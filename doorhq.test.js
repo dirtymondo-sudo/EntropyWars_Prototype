@@ -473,7 +473,9 @@ test('box-room props resolve (kit or procedural), sit inside the walls, wall pro
             if (!(c.radius > 0)) problems.push(k + ': counter ' + c.id + ' has no reach');
         }
         for (const a of room.agents || []) if (!(typeof a.x === 'number' && typeof a.z === 'number')) problems.push(k + ': agent needs x/z');
-        assert.ok(room.props.some(p => p.key === 'fluorescent' && (p.ceil || HQ.catalogue.fluorescent.ceil)), k + ': lit by a fluorescent');
+        /* an OUTDOOR room (plan 7.2 stage 3) has no ceiling to hang a fluorescent from: its lights are masts */
+        if (S.open) assert.ok(Array.isArray(S.lights) && S.lights.length >= 4 && !room.props.some(p => p.ceil), k + ': an outdoor room is lit by masts, nothing hangs from a ceiling');
+        else assert.ok(room.props.some(p => p.key === 'fluorescent' && (p.ceil || HQ.catalogue.fluorescent.ceil)), k + ': lit by a fluorescent');
     }
     assert.deepStrictEqual(problems, []);
     /* the closet reference (janitor_closet_v1): cot, sink, mop bucket, breaker panel, rug, drain, CRT, phone, desk, locker, chair */
@@ -1119,8 +1121,13 @@ test('every built site is a launch map with a threshold and generates a box room
     const built = HQ.siteRooms && HQ.siteRooms.built;
     assert.ok(Array.isArray(built) && built.includes('prebuilt_dumb'), 'D.U.M.B. is the first walkable site (plan 7.2 order)');
     assert.ok(built.includes('prebuilt_cern') && built.includes('prebuilt_backrooms'), 'CERN and the Backrooms follow (plan 7.2 stage 2)');
+    assert.ok(built.includes('prebuilt_nuketown') && built.includes('prebuilt_stadium'), 'Nuketown and the Stadium follow (plan 7.2 stage 3: the outdoor rooms)');
     assert.strictEqual(new Set(built).size, built.length, 'no site is built twice');
     const CAT = HQ.catalogue;
+    /* an outdoor room dresses itself in battle terrain keys (the renderer's _hqTex falls through to the terrain sheet) */
+    const TERRAIN_RULES = require('vm').runInContext('TERRAIN_RULES', D);
+    const texOK = n => !!(HQ.textures[n] || TERRAIN_RULES[n]);
+    const META = Object.fromEntries(D.EW_MAP_META.map(m => [m.id, m]));
     for (const id of built) {
         const th = HQ.thresholds[id];
         assert.ok(th && th.roomNo, id + ': a built site has a threshold with a number');
@@ -1137,9 +1144,23 @@ test('every built site is a launch map with a threshold and generates a box room
         const S = room.shell;
         const board = D.hqSiteBoard(id);
         assert.ok(S.grid && S.grid.cells === board.w && Math.abs(S.grid.cell - 128 / HQ.units) < 1e-9, id + ': one battle tile per cell, 1:1');
-        assert.ok(S.w >= S.grid.cells * S.grid.cell + 4 && S.d === S.w && S.h === S.wallH && S.h > 3.5, id + ': at least 2 m of walkway round the board');
-        for (const n of [S.floor, S.wall, S.dado, S.trim, S.ceiling]) assert.ok(HQ.textures[n], id + ': texture ' + n);
+        assert.ok(S.w >= S.grid.cells * S.grid.cell + 4 && S.d === S.w && S.h === S.wallH && S.h > (S.open ? 2.8 : 3.5), id + ': at least 2 m of walkway round the board');
+        for (const n of [S.floor, S.wall, S.dado, S.trim].concat(S.open ? [] : [S.ceiling])) assert.ok(texOK(n), id + ': texture ' + n);
         assert.ok(Array.isArray(S.lights) && S.lights.length >= 4, id + ': lit over every quarter of the board');
+        if (S.open) {
+            /* an OUTDOOR room (plan 7.2 stage 3): no ceiling, no conduits, the
+               map's sky, ground past the walls, the lights on the walkway corners */
+            assert.ok(S.ceiling == null && S.pipes === false, id + ': an outdoor room has no ceiling and nothing runs across it');
+            assert.ok(S.sky && typeof S.sky === 'object' && (S.sky.night === 0 || S.sky.night === 1), id + ': the sky says day or night');
+            assert.strictEqual(S.sky.scenery, (META[id].env || {}).scenery, id + ': the sky\'s far roster is the map\'s');
+            assert.strictEqual(S.sky.tint, (META[id].env || {}).tint, id + ': the sky\'s tint is the map\'s');
+            assert.ok(!S.sky.fog || (typeof S.sky.fog.color === 'number' && S.sky.fog.amount >= 0), id + ': the fog is the map\'s');
+            assert.ok(texOK(S.apron) && texOK(S.skirt), id + ': the apron and the skirt are textures');
+            for (const L of S.lights) assert.ok(Math.max(Math.abs(L.x), Math.abs(L.z)) > S.grid.cells * S.grid.cell / 2 && Math.abs(L.x) < S.w / 2 && Math.abs(L.z) < S.d / 2, id + ': a mast stands on the walkway, not the board');
+        } else {
+            assert.ok(!S.sky && S.apron == null, id + ': an indoor room has no sky');
+            for (const L of S.lights) assert.ok(Math.abs(L.x) < S.grid.cells * S.grid.cell / 2, id + ': a fluorescent hangs over the board');
+        }
         /* the room's LIGHT (7.2 stage 2): the defaults under the site's overrides */
         const M = S.mood;
         assert.ok(M && typeof M === 'object', id + ': a mood');
@@ -1150,7 +1171,9 @@ test('every built site is a launch map with a threshold and generates a box room
            3.5 m; monuments are fitted by the builder, not by maxH) */
         const infoB = D.hqSiteBoardInfo(id);
         const tallest = Math.max(0, ...infoB.cells.flat().map(c => c.lvl));
-        assert.ok(S.h >= tallest * S.grid.cell + 0.3, id + ': the ceiling (' + S.h + ') clears the board (' + (tallest * S.grid.cell).toFixed(2) + ')');
+        if (!S.open) assert.ok(S.h >= tallest * S.grid.cell + 0.3, id + ': the ceiling (' + S.h + ') clears the board (' + (tallest * S.grid.cell).toFixed(2) + ')');
+        /* the way in must fit the wall: an outdoor room's fence still holds a 2.25 m leaf under its lintel */
+        assert.ok(S.h - 0.25 >= 2.25 + 0.4, id + ': the wall (' + S.h + ') holds the leaf and its lintel');
         /* every prop is in the kit, on a wall, the ceiling or the floor inside the room */
         for (const p of room.props) {
             assert.ok(CAT[p.key], id + ': prop ' + p.key + ' is in the catalogue');
@@ -1206,6 +1229,20 @@ test('every built site is a launch map with a threshold and generates a box room
     assert.ok(brInfo.mons.length === 2 && brInfo.mons.every(m => m.kind === 'monolith' && m.solid), 'Backrooms: two solid monoliths, here with you');
     assert.ok(brInfo.cells.flat().filter(c => c.key === 'water').every(c => c.tint), 'Backrooms: the almond water carries its tint for the sheet');
     assert.strictEqual(D.hqSectorOfMap('prebuilt_backrooms'), 'quarantined');
+    /* the two stage-3 rooms — OUTDOORS, under the map's own sky */
+    const nk = HQ.rooms[D.hqSiteRoomId('prebuilt_nuketown')];
+    assert.ok(nk.shell.open === true && nk.shell.sky.night === 0 && nk.shell.sky.scenery === 'orbs', 'Nuketown: dusk, the orbs overhead');
+    assert.ok(nk.shell.wall === 'wood_planks' && nk.shell.floor === 'grass_2' && nk.shell.apron === 'grass_2', 'Nuketown: a board fence round a lawn');
+    assert.ok(nk.doors[0].leaf === 'leaf_motel' && nk.doors[0].wide === false, 'Nuketown: the motel door is the way in');
+    assert.ok(nk.props.some(p => p.key === 'tube_tv') && !nk.props.some(p => p.key === 'wall_clock' || p.key === 'locker'), 'Nuketown: the TV on the lawn, no lockers on a fence');
+    assert.ok(nk.shell.mood.signLines && nk.shell.mood.signLines.n[2] === 'POP. 0 · TEST SITE');
+    assert.strictEqual(D.hqSectorOfMap('prebuilt_nuketown'), 'terrestrial');
+    const st = HQ.rooms[D.hqSiteRoomId('prebuilt_stadium')];
+    assert.ok(st.shell.open === true && st.shell.sky.night === 1 && st.shell.sky.scenery === 'city', 'the Stadium: night, the city overhead');
+    assert.ok(st.shell.h >= 4 && st.shell.wall === 'concrete_floor', 'the Stadium: the bowl\'s concrete wall');
+    assert.ok(st.doors[0].leaf === 'leaf_wired_double' && st.doors[0].wide === true, 'the Stadium: the turnstile, wide');
+    assert.ok(st.props.filter(p => p.key === 'folding_chair').length >= 3 && st.props.some(p => p.key === 'water_cooler' && p.wall === 'e'), 'the Stadium: the home bench and its cooler on the east wall');
+    assert.strictEqual(D.hqSectorOfMap('prebuilt_stadium'), 'urban');
     /* sites without a room: no room, the register says so */
     assert.ok(!HQ.rooms[D.hqSiteRoomId('prebuilt_moon')], 'the Moon is not walkable yet');
     assert.strictEqual(D.hqRoomRegister().find(r => r.mapId === 'prebuilt_moon').siteRoom, null);
@@ -1227,6 +1264,17 @@ test('source scan: the renderer builds the site board and walks it; map.js walks
     assert.match(tr, /var signY = S\.h - 0\.9, lampY = S\.h - 1\.0;/, 'signs and lamps hang from the ceiling height');
     assert.match(tr, /\(pc\.key === 'water' \|\| pc\.key === 'deep_water'\) && pc\.tint\) fluidColor = new THREE\.Color\(pc\.tint\)/, 'water wears the Δ tint');
     assert.match(tr, /new THREE\.PointLight\(plC,/, 'the fluorescents\' point lights take the mood');
+    /* stage 3: the outdoor room */
+    assert.match(tr, /function _hqBuildSky\(room\)/, 'the sky over an outdoor room');
+    assert.match(tr, /function _hqTickSky\(now\)/, 'the sky ticks under the HQ loop');
+    assert.match(tr, /if \(S\.open\) \{ try \{ _hqBuildSky\(room\); \}/, '_hqEnter builds the sky for an open room');
+    assert.match(tr, /if \(H\.sky\) _hqTickSky\(now\);/, '_hqTickWorld drives it');
+    assert.match(tr, /function _hzCosmicRoster\(\)/, 'the default roster is shared with the battle');
+    assert.match(tr, /var ROSTER = themeRoster \|\| _hzCosmicRoster\(\);/, 'the battle draws from the same roster');
+    assert.match(tr, /TERRAIN_SPRITES\[name\]\) \? TERRAIN_SPRITES\[name\]\[0\] : null\)/, '_hqTex falls through to the terrain sheet');
+    assert.match(tr, /if \(!S\.open && py > S\.h - 0\.3\) return true;/, 'the camera boom has no ceiling outdoors');
+    assert.match(tr, /_horizonFogDirty = true;   \/\/ an outdoor room drove the shared sky uniforms/, 'leaving re-arms the battle\'s fog');
+    assert.match(tr, /\(S\.open \? \[\] : \[\['n', -8\.6\]/, 'no containment lamps outdoors');
     const mp = fs.readFileSync(require('path').join(__dirname, 'map.js'), 'utf8');
     assert.match(mp, /if \(sr && _hqRoomExists\(sr\)\) return \{ room: sr, at: 'egress' \};/, 'a threshold with a room walks you in');
     assert.match(mp, /if \(act\.overlay === 'crossing'\) return _hqCrossingHtml\(t\);/);

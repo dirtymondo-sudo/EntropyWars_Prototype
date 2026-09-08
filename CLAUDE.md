@@ -154,7 +154,16 @@ That's why online kept drifting behind VS-CPU. So, for EVERY change:
   planned in the HQ plan 5.4a, after 7.2.
   **THE WALKABLE SITE (plan 7.2 stage 1, shipped 2026-09-07)**: a site
   listed in `DOOR_HQ.siteRooms.built` (today `prebuilt_dumb`,
-  `prebuilt_cern`, `prebuilt_backrooms` — stage 2 shipped 2026-09-07) is a ROOM
+  `prebuilt_cern`, `prebuilt_backrooms` — stage 2 shipped 2026-09-07 —
+  and the OUTDOOR rooms `prebuilt_nuketown`, `prebuilt_stadium` — stage 3
+  shipped 2026-09-08: `shells[id].open: true` = no ceiling, the walls are
+  the site's perimeter in battle TERRAIN keys (`_hqTex` falls through to
+  the terrain sheet), an `apron` / `skirt` past them, lamp MASTS at the
+  walkway corners, and `shell.sky` = the map's EW_MAP_META `env` drawn by
+  three-renderer.js `_hqBuildSky` — a second firmament dome on the
+  battle's shared `_envUni` uniforms, driven by `_hqTickSky`, plus the
+  map's far roster hung round the room from the same builders; the
+  battle's own horizon is untouched) is a ROOM
   behind its bay threshold — `hqSiteRoom(mapId)` (data.js) generates a
   box room (`kind: 'box', fx: 'site', site: mapId`; never hand-edit
   `rooms.site_*`) with the site's Δ board on the floor at 1:1, read by

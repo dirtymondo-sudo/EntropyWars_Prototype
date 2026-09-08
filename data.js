@@ -16587,9 +16587,18 @@ const DOOR_HQ = {
        Cartesian frame (Claude-written placeholders — the user may rewrite
        any line, A15). The natives loiter on the walkway (`npcSpots` with a
        `race` hint from hqMissionPool). Order of construction (plan 7.2):
-       555 D.U.M.B. → 999 CERN → 90 Backrooms → 1945 → 50 → the moat maps. */
+       555 D.U.M.B. → 999 CERN → 90 Backrooms → 1945 → 50 → the moat maps.
+       AN OUTDOOR ROOM (plan 7.2 stage 3, 2026-09-08): `shells[id].open:
+       true` — no ceiling, no conduits, no fluorescents; the four walls are
+       the site's own perimeter (a board fence, the bowl's wall — `wall` may
+       be a battle TERRAIN key, the renderer's _hqTex falls through to the
+       terrain sheet), an `apron` of ground runs out past them over a
+       `skirt`, the room's `sky` is the map's EW_MAP_META env (tint /
+       stars / nebula / fog / far roster `scenery`) drawn on the battle's
+       own firmament dome, `mood.night` picks day or night, and the four
+       `lights` become lamp MASTS on the walkway corners. */
     siteRooms: {
-        built: ['prebuilt_dumb', 'prebuilt_cern', 'prebuilt_backrooms'],
+        built: ['prebuilt_dumb', 'prebuilt_cern', 'prebuilt_backrooms', 'prebuilt_nuketown', 'prebuilt_stadium'],
         shell: { pad: 4.0, h: 4.4, dadoH: 1.05, floor: 'concrete', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling', pipes: true,
             /* the room's LIGHT (plan 7.2 stage 2): `lamp` = the containment
                lamps in the corners (lens + glow), `strip` = the wall strips,
@@ -16609,6 +16618,23 @@ const DOOR_HQ = {
             prebuilt_backrooms: { floor: 'carpet', wall: 'drywall', dado: 'drywall', trim: 'drywall', ceiling: 'ceiling', h: 3.9, dadoH: 0.7, pipes: false,
                 mood: { lamp: 0xfff0a0, glow: 0xffe070, strip: 0xfff2b0, light: 0xfff0c0, signN: { bg: '#3a3418', border: '#e8d890', color: '#fff4c0' }, signS: { bg: '#3a3418', border: '#e8d890', color: '#fff4c0' },
                     signLines: { n: ['BACKROOMS', 'ROOM 90', 'LEVEL 0 · NO EXIT'], s: ['NON-CANON', 'THE EXIT SIGN IS A LIE', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 1945 · NUKETOWN — the first OUTDOOR room (stage 3): the test
+               site's board fence for a wall, lawn underfoot, dusk overhead
+               (the map's own khaki sky and its orbs), sodium lamp masts at
+               the corners; the way in is the motel door in the fence */
+            prebuilt_nuketown: { open: true, floor: 'grass_2', wall: 'wood_planks', dado: 'wood_planks', trim: 'concrete', ceiling: null, h: 3.2, dadoH: 0.5, pipes: false,
+                apron: 'grass_2', skirt: 'dirt', apronColor: 0xa8b888,
+                mood: { lamp: 0xffd890, glow: 0xffc060, strip: 0xffe8b0, light: 0xfff0d0, night: 0,
+                    signN: { bg: '#2d6b3a', border: '#e8e2c0', color: '#fff6dc' }, signS: { bg: '#3a2a10', border: '#ffd060', color: '#fff0c0' },
+                    signLines: { n: ['NUKETOWN', 'ROOM 1945', 'POP. 0 · TEST SITE'], s: ['CONDEMNED', 'THE FENCE IS THE WALL', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 50 · FOOTBALL STADIUM — the bowl at night: the inner concrete
+               wall round the field, turf underfoot, floodlight masts, the
+               city's roster and its stars overhead; the turnstile lets you in */
+            prebuilt_stadium: { open: true, floor: 'grass_2', wall: 'concrete_floor', dado: 'concrete_floor', trim: 'concrete', ceiling: null, h: 4.2, dadoH: 1.0, pipes: false,
+                apron: 'concrete_floor', skirt: 'concrete_floor', apronColor: 0x9a9a96, floorColor: 0x5ec46a,
+                mood: { lamp: 0xeaf4ff, glow: 0xbfe0ff, strip: 0xffffff, light: 0xe8f2ff, night: 1,
+                    signN: { bg: '#10203a', border: '#ffd34a', color: '#ffffff' }, signS: { bg: '#1a1a1a', border: '#f4f4f4', color: '#f4f4f4' },
+                    signLines: { n: ['FOOTBALL STADIUM', 'ROOM 50', 'HOME 0 · AWAY 0 · Q1'], s: ['ACTIVE CROSSING', 'NO RE-ENTRY WITHOUT A STAMP', 'THE CROSSING IS AT THE CONSOLE'] } } },
         },
         flavour: {
             prebuilt_dumb: {
@@ -16680,6 +16706,49 @@ const DOOR_HQ = {
                     { key: 'fluorescent',    x: 8.6,  z: 0,   ceil: true, face: 0 },
                     { key: 'fluorescent',    x: 0,    z: -8.6, ceil: true, face: 90 },
                     { key: 'fluorescent',    x: 0,    z: 8.6,  ceil: true, face: 90 },
+                ],
+            },
+            /* 1945 · NUKETOWN — the observation post on the east lawn: a TV
+               that still gets the test countdown, a chair to watch it from,
+               the box the mannequins came in; the fence wears the site's
+               breaker and a hose reel of clipboard paperwork */
+            prebuilt_nuketown: {
+                agent: '“Population zero. That is the sign, not the count. Do not wave at the mannequins; some of them wave back.”',
+                lines: [
+                    'The lawns are watered on a schedule. The schedule is classified.',
+                    'Every house has a basement. Every basement has a door. Continuity has stopped counting.',
+                    'The countdown on the TV has been at ten for nine years.',
+                    'The dumpsters are climbable. That is in the site file. That is the whole site file.',
+                    'If the picket fence is warm, the test is early.',
+                ],
+                props: [
+                    { key: 'tube_tv',        x: 9.6,  z: -6.9, y: 0, face: 250 },
+                    { key: 'folding_chair',  x: 8.3,  z: -6.4, face: 70 },
+                    { key: 'cardboard_box',  x: 9.5,  z: -8.6, face: 25 },
+                    { key: 'potted_plant',   x: -9.5, z: -9.4 },
+                    { key: 'mop_bucket',     x: -9.4, z: 8.6, face: 40 },
+                ],
+            },
+            /* 50 · THE STADIUM — the home bench along the east wall (three
+               folding chairs, the cooler), the ground crew's bucket by the
+               turnstile, the crate of game balls, a plant nobody ordered */
+            prebuilt_stadium: {
+                agent: '“Tickets. Not a badge, a ticket. On game day the league is the jurisdiction and the Department is the halftime show.”',
+                lines: [
+                    'The 50-yard line is a threshold. Both teams cross it. Nobody has filed the paperwork.',
+                    'The bowl seats ninety thousand. The void seats more.',
+                    'The floodlights come on at night. There is no other time here.',
+                    'The quarterback has crossed more times than any officer in the building. He calls it a season.',
+                    'The turnstile counts in. It does not count out.',
+                ],
+                props: [
+                    { key: 'folding_chair',  x: 9.6,  z: -4.0, face: 270 },
+                    { key: 'folding_chair',  x: 9.6,  z: -2.9, face: 270 },
+                    { key: 'folding_chair',  x: 9.6,  z: -1.8, face: 270 },
+                    { key: 'water_cooler',   wall: 'e', z: -0.6 },
+                    { key: 'cardboard_boxes', x: 9.4, z: 8.4, face: 20 },
+                    { key: 'mop_bucket',     x: -3.6, z: 9.6, face: 200 },
+                    { key: 'potted_plant',   x: -9.6, z: -9.5 },
                 ],
             },
         },
@@ -17375,6 +17444,14 @@ function hqSiteRoom(mapId) {
     const leaf = T.leaf || 'leaf_closet_alt';
     const F = (SR.flavour || {})[id] || {};
     const label = ((meta.label) || id).toUpperCase();
+    /* an OUTDOOR room (stage 3): no ceiling, the map's sky and far roster
+       overhead, the lights are masts on the walkway corners */
+    const open = !!shell.open;
+    const mood = Object.assign({}, ((SR.shell || {}).mood) || {}, (shell.mood) || {});
+    const lightsAt = open
+        ? [{ x: -(half - 1.3), z: -(half - 1.3) }, { x: half - 1.3, z: -(half - 1.3) }, { x: -(half - 1.3), z: half - 1.3 }, { x: half - 1.3, z: half - 1.3 }]
+        : [{ x: -3.5, z: -3.5 }, { x: 3.5, z: -3.5 }, { x: -3.5, z: 3.5 }, { x: 3.5, z: 3.5 }];
+    const sky = open ? Object.assign({ night: mood.night ? 1 : 0 }, meta.env || {}) : null;
     const doors = [{
         /* the way back: the threshold leaf from the other side, centred on
            the south wall (P1's spawn lane is the south row), landing at the
@@ -17401,19 +17478,20 @@ function hqSiteRoom(mapId) {
         { key: 'fire_extinguisher', wall: 's', x: 3.4 },
         { key: 'breaker_panel', wall: 's', x: -3.4 },
         { key: 'wet_floor_sign', x: 2.6, z: half - 1.4, face: 150 },
+        /* the east walkway: file boxes for the site file, a chair for the guard */
+        { key: 'cardboard_boxes', x: half - 1.3, z: half - 1.6, face: 30 },
+        { key: 'folding_chair', x: half - 1.3, z: 2.2, face: 250 },
+    ];
+    if (!open) props.push(
         /* the north wall: the plate over the board, a clock, lockers in the corner */
         { key: 'wall_clock',    wall: 'n', x: -3.0 },
         { key: 'locker',        wall: 'n', x: half - 1.2 },
         { key: 'locker',        wall: 'n', x: half - 2.1 },
-        /* the east walkway: file boxes for the site file, a chair for the guard */
-        { key: 'cardboard_boxes', x: half - 1.3, z: half - 1.6, face: 30 },
-        { key: 'folding_chair', x: half - 1.3, z: 2.2, face: 250 },
         /* ceiling fixtures: one over each quarter of the board */
         { key: 'fluorescent', x: -3.5, z: -3.5, ceil: true, face: 90 },
         { key: 'fluorescent', x: 3.5,  z: -3.5, ceil: true, face: 90 },
         { key: 'fluorescent', x: -3.5, z: 3.5,  ceil: true, face: 90 },
-        { key: 'fluorescent', x: 3.5,  z: 3.5,  ceil: true, face: 90 },
-    ];
+        { key: 'fluorescent', x: 3.5,  z: 3.5,  ceil: true, face: 90 });
     (F.props || []).forEach(p => props.push(Object.assign({}, p)));
     /* the natives on the walkway (hqMissionPool: natives first) — a race hint
        per spot; a race with no rigged model falls back to the roster draw */
@@ -17426,12 +17504,16 @@ function hqSiteRoom(mapId) {
         kind: 'box', fx: 'site', site: id, sector: sector, why: T.why || '',
         shell: {
             w: size, d: size, h: shell.h || 4.4, wallH: shell.h || 4.4, dadoH: shell.dadoH || 1.05,
-            floor: shell.floor, wall: shell.wall, dado: shell.dado, trim: shell.trim, ceiling: shell.ceiling,
-            pipes: shell.pipes !== false,
+            floor: shell.floor, wall: shell.wall, dado: shell.dado, trim: shell.trim, ceiling: open ? null : shell.ceiling,
+            pipes: !open && shell.pipes !== false,
+            /* an outdoor room (stage 3): the sky it stands under, the ground past its walls */
+            open: open, sky: sky,
+            apron: open ? (shell.apron || shell.floor || 'grass_2') : null, skirt: open ? (shell.skirt || 'dirt') : null,
+            apronColor: (open && shell.apronColor != null) ? shell.apronColor : null, floorColor: (shell.floorColor != null) ? shell.floorColor : null,
             /* the light (7.2 stage 2): the defaults under the site's overrides */
-            mood: Object.assign({}, ((SR.shell || {}).mood) || {}, (((SR.shells || {})[id] || {}).mood) || {}),
+            mood: mood,
             light: { x: 0, z: 0 },
-            lights: [{ x: -3.5, z: -3.5 }, { x: 3.5, z: -3.5 }, { x: -3.5, z: 3.5 }, { x: 3.5, z: 3.5 }],
+            lights: lightsAt,
             plate: { x: 0, z: -(half - 0.4), y: (shell.h || 4.4) - 0.45 },
             grid: { cells: cells, cell: cell },
         },

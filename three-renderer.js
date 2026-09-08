@@ -24398,6 +24398,30 @@ const ThreeRenderer = (function () {
         return _HZ_THEME_ROSTERS[name] || null;
     }
 
+    /* the default (cosmic) roster — a function so the HQ's outdoor rooms
+       (_hqBuildSky) can draw from it as well as the battle */
+    function _hzCosmicRoster() {
+        return [
+            [0.185, _hzGreekRuin,      false, -0.45,  0.55],   // colonnade ruins
+            [0.262, _hzStairway,       false, -0.50,  0.55],   // stairways to nowhere
+            [0.408, _hzZiggurat,       false, -0.45,  0.55],   // stepped temples
+            [0.468, _hzGateway,        false, -0.45,  0.58],   // gateways to nowhere
+            [0.521, _hzObelisk,        false, -0.45,  0.58],   // obelisks
+            [0.583, _hzMonolith,       false, -0.52,  0.62],   // leaning monoliths
+            [0.629, _hzColossus,       false, -0.45,  0.48],   // toppled colossi
+            [0.691, _hzFloatingIsland, false, -0.58,  0.66],   // broken sky-islands
+            [0.725, _hzCrystalShards, true,  -0.60,  0.70],   // crystal clusters
+            [0.748, _hzAstralOrbs,    true,  -0.64,  0.76],   // wandering astral lights
+            [0.768, _hzSacredRings,   true,  -0.60,  0.72],   // sacred-geometry haloes
+            [0.808, _hzModelPyramid,  false, -0.48,  0.55],   // textured pyramid model (.glb)
+            [0.848, _hzModelEyeball,  true,  -0.55,  0.70],   // watcher eyeball — tumbles/scans
+            [0.918, _hzModelPlanet,   false, -0.60,  0.78],   // drifting planets (misc .glb)
+            [0.938, _hzModelStar,     false, -0.55,  0.80],   // a burning star
+            [0.953, _hzModelSolarSystem, false, -0.40, 0.70], // rare orrery showpiece
+            [0.976, _hzModelClock,    false, -0.45,  0.62],   // surreal timepieces
+            [1.00,  _hzModelCraft,    false, -0.30,  0.68]    // UFO / spaceship on patrol
+        ];
+    }
     function _buildHorizonScenery() {
         if (!scene || typeof THREE === 'undefined') return;
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -24452,26 +24476,7 @@ const ThreeRenderer = (function () {
         // `tumble` bodies (crystals, haloes) spin freely on all axes while the
         // rest hang roughly upright with a slow turn and an organic tilt.
         //   thr,  builder,          tumble, yLoFactor, yHiFactor   (× discR)
-        var ROSTER = themeRoster || [
-            [0.185, _hzGreekRuin,      false, -0.45,  0.55],   // colonnade ruins
-            [0.262, _hzStairway,       false, -0.50,  0.55],   // stairways to nowhere
-            [0.408, _hzZiggurat,       false, -0.45,  0.55],   // stepped temples
-            [0.468, _hzGateway,        false, -0.45,  0.58],   // gateways to nowhere
-            [0.521, _hzObelisk,        false, -0.45,  0.58],   // obelisks
-            [0.583, _hzMonolith,       false, -0.52,  0.62],   // leaning monoliths
-            [0.629, _hzColossus,       false, -0.45,  0.48],   // toppled colossi
-            [0.691, _hzFloatingIsland, false, -0.58,  0.66],   // broken sky-islands
-            [0.725, _hzCrystalShards, true,  -0.60,  0.70],   // crystal clusters
-            [0.748, _hzAstralOrbs,    true,  -0.64,  0.76],   // wandering astral lights
-            [0.768, _hzSacredRings,   true,  -0.60,  0.72],   // sacred-geometry haloes
-            [0.808, _hzModelPyramid,  false, -0.48,  0.55],   // textured pyramid model (.glb)
-            [0.848, _hzModelEyeball,  true,  -0.55,  0.70],   // watcher eyeball — tumbles/scans
-            [0.918, _hzModelPlanet,   false, -0.60,  0.78],   // drifting planets (misc .glb)
-            [0.938, _hzModelStar,     false, -0.55,  0.80],   // a burning star
-            [0.953, _hzModelSolarSystem, false, -0.40, 0.70], // rare orrery showpiece
-            [0.976, _hzModelClock,    false, -0.45,  0.62],   // surreal timepieces
-            [1.00,  _hzModelCraft,    false, -0.30,  0.68]    // UFO / spaceship on patrol
-        ];
+        var ROSTER = themeRoster || _hzCosmicRoster();
 
         var slots = 132;
         for (var i = 0; i < slots; i++) {
@@ -29081,10 +29086,14 @@ const ThreeRenderer = (function () {
     function _hqTex(name, ru, rv) {
         var D = _hqData();
         var file = D && D.textures && D.textures[name];
-        if (!file) return null;
+        /* an OUTDOOR site room (HQ plan 7.2 stage 3) dresses its floor and
+           walls in a battle TERRAIN key (grass, planks, concrete) — those
+           come off the terrain sheet, tiled like the HQ's own textures */
+        var url = file ? (D.assets.textures + file) : ((typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[name]) ? TERRAIN_SPRITES[name][0] : null);
+        if (!url) return null;
         var key = name + '|' + (ru || 1) + '|' + (rv || 1);
         if (_hqTexCache[key]) return _hqTexCache[key];
-        var t = textureLoader.load(D.assets.textures + file, function () { if (_hq) _hq.dirty = true; });
+        var t = textureLoader.load(url, function () { if (_hq) _hq.dirty = true; });
         t.wrapS = t.wrapT = THREE.RepeatWrapping;
         t.repeat.set(ru || 1, rv || 1);
         t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter;
@@ -29550,12 +29559,27 @@ const ThreeRenderer = (function () {
         var U = _hqUnits(), S = room.shell, G = _hq.shellGroup;
         var W = S.w, Dp = S.d, H = S.h;
         var texFloor = S.floor || 'terrazzo', texWall = S.wall || 'stone', texDado = S.dado || 'oxblood', texTrim = S.trim || 'teal', texCeil = S.ceiling || 'concrete';
-        var fl = new THREE.Mesh(new THREE.PlaneGeometry(W * U, Dp * U), _hqMat(texFloor, W / 1.6, Dp / 1.6, { shininess: 18, specular: 0x2a2a2a }));
+        /* an OUTDOOR room (HQ plan 7.2 stage 3, `shell.open`): no ceiling,
+           no fluorescents; the walls are the site's perimeter (terrain keys
+           tile at one battle tile = 1.75 m), an apron of ground runs out
+           past them over a dark skirt, and the sky is _hqBuildSky's */
+        var open = !!S.open, TR = open ? 1.75 : null;
+        var fl = new THREE.Mesh(new THREE.PlaneGeometry(W * U, Dp * U), _hqMat(texFloor, W / (TR || 1.6), Dp / (TR || 1.6), { shininess: open ? 4 : 18, specular: open ? 0x101010 : 0x2a2a2a, color: (S.floorColor != null) ? S.floorColor : 0xffffff }));
         fl.rotation.x = -Math.PI / 2;
         G.add(fl);
-        var ce = new THREE.Mesh(new THREE.PlaneGeometry(W * U, Dp * U), _hqMat(texCeil, W / 1.4, Dp / 1.4, { shininess: 2 }));
-        ce.rotation.x = Math.PI / 2; ce.position.y = H * U;
-        G.add(ce);
+        if (!open) {
+            var ce = new THREE.Mesh(new THREE.PlaneGeometry(W * U, Dp * U), _hqMat(texCeil, W / 1.4, Dp / 1.4, { shininess: 2 }));
+            ce.rotation.x = Math.PI / 2; ce.position.y = H * U;
+            G.add(ce);
+        } else {
+            var A = 16;
+            var ap = new THREE.Mesh(new THREE.PlaneGeometry((W + 2 * A) * U, (Dp + 2 * A) * U), _hqMat(S.apron || texFloor, (W + 2 * A) / 1.75, (Dp + 2 * A) / 1.75, { shininess: 3, specular: 0x0c0c0c, color: (S.apronColor != null) ? S.apronColor : 0xffffff }));
+            ap.rotation.x = -Math.PI / 2; ap.position.y = -0.9; ap.renderOrder = -2;
+            G.add(ap);
+            var sk = _hqBox(W + 2 * A, 3.0, Dp + 2 * A, _hqMat(S.skirt || 'dirt', (W + 2 * A) / 1.75, 3.0 / 1.75, { color: 0x6a6660, shininess: 2 }));
+            sk.position.y = -1.5 * U - 1.0;
+            G.add(sk);
+        }
         [['n', W], ['s', W], ['e', Dp], ['w', Dp]].forEach(function (ws) {
             var B = _hqBoxWall(room, ws[0]), len = ws[1];
             /* a slab along the wall: local x runs along it, local z is the inward normal */
@@ -29565,8 +29589,8 @@ const ThreeRenderer = (function () {
                 m.rotation.y = B.yaw;
                 return m;
             }
-            G.add(slab(0, H, -0.02, 0.04, _hqMat(texWall, len / 3.2, H / 3.2)));
-            G.add(slab(0.06, S.dadoH, 0.02, 0.03, _hqMat(texDado, len / 2.2, 1, { shininess: 14 })));
+            G.add(slab(0, H, -0.02, 0.04, _hqMat(texWall, len / (TR || 3.2), H / (TR || 3.2), open ? { shininess: 4, specular: 0x101010 } : {})));
+            G.add(slab(0.06, S.dadoH, 0.02, 0.03, _hqMat(texDado, len / (TR || 2.2), TR ? S.dadoH / TR : 1, { shininess: open ? 4 : 14 })));
             var trim = _hqMat(texTrim, len / 1.5, 1, { shininess: 40, specular: 0x555555 });
             G.add(slab(0, 0.08, 0.03, 0.05, trim));
             G.add(slab(S.dadoH, S.dadoH + 0.09, 0.03, 0.05, trim));
@@ -29598,6 +29622,7 @@ const ThreeRenderer = (function () {
         /* the fluorescent: a procedural strip + glow at S.light (the kit fixture hangs at the same spot) */
         var lightsAt = (S.lights && S.lights.length) ? S.lights : [S.light || { x: 0, z: 0 }];
         var lightC = (S.mood && S.mood.light != null) ? S.mood.light : null;   // a site room's mood tints its fluorescents
+        if (open) lightsAt = [];                                               // an outdoor room's lights are masts (_hqBuildSiteBoard)
         lightsAt.forEach(function (L) {
             var strip = new THREE.Mesh(new THREE.BoxGeometry(1.3 * U, 0.08 * U, 0.3 * U), _hqBasic(lightC != null ? lightC : 0xeef3ff));
             strip.position.set(L.x * U, (H - 0.05) * U, L.z * U);
@@ -30074,9 +30099,30 @@ const ThreeRenderer = (function () {
         var SL = mood.signLines || {};
         sign('site_n_' + room.site, SL.n || [String(room.label || room.site), 'ROOM ' + (no || '—'), 'THE SITE · WALK IT'], 4.8, 1.7, 5.0, signY, -wallIn, 0, Object.assign({ sizes: [72, 96, 40] }, mood.signN || {}));
         sign('site_s_' + room.site, SL.s || [(sf && sf.status) || 'ON FILE', 'THE THRESHOLD IS BEHIND YOU', 'THE CROSSING IS AT THE CONSOLE'], 4.8, 1.7, -5.0, signY, wallIn, Math.PI, Object.assign({ sizes: [92, 44, 44], bg: '#2a1416', border: '#d8a0a0', color: '#f2d8d2' }, mood.signS || {}));
-        /* the containment lamps in the corners (red by default; the site's mood recolours them) */
+        /* an OUTDOOR room (stage 3): lamp masts on the walkway corners where
+           the indoor room hangs its fluorescents — a pole, a head, the lens
+           and its glow in the mood's colour; no containment kit, no strips */
         var lampMat = new THREE.MeshPhongMaterial({ color: 0x2a2b2e, shininess: 20 });
-        [['n', -8.6], ['n', 8.6], ['s', -8.6], ['s', 8.6], ['w', -7.0], ['w', 7.0], ['e', -7.0], ['e', 7.0]].forEach(function (L, i) {
+        if (S.open) {
+            var poleMat = new THREE.MeshPhongMaterial({ color: 0x5a5f66, shininess: 30, specular: 0x666666 });
+            var mastH = S.h + 2.0;
+            (S.lights || []).forEach(function (L, i) {
+                var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06 * U, 0.09 * U, mastH * U, 8), poleMat);
+                pole.position.set(L.x * U, (mastH / 2) * U, L.z * U); G.add(pole);
+                var face = Math.atan2(-L.x, -L.z);                    // the head leans in over the board
+                var head = _hqBox(0.62, 0.16, 0.3, lampMat);
+                head.position.set((L.x - Math.sin(face) * -0.22) * U, (mastH - 0.05) * U, (L.z - Math.cos(face) * -0.22) * U); head.rotation.y = face; G.add(head);
+                var lens = new THREE.Mesh(new THREE.SphereGeometry(0.13 * U, 8, 6), _hzGlowMat(lampC, 0.95));
+                lens.position.set(head.position.x, (mastH - 0.16) * U, head.position.z); G.add(lens);
+                var glow = _hzGlowSprite(1.6 * CM, glowC, 0.5, 0, 0, 0);
+                glow.position.copy(lens.position); G.add(glow);
+                pulse(glow.material, 0.08, 0.6 + (i % 3) * 0.25);
+                var pb = new THREE.Object3D(); pb.position.set(L.x * U, 0, L.z * U); G.add(pb);
+                _hq.blockers.push({ obj: pb, y: 0, top: null, rad: 0.22, site: true });
+            });
+        }
+        /* the containment lamps in the corners (red by default; the site's mood recolours them) */
+        (S.open ? [] : [['n', -8.6], ['n', 8.6], ['s', -8.6], ['s', 8.6], ['w', -7.0], ['w', 7.0], ['e', -7.0], ['e', 7.0]]).forEach(function (L, i) {
             var B = _hqBoxWall(room, L[0], (L[0] === 'e' || L[0] === 'w') ? { z: L[1] } : { x: L[1] });
             var yL = lampY;
             var h = _hqBox(0.28, 0.5, 0.28, lampMat);
@@ -30088,7 +30134,7 @@ const ThreeRenderer = (function () {
             pulse(glow.material, 0.18, 0.5 + (i % 3) * 0.3);
         });
         /* fluorescent strips near the top of every wall, so the room reads */
-        [['n', 0], ['s', Math.PI], ['w', Math.PI / 2], ['e', -Math.PI / 2]].forEach(function (wd) {
+        (S.open ? [] : [['n', 0], ['s', Math.PI], ['w', Math.PI / 2], ['e', -Math.PI / 2]]).forEach(function (wd) {
             var B = _hqBoxWall(room, wd[0], {});
             [-5, 5].forEach(function (f) {
                 var gm = _hzGlowMat(stripC, 0.75);
@@ -30100,6 +30146,101 @@ const ThreeRenderer = (function () {
                 pulse(gm, 0.06, 2.2 + Math.random() * 2.5);
             });
         });
+    }
+
+    /* ── THE SKY OVER AN OUTDOOR ROOM (HQ plan 7.2 stage 3, 2026-09-08) ──
+       A site room with `shell.open` stands under the map's own sky: a second
+       firmament dome (the battle's dome shader and its SHARED uniforms —
+       _hqTickWorld drives uMapTint / stars / nebula / fog / day-night from
+       `shell.sky` every frame, which the battle overwrites again the moment
+       it renders) and the map's far roster (`sky.scenery` → _hzThemeRoster,
+       the cosmic default otherwise) hung round the room at the battle's
+       scale — the same builders, the same haze stamp, drifting under the HQ
+       loop (_hq.sky.floaters), plus the Department's lone doors and a few
+       haloes like every outdoor battle roster. Nothing here is the battle
+       horizon: that group, its key cache and its floaters are untouched. */
+    function _hqBuildSky(room) {
+        var S = room.shell, sky = S.sky, H = _hq;
+        if (!S.open || !sky || !H) return;
+        if (!_envInited) { try { _initEnvironment(); } catch (e) {} }
+        if (!_envUni) return;
+        var domeMat = new THREE.ShaderMaterial({ uniforms: _envUni, vertexShader: _ENV_DOME_VS, fragmentShader: _envDomeFS(), side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false });
+        var dome = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24), domeMat);
+        dome.renderOrder = -1000; dome.frustumCulled = false; dome.scale.setScalar(_ENV_DOME_R);
+        H.scene.add(dome);
+        H.sky = { dome: dome, tint: new THREE.Color((sky.tint != null) ? sky.tint : 0x000000), fogC: new THREE.Color((sky.fog && sky.fog.color != null) ? sky.fog.color : 0x000000), floaters: [], group: null, night: sky.night ? 1 : 0 };
+        var theme = sky.scenery || 'cosmic';
+        if (theme === 'none') return;
+        var roster = _hzThemeRoster(theme) || _hzCosmicRoster();
+        var dens = (sky.density != null) ? sky.density : 1;
+        var discR = 6000, ts = 128;
+        var seed = 0x1945; for (var ci = 0; ci < (room.site || '').length; ci++) seed = (seed * 31 + room.site.charCodeAt(ci)) >>> 0;
+        var rng = _mulberry32(seed);
+        var group = new THREE.Group(); group.name = 'hqSky'; group.renderOrder = -40;
+        var pulse0 = _hzGlowPulse.length;
+        var hang = function (mesh, ang, rad, y, tumble, spinLo, spinHi) {
+            var x = Math.cos(ang) * rad, z = Math.sin(ang) * rad;
+            mesh.position.set(x, y, z);
+            if (tumble) mesh.rotation.set(rng() * Math.PI * 2, rng() * Math.PI * 2, rng() * Math.PI * 2);
+            else { mesh.rotation.y += rng() * Math.PI * 2; mesh.rotation.z += (rng() - 0.5) * 0.16; }
+            _stampHorizonHaze(mesh, rad, y, discR);
+            group.add(mesh);
+            H.sky.floaters.push({ obj: mesh, baseY: y, amp: ts * (0.5 + rng() * 1.6), spd: 0.08 + rng() * 0.22, phase: rng() * Math.PI * 2, spin: (rng() < 0.5 ? 1 : -1) * (spinLo + rng() * (spinHi - spinLo)) });
+        };
+        var want = Math.round(16 * Math.max(0.35, Math.min(1.5, dens)));
+        for (var i = 0; i < want; i++) {
+            var roll = rng(), row = roster[roster.length - 1];
+            for (var ri = 0; ri < roster.length; ri++) if (roll < roster[ri][0]) { row = roster[ri]; break; }
+            var mesh = null;
+            try { mesh = row[1](rng); } catch (e) { console.warn('[HQ] sky body failed', e); }
+            if (!mesh) continue;
+            var ang = (i / want) * Math.PI * 2 + (rng() - 0.5) * 0.5;
+            var rad = discR * (0.55 + rng() * 0.8);
+            /* keep the low bodies clear of the apron's eye line: nothing hangs just under the room's floor */
+            var yLo = Math.min(row[3], -0.12), yHi = row[4];
+            var y = (yLo + rng() * (yHi - yLo)) * discR;
+            if (y < 0 && y > -0.12 * discR) y = -0.12 * discR;
+            hang(mesh, ang, rad, y, row[2], row[2] ? 0.0012 : 0.0002, row[2] ? 0.004 : 0.0008);
+        }
+        var ringWant = Math.round(3 * Math.min(1, dens));
+        for (var rgi = 0; rgi < ringWant; rgi++) { var rM = _hzSacredRings(rng); if (rM) hang(rM, (rgi / ringWant) * Math.PI * 2 + rng() * 0.8, discR * (0.7 + rng() * 0.6), (-0.4 + rng() * 1.0) * discR, true, 0.0012, 0.004); }
+        for (var dgi = 0; dgi < 3; dgi++) {
+            var dM = _hzLoneDoor(rng); if (!dM) continue;
+            var dAng = (dgi / 3) * Math.PI * 2 + rng() * 0.9 + 0.7, dRad = discR * (0.6 + rng() * 0.6), dY = (-0.2 + rng() * 0.7) * discR;
+            dM.position.set(Math.cos(dAng) * dRad, dY, Math.sin(dAng) * dRad);
+            dM.rotation.y += Math.atan2(-dM.position.x, -dM.position.z);          // face the room
+            dM.rotation.z += (rng() - 0.5) * 0.12;
+            _stampHorizonHaze(dM, dRad, dY, discR);
+            group.add(dM);
+            H.sky.floaters.push({ obj: dM, baseY: dY, amp: ts * (0.5 + rng() * 1.4), spd: 0.08 + rng() * 0.2, phase: rng() * Math.PI * 2, spin: 0 });
+        }
+        H.scene.add(group);
+        H.sky.group = group;
+        /* the roster's glow accents breathe under the HQ loop; its materials take the sky's grade once (no per-frame regrade here) */
+        _hzGlowPulse.splice(pulse0).forEach(function (p) { if (p && p.mat) H.fxPulse.push(p); });
+        try { _gradeHorizonScenery(H.sky.night, 0, 0); } catch (e) {}
+        console.log('[HQ] sky:', theme, '—', group.children.length, 'bodies');
+    }
+    function _hqTickSky(now) {
+        var H = _hq, sk = H && H.sky, env = H && H.room.shell.sky;
+        if (!sk || !env || !_envUni) return;
+        sk.dome.position.copy(H.camera.position);
+        var u = _envUni, t = now / 1000;
+        u.uTime.value = t; u.uDayNight.value = sk.night; u.uSkyEvent.value = 0; u.uSkyAmt.value = 0; u.uZodiac.value = 0;
+        u.uWeather.value.set(0, 0, 0, 0); u.uMoonMesh.value = 0;
+        u.uCenter.value.set(0, 0, 0); u.uDiscR.value = 6000;
+        u.uMapTint.value.set(sk.tint.r, sk.tint.g, sk.tint.b);
+        u.uMapTintAmt.value = (env.tint != null && env.tintAmt != null) ? env.tintAmt : 0;
+        u.uMapStars.value = (env.stars != null) ? env.stars : 1;
+        u.uMapNebula.value = (env.nebula != null) ? env.nebula : 1;
+        var fg = env.fog;
+        if (fg) { u.uFogColor.value.set(sk.fogC.r, sk.fogC.g, sk.fogC.b); u.uFogAmount.value = fg.amount || 0; u.uFogTop.value = fg.top || 0; u.uFogBand.value = (fg.band != null) ? fg.band : 0.5; }
+        else u.uFogAmount.value = 0;
+        for (var i = 0; i < sk.floaters.length; i++) {
+            var f = sk.floaters[i];
+            f.obj.position.y = f.baseY + Math.sin(t * f.spd + f.phase) * f.amp;
+            f.obj.rotation.y += f.spin;
+        }
     }
 
     /* ── procedural props (catalogue `proc`): the closet pieces the kit
@@ -31051,7 +31192,7 @@ const ThreeRenderer = (function () {
         var r = Math.hypot(px, pz);
         if (_hq.room.kind === 'box') {
             if (Math.abs(px) > S.w / 2 - 0.28 || Math.abs(pz) > S.d / 2 - 0.28) return true;
-            if (py > S.h - 0.3) return true;
+            if (!S.open && py > S.h - 0.3) return true;   // an outdoor room has no ceiling
             if (_hq.site) {
                 /* the site board (plan 7.2): the boom stays out of raised cells and off a pit's floor */
                 var sc = _hqSiteCellAt(px, pz);
@@ -31452,6 +31593,9 @@ const ThreeRenderer = (function () {
     function _hqTickWorld(dt, now) {
         var H = _hq;
         if (H.cube) { H.cube.rotation.y += dt * 0.035; H.cube.position.y = (H.room.shell.cube.y + Math.sin(now * 0.0004) * 0.05) * _hqUnits(); }
+        /* an outdoor room's sky: the dome rides the camera, the uniforms are
+           the room's, the far roster drifts (HQ plan 7.2 stage 3) */
+        if (H.sky) _hqTickSky(now);
         /* room-fx glow pulses (the training pit's lamps and strips) — the
            battle _hzGlowPulse list is not ticked under the HQ loop */
         for (var fp = 0; fp < H.fxPulse.length; fp++) {
@@ -31591,7 +31735,7 @@ const ThreeRenderer = (function () {
             opts: opts, host: opts.host, room: room, profile: opts.profile || null,
             scene: new THREE.Scene(), camera: null, cube: null,
             shellGroup: new THREE.Group(), doorGroup: new THREE.Group(), propGroup: new THREE.Group(), charGroup: new THREE.Group(),
-            doors: [], counters: [], chars: [], blockers: [], landings: [], player: null, fxPulse: [], site: null,
+            doors: [], counters: [], chars: [], blockers: [], landings: [], player: null, fxPulse: [], site: null, sky: null,
             keys: {}, drag: null, lastDragAt: 0, fp: false, paused: false, ready: false, t0: performance.now(), lastMs: 0, lastDebug: 0,
             cam: { yaw: 0, pitch: -0.24, dist: 3.6, init: false }, targetKey: '', w: 0, h: 0, dirty: true,
         };
@@ -31607,7 +31751,22 @@ const ThreeRenderer = (function () {
         sc.fog = new THREE.FogExp2(0x0d0e12, 0.00017);
         sc.add(_hq.shellGroup, _hq.doorGroup, _hq.propGroup, _hq.charGroup);
         /* lights: warm ceiling / cool floor hemisphere, a soft key, point lights over the hall */
-        if (room.kind === 'box') {
+        if (room.kind === 'box' && S.open && S.sky) {
+            /* an OUTDOOR room (HQ plan 7.2 stage 3): the map's sky lights it —
+               a hemisphere in the sky's tint, a sun (or the night's cool
+               fill), and the lamp masts' point lights over the corners; the
+               distance fog is the map's, so the apron fades into the dome */
+            var skyC = new THREE.Color((S.sky.tint != null) ? S.sky.tint : 0x8090b0), nightO = S.sky.night ? 1 : 0;
+            sc.add(new THREE.HemisphereLight(skyC.clone().lerp(new THREE.Color(0xffffff), nightO ? 0.15 : 0.45), 0x2a2620, nightO ? 0.42 : 0.72));
+            var sun = new THREE.DirectionalLight(nightO ? 0x9fb4d8 : 0xfff1d6, nightO ? 0.22 : 0.55); sun.position.set(0.45, 1, 0.3).multiplyScalar(1000); sc.add(sun);
+            var mplC = (S.mood && S.mood.light != null) ? S.mood.light : 0xfff0d0;
+            (S.lights || []).forEach(function (Lt) {
+                var ml = new THREE.PointLight(mplC, nightO ? 0.75 : 0.5, 20 * U, 2); ml.position.set(Lt.x * U, (S.h + 1.8) * U, Lt.z * U); sc.add(ml);
+            });
+            if (S.sky.fog && S.sky.fog.color != null) sc.fog = new THREE.FogExp2(S.sky.fog.color, 0.00005);
+            else sc.fog = new THREE.FogExp2(0x0d0e12, 0.00005);
+            _hq.cam.dist = Math.min(_hq.cam.dist, Math.max(2.2, S.d * 0.6));
+        } else if (room.kind === 'box') {
             /* a small room: one fluorescent overhead, a warm pool at the desk lamp, dim fill */
             sc.add(new THREE.HemisphereLight(0xd9d2c0, 0x1c1a1e, 0.5));
             var bxk = new THREE.DirectionalLight(0xe8ecf5, 0.22); bxk.position.set(0.3, 1, 0.2).multiplyScalar(1000); sc.add(bxk);
@@ -31659,6 +31818,8 @@ const ThreeRenderer = (function () {
         if (room.fx === 'training') { try { _hqBuildTrainingPit(room); } catch (e) { console.error('[HQ] training pit failed', e); } }
         /* a walkable site (HQ plan 7.2): the Δ board in the middle of the room */
         if (room.fx === 'site') { try { _hqBuildSiteBoard(room); } catch (e) { console.error('[HQ] site board failed', e); } }
+        /* an outdoor room (HQ plan 7.2 stage 3): the map's sky and far roster */
+        if (S.open) { try { _hqBuildSky(room); } catch (e) { console.error('[HQ] sky failed', e); } }
         try { _hqBuildStairs(room); } catch (e) { console.error('[HQ] stairs failed', e); }
         try { _hqBuildDesk(room); } catch (e) { console.error('[HQ] desk failed', e); }
         try { _hqBuildDoors(room); } catch (e) { console.error('[HQ] doors failed', e); }
@@ -31677,6 +31838,7 @@ const ThreeRenderer = (function () {
         var H = _hq; if (!H) return;
         _hqUnbindInput();
         _hq = null;
+        if (H.sky) _horizonFogDirty = true;   // an outdoor room drove the shared sky uniforms: the battle re-applies its fog
         try { renderer.setAnimationLoop(active ? renderFrame : null); } catch (e) {}
         /* characters: evict their rig-cache records (ids are ours) */
         H.chars.forEach(function (ch) {

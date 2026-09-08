@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 20 (2026-09-07 rev 5 — 7.2 stage 2 SHIPPED: Rooms 999 · CERN and 90 · BACKROOMS are walkable sites, each in its own LIGHT (`siteRooms.shell.mood`: lamps, strips, sign palettes, `signLines`; the Backrooms under a low yellow ceiling with no conduits, the almond water tinted); rev 19 2026-09-07 rev 4 — 7.2 stage 1 SHIPPED: the first WALKABLE SITE — Room 555 · D.U.M.B. is a room behind its bay threshold, its own Δ board in the middle at 1:1 (steps climbed, blocks solid, the cell walls, the specimen tubes, the nexus ring), the CROSSING console files the crossing, the natives loiter on the walkway; `hqSiteRoom` / `hqSiteBoardInfo`, the renderer's `_hqBuildSiteBoard` + the board layer in `_hqSurface`; rev 18 2026-09-07 rev 3 — 7.5 SHIPPED + THE CONTAINMENT RING (new 5.4a) stage 1: Bay 7 · URBAN on the mezzanine, the rebalance (C-22 + C-23 DECIDED), and every bay's end caps wear fire doors into the next bay on its floor — 1 ⇄ 4 downstairs, 2 → 5 → 7 → 3 → 6 → 2 upstairs; rev 17 2026-09-07 rev 2 — 7.1 SHIPPED, the numbers are on the doors: `roomNo` on every threshold and numbered room, `hqRoomNo` / `hqRoomRegister`, the plate · the panels · the SITE FILE header · the result stamp · the loading card · the directory's register; the elevator skips 13; rev 16 2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
+### The walkable facility that replaces the Play menu · rev 21 (2026-09-08 — 7.2 stage 3 SHIPPED: the first OUTDOOR rooms — Room 1945 · NUKETOWN and Room 50 · FOOTBALL STADIUM are walkable sites with no ceiling, the map's own sky on the battle's firmament dome, its far roster drifting round the room, lamp masts on the walkway corners, a fence / the bowl's wall for a perimeter and the ground running out past it; `shells[id].open`, `shell.sky`, three-renderer.js `_hqBuildSky` / `_hqTickSky`, `_hqTex` reads terrain keys; rev 20 2026-09-07 rev 5 — 7.2 stage 2 SHIPPED: Rooms 999 · CERN and 90 · BACKROOMS are walkable sites, each in its own LIGHT (`siteRooms.shell.mood`: lamps, strips, sign palettes, `signLines`; the Backrooms under a low yellow ceiling with no conduits, the almond water tinted); rev 19 2026-09-07 rev 4 — 7.2 stage 1 SHIPPED: the first WALKABLE SITE — Room 555 · D.U.M.B. is a room behind its bay threshold, its own Δ board in the middle at 1:1 (steps climbed, blocks solid, the cell walls, the specimen tubes, the nexus ring), the CROSSING console files the crossing, the natives loiter on the walkway; `hqSiteRoom` / `hqSiteBoardInfo`, the renderer's `_hqBuildSiteBoard` + the board layer in `_hqSurface`; rev 18 2026-09-07 rev 3 — 7.5 SHIPPED + THE CONTAINMENT RING (new 5.4a) stage 1: Bay 7 · URBAN on the mezzanine, the rebalance (C-22 + C-23 DECIDED), and every bay's end caps wear fire doors into the next bay on its floor — 1 ⇄ 4 downstairs, 2 → 5 → 7 → 3 → 6 → 2 upstairs; rev 17 2026-09-07 rev 2 — 7.1 SHIPPED, the numbers are on the doors: `roomNo` on every threshold and numbered room, `hqRoomNo` / `hqRoomRegister`, the plate · the panels · the SITE FILE header · the result stamp · the loading card · the directory's register; the elevator skips 13; rev 16 2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -541,7 +541,7 @@ proposes and the user has not ruled on (MASTER Part C rows 22–24).
 - The elevator's floor panel skips 13 (Room 13 is filed in Bay 1, not on a
   floor). One line of procedural text; the joke is free.
 
-#### 7.2 ⚙ The walkable site (the engine piece) — stage 1 ✅ (2026-09-07, §9: D.U.M.B.) · stage 2 ✅ (2026-09-07 rev 5, §9: CERN + Backrooms, the room's `mood`); the rest one session per site
+#### 7.2 ⚙ The walkable site (the engine piece) — stage 1 ✅ (2026-09-07, §9: D.U.M.B.) · stage 2 ✅ (2026-09-07 rev 5, §9: CERN + Backrooms, the room's `mood`) · stage 3 ✅ (2026-09-08, §9: Nuketown + the Stadium, the OUTDOOR room — `open`, the sky, the masts); the rest one session per site
 **What shipped** (rev 4): the mechanism and the first room. A site in
 `DOOR_HQ.siteRooms.built` gets `hqSiteRoom(mapId)` → a **box** room
 (`kind: 'box', fx: 'site', site: mapId` — the Training Room's pattern
@@ -571,14 +571,37 @@ directory GOes into the room; the register's site row carries `siteRoom`.
 The room wears no `roomNo` — `hqRoomNo(roomId)` and the console's plate
 resolve to the threshold's (7.0 rule 1). The natives stand on the walkway
 (`npcSpots` with a `race` hint from `hqMissionPool`; a race with no rigged
-model falls back to the roster draw). Still to do per site: the map's
-`near` setting inside the room (today: the generic dressing + red lamps +
-the site's signs, per-site props in `siteRooms.flavour`), the outdoor
-sky, the cast lines (A15). **Adding a site room = one id in
-`siteRooms.built`** (+ optional `shells[id]` — textures, `h`, `pipes`, and
-a `mood` for its light — / `flavour[id]`);
+model falls back to the roster draw). **Stage 3 (2026-09-08): the
+OUTDOOR room.** `shells[id].open: true` makes the box room a compound
+under the sky: no ceiling, no conduits, no fluorescents; the four walls
+are the site's perimeter (`wall` / `floor` / `dado` may be battle TERRAIN
+keys — `_hqTex` falls through to the terrain sheet, tiled at one battle
+tile = 1.75 m); an `apron` of ground runs 16 m out past the walls over a
+dark `skirt`; `shell.sky` is the map's EW_MAP_META `env` (tint / stars /
+nebula / fog / far-roster `scenery` / `density`) plus `night` from the
+mood; the four `lights` move to the walkway corners and become lamp
+MASTS (pole, head, lens and glow in the mood's colour, a blocker each).
+The renderer's `_hqBuildSky` hangs a SECOND firmament dome in the HQ
+scene wearing the battle's dome shader and its shared uniforms
+(`_hqTickSky` drives uMapTint / stars / nebula / fog / day-night from
+`shell.sky` every frame; the battle overwrites them again the moment it
+renders, and `_hqLeave` re-arms its fog) and the map's far roster round
+the room at the battle's scale — the same body builders (the default
+list is now `_hzCosmicRoster()`, shared), the same haze stamp, graded
+once, drifting under the HQ loop (`_hq.sky.floaters`), with three of the
+Department's lone doors and a few haloes like every outdoor battle
+roster. The battle's own horizon group, key cache and floaters are never
+touched. Lighting is the sky's: a hemisphere in its tint, a sun by day
+or a cool fill by night, the masts' point lights, and the map's fog
+colour as the distance fog. Still to do per site: the map's `near`
+setting inside the room (today: the generic dressing + the site's signs,
+per-site props in `siteRooms.flavour`), the cast lines (A15). **Adding a
+site room = one id in `siteRooms.built`** (+ optional `shells[id]` —
+textures, `h`, `pipes`, a `mood` for its light, `open` + `apron` /
+`skirt` for an outdoor one — / `flavour[id]`);
 doorhq.test.js checks the room against its threshold, its bay door, its
-board and the register.
+board and the register (an open room: a sky that is the map's, masts on
+the walkway, nothing hung from a ceiling, a wall tall enough for the leaf).
 
 The Training Room is already the pattern: a `kind: 'box'` room whose floor
 carries the 8×8 pit (`shell.grid`, one 1.75 m cell per battle tile — a
@@ -2995,3 +3018,81 @@ doorhq.test.js + index.html; docs.
   then the moat maps once a fluid sheet edge is in; the map's `near`
   setting inside the room; 5.4a stage 2; 7.9 dailies; 4.1 the case-file
   screen.
+
+### 2026-09-08 — 7.2 stage 3 SHIPPED: Rooms 1945 and 50, the first OUTDOOR rooms
+The plan's next step ("1945 Nuketown and 50 Stadium — the OUTDOOR rooms:
+the map's sky from `env`, its far roster, no ceiling"). No new files;
+data.js + three-renderer.js + doorhq.test.js + index.html; docs. The
+`kind: 'site'` room the plan sketched is NOT a new kind: an outdoor site
+is still the `kind: 'box'` room (shell / doors / counters / props /
+collision / camera all unchanged) with `shell.open` — the box builder
+skips its ceiling and the site builder swaps its indoor kit for masts.
+- **data.js.** `siteRooms.built` → `[…, 'prebuilt_nuketown',
+  'prebuilt_stadium']`. `shells[id]` grew `open`, `apron`, `skirt`,
+  `apronColor` / `floorColor` and `mood.night`; `hqSiteRoom` reads them
+  into `shell.open` / `sky` (the map's `env` + `night`) / `apron` /
+  `skirt`, nulls the ceiling and the pipes, moves the four `lights` to
+  the walkway corners (±(half − 1.3)) and leaves the wall clock, the
+  lockers and the ceiling fluorescents out of the props.
+  - **1945 · NUKETOWN**: `wood_planks` for the fence (h 3.2 — the motel
+    leaf and its lintel need 2.9), `grass_2` underfoot and for the apron
+    over a `dirt` skirt, a concrete coping; dusk (`night: 0`) under the
+    map's khaki sky and its `orbs` roster; sodium masts (`0xffd890`);
+    the north sign green-and-cream (`NUKETOWN · ROOM 1945 · POP. 0 · TEST
+    SITE`), the south one `CONDEMNED · THE FENCE IS THE WALL`. Flavour:
+    the observation post on the east lawn (a tube TV, a folding chair,
+    the mannequins' box), a plant, a mop bucket. Guard + five lines.
+  - **50 · FOOTBALL STADIUM**: `concrete_floor` for the bowl's inner
+    wall (h 4.2 — the wide turnstile leaf), turf (`grass_2` tinted
+    `0x5ec46a` like the near kit's apron) over a concrete apron and
+    skirt; night (`night: 1`) under the map's navy sky and its `city`
+    roster; floodlight masts (`0xeaf4ff`); the north sign a scoreboard
+    (`HOME 0 · AWAY 0 · Q1`), the south one `NO RE-ENTRY WITHOUT A
+    STAMP`. Flavour: the home bench on the east wall (three folding
+    chairs, the water cooler), the ground crew's bucket by the turnstile,
+    a crate of game balls, a plant. Guard + five lines.
+- **three-renderer.js.** `_hqTex(name)`: a name missing from
+  `DOOR_HQ.textures` resolves to `TERRAIN_SPRITES[name][0]` (same
+  loader, same cache key) so a room can wear grass, planks or concrete.
+  `_hqBuildBoxShell`: `S.open` → no ceiling plane, terrain textures tile
+  at 1.75 m, the floor takes `S.floorColor`, a 16 m apron plane
+  (`S.apron`, `S.apronColor`) at −0.9 and a 3 m dark skirt box under it,
+  no fluorescent strips. `_hqBuildSiteBoard`: `S.open` → masts at
+  `S.lights` (pole to `S.h + 2`, head leaning in over the board, lens
+  `_hzGlowMat(lampC)`, glow sprite, a 0.22 m blocker) instead of the
+  containment lamps and the wall strips; signs and the plate unchanged
+  (they hang from `S.h` — on the fence at 2.3 m). New `_hqBuildSky`
+  (after the site board) and `_hqTickSky` (from `_hqTickWorld`), above.
+  `_hqEnter`: an open room is lit by its sky (hemisphere in the sky's
+  tint, a sun / night fill, the masts' point lights at `S.h + 1.8`, the
+  map's fog colour as FogExp2 0.00005). `_hqCamBlocked`: no ceiling
+  outdoors. `_hqLeave`: `_horizonFogDirty = true` when a sky was up.
+  The battle's default roster literal moved into `_hzCosmicRoster()`
+  (`_buildHorizonScenery` calls it — identical rows).
+- **doorhq.test.js.** The box-room props test lets an open room be lit
+  by masts; the built-site test requires the two new rooms, reads
+  `TERRAIN_RULES` out of the sandbox to accept terrain keys, checks an
+  open room's sky against `EW_MAP_META` (scenery, tint, fog), the apron /
+  skirt textures, masts on the walkway, no ceiling / pipes / hung props,
+  and every room's wall tall enough for the leaf + lintel; an indoor room
+  must have no sky; per-room checks (Nuketown: dusk, orbs, the fence, the
+  motel leaf, the TV, no lockers; the Stadium: night, city, the concrete
+  wall ≥ 4 m, the wide turnstile, the bench + cooler); the source scan
+  covers `_hqBuildSky` / `_hqTickSky` / `_hzCosmicRoster` / the terrain
+  fall-through / the boom / the fog re-arm / no containment lamps
+  outdoors. `npm test`: 151 green. index.html → `20260908a-cors`.
+- Not playtested (RULE #1c). What to eyeball first: Bay 1, the motel
+  door (ROOM 1945), E — you should be on a lawn inside a board fence
+  under a khaki dusk with orbs and lone doors drifting past the fence
+  line, four sodium masts, the TV in the far right corner; walk the
+  street, climb a dumpster. Then Bay 7 (the mezzanine shopfront), the
+  turnstile (ROOM 50), E — night, floodlights, the city's monoliths and
+  haloes over the bowl wall, the bench on the right. Both consoles file
+  the crossing and return you to the desk. If the sky is black: the
+  console says `[HQ] sky:` with a body count when it built; a missing
+  line means `_envUni` never initialised (the battle scene's
+  `_initEnvironment` runs from the HQ now if it has not).
+- Next: the moat maps once a fluid sheet edge is in (Camelot, Atlantis,
+  Hell, Technoticlan, Agartha, Antarctica — they are outdoor rooms too,
+  `open` + a lake that reaches the walls); the map's `near` setting
+  inside the room; 5.4a stage 2; 7.9 dailies; 4.1 the case-file screen.

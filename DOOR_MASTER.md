@@ -1681,3 +1681,22 @@ may rewrite (A15). Next in the plan's order: the outdoor rooms, Nuketown
 (1945) and the Stadium (50). Files: data.js, three-renderer.js,
 index.html (`20260907p-cors`), doorhq.test.js (151 green). Story track
 still ON HOLD (A14).
+
+### 2026-09-08 — the first OUTDOOR rooms: Rooms 1945 and 50 stand under the sky
+HQ plan **7.2** stage 3 (§9 there has the mechanics). The motel door in
+Bay 1 and the turnstile in Bay 7 now open INTO rooms with no ceiling:
+Nuketown is a lawn inside a board fence at dusk under the map's own
+khaki sky with its orbs and the Department's lone doors drifting past
+the fence line, sodium masts on the corners, the observation post's TV
+on the east lawn; the Stadium is turf inside the bowl's concrete wall at
+night under floodlights and the city's roster, the home bench and its
+cooler on the east wall. Both boards walk at 1:1 (the street, the
+dumpsters, the picket rows; the yard lines and the end zones), both
+consoles file the crossing. The sky is the battle's firmament dome drawn
+a second time in the building (`shell.sky` = the map's `env`), so a site
+room looks like the site it launches. Guard and overheard lines are
+Claude placeholders in `siteRooms.flavour` — the user may rewrite (A15).
+Next in the plan's order: the moat maps (outdoor rooms with water to the
+walls). Files: data.js, three-renderer.js, index.html
+(`20260908a-cors`), doorhq.test.js (151 green). Story track still ON
+HOLD (A14).
