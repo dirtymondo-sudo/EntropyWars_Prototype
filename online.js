@@ -510,8 +510,25 @@
             if (!_isOnline() || state._remoteAction) return _origDoSpell(unit, x, y, z);
             if (_isHost()) return _hostRunAndSync(_origDoSpell, [unit, x, y, z]);
             if (!_guestOwnsAction(unit)) return 0;
+            /* Two-click casts (CHAMP_REWORK Phase 5 wave B — link / transfer):
+               the FIRST pick is pure local UI (nothing is spent) — run the
+               engine's pick branch here so the guest gets the prompt and the
+               drum flips to the second team; only the second click travels,
+               carrying the first pick's id as partnerId for the host. */
+            var _tcSpell = null, _tcPick = null;
+            try {
+                _tcSpell = ((unit.spells || []).find(function(s) { return s && s.name === state.selectedTool; })
+                    || (unit._raceAbilities || []).find(function(s) { return s && s.name === state.selectedTool; })) || null;
+                if (_tcSpell && typeof _kindMeta === 'function' && _kindMeta(_tcSpell).twoClick) {
+                    _tcPick = (typeof _twoClickPick === 'function') ? _twoClickPick(_tcSpell) : null;
+                    var _tcClicked = (typeof unitAt === 'function') ? (unitAt(x, y, z) || unitAt(x, y)) : null;
+                    if (!_tcPick || (_tcClicked && _tcClicked.id === _tcPick.id)) return _origDoSpell(unit, x, y, z);
+                }
+            } catch (e) { _tcPick = null; }
             _guestActionFeedback('spell', unit, x, y);
-            _emit('game-action', { type: 'engine', fn: 'doSpell', unitId: unit.id, x: x, y: y, z: z, tool: state.selectedTool });
+            _emit('game-action', { type: 'engine', fn: 'doSpell', unitId: unit.id, x: x, y: y, z: z, tool: state.selectedTool,
+                partnerId: _tcPick ? _tcPick.id : null });
+            if (_tcPick) state._spellPick1 = null;
             return 1200;
         };
 
@@ -1068,6 +1085,22 @@
         };
         window.showPlayerTurnAnnounce = showPlayerTurnAnnounce;
 
+        /* 🎭 Possessed activation beat (battle.js showPossessedActivation,
+           CHAMP_REWORK Phase 5 wave B): engine-side (fires from the blitz
+           activation on the host), so relay it — the guest sees the same
+           dream-void face cam + subtitle when a stolen body acts. */
+        if (typeof showPossessedActivation === 'function') {
+            const _origShowPossessedActivation = showPossessedActivation;
+            showPossessedActivation = function(unit) {
+                _origShowPossessedActivation(unit);
+                var _netOn = window._NET && window._NET.online;
+                if ((_netOn && _isHost() || _ewRecOn()) && unit) {
+                    _emit('relay', { type: 'possessed-activation', unitId: unit.id || null });
+                }
+            };
+            window.showPossessedActivation = showPossessedActivation;
+        }
+
         /* Stealth reveal banner (battle.js checkStealthReveals /
            updateSmokeZoneCloak): engine-side, so online it only ever fires on
            the HOST. Relay it and let the guest re-run the global, which
@@ -1500,7 +1533,22 @@
                         if (data.tool !== undefined) state.selectedTool = data.tool;
                         switch (data.fn) {
                             case 'doAttack': doAttack(engUnit, data.x, data.y, data.z); break;
-                            case 'doSpell': doSpell(engUnit, data.x, data.y, data.z); break;
+                            case 'doSpell': {
+                                /* Two-click casts (wave B): the guest's first pick
+                                   rides the action — seat it as the engine's own
+                                   first pick, keyed to the spell being cast. */
+                                if (data.partnerId != null) {
+                                    var _tcSp = ((engUnit.spells || []).find(function(s) { return s && s.name === data.tool; })
+                                        || (engUnit._raceAbilities || []).find(function(s) { return s && s.name === data.tool; })) || null;
+                                    var _tcPk = state.units.find(function(u) { return u.id === data.partnerId && !u.dead; });
+                                    state._spellPick1 = (_tcSp && _tcPk) ? { id: _tcPk.id, spellId: _tcSp.id, x: _tcPk.x, y: _tcPk.y } : null;
+                                } else {
+                                    state._spellPick1 = null;
+                                }
+                                doSpell(engUnit, data.x, data.y, data.z);
+                                state._spellPick1 = null;
+                                break;
+                            }
                             case 'doMove': doMove(engUnit, data.x, data.y, data.z); break;
                             case 'doJump': doJump(engUnit, data.x, data.y, data.z); break;
                             case 'doItem': doItem(engUnit, data.x, data.y, data.z); break;
@@ -3315,6 +3363,13 @@
                         }
                     }
 
+                    if (data.type === 'possessed-activation' && _ewMirrorView()) {
+                        if (typeof window.showPossessedActivation === 'function' && data.unitId && st && st.units) {
+                            var _paUnit = st.units.find(function(u) { return u.id === data.unitId; }) || null;
+                            if (_paUnit) window.showPossessedActivation(_paUnit);
+                        }
+                    }
+
                     if (data.type === 'stealth-reveal-banner' && _ewMirrorView()) {
                         /* Re-run the viewer-relative banner on the mirror. The
                            wrapped global only re-emits on the host, so this
@@ -3941,6 +3996,9 @@
                     _enemyActionTargetId: 1,
                     _tileActionTarget: 1,
                     _skyThrowDestKey: 1,
+                    /* two-click casts (wave B): the first pick is per-viewer
+                       aiming UI — the guest's own pick must survive the sync */
+                    _spellPick1: 1,
 
                     aiPlayer: 1,
                     aiThinking: 1,
@@ -4215,6 +4273,8 @@
                 '_enemyActionTargetId', '_tileActionTarget',
                 // sky-throw destination hover preview — per-viewer hover UI
                 '_skyThrowDestKey',
+                // two-click casts (wave B): the first pick is per-viewer aiming UI
+                '_spellPick1',
                 // per-viewer audio mix — snapshots from older builds (and
                 // replays) still carry these; never let them stomp the sliders
                 'musicVolume', 'sfxVolume', 'ambienceVolume'

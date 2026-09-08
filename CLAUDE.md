@@ -497,6 +497,36 @@ champ-rework.test.js; a new KIND also needs `SPELL_KIND_META`, a `doSpell`
 branch, ai.js `scoreSpell` + `findSpellTarget`, hud.js parts, ui.js
 `_SLB_KINDS`. `npm test` guards all of it.
 
+## PHASE 5 WAVE B (CHAMP_REWORK_PLAN §5.10) — added 2026-09-08
+Control + links: ten rows on ghost / zombie / demon / shaman / vampire /
+succubus and five kinds. **`possess`** (Possession, Enthrall, Infect,
+Thrall Bite): battle.js `possessUnit` applies the control status and
+FLIPS `unit.player` to the caster's seat (`_origPlayer` = home) — every
+`unit.player` consumer (HUD gate, `runComputerTurn`, fog, targeting, the
+online guest-emit gate) hands the body over with no special cases;
+data.js `_releaseControl` (the statuses' `onRemove`) and battle.js
+`releasePossession` (map.js `defeatUnit` calls it) hand it back;
+`maybeAdvanceTurn` spends one activation per controlled turn;
+`showPossessedActivation` opens the turn (relayed as
+`possessed-activation`). Read `getControllingPlayer(unit)` /
+`unitHomePlayer(unit)`, never `_origPlayer` directly. **`link`** (Soul
+Bind, Voodoo) and **`transfer`** (Sacrifice) are the first TWO-CLICK
+casts: `SPELL_KIND_META.twoClick`, the first legal click is remembered in
+`state._spellPick1` `{ id, spellId, x, y }` (nothing spent; the gate sits
+right before doSpell's commit point), the second resolves; the drum /
+prompt / hud chip follow `_twoClickPick(spell)`; `clearSpellPick()` on
+cancel / ESC / turn end; online the guest picks locally and its second
+click carries `partnerId` (host dispatcher seats it); `_spellPick1` is
+skip-listed + guest-local; the AI stashes the partner in
+`_aiPairPick[spell.id]` and the executor seats it. **`shadowRealm`**
+(Shadow Realm★) crosses `partnerId` on both, director
+`CINE_SEQUENCES.raceShadowRealm` = the `shadow` Void palette (+ css
+`vp-shadow`). **`cannibalize`** is corpse-targeted through
+`spellTargetsCorpses(spell)` (raiseDead OR meta `corpseTarget`) — use it,
+never `kind === 'raiseDead'`. Adding a possess / link spell = a data row
++ tree node + `SPELL_MAP` alias + a `WAVE_B` test row; `npm test` guards
+the kinds, the seat flip, the two-click gate and the relay.
+
 ## Most common request: "playtest <mode>"
 The user wants Claude to **actually play Player 1 against the CPU** (NOT auto-sim /
 dev-sim — they can do that themselves) and report pain points: unresponsive

@@ -738,6 +738,19 @@
             // (doSpell's damage branch + _runPostEffects).
             transform:    { minRange: 0, offensive: false, selfCast: true, fogExempt: true, noStrikeLeap: true },
             tackle:       { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true },
+            // CHAMP_REWORK_PLAN §5.3 (Phase 5 wave B, 2026-09-08):
+            // possess — the victim's next activation(s) belong to the caster's
+            //   seat (possessUnit flips unit.player; releasePossession hands it
+            //   back). shadowRealm — caster + target vanish into the realm.
+            // link / transfer — TWO-CLICK casts (twoClick): the first legal
+            //   click is remembered in state._spellPick1 and costs nothing; the
+            //   second resolves. cannibalize — corpse-targeted like raiseDead
+            //   (corpseTarget; spellTargetsCorpses).
+            possess:      { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true },
+            shadowRealm:  { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true },
+            link:         { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true, twoClick: true },
+            transfer:     { minRange: 0, offensive: false, allyOnly: true, fogExempt: true, noStrikeLeap: true, twoClick: true },
+            cannibalize:  { minRange: 1, offensive: false, noStrikeLeap: true, corpseTarget: true },
 
             // ── Movement / positioning ──
             teleport:     { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
@@ -8408,6 +8421,143 @@
                 }
             }
         }
+
+        /* ── Two-click casts (plan §5.3 link / transfer, Phase 5 wave B) ──
+           state._spellPick1 = { id, spellId, x, y } remembers the FIRST
+           legal click of a twoClick kind (nothing is spent); doSpell
+           resolves on the second. Per-viewer UI (online.js skip-lists it;
+           the guest sends the id along with its second click as
+           partnerId). */
+        function _twoClickPick(spell) {
+            const pk = state._spellPick1;
+            if (!pk || !spell || pk.spellId !== spell.id) return null;
+            const u = unitFromId(pk.id);
+            return (u && !u.dead && !u._dying) ? u : null;
+        }
+        function _twoClickTeams(spell) {
+            const t = String((spell && spell.linkTargets) || 'enemy-enemy').split('-');
+            return [t[0] || 'enemy', t[1] || t[0] || 'enemy'];
+        }
+        function _twoClickTeamOk(caster, u, team) {
+            if (!u || u.dead || u._dying) return false;
+            return team === 'ally' ? isAllyUnit(u, caster) : isEnemyUnit(u, caster);
+        }
+        function clearSpellPick() {
+            if (!state._spellPick1) return;
+            state._spellPick1 = null;
+            if (typeof markDirty === 'function') markDirty('hud', 'board');
+        }
+        window._twoClickPick = _twoClickPick;
+        window._twoClickTeams = _twoClickTeams;
+        window.clearSpellPick = clearSpellPick;
+
+        /* Corpse-targeted kinds: raiseDead (necromancer) and every kind whose
+           SPELL_KIND_META wears corpseTarget (Cannibalize, wave B). */
+        function spellTargetsCorpses(spell) {
+            return !!spell && (spell.kind === 'raiseDead' || !!_kindMeta(spell).corpseTarget);
+        }
+        window.spellTargetsCorpses = spellTargetsCorpses;
+
+        /* 🎭 Control (plan §5.5, Phase 5 wave B). possessUnit: the victim
+           wears the control status (possessed / infected) for `acts`
+           activations and its `player` BECOMES the caster's seat — HUD
+           ownership, the AI, fog, targeting, the blitz activation and the
+           online guest-emit gate all key on unit.player, so the hand-off
+           needs no special cases anywhere. The home seat lives in
+           _origPlayer (plain unit data → state-sync). The status defs'
+           onRemove (data.js _releaseControl) restores the seat on EVERY
+           removal path; releasePossession is the explicit hand-back (the
+           activation count, death — a respawn wipes `status` without
+           clearStatus). maybeAdvanceTurn spends one activation per
+           controlled turn; the last one releases. */
+        function unitIsControlled(unit) {
+            return !!unit && unit._origPlayer != null
+                && (unitHasStatus(unit, 'possessed') || unitHasStatus(unit, 'infected'));
+        }
+        function getControllingPlayer(unit) { return unit ? unit.player : null; }
+        function unitHomePlayer(unit) {
+            if (!unit) return null;
+            return unit._origPlayer != null ? unit._origPlayer : unit.player;
+        }
+        function possessUnit(caster, target, spell, acts) {
+            if (!caster || !target || target.dead || target._dying || target._isBoss) return false;
+            const fx = (spell && spell.statusEffects && spell.statusEffects[0]) || {};
+            const sid = (spell && spell.possessStatus) || fx.id || 'possessed';
+            const def = STATUS_DEFS[sid];
+            if (!def || !def.control) return false;
+            const n = Math.max(1, acts | 0);
+            const dur = Math.max(n + 1, fx.duration || 0);
+            // A fresh will replaces the old one (and hands any earlier seat back first).
+            releasePossession(target, { quiet: true });
+            const ok = applyStatusPayload(target, { id: sid, duration: dur }, spell ? `${spell.name}: ` : '', caster);
+            if (!ok || !unitHasStatus(target, sid)) return false;
+            target._possessLeft = n;
+            target._controllerPlayer = caster.player;
+            if (target.player !== caster.player) {
+                target._origPlayer = target.player;
+                target.player = caster.player;
+            }
+            if (state._enemyActionTargetId === target.id) state._enemyActionTargetId = null;
+            showFloatingTextForUnit(target, `${def.icon || '🎭'} ${String(def.label || sid).toUpperCase()}`, 'debuff', { durationMs: 1200 });
+            addLog(`${def.icon || '🎭'} ${unitDisplayName(target)} is ${def.colorText || 'controlled'} — Player ${caster.player} steers it for ${n} activation${n === 1 ? '' : 's'}!`);
+            if (window.RenderBus) {
+                window.RenderBus.emit('unit:statusChanged', { unit: target });
+                window.RenderBus.emit('fog:dirty', {});
+            }
+            if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
+            scheduleBoardRender();
+            return true;
+        }
+        function releasePossession(unit, opts = {}) {
+            if (!unit) return false;
+            let had = false;
+            for (const sid of ['possessed', 'infected']) {
+                if (unit.status && Number(unit.status[sid] || 0) > 0) { clearStatus(unit, sid); had = true; }
+            }
+            // Belt and braces: a respawn wipe (status = {…}) skips onRemove.
+            if (unit._origPlayer != null) { unit.player = unit._origPlayer; delete unit._origPlayer; had = true; }
+            delete unit._controllerPlayer;
+            delete unit._possessLeft;
+            if (had && !opts.quiet) {
+                addLog(`🎭 ${unitDisplayName(unit)} is its own again.`);
+                if (window.RenderBus) {
+                    window.RenderBus.emit('unit:statusChanged', { unit });
+                    window.RenderBus.emit('fog:dirty', {});
+                }
+                if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
+            }
+            return had;
+        }
+        /* One controlled activation is spent — maybeAdvanceTurn calls this
+           when the active unit's turn is over. */
+        function _possessSpendActivation(unit) {
+            if (!unitIsControlled(unit)) return;
+            unit._possessLeft = Math.max(0, (unit._possessLeft | 0) - 1);
+            if (unit._possessLeft <= 0) releasePossession(unit);
+        }
+        /* The stolen activation's beat (engine-side; online.js relays it so
+           the guest sees it too): the victim's face under the `dream` void,
+           the controller named in the subtitle bar. */
+        function showPossessedActivation(unit) {
+            if (!unit || !unitIsControlled(unit) || _skipVisuals()) return;
+            const sid = unitHasStatus(unit, 'infected') ? 'infected' : 'possessed';
+            const def = STATUS_DEFS[sid] || {};
+            try {
+                showBattleDialogue([`<span class="dlg-status">${def.icon || '🎭'} ${unitDisplayName(unit)}</span> is <span class="dlg-status">${def.label || sid}</span> — a hostile will moves it (${Math.max(1, unit._possessLeft | 0)} left)`], 1800);
+            } catch (e) {}
+            try {
+                if (typeof VoidStage !== 'undefined' && VoidStage.canPlay([unit])) {
+                    VoidStage.enter({ palette: 'dream', actors: [unit], ms: 1400 });
+                    cineFaceCam(unit, { dist: 2.3, tilt: 79 });
+                }
+            } catch (e) {}
+        }
+        window.unitIsControlled = unitIsControlled;
+        window.getControllingPlayer = getControllingPlayer;
+        window.unitHomePlayer = unitHomePlayer;
+        window.possessUnit = possessUnit;
+        window.releasePossession = releasePossession;
+        window.showPossessedActivation = showPossessedActivation;
 
         /* 🪢 Roped (plan §5.1 tethered): the roper just left (ox, oy, oz) —
            every victim tethered to it is dragged into that tile (the rope
@@ -16692,7 +16842,8 @@
                 /* rallyPull / raiseDead are turn-model spells (corpse tiles /
                    board-wide repositioning don't exist in real-time) — give
                    them their own cat so the exec switch politely refuses. */
-                else if (kind === 'rallyPull' || kind === 'raiseDead') cat = kind;
+                else if (kind === 'rallyPull' || kind === 'raiseDead'
+                    || kind === 'possess' || kind === 'link' || kind === 'transfer' || kind === 'shadowRealm' || kind === 'cannibalize') cat = kind;
                 else if (kind === 'cleanse') cat = 'cleanse';
                 else if (kind === 'encore') cat = 'encore';
                 else if (kind === 'shield' || kind === 'aoeShield' || kind === 'buff' || kind === 'warCry' || type === 'buff') cat = 'buff';
@@ -19501,7 +19652,9 @@
             kaleido:   { color: 0x1a0326, sky: ['#341047', '#1a0326', '#0a0110'], glow: '#c86bff', layer: 'kaleido' },
             hearth:    { color: 0x1d1109, sky: ['#3d2712', '#1d1109', '#0a0503'], glow: '#ffb066', layer: 'snowfire' },
             stadium:   { color: 0x060b1c, sky: ['#101d40', '#060b1c', '#02040c'], glow: '#f5f0c8', layer: 'floods' },
-            hex:       { color: 0x160320, sky: ['#33094d', '#160320', '#08010d'], glow: '#b45cff', layer: 'sigil' }
+            hex:       { color: 0x160320, sky: ['#33094d', '#160320', '#08010d'], glow: '#b45cff', layer: 'sigil' },
+            // Shadow Realm★ (Phase 5 wave B): a lightless violet-black with drifting motes.
+            shadow:    { color: 0x05040a, sky: ['#1a1428', '#05040a', '#000000'], glow: '#6a5aa0', layer: 'motes', light: 'toplight' }
         };
         /* Veil cross-fade timing: the world never hard-cuts. The veil blooms
            to full cover (IN), the swap happens hidden behind it, then the
@@ -19983,7 +20136,7 @@
             _cineAt(at, sequenceId, () => {
                 const actors = opts.actors ? opts.actors(ctx) : [caster, target];
                 if (!VoidStage.canPlay(actors)) return;
-                VoidStage.enter({ palette, actors, ms: opts.ms || 1500, caption: opts.caption });
+                VoidStage.enter({ palette, actors, ms: opts.ms || 1500, maxMs: opts.maxMs, caption: opts.caption });
                 if (opts.shot !== false) {
                     const subj = opts.subject === 'caster' ? caster : target;
                     if (subj && subj.id != null) cineFaceCam(subj, { dist: opts.dist ?? 3.0, tilt: opts.tilt ?? 80 });
@@ -20380,6 +20533,25 @@
                     cineFaceCam(target, { dist: 2.3, tilt: 79 });
                     cineUnitFade(caster, 1, 0.0, actionMs(420));
                 });
+                return true;
+            },
+
+            /* ── wave B possess kin (Enthrall / Thrall Bite / Infect): the same
+               one hard cut onto the stolen face. */
+            raceEnthrall(ctx)   { return CINE_SEQUENCES.racePossession(ctx); },
+            raceThrallBite(ctx) { return CINE_SEQUENCES.racePossession(ctx); },
+            raceInfect(ctx)     { return CINE_SEQUENCES.racePossession(ctx); },
+
+            /* ── Shadow Realm★ (wave B) — the pair drops out of the world: the
+               `shadow` void held past the spell cap (maxMs), a glitch seam
+               closing, one flinch of a freeze before the pull back. */
+            raceShadowRealm(ctx) {
+                const { sequenceId } = ctx;
+                _voidBeat('shadow', ctx, {
+                    ms: 3200, maxMs: 3200, dist: 3.2, tilt: 78, grade: 'cool dim',
+                    onEnter: () => { try { cineInsert('THE SHADOW REALM', 'k-glitch', actionMs(900)); } catch (e) {} }
+                });
+                _cineAt(actionMs(2600), sequenceId, () => { try { cineFreezeFrame(actionMs(120)); } catch (e) {} });
                 return true;
             },
 
@@ -24882,6 +25054,18 @@
                 case 'cleanse':       return 'Select an ally to cleanse with ' + nm + '.';
                 case 'revive':        return 'Select a fallen ally to revive with ' + nm + '.';
                 case 'raiseDead':     return nm + ': select a fallen unit\'s remains — an ally\'s gravestone or an enemy\'s bones — to raise a zombie.';
+                case 'cannibalize':   return nm + ': select a fallen unit\'s remains within reach to feed on.';
+                case 'possess':       return nm + ': select an enemy to take control of.';
+                case 'shadowRealm':   return nm + ': select an enemy to drag into the Shadow Realm with you.';
+                case 'link':
+                case 'transfer': {
+                    const _pk = _twoClickPick(spell);
+                    const _tm = _twoClickTeams(spell);
+                    const _word = t => (t === 'ally' ? 'an ally' : 'an enemy');
+                    if (_pk) return nm + ': <strong>' + esc(unitDisplayName(_pk)) + '</strong> chosen — now select ' + _word(_tm[1])
+                        + (spell.pairRange ? ' within ' + spell.pairRange + ' tiles of it' : '') + '.';
+                    return nm + ': select ' + _word(_tm[0]) + ' first, then ' + _word(_tm[1]) + '.';
+                }
                 case 'swap':          return nm + ': select a unit to swap places with.';
                 case 'pull':          return nm + ': select an enemy to pull in.';
                 case 'teleport':      return nm + ': select a destination tile.';
@@ -26050,6 +26234,7 @@
             if (!unit || !spell || !u) return false;
             const k = spell.kind;
             if (k === 'revive') return !!u.dead && !u.reviveLocked;
+            if (spellTargetsCorpses(spell)) return !!u.dead && !u._corpseConsumed;
             if (u.dead) return false;
             if (k === 'heal') return (u.hp || 0) < (u.maxHp || 0);
             if (k === 'cleanse') {
@@ -26626,7 +26811,7 @@
                 });
             }
 
-            if (['damage', 'ricochet', 'multiHit', 'lifeDrain', 'debuff', 'aoe', 'displacement', 'cross', 'pull', 'swap', 'aoePull', 'splitBeam', 'tackle'].includes(kind)) {
+            if (['damage', 'ricochet', 'multiHit', 'lifeDrain', 'debuff', 'aoe', 'displacement', 'cross', 'pull', 'swap', 'aoePull', 'splitBeam', 'tackle', 'possess', 'shadowRealm', 'link'].includes(kind)) {
                 const effectiveRange = (kind === 'aoe' && spell.aoeOriginSelf) ? (spell.aoeRadius || 1) : range;
                 const _longRange = isLongRangeSpell(spell);
                 const enemies = state.units.filter(u => !u.dead && u.player !== unit.player);
@@ -26652,7 +26837,7 @@
                 });
             }
 
-            if (['buff', 'shield'].includes(kind)) {
+            if (['buff', 'shield', 'transfer'].includes(kind)) {
                 const allies = [unit, ...aliveUnitsOnFloor(unit.player).filter(a => a.id !== unit.id)];
                 return allies.some(a => {
                     const d = Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y);
@@ -26692,7 +26877,7 @@
                     Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y) <= range);
             }
 
-            if (kind === 'raiseDead') {
+            if (spellTargetsCorpses(spell)) {
                 // Any corpse (either side) whose remains haven't been consumed yet.
                 return state.units.some(u => u.dead && !u._corpseConsumed &&
                     Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y) <= range);
@@ -35641,7 +35826,7 @@
                 const spell = (unit.spells || []).find(s => s.name === state.selectedTool)
                     || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
                 if (!spell) { addLog('No spell selected.'); return 0; }
-                if (spell.kind === 'skyThrow' || spell.kind === 'teleport') {
+                if (spell.kind === 'skyThrow' || spell.kind === 'teleport' || _kindMeta(spell).twoClick) {
                     addLog(`🌀 ${spell.name} cannot be planned in Simul mode (yet).`);
                     playErrorSfx();
                     return 0;
@@ -36312,6 +36497,14 @@
                         return;
                     }
                 }
+
+                /* 🎭 A controlled unit's activation is over — spend one of the
+                   possessor's activations (the last one hands the body back). */
+                if (state._blitzActiveUnitId) {
+                    const _ctlUnit = state.units.find(u => u.id === state._blitzActiveUnitId);
+                    if (_ctlUnit && !_ctlUnit.dead) _possessSpendActivation(_ctlUnit);
+                }
+                clearSpellPick();
 
                 hideTurnBanner();
                 hidePlayerTurnAnnounce();
@@ -37063,6 +37256,11 @@
                     });
                     return;
                 }
+
+                /* 🎭 Possessed / Infected (wave B): this activation belongs to
+                   the controller's seat (unit.player already is it) — say so
+                   and show the stolen face. */
+                if (unitIsControlled(nextUnit)) showPossessedActivation(nextUnit);
 
                 if (nextUnit._pendingSecondaryJobPick) {
                     if (state.autoPlayers?.[nextUnit.player]) {
@@ -40444,12 +40642,12 @@
                 // whole job is targeting a fallen ally's gravestone — and raiseDead,
                 // which reanimates ANY unconsumed remains (ally grave or enemy bones).
                 if (u.dead) {
-                    if (spell.kind === 'raiseDead') {
+                    if (spellTargetsCorpses(spell)) {
                         if (u._corpseConsumed) continue;
                     } else if (spell.kind !== 'revive' || u.player !== unit.player || u.reviveLocked) continue;
                 }
                 // raiseDead only ever targets the dead.
-                if (!u.dead && spell.kind === 'raiseDead') continue;
+                if (!u.dead && spellTargetsCorpses(spell)) continue;
                 // Above-target spells: an enemy not below the caster isn't a valid
                 // target from here. Clicking it instead routes to the jump-then-cast
                 // approach, which leaps up to clear the target first.
@@ -40482,8 +40680,20 @@
                 if (!skipLOS && dxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, u.x, u.y, unitZ)) continue;
                 if (fogLimit && dxy >= 1 && !_skm.fogExempt && !isInVision(unit, u.x, u.y)
                     && !(_fogTelescope && !u.dead && u.player !== unit.player && getSectionForUnit(u) === 'above')) continue;
-                if (isOffensive && isAllyUnit(u, unit)) continue;
-                if (!isOffensive && _skm.allyOnly && !isAllyUnit(u, unit)) continue;
+                if (_skm.twoClick) {
+                    // Two-click kinds (wave B): before the first pick the drum
+                    // lists the FIRST team of the pair; after it, the second —
+                    // minus the pick itself, and within pairRange of it.
+                    const _tcPick = _twoClickPick(spell);
+                    const _tcTeams = _twoClickTeams(spell);
+                    const _tcTeam = _tcPick ? _tcTeams[1] : _tcTeams[0];
+                    if (_tcPick && u.id === _tcPick.id) continue;
+                    if (_tcTeam === 'ally' ? !isAllyUnit(u, unit) : !isEnemyUnit(u, unit)) continue;
+                    if (_tcPick && spell.pairRange && (Math.abs(u.x - _tcPick.x) + Math.abs(u.y - _tcPick.y)) > spell.pairRange) continue;
+                } else {
+                    if (isOffensive && isAllyUnit(u, unit)) continue;
+                    if (!isOffensive && _skm.allyOnly && !isAllyUnit(u, unit)) continue;
+                }
                 // Tile-targeted AoE/zone spells: only suggest units the spell
                 // actually serves — no enemies in a healing/buff zone's target
                 // drum, no allies in a damage burst's. Free tile aim still
@@ -40542,14 +40752,26 @@
                 // Dead-target rules mirror the drum: revive walks to its own
                 // fallen ally's grave, raiseDead to any unconsumed remains.
                 if (u.dead) {
-                    if (spell.kind === 'raiseDead') {
+                    if (spellTargetsCorpses(spell)) {
                         if (u._corpseConsumed) continue;
                     } else if (spell.kind !== 'revive' || u.player !== unit.player || u.reviveLocked) continue;
                 }
-                if (!u.dead && spell.kind === 'raiseDead') continue;
+                if (!u.dead && spellTargetsCorpses(spell)) continue;
                 if (haveSet && u.id != null && haveSet.has(u.id)) continue;
-                if (isOffensive && isAllyUnit(u, unit)) continue;
-                if (!isOffensive && _skm.allyOnly && !isAllyUnit(u, unit)) continue;
+                if (_skm.twoClick) {
+                    // Two-click kinds (wave B): before the first pick the drum
+                    // lists the FIRST team of the pair; after it, the second —
+                    // minus the pick itself, and within pairRange of it.
+                    const _tcPick = _twoClickPick(spell);
+                    const _tcTeams = _twoClickTeams(spell);
+                    const _tcTeam = _tcPick ? _tcTeams[1] : _tcTeams[0];
+                    if (_tcPick && u.id === _tcPick.id) continue;
+                    if (_tcTeam === 'ally' ? !isAllyUnit(u, unit) : !isEnemyUnit(u, unit)) continue;
+                    if (_tcPick && spell.pairRange && (Math.abs(u.x - _tcPick.x) + Math.abs(u.y - _tcPick.y)) > spell.pairRange) continue;
+                } else {
+                    if (isOffensive && isAllyUnit(u, unit)) continue;
+                    if (!isOffensive && _skm.allyOnly && !isAllyUnit(u, unit)) continue;
+                }
                 if (_skm.tileTargeted) {
                     const _tt = spellTileTeam(spell);
                     if (_tt === 'ally' && !isAllyUnit(u, unit)) continue;
@@ -48605,6 +48827,60 @@
                 }
             }
 
+            /* ── Two-click casts (plan §5.3 link / transfer, wave B): the FIRST
+               legal click is only remembered — nothing is spent, no cast
+               animation, the spell stays armed for the second click. Sits
+               right before the commit point so the range / LOS / fog gates
+               above have already judged the pick. */
+            if (_kindMeta(spell).twoClick) {
+                const _pk1 = _twoClickPick(spell);
+                const _pkT = unitAt(x, y, z) || unitAt(x, y);
+                const _pkTeams = _twoClickTeams(spell);
+                const _pkWord = t => (t === 'ally' ? 'an ally' : 'an enemy');
+                if (!_pk1 || (_pkT && _pkT.id === _pk1.id)) {
+                    if (!_pkT || !_twoClickTeamOk(unit, _pkT, _pkTeams[0])) {
+                        if (!_silentReject) {
+                            addLog(`${spell.name}: choose ${_pkWord(_pkTeams[0])} first, then ${_pkWord(_pkTeams[1])}.`);
+                            playErrorSfx();
+                        }
+                        state._teleportingUnit = null;
+                        return 0;
+                    }
+                    if (_pk1 && _pk1.id === _pkT.id) {
+                        // clicking the first pick again un-picks it
+                        clearSpellPick();
+                        if (!_silentReject) playSfx('uiBack');
+                        return 0;
+                    }
+                    state._spellPick1 = { id: _pkT.id, spellId: spell.id, x: _pkT.x, y: _pkT.y };
+                    if (!_silentReject) {
+                        playSfx('uiConfirm');
+                        showFloatingTextForUnit(_pkT, `① ${spell.name.toUpperCase()}`, 'buff', { durationMs: 900 });
+                        addLog(`${spell.name}: ${unitDisplayName(_pkT)} chosen — now pick ${_pkWord(_pkTeams[1])}${spell.pairRange ? ` within ${spell.pairRange} tiles of it` : ''}.`);
+                    }
+                    if (typeof markDirty === 'function') markDirty('hud', 'board', 'selectedUnit');
+                    if (typeof renderIfDirty === 'function') renderIfDirty();
+                    scheduleBoardRender();
+                    return 0;
+                }
+                // Second click: the other half of the pair, and (paired links)
+                // within pairRange of the first pick.
+                if (!_pkT || !_twoClickTeamOk(unit, _pkT, _pkTeams[1])) {
+                    if (!_silentReject) {
+                        addLog(`${spell.name}: now choose ${_pkWord(_pkTeams[1])} (not ${unitDisplayName(_pk1)}).`);
+                        playErrorSfx();
+                    }
+                    return 0;
+                }
+                if (spell.pairRange && (Math.abs(_pkT.x - _pk1.x) + Math.abs(_pkT.y - _pk1.y)) > spell.pairRange) {
+                    if (!_silentReject) {
+                        addLog(`${spell.name}: the two must be within ${spell.pairRange} tiles of each other.`);
+                        playErrorSfx();
+                    }
+                    return 0;
+                }
+            }
+
             // Every validation gate has passed — the cast WILL happen. Sweep away
             // all targeting visuals (previews, arrows, ghost blocks, range
             // overlays) so nothing lingers into the cast animation.
@@ -50434,6 +50710,270 @@
                 markDirty('board', 'hud', 'selectedUnit');
                 scheduleBoardRender();
                 completionDelay = actionMs(700);
+            }
+
+            else if (spell.kind === 'possess') {
+                /* §5.3 possess (Phase 5 wave B): Possession / Enthrall / Infect /
+                   Thrall Bite. An optional bite first (dmg + drainPct); if the
+                   victim still stands, possessUnit hands its next `activations`
+                   activation(s) to the caster's seat. bonusVsStatus on this
+                   kind means EXTRA activations (Enthrall ×2 vs Charmed). */
+                const target = (unitAt(x, y, z) || unitAt(x, y));
+                if (!target || isAllyUnit(target, unit)) {
+                    addLog(`Choose an enemy target for ${spell.name}.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                if (target._isBoss) {
+                    addLog(`${unitDisplayName(target)}'s will is too vast to steal.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                panelFocusTarget = target;
+                focusUnitPanel(target.id);
+                playSfx(spell.dmg ? spellLaunchSfx(spell) : 'debuff');
+                const cam = playOffensiveActionCamera(unit, target, {
+                    sourceHold: 1100,
+                    targetHold: 1100,
+                    attackName: spell.name
+                });
+                const projectileDelay = Math.max(0, cam?.sourceHold ?? actionMs(900));
+                const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
+                completionDelay = Math.max(impactDelay + actionMs(500), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
+                unit.mp -= effectiveSpellCost;
+                const _psVFX = window.ThreeVFXEffects;
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle' || _skipVisuals()) return;
+                    if (_psVFX && _psVFX.hasMapping(spell.id, 'impact')) _psVFX.fire('impact', spell.id, { tx: target.x, ty: target.y });
+                    else _vfxDebuff(target.x, target.y);
+                }, projectileDelay);
+                let _psActs = Math.max(1, spell.activations | 0);
+                if (spell.bonusVsStatus && bonusStatusMatches(target, spell.bonusVsStatus.status)) {
+                    _psActs = Math.max(_psActs + 1, Math.round(_psActs * (spell.bonusVsStatus.mult || 1.5)));
+                }
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle' || state.winner) return;
+                    if (spell.dmg) {
+                        const dmg = computeSpellBase(spell, spellPower, { baseDmg: spell.dmg });
+                        const hpB = target.hp;
+                        applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} bites `, {
+                            sourceUnit: unit,
+                            damageType: spell.damageType || 'physical',
+                            spellType: spell.spellType || null, spellElement: getSpellElement(spell)
+                        });
+                        const took = Math.max(0, hpB - target.hp);
+                        if (spell.drainPct && took > 0) {
+                            let drainMult = spell.drainPct;
+                            if (unit.cls === 'Harvester') drainMult *= 1.20;
+                            const healed = applyHealingToUnit(unit, Math.max(1, Math.round(took * drainMult)), unit);
+                            if (healed > 0) {
+                                addLog(`${unitDisplayName(unit)} absorbs ${healed} HP.`);
+                                _vfxHeal(unit.x, unit.y, { soft: true });
+                            }
+                        }
+                    }
+                    if (target.dead || target._dying || unit.dead) return;
+                    if (!possessUnit(unit, target, spell, _psActs)) {
+                        addLog(`${unitDisplayName(target)} resists ${spell.name}!`);
+                    }
+                }, impactDelay);
+            }
+
+            else if (spell.kind === 'shadowRealm') {
+                /* §5.3 shadowRealm (Phase 5 wave B): the demon and one enemy
+                   wear `shadowRealm` with each other's id — the Phase 4 realm
+                   gates (target / damage / heal / status / concealment) do the
+                   rest. The Void Stage `shadow` beat is the spell's director
+                   (CINE_SEQUENCES.raceShadowRealm). */
+                const target = (unitAt(x, y, z) || unitAt(x, y));
+                if (!target || isAllyUnit(target, unit)) {
+                    addLog(`Choose an enemy target for ${spell.name}.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                if (target._isBoss) {
+                    addLog(`${unitDisplayName(target)} cannot be dragged into the realm.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                panelFocusTarget = target;
+                focusUnitPanel(target.id);
+                playSfx('debuff');
+                try { if (typeof playDoorSfx === 'function') playDoorSfx('slam'); } catch (e) {}
+                const cam = playOffensiveActionCamera(unit, target, {
+                    sourceHold: 1100,
+                    targetHold: 1400,
+                    attackName: spell.name
+                });
+                const projectileDelay = Math.max(0, cam?.sourceHold ?? actionMs(900));
+                const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
+                completionDelay = Math.max(impactDelay + actionMs(900), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
+                unit.mp -= effectiveSpellCost;
+                const _srVFX = window.ThreeVFXEffects;
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle' || _skipVisuals()) return;
+                    if (_srVFX && _srVFX.hasMapping(spell.id, 'impact')) _srVFX.fire('impact', spell.id, { tx: target.x, ty: target.y });
+                    else _vfxDebuff(target.x, target.y);
+                    if (_srVFX && _srVFX.hasMapping(spell.id, 'aura')) _srVFX.fire('aura', spell.id, { tx: unit.x, ty: unit.y, aoeRadius: 0 });
+                }, projectileDelay);
+                const _srDur = (spell.statusEffects && spell.statusEffects[0] && spell.statusEffects[0].duration) || 2;
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle' || state.winner || target.dead || unit.dead) return;
+                    // Target first (the caster is not in the realm yet, so nothing
+                    // bounces), then the caster.
+                    const okT = applyStatusPayload(target, { id: 'shadowRealm', duration: _srDur, partnerId: unit.id }, `${spell.name}: `, unit);
+                    if (!okT || !unitHasStatus(target, 'shadowRealm')) {
+                        addLog(`${unitDisplayName(target)} slips the realm's pull!`);
+                        return;
+                    }
+                    applyStatusPayload(unit, { id: 'shadowRealm', duration: _srDur, partnerId: target.id }, `${spell.name}: `, unit);
+                    addLog(`🌑 ${unitDisplayName(unit)} and ${unitDisplayName(target)} are gone — into the Shadow Realm for ${_srDur} rounds.`);
+                    if (window.RenderBus) window.RenderBus.emit('fog:dirty', {});
+                    markDirty('board', 'hud', 'selectedUnit');
+                    scheduleBoardRender();
+                }, impactDelay);
+            }
+
+            else if (spell.kind === 'link') {
+                /* §5.3 link (Phase 5 wave B): Soul Bind (enemy ⇄ enemy, both
+                   wear the status with the other's id) / Voodoo (the enemy
+                   doll wears it with the ally's id). The first pick rode
+                   state._spellPick1 through the two-click gate above; (x, y)
+                   is the second. battle.js _procLinks does the echoing. */
+                const first = _twoClickPick(spell);
+                const second = (unitAt(x, y, z) || unitAt(x, y));
+                clearSpellPick();
+                if (!first || !second) {
+                    addLog(`${spell.name} lost its target.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                const fx = (spell.statusEffects && spell.statusEffects[0]) || { id: 'soulBound', duration: 3 };
+                const def = STATUS_DEFS[fx.id] || {};
+                panelFocusTarget = second;
+                focusUnitPanel(second.id);
+                playSfx('debuff');
+                const cam = playOffensiveActionCamera(unit, second, {
+                    sourceHold: 1000,
+                    targetHold: 900,
+                    attackName: spell.name
+                });
+                const projectileDelay = Math.max(0, cam?.sourceHold ?? actionMs(900));
+                const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
+                completionDelay = Math.max(impactDelay + actionMs(400), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
+                unit.mp -= effectiveSpellCost;
+                const _lkVFX = window.ThreeVFXEffects;
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle' || _skipVisuals()) return;
+                    for (const t of [first, second]) {
+                        if (_lkVFX && _lkVFX.hasMapping(spell.id, 'impact')) _lkVFX.fire('impact', spell.id, { tx: t.x, ty: t.y });
+                        else _vfxDebuff(t.x, t.y);
+                    }
+                }, projectileDelay);
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle' || state.winner) return;
+                    if (def.link === 'pair') {
+                        const okA = !first.dead && applyStatusPayload(first, { id: fx.id, duration: fx.duration, partnerId: second.id }, `${spell.name}: `, unit);
+                        const okB = !second.dead && applyStatusPayload(second, { id: fx.id, duration: fx.duration, partnerId: first.id }, `${spell.name}: `, unit);
+                        if (okA && okB) {
+                            addLog(`${def.icon || '⛓'} ${unitDisplayName(first)} and ${unitDisplayName(second)} are chained soul to soul!`);
+                        } else {
+                            if (okA) clearStatus(first, fx.id);
+                            if (okB) clearStatus(second, fx.id);
+                            addLog(`${spell.name} fails to take hold on both.`);
+                        }
+                    } else {
+                        const ok = !first.dead && applyStatusPayload(first, { id: fx.id, duration: fx.duration, allyId: second.id }, `${spell.name}: `, unit);
+                        if (ok) addLog(`${def.icon || '🪆'} ${unitDisplayName(first)}'s doll is tied to ${unitDisplayName(second)} — what the ally suffers, the doll shares.`);
+                    }
+                    markDirty('board', 'hud');
+                    scheduleBoardRender();
+                }, impactDelay);
+            }
+
+            else if (spell.kind === 'transfer') {
+                /* §5.3 transfer (Phase 5 wave B): Sacrifice — the giver (first
+                   pick) loses takePct of max HP (never below 1), the receiver
+                   heals givePct of it plus half the caster's spell power. */
+                const giver = _twoClickPick(spell);
+                const receiver = (unitAt(x, y, z) || unitAt(x, y));
+                clearSpellPick();
+                if (!giver || !receiver) {
+                    addLog(`${spell.name} lost its target.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                if ((receiver.hp || 0) >= (receiver.maxHp || 0)) {
+                    addLog(`${unitDisplayName(receiver)} is already at full HP.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                playSfx('buff');
+                _spellFocusCamera(unit, receiver.x, receiver.y);
+                unit.mp -= effectiveSpellCost;
+                const take = Math.max(1, Math.min((giver.hp || 1) - 1, Math.round((giver.maxHp || 0) * (spell.takePct || 0.3))));
+                const give = Math.max(1, Math.round(take * (spell.givePct || 1.5)) + Math.floor(spellPower * 0.5));
+                giver.hp = Math.max(1, giver.hp - take);
+                showFloatingTextForUnit(giver, `-${take}`, 'damage', { durationMs: 1000 });
+                addLog(`${unitDisplayName(giver)} gives ${take} HP to the spirits.`);
+                if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: giver });
+                const _trVFX = window.ThreeVFXEffects;
+                if (state.phase === 'battle' && !_skipVisuals()) {
+                    _vfxDebuff(giver.x, giver.y);
+                    if (_trVFX && _trVFX.hasMapping(spell.id, 'drainHop')) {
+                        const hops = 6;
+                        for (let i = 0; i < hops; i++) {
+                            const t = (i + 1) / (hops + 1);
+                            const hx = giver.x + (receiver.x - giver.x) * t, hy = giver.y + (receiver.y - giver.y) * t;
+                            window.setTimeout(() => {
+                                if (state.phase === 'battle' && !_skipVisuals()) _trVFX.fire('drainHop', spell.id, { tx: hx, ty: hy });
+                            }, actionMs(120) + i * actionMs(80));
+                        }
+                    }
+                }
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle' || receiver.dead) return;
+                    const healed = applyHealingToUnit(receiver, give, unit);
+                    if (healed > 0) {
+                        addLog(`${unitDisplayName(receiver)} is restored for ${healed} HP.`);
+                        if (!_skipVisuals()) _vfxHeal(receiver.x, receiver.y);
+                    }
+                    markDirty('board', 'hud', 'selectedUnit');
+                    scheduleBoardRender();
+                }, actionMs(700));
+                completionDelay = actionMs(1200);
+            }
+
+            else if (spell.kind === 'cannibalize') {
+                /* §6.18 Cannibalize (Phase 5 wave B): eat unconsumed remains —
+                   heal healPct of max HP, the corpse's respawn +corpseDelay,
+                   the remains consumed (no revive, no raising). */
+                const corpse = state.units.find(u => u.dead && !u._corpseConsumed && u.x === x && u.y === y);
+                if (!corpse) {
+                    addLog("Target a fallen unit's remains — an ally's gravestone or an enemy's bones.");
+                    playErrorSfx();
+                    return 0;
+                }
+                playSfx('buff');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                corpse._corpseConsumed = true;
+                corpse.reviveLocked = true;
+                const _cbDelay = spell.corpseDelay || 2;
+                const _cbDelayed = corpse._respawnIn != null && Number.isFinite(corpse._respawnIn);
+                if (_cbDelayed) corpse._respawnIn += _cbDelay;
+                const amt = Math.max(1, Math.round((unit.maxHp || 0) * (spell.healPct || 0.35)));
+                const healed = applyHealingToUnit(unit, amt, unit, { preScaled: true });
+                if (state.phase === 'battle' && !_skipVisuals()) {
+                    const _cbVFX = window.ThreeVFXEffects;
+                    if (_cbVFX && _cbVFX.hasMapping(spell.id, 'aura')) _cbVFX.fire('aura', spell.id, { tx: x, ty: y });
+                    _vfxHeal(unit.x, unit.y);
+                }
+                showFloatingTextAtTile(x, y, '🦴 DEVOURED', 'damage', { durationMs: 1100 });
+                addLog(`${unitDisplayName(unit)} feeds on the remains of ${unitDisplayName(corpse)} — heals ${healed} HP${_cbDelayed ? `; ${unitDisplayName(corpse)}'s respawn is delayed ${_cbDelay} rounds` : ''}.`);
+                markDirty('board', 'hud', 'selectedUnit');
+                scheduleBoardRender();
+                completionDelay = actionMs(900);
             }
 
             else if (spell.kind === 'escape') {
@@ -53271,8 +53811,10 @@
                         state._winCondition = 'wipeout';
                     }
                 } else {
-                    const p1Alive = state.units.filter(u => u.player === 1 && !u.dead && !u._dying).length + (_isGauntlet() ? _gauntletReservesAlive(1) : 0);
-                    const p2Alive = state.units.filter(u => u.player === 2 && !u.dead && !u._dying).length + (_isGauntlet() ? _gauntletReservesAlive(2) : 0);
+                    // 🎭 A possessed body still counts for its HOME team (wave B):
+                    // stealing a side's last unit must not wipe that side out.
+                    const p1Alive = state.units.filter(u => unitHomePlayer(u) === 1 && !u.dead && !u._dying).length + (_isGauntlet() ? _gauntletReservesAlive(1) : 0);
+                    const p2Alive = state.units.filter(u => unitHomePlayer(u) === 2 && !u.dead && !u._dying).length + (_isGauntlet() ? _gauntletReservesAlive(2) : 0);
                     if (p1Alive === 0 && p2Alive > 0) { state.winner = 2; state._winCondition = 'wipeout'; }
                     else if (p2Alive === 0 && p1Alive > 0) { state.winner = 1; state._winCondition = 'wipeout'; }
                 }

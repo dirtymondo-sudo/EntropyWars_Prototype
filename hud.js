@@ -3156,8 +3156,18 @@ function spellTargetChip(sp) {
     return { label: '⟳ SELF', color: '#9a94ab', title: 'Casts on/around the caster — no aiming needed' };
   }
   const k = sp.kind || '';
-  if (k === 'raiseDead') {
+  if (k === 'raiseDead' || k === 'cannibalize') {
     return { label: '🪦 REMAINS', color: '#b8a2d8', title: "Select a fallen unit's remains — ally gravestone or enemy bones" };
+  }
+  // Two-click casts (CHAMP_REWORK Phase 5 wave B): the label follows the pick.
+  if (k === 'link' || k === 'transfer') {
+    const _tcPick = (typeof _twoClickPick === 'function') ? _twoClickPick(sp) : null;
+    const _tcTeams = (typeof _twoClickTeams === 'function') ? _twoClickTeams(sp) : ['enemy', 'enemy'];
+    const _tcTeam = _tcPick ? _tcTeams[1] : _tcTeams[0];
+    const _tcStep = _tcPick ? '②' : '①';
+    return _tcTeam === 'ally'
+      ? { label: _tcStep + ' ♥ ALLY', color: '#57d98a', title: (_tcPick ? 'Now select the second unit: an ally' : 'Select the first unit: an ally') }
+      : { label: _tcStep + ' ✕ ENEMY', color: '#ff7b7b', title: (_tcPick ? 'Now select the second unit: an enemy' : 'Select the first unit: an enemy') };
   }
   if (['heal', 'shield', 'buff', 'cleanse', 'revive', 'guard', 'healAll', 'manaRestoreAll', 'warCry', 'encore'].includes(k)) {
     return { label: '♥ ALLY', color: '#57d98a', title: 'Select an allied unit' };
@@ -4599,6 +4609,11 @@ function spellTagline(sp) {
   else if (k === 'encore') parts.push('Copy');
   else if (k === 'revive') parts.push('Revive');
   else if (k === 'raiseDead') parts.push('Raise zombie');
+  else if (k === 'cannibalize') parts.push('Eat remains · heal ' + Math.round((sp.healPct || 0.35) * 100) + '%');
+  else if (k === 'possess') parts.push('Control ' + (sp.activations || 1) + ' activation' + ((sp.activations || 1) === 1 ? '' : 's'));
+  else if (k === 'shadowRealm') parts.push('Shadow Realm · both');
+  else if (k === 'link') parts.push((sp.linkTargets === 'enemy-ally' ? 'Link enemy → ally' : 'Link two enemies') + (sp.pairRange ? ' · ' + sp.pairRange + ' apart' : ''));
+  else if (k === 'transfer') parts.push('Give ' + Math.round((sp.takePct || 0.3) * 100) + '% → heal ' + Math.round((sp.givePct || 1.5) * 100) + '%');
   else if (k === 'rallyPull') parts.push('Rally allies');
   else if (k === 'cleanse') parts.push('Cleanse');
   else if (k === 'tackle') parts.push('Charge · carries ' + (sp.pushDistance || 1) + ' tiles');
@@ -4636,6 +4651,9 @@ function spellTargetMode(sp) {
   const k = sp.kind || '';
   if (['selfHeal', 'escape'].includes(k)) return 'Self Target';
   if (['warCry', 'encore'].includes(k)) return 'Self Target';
+  if (k === 'link' || k === 'transfer') return 'Two Targets';
+  if (k === 'cannibalize') return 'Remains';
+  if (k === 'shadowRealm') return 'You + Target';
   if (['healAll', 'manaRestoreAll'].includes(k)) return 'All Allies';
   if (['aoe', 'aoePull', 'aoeShield'].includes(k)) return 'Area · AOE';
   if (['line', 'linePush', 'splitBeam'].includes(k)) return 'Line';
@@ -5002,6 +5020,8 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     'deployObject', 'deployPair', 'deployTurret', 'remoteView',
     // traps need an EMPTY tile — casting one AT an enemy always fails
     'placeTrap',
+    // wave B: an ally-to-ally transfer and a corpse feed never touch a living enemy
+    'transfer', 'cannibalize',
     // Machine Elves: prisms need an empty tile; tune/pulse are self-cast
     'placeMirror', 'tuneFrequency', 'pulseLattice',
   ]);
@@ -6467,7 +6487,7 @@ function _computeAllyActions(actingUnit, targetUnit) {
       || ((cls === 'heal' || cls === 'buff') && _tt !== 'enemy');
     if (!isAllySpell || _tt === 'enemy') continue;
     // Self-only casts can't be aimed at someone else; revives need remains.
-    if (sp.kind === 'selfHeal' || sp.kind === 'revive' || sp.kind === 'raiseDead') continue;
+    if (sp.kind === 'selfHeal' || sp.kind === 'revive' || sp.kind === 'raiseDead' || sp.kind === 'cannibalize') continue;
     if (!isTeamCast && typeof isSpellSelfCast === 'function' && isSpellSelfCast(sp)) continue;
     const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(actingUnit, sp) : true;
     if (!tierOk) continue;   // level-locked — not quick-cast material

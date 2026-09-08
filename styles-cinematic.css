@@ -4301,6 +4301,7 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
 .void-layer.vp-ocean::after     { --void-vig: rgba(0, 8, 10, .7); }
 .void-layer.vp-dream::after     { --void-vig: rgba(10, 3, 22, .68); }
 .void-layer.vp-hex::after       { --void-vig: rgba(5, 0, 10, .72); }
+.void-layer.vp-shadow::after    { --void-vig: rgba(3, 1, 8, .8); }   /* Shadow Realm★ (wave B) */
 .void-layer .void-caption {
     position: absolute; left: 8%; top: 22%;
     max-width: 44%;

@@ -22843,6 +22843,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['raceSkyTackle']        = Object.assign({}, SPELL_MAP['raceHeroicLeap']);        /* superhero — charge impact */
     SPELL_MAP['raceIncendiaryRounds'] = Object.assign({}, SPELL_MAP['raceSiegeMode']);         /* marksman — self buff */
     SPELL_MAP['raceStoneform']        = Object.assign({}, SPELL_MAP['raceStoneSkin']);         /* gargoyle — stone aura */
+    /* ── CHAMP_REWORK_PLAN Phase 5 wave B (2026-09-08): control + links.
+       Family aliases like wave A; Possession keeps its own recipe. ── */
+    SPELL_MAP['raceHaunt']            = Object.assign({}, SPELL_MAP['racePossession']);        /* ghost — a wisp sinks in */
+    SPELL_MAP['raceEnthrall']         = Object.assign({}, SPELL_MAP['raceCharm']);             /* succubus — possess */
+    SPELL_MAP['raceThrallBite']       = Object.assign({}, SPELL_MAP['raceBite']);              /* vampire — bite + possess */
+    SPELL_MAP['raceInfect']           = Object.assign({}, SPELL_MAP['raceInfectiousBite']);    /* zombie — bite + possess */
+    SPELL_MAP['raceCannibalize']      = Object.assign({}, SPELL_MAP['raceRaiseDead']);         /* zombie — corpse aura */
+    SPELL_MAP['raceSoulBind']         = Object.assign({}, SPELL_MAP['raceContract']);          /* demon — the fine print, twice */
+    SPELL_MAP['raceShadowRealm']      = Object.assign({}, SPELL_MAP['raceSleepParalysis'], { aura: 'raceDarkResurrection_aura' });   /* demon — the seam */
+    SPELL_MAP['raceVoodoo']           = Object.assign({}, SPELL_MAP['raceContract']);          /* shaman — the doll */
+    SPELL_MAP['raceSacrifice']        = Object.assign({}, SPELL_MAP['raceBite'], { drainHop: 'lifeDrain_drainHop' });   /* shaman — the bead A → B */
     SPELL_MAP['raceQBSneak']          = Object.assign({}, SPELL_MAP['raceMistForm']);          /* quarterback — escape */
     SPELL_MAP['raceTreelineRetreat']  = Object.assign({}, SPELL_MAP['raceEject']);             /* bigfoot — escape */
     SPELL_MAP['raceTransform']        = Object.assign({}, SPELL_MAP['overclock']);             /* sedan — the morph aura */

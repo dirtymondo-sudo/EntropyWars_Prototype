@@ -5803,18 +5803,35 @@ const RACE_ABILITIES = {
        map.js + the getMoveTiles/findMovePath hooks in battle.js). Boo is the
        new jump-scare nuke. */
     'ghost': [
-        /* Ghost capstone since the 2026-08-12 capstone pass (was Possession). */
+        /* Ghost capstone since the 2026-08-12 capstone pass (was Possession).
+           §6.6 (Phase 5 wave B, 2026-09-08): ×1.5 vs Haunted — the payoff. */
         { id: 'raceBoo', spellType: 'anomaly', element: 'psychic', name: 'Boo',
           type: 'damage', tier: 'III', cost: 55, dmg: 180, range: 2,
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'discord', duration: 2 }],
-          desc: 'Deals HEAVY magic damage to a Single Enemy. Lowers ATK by 2 stages and DEF by 1 stage.' },
+          bonusVsStatus: { status: 'haunted', mult: 1.5 },
+          desc: 'Deals HEAVY magic damage to a Single Enemy. Lowers ATK by 2 stages and DEF by 1 stage. Deals bonus damage to Haunted targets.' },
+        /* §6.6 Haunt (Phase 5 wave B, 2026-09-08): the ring-1 opener — a
+           28/round armor-ignoring DoT (STATUS_DEFS haunted) Boo cashes in. */
+        { id: 'raceHaunt', spellType: 'anomaly', element: 'shadow', name: 'Haunt',
+          type: 'debuff', cost: 25, range: 5, apCost: 1,
+          kind: 'debuff',
+          statusEffects: [{ id: 'haunted', duration: 3 }],
+          desc: 'A restless spirit sinks into a Single Enemy. Applies Haunted: 28 magic damage at the end of every round for 3 rounds, armor ignored. Boo hits Haunted targets harder.' },
         { id: 'raceColdSpot', element: 'ice', spellType: 'anomaly', name: 'Cold Spot',
           type: 'utility', cost: 30, range: 4, apCost: 1,
           kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
           statusEffects: [{ id: 'frozen', duration: 1 }],
           desc: 'Creates a hostile zone that weakens enemies inside for 2 rounds. Applies Frozen.' },
-        _mkBolt(_JAM_BOLT, { id: 'racePossession', spellType: 'anomaly', name: 'Possession' }),
+        /* §6.6 Possession REWORK (Phase 5 wave B, 2026-09-08): was a Jammed
+           bolt — now the `possess` kind: the ghost's player steers the
+           victim's next activation, whole kit included (STATUS_DEFS
+           possessed; battle.js possessUnit / releasePossession). */
+        { id: 'racePossession', spellType: 'anomaly', element: 'psychic', name: 'Possession',
+          type: 'debuff', cost: 30, range: 3, apCost: 1, cooldownRounds: 3,
+          kind: 'possess', activations: 1,
+          statusEffects: [{ id: 'possessed', duration: 2 }],
+          desc: 'Steals a Single Enemy\'s body: for its next activation the enemy unit is YOURS — move it, attack with it, cast with it. Applies Possessed. Bosses cannot be possessed.' },
         SHARED_FLASH_FREEZE
     ],
     'angel': [
@@ -5884,8 +5901,29 @@ const RACE_ABILITIES = {
         { id: 'raceVoidContract', spellType: 'unholy', element: 'shadow', name: 'Devour Soul',
           type: 'damage', cost: 40, dmg: 125, range: 3, apCost: 2,
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.50,
-          bonusVsStatus: { status: 'contract', mult: 1.5 },
-          desc: 'Deals MEDIUM magic damage to a Single Enemy. Deals bonus damage to targets with Contract. Heals the caster for part of the damage dealt.' },
+          /* §6.8 (wave B): Soul-Bound joins Contract as the payoff status. */
+          bonusVsStatus: { status: ['contract', 'soulBound'], mult: 1.5 },
+          desc: 'Deals MEDIUM magic damage to a Single Enemy. Deals bonus damage to targets with Contract or Soul-Bound. Heals the caster for part of the damage dealt.' },
+        /* §6.8 Soul Bind (Phase 5 wave B, 2026-09-08): the `link` kind —
+           TWO clicks (enemy, then a second enemy within 4 tiles of the
+           first); both wear `soulBound` with each other's id, and
+           battle.js _procLinks echoes 30% (45% while the demon carries a
+           live +M.ATK stage) of every wound across the chain. */
+        { id: 'raceSoulBind', spellType: 'unholy', element: 'shadow', name: 'Soul Bind',
+          type: 'debuff', cost: 30, range: 3, apCost: 1,
+          kind: 'link', linkTargets: 'enemy-enemy', pairRange: 4,
+          statusEffects: [{ id: 'soulBound', duration: 3 }],
+          desc: 'Chains two enemies soul to soul (pick one, then another within 4 tiles of it). For 3 rounds, whenever either takes damage the other takes 30% of it — 45% while the demon\'s M ATK is raised. Devour Soul hits Soul-Bound targets harder.' },
+        /* §6.8 Shadow Realm★ (Phase 5 wave B, 2026-09-08): the capstone
+           twin of Hellmouth — the `shadowRealm` kind drags the demon and one
+           enemy into the realm (STATUS_DEFS shadowRealm on BOTH, partner
+           ids crossed): invisible and untargetable to everyone else, immune
+           to everything not from each other, nobody else can heal either. */
+        { id: 'raceShadowRealm', spellType: 'unholy', element: 'shadow', name: 'Shadow Realm',
+          type: 'debuff', tier: 'III', cost: 55, range: 3, apCost: 2, cooldownRounds: 3,
+          kind: 'shadowRealm',
+          statusEffects: [{ id: 'shadowRealm', duration: 2 }],
+          desc: 'Drags a Single Enemy into the Shadow Realm with the demon for 2 rounds: to everyone else the two of you are gone — invisible, untargetable, immune to everything not from each other, beyond any healer\'s reach. In there, it is just you and them.' },
         { id: 'raceInfernalHurl', spellType: 'unholy', element: 'fire', name: 'Infernal Hurl',
           type: 'damage', cost: 30, dmg: 90, range: 1, apCost: 1,
           kind: 'skyThrow', damageType: 'physical', carryHeight: 4, dmgPerLevel: 25,
@@ -5919,6 +5957,16 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'root', duration: 2 }],
           desc: 'Deals MEDIUM magic damage to a Single Enemy. Applies Rooted.' },
+        /* §6.29 Enthrall (Phase 5 wave B, 2026-09-08): the succubus' possess
+           — one stolen activation, TWO when the victim is Charmed (the
+           `possess` kind reads bonusVsStatus as extra activations; Charm is
+           the setup, Enthrall the payoff). */
+        { id: 'raceEnthrall', spellType: 'unholy', element: 'psychic', name: 'Enthrall',
+          type: 'debuff', cost: 30, range: 2, apCost: 1,
+          kind: 'possess', activations: 1,
+          bonusVsStatus: { status: 'charm', mult: 2 },
+          statusEffects: [{ id: 'possessed', duration: 2 }],
+          desc: 'Bends a Single Enemy to the succubus\' will: its next activation is YOURS — two activations if the target is Charmed. Applies Possessed. Bosses cannot be enthralled.' },
     ],
     /* 2026-07-18 zombie kit rework: Poison Swamp / Scorched Earth / Undying
        Grip are GONE. Shambling Horde is now an AoE stampede (the horde
@@ -5929,7 +5977,24 @@ const RACE_ABILITIES = {
         { id: 'raceShamblingHorde', spellType: 'unholy', name: 'Shambling Horde',
           type: 'damage', tier: 'III', cost: 55, dmg: 160, range: 3, apCost: 2,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
-          desc: 'The horde descends. Deals HEAVY physical damage to All Enemies in an AOE.' },
+          bonusVsStatus: { status: 'infected', mult: 1.5 },
+          desc: 'The horde descends. Deals HEAVY physical damage to All Enemies in an AOE. Deals bonus damage to Infected targets.' },
+        /* §6.18 Infect (Phase 5 wave B, 2026-09-08): the zombie's possess —
+           the bite takes the victim for FOUR activations, melee only
+           (STATUS_DEFS infected: blockSpells, +1 ATK / +1 SPD stage). */
+        { id: 'raceInfect', spellType: 'unholy', element: 'poison', name: 'Infect',
+          type: 'debuff', cost: 30, range: 1, apCost: 1,
+          kind: 'possess', activations: 4,
+          statusEffects: [{ id: 'infected', duration: 5 }],
+          desc: 'The rot takes hold: a Single Enemy in melee joins the horde for its next 4 activations — yours to move and swing, melee only, with +1 ATK and +1 SPD stage. Applies Infected. Shambling Horde hits Infected targets harder. Bosses cannot be infected.' },
+        /* §6.18 Cannibalize (Phase 5 wave B, 2026-09-08): corpse-targeted
+           (the raiseDead targeting, `cannibalize` kind) — eat unconsumed
+           remains within 2 tiles: heal 35% max HP, the corpse's respawn
+           timer +2 rounds, the remains are gone (no revive, no raising). */
+        { id: 'raceCannibalize', spellType: 'unholy', element: 'poison', name: 'Cannibalize',
+          type: 'heal', cost: 25, range: 2, apCost: 1,
+          kind: 'cannibalize', healPct: 0.35, corpseDelay: 2,
+          desc: 'Feeds on a fallen unit\'s remains within 2 tiles — an ally\'s gravestone or an enemy\'s bones. Heals 35% of max HP and delays that unit\'s respawn by 2 rounds. The remains are consumed.' },
         _mkCharge({ id: 'raceZombieRush', spellType: 'unholy', name: 'Zombie Rush', dmg: 130, desc: 'Deals MEDIUM physical damage to a Single Enemy. The caster charges into melee first.' }),
         { id: 'raceOutbreak', spellType: 'unholy', element: 'poison', name: 'Outbreak',
           type: 'debuff', cost: 55, range: 4, apCost: 2,
@@ -6461,8 +6526,25 @@ const RACE_ABILITIES = {
           type: 'damage', tier: 'III', cost: 55, dmg: 180, range: 3,
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'slow', duration: 1 }],
-          bonusVsStatus: { status: 'slow', mult: 1.5 },
-          desc: 'Deals HEAVY magic damage to a Single Enemy. Applies Slow. Deals bonus damage to targets with Slow.' },
+          /* §6.9 (wave B): Voodoo joins Slow as the payoff status. */
+          bonusVsStatus: { status: ['slow', 'voodoo'], mult: 1.5 },
+          desc: 'Deals HEAVY magic damage to a Single Enemy. Applies Slow. Deals bonus damage to targets with Slow or Voodoo.' },
+        /* §6.9 Sacrifice (Phase 5 wave B, 2026-09-08): the `transfer` kind —
+           TWO clicks (the ally who gives, then the ally who receives): takes
+           30% of the giver's max HP (never below 1 HP) and heals the
+           receiver for 150% of it, M.ATK-scaled. */
+        { id: 'raceSacrifice', spellType: 'anomaly', element: 'nature', name: 'Sacrifice',
+          type: 'heal', cost: 30, range: 3, apCost: 1,
+          kind: 'transfer', linkTargets: 'ally-ally', takePct: 0.30, givePct: 1.5,
+          desc: 'The spirits trade flesh for flesh: pick an ally to give and an ally to receive (both within 3 tiles). The giver loses 30% of max HP (never fatal); the receiver heals for 150% of that, scaled by M ATK.' },
+        /* §6.9 Voodoo (Phase 5 wave B, 2026-09-08): the `link` kind, enemy
+           then ally — the enemy wears `voodoo` tied to the ally's id, and
+           battle.js _procLinks hits the doll for 50% of what the ally takes. */
+        { id: 'raceVoodoo', spellType: 'anomaly', element: 'shadow', name: 'Voodoo',
+          type: 'debuff', cost: 30, range: 3, apCost: 1,
+          kind: 'link', linkTargets: 'enemy-ally',
+          statusEffects: [{ id: 'voodoo', duration: 3 }],
+          desc: 'Ties a doll of a Single Enemy to one of your allies (pick the enemy, then the ally). For 3 rounds, whenever that ally takes damage the enemy takes half of it. Bad Trip hits Voodoo targets harder.' },
         SHARED_HEX_OF_TOIL,
         SHARED_EGO_DEATH,
     ],
@@ -7066,6 +7148,14 @@ const RACE_ABILITIES = {
           kind: 'escape', teleportDistance: 3,
           statusEffects: [{ id: 'invisible', duration: 1 }],
           desc: 'Dissolve into mist. Teleport 3 tiles and become invisible for 1 turn.' },
+        /* §6.29 Thrall Bite (Phase 5 wave B, 2026-09-08): a `possess` that
+           BITES first — 80 physical with a 25% drain — then takes the
+           victim's next activation if it still stands. */
+        { id: 'raceThrallBite', spellType: 'unholy', element: 'blood', name: 'Thrall Bite',
+          type: 'damage', cost: 30, dmg: 80, range: 1, apCost: 1,
+          kind: 'possess', activations: 1, damageType: 'physical', drainPct: 0.25,
+          statusEffects: [{ id: 'possessed', duration: 2 }],
+          desc: 'Deals WEAK physical damage to a Single Enemy in melee and heals the caster for part of it. If the victim survives, its next activation is YOURS. Applies Possessed. Bosses cannot be made thralls.' },
         { id: 'racePredatorDrop', spellType: 'unholy', element: 'blood', name: 'Predator Drop',
           type: 'damage', tier: 'III', cost: 25, dmg: 150, range: 1, apCost: 1,
           kind: 'skyDrop', damageType: 'physical', carryHeight: 4, dmgPerLevel: 15,
@@ -8829,6 +8919,25 @@ function keyIconHtml(px, style) {
 }
 if (typeof window !== 'undefined') { window.KEY_ICON_URI = KEY_ICON_URI; window.keyIconHtml = keyIconHtml; }
 
+/* 🎭 Control hand-off (CHAMP_REWORK_PLAN §5.5, Phase 5 wave B, 2026-09-08):
+   a Possessed / Infected unit IS the controller's unit for the duration —
+   battle.js possessUnit flips `unit.player` to the controller's seat and
+   remembers the home seat in `_origPlayer`, so every consumer of
+   `unit.player` (HUD ownership, the AI, fog, targeting, the online
+   guest-emit gate) hands the body over with no special cases. This is the
+   ONE funnel that hands it back: the two control statuses call it from
+   onRemove, so every removal path (the activation count, the round tick,
+   a cleanse, death → releasePossession) restores the home seat. */
+function _releaseControl(unit) {
+    if (!unit) return;
+    delete unit._controllerPlayer;
+    delete unit._possessLeft;
+    if (unit._origPlayer != null) {
+        unit.player = unit._origPlayer;
+        delete unit._origPlayer;
+    }
+}
+
 const STATUS_DEFS = {
 
     burn: {
@@ -9136,7 +9245,7 @@ const STATUS_DEFS = {
         stack: 'replace',
         control: true,
         iconSrc: createStatusIconDataUri('🎭', '#2a1030', '#f4d6ff', '#c060e0'),
-        onRemove(unit) { delete unit._controllerPlayer; delete unit._possessLeft; }
+        onRemove(unit) { _releaseControl(unit); }
     },
     /* 🧟 Infected: the zombie's control variant — controlled for 4
        activations, MELEE ONLY (blockSpells), +1 ATK and +1 SPD stage.
@@ -9154,7 +9263,7 @@ const STATUS_DEFS = {
         blockSpells: true,
         stageMod: { atk: 1, spd: 1 },
         iconSrc: createStatusIconDataUri('🧟', '#1e2e14', '#e2ffd0', '#7fb84a'),
-        onRemove(unit) { delete unit._controllerPlayer; delete unit._possessLeft; }
+        onRemove(unit) { _releaseControl(unit); }
     },
     /* 🗿 Stoneform: the gargoyle turns to stone — cannot move or act (the
        activation is skipped like stun), immune to all damage, regenerates
@@ -14410,7 +14519,7 @@ const RACE_TREE = {
     'ai':            ['racePredictiveModel', 'raceOvercalculate', 'raceRecursiveLoop', 'raceSingularity'],
     'orb of light':  ['racePhotonScatter', 'raceLuminousShield', 'racePrismBurst', 'raceSupernova'],
     'skeleton':      [['raceBoneToss', 'raceGraveChill'], 'raceReassemble', ['sharedPoisonSwamp', 'sharedFissure'], 'raceMarrowstorm'],   // §6.13
-    'zombie':        ['raceInfectiousBite', 'raceZombieRush', 'raceOutbreak', 'raceShamblingHorde'],
+    'zombie':        ['raceInfectiousBite', ['raceZombieRush', 'raceCannibalize'], ['raceOutbreak', 'raceInfect'], 'raceShamblingHorde'],   // §6.18 (wave B)
     'dreameater':    ['raceDreamSiphon', 'raceLucidTrap', 'raceNightmarePulse', 'raceEternalSlumber'],
     'goatman':       ['raceGoreCharge', 'raceCliffCharge', 'raceBloodRitual', 'raceBaphometsRite'],
     'antihero':      ['raceDarkJustice', 'raceGrimResolve', 'raceCosmicSlam', 'raceNoMercy'],
@@ -14418,7 +14527,7 @@ const RACE_TREE = {
     'gnome':         ['raceFlashbangMine', 'raceTinkersContraption', 'raceClockworkTurret', 'raceOvertinker'],
     'pirate':        ['racePlunder', 'raceBoardingRush', 'raceYoHo', 'raceCannonball'],
     'swordfighter':  ['raceSadBackstory', 'racePlotArmor', 'raceToBeContinued', 'raceBlessedBlade'],
-    'shaman':        ['raceHerbalRemedy', 'raceSpiritWalk', 'raceAyahuascaRetreat', ['raceBadTrip', 'sharedEgoDeath']],   // §4.5 capstone twin (both tier III)
+    'shaman':        ['raceHerbalRemedy', ['raceSpiritWalk', 'raceSacrifice'], ['raceAyahuascaRetreat', 'raceVoodoo'], ['raceBadTrip', 'sharedEgoDeath']],   // §6.9 (wave B) + the §4.5 capstone twin (both tier III)
     'mad scientist': ['raceTeslaTrap', 'raceCloneDecoy', 'raceOvercharge', 'racePlandemic'],
     'men in black':  ['raceDeneuralizer', 'raceAgentVanish', 'sharedSmokeScreen', 'raceClassifiedWeapon'],
     'telepath':      ['raceTelepathicLink', 'racePsychicBarrier', 'raceBrainwash', 'raceMindCrush'],
@@ -14433,10 +14542,10 @@ const RACE_TREE = {
     'android':       ['raceSyntheticBlade', 'raceSelfRepairProtocol', 'raceNeuralHack', 'empBurst'],
     'angel':         ['radiantBolt', 'raceWingsOfMercy', 'raceSanctuary', 'raceDivineSmite'],
     'seraphim':      ['raceRapture', 'raceAbsolution', 'raceDivineJudgment', 'raceMerkaba'],
-    'demon':         ['raceContract', 'raceInfernalHurl', 'raceVoidContract', 'raceHellmouth'],
-    'succubus':      ['raceSoulSuck', 'raceCharm', 'raceSleepParalysis', 'raceDrainingEmbrace'],
+    'demon':         ['raceContract', ['raceInfernalHurl', 'raceSoulBind'], 'raceVoidContract', ['raceHellmouth', 'raceShadowRealm']],   // §6.8 (wave B)
+    'succubus':      ['raceSoulSuck', 'raceCharm', ['raceSleepParalysis', 'raceEnthrall'], 'raceDrainingEmbrace'],   // §6.29 (wave B)
     'mech':          ['raceMortarSalvo', 'raceSiegeMode', 'raceEject', 'sharedNuke'],
-    'ghost':         ['racePossession', 'raceColdSpot', 'sharedFlashFreeze', 'raceBoo'],
+    'ghost':         ['raceHaunt', ['raceColdSpot', 'sharedFlashFreeze'], 'racePossession', 'raceBoo'],   // §6.6 (wave B)
     'annunaki':      ['raceGravityWell', 'raceZigguratProtocol', 'sharedGravityCrush', 'raceStarDecree'],
     'skinwalker':    ['raceBorrowedClaw', 'sharedSmokeScreen', 'raceSkinSwap', 'raceMimicry'],
     'werewolf':      ['raceBite', 'raceHowl', 'raceFeralDive', 'raceBloodFrenzy'],
@@ -14463,7 +14572,7 @@ const RACE_TREE = {
     'halfdemon':     ['raceInnerDemon', 'sharedSmokeScreen', 'raceShadowStep', 'raceDemonicClaw'],
     'mermaid':       ['raceSirenSong', 'raceTidalBlessing', 'raceRiptide', 'raceFlood'],
     'nephilim':      ['raceSmite', 'raceHolyBulwark', 'sharedFissure', 'raceWrathOfTheWatchers'],
-    'vampire':       ['raceBite', 'raceMistForm', 'raceBatSwarm', 'racePredatorDrop'],
+    'vampire':       ['raceBite', 'raceMistForm', ['raceBatSwarm', 'raceThrallBite'], 'racePredatorDrop'],   // §6.29 (wave B)
     'voidweaver':    ['raceVenomFang', 'raceWebSnare', 'raceDimensionalWeb', 'sharedBlackHole'],
     'cosmic wraith': ['raceEntropicBeam', 'racePhaseWalk', 'sharedNebula', 'raceHeatDeath'],
     'superhero':     ['raceHeroicLeap', ['raceInvulnerable', 'raceFreezeBreath'], ['raceShockwaveClap', 'raceSkyTackle'], 'raceLaserBeam'],   // §6.25 (Heat Vision = raceLaserBeam)

@@ -498,3 +498,146 @@ test('Phase 5 wave A: the engine honours the new kinds and flags (source-text gu
     assert.ok(/k === 'tackle'/.test(hudSrc) && /k === 'transform'/.test(hudSrc), 'hud.js spell-card parts');
     assert.ok(/'damage','tackle','transform'/.test(uiSrc2), 'ui.js spell library kinds');
 });
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Phase 5 wave B — control + links (plan §9.5, shipped 2026-09-08).
+   The five new kinds (possess, link, shadowRealm, transfer, cannibalize),
+   the control hand-off (unit.player flips to the controller's seat and
+   comes back on every removal path), the two-click cast gate, and the
+   engine / AI / HUD / online sites that honour them.
+   ═══════════════════════════════════════════════════════════════════════ */
+const onlineSrc = src('online.js');
+const mapSrc2 = src('map.js');
+const cssSrc = src('styles-cinematic.css');
+
+/* id → [race, kind, { field: expected }] — the §6 numbers that matter. */
+const WAVE_B = {
+    raceHaunt:        ['ghost',    'debuff',      { range: 5 }],
+    racePossession:   ['ghost',    'possess',     { range: 3, activations: 1, cooldownRounds: 3 }],
+    raceInfect:       ['zombie',   'possess',     { range: 1, activations: 4 }],
+    raceCannibalize:  ['zombie',   'cannibalize', { range: 2, healPct: 0.35, corpseDelay: 2 }],
+    raceSoulBind:     ['demon',    'link',        { range: 3, linkTargets: 'enemy-enemy', pairRange: 4 }],
+    raceShadowRealm:  ['demon',    'shadowRealm', { range: 3, tier: 'III', cooldownRounds: 3 }],
+    raceSacrifice:    ['shaman',   'transfer',    { range: 3, linkTargets: 'ally-ally', takePct: 0.30, givePct: 1.5 }],
+    raceVoodoo:       ['shaman',   'link',        { range: 3, linkTargets: 'enemy-ally' }],
+    raceThrallBite:   ['vampire',  'possess',     { range: 1, activations: 1, dmg: 80, damageType: 'physical', drainPct: 0.25 }],
+    raceEnthrall:     ['succubus', 'possess',     { range: 2, activations: 1 }],
+};
+/* id → the ONE status each applies (+ its duration). */
+const WAVE_B_STATUS = {
+    raceHaunt: ['haunted', 3], racePossession: ['possessed', 2], raceInfect: ['infected', 5],
+    raceSoulBind: ['soulBound', 3], raceShadowRealm: ['shadowRealm', 2], raceVoodoo: ['voodoo', 3],
+    raceThrallBite: ['possessed', 2], raceEnthrall: ['possessed', 2],
+};
+
+test('Phase 5 wave B: every §6 spell exists on its race with its kind, numbers, status and tree node', () => {
+    for (const [id, [race, kind, fields]] of Object.entries(WAVE_B)) {
+        const sp = raceSpell(race, id);
+        assert.ok(sp, `${race} has ${id}`);
+        assert.strictEqual(sp.kind, kind, `${id} kind`);
+        for (const [k, v] of Object.entries(fields)) same(sp[k], v, `${id}.${k}`);
+        assert.ok(sp.desc && sp.desc.length > 20, `${id} has a desc`);
+        assert.ok(treeHas(race, id), `${id} sits on ${race}'s RACE_TREE`);
+        assert.ok(D.getRaceTreeAllIds(race).includes(id), `${id} reachable through getRaceTreeAllIds`);
+        const want = WAVE_B_STATUS[id];
+        if (want) {
+            const fx = sp.statusEffects || [];
+            assert.strictEqual(fx.length, 1, `${id} applies exactly one status`);
+            assert.strictEqual(fx[0].id, want[0], `${id} applies ${want[0]}`);
+            assert.strictEqual(fx[0].duration, want[1], `${id} status duration`);
+            assert.ok(D.STATUS_DEFS[fx[0].id], `${id}'s status is a STATUS_DEFS row`);
+        } else {
+            assert.ok(!sp.statusEffects, `${id} applies no status`);
+        }
+    }
+    // Possess spells wear a CONTROL status; their durations cover activations + 1.
+    for (const id of ['racePossession', 'raceInfect', 'raceThrallBite', 'raceEnthrall']) {
+        const [race] = WAVE_B[id];
+        const sp = raceSpell(race, id);
+        assert.ok(D.STATUS_DEFS[sp.statusEffects[0].id].control, `${id}'s status is a control row`);
+        assert.ok(sp.statusEffects[0].duration >= sp.activations + 1, `${id} duration ≥ activations + 1`);
+    }
+    // Enthrall's payoff: bonusVsStatus on a possess = extra activations vs Charmed.
+    same(raceSpell('succubus', 'raceEnthrall').bonusVsStatus, { status: 'charm', mult: 2 });
+    // Twins: every wave-B pair is a 2-array on its node.
+    const pairs = {
+        ghost: ['raceColdSpot', 'sharedFlashFreeze'], zombie: ['raceZombieRush', 'raceCannibalize'],
+        demon: ['raceInfernalHurl', 'raceSoulBind'], shaman: ['raceSpiritWalk', 'raceSacrifice'],
+        vampire: ['raceBatSwarm', 'raceThrallBite'], succubus: ['raceSleepParalysis', 'raceEnthrall'],
+    };
+    for (const [race, pair] of Object.entries(pairs)) {
+        const alts = Object.values(D.getRaceTreeAlts(race)).map(a => JSON.stringify(a));
+        assert.ok(alts.includes(JSON.stringify(pair)), `${race} twins ${pair.join(' ⇄ ')} (has ${alts.join(' | ')})`);
+    }
+    assert.ok(JSON.stringify(D.getRaceTreeAlts('zombie')).includes('"raceOutbreak","raceInfect"'), 'zombie r3 twin Outbreak ⇄ Infect');
+    assert.ok(JSON.stringify(D.getRaceTreeAlts('demon')).includes('"raceHellmouth","raceShadowRealm"'), 'demon capstone twin Hellmouth★ ⇄ Shadow Realm★');
+    assert.ok(JSON.stringify(D.getRaceTreeAlts('shaman')).includes('"raceAyahuascaRetreat","raceVoodoo"'), 'shaman r3 twin Ayahuasca ⇄ Voodoo');
+    // Ghost pillar order: Haunt → Cold Spot ⇄ Flash Freeze → Possession → Boo★.
+    same(D.getRaceTreeSpells('ghost'), ['raceHaunt', 'raceColdSpot', 'racePossession', 'raceBoo']);
+});
+
+test('Phase 5 wave B: payoffs, the control funnel and the VFX aliases', () => {
+    same(raceSpell('ghost', 'raceBoo').bonusVsStatus, { status: 'haunted', mult: 1.5 });
+    same(raceSpell('demon', 'raceVoidContract').bonusVsStatus, { status: ['contract', 'soulBound'], mult: 1.5 });
+    same(raceSpell('shaman', 'raceBadTrip').bonusVsStatus, { status: ['slow', 'voodoo'], mult: 1.5 });
+    same(raceSpell('zombie', 'raceShamblingHorde').bonusVsStatus, { status: 'infected', mult: 1.5 });
+    // Possession is no longer the Jammed bolt.
+    assert.ok(!raceSpell('ghost', 'racePossession').statusEffects.some(f => f.id === 'jammed'));
+    // data.js: the two control statuses hand the seat back from onRemove (the ONE funnel).
+    assert.ok(/function _releaseControl\(unit\)[\s\S]{0,400}_origPlayer/.test(dataSrc), 'data.js _releaseControl restores unit.player from _origPlayer');
+    assert.strictEqual((dataSrc.match(/onRemove\(unit\) \{ _releaseControl\(unit\); \}/g) || []).length, 2, 'possessed + infected call _releaseControl');
+    // Every wave-B id has a VFX family recipe.
+    for (const id of Object.keys(WAVE_B)) assert.ok(vfxSrc.includes(`SPELL_MAP['${id}']`), `${id} has a SPELL_MAP recipe`);
+    // The Void Stage palette + its vignette row.
+    assert.ok(/shadow:\s*\{ color: 0x05040a/.test(battleSrc), 'VOID_PALETTES.shadow');
+    assert.ok(/\.void-layer\.vp-shadow::after/.test(cssSrc), 'styles-cinematic.css vp-shadow vignette');
+});
+
+test('Phase 5 wave B: the engine honours the new kinds (source-text guards)', () => {
+    const count = (text, re) => (text.match(re) || []).length;
+    // Kinds registered with the flags the engine keys on.
+    assert.ok(/possess:\s*\{ minRange: 1, offensive: true,\s*breaksStealth: true/.test(battleSrc), 'SPELL_KIND_META.possess');
+    assert.ok(/shadowRealm:\s*\{ minRange: 1, offensive: true/.test(battleSrc), 'SPELL_KIND_META.shadowRealm');
+    assert.ok(/link:\s*\{ minRange: 1, offensive: true,[^}]*twoClick: true/.test(battleSrc), 'SPELL_KIND_META.link twoClick');
+    assert.ok(/transfer:\s*\{ minRange: 0, offensive: false, allyOnly: true,[^}]*twoClick: true/.test(battleSrc), 'SPELL_KIND_META.transfer twoClick');
+    assert.ok(/cannibalize:\s*\{ minRange: 1, offensive: false,[^}]*corpseTarget: true/.test(battleSrc), 'SPELL_KIND_META.cannibalize corpseTarget');
+    for (const k of ['possess', 'shadowRealm', 'link', 'transfer', 'cannibalize']) {
+        assert.ok(battleSrc.includes(`else if (spell.kind === '${k}')`), `doSpell ${k} branch`);
+    }
+    // The control hand-off: possessUnit flips the seat, releasePossession hands it back,
+    // the activation end spends one, the activation start announces it, death releases.
+    assert.ok(/function possessUnit\(caster, target, spell, acts\)[\s\S]{0,1600}target\._origPlayer = target\.player;\s*target\.player = caster\.player;/.test(battleSrc), 'possessUnit flips unit.player');
+    assert.ok(/function releasePossession\(unit, opts = \{\}\)/.test(battleSrc) && /function _possessSpendActivation\(unit\)/.test(battleSrc));
+    assert.ok(/_possessSpendActivation\(_ctlUnit\)/.test(battleSrc), 'maybeAdvanceTurn spends a controlled activation');
+    assert.ok(/if \(unitIsControlled\(nextUnit\)\) showPossessedActivation\(nextUnit\);/.test(battleSrc), 'activation beat');
+    assert.ok(/releasePossession\(unit, \{ quiet: true \}\)/.test(mapSrc2), 'map.js defeatUnit releases the seat before the death is counted');
+    assert.ok(/window\.getControllingPlayer = getControllingPlayer/.test(battleSrc) && /window\.unitHomePlayer = unitHomePlayer/.test(battleSrc));
+    // Two-click gate sits before the commit point; the drum follows the pick; ESC / cancel drop it.
+    const gateAt = battleSrc.indexOf('if (_kindMeta(spell).twoClick) {');
+    const commitAt = battleSrc.indexOf('// Every validation gate has passed — the cast WILL happen.');
+    assert.ok(gateAt > 0 && commitAt > gateAt && commitAt - gateAt < 4000, 'two-click gate right before the cast commit');
+    assert.ok(count(battleSrc, /if \(_skm\.twoClick\) \{/g) >= 2, 'drum + approach lists follow the first pick');
+    assert.ok(/function _twoClickPick\(spell\)/.test(battleSrc) && /function clearSpellPick\(\)/.test(battleSrc));
+    assert.ok(/state\._spellPick1 = null;\s*\/\/ two-click casts/.test(uiSrc2) && /if \(state\._spellPick1\) \{\s*state\._spellPick1 = null;/.test(uiSrc2), 'ui.js cancel / ESC drop the pick');
+    // Corpse targeting is shared (raiseDead + cannibalize) through one predicate.
+    assert.ok(/function spellTargetsCorpses\(spell\)/.test(battleSrc));
+    assert.ok(count(battleSrc, /spellTargetsCorpses\(spell\)/g) >= 6, 'drum, approach list, has-target check and usability all route through spellTargetsCorpses');
+    // Shadow Realm: both ends wear the marker with the partner id; the director holds the void.
+    assert.ok(/partnerId: unit\.id \}, `\$\{spell\.name\}: `, unit\)/.test(battleSrc) && /partnerId: target\.id \}, `\$\{spell\.name\}: `, unit\)/.test(battleSrc));
+    assert.ok(/raceShadowRealm\(ctx\) \{[\s\S]{0,400}_voidBeat\('shadow', ctx/.test(battleSrc), 'CINE_SEQUENCES.raceShadowRealm');
+    assert.ok(/maxMs: opts\.maxMs, caption: opts\.caption/.test(battleSrc), '_voidBeat forwards maxMs');
+    // AI: scorers, targeters, the pair pick, the realm gate, the executor seating the pick.
+    for (const k of ['possess', 'shadowRealm', 'link', 'transfer', 'cannibalize']) {
+        assert.ok(aiSrc.includes(`kind === '${k}'`), `ai.js knows ${k}`);
+    }
+    assert.ok(/const _aiPairPick = \{\};/.test(aiSrc) && /partner: _aiPairPick\[spell\.id\] \|\| null/.test(aiSrc) && /g\.state\._spellPick1 = \{ id: _p1\.id, spellId: action\.spell\.id/.test(aiSrc), 'AI two-click execution');
+    assert.ok(/isUnitRealmShieldedFrom\(tg, _aiActor\)/.test(aiSrc), 'AI treats a realm unit as untargetable');
+    // HUD + library filter.
+    assert.ok(/k === 'possess'/.test(hudSrc) && /k === 'link' \|\| k === 'transfer'/.test(hudSrc) && /k === 'cannibalize'/.test(hudSrc), 'hud.js spell-card parts');
+    assert.ok(/'damage','tackle','transform','possess','link','shadowRealm','transfer','cannibalize'/.test(uiSrc2), 'ui.js spell library kinds');
+    // Online: the guest runs the first pick locally, the second click carries partnerId,
+    // the host seats it; the pick is per-viewer UI; the activation beat is relayed.
+    assert.ok(/partnerId: _tcPick \? _tcPick\.id : null/.test(onlineSrc) && /data\.partnerId != null/.test(onlineSrc), 'online.js doSpell partnerId');
+    assert.ok(/_spellPick1: 1,/.test(onlineSrc) && /'_spellPick1',/.test(onlineSrc), '_spellPick1 skip-listed + guest-local');
+    assert.ok(/type: 'possessed-activation'/.test(onlineSrc) && /data\.type === 'possessed-activation'/.test(onlineSrc), 'possessed-activation relay');
+});

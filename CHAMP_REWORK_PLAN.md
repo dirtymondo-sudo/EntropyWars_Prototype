@@ -35,10 +35,22 @@
 > (possessed/infected) is rows + partner fields only — the hand-off lands
 > with the `possess` kind in wave B. Token `20260907n-cors` →
 > `20260907o-cors`. See §5.8.
-> **Phases 5–6 are PLANNED here, not built** — the new spells (with their
-> VFX / animation / cinematic specs) and the two new champs. §10 lists the
+> **PHASE 5 WAVE B SHIPPED 2026-09-08 (§5.10, §9.5):** control + links —
+> ten `RACE_ABILITIES` rows on six pillars (ghost, zombie, demon, shaman,
+> vampire, succubus) and five new kinds: **`possess`** (the victim's next
+> activation(s) belong to the caster's SEAT — battle.js `possessUnit` flips
+> `unit.player`, `releasePossession` hands it back; Possession / Enthrall /
+> Infect / Thrall Bite), **`link`** + **`transfer`** (the first TWO-CLICK
+> casts — `state._spellPick1`; Soul Bind / Voodoo / Sacrifice),
+> **`shadowRealm`** (Shadow Realm★ with the `shadow` Void Stage) and
+> **`cannibalize`** (corpse-targeted, shared with raiseDead). Haunt opens
+> the ghost. Token `20260908h-cors` → `20260908i-cors`. See §5.10 for what
+> differs from §6 and §10 #31–38 for the calls it made.
+> **Phase 5 wave C and Phase 6 are PLANNED here, not built** — the
+> summons / tethers / terrain wave and the two new champs. §10 lists the
 > yes/no decisions the owner should make (items 14–15 came out of Phase 2;
-> 17–19 out of Phase 3; 20–24 out of Phase 4).
+> 17–19 out of Phase 3; 20–24 out of Phase 4; 25–30 out of wave A; 31–38
+> out of wave B).
 
 This is the single planning doc for the owner's 2026-09-07 "champ reworks"
 notes. It is written so that any later session can build one phase from it
@@ -60,8 +72,8 @@ are measured).
 | §2 | The vocabulary: the owner's words → numbers; the power budget; the checkable constraints | **shipped** |
 | §3 | "Speed is both" — what changed, who is fast now | **shipped** |
 | §4 | Twin nodes — "each node could have 2 abilities and you pick one" | **shipped** (Phase 2, §4.6) |
-| §5 | New game-wide systems the kits need: statuses, passives, spell kinds/flags, terrain, forms, control, links, the shadow realm, summons | §5.2 passives **shipped** (Phase 3, see §5.7); the rest planned (Phase 4+) |
-| §6 | The champs — 27 reworked + 2 new: role, stats, passives, race pillar, every new spell with numbers + presentation | planned (Phase 5–6), stats shipped |
+| §5 | New game-wide systems the kits need: statuses, passives, spell kinds/flags, terrain, forms, control, links, the shadow realm, summons | passives **shipped** (§5.7), statuses **shipped** (§5.8), wave A kinds/flags **shipped** (§5.9), control + links **shipped** (§5.10); summons / tethers / goo terrain planned (wave C) |
+| §6 | The champs — 27 reworked + 2 new: role, stats, passives, race pillar, every new spell with numbers + presentation | stats shipped; wave A (14 champs) + wave B (6 champs) spells **shipped**; wave C + the two new races planned |
 | §7 | The roster sweep — before/after table for all 96 races | **shipped** |
 | §8 | The per-spell presentation checklist (VFX / anim / cinematic / SFX / AI / online) | reference for Phase 5 |
 | §9 | Build order, file touch lists, tests, cache-bust tokens | plan |
@@ -665,6 +677,120 @@ guarded by champ-rework.test.js (the `WAVE_A` table).
   renames / retunes / retirements, source-text guards for every engine
   site above); content-schema's twin test learned the QB's R2 pair.
 
+### 5.10 SHIPPED 2026-09-08 — Phase 5 wave B, control + links (what landed, and where it differs from §6)
+
+Ten new / reworked spell rows, five new kinds, one new two-click targeting
+flow, the control hand-off, and four payoff riders. Every new spell is a
+`RACE_ABILITIES` row on its §6 node (twin arrays in `RACE_TREE`), rides an
+existing VFX recipe by family (three-vfx-effects.js `SPELL_MAP['<id>']`
+aliases in the wave-B block right above the wave-A ones), and is guarded by
+champ-rework.test.js (the `WAVE_B` table).
+
+| Race | Landed | Node |
+|---|---|---|
+| ghost | **Haunt** `raceHaunt` (debuff, r5, `haunted` 3) · **Possession** `racePossession` REWORK (`possess`, r3, 1 activation, cooldown 3 — was the Jammed bolt) · Boo ×1.5 vs Haunted | r1 Haunt · r2 Cold Spot ⇄ Flash Freeze · r3 Possession · r4★ Boo |
+| zombie | **Infect** `raceInfect` (`possess`, r1, 4 activations, `infected` 5) · **Cannibalize** `raceCannibalize` (`cannibalize`, r2, heal 35 % max HP, corpse respawn +2) · Shambling Horde ×1.5 vs Infected | r2 Zombie Rush ⇄ Cannibalize · r3 Outbreak ⇄ Infect |
+| demon | **Soul Bind** `raceSoulBind` (`link` enemy-enemy, r3, pair within 4, `soulBound` 3) · **Shadow Realm★** `raceShadowRealm` (`shadowRealm`, tier III, r3, `shadowRealm` 2, cooldown 3) · Devour Soul ×1.5 vs Contract OR Soul-Bound | r2 Infernal Hurl ⇄ Soul Bind · r4★ Hellmouth ⇄ Shadow Realm |
+| shaman | **Sacrifice** `raceSacrifice` (`transfer` ally-ally, r3, take 30 % → give 150 %) · **Voodoo** `raceVoodoo` (`link` enemy-ally, r3, `voodoo` 3) · Bad Trip ×1.5 vs Slow OR Voodoo | r2 Spirit Walk ⇄ Sacrifice · r3 Ayahuasca Retreat ⇄ Voodoo (r4★ keeps the §4.5 Bad Trip ⇄ Ego Death twin) |
+| vampire | **Thrall Bite** `raceThrallBite` (`possess`, r1, 80 physical + 25 % drain, then 1 activation) | r3 Bat Swarm ⇄ Thrall Bite |
+| succubus | **Enthrall** `raceEnthrall` (`possess`, r2, 1 activation — 2 vs Charmed) | r3 Sleep Paralysis ⇄ Enthrall |
+
+**Engine (battle.js unless noted):**
+- `SPELL_KIND_META.possess` / `.shadowRealm` / `.link` / `.transfer` /
+  `.cannibalize`. Two new meta flags the engine reads: **`twoClick`**
+  (link, transfer) and **`corpseTarget`** (cannibalize;
+  `spellTargetsCorpses(spell)` = raiseDead OR corpseTarget, used by the
+  target drum, the approach list, `hasSpellTargetInRange` and
+  `spellTargetUsableOn` — which also means raiseDead's corpses now appear
+  in the drum, which they never did).
+- **Control = the seat.** `possessUnit(caster, target, spell, acts)`
+  applies the spell's control status (duration ≥ acts + 1) and then
+  **flips `unit.player` to the caster's seat**, remembering the home seat
+  in `unit._origPlayer` (plain unit data → state-sync). Every consumer of
+  `unit.player` — the HUD ownership gate, `runComputerTurn` /
+  `maybeTriggerComputerTurn`, `isEnemyUnit`, fog and vision, the target
+  drums, the online `_guestOwnsAction` / host dispatcher — hands the body
+  over with NO special cases. `getControllingPlayer(unit)` (= unit.player)
+  and `unitHomePlayer(unit)` exist for anyone who needs to ask. The hand-
+  back is ONE funnel: data.js `_releaseControl` runs from the two control
+  statuses' `onRemove`, so the round tick, a cleanse and `clearStatus`
+  all restore the seat; `releasePossession(unit)` is the explicit call
+  (map.js `defeatUnit` makes it before the death is counted — a respawn
+  wipes `status` without `clearStatus`). `maybeAdvanceTurn` spends one
+  activation per controlled turn (`_possessSpendActivation`, right after
+  the spurious-advance guard); the last one releases. The activation
+  opens with `showPossessedActivation` (subtitle line + the `dream` Void
+  Stage on the stolen face; online.js relays it as
+  `possessed-activation`).
+- **`possess` branch**: enemy only, never a boss; optional bite first
+  (`dmg` + `drainPct`, Thrall Bite); `activations` (+ **bonusVsStatus on
+  this kind = extra activations**: Enthrall 1 → 2 vs Charmed); the
+  #32 Possession face-cam director is aliased for Enthrall / Thrall
+  Bite / Infect.
+- **Two-click casts** (`link`, `transfer`): the first legal click (team =
+  first half of `linkTargets`) is remembered in `state._spellPick1`
+  `{ id, spellId, x, y }` and costs NOTHING — the gate sits right before
+  doSpell's commit point, so range / LOS / fog have judged it but no cast
+  animation, stealth break or MP is spent; clicking the pick again un-
+  picks it; the second click (other half of the pair, within `pairRange`
+  of the first for Soul Bind) resolves. The target drum
+  (`_getSpellValidTargets`), the approach list, the prompt bar and the
+  hud.js target-kind chip (① / ②) follow the pick; ESC / cancel drop it;
+  `maybeAdvanceTurn` clears it. Online: the guest runs the FIRST pick
+  locally (online.js doSpell wrapper) and its second click carries
+  `partnerId`; the host dispatcher seats it as its own pick.
+  `_spellPick1` is skip-listed + `_guestUIKeys`. The AI: `findSpellTarget`
+  returns the first pick and stashes the partner in `_aiPairPick[spell.id]`
+  (Soul Bind: the two highest-priority enemies within pairRange of each
+  other; Voodoo: the highest-priority enemy + the ally enemies can reach
+  most easily; Sacrifice: the healthiest ally ≥ 60 % → the neediest ally
+  ≤ 60 %); the executor seats the pick and casts at the partner. Simul
+  refuses to plan a two-click cast (the same "cannot be planned (yet)" as
+  skyThrow / teleport).
+- **`link` branch**: pair statuses (`STATUS_DEFS[id].link === 'pair'`)
+  land on BOTH with the other's `partnerId` (one refusal clears the
+  other); the ally link lands on the enemy with `allyId`. Phase 4's
+  `_procLinks` does the echoing unchanged.
+- **`shadowRealm` branch**: target first, then the caster (so the realm
+  gate can't bounce the second application), both `partnerId`-crossed;
+  the Phase 4 gates (target / damage / heal / status / concealment) do
+  the rest; ai.js `isProtected` now also treats a realm unit as
+  untargetable for every actor but its partner (`_aiActor`). Director
+  `CINE_SEQUENCES.raceShadowRealm`: the new **`shadow`** Void Stage
+  palette (VOID_PALETTES + styles-cinematic.css `vp-shadow`), 3.2 s via
+  `_voidBeat`'s new `maxMs` pass-through, a `k-glitch` insert, one
+  freeze-frame flinch.
+- **`transfer` branch**: giver loses `takePct` of max HP (clamped to
+  hp − 1, applied directly — no armour, no link echo), receiver heals
+  `givePct` of it + half the caster's spell power; refused on a full-HP
+  receiver.
+- **`cannibalize` branch**: an unconsumed corpse at the tile; heal
+  `healPct` of max HP (preScaled), `_respawnIn += corpseDelay` when a
+  timer is running, the remains consumed + `reviveLocked` (no raising,
+  no revive).
+- hud.js: spell-card parts for all five kinds, a "Two Targets" / "Remains"
+  / "You + Target" range label, transfer + cannibalize kept out of the
+  enemy quick menu; ui.js library filter; Strike mode's category table
+  refuses the five (turn-model kinds, like rallyPull / raiseDead).
+
+**Deviations from §6 (deliberate — §10 #31–38):**
+- Control is the whole SEAT, not a per-activation overlay: while
+  possessed the unit is an ENEMY to its own team (they can attack it,
+  they cannot cleanse it), it gives the controller vision, and a Key it
+  carries counts for the controller.
+- Released at the END of the controlled activation, not on the round
+  tick; a victim that already acted this round is controlled next round.
+- Shadow Realm's Void Stage is the 3.2 s cast beat, not the whole two
+  rounds — the board has to stay readable for the other twelve units.
+- Voodoo picks the ENEMY first, then the ally (so the enemy quick menu
+  can start it).
+- Enthrall's "×1.5 vs Charmed" is a SECOND activation.
+- Cooldowns DO exist (`cooldownRounds` — the wave-A note saying otherwise
+  was wrong): Possession and Shadow Realm wear the plan's 3.
+- Bosses refuse possession and the realm.
+- Tests: champ-rework.test.js "Phase 5 wave B" ×3; content-schema's
+  no-twin probe moved from the vampire to the knight.
+
 ### 5.6 Stage-buff retune that this pass makes necessary
 
 STAT_REWORK §7 warned that +2-stage buffs doubled in strength when a stage
@@ -1118,8 +1244,11 @@ index.html token. Details and deviations: §5.8.
   cyborg (lineWidth 2), conspiracy theorist (flatten). data.js, battle.js,
   state.js, ai.js, hud.js, ui.js, three-vfx-effects.js,
   champ-rework.test.js, content-schema.test.js, index.html token.
-- **Wave B (control + links):** ghost, zombie, demon, shaman, succubus,
-  vampire — `possess`, `link`, `shadowRealm`, `transfer`.
+- **Wave B (control + links) — SHIPPED 2026-09-08 (§5.10):** ghost, zombie,
+  demon, shaman, succubus, vampire — `possess`, `link`, `shadowRealm`,
+  `transfer`, `cannibalize`. data.js, battle.js, map.js, ai.js, hud.js,
+  ui.js, online.js, three-vfx-effects.js, styles-cinematic.css,
+  champ-rework.test.js, content-schema.test.js, index.html token.
 - **Wave C (summons, tethers, terrain):** cowboy, mad scientist, black goo,
   fairy, ghoul, atlantean, dragon — `summonUnit`, `tetherFollow`, goo
   terrain, `levitating`, `feared`, width-3 lines, `lineZone`.
@@ -1220,3 +1349,28 @@ crumble (gargoyle), arm-cannon morph (cyborg).
     direction (Plasma Cannon). Fine, or prefer the left / a UI choice?
 30. **Sky Tackle's carry lands the hero one tile behind the body** (never on
     an occupied tile; a blocked landing leaves him where he struck). Fine?
+31. **Possession takes the whole SEAT** (wave B): `unit.player` flips to
+    the controller, so the victim's own team sees an enemy (attackable,
+    not cleansable), the controller gets its vision, and a Key it carries
+    counts for the controller while it lasts. The alternative — a
+    per-activation controller overlay — keeps it an ally for its team but
+    needs a special case at every `unit.player` read (HUD, AI, fog,
+    online). Keep the flip?
+32. **The stolen activation is released when it ENDS**, not on the round
+    tick; a victim that already acted this round is controlled on its next
+    activation. Or should Possession on an already-acted unit fizzle?
+33. **Shadow Realm's Void Stage is a 3.2 s cast beat**, not the whole two
+    rounds the plan's `maxMs` reading implied (holding the void would hide
+    the board from every other unit's turn). Want a shorter re-entry beat
+    on each of the pair's own activations instead?
+34. **Voodoo picks the ENEMY first, then the ally** (plan said ally↔enemy)
+    so the enemy quick menu can start the cast. Swap the order?
+35. **Enthrall vs Charmed = a second activation** ("×1.5" has no meaning
+    on a no-damage spell). Fine, or make it a damage rider?
+36. **Bosses can't be possessed or dragged into the realm** (a stolen boss
+    would hand over the campaign). Keep?
+37. **Cannibalize consumes the remains** (no raiseDead / revive after) and
+    the AI only eats below 70 % HP. Keep the consume?
+38. **Cooldowns are real** (`cooldownRounds`): Possession 3, Shadow Realm 3
+    as planned. The wave-A note claimed the engine had none — it does, so
+    say if any wave-A spell should wear one.

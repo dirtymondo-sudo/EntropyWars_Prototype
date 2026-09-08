@@ -4534,6 +4534,7 @@
             state.comboPartner = null;
             state.hoverUnitId = null;
             state._spellOrientation = null;
+            state._spellPick1 = null;   // two-click casts (wave B) forget their first pick
             if (typeof _clearBuildHoverPreview === 'function') _clearBuildHoverPreview();
             state.focusedUnitId = state.selectedUnitId || null;
             // back at the root menu → return to the third-person turn shot
@@ -4652,6 +4653,12 @@
             // aim) → back to the ABILITIES list, never all the way to root.
             if (state.actionMode === 'spell' && state.actionMenuView === 'spells' && state.selectedTool) {
                 playSfx('uiBack');
+                // Two-click casts (wave B): the first ESC only drops the first pick.
+                if (state._spellPick1) {
+                    state._spellPick1 = null;
+                    renderBattleSelectionUI();
+                    return;
+                }
                 state.actionMode = null;
                 state.selectedTool = null;
                 state.pendingTarget = null;
@@ -8481,7 +8488,7 @@
         let _slbMpSearch = '';
         let _slbRawOpen = false;
 
-        const _SLB_KINDS = ['damage','tackle','transform','buff','aoe','debuff','terrainCreate','line','dash','lifeDrain','barrage','warCry','aoeShield','zoneDebuff','escape','cross','deployObject','leapStrike','teleport','heal','healAll','multiHit','delayed','summonWeather','aoePull','deployTurret','displacement','swap','skyThrow','selfHeal','pull','ricochet','zoneHeal','skyDrop','linePush','shield','revive','placeTrap','deployPair','utility','skySlam','scan','bomb','seedHeal','seedPoison','warpRune','leechSeed','remoteView','encore','cleanse','trickRoom','guard','manaRestoreAll','splitBeam','placeMirror','tuneFrequency','pulseLattice','rallyPull','raiseDead','placeBlock','buildStructure'];
+        const _SLB_KINDS = ['damage','tackle','transform','possess','link','shadowRealm','transfer','cannibalize','buff','aoe','debuff','terrainCreate','line','dash','lifeDrain','barrage','warCry','aoeShield','zoneDebuff','escape','cross','deployObject','leapStrike','teleport','heal','healAll','multiHit','delayed','summonWeather','aoePull','deployTurret','displacement','swap','skyThrow','selfHeal','pull','ricochet','zoneHeal','skyDrop','linePush','shield','revive','placeTrap','deployPair','utility','skySlam','scan','bomb','seedHeal','seedPoison','warpRune','leechSeed','remoteView','encore','cleanse','trickRoom','guard','manaRestoreAll','splitBeam','placeMirror','tuneFrequency','pulseLattice','rallyPull','raiseDead','placeBlock','buildStructure'];
         const _SLB_TYPES = ['damage', 'utility', 'buff', 'debuff', 'heal'];
         const _SLB_SPELLTYPES = ['anomaly', 'human', 'unholy', 'tech', 'alien', 'divine'];
         const _SLB_ELEMENTS = ['fire','water','ice','lightning','earth','wind','nature','poison','light','shadow','arcane','psychic','sonic','metal','blood'];

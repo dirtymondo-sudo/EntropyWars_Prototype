@@ -8246,6 +8246,11 @@
 
             if (typeof dropFlagOnDeath === 'function') dropFlagOnDeath(unit);
 
+            /* 🎭 A possessed / infected body dies as its OWN: hand the seat
+               back before the death is counted (respawn zone, kill credit,
+               wipe-out checks all read unit.player). battle.js. */
+            if (typeof releasePossession === 'function') releasePossession(unit, { quiet: true });
+
             if (state.turrets) state.turrets = state.turrets.filter(t => t.casterUnitId !== unit.id);
 
             if (state.plantedSeeds) state.plantedSeeds = state.plantedSeeds.filter(s => s.casterUnitId !== unit.id);

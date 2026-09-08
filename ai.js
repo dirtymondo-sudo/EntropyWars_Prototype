@@ -178,6 +178,11 @@
 
     // ── per-turn action memory (anti-loop, target spreading) ─────────────
     let _turnActionLog = [];
+    // CHAMP_REWORK Phase 5 wave B: the unit the AI is thinking for (the
+    // Shadow Realm gate is relative to it) and, per two-click spell id, the
+    // partner findSpellTarget chose alongside the returned first pick.
+    let _aiActor = null;
+    const _aiPairPick = {};
     function logAction(action) {
         _turnActionLog.push({
             type: action.type,
@@ -291,7 +296,14 @@
     // Protected (invulnerable) targets block ALL damage and count as a
     // press MISS — never shoot into Protect.
     function isProtected(g, tg) {
-        try { return !!(g.unitHasStatus && g.unitHasStatus(tg, 'protect')); } catch (e) { return false; }
+        try {
+            if (g.unitHasStatus && g.unitHasStatus(tg, 'protect')) return true;
+            // 🌑 Shadow Realm (wave B): a unit in the realm can only be reached
+            // by its partner — to everyone else it is untargetable.
+            if (tg && tg._realmPartnerId && _aiActor && typeof window.isUnitRealmShieldedFrom === 'function'
+                && window.isUnitRealmShieldedFrom(tg, _aiActor)) return true;
+        } catch (e) {}
+        return false;
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -1127,6 +1139,7 @@
     window.aiTakeTurn = function (unit) {
         const g = G();
         if (!g) { console.error('GAME API not available'); return; }
+        _aiActor = unit;
 
         if (!unit._aiLoopCount) unit._aiLoopCount = 0;
         unit._aiLoopCount++;
@@ -1427,6 +1440,7 @@
         return c.type;
     }
     window.aiScoreMargin = function (unit, human) {
+        _aiActor = unit;
         const g = G();
         if (!g || !unit || !human) return null;
         const saved = _snapActivationState();
@@ -1883,7 +1897,7 @@
             score -= _mpCost(unit, spell) * tuneW(g, 'mpValuePerPoint');
             if (score <= 0) continue;
 
-            out.push({ type: 'spell', spell, target, score, apCost });
+            out.push({ type: 'spell', spell, target, score, apCost, partner: _aiPairPick[spell.id] || null });
         }
     }
 
@@ -1914,6 +1928,59 @@
             const wantMecha = near || (unit.hp / unit.maxHp) < 0.5;
             if (wantMecha === inMecha) return 0;
             return 60 + (near ? 40 : 0);
+        }
+
+        // ── CHAMP_REWORK Phase 5 wave B: control + links ──
+        if (kind === 'possess') {
+            if (!target) return 0;
+            const acts = Math.max(1, spell.activations | 0);
+            const extra = spell.bonusVsStatus && _bonusVsMatches(target, spell.bonusVsStatus);
+            const n = extra ? Math.max(acts + 1, Math.round(acts * (spell.bonusVsStatus.mult || 1.5))) : acts;
+            // A stolen body is worth what it would have done to us, and then
+            // what it does to them — per activation; a dying body is a poor steal.
+            let s = n * unitThreatOutput(g, target, unit) * 1.6 + getTargetPriority(target, unit, v) * 0.3;
+            if (spell.dmg) s += scoreOffensiveHit(g, unit, target, spell, v, { splash: true }).val * 0.8;
+            if ((target.hp / (target.maxHp || 1)) < 0.25) s *= 0.6;
+            return s;
+        }
+        if (kind === 'shadowRealm') {
+            if (!target) return 0;
+            // One-on-one with the demon: worth it when the demon out-trades the
+            // target and the target is worth isolating (a healer, a threat).
+            const mine = unitThreatOutput(g, unit, target), theirs = unitThreatOutput(g, target, unit);
+            let s = 40 + getTargetPriority(target, unit, v) * 0.4 + Math.max(0, mine - theirs) * 0.8;
+            if ((unit.hp / (unit.maxHp || 1)) < 0.35) s *= 0.4;
+            return s;
+        }
+        if (kind === 'link') {
+            if (!target) return 0;
+            const partner = _aiPairPick[spell.id];
+            if (!partner) return 0;
+            const defs = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS : (g.STATUS_DEFS || {});
+            const def = defs[((spell.statusEffects || [])[0] || {}).id] || {};
+            const pct = def.linkEcho || 0.3;
+            if (spell.linkTargets === 'enemy-ally') {
+                // Voodoo: the doll pays for what our most exposed ally takes.
+                return 30 + pct * unitThreatOutput(g, target, partner) * 1.5 + getTargetPriority(target, unit, v) * 0.2;
+            }
+            // Soul Bind: every hit on either enemy echoes into the other.
+            return 30 + pct * (unitThreatOutput(g, unit, target) + unitThreatOutput(g, unit, partner)) * 1.2
+                + (getTargetPriority(target, unit, v) + getTargetPriority(partner, unit, v)) * 0.15;
+        }
+        if (kind === 'transfer') {
+            if (!target) return 0;   // target = the giver; the receiver is the pair pick
+            const receiver = _aiPairPick[spell.id];
+            if (!receiver) return 0;
+            const take = Math.round((target.maxHp || 0) * (spell.takePct || 0.3));
+            const give = Math.round(take * (spell.givePct || 1.5));
+            return healValue(g, unit, receiver, give, v) - healValue(g, unit, target, take, v) * 0.5;
+        }
+        if (kind === 'cannibalize') {
+            if (!target) return 0;
+            const amt = Math.round((unit.maxHp || 0) * (spell.healPct || 0.35));
+            let s = healValue(g, unit, unit, amt, v);
+            if (target.player !== unit.player && target._respawnIn != null) s += 25;   // a delayed enemy respawn
+            return s;
         }
 
         if (kind === 'lifeDrain') {
@@ -4084,6 +4151,84 @@
             return dead[0] || null;
         }
 
+        // ── CHAMP_REWORK Phase 5 wave B: control + links ──
+        if (kind === 'possess' || kind === 'shadowRealm') {
+            const R = _effRange(unit, spell);
+            const longR = _isLongRange(spell);
+            const srcZ = standH(g, unit);
+            const inRange = v.visibleEnemies
+                .filter(e => !isProtected(g, e) && !e._isBoss
+                    && !g.unitHasStatus(e, 'possessed') && !g.unitHasStatus(e, 'infected')
+                    && !g.unitHasStatus(e, 'shadowRealm'))
+                .filter(e => {
+                    const d = _reach(g, unit.x, unit.y, srcZ, e, longR);
+                    return d >= 1 && d <= R && (spell.ignoresLineOfSight || !g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y));
+                })
+                .sort((a, b) => (unitThreatOutput(g, b, unit) + getTargetPriority(b, unit, v))
+                              - (unitThreatOutput(g, a, unit) + getTargetPriority(a, unit, v)));
+            return inRange[0] || null;
+        }
+        if (kind === 'link') {
+            const R = _effRange(unit, spell);
+            const longR = _isLongRange(spell);
+            const srcZ = standH(g, unit);
+            const reach = e => {
+                const d = _reach(g, unit.x, unit.y, srcZ, e, longR);
+                return d >= 1 && d <= R && (spell.ignoresLineOfSight || !g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y));
+            };
+            const sid = ((spell.statusEffects || [])[0] || {}).id;
+            const enemies = v.visibleEnemies.filter(e => !isProtected(g, e) && reach(e) && !(sid && g.unitHasStatus(e, sid)));
+            delete _aiPairPick[spell.id];
+            if (!enemies.length) return null;
+            if (spell.linkTargets === 'enemy-ally') {
+                // The doll's ally = the one enemies can reach most easily.
+                const allies = [unit, ...v.allies].filter(a => !a.dead && _reach(g, unit.x, unit.y, srcZ, a, longR) <= R);
+                if (!allies.length) return null;
+                const exposure = a => v.visibleEnemies.reduce((m, e) => Math.min(m, Math.abs(e.x - a.x) + Math.abs(e.y - a.y)), 99);
+                allies.sort((a, b) => exposure(a) - exposure(b));
+                enemies.sort((a, b) => getTargetPriority(b, unit, v) - getTargetPriority(a, unit, v));
+                _aiPairPick[spell.id] = allies[0];
+                return enemies[0];
+            }
+            // Pairs: the two enemies (within pairRange of each other) worth the most.
+            let best = null, bestS = -1;
+            for (const a of enemies) {
+                for (const b of enemies) {
+                    if (a.id === b.id) continue;
+                    if (spell.pairRange && Math.abs(a.x - b.x) + Math.abs(a.y - b.y) > spell.pairRange) continue;
+                    const sc = getTargetPriority(a, unit, v) + getTargetPriority(b, unit, v);
+                    if (sc > bestS) { bestS = sc; best = [a, b]; }
+                }
+            }
+            if (!best) return null;
+            _aiPairPick[spell.id] = best[1];
+            return best[0];
+        }
+        if (kind === 'transfer') {
+            const R = _effRange(unit, spell);
+            const longR = _isLongRange(spell);
+            const srcZ = standH(g, unit);
+            const allies = [unit, ...v.allies].filter(a => !a.dead && _reach(g, unit.x, unit.y, srcZ, a, longR) <= R);
+            delete _aiPairPick[spell.id];
+            if (allies.length < 2) return null;
+            const frac = a => a.hp / (a.maxHp || 1);
+            const byNeed = allies.slice().sort((a, b) => frac(a) - frac(b));
+            const receiver = byNeed[0];
+            if (frac(receiver) > 0.6) return null;
+            const giver = byNeed.slice().reverse().find(a => a.id !== receiver.id && frac(a) >= 0.6);
+            if (!giver) return null;
+            _aiPairPick[spell.id] = receiver;
+            return giver;
+        }
+        if (kind === 'cannibalize') {
+            if ((unit.hp / (unit.maxHp || 1)) > 0.7) return null;
+            const remains = g.state.units.filter(u => u.dead && !u._corpseConsumed)
+                .filter(d => Math.abs(d.x - unit.x) + Math.abs(d.y - unit.y) <= _effRange(unit, spell))
+                .sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y))
+                              - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)));
+            return remains[0] || null;
+        }
+
         if (kind === 'raiseDead') {
             const remains = g.state.units.filter(u => u.dead && !u._corpseConsumed)
                 .filter(d => Math.abs(d.x - unit.x) + Math.abs(d.y - unit.y) <= _effRange(unit, spell))
@@ -4821,7 +4966,25 @@
                         }
                         _castX = aim.x; _castY = aim.y; _castZ = undefined;
                     }
+                    // Two-click casts (wave B): the chosen target is the FIRST
+                    // pick — seat it as the engine's own pick and cast at the
+                    // partner findSpellTarget chose with it.
+                    if (action.partner && action.target && action.target.id != null) {
+                        const _pp = g.state.units.find(u => u.id === action.partner.id && !u.dead && !u._dying);
+                        const _p1 = g.state.units.find(u => u.id === action.target.id && !u.dead && !u._dying);
+                        if (!_pp || !_p1) {
+                            _failedSpells.add(action.spell.name);
+                            g.state.actionMode = null;
+                            g.state.selectedTool = null;
+                            g.state.aiThinking = false;
+                            g.maybeTriggerComputerTurn();
+                            return;
+                        }
+                        g.state._spellPick1 = { id: _p1.id, spellId: action.spell.id, x: _p1.x, y: _p1.y };
+                        _castX = _pp.x; _castY = _pp.y; _castZ = _pp.z;
+                    }
                     const delay = g.doSpell(unit, _castX, _castY, _castZ) || 0;
+                    g.state._spellPick1 = null;
                     if (delay > 0) {
                         window.setTimeout(() => g.finishComputerAction(), delay);
                     } else {
