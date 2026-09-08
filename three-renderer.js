@@ -32358,24 +32358,29 @@ const ThreeRenderer = (function () {
        stands at camAt looking at lookAt; the door stands at doorAt turned
        doorYaw (its seal face toward the camera; the leaf swings toward
        the viewer); the Sedan parks at sedanAt with its nose on sedanYaw.
-       The door lands ~65% across the frame, the car left of it and
-       farther back, both clear of the text column. */
+       NOTE the camera looks down +Z, so SCREEN-RIGHT IS WORLD -X: the
+       door at x = -2.6 lands ~70% across the frame (right of the text
+       column), the car at +x sits left of it and farther back. The ENTER
+       cinematic pushes the camera to cineDist m in front of the door
+       (cineSide m toward the hinge side, its eye cineLookOff m to the
+       door's left so the door holds the right of the frame), then pulls
+       back out. */
     var _MENU_BIOMES = {
         desert: {
-            mapId: 'prebuilt_giza', leaf: 'leaf_shabby_wood', roster: 'pyramids', density: 0.55, night: 0.62,
+            mapId: 'prebuilt_giza', leaf: 'leaf_hollow_core', roster: 'pyramids', density: 0.55, night: 0.62,
             floor: 'desert', floorColor: 0xd9bf8c, floorRepeat: 240,
             sky: { tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45 } },
-            hemi: [0xe8c58a, 0x4a3a2a, 0.42], sun: [0xffb070, 0.5, [-0.7, 0.2, -0.4]], fog: [0xc9a46a, 0.00030],
-            camAt: [0, 1.5, 0], lookAt: [1.15, 1.02, 9], doorAt: [2.3, 8.0], doorYaw: -0.14,
-            sedanAt: [-0.9, 16.5], sedanYaw: 2.78, dunes: true,
+            hemi: [0xe8c58a, 0x4a3a2a, 0.42], sun: [0xffb070, 0.5, [0.7, 0.2, -0.4]], fog: [0xc9a46a, 0.00030],
+            camAt: [0, 1.5, 0], lookAt: [-1.0, 1.02, 9], doorAt: [-2.6, 8.0], doorYaw: 0.14,
+            sedanAt: [0.3, 18.0], sedanYaw: -2.80, cineDist: 6.4, cineSide: 0.9, cineLookOff: 0.75, dunes: true,
         },
         antarctica: {
-            mapId: 'prebuilt_antarctica', leaf: 'leaf_bulkhead', roster: 'islands', density: 0.5, night: 0.7,
-            floor: 'marble_light', floorColor: 0xe4f0fa, floorRepeat: 200,
+            mapId: 'prebuilt_antarctica', leaf: 'leaf_hollow_core', roster: 'islands', density: 0.5, night: 0.7,
+            floor: 'marble_light', floorColor: 0xc4d6e6, floorRepeat: 200,
             sky: { tint: 0xdae8f2, tintAmt: 0.40, stars: 0.5, nebula: 0.9, fog: { color: 0xe6f0f8, amount: 0.7, top: 0.04, band: 0.5 } },
-            hemi: [0xcfe0f4, 0x3a4658, 0.5], sun: [0xbcd4f0, 0.34, [-0.5, 0.3, -0.6]], fog: [0xb9cfe4, 0.00034],
-            camAt: [0, 1.5, 0], lookAt: [1.15, 1.02, 9], doorAt: [2.3, 8.0], doorYaw: -0.14,
-            sedanAt: [-0.9, 16.5], sedanYaw: 2.78, ice: true,
+            hemi: [0xcfe0f4, 0x3a4658, 0.42], sun: [0xbcd4f0, 0.3, [0.5, 0.3, -0.6]], fog: [0xb9cfe4, 0.00034],
+            camAt: [0, 1.5, 0], lookAt: [-1.0, 1.02, 9], doorAt: [-2.6, 8.0], doorYaw: 0.14,
+            sedanAt: [0.3, 18.0], sedanYaw: -2.80, cineDist: 6.6, cineSide: 0.9, cineLookOff: 0.75, ice: true, lightMul: 0.5,
         },
     };
     function _menuBiomePick() {
@@ -32403,7 +32408,7 @@ const ThreeRenderer = (function () {
         var M = {
             biome: biome, cfg: B, host: host, scene: new THREE.Scene(), camera: null, U: U, ts: ts,
             door: null, doorGroup: new THREE.Group(), doorLight: null, sedan: null, lamps: [], sky: null, fxPulse: [], mats: [],
-            open: 0, target: 0, swing: null, lastNow: 0, room: null,
+            open: 0, target: 0, swing: null, flash: 0, cine: null, onState: null, lastNow: 0, room: null,
             leafUrl: null, leafHot: false, leafAsked: false, leafLanded: false,
             w: 0, h: 0, t0: performance.now(),
         };
@@ -32437,7 +32442,7 @@ const ThreeRenderer = (function () {
             for (var i = 0; i < 16; i++) {
                 var ang = rng() * Math.PI * 2, rad = 15 + rng() * 60;
                 var x = Math.sin(ang) * rad, z = Math.cos(ang) * rad;
-                if (z > 2 && z < 30 && x > -8 && x < 9) continue;
+                if (z > 2 && z < 30 && x > -9 && x < 8) continue;
                 var rx = 6 + rng() * 15, ry = 0.9 + rng() * 2.6, rz = 4 + rng() * 11;
                 var dn = new THREE.Mesh(dg, dm);
                 dn.scale.set(rx * U, ry * U, rz * U); dn.position.set(x * U, -0.2 * ry * U, z * U); dn.rotation.y = rng() * Math.PI;
@@ -32452,7 +32457,7 @@ const ThreeRenderer = (function () {
             for (var r = 0; r < 12; r++) {
                 var ra = rng() * Math.PI * 2, rr = 14 + rng() * 55;
                 var rxp = Math.sin(ra) * rr, rzp = Math.cos(ra) * rr;
-                if (rzp > 2 && rzp < 30 && rxp > -8 && rxp < 9) continue;
+                if (rzp > 2 && rzp < 30 && rxp > -9 && rxp < 8) continue;
                 var bl = 3 + rng() * 10, bh = 0.6 + rng() * 2.2, bd = 0.6 + rng() * 1.2;
                 var rb = new THREE.Mesh(new THREE.BoxGeometry(bl * U, bh * U, bd * U), im);
                 rb.position.set(rxp * U, (bh / 2 - 0.15) * U, rzp * U); rb.rotation.y = rng() * Math.PI; rb.rotation.z = (rng() - 0.5) * 0.25;
@@ -32576,25 +32581,59 @@ const ThreeRenderer = (function () {
             for (var lf = 0; lf < d.leafMats.length; lf++) d.leafMats[lf].opacity = (d.leafMats[lf]._ew_introOp != null ? d.leafMats[lf]._ew_introOp : 1) * (1 - Math.max(0, k - 0.35) / 0.65 * 0.85);
         }
         else if (mo.mode === 'spin' && mo.carrier) mo.carrier.rotation.y = k * Math.PI * 0.5;
-        var breathe = 0.85 + 0.15 * Math.sin(now * 0.004);
-        d.veil.opacity = Math.min(1, k * 0.8 * breathe);
-        d.halo.opacity = k * 0.55;
-        d.pool.opacity = k * 0.5;
-        d.wedge.opacity = k * 0.12;
+        var breathe = 0.85 + 0.15 * Math.sin(now * 0.004), fl = M.flash || 0;
+        var LM = (M.cfg.lightMul != null) ? M.cfg.lightMul : 1;   // the ice blows out under the full spill
+        d.veil.opacity = Math.min(1, (k * 0.8 + fl * 0.35) * breathe);
+        d.halo.opacity = (k * 0.55 + fl * 0.3) * LM;
+        d.pool.opacity = (k * 0.5 + fl * 0.25) * LM;
+        d.wedge.opacity = (k * 0.12 + fl * 0.06) * LM;
         var leakOp = (1 - k) * (0.30 + 0.18 * Math.sin(now * 0.006));
         for (var L = 0; L < d.leaks.length; L++) d.leaks[L].opacity = leakOp;
-        if (M.doorLight) M.doorLight.intensity = 0.16 + k * 1.5 * breathe;
+        if (M.doorLight) M.doorLight.intensity = 0.16 + (k * 1.5 + fl * 0.8) * breathe;
     }
+    function _menuState(M) { return M.swing ? (M.swing.to === 1 ? 'opening' : 'closing') : (M.target === 1 ? 'open' : 'closed'); }
+    function _menuNotify(M) { if (M.onState) { try { M.onState(_menuState(M)); } catch (e) {} } }
     function _menuTickDoor(M, now) {
         var sw = M.swing;
+        var dt = Math.max(0, Math.min(0.1, (now - (M.lastNow || now)) / 1000)); M.lastNow = now;
         if (sw && now >= sw.at) {
-            if (!sw.sfx) { sw.sfx = true; if (sw.to === 1) _introSfx('doorBuzz'); }
+            if (!sw.sfx) { sw.sfx = true; if (sw.to === 1) { _introSfx('doorBuzz'); M.flash = 1; } _menuNotify(M); }
             var t = sw.ms > 0 ? Math.min(1, (now - sw.at) / sw.ms) : 1;
             var e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
             M.open = sw.from + (sw.to - sw.from) * e;
-            if (t >= 1) { M.swing = null; M.open = sw.to; if (sw.to === 0) _introSfx('stamp'); }
+            if (t >= 1) { M.swing = null; M.open = sw.to; if (sw.to === 0) _introSfx('stamp'); _menuNotify(M); }
         }
+        M.flash = Math.max(0, (M.flash || 0) - dt * 1.6);
         _menuApplyDoor(M, M.open, now);
+    }
+    /* THE ENTER BEAT: a little cinematic — the camera pushes in on the
+       door, the strike plate buzzes and the leaf swings open with the
+       light behind it, a hold on the open doorway, then the pull back out
+       to the menu framing (the door stays open). Keyframes in seconds. */
+    var _MENU_CINE = { push: 1.7, swingAt: 0.8, hold: 1.1, pull: 1.9 };
+    /* dev: stretch the beat (and the swing) — window.EW_MENU_CINE_SCALE = 6
+       lets a software-GL probe (playtest_menu.js, ~1 fps) photograph it */
+    function _menuCineScale() { var s = (typeof window !== 'undefined') ? +window.EW_MENU_CINE_SCALE : 0; return (s > 0) ? s : 1; }
+    function _menuPlayEnter() {
+        var M = _menu; if (!M) return false;
+        if (M.cine || M.swing) return false;
+        M.cine = { t0: performance.now(), swung: false };
+        _menuNotify(M);
+        return true;
+    }
+    /* the camera the cinematic pushes to: cineDist m in front of the door's
+       seal face, cineSide m toward the hinge so the swinging leaf reads */
+    function _menuCineCam(M) {
+        var B = M.cfg, th = B.doorYaw;
+        var fx = -Math.sin(th), fz = -Math.cos(th);          // the door's local -Z (its seal face) in world
+        var rx = Math.cos(th), rz = -Math.sin(th);           // the door's local +X in world
+        var d = M.door, hinge = (d && d.motion && d.motion.dir) ? d.motion.dir : -1;
+        var side = hinge * B.cineSide;
+        var off = (B.cineLookOff || 0);                      // +X world = screen-left: the door stays right of centre
+        return {
+            at: [B.doorAt[0] + fx * B.cineDist + rx * side + off * 0.5, 1.3, B.doorAt[1] + fz * B.cineDist + rz * side],
+            look: [B.doorAt[0] + off, 1.2, B.doorAt[1]]
+        };
     }
     /* Swing the leaf: to = 1 open / 0 shut, after delayMs. Returns false
        when it already is (or is already on its way) there. */
@@ -32604,14 +32643,29 @@ const ThreeRenderer = (function () {
         if (!M.swing && M.target === to) return false;
         M.target = to;
         var span = Math.abs(to - M.open);
-        M.swing = { from: M.open, to: to, at: performance.now() + Math.max(0, delayMs || 0), ms: (to === 1 ? 1150 : 900) * Math.max(0.15, span), sfx: false };
+        M.swing = { from: M.open, to: to, at: performance.now() + Math.max(0, delayMs || 0), ms: (to === 1 ? 1150 : 900) * Math.max(0.15, span) * _menuCineScale(), sfx: false };
         return true;
     }
     /* a barely-there drift: the camera breathes, the eye line wanders */
     function _menuTickCamera(M, now) {
         var t = now / 1000, B = M.cfg, U = M.U, cam = M.camera;
-        cam.position.set((B.camAt[0] + Math.sin(t * 0.09) * 0.10) * U, (B.camAt[1] + Math.sin(t * 0.13) * 0.035) * U, (B.camAt[2] + Math.cos(t * 0.07) * 0.08) * U);
-        cam.lookAt((B.lookAt[0] + Math.sin(t * 0.05) * 0.10) * U, (B.lookAt[1] + Math.cos(t * 0.08) * 0.04) * U, B.lookAt[2] * U);
+        var px = B.camAt[0] + Math.sin(t * 0.09) * 0.10, py = B.camAt[1] + Math.sin(t * 0.13) * 0.035, pz = B.camAt[2] + Math.cos(t * 0.07) * 0.08;
+        var lx = B.lookAt[0] + Math.sin(t * 0.05) * 0.10, ly = B.lookAt[1] + Math.cos(t * 0.08) * 0.04, lz = B.lookAt[2];
+        var C = M.cine;
+        if (C) {
+            var K = _MENU_CINE, e = (now - C.t0) / 1000 / _menuCineScale(), k;
+            function ease(x) { return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2; }
+            if (e < K.push) k = ease(e / K.push);
+            else if (e < K.push + K.hold) k = 1;
+            else if (e < K.push + K.hold + K.pull) k = 1 - ease((e - K.push - K.hold) / K.pull);
+            else { k = 0; M.cine = null; _menuNotify(M); }
+            if (!C.swung && e >= K.swingAt) { C.swung = true; _menuSwing(1, 0); }
+            var cc = _menuCineCam(M);
+            px += (cc.at[0] - px) * k; py += (cc.at[1] - py) * k; pz += (cc.at[2] - pz) * k;
+            lx += (cc.look[0] - lx) * k; ly += (cc.look[1] - ly) * k; lz += (cc.look[2] - lz) * k;
+        }
+        cam.position.set(px * U, py * U, pz * U);
+        cam.lookAt(lx * U, ly * U, lz * U);
     }
     function _menuFrame() {
         var M = _menu; if (!M || !_menuLive || !renderer) return;
@@ -32667,8 +32721,10 @@ const ThreeRenderer = (function () {
         _menu.w = w; _menu.h = h; _menu.lastNow = 0;
         _menuLive = true;
         renderer.setAnimationLoop(_menuFrame);
+        if (opts.onState) _menu.onState = opts.onState;
         if (opts.open === true) _menuSwing(1, opts.delayMs || 0);
-        else if (opts.open === false) { _menu.swing = null; _menu.open = 0; _menu.target = 0; }
+        else if (opts.open === false) _menuReset();
+        _menuNotify(_menu);
         return true;
     }
     function _menuLeave() {
@@ -32695,15 +32751,27 @@ const ThreeRenderer = (function () {
             }
         } catch (e) {}
     }
+    /* shut it silently (a fresh arrival from the title) */
+    function _menuReset() {
+        var M = _menu; if (!M) return;
+        M.swing = null; M.cine = null; M.open = 0; M.target = 0; M.flash = 0;
+        _menuApplyDoor(M, 0, performance.now());
+        _menuNotify(M);
+    }
     var _menuApi = {
         enter: _menuEnter,
         leave: _menuLeave,
         dispose: _menuDispose,
         active: function () { return _menuLive; },
         biome: function () { return _menu ? _menu.biome : null; },
+        /* the ENTER beat: push in, buzz, swing open, hold, pull back */
+        playEnter: _menuPlayEnter,
         openDoor: function (delayMs) { return _menuSwing(1, delayMs); },
         closeDoor: function (delayMs) { return _menuSwing(0, delayMs); },
+        reset: _menuReset,
         isOpen: function () { return !!(_menu && _menu.target === 1); },
+        busy: function () { return !!(_menu && (_menu.cine || _menu.swing)); },
+        state: function () { return _menu ? _menuState(_menu) : 'closed'; },
         /* dev: the live scene graph + record (repo probes) */
         dev: { scene: function () { return _menu ? _menu.scene : null; }, rec: function () { return _menu; } },
     };

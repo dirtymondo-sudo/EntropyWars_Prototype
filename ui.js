@@ -12207,18 +12207,14 @@
                 enterGameFromTitle(e);
                 return;
             }
-            /* ENTER on the main menu swings the lone door (three-renderer.js
-               ThreeRenderer.menu): shut → open, open → shut. A focused
-               button or field keeps its own ENTER. */
+            /* ENTER on the main menu plays the lone door's beat (map.js
+               _menuSceneEnterKey → three-renderer.js ThreeRenderer.menu):
+               shut → the push-in cinematic that swings it open, open →
+               shut. A focused button or field keeps its own ENTER. */
             if (e.key === 'Enter' && state.titleScreenVisible && state.gameState === GS.MAIN_MENU) {
                 const tag = (e.target && e.target.tagName) || '';
                 if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON' || tag === 'A') return;
-                try {
-                    if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.menu && ThreeRenderer.menu.active()) {
-                        e.preventDefault();
-                        if (ThreeRenderer.menu.isOpen()) ThreeRenderer.menu.closeDoor(0); else ThreeRenderer.menu.openDoor(0);
-                    }
-                } catch (err) {}
+                if (typeof window._menuSceneEnterKey === 'function' && window._menuSceneEnterKey()) e.preventDefault();
             }
         });
 

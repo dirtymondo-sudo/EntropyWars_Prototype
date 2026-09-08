@@ -290,13 +290,26 @@ roster (`_hqBuildSky(room, Hx)` / `_hqTickSky(now, Hx)` now take a target
 record) hang round it, the page's CSS motes drift over it, and a scrim
 (`.void-menu.menu-3d .menu-stage::after`, styles-base.css) keeps the left
 column readable. The door IS the match door: `_introBuildDoor` (the
-crossing's threshold builder — frame, seal, case line, catalogue leaf) on a
-flat kit at y=0; `_MENU_BIOMES` (renderer) holds every framing number
-(camAt / lookAt / doorAt / doorYaw / sedanAt / sedanYaw in METRES, the leaf
-key, the floor terrain key, the far roster) — tune those, not the code.
-ENTER on the title (`enterGameFromTitle`) → `menu.openDoor(650)` (the buzz,
-the light through it); ENTER on the menu (ui.js keydown) toggles it
-(open → the stamp). Built once per session and kept across visits;
+crossing's threshold builder — frame, seal, case line, catalogue leaf —
+the leaf is a PLAIN door, `leaf_hollow_core`, per the user) on a flat kit
+at y=0; `_MENU_BIOMES` (renderer) holds every framing number (camAt /
+lookAt / doorAt / doorYaw / sedanAt / sedanYaw / cineDist / cineSide /
+cineLookOff in METRES, the leaf key, the floor terrain key, the far
+roster, `lightMul`) — tune those, not the code. **The camera looks down
++Z, so SCREEN-RIGHT IS WORLD −X** (the door stands at x = −2.6 to land
+right of frame — the first cut mirrored it). The door stands SHUT on a
+fresh arrival from the title (`enterGameFromTitle` → `menu.reset()`);
+ENTER on the menu (ui.js keydown → map.js `_menuSceneEnterKey`) plays
+THE ENTER BEAT — `menu.playEnter()`: the camera pushes to cineDist m in
+front of the door (`_MENU_CINE` keyframes: push 1.7 s, the buzz + swing
+at 0.8 s, hold 1.1 s, pull 1.9 s), the leaf swings open with the light
+behind it, then the pull back out with the door left open; ENTER again
+shuts it (the stamp). The "⏎ ENTER · THE DOOR" hint (`#menuEnterHint`)
+shows while it stands shut (`onState` callback). Screenshot it with
+`NODE_USE_ENV_PROXY=1 node playtest_menu.js desert|antarctica [tag]`
+(repo tooling; `EW_MENU_CINE_SCALE` stretches the beat so a ~1 fps
+software-GL run can photograph it — see PLAYTEST_NOTES "THE MAIN MENU
+SCENE"). Built once per session and kept across visits;
 `menu.dispose()` drops it (the Settings biome button rebuilds). Off = the
 classic void: `?nomenu3d`, localStorage `ew_menu3d='off'` (Settings → Main
 Menu Scene), `window.EW_NO_MENU_SCENE`; `EW_MENU_BIOME` / `?menubiome=` /

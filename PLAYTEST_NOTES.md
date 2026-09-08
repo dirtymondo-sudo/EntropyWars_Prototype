@@ -9824,3 +9824,39 @@ map.js / match-select.js:
   centre band (2–4 columns) fills first, the fallback pool is the rest of
   the board, so 5 Keys always fit on 8×8+. The log reports `placed/spawn`
   if spacing ever loses one.
+
+## THE MAIN MENU SCENE — the lone door in the open (2026-09-08)
+The main menu's void is a 3D place (three-renderer.js `ThreeRenderer.menu`,
+map.js `_menuSceneEnter`; CLAUDE.md "THE MAIN MENU SCENE"). Probe:
+```bash
+npm start   # :3000
+NODE_USE_ENV_PROXY=1 node playtest_menu.js desert|antarctica [tag]
+# → shots/menu/<biome>_<tag>_{shut,push,open,back}.png
+```
+It boots the title with the LOCAL js/css, skips the ident, presses ENTER
+off the title (the door stands shut), dispatches ENTER on the menu and
+photographs the beat at 1.2 / 2.3 / 5.4 beat-seconds, logging the camera
+(metres) each sample. Findings that shaped the scene:
+- **Screen-right is world −X.** The camera looks down +Z with +Y up, so
+  right = forward × up = −X. The first cut put the door at +2.3 and it
+  landed LEFT of frame (the user's screenshot). Every `_MENU_BIOMES` x is
+  now mirrored; keep that in mind before moving anything.
+- **The environment's network policy blocks every CDN outright** (CONNECT
+  403 from the agent proxy — not just the browser, Node too), unlike the
+  sessions playtest_hq.js was written in. The probe serves three r128 +
+  its examples and React from node_modules (`npm install --no-save
+  three@0.128.0 react@18.2.0 react-dom@18.2.0`), socket.io from the
+  server, and answers every blocked IMAGE with a flat grey PNG so lit
+  materials keep their tint; GLBs are aborted → the door is the
+  procedural stand-in, the Sedan is absent (check `M.sedan` by position),
+  the DOOR seal is a grey square. Composition and the beat verify; the
+  leaf's look and the car do not.
+- **Software GL runs ~1 fps at 1600×900 with post**, so a real-time beat
+  is over in three frames: `window.EW_MENU_CINE_SCALE = 6` (the probe sets
+  it) stretches the keyframes and the swing; beat-seconds in the log are
+  unscaled.
+- Framing that survived: door 2.15 m leaf + lintel + seal ≈ 3.1 m tall,
+  at 8.3 m from the menu camera (38° vfov) it is ~40% of frame height at
+  60–75% across; the beat's cineDist 6.4 m holds the whole door (seal
+  included) at ~73% height — 3–5 m overflowed the frame. The ice biome
+  blows out under the full light spill: `lightMul: 0.5`.

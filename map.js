@@ -101,9 +101,9 @@
 
             state.gameState = GS.MAIN_MENU;
             _showTitlePage('mainMenuPage');
-            /* ENTER opened the way: the menu's lone door swings open a beat
-               after the page lands (three-renderer.js ThreeRenderer.menu) */
-            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.menu && ThreeRenderer.menu.active()) ThreeRenderer.menu.openDoor(650); } catch (e) {}
+            /* a fresh arrival: the menu's lone door stands SHUT — ENTER on the
+               menu plays the beat that opens it (three-renderer.js ThreeRenderer.menu) */
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.menu && ThreeRenderer.menu.active()) ThreeRenderer.menu.reset(); } catch (e) {}
         }
 
         window._goToPlayHub = function() {
@@ -221,13 +221,28 @@
                        needs the shared canvas: park it — the next startMatch
                        re-activates it (same guard as _hqEnter) */
                     if (ThreeRenderer.isActive && ThreeRenderer.isActive() && state.phase !== 'battle') ThreeRenderer.deactivate();
-                    ok = !!ThreeRenderer.menu.enter({ host });
+                    ok = !!ThreeRenderer.menu.enter({ host, onState: window._menuSceneOnState });
                 }
             } catch (e) { console.warn('[MENU] scene enter failed', e); ok = false; }
             page.classList.toggle('menu-3d', ok);
             return ok;
         };
+        /* the "⏎ ENTER" hint by the door shows while it stands shut */
+        window._menuSceneOnState = function (st) {
+            const hint = document.getElementById('menuEnterHint');
+            if (hint) hint.classList.toggle('show', st === 'closed');
+        };
+        /* the ENTER beat (ui.js keydown): shut → the cinematic, open → shut */
+        window._menuSceneEnterKey = function () {
+            try {
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.menu || !ThreeRenderer.menu.active()) return false;
+                if (ThreeRenderer.menu.busy()) return true;
+                if (ThreeRenderer.menu.isOpen()) ThreeRenderer.menu.closeDoor(0); else ThreeRenderer.menu.playEnter();
+                return true;
+            } catch (e) { return false; }
+        };
         window._menuSceneLeave = function () {
+            try { const hint = document.getElementById('menuEnterHint'); if (hint) hint.classList.remove('show'); } catch (e) {}
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.menu && ThreeRenderer.menu.active()) ThreeRenderer.menu.leave(); } catch (e) {}
         };
         /* Settings: the scene on/off, and where it stands (desert /

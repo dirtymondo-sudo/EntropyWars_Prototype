@@ -1787,8 +1787,12 @@ game starts". The black void behind the menu text is now a place:
 three-renderer.js `ThreeRenderer.menu` (a self-contained scene on the
 shared renderer, the HQ's contract) puts the crossing's own threshold
 (`_introBuildDoor` — DOOR-issue frame, seal, case line, the catalogue
-leaf: the shabby wooden door on the sand, the ice-wall bulkhead at 90°
-south) on a flat apron ~65% across the frame, the honda civic's static
+leaf: a PLAIN door, the hollow-core one, on the user's word — not the
+site's own bulkhead / vault) on a flat apron ~70% across the frame
+(rev 6b: the first cut mirrored it — screen-right is world −X for a
+camera looking down +Z; the door now stands SHUT on arrival and ENTER
+plays the beat: push in, buzz, the leaf swings open, hold, pull back —
+verified by screenshot with the new playtest_menu.js), the honda civic's static
 car GLB parked back-left with its headlights on the door, the site's sky
 and far roster (Giza's pyramids / Antarctica's islands, no floating
 doors — the threshold is alone) on the shared firmament, dusk lighting
