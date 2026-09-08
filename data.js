@@ -1162,7 +1162,19 @@ const TERRAIN_RULES = {
         moveCost: 2,
         blocksRanged: false,
         healMultiplier: 0.7,
-        endTurn(unit) { return null; }
+        /* CHAMP_REWORK Phase 5 wave C (2026-09-08): the black goo's terrain.
+           Goo Shot / Splash / the Oozing trail paint it TIMED (battle.js
+           _paintTimedTerrain → state._timedTerrain, reverts to the tile's
+           previous terrain at the round tick); Ooze Trail's slick stays
+           permanent. Anyone who walks onto it (finishMoveAt reads
+           enterStatus) or ends a turn on it is Gooed — except flyers and the
+           ooze itself (contactStatus 'goo'). */
+        enterStatus: { id: 'goo', duration: 2 },
+        endTurn(unit) {
+            if (typeof canFly === 'function' && canFly(unit)) return null;
+            if (typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'contactStatus') === 'goo') return null;
+            return { type: 'status', id: 'goo', duration: 2, text: `${unitDisplayName(unit)} is coated by the ooze` };
+        }
     },
     oil: {
         label: 'Oil Slick',
@@ -2847,7 +2859,10 @@ const PASSIVE_DEFS = {
     oozing: {
         id: 'oozing', icon: '🛢️', name: 'Oozing',
         contactStatus: 'goo',
-        desc: 'Everything it touches comes away Gooed: melee basic attacks it lands OR takes coat the other unit in goo (heals halved, −1 MOV, magic hits ×1.25).',
+        // wave C: the tile it ends a turn on becomes ooze terrain for 3 rounds
+        // (map.js applyTerrainTurnEffects → battle.js _paintTimedTerrain).
+        trailTerrain: { terrain: 'swamp', rounds: 3 },
+        desc: 'Everything it touches comes away Gooed: melee basic attacks it lands OR takes coat the other unit in goo (heals halved, −1 MOV, magic hits ×1.25), and the tile it ends its turn on turns to ooze for 3 rounds.',
     },
     powerCore: {
         id: 'powerCore', icon: '⚡', name: 'Power Core',
@@ -6099,6 +6114,23 @@ const RACE_ABILITIES = {
     ],
 
     'fairy': [
+        /* CHAMP_REWORK_PLAN §6.21 wave C (2026-09-08): Sparkle ⇄ Glitterburst,
+           Fairy Dust (levitating warCry) ⇄ Pixie Dust, Glitter Bomb ⇄ Trick Room. */
+        { id: 'raceSparkle', spellType: 'anomaly', element: 'light', name: 'Sparkle',
+          type: 'buff', cost: 25, range: 3, apCost: 1,
+          kind: 'buff',
+          statusEffects: [{ id: 'sparkling', duration: 2 }],
+          desc: 'Dust an ally in gold. For 2 rounds they are Sparkling: +1 SPD stage, and every step sheds blinding glitter — an enemy who treads on it is Blinded.' },
+        { id: 'raceFairyDust', spellType: 'anomaly', element: 'wind', name: 'Fairy Dust',
+          type: 'buff', cost: 50, range: 0, apCost: 1,
+          kind: 'warCry', auraRadius: 3,
+          teamStatusEffects: [{ id: 'levitating', duration: 2 }],
+          desc: 'A happy thought for everyone. Allies within 3 tiles are Levitating for 2 rounds — temporary flight, with the high-ground bonus that comes with it.' },
+        { id: 'raceGlitterBomb', spellType: 'anomaly', element: 'light', name: 'Glitter Bomb',
+          type: 'damage', cost: 75, dmg: 100, range: 4,
+          kind: 'aoe', damageType: 'magic', aoeRadius: 1,
+          statusEffects: [{ id: 'blind', duration: 1 }],
+          desc: 'Deals MEDIUM magic damage to All Enemies in a 3×3 and Blinds them in a white-out of glitter.' },
         { id: 'raceGlitterburst', spellType: 'anomaly', element: 'light', name: 'Glitterburst',
           type: 'damage', cost: 25, dmg: 80, range: 3,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
@@ -6549,6 +6581,19 @@ const RACE_ABILITIES = {
         SHARED_EGO_DEATH,
     ],
     'mad scientist': [
+        /* CHAMP_REWORK_PLAN §6.26 wave C (2026-09-08): Summon Creation
+           (summonUnit) ⇄ Cloning Machine, Monster Serum ⇄ Chemical
+           Concoction (= Chemical Bath reworked onto the corroded DOT). */
+        { id: 'raceSummonCreation', spellType: 'tech', element: 'lightning', name: 'Summon Creation',
+          type: 'utility', cost: 50, apCost: 1, range: 1,
+          kind: 'summonUnit', maxActivePerCaster: 1,
+          summonDef: { key: 'creation', name: 'Creation', move: 3, dmg: 90, hits: 4, armored: true },
+          desc: "IT'S ALIVE! Stitch a creation together on an adjacent tile. At the end of every round it lumbers 3 tiles toward the nearest enemy and clubs for 90. 4 hits to destroy — physical blows only count for half. One creation per scientist." },
+        { id: 'raceMonsterSerum', spellType: 'tech', element: 'poison', name: 'Monster Serum',
+          type: 'buff', cost: 75, range: 3, apCost: 1,
+          kind: 'buff',
+          statusEffects: [{ id: 'monster', duration: 3 }],
+          desc: 'Inject an ally with the serum. For 3 rounds they are Monstrous: +1 ATK / DEF / M.DEF / SPD stage, +1 reach and +25% max HP — but they cannot cast spells.' },
         { id: 'raceTeslaTrap', spellType: 'tech', element: 'lightning', name: 'Tesla Coil',
           type: 'utility', cost: 20, apCost: 1, range: 2,
           kind: 'deployObject',
@@ -6566,12 +6611,11 @@ const RACE_ABILITIES = {
           objectHp: 100, maxActivePerCaster: 1,
           drawsRangedAttack: true, drawsMeleeAttack: true,
           desc: 'Print a decoy clone on an adjacent tile. It draws enemy attention but cannot attack. Placing never uses your spell slot.' },
-        { id: 'raceOvercharge', spellType: 'tech', element: 'poison', name: 'Chemical Bath',
-          type: 'damage', cost: 75, dmg: 125, range: 3,
+        { id: 'raceOvercharge', spellType: 'tech', element: 'poison', name: 'Chemical Concoction',
+          type: 'damage', cost: 75, dmg: 110, range: 3,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
-          statusEffects: [{ id: 'burn', duration: 2 }],
-          bonusVsStatus: { status: 'poison', mult: 1.5 },
-          desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Burn. Deals bonus damage to targets with Poison.' },
+          statusEffects: [{ id: 'corroded', duration: 2 }],
+          desc: 'Hurl the beaker. Deals MEDIUM magic damage to All Enemies in a 3×3 and leaves them Corroded for 2 rounds — one status that burns AND poisons (every Burn and Poison payoff counts it).' },
         SHARED_SHRINK_RAY,
         /* 2026-07-23: Free Energy left the Engineer school — only the Mad
            Scientist cracked zero-point energy. (Same id: VFX/saves intact.) */
@@ -6581,6 +6625,20 @@ const RACE_ABILITIES = {
           desc: 'Restores MP to All Allies.' }
     ],
     'cowboy': [
+        /* CHAMP_REWORK_PLAN §6.15 wave C (2026-09-08): Lasso reworked into the
+           rope (tethered), Dynamite ⇄ Fan the Hammer, Whistle (the hound,
+           summonUnit) ⇄ Long Rifle, High Noon ×1.5 vs Roped too. */
+        { id: 'raceDynamite', spellType: 'human', element: 'fire', name: 'Dynamite',
+          type: 'damage', cost: 50, dmg: 110, range: 3,
+          kind: 'aoe', damageType: 'physical', aoeRadius: 1,
+          projectileOverride: 'proj-bomb',
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'Light the fuse and lob a stick of dynamite up to 3 tiles. Deals MEDIUM physical damage to All Enemies in a 3×3 blast and Staggers them.' },
+        { id: 'raceWhistle', spellType: 'human', element: 'nature', name: 'Whistle',
+          type: 'utility', cost: 75, apCost: 1, range: 1,
+          kind: 'summonUnit', maxActivePerCaster: 1,
+          summonDef: { key: 'hound', name: 'Hound', move: 4, dmg: 60, hits: 3, reveals: 3 },
+          desc: 'Two fingers, one whistle — the hound comes running to an adjacent tile. At the end of every round it runs 4 tiles toward the nearest enemy and bites for 60; anything invisible within 3 tiles of it is sniffed out. 3 hits to put it down. One hound per cowboy.' },
         { id: 'raceFanTheHammer', spellType: 'human', element: 'metal', name: 'Fan the Hammer',
           type: 'damage', cost: 28, dmg: 100, range: 2,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
@@ -6590,20 +6648,20 @@ const RACE_ABILITIES = {
           type: 'utility', cost: 15, apCost: 1, range: 3,
           kind: 'pull', pullDistance: 2,
           groundsFlyers: true,
-          statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Rope an enemy and yank them 2 tiles toward you. Staggers on hit, and hauls flyers down to the dirt where they belong.' },
-        { id: 'raceQuickDraw', spellType: 'human', element: 'metal', name: 'Quick Draw',
-          type: 'damage', cost: 20, dmg: 125, range: 3,
+          statusEffects: [{ id: 'tethered', duration: 2 }],
+          desc: 'Rope an enemy and yank them 2 tiles toward you — then keep the rope on. For 2 rounds they are Roped: they cannot move on their own and are dragged behind you wherever you go, taking 20 damage per tile. Hauls flyers down to the dirt where they belong.' },
+        { id: 'raceQuickDraw', spellType: 'human', element: 'metal', name: 'Long Rifle',
+          type: 'damage', cost: 20, dmg: 125, range: 5,
           kind: 'damage', damageType: 'physical',
           projectileOverride: 'proj-bullet',
-          desc: 'Deals MEDIUM physical damage to a Single Enemy.' },
+          desc: 'Shoulder the long rifle. Deals MEDIUM physical damage to a Single Enemy up to 5 tiles away.' },
         { id: 'raceHighNoon', spellType: 'human', element: 'metal', name: 'High Noon',
           type: 'damage', cost: 50, dmg: 180, range: 4, apCost: 2, tier: 'III',
           kind: 'damage', damageType: 'physical',
           guaranteedCrit: true,
           projectileOverride: 'proj-bullet',
-          bonusVsStatus: { status: 'stagger', mult: 1.5 },
-          desc: 'Deals HEAVY physical damage to a Single Enemy. Always lands a critical hit. The clock strikes twelve. Deals bonus damage to Staggered targets.' },
+          bonusVsStatus: { status: ['stagger', 'tethered'], mult: 1.5 },
+          desc: 'Deals HEAVY physical damage to a Single Enemy. Always lands a critical hit. The clock strikes twelve. Deals bonus damage to Staggered or Roped targets.' },
     ],
     'men in black': [
         _mkBolt(_JAM_BOLT, { id: 'raceDeneuralizer', spellType: 'tech', element: 'psychic', name: 'Deneuralizer' }),
@@ -7392,6 +7450,14 @@ const RACE_ABILITIES = {
     ],
 
     'atlantean': [
+        /* CHAMP_REWORK_PLAN §6.12 wave C (2026-09-08): Tsunami★ — the width-3
+           linePush capstone, twinned with Poseidon's Wrath at r4 (Great Flood
+           steps off the tree; §10 #15). */
+        { id: 'raceTsunami', spellType: 'anomaly', element: 'water', name: 'Tsunami',
+          type: 'damage', tier: 'III', cost: 100, dmg: 160, range: 4, apCost: 2,
+          kind: 'linePush', damageType: 'magic', lineWidth: 3, pushDistance: 2,
+          statusEffects: [{ id: 'slow', duration: 1 }],
+          desc: 'Raise the sea and send it. A wall of water THREE tiles wide rolls 4 tiles out, dealing HEAVY magic damage to All Enemies in its path, shoving them 2 tiles and Slowing them.' },
         { id: 'raceTemporalTide', spellType: 'anomaly', element: 'water', name: 'Temporal Tide',
           type: 'heal', cost: 30, range: 3, apCost: 1,
           kind: 'zoneHeal', aoeRadius: 1, zoneDuration: 2, healPerTurn: 100,
@@ -7451,6 +7517,14 @@ const RACE_ABILITIES = {
         SHARED_FISSURE,
     ],
     'dragon': [
+        /* CHAMP_REWORK_PLAN §6.7 wave C (2026-09-08): Dragon Breath — the
+           short line whose tiles keep burning (lineZone) ⇄ Wing Attack. */
+        { id: 'raceDragonBreath', spellType: 'unholy', element: 'fire', name: 'Dragon Breath',
+          type: 'damage', cost: 25, dmg: 90, range: 3,
+          kind: 'line', damageType: 'magic', lineWidth: 1,
+          statusEffects: [{ id: 'burn', duration: 2 }],
+          lineZone: true, zoneDuration: 2,
+          desc: 'A short gout of flame. Deals MEDIUM magic damage to All Enemies in a 3-tile line and Burns them; the tiles keep burning for 2 rounds — anyone ending a turn there catches fire.' },
         { id: 'raceDragonfire', element: 'fire', spellType: 'unholy', name: 'Dragonfire',
           type: 'damage', tier: 'III', cost: 60, dmg: 160, range: 4,
           kind: 'line', damageType: 'magic', lineWidth: 1,
@@ -7473,6 +7547,25 @@ const RACE_ABILITIES = {
         SHARED_FISSURE,
     ],
     'ghoul': [
+        /* CHAMP_REWORK_PLAN §6.23 wave C (2026-09-08): Frenzy ⇄ Ghoulish Bite,
+           Fear (feared barrage) ⇄ Corpse Crawl, Carrion Feast demoted to tier
+           II beside Poison Swamp, Terror Pounce★ the new capstone. */
+        { id: 'raceFrenzy', spellType: 'unholy', element: 'shadow', name: 'Frenzy',
+          type: 'damage', cost: 25, dmg: 120, range: 1,
+          kind: 'lifeDrain', damageType: 'physical', drainPct: 0.30,
+          statusEffects: [{ id: 'grievous', duration: 2 }],
+          desc: 'Tear in. Deals MEDIUM physical damage to a Single Enemy, heals the ghoul for 30% of it, and leaves a Grievous Wound — their healing is halved for 2 rounds.' },
+        { id: 'raceFear', spellType: 'unholy', element: 'shadow', name: 'Fear',
+          type: 'debuff', cost: 50, range: 0, apCost: 1,
+          kind: 'barrage', aoeRadius: 3, aoeOriginSelf: true, noDamage: true,
+          statusEffects: [{ id: 'feared', duration: 1 }],
+          desc: 'Let them see what you are. Every enemy within 3 tiles is Feared for a round: on its next activation it can only flee from you, then its turn ends.' },
+        { id: 'raceTerrorPounce', spellType: 'unholy', element: 'shadow', name: 'Terror Pounce',
+          type: 'damage', tier: 'III', cost: 100, dmg: 180, range: 3, apCost: 2,
+          kind: 'damage', damageType: 'physical', chargeToTarget: true,
+          purgeBuffs: true,
+          bonusVsStatus: { status: 'feared', mult: 1.5 },
+          desc: 'Run the prey down. Charge up to 3 tiles and deal HEAVY physical damage to a Single Enemy, stripping every buff they carry. Deals bonus damage to Feared targets.' },
         { id: 'raceGhoulishBite', element: 'poison', spellType: 'unholy', name: 'Ghoulish Bite',
           type: 'damage', cost: 25, dmg: 100, range: 1,
           kind: 'lifeDrain', damageType: 'physical', drainPct: 0.40,
@@ -7484,7 +7577,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'invisible', duration: 1 }],
           desc: 'Burrow through the earth up to 3 tiles away, turning invisible for 1 turn.' },
         { id: 'raceCarrionFeast', spellType: 'unholy', name: 'Carrion Feast',
-          type: 'heal', tier: 'III', cost: 20, range: 0, apCost: 1,
+          type: 'heal', tier: 'II', cost: 20, range: 0, apCost: 1,
           kind: 'selfHeal', selfHealPct: 0.25,
           desc: 'Restores 25% of the caster\'s max HP.' },
         SHARED_POISON_SWAMP,
@@ -7651,6 +7744,26 @@ const RACE_ABILITIES = {
     ],
 
     'black goo': [
+        /* CHAMP_REWORK_PLAN §6.22 wave C (2026-09-08): Goo Shot ⇄ Corrosive
+           Splash, Icky Surprise (teleport onto ooze) ⇄ Absorb, Splash ⇄ Toxic
+           Nova. Goo terrain = the 'swamp' Black Ooze tile, painted TIMED. */
+        { id: 'raceGooShot', spellType: 'unholy', element: 'poison', name: 'Goo Shot',
+          type: 'damage', cost: 25, dmg: 90, range: 4,
+          kind: 'damage', damageType: 'magic',
+          statusFirst: true,
+          statusEffects: [{ id: 'goo', duration: 2 }],
+          paintTerrain: { terrain: 'swamp', radius: 0, rounds: 3 },
+          desc: 'Spit a glob of black goo up to 4 tiles. The target is Gooed FIRST (heals halved, −1 MOV, magic hits ×1.25) and then takes MEDIUM magic damage through it; the tile under them turns to ooze for 3 rounds.' },
+        { id: 'raceIckySurprise', spellType: 'unholy', element: 'poison', name: 'Icky Surprise',
+          type: 'utility', cost: 50, apCost: 1, range: 6,
+          kind: 'teleport', onlyTerrain: 'swamp',
+          desc: 'Melt into the floor and erupt from any ooze tile within 6 — no line of sight needed. Only ooze will do.' },
+        { id: 'raceSplash', spellType: 'unholy', element: 'poison', name: 'Splash',
+          type: 'damage', cost: 75, dmg: 60, range: 0, apCost: 2,
+          kind: 'barrage', damageType: 'magic', aoeRadius: 1, aoeOriginSelf: true,
+          statusEffects: [{ id: 'goo', duration: 2 }],
+          paintTerrain: { terrain: 'swamp', radius: 1, rounds: 3 },
+          desc: 'Burst outward. Deals WEAK magic damage to All Enemies in the 3×3 around you and Goos them; the whole 3×3 turns to ooze for 3 rounds.' },
         { id: 'raceCorrosiveSplash', element: 'poison', spellType: 'unholy', name: 'Corrosive Splash',
           type: 'damage', cost: 25, dmg: 80, range: 3,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
@@ -7659,8 +7772,8 @@ const RACE_ABILITIES = {
         { id: 'raceAbsorb', spellType: 'unholy', name: 'Absorb',
           type: 'damage', cost: 30, dmg: 130, range: 1,
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.40,
-          bonusVsStatus: { status: 'poison', mult: 1.5 },
-          desc: 'Deals MEDIUM magic damage to a Single Enemy. Deals bonus damage to targets with Poison. Heals the caster for part of the damage dealt.' },
+          bonusVsStatus: { status: ['poison', 'goo'], mult: 1.5 },
+          desc: 'Deals MEDIUM magic damage to a Single Enemy. Deals bonus damage to Poisoned or Gooed targets. Heals the caster for part of the damage dealt.' },
         { id: 'raceMitosisSplit', spellType: 'anomaly', name: 'Mitosis',
           type: 'buff', tier: 'III', cost: 20, apCost: 1, range: 0,
           kind: 'buff',
@@ -8289,6 +8402,7 @@ const SIM_DEFAULTS = {
     bomb:         { simTargeting: 'tile',  simPhase: 'standard', simFallback: null },
     warpRune:     { simTargeting: 'tile',  simPhase: 'standard', simFallback: null },
     deployObject: { simTargeting: 'tile',  simPhase: 'standard', simFallback: null },
+    summonUnit:   { simTargeting: 'tile',  simPhase: 'standard', simFallback: null },
     deployPair:   { simTargeting: 'tile',  simPhase: 'standard', simFallback: null },
     deployTurret: { simTargeting: 'tile',  simPhase: 'standard', simFallback: null },
     seedHeal:     { simTargeting: 'tile',  simPhase: 'standard', simFallback: null },
@@ -14510,11 +14624,11 @@ const RACE_TREE = {
        two spells both exist today; a pair with a NEW spell lands with it. */
     'homosapien':    ['raceElbowGrease', 'raceAdrenalineRush', 'raceUnderdogSpirit', 'raceIndomitableWill'],
     'knight':        ['raceChivalry', 'raceShieldWall', 'raceOathOfValor', 'raceCrusade'],
-    'cowboy':        ['raceLasso', 'raceFanTheHammer', 'raceQuickDraw', 'raceHighNoon'],
+    'cowboy':        ['raceLasso', ['raceFanTheHammer', 'raceDynamite'], ['raceQuickDraw', 'raceWhistle'], 'raceHighNoon'],   // §6.15 (wave C)
     'marksman':      ['raceSuppressiveFire', ['sharedSmokeScreen', 'raceIncendiaryRounds'], 'raceRangefinder', 'raceFireForEffect'],   // §6.11
     'wizard':        ['raceArcaneBlast', 'raceSpellsteal', 'racePolymorph', 'raceHocusPocus'],
     'giant':         ['raceBoulderHurl', 'raceEarthenGrasp', 'raceTitanStep', 'raceColossalCrush'],
-    'fairy':         ['raceGlitterburst', 'racePixieDust', 'raceTrickRoom', 'raceFaeRing'],  // Fae Ring is a ring-shaped damage capstone since 2026-08-12
+    'fairy':         [['raceGlitterburst', 'raceSparkle'], ['racePixieDust', 'raceFairyDust'], ['raceTrickRoom', 'raceGlitterBomb'], 'raceFaeRing'],  // §6.21 (wave C); Fae Ring is a ring-shaped damage capstone since 2026-08-12
     'bigfoot':       [['raceBigKick', 'raceTremorStomp'], ['raceRealityShift', 'raceTreelineRetreat'], 'trunkThrow', 'raceSasquatchSmash'],   // §6.16 (Trunk Throw is tier II → r3)
     'ai':            ['racePredictiveModel', 'raceOvercalculate', 'raceRecursiveLoop', 'raceSingularity'],
     'orb of light':  ['racePhotonScatter', 'raceLuminousShield', 'racePrismBurst', 'raceSupernova'],
@@ -14528,7 +14642,7 @@ const RACE_TREE = {
     'pirate':        ['racePlunder', 'raceBoardingRush', 'raceYoHo', 'raceCannonball'],
     'swordfighter':  ['raceSadBackstory', 'racePlotArmor', 'raceToBeContinued', 'raceBlessedBlade'],
     'shaman':        ['raceHerbalRemedy', ['raceSpiritWalk', 'raceSacrifice'], ['raceAyahuascaRetreat', 'raceVoodoo'], ['raceBadTrip', 'sharedEgoDeath']],   // §6.9 (wave B) + the §4.5 capstone twin (both tier III)
-    'mad scientist': ['raceTeslaTrap', 'raceCloneDecoy', 'raceOvercharge', 'racePlandemic'],
+    'mad scientist': ['raceTeslaTrap', ['raceCloneDecoy', 'raceSummonCreation'], ['raceOvercharge', 'raceMonsterSerum'], 'racePlandemic'],   // §6.26 (wave C)
     'men in black':  ['raceDeneuralizer', 'raceAgentVanish', 'sharedSmokeScreen', 'raceClassifiedWeapon'],
     'telepath':      ['raceTelepathicLink', 'racePsychicBarrier', 'raceBrainwash', 'raceMindCrush'],
     'priest':        ['raceDivineLight', 'protect1', 'raceSmite', 'exorcism'],
@@ -14581,16 +14695,16 @@ const RACE_TREE = {
     'conspiracy theorist': ['raceTinFoilHat', 'raceChemtrails', 'raceFluorideWater', 'raceTruthBomb'],
     'overlord':      ['raceHellfireCrown', 'raceInfernalDecree', 'sharedScorchedEarth', 'raceCataclysmDecree'],
     'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
-    'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['racePoseidonsWrath', 'raceFlood']],   // §6.12 — Great Flood is tier III (mermaid capstone) so it twins at r4, not r3
+    'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['racePoseidonsWrath', 'raceTsunami']],   // §6.12 (wave C) — Tsunami★ takes Great Flood's r4 seat (Flood is tier III, illegal at r3; §10 #15)
     'dinosaur':      [['racePrimalRoar', 'raceDinoTailWhip'], 'raceApexCharge', ['sharedFissure', 'raceApexRoar'], 'raceJurassicJaw'],   // §6.14 (Stampede = raceApexCharge)
-    'dragon':        ['raceWingGust', 'raceDragonfear', 'raceDragonToss', 'raceDragonfire'],
-    'ghoul':         ['raceGhoulishBite', 'raceCorpseCrawl', 'sharedPoisonSwamp', 'raceCarrionFeast'],
+    'dragon':        [['raceDragonBreath', 'raceWingGust'], 'raceDragonfear', 'raceDragonToss', 'raceDragonfire'],   // §6.7 (wave C)
+    'ghoul':         [['raceGhoulishBite', 'raceFrenzy'], ['raceCorpseCrawl', 'raceFear'], ['sharedPoisonSwamp', 'raceCarrionFeast'], 'raceTerrorPounce'],   // §6.23 (wave C)
     'kaiju':         ['raceCataclysmStomp', 'raceSeismicLeap', 'raceSkyscraperToss', 'raceAtomicBreath'],
     'kraken':        ['raceTentacleLash', 'raceInkCloud', 'raceDepthCharge', 'sharedVortexSlam'],
     'loch ness monster': ['raceRiptide', 'raceDeepDive', 'raceCryptidVanish', 'raceTidalSlam'],
     'yeti':          [['raceFrozenPunch', 'raceIceShard'], 'raceIceSlide', 'racePermafrost', 'raceAvalancheStrike'],   // §6.5
     'barbarella':    ['raceStunRay', 'raceGravityBoots', 'racePlasmaWhip', 'raceSpaceDisco'],
-    'black goo':     ['raceCorrosiveSplash', 'raceAbsorb', 'raceToxicNova', 'raceMitosisSplit'],
+    'black goo':     [['raceGooShot', 'raceCorrosiveSplash'], ['raceIckySurprise', 'raceAbsorb'], ['raceSplash', 'raceToxicNova'], 'raceMitosisSplit'],   // §6.22 (wave C)
     'golem':         ['raceBoulderHurl', 'raceStoneSkin', 'sharedFissure', 'raceQuake'],
     'honda civic':   ['raceRamCharge', ['raceTransform', 'raceExhaustCloud'], ['raceRoboPunch', 'raceNitroBoost'], 'raceMissileBarrage'],   // §6.2
     'ice queen':     ['raceIceSpear', 'sharedFlashFreeze', 'raceDiamondDust', 'raceAbsoluteZero'],

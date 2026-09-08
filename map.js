@@ -6429,7 +6429,7 @@
                 const player = unit.player;
                 for (const zone of state._activeZones) {
                     if (!zone.smokeConcealment || zone.ownerPlayer === player) continue;
-                    const r = zone.radius || 1;
+                    const r = (zone.radius ?? 1);
                     if (Math.abs(tx - zone.x) <= r && Math.abs(ty - zone.y) <= r) {
                         /* Target tile is in enemy smoke — only visible if a friendly is adjacent */
                         const friendlies = state.units.filter(u => !u.dead && u.player === player);
@@ -6626,7 +6626,7 @@
                 if (smokeZones.length > 0) {
                     const friendlies = state.units.filter(u => !u.dead && u.player === player);
                     for (const zone of smokeZones) {
-                        const r = zone.radius || 1;
+                        const r = (zone.radius ?? 1);
                         for (let dy = -r; dy <= r; dy++) {
                             for (let dx = -r; dx <= r; dx++) {
                                 const sx = zone.x + dx, sy = zone.y + dy;
@@ -7732,6 +7732,15 @@
         function applyTerrainTurnEffects(unit) {
 
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
+            /* CHAMP_REWORK Phase 5 wave C (2026-09-08): Oozing's trail — the
+               tile the ooze ends its turn on becomes its terrain for a while
+               (PASSIVE_DEFS.oozing.trailTerrain → battle.js _paintTimedTerrain). */
+            if (typeof unitPassiveValue === 'function' && typeof _paintTimedTerrain === 'function' && !unit.dead) {
+                const _trail = unitPassiveValue(unit, 'trailTerrain');
+                if (_trail && _trail.terrain) {
+                    _paintTimedTerrain(unit.x, unit.y, { terrain: _trail.terrain, radius: 0, rounds: _trail.rounds || 3 }, unit, null);
+                }
+            }
             const terrain = getTerrainAt(unit.x, unit.y);
 
             const _ovrObj = getObjectAt(unit.x, unit.y);
@@ -7759,6 +7768,12 @@
                 const healed = applyHealingToUnit(unit, result.amount, null);
                 if (healed > 0) {
                     addLog(result.text ? `${result.text} ${healed} HP.` : `${unitDisplayName(unit)} recovers ${healed} HP from ${rule.label}.`);
+                }
+            } else if (result.type === 'status') {
+                // wave C: terrain that coats whoever ends a turn on it (goo)
+                if (typeof applyStatusPayload === 'function' && result.id) {
+                    const _ok = applyStatusPayload(unit, { id: result.id, duration: result.duration || 2 }, `${rule.label}: `);
+                    if (_ok && result.text) addLog(`${result.text}.`);
                 }
             } else if (result.type === 'mana') {
                 const before = unit.mp || 0;

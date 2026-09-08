@@ -641,3 +641,149 @@ test('Phase 5 wave B: the engine honours the new kinds (source-text guards)', ()
     assert.ok(/_spellPick1: 1,/.test(onlineSrc) && /'_spellPick1',/.test(onlineSrc), '_spellPick1 skip-listed + guest-local');
     assert.ok(/type: 'possessed-activation'/.test(onlineSrc) && /data\.type === 'possessed-activation'/.test(onlineSrc), 'possessed-activation relay');
 });
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Phase 5 wave C — summons, tethers, terrain (plan §9.5, shipped 2026-09-08).
+   cowboy, mad scientist, black goo, fairy, ghoul, atlantean, dragon: the
+   `summonUnit` kind (a walking turret), the goo terrain (timed 'swamp'),
+   lineZone, onlyTerrain teleports, statusFirst / purgeBuffs / paintTerrain
+   riders, the Lasso rope, and the engine sites that honour them.
+   ═══════════════════════════════════════════════════════════════════════ */
+const rendererSrc = src('three-renderer.js');
+
+const WAVE_C = {
+    raceDynamite:       ['cowboy',        'aoe',        { range: 3, dmg: 110, aoeRadius: 1, damageType: 'physical' }],
+    raceWhistle:        ['cowboy',        'summonUnit', { range: 1, maxActivePerCaster: 1, summonDef: { key: 'hound', name: 'Hound', move: 4, dmg: 60, hits: 3, reveals: 3 } }],
+    raceLasso:          ['cowboy',        'pull',       { range: 3, pullDistance: 2, groundsFlyers: true }],
+    raceQuickDraw:      ['cowboy',        'damage',     { range: 5, dmg: 125, name: 'Long Rifle' }],
+    raceSummonCreation: ['mad scientist', 'summonUnit', { range: 1, maxActivePerCaster: 1, summonDef: { key: 'creation', name: 'Creation', move: 3, dmg: 90, hits: 4, armored: true } }],
+    raceMonsterSerum:   ['mad scientist', 'buff',       { range: 3 }],
+    raceOvercharge:     ['mad scientist', 'aoe',        { range: 3, dmg: 110, aoeRadius: 1, name: 'Chemical Concoction' }],
+    raceGooShot:        ['black goo',     'damage',     { range: 4, dmg: 90, damageType: 'magic', statusFirst: true, paintTerrain: { terrain: 'swamp', radius: 0, rounds: 3 } }],
+    raceIckySurprise:   ['black goo',     'teleport',   { range: 6, onlyTerrain: 'swamp' }],
+    raceSplash:         ['black goo',     'barrage',    { range: 0, dmg: 60, aoeRadius: 1, aoeOriginSelf: true, paintTerrain: { terrain: 'swamp', radius: 1, rounds: 3 } }],
+    raceSparkle:        ['fairy',         'buff',       { range: 3 }],
+    raceFairyDust:      ['fairy',         'warCry',     { range: 0, auraRadius: 3 }],
+    raceGlitterBomb:    ['fairy',         'aoe',        { range: 4, dmg: 100, aoeRadius: 1, damageType: 'magic' }],
+    raceFrenzy:         ['ghoul',         'lifeDrain',  { range: 1, dmg: 120, damageType: 'physical', drainPct: 0.30 }],
+    raceFear:           ['ghoul',         'barrage',    { range: 0, aoeRadius: 3, aoeOriginSelf: true, noDamage: true }],
+    raceTerrorPounce:   ['ghoul',         'damage',     { range: 3, dmg: 180, tier: 'III', damageType: 'physical', chargeToTarget: true, purgeBuffs: true }],
+    raceTsunami:        ['atlantean',     'linePush',   { range: 4, dmg: 160, tier: 'III', lineWidth: 3, pushDistance: 2 }],
+    raceDragonBreath:   ['dragon',        'line',       { range: 3, dmg: 90, lineWidth: 1, lineZone: true, zoneDuration: 2 }],
+};
+/* id → the ONE status each applies (+ duration); Fairy Dust's rides teamStatusEffects. */
+const WAVE_C_STATUS = {
+    raceDynamite: ['stagger', 1], raceLasso: ['tethered', 2], raceMonsterSerum: ['monster', 3],
+    raceOvercharge: ['corroded', 2], raceGooShot: ['goo', 2], raceSplash: ['goo', 2],
+    raceSparkle: ['sparkling', 2], raceFairyDust: ['levitating', 2], raceGlitterBomb: ['blind', 1],
+    raceFrenzy: ['grievous', 2], raceFear: ['feared', 1], raceTsunami: ['slow', 1], raceDragonBreath: ['burn', 2],
+};
+
+test('Phase 5 wave C: every §6 spell exists on its race with its kind, numbers, status and tree node', () => {
+    for (const [id, [race, kind, fields]] of Object.entries(WAVE_C)) {
+        const sp = raceSpell(race, id);
+        assert.ok(sp, `${race} has ${id}`);
+        assert.strictEqual(sp.kind, kind, `${id} kind`);
+        for (const [k, v] of Object.entries(fields)) same(sp[k], v, `${id}.${k}`);
+        assert.ok(sp.desc && sp.desc.length > 20, `${id} has a desc`);
+        assert.ok(treeHas(race, id), `${id} sits on ${race}'s RACE_TREE`);
+        assert.ok(D.getRaceTreeAllIds(race).includes(id), `${id} reachable through getRaceTreeAllIds`);
+        const want = WAVE_C_STATUS[id];
+        const fx = sp.kind === 'warCry' ? (sp.teamStatusEffects || []) : (sp.statusEffects || []);
+        if (want) {
+            assert.strictEqual(fx.length, 1, `${id} applies exactly one status`);
+            assert.strictEqual(fx[0].id, want[0], `${id} applies ${want[0]}`);
+            assert.strictEqual(fx[0].duration, want[1], `${id} status duration`);
+            assert.ok(D.STATUS_DEFS[fx[0].id], `${id}'s status is a STATUS_DEFS row`);
+        } else {
+            assert.ok(!fx.length, `${id} applies no status`);
+        }
+    }
+    // Summons: the def carries everything the walker reads.
+    for (const id of ['raceWhistle', 'raceSummonCreation']) {
+        const sp = raceSpell(WAVE_C[id][0], id);
+        for (const k of ['key', 'name', 'move', 'dmg', 'hits']) assert.ok(sp.summonDef[k] != null, `${id}.summonDef.${k}`);
+    }
+    // Payoffs that came with the wave.
+    same(raceSpell('cowboy', 'raceHighNoon').bonusVsStatus, { status: ['stagger', 'tethered'], mult: 1.5 });
+    same(raceSpell('black goo', 'raceAbsorb').bonusVsStatus, { status: ['poison', 'goo'], mult: 1.5 });
+    same(raceSpell('ghoul', 'raceTerrorPounce').bonusVsStatus, { status: 'feared', mult: 1.5 });
+    assert.strictEqual(raceSpell('ghoul', 'raceCarrionFeast').tier, 'II', 'Carrion Feast demoted to tier II');
+    assert.ok(!raceSpell('mad scientist', 'raceOvercharge').bonusVsStatus, 'Chemical Concoction dropped the Poison payoff (Corroded IS poison)');
+    assert.ok(raceSpell('atlantean', 'raceFlood'), 'Great Flood stays authored (off-tree, §10 #15)');
+    // Twins: every wave-C pair is a 2-array on its node.
+    const pairs = {
+        cowboy: [['raceFanTheHammer', 'raceDynamite'], ['raceQuickDraw', 'raceWhistle']],
+        'mad scientist': [['raceCloneDecoy', 'raceSummonCreation'], ['raceOvercharge', 'raceMonsterSerum']],
+        'black goo': [['raceGooShot', 'raceCorrosiveSplash'], ['raceIckySurprise', 'raceAbsorb'], ['raceSplash', 'raceToxicNova']],
+        fairy: [['raceGlitterburst', 'raceSparkle'], ['racePixieDust', 'raceFairyDust'], ['raceTrickRoom', 'raceGlitterBomb']],
+        ghoul: [['raceGhoulishBite', 'raceFrenzy'], ['raceCorpseCrawl', 'raceFear'], ['sharedPoisonSwamp', 'raceCarrionFeast']],
+        atlantean: [['racePoseidonsWrath', 'raceTsunami']],
+        dragon: [['raceDragonBreath', 'raceWingGust']],
+    };
+    for (const [race, want] of Object.entries(pairs)) {
+        const alts = Object.values(D.getRaceTreeAlts(race)).map(a => JSON.stringify(a));
+        for (const pair of want) assert.ok(alts.includes(JSON.stringify(pair)), `${race} twins ${pair.join(' ⇄ ')} (has ${alts.join(' | ')})`);
+    }
+    same(D.getRaceTreeSpells('ghoul'), ['raceGhoulishBite', 'raceCorpseCrawl', 'sharedPoisonSwamp', 'raceTerrorPounce']);
+    same(D.getRaceTreeSpells('cowboy'), ['raceLasso', 'raceFanTheHammer', 'raceQuickDraw', 'raceHighNoon']);
+    // Every wave-C id has a VFX family recipe.
+    for (const id of Object.keys(WAVE_C)) {
+        if (id === 'raceLasso' || id === 'raceQuickDraw' || id === 'raceOvercharge') continue;   // pre-existing ids keep their own
+        assert.ok(vfxSrc.includes(`SPELL_MAP['${id}']`), `${id} has a SPELL_MAP recipe`);
+    }
+});
+
+test('Phase 5 wave C: the goo terrain, the Oozing trail and the timed-terrain plumbing', () => {
+    // data.js: swamp is the goo tile — enterStatus + a status-typed endTurn; Oozing wears the trail.
+    assert.ok(/swamp: \{[\s\S]{0,900}enterStatus: \{ id: 'goo', duration: 2 \}/.test(dataSrc), 'TERRAIN_RULES.swamp.enterStatus');
+    assert.ok(/swamp: \{[\s\S]{0,1400}return \{ type: 'status', id: 'goo', duration: 2/.test(dataSrc), 'TERRAIN_RULES.swamp.endTurn → status');
+    same(D.PASSIVE_DEFS.oozing.trailTerrain, { terrain: 'swamp', rounds: 3 });
+    assert.ok(D.SIM_DEFAULTS ? D.SIM_DEFAULTS.summonUnit : /summonUnit:\s*\{ simTargeting: 'tile'/.test(dataSrc), 'SIM_DEFAULTS.summonUnit');
+    // battle.js: the painter, the tick (called from the zones pass), the enter hook.
+    assert.ok(/function _paintTimedTerrain\(cx, cy, cfg, unit, label\)/.test(battleSrc) && /function _tickTimedTerrain\(\)/.test(battleSrc));
+    assert.ok(/_tickTimedTerrain\(\);\s*\/\/ wave C/.test(battleSrc), 'timed terrain ticks in processEndOfRoundZonesAndSeeds');
+    assert.ok(/state\._timedTerrain\.push\(\{ x: t\.x, y: t\.y, prev: cur, terrain: cfg\.terrain, expiresRound: expires/.test(battleSrc), 'painter remembers prev terrain');
+    assert.ok(/_er\.enterStatus/.test(battleSrc), 'finishMoveAt applies enterStatus');
+    assert.ok(/if \(spell\.paintTerrain && target\) _paintTimedTerrain\(target\.x, target\.y, spell\.paintTerrain, unit, spell\.name\);/.test(battleSrc), 'damage riders paint the struck tile');
+    assert.ok(/if \(spell\.paintTerrain\) _paintTimedTerrain\(unit\.x, unit\.y, spell\.paintTerrain, unit, spell\.name\);/.test(battleSrc), 'barrage paints its footprint');
+    // map.js: the trail + the status result type.
+    assert.ok(/unitPassiveValue\(unit, 'trailTerrain'\)/.test(mapSrc2), 'applyTerrainTurnEffects lays the trail');
+    assert.ok(/result\.type === 'status'/.test(mapSrc2), 'applyTerrainTurnEffects honours a status result');
+    // Zones no longer treat radius 0 as radius 1 (lineZone tiles are 1×1).
+    for (const [name, text] of [['battle.js', battleSrc], ['ui.js', uiSrc2], ['map.js', mapSrc2]]) {
+        assert.ok(!/zone\.radius \|\| 1/.test(text), `${name} zone radius fallback is ??`);
+    }
+    assert.ok(!/zz\.radius \|\| 1/.test(rendererSrc) && !/\(z\.radius \|\| 1\)/.test(rendererSrc), 'three-renderer.js zone radius fallback');
+});
+
+test('Phase 5 wave C: the engine honours the summon kind and the new flags (source-text guards)', () => {
+    assert.ok(/summonUnit:\s*\{ minRange: 1, offensive: false, tileTargeted: true/.test(battleSrc), 'SPELL_KIND_META.summonUnit');
+    assert.ok(battleSrc.includes("else if (spell.kind === 'summonUnit')"), 'doSpell summonUnit branch');
+    assert.ok(/summon: _sd\.key \|\| 'pet', hitsToKill: true, hp: _sHits, maxHp: _sHits/.test(battleSrc), 'the summon is a hits-to-kill turret');
+    // The walker: summons hunt enemies only, walk `move` tiles, reveal, and credit the caster.
+    assert.ok(/if \(turret\.zombie \|\| turret\.summon\) \{/.test(battleSrc), 'processTurretVolleys walker branch');
+    assert.ok(/&& \(!turret\.summon \|\| u\.player !== turret\.owner\)/.test(battleSrc), 'summons hunt enemies only');
+    assert.ok(/const _walkSteps = turret\.summon \? \(turret\.move \|\| 3\) : 2;/.test(battleSrc), 'summons walk their move');
+    assert.ok(/if \(turret\.summon && turret\.reveals > 0\)/.test(battleSrc), 'the hound reveals');
+    assert.ok(/if \(s\.summon\) \{[\s\S]{0,900}sourceUnit: caster \|\| undefined/.test(battleSrc), 'summon hits credit the caster');
+    // Armored: physical blows count half; the basic attack passes its type.
+    assert.ok(/function damageTurretAt\(x, y, dmg, attackerUnit, opts = \{\}\)/.test(battleSrc));
+    assert.ok(/const _chip = \(turret\.armored && opts\.damageType === 'physical'\) \? 0\.5 : 1;/.test(battleSrc));
+    assert.ok(/damageTurretAt\(x, y, damage, unit, \{ damageType: 'physical' \}\);/.test(battleSrc), 'doAttack passes physical');
+    // lineZone, onlyTerrain, statusFirst, purgeBuffs, the pull's statuses.
+    assert.ok(/if \(spell\.lineZone && _lineCells\.length\)/.test(battleSrc) && /radius: 0, type: 'debuff', lineZone: true/.test(battleSrc), 'lineZone → 1-tile zones');
+    assert.ok(/if \(spell\.onlyTerrain && getTerrainAt\(x, y\) !== spell\.onlyTerrain\)/.test(battleSrc), 'teleport onlyTerrain gate');
+    assert.ok(/function getTeleportTerrainTiles\(unit, spell\)/.test(battleSrc) && /if \(kind === 'teleport' && spell\.onlyTerrain\) return getTeleportTerrainTiles\(unit, spell\)\.length > 0;/.test(battleSrc));
+    assert.ok(/if \(spell\.statusFirst && spell\.statusEffects && !target\.dead\)/.test(battleSrc) && /statusEffects: spell\.statusFirst \? null : spell\.statusEffects,/.test(battleSrc), 'statusFirst');
+    assert.ok(/function removeBuffs\(unit\)/.test(battleSrc) && /if \(spell\.purgeBuffs && target && !target\.dead\)/.test(battleSrc), 'purgeBuffs');
+    assert.ok(/the pull's own statusEffects[\s\S]{0,600}applyStatusEffects\(target, spell\.statusEffects, `\$\{spell\.name\}: `, unit\);/.test(battleSrc), 'pull applies its statuses (the rope)');
+    assert.ok(/case 'summonUnit':/.test(battleSrc) && /kind === 'summonUnit'\n/.test(battleSrc) || /kind === 'raiseDead' \|\| kind === 'summonUnit'/.test(battleSrc), 'prompt + Strike category');
+    // AI, HUD, library, highlight, renderer.
+    assert.ok(/kind === 'summonUnit'/.test(aiSrc) && /spell\.onlyTerrain && g\.getTerrainAt\(tx, ty\) !== spell\.onlyTerrain/.test(aiSrc), 'ai.js summon scorer/targeter + goo teleport');
+    assert.ok(/'deployObject', 'summonUnit',/.test(aiSrc), 'ai.js summonUnit is non-repeatable');
+    assert.ok(/k === 'summonUnit'/.test(hudSrc) && /tr\.summon/.test(hudSrc), 'hud.js spell-card parts + summon nameplate');
+    assert.ok(/'transfer','cannibalize','summonUnit'/.test(uiSrc2), 'ui.js spell library kinds');
+    assert.ok(/!spell\.onlyTerrain \|\| getTerrainAt\(cx, cy\) === spell\.onlyTerrain/.test(uiSrc2), 'ui.js teleport highlight honours onlyTerrain');
+    assert.ok(/function _buildSummon3D\(turret\)/.test(rendererSrc) && /if \(turret\.summon\) return _buildSummon3D\(turret\);/.test(rendererSrc), 'renderer builds the summons');
+});

@@ -4609,6 +4609,7 @@ function spellTagline(sp) {
   else if (k === 'encore') parts.push('Copy');
   else if (k === 'revive') parts.push('Revive');
   else if (k === 'raiseDead') parts.push('Raise zombie');
+  else if (k === 'summonUnit') parts.push('Summon ' + ((sp.summonDef && sp.summonDef.name) || 'ally') + ' · ' + ((sp.summonDef && sp.summonDef.hits) || 3) + ' hits');
   else if (k === 'cannibalize') parts.push('Eat remains · heal ' + Math.round((sp.healPct || 0.35) * 100) + '%');
   else if (k === 'possess') parts.push('Control ' + (sp.activations || 1) + ' activation' + ((sp.activations || 1) === 1 ? '' : 's'));
   else if (k === 'shadowRealm') parts.push('Shadow Realm · both');
@@ -4653,6 +4654,7 @@ function spellTargetMode(sp) {
   if (['warCry', 'encore'].includes(k)) return 'Self Target';
   if (k === 'link' || k === 'transfer') return 'Two Targets';
   if (k === 'cannibalize') return 'Remains';
+  if (k === 'summonUnit') return 'Empty Tile';
   if (k === 'shadowRealm') return 'You + Target';
   if (['healAll', 'manaRestoreAll'].includes(k)) return 'All Allies';
   if (['aoe', 'aoePull', 'aoeShield'].includes(k)) return 'Area · AOE';
@@ -5022,6 +5024,8 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     'placeTrap',
     // wave B: an ally-to-ally transfer and a corpse feed never touch a living enemy
     'transfer', 'cannibalize',
+    // wave C: a summon needs an EMPTY tile
+    'summonUnit',
     // Machine Elves: prisms need an empty tile; tune/pulse are self-cast
     'placeMirror', 'tuneFrequency', 'pulseLattice',
   ]);
@@ -6767,7 +6771,14 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
     const enemy = actingUnit ? tr.owner !== actingUnit.player : false;
     const hits = !!tr.hitsToKill;
     let desc;
-    if (tr.zombie) {
+    if (tr.summon) {
+      desc = (tr.summon === 'hound' ? 'A loyal hound. ' : 'A stitched-together creation. ')
+        + 'At the end of every round it moves ' + _plural(tr.move || 3, 'tile') + ' toward the nearest enemy and strikes for '
+        + (tr.dmg || 0) + ' damage when adjacent.'
+        + (tr.reveals ? ' Invisible enemies within ' + _plural(tr.reveals, 'tile') + ' are sniffed out.' : '')
+        + (tr.armored ? ' Armored: physical blows count as half a hit.' : '')
+        + ' ' + _plural(Math.max(0, Math.round(tr.hp)), 'hit') + ' left to put it down.';
+    } else if (tr.zombie) {
       desc = 'A shambling raised corpse. It bites the nearest enemy within '
         + _plural(tr.range || 1, 'tile') + ' for ' + (tr.dmg || 0) + ' damage at the end of each round. '
         + _plural(Math.max(0, Math.round(tr.hp)), 'hit') + ' left to put it down.';
@@ -6781,7 +6792,7 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
         + (tr.dmg || 0) + ' damage.';
     }
     return {
-      kind: 'turret', name, icon: /5g/i.test(name) ? '📡' : (tr.zombie ? '🧟' : '🔧'), enemy,
+      kind: 'turret', name, icon: /5g/i.test(name) ? '📡' : (tr.summon === 'hound' ? '🐕' : (tr.zombie || tr.summon) ? '🧟' : '🔧'), enemy,
       hp: Math.max(0, Math.round(tr.hp)), maxHp: tr.maxHp || tr.hp,
       hpLabel: _mkHpLabel(tr.hp, tr.maxHp, hits), desc,
     };

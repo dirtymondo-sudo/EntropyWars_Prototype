@@ -46,11 +46,25 @@
 > **`cannibalize`** (corpse-targeted, shared with raiseDead). Haunt opens
 > the ghost. Token `20260908h-cors` → `20260908i-cors`. See §5.10 for what
 > differs from §6 and §10 #31–38 for the calls it made.
-> **Phase 5 wave C and Phase 6 are PLANNED here, not built** — the
-> summons / tethers / terrain wave and the two new champs. §10 lists the
+> **PHASE 5 WAVE C SHIPPED 2026-09-08 (§5.11, §9.5):** summons, tethers,
+> terrain — eighteen rows on seven pillars (cowboy, mad scientist, black
+> goo, fairy, ghoul, atlantean, dragon) and one new kind, **`summonUnit`**
+> (the cowboy's Hound and the mad scientist's Creation are WALKING turrets
+> in `state.turrets` — `summon: <key>` — hunting enemies at the end of
+> every round; battle.js `processTurretVolleys`). The goo terrain is the
+> existing `swamp` Black Ooze tile painted TIMED (`_paintTimedTerrain` /
+> `state._timedTerrain`, reverts at the round tick; `enterStatus` +
+> a status-typed `endTurn` Goo whoever touches it; Oozing lays a trail).
+> New flags the engine reads: `lineZone` (Dragon Breath → 1-tile zones),
+> `onlyTerrain` (Icky Surprise), `statusFirst` (Goo Shot), `purgeBuffs`
+> (Terror Pounce), `paintTerrain`, `summonDef`. Lasso is the rope
+> (`tethered`); the `pull` branch now applies its statuses at all (its
+> Stagger never landed). Token `20260908j-cors` → `20260908k-cors`. See
+> §5.11 for what differs from §6 and §10 #39–45 for the calls it made.
+> **Phase 6 (gangster, nun) is PLANNED here, not built.** §10 lists the
 > yes/no decisions the owner should make (items 14–15 came out of Phase 2;
 > 17–19 out of Phase 3; 20–24 out of Phase 4; 25–30 out of wave A; 31–38
-> out of wave B).
+> out of wave B; 39–45 out of wave C).
 
 This is the single planning doc for the owner's 2026-09-07 "champ reworks"
 notes. It is written so that any later session can build one phase from it
@@ -791,6 +805,108 @@ champ-rework.test.js (the `WAVE_B` table).
 - Tests: champ-rework.test.js "Phase 5 wave B" ×3; content-schema's
   no-twin probe moved from the vampire to the knight.
 
+### 5.11 SHIPPED 2026-09-08 — Phase 5 wave C, summons / tethers / terrain (what landed, and where it differs from §6)
+
+Eighteen new / reworked rows on seven pillars, one new kind, one timed
+terrain, six new spell flags. Every new spell is a `RACE_ABILITIES` row on
+its §6 node (twin arrays in `RACE_TREE`), rides an existing VFX recipe by
+family (three-vfx-effects.js `SPELL_MAP['<id>']` aliases in the wave-C
+block under the wave-B ones) and is guarded by champ-rework.test.js (the
+`WAVE_C` table + two engine source-guard tests).
+
+| Race | Landed | Node |
+|---|---|---|
+| cowboy | **Lasso** REWORK (`pull` 2 + `tethered` 2 — the rope) · **Dynamite** `raceDynamite` (aoe 3×3, r3, 110 physical, Stagger 1, the bomb prop) · **Whistle** `raceWhistle` (`summonUnit` Hound: move 4, bite 60, 3 hits, reveals 3) · Quick Draw → **Long Rifle** (range 5, id kept) · High Noon ×1.5 vs Staggered OR Roped | r2 Fan the Hammer ⇄ Dynamite · r3 Long Rifle ⇄ Whistle |
+| mad scientist | **Summon Creation** `raceSummonCreation` (`summonUnit` Creation: move 3, club 90, 4 hits, armored) · **Chemical Concoction** (= `raceOvercharge`, 110 magic 3×3, `corroded` 2, the Poison payoff dropped — Corroded IS poison) · **Monster Serum** `raceMonsterSerum` (buff, `monster` 3) | r2 Cloning Machine ⇄ Summon Creation · r3 Chemical Concoction ⇄ Monster Serum |
+| black goo | **Goo Shot** `raceGooShot` (damage 90 magic, r4, `statusFirst` Goo 2, paints the tile) · **Icky Surprise** `raceIckySurprise` (`teleport`, r6, `onlyTerrain: 'swamp'`) · **Splash** `raceSplash` (barrage r1 self, 60 magic, Goo 2, paints the 3×3) · Absorb ×1.5 vs Poison OR Goo | r1 Goo Shot ⇄ Corrosive Splash · r2 Icky Surprise ⇄ Absorb · r3 Splash ⇄ Toxic Nova |
+| fairy | **Sparkle** `raceSparkle` (buff, `sparkling` 2) · **Fairy Dust** `raceFairyDust` (warCry radius 3, `teamStatusEffects` `levitating` 2) · **Glitter Bomb** `raceGlitterBomb` (aoe 3×3, r4, 100 light, Blind 1) | r1 Glitterburst ⇄ Sparkle · r2 Pixie Dust ⇄ Fairy Dust · r3 Trick Room ⇄ Glitter Bomb |
+| ghoul | **Frenzy** `raceFrenzy` (lifeDrain 120 physical, 30 %, `grievous` 2) · **Fear** `raceFear` (barrage radius 3 self, `noDamage`, `feared` 1) · **Terror Pounce★** `raceTerrorPounce` (damage 180 physical, `chargeToTarget`, r3, `purgeBuffs`, ×1.5 vs Feared) · Carrion Feast demoted to tier II | r1 Ghoulish Bite ⇄ Frenzy · r2 Corpse Crawl ⇄ Fear · r3 Poison Swamp ⇄ Carrion Feast · r4★ Terror Pounce |
+| atlantean | **Tsunami★** `raceTsunami` (linePush width 3, r4, 160 water, push 2, Slow 1) | r4★ Poseidon's Wrath ⇄ Tsunami (Great Flood steps OFF the tree, still authored — §10 #15 / #45) |
+| dragon | **Dragon Breath** `raceDragonBreath` (line r3, 90 fire, Burn 2, `lineZone` 2 rounds) | r1 Dragon Breath ⇄ Wing Attack |
+
+**Engine (battle.js unless noted):**
+- **`summonUnit`** (`SPELL_KIND_META`: tileTargeted, minRange 1): an
+  empty passable tile beside the caster; the summon is pushed into
+  `state.turrets` as `{ summon: <key>, hitsToKill, hp/maxHp = hits, dmg
+  = def.dmg + ½ spell power, range 1, move, reveals, armored }` — the
+  raiseDead zombie's template, so fog, `damageTurretAt`, the renderer
+  (`_buildTurret` → **`_buildSummon3D`**: the hound is a box-kit
+  quadruped, the creation the flesh abomination re-dressed grey-green
+  with neck bolts — placeholders until the §9.6 models land), the HUD
+  nameplate (hud.js `tr.summon` desc + 🐕 icon) and state-sync all come
+  free. `maxActivePerCaster` per spell; a re-cast dismisses the old one.
+  `processTurretVolleys`' zombie branch became the WALKER branch: a
+  summon hunts its owner's ENEMIES only, first sniffs out Invisible
+  enemies within `reveals` (Chebyshev, the Hagstone rule), walks up to
+  `move` tiles (greedy Manhattan, same blockers as the zombie), strikes
+  when adjacent — the hit carries `sourceUnit` = the caster (kills, XP and
+  the balance table credit the spell). `damageTurretAt(x, y, dmg,
+  attacker, opts)` grew `opts.damageType`: an **armored** summon takes
+  half a hit from a physical blow (doAttack and the line / aoe sweeps
+  pass their type; unknown callers count full). The realtime hub loop
+  treats summons like zombies. AI: `scoreSpell` (150 with an enemy
+  within 6 of the tile, 70 otherwise, 0 while its own stands),
+  `findSpellTarget` (the free adjacent tile nearest the closest visible
+  enemy), non-repeatable per turn. Strike / Simul refuse the kind
+  (turn-model, like raiseDead).
+- **Goo terrain = `swamp`** (data.js `TERRAIN_RULES`, "Black Ooze" — it
+  already IS the black liquid family the renderer / minimap / AI know;
+  §5.4's separate `goo` key would have duplicated it). The row wears
+  **`enterStatus`** (`{ id: 'goo', duration: 2 }`, applied in
+  `finishMoveAt` after the pixie-dust pickup — flyers and a unit whose
+  `contactStatus` is goo walk through clean) and an `endTurn` that
+  returns a new **`{ type: 'status' }`** result (map.js
+  `applyTerrainTurnEffects` handles it). **Timed painting**:
+  `_paintTimedTerrain(cx, cy, { terrain, radius, rounds }, unit, label)`
+  paints a square, remembers `prev` in `state._timedTerrain` (plain
+  state → synced), never touches walls / pits / other liquids and leaves
+  permanent tiles of the same key (Ooze Trail) alone; `_tickTimedTerrain`
+  runs first thing in `processEndOfRoundZonesAndSeeds` and reverts every
+  entry whose `expiresRound` has come (unless the tile was repainted
+  since). Painters: **`paintTerrain`** on a damage spell (in
+  `_runPostEffects`, the struck tile) and on a barrage (the caster's
+  footprint), and **Oozing's `trailTerrain`** (PASSIVE_DEFS; map.js
+  `applyTerrainTurnEffects` paints the ooze's own tile at end of turn).
+- **`lineZone`** (`_applyLineDamage`, after the lane sweep): every swept
+  tile becomes a `state._activeZones` entry with **radius 0** (`lineZone:
+  true`, `zoneStatus` else the spell's statuses, `zoneDuration`); a
+  re-cast refreshes a tile's timer. Every `zone.radius || 1` fallback in
+  battle.js / ui.js / map.js / three-renderer.js became `?? 1` so a
+  1-tile zone is 1×1 (it used to render — and tick — as 3×3).
+- **`onlyTerrain`** on a teleport: the destination gate in the teleport
+  branch, `getTeleportTerrainTiles(unit, spell)` (window) for
+  `hasSpellTargetInRange`, the ui.js board highlight and the AI's tile
+  loop; LOS never applied to teleports anyway.
+- **`statusFirst`** (single-hit damage path): the spell's statuses land
+  before the hit and are withheld from `applyDamageToUnit`'s rider —
+  Goo Shot's ×1.25 applies to its own cast.
+- **`purgeBuffs`** (`_runPostEffects`): new `removeBuffs(unit)` — every
+  `STATUS_DEFS` row of `kind: 'buff'` cleared (stat stages untouched).
+- **The `pull` branch now applies `spell.statusEffects`** (as the yank
+  lands, on `_yankDelayMs`). It never did — Lasso's old Stagger never
+  stuck; the rope (`tethered` + `_tetherCasterId` from the applier →
+  Phase 4's `_tetherFollow`) is what made it visible.
+- hud.js: 'Summon <name> · N hits' part, 'Empty Tile' range label, summon
+  kept out of the enemy quick menu; ui.js library filter; the targeting
+  prompt; data.js `SIM_DEFAULTS.summonUnit`.
+
+**Deviations from §6 (deliberate — §10 #39–45):**
+- The goo terrain is the existing `swamp` key, not a new `goo` row.
+- Summons are turrets with hit counts, not units: no HP bar, no statuses,
+  no initiative — 3 / 4 hits like the zombie; "armored" = physical hits
+  count half.
+- Monster Serum targets allies only (a turret can't wear a status).
+- Fear is the engine's flee (§10 #20); Terror Pounce's charge is the
+  ordinary `chargeToTarget` hop (range 3, lands adjacent).
+- Tsunami REPLACES Great Flood at r4 (a twin holds two); Flood stays
+  authored off-tree.
+- Fairy Dust's Levitating is 2 rounds on the whole team (the §5.1
+  `levitating` row); no high-ground number was added — flight's own
+  elevation bonus is the payoff.
+- The Lasso rope drags to the roper's ORIGIN tile (Phase 4's
+  simplification, §10 #23), not the whole path.
+- Tests: champ-rework.test.js "Phase 5 wave C" ×3.
+
 ### 5.6 Stage-buff retune that this pass makes necessary
 
 STAT_REWORK §7 warned that +2-stage buffs doubled in strength when a stage
@@ -1249,9 +1365,13 @@ index.html token. Details and deviations: §5.8.
   `transfer`, `cannibalize`. data.js, battle.js, map.js, ai.js, hud.js,
   ui.js, online.js, three-vfx-effects.js, styles-cinematic.css,
   champ-rework.test.js, content-schema.test.js, index.html token.
-- **Wave C (summons, tethers, terrain):** cowboy, mad scientist, black goo,
-  fairy, ghoul, atlantean, dragon — `summonUnit`, `tetherFollow`, goo
-  terrain, `levitating`, `feared`, width-3 lines, `lineZone`.
+- **Wave C (summons, tethers, terrain) — SHIPPED 2026-09-08 (§5.11):**
+  cowboy, mad scientist, black goo, fairy, ghoul, atlantean, dragon —
+  `summonUnit`, the Lasso rope, goo terrain (timed `swamp`), `levitating`,
+  `feared`, width-3 lines, `lineZone`, `onlyTerrain`, `statusFirst`,
+  `purgeBuffs`, `paintTerrain`. data.js, battle.js, map.js, ai.js, hud.js,
+  ui.js, three-renderer.js, three-vfx-effects.js, champ-rework.test.js,
+  index.html token.
 - **New races (gangster, nun):** every table a race key touches —
   `AVAILABLE_RACES`, `RACE_PROFILES`, `RACE_DEFAULT_JOBS`, `RACE_CLASS`,
   `RACE_BASE_STATS`, `RACE_PHYSIQUE`, `RACE_ABILITIES`, `RACE_TREE`,
@@ -1374,3 +1494,28 @@ crumble (gargoyle), arm-cannon morph (cyborg).
 38. **Cooldowns are real** (`cooldownRounds`): Possession 3, Shadow Realm 3
     as planned. The wave-A note claimed the engine had none — it does, so
     say if any wave-A spell should wear one.
+39. **Goo terrain is the existing `swamp` ("Black Ooze") tile** (wave C),
+    not a new `goo` key — it was already the black liquid the renderer,
+    minimap and AI know, so a second key would have duplicated it. The
+    cost: EVERY swamp tile (Ooze Trail's permanent slick included) now
+    Goos whoever steps on / ends a turn on it. Keep, or carve the status
+    out for permanent tiles?
+40. **Summons are hit-count turrets** (hound 3, creation 4 — "armored" =
+    physical blows count half), not units with HP bars, statuses or a
+    place in the initiative. They act in the end-of-round volley like the
+    zombie. Fine, or should a summon be a real unit (a much bigger build)?
+41. **A summon hunts the NEAREST enemy** every round with no owner
+    steering; a re-cast dismisses the old one. Want a "heel" / target
+    pick (a second click), or is the fire-and-forget hound right?
+42. **The hound's nose reveals within 3 in Chebyshev distance** (a 7×7
+    square, the Hagstone rule) — Manhattan 3 would be a diamond.
+43. **Chemical Concoction dropped its ×1.5-vs-Poison payoff** — Corroded
+    counts as Poison, so the spell would have paid itself off on a
+    second cast. Restore it (it would then always fire on a re-cast)?
+44. **Icky Surprise is fog-gated like every tile cast** — a goo tile in
+    the fog can't be picked even though no LOS is needed. Should
+    onlyTerrain teleports ignore fog too?
+45. **Tsunami★ replaced Great Flood at atlantean r4** (#15 answered by
+    the build — a twin holds two). Flood stays authored off-tree. If you
+    want Flood back, name the node it should share (r3 Temporal Tide
+    needs it re-authored as tier II).

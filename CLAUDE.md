@@ -571,6 +571,36 @@ never `kind === 'raiseDead'`. Adding a possess / link spell = a data row
 + tree node + `SPELL_MAP` alias + a `WAVE_B` test row; `npm test` guards
 the kinds, the seat flip, the two-click gate and the relay.
 
+## PHASE 5 WAVE C (CHAMP_REWORK_PLAN §5.11) — added 2026-09-08
+Summons, tethers, terrain: eighteen rows on cowboy / mad scientist / black
+goo / fairy / ghoul / atlantean / dragon. **`summonUnit`** (Whistle's Hound,
+Summon Creation): a WALKING TURRET in `state.turrets` (`summon: <key>`,
+`hitsToKill`, `move`, `reveals`, `armored`; `summonDef` on the row) — the
+raiseDead zombie's template, so fog / `damageTurretAt` (now takes
+`opts.damageType`; armored = physical hits count half) / the renderer
+(`_buildSummon3D`) / the HUD nameplate / state-sync come free;
+`processTurretVolleys`' walker branch hunts the owner's ENEMIES only, reveals
+Invisible within `reveals` first, walks `move` tiles, strikes adjacent with
+`sourceUnit` = the caster. **Goo terrain = the existing `swamp` Black Ooze
+row** (never add a `goo` key): `enterStatus` (finishMoveAt) + a
+`{ type: 'status' }` endTurn result (map.js applyTerrainTurnEffects) Goo
+whoever touches it; **timed painting** through battle.js
+`_paintTimedTerrain(cx, cy, { terrain, radius, rounds }, unit, label)` →
+`state._timedTerrain` (prev terrain remembered, reverted by
+`_tickTimedTerrain` at the top of processEndOfRoundZonesAndSeeds) — used by
+`paintTerrain` on damage (`_runPostEffects`) / barrage rows and by Oozing's
+`trailTerrain`. Flags the engine reads: `lineZone` (`_applyLineDamage` →
+radius-0 `_activeZones` entries; every `zone.radius || 1` became `?? 1`),
+`onlyTerrain` on a teleport (`getTeleportTerrainTiles`, gate + ui.js
+highlight + AI), `statusFirst` (status before the hit), `purgeBuffs`
+(`removeBuffs`). The `pull` branch now applies `spell.statusEffects` (it
+never did) — Lasso is the rope (`tethered` 2). Tsunami★ took Great Flood's
+r4 seat (Flood stays authored, off-tree). Adding a summon = a row with
+`kind: 'summonUnit'` + `summonDef { key, name, move, dmg, hits, reveals?,
+armored? }` + a `_buildSummon3D` look for a new key; `npm test`
+(champ-rework.test.js "Phase 5 wave C" ×3) guards the rows, the terrain
+plumbing and every engine site.
+
 ## Most common request: "playtest <mode>"
 The user wants Claude to **actually play Player 1 against the CPU** (NOT auto-sim /
 dev-sim — they can do that themselves) and report pain points: unresponsive

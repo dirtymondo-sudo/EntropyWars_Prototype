@@ -475,7 +475,7 @@
             let field = null;
             for (const zone of zones) {
                 if (!zone.gravityField) continue;
-                const r = zone.radius || 1;
+                const r = (zone.radius ?? 1);
                 if (Math.abs(x - zone.x) > r || Math.abs(y - zone.y) > r) continue;
                 if (zone.gravityField === 'super') return 'super';
                 field = zone.gravityField;
@@ -760,6 +760,11 @@
             // ── Deploy / terrain ──
             bomb:         { minRange: 0, offensive: false, tileTargeted: true },
             deployObject: { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
+            /* CHAMP_REWORK Phase 5 wave C (2026-09-08): a walking summon (the
+               cowboy's hound, the mad scientist's creation) placed on an empty
+               tile beside the caster; it lives in state.turrets (summon: <key>)
+               and acts in processTurretVolleys like the raised zombie. */
+            summonUnit:   { minRange: 1, offensive: false, tileTargeted: true, noStrikeLeap: true },
             deployPair:   { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
             deployTurret: { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
             buildBridge:  { minRange: 0, offensive: false, tileTargeted: true },
@@ -2164,6 +2169,17 @@
         // the spell definition and animation profile.
         // ═══════════════════════════════════════════════════════════════════
         function _runPostEffects(unit, spell, target) {
+            /* Phase 5 wave C (2026-09-08): purgeBuffs (Terror Pounce) strips
+               every buff-kind status the victim wears; paintTerrain (Goo Shot)
+               turns the struck tile into timed terrain. */
+            if (spell.purgeBuffs && target && !target.dead) {
+                const _pn = removeBuffs(target);
+                if (_pn) {
+                    addLog(`${spell.name} strips ${_pn} buff${_pn !== 1 ? 's' : ''} from ${unitDisplayName(target)}!`);
+                    showFloatingTextForUnit(target, '✂ BUFFS STRIPPED', 'debuff', { durationMs: 1000 });
+                }
+            }
+            if (spell.paintTerrain && target) _paintTimedTerrain(target.x, target.y, spell.paintTerrain, unit, spell.name);
             /* Clash: the charge-in hop and the swap-through are repositioning —
                the strike itself already landed, formation holds. */
             const _clashPinned = typeof _isClashMode === 'function' && _isClashMode();
@@ -4540,12 +4556,18 @@
                 if (spell.sneakBonus && unit._sneakStrikeBonus) {
                     addLog(`🗡️ ${unitDisplayName(unit)} strikes from the shadows — ambush bonus!`, unit.player);
                 }
+                /* Phase 5 wave C (2026-09-08): statusFirst (Goo Shot) — the
+                   status lands BEFORE the hit so its own damage multiplier
+                   (Gooed: magic ×1.25) applies to this very cast. */
+                if (spell.statusFirst && spell.statusEffects && !target.dead) {
+                    applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
+                }
                 applyDamageToUnit(target, damage,
                     `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         allowMarkBonus: false,
                         ignoreArmor: !!spell.ignoreArmor,
-                        statusEffects: spell.statusEffects,
+                        statusEffects: spell.statusFirst ? null : spell.statusEffects,
                         damageType: spell.damageType || 'magic',
                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell),
                         element: _spellEl
@@ -4919,7 +4941,7 @@
                 // over the Cube without damaging it.)
 
                 // Turret damage
-                damageTurretAt(tile.x, tile.y, spell.dmg || 80, unit);
+                damageTurretAt(tile.x, tile.y, spell.dmg || 80, unit, { damageType: spell.damageType || 'magic' });
 
                 // Prism mirror damage (Machine Elves lattice) — one hit per blast
                 if (typeof damageMirrorAt === 'function') damageMirrorAt(tile.x, tile.y, unit);
@@ -5164,7 +5186,7 @@
                 if (hit && hit.player !== unit.player && !hit.dead) {
                     hitTargets.push(hit);
                 }
-                damageTurretAt(cx, cy, spell.dmg || 80, unit);
+                damageTurretAt(cx, cy, spell.dmg || 80, unit, { damageType: spell.damageType || 'magic' });
                 if (typeof damageMirrorAt === 'function') damageMirrorAt(cx, cy, unit);
                 // 🏢 Beams chip 1 structure hit per building crossed (once per cast).
                 if (typeof getBuildingAt === 'function') {
@@ -5209,13 +5231,37 @@
                         _lineCells.push({ x: lx, y: ly });
                         const lh = unitAt(lx, ly);
                         if (lh && lh.player !== unit.player && !lh.dead && !hitTargets.includes(lh)) hitTargets.push(lh);
-                        damageTurretAt(lx, ly, spell.dmg || 80, unit);
+                        damageTurretAt(lx, ly, spell.dmg || 80, unit, { damageType: spell.damageType || 'magic' });
                         if (spell.leaveTerrain && getTerrainAt(lx, ly) !== spell.leaveTerrain) {
                             setTerrainAt(lx, ly, spell.leaveTerrain);
                             trackTilesChanged(unit, 1);
                         }
                     }
                 }
+            }
+            /* Phase 5 wave C (2026-09-08): lineZone (Dragon Breath) — every
+               swept tile becomes a 1-tile debuff zone for zoneDuration rounds
+               applying zoneStatus (else the spell's own statuses) to enemies
+               who end the round there. Rides state._activeZones unchanged
+               (radius 0 = the tile); a re-cast refreshes a tile's timer. */
+            if (spell.lineZone && _lineCells.length) {
+                if (!state._activeZones) state._activeZones = [];
+                let _lzN = 0;
+                for (const c of _lineCells) {
+                    if (!isTerrainPassable(c.x, c.y)) continue;
+                    const _ez = state._activeZones.find(z => z.lineZone && z.x === c.x && z.y === c.y && z.spellName === spell.name);
+                    if (_ez) { _ez.duration = Math.max(_ez.duration, spell.zoneDuration || 2); _lzN++; continue; }
+                    state._activeZones.push({
+                        x: c.x, y: c.y, radius: 0, type: 'debuff', lineZone: true,
+                        ownerPlayer: unit.player, casterUnitId: unit.id,
+                        duration: spell.zoneDuration || 2,
+                        statusEffects: spell.zoneStatus || spell.statusEffects || [],
+                        allyStatusEffects: [], smokeConcealment: false, gravityField: null, expireTerrain: null,
+                        spellName: spell.name
+                    });
+                    _lzN++;
+                }
+                if (_lzN) addLog(`${spell.name} leaves ${_lzN} tile${_lzN !== 1 ? 's' : ''} burning for ${spell.zoneDuration || 2} rounds.`);
             }
             const dmgBase = calcFlatSpellDamage(baseDmg, spellPower, 32);
             for (const hit of hitTargets) {
@@ -6502,6 +6548,20 @@
             return removed;
         }
 
+        /* wave C: the buff-side twin of removeDebuffs — every status whose
+           STATUS_DEFS row is kind 'buff' is cleared (stat stages are left
+           alone; a purge is a status wipe, not a stage reset). */
+        function removeBuffs(unit) {
+            if (!unit || !unit.status) return 0;
+            let removed = 0;
+            for (const key of Object.keys(STATUS_DEFS)) {
+                if (STATUS_DEFS[key].kind !== 'buff') continue;
+                if (unit.status[key] > 0) { removed += 1; clearStatus(unit, key); }
+            }
+            return removed;
+        }
+        if (typeof window !== 'undefined') window.removeBuffs = removeBuffs;
+
         function applyStatusPayload(target, payload = {}, sourceLabel = '', sourceUnit = null) {
             if (!target || target.dead || !payload?.id || !STATUS_DEFS[payload.id]) return false;
             // A flag carrier can't cloak — the flag stays visible no matter what.
@@ -6903,9 +6963,11 @@
 
             const events = [];
 
+            _tickTimedTerrain();   // wave C: timed goo reverts on the round tick
+
             if (state._activeZones?.length) {
                 state._activeZones = state._activeZones.filter(zone => {
-                    const area = getSquareArea(zone.x, zone.y, zone.radius || 1);
+                    const area = getSquareArea(zone.x, zone.y, (zone.radius ?? 1));
                     if (zone.type === 'heal') {
                         const allies = state.units.filter(u => !u.dead && u.player === zone.ownerPlayer);
                         for (const ally of allies) {
@@ -6976,7 +7038,7 @@
                            squall paints its footprint (expireTerrain) as it clears. */
                         if (zone.expireTerrain) {
                             let _zt = 0;
-                            for (const t of getSquareArea(zone.x, zone.y, zone.radius || 1)) {
+                            for (const t of getSquareArea(zone.x, zone.y, (zone.radius ?? 1))) {
                                 if (!isInside(t.x, t.y)) continue;
                                 const cur = getTerrainAt(t.x, t.y);
                                 if (cur === 'wall' || cur === 'mountain' || cur === zone.expireTerrain) continue;
@@ -7894,7 +7956,7 @@
             if (state._activeZones && state._activeZones.length) {
                 for (const zone of state._activeZones) {
                     if (!zone.smokeConcealment || zone.ownerPlayer === viewer) continue;
-                    const r = zone.radius || 1;
+                    const r = (zone.radius ?? 1);
                     if (Math.abs(unit.x - zone.x) <= r && Math.abs(unit.y - zone.y) <= r) { smokeHidden = true; break; }
                 }
             }
@@ -8073,7 +8135,7 @@
                     let inSmoke = false;
                     for (const zone of (state._activeZones || [])) {
                         if (!zone.smokeConcealment || zone.ownerPlayer !== unit.player) continue;
-                        const r = zone.radius || 1;
+                        const r = (zone.radius ?? 1);
                         if (Math.abs(x - zone.x) <= r && Math.abs(y - zone.y) <= r) { inSmoke = true; break; }
                     }
                     if (!inSmoke) { invisRestore = unit.status.invisible; unit.status.invisible = 0; }
@@ -16842,7 +16904,7 @@
                 /* rallyPull / raiseDead are turn-model spells (corpse tiles /
                    board-wide repositioning don't exist in real-time) — give
                    them their own cat so the exec switch politely refuses. */
-                else if (kind === 'rallyPull' || kind === 'raiseDead'
+                else if (kind === 'rallyPull' || kind === 'raiseDead' || kind === 'summonUnit'
                     || kind === 'possess' || kind === 'link' || kind === 'transfer' || kind === 'shadowRealm' || kind === 'cannibalize') cat = kind;
                 else if (kind === 'cleanse') cat = 'cleanse';
                 else if (kind === 'encore') cat = 'encore';
@@ -17997,10 +18059,10 @@
                             /* zombies are mindless — the NEAREST unit of EITHER side */
                             if (!_alive(x) || (!t.zombie && x.player === t.owner)) continue;
                             const dd = Math.hypot(x.x - t.x, x.y - t.y);
-                            if (dd < bestD && (t.zombie || dd <= (t.range || 4))) { bestD = dd; best = x; }
+                            if (dd < bestD && (t.zombie || t.summon || dd <= (t.range || 4))) { bestD = dd; best = x; }
                         }
                         if (!best) continue;
-                        if (t.zombie) {
+                        if (t.zombie || t.summon) {
                             /* shamble one tile toward prey; maul only when adjacent */
                             if (bestD > 1.5) {
                                 const sx = Math.sign(best.x - t.x), sy = Math.sign(best.y - t.y);
@@ -22570,12 +22632,27 @@
             if (state.turrets && state.turrets.length) {
                 for (const turret of state.turrets) {
                     if (turret.hp <= 0 || turret.auraDebuff) continue;   // 5G towers don't shoot
-                    if (turret.zombie) {
+                    if (turret.zombie || turret.summon) {
                         // 🧟 Raised abomination: mindless — hunts the NEAREST unit,
                         // friend or foe. Shambles up to 2 tiles toward it, then
                         // mauls if it can reach (melee, range 1).
+                        // 🐕 Wave C summons (hound / creation) are the same walker
+                        // but LOYAL: enemies of their owner only, `move` tiles a
+                        // round, and the hound's nose strips Invisible within
+                        // `reveals` tiles first (the Hagstone rule).
+                        if (turret.summon && turret.reveals > 0) {
+                            for (const e of state.units) {
+                                if (e.dead || e._dying || e.player === turret.owner) continue;
+                                if (!unitHasStatus(e, 'invisible')) continue;
+                                if (Math.max(Math.abs(e.x - turret.x), Math.abs(e.y - turret.y)) > turret.reveals) continue;
+                                clearStatus(e, 'invisible');
+                                addLog(`👃 ${turret.spellName} sniffs out ${unitDisplayName(e)} — revealed!`);
+                                showFloatingTextForUnit(e, '👁️ Revealed!', 'debuff');
+                            }
+                        }
                         const prey = state.units
                             .filter(u => !u.dead && !u._dying
+                                && (!turret.summon || u.player !== turret.owner)
                                 && (typeof getSectionForUnit !== 'function' || getSectionForUnit(u) === 'earth'))
                             .sort((a, b) => {
                                 const da = Math.abs(a.x - turret.x) + Math.abs(a.y - turret.y);
@@ -22591,7 +22668,8 @@
                             return false;
                         };
                         let moved = false;
-                        for (let step = 0; step < 2; step++) {
+                        const _walkSteps = turret.summon ? (turret.move || 3) : 2;
+                        for (let step = 0; step < _walkSteps; step++) {
                             let d0 = Math.abs(prey.x - turret.x) + Math.abs(prey.y - turret.y);
                             if (d0 <= (turret.range || 1)) break;
                             let best = null, bestD = d0;
@@ -22606,12 +22684,14 @@
                             moved = true;
                         }
                         if (moved) {
-                            addLog(`🧟 The flesh abomination shambles toward ${unitDisplayName(prey)}...`);
+                            addLog(turret.summon
+                                ? `${turret.summon === 'hound' ? '🐕' : '🧟'} ${turret.spellName} closes on ${unitDisplayName(prey)}...`
+                                : `🧟 The flesh abomination shambles toward ${unitDisplayName(prey)}...`);
                             scheduleBoardRender();
                         }
                         if (Math.abs(prey.x - turret.x) + Math.abs(prey.y - turret.y) <= (turret.range || 1)) {
                             turret.facingAngle = Math.atan2(prey.y - turret.y, prey.x - turret.x);
-                            shots.push({ turret, target: prey, zombie: true, dmg: Math.max(24, turret.dmg + engineRandInt(24) - 8) });
+                            shots.push({ turret, target: prey, zombie: !turret.summon, summon: !!turret.summon, dmg: Math.max(24, turret.dmg + engineRandInt(24) - 8) });
                         }
                         continue;
                     }
@@ -22634,6 +22714,24 @@
             function applyShot(s) {
                 if (s.target.dead || s.target._dying) return;
                 const caster = s.turret.casterUnitId ? unitFromId(s.turret.casterUnitId) : null;
+                if (s.summon) {
+                    addLog(`${s.turret.summon === 'hound' ? '🐕' : '🧟'} ${s.turret.spellName} at ${coordLabel(s.turret.x, s.turret.y)} ${s.turret.summon === 'hound' ? 'bites' : 'clubs'} ${unitDisplayName(s.target)} for ${s.dmg} damage!`);
+                    const _sHpBefore = s.target.hp;
+                    applyDamageToUnit(s.target, s.dmg, `${s.turret.spellName}: `, {
+                        ignoreArmor: false,
+                        damageType: 'physical',
+                        sourceUnit: caster || undefined,   // the caster's kill, the caster's XP
+                        noRangeMult: true,
+                        scaleByTargetLevel: true,
+                        flashColor: 'hit'
+                    });
+                    if (typeof _balAddSpellEffect === 'function') {
+                        const _applied = Math.max(0, _sHpBefore - Math.max(0, s.target.hp || 0));
+                        const _killed = (s.target.dead || s.target._dying || (s.target.hp || 0) <= 0) ? 1 : 0;
+                        _balAddSpellEffect(s.turret.spellId || 'summonUnit', _applied, _killed);
+                    }
+                    return;
+                }
                 if (s.zombie) {
                     addLog(`🧟 The flesh abomination at ${coordLabel(s.turret.x, s.turret.y)} mauls ${unitDisplayName(s.target)} for ${s.dmg} damage!`);
                     applyDamageToUnit(s.target, s.dmg, `🧟 Zombie maul: `, {
@@ -22702,7 +22800,9 @@
                 // Per-shot caption naming the victim — with several turrets
                 // firing back-to-back this is what keeps each hit attributable.
                 if (isVisible) {
-                    _eorPhaseLabel(s.zombie
+                    _eorPhaseLabel(s.summon
+                        ? `${s.turret.summon === 'hound' ? '🐕' : '🧟'} ${s.turret.spellName} strikes ${unitDisplayName(s.target)}`
+                        : s.zombie
                         ? `🧟 Zombie mauls ${unitDisplayName(s.target)}`
                         : `🔧 Turret fires at ${unitDisplayName(s.target)}`);
                 }
@@ -22717,8 +22817,8 @@
                             (s.turret.x + s.target.x) / 2, (s.turret.y + s.target.y) / 2,
                             { duration: 400 });
                     }
-                    playSfx(s.zombie ? 'basicAttack' : 'turret');
-                    if (!s.zombie && typeof window !== 'undefined' && window.ThreeVFXEffects
+                    playSfx((s.zombie || s.summon) ? 'basicAttack' : 'turret');
+                    if (!s.zombie && !s.summon && typeof window !== 'undefined' && window.ThreeVFXEffects
                         && typeof window.ThreeVFXEffects.hasMapping === 'function'
                         && window.ThreeVFXEffects.hasMapping('_turretBlast', 'beam')) {
                         const _tdx = s.target.x - s.turret.x;
@@ -22754,15 +22854,23 @@
             fireNext();
         }
 
-        function damageTurretAt(x, y, dmg, attackerUnit) {
+        function _turretLogName(turret) {
+            if (turret.summon) return `${turret.summon === 'hound' ? '🐕' : '🧟'} ${turret.spellName || 'The summon'}`;
+            if (turret.zombie) return '🧟 The flesh abomination';
+            return `🔧 ${turret.auraDebuff ? '5G Tower' : 'Siege Turret'}`;
+        }
+        /* opts.damageType (wave C): an ARMORED summon (the creation) counts a
+           physical blow as half a hit; callers that know the hit's type pass it. */
+        function damageTurretAt(x, y, dmg, attackerUnit, opts = {}) {
             if (!state.turrets) return false;
             const turret = state.turrets.find(t => t.x === x && t.y === y && t.hp > 0);
             if (!turret) return false;
             if (turret.hitsToKill) {
 
-                turret.hp = Math.max(0, turret.hp - 1);
-                addLog(`${turret.zombie ? '🧟 The flesh abomination' : `🔧 ${turret.auraDebuff ? '5G Tower' : 'Siege Turret'}`} at ${coordLabel(x, y)} takes a hit! (${turret.hp}/${turret.maxHp} hits remaining)`);
-                showFloatingTextAtTile(x, y, `-1 HIT`, 'damage', {
+                const _chip = (turret.armored && opts.damageType === 'physical') ? 0.5 : 1;
+                turret.hp = Math.max(0, turret.hp - _chip);
+                addLog(`${_turretLogName(turret)} at ${coordLabel(x, y)} takes a hit!${_chip < 1 ? ' (armored — a physical blow counts half)' : ''} (${turret.hp}/${turret.maxHp} hits remaining)`);
+                showFloatingTextAtTile(x, y, _chip < 1 ? `-½ HIT` : `-1 HIT`, 'damage', {
                     durationMs: 700
                 });
             } else {
@@ -22773,14 +22881,16 @@
                 });
             }
             if (turret.hp <= 0) {
-                addLog(turret.zombie
+                addLog(turret.summon
+                    ? `${_turretLogName(turret)} at ${coordLabel(x, y)} goes down!`
+                    : turret.zombie
                     ? `🧟 The flesh abomination at ${coordLabel(x, y)} collapses into carrion!`
                     : `🔧 ${turret.auraDebuff ? '5G Tower' : turret.spellId === 'siegeTurret' ? 'Siege Turret' : 'Turret'} at ${coordLabel(x, y)} has been destroyed!`);
                 state.turrets = state.turrets.filter(t => t !== turret);
                 if (attackerUnit) addEntropy(attackerUnit.player, ENTROPY_PTS.destructTurret, 'turret', attackerUnit);
                 // 🧱 Wrecked machinery is a metal mine (meat isn't) — the
                 // scrap scatters as debris cubes around the wreck.
-                if (!turret.zombie) {
+                if (!turret.zombie && !turret.summon) {
                     spawnMaterialDrops(x, y, [{ terrain: 'metal' }, { terrain: 'metal' }], { log: false });
                 }
                 scheduleBoardRender();
@@ -23343,6 +23453,90 @@
             return state.units.find(u => u.id === id) || null;
         }
 
+        /* wave C: the legal destinations of an onlyTerrain teleport (Icky
+           Surprise) — that terrain, within range, unoccupied. Shared by the
+           cast gate, the board highlight (ui.js) and the AI. */
+        function getTeleportTerrainTiles(unit, spell) {
+            if (!unit || !spell || !spell.onlyTerrain) return [];
+            const R = getEffectiveSpellRange(unit, spell);
+            const out = [];
+            for (let dy = -R; dy <= R; dy++) {
+                for (let dx = -R; dx <= R; dx++) {
+                    const d = Math.abs(dx) + Math.abs(dy);
+                    if (d < 1 || d > R) continue;
+                    const tx = unit.x + dx, ty = unit.y + dy;
+                    if (!isInside(tx, ty) || !isTerrainPassable(tx, ty)) continue;
+                    if (getTerrainAt(tx, ty) !== spell.onlyTerrain) continue;
+                    if (unitAt(tx, ty)) continue;
+                    if ((state.turrets || []).some(t => t.hp > 0 && t.x === tx && t.y === ty)) continue;
+                    out.push({ x: tx, y: ty });
+                }
+            }
+            return out;
+        }
+        if (typeof window !== 'undefined') window.getTeleportTerrainTiles = getTeleportTerrainTiles;
+
+        /* ── TIMED TERRAIN (Phase 5 wave C, 2026-09-08) ──────────────────
+           Goo Shot / Splash / the Oozing trail paint a tile (or a square) as
+           `cfg.terrain` for `cfg.rounds` rounds, remembering what was there
+           in state._timedTerrain (plain state → state-sync carries it). The
+           round tick (_tickTimedTerrain, from processEndOfRoundZonesAndSeeds)
+           reverts each entry whose expiresRound has come — unless someone
+           has since painted the tile something else. Permanent terrain of
+           the same key (Ooze Trail's slick) is left alone; walls, pits and
+           other liquids are never painted over. */
+        function _paintTimedTerrain(cx, cy, cfg, unit, label) {
+            if (!cfg || !cfg.terrain || typeof TERRAIN_RULES === 'undefined' || !TERRAIN_RULES[cfg.terrain]) return 0;
+            const r = cfg.radius || 0, rounds = cfg.rounds || 3;
+            if (!state._timedTerrain) state._timedTerrain = [];
+            const expires = (state.round || 1) + rounds;
+            let n = 0;
+            for (const t of getSquareArea(cx, cy, r)) {
+                if (!isTerrainPassable(t.x, t.y)) continue;
+                const cur = getTerrainAt(t.x, t.y);
+                if (!cur || cur === 'wall' || cur === 'mountain' || cur === 'chasm' || cur.indexOf('void') === 0) continue;
+                if (typeof liquidFamilyOf === 'function' && liquidFamilyOf(cur) && cur !== cfg.terrain) continue;
+                const ex = state._timedTerrain.find(e => e.x === t.x && e.y === t.y);
+                if (ex) {
+                    ex.expiresRound = Math.max(ex.expiresRound, expires);
+                    if (cur !== cfg.terrain) { ex.terrain = cfg.terrain; setTerrainAt(t.x, t.y, cfg.terrain); }
+                    n++;
+                    continue;
+                }
+                if (cur === cfg.terrain) continue;
+                state._timedTerrain.push({ x: t.x, y: t.y, prev: cur, terrain: cfg.terrain, expiresRound: expires, owner: unit ? unit.player : 0 });
+                setTerrainAt(t.x, t.y, cfg.terrain);
+                if (unit && typeof trackTilesChanged === 'function') trackTilesChanged(unit, 1);
+                n++;
+            }
+            if (n) {
+                state._terrainVersion = (state._terrainVersion || 0) + 1;
+                if (label) addLog(`${label} turns ${n} tile${n !== 1 ? 's' : ''} to ${TERRAIN_RULES[cfg.terrain].label || cfg.terrain} for ${rounds} rounds.`);
+                scheduleBoardRender();
+            }
+            return n;
+        }
+        function _tickTimedTerrain() {
+            if (!state._timedTerrain || !state._timedTerrain.length) return;
+            const r = state.round || 1;
+            const keep = [];
+            let reverted = 0;
+            for (const e of state._timedTerrain) {
+                if (r < e.expiresRound) { keep.push(e); continue; }
+                if (getTerrainAt(e.x, e.y) === e.terrain && e.prev && typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[e.prev]) {
+                    setTerrainAt(e.x, e.y, e.prev);
+                    reverted++;
+                }
+            }
+            state._timedTerrain = keep;
+            if (reverted) {
+                state._terrainVersion = (state._terrainVersion || 0) + 1;
+                addLog(`The ooze dries up on ${reverted} tile${reverted !== 1 ? 's' : ''}.`);
+                scheduleBoardRender();
+            }
+        }
+        if (typeof window !== 'undefined') { window._paintTimedTerrain = _paintTimedTerrain; window._tickTimedTerrain = _tickTimedTerrain; }
+
         function getSquareArea(cx, cy, radius = 1) {
             const out = [];
             for (let dy = -radius; dy <= radius; dy++) {
@@ -23856,7 +24050,7 @@
             let inFriendlySmoke = false;
             for (const zone of state._activeZones) {
                 if (!zone.smokeConcealment || zone.ownerPlayer !== unit.player) continue;
-                const r = zone.radius || 1;
+                const r = (zone.radius ?? 1);
                 if (Math.abs(unit.x - zone.x) > r || Math.abs(unit.y - zone.y) > r) continue;
                 inFriendlySmoke = true;
                 if (!unitHasStatus(unit, 'invisible')) {
@@ -24004,6 +24198,16 @@
                 }
             }
             if (typeof checkPixieDustPickup === 'function') checkPixieDustPickup(unit);
+            /* wave C: terrain that coats whoever steps onto it (the goo tile's
+               enterStatus) — flyers and the ooze itself walk through clean. */
+            {
+                const _er = (typeof TERRAIN_RULES !== 'undefined') ? TERRAIN_RULES[getTerrainAt(unit.x, unit.y)] : null;
+                if (_er && _er.enterStatus && !unit.dead
+                    && !(typeof isUnitAirborne === 'function' ? isUnitAirborne(unit) : canFly(unit))
+                    && !(typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'contactStatus') === _er.enterStatus.id)) {
+                    applyStatusPayload(unit, { id: _er.enterStatus.id, duration: _er.enterStatus.duration || 2 }, `${_er.label}: `);
+                }
+            }
             // 🪢 Roped victims are dragged into the tile this unit just left.
             _tetherFollow(unit, _originX, _originY, _fromZ);
 
@@ -25054,6 +25258,7 @@
                 case 'cleanse':       return 'Select an ally to cleanse with ' + nm + '.';
                 case 'revive':        return 'Select a fallen ally to revive with ' + nm + '.';
                 case 'raiseDead':     return nm + ': select a fallen unit\'s remains — an ally\'s gravestone or an enemy\'s bones — to raise a zombie.';
+                case 'summonUnit':    return nm + ': select an empty tile beside you to call it to.';
                 case 'cannibalize':   return nm + ': select a fallen unit\'s remains within reach to feed on.';
                 case 'possess':       return nm + ': select an enemy to take control of.';
                 case 'shadowRealm':   return nm + ': select an enemy to drag into the Shadow Realm with you.';
@@ -26850,6 +27055,20 @@
             if (['delayed', 'deployObject', 'deployPair', 'aoeShield', 'zoneDebuff', 'zoneHeal', 'terrainCreate', 'dash'].includes(kind)) {
                 return range > 0 || true;
             }
+            if (kind === 'summonUnit') {
+                // wave C: an empty passable tile within reach, and the cap not full
+                const _smCap = spell.maxActivePerCaster || 1;
+                const _smMine = (state.turrets || []).filter(t => t.summon && t.casterUnitId === unit.id && t.spellId === spell.id).length;
+                if (_smMine >= _smCap) return true;   // a re-cast dismisses the old one
+                for (const t of getSquareArea(unit.x, unit.y, range)) {
+                    const d = Math.abs(t.x - unit.x) + Math.abs(t.y - unit.y);
+                    if (d < 1 || d > range) continue;
+                    if (!isTerrainPassable(t.x, t.y) || unitAt(t.x, t.y)) continue;
+                    if ((state.turrets || []).some(tt => tt.hp > 0 && tt.x === t.x && tt.y === t.y)) continue;
+                    return true;
+                }
+                return false;
+            }
 
             // Placement kinds: only castable when at least one tile in range
             // actually ACCEPTS the placement — otherwise the ability menu greys
@@ -26889,6 +27108,7 @@
                     Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y) > 1);
             }
 
+            if (kind === 'teleport' && spell.onlyTerrain) return getTeleportTerrainTiles(unit, spell).length > 0;
             if (kind === 'teleport') {
                 const all = state.units.filter(u => !u.dead);
                 return all.some(u => {
@@ -44894,7 +45114,7 @@
                     if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
                     else animateStrikeLeap(unit, x, y);
                     let damage = Math.max(24, Math.floor(pwrAtk(unit) * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
-                    damageTurretAt(x, y, damage, unit);
+                    damageTurretAt(x, y, damage, unit, { damageType: 'physical' });
                     playSfx('damage');
                     spendAllAP(unit);   // attacking ends the turn
                     state.actionMode = null;
@@ -49459,6 +49679,54 @@
                 addLog(`${unitDisplayName(unit)} raises the remains of ${unitDisplayName(corpse)} — a flesh abomination claws out of the ground! It mauls the nearest unit, friend or foe, at the end of every round (${_zHits} hits to destroy).`, unit.player);
                 scheduleBoardRender();
                 completionDelay = actionMs(900);
+            } else if (spell.kind === 'summonUnit') {
+                /* CHAMP_REWORK Phase 5 wave C (2026-09-08): Whistle (hound) /
+                   Summon Creation. The summon is a WALKING turret — it rides
+                   the whole zombie pipeline (state.turrets, fog, damageTurretAt,
+                   the renderer's _buildTurret, processTurretVolleys) but hunts
+                   ENEMIES only, moves summonDef.move tiles a round, bites for
+                   summonDef.dmg (+ half spell power), reveals invisible enemies
+                   within summonDef.reveals (the Hagstone rule) and, when
+                   armored, counts physical blows as half a hit. One per caster
+                   per spell (maxActivePerCaster) — a new call dismisses the old. */
+                const _sd = spell.summonDef || {};
+                if (!isInside(x, y) || !isTerrainPassable(x, y) || unitAt(x, y)
+                    || (state.turrets || []).some(t => t.hp > 0 && t.x === x && t.y === y)) {
+                    addLog(`${spell.name}: pick an empty tile beside you.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                if (!state.turrets) state.turrets = [];
+                const _sCap = spell.maxActivePerCaster || 1;
+                const _sMine = state.turrets.filter(t => t.summon && t.casterUnitId === unit.id && t.spellId === spell.id);
+                while (_sMine.length >= _sCap) {
+                    const old = _sMine.shift();
+                    addLog(`${old.spellName} at ${coordLabel(old.x, old.y)} is dismissed.`);
+                    state.turrets.splice(state.turrets.indexOf(old), 1);
+                }
+                playSfx(spellLaunchSfx(spell));
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                const _sHits = _sd.hits || 3;
+                const _sName = _sd.name || spell.name;
+                state.turrets.push({
+                    id: `summon_${_sd.key || 'pet'}_${state.round || 0}_${unit.id}_${randInt(99999)}`,
+                    x, y, owner: unit.player, casterUnitId: unit.id,
+                    spellId: spell.id, spellName: _sName,
+                    summon: _sd.key || 'pet', hitsToKill: true, hp: _sHits, maxHp: _sHits,
+                    dmg: (_sd.dmg || 60) + Math.floor(spellPower * 0.5),
+                    range: 1, move: _sd.move || 3, reveals: _sd.reveals || 0, armored: !!_sd.armored,
+                });
+                if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                    && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
+                    if (state.phase === 'battle' && !_skipVisuals()) {
+                        window.ThreeVFXEffects.fire('aura', spell.id, { tx: x, ty: y });
+                    }
+                }
+                showFloatingTextAtTile(x, y, `${_sd.key === 'hound' ? '🐕' : '🧟'} ${_sName.toUpperCase()}`, 'damage', { durationMs: 1200 });
+                addLog(`${unitDisplayName(unit)} calls ${_sName} to ${coordLabel(x, y)}! It hunts the nearest enemy at the end of every round — ${_sd.move || 3} tiles a round, ${_sHits} hits to destroy${_sd.armored ? ', physical blows count half' : ''}${_sd.reveals ? `, sniffs out invisible enemies within ${_sd.reveals}` : ''}.`, unit.player);
+                scheduleBoardRender();
+                completionDelay = actionMs(900);
             } else if (spell.kind === 'bomb') {
                 // Allies may stand on a bomb tile — only the caster's own bombs
                 // are safe to share a tile with (enemy bombs still trigger on step).
@@ -50091,6 +50359,8 @@
                     }
                 }
                 const _barrageWaterMult = (spell.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') ? 1.5 : 1;
+                /* wave C: Splash paints the nova's footprint as timed goo */
+                if (spell.paintTerrain) _paintTimedTerrain(unit.x, unit.y, spell.paintTerrain, unit, spell.name);
                 // Victim list comes from the ONE shared filter (_barrageTargets):
                 // hitsWetOnly, 3D reach and LOS rules live there, so this handler
                 // and the menu greying can never disagree about who gets hit.
@@ -50536,6 +50806,15 @@
                             spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell)
                         });
                     }, Math.max(0, _yankDelayMs - actionMs(80)));
+                }
+                /* Phase 5 wave C (2026-09-08): the pull's own statusEffects
+                   (Lasso's rope, `tethered`) land as the yank does — the branch
+                   never applied them before (Lasso's old Stagger never stuck). */
+                if (spell.statusEffects && spell.statusEffects.length) {
+                    window.setTimeout(() => {
+                        if (target.dead || target._dying) return;
+                        applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
+                    }, Math.max(0, _yankDelayMs || 0));
                 }
                 addLog(`${unitDisplayName(unit)} pulls ${unitDisplayName(target)} ${pulled} tile${pulled !== 1 ? 's' : ''}.`);
 
@@ -52264,6 +52543,13 @@
                     }
                     if (!isInside(x, y) || !isTerrainPassable(x, y)) {
                         addLog('Cannot teleport there.');
+                        playErrorSfx();
+                        return 0;
+                    }
+                    /* wave C: onlyTerrain (Icky Surprise) — destinations are
+                       that terrain only; LOS never mattered for teleports. */
+                    if (spell.onlyTerrain && getTerrainAt(x, y) !== spell.onlyTerrain) {
+                        addLog(`${spell.name}: only ${(typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[spell.onlyTerrain]?.label) || spell.onlyTerrain} tiles will do.`);
                         playErrorSfx();
                         return 0;
                     }

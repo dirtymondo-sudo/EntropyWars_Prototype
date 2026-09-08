@@ -22858,6 +22858,25 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['raceTreelineRetreat']  = Object.assign({}, SPELL_MAP['raceEject']);             /* bigfoot — escape */
     SPELL_MAP['raceTransform']        = Object.assign({}, SPELL_MAP['overclock']);             /* sedan — the morph aura */
 
+    /* ── CHAMP_REWORK_PLAN Phase 5 wave C (2026-09-08): summons, tethers,
+       terrain. Family aliases again — each new id borrows the recipe of the
+       kin it plays like. ── */
+    SPELL_MAP['raceDynamite']         = Object.assign({}, SPELL_MAP['raceFanTheHammer']);      /* cowboy — the blast (the bomb prop rides projectileOverride) */
+    SPELL_MAP['raceWhistle']          = Object.assign({}, SPELL_MAP['raceHowl']);              /* cowboy — the call */
+    SPELL_MAP['raceSummonCreation']   = Object.assign({}, SPELL_MAP['raceTeslaTrap']);         /* mad scientist — the spark of life */
+    SPELL_MAP['raceMonsterSerum']     = Object.assign({}, SPELL_MAP['overclock']);             /* mad scientist — the serum aura */
+    SPELL_MAP['raceGooShot']          = Object.assign({}, SPELL_MAP['raceCorrosiveSplash']);   /* black goo — the glob */
+    SPELL_MAP['raceIckySurprise']     = Object.assign({}, SPELL_MAP['raceCorpseCrawl']);       /* black goo — melts into the floor */
+    SPELL_MAP['raceSplash']           = Object.assign({}, SPELL_MAP['raceToxicNova']);         /* black goo — the burst */
+    SPELL_MAP['raceSparkle']          = Object.assign({}, SPELL_MAP['raceGlitterburst']);      /* fairy — gold dust */
+    SPELL_MAP['raceFairyDust']        = Object.assign({}, SPELL_MAP['raceHowl']);              /* fairy — the lift, an aura */
+    SPELL_MAP['raceGlitterBomb']      = Object.assign({}, SPELL_MAP['raceFaeRing']);           /* fairy — the kaleidoscope */
+    SPELL_MAP['raceFrenzy']           = Object.assign({}, SPELL_MAP['raceGhoulishBite']);      /* ghoul — the bite */
+    SPELL_MAP['raceFear']             = Object.assign({}, SPELL_MAP['raceDragonfear']);        /* ghoul — the terror nova */
+    SPELL_MAP['raceTerrorPounce']     = Object.assign({}, SPELL_MAP['raceBloodFrenzy']);       /* ghoul — the predator cam */
+    SPELL_MAP['raceTsunami']          = Object.assign({}, SPELL_MAP['sharedTidalSurge']);      /* atlantean — the wall of water */
+    SPELL_MAP['raceDragonBreath']     = Object.assign({}, SPELL_MAP['raceDragonfire']);        /* dragon — the short gout */
+
     /* ═════════ END VFX PASS-3 COVERAGE SECTION ═════════ */
 
     return {

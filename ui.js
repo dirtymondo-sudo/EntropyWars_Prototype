@@ -972,7 +972,7 @@
 
       const ts = CONFIG.tileSize;
       const _wKey = (state.activeWeather || []).map(w => w.id + ':' + w.tiles.length + ':' + (w.tiles[0] ? w.tiles[0].x + ',' + w.tiles[0].y : '')).join('|');
-      const _zKey = (state._activeZones || []).map(z => (z.spellName || z.type) + ':' + z.x + ',' + z.y + ':' + (z.radius || 1) + ':' + (z.duration ?? '')).join('|');
+      const _zKey = (state._activeZones || []).map(z => (z.spellName || z.type) + ':' + z.x + ',' + z.y + ':' + (z.radius ?? 1) + ':' + (z.duration ?? '')).join('|');
       const _dKey = (state._delayedSpells || []).map(d => (d.spellName || 'delayed') + ':' + d.x + ',' + d.y + ':' + (d.aoeRadius || 1) + ':' + (d.roundsLeft ?? '')).join('|');
       const cacheKey = ts + '|' + (_isDiorama ? 'D' : 'F') + '|W' + _wKey + '|Z' + _zKey + '|D' + _dKey;
       const _svgHasContent = weatherOutlineSvg.children.length > 0;
@@ -1002,7 +1002,7 @@
         }
 
         for (const zone of (state._activeZones || [])) {
-          const r = zone.radius || 1;
+          const r = (zone.radius ?? 1);
           const tiles = _squareTilesFor(zone.x, zone.y, r);
           const color = getZoneOutlineColor(zone);
           _zoneGroups.push({ tiles, color, dashed: false, spellName: zone.spellName || '' });
@@ -1129,7 +1129,7 @@
       }
 
       for (const zone of (state._activeZones || [])) {
-        const r = zone.radius || 1;
+        const r = (zone.radius ?? 1);
         const tiles = _squareTilesFor(zone.x, zone.y, r);
         const color = getZoneOutlineColor(zone);
         _drawOutline(tiles, color, { strokeWidth: 2.5 });
@@ -3013,7 +3013,8 @@
                     const occupant = _liveUnitMap.get(pk2);
                     if (cx === state._teleportingUnit.x && cy === state._teleportingUnit.y) {
                       _hlCache.set(pk2, 'selected');
-                    } else if (!occupant && isTerrainPassable(cx, cy)) {
+                    } else if (!occupant && isTerrainPassable(cx, cy)
+                               && (!spell.onlyTerrain || getTerrainAt(cx, cy) === spell.onlyTerrain)) {   // wave C: Icky Surprise → goo only
                       _hlCache.set(pk2, 'move');
                     }
                   }
@@ -8488,7 +8489,7 @@
         let _slbMpSearch = '';
         let _slbRawOpen = false;
 
-        const _SLB_KINDS = ['damage','tackle','transform','possess','link','shadowRealm','transfer','cannibalize','buff','aoe','debuff','terrainCreate','line','dash','lifeDrain','barrage','warCry','aoeShield','zoneDebuff','escape','cross','deployObject','leapStrike','teleport','heal','healAll','multiHit','delayed','summonWeather','aoePull','deployTurret','displacement','swap','skyThrow','selfHeal','pull','ricochet','zoneHeal','skyDrop','linePush','shield','revive','placeTrap','deployPair','utility','skySlam','scan','bomb','seedHeal','seedPoison','warpRune','leechSeed','remoteView','encore','cleanse','trickRoom','guard','manaRestoreAll','splitBeam','placeMirror','tuneFrequency','pulseLattice','rallyPull','raiseDead','placeBlock','buildStructure'];
+        const _SLB_KINDS = ['damage','tackle','transform','possess','link','shadowRealm','transfer','cannibalize','summonUnit','buff','aoe','debuff','terrainCreate','line','dash','lifeDrain','barrage','warCry','aoeShield','zoneDebuff','escape','cross','deployObject','leapStrike','teleport','heal','healAll','multiHit','delayed','summonWeather','aoePull','deployTurret','displacement','swap','skyThrow','selfHeal','pull','ricochet','zoneHeal','skyDrop','linePush','shield','revive','placeTrap','deployPair','utility','skySlam','scan','bomb','seedHeal','seedPoison','warpRune','leechSeed','remoteView','encore','cleanse','trickRoom','guard','manaRestoreAll','splitBeam','placeMirror','tuneFrequency','pulseLattice','rallyPull','raiseDead','placeBlock','buildStructure'];
         const _SLB_TYPES = ['damage', 'utility', 'buff', 'debuff', 'heal'];
         const _SLB_SPELLTYPES = ['anomaly', 'human', 'unholy', 'tech', 'alien', 'divine'];
         const _SLB_ELEMENTS = ['fire','water','ice','lightning','earth','wind','nature','poison','light','shadow','arcane','psychic','sonic','metal','blood'];

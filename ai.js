@@ -1340,7 +1340,7 @@
                     if (priorUses >= 2) { c.score = -999; continue; }
                     if (priorUses >= 1) c.score *= 0.15;
                 }
-                const nonRepeatableKinds = ['swap', 'terrainCreate', 'summonWeather', 'deployObject',
+                const nonRepeatableKinds = ['swap', 'terrainCreate', 'summonWeather', 'deployObject', 'summonUnit',
                     'deployPair', 'warpRune', 'remoteView', 'scan', 'encore',
                     'placeTrap', 'placeBlock', 'buildStructure', 'tuneFrequency', 'pulseLattice'];
                 if (nonRepeatableKinds.includes(c.spell.kind) && hasUsedSpellKind(c.spell.kind)) {
@@ -2294,6 +2294,16 @@
             if (!target) return 0;
             const nearEnemy = v.visibleEnemies.some(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 4);
             return nearEnemy ? 160 : 90;
+        }
+        if (kind === 'summonUnit') {
+            // wave C: a walking summon is worth calling when there is someone
+            // for it to hunt; never while the caster's own one still stands.
+            if (!target) return 0;
+            const _smActive = (g.state.turrets || []).filter(t => t.summon && t.hp > 0 && t.casterUnitId === unit.id && t.spellId === spell.id).length;
+            if (_smActive >= (spell.maxActivePerCaster || 1)) return 0;
+            if (!v.visibleEnemies.length) return 0;
+            const _smNear = v.visibleEnemies.some(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 6);
+            return _smNear ? 150 : 70;
         }
 
         if (kind === 'shield' && target) {
@@ -4229,6 +4239,29 @@
             return remains[0] || null;
         }
 
+        if (kind === 'summonUnit') {
+            // wave C: the free adjacent tile nearest the closest visible enemy.
+            const _smActive = (g.state.turrets || []).filter(t => t.summon && t.hp > 0 && t.casterUnitId === unit.id && t.spellId === spell.id).length;
+            if (_smActive >= (spell.maxActivePerCaster || 1)) return null;
+            const R = _effRange(unit, spell) || 1;
+            let bestTile = null, bestD = Infinity;
+            for (let dy = -R; dy <= R; dy++) {
+                for (let dx = -R; dx <= R; dx++) {
+                    const d = Math.abs(dx) + Math.abs(dy);
+                    if (d < 1 || d > R) continue;
+                    const tx = unit.x + dx, ty = unit.y + dy;
+                    if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) continue;
+                    if (typeof g.isTerrainPassable === 'function' && !g.isTerrainPassable(tx, ty)) continue;
+                    if (g.unitAt(tx, ty)) continue;
+                    if ((g.state.turrets || []).some(t => t.hp > 0 && t.x === tx && t.y === ty)) continue;
+                    let nd = Infinity;
+                    for (const e of v.visibleEnemies) nd = Math.min(nd, Math.abs(e.x - tx) + Math.abs(e.y - ty));
+                    if (nd < bestD) { bestD = nd; bestTile = { x: tx, y: ty }; }
+                }
+            }
+            return bestTile;
+        }
+
         if (kind === 'raiseDead') {
             const remains = g.state.units.filter(u => u.dead && !u._corpseConsumed)
                 .filter(d => Math.abs(d.x - unit.x) + Math.abs(d.y - unit.y) <= _effRange(unit, spell))
@@ -4415,6 +4448,8 @@
                     if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) continue;
                     if (g.unitAt(tx, ty)) continue;
                     if (typeof g.isTerrainPassable === 'function' && !g.isTerrainPassable(tx, ty)) continue;
+                    // wave C: onlyTerrain (Icky Surprise) — goo tiles only
+                    if (spell.onlyTerrain && g.getTerrainAt(tx, ty) !== spell.onlyTerrain) continue;
                     let val = 0;
                     if (hurt) {
                         let nd = Infinity;

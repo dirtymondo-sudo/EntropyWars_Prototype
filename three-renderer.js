@@ -3951,7 +3951,73 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    /* ── WAVE C SUMMONS (2026-09-08): the cowboy's hound + the mad
+       scientist's creation. Both live in state.turrets (summon: 'hound' |
+       'creation') and ride the turret pipeline exactly like the zombie. The
+       creation is the flesh abomination re-dressed (grey-green skin, neck
+       bolts, a stitched seam); the hound is a low box-kit quadruped —
+       placeholders until the owner's models land (plan §9.6). */
+    function _buildSummon3D(turret) {
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(turret.x, turret.y);
+        if (turret.summon === 'creation') {
+            var gz = _buildZombie3D(turret);
+            gz.traverse(function (m) {
+                if (m.isMesh && m.material && m.material.color && m.material.map) m.material.color.setHex(0x9fb894);
+            });
+            var boltMat = new THREE.MeshLambertMaterial({ color: 0x8a9099 });
+            for (var b = -1; b <= 1; b += 2) {
+                var bolt = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.02, ts * 0.09, 6), boltMat);
+                bolt.rotation.z = Math.PI / 2;
+                bolt.position.set(b * ts * 0.12, ts * 0.42, -ts * 0.2);
+                gz.add(bolt);
+            }
+            var seam = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.03, ts * 0.22, ts * 0.03),
+                new THREE.MeshBasicMaterial({ color: 0x2a2a30 }));
+            seam.position.set(0, ts * 0.32, -ts * 0.24);
+            gz.add(seam);
+            return gz;
+        }
+        var g = new THREE.Group();
+        var fur = new THREE.MeshLambertMaterial({ color: 0x6b4a2b });
+        var dark = new THREE.MeshLambertMaterial({ color: 0x3a2a18 });
+        var body = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.22, ts * 0.16, ts * 0.42), fur);
+        body.position.set(0, ts * 0.26, 0);
+        g.add(body);
+        var head = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.16, ts * 0.14, ts * 0.18), fur);
+        head.position.set(0, ts * 0.36, -ts * 0.26);
+        g.add(head);
+        var snout = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.09, ts * 0.07, ts * 0.12), dark);
+        snout.position.set(0, ts * 0.33, -ts * 0.4);
+        g.add(snout);
+        for (var e = -1; e <= 1; e += 2) {
+            var ear = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.04, ts * 0.08, ts * 0.03), dark);
+            ear.position.set(e * ts * 0.06, ts * 0.46, -ts * 0.24);
+            ear.rotation.x = -0.4;
+            g.add(ear);
+            var eye = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.015, 5, 4),
+                new THREE.MeshBasicMaterial({ color: 0xffd060, fog: false }));
+            eye.position.set(e * ts * 0.05, ts * 0.38, -ts * 0.35);
+            g.add(eye);
+        }
+        for (var lx = -1; lx <= 1; lx += 2) {
+            for (var lz = -1; lz <= 1; lz += 2) {
+                var leg = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.05, ts * 0.2, ts * 0.05), dark);
+                leg.position.set(lx * ts * 0.08, ts * 0.1, lz * ts * 0.15);
+                g.add(leg);
+            }
+        }
+        var tail = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.03, ts * 0.03, ts * 0.16), fur);
+        tail.position.set(0, ts * 0.34, ts * 0.27);
+        tail.rotation.x = 0.7;
+        g.add(tail);
+        if (turret.facingAngle != null) g.rotation.y = -turret.facingAngle + Math.PI / 2;
+        g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
+        g._ew_turretId = turret.id;
+        return g;
+    }
+
     function _buildTurret(turret) {
+        if (turret.summon) return _buildSummon3D(turret);
         if (turret.zombie) return _buildZombie3D(turret);
         if (turret.spellId === 'fiveGTower') return _buildFiveGTower(turret);
 
@@ -25894,8 +25960,8 @@ const ThreeRenderer = (function () {
         var zKey = '';
         for (var zi = 0; zi < zones.length; zi++) {
             var z = zones[zi];
-            zKey += (z.spellName || z.type) + ':' + z.x + ',' + z.y + ':' + (z.radius || 1)
-                 + ':' + _zHeightSig(z.x, z.y, z.radius || 1) + '|';
+            zKey += (z.spellName || z.type) + ':' + z.x + ',' + z.y + ':' + ((z.radius != null ? z.radius : 1))
+                 + ':' + _zHeightSig(z.x, z.y, (z.radius != null ? z.radius : 1)) + '|';
         }
         for (var di = 0; di < delayed.length; di++) {
             var d = delayed[di];
@@ -25918,7 +25984,7 @@ const ThreeRenderer = (function () {
 
             for (var zzi = 0; zzi < zones.length; zzi++) {
                 var zz = zones[zzi];
-                var zr = zz.radius || 1;
+                var zr = (zz.radius != null ? zz.radius : 1);
                 var zcol = _ZONE_OVERLAY_NAMES[zz.spellName] || _ZONE_OVERLAY_COLORS[zz.type] || 0xdcc8a0;
                 var zInfo = _buildZoneBorderEdges(zz.x, zz.y, zr);
                 _renderZoneBorderGroup(zInfo, zcol);
