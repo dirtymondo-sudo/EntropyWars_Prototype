@@ -142,16 +142,30 @@ That's why online kept drifting behind VS-CPU. So, for EVERY change:
   launch map without one, or a door that duplicates its room's number.
   Adding a site = a `roomNo` + `why` on its threshold (plan 7.3 has the
   number; 7.10 the checklist).
-  **SEVEN BAYS + THE CONTAINMENT RING (plan 7.5 + 5.4a stage 1, shipped
-  2026-09-07)**: `DOOR_HQ.sectors` has seven bays (Bay 7 · URBAN on the
-  mezzanine at 180°); every bay's end caps wear fire doors into the next
-  bay on the same egress floor (`hqBayRing(sector)` → cw/ccw neighbours;
-  `hqBayRoom` hangs `cap_cw` / `cap_ccw` with `cap: 'cw'|'ccw'` and an
-  `action: { sector, at }`; three-renderer.js `_hqCapWall` places a cap
-  door as a flat wall like a box-room door). Moving a map between bays =
-  edit `sectors` only — everything else derives. Kill-switch:
-  `bayShell.ring: false`. Stage 2 (one continuous ring corridor) is
-  planned in the HQ plan 5.4a, after 7.2.
+  **SEVEN BAYS + THE CONTAINMENT RING (plan 7.5 + 5.4a, shipped
+  2026-09-07 / stage 2 2026-09-08)**: `DOOR_HQ.sectors` has seven bays
+  (Bay 7 · URBAN on the mezzanine at 180°). Since 5.4a stage 2 the bays
+  of one egress floor are ONE room: `bayShell.corridor` (`on`, `rings`
+  per level with rIn/rOut just outside the egress drum, `endPadM`,
+  `gapM`, `arc` override, `close`) → `hqRingLayout(level)` (each bay a
+  SEGMENT: its egress door on the inner wall at the SAME angle as on the
+  egress, its thresholds a `spacing` run on the outer wall centred on it,
+  runs relaxed apart, the break at the widest gap) → `hqRingRoom(level)`
+  (`rooms.ring_g` / `ring_m`, still `kind: 'bay'`; `segments`,
+  `shell.full`). READ the room through `hqBayId(sector)` (→ the floor's
+  ring) and land through `hqBayEntry(sector)` (→ `egress_<sector>`) —
+  never hard-code `'egress'` or `bay_<sector>` for a bay; `hqBayNo
+  (sector)` for its number (no room wears `bayNo` any more);
+  `hqRingSectorAt(room, deg)` names the bay you stand in (map.js uses it
+  for the overheard lines); `hqRingSpot(sector, spot)` carries a
+  bay-frame prop / cast spot into the ring (Sedaniel). The caps wear the
+  stage-1 fire door to EACH OTHER (`{ room: ring, at: cap_* }`). The
+  stage-1 rooms (`hqBayRoom` → `bay_<sector>`, cap doors via
+  `hqBayRing` into the neighbour bay, `_hqCapWall`) stay registered and
+  come back with `corridor.on: false`; `bayShell.ring: false` kills both
+  stages. Moving a map between bays = edit `sectors` only — everything
+  else derives. doorhq.test.js checks the layout (no door overlaps,
+  every launch map once on the rings, the segments, the caps).
   **THE WALKABLE SITE (plan 7.2 stage 1, shipped 2026-09-07)**: a site
   listed in `DOOR_HQ.siteRooms.built` (since stage 6, 2026-09-08 rev 4,
   ALL 29 launch maps — doorhq.test.js insists every threshold id is

@@ -10,7 +10,7 @@
 // the browser runs with no proxy and every CDN asset is fetched Node-side (which does work
 // through the proxy) into .asset-cache/ and fulfilled from there. See PLAYTEST_NOTES.md.
 // Usage: node playtest_hq.js <room> [force-json] [tag]
-//   room: central_egress | office | training | bay_terrestrial
+//   room: central_egress | office | training | ring_g | ring_m (the containment ring per floor) | bay_terrestrial (the stage-1 bay, corridor off)
 //   force-json: {"belle":1,"kit":1,"elle":0,...}  (spot index per member, -1 = absent)
 const fs = require('fs'), path = require('path');
 const REPO = __dirname;

@@ -29509,11 +29509,13 @@ const ThreeRenderer = (function () {
             G.add(_hqArcBand(rOut - 0.05, b[0], b[1], a0, a1, trimOut));
             G.add(_hqArcBand(rIn + 0.05, b[0], b[1], a0, a1, trimIn));
         });
-        /* end caps: a slab across the corridor at each end, dado + trim strips on its inward face */
+        /* end caps: a slab across the corridor at each end, dado + trim strips
+           on its inward face (a FULL ring — the containment ring closed by
+           hand, HQ plan 5.4a stage 2 — has no ends) */
         var capMat = _hqMat(texWall, (rOut - rIn) / 3.2, WH / 3.2);
         var capTrim = _hqMat(texTrim, 3, 1, { shininess: 40, specular: 0x555555 });
         var capDado = _hqMat(texDado, 2, 1, { shininess: 14 });
-        [a0, a1].forEach(function (a, i) {
+        (S.full ? [] : [a0, a1]).forEach(function (a, i) {
             var inward = (i === 0) ? 1 : -1;   // toward the corridor's interior, along the local x axis
             var cap = _hqBox(0.3, WH, rOut - rIn + 0.1, capMat);
             cap.position.copy(_hqPolarW(a, mid, WH / 2));
@@ -31317,9 +31319,9 @@ const ThreeRenderer = (function () {
                 if (sc) { if (!sc.walk) return null; if (sc.top < 0) y = sc.top; }
             }
         } else if (room.kind === 'bay') {
-            /* a corridor: between the two wall arcs, short of the end caps */
+            /* a corridor: between the two wall arcs, short of the end caps (a full ring has none) */
             var capPad = ((0.15 + HQ_BODY_R) / Math.max(1, r)) * 180 / Math.PI;
-            if (!_hqWithinArc(deg, S.arc[0] + capPad, S.arc[1] - capPad, 0)) return null;
+            if (!S.full && !_hqWithinArc(deg, S.arc[0] + capPad, S.arc[1] - capPad, 0)) return null;
             if (r < S.rIn + HQ_BODY_R + 0.08 || r > S.rOut - HQ_BODY_R - 0.08) return null;
             y = 0;
         } else {
@@ -31462,7 +31464,7 @@ const ThreeRenderer = (function () {
         } else if (room.kind === 'bay') {
             var deg = _hqNormDeg(Math.atan2(x, -z) * 180 / Math.PI);
             var capPad = ((0.15 + HQ_BODY_R) / Math.max(1, r)) * 180 / Math.PI;
-            if (!_hqWithinArc(deg, S.arc[0] + capPad, S.arc[1] - capPad, 0)) return false;
+            if (!S.full && !_hqWithinArc(deg, S.arc[0] + capPad, S.arc[1] - capPad, 0)) return false;
             if (r < S.rIn + HQ_BODY_R + 0.08 || r > S.rOut - HQ_BODY_R - 0.08) return false;
         } else {
             var wallR = (y > S.wallH * 0.6) ? S.mezz.outer : S.radius;
@@ -31493,6 +31495,7 @@ const ThreeRenderer = (function () {
         if (_hq.room.kind === 'bay') {
             if (r > S.rOut - 0.28 || r < S.rIn + 0.28) return true;
             if (py > S.wallH - 0.3 || py < 0.22) return true;
+            if (S.full) return false;
             var cp = (0.4 / Math.max(1, r)) * 180 / Math.PI;
             var dg = _hqNormDeg(Math.atan2(px, -pz) * 180 / Math.PI);
             return !_hqWithinArc(dg, S.arc[0] + cp, S.arc[1] - cp, 0);
@@ -32094,9 +32097,13 @@ const ThreeRenderer = (function () {
             sc.add(new THREE.HemisphereLight(0xe3e9f2, 0x24222a, 0.74));
             var bkey = new THREE.DirectionalLight(0xf2f5ff, 0.3); bkey.position.set(0.2, 1, 0.3).multiplyScalar(1000); sc.add(bkey);
             var bmid = (S.rIn + S.rOut) / 2, bspan = S.arc[1] - S.arc[0];
-            var nb = Math.max(2, Math.round(bspan / 32));
+            /* one point light per ~6 m of a short bay; the CONTAINMENT RING
+               (plan 5.4a stage 2, up to ~130 m of hallway) spaces them ~12 m
+               apart and stops at eight — the shell's own strips carry the rest */
+            var blen = _hqRad(bspan) * bmid;
+            var nb = (blen > 40) ? Math.max(4, Math.min(8, Math.round(blen / 12))) : Math.max(2, Math.round(bspan / 32));
             for (var bl = 0; bl < nb; bl++) {
-                var bpl = new THREE.PointLight(0xe6eeff, 0.42, 13 * U, 2);
+                var bpl = new THREE.PointLight(0xe6eeff, 0.42, (blen > 40 ? 16 : 13) * U, 2);
                 bpl.position.copy(_hqPolarW(S.arc[0] + bspan * (bl + 0.5) / nb, bmid, S.wallH - 0.5));
                 sc.add(bpl);
             }

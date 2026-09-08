@@ -16514,6 +16514,36 @@ const DOOR_HQ = {
         floor: 'concrete', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
         ring: true,                // the bays link end to end (plan 5.4a); false = dead-end caps as before
         ringLeaf: 'leaf_wired_double',   // the fire door on every linked cap (wide; the 4 m cap takes a 3.3 m panel)
+        /* THE CONTAINMENT RING, stage 2 (HQ plan 5.4a, 2026-09-08): ONE
+           continuous corridor per floor of the egress instead of a room per
+           bay. The ring is framed in the egress's own polar frame just
+           outside its drum — the ground ring behind the lower wall (r 21),
+           the mezzanine ring behind the upper drum (r 24) — so every bay
+           door on the egress wall is the ring's inner-wall door at the SAME
+           angle, and the bay's thresholds spread along the outer wall
+           either side of it. hqRingLayout(level) lays the bays out as
+           SEGMENTS of the one hallway (a bay's door run is centred on its
+           egress door and nudged only where two runs would collide),
+           hqRingRoom(level) builds the room (kind 'bay' — the arc shell,
+           the walking surface and the door placement take any span), and
+           hqBayId(sector) resolves to the ring of the bay's floor, so every
+           consumer (the egress door, the site rooms' way back, the panels,
+           the directory, Code Red, the cast) follows without a change. The
+           ring wraps only the bays' arcs (`endPadM` of blank wall past the
+           outermost threshold, then a cap); with `close` the two caps wear
+           the stage-1 fire door to EACH OTHER — the ring continues past the
+           service core, which is not on the plan. `arc[level]` = a hand
+           span override ([deg0, deg1], deg1 may pass 360; a span of 360
+           closes the circle and drops the caps). Kill-switch: `on: false`
+           restores the stage-1 bays (one room each, cap doors between). */
+        corridor: {
+            on: true,
+            rings: { 0: { rIn: 21.5, rOut: 25.5, id: 'ring_g', floor: 'GROUND FLOOR' }, 1: { rIn: 24.5, rOut: 28.5, id: 'ring_m', floor: 'MEZZANINE' } },
+            endPadM: 2.2,             // metres of blank outer wall past the outermost threshold, before the cap
+            gapM: 2.6,                // the least outer wall between two bays' door runs (room for a cabinet)
+            arc: { 0: null, 1: null },
+            close: true,              // the caps wear a fire door to each other (a door-blink across the service side)
+        },
     },
     /* Which leaf hangs on each threshold (HQ plan §5.3 C: "more thresholds
        per map"). Unlisted maps fall back to `leaf_closet_alt`. Rank leaves
@@ -18026,7 +18056,32 @@ function hqMissionPool(mapId, n) {
    breaker panel, plants by the way out) and the bay's own extras. Door
    `side: 'in'` = hangs on the inner wall and faces OUTWARD; `action:
    {mission: mapId}` = a threshold. */
-function hqBayId(sector) { return 'bay_' + sector; }
+/* THE CONTAINMENT RING stage 2 (HQ plan 5.4a, 2026-09-08): with
+   bayShell.corridor.on the bays of one floor are ONE room — hqBayId(sector)
+   is the ring of the bay's floor and hqBayEntry(sector) the id of that
+   bay's egress door in it ('egress_<sector>'); off, the stage-1 bay room
+   ('bay_<sector>') with its single 'egress' door. Every consumer that walks
+   into a bay goes through these two. hqBayNo(sector) reads the bay's
+   number off its egress door (BAY 4 · CELESTIAL → 4) — the ring room has
+   no single number, so nobody reads `room.bayNo` any more. */
+function hqCorridorOn() { const B = DOOR_HQ.bayShell || {}; return !!(B.ring && B.corridor && B.corridor.on); }
+function hqBayDoor(sector) {
+    const egress = DOOR_HQ.rooms.central_egress;
+    return ((egress && egress.doors) || []).find(d => d.action && d.action.sector === sector) || null;
+}
+function hqBayLevel(sector) { const d = hqBayDoor(sector); return d ? (d.level || 0) : 0; }
+function hqBayNo(sector) {
+    const d = hqBayDoor(sector);
+    const m = d && (d.label || '').match(/BAY\s*(\d+)/);
+    return m ? +m[1] : null;
+}
+function hqRingId(level) {
+    const C = (DOOR_HQ.bayShell || {}).corridor || {};
+    const R = (C.rings || {})[level || 0];
+    return (R && R.id) || ('ring_' + (level ? 'm' : 'g'));
+}
+function hqBayId(sector) { return hqCorridorOn() && DOOR_HQ.sectors[sector] ? hqRingId(hqBayLevel(sector)) : 'bay_' + sector; }
+function hqBayEntry(sector) { return hqCorridorOn() ? 'egress_' + sector : 'egress'; }
 /* THE CONTAINMENT RING (HQ plan 5.4a): the bays on one floor of the egress
    link end to end, ordered by their egress-door angle (clockwise = the
    increasing direction). hqBayRing(sector) → { level, cw, ccw, count } —
@@ -18130,7 +18185,202 @@ function hqBayRoom(sectorKey) {
         spawn: { deg: 0, r: B.rIn + 2.2, level: 0, face: 0 },
     };
 }
-Object.keys(DOOR_HQ.sectors).forEach(k => { DOOR_HQ.rooms[hqBayId(k)] = hqBayRoom(k); });
+Object.keys(DOOR_HQ.sectors).forEach(k => { DOOR_HQ.rooms['bay_' + k] = hqBayRoom(k); });
+/* ── THE CONTAINMENT RING, stage 2 (HQ plan 5.4a, 2026-09-08) ───────────
+   hqRingLayout(level) → { level, id, rIn, rOut, mid, arc: [a0, a1], full,
+   stepDeg, segments: [{ sector, deg, c, n, w, from, to, bayNo, label,
+   door }] } or null. The bays on that floor of the egress, sorted by their
+   door angle; each bay is a DOOR RUN of n thresholds `spacing` metres apart
+   on the outer wall (w degrees wide), centred on its egress door (deg) —
+   the runs are relaxed apart where two would stand closer than `gapM`
+   (c = the run's centre after that), the ring's BREAK is the largest gap
+   between runs (the order starts after it and the angles run upward past
+   360 where they must), and the arc is the first run's start to the last
+   run's end plus `endPadM` each way (or `arc[level]` by hand; ≥ 360 - gap
+   = a full circle, `full`). A segment's bounds are the midpoints of the
+   gaps to its neighbours (the caps for the first and last), so
+   hqRingSectorAt(room, deg) can name the bay you stand in. */
+function hqRingLayout(level) {
+    const B = DOOR_HQ.bayShell || {}, C = B.corridor || {};
+    if (!hqCorridorOn()) return null;
+    level = level || 0;
+    const R = (C.rings || {})[level];
+    if (!R) return null;
+    const egress = DOOR_HQ.rooms.central_egress;
+    const bayDoors = ((egress && egress.doors) || []).filter(d => d.action && d.action.sector && DOOR_HQ.sectors[d.action.sector] && (d.level || 0) === level).sort((a, b) => a.deg - b.deg);
+    if (!bayDoors.length) return null;
+    const rIn = R.rIn, rOut = R.rOut, mid = (rIn + rOut) / 2;
+    const degPerM = 180 / Math.PI / rOut;   // outer-wall degrees per metre
+    const stepDeg = B.spacing * degPerM;
+    const gapDeg = (C.gapM != null ? C.gapM : 2.6) * degPerM;
+    const padDeg = (C.endPadM != null ? C.endPadM : 2.2) * degPerM;
+    let groups = bayDoors.map(d => {
+        const n = DOOR_HQ.sectors[d.action.sector].maps.length;
+        return { sector: d.action.sector, deg: d.deg, c: d.deg, n: n, w: n * stepDeg, door: d, bayNo: hqBayNo(d.action.sector), label: d.label || ('BAY · ' + DOOR_HQ.sectors[d.action.sector].label) };
+    });
+    if (groups.length > 1) {
+        /* the break: start the linear order after the widest gap between runs */
+        let bi = 0, best = -Infinity;
+        for (let i = 0; i < groups.length; i++) {
+            const a = groups[i], b = groups[(i + 1) % groups.length];
+            const gap = (b.c - b.w / 2) - (a.c + a.w / 2) + ((i === groups.length - 1) ? 360 : 0);
+            if (gap > best) { best = gap; bi = i; }
+        }
+        groups = groups.slice(bi + 1).concat(groups.slice(0, bi + 1));
+        for (let i = 1; i < groups.length; i++) while (groups[i].c < groups[i - 1].c) groups[i].c += 360;
+        /* relax: two runs closer than the gap push each other apart, half each */
+        for (let pass = 0; pass < 40; pass++) {
+            let moved = false;
+            for (let i = 1; i < groups.length; i++) {
+                const a = groups[i - 1], b = groups[i];
+                const need = (a.c + a.w / 2 + gapDeg) - (b.c - b.w / 2);
+                if (need > 1e-6) { a.c -= need / 2; b.c += need / 2; moved = true; }
+            }
+            if (!moved) break;
+        }
+    }
+    groups.forEach(g => { g.c = Math.round(g.c * 100) / 100; });
+    const first = groups[0], last = groups[groups.length - 1];
+    let a0 = first.c - first.w / 2 - padDeg, a1 = last.c + last.w / 2 + padDeg;
+    const over = C.arc && C.arc[level];
+    if (over && over.length === 2) { a0 = over[0]; a1 = over[1]; }
+    let full = false;
+    if (a1 - a0 >= 360 - gapDeg) { full = true; a1 = a0 + 360; }
+    a0 = Math.round(a0 * 100) / 100; a1 = Math.round(a1 * 100) / 100;
+    const segments = groups.map((g, i) => {
+        const prev = groups[i - 1], next = groups[i + 1];
+        const from = prev ? Math.round(((prev.c + prev.w / 2) + (g.c - g.w / 2)) / 2 * 100) / 100 : a0;
+        const to = next ? Math.round(((g.c + g.w / 2) + (next.c - next.w / 2)) / 2 * 100) / 100 : a1;
+        return { sector: g.sector, deg: g.deg, c: g.c, n: g.n, w: Math.round(g.w * 100) / 100, from: from, to: to, bayNo: g.bayNo, label: g.label, door: g.door };
+    });
+    return { level: level, id: R.id || hqRingId(level), floor: R.floor || (level ? 'MEZZANINE' : 'GROUND FLOOR'), rIn: rIn, rOut: rOut, mid: mid, arc: [a0, a1], full: full, stepDeg: stepDeg, segments: segments };
+}
+/* the segment of a ring room the polar angle `deg` falls in (null off the ring) */
+function hqRingSectorAt(room, deg) {
+    const segs = (room && room.segments) || [];
+    if (!segs.length) return null;
+    const norm = x => ((x % 360) + 360) % 360;
+    let best = null, bestD = Infinity;
+    segs.forEach(sg => {
+        for (const k of [0, 360, -360]) {
+            const d = norm(deg) + k;
+            if (d >= sg.from && d <= sg.to) { if (bestD > 0) { best = sg; bestD = 0; } return; }
+            const dd = Math.min(Math.abs(d - sg.from), Math.abs(d - sg.to));
+            if (dd < bestD) { bestD = dd; best = sg; }
+        }
+    });
+    return best;
+}
+/* a bay-frame spot (deg 0 = the bay's egress door on the inner wall, r in
+   the stage-1 corridor's 8.5–12.5 m) carried into the ring: the angle
+   scales with the radius so its distance along the corridor is kept, the
+   radius keeps its distance from the inner wall, a heading turns with the
+   frame. Used for the bays' own flavour props and the cast's bay spots. */
+function hqRingSpot(sector, spot) {
+    const B = DOOR_HQ.bayShell || {};
+    const lay = hqRingLayout(hqBayLevel(sector));
+    const seg = lay && lay.segments.find(sg => sg.sector === sector);
+    if (!seg) return spot;
+    const k = B.rOut / lay.rOut;
+    const out = Object.assign({}, spot, { room: lay.id, src: spot, bay: 'bay_' + sector });
+    if (typeof spot.deg === 'number') out.deg = Math.round((((seg.c + spot.deg * k) % 360) + 360) % 360 * 100) / 100;
+    if (typeof spot.r === 'number') out.r = Math.round((lay.rIn + (spot.r - B.rIn)) * 100) / 100;
+    if (typeof spot.face === 'number') out.face = Math.round((((spot.face + seg.c) % 360) + 360) % 360);
+    return out;
+}
+function hqRingRoom(level) {
+    const lay = hqRingLayout(level);
+    if (!lay) return null;
+    const B = DOOR_HQ.bayShell, C = B.corridor || {}, T = DOOR_HQ.thresholds || {};
+    const META = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META : [];
+    const norm = x => Math.round((((x % 360) + 360) % 360) * 100) / 100;
+    const m2degIn = m => (m / lay.rIn) * 180 / Math.PI, m2degOut = m => (m / lay.rOut) * 180 / Math.PI, m2degMid = m => (m / lay.mid) * 180 / Math.PI;
+    const doors = [], props = [], agents = [], lines = [];
+    lay.segments.forEach(seg => {
+        const sec = DOOR_HQ.sectors[seg.sector], F = (DOOR_HQ.bays || {})[seg.sector] || {}, bd = seg.door;
+        /* the way back: the egress door at the very angle it wears on the egress wall */
+        doors.push({
+            id: 'egress_' + seg.sector, deg: norm(seg.deg), side: 'in', level: 0, leaf: bd.leaf || 'leaf_closet_alt', wide: !!bd.wide,
+            label: 'CENTRAL EGRESS', sub: 'OPERATIONS RING · THE WAY BACK · ' + seg.label, sector: seg.sector, bay: seg.label,
+            action: { room: 'central_egress', at: bd.id || null },
+            desc: 'Back to the ring. The desk will still be there. Probably the same desk.',
+        });
+        /* the thresholds, `spacing` apart along the outer wall, centred on the run */
+        sec.maps.forEach((id, i) => {
+            const th = T[id] || {};
+            const meta = META.find(m => m.id === id);
+            doors.push({
+                id: 'site_' + id, deg: norm(seg.c - seg.w / 2 + lay.stepDeg * (i + 0.5)), side: 'out', level: 0,
+                leaf: th.leaf || 'leaf_closet_alt', wide: !!th.wide,
+                label: ((meta && meta.label) || id).toUpperCase(), sub: th.sub || ('THRESHOLD · ' + sec.label), sector: seg.sector, bay: seg.label,
+                action: { mission: id }, note: th.note || '',
+                roomNo: (th.roomNo != null) ? String(th.roomNo) : null, why: th.why || '',
+            });
+        });
+        /* the inner wall by the way out: extinguisher, breaker, a clock on a wide segment */
+        const doorHalfDeg = m2degIn((bd.wide ? 3.3 : 2.5) / 2);
+        props.push({ key: 'fire_extinguisher', deg: norm(seg.deg + doorHalfDeg + m2degIn(0.9)), side: 'in', wall: true });
+        props.push({ key: 'breaker_panel', deg: norm(seg.deg - doorHalfDeg - m2degIn(1.0)), side: 'in', wall: true });
+        if ((seg.to - seg.from) * Math.PI / 180 * lay.rIn >= 14) props.push({ key: 'wall_clock', deg: norm(seg.deg + doorHalfDeg + m2degIn(2.6)), side: 'in', wall: true });
+        /* the bay's own dressing, carried over (hqRingSpot) */
+        (F.props || []).forEach(p => props.push(hqRingSpot(seg.sector, p)));
+        /* the bay guard: by the outer wall just past the way in, facing back across the corridor toward it */
+        const gOff = ((bd.wide ? 3.3 : 2.5) / 2 + 1.8) / (lay.rOut - 1.4) * 180 / Math.PI;
+        agents.push({ deg: norm(seg.deg + gOff), r: lay.rOut - 1.4, level: 0, face: Math.round(norm(seg.deg + gOff + 205)), line: F.agent || '“Sign the book.”', sector: seg.sector });
+        (F.lines || []).forEach(l => lines.push(l));
+    });
+    /* fluorescents along the centreline (the shell adds its own strips; these are the kit's fixtures) */
+    const stripStep = m2degMid(3.2);
+    for (let a = lay.arc[0] + m2degMid(1.6); a <= lay.arc[1] - m2degMid(1.6) + 0.01; a += stripStep) props.push({ key: 'fluorescent', deg: norm(a), r: lay.mid, ceil: true, rot: 90 });
+    /* the gaps between runs: cabinets and boxes on the inner wall, where nobody's door is */
+    for (let i = 1; i < lay.segments.length; i++) {
+        const a = lay.segments[i - 1], b = lay.segments[i];
+        const g0 = a.c + a.w / 2, g1 = b.c - b.w / 2, gm = (g0 + g1) / 2;
+        if ((g1 - g0) * Math.PI / 180 * lay.rIn < 4.0) continue;
+        props.push({ key: 'filing_cabinet', deg: norm(gm - m2degIn(0.5)), side: 'in', wall: true });
+        props.push({ key: 'filing_cabinet', deg: norm(gm + m2degIn(0.5)), side: 'in', wall: true });
+        props.push({ key: 'cardboard_boxes', deg: norm(gm + m2degIn(1.6)), r: lay.rIn + 1.0, rot: 25 });
+        props.push({ key: 'papers_a', deg: norm(gm - m2degIn(0.5)), r: lay.rIn + 0.62, y: 1.32, rot: 15 });
+    }
+    /* the caps: the fire door to the other cap (the ring continues past the
+       service core), and the cap-side dressing stepped back clear of its frame */
+    const closed = !lay.full && !!C.close;
+    if (closed) {
+        [['cw', lay.arc[1], 'cap_ccw', 'CLOCKWISE'], ['ccw', lay.arc[0], 'cap_cw', 'COUNTER-CLOCKWISE']].forEach(([cap, at, far, way]) => {
+            doors.push({
+                id: 'cap_' + cap, cap: cap, deg: norm(at), level: 0,
+                leaf: B.ringLeaf || 'leaf_wired_double', wide: !!((DOOR_HQ.catalogue[B.ringLeaf || 'leaf_wired_double'] || {}).wide),
+                label: 'CONTAINMENT RING', sub: 'SERVICE SIDE · CONTINUES ' + way,
+                action: { room: lay.id, at: far }, ring: true,
+                desc: 'The ring continues past the service core. Fire door, held open by a wedge that is not on the inventory. That stretch is not on the plan and is not lit; Records says it is shorter than it looks.',
+            });
+        });
+    }
+    if (!lay.full) {
+        const back = closed ? 0.5 : 0;   // the 3.3 m panel on the 4 m cap protrudes 0.5 m past the walls
+        props.push({ key: 'filing_cabinet', deg: norm(lay.arc[1] - m2degIn(1.4 + back)), side: 'in', wall: true });
+        props.push({ key: 'filing_cabinet', deg: norm(lay.arc[1] - m2degIn(2.3 + back)), side: 'in', wall: true });
+        props.push({ key: 'papers_a', deg: norm(lay.arc[1] - m2degIn(1.4 + back)), r: lay.rIn + 0.62, y: 1.32, rot: 15 });
+        props.push({ key: 'cardboard_boxes', deg: norm(lay.arc[0] + m2degIn(1.4 + back)), r: lay.rIn + 1.0, rot: 25 });
+        props.push({ key: 'filing_cabinet', deg: norm(lay.arc[0] + m2degIn(2.6 + back)), side: 'in', wall: true });
+    }
+    const bayList = lay.segments.map(sg => sg.bayNo != null ? sg.bayNo : '?').join(' · ');
+    const s0 = lay.segments[0];
+    return {
+        label: 'CONTAINMENT RING', sub: lay.floor + ' · BAYS ' + bayList,
+        kind: 'bay', corridor: true, level: lay.level, ring: null, segments: lay.segments.map(sg => Object.assign({}, sg, { door: undefined, lines: ((DOOR_HQ.bays || {})[sg.sector] || {}).lines || [] })),
+        shell: { rIn: lay.rIn, rOut: lay.rOut, arc: lay.arc.slice(), full: lay.full, wallH: B.wallH, dadoH: B.dadoH,
+                 floor: B.floor, wall: B.wall, dado: B.dado, trim: B.trim, ceiling: B.ceiling },
+        doors: doors,
+        counters: [],
+        props: props,
+        agents: agents,
+        npcSpots: [],
+        lines: lines,
+        spawn: { deg: norm(s0.deg), r: lay.rIn + 2.2, level: 0, face: Math.round(norm(s0.deg)) },
+    };
+}
+if (hqCorridorOn()) [0, 1].forEach(l => { const r = hqRingRoom(l); if (r) DOOR_HQ.rooms[hqRingId(l)] = r; });
 /* ── THE WALKABLE SITE (HQ plan 7.2, 2026-09-07) ────────────────────────
    hqSiteRoomId(mapId) → 'site_<id>' (the room id; the bay's threshold DOOR
    wears the same id in its own room — doors and rooms are separate
@@ -18323,7 +18573,7 @@ function hqSiteRoom(mapId) {
         : [{ x: half - 1.4, z: -4.2, face: 270 }, { x: half - 1.4, z: 4.6, face: 290 }, { x: -(half - 1.4), z: 5.6, face: 80 }];
     const npcSpots = spotXZ.map((sp, i) => Object.assign({}, sp, (i < nat && pool[i]) ? { race: pool[i] } : {}));
     return {
-        label: label, sub: T.sub || ('THE SITE · ' + (sec.label || sector).toUpperCase() + ' · BAY ' + (DOOR_HQ.rooms[hqBayId(sector)] ? DOOR_HQ.rooms[hqBayId(sector)].bayNo : '?')),
+        label: label, sub: T.sub || ('THE SITE · ' + (sec.label || sector).toUpperCase() + ' · BAY ' + (hqBayNo(sector) != null ? hqBayNo(sector) : '?')),
         kind: 'box', fx: 'site', site: id, sector: sector, why: T.why || '',
         shell: {
             w: size, d: size, h: roomH, wallH: roomH, dadoH: shell.dadoH || 1.05,
@@ -18419,7 +18669,7 @@ function hqRoomRegister() {
         const sector = hqSectorOfMap(id);
         const bay = sector ? DOOR_HQ.rooms[hqBayId(sector)] : null;
         out.push({ no: hqRoomNoStr(T[id].roomNo), label: ((meta && meta.label) || id).toUpperCase(), sub: T[id].sub || ('THRESHOLD · ' + ((DOOR_HQ.sectors[sector] || {}).label || '')),
-                   kind: 'site', id: id, mapId: id, room: bay ? hqBayId(sector) : null, sector: sector, bayNo: bay ? bay.bayNo : null, why: T[id].why || '',
+                   kind: 'site', id: id, mapId: id, room: bay ? hqBayId(sector) : null, sector: sector, bayNo: sector ? hqBayNo(sector) : null, why: T[id].why || '',
                    siteRoom: DOOR_HQ.rooms[hqSiteRoomId(id)] ? hqSiteRoomId(id) : null });
     }
     const F = DOOR_HQ.facility || {};
@@ -19151,7 +19401,7 @@ function hqCastInRoom(roomId, profile, opts) {
     for (const id in DOOR_CAST) {
         const m = DOOR_CAST[id];
         if (!m || m.hidden || !Array.isArray(m.spots) || !m.spots.length) continue;
-        const open = m.spots.filter(s => s && DOOR_HQ.rooms[s.room]
+        const open = m.spots.filter(s => s && DOOR_HQ.rooms[hqCastSpotRoom(s)]
             && (s.p == null || s.p > 0)
             && (s.minClearance == null || cl >= s.minClearance)
             && (s.maxClearance == null || cl <= s.maxClearance));
@@ -19160,9 +19410,16 @@ function hqCastInRoom(roomId, profile, opts) {
         let roll = ((hqHash(id + '|' + salt) % 100000) / 100000) * Math.max(1, total), pick = null;
         for (const s of open) { roll -= (s.p == null ? 1 : s.p); if (roll <= 0) { pick = s; break; } }
         if (opts.force && opts.force[id] != null) pick = (opts.force[id] < 0) ? null : (m.spots[opts.force[id]] || null);
-        if (pick && pick.room === roomId) out.push({ id: id, member: m, spot: pick });
+        if (pick && hqCastSpotRoom(pick) === roomId) out.push({ id: id, member: m, spot: (hqCastSpotRoom(pick) === pick.room) ? pick : hqRingSpot(pick.room.slice(4), pick) });
     }
     return out;
+}
+/* a spot authored in a bay ('bay_<sector>', the stage-1 frame) stands in
+   that bay's segment of the CONTAINMENT RING when the corridor is on
+   (plan 5.4a stage 2) — hqRingSpot carries it over; `src` is the sheet's row */
+function hqCastSpotRoom(s) {
+    if (s && typeof s.room === 'string' && s.room.indexOf('bay_') === 0 && hqCorridorOn()) return hqBayId(s.room.slice(4));
+    return s ? s.room : null;
 }
 /* One of the member's own lines, or null (the panel shows the spot's `doing`). */
 function hqCastLine(id) {
@@ -19188,6 +19445,15 @@ if (typeof window !== 'undefined') {
     window.hqBayId = hqBayId;
     window.hqBayRoom = hqBayRoom;
     window.hqBayRing = hqBayRing;
+    window.hqCorridorOn = hqCorridorOn;
+    window.hqBayEntry = hqBayEntry;
+    window.hqBayNo = hqBayNo;
+    window.hqBayLevel = hqBayLevel;
+    window.hqRingId = hqRingId;
+    window.hqRingLayout = hqRingLayout;
+    window.hqRingRoom = hqRingRoom;
+    window.hqRingSectorAt = hqRingSectorAt;
+    window.hqRingSpot = hqRingSpot;
     window.hqSiteRoomId = hqSiteRoomId;
     window.hqSiteRoom = hqSiteRoom;
     window.hqSiteBoard = hqSiteBoard;

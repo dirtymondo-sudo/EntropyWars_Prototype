@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 24 (2026-09-08 rev 4 — 7.2 stage 6 SHIPPED: THE REST OF THE REGISTER — every launch map is a walkable room: Rooms 14179 · SHASTA, 56 · STONEHENGE, 444 · GIZA, 777 · HEAVEN, 2047 · CYBERPUNK CITY, 11 · BABEL, 12 · OLYMPUS, 4 · MARS, 51 · AREA 51, 512 · SKINWALKER RANCH, 180 · HOLLOW EARTH, 420 · FAIRY FOREST, 1969 · MOON, 888 · VATICAN CITY, 23 · BOHEMIAN GROVE, 9600 · GÖBEKLI TEPE, 1225 · NORTH POLE and 2D · FLAT LANDS are outdoor rooms behind their bay thresholds, each with its map's setting inside it at 1:1 and its sky overhead (Flat Lands opts out of its fourteen-tile setting), four consoles off the west wall, Babel's terraces as stands, the Moon under a 3 m berm; data-only — `siteRooms.built` / `near` / `shells` / `flavour`, no renderer change; doorhq.test.js now insists every site in the register has a room; rev 23 2026-09-08 rev 3 — 7.2 stage 5 SHIPPED: THE SETTING IN THE ROOM — every walkable site room now runs its map's own MAP SETTINGS near builder inside it at 1:1 (D.U.M.B.'s server racks and blast door, CERN's beamline and terminals, the Backrooms' partitions and stalk fluorescents, Nuketown's picket fence, houses, road and buses, the Stadium's tiers and floodlights, Camelot's curtain wall with its towers and drawbridge, Atlantis' colonnade and kelp, Hell's spires and braziers, Technoticlan's temple tiers and torches, Agartha's crystal spires, Antarctica's ice ridges and igloo) — the room grows to the setting's apron (`siteRooms.near[key].w` tiles, + the moat's gap), the kit's enclosure primitives are no-ops in the room (the shell is those), every piece is culled clear of the way in and the console and becomes a blocker, natives and props are nudged off the houses and the stands, and four consoles moved to the north wall (`shells[id].console`); `hqSiteRoom` `near`, three-renderer.js `_hqBuildSetting` / `_hqSettingFreeSpot`, `_nrKit` `ctx.hq`; rev 22 2026-09-08 rev 2 — 7.2 stage 4 SHIPPED: the MOAT rooms — Rooms i · CAMELOT, H-20 · ATLANTIS, 666 · HELL, 2012 · TECHNOTICLAN, 88 · AGARTHA and 90S · ANTARCTICA are outdoor sites whose walkway is a QUAY: the ring between the island and the quay is the map's own liquid one level down in the battle's animated fluid sheet, board-edge canals open into it, a causeway either way (the south one is the way in), deep water and lava never entered; `shells[id].moat`, `hqSiteRoom` → `shell.moat`, three-renderer.js `_hqSiteOnCauseway` / `_hqTickMoat`, and a site room's floor is now a FRAME so every board pit finally shows; rev 21 2026-09-08 — 7.2 stage 3 SHIPPED: the first OUTDOOR rooms — Room 1945 · NUKETOWN and Room 50 · FOOTBALL STADIUM are walkable sites with no ceiling, the map's own sky on the battle's firmament dome, its far roster drifting round the room, lamp masts on the walkway corners, a fence / the bowl's wall for a perimeter and the ground running out past it; `shells[id].open`, `shell.sky`, three-renderer.js `_hqBuildSky` / `_hqTickSky`, `_hqTex` reads terrain keys; rev 20 2026-09-07 rev 5 — 7.2 stage 2 SHIPPED: Rooms 999 · CERN and 90 · BACKROOMS are walkable sites, each in its own LIGHT (`siteRooms.shell.mood`: lamps, strips, sign palettes, `signLines`; the Backrooms under a low yellow ceiling with no conduits, the almond water tinted); rev 19 2026-09-07 rev 4 — 7.2 stage 1 SHIPPED: the first WALKABLE SITE — Room 555 · D.U.M.B. is a room behind its bay threshold, its own Δ board in the middle at 1:1 (steps climbed, blocks solid, the cell walls, the specimen tubes, the nexus ring), the CROSSING console files the crossing, the natives loiter on the walkway; `hqSiteRoom` / `hqSiteBoardInfo`, the renderer's `_hqBuildSiteBoard` + the board layer in `_hqSurface`; rev 18 2026-09-07 rev 3 — 7.5 SHIPPED + THE CONTAINMENT RING (new 5.4a) stage 1: Bay 7 · URBAN on the mezzanine, the rebalance (C-22 + C-23 DECIDED), and every bay's end caps wear fire doors into the next bay on its floor — 1 ⇄ 4 downstairs, 2 → 5 → 7 → 3 → 6 → 2 upstairs; rev 17 2026-09-07 rev 2 — 7.1 SHIPPED, the numbers are on the doors: `roomNo` on every threshold and numbered room, `hqRoomNo` / `hqRoomRegister`, the plate · the panels · the SITE FILE header · the result stamp · the loading card · the directory's register; the elevator skips 13; rev 16 2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
+### The walkable facility that replaces the Play menu · rev 25 (2026-09-08 rev 5 — 5.4a stage 2 SHIPPED: THE CONTAINMENT RING is ONE CORRIDOR PER FLOOR — the bays of a floor are segments of a single hallway framed just outside the egress drum (ground ring r 21.5–25.5 behind Bays 1 and 4, mezzanine ring r 24.5–28.5 behind Bays 2 · 5 · 7 · 3 · 6), every egress bay door is the ring's inner-wall door at the same angle, the thresholds spread along the outer wall either side of it, no rebuild between bays, the caps wear the fire door to each other across the service side; data.js `bayShell.corridor`, `hqRingLayout` / `hqRingRoom` / `hqBayEntry` / `hqBayNo` / `hqRingSectorAt` / `hqRingSpot`, `hqBayId(sector)` → the floor's ring; the renderer learns only `shell.full`; map.js lands through `hqBayEntry`; the cast's bay spots carry over; kill-switch `corridor.on: false`; rev 24 2026-09-08 rev 4 — 7.2 stage 6 SHIPPED: THE REST OF THE REGISTER — every launch map is a walkable room: Rooms 14179 · SHASTA, 56 · STONEHENGE, 444 · GIZA, 777 · HEAVEN, 2047 · CYBERPUNK CITY, 11 · BABEL, 12 · OLYMPUS, 4 · MARS, 51 · AREA 51, 512 · SKINWALKER RANCH, 180 · HOLLOW EARTH, 420 · FAIRY FOREST, 1969 · MOON, 888 · VATICAN CITY, 23 · BOHEMIAN GROVE, 9600 · GÖBEKLI TEPE, 1225 · NORTH POLE and 2D · FLAT LANDS are outdoor rooms behind their bay thresholds, each with its map's setting inside it at 1:1 and its sky overhead (Flat Lands opts out of its fourteen-tile setting), four consoles off the west wall, Babel's terraces as stands, the Moon under a 3 m berm; data-only — `siteRooms.built` / `near` / `shells` / `flavour`, no renderer change; doorhq.test.js now insists every site in the register has a room; rev 23 2026-09-08 rev 3 — 7.2 stage 5 SHIPPED: THE SETTING IN THE ROOM — every walkable site room now runs its map's own MAP SETTINGS near builder inside it at 1:1 (D.U.M.B.'s server racks and blast door, CERN's beamline and terminals, the Backrooms' partitions and stalk fluorescents, Nuketown's picket fence, houses, road and buses, the Stadium's tiers and floodlights, Camelot's curtain wall with its towers and drawbridge, Atlantis' colonnade and kelp, Hell's spires and braziers, Technoticlan's temple tiers and torches, Agartha's crystal spires, Antarctica's ice ridges and igloo) — the room grows to the setting's apron (`siteRooms.near[key].w` tiles, + the moat's gap), the kit's enclosure primitives are no-ops in the room (the shell is those), every piece is culled clear of the way in and the console and becomes a blocker, natives and props are nudged off the houses and the stands, and four consoles moved to the north wall (`shells[id].console`); `hqSiteRoom` `near`, three-renderer.js `_hqBuildSetting` / `_hqSettingFreeSpot`, `_nrKit` `ctx.hq`; rev 22 2026-09-08 rev 2 — 7.2 stage 4 SHIPPED: the MOAT rooms — Rooms i · CAMELOT, H-20 · ATLANTIS, 666 · HELL, 2012 · TECHNOTICLAN, 88 · AGARTHA and 90S · ANTARCTICA are outdoor sites whose walkway is a QUAY: the ring between the island and the quay is the map's own liquid one level down in the battle's animated fluid sheet, board-edge canals open into it, a causeway either way (the south one is the way in), deep water and lava never entered; `shells[id].moat`, `hqSiteRoom` → `shell.moat`, three-renderer.js `_hqSiteOnCauseway` / `_hqTickMoat`, and a site room's floor is now a FRAME so every board pit finally shows; rev 21 2026-09-08 — 7.2 stage 3 SHIPPED: the first OUTDOOR rooms — Room 1945 · NUKETOWN and Room 50 · FOOTBALL STADIUM are walkable sites with no ceiling, the map's own sky on the battle's firmament dome, its far roster drifting round the room, lamp masts on the walkway corners, a fence / the bowl's wall for a perimeter and the ground running out past it; `shells[id].open`, `shell.sky`, three-renderer.js `_hqBuildSky` / `_hqTickSky`, `_hqTex` reads terrain keys; rev 20 2026-09-07 rev 5 — 7.2 stage 2 SHIPPED: Rooms 999 · CERN and 90 · BACKROOMS are walkable sites, each in its own LIGHT (`siteRooms.shell.mood`: lamps, strips, sign palettes, `signLines`; the Backrooms under a low yellow ceiling with no conduits, the almond water tinted); rev 19 2026-09-07 rev 4 — 7.2 stage 1 SHIPPED: the first WALKABLE SITE — Room 555 · D.U.M.B. is a room behind its bay threshold, its own Δ board in the middle at 1:1 (steps climbed, blocks solid, the cell walls, the specimen tubes, the nexus ring), the CROSSING console files the crossing, the natives loiter on the walkway; `hqSiteRoom` / `hqSiteBoardInfo`, the renderer's `_hqBuildSiteBoard` + the board layer in `_hqSurface`; rev 18 2026-09-07 rev 3 — 7.5 SHIPPED + THE CONTAINMENT RING (new 5.4a) stage 1: Bay 7 · URBAN on the mezzanine, the rebalance (C-22 + C-23 DECIDED), and every bay's end caps wear fire doors into the next bay on its floor — 1 ⇄ 4 downstairs, 2 → 5 → 7 → 3 → 6 → 2 upstairs; rev 17 2026-09-07 rev 2 — 7.1 SHIPPED, the numbers are on the doors: `roomNo` on every threshold and numbered room, `hqRoomNo` / `hqRoomRegister`, the plate · the panels · the SITE FILE header · the result stamp · the loading card · the directory's register; the elevator skips 13; rev 16 2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -437,21 +437,38 @@ lamp/frame details → furniture → fixtures → machinery.
     transition is the existing door-blink rebuild. Kill-switch:
     `bayShell.ring: false` restores the dead-end caps. doorhq.test.js walks
     every ring and checks the reciprocity.
-  - **Stage 2 ⚙ (planned) — one continuous corridor.** Re-frame the bays
-    in the egress's polar frame at a radius just outside the rotunda wall
-    (rIn ≈ 21.5, rOut ≈ 25.5): the bay doors on the egress wall become the
-    ring's inner-wall doors, the thresholds sit on its outer wall, one
-    `kind: 'ring'` room per floor with NO rebuild between bays — the bay
-    stencils, lamps and flavour become segments of one hallway. The arc
-    band builder and `_hqSurface`'s annulus already take any span; the
-    work is the frame change in `hqBayRoom` (a global angle per bay = its
-    egress door's angle; thresholds spread either side of it), the
-    per-segment dressing, and the two floors: downstairs the ground ring
-    passes the training / office / records doors on its inner wall (they
-    stay egress doors — the ring only wraps the bays' arcs, ~90° each side
-    of 1 and 4), upstairs the mezzanine ring is five bays deep and nearly
-    closes. Do this after 7.2 lands (the site rooms hang off the ring's
-    outer wall, so their doors are the same doors).
+  - **Stage 2 ⚙ ✅ (2026-09-08 rev 5, §9) — one continuous corridor.** The
+    bays are re-framed in the egress's polar frame just outside its drum:
+    the ground ring at r 21.5–25.5 (behind the lower wall, r 21), the
+    mezzanine ring at r 24.5–28.5 (behind the upper drum, r 24) — one
+    room per floor (`ring_g` / `ring_m`, still `kind: 'bay'`: the arc
+    shell, the annulus walk and the door placement took any span, so the
+    renderer learned only `shell.full`). `hqRingLayout(level)` lays each
+    bay out as a SEGMENT: its egress door is the ring's inner-wall door
+    at the SAME angle (`egress_<sector>`), its thresholds a door run
+    `spacing` apart on the outer wall centred on it — runs that would
+    collide are relaxed apart (Diplomatic 150 → 146.0, Urban 180 →
+    178.7, Hollow 210 → 215.3 on the mezzanine; the egress doors stay
+    put), the ring's break is the widest gap between runs, the arc is
+    the outermost runs plus `endPadM` (2.2 m) each way: downstairs 239°
+    → 374° (Bays 1 and 4, 55 m), upstairs 17° → 282° (2 · 5 · 7 · 3 · 6,
+    123 m). `hqRingRoom(level)` hangs the doors, the per-segment
+    dressing (extinguisher / breaker / clock at each way out, cabinets
+    and boxes in the gaps and at the caps), the bays' own flavour props
+    and guards carried over by `hqRingSpot` (angle scaled by the radius
+    so the distance along the corridor is kept), the overheard lines per
+    segment (map.js picks the bay you stand in via `hqRingSectorAt`).
+    `hqBayId(sector)` resolves to the floor's ring and `hqBayEntry
+    (sector)` to its door, so the egress doors, the site rooms' way back,
+    the panels, the directory, Code Red and the cast (Sedaniel's bay spot
+    → `hqCastSpotRoom`) all followed; `hqBayNo(sector)` replaced every
+    read of `room.bayNo`. The caps: with `corridor.close` each wears the
+    stage-1 fire door to the OTHER cap (`{ room: ring, at: cap_* }` — a
+    door-blink across the service side, "not on the plan and not lit");
+    `corridor.arc[level] = [a, a + 360]` closes a ring by hand (no caps,
+    `full`). Kill-switch `corridor.on: false` = the stage-1 bays (still
+    registered as `bay_<sector>` and still tested). doorhq.test.js: five
+    new tests (+ the stage-1 block re-pointed at `bay_*`).
 - 5.5 H-Wing: a straight corridor kit (drywall, carpet, fluorescent,
   cubicles) — the only place with right angles; the childhood-home door;
   the Backrooms crossing.
@@ -3435,3 +3452,94 @@ No renderer change; data.js + doorhq.test.js + index.html; docs.
   case-file screen; the cast lines for the site rooms (A15, the user's);
   wave 1 of the new sites (7.6) — each is now a room the moment its
   threshold exists.
+
+### 2026-09-08 (rev 5) — 5.4a stage 2 SHIPPED: THE CONTAINMENT RING is one corridor per floor
+The plan's standing next step after 7.2. The user's original ask
+("the hallways with the different doors can be made longer and go all
+the way around, or at least halfway") is now a hallway, not a chain of
+rooms: data.js + three-renderer.js + map.js + doorhq.test.js +
+index.html; docs.
+- **data.js.** `bayShell.corridor = { on, rings: { 0: { rIn: 21.5,
+  rOut: 25.5, id: 'ring_g' }, 1: { rIn: 24.5, rOut: 28.5, id: 'ring_m'
+  } }, endPadM: 2.2, gapM: 2.6, arc: { 0: null, 1: null }, close: true
+  }`. `hqRingLayout(level)`: the bay doors of that floor of the egress
+  sorted by angle; each a door run of n × `spacing` metres on the outer
+  wall centred on its egress angle; runs closer than `gapM` pushed apart
+  half each until none touch; the break = the widest gap between runs
+  (the order starts after it, angles run past 360 where they must); the
+  arc = first run's start − pad … last run's end + pad, or `arc[level]`
+  by hand (≥ 360 − gap → `full`); segment bounds at the gap midpoints.
+  `hqRingRoom(level)` → a `kind: 'bay'` room (`corridor: true`,
+  `segments`, `shell.full`, `sub: '<FLOOR> · BAYS 1 · 4'`): per segment
+  the `egress_<sector>` door (inner wall, the egress leaf, back to
+  `central_egress` at that door), the `site_<id>` thresholds (outer
+  wall; leaf / roomNo / why / note as the stage-1 bay's), extinguisher
+  + breaker (+ a clock on a wide segment) flanking the way out, the
+  bay's `bays[sector].props` through `hqRingSpot`, one guard with the
+  bay's line; along the whole arc the fluorescents every 3.2 m; in each
+  gap ≥ 4 m two cabinets, boxes and papers; at the caps the old cap
+  dressing stepped 0.5 m further back when the cap wears a door; the
+  two cap doors (`cap_cw` at arc[1] → `at: 'cap_ccw'`, and back) when
+  the ring is not full and `close` is on. `hqBayId(sector)` → the
+  floor's ring in corridor mode (else `bay_<sector>`), `hqBayEntry
+  (sector)` → `egress_<sector>` (else `egress`), `hqBayNo(sector)` off
+  the egress door's label, `hqBayLevel`, `hqRingId`, `hqRingSectorAt
+  (room, deg)`, `hqRingSpot(sector, spot)` (deg' = c + deg · rOut₁/rOut₂,
+  r' = rIn₂ + (r − rIn₁), face' = face + c; `src` / `bay` on the copy).
+  The stage-1 rooms stay registered as `bay_<sector>` (kill-switch,
+  tests, playtest_hq.js). `hqSiteRoom`'s sub-line and `hqRoomRegister`
+  read `hqBayNo`; `hqCastInRoom` resolves a `bay_*` spot through
+  `hqCastSpotRoom` and hands the renderer the carried copy. Computed
+  today — ground: Terrestrial c 270 (52.6°), Celestial c 360 (17.5°),
+  arc [238.77, 373.71]; mezzanine: Ancient 45, Diplomatic 146.02, Urban
+  178.69, Hollow 215.28, Quarantined 270, arc [17.06, 282.26].
+- **three-renderer.js.** `_hqBuildBayShell` skips the cap slabs on
+  `S.full`; `_hqSurface` / `_hqAirOK` / `_hqCamBlocked` skip the cap
+  check on `S.full`; the bay lighting spaces its point lights ~12 m
+  apart (4–8) on a corridor over 40 m instead of one per 32° of arc.
+  Nothing else — the arc band, the sector mesh, the strips, the pipe
+  run, `_hqCapWall`, the door placement and `_hqGoTo` took the wider
+  arc and the larger radii as they were.
+- **map.js.** `_hqBayEntry(sector)` replaces the four hard-coded
+  `'egress'` landings (the Code Red panel's ENTER / GO TO THE BAY, the
+  bay door panel's button, `_hqDoorDirectAction`, `_hqDoAction`); the
+  Code Red WALK TO THE THRESHOLD button also fires when the ring's
+  segments include the sector; the directory's row prefix names the
+  bay (`d.bay`) and END CAP; the overheard line is the segment's
+  (`_hqRingSegHere` → `hqRingSectorAt` on `ThreeRenderer.hq.pos().deg`).
+- **doorhq.test.js** (157 tests, 156 green + 1 skip): the stage-1 block
+  re-pointed at `bay_*`; five new tests — two rings framed 0.3–1.5 m
+  outside the drum, 4 m wide, one segment per bay door in door order
+  ([1, 4], [2, 5, 7, 3, 6]), each segment holding its egress angle and
+  its whole run; every launch map exactly once on the rings with the
+  stage-1 door's leaf / number / hook, nothing overlapping, `gapM`
+  between bays, `endPadM` past the outermost run, props and guards
+  inside the corridor and in their bay, `hqRingSectorAt` naming every
+  door's and guard's bay, the lines on the segments; the caps' doors
+  reciprocal within the ring, unnumbered, dressing ≥ 0.75 m clear, a
+  hand `[0, 360]` closing the mezzanine with the same thresholds; the
+  site rooms' way back landing at their threshold on the ring, the
+  register's bay numbers, Sedaniel carried to the same side of the way
+  in, the flavour TV with him, the source scans; the kill-switch. index
+  → `20260908e-cors`.
+- Not playtested (RULE #1c). What to eyeball first: Bay 1's door on the
+  egress, E — you stand at `egress_terrestrial` on the ground ring
+  facing the outer wall, six thresholds curving away to the left and
+  right, and the corridor continuing clockwise past two cabinets to
+  Bay 4's way out and the Mars / Moon doors, a fire door at each end
+  (E on one lands you at the other, same way round). Upstairs, Bay 2's
+  portcullis: the mezzanine ring runs 123 m clockwise past 21
+  thresholds and four more ways out; the Diplomatic and Hollow runs
+  sit a few metres off-centre of their egress doors (the relaxation),
+  the Urban pair between them. Sedaniel is parked a corridor-width left
+  of Bay 1's way out. If a threshold plate reads the wrong bay, or a
+  guard stands in another bay's run, `hqRingLayout` is the place.
+- Decisions the user may reverse: the ring wraps only the bays' arcs
+  (alternative: `corridor.arc[0] = [150, 510]` walks the ground ring
+  behind Medical / Training / the Office / Reception too, with no doors
+  on that stretch); the cap doors as a door-blink across the service
+  side (`close: false` = dead-end caps); the radii (a wider ring makes
+  room for wave-1 sites without any run moving).
+- Next: 7.9 dailies; 4.1 the case-file screen; the cast lines for the
+  site rooms (A15, the user's); wave 1 of the new sites (7.6) — each is
+  now a segment's extra door the moment its threshold exists.

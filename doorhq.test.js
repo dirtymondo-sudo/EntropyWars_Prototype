@@ -306,7 +306,11 @@ test('hqSiteMastery lists the per-condition checklist behind hqMapMastered', () 
 
 /* ── Phase 2.6 (2026-09-03): the bays as curved corridors (six then; seven since 7.5) ── */
 
-const BAYS = Object.keys(HQ.sectors).map(k => [k, HQ.rooms[D.hqBayId(k)]]);
+/* the stage-1 bay rooms (one per sector) stay registered as `bay_<sector>` — the
+   kill-switch path and the frame the cast's bay spots are authored in; with the
+   CONTAINMENT RING corridor on (plan 5.4a stage 2) hqBayId(sector) is the RING
+   of the bay's floor, tested in its own block below */
+const BAYS = Object.keys(HQ.sectors).map(k => [k, HQ.rooms['bay_' + k]]);
 
 test('every sector generates a bay room: kind bay, a way out at deg 0, one threshold per map', () => {
     const problems = [];
@@ -390,8 +394,9 @@ test('every launch map has a threshold leaf and doorSiteState reads a threshold 
     const back = HQ.rooms.bay_quarantined.doors.find(d => d.action && d.action.mission === 'prebuilt_backrooms');
     assert.strictEqual(D.doorSiteState(back, { progress: { unlocked } }), 'sealed', 'a locked sector seals its thresholds');
     assert.strictEqual(D.doorSiteState(HQ.rooms.bay_celestial.doors.find(d => d.id === 'egress'), null), 'open');
-    assert.strictEqual(D.hqBayId('celestial'), 'bay_celestial');
+    assert.strictEqual(D.hqBayId('celestial'), HQ.bayShell.corridor && HQ.bayShell.corridor.on ? D.hqRingId(0) : 'bay_celestial');
     assert.strictEqual(D.hqBayRoom('nope'), null);
+    assert.strictEqual(D.hqBayId('nope'), 'bay_nope');
     /* every egress bay door's sector has a room the panel can walk into */
     for (const d of ROOM.doors.filter(d => d.action && d.action.sector)) assert.ok(HQ.rooms[D.hqBayId(d.action.sector)], d.id + ' has no bay room');
 });
@@ -575,8 +580,8 @@ test("every door's wide flag agrees with its leaf (the renderer lets the leaf de
     }
     assert.deepStrictEqual(problems, []);
     /* the static one-mesh doubles / hatches are used sparingly: the revolving door at most once */
-    const revolving = ALL_DOORS.filter(d => d.leaf === 'leaf_revolving').length + Object.values(HQ.thresholds).filter(t => t.leaf === 'leaf_revolving').length;
-    assert.ok(revolving <= 2, 'the revolving door is the one sparing use (bay + its way out), got ' + revolving);
+    const revolving = ALL_DOORS.filter(d => d.leaf === 'leaf_revolving' && !/^egress_/.test(d.id)).length + Object.values(HQ.thresholds).filter(t => t.leaf === 'leaf_revolving').length;
+    assert.ok(revolving <= 2, 'the revolving door is the one sparing use (bay + its way out; the ring\'s egress_* copy is the same door), got ' + revolving);
 });
 
 /* ── Phase 7.5 (2026-09-07, MASTER C-23 DECIDED): Bay 7 · URBAN and the rebalance ── */
@@ -623,7 +628,7 @@ test('the ring: every bay on a shared floor wears two cap doors that lead to its
             if (d.leaf !== HQ.bayShell.ringLeaf || !d.wide) problems.push(k + ': ' + d.id + ' leaf');
             if (nbSector !== (d.cap === 'cw' ? ring.cw : ring.ccw)) problems.push(k + ': ' + d.id + ' leads to ' + nbSector);
             if (d.roomNo != null) problems.push(k + ': ' + d.id + ' carries a room number');
-            const far = HQ.rooms[D.hqBayId(nbSector)];
+            const far = HQ.rooms['bay_' + nbSector];   // the stage-1 neighbour room (hqBayId is the ring when the corridor is on)
             const farCap = far && far.doors.find(x => x.id === d.action.at);
             if (!farCap || !farCap.cap) { problems.push(k + ': ' + d.id + ' lands at no cap (' + d.action.at + ')'); continue; }
             if (farCap.cap === d.cap) problems.push(k + ': ' + d.id + ' lands at the same-handed cap');
@@ -678,6 +683,205 @@ test('the ring can be switched off: dead-end caps and no cap doors (the pre-5.4a
     assert.ok(D.hqBayRing('ancient'), 'restored');
 });
 
+/* ── Phase 5.4a stage 2 (2026-09-08): THE CONTAINMENT RING is one corridor per floor ── */
+
+const CORR = HQ.bayShell.corridor;
+const RINGS = CORR && CORR.on ? [0, 1].map(l => [l, D.hqRingLayout(l), HQ.rooms[D.hqRingId(l)]]).filter(x => x[1]) : [];
+const unwrap = (deg, a0) => { let d = deg; while (d < a0 - 1e-6) d += 360; while (d >= a0 + 360 - 1e-6) d -= 360; return d; };
+
+test('the corridor: two ring rooms, framed just outside the egress drum, every bay a segment of its floor', () => {
+    assert.ok(CORR && CORR.on, 'the corridor is on');
+    assert.ok(HQ.bayShell.ring, 'stage 2 rides stage 1');
+    assert.strictEqual(RINGS.length, 2, 'a ring per floor of the egress');
+    const S = ROOM.shell;
+    for (const [level, lay, room] of RINGS) {
+        assert.ok(room && room.kind === 'bay' && room.corridor, 'ring ' + level + ' is a corridor room');
+        assert.strictEqual(room.level, level);
+        assert.strictEqual(lay.id, D.hqRingId(level));
+        /* just outside the drum the bay doors hang on: the lower wall (r 21) downstairs, the upper drum (mezz.outer 24) upstairs */
+        const drum = level ? S.mezz.outer : S.radius;
+        assert.ok(lay.rIn >= drum + 0.3 && lay.rIn <= drum + 1.5, 'ring ' + level + ' inner wall at ' + lay.rIn + ' vs the drum at ' + drum);
+        assert.ok(Math.abs((lay.rOut - lay.rIn) - (HQ.bayShell.rOut - HQ.bayShell.rIn)) < 1e-9, 'the corridor keeps the bays\' 4 m width');
+        assert.strictEqual(JSON.stringify(room.shell.arc), JSON.stringify(lay.arc));
+        assert.strictEqual(!!room.shell.full, lay.full);
+        /* every bay door on this floor of the egress is a segment, in door-angle order round the ring */
+        const bays = ROOM.doors.filter(d => d.action && d.action.sector && (d.level || 0) === level);
+        assert.strictEqual(lay.segments.length, bays.length, 'ring ' + level + ' segments');
+        for (const bd of bays) {
+            const sg = lay.segments.find(x => x.sector === bd.action.sector);
+            assert.ok(sg, bd.id + ' has no segment');
+            assert.strictEqual(sg.deg, bd.deg, bd.id + ' segment at the egress door\'s angle');
+            assert.strictEqual(sg.bayNo, D.hqBayNo(bd.action.sector));
+            assert.strictEqual(sg.n, HQ.sectors[bd.action.sector].maps.length);
+            assert.strictEqual(D.hqBayId(bd.action.sector), lay.id, bd.id + ' resolves to its floor\'s ring');
+            assert.strictEqual(D.hqBayLevel(bd.action.sector), level);
+            /* the segment holds its own egress angle and its whole door run */
+            const c = unwrap(sg.c, lay.arc[0]), dg = unwrap(sg.deg, lay.arc[0]);
+            assert.ok(dg >= sg.from - 1e-6 && dg <= sg.to + 1e-6, bd.id + ': egress door at ' + dg + ' outside its segment [' + sg.from + ', ' + sg.to + ']');
+            assert.ok(c - sg.w / 2 >= sg.from - 1e-6 && c + sg.w / 2 <= sg.to + 1e-6, bd.id + ': door run outside its segment');
+            assert.ok(c - sg.w / 2 >= lay.arc[0] - 1e-6 && c + sg.w / 2 <= lay.arc[1] + 1e-6, bd.id + ': door run outside the arc');
+        }
+        for (let i = 1; i < lay.segments.length; i++) assert.ok(lay.segments[i].from >= lay.segments[i - 1].to - 1e-6, 'segments in order');
+        assert.strictEqual(lay.segments[0].from, lay.arc[0]); assert.strictEqual(lay.segments[lay.segments.length - 1].to, lay.arc[1]);
+        assert.match(room.sub, new RegExp('^' + lay.floor + ' · BAYS '));
+    }
+    /* the plan's floors: downstairs Bays 1 and 4; upstairs 2 · 5 · 7 · 3 · 6 in door order */
+    assert.strictEqual(JSON.stringify(RINGS[0][1].segments.map(s => s.bayNo)), '[1,4]');
+    assert.strictEqual(JSON.stringify(RINGS[1][1].segments.map(s => s.bayNo)), '[2,5,7,3,6]');
+    assert.ok(!RINGS[0][1].full && !RINGS[1][1].full, 'neither ring closes by itself (the service side has no bays)');
+});
+
+test('the corridor: every threshold once, on the outer wall, at its bay, no two doors touching, the way back at the egress door\'s angle', () => {
+    const launch = D.EW_MAP_META.filter(m => !m.isDelta).map(m => m.id);
+    const seen = {};
+    for (const [level, lay, room] of RINGS) {
+        const problems = [];
+        const a0 = lay.arc[0];
+        const stage1 = k => HQ.rooms['bay_' + k];
+        for (const sg of lay.segments) {
+            const eg = room.doors.find(d => d.id === D.hqBayEntry(sg.sector));
+            if (!eg) { problems.push(sg.sector + ': no way back'); continue; }
+            const bd = ROOM.doors.find(d => d.action && d.action.sector === sg.sector);
+            if (eg.side !== 'in' || eg.deg !== bd.deg || eg.leaf !== bd.leaf || !!eg.wide !== !!bd.wide) problems.push(sg.sector + ': the way back is not the egress door seen from behind');
+            if (!eg.action || eg.action.room !== 'central_egress' || eg.action.at !== bd.id) problems.push(sg.sector + ': the way back does not land at ' + bd.id);
+            if (eg.bay !== sg.label || eg.sector !== sg.sector) problems.push(sg.sector + ': the way back does not name its bay');
+            /* the thresholds: the stage-1 bay's, same leaf / number / hook, spaced like the bays, inside the segment */
+            const mine = room.doors.filter(d => d.action && d.action.mission && d.sector === sg.sector);
+            if (mine.length !== sg.n) problems.push(sg.sector + ': ' + mine.length + ' thresholds, expected ' + sg.n);
+            for (const d of mine) {
+                const old = stage1(sg.sector).doors.find(x => x.id === d.id);
+                if (!old) { problems.push(d.id + ': not a stage-1 threshold of ' + sg.sector); continue; }
+                for (const f of ['leaf', 'wide', 'label', 'sub', 'roomNo', 'why', 'note']) if (JSON.stringify(d[f]) !== JSON.stringify(old[f])) problems.push(d.id + ': ' + f + ' differs from the bay\'s');
+                if (d.side !== 'out') problems.push(d.id + ': not on the outer wall');
+                const dg = unwrap(d.deg, a0);
+                if (dg < sg.from || dg > sg.to) problems.push(d.id + ': at ' + dg + ', outside its segment');
+                seen[d.action.mission] = (seen[d.action.mission] || 0) + 1;
+            }
+        }
+        /* no two doors on one wall closer than their panels; a bay's outermost door keeps endPadM to the cap */
+        const panel = d => (d.wide ? 3.3 : 2.5);
+        for (const side of ['in', 'out']) {
+            const R = side === 'in' ? lay.rIn : lay.rOut;
+            const ds = room.doors.filter(d => d.side === side).sort((a, b) => unwrap(a.deg, a0) - unwrap(b.deg, a0));
+            for (let i = 1; i < ds.length; i++) {
+                const gapM = (unwrap(ds[i].deg, a0) - unwrap(ds[i - 1].deg, a0)) * Math.PI / 180 * R - (panel(ds[i]) + panel(ds[i - 1])) / 2;
+                if (gapM < -1e-6) problems.push(ds[i - 1].id + ' and ' + ds[i].id + ' overlap by ' + (-gapM).toFixed(2) + ' m');
+                if (ds[i].sector !== ds[i - 1].sector && gapM < CORR.gapM - 0.05) problems.push(ds[i - 1].id + ' | ' + ds[i].id + ': ' + gapM.toFixed(2) + ' m between bays, wants ' + CORR.gapM);
+            }
+            if (!lay.full && ds.length) {
+                const lo = (unwrap(ds[0].deg, a0) - a0) * Math.PI / 180 * R - HQ.bayShell.spacing / 2;
+                const hi = (lay.arc[1] - unwrap(ds[ds.length - 1].deg, a0)) * Math.PI / 180 * R - HQ.bayShell.spacing / 2;
+                if (side === 'out' && (Math.abs(lo - CORR.endPadM) > 0.05 || Math.abs(hi - CORR.endPadM) > 0.05)) problems.push('ring ' + level + ': end pads ' + lo.toFixed(2) + ' / ' + hi.toFixed(2) + ' m past the run, wants ' + CORR.endPadM);
+                if (lo + HQ.bayShell.spacing / 2 - panel(ds[0]) / 2 < 0.5 || hi + HQ.bayShell.spacing / 2 - panel(ds[ds.length - 1]) / 2 < 0.5) problems.push('ring ' + level + ' ' + side + ': a door in the cap');
+            }
+        }
+        /* everything with an angle stands inside the corridor */
+        for (const p of room.props) if (p.r != null && (p.r < lay.rIn + 0.3 || p.r > lay.rOut - 0.3)) problems.push(p.key + ' @' + p.deg + ' r ' + p.r + ' is in a wall');
+        for (const ag of room.agents) if (ag.r < lay.rIn + 0.5 || ag.r > lay.rOut - 0.5) problems.push('guard ' + ag.sector + ' r ' + ag.r);
+        assert.deepStrictEqual(problems, []);
+        assert.strictEqual(room.agents.length, lay.segments.length, 'a guard per bay');
+        for (const sg of lay.segments) {
+            const g = room.agents.find(a => a.sector === sg.sector);
+            const gd = unwrap(g.deg, a0);
+            assert.ok(gd >= sg.from && gd <= sg.to, sg.sector + ': the guard stands in another bay');
+            assert.strictEqual(g.line, HQ.bays[sg.sector].agent);
+            assert.strictEqual(D.hqRingSectorAt(room, g.deg).sector, sg.sector, 'hqRingSectorAt names the guard\'s bay');
+            const rs = room.segments.find(x => x.sector === sg.sector);
+            assert.strictEqual(JSON.stringify(rs.lines), JSON.stringify(HQ.bays[sg.sector].lines), 'the bay\'s overheard lines ride its segment');
+        }
+        for (const d of room.doors.filter(d => d.action && d.action.mission)) assert.strictEqual(D.hqRingSectorAt(room, d.deg).sector, d.sector, d.id + ' is in its bay\'s segment');
+    }
+    assert.strictEqual(JSON.stringify(launch.filter(id => seen[id] !== 1)), '[]', 'every launch map has exactly one threshold on the rings');
+});
+
+test('the corridor: the caps wear the ring door to each other, clear of the dressing; the ring closes by hand', () => {
+    for (const [level, lay, room] of RINGS) {
+        const caps = room.doors.filter(d => d.cap);
+        if (lay.full || !CORR.close) { assert.strictEqual(caps.length, 0); continue; }
+        assert.strictEqual(caps.length, 2, 'ring ' + level + ' caps');
+        for (const d of caps) {
+            assert.strictEqual(d.id, 'cap_' + d.cap);
+            assert.strictEqual(d.leaf, HQ.bayShell.ringLeaf); assert.ok(d.wide && d.ring && d.roomNo == null);
+            assert.strictEqual(JSON.stringify(d.action), JSON.stringify({ room: lay.id, at: d.cap === 'cw' ? 'cap_ccw' : 'cap_cw' }), d.id + ' leads to the other cap of the same ring');
+            assert.strictEqual(D.doorSiteState(d, null), 'open');
+            assert.strictEqual(unwrap(d.deg, lay.arc[0]), d.cap === 'cw' ? lay.arc[1] : lay.arc[0], d.id + ' stands on its cap');
+        }
+        /* the cap-side dressing steps back from the door frame (a 3.3 m panel on a 4 m cap protrudes 0.5 m) */
+        for (const p of room.props) {
+            if (p.ceil || typeof p.deg !== 'number') continue;
+            const dg = unwrap(p.deg, lay.arc[0]);
+            const capDeg = Math.min(dg - lay.arc[0], lay.arc[1] - dg);
+            const r = p.r != null ? p.r : (p.side === 'in' ? lay.rIn : lay.rOut);
+            assert.ok(capDeg * Math.PI / 180 * r >= 0.75, 'ring ' + level + ': ' + p.key + ' @' + p.deg + ' stands in the cap door');
+        }
+    }
+    /* a hand span of 360 closes the circle: no caps, `full`, the doors still fit */
+    const was = CORR.arc[1];
+    try {
+        CORR.arc[1] = [0, 360];
+        const lay = D.hqRingLayout(1), room = D.hqRingRoom(1);
+        assert.ok(lay.full && room.shell.full);
+        assert.strictEqual(JSON.stringify(lay.arc), '[0,360]');
+        assert.strictEqual(room.doors.filter(d => d.cap).length, 0);
+        assert.strictEqual(room.doors.filter(d => d.action && d.action.mission).length, RINGS[1][2].doors.filter(d => d.action && d.action.mission).length);
+    } finally { CORR.arc[1] = was; }
+});
+
+test('the corridor: the site rooms, the register, the cast and the panels all follow hqBayId / hqBayEntry', () => {
+    /* a site room's way back lands at its own threshold on the ring */
+    for (const id of HQ.siteRooms.built) {
+        const sr = HQ.rooms[D.hqSiteRoomId(id)];
+        const back = sr.doors.find(d => d.id === 'egress');
+        const ringId = D.hqBayId(D.hqSectorOfMap(id));
+        assert.strictEqual(JSON.stringify(back.action), JSON.stringify({ room: ringId, at: 'site_' + id }), id + ': the way back');
+        assert.ok(HQ.rooms[ringId].doors.find(d => d.id === 'site_' + id), id + ': that door is on the ring');
+        if (!HQ.thresholds[id].sub) assert.match(sr.sub, new RegExp('BAY ' + D.hqBayNo(D.hqSectorOfMap(id)) + '$'), id + ': the site room names its bay');
+    }
+    /* the register knows the bay number of every site without a bay room */
+    const reg = D.hqRoomRegister();
+    for (const r of reg.filter(r => r.kind === 'site')) {
+        assert.strictEqual(r.bayNo, D.hqBayNo(r.sector), r.id + ' bay number');
+        assert.strictEqual(r.room, D.hqBayId(r.sector));
+    }
+    assert.strictEqual(reg.find(r => r.id === 'prebuilt_stadium').bayNo, 7);
+    assert.strictEqual(reg.find(r => r.id === 'prebuilt_mars').bayNo, 4);
+    /* the cast's bay spots carry over into the corridor, on the same side of the same door */
+    const sed = CAST.sedaniel.spots[0];
+    const moved = D.hqRingSpot('terrestrial', sed);
+    const lay = D.hqRingLayout(0), seg = lay.segments.find(s => s.sector === 'terrestrial');
+    assert.strictEqual(moved.room, lay.id); assert.strictEqual(moved.src, sed); assert.strictEqual(moved.bay, 'bay_terrestrial');
+    assert.ok(moved.r > lay.rIn + 0.5 && moved.r < lay.rOut - 0.5, 'in the corridor');
+    assert.ok(Math.abs(moved.r - lay.rIn - (sed.r - HQ.bayShell.rIn)) < 1e-6, 'the same distance off the inner wall');
+    assert.ok(Math.sign(D.hqPolar ? 1 : 1) && (unwrap(moved.deg, lay.arc[0]) < unwrap(seg.c, lay.arc[0])) === (sed.deg < 0), 'the same side of the way in');
+    assert.strictEqual(D.hqRingSectorAt(HQ.rooms[lay.id], moved.deg).sector, 'terrestrial');
+    assert.strictEqual(D.hqRingSpot('nope', sed), sed, 'no segment, no change');
+    /* the flavour props followed too */
+    const tv = HQ.rooms[lay.id].props.find(p => p.key === 'tube_tv');
+    assert.ok(tv && tv.src === HQ.bays.terrestrial.props[0] && D.hqRingSectorAt(HQ.rooms[lay.id], tv.deg).sector === 'terrestrial');
+    /* the flow layer never hard-codes the landing door any more */
+    const src = require('fs').readFileSync(require('path').join(__dirname, 'map.js'), 'utf8');
+    assert.ok(src.includes('function _hqBayEntry(sector)'), 'map.js resolves the bay entry through hqBayEntry');
+    assert.strictEqual((src.match(/data-at="egress"/g) || []).length, 2, 'the two remaining literal landings are the site rooms\' own way-in door');
+    const rsrc = require('fs').readFileSync(require('path').join(__dirname, 'three-renderer.js'), 'utf8');
+    assert.ok(/S\.full \? \[\] : \[a0, a1\]/.test(rsrc) && /!S\.full && !_hqWithinArc/.test(rsrc), 'the renderer knows a full ring has no caps');
+});
+
+test('the corridor can be switched off: the stage-1 bays come back, one room each', () => {
+    const was = CORR.on;
+    try {
+        CORR.on = false;
+        assert.strictEqual(D.hqCorridorOn(), false);
+        assert.strictEqual(D.hqBayId('celestial'), 'bay_celestial');
+        assert.strictEqual(D.hqBayEntry('celestial'), 'egress');
+        assert.strictEqual(D.hqRingLayout(0), null);
+        assert.strictEqual(D.hqRingRoom(1), null);
+        assert.strictEqual(D.hqRingSpot('terrestrial', CAST.sedaniel.spots[0]), CAST.sedaniel.spots[0]);
+        assert.ok(D.hqCastInRoom('bay_terrestrial', null, { salt: 'x' }).some(c => c.id === 'sedaniel'), 'Sedaniel is back in the bay room');
+        assert.strictEqual(D.hqRoomRegister().find(r => r.id === 'prebuilt_mars').room, 'bay_celestial');
+    } finally { CORR.on = was; }
+    assert.strictEqual(D.hqBayId('celestial'), D.hqRingId(0), 'restored');
+});
+
 /* the renderer hangs a cap door on a flat wall (the _hqCapWall path) and map.js lands ring walks at the far cap */
 test('source scan: the renderer knows cap doors and map.js honours a sector door\'s `at`', () => {
     const fs = require('fs');
@@ -685,8 +889,8 @@ test('source scan: the renderer knows cap doors and map.js honours a sector door
     assert.match(tr, /function _hqCapWall\(room, door\)/);
     assert.match(tr, /room\.kind === 'bay' && door\.cap\) \? _hqCapWall\(room, door\)/);
     const mp = fs.readFileSync(require('path').join(__dirname, 'map.js'), 'utf8');
-    assert.match(mp, /return \{ room: bayId, at: act\.at \|\| 'egress' \}/);
-    assert.match(mp, /data-at="\$\{_hqEsc\(act\.at \|\| 'egress'\)\}"/);
+    assert.match(mp, /return \{ room: bayId, at: act\.at \|\| _hqBayEntry\(act\.sector\) \}/);
+    assert.match(mp, /data-at="\$\{_hqEsc\(act\.at \|\| _hqBayEntry\(act\.sector\)\)\}"/);
 });
 
 /* ── Phase 3.2 / 3.3 / 3.4 (2026-09-04): Keys, Code Red, the promotion moment ── */
@@ -938,7 +1142,8 @@ test('hqCastInRoom draws one spot per member per session, honours hidden / weigh
             for (const c of D.hqCastInRoom(rid, null, { salt })) {
                 assert.ok(!CAST[c.id].hidden, c.id + ' is hidden');
                 assert.strictEqual(c.spot.room, rid, c.id + ' drawn into the wrong room');
-                assert.ok(CAST[c.id].spots.includes(c.spot));
+                /* a bay spot carried onto the containment ring (plan 5.4a stage 2) is a copy whose `src` is the sheet's row */
+                assert.ok(CAST[c.id].spots.includes(c.spot) || (c.spot.src && CAST[c.id].spots.includes(c.spot.src)));
                 where[c.id] = (where[c.id] || 0) + 1;
                 seen[c.id] = seen[c.id] || {}; seen[c.id][rid] = true;
             }
@@ -956,7 +1161,8 @@ test('hqCastInRoom draws one spot per member per session, honours hidden / weigh
     assert.ok(elleAbsent > 0 && elleAbsent < 40, 'Elle’s visits are unscheduled (absent ' + elleAbsent + '/40)');
     assert.ok(seen.janitor && seen.janitor.central_egress && seen.janitor.office, 'the Janitor is seen both mopping the hall and raiding your closet');
     assert.ok(seen.rhonda && seen.rhonda.central_egress && Object.keys(seen.rhonda).length === 1, 'Rhonda never leaves the desk');
-    assert.ok(seen.sedaniel && seen.sedaniel.bay_terrestrial, 'Sedaniel is parked in the terrestrial bay');
+    assert.ok(seen.sedaniel && seen.sedaniel[D.hqBayId('terrestrial')], 'Sedaniel is parked in the terrestrial bay (its ring, when the corridor is on)');
+    if (D.hqCorridorOn()) assert.ok(!seen.sedaniel.bay_terrestrial, 'his stage-1 spot is not ALSO drawn into the retired bay room');
     assert.strictEqual(D.hqCastInRoom('nope', null, { salt: 'x' }).length, 0);
     /* clearance gates are honoured (none set today, so a gated spot is simulated) */
     const gated = { name: 'T', title: 'T', model: 'player', gender: 'male', lines: [], spots: [{ room: 'office', x: 0, z: 0, face: 0, minClearance: 4, doing: 'x' }] };

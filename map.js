@@ -639,6 +639,14 @@
             html += '</div>';
             return html;
         }
+        /* a bay's way in (HQ plan 5.4a stage 2): the ring of its floor and its
+           egress door in it — or the stage-1 bay room's single 'egress' */
+        function _hqBayEntry(sector) { return (typeof window.hqBayEntry === 'function') ? window.hqBayEntry(sector) : 'egress'; }
+        /* the ring segment (the bay) the walker stands in, or null */
+        function _hqRingSegHere(room) {
+            if (!room || !room.segments || typeof window.hqRingSectorAt !== 'function') return null;
+            try { const p = ThreeRenderer.hq.pos(); return p ? window.hqRingSectorAt(room, p.deg) : null; } catch (e) { return null; }
+        }
         /* the strip pill / anywhere in the building: the brief + the way there */
         function _hqCodeRedHtml() {
             const profile = _hqProfile();
@@ -649,13 +657,13 @@
             const room = _hqRoom();
             const bayId = (typeof window.hqBayId === 'function') ? window.hqBayId(cr.sector) : ('bay_' + cr.sector);
             html += '<div class="hq-panel-actions">';
-            if (room && room.kind === 'bay' && room.sector === cr.sector) html += `<button class="hq-btn" data-goto="site_${_hqEsc(cr.site)}">WALK TO THE THRESHOLD</button>`;
+            if (room && room.kind === 'bay' && (room.sector === cr.sector || (room.segments || []).some(sg => sg.sector === cr.sector))) html += `<button class="hq-btn" data-goto="site_${_hqEsc(cr.site)}">WALK TO THE THRESHOLD</button>`;
             else if (room && room.site === cr.site) html += '<button class="hq-btn" data-goto="crossing">WALK TO THE CONSOLE</button>';
             else if (_hqCurRoom === 'central_egress') {
                 const bd = (DOOR_HQ.rooms.central_egress.doors || []).find(d => d.action && d.action.sector === cr.sector);
                 if (bd) html += `<button class="hq-btn" data-goto="${_hqEsc(bd.id)}">WALK TO ${_hqEsc(bd.label)}</button>`;
-                if (_hqRoomExists(bayId)) html += `<button class="hq-btn" data-room="${_hqEsc(bayId)}" data-at="egress">ENTER THE BAY</button>`;
-            } else if (_hqRoomExists(bayId)) html += `<button class="hq-btn" data-room="${_hqEsc(bayId)}" data-at="egress">GO TO THE BAY</button>`;
+                if (_hqRoomExists(bayId)) html += `<button class="hq-btn" data-room="${_hqEsc(bayId)}" data-at="${_hqEsc(_hqBayEntry(cr.sector))}">ENTER THE BAY</button>`;
+            } else if (_hqRoomExists(bayId)) html += `<button class="hq-btn" data-room="${_hqEsc(bayId)}" data-at="${_hqEsc(_hqBayEntry(cr.sector))}">GO TO THE BAY</button>`;
             html += '<button class="hq-btn" data-close="1">NOTED</button></div>';
             html += '<p class="hq-panel-note">One Code Red a day, picked from your stabilized thresholds by the date and your employee number. Everyone in the building already knows; nobody will mention it.</p>';
             return html;
@@ -726,7 +734,7 @@
                 const crHere = cr && !cr.cleared && cr.sector === act.sector ? cr : null;
                 if (crHere) html += _hqCodeRedBriefHtml(crHere, { respond: false });
                 /* the bay is a corridor you walk (plan 2.6); the rows below are the quick dispatch */
-                if (_hqRoomExists(bayId)) html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" ${canCross ? '' : 'disabled'} data-room="${_hqEsc(bayId)}" data-at="${_hqEsc(act.at || 'egress')}">${act.at ? 'THROUGH THE RING ▸ ' + _hqEsc(sec.label) : 'ENTER THE BAY ▸ WALK THE THRESHOLDS'}</button></div>`;
+                if (_hqRoomExists(bayId)) html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" ${canCross ? '' : 'disabled'} data-room="${_hqEsc(bayId)}" data-at="${_hqEsc(act.at || _hqBayEntry(act.sector))}">${act.at ? 'THROUGH THE RING ▸ ' + _hqEsc(sec.label) : 'ENTER THE BAY ▸ WALK THE THRESHOLDS'}</button></div>`;
                 html += '<div class="hq-rows">';
                 sec.maps.forEach(id => {
                     const sf = (typeof window.doorSiteFile === 'function') ? window.doorSiteFile(id) : null;
@@ -774,7 +782,7 @@
             let html = `<div class="hq-panel-hd"><b>BUILDING DIRECTORY</b><span>${_hqEsc(room.label || 'CENTRAL EGRESS')} · YOU ARE HERE · LAYOUT SUBJECT TO REVISION</span></div><div class="hq-rows">`;
             const rows = [];
             const isBox = room.kind === 'box';
-            const where = d => isBox ? ('WALL ' + String(d.wall || '').toUpperCase() + ' · ') : isBay ? ((d.side === 'in') ? 'INNER WALL · ' : 'THRESHOLD · ') : (d.level ? 'MEZZANINE · ' : 'FLOOR · ');
+            const where = d => isBox ? ('WALL ' + String(d.wall || '').toUpperCase() + ' · ') : isBay ? ((d.cap ? 'END CAP · ' : (d.side === 'in') ? 'INNER WALL · ' : 'THRESHOLD · ') + (d.bay ? d.bay + ' · ' : '')) : (d.level ? 'MEZZANINE · ' : 'FLOOR · ');
             const noPre = e => { const n = _hqNo(e); return n ? 'ROOM ' + n + ' · ' : ''; };
             (room.doors || []).forEach(d => rows.push({ id: d.id, label: d.label, sub: noPre(d) + where(d) + (d.sub || ''), st: (typeof window.doorSiteState === 'function') ? window.doorSiteState(d, profile) : 'open' }));
             (room.counters || []).forEach(c => rows.push({ id: c.id, label: c.label, sub: noPre(c) + (c.level ? 'MEZZANINE · ' : 'FLOOR · ') + (c.sub || ''), st: 'open' }));
@@ -928,7 +936,10 @@
                keyed by race + gender so the Nun and the Witch get theirs);
                a race without an entry overhears the room */
             if (!line && t.kind === 'npc' && t.race && typeof window.hqRosterLine === 'function') line = window.hqRosterLine(t.race, t.gender);
-            if (!line && room && room.lines && room.lines.length) line = room.lines[Math.floor(Math.random() * room.lines.length)];
+            /* on the containment ring (plan 5.4a stage 2) the overheard line is the bay's you stand in */
+            const seg = (!line) ? _hqRingSegHere(room) : null;
+            const pool = (seg && seg.lines && seg.lines.length) ? seg.lines : (room && room.lines) || [];
+            if (!line && pool.length) line = pool[Math.floor(Math.random() * pool.length)];
             return `<div class="hq-panel-hd"><b>${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span></div><p class="hq-panel-line">${_hqEsc(line || '…')}</p><div class="hq-panel-actions"><button class="hq-btn" data-close="1">NOTED</button></div>`;
         }
         /* A plain unlocked door with exactly one obvious outcome — a built
@@ -953,7 +964,7 @@
             if (act.room && _hqRoomExists(act.room)) return { room: act.room, at: act.at || null };
             if (act.sector) {
                 const bayId = (typeof window.hqBayId === 'function') ? window.hqBayId(act.sector) : ('bay_' + act.sector);
-                if (_hqRoomExists(bayId)) return { room: bayId, at: act.at || 'egress' };   // a ring door lands at the far cap (plan 5.4a)
+                if (_hqRoomExists(bayId)) return { room: bayId, at: act.at || _hqBayEntry(act.sector) };   // a ring door lands at the far cap (plan 5.4a)
             }
             if (act.fn && typeof window[act.fn] === 'function') return { fn: act.fn };
             return null;
@@ -1022,7 +1033,7 @@
                 const roomId = act.room || ((typeof window.hqBayId === 'function') ? window.hqBayId(act.sector) : ('bay_' + act.sector));
                 const from = t || _hqPanelTarget;
                 if (from && from.kind === 'door') _hqRecordVisit(from.id);
-                const at = act.at || (act.sector ? 'egress' : null);
+                const at = act.at || (act.sector ? _hqBayEntry(act.sector) : null);
                 window._hqGoRoom(roomId, at);
                 return;
             }

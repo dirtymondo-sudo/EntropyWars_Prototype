@@ -1,5 +1,5 @@
 # D.O.O.R. — MASTER FILE
-### Story bible + integration design + build log — rev 19 (2026-09-07 rev 4 — the first WALKABLE SITE: Room 555 · D.U.M.B. is a room behind its threshold with its own Δ board on the floor (HQ plan 7.2 stage 1); rev 18 2026-09-07 rev 3 — C-22 and C-23 DECIDED and shipped: seven bays (Bay 7 · URBAN), the CONTAINMENT RING joins the bays end to end on each floor (HQ plan 5.4a); rev 17 2026-09-07 — the ROOM REGISTER proposed: room numbers on every site and HQ room, seven new sites, a seventh bay — HQ plan Phase 7, Part C rows 22–24, Part D; rev 16 2026-09-06 — THE CAST: twenty characters hand-authored by the user (A0 #6–#9, A16, `DOOR_STORY.md` §2), fifteen rigged models placed in the headquarters (Part D); rev 15 2026-09-05 — roster dialogue shipped, see A15 + Part D rev 6; 2026-09-04 — story canon separated from ChatGPT scaffolding (A0); the authoring process recorded (A14); `DOOR_STORY.md` created as the empty worksheet. Story track code stays ON HOLD until the user writes the outline per A14.)
+### Story bible + integration design + build log — rev 20 (2026-09-08 rev 5 — THE CONTAINMENT RING is one corridor per floor: the bays of a floor are segments of a single hallway just outside the egress drum, every egress bay door its inner-wall door, the thresholds along its outer wall, the caps a fire door to each other across the service side (HQ plan 5.4a stage 2); rev 19 2026-09-07 rev 4 — the first WALKABLE SITE: Room 555 · D.U.M.B. is a room behind its threshold with its own Δ board on the floor (HQ plan 7.2 stage 1); rev 18 2026-09-07 rev 3 — C-22 and C-23 DECIDED and shipped: seven bays (Bay 7 · URBAN), the CONTAINMENT RING joins the bays end to end on each floor (HQ plan 5.4a); rev 17 2026-09-07 — the ROOM REGISTER proposed: room numbers on every site and HQ room, seven new sites, a seventh bay — HQ plan Phase 7, Part C rows 22–24, Part D; rev 16 2026-09-06 — THE CAST: twenty characters hand-authored by the user (A0 #6–#9, A16, `DOOR_STORY.md` §2), fifteen rigged models placed in the headquarters (Part D); rev 15 2026-09-05 — roster dialogue shipped, see A15 + Part D rev 6; 2026-09-04 — story canon separated from ChatGPT scaffolding (A0); the authoring process recorded (A14); `DOOR_STORY.md` created as the empty worksheet. Story track code stays ON HOLD until the user writes the outline per A14.)
 
 This file MERGES the two earlier DOOR documents and supersedes both:
 - `entropy_wars_claude_brief.md` (the ChatGPT-assisted story/world brief, 2026-09) → Part A
@@ -395,9 +395,12 @@ The 29 launch maps (`EW_MAP_META`, each with a `SITE_FILES` customs file
 and a hand-authored 8×8 Δ board) group into seven sector bays (six until
 2026-09-07; the seventh, URBAN, and the two moves are C-23, DECIDED). Story
 anchors in bold. Grouping is a proposal (Part C, decision 4). Since HQ plan
-5.4a the bays on one floor of the egress link end to end through fire
-doors on their caps — downstairs 1 ⇄ 4, upstairs 2 → 5 → 7 → 3 → 6 → 2 —
-so a corridor walk goes all the way round its floor.
+5.4a the bays on one floor of the egress are ONE corridor (stage 2,
+2026-09-08): the CONTAINMENT RING runs just outside the egress drum —
+downstairs behind Bays 1 and 4, upstairs behind 2 · 5 · 7 · 3 · 6 in door
+order — each bay a segment whose egress door is the ring's inner-wall
+door and whose thresholds line its outer wall, a fire door at each cap
+opening on the other cap across the service side.
 
 | Bay | Door light colour band | Maps |
 |---|---|---|
@@ -1754,3 +1757,24 @@ Claude placeholders the user may rewrite (A15). Files: data.js,
 index.html (`20260908d-cors`), doorhq.test.js (152 tests, 151 green +
 1 skip). Next in the plan: 5.4a stage 2, 7.9 dailies, 4.1. Story track
 still ON HOLD (A14).
+
+### 2026-09-08 (rev 5) — THE CONTAINMENT RING: one corridor per floor
+HQ plan 5.4a stage 2 — the plan's standing next step after 7.2, and the
+rest of the user's 2026-09-07 ask ("go all the way around, or at least
+halfway"). The bays of a floor are segments of ONE hallway framed just
+outside the egress drum (ground ring r 21.5–25.5 behind Bays 1 and 4,
+55 m; mezzanine ring r 24.5–28.5 behind 2 · 5 · 7 · 3 · 6, 123 m): every
+egress bay door is the ring's inner-wall door at the same angle, the
+thresholds run along the outer wall either side of it (three runs on
+the mezzanine nudged a few degrees apart where they would collide), no
+rebuild between bays, a fire door on each cap opening on the other cap
+across the service side (a door-blink; that stretch "is not on the plan
+and is not lit"). data.js `bayShell.corridor`, `hqRingLayout` /
+`hqRingRoom`, `hqBayId` → the floor's ring; the renderer learned only
+`shell.full`; map.js lands through `hqBayEntry`; Sedaniel's bay spot
+carried over. No canon change; the cap door's line is a Claude
+placeholder the user may rewrite (A15). Files: data.js,
+three-renderer.js, map.js, index.html (`20260908e-cors`),
+doorhq.test.js (157 tests, 156 green + 1 skip). Kill-switch
+`corridor.on: false` = the stage-1 bays. Next in the plan: 7.9 dailies,
+4.1, wave 1 of the new sites. Story track still ON HOLD (A14).
