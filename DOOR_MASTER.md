@@ -1808,3 +1808,31 @@ styles-base.css, doorhq.test.js (source-scan rows). Also fixed: a hot
 crossing leaf (introCineWarm) bailed out of its fit because the group
 was not yet parented — `rec.dead` gates it now. Story track still ON
 HOLD (A14).
+
+### 2026-09-08 (rev 7) — THE TERMINAL: the crossing is filed on the console's own screen
+The user's ask: clicking a room's console dumped you on the match-select
+page with a dead mouse (the walker's pointer lock landed on the page a
+frame late); a site you are STANDING IN should not ask you to pick a map;
+and both screens should be diegetic — on the monitor, full frame. Done:
+match-select.js is now a CRT (bezel, glass, scanlines, the phosphor's
+warm paper, a label-gun strip that reads D.O.O.R. · CROSSING CONSOLE ·
+TTY-1 · DO NOT UNPLUG) in two variants — SITE (the site fixed, BOARD Δ /
+FULL · MODE · TEAM · ROUNDS · TEMPO · FILE THE CROSSING) and FULL (every
+site, the desk). In the building it lives in `#hqTerminal` over the
+paused walk: E at a walkable site's CROSSING console pushes the camera
+onto the tanker desk's CRT (three-renderer.js `hq.focusScreen`) and the
+screen powers on with the crtOn sting; the RANGE console opens the FULL
+desk on the Training Room board with ORIENTATION / PRACTICE as presets;
+DISPATCH's panel gained "THE DESK'S SCREEN ▸ FILE A CROSSING · ANY SITE";
+a bay threshold's CROSS / DEEP / RESPOND file on the SITE screen over the
+ring. STEP AWAY / ESC powers it down and pulls the camera back into the
+room (no rebuild); FILE takes the building down with the screen and the
+post-match return stands you at the console. The classic page (?nohq,
+VS CPU) is the same monitor on black. The dead cursor: the async pointer
+lock is now released when it lands on a paused walk or after a leave.
+No canon change: the desk is the Department's, the sound kit is the DOOR
+kit; the officer line on the head reads the card (clearance, never ELO).
+Files: match-select.js (rewritten), map.js, three-renderer.js,
+styles-base.css, index.html (`20260908j-cors`), doorhq.test.js (one new
+source-scan test, 164 green + 1 skip). Story track still ON HOLD (A14).
+

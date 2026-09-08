@@ -1,173 +1,39 @@
 (function() {
 'use strict';
 
+/* ═══════════════════════════════════════════════════════════════════════
+   MATCH SELECT — THE TERMINAL (2026-09-08)
+   The screen is a CRT monitor: the console's own tube, full frame (bezel,
+   glass, scanlines, the phosphor's warm black), styled by styles-base.css
+   `.ms-crt` / `.ms-tty-*`. It lives in two homes:
+   · #hqTerminal inside the D.O.O.R. headquarters — the camera has pushed
+     onto the desk's CRT (three-renderer.js hq.focusScreen) and map.js
+     _hqOpenTerminal powers it on; the building waits underneath, paused.
+     STEP AWAY pulls the camera back into the room, FILE leaves for the
+     party builder.
+   · #modePage — the classic route (?nohq, VS CPU from the play hub): the
+     same monitor on black.
+   Two VARIANTS of the content:
+   · FULL  — MODE · every SITE (map cards, filters) · CONFIG. The Training
+     Room's RANGE console and DISPATCH open it (any site, any mode).
+   · SITE  — the site is the room you stand in (a walkable site's CROSSING
+     console, a bay threshold's CROSS / DEEP): the site file, then BOARD
+     (Δ 8×8 / the full site) · MODE · TEAM · ROUNDS · TEMPO. No map grid.
+   The launch contract is unchanged: the module globals _msSelected* are
+   mirrored during render and map.js _msConfirm reads them; a D.O.O.R.
+   crossing rides window._hqPreselect (map.js _hqLaunchMission), whose
+   `locked` flag picks the SITE variant. Plain game words stay: MODE / MAP /
+   CONFIG / CONFIRM are not renamed in the code.
+   ═══════════════════════════════════════════════════════════════════════ */
+
 const h = React.createElement;
 const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
-if (!document.getElementById('ms-hover-css')) {
-  const _css = document.createElement('style');
-  _css.id = 'ms-hover-css';
-  _css.textContent = `
-    /* ── Match Select hover feedback — black/minimal (void-menu dialect) ── */
-    .ms-btn {
-      transition: background 0.12s, border-color 0.15s, color 0.12s,
-                  box-shadow 0.15s, transform 0.1s, filter 0.12s !important;
-    }
-    .ms-btn:hover {
-      filter: brightness(1.25);
-      box-shadow: 0 0 10px rgba(255,255,255,0.1);
-    }
-    .ms-btn:active {
-      transform: scale(0.97);
-      filter: brightness(0.9);
-    }
-
-    /* Ghost outline buttons (RANDOMIZE) */
-    .ms-btn-ghost {
-      transition: background 0.12s, border-color 0.15s, color 0.12s,
-                  box-shadow 0.15s, transform 0.1s !important;
-    }
-    .ms-btn-ghost:hover {
-      background: rgba(255,255,255,0.07) !important;
-      border-color: rgba(255,255,255,0.4) !important;
-      color: #fff !important;
-    }
-    .ms-btn-ghost:active {
-      transform: scale(0.96);
-      background: rgba(255,255,255,0.12) !important;
-    }
-
-    /* BACK button (red) */
-    .ms-btn-back {
-      transition: background 0.12s, border-color 0.15s, color 0.12s,
-                  box-shadow 0.15s, transform 0.1s !important;
-    }
-    .ms-btn-back:hover {
-      background: rgba(255,92,92,0.1) !important;
-      border-color: #ff5c5c !important;
-      color: #ff8a8a !important;
-      box-shadow: 0 0 12px rgba(255,92,92,0.15);
-    }
-    .ms-btn-back:active {
-      transform: scale(0.96);
-      background: rgba(255,92,92,0.16) !important;
-    }
-
-    /* Primary CTA (CONFIRM — green) */
-    .ms-btn-primary {
-      transition: box-shadow 0.15s, transform 0.1s, filter 0.12s,
-                  background 0.12s !important;
-    }
-    .ms-btn-primary:hover {
-      filter: brightness(1.15);
-      background: rgba(61,220,132,0.16) !important;
-      box-shadow: 0 0 40px rgba(61,220,132,0.3), 0 2px 12px rgba(61,220,132,0.22) !important;
-      transform: translateY(-1px);
-    }
-    .ms-btn-primary:active {
-      transform: translateY(0) scale(0.98);
-      filter: brightness(0.95);
-    }
-
-    /* Mode cards */
-    .ms-mode-card {
-      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s,
-                  transform 0.12s !important;
-    }
-    .ms-mode-card:hover {
-      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(0,0,0,0.4)) !important;
-      border-color: rgba(255,255,255,0.4) !important;
-      box-shadow: 0 0 14px rgba(255,255,255,0.06);
-      transform: translateX(2px);
-    }
-    .ms-mode-card:active {
-      transform: translateX(2px) scale(0.99);
-    }
-    .ms-mode-card.selected:hover {
-      box-shadow: 0 0 20px rgba(255,255,255,0.12);
-      transform: none;
-    }
-
-    /* Map cards */
-    .ms-map-card {
-      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s,
-                  transform 0.12s !important;
-    }
-    .ms-map-card:hover {
-      border-color: rgba(255,255,255,0.4) !important;
-      box-shadow: 0 0 14px rgba(255,255,255,0.06);
-      transform: translateY(-1px);
-    }
-    .ms-map-card:active {
-      transform: scale(0.98);
-    }
-
-    /* Segmented control options */
-    .ms-seg-opt {
-      transition: background 0.12s, color 0.12s, border-color 0.12s !important;
-    }
-    .ms-seg-opt:hover {
-      background: linear-gradient(180deg, rgba(255,255,255,0.1), transparent) !important;
-      color: #fff !important;
-    }
-
-    /* Chip buttons (size filters, team size picks) */
-    .ms-chip {
-      transition: background 0.12s, border-color 0.12s, color 0.12s,
-                  box-shadow 0.12s, transform 0.1s !important;
-    }
-    .ms-chip:hover {
-      border-color: rgba(255,255,255,0.55) !important;
-      color: #fff !important;
-      background: rgba(255,255,255,0.08) !important;
-      box-shadow: 0 0 8px rgba(255,255,255,0.08);
-    }
-    .ms-chip:active {
-      transform: scale(0.95);
-    }
-
-    /* Stepper +/- buttons */
-    .ms-stepper-btn {
-      transition: background 0.1s, border-color 0.12s, color 0.1s, transform 0.08s !important;
-    }
-    .ms-stepper-btn:hover {
-      background: rgba(255,255,255,0.08) !important;
-      border-color: rgba(255,255,255,0.4) !important;
-      color: #fff !important;
-    }
-    .ms-stepper-btn:active {
-      transform: scale(0.9);
-      background: rgba(255,255,255,0.15) !important;
-    }
-  `;
-  document.head.appendChild(_css);
-}
-
-/* Black/minimal palette — matches the title screen / main menu / loading
-   screen: pure black, white text, white hairline borders. Green is reserved
-   for confirm/go, red for back/danger. The old accent keys (space/time/chaos)
-   stay as named slots but now resolve to neutral white so every selected
-   state reads as "white on black" instead of purple. */
-const EW = {
-  bg: '#000000', bg2: '#050505', bg3: '#0a0a0a',
-  panel: 'rgba(0,0,0,0.6)',
-  panelEdge: 'rgba(255,255,255,0.14)',
-  panelEdgeHi: 'rgba(255,255,255,0.38)',
-  ink: '#f2f2f2', inkMute: '#9c9c9c', inkDim: '#5c5c5c',
-  grid: 'rgba(255,255,255,0.04)',
-  space: '#e8e8e8', time: '#e8e8e8', chaos: '#e8e8e8',
-  good: '#3ddc84', bad: '#ff5c5c', warn: '#e8e8e8',
-  unholy: '#e8e8e8',
-};
-
-/* ── D.O.O.R. layer (DOOR_DESIGN §3): the match-select screen is a customs
-   desk — every map is a SITE FILE (data.js DOOR_TEXT.SITE_FILES: status
-   stamp, jurisdiction, executive summary) and the roster's
-   POINT OF ENTRY table tells you who crossed there. Everything degrades to
-   the plain screen if data.js predates the layer. Plain game words stay:
-   MODE / MAP / CONFIG / CONFIRM are not renamed. */
+/* ── D.O.O.R. layer (DOOR_DESIGN §3): every map is a SITE FILE (data.js
+   DOOR_TEXT.SITE_FILES: status stamp, jurisdiction, executive summary) and
+   the roster's POINT OF ENTRY table tells you who crossed there. Everything
+   degrades to the plain screen if data.js predates the layer. ── */
 const DOOR = (typeof window !== 'undefined' && window.DOOR_TEXT) || null;
-const DOOR_SEAL = DOOR && DOOR.LOGO ? DOOR.LOGO.onDark : null;
 const STAMP_INK = { admit: '#4fc07a', deny: '#e0554a', void: '#8f8f8f' };
 function siteFileFor(mp) {
   if (!mp || typeof window.doorSiteFile !== 'function') return null;
@@ -191,49 +57,34 @@ function siteCrossings(mp) {
       || (window.RACE_PROFILES && window.RACE_PROFILES[r] && window.RACE_PROFILES[r].label) || r,
   }));
 }
-function officerInfo() {
+function siteMeta(mp) {
   try {
-    const p = window.ProfileSystem && window.ProfileSystem.getActiveProfile && window.ProfileSystem.getActiveProfile();
-    if (!p) return null;
-    const cl = (typeof window.doorClearance === 'function') ? window.doorClearance(p) : { level: 1, title: 'PROBATIONARY' };
-    return { name: p.username || 'OFFICER', clearance: cl };
+    if (!mp || typeof EW_MAP_META === 'undefined') return null;
+    const id = (typeof window.hqSiteId === 'function') ? window.hqSiteId(mp.modeId) : String(mp.modeId).replace(/_delta$/, '');
+    return EW_MAP_META.find(m => m.id === id) || null;
   } catch (_e) { return null; }
 }
+function activeProfile() {
+  try { return (window.ProfileSystem && window.ProfileSystem.getActiveProfile && window.ProfileSystem.getActiveProfile()) || null; } catch (_e) { return null; }
+}
+function officerInfo() {
+  const p = activeProfile();
+  if (!p) return null;
+  const cl = (typeof window.doorClearance === 'function') ? window.doorClearance(p) : { level: 1, title: 'PROBATIONARY' };
+  return { name: p.username || 'OFFICER', clearance: cl };
+}
+function canonDate() {
+  try { return (typeof window.doorCanonDate === 'function') ? window.doorCanonDate() : ''; } catch (_e) { return ''; }
+}
+function playUi() { if (typeof playSfx === 'function') playSfx('uiButtonConfirm'); }
+function doorSfx(key, opts) { try { if (typeof window.playDoorSfx === 'function') window.playDoorSfx(key, opts || {}); } catch (_e) {} }
+
 function DoorStamp({ text, tone, size, style, title }) {
   return h('span', {
     className: 'door-stamp' + (tone === 'admit' ? ' admit' : tone === 'void' ? ' void' : '')
       + (size === 'sm' ? ' door-stamp-sm' : size === 'lg' ? ' door-stamp-lg' : ''),
     style: style, title: title,
   }, text);
-}
-/* The seal (user-made PNG on R2). Falls back to the old sigil if data.js
-   predates the DOOR layer. */
-function DoorSeal({ size }) {
-  size = size || 40;
-  if (DOOR_SEAL) {
-    return h('img', { src: DOOR_SEAL, alt: '', draggable: false, style: {
-      width: size, height: size, objectFit: 'contain', flexShrink: 0,
-      filter: 'drop-shadow(0 0 8px rgba(0,0,0,0.7))', userSelect: 'none',
-    }});
-  }
-  return h('svg', { width: 28, height: 28, viewBox: '0 0 28 28' },
-    h('circle', { cx: 14, cy: 14, r: 12, fill: 'none', stroke: EW.time, strokeWidth: 1 }),
-    h('circle', { cx: 14, cy: 14, r: 6, fill: 'none', stroke: EW.time, strokeWidth: 0.5 }),
-    h('circle', { cx: 14, cy: 14, r: 2, fill: EW.time }),
-    h('line', { x1: 14, y1: 0, x2: 14, y2: 4, stroke: EW.time, strokeWidth: 1 }),
-    h('line', { x1: 14, y1: 24, x2: 14, y2: 28, stroke: EW.time, strokeWidth: 1 }),
-    h('line', { x1: 0, y1: 14, x2: 4, y2: 14, stroke: EW.time, strokeWidth: 1 }),
-    h('line', { x1: 24, y1: 14, x2: 28, y2: 14, stroke: EW.time, strokeWidth: 1 }),
-  );
-}
-/* Officer chip: callsign + story clearance (NOT the ELO rank). */
-function OfficerChip() {
-  const o = officerInfo();
-  if (!o) return null;
-  return h('div', { className: 'door-officer', title: 'Employee on desk · clearance is story progress, not rank' },
-    h('b', null, o.name),
-    h('span', null, 'CLEARANCE L' + o.clearance.level + ' · ' + o.clearance.title)
-  );
 }
 
 const _TERRAIN_COLORS_FALLBACK = {
@@ -268,50 +119,7 @@ const _TERRAIN_COLORS_FALLBACK = {
 const TERRAIN_COLORS = Object.assign({}, _TERRAIN_COLORS_FALLBACK,
   (typeof window !== 'undefined' && window.EW_TERRAIN_COLORS) || {});
 
-/* Minimal dialect: chrome accents are monochrome. Per-map color identity was
-   the old behaviour — the terrain minimap + spawn dots still carry the color;
-   panel chrome stays white-on-black. */
-function accentForMap(mp) {
-  return '#e8e8e8';
-}
-
-function StarField() {
-  const stars = useMemo(() => {
-    const out = [];
-    let s = 11 * 9301 + 49297;
-    for (let i = 0; i < 120; i++) {
-      s = (s * 9301 + 49297) % 233280;
-      const x = (s / 233280) * 100;
-      s = (s * 9301 + 49297) % 233280;
-      const y = (s / 233280) * 100;
-      s = (s * 9301 + 49297) % 233280;
-      const r = ((s / 233280) * 1.6) + 0.2;
-      s = (s * 9301 + 49297) % 233280;
-      const o = ((s / 233280) * 0.7) + 0.1;
-      out.push(h('div', { key: i, style: {
-        position: 'absolute', left: x + '%', top: y + '%',
-        width: r, height: r,
-        background: 'rgba(220,230,255,' + o + ')',
-        borderRadius: '50%',
-      }}));
-    }
-    return out;
-  }, []);
-
-  return h('div', { style: {
-    position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden',
-  }},
-    h('div', { style: {
-      position: 'absolute', inset: 0,
-      backgroundImage: 'linear-gradient(' + EW.grid + ' 1px, transparent 1px), linear-gradient(90deg, ' + EW.grid + ' 1px, transparent 1px)',
-      backgroundSize: '56px 56px',
-      maskImage: 'radial-gradient(ellipse at center, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 80%)',
-      WebkitMaskImage: 'radial-gradient(ellipse at center, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 80%)',
-    }}),
-    ...stars
-  );
-}
-
+/* the minimap: the board's terrain from PREBUILT_MAPS.grid, the spawn dots */
 function MapPreview({ mp, size, mini }) {
   size = size || 200;
   const w = mp.w || mp.boardWidth || 8;
@@ -320,7 +128,6 @@ function MapPreview({ mp, size, mini }) {
   const cell = (size - 4) / maxDim;
   const offX = Math.floor((maxDim - w) / 2);
   const offY = Math.floor((maxDim - ht) / 2);
-  const accent = accentForMap(mp);
   const pbData = (mp.isPrebuilt && typeof PREBUILT_MAPS !== 'undefined') ? PREBUILT_MAPS[mp.modeId] : null;
 
   const rects = useMemo(() => {
@@ -336,28 +143,23 @@ function MapPreview({ mp, size, mini }) {
           const tKey = (typeof ME_TERRAIN_IDS !== 'undefined' && ME_TERRAIN_IDS[tid]) ? ME_TERRAIN_IDS[tid] : null;
           color = (tKey && TERRAIN_COLORS[tKey]) ? TERRAIN_COLORS[tKey] : (tid === 0 ? 'transparent' : 'rgba(80,140,60,0.3)');
         }
-        const xx = c * cell;
-        const yy = r * cell;
         out.push(h('rect', {
           key: r + ',' + c,
-          x: xx, y: yy,
+          x: c * cell, y: r * cell,
           width: cell - 0.5, height: cell - 0.5,
           fill: color, stroke: '#000', strokeOpacity: 0.25, strokeWidth: 0.5,
         }));
       }
     }
-
     if (pbData && pbData.spawns) {
       [1, 2].forEach(team => {
         const spawns = pbData.spawns[team] || [];
         const clr = team === 1 ? '#5fd6ff' : '#e168c8';
         spawns.forEach((sp, si) => {
-          const sx = (sp.x + offX) * cell + cell / 2;
-          const sy = (sp.y + offY) * cell + cell / 2;
           out.push(h('circle', {
             key: 'sp' + team + '-' + si,
-            cx: sx, cy: sy, r: cell * 0.3,
-            fill: clr, opacity: 0.8,
+            cx: (sp.x + offX) * cell + cell / 2, cy: (sp.y + offY) * cell + cell / 2,
+            r: cell * 0.3, fill: clr, opacity: 0.8,
           }));
         });
       });
@@ -365,223 +167,174 @@ function MapPreview({ mp, size, mini }) {
     return out;
   }, [mp.modeId, size]);
 
-  return h('div', { style: {
-    width: size + 8, height: size + 8, padding: 4, position: 'relative',
-    background: 'linear-gradient(180deg, rgba(0,0,0,0.4), rgba(0,0,0,0.7))',
-    border: '1px solid ' + EW.panelEdge,
-    boxShadow: '0 0 30px ' + accent + '22, inset 0 0 20px rgba(0,0,0,0.5)',
-  }},
-    h('svg', {
-      width: size, height: size,
-      viewBox: '0 0 ' + size + ' ' + size,
-      style: { display: 'block' },
-    },
-      h('rect', { width: size, height: size, fill: '#050505' }),
+  return h('div', { className: 'ms-tty-preview', style: { width: size + 8, height: size + 8 } },
+    h('svg', { width: size, height: size, viewBox: '0 0 ' + size + ' ' + size },
+      h('rect', { width: size, height: size, fill: '#050604' }),
       ...rects,
       !mini && h('g', { opacity: 0.6 },
-        h('text', {
-          x: 6, y: size - 6,
-          fill: EW.inkDim,
-          fontFamily: 'DotGothic16, monospace',
-          fontSize: 9, letterSpacing: '0.16em',
-        }, w + '×' + ht),
-        h('text', {
-          x: size - 26, y: size - 6,
-          fill: EW.inkDim,
-          fontFamily: 'DotGothic16, monospace',
-          fontSize: 9, letterSpacing: '0.16em',
-        }, 'N↑')
+        h('text', { x: 6, y: size - 6, fill: '#9a8f6e', fontFamily: 'IBM Plex Mono, monospace', fontSize: 9, letterSpacing: '0.16em' }, w + '×' + ht),
+        h('text', { x: size - 26, y: size - 6, fill: '#9a8f6e', fontFamily: 'IBM Plex Mono, monospace', fontSize: 9, letterSpacing: '0.16em' }, 'N↑')
       )
     )
   );
 }
 
-function ModeCard({ m, selected, onClick }) {
-  return h('div', {
-    onClick: onClick,
-    className: 'ms-mode-card' + (selected ? ' selected' : ''),
-    style: {
-      position: 'relative', cursor: 'pointer', padding: '12px 14px',
-      background: selected
-        ? 'linear-gradient(180deg, ' + EW.time + '1a, rgba(0,0,0,0.4))'
-        : 'rgba(0,0,0,0.35)',
-      border: '1px solid ' + (selected ? EW.time + 'aa' : EW.panelEdge),
-      display: 'flex', gap: 12, alignItems: 'flex-start',
-      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-    },
-  },
-    selected && h('div', { style: {
-      position: 'absolute', top: 0, bottom: 0, left: 0, width: 2,
-      background: EW.time, boxShadow: '0 0 10px ' + EW.time,
-    }}),
-    h('div', { style: {
-      flexShrink: 0, width: 36, height: 36,
-      background: 'linear-gradient(180deg, ' + (selected ? EW.time : EW.inkMute) + '22, rgba(0,0,0,0.4))',
-      border: '1px solid ' + (selected ? EW.time + '66' : EW.panelEdge),
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: selected ? EW.time : EW.inkMute, fontSize: 18,
-    }}, m.icon),
-    h('div', { style: { flex: 1, minWidth: 0 } },
-      h('div', { style: {
-        fontFamily: '"Cormorant SC", serif',
-        fontSize: 18, color: EW.ink, lineHeight: 1, letterSpacing: '0.02em',
-      }}, m.label,
-        m.tag && h('span', { style: {
-          fontFamily: '"DotGothic16", monospace', fontSize: 9, letterSpacing: '0.1em',
-          color: EW.time, border: '1px solid ' + EW.time + '66',
-          padding: '1px 5px', marginLeft: 8, verticalAlign: 'middle',
-        }}, m.tag)
-      ),
-      h('div', { style: {
-        fontFamily: '"DotGothic16", monospace', fontSize: 10, letterSpacing: '0.06em',
-        color: EW.inkMute, lineHeight: 1.4, marginTop: 5,
-      }}, m.desc)
-    )
+/* ── the parts ─────────────────────────────────────────────────────── */
+function ModeRow({ m, selected, onClick }) {
+  return h('div', { className: 'ms-tty-row' + (selected ? ' sel' : '') + (m.locked ? ' locked' : ''), onClick: onClick },
+    h('em', null, '▸'),
+    h('b', null, m.icon ? m.icon + ' ' : '', m.label, m.tag && h('i', null, m.tag)),
+    h('p', null, m.desc)
   );
 }
 
-function MapCard({ mp, selected, onClick, accent }) {
+function MapCard({ mp, selected, onClick }) {
   const sf = siteFileFor(mp);
-  return h('div', {
-    onClick: onClick,
-    className: 'ms-map-card',
-    style: {
-      position: 'relative', cursor: 'pointer',
-      background: selected
-        ? 'linear-gradient(180deg, ' + accent + '22, rgba(0,0,0,0.4))'
-        : 'rgba(0,0,0,0.35)',
-      border: '1px solid ' + (selected ? accent : EW.panelEdge),
-      padding: 10, display: 'flex', flexDirection: 'column', gap: 8,
-    },
-  },
-    selected && h('div', { style: {
-      position: 'absolute', top: 0, bottom: 0, left: 0, width: 2,
-      background: accent, boxShadow: '0 0 10px ' + accent,
-    }}),
-    h('div', { style: { display: 'flex', alignItems: 'flex-start', gap: 10 } },
-      h('div', { style: { flexShrink: 0 } },
-        h(MapPreview, { mp: mp, size: 72, mini: true })
-      ),
-      h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 } },
-        h('div', { style: {
-          fontFamily: '"Cormorant SC", serif', fontSize: 15,
-          color: EW.ink, lineHeight: 1, letterSpacing: '0.02em',
-        }}, mp.name),
-        h('div', { style: {
-          fontFamily: '"DotGothic16", monospace', fontSize: 9,
-          color: EW.inkMute, letterSpacing: '0.12em',
-          display: 'flex', justifyContent: 'space-between', gap: 6,
-        }},
-          h('span', { style: { color: accent, fontWeight: 600, flexShrink: 0 } }, mp.size),
-          h('span', {
-            title: sf ? 'Customs status · ' + sf.juris : undefined,
-            style: {
-              color: sf ? STAMP_INK[sf.tone] || EW.inkMute : EW.inkMute, letterSpacing: '0.1em',
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0,
-            },
-          }, sf ? sf.status : (mp.isPrebuilt ? 'PRESET' : 'RANDOM'))
-        ),
-        h('div', { style: {
-          fontFamily: '"DotGothic16", monospace', fontSize: 8,
-          color: EW.inkDim, letterSpacing: '0.12em',
-        }}, (mp.team || 4) + ' SPAWNS')
+  return h('div', { className: 'ms-tty-card' + (selected ? ' sel' : ''), onClick: onClick, title: sf ? sf.status + ' · ' + sf.juris : undefined },
+    h(MapPreview, { mp: mp, size: 56, mini: true }),
+    h('div', null,
+      h('b', null, mp.name),
+      h('span', null, h('em', null, mp.size), h('span', { style: { color: sf ? (STAMP_INK[sf.tone] || undefined) : undefined, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, sf ? sf.status : (mp.isPrebuilt ? 'PRESET' : 'RANDOM'))),
+      h('small', null, (mp.team || 4) + ' SPAWNS')
+    )
+  );
+}
+
+function Chip({ on, teal, big, disabled, onClick, title, children }) {
+  return h('button', { className: 'ms-tty-chip' + (on ? ' on' : '') + (teal ? ' teal' : '') + (big ? ' big' : ''), disabled: !!disabled, onClick: onClick, title: title }, children);
+}
+
+function Seg({ options, value, onChange }) {
+  return h('div', { className: 'ms-tty-seg' },
+    ...options.map(o => h('div', {
+      key: o.id, className: (value === o.id ? 'on' : '') + (o.off ? ' off' : ''), title: o.title,
+      onClick: () => { if (!o.off) onChange(o.id); },
+    }, o.label, o.sub && h('small', null, o.sub)))
+  );
+}
+
+function Field({ label, hint, children }) {
+  return h('div', { className: 'ms-tty-field' }, h('label', null, label, hint && h('i', null, hint)), children);
+}
+
+function Stepper({ value, min, max, unit, onChange }) {
+  return h('div', { className: 'ms-tty-step' },
+    h('button', { onClick: () => onChange(Math.max(min, value - 1)) }, '−'),
+    h('b', null, value, h('small', null, unit)),
+    h('button', { onClick: () => onChange(Math.min(max, value + 1)) }, '+')
+  );
+}
+
+/* the mastery checklist on file for a site (HQ plan 3.1) */
+function SiteChecks({ siteId }) {
+  const sm = (typeof window.hqSiteMastery === 'function') ? window.hqSiteMastery(siteId, activeProfile()) : null;
+  const HQ = (typeof window !== 'undefined' && window.DOOR_HQ) || null;
+  if (!sm || !HQ || !Array.isArray(HQ.masteryConditions)) return null;
+  const labels = HQ.masteryLabels || {};
+  return h('div', { className: 'ms-tty-chips' },
+    h('span', null, 'ON FILE FOR THIS THRESHOLD · ' + sm.done + '/' + sm.total),
+    ...HQ.masteryConditions.map(c => h('i', { key: c, className: 'hq-check ' + (sm.have[c] ? 'ok' : 'no'), title: c }, (sm.have[c] ? '☑ ' : '☐ ') + (labels[c] || c)))
+  );
+}
+
+/* the day's Code Red on this site (HQ plan 3.3): who, where from, what it pays */
+function CodeRedBrief({ siteId }) {
+  const cr = (typeof window.hqCodeRed === 'function') ? window.hqCodeRed(activeProfile()) : null;
+  if (!cr || cr.cleared || cr.site !== siteId) return null;
+  const ent = String(cr.race || '').toUpperCase();
+  return h('div', { className: 'hq-codered', style: { flexShrink: 0 } },
+    h('b', null, 'CODE RED · ACTIVE BREACH'),
+    h('p', null, 'This morning the ' + cr.label + ' threshold — STABILIZED, on file, green — reported ',
+      h('i', { className: 'hq-chip' }, ent), ' on the far side. ' + ent + ' is filed at ',
+      h('em', null, String(cr.from).toUpperCase()), ' and has no business being here. Cross, put it back, and the Department pays ',
+      h('em', { className: 'pay' }, '💰 +' + (cr.bonus | 0) + ' Hazard Pay'), ' on top of the match. The entity leads the CPU roster.')
+  );
+}
+
+/* the site file: the dossier voice of the codex, numbered sections */
+function SiteFile({ mp, variant, pre, gameModes, multiplayerModes, gmId }) {
+  const sf = siteFileFor(mp);
+  const caseNo = siteCaseNo(mp);
+  const roomNo = siteRoomNo(mp);
+  const firstCrossing = siteFirstCrossing(mp);
+  const crossings = siteCrossings(mp);
+  const meta = siteMeta(mp);
+  const siteId = (typeof window.hqSiteId === 'function') ? window.hqSiteId(mp.modeId) : String(mp.modeId).replace(/_delta$/, '');
+  const boardSizeLabel = mp.size || (mp.w + '×' + mp.h);
+  const L = (DOOR && DOOR.SITE_FILE_LABELS) || {};
+  /* the pinned CPU pool (data.js hqMissionPool): the first `natives` are the
+     site's own entities, the rest its bay's neighbours; [] = a free draw */
+  const roster = (pre && Array.isArray(pre.roster)) ? pre.roster : null;
+  const nativeN = roster ? (roster.natives | 0) : 0;
+  const natives = roster ? (nativeN ? roster.slice(0, nativeN) : roster.slice()) : null;
+  const nativesLabel = !roster ? '' : nativeN ? 'ENTITIES ON FILE · THE CPU FIELDS THEM' : (roster.length ? 'NO ENTITY ON FILE · THE BAY FIELDS ITS NEIGHBOURS' : 'ENTITIES ON FILE');
+  return h('div', { className: 'ms-tty-file' },
+    h('div', { className: 'ms-tty-kicker' },
+      h('b', null, DOOR ? 'SITE FILE' : 'MAP DOSSIER'),
+      caseNo && h('span', null, caseNo),
+      /* the room register (HQ plan 7.1): the number on the plate over this site's door */
+      roomNo && h('span', { className: 'ms-tty-no', title: 'The number on the plate over this threshold in the D.O.O.R. headquarters' }, (((DOOR && DOOR.SITE_FILE_LABELS) || {}).room || 'ROOM') + ' ' + roomNo),
+      h('span', { className: 'ms-tty-fill' }),
+      firstCrossing && h('span', { title: (DOOR && DOOR.CANON_DATE_LABEL) || 'CANON DATE · SUBJECT TO REVISION' }, 'FIRST CROSSING · ' + firstCrossing)
+    ),
+    h('div', { className: 'ms-tty-title' },
+      h('h1', null, mp.name),
+      sf && h(DoorStamp, { text: sf.status, tone: sf.tone, title: 'Customs status · ' + sf.juris })
+    ),
+    h('div', { className: 'ms-tty-sub' }, mp.isDelta ? '· Δ map · hand-authored 8×8 board' : (mp.isPrebuilt ? '· full site · ' + boardSizeLabel : '· procedural')),
+    h('div', { className: 'ms-tty-meta' },
+      h('span', null, h('em', null, 'SIZE'), boardSizeLabel),
+      h('span', null, h('em', null, 'SPAWNS'), (mp.team || 4) + ' per side'),
+      pre && pre.doorLabel && h('span', null, h('em', null, 'VIA'), pre.doorLabel)
+    ),
+    sf && h('div', { className: 'ms-tty-kv' }, h('b', null, L.juris || 'JURISDICTION'), sf.juris),
+    sf && sf.summary && h('div', null,
+      h('div', { className: 'door-file-h' }, '1.  ' + (L.summary || 'EXECUTIVE SUMMARY')),
+      h('p', { className: 'ms-tty-p' }, sf.summary)
+    ),
+    meta && meta.desc && h('div', { className: 'ms-tty-note' }, 'FIELD: ' + meta.desc),
+    variant === 'site' && h(CodeRedBrief, { siteId: siteId }),
+    variant === 'site' && natives && h('div', { className: 'ms-tty-chips' },
+      h('span', null, nativesLabel),
+      ...(natives.length ? natives.map((r, i) => h('i', { key: r + i, className: 'hq-chip' }, String(r).toUpperCase())) : [h('i', { key: 'none', className: 'hq-chip dim' }, 'NONE — FREE DRAW')])
+    ),
+    variant === 'site' && h(SiteChecks, { siteId: siteId }),
+    crossings.length > 0 && h('div', null,
+      h('div', { className: 'door-file-h' }, (variant === 'site' ? '2.  ' : '2.  ') + (L.crossings || 'KNOWN CROSSINGS'), h('b', null, crossings.length + ' ON FILE · point of entry')),
+      h('div', { style: { display: 'flex', flexWrap: 'wrap' } },
+        ...crossings.slice(0, 10).map(c => h('span', { key: c.key, className: 'door-file-chip', title: 'Codex: ' + c.label }, c.label)),
+        crossings.length > 10 && h('span', { className: 'door-file-chip more' }, '+' + (crossings.length - 10) + ' redacted')
       )
+    ),
+    variant !== 'site' && h('div', { className: 'ms-tty-supports' }, 'SUPPORTS',
+      ...gameModes.filter(mo => { const mm = multiplayerModes[mo.id]; return mm && mm.compatibleMaps && mm.compatibleMaps.includes(mp.modeId); })
+        .map(mo => h('i', { key: mo.id, className: mo.id === gmId ? 'on' : '' }, mo.label.toUpperCase()))
     )
   );
 }
 
-function Meta({ label, val, accent }) {
-  return h('div', { style: {
-    display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px',
-    background: 'rgba(0,0,0,0.35)', border: '1px solid ' + EW.panelEdge,
-  }},
-    h('span', { style: {
-      fontFamily: '"DotGothic16", monospace', fontSize: 8,
-      color: EW.inkDim, letterSpacing: '0.2em',
-    }}, label),
-    h('span', { style: {
-      fontFamily: '"DotGothic16", monospace', fontSize: 11,
-      color: accent || EW.ink, fontWeight: 600, letterSpacing: '0.05em',
-    }}, val)
-  );
-}
-
-function CfgRow({ label, children }) {
-  return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 6 } },
-    h('div', { style: {
-      fontFamily: '"DotGothic16", monospace', fontSize: 9,
-      color: EW.inkDim, letterSpacing: '0.22em',
-    }}, label),
-    children
-  );
-}
-
-function Segmented({ options, value, onChange }) {
-  return h('div', { style: {
-    display: 'flex', border: '1px solid ' + EW.panelEdge,
-    background: 'rgba(0,0,0,0.3)',
-  }},
-    ...options.map((o, i) =>
-      h('div', {
-        key: o, onClick: () => onChange(o),
-        className: 'ms-seg-opt',
-        style: {
-          flex: 1, padding: '9px 12px', textAlign: 'center', cursor: 'pointer',
-          fontFamily: '"DotGothic16", monospace', fontSize: 10,
-          letterSpacing: '0.2em',
-          color: value === o ? EW.ink : EW.inkMute,
-          background: value === o ? 'linear-gradient(180deg, ' + EW.time + '1a, transparent)' : 'transparent',
-          borderRight: i < options.length - 1 ? '1px solid ' + EW.panelEdge : 'none',
-          borderBottom: value === o ? '2px solid ' + EW.time : '2px solid transparent',
-          fontWeight: 600,
-        },
-      }, o.toUpperCase())
-    )
-  );
-}
-
-function ChipBtn({ on, color, onClick, children }) {
-  return h('button', {
-    onClick: onClick,
-    className: 'ms-chip',
-    style: {
-      background: on ? (color ? color + '22' : 'rgba(255,255,255,0.12)') : 'rgba(0,0,0,0.3)',
-      border: '1px solid ' + (on ? (color || EW.time) : EW.panelEdge),
-      color: on ? (color || EW.time) : EW.inkMute,
-      padding: '4px 9px',
-      fontFamily: '"DotGothic16", monospace', fontSize: 9,
-      letterSpacing: '0.14em', textTransform: 'uppercase', cursor: 'pointer',
-    },
-  }, children);
-}
-
-function ChipPick({ on, onClick, children }) {
-  return h('button', {
-    onClick: onClick,
-    className: 'ms-chip',
-    style: {
-      background: on ? EW.time + '1a' : 'rgba(0,0,0,0.3)',
-      border: '1px solid ' + (on ? EW.time : EW.panelEdge),
-      color: on ? EW.time : EW.inkMute,
-      padding: '8px 14px',
-      fontFamily: '"DotGothic16", monospace', fontSize: 11,
-      letterSpacing: '0.16em', fontWeight: 600, cursor: 'pointer',
-    },
-  }, children);
-}
-
-function MatchSelect() {
-
+/* ── the screen ────────────────────────────────────────────────────── */
+function MatchSelect(props) {
+  props = props || {};
   const gameModes = typeof MS_GAME_MODES !== 'undefined' ? MS_GAME_MODES : [];
   const mapList = typeof MS_MAP_LIST !== 'undefined' ? MS_MAP_LIST : [];
   const multiplayerModes = typeof MULTIPLAYER_MODES !== 'undefined' ? MULTIPLAYER_MODES : {};
 
-  /* A crossing launched from a D.O.O.R. HQ bay door (map.js _hqLaunchMission,
-     DOOR_HQ_BUILD_PLAN §3.7) pre-selects mode / map / team size here. map.js
-     _msRenderAll remounts this component while the preselect is set, so the
-     initial state below IS the consumption; the object stays on window until
-     CONFIRM (_msConfirm reads its pinned CPU roster) or BACK clears it. */
-  const pre = (typeof window !== 'undefined' && window._hqPreselect && typeof window._hqPreselect === 'object') ? window._hqPreselect : null;
+  /* A crossing launched from the headquarters (map.js _hqLaunchMission,
+     DOOR_HQ_BUILD_PLAN §3.7) pre-selects mode / map / team size here and,
+     with `locked`, fixes the SITE (the room you stand in). The object stays
+     on window until CONFIRM (_msConfirm reads its pinned CPU roster) or
+     BACK clears it; the root is remounted per visit so this initial state
+     IS the consumption. */
+  const pre = props.pre || ((typeof window !== 'undefined' && window._hqPreselect && typeof window._hqPreselect === 'object') ? window._hqPreselect : null);
+  const frame = props.frame || 'page';
+  let variant = props.variant || ((pre && pre.locked) ? 'site' : 'full');
+  const siteId = (pre && pre.mapId) ? pre.mapId : null;
+  const deltaIdx = siteId ? mapList.findIndex(m => m.modeId === siteId + '_delta') : -1;
+  const fullIdx = siteId ? mapList.findIndex(m => m.modeId === siteId) : -1;
+  if (variant === 'site' && deltaIdx < 0 && fullIdx < 0) variant = 'full';   // no launch entry for the site: the whole desk
+  const isSite = variant === 'site';
+
   const [gmIdx, setGmIdx] = useState(() => {
     if (pre && pre.gm) { const i = gameModes.findIndex(m => m.id === pre.gm); if (i >= 0) return i; }
     return 0;
@@ -589,15 +342,21 @@ function MatchSelect() {
   // Default to the first Δ map — 4v4 8×8 delta maps are the competitive default.
   const [mapIdx, setMapIdx] = useState(() => {
     if (pre && pre.launchId) { const i = mapList.findIndex(m => m.modeId === pre.launchId); if (i >= 0) return i; }
+    if (isSite) return deltaIdx >= 0 ? deltaIdx : fullIdx;
     const di = mapList.findIndex(m => m.isDelta);
     return di >= 0 ? di : 7;
   });
   const [sizeFilter, setSizeFilter] = useState(null);
-  const [deltaOnly, setDeltaOnly] = useState(() => pre ? !!pre.delta : true);
+  /* the Δ filter opens on the pre-selected board's own kind (the Training
+     Room / Holo Sim have no Δ cut — the range must not hide its own board) */
+  const [deltaOnly, setDeltaOnly] = useState(() => {
+    const preMap = (pre && pre.launchId) ? mapList.find(m => m.modeId === pre.launchId) : null;
+    if (preMap) return !!preMap.isDelta;
+    return pre ? !!pre.delta : true;
+  });
+  const mountedRef = useRef(false);
   const [query, setQuery] = useState('');
   const [teamSize, setTeamSize] = useState(() => (pre && pre.teamSize > 0) ? pre.teamSize : 0);
-  const [ranked, setRanked] = useState(false);
-  const [opponent, setOpponent] = useState('CPU');
   const [rounds, setRounds] = useState(15);
   /* CPU TEMPO (2026-09-07): ⚡ TRAINING = the CPU's turns resolve instantly
      (no animations, no camera, no banners — battle.js _setAiTurbo); the
@@ -608,12 +367,11 @@ function MatchSelect() {
   function pickTraining(on) {
     setTraining(on);
     try { localStorage.setItem('ew_training_match', on ? '1' : '0'); } catch (_e) {}
-    if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
+    playUi();
   }
   // CONFIRM = the form goes through: a FILED stamp thunks onto the button,
   // then the existing launch path runs. filedRef blocks a double-click
-  // during the 420 ms beat; both reset after launch (the React root stays
-  // mounted between visits, so state must not stick).
+  // during the 420 ms beat; both reset after launch.
   const [filed, setFiled] = useState(false);
   const filedRef = useRef(false);
 
@@ -645,7 +403,6 @@ function MatchSelect() {
       if (ts < 1 || ts > maxT) return Math.max(1, Math.min(defaultT, maxT));
       return ts;
     });
-
     if (mpMode.roundLimit) setRounds(mpMode.roundLimit);
     // Clash is locked to 4v4 — snap the stepper so the display matches launch.
     if (mpMode.isClash) setTeamSize(4);
@@ -674,22 +431,32 @@ function MatchSelect() {
   // When the Δ toggle flips, keep the selection valid: if the current map is
   // filtered out, jump to the first map that still matches.
   useEffect(() => {
-    if (filteredMaps.length > 0 && !filteredMaps.includes(mapIdx)) {
-      setMapIdx(filteredMaps[0]);
-    }
+    if (isSite) return;
+    if (!mountedRef.current) { mountedRef.current = true; return; }   // not on mount: the pre-selection stands
+    if (filteredMaps.length > 0 && !filteredMaps.includes(mapIdx)) setMapIdx(filteredMaps[0]);
   }, [deltaOnly]);
 
   useEffect(() => {
-    if (compatibleMapIndices.length > 0 && !compatibleMapIndices.includes(mapIdx)) {
-      setMapIdx(compatibleMapIndices[0]);
-    }
+    if (isSite) return;
+    if (compatibleMapIndices.length > 0 && !compatibleMapIndices.includes(mapIdx)) setMapIdx(compatibleMapIndices[0]);
   }, [compatibleMapIndices]);
+
+  /* SITE variant: the modes this board can play (Clash is pinned to its own
+     stage — not this site; Gauntlet keeps the full boards). A board switch
+     that leaves the mode behind snaps back to the first legal one. */
+  const siteModes = useMemo(() => {
+    if (!isSite) return gameModes;
+    const mp = mapList[mapIdx];
+    return gameModes.filter(m => m.id !== 'clash' && !m.locked && (!multiplayerModes[m.id] || !multiplayerModes[m.id].compatibleMaps || multiplayerModes[m.id].compatibleMaps.includes(mp && mp.modeId)));
+  }, [isSite, mapIdx]);
+  useEffect(() => {
+    if (!isSite || !siteModes.length) return;
+    if (!siteModes.some(m => m.id === gm.id)) setGmIdx(gameModes.indexOf(siteModes[0]));
+  }, [siteModes]);
 
   // Mirror the live selection into the module globals during render (NOT in a
   // deferred useEffect): _msConfirm reads these synchronously on CONFIRM, and
-  // an effect-based mirror can be outrun by a fast click — the old version
-  // also omitted `rounds` from its deps, so mode round-limits and manual
-  // ROUNDS tweaks were silently ignored (TDM ran 15 rounds instead of 12).
+  // an effect-based mirror can be outrun by a fast click.
   _msSelectedGM = gmIdx;
   _msSelectedMap = mapIdx;
   _msSelectedTeamSize = teamSize;
@@ -699,608 +466,257 @@ function MatchSelect() {
   _msTraining = training;
 
   const mp = mapList[mapIdx] || { name: '—', size: '8×8', w: 8, h: 8, team: 4 };
-  const accent = accentForMap(mp);
-  const sf = siteFileFor(mp);
   const caseNo = siteCaseNo(mp);
-  const roomNo = siteRoomNo(mp);
-  const firstCrossing = siteFirstCrossing(mp);
-  const crossings = siteCrossings(mp);
-  // Δ maps are the 8×8 hand-authored boards in every mode (Arena included).
+  const sf = siteFileFor(mp);
   const boardSizeLabel = mp.size || (mp.w + '×' + mp.h);
   const maxT = maxTeamForMap(mapIdx);
   const teamDisplay = isFFA ? '' + teamSize : teamSize + 'v' + teamSize;
   const winLabel = mpMode.isClash ? 'Wipeout' :
     mpMode.hasTowers ? 'Tower/Elim' :
     mpMode.scoringType === 'kills' ? 'Most Kills' : 'Composite';
+  const officer = officerInfo();
+  const canon = useMemo(() => canonDate(), []);   // the canon date is rolled once per visit (it is "subject to revision", not per click)
+  const consoleLabel = isSite ? 'CROSSING CONSOLE' : 'FIELD ASSIGNMENT TERMINAL';
+  let whereLabel = (pre && pre.doorLabel) ? pre.doorLabel : (frame === 'room' ? 'HEADQUARTERS' : 'CUSTOMS & ADMISSIONS');
+  if (String(whereLabel).toUpperCase() === consoleLabel) { const rn = siteRoomNo(mp); whereLabel = 'ON SITE' + (rn ? ' · ROOM ' + rn : ''); }
 
   function handleConfirm() {
     if (typeof window._msConfirm !== 'function') return;
     if (filedRef.current) return;
     filedRef.current = true;
     setFiled(true);
-    try { if (typeof window.playDoorSfx === 'function') window.playDoorSfx('stamp', { volume: 0.8 }); } catch (_e) {}
+    doorSfx('stamp', { volume: 0.8 });
     setTimeout(() => {
       filedRef.current = false;
       setFiled(false);
       window._msConfirm();
     }, 420);
   }
-
   function handleBack() {
     if (typeof window._msBack === 'function') window._msBack();
   }
-
   function handleRandomize() {
-    if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
-
-    const randomGM = Math.floor(Math.random() * gameModes.length);
-    setGmIdx(randomGM);
-
-    if (filteredMaps.length > 0) {
-      setMapIdx(filteredMaps[Math.floor(Math.random() * filteredMaps.length)]);
-    }
+    playUi();
+    setGmIdx(Math.floor(Math.random() * gameModes.length));
+    if (filteredMaps.length > 0) setMapIdx(filteredMaps[Math.floor(Math.random() * filteredMaps.length)]);
   }
-
-  function selectMode(i) {
-    if (gameModes[i] && gameModes[i].locked) return;
-    if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
+  function selectMode(m) {
+    if (!m || m.locked) return;
+    const i = gameModes.indexOf(m);
+    if (i < 0) return;
+    playUi();
     setGmIdx(i);
   }
-
-  function selectMap(i) {
-    if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
-    setMapIdx(i);
+  function selectMap(i) { playUi(); setMapIdx(i); }
+  /* SITE: Δ board ↔ the full site; the team size follows the board (4v4 on
+     the Δ board, the site's own size for a deep crossing — HQ plan §3.7) */
+  function pickBoard(b) {
+    const idx = b === 'delta' ? deltaIdx : fullIdx;
+    if (idx < 0 || idx === mapIdx) return;
+    playUi();
+    setMapIdx(idx);
+    const target = mapList[idx];
+    setTeamSize(b === 'delta' ? ((pre && pre.delta && pre.teamSize > 0) ? pre.teamSize : 4) : ((target && target.team) || 4));
+  }
+  /* FULL: a console's presets (the RANGE console's ORIENTATION / PRACTICE) */
+  function pickPreset(p) {
+    const idx = mapList.findIndex(m => m.modeId === p.launchId);
+    if (idx < 0) return;
+    playUi();
+    if (p.gm) { const gi = gameModes.findIndex(m => m.id === p.gm); if (gi >= 0) setGmIdx(gi); }
+    setMapIdx(idx);
+    if (p.teamSize > 0) setTeamSize(p.teamSize);
   }
 
-  return h('div', { style: {
-    width: '100%', height: '100%', position: 'relative', overflow: 'hidden',
-    background: 'radial-gradient(ellipse 1200px 800px at 50% 30%, #0c0c0c 0%, ' + EW.bg + ' 60%, #000 100%)',
-    color: EW.ink, fontFamily: '"DotGothic16", monospace',
-  }},
-    h(StarField),
+  /* keys: ENTER files, ESC steps away (in the building ESC belongs to the
+     walker's own listener, which closes the terminal — map.js) */
+  useEffect(() => {
+    const onKey = (e) => {
+      const tag = (e.target && e.target.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.key === 'Enter') { e.preventDefault(); handleConfirm(); }
+      else if (e.key === 'Escape' && frame === 'page') { e.preventDefault(); handleBack(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  });
 
-    h('div', { style: {
-      position: 'absolute', top: 0, left: 0, right: 0, height: 64, zIndex: 2,
-      display: 'flex', alignItems: 'center', padding: '0 28px', gap: 24,
-      borderBottom: '1px solid ' + EW.panelEdge,
-      background: 'linear-gradient(180deg, rgba(0,0,0,0.85), rgba(0,0,0,0))',
-    }},
-      h('button', { onClick: handleBack, className: 'ms-btn-back', style: {
-        background: 'rgba(0,0,0,0.5)', color: '#ff5c5c',
-        border: '1px solid rgba(255,92,92,0.5)', padding: '10px 16px',
-        fontFamily: '"DotGothic16", monospace', fontSize: 10,
-        letterSpacing: '0.22em', cursor: 'pointer',
-      }}, '← BACK'),
-      h('div', { style: { display: 'flex', alignItems: 'center', gap: 14 } },
+  /* ── the head line ── */
+  const head = h('div', { className: 'ms-tty-head' },
+    h('span', null, 'D.O.O.R.'), h('span', { className: 'ms-tty-sep' }, '▸'),
+    h('b', null, consoleLabel),
+    h('span', { className: 'ms-tty-sep' }, '·'), h('span', null, whereLabel),
+    h('span', { className: 'ms-tty-sep' }, '·'), h('span', null, 'TTY-1'),
+    canon && h('span', { className: 'ms-tty-sep' }, '·'), canon && h('span', null, canon),
+    h('span', { className: 'ms-tty-officer' }, officer ? (officer.name) : 'UNFILED', officer && h('i', null, 'CLEARANCE L' + officer.clearance.level + ' · ' + officer.clearance.title)),
+    h('span', { className: 'ms-tty-sep' }, '·'), h('span', { className: 'ms-tty-esc' }, 'ESC · STEP AWAY')
+  );
 
-        h(DoorSeal, { size: 44 }),
-        h('div', { style: { display: 'flex', flexDirection: 'column', lineHeight: 1.15 } },
-          h('div', { style: {
-            fontFamily: '"Cormorant SC", serif',
-            fontSize: 18, letterSpacing: '0.16em', fontWeight: 500,
-          }}, 'ENTROPY WARS'),
-          DOOR && h('div', { className: 'door-hdr-sub' }, 'D.O.O.R. · CUSTOMS & ADMISSIONS · FIELD ASSIGNMENT')
-        ),
-        h('div', { style: { width: 1, height: 18, background: EW.panelEdge } }),
-        h('div', { style: {
-          fontFamily: '"DotGothic16", monospace', fontSize: 10,
-          color: EW.inkMute, letterSpacing: '0.28em',
-        }}, 'SELECT MATCH'),
-      ),
+  /* ── the config form (both variants) ── */
+  const teamField = h(Field, { label: isFFA ? 'PLAYERS' : 'TEAM SIZE', hint: mpMode.isClash ? 'CLASH · 4v4' : ('MAX ' + maxT) },
+    h('div', { className: 'ms-tty-chips' },
+      ...(() => { const opts = []; for (let t = 1; t <= maxT; t++) opts.push(h(Chip, { key: t, on: teamSize === t, onClick: () => { setTeamSize(t); playUi(); } }, isFFA ? t + ' Players' : t + 'v' + t)); return opts; })()
+    )
+  );
+  const roundsField = h(Field, { label: 'ROUNDS', hint: mpMode.roundLimit ? 'MODE DEFAULT ' + mpMode.roundLimit : null },
+    h(Stepper, { value: rounds, min: 3, max: 100, unit: 'R', onChange: setRounds })
+  );
+  const winField = h(Field, { label: 'WIN CONDITION' }, h('div', { className: 'ms-tty-ro' }, h('span', null, winLabel), h('em', null, 'FROM MODE')));
+  const tempoField = h(Field, { label: 'CPU TEMPO' },
+    h(Seg, { value: training ? 'training' : 'cinematic', onChange: (v) => pickTraining(v === 'training'), options: [
+      { id: 'cinematic', label: 'Cinematic' }, { id: 'training', label: '⚡ Training' },
+    ] }),
+    h('div', { className: 'ms-tty-tempo' + (training ? ' on' : '') }, training
+      ? 'CPU turns resolve instantly — no animations, no camera — and the CPU learns from your decisions, re-tuning its weights toward how you play.'
+      : 'CPU turns play out with full animations and action camera.')
+  );
+  const assignBlock = h('div', { className: 'ms-tty-assign' },
+    h('div', { className: 'ms-tty-kicker' }, h('b', null, DOOR ? 'FIELD ASSIGNMENT' : 'SELECTED'), caseNo && h('span', null, 'CASE ' + caseNo)),
+    h('h2', null, mp.name, h('span', null, boardSizeLabel)),
+    h('div', { className: 'ms-tty-line' }, gm.label.toUpperCase() + ' · ' + teamDisplay + ' · ' + rounds + 'R' + (training ? ' · ⚡ TRAINING' : '')),
+    sf && h('div', { className: 'ms-tty-line' }, 'SITE STATUS  ', h('span', { style: { color: STAMP_INK[sf.tone] || undefined } }, sf.status)),
+    pre && h('div', { className: 'ms-tty-dispatch' }, 'DISPATCHED FROM ' + (pre.doorLabel || 'HEADQUARTERS') + ' · '
+      + (mp.isDelta ? '4v4 Δ BOARD' : 'DEEP CROSSING') + ' · '
+      + (Array.isArray(pre.roster) && pre.roster.length ? 'CPU FIELDS THE SITE’S NATIVE ENTITIES' : 'FREE CPU DRAW · NOTHING FILED'))
+  );
 
-      h('div', { style: { flex: 1, display: 'flex', justifyContent: 'center', gap: 24 } },
-        ...[
-          { n: 'I', label: 'MODE', done: gmIdx >= 0 },
-          { n: 'II', label: 'MAP', done: mapIdx >= 0 },
-          { n: 'III', label: 'CONFIG', done: false },
-        ].map((s, i) =>
-          h('div', { key: i, style: { display: 'flex', alignItems: 'center', gap: 8 } },
-            h('span', { style: {
-              fontFamily: '"Cormorant SC", serif', fontStyle: 'italic',
-              fontSize: 18, color: EW.time, lineHeight: 1,
-            }}, s.n),
-            h('span', { style: {
-              fontFamily: '"DotGothic16", monospace', fontSize: 10,
-              letterSpacing: '0.24em', color: EW.ink,
-            }}, s.label),
-            s.done && h('span', { style: {
-              width: 5, height: 5, background: EW.good, borderRadius: '50%',
-              boxShadow: '0 0 6px ' + EW.good,
-            }})
-          )
+  /* ── the body ── */
+  let body;
+  if (isSite) {
+    const boards = [
+      { id: 'delta', label: 'Δ BOARD', sub: '8×8 · hand-authored · 4v4', off: deltaIdx < 0, title: 'Arena-ready 8×8 cut of the site, the CPU fielding the entities on file' },
+      { id: 'full', label: 'FULL SITE', sub: (mapList[fullIdx] ? mapList[fullIdx].size + ' · ' + (mapList[fullIdx].team || 4) + 'v' + (mapList[fullIdx].team || 4) : 'deep crossing'), off: fullIdx < 0, title: 'Deep crossing: the whole site at its own team size' },
+    ];
+    body = h('div', { className: 'ms-tty-body ms-tty-site' },
+      h('div', { className: 'ms-tty-col ms-tty-dossier' },
+        h('div', { className: 'ms-tty-h' }, 'THE SITE', h('span', null, 'YOU ARE STANDING ON THE BOARD · THE CONSOLE FILES THE CROSSING')),
+        h('div', { className: 'ms-tty-filebox' },
+          h(SiteFile, { mp: mp, variant: 'site', pre: pre, gameModes: gameModes, multiplayerModes: multiplayerModes, gmId: gm.id }),
+          h(MapPreview, { mp: mp, size: 230 })
         )
       ),
-      h(OfficerChip),
-    ),
-
-    h('div', { style: {
-      position: 'absolute', top: 64, bottom: 96, left: 0, right: 0,
-      display: 'grid', gridTemplateColumns: '320px 1fr 340px', gap: 18,
-      padding: '18px 22px', zIndex: 1,
-    }},
-
-      h('div', { style: { display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0 } },
-        h('div', { style: {
-          fontFamily: '"Cormorant SC", serif', fontSize: 15,
-          letterSpacing: '0.22em', textTransform: 'uppercase', color: EW.inkMute,
-        }}, 'Game Mode'),
-        h('div', { style: {
-          display: 'flex', flexDirection: 'column', gap: 8,
-          overflow: 'auto', minHeight: 0, paddingRight: 4,
-        }},
-          ...gameModes.map((m, i) =>
-            h(ModeCard, { key: m.id, m: m, selected: i === gmIdx, onClick: () => selectMode(i) })
-          )
-        )
-      ),
-
-      h('div', { style: { display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 } },
-
-        h('div', { style: {
-          position: 'relative',
-          background: 'linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0.85)), radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.05), transparent 60%)',
-          border: '1px solid ' + EW.panelEdge,
-          padding: '18px 22px', display: 'flex', gap: 24,
-          /* fixed band: the dossier column scrolls inside it, the map grid
-             below keeps its share of the screen on every resolution */
-          height: 'clamp(300px, 46%, 420px)', flexShrink: 0, overflow: 'hidden',
-        }},
-          DOOR && h('div', { className: 'door-wm', style: { right: '1.5%', top: '-4%', width: '34%', aspectRatio: '1' } }),
-
-          ...[
-            { top: -1, left: -1, rot: 0 },
-            { top: -1, right: -1, rot: 90 },
-            { bottom: -1, right: -1, rot: 180 },
-            { bottom: -1, left: -1, rot: 270 },
-          ].map((p, i) =>
-            h('div', { key: 'br' + i, style: {
-              position: 'absolute', width: 16, height: 16,
-              top: p.top, bottom: p.bottom, left: p.left, right: p.right,
-              borderTop: '2px solid ' + accent, borderLeft: '2px solid ' + accent,
-              transform: 'rotate(' + p.rot + 'deg)',
-            }})
-          ),
-
-          h('div', { style: {
-            flex: '0 0 280px', display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-          }},
-            h(MapPreview, { mp: mp, size: 250 })
-          ),
-
-          h('div', { style: {
-            flex: 1, display: 'flex', flexDirection: 'column',
-            gap: 10, minWidth: 0, minHeight: 0, overflowY: 'auto', overflowX: 'hidden',
-            paddingRight: 8, position: 'relative', zIndex: 1,
-          }},
-            /* kicker: SITE FILE · case no ········ first documented crossing */
-            h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 } },
-              h('span', { style: {
-                fontFamily: '"DotGothic16", monospace', fontSize: 10,
-                letterSpacing: '0.3em', color: EW.inkMute,
-              }}, DOOR ? 'SITE FILE' : 'MAP DOSSIER'),
-              caseNo && h('span', { style: {
-                fontFamily: '"IBM Plex Mono", "DotGothic16", monospace', fontSize: 9,
-                letterSpacing: '0.12em', color: EW.inkDim,
-              }}, caseNo),
-              /* the room register (HQ plan 7.1): the number on the plate over this site's door */
-              roomNo && h('span', {
-                title: 'The number on the plate over this threshold in the D.O.O.R. headquarters',
-                style: {
-                  fontFamily: '"Cormorant SC", serif', fontSize: 12,
-                  letterSpacing: '0.24em', color: '#b8a060', whiteSpace: 'nowrap',
-                },
-              }, (((DOOR && DOOR.SITE_FILE_LABELS) || {}).room || 'ROOM') + ' ' + roomNo),
-              h('div', { style: {
-                flex: 1, height: 1,
-                background: 'linear-gradient(90deg, ' + EW.panelEdge + ', transparent)',
-              }}),
-              firstCrossing && h('span', {
-                title: (DOOR && DOOR.CANON_DATE_LABEL) || 'CANON DATE · SUBJECT TO REVISION',
-                style: {
-                  fontFamily: '"DotGothic16", monospace', fontSize: 9,
-                  letterSpacing: '0.18em', color: '#8f88a8', whiteSpace: 'nowrap',
-                },
-              }, 'FIRST CROSSING · ' + firstCrossing)
-            ),
-            /* site name + the rubber stamp */
-            h('div', { style: { flexShrink: 0 } },
-              h('div', { className: 'door-title-stamp' },
-                h('div', { style: {
-                  fontFamily: '"Cormorant SC", serif',
-                  fontSize: 44, fontWeight: 400, margin: 0, lineHeight: 0.95,
-                  color: EW.ink, textShadow: '0 0 24px ' + accent + '44',
-                  letterSpacing: '-0.01em',
-                }}, mp.name),
-                sf && h(DoorStamp, { text: sf.status, tone: sf.tone, title: 'Customs status · ' + sf.juris })
-              ),
-              h('div', { style: {
-                fontFamily: '"Cormorant SC", serif', fontStyle: 'italic',
-                fontSize: 17, color: EW.inkMute, marginTop: 2,
-              }}, mp.isDelta ? '· Δ map · hand-authored 8×8 board' : (mp.isPrebuilt ? '· full map · ' + boardSizeLabel : '· procedural')),
-            ),
-            h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0 } },
-              h(Meta, { label: 'SIZE', val: boardSizeLabel, accent: accent }),
-              h(Meta, { label: 'SPAWNS', val: (mp.team || 4) + ' per side' }),
-            ),
-            sf && h('div', { className: 'door-file-h', style: { flexShrink: 0 } },
-              (DOOR.SITE_FILE_LABELS || {}).juris || 'JURISDICTION', h('b', null, sf.juris)),
-            /* the file itself — same numbered-section voice as the codex */
-            sf && h('div', { style: { flexShrink: 0, maxWidth: 620 } },
-              h('div', { className: 'door-file-h' }, '1.  ' + ((DOOR.SITE_FILE_LABELS || {}).summary || 'EXECUTIVE SUMMARY')),
-              h('p', { className: 'door-file-p' }, sf.summary)
-            ),
-            crossings.length > 0 && h('div', { style: { flexShrink: 0 } },
-              h('div', { className: 'door-file-h' }, '2.  ' + ((DOOR.SITE_FILE_LABELS || {}).crossings || 'KNOWN CROSSINGS'),
-                h('b', null, crossings.length + ' ON FILE · point of entry')),
-              h('div', { style: { display: 'flex', flexWrap: 'wrap' } },
-                ...crossings.slice(0, 10).map(c => h('span', { key: c.key, className: 'door-file-chip', title: 'Codex: ' + c.label }, c.label)),
-                crossings.length > 10 && h('span', { className: 'door-file-chip more' }, '+' + (crossings.length - 10) + ' redacted')
-              )
-            ),
-
-            h('div', { style: {
-              display: 'flex', gap: 6, marginTop: 'auto', alignItems: 'center',
-            }},
-              h('span', { style: {
-                fontFamily: '"DotGothic16", monospace', fontSize: 9,
-                letterSpacing: '0.22em', color: EW.inkDim,
-              }}, 'SUPPORTS'),
-              ...gameModes.filter(mo => {
-                const mm = multiplayerModes[mo.id];
-                return mm && mm.compatibleMaps && mm.compatibleMaps.includes(mp.modeId);
-              }).map(mo =>
-                h('span', { key: mo.id, style: {
-                  fontFamily: '"DotGothic16", monospace', fontSize: 9,
-                  letterSpacing: '0.16em', padding: '3px 7px',
-                  border: '1px solid ' + (mo.id === gm.id ? EW.time + 'aa' : EW.panelEdge),
-                  color: mo.id === gm.id ? EW.time : EW.inkMute,
-                  background: mo.id === gm.id ? EW.time + '14' : 'transparent',
-                }}, mo.label.toUpperCase())
-              )
-            ),
-          ),
-        ),
-
-        h('div', { style: {
-          display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
-        }},
-          h('div', { style: {
-            fontFamily: '"Cormorant SC", serif', fontSize: 15,
-            letterSpacing: '0.22em', textTransform: 'uppercase', color: EW.inkMute,
-          }},
-            'Maps ',
-            h('span', { style: {
-              fontFamily: '"DotGothic16", monospace', fontSize: 10,
-              color: EW.inkDim, marginLeft: 6, letterSpacing: '0.16em',
-            }}, filteredMaps.length + '/' + compatibleMapIndices.length)
-          ),
-          h('div', { style: { flex: 1 } }),
-
-          h('div', { style: {
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '4px 10px', border: '1px solid ' + EW.panelEdge,
-            background: 'rgba(0,0,0,0.4)', width: 200,
-          }},
-            h('span', { style: {
-              color: EW.inkDim, fontFamily: '"DotGothic16", monospace', fontSize: 11,
-            }}, '⌕'),
-            h('input', {
-              value: query, onChange: e => setQuery(e.target.value),
-              placeholder: 'search maps',
-              style: {
-                background: 'transparent', border: 'none', outline: 'none',
-                color: EW.ink, fontFamily: '"DotGothic16", monospace',
-                fontSize: 11, flex: 1, letterSpacing: '0.05em',
-              },
-            })
-          ),
-
-          h('div', { style: { display: 'flex', gap: 5, alignItems: 'center' } },
-            h(ChipBtn, {
-              on: deltaOnly, color: EW.chaos,
-              onClick: () => { setDeltaOnly(d => !d); if (typeof playSfx === 'function') playSfx('uiButtonConfirm'); },
-            }, 'Δ MAPS'),
-            h('span', { style: {
-              fontFamily: '"DotGothic16", monospace', fontSize: 9,
-              color: EW.inkDim, letterSpacing: '0.18em', marginLeft: 6,
-            }}, 'SIZE'),
-            ...([['sm', '4–8'], ['md', '10–14'], ['lg', '16+']]).map(([k, l]) =>
-              h(ChipBtn, {
-                key: k, on: sizeFilter === k,
-                onClick: () => setSizeFilter(sizeFilter === k ? null : k),
-              }, l)
+      h('div', { className: 'ms-tty-col' },
+        h('div', { className: 'ms-tty-h' }, 'CROSSING FORM', h('span', null, 'BOARD · MODE · CONFIG')),
+        h('div', { className: 'ms-tty-form' },
+          h(Field, { label: 'BOARD' }, h(Seg, { options: boards, value: mp.isDelta ? 'delta' : 'full', onChange: pickBoard })),
+          h(Field, { label: 'GAME MODE', hint: siteModes.length + ' ON THIS BOARD' },
+            h('div', { className: 'ms-tty-list', style: { maxHeight: 250 } },
+              ...siteModes.map(m => h(ModeRow, { key: m.id, m: m, selected: m.id === gm.id, onClick: () => selectMode(m) }))
             )
           ),
-        ),
-
-        h('div', { style: {
-          flex: 1, minHeight: 0, overflow: 'auto',
-          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: 10, paddingRight: 4, alignContent: 'start',
-        }},
-          ...filteredMaps.map(i => {
-            const m = mapList[i];
-            return h(MapCard, {
-              key: m.modeId, mp: m, selected: i === mapIdx,
-              accent: accentForMap(m), onClick: () => selectMap(i),
-            });
-          }),
-          filteredMaps.length === 0 && h('div', { style: {
-            gridColumn: '1 / -1', padding: '40px 20px', textAlign: 'center',
-            color: EW.inkDim, fontFamily: '"DotGothic16", monospace',
-            fontSize: 11, letterSpacing: '0.2em',
-          }}, 'NO MAPS MATCH FILTERS')
+          teamField, roundsField, winField, tempoField, assignBlock
+        )
+      )
+    );
+  } else {
+    const presets = (pre && Array.isArray(pre.presets)) ? pre.presets : null;
+    body = h('div', { className: 'ms-tty-body ms-tty-full' },
+      h('div', { className: 'ms-tty-col ms-tty-modes' },
+        h('div', { className: 'ms-tty-h' }, 'GAME MODE'),
+        h('div', { className: 'ms-tty-list' },
+          ...gameModes.map(m => h(ModeRow, { key: m.id, m: m, selected: m.id === gm.id, onClick: () => selectMode(m) }))
         )
       ),
-
-      h('div', { style: {
-        background: 'rgba(0,0,0,0.55)', border: '1px solid ' + EW.panelEdge,
-        padding: '18px 18px', display: 'flex', flexDirection: 'column',
-        gap: 14, minHeight: 0,
-        clipPath: 'polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px)',
-      }},
-        h('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } },
-          h('div', { style: {
-            fontFamily: '"Cormorant SC", serif', fontSize: 18,
-            letterSpacing: '0.2em', textTransform: 'uppercase', color: EW.ink,
-          }}, 'Configuration'),
-          h('div', { style: {
-            flex: 1, height: 1,
-            background: 'linear-gradient(90deg, ' + EW.panelEdge + ', transparent)',
-          }})
+      h('div', { className: 'ms-tty-col' },
+        h('div', { className: 'ms-tty-band' },
+          h(MapPreview, { mp: mp, size: 220 }),
+          h(SiteFile, { mp: mp, variant: 'full', pre: pre, gameModes: gameModes, multiplayerModes: multiplayerModes, gmId: gm.id })
         ),
-
-        h(CfgRow, { label: isFFA ? 'PLAYERS' : 'TEAM SIZE' },
-          h('div', { style: { display: 'flex', gap: 6, flexWrap: 'wrap' } },
-            ...(() => {
-              const opts = [];
-              for (let t = 1; t <= maxT; t++) {
-                const label = isFFA ? t + ' Players' : t + 'v' + t;
-                opts.push(h(ChipPick, {
-                  key: t, on: teamSize === t,
-                  onClick: () => { setTeamSize(t); if (typeof playSfx === 'function') playSfx('uiButtonConfirm'); },
-                }, label));
-              }
-              return opts;
-            })()
-          )
+        presets && presets.length > 0 && h('div', { className: 'ms-tty-presets' }, 'PRESETS ▸',
+          ...presets.map(p => h(Chip, { key: p.id || p.launchId, teal: true, on: mp.modeId === p.launchId, onClick: () => pickPreset(p), title: p.title }, p.label))
         ),
-
-        h(CfgRow, { label: 'BOARD SIZE' },
-          h('div', { style: {
-            padding: '9px 12px', background: 'rgba(0,0,0,0.35)',
-            border: '1px solid ' + EW.panelEdge,
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            fontFamily: '"DotGothic16", monospace', fontSize: 12, color: EW.ink,
-          }},
-            h('span', { style: { fontWeight: 600 } }, boardSizeLabel),
-            h('span', { style: {
-              color: EW.inkDim, fontSize: 9, letterSpacing: '0.16em',
-            }}, 'FROM MAP')
-          )
+        h('div', { className: 'ms-tty-filters' },
+          h('div', { className: 'ms-tty-h' }, 'SITES', h('span', null, filteredMaps.length + '/' + compatibleMapIndices.length)),
+          h('div', { className: 'ms-tty-input' }, h('span', null, '⌕'),
+            h('input', { value: query, onChange: e => setQuery(e.target.value), placeholder: 'search sites', spellCheck: false })),
+          h(Chip, { on: deltaOnly, onClick: () => { setDeltaOnly(d => !d); playUi(); } }, 'Δ MAPS'),
+          h('span', { className: 'ms-tty-note', style: { letterSpacing: '0.18em' } }, 'SIZE'),
+          ...([['sm', '4–8'], ['md', '10–14'], ['lg', '16+']]).map(([k, l]) => h(Chip, { key: k, on: sizeFilter === k, onClick: () => setSizeFilter(sizeFilter === k ? null : k) }, l))
         ),
-
-        h(CfgRow, { label: 'ROUNDS' },
-          h('div', { style: {
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            background: 'rgba(0,0,0,0.35)', border: '1px solid ' + EW.panelEdge,
-            padding: '4px 6px',
-          }},
-            h('button', {
-              onClick: () => setRounds(Math.max(3, rounds - 1)),
-              className: 'ms-stepper-btn',
-              style: {
-                background: 'transparent', border: '1px solid ' + EW.panelEdge,
-                color: EW.inkMute, padding: '4px 12px',
-                fontFamily: '"DotGothic16", monospace', fontSize: 14,
-                fontWeight: 700, cursor: 'pointer',
-              },
-            }, '−'),
-            h('div', { style: {
-              fontFamily: '"DotGothic16", monospace', fontSize: 18,
-              fontWeight: 700, color: EW.ink,
-              display: 'flex', alignItems: 'baseline', gap: 4,
-            }},
-              rounds,
-              h('span', { style: {
-                fontSize: 11, color: EW.inkMute, fontWeight: 400, letterSpacing: '0.1em',
-              }}, 'R')
-            ),
-            h('button', {
-              onClick: () => setRounds(Math.min(100, rounds + 1)),
-              className: 'ms-stepper-btn',
-              style: {
-                background: 'transparent', border: '1px solid ' + EW.panelEdge,
-                color: EW.inkMute, padding: '4px 12px',
-                fontFamily: '"DotGothic16", monospace', fontSize: 14,
-                fontWeight: 700, cursor: 'pointer',
-              },
-            }, '+'),
-          )
-        ),
-
-        h(CfgRow, { label: 'WIN CONDITION' },
-          h('div', { style: {
-            padding: '9px 12px', background: 'rgba(0,0,0,0.35)',
-            border: '1px solid ' + EW.panelEdge,
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            fontFamily: '"DotGothic16", monospace', fontSize: 12, letterSpacing: '0.06em', color: EW.ink,
-          }},
-            h('span', { style: { fontWeight: 600 } }, winLabel),
-            h('span', { style: {
-              color: EW.inkDim, fontSize: 9, letterSpacing: '0.16em',
-              fontFamily: '"DotGothic16", monospace',
-            }}, 'FROM MODE')
-          )
-        ),
-
-        h(CfgRow, { label: 'CPU TEMPO' },
-          h('div', { style: { display: 'flex', flexDirection: 'column', gap: 6 } },
-            h('div', { style: { display: 'flex', gap: 6, flexWrap: 'wrap' } },
-              h(ChipPick, { on: !training, onClick: () => pickTraining(false) }, 'Cinematic'),
-              h(ChipPick, { on: training, onClick: () => pickTraining(true) }, '⚡ Training')
-            ),
-            h('div', { style: {
-              fontFamily: '"DotGothic16", monospace', fontSize: 9,
-              color: training ? EW.good : EW.inkDim, letterSpacing: '0.1em', lineHeight: 1.5,
-            }}, training
-              ? 'CPU turns resolve instantly — no animations, no camera — and the CPU learns from your decisions, re-tuning its weights toward how you play.'
-              : 'CPU turns play out with full animations and action camera.')
-          )
-        ),
-
-        h('div', { style: {
-          marginTop: 'auto', padding: '12px 14px',
-          background: 'linear-gradient(180deg, ' + accent + '14, transparent)',
-          borderLeft: '2px solid ' + accent,
-        }},
-          h('div', { style: {
-            fontFamily: '"DotGothic16", monospace', fontSize: 9,
-            color: EW.inkMute, letterSpacing: '0.22em',
-            display: 'flex', justifyContent: 'space-between', gap: 8,
-          }},
-            h('span', null, DOOR ? 'FIELD ASSIGNMENT' : 'SELECTED'),
-            caseNo && h('span', { style: { color: EW.inkDim, fontFamily: '"IBM Plex Mono", "DotGothic16", monospace', letterSpacing: '0.12em' } }, 'CASE ' + caseNo)
-          ),
-          pre && h('div', { style: {
-            marginTop: 6, padding: '5px 8px', fontFamily: '"IBM Plex Mono", "DotGothic16", monospace',
-            fontSize: 9, letterSpacing: '0.16em', color: '#7fd9dd',
-            border: '1px dashed rgba(127,217,221,0.45)', background: 'rgba(127,217,221,0.06)',
-          }}, 'DISPATCHED FROM ' + (pre.doorLabel || 'HEADQUARTERS') + ' · ' + (pre.delta ? '4v4 Δ BOARD' : 'DEEP CROSSING') + ' · CPU FIELDS THE SITE’S NATIVE ENTITIES'),
-          h('div', { style: {
-            display: 'flex', justifyContent: 'space-between',
-            alignItems: 'baseline', marginTop: 4,
-          }},
-            h('div', { style: {
-              fontFamily: '"Cormorant SC", serif', fontSize: 20,
-              color: EW.ink, lineHeight: 1,
-            }}, mp.name),
-            h('div', { style: {
-              fontFamily: '"DotGothic16", monospace', fontSize: 11,
-              color: accent,
-            }}, boardSizeLabel)
-          ),
-          h('div', { style: {
-            fontFamily: '"DotGothic16", monospace', fontSize: 9,
-            color: EW.inkDim, letterSpacing: '0.16em', marginTop: 2,
-          }}, gm.label.toUpperCase() + ' · ' + teamDisplay + ' · ' + rounds + 'R' + (training ? ' · ⚡ TRAINING' : '')),
-          sf && h('div', { style: {
-            fontFamily: '"DotGothic16", monospace', fontSize: 9, letterSpacing: '0.14em', marginTop: 5,
-            display: 'flex', alignItems: 'center', gap: 8,
-          }},
-            h('span', { style: { color: EW.inkDim } }, 'SITE STATUS'),
-            h('span', { style: { color: STAMP_INK[sf.tone] || EW.inkMute } }, sf.status)
-          )
-        ),
+        h('div', { className: 'ms-tty-cards' },
+          ...filteredMaps.map(i => h(MapCard, { key: mapList[i].modeId, mp: mapList[i], selected: i === mapIdx, onClick: () => selectMap(i) })),
+          filteredMaps.length === 0 && h('div', { className: 'ms-tty-empty' }, 'NO SITES MATCH FILTERS')
+        )
       ),
+      h('div', { className: 'ms-tty-col' },
+        h('div', { className: 'ms-tty-h' }, 'CONFIGURATION'),
+        h('div', { className: 'ms-tty-form' },
+          teamField,
+          h(Field, { label: 'BOARD SIZE' }, h('div', { className: 'ms-tty-ro' }, h('span', null, boardSizeLabel), h('em', null, 'FROM SITE'))),
+          roundsField, winField, tempoField, assignBlock
+        )
+      )
+    );
+  }
+
+  /* ── the foot: the summary line + the buttons ── */
+  const foot = h('div', { className: 'ms-tty-foot' },
+    h('button', { className: 'ms-tty-btn danger', onClick: handleBack, title: frame === 'room' ? 'Back into the room' : 'Back' }, frame === 'room' ? '◂ STEP AWAY' : '◂ BACK'),
+    h('div', { className: 'ms-tty-sum' },
+      h('small', null, 'CROSSING ON FILE'),
+      h('b', null, gm.label + ' ', h('i', null, '· on '), mp.name),
+      h('span', null,
+        h('em', { className: 'gold' }, boardSizeLabel), ' · ', h('em', null, teamDisplay), ' · ', h('em', null, rounds + ' ROUNDS'), ' · ',
+        h('em', null, winLabel.toUpperCase()), ' · ', h('em', null, 'VS CPU'),
+        training && ' · ', training && h('em', { className: 'green' }, '⚡ TRAINING'),
+        caseNo && ' · ', caseNo && ('CASE ' + caseNo)
+      )
     ),
+    h('div', { className: 'ms-tty-spacer' }),
+    h('span', { className: 'ms-tty-prompt' }, '> ', h('b', null, 'file ' + (isSite ? '--site' : '--any') + ' --mode ' + gm.id + (mp.isDelta ? ' --delta' : '')), h('span', { className: 'ms-tty-cursor' })),
+    !isSite && h('button', { className: 'ms-tty-btn', onClick: handleRandomize, title: 'Let the Department assign the site' }, 'RANDOMIZE'),
+    h('button', { className: 'ms-tty-btn primary' + (filed ? ' filed' : ''), onClick: handleConfirm, title: DOOR ? 'File the crossing' : undefined },
+      h('b', null, isSite ? 'FILE THE CROSSING' : 'CONFIRM'), h('i', null, '↵'),
+      /* the FILED stamp thunks onto the form (styles-base.css .door-stamp.thunk) */
+      filed && h('span', { className: 'ms-tty-filed' }, h(DoorStamp, { text: 'FILED', tone: 'admit', size: 'lg', style: { animation: 'doorThunk 0.45s cubic-bezier(0.2, 1.4, 0.3, 1) forwards', opacity: 0 } }))
+    )
+  );
 
-    h('div', { style: {
-      position: 'absolute', bottom: 0, left: 0, right: 0, height: 96, zIndex: 2,
-      display: 'flex', alignItems: 'center', padding: '0 28px', gap: 18,
-      borderTop: '1px solid ' + EW.panelEdge,
-      background: 'linear-gradient(0deg, rgba(0,0,0,0.9), rgba(0,0,0,0.2))',
-    }},
-
-      h('div', { style: { display: 'flex', flexDirection: 'column', gap: 3 } },
-        h('div', { style: {
-          fontFamily: '"DotGothic16", monospace', fontSize: 9,
-          color: EW.inkDim, letterSpacing: '0.24em',
-        }}, 'MATCH SUMMARY'),
-        h('div', { style: {
-          fontFamily: '"Cormorant SC", serif', fontSize: 22,
-          color: EW.ink, lineHeight: 1, letterSpacing: '0.01em',
-        }},
-          gm.label + ' ',
-          h('span', { style: { color: EW.inkMute, fontStyle: 'italic' } }, '· on '),
-          mp.name
-        ),
-        h('div', { style: {
-          fontFamily: '"DotGothic16", monospace', fontSize: 10,
-          color: EW.inkMute, letterSpacing: '0.18em', marginTop: 2,
-        }},
-          h('span', { style: { color: accent } }, boardSizeLabel),
-          h('span', { style: { color: EW.inkDim } }, ' · '),
-          h('span', { style: { color: EW.ink } }, teamDisplay),
-          h('span', { style: { color: EW.inkDim } }, ' · '),
-          h('span', { style: { color: EW.ink } }, rounds + ' ROUNDS'),
-          h('span', { style: { color: EW.inkDim } }, ' · '),
-          h('span', { style: { color: EW.ink } }, winLabel.toUpperCase()),
-          h('span', { style: { color: EW.inkDim } }, ' · '),
-          h('span', { style: { color: EW.ink } }, 'VS CPU'),
-          training && h('span', { style: { color: EW.inkDim } }, ' · '),
-          training && h('span', { style: { color: EW.good } }, '⚡ TRAINING'),
-          caseNo && h('span', { style: { color: EW.inkDim } }, ' · '),
-          caseNo && h('span', { style: { color: EW.inkDim, fontFamily: '"IBM Plex Mono", "DotGothic16", monospace' } }, 'CASE ' + caseNo)
-        ),
+  /* ── the monitor ── */
+  return h('div', { className: 'ms-crt ms-crt-' + frame + ' ms-crt-' + variant },
+    h('div', { className: 'ms-crt-bezel' },
+      h('div', { className: 'ms-crt-glass' },
+        h('div', { className: 'ms-crt-screen' }, h('div', { className: 'ms-tty' }, head, body, foot)),
+        h('div', { className: 'ms-crt-scan' }),
+        h('div', { className: 'ms-crt-glare' })
       ),
-      h('div', { style: { flex: 1 } }),
-      h('button', {
-        onClick: handleRandomize,
-        className: 'ms-btn-ghost',
-        title: 'Let the Department assign the site',
-        style: {
-          background: 'transparent', color: EW.inkMute,
-          border: '1px solid ' + EW.panelEdge, padding: '10px 16px',
-          fontFamily: '"DotGothic16", monospace', fontSize: 10,
-          letterSpacing: '0.22em', cursor: 'pointer',
-        },
-      }, 'RANDOMIZE'),
-      h('button', {
-        onClick: handleConfirm,
-        className: 'ms-btn-primary',
-        title: DOOR ? 'File the assignment' : undefined,
-        style: {
-          background: 'rgba(61,220,132,0.1)',
-          color: EW.good, border: '1px solid ' + EW.good,
-          padding: '18px 40px', display: 'flex', alignItems: 'center', gap: 16,
-          cursor: 'pointer', boxShadow: '0 0 28px rgba(61,220,132,0.2)',
-          position: 'relative',
-        },
-      },
-        h('span', { style: {
-          fontFamily: '"Cormorant SC", serif', fontSize: 20,
-          letterSpacing: '0.24em', fontWeight: 600,
-          opacity: filed ? 0.35 : 1, transition: 'opacity 0.2s',
-        }}, 'CONFIRM'),
-        h('span', { style: {
-          fontFamily: '"DotGothic16", monospace', fontSize: 11,
-          opacity: filed ? 0.2 : 0.7, fontWeight: 700,
-        }}, '↵'),
-        /* the FILED stamp thunks onto the form (styles-base.css .door-stamp.thunk) */
-        filed && h('span', { style: {
-          position: 'absolute', inset: 0, display: 'flex', alignItems: 'center',
-          justifyContent: 'center', pointerEvents: 'none', zIndex: 2,
-        }}, h(DoorStamp, { text: 'FILED', tone: 'admit', size: 'lg', style: { animation: 'doorThunk 0.45s cubic-bezier(0.2, 1.4, 0.3, 1) forwards', opacity: 0 } }))
-      ),
-    ),
-
+      h('div', { className: 'ms-crt-label' }, 'D.O.O.R. · ' + consoleLabel + ' · TTY-1 · DO NOT UNPLUG'),
+      h('div', { className: 'ms-crt-brand' }, 'ENTROPY DATA SYSTEMS'),
+      h('div', { className: 'ms-crt-led' })
+    )
   );
 }
 
-let _msReactRoot = null;
+/* ── mounting: one React root per host (the page, the building's console) ── */
+const _msRoots = {};
 
-window._mountReactMatchSelect = function() {
-  const container = document.getElementById('modePage');
-  if (!container) return;
-  if (!_msReactRoot) {
-    _msReactRoot = ReactDOM.createRoot(container);
-  }
-  _msReactRoot.render(h(MatchSelect));
+/* opts: { host: 'modePage' | 'hqTerminal', variant: 'full' | 'site' | null,
+   frame: 'page' | 'room', pre: the crossing record (else window._hqPreselect) } */
+window._mountReactMatchSelect = function(opts) {
+  opts = opts || {};
+  const hostId = opts.host || 'modePage';
+  const container = document.getElementById(hostId);
+  if (!container) return false;
+  if (!_msRoots[hostId]) _msRoots[hostId] = ReactDOM.createRoot(container);
+  _msRoots[hostId].render(h(MatchSelect, {
+    variant: opts.variant || null,
+    frame: opts.frame || (hostId === 'modePage' ? 'page' : 'room'),
+    pre: opts.pre || null,
+  }));
+  return true;
 };
 
-window._unmountReactMatchSelect = function() {
-  if (_msReactRoot) {
-    _msReactRoot.unmount();
-    _msReactRoot = null;
+window._unmountReactMatchSelect = function(hostId) {
+  hostId = hostId || 'modePage';
+  if (_msRoots[hostId]) {
+    _msRoots[hostId].unmount();
+    delete _msRoots[hostId];
   }
 };
 
-window._refreshReactMatchSelect = function() {
-  if (_msReactRoot) {
-    _msReactRoot.render(h(MatchSelect));
-  }
+window._refreshReactMatchSelect = function(hostId) {
+  hostId = hostId || 'modePage';
+  if (_msRoots[hostId]) _msRoots[hostId].render(h(MatchSelect, { frame: hostId === 'modePage' ? 'page' : 'room' }));
 };
 
 })();

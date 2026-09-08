@@ -9860,3 +9860,35 @@ photographs the beat at 1.2 / 2.3 / 5.4 beat-seconds, logging the camera
   60–75% across; the beat's cineDist 6.4 m holds the whole door (seal
   included) at ~73% height — 3–5 m overflowed the frame. The ice biome
   blows out under the full light spill: `lightMul: 0.5`.
+
+## THE TERMINAL (2026-09-08): match-select on the console's CRT
+- The bug that started it: E at a room's console → the panel's CROSS →
+  `_hqClosePanel()` un-paused the walk → `setPaused(false)` →
+  `_hqTryLock()` → `requestPointerLock()` (ASYNC) → `_hqLaunchMission` →
+  `_hqLeave` → `exitPointerLock` skipped (the lock was not held yet) → the
+  grab landed on the match-select page: no cursor, nothing clickable. Two
+  fixes, both kept: the renderer releases any lock that lands while the
+  walk is paused or within 2.5 s of a leave (`_hqOnLockChange`), and panels
+  on the way to a launch close with `{ keepPaused: true }`.
+- Flow now: consoles open `#hqTerminal` over the PAUSED building
+  (`_hqSuspend`), the camera pushes onto the desk's `crt_terminal`
+  (`hq.focusScreen({ counterId })` — nearest CRT within 3.4 m of the
+  counter), the overlay powers on 430 ms in. STEP AWAY / ESC →
+  `_hqTerminalClose()` → power-down, `unfocus(560)`, `_hqResume` (no room
+  rebuild). FILE → `_msConfirm` → `_hqTerminalClose({ launch: true })` →
+  `_hqLeave` → the party builder (the classic path from there). The
+  return spot is the console (`doorId` → `_hqLastDoor`).
+- Harness note: `playtest_hq.js` drives `_hqEnter` directly; to photograph
+  the screen, stand at the console (`ThreeRenderer.hq.goTo('crossing')`),
+  call `ThreeRenderer.hq.interact()`, wait ~1.2 s (push + power-on), then
+  screenshot; `window._hqTerminalIsOpen()` says whether it is up;
+  `window._hqTerminalClose()` steps away. The FULL desk: `goTo('range')`
+  in `training`, or `goTo('dispatch')` + the panel's THE DESK'S SCREEN
+  button. Software GL: the push is 720 ms — ~1 frame at 1 fps; set the
+  overlay's `.on` class and screenshot after the mount instead of waiting
+  for the tween.
+- Headless check that is NOT a playtest: `react`/`react-dom` from npm +
+  `react-dom/server` renderToString of `MatchSelect` with stubbed globals
+  (MS_GAME_MODES / MS_MAP_LIST / MULTIPLAYER_MODES / GAME_MODES) catches
+  undefined refs in both variants in a second.
+

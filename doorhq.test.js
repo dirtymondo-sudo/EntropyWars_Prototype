@@ -1630,3 +1630,46 @@ test('source scan: the renderer builds the site board and walks it; map.js walks
     assert.match(mp, /data-goto="crossing">WALK TO THE CONSOLE/);
     assert.match(mp, /r\.siteRoom && _hqRoomExists\(r\.siteRoom\)/, 'the directory GOes into a walkable site');
 });
+
+/* ── 2026-09-08: THE TERMINAL — the match-select screen is a console's CRT ── */
+test('the terminal: consoles light their own screen, the pointer comes back (source scan)', () => {
+    const read = f => fs.readFileSync(path.join(__dirname, f), 'utf8');
+    const mp = read('map.js'), tr = read('three-renderer.js'), ms = read('match-select.js'), css = read('styles-base.css'), html = read('index.html');
+    /* the host in the building */
+    assert.ok(html.includes('id="hqTerminal"'), 'index.html: #hqTerminal inside #hqPage');
+    assert.ok(html.indexOf('id="hqTerminal"') > html.indexOf('id="hqPanel"') && html.indexOf('id="hqTerminal"') < html.indexOf('id="hqLoad"'), 'the host sits between the panel and the load card');
+    assert.match(css, /\.hq-terminal \{[^}]*z-index: 35/, 'the host stacks over the panel (30) and under the load card (40)');
+    for (const c of ['.ms-crt-bezel', '.ms-crt-glass', '.ms-crt-screen', '.ms-crt-scan', '.ms-tty-body', '.ms-tty-site', '.ms-tty-full', '.ms-tty-filebox']) assert.ok(css.includes(c + ' {'), 'styles-base.css: ' + c);
+    assert.match(css, /@keyframes msCrtOn/, 'the power-on raster');
+    /* the flow layer */
+    assert.match(mp, /function _hqOpenTerminal\(spec\)/, 'map.js opens the screen');
+    assert.match(mp, /window\._hqTerminalClose = function \(o\)/, 'and closes it');
+    assert.match(mp, /if \(_hqTerm\) window\._hqTerminalClose\(\{ launch: true \}\);/, 'FILE takes the building down first (_msConfirm)');
+    assert.match(mp, /if \(_hqTerm\) \{ window\._hqTerminalClose\(\); return; \}/, 'STEP AWAY resumes the walk (_msBack)');
+    assert.match(mp, /onEscape: \(\) => \{ if \(_hqTerm\) \{ window\._hqTerminalClose\(\); return; \}/, 'ESC closes the screen before anything else');
+    assert.match(mp, /o\.terminal !== false && _hqOpenTerminal\(\{ variant: o\.variant \|\| 'site', counterId: o\.counterId \|\| null, pre \}\)/, '_hqLaunchMission files on the screen, the page is the fallback');
+    assert.match(mp, /t\.counter\.action\.overlay === 'crossing' \|\| t\.counter\.action\.overlay === 'training'/, 'E at a console lights the screen');
+    assert.match(mp, /variant: 'site' \}\);/, 'the CROSSING console is the SITE variant');
+    assert.match(mp, /launchId: 'prebuilt_training', gm: 'arena', teamSize: 4/, 'the RANGE console presets ORIENTATION');
+    assert.match(mp, /launchId: 'prebuilt_holosim', gm: 'arena', teamSize: 4/, 'and PRACTICE');
+    assert.match(mp, /data-terminal="full"/, 'DISPATCH offers the desk\'s screen');
+    assert.match(mp, /window\._hqClosePanel\(\{ keepPaused: true \}\)/, 'a panel on the way to a launch closes without the re-grab');
+    assert.match(mp, /_hqTermDrop\(\);   \/\/ a console screen left up goes down with the building/, '_hqLeave drops a screen left up');
+    /* the renderer */
+    assert.match(tr, /focusScreen: _hqFocusScreen,/, 'hq.focusScreen: the camera pushes onto the CRT');
+    assert.match(tr, /unfocus: _hqUnfocus,/, 'hq.unfocus: and back');
+    assert.match(tr, /_hq\.props\.push\(\{ key: p\.key, grp: grp \}\);/, 'placed props are on record (the CRT is found by key)');
+    assert.match(tr, /function _hqOnLockChange\(\)/, 'a late pointer lock is released');
+    assert.match(tr, /document\.addEventListener\('pointerlockchange', _hqOnLockChange\);/, 'and the listener is installed');
+    assert.match(tr, /if \(_hq && _hq\.paused\) \{ document\.exitPointerLock\(\); return; \}/, 'a lock landing on a paused walk is refused');
+    assert.match(tr, /if \(!_hqKeepLock\) \{\s*_hqLockStaleAt = performance\.now\(\);/, 'leaving marks the stale window');
+    assert.match(tr, /e\.group\.visible = !H\.fp && !\(H\.focus && H\.focus\.k > 0\.3\);/, 'the avatar hides under the push');
+    /* the screen */
+    assert.match(ms, /window\._mountReactMatchSelect = function\(opts\)/, 'match-select mounts per host');
+    assert.match(ms, /const isSite = variant === 'site';/, 'the SITE variant');
+    assert.match(ms, /className: 'ms-tty-body ms-tty-site'/, 'renders the two-column form');
+    assert.match(ms, /className: 'ms-tty-body ms-tty-full'/, 'the FULL variant the three-column desk');
+    assert.match(ms, /className: 'ms-crt ms-crt-' \+ frame \+ ' ms-crt-' \+ variant/, 'inside the monitor');
+    assert.match(ms, /if \(variant === 'site' && deltaIdx < 0 && fullIdx < 0\) variant = 'full';/, 'a site without a launch entry falls back to the desk');
+    assert.match(ms, /function pickBoard\(b\)/, 'Δ board ↔ the full site');
+});

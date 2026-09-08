@@ -404,6 +404,7 @@
             const profile = _hqProfile();
             _hqHome = true;
             _hqSuspended = false;
+            _hqTermDrop();
             window._hqPreselect = null;
             window._hqCodeRedRun = null;   // back in the building = not in a Code Red crossing (the commit consumed it)
             state.gameState = GS.HQ;
@@ -436,7 +437,7 @@
                 onEnterDoor: _hqWalkThroughDoor,
                 /* ESC: close the panel, else Settings (plan D6 — an overlay,
                    not a place); EXIT on the strip is how you leave */
-                onEscape: () => { if (_hqPanelTarget) window._hqClosePanel(); else window._hqOpenSettings(); },
+                onEscape: () => { if (_hqTerm) { window._hqTerminalClose(); return; } if (_hqPanelTarget) window._hqClosePanel(); else window._hqOpenSettings(); },
                 /* Q: answer a BELL call from anywhere in the building (plan D2) */
                 onHotkey: (k) => { if (k === 'q') _hqOpenCounter('dispatch'); },
                 onReady: () => {
@@ -558,6 +559,7 @@
             } catch (e) { console.warn('[DOOR] promote failed', e); return false; }
         };
         window._hqLeave = function () {
+            _hqTermDrop();   // a console screen left up goes down with the building
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active()) ThreeRenderer.hq.leave(); } catch (e) { console.error('[HQ] leave failed', e); }
             _hqSuspended = false;
             window._hqClosePanel();
@@ -692,15 +694,172 @@
                 : cr && typeof window.hqCodeRedPool === 'function' ? window.hqCodeRedPool(cr, teamSize)
                 : ((typeof window.hqMissionPool === 'function') ? window.hqMissionPool(site, teamSize) : []);
             window._hqCodeRedRun = cr ? { date: cr.date, site: cr.site, race: cr.race, label: cr.label, bonus: cr.bonus } : null;
-            window._hqPreselect = { mapId: site, launchId, delta, teamSize, gm: 'arena', roster, doorId: o.doorId || null, doorLabel: o.doorLabel || '', codeRed: !!cr };
+            /* `locked` = the SITE variant of the terminal (the site is fixed,
+               only the board / mode / config are asked); `presets` = a
+               console's quick picks on the FULL variant (the RANGE console) */
+            const pre = { mapId: site, launchId, delta, teamSize, gm: 'arena', roster, doorId: o.doorId || null, doorLabel: o.doorLabel || '', codeRed: !!cr,
+                          locked: o.variant !== 'full', presets: Array.isArray(o.presets) ? o.presets : null };
+            window._hqPreselect = pre;
             window._msCpuOnly = true;
             if (o.doorId) { _hqLastDoor = o.doorId; _hqLastRoom = _hqCurRoom; _hqRecordVisit(o.doorId); }
+            /* THE TERMINAL (2026-09-08): the crossing is filed on the console's
+               own screen, the building alive underneath — the camera pushes
+               onto the desk's CRT when the source names one (counterId) */
+            if (o.terminal !== false && _hqOpenTerminal({ variant: o.variant || 'site', counterId: o.counterId || null, pre })) return true;
+            /* the classic page (no terminal host / React missing): leave the building */
             try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.6 }); } catch (e) {}
             window._hqLeave();
             state.gameState = GS.MODE_SELECT;
             _showTitlePage('modePage');
             return true;
         };
+        /* ══════════════════════════════════════════════════════════════════
+           THE TERMINAL (2026-09-08) — a console's CRT, full screen.
+           E / the prompt at a CROSSING console (a walkable site), the RANGE
+           console (Training Room) or DISPATCH pushes the camera onto the
+           desk's monitor (three-renderer.js hq.focusScreen) and powers up
+           match-select.js's diegetic screen in #hqTerminal: the SITE
+           variant where the site is the room you stand in (board · mode ·
+           config), the FULL variant (every site) at the range / the desk.
+           The building waits underneath (paused, _hqSuspend); STEP AWAY /
+           ESC powers it down and pulls the camera back (_hqResume); FILE
+           takes the building down with the screen (_msConfirm →
+           _hqTerminalClose({ launch: true })) and the post-match return
+           re-enters at the console (doorId → _hqLastDoor). The old panel +
+           match-select PAGE remain as the fallback when the host or React
+           is missing (and for ?nohq).
+           ══════════════════════════════════════════════════════════════════ */
+        let _hqTerm = null;   // { variant, counterId, pushed, timer } while a console screen is up
+        window._hqTerminalIsOpen = function () { return !!_hqTerm; };
+        /* tear the overlay down without touching the walk (leave / enter / launch) */
+        function _hqTermDrop() {
+            const t = _hqTerm;
+            _hqTerm = null;
+            if (t && t.timer) clearTimeout(t.timer);
+            const host = _hqEl('hqTerminal');
+            try { if (typeof window._unmountReactMatchSelect === 'function') window._unmountReactMatchSelect('hqTerminal'); } catch (e) {}
+            if (host) { host.style.display = 'none'; host.classList.remove('on', 'off'); host.innerHTML = ''; }
+            return !!t;
+        }
+        function _hqOpenTerminal(spec) {
+            spec = spec || {};
+            if (_hqTerm) return true;
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.hq || !ThreeRenderer.hq.active() || _hqSuspended) return false;
+            if (typeof window._mountReactMatchSelect !== 'function' || typeof MS_MAP_LIST === 'undefined') return false;
+            const host = _hqEl('hqTerminal');
+            if (!host) return false;
+            const pre = spec.pre || null;
+            if (pre) pre.locked = spec.variant === 'site';
+            window._hqPreselect = pre;
+            window._msCpuOnly = true;
+            /* the walk stops and the cursor comes back (renderer setPaused);
+               a panel on the way closes WITHOUT the unpause that re-grabs the
+               pointer — that grab used to land on the next screen */
+            if (_hqPanelTarget) window._hqClosePanel({ keepPaused: true });
+            _hqSetPrompt(null);
+            _hqSuspend();
+            state.gameState = GS.MODE_SELECT;   // the desk's own state; _hqResume restores GS.HQ
+            let pushed = false;
+            try { pushed = !!(spec.counterId && ThreeRenderer.hq.focusScreen && ThreeRenderer.hq.focusScreen({ counterId: spec.counterId, ms: 720 })); } catch (e) { pushed = false; }
+            _hqTerm = { variant: spec.variant || 'full', counterId: spec.counterId || null, pushed, timer: null };
+            const mount = () => {
+                if (!_hqTerm) return;
+                _hqTerm.timer = null;
+                try { if (typeof playDoorSfx === 'function') playDoorSfx('crtOn', { volume: 0.9 }); } catch (e) {}
+                host.innerHTML = '';
+                host.style.display = '';
+                host.classList.remove('off');
+                host.classList.add('on');
+                if (!window._mountReactMatchSelect({ host: 'hqTerminal', variant: _hqTerm.variant, frame: 'room', pre })) {
+                    /* no root: fall back to the page */
+                    _hqTermDrop();
+                    window._hqLeave();
+                    state.gameState = GS.MODE_SELECT;
+                    _showTitlePage('modePage');
+                }
+            };
+            /* the push takes 720 ms; the screen lights while the glass is
+               filling the frame — at once when there is no CRT to push onto */
+            _hqTerm.timer = setTimeout(mount, pushed ? 430 : 40);
+            return true;
+        }
+        window._hqOpenTerminal = _hqOpenTerminal;
+        /* STEP AWAY / ESC (o.launch false): power down, pull the camera back,
+           the walk resumes. FILE (o.launch true): the screen and the building
+           go down together — the match owns the canvas next. */
+        window._hqTerminalClose = function (o) {
+            o = o || {};
+            const t = _hqTerm;
+            if (!t) return false;
+            if (o.launch) {
+                _hqTermDrop();
+                try { if (ThreeRenderer.hq.unfocus) ThreeRenderer.hq.unfocus(0); } catch (e) {}
+                _hqSuspended = false;
+                window._hqLeave();
+                return true;
+            }
+            _hqTerm = null;
+            if (t.timer) clearTimeout(t.timer);
+            window._hqPreselect = null;
+            window._hqCodeRedRun = null;
+            window._msCpuOnly = false;
+            const host = _hqEl('hqTerminal');
+            const drop = () => {
+                try { if (typeof window._unmountReactMatchSelect === 'function') window._unmountReactMatchSelect('hqTerminal'); } catch (e) {}
+                if (host) { host.style.display = 'none'; host.classList.remove('on', 'off'); host.innerHTML = ''; }
+            };
+            if (host && host.style.display !== 'none') {
+                try { if (typeof playDoorSfx === 'function') playDoorSfx('vhsEject', { volume: 0.45 }); } catch (e) {}
+                host.classList.remove('on'); host.classList.add('off');
+                setTimeout(drop, 300);
+            } else drop();
+            try { if (ThreeRenderer.hq.unfocus) ThreeRenderer.hq.unfocus(560); } catch (e) {}
+            setTimeout(() => { if (!_hqTerm && _hqSuspended && state.gameState === GS.MODE_SELECT) window._hqResume(); }, 120);
+            return true;
+        };
+        /* a console's screen (E / the prompt): the CROSSING console of a
+           walkable site → the SITE terminal for the room's site; the RANGE
+           console → the FULL terminal with the range's two boards as
+           presets; DISPATCH's desk → the FULL terminal. Returns false where
+           the old panel should show instead (a sealed / gated site, no host). */
+        function _hqConsoleTerminal(t) {
+            const c = t && t.counter;
+            const act = (c && c.action) || {};
+            if (act.overlay === 'crossing') {
+                const room = _hqRoom();
+                const id = c.site || (room && room.site);
+                if (!id) return false;
+                const th = (DOOR_HQ.thresholds || {})[id] || {};
+                const door = { id: c.id || 'crossing', label: c.label || 'CROSSING CONSOLE', action: { mission: id }, roomNo: (th.roomNo != null) ? String(th.roomNo) : null };
+                const st = (typeof window.doorSiteState === 'function') ? window.doorSiteState(door, _hqProfile()) : 'unstable';
+                if (st === 'sealed' || st === 'clearance' || st === 'off') return false;
+                return window._hqLaunchMission(id, { delta: true, doorId: c.id || 'crossing', doorLabel: c.label || 'CROSSING CONSOLE', counterId: c.id || 'crossing', variant: 'site' });
+            }
+            if (act.overlay === 'training') return _hqRangeTerminal(c.id || 'range');
+            if (act.overlay === 'dispatch' && t.viaTerminal) return _hqDeskTerminal(c.id || 'dispatch', c.label || 'DISPATCH');
+            return false;
+        }
+        /* the RANGE console (HQ plan 6.1a): the whole desk, opened on the
+           Training Room board with ORIENTATION / PRACTICE one click away;
+           a free CPU pool — nothing is filed, no threshold moves */
+        function _hqRangeTerminal(counterId) {
+            return window._hqLaunchMission('prebuilt_training', {
+                delta: true, roster: [], doorId: counterId || 'range', doorLabel: 'RANGE CONSOLE', counterId: counterId || 'range', variant: 'full',
+                /* the facility boards are 8×8 already — they have no Δ cut (launchId = the site) */
+                presets: [
+                    { id: 'orientation', label: 'ORIENTATION · TRAINING ROOM', launchId: 'prebuilt_training', gm: 'arena', teamSize: 4, title: 'Arena · 4v4 on the 8×8 Training Room board · free CPU pool' },
+                    { id: 'practice', label: 'PRACTICE · HOLO SIM', launchId: 'prebuilt_holosim', gm: 'arena', teamSize: 4, title: 'Arena · 4v4 on the Holo Sim floor · free CPU pool · nothing is filed' },
+                ],
+            });
+        }
+        /* DISPATCH's desk (the front desk): the whole desk, nothing pre-filled
+           beyond the Δ default — a simulated crossing on any site */
+        function _hqDeskTerminal(counterId, label) {
+            if (_hqSuspended) return false;
+            const pre = { doorId: counterId || 'dispatch', doorLabel: label || 'DISPATCH', delta: true, roster: [], locked: false, presets: null };
+            if (counterId) { _hqLastDoor = counterId; _hqLastRoom = _hqCurRoom; _hqRecordVisit(counterId); }
+            return _hqOpenTerminal({ variant: 'full', counterId: counterId || null, pre });
+        }
         function _hqSetPrompt(t) {
             const el = _hqEl('hqPrompt');
             if (!el) return;
@@ -918,7 +1077,7 @@
             try { const n = _hqEl('mmOnlineNum'); if (n && n.textContent) online = `<p class="hq-panel-note">${_hqEsc(n.textContent)} officer(s) on the BELL network.</p>`; } catch (e) {}
             return '<div class="hq-panel-hd"><b>DISPATCH</b><span>BELL CONSOLE · BOUNDARY EVENT LOCATION AND LOGGING</span></div>'
                 + '<p class="hq-panel-desc">The agent slides a form across the counter without looking up. “Filing jurisdiction claim. Two field offices, one crossing. Settle it in the field.”</p>'
-                + '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="_goToQuickPlay">ANSWER A BELL CALL ▸ QUICK PLAY</button><button class="hq-btn" data-fn="_goToFriendlyMatch">CALL A COLLEAGUE ▸ FRIENDLY MATCH</button></div>'
+                + '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="_goToQuickPlay">ANSWER A BELL CALL ▸ QUICK PLAY</button><button class="hq-btn" data-fn="_goToFriendlyMatch">CALL A COLLEAGUE ▸ FRIENDLY MATCH</button><button class="hq-btn" data-terminal="full" title="The desk’s own screen: any site, any mode, a free CPU draw — a simulated crossing, nothing filed">THE DESK’S SCREEN ▸ FILE A CROSSING · ANY SITE</button></div>'
                 + online;
         }
         /* The in-tray on your desk (HQ plan 2.7 — the case-file screen of
@@ -1068,11 +1227,15 @@
             if (act.fn && typeof window[act.fn] === 'function') return { fn: act.fn };
             return null;
         }
-        /* E: direct doors go through, everything else opens its panel */
+        /* E: direct doors go through, a console lights its screen (THE
+           TERMINAL), everything else opens its panel */
         function _hqInteractTarget(t) {
             if (t && t.kind === 'door' && t.door) {
                 const act = _hqDoorDirectAction(t);
                 if (act) { window._hqDoAction(act, t); return; }
+            }
+            if (t && t.kind === 'counter' && t.counter && t.counter.action && (t.counter.action.overlay === 'crossing' || t.counter.action.overlay === 'training')) {
+                try { if (_hqConsoleTerminal(t)) return; } catch (e) { console.warn('[HQ] terminal failed, panel instead', e); }
             }
             _hqOpenPanel(t);
         }
@@ -1100,10 +1263,14 @@
             try { playSfx('uiButtonConfirm'); } catch (e) {}
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq) ThreeRenderer.hq.setPaused(true); } catch (e) {}
         }
-        window._hqClosePanel = function () {
+        /* o.keepPaused (2026-09-08): close on the way to a screen / a launch
+           without the unpause — unpausing re-grabs the pointer, and that grab
+           landed on the next screen (the dead cursor on match-select) */
+        window._hqClosePanel = function (o) {
             const panel = _hqEl('hqPanel');
             if (panel) panel.style.display = 'none';
             _hqPanelTarget = null;
+            if (o && o.keepPaused) return;
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active()) { ThreeRenderer.hq.setPaused(false); _hqSetPrompt(ThreeRenderer.hq.target()); } } catch (e) {}
         };
         /* wrap a modal's unmount once so closing it resumes the building */
@@ -1168,8 +1335,8 @@
                 const door = (_hqPanelTarget && _hqPanelTarget.kind === 'door') ? _hqPanelTarget : null;
                 /* the CROSSING console of a walkable site (plan 7.2) is the door you left through */
                 const console_ = (_hqPanelTarget && _hqPanelTarget.kind === 'counter' && _hqPanelTarget.counter && _hqPanelTarget.counter.action && _hqPanelTarget.counter.action.overlay === 'crossing') ? _hqPanelTarget : null;
-                window._hqClosePanel();
-                window._hqLaunchMission(id, { delta: !deep, codeRed, doorId: door ? door.id : (console_ ? (console_.counter.id || 'crossing') : null), doorLabel: door ? door.label : (console_ ? console_.label : '') });
+                window._hqClosePanel({ keepPaused: true });
+                window._hqLaunchMission(id, { delta: !deep, codeRed, doorId: door ? door.id : (console_ ? (console_.counter.id || 'crossing') : null), doorLabel: door ? door.label : (console_ ? console_.label : ''), counterId: console_ ? (console_.counter.id || 'crossing') : null });
                 return;
             }
             /* the RANGE console (HQ plan 6.1a): a facility board with a free
@@ -1177,8 +1344,16 @@
             const range = e.target.closest('[data-range]');
             if (range && !range.disabled) {
                 const id = range.getAttribute('data-range');
-                window._hqClosePanel();
-                window._hqLaunchMission(id, { delta: true, roster: [], doorId: 'range', doorLabel: 'RANGE CONSOLE' });
+                window._hqClosePanel({ keepPaused: true });
+                window._hqLaunchMission(id, { delta: true, roster: [], doorId: 'range', doorLabel: 'RANGE CONSOLE', counterId: 'range', variant: 'full' });
+                return;
+            }
+            /* the desk's screen (THE TERMINAL): DISPATCH files a simulated crossing on any site */
+            const term = e.target.closest('[data-terminal]');
+            if (term && !term.disabled) {
+                const src = (_hqPanelTarget && _hqPanelTarget.kind === 'counter') ? _hqPanelTarget : null;
+                window._hqClosePanel({ keepPaused: true });
+                if (!_hqDeskTerminal(src ? (src.counter.id || 'dispatch') : 'dispatch', src ? src.label : 'DISPATCH')) window._hqResume();
                 return;
             }
             const go = e.target.closest('[data-goto]');
@@ -2822,7 +2997,7 @@
                 }
             } catch (e) {}
             if (typeof window._mountReactMatchSelect === 'function') {
-                window._mountReactMatchSelect();
+                window._mountReactMatchSelect({ host: 'modePage', frame: 'page' });
             }
         }
 
@@ -2972,6 +3147,8 @@
 
         window._msBack = function() {
             playSfx('uiButtonConfirm');
+            /* THE TERMINAL: STEP AWAY powers the console down and pulls the camera back into the room */
+            if (_hqTerm) { window._hqTerminalClose(); return; }
             window._msCpuOnly = false;
             window._hqPreselect = null;
             window._hqCodeRedRun = null;
@@ -2981,6 +3158,10 @@
 
         window._msConfirm = function() {
             playSfx('uiButtonConfirm');
+            /* THE TERMINAL: filed on a console's screen — the building goes
+               down with it (the match owns the canvas next); the return spot
+               was recorded when the screen lit (_hqLastDoor) */
+            if (_hqTerm) window._hqTerminalClose({ launch: true });
 
             const mp = MS_MAP_LIST[_msSelectedMap];
             const gm = MS_GAME_MODES[_msSelectedGM];

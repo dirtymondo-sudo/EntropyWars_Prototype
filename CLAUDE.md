@@ -322,6 +322,50 @@ parented, so `_introBuildDoor`'s fit ran on `g.parent` = null and bailed —
 the guard is now `rec.dead` (set by `_introDropDoors`). doorhq.test.js
 source-scans the signatures.
 
+## THE TERMINAL (the match-select screen is a console's CRT) — added 2026-09-08
+Match-select is DIEGETIC: match-select.js renders a full-frame CRT monitor
+(`.ms-crt` bezel → glass → screen, scanlines, the phosphor's warm black;
+CSS in styles-base.css "THE TERMINAL" block, `.ms-tty-*` = the terminal
+typography) in two homes and two VARIANTS. Homes: `#hqTerminal` inside
+`#hqPage` (map.js `_hqOpenTerminal(spec)` — the building waits underneath,
+paused via `_hqSuspend`; three-renderer.js `hq.focusScreen({ counterId })`
+pushes the camera onto the desk's `crt_terminal` prop (found by catalogue
+key in `_hq.props`, +Z-front, `hq.unfocus(ms)` pulls it back; the avatar
+hides under the push) and the overlay powers on 430 ms in (`.on` =
+`msCrtOn`, `crtOn` SFX); `#modePage` = the classic route (`?nohq`,
+VS CPU from the play hub) — the same monitor on black, `frame: 'page'`.
+Variants (`_mountReactMatchSelect({ host, variant, frame, pre })`): **SITE**
+(`pre.locked`) = the site is the room you stand in — site file, then BOARD
+(Δ 8×8 ↔ the full site, `pickBoard`), GAME MODE (Clash excluded — it is
+pinned to its own stage; Gauntlet on full boards only), TEAM, ROUNDS, CPU
+TEMPO, FILE THE CROSSING; **FULL** = MODE · every SITE (cards, filters,
+optional `pre.presets` chips) · CONFIG. Who opens what (map.js
+`_hqInteractTarget` → `_hqConsoleTerminal`): a walkable site's CROSSING
+console → SITE for `room.site` (sealed / gated sites keep their panel);
+the Training Room's RANGE console → FULL with ORIENTATION / PRACTICE
+presets (`_hqRangeTerminal`; the facility boards have NO Δ cut — launchId
+is the site); DISPATCH's panel → "THE DESK'S SCREEN" (`data-terminal`,
+`_hqDeskTerminal`) → FULL, bare pre; a bay threshold's CROSS / DEEP /
+RESPOND (`_hqLaunchMission`) → SITE over the paused ring, no push. The
+launch contract is unchanged: `_msSelected*` mirrored during render,
+`window._hqPreselect` (+ `locked`, `presets`) read by `_msConfirm`, the
+CPU pool pinned only while the filed map is the pre-selected site. FILE →
+`_msConfirm` → `_hqTerminalClose({ launch: true })` drops the overlay and
+`_hqLeave`s (the match owns the canvas next; the return spot is the
+console — `doorId` → `_hqLastDoor`). STEP AWAY / ESC → `_hqTerminalClose()`
+→ power-down (`.off`, `vhsEject`), `unfocus(560)`, `_hqResume`. `_msBack`
+/ `_msConfirm` / the walker's `onEscape` check `_hqTerm` first; `_hqLeave`
+and `_hqEnter` drop a screen left up. **THE DEAD-CURSOR FIX that came with
+it**: `requestPointerLock` is async — closing a panel un-paused the walk,
+which re-requested the lock, and the grab landed AFTER `_hqLeave` on the
+match-select page. Now `_hqUnbindInput` exits the lock unconditionally and
+stamps `_hqLockStaleAt`; a document `pointerlockchange` listener
+(`_hqOnLockChange`) releases any lock that lands while the walk is PAUSED
+or within 2.5 s of a leave; panels on the way to a launch close with
+`_hqClosePanel({ keepPaused: true })`. `npm test` (doorhq.test.js "the
+terminal") source-scans all of it. Fallback: no host / no React → the old
+panel + the page.
+
 ## TRAINING MATCH (instant CPU turns vs a human) — added 2026-09-07
 Match-select → CONFIG column → **CPU TEMPO: Cinematic / ⚡ Training**
 (match-select.js, sticky via localStorage `ew_training_match`; mirrored into

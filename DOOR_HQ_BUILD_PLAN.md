@@ -3543,3 +3543,47 @@ index.html; docs.
 - Next: 7.9 dailies; 4.1 the case-file screen; the cast lines for the
   site rooms (A15, the user's); wave 1 of the new sites (7.6) — each is
   now a segment's extra door the moment its threshold exists.
+
+### 2026-09-08 (rev 7) — THE TERMINAL (the console's screen replaces the match-select page)
+- Shipped: map.js `_hqOpenTerminal(spec)` / `window._hqTerminalClose(o)`
+  / `_hqTermDrop` / `_hqConsoleTerminal` / `_hqRangeTerminal` /
+  `_hqDeskTerminal`; `_hqLaunchMission` files on the screen (`o.variant`,
+  `o.counterId`, `o.presets`; `o.terminal === false` = the page);
+  `_msBack` / `_msConfirm` / the walker's `onEscape` check `_hqTerm`;
+  `_hqClosePanel({ keepPaused })`. three-renderer.js `_hq.props`
+  records, `_hqFocusScreen` / `_hqUnfocus` (`hq.focusScreen` /
+  `hq.unfocus` / `hq.focused`), the focus blend in `_hqTickCamera`, the
+  avatar hidden under the push, `_hqOnLockChange` + `_hqLockStaleAt`.
+  match-select.js rewritten as the CRT (`.ms-crt` / `.ms-tty-*`,
+  styles-base.css "THE TERMINAL" block), `_mountReactMatchSelect({ host,
+  variant, frame, pre })` with one root per host. index.html
+  `#hqTerminal` (between the panel and the load card), token
+  `20260908j-cors`. doorhq.test.js "the terminal" source scan.
+- Tuning knobs: the push — `hq.focusScreen` `dist` 0.62 m out from the
+  CRT's base along its yaw, `screenY` 0.21 m up, `ms` 720, `reach` 3.4 m
+  from the counter; the mount delay 430 ms (map.js `_hqOpenTerminal`);
+  the power-on/off rasters (`msCrtOn` 0.62 s / `msCrtOff` 0.3 s); the
+  glass inset (22 / 28 / 34 px) and the phosphor palette (`.ms-crt`
+  custom properties).
+- Not playtested (RULE #1c). What to eyeball first: walk into any bay
+  threshold's room, E at the CROSSING console — the camera should slide
+  onto the CRT on the tanker desk (the avatar vanishes as it passes), the
+  raster opens, the site's name sits top-left of the screen with its stamp,
+  BOARD Δ / FULL on the right; ESC pulls back to the desk with the cursor
+  free; FILE stamps and leaves for the party builder; the result overlay's
+  D.O.O.R. HQ button lands you at the console. Then the Training Room's
+  RANGE console (the FULL desk, Training Room selected, two preset chips
+  above the site cards) and DISPATCH → THE DESK'S SCREEN (the push targets
+  the CRT at deg 200 on the dispatch desk — if it looks at the wrong
+  monitor, `reach` / the CRT rows in DOOR_HQ.rooms.central_egress.props).
+  If the screen is dark, check the console for a React error — the page
+  fallback is only for a missing host.
+- Decisions the user may reverse: bay-threshold launches (the ring) also
+  use the SITE screen (alternative: `terminal: false` there → the page);
+  Clash is not offered on a site (its stage is its own); DISPATCH keeps its
+  panel (Quick Play / Friendly) with the desk's screen as a third button
+  rather than lighting the screen on E.
+- Next: an idle screensaver on the CRT in the room (the site's name
+  scrolling) before the push; the RANGE console's own boot text; a
+  `steward`-style boot line for each console (the room's number).
+

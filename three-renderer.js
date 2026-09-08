@@ -31033,6 +31033,7 @@ const ThreeRenderer = (function () {
                 grp.add(pg);
                 if (cat.glow) { var pgl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4); pgl.position.y = cat.glow.y * U; grp.add(pgl); }
                 G.add(grp);
+                _hq.props.push({ key: p.key, grp: grp });
                 if (cat.foot > 0 && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0, top: y + (cat.h || 1) });
                 return;
             }
@@ -31078,6 +31079,7 @@ const ThreeRenderer = (function () {
                 grp.add(gl);
             }
             G.add(grp);
+            _hq.props.push({ key: p.key, grp: grp });
         });
     }
 
@@ -31688,9 +31690,32 @@ const ThreeRenderer = (function () {
         window.removeEventListener('mousemove', H.onMouseMove);
         window.removeEventListener('mouseup', H.onMouseUp);
         /* walking into the next room keeps the aim captured (the canvas is
-           the same element); leaving the building releases it */
-        try { if (!_hqKeepLock && document.pointerLockElement === canvas) document.exitPointerLock(); } catch (e) {}
+           the same element); leaving the building releases it. The release
+           is unconditional (2026-09-08): a requestPointerLock is ASYNC, so
+           the grab a closing panel asked for can land AFTER this leave —
+           that was the dead cursor on the match-select page (the pointer
+           was still captured by a scene that no longer existed).
+           _hqLockStaleAt lets _hqOnLockChange release that late lock. */
+        if (!_hqKeepLock) {
+            _hqLockStaleAt = performance.now();
+            try { document.exitPointerLock(); } catch (e) {}
+        }
     }
+    /* the pointer lock's arrival, observed: a lock that lands on the canvas
+       while the walk is PAUSED (a panel, the terminal, settings) or after
+       the building is GONE (a launch) is the tail of an earlier request —
+       give the cursor back so the UI on top can be clicked. Strike Mode
+       (battle.js) owns its own locks: it is never live inside the 2.5 s
+       stale window after a leave, and never while _hq exists. */
+    var _hqLockStaleAt = 0;
+    function _hqOnLockChange() {
+        try {
+            if (typeof document === 'undefined' || !canvas || document.pointerLockElement !== canvas) return;
+            if (_hq && _hq.paused) { document.exitPointerLock(); return; }
+            if (!_hq && performance.now() - _hqLockStaleAt < 2500) document.exitPointerLock();
+        } catch (e) {}
+    }
+    if (typeof document !== 'undefined') document.addEventListener('pointerlockchange', _hqOnLockChange);
     function _hqInteract() {
         if (!_hq || _hq.paused) return;
         var t = _hqFindTarget();
@@ -31806,7 +31831,7 @@ const ThreeRenderer = (function () {
                 ch.held.quaternion.copy(hq).invert();
                 ch.held.scale.setScalar(1 / (hs.x || 1));
             }
-            if (ch.kind === 'player') e.group.visible = !H.fp;
+            if (ch.kind === 'player') e.group.visible = !H.fp && !(H.focus && H.focus.k > 0.3);
             var want = 'idle';
             /* a placed cast member holds its building pose (sits, mops,
                kneels…) once the library bake has landed the clip */
@@ -31882,8 +31907,73 @@ const ThreeRenderer = (function () {
             c.ex += (eye.x - c.ex) * a; c.ey += (eye.y - c.ey) * a; c.ez += (eye.z - c.ez) * a;
             c.lx += (look.x - c.lx) * a; c.ly += (look.y - c.ly) * a; c.lz += (look.z - c.lz) * a;
         }
+        /* THE TERMINAL (2026-09-08): a console's screen push. The walker's
+           camera above keeps being computed (so the pull-back lands where
+           the walk left off); the eye is blended toward a point in front of
+           the CRT's glass by the eased fraction k — in over focus.ms, out
+           over the same on unfocus, a slow breath while it holds. */
+        if (H.focus) {
+            var f = H.focus, nowF = performance.now();
+            var tf = Math.min(1, (nowF - f.t0) / Math.max(1, f.ms));
+            var ef = tf < 0.5 ? 2 * tf * tf : 1 - Math.pow(-2 * tf + 2, 2) / 2;
+            f.k = f.out ? f.k0 * (1 - ef) : ef;
+            var bx = Math.sin(nowF * 0.0006) * 0.004 * f.k, by = Math.cos(nowF * 0.00043) * 0.003 * f.k;
+            var fx = c.ex + (f.eye.x + bx - c.ex) * f.k, fy = c.ey + (f.eye.y + by - c.ey) * f.k, fz = c.ez + (f.eye.z - c.ez) * f.k;
+            var lx = c.lx + (f.look.x - c.lx) * f.k, ly = c.ly + (f.look.y - c.ly) * f.k, lz = c.lz + (f.look.z - c.lz) * f.k;
+            cam.position.set(fx * U, fy * U, fz * U);
+            cam.lookAt(lx * U, ly * U, lz * U);
+            if (f.out && tf >= 1) H.focus = null;
+            return;
+        }
         cam.position.set(c.ex * U, c.ey * U, c.ez * U);
         cam.lookAt(c.lx * U, c.ly * U, c.lz * U);
+    }
+    /* Push the camera onto the glass of the CRT nearest a counter (the
+       CROSSING / RANGE console's tanker desk, the dispatch desk) — the
+       terminal overlay (map.js _hqOpenTerminal) fades in over it. The
+       screen is found by catalogue key among the room's placed props,
+       within `reach` metres of the counter (else of the walker); the model
+       is +Z-front, so the eye sits `dist` metres out along its yaw at
+       screen height. Returns false when there is no screen to push onto
+       (the overlay then simply fades in over the paused walk). */
+    function _hqFocusScreen(o) {
+        var H = _hq; if (!H || !H.player) return false;
+        o = o || {};
+        var U = _hqUnits();
+        var ax = H.player.x, az = H.player.z;
+        if (o.counterId) {
+            for (var i = 0; i < H.counters.length; i++) {
+                if (H.counters[i].counter.id === o.counterId) { ax = H.counters[i].group.position.x / U; az = H.counters[i].group.position.z / U; break; }
+            }
+        }
+        var key = o.propKey || 'crt_terminal';
+        var best = null, bestD = (o.reach != null) ? o.reach : 3.4;
+        for (var j = 0; j < H.props.length; j++) {
+            var pr = H.props[j];
+            if (pr.key !== key) continue;
+            var d = Math.hypot(pr.grp.position.x / U - ax, pr.grp.position.z / U - az);
+            if (d < bestD) { bestD = d; best = pr; }
+        }
+        if (!best) return false;
+        var g = best.grp, yaw = g.rotation.y;
+        var fx = Math.sin(yaw), fz = Math.cos(yaw);              // the prop's +Z front, in world
+        var bx = g.position.x / U, by = g.position.y / U, bz = g.position.z / U;
+        var sh = (o.screenY != null) ? o.screenY : 0.21;        // the glass centre above the prop's base (the CRT stands 0.42 m)
+        var dist = (o.dist != null) ? o.dist : 0.62;
+        H.focus = {
+            t0: performance.now(), ms: (o.ms != null) ? o.ms : 720, k: 0, k0: 0, out: false,
+            eye: new THREE.Vector3(bx + fx * dist, by + sh + 0.05, bz + fz * dist),
+            look: new THREE.Vector3(bx, by + sh, bz),
+        };
+        return true;
+    }
+    function _hqUnfocus(ms) {
+        var H = _hq; if (!H || !H.focus) return false;
+        var f = H.focus;
+        if (f.out) return true;
+        f.out = true; f.k0 = f.k; f.t0 = performance.now(); f.ms = (ms != null) ? ms : 560;
+        if (f.ms <= 0) H.focus = null;
+        return true;
     }
     /* the moat's liquid under the HQ loop: the shared fluid clock, the wave
        drift for the moat's key, and the caustic tile = one cell (the
@@ -32052,6 +32142,7 @@ const ThreeRenderer = (function () {
             scene: new THREE.Scene(), camera: null, cube: null,
             shellGroup: new THREE.Group(), doorGroup: new THREE.Group(), propGroup: new THREE.Group(), charGroup: new THREE.Group(),
             doors: [], counters: [], chars: [], blockers: [], landings: [], player: null, fxPulse: [], site: null, sky: null, setting: null,
+            props: [], focus: null,   /* props: { key, grp } per placed catalogue prop (the terminal's camera finds the CRT by key); focus: the screen push (_hqFocusScreen) */
             keys: {}, drag: null, lastDragAt: 0, fp: false, paused: false, ready: false, t0: performance.now(), lastMs: 0, lastDebug: 0,
             cam: { yaw: 0, pitch: -0.24, dist: 3.6, init: false }, targetKey: '', w: 0, h: 0, dirty: true,
         };
@@ -32259,6 +32350,11 @@ const ThreeRenderer = (function () {
         interact: _hqInteract,
         toggleView: _hqToggleView,
         isFirstPerson: function () { return !!(_hq && _hq.fp); },
+        /* THE TERMINAL (2026-09-08): push the camera onto a console's CRT
+           (map.js _hqOpenTerminal), pull it back, and whether it is there */
+        focusScreen: _hqFocusScreen,
+        unfocus: _hqUnfocus,
+        focused: function () { return !!(_hq && _hq.focus && !_hq.focus.out); },
         refreshLamps: _hqRefreshLamps,
         goTo: _hqGoTo,
         target: function () { return _hq ? _hqFindTarget() : null; },

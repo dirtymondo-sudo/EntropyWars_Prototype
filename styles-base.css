@@ -4205,3 +4205,202 @@ body.diorama-3d .tile-underpass.jump::before {
 /* main-menu dev pill (isolated entry; hidden unless ?hqdev / localStorage ew_hqdev) */
 .hq-dev-pill { position: absolute; right: 18px; bottom: 44px; z-index: 5; font: 10px 'IBM Plex Mono', monospace; letter-spacing: 0.16em; color: #d59aff; background: rgba(20,4,24,0.85); border: 1px solid #8a3aa5; padding: 6px 10px; cursor: pointer; }
 .hq-dev-pill:hover { background: rgba(138,58,165,0.35); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   THE TERMINAL (2026-09-08) — the match-select screen is a CRT MONITOR.
+   match-select.js renders `.ms-crt` (bezel → glass → screen) in two homes:
+   #hqTerminal inside the headquarters (the camera has pushed onto the
+   console's CRT; map.js _hqOpenTerminal powers it on) and #modePage (the
+   classic route: ?nohq, VS CPU from the play hub — the same monitor on
+   black). One CSS for both; the screen's content is the `.ms-tty-*`
+   terminal typography below. Two variants of the content: FULL (mode +
+   every site + config) and SITE (the site you stand on is fixed: board /
+   mode / config only). Kill nothing here without match-select.js.
+   ═══════════════════════════════════════════════════════════════════════ */
+.hq-terminal { position: absolute; inset: 0; z-index: 35; background: transparent; }
+.hq-terminal .ms-crt { background: transparent; }
+/* power-on: the raster opens from a bright line (the old sets), off: it collapses back into one */
+.hq-terminal.on .ms-crt-glass { animation: msCrtOn 0.62s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.hq-terminal.off .ms-crt-glass { animation: msCrtOff 0.3s ease-in both; }
+.hq-terminal.on .ms-crt-bezel, .hq-terminal.off .ms-crt-bezel { animation: msCrtBezelIn 0.5s ease-out both; }
+.hq-terminal.off .ms-crt-bezel { animation-direction: reverse; animation-duration: 0.3s; }
+@keyframes msCrtOn { 0% { transform: scale(1.02, 0.004); filter: brightness(5) contrast(1.6); opacity: 1; } 42% { transform: scale(1.03, 0.004); filter: brightness(7); } 68% { transform: scale(1.015, 1.02); filter: brightness(1.9); } 100% { transform: none; filter: none; } }
+@keyframes msCrtOff { 0% { transform: none; filter: none; } 55% { transform: scale(1.02, 0.006); filter: brightness(6); } 100% { transform: scale(0.02, 0.004); filter: brightness(0); opacity: 0; } }
+@keyframes msCrtBezelIn { from { opacity: 0; } to { opacity: 1; } }
+
+.ms-crt {
+    --ph: #e8dcb5; --ph-dim: #9a8f6e; --ph-faint: #57503f; --ph-gold: #ffcd6b; --ph-teal: #7fd9dd;
+    --ph-green: #66ff8a; --ph-red: #ff6a5c; --ph-line: rgba(232,220,181,0.16); --ph-line-hi: rgba(255,205,107,0.55);
+    --ph-glow: 0 0 5px rgba(255,205,107,0.22);
+    position: absolute; inset: 0; overflow: hidden; background: #030303; color: var(--ph);
+    font-family: 'IBM Plex Mono', 'DotGothic16', monospace; font-size: 11px; letter-spacing: 0.04em;
+}
+/* the bezel: 1987 beige plastic gone grey under the fluorescents, a moulded brand, a label-gun strip, the power LED */
+.ms-crt-bezel { position: absolute; inset: 0; padding: 22px 28px 34px; background: linear-gradient(180deg, #2b2823 0%, #1c1a17 55%, #14120f 100%); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05), inset 0 -3px 0 rgba(0,0,0,0.6); }
+.ms-crt-bezel::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, rgba(255,255,255,0.012) 0 2px, transparent 2px 5px); pointer-events: none; }
+.ms-crt-label { position: absolute; left: 30px; bottom: 9px; font-family: 'DotGothic16', monospace; font-size: 9px; letter-spacing: 0.3em; color: #0a0908; background: #cfc6b2; padding: 3px 9px 2px; text-transform: uppercase; box-shadow: 0 1px 0 rgba(0,0,0,0.6); transform: rotate(-0.6deg); white-space: nowrap; }
+.ms-crt-brand { position: absolute; right: 64px; bottom: 9px; font-family: 'Cormorant SC', serif; font-size: 11px; letter-spacing: 0.34em; color: rgba(236,231,216,0.28); text-shadow: 0 1px 0 rgba(0,0,0,0.8); }
+.ms-crt-led { position: absolute; right: 34px; bottom: 12px; width: 9px; height: 9px; border-radius: 50%; background: #4dff7a; box-shadow: 0 0 8px #4dff7a, 0 0 2px #fff inset; animation: msCrtLed 3.6s steps(1) infinite; }
+@keyframes msCrtLed { 0%, 92% { opacity: 1; } 94% { opacity: 0.55; } 96%, 100% { opacity: 1; } }
+/* the glass: curved corners, a deep vignette, the phosphor's warm black */
+.ms-crt-glass { position: absolute; inset: 22px 28px 34px; border-radius: 20px / 26px; overflow: hidden; background: radial-gradient(ellipse 90% 80% at 50% 45%, #0c0e0a 0%, #070806 65%, #040403 100%); box-shadow: inset 0 0 110px rgba(0,0,0,0.9), inset 0 0 2px rgba(255,255,255,0.12), 0 0 0 2px #000, 0 0 30px rgba(255,205,107,0.06); transform-origin: 50% 50%; }
+.ms-crt-screen { position: absolute; inset: 0; padding: 16px 22px 14px; display: flex; flex-direction: column; min-height: 0; animation: msCrtFlicker 5.5s steps(3) infinite; text-shadow: var(--ph-glow); }
+@keyframes msCrtFlicker { 0%, 100% { opacity: 1; } 47% { opacity: 0.985; } 48% { opacity: 1; } 71% { opacity: 0.97; } 72% { opacity: 1; } }
+.ms-crt-scan { position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0,0,0,0.26) 0 1px, transparent 1px 3px); mix-blend-mode: multiply; z-index: 5; }
+.ms-crt-scan::after { content: ''; position: absolute; left: 0; right: 0; height: 90px; top: -90px; background: linear-gradient(180deg, transparent, rgba(255,240,200,0.045) 50%, transparent); animation: msCrtRoll 7s linear infinite; }
+@keyframes msCrtRoll { from { transform: translateY(0); } to { transform: translateY(120vh); } }
+.ms-crt-glare { position: absolute; inset: 0; pointer-events: none; z-index: 6; background: radial-gradient(ellipse 60% 40% at 24% 8%, rgba(255,255,255,0.05), transparent 60%); box-shadow: inset 0 0 90px rgba(0,0,0,0.55); }
+/* the classic page (no building): the same set, a touch of desk under it */
+.ms-crt-page .ms-crt-bezel { background: linear-gradient(180deg, #2b2823 0%, #1a1815 60%, #111 100%); }
+
+/* ── the terminal typography (inside the glass) ───────────────────── */
+.ms-tty { display: flex; flex-direction: column; flex: 1; min-height: 0; gap: 10px; position: relative; z-index: 2; }
+.ms-tty-head { display: flex; align-items: center; gap: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--ph-line); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ph-dim); white-space: nowrap; overflow: hidden; }
+.ms-tty-head b { color: var(--ph-gold); font-weight: 600; letter-spacing: 0.24em; }
+.ms-tty-head .ms-tty-sep { color: var(--ph-faint); }
+.ms-tty-head .ms-tty-officer { margin-left: auto; color: var(--ph); }
+.ms-tty-head .ms-tty-officer i { font-style: normal; color: var(--ph-teal); margin-left: 8px; }
+.ms-tty-head .ms-tty-esc { color: var(--ph-red); }
+.ms-tty-prompt { font-size: 10px; letter-spacing: 0.12em; color: var(--ph-dim); }
+.ms-tty-prompt b { color: var(--ph); font-weight: 500; }
+.ms-tty-cursor { display: inline-block; width: 7px; height: 12px; background: var(--ph-gold); vertical-align: -2px; margin-left: 4px; animation: msCrtBlink 1s steps(2) infinite; box-shadow: 0 0 6px var(--ph-gold); }
+@keyframes msCrtBlink { 50% { opacity: 0; } }
+.ms-tty-body { display: grid; gap: 18px; flex: 1; min-height: 0; }
+.ms-tty-full { grid-template-columns: minmax(230px, 300px) minmax(0, 1fr) minmax(270px, 330px); }
+.ms-tty-site { grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); }
+.ms-tty-col { display: flex; flex-direction: column; gap: 10px; min-height: 0; min-width: 0; }
+.ms-tty-h { display: flex; align-items: center; gap: 10px; font-size: 9px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--ph-gold); flex-shrink: 0; }
+.ms-tty-h::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--ph-line-hi), transparent); }
+.ms-tty-h span { color: var(--ph-dim); letter-spacing: 0.16em; }
+.ms-tty-list { display: flex; flex-direction: column; gap: 4px; overflow: auto; min-height: 0; padding-right: 4px; }
+/* a selectable line: the caret, the name, the tag, the description under it */
+.ms-tty-row { position: relative; display: grid; grid-template-columns: 14px 1fr; gap: 2px 8px; padding: 8px 10px 8px 8px; cursor: pointer; border: 1px solid transparent; border-left: 2px solid transparent; transition: background 0.12s, border-color 0.12s; }
+.ms-tty-row:hover { background: rgba(232,220,181,0.05); border-color: var(--ph-line); }
+.ms-tty-row.sel { background: linear-gradient(90deg, rgba(255,205,107,0.12), rgba(255,205,107,0.02)); border-color: var(--ph-line); border-left-color: var(--ph-gold); }
+.ms-tty-row.locked { opacity: 0.4; cursor: not-allowed; }
+.ms-tty-row > em { grid-row: 1 / span 2; font-style: normal; color: var(--ph-gold); opacity: 0; }
+.ms-tty-row.sel > em { opacity: 1; animation: msCrtBlink 1.1s steps(2) infinite; }
+.ms-tty-row b { font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ph); font-weight: 600; }
+.ms-tty-row b i { font-style: normal; font-size: 8px; letter-spacing: 0.18em; color: var(--ph-teal); border: 1px solid rgba(127,217,221,0.45); padding: 1px 5px; margin-left: 8px; vertical-align: 2px; }
+.ms-tty-row p { margin: 0; font-size: 9.5px; line-height: 1.45; color: var(--ph-dim); letter-spacing: 0.02em; }
+.ms-tty-row.sel p { color: #c9bf9e; }
+/* the map cards (FULL): a thumbnail, the name, the stamp */
+.ms-tty-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; overflow: auto; min-height: 0; align-content: start; padding-right: 4px; }
+.ms-tty-card { display: flex; gap: 8px; align-items: flex-start; padding: 7px; cursor: pointer; border: 1px solid var(--ph-line); background: rgba(0,0,0,0.25); transition: border-color 0.12s, background 0.12s; }
+.ms-tty-card:hover { border-color: var(--ph-line-hi); background: rgba(232,220,181,0.05); }
+.ms-tty-card.sel { border-color: var(--ph-gold); background: rgba(255,205,107,0.08); box-shadow: inset 2px 0 0 var(--ph-gold); }
+.ms-tty-card > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ms-tty-card b { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ph); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-tty-card span { font-size: 8.5px; letter-spacing: 0.14em; color: var(--ph-dim); display: flex; justify-content: space-between; gap: 6px; }
+.ms-tty-card span em { font-style: normal; color: var(--ph-gold); }
+.ms-tty-card small { font-size: 8px; letter-spacing: 0.12em; color: var(--ph-faint); }
+.ms-tty-empty { grid-column: 1 / -1; padding: 30px; text-align: center; color: var(--ph-faint); letter-spacing: 0.2em; }
+/* the site file: the band (FULL) / the column (SITE) */
+.ms-tty-band { position: relative; display: flex; gap: 20px; padding: 14px 16px; border: 1px solid var(--ph-line); background: rgba(0,0,0,0.3); height: clamp(230px, 40%, 360px); flex-shrink: 0; overflow: hidden; }
+.ms-tty-band .ms-tty-file, .ms-tty-dossier .ms-tty-file { flex: 1; display: flex; flex-direction: column; gap: 7px; min-width: 0; min-height: 0; overflow: auto; padding-right: 6px; }
+.ms-tty-dossier { display: flex; flex-direction: column; gap: 10px; min-height: 0; flex: 1; }
+.ms-tty-filebox { display: flex; gap: 20px; align-items: flex-start; flex: 1; min-height: 0; overflow: hidden; border: 1px solid var(--ph-line); background: rgba(0,0,0,0.3); padding: 14px 16px; }
+.ms-tty-filebox .ms-tty-file { align-self: stretch; }
+.ms-tty-filebox .ms-tty-preview { align-self: flex-start; }
+.ms-tty-kicker { display: flex; align-items: center; gap: 10px; font-size: 9px; letter-spacing: 0.26em; text-transform: uppercase; color: var(--ph-dim); flex-shrink: 0; white-space: nowrap; overflow: hidden; }
+.ms-tty-kicker b { color: var(--ph-gold); font-weight: 600; }
+.ms-tty-kicker .ms-tty-no { font-family: 'Cormorant SC', serif; font-size: 12px; letter-spacing: 0.24em; color: #b8a060; }
+.ms-tty-kicker .ms-tty-fill { flex: 1; height: 1px; background: linear-gradient(90deg, var(--ph-line), transparent); }
+.ms-tty-title { display: inline-flex; align-items: center; gap: 14px; flex-wrap: wrap; flex-shrink: 0; }
+.ms-tty-title h1 { margin: 0; font-family: 'Cormorant SC', serif; font-weight: 400; font-size: 40px; line-height: 0.95; letter-spacing: -0.005em; color: #f1e9cf; text-shadow: 0 0 22px rgba(255,205,107,0.28); }
+.ms-tty-site .ms-tty-title h1 { font-size: 48px; }
+.ms-tty-title .door-stamp { transform: rotate(-6deg) translateY(-3px); }
+.ms-tty-sub { font-family: 'Cormorant SC', serif; font-style: italic; font-size: 15px; color: var(--ph-dim); flex-shrink: 0; }
+.ms-tty-meta { display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
+.ms-tty-meta span { display: inline-flex; align-items: baseline; gap: 7px; padding: 4px 9px; border: 1px solid var(--ph-line); background: rgba(0,0,0,0.3); font-size: 10px; color: var(--ph); }
+.ms-tty-meta span em { font-style: normal; font-size: 8px; letter-spacing: 0.22em; color: var(--ph-faint); }
+.ms-tty-kv { font-size: 9.5px; letter-spacing: 0.12em; color: #cfc6a8; flex-shrink: 0; }
+.ms-tty-kv b { color: #c9b98a; font-weight: 600; letter-spacing: 0.22em; margin-right: 6px; text-transform: uppercase; }
+.ms-tty-p { margin: 0; font-size: 11px; line-height: 1.55; color: #d3caae; max-width: 640px; flex-shrink: 0; }
+.ms-tty-note { font-size: 9px; line-height: 1.5; letter-spacing: 0.05em; color: var(--ph-faint); }
+.ms-tty-chips { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; flex-shrink: 0; }
+.ms-tty-chips > span { flex-basis: 100%; font-size: 8px; letter-spacing: 0.26em; color: #c9b98a; text-transform: uppercase; margin-bottom: 1px; }
+.ms-tty-supports { display: flex; gap: 6px; align-items: center; margin-top: auto; flex-shrink: 0; font-size: 8px; letter-spacing: 0.22em; color: var(--ph-faint); }
+.ms-tty-supports i { font-style: normal; padding: 2px 7px; border: 1px solid var(--ph-line); color: var(--ph-dim); letter-spacing: 0.16em; }
+.ms-tty-supports i.on { border-color: var(--ph-line-hi); color: var(--ph-gold); }
+/* the preview: the minimap gets a phosphor frame */
+.ms-tty-preview { flex-shrink: 0; align-self: center; border: 1px solid var(--ph-line); padding: 4px; background: rgba(0,0,0,0.5); box-shadow: inset 0 0 20px rgba(0,0,0,0.6), 0 0 26px rgba(255,205,107,0.06); }
+.ms-tty-preview svg { display: block; }
+/* filters (FULL): the search field, the toggles, the presets */
+.ms-tty-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
+.ms-tty-filters .ms-tty-h { flex: 1; min-width: 120px; }
+.ms-tty-input { display: flex; align-items: center; gap: 6px; padding: 3px 8px; border: 1px solid var(--ph-line); background: rgba(0,0,0,0.4); width: 190px; }
+.ms-tty-input span { color: var(--ph-faint); }
+.ms-tty-input input { background: transparent; border: none; outline: none; color: var(--ph); font: inherit; font-size: 11px; flex: 1; min-width: 0; letter-spacing: 0.05em; }
+.ms-tty-input input::placeholder { color: var(--ph-faint); }
+.ms-tty-presets { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex-shrink: 0; font-size: 8px; letter-spacing: 0.24em; color: var(--ph-teal); text-transform: uppercase; }
+/* chips and buttons: bracketed, like a menu you tab through */
+.ms-tty-chip { font: inherit; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ph-dim); background: rgba(0,0,0,0.3); border: 1px solid var(--ph-line); padding: 5px 10px; cursor: pointer; transition: color 0.12s, border-color 0.12s, background 0.12s, transform 0.08s; text-shadow: inherit; }
+.ms-tty-chip:hover:not(:disabled) { color: var(--ph); border-color: var(--ph-line-hi); background: rgba(232,220,181,0.06); }
+.ms-tty-chip:active:not(:disabled) { transform: scale(0.96); }
+.ms-tty-chip.on { color: var(--ph-gold); border-color: var(--ph-gold); background: rgba(255,205,107,0.12); }
+.ms-tty-chip.teal.on { color: var(--ph-teal); border-color: var(--ph-teal); background: rgba(127,217,221,0.1); }
+.ms-tty-chip:disabled { opacity: 0.35; cursor: not-allowed; }
+.ms-tty-chip.big { font-size: 11px; padding: 8px 14px; font-weight: 600; }
+.ms-tty-seg { display: flex; border: 1px solid var(--ph-line); background: rgba(0,0,0,0.3); }
+.ms-tty-seg > div { flex: 1; padding: 9px 10px; text-align: center; cursor: pointer; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ph-dim); border-bottom: 2px solid transparent; transition: background 0.12s, color 0.12s; }
+.ms-tty-seg > div + div { border-left: 1px solid var(--ph-line); }
+.ms-tty-seg > div:hover { color: var(--ph); background: rgba(232,220,181,0.05); }
+.ms-tty-seg > div.on { color: var(--ph-gold); border-bottom-color: var(--ph-gold); background: linear-gradient(180deg, rgba(255,205,107,0.12), transparent); }
+.ms-tty-seg > div.off { opacity: 0.35; cursor: not-allowed; }
+.ms-tty-seg > div small { display: block; font-size: 8px; letter-spacing: 0.14em; color: var(--ph-faint); margin-top: 3px; text-transform: none; }
+.ms-tty-form { border: 1px solid var(--ph-line); background: rgba(0,0,0,0.3); padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow: auto; }
+.ms-tty-field { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+.ms-tty-field > label { font-size: 9px; letter-spacing: 0.26em; text-transform: uppercase; color: var(--ph-dim); }
+.ms-tty-field > label i { font-style: normal; color: var(--ph-faint); margin-left: 8px; letter-spacing: 0.12em; }
+.ms-tty-field .ms-tty-chips { gap: 5px; }
+.ms-tty-ro { padding: 8px 11px; border: 1px solid var(--ph-line); background: rgba(0,0,0,0.3); display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--ph); }
+.ms-tty-ro em { font-style: normal; font-size: 8px; letter-spacing: 0.18em; color: var(--ph-faint); }
+.ms-tty-step { display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--ph-line); background: rgba(0,0,0,0.3); padding: 4px 6px; }
+.ms-tty-step button { font: inherit; font-size: 14px; font-weight: 700; color: var(--ph-dim); background: transparent; border: 1px solid var(--ph-line); padding: 3px 12px; cursor: pointer; text-shadow: inherit; }
+.ms-tty-step button:hover { color: var(--ph); border-color: var(--ph-line-hi); }
+.ms-tty-step b { font-size: 18px; font-weight: 700; color: var(--ph); }
+.ms-tty-step b small { font-size: 10px; font-weight: 400; color: var(--ph-dim); margin-left: 3px; letter-spacing: 0.1em; }
+.ms-tty-tempo { font-size: 9px; letter-spacing: 0.08em; line-height: 1.5; color: var(--ph-faint); }
+.ms-tty-tempo.on { color: var(--ph-green); }
+/* the assignment block at the bottom of the form */
+.ms-tty-assign { margin-top: auto; padding: 10px 12px; border-left: 2px solid var(--ph-gold); background: linear-gradient(180deg, rgba(255,205,107,0.08), transparent); display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
+.ms-tty-assign .ms-tty-kicker { justify-content: space-between; }
+.ms-tty-assign h2 { margin: 2px 0 0; font-family: 'Cormorant SC', serif; font-weight: 400; font-size: 20px; line-height: 1; color: #f1e9cf; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.ms-tty-assign h2 span { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ph-gold); }
+.ms-tty-assign .ms-tty-line { font-size: 9px; letter-spacing: 0.16em; color: var(--ph-dim); }
+.ms-tty-dispatch { margin-top: 4px; padding: 5px 8px; font-size: 8.5px; letter-spacing: 0.14em; color: var(--ph-teal); border: 1px dashed rgba(127,217,221,0.45); background: rgba(127,217,221,0.05); line-height: 1.5; }
+/* the footer: the summary line, the buttons */
+.ms-tty-foot { display: flex; align-items: center; gap: 14px; padding-top: 10px; border-top: 1px solid var(--ph-line); flex-shrink: 0; }
+.ms-tty-foot .ms-tty-sum { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ms-tty-foot .ms-tty-sum small { font-size: 8px; letter-spacing: 0.26em; color: var(--ph-faint); text-transform: uppercase; }
+.ms-tty-foot .ms-tty-sum b { font-family: 'Cormorant SC', serif; font-weight: 400; font-size: 20px; line-height: 1; color: #f1e9cf; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-tty-foot .ms-tty-sum b i { color: var(--ph-dim); }
+.ms-tty-foot .ms-tty-sum span { font-size: 9.5px; letter-spacing: 0.16em; color: var(--ph-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-tty-foot .ms-tty-sum span em { font-style: normal; color: var(--ph); }
+.ms-tty-foot .ms-tty-sum span em.gold { color: var(--ph-gold); }
+.ms-tty-foot .ms-tty-sum span em.green { color: var(--ph-green); }
+.ms-tty-foot .ms-tty-spacer { flex: 1; }
+.ms-tty-btn { position: relative; font: inherit; font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ph-dim); background: rgba(0,0,0,0.35); border: 1px solid var(--ph-line); padding: 10px 16px; cursor: pointer; transition: color 0.12s, border-color 0.12s, background 0.12s, box-shadow 0.15s, transform 0.08s; text-shadow: inherit; white-space: nowrap; }
+.ms-tty-btn:hover:not(:disabled) { color: var(--ph); border-color: var(--ph-line-hi); background: rgba(232,220,181,0.07); }
+.ms-tty-btn:active:not(:disabled) { transform: scale(0.97); }
+.ms-tty-btn.danger { color: var(--ph-red); border-color: rgba(255,106,92,0.5); }
+.ms-tty-btn.danger:hover:not(:disabled) { color: #ffb3aa; border-color: var(--ph-red); background: rgba(255,106,92,0.1); }
+.ms-tty-btn.primary { color: var(--ph-green); border-color: var(--ph-green); background: rgba(102,255,138,0.1); padding: 14px 32px; display: flex; align-items: center; gap: 14px; box-shadow: 0 0 26px rgba(102,255,138,0.16); }
+.ms-tty-btn.primary:hover:not(:disabled) { color: #c8ffd6; background: rgba(102,255,138,0.18); box-shadow: 0 0 40px rgba(102,255,138,0.3); transform: translateY(-1px); border-color: var(--ph-green); }
+.ms-tty-btn.primary b { font-family: 'Cormorant SC', serif; font-size: 19px; letter-spacing: 0.24em; font-weight: 600; transition: opacity 0.2s; }
+.ms-tty-btn.primary i { font-style: normal; font-size: 11px; opacity: 0.7; font-weight: 700; }
+.ms-tty-btn.primary.filed b, .ms-tty-btn.primary.filed i { opacity: 0.3; }
+.ms-tty-btn.primary .ms-tty-filed { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 2; }
+.ms-tty-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+/* the FILE stamp thunk (styles-base.css .door-stamp) rides the button */
+@media (max-width: 1180px) {
+    .ms-tty-full { grid-template-columns: minmax(200px, 240px) minmax(0, 1fr) minmax(240px, 280px); gap: 12px; }
+    .ms-tty-title h1 { font-size: 32px; }
+    .ms-tty-site .ms-tty-title h1 { font-size: 38px; }
+}
+@media (max-width: 940px) {
+    .ms-tty-full { grid-template-columns: minmax(0, 1fr) minmax(240px, 280px); }
+    .ms-tty-full .ms-tty-modes { display: none; }
+    .ms-tty-site { grid-template-columns: minmax(0, 1fr); }
+}
