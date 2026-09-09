@@ -8863,6 +8863,31 @@
             }, 650);
         }
 
+        /* The clip family a basic attack plays (shared by triggerAttackAnim
+           and the strike-frame lead below): melee / ranged by reach, the
+           def's basicAttackKind flavour, an explicit override ('chop'). */
+        function _attackAnimKindFor(unit, tx, ty, kindOverride) {
+            if (kindOverride) return kindOverride;
+            const dx = tx - unit.x, dy = ty - unit.y;
+            let _atkKind = (Math.max(Math.abs(dx), Math.abs(dy)) > 1) ? 'ranged' : 'melee';
+            if (typeof getRace3DModel === 'function') {
+                const _def3d = getRace3DModel(unit.race, unit.gender);
+                if (_def3d && _def3d.basicAttackKind) _atkKind = _def3d.basicAttackKind;
+            }
+            return _atkKind;
+        }
+        /* THE STRIKE FRAME (2026-09-09): ms into the unit's attack clip on
+           which the blow lands (sprites.js UAL_SLOTS strikeAt, resolved by
+           the renderer for the chain this unit really plays). doAttack
+           starts the clip that much BEFORE the impact / shot it scheduled, so
+           the sword connects when the damage does and the gun goes off on
+           the draw, not a wind-up later. 0 when unknown (sprite units, the
+           Meshy fallback, 2D) — the clip then starts on the beat as before. */
+        function _attackStrikeLeadMs(unit, tx, ty, kindOverride) {
+            if (!_unitAttacksWithClip(unit) || !window.ThreeAnim || typeof ThreeAnim.attackStrikeMs !== 'function') return 0;
+            const ms = ThreeAnim.attackStrikeMs(unit, _attackAnimKindFor(unit, tx, ty, kindOverride));
+            return ms > 0 ? ms : 0;
+        }
         function triggerAttackAnim(unit, tx, ty, kindOverride) {
             if (!unit || unit.dead || _skipVisuals()) return;
             const _v2 = window._v2UnitSystemActive?.();
@@ -8882,12 +8907,7 @@
             // 'throw'…) — casters zap instead of sword-slashing, Santa lobs a
             // present. Explicit kindOverride ('chop') still wins.
             if (!state._attackAnimKind) state._attackAnimKind = {};
-            let _atkKind = (Math.max(Math.abs(dx), Math.abs(dy)) > 1) ? 'ranged' : 'melee';
-            if (!kindOverride && typeof getRace3DModel === 'function') {
-                const _def3d = getRace3DModel(unit.race, unit.gender);
-                if (_def3d && _def3d.basicAttackKind) _atkKind = _def3d.basicAttackKind;
-            }
-            state._attackAnimKind[unit.id] = kindOverride || _atkKind;
+            state._attackAnimKind[unit.id] = _attackAnimKindFor(unit, tx, ty, kindOverride);
             state.attackAnimIds.add(unit.id);
             if (window.RenderBus) window.RenderBus.emit('unit:animChanged', { unit });
             if (!_v2) scheduleBoardRender();
@@ -8954,6 +8974,18 @@
                 if (state._castAnimDamaging) delete state._castAnimDamaging[unit.id];
                 if (state._castAnimKind) delete state._castAnimKind[unit.id];
                 return;
+            }
+            // THE STRIKE FRAME (2026-09-09): a rigged model's cast clip has a
+            // known release frame (sprites.js UAL_SLOTS strikeAt — the arm
+            // thrust, the loosed string, the fists hitting the ground). Start
+            // the clip that many ms BEFORE the launch so the release frame
+            // lands ON it, instead of the wind-up starting when the bolt is
+            // already flying. Only a hold can be traded for lead — a next-tick
+            // support release (holdMs 0) still starts on the beat.
+            if (holdMs > 0 && window.ThreeAnim && typeof ThreeAnim.castStrikeMs === 'function') {
+                const _kind = state._castAnimKind ? state._castAnimKind[unit.id] : null;
+                const _lead = ThreeAnim.castStrikeMs(unit, _kind);
+                if (_lead > 0) holdMs = Math.max(0, holdMs - _lead);
             }
             const _v2 = window._v2UnitSystemActive?.();
             const _start = () => {
@@ -45438,25 +45470,34 @@
 
             if (_isMeleeStrike) {
 
+                // THE STRIKE FRAME (2026-09-09): the clip starts early enough
+                // that its blow lands on impactDelay (the damage, the flash,
+                // the tile's white-hot frame) — a 0.6 s sword wind-up used to
+                // START at the source hold and connect after the numbers.
+                const _clipStrike = (_unitAttacksWithClip(unit) && !_clashLeap);
+                const _meleeLead = _clipStrike ? _attackStrikeLeadMs(unit, target.x, target.y) : 0;
                 window.setTimeout(() => {
                     // 2026-07-11d: rigged models play their basic-attack clip
                     // in place (punch/slash/claw/zap per basicAttackKind);
                     // the strike leap survives only for sprite units — except
                     // the Clash gap-closer, where everyone leaps (in-place
                     // clips read as air-swings from 7 tiles away).
-                    if (_unitAttacksWithClip(unit) && !_clashLeap) triggerAttackAnim(unit, target.x, target.y);
+                    if (_clipStrike) triggerAttackAnim(unit, target.x, target.y);
                     else animateStrikeLeap(unit, target.x, target.y);
-                    playSfx('basicAttack');
-                }, projectileDelay);
+                }, _meleeLead > 0 ? Math.max(0, impactDelay - _meleeLead) : projectileDelay);
+                window.setTimeout(() => { playSfx('basicAttack'); }, projectileDelay);
             } else {
 
                 // Fire the lunge + attack sprite-sheet at the SAME instant the
                 // projectile leaves (projectileDelay + lungeLeadMs) so the strike
                 // animation and the projectile read as one motion instead of the
-                // sprite/lunge playing a beat ahead of the shot.
+                // sprite/lunge playing a beat ahead of the shot. A rigged model
+                // starts its clip its strike-frame lead EARLIER (the cowboy
+                // draw's shot, the loosed arrow) so the shot frame IS the launch.
+                const _rangedLead = _attackStrikeLeadMs(unit, target.x, target.y);
                 window.setTimeout(() => {
                     triggerAttackAnim(unit, target.x, target.y);
-                }, projectileDelay + lungeLeadMs);
+                }, Math.max(0, projectileDelay + lungeLeadMs - _rangedLead));
 
                 window.setTimeout(() => {
                     playSfx('basicAttack');

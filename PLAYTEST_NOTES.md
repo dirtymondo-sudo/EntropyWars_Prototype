@@ -9942,3 +9942,85 @@ only; the user checks them live. Bugs it found on day one: the shared
 sleeping instance re-rendered — ESC opened match-select) and match-select's
 always-on ENTER / ESC listener. Both fixed 2026-09-09 (PARTY_BUILDER_PLAN
 §9 rev 5).
+
+## THE STRIKE FRAME — the animation libraries VIEWED, every action slot timed (2026-09-09)
+
+The user committed `rigged_animations/` (the two Quaternius UAL libraries,
+MAL1/MAL2, and every Meshy `withSkin` export the MALs were built from — 218
+MB, NOT an R2 upload set). Claude rendered a frame contact sheet of EVERY clip
+(12 frames a row, ¾ view + side view, hand/foot peak-speed and hips-travel
+stats per clip) with the repo tool **`node anim-sheets.js [out-dir]`** (needs
+`npm i --no-save playwright three@0.128.0`; uses the preinstalled Chromium
+at /opt/pw-browsers; writes `shots/anim-sheets/*.png` + a stats JSON). Read
+the PNGs with the Read tool. Two gotchas the tool already handles: the Meshy
+exports carry a METRE-scale skinned mesh under a 0.01-scale armature, so
+`Box3.setFromObject` sees a 1.7 cm model — frame on BONE world positions;
+and the clips' `Armature` / `.scale` tracks must be stripped before playing.
+
+**What the sheets showed (source seconds; `strikeAt` in sprites.js UAL_SLOTS
+is this column):**
+
+| clip | dur | what happens | strike |
+|---|---|---|---|
+| mage_soell_cast_3 (castMagic) | 3.37 | arm raise 0.3, THRUST forward 0.6–0.7, both arms held out 0.9–2.5 (a channel), recover 2.75 | 0.70 |
+| mage_soell_cast_7 (castSupport) | 2.73 | swipe 0.25–0.5, arm up 0.75, arms SPREAD wide 1.0–1.5, lower 1.75 | 1.00 |
+| mage_soell_cast (castHeal) | 2.30 | gather 0.4, arm forward 0.6, hand to the SKY 0.85–1.05, idle from 1.45 | 0.90 |
+| Charged_Spell_Cast (castAOE) | 2.70 | hands to face 0.25–0.5, PUSH forward 0.6–1.5, arms flung to the SKY 1.7–2.2, back 2.45 — TWO beats; the sky-raise is the strike | 1.90 |
+| Charged_Ground_Slam (castSlam) | 3.03 | crouch 0.3, arm overhead 0.55–1.4 (charging), SLAM 1.6, crouched hold to 2.5, rise 2.75 | 1.62 |
+| Cowboy_Quick_Draw_Shooting | 7.33 | standing 0–1.9, draw 2.0–2.4, SHOT ~2.5, aim held 2.7–4.0, holster 4.5, standing to 7.3 | 2.55, trim [1.85, 4.35] |
+| Archery_Shot_1 (castArrow) | 1.07 | draw 0.3–0.5 (arm high), LOOSE ~0.6, bow arm held 0.7–1.07 | 0.60 |
+| Spartan_Kick (castKick) | 1.47 | arms up 0.27–0.4, leg EXTENDED 0.55–0.8, foot down 0.93 | 0.68 |
+| Sword_Attack (castMelee) | 1.53 | arm back 0.28–0.42, spinning SLASH 0.56–0.84, follow-through 0.98, recover 1.12 | 0.70 |
+| Sword_Regular_Combo | 3.00 | slash 0.55, low sweep 0.82–1.09, LEAPING strike 1.36, down-cut 1.64–1.91 | 0.55 |
+| Punch_Cross / Punch_Jab | 1.00 / 0.87 | full EXTENSION 0.27 (cross) / 0.24 (jab), held to 0.55, back by 0.8 | 0.25 |
+| Punch_Combo (MAL2) | 2.50 | jab 0.45, cross 0.9, big OVERHEAD 1.36, recover | 0.45 |
+| Punch_Combo_1 / _5 (spares) | 2.27 / 3.87 | _1: right 0.62, left 0.82, straight 1.44 · _5: uppercut 0.7, high 1.05–1.4, low 2.1–2.5 | — |
+| OverhandThrow (castThrow) | 1.33 | arm back/up 0.24–0.36, RELEASE ~0.45 (crouching), follow-through | 0.46 |
+| Zombie_Scratch (castClaw) | 1.80 | rear back 0.33–0.5, the RAKE 0.65–0.85, hunch back 1.15+ | 0.72 |
+| TreeChopping_Loop (castChop) | 0.97 | raise 0.1–0.26, CHOP down 0.44–0.53 | 0.47 |
+| Farm_PlantSeed (castPlant) | 2.77 | kneel 0.5–0.75, hand to the SOIL 1.0–1.75, rise 2.0+ | 1.30 |
+| Fixing_Kneeling (castTrap) | 5.20 | kneel 0.5–0.95, works the device 1.4–4.2, rise 4.7 | 1.60 |
+| Consume (castConsume) | 1.33 | hand to mouth 0.36–0.48, standing from 0.6 | 0.42, trim [0.05, 0.95] |
+| Shield_OneShot (block) | 0.83 | arm across 0.08–0.3, drops by 0.6 | 0.10 |
+| Sword_Dash (castDash, NEW) | 1.57 | crouch 0.14–0.28, low lunging STAB 0.43–0.85, up by 1.3 | 0.50 |
+| Shield_Dash (castTackle, NEW) | 1.10 | OPENS on the shoulder-charge impact (lean, arm swept back), straightens | 0.06 |
+| Roll (dodge, NEW) | 1.47 | dive 0.13–0.27 (airborne), tumble 0.4–0.8, standing 1.2 | — |
+| Block3 (was dodge) | 1.53 | a two-hand GUARD held throughout, slight sway — never moves | — |
+| Face_Punch_Reaction (hitHeavy) | 2.87 | raised GUARD 0–0.35, head snaps 0.5–0.8, reel 1.0–1.6, recover 2.0+ | trim [0.35, 2.45] |
+| Hit_Reaction_1 (hit) | 1.27 | flinch 0.23–0.58, recovered 0.9 | — |
+| Regular_Jump (jump) | 1.93 | crouch 0.18–0.35, launch 0.53, airborne 0.7–0.9, land 1.05, recover 1.4 | — |
+| Basic_Jump (jumpStrike, MAL2) | 5.93 | STANDING 0–1.6, the jump 1.6–4.2 — trim it when the approach is wired | — |
+| Pistol_Shoot (was castRanged) | 0.63 | recoil on frame 0 from an aimed pose — pops out of idle | — |
+| Spell_Simple_Shoot (cast) | 0.50 | a hand flick from the spell-idle pose (designed as Enter→Idle→Shoot→Exit) | 0.05 |
+| Melee_Hook (+_Rec) | 0.47 (+0.60) | a leaping overhead hammer-fist, impact 0.25–0.3 — unwired heavy-punch candidate | — |
+| Sword_Heavy_Combo | 4.33 | two big spins: 0.8, 1.6/2.0, 3.1 — unwired ultimate candidate | — |
+| Hit_Knockback | 0.83 | flung onto the back, flat by 0.38 — no get-up; pair with LayToIdle (1.53, rises by 1.4) | — |
+| NinjaJump_Start / Idle / Land | 0.97 / 2.0 / 1.27 | crouch→leap pose / hanging / land — teleport-blink candidates | — |
+
+**What changed (the four R2 files, delivered 2026-09-09):**
+- sprites.js `UAL_SLOTS`: `strikeAt` on every action slot, `trim` on
+  castRanged / castConsume / hitHeavy, castRanged → the trimmed cowboy draw,
+  dodge → Roll (pinXZ), castMagic ts 2.6→2.2, new castDash / castTackle;
+  `_ualClipRef` builds every slot record (the `lib:` overrides and the female
+  defaults included); classifySpellAnimKind routes `kind: 'dash'` / `'tackle'`
+  BY KIND before any text.
+- three-renderer.js: `_libBakeClips` honours `trim` (samples `t0 + t`, key
+  carries the window); `_slotStrikeMs` / `_unitAnimStrikeMs`;
+  `ThreeRenderer.castStrikeMs / attackStrikeMs` + the `ThreeAnim` wrappers
+  (−1 = no library clip); `_castChainFor` dash / tackle; the forge preview's
+  burst / blink-out / charge-arrival hits fire on `_cvStrikeMs` (45 % of the
+  clip only when the rig has no table).
+- battle.js: `_releaseCastSprite` trades the source hold for the lead
+  (`holdMs − castStrikeMs`, never below 0 — a next-tick support release still
+  starts on the beat); doAttack starts a melee clip at `impactDelay − lead`
+  and a ranged clip `lead` before the shot (`_attackStrikeLeadMs`,
+  `_attackAnimKindFor` shared with triggerAttackAnim); the basic-attack SFX
+  stays on the source hold.
+- `anim-strike.test.js` pins the table to the GLBs and source-scans the
+  consumers (`npm test`).
+
+**Still open:** Basic_Jump's 1.6 s of standing (jumpStrike is not read by the
+renderer yet — no `_updateStrikeApproach` exists); a heavy-punch slot on
+Melee_Hook; Sword_Heavy_Combo for ultimates; Hit_Knockback + LayToIdle for
+push victims; the Pistol_* aim set (Aim_Up/Down/Neutral are 0.17 s poses —
+an aim blend, not clips).

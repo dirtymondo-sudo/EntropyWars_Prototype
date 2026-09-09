@@ -512,8 +512,9 @@ function getRaceSpriteAnimations(race, gender) {
 //   cast        REQUIRED generic fallback for every action animation
 //   castMagic   Charged_Spell_Cast (2.7s) — damaging magic (damageType:'magic')
 //   castSupport mage_soell_cast (2.3s) — heals/buffs/debuffs (staff wave)
-//   castRanged  Cowboy_Quick_Draw_Shooting (7.33s) — guns/rifles/ray-guns and
-//               any physical ranged hit; also basic attacks beyond melee reach
+//   castRanged  Cowboy_Quick_Draw_Shooting (7.33s, trimmed to the draw →
+//               shot → holster window) — guns/rifles/ray-guns and any
+//               physical ranged hit; also basic attacks beyond melee reach
 //   castMelee   sword slash / punch clips (none uploaded yet) — adjacent
 //               physical strikes; falls back to `cast` + the engine lunge
 //   castThrow   throw/pitch clips (none uploaded yet) — lobbed projectiles
@@ -543,6 +544,12 @@ function classifySpellAnimKind(spell) {
   // Charge-to-target gap closers (Brave Charge, Zombie Rush…) sprint in and
   // strike on arrival — always a melee swing, whatever the listed range.
   if (spell.chargeToTarget) return 'melee';
+  // 2026-09-09: the MOVE kinds by `kind`, never by text — a `tackle` runs
+  // its charge then shoulder-checks on arrival (UAL2 Shield_Dash via
+  // castTackle), a `dash` slides its line with a low lunging stab (UAL2
+  // Sword_Dash via castDash; Drive-By's afterShot still reads as the lunge).
+  if (spell.kind === 'tackle') return 'tackle';
+  if (spell.kind === 'dash') return 'dash';
   // Kill Mode (robot, was Chassis Slam — id raceChassisSlan would otherwise
   // hit the slam bucket below): a 360° weapons-free barrage reads as gunfire.
   if (/kill.?mode/.test(text)) return 'ranged';
@@ -639,67 +646,80 @@ const EW_ANIM_LIB_URLS = [
 // the mage-cast trio); weapon actions (gun/sword/throw/plant) stay UAL.
 //   idle Idle_5 1.9s (male; females get Idle_11 via _FEM_SLOT_DEFAULTS)
 //   walk Walking 1.07s (→~0.52s ≈ 150ms/tile pace) · run Running 0.67s
-//   jump Regular_Jump 1.93s (→0.6s hop) · dodge Block3 1.53s (→0.51s evade)
+//   jump Regular_Jump 1.93s (→0.6s hop) · dodge Roll (UAL1) 1.47s (→0.61s
+//   tumble; was Block3, a static guard)
 //   hit Hit_Reaction_1 1.27s (→0.6s flinch) · death Dead 3.0s (→1.58s,
 //   stays down) · cast Spell_Simple_Shoot 0.5s (→1.0s generic fallback)
-//   castMagic mage_soell_cast_3 3.37s (→1.3s damage cast) · castSupport
+//   castMagic mage_soell_cast_3 3.37s (→1.5s damage cast, capped 1.4) · castSupport
 //   mage_soell_cast_7 2.73s (→1.19s buff/debuff) · castHeal mage_soell_cast
-//   2.3s (→1.15s staff wave) · castRanged Pistol_Shoot 0.63s (→1.05s) ·
+//   2.3s (→1.15s staff wave) · castRanged Cowboy_Quick_Draw_Shooting
+//   trimmed 2.5s (→1.3s draw-shoot-holster; was UAL1 Pistol_Shoot) ·
 //   castMelee Sword_Attack 1.53s (→1.28s swing) · castThrow OverhandThrow
 //   (UAL2) 1.33s (→1.1s) · castPlant Farm_PlantSeed (UAL2) 2.77s kneel
 //   (→1.2s) · castArrow Archery_Shot_1 1.07s (→0.89s) · castKick
 //   Spartan_Kick 1.47s (→0.73s) · castAOE Charged_Spell_Cast 2.7s (→1.23s
 //   raise-terrain / big AOE) · castSlam Charged_Ground_Slam 3.03s (→1.26s
 //   rampart / ground slams) · castConsume Consume (UAL2) 1.33s (→1.1s
-//   potion swig). Spare lib-2 clips (wired per character or future slots):
-//   Idle_10 (male brawler idle), Idle_11 / Walking_Woman (female defaults),
-//   Cowboy_Quick_Draw_Shooting (cowboy castRanged), Face_Punch_Reaction
-//   (heavy-hit, no engine hook yet), Fall3 (falling, no engine hook yet).
+//   potion swig, trimmed to the drink). Spare lib-2 clips (wired per
+//   character or future slots): Idle_10 (male brawler idle), Idle_11 /
+//   Walking_Woman (female defaults), Block3 (a two-hand guard — free for a
+//   per-character `block`).
 const UAL_SLOTS = {
+  // 2026-09-09 — THE STRIKE FRAME. Every action slot now carries `strikeAt`:
+  // the second of the SOURCE clip (before `trim`, before `ts`) on which the
+  // hit / release / bloom actually happens, read off frame contact sheets of
+  // every library clip (rigged_animations/, PLAYTEST_NOTES "THE STRIKE
+  // FRAME"). The board starts the clip strikeAt/ts EARLY so that frame lands
+  // ON the projectile launch / melee impact / aura bloom (battle.js
+  // _releaseCastSprite + doAttack via ThreeAnim.castStrikeMs /
+  // attackStrikeMs); the forge preview fires its burst on the same frame.
+  // `trim: [from, to]` bakes only that window of the source clip (dead idle
+  // before a draw, a guard pose before a flinch) — strikeAt stays in SOURCE
+  // seconds. Omit strikeAt on a slot with no strike (loops, reactions).
   idle:        { clip: 'Idle_5',                 lib: 2, ts: 1.0  },
   walk:        { clip: 'Walking',                lib: 2, ts: 2.05 },
   run:         { clip: 'Running',                lib: 2, ts: 1.3  },
   jump:        { clip: 'Regular_Jump',           lib: 2, ts: 3.2  },
-  dodge:       { clip: 'Block3',                 lib: 2, ts: 3.0  },
+  // dodge: UAL1 Roll 1.47s (→0.61s) — a real dive-and-tumble evade; Block3
+  // (the old slot) is a static two-hand GUARD, it never moved. pinXZ keeps
+  // the roll over the tile (the dodge tween owns the sidestep).
+  dodge:       { clip: 'Roll',                   lib: 0, ts: 2.4, pinXZ: true },
   hit:         { clip: 'Hit_Reaction_1',         lib: 2, ts: 2.1  },
   death:       { clip: 'Dead',                   lib: 2, ts: 1.9  },
-  cast:        { clip: 'Spell_Simple_Shoot',     lib: 0, ts: 0.5  },
-  castMagic:   { clip: 'mage_soell_cast_3',      lib: 2, ts: 2.6  },
-  castSupport: { clip: 'mage_soell_cast_7',      lib: 2, ts: 2.3  },
-  castHeal:    { clip: 'mage_soell_cast',        lib: 2, ts: 2.0  },
-  castRanged:  { clip: 'Pistol_Shoot',           lib: 0, ts: 0.6  },
-  castMelee:   { clip: 'Sword_Attack',           lib: 0, ts: 1.2  },
-  castThrow:   { clip: 'OverhandThrow',          lib: 1, ts: 1.2  },
-  castPlant:   { clip: 'Farm_PlantSeed',         lib: 1, ts: 2.3  },
-  castArrow:   { clip: 'Archery_Shot_1',         lib: 2, ts: 1.2  },
-  castKick:    { clip: 'Spartan_Kick',           lib: 2, ts: 2.0  },
-  castAOE:     { clip: 'Charged_Spell_Cast',     lib: 2, ts: 2.2  },
-  castSlam:    { clip: 'Charged_Ground_Slam',    lib: 2, ts: 2.4  },
-  castConsume: { clip: 'Consume',                lib: 1, ts: 1.2  },
-  // 2026-07-11b: castChop TreeChopping_Loop (UAL2) 0.97s (→0.81s — tree
-  // chops + dig-tool ops, attack kind 'chop') · castTrap Fixing_Kneeling
-  // (UAL1) 5.2s kneel-and-rig (→1.3s — deployable traps/mines/turrets,
-  // spell kind 'deploy'; runes intentionally excluded) · block
-  // Shield_OneShot (UAL2) 0.83s (→0.52s — zero-damage "blocks the hit",
-  // hitFlash kind 'block').
-  castChop:    { clip: 'TreeChopping_Loop',      lib: 1, ts: 1.2  },
-  castTrap:    { clip: 'Fixing_Kneeling',        lib: 0, ts: 4.0  },
-  block:       { clip: 'Shield_OneShot',         lib: 1, ts: 1.6  },
-  // 2026-07-11c: hitHeavy Face_Punch_Reaction 2.87s (→0.87s reel — crits
-  // ≥60 dmg / super-effective hits, hitFlash kind 'hitHeavy') · fall Fall3
-  // 1.33s (→1.1s flail — forced groundings + enemy-caused fall damage).
-  // pinHips: Fall3 bakes a 1.5×hips-height plunge into the clip; the board
-  // tween owns the actual drop, so the bake pins the hips at rest height
-  // and keeps only the flailing rotations.
-  hitHeavy:    { clip: 'Face_Punch_Reaction',    lib: 2, ts: 3.3  },
+  cast:        { clip: 'Spell_Simple_Shoot',     lib: 0, ts: 0.5, strikeAt: 0.05 },
+  // castMagic: arm thrusts forward at 0.7s then HOLDS the push to 2.5s (a
+  // bolt/beam channel) — ts 2.6→2.2 so the wind-up isn't a blur.
+  castMagic:   { clip: 'mage_soell_cast_3',      lib: 2, ts: 2.2, strikeAt: 0.70 },
+  castSupport: { clip: 'mage_soell_cast_7',      lib: 2, ts: 2.3, strikeAt: 1.00 },   // arms spread wide 1.0–1.5s
+  castHeal:    { clip: 'mage_soell_cast',        lib: 2, ts: 2.0, strikeAt: 0.90 },   // hand raised to the sky 0.85–1.05s
+  // castRanged: MAL Cowboy_Quick_Draw_Shooting, TRIMMED. The 7.33s export is
+  // 1.9s of standing, the draw, the shot at ~2.5s, a 1.5s aim hold, the
+  // holster, 3s more standing; [1.85, 4.35] keeps draw → shot → hold →
+  // holster (→1.3s at 1.9×). UAL1 Pistol_Shoot (the old slot) POPPED out of
+  // idle straight into an aimed pose with the recoil on frame 0.
+  castRanged:  { clip: 'Cowboy_Quick_Draw_Shooting', lib: 2, ts: 1.9, trim: [1.85, 4.35], strikeAt: 2.55 },
+  castMelee:   { clip: 'Sword_Attack',           lib: 0, ts: 1.2, strikeAt: 0.70 },   // spinning slash lands 0.56–0.84s
+  castThrow:   { clip: 'OverhandThrow',          lib: 1, ts: 1.2, strikeAt: 0.46 },   // release ~0.45s, follow-through after
+  castPlant:   { clip: 'Farm_PlantSeed',         lib: 1, ts: 2.3, strikeAt: 1.30 },   // hand to the soil 1.0–1.75s
+  castArrow:   { clip: 'Archery_Shot_1',         lib: 2, ts: 1.2, strikeAt: 0.60 },   // draw 0.3–0.5s, loose ~0.6s
+  castKick:    { clip: 'Spartan_Kick',           lib: 2, ts: 2.0, strikeAt: 0.68 },   // leg fully extended 0.55–0.8s
+  // castAOE: Charged_Spell_Cast is TWO beats — a forward push at 0.65s, then
+  // both arms flung to the sky at 1.7–2.2s. The sky-raise is the strike
+  // (terrain rises, hordes are called, the storm comes down).
+  castAOE:     { clip: 'Charged_Spell_Cast',     lib: 2, ts: 2.2, strikeAt: 1.90 },
+  castSlam:    { clip: 'Charged_Ground_Slam',    lib: 2, ts: 2.4, strikeAt: 1.62 },   // 0.8s overhead charge, the slam at 1.6s
+  // castConsume: the swig is 0.35–0.5s, the rest is standing — trimmed to
+  // the drink (→0.9s at 1.0×).
+  castConsume: { clip: 'Consume',                lib: 1, ts: 1.0, trim: [0.05, 0.95], strikeAt: 0.42 },
+  castChop:    { clip: 'TreeChopping_Loop',      lib: 1, ts: 1.2, strikeAt: 0.47  },
+  castTrap:    { clip: 'Fixing_Kneeling',        lib: 0, ts: 4.0, strikeAt: 1.60  },   // kneels by 0.95s, works the device from 1.4s
+  block:       { clip: 'Shield_OneShot',         lib: 1, ts: 1.6, strikeAt: 0.10  },
+  // hitHeavy: Face_Punch_Reaction opens with 0.35s of a raised GUARD before
+  // the head snaps — trimmed off so the reel starts on the hit (→0.81s).
+  hitHeavy:    { clip: 'Face_Punch_Reaction',    lib: 2, ts: 2.6, trim: [0.35, 2.45] },
   fall:        { clip: 'Fall3',                  lib: 2, ts: 1.2, pinHips: true },
-  // 2026-07-11d: castPunch Punch_Cross (UAL1) 1.0s (→0.83s jab-cross) —
-  // punch/fist/uppercut spells + 'punch'-flavored basic attacks · castClaw
-  // Zombie_Scratch (UAL2) 1.3s (→0.87s rake) — claw/bite/scratch spells +
-  // bestial basic attacks (kinds 'punch'/'claw' via classifySpellAnimKind /
-  // def.basicAttackKind).
-  castPunch:   { clip: 'Punch_Cross',            lib: 0, ts: 1.2  },
-  castClaw:    { clip: 'Zombie_Scratch',         lib: 1, ts: 1.5  },
+  castPunch:   { clip: 'Punch_Cross',            lib: 0, ts: 1.2, strikeAt: 0.25 },   // full extension 0.27s
+  castClaw:    { clip: 'Zombie_Scratch',         lib: 1, ts: 1.5, strikeAt: 0.72 },   // the rake 0.65–0.85s
   // 2026-08-12 — strike-approach set (MAL2_Sniper.glb lib 3 + one UAL2
   // freebie). MAL2 clip inventory (dur s): Basic_Jump 5.93 / Back_Jump 0.97 /
   // Punch_Combo 2.50 / Punch_Combo_1 2.27 / Punch_Combo_5 3.87 (the last two
@@ -711,17 +731,30 @@ const UAL_SLOTS = {
   //   the export root-travels +1.4×hips forward with a 1.9×hips rise — the
   //   board tween owns the arc, so only the body language is kept. NOTE the
   //   source clip is long (5.93s); if 4.5× reads rushed in-game, try 3.5–4.
+  //   (Contact sheet 2026-09-09: the first 1.6s of Basic_Jump is STANDING —
+  //   the jump itself is 1.6–4.2s. When the approach is wired, trim it.)
   //   jumpBack Back_Jump @2.6 (→~0.37s) — the back-hop home after the swing
   //   (falls back to the forward jump clip when unwired). pinHips: the
   //   export root-travels −2.6×hips backward; the tween owns the hop.
   //   castPunchCombo Punch_Combo @1.8 (→~1.39s, in-place export) — multi-hit
   //   PUNCH strikes play one real combo instead of restarting Punch_Cross
-  //   per hit. castMeleeCombo Sword_Regular_Combo (UAL2) @2.2 — same for
-  //   multi-hit sword strikes; claw/kick flurries keep the restart look.
+  //   per hit (jab 0.45s, cross 0.9s, overhead 1.36s). castMeleeCombo
+  //   Sword_Regular_Combo (UAL2) @2.2 — same for multi-hit sword strikes
+  //   (slash 0.55s, low sweep 0.9s, leaping strike 1.36s, down-cut 1.7s);
+  //   claw/kick flurries keep the restart look.
   jumpStrike:     { clip: 'Basic_Jump',          lib: 3, ts: 4.5, pinHips: true },
   jumpBack:       { clip: 'Back_Jump',           lib: 3, ts: 2.6, pinHips: true },
-  castPunchCombo: { clip: 'Punch_Combo',         lib: 3, ts: 1.8  },
-  castMeleeCombo: { clip: 'Sword_Regular_Combo', lib: 1, ts: 2.2  },
+  castPunchCombo: { clip: 'Punch_Combo',         lib: 3, ts: 1.8, strikeAt: 0.45 },
+  castMeleeCombo: { clip: 'Sword_Regular_Combo', lib: 1, ts: 2.2, strikeAt: 0.55 },
+  // 2026-09-09 — the MOVE kinds get their own body language (spell kind,
+  // never the text — classifySpellAnimKind checks `kind` first):
+  //   castDash UAL2 Sword_Dash 1.57s (→1.05s): crouch 0.15–0.3s, a low
+  //   lunging stab 0.45–0.85s, up by 1.3s — every `dash` (Sky Tackle's
+  //   slide, Drive-By, QB Sneak…). castTackle UAL2 Shield_Dash 1.1s (→1.0s):
+  //   OPENS on the shoulder-charge impact frame and straightens up — the
+  //   `tackle` kind runs the charge first, so the clip starts on arrival.
+  castDash:       { clip: 'Sword_Dash',          lib: 1, ts: 1.5, strikeAt: 0.50 },
+  castTackle:     { clip: 'Shield_Dash',         lib: 1, ts: 1.1, strikeAt: 0.06 },
 };
 // Female body-language defaults — applied to every `female:` def after
 // RACE_MODELS_3D is built (see _applyFemaleSlotDefaults) unless the
@@ -732,9 +765,20 @@ const _FEM_SLOT_DEFAULTS = {
 };
 // Shared per-def field objects (read-only in the renderer).
 const _UAL_CLIPS = {}, _UAL_TS = {};
+// _ualClipRef(o): the renderer-facing slot record — clip + lib + the bake
+// flags (pinHips / pinXZ / trim) + strikeAt. One builder for the defaults,
+// the per-character `lib:` overrides and the female defaults, so a flag
+// added here reaches every path.
+function _ualClipRef(o) {
+  const r = { clip: o.clip, lib: o.lib || 0 };
+  if (o.pinHips) r.pinHips = true;
+  if (o.pinXZ) r.pinXZ = true;
+  if (Array.isArray(o.trim) && o.trim.length === 2) r.trim = [o.trim[0], o.trim[1]];
+  if (typeof o.strikeAt === 'number') r.strikeAt = o.strikeAt;
+  return r;
+}
 for (const _slot in UAL_SLOTS) {
-  _UAL_CLIPS[_slot] = { clip: UAL_SLOTS[_slot].clip, lib: UAL_SLOTS[_slot].lib || 0 };
-  if (UAL_SLOTS[_slot].pinHips) _UAL_CLIPS[_slot].pinHips = true;
+  _UAL_CLIPS[_slot] = _ualClipRef(UAL_SLOTS[_slot]);
   _UAL_TS[_slot] = UAL_SLOTS[_slot].ts;
 }
 
@@ -783,9 +827,7 @@ function _mk3d(folder, prefix, anims, opts) {
     const lc = Object.assign({}, def.libClips), lt = Object.assign({}, def.libTimeScales);
     for (const slot in def.lib) {
       const o = def.lib[slot];
-      lc[slot] = { clip: o.clip, lib: o.lib || 0 };
-      if (o.pinHips) lc[slot].pinHips = true;
-      if (o.pinXZ) lc[slot].pinXZ = true;     // keep the vertical hips travel, pin the ground-plane travel (HQ poses)
+      lc[slot] = _ualClipRef(o);            // pinHips / pinXZ (HQ poses) / trim / strikeAt ride along
       if (o.ts) lt[slot] = o.ts;
     }
     def.libClips = lc; def.libTimeScales = lt;
@@ -1692,7 +1734,7 @@ const RACE_MODELS_3D = {
     for (const slot in _FEM_SLOT_DEFAULTS) {
       if (own.indexOf(slot) >= 0) continue;
       const o = _FEM_SLOT_DEFAULTS[slot];
-      lc[slot] = { clip: o.clip, lib: o.lib };
+      lc[slot] = _ualClipRef(o);
       lt[slot] = o.ts;
     }
     def.libClips = lc; def.libTimeScales = lt;

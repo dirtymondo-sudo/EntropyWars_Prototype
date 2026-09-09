@@ -10092,14 +10092,23 @@ const ThreeRenderer = (function () {
             // clip slides the pelvis ~0.5 m behind the root, which put Rhonda
             // behind her chair instead of on it.
             var pinXZ = !pinHips && !!(ref && typeof ref === 'object' && ref.pinXZ);
-            var key = libIdx + ':' + clipName + (pinHips ? ':pin' : (pinXZ ? ':pxz' : ''));
+            // trim [from, to] (2026-09-09, sprites.js UAL_SLOTS): bake only
+            // that window of the source clip — the cowboy draw without its
+            // 1.9 s of standing first, the heavy flinch without its guard.
+            // Times are re-based to 0; strikeAt stays in SOURCE seconds and
+            // _unitAnimStrikeMs subtracts the window's start.
+            var trim = (ref && typeof ref === 'object' && Array.isArray(ref.trim) && ref.trim.length === 2) ? ref.trim : null;
+            var key = libIdx + ':' + clipName + (pinHips ? ':pin' : (pinXZ ? ':pxz' : '')) + (trim ? (':t' + trim[0] + '-' + trim[1]) : '');
             if (bakedByClip[key]) { out[slot] = bakedByClip[key]; return; }
             var ctx = libCtx(libIdx);
             if (!ctx) { missing.push(clipName + ' (lib ' + libIdx + ' unavailable)'); return; }
             var src = ctx.src, setup = ctx.setup;
             var srcClip = src.clipsByName[clipName];
             if (!srcClip) { missing.push(clipName); return; }
-            var dur = srcClip.duration;
+            var srcDur = srcClip.duration;
+            var t0 = trim ? Math.max(0, Math.min(trim[0], srcDur)) : 0;
+            var t1 = trim ? Math.max(t0 + 0.05, Math.min(trim[1], srcDur)) : srcDur;
+            var dur = t1 - t0;
             var nSamp = Math.max(2, Math.ceil(dur * _ANIMLIB_SAMPLE_HZ) + 1);
             var times = new Float32Array(nSamp);
             var quats = {}, hipsPos = new Float32Array(nSamp * 3);
@@ -10117,7 +10126,7 @@ const ThreeRenderer = (function () {
             for (var i = 0; i < nSamp; i++) {
                 var t = Math.min(dur * i / (nSamp - 1), dur);
                 times[i] = t;
-                src.mixer.setTime(t);
+                src.mixer.setTime(t0 + t);
                 src.root.updateMatrixWorld(true);
                 // desired world orientation per bone → local keys (top-down;
                 // ancestors' freshly-written locals accumulate into pwq)
@@ -10591,6 +10600,8 @@ const ThreeRenderer = (function () {
                 _animLibBakeForModel(def, res, function (baked) {
                     if (entry.mixer !== mixer) return;
                     if (!baked) { _loadMeshyClips(); return; }
+                    entry._ew_libBaked = true;      // the UAL_SLOTS strike table applies (see _unitAnimStrikeMs)
+                    entry._ew_def = def;
                     Object.keys(baked).forEach(function (name) {
                         _wireSlot(name, baked[name],
                             (def.libTimeScales && def.libTimeScales[name]) || 1);
@@ -10646,7 +10657,38 @@ const ThreeRenderer = (function () {
             (kind === 'claw')    ? ['castClaw', 'castMelee', 'cast'] :
             (kind === 'consume') ? ['castConsume', 'castSupport', 'cast'] :
             (kind === 'deploy')  ? ['castTrap', 'castPlant', 'castSupport', 'cast'] :
+            (kind === 'dash')    ? ['castDash', 'castMelee', 'cast'] :        // 2026-09-09: the slide's lunging stab
+            (kind === 'tackle')  ? ['castTackle', 'castMelee', 'cast'] :      // the shoulder-check on arrival
             (kind === 'magic')   ? ['castMagic', 'cast'] : ['cast'];
+    }
+    /* THE STRIKE FRAME (2026-09-09). Every action slot in sprites.js
+       UAL_SLOTS names `strikeAt` — the source-clip second on which the hit /
+       release / bloom happens (read off contact sheets of every library
+       clip). _slotStrikeMs(def, slot) → that moment in PLAYED milliseconds
+       (trim start subtracted, the slot's time scale applied), or -1 when the
+       slot has no strike. _unitAnimStrikeMs(uid, chain) resolves the chain
+       exactly like _maybeStartModelAnim will (the first slot the rig
+       carries) so battle.js can start the clip strikeMs EARLY and land the
+       frame ON its projectile launch / impact (ThreeAnim.castStrikeMs /
+       attackStrikeMs). Meshy-fallback rigs (no library bake) report -1 —
+       their per-character clips keep the old start-at-launch timing. */
+    function _slotStrikeMs(def, slot, act) {
+        if (!def || !def.libClips) return -1;
+        var ref = def.libClips[slot];
+        if (!ref || typeof ref !== 'object' || typeof ref.strikeAt !== 'number') return -1;
+        var t = ref.strikeAt - ((Array.isArray(ref.trim) && ref.trim.length === 2) ? ref.trim[0] : 0);
+        if (!(t >= 0)) return -1;
+        var ts = (act && Math.abs(act.timeScale)) || (def.libTimeScales && def.libTimeScales[slot]) || 1;
+        return Math.round((t / ts) * 1000);
+    }
+    function _unitAnimStrikeMs(uid, chain) {
+        var ue = _getUnitEntry(uid);
+        if (!ue || !ue.actions || !ue._ew_libBaked) return -1;
+        var list = Array.isArray(chain) ? chain : [chain];
+        for (var i = 0; i < list.length; i++) {
+            if (ue.actions[list[i]]) return _slotStrikeMs(ue._ew_def, list[i], ue.actions[list[i]]);
+        }
+        return -1;
     }
     /* The BASIC ATTACK chain (battle.js triggerAttackAnim: melee / ranged by
        reach, 'chop' for tree felling, or the def's basicAttackKind). */
@@ -29096,15 +29138,35 @@ const ThreeRenderer = (function () {
         var v = _cv;
         opts = opts || {};
         if (!v || !v.model) return 0;
-        var chain;
+        return _cvPlay(_cvSpellChain(spell, opts), { full: opts.full, name: opts.name || (spell && spell.name) || 'BASIC ATTACK' });
+    }
+    function _cvSpellChain(spell, opts) {
+        var v = _cv;
+        opts = opts || {};
         if (!spell || spell.kind === 'basicAttack' || opts.attack) {
-            var ak = (v.def && v.def.basicAttackKind) || (spell && (spell.range || 1) > 1 ? 'ranged' : 'melee');
-            chain = _attackChainFor(ak);
-        } else {
-            var kind = (typeof classifySpellAnimKind === 'function') ? classifySpellAnimKind(spell) : 'magic';
-            chain = _castChainFor(kind);
+            var ak = (v && v.def && v.def.basicAttackKind) || (spell && (spell.range || 1) > 1 ? 'ranged' : 'melee');
+            return _attackChainFor(ak);
         }
-        return _cvPlay(chain, { full: opts.full, name: opts.name || (spell && spell.name) || 'BASIC ATTACK' });
+        var kind = (typeof classifySpellAnimKind === 'function') ? classifySpellAnimKind(spell) : 'magic';
+        return _castChainFor(kind);
+    }
+    /* THE STRIKE FRAME on the stage: the played-ms at which the chain's clip
+       lands its hit (sprites.js UAL_SLOTS strikeAt via _slotStrikeMs), or -1
+       for a rig without one (a Meshy-clip vessel, a slot with no strike) —
+       the beat then falls back to its old 45 % guess. */
+    function _cvStrikeMs(spell, opts) {
+        var v = _cv;
+        if (!v || !v.def || !v.clips) return -1;
+        var slot = _cvFirstSlot(_cvSpellChain(spell, opts));
+        if (!slot || !v.clips[slot]) return -1;          // only library bakes carry the table
+        var act = v.actions && v.actions[slot];
+        var ms = _slotStrikeMs(v.def, slot, act || null);
+        if (ms < 0 && !act) {
+            var ts = _cvSlotScale(v.def, slot, true);
+            var ref = v.def.libClips && v.def.libClips[slot];
+            if (ref && typeof ref.strikeAt === 'number') ms = Math.round(((ref.strikeAt - (ref.trim ? ref.trim[0] : 0)) / (ts || 1)) * 1000);
+        }
+        return ms;
     }
 
     /* ── THE STAGE (PARTY_BUILDER_PLAN §5.3) — the spell LIGHTS UP the viewer ──
@@ -29408,8 +29470,14 @@ const ThreeRenderer = (function () {
             later(function () {
                 var ms = _cvPlaySpell(spell, opts);
                 var clipMs = ms > 1 ? ms : 700;
-                _cvStageFx('shake', { kind: 'normal' });
-                fireMapped(plan.casterX);
+                // the hits land on the clip's strike frame (a tackle's
+                // Shield_Dash opens on the impact, a swing lands mid-clip)
+                var sk = ms > 1 ? _cvStrikeMs(spell, opts) : -1;
+                var hitAt = sk >= 0 ? Math.min(sk, clipMs) : 0;
+                later(function () {
+                    _cvStageFx('shake', { kind: 'normal' });
+                    fireMapped(plan.casterX);
+                }, hitAt);
                 wrap(clipMs, arriveAt, plan.casterX);
             }, arriveAt);
             return arriveAt + 900;
@@ -29419,7 +29487,8 @@ const ThreeRenderer = (function () {
             // in at the landing tile with the spell's own effect there
             var msB = _cvPlaySpell(spell, opts);
             var clipB = msB > 1 ? msB : 900;
-            var outAt = Math.max(260, Math.round(clipB * 0.45));
+            var skB = msB > 1 ? _cvStrikeMs(spell, opts) : -1;
+            var outAt = skB >= 0 ? Math.max(120, Math.min(skB, clipB)) : Math.max(260, Math.round(clipB * 0.45));
             var wuB = params(0); wuB.holdMs = outAt;
             S.fire('windup', id, wuB);
             later(function () { S.fire('burst', id, params(0)); if (v.model) v.model.visible = false; _cvMoveTo(mv.to, 0, null); }, outAt);
@@ -29428,10 +29497,14 @@ const ThreeRenderer = (function () {
             return msB || clipB;
         }
         // the plain cast (and the melee swing with its lunge): windup now, the
-        // clip, burst + every mapped intent at 45 %, finish at the end
+        // clip, burst + every mapped intent ON THE STRIKE FRAME (sprites.js
+        // UAL_SLOTS strikeAt — the arrow looses when the string does, the
+        // slam hits when the fists land; 45 % of the clip when the rig has no
+        // strike table), finish at the end
         var ms0 = _cvPlaySpell(spell, opts);
         var clipMs0 = ms0 > 1 ? ms0 : 900;     // no clip (sprite vessel / a pending Meshy GLB): the VFX is the preview
-        var burstAt = Math.max(260, Math.round(clipMs0 * 0.45));
+        var sk0 = ms0 > 1 ? _cvStrikeMs(spell, opts) : -1;
+        var burstAt = sk0 >= 0 ? Math.max(120, Math.min(sk0, clipMs0)) : Math.max(260, Math.round(clipMs0 * 0.45));
         var wu0 = params(0); wu0.holdMs = burstAt;
         S.fire('windup', id, wu0);
         lunge(Math.max(0, burstAt - 170));
@@ -33577,6 +33650,11 @@ const ThreeRenderer = (function () {
         startWalkTween, startDisplaceTween, startJumpTween, startStrikeLeapTween, startThrowArcTween, startDeathTween,
         startCarryHoldTween, endCarryHold, hasCarryHold,
         setTimeWarp,
+        /* THE STRIKE FRAME (2026-09-09): played-ms into the clip the unit's
+           cast / attack chain would play at which the hit lands; -1 = no
+           rigged library clip (sprite, Meshy fallback, unknown kind). */
+        castStrikeMs: function (uid, kind) { return _unitAnimStrikeMs(uid, _castChainFor(kind)); },
+        attackStrikeMs: function (uid, kind) { return _unitAnimStrikeMs(uid, _attackChainFor(kind)); },
 
         /* Opening cinematic (battle.js playOpeningCinematic) */
         introCineStart, introCineFadeDoors, introCineEnd, introCineWarm,
@@ -33787,6 +33865,20 @@ window.ThreeAnim = {
 
     death: function(unitId) {
         if (ThreeRenderer.isActive()) ThreeRenderer.startDeathTween(unitId);
+    },
+
+    /* THE STRIKE FRAME (2026-09-09, sprites.js UAL_SLOTS strikeAt): how many
+       ms into its cast / attack clip this unit's hit frame falls, so the
+       caller can start the clip that much BEFORE the launch / impact it has
+       scheduled. -1 when the unit has no rigged library clip for the kind
+       (battle.js then keeps the start-at-launch timing). */
+    castStrikeMs: function(unit, kind) {
+        if (!unit || !ThreeRenderer.isActive()) return -1;
+        try { return ThreeRenderer.castStrikeMs(unit.id, kind); } catch (_e) { return -1; }
+    },
+    attackStrikeMs: function(unit, kind) {
+        if (!unit || !ThreeRenderer.isActive()) return -1;
+        try { return ThreeRenderer.attackStrikeMs(unit.id, kind); } catch (_e) { return -1; }
     },
 
     projectile: function(fromX, fromY, toX, toY, projClass, flyMs, fromZ, toZ) {

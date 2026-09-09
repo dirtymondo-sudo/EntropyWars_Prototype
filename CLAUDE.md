@@ -761,6 +761,25 @@ Heat Death ladder's top tier (`ACH_CATALOG` champsMastered = roster
 size; achievements.test.js pins it). `npm test` (champ-rework.test.js
 "Phase 6" ×3) guards every table and engine site.
 
+## THE STRIKE FRAME (animation ↔ VFX timing) — added 2026-09-09
+Every action slot in sprites.js `UAL_SLOTS` carries **`strikeAt`** — the
+SOURCE-clip second on which the hit / release / bloom lands (read off frame
+contact sheets of every library clip; the table is in PLAYTEST_NOTES "THE
+STRIKE FRAME") — and optionally **`trim: [from, to]`** (bake only that window;
+strikeAt stays in source seconds). The renderer answers
+`ThreeAnim.castStrikeMs(unit, kind)` / `attackStrikeMs` (−1 = no library
+clip); battle.js starts the clip that many ms BEFORE the launch / impact it
+scheduled (`_releaseCastSprite` trades the source hold for it, doAttack's
+`_attackStrikeLeadMs`), and the forge preview fires its burst on the same
+frame (`_cvStrikeMs`). Adding / retuning a clip = set `strikeAt` (and `trim`)
+in UAL_SLOTS — never a per-site delay. `classifySpellAnimKind` routes
+`kind: 'dash'` / `'tackle'` BY KIND (castDash / castTackle) before the text
+rules. `rigged_animations/` (repo, 218 MB, NOT an upload set) holds the
+libraries + the Meshy exports; **`node anim-sheets.js`** renders a contact
+sheet of every clip so Claude can LOOK at an animation before wiring it
+(needs `npm i --no-save playwright three@0.128.0`; that is not a playtest).
+`npm test` runs `anim-strike.test.js` (the table ↔ the GLBs ↔ the consumers).
+
 ## Most common request: "playtest <mode>"
 The user wants Claude to **actually play Player 1 against the CPU** (NOT auto-sim /
 dev-sim — they can do that themselves) and report pain points: unresponsive
