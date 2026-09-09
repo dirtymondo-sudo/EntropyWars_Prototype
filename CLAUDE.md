@@ -366,6 +366,22 @@ or within 2.5 s of a leave; panels on the way to a launch close with
 terminal") source-scans all of it. Fallback: no host / no React → the old
 panel + the page.
 
+## THE FORGE TERMINAL (party builder redesign) — PLAN ONLY, added 2026-09-09
+`PARTY_BUILDER_PLAN.md` is the staged plan for rebuilding party-builder.js
+around the seven reference images in `party_builder_references/` (view
+them with the Read tool): ONE CRT monitor (the match-select `.ms-crt`
+chrome), four tabs (ROSTER = the champ-select wall · TECHNIQUES = the
+three-pillar circuit + the technique panel · GEAR · DOSSIER), the party as a
+ROW of circular portraits along the bottom, stats as pills, passives as
+sticky notes ON THE BEZEL, and the hero playing its real cast animation +
+VFX on the stage when a spell is hovered / equipped. Read the plan's §2
+(anatomy: mount points, `EWCharViewer`, the cast chain, the VFX binding —
+`ThreeVFX.init` is single-scene and online.js RELAYS `VFX3D.fire`, so a
+preview must route around it), §3 (the rounding rule and the other design
+rules), §5 (the six stages, in order), §6 (decisions the user still owns)
+before touching the builder; append to its §9 build log every session.
+Nothing has shipped yet — Stage 1 (the monitor + tabs + the row) is next.
+
 ## TRAINING MATCH (instant CPU turns vs a human) — added 2026-09-07
 Match-select → CONFIG column → **CPU TEMPO: Cinematic / ⚡ Training**
 (match-select.js, sticky via localStorage `ew_training_match`; mirrored into
