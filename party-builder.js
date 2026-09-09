@@ -1213,44 +1213,74 @@ function computeTreeEquipPath(tree, sealed, equippedIds, targetKey) {
   return path;
 }
 
+/* Which pillar a node key sits on ('P' | 'R' | 'S'; root = null) and its
+   ring (1–4; root = 0) — the keyboard walks the circuit with these. */
+function treePillarOf(key) { return key === 'root' ? null : key[0]; }
+function treeRingOf(key) { return key === 'root' ? 0 : (parseInt(key.slice(1), 10) || 0); }
+const TREE_PILLAR_ORDER = ['P', 'R', 'S'];
+/* Arrow-key step across the circuit: ↑ ↓ along a pillar, ← → across
+   pillars on the same ring; from the root ← → land on ring 1 of the outer
+   pillars, ↓ from ring 1 returns to the root. Skips nothing — an empty node
+   is still a place on the circuit (the panel says so). */
+function treeStepKey(key, dir) {
+  const col = treePillarOf(key), ring = treeRingOf(key);
+  if (dir === 'up') return key === 'root' ? 'R1' : (ring < 4 ? col + (ring + 1) : key);
+  if (dir === 'down') return key === 'root' ? key : (ring > 1 ? col + (ring - 1) : 'root');
+  const ci = col ? TREE_PILLAR_ORDER.indexOf(col) : 1;
+  const r = Math.max(1, ring);
+  if (dir === 'left') return ci > 0 ? TREE_PILLAR_ORDER[ci - 1] + r : key;
+  if (dir === 'right') return ci < 2 ? TREE_PILLAR_ORDER[ci + 1] + r : key;
+  return key;
+}
+
+/* The state of one node — shared by the circuit (its look) and the technique
+   panel (its verb). root / socket / empty / sealed / equipped / reachable /
+   far / blocked; identical to the Stage-1 nodeState (moved, not changed). */
+function treeNodeState(tree, sealed, equipped, key) {
+  if (key === 'root') return 'root';
+  const id = tree.nodes[key];
+  // Freelancer: an unfilled wildcard socket is its own state — a slot the
+  // player clicks to browse the pool (vs 'empty' = missing branch node).
+  if (!id && tree.isFreelancer && tree.sockets && tree.sockets[key]) return 'socket';
+  if (!id) return 'empty';
+  if (sealed.has(id)) return 'sealed';
+  if ((equipped || []).includes(id)) return 'equipped';
+  const path = computeTreeEquipPath(tree, sealed, equipped, key);
+  if (!path) return 'blocked';
+  return path.length <= 1 ? 'reachable' : 'far';
+}
+
+/* ══ THE CIRCUIT (PARTY_BUILDER_PLAN §5.2) — three pillars of glowing
+   circles. TREE_NODE_POS and every legality rule are Stage-1's; only the
+   skin changed: round-capped <path> connectors (lit = phosphor, hover path
+   = gold, unlit = dashed), 50 px chips (ring-4 capstones 58 px with a thin
+   outer ring instead of the ♛), the twin ⇄ as a satellite disc, sockets as
+   dashed gold rings, sealed as a 🔒 disc, pillar heads as pills with a
+   tagline line (`n TECHNIQUES` until decision C-5 lands). `selKey` is the
+   keyboard / click selection (a gold halo); hover previews. ══ */
 function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, raceLabel,
                           onNodeClick, onNodeHoverIn, onNodeHoverOut, hoverPath, shakeKey, onOpenSubjob,
-                          onSocketClick, onTwinPick }) {
+                          onSocketClick, onTwinPick, selKey, onSelect }) {
   const equippedSet = new Set(equipped || []);
   const connected = (typeof window.treeReachableKeys === 'function')
     ? window.treeReachableKeys(tree, equippedSet) : new Set(['root']);
-  const headColor = { P: EW.space };   // pillar HEADER text only — nodes wear category colors
   const hoverSet = hoverPath ? new Set(hoverPath) : null;
   const used = (equipped || []).length;
   const isFL = !!tree.isFreelancer;
 
-  const nodeState = (key) => {
-    if (key === 'root') return 'root';
-    const id = tree.nodes[key];
-    // Freelancer: an unfilled wildcard socket is its own state — a slot the
-    // player clicks to browse the pool (vs 'empty' = missing branch node).
-    if (!id && isFL && tree.sockets && tree.sockets[key]) return 'socket';
-    if (!id) return 'empty';
-    if (sealed.has(id)) return 'sealed';
-    if (equippedSet.has(id)) return 'equipped';
-    const path = computeTreeEquipPath(tree, sealed, equipped, key);
-    if (!path) return 'blocked';
-    return path.length <= 1 ? 'reachable' : 'far';
-  };
   const states = {};
-  Object.keys(TREE_NODE_POS).forEach(k => { states[k] = nodeState(k); });
+  Object.keys(TREE_NODE_POS).forEach(k => { states[k] = treeNodeState(tree, sealed, equipped, k); });
 
-  // path (edge) styling: lit when both endpoints are root-connected.
-  // Lit = neutral silver (no faction tint); hover-path = gold. Edges render
-  // in the z:1 SVG layer UNDER the opaque z:2 node chips.
+  // connectors: round-capped paths in the z:1 SVG layer UNDER the opaque
+  // z:2 chips. Lit = both ends root-connected (phosphor); hover path = gold;
+  // unlit = dashed and faint.
   const edgeNodes = tree.edges.map(([a, b], i) => {
     const [x1, y1] = TREE_NODE_POS[a], [x2, y2] = TREE_NODE_POS[b];
     const lit = connected.has(a) && connected.has(b);
     const onHover = hoverSet && (hoverSet.has(a) || a === 'root' || connected.has(a)) && hoverSet.has(b);
-    return h('line', { key: i, x1, y1, x2, y2,
-      stroke: onHover ? EW.time : lit ? 'rgba(230,233,242,0.55)' : 'rgba(255,255,255,0.13)',
-      strokeWidth: onHover ? 1.1 : lit ? 0.8 : 0.45,
-      strokeDasharray: lit || onHover ? undefined : '1.6 1.6' });
+    return h('path', { key: i, d: `M ${x1} ${y1} L ${x2} ${y2}`,
+      className: 'pb-circuit-edge' + (onHover ? ' hover' : lit ? ' lit' : ''),
+      strokeDasharray: lit || onHover ? undefined : '1.4 1.6' });
   });
 
   const chips = Object.entries(TREE_NODE_POS).map(([key, [x, y]]) => {
@@ -1265,29 +1295,28 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
     const catGlyph = cat ? (TREE_CAT_GLYPH[cat] || TREE_CAT_GLYPH.utility) : '';
     const isCap = key.endsWith('4');
     const onPath = hoverSet && hoverSet.has(key);
+    const size = isCap ? 58 : 50;
     // Chips wear their category color as a SOLID fill (no grey body, no
-    // translucent fills, no element-level opacity — connector lines pass
-    // BEHIND the chips, never through). State reads as brightness:
-    // full color = available, dimmed = far/blocked. EQUIPPED is the ONLY
-    // state that glows: a white outline + white glow. Nothing else pulses.
+    // translucent fills — connectors pass BEHIND the chips, never through).
+    // State reads as brightness: full color = available, dimmed = far /
+    // blocked. EQUIPPED is the ONLY state that glows white. The selection
+    // (keyboard / click) is a gold halo on top of any state.
     const base = {
       position: 'absolute', left: x + '%', top: y + '%',
       transform: 'translate(-50%,-50%)',
-      width: 46, height: 46, borderRadius: '50%',
+      width: size, height: size, borderRadius: '50%',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: 'Cormorant SC, serif', fontSize: 16, fontWeight: 700,
+      fontFamily: 'Cormorant SC, serif', fontSize: isCap ? 19 : 17, fontWeight: 700,
       border: '2px solid ' + nc, color: EW.ink,
       background: nc, cursor: 'default',
       boxSizing: 'border-box', zIndex: 2,
     };
     let style = base, label = sp ? sp.name : '', glyph = '';
     if (st8 === 'root') {
-      // always-equipped: same white outline + glow as equipped nodes.
       style = { ...base, background: '#e6e9f2', border: '2px solid #ffffff', color: TREE_NODE_BG,
-        boxShadow: '0 0 10px rgba(255,255,255,0.75)' };
+        boxShadow: '0 0 10px rgba(255,255,255,0.75)', cursor: 'pointer' };
       glyph = '⚔'; label = 'Basic Attack';
     } else if (st8 === 'socket') {
-      // open wildcard socket: dashed gold ring + the tier(s) it accepts.
       const tiers = (tree.sockets[key] || []).join('·');
       const litAdj = tree.edges.some(([a, b]) =>
         (a === key && connected.has(b)) || (b === key && connected.has(a)));
@@ -1309,7 +1338,7 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
         borderColor: onPath ? EW.time : _treeMixBg(nc, 0.6) };
       glyph = catGlyph;
     } else if (st8 === 'sealed') {
-      style = { ...base, background: TREE_NODE_BG, borderColor: 'rgba(255,255,255,0.25)', color: EW.inkMute, cursor: 'not-allowed' };
+      style = { ...base, background: TREE_NODE_BG, borderColor: 'rgba(255,255,255,0.25)', color: EW.inkMute, cursor: 'not-allowed', fontSize: 15 };
       glyph = '🔒';
     } else { // blocked (unreachable through empty sockets)
       style = { ...base, background: _treeMixBg(nc, 0.28), borderColor: _treeMixBg(nc, 0.4), color: EW.inkDim };
@@ -1317,6 +1346,8 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
     }
     if (key === 'R3' && st8 !== 'equipped') style.borderStyle = 'dashed';       // Da'at
     if (shakeKey === key) style.animation = 'ewTreeShake 0.3s linear';
+    const selected = selKey === key;
+    if (selected) style.boxShadow = (style.boxShadow ? style.boxShadow + ', ' : '') + '0 0 0 3px #000, 0 0 0 5px ' + EW.time + ', 0 0 16px ' + EW.time;
     /* TWIN NODE (CHAMP_REWORK_PLAN §4): the node holds two alternates. An
        UNEQUIPPED twin opens the picker instead of auto-equipping its face;
        an EQUIPPED twin still unequips on click, and its ⇄ badge opens the
@@ -1329,32 +1360,31 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
     const chipClick = st8 === 'socket' ? () => onSocketClick && onSocketClick(key)
       : (twinPickable && st8 !== 'equipped') ? () => onTwinPick(key)
       : clickable ? () => onNodeClick(key) : undefined;
+    const onChipClick = (e) => { if (onSelect) onSelect(key); if (chipClick) chipClick(e); };
     return h('div', { key, style: { position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', pointerEvents: 'none' } },
+      // ring-4 capstone: a thin outer ring (the old ♛) in the category colour
+      isCap && st8 !== 'empty' ? h('div', { className: 'pb-node-crown', style: { left: x + '%', top: y + '%', width: size + 12, height: size + 12, borderColor: st8 === 'equipped' ? '#fff' : nc, opacity: (st8 === 'blocked' || st8 === 'sealed') ? 0.35 : 0.75 } }) : null,
       h('div', {
+        className: 'pb-node pb-node-' + st8 + (selected ? ' sel' : ''),
         style: { ...style, pointerEvents: 'auto' },
-        onClick: chipClick,
-        onMouseEnter: sp ? (e) => onNodeHoverIn(key, sp, e) : undefined,
-        onMouseLeave: sp ? () => onNodeHoverOut() : undefined,
+        onClick: onChipClick,
+        onMouseEnter: (e) => onNodeHoverIn(key, sp, e),
+        onMouseLeave: () => onNodeHoverOut(key),
+        title: sp ? sp.name : (st8 === 'root' ? 'Basic Attack' : st8 === 'socket' ? 'Open wildcard socket' : 'Empty node'),
       },
-        isCap && st8 !== 'empty' ? h('span', { style: { position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', fontSize: 11, color: nc } }, '♛') : null,
         glyph,
         twin ? h('span', {
-          style: { position: 'absolute', right: -7, bottom: -5, width: 16, height: 16, borderRadius: '50%',
-            background: TREE_NODE_BG, border: '1px solid ' + (twinPickable ? EW.time : 'rgba(242,196,104,0.35)'),
-            color: twinPickable ? EW.time : EW.inkDim, fontSize: 10, lineHeight: '14px', textAlign: 'center',
-            fontFamily: 'sans-serif', fontWeight: 700, cursor: twinPickable ? 'pointer' : 'default',
+          className: 'pb-node-twin',
+          style: { border: '1px solid ' + (twinPickable ? EW.time : 'rgba(242,196,104,0.35)'),
+            color: twinPickable ? EW.time : EW.inkDim, cursor: twinPickable ? 'pointer' : 'default',
             boxShadow: st8 === 'equipped' ? '0 0 6px rgba(242,196,104,0.45)' : 'none' },
-          onClick: twinPickable ? (e) => { e.stopPropagation(); onTwinPick(key); } : undefined,
+          title: otherSp ? '⇄ other alternate: ' + otherSp.name : 'Twin node',
+          onClick: twinPickable ? (e) => { e.stopPropagation(); if (onSelect) onSelect(key); onTwinPick(key); } : undefined,
         }, '⇄') : null),
-      (st8 !== 'empty') ? h('div', { style: {
-        position: 'absolute', left: x + '%', top: 'calc(' + y + '% + 27px)',
-        transform: 'translateX(-50%)', width: 84, textAlign: 'center',
-        fontSize: 8, letterSpacing: '0.05em', lineHeight: 1.15,
-        color: st8 === 'equipped' ? EW.ink : EW.inkMute,
+      (st8 !== 'empty') ? h('div', { className: 'pb-node-label', style: {
+        left: x + '%', top: 'calc(' + y + '% + ' + (size / 2 + 4) + 'px)',
+        color: st8 === 'equipped' ? EW.ink : (selected ? EW.time : EW.inkMute),
         opacity: st8 === 'blocked' || st8 === 'sealed' ? 0.5 : 1,
-        pointerEvents: 'none', textShadow: '0 1px 2px #000',
-        // UPPERCASE like the battle action menu — one casing everywhere
-        textTransform: 'uppercase',
       } },
         label,
         // twin node: the alternate it is NOT wearing, so the choice reads at a glance
@@ -1363,27 +1393,21 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
         // on the node itself, same chip as the blades / battle menu
         sp && sp.spellType ? h('div', { style: { marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 } },
           pbDmgIcon(sp, 8),
-          h('span', { style: { ...pbTypeBadgeStyle(sp.spellType, 7), padding: '0 4px', letterSpacing: '0.1em' } }, sp.spellType)) : null) : null);
+          h('span', { style: { ...pbTypeBadgeStyle(sp.spellType, 7), padding: '0 4px', letterSpacing: '0.1em', borderRadius: 999 } }, sp.spellType)) : null) : null);
   });
 
-  /* Pillar headers. A clickable head (the SUBCLASS picker) must READ as a
-     button — bordered gold chip + ▾ + a CHANGE hint — not as plain text
-     that looks identical to the fixed primary-job label. */
-  const pillarHead = (x, text, color, onClick, sub) => h('div', {
-    style: {
-      position: 'absolute', left: x + '%', top: '1%', transform: 'translateX(-50%)',
-      fontSize: 9, letterSpacing: '0.16em', color, whiteSpace: 'nowrap',
-      textAlign: 'center', zIndex: 3,
-      cursor: onClick ? 'pointer' : 'default', pointerEvents: onClick ? 'auto' : 'none',
-      ...(onClick ? {
-        border: '1px solid rgba(242,196,104,0.5)', background: TREE_NODE_BG,
-        padding: '3px 8px', boxShadow: '0 0 6px rgba(242,196,104,0.18)',
-      } : {}),
-    }, onClick, title: onClick ? 'Subclass — click to change' : undefined,
+  /* Pillar heads as PILLS: the title + a tagline line under it. Until the
+     tagline table (decision C-5) is approved the line is the pillar's spell
+     count. The SUBCLASS head is a button (opens the picker) and reads as one. */
+  const pillarCount = (prefix) => [1, 2, 3, 4].reduce((n, r) => n + (tree.nodes[prefix + r] ? 1 : 0), 0);
+  const pillarHead = (x, text, color, onClick, sub, count) => h('div', {
+    key: 'head' + x,
+    className: 'pb-pillar-head' + (onClick ? ' btn' : ''),
+    style: { left: x + '%', color, borderColor: onClick ? 'rgba(242,196,104,0.5)' : (color + '55') },
+    onClick, title: onClick ? 'Subclass — click to change' : undefined,
   },
-    text,
-    onClick ? h('span', { style: { marginLeft: 5, color: EW.time } }, '▾') : null,
-    onClick ? h('div', { style: { fontSize: 7, letterSpacing: '0.22em', color: EW.time, marginTop: 2 } }, sub) : null);
+    h('span', { className: 'pb-pillar-title' }, text, onClick ? h('i', null, ' ▾') : null),
+    h('span', { className: 'pb-pillar-tag' }, onClick ? sub : (count != null ? count + ' TECHNIQUE' + (count === 1 ? '' : 'S') : sub)));
 
   const pips = [];
   for (let i = 0; i < slotCap; i++) pips.push(h('span', { key: i, style: {
@@ -1391,18 +1415,108 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
     background: i < used ? EW.time : 'transparent', border: '1px solid ' + (i < used ? EW.time : 'rgba(255,255,255,0.3)'),
   } }));
 
-  return h('div', { style: { position: 'relative', width: '100%', height: '100%', minHeight: 400 } },
-    h('svg', { viewBox: '0 0 100 100', preserveAspectRatio: 'none',
-      style: { position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 1, pointerEvents: 'none' } }, edgeNodes),
-    pillarHead(19, getJobDisplay(clsName).toUpperCase(), headColor.P),
-    pillarHead(50, (raceLabel || '').toUpperCase(), fc),
-    isFL
-      // Freelancer has no subclass — the right pillar IS the wildcard rack.
-      ? pillarHead(81, 'WILDCARDS', EW.time)
-      : pillarHead(81, secJob ? getJobDisplay(secJob).toUpperCase() : '＋ SUBCLASS',
-          secJob ? EW.ink : EW.inkMute, onOpenSubjob, secJob ? 'CHANGE' : 'SELECT'),
-    chips,
-    h('div', { style: { position: 'absolute', left: '50%', top: 'calc(91% + 30px)', transform: 'translateX(-50%)', whiteSpace: 'nowrap', zIndex: 2 } }, pips));
+  // The circuit is three rows: the pillar heads (their own strip, so the
+  // pills never sit on the ring-4 capstones), the BOARD (TREE_NODE_POS in %
+  // of it), and the slot pips under the root's label.
+  return h('div', { className: 'pb-circuit' },
+    h('div', { className: 'pb-circuit-heads' },
+      pillarHead(19, getJobDisplay(clsName).toUpperCase(), EW.space, undefined, undefined, pillarCount('P')),
+      pillarHead(50, (raceLabel || '').toUpperCase(), fc, undefined, undefined, pillarCount('R')),
+      isFL
+        // Freelancer has no subclass — the right pillar IS the wildcard rack.
+        ? pillarHead(81, 'WILDCARDS', EW.time, undefined, undefined, pillarCount('S'))
+        : pillarHead(81, secJob ? getJobDisplay(secJob).toUpperCase() : '＋ SUBCLASS',
+            secJob ? EW.ink : EW.inkMute, onOpenSubjob, secJob ? 'CHANGE' : 'SELECT')),
+    h('div', { className: 'pb-circuit-board' },
+      h('svg', { viewBox: '0 0 100 100', preserveAspectRatio: 'none',
+        style: { position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 1, pointerEvents: 'none' } }, edgeNodes),
+      chips),
+    h('div', { className: 'pb-circuit-pips' }, pips));
+}
+
+/* ══ THE TECHNIQUE PANEL (plan §5.2 item 3) — under the circuit: a category
+   disc with the glyph · `RING 2 · TIER II · DAMAGE` · the name · the desc ·
+   the chip row (AP / MP / RNG / AOE / PWR / the type badge / status effects /
+   slots) · the verb pill. Follows `techHover || techSel`. Module-level so it
+   never remounts per render. `info` = pbTechInfo(...) below. ══ */
+function pbTechInfo(tree, sealed, equipped, key, slotCap) {
+  if (!tree || !key) return null;
+  const st8 = treeNodeState(tree, sealed, equipped, key);
+  const id = key === 'root' ? null : tree.nodes[key];
+  const sp = id && typeof window.getSpellById === 'function' ? window.getSpellById(id) : null;
+  const ring = treeRingOf(key);
+  let path = null;
+  if (st8 === 'reachable' || st8 === 'far') path = computeTreeEquipPath(tree, sealed, equipped, key);
+  const newIds = path ? path.map(k => tree.nodes[k]).filter(pid => pid && !(equipped || []).includes(pid)) : [];
+  const overCap = path ? ((equipped || []).length + newIds.length > slotCap) : false;
+  const twin = (tree.alts && tree.alts[key]) || null;
+  return { key, st8, id, sp, ring, path, newIds, overCap, twin,
+    pillar: treePillarOf(key), tiers: (st8 === 'socket' && tree.sockets) ? (tree.sockets[key] || []) : null };
+}
+function TechniquePanel({ info, clsName, secJob, raceLabel, fc, onVerb, onPreview, previewLabel, previewOff, previewing, used, slotCap }) {
+  if (!info) {
+    return h('div', { className: 'pb-technique empty' },
+      h('div', { className: 'pb-technique-disc', style: { borderColor: 'rgba(255,255,255,0.18)', color: EW.inkDim } }, '◯'),
+      h('div', { className: 'pb-technique-main' },
+        h('div', { className: 'pb-technique-kicker' }, 'THE CIRCUIT'),
+        h('div', { className: 'pb-technique-name', style: { color: EW.inkMute } }, 'Select a technique'),
+        h('div', { className: 'pb-technique-desc' }, 'Hover or arrow across the circuit. ENTER equips · BACKSPACE unequips · SPACE replays the preview.')));
+  }
+  const { st8, sp, ring, key } = info;
+  const cat = sp ? classifySpellLocal(sp) : null;
+  const cc = cat ? (PB_CAT[cat] || PB_CAT.damage) : null;
+  const nc = cat ? (TREE_CAT_C[cat] || TREE_CAT_C.utility) : (st8 === 'root' ? '#e6e9f2' : EW.time);
+  const glyph = cat ? (TREE_CAT_GLYPH[cat] || TREE_CAT_GLYPH.utility) : (st8 === 'root' ? '⚔' : st8 === 'socket' ? '＋' : st8 === 'sealed' ? '🔒' : '◯');
+  const pillarName = info.pillar === 'P' ? getJobDisplay(clsName) : info.pillar === 'R' ? (raceLabel || 'RACE') : (secJob ? getJobDisplay(secJob) : 'SUBCLASS');
+  const kicker = st8 === 'root' ? 'ROOT · ALWAYS EQUIPPED'
+    : ['RING ' + ring, sp && sp.tier ? 'TIER ' + sp.tier : null, cat ? spellCategoryLabel(cat).toUpperCase() : null, (pillarName || '').toUpperCase()].filter(Boolean).join(' · ');
+  const name = st8 === 'root' ? 'Basic Attack' : st8 === 'socket' ? 'Wildcard Socket' : st8 === 'empty' ? 'Empty Node' : (sp ? sp.name : '—');
+  const desc = st8 === 'root' ? 'The vessel\'s plain strike — melee or ranged by reach. Every loadout carries it; the circuit grows from here.'
+    : st8 === 'socket' ? 'An open socket on the Freelancer\'s rack: borrow any job\'s technique of tier ' + (info.tiers || []).join(' / ') + '.'
+    : st8 === 'empty' ? (info.pillar === 'S' ? 'No subclass chosen — pick one on the pillar head to light this node.' : 'Nothing is authored on this node yet.')
+    : (sp ? (sp.desc || spellCategoryLabel(cat)) : '');
+  // chips
+  const chips = [];
+  if (sp) {
+    const pw = pbPowerStat(sp);
+    const aoe = pbAoeLabel(sp);
+    const sc = spellSlotCost(sp);
+    if (sp.apCost != null) chips.push(['AP ' + sp.apCost, EW.ink]);
+    if (sp.cost) chips.push(['MP ' + sp.cost, '#6fc3ff']);
+    if (sp.range != null) chips.push([sp.range === 0 ? 'SELF' : 'RNG ' + sp.range, EW.ink]);
+    if (aoe) chips.push(['AOE ' + aoe, EW.ink]);
+    if (pw) chips.push([pw.value + ' ' + pw.unit, pw.color]);
+    chips.push([sc + ' SLOT' + (sc > 1 ? 'S' : ''), EW.time]);
+  }
+  const effects = sp ? pbSpellEffects(sp) : [];
+  // the verb
+  let verb = null, verbCls = '', verbTitle = '';
+  if (st8 === 'equipped') { verb = 'UNEQUIP'; verbCls = 'danger'; verbTitle = 'Remove it (the rest must stay connected)'; }
+  else if (st8 === 'socket') { verb = '＋ BROWSE'; verbCls = 'gold'; verbTitle = 'Open the wildcard pool'; }
+  else if (st8 === 'sealed') { verb = 'SEALED — CLASH RULES'; verbCls = 'off'; verbTitle = 'Not allowed in this mode'; }
+  else if (st8 === 'blocked') { verb = 'NO PATH'; verbCls = 'off'; verbTitle = 'Fill the sockets between here and the root first'; }
+  else if (st8 === 'reachable' || st8 === 'far') {
+    if (info.twin) { verb = '⇄ PICK'; verbCls = 'gold'; verbTitle = 'Twin node — choose which of its two techniques to equip'; }
+    else if (info.overCap) { verb = 'NO ROOM · ' + info.newIds.length + ' SLOT' + (info.newIds.length > 1 ? 'S' : '') + ' NEEDED'; verbCls = 'off'; verbTitle = 'Unequip something first'; }
+    else if (info.path && info.path.length > 1) { verb = 'PATH · +' + info.path.length + ' NODES'; verbCls = 'gold'; verbTitle = 'Equips the whole path to reach it'; }
+    else { verb = 'EQUIP'; verbCls = 'primary'; verbTitle = 'Equip this technique'; }
+  }
+  const canPreview = st8 !== 'empty' && st8 !== 'socket';
+  return h('div', { className: 'pb-technique', style: { '--tc': nc } },
+    h('div', { className: 'pb-technique-disc', style: { borderColor: nc, color: st8 === 'equipped' || st8 === 'root' ? TREE_NODE_BG : nc, background: (st8 === 'equipped' || st8 === 'root') ? nc : 'transparent' } }, glyph),
+    h('div', { className: 'pb-technique-main' },
+      h('div', { className: 'pb-technique-kicker' }, kicker),
+      h('div', { className: 'pb-technique-name' }, name,
+        sp && sp.spellType ? h('span', { style: { ...pbTypeBadgeStyle(sp.spellType, 8), borderRadius: 999, marginLeft: 8, verticalAlign: 'middle' } }, sp.spellType) : null,
+        sp ? pbDmgIcon(sp, 10) : null),
+      h('div', { className: 'pb-technique-desc' }, desc),
+      (chips.length || effects.length) ? h('div', { className: 'pb-technique-chips' },
+        ...chips.map(([t, c], i) => h('span', { key: 'c' + i, className: 'pb-technique-chip', style: { color: c } }, t)),
+        ...effects.map((ef, i) => h('span', { key: 'e' + i, className: 'pb-technique-chip fx', style: { color: ef.color || EW.inkMute, borderColor: (ef.color || EW.inkMute) + '66' }, title: ef.txt }, ef.txt))) : null,
+      h('div', { className: 'pb-technique-verbs' },
+        verb ? h('button', { className: 'pb-verb ' + verbCls, disabled: verbCls === 'off', onClick: () => onVerb && onVerb(info), title: verbTitle }, verb) : h('span', { className: 'pb-verb-note' }, st8 === 'root' ? 'ALWAYS EQUIPPED' : ''),
+        canPreview ? h('button', { className: 'pb-verb ghost' + (previewing ? ' live' : ''), onClick: () => onPreview && onPreview(info), disabled: !!previewOff, title: previewOff ? 'Preview off' : 'Play the cast on the stage (SPACE)' }, previewOff ? '▶ PREVIEW OFF' : (previewing ? '■ PLAYING' : '▶ PREVIEW')) : null,
+        h('span', { className: 'pb-technique-slots' }, used + ' / ' + slotCap + ' SLOTS'))));
 }
 // ── Race traits: passives & terrain rules shown on the hero sheet ──
 // Entries marked CODED are live engine rules (map.js adaptation fns,
@@ -1648,6 +1762,17 @@ function PartyBuilder() {
   const [_, forceUpdate] = React.useState(0);
   const refresh = () => forceUpdate(n => n + 1);
   const [spellTip, setSpellTip] = React.useState(null); // { sp, x, y }
+  /* THE CIRCUIT selection model (plan §5.2 item 2): techSel = the node the
+     keyboard / a click owns, techHover = the node under the pointer; the
+     technique panel follows techHover || techSel. previewState mirrors the
+     viewer's MOVE PREVIEW ({ playing, ms, name }); previewNote is the pill's
+     one-shot message for vessels that cannot preview. */
+  const [techSel, setTechSel] = React.useState(null);
+  const [techHover, setTechHover] = React.useState(null);
+  const [previewState, setPreviewState] = React.useState(null);
+  const [previewNote, setPreviewNote] = React.useState(null);
+  const previewHoverTimer = React.useRef(0);
+  const previewNoteTimer = React.useRef(0);
   const showSpellTip = (sp, e) => { if (sp) setSpellTip({ sp, x: e.clientX, y: e.clientY }); };
   const hideSpellTip = () => setSpellTip(null);
   /* the four tabs on the glass (PB_TABS); ROSTER first, as the references open */
@@ -2001,7 +2126,7 @@ function PartyBuilder() {
 
       st.partyMeta[player][slot].customSpells = buildDefaultCustomSpells(unitRace, mainJob, val);
     st.teamLockedIn=false; refresh(); }
-  function toggleSpell(spellId) { if (!spellId) return; if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:6; const m=st.partyMeta[player][slot]; if (!Array.isArray(m.customSpells)) m.customSpells=[]; const arr=m.customSpells,idx=arr.indexOf(spellId); if(idx>=0)arr.splice(idx,1);else{if(usedSpellSlots(arr)+spellIdSlotCost(spellId)>slotCap){sfx('uiError');return;}arr.push(spellId);} st.teamLockedIn=false; sfx('uiCursorMove'); refresh(); }
+  function toggleSpell(spellId) { if (!spellId) return; if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:6; const m=st.partyMeta[player][slot]; if (!Array.isArray(m.customSpells)) m.customSpells=[]; const arr=m.customSpells,idx=arr.indexOf(spellId); if(idx>=0)arr.splice(idx,1);else{if(usedSpellSlots(arr)+spellIdSlotCost(spellId)>slotCap){sfx('uiError');return;}arr.push(spellId); if (typeof window.getSpellById==='function') pbPreview(window.getSpellById(spellId));} st.teamLockedIn=false; sfx('uiCursorMove'); refresh(); }
   function resetCustomSpells() { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={};
     st.partyMeta[player][slot].customSpells = buildDefaultCustomSpells(unitRace, clsName, secJob);
     st.teamLockedIn=false; sfx('uiButtonConfirm'); refresh(); }
@@ -2077,6 +2202,42 @@ function PartyBuilder() {
   const [twinPick, setTwinPick] = React.useState(null);
   React.useEffect(() => { setFlSocketPick(null); setTwinPick(null); }, [player, slot, clsName, unitRace]);
   const treeShakeTimer = React.useRef(null);
+  React.useEffect(() => { setTechSel(null); setTechHover(null); setPreviewState(null); }, [player, slot, clsName, unitRace]);
+  React.useEffect(() => {
+    const cv = window.EWCharViewer;
+    if (cv && typeof cv.onState === 'function') cv.onState((ps) => setPreviewState(ps && ps.playing ? ps : null));
+    return () => {
+      if (cv && typeof cv.onState === 'function') cv.onState(null);
+      if (previewHoverTimer.current) clearTimeout(previewHoverTimer.current);
+      if (previewNoteTimer.current) clearTimeout(previewNoteTimer.current);
+    };
+  }, []);
+  /* MOVE PREVIEW triggers (plan §5.2 item 6). previewOff: the pause-menu
+     Animation toggle or the kill-switch. pbPreview(spOrNull, opts): null =
+     the basic attack (root). Hover = after a 180 ms debounce and only when
+     idle; click / equip / pick = immediately, restarting any running clip.
+     Sprite-only vessels get the NO PREVIEW note instead. */
+  const previewOff = !!(st.animationsDisabled || window.EW_NO_PB_PREVIEW);
+  const pbNote = (txt) => {
+    setPreviewNote(txt);
+    if (previewNoteTimer.current) clearTimeout(previewNoteTimer.current);
+    previewNoteTimer.current = setTimeout(() => setPreviewNote(null), 1400);
+  };
+  const pbPreview = (sp, opts) => {
+    opts = opts || {};
+    if (previewHoverTimer.current) { clearTimeout(previewHoverTimer.current); previewHoverTimer.current = 0; }
+    if (previewOff) { if (!opts.hover) pbNote('PREVIEW OFF'); return; }
+    const cv = window.EWCharViewer;
+    if (!cv || typeof cv.playSpell !== 'function') return;
+    const fire = () => {
+      if (!cv.isMounted || !cv.isMounted()) return;
+      if (opts.hover && cv.isPlaying && cv.isPlaying()) return;   // hover never cuts a running clip
+      const ms = cv.playSpell(sp, { attack: !sp, name: sp ? sp.name : 'BASIC ATTACK' });
+      if (!ms && !opts.hover) pbNote(cv.hasClips && cv.hasClips() ? 'NO CLIP FOR THIS TECHNIQUE' : 'NO PREVIEW · SPRITE VESSEL');
+    };
+    if (opts.hover) previewHoverTimer.current = setTimeout(() => { previewHoverTimer.current = 0; fire(); }, 180);
+    else fire();
+  };
   const shakeTreeNode = (key) => {
     setTreeShake(key);
     if (treeShakeTimer.current) clearTimeout(treeShakeTimer.current);
@@ -2108,19 +2269,27 @@ function PartyBuilder() {
       const newIds = path.map(k => unitTree.nodes[k]).filter(pid => pid && !arr.includes(pid));
       if (arr.length + newIds.length > slotCap) { sfx('uiError'); shakeTreeNode(nodeKey); return; }
       for (const pid of newIds) arr.push(pid);
+      const spNow = typeof window.getSpellById === 'function' ? window.getSpellById(id) : null;
+      if (spNow) pbPreview(spNow);                       // the equip plays the cast
     }
     setTreeHoverPath(null);
     st.teamLockedIn = false; sfx('uiCursorMove'); refresh();
   }
-  const treeNodeHoverIn = (nodeKey, sp, e) => {
-    showSpellTip(sp, e);
+  // The circuit's hover: the technique panel follows it (no floating card —
+  // the panel IS the card here), the path lights, the stage previews.
+  const treeNodeHoverIn = (nodeKey, sp) => {
+    setTechHover(nodeKey);
     const id = unitTree ? unitTree.nodes[nodeKey] : null;
     if (id && !(customSpells || []).includes(id) && !treeSealed.has(id)) {
       const path = computeTreeEquipPath(unitTree, treeSealed, customSpells || [], nodeKey);
       setTreeHoverPath(path && path.length > 1 ? path : null);
     } else setTreeHoverPath(null);
+    if (sp || nodeKey === 'root') pbPreview(sp || null, { hover: true });
   };
-  const treeNodeHoverOut = () => { hideSpellTip(); setTreeHoverPath(null); };
+  const treeNodeHoverOut = () => {
+    setTechHover(null); setTreeHoverPath(null);
+    if (previewHoverTimer.current) { clearTimeout(previewHoverTimer.current); previewHoverTimer.current = 0; }
+  };
   /* Freelancer socket flow: click an open socket → picker overlay; picking a
      spell equips it (customSpells only — placement re-derives). */
   function flEquipWildcard(spellId) {
@@ -2137,6 +2306,7 @@ function PartyBuilder() {
     arr.push(spellId);
     setFlSocketPick(null);
     hideSpellTip();
+    if (typeof window.getSpellById === 'function') pbPreview(window.getSpellById(spellId));
     st.teamLockedIn = false; sfx('uiCursorMove'); refresh();
   }
   /* Twin-node flow: the candidate loadout that equips ALTERNATE spellId on
@@ -2169,6 +2339,7 @@ function PartyBuilder() {
     setTwinPick(null);
     setTreeHoverPath(null);
     hideSpellTip();
+    if (typeof window.getSpellById === 'function') pbPreview(window.getSpellById(spellId));
     st.teamLockedIn = false; sfx('uiCursorMove'); refresh();
   }
   const flSocketPool = React.useMemo(() => {
@@ -2237,15 +2408,54 @@ function PartyBuilder() {
         return;
       }
       if (anyWindow || (standalone && tbView === 'locker')) return;
+      const onButton = t && t.tagName === 'BUTTON';
+      const circuitKeys = pbTab === 'tech' && !!unitTree;   // the circuit owns the arrows on TECHNIQUES (SHIFT+← → still walks the row)
       if (k === 'q' || k === 'Q' || k === '[') { e.preventDefault(); cycleTab(-1); }
       else if (k === 'e' || k === 'E' || k === ']') { e.preventDefault(); cycleTab(1); }
       else if (k >= '1' && k <= '4' && PB_TABS[+k - 1]) { e.preventDefault(); setTab(PB_TABS[+k - 1].id); }
+      else if (circuitKeys && !e.shiftKey && (k === 'ArrowUp' || k === 'ArrowDown' || k === 'ArrowLeft' || k === 'ArrowRight')) {
+        e.preventDefault();
+        const dir = k === 'ArrowUp' ? 'up' : k === 'ArrowDown' ? 'down' : k === 'ArrowLeft' ? 'left' : 'right';
+        const next = techSel ? treeStepKey(techSel, dir) : 'root';
+        if (next !== techSel) {
+          setTechSel(next); setTechHover(null); sfx('uiCursorMove');
+          const nid = next === 'root' ? null : unitTree.nodes[next];
+          const nsp = nid && typeof window.getSpellById === 'function' ? window.getSpellById(nid) : null;
+          if (nsp || next === 'root') pbPreview(nsp, { hover: true });
+        }
+      }
       else if (k === 'ArrowLeft') { e.preventDefault(); selectSlot((slot - 1 + teamSize) % teamSize); }
       else if (k === 'ArrowRight') { e.preventDefault(); selectSlot((slot + 1) % teamSize); }
+      else if (circuitKeys && techSel && !onButton && k === 'Enter') { e.preventDefault(); techVerb(pbTechInfo(unitTree, treeSealed, customSpells || [], techSel, slotCap)); }
+      else if (circuitKeys && techSel && k === 'Backspace') {
+        e.preventDefault();
+        if (treeNodeState(unitTree, treeSealed, customSpells || [], techSel) === 'equipped') treeNodeClick(techSel); else sfx('uiError');
+      }
+      else if (circuitKeys && !onButton && k === ' ') {
+        e.preventDefault();
+        const info = pbTechInfo(unitTree, treeSealed, customSpells || [], techHover || techSel, slotCap);
+        if (info && info.st8 !== 'empty' && info.st8 !== 'socket') pbPreview(info.sp || null);
+      }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   });
+
+  /* THE TECHNIQUE PANEL's verb (plan §5.2 item 3): the same thing a click
+     on the chip does — treeNodeClick / the twin picker / the socket picker. */
+  const techVerb = (info) => {
+    if (!info || !unitTree) return;
+    const { st8, key } = info;
+    if (st8 === 'socket') { if (unitTree.isFreelancer) { setFlSocketPick(key); sfx('uiCursorMove'); } return; }
+    if (st8 === 'equipped') { treeNodeClick(key); return; }
+    if (st8 === 'reachable' || st8 === 'far') {
+      if (info.twin && !isArena) { setTwinPick(key); sfx('uiCursorMove'); return; }
+      if (info.overCap) { sfx('uiError'); shakeTreeNode(key); return; }
+      treeNodeClick(key); return;
+    }
+    sfx('uiError');
+  };
+  const techInfo = (useTree && unitTree) ? pbTechInfo(unitTree, treeSealed, customSpells || [], techHover || techSel, slotCap) : null;
 
   /* ── HEAD ── */
   const head = h('div', { className: 'ms-tty-head pb-head' },
@@ -2359,22 +2569,27 @@ function PartyBuilder() {
 
       // ── the spell tree (every job — Freelancer gets wildcard sockets) ──
       useTree&&unitTree&&h(React.Fragment, null,
-        h('div', { style:{ display:'flex', alignItems:'center', gap:6, flexShrink:0, margin:'4px 6px 3px 10px' } },
-          h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.16em' } }, 'SPELL TREE'),
+        h('div', { className: 'pb-circuit-head' },
+          h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.16em' } }, 'THE CIRCUIT'),
           h('span', { style:{ fontSize:9, color:`${fc}bb`, letterSpacing:'0.08em', textTransform:'uppercase' } }, getJobDisplay(clsName), unitTree.isFreelancer ? ' + WILDCARDS' : (secJob ? ' + ' + getJobDisplay(secJob) : '')),
           h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em', marginLeft:'auto', textAlign:'right' } },
             unitTree.isFreelancer ? 'CLICK A ＋ SOCKET · BORROW ANY JOB\'S SPELL'
-              : (unitTree.alts && Object.keys(unitTree.alts).length) ? 'CLICK A NODE · ⇄ NODES HOLD TWO SPELLS — PICK ONE'
-              : 'CLICK A NODE · DISTANT NODES AUTO-EQUIP THE PATH')),
-        h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', paddingTop:6, paddingBottom:4, position:'relative' } },
+              : (unitTree.alts && Object.keys(unitTree.alts).length) ? 'HOVER PREVIEWS · ⇄ NODES HOLD TWO'
+              : 'HOVER PREVIEWS · DISTANT NODES EQUIP THE PATH')),
+        h('div', { className: 'pb-circuit-scroll', onMouseLeave: treeNodeHoverOut },
           h(SpellTreePanel, { tree: unitTree, sealed: treeSealed, equipped: customSpells || [],
             slotCap, fc, clsName, secJob,
             raceLabel: (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace),
             onNodeClick: treeNodeClick, onNodeHoverIn: treeNodeHoverIn, onNodeHoverOut: treeNodeHoverOut,
             hoverPath: treeHoverPath, shakeKey: treeShake,
+            selKey: techSel, onSelect: (key) => setTechSel(key),
             onOpenSubjob: (!isArena && !unitTree.isFreelancer) ? () => { setEquipPicker('subjob'); sfx('uiCursorMove'); } : undefined,
             onSocketClick: unitTree.isFreelancer ? (key) => { setFlSocketPick(key); sfx('uiCursorMove'); } : undefined,
-            onTwinPick: (unitTree.alts && Object.keys(unitTree.alts).length) ? (key) => { setTwinPick(key); sfx('uiCursorMove'); } : undefined }))),
+            onTwinPick: (unitTree.alts && Object.keys(unitTree.alts).length) ? (key) => { setTwinPick(key); sfx('uiCursorMove'); } : undefined })),
+        h(TechniquePanel, { info: techInfo, clsName, secJob, fc,
+          raceLabel: (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace),
+          onVerb: techVerb, onPreview: (info) => pbPreview(info.sp || null),
+          previewOff, previewing: !!previewState, used: (customSpells || []).length, slotCap })),
 
       // ── flat pool — FALLBACK only (tree fns unavailable) ──
       (!useTree&&!isArena&&(spellPool.length>0||raceAbilities.length>0))&&h(React.Fragment, null,
@@ -2604,7 +2819,13 @@ function PartyBuilder() {
       h('div', { className: 'pb-stage-view' },
         h('div', { style:{ position:'absolute', left:'50%', top:'52%', transform:'translate(-50%,-50%)', width:'78%', aspectRatio:'1', background:`radial-gradient(circle, ${fc}26, transparent 62%)`, filter:'blur(18px)', pointerEvents:'none' } }),
         h('div', { style:{ position:'absolute', bottom:8, left:'50%', transform:'translateX(-50%)', width:'62%', height:12, background:`radial-gradient(ellipse, ${fc}66, transparent 70%)`, filter:'blur(3px)', pointerEvents:'none' } }),
-        h(HeroViewer3D, { race:unitRace, gender:identity.gender||'male', cls:clsName, faction:unitFaction })),
+        h(HeroViewer3D, { race:unitRace, gender:identity.gender||'male', cls:clsName, faction:unitFaction }),
+        // MOVE PREVIEW pill (plan §5.2 item 5): shows while a cast clip runs
+        // on the stage; the note for vessels that cannot preview; PREVIEW OFF
+        // on TECHNIQUES when the trigger is disabled.
+        previewState ? h('div', { className: 'pb-stage-pill live' }, h('i', null), 'MOVE PREVIEW · ', (previewState.name || '').toUpperCase())
+          : previewNote ? h('div', { className: 'pb-stage-pill note' }, previewNote)
+          : (previewOff && pbTab === 'tech') ? h('div', { className: 'pb-stage-pill off' }, 'PREVIEW OFF') : null),
       pbTab === 'roster' ? quickCard : null),
     pbTab !== 'roster' ? h('div', { key: 'stats', className: 'pb-zone pb-zone-stats' }, statsPanel) : null);
 

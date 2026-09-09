@@ -14,6 +14,7 @@ const REPO_ROOT = __dirname;
 const read = (f) => fs.readFileSync(path.join(REPO_ROOT, f), 'utf8');
 const PB = read('party-builder.js');
 const CSS = read('styles-base.css');
+const TR = read('three-renderer.js');
 
 test('PB_TABS carries the four tabs, in order, on window', () => {
     const m = PB.match(/const PB_TABS = \[([\s\S]*?)\];/);
@@ -79,4 +80,49 @@ test('styles-base.css carries THE FORGE TERMINAL block', () => {
 
 test('champ-rework (Phase 6) still finds the CODEX_LORE rows it asserts on', () => {
     assert.ok(PB.includes("'gangster': '") && PB.includes("'nun': '"), 'CODEX_LORE rows for gangster / nun must stay');
+});
+
+/* ── Stage 2 (2026-09-09): the circuit, the technique panel, the move preview ── */
+test('the cast chain table is SHARED: the board and the viewer both read _castChainFor', () => {
+    assert.ok(/function _castChainFor\(kind\)/.test(TR), '_castChainFor missing');
+    assert.ok(/function _attackChainFor\(kind\)/.test(TR), '_attackChainFor missing');
+    const castSites = (TR.match(/_castChainFor\(/g) || []).length;
+    const atkSites = (TR.match(/_attackChainFor\(/g) || []).length;
+    assert.ok(castSites >= 3, `_castChainFor must be defined AND used by the board AND the viewer (found ${castSites})`);
+    assert.ok(atkSites >= 3, `_attackChainFor must be defined AND used by the board AND the viewer (found ${atkSites})`);
+    assert.ok(/var _castChain = _castChainFor\(_ck\)/.test(TR), 'the board cast site must call the shared table');
+    assert.ok(/var _atkChain = _attackChainFor\(_ak\)/.test(TR), 'the board attack site must call the shared table');
+    assert.ok(!/\(_ck === 'support'\) \? \['castSupport'/.test(TR.replace(/function _castChainFor[\s\S]*?\n    \}\n/, '')), 'an inline cast chain table crept back in');
+});
+
+test('EWCharViewer exposes the MOVE PREVIEW API', () => {
+    for (const k of ['play', 'playSpell', 'stopPreview', 'isPlaying', 'onState', 'hasClips']) {
+        assert.ok(new RegExp('\\n        ' + k + ': function').test(TR), `EWCharViewer.${k} missing`);
+    }
+    assert.ok(/function _cvPlaySpell\(spell, opts\)[\s\S]{0,900}classifySpellAnimKind\(spell\)/.test(TR), 'playSpell must classify through sprites.js classifySpellAnimKind');
+    assert.ok(/v\.clips = baked;/.test(TR), 'the viewer must keep the WHOLE baked clip map');
+    assert.ok(/Math\.min\(ms, 1400\)/.test(TR), 'the preview keeps the board\'s 1.4 s cap (opts.full lifts it)');
+});
+
+test('the circuit, the technique panel and the preview triggers are in the builder', () => {
+    for (const sym of ['function treeNodeState(', 'function treeStepKey(', 'function pbTechInfo(', 'function TechniquePanel(', 'const pbPreview = ', 'const techVerb = ']) {
+        assert.ok(PB.includes(sym), `${sym} missing`);
+    }
+    assert.ok(PB.includes("className: 'pb-circuit'") && PB.includes("className: 'pb-technique'"), 'circuit / technique classes missing');
+    assert.ok(/h\('path', \{ key: i, d: `M/.test(PB), 'connectors must be round-capped <path>s');
+    assert.ok(PB.includes("className: 'pb-stage-pill live'"), 'the MOVE PREVIEW pill is missing');
+    assert.ok(PB.includes('window.EW_NO_PB_PREVIEW') && PB.includes('st.animationsDisabled'), 'the preview kill-switches are missing');
+    assert.ok(/pbPreview\(sp \|\| null, \{ hover: true \}\)/.test(PB), 'node hover must preview (debounced)');
+    assert.ok(/cv\.playSpell\(sp, \{ attack: !sp/.test(PB), 'the builder must go through EWCharViewer.playSpell');
+    assert.ok(!/VFX3D\.fire\(/.test(PB), 'party-builder.js must never call the relayed VFX3D.fire');
+    for (const sel of ['.pb-circuit-edge', '.pb-node', '.pb-pillar-head', '.pb-technique', '.pb-verb', '.pb-stage-pill']) {
+        assert.ok(CSS.includes(sel + ' {') || CSS.includes(sel + ','), `${sel} rule missing`);
+    }
+});
+
+test('the party row is sized by --pb-portrait (the user asked for bigger portraits)', () => {
+    const m = CSS.match(/\.pb-party \{ --pb-portrait: (\d+)px;/);
+    assert.ok(m, '--pb-portrait token missing on .pb-party');
+    assert.ok(+m[1] >= 88, `portraits must be at least 88px (got ${m[1]})`);
+    assert.ok(/\.pb-party-ring \{ position: relative; width: var\(--pb-portrait\); height: var\(--pb-portrait\);/.test(CSS), 'the ring must read the token');
 });

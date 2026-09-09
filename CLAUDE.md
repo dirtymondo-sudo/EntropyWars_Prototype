@@ -393,9 +393,31 @@ CSS = styles-base.css "THE FORGE TERMINAL" block (`#builderOverlay` is
 positioned there because the CRT root is absolute). `npm test` runs
 `party-builder.test.js` (source scans: tabs, root, row, one stage, the
 lock-flow names, the mechanic names). Every mechanic kept its function name
-(plan rule 3.5) — re-skin, never re-implement. Next: Stage 2 (the circuit,
-the technique panel, `EWCharViewer.play` / `playSpell` + the shared
-`_castChainFor` chain table).
+(plan rule 3.5) — re-skin, never re-implement.
+**Stage 2 shipped (2026-09-09)**: TECHNIQUES is THE CIRCUIT —
+`SpellTreePanel` (same name, same `TREE_NODE_POS`, same rules) draws
+round-capped `<path>` connectors, 50 px chips (capstones 58 px in a
+`.pb-node-crown` ring), pillar-head PILLS in their own strip
+(`.pb-circuit` = heads · board · pips), a gold halo on `techSel`; the
+TECHNIQUE PANEL (`TechniquePanel`, `.pb-technique`, fed by
+`pbTechInfo`) follows `techHover || techSel` and its verb (`techVerb`)
+does what the chip click does. Keys on TECHNIQUES: arrows walk the
+circuit (`treeStepKey`; SHIFT+← → = the party row), ENTER = verb,
+BACKSPACE = unequip, SPACE = replay. THE MOVE PREVIEW: three-renderer.js
+`_castChainFor(kind)` / `_attackChainFor(kind)` are the ONE chain table
+(the board's cast + attack sites call them — never inline a chain
+again); `EWCharViewer` keeps the whole library bake and exposes
+`play(slotOrChain, { full, name })`, `playSpell(spell, { attack, full })`
+(`classifySpellAnimKind` → the chain; a basic attack → the def's
+`basicAttackKind`), `stopPreview`, `isPlaying`, `hasClips`, `onState(fn)`.
+The builder's `pbPreview(sp, { hover })` fires it (hover / keyboard =
+180 ms debounce, idle only; click / equip = immediately) and the stage
+wears `.pb-stage-pill` (`MOVE PREVIEW · name`, `NO PREVIEW · SPRITE
+VESSEL`, `PREVIEW OFF`). Kill-switches: `state.animationsDisabled`,
+`window.EW_NO_PB_PREVIEW`. The party row is sized by
+`.pb-party { --pb-portrait }` (96 / 76 / 64 px by breakpoint). Next:
+Stage 3 (the VFX in the viewer — `ThreeVFX.attach`, `VFX3D.stage`;
+party-builder.js must never call the relayed `VFX3D.fire`).
 
 ## TRAINING MATCH (instant CPU turns vs a human) — added 2026-09-07
 Match-select → CONFIG column → **CPU TEMPO: Cinematic / ⚡ Training**

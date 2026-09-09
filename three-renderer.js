@@ -10625,6 +10625,42 @@ const ThreeRenderer = (function () {
         return true;
     }
 
+    /* THE CAST CHAIN TABLE — one source for the board AND the party-builder
+       preview (PARTY_BUILDER_PLAN §5.2). A spell's animation kind (sprites.js
+       classifySpellAnimKind, tagged by battle.js triggerCastAnim) resolves to
+       a slot fallback chain; the first slot the rig carries plays. Never
+       inline this table again: the viewer's MOVE PREVIEW must not drift from
+       what the battle plays (party-builder.test.js checks both call sites). */
+    function _castChainFor(kind) {
+        return (kind === 'support') ? ['castSupport', 'castMagic', 'cast'] :
+            (kind === 'ranged')  ? ['castRanged', 'cast'] :
+            (kind === 'throw')   ? ['castThrow', 'castRanged', 'cast'] :
+            (kind === 'plant')   ? ['castPlant', 'castSupport', 'cast'] :
+            (kind === 'melee')   ? ['castMelee', 'cast'] :
+            (kind === 'heal')    ? ['castHeal', 'castSupport', 'castMagic', 'cast'] :
+            (kind === 'aoe')     ? ['castAOE', 'castMagic', 'cast'] :
+            (kind === 'slam')    ? ['castSlam', 'castAOE', 'castMelee', 'cast'] :
+            (kind === 'arrow')   ? ['castArrow', 'castRanged', 'cast'] :
+            (kind === 'kick')    ? ['castKick', 'castMelee', 'cast'] :
+            (kind === 'punch')   ? ['castPunch', 'castMelee', 'cast'] :
+            (kind === 'claw')    ? ['castClaw', 'castMelee', 'cast'] :
+            (kind === 'consume') ? ['castConsume', 'castSupport', 'cast'] :
+            (kind === 'deploy')  ? ['castTrap', 'castPlant', 'castSupport', 'cast'] :
+            (kind === 'magic')   ? ['castMagic', 'cast'] : ['cast'];
+    }
+    /* The BASIC ATTACK chain (battle.js triggerAttackAnim: melee / ranged by
+       reach, 'chop' for tree felling, or the def's basicAttackKind). */
+    function _attackChainFor(kind) {
+        return (kind === 'ranged') ? ['castRanged', 'cast']
+            : (kind === 'chop')  ? ['castChop', 'castMelee', 'cast']   // tree chops + dig ops
+            : (kind === 'magic') ? ['castMagic', 'cast']
+            : (kind === 'arrow') ? ['castArrow', 'castRanged', 'cast']
+            : (kind === 'punch') ? ['castPunch', 'castMelee', 'cast']
+            : (kind === 'claw')  ? ['castClaw', 'castMelee', 'cast']
+            : (kind === 'throw') ? ['castThrow', 'castRanged', 'cast']
+            : ['castMelee', 'cast'];
+    }
+
     /* One-shot action clip (cast variants / hit — cast* also plays for basic
        attacks). `name` may be an ARRAY of slot names tried in order (fallback
        chain, e.g. ['castMagic','cast']). Owns the animation for the clip's
@@ -18551,14 +18587,7 @@ const ThreeRenderer = (function () {
                     // is RETIRED for model units — the clip owns the strike;
                     // sprite units keep the lunge + attack sheet fallback.
                     var _ak = state._attackAnimKind ? state._attackAnimKind[uid] : null;
-                    var _atkChain = (_ak === 'ranged') ? ['castRanged', 'cast']
-                        : (_ak === 'chop')  ? ['castChop', 'castMelee', 'cast']   // tree chops + dig ops
-                        : (_ak === 'magic') ? ['castMagic', 'cast']
-                        : (_ak === 'arrow') ? ['castArrow', 'castRanged', 'cast']
-                        : (_ak === 'punch') ? ['castPunch', 'castMelee', 'cast']
-                        : (_ak === 'claw')  ? ['castClaw', 'castMelee', 'cast']
-                        : (_ak === 'throw') ? ['castThrow', 'castRanged', 'cast']
-                        : ['castMelee', 'cast'];
+                    var _atkChain = _attackChainFor(_ak);   // shared table — see _castChainFor
                     if (!_maybeStartModelAnim(uid, _atkChain)) {
                         var dir = state._attackAnimDir ? state._attackAnimDir[uid] : null;
                         if (dir && !_ewAnimsOff()) {
@@ -18587,22 +18616,7 @@ const ThreeRenderer = (function () {
                     // Spell category → clip fallback chain (kind tagged by
                     // battle.js triggerCastAnim via classifySpellAnimKind).
                     var _ck = state._castAnimKind ? state._castAnimKind[uid] : null;
-                    var _castChain =
-                        (_ck === 'support') ? ['castSupport', 'castMagic', 'cast'] :
-                        (_ck === 'ranged')  ? ['castRanged', 'cast'] :
-                        (_ck === 'throw')   ? ['castThrow', 'castRanged', 'cast'] :
-                        (_ck === 'plant')   ? ['castPlant', 'castSupport', 'cast'] :
-                        (_ck === 'melee')   ? ['castMelee', 'cast'] :
-                        (_ck === 'heal')    ? ['castHeal', 'castSupport', 'castMagic', 'cast'] :
-                        (_ck === 'aoe')     ? ['castAOE', 'castMagic', 'cast'] :
-                        (_ck === 'slam')    ? ['castSlam', 'castAOE', 'castMelee', 'cast'] :
-                        (_ck === 'arrow')   ? ['castArrow', 'castRanged', 'cast'] :
-                        (_ck === 'kick')    ? ['castKick', 'castMelee', 'cast'] :
-                        (_ck === 'punch')   ? ['castPunch', 'castMelee', 'cast'] :
-                        (_ck === 'claw')    ? ['castClaw', 'castMelee', 'cast'] :
-                        (_ck === 'consume') ? ['castConsume', 'castSupport', 'cast'] :
-                        (_ck === 'deploy')  ? ['castTrap', 'castPlant', 'castSupport', 'cast'] :
-                        (_ck === 'magic')   ? ['castMagic', 'cast'] : ['cast'];
+                    var _castChain = _castChainFor(_ck);   // shared table (the builder preview uses it too)
                     if (!_maybeStartModelAnim(uid, _castChain)
                         && !_maybeStartSpriteAnim(uid, _dmg ? 'attack' : 'spell')) {
                         _castTweens.set(uid, {
@@ -28699,6 +28713,10 @@ const ThreeRenderer = (function () {
         }
         if (_cv.mixer) { try { _cv.mixer.stopAllAction(); } catch (_e) {} _cv.mixer = null; }
         _cv.url = null;
+        // MOVE PREVIEW state (PARTY_BUILDER_PLAN §5.2): the clip table, the
+        // lazily built actions and any running one-shot die with the model.
+        _cvPreviewEnd(true);
+        _cv.def = null; _cv.clips = null; _cv.clipUrls = null; _cv.actions = null; _cv.idleAct = null;
     }
 
     function _cvFrame() {
@@ -28826,27 +28844,39 @@ const ThreeRenderer = (function () {
             v.stage.add(wrap);
             // idle animation: retargeted library bake first, per-character
             // Meshy clip GLB as the fallback — same chain as the board.
+            v.def = def; v.clips = null; v.clipUrls = null; v.actions = {}; v.idleAct = null;
             if (hasSkin) {
                 var mixer = new THREE.AnimationMixer(m);
                 v.mixer = mixer;
+                // a one-shot preview clip ran out → back to idle (MOVE PREVIEW)
+                mixer.addEventListener('finished', function (ev) {
+                    if (!_cv || _cv.mixer !== mixer || !_cv.preview) return;
+                    if (ev.action === _cv.preview.act) _cvPreviewEnd(false);
+                });
                 function _playIdleClip(clip, ts) {
                     if (!_cv || tok !== _cvToken || v.mixer !== mixer || !clip) return;
                     var act = mixer.clipAction(clip);
                     act.setLoop(THREE.LoopRepeat, Infinity);
                     if (ts) act.timeScale = ts;
                     act.play();
+                    v.idleAct = act;
+                    v.actions.idle = act;
                 }
                 if (_animLibActive(def)) {
                     _animLibBakeForModel(def, entry, function (baked) {
+                        if (!_cv || tok !== _cvToken || v.mixer !== mixer) return;
+                        if (baked) v.clips = baked;             // EVERY retargeted slot — the preview picks from it
                         if (baked && baked.idle) {
                             _playIdleClip(baked.idle, (def.libTimeScales && def.libTimeScales.idle) || 1);
                         } else if (def.clips && def.clips.idle) {
+                            v.clipUrls = def.clips;
                             _loadUnitGLB(def.clips.idle, function (ce) {
                                 _playIdleClip(ce.clips && ce.clips[0], def.idleTimeScale || 0);
                             });
                         }
                     });
                 } else if (def.clips && def.clips.idle) {
+                    v.clipUrls = def.clips;                     // per-character Meshy exports, loaded on demand
                     _loadUnitGLB(def.clips.idle, function (ce) {
                         _playIdleClip(ce.clips && ce.clips[0], def.idleTimeScale || 0);
                     });
@@ -28866,6 +28896,128 @@ const ThreeRenderer = (function () {
             _cvHostState(host, 'fail');
         }
         return true;
+    }
+
+    /* ── MOVE PREVIEW (PARTY_BUILDER_PLAN §5.2) — the viewer plays a cast ──
+       `_cvPlay(names, opts)`: `names` = a slot or a fallback chain (the SAME
+       chains the board uses — _castChainFor / _attackChainFor); the first
+       slot the rig carries plays once (LoopOnce, clampWhenFinished, the
+       per-slot time scale the board applies: def.libTimeScales[slot] for a
+       library bake, else the UAL_SLOTS default, else the def's Meshy
+       castTimeScale), crossfaded from idle; when it finishes (or the board's
+       1.4 s cap runs out — `opts.full` lifts the cap) idle crossfades back.
+       One preview at a time: a new play cuts the old one. Returns the clip's
+       ms, 0 when nothing can play (sprite-only vessel, no rig, no clip yet).
+       `v.onState({ playing, ms, name })` reports every start / end. */
+    var _cvPreviewTimer = 0;
+    function _cvEmitState(playing, ms, name) {
+        if (!_cv || typeof _cv.onState !== 'function') return;
+        try { _cv.onState({ playing: playing || null, ms: ms || 0, name: name || null }); } catch (_e) {}
+    }
+    function _cvPreviewEnd(silent) {
+        if (_cvPreviewTimer) { clearTimeout(_cvPreviewTimer); _cvPreviewTimer = 0; }
+        if (!_cv || !_cv.preview) return;
+        var pv = _cv.preview;
+        _cv.preview = null;
+        var idle = _cv.idleAct;
+        if (idle && _cv.mixer && pv.act) {
+            try {
+                idle.enabled = true; idle.reset(); idle.play();
+                idle.crossFadeFrom(pv.act, 0.2, false);
+            } catch (_e) {}
+        } else if (pv.act) { try { pv.act.stop(); } catch (_e) {} }
+        if (!silent) _cvEmitState(null, 0, pv.name);
+    }
+    function _cvSlotScale(def, slot, fromLib) {
+        if (fromLib) {
+            if (def && def.libTimeScales && def.libTimeScales[slot]) return def.libTimeScales[slot];
+            if (typeof UAL_SLOTS !== 'undefined' && UAL_SLOTS[slot] && UAL_SLOTS[slot].ts) return UAL_SLOTS[slot].ts;
+            return 1;
+        }
+        if (!def) return 1;
+        if (slot.indexOf('cast') === 0) return (def.castTimeScales && def.castTimeScales[slot]) || def.castTimeScale || 1;
+        if (slot === 'hit') return def.hitTimeScale || 2.8;
+        return 1;
+    }
+    function _cvActionFor(slot, cb) {
+        var v = _cv;
+        if (!v || !v.mixer || !v.model) { cb(null); return; }
+        if (v.actions && v.actions[slot]) { cb(v.actions[slot]); return; }
+        var wire = function (clip, fromLib) {
+            if (!_cv || _cv !== v || !v.mixer || !clip) { cb(null); return; }
+            var act = v.mixer.clipAction(clip);
+            act.setLoop(THREE.LoopOnce, 0);
+            act.clampWhenFinished = true;
+            act.timeScale = _cvSlotScale(v.def, slot, fromLib);
+            v.actions[slot] = act;
+            cb(act);
+        };
+        if (v.clips && v.clips[slot]) { wire(v.clips[slot], true); return; }
+        if (v.clipUrls && v.clipUrls[slot]) {          // legacy per-character Meshy clip GLB
+            var tok = _cvToken;
+            _loadUnitGLB(v.clipUrls[slot], function (ce) {
+                if (tok !== _cvToken) { cb(null); return; }
+                wire(ce && ce.clips && ce.clips[0], false);
+            });
+            return;
+        }
+        cb(null);
+    }
+    function _cvFirstSlot(names) {
+        var v = _cv;
+        if (!v) return null;
+        var list = Array.isArray(names) ? names : [names];
+        for (var i = 0; i < list.length; i++) {
+            var n = list[i];
+            if (!n || n === 'idle') continue;
+            if ((v.actions && v.actions[n]) || (v.clips && v.clips[n]) || (v.clipUrls && v.clipUrls[n])) return n;
+        }
+        return null;
+    }
+    function _cvPlay(names, opts) {
+        var v = _cv;
+        opts = opts || {};
+        if (!v || !v.mixer || !v.model) return 0;
+        var slot = _cvFirstSlot(names);
+        if (!slot) return 0;
+        _cvPreviewEnd(true);
+        var seq = (v.previewSeq = (v.previewSeq || 0) + 1);
+        var label = opts.name || slot;
+        var started = 0;
+        _cvActionFor(slot, function (act) {
+            if (!act || !_cv || _cv !== v || v.previewSeq !== seq) return;
+            var clip = act.getClip();
+            var scale = Math.abs(act.timeScale) || 1;
+            var ms = (clip.duration / scale) * 1000;
+            if (!opts.full) ms = Math.min(ms, 1400);   // the board's cap
+            ms = Math.max(120, Math.round(ms));
+            var prev = v.idleAct;
+            act.enabled = true; act.reset(); act.play();
+            if (prev && prev !== act) act.crossFadeFrom(prev, 0.12, false);
+            v.preview = { act: act, name: slot, label: label };
+            _cvPreviewTimer = setTimeout(function () { _cvPreviewTimer = 0; if (_cv && _cv.preview && _cv.preview.act === act) _cvPreviewEnd(false); }, ms + 40);
+            started = ms;
+            _cvEmitState(slot, ms, label);
+        });
+        // a library slot resolves synchronously; a Meshy clip GLB reports 1 (pending)
+        return started || ((v.clipUrls && v.clipUrls[slot]) ? 1 : 0);
+    }
+    /* `playSpell(spell, opts)`: the spell's animation kind → the board's own
+       chain. A basic attack (`spell.kind === 'basicAttack'`, or no spell +
+       opts.attack) uses the def's basicAttackKind like triggerAttackAnim. */
+    function _cvPlaySpell(spell, opts) {
+        var v = _cv;
+        opts = opts || {};
+        if (!v || !v.model) return 0;
+        var chain;
+        if (!spell || spell.kind === 'basicAttack' || opts.attack) {
+            var ak = (v.def && v.def.basicAttackKind) || (spell && (spell.range || 1) > 1 ? 'ranged' : 'melee');
+            chain = _attackChainFor(ak);
+        } else {
+            var kind = (typeof classifySpellAnimKind === 'function') ? classifySpellAnimKind(spell) : 'magic';
+            chain = _castChainFor(kind);
+        }
+        return _cvPlay(chain, { full: opts.full, name: opts.name || (spell && spell.name) || 'BASIC ATTACK' });
     }
 
     var charViewer = {
@@ -28899,6 +29051,18 @@ const ThreeRenderer = (function () {
             _cv.yaw = 0; _cv.polar = 0; _cv.zoom = 1; _cv.lastTouch = 0;
         },
         isMounted: function () { return !!(_cv && _cv.host && _cv.host.isConnected); },
+        /* MOVE PREVIEW (PARTY_BUILDER_PLAN §5.2). play(slotOrChain, { full,
+           name }) → ms (0 = nothing to play); playSpell(spell, { full,
+           attack, name }) resolves the chain the board would use;
+           stopPreview() returns to idle; onState(fn) receives
+           { playing: slot|null, ms, name } on every start / end;
+           isPlaying(). Sprite-only vessels return 0 from both plays. */
+        play: function (names, opts) { return _cvPlay(names, opts); },
+        playSpell: function (spell, opts) { return _cvPlaySpell(spell, opts); },
+        stopPreview: function () { _cvPreviewEnd(false); },
+        isPlaying: function () { return !!(_cv && _cv.preview); },
+        onState: function (fn) { var v = _cv || _cvEnsure(); if (v) v.onState = (typeof fn === 'function') ? fn : null; },
+        hasClips: function () { return !!(_cv && _cv.mixer && (_cv.clips || _cv.clipUrls)); },
     };
 
     /* ═══════════════════════════════════════════════════════════════════
