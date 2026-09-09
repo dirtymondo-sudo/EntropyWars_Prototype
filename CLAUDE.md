@@ -472,6 +472,25 @@ mirrors battle.js Star Crossed's `_zElementOf` — the test diffs them; there
 is NO `ZODIAC_NATURES` table, the wheel states the engine's +10 % move &
 armor rule). No native `<select>` survives in party-builder.js (C-9 —
 tested). Next: Stage 6 (the desk in the building, sounds, `EW_NO_PB_CRT`).
+**THE RELAYOUT (2026-09-09, rev 7)**: the glass IS the screen — the
+notes are ON THE GLASS (`PbNotes` inside `.pb-stage-view`, top-right of
+the hero's band; no bezel margin), the STAGE spans the whole body on
+TECHNIQUES / GEAR / DOSSIER (`grid-column: 1 / -1`) with the circuit and
+the stats floating TRANSPARENT over it (scrims via `::before`); the hero
+stands in the free band: `PB_STAGE_CX` (0.575 = `--pb-tech-w` 36% +
+half the rest, party-builder.test.js ties them) → `HeroViewer3D
+{ focus }` → `EWCharViewer.setFocus(cx)` (three-renderer.js `v.focusX`,
+`_cvFrame` slides camera + look; a wide beat frame eases it home). The
+future ground + sky belong in the viewer (it already fills the body).
+The circuit is THREE LANES (`.pb-lanes` → `.pb-lane` → `.pb-tn` node
+rows: disc + name + `pbNodeMeta` line; CSS `.pb-link` segments onto a
+`.pb-bus` with the root hub) — `SpellTreePanel`, `TREE_NODE_POS`,
+`treeStepKey` and every legality rule unchanged. ONE head row (tabs
+inside `.pb-head`) and ONE bottom bar (`.pb-party-left` BACK + summary ·
+portraits · `.pb-party-right.pb-foot` tools + CONFIRM + the lock ladder
+verbatim). Cut: the officer chip, the prompt line, the ◂ ▸ caps, the
+counter, the stage title, the hover-hint sub-head, the tab hint.
+`node playtest_builder.js [tag]` honours `PW_W` / `PW_H`.
 
 ## TRAINING MATCH (instant CPU turns vs a human) — added 2026-09-07
 Match-select → CONFIG column → **CPU TEMPO: Cinematic / ⚡ Training**

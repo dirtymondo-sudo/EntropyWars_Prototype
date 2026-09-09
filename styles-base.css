@@ -4419,45 +4419,67 @@ body.diorama-3d .tile-underpass.jump::before {
    ═══════════════════════════════════════════════════════════════════════ */
 #builderOverlay { position: relative; }
 .ms-crt-forge { --pb-r: 16px; --pb-r-sm: 9px; }
-/* a wider bezel top and bottom — the sticky notes (Stage 5) stick there */
-.ms-crt-forge .ms-crt-bezel { padding: 30px 34px 42px; }
-.ms-crt-forge .ms-crt-glass { inset: 30px 34px 42px; }
-.ms-crt-forge .ms-crt-screen { padding: 12px 18px 10px; }
-.ms-crt-forge .ms-crt-label { bottom: 13px; }
-.ms-crt-forge .ms-crt-brand { bottom: 14px; }
-.ms-crt-forge .ms-crt-led { bottom: 17px; }
+/* THE GLASS IS THE SCREEN (2026-09-09 relayout): no widened bezel any more
+   — the sticky notes moved onto the glass (they used to shrink the whole
+   screen), the tabs ride in the head row, the foot merged into the party
+   row, and on TECHNIQUES / GEAR / DOSSIER the STAGE spans the whole body
+   with the circuit and the stats floating TRANSPARENT over it (the hero's
+   environment is the backdrop; a ground + sky come later in the viewer).
+   --pb-tech-w / --pb-stats-w are the two side columns; party-builder.js
+   PB_STAGE_CX (0.575) = the centre of the band they leave free. */
+.ms-crt-forge { --pb-tech-w: 36%; --pb-stats-w: 21%; --pb-notes-w: 0px; }
+.ms-crt-forge .ms-crt-bezel { padding: 26px 30px 40px; }
+.ms-crt-forge .ms-crt-glass { inset: 26px 30px 40px; }
+.ms-crt-forge .ms-crt-screen { padding: 10px 16px 8px; }
+.ms-crt-forge .ms-crt-label { bottom: 12px; }
+.ms-crt-forge .ms-crt-brand { bottom: 13px; }
+.ms-crt-forge .ms-crt-led { bottom: 16px; }
 .pb-tty { gap: 8px; }
-.pb-head { flex-shrink: 0; }
+/* ── the head: seal · title · the TABS (centred) · mode · ESC — one row ── */
+.pb-head { flex-shrink: 0; gap: 10px; padding-bottom: 6px; }
 .pb-head img { width: 20px; height: 20px; }
-/* ── the tab bar: pills, the active one in the vessel's faction colour, L1 / R1 caps ── */
-.pb-tabbar { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-.pb-tabcap { font: inherit; font-size: 9px; letter-spacing: 0.2em; color: var(--ph-dim); background: rgba(0,0,0,0.35); border: 1px solid var(--ph-line); border-radius: 999px; padding: 5px 11px; cursor: pointer; text-shadow: inherit; transition: color 0.12s, border-color 0.12s; white-space: nowrap; }
+.pb-head .pb-tabbar { margin-left: auto; margin-right: auto; }
+.pb-head-right { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }
+.pb-tabbar { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.pb-tabcap { font: inherit; font-size: 9px; letter-spacing: 0.2em; color: var(--ph-dim); background: rgba(0,0,0,0.35); border: 1px solid var(--ph-line); border-radius: 999px; padding: 4px 10px; cursor: pointer; text-shadow: inherit; transition: color 0.12s, border-color 0.12s; white-space: nowrap; }
 .pb-tabcap:hover { color: var(--ph); border-color: var(--ph-line-hi); }
 .pb-tabs { display: flex; gap: 6px; }
-.pb-tab { position: relative; font: inherit; font-family: 'DotGothic16', monospace; font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ph-dim); background: rgba(0,0,0,0.35); border: 1px solid var(--ph-line); border-radius: 999px; padding: 7px 18px 6px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 9px; text-shadow: inherit; transition: color 0.12s, border-color 0.12s, background 0.12s, box-shadow 0.15s; white-space: nowrap; }
+.pb-tab { position: relative; font: inherit; font-family: 'DotGothic16', monospace; font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ph-dim); background: rgba(0,0,0,0.35); border: 1px solid var(--ph-line); border-radius: 999px; padding: 6px 16px 5px 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-shadow: inherit; transition: color 0.12s, border-color 0.12s, background 0.12s, box-shadow 0.15s; white-space: nowrap; }
 .pb-tab i { font-style: normal; font-size: 8px; line-height: 1; color: var(--ph-faint); border: 1px solid var(--ph-line); border-radius: 50%; width: 15px; height: 15px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .pb-tab:hover { color: var(--ph); border-color: var(--ph-line-hi); background: rgba(232,220,181,0.06); }
 .pb-tab.on { color: #fff; border-color: var(--pb-fc, var(--ph-gold)); background: rgba(0,0,0,0.55); box-shadow: 0 0 16px var(--pb-fc, var(--ph-gold)), inset 0 0 0 1px var(--pb-fc, var(--ph-gold)); text-shadow: 0 0 8px var(--pb-fc, var(--ph-gold)); }
 .pb-tab.on i { color: var(--pb-fc, var(--ph-gold)); border-color: var(--pb-fc, var(--ph-gold)); }
-.pb-tabhint { margin-left: auto; font-size: 9px; letter-spacing: 0.26em; color: var(--ph-faint); text-transform: uppercase; white-space: nowrap; }
-/* ── the body: one grid per tab; the stage is always the middle (or right) column ── */
-.pb-body { display: grid; gap: 12px; flex: 1; min-height: 0; font-family: 'DotGothic16', monospace; text-shadow: none; }
-.pb-body[data-tab="tech"] { grid-template-columns: clamp(330px, 30vw, 470px) minmax(0, 1fr) clamp(240px, 21vw, 320px); grid-template-areas: "tech stage stats"; }
-.pb-body[data-tab="gear"], .pb-body[data-tab="dossier"] { grid-template-columns: clamp(300px, 26vw, 420px) minmax(0, 1fr) clamp(240px, 21vw, 320px); grid-template-areas: "tech stage stats"; }
+/* ── the body: one grid per tab; the STAGE spans every column (row 1) and
+   the side zones float over it, except on ROSTER where the wall is a panel ── */
+.pb-body { display: grid; gap: 12px; flex: 1; min-height: 0; font-family: 'DotGothic16', monospace; text-shadow: none; position: relative; }
+.pb-body[data-tab="tech"], .pb-body[data-tab="gear"], .pb-body[data-tab="dossier"] { grid-template-columns: var(--pb-tech-w) minmax(0, 1fr) var(--pb-stats-w); grid-template-rows: minmax(0, 1fr); grid-template-areas: "tech band stats"; }
 .pb-body[data-tab="roster"] { grid-template-columns: minmax(0, 1fr) clamp(300px, 27vw, 420px); grid-template-areas: "tech stage"; }
-.pb-zone { position: relative; display: flex; flex-direction: column; min-height: 0; min-width: 0; border: 1px solid var(--ph-line); border-radius: var(--pb-r); background: rgba(0,0,0,0.28); overflow: hidden; }
+.pb-zone { position: relative; display: flex; flex-direction: column; min-height: 0; min-width: 0; border-radius: var(--pb-r); overflow: hidden; z-index: 1; }
 .pb-zone-tech { grid-area: tech; }
-.pb-zone-stats { grid-area: stats; padding: 10px 12px 8px; gap: 5px; }
+.pb-zone-stats { grid-area: stats; padding: 6px 4px 4px 10px; gap: 5px; }
+/* the scrims: a soft dark wash behind each side zone so the text reads over the scene */
+.pb-body[data-tab="tech"] .pb-zone-tech::before, .pb-body[data-tab="gear"] .pb-zone-tech::before, .pb-body[data-tab="dossier"] .pb-zone-tech::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(90deg, rgba(3,3,2,0.72) 0%, rgba(3,3,2,0.55) 70%, rgba(3,3,2,0) 100%); }
+.pb-zone-stats::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(270deg, rgba(3,3,2,0.74) 0%, rgba(3,3,2,0.58) 72%, rgba(3,3,2,0) 100%); }
+.pb-body[data-tab="roster"] .pb-zone { border: 1px solid var(--ph-line); background: rgba(0,0,0,0.28); }
 .pb-zone-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px 6px 12px; border-bottom: 1px solid var(--ph-line); flex-shrink: 0; min-width: 0; }
 .pb-zone-head b { font-family: 'Cormorant SC', serif; font-size: 16px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; color: #f1e9cf; white-space: nowrap; }
 .pb-zone-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-/* the stage: the hero in the middle, lit, its name over it */
-.pb-stage { grid-area: stage; position: relative; display: flex; flex-direction: column; min-height: 0; min-width: 0; border: 1px solid var(--ph-line); border-radius: var(--pb-r); background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(255,205,107,0.05), transparent 70%), rgba(0,0,0,0.2); overflow: hidden; }
-.pb-stage-title { display: flex; align-items: baseline; justify-content: center; gap: 8px; padding: 8px 12px 0; flex-shrink: 0; min-width: 0; }
-.pb-stage-title b { font-family: 'Cormorant SC', serif; font-weight: 600; font-size: clamp(16px, 1.7vw, 26px); line-height: 1.1; color: #f1e9cf; text-shadow: 0 0 24px var(--pb-fc, var(--ph-gold)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pb-stage-title span { font-size: 9px; letter-spacing: 0.18em; color: var(--ph-faint); flex-shrink: 0; }
-.pb-stage-view { flex: 1; min-height: 0; position: relative; display: flex; align-items: flex-end; justify-content: center; }
+/* the stage: full-body on the three sheet tabs (grid column 1 / -1, under the zones), its own column on ROSTER */
+.pb-stage { --pb-cx: 50%; grid-area: stage; position: relative; display: flex; flex-direction: column; min-height: 0; min-width: 0; border-radius: var(--pb-r); overflow: hidden; z-index: 0; background: radial-gradient(ellipse 60% 70% at var(--pb-cx) 55%, rgba(255,205,107,0.06), transparent 70%), linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.3)); }
+.pb-body[data-tab="tech"] .pb-stage, .pb-body[data-tab="gear"] .pb-stage, .pb-body[data-tab="dossier"] .pb-stage { grid-area: auto; grid-column: 1 / -1; grid-row: 1; }
+.pb-body[data-tab="roster"] .pb-stage { border: 1px solid var(--ph-line); background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(255,205,107,0.05), transparent 70%), rgba(0,0,0,0.2); }
+.pb-stage-view { flex: 1; min-height: 0; position: relative; }
+.pb-stage-glow { position: absolute; left: var(--pb-cx, 50%); top: 52%; transform: translate(-50%, -50%); width: min(78%, 90vh); aspect-ratio: 1; filter: blur(18px); pointer-events: none; }
+.pb-stage-floor { position: absolute; bottom: 8px; left: var(--pb-cx, 50%); transform: translateX(-50%); width: min(62%, 60vh); height: 12px; filter: blur(3px); pointer-events: none; }
+.pb-stage .pb-hero3d-fallback { left: calc(var(--pb-cx, 50%) - 22vh); width: 44vh; right: auto; }
+.pb-stage .pb-hero3d-hint, .pb-stage .pb-hero3d.ew-cv-loading::after, .pb-stage .pb-hero3d.ew-cv-loading::before { left: var(--pb-cx, 50%); }
 .pb-stage-card { flex-shrink: 0; border-top: 1px solid var(--ph-line); padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 5px; background: rgba(0,0,0,0.3); }
+/* the STATS column's identity block: the name, race · job (+ sub), the types */
+.pb-ident { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; min-width: 0; padding-bottom: 6px; border-bottom: 1px solid var(--ph-line); }
+.pb-ident b { font-family: 'Cormorant SC', serif; font-size: clamp(20px, 1.9vw, 28px); font-weight: 600; line-height: 1; color: #f1e9cf; text-shadow: 0 0 30px var(--pb-fc, var(--ph-gold)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-ident > span { font-size: 9px; letter-spacing: 0.16em; color: var(--ph-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-ident-types { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 2px; }
+.pb-ident-types em { font-style: normal; font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; }
 /* THE WALL (ROSTER, Stage 4 — plan §5.4): the champ-select grid. Square
    tiles (--pb-r corners), the portrait full-bleed or the sprite standing
    on the tile's floor, a faction ring on hover / active, the type dots,
@@ -4519,14 +4541,23 @@ body.diorama-3d .tile-underpass.jump::before {
 .ms-crt-forge .pbx-eqslot { clip-path: none; border-radius: 50%; }
 .ms-crt-forge .pbx-subbar { border-radius: var(--pb-r-sm); }
 .ms-crt-forge .pbx-pick-row { border-radius: var(--pb-r-sm); }
-/* ── the party row: circular portraits, the active one larger and ringed ── */
-/* Sized 2026-09-09 (Stage 2): the portraits were "way too small" — the ring
-   is --pb-portrait (96 px, 112 active) and the row takes the height it needs;
-   the body above is the flex child that gives. */
-.pb-party { --pb-portrait: 96px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; padding: 6px 10px 4px; border-top: 1px solid var(--ph-line); font-family: 'DotGothic16', monospace; text-shadow: none; }
-.pb-party-cap { font: inherit; font-size: 18px; line-height: 1; color: var(--ph-dim); background: rgba(0,0,0,0.35); border: 1px solid var(--ph-line); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; transition: color 0.12s, border-color 0.12s; }
-.pb-party-cap:hover { color: var(--ph-gold); border-color: var(--ph-line-hi); }
-.pb-party-slots { display: flex; gap: 22px; flex: 1; min-width: 0; overflow-x: auto; overflow-y: hidden; padding: 14px 10px 4px; justify-content: center; align-items: flex-start; }
+/* ── the bottom bar (2026-09-09): BACK + the summary · the portraits · the tools + the seal.
+   The portraits are --pb-portrait (96 px; 76 under 1180 px, 64 under 940), the
+   active one 1.16× with a glow. The flanks hold the controls the foot used to. ── */
+.pb-party { --pb-portrait: 96px; display: flex; align-items: center; gap: 14px; flex-shrink: 0; padding: 6px 4px 2px; border-top: 1px solid var(--ph-line); font-family: 'DotGothic16', monospace; text-shadow: none; }
+.pb-party-left { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 12px; }
+.pb-party-right { flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 12px; border-top: 0 !important; padding-top: 0 !important; }
+.pb-sum { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.pb-sum small { font-size: 8px; letter-spacing: 0.26em; color: var(--ph-faint); text-transform: uppercase; }
+.pb-sum b { font-family: 'Cormorant SC', serif; font-weight: 400; font-size: 20px; line-height: 1; color: #f1e9cf; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-sum span { font-size: 9.5px; letter-spacing: 0.16em; color: var(--ph-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-sum span em { font-style: normal; color: var(--ph); }
+.pb-sum span em.gold { color: var(--ph-gold); }
+.pb-sum span em.green { color: var(--ph-green); }
+.pb-sum span em.red { color: var(--ph-red); }
+.pb-tools { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; max-width: 232px; }
+.pb-seal { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.pb-party-slots { display: flex; gap: 22px; flex: 0 0 auto; min-width: 0; overflow-x: auto; overflow-y: hidden; padding: 14px 10px 2px; justify-content: center; align-items: flex-start; }
 /* The legacy "Character Select Screen v2" block above still declares
    .pb-party-slot with a clamped HEIGHT, a border, a centred column and a
    hover translate/glow — under it the ring's height shrank inside the
@@ -4549,32 +4580,99 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-pill { font: inherit; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ph-dim); background: rgba(0,0,0,0.35); border: 1px solid var(--ph-line); border-radius: 999px; padding: 4px 10px; cursor: pointer; white-space: nowrap; transition: color 0.12s, border-color 0.12s, background 0.12s; }
 .pb-pill:hover { color: var(--ph); border-color: var(--ph-line-hi); }
 .pb-pill.on { color: var(--ph-gold); border-color: var(--ph-gold); background: rgba(255,205,107,0.12); }
-.pb-party-count { font-size: 10px; letter-spacing: 0.2em; color: var(--ph-dim); white-space: nowrap; flex-shrink: 0; }
-/* ── THE CIRCUIT (Stage 2, 2026-09-09): three pillars of glowing circles,
-   the technique panel under it, the MOVE PREVIEW pill on the stage ── */
-.pb-circuit-head { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin: 4px 8px 2px 10px; }
-.pb-circuit-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 8px 4px 2px; position: relative; }
-.pb-circuit { --pb-node-shadow: 0 2px 6px rgba(0,0,0,0.6); display: flex; flex-direction: column; width: 100%; }
-.pb-circuit-heads { position: relative; height: 44px; flex-shrink: 0; }
-.pb-circuit-board { position: relative; flex: 1; min-height: 350px; }
-.pb-circuit-pips { height: 58px; flex-shrink: 0; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; }
-.pb-circuit-edge { fill: none; stroke: rgba(255,255,255,0.14); stroke-width: 1.5; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.pb-circuit-edge.lit { stroke: var(--ph-dim); stroke-width: 2; filter: drop-shadow(0 0 2px var(--ph-glow)); }
-.pb-circuit-edge.hover { stroke: var(--ph-gold); stroke-width: 2.5; filter: drop-shadow(0 0 4px var(--ph-gold)); }
-.pb-node { box-shadow: var(--pb-node-shadow); transition: transform 0.12s, box-shadow 0.12s, filter 0.12s; user-select: none; }
-.pb-node:hover { transform: translate(-50%, -50%) scale(1.08); filter: brightness(1.12); }
-.pb-node.pb-node-sealed:hover, .pb-node.pb-node-empty:hover, .pb-node.pb-node-blocked:hover { transform: translate(-50%, -50%); filter: none; }
-.pb-node-crown { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; border: 1px solid; box-sizing: border-box; pointer-events: none; z-index: 1; }
-.pb-node-twin { position: absolute; right: -8px; bottom: -6px; width: 18px; height: 18px; border-radius: 50%; background: #0d0d13; font-size: 11px; line-height: 16px; text-align: center; font-family: sans-serif; font-weight: 700; }
-.pb-node-label { position: absolute; transform: translateX(-50%); width: 92px; text-align: center; font-size: 8px; letter-spacing: 0.05em; line-height: 1.15; pointer-events: none; text-shadow: 0 1px 2px #000; text-transform: uppercase; z-index: 2; }
-.pb-pillar-head { position: absolute; top: 2px; transform: translateX(-50%); z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 4px 12px 3px; border: 1px solid; border-radius: 999px; background: #0d0d13; white-space: nowrap; pointer-events: none; text-align: center; max-width: 30%; }
-.pb-pillar-head.btn { pointer-events: auto; cursor: pointer; box-shadow: 0 0 8px rgba(255,205,107,0.18); }
+/* ── THE CIRCUIT · THREE LANES (2026-09-09 redesign; Stage 2's % board is
+   gone). One bar (TECHNIQUES · the slot pips · RND / RST / CLR), then three
+   lanes over a bus: each lane a head pill and four NODE ROWS (ring 4 at the
+   top … ring 1 above the bus) — a category disc, the NAME, a META line —
+   joined by .pb-link segments (lit phosphor / gold hover path / dashed
+   unlit) that drop onto the bus; the root hub (Basic Attack) sits on the
+   bus under the race lane. Rows flex to the height on offer (--pb-row);
+   the technique panel keeps the bottom. Everything is transparent over
+   the stage. ── */
+.pb-tech-bar { display: flex; align-items: center; gap: 10px; flex-shrink: 0; padding: 4px 8px 6px 12px; border-bottom: 1px solid var(--ph-line); }
+.pb-tech-bar b { font-family: 'Cormorant SC', serif; font-size: 15px; letter-spacing: 0.14em; font-weight: 600; color: #f1e9cf; white-space: nowrap; }
+.pb-pips { display: inline-flex; align-items: center; gap: 4px; }
+.pb-pips i { width: 8px; height: 8px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.3); display: inline-block; }
+.pb-pips i.on { background: var(--ph-gold); border-color: var(--ph-gold); box-shadow: 0 0 6px rgba(255,205,107,0.5); }
+.pb-pips small { margin-left: 4px; font-size: 9px; letter-spacing: 0.12em; color: var(--ph-dim); }
+.pb-pips.over i.on { background: var(--ph-red); border-color: var(--ph-red); }
+.pb-pips.over small { color: var(--ph-red); }
+.pb-mini { font: inherit; font-family: 'DotGothic16', monospace; font-size: 9px; letter-spacing: 0.1em; color: var(--ph-dim); background: rgba(0,0,0,0.35); border: 1px solid var(--ph-line); border-radius: 999px; padding: 3px 9px; cursor: pointer; transition: color 0.12s, border-color 0.12s; }
+.pb-mini:hover { color: var(--ph); border-color: var(--ph-line-hi); }
+.pb-mini.danger { color: rgba(255,120,120,0.7); border-color: rgba(255,120,120,0.25); }
+.pb-mini.danger:hover { color: #ff9b9b; border-color: rgba(255,120,120,0.6); }
+.pb-circuit-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 6px 6px 0; position: relative; display: flex; flex-direction: column; }
+.pb-circuit { --pb-disc: clamp(38px, 5vh, 50px); --pb-row: clamp(46px, 6.6vh, 64px); --pb-lane-gap: 12px; display: flex; flex-direction: column; flex: 1 0 auto; width: 100%; }
+.pb-lanes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--pb-lane-gap); flex: 1 0 auto; }
+.pb-lane { display: flex; flex-direction: column; min-width: 0; }
+.pb-pillar-head { align-self: flex-start; margin: 0 0 8px 0; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 4px 12px 3px 10px; border: 1px solid; border-radius: 999px; background: rgba(3,3,2,0.7); white-space: nowrap; text-align: left; max-width: 100%; box-sizing: border-box; flex-shrink: 0; }
+.pb-pillar-head.btn { cursor: pointer; box-shadow: 0 0 8px rgba(255,205,107,0.18); transition: border-color 0.12s, box-shadow 0.12s; }
 .pb-pillar-head.btn:hover { border-color: var(--ph-gold); box-shadow: 0 0 12px rgba(255,205,107,0.35); }
 .pb-pillar-title { font-size: 9px; letter-spacing: 0.16em; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .pb-pillar-title i { font-style: normal; color: var(--ph-gold); }
 .pb-pillar-tag { font-size: 7px; letter-spacing: 0.2em; color: var(--ph-faint); }
 .pb-pillar-head.btn .pb-pillar-tag { color: var(--ph-gold); }
-.pb-technique { flex-shrink: 0; display: flex; gap: 10px; align-items: flex-start; margin: 4px 6px 2px 6px; padding: 9px 10px 8px; border: 1px solid var(--ph-line); border-left: 3px solid var(--tc, var(--ph-line-hi)); border-radius: var(--pb-r-sm); background: rgba(0,0,0,0.42); min-height: 118px; }
+/* the node row */
+.pb-tn { --nc: var(--ph-dim); position: relative; display: flex; align-items: center; gap: 8px; height: var(--pb-row); flex: 0 0 auto; min-width: 0; cursor: default; border-radius: 999px 12px 12px 999px; transition: background 0.12s; user-select: none; }
+.pb-tn.can { cursor: pointer; }
+.pb-tn.can:hover { background: rgba(255,255,255,0.05); }
+.pb-tn-disc { position: relative; width: var(--pb-disc); height: var(--pb-disc); flex: none; border-radius: 50%; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-family: 'Cormorant SC', serif; font-size: 17px; font-weight: 700; line-height: 1; border: 2px solid var(--nc); background: #0d0d13; color: var(--nc); box-shadow: 0 2px 6px rgba(0,0,0,0.6); transition: transform 0.12s, box-shadow 0.12s, background 0.12s, filter 0.12s; z-index: 1; }
+.pb-tn.can:hover .pb-tn-disc { transform: scale(1.08); filter: brightness(1.12); }
+.pb-tn-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.pb-tn-name { font-family: 'Cormorant SC', serif; font-size: clamp(12px, 1.5vh, 14px); font-weight: 700; line-height: 1.05; letter-spacing: 0.03em; color: var(--ph); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 2px #000; }
+.pb-tn-meta { display: block; font-size: 8px; letter-spacing: 0.08em; color: var(--ph-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 16px; }
+.pb-tn-meta em { font-style: normal; }
+.pb-tn-meta em + em::before { content: '·'; margin: 0 5px; color: var(--ph-faint); }
+.pb-tn-type + em { margin-left: 5px; }
+.pb-tn-type { --tc: var(--ph-dim); font-style: normal; font-size: 7px; font-weight: 700; letter-spacing: 0.04em; width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--tc); color: var(--tc); display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; box-sizing: border-box; background: rgba(0,0,0,0.5); }
+.pb-tn-alt { font-size: 7.5px; letter-spacing: 0.08em; color: rgba(242,196,104,0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; }
+.pb-node-twin { position: absolute; right: -7px; bottom: -5px; width: 17px; height: 17px; border-radius: 50%; background: #0d0d13; border: 1px solid rgba(242,196,104,0.35); color: var(--ph-faint); font-size: 10px; line-height: 15px; text-align: center; font-family: sans-serif; font-weight: 700; z-index: 2; }
+.pb-node-twin.can { border-color: var(--ph-gold); color: var(--ph-gold); cursor: pointer; }
+/* the states — brightness on the disc AND the text */
+.pb-tn.is-reachable .pb-tn-disc { background: color-mix(in srgb, var(--nc) 22%, #0d0d13); }
+.pb-tn.is-equipped .pb-tn-disc { background: var(--nc); border-color: #fff; color: #0d0d13; box-shadow: 0 0 10px rgba(255,255,255,0.65), 0 0 20px color-mix(in srgb, var(--nc) 60%, transparent); }
+.pb-tn.is-equipped .pb-tn-name { color: #fff; }
+.pb-tn.is-equipped .pb-tn-meta { color: var(--ph); }
+.pb-tn.is-far .pb-tn-disc { border-color: color-mix(in srgb, var(--nc) 45%, transparent); color: color-mix(in srgb, var(--nc) 60%, transparent); }
+.pb-tn.is-far .pb-tn-name { color: var(--ph-dim); }
+.pb-tn.is-far .pb-tn-meta { color: var(--ph-faint); }
+.pb-tn.is-blocked .pb-tn-disc, .pb-tn.is-sealed .pb-tn-disc { border-style: dashed; border-color: rgba(255,255,255,0.2); color: var(--ph-faint); background: #0d0d13; }
+.pb-tn.is-sealed { cursor: not-allowed; }
+.pb-tn.is-sealed .pb-tn-disc { font-size: 14px; }
+.pb-tn.is-blocked .pb-tn-name, .pb-tn.is-sealed .pb-tn-name { color: var(--ph-faint); }
+.pb-tn.is-blocked .pb-tn-meta, .pb-tn.is-sealed .pb-tn-meta { opacity: 0.5; }
+.pb-tn.is-empty .pb-tn-disc { border: 2px dashed rgba(255,255,255,0.14); background: transparent; box-shadow: none; }
+.pb-tn.is-empty .pb-tn-name { color: var(--ph-faint); font-weight: 400; font-size: 11px; }
+.pb-tn.is-socket .pb-tn-disc { border: 2px dashed rgba(242,196,104,0.35); color: var(--ph-faint); background: #0d0d13; }
+.pb-tn.is-socket.socket-lit .pb-tn-disc { border-color: var(--ph-gold); color: var(--ph-gold); }
+.pb-tn.is-socket .pb-tn-name { color: var(--ph-gold); }
+.pb-tn.daat:not(.is-equipped) .pb-tn-disc { border-style: dashed; }
+.pb-tn.cap .pb-tn-disc::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 1px solid var(--nc); opacity: 0.7; }
+.pb-tn.is-blocked.cap .pb-tn-disc::after, .pb-tn.is-sealed.cap .pb-tn-disc::after, .pb-tn.is-far.cap .pb-tn-disc::after { opacity: 0.3; }
+.pb-tn.is-equipped.cap .pb-tn-disc::after { border-color: #fff; }
+.pb-tn.on-path .pb-tn-disc { box-shadow: 0 0 0 2px #000, 0 0 0 3.5px var(--ph-gold), 0 0 12px rgba(255,205,107,0.5); }
+.pb-tn.on-path .pb-tn-name { color: var(--ph-gold); }
+.pb-tn.sel .pb-tn-disc { box-shadow: 0 0 0 3px #000, 0 0 0 5px var(--ph-gold), 0 0 16px var(--ph-gold); }
+.pb-tn.sel .pb-tn-name { color: #fff; }
+/* the root hub */
+.pb-tn.is-root .pb-tn-disc { background: #e6e9f2; border-color: #fff; color: #0d0d13; box-shadow: 0 0 10px rgba(255,255,255,0.75); }
+.pb-tn.is-root .pb-tn-name { color: #fff; }
+/* the links: a vertical segment through the disc's centre, between two rows */
+.pb-link { display: block; flex: 1 1 10px; min-height: 8px; width: 2px; margin-left: calc(var(--pb-disc) / 2 - 1px); background: repeating-linear-gradient(180deg, rgba(255,255,255,0.16) 0 4px, transparent 4px 8px); }
+.pb-link.lit { background: var(--ph-dim); box-shadow: 0 0 3px var(--ph-glow); }
+.pb-link.hover { background: var(--ph-gold); box-shadow: 0 0 5px var(--ph-gold); width: 3px; margin-left: calc(var(--pb-disc) / 2 - 1.5px); }
+.pb-link.drop { flex: 0 0 14px; min-height: 14px; }
+/* the bus: one grid of the same three columns; each cell draws its stretch of the line */
+.pb-bus { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--pb-lane-gap); height: calc(var(--pb-disc) + 6px); flex-shrink: 0; margin-bottom: 4px; }
+.pb-bus-cell { position: relative; }
+.pb-bus-cell::before { content: ''; position: absolute; top: 0; height: 2px; background: repeating-linear-gradient(90deg, rgba(255,255,255,0.16) 0 4px, transparent 4px 8px); }
+.pb-bus-cell.lit::before { background: var(--ph-dim); box-shadow: 0 0 3px var(--ph-glow); }
+.pb-bus-cell.hover::before { background: var(--ph-gold); box-shadow: 0 0 5px var(--ph-gold); }
+.pb-bus-cell.l::before { left: calc(var(--pb-disc) / 2); right: calc(-1 * var(--pb-lane-gap)); border-radius: 2px 0 0 2px; }
+.pb-bus-cell.c::before { left: calc(-1 * var(--pb-lane-gap)); right: calc(-1 * var(--pb-lane-gap)); }
+.pb-bus-cell.r::before { left: calc(-1 * var(--pb-lane-gap)); right: calc(100% - var(--pb-disc) / 2); border-radius: 0 2px 2px 0; }
+.pb-bus-cell .pb-tn { position: absolute; left: 0; right: 0; top: calc(var(--pb-disc) / -2 + 1px); height: var(--pb-disc); }
+.pb-technique { flex-shrink: 0; display: flex; gap: 10px; align-items: flex-start; margin: 4px 6px 4px 6px; padding: 9px 10px 8px; border: 1px solid var(--ph-line); border-left: 3px solid var(--tc, var(--ph-line-hi)); border-radius: var(--pb-r-sm); background: rgba(3,3,2,0.62); min-height: 112px; }
 .pb-technique.empty { border-left-color: var(--ph-line); }
 .pb-technique-disc { width: 44px; height: 44px; flex-shrink: 0; border-radius: 50%; border: 2px solid; display: flex; align-items: center; justify-content: center; font-family: 'Cormorant SC', serif; font-size: 20px; font-weight: 700; box-sizing: border-box; box-shadow: 0 0 10px rgba(0,0,0,0.6); }
 .pb-technique-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
@@ -4596,7 +4694,7 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-verb-note { font-size: 8px; letter-spacing: 0.16em; color: var(--ph-faint); }
 .pb-technique-slots { margin-left: auto; font-size: 8px; letter-spacing: 0.16em; color: var(--ph-dim); white-space: nowrap; }
 @keyframes pbVerbLive { from { box-shadow: 0 0 4px var(--ph-glow); } to { box-shadow: 0 0 14px var(--ph-gold); } }
-.pb-stage-pill { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 3; font-size: 9px; letter-spacing: 0.2em; padding: 5px 14px 4px; border-radius: 999px; border: 1px solid var(--ph-line-hi); background: rgba(0,0,0,0.62); color: var(--ph); white-space: nowrap; max-width: 92%; overflow: hidden; text-overflow: ellipsis; pointer-events: none; display: inline-flex; align-items: center; gap: 7px; animation: pbTipIn 0.14s ease-out; }
+.pb-stage-pill { position: absolute; top: 8px; left: var(--pb-cx, 50%); transform: translateX(-50%); z-index: 3; font-size: 9px; letter-spacing: 0.2em; padding: 5px 14px 4px; border-radius: 999px; border: 1px solid var(--ph-line-hi); background: rgba(0,0,0,0.62); color: var(--ph); white-space: nowrap; max-width: 92%; overflow: hidden; text-overflow: ellipsis; pointer-events: none; display: inline-flex; align-items: center; gap: 7px; animation: pbTipIn 0.14s ease-out; }
 .pb-stage-pill.live { border-color: var(--ph-gold); color: var(--ph-gold); box-shadow: 0 0 14px rgba(255,205,107,0.3); }
 .pb-stage-pill.live i { width: 7px; height: 7px; border-radius: 50%; background: var(--ph-red); box-shadow: 0 0 6px var(--ph-red); animation: pbRec 0.8s steps(2) infinite; }
 .pb-stage-pill.note { border-color: rgba(255,120,120,0.5); color: #ff9b9b; }
@@ -4630,23 +4728,21 @@ body.diorama-3d .tile-underpass.jump::before {
 .ms-crt-forge .pbx-blade { border-radius: var(--pb-r-sm); clip-path: none; }
 .ms-crt-forge .pbx-slotno { width: 18px; align-items: center; }
 .ms-crt-forge .pbx-slotno > span { width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--ph-line); display: inline-flex; align-items: center; justify-content: center; font-size: 8px; line-height: 1; }
-/* ── the foot: the match-select buttons, plus the small dice and the tinted verbs ── */
+/* ── the foot's buttons (now in the bottom bar's right cluster) ── */
 .pb-foot { gap: 8px; }
 .pb-foot .ms-tty-btn { border-radius: 999px; }
-.pb-foot .ms-tty-btn.sm { padding: 8px 11px; font-size: 9px; }
+.pb-foot .ms-tty-btn.sm { padding: 6px 10px; font-size: 9px; }
 .pb-foot .ms-tty-btn.ok { color: var(--ph-green); border-color: rgba(102,255,138,0.45); }
 .pb-foot .ms-tty-btn.ok:hover:not(:disabled) { color: #c8ffd6; background: rgba(102,255,138,0.1); border-color: var(--ph-green); }
 .pb-foot .ms-tty-btn.gold { color: var(--ph-gold); border-color: rgba(255,205,107,0.4); }
 .pb-foot .ms-tty-btn.gold:hover:not(:disabled) { background: rgba(255,205,107,0.1); border-color: var(--ph-gold); color: var(--ph-gold); }
 .pb-foot .ms-tty-btn.teal { color: var(--ph-teal); border-color: rgba(127,217,221,0.4); }
 .pb-foot .ms-tty-btn.teal:hover:not(:disabled) { background: rgba(127,217,221,0.1); border-color: var(--ph-teal); color: var(--ph-teal); }
-.pb-foot .ms-tty-btn.primary { padding: 12px 26px; }
+.pb-foot .ms-tty-btn.primary { padding: 12px 22px; }
 .pb-foot .ms-tty-btn.primary:disabled { opacity: 0.85; cursor: default; }
 .pb-foot .ms-tty-btn.primary.waiting b { font-size: 14px; letter-spacing: 0.18em; }
-.pb-foot .ms-tty-sum span em.red { color: var(--ph-red); }
-.pb-foot-input { background: rgba(0,0,0,0.4); border: 1px solid var(--ph-line); border-radius: 999px; color: var(--ph); font-family: 'Cormorant SC', serif; font-size: 14px; padding: 7px 14px; width: 200px; letter-spacing: 0.06em; outline: none; }
+.pb-foot-input { background: rgba(0,0,0,0.4); border: 1px solid var(--ph-line); border-radius: 999px; color: var(--ph); font-family: 'Cormorant SC', serif; font-size: 14px; padding: 7px 14px; width: 180px; letter-spacing: 0.06em; outline: none; }
 .pb-foot-input:focus { border-color: var(--ph-line-hi); }
-.pb-foot-note { font-size: 9px; letter-spacing: 0.14em; color: var(--ph-dim); white-space: nowrap; }
 /* ── a window on the glass ── */
 .pb-veil { position: absolute; inset: 0; z-index: 4; background: rgba(3,3,2,0.7); display: flex; align-items: center; justify-content: center; font-family: 'DotGothic16', monospace; text-shadow: none; }
 .pb-veil.zone { background: rgba(3,3,2,0.92); align-items: stretch; padding: 6px; }
@@ -4666,21 +4762,16 @@ body.diorama-3d .tile-underpass.jump::before {
 .ms-crt-forge .pb-team-mini { border-radius: 50%; }
 .ms-crt-forge .pb-team-act { border-radius: 999px; }
 /* ── Stage 5 (§5.5): THE STICKY NOTES · STAT PILLS · AFFINITIES · the SUBCLASS pill · the ZODIAC wheel ──
-   The notes are paper stuck ON THE BEZEL, outside the glass: the forge's
-   RIGHT bezel is widened by --pb-notes-w to hold them (the overlay clips
-   anything past the monitor's edge, and the bottom bezel wears the label),
-   so they never sit over glass content. Under 1180 px the margin closes,
-   the notes hide and the same text shows inline in the STATS column
-   (.pb-traits-inline). Paper: yellow (time) / pink (chaos) / cream (space),
-   the handwriting is Caveat (decision C-6), ±3° per note seeded by the race. */
-.ms-crt-forge { --pb-notes-w: 132px; }
-.ms-crt-forge .ms-crt-bezel { padding: 30px calc(34px + var(--pb-notes-w)) 42px 34px; }
-.ms-crt-forge .ms-crt-glass { inset: 30px calc(34px + var(--pb-notes-w)) 42px 34px; }
-.pb-notes { position: absolute; top: 26px; right: 12px; bottom: 60px; width: calc(var(--pb-notes-w) - 4px); display: flex; flex-direction: column; align-items: center; gap: 16px; z-index: 3; pointer-events: none; font-family: 'Caveat', 'Segoe Print', 'Comic Sans MS', cursive; }
+   The notes are paper stuck ON THE GLASS (2026-09-09; they used to widen the
+   right bezel, which shrank the whole screen): a column at the top-right of
+   the hero's band, inside .pb-stage, over the scene, clear of the stats.
+   Paper: yellow (time) / pink (chaos) / cream (space); the handwriting is
+   Caveat (decision C-6), ±3° per note seeded by the race. */
+.pb-notes { position: absolute; top: 10px; right: calc(var(--pb-stats-w, 21%) + 14px); width: 122px; display: flex; flex-direction: column; align-items: center; gap: 14px; z-index: 3; pointer-events: none; font-family: 'Caveat', 'Segoe Print', 'Comic Sans MS', cursive; }
 .pb-note { --paper: #f4df6d; --ink: #2a2410; position: relative; pointer-events: auto; width: 118px; min-height: 92px; padding: 9px 10px 13px 11px; background: linear-gradient(225deg, transparent 11px, var(--paper) 11px); color: var(--ink); font-size: 14px; line-height: 1.12; box-shadow: 0 7px 12px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.35) inset; transform: rotate(var(--rot, 0deg)); transition: transform 0.14s ease-out, box-shadow 0.14s; cursor: pointer; overflow: hidden; }
 .pb-note::before { content: ''; position: absolute; left: 30%; top: -6px; width: 40%; height: 14px; background: rgba(255,255,255,0.32); border: 1px solid rgba(0,0,0,0.08); transform: rotate(-2deg); pointer-events: none; }   /* a strip of tape */
-.pb-note:nth-child(2) { margin-left: -10px; }
-.pb-note:nth-child(3) { margin-left: 8px; }
+.pb-note:nth-child(2) { margin-left: -14px; }
+.pb-note:nth-child(3) { margin-left: 10px; }
 .pb-note-fold { position: absolute; right: 0; bottom: 0; width: 0; height: 0; border-style: solid; border-width: 0 0 16px 16px; border-color: transparent transparent rgba(0,0,0,0.22) transparent; pointer-events: none; }
 .pb-note b { display: block; font-weight: 700; font-size: 15px; letter-spacing: 0.01em; }
 .pb-note b u { text-decoration-thickness: 1.5px; text-underline-offset: 2px; }
@@ -4702,8 +4793,6 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-notes-row.terrain b { color: var(--ph-teal); }
 .pb-notes-row p { margin: 3px 0 0; font-size: 11px; color: var(--ph); line-height: 1.45; }
 .pb-notes-row em { display: block; margin-top: 3px; font-family: 'Caveat', cursive; font-size: 15px; color: var(--ph-dim); }
-/* on glass too narrow for the margin, the notes read inline in the STATS column */
-.pb-traits-inline { display: none !important; }
 /* STAT PILLS: a round disc (the stat's colour + glyph) · label · a rounded bar · the grade ring · the value · the delta */
 .pb-stat { --sc: var(--ph-dim); display: flex; align-items: center; gap: 5px; font-family: 'DotGothic16', monospace; font-size: 11px; min-height: 22px; }
 .pb-stat-disc { width: 22px; height: 22px; border-radius: 50%; background: var(--sc); color: #0a0908; font-size: 12px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 0 0 1px rgba(0,0,0,0.6), 0 0 8px color-mix(in srgb, var(--sc) 50%, transparent); }
@@ -4754,34 +4843,52 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-zodiac-read b span { font-family: 'DotGothic16', monospace; font-size: 8px; letter-spacing: 0.12em; color: var(--ph-dim); }
 /* ── smaller glass ── */
 @media (max-width: 1500px) {
-    .pb-prompt { display: none; }
+    .pb-party { --pb-portrait: 84px; gap: 10px; }
+    .pb-party-slots { gap: 10px; padding-top: 12px; }
+    .ms-crt-forge .pb-party-slot, .pb-party .pb-party-slot { width: calc(var(--pb-portrait) + 26px); }
+    .pb-tools { flex-direction: column; flex-wrap: nowrap; align-items: stretch; max-width: none; gap: 3px; }
+    .pb-tools .ms-tty-btn.sm { padding: 4px 8px; font-size: 8px; text-align: center; }
+    .pb-seal { flex-direction: column; align-items: flex-end; gap: 5px; }
+    .pb-foot .ms-tty-btn.primary { padding: 9px 16px; }
+    .pb-foot .ms-tty-btn.primary b { font-size: 15px; }
+    .pb-foot-input { width: 150px; font-size: 13px; padding: 6px 12px; }
+    .pb-sum b { font-size: 17px; }
 }
 @media (max-width: 1180px) {
-    .pb-body[data-tab="tech"] { grid-template-columns: minmax(280px, 34vw) minmax(0, 1fr) minmax(200px, 24vw); gap: 8px; }
-    .pb-body[data-tab="gear"], .pb-body[data-tab="dossier"] { grid-template-columns: minmax(260px, 30vw) minmax(0, 1fr) minmax(200px, 24vw); gap: 8px; }
-    .pb-body[data-tab="roster"] { grid-template-columns: minmax(0, 1fr) minmax(240px, 30vw); gap: 8px; }
-    .pb-tabhint, .pb-foot-note { display: none; }
+    .ms-crt-forge { --pb-tech-w: 38%; --pb-stats-w: 23%; }
+    .pb-body { gap: 8px; }
+    .pb-body[data-tab="roster"] { grid-template-columns: minmax(0, 1fr) minmax(240px, 30vw); }
+    .pb-head > span:not(.pb-head-right), .pb-head > .ms-tty-sep { display: none; }
     .pb-party { --pb-portrait: 76px; }
+    .pb-circuit { --pb-disc: 36px; --pb-row: 46px; --pb-lane-gap: 8px; }
+    .pb-tn-disc { font-size: 14px; }
+    .pb-tn-name { font-size: 11px; }
+    .pb-tn-meta, .pb-tn-alt { display: none; }
     .pb-technique { min-height: 0; }
-    .pb-foot .ms-tty-btn.primary { padding: 10px 18px; }
+    .pb-notes { width: 104px; }
+    .pb-note { width: 100px; min-height: 70px; font-size: 12px; }
+    .pb-note b { font-size: 13px; }
+    .pb-note p { font-size: 11.5px; -webkit-line-clamp: 3; }
+    .pb-tools { max-width: 150px; }
+    .pb-sum b { font-size: 16px; }
+    .pb-foot .ms-tty-btn.primary { padding: 10px 16px; }
     .pb-foot .ms-tty-btn.primary b { font-size: 15px; }
-    /* Stage 5: no margin for the notes on narrow glass — they read inline in the STATS column */
-    .ms-crt-forge { --pb-notes-w: 0px; }
-    .pb-notes { display: none; }
-    .pb-traits-inline { display: flex !important; }
 }
 @media (max-width: 940px) {
     .ms-crt-forge .ms-crt-bezel { padding: 14px 12px 30px; }
     .ms-crt-forge .ms-crt-glass { inset: 14px 12px 30px; }
     .ms-crt-forge .ms-crt-screen { padding: 8px 10px 8px; }
-    .pb-body[data-tab] { grid-template-columns: minmax(0, 1fr); grid-template-areas: "stage" "tech" "stats"; overflow-y: auto; }
-    .pb-stage { min-height: 42vh; flex-shrink: 0; }
+    .pb-body[data-tab] { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; grid-template-areas: "stage" "tech" "stats"; overflow-y: auto; }
+    .pb-body[data-tab] .pb-stage { grid-area: stage; grid-column: auto; grid-row: auto; --pb-cx: 50%; min-height: 42vh; flex-shrink: 0; border: 1px solid var(--ph-line); }
     .pb-zone { min-height: 60vh; flex-shrink: 0; }
+    .pb-zone-tech::before, .pb-zone-stats::before { display: none; }
+    .pb-notes { right: 8px; }
     .pb-tabcap { display: none; }
     .pb-tab { padding: 6px 12px 5px 9px; font-size: 10px; }
-    .pb-party-slots { justify-content: flex-start; }
+    .pb-party { flex-wrap: wrap; justify-content: center; }
+    .pb-party-left, .pb-party-right { flex: 1 1 100%; justify-content: center; }
+    .pb-party-slots { justify-content: flex-start; max-width: 100%; }
     .pb-party { --pb-portrait: 64px; }
     .pb-party-name { font-size: 12px; }
-    .pb-foot { flex-wrap: wrap; }
-    .pb-foot .ms-tty-sum { display: none; }
+    .pb-sum { display: none; }
 }

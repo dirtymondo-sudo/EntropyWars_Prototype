@@ -109,13 +109,18 @@ test('the circuit, the technique panel and the preview triggers are in the build
         assert.ok(PB.includes(sym), `${sym} missing`);
     }
     assert.ok(PB.includes("className: 'pb-circuit'") && PB.includes("className: 'pb-technique'"), 'circuit / technique classes missing');
-    assert.ok(/h\('path', \{ key: i, d: `M/.test(PB), 'connectors must be round-capped <path>s');
+    // 2026-09-09 relayout: the circuit is THREE LANES over a bus — node rows (disc + name + meta), CSS link segments, the root hub on the bus
+    for (const sym of ["className: 'pb-lanes'", "className: 'pb-lane'", "className: 'pb-bus'", "'pb-tn is-'", "className: 'pb-tn-disc'", "className: 'pb-tn-name'", "className: 'pb-tn-meta'", 'function pbNodeMeta(sp)', "h('i', { className: linkCls("]) {
+        assert.ok(PB.includes(sym), `${sym} missing from the lanes`);
+    }
+    assert.ok(!/TREE_NODE_POS\[a\]/.test(PB), 'the % board is gone — no SVG connectors from TREE_NODE_POS');
+    assert.ok(/const TREE_NODE_POS = \{/.test(PB) && /function treeStepKey\(key, dir\)/.test(PB), 'TREE_NODE_POS keys and the keyboard walk stay');
     assert.ok(PB.includes("className: 'pb-stage-pill live'"), 'the MOVE PREVIEW pill is missing');
     assert.ok(PB.includes('window.EW_NO_PB_PREVIEW') && PB.includes('st.animationsDisabled'), 'the preview kill-switches are missing');
     assert.ok(/pbPreview\(sp \|\| null, \{ hover: true \}\)/.test(PB), 'node hover must preview (debounced)');
     assert.ok(/cv\.playSpell\(sp, \{ attack: !sp/.test(PB), 'the builder must go through EWCharViewer.playSpell');
     assert.ok(!/VFX3D\.fire\(/.test(PB), 'party-builder.js must never call the relayed VFX3D.fire');
-    for (const sel of ['.pb-circuit-edge', '.pb-node', '.pb-pillar-head', '.pb-technique', '.pb-verb', '.pb-stage-pill']) {
+    for (const sel of ['.pb-lanes', '.pb-lane', '.pb-tn', '.pb-tn-disc', '.pb-link', '.pb-link.lit', '.pb-link.hover', '.pb-bus', '.pb-bus-cell', '.pb-tech-bar', '.pb-pips', '.pb-pillar-head', '.pb-technique', '.pb-verb', '.pb-stage-pill']) {
         assert.ok(CSS.includes(sel + ' {') || CSS.includes(sel + ','), `${sel} rule missing`);
     }
 });
@@ -235,7 +240,7 @@ test('ROSTER is the wall (Stage 4): tiles, round filters, hover → the stage, n
     }
     assert.ok(/const PB_TYPE_GLYPH = \{ human: 'HU', alien: 'AL', divine: 'DV', unholy: 'UH', tech: 'TK', anomaly: 'AN' \};/.test(PB), 'the six type glyphs are missing');
     assert.ok(/onMouseEnter: \(\) => rosterHoverIn\(entry\)/.test(PB) && /className: 'pb-roster', onMouseLeave: rosterHoverOut/.test(PB), 'the wall must preview on hover and restore on leave');
-    assert.ok(/h\(HeroViewer3D, \{ race:stageRace, gender:stageGender, cls:stageCls, faction:stageFaction \}\)/.test(PB), 'the stage must follow the hovered vessel');
+    assert.ok(/h\(HeroViewer3D, \{ race:stageRace, gender:stageGender, cls:stageCls, faction:stageFaction, focus: stageCx \}\)/.test(PB), 'the stage must follow the hovered vessel');
     assert.ok(/pbMenu === 'sort'/.test(PB) && /pbMenu === 'job'/.test(PB), 'the SORT / JOB menus must be glass windows');
     const rosterSrc = PB.slice(PB.indexOf('const rosterPanel = h(React.Fragment'), PB.indexOf('// TECHNIQUES: the abilities head'));
     assert.ok(!/h\('select'/.test(rosterSrc), 'no native <select> on the wall (C-9)');
@@ -247,7 +252,7 @@ test('ROSTER is the wall (Stage 4): tiles, round filters, hover → the stage, n
 const IDX = read('index.html');
 const BT = read('battle.js');
 
-test('the sticky notes read the ENGINE passives (getUnitPassives on a pseudo-unit) and live on the bezel', () => {
+test('the sticky notes read the ENGINE passives (getUnitPassives on a pseudo-unit) and are stuck on the glass', () => {
     assert.ok(PB.includes('function pbUnitNotes(identity, cls, equipment)'), 'pbUnitNotes missing');
     assert.ok(/window\.getUnitPassives\(pseudo\)/.test(PB), 'the notes must come from data.js getUnitPassives (never the race table)');
     assert.ok(/const pseudo = \{ race, gender: identity\.gender \|\| 'male', cls, types: identity\.types \|\| \[\], faction: identity\.faction,\s*zodiac: identity\.zodiac, status: \{\}, equipment: equipment \|\| \{\} \};/.test(PB), 'the pseudo-unit must carry race / gender / cls / types / equipment / an empty status (canFly reads them)');
@@ -256,14 +261,17 @@ test('the sticky notes read the ENGINE passives (getUnitPassives on a pseudo-uni
     assert.ok(/function pbNoteRot\(seed, i\)/.test(PB) && /\/ 10 - 3\)\.toFixed\(1\)/.test(PB), 'the rotation must be seeded, ±3°');
     assert.ok(/p\.note \? h\('em', null, p\.note\) : null/.test(PB), 'the marginalia slot PASSIVE_DEFS[id].note must be read when present (C-7)');
     assert.ok(PB.includes("className: 'pb-notes'") && PB.includes("className: 'pb-note-fold'") && PB.includes("className: 'pb-note-clip'"), 'note classes missing');
-    assert.ok(/className: 'ms-crt-led' \}\),[\s\S]{0,400}h\(PbNotes, \{ notes: unitNotes/.test(PB), 'the notes must be rendered inside the BEZEL, after the LED — never on the glass');
+    // 2026-09-09: the notes moved ONTO THE GLASS (the widened bezel shrank the whole screen) — inside the stage view, over the scene
+    assert.ok(/className: 'pb-stage-view' \},[\s\S]{0,1800}h\(PbNotes, \{ notes: unitNotes/.test(PB), 'the notes must be rendered inside .pb-stage-view');
+    assert.ok(!/className: 'ms-crt-led' \}\),[\s\S]{0,400}h\(PbNotes/.test(PB), 'no bezel copy of the notes');
+    assert.ok(!PB.includes('pb-traits-inline'), 'the inline copy of the notes is gone');
     assert.ok(/notesOpen \|\|/.test(PB) && /setNotesOpen\(false\); hideSpellTip\(\);/.test(PB), 'the notes window must count as a window (ESC closes it)');
     assert.ok(PB.includes("title: 'THE NOTES'"), 'the full-text window is missing');
-    for (const sel of ['.pb-notes {', '.pb-note {', '.pb-note.pink {', '.pb-note.cream {', '.pb-note:hover, .pb-note:focus-visible {', '.pb-notes-row {', '.pb-traits-inline { display: none !important; }']) {
+    for (const sel of ['.pb-notes {', '.pb-note {', '.pb-note.pink {', '.pb-note.cream {', '.pb-note:hover, .pb-note:focus-visible {', '.pb-notes-row {']) {
         assert.ok(CSS.includes(sel), `${sel} rule missing`);
     }
-    assert.ok(/\.ms-crt-forge \{ --pb-notes-w: 132px; \}/.test(CSS) && /\.ms-crt-forge \.ms-crt-glass \{ inset: 30px calc\(34px \+ var\(--pb-notes-w\)\) 42px 34px; \}/.test(CSS), 'the right bezel must widen by --pb-notes-w for the notes');
-    assert.ok(/\.ms-crt-forge \{ --pb-notes-w: 0px; \}[\s\S]{0,120}\.pb-notes \{ display: none; \}[\s\S]{0,120}\.pb-traits-inline \{ display: flex !important; \}/.test(CSS), 'under 1180 px the margin closes and the notes read inline');
+    assert.ok(/\.pb-notes \{ position: absolute; top: 10px; right: calc\(var\(--pb-stats-w, 21%\) \+ 14px\);/.test(CSS), 'the notes sit at the top-right of the hero\'s band, clear of the stats');
+    assert.ok(!/--pb-notes-w: 132px/.test(CSS) && !/calc\(34px \+ var\(--pb-notes-w\)\)/.test(CSS), 'the bezel must not widen for the notes any more');
     assert.ok(/'Caveat'/.test(CSS), 'the handwriting face (C-6) must be Caveat');
     assert.ok(/family=Caveat:wght@500;700&/.test(IDX), 'index.html must load Caveat from Google Fonts (the CSP allowlist)');
 });
@@ -315,4 +323,33 @@ test('DOSSIER keeps the customs file (stamps stay square, the NOFORN foot)', () 
     assert.ok(PB.includes('TOP SECRET // ████████ // NOFORN'), 'the foot changed');
     assert.ok(PB.includes("'1.  EXECUTIVE SUMMARY'") && PB.includes("'2.  CUSTOMS DISPOSITION'"), 'the file headings changed');
     assert.ok(/className:'door-stamp door-stamp-sm' \+ \(tone === 'admit'/.test(PB), 'the disposition stamp must stay a door-stamp');
+});
+
+/* ── 2026-09-09 THE RELAYOUT: the stage under everything, the hero in the band, one head row, one bottom bar ── */
+test('the stage spans the body on the sheet tabs and the hero stands in the free band', () => {
+    assert.ok(/const PB_STAGE_CX = 0\.575;/.test(PB), 'PB_STAGE_CX missing');
+    const tw = +(CSS.match(/\.ms-crt-forge \{ --pb-tech-w: (\d+)%; --pb-stats-w: (\d+)%;/) || [])[1];
+    const sw = +(CSS.match(/\.ms-crt-forge \{ --pb-tech-w: (\d+)%; --pb-stats-w: (\d+)%;/) || [])[2];
+    assert.ok(tw && sw, 'the two side-column tokens must be declared on .ms-crt-forge');
+    assert.strictEqual(Math.round((tw / 100 + (1 - tw / 100 - sw / 100) / 2) * 1000) / 1000, 0.575, 'PB_STAGE_CX must equal the centre of the band the CSS leaves free');
+    assert.ok(/\.pb-body\[data-tab="tech"\] \.pb-stage, \.pb-body\[data-tab="gear"\] \.pb-stage, \.pb-body\[data-tab="dossier"\] \.pb-stage \{ grid-area: auto; grid-column: 1 \/ -1; grid-row: 1; \}/.test(CSS), 'the stage must span every column on TECHNIQUES / GEAR / DOSSIER');
+    assert.ok(/\.pb-body\[data-tab="tech"\] \.pb-zone-tech::before/.test(CSS) && /\.pb-zone-stats::before \{/.test(CSS), 'the side zones float transparent over the stage with a scrim');
+    assert.ok(!/\n\.pb-zone \{[^}]*border: 1px solid var\(--ph-line\)/.test(CSS), 'the base zone must be transparent (ROSTER re-adds its panel)');
+    assert.ok(/const stageCx = pbTab === 'roster' \? 0\.5 : PB_STAGE_CX;/.test(PB) && /focus: stageCx/.test(PB), 'the viewer must be told the band centre');
+    assert.ok(/window\.EWCharViewer\.setFocus\(focus == null \? 0\.5 : focus\)/.test(PB), 'HeroViewer3D must call EWCharViewer.setFocus');
+    assert.ok(/\n        setFocus: function \(cx\)/.test(TR) && /v\.focusX = \(f >= 0 && f <= 1\) \? f : 0\.5;/.test(TR), 'EWCharViewer.setFocus missing');
+    assert.ok(/lx \+= \(0\.5 - v\.camFx\) \* 2 \* dist \* tanHf;/.test(TR), 'the frame must slide the camera + look point by the focus');
+    assert.ok(/wantFx = 0\.5 \+ \(fx - 0\.5\) \* \(1 - fill\);/.test(TR), 'a wide beat frame must ease the focus back to the centre');
+    assert.ok(!PB.includes("className: 'pb-stage-title'"), 'the stage title is gone (the identity lives in the STATS column)');
+    assert.ok(PB.includes("className: 'pb-ident'"), 'the identity block is missing');
+});
+
+test('one head row (the tabs inside it) and one bottom bar (the foot merged into the party row)', () => {
+    assert.ok(/const head = h\('div', \{ className: 'ms-tty-head pb-head' \},[\s\S]{0,700}tabbar,[\s\S]{0,400}className: 'pb-head-right'/.test(PB), 'the tab bar must ride in the head row');
+    assert.ok(/h\('div', \{ className: 'ms-tty pb-tty' \}, head, body, partyRow\),/.test(PB), 'the tty is head · body · party row — no separate tab row, no separate foot');
+    for (const cls of ['pb-party-left', 'pb-party-slots', 'pb-party-right ms-tty-foot pb-foot', 'pb-tools', 'pb-seal', 'ms-tty-sum pb-sum']) assert.ok(PB.includes(`className: '${cls}'`), `${cls} missing from the bottom bar`);
+    assert.ok(!PB.includes('pb-prompt') && !PB.includes('pb-party-cap') && !PB.includes('pb-party-count') && !PB.includes('pb-tabhint'), 'the prompt line, the ◂ ▸ caps, the counter and the tab hint are cut');
+    assert.ok(PB.includes("className: 'pb-tech-bar'") && PB.includes("className: 'pb-pips'"), 'the tech bar with the slot pips is missing');
+    assert.ok(!PB.includes("className: 'pb-circuit-head'") && !PB.includes('HOVER PREVIEWS ·'), 'the circuit sub-head (hover hints) is cut');
+    for (const sel of ['.pb-party-left {', '.pb-party-right {', '.pb-sum {', '.pb-tools {', '.pb-seal {', '.pb-head .pb-tabbar {', '.pb-ident {']) assert.ok(CSS.includes(sel), `${sel} rule missing`);
 });

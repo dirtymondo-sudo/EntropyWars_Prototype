@@ -69,7 +69,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const exe = process.env.PW_CHROMIUM || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
   const browser = await chromium.launch({ headless: true, executablePath: fs.existsSync(exe) ? exe : undefined,
     args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage', '--proxy-server=direct://', '--proxy-bypass-list=*', '--autoplay-policy=no-user-gesture-required'] });
-  const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1600, height: 900 } });
+  const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: +(process.env.PW_W || 1600), height: +(process.env.PW_H || 900) } });
   const cache = await installNodeFetchCache(context);
   const page = await context.newPage();
   const errs = [];
@@ -114,9 +114,16 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await page.evaluate(() => { const d = document.querySelector('#teamBuilderPage .pb-type-disc.on'); if (d) d.click(); });
   await page.evaluate(() => window._pbSetTab && window._pbSetTab('tech')); await sleep(600);
   await shot('tech');
-  await page.evaluate(() => { const n = [...document.querySelectorAll('#teamBuilderPage .pb-node')].find(x => !/root/.test(x.className)) || document.querySelector('#teamBuilderPage .pb-node'); if (n) n.click(); }); await sleep(600);
+  // (2026-09-09 relayout) the circuit is three LANES of .pb-tn rows: hover a FAR node (the gold path), then click a reachable one
+  const far = await page.$('#teamBuilderPage .pb-tn.is-far');
+  if (far) { await far.hover(); await sleep(400); await shot('tech_path'); }
+  await page.evaluate(() => { const n = document.querySelector('#teamBuilderPage .pb-tn.is-reachable') || document.querySelector('#teamBuilderPage .pb-tn.is-equipped'); if (n) n.click(); }); await sleep(600);
   console.log('stage pill:', await page.evaluate(() => (document.querySelector('#teamBuilderPage .pb-stage-pill') || {}).textContent || null));
   await shot('tech_preview');
+  await page.evaluate(() => window._pbSetTab && window._pbSetTab('gear')); await sleep(500);
+  await shot('gear');
+  const lanes = await page.evaluate(() => { const q = s => document.querySelector('#teamBuilderPage ' + s); const r = e => { if (!e) return null; const b = e.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)]; }; return { body: r(q('.pb-body')), tech: r(q('.pb-zone-tech')), stage: r(q('.pb-stage')), stats: r(q('.pb-zone-stats')), lanes: r(q('.pb-lanes')), technique: r(q('.pb-technique')), scroll: (q('.pb-circuit-scroll') || {}).scrollHeight + '/' + (q('.pb-circuit-scroll') || {}).clientHeight, notes: r(q('.pb-notes')), party: r(q('.pb-party')) }; });
+  console.log('geometry:', JSON.stringify(lanes));
   console.log('page errors:', errs.length ? errs : 'none');
   console.log('net:', JSON.stringify(cache.stats()));
   await browser.close();

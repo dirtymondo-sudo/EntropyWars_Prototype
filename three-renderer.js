@@ -28662,6 +28662,7 @@ const ThreeRenderer = (function () {
             // and eases back when it is null. camLx / camDist = the smoothed
             // look-x / distance the frame loop drives toward.
             heroX: 0, heroY: 0, moveTween: null, frameTo: null, camLx: 0, camDist: 0,
+            focusX: 0.5,   // THE FOCUS (2026-09-09): where the hero stands across the canvas, 0..1 (the forge's stage spans the whole body; the hero keeps to the free band)
         };
 
         cnv.addEventListener('pointerdown', function (e) {
@@ -28794,6 +28795,23 @@ const ThreeRenderer = (function () {
         v.camDist += (wantDist - v.camDist) * ease;
         v.camLx += (wantLx - v.camLx) * ease;
         var dist = v.camDist, lx = v.camLx;
+        // THE FOCUS: sliding the camera AND its look point by dx keeps the
+        // hero's size and lands it at focusX of the canvas width (the
+        // visible half-width at `dist` is dist × tan(fov/2) × aspect)
+        // While a beat's frame fills the width the focus eases back toward
+        // the centre (a frame wider than the free band would otherwise run
+        // off the canvas); v.camFx eases like camDist / camLx do.
+        var fx = (v.focusX == null) ? 0.5 : v.focusX;
+        var tanVf = Math.tan((v.cam.fov * Math.PI / 180) / 2);
+        var tanHf = tanVf * (v.cam.aspect || 1);
+        var wantFx = fx;
+        if (F) {
+            var fill = Math.min(1, halfW / Math.max(1e-6, wantDist * tanHf));
+            wantFx = 0.5 + (fx - 0.5) * (1 - fill);
+        }
+        if (!(v.camFx >= 0)) v.camFx = wantFx;
+        v.camFx += (wantFx - v.camFx) * ease;
+        if (Math.abs(v.camFx - 0.5) > 1e-4) lx += (0.5 - v.camFx) * 2 * dist * tanHf;
         // camera stays on the +Z axis; the MODEL yaws under the pointer
         v.cam.position.set(lx, cy + Math.sin(pol) * dist, Math.cos(pol) * dist);
         if (v.jolt > 0.002) {                              // the board shake, on the stage camera
@@ -29448,6 +29466,15 @@ const ThreeRenderer = (function () {
             if (_cv.canvas.parentNode) _cv.canvas.parentNode.removeChild(_cv.canvas);
             _cv.host = null;
             _cvClearModel();
+        },
+        /* THE FOCUS (2026-09-09): setFocus(cx) — the hero stands at cx (0..1)
+           of the host's width instead of the centre; 0.5 restores. The forge
+           reads its band centre from PB_STAGE_CX (party-builder.js). */
+        setFocus: function (cx) {
+            var v = _cv || _cvEnsure();
+            if (!v) return;
+            var f = +cx;
+            v.focusX = (f >= 0 && f <= 1) ? f : 0.5;
         },
         resetView: function () {
             if (!_cv) return;

@@ -452,6 +452,11 @@ const PB_TABS = [
   { id: 'dossier', label: 'DOSSIER',    hint: 'THE CUSTOMS FILE' },
 ];
 if (typeof window !== 'undefined') window.PB_TABS = PB_TABS;
+/* The hero's x on the full-width stage = the centre of the band the CSS
+   leaves free between the circuit (--pb-tech-w 36%) and the stats
+   (--pb-stats-w 21%): 0.36 + (1 - 0.36 - 0.21) / 2. Keep in step with
+   styles-base.css "THE FORGE TERMINAL". */
+const PB_STAGE_CX = 0.575;
 
 const FACTION_C = { space: EW.space, time: EW.time, chaos: EW.chaos };
 const TYPE_C = { human:EW.human, alien:EW.alien, divine:EW.divine, unholy:EW.unholy, anomaly:EW.anomaly, tech:EW.tech };
@@ -863,7 +868,7 @@ function PortraitSprite({ race, gender, cls, glow, style: extraStyle }) {
    the vessel's rigged GLB with its retargeted idle, drag to orbit,
    wheel to zoom, double-click to reset. The flat sprite renders
    underneath as the loading frame and stays for sprite-only vessels. */
-function HeroViewer3D({ race, gender, cls, faction }) {
+function HeroViewer3D({ race, gender, cls, faction, focus }) {
   const hostRef = React.useRef(null);
   const accent = getFactionColor(faction);
   const supported = !!(window.EWCharViewer && window.EWCharViewer.supports && window.EWCharViewer.supports(race, gender));
@@ -878,6 +883,10 @@ function HeroViewer3D({ race, gender, cls, faction }) {
       host.classList.remove('ew-cv-loading', 'ew-cv-ready', 'ew-cv-fail');
     }
   }, [race, gender, supported, accent]);
+  // the hero stands at `focus` (0..1 of the host's width) — the band between the circuit and the stats
+  React.useEffect(() => {
+    if (window.EWCharViewer && typeof window.EWCharViewer.setFocus === 'function') window.EWCharViewer.setFocus(focus == null ? 0.5 : focus);
+  }, [focus, supported]);
   React.useEffect(() => () => {
     // component teardown: put the singleton viewer to sleep
     if (window.EWCharViewer) window.EWCharViewer.unmount();
@@ -1297,14 +1306,32 @@ function treeNodeState(tree, sealed, equipped, key) {
   return path.length <= 1 ? 'reachable' : 'far';
 }
 
-/* ══ THE CIRCUIT (PARTY_BUILDER_PLAN §5.2) — three pillars of glowing
-   circles. TREE_NODE_POS and every legality rule are Stage-1's; only the
-   skin changed: round-capped <path> connectors (lit = phosphor, hover path
-   = gold, unlit = dashed), 50 px chips (ring-4 capstones 58 px with a thin
-   outer ring instead of the ♛), the twin ⇄ as a satellite disc, sockets as
-   dashed gold rings, sealed as a 🔒 disc, pillar heads as pills with a
-   tagline line (`n TECHNIQUES` until decision C-5 lands). `selKey` is the
-   keyboard / click selection (a gold halo); hover previews. ══ */
+/* ══ THE CIRCUIT — THREE LANES (2026-09-09, the redesign after the user's
+   "smushed together / doesn't convey enough" note). TREE_NODE_POS and every
+   legality rule are untouched (treeNodeState / computeTreeEquipPath /
+   treeStepKey still walk the same keys); only the SKIN changed: instead of
+   thirteen bare circles on a % board, each pillar is a LANE — a head pill,
+   then four NODE ROWS top-down (ring 4 … ring 1), each row a category disc
+   + the technique's NAME + one META line (type · MP · range · AoE · power ·
+   slots · the twin's alternate) — joined by CSS link segments (lit =
+   phosphor, hover path = gold, unlit = dashed) that drop onto a BUS at the
+   bottom with the root hub (Basic Attack) at its centre. State reads as
+   brightness on the disc AND the text: EQUIPPED glows white, REACHABLE is
+   full colour, FAR dims, BLOCKED / SEALED go dark, the selection is a gold
+   halo. The slot pips moved up into the tech bar (the parent). ══ */
+function pbNodeMeta(sp) {
+  const m = [];
+  if (!sp) return m;
+  if (sp.cost) m.push(['MP ' + sp.cost, '#6fc3ff']);
+  if (sp.range != null) m.push([sp.range === 0 ? 'SELF' : 'R' + sp.range, null]);
+  const aoe = pbAoeLabel(sp);
+  if (aoe) m.push(['AOE ' + aoe, null]);
+  const pw = pbPowerStat(sp);
+  if (pw) m.push([pw.value + ' ' + pw.unit, pw.color]);
+  const sc = spellSlotCost(sp);
+  if (sc > 1) m.push([sc + ' SLOTS', EW.time]);
+  return m.slice(0, 4);
+}
 function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, raceLabel,
                           onNodeClick, onNodeHoverIn, onNodeHoverOut, hoverPath, shakeKey, onOpenSubjob,
                           onSocketClick, onTwinPick, selKey, onSelect }) {
@@ -1312,173 +1339,111 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
   const connected = (typeof window.treeReachableKeys === 'function')
     ? window.treeReachableKeys(tree, equippedSet) : new Set(['root']);
   const hoverSet = hoverPath ? new Set(hoverPath) : null;
-  const used = (equipped || []).length;
   const isFL = !!tree.isFreelancer;
 
   const states = {};
   Object.keys(TREE_NODE_POS).forEach(k => { states[k] = treeNodeState(tree, sealed, equipped, k); });
 
-  // connectors: round-capped paths in the z:1 SVG layer UNDER the opaque
-  // z:2 chips. Lit = both ends root-connected (phosphor); hover path = gold;
-  // unlit = dashed and faint.
-  const edgeNodes = tree.edges.map(([a, b], i) => {
-    const [x1, y1] = TREE_NODE_POS[a], [x2, y2] = TREE_NODE_POS[b];
+  // one edge's look: a = the lower end (root / ring n), b = the upper end
+  const linkCls = (a, b) => {
     const lit = connected.has(a) && connected.has(b);
     const onHover = hoverSet && (hoverSet.has(a) || a === 'root' || connected.has(a)) && hoverSet.has(b);
-    return h('path', { key: i, d: `M ${x1} ${y1} L ${x2} ${y2}`,
-      className: 'pb-circuit-edge' + (onHover ? ' hover' : lit ? ' lit' : ''),
-      strokeDasharray: lit || onHover ? undefined : '1.4 1.6' });
-  });
+    return 'pb-link' + (onHover ? ' hover' : lit ? ' lit' : '');
+  };
 
-  const chips = Object.entries(TREE_NODE_POS).map(([key, [x, y]]) => {
+  const node = (key) => {
     const st8 = states[key];
     const id = key === 'root' ? null : tree.nodes[key];
     const sp = id && typeof window.getSpellById === 'function' ? window.getSpellById(id) : null;
-    // Category color — SAME coding as the battle action menu (red damage,
+    // Category colour — SAME coding as the battle action menu (red damage,
     // green heal, blue buff, purple debuff, gold utility).
     const cat = sp ? classifySpellLocal(sp) : null;
-    const nc = cat ? (TREE_CAT_C[cat] || TREE_CAT_C.utility)
-                  : (key === 'root' ? EW.ink : 'rgba(255,255,255,0.2)');
+    const nc = cat ? (TREE_CAT_C[cat] || TREE_CAT_C.utility) : (key === 'root' ? '#e6e9f2' : EW.time);
     const catGlyph = cat ? (TREE_CAT_GLYPH[cat] || TREE_CAT_GLYPH.utility) : '';
     const isCap = key.endsWith('4');
-    const onPath = hoverSet && hoverSet.has(key);
-    const size = isCap ? 58 : 50;
-    // Chips wear their category color as a SOLID fill (no grey body, no
-    // translucent fills — connectors pass BEHIND the chips, never through).
-    // State reads as brightness: full color = available, dimmed = far /
-    // blocked. EQUIPPED is the ONLY state that glows white. The selection
-    // (keyboard / click) is a gold halo on top of any state.
-    const base = {
-      position: 'absolute', left: x + '%', top: y + '%',
-      transform: 'translate(-50%,-50%)',
-      width: size, height: size, borderRadius: '50%',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: 'Cormorant SC, serif', fontSize: isCap ? 19 : 17, fontWeight: 700,
-      border: '2px solid ' + nc, color: EW.ink,
-      background: nc, cursor: 'default',
-      boxSizing: 'border-box', zIndex: 2,
-    };
-    let style = base, label = sp ? sp.name : '', glyph = '';
-    if (st8 === 'root') {
-      style = { ...base, background: '#e6e9f2', border: '2px solid #ffffff', color: TREE_NODE_BG,
-        boxShadow: '0 0 10px rgba(255,255,255,0.75)', cursor: 'pointer' };
-      glyph = '⚔'; label = 'Basic Attack';
-    } else if (st8 === 'socket') {
-      const tiers = (tree.sockets[key] || []).join('·');
-      const litAdj = tree.edges.some(([a, b]) =>
-        (a === key && connected.has(b)) || (b === key && connected.has(a)));
-      style = { ...base, background: TREE_NODE_BG,
-        border: '2px dashed ' + (litAdj ? EW.time : 'rgba(242,196,104,0.35)'),
-        color: litAdj ? EW.time : EW.inkDim, cursor: 'pointer' };
-      glyph = '＋'; label = 'WILDCARD ' + tiers;
-    } else if (st8 === 'empty') {
-      style = { ...base, background: TREE_NODE_BG, border: '2px dashed rgba(255,255,255,0.14)', color: EW.inkDim };
-    } else if (st8 === 'equipped') {
-      style = { ...base, border: '2px solid #ffffff', color: TREE_NODE_BG, cursor: 'pointer',
-        boxShadow: '0 0 10px rgba(255,255,255,0.75), 0 0 20px rgba(255,255,255,0.35)' };
-      glyph = catGlyph;
-    } else if (st8 === 'reachable') {
-      style = { ...base, color: TREE_NODE_BG, cursor: 'pointer' };
-      glyph = catGlyph;
-    } else if (st8 === 'far') {
-      style = { ...base, cursor: 'pointer', background: _treeMixBg(nc, 0.5),
-        borderColor: onPath ? EW.time : _treeMixBg(nc, 0.6) };
-      glyph = catGlyph;
-    } else if (st8 === 'sealed') {
-      style = { ...base, background: TREE_NODE_BG, borderColor: 'rgba(255,255,255,0.25)', color: EW.inkMute, cursor: 'not-allowed', fontSize: 15 };
-      glyph = '🔒';
-    } else { // blocked (unreachable through empty sockets)
-      style = { ...base, background: _treeMixBg(nc, 0.28), borderColor: _treeMixBg(nc, 0.4), color: EW.inkDim };
-      glyph = catGlyph;
-    }
-    if (key === 'R3' && st8 !== 'equipped') style.borderStyle = 'dashed';       // Da'at
-    if (shakeKey === key) style.animation = 'ewTreeShake 0.3s linear';
+    const onPath = !!(hoverSet && hoverSet.has(key));
     const selected = selKey === key;
-    if (selected) style.boxShadow = (style.boxShadow ? style.boxShadow + ', ' : '') + '0 0 0 3px #000, 0 0 0 5px ' + EW.time + ', 0 0 16px ' + EW.time;
+    let glyph = catGlyph, name = sp ? sp.name : '';
+    if (st8 === 'root') { glyph = '⚔'; name = 'Basic Attack'; }
+    else if (st8 === 'socket') { glyph = '＋'; name = 'Wildcard ' + (tree.sockets[key] || []).join('·'); }
+    else if (st8 === 'empty') { glyph = ''; name = key[0] === 'S' ? 'No subclass' : '—'; }
+    else if (st8 === 'sealed') { glyph = '🔒'; }
     /* TWIN NODE (CHAMP_REWORK_PLAN §4): the node holds two alternates. An
        UNEQUIPPED twin opens the picker instead of auto-equipping its face;
        an EQUIPPED twin still unequips on click, and its ⇄ badge opens the
-       picker to swap in place. The badge is the one visual tell. */
+       picker to swap in place. The alternate it is NOT wearing is named. */
     const twin = (tree.alts && tree.alts[key]) || null;
     const otherAlt = twin ? twin.find(a => a !== id) : null;
     const otherSp = otherAlt && typeof window.getSpellById === 'function' ? window.getSpellById(otherAlt) : null;
-    const clickable = (st8 === 'equipped' || st8 === 'reachable' || st8 === 'far');
+    const clickable = (st8 === 'equipped' || st8 === 'reachable' || st8 === 'far' || st8 === 'root');
     const twinPickable = twin && clickable && !!onTwinPick;
     const chipClick = st8 === 'socket' ? () => onSocketClick && onSocketClick(key)
       : (twinPickable && st8 !== 'equipped') ? () => onTwinPick(key)
-      : clickable ? () => onNodeClick(key) : undefined;
-    const onChipClick = (e) => { if (onSelect) onSelect(key); if (chipClick) chipClick(e); };
-    return h('div', { key, style: { position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', pointerEvents: 'none' } },
-      // ring-4 capstone: a thin outer ring (the old ♛) in the category colour
-      isCap && st8 !== 'empty' ? h('div', { className: 'pb-node-crown', style: { left: x + '%', top: y + '%', width: size + 12, height: size + 12, borderColor: st8 === 'equipped' ? '#fff' : nc, opacity: (st8 === 'blocked' || st8 === 'sealed') ? 0.35 : 0.75 } }) : null,
-      h('div', {
-        className: 'pb-node pb-node-' + st8 + (selected ? ' sel' : ''),
-        style: { ...style, pointerEvents: 'auto' },
-        onClick: onChipClick,
-        onMouseEnter: (e) => onNodeHoverIn(key, sp, e),
-        onMouseLeave: () => onNodeHoverOut(key),
-        title: sp ? sp.name : (st8 === 'root' ? 'Basic Attack' : st8 === 'socket' ? 'Open wildcard socket' : 'Empty node'),
-      },
-        glyph,
-        twin ? h('span', {
-          className: 'pb-node-twin',
-          style: { border: '1px solid ' + (twinPickable ? EW.time : 'rgba(242,196,104,0.35)'),
-            color: twinPickable ? EW.time : EW.inkDim, cursor: twinPickable ? 'pointer' : 'default',
-            boxShadow: st8 === 'equipped' ? '0 0 6px rgba(242,196,104,0.45)' : 'none' },
-          title: otherSp ? '⇄ other alternate: ' + otherSp.name : 'Twin node',
+      : (clickable && st8 !== 'root') ? () => onNodeClick(key) : undefined;
+    const onRowClick = (e) => { if (onSelect) onSelect(key); if (chipClick) chipClick(e); };
+    const socketLit = st8 === 'socket' && tree.edges.some(([a, b]) =>
+      (a === key && connected.has(b)) || (b === key && connected.has(a)));
+    const meta = pbNodeMeta(sp);
+    const cls = 'pb-tn is-' + st8 + (isCap ? ' cap' : '') + (onPath ? ' on-path' : '') + (selected ? ' sel' : '')
+      + (socketLit ? ' socket-lit' : '') + (key === 'R3' ? ' daat' : '') + (chipClick || st8 === 'root' ? ' can' : '');
+    return h('div', {
+      key, className: cls, style: { '--nc': nc, animation: shakeKey === key ? 'ewTreeShake 0.3s linear' : undefined },
+      onClick: onRowClick,
+      onMouseEnter: (e) => onNodeHoverIn(key, sp, e),
+      onMouseLeave: () => onNodeHoverOut(key),
+      title: sp ? sp.name : (st8 === 'root' ? 'Basic Attack — always equipped' : st8 === 'socket' ? 'Open wildcard socket' : 'Empty node'),
+    },
+      h('span', { className: 'pb-tn-disc' }, glyph,
+        twin ? h('b', {
+          className: 'pb-node-twin' + (twinPickable ? ' can' : ''),
+          title: otherSp ? '⇄ swap for ' + otherSp.name : 'Twin node',
           onClick: twinPickable ? (e) => { e.stopPropagation(); if (onSelect) onSelect(key); onTwinPick(key); } : undefined,
         }, '⇄') : null),
-      (st8 !== 'empty') ? h('div', { className: 'pb-node-label', style: {
-        left: x + '%', top: 'calc(' + y + '% + ' + (size / 2 + 4) + 'px)',
-        color: st8 === 'equipped' ? EW.ink : (selected ? EW.time : EW.inkMute),
-        opacity: st8 === 'blocked' || st8 === 'sealed' ? 0.5 : 1,
-      } },
-        label,
-        // twin node: the alternate it is NOT wearing, so the choice reads at a glance
-        twin && otherSp ? h('div', { style: { marginTop: 1, color: st8 === 'equipped' ? 'rgba(242,196,104,0.75)' : EW.inkDim, fontSize: 7, letterSpacing: '0.08em' } }, '⇄ ' + otherSp.name) : null,
-        // the canonical TYPE badge rides under the name — matchup intel
-        // on the node itself, same chip as the blades / battle menu
-        sp && sp.spellType ? h('div', { style: { marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 } },
-          pbDmgIcon(sp, 8),
-          h('span', { style: { ...pbTypeBadgeStyle(sp.spellType, 7), padding: '0 4px', letterSpacing: '0.1em', borderRadius: 999 } }, sp.spellType)) : null) : null);
-  });
+      h('span', { className: 'pb-tn-text' },
+        h('span', { className: 'pb-tn-name' }, name),
+        sp ? h('span', { className: 'pb-tn-meta' },
+          sp.spellType ? h('i', { className: 'pb-tn-type', style: { '--tc': TYPE_C[String(sp.spellType).toLowerCase()] || EW.inkMute }, title: String(sp.spellType).toUpperCase() }, PB_TYPE_GLYPH[String(sp.spellType).toLowerCase()] || '?') : null,
+          ...meta.map(([t, c], i) => h('em', { key: i, style: c ? { color: c } : undefined }, t))) : null,
+        twin && otherSp ? h('span', { className: 'pb-tn-alt' }, '⇄ or ' + otherSp.name) : null,
+        st8 === 'root' ? h('span', { className: 'pb-tn-meta' }, h('em', null, 'ALWAYS EQUIPPED')) : null));
+  };
 
-  /* Pillar heads as PILLS: the title + a tagline line under it. Until the
+  /* The lane heads as PILLS: the title + a tagline line under it. Until the
      tagline table (decision C-5) is approved the line is the pillar's spell
-     count. The SUBCLASS head is a button (opens the picker) and reads as one. */
+     count. The SUBCLASS head is a button (opens the picker). */
   const pillarCount = (prefix) => [1, 2, 3, 4].reduce((n, r) => n + (tree.nodes[prefix + r] ? 1 : 0), 0);
-  const pillarHead = (x, text, color, onClick, sub, count) => h('div', {
-    key: 'head' + x,
+  const pillarHead = (prefix, text, color, onClick, sub) => h('div', {
+    key: 'head' + prefix,
     className: 'pb-pillar-head' + (onClick ? ' btn' : ''),
-    style: { left: x + '%', color, borderColor: onClick ? 'rgba(242,196,104,0.5)' : (color + '55') },
+    style: { color, borderColor: onClick ? 'rgba(242,196,104,0.5)' : (color + '66') },
     onClick, title: onClick ? 'Subclass — click to change' : undefined,
   },
     h('span', { className: 'pb-pillar-title' }, text, onClick ? h('i', null, ' ▾') : null),
-    h('span', { className: 'pb-pillar-tag' }, onClick ? sub : (count != null ? count + ' TECHNIQUE' + (count === 1 ? '' : 'S') : sub)));
+    h('span', { className: 'pb-pillar-tag' }, sub != null ? sub : pillarCount(prefix) + ' TECHNIQUE' + (pillarCount(prefix) === 1 ? '' : 'S')));
 
-  const pips = [];
-  for (let i = 0; i < slotCap; i++) pips.push(h('span', { key: i, style: {
-    width: 7, height: 7, borderRadius: '50%', display: 'inline-block', margin: '0 2px',
-    background: i < used ? EW.time : 'transparent', border: '1px solid ' + (i < used ? EW.time : 'rgba(255,255,255,0.3)'),
-  } }));
+  const lane = (prefix, head) => h('div', { key: prefix, className: 'pb-lane', 'data-pillar': prefix },
+    head,
+    node(prefix + '4'), h('i', { className: linkCls(prefix + '3', prefix + '4') }),
+    node(prefix + '3'), h('i', { className: linkCls(prefix + '2', prefix + '3') }),
+    node(prefix + '2'), h('i', { className: linkCls(prefix + '1', prefix + '2') }),
+    node(prefix + '1'), h('i', { className: linkCls('root', prefix + '1') + ' drop' }));
 
-  // The circuit is three rows: the pillar heads (their own strip, so the
-  // pills never sit on the ring-4 capstones), the BOARD (TREE_NODE_POS in %
-  // of it), and the slot pips under the root's label.
+  const busCls = (k) => (connected.has(k) ? ' lit' : '') + (hoverSet && hoverSet.has(k) ? ' hover' : '');
+  // The circuit: three lanes over a BUS. Every lane's drop lands on the bus;
+  // the root hub sits at the centre lane's disc, exactly under R1.
   return h('div', { className: 'pb-circuit' },
-    h('div', { className: 'pb-circuit-heads' },
-      pillarHead(19, getJobDisplay(clsName).toUpperCase(), EW.space, undefined, undefined, pillarCount('P')),
-      pillarHead(50, (raceLabel || '').toUpperCase(), fc, undefined, undefined, pillarCount('R')),
-      isFL
+    h('div', { className: 'pb-lanes' },
+      lane('P', pillarHead('P', getJobDisplay(clsName).toUpperCase(), EW.space)),
+      lane('R', pillarHead('R', (raceLabel || '').toUpperCase(), fc)),
+      lane('S', isFL
         // Freelancer has no subclass — the right pillar IS the wildcard rack.
-        ? pillarHead(81, 'WILDCARDS', EW.time, undefined, undefined, pillarCount('S'))
-        : pillarHead(81, secJob ? getJobDisplay(secJob).toUpperCase() : '＋ SUBCLASS',
-            secJob ? EW.ink : EW.inkMute, onOpenSubjob, secJob ? 'CHANGE' : 'SELECT')),
-    h('div', { className: 'pb-circuit-board' },
-      h('svg', { viewBox: '0 0 100 100', preserveAspectRatio: 'none',
-        style: { position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 1, pointerEvents: 'none' } }, edgeNodes),
-      chips),
-    h('div', { className: 'pb-circuit-pips' }, pips));
+        ? pillarHead('S', 'WILDCARDS', EW.time)
+        : pillarHead('S', secJob ? getJobDisplay(secJob).toUpperCase() : '＋ SUBCLASS',
+            secJob ? EW.ink : EW.inkMute, onOpenSubjob, secJob ? 'CHANGE' : 'SELECT'))),
+    h('div', { className: 'pb-bus' },
+      h('div', { className: 'pb-bus-cell l' + busCls('P1') }),
+      h('div', { className: 'pb-bus-cell c lit' }, node('root')),
+      h('div', { className: 'pb-bus-cell r' + busCls('S1') })));
 }
 
 /* ══ THE TECHNIQUE PANEL (plan §5.2 item 3) — under the circuit: a category
@@ -1507,7 +1472,7 @@ function TechniquePanel({ info, clsName, secJob, raceLabel, fc, onVerb, onPrevie
       h('div', { className: 'pb-technique-main' },
         h('div', { className: 'pb-technique-kicker' }, 'THE CIRCUIT'),
         h('div', { className: 'pb-technique-name', style: { color: EW.inkMute } }, 'Select a technique'),
-        h('div', { className: 'pb-technique-desc' }, 'Hover or arrow across the circuit. ENTER equips · BACKSPACE unequips · SPACE replays the preview.')));
+        h('div', { className: 'pb-technique-desc' }, 'ENTER equips · ⌫ unequips · SPACE replays the preview')));
   }
   const { st8, sp, ring, key } = info;
   const cat = sp ? classifySpellLocal(sp) : null;
@@ -1516,7 +1481,7 @@ function TechniquePanel({ info, clsName, secJob, raceLabel, fc, onVerb, onPrevie
   const glyph = cat ? (TREE_CAT_GLYPH[cat] || TREE_CAT_GLYPH.utility) : (st8 === 'root' ? '⚔' : st8 === 'socket' ? '＋' : st8 === 'sealed' ? '🔒' : '◯');
   const pillarName = info.pillar === 'P' ? getJobDisplay(clsName) : info.pillar === 'R' ? (raceLabel || 'RACE') : (secJob ? getJobDisplay(secJob) : 'SUBCLASS');
   const kicker = st8 === 'root' ? 'ROOT · ALWAYS EQUIPPED'
-    : ['RING ' + ring, sp && sp.tier ? 'TIER ' + sp.tier : null, cat ? spellCategoryLabel(cat).toUpperCase() : null, (pillarName || '').toUpperCase()].filter(Boolean).join(' · ');
+    : ['RING ' + ring, sp && sp.tier ? 'TIER ' + sp.tier : null, cat ? spellCategoryLabel(cat).toUpperCase() : null].filter(Boolean).join(' · ');
   const name = st8 === 'root' ? 'Basic Attack' : st8 === 'socket' ? 'Wildcard Socket' : st8 === 'empty' ? 'Empty Node' : (sp ? sp.name : '—');
   const desc = st8 === 'root' ? 'The vessel\'s plain strike — melee or ranged by reach. Every loadout carries it; the circuit grows from here.'
     : st8 === 'socket' ? 'An open socket on the Freelancer\'s rack: borrow any job\'s technique of tier ' + (info.tiers || []).join(' / ') + '.'
@@ -2580,10 +2545,8 @@ function PartyBuilder(props) {
      The STAGE (the hero) is rendered ONCE with a stable key and placed by
      grid-area — EWCharViewer is a singleton canvas and must never remount
      when a tab changes. ══ */
-  const tabDef = PB_TABS.find(t => t.id === pbTab) || PB_TABS[0];
   const raceLabelTxt = _grl(unitRace, identity.gender) || unitRace;
   const officer = pbOfficer();
-  const filedCount = (() => { let n = 0; for (let i = 0; i < teamSize; i++) if (st.builderConfirmedSlots?.[player]?.[i]) n++; return n; })();
   const anyWindow = !!(equipPicker || showTeamModal || pbMenu || notesOpen || (twinPick && unitTree && unitTree.alts && unitTree.alts[twinPick]) || (flSocketPick && unitTree && unitTree.isFreelancer));
   // the wall's hover → the stage (Stage 4); cleared on leave, on a pick and off the ROSTER tab
   const rosterHoverIn = (entry) => {
@@ -2686,27 +2649,22 @@ function PartyBuilder(props) {
   };
   const techInfo = (useTree && unitTree) ? pbTechInfo(unitTree, treeSealed, customSpells || [], techHover || techSel, slotCap) : null;
 
-  /* ── HEAD ── */
-  const head = h('div', { className: 'ms-tty-head pb-head' },
-    h(DoorSeal, { size: 20 }),
-    h('span', null, 'D.O.O.R.'), h('span', { className: 'ms-tty-sep' }, '▸'),
-    h('b', null, 'ENTROPY WARS'),
-    h('span', { className: 'ms-tty-sep' }, '·'), h('span', null, standalone ? 'RECORDS · SQUAD MANIFESTS' : 'CUSTOMS & ADMISSIONS · VESSEL ASSIGNMENT'),
-    h('span', { className: 'ms-tty-sep' }, '·'), h('span', null, 'FORGE-1'),
-    h('span', { className: 'ms-tty-officer' }, officer ? officer.name : 'UNFILED', officer && h('i', null, 'CLEARANCE L' + officer.cl.level + ' · ' + officer.cl.title)),
-    h('span', { className: 'ms-tty-sep' }, '·'),
-    h('span', null, teamSize + ' SLOTS · ' + (standalone ? 'TEAM ARCHIVE' : (mpMode?.label || 'BATTLE').toUpperCase())),
-    h('span', { className: 'ms-tty-sep' }, '·'), h('span', { className: 'ms-tty-esc' }, 'ESC · BACK'));
-
-  /* ── TABS ── */
+  /* ── HEAD: one row — the seal + FORGE-1, the tabs (L1 / R1 caps), the mode · slots, ESC ── */
   const tabbar = h('div', { className: 'pb-tabbar' },
     h('button', { className: 'pb-tabcap', onClick: () => cycleTab(-1), title: 'Previous tab · Q or [' }, '◂ L1'),
     h('div', { className: 'pb-tabs', role: 'tablist' },
       ...PB_TABS.map((t, i) => h('button', { key: t.id, role: 'tab', 'aria-selected': t.id === pbTab,
-        className: 'pb-tab' + (t.id === pbTab ? ' on' : ''), onClick: () => setTab(t.id), title: t.hint + ' · key ' + (i + 1) },
+        className: 'pb-tab' + (t.id === pbTab ? ' on' : ''), onClick: () => setTab(t.id), title: (t.hint || '') + ' · key ' + (i + 1) },
         h('i', null, String(i + 1)), t.label))),
-    h('button', { className: 'pb-tabcap', onClick: () => cycleTab(1), title: 'Next tab · E or ]' }, 'R1 ▸'),
-    h('span', { className: 'pb-tabhint' }, tabDef.hint || ''));
+    h('button', { className: 'pb-tabcap', onClick: () => cycleTab(1), title: 'Next tab · E or ]' }, 'R1 ▸'));
+  const head = h('div', { className: 'ms-tty-head pb-head' },
+    h(DoorSeal, { size: 20 }),
+    h('b', null, 'ENTROPY WARS'),
+    h('span', { className: 'ms-tty-sep' }, '·'), h('span', null, standalone ? 'SQUAD MANIFESTS' : 'FORGE-1'),
+    tabbar,
+    h('span', { className: 'pb-head-right' },
+      h('span', null, teamSize + ' SLOTS · ' + (standalone ? 'TEAM ARCHIVE' : (mpMode?.label || 'BATTLE').toUpperCase())),
+      h('span', { className: 'ms-tty-sep' }, '·'), h('span', { className: 'ms-tty-esc' }, 'ESC · BACK')));
 
   /* ── the pieces, moved into their tabs unchanged inside ── */
   // ROSTER: the Codex of Vessels — filter row + the wall
@@ -2783,13 +2741,16 @@ function PartyBuilder(props) {
 
   // TECHNIQUES: the abilities head, the tree (or the rack + flat pool fallback), the node picker
   const techPanel = h(React.Fragment, null,
-    h('div', { className: 'pb-zone-head' },
-      h('b', null, 'Abilities'),
-      h('span', { style:{ fontSize:10, color: spellSlotsUsed>slotCap ? EW.bad : EW.time, letterSpacing:'0.12em', border:`1px solid ${spellSlotsUsed>slotCap?'rgba(255,122,138,0.45)':'rgba(242,196,104,0.35)'}`, borderRadius:999, background:'rgba(0,0,0,0.35)', padding:'2px 9px', whiteSpace:'nowrap' } }, spellSlotsUsed, '/', slotCap, ' SLOTS'),
+    // one bar: the tab's name, the slot pips, the three tools — nothing else
+    h('div', { className: 'pb-tech-bar' },
+      h('b', null, 'TECHNIQUES'),
+      h('span', { className: 'pb-pips' + (spellSlotsUsed > slotCap ? ' over' : ''), title: spellSlotsUsed + ' of ' + slotCap + ' slots filled' },
+        ...Array.from({ length: Math.max(slotCap, spellSlotsUsed) }).map((_, i) => h('i', { key: i, className: i < spellSlotsUsed ? 'on' : '' })),
+        h('small', null, spellSlotsUsed + '/' + slotCap)),
       h('div', { style:{flex:1} }),
-      !isArena&&h('button',{onClick:randomizeSpells,className:'pb-btn-ghost',title:'Random legal loadout',style:{background:'transparent',border:`1px solid ${EW.panelEdge}`,borderRadius:999,color:EW.inkMute,fontSize:9,padding:'3px 9px',fontFamily:'DotGothic16, monospace',cursor:'pointer',letterSpacing:'0.1em'}},'RND'),
-      !isArena&&h('button',{onClick:resetCustomSpells,className:'pb-btn-ghost',title:'Default loadout',style:{background:'transparent',border:`1px solid ${EW.panelEdge}`,borderRadius:999,color:EW.inkMute,fontSize:9,padding:'3px 9px',fontFamily:'DotGothic16, monospace',cursor:'pointer',letterSpacing:'0.1em'}},'RST'),
-      !isArena&&h('button',{onClick:clearAllSpells,className:'pb-btn-danger',title:'Unequip everything',style:{background:'transparent',border:`1px solid rgba(255,120,120,0.25)`,borderRadius:999,color:'rgba(255,120,120,0.7)',fontSize:9,padding:'3px 9px',fontFamily:'DotGothic16, monospace',cursor:'pointer',letterSpacing:'0.1em'}},'CLR')),
+      !isArena&&h('button',{onClick:randomizeSpells,className:'pb-mini',title:'Random legal loadout'},'RND'),
+      !isArena&&h('button',{onClick:resetCustomSpells,className:'pb-mini',title:'Default loadout'},'RST'),
+      !isArena&&h('button',{onClick:clearAllSpells,className:'pb-mini danger',title:'Unequip everything'},'CLR')),
     h('div', { className: 'pb-zone-body', style: { padding: '6px 4px 6px 2px' } },
 
       // ── equipped loadout: fixed 6-slot rack. Tree classes DON'T get
@@ -2832,13 +2793,6 @@ function PartyBuilder(props) {
 
       // ── the spell tree (every job — Freelancer gets wildcard sockets) ──
       useTree&&unitTree&&h(React.Fragment, null,
-        h('div', { className: 'pb-circuit-head' },
-          h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.16em' } }, 'THE CIRCUIT'),
-          h('span', { style:{ fontSize:9, color:`${fc}bb`, letterSpacing:'0.08em', textTransform:'uppercase' } }, getJobDisplay(clsName), unitTree.isFreelancer ? ' + WILDCARDS' : (secJob ? ' + ' + getJobDisplay(secJob) : '')),
-          h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em', marginLeft:'auto', textAlign:'right' } },
-            unitTree.isFreelancer ? 'CLICK A ＋ SOCKET · BORROW ANY JOB\'S SPELL'
-              : (unitTree.alts && Object.keys(unitTree.alts).length) ? 'HOVER PREVIEWS · ⇄ NODES HOLD TWO'
-              : 'HOVER PREVIEWS · DISTANT NODES EQUIP THE PATH')),
         h('div', { className: 'pb-circuit-scroll', onMouseLeave: treeNodeHoverOut },
           h(SpellTreePanel, { tree: unitTree, sealed: treeSealed, equipped: customSpells || [],
             slotCap, fc, clsName, secJob,
@@ -3042,12 +2996,12 @@ function PartyBuilder(props) {
   // STATS column (every tab but ROSTER): identity, vitals, the sheet, footprints, affinities
   const zMod = (mapped) => zodiacNature ? (zodiacNature.buff===mapped ? 'up' : zodiacNature.debuff===mapped ? 'dn' : null) : null;
   const statsPanel = h(React.Fragment, null,
-    h('div', { style:{ display:'flex', alignItems:'baseline', gap:8, flexWrap:'wrap', flexShrink:0 } },
-      h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:'clamp(18px,1.8vw,26px)', fontWeight:600, lineHeight:1, color:'#f1e9cf', textShadow:`0 0 30px ${fc}44` } }, getJobDisplay(clsName)),
-      !isArena && clsName!=='Freelancer' && secJob && h('span', { style:{ fontSize:9, color:`${fc}bb`, letterSpacing:'0.1em', textTransform:'uppercase' } }, '◈ SUB: ', getJobDisplay(secJob))),
-    h('div', { style:{ display:'flex', alignItems:'center', gap:5, flexWrap:'wrap', flexShrink:0 } },
-      ...unitTypes.map((t,i)=>h(TypeChip,{key:i,type:t,size:10})),
-      h('span', { style:{ fontSize:8, color:`${fc}99`, letterSpacing:'0.14em', marginLeft:2, textTransform:'uppercase' } }, unitFaction, factionBonusTxt ? ' · ' + factionBonusTxt : '')),
+    h('div', { className: 'pb-ident' },
+      h('b', null, unitName),
+      h('span', null, raceLabelTxt.toUpperCase(), ' · ', getJobDisplay(clsName).toUpperCase(),
+        (!isArena && clsName!=='Freelancer' && secJob) ? ' + ' + getJobDisplay(secJob).toUpperCase() : ''),
+      h('div', { className: 'pb-ident-types' }, ...unitTypes.map((t,i)=>h(TypeChip,{key:i,type:t,size:9})),
+        h('em', { style:{ color:`${fc}bb` }, title: factionBonusTxt || undefined }, unitFaction))),
     h('div', { style:{ flex:1, minHeight:0, display:'flex', flexDirection:'column', gap:6, overflowY:'auto', overflowX:'hidden', paddingTop:4 } },
       h('div', { style:{ display:'flex', flexDirection:'column', gap:3, flexShrink:0, paddingBottom:6, marginBottom:2, borderBottom:`1px solid ${EW.panelEdge}` } },
         VITAL_KEYS.map(k => {
@@ -3064,28 +3018,19 @@ function PartyBuilder(props) {
         })),
       // MOVE / RANGE footprints — the diamonds ARE the rule's shape (§3.2), inside round badges
       h('div', { style:{ display:'flex', gap:14, justifyContent:'center', alignItems:'flex-start', flexShrink:0, paddingTop:2 } },
-        h('div', { className:'pb-foot-badge' }, h(RangeDiamond, { radius: fullStats.move ?? 3, fill:'rgba(80,160,255,0.45)', edge:'rgba(80,160,255,0.7)', label:'MOVE (SPD)', value: fullStats.move ?? 3, color:'rgba(120,180,255,0.9)', tip: window.STAT_HELP?.move })),
+        h('div', { className:'pb-foot-badge' }, h(RangeDiamond, { radius: fullStats.move ?? 3, fill:'rgba(80,160,255,0.45)', edge:'rgba(80,160,255,0.7)', label:'MOVE', value: fullStats.move ?? 3, color:'rgba(120,180,255,0.9)', tip: window.STAT_HELP?.move })),
         h('div', { className:'pb-foot-badge' }, h(RangeDiamond, { radius: fullStats.range ?? 1, fill:'rgba(255,70,70,0.35)', edge:'rgba(255,70,70,0.6)', label:'RANGE', value: fullStats.range ?? 1, color:'rgba(255,120,120,0.9)', tip: window.STAT_HELP?.range }))),
       // AFFINITIES (Stage 5, §5.5 item 3): the six type discs, the incoming matchups for this vessel's own types
       h('div', { style:{ flexShrink:0, display:'flex', flexDirection:'column', gap:4, borderTop:`1px solid ${EW.panelEdge}`, paddingTop:5 } },
-        h('div', { style:{ fontSize:9, color:fc, letterSpacing:'0.14em', fontWeight:600, flexShrink:0 } }, 'AFFINITIES ', h('span', { style:{ color:EW.inkDim, fontWeight:400 } }, '· WHAT IT TAKES')),
+        h('div', { style:{ fontSize:9, color:fc, letterSpacing:'0.14em', fontWeight:600, flexShrink:0 } }, 'AFFINITIES'),
         h(PbAffinityRing, { types: unitTypes })),
-      // the notes, inline — CSS shows this only on glass too narrow for the bezel's sticky notes
-      h('div', { className:'pb-traits-inline', style:{ flexShrink:0, display:'flex', flexDirection:'column', gap:3 } },
-        h('div', { style:{ fontSize:9, color:fc, letterSpacing:'0.14em', fontWeight:600, flexShrink:0, borderTop:`1px solid ${EW.panelEdge}`, paddingTop:5 } }, 'THE NOTES ', h('span', { style:{ color:EW.inkDim, fontWeight:400 } }, '· PASSIVES & TERRAIN')),
-        (unitNotes.passives.length || unitNotes.terrain.length)
-          ? [...unitNotes.passives.map(p => ({ icon:p.icon, name:p.name, desc:p.desc })), ...unitNotes.terrain].map((t, ti) => h('div', { key:ti, className:'pbx-trait' },
-              h('span', { style:{ fontSize:13, lineHeight:1.2, flexShrink:0, width:18, textAlign:'center' } }, t.icon),
-              h('div', { style:{ minWidth:0, fontSize:10, lineHeight:1.4 } },
-                h('span', { style:{ color:EW.ink, fontWeight:700, letterSpacing:'0.04em' } }, t.name),
-                h('span', { style:{ color:EW.inkMute } }, ' — ', t.desc))))
-          : h('div', { style:{ fontSize:10, color:EW.inkDim, fontStyle:'italic', padding:'4px 6px' } }, 'No documented traits — field research pending.'))));
+));
 
   // ROSTER's quick read under the hero: name · race · job · types · four pills · CONFIRM
   const quickCard = h('div', { className: 'pb-stage-card' },
     h('div', { style:{ display:'flex', alignItems:'baseline', gap:8, minWidth:0 } },
-      h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:15, fontWeight:600, color:'#f1e9cf', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0 } }, unitName),
-      h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.14em', flexShrink:0, textTransform:'uppercase' } }, getJobDisplay(clsName))),
+      h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:15, fontWeight:600, color:'#f1e9cf', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0 } }, stageEntry ? stageLabel : unitName),
+      h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.14em', flexShrink:0, textTransform:'uppercase' } }, getJobDisplay(stageCls))),
     h('div', { style:{ display:'flex', alignItems:'center', gap:4, flexWrap:'wrap' } }, ...unitTypes.map((t,i)=>h(TypeChip,{key:i,type:t,size:9}))),
     h('div', { style:{ display:'flex', flexDirection:'column', gap:2 } },
       ['HP','ATK','DEF','SPD'].map(k => {
@@ -3095,29 +3040,51 @@ function PartyBuilder(props) {
     !standalone && h('button', { className:'ms-tty-btn ok', style:{ alignSelf:'flex-end', marginTop:2 }, onClick:confirmSlot, title:'Lock this vessel and move to the next open slot' }, 'CONFIRM ' + numerals[slot]));
 
   /* ── BODY: the three zones; the stage keeps its key across every tab ── */
+  const stageCx = pbTab === 'roster' ? 0.5 : PB_STAGE_CX;
   const zoneContent = pbTab === 'roster' ? rosterPanel : pbTab === 'tech' ? techPanel : pbTab === 'gear' ? gearPanel : dossierPanel;
   const body = h('div', { className: 'pb-body', 'data-tab': pbTab },
     h('div', { key: 'tech', className: 'pb-zone pb-zone-tech pb-zone-' + pbTab }, zoneContent),
-    h('div', { key: 'stage', className: 'pb-stage' },
-      h('div', { className: 'pb-stage-title' },
-        h('b', null, stageLabel),
-        h('span', null, stageEntry ? '· ' + getJobDisplay(stageCls) + ' · PREVIEW ·' : '· SLOT ' + numerals[slot] + ' ·')),
+    // The stage spans the WHOLE body on TECHNIQUES / GEAR / DOSSIER (the side
+    // zones are transparent over it — the hero's environment is the backdrop);
+    // --pb-cx / `focus` put the hero at the centre of the free band between
+    // the circuit and the stats (PB_STAGE_CX ↔ the CSS column widths).
+    h('div', { key: 'stage', className: 'pb-stage', style: { '--pb-cx': (stageCx * 100) + '%' } },
       h('div', { className: 'pb-stage-view' },
-        h('div', { style:{ position:'absolute', left:'50%', top:'52%', transform:'translate(-50%,-50%)', width:'78%', aspectRatio:'1', background:`radial-gradient(circle, ${fc}26, transparent 62%)`, filter:'blur(18px)', pointerEvents:'none' } }),
-        h('div', { style:{ position:'absolute', bottom:8, left:'50%', transform:'translateX(-50%)', width:'62%', height:12, background:`radial-gradient(ellipse, ${fc}66, transparent 70%)`, filter:'blur(3px)', pointerEvents:'none' } }),
-        h(HeroViewer3D, { race:stageRace, gender:stageGender, cls:stageCls, faction:stageFaction }),
+        h('div', { className: 'pb-stage-glow', style:{ background:`radial-gradient(circle, ${fc}26, transparent 62%)` } }),
+        h('div', { className: 'pb-stage-floor', style:{ background:`radial-gradient(ellipse, ${fc}66, transparent 70%)` } }),
+        h(HeroViewer3D, { race:stageRace, gender:stageGender, cls:stageCls, faction:stageFaction, focus: stageCx }),
         // MOVE PREVIEW pill (plan §5.2 item 5): shows while a cast clip runs
         // on the stage; the note for vessels that cannot preview; PREVIEW OFF
         // on TECHNIQUES when the trigger is disabled.
         previewState ? h('div', { className: 'pb-stage-pill live' }, h('i', null), 'MOVE PREVIEW · ', (previewState.name || '').toUpperCase())
           : previewNote ? h('div', { className: 'pb-stage-pill note' }, previewNote)
-          : (previewOff && pbTab === 'tech') ? h('div', { className: 'pb-stage-pill off' }, 'PREVIEW OFF') : null),
+          : (previewOff && pbTab === 'tech') ? h('div', { className: 'pb-stage-pill off' }, 'PREVIEW OFF') : null,
+        // Stage 5's sticky notes, stuck ON THE GLASS (2026-09-09 — the user: the bezel margin "shrinks the entire screen")
+        (pbTab !== 'roster' && !(standalone && tbView === 'locker')) ? h(PbNotes, { notes: unitNotes, seed: unitRace + ':' + (identity.gender || ''), paper: notePaper, onOpen: () => { setNotesOpen(true); sfx('uiCursorMove'); } }) : null),
       pbTab === 'roster' ? quickCard : null),
     pbTab !== 'roster' ? h('div', { key: 'stats', className: 'pb-zone pb-zone-stats' }, statsPanel) : null);
 
-  /* ── PARTY ROW ── */
+  /* ── THE BOTTOM BAR (2026-09-09): the party row and the foot are ONE row —
+     BACK + the vessel's summary on the left, the portraits in the middle, the
+     tools + CONFIRM / the seal on the right. The empty flanks the user
+     circled are now the controls; the `> forge --slot` prompt, the ◂ ▸ caps
+     and the counter are gone (← → still walk the row). The online lock
+     ladder (START / WAITING / SEAL) is verbatim (plan rule 3.6a). ── */
   const partyRow = h('div', { className: 'pb-party' },
-    h('button', { className: 'pb-party-cap', onClick: () => selectSlot((slot - 1 + teamSize) % teamSize), title: 'Previous slot (←)' }, '◂'),
+    h('div', { className: 'pb-party-left' },
+      standalone
+        ? h('button', { className: 'ms-tty-btn danger', onClick: () => { setTbView('locker'); sfx('uiCursorMove'); refresh(); }, title: 'Back to the archive' }, '◂ TEAMS')
+        : h('button', { className: 'ms-tty-btn danger', onClick: doBack, title: 'Back' }, '◂ BACK'),
+      h('div', { className: 'ms-tty-sum pb-sum' },
+        h('small', null, 'SLOT ' + numerals[slot]),
+        h('b', null, unitName),
+        h('span', null,
+          h('em', { className: 'gold' }, raceLabelTxt.toUpperCase()), ' · ', h('em', null, getJobDisplay(clsName).toUpperCase()),
+          secJob ? ' + ' : null, secJob ? h('em', null, getJobDisplay(secJob).toUpperCase()) : null,
+          ' · ', h('em', { className: spellSlotsUsed > slotCap ? 'red' : 'green' }, spellSlotsUsed + '/' + slotCap + ' SPELLS'))),
+      (!isOnline && st.showPlayer2Builder) ? h('div', { className: 'pb-party-side' },
+        h('button', { className: 'pb-pill' + (player === 1 ? ' on' : ''), onClick: () => selectPlayer(1) }, 'P1'),
+        h('button', { className: 'pb-pill' + (player === 2 ? ' on' : ''), onClick: () => selectPlayer(2) }, 'P2 · CPU')) : null),
     h('div', { className: 'pb-party-slots' },
       Array.from({length: teamSize}).map((_, i) => {
         const cn = typeof window.normalizeClassName==='function' ? window.normalizeClassName(st.partyBuilds?.[player]?.[i], window.DEFAULT_BUILDS?.[player]?.[i]) : (st.partyBuilds?.[player]?.[i]||'Warrior');
@@ -3137,48 +3104,29 @@ function PartyBuilder(props) {
           h('div', { className:'pb-party-name' }, nm),
           h('div', { className:'pb-party-sub' }, rl, ' · ', getJobDisplay(cn)));
       })),
-    h('button', { className: 'pb-party-cap', onClick: () => selectSlot((slot + 1) % teamSize), title: 'Next slot (→)' }, '▸'),
-    (!isOnline && st.showPlayer2Builder) ? h('div', { className: 'pb-party-side' },
-      h('button', { className: 'pb-pill' + (player === 1 ? ' on' : ''), onClick: () => selectPlayer(1) }, 'P1'),
-      h('button', { className: 'pb-pill' + (player === 2 ? ' on' : ''), onClick: () => selectPlayer(2) }, 'P2 · CPU')) : null,
-    h('span', { className: 'pb-party-count' }, standalone ? (teamSize + ' VESSELS') : (filedCount + ' / ' + teamSize + ' FILED')));
-
-  /* ── FOOT: BACK · summary · prompt · the dice · CONFIRM · the seal ── */
-  const foot = h('div', { className: 'ms-tty-foot pb-foot' },
-    standalone
-      ? h('button', { className: 'ms-tty-btn danger', onClick: () => { setTbView('locker'); sfx('uiCursorMove'); refresh(); }, title: 'Back to the archive' }, '◂ TEAMS')
-      : h('button', { className: 'ms-tty-btn danger', onClick: doBack, title: 'Back' }, '◂ BACK'),
-    h('div', { className: 'ms-tty-sum' },
-      h('small', null, 'SLOT ' + numerals[slot] + (standalone ? ' · SQUAD MANIFEST' : ' · VESSEL ASSIGNMENT')),
-      h('b', null, unitName),
-      h('span', null,
-        h('em', { className: 'gold' }, raceLabelTxt.toUpperCase()), ' · ', h('em', null, getJobDisplay(clsName).toUpperCase()),
-        secJob ? ' · ' : null, secJob ? h('em', null, 'SUB ' + getJobDisplay(secJob).toUpperCase()) : null,
-        ' · ', h('em', { className: spellSlotsUsed > slotCap ? 'red' : 'green' }, 'SPELLS ' + spellSlotsUsed + '/' + slotCap))),
-    h('div', { className: 'ms-tty-spacer' }),
-    h('span', { className: 'ms-tty-prompt pb-prompt' }, '> ', h('b', null, 'forge --slot ' + (slot + 1) + ' --job "' + getJobDisplay(clsName) + '"'), h('span', { className: 'ms-tty-cursor' })),
-    h('button', { className: 'ms-tty-btn sm', onClick: doRandomize, title: 'Randomize this vessel' }, '🎲 ONE'),
-    h('button', { className: 'ms-tty-btn sm', onClick: doRandomizeAll, title: 'Randomize the whole party' }, '🎲 ALL'),
-    h('button', { className: 'ms-tty-btn sm', onClick: doDefaults, title: 'Reset every slot to defaults' }, 'RESET'),
-    standalone
-      // ── standalone: name the squad, then archive it — SAVE is the seal ──
-      ? h(React.Fragment, null,
-          h('input', { className: 'pb-foot-input', value: teamNameDraft, onChange: e => setTeamNameDraft(e.target.value), placeholder: 'Name this squad…', maxLength: 30, title: 'Team name' }),
-          h('span', { className: 'pb-foot-note' }, editingTeamId ? 'FORGING · ' + (teamNameDraft || 'UNNAMED').toUpperCase() : 'NEW SQUAD'),
-          h('button', { className: 'ms-tty-btn primary', onClick: tbSaveTeam, title: 'Archive this squad' }, h('b', null, '💾 SAVE TEAM'), h('i', null, '↵')))
-      // ── match flow: presets left of CONFIRM, the seal on the right ──
-      : h(React.Fragment, null,
-          h('button', { className: 'ms-tty-btn sm gold', onClick: () => { setTeamSaveName(''); setShowTeamModal('save'); }, title: 'Archive this party as a saved team' }, '★ SAVE'),
-          h('button', { className: 'ms-tty-btn sm teal', onClick: () => setShowTeamModal('load'), title: 'Load a saved team from your archive' }, '↑ LOAD', getTeamPresets().length ? ' · ' + getTeamPresets().length : ''),
-          h('button', { className: 'ms-tty-btn ok', onClick: confirmSlot, title: 'Lock this vessel and move to the next open slot' }, 'CONFIRM ', numerals[slot]),
-          friendlyHostCanStart
-            ? h('button', { className: 'ms-tty-btn primary', onClick: doStart }, h('b', null, '⚔ START MATCH'), h('i', null, '↵'))
-            : isWaitingOnline
-            ? h('button', { className: 'ms-tty-btn primary waiting pb-btn-waiting', disabled: true },
-                h('b', null, (isRankedNet && opponentLockedToo) ? 'MATCH STARTING…'
-                  : (!isRankedNet && netRole === 'guest' && opponentLockedToo) ? '⌛ WAITING FOR HOST TO START…'
-                  : '⌛ WAITING ON OPPONENT…'))
-            : h('button', { className: 'ms-tty-btn primary', onClick: doStart, title: 'Seal the manifest and cross' }, h('b', null, 'SEAL YOUR FATE'), h('i', null, '↵'))));
+    h('div', { className: 'pb-party-right ms-tty-foot pb-foot' },
+      h('div', { className: 'pb-tools' },
+        h('button', { className: 'ms-tty-btn sm', onClick: doRandomize, title: 'Randomize this vessel' }, '🎲 ONE'),
+        h('button', { className: 'ms-tty-btn sm', onClick: doRandomizeAll, title: 'Randomize the whole party' }, '🎲 ALL'),
+        h('button', { className: 'ms-tty-btn sm', onClick: doDefaults, title: 'Reset every slot to defaults' }, 'RESET'),
+        !standalone ? h('button', { className: 'ms-tty-btn sm gold', onClick: () => { setTeamSaveName(''); setShowTeamModal('save'); }, title: 'Archive this party as a saved team' }, '★ SAVE') : null,
+        !standalone ? h('button', { className: 'ms-tty-btn sm teal', onClick: () => setShowTeamModal('load'), title: 'Load a saved team from your archive' }, '↑ LOAD', getTeamPresets().length ? ' · ' + getTeamPresets().length : '') : null),
+      standalone
+        // ── standalone: name the squad, then archive it — SAVE is the seal ──
+        ? h('div', { className: 'pb-seal' },
+            h('input', { className: 'pb-foot-input', value: teamNameDraft, onChange: e => setTeamNameDraft(e.target.value), placeholder: editingTeamId ? 'Squad name' : 'Name this squad…', maxLength: 30, title: 'Team name' }),
+            h('button', { className: 'ms-tty-btn primary', onClick: tbSaveTeam, title: 'Archive this squad' }, h('b', null, '💾 SAVE TEAM'), h('i', null, '↵')))
+        // ── match flow: CONFIRM left of the seal ──
+        : h('div', { className: 'pb-seal' },
+            h('button', { className: 'ms-tty-btn ok', onClick: confirmSlot, title: 'Lock this vessel and move to the next open slot' }, 'CONFIRM ', numerals[slot]),
+            friendlyHostCanStart
+              ? h('button', { className: 'ms-tty-btn primary', onClick: doStart }, h('b', null, '⚔ START MATCH'), h('i', null, '↵'))
+              : isWaitingOnline
+              ? h('button', { className: 'ms-tty-btn primary waiting pb-btn-waiting', disabled: true },
+                  h('b', null, (isRankedNet && opponentLockedToo) ? 'MATCH STARTING…'
+                    : (!isRankedNet && netRole === 'guest' && opponentLockedToo) ? '⌛ WAITING FOR HOST TO START…'
+                    : '⌛ WAITING ON OPPONENT…'))
+              : h('button', { className: 'ms-tty-btn primary', onClick: doStart, title: 'Seal the manifest and cross' }, h('b', null, 'SEAL YOUR FATE'), h('i', null, '↵')))));
 
   /* ══ TEAM ARCHIVE — standalone landing view (Pokémon-Showdown locker), a
      full-glass view over the forge: pick a squad to edit, or start a new
@@ -3350,7 +3298,7 @@ function PartyBuilder(props) {
     h('div', { className: 'ms-crt-bezel' },
       h('div', { className: 'ms-crt-glass' },
         h('div', { className: 'ms-crt-screen' },
-          h('div', { className: 'ms-tty pb-tty' }, head, tabbar, body, partyRow, foot),
+          h('div', { className: 'ms-tty pb-tty' }, head, body, partyRow),
           locker,
           teamWindow,
           notesWindow,
@@ -3362,9 +3310,7 @@ function PartyBuilder(props) {
         h('div', { className: 'pb-crt-roll' })),
       h('div', { className: 'ms-crt-label' }, 'D.O.O.R. · ' + (standalone ? 'RECORDS' : 'CUSTOMS & ADMISSIONS') + ' · FORGE-1 · DO NOT UNPLUG'),
       h('div', { className: 'ms-crt-brand' }, 'ENTROPY DATA SYSTEMS'),
-      h('div', { className: 'ms-crt-led' }),
-      // Stage 5: the sticky notes live ON THE BEZEL, outside the glass (the forge's right bezel is widened for them)
-      (standalone && tbView === 'locker') ? null : h(PbNotes, { notes: unitNotes, seed: unitRace + ':' + (identity.gender || ''), paper: notePaper, onOpen: () => { setNotesOpen(true); sfx('uiCursorMove'); } })),
+      h('div', { className: 'ms-crt-led' })),
     spellTip && buildSpellTooltip(spellTip.sp, spellTip.x, spellTip.y));
 }
 
