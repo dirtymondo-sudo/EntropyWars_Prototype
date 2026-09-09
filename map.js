@@ -101,12 +101,20 @@
 
             state.gameState = GS.MAIN_MENU;
             _showTitlePage('mainMenuPage');
-            /* a fresh arrival: the menu's lone door stands SHUT — ENTER on the
-               menu plays the beat that opens it (three-renderer.js ThreeRenderer.menu) */
+            /* a fresh arrival: the menu's lone door stands SHUT — PLAY walks
+               through it (_goToPlayHub → _menuScenePlayBeat; the beat lives in
+               three-renderer.js ThreeRenderer.menu) */
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.menu && ThreeRenderer.menu.active()) ThreeRenderer.menu.reset(); } catch (e) {}
         }
 
-        window._goToPlayHub = function() {
+        window._goToPlayHub = function(opts) {
+            opts = opts || {};
+            /* THE DOOR BEAT (2026-09-09): Play walks through the menu's lone
+               door — the cinematic plays first and the building opens as the
+               camera reaches the open leaf. No scene / already open ⇒ nothing
+               plays and we go straight in. */
+            if (!opts.afterDoor && typeof window._menuScenePlayBeat === 'function'
+                && window._menuScenePlayBeat(() => window._goToPlayHub({ afterDoor: true }))) return;
             /* D.O.O.R. HQ (DOOR_HQ_BUILD_PLAN D5 / Phase 1.3): Play walks into
                the building. ?nohq, localStorage ew_hq='off' or the Settings
                toggle keep the classic Play hub; a failed 3D enter falls back
@@ -221,28 +229,31 @@
                        needs the shared canvas: park it — the next startMatch
                        re-activates it (same guard as _hqEnter) */
                     if (ThreeRenderer.isActive && ThreeRenderer.isActive() && state.phase !== 'battle') ThreeRenderer.deactivate();
-                    ok = !!ThreeRenderer.menu.enter({ host, onState: window._menuSceneOnState });
+                    ok = !!ThreeRenderer.menu.enter({ host });
                 }
             } catch (e) { console.warn('[MENU] scene enter failed', e); ok = false; }
             page.classList.toggle('menu-3d', ok);
             return ok;
         };
-        /* the "⏎ ENTER" hint by the door shows while it stands shut */
-        window._menuSceneOnState = function (st) {
-            const hint = document.getElementById('menuEnterHint');
-            if (hint) hint.classList.toggle('show', st === 'closed');
-        };
-        /* the ENTER beat (ui.js keydown): shut → the cinematic, open → shut */
-        window._menuSceneEnterKey = function () {
+        /* THE DOOR BEAT — PLAY walks through the menu's lone door
+           (_goToPlayHub): the camera pushes in, the strike plate buzzes and
+           the leaf swings open; the building opens as we reach it. Returns
+           false (nothing played) when the scene is off / already busy so the
+           caller goes straight in. `done` fires once, on the open doorway. */
+        const _MENU_BEAT_THROUGH_MS = 2100;   // push (1.7 s) + the swing settling
+        window._menuScenePlayBeat = function (done) {
             try {
                 if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.menu || !ThreeRenderer.menu.active()) return false;
-                if (ThreeRenderer.menu.busy()) return true;
-                if (ThreeRenderer.menu.isOpen()) ThreeRenderer.menu.closeDoor(0); else ThreeRenderer.menu.playEnter();
-                return true;
+                const page = document.getElementById('mainMenuPage');
+                if (!page || !page.classList.contains('active')) return false;
+                if (ThreeRenderer.menu.busy() || ThreeRenderer.menu.isOpen()) return false;
+                if (!ThreeRenderer.menu.playEnter()) return false;
             } catch (e) { return false; }
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+            setTimeout(() => { try { done(); } catch (e) { console.warn('[MENU] door beat handoff failed', e); } }, _MENU_BEAT_THROUGH_MS);
+            return true;
         };
         window._menuSceneLeave = function () {
-            try { const hint = document.getElementById('menuEnterHint'); if (hint) hint.classList.remove('show'); } catch (e) {}
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.menu && ThreeRenderer.menu.active()) ThreeRenderer.menu.leave(); } catch (e) {}
         };
         /* Settings: the scene on/off, and where it stands (desert /

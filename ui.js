@@ -12220,15 +12220,6 @@
                 enterGameFromTitle(e);
                 return;
             }
-            /* ENTER on the main menu plays the lone door's beat (map.js
-               _menuSceneEnterKey → three-renderer.js ThreeRenderer.menu):
-               shut → the push-in cinematic that swings it open, open →
-               shut. A focused button or field keeps its own ENTER. */
-            if (e.key === 'Enter' && state.titleScreenVisible && state.gameState === GS.MAIN_MENU) {
-                const tag = (e.target && e.target.tagName) || '';
-                if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON' || tag === 'A') return;
-                if (typeof window._menuSceneEnterKey === 'function' && window._menuSceneEnterKey()) e.preventDefault();
-            }
         });
 
         const uiDialogOverlay = document.getElementById('uiDialogOverlay');
