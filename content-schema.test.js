@@ -365,6 +365,24 @@ test('spell element tags are canonical SPELL_ELEMENTS values', () => {
     assert.deepStrictEqual(problems, []);
 });
 
+test('every SPELL_ELEMENT has an emoji glyph and an icon file (ELEMENT_ICONS / ELEMENT_ICON_FILES)', () => {
+    const problems = [];
+    for (const el of D.SPELL_ELEMENTS) {
+        if (!D.ELEMENT_ICONS[el]) problems.push(`element '${el}' has no ELEMENT_ICONS glyph`);
+        const f = D.ELEMENT_ICON_FILES[el];
+        if (!f) problems.push(`element '${el}' has no ELEMENT_ICON_FILES entry`);
+        else if (!/^[a-z0-9_-]+\.(png|webp|svg)$/.test(f)) problems.push(`element '${el}' icon file '${f}' is not a plain lowercase png/webp/svg name`);
+    }
+    for (const el of Object.keys(D.ELEMENT_ICON_FILES)) {
+        if (!D.SPELL_ELEMENTS.includes(el)) problems.push(`ELEMENT_ICON_FILES has unknown element '${el}'`);
+    }
+    if (!/^https:\/\/cdn\.entropywars\.net\/Assets\/.+\/$/.test(D.ELEMENT_ICON_BASE)) problems.push(`ELEMENT_ICON_BASE '${D.ELEMENT_ICON_BASE}' must be an R2 Assets folder URL ending in '/'`);
+    if (D.elementIconUrl('fire') !== D.ELEMENT_ICON_BASE + D.ELEMENT_ICON_FILES.fire) problems.push('elementIconUrl(fire) does not join base + file');
+    if (!/^<img class="ew-elicon"/.test(D.elementIconHtml('fire'))) problems.push('elementIconHtml(fire) is not an .ew-elicon <img>');
+    if (D.elementIconHtml('not-an-element') !== '') problems.push('elementIconHtml(unknown) should be empty');
+    assert.deepEqual(problems, []);
+});
+
 test('RACE_ELEMENT_AFFINITY rows are valid, combat-element-only and sparse', () => {
     const races = new Set(D.AVAILABLE_RACES);
     const combat = new Set(D.COMBAT_ELEMENTS);

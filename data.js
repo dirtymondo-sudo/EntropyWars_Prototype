@@ -270,6 +270,38 @@ const ELEMENT_ICONS = {
     earth: '⛰️', wind: '🌪️', nature: '🌿', shadow: '🌑', light: '✨',
     psychic: '🌀', sonic: '🔊', arcane: '🔮', blood: '🩸', metal: '⚙️'
 };
+/* ELEMENT ICON ART (2026-09-09). Every element has an image icon on R2 at
+   ELEMENT_ICON_BASE + ELEMENT_ICON_FILES[el] (Assets/Icons/elements/<el>.png,
+   64×64 RGBA, transparent ground — the user's art; placeholders shipped
+   first). HTML surfaces (inspect card pills, codex dossier, the Horologe's
+   spell-blade chips) render it through elementIconHtml(): an <img> that
+   swaps itself for the ELEMENT_ICONS emoji if the file is missing, so an
+   un-uploaded icon never leaves a hole. Plain-TEXT surfaces (floating
+   callouts, the battle log) keep the emoji. Swapping art = replace the file
+   on R2 under a NEW name and edit the row here (asset URLs are not ?v=
+   tagged — same-name uploads stay cached, see CLAUDE.md RULE #1b). */
+const ELEMENT_ICON_BASE = 'https://cdn.entropywars.net/Assets/Icons/elements/';
+const ELEMENT_ICON_FILES = {
+    fire: 'fire.png', ice: 'ice.png', lightning: 'lightning.png', water: 'water.png',
+    poison: 'poison.png', earth: 'earth.png', wind: 'wind.png', nature: 'nature.png',
+    shadow: 'shadow.png', light: 'light.png', psychic: 'psychic.png', sonic: 'sonic.png',
+    arcane: 'arcane.png', blood: 'blood.png', metal: 'metal.png'
+};
+function elementIconUrl(el) {
+    const f = el && ELEMENT_ICON_FILES[el];
+    return f ? ELEMENT_ICON_BASE + f : null;
+}
+// Inline icon markup for innerHTML surfaces. `cls` adds a size/placement
+// class (see styles-hud.css .ew-elicon). Falls back to the emoji glyph on
+// load failure — and to the bare emoji when no file is mapped.
+function elementIconHtml(el, cls) {
+    const emoji = ELEMENT_ICONS[el] || '';
+    const url = elementIconUrl(el);
+    if (!url) return emoji;
+    const fb = emoji.replace(/'/g, '');
+    return '<img class="ew-elicon' + (cls ? ' ' + cls : '') + '" src="' + url + '" alt="' + el + '" draggable="false"' +
+        ' onerror="var s=document.createElement(\'span\');s.className=this.className;s.textContent=\'' + fb + '\';this.replaceWith(s)">';
+}
 
 // Statuses that ARE an element: the target's affinity for that element
 // governs every application, whatever the source (immune/absorb bounces
@@ -15612,7 +15644,8 @@ Object.assign(window, {
   TYPE_CHART, STAB_MULTIPLIER, ENTROPY_STRIKE_TYPE_ORDER, ENTROPY_STRIKE_TYPES,
   /* elemental affinity system (2026-09-01, ELEMENTAL_TYPES_PLAN.md) */
   SPELL_ELEMENTS, COMBAT_ELEMENTS, ELEMENT_AFFINITY_TIERS, ELEMENT_AFFINITY_MULT,
-  ELEMENT_ICONS, ELEMENTAL_STATUS, ELEMENT_RIDER_STATUS, statusAffinityElement,
+  ELEMENT_ICONS, ELEMENT_ICON_BASE, ELEMENT_ICON_FILES, elementIconUrl, elementIconHtml,
+  ELEMENTAL_STATUS, ELEMENT_RIDER_STATUS, statusAffinityElement,
   RACE_ELEMENT_AFFINITY, getRaceElementAffinity, unitElementAffinity,
   AVAILABLE_ZODIACS, ZODIAC_ICONS, JOB_MODIFIERS, CLASS_TEMPLATES,
   JOB_PASSIVES, CLASS_PASSIVES, getJobPassive,

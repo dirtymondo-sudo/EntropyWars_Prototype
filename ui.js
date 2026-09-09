@@ -3865,7 +3865,10 @@
             return Object.keys(t).map(el => {
                 const tier = t[el];
                 const ui = _ELEM_TIER_UI[tier] || { word: tier, color: '#cfd6ea', tip: '' };
-                const icon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[el]) || '';
+                // Image icon (R2 art, ELEMENT_ICON_FILES) with the emoji as its
+                // own onerror fallback — consumers inject `icon` as HTML.
+                const icon = (typeof elementIconHtml === 'function') ? elementIconHtml(el)
+                    : ((typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[el]) || '');
                 return { el, tier, icon, word: ui.word, color: ui.color, tip: ui.tip };
             }).sort((a, b) => (order[a.tier] ?? 9) - (order[b.tier] ?? 9));
         }

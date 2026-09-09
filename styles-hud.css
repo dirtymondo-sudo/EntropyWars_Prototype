@@ -5120,6 +5120,22 @@
     height: 11px;
     flex: none;
 }
+/* Element icon art (data.js ELEMENT_ICON_FILES via elementIconHtml / the
+   Horologe badge renderer): sized to the surrounding text so the R2 PNG
+   sits where the emoji glyph used to. Text surfaces keep the emoji. */
+.ew-elicon {
+    display: inline-block;
+    width: 1.15em;
+    height: 1.15em;
+    vertical-align: -0.2em;
+    margin-right: 0.3em;
+    object-fit: contain;
+    image-rendering: auto;
+    flex: none;
+}
+.hrlg-badges .ew-elicon { width: 12px; height: 12px; vertical-align: -2px; margin-right: 3px; }
+.ins-affin-pill .ew-elicon { width: 11px; height: 11px; vertical-align: -2px; margin: 0 1px; }
+.cdx-elem-pill .ew-elicon { width: 11px; height: 11px; vertical-align: -2px; }
 .ew-dmgicon.phys {
     background: radial-gradient(circle at 50% 45%,
         #fff3c4 0%, #ffcf6e 22%, #f08a3c 48%, #d84e1a 72%, #7e2508 100%);

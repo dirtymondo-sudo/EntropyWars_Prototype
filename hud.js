@@ -2233,10 +2233,21 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
     'CONFIRM',
   ));
   // TYPE badge rides inline next to the name — it's the matchup intel.
+  // Optional image icon on a styled badge (element chips): the <img> hides
+  // itself and reveals the emoji fallback span when the R2 file is missing.
+  const _badgeIcon = (bd) => bd.icon && bd.icon.src
+    ? h(React.Fragment, null,
+        h('img', {
+          className: 'ew-elicon', src: bd.icon.src, alt: '', draggable: false,
+          onError: (e) => { const im = e.currentTarget; im.style.display = 'none'; if (im.nextSibling) im.nextSibling.style.display = ''; },
+        }),
+        h('span', { style: { display: 'none' } }, (bd.icon.fallback ? bd.icon.fallback + ' ' : '')),
+      )
+    : null;
   const badgeRow = (b.badges && b.badges.length) ? h('span', { className: 'hrlg-badges' },
     b.badges.map((bd, k) => bd.plain
       ? h('span', { key: k, className: 'hrlg-cfree', title: bd.title || undefined }, bd.label)
-      : h('span', { key: k, style: bd.style, title: bd.title || undefined }, bd.label)),
+      : h('span', { key: k, style: bd.style, title: bd.title || undefined }, _badgeIcon(bd), bd.label)),
   ) : null;
   // portrait target rows: face chip + name over a real HP (and optional MP)
   // bar — the classic JRPG "who am I hitting / healing" readout.
@@ -3202,8 +3213,12 @@ function _hrlgSpellBadges(sp) {
     const _elCol = ELEM_BADGE_COLORS[_el] || '#cfd6ea';
     const _elIcon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[_el]) || '';
     const _elCombat = (typeof COMBAT_ELEMENTS !== 'undefined') && COMBAT_ELEMENTS.includes(_el);
+    // Image icon from R2 (data.js ELEMENT_ICON_FILES); the badge renderer
+    // falls back to the emoji glyph if the file 404s (art not uploaded yet).
+    const _elSrc = (typeof elementIconUrl === 'function') ? elementIconUrl(_el) : null;
     badges.push({
-      label: (_elIcon ? _elIcon + ' ' : '') + _el.toUpperCase(),
+      icon: _elSrc ? { src: _elSrc, fallback: _elIcon } : null,
+      label: (_elSrc ? '' : (_elIcon ? _elIcon + ' ' : '')) + _el.toUpperCase(),
       style: typeBadgeStyle(_elCol, { fontSize: _HRLG_TYPE_FS, padding: _HRLG_TYPE_PAD, text: _elCol }),
       title: _elCombat
         ? 'Element — checks the target\'s affinity: weak ×1.5 · resist ×0.5 · null 0 · absorb heals'

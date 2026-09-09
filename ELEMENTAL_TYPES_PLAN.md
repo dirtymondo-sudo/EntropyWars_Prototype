@@ -16,6 +16,45 @@ The only live backlog, all optional, none blocking anything:
 3. **P4.17** — new-spell waves to fatten lightning/water; optional
    weather↔element boosts (zodiac resonance is the precedent).
 
+## THE FINAL ELEMENTS (reference — read this before asking again)
+Fifteen tags live on spells (`element:`), split into two tiers:
+- **6 COMBAT elements** (the only ones the affinity table consults):
+  **fire · ice · lightning · water · poison · earth**.
+- **9 FLAVOR elements** (VFX / filter chips only, never resisted):
+  wind · nature · shadow · light · psychic · sonic · arcane · blood · metal.
+  `psychic` / `sonic` are the promotion candidates (P4.16); `arcane` and
+  `metal` are never promoted (decisions above).
+
+WHERE THE AFFINITIES LIVE: data.js `RACE_ELEMENT_AFFINITY` (the one table —
+38 races have rows, every other race is deliberately NEUTRAL and has no
+row). WHERE THEY SHOW IN-GAME (all ship since 2026-09-01): the INFO stat
+card (toggle unit info on a selected unit — `toggleUnitInfo`; the
+`.ins-affin` pill row under the stat bars, ONLY for races with rows —
+neutral races show nothing there), the codex / shop dossier section 3
+(`_codexBuildElementAffinity`, grouped rows + an explicit "Neutral" line),
+spell forecasts / intent badges, and the Horologe target-drum blades. There
+is no all-races chart screen — the codex dossier is per race.
+
+## ELEMENT ICON ART (2026-09-09)
+Every element has an IMAGE icon slot: data.js `ELEMENT_ICON_BASE`
+(`https://cdn.entropywars.net/Assets/Icons/elements/`) +
+`ELEMENT_ICON_FILES[el]` (`<el>.png`) → `elementIconUrl(el)` /
+`elementIconHtml(el)`. HTML surfaces use the image: the INFO card pills and
+the codex dossier (ui.js `_elemAffinityRows`) and the Horologe's spell-blade
+element chip (hud.js `_hrlgSpellBadges` → badge `icon: { src, fallback }`,
+drawn by the badge renderer's `_badgeIcon`). Each `<img>` swaps itself for
+the `ELEMENT_ICONS` emoji on load error, so a missing R2 file never leaves a
+hole. Text surfaces (floating callouts, battle log, battle.js) keep the
+emoji. CSS: styles-hud.css `.ew-elicon` (+ per-surface sizes).
+ART SPEC for the user's icons: PNG-32 (RGBA, transparent ground), square,
+64×64 px (drawn at 11–12 px, so 64 stays crisp on 4× displays; 128×128 is
+fine too), lowercase `<element>.png`, uploaded to R2 `Assets/Icons/elements/`.
+SVG / WebP also work — change the filename in `ELEMENT_ICON_FILES`. Asset
+URLs are not `?v=`-tagged: to REPLACE an icon later, upload under a new name
+and edit the map row (RULE #1b). Placeholders (coloured disc + white glyph)
+were generated 2026-09-09 and shipped to the user as a zip.
+content-schema.test.js checks every SPELL_ELEMENT has a glyph + a file.
+
 ## IMPLEMENTED P3 (2026-09-01) — knowledge UI, what shipped where
 - ui.js: `_ELEM_TIER_UI` + `_elemAffinityRows(race)` (single source for
   wording/order/colors, placed above renderSelectedUnitPanel); inspect card
