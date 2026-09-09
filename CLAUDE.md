@@ -433,7 +433,27 @@ two tiles to screen-right, aura at the hero), finish. The monitor reacts
 through `onStageFx` → `data-grade` (the type's ENTROPY STRIKE colour),
 `.pb-crt-roll-on`, `.pb-crt-jolt`. Kill-switches: `EW_NO_PB_VFX` (Stage
 2's animation-only preview), `EW_PB_VFX_NO_GEOM`, `EW_NO_PB_PREVIEW`.
-Next: Stage 4 (the ROSTER wall + the rounding pass).
+**Stage 4 shipped (2026-09-09, rev 5)**: ROSTER is THE WALL — `.pb-rtile`
+tiles (portrait full-bleed else the sprite, faction ring, type dots, ★, 🔒),
+round filters (`.pb-type-disc` ×6 `PB_TYPE_GLYPH`, `.pb-faction-ring` ×3,
+search pill, SORT / JOB pills → `PbWindow` menus — no native `<select>` on
+the wall), hover → the stage shows that vessel (`rosterHoverIn`, 220 ms;
+`stageRace` etc. feed `HeroViewer3D`). Same rev: the row's OVAL portraits
+fixed (the legacy `.pb-party-slot` height clamp at styles-base.css ~3467 is
+overridden in the forge block — never delete that override), the VFX plays
+on HOVER too (C-10 overruled by the user), and THE MOVE + THE FRAME
+(three-renderer.js `_cvMovePlan` / `_cvMoveTo` / `v.frameTo`): a charge
+RUNS to the tile beside its dummy at (3,0) and strikes on arrival, a dash
+slides its line, a teleport blinks, a melee swing lunges, and `_cvFrame`
+pulls the camera out to hold the whole beat (`VFX3D.stage.caster(x, y)`
+moves the effects' caster anchor with the hero). Two instance bugs fixed:
+`PartyBuilder(props)` reads `props.standalone` (the module flag was shared
+by the sleeping pre-match instance) and the key handler acts only for the
+instance on screen; match-select.js's ENTER / ESC listener returns while
+its host is off screen. Screenshot the forge with `NODE_USE_ENV_PROXY=1
+node playtest_builder.js [tag]` (repo tooling; standalone route; GLBs do
+not load in the sandbox — DOM / CSS only). Next: Stage 5 (sticky notes,
+stat pills, affinities, GEAR, DOSSIER).
 
 ## TRAINING MATCH (instant CPU turns vs a human) — added 2026-09-07
 Match-select → CONFIG column → **CPU TEMPO: Cinematic / ⚡ Training**

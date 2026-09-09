@@ -534,6 +534,13 @@ function MatchSelect(props) {
     const onKey = (e) => {
       const tag = (e.target && e.target.tagName) || '';
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      /* 2026-09-09: the terminal stays MOUNTED in #modePage after a visit
+         (the root is kept), so its listener used to fire from every other
+         screen — ESC in the standalone forge stepped the hidden terminal
+         "back" and re-showed it, ENTER would have FILED a crossing from the
+         party builder. The monitor must be on screen to take a key. */
+      const hostEl = document.getElementById(props.hostId || 'modePage');
+      if (!hostEl || !hostEl.isConnected || hostEl.getClientRects().length === 0) return;
       if (e.key === 'Enter') { e.preventDefault(); handleConfirm(); }
       else if (e.key === 'Escape' && frame === 'page') { e.preventDefault(); handleBack(); }
     };
@@ -702,6 +709,7 @@ window._mountReactMatchSelect = function(opts) {
     variant: opts.variant || null,
     frame: opts.frame || (hostId === 'modePage' ? 'page' : 'room'),
     pre: opts.pre || null,
+    hostId: hostId,
   }));
   return true;
 };

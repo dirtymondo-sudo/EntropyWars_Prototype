@@ -28655,6 +28655,13 @@ const ThreeRenderer = (function () {
             // the VFX stage (§5.3)
             vfxGroup: vfxGroup, staged: false, grid: null, tile: 1,
             yawTween: null, yawHome: null, jolt: 0, beat: null, onStageFx: null,
+            // THE MOVE + THE FRAME (2026-09-09): the hero's offset along +X
+            // (tiles → world units) for charges / dashes / blinks, its tween,
+            // and the camera's framing target while a beat runs — `frameTo`
+            // = { x0, x1, y1 } in world units; the camera pulls out to fit it
+            // and eases back when it is null. camLx / camDist = the smoothed
+            // look-x / distance the frame loop drives toward.
+            heroX: 0, heroY: 0, moveTween: null, frameTo: null, camLx: 0, camDist: 0,
         };
 
         cnv.addEventListener('pointerdown', function (e) {
@@ -28731,6 +28738,7 @@ const ThreeRenderer = (function () {
         _cvBeatCancel(true);
         if (_cv.staged && window.ThreeVFX && ThreeVFX.clear) { try { ThreeVFX.clear(); } catch (_e) {} }
         _cv.yawTween = null; _cv.yawHome = null; _cv.jolt = 0;
+        _cv.heroX = 0; _cv.heroY = 0; _cv.moveTween = null; _cv.frameTo = null;
         _cv.def = null; _cv.clips = null; _cv.clipUrls = null; _cv.actions = null; _cv.idleAct = null;
     }
 
@@ -28754,21 +28762,46 @@ const ThreeRenderer = (function () {
         var dt = Math.min(v.clock.getDelta(), 0.1);
         if (v.mixer) v.mixer.update(dt);
         if (v.yawTween) _cvYawTweenStep(v, dt);          // the preview turn (§5.3)
+        if (v.moveTween) _cvMoveTweenStep(v, dt);        // the charge / dash / blink (2026-09-09)
         if (v.staged && window.ThreeVFX && ThreeVFX.tick) { try { ThreeVFX.tick(dt); } catch (_e) {} }
         // no auto-spin: yaw belongs to the player's drag alone
         if (v.model) v.model.rotation.y = v.yaw;
+        // the hero (and its shadow blob + sigil) stand at heroX along +X
+        v.stage.position.x = v.heroX; v.stage.position.y = v.heroY;
+        v.blob.position.x = v.heroX; v.circle.position.x = v.heroX;
         v.circle.rotation.z += dt * 0.05;
-        var dist = (v.dist0 / v.zoom);
         var cy = v.h * 0.52;
         var pol = v.polar;
+        // THE FRAME: the camera's rest distance is dist0 / zoom on the +Z
+        // axis looking at the hero; while a beat runs `frameTo` names the
+        // extent (world units) the whole move + VFX covers and the camera
+        // pulls out (and slides its look-x) far enough to hold all of it,
+        // then eases home. The player's wheel zoom stays the floor.
+        var restDist = v.dist0 / v.zoom;
+        var wantDist = restDist, wantLx = 0;
+        var F = v.frameTo;
+        if (F) {
+            var tanV = Math.tan((v.cam.fov * Math.PI / 180) / 2);
+            var tanH = tanV * (v.cam.aspect || 1);
+            var mx = (F.x0 + F.x1) * 0.5;
+            var halfW = Math.max(Math.abs(F.x1 - mx), Math.abs(F.x0 - mx)) + (F.pad != null ? F.pad : v.tile * 0.35);
+            var halfH = Math.max(Math.abs((F.y1 || v.h) - cy), cy) + v.tile * 0.2;
+            wantLx = mx;
+            wantDist = Math.max(restDist, halfW / Math.max(0.05, tanH), halfH / Math.max(0.05, tanV));
+        }
+        if (!(v.camDist > 0)) { v.camDist = wantDist; v.camLx = wantLx; }
+        var ease = Math.min(1, dt * (F ? 6.5 : 4.5));
+        v.camDist += (wantDist - v.camDist) * ease;
+        v.camLx += (wantLx - v.camLx) * ease;
+        var dist = v.camDist, lx = v.camLx;
         // camera stays on the +Z axis; the MODEL yaws under the pointer
-        v.cam.position.set(0, cy + Math.sin(pol) * dist, Math.cos(pol) * dist);
+        v.cam.position.set(lx, cy + Math.sin(pol) * dist, Math.cos(pol) * dist);
         if (v.jolt > 0.002) {                              // the board shake, on the stage camera
             v.cam.position.x += (Math.random() - 0.5) * v.jolt * 0.05 * v.h;
             v.cam.position.y += (Math.random() - 0.5) * v.jolt * 0.03 * v.h;
             v.jolt *= Math.pow(0.001, dt);
         }
-        v.cam.lookAt(0, cy * 0.96, 0);
+        v.cam.lookAt(lx, cy * 0.96, 0);
         v.renderer.render(v.scene, v.cam);
     }
 
@@ -28860,6 +28893,8 @@ const ThreeRenderer = (function () {
             v.h = h;
             var fh = Math.max(1.02, h * 1.04);
             v.dist0 = (fh / (2 * Math.tan((v.cam.fov * Math.PI / 180) / 2))) * 1.32;
+            v.camDist = 0; v.camLx = 0;                    // re-seat the camera on the new vessel
+            v.heroX = 0; v.heroY = 0; v.moveTween = null; v.frameTo = null;
             var gr = Math.max(0.62, Math.min(1.7, h * 0.78));
             v.blob.scale.set(gr, gr, 1);
             v.circle.scale.set(gr * 1.55, gr * 1.55, 1);
@@ -28938,12 +28973,13 @@ const ThreeRenderer = (function () {
         if (!_cv || typeof _cv.onState !== 'function') return;
         try { _cv.onState({ playing: playing || null, ms: ms || 0, name: name || null }); } catch (_e) {}
     }
-    function _cvPreviewEnd(silent) {
+    function _cvPreviewEnd(silent, keep) {
         if (_cvPreviewTimer) { clearTimeout(_cvPreviewTimer); _cvPreviewTimer = 0; }
         if (!_cv || !_cv.preview) return;
         var pv = _cv.preview;
         _cv.preview = null;
         var idle = _cv.idleAct;
+        if (keep) return;                      // the caller crossfades the next clip straight from pv.act
         if (idle && _cv.mixer && pv.act) {
             try {
                 idle.enabled = true; idle.reset(); idle.play();
@@ -29004,18 +29040,27 @@ const ThreeRenderer = (function () {
         if (!v || !v.mixer || !v.model) return 0;
         var slot = _cvFirstSlot(names);
         if (!slot) return 0;
-        _cvPreviewEnd(true);
+        // a clip already running hands over DIRECTLY (a charge's run → its
+        // strike) instead of dipping through idle for a frame
+        var handoff = (v.preview && v.preview.act) || null;
+        _cvPreviewEnd(true, !!handoff);
         var seq = (v.previewSeq = (v.previewSeq || 0) + 1);
         var label = opts.name || slot;
         var started = 0;
         _cvActionFor(slot, function (act) {
-            if (!act || !_cv || _cv !== v || v.previewSeq !== seq) return;
+            if (!act || !_cv || _cv !== v || v.previewSeq !== seq) {
+                if (handoff && _cv === v && v.idleAct && v.mixer) { try { v.idleAct.enabled = true; v.idleAct.reset(); v.idleAct.play(); v.idleAct.crossFadeFrom(handoff, 0.2, false); } catch (_e) {} }
+                return;
+            }
             var clip = act.getClip();
             var scale = Math.abs(act.timeScale) || 1;
             var ms = (clip.duration / scale) * 1000;
             if (!opts.full) ms = Math.min(ms, 1400);   // the board's cap
+            if (opts.ms > 0) ms = opts.ms;              // a fixed length (a run held for the charge)
             ms = Math.max(120, Math.round(ms));
-            var prev = v.idleAct;
+            // a run loops for its length; everything else plays once and holds its last frame
+            if (opts.loop) act.setLoop(THREE.LoopRepeat, Infinity); else act.setLoop(THREE.LoopOnce, 0);
+            var prev = (handoff && handoff !== act) ? handoff : v.idleAct;
             act.enabled = true; act.reset(); act.play();
             if (prev && prev !== act) act.crossFadeFrom(prev, 0.12, false);
             v.preview = { act: act, name: slot, label: label };
@@ -29080,10 +29125,11 @@ const ThreeRenderer = (function () {
             try { v.grid.geometry.dispose(); v.grid.material.dispose(); } catch (_e) {}
             v.grid = null;
         }
-        // a faint 5×3 tile grid (tiles -1..3 × -1..1, the hero on (0,0)) so AoE footprints read
+        // a faint 6×3 tile grid (tiles -1..4 × -1..1, the hero on (0,0)) so AoE
+        // footprints read — a charge's dummy stands at (3,0), a dash runs to it
         var pts = [];
-        var x0 = -1.5 * tile, x1 = 3.5 * tile, z0 = -1.5 * tile, z1 = 1.5 * tile;
-        for (var i = 0; i <= 5; i++) { var gx = x0 + i * tile; pts.push(gx, 0, z0, gx, 0, z1); }
+        var x0 = -1.5 * tile, x1 = 4.5 * tile, z0 = -1.5 * tile, z1 = 1.5 * tile;
+        for (var i = 0; i <= 6; i++) { var gx = x0 + i * tile; pts.push(gx, 0, z0, gx, 0, z1); }
         for (var j = 0; j <= 3; j++) { var gz = z0 + j * tile; pts.push(x0, 0, gz, x1, 0, gz); }
         var geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
@@ -29157,11 +29203,96 @@ const ThreeRenderer = (function () {
     }
     function _cvBeatCancel(silent) {
         var v = _cv;
-        if (!v || !v.beat) return;
+        if (!v) return;
         var b = v.beat;
         v.beat = null;
-        for (var i = 0; i < b.timers.length; i++) clearTimeout(b.timers[i]);
-        if (!silent && v.yawHome != null) _cvYawTo(v.yawHome, 260, true);
+        if (b) for (var i = 0; i < b.timers.length; i++) clearTimeout(b.timers[i]);
+        if (v.model) v.model.visible = true;               // a blink cut short never leaves the hero gone
+        v.frameTo = null;                                  // the camera eases home
+        if (!b) return;
+        if (silent) { v.moveTween = null; v.heroX = 0; v.heroY = 0; }
+        else {
+            if (v.heroX !== 0 || v.heroY !== 0) _cvMoveTo(0, 260, null);
+            if (v.yawHome != null) _cvYawTo(v.yawHome, 260, true);
+        }
+    }
+    /* ── THE MOVE (2026-09-09, the user: "for brave charge I wanna actually
+       see the character charge forward") — the hero travels along +X on the
+       stage the way the board moves the caster: a charge (`chargeToTarget`,
+       the tackle kind) RUNS to the tile beside its dummy and strikes on
+       arrival (battle.js _runChargeToTargetSpell — 150 ms a tile there, a
+       hair slower here so it reads), a dash slides down its run to the far
+       tile (the hits along the line), a leap arcs, a teleport / escape
+       BLINKS out and back in at the landing tile, a melee swing lunges
+       LUNGE_DIST toward its target and back. `_cvMovePlan(spell, opts)`
+       names the dummy's tile and the move; `_cvMoveTo(x, ms, opts)` tweens
+       the hero (tiles → world units; `arc` = a jump's height, `back` = an
+       out-and-back lunge, `then` = the arrival callback). */
+    var _CV_RUN_MS_PER_TILE = 240;
+    var _CV_MOVE_KINDS = { dash: 'dash', tackle: 'charge', leapStrike: 'leap', teleport: 'blink', escape: 'blink' };
+    function _cvMoveTo(xTiles, ms, o) {
+        var v = _cv;
+        if (!v) return;
+        o = o || {};
+        var to = xTiles * (v.tile || 1);
+        if (!(ms > 0)) { v.moveTween = null; v.heroX = to; v.heroY = 0; if (o.then) o.then(); return; }
+        v.moveTween = { from: v.heroX, to: to, t: 0, ms: ms, arc: (o.arc || 0) * (v.tile || 1), back: !!o.back, ease: o.ease || 'run', then: o.then || null };
+    }
+    function _cvMoveTweenStep(v, dt) {
+        var tw = v.moveTween;
+        if (!tw) return;
+        tw.t += dt * 1000;
+        var k = Math.min(1, tw.t / tw.ms);
+        var e = k;
+        if (tw.ease === 'run') e = k < 0.2 ? (k / 0.2) * (k / 0.2) * 0.2 : 0.2 + (k - 0.2) * (0.8 / 0.8) * 1.0;   // a push-off, then flat out
+        else if (tw.ease === 'out') e = 1 - Math.pow(1 - k, 3);
+        if (e > 1) e = 1;
+        if (tw.back) e = Math.sin(k * Math.PI);                   // out and back
+        v.heroX = tw.from + (tw.to - tw.from) * e;
+        v.heroY = tw.arc ? Math.sin(k * Math.PI) * tw.arc : 0;
+        if (k >= 1) {
+            v.moveTween = null;
+            v.heroY = 0;
+            v.heroX = tw.back ? tw.from : tw.to;              // a lunge lands exactly where it started
+            if (tw.then) { var fn = tw.then; tw.then = null; fn(); }
+        }
+    }
+    function _cvMovePlan(spell, opts) {
+        var v = _cv;
+        opts = opts || {};
+        var plan = { tx: 2, move: null, casterX: 0, hitTiles: null };
+        var atSelf = _cvSpellAtSelf(spell);
+        var basic = !spell || spell.kind === 'basicAttack' || opts.attack;
+        var kind = spell ? spell.kind : null;
+        var moveKind = spell ? (spell.chargeToTarget ? 'charge' : _CV_MOVE_KINDS[kind] || null) : null;
+        if (basic) {
+            var ak = (v && v.def && v.def.basicAttackKind) || (spell && (spell.range || 1) > 1 ? 'ranged' : 'melee');
+            if (ak === 'melee') { plan.tx = 1; plan.move = { kind: 'lunge', to: 0.16, ms: 350 }; }
+            return plan;
+        }
+        if (moveKind === 'charge') {
+            plan.tx = 3; plan.move = { kind: 'run', to: 2, ms: 2 * _CV_RUN_MS_PER_TILE }; plan.casterX = 2;
+            return plan;
+        }
+        if (moveKind === 'dash') {
+            var far = Math.max(2, Math.min(3, spell.range || 3));
+            plan.tx = far; plan.move = { kind: 'run', to: far, ms: far * _CV_RUN_MS_PER_TILE }; plan.casterX = far;
+            plan.hitTiles = []; for (var i = 1; i <= far; i++) plan.hitTiles.push({ x: i, y: 0 });
+            return plan;
+        }
+        if (moveKind === 'leap') {
+            plan.tx = 2; plan.move = { kind: 'leap', to: 1, ms: 560, arc: 0.7 }; plan.casterX = 1;
+            return plan;
+        }
+        if (moveKind === 'blink') {
+            plan.tx = 2; plan.move = { kind: 'blink', to: 2, ms: 240 }; plan.casterX = 2;
+            return plan;
+        }
+        if (atSelf) { plan.tx = 0; return plan; }
+        // a melee-range physical hit lands on the tile beside the hero, with the swing's lunge
+        var melee = (spell.range || 1) <= 1 && (spell.damageType === 'physical' || /melee|slash|punch|kick|claw|bite/i.test(spell.name || ''));
+        if (melee) { plan.tx = 1; plan.move = { kind: 'lunge', to: 0.16, ms: 350 }; }
+        return plan;
     }
     /* self / ally casts land ON the hero; everything else at the dummy target */
     function _cvSpellAtSelf(spell) {
@@ -29182,41 +29313,113 @@ const ThreeRenderer = (function () {
         if (!_cvStageEnter()) return _cvPlaySpell(spell, opts);     // Stage 2 fallback: the animation alone
         _cvBeatCancel(true);
         try { if (window.ThreeVFX && ThreeVFX.clear) ThreeVFX.clear(); } catch (_e) {}   // one preview at a time
+        try { if (VFX3D.stage.caster) VFX3D.stage.caster(0, 0); } catch (_e) {}
         var id = (spell && spell.id) || 'basicAttack';
-        var atSelf = _cvSpellAtSelf(spell);
-        var tx = atSelf ? 0 : 2, ty = 0;
-        var ms = _cvPlaySpell(spell, opts);
-        var clipMs = ms > 1 ? ms : 900;     // no clip (sprite vessel / a pending Meshy GLB): the VFX is the preview
-        var burstAt = Math.max(260, Math.round(clipMs * 0.45));
+        var plan = _cvMovePlan(spell, opts);
+        var tx = plan.tx, ty = 0;
+        var mv = plan.move;
+        var runs = !!(mv && (mv.kind === 'run' || mv.kind === 'leap'));
+        var blinks = !!(mv && mv.kind === 'blink');
+        var turnMs = 200;
         var beat = { id: id, timers: [] };
         v.beat = beat;
         if (v.yawHome == null) v.yawHome = v.yaw;
-        _cvYawTo(_CV_STAGE_YAW, 200, false);
+        _cvYawTo(_CV_STAGE_YAW, turnMs, false);
         var S = VFX3D.stage;
-        var base = {
-            sx: 0, sy: 0, tx: tx, ty: ty, fromX: 0, fromY: 0, toX: tx, toY: ty, cx: 0, cy: 0, casterX: 0, casterY: 0,
-            dx: 1, dy: 0, range: tx || 1, holdMs: burstAt, spellType: spell ? spell.spellType : undefined,
-            aoeRadius: (spell && spell.aoeRadius) || 0,
-            hitTiles: [{ x: tx, y: ty }], tiles: [{ x: tx, y: ty }],
-            chain: [{ x: 0, y: 0 }, { x: tx, y: ty }], includePrimary: false,
-        };
-        S.fire('windup', id, base);
         var later = function (fn, at) {
             beat.timers.push(setTimeout(function () { if (_cv !== v || v.beat !== beat) return; fn(); }, at));
         };
-        later(function () {
+        var tile = v.tile || 1;
+        var aoe = (spell && spell.aoeRadius) || 0;
+        // THE FRAME: hold everything the beat covers — the run, the dummy,
+        // its AoE — from a tile behind the hero to half a tile past the last
+        // thing that happens; the camera pulls out to fit it (see _cvFrame)
+        var farX = Math.max(tx + aoe, plan.casterX, mv ? mv.to : 0) + 0.5;
+        var tallH = Math.max(v.h * 1.25, tile * (1.1 + aoe * 0.35) + (mv && mv.arc ? mv.arc * tile : 0));
+        v.frameTo = { x0: -0.6 * tile, x1: farX * tile, y1: tallH };
+        var params = function (cx) {
+            var sx = cx != null ? cx : 0;
+            var p = {
+                sx: sx, sy: 0, tx: tx, ty: ty, fromX: sx, fromY: 0, toX: tx, toY: ty, cx: sx, cy: 0, casterX: sx, casterY: 0,
+                dx: 1, dy: 0, range: Math.max(1, tx - sx) || 1, holdMs: 400, spellType: spell ? spell.spellType : undefined,
+                aoeRadius: aoe,
+                hitTiles: plan.hitTiles || [{ x: tx, y: ty }], tiles: plan.hitTiles || [{ x: tx, y: ty }],
+                chain: [{ x: sx, y: 0 }, { x: tx, y: ty }], includePrimary: false,
+            };
+            return p;
+        };
+        var fireMapped = function (cx) {
+            try { if (S.caster) S.caster(cx || 0, 0); } catch (_e) {}
+            var base = params(cx);
             S.fire('burst', id, base);
             var mapped = ['aura', 'impact', 'bolt', 'beam', 'aoe', 'chain', 'descent', 'wall', 'teleport'];
             for (var i = 0; i < mapped.length; i++) {
                 if (!S.hasMapping(id, mapped[i])) continue;
                 var p = Object.assign({}, base);
-                if (mapped[i] === 'aura') { p.tx = 0; p.ty = 0; }
+                if (mapped[i] === 'aura') { p.tx = cx || 0; p.ty = 0; }
                 S.fire(mapped[i], id, p);
             }
-        }, burstAt);
-        later(function () { S.fire('finish', id, base); }, clipMs);
-        later(function () { v.beat = null; if (v.yawHome != null) _cvYawTo(v.yawHome, 320, true); }, clipMs + 420);
-        return ms || clipMs;
+        };
+        var total = 0;
+        var wrap = function (clipMs, strikeAt, casterX) {
+            // the strike's tail, the finish, then the walk home + the turn back
+            later(function () { S.fire('finish', id, params(casterX)); }, strikeAt + clipMs);
+            later(function () {
+                v.beat = null;
+                v.frameTo = null;
+                if (v.heroX !== 0) _cvMoveTo(0, 360, { ease: 'out' });
+                if (v.yawHome != null) _cvYawTo(v.yawHome, 320, true);
+            }, strikeAt + clipMs + 420);
+            total = strikeAt + clipMs;
+        };
+        var lunge = function (at) {
+            if (!mv || mv.kind !== 'lunge') return;
+            later(function () { _cvMoveTo(mv.to, mv.ms, { back: true }); }, at);
+        };
+        if (runs) {
+            // the charge: windup at the start tile, the run (its clip looped for
+            // the length of the run), the strike on ARRIVAL, the hits there
+            var runMs = mv.ms;
+            var wu = params(0); wu.holdMs = turnMs + runMs;
+            S.fire('windup', id, wu);
+            later(function () {
+                _cvPlay(mv.kind === 'leap' ? ['jump', 'run', 'walk'] : ['run', 'walk'], { loop: mv.kind !== 'leap', ms: runMs, full: true, name: opts.name || (spell && spell.name) });
+                _cvMoveTo(mv.to, runMs, { arc: mv.arc || 0, ease: mv.kind === 'leap' ? 'lin' : 'run' });
+            }, turnMs);
+            var arriveAt = turnMs + runMs;
+            later(function () {
+                var ms = _cvPlaySpell(spell, opts);
+                var clipMs = ms > 1 ? ms : 700;
+                _cvStageFx('shake', { kind: 'normal' });
+                fireMapped(plan.casterX);
+                wrap(clipMs, arriveAt, plan.casterX);
+            }, arriveAt);
+            return arriveAt + 900;
+        }
+        if (blinks) {
+            // the teleport: the cast, then the hero blinks out at 45 % and back
+            // in at the landing tile with the spell's own effect there
+            var msB = _cvPlaySpell(spell, opts);
+            var clipB = msB > 1 ? msB : 900;
+            var outAt = Math.max(260, Math.round(clipB * 0.45));
+            var wuB = params(0); wuB.holdMs = outAt;
+            S.fire('windup', id, wuB);
+            later(function () { S.fire('burst', id, params(0)); if (v.model) v.model.visible = false; _cvMoveTo(mv.to, 0, null); }, outAt);
+            later(function () { if (v.model) v.model.visible = true; fireMapped(plan.casterX); }, outAt + mv.ms);
+            wrap(clipB, 0, plan.casterX);
+            return msB || clipB;
+        }
+        // the plain cast (and the melee swing with its lunge): windup now, the
+        // clip, burst + every mapped intent at 45 %, finish at the end
+        var ms0 = _cvPlaySpell(spell, opts);
+        var clipMs0 = ms0 > 1 ? ms0 : 900;     // no clip (sprite vessel / a pending Meshy GLB): the VFX is the preview
+        var burstAt = Math.max(260, Math.round(clipMs0 * 0.45));
+        var wu0 = params(0); wu0.holdMs = burstAt;
+        S.fire('windup', id, wu0);
+        lunge(Math.max(0, burstAt - 170));
+        later(function () { fireMapped(0); }, burstAt);
+        wrap(clipMs0, 0, 0);
+        return ms0 || clipMs0;
     }
 
     var charViewer = {

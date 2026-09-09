@@ -20,7 +20,7 @@ const ThreeVFXEffects = (function () {
        for the host → guest relay (rule 3.6b): a preview must never reach
        the other screen. Kill: window.EW_NO_PB_VFX (party-builder.js),
        EW_PB_VFX_NO_GEOM (the bespoke 3D geometry on the stage). */
-    var _VS = { on: false, tile: 1, heroH: 1, fx: null, post: null, lt: null };
+    var _VS = { on: false, tile: 1, heroH: 1, fx: null, post: null, lt: null, cx: 0, cy: 0 };
     var _VS_CFG = { tileSize: 128, tileGap: 0, boardPadding: 0 };
     function _vsFx(kind, o) {
         if (!_VS.on || typeof _VS.fx !== 'function') return;
@@ -11498,7 +11498,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        attack came from. The blitz engine tracks the acting unit; fall back
        to the nearest living unit that isn't standing ON the target tile. */
     function _sigCasterPos(tx, ty) {
-        if (_VS.on) return { x: 0, y: 0 };            // the hero stands at the stage origin
+        if (_VS.on) return { x: _VS.cx || 0, y: _VS.cy || 0 };   // the hero's tile on the stage (a charge moves it — stage.caster)
         try {
             if (typeof state === 'undefined' || !state.units) return null;
             var u = null;
@@ -22957,6 +22957,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _VS.tile = opts.tile || 1;
             _VS.heroH = opts.heroH || 1;
             _VS.fx = (typeof opts.fx === 'function') ? opts.fx : null;
+            _VS.cx = 0; _VS.cy = 0;
             _VS.post = {
                 spellGrade: function (o) { _vsFx('grade', o || {}); },
                 spellGradeKick: function (amt, ms) { _vsFx('kick', { amt: amt, ms: ms }); },
@@ -22972,6 +22973,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _VS.post = null;
         },
         active: function () { return _VS.on; },
+        /* where the hero stands NOW (tiles) — the viewer moves it for a
+           charge / dash / blink (three-renderer.js _cvPreviewSpell) so the
+           caster-anchored effects follow it */
+        caster: function (x, y) { _VS.cx = x || 0; _VS.cy = y || 0; },
         /* the INTERNAL fire: online.js wraps the exported VFX3D.fire to
            relay host → guest, and a builder preview must never ride it */
         fire: function (intent, spellId, params) {

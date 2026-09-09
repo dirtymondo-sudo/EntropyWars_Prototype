@@ -124,7 +124,7 @@ test('the party row is sized by --pb-portrait (the user asked for bigger portrai
     const m = CSS.match(/\.pb-party \{ --pb-portrait: (\d+)px;/);
     assert.ok(m, '--pb-portrait token missing on .pb-party');
     assert.ok(+m[1] >= 88, `portraits must be at least 88px (got ${m[1]})`);
-    assert.ok(/\.pb-party-ring \{ position: relative; width: var\(--pb-portrait\); height: var\(--pb-portrait\);/.test(CSS), 'the ring must read the token');
+    assert.ok(/\.pb-party-ring \{ position: relative; flex: none; width: var\(--pb-portrait\); height: var\(--pb-portrait\);/.test(CSS), 'the ring must read the token');
 });
 
 /* ── Stage 3 (2026-09-09): THE SPELL LIGHTS UP THE STAGE (the VFX in the viewer) ── */
@@ -158,7 +158,7 @@ test('VFX3D.stage overrides the board helpers and fires the INTERNAL fire (never
                      'function _suppressed() {\n        if (_VS.on) return',
                      'function _post() {\n        if (_VS.on) return _VS.post;',
                      'function _glowR() {\n        if (_VS.on) return null;',
-                     'function _sigCasterPos(tx, ty) {\n        if (_VS.on) return { x: 0, y: 0 };']) {
+                     'function _sigCasterPos(tx, ty) {\n        if (_VS.on) return { x: _VS.cx || 0, y: _VS.cy || 0 };']) {
         assert.ok(FX.includes(g), `stage override missing: ${g.split('\n')[0]}`);
     }
     assert.ok(/function _sigScreenFlash\(color, ms, peak\) \{\s*if \(_VS\.on\) \{ _vsFx\('flash'/.test(FX), 'the screen flash must go to the monitor on the stage');
@@ -182,9 +182,11 @@ test('EWCharViewer exposes the stage API and the builder previews through it', (
     assert.ok(/if \(v\.staged && window\.ThreeVFX && ThreeVFX\.tick\)/.test(TR), '_cvFrame must tick ThreeVFX while staged');
     assert.ok(/var s = tile \/ 128;/.test(TR) && /v\.vfxGroup\.scale\.setScalar\(s\)/.test(TR), 'the stage group must be scaled tile / 128 (px-authored effects → viewer units)');
     assert.ok(/if \(!_cvStageEnter\(\)\) return _cvPlaySpell\(spell, opts\);/.test(TR), 'previewSpell must fall back to the Stage 2 animation-only preview');
-    assert.ok(/S\.fire\('windup', id, base\)/.test(TR) && /S\.fire\('burst', id, base\)/.test(TR) && /S\.fire\('finish', id, base\)/.test(TR), 'the beat must run windup → burst → finish');
+    assert.ok(/S\.fire\('windup', id, wu0\)/.test(TR) && /S\.fire\('burst', id, base\)/.test(TR) && /S\.fire\('finish', id, params\(casterX\)\)/.test(TR), 'the beat must run windup → burst → finish');
     assert.ok(/cv\.previewSpell\(sp, \{ attack: !sp/.test(PB), 'the builder must go through EWCharViewer.previewSpell on click / equip');
-    assert.ok(/cv\.playSpell\(sp, \{ attack: !sp/.test(PB), 'hover stays animation-only (decision C-10)');
+    // 2026-09-09: the user overruled C-10 — hover carries the VFX too (the animation-only path stays as the EW_NO_PB_VFX fallback)
+    assert.ok(/const stageOn = typeof cv\.previewSpell === 'function' && !window\.EW_NO_PB_VFX;/.test(PB), 'every trigger (hover included) must stage the VFX');
+    assert.ok(/cv\.playSpell\(sp, \{ attack: !sp/.test(PB), 'the animation-only fallback must remain');
     assert.ok(PB.includes('window.EW_NO_PB_VFX') && TR.includes('window.EW_NO_PB_VFX'), 'the VFX kill-switch is missing');
     assert.ok(!/VFX3D\.fire\(/.test(PB), 'party-builder.js must never call the relayed VFX3D.fire');
     assert.strictEqual((PB.match(/, \{ equip: true \}\)/g) || []).length, 4, 'the four equip sites must carry { equip: true } (the DOOR click)');
@@ -196,4 +198,47 @@ test('EWCharViewer exposes the stage API and the builder previews through it', (
     for (const t of ['human', 'alien', 'divine', 'unholy', 'tech', 'anomaly']) {
         assert.ok(CSS.includes(`.ms-crt-forge[data-grade="${t}"] {`), `grade palette missing: ${t}`);
     }
+});
+
+/* ── 2026-09-09 · the move, the frame, the circle, the wall ─────────── */
+test('the party row portraits are circles: the forge overrides the legacy slot height / hover', () => {
+    assert.ok(/\.ms-crt-forge \.pb-party-slot, \.pb-party \.pb-party-slot \{[^}]*height: auto;/.test(CSS), 'the forge row must reset the legacy .pb-party-slot height clamp (that is what made the rings ovals)');
+    assert.ok(/\.pb-party \.pb-party-slot:hover, \.pb-party \.pb-party-slot:active \{[^}]*transform: none;[^}]*animation: none;/.test(CSS), 'the legacy hover translate / glow must be neutralised on the row');
+    assert.ok(/\.pb-party-ring \{[^}]*flex: none;[^}]*aspect-ratio: 1 \/ 1;/.test(CSS), 'the ring must be flex: none with a 1:1 aspect');
+});
+
+test('the hero MOVES for charges / dashes / blinks and the camera frames the whole beat', () => {
+    for (const fn of ['function _cvMoveTo(xTiles, ms, o)', 'function _cvMoveTweenStep(v, dt)', 'function _cvMovePlan(spell, opts)']) {
+        assert.ok(TR.includes(fn), `${fn} missing`);
+    }
+    assert.ok(/if \(v\.moveTween\) _cvMoveTweenStep\(v, dt\);/.test(TR), '_cvFrame must step the move tween');
+    assert.ok(/v\.stage\.position\.x = v\.heroX; v\.stage\.position\.y = v\.heroY;/.test(TR), 'the hero must stand at heroX / heroY');
+    assert.ok(/v\.blob\.position\.x = v\.heroX; v\.circle\.position\.x = v\.heroX;/.test(TR), 'the shadow blob + the sigil must follow the hero');
+    assert.ok(/var F = v\.frameTo;/.test(TR) && /wantDist = Math\.max\(restDist, halfW \/ Math\.max\(0\.05, tanH\), halfH \/ Math\.max\(0\.05, tanV\)\);/.test(TR), 'the camera must pull out to fit frameTo (never closer than the rest distance)');
+    assert.ok(/v\.cam\.lookAt\(lx, cy \* 0\.96, 0\);/.test(TR), 'the camera must look at the framed centre');
+    assert.ok(/v\.frameTo = \{ x0: -0\.6 \* tile, x1: farX \* tile, y1: tallH \};/.test(TR), 'previewSpell must set the frame from the plan');
+    assert.ok(/spell\.chargeToTarget \? 'charge'/.test(TR) && /dash: 'dash', tackle: 'charge', leapStrike: 'leap', teleport: 'blink', escape: 'blink'/.test(TR), 'the move kinds must cover charge / dash / leap / blink');
+    assert.ok(/plan\.tx = 3; plan\.move = \{ kind: 'run', to: 2, ms: 2 \* _CV_RUN_MS_PER_TILE \}; plan\.casterX = 2;/.test(TR), 'a charge must run to the tile beside its dummy at (3,0)');
+    assert.ok(/_cvPlay\(mv\.kind === 'leap' \? \['jump', 'run', 'walk'\] : \['run', 'walk'\], \{ loop: mv\.kind !== 'leap', ms: runMs, full: true/.test(TR), 'the run must play the run / walk clip for the length of the run');
+    assert.ok(/if \(opts\.loop\) act\.setLoop\(THREE\.LoopRepeat, Infinity\); else act\.setLoop\(THREE\.LoopOnce, 0\);/.test(TR), '_cvPlay must set the loop mode per play');
+    assert.ok(/caster: function \(x, y\) \{ _VS\.cx = x \|\| 0; _VS\.cy = y \|\| 0; \}/.test(FX), 'VFX3D.stage.caster must move the caster anchor');
+    assert.ok(/if \(S\.caster\) S\.caster\(cx \|\| 0, 0\);/.test(TR), 'the beat must tell the stage where the hero landed before the hits fire');
+    assert.ok(/for \(var i = 0; i <= 6; i\+\+\) \{ var gx = x0 \+ i \* tile;/.test(TR), 'the stage grid must reach tile 4 (a charge\'s dummy stands at 3)');
+    assert.ok(/if \(v\.model\) v\.model\.visible = true;\s*\/\/ a blink cut short/.test(TR), 'a cancelled beat must never leave the hero invisible');
+});
+
+test('ROSTER is the wall (Stage 4): tiles, round filters, hover → the stage, no native select on the glass', () => {
+    assert.ok(PB.includes("className:'pb-rtile'"), 'the wall tiles are missing');
+    for (const c of ['pb-rtile-art', 'pb-rtile-portrait', 'pb-rtile-star', 'pb-rtile-types', 'pb-rtile-name', 'pb-rtile-job', 'pb-type-disc', 'pb-faction-ring', 'pb-pill-input', 'pb-pill-btn', 'pb-menu-row']) {
+        assert.ok(PB.includes(c), `${c} missing from party-builder.js`);
+        assert.ok(CSS.includes('.' + c), `.${c} rule missing from styles-base.css`);
+    }
+    assert.ok(/const PB_TYPE_GLYPH = \{ human: 'HU', alien: 'AL', divine: 'DV', unholy: 'UH', tech: 'TK', anomaly: 'AN' \};/.test(PB), 'the six type glyphs are missing');
+    assert.ok(/onMouseEnter: \(\) => rosterHoverIn\(entry\)/.test(PB) && /className: 'pb-roster', onMouseLeave: rosterHoverOut/.test(PB), 'the wall must preview on hover and restore on leave');
+    assert.ok(/h\(HeroViewer3D, \{ race:stageRace, gender:stageGender, cls:stageCls, faction:stageFaction \}\)/.test(PB), 'the stage must follow the hovered vessel');
+    assert.ok(/pbMenu === 'sort'/.test(PB) && /pbMenu === 'job'/.test(PB), 'the SORT / JOB menus must be glass windows');
+    const rosterSrc = PB.slice(PB.indexOf('const rosterPanel = h(React.Fragment'), PB.indexOf('// TECHNIQUES: the abilities head'));
+    assert.ok(!/h\('select'/.test(rosterSrc), 'no native <select> on the wall (C-9)');
+    assert.ok(!PB.includes("className:'pb-vessel-card'"), 'the old codex card must be gone');
+    assert.strictEqual((PB.match(/clipPath/g) || []).length, 1, 'only the door stamp may still clip a polygon');
 });

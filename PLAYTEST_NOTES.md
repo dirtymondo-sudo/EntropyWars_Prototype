@@ -9917,3 +9917,28 @@ the spec (§4 anatomy, §5.1 what shipped, §7 keys). Hooks a harness can drive:
 Playtest harnesses that click the old left-column slot cards must use
 `.pb-party-slot` now; the old ASSESSMENT / DOSSIER sub-tabs are gone (stats
 live in the right column, the dossier is a tab).
+
+## THE FORGE PROBE (party builder screenshots) — added 2026-09-09
+
+`NODE_USE_ENV_PROXY=1 node playtest_builder.js [tag]` (server on :3000;
+needs `npm install` + `npm install --no-save playwright three@0.128.0
+react@18 react-dom@18` — the shim serves three r128 + the React UMDs from
+node_modules because the CDNs are blocked here). It boots the title with the
+LOCAL R2 files, enters the game, opens the STANDALONE forge (main menu →
+PARTY BUILDER → the locker → NEW TEAM — the pre-match route FILEs straight
+into a match when a team is already on file, so it is no good for shots)
+and photographs `shots/builder/<tag>_{roster, roster_hover,
+roster_sortmenu, roster_typefilter, tech, tech_preview}.png`, printing the
+party-ring sizes (w×h — circles read 96×96 / 111×111), the stage title after
+a wall hover, the tile count after a type filter, page errors. Every
+selector is scoped to `#teamBuilderPage`: TWO forges live in the DOM (the
+pre-match one sleeps in `#builderOverlay` under the title overlay) and an
+unscoped `page.$` picks the hidden one. GLBs / sprites / audio cannot load
+in the sandbox — the hero is the summoning ring, portraits are the grey
+placeholder PNG, the VFX preview reports nothing — so the move + the frame
+(three-renderer.js `_cvMovePlan`) are verified by reading + `npm test`
+only; the user checks them live. Bugs it found on day one: the shared
+`_pbStandaloneMode` flag (the standalone forge ran as pre-match once the
+sleeping instance re-rendered — ESC opened match-select) and match-select's
+always-on ENTER / ESC listener. Both fixed 2026-09-09 (PARTY_BUILDER_PLAN
+§9 rev 5).

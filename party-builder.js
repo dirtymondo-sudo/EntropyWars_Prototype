@@ -455,6 +455,8 @@ if (typeof window !== 'undefined') window.PB_TABS = PB_TABS;
 
 const FACTION_C = { space: EW.space, time: EW.time, chaos: EW.chaos };
 const TYPE_C = { human:EW.human, alien:EW.alien, divine:EW.divine, unholy:EW.unholy, anomaly:EW.anomaly, tech:EW.tech };
+// the wall's six type discs (Stage 4): a two-letter glyph per damage type
+const PB_TYPE_GLYPH = { human: 'HU', alien: 'AL', divine: 'DV', unholy: 'UH', tech: 'TK', anomaly: 'AN' };
 // Brightened text for the canonical type badge (legible over any background).
 const TYPE_TEXT_C = { human:'#c8c8e4', divine:'#f2c63c', unholy:'#c566e2', tech:'#4ecbe2', anomaly:'#ff5e98', alien:'#56d178' };
 /* CRT/EVA are official stats (canonical formula in data.js — the same one
@@ -1727,7 +1729,7 @@ function PbWindow({ title, sub, onClose, width, zone, children }) {
    controls (CONFIRM / SEAL YOUR FATE / online locks) for SAVE TEAM. */
 let _pbStandaloneMode = false;
 
-function PartyBuilder() {
+function PartyBuilder(props) {
   const st = getSt();
   if (!st || !st.partyBuilds) return h('div', { style:{ color:'#8a93a8', padding:40, fontFamily:'DotGothic16, monospace', textAlign:'center' } }, 'Initializing\u2026');
   const NET = window._NET;
@@ -1746,7 +1748,12 @@ function PartyBuilder() {
   const friendlyHostCanStart = isWaitingOnline && !isRankedNet && netRole === 'host' && opponentLockedToo;
   const player = isOnline ? (typeof window._myPlayer === 'function' ? window._myPlayer() : 1) : (st.builderSelectedPlayer || 1);
   const teamSize = window.CONFIG?.teamSize || 4;
-  const standalone = _pbStandaloneMode;
+  /* 2026-09-09 (found by playtest_builder.js): the flag is per INSTANCE
+     now — the pre-match forge sleeping in #builderOverlay re-renders while
+     the archive is open and used to flip the shared module flag, so the
+     standalone instance woke up as a pre-match one (its ESC ran doBack →
+     the match-select terminal). Each mount passes its own mode. */
+  const standalone = (props && typeof props.standalone === 'boolean') ? props.standalone : _pbStandaloneMode;
   const [tbView, setTbView] = React.useState(standalone ? 'locker' : 'edit');   // standalone: 'locker' | 'edit'
   const [editingTeamId, setEditingTeamId] = React.useState(null);
   const [teamNameDraft, setTeamNameDraft] = React.useState('');
@@ -1773,6 +1780,13 @@ function PartyBuilder() {
   const [previewNote, setPreviewNote] = React.useState(null);
   const previewHoverTimer = React.useRef(0);
   const previewNoteTimer = React.useRef(0);
+  /* ROSTER (Stage 4, §5.4): hovering a wall tile shows that vessel on the
+     stage after a 220 ms debounce (cached GLBs swap instantly; uncached
+     ones show the summoning ring); leaving the wall returns the slot's
+     vessel. pbMenu = the SORT / JOB pill menus (glass windows, C-9). */
+  const [rosterHover, setRosterHover] = React.useState(null);
+  const rosterHoverTimer = React.useRef(0);
+  const [pbMenu, setPbMenu] = React.useState(null);
   // THE STAGE (plan §5.3): the CRT root + the technique on the stage, for the
   // monitor's reactions (grade wash / scanline roll / jolt) — DOM-driven, no
   // React state churn per beat.
@@ -2259,11 +2273,15 @@ function PartyBuilder() {
      the basic attack (root). Hover = after a 180 ms debounce and only when
      idle; click / equip / pick = immediately, restarting any running clip.
      Sprite-only vessels get the NO PREVIEW note instead.
-     Stage 3 (§5.3, decision C-10): hover = the animation alone
-     (EWCharViewer.playSpell); click / equip / ENTER / ▶ = the animation PLUS
-     the spell's real VFX around the hero (EWCharViewer.previewSpell — the
-     effects layer staged in the viewer; never the relayed VFX3D.fire).
-     `opts.equip` adds the DOOR click. window.EW_NO_PB_VFX = Stage 2 only. */
+     Stage 3 (§5.3): EVERY trigger — hover, click, equip, ENTER, ▶ — runs
+     the animation PLUS the spell's real VFX around the hero
+     (EWCharViewer.previewSpell — the effects layer staged in the viewer,
+     the hero charging / dashing / blinking when the spell moves it, the
+     camera pulled out to hold the whole beat; never the relayed
+     VFX3D.fire). Decision C-10 was overruled by the user on 2026-09-09
+     ("the vfx always play with the animation"); hover still never cuts a
+     beat already running. `opts.equip` adds the DOOR click.
+     window.EW_NO_PB_VFX = the Stage 2 animation-only preview. */
   const previewOff = !!(st.animationsDisabled || window.EW_NO_PB_PREVIEW);
   const pbNote = (txt) => {
     setPreviewNote(txt);
@@ -2280,7 +2298,7 @@ function PartyBuilder() {
       if (!cv.isMounted || !cv.isMounted()) return;
       if (opts.hover && cv.isPlaying && cv.isPlaying()) return;   // hover never cuts a running clip
       previewSpellRef.current = sp || null;
-      const stageOn = !opts.hover && typeof cv.previewSpell === 'function' && !window.EW_NO_PB_VFX;
+      const stageOn = typeof cv.previewSpell === 'function' && !window.EW_NO_PB_VFX;
       const ms = stageOn
         ? cv.previewSpell(sp, { attack: !sp, name: sp ? sp.name : 'BASIC ATTACK' })
         : cv.playSpell(sp, { attack: !sp, name: sp ? sp.name : 'BASIC ATTACK' });
@@ -2437,8 +2455,25 @@ function PartyBuilder() {
   const raceLabelTxt = _grl(unitRace, identity.gender) || unitRace;
   const officer = pbOfficer();
   const filedCount = (() => { let n = 0; for (let i = 0; i < teamSize; i++) if (st.builderConfirmedSlots?.[player]?.[i]) n++; return n; })();
-  const anyWindow = !!(equipPicker || showTeamModal || (twinPick && unitTree && unitTree.alts && unitTree.alts[twinPick]) || (flSocketPick && unitTree && unitTree.isFreelancer));
-  const closeWindows = () => { setEquipPicker(null); setShowTeamModal(false); setTwinPick(null); setFlSocketPick(null); hideSpellTip(); };
+  const anyWindow = !!(equipPicker || showTeamModal || pbMenu || (twinPick && unitTree && unitTree.alts && unitTree.alts[twinPick]) || (flSocketPick && unitTree && unitTree.isFreelancer));
+  // the wall's hover → the stage (Stage 4); cleared on leave, on a pick and off the ROSTER tab
+  const rosterHoverIn = (entry) => {
+    if (rosterHoverTimer.current) clearTimeout(rosterHoverTimer.current);
+    rosterHoverTimer.current = setTimeout(() => { rosterHoverTimer.current = 0; setRosterHover(entry); }, 220);
+  };
+  const rosterHoverOut = () => {
+    if (rosterHoverTimer.current) { clearTimeout(rosterHoverTimer.current); rosterHoverTimer.current = 0; }
+    setRosterHover(null);
+  };
+  React.useEffect(() => { if (pbTab !== 'roster' && rosterHover) rosterHoverOut(); }, [pbTab]);
+  React.useEffect(() => () => { if (rosterHoverTimer.current) clearTimeout(rosterHoverTimer.current); }, []);
+  const stageEntry = (pbTab === 'roster' && rosterHover) ? rosterHover : null;
+  const stageRace = stageEntry ? stageEntry.race : unitRace;
+  const stageGender = stageEntry ? (stageEntry.gender || 'male') : (identity.gender || 'male');
+  const stageCls = stageEntry ? stageEntry.cls : clsName;
+  const stageFaction = stageEntry ? (stageEntry.faction || unitFaction) : unitFaction;
+  const stageLabel = stageEntry ? (stageEntry.label || _grl(stageEntry.race, stageEntry.gender)) : raceLabelTxt;
+  const closeWindows = () => { setEquipPicker(null); setShowTeamModal(false); setTwinPick(null); setFlSocketPick(null); setPbMenu(null); hideSpellTip(); };
   const selectPlayer = (p) => { if (p === player) return; st.builderSelectedPlayer = p; st.builderSelectedSlot = 0; setSlot(0); sfx('uiCursorMove'); refresh(); };
   const backOut = () => {
     if (standalone) {
@@ -2453,6 +2488,19 @@ function PartyBuilder() {
       const t = e.target;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
       if (e.altKey || e.ctrlKey || e.metaKey) return;
+      /* 2026-09-09 (found by playtest_builder.js): TWO forges can be mounted
+         at once — the pre-match one sleeps in #builderOverlay under the
+         title overlay while the standalone one is up in #teamBuilderPage
+         (and the other way round). Each instance used to answer every key,
+         so ESC in the archive backed the HIDDEN pre-match forge out to the
+         match-select terminal. Only the instance on screen takes a key. */
+      const root = crtRef.current;
+      if (!root || !root.isConnected) return;
+      if (standalone) { if (!root.closest('#teamBuilderPage.active')) return; }
+      else {
+        const so = document.getElementById('startOverlay');
+        if (so && so.isConnected && !so.classList.contains('hidden') && getComputedStyle(so).display !== 'none') return;   // a title page is in front
+      }
       const k = e.key;
       if (k === 'Escape') {
         e.preventDefault();
@@ -2533,24 +2581,53 @@ function PartyBuilder() {
 
   /* ── the pieces, moved into their tabs unchanged inside ── */
   // ROSTER: the Codex of Vessels — filter row + the wall
+  /* ROSTER — THE WALL (Stage 4, §5.4): the champ-select grid. One flat
+     wall (C-4) of square tiles with --pb-r corners — the 128×128 portrait
+     when the vessel has one, else the sprite bottom-anchored — a faction
+     ring on hover / active, the type dots, ★ favourite, 🔒 → the Shop.
+     Filters as ROUND chips: six type discs, three faction rings, the SORT
+     and JOB pills open glass windows (C-9: no native <select> on the
+     glass), search is a pill input. filteredRoster / rosterEntries /
+     pickRace / isLockedEntry / toggleFav are unchanged. Hover → the stage
+     (rosterHoverIn). */
+  const sortLabelTxt = sortKey === 'label' ? ('NAME ' + (sortDir === 'asc' ? 'A–Z' : 'Z–A')) : (statLabel(sortKey) + (sortDir === 'desc' ? ' ↓' : ' ↑'));
+  const rosterMenu = pbMenu === 'sort'
+    ? h(PbWindow, { title: 'SORT THE WALL', sub: sortLabelTxt, onClose: () => setPbMenu(null), zone: true, width: 300 },
+        h('div', { className: 'pb-menu-list' },
+          ...STAT_KEYS.map(k => [['desc', '↓'], ['asc', '↑']].map(([d, arrow]) =>
+            h('button', { key: k + d, className: 'pb-menu-row' + (sortKey === k && sortDir === d ? ' on' : ''), onClick: () => { setSortKey(k); setSortDir(d); setPbMenu(null); sfx('uiCursorMove'); } },
+              h('i', null, arrow), statLabel(k), h('small', null, d === 'desc' ? 'HIGHEST FIRST' : 'LOWEST FIRST')))).flat(),
+          h('button', { key: 'la', className: 'pb-menu-row' + (sortKey === 'label' && sortDir === 'asc' ? ' on' : ''), onClick: () => { setSortKey('label'); setSortDir('asc'); setPbMenu(null); sfx('uiCursorMove'); } }, h('i', null, 'A'), 'NAME', h('small', null, 'A – Z')),
+          h('button', { key: 'ld', className: 'pb-menu-row' + (sortKey === 'label' && sortDir === 'desc' ? ' on' : ''), onClick: () => { setSortKey('label'); setSortDir('desc'); setPbMenu(null); sfx('uiCursorMove'); } }, h('i', null, 'Z'), 'NAME', h('small', null, 'Z – A'))))
+    : pbMenu === 'job'
+    ? h(PbWindow, { title: 'FILTER BY JOB', sub: jobFilter ? getJobDisplay(jobFilter) : 'EVERY JOB', onClose: () => setPbMenu(null), zone: true, width: 320 },
+        h('div', { className: 'pb-menu-list' },
+          h('button', { key: 'all', className: 'pb-menu-row' + (!jobFilter ? ' on' : ''), onClick: () => { setJobFilter(null); setPbMenu(null); sfx('uiCursorMove'); } }, h('i', null, '∗'), 'ALL JOBS'),
+          ...availableJobs.map(j => h('button', { key: j, className: 'pb-menu-row' + (jobFilter === j ? ' on' : ''), onClick: () => { setJobFilter(j); setPbMenu(null); sfx('uiCursorMove'); } }, h('i', null, getJobDisplay(j).charAt(0)), getJobDisplay(j)))))
+    : null;
   const rosterPanel = h(React.Fragment, null,
-    h('div', { className: 'pb-zone-head', style: { flexWrap: 'wrap', gap: 8 } },
+    h('div', { className: 'pb-zone-head pb-wall-head' },
       h('b', null, 'Codex of Vessels'),
-      h('span', { style:{ fontSize:10, color:EW.inkDim, letterSpacing:'0.1em', marginRight:6 } }, filteredRoster.length,'/',rosterEntries.length),
-      DOOR && h('span', { className:'door-hdr-sub', style:{ marginRight:6 } }, 'D.O.O.R. RECORDS · ENTITY REGISTRY'),
-      h('input', { placeholder:'Search...', value:rosterSearch, onChange:e=>setRosterSearch(e.target.value), style:{ background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, borderRadius:999, color:EW.ink, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 10px', width:130 }}),
-      h('select', { value:`${sortKey}-${sortDir}`, onChange:e=>{const[k,d]=e.target.value.split('-');setSortKey(k);setSortDir(d);}, style:{ background:'rgba(0,0,0,0.4)', border:`1px solid ${EW.panelEdge}`, borderRadius:999, color:EW.time, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 9px', appearance:'none', WebkitAppearance:'none' }},
-        ...STAT_KEYS.map(k=>[h('option',{key:`${k}-desc`,value:`${k}-desc`,style:{background:'#000000'}},`${statLabel(k)} ↓`),h('option',{key:`${k}-asc`,value:`${k}-asc`,style:{background:'#000000'}},`${statLabel(k)} ↑`)]).flat(),
-        h('option',{value:'label-asc',style:{background:'#000000'}},'Name A-Z'), h('option',{value:'label-desc',style:{background:'#000000'}},'Name Z-A')),
-      h('select', { value:typeFilter||'', onChange:e=>setTypeFilter(e.target.value||null), title:'Filter by Type', style:{ background:'rgba(0,0,0,0.4)', border:`1px solid ${typeFilter?getTypeColor(typeFilter):EW.panelEdge}`, borderRadius:999, color:typeFilter?getTypeColor(typeFilter):EW.inkMute, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 9px', appearance:'none', WebkitAppearance:'none', cursor:'pointer' }},
-        h('option',{value:'',style:{background:'#000000',color:'#ccc'}},'All Types'),
-        ...availableTypes.map(t=>h('option',{key:t,value:t,style:{background:'#000000',color:'#ccc'}}, t.toUpperCase()))),
-      h('select', { value:jobFilter||'', onChange:e=>setJobFilter(e.target.value||null), title:'Filter by Job', style:{ background:'rgba(0,0,0,0.4)', border:`1px solid ${jobFilter?EW.time:EW.panelEdge}`, borderRadius:999, color:jobFilter?EW.time:EW.inkMute, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 9px', appearance:'none', WebkitAppearance:'none', cursor:'pointer' }},
-        h('option',{value:'',style:{background:'#000000',color:'#ccc'}},'All Jobs'),
-        ...availableJobs.map(j=>h('option',{key:j,value:j,style:{background:'#000000',color:'#ccc'}}, getJobDisplay(j)))),
-      h('span', { style:{ width:1, height:14, background:EW.panelEdge }}),
-      ...['space','time','chaos'].map(fk=>h('button',{key:fk,onClick:()=>setFactionFilter(factionFilter===fk?null:fk),className:'pb-faction-chip',style:{ background:factionFilter===fk?`${FACTION_C[fk]}18`:'rgba(0,0,0,0.3)', border:`1px solid ${factionFilter===fk?FACTION_C[fk]:EW.panelEdge}`, borderRadius:999, color:factionFilter===fk?FACTION_C[fk]:EW.inkDim, padding:'2px 10px', fontFamily:'DotGothic16, monospace', fontSize:10, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'pointer' }}, fk))),
-    h('div', { className: 'pb-roster' },
+      h('span', { className: 'pb-wall-count' }, filteredRoster.length, ' / ', rosterEntries.length),
+      DOOR && h('span', { className:'door-hdr-sub pb-wall-sub' }, 'D.O.O.R. RECORDS · ENTITY REGISTRY'),
+      h('div', { style: { flex: 1 } }),
+      h('input', { className: 'pb-pill-input', placeholder:'SEARCH…', value:rosterSearch, onChange:e=>setRosterSearch(e.target.value), 'aria-label': 'Search the wall' }),
+      h('button', { className: 'pb-pill-btn' + (pbMenu === 'sort' ? ' on' : ''), onClick: () => setPbMenu(pbMenu === 'sort' ? null : 'sort'), title: 'Sort the wall' }, '⇅ ', sortLabelTxt),
+      h('button', { className: 'pb-pill-btn' + (jobFilter || pbMenu === 'job' ? ' on' : ''), onClick: () => setPbMenu(pbMenu === 'job' ? null : 'job'), title: 'Filter by job' }, jobFilter ? getJobDisplay(jobFilter).toUpperCase() : 'ALL JOBS', ' ▾')),
+    h('div', { className: 'pb-wall-filters' },
+      h('span', { className: 'pb-wall-flabel' }, 'TYPE'),
+      ...['human','alien','divine','unholy','tech','anomaly'].map(t => {
+        const on = typeFilter === t, c = getTypeColor(t);
+        const has = availableTypes.includes(t);
+        return h('button', { key: t, className: 'pb-type-disc' + (on ? ' on' : '') + (has ? '' : ' none'), style: { '--tc': c }, disabled: !has,
+          onClick: () => setTypeFilter(on ? null : t), title: t.toUpperCase() + (has ? '' : ' — none on the wall') }, PB_TYPE_GLYPH[t] || t.slice(0, 2).toUpperCase());
+      }),
+      h('span', { className: 'pb-wall-fsep' }),
+      h('span', { className: 'pb-wall-flabel' }, 'FACTION'),
+      ...['space','time','chaos'].map(fk => h('button', { key: fk, className: 'pb-faction-ring' + (factionFilter === fk ? ' on' : ''), style: { '--fc': FACTION_C[fk] },
+        onClick: () => setFactionFilter(factionFilter === fk ? null : fk), title: fk.toUpperCase() }, fk)),
+      (typeFilter || factionFilter || jobFilter || rosterSearch) ? h('button', { className: 'pb-pill-btn danger', onClick: () => { setTypeFilter(null); setFactionFilter(null); setJobFilter(null); setRosterSearch(''); }, title: 'Clear every filter' }, '✕ CLEAR') : null),
+    h('div', { className: 'pb-roster', onMouseLeave: rosterHoverOut },
       filteredRoster.map((entry, ei) => {
         const isActive = entry.race===unitRace && entry.gender===(identity.gender||'male') && (entry.race!=='homosapien'||entry.cls===clsName);
         const entryFc = getFactionColor(entry.faction);
@@ -2559,16 +2636,21 @@ function PartyBuilder() {
         const locked = isLockedEntry(entry.race);
         const onCardClick = locked
           ? ()=>{ try{ sfx('uiError'); }catch(e){} if (typeof window._goToShop==='function') window._goToShop(entry.race); }
-          : ()=>pickRace(entry.race,entry.gender,entry.job);
-        return h('div', { key:ei, onClick:onCardClick, title: locked?'NOT DECLASSIFIED — unlock this vessel in the Shop':`${entry.label} · ${getJobDisplay(entry.cls)}`, className:'pb-vessel-card'+(locked?' pb-vessel-locked':''), style:{ cursor:'pointer', position:'relative', background:isActive?`${entryFc}18`:'rgba(0,0,0,0.3)', border:`1px solid ${isActive?entryFc:EW.panelEdge}`, display:'flex', flexDirection:'column', alignItems:'center', padding:'3px 2px 2px', gap:1, opacity: locked?0.55:1 }},
-          h('div', { style:{ width:'100%', aspectRatio:'1', display:'flex', alignItems:'flex-end', justifyContent:'center', position:'relative', overflow:'hidden', background:`linear-gradient(180deg, transparent 40%, ${entryFc}10 100%)` }},
-            h(Sprite, { race:entry.race, gender:entry.gender, cls:entry.cls, size:'85%', style:{width:'85%',height:'85%', filter: locked?'brightness(0.18) grayscale(1)':'none'} }),
-            locked && h('div', { style:{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, color:'rgba(255,216,106,0.9)', textShadow:'0 1px 4px #000' } }, '🔒'),
-            !locked && h('div', { onClick:e=>{e.stopPropagation();toggleFav(entry.race,entry.gender);}, style:{ position:'absolute', top:0, left:0, width:15, height:15, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:11, color:starred?'#dcaa1e':'rgba(255,255,255,0.15)', textShadow:starred?'0 0 6px rgba(220,170,30,0.6)':'none', transition:'color 0.15s, text-shadow 0.15s', zIndex:1 } }, starred?'★':'☆')),
-          h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:9, fontWeight:500, textAlign:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', width:'100%', color:isActive?EW.ink:EW.inkMute, lineHeight:1.2 }}, entry.label),
-          h('div', { style:{ fontSize:7, color:EW.inkDim, letterSpacing:'0.04em', textAlign:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', width:'100%' } }, getJobDisplay(entry.cls)),
-          isActive && h('div', { style:{ position:'absolute', inset:-1, border:`1px solid ${entryFc}`, borderRadius:'inherit', boxShadow:`0 0 8px ${entryFc}44`, pointerEvents:'none' } }));
-      })));
+          : ()=>{ rosterHoverOut(); pickRace(entry.race,entry.gender,entry.job); };
+        const pUrl = (typeof window.getUnitPortraitUrl === 'function') ? window.getUnitPortraitUrl({ race: entry.race, gender: entry.gender }) : null;
+        const hovered = !!(rosterHover && rosterHover.race === entry.race && rosterHover.gender === entry.gender && rosterHover.cls === entry.cls);
+        return h('div', { key:ei, onClick:onCardClick, onMouseEnter: () => rosterHoverIn(entry), title: locked?'NOT DECLASSIFIED — unlock this vessel in the Shop':`${entry.label} · ${getJobDisplay(entry.cls)}`,
+            className:'pb-rtile'+(locked?' locked':'')+(isActive?' on':'')+(hovered?' hover':''), style:{ '--fc': entryFc } },
+          h('div', { className: 'pb-rtile-art' + (pUrl ? ' portrait' : '') },
+            pUrl ? h('div', { className: 'pb-rtile-portrait', style: { backgroundImage: `url('${pUrl}')` } })
+                 : h(Sprite, { race:entry.race, gender:entry.gender, cls:entry.cls, size:'88%', style:{ width:'88%', height:'88%' } }),
+            locked ? h('div', { className: 'pb-rtile-lock' }, '🔒') : null,
+            !locked ? h('button', { className: 'pb-rtile-star' + (starred ? ' on' : ''), onClick:e=>{e.stopPropagation();toggleFav(entry.race,entry.gender);}, title: starred ? 'Unfavourite' : 'Favourite' }, starred ? '★' : '☆') : null,
+            h('div', { className: 'pb-rtile-types' }, ...(entry.types || []).slice(0, 3).map((t, ti) => h('i', { key: ti, style: { background: getTypeColor(t) }, title: String(t).toUpperCase() })))),
+          h('div', { className: 'pb-rtile-name' }, entry.label),
+          h('div', { className: 'pb-rtile-job' }, getJobDisplay(entry.cls)));
+      })),
+    rosterMenu);
 
   // TECHNIQUES: the abilities head, the tree (or the rack + flat pool fallback), the node picker
   const techPanel = h(React.Fragment, null,
@@ -2866,12 +2948,12 @@ function PartyBuilder() {
     h('div', { key: 'tech', className: 'pb-zone pb-zone-tech pb-zone-' + pbTab }, zoneContent),
     h('div', { key: 'stage', className: 'pb-stage' },
       h('div', { className: 'pb-stage-title' },
-        h('b', null, raceLabelTxt),
-        h('span', null, '· SLOT ', numerals[slot], ' ·')),
+        h('b', null, stageLabel),
+        h('span', null, stageEntry ? '· ' + getJobDisplay(stageCls) + ' · PREVIEW ·' : '· SLOT ' + numerals[slot] + ' ·')),
       h('div', { className: 'pb-stage-view' },
         h('div', { style:{ position:'absolute', left:'50%', top:'52%', transform:'translate(-50%,-50%)', width:'78%', aspectRatio:'1', background:`radial-gradient(circle, ${fc}26, transparent 62%)`, filter:'blur(18px)', pointerEvents:'none' } }),
         h('div', { style:{ position:'absolute', bottom:8, left:'50%', transform:'translateX(-50%)', width:'62%', height:12, background:`radial-gradient(ellipse, ${fc}66, transparent 70%)`, filter:'blur(3px)', pointerEvents:'none' } }),
-        h(HeroViewer3D, { race:unitRace, gender:identity.gender||'male', cls:clsName, faction:unitFaction }),
+        h(HeroViewer3D, { race:stageRace, gender:stageGender, cls:stageCls, faction:stageFaction }),
         // MOVE PREVIEW pill (plan §5.2 item 5): shows while a cast clip runs
         // on the stage; the note for vessels that cannot preview; PREVIEW OFF
         // on TECHNIQUES when the trigger is disabled.
@@ -3121,13 +3203,13 @@ window._mountReactPartyBuilder = function() {
   if (!c) return;
   _pbStandaloneMode = false;
   if (!_pbRoot) _pbRoot = ReactDOM.createRoot(c);
-  _pbRoot.render(h(PartyBuilder));
+  _pbRoot.render(h(PartyBuilder, { standalone: false }));
 };
 window._unmountReactPartyBuilder = function() {
   if (_pbRoot) { _pbRoot.unmount(); _pbRoot = null; }
   if (window.EWCharViewer) window.EWCharViewer.unmount();
 };
-window._refreshReactPartyBuilder = function() { if (_pbRoot) _pbRoot.render(h(PartyBuilder)); };
+window._refreshReactPartyBuilder = function() { if (_pbRoot) _pbRoot.render(h(PartyBuilder, { standalone: false })); };
 
 /* ── Standalone Party Forge (main menu → #teamBuilderPage) ─────────────
    Same component, standalone mode: opens on the TEAM ARCHIVE locker.
@@ -3138,7 +3220,7 @@ window._mountReactTeamBuilder = function() {
   if (!c) return;
   _pbStandaloneMode = true;
   if (!_tbRoot) _tbRoot = ReactDOM.createRoot(c);
-  _tbRoot.render(h(PartyBuilder));
+  _tbRoot.render(h(PartyBuilder, { standalone: true }));
 };
 window._unmountReactTeamBuilder = function() {
   _pbStandaloneMode = false;
