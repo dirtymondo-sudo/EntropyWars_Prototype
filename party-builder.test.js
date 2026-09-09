@@ -128,7 +128,7 @@ test('the circuit, the technique panel and the preview triggers are in the build
 test('the party row is sized by --pb-portrait (the user asked for bigger portraits)', () => {
     const m = CSS.match(/\.pb-party \{ --pb-portrait: (\d+)px;/);
     assert.ok(m, '--pb-portrait token missing on .pb-party');
-    assert.ok(+m[1] >= 88, `portraits must be at least 88px (got ${m[1]})`);
+    assert.ok(+m[1] >= 72, `portraits must be at least 72px (got ${m[1]}) — 84 since the user asked for them closer / smaller, 2026-09-09 rev 8`);
     assert.ok(/\.pb-party-ring \{ position: relative; flex: none; width: var\(--pb-portrait\); height: var\(--pb-portrait\);/.test(CSS), 'the ring must read the token');
 });
 
@@ -332,7 +332,7 @@ test('the stage spans the body on the sheet tabs and the hero stands in the free
     const sw = +(CSS.match(/\.ms-crt-forge \{ --pb-tech-w: (\d+)%; --pb-stats-w: (\d+)%;/) || [])[2];
     assert.ok(tw && sw, 'the two side-column tokens must be declared on .ms-crt-forge');
     assert.strictEqual(Math.round((tw / 100 + (1 - tw / 100 - sw / 100) / 2) * 1000) / 1000, 0.575, 'PB_STAGE_CX must equal the centre of the band the CSS leaves free');
-    assert.ok(/\.pb-body\[data-tab="tech"\] \.pb-stage, \.pb-body\[data-tab="gear"\] \.pb-stage, \.pb-body\[data-tab="dossier"\] \.pb-stage \{ grid-area: auto; grid-column: 1 \/ -1; grid-row: 1; \}/.test(CSS), 'the stage must span every column on TECHNIQUES / GEAR / DOSSIER');
+    assert.ok(/\.pb-body\[data-tab="tech"\] \.pb-stage, \.pb-body\[data-tab="gear"\] \.pb-stage, \.pb-body\[data-tab="dossier"\] \.pb-stage \{ grid-area: auto; grid-column: 1 \/ -1; grid-row: 1 \/ -1; \}/.test(CSS), 'the stage must span every column on TECHNIQUES / GEAR / DOSSIER');
     assert.ok(/\.pb-body\[data-tab="tech"\] \.pb-zone-tech::before/.test(CSS) && /\.pb-zone-stats::before \{/.test(CSS), 'the side zones float transparent over the stage with a scrim');
     assert.ok(!/\n\.pb-zone \{[^}]*border: 1px solid var\(--ph-line\)/.test(CSS), 'the base zone must be transparent (ROSTER re-adds its panel)');
     assert.ok(/const stageCx = pbTab === 'roster' \? 0\.5 : PB_STAGE_CX;/.test(PB) && /focus: stageCx/.test(PB), 'the viewer must be told the band centre');
@@ -346,10 +346,12 @@ test('the stage spans the body on the sheet tabs and the hero stands in the free
 
 test('one head row (the tabs inside it) and one bottom bar (the foot merged into the party row)', () => {
     assert.ok(/const head = h\('div', \{ className: 'ms-tty-head pb-head' \},[\s\S]{0,700}tabbar,[\s\S]{0,400}className: 'pb-head-right'/.test(PB), 'the tab bar must ride in the head row');
-    assert.ok(/h\('div', \{ className: 'ms-tty pb-tty' \}, head, body, partyRow\),/.test(PB), 'the tty is head · body · party row — no separate tab row, no separate foot');
-    for (const cls of ['pb-party-left', 'pb-party-slots', 'pb-party-right ms-tty-foot pb-foot', 'pb-tools', 'pb-seal', 'ms-tty-sum pb-sum']) assert.ok(PB.includes(`className: '${cls}'`), `${cls} missing from the bottom bar`);
+    assert.ok(/h\('div', \{ className: 'ms-tty pb-tty' \}, head, body\),/.test(PB) && /panelZone,\s*partyRow\);/.test(PB), 'the tty is head · body; the party bar and the technique panel are cells of the body grid');
+    assert.ok(/className: 'pb-zone pb-zone-panel'/.test(PB) && /'data-panel': hasPanel \? '1' : '0'/.test(PB), 'the technique panel cell is missing');
+    assert.ok(/\.pb-body\[data-panel="1"\] \{ grid-template-areas: "tech band stats" "panel party party"; \}/.test(CSS), 'the panel takes the bottom-left cell beside the portraits');
+    for (const cls of ['pb-party-left', 'pb-party-slots', 'pb-party-right ms-tty-foot pb-foot', 'pb-tools', 'pb-seal']) assert.ok(PB.includes(`className: '${cls}'`), `${cls} missing from the bottom bar`);
     assert.ok(!PB.includes('pb-prompt') && !PB.includes('pb-party-cap') && !PB.includes('pb-party-count') && !PB.includes('pb-tabhint'), 'the prompt line, the ◂ ▸ caps, the counter and the tab hint are cut');
     assert.ok(PB.includes("className: 'pb-tech-bar'") && PB.includes("className: 'pb-pips'"), 'the tech bar with the slot pips is missing');
     assert.ok(!PB.includes("className: 'pb-circuit-head'") && !PB.includes('HOVER PREVIEWS ·'), 'the circuit sub-head (hover hints) is cut');
-    for (const sel of ['.pb-party-left {', '.pb-party-right {', '.pb-sum {', '.pb-tools {', '.pb-seal {', '.pb-head .pb-tabbar {', '.pb-ident {']) assert.ok(CSS.includes(sel), `${sel} rule missing`);
+    for (const sel of ['.pb-party-left {', '.pb-party-right {', '.pb-zone-panel {', '.pb-tools {', '.pb-seal {', '.pb-head .pb-tabbar {', '.pb-ident {']) assert.ok(CSS.includes(sel), `${sel} rule missing`);
 });

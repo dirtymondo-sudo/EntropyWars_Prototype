@@ -4452,8 +4452,14 @@ body.diorama-3d .tile-underpass.jump::before {
 /* ── the body: one grid per tab; the STAGE spans every column (row 1) and
    the side zones float over it, except on ROSTER where the wall is a panel ── */
 .pb-body { display: grid; gap: 12px; flex: 1; min-height: 0; font-family: 'DotGothic16', monospace; text-shadow: none; position: relative; }
-.pb-body[data-tab="tech"], .pb-body[data-tab="gear"], .pb-body[data-tab="dossier"] { grid-template-columns: var(--pb-tech-w) minmax(0, 1fr) var(--pb-stats-w); grid-template-rows: minmax(0, 1fr); grid-template-areas: "tech band stats"; }
-.pb-body[data-tab="roster"] { grid-template-columns: minmax(0, 1fr) clamp(300px, 27vw, 420px); grid-template-areas: "tech stage"; }
+/* two rows: the sheet, then the bottom bar; on TECHNIQUES (data-panel=1) the
+   technique panel takes the bar's left cell, under the lanes, beside the portraits */
+.pb-body[data-tab="tech"], .pb-body[data-tab="gear"], .pb-body[data-tab="dossier"] { grid-template-columns: var(--pb-tech-w) minmax(0, 1fr) var(--pb-stats-w); grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "tech band stats" "party party party"; row-gap: 0; }
+.pb-body[data-panel="1"] { grid-template-areas: "tech band stats" "panel party party"; }
+.pb-zone-panel { grid-area: panel; padding-top: 4px; }
+.pb-zone-panel::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(90deg, rgba(3,3,2,0.72) 0%, rgba(3,3,2,0.55) 70%, rgba(3,3,2,0) 100%); }
+.pb-zone-panel .pb-technique { flex: 1; margin: 4px 6px 6px 0; min-height: 0; }
+.pb-body[data-tab="roster"] { grid-template-columns: minmax(0, 1fr) clamp(300px, 27vw, 420px); grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "tech stage" "party party"; row-gap: 0; }
 .pb-zone { position: relative; display: flex; flex-direction: column; min-height: 0; min-width: 0; border-radius: var(--pb-r); overflow: hidden; z-index: 1; }
 .pb-zone-tech { grid-area: tech; }
 .pb-zone-stats { grid-area: stats; padding: 6px 4px 4px 10px; gap: 5px; }
@@ -4466,7 +4472,7 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-zone-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 /* the stage: full-body on the three sheet tabs (grid column 1 / -1, under the zones), its own column on ROSTER */
 .pb-stage { --pb-cx: 50%; grid-area: stage; position: relative; display: flex; flex-direction: column; min-height: 0; min-width: 0; border-radius: var(--pb-r); overflow: hidden; z-index: 0; background: radial-gradient(ellipse 60% 70% at var(--pb-cx) 55%, rgba(255,205,107,0.06), transparent 70%), linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.3)); }
-.pb-body[data-tab="tech"] .pb-stage, .pb-body[data-tab="gear"] .pb-stage, .pb-body[data-tab="dossier"] .pb-stage { grid-area: auto; grid-column: 1 / -1; grid-row: 1; }
+.pb-body[data-tab="tech"] .pb-stage, .pb-body[data-tab="gear"] .pb-stage, .pb-body[data-tab="dossier"] .pb-stage { grid-area: auto; grid-column: 1 / -1; grid-row: 1 / -1; }
 .pb-body[data-tab="roster"] .pb-stage { border: 1px solid var(--ph-line); background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(255,205,107,0.05), transparent 70%), rgba(0,0,0,0.2); }
 .pb-stage-view { flex: 1; min-height: 0; position: relative; }
 .pb-stage-glow { position: absolute; left: var(--pb-cx, 50%); top: 52%; transform: translate(-50%, -50%); width: min(78%, 90vh); aspect-ratio: 1; filter: blur(18px); pointer-events: none; }
@@ -4544,9 +4550,9 @@ body.diorama-3d .tile-underpass.jump::before {
 /* ── the bottom bar (2026-09-09): BACK + the summary · the portraits · the tools + the seal.
    The portraits are --pb-portrait (96 px; 76 under 1180 px, 64 under 940), the
    active one 1.16× with a glow. The flanks hold the controls the foot used to. ── */
-.pb-party { --pb-portrait: 96px; display: flex; align-items: center; gap: 14px; flex-shrink: 0; padding: 6px 4px 2px; border-top: 1px solid var(--ph-line); font-family: 'DotGothic16', monospace; text-shadow: none; }
-.pb-party-left { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 12px; }
-.pb-party-right { flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 12px; border-top: 0 !important; padding-top: 0 !important; }
+.pb-party { --pb-portrait: 84px; grid-area: party; position: relative; z-index: 1; display: flex; align-items: center; gap: 12px; min-width: 0; margin-top: 8px; padding: 4px 4px 0 10px; border-top: 1px solid var(--ph-line); font-family: 'DotGothic16', monospace; text-shadow: none; }
+.pb-party-left { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; }
+.pb-party-right { flex: 0 0 auto; display: flex; align-items: center; justify-content: flex-end; gap: 12px; border-top: 0 !important; padding-top: 0 !important; }
 .pb-sum { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .pb-sum small { font-size: 8px; letter-spacing: 0.26em; color: var(--ph-faint); text-transform: uppercase; }
 .pb-sum b { font-family: 'Cormorant SC', serif; font-weight: 400; font-size: 20px; line-height: 1; color: #f1e9cf; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -4555,26 +4561,27 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-sum span em.gold { color: var(--ph-gold); }
 .pb-sum span em.green { color: var(--ph-green); }
 .pb-sum span em.red { color: var(--ph-red); }
-.pb-tools { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; max-width: 232px; }
+.pb-tools { display: flex; flex-direction: column; align-items: stretch; gap: 3px; }
+.pb-tools .ms-tty-btn.sm { padding: 4px 8px; font-size: 8px; text-align: center; }
 .pb-seal { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.pb-party-slots { display: flex; gap: 22px; flex: 0 0 auto; min-width: 0; overflow-x: auto; overflow-y: hidden; padding: 14px 10px 2px; justify-content: center; align-items: flex-start; }
+.pb-party-slots { display: flex; gap: 8px; flex: 1 1 0; min-width: 0; overflow: visible; padding: 12px 6px 8px; justify-content: center; align-items: flex-start; }
 /* The legacy "Character Select Screen v2" block above still declares
    .pb-party-slot with a clamped HEIGHT, a border, a centred column and a
    hover translate/glow — under it the ring's height shrank inside the
    column and the portraits read as OVALS. The forge row overrides every
    one of those here (2026-09-09, the user: "oval instead of circle"). */
-.ms-crt-forge .pb-party-slot, .pb-party .pb-party-slot { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px; width: calc(var(--pb-portrait) + 44px); height: auto; min-height: 0; flex: none; cursor: pointer; border: 0; border-radius: 0; background: none; padding: 0; position: relative; }
+.ms-crt-forge .pb-party-slot, .pb-party .pb-party-slot { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3px; width: calc(var(--pb-portrait) + 22px); height: auto; min-height: 0; flex: none; cursor: pointer; border: 0; border-radius: 0; background: none; padding: 0; position: relative; }
 .pb-party .pb-party-slot:hover, .pb-party .pb-party-slot:active { transform: none; filter: none; animation: none; border-color: transparent !important; background: none; }
 .pb-party-ring { position: relative; flex: none; width: var(--pb-portrait); height: var(--pb-portrait); aspect-ratio: 1 / 1; box-sizing: border-box; border-radius: 50%; border: 3px solid var(--slot-fc, var(--ph-gold)); box-shadow: 0 0 0 3px #000; background: radial-gradient(circle, rgba(255,255,255,0.05), rgba(0,0,0,0.55)); transition: transform 0.15s, box-shadow 0.15s, border-width 0.15s; }
 .pb-party-slot:hover .pb-party-ring { box-shadow: 0 0 0 3px #000, 0 0 16px var(--slot-fc, var(--ph-gold)); }
-.pb-party-slot.on .pb-party-ring { border-width: 4px; transform: scale(1.16); box-shadow: 0 0 0 3px #000, 0 0 26px var(--slot-fc, var(--ph-gold)); }
+.pb-party-slot.on .pb-party-ring { border-width: 4px; transform: scale(1.12); box-shadow: 0 0 0 3px #000, 0 0 26px var(--slot-fc, var(--ph-gold)); }
 .pb-party-portrait { position: absolute; inset: 3px; border-radius: 50%; overflow: hidden; display: flex; align-items: flex-end; justify-content: center; }
 .pb-party-no { position: absolute; top: -6px; left: -6px; width: 26px; height: 26px; border-radius: 50%; background: #0a0908; border: 1.5px solid var(--slot-fc, var(--ph-gold)); color: var(--slot-fc, var(--ph-gold)); font-family: 'Cormorant SC', serif; font-style: italic; font-size: 13px; line-height: 1; display: flex; align-items: center; justify-content: center; z-index: 2; }
 .pb-party-filed { position: absolute; right: -16px; bottom: -2px; z-index: 2; }
 .pb-party-ring .door-stamp.pb-party-filed { font-size: 8px; letter-spacing: 0.12em; padding: 2px 5px 1px; outline: none; border-width: 2px; }
 .pb-party-tick { font-size: 15px; color: var(--ph-green); font-weight: 700; }
-.pb-party-name { font-family: 'Cormorant SC', serif; font-size: 15px; line-height: 1.1; color: var(--ph); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 8px; }
-.pb-party-slot.on .pb-party-name { color: #fff; margin-top: 12px; }
+.pb-party-name { font-family: 'Cormorant SC', serif; font-size: 13px; line-height: 1.1; color: var(--ph); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 8px; }
+.pb-party-slot.on .pb-party-name { color: #fff; margin-top: 10px; }
 .pb-party-sub { font-size: 9px; letter-spacing: 0.08em; color: var(--ph-faint); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; }
 .pb-party-side { display: flex; gap: 4px; flex-shrink: 0; }
 .pb-pill { font: inherit; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ph-dim); background: rgba(0,0,0,0.35); border: 1px solid var(--ph-line); border-radius: 999px; padding: 4px 10px; cursor: pointer; white-space: nowrap; transition: color 0.12s, border-color 0.12s, background 0.12s; }
@@ -4843,23 +4850,20 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-zodiac-read b span { font-family: 'DotGothic16', monospace; font-size: 8px; letter-spacing: 0.12em; color: var(--ph-dim); }
 /* ── smaller glass ── */
 @media (max-width: 1500px) {
-    .pb-party { --pb-portrait: 84px; gap: 10px; }
-    .pb-party-slots { gap: 10px; padding-top: 12px; }
-    .ms-crt-forge .pb-party-slot, .pb-party .pb-party-slot { width: calc(var(--pb-portrait) + 26px); }
-    .pb-tools { flex-direction: column; flex-wrap: nowrap; align-items: stretch; max-width: none; gap: 3px; }
-    .pb-tools .ms-tty-btn.sm { padding: 4px 8px; font-size: 8px; text-align: center; }
+    .pb-party { --pb-portrait: 72px; gap: 8px; }
+    .pb-party-slots { gap: 6px; }
+    .ms-crt-forge .pb-party-slot, .pb-party .pb-party-slot { width: calc(var(--pb-portrait) + 18px); }
     .pb-seal { flex-direction: column; align-items: flex-end; gap: 5px; }
     .pb-foot .ms-tty-btn.primary { padding: 9px 16px; }
     .pb-foot .ms-tty-btn.primary b { font-size: 15px; }
     .pb-foot-input { width: 150px; font-size: 13px; padding: 6px 12px; }
-    .pb-sum b { font-size: 17px; }
 }
 @media (max-width: 1180px) {
     .ms-crt-forge { --pb-tech-w: 38%; --pb-stats-w: 23%; }
     .pb-body { gap: 8px; }
     .pb-body[data-tab="roster"] { grid-template-columns: minmax(0, 1fr) minmax(240px, 30vw); }
     .pb-head > span:not(.pb-head-right), .pb-head > .ms-tty-sep { display: none; }
-    .pb-party { --pb-portrait: 76px; }
+    .pb-party { --pb-portrait: 64px; }
     .pb-circuit { --pb-disc: 36px; --pb-row: 46px; --pb-lane-gap: 8px; }
     .pb-tn-disc { font-size: 14px; }
     .pb-tn-name { font-size: 11px; }
@@ -4869,8 +4873,6 @@ body.diorama-3d .tile-underpass.jump::before {
     .pb-note { width: 100px; min-height: 70px; font-size: 12px; }
     .pb-note b { font-size: 13px; }
     .pb-note p { font-size: 11.5px; -webkit-line-clamp: 3; }
-    .pb-tools { max-width: 150px; }
-    .pb-sum b { font-size: 16px; }
     .pb-foot .ms-tty-btn.primary { padding: 10px 16px; }
     .pb-foot .ms-tty-btn.primary b { font-size: 15px; }
 }
@@ -4878,7 +4880,8 @@ body.diorama-3d .tile-underpass.jump::before {
     .ms-crt-forge .ms-crt-bezel { padding: 14px 12px 30px; }
     .ms-crt-forge .ms-crt-glass { inset: 14px 12px 30px; }
     .ms-crt-forge .ms-crt-screen { padding: 8px 10px 8px; }
-    .pb-body[data-tab] { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; grid-template-areas: "stage" "tech" "stats"; overflow-y: auto; }
+    .pb-body[data-tab], .pb-body[data-panel="1"] { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; grid-template-areas: "stage" "tech" "panel" "stats" "party"; overflow-y: auto; }
+    .pb-zone-panel { min-height: 0; }
     .pb-body[data-tab] .pb-stage { grid-area: stage; grid-column: auto; grid-row: auto; --pb-cx: 50%; min-height: 42vh; flex-shrink: 0; border: 1px solid var(--ph-line); }
     .pb-zone { min-height: 60vh; flex-shrink: 0; }
     .pb-zone-tech::before, .pb-zone-stats::before { display: none; }
@@ -4890,5 +4893,4 @@ body.diorama-3d .tile-underpass.jump::before {
     .pb-party-slots { justify-content: flex-start; max-width: 100%; }
     .pb-party { --pb-portrait: 64px; }
     .pb-party-name { font-size: 12px; }
-    .pb-sum { display: none; }
 }

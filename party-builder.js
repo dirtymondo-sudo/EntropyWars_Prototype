@@ -2803,10 +2803,7 @@ function PartyBuilder(props) {
             onOpenSubjob: (!isArena && !unitTree.isFreelancer) ? () => { setEquipPicker('subjob'); sfx('uiCursorMove'); } : undefined,
             onSocketClick: unitTree.isFreelancer ? (key) => { setFlSocketPick(key); sfx('uiCursorMove'); } : undefined,
             onTwinPick: (unitTree.alts && Object.keys(unitTree.alts).length) ? (key) => { setTwinPick(key); sfx('uiCursorMove'); } : undefined })),
-        h(TechniquePanel, { info: techInfo, clsName, secJob, fc,
-          raceLabel: (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace),
-          onVerb: techVerb, onPreview: (info) => pbPreview(info.sp || null),
-          previewOff, previewing: !!previewState, used: (customSpells || []).length, slotCap })),
+        null),
 
       // ── flat pool — FALLBACK only (tree fns unavailable) ──
       (!useTree&&!isArena&&(spellPool.length>0||raceAbilities.length>0))&&h(React.Fragment, null,
@@ -3040,30 +3037,6 @@ function PartyBuilder(props) {
     !standalone && h('button', { className:'ms-tty-btn ok', style:{ alignSelf:'flex-end', marginTop:2 }, onClick:confirmSlot, title:'Lock this vessel and move to the next open slot' }, 'CONFIRM ' + numerals[slot]));
 
   /* ── BODY: the three zones; the stage keeps its key across every tab ── */
-  const stageCx = pbTab === 'roster' ? 0.5 : PB_STAGE_CX;
-  const zoneContent = pbTab === 'roster' ? rosterPanel : pbTab === 'tech' ? techPanel : pbTab === 'gear' ? gearPanel : dossierPanel;
-  const body = h('div', { className: 'pb-body', 'data-tab': pbTab },
-    h('div', { key: 'tech', className: 'pb-zone pb-zone-tech pb-zone-' + pbTab }, zoneContent),
-    // The stage spans the WHOLE body on TECHNIQUES / GEAR / DOSSIER (the side
-    // zones are transparent over it — the hero's environment is the backdrop);
-    // --pb-cx / `focus` put the hero at the centre of the free band between
-    // the circuit and the stats (PB_STAGE_CX ↔ the CSS column widths).
-    h('div', { key: 'stage', className: 'pb-stage', style: { '--pb-cx': (stageCx * 100) + '%' } },
-      h('div', { className: 'pb-stage-view' },
-        h('div', { className: 'pb-stage-glow', style:{ background:`radial-gradient(circle, ${fc}26, transparent 62%)` } }),
-        h('div', { className: 'pb-stage-floor', style:{ background:`radial-gradient(ellipse, ${fc}66, transparent 70%)` } }),
-        h(HeroViewer3D, { race:stageRace, gender:stageGender, cls:stageCls, faction:stageFaction, focus: stageCx }),
-        // MOVE PREVIEW pill (plan §5.2 item 5): shows while a cast clip runs
-        // on the stage; the note for vessels that cannot preview; PREVIEW OFF
-        // on TECHNIQUES when the trigger is disabled.
-        previewState ? h('div', { className: 'pb-stage-pill live' }, h('i', null), 'MOVE PREVIEW · ', (previewState.name || '').toUpperCase())
-          : previewNote ? h('div', { className: 'pb-stage-pill note' }, previewNote)
-          : (previewOff && pbTab === 'tech') ? h('div', { className: 'pb-stage-pill off' }, 'PREVIEW OFF') : null,
-        // Stage 5's sticky notes, stuck ON THE GLASS (2026-09-09 — the user: the bezel margin "shrinks the entire screen")
-        (pbTab !== 'roster' && !(standalone && tbView === 'locker')) ? h(PbNotes, { notes: unitNotes, seed: unitRace + ':' + (identity.gender || ''), paper: notePaper, onOpen: () => { setNotesOpen(true); sfx('uiCursorMove'); } }) : null),
-      pbTab === 'roster' ? quickCard : null),
-    pbTab !== 'roster' ? h('div', { key: 'stats', className: 'pb-zone pb-zone-stats' }, statsPanel) : null);
-
   /* ── THE BOTTOM BAR (2026-09-09): the party row and the foot are ONE row —
      BACK + the vessel's summary on the left, the portraits in the middle, the
      tools + CONFIRM / the seal on the right. The empty flanks the user
@@ -3075,13 +3048,6 @@ function PartyBuilder(props) {
       standalone
         ? h('button', { className: 'ms-tty-btn danger', onClick: () => { setTbView('locker'); sfx('uiCursorMove'); refresh(); }, title: 'Back to the archive' }, '◂ TEAMS')
         : h('button', { className: 'ms-tty-btn danger', onClick: doBack, title: 'Back' }, '◂ BACK'),
-      h('div', { className: 'ms-tty-sum pb-sum' },
-        h('small', null, 'SLOT ' + numerals[slot]),
-        h('b', null, unitName),
-        h('span', null,
-          h('em', { className: 'gold' }, raceLabelTxt.toUpperCase()), ' · ', h('em', null, getJobDisplay(clsName).toUpperCase()),
-          secJob ? ' + ' : null, secJob ? h('em', null, getJobDisplay(secJob).toUpperCase()) : null,
-          ' · ', h('em', { className: spellSlotsUsed > slotCap ? 'red' : 'green' }, spellSlotsUsed + '/' + slotCap + ' SPELLS'))),
       (!isOnline && st.showPlayer2Builder) ? h('div', { className: 'pb-party-side' },
         h('button', { className: 'pb-pill' + (player === 1 ? ' on' : ''), onClick: () => selectPlayer(1) }, 'P1'),
         h('button', { className: 'pb-pill' + (player === 2 ? ' on' : ''), onClick: () => selectPlayer(2) }, 'P2 · CPU')) : null),
@@ -3127,6 +3093,41 @@ function PartyBuilder(props) {
                     : (!isRankedNet && netRole === 'guest' && opponentLockedToo) ? '⌛ WAITING FOR HOST TO START…'
                     : '⌛ WAITING ON OPPONENT…'))
               : h('button', { className: 'ms-tty-btn primary', onClick: doStart, title: 'Seal the manifest and cross' }, h('b', null, 'SEAL YOUR FATE'), h('i', null, '↵')))));
+
+  const stageCx = pbTab === 'roster' ? 0.5 : PB_STAGE_CX;
+  // THE TECHNIQUE PANEL (2026-09-09 rev 8): its own cell UNDER the lanes, beside
+  // the party bar — the lanes get the full height, the description reads next
+  // to the portraits. Only on TECHNIQUES with a tree; otherwise the party bar spans.
+  const hasPanel = pbTab === 'tech' && !!(useTree && unitTree);
+  const panelZone = hasPanel ? h('div', { key: 'panel', className: 'pb-zone pb-zone-panel' },
+    h(TechniquePanel, { info: techInfo, clsName, secJob, fc,
+      raceLabel: (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace),
+      onVerb: techVerb, onPreview: (info) => pbPreview(info.sp || null),
+      previewOff, previewing: !!previewState, used: (customSpells || []).length, slotCap })) : null;
+  const zoneContent = pbTab === 'roster' ? rosterPanel : pbTab === 'tech' ? techPanel : pbTab === 'gear' ? gearPanel : dossierPanel;
+  const body = h('div', { className: 'pb-body', 'data-tab': pbTab, 'data-panel': hasPanel ? '1' : '0' },
+    h('div', { key: 'tech', className: 'pb-zone pb-zone-tech pb-zone-' + pbTab }, zoneContent),
+    // The stage spans the WHOLE body on TECHNIQUES / GEAR / DOSSIER (the side
+    // zones are transparent over it — the hero's environment is the backdrop);
+    // --pb-cx / `focus` put the hero at the centre of the free band between
+    // the circuit and the stats (PB_STAGE_CX ↔ the CSS column widths).
+    h('div', { key: 'stage', className: 'pb-stage', style: { '--pb-cx': (stageCx * 100) + '%' } },
+      h('div', { className: 'pb-stage-view' },
+        h('div', { className: 'pb-stage-glow', style:{ background:`radial-gradient(circle, ${fc}26, transparent 62%)` } }),
+        h('div', { className: 'pb-stage-floor', style:{ background:`radial-gradient(ellipse, ${fc}66, transparent 70%)` } }),
+        h(HeroViewer3D, { race:stageRace, gender:stageGender, cls:stageCls, faction:stageFaction, focus: stageCx }),
+        // MOVE PREVIEW pill (plan §5.2 item 5): shows while a cast clip runs
+        // on the stage; the note for vessels that cannot preview; PREVIEW OFF
+        // on TECHNIQUES when the trigger is disabled.
+        previewState ? h('div', { className: 'pb-stage-pill live' }, h('i', null), 'MOVE PREVIEW · ', (previewState.name || '').toUpperCase())
+          : previewNote ? h('div', { className: 'pb-stage-pill note' }, previewNote)
+          : (previewOff && pbTab === 'tech') ? h('div', { className: 'pb-stage-pill off' }, 'PREVIEW OFF') : null,
+        // Stage 5's sticky notes, stuck ON THE GLASS (2026-09-09 — the user: the bezel margin "shrinks the entire screen")
+        (pbTab !== 'roster' && !(standalone && tbView === 'locker')) ? h(PbNotes, { notes: unitNotes, seed: unitRace + ':' + (identity.gender || ''), paper: notePaper, onOpen: () => { setNotesOpen(true); sfx('uiCursorMove'); } }) : null),
+      pbTab === 'roster' ? quickCard : null),
+    pbTab !== 'roster' ? h('div', { key: 'stats', className: 'pb-zone pb-zone-stats' }, statsPanel) : null,
+    panelZone,
+    partyRow);
 
   /* ══ TEAM ARCHIVE — standalone landing view (Pokémon-Showdown locker), a
      full-glass view over the forge: pick a squad to edit, or start a new
@@ -3298,7 +3299,7 @@ function PartyBuilder(props) {
     h('div', { className: 'ms-crt-bezel' },
       h('div', { className: 'ms-crt-glass' },
         h('div', { className: 'ms-crt-screen' },
-          h('div', { className: 'ms-tty pb-tty' }, head, body, partyRow),
+          h('div', { className: 'ms-tty pb-tty' }, head, body),
           locker,
           teamWindow,
           notesWindow,

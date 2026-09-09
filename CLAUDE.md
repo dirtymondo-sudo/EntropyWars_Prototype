@@ -491,6 +491,11 @@ portraits · `.pb-party-right.pb-foot` tools + CONFIRM + the lock ladder
 verbatim). Cut: the officer chip, the prompt line, the ◂ ▸ caps, the
 counter, the stage title, the hover-hint sub-head, the tab hint.
 `node playtest_builder.js [tag]` honours `PW_W` / `PW_H`.
+**rev 8 (same day)**: the body grid has TWO rows — the sheet, then the
+bottom bar; on TECHNIQUES `data-panel="1"` puts `TechniquePanel` in its
+own `.pb-zone-panel` cell under the lanes, beside the party bar (which is
+a body cell, `grid-area: party`; the stage spans both rows). Portraits
+84 px, closer; the bar's summary is gone (identity = STATS column).
 
 ## TRAINING MATCH (instant CPU turns vs a human) — added 2026-09-07
 Match-select → CONFIG column → **CPU TEMPO: Cinematic / ⚡ Training**
