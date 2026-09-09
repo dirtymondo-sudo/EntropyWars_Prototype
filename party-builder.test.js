@@ -15,6 +15,7 @@ const read = (f) => fs.readFileSync(path.join(REPO_ROOT, f), 'utf8');
 const PB = read('party-builder.js');
 const CSS = read('styles-base.css');
 const TR = read('three-renderer.js');
+const DATA = read('data.js');
 
 test('PB_TABS carries the four tabs, in order, on window', () => {
     const m = PB.match(/const PB_TABS = \[([\s\S]*?)\];/);
@@ -303,6 +304,22 @@ test('AFFINITIES read TYPE_CHART the way the engine judges a hit (strongVs / wea
     assert.ok(PB.includes("className: 'pb-affinity'") && PB.includes("className: 'pb-aff-disc'"), 'ring classes missing');
     assert.ok(/h\(PbAffinityRing, \{ types: unitTypes \}\)/.test(PB), 'the STATS column must show the ring');
     for (const sel of ['.pb-affinity {', '.pb-aff-disc {', '.pb-aff.weak .pb-aff-disc {', '.pb-aff.resist .pb-aff-disc {', '.pb-aff.own .pb-aff-disc {']) assert.ok(CSS.includes(sel), `${sel} rule missing`);
+});
+
+test('ELEMENTS: the elemental ring under the type chart reads RACE_ELEMENT_AFFINITY through getRaceElementAffinity, six combat elements, four tiers', () => {
+    assert.ok(/function pbElementAffinities\(race\)/.test(PB) && /function PbElementRing\(\{ race \}\)/.test(PB), 'element helpers missing');
+    const fn = PB.slice(PB.indexOf('function pbElementAffinities(race)'), PB.indexOf('function PbElementRing('));
+    assert.ok(/window\.getRaceElementAffinity/.test(fn) && /window\.COMBAT_ELEMENTS/.test(fn) && /window\.ELEMENT_AFFINITY_MULT/.test(fn), 'must read the data.js table, element list and multipliers');
+    const order = PB.match(/const PB_ELEMENT_ORDER = \[([^\]]*)\]/);
+    assert.ok(order, 'PB_ELEMENT_ORDER missing');
+    const pbList = order[1].split(',').map(x => x.trim().replace(/'/g, '')).filter(Boolean);
+    const dataList = DATA.match(/const COMBAT_ELEMENTS = \[([^\]]*)\]/)[1].split(',').map(x => x.trim().replace(/'/g, '')).filter(Boolean);
+    assert.deepStrictEqual(pbList, dataList, 'the builder fallback order must equal data.js COMBAT_ELEMENTS');
+    for (const tier of ['weak', 'resist', 'immune', 'absorb']) assert.ok(new RegExp("r\\.verdict === '" + tier + "'").test(PB), `tier ${tier} not rendered`);
+    assert.ok(PB.includes("'TYPE CHART'") && PB.includes("'ELEMENTS'"), 'the STATS column headings must be TYPE CHART then ELEMENTS');
+    assert.ok(PB.indexOf("'TYPE CHART'") < PB.indexOf("'ELEMENTS'"), 'ELEMENTS must sit below TYPE CHART');
+    assert.ok(/h\(PbElementRing, \{ race: unitRace \}\)/.test(PB), 'the STATS column must show the element ring');
+    for (const sel of ['.pb-aff.immune .pb-aff-disc {', '.pb-aff.absorb .pb-aff-disc {', '.pb-element .pb-aff-disc {']) assert.ok(CSS.includes(sel), `${sel} rule missing`);
 });
 
 test('GEAR: no native <select> left on the glass (C-9); the zodiac wheel mirrors the engine; the subclass is a pill', () => {

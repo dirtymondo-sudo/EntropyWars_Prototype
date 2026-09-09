@@ -1789,6 +1789,46 @@ function PbAffinityRing({ types }) {
     }));
 }
 
+/* ══ THE ELEMENTS (2026-09-09, rev 9): the elemental weakness / resistance
+   layer UNDER the type chart. data.js RACE_ELEMENT_AFFINITY is the table
+   and getRaceElementAffinity(race, el) the read (the engine's
+   unitElementAffinity is the same read off the unit's race); only the six
+   COMBAT_ELEMENTS ever consult it (fire / ice / lightning / water / poison /
+   earth). weak ×1.5 · resist ×0.5 · immune ×0 (statuses bounce too) ·
+   absorb = the hit HEALS. Neutral is the common case and shows as '—'. */
+const PB_ELEMENT_ORDER = ['fire', 'ice', 'lightning', 'water', 'poison', 'earth'];
+const PB_ELEMENT_C = { fire: '#ff7a3d', ice: '#8fd8ff', lightning: '#ffe25c', water: '#4fa8ff', poison: '#9be25a', earth: '#c9a06a' };
+function pbElementAffinities(race) {
+  const order = (Array.isArray(window.COMBAT_ELEMENTS) && window.COMBAT_ELEMENTS.length === 6) ? window.COMBAT_ELEMENTS : PB_ELEMENT_ORDER;
+  const read = typeof window.getRaceElementAffinity === 'function' ? window.getRaceElementAffinity : (r, el) => ((window.RACE_ELEMENT_AFFINITY || {})[r] || {})[el] || null;
+  const mults = window.ELEMENT_AFFINITY_MULT || { weak: 1.5, resist: 0.5, immune: 0 };
+  return order.map(el => {
+    const tier = read(race, el) || 'neutral';
+    const mult = tier === 'absorb' ? null : (mults[tier] ?? 1);
+    return { element: el, verdict: tier, mult };
+  });
+}
+function PbElementRing({ race }) {
+  const rows = pbElementAffinities(race);
+  const icons = window.ELEMENT_ICONS || {};
+  const iconHtml = typeof window.elementIconHtml === 'function' ? window.elementIconHtml : null;
+  return h('div', { className: 'pb-affinity pb-element' },
+    ...rows.map(r => {
+      const c = PB_ELEMENT_C[r.element] || EW.inkMute;
+      const EL = r.element.toUpperCase();
+      const tip = r.verdict === 'weak' ? `takes ${r.mult}× from ${EL}`
+        : r.verdict === 'resist' ? `takes ${r.mult}× from ${EL}`
+        : r.verdict === 'immune' ? `IMMUNE to ${EL} — no damage, its status bounces`
+        : r.verdict === 'absorb' ? `ABSORBS ${EL} — the hit heals instead`
+        : `takes 1× from ${EL}`;
+      const label = r.verdict === 'weak' ? 'WEAK' : r.verdict === 'resist' ? 'RESIST' : r.verdict === 'immune' ? 'IMMUNE' : r.verdict === 'absorb' ? 'ABSORB' : '—';
+      const disc = iconHtml
+        ? h('span', { className: 'pb-aff-disc', dangerouslySetInnerHTML: { __html: iconHtml(r.element, 'pb-elicon') } })
+        : h('span', { className: 'pb-aff-disc' }, icons[r.element] || '?');
+      return h('div', { key: r.element, className: 'pb-aff ' + r.verdict, style: { '--tc': c }, title: tip }, disc, h('small', null, label));
+    }));
+}
+
 // RPG-style equipment/item slot square flanking the hero sprite.
 function EquipSlotBox({ size, accent, filled, icon, label, title, onClick, onClear }) {
   const s = size || 48;
@@ -2990,7 +3030,7 @@ function PartyBuilder(props) {
   const unitNotes = pbUnitNotes(identity, clsName, unitEquipment);
   const notePaper = PB_NOTE_PAPER[unitFaction] || 'yellow';
 
-  // STATS column (every tab but ROSTER): identity, vitals, the sheet, footprints, affinities
+  // STATS column (every tab but ROSTER): identity, vitals, the sheet, footprints, the type chart, the elements
   const zMod = (mapped) => zodiacNature ? (zodiacNature.buff===mapped ? 'up' : zodiacNature.debuff===mapped ? 'dn' : null) : null;
   const statsPanel = h(React.Fragment, null,
     h('div', { className: 'pb-ident' },
@@ -3017,10 +3057,14 @@ function PartyBuilder(props) {
       h('div', { style:{ display:'flex', gap:14, justifyContent:'center', alignItems:'flex-start', flexShrink:0, paddingTop:2 } },
         h('div', { className:'pb-foot-badge' }, h(RangeDiamond, { radius: fullStats.move ?? 3, fill:'rgba(80,160,255,0.45)', edge:'rgba(80,160,255,0.7)', label:'MOVE', value: fullStats.move ?? 3, color:'rgba(120,180,255,0.9)', tip: window.STAT_HELP?.move })),
         h('div', { className:'pb-foot-badge' }, h(RangeDiamond, { radius: fullStats.range ?? 1, fill:'rgba(255,70,70,0.35)', edge:'rgba(255,70,70,0.6)', label:'RANGE', value: fullStats.range ?? 1, color:'rgba(255,120,120,0.9)', tip: window.STAT_HELP?.range }))),
-      // AFFINITIES (Stage 5, §5.5 item 3): the six type discs, the incoming matchups for this vessel's own types
+      // TYPE CHART (Stage 5, §5.5 item 3): the six type discs, the incoming matchups for this vessel's own types
       h('div', { style:{ flexShrink:0, display:'flex', flexDirection:'column', gap:4, borderTop:`1px solid ${EW.panelEdge}`, paddingTop:5 } },
-        h('div', { style:{ fontSize:9, color:fc, letterSpacing:'0.14em', fontWeight:600, flexShrink:0 } }, 'AFFINITIES'),
+        h('div', { style:{ fontSize:9, color:fc, letterSpacing:'0.14em', fontWeight:600, flexShrink:0 } }, 'TYPE CHART'),
         h(PbAffinityRing, { types: unitTypes })),
+      // ELEMENTS (rev 9): the elemental weakness / resistance layer under the type chart (RACE_ELEMENT_AFFINITY)
+      h('div', { style:{ flexShrink:0, display:'flex', flexDirection:'column', gap:4, paddingTop:5 } },
+        h('div', { style:{ fontSize:9, color:fc, letterSpacing:'0.14em', fontWeight:600, flexShrink:0 } }, 'ELEMENTS'),
+        h(PbElementRing, { race: unitRace })),
 ));
 
   // ROSTER's quick read under the hero: name · race · job · types · four pills · CONFIRM
