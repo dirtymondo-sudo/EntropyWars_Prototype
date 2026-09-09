@@ -123,7 +123,7 @@
 
             const k = spell.kind;
             if (!k) return t || 'damage';
-            if (['heal', 'selfHeal', 'revive', 'zoneHeal', 'cleanse'].includes(k)) return 'heal';
+            if (['heal', 'selfHeal', 'revive', 'zoneHeal', 'cleanse', 'cleanseArea'].includes(k)) return 'heal';
             if (['buff', 'warCry', 'encore', 'aoeShield', 'shield'].includes(k)) return 'buff';
             if (['debuff', 'zoneDebuff'].includes(k)) return 'debuff';
             if (['scan', 'remoteView', 'warpRune', 'summonWeather', 'utility', 'mimic', 'displacement', 'pull', 'aoePull'].includes(k)) return 'utility';
@@ -7627,6 +7627,8 @@
             'knight': 'Armored human combatant adhering to an archaic code of conduct designated "chivalry." Full-plate protective equipment provides exceptional ballistic and melee resistance. Subjects exhibit unwavering loyalty to designated allies and willingness to absorb lethal force on their behalf. Tactically rigid but extremely difficult to neutralize. Classification: heavy infantry. "Hit it again." "I did. Five times." — Field exchange, Operation ████████',
             'shaman': 'Human practitioner of ethnobotanical combat medicine and spirit-realm interfacing. Employs plant-derived compounds and ritualistic invocations to achieve measurable healing and psychoactive battlefield effects. Field reports document instances of consciousness transference and spirit-animal manifestation. Operates outside all recognized medical frameworks. Effectiveness: confirmed. "The lab results came back impossible. The patient came back alive." — Medical Officer ████',
             'mad scientist': 'Human subject exhibiting genius-level intellect combined with complete disregard for ethical research protocols. Deploys improvised electromagnetic devices, unstable chemical compounds, and clone technology of alarming sophistication. Laboratory conditions consistently violate 200+ safety regulations. Products are devastatingly effective despite — or because of — their instability. Current patent filings: 0. Current containment breaches caused: ██.',
+            'gangster': 'Human street enforcer operating outside every sanctioned combat doctrine. Small-arms proficiency is exceptional; discipline is not. Subjects answer any approach within arm\'s reach with immediate, disproportionate violence (see incident log: "shanked"). Vehicle-borne engagements documented at speeds the Department\'s insurance does not cover. Do not let them near your pockets.',
+            'nun': 'Human clergy of the [REDACTED] order. No offensive capability of note; restorative output exceeds every field medic on file by a wide margin. Subjects refuse the term "healer" and correct it to "sister." Documented cleansing of hostile enchantments, blessings that hold under fire, and a choir that can be heard through the wall. Do not swear in the interview.',
             'cowboy': 'Human firearms specialist operating under frontier combat doctrine. Exhibits supernatural quickdraw reflexes (est. 0.12s reaction time) and preternatural accuracy at range. Cultural affectations include anachronistic headwear and a peculiar code of honor involving fair duels. Do not underestimate. They never miss twice. "The second shot was a warning. The first one wasn\'t." — Incident Report ████-7',
             'men in black': 'Human operatives of [REDACTED] agency. Equipped with alien-derived technology and neurological suppression devices. Subjects display complete operational security — personal histories cannot be verified through any database. Suspected involvement in 847 documented anomalous event coverups. If approached, deny all knowledge of this dossier. NOTE: If you are reading this, you have already been flagged.',
             'telepath': 'Human subject exhibiting anomalous psionic capability. Brain imaging reveals 340% neural density increase in prefrontal cortex. Capable of sustained telepathic contact, psychokinetic barrier projection, and hostile neural disruption at range. Subject claims the voices "never stop." EEG readings during combat produce patterns that cause migraines in monitoring staff. Containment priority: HIGH.',
@@ -8489,7 +8491,7 @@
         let _slbMpSearch = '';
         let _slbRawOpen = false;
 
-        const _SLB_KINDS = ['damage','tackle','transform','possess','link','shadowRealm','transfer','cannibalize','summonUnit','buff','aoe','debuff','terrainCreate','line','dash','lifeDrain','barrage','warCry','aoeShield','zoneDebuff','escape','cross','deployObject','leapStrike','teleport','heal','healAll','multiHit','delayed','summonWeather','aoePull','deployTurret','displacement','swap','skyThrow','selfHeal','pull','ricochet','zoneHeal','skyDrop','linePush','shield','revive','placeTrap','deployPair','utility','skySlam','scan','bomb','seedHeal','seedPoison','warpRune','leechSeed','remoteView','encore','cleanse','trickRoom','guard','manaRestoreAll','splitBeam','placeMirror','tuneFrequency','pulseLattice','rallyPull','raiseDead','placeBlock','buildStructure'];
+        const _SLB_KINDS = ['damage','tackle','transform','possess','link','shadowRealm','transfer','cannibalize','summonUnit','steal','cleanseArea','buff','aoe','debuff','terrainCreate','line','dash','lifeDrain','barrage','warCry','aoeShield','zoneDebuff','escape','cross','deployObject','leapStrike','teleport','heal','healAll','multiHit','delayed','summonWeather','aoePull','deployTurret','displacement','swap','skyThrow','selfHeal','pull','ricochet','zoneHeal','skyDrop','linePush','shield','revive','placeTrap','deployPair','utility','skySlam','scan','bomb','seedHeal','seedPoison','warpRune','leechSeed','remoteView','encore','cleanse','trickRoom','guard','manaRestoreAll','splitBeam','placeMirror','tuneFrequency','pulseLattice','rallyPull','raiseDead','placeBlock','buildStructure'];
         const _SLB_TYPES = ['damage', 'utility', 'buff', 'debuff', 'heal'];
         const _SLB_SPELLTYPES = ['anomaly', 'human', 'unholy', 'tech', 'alien', 'divine'];
         const _SLB_ELEMENTS = ['fire','water','ice','lightning','earth','wind','nature','poison','light','shadow','arcane','psychic','sonic','metal','blood'];
@@ -10716,7 +10718,7 @@
                 return tiles;
             }
 
-            if (['zoneDebuff', 'zoneHeal', 'aoeShield', 'delayed'].includes(spell.kind) && spell.aoeRadius) {
+            if (['zoneDebuff', 'zoneHeal', 'aoeShield', 'delayed', 'cleanseArea'].includes(spell.kind) && spell.aoeRadius) {
                 return getSquareArea(tx, ty, spell.aoeRadius);
             }
             return [];

@@ -2079,6 +2079,22 @@
                 if (est >= effHp(victim)) s += killValue(g, unit, victim, v) * 0.9;
                 s += statusRiderValue(g, unit, victim, spell, v) * 0.6;
             }
+            // Phase 6 (Drive-By): the shot after the run — the weakest
+            // visible enemy within afterShot.range of the landing tile.
+            if (spell.afterShot) {
+                const _asR = spell.afterShot.range || 3;
+                const _asC = v.visibleEnemies.filter(e => !isProtected(g, e)
+                    && Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= _asR
+                    && !g.isRangeBlockedByTerrain(target.x, target.y, e.x, e.y))
+                    .sort((a, b) => a.hp - b.hp);
+                if (_asC.length) {
+                    const _asV = _asC[0];
+                    const pseudo = Object.assign({}, spell, { dmg: spell.afterShot.dmg || 0, hitDamages: null, dashDamage: null });
+                    const est = estDamage(g, unit, _asV, pseudo);
+                    s += Math.min(est, effHp(_asV));
+                    if (est >= effHp(_asV)) s += killValue(g, unit, _asV, v) * 0.9;
+                }
+            }
             if (s <= 0) return 0;
             // the dash also repositions us — credit tower approach
             if (v.enemyTower && v.enemyTower.hp > 0) {
@@ -2716,6 +2732,47 @@
                 s += meleeAllies * 50;
                 s += getTargetPriority(target, unit, v) * 0.25;
                 if (g.getEffectiveRange(target) >= 3) s += 40;
+                return s;
+            }
+            /* CHAMP_REWORK_PLAN Phase 6 (2026-09-08): the `steal` kind (Hit
+               a Lick) — the plunder's scoring plus the hit itself. */
+            if (kind === 'steal' && target) {
+                let s = 30;
+                const est = estDamage(g, unit, target, spell);
+                s += Math.min(est, effHp(target));
+                if (est >= effHp(target)) s += killValue(g, unit, target, v) * 0.9;
+                if ((target.hourglasses || 0) > 0) s += 110;
+                if (target.items && Object.keys(target.items).some(k => target.items[k] > 0)) s += 35;
+                return s;
+            }
+            /* Phase 6: `cleanseArea` (Purify) — target is the centre TILE.
+               Allies in the 3×3 pay out per debuff (crippling ones by the
+               output they unlock), enemies per buff stripped. */
+            if (kind === 'cleanseArea' && target) {
+                const defs = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS : (g.STATUS_DEFS || {});
+                const area = getSquareArea(target.x, target.y, spell.aoeRadius || 1);
+                const inArea = u => !u.dead && area.some(t => t.x === u.x && t.y === u.y);
+                let s = 0;
+                for (const a of [unit, ...v.allies]) {
+                    if (!inArea(a) || !a.status) continue;
+                    for (const key of Object.keys(a.status)) {
+                        if (!(a.status[key] > 0) || !defs[key] || defs[key].kind !== 'debuff') continue;
+                        if (['stun', 'sleep', 'freeze', 'frozen', 'silence', 'charm', 'feared', 'possessed', 'infected'].includes(key)) {
+                            s += 0.6 * unitThreatOutput(g, a, v.closestEnemy || unit);
+                        } else if (['slow', 'root', 'stagger', 'jammed', 'blind', 'confuse', 'tethered', 'grievous'].includes(key)) {
+                            s += 70;
+                        } else {
+                            s += 45;
+                        }
+                    }
+                    if ((a.hourglasses || 0) > 0 && s > 0) s += 20;
+                }
+                for (const e of v.visibleEnemies) {
+                    if (!inArea(e) || !e.status) continue;
+                    for (const key of Object.keys(e.status)) {
+                        if (e.status[key] > 0 && defs[key] && defs[key].kind === 'buff') s += 55;
+                    }
+                }
                 return s;
             }
             if ((sid === 'plunder' || sid === 'racePlunder') && target) {
@@ -4115,6 +4172,46 @@
                     .sort((a, b) => getTargetPriority(b, unit, v) - getTargetPriority(a, unit, v));
                 return inRange[0] || null;
             }
+            /* Phase 6: `steal` — an enemy in reach, Key carriers first. */
+            if (kind === 'steal') {
+                const inReach = v.visibleEnemies.filter(e => {
+                    const d = _dist(g, unit.x, unit.y, unit.z, e);
+                    return d >= 1 && d <= (_effRange(unit, spell) || 1) && !isProtected(g, e)
+                        && !g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y);
+                });
+                inReach.sort((a, b) => {
+                    const aHG = (a.hourglasses || 0) > 0 ? 100 : 0;
+                    const bHG = (b.hourglasses || 0) > 0 ? 100 : 0;
+                    const aIt = a.items && Object.keys(a.items).some(k => a.items[k] > 0) ? 30 : 0;
+                    const bIt = b.items && Object.keys(b.items).some(k => b.items[k] > 0) ? 30 : 0;
+                    return (bHG + bIt + getTargetPriority(b, unit, v)) - (aHG + aIt + getTargetPriority(a, unit, v));
+                });
+                return inReach[0] || null;
+            }
+            /* Phase 6: `cleanseArea` — the 3×3 in range that lifts the most
+               ally debuffs / strips the most enemy buffs; returns the tile. */
+            if (kind === 'cleanseArea') {
+                const defs = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS : (g.STATUS_DEFS || {});
+                const R = _effRange(unit, spell) || 3;
+                const countOf = (u, want) => {
+                    if (!u.status) return 0;
+                    let n = 0;
+                    for (const key of Object.keys(u.status)) if (u.status[key] > 0 && defs[key] && defs[key].kind === want) n++;
+                    return n;
+                };
+                const centres = [unit, ...v.allies].filter(a => !a.dead && countOf(a, 'debuff') > 0)
+                    .concat(v.visibleEnemies.filter(e => countOf(e, 'buff') > 0));
+                let best = null, bestScore = 0;
+                for (const c of centres) {
+                    if (Math.abs(c.x - unit.x) + Math.abs(c.y - unit.y) > R) continue;
+                    const area = getSquareArea(c.x, c.y, spell.aoeRadius || 1);
+                    let score = 0;
+                    for (const a of [unit, ...v.allies]) if (!a.dead && area.some(t => t.x === a.x && t.y === a.y)) score += countOf(a, 'debuff') * 2;
+                    for (const e of v.visibleEnemies) if (area.some(t => t.x === e.x && t.y === e.y)) score += countOf(e, 'buff');
+                    if (score > bestScore) { bestScore = score; best = { x: c.x, y: c.y }; }
+                }
+                return best;
+            }
             if (sid === 'plunder' || sid === 'racePlunder') {
                 const adjacent = v.visibleEnemies.filter(e => {
                     const d = _dist(g, unit.x, unit.y, unit.z, e);
@@ -4768,8 +4865,22 @@
                         const victim = v.visibleEnemies.find(e => e.x === pt.x && e.y === pt.y);
                         if (victim) { hits++; hitPriority += getTargetPriority(victim, unit, v); }
                     }
-                    if (hits === 0) continue;
-                    const score = hits * 100 + hitPriority + d * 2;
+                    // Phase 6 (Drive-By): a landing with a shot on offer
+                    // qualifies even when the run itself hits nobody — prefer
+                    // the weakest enemy in the shot's reach; never land on a
+                    // body (the dash would only shove it).
+                    let shot = 0;
+                    if (spell.afterShot) {
+                        if (v.visibleEnemies.some(e => e.x === tx && e.y === ty)) continue;
+                        const _asR = spell.afterShot.range || 3;
+                        for (const e of v.visibleEnemies) {
+                            if (Math.abs(e.x - tx) + Math.abs(e.y - ty) > _asR) continue;
+                            if (g.isRangeBlockedByTerrain(tx, ty, e.x, e.y)) continue;
+                            shot = Math.max(shot, 80 + getTargetPriority(e, unit, v) + Math.max(0, 60 - (e.hp / Math.max(1, e.maxHp)) * 60));
+                        }
+                    }
+                    if (hits === 0 && shot === 0) continue;
+                    const score = hits * 100 + hitPriority + d * 2 + shot;
                     if (score > bestScore) { bestScore = score; bestTile = { x: tx, y: ty }; }
                 }
             }

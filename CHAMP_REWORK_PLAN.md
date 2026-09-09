@@ -61,10 +61,26 @@
 > (`tethered`); the `pull` branch now applies its statuses at all (its
 > Stagger never landed). Token `20260908j-cors` → `20260908k-cors`. See
 > §5.11 for what differs from §6 and §10 #39–45 for the calls it made.
-> **Phase 6 (gangster, nun) is PLANNED here, not built.** §10 lists the
-> yes/no decisions the owner should make (items 14–15 came out of Phase 2;
-> 17–19 out of Phase 3; 20–24 out of Phase 4; 25–30 out of wave A; 31–38
-> out of wave B; 39–45 out of wave C).
+> **PHASE 6 SHIPPED 2026-09-08 (§5.12, §9.7):** the two new races. The
+> **gangster** (Gunslinger, Shank — Stomp Out → Drive-By ⇄ Hit a Lick →
+> Choppa → Extended Clips★) and the **nun** (White Mage, Devout — Purify ⇄
+> Smite → Blessing → Prayer → Hallelujah★) are in every race table on both
+> sides (data.js + the server's literals, parity green), with two new
+> kinds — **`steal`** (the hit, then Keys + items change hands) and
+> **`cleanseArea`** (a 3×3: allies lose debuffs, enemies lose buffs) — and
+> the dash **`afterShot`** rider (the plan's dashThenShoot as a flag). The
+> nun is her own race: the priest's female form is the PRIESTESS now, the
+> Nun's user-authored roster lines moved with her, and she wears the
+> whitemage female model (a starter on both sides). The gangster has NO
+> rigged model yet (§9.6) — the 3D-only roster rule keeps him shelved for
+> players until it lands; CPU / campaign rosters can field him as a
+> sprite. 98 races, every one in the power band; 27 constraint rows
+> checked. Token `20260908k-cors` → `20260908l-cors`. See §5.12 and §10
+> #46–51 for the calls it made.
+> **Every phase of this plan has now shipped.** §10 lists the yes/no
+> decisions the owner should make (items 14–15 came out of Phase 2; 17–19
+> out of Phase 3; 20–24 out of Phase 4; 25–30 out of wave A; 31–38 out of
+> wave B; 39–45 out of wave C; 46–51 out of Phase 6).
 
 This is the single planning doc for the owner's 2026-09-07 "champ reworks"
 notes. It is written so that any later session can build one phase from it
@@ -86,11 +102,11 @@ are measured).
 | §2 | The vocabulary: the owner's words → numbers; the power budget; the checkable constraints | **shipped** |
 | §3 | "Speed is both" — what changed, who is fast now | **shipped** |
 | §4 | Twin nodes — "each node could have 2 abilities and you pick one" | **shipped** (Phase 2, §4.6) |
-| §5 | New game-wide systems the kits need: statuses, passives, spell kinds/flags, terrain, forms, control, links, the shadow realm, summons | passives **shipped** (§5.7), statuses **shipped** (§5.8), wave A kinds/flags **shipped** (§5.9), control + links **shipped** (§5.10); summons / tethers / goo terrain planned (wave C) |
-| §6 | The champs — 27 reworked + 2 new: role, stats, passives, race pillar, every new spell with numbers + presentation | stats shipped; wave A (14 champs) + wave B (6 champs) spells **shipped**; wave C + the two new races planned |
+| §5 | New game-wide systems the kits need: statuses, passives, spell kinds/flags, terrain, forms, control, links, the shadow realm, summons | passives **shipped** (§5.7), statuses **shipped** (§5.8), wave A kinds/flags **shipped** (§5.9), control + links **shipped** (§5.10), summons / tethers / goo terrain **shipped** (§5.11), the new races' kinds **shipped** (§5.12) |
+| §6 | The champs — 27 reworked + 2 new: role, stats, passives, race pillar, every new spell with numbers + presentation | **all shipped** — stats (Phase 1), wave A (14 champs), wave B (6), wave C (7), and the two new races (Phase 6, §5.12) |
 | §7 | The roster sweep — before/after table for all 96 races | **shipped** |
 | §8 | The per-spell presentation checklist (VFX / anim / cinematic / SFX / AI / online) | reference for Phase 5 |
-| §9 | Build order, file touch lists, tests, cache-bust tokens | plan |
+| §9 | Build order, file touch lists, tests, cache-bust tokens | **every phase shipped** |
 | §10 | Decisions the owner should make (yes/no) | open |
 
 ---
@@ -907,6 +923,106 @@ block under the wave-B ones) and is guarded by champ-rework.test.js (the
   simplification, §10 #23), not the whole path.
 - Tests: champ-rework.test.js "Phase 5 wave C" ×3.
 
+### 5.12 SHIPPED 2026-09-08 — Phase 6, the two new races (what landed, and where it differs from §6 / §9.5)
+
+The gangster (§6.19) and the nun (§6.20) exist. Every table a race key
+touches got a row — data.js `RACE_PROFILES`, `AVAILABLE_RACES`,
+`RACE_DEFAULT_JOBS`, `RACE_CLASS`, `RACE_BASE_STATS`, `RACE_PHYSIQUE`,
+`RACE_ABILITIES`, `RACE_TREE`, `RACE_PASSIVES`, `EW_RACE_BIOMES`,
+`CAMPAIGN_RACE_PRICES`, the D.O.O.R. `CUSTOMS_OVERRIDES` +
+`POINT_OF_ENTRY`, `ACCT_STARTER_UNITS` (nun), `ACH_CATALOG` (the Heat
+Death ladder's top tier = the roster size, 98); sprites.js
+`RACE_PATH_RULES`, `RACE_SPRITE_GENDERS`, `_HOMOSAPIEN_RACE_JOB_MAP`,
+`RACE_MODELS_3D` (nun), `RACE_SPRITES`; server.js `AVAILABLE_RACES` +
+`ACCT_STARTER_UNITS` (parity green); party-builder.js / ui.js dossier
+lore + `RACE_TRAITS`; check-grades.js `PLANNED_PASSIVE_ALLOWANCE` is
+empty (Shank / Devout are live and priced). `npm run grades`: 98 races
+in the band, gangster 269 / nun 255 exactly as §7.1 planned, the
+speed ladder reads `cowboy 72 · fairy 64 · gangster 64`.
+
+| Race | Landed | Node |
+|---|---|---|
+| gangster | **Stomp Out** `raceStompOut` (damage 120 physical, r1, `grievous` 2) · **Drive-By** `raceDriveBy` (`dash` 3, no path damage, `afterShot { dmg 100, range 3 }` — the shot after the run at the WEAKEST enemy in LOS of the landing tile) · **Hit a Lick** `raceHitALick` (`steal`, r2, 60 physical, `stealKeys 1` + `stealItems 1`) · **Choppa** `raceChoppa` (line r5, 110 physical, tier II) · **Extended Clips★** `raceExtendedClips` (warCry radius 3, `teamStatusEffects` `extendedClips` 3) | r1 Stomp Out · r2 Drive-By ⇄ Hit a Lick · r3 Choppa · r4★ Extended Clips |
+| nun | **Purify** `racePurify` (`cleanseArea` 3×3, r3) · **Smite** (the shared `raceSmite` row — one def, priest / angel / nephilim / nun) · **Blessing** `raceBlessing` (buff, `blessed` 3) · **Prayer** `racePrayer` (`shield` 150, tier II — the `shield` library row finally has a caster) · **Hallelujah★** `raceHallelujah` (healAll 180 + cleanse 2, 2 AP) | r1 Purify ⇄ Smite · r2 Blessing · r3 Prayer · r4★ Hallelujah |
+
+**Engine (battle.js unless noted):**
+- **`steal`** (`SPELL_KIND_META`: offensive, minRange 1, breaksStealth):
+  an enemy in reach takes `dmg` + spell power (riders apply), then
+  `_stealFromUnit(thief, victim, { keys, items, verb })` moves up to
+  `stealKeys` Keys and `stealItems` random items with the plunder's
+  floating text and returns what changed hands. The pirate's Plunder
+  keeps its `utility` id and its one-thing rule (it was left alone —
+  §10 #48). Simul: `cat = kind` (polite refusal like the summons).
+- **`cleanseArea`** (tileTargeted, fogExempt, minRange 0): the 3×3
+  (`aoeRadius`) round the picked tile — every ally inside loses every
+  STATUS_DEFS `kind: 'debuff'` key one by one through `clearStatus`
+  (onRemove hooks fire; `_matchCleanses` counts), every enemy inside
+  loses every `kind: 'buff'` key through wave C's `removeBuffs`. Nothing
+  is applied. The footprint glows through `_spellGlowTiles` (+
+  `_GLOW_FRIENDLY_KINDS`) and previews through ui.js's AoE list; Simul
+  maps it onto the single-ally `cleanse` category.
+- **`afterShot { dmg, range, damageType? }`** on a `dash`: once the
+  slide settles, `_afterShotTarget(unit, lx, ly, range)` picks the
+  lowest-HP enemy within `range` (Manhattan) of the landing tile that
+  the shooter can see (`isUnitConcealedFrom`, `isRangeBlockedByTerrain`)
+  and a bullet (`playProjectileToUnit`, `projectileOverride`) lands
+  `dmg` + spell power; the turn holds through it (`completionDelay`).
+  A dash with `dmg: 0` no longer logs "hit for 0" on the bodies it
+  shoves (`if (hitDmg <= 0) continue`). Both halves are engine state +
+  VFX3D intents, so the guest sees them without a new relay.
+- **ai.js**: `scoreSpell` + `findSpellTarget` for `steal` (Key carriers
+  first, then item holders, then priority) and `cleanseArea` (centres =
+  debuffed allies + buffed enemies in range; the 3×3 that lifts /
+  strips the most wins; crippling debuffs are priced by the output they
+  unlock); the dash scorer / targeter credit the `afterShot` (a landing
+  with only a shot on offer now qualifies; never on a body).
+- **hud.js**: card parts ("Rob · 1 Key + 1 item", "Purify 3×3 · …",
+  "then shoot 100 within 3"); target modes "Area · AOE" / "Dash · then
+  Shoot". **ui.js**: library kinds, class (`cleanseArea` → heal), the
+  AoE preview list. **data.js** `SIM_DEFAULTS` rows for both kinds.
+- **Shank** and **Devout** were live hooks since Phase 3
+  (`checkOpportunityAttack`, `applyHealingToUnit`) — only the
+  `RACE_PASSIVES` rows landed.
+- **VFX**: family aliases in the Phase 6 block of three-vfx-effects.js
+  (Stomp Out → the hydraulic punch, Drive-By → High Noon's shot, Hit a
+  Lick → Plunder, Choppa → Suppressive Fire's bullet line, Extended
+  Clips → Siege Mode's aura, Purify → Absolution's light, Blessing /
+  Prayer → Protect, Hallelujah → Yo Ho's team heal). No bespoke
+  `CINE_SEQUENCES` directors — the family treatments fire by kind
+  (the §6 "Tokyo-Drift side dolly" for Drive-By is the dash family's
+  own side dolly).
+
+**Where it differs from §6 / §9.5:**
+- **Drive-By is a `dash` with an `afterShot` flag**, not a
+  `dashThenShoot` kind — the tile prompt, the preview lane, the chase
+  cam, the AI's tile search and the online path all come free.
+- **The nun is her own race** (§10 #5 answered by the build, as
+  recommended): the priest's female form is labelled **Priestess** and
+  keeps the whitemage female model; the Nun's `priest:female` roster
+  lines moved to `nun` untouched (A15 — moved, not rewritten). There is
+  no female whitemage portrait on R2 ("no priestess file yet"), so the
+  nun's HUD panels fall back to her sprite until one is uploaded.
+- **The gangster has no rigged model** (§9.6 wishlist): `RACE_SPRITE_GENDERS`
+  male, the 2D sheet borrows the Gunslinger job folder, no
+  `RACE_MODELS_3D` row — so `isRace3DReady` shelves him for players
+  (not a starter, not purchasable) until the owner uploads
+  `Homosapien/Male/<gangster folder>` and one `_mkUAL` line is added.
+  CPU pools and campaign rosters can field him as a sprite today.
+- **Costs**: MP costs follow the pillar's own economy (gangster MP 100:
+  20 / 30 / 25 / 40 / 50; nun MP 250: 30 / 25 / 25 / 35 / 60) — the
+  25/50/75/100 ladder in §1 is the RING (equip) cost, which the tree
+  already enforces.
+- **Prayer's barrier is Key-power scaled** (the `shield` branch's rule:
+  `shield + getHourglassPower` × supportScale), not M.ATK-scaled — no
+  shield in the game reads M.ATK, and Devout is a heal multiplier, so
+  it does not touch it.
+- **Hit a Lick takes one Key AND one item** ("takes keys/hourglasses and
+  the item") — the counts are fields, so a "takes everything" variant
+  is a row edit.
+- Tests: champ-rework.test.js "Phase 6" ×3 (every table, the pillars,
+  the engine source guards); achievements.test.js pins the Heat Death
+  ladder to the roster size.
+
 ### 5.6 Stage-buff retune that this pass makes necessary
 
 STAT_REWORK §7 warned that +2-stage buffs doubled in strength when a stage
@@ -1058,6 +1174,7 @@ are the ring's (25/50/75/100).
 - **Cannibalize** — corpse-targeted (the raiseDead targeting), range 2: heal 35 % max HP, the corpse's respawn timer +2 rounds. Presentation: the heal letterbox with a horror palette; the bone pile prop shrinks.
 
 ### 6.19 Gangster (NEW race) — the street enforcer
+> SHIPPED 2026-09-08 (Phase 6, §5.12). Drive-By landed as `dash` + `afterShot`; Hit a Lick is the `steal` kind. No rigged model yet — shelved for players until it lands (§9.6).
 - **Role:** mid HP/defenses, high ATK, no magic, good speed; punishes anyone who moves near him. Human · Gunslinger (kit 2) · faction space.
 - **Stats:** HP 540 B · MP 100 C · ATK 78 A · M.ATK 10 F · DEF 44 B · M.DEF 44 B · SPD 64 A (4) · AWR 56 B · budget 269.
 - **Passives:** **Shank** (opportunity attacks always land and deal ×1.5).
@@ -1067,6 +1184,7 @@ are the ring's (25/50/75/100).
 - **New-race checklist:** §9.5.
 
 ### 6.20 Nun (NEW race) — the sister of mercy
+> SHIPPED 2026-09-08 (Phase 6, §5.12) as her own race (§10 #5 → yes). Purify is the `cleanseArea` kind; the priest's female form is the Priestess now.
 - **Role:** low HP/armor, decent M.DEF, no attack, high magic, slow — a pure support. Today the Nun is the priest's female form; this makes her a champ of her own (assets already exist: the priest's female sprite/model/portrait). Human/Divine · White Mage.
 - **Stats:** HP 460 C · MP 250 S · ATK 8 F · M.ATK 90 S · DEF 26 C · M.DEF 58 B · SPD 30 C (2) · AWR 70 A · budget 255.
 - **Passives:** **Devout** (heals she casts +20 %).
@@ -1143,7 +1261,7 @@ are the ring's (25/50/75/100).
 Before → **after** for every race (grade beside each number, tiles beside SPD,
 budget last). Bold cells changed. `npm run grades` prints the live version.
 
-### 7.1 The reworked champs (27 in the roster; gangster and nun join in Phase 6)
+### 7.1 The reworked champs (29 in the roster — gangster and nun joined in Phase 6, 2026-09-08)
 
 | champ | HP | MP | ATK | M.ATK | DEF | M.DEF | SPD (tiles) | AWR | budget |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -1372,15 +1490,30 @@ index.html token. Details and deviations: §5.8.
   `purgeBuffs`, `paintTerrain`. data.js, battle.js, map.js, ai.js, hud.js,
   ui.js, three-renderer.js, three-vfx-effects.js, champ-rework.test.js,
   index.html token.
-- **New races (gangster, nun):** every table a race key touches —
-  `AVAILABLE_RACES`, `RACE_PROFILES`, `RACE_DEFAULT_JOBS`, `RACE_CLASS`,
-  `RACE_BASE_STATS`, `RACE_PHYSIQUE`, `RACE_ABILITIES`, `RACE_TREE`,
-  `EW_RACE_BIOMES`, `CAMPAIGN_RACE_PRICES`, `RACE_ELEMENT_AFFINITY`
-  (optional), the DOOR text tables; sprites.js `RACE_SPRITES` /
-  `RACE_SPRITE_GENDERS` / `RACE_PORTRAITS` / `RACE_MODELS_3D`; server.js
-  `AVAILABLE_RACES` literal (parity test); starter/unlock economy. Gangster
-  needs a model + sprite from the owner; the nun reuses the priest's female
-  assets (a `<race>:female`-style override already exists for her lines).
+- **New races (gangster, nun) — SHIPPED 2026-09-08 as Phase 6 (§5.12,
+  §9.7):** every table a race key touches — `AVAILABLE_RACES`,
+  `RACE_PROFILES`, `RACE_DEFAULT_JOBS`, `RACE_CLASS`, `RACE_BASE_STATS`,
+  `RACE_PHYSIQUE`, `RACE_ABILITIES`, `RACE_TREE`, `EW_RACE_BIOMES`,
+  `CAMPAIGN_RACE_PRICES`, the DOOR text tables (`RACE_ELEMENT_AFFINITY`
+  left alone — neither has an element); sprites.js `RACE_SPRITES` /
+  `RACE_SPRITE_GENDERS` / `RACE_MODELS_3D` (nun; no portraits exist);
+  server.js `AVAILABLE_RACES` + `ACCT_STARTER_UNITS` literals (parity
+  test); the nun is a starter. The gangster still needs a rigged model
+  from the owner (§9.6); the nun wears the whitemage female assets and
+  her lines moved from the `priest:female` override to `nun`.
+
+### 9.7 Phase 6 — the two new races (SHIPPED 2026-09-08)
+data.js (the fifteen race tables in §5.12, the two `RACE_ABILITIES`
+pillars, `SIM_DEFAULTS` steal / cleanseArea, the Heat Death ladder),
+battle.js (`SPELL_KIND_META` ×2, the `steal` + `cleanseArea` branches,
+`_stealFromUnit`, `_afterShotTarget`, the dash `afterShot` rider + the
+zero-damage guard, `_spellGlowTiles`, `_GLOW_FRIENDLY_KINDS`, the prompt
+cases, the Simul category), ai.js (scorer + targeter ×2, the dash
+afterShot), hud.js (parts, target modes), ui.js (`_SLB_KINDS`, class,
+AoE preview, dossier lore), sprites.js (five tables), three-vfx-effects.js
+(the Phase 6 alias block), party-builder.js (lore, `RACE_TRAITS`),
+server.js (two literals), check-grades.js (the empty allowance),
+champ-rework.test.js ×3, this doc, CLAUDE.md, index.html token.
 
 ### 9.6 Asset wishlist (owner uploads; everything else is CSS/GLB-kit)
 Hound model (cowboy) · stitched creation model (mad scientist) · gangster
@@ -1519,3 +1652,28 @@ crumble (gargoyle), arm-cannon morph (cyborg).
     the build — a twin holds two). Flood stays authored off-tree. If you
     want Flood back, name the node it should share (r3 Temporal Tide
     needs it re-authored as tier II).
+46. **The nun is her own race** (#5 → yes, as recommended). The priest's
+    female form is labelled **Priestess** and still renders the whitemage
+    female model, so a saved female priest looks the same and just reads
+    "Priestess". The Nun's `priest:female` roster lines moved to `nun`
+    (not rewritten). Veto = one label + one key rename.
+47. **The gangster is shelved for players until his model lands** (the
+    3D-only roster rule): not a starter, not purchasable, but CPU pools
+    and campaign rosters can field him as a 2D sprite (he borrows the
+    Gunslinger sheet). Ship the rigged GLB to
+    `Assets/Sprites/Races/Homosapien/Male/<folder>/` and it is one
+    `_mkUAL` line + a starter-list entry on both sides.
+48. **Plunder was left alone** — the pirate's Plunder keeps its `utility`
+    id and one-thing rule; only Hit a Lick wears the `steal` kind. Fold
+    Plunder onto the kind (it would then take one Key AND one item)?
+49. **Drive-By's shot picks the WEAKEST enemy in reach** (lowest HP, LOS
+    respected), not the closest or the highest-priority one, and fires
+    even when the run hit nobody. Prefer a player-picked target (a second
+    click, like Soul Bind)?
+50. **Purify lifts EVERY debuff and strips EVERY buff** in the 3×3 (the
+    priest's Absolution cleanses 99 on one ally; Hallelujah cleanses 2
+    each). Cap it (say 2 + 2) to keep the twin choice against Smite
+    honest?
+51. **Prayer's 150 barrier scales with Key power, not M.ATK** (no shield
+    in the game reads M.ATK). Want a `shieldIntScale` field so the nun's
+    90 M.ATK shows up in it?

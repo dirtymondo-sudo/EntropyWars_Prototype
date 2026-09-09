@@ -59,13 +59,14 @@ const PHASE3 = {
     quickdraw:       ['speedTiePriority'],
     fairyDustTrail:  [],
 };
-/* Plan §5.2 slot check — who wears what today (gangster/nun join in Phase 6). */
+/* Plan §5.2 slot check — who wears what today (gangster/nun joined in Phase 6). */
 const EXPECTED_RACE_PASSIVES = {
     ghost: ['incorporeal'], werewolf: ['lycanthropy', 'bloodcraze'], skeleton: ['boneDeep'],
     zombie: ['returnOfTheDead'], dinosaur: ['reach'], dragon: ['dragonReach'], bigfoot: ['cryptid'],
     ghoul: ['pureNegativity'], robinhood: ['serrated'], marksman: ['longshot', 'pointBlank'],
     'black goo': ['oozing'], cyborg: ['powerCore'], 'mad scientist': ['madGenius', 'rayGun'],
     fairy: ['fairyDustTrail'], cowboy: ['quickdraw'],
+    gangster: ['shank'], nun: ['devout'],
 };
 
 test('passive registry: every RACE_PASSIVES row names a real race and real defs, inside the slot cap', () => {
@@ -786,4 +787,130 @@ test('Phase 5 wave C: the engine honours the summon kind and the new flags (sour
     assert.ok(/'transfer','cannibalize','summonUnit'/.test(uiSrc2), 'ui.js spell library kinds');
     assert.ok(/!spell\.onlyTerrain \|\| getTerrainAt\(cx, cy\) === spell\.onlyTerrain/.test(uiSrc2), 'ui.js teleport highlight honours onlyTerrain');
     assert.ok(/function _buildSummon3D\(turret\)/.test(rendererSrc) && /if \(turret\.summon\) return _buildSummon3D\(turret\);/.test(rendererSrc), 'renderer builds the summons');
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Phase 6 — the two new races (plan §6.19 / §6.20 / §9.5, shipped 2026-09-08).
+   The gangster (Gunslinger, Shank) and the nun (White Mage, Devout): every
+   table a race key touches, their pillars, the `steal` and `cleanseArea`
+   kinds, the dash `afterShot` rider, and the engine sites that honour them.
+   ═══════════════════════════════════════════════════════════════════════ */
+const spritesSrc = src('sprites.js');
+const serverSrc = src('server.js');
+const partyBuilderSrc = src('party-builder.js');
+
+const PHASE_6 = {
+    raceStompOut:      ['gangster', 'damage',      { range: 1, dmg: 120, damageType: 'physical' }],
+    raceDriveBy:       ['gangster', 'dash',        { range: 3, dmg: 0, afterShot: { dmg: 100, range: 3 } }],
+    raceHitALick:      ['gangster', 'steal',       { range: 2, dmg: 60, damageType: 'physical', stealKeys: 1, stealItems: 1 }],
+    raceChoppa:        ['gangster', 'line',        { range: 5, dmg: 110, damageType: 'physical', lineWidth: 1, tier: 'II' }],
+    raceExtendedClips: ['gangster', 'warCry',      { range: 0, auraRadius: 3, tier: 'III' }],
+    racePurify:        ['nun',      'cleanseArea', { range: 3, aoeRadius: 1 }],
+    raceSmite:         ['nun',      'damage',      { range: 3, dmg: 100, damageType: 'magic' }],
+    raceBlessing:      ['nun',      'buff',        { range: 3 }],
+    racePrayer:        ['nun',      'shield',      { range: 3, shield: 150, tier: 'II' }],
+    raceHallelujah:    ['nun',      'healAll',     { range: 0, healAmt: 180, cleanse: 2, tier: 'III' }],
+};
+const PHASE_6_STATUS = {
+    raceStompOut:      ['grievous', 2],
+    raceExtendedClips: ['extendedClips', 3],
+    raceBlessing:      ['blessed', 3],
+};
+
+test('Phase 6: gangster + nun exist in every race table, with the §6 stats and passives', () => {
+    for (const race of ['gangster', 'nun']) {
+        assert.ok(D.AVAILABLE_RACES.includes(race), `${race} in AVAILABLE_RACES`);
+        assert.ok(D.RACE_PROFILES[race] && D.RACE_PROFILES[race].label, `${race} profile`);
+        assert.ok(D.RACE_BASE_STATS[race], `${race} statline`);
+        assert.ok(new RegExp("'" + race + "':\\s*\\{ h: [0-9.]+, w: [0-9.]+ \\}").test(dataSrc), `${race} physique`);
+        assert.ok(D.RACE_TREE[race] && D.RACE_TREE[race].length === 4, `${race} tree`);
+        assert.ok(Array.isArray(D.RACE_ABILITIES[race]) && D.RACE_ABILITIES[race].length >= 4, `${race} abilities`);
+        assert.ok(new RegExp("'" + race + "': [0-9]+,").test(dataSrc.slice(dataSrc.indexOf('const CAMPAIGN_RACE_PRICES'), dataSrc.indexOf('const CAMPAIGN_REGION_THEMES'))), `${race} campaign price`);
+        assert.ok(D.EW_RACE_BIOMES[race] && D.EW_RACE_BIOMES[race].length, `${race} biomes`);
+        assert.ok(new RegExp("'" + race + "':\\s*\\{ folder: 'Homosapien'").test(spritesSrc), `${race} sprite path rule`);
+        assert.ok(new RegExp("'" + race + "': `\\$\\{_S\\}/homosapien\\.png`").test(spritesSrc), `${race} sprite sheet`);
+        assert.ok(new RegExp("'" + race + "'").test(serverSrc.slice(serverSrc.indexOf('const AVAILABLE_RACES'), serverSrc.indexOf('const AVAILABLE_RACES') + 3000)), `${race} in server.js AVAILABLE_RACES`);
+        assert.ok(new RegExp("'" + race + "':\\s*'").test(partyBuilderSrc), `${race} dossier lore`);
+    }
+    same(D.RACE_BASE_STATS.gangster, { hp: 540, mp: 100, atk: 78, def: 44, mdef: 44, int: 10, awr: 56, spd: 64 });
+    same(D.RACE_BASE_STATS.nun,      { hp: 460, mp: 250, atk: 8, def: 26, mdef: 58, int: 90, awr: 70, spd: 30 });
+    assert.strictEqual(D.RACE_DEFAULT_JOBS.gangster, 'Gunslinger');
+    assert.strictEqual(D.RACE_DEFAULT_JOBS.nun, 'White Mage');
+    same(D.RACE_PASSIVES.gangster, ['shank']);
+    same(D.RACE_PASSIVES.nun, ['devout']);
+    assert.strictEqual(D.PASSIVE_DEFS.shank.oppAttackMult, 1.5);
+    assert.strictEqual(D.PASSIVE_DEFS.devout.healMult, 1.2);
+    // The nun is her own race: the priest's female form is the Priestess, and
+    // the Nun's user-authored roster lines moved to her key untouched.
+    assert.strictEqual(D.RACE_PROFILES.priest.labelFemale, 'Priestess');
+    assert.strictEqual(D.RACE_PROFILES.nun.label, 'Nun');
+    assert.ok(Array.isArray(D.DOOR_ROSTER_LINES.nun) && D.DOOR_ROSTER_LINES.nun.length >= 2, 'the Nun keeps her lines');
+    assert.ok(!D.DOOR_ROSTER_LINES['priest:female'], 'priest:female lines moved to nun');
+    // Sprites: the nun wears the whitemage female model; the gangster is male-only, sheet-only until his GLB lands.
+    assert.ok(/'nun': \{\s*female: _mkUAL\('Homosapien\/Female\/whitemage', 'sexy_nun_girl_realis'/.test(spritesSrc), 'nun RACE_MODELS_3D');
+    assert.ok(/'nun': 'female',/.test(spritesSrc) && /'gangster': 'male',/.test(spritesSrc), 'RACE_SPRITE_GENDERS');
+    assert.ok(/'gangster': 'gunslinger',/.test(spritesSrc) && /'nun': 'whitemage',/.test(spritesSrc), '2D sheet job folders');
+    // The nun is a starter on both sides (parity); the gangster is not (no model yet).
+    assert.ok(D.ACCT_STARTER_UNITS.includes('nun') && !D.ACCT_STARTER_UNITS.includes('gangster'), 'data.js starters');
+    assert.ok(/'nun',\s*\n\s*'yeti', 'skeleton'/.test(serverSrc), 'server.js starters');
+    // The Heat Death ladder tops out at the roster size.
+    const heat = D.ACH_CATALOG.find(l => l.metric === 'champsMastered');
+    assert.strictEqual(heat.tiers[heat.tiers.length - 1], D.AVAILABLE_RACES.length);
+});
+
+test('Phase 6: the two pillars — rows, twins, kinds, statuses, VFX recipes', () => {
+    for (const [id, [race, kind, fields]] of Object.entries(PHASE_6)) {
+        const sp = raceSpell(race, id);
+        assert.ok(sp, `${id} exists on ${race}`);
+        assert.strictEqual(sp.kind, kind, `${id} kind`);
+        for (const [k, want] of Object.entries(fields)) same(sp[k], want, `${id}.${k}`);
+        assert.ok(D.getRaceTreeAllIds(race).includes(id), `${id} reachable through getRaceTreeAllIds`);
+        const want = PHASE_6_STATUS[id];
+        const fx = sp.kind === 'warCry' ? (sp.teamStatusEffects || []) : (sp.statusEffects || []);
+        if (want) {
+            assert.strictEqual(fx.length, 1, `${id} applies exactly one status`);
+            assert.strictEqual(fx[0].id, want[0], `${id} applies ${want[0]}`);
+            assert.strictEqual(fx[0].duration, want[1], `${id} status duration`);
+            assert.ok(D.STATUS_DEFS[fx[0].id], `${id}'s status is a STATUS_DEFS row`);
+        } else {
+            assert.ok(!fx.length, `${id} applies no status`);
+        }
+    }
+    same(Object.values(D.getRaceTreeAlts('gangster')), [['raceDriveBy', 'raceHitALick']]);
+    same(Object.values(D.getRaceTreeAlts('nun')), [['racePurify', 'raceSmite']]);
+    same(D.getRaceTreeSpells('gangster'), ['raceStompOut', 'raceDriveBy', 'raceChoppa', 'raceExtendedClips']);
+    same(D.getRaceTreeSpells('nun'), ['racePurify', 'raceBlessing', 'racePrayer', 'raceHallelujah']);
+    assert.strictEqual(raceSpell('nun', 'raceSmite'), raceSpell('priest', 'raceSmite'), 'the nun shares the priest\'s Smite row');
+    for (const id of Object.keys(PHASE_6)) {
+        if (id === 'raceSmite') continue;   // pre-existing id keeps its own recipe
+        assert.ok(vfxSrc.includes(`SPELL_MAP['${id}']`), `${id} has a SPELL_MAP recipe`);
+    }
+    // The sim-mode defaults know the new kinds.
+    assert.ok(/steal:\s*\{ simTargeting: 'unit'/.test(dataSrc) && /cleanseArea:\s*\{ simTargeting: 'tile'/.test(dataSrc), 'SIM_DEFAULTS rows');
+});
+
+test('Phase 6: the engine honours steal, cleanseArea and the dash afterShot (source-text guards)', () => {
+    // battle.js: kind meta, the branches, the helpers, the prompts, the glow footprint, the Simul category.
+    assert.ok(/steal:\s*\{ minRange: 1, offensive: true,\s*breaksStealth: true, noStrikeLeap: true \}/.test(battleSrc), 'SPELL_KIND_META.steal');
+    assert.ok(/cleanseArea:\s*\{ minRange: 0, offensive: false, tileTargeted: true, fogExempt: true, noStrikeLeap: true \}/.test(battleSrc), 'SPELL_KIND_META.cleanseArea');
+    assert.ok(/else if \(spell\.kind === 'steal'\) \{/.test(battleSrc) && /function _stealFromUnit\(thief, victim, opts\)/.test(battleSrc), 'steal branch + helper');
+    assert.ok(/keys: spell\.stealKeys != null \? spell\.stealKeys : 1,\s*items: spell\.stealItems != null \? spell\.stealItems : 1,/.test(battleSrc), 'steal counts');
+    assert.ok(/else if \(spell\.kind === 'cleanseArea'\) \{/.test(battleSrc), 'cleanseArea branch');
+    assert.ok(/getActiveStatusKeys\(u\)\.filter\(k => STATUS_DEFS\[k\]\?\.kind === 'debuff'\)/.test(battleSrc) && /const n = removeBuffs\(u\);/.test(battleSrc), 'allies lose debuffs, enemies lose buffs');
+    assert.ok(/function _afterShotTarget\(unit, lx, ly, range\)/.test(battleSrc) && /if \(spell\.afterShot\) \{\s*const _asR = spell\.afterShot\.range \|\| 3;\s*const _asT = _afterShotTarget\(unit, x, y, _asR\);/.test(battleSrc), 'the shot after the run');
+    assert.ok(/if \(spell\.afterShot\) completionDelay \+= dashAnimMs/.test(battleSrc), 'the turn holds through the shot');
+    assert.ok(/if \(hitDmg <= 0\) continue;/.test(battleSrc), 'a zero-damage dash only shoves');
+    assert.ok(/case 'cleanseArea':/.test(battleSrc) && /case 'steal':/.test(battleSrc) && /spell\.afterShot\s*\?\s*nm \+ ': select a tile to dash to — you then fire/.test(battleSrc), 'targeting prompts');
+    assert.ok(/cleanse: 1, cleanseArea: 1,/.test(battleSrc) && /else if \(kind === 'cleanseArea'\) \{\s*tiles = getSquareArea\(tx, ty/.test(battleSrc), 'glow footprint');
+    assert.ok(/\|\| kind === 'steal'\) cat = kind;/.test(battleSrc) && /kind === 'cleanse' \|\| kind === 'cleanseArea'\) cat = 'cleanse';/.test(battleSrc), 'Simul categories');
+    // ai.js: scorer + targeter for both kinds, the afterShot rider in the dash scorer/targeter.
+    assert.ok(/if \(kind === 'steal' && target\) \{/.test(aiSrc) && /if \(kind === 'cleanseArea' && target\) \{/.test(aiSrc), 'ai.js scoreSpell');
+    assert.ok(/if \(kind === 'steal'\) \{\s*const inReach/.test(aiSrc) && /if \(kind === 'cleanseArea'\) \{\s*const defs/.test(aiSrc), 'ai.js findSpellTarget');
+    assert.ok(/if \(spell\.afterShot\) \{\s*const _asR = spell\.afterShot\.range \|\| 3;\s*const _asC = v\.visibleEnemies/.test(aiSrc) && /if \(hits === 0 && shot === 0\) continue;/.test(aiSrc), 'ai.js afterShot');
+    // HUD + library + highlight.
+    assert.ok(/k === 'cleanseArea'/.test(hudSrc) && /k === 'steal'/.test(hudSrc) && /if \(sp\.afterShot\) parts\.push/.test(hudSrc), 'hud.js spell-card parts');
+    assert.ok(/'summonUnit','steal','cleanseArea'/.test(uiSrc2), 'ui.js spell library kinds');
+    assert.ok(/'cleanse', 'cleanseArea'\]\.includes\(k\)\) return 'heal'/.test(uiSrc2) && /'aoeShield', 'delayed', 'cleanseArea'\]\.includes\(spell\.kind\)/.test(uiSrc2), 'ui.js class + AoE preview');
+    // check-grades: nothing planned any more — both passives are live and priced.
+    assert.deepStrictEqual(Object.keys(PLANNED), [], 'PLANNED_PASSIVE_ALLOWANCE is empty');
 });

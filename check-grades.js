@@ -110,12 +110,11 @@ const PASSIVE_VALUE = {                    // live PASSIVE_DEFS ids (plan §2.3)
     devout: 8, quickdraw: 4, fairyDustTrail: 4,
 };
 const PLANNED_PASSIVE_ALLOWANCE = {        // CHAMP_REWORK_PLAN §5.2 — remove rows as they ship
-    // Phase 3 shipped every row for a race that exists; only the two new
-    // races' passives remain planned (their RACE_PASSIVES rows land with
-    // the races in Phase 6). champ-rework.test.js fails if a planned row
-    // names a race that already has live passives.
-    gangster: 8,           // shank
-    nun: 8,                // devout
+    // Empty since Phase 6 (2026-09-08): every §5.2 passive is live on its
+    // race (the gangster's Shank and the nun's Devout shipped with the
+    // races). A future planned passive goes here as `race: value` until it
+    // ships; champ-rework.test.js fails if a planned row names a race that
+    // already has live passives.
 };
 const WEREWOLF_NIGHT_STAGES = { atk: 2, spd: 3, def: 2, mdef: 1 };
 const SKY_RACES = ['fairy', 'shadow entity', 'ai', 'angel', 'seraphim', 'orb of light', 'demon', 'mech', 'ghost',

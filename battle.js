@@ -751,6 +751,16 @@
             link:         { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true, twoClick: true },
             transfer:     { minRange: 0, offensive: false, allyOnly: true, fogExempt: true, noStrikeLeap: true, twoClick: true },
             cannibalize:  { minRange: 1, offensive: false, noStrikeLeap: true, corpseTarget: true },
+            // CHAMP_REWORK_PLAN §5.3 (Phase 6, 2026-09-08):
+            // steal — a grab: the hit lands, then the target's Keys / items
+            //   change hands (stealKeys / stealItems; Hit a Lick — the pirate's
+            //   Plunder keeps its utility id and one-thing rule).
+            // cleanseArea — a 3×3 tile cast: allies inside lose every debuff,
+            //   enemies inside lose every buff (Purify). Nothing is applied.
+            // (Drive-By is a `dash` wearing `afterShot: { dmg, range }` — the
+            //   plan's dashThenShoot kind as a flag on the existing branch.)
+            steal:        { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true },
+            cleanseArea:  { minRange: 0, offensive: false, tileTargeted: true, fogExempt: true, noStrikeLeap: true },
 
             // ── Movement / positioning ──
             teleport:     { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
@@ -5497,7 +5507,7 @@
         // Rides the relayed windup beat (`tiles` is on online.js's whitelist).
         const _GLOW_FRIENDLY_KINDS = {
             heal: 1, selfHeal: 1, healAll: 1, manaRestoreAll: 1, revive: 1, raiseDead: 1,
-            cleanse: 1, seedHeal: 1, shield: 1, aoeShield: 1, buff: 1, warCry: 1,
+            cleanse: 1, cleanseArea: 1, seedHeal: 1, shield: 1, aoeShield: 1, buff: 1, warCry: 1,
             zoneHeal: 1, scan: 1, remoteView: 1, utility: 1, escape: 1, teleport: 1,
             warpRune: 1, swap: 1, placeMirror: 1, tuneFrequency: 1, deployObject: 1,
             deployPair: 1, deployTurret: 1, buildBridge: 1, buildStructure: 1,
@@ -5549,6 +5559,8 @@
                     /* every tile the charge runs through, drawn along the run */
                     tiles = getLinePoints(unit.x, unit.y, tx, ty);
                     out.stagger = 70;
+                } else if (kind === 'cleanseArea') {
+                    tiles = getSquareArea(tx, ty, spell.aoeRadius != null ? spell.aoeRadius : 1);
                 } else if (kind === 'leapStrike') {
                     tiles = spell.aoeRadius ? getSquareArea(tx, ty, spell.aoeRadius) : [{ x: tx, y: ty }];
                 } else if (kind === 'barrage') {
@@ -6561,6 +6573,57 @@
             return removed;
         }
         if (typeof window !== 'undefined') window.removeBuffs = removeBuffs;
+
+        /* CHAMP_REWORK_PLAN Phase 6 (2026-09-08): the grab behind the `steal`
+           kind. Moves up to opts.keys Keys and opts.items items (one random
+           kind each) from victim to thief with the plunder's floating text.
+           Returns what changed hands. */
+        function _stealFromUnit(thief, victim, opts) {
+            opts = opts || {};
+            const out = { keys: 0, items: [] };
+            if (!thief || !victim) return out;
+            const label = opts.verb || 'steals';
+            let wantKeys = opts.keys != null ? opts.keys : 1;
+            while (wantKeys > 0 && (victim.hourglasses || 0) > 0) {
+                victim.hourglasses--;
+                thief.hourglasses = (thief.hourglasses || 0) + 1;
+                out.keys++; wantKeys--;
+            }
+            if (out.keys) {
+                addLog(`${unitDisplayName(thief)} — ${label}: ${out.keys} Key${out.keys === 1 ? '' : 's'} taken from ${unitDisplayName(victim)}!`);
+                showFloatingTextForUnit(thief, `+${out.keys} KEY`, 'pickup', { durationMs: 1200 });
+                showFloatingTextForUnit(victim, `-${out.keys} KEY`, 'damage', { durationMs: 1000 });
+            }
+            let wantItems = opts.items != null ? opts.items : 1;
+            while (wantItems > 0 && victim.items) {
+                const stealable = Object.keys(victim.items).filter(k => victim.items[k] > 0);
+                if (!stealable.length) break;
+                const pick = stealable[randInt(stealable.length)];
+                victim.items[pick]--;
+                if (!thief.items) thief.items = {};
+                thief.items[pick] = (thief.items[pick] || 0) + 1;
+                out.items.push(pick);
+                wantItems--;
+            }
+            if (out.items.length) {
+                addLog(`${unitDisplayName(thief)} — ${label}: ${out.items.join(', ')} taken from ${unitDisplayName(victim)}!`);
+                showFloatingTextForUnit(thief, `📦 Stole ${out.items[0]}${out.items.length > 1 ? ' +' + (out.items.length - 1) : ''}`, 'pickup', { durationMs: 1200 });
+            }
+            return out;
+        }
+
+        /* Phase 6: the target of a dash's `afterShot` — the weakest living
+           enemy within `range` (Manhattan) of the landing tile that the
+           shooter can see (not concealed from them, no terrain in the way). */
+        function _afterShotTarget(unit, lx, ly, range) {
+            const cands = aliveUnitsFor(enemyOf(unit.player)).filter(e => !e.dead
+                && Math.abs(e.x - lx) + Math.abs(e.y - ly) <= range
+                && !(typeof isUnitConcealedFrom === 'function' && isUnitConcealedFrom(e, unit))
+                && !(typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(lx, ly, e.x, e.y)));
+            cands.sort((a, b) => a.hp - b.hp);
+            return cands[0] || null;
+        }
+        if (typeof window !== 'undefined') window._afterShotTarget = _afterShotTarget;
 
         function applyStatusPayload(target, payload = {}, sourceLabel = '', sourceUnit = null) {
             if (!target || target.dead || !payload?.id || !STATUS_DEFS[payload.id]) return false;
@@ -16905,8 +16968,9 @@
                    board-wide repositioning don't exist in real-time) — give
                    them their own cat so the exec switch politely refuses. */
                 else if (kind === 'rallyPull' || kind === 'raiseDead' || kind === 'summonUnit'
-                    || kind === 'possess' || kind === 'link' || kind === 'transfer' || kind === 'shadowRealm' || kind === 'cannibalize') cat = kind;
-                else if (kind === 'cleanse') cat = 'cleanse';
+                    || kind === 'possess' || kind === 'link' || kind === 'transfer' || kind === 'shadowRealm' || kind === 'cannibalize'
+                    || kind === 'steal') cat = kind;
+                else if (kind === 'cleanse' || kind === 'cleanseArea') cat = 'cleanse';
                 else if (kind === 'encore') cat = 'encore';
                 else if (kind === 'shield' || kind === 'aoeShield' || kind === 'buff' || kind === 'warCry' || type === 'buff') cat = 'buff';
                 else if (kind === 'dash' || kind === 'displacement' || kind === 'teleport' || kind === 'chargeToTarget' || kind === 'grapple' || kind === 'leapStrike' || kind === 'tackle') cat = 'dash';
@@ -25256,6 +25320,8 @@
                 case 'shield':        return 'Select an ally to shield with ' + nm + '.';
                 case 'buff':          return 'Select an ally to empower with ' + nm + '.';
                 case 'cleanse':       return 'Select an ally to cleanse with ' + nm + '.';
+                case 'cleanseArea':   return nm + ': select a tile — allies in the 3×3 lose their debuffs, enemies lose their buffs.';
+                case 'steal':         return nm + ': select an enemy to rob.';
                 case 'revive':        return 'Select a fallen ally to revive with ' + nm + '.';
                 case 'raiseDead':     return nm + ': select a fallen unit\'s remains — an ally\'s gravestone or an enemy\'s bones — to raise a zombie.';
                 case 'summonUnit':    return nm + ': select an empty tile beside you to call it to.';
@@ -25274,7 +25340,9 @@
                 case 'swap':          return nm + ': select a unit to swap places with.';
                 case 'pull':          return nm + ': select an enemy to pull in.';
                 case 'teleport':      return nm + ': select a destination tile.';
-                case 'dash':          return nm + ': select a tile to dash to.';
+                case 'dash':          return spell.afterShot
+                    ? nm + ': select a tile to dash to — you then fire at the weakest enemy within ' + (spell.afterShot.range || 3) + ' tiles of it.'
+                    : nm + ': select a tile to dash to.';
                 case 'warpRune':      return nm + ': select a tile to place the warp rune on.';
                 case 'bomb':          return nm + ': select a tile to place the bomb on.';
                 case 'deployObject':
@@ -50414,6 +50482,97 @@
                 }
             }
 
+            /* CHAMP_REWORK_PLAN §5.3 Phase 6 (2026-09-08): `steal` — the
+               gangster's Hit a Lick. The hit lands (with any rider), then the
+               target's Keys and items change hands: stealKeys / stealItems
+               say how many of each (default one of each). The pirate's
+               Plunder keeps its utility id and its one-thing rule. */
+            else if (spell.kind === 'steal') {
+                const target = (unitAt(x, y, z) || unitAt(x, y));
+                if (!target || target.dead || isAllyUnit(target, unit)) {
+                    addLog('Choose an enemy to rob.');
+                    playErrorSfx();
+                    return 0;
+                }
+                panelFocusTarget = target;
+                focusUnitPanel(target.id);
+                playSfx(spellLaunchSfx(spell));
+                _spellFocusCamera(unit, x, y, { spellName: spell.name, spellId: spell.id });
+                unit.mp -= effectiveSpellCost;
+                const _stVFX = window.ThreeVFXEffects;
+                if (_stVFX && state.phase === 'battle' && !_skipVisuals() && _stVFX.hasMapping(spell.id, 'impact')) {
+                    _stVFX.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
+                }
+                if (spell.dmg) {
+                    const _stDmg = spell.dmg + spellPower;
+                    applyDamageToUnit(target, _stDmg, `${spell.name}: `, {
+                        sourceUnit: unit,
+                        allowMarkBonus: true,
+                        damageType: spell.damageType || 'physical',
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell)
+                    });
+                    if (spell.statusEffects && spell.statusEffects.length > 0 && !target.dead) {
+                        applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
+                    }
+                }
+                const _stTook = _stealFromUnit(unit, target, {
+                    keys: spell.stealKeys != null ? spell.stealKeys : 1,
+                    items: spell.stealItems != null ? spell.stealItems : 1,
+                    verb: spell.name,
+                });
+                if (!_stTook.keys && !_stTook.items) {
+                    addLog(`${unitDisplayName(target)} had nothing worth taking.`);
+                }
+                completionDelay = actionMs(650);
+            }
+
+            /* Phase 6: `cleanseArea` — the nun's Purify. A 3×3 tile cast:
+               allies inside lose every debuff (the cleanse branch's rule —
+               STATUS_DEFS kind 'debuff', cleared one by one so onRemove
+               hooks fire), enemies inside lose every buff (removeBuffs).
+               Nothing is APPLIED, so the single-status rule is untouched. */
+            else if (spell.kind === 'cleanseArea') {
+                const _caDist = Math.abs(x - unit.x) + Math.abs(y - unit.y);
+                if (!isInside(x, y) || _caDist > getEffectiveSpellRange(unit, spell)) {
+                    addLog(`${spell.name}: that tile is out of range.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                const _caRadius = spell.aoeRadius != null ? spell.aoeRadius : 1;
+                const _caUnits = getSquareArea(x, y, _caRadius)
+                    .map(t => unitAt(t.x, t.y)).filter(u => u && !u.dead);
+                playSfx(spellLaunchSfx(spell));
+                _spellFocusCamera(unit, x, y, { spellName: spell.name, spellId: spell.id });
+                unit.mp -= effectiveSpellCost;
+                const _caVFX = window.ThreeVFXEffects;
+                if (_caVFX && state.phase === 'battle' && !_skipVisuals() && _caVFX.hasMapping(spell.id, 'aura')) {
+                    _caVFX.fire('aura', spell.id, { tx: x, ty: y, aoeRadius: _caRadius });
+                } else if (!_skipVisuals()) {
+                    _vfxHeal(x, y);
+                }
+                let _caCleansed = 0, _caPurged = 0, _caAllies = 0, _caEnemies = 0;
+                for (const u of _caUnits) {
+                    if (isAllyUnit(u, unit)) {
+                        const keys = getActiveStatusKeys(u).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
+                        for (const k of keys) { clearStatus(u, k); _caCleansed++; }
+                        if (keys.length) {
+                            _caAllies++;
+                            showFloatingTextForUnit(u, '✨ PURIFIED', 'heal', { durationMs: 1200 });
+                            flashUnit(u.id, 'heal');
+                        }
+                    } else {
+                        const n = removeBuffs(u);
+                        if (n > 0) {
+                            _caPurged += n; _caEnemies++;
+                            showFloatingTextForUnit(u, 'PURGED', 'debuff', { durationMs: 1200 });
+                        }
+                    }
+                }
+                if (_caCleansed > 0) unit._matchCleanses = (unit._matchCleanses || 0) + _caCleansed;
+                addLog(`${unitDisplayName(unit)} casts ${spell.name}: ${_caCleansed} debuff${_caCleansed === 1 ? '' : 's'} lifted from ${_caAllies} all${_caAllies === 1 ? 'y' : 'ies'}, ${_caPurged} buff${_caPurged === 1 ? '' : 's'} stripped from ${_caEnemies} enem${_caEnemies === 1 ? 'y' : 'ies'}.`);
+                completionDelay = actionMs(700);
+            }
+
             else if (spell.kind === 'cleanse') {
                 // Universal guard parity: never burn MP/AP cleansing an ally
                 // with nothing on them (map clicks bypass the target drum).
@@ -53300,6 +53459,9 @@
                         if (victim && !victim.dead && isEnemyUnit(victim, unit)) {
                             const isPrimaryTarget = (pt.x === x && pt.y === y);
                             const hitDmg = (dashSplitsDamage && isPrimaryTarget) ? dashPrimaryDmg : dashPathDmg;
+                            // A dash with no damage of its own (Drive-By, Phase 6)
+                            // only shoves — no "hit for 0" line, no rider.
+                            if (hitDmg <= 0) continue;
                             // applyDamageToUnit returns whether the victim was killed
                             // (a boolean) and already pops its own post-mitigation
                             // "-N" damage number, so don't render the return value as
@@ -53401,6 +53563,38 @@
                         addLog(`${unitDisplayName(unit)} dashes from ${oldLabel} to ${coordLabel(x, y)}.`);
                     }
                     scheduleBoardRender();
+
+                    /* CHAMP_REWORK_PLAN §5.3 Phase 6 (2026-09-08): `afterShot`
+                       — the Drive-By. Once the slide settles, the WEAKEST enemy
+                       within afterShot.range of the landing tile (line of sight
+                       respected, concealed units skipped) takes afterShot.dmg +
+                       spell power from a bolt fired out of the window. Both
+                       halves are engine state + VFX3D intents, so the guest
+                       sees them (RULE #2). */
+                    if (spell.afterShot) {
+                        const _asR = spell.afterShot.range || 3;
+                        const _asT = _afterShotTarget(unit, x, y, _asR);
+                        if (_asT) {
+                            const _asDmg = (spell.afterShot.dmg || 0) + spellPower;
+                            const _asTravel = actionMs(360);
+                            window.setTimeout(() => {
+                                if (_asT.dead || unit.dead) return;
+                                if (!_skipVisuals()) playProjectileToUnit(unit, _asT, 'damage', _asTravel, spell.spellType, spell.projectileOverride || 'proj-bullet', spell);
+                                window.setTimeout(() => {
+                                    if (_asT.dead) return;
+                                    applyDamageToUnit(_asT, _asDmg, `${spell.name}: `, {
+                                        sourceUnit: unit, allowMarkBonus: true,
+                                        damageType: spell.afterShot.damageType || spell.damageType || 'physical',
+                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell)
+                                    });
+                                    addLog(`${unitDisplayName(unit)} fires from the window — ${unitDisplayName(_asT)} takes ${_asDmg}!`);
+                                    scheduleBoardRender();
+                                }, _skipVisuals() ? 0 : _asTravel);
+                            }, _skipVisuals() ? 0 : dashAnimMs);
+                        } else {
+                            addLog(`${unitDisplayName(unit)} rolls up — nobody within ${_asR} tiles to shoot at.`);
+                        }
+                    }
                 };
 
                 if (_dashDelay > 0) window.setTimeout(_runDash, _dashDelay);
@@ -53412,6 +53606,8 @@
                 completionDelay = (_dashCam && _dashCam.windupMs)
                     ? _dashDelay + dashAnimMs + actionMs(700)
                     : actionMs(500);
+                // Phase 6: hold the turn through the shot after the run.
+                if (spell.afterShot) completionDelay += dashAnimMs + actionMs(360) + actionMs(300);
             }
 
             else if (spell.kind === 'skyDrop') {

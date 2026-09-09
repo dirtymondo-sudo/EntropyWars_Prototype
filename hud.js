@@ -4592,6 +4592,8 @@ function spellTagline(sp) {
   else if (k === 'dash' || k === 'leapStrike') {
     const rng = sp.range || 1;
     parts.push('Dash ' + rng + (sp.dashDamage ? ' · hits path' : ''));
+    // Phase 6 (Drive-By): the shot after the run.
+    if (sp.afterShot) parts.push('then shoot ' + (sp.afterShot.dmg || 0) + ' within ' + (sp.afterShot.range || 3));
   }
   else if (k === 'teleport' || k === 'swap') parts.push(k === 'swap' ? 'Swap' : 'Teleport');
   else if (k === 'pull' || k === 'aoePull' || k === 'displacement') parts.push('Displacement');
@@ -4617,6 +4619,8 @@ function spellTagline(sp) {
   else if (k === 'transfer') parts.push('Give ' + Math.round((sp.takePct || 0.3) * 100) + '% → heal ' + Math.round((sp.givePct || 1.5) * 100) + '%');
   else if (k === 'rallyPull') parts.push('Rally allies');
   else if (k === 'cleanse') parts.push('Cleanse');
+  else if (k === 'cleanseArea') parts.push('Purify ' + (2 * (sp.aoeRadius || 1) + 1) + '×' + (2 * (sp.aoeRadius || 1) + 1) + ' · allies lose debuffs · enemies lose buffs');
+  else if (k === 'steal') parts.push('Rob · ' + (sp.stealKeys != null ? sp.stealKeys : 1) + ' Key + ' + (sp.stealItems != null ? sp.stealItems : 1) + ' item');
   else if (k === 'tackle') parts.push('Charge · carries ' + (sp.pushDistance || 1) + ' tiles');
   else if (k === 'transform') parts.push('Self · transform');
   else parts.push('Single target');
@@ -4657,7 +4661,7 @@ function spellTargetMode(sp) {
   if (k === 'summonUnit') return 'Empty Tile';
   if (k === 'shadowRealm') return 'You + Target';
   if (['healAll', 'manaRestoreAll'].includes(k)) return 'All Allies';
-  if (['aoe', 'aoePull', 'aoeShield'].includes(k)) return 'Area · AOE';
+  if (['aoe', 'aoePull', 'aoeShield', 'cleanseArea'].includes(k)) return 'Area · AOE';
   if (['line', 'linePush', 'splitBeam'].includes(k)) return 'Line';
   if (k === 'cross') return 'Cross';
   if (k === 'barrage') return 'Barrage';
@@ -4666,6 +4670,7 @@ function spellTargetMode(sp) {
        'placeBlock', 'buildStructure', 'placeTrap', 'placeMirror'].includes(k)) return 'Tile Target';
   if (k === 'pulseLattice') return 'Self · AOE';
   if (k === 'tuneFrequency') return 'Self Target';
+  if (k === 'dash' && sp.afterShot) return 'Dash · then Shoot';
   if (['dash', 'leapStrike'].includes(k)) return 'Dash Line';
   if (['teleport', 'swap', 'pull', 'displacement'].includes(k)) return k === 'swap' ? 'Swap' : 'Reposition';
   if (['scan', 'remoteView'].includes(k)) return 'Vision';

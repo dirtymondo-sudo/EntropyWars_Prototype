@@ -2572,7 +2572,23 @@ const RACE_PROFILES = {
     'priest': {
         label: 'Priest',
         labelMale: 'Priest',
-        labelFemale: 'Nun',
+        /* CHAMP REWORK Phase 6 (2026-09-08, plan §6.20): the Nun is her own
+           race now (below) — the priest's female form is the Priestess. */
+        labelFemale: 'Priestess',
+        faction: 'time',
+        types: ['human', 'divine']
+    },
+    /* CHAMP REWORK Phase 6 (2026-09-08, plan §6.19 / §6.20): the two new
+       champs. The gangster is the street enforcer (Gunslinger kit, Shank);
+       the nun is the sister of mercy (White Mage, Devout) — she wears the
+       female whitemage assets the priest's female form used to. */
+    'gangster': {
+        label: 'Gangster',
+        faction: 'space',
+        types: ['human']
+    },
+    'nun': {
+        label: 'Nun',
         faction: 'time',
         types: ['human', 'divine']
     },
@@ -2908,8 +2924,10 @@ const RACE_PASSIVES = {
     'machine elves': ['fractalMind'],
     'nordic':        ['sereneMind'],
     'vampire':       ['hemophage'],           // vampire also flies → slots full
-    // CHAMP REWORK Phase 3 (2026-09-07, plan §5.2). Gangster (shank) and nun
-    // (devout) join when the races exist (Phase 6) — their defs are above.
+    // CHAMP REWORK Phase 3 (2026-09-07, plan §5.2); the gangster (shank) and
+    // the nun (devout) joined with their races in Phase 6 (2026-09-08).
+    'gangster':      ['shank'],
+    'nun':           ['devout'],
     'werewolf':      ['lycanthropy', 'bloodcraze'],
     'skeleton':      ['boneDeep'],
     'zombie':        ['returnOfTheDead'],
@@ -2963,7 +2981,7 @@ function unitPassiveBlocksStatus(unit, statusId) {
     return null;
 }
 
-const AVAILABLE_RACES = ['homosapien', 'pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher'];
+const AVAILABLE_RACES = ['homosapien', 'pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun'];
 
 const RACE_DEFAULT_JOBS = {
     // NOTE (2026-07-18): 'Warrior' and 'Tank' are now SEPARATE jobs (the old
@@ -3012,6 +3030,8 @@ const RACE_DEFAULT_JOBS = {
     'telepath': 'Psychic',
     'marksman': 'Sniper',
     'priest': 'White Mage',
+    'gangster': 'Gunslinger',   // CHAMP REWORK Phase 6 (plan §6.19)
+    'nun': 'White Mage',        // CHAMP REWORK Phase 6 (plan §6.20)
     'wizard': 'Black Mage',
     'fortune teller': 'Harbinger',
     'zombie': 'Raider',
@@ -3115,6 +3135,8 @@ const RACE_CLASS = {
     'telepath': 'caster',
     'marksman': 'ranged',
     'priest': 'healer',
+    'gangster': 'bruiser',
+    'nun': 'healer',
     'wizard': 'caster',
     'fortune teller': 'support',
     'cyborg': 'bruiser',
@@ -3311,6 +3333,9 @@ const RACE_BASE_STATS = {
     'telepath':           { hp: 435, mp: 225, atk:   8, def:  21, mdef:  92, int:  96, awr: 84, spd: 21 },
     'marksman':           { hp: 440, mp: 120, atk:  80, def:  20, mdef:  20, int:   8, awr: 98, spd: 18 },
     'priest':             { hp: 470, mp: 230, atk:   8, def:  36, mdef:  88, int:  71, awr: 56, spd: 33 },
+    // CHAMP REWORK Phase 6 (2026-09-08, plan §6.19 / §6.20 / §7.1): the two new champs.
+    'gangster':           { hp: 540, mp: 100, atk:  78, def:  44, mdef:  44, int:  10, awr: 56, spd: 64 },
+    'nun':                { hp: 460, mp: 250, atk:   8, def:  26, mdef:  58, int:  90, awr: 70, spd: 30 },
     'wizard':             { hp: 415, mp: 255, atk:   8, def:  17, mdef:  98, int:  90, awr: 42, spd: 31 },
     'fortune teller':     { hp: 545, mp: 210, atk:   8, def:  25, mdef:  82, int:  90, awr: 98, spd: 33 },
     'nephilim':           { hp: 680, mp:  90, atk:  68, def:  73, mdef:  36, int:  27, awr: 28, spd: 41 },
@@ -3384,6 +3409,8 @@ const RACE_PHYSIQUE = {
     'telepath':            { h: 1.70, w: 65 },
     'marksman':            { h: 1.80, w: 80 },
     'priest':              { h: 1.75, w: 74 },
+    'gangster':            { h: 1.82, w: 88 },   // Phase 6 — the enforcer
+    'nun':                 { h: 1.65, w: 58 },   // Phase 6 — the sister
     'wizard':              { h: 1.70, w: 68 },
     'fortune teller':      { h: 1.65, w: 60 },
     'giant':               { h: 7.50, w: 3800 },
@@ -6747,6 +6774,61 @@ const RACE_ABILITIES = {
           bonusVsStatus: { status: ['contract', 'hexed'], mult: 1.5 },
           desc: 'Deals HEAVY magic damage to a Single Enemy. Deals bonus damage to Contracted or Hexed targets — the rite burns the curse out of them. Deals bonus damage to Unholy targets.' },
     ],
+    /* CHAMP_REWORK_PLAN §6.19 Phase 6 (2026-09-08): the GANGSTER — the street
+       enforcer. Stomp Out → Drive-By ⇄ Hit a Lick → Choppa → Extended Clips★.
+       Drive-By is a `dash` with the `afterShot` rider (the plan's
+       dashThenShoot kind, as a flag); Hit a Lick is the new `steal` kind. */
+    'gangster': [
+        { id: 'raceStompOut', spellType: 'human', element: 'metal', name: 'Stomp Out',
+          type: 'damage', cost: 20, dmg: 120, range: 1, apCost: 1,
+          kind: 'damage', damageType: 'physical',
+          statusEffects: [{ id: 'grievous', duration: 2 }],
+          desc: 'Put an adjacent enemy on the pavement and stomp. Deals MEDIUM physical damage to a Single Enemy and leaves a Grievous Wound — healing on them is halved for 2 rounds.' },
+        { id: 'raceDriveBy', spellType: 'human', element: 'metal', name: 'Drive-By',
+          type: 'damage', cost: 30, dmg: 0, range: 3, apCost: 1,
+          kind: 'dash', damageType: 'physical',
+          afterShot: { dmg: 100, range: 3 },
+          projectileOverride: 'proj-bullet',
+          desc: 'Roll up. Dash up to 3 tiles — anyone on the line is shoved aside — then fire a MEDIUM physical shot at the weakest enemy within 3 tiles of where you stop.' },
+        { id: 'raceHitALick', spellType: 'human', element: 'metal', name: 'Hit a Lick',
+          type: 'damage', cost: 25, dmg: 60, range: 2, apCost: 1,
+          kind: 'steal', damageType: 'physical',
+          stealKeys: 1, stealItems: 1,
+          desc: 'Run up on an enemy within 2 tiles. Deals LIGHT physical damage to a Single Enemy and takes a Key AND an item off them.' },
+        { id: 'raceChoppa', spellType: 'human', element: 'metal', name: 'Choppa',
+          type: 'damage', cost: 40, dmg: 110, range: 5, apCost: 1, tier: 'II',
+          kind: 'line', damageType: 'physical', lineWidth: 1,
+          projectileOverride: 'proj-bullet',
+          desc: 'Let the choppa sing. Deals MEDIUM physical damage to every enemy on a 5-tile line.' },
+        { id: 'raceExtendedClips', spellType: 'human', element: 'metal', name: 'Extended Clips',
+          type: 'buff', cost: 50, range: 0, apCost: 1, tier: 'III',
+          kind: 'warCry', auraRadius: 3,
+          teamStatusEffects: [{ id: 'extendedClips', duration: 3 }],
+          desc: 'Everybody reload. Allies within 3 tiles pack Extended Clips for 3 rounds: +1 basic-attack range and +1 ATK stage.' },
+    ],
+    /* CHAMP_REWORK_PLAN §6.20 Phase 6 (2026-09-08): the NUN — the sister of
+       mercy, her own race now (was the priest's female form). Purify ⇄ Smite
+       → Blessing → Prayer → Hallelujah★. Purify is the new `cleanseArea`
+       kind; Prayer finally gives the `shield` status row a caster. */
+    'nun': [
+        { id: 'racePurify', spellType: 'divine', element: 'light', name: 'Purify',
+          type: 'heal', cost: 30, range: 3, apCost: 1,
+          kind: 'cleanseArea', aoeRadius: 1,
+          desc: 'A pillar of light over a 3×3 area up to 3 tiles away. Allies inside lose every debuff; enemies inside lose every buff.' },
+        SHARED_SMITE,
+        { id: 'raceBlessing', spellType: 'divine', element: 'light', name: 'Blessing',
+          type: 'buff', cost: 25, range: 3, apCost: 1,
+          kind: 'buff', statusEffects: [{ id: 'blessed', duration: 3 }],
+          desc: 'Bless a Single Ally for 3 rounds: +1 DEF stage, +1 M DEF stage, and 40 HP restored at the end of every round.' },
+        { id: 'racePrayer', spellType: 'divine', element: 'light', name: 'Prayer',
+          type: 'buff', cost: 35, range: 3, apCost: 1, tier: 'II',
+          kind: 'shield', shield: 150,
+          desc: 'Pray over a Single Ally. Grants a 150 HP barrier that absorbs damage before it reaches them.' },
+        { id: 'raceHallelujah', spellType: 'divine', element: 'light', name: 'Hallelujah',
+          type: 'heal', cost: 60, range: 0, apCost: 2, tier: 'III',
+          kind: 'healAll', healAmt: 180, cleanse: 2,
+          desc: 'The choir answers. Restores a LARGE amount of HP to All Allies and cleanses 2 debuffs from each.' },
+    ],
     'wizard': [
         /* 2026-07-17 shape pass: was the 16th identical 3×3 nuke. Now the
            wizard paints an X-shaped sigil — diagonal arms 3 tiles each way,
@@ -8403,6 +8485,9 @@ const SIM_DEFAULTS = {
     warpRune:     { simTargeting: 'tile',  simPhase: 'standard', simFallback: null },
     deployObject: { simTargeting: 'tile',  simPhase: 'standard', simFallback: null },
     summonUnit:   { simTargeting: 'tile',  simPhase: 'standard', simFallback: null },
+    // Phase 6 (2026-09-08): the grab is unit-targeted; Purify is a tile cast.
+    steal:        { simTargeting: 'unit',  simPhase: 'standard', simFallback: 'fizzle' },
+    cleanseArea:  { simTargeting: 'tile',  simPhase: 'standard', simFallback: null },
     deployPair:   { simTargeting: 'tile',  simPhase: 'standard', simFallback: null },
     deployTurret: { simTargeting: 'tile',  simPhase: 'standard', simFallback: null },
     seedHeal:     { simTargeting: 'tile',  simPhase: 'standard', simFallback: null },
@@ -10315,8 +10400,10 @@ const ACCT_STARTER_UNITS = [
   'swordfighter',   // Swordmaster (3D — female only, 2026-07-13 batch)
   'zombie',         // Raider (3D — female only, 2026-07-13 batch)
   'fallen angel',   // Harbinger (3D — female only, 2026-07-13 batch)
-  'priest',         // White Mage (3D — nun, female only; was never actually
-                    // listed here despite the old comment — fixed 2026-07-19)
+  'priest',         // White Mage (3D — the whitemage female model; was never
+                    // actually listed here despite the old comment — fixed 2026-07-19)
+  'nun',            // White Mage (3D — female only; her own race since the
+                    // CHAMP REWORK Phase 6, 2026-09-08 — same model as above)
   // 2026-07-19 batch (sprites.js RACE_MODELS_3D):
   'yeti',           // bruiser (3D — frost cryptid, male only)
   'skeleton',       // undead (3D — male only)
@@ -10475,7 +10562,7 @@ const ACH_CATALOG = [
   // Champion-mastery meta (§4.1): a champ is Mastered at kills ≥ ACH_MASTERY.kills
   // + wins ≥ ACH_MASTERY.wins + deathless ≥ ACH_MASTERY.deathless. This line
   // counts mastered champs (evaluated at match commit, stored high-water).
-  { id: 'champsMastered',  metric: 'champsMastered',  cat: 'modes',       icon: '👑', name: 'Heat Death',        desc: 'Fully master champions (100 kills · 100 wins · 10 deathless each)', tiers: [1, 5, 10, 25, 50, 96], hw: true },
+  { id: 'champsMastered',  metric: 'champsMastered',  cat: 'modes',       icon: '👑', name: 'Heat Death',        desc: 'Fully master champions (100 kills · 100 wins · 10 deathless each)', tiers: [1, 5, 10, 25, 50, 98], hw: true },   // top tier = the roster size (98 since Phase 6 added gangster + nun)
 ];
 
 // What a champ must reach on each mastery ladder to count as Mastered
@@ -14207,6 +14294,7 @@ const EW_RACE_BIOMES = {
     'shaman': ['forest', 'ancient'], 'mad scientist': ['underground_base'], 'cowboy': ['ranch'],
     'men in black': ['clandestine', 'underground_base'], 'telepath': ['underground_base', 'astral'],
     'marksman': ['clandestine', 'urban'], 'priest': ['holy_city'], 'wizard': ['arthurian', 'gothic'],
+    'gangster': ['urban', 'neon_city'], 'nun': ['holy_city'],
     'fortune teller': ['desert', 'astral'], 'barbarella': ['space'],
     'black goo': ['space', 'underground_base'], 'golem': ['ancient'],
     'honda civic': ['urban', 'neon_city'], 'ice queen': ['polar'], 'juggernaut': ['underground_base'],
@@ -14646,6 +14734,8 @@ const RACE_TREE = {
     'men in black':  ['raceDeneuralizer', 'raceAgentVanish', 'sharedSmokeScreen', 'raceClassifiedWeapon'],
     'telepath':      ['raceTelepathicLink', 'racePsychicBarrier', 'raceBrainwash', 'raceMindCrush'],
     'priest':        ['raceDivineLight', 'protect1', 'raceSmite', 'exorcism'],
+    'gangster':      ['raceStompOut', ['raceDriveBy', 'raceHitALick'], 'raceChoppa', 'raceExtendedClips'],   // §6.19 (Phase 6)
+    'nun':           [['racePurify', 'raceSmite'], 'raceBlessing', 'racePrayer', 'raceHallelujah'],           // §6.20 (Phase 6)
     'fortune teller': ['raceTarotDraw', 'raceSpiritChannel', 'raceCurseOfMisfortune', 'raceCrystalBall'],
     'martian':       ['raceHeatRay', 'sharedLowGravity', 'sharedShrinkRay', 'raceWarOfTheWorlds'],
     'nordic':        ['raceAuroraRay', 'racePleiadianShield', 'raceStasisBeam', 'raceNordicAccord'],
@@ -15417,6 +15507,9 @@ const CAMPAIGN_RACE_PRICES = {
   'overlord': 850,
   'chosen one': 700,
   'politician': 600,
+  // CHAMP REWORK Phase 6 (2026-09-08)
+  'gangster': 200,
+  'nun': 250,
 };
 
 const CAMPAIGN_REGION_THEMES = {
@@ -16297,6 +16390,8 @@ const DOOR_TEXT = {
         'werewolf':             { status: 'DOMESTIC',          note: 'by day' },
         'pirate':               { status: 'DOMESTIC',          note: 'legitimacy contested' },
         'cowboy':               { status: 'DOMESTIC',          note: 'never misses twice' },
+        'gangster':             { status: 'DOMESTIC',          note: 'known to the desk; the desk is known to him' },
+        'nun':                  { status: 'DIPLOMATIC',        note: 'the only diplomat who has never lied on the form' },
         'quarterback':          { status: 'DOMESTIC',          note: 'went back to the huddle' },
         'general':              { status: 'DOMESTIC',          note: 'asked to see the org chart' },
         'antihero':             { status: 'DOMESTIC',          note: 'declined to align with any desk' },
@@ -16311,6 +16406,7 @@ const DOOR_TEXT = {
         'homosapien': 'Nuketown', 'pirate': 'Atlantis', 'swordfighter': 'Camelot', 'knight': 'Camelot',
         'shaman': 'Mount Shasta', 'mad scientist': 'D.U.M.B.', 'cowboy': 'Area 51', 'men in black': 'Area 51',
         'telepath': 'D.U.M.B.', 'marksman': 'Antarctica', 'priest': 'Vatican City', 'wizard': 'Stonehenge',
+        'gangster': 'Cyberpunk City', 'nun': 'Vatican City',
         'fortune teller': 'Bohemian Grove', 'giant': 'Göbekli Tepe', 'fairy': 'Fairy Forest', 'martian': 'Mars',
         'nordic': 'Antarctica', 'grey': 'Area 51', 'bigfoot': 'Mount Shasta', 'shadow entity': 'Backrooms',
         'reptilian': 'Hollow Earth', 'ai': 'Cyberpunk City', 'robot': 'Technoticlan', 'android': 'Cyberpunk City',
@@ -19158,8 +19254,9 @@ function doorSiteState(door, profile) {
 /* ── D.O.O.R. ROSTER DIALOGUE (2026-09-05) ──────────────────────────────
    What a roster vessel says when the player presses E on it in the
    headquarters (map.js `_hqNpcPanelHtml` → `hqRosterLine`). Keyed by
-   race id; a `<race>:female` key overrides for the female variant (Nun,
-   Witch — separate characters, separate lines). `_cryptid` is a shared
+   race id; a `<race>:female` key overrides for the female variant (the
+   Witch — a separate character, separate lines; the Nun is her own race
+   since 2026-09-08 and wears the plain 'nun' key). `_cryptid` is a shared
    pool that the races in DOOR_ROSTER_CRYPTIDS get IN ADDITION to their
    own lines. Races with no entry fall back to the room's overheard lines.
    HAND-AUTHORED BY THE USER. Do not add, rewrite or "improve" lines —
@@ -19363,8 +19460,9 @@ const DOOR_ROSTER_LINES = {
         '“My human suit is at the cleaners.”',
         '“Please stop asking which politicians I control. You can probably guess anyway.”',
     ],
-    /* the Nun — the priest's female variant, her own lines */
-    'priest:female': [
+    /* the Nun — her own race since Phase 6 (2026-09-08); these were the
+       priest's `priest:female` lines, moved with her, not rewritten */
+    'nun': [
         '“That succubus needs to put some god damn clothes on! Oh, heavens. Forgive me Father.”',
         '“This one time at church camp… nevermind.”',
     ],
@@ -19555,7 +19653,7 @@ const DOOR_ROSTER_LINES = {
     ],
 };
 /* The pool a roster vessel draws from: its own lines, the female variant's
-   lines when the vessel is female (Nun, Witch), plus the shared cryptid
+   lines when the vessel is female (the Witch), plus the shared cryptid
    lines for DOOR_ROSTER_CRYPTIDS. Empty array = no entry (caller falls back). */
 function hqRosterLines(race, gender) {
     const out = [];

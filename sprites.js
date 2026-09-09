@@ -36,6 +36,8 @@ const RACE_PATH_RULES = {
   'telepath':   { folder: 'Homosapien', capGender: true },
   'marksman':   { folder: 'Homosapien', capGender: true },
   'priest':     { folder: 'Homosapien', capGender: true },
+  'gangster':   { folder: 'Homosapien', capGender: true },   // Phase 6 (2026-09-08) — gunslinger-folder 2D art until his own ships
+  'nun':        { folder: 'Homosapien', capGender: true },   // Phase 6 — the whitemage female assets, her own race now
   'wizard':     { folder: 'Homosapien', capGender: true },
   'fortune teller': { folder: 'Homosapien', capGender: true },
   'demon':      { folder: 'Demon',      capGender: true },
@@ -78,6 +80,8 @@ const RACE_SPRITE_GENDERS = {
   'telepath': 'both',
   'marksman': 'both',
   'priest': 'both',
+  'gangster': 'male',
+  'nun': 'female',
   'wizard': 'both',
   'fortune teller': 'both',
   'nordic': 'both',
@@ -306,6 +310,8 @@ function getR2RaceSpriteUrl(race, gender, cls) {
     'telepath': 'psychic',
     'marksman': 'sniper',
     'priest': 'whitemage',
+    'gangster': 'gunslinger',   // Phase 6 — borrows the Gunslinger sheet until a gangster sprite lands
+    'nun': 'whitemage',         // Phase 6 — the whitemage female sheet is hers
     'wizard': 'blackmage',
     'fortune teller': 'harbinger',
   };
@@ -1272,9 +1278,20 @@ const RACE_MODELS_3D = {
       basicAttackKind: 'claw',
     }),
   },
-  // Nun / Priestess (homosapien White Mage) — holy zaps; heals get the
+  // Priestess (homosapien White Mage) — holy zaps; heals get the
   // castHeal staff wave from the shared slots.
   'priest': {
+    female: _mkUAL('Homosapien/Female/whitemage', 'sexy_nun_girl_realis', {
+      heightRatio: 0.94,
+      basicAttackKind: 'magic',
+    }),
+  },
+  // The NUN — her own race since CHAMP REWORK Phase 6 (2026-09-08, plan
+  // §6.20). Same rigged whitemage female GLB as the priestess above (one
+  // download — the loader caches by URL). The gangster has NO model yet
+  // (plan §9.6 wishlist) — the 3D-only roster rule keeps him shelved
+  // until his rigged GLB is uploaded and wired here.
+  'nun': {
     female: _mkUAL('Homosapien/Female/whitemage', 'sexy_nun_girl_realis', {
       heightRatio: 0.94,
       basicAttackKind: 'magic',
@@ -1887,6 +1904,8 @@ const RACE_SPRITES = {
   'telepath': `${_S}/homosapien.png`,
   'marksman': `${_S}/homosapien.png`,
   'priest': `${_S}/homosapien.png`,
+  'gangster': `${_S}/homosapien.png`,
+  'nun': `${_S}/homosapien.png`,
   'wizard': `${_S}/homosapien.png`,
   'fortune teller': `${_S}/homosapien.png`,
   'martian': `${_S}/martian.png`,

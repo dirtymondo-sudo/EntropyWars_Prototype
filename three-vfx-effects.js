@@ -22877,6 +22877,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['raceTsunami']          = Object.assign({}, SPELL_MAP['sharedTidalSurge']);      /* atlantean — the wall of water */
     SPELL_MAP['raceDragonBreath']     = Object.assign({}, SPELL_MAP['raceDragonfire']);        /* dragon — the short gout */
 
+    /* ── CHAMP_REWORK_PLAN Phase 6 (2026-09-08): the two new races. Family
+       aliases — the gangster borrows the gunslinger's bullet grammar, the
+       nun the clergy's light. ── */
+    SPELL_MAP['raceStompOut']         = Object.assign({}, SPELL_MAP['raceHydraulicPunch']);    /* gangster — the stomp */
+    SPELL_MAP['raceDriveBy']          = Object.assign({}, SPELL_MAP['raceHighNoon']);          /* gangster — the shot after the run */
+    SPELL_MAP['raceHitALick']         = Object.assign({}, SPELL_MAP['racePlunder']);           /* gangster — the grab */
+    SPELL_MAP['raceChoppa']           = Object.assign({}, SPELL_MAP['raceSuppressiveFire']);   /* gangster — the bullet line */
+    SPELL_MAP['raceExtendedClips']    = Object.assign({}, SPELL_MAP['raceSiegeMode']);         /* gangster — the reload aura */
+    SPELL_MAP['racePurify']           = Object.assign({}, SPELL_MAP['raceAbsolution']);        /* nun — the light pillar */
+    SPELL_MAP['raceBlessing']         = Object.assign({}, SPELL_MAP['protect1']);              /* nun — the blessing */
+    SPELL_MAP['racePrayer']           = Object.assign({}, SPELL_MAP['protect1']);              /* nun — the barrier */
+    SPELL_MAP['raceHallelujah']       = Object.assign({}, SPELL_MAP['raceYoHo']);              /* nun — the team heal */
+
     /* ═════════ END VFX PASS-3 COVERAGE SECTION ═════════ */
 
     return {

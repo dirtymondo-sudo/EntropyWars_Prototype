@@ -601,6 +601,35 @@ armored? }` + a `_buildSummon3D` look for a new key; `npm test`
 (champ-rework.test.js "Phase 5 wave C" ×3) guards the rows, the terrain
 plumbing and every engine site.
 
+## PHASE 6 — THE TWO NEW RACES (CHAMP_REWORK_PLAN §5.12) — added 2026-09-08
+The last phase of the champ rework: **gangster** (Gunslinger, `shank`;
+Stomp Out → Drive-By ⇄ Hit a Lick → Choppa → Extended Clips★) and **nun**
+(White Mage, `devout`; Purify ⇄ Smite → Blessing → Prayer → Hallelujah★)
+are real races — 98 in `AVAILABLE_RACES`, in every race table on BOTH
+sides (server.js `AVAILABLE_RACES` + `ACCT_STARTER_UNITS` literals; `npm
+run test:parity`). The nun is her OWN race: `RACE_PROFILES.priest
+.labelFemale` is 'Priestess' (same whitemage female model, shared by
+`RACE_MODELS_3D.priest.female` and `.nun.female`), the Nun's user-authored
+`DOOR_ROSTER_LINES` sit under `'nun'` (moved, never rewritten), she is a
+starter. The gangster has NO rigged model — `RACE_SPRITE_GENDERS` male,
+the 2D sheet borrows the Gunslinger folder — so `isRace3DReady` shelves
+him for players until the owner uploads one (then one `_mkUAL` line +
+the starter lists). New kinds (battle.js `SPELL_KIND_META` + `doSpell`):
+**`steal`** (the hit, then `_stealFromUnit` moves `stealKeys` Keys +
+`stealItems` items — Plunder keeps its utility id) and **`cleanseArea`**
+(3×3 tile cast: allies lose every `kind: 'debuff'` key via `clearStatus`,
+enemies lose every buff via `removeBuffs`; nothing applied). A `dash` may
+wear **`afterShot { dmg, range }`**: after the slide, `_afterShotTarget`
+(weakest visible enemy in LOS of the landing tile) takes the bullet; a
+`dmg: 0` dash only shoves. ai.js scores/targets all three; hud.js parts,
+ui.js `_SLB_KINDS` / AoE preview, data.js `SIM_DEFAULTS` know the kinds.
+check-grades.js `PLANNED_PASSIVE_ALLOWANCE` is EMPTY now — a future
+planned passive goes back in as `race: value`. Adding a race = the §5.12
+table list (data.js ×15, sprites.js ×5, server.js ×2, lore ×2) and the
+Heat Death ladder's top tier (`ACH_CATALOG` champsMastered = roster
+size; achievements.test.js pins it). `npm test` (champ-rework.test.js
+"Phase 6" ×3) guards every table and engine site.
+
 ## Most common request: "playtest <mode>"
 The user wants Claude to **actually play Player 1 against the CPU** (NOT auto-sim /
 dev-sim — they can do that themselves) and report pain points: unresponsive
