@@ -437,6 +437,22 @@ const EW = {
   good: '#3ddc84', bad: '#ff5c5c', warn: '#f2c468',
 };
 
+/* ── THE FORGE TERMINAL (PARTY_BUILDER_PLAN §5.1, Stage 1 — 2026-09-09) ──
+   The builder is ONE CRT monitor (the match-select `.ms-crt` chrome,
+   styles-base.css "THE FORGE TERMINAL" block) with four tabs on the glass
+   and the party as a row of circular portraits along the bottom. Q / E
+   and [ / ] cycle the tabs (the L1 / R1 caps), 1–4 jump, ← → walk the
+   party row, ESC closes a window else backs out. Picking a vessel on
+   ROSTER flips to TECHNIQUES (plan decision C-1). Every mechanic keeps
+   its function name — this is a re-skin, not a re-implementation. */
+const PB_TABS = [
+  { id: 'roster',  label: 'ROSTER',     hint: 'CHOOSE A VESSEL' },
+  { id: 'tech',    label: 'TECHNIQUES', hint: 'EQUIP ITS SPELLS' },
+  { id: 'gear',    label: 'GEAR',       hint: 'ARM IT · NAME IT' },
+  { id: 'dossier', label: 'DOSSIER',    hint: 'THE CUSTOMS FILE' },
+];
+if (typeof window !== 'undefined') window.PB_TABS = PB_TABS;
+
 const FACTION_C = { space: EW.space, time: EW.time, chaos: EW.chaos };
 const TYPE_C = { human:EW.human, alien:EW.alien, divine:EW.divine, unholy:EW.unholy, anomaly:EW.anomaly, tech:EW.tech };
 // Brightened text for the canonical type badge (legible over any background).
@@ -883,15 +899,6 @@ function VitalBar({ label, val, max, vital, zodiacMod, delta, tip, gradeKey }) {
     h('span', { style:{ width:32, textAlign:'right', color:valColor, fontWeight:600, fontSize:11 } }, val),
     deltaNum !== 0 ? h('span', { style:{ width:28, textAlign:'right', fontSize:9, fontWeight:700, color: deltaNum > 0 ? EW.good : EW.bad } }, deltaNum > 0 ? '+'+deltaNum : ''+deltaNum) : h('span', { style:{ width:28 } }));
 }
-function StarField() {
-  const stars = React.useMemo(() => {
-    const arr = []; let s = 9*9301+49297;
-    for (let i = 0; i < 120; i++) { s=(s*9301+49297)%233280; const x=(s/233280)*100; s=(s*9301+49297)%233280; const y=(s/233280)*100; s=(s*9301+49297)%233280; const sz=((s/233280)*1.4)+0.3; s=(s*9301+49297)%233280; const o=((s/233280)*0.6)+0.1; arr.push(h('div',{key:i,style:{position:'absolute',left:`${x}%`,top:`${y}%`,width:sz,height:sz,background:`rgba(220,230,255,${o})`,borderRadius:'50%',pointerEvents:'none'}})); }
-    return arr;
-  }, []);
-  return h('div',{style:{position:'absolute',inset:0,pointerEvents:'none',overflow:'hidden'}},
-    h('div',{style:{position:'absolute',inset:0,backgroundImage:`linear-gradient(${EW.grid} 1px, transparent 1px), linear-gradient(90deg, ${EW.grid} 1px, transparent 1px)`,backgroundSize:'56px 56px',maskImage:'radial-gradient(ellipse at center, rgba(0,0,0,0.5) 30%, rgba(0,0,0,0) 80%)',WebkitMaskImage:'radial-gradient(ellipse at center, rgba(0,0,0,0.5) 30%, rgba(0,0,0,0) 80%)'}}), stars);
-}
 /* ── D.O.O.R. layer (DOOR_DESIGN §3): the forge is a customs desk. The seal
    is the user-made PNG on R2 (data.js DOOR_TEXT.LOGO); SigilMark stays as
    the fallback when data.js predates the layer. Plain game words stay —
@@ -902,17 +909,15 @@ function DoorSeal({ size }) {
   if (!(DOOR && DOOR.LOGO && DOOR.LOGO.onDark)) return h(SigilMark);
   return h('img', { src: DOOR.LOGO.onDark, alt: '', draggable: false, style: { width: size, height: size, objectFit: 'contain', flexShrink: 0, filter: 'drop-shadow(0 0 8px rgba(0,0,0,0.7))', userSelect: 'none' } });
 }
-/* Officer chip: callsign + story clearance (NOT the ELO rank). */
-function OfficerChip() {
-  let o = null;
+/* Officer on desk: callsign + story clearance (NOT the ELO rank) — the
+   head line of the monitor, same words as the match-select terminal. */
+function pbOfficer() {
   try {
     const p = window.ProfileSystem?.getActiveProfile?.();
-    if (p) o = { name: p.username || 'OFFICER', cl: (typeof window.doorClearance === 'function') ? window.doorClearance(p) : { level: 1, title: 'PROBATIONARY' } };
-  } catch (_e) {}
-  if (!o) return null;
-  return h('div', { className: 'door-officer', title: 'Employee on desk · clearance is story progress, not rank' },
-    h('b', null, o.name),
-    h('span', null, 'CLEARANCE L' + o.cl.level + ' · ' + o.cl.title));
+    if (!p) return null;
+    const cl = (typeof window.doorClearance === 'function') ? window.doorClearance(p) : { level: 1, title: 'PROBATIONARY' };
+    return { name: p.username || 'OFFICER', cl };
+  } catch (_e) { return null; }
 }
 function SigilMark() {
   return h('svg',{width:22,height:22,viewBox:'0 0 28 28'},h('circle',{cx:14,cy:14,r:12,fill:'none',stroke:EW.time,strokeWidth:1}),h('circle',{cx:14,cy:14,r:6,fill:'none',stroke:EW.time,strokeWidth:0.5}),h('circle',{cx:14,cy:14,r:2,fill:EW.time}),h('line',{x1:14,y1:0,x2:14,y2:4,stroke:EW.time,strokeWidth:1}),h('line',{x1:14,y1:24,x2:14,y2:28,stroke:EW.time,strokeWidth:1}),h('line',{x1:0,y1:14,x2:4,y2:14,stroke:EW.time,strokeWidth:1}),h('line',{x1:24,y1:14,x2:28,y2:14,stroke:EW.time,strokeWidth:1}));
@@ -1585,6 +1590,22 @@ function EquipSlotBox({ size, accent, filled, icon, label, title, onClick, onCle
     filled && label ? h('span', { className:'pbx-eqslot-label' }, label) : null);
 }
 
+/* A window on the glass (PARTY_BUILDER_PLAN §5.1 item 9): the pickers and
+   the team modal are rounded phosphor panes drawn INSIDE the monitor, never
+   browser modals. `zone` = fills the column it is rendered in (the node
+   picker over the TECH column); otherwise centred over the whole glass. */
+function PbWindow({ title, sub, onClose, width, zone, children }) {
+  return h('div', {
+    className: 'pb-veil' + (zone ? ' zone' : ''),
+    onClick: (e) => { if (e.target === e.currentTarget) onClose(); } },
+    h('div', { className: 'pb-window', style: width ? { width } : undefined, onClick: e => e.stopPropagation() },
+      h('div', { className: 'pb-window-head' },
+        h('b', null, title),
+        sub ? h('span', null, sub) : null,
+        h('button', { className: 'pb-window-x', onClick: onClose, title: 'Close (ESC)' }, '\u2715 CLOSE')),
+      h('div', { className: 'pb-window-body' }, children)));
+}
+
 /* Standalone mode flag \u2014 set by _mountReactTeamBuilder (main-menu Party
    Builder page) and cleared by the pre-match mount. In standalone the
    component opens on the TEAM ARCHIVE locker (Pok\u00e9mon-Showdown-style:
@@ -1629,7 +1650,11 @@ function PartyBuilder() {
   const [spellTip, setSpellTip] = React.useState(null); // { sp, x, y }
   const showSpellTip = (sp, e) => { if (sp) setSpellTip({ sp, x: e.clientX, y: e.clientY }); };
   const hideSpellTip = () => setSpellTip(null);
-  const [heroTab, setHeroTab] = React.useState('stats');            // 'stats' | 'lore'
+  /* the four tabs on the glass (PB_TABS); ROSTER first, as the references open */
+  const [pbTab, setPbTab] = React.useState('roster');
+  const setTab = (id) => { if (!PB_TABS.some(t => t.id === id) || id === pbTab) return; setPbTab(id); sfx('uiCursorMove'); };
+  const cycleTab = (d) => { const i = Math.max(0, PB_TABS.findIndex(t => t.id === pbTab)); setTab(PB_TABS[(i + d + PB_TABS.length) % PB_TABS.length].id); };
+  React.useEffect(() => { window._pbSetTab = setTab; return () => { if (window._pbSetTab === setTab) delete window._pbSetTab; }; });
   const [equipPicker, setEquipPicker] = React.useState(null);        // 'item' | 'accessory1' | 'accessory2'
   React.useEffect(() => { st.builderSelectedSlot = slot; }, [slot]);
 
@@ -1934,7 +1959,9 @@ function PartyBuilder() {
     if (!st.partyMeta[player][slot].customSpells) {
       st.partyMeta[player][slot].customSpells = buildDefaultCustomSpells(raceKey, st.partyBuilds[player][slot], st.partyMeta[player][slot].secondaryJob || '');
     }
-    st.teamLockedIn = false; if (st.builderConfirmedSlots?.[player]) delete st.builderConfirmedSlots[player][slot]; sfx('uiCursorMove'); refresh();
+    st.teamLockedIn = false; if (st.builderConfirmedSlots?.[player]) delete st.builderConfirmedSlots[player][slot]; sfx('uiCursorMove');
+    setPbTab('tech');   // C-1: a picked vessel goes straight to its techniques
+    refresh();
   }
   function confirmSlot() { if (!st.builderConfirmedSlots) st.builderConfirmedSlots={}; if (!st.builderConfirmedSlots[player]) st.builderConfirmedSlots[player]={}; st.builderConfirmedSlots[player][slot]=true; let thunk=false; try{ thunk = typeof window.playDoorSfx==='function' && window.playDoorSfx('stamp',{volume:0.75})!==false; }catch(e){} if(!thunk) sfx('uiButtonConfirm'); for (let ni=0;ni<teamSize;ni++){const nx=(slot+1+ni)%teamSize;if(!st.builderConfirmedSlots[player][nx]){setSlot(nx);break;}} refresh(); }
   function selectSlot(i) { setSlot(i); st.builderSelectedSlot=i; st.builderSelectedPlayer=player; sfx('uiCursorMove'); refresh(); }
@@ -2176,615 +2203,640 @@ function PartyBuilder() {
   const slotCap = typeof window.SPELL_SLOT_MAX !== 'undefined' ? window.SPELL_SLOT_MAX : 6;
   const docNum = 'EW-' + (Math.abs((unitRace||'').split('').reduce((a,c)=>a+c.charCodeAt(0),0)*7)%9000+1000);
 
-  return h('div', { className: `pb-tarot pb-tarot-${unitFaction}`, style:{ width:'100%', height:'100%', position:'relative', overflow:'hidden', background: `radial-gradient(ellipse 900px 700px at 65% 35%, ${fc}12, transparent 60%), radial-gradient(ellipse 1200px 900px at 20% 50%, #0b0b0b 0%, ${EW.bg} 60%, #000 100%)`, color: EW.ink, fontFamily:'DotGothic16, monospace', display:'flex', flexDirection:'column', '--pb-fc': fc }},
-    h(StarField),
+  /* ══ THE FORGE TERMINAL — one CRT monitor, four tabs, the party as a row
+     (PARTY_BUILDER_PLAN §4 anatomy, §5.1 Stage 1). Chrome = the match-select
+     `.ms-crt` classes (styles-base.css "THE TERMINAL"), the forge's own
+     overrides live in "THE FORGE TERMINAL" (`.ms-crt-forge`, `.pb-*`).
+     The STAGE (the hero) is rendered ONCE with a stable key and placed by
+     grid-area — EWCharViewer is a singleton canvas and must never remount
+     when a tab changes. ══ */
+  const tabDef = PB_TABS.find(t => t.id === pbTab) || PB_TABS[0];
+  const raceLabelTxt = _grl(unitRace, identity.gender) || unitRace;
+  const officer = pbOfficer();
+  const filedCount = (() => { let n = 0; for (let i = 0; i < teamSize; i++) if (st.builderConfirmedSlots?.[player]?.[i]) n++; return n; })();
+  const anyWindow = !!(equipPicker || showTeamModal || (twinPick && unitTree && unitTree.alts && unitTree.alts[twinPick]) || (flSocketPick && unitTree && unitTree.isFreelancer));
+  const closeWindows = () => { setEquipPicker(null); setShowTeamModal(false); setTwinPick(null); setFlSocketPick(null); hideSpellTip(); };
+  const selectPlayer = (p) => { if (p === player) return; st.builderSelectedPlayer = p; st.builderSelectedSlot = 0; setSlot(0); sfx('uiCursorMove'); refresh(); };
+  const backOut = () => {
+    if (standalone) {
+      if (tbView === 'locker') { if (typeof window._teamBuilderBack === 'function') window._teamBuilderBack(); }
+      else { setTbView('locker'); sfx('uiCursorMove'); refresh(); }
+    } else doBack();
+  };
 
-    h('div', { style:{ display:'flex', alignItems:'center', height:46, padding:'0 14px 0 8px', gap:10, borderBottom:`1px solid ${EW.panelEdge}`, flexShrink:0, position:'relative', zIndex:2 }},
-      h(DoorSeal, { size:32 }),
-      h('div', { style:{ display:'flex', flexDirection:'column', lineHeight:1.15 } },
-        h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:15, letterSpacing:'0.14em', fontWeight:500 } }, 'ENTROPY WARS'),
-        DOOR && h('span', { className:'door-hdr-sub' }, 'D.O.O.R. · CUSTOMS & ADMISSIONS · VESSEL ASSIGNMENT')),
-      h('span', { style:{ width:1, height:16, background:EW.panelEdge } }),
-      h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.2em' } }, standalone ? 'THE PARTY FORGE' : 'CHOOSE YOUR VESSEL'),
+  /* keyboard (plan §7): tabs, the row, ESC. Never while typing in a field. */
+  React.useEffect(() => {
+    const onKey = (e) => {
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      const k = e.key;
+      if (k === 'Escape') {
+        e.preventDefault();
+        if (anyWindow) closeWindows(); else backOut();
+        return;
+      }
+      if (anyWindow || (standalone && tbView === 'locker')) return;
+      if (k === 'q' || k === 'Q' || k === '[') { e.preventDefault(); cycleTab(-1); }
+      else if (k === 'e' || k === 'E' || k === ']') { e.preventDefault(); cycleTab(1); }
+      else if (k >= '1' && k <= '4' && PB_TABS[+k - 1]) { e.preventDefault(); setTab(PB_TABS[+k - 1].id); }
+      else if (k === 'ArrowLeft') { e.preventDefault(); selectSlot((slot - 1 + teamSize) % teamSize); }
+      else if (k === 'ArrowRight') { e.preventDefault(); selectSlot((slot + 1) % teamSize); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  });
+
+  /* ── HEAD ── */
+  const head = h('div', { className: 'ms-tty-head pb-head' },
+    h(DoorSeal, { size: 20 }),
+    h('span', null, 'D.O.O.R.'), h('span', { className: 'ms-tty-sep' }, '▸'),
+    h('b', null, 'ENTROPY WARS'),
+    h('span', { className: 'ms-tty-sep' }, '·'), h('span', null, standalone ? 'RECORDS · SQUAD MANIFESTS' : 'CUSTOMS & ADMISSIONS · VESSEL ASSIGNMENT'),
+    h('span', { className: 'ms-tty-sep' }, '·'), h('span', null, 'FORGE-1'),
+    h('span', { className: 'ms-tty-officer' }, officer ? officer.name : 'UNFILED', officer && h('i', null, 'CLEARANCE L' + officer.cl.level + ' · ' + officer.cl.title)),
+    h('span', { className: 'ms-tty-sep' }, '·'),
+    h('span', null, teamSize + ' SLOTS · ' + (standalone ? 'TEAM ARCHIVE' : (mpMode?.label || 'BATTLE').toUpperCase())),
+    h('span', { className: 'ms-tty-sep' }, '·'), h('span', { className: 'ms-tty-esc' }, 'ESC · BACK'));
+
+  /* ── TABS ── */
+  const tabbar = h('div', { className: 'pb-tabbar' },
+    h('button', { className: 'pb-tabcap', onClick: () => cycleTab(-1), title: 'Previous tab · Q or [' }, '◂ L1'),
+    h('div', { className: 'pb-tabs', role: 'tablist' },
+      ...PB_TABS.map((t, i) => h('button', { key: t.id, role: 'tab', 'aria-selected': t.id === pbTab,
+        className: 'pb-tab' + (t.id === pbTab ? ' on' : ''), onClick: () => setTab(t.id), title: t.hint + ' · key ' + (i + 1) },
+        h('i', null, String(i + 1)), t.label))),
+    h('button', { className: 'pb-tabcap', onClick: () => cycleTab(1), title: 'Next tab · E or ]' }, 'R1 ▸'),
+    h('span', { className: 'pb-tabhint' }, tabDef.hint || ''));
+
+  /* ── the pieces, moved into their tabs unchanged inside ── */
+  // ROSTER: the Codex of Vessels — filter row + the wall
+  const rosterPanel = h(React.Fragment, null,
+    h('div', { className: 'pb-zone-head', style: { flexWrap: 'wrap', gap: 8 } },
+      h('b', null, 'Codex of Vessels'),
+      h('span', { style:{ fontSize:10, color:EW.inkDim, letterSpacing:'0.1em', marginRight:6 } }, filteredRoster.length,'/',rosterEntries.length),
+      DOOR && h('span', { className:'door-hdr-sub', style:{ marginRight:6 } }, 'D.O.O.R. RECORDS · ENTITY REGISTRY'),
+      h('input', { placeholder:'Search...', value:rosterSearch, onChange:e=>setRosterSearch(e.target.value), style:{ background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, borderRadius:999, color:EW.ink, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 10px', width:130 }}),
+      h('select', { value:`${sortKey}-${sortDir}`, onChange:e=>{const[k,d]=e.target.value.split('-');setSortKey(k);setSortDir(d);}, style:{ background:'rgba(0,0,0,0.4)', border:`1px solid ${EW.panelEdge}`, borderRadius:999, color:EW.time, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 9px', appearance:'none', WebkitAppearance:'none' }},
+        ...STAT_KEYS.map(k=>[h('option',{key:`${k}-desc`,value:`${k}-desc`,style:{background:'#000000'}},`${statLabel(k)} ↓`),h('option',{key:`${k}-asc`,value:`${k}-asc`,style:{background:'#000000'}},`${statLabel(k)} ↑`)]).flat(),
+        h('option',{value:'label-asc',style:{background:'#000000'}},'Name A-Z'), h('option',{value:'label-desc',style:{background:'#000000'}},'Name Z-A')),
+      h('select', { value:typeFilter||'', onChange:e=>setTypeFilter(e.target.value||null), title:'Filter by Type', style:{ background:'rgba(0,0,0,0.4)', border:`1px solid ${typeFilter?getTypeColor(typeFilter):EW.panelEdge}`, borderRadius:999, color:typeFilter?getTypeColor(typeFilter):EW.inkMute, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 9px', appearance:'none', WebkitAppearance:'none', cursor:'pointer' }},
+        h('option',{value:'',style:{background:'#000000',color:'#ccc'}},'All Types'),
+        ...availableTypes.map(t=>h('option',{key:t,value:t,style:{background:'#000000',color:'#ccc'}}, t.toUpperCase()))),
+      h('select', { value:jobFilter||'', onChange:e=>setJobFilter(e.target.value||null), title:'Filter by Job', style:{ background:'rgba(0,0,0,0.4)', border:`1px solid ${jobFilter?EW.time:EW.panelEdge}`, borderRadius:999, color:jobFilter?EW.time:EW.inkMute, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 9px', appearance:'none', WebkitAppearance:'none', cursor:'pointer' }},
+        h('option',{value:'',style:{background:'#000000',color:'#ccc'}},'All Jobs'),
+        ...availableJobs.map(j=>h('option',{key:j,value:j,style:{background:'#000000',color:'#ccc'}}, getJobDisplay(j)))),
+      h('span', { style:{ width:1, height:14, background:EW.panelEdge }}),
+      ...['space','time','chaos'].map(fk=>h('button',{key:fk,onClick:()=>setFactionFilter(factionFilter===fk?null:fk),className:'pb-faction-chip',style:{ background:factionFilter===fk?`${FACTION_C[fk]}18`:'rgba(0,0,0,0.3)', border:`1px solid ${factionFilter===fk?FACTION_C[fk]:EW.panelEdge}`, borderRadius:999, color:factionFilter===fk?FACTION_C[fk]:EW.inkDim, padding:'2px 10px', fontFamily:'DotGothic16, monospace', fontSize:10, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'pointer' }}, fk))),
+    h('div', { className: 'pb-roster' },
+      filteredRoster.map((entry, ei) => {
+        const isActive = entry.race===unitRace && entry.gender===(identity.gender||'male') && (entry.race!=='homosapien'||entry.cls===clsName);
+        const entryFc = getFactionColor(entry.faction);
+        const starred = isFav(entry.race, entry.gender);
+        // Account-unlock gate: only the local human's roster (player 1) is restricted.
+        const locked = isLockedEntry(entry.race);
+        const onCardClick = locked
+          ? ()=>{ try{ sfx('uiError'); }catch(e){} if (typeof window._goToShop==='function') window._goToShop(entry.race); }
+          : ()=>pickRace(entry.race,entry.gender,entry.job);
+        return h('div', { key:ei, onClick:onCardClick, title: locked?'NOT DECLASSIFIED — unlock this vessel in the Shop':`${entry.label} · ${getJobDisplay(entry.cls)}`, className:'pb-vessel-card'+(locked?' pb-vessel-locked':''), style:{ cursor:'pointer', position:'relative', background:isActive?`${entryFc}18`:'rgba(0,0,0,0.3)', border:`1px solid ${isActive?entryFc:EW.panelEdge}`, display:'flex', flexDirection:'column', alignItems:'center', padding:'3px 2px 2px', gap:1, opacity: locked?0.55:1 }},
+          h('div', { style:{ width:'100%', aspectRatio:'1', display:'flex', alignItems:'flex-end', justifyContent:'center', position:'relative', overflow:'hidden', background:`linear-gradient(180deg, transparent 40%, ${entryFc}10 100%)` }},
+            h(Sprite, { race:entry.race, gender:entry.gender, cls:entry.cls, size:'85%', style:{width:'85%',height:'85%', filter: locked?'brightness(0.18) grayscale(1)':'none'} }),
+            locked && h('div', { style:{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, color:'rgba(255,216,106,0.9)', textShadow:'0 1px 4px #000' } }, '🔒'),
+            !locked && h('div', { onClick:e=>{e.stopPropagation();toggleFav(entry.race,entry.gender);}, style:{ position:'absolute', top:0, left:0, width:15, height:15, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:11, color:starred?'#dcaa1e':'rgba(255,255,255,0.15)', textShadow:starred?'0 0 6px rgba(220,170,30,0.6)':'none', transition:'color 0.15s, text-shadow 0.15s', zIndex:1 } }, starred?'★':'☆')),
+          h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:9, fontWeight:500, textAlign:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', width:'100%', color:isActive?EW.ink:EW.inkMute, lineHeight:1.2 }}, entry.label),
+          h('div', { style:{ fontSize:7, color:EW.inkDim, letterSpacing:'0.04em', textAlign:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', width:'100%' } }, getJobDisplay(entry.cls)),
+          isActive && h('div', { style:{ position:'absolute', inset:-1, border:`1px solid ${entryFc}`, borderRadius:'inherit', boxShadow:`0 0 8px ${entryFc}44`, pointerEvents:'none' } }));
+      })));
+
+  // TECHNIQUES: the abilities head, the tree (or the rack + flat pool fallback), the node picker
+  const techPanel = h(React.Fragment, null,
+    h('div', { className: 'pb-zone-head' },
+      h('b', null, 'Abilities'),
+      h('span', { style:{ fontSize:10, color: spellSlotsUsed>slotCap ? EW.bad : EW.time, letterSpacing:'0.12em', border:`1px solid ${spellSlotsUsed>slotCap?'rgba(255,122,138,0.45)':'rgba(242,196,104,0.35)'}`, borderRadius:999, background:'rgba(0,0,0,0.35)', padding:'2px 9px', whiteSpace:'nowrap' } }, spellSlotsUsed, '/', slotCap, ' SLOTS'),
       h('div', { style:{flex:1} }),
-      h(OfficerChip),
-      h('span', { style:{ width:1, height:16, background:EW.panelEdge } }),
-      h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.14em' } }, teamSize, ' SLOTS \u00B7 ',
-        h('span', { style:{color:EW.ink} }, standalone ? 'TEAM ARCHIVE' : (mpMode?.label || 'BATTLE').toUpperCase())),
-    ),
+      !isArena&&h('button',{onClick:randomizeSpells,className:'pb-btn-ghost',title:'Random legal loadout',style:{background:'transparent',border:`1px solid ${EW.panelEdge}`,borderRadius:999,color:EW.inkMute,fontSize:9,padding:'3px 9px',fontFamily:'DotGothic16, monospace',cursor:'pointer',letterSpacing:'0.1em'}},'RND'),
+      !isArena&&h('button',{onClick:resetCustomSpells,className:'pb-btn-ghost',title:'Default loadout',style:{background:'transparent',border:`1px solid ${EW.panelEdge}`,borderRadius:999,color:EW.inkMute,fontSize:9,padding:'3px 9px',fontFamily:'DotGothic16, monospace',cursor:'pointer',letterSpacing:'0.1em'}},'RST'),
+      !isArena&&h('button',{onClick:clearAllSpells,className:'pb-btn-danger',title:'Unequip everything',style:{background:'transparent',border:`1px solid rgba(255,120,120,0.25)`,borderRadius:999,color:'rgba(255,120,120,0.7)',fontSize:9,padding:'3px 9px',fontFamily:'DotGothic16, monospace',cursor:'pointer',letterSpacing:'0.1em'}},'CLR')),
+    h('div', { className: 'pb-zone-body', style: { padding: '6px 4px 6px 2px' } },
 
-    // abilities/spell-tree column WIDENED (was clamp(340px,28vw,470px)) —
-    // the assessment sheet is width-capped now, so the tree gets the space.
-    h('div', { style:{ display:'grid', gridTemplateColumns:'112px minmax(0,1fr) clamp(380px,36vw,640px)', flex:1, minHeight:0, position:'relative', zIndex:1 } },
+      // ── equipped loadout: fixed 6-slot rack. Tree classes DON'T get
+      //    this — the tree (lit nodes + pips) IS the loadout display;
+      //    the rack only remains for the flat-pool fallback (Freelancer,
+      //    or a race/class the tree fns can't build). ──
+      !(useTree&&unitTree)&&h('div', { className:'pbx-slotrack', style:{ maxHeight:'48%', overflow:'hidden' } },
+        h('div', { className:'pbx-slotrack-head' },
+          h('span', { style:{ fontSize:10, color:'#79d99a', letterSpacing:'0.16em', fontWeight:700 } }, '🔒 EQUIPPED — SPELL SLOTS'),
+          h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em', marginLeft:'auto' } }, spellSlotsUsed, ' / ', slotCap, ' SLOTS FILLED')),
+        h('div', { className:'pbx-slotrack-body' },
+        (()=>{
+          const SLOT_H = 44, GAP = 3;   // battle-parity row height (.pbx-blade)
+          let slotNo = 1;
+          const rows = learnedSpells.map((sp, si) => {
+            const sc = spellSlotCost(sp);
+            const slotNums = [];
+            for (let k = 0; k < sc; k++) slotNums.push(String(slotNo + k));
+            slotNo += sc;
+            const isRA = !!(raceAbilities.find(a => a.id && a.id === sp.id));
+            const heightPx = sc * SLOT_H + (sc - 1) * GAP;
+            return h(SpellBlade, { key: sp.id || si, sp, slotNums, heightPx, equippedSlot:true, raceAbility: isRA,
+              onClick: !isArena ? ()=>toggleSpell(sp.id) : undefined,
+              onHoverIn: e=>showSpellTip(sp, e), onHoverOut: hideSpellTip });
+          });
+          for (let si = spellSlotsUsed; si < slotCap; si++) rows.push(h(SpellBlade, { key:'empty-'+si, empty:true, slotNums:[String(si+1)], heightPx:SLOT_H }));
+          if (spellSlotsUsed > slotCap) rows.push(h('div', { key:'overbudget', style:{ display:'flex', alignItems:'center', gap:4, padding:'3px 8px', margin:'0 6px 0 4px', background:'rgba(255,120,120,0.08)', borderLeft:'3px solid rgba(255,120,120,0.6)', fontSize:10, color:EW.bad } },
+            h('span', { style:{flex:1} }, 'OVER BUDGET — remove spells (extras are dropped in battle)')));
+          return rows;
+        })())),
 
-      h('div', { style:{ display:'flex', flexDirection:'column', gap:6, padding:'10px 6px 10px 8px', borderRight:`1px solid ${EW.panelEdge}`, background:'linear-gradient(90deg, rgba(0,0,0,0.35), transparent)', overflowY:'auto' }},
-        h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:11, letterSpacing:'0.16em', color:EW.inkMute, marginBottom:2, flexShrink:0 } }, 'THE PARTY',
-          DOOR && h('span', { style:{ display:'block', fontFamily:'DotGothic16, monospace', fontSize:7, letterSpacing:'0.22em', color:EW.inkDim, marginTop:1 } }, 'MANIFEST')),
-        Array.from({length: teamSize}).map((_, i) => {
-          const cn = typeof window.normalizeClassName==='function' ? window.normalizeClassName(st.partyBuilds?.[player]?.[i], window.DEFAULT_BUILDS?.[player]?.[i]) : (st.partyBuilds?.[player]?.[i]||'Warrior');
-          const mt = st.partyMeta?.[player]?.[i] || (typeof window.getArchetypeForJob==='function' ? window.getArchetypeForJob(cn) : {});
-          const id = typeof window.resolveIdentityForBuild==='function' ? window.resolveIdentityForBuild(cn,mt) : {race:'homosapien',faction:'time',types:['human'],gender:'male'};
-          const pf = window.RACE_PROFILES?.[id.race], isActive = i===slot, fCol = getFactionColor(id.faction);
-          const confirmed = !!(st.builderConfirmedSlots?.[player]?.[i]);
-          const nm = resolveUnitName(player, i, cn);
-          return h('div', { key:i, onClick:()=>selectSlot(i), className:'pb-slot-card', style:{ position:'relative', cursor:'pointer', flex:1, minHeight:0, background:isActive?`linear-gradient(180deg,${fCol}18,rgba(0,0,0,0.3))`:'rgba(0,0,0,0.3)', border:`1px solid ${isActive?fCol+'99':EW.panelEdge}`, padding:'4px', display:'flex', flexDirection:'column', alignItems:'center', gap:2, clipPath:'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)' }},
-            isActive && h('div', { style:{ position:'absolute', top:0, bottom:0, left:0, width:3, background:fCol, boxShadow:`0 0 10px ${fCol}` } }),
-            confirmed && (DOOR
-              ? h('div', { className:'door-stamp door-stamp-sm admit', title:'Locked in', style:{ position:'absolute', top:4, right:5, fontSize:6.5, letterSpacing:'0.12em', padding:'1px 3px 0', outline:'none', borderWidth:1.5, zIndex:1 } }, 'FILED')
-              : h('div', { style:{ position:'absolute', top:3, right:4, fontSize:10, color:'rgba(100,200,120,0.7)', fontWeight:700 } }, '✓')),
-            h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:10, fontStyle:'italic', color:isActive?fCol:EW.inkDim, opacity:isActive?0.85:0.45, alignSelf:'flex-end', marginRight:4 } }, numerals[i]),
-            /* Portraits are 128×128 art — the box stays a SQUARE no matter the
-               party size (the outer flex row absorbs the leftover space). */
-            h('div', { style:{ width:'100%', flex:1, minHeight:0, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }},
-              h('div', { style:{ height:'100%', maxWidth:'100%', aspectRatio:'1 / 1', display:'flex', alignItems:'flex-end', justifyContent:'center', background:`linear-gradient(180deg,${fCol}08,rgba(0,0,0,0.4))`, position:'relative', overflow:'hidden' }},
-                h('div', { style:{ position:'absolute', bottom:0, left:'50%', transform:'translateX(-50%)', width:'120%', height:'30%', background:`radial-gradient(ellipse,${fCol}40,transparent 70%)`, filter:'blur(4px)', pointerEvents:'none' } }),
-                h(PortraitSprite, { race:id.race, gender:id.gender||'male', cls:cn, glow:isActive?id.faction:null }),
-              ),
-            ),
-            h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:10, fontWeight:500, lineHeight:1.1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textAlign:'center', width:'100%', padding:'0 2px' } }, nm),
-            h('div', { style:{ fontSize:7, color:EW.inkMute, letterSpacing:'0.06em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textAlign:'center', paddingBottom:1 } }, (_grl(id.race,id.gender)||id.race||'?').toUpperCase(),' · ',getJobDisplay(cn).toUpperCase()),
-          );
-        }),
-      ),
+      // ── SUBCLASS — flat-pool classes pick it here (it feeds the pool);
+      //    tree classes pick via the tree's right pillar head, and every
+      //    class also has it on the GEAR tab. ──
+      !isArena && !(useTree&&unitTree) && clsName!=='Freelancer' && h('div', { className:'pbx-subbar', style:{ '--cat': fc, flexShrink:0 }, onClick:()=>{ setEquipPicker('subjob'); sfx('uiCursorMove'); }, title:'A second job: its spells join this spell pool and its training shifts your stats.' },
+        h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.16em', flexShrink:0 } }, 'SUBCLASS'),
+        h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:14, fontWeight:700, color:EW.ink, letterSpacing:'0.04em', whiteSpace:'nowrap' } }, secJob ? getJobDisplay(secJob) : '— None —'),
+        h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.04em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flex:1 } }, 'adds its spells to the pool below · shifts stats'),
+        h('span', { style:{ fontSize:10, color:fc, letterSpacing:'0.1em', flexShrink:0 } }, '▾ CHANGE')),
 
-      h('div', { style:{ display:'flex', flexDirection:'column', minHeight:0, overflow:'hidden' } },
+      // ── the spell tree (every job — Freelancer gets wildcard sockets) ──
+      useTree&&unitTree&&h(React.Fragment, null,
+        h('div', { style:{ display:'flex', alignItems:'center', gap:6, flexShrink:0, margin:'4px 6px 3px 10px' } },
+          h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.16em' } }, 'SPELL TREE'),
+          h('span', { style:{ fontSize:9, color:`${fc}bb`, letterSpacing:'0.08em', textTransform:'uppercase' } }, getJobDisplay(clsName), unitTree.isFreelancer ? ' + WILDCARDS' : (secJob ? ' + ' + getJobDisplay(secJob) : '')),
+          h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em', marginLeft:'auto', textAlign:'right' } },
+            unitTree.isFreelancer ? 'CLICK A ＋ SOCKET · BORROW ANY JOB\'S SPELL'
+              : (unitTree.alts && Object.keys(unitTree.alts).length) ? 'CLICK A NODE · ⇄ NODES HOLD TWO SPELLS — PICK ONE'
+              : 'CLICK A NODE · DISTANT NODES AUTO-EQUIP THE PATH')),
+        h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', paddingTop:6, paddingBottom:4, position:'relative' } },
+          h(SpellTreePanel, { tree: unitTree, sealed: treeSealed, equipped: customSpells || [],
+            slotCap, fc, clsName, secJob,
+            raceLabel: (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace),
+            onNodeClick: treeNodeClick, onNodeHoverIn: treeNodeHoverIn, onNodeHoverOut: treeNodeHoverOut,
+            hoverPath: treeHoverPath, shakeKey: treeShake,
+            onOpenSubjob: (!isArena && !unitTree.isFreelancer) ? () => { setEquipPicker('subjob'); sfx('uiCursorMove'); } : undefined,
+            onSocketClick: unitTree.isFreelancer ? (key) => { setFlSocketPick(key); sfx('uiCursorMove'); } : undefined,
+            onTwinPick: (unitTree.alts && Object.keys(unitTree.alts).length) ? (key) => { setTwinPick(key); sfx('uiCursorMove'); } : undefined }))),
 
-        // ══ HERO SHOWCASE — the selected vessel, staged like it matters ══
-        h('div', { style:{ display:'flex', height:'54%', minHeight:0, flexShrink:0, borderBottom:`1px solid ${EW.panelEdge}` } },
-
-          // ── the stage: gear rail · big sprite · item rail ──
-          // grows to absorb whatever the width-capped sheet doesn't take
-          h('div', { style:{ flex:'1 1 46%', minWidth:0, display:'flex', flexDirection:'column', padding:'8px 4px 8px 10px', position:'relative' } },
-            // the vessel's RACE crowns the stage; the job title lives on the
-            // assessment sheet. Slot numeral stays as a small marker.
-            h('div', { style:{ display:'flex', alignItems:'baseline', justifyContent:'center', gap:8, flexShrink:0, minWidth:0 } },
-              h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:'clamp(16px,1.7vw,26px)', fontWeight:600, lineHeight:1.1, textShadow:`0 0 24px ${fc}44`, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' } }, _grl(unitRace, identity.gender) || unitRace),
-              h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.18em', flexShrink:0 } }, '· SLOT ', numerals[slot], ' ·')),
-            h('div', { style:{ flex:1, minHeight:0, display:'flex', gap:8, alignItems:'stretch' } },
-              h('div', { style:{ display:'flex', flexDirection:'column', justifyContent:'flex-end', gap:7, paddingBottom:12, flexShrink:0 } },
-                h('div', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.16em', textAlign:'center' } }, 'GEAR'),
-                ['accessory1','accessory2'].map(sk => {
-                  const accId = unitEquipment[sk];
-                  const def = accId ? window.EQUIP_DEFS?.[accId] : null;
-                  return h(EquipSlotBox, { key:sk, size:52, accent:fc,
-                    filled:!!def, icon:def ? (ACC_ICONS[accId]||'\u{1F392}') : null,
-                    label:def ? def.label : '', title:def ? `${def.label} — ${def.desc}` : 'Equip gear',
-                    onClick:()=>{ setEquipPicker(sk); sfx('uiCursorMove'); },
-                    onClear:def ? ()=>handleAccChange(sk, null) : null });
-                })),
-              h('div', { style:{ flex:1, minWidth:0, position:'relative', display:'flex', alignItems:'flex-end', justifyContent:'center' } },
-                h('div', { style:{ position:'absolute', left:'50%', top:'52%', transform:'translate(-50%,-50%)', width:'88%', aspectRatio:'1', background:`radial-gradient(circle, ${fc}26, transparent 62%)`, filter:'blur(18px)', pointerEvents:'none' } }),
-                h('div', { style:{ position:'absolute', bottom:8, left:'50%', transform:'translateX(-50%)', width:'70%', height:12, background:`radial-gradient(ellipse, ${fc}66, transparent 70%)`, filter:'blur(3px)', pointerEvents:'none' } }),
-                h(HeroViewer3D, { race:unitRace, gender:identity.gender||'male', cls:clsName, faction:unitFaction }),
-              ),
-              h('div', { style:{ display:'flex', flexDirection:'column', justifyContent:'flex-end', gap:7, paddingBottom:12, flexShrink:0, paddingRight:4 } },
-                h('div', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.16em', textAlign:'center' } }, 'ITEMS'),
-                Array.from({length:itemSlotMax}).map((_, ii) => {
-                  const ik = itemUnits[ii];
-                  const rule = ik ? window.ITEM_RULES?.[ik] : null;
-                  return h(EquipSlotBox, { key:ii, size:52, accent:fc,
-                    filled:!!rule, icon:rule ? (rule.icon||'\u{1F4E6}') : null,
-                    label:rule ? rule.name : '', title:rule ? `${rule.name} — ${rule.desc}` : 'Add an item',
-                    onClick:()=>{ setEquipPicker('item'); sfx('uiCursorMove'); },
-                    onClear:rule ? ()=>setItemCount(ik, -1) : null });
-                })),
-            ),
-          ),
-
-          // ── identity + assessment sheet ──
-          // WIDTH-CAPPED (flex-basis 450px, shrinkable, never grows): the
-          // sheet stays a tight column instead of sprawling — leftover width
-          // goes to the 3D stage, and the whole center column slimmed down
-          // so the spell tree got wider.
-          h('div', { style:{ flex:'0 1 450px', minWidth:0, display:'flex', flexDirection:'column', gap:5, padding:'10px 12px 8px 10px', borderLeft:`1px solid ${EW.panelEdge}` } },
-            // the JOB heads the sheet (the race name crowns the 3D stage).
-            h('div', { style:{ display:'flex', alignItems:'baseline', gap:10, flexWrap:'wrap', flexShrink:0 } },
-              h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:'clamp(20px,2.2vw,32px)', fontWeight:600, lineHeight:1, textShadow:`0 0 30px ${fc}44` } }, getJobDisplay(clsName))),
-            h('div', { style:{ display:'flex', alignItems:'center', gap:5, flexWrap:'wrap', flexShrink:0 } },
-              ...unitTypes.map((t,i)=>h(TypeChip,{key:i,type:t,size:11})),
-              h('span', { style:{ fontSize:9, color:`${fc}99`, letterSpacing:'0.14em', marginLeft:4, textTransform:'uppercase' } }, unitFaction, ' alignment', factionBonusTxt ? ' · ' + factionBonusTxt : '')),
-            h('div', { style:{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap', flexShrink:0, fontSize:10 } },
-              h('span', { style:{ color:EW.inkDim, letterSpacing:'0.08em' } }, 'NAME'),
-              h('input', { key:player+'-'+slot, defaultValue:unitName, style:{ background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, color:EW.ink, fontFamily:'DotGothic16, monospace', fontSize:10, padding:'3px 6px', width:110, minWidth:0 }, onBlur:e=>handleNameChange(e.target.value), onKeyDown:e=>{ if(e.key==='Enter') e.target.blur(); } }),
-              h('span', { style:{ color:EW.inkDim, letterSpacing:'0.08em' } }, 'ZODIAC'),
-              h('select', { value:identity.zodiac||'aries', onChange:e=>handleZodiacChange(e.target.value), style:{ background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, color:EW.ink, fontFamily:'DotGothic16, monospace', fontSize:10, padding:'3px 4px', maxWidth:96 } },
-                zodiacs.map(z=>h('option',{key:z,value:z,style:{background:'#000000',color:'#ccc'}}, (window.ZODIAC_ICONS?.[z]||'')+' '+z.charAt(0).toUpperCase()+z.slice(1)))),
-              // Subclass selection lives on the ABILITIES panel (it drives the
-              // spell pool); this echo just keeps it visible on the sheet.
-              !isArena && clsName!=='Freelancer' && secJob && h('span', { style:{ fontSize:9, color:`${fc}bb`, letterSpacing:'0.1em', textTransform:'uppercase' } }, '◈ SUB: ', getJobDisplay(secJob))),
-            h('div', { style:{ display:'flex', gap:2, borderBottom:`1px solid ${EW.panelEdge}`, flexShrink:0, marginTop:2 } },
-              h('button', { className:'pbx-tab'+(heroTab==='stats'?' on':''), onClick:()=>setHeroTab('stats') }, 'ASSESSMENT'),
-              h('button', { className:'pbx-tab'+(heroTab==='lore'?' on':''), onClick:()=>setHeroTab('lore') }, 'DOSSIER')),
-            heroTab === 'stats'
-              ? h('div', { style:{ flex:1, minHeight:0, display:'flex', flexDirection:'column', gap:6, overflowY:'auto', overflowX:'hidden', paddingTop:2 } },
-                  // stacked & narrow (the sheet itself is width-capped now):
-                  // the HP/MP VITALS block (battle-style bars) sits apart on
-                  // top, the full stat-bar sheet under it, MOVE / RANGE
-                  // footprints below that.
-                  h('div', { style:{ display:'flex', flexDirection:'column', gap:3, flexShrink:0, paddingBottom:6, marginBottom:2, borderBottom:`1px solid ${EW.panelEdge}` } },
-                    VITAL_KEYS.map(k => {
-                      const mapped = STAT_MAP[k], val = fullStats[mapped]??0;
-                      const d = statDeltas[mapped]??0;
-                      let zMod = null;
-                      if (zodiacNature) { if (zodiacNature.buff===mapped) zMod='up'; else if (zodiacNature.debuff===mapped) zMod='dn'; }
-                      return h(VitalBar, { key:k, label:k, val, max:STAT_MAX_PB[k]||100, vital:k.toLowerCase(), zodiacMod:zMod, delta:d,
-                        tip: window.STAT_HELP?.[mapped] || null, gradeKey: mapped });
-                    })),
-                  h('div', { style:{ display:'flex', flexDirection:'column', gap:2, flexShrink:0 } },
-                    BAR_KEYS.map(k => {
-                      const mapped = STAT_MAP[k], val = fullStats[mapped]??fullStats[k]??fullStats[k.toLowerCase()]??0;
-                      const d = statDeltas[mapped]??statDeltas[k]??statDeltas[k.toLowerCase()]??0;
-                      let zMod = null;
-                      if (zodiacNature) { if (zodiacNature.buff===mapped) zMod='up'; else if (zodiacNature.debuff===mapped) zMod='dn'; }
-                      return h(StatBar, { key:k, label:statLabel(k), val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:zMod, delta:d,
-                        suffix: STAT_PCT[k] ? '%' : '', tip: window.STAT_HELP?.[mapped] || null, gradeKey: mapped });
-                    })),
-                  // MOVE / RANGE footprints — under the numbers, side by side
-                  h('div', { style:{ display:'flex', gap:26, justifyContent:'center', alignItems:'flex-start', flexShrink:0, paddingTop:2 } },
-                    h(RangeDiamond, { radius: fullStats.move ?? 3, fill:'rgba(80,160,255,0.45)', edge:'rgba(80,160,255,0.7)', label:'MOVE (SPD)', value: fullStats.move ?? 3, color:'rgba(120,180,255,0.9)', tip: window.STAT_HELP?.move }),
-                    h(RangeDiamond, { radius: fullStats.range ?? 1, fill:'rgba(255,70,70,0.35)', edge:'rgba(255,70,70,0.6)', label:'RANGE', value: fullStats.range ?? 1, color:'rgba(255,120,120,0.9)', tip: window.STAT_HELP?.range })),
-                  // race traits: passives & terrain rules unique to this vessel
-                  h('div', { style:{ flex:1, minHeight:0, display:'flex', flexDirection:'column', gap:3, overflow:'hidden' } },
-                    h('div', { style:{ fontSize:9, color:fc, letterSpacing:'0.14em', fontWeight:600, flexShrink:0, borderTop:`1px solid ${EW.panelEdge}`, paddingTop:5 } }, 'RACE TRAITS ', h('span', { style:{ color:EW.inkDim, fontWeight:400 } }, '· PASSIVES & TERRAIN')),
-                    h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', display:'flex', flexDirection:'column', gap:3, paddingRight:2 } },
-                      (RACE_TRAITS[unitRace] && RACE_TRAITS[unitRace].length)
-                        ? RACE_TRAITS[unitRace].map((t, ti) => h('div', { key:ti, className:'pbx-trait' },
-                            h('span', { style:{ fontSize:13, lineHeight:1.2, flexShrink:0, width:18, textAlign:'center' } }, t.icon),
-                            h('div', { style:{ minWidth:0, fontSize:10, lineHeight:1.4 } },
-                              h('span', { style:{ color:EW.ink, fontWeight:700, letterSpacing:'0.04em' } }, t.name),
-                              h('span', { style:{ color:EW.inkMute } }, ' — ', t.desc))))
-                        : h('div', { style:{ fontSize:10, color:EW.inkDim, fontStyle:'italic', padding:'4px 6px' } }, 'No documented traits — field research pending.'))))
-              : (() => {
-                  /* D.O.O.R. customs file — same source as the codex (data.js
-                     DOOR_TEXT: disposition, point of entry, annotation). */
-                  const cs = typeof window.doorCustomsStatus === 'function' ? window.doorCustomsStatus(unitRace) : null;
-                  const poe = typeof window.doorPointOfEntry === 'function' ? window.doorPointOfEntry(unitRace) : null;
-                  const note = DOOR?.DOSSIER_NOTES?.[unitRace] || null;
-                  const tone = !cs ? null : cs.status === 'NON-CANON' ? 'void' : /^(UNDOCUMENTED|DISPUTED)$/.test(cs.status) ? 'deny' : 'admit';
-                  return h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', overflowX:'hidden', display:'flex', flexDirection:'column', gap:5, paddingTop:4, position:'relative' } },
-                    DOOR && h('div', { className:'door-wm', style:{ right:'2%', top:'6%', width:'44%', aspectRatio:'1' } }),
-                    h('div', { style:{ display:'flex', alignItems:'center', gap:6, position:'relative', zIndex:1 } },
-                      h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.04em', padding:'2px 6px', border:`1px solid ${EW.panelEdge}`, background:'rgba(0,0,0,0.3)' } }, classLabel),
-                      h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.04em' } }, docNum),
-                      cs && h('span', { className:'door-stamp door-stamp-sm' + (tone === 'admit' ? ' admit' : tone === 'void' ? ' void' : ''), style:{ fontSize:7, padding:'2px 5px 1px', marginLeft:2 }, title:'Customs disposition · point of entry: ' + (poe || '?') }, cs.status)),
-                    DOOR && h('div', { className:'door-file-h', style:{ position:'relative', zIndex:1 } }, '1.  EXECUTIVE SUMMARY'),
-                    h('div', { style:{ fontSize:11, lineHeight:1.55, color:EW.inkMute, fontFamily:'Cormorant SC, serif', fontStyle:'italic', borderLeft:`2px solid ${fc}55`, paddingLeft:8, position:'relative', zIndex:1 } }, codexLore),
-                    cs && h('div', { className:'door-file-h', style:{ position:'relative', zIndex:1, marginTop:2 } }, '2.  CUSTOMS DISPOSITION'),
-                    cs && h('div', { className:'door-file-p', style:{ fontSize:10.5, position:'relative', zIndex:1 } },
-                      h('b', { style:{ color:'#c9b98a', letterSpacing:'0.08em' } }, cs.status), cs.note ? ' — ' + cs.note : '',
-                      poe ? h('span', { style:{ display:'block', color:'#b6ad98', marginTop:2, letterSpacing:'0.06em' } }, 'POINT OF ENTRY · ' + poe) : null),
-                    note && h('div', { className:'door-file-h', style:{ position:'relative', zIndex:1, marginTop:2 } }, '3.  D.O.O.R. ANNOTATION'),
-                    note && h('div', { className:'door-file-p', style:{ fontSize:10.5, position:'relative', zIndex:1 } }, note),
-                    h('div', { style:{ fontSize:7, color:EW.inkDim, letterSpacing:'0.08em', paddingTop:2, position:'relative', zIndex:1 } }, 'TOP SECRET // ████████ // NOFORN'));
-                })(),
-          ),
-        ),
-
-        // ══ ROSTER — compact codex grid; the hero + abilities lead ══
-        h('div', { style:{ display:'flex', flexDirection:'column', gap:4, padding:'6px 10px', flex:1, minHeight:0, background:'linear-gradient(180deg, rgba(0,0,0,0.2), rgba(0,0,0,0.45))', overflow:'hidden' }},
-          h('div', { style:{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', flexShrink:0 } },
-            h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:'clamp(13px,1.1vw,17px)', letterSpacing:'0.14em', textTransform:'uppercase', color:EW.ink } }, 'Codex of Vessels'),
-            h('span', { style:{ fontSize:10, color:EW.inkDim, letterSpacing:'0.1em', marginRight:6 } }, filteredRoster.length,'/',rosterEntries.length),
-            DOOR && h('span', { className:'door-hdr-sub', style:{ marginRight:6 } }, 'D.O.O.R. RECORDS · ENTITY REGISTRY'),
-            h('input', { placeholder:'Search...', value:rosterSearch, onChange:e=>setRosterSearch(e.target.value), style:{ background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, color:EW.ink, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 10px', width:130 }}),
-            h('select', { value:`${sortKey}-${sortDir}`, onChange:e=>{const[k,d]=e.target.value.split('-');setSortKey(k);setSortDir(d);}, style:{ background:'rgba(0,0,0,0.4)', border:`1px solid ${EW.panelEdge}`, color:EW.time, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 7px', appearance:'none', WebkitAppearance:'none' }},
-              ...STAT_KEYS.map(k=>[h('option',{key:`${k}-desc`,value:`${k}-desc`,style:{background:'#000000'}},`${statLabel(k)} ↓`),h('option',{key:`${k}-asc`,value:`${k}-asc`,style:{background:'#000000'}},`${statLabel(k)} ↑`)]).flat(),
-              h('option',{value:'label-asc',style:{background:'#000000'}},'Name A-Z'), h('option',{value:'label-desc',style:{background:'#000000'}},'Name Z-A')),
-            h('select', { value:typeFilter||'', onChange:e=>setTypeFilter(e.target.value||null), title:'Filter by Type', style:{ background:'rgba(0,0,0,0.4)', border:`1px solid ${typeFilter?getTypeColor(typeFilter):EW.panelEdge}`, color:typeFilter?getTypeColor(typeFilter):EW.inkMute, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 7px', appearance:'none', WebkitAppearance:'none', cursor:'pointer' }},
-              h('option',{value:'',style:{background:'#000000',color:'#ccc'}},'All Types'),
-              ...availableTypes.map(t=>h('option',{key:t,value:t,style:{background:'#000000',color:'#ccc'}}, t.toUpperCase()))),
-            h('select', { value:jobFilter||'', onChange:e=>setJobFilter(e.target.value||null), title:'Filter by Job', style:{ background:'rgba(0,0,0,0.4)', border:`1px solid ${jobFilter?EW.time:EW.panelEdge}`, color:jobFilter?EW.time:EW.inkMute, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 7px', appearance:'none', WebkitAppearance:'none', cursor:'pointer' }},
-              h('option',{value:'',style:{background:'#000000',color:'#ccc'}},'All Jobs'),
-              ...availableJobs.map(j=>h('option',{key:j,value:j,style:{background:'#000000',color:'#ccc'}}, getJobDisplay(j)))),
-            h('span', { style:{ width:1, height:14, background:EW.panelEdge } }),
-            ...['space','time','chaos'].map(fk=>h('button',{key:fk,onClick:()=>setFactionFilter(factionFilter===fk?null:fk),className:'pb-faction-chip',style:{ background:factionFilter===fk?`${FACTION_C[fk]}18`:'rgba(0,0,0,0.3)', border:`1px solid ${factionFilter===fk?FACTION_C[fk]:EW.panelEdge}`, color:factionFilter===fk?FACTION_C[fk]:EW.inkDim, padding:'2px 8px', fontFamily:'DotGothic16, monospace', fontSize:10, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'pointer' }}, fk)),
-          ),
-          h('div', { style:{ flex:1, minHeight:0, overflow:'auto', display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(72px, 1fr))', gap:4, padding:'4px 0', alignContent:'start' }},
-            filteredRoster.map((entry, ei) => {
-              const isActive = entry.race===unitRace && entry.gender===(identity.gender||'male') && (entry.race!=='homosapien'||entry.cls===clsName);
-              const entryFc = getFactionColor(entry.faction);
-              const starred = isFav(entry.race, entry.gender);
-              // Account-unlock gate: only the local human's roster (player 1) is restricted.
-              const locked = isLockedEntry(entry.race);
-              const onCardClick = locked
-                ? ()=>{ try{ sfx('uiError'); }catch(e){} if (typeof window._goToShop==='function') window._goToShop(entry.race); }
-                : ()=>pickRace(entry.race,entry.gender,entry.job);
-              return h('div', { key:ei, onClick:onCardClick, title: locked?'NOT DECLASSIFIED — unlock this vessel in the Shop':`${entry.label} · ${getJobDisplay(entry.cls)}`, className:'pb-vessel-card'+(locked?' pb-vessel-locked':''), style:{ cursor:'pointer', position:'relative', background:isActive?`${entryFc}18`:'rgba(0,0,0,0.3)', border:`1px solid ${isActive?entryFc:EW.panelEdge}`, display:'flex', flexDirection:'column', alignItems:'center', padding:'3px 2px 2px', gap:1, opacity: locked?0.55:1 }},
-                h('div', { style:{ width:'100%', aspectRatio:'1', display:'flex', alignItems:'flex-end', justifyContent:'center', position:'relative', overflow:'hidden', background:`linear-gradient(180deg, transparent 40%, ${entryFc}10 100%)` }},
-                  h(Sprite, { race:entry.race, gender:entry.gender, cls:entry.cls, size:'85%', style:{width:'85%',height:'85%', filter: locked?'brightness(0.18) grayscale(1)':'none'} }),
-                  locked && h('div', { style:{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, color:'rgba(255,216,106,0.9)', textShadow:'0 1px 4px #000' } }, '🔒'),
-                  !locked && h('div', { onClick:e=>{e.stopPropagation();toggleFav(entry.race,entry.gender);}, style:{ position:'absolute', top:0, left:0, width:15, height:15, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:11, color:starred?'#dcaa1e':'rgba(255,255,255,0.15)', textShadow:starred?'0 0 6px rgba(220,170,30,0.6)':'none', transition:'color 0.15s, text-shadow 0.15s', zIndex:1 } }, starred?'★':'☆')),
-                h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:9, fontWeight:500, textAlign:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', width:'100%', color:isActive?EW.ink:EW.inkMute, lineHeight:1.2 }}, entry.label),
-                h('div', { style:{ fontSize:7, color:EW.inkDim, letterSpacing:'0.04em', textAlign:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', width:'100%' } }, getJobDisplay(entry.cls)),
-                isActive && h('div', { style:{ position:'absolute', inset:-1, border:`1px solid ${entryFc}`, boxShadow:`0 0 8px ${entryFc}44`, pointerEvents:'none' } }),
-              );
-            }),
-          ),
-        ),
-      ),
-
-      h('div', { style:{ display:'flex', flexDirection:'column', minHeight:0, overflow:'hidden', padding:'8px 6px 8px 4px', borderLeft:`1px solid ${EW.panelEdge}`, background:'linear-gradient(270deg, rgba(0,0,0,0.3), transparent)' }},
-        h('div', { style:{ display:'flex', alignItems:'center', gap:8, flexShrink:0, padding:'0 6px 6px 10px', borderBottom:`1px solid ${fc}33` } },
-          h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:17, letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:600 } }, 'Abilities'),
-          h('span', { style:{ fontSize:10, color: spellSlotsUsed>slotCap ? EW.bad : EW.time, letterSpacing:'0.12em', border:`1px solid ${spellSlotsUsed>slotCap?'rgba(255,122,138,0.45)':'rgba(242,196,104,0.35)'}`, background:'rgba(0,0,0,0.35)', padding:'2px 8px', whiteSpace:'nowrap' } }, spellSlotsUsed, '/', slotCap, ' SLOTS'),
-          h('div', { style:{flex:1} }),
-          !isArena&&h('button',{onClick:randomizeSpells,className:'pb-btn-ghost',style:{background:'transparent',border:`1px solid ${EW.panelEdge}`,color:EW.inkMute,fontSize:9,padding:'3px 8px',fontFamily:'DotGothic16, monospace',cursor:'pointer',letterSpacing:'0.1em'}},'RND'),
-          !isArena&&h('button',{onClick:resetCustomSpells,className:'pb-btn-ghost',style:{background:'transparent',border:`1px solid ${EW.panelEdge}`,color:EW.inkMute,fontSize:9,padding:'3px 8px',fontFamily:'DotGothic16, monospace',cursor:'pointer',letterSpacing:'0.1em'}},'RST'),
-          !isArena&&h('button',{onClick:clearAllSpells,className:'pb-btn-danger',style:{background:'transparent',border:`1px solid rgba(255,120,120,0.25)`,color:'rgba(255,120,120,0.7)',fontSize:9,padding:'3px 8px',fontFamily:'DotGothic16, monospace',cursor:'pointer',letterSpacing:'0.1em'}},'CLR')),
-
-        // ── equipped loadout: fixed 6-slot rack. Tree classes DON'T get
-        //    this — the tree (lit nodes + pips) IS the loadout display;
-        //    the rack only remains for the flat-pool fallback (Freelancer,
-        //    or a race/class the tree fns can't build). ──
-        !(useTree&&unitTree)&&h('div', { className:'pbx-slotrack', style:{ maxHeight:'48%', overflow:'hidden' } },
-          h('div', { className:'pbx-slotrack-head' },
-            h('span', { style:{ fontSize:10, color:'#79d99a', letterSpacing:'0.16em', fontWeight:700 } }, '🔒 EQUIPPED — SPELL SLOTS'),
-            h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em', marginLeft:'auto' } }, spellSlotsUsed, ' / ', slotCap, ' SLOTS FILLED')),
-          h('div', { className:'pbx-slotrack-body' },
+      // ── flat pool — FALLBACK only (tree fns unavailable) ──
+      (!useTree&&!isArena&&(spellPool.length>0||raceAbilities.length>0))&&h(React.Fragment, null,
+        h('div', { style:{ display:'flex', alignItems:'center', gap:6, flexShrink:0, margin:'6px 6px 3px 10px', paddingTop:6, borderTop:`1px solid ${EW.panelEdge}` } },
+          h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.16em' } }, 'SPELL POOL'),
+          h('span', { style:{ fontSize:9, color:`${fc}bb`, letterSpacing:'0.08em', textTransform:'uppercase' } }, getJobDisplay(clsName), secJob ? ' + ' + getJobDisplay(secJob) : ''),
+          h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em', marginLeft:'auto' } }, spellPool.length + raceAbilities.length, ' AVAILABLE · CLICK TO EQUIP')),
+        h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', display:'flex', flexDirection:'column', gap:3, paddingTop:2, paddingBottom:2 } },
           (()=>{
-            const SLOT_H = 44, GAP = 3;   // battle-parity row height (.pbx-blade)
-            let slotNo = 1;
-            const rows = learnedSpells.map((sp, si) => {
-              const sc = spellSlotCost(sp);
-              const slotNums = [];
-              for (let k = 0; k < sc; k++) slotNums.push(String(slotNo + k));
-              slotNo += sc;
-              const isRA = !!(raceAbilities.find(a => a.id && a.id === sp.id));
-              const heightPx = sc * SLOT_H + (sc - 1) * GAP;
-              return h(SpellBlade, { key: sp.id || si, sp, slotNums, heightPx, equippedSlot:true, raceAbility: isRA,
-                onClick: !isArena ? ()=>toggleSpell(sp.id) : undefined,
-                onHoverIn: e=>showSpellTip(sp, e), onHoverOut: hideSpellTip });
+            // Build one sortable pool (race abilities + class spells), then
+            // order by: fits-first → race abilities → category (damage first)
+            // → power desc → name. Won't-fit spells sink to the bottom.
+            const entries = [];
+            raceAbilities.forEach((a, ai) => {
+              const raId = a.id || `ra_${unitRace}_${ai}`;
+              const selected = customSpells ? customSpells.includes(raId) : false;
+              const cantFit = !selected && a.id && (spellSlotsUsed + spellIdSlotCost(a.id)) > slotCap;
+              entries.push({ key:'ra-'+ai, sp:a, isRA:true, hasId:!!a.id, id:raId, selected, cantFit:!!cantFit });
             });
-            for (let si = spellSlotsUsed; si < slotCap; si++) rows.push(h(SpellBlade, { key:'empty-'+si, empty:true, slotNums:[String(si+1)], heightPx:SLOT_H }));
-            if (spellSlotsUsed > slotCap) rows.push(h('div', { key:'overbudget', style:{ display:'flex', alignItems:'center', gap:4, padding:'3px 8px', margin:'0 6px 0 4px', background:'rgba(255,120,120,0.08)', borderLeft:'3px solid rgba(255,120,120,0.6)', fontSize:10, color:EW.bad } },
-              h('span', { style:{flex:1} }, 'OVER BUDGET — remove spells (extras are dropped in battle)')));
-            return rows;
+            spellPool.forEach(sp => {
+              const selected = customSpells ? customSpells.includes(sp.id) : false;
+              const cantFit = !selected && (spellSlotsUsed + spellSlotCost(sp)) > slotCap;
+              entries.push({ key:sp.id, sp, isRA:false, hasId:true, id:sp.id, selected, cantFit:!!cantFit });
+            });
+            entries.sort((a, b) => {
+              if (a.cantFit !== b.cantFit) return a.cantFit ? 1 : -1;   // dim → bottom
+              if (a.isRA !== b.isRA) return a.isRA ? -1 : 1;            // race abilities lead
+              const cr = pbCatRank(a.sp) - pbCatRank(b.sp);            // category buckets
+              if (cr) return cr;
+              const pw = pbPowerVal(b.sp) - pbPowerVal(a.sp);         // power desc
+              if (pw) return pw;
+              return (a.sp.name || '').localeCompare(b.sp.name || '');
+            });
+            const nodes = [];
+            let dimHeaderShown = false;
+            entries.forEach(en => {
+              if (en.cantFit && !dimHeaderShown) {
+                dimHeaderShown = true;
+                nodes.push(h('div', { key:'dimhdr', style:{ display:'flex', alignItems:'center', gap:6, margin:'8px 9px 1px 10px', flexShrink:0, fontSize:8, letterSpacing:'0.12em', color:EW.inkDim, textTransform:'uppercase', whiteSpace:'nowrap' } },
+                  h('span', null, "Won't fit remaining slots"),
+                  h('span', { style:{ flex:1, height:1, background:EW.panelEdge } })));
+              }
+              nodes.push(h(SpellBlade, { key:en.key, sp:en.sp, pool: en.isRA ? !!en.hasId : true, raceAbility: en.isRA || undefined, equipped:en.selected, dim:en.cantFit,
+                onClick: en.isRA ? (en.hasId && !isArena ? ()=>toggleSpell(en.id) : undefined) : ()=>toggleSpell(en.id),
+                onHoverIn: e=>showSpellTip(en.sp, e), onHoverOut: hideSpellTip }));
+            });
+            return nodes;
           })())),
 
-        // ── SUBCLASS — a second job that feeds the pool below and shifts
-        //    stats. Tree classes pick their subclass via the tree's left
-        //    pillar header instead — no separate bar. ──
-        !isArena && !(useTree&&unitTree) && clsName!=='Freelancer' && h('div', { className:'pbx-subbar', style:{ '--cat': fc, flexShrink:0 }, onClick:()=>{ setEquipPicker('subjob'); sfx('uiCursorMove'); }, title:'A second job: its spells join this spell pool and its training shifts your stats.' },
-          h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.16em', flexShrink:0 } }, 'SUBCLASS'),
-          h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:14, fontWeight:700, color:EW.ink, letterSpacing:'0.04em', whiteSpace:'nowrap' } }, secJob ? getJobDisplay(secJob) : '— None —'),
-          h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.04em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flex:1 } }, 'adds its spells to the pool below · shifts stats'),
-          h('span', { style:{ fontSize:10, color:fc, letterSpacing:'0.1em', flexShrink:0 } }, '▾ CHANGE')),
+      isArena&&raceAbilities.length>0&&h('div',{style:{marginTop:3,borderTop:`1px solid ${EW.panelEdge}`,paddingTop:5,display:'flex',flexDirection:'column',gap:3}},
+        h('span',{style:{fontSize:10,color:'rgba(200,180,150,0.6)',letterSpacing:'0.1em',marginBottom:1,paddingLeft:10}},'RACE ABILITIES'),
+        raceAbilities.map((a,ai)=>h(SpellBlade,{key:ai,sp:a,raceAbility:true,onHoverIn:e=>showSpellTip(a,e),onHoverOut:hideSpellTip})))),
 
-        // ── the spell tree (every job — Freelancer gets wildcard sockets) ──
-        useTree&&unitTree&&h(React.Fragment, null,
-          h('div', { style:{ display:'flex', alignItems:'center', gap:6, flexShrink:0, margin:'6px 6px 3px 10px', paddingTop:6, borderTop:`1px solid ${EW.panelEdge}` } },
-            h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.16em' } }, 'SPELL TREE'),
-            h('span', { style:{ fontSize:9, color:`${fc}bb`, letterSpacing:'0.08em', textTransform:'uppercase' } }, getJobDisplay(clsName), unitTree.isFreelancer ? ' + WILDCARDS' : (secJob ? ' + ' + getJobDisplay(secJob) : '')),
-            h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em', marginLeft:'auto' } },
-              unitTree.isFreelancer ? 'CLICK A ＋ SOCKET · BORROW ANY JOB\'S SPELL'
-                : (unitTree.alts && Object.keys(unitTree.alts).length) ? 'CLICK A NODE · ⇄ NODES HOLD TWO SPELLS — PICK ONE'
-                : 'CLICK A NODE · DISTANT NODES AUTO-EQUIP THE PATH')),
-          h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', paddingTop:6, paddingBottom:4, position:'relative' } },
-            h(SpellTreePanel, { tree: unitTree, sealed: treeSealed, equipped: customSpells || [],
-              slotCap, fc, clsName, secJob,
-              raceLabel: (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace),
-              onNodeClick: treeNodeClick, onNodeHoverIn: treeNodeHoverIn, onNodeHoverOut: treeNodeHoverOut,
-              hoverPath: treeHoverPath, shakeKey: treeShake,
-              onOpenSubjob: (!isArena && !unitTree.isFreelancer) ? () => { setEquipPicker('subjob'); sfx('uiCursorMove'); } : undefined,
-              onSocketClick: unitTree.isFreelancer ? (key) => { setFlSocketPick(key); sfx('uiCursorMove'); } : undefined,
-              onTwinPick: (unitTree.alts && Object.keys(unitTree.alts).length) ? (key) => { setTwinPick(key); sfx('uiCursorMove'); } : undefined }),
-            // ── node picker: ONE overlay for Freelancer wildcard sockets AND twin
-            //    nodes (CHAMP_REWORK_PLAN §10 decision 10 — one UI, not two) ──
-            (() => {
-              const twinOpen = twinPick && unitTree.alts && unitTree.alts[twinPick];
-              const socketOpen = !twinOpen && flSocketPick && unitTree.isFreelancer;
-              if (!twinOpen && !socketOpen) return null;
-              const close = () => { setTwinPick(null); setFlSocketPick(null); hideSpellTip(); };
-              let title, sub, rows;
-              if (twinOpen) {
-                const pair = unitTree.alts[twinPick];
-                const curAlt = pair.find(id => (customSpells || []).includes(id)) || null;
-                title = '⇄ TWIN NODE';
-                sub = 'RING ' + twinPick.slice(1) + ' · TWO SPELLS, ONE SLOT' + (curAlt ? ' · SWAPS IN PLACE' : ' · PICK ONE');
-                rows = pair.map(id => typeof window.getSpellById === 'function' ? window.getSpellById(id) : null).filter(Boolean).map(sp => {
-                  const already = sp.id === curAlt;
-                  const cand = already ? null : twinCandidate(twinPick, sp.id);
-                  const cantEquip = !already && (!cand || (typeof window.isTreeLoadoutLegal === 'function'
-                        && !window.isTreeLoadoutLegal(unitRace, clsName, secJob, cand)));
-                  return h(SpellBlade, { key: sp.id, sp, pool:true, raceAbility:true, equipped: already, dim: cantEquip,
-                    onClick: () => (already ? close() : twinPickSpell(sp.id)),
-                    onHoverIn: e=>showSpellTip(sp, e), onHoverOut: hideSpellTip });
-                });
-              } else {
-                title = '＋ WILDCARD SOCKET';
-                sub = 'TIER ' + (((unitTree.sockets||{})[flSocketPick]||[]).join(' / ')) + ' · ANY JOB';
-                rows = flSocketPool.map(sp => {
-                  const already = (customSpells || []).includes(sp.id);
-                  const cantEquip = already || (customSpells || []).length >= slotCap
-                    || (typeof window.isTreeLoadoutLegal === 'function'
-                        && !window.isTreeLoadoutLegal(unitRace, clsName, secJob, [...(customSpells || []), sp.id]));
-                  return h(SpellBlade, { key: sp.id, sp, pool:true, equipped: already, dim: cantEquip && !already,
-                    onClick: () => flEquipWildcard(sp.id),
-                    onHoverIn: e=>showSpellTip(sp, e), onHoverOut: hideSpellTip });
-                });
-              }
-              return h('div', {
-                style:{ position:'absolute', inset:0, zIndex:5, background:'rgba(5,5,9,0.88)',
-                  display:'flex', flexDirection:'column' },
-                onClick:(e)=>{ if (e.target === e.currentTarget) close(); } },
-                h('div', { style:{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderBottom:`1px solid ${EW.panelEdge}`, flexShrink:0 } },
-                  h('span', { style:{ fontSize:10, color:EW.time, letterSpacing:'0.16em' } }, title),
-                  h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.1em' } }, sub),
-                  h('span', { style:{ flex:1 } }),
-                  h('span', { style:{ fontSize:10, color:EW.inkDim, cursor:'pointer', padding:'2px 6px', border:`1px solid ${EW.panelEdge}` },
-                    onClick: close }, '✕ CLOSE')),
-                h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', display:'flex', flexDirection:'column', gap:3, padding:'4px 2px' } }, rows));
-            })()
-          )),
+    // ── node picker: ONE window for Freelancer wildcard sockets AND twin
+    //    nodes (CHAMP_REWORK_PLAN §10 decision 10 — one UI, not two) ──
+    (() => {
+      if (!unitTree) return null;
+      const twinOpen = twinPick && unitTree.alts && unitTree.alts[twinPick];
+      const socketOpen = !twinOpen && flSocketPick && unitTree.isFreelancer;
+      if (!twinOpen && !socketOpen) return null;
+      const close = () => { setTwinPick(null); setFlSocketPick(null); hideSpellTip(); };
+      let title, sub, rows;
+      if (twinOpen) {
+        const pair = unitTree.alts[twinPick];
+        const curAlt = pair.find(id => (customSpells || []).includes(id)) || null;
+        title = '⇄ TWIN NODE';
+        sub = 'RING ' + twinPick.slice(1) + ' · TWO SPELLS, ONE SLOT' + (curAlt ? ' · SWAPS IN PLACE' : ' · PICK ONE');
+        rows = pair.map(id => typeof window.getSpellById === 'function' ? window.getSpellById(id) : null).filter(Boolean).map(sp => {
+          const already = sp.id === curAlt;
+          const cand = already ? null : twinCandidate(twinPick, sp.id);
+          const cantEquip = !already && (!cand || (typeof window.isTreeLoadoutLegal === 'function'
+                && !window.isTreeLoadoutLegal(unitRace, clsName, secJob, cand)));
+          return h(SpellBlade, { key: sp.id, sp, pool:true, raceAbility:true, equipped: already, dim: cantEquip,
+            onClick: () => (already ? close() : twinPickSpell(sp.id)),
+            onHoverIn: e=>showSpellTip(sp, e), onHoverOut: hideSpellTip });
+        });
+      } else {
+        title = '＋ WILDCARD SOCKET';
+        sub = 'TIER ' + (((unitTree.sockets||{})[flSocketPick]||[]).join(' / ')) + ' · ANY JOB';
+        rows = flSocketPool.map(sp => {
+          const already = (customSpells || []).includes(sp.id);
+          const cantEquip = already || (customSpells || []).length >= slotCap
+            || (typeof window.isTreeLoadoutLegal === 'function'
+                && !window.isTreeLoadoutLegal(unitRace, clsName, secJob, [...(customSpells || []), sp.id]));
+          return h(SpellBlade, { key: sp.id, sp, pool:true, equipped: already, dim: cantEquip && !already,
+            onClick: () => flEquipWildcard(sp.id),
+            onHoverIn: e=>showSpellTip(sp, e), onHoverOut: hideSpellTip });
+        });
+      }
+      return h(PbWindow, { title, sub, onClose: close, zone: true }, rows);
+    })());
 
-        // ── flat pool — FALLBACK only (tree fns unavailable) ──
-        (!useTree&&!isArena&&(spellPool.length>0||raceAbilities.length>0))&&h(React.Fragment, null,
-          h('div', { style:{ display:'flex', alignItems:'center', gap:6, flexShrink:0, margin:'6px 6px 3px 10px', paddingTop:6, borderTop:`1px solid ${EW.panelEdge}` } },
-            h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.16em' } }, 'SPELL POOL'),
-            h('span', { style:{ fontSize:9, color:`${fc}bb`, letterSpacing:'0.08em', textTransform:'uppercase' } }, getJobDisplay(clsName), secJob ? ' + ' + getJobDisplay(secJob) : ''),
-            h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em', marginLeft:'auto' } }, spellPool.length + raceAbilities.length, ' AVAILABLE · CLICK TO EQUIP')),
-          h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', display:'flex', flexDirection:'column', gap:3, paddingTop:2, paddingBottom:2 } },
-            (()=>{
-              // Build one sortable pool (race abilities + class spells), then
-              // order by: fits-first → race abilities → category (damage first)
-              // → power desc → name. Won't-fit spells sink to the bottom.
-              const entries = [];
-              raceAbilities.forEach((a, ai) => {
-                const raId = a.id || `ra_${unitRace}_${ai}`;
-                const selected = customSpells ? customSpells.includes(raId) : false;
-                const cantFit = !selected && a.id && (spellSlotsUsed + spellIdSlotCost(a.id)) > slotCap;
-                entries.push({ key:'ra-'+ai, sp:a, isRA:true, hasId:!!a.id, id:raId, selected, cantFit:!!cantFit });
-              });
-              spellPool.forEach(sp => {
-                const selected = customSpells ? customSpells.includes(sp.id) : false;
-                const cantFit = !selected && (spellSlotsUsed + spellSlotCost(sp)) > slotCap;
-                entries.push({ key:sp.id, sp, isRA:false, hasId:true, id:sp.id, selected, cantFit:!!cantFit });
-              });
-              entries.sort((a, b) => {
-                if (a.cantFit !== b.cantFit) return a.cantFit ? 1 : -1;   // dim → bottom
-                if (a.isRA !== b.isRA) return a.isRA ? -1 : 1;            // race abilities lead
-                const cr = pbCatRank(a.sp) - pbCatRank(b.sp);            // category buckets
-                if (cr) return cr;
-                const pw = pbPowerVal(b.sp) - pbPowerVal(a.sp);         // power desc
-                if (pw) return pw;
-                return (a.sp.name || '').localeCompare(b.sp.name || '');
-              });
-              const nodes = [];
-              let dimHeaderShown = false;
-              entries.forEach(en => {
-                if (en.cantFit && !dimHeaderShown) {
-                  dimHeaderShown = true;
-                  nodes.push(h('div', { key:'dimhdr', style:{ display:'flex', alignItems:'center', gap:6, margin:'8px 9px 1px 10px', flexShrink:0, fontSize:8, letterSpacing:'0.12em', color:EW.inkDim, textTransform:'uppercase', whiteSpace:'nowrap' } },
-                    h('span', null, "Won't fit remaining slots"),
-                    h('span', { style:{ flex:1, height:1, background:EW.panelEdge } })));
-                }
-                nodes.push(h(SpellBlade, { key:en.key, sp:en.sp, pool: en.isRA ? !!en.hasId : true, raceAbility: en.isRA || undefined, equipped:en.selected, dim:en.cantFit,
-                  onClick: en.isRA ? (en.hasId && !isArena ? ()=>toggleSpell(en.id) : undefined) : ()=>toggleSpell(en.id),
-                  onHoverIn: e=>showSpellTip(en.sp, e), onHoverOut: hideSpellTip }));
-              });
-              return nodes;
-            })()),
-        ),
+  // GEAR: gear circles · item circles · subclass · name · zodiac
+  const gearPanel = h(React.Fragment, null,
+    h('div', { className: 'pb-zone-head' },
+      h('b', null, 'Gear'),
+      h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.14em', marginLeft:'auto' } }, totalItemsUsed, '/', itemSlotMax, ' ITEMS CARRIED')),
+    h('div', { className: 'pb-zone-body pb-gear' },
+      h('div', { className: 'pb-gear-row' },
+        h('div', { className: 'pb-gear-label' }, 'GEAR', h('small', null, 'TWO SLOTS')),
+        h('div', { className: 'pb-gear-slots' },
+          ['accessory1','accessory2'].map(sk => {
+            const accId = unitEquipment[sk];
+            const def = accId ? window.EQUIP_DEFS?.[accId] : null;
+            return h(EquipSlotBox, { key:sk, size:58, accent:fc,
+              filled:!!def, icon:def ? (ACC_ICONS[accId]||'\u{1F392}') : null,
+              label:def ? def.label : '', title:def ? `${def.label} — ${def.desc}` : 'Equip gear',
+              onClick:()=>{ setEquipPicker(sk); sfx('uiCursorMove'); },
+              onClear:def ? ()=>handleAccChange(sk, null) : null });
+          }))),
+      h('div', { className: 'pb-gear-row' },
+        h('div', { className: 'pb-gear-label' }, 'ITEMS', h('small', null, itemSlotMax + ' SLOTS')),
+        h('div', { className: 'pb-gear-slots' },
+          Array.from({length:itemSlotMax}).map((_, ii) => {
+            const ik = itemUnits[ii];
+            const rule = ik ? window.ITEM_RULES?.[ik] : null;
+            return h(EquipSlotBox, { key:ii, size:58, accent:fc,
+              filled:!!rule, icon:rule ? (rule.icon||'\u{1F4E6}') : null,
+              label:rule ? rule.name : '', title:rule ? `${rule.name} — ${rule.desc}` : 'Add an item',
+              onClick:()=>{ setEquipPicker('item'); sfx('uiCursorMove'); },
+              onClear:rule ? ()=>setItemCount(ik, -1) : null });
+          }))),
+      // SUBCLASS — the same picker the tree's right pillar opens
+      !isArena && clsName!=='Freelancer' && h('div', { className:'pbx-subbar', style:{ '--cat': fc, flexShrink:0, margin:'4px 0 0' }, onClick:()=>{ setEquipPicker('subjob'); sfx('uiCursorMove'); }, title:'A second job: its spells join this spell pool and its training shifts your stats.' },
+        h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.16em', flexShrink:0 } }, 'SUBCLASS'),
+        h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:14, fontWeight:700, color:EW.ink, letterSpacing:'0.04em', whiteSpace:'nowrap' } }, secJob ? getJobDisplay(secJob) : '— None —'),
+        h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.04em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flex:1 } }, 'its spells join the tree · its training shifts stats'),
+        h('span', { style:{ fontSize:10, color:fc, letterSpacing:'0.1em', flexShrink:0 } }, '▾ CHANGE')),
+      clsName==='Freelancer' && h('div', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.08em', fontStyle:'italic', padding:'4px 2px' } }, 'A Freelancer has no subclass — its wildcard sockets borrow any job\'s spell.'),
+      h('div', { className: 'pb-gear-row', style:{ marginTop: 6 } },
+        h('div', { className: 'pb-gear-label' }, 'NAME', h('small', null, 'THE MANIFEST')),
+        h('input', { key:player+'-'+slot, className:'pb-gear-input', defaultValue:unitName, maxLength:24, onBlur:e=>{ handleNameChange(e.target.value); refresh(); }, onKeyDown:e=>{ if(e.key==='Enter') e.target.blur(); } })),
+      h('div', { className: 'pb-gear-row' },
+        h('div', { className: 'pb-gear-label' }, 'ZODIAC', h('small', null, zodiacNature ? ((zodiacNature.buff||'').toUpperCase() + ' ▲ · ' + (zodiacNature.debuff||'').toUpperCase() + ' ▼') : 'NATURE')),
+        h('select', { className:'pb-gear-select', value:identity.zodiac||'aries', onChange:e=>handleZodiacChange(e.target.value) },
+          zodiacs.map(z=>h('option',{key:z,value:z,style:{background:'#000000',color:'#ccc'}}, (window.ZODIAC_ICONS?.[z]||'')+' '+z.charAt(0).toUpperCase()+z.slice(1))))),
+      h('div', { style:{ marginTop:'auto', fontSize:8, color:EW.inkDim, letterSpacing:'0.1em', lineHeight:1.5, padding:'6px 2px 0' } },
+        'GEAR AND ITEMS RIDE INTO THE CROSSING WITH THE VESSEL · A NATURE SHIFTS ONE STAT UP AND ONE DOWN')));
 
-        isArena&&raceAbilities.length>0&&h('div',{style:{marginTop:3,borderTop:`1px solid ${EW.panelEdge}`,paddingTop:5,display:'flex',flexDirection:'column',gap:3}},
-          h('span',{style:{fontSize:10,color:'rgba(200,180,150,0.6)',letterSpacing:'0.1em',marginBottom:1,paddingLeft:10}},'RACE ABILITIES'),
-          raceAbilities.map((a,ai)=>h(SpellBlade,{key:ai,sp:a,raceAbility:true,onHoverIn:e=>showSpellTip(a,e),onHoverOut:hideSpellTip}))),
-      ),
-    ),
+  // DOSSIER: the D.O.O.R. customs file — same source as the codex (data.js
+  // DOOR_TEXT: disposition, point of entry, annotation).
+  const dossierPanel = (() => {
+    const cs = typeof window.doorCustomsStatus === 'function' ? window.doorCustomsStatus(unitRace) : null;
+    const poe = typeof window.doorPointOfEntry === 'function' ? window.doorPointOfEntry(unitRace) : null;
+    const note = DOOR?.DOSSIER_NOTES?.[unitRace] || null;
+    const tone = !cs ? null : cs.status === 'NON-CANON' ? 'void' : /^(UNDOCUMENTED|DISPUTED)$/.test(cs.status) ? 'deny' : 'admit';
+    return h(React.Fragment, null,
+      h('div', { className: 'pb-zone-head' },
+        h('b', null, 'Dossier'),
+        h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.04em', padding:'2px 8px', border:`1px solid ${EW.panelEdge}`, borderRadius:999, background:'rgba(0,0,0,0.3)' } }, classLabel),
+        h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.04em' } }, docNum),
+        cs && h('span', { className:'door-stamp door-stamp-sm' + (tone === 'admit' ? ' admit' : tone === 'void' ? ' void' : ''), style:{ fontSize:7, padding:'2px 5px 1px', marginLeft:'auto' }, title:'Customs disposition · point of entry: ' + (poe || '?') }, cs.status)),
+      h('div', { className: 'pb-zone-body', style:{ overflowY:'auto', overflowX:'hidden', gap:6, padding:'10px 14px 10px 12px', position:'relative' } },
+        DOOR && h('div', { className:'door-wm', style:{ right:'2%', top:'6%', width:'44%', aspectRatio:'1' } }),
+        h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:'clamp(18px,1.6vw,24px)', fontWeight:600, lineHeight:1.05, color:'#f1e9cf', position:'relative', zIndex:1 } }, raceLabelTxt),
+        h('div', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.16em', position:'relative', zIndex:1 } }, getJobDisplay(clsName).toUpperCase(), ' · ', unitFaction.toUpperCase(), ' ALIGNMENT'),
+        DOOR && h('div', { className:'door-file-h', style:{ position:'relative', zIndex:1, marginTop:4 } }, '1.  EXECUTIVE SUMMARY'),
+        h('div', { style:{ fontSize:12, lineHeight:1.55, color:'#d3caae', fontFamily:'Cormorant SC, serif', fontStyle:'italic', borderLeft:`2px solid ${fc}55`, paddingLeft:8, position:'relative', zIndex:1 } }, codexLore),
+        cs && h('div', { className:'door-file-h', style:{ position:'relative', zIndex:1, marginTop:2 } }, '2.  CUSTOMS DISPOSITION'),
+        cs && h('div', { className:'door-file-p', style:{ fontSize:10.5, position:'relative', zIndex:1 } },
+          h('b', { style:{ color:'#c9b98a', letterSpacing:'0.08em' } }, cs.status), cs.note ? ' — ' + cs.note : '',
+          poe ? h('span', { style:{ display:'block', color:'#b6ad98', marginTop:2, letterSpacing:'0.06em' } }, 'POINT OF ENTRY · ' + poe) : null),
+        note && h('div', { className:'door-file-h', style:{ position:'relative', zIndex:1, marginTop:2 } }, '3.  D.O.O.R. ANNOTATION'),
+        note && h('div', { className:'door-file-p', style:{ fontSize:10.5, position:'relative', zIndex:1 } }, note),
+        h('div', { style:{ fontSize:7, color:EW.inkDim, letterSpacing:'0.08em', paddingTop:6, marginTop:'auto', position:'relative', zIndex:1 } }, 'TOP SECRET // ████████ // NOFORN')));
+  })();
 
-    /* ══ COMMAND BAR — visual weight runs left (tertiary tools, small)
-       to right (THE decision, biggest). One glance answers "what do I
-       do to finish?": the big green seal. ══ */
-    h('div', { style:{ display:'flex', alignItems:'center', padding:'0 16px', height:56, gap:7, borderTop:`1px solid ${EW.panelEdge}`, background:'linear-gradient(0deg, rgba(0,0,0,0.85), rgba(0,0,0,0.3))', flexShrink:0, position:'relative', zIndex:2 }},
-      standalone
-        ? h('button',{onClick:()=>{ setTbView('locker'); sfx('uiCursorMove'); refresh(); },className:'pb-btn-danger',style:{background:'rgba(255,92,92,0.08)',color:'#ff5c5c',border:'1px solid rgba(255,92,92,0.5)',padding:'9px 18px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer',fontWeight:600}},'← TEAMS')
-        : h('button',{onClick:doBack,className:'pb-btn-danger',style:{background:'rgba(255,92,92,0.08)',color:'#ff5c5c',border:'1px solid rgba(255,92,92,0.5)',padding:'9px 18px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer',fontWeight:600}},'← BACK'),
-      h('div',{style:{width:1,height:22,background:EW.panelEdge,margin:'0 3px'}}),
-      // tertiary dice tools — quiet, small, out of the decision path
-      h('button',{onClick:doRandomize,className:'pb-btn-ghost',title:'Randomize this vessel',style:{background:'transparent',color:EW.inkDim,border:`1px solid ${EW.panelEdge}`,padding:'7px 10px',fontFamily:'DotGothic16, monospace',fontSize:10,letterSpacing:'0.14em',cursor:'pointer'}},'🎲 ONE'),
-      h('button',{onClick:doRandomizeAll,className:'pb-btn-ghost',title:'Randomize the whole party',style:{background:'transparent',color:EW.inkDim,border:`1px solid ${EW.panelEdge}`,padding:'7px 10px',fontFamily:'DotGothic16, monospace',fontSize:10,letterSpacing:'0.14em',cursor:'pointer'}},'🎲 ALL'),
-      h('button',{onClick:doDefaults,className:'pb-btn-ghost',title:'Reset every slot to defaults',style:{background:'transparent',color:EW.inkDim,border:`1px solid ${EW.panelEdge}`,padding:'7px 10px',fontFamily:'DotGothic16, monospace',fontSize:10,letterSpacing:'0.14em',cursor:'pointer'}},'RESET'),
-      h('div',{style:{width:1,height:22,background:EW.panelEdge,margin:'0 3px'}}),
-      standalone
-        // ── standalone: name the squad, then archive it — SAVE is the seal ──
-        ? h(React.Fragment, null,
-            h('span',{style:{fontSize:9,color:EW.inkDim,letterSpacing:'0.14em'}},'TEAM NAME'),
-            h('input',{value:teamNameDraft,onChange:e=>setTeamNameDraft(e.target.value),placeholder:'Name this squad…',maxLength:30,style:{background:'rgba(0,0,0,0.4)',border:`1px solid ${EW.panelEdge}`,color:EW.ink,fontFamily:'Cormorant SC, serif',fontSize:14,padding:'7px 12px',width:220,letterSpacing:'0.06em'}}),
-            h('div',{style:{flex:1}}),
-            h('span',{style:{fontSize:10,color:EW.inkMute,letterSpacing:'0.12em'}}, editingTeamId ? 'FORGING · ' + (teamNameDraft || 'UNNAMED').toUpperCase() : 'NEW SQUAD'),
-            h('div',{style:{width:1,height:22,background:EW.panelEdge,margin:'0 3px'}}),
-            h('button',{onClick:tbSaveTeam,className:'pb-btn-primary',style:{background:'linear-gradient(180deg,rgba(61,220,132,0.22),rgba(61,220,132,0.06))',color:'#3ddc84',border:'1px solid #3ddc84',padding:'12px 34px',fontFamily:'Cormorant SC, serif',fontSize:18,letterSpacing:'0.22em',fontWeight:500,cursor:'pointer',boxShadow:'0 0 22px rgba(61,220,132,0.3)',display:'flex',alignItems:'center',gap:10}},
-              '💾 SAVE TEAM'))
-        // ── match flow: presets left of the status, the seal on the right ──
-        : h(React.Fragment, null,
-            h('button',{onClick:()=>{setTeamSaveName('');setShowTeamModal('save');},className:'pb-btn-ghost',title:'Archive this party as a saved team',style:{background:'rgba(220,170,30,0.06)',color:'#dcaa1e',border:'1px solid rgba(220,170,30,0.25)',padding:'8px 12px',fontFamily:'DotGothic16, monospace',fontSize:10,letterSpacing:'0.14em',cursor:'pointer'}},'★ SAVE'),
-            h('button',{onClick:()=>setShowTeamModal('load'),className:'pb-btn-ghost',title:'Load a saved team from your archive',style:{background:'rgba(100,180,255,0.06)',color:'rgba(100,180,255,0.9)',border:'1px solid rgba(100,180,255,0.25)',padding:'8px 12px',fontFamily:'DotGothic16, monospace',fontSize:10,letterSpacing:'0.14em',cursor:'pointer',display:'inline-flex',alignItems:'center'}},'↑ LOAD',
-              getTeamPresets().length ? h('span',{style:{marginLeft:5,fontSize:9,color:'rgba(100,180,255,0.6)'}}, getTeamPresets().length) : null),
-            h('div',{style:{flex:1}}),
-            h('span',{style:{fontSize:10,color:EW.inkMute,letterSpacing:'0.12em'}}, 'SLOT ', numerals[slot], ' · ', unitName),
-            h('div',{style:{width:1,height:22,background:EW.panelEdge,margin:'0 3px'}}),
-            h('button',{onClick:confirmSlot,className:'pb-btn-confirm',title:'Lock this vessel and move to the next open slot',style:{background:'rgba(100,200,120,0.08)',color:'rgba(100,200,120,0.9)',border:'1px solid rgba(100,200,120,0.25)',padding:'9px 16px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.12em',cursor:'pointer',fontWeight:600}},'CONFIRM ', numerals[slot]),
-            friendlyHostCanStart
-              ? h('button',{onClick:doStart,className:'pb-btn-primary',style:{background:'linear-gradient(180deg,rgba(100,200,120,0.25),rgba(100,200,120,0.08))',color:'rgba(140,240,160,0.95)',border:'1px solid rgba(100,200,120,0.6)',padding:'12px 32px',fontFamily:'Cormorant SC, serif',fontSize:18,letterSpacing:'0.22em',fontWeight:500,cursor:'pointer',boxShadow:'0 0 22px rgba(100,200,120,0.3)',display:'flex',alignItems:'center',gap:10}},
-                  '⚔ START MATCH')
-              : isWaitingOnline
-              ? h('button',{disabled:true,className:'pb-btn-primary pb-btn-waiting',style:{background:'linear-gradient(180deg,rgba(100,200,120,0.15),rgba(100,200,120,0.04))',color:'rgba(100,200,120,0.9)',border:'1px solid rgba(100,200,120,0.4)',padding:'12px 30px',fontFamily:'Cormorant SC, serif',fontSize:15,letterSpacing:'0.18em',fontWeight:500,display:'flex',alignItems:'center',gap:10,cursor:'default',opacity:0.9}},
-                  (isRankedNet && opponentLockedToo) ? 'MATCH STARTING…'
+  // STATS column (every tab but ROSTER): identity, vitals, the sheet, footprints, traits
+  const zMod = (mapped) => zodiacNature ? (zodiacNature.buff===mapped ? 'up' : zodiacNature.debuff===mapped ? 'dn' : null) : null;
+  const statsPanel = h(React.Fragment, null,
+    h('div', { style:{ display:'flex', alignItems:'baseline', gap:8, flexWrap:'wrap', flexShrink:0 } },
+      h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:'clamp(18px,1.8vw,26px)', fontWeight:600, lineHeight:1, color:'#f1e9cf', textShadow:`0 0 30px ${fc}44` } }, getJobDisplay(clsName)),
+      !isArena && clsName!=='Freelancer' && secJob && h('span', { style:{ fontSize:9, color:`${fc}bb`, letterSpacing:'0.1em', textTransform:'uppercase' } }, '◈ SUB: ', getJobDisplay(secJob))),
+    h('div', { style:{ display:'flex', alignItems:'center', gap:5, flexWrap:'wrap', flexShrink:0 } },
+      ...unitTypes.map((t,i)=>h(TypeChip,{key:i,type:t,size:10})),
+      h('span', { style:{ fontSize:8, color:`${fc}99`, letterSpacing:'0.14em', marginLeft:2, textTransform:'uppercase' } }, unitFaction, factionBonusTxt ? ' · ' + factionBonusTxt : '')),
+    h('div', { style:{ flex:1, minHeight:0, display:'flex', flexDirection:'column', gap:6, overflowY:'auto', overflowX:'hidden', paddingTop:4 } },
+      h('div', { style:{ display:'flex', flexDirection:'column', gap:3, flexShrink:0, paddingBottom:6, marginBottom:2, borderBottom:`1px solid ${EW.panelEdge}` } },
+        VITAL_KEYS.map(k => {
+          const mapped = STAT_MAP[k], val = fullStats[mapped]??0;
+          return h(VitalBar, { key:k, label:k, val, max:STAT_MAX_PB[k]||100, vital:k.toLowerCase(), zodiacMod:zMod(mapped), delta:statDeltas[mapped]??0,
+            tip: window.STAT_HELP?.[mapped] || null, gradeKey: mapped });
+        })),
+      h('div', { style:{ display:'flex', flexDirection:'column', gap:2, flexShrink:0 } },
+        BAR_KEYS.map(k => {
+          const mapped = STAT_MAP[k], val = fullStats[mapped]??fullStats[k]??fullStats[k.toLowerCase()]??0;
+          const d = statDeltas[mapped]??statDeltas[k]??statDeltas[k.toLowerCase()]??0;
+          return h(StatBar, { key:k, label:statLabel(k), val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:zMod(mapped), delta:d,
+            suffix: STAT_PCT[k] ? '%' : '', tip: window.STAT_HELP?.[mapped] || null, gradeKey: mapped });
+        })),
+      // MOVE / RANGE footprints — under the numbers, side by side
+      h('div', { style:{ display:'flex', gap:26, justifyContent:'center', alignItems:'flex-start', flexShrink:0, paddingTop:2 } },
+        h(RangeDiamond, { radius: fullStats.move ?? 3, fill:'rgba(80,160,255,0.45)', edge:'rgba(80,160,255,0.7)', label:'MOVE (SPD)', value: fullStats.move ?? 3, color:'rgba(120,180,255,0.9)', tip: window.STAT_HELP?.move }),
+        h(RangeDiamond, { radius: fullStats.range ?? 1, fill:'rgba(255,70,70,0.35)', edge:'rgba(255,70,70,0.6)', label:'RANGE', value: fullStats.range ?? 1, color:'rgba(255,120,120,0.9)', tip: window.STAT_HELP?.range })),
+      // race traits: passives & terrain rules unique to this vessel (→ sticky notes in Stage 5)
+      h('div', { style:{ flexShrink:0, display:'flex', flexDirection:'column', gap:3 } },
+        h('div', { style:{ fontSize:9, color:fc, letterSpacing:'0.14em', fontWeight:600, flexShrink:0, borderTop:`1px solid ${EW.panelEdge}`, paddingTop:5 } }, 'RACE TRAITS ', h('span', { style:{ color:EW.inkDim, fontWeight:400 } }, '· PASSIVES & TERRAIN')),
+        (RACE_TRAITS[unitRace] && RACE_TRAITS[unitRace].length)
+          ? RACE_TRAITS[unitRace].map((t, ti) => h('div', { key:ti, className:'pbx-trait' },
+              h('span', { style:{ fontSize:13, lineHeight:1.2, flexShrink:0, width:18, textAlign:'center' } }, t.icon),
+              h('div', { style:{ minWidth:0, fontSize:10, lineHeight:1.4 } },
+                h('span', { style:{ color:EW.ink, fontWeight:700, letterSpacing:'0.04em' } }, t.name),
+                h('span', { style:{ color:EW.inkMute } }, ' — ', t.desc))))
+          : h('div', { style:{ fontSize:10, color:EW.inkDim, fontStyle:'italic', padding:'4px 6px' } }, 'No documented traits — field research pending.'))));
+
+  // ROSTER's quick read under the hero: name · race · job · types · four pills · CONFIRM
+  const quickCard = h('div', { className: 'pb-stage-card' },
+    h('div', { style:{ display:'flex', alignItems:'baseline', gap:8, minWidth:0 } },
+      h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:15, fontWeight:600, color:'#f1e9cf', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0 } }, unitName),
+      h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.14em', flexShrink:0, textTransform:'uppercase' } }, getJobDisplay(clsName))),
+    h('div', { style:{ display:'flex', alignItems:'center', gap:4, flexWrap:'wrap' } }, ...unitTypes.map((t,i)=>h(TypeChip,{key:i,type:t,size:9}))),
+    h('div', { style:{ display:'flex', flexDirection:'column', gap:2 } },
+      ['HP','ATK','DEF','SPD'].map(k => {
+        const mapped = STAT_MAP[k], val = fullStats[mapped]??0;
+        return h(StatBar, { key:k, label:k, val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:zMod(mapped), delta:statDeltas[mapped]??0, gradeKey: mapped, tip: window.STAT_HELP?.[mapped] || null });
+      })),
+    !standalone && h('button', { className:'ms-tty-btn ok', style:{ alignSelf:'flex-end', marginTop:2 }, onClick:confirmSlot, title:'Lock this vessel and move to the next open slot' }, 'CONFIRM ' + numerals[slot]));
+
+  /* ── BODY: the three zones; the stage keeps its key across every tab ── */
+  const zoneContent = pbTab === 'roster' ? rosterPanel : pbTab === 'tech' ? techPanel : pbTab === 'gear' ? gearPanel : dossierPanel;
+  const body = h('div', { className: 'pb-body', 'data-tab': pbTab },
+    h('div', { key: 'tech', className: 'pb-zone pb-zone-tech pb-zone-' + pbTab }, zoneContent),
+    h('div', { key: 'stage', className: 'pb-stage' },
+      h('div', { className: 'pb-stage-title' },
+        h('b', null, raceLabelTxt),
+        h('span', null, '· SLOT ', numerals[slot], ' ·')),
+      h('div', { className: 'pb-stage-view' },
+        h('div', { style:{ position:'absolute', left:'50%', top:'52%', transform:'translate(-50%,-50%)', width:'78%', aspectRatio:'1', background:`radial-gradient(circle, ${fc}26, transparent 62%)`, filter:'blur(18px)', pointerEvents:'none' } }),
+        h('div', { style:{ position:'absolute', bottom:8, left:'50%', transform:'translateX(-50%)', width:'62%', height:12, background:`radial-gradient(ellipse, ${fc}66, transparent 70%)`, filter:'blur(3px)', pointerEvents:'none' } }),
+        h(HeroViewer3D, { race:unitRace, gender:identity.gender||'male', cls:clsName, faction:unitFaction })),
+      pbTab === 'roster' ? quickCard : null),
+    pbTab !== 'roster' ? h('div', { key: 'stats', className: 'pb-zone pb-zone-stats' }, statsPanel) : null);
+
+  /* ── PARTY ROW ── */
+  const partyRow = h('div', { className: 'pb-party' },
+    h('button', { className: 'pb-party-cap', onClick: () => selectSlot((slot - 1 + teamSize) % teamSize), title: 'Previous slot (←)' }, '◂'),
+    h('div', { className: 'pb-party-slots' },
+      Array.from({length: teamSize}).map((_, i) => {
+        const cn = typeof window.normalizeClassName==='function' ? window.normalizeClassName(st.partyBuilds?.[player]?.[i], window.DEFAULT_BUILDS?.[player]?.[i]) : (st.partyBuilds?.[player]?.[i]||'Warrior');
+        const mt = st.partyMeta?.[player]?.[i] || (typeof window.getArchetypeForJob==='function' ? window.getArchetypeForJob(cn) : {});
+        const id = typeof window.resolveIdentityForBuild==='function' ? window.resolveIdentityForBuild(cn,mt) : {race:'homosapien',faction:'time',types:['human'],gender:'male'};
+        const isActive = i===slot, fCol = getFactionColor(id.faction);
+        const confirmed = !!(st.builderConfirmedSlots?.[player]?.[i]);
+        const nm = resolveUnitName(player, i, cn);
+        const rl = (_grl(id.race,id.gender)||id.race||'?');
+        return h('div', { key:i, onClick:()=>selectSlot(i), className:'pb-party-slot' + (isActive ? ' on' : '') + (confirmed ? ' filed' : ''), style:{ '--slot-fc': fCol }, title: nm + ' · ' + rl + ' · ' + getJobDisplay(cn) },
+          h('div', { className:'pb-party-ring' },
+            h('div', { className:'pb-party-portrait' }, h(PortraitSprite, { race:id.race, gender:id.gender||'male', cls:cn, glow:isActive?id.faction:null })),
+            h('span', { className:'pb-party-no' }, numerals[i]),
+            confirmed && (DOOR
+              ? h('span', { className:'door-stamp door-stamp-sm admit pb-party-filed', title:'Locked in' }, 'FILED')
+              : h('span', { className:'pb-party-filed pb-party-tick' }, '✓'))),
+          h('div', { className:'pb-party-name' }, nm),
+          h('div', { className:'pb-party-sub' }, rl, ' · ', getJobDisplay(cn)));
+      })),
+    h('button', { className: 'pb-party-cap', onClick: () => selectSlot((slot + 1) % teamSize), title: 'Next slot (→)' }, '▸'),
+    (!isOnline && st.showPlayer2Builder) ? h('div', { className: 'pb-party-side' },
+      h('button', { className: 'pb-pill' + (player === 1 ? ' on' : ''), onClick: () => selectPlayer(1) }, 'P1'),
+      h('button', { className: 'pb-pill' + (player === 2 ? ' on' : ''), onClick: () => selectPlayer(2) }, 'P2 · CPU')) : null,
+    h('span', { className: 'pb-party-count' }, standalone ? (teamSize + ' VESSELS') : (filedCount + ' / ' + teamSize + ' FILED')));
+
+  /* ── FOOT: BACK · summary · prompt · the dice · CONFIRM · the seal ── */
+  const foot = h('div', { className: 'ms-tty-foot pb-foot' },
+    standalone
+      ? h('button', { className: 'ms-tty-btn danger', onClick: () => { setTbView('locker'); sfx('uiCursorMove'); refresh(); }, title: 'Back to the archive' }, '◂ TEAMS')
+      : h('button', { className: 'ms-tty-btn danger', onClick: doBack, title: 'Back' }, '◂ BACK'),
+    h('div', { className: 'ms-tty-sum' },
+      h('small', null, 'SLOT ' + numerals[slot] + (standalone ? ' · SQUAD MANIFEST' : ' · VESSEL ASSIGNMENT')),
+      h('b', null, unitName),
+      h('span', null,
+        h('em', { className: 'gold' }, raceLabelTxt.toUpperCase()), ' · ', h('em', null, getJobDisplay(clsName).toUpperCase()),
+        secJob ? ' · ' : null, secJob ? h('em', null, 'SUB ' + getJobDisplay(secJob).toUpperCase()) : null,
+        ' · ', h('em', { className: spellSlotsUsed > slotCap ? 'red' : 'green' }, 'SPELLS ' + spellSlotsUsed + '/' + slotCap))),
+    h('div', { className: 'ms-tty-spacer' }),
+    h('span', { className: 'ms-tty-prompt pb-prompt' }, '> ', h('b', null, 'forge --slot ' + (slot + 1) + ' --job "' + getJobDisplay(clsName) + '"'), h('span', { className: 'ms-tty-cursor' })),
+    h('button', { className: 'ms-tty-btn sm', onClick: doRandomize, title: 'Randomize this vessel' }, '🎲 ONE'),
+    h('button', { className: 'ms-tty-btn sm', onClick: doRandomizeAll, title: 'Randomize the whole party' }, '🎲 ALL'),
+    h('button', { className: 'ms-tty-btn sm', onClick: doDefaults, title: 'Reset every slot to defaults' }, 'RESET'),
+    standalone
+      // ── standalone: name the squad, then archive it — SAVE is the seal ──
+      ? h(React.Fragment, null,
+          h('input', { className: 'pb-foot-input', value: teamNameDraft, onChange: e => setTeamNameDraft(e.target.value), placeholder: 'Name this squad…', maxLength: 30, title: 'Team name' }),
+          h('span', { className: 'pb-foot-note' }, editingTeamId ? 'FORGING · ' + (teamNameDraft || 'UNNAMED').toUpperCase() : 'NEW SQUAD'),
+          h('button', { className: 'ms-tty-btn primary', onClick: tbSaveTeam, title: 'Archive this squad' }, h('b', null, '💾 SAVE TEAM'), h('i', null, '↵')))
+      // ── match flow: presets left of CONFIRM, the seal on the right ──
+      : h(React.Fragment, null,
+          h('button', { className: 'ms-tty-btn sm gold', onClick: () => { setTeamSaveName(''); setShowTeamModal('save'); }, title: 'Archive this party as a saved team' }, '★ SAVE'),
+          h('button', { className: 'ms-tty-btn sm teal', onClick: () => setShowTeamModal('load'), title: 'Load a saved team from your archive' }, '↑ LOAD', getTeamPresets().length ? ' · ' + getTeamPresets().length : ''),
+          h('button', { className: 'ms-tty-btn ok', onClick: confirmSlot, title: 'Lock this vessel and move to the next open slot' }, 'CONFIRM ', numerals[slot]),
+          friendlyHostCanStart
+            ? h('button', { className: 'ms-tty-btn primary', onClick: doStart }, h('b', null, '⚔ START MATCH'), h('i', null, '↵'))
+            : isWaitingOnline
+            ? h('button', { className: 'ms-tty-btn primary waiting pb-btn-waiting', disabled: true },
+                h('b', null, (isRankedNet && opponentLockedToo) ? 'MATCH STARTING…'
                   : (!isRankedNet && netRole === 'guest' && opponentLockedToo) ? '⌛ WAITING FOR HOST TO START…'
-                  : '⌛ WAITING ON OPPONENT…')
-              : h('button',{onClick:doStart,className:'pb-btn-primary',style:{background:'linear-gradient(180deg,rgba(61,220,132,0.22),rgba(61,220,132,0.06))',color:'#3ddc84',border:'1px solid #3ddc84',padding:'12px 34px',fontFamily:'Cormorant SC, serif',fontSize:18,letterSpacing:'0.22em',fontWeight:500,cursor:'pointer',boxShadow:'0 0 22px rgba(61,220,132,0.3)',display:'flex',alignItems:'center',gap:10}},
-                  'SEAL YOUR FATE',h('span',{style:{fontFamily:'DotGothic16, monospace',fontSize:10,opacity:0.7}},'\u21B5'))),
-    ),
+                  : '⌛ WAITING ON OPPONENT…'))
+            : h('button', { className: 'ms-tty-btn primary', onClick: doStart, title: 'Seal the manifest and cross' }, h('b', null, 'SEAL YOUR FATE'), h('i', null, '↵'))));
 
-    /* ══ TEAM ARCHIVE — standalone landing view (Pokémon-Showdown locker).
-       Opaque layer over the forge: pick a squad to edit, or start a new
-       one. Primary = NEW TEAM + the team cards; tertiary = per-card
-       COPY/DEL. Teams saved here surface in the pre-match ↑ LOAD list. ══ */
-    standalone && tbView === 'locker' && (() => {
-      const presets = getTeamPresets();
-      return h('div', { style:{ position:'absolute', inset:0, zIndex:60, display:'flex', flexDirection:'column', background:`radial-gradient(ellipse 1000px 700px at 50% 20%, ${EW.time}0d, transparent 60%), radial-gradient(ellipse 1200px 900px at 20% 80%, #0b0b0b 0%, ${EW.bg} 60%, #000 100%)` }},
-        h(StarField),
-        h('div', { style:{ display:'flex', alignItems:'center', height:46, padding:'0 14px 0 8px', gap:10, borderBottom:`1px solid ${EW.panelEdge}`, flexShrink:0, position:'relative', zIndex:2 }},
-          h(DoorSeal, { size:32 }),
-          h('div', { style:{ display:'flex', flexDirection:'column', lineHeight:1.15 } },
-            h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:15, letterSpacing:'0.14em', fontWeight:500 } }, 'ENTROPY WARS'),
-            DOOR && h('span', { className:'door-hdr-sub' }, 'D.O.O.R. · RECORDS · SQUAD MANIFESTS')),
-          h('span', { style:{ width:1, height:16, background:EW.panelEdge } }),
-          h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.2em' } }, 'THE PARTY FORGE'),
-          h('div', { style:{flex:1} }),
-          h(OfficerChip),
-          h('span', { style:{ width:1, height:16, background:EW.panelEdge } }),
-          h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.14em' } }, presets.length, ' / ', (window.ProfileSystem?.MAX_TEAM_PRESETS || 20), ' SQUADS ARCHIVED')),
-        h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', padding:'26px clamp(20px,5vw,80px) 30px', position:'relative', zIndex:1 }},
-          h('div', { style:{ marginBottom:18 }},
-            h('div', { className:'door-title-stamp' },
-              h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:'clamp(22px,2.6vw,34px)', fontWeight:600, letterSpacing:'0.1em', textShadow:`0 0 30px ${EW.time}33` }}, 'TEAM ARCHIVE'),
-              DOOR && h('span', { className:'door-stamp admit', title:'Manifests on file are cleared for deployment' }, 'ON FILE')),
-            h('div', { style:{ fontSize:11, color:EW.inkMute, letterSpacing:'0.08em', marginTop:4, lineHeight:1.5 }},
-              'Forge squads here, before the war finds you. Saved teams appear under ', h('b', {style:{color:'rgba(100,180,255,0.9)'}}, '↑ LOAD'), ' whenever you build a party for any match.')),
-          h('div', { style:{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(300px, 1fr))', gap:14, alignContent:'start' }},
-            h('div', { className:'pb-team-card new', onClick:tbNewTeam },
-              h('div', { style:{ fontSize:34, color:'#3ddc84', lineHeight:1, textShadow:'0 0 18px rgba(61,220,132,0.5)' }}, '+'),
-              h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:17, letterSpacing:'0.14em', color:'#3ddc84', fontWeight:600 }}, 'NEW TEAM'),
-              h('div', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.1em' }}, 'FORGE A FRESH SQUAD')),
-            presets.map(preset => {
-              const slots = preset.slots || [];
-              return h('div', { key:preset.id, className:'pb-team-card', onClick:()=>tbEditTeam(preset), title:'Open this squad in the forge' },
-                h('div', { style:{ display:'flex', alignItems:'baseline', gap:10 }},
-                  h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:18, fontWeight:600, letterSpacing:'0.06em', color:EW.ink, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flex:1 }}, preset.name || 'Unnamed'),
-                  h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.1em', flexShrink:0 }}, slots.length, ' VESSELS')),
-                h('div', { style:{ display:'flex', gap:5, flexWrap:'wrap' }},
-                  slots.slice(0, 8).map((s, si) => h('div', { key:si, className:'pb-team-mini', title:(_grl(s.race, s.gender)||s.race)+' · '+getJobDisplay(s.cls) },
-                    h(PortraitSprite, { race:s.race, gender:s.gender||'male', cls:s.cls })))),
-                h('div', { style:{ display:'flex', alignItems:'center', gap:6, marginTop:2 }},
-                  h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.08em', flex:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }},
-                    (preset.gameMode || '').toUpperCase(), preset.lastUsed ? ' · ' + new Date(preset.lastUsed).toLocaleDateString() : ''),
-                  h('button', { className:'pb-team-act', onClick:e=>{ e.stopPropagation(); tbEditTeam(preset); } }, '⚒ FORGE'),
-                  h('button', { className:'pb-team-act', onClick:e=>{ e.stopPropagation(); tbDuplicateTeam(preset); } }, 'COPY'),
-                  h('button', { className:'pb-team-act danger', onClick:e=>{ e.stopPropagation(); deleteTeamPreset(preset.id); } }, 'DEL')));
-            })),
-          presets.length === 0 && h('div', { style:{ marginTop:22, fontSize:11, color:EW.inkDim, fontStyle:'italic', letterSpacing:'0.06em' }},
-            'The archive is empty. Forge your first squad — the entropy is patient, but not that patient.')),
-        h('div', { style:{ display:'flex', alignItems:'center', padding:'0 16px', height:56, gap:8, borderTop:`1px solid ${EW.panelEdge}`, background:'linear-gradient(0deg, rgba(0,0,0,0.85), rgba(0,0,0,0.3))', flexShrink:0, position:'relative', zIndex:2 }},
-          h('button', { onClick:()=>{ if (typeof window._teamBuilderBack==='function') window._teamBuilderBack(); }, className:'pb-btn-danger', style:{background:'rgba(255,92,92,0.08)',color:'#ff5c5c',border:'1px solid rgba(255,92,92,0.5)',padding:'9px 18px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer',fontWeight:600}}, '← MAIN MENU'),
-          h('div', { style:{flex:1} }),
-          h('span', { style:{ fontSize:10, color:EW.inkDim, letterSpacing:'0.12em' }}, 'SQUADS ARE SAVED TO YOUR PROFILE', DOOR ? ' · MANIFESTS REMAIN PROPERTY OF THE DEPARTMENT' : '')));
-    })(),
+  /* ══ TEAM ARCHIVE — standalone landing view (Pokémon-Showdown locker), a
+     full-glass view over the forge: pick a squad to edit, or start a new
+     one. Teams saved here surface in the pre-match ↑ LOAD list. ══ */
+  const locker = (standalone && tbView === 'locker') ? (() => {
+    const presets = getTeamPresets();
+    return h('div', { className: 'pb-locker' },
+      h('div', { className: 'ms-tty-head pb-head' },
+        h(DoorSeal, { size: 20 }),
+        h('span', null, 'D.O.O.R.'), h('span', { className: 'ms-tty-sep' }, '▸'),
+        h('b', null, 'ENTROPY WARS'),
+        h('span', { className: 'ms-tty-sep' }, '·'), h('span', null, 'RECORDS · SQUAD MANIFESTS'),
+        h('span', { className: 'ms-tty-sep' }, '·'), h('span', null, 'FORGE-1'),
+        h('span', { className: 'ms-tty-officer' }, officer ? officer.name : 'UNFILED', officer && h('i', null, 'CLEARANCE L' + officer.cl.level + ' · ' + officer.cl.title)),
+        h('span', { className: 'ms-tty-sep' }, '·'), h('span', null, presets.length + ' / ' + (window.ProfileSystem?.MAX_TEAM_PRESETS || 20) + ' SQUADS ARCHIVED'),
+        h('span', { className: 'ms-tty-sep' }, '·'), h('span', { className: 'ms-tty-esc' }, 'ESC · MAIN MENU')),
+      h('div', { className: 'pb-locker-body' },
+        h('div', { style:{ marginBottom:18 }},
+          h('div', { className:'door-title-stamp' },
+            h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:'clamp(22px,2.6vw,34px)', fontWeight:600, letterSpacing:'0.1em', color:'#f1e9cf', textShadow:'0 0 22px rgba(255,205,107,0.28)' }}, 'TEAM ARCHIVE'),
+            DOOR && h('span', { className:'door-stamp admit', title:'Manifests on file are cleared for deployment' }, 'ON FILE')),
+          h('div', { style:{ fontSize:11, color:'#c9bf9e', letterSpacing:'0.08em', marginTop:4, lineHeight:1.5 }},
+            'Forge squads here, before the war finds you. Saved teams appear under ', h('b', {style:{color:'#7fd9dd'}}, '↑ LOAD'), ' whenever you build a party for any match.')),
+        h('div', { className: 'pb-locker-grid' },
+          h('div', { className:'pb-team-card new', onClick:tbNewTeam },
+            h('div', { style:{ fontSize:34, color:'#3ddc84', lineHeight:1, textShadow:'0 0 18px rgba(61,220,132,0.5)' }}, '+'),
+            h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:17, letterSpacing:'0.14em', color:'#3ddc84', fontWeight:600 }}, 'NEW TEAM'),
+            h('div', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.1em' }}, 'FORGE A FRESH SQUAD')),
+          presets.map(preset => {
+            const slots = preset.slots || [];
+            return h('div', { key:preset.id, className:'pb-team-card', onClick:()=>tbEditTeam(preset), title:'Open this squad in the forge' },
+              h('div', { style:{ display:'flex', alignItems:'baseline', gap:10 }},
+                h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:18, fontWeight:600, letterSpacing:'0.06em', color:EW.ink, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flex:1 }}, preset.name || 'Unnamed'),
+                h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.1em', flexShrink:0 }}, slots.length, ' VESSELS')),
+              h('div', { style:{ display:'flex', gap:5, flexWrap:'wrap' }},
+                slots.slice(0, 8).map((s, si) => h('div', { key:si, className:'pb-team-mini', title:(_grl(s.race, s.gender)||s.race)+' · '+getJobDisplay(s.cls) },
+                  h(PortraitSprite, { race:s.race, gender:s.gender||'male', cls:s.cls })))),
+              h('div', { style:{ display:'flex', alignItems:'center', gap:6, marginTop:2 }},
+                h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.08em', flex:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }},
+                  (preset.gameMode || '').toUpperCase(), preset.lastUsed ? ' · ' + new Date(preset.lastUsed).toLocaleDateString() : ''),
+                h('button', { className:'pb-team-act', onClick:e=>{ e.stopPropagation(); tbEditTeam(preset); } }, '⚒ FORGE'),
+                h('button', { className:'pb-team-act', onClick:e=>{ e.stopPropagation(); tbDuplicateTeam(preset); } }, 'COPY'),
+                h('button', { className:'pb-team-act danger', onClick:e=>{ e.stopPropagation(); deleteTeamPreset(preset.id); } }, 'DEL')));
+          })),
+        presets.length === 0 && h('div', { style:{ marginTop:22, fontSize:11, color:EW.inkDim, fontStyle:'italic', letterSpacing:'0.06em' }},
+          'The archive is empty. Forge your first squad — the entropy is patient, but not that patient.')),
+      h('div', { className: 'ms-tty-foot pb-foot' },
+        h('button', { className: 'ms-tty-btn danger', onClick: () => { if (typeof window._teamBuilderBack==='function') window._teamBuilderBack(); } }, '◂ MAIN MENU'),
+        h('div', { className: 'ms-tty-spacer' }),
+        h('span', { className: 'ms-tty-prompt' }, '> ', h('b', null, 'archive --list'), h('span', { className: 'ms-tty-cursor' })),
+        h('span', { className: 'pb-foot-note' }, 'SQUADS ARE SAVED TO YOUR PROFILE', DOOR ? ' · MANIFESTS REMAIN PROPERTY OF THE DEPARTMENT' : '')));
+  })() : null;
 
-    showTeamModal && h('div', { onClick:()=>setShowTeamModal(false), style:{ position:'absolute', inset:0, background:'rgba(0,0,0,0.75)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center' }},
-      h('div', { onClick:e=>e.stopPropagation(), style:{ background:'#0a0a0a', border:`1px solid ${EW.panelEdge}`, padding:'20px 24px', minWidth:340, maxWidth:480, maxHeight:'70vh', display:'flex', flexDirection:'column', gap:12, boxShadow:'0 8px 40px rgba(0,0,0,0.7)' }},
-        h('div', { style:{ display:'flex', alignItems:'center', justifyContent:'space-between' }},
-          h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:16, letterSpacing:'0.16em' }}, showTeamModal === 'save' ? 'SAVE TEAM' : 'LOAD TEAM'),
-          h('button', { onClick:()=>setShowTeamModal(false), style:{ background:'transparent', border:'none', color:EW.inkMute, fontSize:18, cursor:'pointer', lineHeight:1 }}, '\u2715')),
+  /* ── the windows on the glass ── */
+  const teamWindow = showTeamModal && h(PbWindow, { title: showTeamModal === 'save' ? 'SAVE TEAM' : 'LOAD TEAM', sub: getTeamPresets().length + ' / ' + (window.ProfileSystem?.MAX_TEAM_PRESETS||20) + ' PRESETS', onClose: () => setShowTeamModal(false), width: 440 },
+    showTeamModal === 'save' && h('div', { style:{ display:'flex', flexDirection:'column', gap:8 }},
+      h('div', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.1em' }}, 'Name this team preset:'),
+      h('input', { className:'pb-gear-input', value:teamSaveName, onChange:e=>setTeamSaveName(e.target.value), placeholder:'e.g. Fire Squad, Tank Line...', maxLength:30, autoFocus:true, onKeyDown:e=>{ if(e.key==='Enter'&&teamSaveName.trim()) saveCurrentTeam(teamSaveName.trim()); }, style:{ width:'100%', boxSizing:'border-box' }}),
+      h('div', { style:{ display:'flex', gap:6, justifyContent:'flex-end' }},
+        h('button', { className:'ms-tty-btn sm', onClick:()=>setShowTeamModal(false) }, 'CANCEL'),
+        h('button', { className:'ms-tty-btn sm gold', disabled: !teamSaveName.trim(), onClick:()=>{ if(teamSaveName.trim()) saveCurrentTeam(teamSaveName.trim()); } }, 'SAVE'))),
+    showTeamModal === 'load' && h('div', { style:{ display:'flex', flexDirection:'column', gap:4 }},
+      getTeamPresets().length === 0
+        ? h('div', { style:{ color:EW.inkDim, fontSize:12, textAlign:'center', padding:20, fontStyle:'italic' }}, 'No saved teams yet. Use SAVE to store your current party.')
+        : getTeamPresets().map(preset =>
+          h('div', { key:preset.id, className:'pbx-pick-row', style:{ borderRadius:'var(--pb-r-sm)' } },
+            h('div', { onClick:()=>loadTeamPreset(preset), style:{ flex:1, display:'flex', flexDirection:'column', gap:2, cursor:'pointer', minWidth:0 }},
+              h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:13, letterSpacing:'0.1em', color:EW.ink }}, preset.name),
+              h('div', { style:{ display:'flex', gap:4, flexWrap:'wrap' }},
+                ...(preset.slots||[]).map((s,si)=>{
+                  const rl = typeof _grl==='function' ? _grl(s.race,s.gender) : s.race;
+                  return h('span', { key:si, style:{ fontSize:9, color:EW.inkMute, background:'rgba(255,255,255,0.04)', padding:'1px 6px', borderRadius:999, border:`1px solid rgba(255,255,255,0.06)` }}, rl);
+                })),
+              h('div', { style:{ fontSize:8, color:EW.inkDim }}, preset.gameMode?.toUpperCase() || '', ' · ', new Date(preset.createdAt).toLocaleDateString())),
+            h('button', { className:'pb-team-act danger', onClick:e=>{e.stopPropagation();deleteTeamPreset(preset.id);} }, 'DEL')))));
 
-        showTeamModal === 'save' && h('div', { style:{ display:'flex', flexDirection:'column', gap:8 }},
-          h('div', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.1em' }}, 'Name this team preset:'),
-          h('input', { value:teamSaveName, onChange:e=>setTeamSaveName(e.target.value), placeholder:'e.g. Fire Squad, Tank Line...', maxLength:30, autoFocus:true, onKeyDown:e=>{ if(e.key==='Enter'&&teamSaveName.trim()) saveCurrentTeam(teamSaveName.trim()); }, style:{ background:'rgba(0,0,0,0.4)', border:`1px solid ${EW.panelEdge}`, color:EW.ink, fontFamily:'DotGothic16, monospace', fontSize:13, padding:'8px 12px', width:'100%', boxSizing:'border-box' }}),
-          h('div', { style:{ display:'flex', gap:6, justifyContent:'flex-end' }},
-            h('button', { onClick:()=>setShowTeamModal(false), className:'pb-btn-ghost', style:{ background:'transparent', border:`1px solid ${EW.panelEdge}`, color:EW.inkMute, padding:'6px 14px', fontFamily:'DotGothic16, monospace', fontSize:11, cursor:'pointer' }}, 'CANCEL'),
-            h('button', { onClick:()=>{ if(teamSaveName.trim()) saveCurrentTeam(teamSaveName.trim()); }, className:'pb-btn-confirm', style:{ background:'rgba(220,170,30,0.1)', border:'1px solid rgba(220,170,30,0.35)', color:'#dcaa1e', padding:'6px 14px', fontFamily:'DotGothic16, monospace', fontSize:11, cursor:'pointer', fontWeight:600, opacity:teamSaveName.trim()?1:0.4 }}, 'SAVE')),
-          h('div', { style:{ fontSize:9, color:EW.inkDim }}, getTeamPresets().length, '/', (window.ProfileSystem?.MAX_TEAM_PRESETS||20), ' presets used')),
+  const pickerWindow = equipPicker && h(PbWindow, {
+      title: equipPicker === 'item' ? 'Battle Items' : equipPicker === 'subjob' ? 'Choose a Subclass' : 'Gear — Slot ' + (equipPicker === 'accessory1' ? '1' : '2'),
+      sub: equipPicker === 'item' ? (totalItemsUsed + ' / ' + itemSlotMax + ' CARRIED') : equipPicker === 'subjob' ? 'its spells join your pool · its training shifts your stats' : null,
+      onClose: () => setEquipPicker(null), width: 470 },
+    equipPicker === 'subjob'
+      ? (() => {
+          // Subclass rows: spells the job contributes + its stat shifts, so
+          // the choice reads as "what playstyle does this buy me".
+          const jobs = (typeof window.JOB_MODIFIERS!=='undefined'?Object.keys(window.JOB_MODIFIERS):[]).filter(j=>j!==clsName&&j!=='Freelancer');
+          const bonusStr = (j) => {
+            const b = (typeof window.computeSecJobBonuses === 'function') ? window.computeSecJobBonuses(j) : {};
+            return Object.entries(b).filter(([,v]) => v).map(([k,v]) => (v>0?'+':'')+v+' '+k.toUpperCase()).join('  ');
+          };
+          const spellCount = (j) => (((typeof window.CLASS_SPELL_LEARN_ORDER!=='undefined'&&window.CLASS_SPELL_LEARN_ORDER)||{})[j]||[]).length;
+          const pickJob = (j) => { handleSecJobChange(j); sfx('uiButtonConfirm'); setEquipPicker(null); };
+          const autoOn = !secJob;
+          const rows = [h('div', { key:'__auto', className:'pbx-pick-row', style: autoOn ? { borderColor:fc, background:`${fc}14` } : undefined, onClick:()=>pickJob('') },
+            h('span', { style:{ width:26, textAlign:'center', fontSize:16, flexShrink:0, color:EW.inkMute }}, '◈'),
+            h('div', { style:{ flex:1, minWidth:0 }},
+              h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:13, fontWeight:700, color: autoOn ? EW.ink : '#c3c8d6' }}, '— None —'),
+              h('div', { style:{ fontSize:10, color:EW.inkMute, lineHeight:1.35 }}, 'No subclass. Your pool holds main-job spells and race abilities only.')),
+            autoOn ? h('span', { style:{ fontSize:9, color:fc, fontWeight:700, flexShrink:0, letterSpacing:'0.08em' }}, 'CURRENT') : null)];
+          for (const j of jobs) {
+            const on = secJob === j;
+            const bs = bonusStr(j);
+            rows.push(h('div', { key:j, className:'pbx-pick-row', style: on ? { borderColor:fc, background:`${fc}14` } : undefined, onClick:()=>pickJob(j) },
+              // Plain homosapien in this job — a visual shorthand for the role.
+              h('div', { style:{ width:40, height:40, flexShrink:0, display:'flex', alignItems:'flex-end', justifyContent:'center', background:`linear-gradient(180deg, transparent 45%, ${fc}12 100%)`, border:`1px solid ${on?fc:EW.panelEdge}`, borderRadius:'50%', overflow:'hidden' }},
+                h(Sprite, { race:'homosapien', gender:'male', cls:j, size:'92%', style:{ width:'92%', height:'92%' } })),
+              h('div', { style:{ flex:1, minWidth:0 }},
+                h('div', { style:{ display:'flex', alignItems:'baseline', gap:8 }},
+                  h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:13, fontWeight:700, color: on ? EW.ink : '#c3c8d6' }}, getJobDisplay(j)),
+                  h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em' }}, '+', spellCount(j), ' SPELLS TO POOL')),
+                bs ? h('div', { style:{ fontSize:10, color:EW.inkMute, lineHeight:1.4 }}, ...bs.split('  ').map((tok, ti) => h('span', { key:ti, style:{ color: tok.startsWith('-') ? EW.bad : EW.good, marginRight:8, fontWeight:600 }}, tok))) : null),
+              on ? h('span', { style:{ fontSize:9, color:fc, fontWeight:700, flexShrink:0, letterSpacing:'0.08em' }}, 'CURRENT') : null));
+          }
+          return rows;
+        })()
+      : equipPicker === 'item'
+      ? allItemKeys.map(ik => {
+          const rule = window.ITEM_RULES?.[ik];
+          if (!rule) return null;
+          const count = unitItems[ik] || 0;
+          const capped = count >= (rule.max || 6) || totalItemsUsed >= itemSlotMax;
+          return h('div', { key:ik, className:'pbx-pick-row', onClick:()=>setItemCount(ik, 1), style:{ opacity: capped && !count ? 0.5 : 1 }},
+            h('span', { style:{ fontSize:20, flexShrink:0, width:26, textAlign:'center' }}, rule.icon || '📦'),
+            h('div', { style:{ flex:1, minWidth:0 }},
+              h('div', { style:{ fontSize:12, color: count ? EW.ink : '#c3c8d6' }}, rule.name),
+              h('div', { style:{ fontSize:10, color:EW.inkMute, lineHeight:1.35 }}, rule.desc)),
+            h('div', { style:{ display:'flex', alignItems:'center', gap:4, flexShrink:0 }},
+              count > 0 ? h('button', { className:'pb-stepper-btn', onClick:e=>{ e.stopPropagation(); setItemCount(ik, -1); }, style:{ width:20, height:20, borderRadius:'50%', background:'rgba(0,0,0,0.4)', border:`1px solid ${EW.panelEdge}`, color:EW.inkMute, fontSize:13, lineHeight:'18px', textAlign:'center', cursor:'pointer', padding:0, fontFamily:'DotGothic16, monospace' }}, '−') : null,
+              h('span', { style:{ width:18, textAlign:'center', fontSize:12, color: count ? EW.ink : EW.inkDim, fontWeight:600 }}, count)));
+        })
+      : (() => {
+          const other = equipPicker === 'accessory1' ? 'accessory2' : 'accessory1';
+          const rows = allAccIds.map(accId => {
+            const def = window.EQUIP_DEFS?.[accId];
+            if (!def) return null;
+            const here = unitEquipment[equipPicker] === accId, there = unitEquipment[other] === accId;
+            return h('div', { key:accId, className:'pbx-pick-row', style: here ? { borderColor:fc, background:`${fc}14` } : undefined,
+              onClick:()=>{ if (here) { handleAccChange(equipPicker, null); } else { if (there) handleAccChange(other, null); handleAccChange(equipPicker, accId); } sfx('uiButtonConfirm'); setEquipPicker(null); } },
+              h('span', { style:{ fontSize:18, flexShrink:0, width:26, textAlign:'center' }}, ACC_ICONS[accId] || '🎒'),
+              h('div', { style:{ flex:1, minWidth:0 }},
+                h('div', { style:{ fontSize:12, color: here ? EW.ink : '#c3c8d6' }}, def.label, there ? h('span', { style:{ fontSize:8, color:EW.inkDim }}, '  (in other slot)') : null),
+                h('div', { style:{ fontSize:10, color:EW.inkMute, lineHeight:1.35 }}, def.desc)),
+              def.stat && def.statVal ? h('span', { style:{ fontSize:10, color:EW.good, fontWeight:700, flexShrink:0 }}, '+' + def.statVal + ' ' + (def.stat || '').toUpperCase()) : null,
+              here ? h('span', { style:{ fontSize:9, color:fc, flexShrink:0, fontWeight:700, letterSpacing:'0.08em' }}, 'EQUIPPED') : null);
+          });
+          if (unitEquipment[equipPicker]) rows.push(h('div', { key:'__rm', className:'pbx-pick-row', onClick:()=>{ handleAccChange(equipPicker, null); setEquipPicker(null); } },
+            h('span', { style:{ width:26, textAlign:'center', color:EW.bad, flexShrink:0 }}, '✕'),
+            h('div', { style:{ flex:1, fontSize:11, color:EW.bad }}, 'Remove gear from this slot')));
+          return rows;
+        })());
 
-        showTeamModal === 'load' && h('div', { style:{ display:'flex', flexDirection:'column', gap:4, maxHeight:'50vh', overflow:'auto' }},
-          getTeamPresets().length === 0
-            ? h('div', { style:{ color:EW.inkDim, fontSize:12, textAlign:'center', padding:20, fontStyle:'italic' }}, 'No saved teams yet. Use SAVE to store your current party.')
-            : getTeamPresets().map(preset =>
-              h('div', { key:preset.id, style:{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, cursor:'pointer' }},
-                h('div', { onClick:()=>loadTeamPreset(preset), style:{ flex:1, display:'flex', flexDirection:'column', gap:2, cursor:'pointer' }},
-                  h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:13, letterSpacing:'0.1em', color:EW.ink }}, preset.name),
-                  h('div', { style:{ display:'flex', gap:4, flexWrap:'wrap' }},
-                    ...(preset.slots||[]).map((s,si)=>{
-                      const rl = typeof _grl==='function' ? _grl(s.race,s.gender) : s.race;
-                      return h('span', { key:si, style:{ fontSize:9, color:EW.inkMute, background:'rgba(255,255,255,0.04)', padding:'1px 5px', border:`1px solid rgba(255,255,255,0.06)` }}, rl);
-                    })),
-                  h('div', { style:{ fontSize:8, color:EW.inkDim }}, preset.gameMode?.toUpperCase() || '', ' \u00B7 ', new Date(preset.createdAt).toLocaleDateString())),
-                h('button', { onClick:e=>{e.stopPropagation();deleteTeamPreset(preset.id);}, style:{ background:'transparent', border:'1px solid rgba(255,100,100,0.2)', color:'rgba(255,100,100,0.5)', fontSize:9, padding:'3px 8px', fontFamily:'DotGothic16, monospace', cursor:'pointer' }}, 'DEL'),
-              ))),
-      )),
-
-    equipPicker && h('div', { onClick:()=>setEquipPicker(null), style:{ position:'absolute', inset:0, background:'rgba(0,0,0,0.72)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center' }},
-      h('div', { onClick:e=>e.stopPropagation(), style:{ background:'#0a0a0a', border:`1px solid ${EW.panelEdgeHi}`, padding:'16px 18px', width:430, maxWidth:'92vw', maxHeight:'72vh', display:'flex', flexDirection:'column', gap:10, boxShadow:'0 8px 40px rgba(0,0,0,0.7)' }},
-        h('div', { style:{ display:'flex', alignItems:'center', gap:10 }},
-          h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:15, letterSpacing:'0.14em', textTransform:'uppercase' }},
-            equipPicker === 'item' ? 'Battle Items' : equipPicker === 'subjob' ? 'Choose a Subclass' : 'Gear — Slot ' + (equipPicker === 'accessory1' ? '1' : '2')),
-          equipPicker === 'item' && h('span', { style:{ fontSize:10, color: totalItemsUsed >= itemSlotMax ? EW.warn : EW.inkMute, letterSpacing:'0.1em' }}, totalItemsUsed, '/', itemSlotMax, ' CARRIED'),
-          equipPicker === 'subjob' && h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.04em' }}, 'its spells join your pool · its training shifts your stats'),
-          h('div', { style:{flex:1} }),
-          h('button', { onClick:()=>setEquipPicker(null), style:{ background:'transparent', border:'none', color:EW.inkMute, fontSize:18, cursor:'pointer', lineHeight:1 }}, '✕')),
-        h('div', { style:{ display:'flex', flexDirection:'column', gap:5, overflowY:'auto' }},
-          equipPicker === 'subjob'
-            ? (() => {
-                // Subclass rows: spells the job contributes + its stat shifts, so
-                // the choice reads as "what playstyle does this buy me".
-                const jobs = (typeof window.JOB_MODIFIERS!=='undefined'?Object.keys(window.JOB_MODIFIERS):[]).filter(j=>j!==clsName&&j!=='Freelancer');
-                const bonusStr = (j) => {
-                  const b = (typeof window.computeSecJobBonuses === 'function') ? window.computeSecJobBonuses(j) : {};
-                  return Object.entries(b).filter(([,v]) => v).map(([k,v]) => (v>0?'+':'')+v+' '+k.toUpperCase()).join('  ');
-                };
-                const spellCount = (j) => (((typeof window.CLASS_SPELL_LEARN_ORDER!=='undefined'&&window.CLASS_SPELL_LEARN_ORDER)||{})[j]||[]).length;
-                const pickJob = (j) => { handleSecJobChange(j); sfx('uiButtonConfirm'); setEquipPicker(null); };
-                const autoOn = !secJob;
-                const rows = [h('div', { key:'__auto', className:'pbx-pick-row', style: autoOn ? { borderColor:fc, background:`${fc}14` } : undefined, onClick:()=>pickJob('') },
-                  h('span', { style:{ width:26, textAlign:'center', fontSize:16, flexShrink:0, color:EW.inkMute }}, '◈'),
-                  h('div', { style:{ flex:1, minWidth:0 }},
-                    h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:13, fontWeight:700, color: autoOn ? EW.ink : '#c3c8d6' }}, '— None —'),
-                    h('div', { style:{ fontSize:10, color:EW.inkMute, lineHeight:1.35 }}, 'No subclass. Your pool holds main-job spells and race abilities only.')),
-                  autoOn ? h('span', { style:{ fontSize:9, color:fc, fontWeight:700, flexShrink:0, letterSpacing:'0.08em' }}, 'CURRENT') : null)];
-                for (const j of jobs) {
-                  const on = secJob === j;
-                  const bs = bonusStr(j);
-                  rows.push(h('div', { key:j, className:'pbx-pick-row', style: on ? { borderColor:fc, background:`${fc}14` } : undefined, onClick:()=>pickJob(j) },
-                    // Plain homosapien in this job — a visual shorthand for the role.
-                    h('div', { style:{ width:40, height:40, flexShrink:0, display:'flex', alignItems:'flex-end', justifyContent:'center', background:`linear-gradient(180deg, transparent 45%, ${fc}12 100%)`, border:`1px solid ${on?fc:EW.panelEdge}`, overflow:'hidden' }},
-                      h(Sprite, { race:'homosapien', gender:'male', cls:j, size:'92%', style:{ width:'92%', height:'92%' } })),
-                    h('div', { style:{ flex:1, minWidth:0 }},
-                      h('div', { style:{ display:'flex', alignItems:'baseline', gap:8 }},
-                        h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:13, fontWeight:700, color: on ? EW.ink : '#c3c8d6' }}, getJobDisplay(j)),
-                        h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em' }}, '+', spellCount(j), ' SPELLS TO POOL')),
-                      bs ? h('div', { style:{ fontSize:10, color:EW.inkMute, lineHeight:1.4 }}, ...bs.split('  ').map((tok, ti) => h('span', { key:ti, style:{ color: tok.startsWith('-') ? EW.bad : EW.good, marginRight:8, fontWeight:600 }}, tok))) : null),
-                    on ? h('span', { style:{ fontSize:9, color:fc, fontWeight:700, flexShrink:0, letterSpacing:'0.08em' }}, 'CURRENT') : null));
-                }
-                return rows;
-              })()
-            : equipPicker === 'item'
-            ? allItemKeys.map(ik => {
-                const rule = window.ITEM_RULES?.[ik];
-                if (!rule) return null;
-                const count = unitItems[ik] || 0;
-                const capped = count >= (rule.max || 6) || totalItemsUsed >= itemSlotMax;
-                return h('div', { key:ik, className:'pbx-pick-row', onClick:()=>setItemCount(ik, 1), style:{ opacity: capped && !count ? 0.5 : 1 }},
-                  h('span', { style:{ fontSize:20, flexShrink:0, width:26, textAlign:'center' }}, rule.icon || '📦'),
-                  h('div', { style:{ flex:1, minWidth:0 }},
-                    h('div', { style:{ fontSize:12, color: count ? EW.ink : '#c3c8d6' }}, rule.name),
-                    h('div', { style:{ fontSize:10, color:EW.inkMute, lineHeight:1.35 }}, rule.desc)),
-                  h('div', { style:{ display:'flex', alignItems:'center', gap:4, flexShrink:0 }},
-                    count > 0 ? h('button', { className:'pb-stepper-btn', onClick:e=>{ e.stopPropagation(); setItemCount(ik, -1); }, style:{ width:20, height:20, background:'rgba(0,0,0,0.4)', border:`1px solid ${EW.panelEdge}`, color:EW.inkMute, fontSize:13, lineHeight:'18px', textAlign:'center', cursor:'pointer', padding:0, fontFamily:'DotGothic16, monospace' }}, '−') : null,
-                    h('span', { style:{ width:18, textAlign:'center', fontSize:12, color: count ? EW.ink : EW.inkDim, fontWeight:600 }}, count)));
-              })
-            : (() => {
-                const other = equipPicker === 'accessory1' ? 'accessory2' : 'accessory1';
-                const rows = allAccIds.map(accId => {
-                  const def = window.EQUIP_DEFS?.[accId];
-                  if (!def) return null;
-                  const here = unitEquipment[equipPicker] === accId, there = unitEquipment[other] === accId;
-                  return h('div', { key:accId, className:'pbx-pick-row', style: here ? { borderColor:fc, background:`${fc}14` } : undefined,
-                    onClick:()=>{ if (here) { handleAccChange(equipPicker, null); } else { if (there) handleAccChange(other, null); handleAccChange(equipPicker, accId); } sfx('uiButtonConfirm'); setEquipPicker(null); } },
-                    h('span', { style:{ fontSize:18, flexShrink:0, width:26, textAlign:'center' }}, ACC_ICONS[accId] || '🎒'),
-                    h('div', { style:{ flex:1, minWidth:0 }},
-                      h('div', { style:{ fontSize:12, color: here ? EW.ink : '#c3c8d6' }}, def.label, there ? h('span', { style:{ fontSize:8, color:EW.inkDim }}, '  (in other slot)') : null),
-                      h('div', { style:{ fontSize:10, color:EW.inkMute, lineHeight:1.35 }}, def.desc)),
-                    def.stat && def.statVal ? h('span', { style:{ fontSize:10, color:EW.good, fontWeight:700, flexShrink:0 }}, '+' + def.statVal + ' ' + (def.stat || '').toUpperCase()) : null,
-                    here ? h('span', { style:{ fontSize:9, color:fc, flexShrink:0, fontWeight:700, letterSpacing:'0.08em' }}, 'EQUIPPED') : null);
-                });
-                if (unitEquipment[equipPicker]) rows.push(h('div', { key:'__rm', className:'pbx-pick-row', onClick:()=>{ handleAccChange(equipPicker, null); setEquipPicker(null); } },
-                  h('span', { style:{ width:26, textAlign:'center', color:EW.bad, flexShrink:0 }}, '✕'),
-                  h('div', { style:{ flex:1, fontSize:11, color:EW.bad }}, 'Remove gear from this slot')));
-                return rows;
-              })()),
-      )),
-
-    spellTip && buildSpellTooltip(spellTip.sp, spellTip.x, spellTip.y),
-  );
+  /* ── the monitor ── */
+  return h('div', { className: `ms-crt ms-crt-page ms-crt-forge pb-tarot pb-tarot-${unitFaction}`, style: { '--pb-fc': fc } },
+    h('div', { className: 'ms-crt-bezel' },
+      h('div', { className: 'ms-crt-glass' },
+        h('div', { className: 'ms-crt-screen' },
+          h('div', { className: 'ms-tty pb-tty' }, head, tabbar, body, partyRow, foot),
+          locker,
+          teamWindow,
+          pickerWindow),
+        h('div', { className: 'ms-crt-scan' }),
+        h('div', { className: 'ms-crt-glare' })),
+      h('div', { className: 'ms-crt-label' }, 'D.O.O.R. · ' + (standalone ? 'RECORDS' : 'CUSTOMS & ADMISSIONS') + ' · FORGE-1 · DO NOT UNPLUG'),
+      h('div', { className: 'ms-crt-brand' }, 'ENTROPY DATA SYSTEMS'),
+      h('div', { className: 'ms-crt-led' })),
+    spellTip && buildSpellTooltip(spellTip.sp, spellTip.x, spellTip.y));
 }
 
 let _pbRoot = null;

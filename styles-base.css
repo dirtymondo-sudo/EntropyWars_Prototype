@@ -4404,3 +4404,154 @@ body.diorama-3d .tile-underpass.jump::before {
     .ms-tty-full .ms-tty-modes { display: none; }
     .ms-tty-site { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   THE FORGE TERMINAL (2026-09-09) — the party builder is a CRT MONITOR.
+   party-builder.js renders the match-select set (`.ms-crt` bezel → glass →
+   screen, the `.ms-tty-*` head / foot typography above) with `.ms-crt-forge`
+   on the root and the builder's own zones on the glass: a TAB bar (ROSTER ·
+   TECHNIQUES · GEAR · DOSSIER), a three-zone body whose grid changes per
+   tab (`.pb-body[data-tab]` — the STAGE keeps its element, only its area
+   moves), the PARTY as a row of circular portraits, and windows (`.pb-veil`
+   / `.pb-window`) for the pickers. PARTY_BUILDER_PLAN.md §4 / §5.1 is the
+   spec; the rounding rule (§3.2) is `--pb-r` / `--pb-r-sm` / 999px pills /
+   50% discs. Kill nothing here without party-builder.js.
+   ═══════════════════════════════════════════════════════════════════════ */
+#builderOverlay { position: relative; }
+.ms-crt-forge { --pb-r: 16px; --pb-r-sm: 9px; }
+/* a wider bezel top and bottom — the sticky notes (Stage 5) stick there */
+.ms-crt-forge .ms-crt-bezel { padding: 30px 34px 42px; }
+.ms-crt-forge .ms-crt-glass { inset: 30px 34px 42px; }
+.ms-crt-forge .ms-crt-screen { padding: 12px 18px 10px; }
+.ms-crt-forge .ms-crt-label { bottom: 13px; }
+.ms-crt-forge .ms-crt-brand { bottom: 14px; }
+.ms-crt-forge .ms-crt-led { bottom: 17px; }
+.pb-tty { gap: 8px; }
+.pb-head { flex-shrink: 0; }
+.pb-head img { width: 20px; height: 20px; }
+/* ── the tab bar: pills, the active one in the vessel's faction colour, L1 / R1 caps ── */
+.pb-tabbar { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.pb-tabcap { font: inherit; font-size: 9px; letter-spacing: 0.2em; color: var(--ph-dim); background: rgba(0,0,0,0.35); border: 1px solid var(--ph-line); border-radius: 999px; padding: 5px 11px; cursor: pointer; text-shadow: inherit; transition: color 0.12s, border-color 0.12s; white-space: nowrap; }
+.pb-tabcap:hover { color: var(--ph); border-color: var(--ph-line-hi); }
+.pb-tabs { display: flex; gap: 6px; }
+.pb-tab { position: relative; font: inherit; font-family: 'DotGothic16', monospace; font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ph-dim); background: rgba(0,0,0,0.35); border: 1px solid var(--ph-line); border-radius: 999px; padding: 7px 18px 6px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 9px; text-shadow: inherit; transition: color 0.12s, border-color 0.12s, background 0.12s, box-shadow 0.15s; white-space: nowrap; }
+.pb-tab i { font-style: normal; font-size: 8px; line-height: 1; color: var(--ph-faint); border: 1px solid var(--ph-line); border-radius: 50%; width: 15px; height: 15px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.pb-tab:hover { color: var(--ph); border-color: var(--ph-line-hi); background: rgba(232,220,181,0.06); }
+.pb-tab.on { color: #fff; border-color: var(--pb-fc, var(--ph-gold)); background: rgba(0,0,0,0.55); box-shadow: 0 0 16px var(--pb-fc, var(--ph-gold)), inset 0 0 0 1px var(--pb-fc, var(--ph-gold)); text-shadow: 0 0 8px var(--pb-fc, var(--ph-gold)); }
+.pb-tab.on i { color: var(--pb-fc, var(--ph-gold)); border-color: var(--pb-fc, var(--ph-gold)); }
+.pb-tabhint { margin-left: auto; font-size: 9px; letter-spacing: 0.26em; color: var(--ph-faint); text-transform: uppercase; white-space: nowrap; }
+/* ── the body: one grid per tab; the stage is always the middle (or right) column ── */
+.pb-body { display: grid; gap: 12px; flex: 1; min-height: 0; font-family: 'DotGothic16', monospace; text-shadow: none; }
+.pb-body[data-tab="tech"] { grid-template-columns: clamp(330px, 30vw, 470px) minmax(0, 1fr) clamp(240px, 21vw, 320px); grid-template-areas: "tech stage stats"; }
+.pb-body[data-tab="gear"], .pb-body[data-tab="dossier"] { grid-template-columns: clamp(300px, 26vw, 420px) minmax(0, 1fr) clamp(240px, 21vw, 320px); grid-template-areas: "tech stage stats"; }
+.pb-body[data-tab="roster"] { grid-template-columns: minmax(0, 1fr) clamp(300px, 27vw, 420px); grid-template-areas: "tech stage"; }
+.pb-zone { position: relative; display: flex; flex-direction: column; min-height: 0; min-width: 0; border: 1px solid var(--ph-line); border-radius: var(--pb-r); background: rgba(0,0,0,0.28); overflow: hidden; }
+.pb-zone-tech { grid-area: tech; }
+.pb-zone-stats { grid-area: stats; padding: 10px 12px 8px; gap: 5px; }
+.pb-zone-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px 6px 12px; border-bottom: 1px solid var(--ph-line); flex-shrink: 0; min-width: 0; }
+.pb-zone-head b { font-family: 'Cormorant SC', serif; font-size: 16px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; color: #f1e9cf; white-space: nowrap; }
+.pb-zone-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+/* the stage: the hero in the middle, lit, its name over it */
+.pb-stage { grid-area: stage; position: relative; display: flex; flex-direction: column; min-height: 0; min-width: 0; border: 1px solid var(--ph-line); border-radius: var(--pb-r); background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(255,205,107,0.05), transparent 70%), rgba(0,0,0,0.2); overflow: hidden; }
+.pb-stage-title { display: flex; align-items: baseline; justify-content: center; gap: 8px; padding: 8px 12px 0; flex-shrink: 0; min-width: 0; }
+.pb-stage-title b { font-family: 'Cormorant SC', serif; font-weight: 600; font-size: clamp(16px, 1.7vw, 26px); line-height: 1.1; color: #f1e9cf; text-shadow: 0 0 24px var(--pb-fc, var(--ph-gold)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-stage-title span { font-size: 9px; letter-spacing: 0.18em; color: var(--ph-faint); flex-shrink: 0; }
+.pb-stage-view { flex: 1; min-height: 0; position: relative; display: flex; align-items: flex-end; justify-content: center; }
+.pb-stage-card { flex-shrink: 0; border-top: 1px solid var(--ph-line); padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 5px; background: rgba(0,0,0,0.3); }
+/* the codex wall (ROSTER) */
+.pb-roster { flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 5px; padding: 6px 8px; align-content: start; }
+.ms-crt-forge .pb-vessel-card { border-radius: var(--pb-r-sm); }
+/* GEAR: rows of slots, the name, the nature */
+.pb-gear { padding: 10px 12px; gap: 8px; overflow-y: auto; }
+.pb-gear-row { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.pb-gear-label { width: 66px; flex-shrink: 0; font-size: 9px; letter-spacing: 0.18em; color: var(--ph-dim); display: flex; flex-direction: column; gap: 2px; }
+.pb-gear-label small { font-size: 7px; letter-spacing: 0.14em; color: var(--ph-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 66px; }
+.pb-gear-slots { display: flex; gap: 8px; flex-wrap: wrap; }
+.pb-gear-input, .pb-gear-select { background: rgba(0,0,0,0.4); border: 1px solid var(--ph-line); border-radius: 999px; color: var(--ph); font-family: 'DotGothic16', monospace; font-size: 11px; padding: 5px 12px; flex: 1; min-width: 0; outline: none; letter-spacing: 0.04em; }
+.pb-gear-input:focus, .pb-gear-select:focus { border-color: var(--ph-line-hi); }
+.pb-gear-select { appearance: none; -webkit-appearance: none; cursor: pointer; }
+.ms-crt-forge .pbx-eqslot { clip-path: none; border-radius: 50%; }
+.ms-crt-forge .pbx-subbar { border-radius: var(--pb-r-sm); }
+.ms-crt-forge .pbx-pick-row { border-radius: var(--pb-r-sm); }
+/* ── the party row: circular portraits, the active one larger and ringed ── */
+.pb-party { display: flex; align-items: center; gap: 10px; flex-shrink: 0; padding: 4px 8px 2px; border-top: 1px solid var(--ph-line); font-family: 'DotGothic16', monospace; text-shadow: none; }
+.pb-party-cap { font: inherit; font-size: 14px; line-height: 1; color: var(--ph-dim); background: rgba(0,0,0,0.35); border: 1px solid var(--ph-line); border-radius: 50%; width: 30px; height: 30px; cursor: pointer; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; transition: color 0.12s, border-color 0.12s; }
+.pb-party-cap:hover { color: var(--ph-gold); border-color: var(--ph-line-hi); }
+.pb-party-slots { display: flex; gap: 14px; flex: 1; min-width: 0; overflow-x: auto; overflow-y: hidden; padding: 8px 6px 2px; justify-content: center; }
+.pb-party-slot { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 96px; flex: none; cursor: pointer; }
+.pb-party-ring { position: relative; width: 60px; height: 60px; border-radius: 50%; border: 2px solid var(--slot-fc, var(--ph-gold)); box-shadow: 0 0 0 2px #000; background: radial-gradient(circle, rgba(255,255,255,0.05), rgba(0,0,0,0.55)); transition: transform 0.15s, box-shadow 0.15s, border-width 0.15s; }
+.pb-party-slot:hover .pb-party-ring { box-shadow: 0 0 0 2px #000, 0 0 12px var(--slot-fc, var(--ph-gold)); }
+.pb-party-slot.on .pb-party-ring { border-width: 3px; transform: scale(1.12); box-shadow: 0 0 0 2px #000, 0 0 18px var(--slot-fc, var(--ph-gold)); }
+.pb-party-portrait { position: absolute; inset: 2px; border-radius: 50%; overflow: hidden; display: flex; align-items: flex-end; justify-content: center; }
+.pb-party-no { position: absolute; top: -5px; left: -5px; width: 18px; height: 18px; border-radius: 50%; background: #0a0908; border: 1px solid var(--slot-fc, var(--ph-gold)); color: var(--slot-fc, var(--ph-gold)); font-family: 'Cormorant SC', serif; font-style: italic; font-size: 10px; line-height: 1; display: flex; align-items: center; justify-content: center; z-index: 2; }
+.pb-party-filed { position: absolute; right: -12px; bottom: -3px; z-index: 2; }
+.pb-party-ring .door-stamp.pb-party-filed { font-size: 6.5px; letter-spacing: 0.12em; padding: 1px 3px 0; outline: none; border-width: 1.5px; }
+.pb-party-tick { font-size: 11px; color: var(--ph-green); font-weight: 700; }
+.pb-party-name { font-family: 'Cormorant SC', serif; font-size: 11px; line-height: 1.1; color: var(--ph); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
+.pb-party-slot.on .pb-party-name { color: #fff; }
+.pb-party-sub { font-size: 7px; letter-spacing: 0.08em; color: var(--ph-faint); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; }
+.pb-party-side { display: flex; gap: 4px; flex-shrink: 0; }
+.pb-pill { font: inherit; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ph-dim); background: rgba(0,0,0,0.35); border: 1px solid var(--ph-line); border-radius: 999px; padding: 4px 10px; cursor: pointer; white-space: nowrap; transition: color 0.12s, border-color 0.12s, background 0.12s; }
+.pb-pill:hover { color: var(--ph); border-color: var(--ph-line-hi); }
+.pb-pill.on { color: var(--ph-gold); border-color: var(--ph-gold); background: rgba(255,205,107,0.12); }
+.pb-party-count { font-size: 9px; letter-spacing: 0.2em; color: var(--ph-dim); white-space: nowrap; flex-shrink: 0; }
+/* ── the foot: the match-select buttons, plus the small dice and the tinted verbs ── */
+.pb-foot { gap: 8px; }
+.pb-foot .ms-tty-btn { border-radius: 999px; }
+.pb-foot .ms-tty-btn.sm { padding: 8px 11px; font-size: 9px; }
+.pb-foot .ms-tty-btn.ok { color: var(--ph-green); border-color: rgba(102,255,138,0.45); }
+.pb-foot .ms-tty-btn.ok:hover:not(:disabled) { color: #c8ffd6; background: rgba(102,255,138,0.1); border-color: var(--ph-green); }
+.pb-foot .ms-tty-btn.gold { color: var(--ph-gold); border-color: rgba(255,205,107,0.4); }
+.pb-foot .ms-tty-btn.gold:hover:not(:disabled) { background: rgba(255,205,107,0.1); border-color: var(--ph-gold); color: var(--ph-gold); }
+.pb-foot .ms-tty-btn.teal { color: var(--ph-teal); border-color: rgba(127,217,221,0.4); }
+.pb-foot .ms-tty-btn.teal:hover:not(:disabled) { background: rgba(127,217,221,0.1); border-color: var(--ph-teal); color: var(--ph-teal); }
+.pb-foot .ms-tty-btn.primary { padding: 12px 26px; }
+.pb-foot .ms-tty-btn.primary:disabled { opacity: 0.85; cursor: default; }
+.pb-foot .ms-tty-btn.primary.waiting b { font-size: 14px; letter-spacing: 0.18em; }
+.pb-foot .ms-tty-sum span em.red { color: var(--ph-red); }
+.pb-foot-input { background: rgba(0,0,0,0.4); border: 1px solid var(--ph-line); border-radius: 999px; color: var(--ph); font-family: 'Cormorant SC', serif; font-size: 14px; padding: 7px 14px; width: 200px; letter-spacing: 0.06em; outline: none; }
+.pb-foot-input:focus { border-color: var(--ph-line-hi); }
+.pb-foot-note { font-size: 9px; letter-spacing: 0.14em; color: var(--ph-dim); white-space: nowrap; }
+/* ── a window on the glass ── */
+.pb-veil { position: absolute; inset: 0; z-index: 4; background: rgba(3,3,2,0.7); display: flex; align-items: center; justify-content: center; font-family: 'DotGothic16', monospace; text-shadow: none; }
+.pb-veil.zone { background: rgba(3,3,2,0.92); align-items: stretch; padding: 6px; }
+.pb-window { display: flex; flex-direction: column; min-height: 0; max-height: 86%; max-width: 92%; background: #060705; border: 1px solid var(--ph-line-hi); border-radius: var(--pb-r); box-shadow: 0 0 0 1px #000, 0 12px 40px rgba(0,0,0,0.8), 0 0 30px rgba(255,205,107,0.08); overflow: hidden; animation: pbTipIn 0.14s ease-out; }
+.pb-veil.zone .pb-window { width: 100%; max-height: none; max-width: none; flex: 1; }
+.pb-window-head { display: flex; align-items: center; gap: 10px; padding: 9px 12px 8px 14px; border-bottom: 1px solid var(--ph-line); flex-shrink: 0; min-width: 0; }
+.pb-window-head b { font-family: 'Cormorant SC', serif; font-size: 15px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ph-gold); font-weight: 600; white-space: nowrap; }
+.pb-window-head span { font-size: 9px; letter-spacing: 0.1em; color: var(--ph-dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-window-x { margin-left: auto; font: inherit; font-size: 9px; letter-spacing: 0.12em; color: var(--ph-dim); background: transparent; border: 1px solid var(--ph-line); border-radius: 999px; padding: 4px 10px; cursor: pointer; flex-shrink: 0; }
+.pb-window-x:hover { color: var(--ph); border-color: var(--ph-line-hi); }
+.pb-window-body { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 5px; }
+/* ── the archive (standalone landing view) — a full-glass view over the forge ── */
+.pb-locker { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; gap: 10px; padding: 12px 18px 10px; background: radial-gradient(ellipse 90% 80% at 50% 45%, #0c0e0a 0%, #070806 65%, #040403 100%); text-shadow: var(--ph-glow); }
+.pb-locker-body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 8px 20px; font-family: 'DotGothic16', monospace; text-shadow: none; }
+.pb-locker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; align-content: start; }
+.ms-crt-forge .pb-team-card { clip-path: none; border-radius: var(--pb-r); }
+.ms-crt-forge .pb-team-mini { border-radius: 50%; }
+.ms-crt-forge .pb-team-act { border-radius: 999px; }
+/* ── smaller glass ── */
+@media (max-width: 1500px) {
+    .pb-prompt { display: none; }
+}
+@media (max-width: 1180px) {
+    .pb-body[data-tab="tech"] { grid-template-columns: minmax(280px, 34vw) minmax(0, 1fr) minmax(200px, 24vw); gap: 8px; }
+    .pb-body[data-tab="gear"], .pb-body[data-tab="dossier"] { grid-template-columns: minmax(260px, 30vw) minmax(0, 1fr) minmax(200px, 24vw); gap: 8px; }
+    .pb-body[data-tab="roster"] { grid-template-columns: minmax(0, 1fr) minmax(240px, 30vw); gap: 8px; }
+    .pb-tabhint, .pb-foot-note { display: none; }
+    .pb-foot .ms-tty-btn.primary { padding: 10px 18px; }
+    .pb-foot .ms-tty-btn.primary b { font-size: 15px; }
+}
+@media (max-width: 940px) {
+    .ms-crt-forge .ms-crt-bezel { padding: 14px 12px 30px; }
+    .ms-crt-forge .ms-crt-glass { inset: 14px 12px 30px; }
+    .ms-crt-forge .ms-crt-screen { padding: 8px 10px 8px; }
+    .pb-body[data-tab] { grid-template-columns: minmax(0, 1fr); grid-template-areas: "stage" "tech" "stats"; overflow-y: auto; }
+    .pb-stage { min-height: 42vh; flex-shrink: 0; }
+    .pb-zone { min-height: 60vh; flex-shrink: 0; }
+    .pb-tabcap { display: none; }
+    .pb-tab { padding: 6px 12px 5px 9px; font-size: 10px; }
+    .pb-party-slots { justify-content: flex-start; }
+    .pb-foot { flex-wrap: wrap; }
+    .pb-foot .ms-tty-sum { display: none; }
+}

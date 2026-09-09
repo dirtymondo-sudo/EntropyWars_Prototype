@@ -366,7 +366,7 @@ or within 2.5 s of a leave; panels on the way to a launch close with
 terminal") source-scans all of it. Fallback: no host / no React → the old
 panel + the page.
 
-## THE FORGE TERMINAL (party builder redesign) — PLAN ONLY, added 2026-09-09
+## THE FORGE TERMINAL (party builder redesign) — Stage 1 SHIPPED 2026-09-09
 `PARTY_BUILDER_PLAN.md` is the staged plan for rebuilding party-builder.js
 around the seven reference images in `party_builder_references/` (view
 them with the Read tool): ONE CRT monitor (the match-select `.ms-crt`
@@ -380,7 +380,22 @@ VFX on the stage when a spell is hovered / equipped. Read the plan's §2
 preview must route around it), §3 (the rounding rule and the other design
 rules), §5 (the six stages, in order), §6 (decisions the user still owns)
 before touching the builder; append to its §9 build log every session.
-Nothing has shipped yet — Stage 1 (the monitor + tabs + the row) is next.
+**Stage 1 shipped (2026-09-09)**: party-builder.js renders the monitor —
+root `.ms-crt.ms-crt-page.ms-crt-forge.pb-tarot` → bezel → glass →
+`.ms-tty.pb-tty` (head · `.pb-tabbar` · `.pb-body[data-tab]` · `.pb-party`
+· `.pb-foot`); `PB_TABS` (`window.PB_TABS`, `window._pbSetTab(id)`), React
+state `pbTab`, ROSTER first, `pickRace` flips to TECHNIQUES; Q / E, [ / ],
+1–4, ← →, ESC (closes a window, else BACK). The STAGE (`.pb-stage`, one
+keyed element) never remounts across tabs — `EWCharViewer` is a singleton.
+Windows (`PbWindow`, module-level — a per-render component remounts on
+every keystroke) replace the modals; the standalone locker is `.pb-locker`.
+CSS = styles-base.css "THE FORGE TERMINAL" block (`#builderOverlay` is
+positioned there because the CRT root is absolute). `npm test` runs
+`party-builder.test.js` (source scans: tabs, root, row, one stage, the
+lock-flow names, the mechanic names). Every mechanic kept its function name
+(plan rule 3.5) — re-skin, never re-implement. Next: Stage 2 (the circuit,
+the technique panel, `EWCharViewer.play` / `playSpell` + the shared
+`_castChainFor` chain table).
 
 ## TRAINING MATCH (instant CPU turns vs a human) — added 2026-09-07
 Match-select → CONFIG column → **CPU TEMPO: Cinematic / ⚡ Training**

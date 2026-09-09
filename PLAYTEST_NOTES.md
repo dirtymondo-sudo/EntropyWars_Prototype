@@ -9892,3 +9892,28 @@ photographs the beat at 1.2 / 2.3 / 5.4 beat-seconds, logging the camera
   (MS_GAME_MODES / MS_MAP_LIST / MULTIPLAYER_MODES / GAME_MODES) catches
   undefined refs in both variants in a second.
 
+## THE FORGE TERMINAL (2026-09-09): the party builder on a CRT — Stage 1
+The pre-match builder (`#builderOverlay`, ui.js `renderBuilder` →
+`_mountReactPartyBuilder`) and the standalone archive (`#teamBuilderBody`,
+map.js `_goToTeamBuilder`) now render ONE monitor — the match-select
+`.ms-crt` chrome with `.ms-crt-forge` on the root. PARTY_BUILDER_PLAN.md is
+the spec (§4 anatomy, §5.1 what shipped, §7 keys). Hooks a harness can drive:
+- `window.PB_TABS` — `[{ id, label, hint }]`: roster · tech · gear · dossier.
+- `window._pbSetTab(id)` — switch tabs (set while the builder is mounted).
+- DOM: `.pb-tab` (the pills, `.on` = active, `data`-less — read `aria-selected`),
+  `.pb-tabcap` (L1 / R1), `.pb-body[data-tab]`, `.pb-zone-tech` (the left
+  column — the Codex wall `.pb-roster > .pb-vessel-card` on ROSTER, the
+  tree on TECHNIQUES, `.pb-gear` on GEAR), `.pb-stage` (the hero; one
+  element, never remounts), `.pb-zone-stats`, `.pb-party > .pb-party-slots >
+  .pb-party-slot` (`.on` = selected, `.filed` = confirmed), `.pb-party-cap`,
+  `.pb-foot .ms-tty-btn.primary` (SEAL / WAITING / START), `.ms-tty-btn.ok`
+  (CONFIRM), `.pb-veil` / `.pb-window` (a picker or the team modal is open),
+  `.pb-locker` (the standalone archive is showing).
+- Keys: Q / E or [ / ] cycle tabs, 1–4 jump, ← → walk the party row, ESC
+  closes a window else BACK (pre-match `doBack`; standalone edit → locker;
+  locker → main menu). All ignored while an input / select has focus.
+- Nothing relays (local UI); the online foot ladder (`isWaitingOnline` /
+  `opponentLockedToo` / `friendlyHostCanStart`) is verbatim from before.
+Playtest harnesses that click the old left-column slot cards must use
+`.pb-party-slot` now; the old ASSESSMENT / DOSSIER sub-tabs are gone (stats
+live in the right column, the dossier is a tab).
