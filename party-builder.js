@@ -457,6 +457,48 @@ const FACTION_C = { space: EW.space, time: EW.time, chaos: EW.chaos };
 const TYPE_C = { human:EW.human, alien:EW.alien, divine:EW.divine, unholy:EW.unholy, anomaly:EW.anomaly, tech:EW.tech };
 // the wall's six type discs (Stage 4): a two-letter glyph per damage type
 const PB_TYPE_GLYPH = { human: 'HU', alien: 'AL', divine: 'DV', unholy: 'UH', tech: 'TK', anomaly: 'AN' };
+// the affinity ring's order (Stage 5) — the ENTROPY STRIKE order when data.js has it
+const PB_TYPE_ORDER = ['human', 'alien', 'divine', 'unholy', 'tech', 'anomaly'];
+/* ── Stage 5 (plan §5.5): STAT PILLS — one round disc per stat (its colour +
+   a glyph), a rounded bar, the value; the letter grade is a tiny ring. The
+   NUMBERS still come from computeFullStats / statGrade — this table is
+   paint only. ── */
+const PB_STAT_LOOK = {
+  HP:   { c: '#2ed158', g: '♥' },   // ♥
+  MP:   { c: '#2f9dff', g: '◆' },   // ◆
+  ATK:  { c: '#ff6b4a', g: '✊' },   // ✊
+  DEF:  { c: '#4fa3ff', g: '\u{1F6E1}' },// 🛡
+  INT:  { c: '#c77dff', g: '✦' },   // ✦  (M ATK)
+  MDEF: { c: '#7fd9dd', g: '◈' },   // ◈  (M DEF)
+  SPD:  { c: '#f2c468', g: '➶' },   // ➶
+  AWR:  { c: '#ffd75a', g: '◉' },   // ◉
+  CRT:  { c: '#ff4fa3', g: '✧' },   // ✧
+  EVA:  { c: '#58d858', g: '↯' },   // ↯
+};
+/* ── Stage 5: THE STICKY NOTES — paper colour per faction (pink / yellow /
+   cream, plan §5.5 item 1); the rotation is seeded by the race id. ── */
+const PB_NOTE_PAPER = { chaos: 'pink', time: 'yellow', space: 'cream' };
+/* ── Stage 5: THE ZODIAC WHEEL — what a sign DOES in the engine. The sky
+   cycles through the twelve signs (data.js ZODIAC_CYCLE, five rounds each,
+   a random offset per match); while a unit's own sign rules the sky its
+   MOVE and armor read ×1.10 (state.js getZodiacBonus → battle.js
+   getEffectiveMove / calculateDamage). Star Crossed (the fortune teller's
+   reading, battle.js) afflicts by the sign's ELEMENT — this table mirrors
+   `_zElementOf` there — and strikes 50 % harder under the sign's own sky.
+   (`ZODIAC_NATURES` never existed in data.js; the old buff / debuff label
+   read null. This is the real rule.) ── */
+const PB_ZODIAC_ELEMENT = {
+  aries: 'fire', leo: 'fire', sagittarius: 'fire',
+  taurus: 'earth', virgo: 'earth', capricorn: 'earth',
+  gemini: 'air', libra: 'air', aquarius: 'air',
+  cancer: 'water', scorpio: 'water', pisces: 'water',
+};
+const PB_ZODIAC_READ = {
+  fire:  { icon: '\u{1F525}', line: 'STAR CROSSED READS A FIRE SIGN AS BURN (2 ROUNDS)' },
+  earth: { icon: '⛰',    line: 'STAR CROSSED READS AN EARTH SIGN AS ROOT (1 ROUND) · −1 DEF' },
+  air:   { icon: '\u{1F32C}', line: 'STAR CROSSED READS AN AIR SIGN AS SILENCE (1 ROUND)' },
+  water: { icon: '\u{1F4A7}', line: 'STAR CROSSED READS A WATER SIGN AS −1 M ATK' },
+};
 // Brightened text for the canonical type badge (legible over any background).
 const TYPE_TEXT_C = { human:'#c8c8e4', divine:'#f2c63c', unholy:'#c566e2', tech:'#4ecbe2', anomaly:'#ff5e98', alien:'#56d178' };
 /* CRT/EVA are official stats (canonical formula in data.js — the same one
@@ -856,50 +898,53 @@ function TypeChip({ type, size }) {
    the number at every display site so the language is learned once. */
 function GradeChip({ statKey, val }) {
   const g = (typeof window.statGrade === 'function') ? window.statGrade(statKey, val) : null;
-  if (!g) return h('span', { style:{ width:14 } });
+  if (!g) return h('span', { className: 'pb-grade-ring none' });
   const c = (window.STAT_GRADE_COLORS || {})[g] || '#c8c8e4';
-  return h('span', { style:{ width:14, textAlign:'center', fontFamily:'DotGothic16, monospace',
-    fontSize:10, fontWeight:700, lineHeight:'12px', color:c, border:`1px solid ${c}66`,
-    background:`${c}1a`, borderRadius:2 } }, g);
+  return h('span', { className: 'pb-grade-ring', style: { '--gc': c }, title: 'Grade ' + g }, g);
 }
-function StatBar({ label, val, max, compact, zodiacMod, delta, suffix, tip, gradeKey }) {
+/* Stage 5 (plan §5.5 item 2): the STAT PILL. `statKey` (HP / ATK / INT …)
+   picks the disc's colour + glyph from PB_STAT_LOOK; `gradeKey` is the
+   engine's stat id for the grade ring / the tooltip. The bar is rounded
+   (--pb-r-sm), the fill is the stat's colour, the zodiac ▲▼ and the
+   subclass / gear delta read exactly as before. */
+function StatBar({ label, val, max, compact, zodiacMod, delta, suffix, tip, gradeKey, statKey }) {
   const pct = Math.min(100, (val / max) * 100);
-  const tone = pct >= 70 ? EW.good : pct >= 40 ? EW.warn : EW.bad;
-  let barColor = tone, labelColor = EW.inkMute, valColor = EW.ink;
-  if (zodiacMod === 'up') { barColor = EW.good; labelColor = EW.good; valColor = EW.good; }
-  if (zodiacMod === 'dn') { barColor = EW.bad; labelColor = EW.bad; valColor = EW.bad; }
+  const look = PB_STAT_LOOK[statKey] || PB_STAT_LOOK[label] || { c: EW.inkMute, g: '●' };
+  let color = look.c, labelColor = EW.inkMute, valColor = EW.ink;
+  if (zodiacMod === 'up') { color = EW.good; labelColor = EW.good; valColor = EW.good; }
+  if (zodiacMod === 'dn') { color = EW.bad; labelColor = EW.bad; valColor = EW.bad; }
   const deltaNum = delta || 0;
-  return h('div', { title: tip || undefined, style:{ display:'flex', alignItems:'center', gap:4, fontFamily:'DotGothic16, monospace', fontSize:11 } },
-    h('span', { style:{ width:34, color:labelColor, letterSpacing:'0.04em', fontSize:10 } }, label,
-      zodiacMod === 'up' ? h('span', { style:{color:EW.good, fontSize:'0.7em'} }, ' \u25B2') : null,
-      zodiacMod === 'dn' ? h('span', { style:{color:EW.bad, fontSize:'0.7em'} }, ' \u25BC') : null),
-    h('div', { style:{ flex:1, position:'relative', height: compact?5:7, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', overflow:'hidden' } },
-      h('div', { style:{ position:'absolute', inset:0, width:`${pct}%`, background:`linear-gradient(90deg, ${barColor}, ${barColor}aa)` } })),
-    gradeKey ? h(GradeChip, { statKey: gradeKey, val }) : null,
-    h('span', { style:{ width:32, textAlign:'right', color:valColor, fontWeight:600, fontSize:11 } }, val + (suffix || '')),
-    deltaNum !== 0 ? h('span', { style:{ width:28, textAlign:'right', fontSize:9, fontWeight:700, color: deltaNum > 0 ? EW.good : EW.bad } }, deltaNum > 0 ? '+'+deltaNum : ''+deltaNum) : h('span', { style:{ width:28 } }));
+  return h('div', { className: 'pb-stat' + (compact ? ' compact' : ''), title: tip || undefined, style: { '--sc': color } },
+    h('span', { className: 'pb-stat-disc' }, look.g),
+    h('span', { className: 'pb-stat-label', style: { color: labelColor } }, label,
+      zodiacMod === 'up' ? h('em', { style: { color: EW.good } }, '▲') : null,
+      zodiacMod === 'dn' ? h('em', { style: { color: EW.bad } }, '▼') : null),
+    h('span', { className: 'pb-stat-bar' }, h('i', { style: { width: `${pct}%` } })),
+    gradeKey ? h(GradeChip, { statKey: gradeKey, val }) : h('span', { className: 'pb-grade-ring none' }),
+    h('span', { className: 'pb-stat-val', style: { color: valColor } }, val + (suffix || '')),
+    h('span', { className: 'pb-stat-delta', style: { color: deltaNum > 0 ? EW.good : EW.bad } }, deltaNum > 0 ? '+' + deltaNum : deltaNum < 0 ? '' + deltaNum : ''));
 }
-/* Battle-style HP/MP vitals bar: the exact nameplate fills/glows (PB_VITAL,
-   synced with hud.js), rendered taller than the stat bars so the vitals read
-   as their own block. Row metrics (label/grade/value/delta column widths)
-   match StatBar so everything below lines up. Zodiac recolors label/value
-   text only \u2014 the fill itself stays canonical green/blue. */
-function VitalBar({ label, val, max, vital, zodiacMod, delta, tip, gradeKey }) {
+/* Battle-style HP/MP vitals pill: the exact nameplate fills/glows (PB_VITAL,
+   synced with hud.js), taller than the stat bars so the vitals read as their
+   own block. Same column metrics as StatBar so everything lines up. Zodiac
+   recolors label/value text only — the fill itself stays canonical green/blue. */
+function VitalBar({ label, val, max, vital, zodiacMod, delta, tip, gradeKey, statKey }) {
   const pct = Math.min(100, (val / max) * 100);
   const vd = PB_VITAL[vital] || PB_VITAL.hp;
+  const look = PB_STAT_LOOK[statKey] || PB_STAT_LOOK[label] || { c: vd.ink, g: '●' };
   let labelColor = vd.ink, valColor = EW.ink;
   if (zodiacMod === 'up') { labelColor = EW.good; valColor = EW.good; }
   if (zodiacMod === 'dn') { labelColor = EW.bad; valColor = EW.bad; }
   const deltaNum = delta || 0;
-  return h('div', { title: tip || undefined, style:{ display:'flex', alignItems:'center', gap:4, fontFamily:'DotGothic16, monospace', fontSize:11 } },
-    h('span', { style:{ width:34, color:labelColor, fontWeight:700, letterSpacing:'0.06em', fontSize:10, textShadow:`0 0 8px ${vd.ink}66` } }, label,
-      zodiacMod === 'up' ? h('span', { style:{color:EW.good, fontSize:'0.7em'} }, ' \u25B2') : null,
-      zodiacMod === 'dn' ? h('span', { style:{color:EW.bad, fontSize:'0.7em'} }, ' \u25BC') : null),
-    h('div', { style:{ flex:1, position:'relative', height: vital === 'hp' ? 9 : 7, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.10)', overflow:'hidden' } },
-      h('div', { style:{ position:'absolute', top:0, left:0, bottom:0, width:`${pct}%`, background:vd.fill, boxShadow:vd.glow, transition:'width 0.35s ease-out' } })),
-    gradeKey ? h(GradeChip, { statKey: gradeKey, val }) : null,
-    h('span', { style:{ width:32, textAlign:'right', color:valColor, fontWeight:600, fontSize:11 } }, val),
-    deltaNum !== 0 ? h('span', { style:{ width:28, textAlign:'right', fontSize:9, fontWeight:700, color: deltaNum > 0 ? EW.good : EW.bad } }, deltaNum > 0 ? '+'+deltaNum : ''+deltaNum) : h('span', { style:{ width:28 } }));
+  return h('div', { className: 'pb-stat vital' + (vital === 'hp' ? ' hp' : ''), title: tip || undefined, style: { '--sc': look.c } },
+    h('span', { className: 'pb-stat-disc' }, look.g),
+    h('span', { className: 'pb-stat-label', style: { color: labelColor, textShadow: `0 0 8px ${vd.ink}66` } }, label,
+      zodiacMod === 'up' ? h('em', { style: { color: EW.good } }, '▲') : null,
+      zodiacMod === 'dn' ? h('em', { style: { color: EW.bad } }, '▼') : null),
+    h('span', { className: 'pb-stat-bar' }, h('i', { style: { width: `${pct}%`, background: vd.fill, boxShadow: vd.glow } })),
+    gradeKey ? h(GradeChip, { statKey: gradeKey, val }) : h('span', { className: 'pb-grade-ring none' }),
+    h('span', { className: 'pb-stat-val', style: { color: valColor } }, val),
+    h('span', { className: 'pb-stat-delta', style: { color: deltaNum > 0 ? EW.good : EW.bad } }, deltaNum > 0 ? '+' + deltaNum : deltaNum < 0 ? '' + deltaNum : ''));
 }
 /* ── D.O.O.R. layer (DOOR_DESIGN §3): the forge is a customs desk. The seal
    is the user-made PNG on R2 (data.js DOOR_TEXT.LOGO); SigilMark stays as
@@ -1697,6 +1742,88 @@ function RangeDiamond({ radius, fill, edge, label, value, color, tip }) {
     h('div', { style: { position:'relative', width: size * cellPx, height: size * cellPx } }, ...cells),
     h('div', { style: { fontSize:9, color, letterSpacing:'0.1em', fontWeight:600, whiteSpace:'nowrap' } }, label, ' ', h('span', { style:{ color:'#e6e9f2' } }, value)));
 }
+/* ══ Stage 5 (plan §5.5 item 1): THE STICKY NOTES ═══════════════════════
+   One paper note per passive the ENGINE would give this vessel — read
+   through data.js getUnitPassives on a pseudo-unit built from the slot's
+   identity (race / gender / job / types / gear, an empty status map), so
+   `flying` resolves first (map.js canFly: SKY_RACES, the Psychic, the
+   telepath, a jetpack) and the race's ids after, capped at
+   MAX_UNIT_PASSIVES exactly like a unit on the board. The hand-authored
+   RACE_TRAITS rows that are NOT registry passives (Mountain Traverser,
+   Daywalker…) become one smaller TERRAIN note. Text: `PASSIVE: <name>` +
+   the def's desc; a user-voiced marginalia line rides
+   `PASSIVE_DEFS[id].note` when present (decision C-7 — Claude never writes
+   it). Clicking a note opens the full list in a window. */
+function pbUnitNotes(identity, cls, equipment) {
+  const race = identity.race || '';
+  const pseudo = { race, gender: identity.gender || 'male', cls, types: identity.types || [], faction: identity.faction,
+    zodiac: identity.zodiac, status: {}, equipment: equipment || {} };
+  let passives = [];
+  try { passives = (typeof window.getUnitPassives === 'function') ? (window.getUnitPassives(pseudo) || []) : []; } catch (e) { passives = []; }
+  const passiveNames = new Set(passives.map(p => p.name));
+  const terrain = (RACE_TRAITS[race] || []).filter(t => !passiveNames.has(t.name));
+  return { passives, terrain };
+}
+// ±3° per note, seeded by the race id — the same vessel always wears its notes the same way
+function pbNoteRot(seed, i) {
+  let x = 7;
+  for (const c of String(seed || '')) x = ((x * 31) + c.charCodeAt(0)) >>> 0;
+  return (((x + i * 977) % 61) / 10 - 3).toFixed(1);
+}
+function PbNotes({ notes, seed, paper, onOpen }) {
+  const items = [];
+  notes.passives.forEach((p, i) => {
+    items.push(h('div', { key: 'p' + p.id, className: 'pb-note ' + paper, style: { '--rot': pbNoteRot(seed, i) + 'deg' }, onClick: onOpen, title: 'Open the notes' },
+      h('i', { className: 'pb-note-fold' }),
+      h('b', null, 'PASSIVE: ', h('u', null, p.name)),
+      h('p', null, p.desc || ''),
+      p.note ? h('em', null, p.note) : null));
+  });
+  if (notes.terrain.length) {
+    const rows = notes.terrain.slice(0, 3);
+    items.push(h('div', { key: 'terrain', className: 'pb-note terrain ' + paper, style: { '--rot': pbNoteRot(seed, 5) + 'deg' }, onClick: onOpen, title: 'Open the notes' },
+      h('i', { className: 'pb-note-fold' }),
+      h('b', null, h('u', null, 'TERRAIN')),
+      ...rows.map((t, i) => h('p', { key: i }, t.icon, ' ', h('strong', null, t.name), ' — ', t.desc)),
+      notes.terrain.length > rows.length ? h('span', { className: 'pb-note-clip' }, '\u{1F4CE} +' + (notes.terrain.length - rows.length) + ' MORE') : null));
+  }
+  if (!items.length) return null;
+  return h('div', { className: 'pb-notes' }, ...items);
+}
+
+/* ══ Stage 5 (plan §5.5 item 3): AFFINITIES ══════════════════════════════
+   Six round type icons; for the vessel's OWN types the ring reads the
+   INCOMING matchups the way state.js getTypeDamageMultiplier judges a hit
+   of type A on this vessel: TYPE_CHART[A].strongVs meets a type of ours
+   (and weakVs does not) → WEAK, it takes ×1.30; TYPE_CHART[A].weakVs meets
+   ours (and strongVs does not) → RESIST, ×0.75; else neutral. (The chart's
+   `resists` field is documentation — the engine reads strongVs / weakVs.) */
+function pbAffinities(unitTypes) {
+  const chart = window.TYPE_CHART || {};
+  const mine = (unitTypes || []).map(t => String(t).toLowerCase());
+  const order = (Array.isArray(window.ENTROPY_STRIKE_TYPE_ORDER) && window.ENTROPY_STRIKE_TYPE_ORDER.length === 6) ? window.ENTROPY_STRIKE_TYPE_ORDER : PB_TYPE_ORDER;
+  return order.map(a => {
+    const row = chart[a] || {};
+    const strong = (row.strongVs || []).some(t => mine.includes(t));
+    const weak = (row.weakVs || []).some(t => mine.includes(t));
+    const verdict = strong && !weak ? 'weak' : weak && !strong ? 'resist' : 'neutral';
+    return { type: a, verdict, own: mine.includes(a), mult: verdict === 'weak' ? 1.3 : verdict === 'resist' ? 0.75 : 1 };
+  });
+}
+function PbAffinityRing({ types }) {
+  const rows = pbAffinities(types);
+  return h('div', { className: 'pb-affinity' },
+    ...rows.map(r => {
+      const c = TYPE_C[r.type] || EW.inkMute;
+      const tip = r.verdict === 'weak' ? `takes 1.3× from ${r.type.toUpperCase()}`
+        : r.verdict === 'resist' ? `takes 0.75× from ${r.type.toUpperCase()}`
+        : `takes 1× from ${r.type.toUpperCase()}`;
+      return h('div', { key: r.type, className: 'pb-aff ' + r.verdict + (r.own ? ' own' : ''), style: { '--tc': c }, title: tip + (r.own ? ' · its own type: STAB on its own casts' : '') },
+        h('span', { className: 'pb-aff-disc' }, PB_TYPE_GLYPH[r.type] || '?'),
+        h('small', null, r.verdict === 'weak' ? 'WEAK' : r.verdict === 'resist' ? 'RESIST' : r.own ? 'OWN' : '—'));
+    }));
+}
+
 // RPG-style equipment/item slot square flanking the hero sprite.
 function EquipSlotBox({ size, accent, filled, icon, label, title, onClick, onClear }) {
   const s = size || 48;
@@ -1787,6 +1914,8 @@ function PartyBuilder(props) {
   const [rosterHover, setRosterHover] = React.useState(null);
   const rosterHoverTimer = React.useRef(0);
   const [pbMenu, setPbMenu] = React.useState(null);
+  // Stage 5: the sticky notes' full-text window (`.pb-notes` click)
+  const [notesOpen, setNotesOpen] = React.useState(false);
   // THE STAGE (plan §5.3): the CRT root + the technique on the stage, for the
   // monitor's reactions (grade wash / scanline roll / jolt) — DOM-driven, no
   // React state churn per beat.
@@ -2455,7 +2584,7 @@ function PartyBuilder(props) {
   const raceLabelTxt = _grl(unitRace, identity.gender) || unitRace;
   const officer = pbOfficer();
   const filedCount = (() => { let n = 0; for (let i = 0; i < teamSize; i++) if (st.builderConfirmedSlots?.[player]?.[i]) n++; return n; })();
-  const anyWindow = !!(equipPicker || showTeamModal || pbMenu || (twinPick && unitTree && unitTree.alts && unitTree.alts[twinPick]) || (flSocketPick && unitTree && unitTree.isFreelancer));
+  const anyWindow = !!(equipPicker || showTeamModal || pbMenu || notesOpen || (twinPick && unitTree && unitTree.alts && unitTree.alts[twinPick]) || (flSocketPick && unitTree && unitTree.isFreelancer));
   // the wall's hover → the stage (Stage 4); cleared on leave, on a pick and off the ROSTER tab
   const rosterHoverIn = (entry) => {
     if (rosterHoverTimer.current) clearTimeout(rosterHoverTimer.current);
@@ -2473,7 +2602,7 @@ function PartyBuilder(props) {
   const stageCls = stageEntry ? stageEntry.cls : clsName;
   const stageFaction = stageEntry ? (stageEntry.faction || unitFaction) : unitFaction;
   const stageLabel = stageEntry ? (stageEntry.label || _grl(stageEntry.race, stageEntry.gender)) : raceLabelTxt;
-  const closeWindows = () => { setEquipPicker(null); setShowTeamModal(false); setTwinPick(null); setFlSocketPick(null); setPbMenu(null); hideSpellTip(); };
+  const closeWindows = () => { setEquipPicker(null); setShowTeamModal(false); setTwinPick(null); setFlSocketPick(null); setPbMenu(null); setNotesOpen(false); hideSpellTip(); };
   const selectPlayer = (p) => { if (p === player) return; st.builderSelectedPlayer = p; st.builderSelectedSlot = 0; setSlot(0); sfx('uiCursorMove'); refresh(); };
   const backOut = () => {
     if (standalone) {
@@ -2828,7 +2957,7 @@ function PartyBuilder(props) {
           ['accessory1','accessory2'].map(sk => {
             const accId = unitEquipment[sk];
             const def = accId ? window.EQUIP_DEFS?.[accId] : null;
-            return h(EquipSlotBox, { key:sk, size:58, accent:fc,
+            return h(EquipSlotBox, { key:sk, size:64, accent:fc,
               filled:!!def, icon:def ? (ACC_ICONS[accId]||'\u{1F392}') : null,
               label:def ? def.label : '', title:def ? `${def.label} — ${def.desc}` : 'Equip gear',
               onClick:()=>{ setEquipPicker(sk); sfx('uiCursorMove'); },
@@ -2840,28 +2969,43 @@ function PartyBuilder(props) {
           Array.from({length:itemSlotMax}).map((_, ii) => {
             const ik = itemUnits[ii];
             const rule = ik ? window.ITEM_RULES?.[ik] : null;
-            return h(EquipSlotBox, { key:ii, size:58, accent:fc,
+            return h(EquipSlotBox, { key:ii, size:64, accent:fc,
               filled:!!rule, icon:rule ? (rule.icon||'\u{1F4E6}') : null,
               label:rule ? rule.name : '', title:rule ? `${rule.name} — ${rule.desc}` : 'Add an item',
               onClick:()=>{ setEquipPicker('item'); sfx('uiCursorMove'); },
               onClear:rule ? ()=>setItemCount(ik, -1) : null });
           }))),
-      // SUBCLASS — the same picker the tree's right pillar opens
-      !isArena && clsName!=='Freelancer' && h('div', { className:'pbx-subbar', style:{ '--cat': fc, flexShrink:0, margin:'4px 0 0' }, onClick:()=>{ setEquipPicker('subjob'); sfx('uiCursorMove'); }, title:'A second job: its spells join this spell pool and its training shifts your stats.' },
-        h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.16em', flexShrink:0 } }, 'SUBCLASS'),
-        h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:14, fontWeight:700, color:EW.ink, letterSpacing:'0.04em', whiteSpace:'nowrap' } }, secJob ? getJobDisplay(secJob) : '— None —'),
-        h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.04em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flex:1 } }, 'its spells join the tree · its training shifts stats'),
-        h('span', { style:{ fontSize:10, color:fc, letterSpacing:'0.1em', flexShrink:0 } }, '▾ CHANGE')),
+      // SUBCLASS — a pill (Stage 5); the same picker the tree's right pillar opens (handleSecJobChange as today)
+      !isArena && clsName!=='Freelancer' && h('div', { className: 'pb-gear-row', style:{ marginTop: 4 } },
+        h('div', { className: 'pb-gear-label' }, 'SUBCLASS', h('small', null, 'A SECOND JOB')),
+        h('button', { className:'pb-sub-pill', style:{ '--cat': fc }, onClick:()=>{ setEquipPicker('subjob'); sfx('uiCursorMove'); }, title:'A second job: its spells join this spell pool and its training shifts your stats.' },
+          h('b', null, secJob ? getJobDisplay(secJob) : '— None —'),
+          h('span', null, 'its spells join the tree · its training shifts stats'),
+          h('i', null, '▾ CHANGE'))),
       clsName==='Freelancer' && h('div', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.08em', fontStyle:'italic', padding:'4px 2px' } }, 'A Freelancer has no subclass — its wildcard sockets borrow any job\'s spell.'),
       h('div', { className: 'pb-gear-row', style:{ marginTop: 6 } },
         h('div', { className: 'pb-gear-label' }, 'NAME', h('small', null, 'THE MANIFEST')),
         h('input', { key:player+'-'+slot, className:'pb-gear-input', defaultValue:unitName, maxLength:24, onBlur:e=>{ handleNameChange(e.target.value); refresh(); }, onKeyDown:e=>{ if(e.key==='Enter') e.target.blur(); } })),
-      h('div', { className: 'pb-gear-row' },
-        h('div', { className: 'pb-gear-label' }, 'ZODIAC', h('small', null, zodiacNature ? ((zodiacNature.buff||'').toUpperCase() + ' ▲ · ' + (zodiacNature.debuff||'').toUpperCase() + ' ▼') : 'NATURE')),
-        h('select', { className:'pb-gear-select', value:identity.zodiac||'aries', onChange:e=>handleZodiacChange(e.target.value) },
-          zodiacs.map(z=>h('option',{key:z,value:z,style:{background:'#000000',color:'#ccc'}}, (window.ZODIAC_ICONS?.[z]||'')+' '+z.charAt(0).toUpperCase()+z.slice(1))))),
+      // ZODIAC — a wheel of twelve round glyph chips (Stage 5, §5.5 item 4; handleZodiacChange as the <select> did)
+      (() => {
+        const cur = identity.zodiac || 'aries';
+        const el = PB_ZODIAC_ELEMENT[cur] || 'air';
+        const read = PB_ZODIAC_READ[el] || PB_ZODIAC_READ.air;
+        const every = (typeof window.ZODIAC_ROTATION_ROUNDS === 'number' ? window.ZODIAC_ROTATION_ROUNDS : 5);
+        return h('div', { className: 'pb-gear-row pb-zodiac-row' },
+          h('div', { className: 'pb-gear-label' }, 'ZODIAC', h('small', null, 'THE SIGN')),
+          h('div', { className: 'pb-zodiac' },
+            h('div', { className: 'pb-zodiac-wheel', role: 'radiogroup', 'aria-label': 'Zodiac sign' },
+              zodiacs.map(z => h('button', { key:z, className:'pb-zodiac-chip' + (z === cur ? ' on' : ''), style:{ '--el': PB_ZODIAC_ELEMENT[z] || 'air' }, 'data-el': PB_ZODIAC_ELEMENT[z] || 'air',
+                title: z.charAt(0).toUpperCase() + z.slice(1) + ' · ' + (PB_ZODIAC_ELEMENT[z] || 'air') + ' sign', 'aria-pressed': z === cur,
+                onClick:()=>{ if (z !== cur) { handleZodiacChange(z); sfx('uiCursorMove'); } } }, window.ZODIAC_ICONS?.[z] || z.slice(0, 2).toUpperCase()))),
+            h('div', { className: 'pb-zodiac-read' },
+              h('b', null, (window.ZODIAC_ICONS?.[cur] || ''), ' ', cur.toUpperCase(), h('span', null, ' · ', read.icon, ' ', el.toUpperCase(), ' SIGN')),
+              h('span', null, 'WHEN ', cur.toUpperCase(), ' RULES THE SKY (', every, ' ROUNDS IN EVERY ', every * zodiacs.length, '): +10% MOVE & ARMOR'),
+              h('span', null, read.line, ' · 50% HARDER UNDER ITS OWN SKY'))));
+      })(),
       h('div', { style:{ marginTop:'auto', fontSize:8, color:EW.inkDim, letterSpacing:'0.1em', lineHeight:1.5, padding:'6px 2px 0' } },
-        'GEAR AND ITEMS RIDE INTO THE CROSSING WITH THE VESSEL · A NATURE SHIFTS ONE STAT UP AND ONE DOWN')));
+        'GEAR AND ITEMS RIDE INTO THE CROSSING WITH THE VESSEL · THE SKY CYCLES THROUGH THE TWELVE SIGNS')));
 
   // DOSSIER: the D.O.O.R. customs file — same source as the codex (data.js
   // DOOR_TEXT: disposition, point of entry, annotation).
@@ -2891,7 +3035,11 @@ function PartyBuilder(props) {
         h('div', { style:{ fontSize:7, color:EW.inkDim, letterSpacing:'0.08em', paddingTop:6, marginTop:'auto', position:'relative', zIndex:1 } }, 'TOP SECRET // ████████ // NOFORN')));
   })();
 
-  // STATS column (every tab but ROSTER): identity, vitals, the sheet, footprints, traits
+  // Stage 5: the vessel's notes (the engine's passives + the hand-authored terrain rows)
+  const unitNotes = pbUnitNotes(identity, clsName, unitEquipment);
+  const notePaper = PB_NOTE_PAPER[unitFaction] || 'yellow';
+
+  // STATS column (every tab but ROSTER): identity, vitals, the sheet, footprints, affinities
   const zMod = (mapped) => zodiacNature ? (zodiacNature.buff===mapped ? 'up' : zodiacNature.debuff===mapped ? 'dn' : null) : null;
   const statsPanel = h(React.Fragment, null,
     h('div', { style:{ display:'flex', alignItems:'baseline', gap:8, flexWrap:'wrap', flexShrink:0 } },
@@ -2904,25 +3052,29 @@ function PartyBuilder(props) {
       h('div', { style:{ display:'flex', flexDirection:'column', gap:3, flexShrink:0, paddingBottom:6, marginBottom:2, borderBottom:`1px solid ${EW.panelEdge}` } },
         VITAL_KEYS.map(k => {
           const mapped = STAT_MAP[k], val = fullStats[mapped]??0;
-          return h(VitalBar, { key:k, label:k, val, max:STAT_MAX_PB[k]||100, vital:k.toLowerCase(), zodiacMod:zMod(mapped), delta:statDeltas[mapped]??0,
+          return h(VitalBar, { key:k, label:k, statKey:k, val, max:STAT_MAX_PB[k]||100, vital:k.toLowerCase(), zodiacMod:zMod(mapped), delta:statDeltas[mapped]??0,
             tip: window.STAT_HELP?.[mapped] || null, gradeKey: mapped });
         })),
       h('div', { style:{ display:'flex', flexDirection:'column', gap:2, flexShrink:0 } },
         BAR_KEYS.map(k => {
           const mapped = STAT_MAP[k], val = fullStats[mapped]??fullStats[k]??fullStats[k.toLowerCase()]??0;
           const d = statDeltas[mapped]??statDeltas[k]??statDeltas[k.toLowerCase()]??0;
-          return h(StatBar, { key:k, label:statLabel(k), val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:zMod(mapped), delta:d,
+          return h(StatBar, { key:k, label:statLabel(k), statKey:k, val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:zMod(mapped), delta:d,
             suffix: STAT_PCT[k] ? '%' : '', tip: window.STAT_HELP?.[mapped] || null, gradeKey: mapped });
         })),
-      // MOVE / RANGE footprints — under the numbers, side by side
-      h('div', { style:{ display:'flex', gap:26, justifyContent:'center', alignItems:'flex-start', flexShrink:0, paddingTop:2 } },
-        h(RangeDiamond, { radius: fullStats.move ?? 3, fill:'rgba(80,160,255,0.45)', edge:'rgba(80,160,255,0.7)', label:'MOVE (SPD)', value: fullStats.move ?? 3, color:'rgba(120,180,255,0.9)', tip: window.STAT_HELP?.move }),
-        h(RangeDiamond, { radius: fullStats.range ?? 1, fill:'rgba(255,70,70,0.35)', edge:'rgba(255,70,70,0.6)', label:'RANGE', value: fullStats.range ?? 1, color:'rgba(255,120,120,0.9)', tip: window.STAT_HELP?.range })),
-      // race traits: passives & terrain rules unique to this vessel (→ sticky notes in Stage 5)
-      h('div', { style:{ flexShrink:0, display:'flex', flexDirection:'column', gap:3 } },
-        h('div', { style:{ fontSize:9, color:fc, letterSpacing:'0.14em', fontWeight:600, flexShrink:0, borderTop:`1px solid ${EW.panelEdge}`, paddingTop:5 } }, 'RACE TRAITS ', h('span', { style:{ color:EW.inkDim, fontWeight:400 } }, '· PASSIVES & TERRAIN')),
-        (RACE_TRAITS[unitRace] && RACE_TRAITS[unitRace].length)
-          ? RACE_TRAITS[unitRace].map((t, ti) => h('div', { key:ti, className:'pbx-trait' },
+      // MOVE / RANGE footprints — the diamonds ARE the rule's shape (§3.2), inside round badges
+      h('div', { style:{ display:'flex', gap:14, justifyContent:'center', alignItems:'flex-start', flexShrink:0, paddingTop:2 } },
+        h('div', { className:'pb-foot-badge' }, h(RangeDiamond, { radius: fullStats.move ?? 3, fill:'rgba(80,160,255,0.45)', edge:'rgba(80,160,255,0.7)', label:'MOVE (SPD)', value: fullStats.move ?? 3, color:'rgba(120,180,255,0.9)', tip: window.STAT_HELP?.move })),
+        h('div', { className:'pb-foot-badge' }, h(RangeDiamond, { radius: fullStats.range ?? 1, fill:'rgba(255,70,70,0.35)', edge:'rgba(255,70,70,0.6)', label:'RANGE', value: fullStats.range ?? 1, color:'rgba(255,120,120,0.9)', tip: window.STAT_HELP?.range }))),
+      // AFFINITIES (Stage 5, §5.5 item 3): the six type discs, the incoming matchups for this vessel's own types
+      h('div', { style:{ flexShrink:0, display:'flex', flexDirection:'column', gap:4, borderTop:`1px solid ${EW.panelEdge}`, paddingTop:5 } },
+        h('div', { style:{ fontSize:9, color:fc, letterSpacing:'0.14em', fontWeight:600, flexShrink:0 } }, 'AFFINITIES ', h('span', { style:{ color:EW.inkDim, fontWeight:400 } }, '· WHAT IT TAKES')),
+        h(PbAffinityRing, { types: unitTypes })),
+      // the notes, inline — CSS shows this only on glass too narrow for the bezel's sticky notes
+      h('div', { className:'pb-traits-inline', style:{ flexShrink:0, display:'flex', flexDirection:'column', gap:3 } },
+        h('div', { style:{ fontSize:9, color:fc, letterSpacing:'0.14em', fontWeight:600, flexShrink:0, borderTop:`1px solid ${EW.panelEdge}`, paddingTop:5 } }, 'THE NOTES ', h('span', { style:{ color:EW.inkDim, fontWeight:400 } }, '· PASSIVES & TERRAIN')),
+        (unitNotes.passives.length || unitNotes.terrain.length)
+          ? [...unitNotes.passives.map(p => ({ icon:p.icon, name:p.name, desc:p.desc })), ...unitNotes.terrain].map((t, ti) => h('div', { key:ti, className:'pbx-trait' },
               h('span', { style:{ fontSize:13, lineHeight:1.2, flexShrink:0, width:18, textAlign:'center' } }, t.icon),
               h('div', { style:{ minWidth:0, fontSize:10, lineHeight:1.4 } },
                 h('span', { style:{ color:EW.ink, fontWeight:700, letterSpacing:'0.04em' } }, t.name),
@@ -2938,7 +3090,7 @@ function PartyBuilder(props) {
     h('div', { style:{ display:'flex', flexDirection:'column', gap:2 } },
       ['HP','ATK','DEF','SPD'].map(k => {
         const mapped = STAT_MAP[k], val = fullStats[mapped]??0;
-        return h(StatBar, { key:k, label:k, val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:zMod(mapped), delta:statDeltas[mapped]??0, gradeKey: mapped, tip: window.STAT_HELP?.[mapped] || null });
+        return h(StatBar, { key:k, label:k, statKey:k, val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:zMod(mapped), delta:statDeltas[mapped]??0, gradeKey: mapped, tip: window.STAT_HELP?.[mapped] || null });
       })),
     !standalone && h('button', { className:'ms-tty-btn ok', style:{ alignSelf:'flex-end', marginTop:2 }, onClick:confirmSlot, title:'Lock this vessel and move to the next open slot' }, 'CONFIRM ' + numerals[slot]));
 
@@ -3103,6 +3255,22 @@ function PartyBuilder(props) {
               h('div', { style:{ fontSize:8, color:EW.inkDim }}, preset.gameMode?.toUpperCase() || '', ' · ', new Date(preset.createdAt).toLocaleDateString())),
             h('button', { className:'pb-team-act danger', onClick:e=>{e.stopPropagation();deleteTeamPreset(preset.id);} }, 'DEL')))));
 
+  // Stage 5: the notes' full text — every passive + every terrain row, unclamped
+  const notesWindow = notesOpen && h(PbWindow, { title: 'THE NOTES', sub: raceLabelTxt.toUpperCase() + ' · PASSIVES & TERRAIN', onClose: () => setNotesOpen(false), width: 460 },
+    h('div', { className: 'pb-notes-list' },
+      ...unitNotes.passives.map(p => h('div', { key: 'p' + p.id, className: 'pb-notes-row' },
+        h('span', { className: 'pb-notes-icon' }, p.icon || '✦'),
+        h('div', null,
+          h('b', null, 'PASSIVE: ', p.name),
+          h('p', null, p.desc || ''),
+          p.note ? h('em', null, p.note) : null))),
+      ...unitNotes.terrain.map((t, i) => h('div', { key: 't' + i, className: 'pb-notes-row terrain' },
+        h('span', { className: 'pb-notes-icon' }, t.icon || '⛰'),
+        h('div', null,
+          h('b', null, 'TERRAIN: ', t.name),
+          h('p', null, t.desc || '')))),
+      (!unitNotes.passives.length && !unitNotes.terrain.length) ? h('div', { style:{ fontSize:11, color:EW.inkDim, fontStyle:'italic', padding:'12px 6px', textAlign:'center' } }, 'No notes on this vessel — field research pending.') : null));
+
   const pickerWindow = equipPicker && h(PbWindow, {
       title: equipPicker === 'item' ? 'Battle Items' : equipPicker === 'subjob' ? 'Choose a Subclass' : 'Gear — Slot ' + (equipPicker === 'accessory1' ? '1' : '2'),
       sub: equipPicker === 'item' ? (totalItemsUsed + ' / ' + itemSlotMax + ' CARRIED') : equipPicker === 'subjob' ? 'its spells join your pool · its training shifts your stats' : null,
@@ -3185,6 +3353,7 @@ function PartyBuilder(props) {
           h('div', { className: 'ms-tty pb-tty' }, head, tabbar, body, partyRow, foot),
           locker,
           teamWindow,
+          notesWindow,
           pickerWindow),
         h('div', { className: 'ms-crt-scan' }),
         h('div', { className: 'ms-crt-glare' }),
@@ -3193,7 +3362,9 @@ function PartyBuilder(props) {
         h('div', { className: 'pb-crt-roll' })),
       h('div', { className: 'ms-crt-label' }, 'D.O.O.R. · ' + (standalone ? 'RECORDS' : 'CUSTOMS & ADMISSIONS') + ' · FORGE-1 · DO NOT UNPLUG'),
       h('div', { className: 'ms-crt-brand' }, 'ENTROPY DATA SYSTEMS'),
-      h('div', { className: 'ms-crt-led' })),
+      h('div', { className: 'ms-crt-led' }),
+      // Stage 5: the sticky notes live ON THE BEZEL, outside the glass (the forge's right bezel is widened for them)
+      (standalone && tbView === 'locker') ? null : h(PbNotes, { notes: unitNotes, seed: unitRace + ':' + (identity.gender || ''), paper: notePaper, onOpen: () => { setNotesOpen(true); sfx('uiCursorMove'); } })),
     spellTip && buildSpellTooltip(spellTip.sp, spellTip.x, spellTip.y));
 }
 

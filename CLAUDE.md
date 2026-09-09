@@ -452,8 +452,26 @@ by the sleeping pre-match instance) and the key handler acts only for the
 instance on screen; match-select.js's ENTER / ESC listener returns while
 its host is off screen. Screenshot the forge with `NODE_USE_ENV_PROXY=1
 node playtest_builder.js [tag]` (repo tooling; standalone route; GLBs do
-not load in the sandbox — DOM / CSS only). Next: Stage 5 (sticky notes,
-stat pills, affinities, GEAR, DOSSIER).
+not load in the sandbox — DOM / CSS only).
+**Stage 5 shipped (2026-09-09, rev 6)**: THE STICKY NOTES — `pbUnitNotes`
+builds a pseudo-unit and reads data.js `getUnitPassives` (so `flying`
+resolves through map.js `canFly`, jetpack included; never the race table),
+the non-passive `RACE_TRAITS` rows become one TERRAIN note, `PbNotes`
+renders them ON THE BEZEL in a widened right margin (`--pb-notes-w`,
+132 px; closes under 1180 px → the same text inline as `.pb-traits-inline`),
+paper per faction, `Caveat` handwriting (index.html Google-Fonts link),
+`PASSIVE_DEFS[id].note` = user marginalia (C-7), a click opens THE NOTES
+window. STAT PILLS: `StatBar` / `VitalBar` keep their names (+ `statKey`),
+`PB_STAT_LOOK` is paint only, `.pb-grade-ring` is the grade, the MOVE /
+RANGE diamonds sit in `.pb-foot-badge`. AFFINITIES: `pbAffinities` reads
+`TYPE_CHART` **strongVs / weakVs** exactly like state.js
+`getTypeDamageMultiplier` (WEAK ×1.30 red ring · RESIST ×0.75 green ring;
+the `resists` field is documentation). GEAR: `.pb-sub-pill`, the ZODIAC
+wheel (`.pb-zodiac-chip` ×12 → `handleZodiacChange`; `PB_ZODIAC_ELEMENT`
+mirrors battle.js Star Crossed's `_zElementOf` — the test diffs them; there
+is NO `ZODIAC_NATURES` table, the wheel states the engine's +10 % move &
+armor rule). No native `<select>` survives in party-builder.js (C-9 —
+tested). Next: Stage 6 (the desk in the building, sounds, `EW_NO_PB_CRT`).
 
 ## TRAINING MATCH (instant CPU turns vs a human) — added 2026-09-07
 Match-select → CONFIG column → **CPU TEMPO: Cinematic / ⚡ Training**

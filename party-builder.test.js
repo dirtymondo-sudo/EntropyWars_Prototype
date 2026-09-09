@@ -242,3 +242,77 @@ test('ROSTER is the wall (Stage 4): tiles, round filters, hover → the stage, n
     assert.ok(!PB.includes("className:'pb-vessel-card'"), 'the old codex card must be gone');
     assert.strictEqual((PB.match(/clipPath/g) || []).length, 1, 'only the door stamp may still clip a polygon');
 });
+
+/* ── Stage 5 (2026-09-09): STICKY NOTES · STAT PILLS · AFFINITIES · GEAR · DOSSIER ── */
+const IDX = read('index.html');
+const BT = read('battle.js');
+
+test('the sticky notes read the ENGINE passives (getUnitPassives on a pseudo-unit) and live on the bezel', () => {
+    assert.ok(PB.includes('function pbUnitNotes(identity, cls, equipment)'), 'pbUnitNotes missing');
+    assert.ok(/window\.getUnitPassives\(pseudo\)/.test(PB), 'the notes must come from data.js getUnitPassives (never the race table)');
+    assert.ok(/const pseudo = \{ race, gender: identity\.gender \|\| 'male', cls, types: identity\.types \|\| \[\], faction: identity\.faction,\s*zodiac: identity\.zodiac, status: \{\}, equipment: equipment \|\| \{\} \};/.test(PB), 'the pseudo-unit must carry race / gender / cls / types / equipment / an empty status (canFly reads them)');
+    assert.ok(/const terrain = \(RACE_TRAITS\[race\] \|\| \[\]\)\.filter\(t => !passiveNames\.has\(t\.name\)\);/.test(PB), 'the TERRAIN note = the hand-authored rows that are not registry passives');
+    assert.ok(/const PB_NOTE_PAPER = \{ chaos: 'pink', time: 'yellow', space: 'cream' \};/.test(PB), 'paper per faction (pink / yellow / cream)');
+    assert.ok(/function pbNoteRot\(seed, i\)/.test(PB) && /\/ 10 - 3\)\.toFixed\(1\)/.test(PB), 'the rotation must be seeded, ±3°');
+    assert.ok(/p\.note \? h\('em', null, p\.note\) : null/.test(PB), 'the marginalia slot PASSIVE_DEFS[id].note must be read when present (C-7)');
+    assert.ok(PB.includes("className: 'pb-notes'") && PB.includes("className: 'pb-note-fold'") && PB.includes("className: 'pb-note-clip'"), 'note classes missing');
+    assert.ok(/className: 'ms-crt-led' \}\),[\s\S]{0,400}h\(PbNotes, \{ notes: unitNotes/.test(PB), 'the notes must be rendered inside the BEZEL, after the LED — never on the glass');
+    assert.ok(/notesOpen \|\|/.test(PB) && /setNotesOpen\(false\); hideSpellTip\(\);/.test(PB), 'the notes window must count as a window (ESC closes it)');
+    assert.ok(PB.includes("title: 'THE NOTES'"), 'the full-text window is missing');
+    for (const sel of ['.pb-notes {', '.pb-note {', '.pb-note.pink {', '.pb-note.cream {', '.pb-note:hover, .pb-note:focus-visible {', '.pb-notes-row {', '.pb-traits-inline { display: none !important; }']) {
+        assert.ok(CSS.includes(sel), `${sel} rule missing`);
+    }
+    assert.ok(/\.ms-crt-forge \{ --pb-notes-w: 132px; \}/.test(CSS) && /\.ms-crt-forge \.ms-crt-glass \{ inset: 30px calc\(34px \+ var\(--pb-notes-w\)\) 42px 34px; \}/.test(CSS), 'the right bezel must widen by --pb-notes-w for the notes');
+    assert.ok(/\.ms-crt-forge \{ --pb-notes-w: 0px; \}[\s\S]{0,120}\.pb-notes \{ display: none; \}[\s\S]{0,120}\.pb-traits-inline \{ display: flex !important; \}/.test(CSS), 'under 1180 px the margin closes and the notes read inline');
+    assert.ok(/'Caveat'/.test(CSS), 'the handwriting face (C-6) must be Caveat');
+    assert.ok(/family=Caveat:wght@500;700&/.test(IDX), 'index.html must load Caveat from Google Fonts (the CSP allowlist)');
+});
+
+test('the stats are PILLS: a disc per stat, a rounded bar, the grade ring, the footprints in round badges', () => {
+    const m = PB.match(/const PB_STAT_LOOK = \{([\s\S]*?)\n\};/);
+    assert.ok(m, 'PB_STAT_LOOK missing');
+    for (const k of ['HP', 'MP', 'ATK', 'DEF', 'INT', 'MDEF', 'SPD', 'AWR', 'CRT', 'EVA']) assert.ok(new RegExp('\\n  ' + k + ':\\s*\\{ c: \'#[0-9a-f]{6}\', g: ').test(m[1]), `stat look missing: ${k}`);
+    assert.ok(/function StatBar\(\{ label, val, max, compact, zodiacMod, delta, suffix, tip, gradeKey, statKey \}\)/.test(PB), 'StatBar keeps its name (+ statKey)');
+    assert.ok(/function VitalBar\(\{ label, val, max, vital, zodiacMod, delta, tip, gradeKey, statKey \}\)/.test(PB), 'VitalBar keeps its name (+ statKey)');
+    assert.strictEqual((PB.match(/statKey:k,/g) || []).length, 3, 'the three stat sites (vitals, the sheet, the ROSTER quick card) must pass statKey');
+    assert.ok(/function computeFullStats\(race, cls, secJob, equipment\)/.test(PB), 'computeFullStats untouched');
+    for (const c of ['pb-stat-disc', 'pb-stat-bar', 'pb-stat-val', 'pb-stat-delta', 'pb-grade-ring', 'pb-foot-badge']) {
+        assert.ok(PB.includes(c), `${c} missing from party-builder.js`);
+        assert.ok(CSS.includes('.' + c + ' {'), `.${c} rule missing`);
+    }
+    assert.ok(/\.pb-stat-bar \{[^}]*border-radius: var\(--pb-r-sm\)/.test(CSS), 'the bar must be rounded (§3.2)');
+    assert.ok(/\.pb-foot-badge \{[^}]*border-radius: 999px/.test(CSS), 'the MOVE / RANGE diamonds sit inside ROUND badges');
+    assert.strictEqual((PB.match(/h\('div', \{ className:'pb-foot-badge' \}, h\(RangeDiamond,/g) || []).length, 2, 'both footprints must wear the badge');
+});
+
+test('AFFINITIES read TYPE_CHART the way the engine judges a hit (strongVs / weakVs, ×1.30 / ×0.75)', () => {
+    assert.ok(/function pbAffinities\(unitTypes\)/.test(PB) && /function PbAffinityRing\(\{ types \}\)/.test(PB), 'affinity helpers missing');
+    const fn = PB.slice(PB.indexOf('function pbAffinities(unitTypes)'), PB.indexOf('function PbAffinityRing('));
+    assert.ok(/const chart = window\.TYPE_CHART \|\| \{\};/.test(fn), 'must read TYPE_CHART');
+    assert.ok(/row\.strongVs/.test(fn) && /row\.weakVs/.test(fn) && !/row\.resists/.test(fn), 'the engine reads strongVs / weakVs (state.js getTypeDamageMultiplier) — never the documentary resists field');
+    assert.ok(/verdict === 'weak' \? 1\.3 : verdict === 'resist' \? 0\.75 : 1/.test(fn), 'the multipliers must be the engine\'s 1.30 / 0.75');
+    assert.ok(/strong && !weak \? 'weak' : weak && !strong \? 'resist' : 'neutral'/.test(fn), 'a type both strong and weak against ours is neutral, as in the engine');
+    assert.ok(PB.includes("className: 'pb-affinity'") && PB.includes("className: 'pb-aff-disc'"), 'ring classes missing');
+    assert.ok(/h\(PbAffinityRing, \{ types: unitTypes \}\)/.test(PB), 'the STATS column must show the ring');
+    for (const sel of ['.pb-affinity {', '.pb-aff-disc {', '.pb-aff.weak .pb-aff-disc {', '.pb-aff.resist .pb-aff-disc {', '.pb-aff.own .pb-aff-disc {']) assert.ok(CSS.includes(sel), `${sel} rule missing`);
+});
+
+test('GEAR: no native <select> left on the glass (C-9); the zodiac wheel mirrors the engine; the subclass is a pill', () => {
+    assert.ok(!/h\('select'/.test(PB), 'no native <select> anywhere in party-builder.js');
+    assert.ok(PB.includes("className:'pb-zodiac-chip'") && /handleZodiacChange\(z\)/.test(PB), 'the wheel must set the sign through handleZodiacChange');
+    const pbTable = PB.match(/const PB_ZODIAC_ELEMENT = \{([\s\S]*?)\};/);
+    const btTable = BT.match(/const _zElementOf = \{([\s\S]*?)\};/);
+    assert.ok(pbTable && btTable, 'zodiac element tables missing');
+    const parse = (s) => Object.fromEntries([...s.matchAll(/(\w+):\s*'(\w+)'/g)].map(x => [x[1], x[2]]));
+    assert.deepStrictEqual(parse(pbTable[1]), parse(btTable[1]), 'PB_ZODIAC_ELEMENT must equal battle.js Star Crossed _zElementOf');
+    assert.ok(PB.includes("+10% MOVE & ARMOR'"), 'the sign\'s engine rule (state.js getZodiacBonus ×1.10 on move + armor) must be stated');
+    assert.ok(PB.includes("className:'pb-sub-pill'") && CSS.includes('.pb-sub-pill {'), 'the SUBCLASS pill is missing');
+    assert.strictEqual((PB.match(/size:64, accent:fc/g) || []).length, 2, 'the gear + item discs are 64 px');
+    for (const sel of ['.pb-zodiac-wheel {', '.pb-zodiac-chip {', '.pb-zodiac-chip.on {', '.pb-zodiac-read {']) assert.ok(CSS.includes(sel), `${sel} rule missing`);
+});
+
+test('DOSSIER keeps the customs file (stamps stay square, the NOFORN foot)', () => {
+    assert.ok(PB.includes('TOP SECRET // ████████ // NOFORN'), 'the foot changed');
+    assert.ok(PB.includes("'1.  EXECUTIVE SUMMARY'") && PB.includes("'2.  CUSTOMS DISPOSITION'"), 'the file headings changed');
+    assert.ok(/className:'door-stamp door-stamp-sm' \+ \(tone === 'admit'/.test(PB), 'the disposition stamp must stay a door-stamp');
+});
