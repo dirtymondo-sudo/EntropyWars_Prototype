@@ -415,9 +415,25 @@ The builder's `pbPreview(sp, { hover })` fires it (hover / keyboard =
 wears `.pb-stage-pill` (`MOVE PREVIEW · name`, `NO PREVIEW · SPRITE
 VESSEL`, `PREVIEW OFF`). Kill-switches: `state.animationsDisabled`,
 `window.EW_NO_PB_PREVIEW`. The party row is sized by
-`.pb-party { --pb-portrait }` (96 / 76 / 64 px by breakpoint). Next:
-Stage 3 (the VFX in the viewer — `ThreeVFX.attach`, `VFX3D.stage`;
-party-builder.js must never call the relayed `VFX3D.fire`).
+`.pb-party { --pb-portrait }` (96 / 76 / 64 px by breakpoint).
+**Stage 3 shipped (2026-09-09)**: the spell LIGHTS UP the stage — a click /
+equip / ENTER / ▶ on a technique runs `EWCharViewer.previewSpell` (hover
+stays animation-only, C-10): the viewer borrows the battle's VFX layer
+through `ThreeVFX.attach(v.vfxGroup)` (the pools re-parented; a stage
+opened before the first match initialises them and the board's
+`init(scene)` ADOPTS them; `detach()` clears and sends them home) and
+`VFX3D.stage.enter/exit/fire` (three-vfx-effects.js `_VS`: the stage cfg,
+flat ground, `_suppressed` ignores the phase, `_post` → a shim,
+`_shake` / `_LT()` / `_geom3D` route every board shake / lightning /
+geometry read — **never add a bare `window.shakeBoard(` /
+`ThreeLightning.` / `_spell3DGeometry[` to that file again**;
+`stage.fire` is the INTERNAL fire, never the online-wrapped one). The beat:
+turn to +X, windup, the clip, burst + the mapped intents at 45 % ((2,0) =
+two tiles to screen-right, aura at the hero), finish. The monitor reacts
+through `onStageFx` → `data-grade` (the type's ENTROPY STRIKE colour),
+`.pb-crt-roll-on`, `.pb-crt-jolt`. Kill-switches: `EW_NO_PB_VFX` (Stage
+2's animation-only preview), `EW_PB_VFX_NO_GEOM`, `EW_NO_PB_PREVIEW`.
+Next: Stage 4 (the ROSTER wall + the rounding pass).
 
 ## TRAINING MATCH (instant CPU turns vs a human) — added 2026-09-07
 Match-select → CONFIG column → **CPU TEMPO: Cinematic / ⚡ Training**

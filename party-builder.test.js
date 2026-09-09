@@ -126,3 +126,74 @@ test('the party row is sized by --pb-portrait (the user asked for bigger portrai
     assert.ok(+m[1] >= 88, `portraits must be at least 88px (got ${m[1]})`);
     assert.ok(/\.pb-party-ring \{ position: relative; width: var\(--pb-portrait\); height: var\(--pb-portrait\);/.test(CSS), 'the ring must read the token');
 });
+
+/* ── Stage 3 (2026-09-09): THE SPELL LIGHTS UP THE STAGE (the VFX in the viewer) ── */
+const VFX = read('three-vfx.js');
+const FX = read('three-vfx-effects.js');
+
+test('ThreeVFX can lend its pools to another scene graph (attach / detach) and the board adopts them', () => {
+    for (const fn of ['function attach(parent, opts)', 'function detach()', 'function _reparentAll(target)', 'function _pooledObjects()']) {
+        assert.ok(VFX.includes(fn), `${fn} missing`);
+    }
+    assert.ok(/attach: attach, detach: detach, isAttached: isAttached/.test(VFX), 'attach / detach not exported');
+    assert.ok(/if \(_initialized\) \{[\s\S]{0,500}if \(!_home && scene\)/.test(VFX), 'init(scene) must ADOPT pools born on a stage before the first match');
+    assert.ok(/if \(_initialized && _attached\) return true;/.test(VFX), 'isActive must be true while staged (the effects gate reads it)');
+    assert.ok(/function detach\(\) \{\s*if \(!_attached\) return;\s*clear\(\);/.test(VFX), 'detach must release every live particle (nothing survives into the next match)');
+    assert.ok(/function _rainTick\(dt\) \{\s*if \(_attached\) return;/.test(VFX) && /if \(!_scene \|\| _attached\) return;/.test(VFX), 'rain / ambient clouds must never run on the stage');
+});
+
+test('VFX3D.stage overrides the board helpers and fires the INTERNAL fire (never the relayed one)', () => {
+    assert.ok(/var _VS = \{ on: false/.test(FX), '_VS record missing');
+    assert.ok(/stage: _vsApi,/.test(FX), 'VFX3D.stage not exported');
+    const api = FX.slice(FX.indexOf('var _vsApi'), FX.indexOf('return {', FX.indexOf('var _vsApi')));
+    for (const k of ['enter: function (opts)', 'exit: function ()', 'active: function ()', 'fire: function (intent, spellId, params)', 'hasMapping: hasMapping']) {
+        assert.ok(api.includes(k), `stage.${k} missing`);
+    }
+    assert.ok(/fire: function \(intent, spellId, params\) \{[\s\S]{0,200}\bfire\(intent, spellId, params \|\| \{\}\)/.test(api), 'stage.fire must call the internal fire');
+    assert.ok(!/VFX3D\.fire\(/.test(api), 'stage must never call the exported (online-wrapped) VFX3D.fire');
+    assert.ok(/exit: function \(\) \{\s*if \(!_VS\.on\) return;\s*try \{ clearAll\(\); \}/.test(api), 'stage.exit must sweep the live effects before the pools go home');
+    for (const g of ['function _cfg() {\n        if (_VS.on) return _VS_CFG;',
+                     'function tileZ(tx, ty) {\n        if (_VS.on) return 0;',
+                     'function unitSurfaceZ(tx, ty) {\n        if (_VS.on) return 0;',
+                     'function _suppressed() {\n        if (_VS.on) return',
+                     'function _post() {\n        if (_VS.on) return _VS.post;',
+                     'function _glowR() {\n        if (_VS.on) return null;',
+                     'function _sigCasterPos(tx, ty) {\n        if (_VS.on) return { x: 0, y: 0 };']) {
+        assert.ok(FX.includes(g), `stage override missing: ${g.split('\n')[0]}`);
+    }
+    assert.ok(/function _sigScreenFlash\(color, ms, peak\) \{\s*if \(_VS\.on\) \{ _vsFx\('flash'/.test(FX), 'the screen flash must go to the monitor on the stage');
+    assert.ok(/function _sigSpeedLinesFx\(opts\) \{\s*if \(_VS\.on\) return;/.test(FX), 'the full-viewport speed lines must not run on the stage');
+    assert.strictEqual((FX.match(/window\.shakeBoard\(/g) || []).length, 1, 'every board shake must route through _shake (the one real call lives inside _shake)');
+    assert.strictEqual((FX.match(/window\.ThreeLightning\b/g) || []).length, 2, 'every lightning call must route through _LT() (the two real reads live inside _LT)');
+    assert.strictEqual((FX.match(/_spell3DGeometry\[/g) || []).length, 1, 'every geometry read must route through _geom3D() (the one real read lives inside _geom3D)');
+    assert.ok(/!_VS\.on &&\s*!state\.devAutoSim/.test(FX) && /if \(!_canSpawn\(\) \|\| _VS\.on\) return;/.test(FX), 'the board\'s burning tiles must never render on the stage');
+});
+
+test('EWCharViewer exposes the stage API and the builder previews through it', () => {
+    for (const k of ['previewSpell', 'stageEnter', 'stageExit', 'isStaged', 'onStageFx']) {
+        assert.ok(new RegExp('\\n        ' + k + ': function').test(TR), `EWCharViewer.${k} missing`);
+    }
+    for (const fn of ['function _cvStageEnter()', 'function _cvStageExit()', 'function _cvFitStage()', 'function _cvPreviewSpell(spell, opts)', 'function _cvBuildGrid(v, tile)', 'function _cvSpellAtSelf(spell)']) {
+        assert.ok(TR.includes(fn), `${fn} missing`);
+    }
+    assert.ok(/ThreeVFX\.attach\(v\.vfxGroup, \{ camera: v\.cam \}\)/.test(TR) && /ThreeVFX\.detach\(\)/.test(TR), 'the viewer must attach / detach the pools (with its camera — the billboards face it)');
+    assert.ok(/function _vfxCam\(\)/.test(VFX) && (VFX.match(/ThreeCamera\.getCamera\(\)/g) || []).length <= 2, 'the billboard quads must read the camera through _vfxCam()');
+    assert.ok(/unmount: function \(\) \{\s*if \(!_cv\) return;\s*_cvStageExit\(\);/.test(TR), 'unmount must exit the stage first (the pools go home before a match)');
+    assert.ok(/if \(v\.staged && window\.ThreeVFX && ThreeVFX\.tick\)/.test(TR), '_cvFrame must tick ThreeVFX while staged');
+    assert.ok(/var s = tile \/ 128;/.test(TR) && /v\.vfxGroup\.scale\.setScalar\(s\)/.test(TR), 'the stage group must be scaled tile / 128 (px-authored effects → viewer units)');
+    assert.ok(/if \(!_cvStageEnter\(\)\) return _cvPlaySpell\(spell, opts\);/.test(TR), 'previewSpell must fall back to the Stage 2 animation-only preview');
+    assert.ok(/S\.fire\('windup', id, base\)/.test(TR) && /S\.fire\('burst', id, base\)/.test(TR) && /S\.fire\('finish', id, base\)/.test(TR), 'the beat must run windup → burst → finish');
+    assert.ok(/cv\.previewSpell\(sp, \{ attack: !sp/.test(PB), 'the builder must go through EWCharViewer.previewSpell on click / equip');
+    assert.ok(/cv\.playSpell\(sp, \{ attack: !sp/.test(PB), 'hover stays animation-only (decision C-10)');
+    assert.ok(PB.includes('window.EW_NO_PB_VFX') && TR.includes('window.EW_NO_PB_VFX'), 'the VFX kill-switch is missing');
+    assert.ok(!/VFX3D\.fire\(/.test(PB), 'party-builder.js must never call the relayed VFX3D.fire');
+    assert.strictEqual((PB.match(/, \{ equip: true \}\)/g) || []).length, 4, 'the four equip sites must carry { equip: true } (the DOOR click)');
+    assert.ok(/cv\.onStageFx\(/.test(PB) && PB.includes("'data-grade'") && PB.includes("className: 'pb-crt-grade'") && PB.includes("className: 'pb-crt-roll'"), 'the monitor reactions are not wired');
+    assert.ok(PB.includes("ref: crtRef, className: `ms-crt ms-crt-page ms-crt-forge"), 'the CRT root must carry the ref the reactions paint');
+    for (const sel of ['.pb-crt-grade', '.pb-crt-roll', '.ms-crt-forge.pb-crt-jolt .ms-crt-glass', '.ms-crt-forge.pb-crt-roll-on .pb-crt-roll']) {
+        assert.ok(CSS.includes(sel + ' {'), `${sel} rule missing`);
+    }
+    for (const t of ['human', 'alien', 'divine', 'unholy', 'tech', 'anomaly']) {
+        assert.ok(CSS.includes(`.ms-crt-forge[data-grade="${t}"] {`), `grade palette missing: ${t}`);
+    }
+});

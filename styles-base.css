@@ -4549,6 +4549,30 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-stage-pill.live i { width: 7px; height: 7px; border-radius: 50%; background: var(--ph-red); box-shadow: 0 0 6px var(--ph-red); animation: pbRec 0.8s steps(2) infinite; }
 .pb-stage-pill.note { border-color: rgba(255,120,120,0.5); color: #ff9b9b; }
 .pb-stage-pill.off { color: var(--ph-faint); border-color: var(--ph-line); }
+/* ── Stage 3 (§5.3): THE MONITOR REACTS — while a technique previews on the
+   stage the effects layer's post grade / aberration kick / screen flash /
+   board shake reach the builder (EWCharViewer.onStageFx → party-builder.js)
+   and land HERE: `data-grade` on the root = the technique's damage type
+   (the six ENTROPY STRIKE palettes of styles-cinematic.css `.ews-t-<id>`)
+   washing the glass at `--pb-grade-amt`; `.pb-crt-roll-on` rolls a bright
+   scanline band down the glass on the kick; `.pb-crt-jolt` shakes the whole
+   glass on the board shake. Reduced motion keeps the wash, drops the rest. */
+.pb-crt-grade { position: absolute; inset: 0; pointer-events: none; z-index: 7; opacity: 0; mix-blend-mode: screen; background: radial-gradient(ellipse 85% 75% at 50% 48%, var(--pb-grade, #ff4fa3) 0%, transparent 72%); transition: opacity 0.46s ease-out; }
+.ms-crt-forge[data-grade] .pb-crt-grade { opacity: calc(0.10 + 0.34 * var(--pb-grade-amt, 0.5)); transition: opacity 0.06s ease-out; }
+.ms-crt-forge[data-grade="human"] { --pb-grade: #f2c468; }
+.ms-crt-forge[data-grade="alien"] { --pb-grade: #58d858; }
+.ms-crt-forge[data-grade="divine"] { --pb-grade: #ffd75a; }
+.ms-crt-forge[data-grade="unholy"] { --pb-grade: #ff3a2a; }
+.ms-crt-forge[data-grade="tech"] { --pb-grade: #4fd8ff; }
+.ms-crt-forge[data-grade="anomaly"] { --pb-grade: #ff4fa3; }
+.pb-crt-roll { position: absolute; left: 0; right: 0; top: -14%; height: 14%; pointer-events: none; z-index: 8; opacity: 0; mix-blend-mode: screen; background: linear-gradient(180deg, transparent, rgba(255,255,255,0.2) 42%, rgba(255,255,255,0.34) 50%, rgba(255,255,255,0.2) 58%, transparent); }
+.ms-crt-forge.pb-crt-roll-on .pb-crt-roll { animation: pbCrtRoll 0.5s linear; }
+@keyframes pbCrtRoll { 0% { transform: translateY(0); opacity: 0.9; } 100% { transform: translateY(820%); opacity: 0.55; } }
+.ms-crt-forge.pb-crt-jolt .ms-crt-glass { animation: pbCrtJolt 0.4s steps(7); }
+@keyframes pbCrtJolt { 0% { transform: translate(0, 0); } 15% { transform: translate(-3px, 2px); } 30% { transform: translate(3px, -2px); } 45% { transform: translate(-2px, -1px); } 60% { transform: translate(2px, 1px); } 80% { transform: translate(-1px, 0); } 100% { transform: translate(0, 0); } }
+@media (prefers-reduced-motion: reduce) {
+    .ms-crt-forge.pb-crt-roll-on .pb-crt-roll, .ms-crt-forge.pb-crt-jolt .ms-crt-glass { animation: none; }
+}
 @keyframes pbRec { to { opacity: 0.25; } }
 /* the picker rows (twin / wildcard windows) — rounded, the slot numerals as discs */
 .ms-crt-forge .pbx-blade { border-radius: var(--pb-r-sm); clip-path: none; }

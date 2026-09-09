@@ -7,6 +7,21 @@ const ThreeVFX = (function () {
     var MAX_BLOOD_GLOBS = 64;
 
     var _scene = null;
+    /* THE STAGE (PARTY_BUILDER_PLAN §5.3, 2026-09-09): the pools can be
+       RE-PARENTED into another scene graph — the party builder's hero
+       viewer borrows them for the spell preview. `_home` is the board scene
+       the pools belong to (null when they were born on a stage before any
+       match), `_attached` the stage group currently holding them, `_limbo`
+       an off-scene group that keeps them alive between a stage and a board
+       that has not initialised yet. See attach() / detach() below. */
+    var _home = null;
+    var _attached = null;
+    var _limbo = null;
+    var _stageCam = null;      // the stage's camera: billboards face IT, not the board's
+    function _vfxCam() {
+        if (_attached && _stageCam) return _stageCam;
+        return (typeof ThreeCamera !== 'undefined') ? ThreeCamera.getCamera() : null;
+    }
 
     var _spritePool = [];
 
@@ -1673,8 +1688,18 @@ const ThreeVFX = (function () {
     }
 
     function init(scene) {
-        if (_initialized) return;
+        if (_initialized) {
+            /* Born on a stage (the builder opened before the first match):
+               the board ADOPTS the pools — they move home now unless a
+               stage still holds them (detach() brings them here then). */
+            if (!_home && scene) {
+                _home = scene;
+                if (!_attached) { _scene = scene; _reparentAll(scene); }
+            }
+            return;
+        }
         _scene = scene;
+        _home = scene;
 
         _tmpQuat  = new THREE.Quaternion();
         _tmpQuat2 = new THREE.Quaternion();
@@ -2142,7 +2167,7 @@ const ThreeVFX = (function () {
             mesh.quaternion.setFromEuler(_tmpEuler);
         } else if (p.mode === 'y-locked') {
 
-            var cam = (typeof ThreeCamera !== 'undefined') ? ThreeCamera.getCamera() : null;
+            var cam = _vfxCam();
             if (cam) {
                 var camDir_x = -(cam.matrixWorld.elements[8]);
                 var camDir_z = -(cam.matrixWorld.elements[10]);
@@ -2153,7 +2178,7 @@ const ThreeVFX = (function () {
             }
         } else {
 
-            var cam2 = (typeof ThreeCamera !== 'undefined') ? ThreeCamera.getCamera() : null;
+            var cam2 = _vfxCam();
             if (cam2) { mesh.quaternion.copy(cam2.quaternion); }
             else { mesh.quaternion.identity(); }
         }
@@ -2454,7 +2479,7 @@ const ThreeVFX = (function () {
     }
 
     function _ambientTick(dt) {
-        if (!_scene) return;
+        if (!_scene || _attached) return;            // never on the builder's stage
         var haveBoard = (typeof bw === 'function' && typeof bh === 'function');
         var bwT = haveBoard ? bw() : 0, bhT = haveBoard ? bh() : 0;
         var ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 128;
@@ -2728,6 +2753,7 @@ const ThreeVFX = (function () {
     }
 
     function _rainTick(dt) {
+        if (_attached) return;                       // never on the builder's stage
         if (!_rainActive || _rainDropMeshes.length === 0) return;
         if (typeof state !== 'undefined' && state.devAutoSim) {
             _rainStopAll();
@@ -2881,8 +2907,71 @@ const ThreeVFX = (function () {
     }
 
     function isActive() {
+        if (_initialized && _attached) return true;      // staged in the viewer
         return _initialized && (typeof ThreeRenderer !== 'undefined') && ThreeRenderer.isActive();
     }
+
+    /* ── THE STAGE: re-parent the pools (PARTY_BUILDER_PLAN §5.3) ────────
+       Every pooled Object3D (sprites, world quads, billboard quads, globs,
+       rain drops / splashes, the ambient clouds) moves under `parent`; the
+       effects layer keeps spawning through the same pools and every
+       `ThreeVFX._getScene()` caller (tile flames, flame bursts, bubble
+       domes, the 3D geometry) lands in the same group. Nothing is
+       allocated twice: a stage opened before the first match INITIALISES
+       the pools here and the board adopts them at its init(scene). */
+    function _pooledObjects() {
+        var out = [], i;
+        for (i = 0; i < _spritePool.length; i++) out.push(_spritePool[i].sprite);
+        for (i = 0; i < _worldMeshPool.length; i++) out.push(_worldMeshPool[i].mesh);
+        for (i = 0; i < _quadMeshPool.length; i++) out.push(_quadMeshPool[i].mesh);
+        for (i = 0; i < _globPool.length; i++) out.push(_globPool[i].mesh);
+        for (i = 0; i < _rainDropMeshes.length; i++) out.push(_rainDropMeshes[i].mesh);
+        for (i = 0; i < _rainSplashMeshes.length; i++) out.push(_rainSplashMeshes[i].mesh);
+        if (_ambMotes && _ambMotes.points) out.push(_ambMotes.points);
+        if (_ambFlies && _ambFlies.points) out.push(_ambFlies.points);
+        return out;
+    }
+    function _reparentAll(target) {
+        if (!target) return;
+        var objs = _pooledObjects();
+        for (var i = 0; i < objs.length; i++) {
+            if (objs[i].parent !== target) target.add(objs[i]);   // add() detaches from the old parent
+        }
+    }
+    function attach(parent, opts) {
+        if (!parent || typeof THREE === 'undefined') return false;
+        if (!_initialized) {
+            init(parent);
+            _home = null;             // no board yet — init(scene) adopts later
+        }
+        _stageCam = (opts && opts.camera) || null;
+        if (_attached === parent) return true;
+        _attached = parent;
+        _scene = parent;
+        _reparentAll(parent);
+        /* a parked post-match board may still have drops mid-fall and its
+           mote clouds up — they ride along hidden (the board's ticks
+           re-show them once the pools are home and a battle is on) */
+        var i;
+        for (i = 0; i < _rainDropMeshes.length; i++) { _rainDropMeshes[i].mesh.visible = false; _rainDropMeshes[i].inUse = false; }
+        for (i = 0; i < _rainSplashMeshes.length; i++) { _rainSplashMeshes[i].mesh.visible = false; _rainSplashMeshes[i].inUse = false; }
+        for (i = 0; i < _rainDrops.length; i++) _rainDrops[i].alive = false;
+        for (i = 0; i < _rainSplashes.length; i++) _rainSplashes[i].alive = false;
+        if (_ambMotes && _ambMotes.points) _ambMotes.points.visible = false;
+        if (_ambFlies && _ambFlies.points) _ambFlies.points.visible = false;
+        return true;
+    }
+    function detach() {
+        if (!_attached) return;
+        clear();                      // no particle survives into the next match
+        _attached = null;
+        _stageCam = null;
+        if (!_home && !_limbo) _limbo = new THREE.Group();
+        var target = _home || _limbo;
+        _scene = target;
+        _reparentAll(target);
+    }
+    function isAttached() { return !!_attached; }
 
     function clear() {
         if (!_initialized) return;
@@ -2944,6 +3033,7 @@ const ThreeVFX = (function () {
         _atlasCanvas = null;
         _uvLookup = {}; _atlasReady = false;
         _particles = []; _aliveCount = 0; _zoneAliveCount = 0; _initialized = false; _scene = null;
+        _home = null; _attached = null; _limbo = null; _stageCam = null;
         _tmpQuat = _tmpQuat2 = _tmpEuler = _tmpVec = null;
         console.log('[ThreeVFX] disposed');
     }
@@ -2987,6 +3077,7 @@ const ThreeVFX = (function () {
     function _getScene() { return _scene; }
 
     return { init: init, spawn: spawn, tick: tick, isActive: isActive, clear: clear, dispose: dispose,
+             attach: attach, detach: detach, isAttached: isAttached,
              startRain3D: startRain3D, stopRain3D: stopRain3D, isRain3DActive: isRain3DActive,
              setAmbientDensity: setAmbientDensity, getAmbientDensity: getAmbientDensity,
              hasActiveParticles: hasActiveParticles, _diag: _diag, _getScene: _getScene };

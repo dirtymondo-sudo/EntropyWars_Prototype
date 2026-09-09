@@ -4,7 +4,48 @@ const ThreeVFXEffects = (function () {
     function rn(a, b) { return a + Math.random() * (b - a); }
     function lerp(a, b, t) { return a + (b - a) * t; }
 
+    /* ══════════════════════════════════════════════════════════════════
+       THE STAGE (PARTY_BUILDER_PLAN.md §5.3, 2026-09-09) — the party
+       builder's hero viewer borrows the WHOLE effects layer for the spell
+       preview. `VFX3D.stage.enter({ tile, heroH, fx })` flips `_VS.on`;
+       while it is on, the four coordinate helpers below describe a
+       floating 5×3-tile frame instead of the board (tile (0,0) = the
+       hero's feet, (2,0) two tiles to screen-right; the viewer scales the
+       pooled objects' group by tile / 128 so every px-authored size lands
+       right), `_suppressed()` ignores `state.phase`, the post grades /
+       the board shake / the screen flash go to the viewer's `fx` callback
+       (the monitor reacts), the lightning module and the ACTION TILE GLOW
+       are skipped (they live in the board renderer). `stage.fire` calls
+       the INTERNAL fire — never window.VFX3D.fire, which online.js wraps
+       for the host → guest relay (rule 3.6b): a preview must never reach
+       the other screen. Kill: window.EW_NO_PB_VFX (party-builder.js),
+       EW_PB_VFX_NO_GEOM (the bespoke 3D geometry on the stage). */
+    var _VS = { on: false, tile: 1, heroH: 1, fx: null, post: null, lt: null };
+    var _VS_CFG = { tileSize: 128, tileGap: 0, boardPadding: 0 };
+    function _vsFx(kind, o) {
+        if (!_VS.on || typeof _VS.fx !== 'function') return;
+        try { _VS.fx(kind, o || {}); } catch (e) {}
+    }
+    function _shake(kind) {
+        if (_VS.on) { _vsFx('shake', { kind: kind }); return; }
+        if (typeof window !== 'undefined' && typeof window.shakeBoard === 'function') window.shakeBoard(kind);
+    }
+    /* the lightning module draws into the BOARD scene — on the stage every
+       bolt call lands on a no-op stub (the guards above the calls stay true) */
+    function _LT() {
+        if (_VS.on) return _VS.lt || (_VS.lt = { bolt: function () {}, strikeFromSky: function () {}, chainBolt: function () {} });
+        return (typeof window !== 'undefined' && window.ThreeLightning) ? window.ThreeLightning : null;
+    }
+    /* The bespoke 3D geometry (the _spell3DGeometry registry) builds into
+       ThreeVFX._getScene() through _worldPos, so it follows the pools onto
+       the stage; EW_PB_VFX_NO_GEOM keeps it board-only. */
+    function _geom3D(spellId) {
+        if (_VS.on && typeof window !== 'undefined' && window.EW_PB_VFX_NO_GEOM) return null;
+        return _spell3DGeometry[spellId];
+    }
+
     function _cfg() {
+        if (_VS.on) return _VS_CFG;
         return (typeof CONFIG !== 'undefined') ? CONFIG : { tileSize: 128, tileGap: 0, boardPadding: 2 };
     }
 
@@ -17,6 +58,7 @@ const ThreeVFXEffects = (function () {
     }
 
     function tileZ(tx, ty) {
+        if (_VS.on) return 0;                         // the stage is flat
         if (typeof state === 'undefined') return 0;
         var ix = Math.round(tx), iy = Math.round(ty);
         /* GROUND-TRUTH FIX (2026-08-03): the 3D renderer stands units on the
@@ -51,6 +93,7 @@ const ThreeVFXEffects = (function () {
     }
 
     function unitSurfaceZ(tx, ty) {
+        if (_VS.on) return 0;                         // never read a stale state.units on the stage
         var ix = Math.round(tx), iy = Math.round(ty);
 
         var u = null;
@@ -101,6 +144,7 @@ const ThreeVFXEffects = (function () {
     }
 
     function _suppressed() {
+        if (_VS.on) return !!(typeof state !== 'undefined' && state && state.animationsDisabled);
         if (typeof state === 'undefined') return true;
         if (state.devAutoSim) return true;
         if (state.animationsDisabled) return true;
@@ -971,7 +1015,7 @@ const ThreeVFXEffects = (function () {
             _tileFlameScene = scene || null;
         }
         var active = scene && _canSpawn() && typeof THREE !== 'undefined' &&
-                     typeof state !== 'undefined' &&
+                     typeof state !== 'undefined' && !_VS.on &&
                      !state.devAutoSim && !state.animationsDisabled && !_catOff('zones');
         var burning = (active && state.burningTiles) ? state.burningTiles : null;
 
@@ -1006,7 +1050,7 @@ const ThreeVFXEffects = (function () {
     }
 
     function _tickBurningTiles(dt) {
-        if (!_canSpawn()) return;
+        if (!_canSpawn() || _VS.on) return;
         if (typeof state === 'undefined' || !state.burningTiles) return;
         if (state.devAutoSim || state.animationsDisabled) return;
         if (_catOff('zones')) return;
@@ -2862,7 +2906,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
 
         if (effectDef.shake && typeof window.shakeBoard === 'function') {
-            window.shakeBoard(effectDef.shake);
+            _shake(effectDef.shake);
         }
     }
 
@@ -3072,7 +3116,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     vz: rn(30, 60), sprite: 'smoke', ml: rn(800, 1400), drag: 0.4,
                     size0: rn(40, 60) * q.s, size1: rn(100, 150) * q.s, opacity0: 0.65, opacity1: 0 });
             }
-            if (typeof window.shakeBoard === 'function') window.shakeBoard(q.s >= 1.5 ? 'hard' : 'normal');
+            if (typeof window.shakeBoard === 'function') _shake(q.s >= 1.5 ? 'hard' : 'normal');
             var P1 = _post(); if (P1 && P1.bloomPulse) P1.bloomPulse(0.5 * q.s, 320);
         },
 
@@ -3080,7 +3124,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _spawn({ x: q.c.x, y: q.c.y, z: q.zf + 2, mode: 'world', sprite: 'shockwave', tint: q.hex,
                 ml: q.ms, size0: q.ts * 0.3 * q.s, size1: q.ts * 3.0 * q.s, opacity0: 0.95, opacity1: 0 });
             try { _sigSpeedBurst3D(q.tx, q.ty, { color: _cueHex(q.hex, 0xfff0d0), ms: Math.min(300, q.ms), size: q.ts * 1.3 * q.s }); } catch (e) {}
-            if (q.s >= 1 && typeof window.shakeBoard === 'function') window.shakeBoard('normal');
+            if (q.s >= 1 && typeof window.shakeBoard === 'function') _shake('normal');
         },
 
         sparks: function(q) {
@@ -3328,9 +3372,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         lightning_strike: function(q) {
             var cfgL = _cfg(), pad = cfgL.boardPadding || 2;
             var hex = _cueHex(q.hex, 0x88ccff);
-            if (window.ThreeLightning && typeof window.ThreeLightning.bolt === 'function') {
+            if (_LT() && typeof _LT().bolt === 'function') {
                 try {
-                    window.ThreeLightning.bolt(
+                    _LT().bolt(
                         { x: q.c.x - pad + rn(-8, 8), y: q.zt + q.ts * 3.4, z: q.c.y - pad + rn(-8, 8) },
                         { x: q.c.x - pad, y: q.zf + 6, z: q.c.y - pad },
                         { segments: 9, jitter: 0.42, branchChance: 0.28, branchDepth: 1,
@@ -3349,7 +3393,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     sprite: 'spark-elec', ml: rn(200, 420), gravity: 320, drag: 1.1,
                     size0: rn(4, 8) * q.s, size1: 1, opacity0: 1, opacity1: 0 });
             }
-            if (typeof window.shakeBoard === 'function') window.shakeBoard('normal');
+            if (typeof window.shakeBoard === 'function') _shake('normal');
             var P4 = _post(); if (P4 && P4.bloomPulse) P4.bloomPulse(0.4 * q.s, 260);
         },
 
@@ -3360,12 +3404,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             for (var i = 0; i < nB; i++) {
                 (function(idx) {
                     window.setTimeout(function() {
-                        if (_suppressed() || !window.ThreeLightning) return;
+                        if (_suppressed() || !_LT()) return;
                         var arcLen = q.ts * (0.4 + Math.random() * 0.55) * q.s;
                         var ang = Math.random() * 6.2832;
                         var from = { x: q.c.x - pad, y: q.zt + 3, z: q.c.y - pad };
                         try {
-                            window.ThreeLightning.bolt(from,
+                            _LT().bolt(from,
                                 { x: from.x + Math.cos(ang) * arcLen, y: from.y + (Math.random() - 0.5) * arcLen * 0.5, z: from.z + Math.sin(ang) * arcLen },
                                 { segments: 6, jitter: 0.4, branchChance: 0.12, branchDepth: 0,
                                   coreWidth: 2.6 * q.s, glowWidth: 7 * q.s,
@@ -3518,15 +3562,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         /* Descent-mapped spells already fire their bespoke 3D geometry from
            the descent pipeline — don't double-fire it on the impact intent. */
-        if (_spell3DGeometry[spellId] && intent === 'impact'
+        if (_geom3D(spellId) && intent === 'impact'
             && !(SPELL_MAP[spellId] && SPELL_MAP[spellId].descent)) {
             /* arg 4 = the full fire() params, so directional signatures (the
                punches) can aim from the caster (params.fromX/fromY) when the
                call site provides it. arg 3 stays the aoeRadius slot. */
-            _spell3DGeometry[spellId](params.tx, params.ty, undefined, params);
+            _geom3D(spellId)(params.tx, params.ty, undefined, params);
         }
 
-        if (window.ThreeLightning && intent === 'impact' &&
+        if (_LT() && intent === 'impact' &&
             /electro|taser|shock|emp|spark|thunder|lightning|tesla|crashLoop|signalPulse|deadAir|mjolnir|yellowThunder|chainLightning|callLightning|overcharge/i.test(spellId)) {
             var _zapCfg = _cfg();
             var _zapTs = _zapCfg.tileSize || 128;
@@ -3553,7 +3597,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                             y: _fromW.y + (Math.random() - 0.5) * _arcLen * 0.4,
                             z: _fromW.z + Math.sin(_angle) * _arcLen,
                         };
-                        ThreeLightning.bolt(_fromW, _toW, {
+                        _LT().bolt(_fromW, _toW, {
                             segments: 6,
                             jitter: 0.4,
                             branchChance: 0.1,
@@ -3584,7 +3628,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        Returns true when something was spawned. */
     function fireGeometry(spellId, tx, ty, aoeRadius, extra) {
         if (_suppressed()) return false;
-        var fn = _spell3DGeometry[spellId];
+        var fn = _geom3D(spellId);
         if (typeof fn !== 'function') return false;
         /* extra: optional context bag (e.g. the dash kind passes
            { fromX, fromY } so travel cinematics know the launch tile) */
@@ -4162,17 +4206,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 _spell3DGeometry.meteor(tx, ty, aoeRadius, descentMs, telegraphMs);
             }
 
-            if (spellId !== 'meteor' && _spell3DGeometry[spellId]) {
-                _spell3DGeometry[spellId](tx, ty);
+            if (spellId !== 'meteor' && _geom3D(spellId)) {
+                _geom3D(spellId)(tx, ty);
             }
 
-            if (window.ThreeLightning && /thunder|lightning|emp|callLightning|yellowThunder|sentaiYellowThunder/i.test(spellId)) {
+            if (_LT() && /thunder|lightning|emp|callLightning|yellowThunder|sentaiYellowThunder/i.test(spellId)) {
 
                 for (var li = 0; li < tileOffsets.length; li++) {
                     (function(off, delay) {
                         window.setTimeout(function() {
                             if (typeof state !== 'undefined' && (state.devAutoSim && !state._devSimShowAnims || state._aiTurbo)) return;
-                            ThreeLightning.strikeFromSky(tx + off.dx, ty + off.dy, {
+                            _LT().strikeFromSky(tx + off.dx, ty + off.dy, {
                                 durationMs: Math.max(200, descentMs * 0.85),
                                 segments: 14,
                                 jitter: 0.3,
@@ -4279,7 +4323,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             })(tiles[i], i * stagger);
         }
 
-        if (_spell3DGeometry[spellId] && tiles.length > 0) {
+        if (_geom3D(spellId) && tiles.length > 0) {
 
             var cx = 0, cy = 0;
             for (var gi = 0; gi < tiles.length; gi++) {
@@ -4287,12 +4331,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
             cx = Math.round(cx / tiles.length);
             cy = Math.round(cy / tiles.length);
-            _spell3DGeometry[spellId](cx, cy);
+            _geom3D(spellId)(cx, cy);
         }
 
         var shake = (wallDef.shake !== undefined) ? wallDef.shake : 'normal';
         if (shake && tiles.length > 0 && typeof window.shakeBoard === 'function') {
-            window.shakeBoard(shake);
+            _shake(shake);
         }
     }
 
@@ -4313,8 +4357,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     if (_suppressed()) return;
                     _spawnEffect(hopDef, { tx: tile.x, ty: tile.y });
 
-                    if (window.ThreeLightning && prevTile) {
-                        ThreeLightning.chainBolt(prevTile.x, prevTile.y, tile.x, tile.y, {
+                    if (_LT() && prevTile) {
+                        _LT().chainBolt(prevTile.x, prevTile.y, tile.x, tile.y, {
                             durationMs: 200,
                             segments: 8,
                             jitter: 0.28,
@@ -4424,7 +4468,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (_suppressed()) return;
 
             if (shake && typeof window.shakeBoard === 'function') {
-                window.shakeBoard(shake);
+                _shake(shake);
             }
 
             var _casterPx = tilePx(fromX, fromY);
@@ -4864,7 +4908,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
                 /* Screen shake if configured */
                 if (e.shake && typeof window.shakeBoard === 'function') {
-                    window.shakeBoard(e.shake);
+                    _shake(e.shake);
                 }
 
                 /* Impact flash: every hit kicks the bloom a little; heavy
@@ -4888,8 +4932,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 }
 
                 /* …and its bespoke 3D signature, when the bolt def opted in */
-                if (e.geom && _spell3DGeometry[e.spellId] && e.toTx != null) {
-                    try { _spell3DGeometry[e.spellId](e.toTx, e.toTy); } catch (gErr) {}
+                if (e.geom && _geom3D(e.spellId) && e.toTx != null) {
+                    try { _geom3D(e.spellId)(e.toTx, e.toTy); } catch (gErr) {}
                 }
             }
 
@@ -5021,8 +5065,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
         }
 
-        if (_spell3DGeometry[spellId]) {
-            _spell3DGeometry[spellId](tx, ty, aoeRadius);
+        if (_geom3D(spellId)) {
+            _geom3D(spellId)(tx, ty, aoeRadius);
         }
 
         if (aoeDef.missiles && params.cx != null) {
@@ -5037,14 +5081,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 aoeDef.impactTileEffect, aoeDef.impactCenterEffect, aoeRadius);
         }
 
-        if (window.ThreeLightning &&
+        if (_LT() &&
             /emp|thunder|lightning|yellowThunder|sentaiYellowThunder|overcharge|signalPulse|deadAir/i.test(spellId)) {
             var _aoeLightDelay = (aoeDef.missiles && params.cx != null) ? (aoeDef.missiles.flyMs || 350) : 0;
             for (var _ali = 0; _ali < tileOffsets.length; _ali++) {
                 (function(off, idx) {
                     window.setTimeout(function() {
                         if (typeof state !== 'undefined' && (state.devAutoSim && !state._devSimShowAnims || state._aiTurbo)) return;
-                        ThreeLightning.strikeFromSky(tx + off.dx, ty + off.dy, {
+                        _LT().strikeFromSky(tx + off.dx, ty + off.dy, {
                             durationMs: 250,
                             segments: 12,
                             jitter: 0.3,
@@ -5655,7 +5699,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }, lanceMs);
 
         if (opts.shake !== false && typeof window.shakeBoard === 'function') {
-            window.shakeBoard(opts.shake || 5);
+            _shake(opts.shake || 5);
         }
         return true;
     }
@@ -5778,7 +5822,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 opacity0: 0.95, opacity1: 0, drag: 1.4, gravity: 90,
             });
         }
-        if (typeof window.shakeBoard === 'function') window.shakeBoard(6);
+        if (typeof window.shakeBoard === 'function') _shake(6);
     }
 
     function _spawnDome3D(tx, ty, aoeRadius, opts) {
@@ -8895,6 +8939,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* full-viewport anime impact flash (DOM overlay, additive) */
     var _sigFlashEl = null;
     function _sigScreenFlash(color, ms, peak) {
+        if (_VS.on) { _vsFx('flash', { color: color, ms: ms, peak: peak }); return; }
         try {
             if (typeof document === 'undefined') return;
             if (_catOff('spells')) return;
@@ -8927,7 +8972,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
 
     function _sigShake(kind) {
-        if (typeof window.shakeBoard === 'function') window.shakeBoard(kind || 'normal');
+        if (typeof window.shakeBoard === 'function') _shake(kind || 'normal');
     }
 
     /* burst of sparks/motes through the existing particle pool so the look
@@ -10445,7 +10490,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                         if (typeof ThreePost !== 'undefined' && ThreePost.bloomPulse) {
                             ThreePost.bloomPulse(0.35, 300);
                         }
-                        if (typeof window.shakeBoard === 'function') window.shakeBoard('normal');
+                        if (typeof window.shakeBoard === 'function') _shake('normal');
                     } catch (e2) {}
                 }
                 carrier.position.y = h * 0.5 - sink;
@@ -10540,7 +10585,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                         if (typeof ThreePost !== 'undefined' && ThreePost.bloomPulse) {
                             ThreePost.bloomPulse(0.5, 300);
                         }
-                        if (typeof window.shakeBoard === 'function') window.shakeBoard('heavy');
+                        if (typeof window.shakeBoard === 'function') _shake('heavy');
                     } catch (e3) {}
                 }
             } else if (el < cockMs + beatMs + slamMs + pressMs) {
@@ -11453,6 +11498,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        attack came from. The blitz engine tracks the acting unit; fall back
        to the nearest living unit that isn't standing ON the target tile. */
     function _sigCasterPos(tx, ty) {
+        if (_VS.on) return { x: 0, y: 0 };            // the hero stands at the stage origin
         try {
             if (typeof state === 'undefined' || !state.units) return null;
             var u = null;
@@ -13660,7 +13706,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         _sigLightPillar3D(tx, ty, { color: 0x99ddff, coreColor: 0xffffff, ms: 520, height: ts * 1.6, radius: ts * 0.16 });
         _sigSparks(tx, ty, 'spark-blue', 14, { vxy: 140, vz0: 60, vz1: 260, gravity: 300 });
         _sigScreenFlash('#aaddff', 120, 0.10);
-        if (window.ThreeLightning) {
+        if (_LT()) {
             var cfg = _cfg();
             var pad = cfg.boardPadding || 2;
             var c = tilePx(tx, ty);
@@ -13671,7 +13717,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                         if (_suppressed()) return;
                         var a = rn(0, Math.PI * 2);
                         var r = ts * rn(0.45, 0.85);
-                        ThreeLightning.bolt(
+                        _LT().bolt(
                             { x: c.x - pad, y: topZ, z: c.y - pad },
                             { x: c.x - pad + Math.cos(a) * r, y: unitSurfaceZ(tx, ty) + 6, z: c.y - pad + Math.sin(a) * r },
                             { segments: 7, jitter: 0.5, branchChance: 0.25, branchDepth: 1,
@@ -15076,6 +15122,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        Radial streaks flicker and converge on the screen centre. ────────── */
     var _sigLinesEl = null;
     function _sigSpeedLinesFx(opts) {
+        if (_VS.on) return;                           // a full-viewport canvas — not on the monitor
         try {
             if (typeof document === 'undefined') return;
             if (_catOff('spells')) return;
@@ -19553,14 +19600,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 color: 0x99ccff, color2: 0xd8ecff, radiusPx: ts0 * 1.3,
                 holdMs: 900, spin: 0.004, opacity: 0.8, rise: 24,
             });
-            if (window.ThreeLightning && window.ThreeLightning.strikeFromSky) {
+            if (_LT() && _LT().strikeFromSky) {
                 var offs = [[0, 0], [1, -1], [-1, 1]];
                 for (var si = 0; si < offs.length; si++) {
                     (function (ox, oy, delay) {
                         window.setTimeout(function () {
                             if (_suppressed()) return;
                             try {
-                                window.ThreeLightning.strikeFromSky(tx + ox, ty + oy, {
+                                _LT().strikeFromSky(tx + ox, ty + oy, {
                                     strikes: 2, durationMs: 300,
                                     impactFlashSize: ts0 * 0.5,
                                 });
@@ -19719,8 +19766,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             });
         }
 
-        if (_spell3DGeometry[spellId]) {
-            _spell3DGeometry[spellId](tx, ty, aoeRadius);
+        if (_geom3D(spellId)) {
+            _geom3D(spellId)(tx, ty, aoeRadius);
         }
 
         _emitAoeBursts(tileOffsets, tx, ty,
@@ -20383,6 +20430,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return true;
     }
     function _post() {
+        if (_VS.on) return _VS.post;                  // the monitor grades instead of the board
         return (typeof window !== 'undefined' && window.ThreePost) ? window.ThreePost : null;
     }
 
@@ -21109,7 +21157,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         if (p && p.bloomPulse) p.bloomPulse(T.bloom, T.bloom > 0.5 ? 420 : 260);
         _stageGrade(spellId, 'burst', params, info);
-        if (T.shake && typeof window.shakeBoard === 'function') window.shakeBoard(T.shake);
+        if (T.shake && typeof window.shakeBoard === 'function') _shake(T.shake);
     }
 
     /* ── BEAT 3: FINISH (target tile) ────────────────────────────────────
@@ -21170,6 +21218,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        still lights its two tiles. Params ride the relayed beat, so the
        guest draws the same glow (RULE #2). Kill: EW_DISABLE_TILE_GLOW. */
     function _glowR() {
+        if (_VS.on) return null;
         return (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive
             && ThreeRenderer.isActive() && typeof ThreeRenderer.actionGlowStart === 'function')
             ? ThreeRenderer : null;
@@ -22892,6 +22941,48 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     /* ═════════ END VFX PASS-3 COVERAGE SECTION ═════════ */
 
+    /* ── VFX3D.stage — the party builder's preview stage (§5.3) ────────
+       enter({ tile, heroH, fx }) / exit() / fire(intent, spellId, params) /
+       active() / clear(). The viewer (three-renderer.js
+       EWCharViewer.stageEnter) has already re-parented the pools with
+       ThreeVFX.attach(group); exit() sweeps every live effect out of the
+       group BEFORE the viewer detaches them. `fx(kind, o)` receives
+       'grade' { tint, tintAmt, dim, holdMs, riseMs, fallMs }, 'kick'
+       { amt, ms }, 'flash' { color, ms, peak }, 'shake' { kind } — the
+       monitor's business, not the board's. */
+    var _vsApi = {
+        enter: function (opts) {
+            opts = opts || {};
+            _VS.on = true;
+            _VS.tile = opts.tile || 1;
+            _VS.heroH = opts.heroH || 1;
+            _VS.fx = (typeof opts.fx === 'function') ? opts.fx : null;
+            _VS.post = {
+                spellGrade: function (o) { _vsFx('grade', o || {}); },
+                spellGradeKick: function (amt, ms) { _vsFx('kick', { amt: amt, ms: ms }); },
+                dramaDim: function (d, ms) { _vsFx('grade', { dim: d, holdMs: ms }); },
+            };
+            return true;
+        },
+        exit: function () {
+            if (!_VS.on) return;
+            try { clearAll(); } catch (e) {}
+            _VS.on = false;
+            _VS.fx = null;
+            _VS.post = null;
+        },
+        active: function () { return _VS.on; },
+        /* the INTERNAL fire: online.js wraps the exported VFX3D.fire to
+           relay host → guest, and a builder preview must never ride it */
+        fire: function (intent, spellId, params) {
+            if (!_VS.on) return false;
+            try { fire(intent, spellId, params || {}); } catch (e) { console.warn('[VFX3D.stage] ' + intent + ' ' + spellId + ' failed', e); return false; }
+            return true;
+        },
+        hasMapping: hasMapping,
+        clear: function () { if (_VS.on) { try { clearAll(); } catch (e) {} } },
+    };
+
     return {
 
         projectile: projectile,
@@ -22900,6 +22991,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         tick: tick,
         clear: clearAll,
+        stage: _vsApi,
 
         startTornado3D: startTornado3D,
         stopTornado3D: stopTornado3D,

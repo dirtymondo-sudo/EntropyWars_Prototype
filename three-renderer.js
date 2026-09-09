@@ -28608,6 +28608,12 @@ const ThreeRenderer = (function () {
 
         var stage = new THREE.Group();     // character spins on this
         scene.add(stage);
+        // THE STAGE (PARTY_BUILDER_PLAN §5.3): the VFX pools are re-parented
+        // into this group for the spell preview; scaled tile/128 by
+        // _cvFitStage so px-authored effects land in viewer units.
+        var vfxGroup = new THREE.Group();
+        vfxGroup.name = 'pb-vfx';
+        scene.add(vfxGroup);
 
         // grounding: soft shadow blob + slowly counter-rotating sigil circle
         var blobTex = (function () {
@@ -28646,6 +28652,9 @@ const ThreeRenderer = (function () {
             // down at the model (owner call 2026-08-09).
             h: 1, yaw: 0, polar: 0, zoom: 1, dist0: 4,
             dragging: false, px: 0, py: 0,
+            // the VFX stage (§5.3)
+            vfxGroup: vfxGroup, staged: false, grid: null, tile: 1,
+            yawTween: null, yawHome: null, jolt: 0, beat: null, onStageFx: null,
         };
 
         cnv.addEventListener('pointerdown', function (e) {
@@ -28658,6 +28667,7 @@ const ThreeRenderer = (function () {
             var dx = e.clientX - _cv.px, dy = e.clientY - _cv.py;
             _cv.px = e.clientX; _cv.py = e.clientY;
             _cv.yaw += dx * 0.012;
+            _cv.yawTween = null; _cv.yawHome = null;   // the player's drag outranks the preview turn
             // negative polar dips BELOW the model (fliers get looked up at)
             _cv.polar = Math.max(-0.6, Math.min(1.25, _cv.polar + dy * 0.006));
         });
@@ -28674,6 +28684,7 @@ const ThreeRenderer = (function () {
         }, { passive: false });
         cnv.addEventListener('dblclick', function () {
             _cv.yaw = 0; _cv.polar = 0; _cv.zoom = 1;
+            _cv.yawTween = null; _cv.yawHome = null;
         });
         return _cv;
     }
@@ -28716,6 +28727,10 @@ const ThreeRenderer = (function () {
         // MOVE PREVIEW state (PARTY_BUILDER_PLAN §5.2): the clip table, the
         // lazily built actions and any running one-shot die with the model.
         _cvPreviewEnd(true);
+        // …and the VFX beat + its live particles (§5.3); the stage itself stays
+        _cvBeatCancel(true);
+        if (_cv.staged && window.ThreeVFX && ThreeVFX.clear) { try { ThreeVFX.clear(); } catch (_e) {} }
+        _cv.yawTween = null; _cv.yawHome = null; _cv.jolt = 0;
         _cv.def = null; _cv.clips = null; _cv.clipUrls = null; _cv.actions = null; _cv.idleAct = null;
     }
 
@@ -28738,6 +28753,8 @@ const ThreeRenderer = (function () {
         }
         var dt = Math.min(v.clock.getDelta(), 0.1);
         if (v.mixer) v.mixer.update(dt);
+        if (v.yawTween) _cvYawTweenStep(v, dt);          // the preview turn (§5.3)
+        if (v.staged && window.ThreeVFX && ThreeVFX.tick) { try { ThreeVFX.tick(dt); } catch (_e) {} }
         // no auto-spin: yaw belongs to the player's drag alone
         if (v.model) v.model.rotation.y = v.yaw;
         v.circle.rotation.z += dt * 0.05;
@@ -28746,6 +28763,11 @@ const ThreeRenderer = (function () {
         var pol = v.polar;
         // camera stays on the +Z axis; the MODEL yaws under the pointer
         v.cam.position.set(0, cy + Math.sin(pol) * dist, Math.cos(pol) * dist);
+        if (v.jolt > 0.002) {                              // the board shake, on the stage camera
+            v.cam.position.x += (Math.random() - 0.5) * v.jolt * 0.05 * v.h;
+            v.cam.position.y += (Math.random() - 0.5) * v.jolt * 0.03 * v.h;
+            v.jolt *= Math.pow(0.001, dt);
+        }
         v.cam.lookAt(0, cy * 0.96, 0);
         v.renderer.render(v.scene, v.cam);
     }
@@ -28842,6 +28864,8 @@ const ThreeRenderer = (function () {
             v.blob.scale.set(gr, gr, 1);
             v.circle.scale.set(gr * 1.55, gr * 1.55, 1);
             v.stage.add(wrap);
+            v.def = def;
+            if (v.staged) _cvFitStage();                   // a new vessel = a new tile scale (§5.3)
             // idle animation: retargeted library bake first, per-character
             // Meshy clip GLB as the fallback — same chain as the board.
             v.def = def; v.clips = null; v.clipUrls = null; v.actions = {}; v.idleAct = null;
@@ -29020,6 +29044,181 @@ const ThreeRenderer = (function () {
         return _cvPlay(chain, { full: opts.full, name: opts.name || (spell && spell.name) || 'BASIC ATTACK' });
     }
 
+    /* ── THE STAGE (PARTY_BUILDER_PLAN §5.3) — the spell LIGHTS UP the viewer ──
+       stageEnter() borrows the battle's VFX layer: ThreeVFX.attach(v.vfxGroup)
+       re-parents every pooled particle object into the viewer scene and
+       VFX3D.stage.enter(...) flips the effects module's coordinate helpers to
+       a floating frame (tile (0,0) = the hero's feet, (2,0) two tiles to
+       screen-right = +X, since the camera sits on +Z). The group is scaled
+       tile / 128 (a heightRatio-1 vessel is ONE tile tall on the board —
+       UNIT_SPRITE_SIZE_RATIO — so tile = v.h / heightRatio) and offset so the
+       effects' px-space (px - CONFIG.boardPadding, pz + 3 slab) lands on the
+       origin. previewSpell(spell) runs the beat: turn the hero toward the
+       target, WINDUP at the caster, the cast clip (§5.2), BURST + every mapped
+       intent at 45 % of the clip (aura at the hero, the rest at (2,0)),
+       FINISH at the end, then turn back. The monitor's reactions (the post
+       grade, the kick, the screen flash, the board shake) arrive through
+       `onStageFx(fn)` — the builder paints the CRT with them. stageExit()
+       (unmount, and any caller) sweeps every effect and hands the pools back
+       BEFORE a match can start. Kill: window.EW_NO_PB_VFX → the §5.2
+       animation-only preview. */
+    var _CV_STAGE_YAW = 1.15;        // radians the hero turns toward +X (screen-right) for a cast
+    var _CV_SELF_KINDS = { buff: 1, heal: 1, transform: 1, shield: 1, summonUnit: 1, raiseDead: 1, deploy: 1, trap: 1, escape: 1, cleanseArea: 1 };
+    function _cvStageFx(kind, o) {
+        var v = _cv;
+        if (!v) return;
+        if (kind === 'shake') {
+            var k = o && o.kind;
+            var amt = (typeof k === 'number') ? Math.min(1, k / 8) : (k === 'hard' || k === 'heavy') ? 1 : 0.55;
+            v.jolt = Math.max(v.jolt || 0, amt);
+        }
+        if (typeof v.onStageFx === 'function') { try { v.onStageFx(kind, o || {}); } catch (_e) {} }
+    }
+    function _cvBuildGrid(v, tile) {
+        if (v.grid) {
+            v.scene.remove(v.grid);
+            try { v.grid.geometry.dispose(); v.grid.material.dispose(); } catch (_e) {}
+            v.grid = null;
+        }
+        // a faint 5×3 tile grid (tiles -1..3 × -1..1, the hero on (0,0)) so AoE footprints read
+        var pts = [];
+        var x0 = -1.5 * tile, x1 = 3.5 * tile, z0 = -1.5 * tile, z1 = 1.5 * tile;
+        for (var i = 0; i <= 5; i++) { var gx = x0 + i * tile; pts.push(gx, 0, z0, gx, 0, z1); }
+        for (var j = 0; j <= 3; j++) { var gz = z0 + j * tile; pts.push(x0, 0, gz, x1, 0, gz); }
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+        var mat = new THREE.LineBasicMaterial({ color: 0xf2c468, transparent: true, opacity: 0.08, depthWrite: false });
+        var grid = new THREE.LineSegments(geo, mat);
+        grid.position.y = 0.005;
+        grid.visible = !!v.staged;
+        v.scene.add(grid);
+        v.grid = grid;
+    }
+    function _cvFitStage() {
+        var v = _cv;
+        if (!v || !v.vfxGroup) return;
+        var hr = (v.def && v.def.heightRatio) || 1;
+        var tile = Math.max(0.4, Math.min(3, (v.h || 1) / hr));
+        v.tile = tile;
+        var s = tile / 128;
+        // three-vfx.js _vfxToWorld subtracts the GLOBAL CONFIG.boardPadding and
+        // adds the 3 px slab whatever the stage cfg says — undo both here
+        var padG = (typeof CONFIG !== 'undefined' && CONFIG.boardPadding) || 2;
+        var c = 64;                       // tilePx(0,0) under the stage cfg (tileSize 128, pad 0)
+        v.vfxGroup.scale.setScalar(s);
+        v.vfxGroup.position.set(-(c - padG) * s, -3 * s + 0.006, -(c - padG) * s);
+        _cvBuildGrid(v, tile);
+        if (v.staged && window.VFX3D && VFX3D.stage && VFX3D.stage.active()) {
+            VFX3D.stage.enter({ tile: tile, heroH: v.h, fx: _cvStageFx });
+        }
+    }
+    function _cvStageEnter() {
+        var v = _cv;
+        if (!v) return false;
+        if (typeof window === 'undefined' || window.EW_NO_PB_VFX) return false;
+        if (!window.ThreeVFX || typeof ThreeVFX.attach !== 'function' || !window.VFX3D || !VFX3D.stage) return false;
+        // staged AND still holding the pools → done; a board dispose() in the
+        // meantime (a parked post-match renderer torn down) took them away —
+        // fall through and attach again (attach re-initialises the pools)
+        if (v.staged && ThreeVFX.isAttached && ThreeVFX.isAttached()) return true;
+        v.staged = false;
+        var ok = false;
+        try { ok = ThreeVFX.attach(v.vfxGroup, { camera: v.cam }); } catch (_e) { ok = false; }
+        if (!ok) return false;
+        v.staged = true;
+        VFX3D.stage.enter({ tile: v.tile || 1, heroH: v.h, fx: _cvStageFx });
+        _cvFitStage();
+        if (v.grid) v.grid.visible = true;
+        return true;
+    }
+    function _cvStageExit() {
+        var v = _cv;
+        if (!v || !v.staged) return;
+        _cvBeatCancel(true);
+        try { if (window.VFX3D && VFX3D.stage) VFX3D.stage.exit(); } catch (_e) {}   // sweeps the group first…
+        try { if (window.ThreeVFX && ThreeVFX.detach) ThreeVFX.detach(); } catch (_e) {}   // …then the pools go home
+        v.staged = false;
+        v.jolt = 0;
+        if (v.grid) v.grid.visible = false;
+    }
+    function _cvYawTo(to, ms, home) {
+        var v = _cv;
+        if (!v) return;
+        v.yawTween = { from: v.yaw, to: to, t: 0, ms: Math.max(1, ms || 200), home: !!home };
+    }
+    function _cvYawTweenStep(v, dt) {
+        var tw = v.yawTween;
+        if (!tw || v.dragging) { v.yawTween = null; return; }
+        tw.t += dt * 1000;
+        var k = Math.min(1, tw.t / tw.ms);
+        k = 1 - Math.pow(1 - k, 3);
+        v.yaw = tw.from + (tw.to - tw.from) * k;
+        if (k >= 1) { v.yawTween = null; if (tw.home) v.yawHome = null; }
+    }
+    function _cvBeatCancel(silent) {
+        var v = _cv;
+        if (!v || !v.beat) return;
+        var b = v.beat;
+        v.beat = null;
+        for (var i = 0; i < b.timers.length; i++) clearTimeout(b.timers[i]);
+        if (!silent && v.yawHome != null) _cvYawTo(v.yawHome, 260, true);
+    }
+    /* self / ally casts land ON the hero; everything else at the dummy target */
+    function _cvSpellAtSelf(spell) {
+        if (!spell) return false;
+        if (spell.range === 0 || spell.selfOnly || spell.targetSelf || spell.target === 'self') return true;
+        if (_CV_SELF_KINDS[spell.kind]) return true;
+        try {
+            var S = window.VFX3D && VFX3D.stage;
+            if (S && S.hasMapping(spell.id, 'aura') && !S.hasMapping(spell.id, 'impact') && !S.hasMapping(spell.id, 'bolt')
+                && !S.hasMapping(spell.id, 'beam') && !S.hasMapping(spell.id, 'aoe') && !S.hasMapping(spell.id, 'descent')) return true;
+        } catch (_e) {}
+        return false;
+    }
+    function _cvPreviewSpell(spell, opts) {
+        var v = _cv;
+        opts = opts || {};
+        if (!v || !v.model) return 0;
+        if (!_cvStageEnter()) return _cvPlaySpell(spell, opts);     // Stage 2 fallback: the animation alone
+        _cvBeatCancel(true);
+        try { if (window.ThreeVFX && ThreeVFX.clear) ThreeVFX.clear(); } catch (_e) {}   // one preview at a time
+        var id = (spell && spell.id) || 'basicAttack';
+        var atSelf = _cvSpellAtSelf(spell);
+        var tx = atSelf ? 0 : 2, ty = 0;
+        var ms = _cvPlaySpell(spell, opts);
+        var clipMs = ms > 1 ? ms : 900;     // no clip (sprite vessel / a pending Meshy GLB): the VFX is the preview
+        var burstAt = Math.max(260, Math.round(clipMs * 0.45));
+        var beat = { id: id, timers: [] };
+        v.beat = beat;
+        if (v.yawHome == null) v.yawHome = v.yaw;
+        _cvYawTo(_CV_STAGE_YAW, 200, false);
+        var S = VFX3D.stage;
+        var base = {
+            sx: 0, sy: 0, tx: tx, ty: ty, fromX: 0, fromY: 0, toX: tx, toY: ty, cx: 0, cy: 0, casterX: 0, casterY: 0,
+            dx: 1, dy: 0, range: tx || 1, holdMs: burstAt, spellType: spell ? spell.spellType : undefined,
+            aoeRadius: (spell && spell.aoeRadius) || 0,
+            hitTiles: [{ x: tx, y: ty }], tiles: [{ x: tx, y: ty }],
+            chain: [{ x: 0, y: 0 }, { x: tx, y: ty }], includePrimary: false,
+        };
+        S.fire('windup', id, base);
+        var later = function (fn, at) {
+            beat.timers.push(setTimeout(function () { if (_cv !== v || v.beat !== beat) return; fn(); }, at));
+        };
+        later(function () {
+            S.fire('burst', id, base);
+            var mapped = ['aura', 'impact', 'bolt', 'beam', 'aoe', 'chain', 'descent', 'wall', 'teleport'];
+            for (var i = 0; i < mapped.length; i++) {
+                if (!S.hasMapping(id, mapped[i])) continue;
+                var p = Object.assign({}, base);
+                if (mapped[i] === 'aura') { p.tx = 0; p.ty = 0; }
+                S.fire(mapped[i], id, p);
+            }
+        }, burstAt);
+        later(function () { S.fire('finish', id, base); }, clipMs);
+        later(function () { v.beat = null; if (v.yawHome != null) _cvYawTo(v.yawHome, 320, true); }, clipMs + 420);
+        return ms || clipMs;
+    }
+
     var charViewer = {
         supports: _cvSupports,
         /* Mount (or move) the viewer into `host` and show `race`/`gender`.
@@ -29040,6 +29239,7 @@ const ThreeRenderer = (function () {
         setCharacter: function (race, gender, opts) { return _cvSetCharacter(race, gender, opts); },
         unmount: function () {
             if (!_cv) return;
+            _cvStageExit();                        // the pools go home before any match starts (§5.3)
             if (_cv.raf) { cancelAnimationFrame(_cv.raf); _cv.raf = 0; }
             _cvHostState(_cv.host, null);
             if (_cv.canvas.parentNode) _cv.canvas.parentNode.removeChild(_cv.canvas);
@@ -29063,6 +29263,16 @@ const ThreeRenderer = (function () {
         isPlaying: function () { return !!(_cv && _cv.preview); },
         onState: function (fn) { var v = _cv || _cvEnsure(); if (v) v.onState = (typeof fn === 'function') ? fn : null; },
         hasClips: function () { return !!(_cv && _cv.mixer && (_cv.clips || _cv.clipUrls)); },
+        /* THE STAGE (§5.3): previewSpell(spell, opts) = the animation + the
+           spell's real VFX around the hero (falls back to playSpell when the
+           stage cannot open); stageEnter() / stageExit() / isStaged();
+           onStageFx(fn) receives (kind, o) — 'grade' / 'kick' / 'flash' /
+           'shake' — for the monitor's reactions. */
+        previewSpell: function (spell, opts) { return _cvPreviewSpell(spell, opts); },
+        stageEnter: function () { return _cvStageEnter(); },
+        stageExit: function () { _cvStageExit(); },
+        isStaged: function () { return !!(_cv && _cv.staged); },
+        onStageFx: function (fn) { var v = _cv || _cvEnsure(); if (v) v.onStageFx = (typeof fn === 'function') ? fn : null; },
     };
 
     /* ═══════════════════════════════════════════════════════════════════

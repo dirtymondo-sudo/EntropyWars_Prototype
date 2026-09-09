@@ -1773,6 +1773,12 @@ function PartyBuilder() {
   const [previewNote, setPreviewNote] = React.useState(null);
   const previewHoverTimer = React.useRef(0);
   const previewNoteTimer = React.useRef(0);
+  // THE STAGE (plan §5.3): the CRT root + the technique on the stage, for the
+  // monitor's reactions (grade wash / scanline roll / jolt) — DOM-driven, no
+  // React state churn per beat.
+  const crtRef = React.useRef(null);
+  const previewSpellRef = React.useRef(null);
+  const gradeTimer = React.useRef(0);
   const showSpellTip = (sp, e) => { if (sp) setSpellTip({ sp, x: e.clientX, y: e.clientY }); };
   const hideSpellTip = () => setSpellTip(null);
   /* the four tabs on the glass (PB_TABS); ROSTER first, as the references open */
@@ -2126,7 +2132,7 @@ function PartyBuilder() {
 
       st.partyMeta[player][slot].customSpells = buildDefaultCustomSpells(unitRace, mainJob, val);
     st.teamLockedIn=false; refresh(); }
-  function toggleSpell(spellId) { if (!spellId) return; if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:6; const m=st.partyMeta[player][slot]; if (!Array.isArray(m.customSpells)) m.customSpells=[]; const arr=m.customSpells,idx=arr.indexOf(spellId); if(idx>=0)arr.splice(idx,1);else{if(usedSpellSlots(arr)+spellIdSlotCost(spellId)>slotCap){sfx('uiError');return;}arr.push(spellId); if (typeof window.getSpellById==='function') pbPreview(window.getSpellById(spellId));} st.teamLockedIn=false; sfx('uiCursorMove'); refresh(); }
+  function toggleSpell(spellId) { if (!spellId) return; if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:6; const m=st.partyMeta[player][slot]; if (!Array.isArray(m.customSpells)) m.customSpells=[]; const arr=m.customSpells,idx=arr.indexOf(spellId); if(idx>=0)arr.splice(idx,1);else{if(usedSpellSlots(arr)+spellIdSlotCost(spellId)>slotCap){sfx('uiError');return;}arr.push(spellId); if (typeof window.getSpellById==='function') pbPreview(window.getSpellById(spellId), { equip: true });} st.teamLockedIn=false; sfx('uiCursorMove'); refresh(); }
   function resetCustomSpells() { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={};
     st.partyMeta[player][slot].customSpells = buildDefaultCustomSpells(unitRace, clsName, secJob);
     st.teamLockedIn=false; sfx('uiButtonConfirm'); refresh(); }
@@ -2212,11 +2218,52 @@ function PartyBuilder() {
       if (previewNoteTimer.current) clearTimeout(previewNoteTimer.current);
     };
   }, []);
+  /* THE MONITOR REACTS (plan §5.3 item 5): the effects layer's post grade,
+     aberration kick, screen flash and board shake reach the builder through
+     EWCharViewer.onStageFx while a preview runs on the stage. `data-grade`
+     = the technique's damage type (the six ENTROPY STRIKE palettes,
+     styles-base.css), `--pb-grade-amt` = the beat's strength; 'kick' rolls
+     a scanline band down the glass, 'shake' jolts the whole glass. */
+  React.useEffect(() => {
+    const cv = window.EWCharViewer;
+    if (!cv || typeof cv.onStageFx !== 'function') return undefined;
+    const retrig = (el, cls, ms) => {
+      el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls);
+      setTimeout(() => { if (el.classList.contains(cls)) el.classList.remove(cls); }, ms);
+    };
+    cv.onStageFx((kind, o) => {
+      const el = crtRef.current;
+      if (!el) return;
+      o = o || {};
+      if (kind === 'grade' || kind === 'flash') {
+        const sp = previewSpellRef.current;
+        const type = (sp && sp.spellType) || 'anomaly';
+        const amt = kind === 'flash'
+          ? Math.min(1, (o.peak != null ? o.peak : 0.3) * 1.6)
+          : Math.min(1, (o.tintAmt != null ? o.tintAmt : 0.5) + (o.dim || 0) * 0.5);
+        const hold = kind === 'flash' ? (o.ms || 180) : ((o.riseMs || 0) + (o.holdMs || 400));
+        el.setAttribute('data-grade', type);
+        el.style.setProperty('--pb-grade-amt', Math.max(0.15, amt).toFixed(2));
+        if (gradeTimer.current) clearTimeout(gradeTimer.current);
+        gradeTimer.current = setTimeout(() => { gradeTimer.current = 0; el.removeAttribute('data-grade'); }, hold);
+      } else if (kind === 'kick') retrig(el, 'pb-crt-roll-on', 520);
+      else if (kind === 'shake') retrig(el, 'pb-crt-jolt', 420);
+    });
+    return () => {
+      cv.onStageFx(null);
+      if (gradeTimer.current) { clearTimeout(gradeTimer.current); gradeTimer.current = 0; }
+    };
+  }, []);
   /* MOVE PREVIEW triggers (plan §5.2 item 6). previewOff: the pause-menu
      Animation toggle or the kill-switch. pbPreview(spOrNull, opts): null =
      the basic attack (root). Hover = after a 180 ms debounce and only when
      idle; click / equip / pick = immediately, restarting any running clip.
-     Sprite-only vessels get the NO PREVIEW note instead. */
+     Sprite-only vessels get the NO PREVIEW note instead.
+     Stage 3 (§5.3, decision C-10): hover = the animation alone
+     (EWCharViewer.playSpell); click / equip / ENTER / ▶ = the animation PLUS
+     the spell's real VFX around the hero (EWCharViewer.previewSpell — the
+     effects layer staged in the viewer; never the relayed VFX3D.fire).
+     `opts.equip` adds the DOOR click. window.EW_NO_PB_VFX = Stage 2 only. */
   const previewOff = !!(st.animationsDisabled || window.EW_NO_PB_PREVIEW);
   const pbNote = (txt) => {
     setPreviewNote(txt);
@@ -2232,8 +2279,13 @@ function PartyBuilder() {
     const fire = () => {
       if (!cv.isMounted || !cv.isMounted()) return;
       if (opts.hover && cv.isPlaying && cv.isPlaying()) return;   // hover never cuts a running clip
-      const ms = cv.playSpell(sp, { attack: !sp, name: sp ? sp.name : 'BASIC ATTACK' });
+      previewSpellRef.current = sp || null;
+      const stageOn = !opts.hover && typeof cv.previewSpell === 'function' && !window.EW_NO_PB_VFX;
+      const ms = stageOn
+        ? cv.previewSpell(sp, { attack: !sp, name: sp ? sp.name : 'BASIC ATTACK' })
+        : cv.playSpell(sp, { attack: !sp, name: sp ? sp.name : 'BASIC ATTACK' });
       if (!ms && !opts.hover) pbNote(cv.hasClips && cv.hasClips() ? 'NO CLIP FOR THIS TECHNIQUE' : 'NO PREVIEW · SPRITE VESSEL');
+      if (ms && opts.equip) { try { if (typeof window.playDoorSfx === 'function') window.playDoorSfx('crtOn', { volume: 0.3 }); } catch (e) {} }
     };
     if (opts.hover) previewHoverTimer.current = setTimeout(() => { previewHoverTimer.current = 0; fire(); }, 180);
     else fire();
@@ -2270,7 +2322,7 @@ function PartyBuilder() {
       if (arr.length + newIds.length > slotCap) { sfx('uiError'); shakeTreeNode(nodeKey); return; }
       for (const pid of newIds) arr.push(pid);
       const spNow = typeof window.getSpellById === 'function' ? window.getSpellById(id) : null;
-      if (spNow) pbPreview(spNow);                       // the equip plays the cast
+      if (spNow) pbPreview(spNow, { equip: true });      // the equip plays the cast (+ its VFX, §5.3)
     }
     setTreeHoverPath(null);
     st.teamLockedIn = false; sfx('uiCursorMove'); refresh();
@@ -2306,7 +2358,7 @@ function PartyBuilder() {
     arr.push(spellId);
     setFlSocketPick(null);
     hideSpellTip();
-    if (typeof window.getSpellById === 'function') pbPreview(window.getSpellById(spellId));
+    if (typeof window.getSpellById === 'function') pbPreview(window.getSpellById(spellId), { equip: true });
     st.teamLockedIn = false; sfx('uiCursorMove'); refresh();
   }
   /* Twin-node flow: the candidate loadout that equips ALTERNATE spellId on
@@ -2339,7 +2391,7 @@ function PartyBuilder() {
     setTwinPick(null);
     setTreeHoverPath(null);
     hideSpellTip();
-    if (typeof window.getSpellById === 'function') pbPreview(window.getSpellById(spellId));
+    if (typeof window.getSpellById === 'function') pbPreview(window.getSpellById(spellId), { equip: true });
     st.teamLockedIn = false; sfx('uiCursorMove'); refresh();
   }
   const flSocketPool = React.useMemo(() => {
@@ -3044,7 +3096,7 @@ function PartyBuilder() {
         })());
 
   /* ── the monitor ── */
-  return h('div', { className: `ms-crt ms-crt-page ms-crt-forge pb-tarot pb-tarot-${unitFaction}`, style: { '--pb-fc': fc } },
+  return h('div', { ref: crtRef, className: `ms-crt ms-crt-page ms-crt-forge pb-tarot pb-tarot-${unitFaction}`, style: { '--pb-fc': fc } },
     h('div', { className: 'ms-crt-bezel' },
       h('div', { className: 'ms-crt-glass' },
         h('div', { className: 'ms-crt-screen' },
@@ -3053,7 +3105,10 @@ function PartyBuilder() {
           teamWindow,
           pickerWindow),
         h('div', { className: 'ms-crt-scan' }),
-        h('div', { className: 'ms-crt-glare' })),
+        h('div', { className: 'ms-crt-glare' }),
+        // Stage 3 (§5.3): the monitor's reactions — the grade wash and the scanline roll (CSS-driven, see onStageFx above)
+        h('div', { className: 'pb-crt-grade' }),
+        h('div', { className: 'pb-crt-roll' })),
       h('div', { className: 'ms-crt-label' }, 'D.O.O.R. · ' + (standalone ? 'RECORDS' : 'CUSTOMS & ADMISSIONS') + ' · FORGE-1 · DO NOT UNPLUG'),
       h('div', { className: 'ms-crt-brand' }, 'ENTROPY DATA SYSTEMS'),
       h('div', { className: 'ms-crt-led' })),
