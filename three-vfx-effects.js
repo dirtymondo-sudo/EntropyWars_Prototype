@@ -3970,7 +3970,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         } catch (e) {}
         var _dLen = Math.hypot(toTx - fromTx, toTy - fromTy);
         var _dMs = Math.max(240, Math.min(520, _dLen * (_cfg().tileSize || 128) * 0.9));
-        window.setTimeout(function () {
+        _fxDelay(function () {
             if (_suppressed() || !_canSpawn()) return;
             var ts2 = _cfg().tileSize || 128;
             try {
@@ -3985,7 +3985,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function fireTeleportLegacy(fromTx, fromTy, toTx, toTy) {
         if (_suppressed()) return;
         _fireUtility('_teleport_vanish', { tx: fromTx, ty: fromTy });
-        window.setTimeout(function() {
+        _fxDelay(function() {
             _fireUtility('_teleport_arrive', { tx: toTx, ty: toTy });
         }, 250);
     }
@@ -7803,10 +7803,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var expandMs = 300, holdMs = 600, fadeMs = 500;
         var totalMs = expandMs + holdMs + fadeMs;
 
-        var allMeshes = [funnel, inner, wire, dust];
-        var entry = { meshes: allMeshes, done: false };
-
-        entry._group = group;
+        // Own the attached root: shared cleanup detaches it and disposes
+        // its children exactly once on completion or scene retirement.
+        var entry = { meshes: [group], done: false };
 
         _animate3D(entry, totalMs, function(elapsed) {
             var t, s, opacity;
@@ -7845,17 +7844,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             matDust.opacity = opacity * 0.25;
         });
 
-        var origCleanup = entry.done;
-        var checkInterval = window.setInterval(function() {
-            if (entry.done) {
-                window.clearInterval(checkInterval);
-                if (scene) scene.remove(group);
-                group.traverse(function(child) {
-                    if (child.geometry) child.geometry.dispose();
-                    if (child.material) child.material.dispose();
-                });
-            }
-        }, 100);
+
     }
 
     function _spawnPortalRing3D(tx, ty) {
@@ -18669,7 +18658,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             /* the wrapped gift drops and blows its lid; the blizzard erupts
                out of the open box a beat later */
             _sigPresent3D(tx, ty, {});
-            window.setTimeout(function () { _spawnBlizzardShards3D(tx, ty, r); }, 620);
+            _fxDelay(function () { _spawnBlizzardShards3D(tx, ty, r); }, 620);
         },
         sharedSummonBlizzard:   function(tx, ty, r) { _spawnBlizzardShards3D(tx, ty, r); },
 
