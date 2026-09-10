@@ -22926,14 +22926,106 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['raceTsunami']          = Object.assign({}, SPELL_MAP['sharedTidalSurge']);      /* atlantean — the wall of water */
     SPELL_MAP['raceDragonBreath']     = Object.assign({}, SPELL_MAP['raceDragonfire']);        /* dragon — the short gout */
 
-    /* ── CHAMP_REWORK_PLAN Phase 6 (2026-09-08): the two new races. Family
-       aliases — the gangster borrows the gunslinger's bullet grammar, the
-       nun the clergy's light. ── */
-    SPELL_MAP['raceStompOut']         = Object.assign({}, SPELL_MAP['raceHydraulicPunch']);    /* gangster — the stomp */
-    SPELL_MAP['raceDriveBy']          = Object.assign({}, SPELL_MAP['raceHighNoon']);          /* gangster — the shot after the run */
-    SPELL_MAP['raceHitALick']         = Object.assign({}, SPELL_MAP['racePlunder']);           /* gangster — the grab */
-    SPELL_MAP['raceChoppa']           = Object.assign({}, SPELL_MAP['raceSuppressiveFire']);   /* gangster — the bullet line */
-    SPELL_MAP['raceExtendedClips']    = Object.assign({}, SPELL_MAP['raceSiegeMode']);         /* gangster — the reload aura */
+    /* ── CHAMP_REWORK_PLAN Phase 6 (2026-09-08): the two new races. The nun
+       borrows the clergy's light by family alias; the GANGSTER got his own
+       kit when his rigged model landed (2026-09-10) — the borrowed gunslinger
+       recipes read wrong on him (a plasma beam out of a choppa, a robot's
+       hydraulic fist for a curb stomp), so every one of his five is authored
+       below: brass, cordite, dust and blood, no energy anywhere. ── */
+    EFFECTS['raceStompOut_impact'] = {            /* stomp out: boot to the pavement, and it stays down */
+        shake: 'hard',
+        layers: [
+            { sprite: 'flash', ml: 110, size0: 52, size1: 14, tint: 0xfff0cc, opacity0: 0.85 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 320, z: 2,
+              tint: 0xd8c6a4, size0: 22, size1: 118, opacity0: 0.6 },
+            { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [420, 700], offsetXY: 14, z: [2, 10],
+              vxRange: 90, vyRange: 90, vzRange: [20, 60], gravity: 80, drag: 0.9,
+              size0: [14, 22], size1: [34, 52], opacity0: 0.6 },
+            { count: 6, sprite: 'debris', ml: [300, 520], offsetXY: 10, z: [4, 26],
+              vxRange: 130, vyRange: 130, vzRange: [60, 180], gravity: 420, drag: 1.3,
+              size0: [4, 8], size1: 1 },
+            { count: 3, sprite: 'blood-fleck', ml: [260, 440], offsetXY: 8, z: [10, 30],
+              vxRange: 120, vyRange: 120, vzRange: [30, 110], gravity: 400, size0: [4, 7], size1: 2 },
+        ]
+    };
+    EFFECTS['raceDriveBy_muzzle'] = {             /* drive-by: the barrel out of the window (fired at the CASTER's tile) */
+        layers: [
+            /* torso-anchored: this one is the gun in his hands, not a hit on
+               the ground — the rest of the kit keeps the library's floor
+               anchor like its neighbours. */
+            { sprite: 'muzzle-flash', anchor: 'torso', ml: 150, z: 8, size0: 66, size1: 18, opacity0: 1 },
+            { count: 4, sprite: 'ember', anchor: 'torso', ml: [420, 700], offsetXY: 8, z: [0, 14], tint: 0xffcf62,
+              vxRange: 150, vyRange: 150, vzRange: [40, 120], gravity: 520, drag: 0.7,
+              size0: [3, 6], size1: 2 },
+            { count: 3, sprite: 'smoke-soft', anchor: 'torso', ml: [420, 700], offsetXY: 10, z: [0, 12],
+              vzRange: [15, 45], drag: 0.7, size0: [10, 16], size1: [26, 40], opacity0: 0.42 },
+        ]
+    };
+    EFFECTS['raceDriveBy_impact'] = {             /* drive-by: where the round lands */
+        shake: 'soft',
+        layers: [
+            { sprite: 'flash', ml: 110, size0: 58, size1: 14, tint: 0xfff2c0, opacity0: 0.95 },
+            { count: 8, sprite: 'steel-spark', ml: [180, 360], offsetXY: 6, z: [12, 40],
+              vxRange: 210, vyRange: 210, vzRange: [30, 150], gravity: 380, drag: 1.4,
+              size0: [4, 8], size1: 1 },
+            { count: 3, sprite: 'blood-fleck', ml: [240, 420], offsetXY: 8, z: [14, 36],
+              vxRange: 140, vyRange: 140, vzRange: [20, 100], gravity: 400, size0: [4, 7], size1: 2 },
+            { count: 2, anchor: 'floor', sprite: 'dust-puff', ml: [280, 460], offsetXY: 10, z: [2, 8],
+              size0: [10, 16], size1: [22, 34], opacity0: 0.45 },
+        ]
+    };
+    EFFECTS['raceHitALick_impact'] = {            /* hit a lick: the shank, then the pockets */
+        layers: [
+            { sprite: 'flash', ml: 90, size0: 44, size1: 12, tint: 0xffe9b0, opacity0: 0.85 },
+            { count: 5, sprite: 'steel-spark', ml: [160, 300], offsetXY: 8, z: [14, 38],
+              vxRange: 200, vyRange: 200, vzRange: [20, 90], gravity: 430, size0: [4, 7], size1: 1 },
+            { count: 7, sprite: 'ember', ml: [360, 620], offsetXY: 11, z: [18, 44], tint: 0xffd24a,
+              vxRange: 165, vyRange: 165, vzRange: [70, 180], gravity: 520, drag: 0.6,
+              size0: [5, 8], size1: 3 },
+            { count: 2, sprite: 'blood-fleck', ml: [220, 380], offsetXY: 6, z: [16, 34],
+              vxRange: 120, vyRange: 120, vzRange: [20, 80], gravity: 400, size0: [3, 6], size1: 2 },
+        ]
+    };
+    EFFECTS['raceChoppa_impact_tile'] = {         /* choppa: every tile the burst walks through */
+        layers: [
+            { sprite: 'flash', ml: 120, z: 6, size0: 44, size1: 12, tint: 0xfff0bb, opacity0: 0.85 },
+            { count: 4, sprite: 'steel-spark', ml: [160, 320], offsetXY: 7, z: [10, 36],
+              vxRange: 200, vyRange: 200, vzRange: [30, 130], gravity: 400, drag: 1.4,
+              size0: [4, 7], size1: 1 },
+            { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [220, 420], offsetXY: 12, z: [2, 8],
+              vxRange: 90, vyRange: 90, vzRange: [15, 60], gravity: 90, drag: 0.8,
+              size0: [8, 14], size1: [18, 30], opacity0: 0.5 },
+            { count: 2, sprite: 'debris', ml: [240, 400], offsetXY: 8, z: [4, 22],
+              vxRange: 120, vyRange: 120, vzRange: [40, 130], gravity: 420, size0: [3, 6], size1: 1 },
+        ]
+    };
+    EFFECTS['raceChoppa_beam'] = {                /* choppa: tracers down the lane, not a laser */
+        chargeMs: 140, beamSprite: 'ember', beamThickness: 24,
+        beamHeadSprite: 'flash', beamMs: 300, leaveScorch: false, shake: 'normal',
+        impactTileEffect: 'raceChoppa_impact_tile',
+    };
+    EFFECTS['raceExtendedClips_aura'] = {         /* extended clips: everybody reload — brass on the deck */
+        layers: [
+            { sprite: 'flash', ml: 200, size0: 70, size1: 180, tint: 0xffc861, opacity0: 0.45 },
+            { count: 14, sprite: 'ember', ml: [520, 900], offsetXY: 30, z: [20, 80], tint: 0xffd24a,
+              vxRange: 90, vyRange: 90, vzRange: [40, 120], gravity: 300, drag: 0.7,
+              size0: [4, 8], size1: 2, opacity0: 0.95 },
+            { count: 8, sprite: 'sparkle', ml: [420, 760], offsetXY: 26, z: [24, 70],
+              tint: 0xffe9a8, size0: [5, 9], size1: 2, opacity0: 0.9 },
+            { count: 4, sprite: 'smoke-soft', ml: [600, 1000], offsetXY: 22, z: [12, 44],
+              vzRange: [12, 40], drag: 0.6, size0: [12, 20], size1: [30, 46], opacity0: 0.35 },
+            { anchor: 'floor', mode: 'world', sprite: 'target-ring-gold', ml: 640, z: 2,
+              size0: 40, size1: 230, opacity0: 0.75 },
+        ]
+    };
+    SPELL_MAP['raceStompOut']         = { impact: 'raceStompOut_impact' };                     /* gangster — the stomp */
+    /* 'muzzle' is a plain layered intent (fire()'s default branch spawns it
+       at params.tx/ty) — battle.js's afterShot fires it at the CASTER's
+       tile when the round leaves, then 'impact' where it lands. */
+    SPELL_MAP['raceDriveBy']          = { impact: 'raceDriveBy_impact', muzzle: 'raceDriveBy_muzzle' };   /* gangster — the shot after the run */
+    SPELL_MAP['raceHitALick']         = { impact: 'raceHitALick_impact' };                     /* gangster — the grab */
+    SPELL_MAP['raceChoppa']           = { beam: 'raceChoppa_beam' };                           /* gangster — the bullet line */
+    SPELL_MAP['raceExtendedClips']    = { aura: 'raceExtendedClips_aura' };                    /* gangster — the reload aura */
     SPELL_MAP['racePurify']           = Object.assign({}, SPELL_MAP['raceAbsolution']);        /* nun — the light pillar */
     SPELL_MAP['raceBlessing']         = Object.assign({}, SPELL_MAP['protect1']);              /* nun — the blessing */
     SPELL_MAP['racePrayer']           = Object.assign({}, SPELL_MAP['protect1']);              /* nun — the barrier */

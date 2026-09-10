@@ -71,12 +71,16 @@
 > the dash **`afterShot`** rider (the plan's dashThenShoot as a flag). The
 > nun is her own race: the priest's female form is the PRIESTESS now, the
 > Nun's user-authored roster lines moved with her, and she wears the
-> whitemage female model (a starter on both sides). The gangster has NO
-> rigged model yet (§9.6) — the 3D-only roster rule keeps him shelved for
-> players until it lands; CPU / campaign rosters can field him as a
-> sprite. 98 races, every one in the power band; 27 constraint rows
-> checked. Token `20260908k-cors` → `20260908l-cors`. See §5.12 and §10
-> #46–51 for the calls it made.
+> whitemage female model (a starter on both sides). 98 races, every one in
+> the power band; 27 constraint rows checked. Token `20260908k-cors` →
+> `20260908l-cors`. See §5.12 and §10 #46–51 for the calls it made.
+> **THE GANGSTER CAME OFF THE SHELF 2026-09-10 (§9.8):** the owner uploaded
+> his sprite and his rigged GLB to R2 `Assets/Sprites/Races/gangster/`, so
+> the 3D-only roster rule stopped shelving him — he is a starter on both
+> sides now, his 2D art is his OWN (no more gunslinger-sheet borrow), and
+> his five spells traded the borrowed gunslinger/robot VFX recipes for an
+> authored kit. §10 #47 and the §9.6 wishlist row are CLOSED (the portrait
+> is still missing — he falls back to his sprite, like the nun).
 > **Every phase of this plan has now shipped.** §10 lists the yes/no
 > decisions the owner should make (items 14–15 came out of Phase 2; 17–19
 > out of Phase 3; 20–24 out of Phase 4; 25–30 out of wave A; 31–38 out of
@@ -1498,9 +1502,9 @@ index.html token. Details and deviations: §5.8.
   left alone — neither has an element); sprites.js `RACE_SPRITES` /
   `RACE_SPRITE_GENDERS` / `RACE_MODELS_3D` (nun; no portraits exist);
   server.js `AVAILABLE_RACES` + `ACCT_STARTER_UNITS` literals (parity
-  test); the nun is a starter. The gangster still needs a rigged model
-  from the owner (§9.6); the nun wears the whitemage female assets and
-  her lines moved from the `priest:female` override to `nun`.
+  test); the nun is a starter. The nun wears the whitemage female assets and
+  her lines moved from the `priest:female` override to `nun`; the gangster's
+  own assets landed 2026-09-10 (§9.8) and he is a starter too.
 
 ### 9.7 Phase 6 — the two new races (SHIPPED 2026-09-08)
 data.js (the fifteen race tables in §5.12, the two `RACE_ABILITIES`
@@ -1515,9 +1519,64 @@ AoE preview, dossier lore), sprites.js (five tables), three-vfx-effects.js
 server.js (two literals), check-grades.js (the empty allowance),
 champ-rework.test.js ×3, this doc, CLAUDE.md, index.html token.
 
+### 9.8 The gangster's model + his own VFX kit (SHIPPED 2026-09-10)
+The owner uploaded `Meshy_AI_thug_gangster_reali_biped_Character_output.glb`
+(rigged: 1 skin, 24 joints, standard Meshy naming — the library retargets
+onto it like every other Meshy rig) and `gangster_male.png` to R2
+`Assets/Sprites/Races/gangster/`. What was wired:
+- **sprites.js** — `RACE_MODELS_3D.gangster.male = _mkUAL('gangster',
+  'thug_gangster_reali', { heightRatio: 1.02, lib: { castMelee: Punch_Cross } })`.
+  No `basicAttackKind`: like the cowboy he quick-draws at his Gunslinger
+  range 2 (`castRanged`, the trimmed Cowboy_Quick_Draw_Shooting with its
+  real `strikeAt`) and works by hand up close — and up close he SHANKS, so
+  `castMelee` is the short cross, not the default sword arc. His
+  `RACE_PATH_RULES` row now points at his own folder, `_SINGLE_FILE_RACES`
+  carries `gangster_male.png`, `RACE_SPRITES` points at it, and the dead
+  `_HOMOSAPIEN_RACE_JOB_MAP` gunslinger borrow is gone.
+- **The unlock** — `ACCT_STARTER_UNITS` on BOTH sides (data.js + the
+  server literal, `npm run test:parity` green). Nothing else gates him:
+  `isUnitUnlocked` was only ever refusing him through `isRace3DReady`.
+- **Animation, per spell** (`classifySpellAnimKind`, verified headless):
+  Stomp Out → `slam` (Charged_Ground_Slam) · Drive-By → `dash`
+  (Sword_Dash lunge) · Hit a Lick → `melee` (his Punch_Cross) · Choppa →
+  `ranged` (the quick draw) · Extended Clips → `support`.
+- **VFX** — the five ids stopped aliasing other races (a plasma beam out
+  of a choppa, the robot's hydraulic fist for a curb stomp). Authored in
+  three-vfx-effects.js: `raceStompOut_impact` (hard shake, floor
+  shockwave, dust, debris, blood), `raceDriveBy_muzzle` (torso-anchored
+  muzzle flash + brass + smoke) and `raceDriveBy_impact`,
+  `raceHitALick_impact` (the shank, then gold spilling),
+  `raceChoppa_beam` + `raceChoppa_impact_tile` (ember tracers walking
+  per-tile hits down the lane), `raceExtendedClips_aura` (brass + a gold
+  ring). **Choppa's `projectileOverride` was REMOVED** — the line branch
+  flies one sprite to the far tile whenever a spell carries one, which
+  skipped the beam entirely and read as a single bullet.
+- **Drive-By's after-shot is a beat now** (battle.js): the caster plays
+  the ranged clip, the barrel flashes at HIS tile (`fire('muzzle', …)` —
+  an unmapped intent falls through to `_spawnEffect`, exactly what a plain
+  layered effect wants), the gunshot plays, the round travels, and the
+  impact recipe fires where it lands. RULE #2: `VFX3D.fire` and `playSfx`
+  are both relayed and `attackAnimIds` rides state-sync, so P2 sees the
+  same shot — and the Choppa beam is relayed where the old single
+  projectile was not.
+- champ-rework.test.js: the Phase 6 sprite/starter asserts were rewritten
+  for his own art, plus a new "the gangster fires his own VFX recipes"
+  test (mappings ↔ authored effects, no aliases left, no projectileOverride
+  on Choppa, the three after-shot call sites). `npm test` green (255).
+- STILL OPEN: no `portrait.png` in his folder (HUD panels fall back to his
+  sprite) and no `DOOR_ROSTER_LINES.gangster` — those lines are
+  user-authored (DOOR_MASTER A15), so `hqRosterLine` falls back to the
+  room's lines until the owner writes them.
+- Files: sprites.js, data.js, server.js, battle.js, three-vfx-effects.js,
+  champ-rework.test.js, this doc, CLAUDE.md, index.html token
+  (`20260910-creator2-084120-cors` → `20260910-gangster-091500-cors`).
+
 ### 9.6 Asset wishlist (owner uploads; everything else is CSS/GLB-kit)
 Hound model (cowboy) · stitched creation model (mad scientist) · gangster
-rigged model + portrait · `goo.png` terrain tile · snowball projectile
+PORTRAIT (his rigged model + sprite landed 2026-09-10, §9.8 — only the
+128×128 `portrait.png` is still missing, and his user-authored
+`DOOR_ROSTER_LINES` have never been written) · `goo.png` terrain tile ·
+snowball projectile
 sprite · optional clips: sniff (werewolf), tail-spin (dinosaur), stone
 crumble (gargoyle), arm-cannon morph (cyborg).
 
@@ -1657,12 +1716,13 @@ crumble (gargoyle), arm-cannon morph (cyborg).
     female model, so a saved female priest looks the same and just reads
     "Priestess". The Nun's `priest:female` roster lines moved to `nun`
     (not rewritten). Veto = one label + one key rename.
-47. **The gangster is shelved for players until his model lands** (the
-    3D-only roster rule): not a starter, not purchasable, but CPU pools
-    and campaign rosters can field him as a 2D sprite (he borrows the
-    Gunslinger sheet). Ship the rigged GLB to
-    `Assets/Sprites/Races/Homosapien/Male/<folder>/` and it is one
-    `_mkUAL` line + a starter-list entry on both sides.
+47. **CLOSED 2026-09-10 — the gangster is off the shelf.** He was shelved
+    by the 3D-only roster rule (not a starter, not purchasable, CPU /
+    campaign only, borrowing the Gunslinger sheet) until his art landed.
+    The owner uploaded it to `Assets/Sprites/Races/gangster/` (his own
+    folder, not the Homosapien tree this note guessed at), and it was
+    exactly what was predicted: one `_mkUAL` line plus a starter entry on
+    both sides — see §9.8 for that and for the VFX kit that came with it.
 48. **Plunder was left alone** — the pirate's Plunder keeps its `utility`
     id and one-thing rule; only Hit a Lick wears the `steal` kind. Fold
     Plunder onto the kind (it would then take one Key AND one item)?

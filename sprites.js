@@ -36,7 +36,7 @@ const RACE_PATH_RULES = {
   'telepath':   { folder: 'Homosapien', capGender: true },
   'marksman':   { folder: 'Homosapien', capGender: true },
   'priest':     { folder: 'Homosapien', capGender: true },
-  'gangster':   { folder: 'Homosapien', capGender: true },   // Phase 6 (2026-09-08) — gunslinger-folder 2D art until his own ships
+  'gangster':   { folder: 'gangster',   capGender: false },  // 2026-09-10 — his OWN art landed (Races/gangster/: gangster_male.png + the rigged GLB)
   'nun':        { folder: 'Homosapien', capGender: true },   // Phase 6 — the whitemage female assets, her own race now
   'wizard':     { folder: 'Homosapien', capGender: true },
   'fortune teller': { folder: 'Homosapien', capGender: true },
@@ -225,6 +225,7 @@ const _HERO_RACE_SPRITES = {
 
 const _SINGLE_FILE_RACES = {
   'barbarella': 'barbarella.png',
+  'gangster': 'gangster_male.png',   // 2026-09-10 — Races/gangster/, male-only race
   'black goo': 'blackgoo.png',
   'golem': 'golem.png',
   'honda civic': 'hondacivic.png',
@@ -310,7 +311,6 @@ function getR2RaceSpriteUrl(race, gender, cls) {
     'telepath': 'psychic',
     'marksman': 'sniper',
     'priest': 'whitemage',
-    'gangster': 'gunslinger',   // Phase 6 — borrows the Gunslinger sheet until a gangster sprite lands
     'nun': 'whitemage',         // Phase 6 — the whitemage female sheet is hers
     'wizard': 'blackmage',
     'fortune teller': 'harbinger',
@@ -1330,13 +1330,25 @@ const RACE_MODELS_3D = {
   },
   // The NUN — her own race since CHAMP REWORK Phase 6 (2026-09-08, plan
   // §6.20). Same rigged whitemage female GLB as the priestess above (one
-  // download — the loader caches by URL). The gangster has NO model yet
-  // (plan §9.6 wishlist) — the 3D-only roster rule keeps him shelved
-  // until his rigged GLB is uploaded and wired here.
+  // download — the loader caches by URL).
   'nun': {
     female: _mkUAL('Homosapien/Female/whitemage', 'sexy_nun_girl_realis', {
       heightRatio: 0.94,
       basicAttackKind: 'magic',
+    }),
+  },
+  // The GANGSTER (Gunslinger, Shank) — his rigged model landed 2026-09-10 in
+  // his OWN folder (Races/gangster/), so the 3D-only roster rule stops
+  // shelving him (plan §9.6 is closed; he is a starter on both sides now).
+  // No basicAttackKind: like the cowboy he quick-draws at range 2 (castRanged)
+  // and works up close by hand — and up close he SHANKS, so castMelee is the
+  // short cross (UAL1 Punch_Cross), never the sword arc the default plays.
+  // Stomp Out reads as a ground slam, Drive-By/Choppa as the gun kit — all
+  // of it from the shared library, so this is still one line + one flavour.
+  'gangster': {
+    male: _mkUAL('gangster', 'thug_gangster_reali', {
+      heightRatio: 1.02,
+      lib: { castMelee: { clip: 'Punch_Cross', lib: 0, ts: 1.2, strikeAt: 0.25 } },
     }),
   },
   // Robot (Warrior, tank) — hydraulic haymakers.
@@ -1993,7 +2005,7 @@ const RACE_SPRITES = {
   'telepath': `${_S}/homosapien.png`,
   'marksman': `${_S}/homosapien.png`,
   'priest': `${_S}/homosapien.png`,
-  'gangster': `${_S}/homosapien.png`,
+  'gangster': `${_S}/Races/gangster/gangster_male.png`,
   'nun': `${_S}/homosapien.png`,
   'wizard': `${_S}/homosapien.png`,
   'fortune teller': `${_S}/homosapien.png`,

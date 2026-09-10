@@ -53658,9 +53658,31 @@
                             const _asTravel = actionMs(360);
                             window.setTimeout(() => {
                                 if (_asT.dead || unit.dead) return;
-                                if (!_skipVisuals()) playProjectileToUnit(unit, _asT, 'damage', _asTravel, spell.spellType, spell.projectileOverride || 'proj-bullet', spell);
+                                if (!_skipVisuals()) {
+                                    /* 2026-09-10: the shot is its OWN beat, not
+                                       a bare bead. The caster turns and fires
+                                       (the ranged clip — the slide's castDash
+                                       lunge finished a beat ago), the barrel
+                                       flashes at HIS tile, the round travels,
+                                       and the spell's impact recipe plays where
+                                       it lands. VFX3D.fire + playSfx are both
+                                       relayed, and attackAnimIds rides
+                                       state-sync, so P2 sees the same shot. */
+                                    triggerAttackAnim(unit, _asT.x, _asT.y, 'ranged');
+                                    playSfx(spellLaunchSfx(spell));
+                                    const _asVFX = window.ThreeVFXEffects;
+                                    if (_asVFX && state.phase === 'battle' && _asVFX.hasMapping(spell.id, 'muzzle')) {
+                                        _asVFX.fire('muzzle', spell.id, { tx: unit.x, ty: unit.y });
+                                    }
+                                    playProjectileToUnit(unit, _asT, 'damage', _asTravel, spell.spellType, spell.projectileOverride || 'proj-bullet', spell);
+                                }
                                 window.setTimeout(() => {
                                     if (_asT.dead) return;
+                                    const _asVFX2 = window.ThreeVFXEffects;
+                                    if (_asVFX2 && state.phase === 'battle' && !_skipVisuals()
+                                        && _asVFX2.hasMapping(spell.id, 'impact')) {
+                                        _asVFX2.fire('impact', spell.id, { tx: _asT.x, ty: _asT.y, fromX: unit.x, fromY: unit.y });
+                                    }
                                     applyDamageToUnit(_asT, _asDmg, `${spell.name}: `, {
                                         sourceUnit: unit, allowMarkBonus: true,
                                         damageType: spell.afterShot.damageType || spell.damageType || 'physical',

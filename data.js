@@ -6829,8 +6829,13 @@ const RACE_ABILITIES = {
           desc: 'Run up on an enemy within 2 tiles. Deals LIGHT physical damage to a Single Enemy and takes a Key AND an item off them.' },
         { id: 'raceChoppa', spellType: 'human', element: 'metal', name: 'Choppa',
           type: 'damage', cost: 40, dmg: 110, range: 5, apCost: 1, tier: 'II',
-          kind: 'line', damageType: 'physical', lineWidth: 1,
-          projectileOverride: 'proj-bullet',
+          kind: 'line', damageType: 'physical',
+          lineWidth: 1,
+          /* No projectileOverride on purpose (2026-09-10): the line branch
+             flies ONE sprite to the far tile when a spell carries one, which
+             read as a single bullet. Without it the branch takes the beam
+             path and raceChoppa_beam walks tracers + per-tile hits down the
+             whole lane — and VFX3D.fire is relayed, so the guest sees it. */
           desc: 'Let the choppa sing. Deals MEDIUM physical damage to every enemy on a 5-tile line.' },
         { id: 'raceExtendedClips', spellType: 'human', element: 'metal', name: 'Extended Clips',
           type: 'buff', cost: 50, range: 0, apCost: 1, tier: 'III',
@@ -10474,6 +10479,9 @@ const ACCT_STARTER_UNITS = [
   'golem',          // Tank (3D — male only)
   'loch ness monster', // Tank (3D — male only)
   'general',        // Warrior (3D — male only)
+  // 2026-09-10: the gangster's rigged model landed (Races/gangster/) — the
+  // last Phase 6 race comes off the shelf.
+  'gangster',       // Gunslinger (3D — male only)
   // NOTE: every race with a rigged 3D model in sprites.js RACE_MODELS_3D is a
   // starter, and the 3D-only gate in isUnitUnlocked() keeps anything listed
   // here shelved until its model ships. Keep server.js ACCT_STARTER_UNITS in

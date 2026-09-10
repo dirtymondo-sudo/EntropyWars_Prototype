@@ -742,10 +742,21 @@ run test:parity`). The nun is her OWN race: `RACE_PROFILES.priest
 .labelFemale` is 'Priestess' (same whitemage female model, shared by
 `RACE_MODELS_3D.priest.female` and `.nun.female`), the Nun's user-authored
 `DOOR_ROSTER_LINES` sit under `'nun'` (moved, never rewritten), she is a
-starter. The gangster has NO rigged model — `RACE_SPRITE_GENDERS` male,
-the 2D sheet borrows the Gunslinger folder — so `isRace3DReady` shelves
-him for players until the owner uploads one (then one `_mkUAL` line +
-the starter lists). New kinds (battle.js `SPELL_KIND_META` + `doSpell`):
+starter. **The gangster's art landed 2026-09-10** (R2
+`Assets/Sprites/Races/gangster/`): `_mkUAL('gangster',
+'thug_gangster_reali')` in `RACE_MODELS_3D`, his OWN single-file 2D sheet
+(`_SINGLE_FILE_RACES`; the gunslinger-folder borrow is retired), and a
+starter on both sides now — no `basicAttackKind` (Gunslinger range 2
+quick-draws; up close he SHANKS, so `castMelee` is flavoured to
+Punch_Cross). His five spells stopped aliasing other races' VFX: authored
+`raceStompOut_impact` · `raceDriveBy_muzzle` + `_impact` ·
+`raceHitALick_impact` · `raceChoppa_beam` + `_impact_tile` ·
+`raceExtendedClips_aura`; Choppa's `projectileOverride` was REMOVED so the
+line branch takes the (relayed) beam path instead of flying one sprite,
+and Drive-By's `afterShot` is a real beat (ranged clip + muzzle at the
+caster + gunshot + impact). Still missing from R2: his `portrait.png`;
+his `DOOR_ROSTER_LINES` are user-authored (A15) and unwritten. See
+CHAMP_REWORK_PLAN §9.8. New kinds (battle.js `SPELL_KIND_META` + `doSpell`):
 **`steal`** (the hit, then `_stealFromUnit` moves `stealKeys` Keys +
 `stealItems` items — Plunder keeps its utility id) and **`cleanseArea`**
 (3×3 tile cast: allies lose every `kind: 'debuff'` key via `clearStatus`,

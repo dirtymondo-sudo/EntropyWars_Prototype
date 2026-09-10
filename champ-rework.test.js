@@ -827,8 +827,6 @@ test('Phase 6: gangster + nun exist in every race table, with the §6 stats and 
         assert.ok(Array.isArray(D.RACE_ABILITIES[race]) && D.RACE_ABILITIES[race].length >= 4, `${race} abilities`);
         assert.ok(new RegExp("'" + race + "': [0-9]+,").test(dataSrc.slice(dataSrc.indexOf('const CAMPAIGN_RACE_PRICES'), dataSrc.indexOf('const CAMPAIGN_REGION_THEMES'))), `${race} campaign price`);
         assert.ok(D.EW_RACE_BIOMES[race] && D.EW_RACE_BIOMES[race].length, `${race} biomes`);
-        assert.ok(new RegExp("'" + race + "':\\s*\\{ folder: 'Homosapien'").test(spritesSrc), `${race} sprite path rule`);
-        assert.ok(new RegExp("'" + race + "': `\\$\\{_S\\}/homosapien\\.png`").test(spritesSrc), `${race} sprite sheet`);
         assert.ok(new RegExp("'" + race + "'").test(serverSrc.slice(serverSrc.indexOf('const AVAILABLE_RACES'), serverSrc.indexOf('const AVAILABLE_RACES') + 3000)), `${race} in server.js AVAILABLE_RACES`);
         assert.ok(new RegExp("'" + race + "':\\s*'").test(partyBuilderSrc), `${race} dossier lore`);
     }
@@ -846,13 +844,26 @@ test('Phase 6: gangster + nun exist in every race table, with the §6 stats and 
     assert.strictEqual(D.RACE_PROFILES.nun.label, 'Nun');
     assert.ok(Array.isArray(D.DOOR_ROSTER_LINES.nun) && D.DOOR_ROSTER_LINES.nun.length >= 2, 'the Nun keeps her lines');
     assert.ok(!D.DOOR_ROSTER_LINES['priest:female'], 'priest:female lines moved to nun');
-    // Sprites: the nun wears the whitemage female model; the gangster is male-only, sheet-only until his GLB lands.
+    // The NUN borrows the whitemage female art wholesale — folder rule, sheet
+    // and rigged model all point at the priestess's files.
+    assert.ok(/'nun':\s*\{ folder: 'Homosapien'/.test(spritesSrc), 'nun sprite path rule');
+    assert.ok(/'nun': `\$\{_S\}\/homosapien\.png`/.test(spritesSrc), 'nun sprite sheet');
     assert.ok(/'nun': \{\s*female: _mkUAL\('Homosapien\/Female\/whitemage', 'sexy_nun_girl_realis'/.test(spritesSrc), 'nun RACE_MODELS_3D');
+    assert.ok(/'nun': 'whitemage',/.test(spritesSrc), "the nun's 2D sheet job folder");
+    // The GANGSTER got his OWN art 2026-09-10 (R2 Races/gangster/): one sheet
+    // in his own folder — so no Homosapien path rule and no gunslinger borrow
+    // any more — plus the rigged GLB that takes him off the 3D-only shelf.
+    assert.ok(/'gangster':\s*\{ folder: 'gangster',\s*capGender: false \}/.test(spritesSrc), 'gangster sprite path rule');
+    assert.ok(/'gangster': 'gangster_male\.png',/.test(spritesSrc), 'gangster single-file sheet');
+    assert.ok(/'gangster': `\$\{_S\}\/Races\/gangster\/gangster_male\.png`/.test(spritesSrc), 'gangster RACE_SPRITES');
+    assert.ok(!/'gangster': 'gunslinger',/.test(spritesSrc), 'the gunslinger-sheet borrow is retired');
+    assert.ok(/'gangster': \{\s*male: _mkUAL\('gangster', 'thug_gangster_reali'/.test(spritesSrc), 'gangster RACE_MODELS_3D');
     assert.ok(/'nun': 'female',/.test(spritesSrc) && /'gangster': 'male',/.test(spritesSrc), 'RACE_SPRITE_GENDERS');
-    assert.ok(/'gangster': 'gunslinger',/.test(spritesSrc) && /'nun': 'whitemage',/.test(spritesSrc), '2D sheet job folders');
-    // The nun is a starter on both sides (parity); the gangster is not (no model yet).
-    assert.ok(D.ACCT_STARTER_UNITS.includes('nun') && !D.ACCT_STARTER_UNITS.includes('gangster'), 'data.js starters');
+    // Both are starters on both sides now (parity) — the 3D-only roster rule
+    // has nothing left to shelve in Phase 6.
+    assert.ok(D.ACCT_STARTER_UNITS.includes('nun') && D.ACCT_STARTER_UNITS.includes('gangster'), 'data.js starters');
     assert.ok(/'nun',\s*\n\s*'yeti', 'skeleton'/.test(serverSrc), 'server.js starters');
+    assert.ok(/'gangster',\s*\n\];/.test(serverSrc), 'server.js gangster starter');
     // The Heat Death ladder tops out at the roster size.
     const heat = D.ACH_CATALOG.find(l => l.metric === 'champsMastered');
     assert.strictEqual(heat.tiers[heat.tiers.length - 1], D.AVAILABLE_RACES.length);
@@ -887,6 +898,37 @@ test('Phase 6: the two pillars — rows, twins, kinds, statuses, VFX recipes', (
     }
     // The sim-mode defaults know the new kinds.
     assert.ok(/steal:\s*\{ simTargeting: 'unit'/.test(dataSrc) && /cleanseArea:\s*\{ simTargeting: 'tile'/.test(dataSrc), 'SIM_DEFAULTS rows');
+});
+
+/* 2026-09-10 — the gangster's own VFX kit. The five ids stopped borrowing
+   gunslinger/robot recipes when his model landed: each maps to an authored
+   EFFECTS entry of its own, and Choppa carries NO projectileOverride so the
+   line branch takes the (relayed) beam path instead of flying one sprite. */
+test('Phase 6: the gangster fires his own VFX recipes', () => {
+    const want = {
+        raceStompOut:      { impact: 'raceStompOut_impact' },
+        raceDriveBy:       { impact: 'raceDriveBy_impact', muzzle: 'raceDriveBy_muzzle' },
+        raceHitALick:      { impact: 'raceHitALick_impact' },
+        raceChoppa:        { beam: 'raceChoppa_beam' },
+        raceExtendedClips: { aura: 'raceExtendedClips_aura' },
+    };
+    for (const [id, intents] of Object.entries(want)) {
+        for (const [intent, fx] of Object.entries(intents)) {
+            assert.ok(new RegExp("SPELL_MAP\\['" + id + "'\\][^\\n]*" + intent + ": '" + fx + "'").test(vfxSrc),
+                `${id} maps ${intent} → ${fx}`);
+            assert.ok(vfxSrc.includes(`EFFECTS['${fx}'] = {`), `${fx} is authored`);
+        }
+        assert.ok(!new RegExp("SPELL_MAP\\['" + id + "'\\]\\s*=\\s*Object\\.assign").test(vfxSrc),
+            `${id} no longer aliases another race's recipe`);
+    }
+    // The choppa's tracer beam walks its own per-tile impact down the lane.
+    assert.ok(/impactTileEffect: 'raceChoppa_impact_tile'/.test(vfxSrc) && vfxSrc.includes("EFFECTS['raceChoppa_impact_tile'] = {"), 'choppa per-tile hits');
+    assert.ok(!raceSpell('gangster', 'raceChoppa').projectileOverride, 'Choppa must not carry a projectileOverride (it would skip the beam)');
+    // Drive-By's shot is its own beat: the ranged clip, the muzzle at the
+    // caster's tile, the gunshot, then the impact where the round lands.
+    assert.ok(/triggerAttackAnim\(unit, _asT\.x, _asT\.y, 'ranged'\);/.test(battleSrc), 'the afterShot plays the shooting clip');
+    assert.ok(/_asVFX\.fire\('muzzle', spell\.id, \{ tx: unit\.x, ty: unit\.y \}\);/.test(battleSrc), 'the afterShot flashes the barrel at the caster');
+    assert.ok(/_asVFX2\.fire\('impact', spell\.id, \{ tx: _asT\.x, ty: _asT\.y/.test(battleSrc), 'the afterShot lands its impact recipe');
 });
 
 test('Phase 6: the engine honours steal, cleanseArea and the dash afterShot (source-text guards)', () => {
