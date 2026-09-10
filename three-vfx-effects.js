@@ -4172,7 +4172,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var fVy = _dvy * speed;
             var spriteRotDeg = Math.atan2(_dvy, _dvx) * 180 / Math.PI + 90;
             var flyDelay = fo.delayMs != null ? fo.delayMs : Math.max(0, telegraphMs * 0.15);
-            window.setTimeout(function() {
+            _fxDelay(function() {
                 if (_suppressed()) return;
                 if (typeof playSfx === 'function') playSfx('jetFlyover');
                 /* real F-22 GLB screams over the strike box (2026-07-13);
@@ -4226,7 +4226,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     var trailInterval = flyMs * 0.6 / trailCount;
                     for (var ti = 0; ti < trailCount; ti++) {
                         (function(idx) {
-                            window.setTimeout(function() {
+                            _fxDelay(function() {
                                 if (_suppressed()) return;
                                 var elapsed = (idx * trailInterval) / 1000;
                                 var jx = startX + fVx * elapsed;
@@ -4246,7 +4246,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }, flyDelay);
         }
 
-        window.setTimeout(function() {
+        _fxDelay(function() {
             if (_suppressed()) return;
             /* 2026-07-25: when the missile GLB is cached, the falling
                warhead is the REAL model plunging nose-first onto the strike
@@ -4286,7 +4286,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
                 for (var li = 0; li < tileOffsets.length; li++) {
                     (function(off, delay) {
-                        window.setTimeout(function() {
+                        _fxDelay(function() {
                             if (typeof state !== 'undefined' && (state.devAutoSim && !state._devSimShowAnims || state._aiTurbo)) return;
                             _LT().strikeFromSky(tx + off.dx, ty + off.dy, {
                                 durationMs: Math.max(200, descentMs * 0.85),
@@ -4303,7 +4303,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 }
             }
 
-            window.setTimeout(function() {
+            _fxDelay(function() {
                 if (_suppressed()) return;
 
                 // Big detonation sfx for nuke / meteor / artillery style strikes.
@@ -4352,7 +4352,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 var ttx = tx + off.dx, tty = ty + off.dy;
                 var isCenter = (off.dx === 0 && off.dy === 0);
                 var stagger = isCenter ? 0 : 40 + (Math.abs(off.dx) + Math.abs(off.dy)) * 35;
-                window.setTimeout(function() {
+                _fxDelay(function() {
                     if (_suppressed()) return;
                     if (tileEffect && aoeRadius > 0) {
                         _spawnEffect(tileEffect, { tx: ttx, ty: tty });
@@ -11076,7 +11076,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var trailN = Math.round(ms / 30);
         for (var tI = 0; tI < trailN; tI++) {
             (function (idx) {
-                window.setTimeout(function () {
+                _fxDelay(function () {
                     if (_suppressed()) return;
                     var t = idx / trailN;
                     _spawn({

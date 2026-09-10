@@ -1,6 +1,6 @@
 # Remaining effect callback inventory
 
-Updated 2026-09-10 after electric/combo timer retirement. This is a complete textual index of direct window.setTimeout sites, not an exhaustive semantic audit. Asset completion callbacks and other scheduling APIs still need separate review.
+Updated 2026-09-10 after descent timer retirement. This is a complete textual index of direct window.setTimeout sites, not an exhaustive semantic audit. Asset completion callbacks and other scheduling APIs still need separate review.
 
 ## Classified and fixed in this batch
 
@@ -14,18 +14,18 @@ Updated 2026-09-10 after electric/combo timer retirement. This is a complete tex
 
 The prior dash, legacy teleport, Blizzard Present, dust-devil and DOM fixes remain in place. Shared _wpnLoad boot/staggered warmup has application lifetime and must not be bulk-canceled. The two helper timer sites below are already owned.
 
+## Descent batch classification
+
+Seven additional sites are lifetime-owned: flyover, flyover smoke, descent spawn, sky lightning, impact, shared AoE bursts and missile-drop smoke. All emit work; none is a resource disposal callback. Model groups continue through existing `_sigRun` ownership. Shared AoE callers now inherit retirement too. Separate meteor/nuke geometry internals remain unreviewed in this batch.
+
+Next: `_fireWall`, `_fireChain`, `_fireBeamMapped`, then remaining mapped/bespoke callbacks and asset attachment. This inventory is not a claim of complete transitive coverage.
+
 ## Remaining direct timer sites
 
 | Line | Direct timer call |
 | --- | --- |
 | 10 | `var id = window.setTimeout(function () {` |
 | 48 | `var id = window.setTimeout(function () {` |
-| 4175 | `window.setTimeout(function() {` |
-| 4229 | `window.setTimeout(function() {` |
-| 4249 | `window.setTimeout(function() {` |
-| 4289 | `window.setTimeout(function() {` |
-| 4306 | `window.setTimeout(function() {` |
-| 4355 | `window.setTimeout(function() {` |
 | 4389 | `window.setTimeout(function() {` |
 | 4428 | `window.setTimeout(function() {` |
 | 4539 | `window.setTimeout(function() {` |
@@ -46,7 +46,6 @@ The prior dash, legacy teleport, Blizzard Present, dust-devil and DOM fixes rema
 | 10329 | `window.setTimeout(function () {` |
 | 10518 | `window.setTimeout(function () {` |
 | 11013 | `window.setTimeout(function () {` |
-| 11079 | `window.setTimeout(function () {` |
 | 11392 | `window.setTimeout(function () {` |
 | 11792 | `window.setTimeout(function () {` |
 | 12152 | `window.setTimeout(function () {` |
@@ -102,5 +101,3 @@ The prior dash, legacy teleport, Blizzard Present, dust-devil and DOM fixes rema
 | 21168 | `window.setTimeout(function () {` |
 | 21352 | `window.setTimeout(function () {` |
 | 21355 | `window.setTimeout(function () {` |
-
-Next: trace `_fireDescent` flyover, nested trails, descent/warhead and impact callbacks. Identify delayed emissions versus disposal before conversion, including cold/warm model paths. Continue subsequent mapped/bespoke functions and asset completion attachment, then VFX-04 endpoint/list visibility.

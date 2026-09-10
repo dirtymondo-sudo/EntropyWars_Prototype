@@ -6,6 +6,18 @@ Baseline: Phase 1 source review pinned to main commit `f0a4c3341631d60cee2ac544e
 Continuation baseline: main commit `4c740fcf6624a30d59e30c4d4dfea1a16dd85b03`, checked 2026-09-09 (America/Chicago). This commit and its predecessor `3da54eff8abbef3da87a1c0f72272919d84bd15e` changed only the uploaded review document; the inspected game source and line references remain unchanged.
 Delivery: this document is repository/reference material. The first delivery is now present in repository main `41f8e76b67120eea58c17fd968c5c72d70ef035e`; R2/Render deployment is unverified. The pause-focus delivery is also present in repository main `e92ee26153b65c2047963544c56310ea838220bb`. The Settings-focus delivery is present in repository main `f546e7fff61edb012e3fae536aee995996257c4f`. The PAUSE-06 controller delivery is present in repository main `88b3bc65adc93fc8ed2e84c28c112b0c81565b3f`; the PAUSE-07 delivery is present in repository main `82494b38fa3dea84f89f32a8723602289fa51b3f`; R2/Render deployment remains unverified.
 
+### Latest continuation — 2026-09-10: LIFE-06 / VFX-03 descent callback ownership
+
+**Implemented and locally validated; not deployed or browser-playtested.** Seven direct timer sites now use `_fxDelay`: descent flyover, nested flyover smoke, descent/warhead spawn, staggered sky lightning, impact, shared `_emitAoeBursts` tile/center bursts, and `_sigMissileDrop3D` smoke. Retiring the originating lifetime cancels pending emissions and rejects already-queued callbacks, including after descent or impact has begun. Existing delays, visual payloads and model/sprite selection are unchanged. These timers emit effects rather than dispose resources; existing model ownership stays with `_sigRun`, and shared weapon-cache warmup is preserved. Host and guest use the same local effect lifetime; no relay or authority changes.
+
+**Validation:** eight production-function tests pass, covering sprite fallback and cached missile paths, retirement before flyover/after descent/after impact, nested work, stale queued callbacks and fresh casts. Six retirement checks fail against the downloaded unchanged source; both normal-emission controls pass. Full package test command with bundled Node (`node --test *.test.js`; npm unavailable): **398 total, 394 passed, 2 failed, 2 skipped**. Failures match the previously recorded Phase 6 starter assertion and lunar-lander ceiling assertion; their files were not edited. Syntax: **80/80 clean**. Controlled function tests do not render WebGL or prove live host/guest acceptance. This is the mixed local review workspace, not full-main CI.
+
+**Source:** refreshed main effects, index, CLAUDE.md and tracker before editing; effects and notes were byte-identical to the previous local state. Effects Git blob: `c7bace48b9515b0ab65aaf451b1e41af39a9c76a`. Complete downloaded baseline hashes accompany the delivery. Synced sources untouched.
+
+**Delivery:** `ENTROPY_WARS_DESCENT_FIXES.zip` includes complete three-vfx-effects.js (R2), index.html (Render), descent-lifetime.test.js, EFFECT_CALLBACK_INVENTORY.md and this plan (repository only), plus validation logs and hash manifests. Shared cache token: `20260910-descent-retirement-01-cors`. No commit, push or deployment.
+
+**Exact next task:** continue at `_fireWall`, `_fireChain` and `_fireBeamMapped`, tracing nested geometry helpers and their resource owners before changing their timers. Separate geometry callbacks invoked by descent, including meteor/nuke, still need semantic review; this batch does not close the complete transitive descent graph. Then remaining mapped/bespoke timers and asset completion attachment; preserve application cache warmup. VFX-04 endpoint/list visibility remains open. LIFE-06/VFX-03 remain partial.
+
 ### Latest continuation — 2026-09-10: LIFE-06 / VFX-03 electric and combo callbacks
 
 **Implemented and locally validated; not deployed or browser-playtested.** This entry supersedes older next-task ordering. Five direct timer sites now use the existing `_fxDelay` lifetime owner: electric_arcs cue bursts, generic electric impact arcs, combo convergence heads, nested combo trails, and the combo arrival explosion. Retirement cancels pending timers and makes already-queued callbacks inert across subsequent battles/previews. Nested trails already scheduled by a convergence head are retired too. These callbacks only emit effects; none is responsible for resource disposal. Normal delays, particle counts, elemental sprites, geometry and relay payloads are preserved.
@@ -987,7 +999,7 @@ After each phase:
 
 ## Resume instructions
 
-**Current continuation:** use the electric/combo entry at the top and `ENTROPY_WARS_ELECTRIC_COMBO_FIXES.zip`. Resume callback classification at `_fireDescent` using EFFECT_CALLBACK_INVENTORY.md, then VFX-04 visibility. Prior bespoke and DOM fixes are preserved; broader lifecycle and live acceptance remain open.
+**Current continuation:** use the descent entry at the top and `ENTROPY_WARS_DESCENT_FIXES.zip`. Continue `_fireWall`, `_fireChain`, `_fireBeamMapped` and nested geometry ownership, then remaining callbacks and VFX-04. Prior fixes remain preserved; live acceptance remains open.
 
 **Latest continuation:** the LIFE-05 delivery at the top supersedes the older next-step notes below. Use `ENTROPY_WARS_RECONNECT_CLOCK_FIXES.zip`. The next implementation is acknowledged current-match state recovery; persistent clock suspension and forced rejoin resend are implemented and locally validated, not deployed. LIFE-05 remains open.
 
