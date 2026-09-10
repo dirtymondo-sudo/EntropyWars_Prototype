@@ -337,6 +337,16 @@ async function getOrBackfillEconomy(player) {
 
 const rooms = new Map();
 
+// Socket.IO gives each socket a private room named by its id. Keep the other
+// seat's reconnect credential out of room-wide lobby messages in both queues.
+function emitRoomFull(room, data) {
+    for (const role of ['host', 'guest']) {
+        if (room[role]) io.to(room[role]).emit('room-full', {
+            ...data, rejoinToken: room.rejoinTokens[role]
+        });
+    }
+}
+
 function generateCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
     let code = '';
@@ -798,7 +808,7 @@ setInterval(() => {
                         guest = a;
                     }
 
-                    const rejoinToken = uuid();
+                    const rejoinTokens = { host: uuid(), guest: uuid() };
                     rooms.set(code, {
                         host: host.socketId,
                         guest: guest.socketId,
@@ -809,7 +819,7 @@ setInterval(() => {
                         mapModeId: map.modeId,
                         teamSize: actualTeamSize,
                         rankedMode: rankedMode,
-                        rejoinToken: rejoinToken,
+                        rejoinTokens,
                         _disconnected: null,
                         _matchStarted: false
                     });
@@ -845,7 +855,7 @@ setInterval(() => {
                         });
                     }
 
-                    io.to(code).emit('room-full', {
+                    emitRoomFull(rooms.get(code), {
                         host: host.socketId,
                         guest: guest.socketId,
                         hostUsername: host.username,
@@ -853,8 +863,7 @@ setInterval(() => {
                         ranked: true,
                         mapModeId: map.modeId,
                         teamSize: actualTeamSize,
-                        rankedMode: rankedMode,
-                        rejoinToken: rejoinToken
+                        rankedMode: rankedMode
                     });
 
                     break;
@@ -1705,20 +1714,20 @@ io.on('connection', (socket) => {
     socket.on('create-room', (data, callback) => {
         const code = generateCode();
         const username = (data && data.username) || 'Player 1';
-        const rejoinToken = uuid();
+        const rejoinTokens = { host: uuid(), guest: uuid() };
         rooms.set(code, {
             host: socket.id,
             guest: null,
             hostUsername: username,
             guestUsername: null,
             created: Date.now(),
-            rejoinToken: rejoinToken,
+            rejoinTokens,
             _disconnected: null,
             _matchStarted: false
         });
         socket.join(code);
         console.log(`[IO] Room ${code} created by ${username} (${socket.id})`);
-        if (callback) callback({ code, rejoinToken });
+        if (callback) callback({ code, rejoinToken: rejoinTokens.host });
     });
 
     socket.on('join-room', (data, callback) => {
@@ -1737,18 +1746,16 @@ io.on('connection', (socket) => {
 
         room.guest = socket.id;
         room.guestUsername = username;
-        if (!room.rejoinToken) room.rejoinToken = uuid();
         socket.join(code);
         console.log(`[IO] ${username} (${socket.id}) joined room ${code}`);
 
-        if (callback) callback({ ok: true, rejoinToken: room.rejoinToken });
+        if (callback) callback({ ok: true, rejoinToken: room.rejoinTokens.guest });
 
-        io.to(code).emit('room-full', {
+        emitRoomFull(room, {
             host: room.host,
             guest: room.guest,
             hostUsername: room.hostUsername,
             guestUsername: room.guestUsername,
-            rejoinToken: room.rejoinToken,
 
             friendlyConfig: room.friendlyConfig || null
         });
@@ -2075,14 +2082,12 @@ io.on('connection', (socket) => {
         const token = data && data.rejoinToken;
         const room = rooms.get(code);
 
-        if (!room || room.rejoinToken !== token) {
+        const dc = room && room._disconnected;
+        // A reconnect credential belongs to exactly one seat. Never infer its
+        // owner from whichever player happens to be disconnected.
+        if (!dc || !room.rejoinTokens || typeof token !== 'string' ||
+            token !== room.rejoinTokens[dc.role] || findRoomBySocket(socket.id)) {
             if (callback) callback({ error: 'Room not found or invalid token.' });
-            return;
-        }
-
-        const dc = room._disconnected;
-        if (!dc) {
-            if (callback) callback({ error: 'No pending reconnection.' });
             return;
         }
 
@@ -2170,3 +2175,4 @@ server.listen(PORT, () => {
         .then(backfillTokenHashes)
         .catch(err => console.error('[DB] boot migration failed:', err.message));
 });
+
