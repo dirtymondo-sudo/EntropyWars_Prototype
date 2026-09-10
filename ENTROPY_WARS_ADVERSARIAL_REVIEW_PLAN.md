@@ -4,7 +4,7 @@ Last updated: 2026-09-10 (America/Chicago)
 Repository: https://github.com/dirtymondo-sudo/EntropyWars_Prototype
 Baseline: Phase 1 source review pinned to main commit `f0a4c3341631d60cee2ac544e543a13754d21624` (2026-09-09 in America/Chicago). Phase 0 used an unpinned main snapshot.
 Continuation baseline: main commit `4c740fcf6624a30d59e30c4d4dfea1a16dd85b03`, checked 2026-09-09 (America/Chicago). This commit and its predecessor `3da54eff8abbef3da87a1c0f72272919d84bd15e` changed only the uploaded review document; the inspected game source and line references remain unchanged.
-Delivery: this document is repository/reference material. The first delivery is now present in repository main `41f8e76b67120eea58c17fd968c5c72d70ef035e`; R2/Render deployment is unverified. The pause-focus delivery is also present in repository main `e92ee26153b65c2047963544c56310ea838220bb`. The Settings-focus delivery is present in repository main `f546e7fff61edb012e3fae536aee995996257c4f`. The PAUSE-06 controller delivery is present in repository main `88b3bc65adc93fc8ed2e84c28c112b0c81565b3f`; the PAUSE-07 continuation below is local only; R2/Render deployment remains unverified.
+Delivery: this document is repository/reference material. The first delivery is now present in repository main `41f8e76b67120eea58c17fd968c5c72d70ef035e`; R2/Render deployment is unverified. The pause-focus delivery is also present in repository main `e92ee26153b65c2047963544c56310ea838220bb`. The Settings-focus delivery is present in repository main `f546e7fff61edb012e3fae536aee995996257c4f`. The PAUSE-06 controller delivery is present in repository main `88b3bc65adc93fc8ed2e84c28c112b0c81565b3f`; the PAUSE-07 delivery is present in repository main `82494b38fa3dea84f89f32a8723602289fa51b3f`; R2/Render deployment remains unverified.
 
 ## Objective
 
@@ -17,7 +17,7 @@ Each phase must leave behind evidence, prioritized findings, a bounded improveme
 - [x] Phase 0 — establish scope, inspect project instructions, and identify initial risks.
 - [ ] Phase 1 — first batch implemented locally: battle label retirement and HQ loading-card ownership pass regression tests; broader lifecycle work and runtime acceptance pending.
 - [ ] Phase 2 — static triage and capture protocol documented; performance baseline and optimizations pending.
-- [ ] Phase 3 — Tab/controller routing fixes are in repository main; battle/editor pause focus is now implemented locally and regression-tested. Main-menu/HQ Settings keyboard focus is in repository main. Controller page visibility/root selection (PAUSE-06) is in repository main. PAUSE-07 board movement/held-key isolation is locally implemented and regression-tested; broader input ownership, shared menu, and runtime acceptance remain pending.
+- [ ] Phase 3 — Tab/controller routing fixes are in repository main; battle/editor pause focus is now implemented locally and regression-tested. Main-menu/HQ Settings keyboard focus is in repository main. Controller page visibility/root selection (PAUSE-06) is in repository main. PAUSE-07 board movement/held-key isolation is in repository main and regression-tested; PAUSE-08 free-roam/shooter capture and retained-input gaps are source-confirmed, with implementation pending; broader input ownership, shared menu, and runtime acceptance remain pending.
 - [ ] Phase 4 — camera source review, framing gaps, and shot acceptance matrix documented; visual verification pending.
 - [ ] Phase 5 — timing/relay/lifetime review and representative spell matrix documented; implementation and captures pending.
 - [ ] Phase 6 — Arena/TDM rule audit, navigation/planning findings, and decision scenarios documented; observed CPU play pending.
@@ -110,6 +110,36 @@ Both seats retain the same local input handlers; no authoritative actions, state
 Complete-file delivery: `ui.js` → R2; `index.html` → Render (fresh shared token `20260910-052918-heldkeys-cors`); `scene-lifecycle.test.js` and this plan → repository only. Sync runtime files to the repository too. Earlier fixes are preserved; no assets changed. No commit, push, upload or deployment performed.
 
 Exact next task: trace free-roam and ShooterControls capture/frame input through pause, dialog, key release and pointer-lock changes; implement the smallest confirmed ownership fix and validate it. Then nested-dialog focus return, followed by reconnect/effect boundaries. UX-01 and Phase 3 remain open.
+
+### PAUSE-08 source trace — free-roam and shooter input (2026-09-10 America/Chicago)
+
+Baseline: repository main `82494b38fa3dea84f89f32a8723602289fa51b3f`. GitHub's comparison with `88b3bc65adc93fc8ed2e84c28c112b0c81565b3f` identifies the PAUSE-07 upload, and the uploaded review contains its implementation record. Local `AGENTS.md`, `CLAUDE.md`, `battle.js`, `three-renderer.js`, `state.js` and `ui.js` match the pinned repository tree's Git blob hashes. PAUSE-07 is therefore present in repository main; R2/Render deployment remains unverified. References in this section use this refreshed baseline; older findings retain their original baseline references.
+
+**PAUSE-08 — High, source-confirmed missing input ownership boundaries; runtime reproduction pending.** The PAUSE-07 board guard does not govern the separate window-capture listeners and continuous movement consumers below. A menu can own focus while those consumers still accept or retain gameplay input.
+
+| Boundary | Verified source path | Consequence / evidence limit |
+| --- | --- | --- |
+| Guild Hub keyboard → walker | `three-renderer.js:19145` `_freeRoamStart` installs capture handlers. Keydown excludes text input and contenteditable, but not SELECT, pause or dialogs. `_freeRoamTick` at line 19220 consumes keys and `_frPad`, changes unit coordinates and invokes the tile callback without a modal gate; `_updateAnimations` at line 19376 calls it. | Focus containment alone cannot prevent movement capture. A held direction can continue feeding movement under a menu while this walker runs. This is the Mystery Dungeon Guild Hub/shared walker, not the separate D.O.O.R. HQ walker. |
+| Shooter keyboard → menu control | `battle.js:16038` keydown rejects typing and `state.uiDialog`, but not `_gamePaused`. Movement, Space and Enter use `stopImmediatePropagation()` in window capture. `_battleActive` at line 15705 and `_owns` at line 15746 do not reject pause. | A focused menu button's Space/Enter can be consumed before its own handler. Enter reaches the end-turn request path; downstream execution is not claimed here. Native menu activation is already at risk at the capture boundary. |
+| Stored movement → frame consumer | `battle.js:16349` `_roamFrameRT` and line 16411 `_roamFrame` stop for dialogs/cinematics and other busy states, but neither includes pause. `_frame` at line 16695 continues to invoke the roam path while `_owns()` remains true. | Clearing only the board-held set in `ui.js:6521` `openPauseMenu` does not clear shooter `heldDirs`, `padVec`, or renderer `_frPad`. Gate consumption as well as new events. |
+| Controller handoff → retained vector | `state.js:6526` derives menu context and dispatches `_shooterPadFrame` only for menu/aim/free gameplay contexts. The shooter callback stores `padVec` or calls `hubFreeRoam.setPadInput`; no neutral handoff occurs in this branch when context changes to domnav/dialog. | Correct menu routing does not itself erase the last movement sample. Clear retained input at ownership loss; do not describe this as missing controller menu precedence. |
+| Pointer lock → capture/held actions | `battle.js:15917` lock change clears directions and sprint when lock is lost, but not fire, ADS, pad vector or jump. Locked mousedown at line 15953 checks mode availability, then swallows the event and changes action flags. `openPauseMenu` neither releases this lock nor clears these channels. | Menu opening needs an explicit shooter-input handoff. Lock release alone is an incomplete reset. Mouse firing and stale-trigger gameplay outcomes still need controlled tests and runtime acceptance. |
+
+Existing protections to preserve: shooter keyup clears movement without a typing/modal gate; blur clears directions, pad vector, fire, ADS and scoreboard. Dialogs already block shooter keydown and stop battle roam. Controller context already prioritizes menu navigation. The separate HQ walker has its own paused guards and stale-lock recovery; do not change it merely because it shares the canvas. Online simulation continuing behind a local menu is a separate policy from preventing that player's menu input from driving gameplay.
+
+**Bounded implementation contract:** establish local input eligibility in the existing owners; block new keyboard/mouse/pad actions and frame consumption while pause/dialog/editable/hidden-document ownership applies. Reset all retained input channels at handoff, including movement, sprint, jump, fire, ADS, scoreboard and trigger-edge state. Keep releases unconditional. Release only a lock belonging to the shooter when opening its menu; preserve the HQ lock owner and use an intentional player gesture for reacquisition. Keep camera lifetime separate from action eligibility so an input fix does not reset framing or provisional movement. Preserve `parkAtUnit` and the turn-based movement commit rules. No new synchronized gameplay fields are required by this proposed local-input contract.
+
+**Required acceptance checks before marking implemented/validated:**
+
+1. Hold keyboard movement or a controller stick, open pause, release under the menu, resume: no movement from the old sample and no changed pending target. Cover Guild Hub, turn-based shooter and Strike separately.
+2. With a menu button focused, Space and Enter activate that button once; arrows and Tab remain with menu navigation. Editable controls and rebinding retain priority.
+3. Open a dialog while walking or holding jump/fire/ADS; dismiss it without fresh gameplay input. No retained jump, shot, ADS, scoreboard or movement resumes. Verify native release handlers still run.
+4. Open pause while shooter pointer lock is held; operate the menu with the mouse, then reacquire deliberately. Verify the separate HQ lock is unaffected. Include blur, hidden tab, ownership loss, respawn and mode exit.
+5. Execute production capture and frame functions with controlled event/frame boundaries, then run the full suite and syntax checks for a code delivery. Real keyboard/controller and both-seat acceptance remain separate; do not infer them from source-pattern tests.
+
+Validation for this pass: pinned-source hash comparison and source/document content review only. No runtime files changed, tests run, browser playtest, simulation, upload or deployment. This complete document is repository-only and needs no R2 upload or cache-token change. PAUSE-08, UX-01 and Phase 3 remain open.
+
+Exact next task: implement PAUSE-08's shared-walker and ShooterControls input handoff in the existing files with capture/frame regression checks; include the complete changed files and fresh entry token. Then trace nested-dialog return focus, followed by reconnect/effect boundaries.
 
 ### Review conclusions so far
 
@@ -754,6 +784,8 @@ After each phase:
 | 2026-09-09 | 3 / PAUSE-06 controller ownership | Required active exposed Settings page, included Back in navigation root, excluded inactive controls and rejected stale activation/adjustment. Prior Settings delivery verified in main. | Full suite: 218 passed, 0 failed, 2 expected skips; syntax passed. Three new controller function regressions; no runtime acceptance or deployment. | Continue held-key/window-capture/pointer ownership and nested-dialog return focus. UX-01 and Phase 3 remain open. |
 
 | 2026-09-10 | 3 / PAUSE-07 board held-key ownership | Added shared board input eligibility, immediate menu-open clearing, editable/visibility/blur clearing and unconditional key release; verified prior controller delivery in main. | Full suite: 222 passed, 0 failed, 2 expected skips; syntax passed. Four production-boundary regressions; no runtime acceptance or deployment. | Trace free-roam/ShooterControls capture and frame consumers across pause/dialog/pointer lock, then nested-dialog return focus. |
+
+| 2026-09-10 | 3 / PAUSE-08 source trace | Verified PAUSE-07 in main; traced Guild Hub/shared walker, shooter capture/frame handlers, retained controller input and pointer-lock reset gaps. Added a bounded fix contract and acceptance checks. | Pinned Git blob hash checks and source/document review only; no runtime edits, tests, playtest or deployment. | Implement PAUSE-08 input handoff and production-boundary regressions, then nested-dialog return focus. |
 
 ## Resume instructions
 
