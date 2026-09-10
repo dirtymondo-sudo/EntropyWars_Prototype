@@ -3587,3 +3587,33 @@ index.html; docs.
   scrolling) before the push; the RANGE console's own boot text; a
   `steward`-style boot line for each console (the room's number).
 
+
+### 2026-09-09 — Adversarial review: scene handoff and settings input (local delivery, not uploaded)
+
+- Implemented in existing files: `three-renderer.js` retires registered battle
+  unit plates during deactivation before HQ reuses the CSS2D layer; unrelated
+  labels and existing health/mana bar history are preserved. `map.js` owns the
+  HQ loading card by entry generation and cancels fade/hide timers on entry,
+  leave, or failure. Stale callbacks cannot dismiss the next entry's card;
+  duplicate readiness is ignored. Renderer-entry exceptions now use the
+  existing main-menu failure fallback. Normal/walking fade durations remain.
+- Settings input: `state.js` gives visible settings controller navigation
+  priority over the broad title/HQ flag; `ui.js` leaves Tab to menu/dialog
+  focus navigation instead of changing battle targets underneath.
+- Validation: full package test command (`node --test *.test.js`) executed
+  with available Node v24.19.0: 208 tests, 206 passed, zero failures, two
+  expected skips (absent animation GLBs and server dependencies). Includes
+  eight new production-function regression tests in `scene-lifecycle.test.js`
+  and repository-wide JS syntax checks. npm was unavailable; its exact test
+  script was run directly. No browser playtest, game simulation, FPS capture,
+  or host/guest runtime acceptance was performed. These local UI/lifecycle
+  changes add no state-sync fields, gameplay rules, or relay payloads.
+- Complete files for upload: `map.js`, `three-renderer.js`, `state.js`, `ui.js`
+  to R2; `index.html` to Render, token `20260910-033727-review-cors`.
+  Sync these plus the new test, this log, the other HQ/master log, and
+  `ENTROPY_WARS_ADVERSARIAL_REVIEW_PLAN.md` to the repository. Nothing committed,
+  pushed, or deployed. No canon, room definitions, assets, or story changed.
+- Still open: texture readiness/black-material diagnosis, actual battle → HQ
+  → battle visual checks for both viewers, modal focus trap/restore and full
+  shared pause presentation. Continue UX-01 in the review plan, then reconnect
+  and effect boundaries. Story track remains ON HOLD under A14.

@@ -162,6 +162,19 @@
            ══════════════════════════════════════════════════════════════════ */
         let _hqPanelTarget = null;
         let _hqEnteredAt = 0;
+        let _hqLoadGeneration = 0;
+        let _hqLoadFadeTimer = null;
+        let _hqLoadHideTimer = null;
+        function _hqCancelLoadCard() {
+            const generation = ++_hqLoadGeneration;
+            if (_hqLoadFadeTimer !== null) clearTimeout(_hqLoadFadeTimer);
+            if (_hqLoadHideTimer !== null) clearTimeout(_hqLoadHideTimer);
+            _hqLoadFadeTimer = null;
+            _hqLoadHideTimer = null;
+            const load = _hqEl('hqLoad');
+            if (load) { load.style.display = 'none'; load.classList.remove('done', 'walk'); }
+            return generation;
+        }
         let _hqHome = false;        // the player entered through Play → screens return to the building
         let _hqSuspended = false;   // the scene is alive but paused under a modal / settings
         let _hqLastDoor = null;     // door id the player last left through (re-entry spot)
@@ -394,6 +407,7 @@
         }
         window._hqEnter = function (opts) {
             opts = opts || {};
+            const loadGeneration = _hqCancelLoadCard();
             if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.hq || typeof DOOR_HQ === 'undefined') {
                 console.warn('[HQ] ThreeRenderer.hq or DOOR_HQ missing');
                 return false;
@@ -435,13 +449,16 @@
             const hints = _hqEl('hqHints');
             if (hints) hints.classList.remove('fp');
             _hqEnteredAt = performance.now();
+            const enteredAt = _hqEnteredAt;
+            let loadReady = false;
             _showTitlePage('hqPage');
             /* the battle renderer stays alive behind the menu after a match
                (only the map editor deactivates it) and the HQ needs the shared
                canvas: put the board away first — the next startMatch
                re-activates it (battle.js checks isActive before activate). */
             try { if (ThreeRenderer.isActive && ThreeRenderer.isActive() && state.phase !== 'battle') ThreeRenderer.deactivate(); } catch (e) { console.warn('[HQ] could not park the battle renderer', e); }
-            const ok = ThreeRenderer.hq.enter({
+            let ok = false;
+            try { ok = ThreeRenderer.hq.enter({
                 host, room: roomId, profile, avatar: _hqAvatar(profile),
                 onPrompt: _hqSetPrompt,
                 onInteract: _hqInteractTarget,
@@ -452,17 +469,30 @@
                 /* Q: answer a BELL call from anywhere in the building (plan D2) */
                 onHotkey: (k) => { if (k === 'q') _hqOpenCounter('dispatch'); },
                 onReady: () => {
-                    const wait = Math.max(0, (walking ? 150 : 900) - (performance.now() - _hqEnteredAt));
-                    setTimeout(() => {
+                    if (loadGeneration !== _hqLoadGeneration || loadReady) return;
+                    loadReady = true;
+                    const wait = Math.max(0, (walking ? 150 : 900) - (performance.now() - enteredAt));
+                    _hqLoadFadeTimer = setTimeout(() => {
+                        if (loadGeneration !== _hqLoadGeneration) return;
+                        _hqLoadFadeTimer = null;
                         const l = _hqEl('hqLoad');
-                        if (l) { l.classList.add('done'); setTimeout(() => { l.style.display = 'none'; l.classList.remove('walk'); }, walking ? 320 : 650); }
+                        if (l) {
+                            l.classList.add('done');
+                            _hqLoadHideTimer = setTimeout(() => {
+                                if (loadGeneration !== _hqLoadGeneration) return;
+                                _hqLoadHideTimer = null;
+                                l.style.display = 'none';
+                                l.classList.remove('walk');
+                            }, walking ? 320 : 650);
+                        }
                     }, wait);
                 },
                 onView: (fp) => { const h = _hqEl('hqHints'); if (h) h.classList.toggle('fp', !!fp); },
                 onDebug: debug ? (d) => { if (dbg) dbg.textContent = `deg ${d.deg} · r ${d.r} · y ${d.y} · L${d.level} · x ${d.x} z ${d.z}${d.fp ? ' · FP' : ''}`; } : null,
-            });
+            }); } catch (e) { console.error('[HQ] enter failed', e); }
             if (!ok) {
                 /* no WebGL / renderer failure: fall back to the classic pages */
+                _hqCancelLoadCard();
                 _hqHome = false;
                 if (load) load.style.display = 'none';
                 window._hqRelabelMenuButtons();
@@ -570,6 +600,7 @@
             } catch (e) { console.warn('[DOOR] promote failed', e); return false; }
         };
         window._hqLeave = function () {
+            _hqCancelLoadCard();
             _hqTermDrop();   // a console screen left up goes down with the building
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active()) ThreeRenderer.hq.leave(); } catch (e) { console.error('[HQ] leave failed', e); }
             _hqSuspended = false;
@@ -15834,3 +15865,4 @@
                 window._hqReturnOrMenu();
             }
         };
+

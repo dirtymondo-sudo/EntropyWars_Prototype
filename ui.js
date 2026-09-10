@@ -10530,6 +10530,9 @@
                 }
             }
 
+            // Menus own Tab while open; leave native focus navigation intact.
+            if (_gamePaused || state.uiDialog) return;
+
             if (e.key === 'Tab' && state.phase === 'battle' && state.actionMode === 'spell' && state._spellCycleTargets?.length > 1) {
                 e.preventDefault();
                 cycleSpellTarget(e.shiftKey ? -1 : 1);
@@ -12837,3 +12840,4 @@
         requestAnimationFrame(_fpsLoop);
       };
     })();
+

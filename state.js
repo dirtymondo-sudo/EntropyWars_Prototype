@@ -6294,6 +6294,7 @@
                 if (rebind) return 'rebind';
                 if (_pauseOpen()) return 'domnav';
                 if (state.uiDialog) return 'dialog';
+                if (_mmSettingsOpen()) return 'domnav';
                 if (state.titleScreenVisible) return 'title';
                 if (state.phase === 'battle' && !state.winner) {
                     const hook = window._hrlgPad;
@@ -6303,7 +6304,6 @@
                     return 'free';                 // not our turn / spectating
                 }
                 if (state.phase === 'editor') return 'free';
-                if (_mmSettingsOpen()) return 'domnav';
                 return 'domnav';                   // menus outside battle
             }
 
@@ -6698,3 +6698,4 @@
             };
         })();
         window.EWPad = EWPad;
+

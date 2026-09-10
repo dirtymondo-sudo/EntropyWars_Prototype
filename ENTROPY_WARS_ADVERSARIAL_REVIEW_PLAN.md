@@ -3,8 +3,8 @@
 Last updated: 2026-09-09 (America/Chicago)
 Repository: https://github.com/dirtymondo-sudo/EntropyWars_Prototype
 Baseline: Phase 1 source review pinned to main commit `f0a4c3341631d60cee2ac544e543a13754d21624` (2026-09-09 in America/Chicago). Phase 0 used an unpinned main snapshot.
-Continuation baseline: main commit `3da54eff8abbef3da87a1c0f72272919d84bd15e`, checked 2026-09-09 (America/Chicago). Its only change from the baseline above is the uploaded review document; the inspected game source and line references remain unchanged.
-Delivery: this document is repository/reference material only. No R2 upload or cache bump required.
+Continuation baseline: main commit `4c740fcf6624a30d59e30c4d4dfea1a16dd85b03`, checked 2026-09-09 (America/Chicago). This commit and its predecessor `3da54eff8abbef3da87a1c0f72272919d84bd15e` changed only the uploaded review document; the inspected game source and line references remain unchanged.
+Delivery: this document is repository/reference material. The accompanying local implementation includes four R2 scripts and a matching Render entry page; see the delivery record below. Nothing has been uploaded or deployed.
 
 ## Objective
 
@@ -15,16 +15,41 @@ Each phase must leave behind evidence, prioritized findings, a bounded improveme
 ## Current status
 
 - [x] Phase 0 — establish scope, inspect project instructions, and identify initial risks.
-- [ ] Phase 1 — in progress: source review and prioritized fix batch documented; implementation and runtime acceptance pending.
+- [ ] Phase 1 — first batch implemented locally: battle label retirement and HQ loading-card ownership pass regression tests; broader lifecycle work and runtime acceptance pending.
 - [ ] Phase 2 — static triage and capture protocol documented; performance baseline and optimizations pending.
-- [ ] Phase 3 — one pause menu across battle and DOOR HQ.
-- [ ] Phase 4 — cinematic camera composition and continuity.
-- [ ] Phase 5 — spell identity, animation timing, and VFX.
-- [ ] Phase 6 — Arena and Team Deathmatch AI.
-- [ ] Phase 7 — map art, environmental coherence, and asset brief.
-- [ ] Phase 8 — integrated player UX and developer review.
+- [ ] Phase 3 — Tab and controller settings routing fixed locally and regression-tested; focus ownership and shared menu implementation pending.
+- [ ] Phase 4 — camera source review, framing gaps, and shot acceptance matrix documented; visual verification pending.
+- [ ] Phase 5 — timing/relay/lifetime review and representative spell matrix documented; implementation and captures pending.
+- [ ] Phase 6 — Arena/TDM rule audit, navigation/planning findings, and decision scenarios documented; observed CPU play pending.
+- [ ] Phase 7 — generated map inventory, shared environment constraints, and scoped asset brief documented; visual ranking pending.
+- [ ] Phase 8 — integrated journey review, implementation backlog, and validation gates documented; end-to-end acceptance pending.
 
-Phase 0 is a scoped reconnaissance pass, not a completed game audit. No gameplay code has been edited. No browser playtest, FPS capture, simulation, or visual comparison has run.
+Phase 0 is a scoped reconnaissance pass, not a completed game audit. Four existing runtime files have now been edited locally. No browser playtest, FPS capture, simulation, or visual comparison has run.
+
+### Local implementation and delivery — 2026-09-09
+
+The source review covers all eight requested areas. This continuation also implements the first scene-handoff batch and the two confirmed input-routing fixes. These are local, tested changes against the continuation baseline above; reported live symptoms are not marked resolved. All source line references in the findings remain references to the baseline, before these edits.
+
+| Finding | Implemented behavior | Validation and limit |
+| --- | --- | --- |
+| LIFE-02 | `three-renderer.js` calls the existing `_clearPlates()` at deactivation, before HQ can reveal the shared label layer. Only registered battle unit plates are removed; the existing health/mana animation history is preserved. Battle activation already rebuilds units/plates. | Executes production deactivation twice with registered and unrelated labels; verifies cleanup, idempotence, and preserved history. Actual CSS2D/WebGL battle → HQ → battle acceptance remains pending. |
+| LOAD-01 | `map.js` assigns an entry generation to the loading card, cancels both timer handles on entry/leave/failure, and rejects stale readiness/fade/hide callbacks. Repeated readiness schedules one fade. A thrown renderer entry falls back to the main menu, as a false return already did. Existing normal/walking timing is preserved. | Exercises rapid replacement, stale ready, canceled callbacks arriving late, leave, duplicate readiness, false/throw failure, and normal/walking delays with controlled timers. Required texture readiness remains LOAD-02. |
+| PAUSE-04 | `ui.js` leaves Tab to normal focus navigation while the pause menu or a dialog owns input, instead of cycling a spell/attack target beneath it. It does not clear the pending target. | Executes the production key handler for both targeting modes under pause/dialog and checks cycling resumes after closing. Full focus trapping/restoration remains UX-01. |
+| PAUSE-05 | `state.js` checks visible settings before the broad title/HQ flag when selecting controller context. Rebinding, pause, and dialog precedence is preserved. | Executes the production context selector with visible/hidden settings and overlapping higher-priority contexts. Actual controller Confirm/Back and slider acceptance remains pending. |
+
+Full suite: **208 tests, 206 passed, 0 failed, 2 skipped**, including all eight new tests in `scene-lifecycle.test.js` and the repository-wide JavaScript syntax check. Executed the exact `package.json` test command (`node --test *.test.js`) with bundled Node v24.19.0; npm itself was unavailable. Skips: animation-library GLBs absent; server smoke-test dependencies absent. The first full run exposed missing Electron reference files in the downloaded workspace; those were fetched unchanged from the same pinned commit, then the suite passed. No existing assertion was weakened and no server/gameplay simulation was started.
+
+Upload the complete `map.js`, `three-renderer.js`, `state.js`, and `ui.js` files to **R2**. The complete `index.html` goes to **Render**, with shared token `20260910-033727-review-cors`. Sync those files plus `scene-lifecycle.test.js`, this plan, `DOOR_MASTER.md`, and `DOOR_HQ_BUILD_PLAN.md` to the repository. Tests and Markdown are repository-only. No assets or embedded asset URLs changed. The accompanying ZIP preserves original root filenames and includes an upload manifest with checksums.
+
+Next: complete UX-01 focus ownership in the existing pause/settings shell, including focus after tab re-render and return to aiming; then address reconnect suspension and effect lifetime/visibility as separate reviewed changes. Do not expand the shared pause design before defining its online/offline suspension contract. Keep visual/FPS acceptance pending until authorized testing supplies evidence.
+
+### Review conclusions so far
+
+The immediate work is ownership and input correctness: retire scene-owned labels/effects, keep loading callbacks tied to their entry, preserve reconnect suspension across clock starts, and prevent menus from sending input to the battle underneath. Camera improvements should then replace fixed body allowances with subject-aware framing. AI fixes should address incorrect navigation inputs and stale planning before changing difficulty weights. More scenery and bigger effects should follow measurement, not precede it.
+
+Several suspected deficiencies are already addressed in source. Arena initializes the current Key threshold for AI. Standard TDM initialization removes Arena objectives. Dungeon results use the dedicated exit. Effects already have a shared ticker and bulk cleanup. The camera already accounts for FOV, aspect, terrain elevation, and airborne subjects in several paths. These protections are recorded below so implementation does not undo them.
+
+This pass extends source review across all eight areas; it does not claim every function or spell was audited. Data enumeration through the repository's `load-data.js` found 501 entries in `SPELL_BY_ID` across 65 kinds, and 60 entries in `EW_MAP_META` (29 without `isDelta`, 31 with it). All metadata `near` keys had a matching named near-scenery builder in the inspected renderer. Enumeration ran locally; it did not run battle simulation or AI decisions. The counts describe those registries, not unique unlocked spells or proof of visual quality.
 
 ### Working rules
 
@@ -108,7 +133,7 @@ Transition ownership table; findings with source locations; complete changed fil
 
 The strongest findings concern two separate contracts: handing the shared renderer from battle to HQ, and deciding when a scene is ready to reveal. The current code already contains substantial cleanup and loading work. The fixes should close gaps in those paths rather than replace them wholesale.
 
-This pass is a static review. No reported symptom has been reproduced, no game implementation has changed, and Phase 1 remains open. Complete source snapshots are retained locally in `review-source/` for follow-up; they are reference copies, not upload deliverables. Source locations below refer to the pinned commit, not the live deployment.
+The findings below describe the baseline static review. LIFE-02 and LOAD-01 now have local implementations recorded above; no reported live symptom has been reproduced and Phase 1 remains open. Complete source snapshots are retained locally in `review-source/` for follow-up; they are reference copies, not upload deliverables. Source locations below refer to the pinned commit, not the live deployment.
 
 #### Transition and resource ownership
 
@@ -129,11 +154,15 @@ This pass is a static review. No reported symptom has been reproduced, no game i
 
 **LIFE-02 — High: battle unit labels survive deactivation before HQ reuses their DOM layer.**
 
+Local status: implemented and regression-tested in the accompanying delivery; baseline evidence follows. Live acceptance remains pending.
+
 Evidence: `deactivate()` hides `css2dRenderer.domElement` but leaves `_plateObjs` intact. HQ entry reparents that same element and restores its display. `_clearPlates()` exists and removes plate objects from their parents, but is called on unit rebuild/full disposal, not this handoff. This is a concrete ownership gap and a strong candidate for REP-03. Whether the retained DOM is visible in the reported case still needs verification against the loaded CSS2D implementation and an actual transition.
 
 Proposed fix: retire battle-owned unit labels at battle deactivation, before another scene reveals the shared overlay. Preserve unrelated HQ labels and the existing bar-animation history contract; rebuild battle labels on the next activation. Verify tower/nexus labels, floating text, and both viewers at the same boundary. Do not clear the whole shared DOM indiscriminately.
 
 **LOAD-01 — Medium: an old HQ fade callback can hide a newer room's loading card.**
+
+Local status: implemented and regression-tested in the accompanying delivery; baseline evidence follows. Live acceptance remains pending.
 
 Evidence: `map.js:453–460` schedules two nested timeouts. Both target the shared `hqLoad`; neither checks entry identity. `_hqLeave` at `map.js:572` does not cancel them. Renderer room replacement does leave the old room, but cannot cancel timeouts that its earlier `onReady` already scheduled in map.js.
 
@@ -157,7 +186,9 @@ Evidence: `_updateMinimap` gates on `active` and board data, while the scanner p
 
 Follow-up caller audit: `render()` (`ui.js:6413`) dirties and renders UI; `renderIfDirty()` (`state.js:4532`) invokes `renderScreenMode()` (`ui.js:5708`). The screen handler hides `mapRow` in setup but does not deactivate the renderer or hide the body-level scanner. `backToPartyBuilder()` leaves `_mdRun` and `_mdPhase` untouched. This establishes a gap if that generic route is used with a live dungeon floor; it does not establish that the normal dungeon result UI selects that route. The dedicated `_mdExitToMenu()` (`battle.js:32182`) stops free roam and clears both fields before returning to the menu/HQ. `_updateMinimap()` then removes scanner mode, and HQ also deactivates the battle renderer.
 
-Remaining verification: trace the dungeon result and pause-button bindings to distinguish the dedicated exit from a generic builder exit, and identify the actual element in REP-02. A normal dedicated dungeon exit is not evidence of a scanner leak. Proposed fix if a bypass is confirmed: tie scanner visibility to the current scene and retire it on departure. Preserve dungeon discovery within the same floor and existing fog filtering.
+Button reachability audit: the dungeon result replaces the shared footer with a single button calling `_mdReturnToHub()` (`battle.js:32159–32166`). That alias invokes `_mdExitToMenu()` (`32180–32208`), which stops free roam, restores the pre-run party, clears run/floor state, and returns through `backToMainMenu()`. The standard result footer separately binds Back to Party Builder (`32620–32640`); its existence does not make it a dungeon result action. The reviewed pause footer contains only Resume (`ui.js:6545–6550`), so it supplies no generic builder bypass either.
+
+Remaining verification: identify the actual element and departure route in REP-02, including any other HUD or controller navigation not covered by these button bindings. The normal dungeon result and reviewed pause footer do not establish a scanner leak. Keep LIFE-03 as a conditional ownership risk. If another bypass is confirmed, tie scanner visibility to the current scene and retire it on departure while preserving same-floor discovery and fog filtering.
 
 **LIFE-04 — Medium: boot callbacks have per-call completion guards but no visible match identity.**
 
@@ -169,13 +200,33 @@ Follow-up disconnect audit: an own-socket disconnect (`online.js:2890`) clears c
 
 Cancellation contract for a future implementation: explicit abandonment or replacement retires the old boot and its timers; a temporary disconnect follows the existing reconnect policy for the same match. A late ready event must not satisfy a different match's waiter. An identity must be shared by host and guest, not independently generated by each viewer. Validate reconnect, timeout/forfeit, and rematch separately before changing this behavior.
 
+**LIFE-05 — High: reconnect pause applies to an existing shot clock, but does not survive a later clock start.**
+
+Evidence: the reconnect UI is a non-blocking banner, not a full-screen input barrier (`online.js:2803–2848`). Showing it calls `_pauseShotClock()` once. That function returns when the clock is inactive (`battle.js:54636–54639`); `_startShotClock()` later sets `pausedAt = null` and `active = true` without checking connection state (`54616–54624`). A pending human activation calls it after its generation/unit guards (`37725–37742`). The host's intro barrier can also release after 20 seconds and call `_afterVSSplash()`, which starts `beginBlitzRound()` (`35222–35243`, `35304`). Thus the reviewed clock API does not retain the reconnect condition across activation or boot.
+
+Failure sequence to verify: disconnect while no shot clock is active, or after a human activation has been scheduled; keep the reconnect banner present while the activation starts. Check whether the newly active clock counts down. Repeat with disconnect during loading/intro and the host barrier timing out. The interval honors `pausedAt`, but `_shotClockExpired()` can end the locally controlled online unit's turn when the clock is running (`54561–54613`). Source confirms the missing persistence at clock start; actual turn loss and the full boot-to-turn sequence remain runtime-unverified.
+
+Proposed fix: track reconnect suspension independently of a particular clock instance and honor it whenever a clock starts or is replaced. Keep it separate from the local settings-menu state. Rejoin must remove only the reconnect reason and retain the correct remaining time. Inspect server rejoin snapshot ordering and guest state application before implementation: `_applyRemoteState()` deserializes host state (`online.js:4284–4300`), so a guest-local timestamp alone is not a sufficient shared contract. Do not infer that the entire simulation already pauses because a clock helper does.
+
+Acceptance: cover both roles, disconnect before first activation, disconnect during a pending activation, an already running clock, reconnect before/after intro timeout, and forfeit. Record clock timestamps, remaining time, active unit, connection state, and whether any action advanced. These checks are pending; no disconnect test ran.
+
+**LIFE-05 follow-up — rejoin acknowledges connectivity before proving state recovery.** `server.js:2058–2091` reassigns the socket, joins the room, acknowledges success, and broadcasts `player-rejoined`. It sends no full match snapshot in this handler. `room._lastState` is a small rules/watchdog summary (`1850–1883`), not a restorable board. On the client, both the successful rejoin callback and `player-rejoined` hide the banner and resume the clock (`online.js:2862–2879`, `3060–3064`). No fresh-state acknowledgement is required by those branches.
+
+There is existing recovery: the host's 1.2-second heartbeat forces a state resend on the remote player's turn (`online.js:4231–4261`). On the host's own turn it calls the normal sender, whose identical-state check can suppress a resend (`4214–4226`). Therefore “rejoin has no recovery” would be wrong; “rejoin is complete as soon as the socket returns” is also too strong. A fix should force a current full snapshot on rejoin, acknowledge its application for that match, and coordinate clock resumption with the chosen recovery policy. Do not replace the host with the server as simulation owner. Verify guest reconnect while the host waits on an unchanged turn, and host reconnect while the guest retains a stale snapshot.
+
+**LIFE-06 — Medium: battle deactivation does not invoke the effects subsystem's bulk retirement.** `deactivate()` and `_clearAnimations()` clear renderer-owned tweens and overlays (`three-renderer.js:25433–25523`, `19404–19430`). The effects subsystem separately owns pooled particles, projectiles, bespoke meshes, and a shared animation ticker. Its `clearAll()` exists and stops those registered effects (`three-vfx-effects.js:19864–19916`), but the reviewed deactivation path does not call it. Full renderer disposal does (`three-renderer.js:27978`), as do preview-specific paths.
+
+This is an ownership gap, not a measured leak: finite effects may finish themselves, and `ThreeVFX.isActive()` blocks ordinary new battle spawns after deactivation (`three-vfx.js:2909–2912`). However, the separate ticker can continue running and particle state can remain until its next update. Add effects retirement to the appropriate battle departure boundary after checking preview ownership, and guard delayed effect creation by scene identity. Clearing registered tickers alone does not cancel every independently scheduled timeout. Check long effects, departure during a delayed burst, immediate new-match entry, and opening the character viewer after battle.
+
+**LOAD-04 — Investigation requirement: separate asset readiness from a graphics failure.** The entry page already exposes `?ewdiag=1` / `EW_SHOW_DIAG()` and records graphics limits and shader/script errors (`index.html:55–178`). The historical Safari notes in `LAUNCH_READINESS.md:40–66` identify a prior shader-precision problem; those historical claims are not a diagnosis of REP-01. Attach the existing diagnostic report, affected material/map, browser, and loaded cache token to a reproduction. A decoded texture with a failed shader needs a different fix from a delayed fetch. Preserve the loading readiness work and use the diagnostic evidence to decide which branch explains the black surface.
+
 #### Bounded implementation order
 
-1. **Label handoff and HQ card ownership:** LIFE-02 and LOAD-01 in existing renderer/map files. This is the first fix batch: small scope, direct ownership evidence, no visual redesign.
+1. **Label handoff and HQ card ownership:** LIFE-02 and LOAD-01 in existing renderer/map files. This first batch is now locally implemented and tested: small scope, direct ownership evidence, no visual redesign.
 2. **Loading outcomes and readiness:** LOAD-02 and LOAD-03. Define required/fallback assets for one representative HQ site and battle map, then connect those consumers to readiness. Keep failure status distinct from success on both clients.
 3. **Match cancellation and minimap:** complete the caller audit for LIFE-03/LIFE-04, then implement only demonstrated gaps. Avoid adding a global teardown to ordinary redraws or resuming HQ while battle still owns the canvas.
 
-No implementation is included in this document delivery. Each code batch must include complete changed files, applicable checks, and a fresh `index.html` cache token. Renderer/map/battle/online files go to R2; `index.html` goes to Render. The plan and any updated subsystem logs are repository-only.
+Batch 1 is now included as complete replacement files, with local checks and a fresh `index.html` cache token recorded above. Remaining code batches must follow the same delivery rule. Renderer/map/battle/online files go to R2; `index.html` goes to Render. The plan and updated subsystem logs are repository-only.
 
 #### Acceptance checks for Phase 1
 
@@ -185,17 +236,18 @@ No implementation is included in this document delivery. Each code batch must in
 | Rapid room changes and leave during fade | Run A's delayed callbacks after B starts and after leaving HQ; neither may hide B's card or mutate departed UI. | Pending |
 | Cold HQ entry with fast avatar and slow room textures | Card remains until required scene assets or deliberate fallbacks are usable; a valid scene frame precedes reveal. | Pending |
 | Required texture fails; optional asset fails; timeout | Outcome distinguishes these cases, offers usable recovery, and does not falsely report complete asset success. | Pending |
-| Dungeon floor → builder/HQ → Arena or TDM | Scanner does not survive into menus/loading or the next mode; same-floor exploration remains intact. Compare dedicated dungeon exit with any reachable generic builder exit. | Pending; generic render chain traced, button reachability still open |
+| Dungeon floor → builder/HQ → Arena or TDM | Scanner does not survive into menus/loading or the next mode; same-floor exploration remains intact. Compare dedicated dungeon exit with any reachable generic builder exit. | Pending runtime; normal dungeon result uses dedicated cleanup, reviewed pause footer has no builder exit |
+| Reconnect while boot or human activation is pending | New clocks retain reconnect suspension; rejoin restores the appropriate remaining time on both viewers. | Pending; LIFE-05 source gap documented |
 | Leave/restart/disconnect during loading or intro | Late callbacks do not boot a departed match; ready messages and engine start remain tied to the same match for both players. | Pending |
 | Repeated warm transitions | Resource/DOM counts plateau across repeated cycles; no accumulating input handlers, timers, or scene owners. | Pending; no memory measurement yet |
 
-Validation performed: manual source tracing and document content review only. No syntax/game tests were needed for this documentation-only delivery. No browser, simulation, FPS, network-failure, or memory test ran. The first two files that previously blocked inspection are now available; remaining uncertainty is in behavior and untraced callers, not access to those files.
+Validation for the initial Phase 1 pass was manual source tracing and document content review only. The extended review's selected automated checks are recorded under Phase 8. No browser, simulation, FPS, network-failure, or memory test ran. The first two files that previously blocked inspection are now available; remaining uncertainty is in behavior and untraced callers, not access to those files.
 
 ## Phase 2 — performance without changing the art style
 
 ### Static triage — 2026-09-09
 
-The renderer already batches terrain, gates shadow updates, distinguishes structural unit rebuilds from stat-only label patches, and exposes performance controls. This pass identifies where to measure and one avoidable-work candidate. It does not establish the cause of REP-06 or claim an FPS gain. Phase 1 fixes remain the first implementation batch; Phase 2 preparation can proceed while its runtime checks are pending.
+The renderer already batches terrain, gates shadow updates, distinguishes structural unit rebuilds from stat-only label patches, and exposes performance controls. This pass identifies where to measure and one avoidable-work candidate. It does not establish the cause of REP-06 or claim an FPS gain. Phase 1's initial fixes are locally tested; Phase 2 preparation can proceed while runtime checks remain pending.
 
 | ID | Source-backed observation | Measurement and bounded next action |
 | --- | --- | --- |
@@ -206,6 +258,12 @@ The renderer already batches terrain, gates shadow updates, distinguishes struct
 | PERF-05 | `renderFrame()` already compares terrain versions and separates unit structural changes from stat-only patches (`three-renderer.js:27318–27381`). It also calls label, visibility, animation, and VFX updates each processed frame. | Use a CPU trace to identify costly consumers before introducing additional caches. A function named `rebuild...` is not evidence that it rebuilds every frame; inspect its internal guard. Preserve HP drains during death/action tweens and correct fog visibility. |
 
 ### Existing tools and capture limits
+
+The ROADMAP performance history has now been read against current source. Its old object counts came from an 8×8 TDM probe under software graphics, not the user's hardware. Its ranked optimization list mixes proposals with work subsequently completed in the same document. In particular, current `three-vfx-effects.js:5258–5285` already has one shared ticker for registered bespoke effects, and `19864–19916` already has bulk cleanup. Do not schedule either as a new architecture project. Some effect-specific DOM animation callbacks still exist; measure their actual cost before expanding the shared ticker's scope.
+
+**PERF-06 — Medium investigation priority: separate hidden work from expensive visible work.** Instrument the effects ticker, main renderer, HQ loop, and character viewer independently. A battle frame cap does not automatically cap an independent effects ticker, and deactivating the renderer does not establish that all its producers stopped. LIFE-06 supplies the specific departure path to inspect. Report processed frames, callback time, and active-effect counts; a lower draw count alone does not show that CPU work stopped.
+
+**PERF-07 — Medium investigation priority: measure AI decision stalls separately from graphics.** The joint planner loops over reachable tiles, visible enemies, and eligible damage spells (`ai.js:2923–3000`). It is a bounded search by candidate count, but this loop has no elapsed-time budget or yielding point. Loop/stall safety in `aiTakeTurn` prevents repeated failed actions; it does not bound one expensive scoring pass. Capture decision duration and candidate counts on the same board/loadout as the frame trace before reducing search breadth. Avoid turning a rendering complaint into weaker AI without evidence.
 
 - `ThreeRenderer._renderer` exposes the live renderer (`three-renderer.js:33779`), providing a starting point for draw, triangle, geometry, and texture counters. Inspect counter reset behavior across postprocessing and split-screen passes before treating a sample as a full-frame total. These counters are not GPU timings or exact memory usage.
 - The existing FPS counter (`three-renderer.js:27230`) reports a rounded average over roughly half a second. It cannot supply p95/p99 frame times or explain a stall. The frame cap is applied before this counter in the battle loop. Record the effective cap; a capped result must not be mistaken for a performance ceiling.
@@ -249,6 +307,42 @@ Before/after measurements and matched images on the same setup, plus a list of c
 
 ## Phase 3 — one familiar pause menu
 
+### Source triage — 2026-09-09
+
+**PAUSE-01 — Medium: HQ and battle use different entry and suspension paths.** HQ Escape first closes its terminal or contextual panel, then calls `_hqOpenSettings()` (`map.js:451`). Settings suspends the building through `_hqSuspend()` and opens the main-menu settings (`652–658`). Battle/editor Escape has its own modal/back-target priority before toggling the pause shell (`ui.js:10515–10532`). Preserve these priorities when unifying presentation. Current HQ history also records asynchronous pointer-lock cleanup on leave (`CLAUDE.md`, terminal/dead-cursor notes); a new Resume action must use that lifecycle rather than directly enabling movement.
+
+**PAUSE-02 — Medium: opening the menu removes cinematic presentation without a reviewed sequence-level cancellation contract.** `openPauseMenu()` removes `_cinematicEl` and clears `_activeCinematic` (`ui.js:6471–6478`); closing only clears the menu flag and hides its element (`7505–7512`). `playCinematicAttack()` refuses new duel cinematics while `_gamePaused` (`battle.js:13323–13327`). This confirms presentation suppression, not suspension of every action callback, VFX, or camera sequence. Before editing, inventory consumers of the active cinematic and their completion/cleanup callbacks. A menu must not make damage resolve twice, strand an action, or leave the camera owned by a departed sequence.
+
+**PAUSE-03 — Medium: the unconditional “PAUSED” title promises more than the reviewed clock path enforces.** The shell always prints that title (`ui.js:6531`), but opening it only sets `_gamePaused` and adjusts presentation. The shot-clock interval checks `pausedAt`, not that menu flag (`battle.js:54561–54572`), and the menu does not invoke the reconnect clock helpers. The reviewed online clock can therefore continue while this local menu is open. Use a truthful online label such as “Match menu — online play continues.” Offline AI, action timers, animations, and audio still need their own consumer audit before promising a full offline pause. This finding concerns the visible promise and inspected paths; it is not a claim that every subsystem ignores the menu.
+
+### Proposed context/action contract
+
+| Context | Shared shell content and actions | Clock/input contract |
+| --- | --- | --- |
+| HQ | Resume, shared settings and controls, Quit to Main Menu; omit match score/round/duration. | Use HQ suspend/resume and existing pointer-lock cleanup. Closing a nested panel consumes one Escape. Leaving HQ must not resume it afterward. |
+| Offline battle or dungeon | Resume, shared settings, relevant match information, contextual departure. | Audit simulation consumers before labeling the game paused. A dungeon departure must use `_mdExitToMenu()` so party restoration and run cleanup remain intact. |
+| Online battle, either role | Match menu, settings, relevant match information, explicit leave/forfeit action. | Local menu does not imply a negotiated pause. Keep reconnect suspension independent; closing the menu cannot resume a disconnected clock. |
+| Editor | Resume, settings and controls; preserve omission of match information. | Retain editor input ownership and existing save/discard behavior; review that behavior before adding a departure action. |
+| Loading, intro, or scene departure | Do not expose actions whose cancellation path has not been defined. | Any reachable exit retires the current boot/scene identity under Phase 1. Closing a menu after departure cannot restore the old scene. |
+
+This is a proposed contract, not an implemented menu. Extend the existing shell and settings builders in place. The reviewed pause footer currently exposes only Resume, so contextual exit/forfeit actions require real handlers and confirmation behavior, not just renamed buttons.
+
+### Bounded next batch and acceptance
+
+After the first Phase 1 cleanup batch, inventory the main-menu settings close callback, HQ resume path, keyboard/controller menu handlers, and cinematic completion consumers. Then wire the shared shell to an explicit context, reuse current settings persistence, and make online wording accurate. Treat offline simulation suspension as a separate bounded change once its consumers are known.
+
+Check one Escape per action; focus moves into the menu and returns to a valid control; Tab/controller navigation does not also target battle units; repeated settings changes persist; HQ has no stale match information; delayed pointer lock cannot capture a departed screen; opening during an action neither duplicates nor loses its resolution; menu close cannot clear reconnect suspension. These are acceptance requirements, not test results. The battle Tab handlers immediately below the Escape handler (`ui.js:10535–10546`) have no `_gamePaused` guard, which was addressed in this delivery; focus trapping/restoration remains open.
+
+### Input and cancellation follow-up
+
+**PAUSE-04 — High: Tab can change the selected battle target while the pause menu is open.** The document-level spell and attack Tab handlers check battle/action state but do not check the menu (`ui.js:10535–10546`). `cycleSpellTarget()` and `cycleAttackTarget()` also have no menu guard; they update `state.pendingTarget`, previews, and camera/selection rendering (`battle.js:41708–41742`). Opening the menu does not clear the targeting state. The concrete route is: arm a spell with multiple targets, open the pause menu with the controller pause button or direct menu control, then press Tab. The reviewed handler prevents normal Tab focus movement and cycles the battle target. This is a code-confirmed input-routing defect; browser reproduction remains pending. Route keyboard input through the active interaction owner and add focus handling to the shell. Do not “fix” it by discarding the player's pending target when opening settings.
+
+**PAUSE-05 — High: title-screen classification can take precedence over settings navigation on controller.** `_context()` checks `state.titleScreenVisible` before `_mmSettingsOpen()` and returns `title` (`state.js:6293–6307`). In that context, controller Confirm/Pause calls `enterGameFromTitle()` (`6611–6613`), which routes to `mainMenuPage` (`map.js:87–107`). HQ resume explicitly keeps `titleScreenVisible = true` (`map.js:620–624`), and `_openMainMenuSettings()` only shows the settings page (`1745–1749`). The settings path therefore retains the title flag in the reviewed HQ flow. Give visible front-end panels their own navigation context before the splash/title fallback. Verify settings from both HQ and the main menu, including Confirm, Back, sticks, sliders, and remapping. The battle pause overlay already has a controller DOM-navigation route; do not replace that working path.
+
+**PAUSE-02 follow-up:** the legacy duel handle already exposes `skip`, which clears its tracked timers (`battle.js:13675–13713`). The pause handler bypasses it by removing the element directly. Reuse or extend the existing retirement method after deciding whether opening a menu skips or suspends this presentation. Some effect callbacks in the duel use separate timeouts, so inspect those too; calling `skip` is not yet evidence that all asynchronous work is retired. Preserve damage resolution independently of presentation cleanup.
+
+**HQ settings return is already lifecycle-aware.** Back calls `_settingsBack()` → `_hqReturnOrMenu()` (`map.js:1751–1755`, `635–649`), which resumes a suspended HQ when appropriate. `_hqResume()` refuses to resume beneath an active battle renderer (`614–629`). The shared menu should retain this return contract. A direct call to unpause the walker would bypass an existing safeguard.
+
 ### Review and design
 
 Use one shared shell in HQ and battle with consistent typography, spacing, focus behavior, navigation, and settings persistence. Proposed primary actions: Resume, Settings, Controls, contextual Match Information, Return to HQ when relevant, and Quit to Main Menu. Preserve useful existing audio/video/status controls without making all of them compete on the first screen.
@@ -262,6 +356,35 @@ Escape should first dismiss the current nested interaction, then open/close the 
 A context/action table and implemented shared menu in existing files. HQ must not show a stale scoreboard or battle timer. Repeated open/close, nested settings, cinematic interruption, and leaving a scene must restore the correct input and clock state.
 
 ## Phase 4 — cinematic action camera
+
+### Source review and findings
+
+The camera has substantial existing composition work. `_tpsZoomFitTiles()` uses the renderer FOV and viewport aspect (`battle.js:18683–18697`), shoulder anchoring includes model height and airborne elevation (`18703–18737`), close/gun casts can drift rather than jump-cut, and multiple-target casts can request a wider hit shot. The reviewed code also preserves a tactical return view and checks shot identity before delayed beats. Keep these behaviors.
+
+**CAM-02 — High: model height changes the pivot but several shot distances still assume a fixed body size.** `getUnitVisualHeight()` returns a scaled height from `modelDef.heightRatio` (`three-renderer.js:33717–33722`); it is not an animated bounding box. `_tpsShoulderLift()` uses 80% of that height. The face shot chooses fixed boom distances (`battle.js:19014–19043`), while pair fits use fixed allowances such as vertical gap + 3.0 tiles or + 2.6 tiles (`18996–18999`, `19154–19162`). A tall model can therefore raise the aim point without proportionally widening the shot to retain its feet. This is a credible source explanation for REP-05, not a verified crop on a specific model.
+
+Proposed fix: define required subject bounds for each shot. Start with cached model bounds transformed into the live pose/scale, using conservative animated margins where exact skinned bounds would be costly. Include feet, head, wings/weapons only where the action needs them. Solve distance and focal offset together against the usable viewport, including letterbox and HUD exclusions. Use the current height accessor as a fallback; do not recompute every skinned vertex every frame. Validate short, normal, tall, wide, airborne, and sprite-fallback actors.
+
+**CAM-03 — High: the multiple-target wide shot fits a two-dimensional tile spread, not the affected actors' vertical extent.** The `frameTiles` branch computes min/max X/Y, derives one horizontal span, and anchors on the ground at its center (`battle.js:19076–19109`). It does not calculate min/max affected unit elevation or body height. The normal pair path separately considers elevation, so its safeguard does not cover this branch. Test an area or line attack hitting ground and elevated/flying units, including a tall unit at the near edge. Carry subject identity/elevation into framing locally and into the guest's allowed view, rather than only adding a bigger constant to every wide shot.
+
+**CAM-04 — Medium: multiple camera layers can issue beats for the same action.** The base shot, family treatment, and bespoke sequence share a sequence ID, which protects against an old action. That does not by itself resolve competition within the current action. The base hit callback runs at `_cineCutMs`; the beam family schedules a side dolly at that cut plus `actionMs(8)` (`battle.js:19064–19178`, `20111–20121`). Both are valid owners under the current ID. A hard cut followed almost immediately by another move is source-backed scheduling behavior; whether it causes REP-04's awkward cut needs a capture. Give each action a declared owner for cast, release, travel, impact, and return, so the family layer can replace a base beat intentionally rather than issue a competing move.
+
+**CAM-01 follow-up — preserve the cinematic collision decision.** Cinematic TPS deliberately bypasses boom collision to avoid being pushed into a close-up by a wall behind the subject (`three-camera.js:304–317`). The renderer fades blockers along rays toward caster/target (`three-renderer.js:14884–14900`, `15103` onward). Re-enabling collision globally would revive a documented failure. For multiple-target shots, inspect whether every important target/effect has a clearance subject; the primary caster/target rays alone are not proof that an entire wide shot is unobstructed.
+
+### Shot acceptance matrix
+
+| Fixture | Required composition | Reject the change if |
+| --- | --- | --- |
+| Adjacent melee, two ordinary units | Contact and reaction remain readable; return restores the tactical view. | The move cuts away before contact or introduces a second return snap. |
+| Tall caster against a short target | Required full-body pose fits at wind-up and release; the target remains locatable. | Raising the pivot crops the feet or the camera backs away excessively from every normal unit. |
+| Ground caster, flying/elevated target | Fit actual vertical separation and model extent. | Camera frames empty ground or loses a descending body below the frame. |
+| Long beam and piercing beam | Show a meaningful length of the beam, then impacts. | Beam collapses to a head-on dot, or a base cut fights a family dolly. |
+| AoE across ledge/roof/flight | Fit the visible affected units and necessary effect volume. | Horizontal spread fits but high or near-edge subjects are clipped. |
+| Unit against wall, room enclosure | Keep the shot distance; fade the actual blocking geometry. | Collision causes an extreme close-up or fade reveals a concealed enemy. |
+| Narrow viewport and short landscape viewport | Fit against actual render area and overlay-safe region. | Subjects are technically in the canvas but hidden behind letterbox/chrome. |
+| Kill, interruption, menu, next action | Resolve once; release camera ownership once. | A dead victim is reframed after departure or a delayed beat steals the new action's camera. |
+
+For each fixture, record the shot family, source/target IDs, elevations, visual bounds, FOV/aspect, source/release/impact times, and return owner. Use the same action on host and guest with different legal visibility. These are pending capture requirements, not visual scores assigned from source.
 
 ### Review
 
@@ -281,6 +404,43 @@ Representative before/after captures and a shot acceptance checklist. The player
 
 ## Phase 5 — spell VFX and animation timing
 
+### Timing and effect ownership findings
+
+**VFX-01 — Existing strike-frame contract confirmed; residual timing cases remain.** The slot record contains source `strikeAt`, optional trim, and time scale. `_slotStrikeMs()` subtracts the trim start and divides by the actual action/default slot scale; `_unitAnimStrikeMs()` follows the first available animation slot (`three-renderer.js:10676–10697`). Battle casts trade hold time for that lead (`battle.js:8970–9018`), and basic attacks use `_attackStrikeLeadMs()` (`8886–8890`). This is already shared infrastructure and should remain the authority.
+
+The remaining audit is the deadline: if lead exceeds available hold, `Math.max(0, holdMs - lead)` cannot start the clip before time zero. A zero-hold support path explicitly starts on the beat. Record the selected slot, strike lead, available hold, actual launch/impact time, and fallback reason. Choose whether to lengthen presentation, accelerate a supported clip, or accept a documented fallback for that action; do not silently delay gameplay in an isolated spell handler. Also test renderer time warp and already-scheduled action delays separately: `_animNow()` owns model/tween time, while `actionMs()` transforms newly scheduled delays (`three-renderer.js:1491–1504`, `battle.js:28587–28594`). They are related systems, not proof of one universal clock.
+
+**VFX-02 — Medium: the strike tests cover structure and asset metadata, not observed synchronization.** `anim-strike.test.js` checks slot values, optional GLB duration bounds, and source patterns in consumers. Its GLB check skips when the animation directory is absent. It cannot establish that a projectile leaves the rendered hand on the expected frame, or that the guest selected the same fallback. Keep these tests and add focused timing assertions/captures for actual consumers; do not claim visual acceptance from regex matches. This pass ran the test file: two checks passed and the GLB check skipped because the animation directory is absent. No contact-sheet review ran.
+
+**VFX-03 — Medium: reuse the existing effect lifetime machinery and close its scene boundary.** There are pooled particles in `three-vfx.js`, registered bespoke effects under `_fxSchedule`, and `clearAll()` in the effects file. LIFE-06 identifies the missing deactivation call; delayed spawns need the same scene identity as loading. Keep character previews isolated: the stage API deliberately calls the internal `fire` rather than the online-wrapped public entry (`three-vfx-effects.js:22980–22988`). A global clear called from the wrong owner could erase a live preview or battle effect.
+
+**VFX-04 — High: guest visibility checks admit an entire multi-anchor effect when any tested anchor is visible.** The sender carries source/destination coordinates and tile lists (`online.js:2176–2229`). The guest tests some anchors, then forwards the original params unchanged if any tested point is visible (`3743–3768`). Its test list includes `tx`, `fromX`, `toX`, `casterX`, and `hitTiles`, but not every supported alias/list (`sx/sy`, `tiles`, `chain`). `_fireTeleport()` renders both departure and arrival from the received endpoints (`three-vfx-effects.js:19777–19808`); it has no per-endpoint visibility test in that path.
+
+Concrete check: an enemy teleports from a hidden origin to a visible destination. Confirm that the guest sees the arrival without a portal at the hidden origin. Reverse the visibility and test both aliases. Repeat for a beam/chain crossing visible and hidden tiles. Source confirms the coarse all-or-nothing admission and unfiltered dispatch; a screen-visible leak has not been reproduced. Normalize coordinate forms and filter independent effect anchors/segments according to the viewer's information rules. Preserve legitimate visible travel and impacts. Dropping every partially hidden effect would hide feedback the player is entitled to see.
+
+### Representative spell matrix
+
+The following IDs were checked against the current `SPELL_BY_ID` registry. They are fixtures for the next pass, not claims that every listed spell has a defect. The registry contains 65 kinds; this sample covers major timing and ownership families, including recent two-stage and displacement mechanics.
+
+| Family | Current examples | Trace and acceptance |
+| --- | --- | --- |
+| Single projectile / strike | `fire1` Fireball; `guardSlash` Brave Charge | Slot selection → release → travel → mitigation/result. Distinguish spell `kind` from the name's implied animation. |
+| Beam / split beam | `railgun` Railgun; `raceFractalNeedle` Fractal Needle | Side framing, origin height, each branch/impact, guest segment visibility. |
+| Multi-hit / barrage | `doubleShot` Double Pump; `raceNinefoldScratch` Ninefold Scratch | Hit count and beat spacing; cumulative feedback without duplicate damage or cut restart. |
+| Dash / tackle | `rampage` Rampage; `raceSkyTackle` Sky Tackle | Kind-specific clip, travel collision, contact, landing, and final camera owner. |
+| Heal / support | `heal1` Heal; `protect1` Protect | Bloom/status must match the chosen animation; full-health/no-op behavior remains truthful. |
+| Terrain construction | `rampart` Rampart; `wallOfFire` Wall of Fire | Legal footprint, progressive visual build, collision state, and readable persistent hazard. |
+| Delayed payoff | `sharedNuke` Nuke; `raceProphecyOfDisaster` Prophecy of Disaster | Mark belongs to the correct turn; payoff uses current valid targets and its own action/scene identity. |
+| Possession / ownership | `racePossession` Possession; `raceEnthrall` Enthrall | Control, team color, target legality, fog, and guest state agree after application and expiry. |
+| Paired deployment | `raceGravePassage` Grave Passage; `raceTunnelNetwork` Tunnel Network | First/second placement remain one action with distinct valid anchors; cancellation leaves no partial effect. |
+| Summon / revival | `raceSummonCreation` Summon Creation; `raceRaiseDead` Raise the Dead | Spawn/return pose, ownership, labels, and turn eligibility agree; no duplicate actor or stale corpse. |
+
+For each tested cast, record the actual slot/fallback, camera family/bespoke sequence, VFX intents, sound cue, target set, and authority/relay path. Use grayscale or reduced-saturation comparisons as a check that silhouette, motion, and impact shape distinguish the family; color alone is insufficient. Never count a nonempty mapping as a successful visual.
+
+### Implementation boundary
+
+Fix visibility and retirement before expanding spectacle. Then choose one ordinary projectile, one beam, one support action, and one movement spell to validate the shared timing contract. Expand by family once those are correct. Maintain the authored signature sequences in `SPELL_CINEMATICS.md`, but verify their current implementation: that document contains both proposals and implemented ideas, so its candidate list is not a missing-feature list.
+
 ### Review
 
 Build a representative spell matrix covering projectile, beam, melee, dash/tackle, area damage, heal, buff/debuff, summon, terrain change, multi-hit, and major cinematic abilities. Audit new spell kinds as well as older shared families.
@@ -298,6 +458,58 @@ Synchronize presentation with authoritative outcomes. Do not change gameplay res
 Spell identity/timing matrix, code changes, and representative captures at supported speeds. Effects communicate the correct target and result, and sustained use remains within the agreed performance budget.
 
 ## Phase 6 — Arena and Team Deathmatch AI
+
+### Rules and existing strengths
+
+The AI uses an effective-HP value model, threat estimates, focus selection, move-plus-action search, legal target queries, and failure/stall guards. `AI_REDESIGN.md` explains the intended model; current source is authoritative where it differs from that history. Changes should retain one brain and its trainable-weight routing rather than add another competing scorer.
+
+| Question | Source evidence | Review conclusion |
+| --- | --- | --- |
+| Does AI still assume five Keys are required in normal Arena? | Arena defines five spawned / three required (`state.js:249–276`); board preparation sets `state.hourglassTarget = getKeysToWin(...)` (`battle.js:33743–33753`); AI reads it (`ai.js:1008`). | AI-01's initial suspicion is resolved for the standard initialized Arena path. The fallback of five is not evidence of a normal three-of-five bug. Check unusual restore/custom states separately. |
+| Does standard TDM retain Arena objectives? | TDM disables towers, Nexus, and Keys and uses 12 rounds (`state.js:278–295`). Objective initialization empties Keys (`battle.js:24555–24560`), nulls towers (`map.js:5685–5697`), and clears Nexus when disabled (`5760–5763`). | Generic AI objective branches do not prove normal TDM chases nonexistent objectives. Test repeated mode changes and custom paths if stale objective state is reported. |
+| Does AI blindly attack concealed enemies? | `buildVision()` filters concealment and visible tiles (`ai.js:849–864`); threat/focus construction uses that list. | A blanket cheating claim is unsupported. Audit global win-state information separately: total carriers, alive counts, and respawn fields may be public or hidden under the game's UI rules. |
+| Are weights disconnected from training? | Current `ai-weights.test.js` checks defaults, live reads, routing, and fallback values. | All seven tests passed in this pass. This validates table wiring, not good tactical decisions. |
+| Can the AI loop forever after an action fails? | Per-activation failure memos and loop/stall guards exist (`ai.js:1134–1196`, `5083–5137`). | Preserve these guards. A forced turn-end is a recovery event to diagnose, not successful decision-making. |
+
+### Prioritized findings
+
+**AI-02 — Medium: one movement goal uses obsolete/fallback dimensions.** `advance_to_mid` computes its destination from `state.mapCols || 15` and `state.mapRows || 8` (`ai.js:3267–3274`). Other goals use `bw()`/`bh()`. The reviewed state and map initialization do not populate those state fields. When absent, the destination is (7,4): near the right edge of an 8×8 board and far from the center of a 20×20 board. Its score of 70 can outrank the TDM no-enemy advance score of 60; earlier exploration and other candidates can still win. Replace the dimension source with the established board helpers, then check both spawn orientations. This is a source-confirmed inconsistent coordinate calculation, not an observed report of all units walking to (7,4).
+
+**AI-03 — Medium: waypoint cache identity omits changes that affect traversal.** `findWaypoint()` clears its cache only when the round changes; the key contains unit ID, start X/Y, and goal X/Y (`ai.js:3332–3340`). It does not include board/height/voxel versions, unit elevation, or movement abilities. Terrain spells, blockers, flight/phase changes, or another match at the same round can change the answer while preserving that key. The final movement selection still uses current legal tiles (`3499–3547`), so this is stale planning, not proof of illegal execution. Include the relevant board and traversal identity, or scope the cache to a decision. Test a previously blocked route becoming open and the reverse within one round.
+
+**AI-04 — Medium: an unhandled spell kind can receive positive value without demonstrated benefit.** The generic fallback ends with `if (s <= 0) s = 20` (`ai.js:2796–2811`), despite the redesign's no-floor principle. `scoreSpells()` then subtracts MP cost and admits a remaining positive score (`1887–1901`). This does not mean every unsupported kind will be cast: target discovery and affordability can reject it first. It does mean an unhandled, affordable candidate that reaches this branch may compete as useful with no quantified effect. Record which current kinds reach the fallback before changing behavior. Prefer explicit supported value or an identified unsupported diagnostic over a silent positive floor. Do not set every unknown spell to zero without ensuring required utility actions still have a scorer and executor.
+
+**AI-05 — High: hypothetical move-plus-spell scoring can value a line attack from a position where that line cannot hit.** `jointMoveActionSearch()` includes `line`/`linePush` through `DMG_KINDS`; its hypothetical spell loop checks reach and line of sight, then calls the damage-value helper (`ai.js:166–168`, `2935–2944`, `2967–2974`). It does not apply the eight-ray alignment restriction used by the actual line scorer (`2108–2118`) and target picker (`4573–4592`). `scoreOffensiveHit()` values damage/utility but does not supply that geometric test (`1505–1529`). A destination with an enemy offset by (2,1), for example, may be in range and unobstructed but not on a permitted line.
+
+The actual shot is re-picked after movement, so the existing execution checks can prevent the illegal cast. They cannot refund the movement AP spent pursuing its imaginary value. Share the prospective-origin legality/footprint query with actual targeting, or exclude unsupported kinds from the joint estimate until that query exists. Test an aligned versus unaligned tile with the same range and comparable danger; include a wall, elevation, and a different affordable spell so the planner selects a real follow-up action.
+
+**AI-06 — Medium: late-match urgency is not derived from the selected mode's remaining rounds.** `assessWinCondition()` sets urgency at rounds 15, 25, and 40 (`ai.js:1030–1031`); normal TDM ends at 12 and Arena's safety cap is 100. The reviewed TDM hunt goal considers engagement and target priority, but not the kill-score lead or rounds remaining (`3103–3117`). This is a missing endgame input in these paths, not a proof that the CPU always makes the wrong final-round choice. Use current mode rules and score state to distinguish protecting a lead from seeking a needed kill, while keeping an immediate legal win/denial above generic caution. Evaluate those cases before tuning broad aggression multipliers.
+
+### Decision scenario suite — specified, not simulated
+
+| ID | Setup | Expected decision evidence |
+| --- | --- | --- |
+| AI-S01 | Arena: team carries two Keys; a third is legally reachable; an optional attack is also available. | Candidate explanation reflects a winning pickup, its legal path, and whether any prior required action prevents it. |
+| AI-S02 | Arena: opponent threatens the last required Key or final Nexus zone. | A legal denial is evaluated against ordinary damage; unseen carrier positions are not invented. |
+| AI-S03 | TDM: same board/units, first tied then leading/trailing near round 12. | Explanations use remaining rounds and actual scoring; they do not introduce tower/Key objectives. |
+| AI-S04 | No visible enemy on 8×8 and 20×20 boards, mirrored starting sides. | Advance goals use current board dimensions and remain in bounds; no fixed (7,4) bias. |
+| AI-S05 | Cache a route, then build/remove terrain or change flight within the round. | Recomputed route reflects the change; failure does not reuse a stale negative cache result. |
+| AI-S06 | Beam specialist can move to an aligned or unaligned firing tile. | Only positions with a legal follow-up line receive beam value. Record the planned and actual action. |
+| AI-S07 | Enemy is concealed; reveal it, then conceal it again without changing its coordinates. | Target and threat sets follow legal information; cached estimates do not retain a forbidden target. |
+| AI-S08 | Ally has critical HP, then full HP; enemy has little remaining effective HP. | Healing respects deficit/threat; damage avoids paying for worthless overkill. |
+| AI-S09 | Possession, paired placement, revival, or a blocked two-stage action. | Correct controller/target state, one AP-cost contract, and a clean failure memo without a turn loop. |
+| AI-S10 | Large legal move set and a full spell loadout. | Record decision time, candidate count, winning score, and runner-up; compare quality before limiting search. |
+
+Capture action and destination scores before/after danger costs, intent reason, legal target count, rejected-action reason, AP/MP before/after, and decision duration. Existing `_aiLastIntent`, debug fallback logging, version stamps, and safety logs provide starting points. Keep diagnostics opt-in and bounded. Do not flood the ordinary player log with score arithmetic.
+
+### Bounded implementation order
+
+1. Correct the board-center source and waypoint invalidation. These are isolated navigation inputs, so validate without retuning combat weights.
+2. Make joint move-plus-action estimates respect actual geometry and affordability at the candidate origin. Compare plan versus execution.
+3. Inventory fallback scorer use across the 65 current kinds; fill demonstrated scoring/execution gaps, including recent mechanics.
+4. Add mode-aware endgame evaluation, then measure candidate search cost and consider bounded pruning.
+
+Update `EW_AI_VERSION` for behavior changes and retain the weight routing tested by `ai-weights.test.js`. Balance exports from different brains must remain distinguishable. P1-versus-CPU play remains required to judge how these changes feel; source correctness alone does not establish smarter play.
 
 ### Review
 
@@ -318,6 +530,45 @@ Correct rule/legality errors before tuning weights. Add concise decision explana
 A scenario suite with expected decisions, legal-action checks, decision-time measurements, and P1-versus-CPU observations when authorized. Do not judge intelligence by win rate alone or substitute auto-simulation for player experience.
 
 ## Phase 7 — maps and asset brief
+
+### Source inventory and constraints
+
+Current data generates one 8×8 Δ per 29 full launch-map entries, plus two standalone facility boards marked as Δ. The existing `delta-maps.test.js` passed both checks: Δ house rules and roster correspondence. Its checks cover data geometry such as symmetry, protected spawn/egress/Nexus space, collision declarations, reachability, and alternate routes. They do not render the map, verify every runtime collision, or establish balanced combat. No full-map or rendered-HQ acceptance is implied.
+
+The 29 named `_NR_BUILDERS` cover every `near` key found in the current map metadata. Δ registration injects the `near` builder into its environment; full maps retain their own environment path (`data.js:13404–13439`). The same site scenery is adapted for HQ by `_hqBuildSetting()` (`three-renderer.js:31065–31113`). Site board helpers select the Δ board and translate its terrain/walls/objects (`data.js:18881–18912`). This is a shared system, not a collection of independent screenshots to edit one by one.
+
+**MAP-01 — Medium: a scenery change can alter both battle occlusion and HQ walkability.** HQ converts selected scenery bounds into blockers and drops pieces that conflict with the perimeter, entrance, or console. A wider prop or new placement can change those decisions. Review its battle framing and HQ traversal together, with the site's existing scale and generator. A decorative change is not automatically gameplay-neutral when its bounds create collision.
+
+**MAP-02 — Medium investigation priority: full map, Δ, and HQ are related but different representations.** A `near` improvement on the Δ does not prove the full map is improved, and the HQ adapter intentionally replaces some apron/enclosure work with its shell. Capture all applicable contexts for a chosen site. Mark the intended scope explicitly; do not duplicate scenery in HQ or add a second perimeter because the battle version uses an apron.
+
+**MAP-03 — Medium investigation priority: verify material use before requesting replacement art.** Eight authored HQ tileables already exist in `DOOR_HQ.textures` (`data.js:16734–16743`): terrazzo, hallway stone, oxblood plaster, teal trim, acoustic ceiling, cracked concrete, beige drywall, and taupe carpet. Near scenery also uses existing terrain textures and procedural/model props. Missing visual coherence can come from scale, UV repetition, lighting, incorrect texture binding, or placement. A new texture pack will not fix LOAD-02/03 or a shader error. Start by checking those contracts on one representative room.
+
+### Representative environment audit order
+
+This order maximizes coverage of different rendering and readability problems. It is not a claim that these maps look worse than the others; visual ranking is still pending.
+
+| Site / variant | What it exercises | Specific review target |
+| --- | --- | --- |
+| `prebuilt_backrooms_delta` and its HQ site | Low interior, repeated wallpaper/carpet, partitions, enclosed light. | Wall/floor seams, repeat scale, near-camera cutaway, corridor readability, and black-material diagnostics. |
+| `prebuilt_cern_delta` and its HQ site | Industrial ring, beamlines, metallic surfaces, glow. | Distinguish scenery glow from spell targeting; preserve console/entrance clearance and readable silhouettes. |
+| `prebuilt_nuketown_delta` and full map | Built streets, buildings, cover and varied heights. | Door/window scale, believable foundations, cover cues, and cinematic obstruction at corners. |
+| `prebuilt_shasta_delta` and full map | Natural slopes, foliage, rock/snow/water transitions. | Surface joins, trees on credible ground, cast-shadow cost, and skyline visibility. |
+| `prebuilt_atlantis_delta` and full map | Liquid-heavy setting and architecture. | Water versus walkable floor, reflections/transparency, depth cues, and overlapping VFX. |
+| `prebuilt_moon_delta` and full map | Sparse terrain and strong silhouette contrast. | Crater edges, prop scale, landing-site legibility, and excessive clutter introduced by fixes. |
+| `prebuilt_flatlands_delta` and its HQ site | Deliberate emptiness. | Preserve negative space and authored atmosphere; do not fill it with generic props to satisfy a density target. |
+
+For each site record: screenshot/camera, map ID, biome/time/weather, mode, render quality, topology warnings, visible material faults, walkable/blocked ambiguity, and frame cost. Rank findings only after seeing them. Keep art judgments separate from reproducible collision/material defects.
+
+### Scoped asset brief — inventory first, no purchases proposed
+
+| Need | First use and acceptance | Existing material to reuse | New asset only if |
+| --- | --- | --- | --- |
+| Floor-to-wall and terrain transition pieces | Backrooms/CERN seam pilot; no gaps or misleading walkable ledges. | Existing tileables, `_nrRoom`/wall/apron primitives and map edge helpers. | Geometry/UV changes cannot produce the required transition cleanly. Specify module dimensions, pivot, snapping, and collision role. |
+| Cohesive surface variation | One room at actual viewing distance; readable material without obvious repeat blocks. | Authored HQ surfaces and current terrain variants. | A matched alternate/decals are needed after UV scale and lighting are correct. Match the palette and texel density. |
+| Reusable small props | A specific clearance/readability problem, not general filling of empty space. | Current catalogue and near-builder props. | Inventory lacks the required silhouette/use. Specify size in existing world units, pivot, material slots, shadow behavior, and both-context collision. |
+| Natural transition detail | Shasta slope/shore pilot. | Existing tree, rock, mound and surface helpers. | Existing pieces cannot meet the visual target within draw/texture budgets. Favor reuse over unique high-resolution assets. |
+
+Do not assume extra normal/roughness maps help: verify the material path consumes them. Asset dimensions and texture resolutions should be set after the Phase 2 baseline and close-view capture. Each requested asset should include an exact consumer, reusable locations, source/licensing record, and a rendered acceptance comparison. No external pack was researched or recommended in this pass.
 
 ### Review
 
@@ -340,6 +591,58 @@ Inventory existing assets before requesting more. For each actual recommendation
 A ranked map audit, one representative improved environment before broad rollout, and a precise asset brief separating reusable essentials from optional detail. Verify sightlines, navigation, camera framing, and performance after dressing changes.
 
 ## Phase 8 — complete player and developer experience
+
+### Integrated player journey findings
+
+The highest-confidence UX defects in this review arise at boundaries: a menu consumes battle input, a reconnect banner promises recovery before current state is established, a loading card reports completion despite failed assets, or a camera fit ignores the subjects' vertical extent. Address these before adding more menu pages or effects.
+
+| Journey | Existing behavior / risk | Acceptance evidence |
+| --- | --- | --- |
+| Title → main menu → HQ/settings | Title flags are reused across front-end screens; PAUSE-05 identifies a controller routing conflict. | All visible controls work by mouse, keyboard, and controller; Confirm in settings does not send the player to the main menu. |
+| HQ → console → match setup | Existing suspend/leave and pointer-lock protections must remain intact. | One current canvas/input owner; Back returns to the right room; launch cannot recapture the cursor behind setup. |
+| Party/loadout → loading → first turn | LOAD-02/03 and LIFE-04/05 separate readiness, intro, and clock start. | The player sees a usable scene or truthful fallback; no local turn expires before the agreed ready state. |
+| Aim → menu → return to aim | PAUSE-04 can change targets under the menu. | Pending target is preserved, focus stays in the menu, and Resume restores the same legal targeting context. |
+| Cast → impact → next activation | CAM-02/03/04 and VFX-01/04 concern framing, timing, and legal visibility. | Actor, target, effect, outcome, and return of control are readable on both viewers. |
+| Disconnect → rejoin | Socket membership is restored before a guaranteed fresh state application. | Current board and active unit are confirmed; clock suspension/resumption follows the same match's recovery state. |
+| Result → HQ/builder → next match | Dedicated dungeon cleanup is present; labels/effects/scanner have different owners. | No old labels, effects, scanner, callbacks, or targeting state appear in the next context. |
+
+**UX-01 — High: modal focus/input ownership needs to be explicit.** PAUSE-04/05 are concrete examples. The pause shell's open/close functions do not establish a keyboard focus trap or restore the prior focused control (`ui.js:6471–6493`, `7505–7512`). Add these at the shared shell and route background shortcuts through the same owner. Test re-rendering tabs/settings: replacing `innerHTML` should leave focus on an equivalent control, not lose it to the document. Treat controller, keyboard, pointer lock, and mouse as consumers of one interaction state.
+
+**UX-02 — Medium: use the existing diagnostics to make failures actionable.** Retain the entry page's diagnostic report, AI intent/failure logs, and render counters, then add scene/match/action identity and a bounded recent-transition trace where needed. A useful report includes build token, browser, scene, mode/map, last transition, failed resource, and whether a fallback was used. Avoid a generic “something went wrong” message that cannot distinguish network, asset, shader, or boot failure. Ordinary player screens should expose the recovery action; detailed diagnostics belong behind a copy/report affordance.
+
+**DEV-01 — Medium: audit coverage must distinguish source-pattern checks from behavior.** The selected weight tests establish wiring; strike tests establish metadata/consumer presence; Δ tests establish generated-data rules. They do not cover mixed-visibility effects, user input under menus, match cancellation, or live shot composition. Add behavior tests at those boundaries for implementation batches. Keep existing tests as guards rather than substituting them for runtime acceptance.
+
+### Prioritized implementation backlog
+
+Severity describes potential player impact; confidence describes evidence. A High source risk is not a claim of a reproduced live bug. Effort is relative scope: Small is one established boundary/helper, Medium crosses a few consumers, Large requires a shared contract across subsystems. No calendar estimate is implied.
+
+| Order / batch | Findings and outcome | Files likely involved | Scope / dependency | Required validation |
+| --- | --- | --- | --- | --- |
+| 1. Scene handoff | LIFE-02, LOAD-01: retire battle labels and cancel stale HQ card fades. | `three-renderer.js`, `map.js`, HQ logs, `index.html` | Small; locally implemented and tested in this delivery. | Focused ownership/timer checks; syntax/full suite; repeated transition acceptance. |
+| 2. Input ownership | PAUSE-04/05, UX-01: menu controls cannot mutate the battle or route through the splash. | `state.js`, `ui.js`, `map.js`, `index.html` | Medium; PAUSE-04/05 locally implemented and tested; UX-01 focus work remains. | Target preserved under Tab, controller settings route, focus restore, one Escape action. |
+| 3. Reconnect and boot | LIFE-04/05: current match identity, state recovery, clock suspension across activation. | `battle.js`, `online.js`, possibly `server.js`, `index.html` | Large; inspect relays and server event ordering before adding fields. | Both roles; idle and active turn rejoin; before/after intro timeout; forfeit/rematch. |
+| 4. Effect lifetime and visibility | LIFE-06, VFX-03/04: retire old effects and filter hidden endpoints correctly. | `three-renderer.js`, `three-vfx-effects.js`, `online.js`, `index.html` | Medium; share scene identity with batch 3 where appropriate. | Long/delayed effects across exit; visible/hidden source and destination; preview isolation. |
+| 5. Truthful loading | LOAD-02/03/04: required resource outcomes and usable-frame readiness. | `map.js`, `battle.js`, `three-renderer.js`, `index.html` | Large; pilot one HQ site and battle map. | Cold/warm, failed/slow asset, shader failure, fallback, both-player readiness. |
+| 6. Camera fit and beat ownership | CAM-02/03/04: fit actual subjects and prevent competing same-action moves. | `battle.js`, `three-camera.js`, `three-renderer.js`, `online.js` if payload changes, `index.html` | Medium/Large; after lifecycle correctness. | Shot matrix, real bounds, aspect/overlays, mixed elevations, fog, stable return. |
+| 7. AI correctness | AI-02/03/05, then AI-04/06: real board coordinates, current routes, achievable follow-up actions. | `ai.js`, relevant existing targeting consumers/tests, `AI_REDESIGN.md`, `index.html` | Medium; separate navigation/legality from tuning. | AI-S04/05/06 first; existing weights; planned versus actual action; version stamp. |
+| 8. Shared pause presentation | PAUSE-01/02/03: common shell with truthful context and safe cinematic handling. | `ui.js`, `map.js`, `state.js`, existing styles, `index.html` | Medium; follows input fixes and suspension decisions. | Context table, settings persistence, pointer lock, offline/online semantics. |
+| 9. Performance and visual pilot | PERF-01–07, MAP-01–03, VFX-01/02: measured cost reductions and one coherent site/spell-family improvement. | Existing renderer/VFX/map/data files as indicated by measurements; `index.html` | Scope set by baseline; avoid blanket optimization. | Comparable traces, quality captures, topology checks, full/Δ/HQ contexts. |
+
+Every runtime delivery includes complete changed files and a fresh shared cache token in `index.html`. `server.js` and `index.html` go to Render; browser scripts/styles/assets go to R2; tests, plans, and build logs are repository-only. The current delivery changes four browser scripts and the entry-page token, as recorded above, and includes updated HQ logs.
+
+### Validation during the extended source-review pass (before implementation)
+
+- Refreshed main: still `4c740fcf6624a30d59e30c4d4dfea1a16dd85b03`. Preserved the newer local review additions rather than overwriting them with the uploaded document.
+- Read additional source for AI, camera, VFX, animation slots, server rejoin, game data, match selection, and entry diagnostics; consulted AI redesign, cinematic, roadmap, launch-readiness, and relevant project/canon instructions.
+- Enumerated game data with the existing loader: 501 spell-registry entries, 65 kinds, 60 map-metadata entries, and no unmatched metadata near-builder keys. This does not establish complete handler or asset coverage.
+- Ran `ai-weights.test.js`, `anim-strike.test.js`, and `delta-maps.test.js` using the available Node runtime: **11 passed, 0 failed, 1 skipped**. The skipped test requires the absent `rigged_animations/` GLBs. The seven AI checks and two Δ checks passed; two strike metadata/source checks passed.
+- Reviewed the document's evidence wording, findings, dependencies, source references, and delivery states. No gameplay files were edited. The full `npm test` suite, browser playtests, AI simulations, FPS captures, network-failure runs, and visual comparisons were not run.
+
+### Remaining evidence and exit criteria
+
+This is now a cross-system source review with bounded implementation work, not a finished runtime audit. REP-01 through REP-06 still need reproduction or matched captures; the pause divergence is source-confirmed, and new input findings have concrete source paths. A phase closes only when its implementation and listed acceptance evidence are complete. Do not mark all eight phases done because each now has a populated section.
+
+Batch 1 and the PAUSE-04/05 portion of batch 2 are now delivered together, with separate regression checks and no shared-menu redesign. Complete batch 2's focus ownership next, then address reconnect/effect boundaries. Further document-only work should deepen a specific unresolved trace or attach evidence, rather than keep restating the same plan. The most valuable remaining traces are the exact REP-02 element/exit route, full action/scene cancellation ownership, and all current spell kinds' target/scorer/executor correspondence.
 
 ### Player review
 
@@ -374,7 +677,10 @@ After each phase:
 | 2026-09-09 | 0 | Established all eight review areas, dependencies, acceptance criteria, and initial source findings. | Documentation content review; selected source inspection only. No code changes or gameplay tests. | Phase 1: obtain three-renderer.js and battle.js; trace startMatch/loading completion, minimap and nameplate ownership, result/HQ exit paths, and stale asynchronous callbacks. |
 | 2026-09-09 | 1 — source review in progress | Pinned the source baseline; obtained renderer/battle files; mapped principal scene owners; added LIFE-02/03/04 and LOAD-02/03, expanded LOAD-01, and defined three fix batches. | Static source and document review only. No game changes, runtime reproduction, or deployment. | Implement and validate the first bounded batch: retire battle labels during deactivation and cancel/identify HQ loading-card callbacks. Refresh source first; read relevant HQ logs before editing and include updated logs in delivery. Continue the minimap/boot caller audit before claiming those symptoms explained. |
 | 2026-09-09 | 1 follow-up / 2 preparation | Verified the uploaded review on current main with unchanged game source; traced generic render and dedicated dungeon exits; separated reconnect policy from boot cancellation; added PERF-01–05 and a repeatable capture protocol. | Static source tracing and document content review. No game edits, browser runs, FPS measurements, or deployment. | First code batch remains LIFE-02/LOAD-01. For further document review, resolve dungeon button reachability and reconnect-to-engine timing. Read ROADMAP performance history before optimizations; execute the capture protocol only with playtest authorization. |
+| 2026-09-09 | 1 follow-up / 3 preparation | Verified main's latest document upload with unchanged source; resolved normal dungeon result and pause-footer bindings; added LIFE-05 reconnect clock persistence finding; expanded PAUSE-01/02 and added PAUSE-03, menu context contract, and acceptance checks. | Source-path and document review only. No game edits, runtime reproduction, or deployment. | First code batch remains LIFE-02/LOAD-01. Next document pass: inspect server rejoin/state delivery for LIFE-05, then main-menu settings close/HQ resume, controller and Tab routing, and cinematic completion ownership for Phase 3. Keep LIFE-03 conditional until the reported minimap element and exit route are identified. |
+| 2026-09-09 | Extended review — all eight areas | Traced server rejoin/heartbeat and effects retirement; confirmed Tab/controller input defects; reviewed model/pair/AoE camera fits and competing beats; traced VFX timing/visibility; resolved standard Arena/TDM rule suspicions; added AI navigation/cache/joint-legality/endgame findings; inventoried generated maps and existing assets; consolidated nine implementation batches. | Data enumeration plus three existing test files: 11 passed, 0 failed, 1 GLB-dependent check skipped. Source and document review; no gameplay changes, full-suite run, browser playtest, simulation, performance capture, or deployment. | Implement batch 1 (LIFE-02/LOAD-01), then batch 2 (PAUSE-04/05 and focus ownership), with complete files and required validation. For continued review, trace full action/scene cancellation and all-kind target/scorer/executor correspondence; attach runtime evidence only when authorized. |
+| 2026-09-09 | 1 implementation / 3 input fixes | Implemented LIFE-02, LOAD-01, PAUSE-04 and PAUSE-05 in four existing scripts; added eight regression checks, refreshed the entry token, and updated both HQ logs. Complete-file delivery prepared. | Full package test command: 206 passed, 0 failed, 2 expected skips; all repo JS syntax checks passed. No live/browser, simulation, FPS, or host/guest acceptance. Not uploaded. | Complete UX-01 focus trap/restore and focus after settings re-render in the existing shell. Then reconnect/effect boundaries; keep texture-readiness and camera/AI findings open. |
 
 ## Resume instructions
 
-Use this file as the review tracker. Continue with the first unfinished phase and refresh the relevant repository files before editing. Preserve finding IDs and evidence distinctions. Do not mark reported bugs fixed based on a plausible source change alone.
+Use this file as the review tracker. Read the current conclusions, the relevant findings, and the Phase 8 backlog before work. Refresh the relevant repository files and preserve newer local deliveries. All eight areas now have source-review material; do not restart reconnaissance or deliver another outline of the same phases. Continue with a concrete implementation batch or a named unresolved evidence gap. Preserve finding IDs and evidence distinctions. Do not mark reported bugs fixed based on a plausible source change alone.

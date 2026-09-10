@@ -25434,6 +25434,9 @@ const ThreeRenderer = (function () {
         active = false;
         hideSplitscreen();
         _clearAnimations();
+        // HQ reuses the CSS2D layer: retire battle-owned labels before it
+        // reveals that layer. activate() rebuilds them for the next battle.
+        _clearPlates();
         _fluidTimeSec = 0;
         _fluidTextures = {};
         for (var _wfd2 = 0; _wfd2 < _waterfallTexList.length; _wfd2++) {
