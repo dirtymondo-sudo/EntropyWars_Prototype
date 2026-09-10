@@ -3,6 +3,7 @@
 Last updated: 2026-09-09 (America/Chicago)
 Repository: https://github.com/dirtymondo-sudo/EntropyWars_Prototype
 Baseline: Phase 1 source review pinned to main commit `f0a4c3341631d60cee2ac544e543a13754d21624` (2026-09-09 in America/Chicago). Phase 0 used an unpinned main snapshot.
+Continuation baseline: main commit `3da54eff8abbef3da87a1c0f72272919d84bd15e`, checked 2026-09-09 (America/Chicago). Its only change from the baseline above is the uploaded review document; the inspected game source and line references remain unchanged.
 Delivery: this document is repository/reference material only. No R2 upload or cache bump required.
 
 ## Objective
@@ -15,7 +16,7 @@ Each phase must leave behind evidence, prioritized findings, a bounded improveme
 
 - [x] Phase 0 — establish scope, inspect project instructions, and identify initial risks.
 - [ ] Phase 1 — in progress: source review and prioritized fix batch documented; implementation and runtime acceptance pending.
-- [ ] Phase 2 — performance baseline and optimizations that preserve the look.
+- [ ] Phase 2 — static triage and capture protocol documented; performance baseline and optimizations pending.
 - [ ] Phase 3 — one pause menu across battle and DOOR HQ.
 - [ ] Phase 4 — cinematic camera composition and continuity.
 - [ ] Phase 5 — spell identity, animation timing, and VFX.
@@ -154,13 +155,19 @@ Proposed fix: retain bounded loading, but return separate loaded/failed/timed-ou
 
 Evidence: `_updateMinimap` gates on `active` and board data, while the scanner predicate checks dungeon mode/floor/run state. Neither requires the battle to be the foreground screen. Results-to-builder does not directly call deactivation. However, normal tactical minimaps are already hidden by `hud.js:9267` (`#battleMinimap:not(.md-scanner)`), and HQ deactivation already hides the scanner. These protections rule out a blanket claim that the minimap has no cleanup.
 
-Next verification: inspect `render()`/screen-mode consumers and dungeon exit state to establish whether a builder or loading transition leaves an active scanner. Identify whether REP-02 is the dungeon scanner, a tactical minimap under missing/older CSS, or another element. Proposed fix if that route is confirmed: tie scanner visibility to the current scene and clear its mode/discovery state on departure. Preserve dungeon discovery within the same floor and existing fog filtering.
+Follow-up caller audit: `render()` (`ui.js:6413`) dirties and renders UI; `renderIfDirty()` (`state.js:4532`) invokes `renderScreenMode()` (`ui.js:5708`). The screen handler hides `mapRow` in setup but does not deactivate the renderer or hide the body-level scanner. `backToPartyBuilder()` leaves `_mdRun` and `_mdPhase` untouched. This establishes a gap if that generic route is used with a live dungeon floor; it does not establish that the normal dungeon result UI selects that route. The dedicated `_mdExitToMenu()` (`battle.js:32182`) stops free roam and clears both fields before returning to the menu/HQ. `_updateMinimap()` then removes scanner mode, and HQ also deactivates the battle renderer.
+
+Remaining verification: trace the dungeon result and pause-button bindings to distinguish the dedicated exit from a generic builder exit, and identify the actual element in REP-02. A normal dedicated dungeon exit is not evidence of a scanner leak. Proposed fix if a bypass is confirmed: tie scanner visibility to the current scene and retire it on departure. Preserve dungeon discovery within the same floor and existing fog filtering.
 
 **LIFE-04 — Medium: boot callbacks have per-call completion guards but no visible match identity.**
 
 Evidence: loading `finish()` prevents duplicate completion of its own call, but does not check whether that match is still current (`battle.js:33938`). Loading fade/auto-dismiss callbacks and `_syncedAfterVSSplash`'s 20-second fallback can later call the boot continuation (`35222–35246`). Ready messages contain `type` and `from`, and the receiver sets global flags (`33813–33833`, `online.js:3175–3181`). Current guest resets and ordered socket delivery provide protection within the expected flow; they do not by themselves prove cancellation across an abandoned/replaced flow.
 
 Proposed fix: establish one current boot identity and cancellation path across loading, intro, timers, and ready waiters. Ignore stale local callbacks. If matching identity is added to relays, carry it consistently through host state, guest state, senders, and receivers. First verify which exits are reachable during boot; stale callbacks are a source risk, not a reproduced restart/disconnect failure.
+
+Follow-up disconnect audit: an own-socket disconnect (`online.js:2890`) clears connection status and opens a reconnect overlay; a reconnectable opponent departure (`3030` onward) does the same. These branches do not cancel the ready/intro waiters. A non-reconnectable opponent departure reloads the page, which is a different lifecycle. `_lsAwaitRemoteReady()` (`battle.js:33813`) explicitly allows its timeout to advance while the reconnect/forfeit flow handles a missing opponent; the host intro barrier has a similar 20-second cap (`35222`). Treat this as an existing recovery policy to reconcile, not proof that every disconnect should cancel a match. The next trace must check whether turn clocks can start behind reconnect/loading overlays and what happens when the guest rejoins at that point.
+
+Cancellation contract for a future implementation: explicit abandonment or replacement retires the old boot and its timers; a temporary disconnect follows the existing reconnect policy for the same match. A late ready event must not satisfy a different match's waiter. An identity must be shared by host and guest, not independently generated by each viewer. Validate reconnect, timeout/forfeit, and rematch separately before changing this behavior.
 
 #### Bounded implementation order
 
@@ -178,13 +185,51 @@ No implementation is included in this document delivery. Each code batch must in
 | Rapid room changes and leave during fade | Run A's delayed callbacks after B starts and after leaving HQ; neither may hide B's card or mutate departed UI. | Pending |
 | Cold HQ entry with fast avatar and slow room textures | Card remains until required scene assets or deliberate fallbacks are usable; a valid scene frame precedes reveal. | Pending |
 | Required texture fails; optional asset fails; timeout | Outcome distinguishes these cases, offers usable recovery, and does not falsely report complete asset success. | Pending |
-| Dungeon floor → builder/HQ → Arena or TDM | Scanner does not survive into menus/loading or the next mode; same-floor exploration remains intact. | Pending; finish caller audit first |
+| Dungeon floor → builder/HQ → Arena or TDM | Scanner does not survive into menus/loading or the next mode; same-floor exploration remains intact. Compare dedicated dungeon exit with any reachable generic builder exit. | Pending; generic render chain traced, button reachability still open |
 | Leave/restart/disconnect during loading or intro | Late callbacks do not boot a departed match; ready messages and engine start remain tied to the same match for both players. | Pending |
 | Repeated warm transitions | Resource/DOM counts plateau across repeated cycles; no accumulating input handlers, timers, or scene owners. | Pending; no memory measurement yet |
 
 Validation performed: manual source tracing and document content review only. No syntax/game tests were needed for this documentation-only delivery. No browser, simulation, FPS, network-failure, or memory test ran. The first two files that previously blocked inspection are now available; remaining uncertainty is in behavior and untraced callers, not access to those files.
 
 ## Phase 2 — performance without changing the art style
+
+### Static triage — 2026-09-09
+
+The renderer already batches terrain, gates shadow updates, distinguishes structural unit rebuilds from stat-only label patches, and exposes performance controls. This pass identifies where to measure and one avoidable-work candidate. It does not establish the cause of REP-06 or claim an FPS gain. Phase 1 fixes remain the first implementation batch; Phase 2 preparation can proceed while its runtime checks are pending.
+
+| ID | Source-backed observation | Measurement and bounded next action |
+| --- | --- | --- |
+| PERF-01 | `_updateMinimap()` (`three-renderer.js:27027`) redraws terrain, objectives, and visible units whenever the active battle frame reaches it (`27527`). It does not test whether the tactical map is hidden by `hud.js:9267`. That CSS intentionally hides non-scanner minimaps. | Time this function on a representative large battle board and record whether the element is visible. If material, skip drawing when the product's minimap visibility policy says hidden. Keep the dungeon scanner branch and its fog/discovery behavior. Prefer an explicit visibility predicate over a new per-frame computed-style query. |
+| PERF-02 | `_terrainBatchWanted()` (`three-renderer.js:3249`) disables terrain merging with the fog grid enabled under fog, and in the editor. Those conditions preserve per-tile behavior. | Record the effective batching state, fog state, and grid setting for every capture. Compare like-for-like scenes. A fog-off benchmark does not demonstrate online performance. Read the existing ROADMAP performance history before any batching change; retain visibility correctness. |
+| PERF-03 | The shadow gate (`three-renderer.js:27489` onward) includes fog, active animations, tower cubes, lighting easing, and animated GLBs. `shadowMap.autoUpdate` is already disabled (`25310`). | Count shadow-pass requests and their time in both idle and action scenes. An idle tactical board may still have animated shadow casters. Do not describe gating as missing or freeze shadows merely to improve a counter. |
+| PERF-04 | `renderScreenMode()` hides the board container in setup (`ui.js:5728`), while the reviewed generic results-to-builder chain has no renderer deactivation. `renderFrame()` checks renderer activity, not foreground screen ownership (`27242`). | After that transition, measure whether the frame loop continues costly work behind the builder. Attribute any verified improvement to lifecycle cleanup in Phase 1. Confirm the next battle rebuilds correctly and that HQ retains its separate scene ownership. |
+| PERF-05 | `renderFrame()` already compares terrain versions and separates unit structural changes from stat-only patches (`three-renderer.js:27318–27381`). It also calls label, visibility, animation, and VFX updates each processed frame. | Use a CPU trace to identify costly consumers before introducing additional caches. A function named `rebuild...` is not evidence that it rebuilds every frame; inspect its internal guard. Preserve HP drains during death/action tweens and correct fog visibility. |
+
+### Existing tools and capture limits
+
+- `ThreeRenderer._renderer` exposes the live renderer (`three-renderer.js:33779`), providing a starting point for draw, triangle, geometry, and texture counters. Inspect counter reset behavior across postprocessing and split-screen passes before treating a sample as a full-frame total. These counters are not GPU timings or exact memory usage.
+- The existing FPS counter (`three-renderer.js:27230`) reports a rounded average over roughly half a second. It cannot supply p95/p99 frame times or explain a stall. The frame cap is applied before this counter in the battle loop. Record the effective cap; a capped result must not be mistaken for a performance ceiling.
+- Pixel ratio has a saved preference and low-performance fallback (`three-renderer.js:25297`). Record the effective renderer ratio and drawing-buffer size, not just the operating system's display scale. Changing either is a quality tradeoff.
+- The battle loop contains dev-sim throttling and a no-render path (`three-renderer.js:27256` onward). Keep these disabled for player-performance captures. HQ and character previews have separate update paths; do not assume a battle-loop measurement covers them.
+
+### Repeatable baseline protocol — proposed, not run
+
+1. Record repository commit, loaded production cache token, browser/version, hardware/GPU, viewport, drawing-buffer size, display refresh rate, power mode, all quality settings, fog/grid state, and effective FPS cap. Record whether the source matches the deployed build. Give the capture a unique ID.
+2. Choose exact room/map IDs and party/loadout fixtures from current data and save them with the capture. For battles, record mode, seed when available, turn, unit count, camera pose, and the action sequence. If no repeatable seed is available, disclose that limitation and reuse the same saved scenario where supported.
+3. Separate cold entry, warm entry, steady idle, and action bursts. For steady scenes, allow 15 seconds to settle, then record 60 seconds, three times. For entry and action cases, record the whole transition or a fixed action sequence; report duration and spikes separately from idle percentiles. Keep the tab foreground and note unrelated activity.
+4. Record median/p95/p99 frame intervals and counts above 33.3 ms and 50 ms. Capture CPU traces for stalls, plus renderer counters at consistent points. Distinguish presentation/frame intervals from JavaScript execution time and GPU time. Report unavailable GPU timing as unavailable.
+5. Compare baseline and candidate in alternating order on the same setup. Retain all three runs, state the percentile aggregation method, and compare the run-to-run spread. Repeat only if a failure, changed fixture, or unstable measurement justifies it.
+6. Capture matching images at the same camera and action beat. Reject unintended loss of shadows, scenery, unit animation, fog correctness, label readability, or spell impact. For resource lifetime, record counts after each of ten warm scene cycles at the same settled point; investigate continuing growth while distinguishing deliberate cache population.
+
+| Capture | Fixed workload | Question it resolves |
+| --- | --- | --- |
+| P2-HQ | One HQ room and one site; cold entry, warm entry, then the same walk/camera route | Does loading or steady scene work dominate, and does room replacement retain resources? |
+| P2-IDLE | One simple and one dense battle map, same legal party and camera; no player action during each idle window | Are draw cost, animated casters, labels, or hidden minimap work significant at rest? |
+| P2-ACTION | Repeatable terrain change and a representative heavy spell sequence | Are spikes caused by rebuilds, effect creation, shader work, or UI updates? |
+| P2-ONLINE | Matched host and guest captures with their normal fog rules | Does a proposed optimization preserve each viewer's legal information and help both clients? |
+| P2-EXIT | Results → builder and battle → HQ → next battle, repeated warm | Does hidden work continue, and do resource/DOM counts settle after reuse? |
+
+Result record: capture ID; source/deployment identity; fixture/settings; three raw-run references; frame-time statistics; CPU/GPU attribution; renderer counters and sample method; transition duration; matched images; observed regressions; decision. Every result is **pending capture**. No synthetic values or estimated speedups should fill this record.
 
 ### Review
 
@@ -328,6 +373,7 @@ After each phase:
 | --- | --- | --- | --- | --- |
 | 2026-09-09 | 0 | Established all eight review areas, dependencies, acceptance criteria, and initial source findings. | Documentation content review; selected source inspection only. No code changes or gameplay tests. | Phase 1: obtain three-renderer.js and battle.js; trace startMatch/loading completion, minimap and nameplate ownership, result/HQ exit paths, and stale asynchronous callbacks. |
 | 2026-09-09 | 1 — source review in progress | Pinned the source baseline; obtained renderer/battle files; mapped principal scene owners; added LIFE-02/03/04 and LOAD-02/03, expanded LOAD-01, and defined three fix batches. | Static source and document review only. No game changes, runtime reproduction, or deployment. | Implement and validate the first bounded batch: retire battle labels during deactivation and cancel/identify HQ loading-card callbacks. Refresh source first; read relevant HQ logs before editing and include updated logs in delivery. Continue the minimap/boot caller audit before claiming those symptoms explained. |
+| 2026-09-09 | 1 follow-up / 2 preparation | Verified the uploaded review on current main with unchanged game source; traced generic render and dedicated dungeon exits; separated reconnect policy from boot cancellation; added PERF-01–05 and a repeatable capture protocol. | Static source tracing and document content review. No game edits, browser runs, FPS measurements, or deployment. | First code batch remains LIFE-02/LOAD-01. For further document review, resolve dungeon button reachability and reconnect-to-engine timing. Read ROADMAP performance history before optimizations; execute the capture protocol only with playtest authorization. |
 
 ## Resume instructions
 
