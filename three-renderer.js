@@ -25467,6 +25467,7 @@ const ThreeRenderer = (function () {
 
     function deactivate() {
         active = false;
+        if (window.ThreeVFXEffects && ThreeVFXEffects.clearBattle) ThreeVFXEffects.clearBattle();
         hideSplitscreen();
         _clearAnimations();
         // HQ reuses the CSS2D layer: retire battle-owned labels before it
@@ -29536,6 +29537,8 @@ const ThreeRenderer = (function () {
         if (v.staged && ThreeVFX.isAttached && ThreeVFX.isAttached()) return true;
         v.staged = false;
         var ok = false;
+        // Retire board-owned effects before the pools move to the preview.
+        if (window.ThreeVFXEffects && ThreeVFXEffects.clearBattle) ThreeVFXEffects.clearBattle();
         try { ok = ThreeVFX.attach(v.vfxGroup, { camera: v.cam }); } catch (_e) { ok = false; }
         if (!ok) return false;
         v.staged = true;

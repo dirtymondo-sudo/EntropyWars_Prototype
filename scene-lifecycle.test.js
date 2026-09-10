@@ -114,7 +114,7 @@ test('battle deactivation removes registered unit labels, preserves other labels
     const parent = { children: new Set(), remove(obj) { this.children.delete(obj); obj.parent = null; } };
     const battleLabel = { parent }, hqLabel = { parent };
     parent.children.add(battleLabel); parent.children.add(hqLabel);
-    const ctx = vm.createContext({ console: { log: noop }, document: { getElementById: () => null },
+    const ctx = vm.createContext({ window: {}, console: { log: noop }, document: { getElementById: () => null },
         _plateObjs: new Map([['unit', { css2d: battleLabel }]]),
         _lastHpPctById: new Map([['unit', 0.5]]), _lastMpPctById: new Map([['unit', 0.4]]),
         _fogMeshes: new Map(), tileMeshes: new Map(), active: true,

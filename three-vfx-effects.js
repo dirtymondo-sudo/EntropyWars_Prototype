@@ -1,6 +1,29 @@
 const ThreeVFXEffects = (function () {
     'use strict';
 
+    // Delayed recipe emissions belong to the effect lifetime that queued them.
+    // A phase check alone cannot distinguish two battles or two previews.
+    var _fxLifetime = 0, _fxDelays = new Set();
+    function _fxDelay(fn, ms) {
+        var lifetime = _fxLifetime;
+        var id = window.setTimeout(function () {
+            _fxDelays.delete(id);
+            if (lifetime !== _fxLifetime) return;
+            fn();
+        }, ms);
+        _fxDelays.add(id);
+        return id;
+    }
+    function _fxCancelDelays() {
+        _fxLifetime++;
+        _fxDelays.forEach(function (id) { window.clearTimeout(id); });
+        _fxDelays.clear();
+    }
+    function clearBattle() {
+        // The preview borrows this singleton. A parked board must not clear it.
+        if (!_VS.on) clearAll();
+    }
+
     function rn(a, b) { return a + Math.random() * (b - a); }
     function lerp(a, b, t) { return a + (b - a) * t; }
 
@@ -2898,7 +2921,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var count = layer.count || 1;
             if (layer.delayMs && layer.delayMs > 0) {
                 (function(l, c, cpx, zf, zt, at) {
-                    window.setTimeout(function() { _emitLayer(l, c, cpx, zf, zt, at); }, l.delayMs);
+                    _fxDelay(function() { _emitLayer(l, c, cpx, zf, zt, at); }, l.delayMs);
                 })(layer, count, centerPx, baseZFloor, baseZTorso, autoTint);
             } else {
                 _emitLayer(layer, count, centerPx, baseZFloor, baseZTorso, autoTint);
@@ -3009,12 +3032,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* repeated emission across a cue's durMs — every step re-checks the
        suppression gates so a scene teardown mid-cue stops the batches */
     function _cueBatches(totalMs, stepMs, fn) {
+        var lifetime = _fxLifetime;
         var t = 0;
         var run = function() {
-            if (_suppressed() || !_canSpawn()) return;
+            if (lifetime !== _fxLifetime || _suppressed() || !_canSpawn()) return;
             fn(t);
             t += stepMs;
-            if (t < totalMs) window.setTimeout(run, stepMs);
+            if (lifetime === _fxLifetime && t < totalMs) _fxDelay(run, stepMs);
         };
         run();
     }
@@ -5260,7 +5284,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        stragglers on match end. All effect loops now register a tick function
        here: ONE rAF drives them all, a tick returning false (or throwing)
        unregisters it, and clearAll() drops every ticker at once. */
-    var _fxTickers = [], _fxRaf = null, _fxPumping = false;
+    var _fxTickers = [], _fxRaf = null, _fxPumping = false, _fxTickerEpoch = 0;
     function _fxSchedule(fn) {
         _fxTickers.push(fn);
         if (_fxRaf === null && !_fxPumping) _fxRaf = requestAnimationFrame(_fxPump);
@@ -5268,18 +5292,20 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _fxPump() {
         _fxRaf = null;
         _fxPumping = true;
+        var epoch = _fxTickerEpoch;
         var list = _fxTickers;
         _fxTickers = [];
-        for (var i = 0; i < list.length; i++) {
+        for (var i = 0; i < list.length && epoch === _fxTickerEpoch; i++) {
             var alive = false;
             try { alive = list[i]() !== false; }
             catch (e) { try { console.warn('[VFX] ticker error, killing effect:', e && e.message ? e.message : e); } catch (e2) {} }
-            if (alive) _fxTickers.push(list[i]);
+            if (alive && epoch === _fxTickerEpoch) _fxTickers.push(list[i]);
         }
         _fxPumping = false;
         if (_fxTickers.length && _fxRaf === null) _fxRaf = requestAnimationFrame(_fxPump);
     }
     function _fxKillAllTickers() {
+        _fxTickerEpoch++;
         _fxTickers.length = 0;
         if (_fxRaf !== null) { cancelAnimationFrame(_fxRaf); _fxRaf = null; }
     }
@@ -19804,7 +19830,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (arrivalEffectId) {
             var arrDef = EFFECTS[arrivalEffectId];
             if (arrDef) {
-                window.setTimeout(function() {
+                _fxDelay(function() {
                     if (_suppressed()) return;
                     _spawnEffect(arrDef, { tx: toX, ty: toY });
 
@@ -19867,6 +19893,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            (pre-existing landmine, tripped once clear() is actually used). */
         if (_clearingAll) return;
         _clearingAll = true;
+        _fxCancelDelays();
         try {
         _origClear();
         /* §4.6: hard-stop every registered effect ticker and sweep the scene
@@ -23088,6 +23115,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         tick: tick,
         clear: clearAll,
+        clearBattle: clearBattle,
         stage: _vsApi,
 
         startTornado3D: startTornado3D,
