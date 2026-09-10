@@ -4386,7 +4386,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             (function(t, baseDelay) {
                 for (var r = 0; r < loops; r++) {
                     (function(rep) {
-                        window.setTimeout(function() {
+                        _fxDelay(function() {
                             if (_suppressed()) return;
                             _spawnEffect(wallDef, { tx: t.x, ty: t.y });
                         }, baseDelay + rep * loopMs);
@@ -4425,7 +4425,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var startIdx = includePrimary ? 0 : 1;
         for (var i = startIdx; i < chain.length; i++) {
             (function(tile, prevTile, delay) {
-                window.setTimeout(function() {
+                _fxDelay(function() {
                     if (_suppressed()) return;
                     _spawnEffect(hopDef, { tx: tile.x, ty: tile.y });
 
@@ -4536,7 +4536,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             });
         }
 
-        window.setTimeout(function() {
+        _fxDelay(function() {
             if (_suppressed()) return;
 
             if (shake && typeof window.shakeBoard === 'function') {

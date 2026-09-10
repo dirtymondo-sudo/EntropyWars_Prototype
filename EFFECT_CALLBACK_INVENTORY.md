@@ -1,6 +1,6 @@
 # Remaining effect callback inventory
 
-Updated 2026-09-10 after descent timer retirement. This is a complete textual index of direct window.setTimeout sites, not an exhaustive semantic audit. Asset completion callbacks and other scheduling APIs still need separate review.
+Updated 2026-09-10 after mapped wall/chain/beam timer retirement. This is a complete textual index of direct window.setTimeout sites, not an exhaustive semantic audit. Asset completion callbacks and other scheduling APIs still need separate review.
 
 ## Classified and fixed in this batch
 
@@ -20,15 +20,18 @@ Seven additional sites are lifetime-owned: flyover, flyover smoke, descent spawn
 
 Next: `_fireWall`, `_fireChain`, `_fireBeamMapped`, then remaining mapped/bespoke callbacks and asset attachment. This inventory is not a claim of complete transitive coverage.
 
+## Mapped wall/chain/beam batch
+
+Three direct emission timers now use `_fxDelay`: sustained wall repetitions, chain hop particles/lightning, and generic beam charge completion. `_spawnEffect` already owns delayed recipe layers. No resource disposal callback was canceled.
+
+Geometry trace: `_spawnLaserBeam3D` registers cylinders and rings with `_animate3D`, which retires through `_cleanup3D`. Its separate delayed terminus emission remains open and is the exact next implementation target. Wall geometry dispatch and sword-wave/breath/boomerang branches need further transitive review; no complete geometry-coverage claim is made.
+
 ## Remaining direct timer sites
 
 | Line | Direct timer call |
 | --- | --- |
 | 10 | `var id = window.setTimeout(function () {` |
 | 48 | `var id = window.setTimeout(function () {` |
-| 4389 | `window.setTimeout(function() {` |
-| 4428 | `window.setTimeout(function() {` |
-| 4539 | `window.setTimeout(function() {` |
 | 5054 | `window.setTimeout(function() {` |
 | 5117 | `window.setTimeout(function() {` |
 | 5146 | `window.setTimeout(function() {` |
