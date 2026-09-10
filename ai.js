@@ -67,7 +67,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.1-2026-08-15'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.2-2026-09-10-navigation'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -255,6 +255,20 @@
     function _reach(g, ax, ay, az, b, longRange) {
         try { if (g.combatReach) return g.combatReach(ax, ay, az ?? 0, b.x, b.y, b.z ?? 0, !!longRange); } catch (e) {}
         return _dist(g, ax, ay, az, b);
+    }
+    // The AI's aimed beam spine, shared by planning, scoring and re-aiming.
+    // Use ray steps (including diagonals), not Manhattan/projectile reach.
+    function _lineRayTilesAI(g, from, spell, dx, dy) {
+        const tiles = [];
+        for (let i = 1; i <= (spell.range || 4); i++) {
+            const x = from.x + dx * i, y = from.y + dy * i;
+            if (x < 0 || y < 0 || x >= g.bw() || y >= g.bh()) break;
+            if (typeof g.isTerrainPassable === 'function' && !g.isTerrainPassable(x, y) && !spell.destroysObstacles) break;
+            if (!spell.ignoresLineOfSight && typeof g.isRangeBlockedByTerrain === 'function'
+                && g.isRangeBlockedByTerrain(from.x, from.y, x, y, from.z ?? null)) break;
+            tiles.push({ x, y });
+        }
+        return tiles;
     }
     function standH(g, u) { try { return g.getUnitStandingHeight(u); } catch (e) { return u.z ?? 0; } }
     function tileH(g, t) {
@@ -2113,14 +2127,8 @@
             const aligned = (adx === 0 || ady === 0 || adx === ady) && (adx + ady > 0);
             if (!aligned) return 0;
             const dx = Math.sign(target.x - unit.x), dy = Math.sign(target.y - unit.y);
-            const len = spell.range || 4;
             let s = 0, hits = 0, first = true;
-            for (let i = 1; i <= len; i++) {
-                const tx = unit.x + dx * i, ty = unit.y + dy * i;
-                if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) break;
-                if (typeof g.isTerrainPassable === 'function' && !g.isTerrainPassable(tx, ty) && !spell.destroysObstacles) break;
-                if (!spell.ignoresLineOfSight && typeof g.isRangeBlockedByTerrain === 'function'
-                    && g.isRangeBlockedByTerrain(unit.x, unit.y, tx, ty, unit.z ?? null)) break;
+            for (const { x: tx, y: ty } of _lineRayTilesAI(g, unit, spell, dx, dy)) {
                 const e = v.visibleEnemies.find(en => en.x === tx && en.y === ty);
                 if (e && !isProtected(g, e)) {
                     hits++;
@@ -2964,9 +2972,17 @@
                 }
                 // damage spells from this tile
                 for (const ds of dmgSpells) {
-                    const reach = _reach(g, t.x, t.y, t.z, e, _isLongRange(ds.sp));
-                    if (reach > ds.er) continue;
-                    if (!ds.sp.ignoresLineOfSight && blocked(t.x, t.y, e)) continue;
+                    if (ds.sp.kind === 'line' || ds.sp.kind === 'linePush') {
+                        const ax = Math.abs(e.x - t.x), ay = Math.abs(e.y - t.y);
+                        if (!(ax === 0 || ay === 0 || ax === ay) || ax + ay === 0) continue;
+                        const ray = _lineRayTilesAI(g, { x: t.x, y: t.y, z: th }, ds.sp,
+                            Math.sign(e.x - t.x), Math.sign(e.y - t.y));
+                        if (!ray.some(p => p.x === e.x && p.y === e.y)) continue;
+                    } else {
+                        const reach = _reach(g, t.x, t.y, t.z, e, _isLongRange(ds.sp));
+                        if (reach > ds.er) continue;
+                        if (!ds.sp.ignoresLineOfSight && blocked(t.x, t.y, e)) continue;
+                    }
                     const hit = scoreOffensiveHit(g, unit, e, ds.sp, v, { fromX: t.x, fromY: t.y, fromH: th, splash: false });
                     const val = hit.val - ds.mp * tuneW(g, 'mpValuePerPoint');
                     if (val > bestShot) bestShot = val;
@@ -3265,8 +3281,8 @@
         }
 
         if (ws.phase === 'even' && ws.roundUrgency === 0 && v.visibleEnemies.length === 0) {
-            const mapCenterX = Math.floor((g.state.mapCols || 15) / 2);
-            const mapCenterY = Math.floor((g.state.mapRows || 8) / 2);
+            const mapCenterX = Math.floor(g.bw() / 2);
+            const mapCenterY = Math.floor(g.bh() / 2);
             const distToMid = Math.abs(unit.x - mapCenterX) + Math.abs(unit.y - mapCenterY);
             if (distToMid > 3) {
                 goals.push({ x: mapCenterX, y: mapCenterY, score: 70, reason: 'advance_to_mid' });
@@ -3326,19 +3342,12 @@
     }
 
     // ── A* waypoint pathfinding (kept: engine-parity climb/phase rules) ──
-    let _pathCache = {};
-    let _pathCacheGen = -1;
-
     function findWaypoint(unit, goalX, goalY) {
         const g = G();
-        const gen = g.state.round || 0;
-        if (gen !== _pathCacheGen) { _pathCache = {}; _pathCacheGen = gen; }
-
-        const cacheKey = `${unit.id}:${unit.x},${unit.y}->${goalX},${goalY}`;
-        if (_pathCache[cacheKey] !== undefined) return _pathCache[cacheKey];
-
+        // One query per macro movement decision. Recompute against current
+        // terrain, edge walls and traversal abilities; a round is not a
+        // board revision (including previously unreachable/clear routes).
         if (!hasObstacleInCorridor(unit, goalX, goalY)) {
-            _pathCache[cacheKey] = null;
             return null;
         }
 
@@ -3360,7 +3369,6 @@
                 }
             }
             if (goalSet.size === 0) {
-                _pathCache[cacheKey] = false;
                 return false;
             }
         }
@@ -3400,10 +3408,8 @@
                 }
                 if (prev === startIdx) {
                     const wp = { x: idx % W, y: Math.floor(idx / W) };
-                    _pathCache[cacheKey] = wp;
                     return wp;
                 }
-                _pathCache[cacheKey] = null;
                 return null;
             }
 
@@ -3435,7 +3441,6 @@
             }
         }
 
-        _pathCache[cacheKey] = false;
         return false;
     }
 
@@ -3449,11 +3454,17 @@
         const _canFly = typeof g.canFly === 'function' && g.canFly(unit);
         const _jumpH = (typeof g.getUnitJumpClimb === 'function')
             ? g.getUnitJumpClimb(unit) : (g.JUMP_HEIGHT ?? 1);
+        const _phase = typeof unitIsPhasing === 'function' && unitIsPhasing(unit);
 
         for (let y = Math.max(0, minY - 1); y <= Math.min(g.bh() - 1, maxY + 1); y++) {
             for (let x = Math.max(0, minX - 1); x <= Math.min(g.bw() - 1, maxX + 1); x++) {
                 if (x === goalX && y === goalY) continue;
                 if (!g.unitCanTraverse(unit, x, y)) return true;
+                if (!_phase && g.objectBlocksEdge) {
+                    for (const [dx, dy] of [[1,0],[0,1],[-1,0],[0,-1]]) {
+                        if (g.isInside(x + dx, y + dy) && g.objectBlocksEdge(x, y, x + dx, y + dy)) return true;
+                    }
+                }
                 if (_hasHeight && !_canFly) {
                     const h = g.getHeightAt(x, y);
                     for (const [dx, dy] of [[1,0],[0,1],[-1,0],[0,-1]]) {
@@ -4573,16 +4584,10 @@
         if (kind === 'line' || kind === 'linePush') {
             const dirs = [{ dx: 1, dy: 0 }, { dx: -1, dy: 0 }, { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
                           { dx: 1, dy: 1 }, { dx: 1, dy: -1 }, { dx: -1, dy: 1 }, { dx: -1, dy: -1 }];
-            const len = spell.range || 4;
             let bestDir = null, bestHits = 0, bestTarget = null;
             for (const dir of dirs) {
                 let hits = 0, firstEnemy = null;
-                for (let i = 1; i <= len; i++) {
-                    const tx = unit.x + dir.dx * i, ty = unit.y + dir.dy * i;
-                    if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) break;
-                    if (typeof g.isTerrainPassable === 'function' && !g.isTerrainPassable(tx, ty) && !spell.destroysObstacles) break;
-                    if (!spell.ignoresLineOfSight && typeof g.isRangeBlockedByTerrain === 'function'
-                        && g.isRangeBlockedByTerrain(unit.x, unit.y, tx, ty, unit.z ?? null)) break;
+                for (const { x: tx, y: ty } of _lineRayTilesAI(g, unit, spell, dir.dx, dir.dy)) {
                     const enemy = v.visibleEnemies.find(e => e.x === tx && e.y === ty);
                     if (enemy) { hits++; if (!firstEnemy) firstEnemy = enemy; }
                 }

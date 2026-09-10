@@ -156,6 +156,35 @@ did).
 
 ## Validation
 
+### 2026-09-10 — adversarial navigation/beam fixes (local delivery)
+
+AI stamp: `v4.2-2026-09-10-navigation`. `advance_to_mid` now uses the active
+board helpers. Waypoints recompute for each macro movement decision instead
+of retaining round-scoped success/failure/null results across terrain,
+height, flight, phasing or match changes. The corridor shortcut now checks
+edge walls as well as cells and height; phasing still bypasses edge walls.
+One waypoint query is made per macro selection, not per reachable tile.
+
+`_lineRayTilesAI` shares the aimed beam spine across `scoreSpell`,
+`findSpellTarget` (including re-aiming) and `jointMoveActionSearch`.
+Hypothetical beams require eight-ray alignment, raw beam step range, current
+terrain and LOS from the landing height. Diagonal beams no longer lose half
+their reach through a Manhattan-distance gate. The caller still filters
+visible/protected enemies and spell affordability, and execution re-picks
+the actual action after movement. No new state/relay fields or tuning weights.
+
+`ai-navigation.test.js` executes the production closure with controlled board
+queries and damage-value stubs: 15 checks, including mirrored board centers,
+same-round route edits, flight/height/phasing, new-match identity, legal
+diagonal versus off-ray beam choices, walls and elevated LOS. Fourteen fail
+against the old AI; all pass after fixes. Full package command: 247 passed,
+0 failed, 2 existing skips; syntax 69/69 clean. No browser playtest or AI
+simulation. A* cost on large real maps is unmeasured. Wide-beam side-lane
+valuation and destructive-breach prediction remain outside this batch;
+the helper deliberately preserves existing aimed-spine target selection.
+The complete runtime files are `ai.js` (R2) and cache-busted `index.html`
+(Render). This log and tests go to the repository. Deployment unverified.
+
 - `npm test` (syntax + schema + parity) must pass.
 - Balance-lab expectations for the next stats run: dead slots/loadout < 1.5
   (from ~2.7), discord/frozen/charm applications > 500 each, Psychic/

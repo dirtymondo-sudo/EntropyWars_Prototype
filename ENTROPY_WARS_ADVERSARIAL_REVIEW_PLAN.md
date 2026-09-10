@@ -6,6 +6,21 @@ Baseline: Phase 1 source review pinned to main commit `f0a4c3341631d60cee2ac544e
 Continuation baseline: main commit `4c740fcf6624a30d59e30c4d4dfea1a16dd85b03`, checked 2026-09-09 (America/Chicago). This commit and its predecessor `3da54eff8abbef3da87a1c0f72272919d84bd15e` changed only the uploaded review document; the inspected game source and line references remain unchanged.
 Delivery: this document is repository/reference material. The first delivery is now present in repository main `41f8e76b67120eea58c17fd968c5c72d70ef035e`; R2/Render deployment is unverified. The pause-focus delivery is also present in repository main `e92ee26153b65c2047963544c56310ea838220bb`. The Settings-focus delivery is present in repository main `f546e7fff61edb012e3fae536aee995996257c4f`. The PAUSE-06 controller delivery is present in repository main `88b3bc65adc93fc8ed2e84c28c112b0c81565b3f`; the PAUSE-07 delivery is present in repository main `82494b38fa3dea84f89f32a8723602289fa51b3f`; R2/Render deployment remains unverified.
 
+### Latest delivery — 2026-09-10: AI navigation and beam planning
+
+Implemented AI-02, AI-03 and the center-ray planning defect in AI-05 in the existing `ai.js`. This batch advances the concrete AI backlog ahead of nested-dialog focus/reconnect work because these source-confirmed defects have independent, deterministic acceptance cases. Those earlier tasks remain open.
+
+- **AI-02:** `advance_to_mid` reads `bw()`/`bh()`, matching other goals. Verified on 8×8 and 20×20 boards from both seats, including stale legacy dimension fields.
+- **AI-03:** removed cross-decision waypoint caching. Each macro movement decision reads current terrain, heights, walls and traversal abilities; success, failure and clear-corridor results cannot leak across actions or matches. Also fixed the corridor shortcut to detect edge walls before skipping A*, respecting phasing.
+- **AI-05:** joint movement planning, line scoring and line target selection share `_lineRayTilesAI`. Prospective beam value requires an aligned, reachable ray from the destination at its standing height. Diagonal rays use beam steps, preserving full diagonal range; terrain and LOS stop the ray unless the existing spell flags permit passage. Ordinary damage spells keep their existing targeting behavior.
+- **Version/delivery:** `EW_AI_VERSION` is `v4.2-2026-09-10-navigation`; shared entry token is `20260910-062900-ai-navigation-cors`. Complete `ai.js` goes to R2; complete `index.html` goes to Render. Tests, this tracker and `AI_REDESIGN.md` are repository-only.
+- **Baseline:** verified main `fef179a6fde229d4f115512fcf13131879d688b6`. Git blob hashes match for `index.html`, `battle.js`, `CLAUDE.md` and this tracker; `ai.js` and `AI_REDESIGN.md` match after ignoring the working copy's extra terminal newline. The prior PAUSE-08 runtime delivery is present in that repository baseline; live deployment remains unverified.
+- **Validation:** executed the package's full test command (`node --test *.test.js`) with bundled Node: **249 total, 247 passed, 0 failed, 2 existing skips**. All **15** production-function regression tests pass; **14 fail on the pre-fix AI**, with the unchanged ordinary-spell/visibility control passing. Repository syntax check: **69/69 clean**. Tests replace damage-value dependencies to isolate navigation/geometry; they do not simulate a match or measure tactical strength.
+- **Online:** no actions, state fields or visible events were added. The host's existing AI execution and state/action relays remain responsible for guest results; Simul's shared planner consumes the same fixes. Both-viewer runtime acceptance is pending.
+- **Limits:** no browser playtest, simulation, performance measurement or deployment. Removing the round cache trades repeated A* work for fresh answers; profile before reintroducing any cache. Beam scoring remains centered on the aimed spine; wide-beam side-lane valuation and destructive-breach prediction are separate existing limitations, not solved here. Other spell kinds' joint legality, AI-04 and AI-06 remain open.
+
+Next implementation task: nested-dialog return focus (UX-01), followed by LIFE-05 reconnect/state/clock recovery. Next AI task: inventory actual generic-fallback kinds (AI-04) and share wide-beam/directional target contracts without changing balance weights speculatively.
+
 ## Objective
 
 Review the game as a skeptical player and maintainer, then improve the weakest systems in manageable phases. Cover all eight requested categories. Preserve the existing art style, game identity, authored DOOR canon, and host/guest behavior.
@@ -20,7 +35,7 @@ Each phase must leave behind evidence, prioritized findings, a bounded improveme
 - [ ] Phase 3 — Tab/controller routing fixes are in repository main; battle/editor pause focus is now implemented locally and regression-tested. Main-menu/HQ Settings keyboard focus is in repository main. Controller page visibility/root selection (PAUSE-06) is in repository main. PAUSE-07 board movement/held-key isolation is in repository main and regression-tested; PAUSE-08 free-roam/shooter input handoff is implemented locally and regression-tested; broader input ownership, shared menu, and runtime acceptance remain pending.
 - [ ] Phase 4 — camera source review, framing gaps, and shot acceptance matrix documented; visual verification pending.
 - [ ] Phase 5 — timing/relay/lifetime review and representative spell matrix documented; implementation and captures pending.
-- [ ] Phase 6 — Arena/TDM rule audit, navigation/planning findings, and decision scenarios documented; observed CPU play pending.
+- [ ] Phase 6 — AI-02/03 and AI-05 center-ray planning fixes implemented and regression-tested; broader spell legality, AI-04/06 and observed CPU play pending.
 - [ ] Phase 7 — generated map inventory, shared environment constraints, and scoped asset brief documented; visual ranking pending.
 - [ ] Phase 8 — integrated journey review, implementation backlog, and validation gates documented; end-to-end acceptance pending.
 
@@ -809,6 +824,10 @@ After each phase:
 
 | 2026-09-10 | 3 / PAUSE-08 implementation | Fixed capture, retained keyboard/pad/action inputs, immediate pause/dialog handoff, pointer-lock release and stale lock grants across Guild Hub and both shooter modes. Three runtime scripts changed; complete files and cache-busted entry prepared. | 232 passed, 0 failed, 2 expected skips (234 total); ten new production-boundary regressions; syntax passed. No browser/device/host-guest acceptance or deployment. | Implement nested-dialog focus return, then LIFE-05 reconnect/state/clock recovery. |
 
+| 2026-09-10 | 6 / AI navigation implementation | Fixed AI-02 center coordinates, AI-03 stale route reuse and edge-wall shortcut, AI-05 impossible beam move value and diagonal reach. Shared beam spine across planner/scorer/target picker; bumped AI stamp and entry token. | 247 passed, 0 failed, 2 existing skips; 15 new regressions (14 fail before fixes); syntax 69/69. No playtest or deployment. | UX-01 nested-dialog focus, then LIFE-05 reconnect recovery; AI-04 fallback inventory and wide-beam targeting remain open. |
+
 ## Resume instructions
+
+Latest implementation continuation: 2026-09-10 AI navigation batch above supersedes the older next-step ordering. AI-02/03 and the AI-05 center-ray defect are locally implemented with 15 new regression tests. Complete files are in `ENTROPY_WARS_AI_NAVIGATION_FIXES.zip`; upload and live acceptance are unverified.
 
 Use this file as the review tracker. Read the current conclusions, the relevant findings, and the Phase 8 backlog before work. Refresh the relevant repository files and preserve newer local deliveries. All eight areas now have source-review material; do not restart reconnaissance or deliver another outline of the same phases. Continue with a concrete implementation batch or a named unresolved evidence gap. Preserve finding IDs and evidence distinctions. Do not mark reported bugs fixed based on a plausible source change alone.
