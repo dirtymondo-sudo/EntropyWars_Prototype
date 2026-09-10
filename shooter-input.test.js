@@ -175,9 +175,9 @@ test('Opening pause or rendering a dialog immediately hands off shooter and walk
             _mdHeldMoveKeys: { clear: () => calls.push('board') },
             window: { ShooterControls: { suspendInput: () => calls.push('shooter') } },
             ThreeRenderer: { hubFreeRoam: { clearInput: () => calls.push('walker') } } });
-        const a = src.indexOf(mode === 'pause' ? '        function openPauseMenu() {' : '        function renderUiDialog() {');
+        const a = src.indexOf(mode === 'pause' ? '        function openPauseMenu() {' : '        function _renderUiDialogContent() {');
         const b = src.indexOf(mode === 'pause' ? '            if (_cinematicEl)' : '            /* onclick', a);
-        vm.runInContext(src.slice(a, b) + '\n}\n' + (mode === 'pause' ? 'openPauseMenu()' : 'renderUiDialog()'), ctx);
+        vm.runInContext(src.slice(a, b) + '\n}\n' + (mode === 'pause' ? 'openPauseMenu()' : '_renderUiDialogContent()'), ctx);
         assert.deepEqual(calls, ['board', 'shooter', 'walker']);
     }
 });
