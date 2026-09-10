@@ -15755,7 +15755,7 @@
             window._shooterCamOwns = _owns;
 
             function _inputAllowed(target) {
-                return _owns() && typeof ThreeRenderer !== 'undefined'
+                return !(window._NET && window._NET.online && (window._NET._recovering || window._NET._recoveryFailed)) && _owns() && typeof ThreeRenderer !== 'undefined'
                     && ThreeRenderer.hubFreeRoam.inputAllowed(target);
             }
             function _clearInput(releaseLock) {
@@ -16971,7 +16971,19 @@
             let denyAt = 0;
             let _busHandler = null;
 
-            function _now() { return performance.now(); }
+            let _rtPauseStarted = null, _rtPausedMs = 0;
+            function _now() {
+                const raw = performance.now();
+                if (_paused()) {
+                    if (_rtPauseStarted === null) _rtPauseStarted = raw;
+                    return _rtPauseStarted - _rtPausedMs;
+                }
+                if (_rtPauseStarted !== null) {
+                    _rtPausedMs += raw - _rtPauseStarted;
+                    _rtPauseStarted = null;
+                }
+                return raw - _rtPausedMs;
+            }
             function _units() { return state.units || []; }
             function _alive(u) { return !!u && !u.dead && !u._dying; }
             function _findU(id) { return _units().find(x => x.id === id) || null; }
@@ -18105,7 +18117,7 @@
             /* ═══ MAIN LOOP ═══ */
             function _paused() {
                 const ov = document.getElementById('pauseOverlay');
-                return !!(ov && ov.classList.contains('active')) || !!state.uiDialog;
+                return !!(window._NET && window._NET.online && (window._NET._recovering || window._NET._recoveryFailed)) || !!(ov && ov.classList.contains('active')) || !!state.uiDialog;
             }
             function _loop() {
                 if (!started) return;
@@ -18123,7 +18135,7 @@
                     if (!pausedAt) pausedAt = now;
                     return;
                 }
-                if (pausedAt) { endsAt += now - pausedAt; pausedAt = 0; }
+                if (pausedAt) pausedAt = 0; // _now() already excludes paused time for every timer.
 
                 /* scheduled impacts */
                 for (let i = pendingFx.length - 1; i >= 0; i--) {
@@ -35281,6 +35293,7 @@
                 }, 1500);
             }
             function _afterVSSplash() {
+                if (window._ewDeferRecovery && window._ewDeferRecovery('battle-boot', () => _afterVSSplash())) return;
 
             _matchBootPendingSince = 0;   // boot chain complete — watchdogs may drive again
 
@@ -35922,6 +35935,7 @@
             /* ── Round / turn lifecycle ─────────────────────────────────── */
 
             function beginRound() {
+            if (window._ewDeferRecovery && window._ewDeferRecovery('simul-round', () => beginRound())) return;
                 if (state.winner || state.phase !== 'battle') return;
                 /* Duplicate-boot guard: stray post-EOR advances can queue a
                    second beginRound behind _waitForAnimationsThen; re-booting
@@ -35939,6 +35953,7 @@
             }
 
             function beginTurnPlanning() {
+            if (window._ewDeferRecovery && window._ewDeferRecovery('simul-plan', () => beginTurnPlanning())) return;
                 if (state.winner || state.phase !== 'battle') return;
                 _noteProgress();
                 hideTurnBanner();
@@ -36278,6 +36293,7 @@
             /* ── Commit ─────────────────────────────────────────────────── */
 
             function commitLocalPlan() {
+            if (window._ewDeferRecovery && window._ewDeferRecovery('simul-commit', () => commitLocalPlan())) return;
                 if (!_isSimul() || state._simulPhase !== 'plan' || state._simulResolving) return;
                 state._simulResolving = true;   // seal against double-commits
                 _noteProgress();
@@ -36483,6 +36499,7 @@
             }
 
             function _execPlanEntry(entry, done) {
+            if (window._ewDeferRecovery && window._ewDeferRecovery('simul-entry', () => _execPlanEntry(entry, done))) return;
                 const plan = entry.plan;
                 if (!plan || !plan.unitId || !plan.steps || !plan.steps.length) { done(); return; }
                 const unit = state.units.find(u => u.id === plan.unitId);
@@ -36795,6 +36812,7 @@
         window.SimulEngine = SimulEngine;
 
         function maybeAdvanceTurn() {
+            if (window._ewDeferRecovery && window._ewDeferRecovery('advance', () => maybeAdvanceTurn())) return;
 
             /* ── STRIKE MODE (real-time): there ARE no turns. The StrikeEngine
                runs the whole match (movement, cooldowns, bots, respawns,
@@ -37445,6 +37463,7 @@
         }
 
         function _continueBlitzWithUnit_impl(nextUnit, _gen) {
+            if (window._ewDeferRecovery && window._ewDeferRecovery('activation', () => _continueBlitzWithUnit_impl(nextUnit, _gen))) return;
                 if (!nextUnit) return;
                 if (state.winner) return;
                 /* Stale continuation: another maybeAdvanceTurn ran while we
@@ -54608,6 +54627,7 @@
         // Suspension belongs to its caller, not to a particular turn's clock.
         // Keep this outside synchronized state: each viewer owns its connection.
         const _shotClockPauseReasons = new Set();
+        let _shotClockActivation = 0, _shotClockExpiredActivation = null;
         function _applyShotClockPause() {
             if (_shotClockPauseReasons.size && state.shotClock && state.shotClock.active && state.shotClock.pausedAt == null) {
                 state.shotClock.pausedAt = Date.now();
@@ -54666,9 +54686,10 @@
                that doesn't exist, so the clock could never fire at all.) */
             const ctrl = state.controllers[unit.player];
             if (ctrl !== CTRL.LOCAL || !isOnlineMatch()) {
-                state.shotClock.active = false;
-                return;
+                return; // A mirror/remote turn must not disarm the host's clock.
             }
+            if (state.shotClock.activationId != null && _shotClockExpiredActivation === state.shotClock.activationId) return;
+            _shotClockExpiredActivation = state.shotClock.activationId;
             state.shotClock.active = false;
             addLog(`⏱ Shot clock! ${unitDisplayName(unit)}'s turn ends automatically.`);
             showFloatingTextForUnit(unit, '⏱ TIME!', 'debuff', { durationMs: 1200 });
@@ -54691,6 +54712,7 @@
             /* Mystery Dungeon: exploration has no turn timer. */
             if (typeof _isDungeonMode === 'function' && _isDungeonMode()) return;
             state.shotClock.startedAt = Date.now();
+            state.shotClock.activationId = ++_shotClockActivation;
             state.shotClock.pausedAt = null;
             state.shotClock.active = true;
             _applyShotClockPause();
@@ -54714,7 +54736,7 @@
 
         function _resumeShotClock(reason) {
             if (!_shotClockPauseReasons.delete(reason || 'cinematic')) return;
-            if (_shotClockPauseReasons.size || !state.shotClock || state.shotClock.pausedAt == null) return;
+            if (_shotClockPauseReasons.size || !state.shotClock || state.shotClock.pausedAt == null || state.shotClock._hostPaused) return;
             state.shotClock.startedAt += Date.now() - state.shotClock.pausedAt;
             state.shotClock.pausedAt = null;
         }
@@ -54754,6 +54776,10 @@
         window._pauseShotClock = _pauseShotClock;
         window._resumeShotClock = _resumeShotClock;
         window._applyShotClockPause = _applyShotClockPause;
+        window._ensureMatchClockInterval = () => { if (!_matchClockInterval) _startMatchClockInterval(); };
+        window._ewRecoverySnapshotReady = () => !state._actionExecuting && !_walkAnimActive &&
+            !state.aiThinking && !(state.units || []).some(u => u._dying);
+        window._ewShotClockCinematicPaused = () => _shotClockPauseReasons.has('cinematic');
 
         function tickMatchClock() {
             if (!state.matchClock || state.matchClock.paused || state.winner) return;

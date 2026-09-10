@@ -35,6 +35,29 @@
             return window._NET && window._NET.role === 'guest';
         }
 
+        function _recoveryBlocked() {
+            var n = window._NET;
+            return !!(n && n.online && (n._recovering || n._recoveryFailed));
+        }
+        // Only new actions/activations wait; an already committed hit settles.
+        // Deferred engine work belongs to the same state object and match.
+        var _recoveryWork = new Map();
+        window._ewDeferRecovery = function(key, work) {
+            if (!_recoveryBlocked()) return false;
+            if (!window._NET._recoveryFailed) _recoveryWork.set(key, {
+                work: work, state: window._gameState, matchId: window._NET.matchId
+            });
+            return true;
+        };
+        window._ewReleaseRecoveryWork = function(run) {
+            var jobs = Array.from(_recoveryWork.values());
+            _recoveryWork.clear();
+            if (run) jobs.forEach(function(job) {
+                if (job.state === window._gameState && job.matchId === window._NET.matchId &&
+                    !job.state.winner && job.state.phase === 'battle') job.work();
+            });
+        };
+
         function _emit(evt, data) {
             /* REPLAY TAP: while a local/host match is being recorded, every
                relay-channel event (banners, cameras, walk anims, VFX, SFX —
@@ -44,7 +67,10 @@
             if (evt === 'relay' && typeof window._ewRecRelay === 'function') {
                 try { window._ewRecRelay(data); } catch (e) {}
             }
-            if (window._NET && window._NET.socket) window._NET.socket.emit(evt, data);
+            if (evt === 'game-action' && _recoveryBlocked()) return;
+            if (evt === 'game-action' && data && window._gameState && window._gameState.shotClock) data.activationId = window._gameState.shotClock.activationId;
+            if (data && window._NET) data.matchId = window._NET.matchId;
+            if (window._NET && window._NET.socket && window._NET.socket.connected) window._NET.socket.emit(evt, data);
         }
 
         /* True while the match recorder is capturing (see the MATCH REPLAY
@@ -117,6 +143,7 @@
 
         const _origMaybeTriggerComputerTurn = maybeTriggerComputerTurn;
         maybeTriggerComputerTurn = function() {
+            if (window._ewDeferRecovery('computer-turn', function() { maybeTriggerComputerTurn(); })) return;
             if (_isOnline() && _isGuest()) return;
             /* REPLAY: playback applies recorded snapshots that look like a live
                battle — the engine must stay dormant or the AI would start
@@ -165,6 +192,7 @@
 
         const _onlineOrigClickTile = clickTile;
         clickTile = function(x, y, z) {
+            if (_recoveryBlocked()) return;
             if (!_isOnline() || state._remoteAction) return _onlineOrigClickTile(x, y, z);
             if (state.phase === 'battle' && !state.winner) {
 
@@ -403,6 +431,7 @@
 
         const _origTriggerEndTurn = triggerEndTurn;
         triggerEndTurn = function() {
+            if (_recoveryBlocked()) return;
             if (!_isOnline() || state._remoteAction) return _origTriggerEndTurn();
             if (state.activePlayer !== _myPlayer()) return;
             if (_isGuest()) {
@@ -449,7 +478,7 @@
            INTERNAL calls also resolve to the wrappers — the state._remoteAction
            pass-through keeps host replays running the originals. */
         function _guestOwnsAction(unit) {
-            return state.phase === 'battle' && !state.winner
+            return !_recoveryBlocked() && state.phase === 'battle' && !state.winner
                 && unit && !unit.dead && unit.player === _myPlayer()
                 && state.activePlayer === _myPlayer();
         }
@@ -490,6 +519,7 @@
         }
 
         function _hostRunAndSync(orig, args) {
+            if (_recoveryBlocked()) return 0;
             const r = orig.apply(null, args);
             if (window._broadcastState) window._broadcastState();
             return r;
@@ -1364,7 +1394,7 @@
             window._NET._rematchState[me] = true;
             _emit('relay', {
                 type: 'rematch-request',
-                from: me
+                from: me, matchId: window._NET.matchId
             });
 
             if (nextMatchBtn) {
@@ -1415,7 +1445,10 @@
         }
 
         window._executeRemoteAction = function(data) {
+            if (_recoveryBlocked()) return;
             if (!data || !data.type) return;
+            if ({ clickTile: 1, engine: 1, triggerEndTurn: 1, useRosterItem: 1, recall: 1, quickMoveTowards: 1, armRepeat: 1 }[data.type] &&
+                state.shotClock && state.shotClock.activationId != null && data.activationId !== state.shotClock.activationId) return;
             state._remoteAction = true;
 
             var remoteP = _isHost() ? 2 : 1;
@@ -2799,6 +2832,8 @@
 
             var _reconnectTimer = null;
             var _reconnectOverlay = null;
+            var _recoveryPoll = null;
+            var _recoveryAttempt = 0;
 
             /* Non-blocking reconnect banner (was a full-screen blackout that
                hid the board and blocked all input for up to 90s). The board
@@ -2806,10 +2841,12 @@
                the local shot clock pauses so nobody loses a turn to a
                disconnect. Same function names/call sites as the old overlay. */
             function _showReconnectOverlay(oppLabel, seconds) {
-                _hideReconnectOverlay();
+                _hideReconnectOverlay(true);
+                NET._recovering = true;
+                if (window._gameState) window._gameState._repeatQueue = null;
                 if (typeof window._pauseShotClock === 'function') window._pauseShotClock('reconnect');
-                var isSelf = oppLabel === 'You';
-                var msg = isSelf
+                var isSelf = oppLabel === 'You' || oppLabel === 'Reconnecting';
+                var msg = oppLabel === 'Restoring match' ? 'Connected — restoring your match…' : isSelf
                     ? '⚠️ Connection lost — reconnecting…'
                     : '⚠️ ' + oppLabel + ' disconnected — waiting for reconnect…';
                 if (!document.getElementById('ewReconnectPulseStyle')) {
@@ -2832,23 +2869,97 @@
                     remaining--;
                     var cd = document.getElementById('reconnectCountdown');
                     if (cd) cd.textContent = Math.max(0, remaining) + 's';
-                    if (remaining <= 0) {
+                    if (remaining <= -5) {
                         clearInterval(_reconnectTimer);
                         _reconnectTimer = null;
+                        _recoveryFailure('The connection did not recover. Please return to the main menu.');
                     }
                 }, 1000);
             }
 
-            function _hideReconnectOverlay() {
+            function _hideReconnectOverlay(keepPaused) {
                 if (_reconnectTimer) { clearInterval(_reconnectTimer); _reconnectTimer = null; }
                 if (_reconnectOverlay) { _reconnectOverlay.remove(); _reconnectOverlay = null; }
                 var existing = document.getElementById('reconnectOverlay');
                 if (existing) existing.remove();
-                if (typeof window._resumeShotClock === 'function') window._resumeShotClock('reconnect');
+                if (!keepPaused) {
+                    NET._recovering = false;
+                    if (_recoveryPoll) clearTimeout(_recoveryPoll);
+                    _recoveryPoll = null;
+                    NET._recoveryId = null;
+                    NET._recoverySnapshot = null;
+                    if (typeof window._resumeShotClock === 'function') window._resumeShotClock('reconnect');
+                }
             }
             /* Exposed so the main-menu teardown (defined in the wrapper scope
                above this closure) can clear a live banner. */
-            window._ewHideReconnectBanner = _hideReconnectOverlay;
+            window._ewHideReconnectBanner = function() {
+                _hideReconnectOverlay();
+                NET._recoveryFailed = false;
+                _recoveryAttempt++;
+                if (window._ewReleaseRecoveryWork) window._ewReleaseRecoveryWork(false);
+            };
+
+            function _recoveryFailure(reason) {
+                _hideReconnectOverlay(true);
+                if (_recoveryPoll) clearTimeout(_recoveryPoll);
+                _recoveryPoll = null;
+                NET._recoveryFailed = true;
+                NET._recovering = true;
+                NET.connected = false;
+                NET._wasInMatch = false;
+                if (window._ewReleaseRecoveryWork) window._ewReleaseRecoveryWork(false);
+                try { ['ew_rejoinToken', 'ew_rejoinRoom', 'ew_rejoinRole'].forEach(function(k) { sessionStorage.removeItem(k); }); } catch (e) {}
+                var panel = document.createElement('div');
+                panel.id = 'reconnectOverlay';
+                panel.style.cssText = 'position:fixed;top:20px;left:10%;width:80%;z-index:99999;padding:20px;background:#211824;color:white;text-align:center';
+                var label = document.createElement('p');
+                label.textContent = reason;
+                var button = document.createElement('button');
+                button.textContent = 'Return to Main Menu';
+                button.onclick = function() { window._ewHideReconnectBanner(); backToMainMenu(); };
+                panel.appendChild(label); panel.appendChild(button);
+                document.body.appendChild(panel); _reconnectOverlay = panel;
+                button.focus();
+            }
+
+            function _beginSnapshotRecovery(data) {
+                if (!NET.online || !data || !data.recoveryId || NET._recoveryFailed) return;
+                if (NET.matchId && data.matchId !== NET.matchId) return;
+                if (NET._completedRecovery === data.recoveryId) return;
+                if (NET._recoveryId === data.recoveryId) {
+                    if (NET.role === 'host' && NET._recoverySnapshot) NET.socket.emit('recovery-snapshot', NET._recoverySnapshot);
+                    return;
+                }
+                NET._recoverySnapshot = null;
+                NET.matchId = data.matchId;
+                NET._recoveryId = data.recoveryId;
+                NET.connected = false;
+                _showReconnectOverlay('Restoring match', 20);
+                var id = data.recoveryId, attempts = 0, sent = false;
+                function poll() {
+                    if (!NET.online || NET._recoveryId !== id || NET._recoveryFailed) return;
+                    var st = window._gameState;
+                    if (NET.role === 'host' && !sent) {
+                        if (st && st.winner) { window._broadcastState(); return; }
+                        if (!st || !Array.isArray(st.units) || !st.units.length || (st.phase !== 'battle' && st.phase !== 'setup')) {
+                            NET.socket.emit('recovery-unavailable', { id: id, matchId: NET.matchId });
+                        } else if (!st._actionExecuting && !st._walkAnimActive && !st.aiThinking &&
+                            (typeof window._ewRecoverySnapshotReady !== 'function' || window._ewRecoverySnapshotReady())) {
+                            var snapshot = _serializeState();
+                            _packClock(snapshot);
+                            NET._recoverySnapshot = { id: id, matchId: NET.matchId,
+                                state: JSON.parse(JSON.stringify(snapshot)), checksum: _ewStateChecksum(st) };
+                            NET.socket.emit('recovery-snapshot', NET._recoverySnapshot);
+                            sent = true;
+                        }
+                    }
+                    if (++attempts >= 24) return _recoveryFailure('The match could not be restored. Please start a new match.');
+                    if (attempts % 3 === 0) NET.socket.emit('recovery-retry', { id: id, matchId: NET.matchId });
+                    _recoveryPoll = setTimeout(poll, 900);
+                }
+                poll();
+            }
 
             function _connectSocket(onReady) {
                 if (NET.socket && NET.socket.connected) {
@@ -2859,32 +2970,63 @@
                     transports: ['websocket', 'polling']
                 });
 
+                var transport = NET.socket, rawEmit = transport.emit, rawOn = transport.on;
+                transport.on = function(event, handler) {
+                    return rawOn.call(transport, event, function() {
+                        if (NET.socket !== transport) return;
+                        return handler.apply(transport, arguments);
+                    });
+                };
+                transport.emit = function(event, data) {
+                    var args = Array.prototype.slice.call(arguments);
+                    if (event === 'relay' || event === 'game-action' || event === 'party-config') {
+                        if (!transport.connected) return transport;
+                        args[1] = Object.assign({}, data, { matchId: NET.matchId });
+                    }
+                    return rawEmit.apply(transport, args);
+                };
+
                 NET.socket.on('connect', function() {
 
                     if (NET._wasInMatch && NET.rejoinToken && NET.roomCode) {
+                        var attempt = ++_recoveryAttempt, rejoinSocket = NET.socket, rejoinRoom = NET.roomCode;
                         NET.socket.emit('rejoin-room', {
                             roomCode: NET.roomCode,
                             rejoinToken: NET.rejoinToken
                         }, function(resp) {
+                            if (attempt !== _recoveryAttempt || NET.socket !== rejoinSocket || NET.roomCode !== rejoinRoom || !NET.online) return;
                             if (resp && resp.ok) {
                                 console.log('[NET] Rejoined room ' + NET.roomCode + ' as ' + resp.role);
+                                NET.matchId = resp.matchId;
+                                try {
+                                    sessionStorage.setItem('ew_rejoinToken', NET.rejoinToken);
+                                    sessionStorage.setItem('ew_rejoinRoom', NET.roomCode);
+                                    sessionStorage.setItem('ew_rejoinRole', resp.role);
+                                } catch (e) {}
                                 NET.role = resp.role;
                                 NET.myPlayer = resp.myPlayer;
-                                NET.connected = true;
+                                NET.connected = false;
                                 NET.online = true;
                                 if (resp.waitingForOpponent) {
                                     _showReconnectOverlay(resp.role === 'host' ? 'Player 2' : 'Player 1',
                                         resp.remainingSeconds);
                                 } else {
-                                    _hideReconnectOverlay();
+                                    _showReconnectOverlay('Restoring match', 20);
                                 }
                                 NET._wasInMatch = false;
-                                ewToast(resp.waitingForOpponent ? 'Connected — waiting for your opponent.' : 'Reconnected!', 2000);
+                                if (resp.result) {
+                                    if (_applyRemoteState(resp.result)) {
+                                        _hideReconnectOverlay();
+                                        if (window._ewReleaseRecoveryWork) window._ewReleaseRecoveryWork(false);
+                                    } else _recoveryFailure('The match ended, but its result could not be restored.');
+                                    return;
+                                }
+                                ewToast(resp.waitingForOpponent ? 'Connected — waiting for your opponent.' : 'Connected — restoring the match.', 2000);
                             } else {
                                 console.log('[NET] Rejoin failed:', resp && resp.error);
                                 ewToast('Failed to rejoin: ' + (resp && resp.error || 'unknown'), 4000);
                                 NET._wasInMatch = false;
-                                setTimeout(function() { window.location.reload(); }, 3000);
+                                _recoveryFailure('Unable to rejoin this match. Please start a new match.');
                             }
                         });
                     } else {
@@ -2893,7 +3035,10 @@
                 });
 
                 NET.socket.on('disconnect', function(reason) {
-                    if (NET.online && NET.connected) {
+                    if (NET.online && !NET._recoveryFailed) {
+                        _recoveryAttempt++;
+                        NET._recoveryId = null;
+                        if (_recoveryPoll) clearTimeout(_recoveryPoll);
                         console.log('[NET] Own socket disconnected:', reason);
                         NET.connected = false;
                         NET._wasInMatch = true;
@@ -2909,6 +3054,8 @@
                 });
 
                 NET.socket.on('room-full', function(data) {
+                    NET.matchId = data.matchId;
+                    NET._recoveryFailed = false;
 
                     if (data.host === NET.socket.id) {
                         NET.role = 'host';
@@ -3062,17 +3209,47 @@
                     _showReconnectOverlay(oppLabel, 90);
                 });
 
-                NET.socket.on('player-rejoined', function(data) {
-                    NET.connected = true;
-                    _hideReconnectOverlay();
-                    // The server broadcasts this to both seats after assigning
-                    // the rejoined socket. Force a full host snapshot even on
-                    // an unchanged host turn; the normal heartbeat deduplicates it.
-                    if (NET.online && NET.role === 'host') {
-                        NET.lastSyncJson = '';
-                        if (window._broadcastState) window._broadcastState();
+                NET.socket.on('player-rejoined', _beginSnapshotRecovery);
+                NET.socket.on('recovery-snapshot', function(data) {
+                    if (!NET.online || NET.role !== 'guest' || !data || data.id !== NET._recoveryId ||
+                        data.matchId !== NET.matchId || NET._recoveryFailed) return;
+                    // Retry packets are acknowledged again without replaying scene boot.
+                    if (NET._appliedRecovery !== data.id) {
+                        if (!_applyRemoteState(data.state)) return;
+                        NET._appliedRecovery = data.id;
                     }
-                    ewToast((data.role === 'host' ? 'Player 1' : 'Player 2') + ' reconnected!', 3000);
+                    NET.socket.emit('recovery-applied', { id: data.id, matchId: NET.matchId,
+                        checksum: _ewStateChecksum(window._gameState) });
+                });
+                NET.socket.on('recovery-verify', function(data) {
+                    if (!NET.online || NET.role !== 'host' || !data || data.id !== NET._recoveryId ||
+                        data.matchId !== NET.matchId || NET._recoveryFailed) return;
+                    NET.socket.emit('recovery-confirmed', { id: data.id, matchId: NET.matchId,
+                        checksum: _ewStateChecksum(window._gameState) });
+                });
+                NET.socket.on('recovery-complete', function(data) {
+                    if (!NET.online || !data || data.id !== NET._recoveryId || data.matchId !== NET.matchId || NET._recoveryFailed) return;
+                    NET.connected = true;
+                    NET._completedRecovery = data.id;
+                    _hideReconnectOverlay();
+                    if (window._ewReleaseRecoveryWork) window._ewReleaseRecoveryWork(true);
+                    if (NET.role === 'host') { NET.lastSyncJson = ''; window._broadcastState(); }
+                    ewToast('Match restored — ready to continue.', 2500);
+                });
+                NET.socket.on('recovery-failed', function(data) {
+                    if (NET.online && data && data.id === NET._recoveryId && data.matchId === NET.matchId) _recoveryFailure(data.reason);
+                });
+                NET.socket.on('result-rejoined', function(data) {
+                    var st = window._gameState;
+                    if (NET.online && !NET._recoveryFailed && data && data.matchId === NET.matchId && st && st.winner) NET.connected = true;
+                });
+                NET.socket.on('match-generation', function(data) {
+                    if (!NET.online || !data || typeof data.matchId !== 'string') return;
+                    _hideReconnectOverlay();
+                    NET.matchId = data.matchId;
+                    NET.lastSyncJson = '';
+                    NET._appliedRecovery = null;
+                    if (window._ewReleaseRecoveryWork) window._ewReleaseRecoveryWork(false);
                 });
 
                 NET.socket.on('match-forfeit', function(data) {
@@ -3144,7 +3321,12 @@
                 });
 
                 NET.socket.on('state-sync', function(data) {
-                    if (NET.role === 'guest') _applyRemoteState(data);
+                    if (NET.role !== 'guest' || !data || (NET.matchId && data._matchId !== NET.matchId)) return;
+                    if (NET._recovering && !data.winner) return;
+                    if (_applyRemoteState(data) && data.winner) {
+                        _hideReconnectOverlay();
+                        if (window._ewReleaseRecoveryWork) window._ewReleaseRecoveryWork(false);
+                    }
                 });
 
                 NET.socket.on('party-config', function(data) {
@@ -3202,6 +3384,7 @@
                         return;
                     }
                     if (data.type === 'rematch-request') {
+                        if (data.matchId !== NET.matchId) return;
                         if (!NET._rematchState) NET._rematchState = {
                             1: false,
                             2: false
@@ -3904,7 +4087,7 @@
                                 onConfirm: function() {
                                     st.uiDialog = null;
                                     if (typeof window.render === 'function') window.render();
-                                    NET.socket.emit('relay', {
+                                    NET.socket.emit('relay', { matchId: NET.matchId,
                                         type: 'pickup-response',
                                         decision: 'confirm'
                                     });
@@ -3912,7 +4095,7 @@
                                 onCancel: function() {
                                     st.uiDialog = null;
                                     if (typeof window.render === 'function') window.render();
-                                    NET.socket.emit('relay', {
+                                    NET.socket.emit('relay', { matchId: NET.matchId,
                                         type: 'pickup-response',
                                         decision: 'cancel'
                                     });
@@ -4160,7 +4343,7 @@
 
             function _deserializeInto(target, s) {
                 for (var key in s) {
-                    if (!s.hasOwnProperty(key)) continue;
+                    if (!s.hasOwnProperty(key) || key === '_matchId' || key === '_csumSeq' || key === '_onlineContext') continue;
                     var val = s[key];
                     if (_MAP_KEYS[key]) {
                         target[key] = _toMap(val);
@@ -4191,6 +4374,69 @@
                 }
             }
 
+            function _packClock(snapshot) {
+                if (snapshot) snapshot._onlineContext = {
+                    mapModeId: typeof activeGameMode === 'undefined' ? null : activeGameMode,
+                    multiplayerMode: typeof activeMultiplayerMode === 'undefined' ? null : activeMultiplayerMode,
+                    teamSize: typeof CONFIG === 'undefined' ? null : CONFIG.teamSize,
+                    ranked: !!NET.ranked
+                };
+                if (snapshot && Number.isFinite(snapshot.startTime)) snapshot._matchElapsedMs = Math.max(0, Date.now() - snapshot.startTime);
+                var clock = snapshot && snapshot.shotClock;
+                if (!clock) return;
+                var now = Date.now(), limit = Number(clock.limitSec) * 1000;
+                var anchor = clock.pausedAt == null ? now : clock.pausedAt;
+                var remaining = Math.max(0, Math.min(limit, limit - (anchor - clock.startedAt)));
+                snapshot.shotClock = Object.assign({}, clock, { remainingMs: remaining,
+                    startedAt: 0, pausedAt: (typeof window._ewShotClockCinematicPaused === 'function' && window._ewShotClockCinematicPaused()) ? 0 : null });
+            }
+            function _restoreOnlineContext(data) {
+                if (!NET.online) return;
+                var st = window._gameState, context = data._onlineContext;
+                if (context) {
+                    if (context.mapModeId && typeof GAME_MODES !== 'undefined' && GAME_MODES[context.mapModeId] &&
+                        typeof activeGameMode !== 'undefined' && activeGameMode !== context.mapModeId && typeof applyGameMode === 'function')
+                        applyGameMode(context.mapModeId, true);
+                    if (context.multiplayerMode && typeof MULTIPLAYER_MODES !== 'undefined' && MULTIPLAYER_MODES[context.multiplayerMode])
+                        activeMultiplayerMode = context.multiplayerMode;
+                    if (Number.isInteger(context.teamSize) && context.teamSize > 0 && typeof CONFIG !== 'undefined') CONFIG.teamSize = context.teamSize;
+                    NET.ranked = !!context.ranked;
+                    NET.matchMapModeId = context.mapModeId;
+                    NET.matchTeamSize = context.teamSize;
+                    NET.matchRankedMode = context.multiplayerMode;
+                }
+                // Controllers are intentionally absent from snapshots. Restore
+                // them explicitly after a page refresh so the guest stays a mirror.
+                if (st && typeof CTRL !== 'undefined') {
+                    var me = NET.role === 'host' ? 1 : 2;
+                    NET.myPlayer = me;
+                    st.controllers = st.controllers || {};
+                    st.controllers[me] = CTRL.LOCAL;
+                    st.controllers[me === 1 ? 2 : 1] = CTRL.REMOTE;
+                    st.aiPlayer = -1;
+                    st.devAutoSim = false;
+                }
+                if (NET._recovering) ['startOverlay', 'lobbyOverlay'].forEach(function(id) {
+                    var el = document.getElementById(id);
+                    if (el) { el.classList.add('hidden'); el.style.display = 'none'; el.style.pointerEvents = 'none'; }
+                });
+            }
+            function _unpackClock(data) {
+                if (data && Number.isFinite(data._matchElapsedMs)) {
+                    data = Object.assign({}, data, { startTime: Date.now() - Math.max(0, data._matchElapsedMs) });
+                    delete data._matchElapsedMs;
+                }
+                if (!data || !data.shotClock || !Number.isFinite(data.shotClock.remainingMs)) return data;
+                var clock = data.shotClock, now = Date.now();
+                var limit = Math.max(0, Number(clock.limitSec) * 1000);
+                var remaining = Math.max(0, Math.min(limit, clock.remainingMs));
+                var local = Object.assign({}, clock, { startedAt: now - (limit - remaining),
+                    pausedAt: clock.pausedAt == null ? null : now });
+                delete local.remainingMs;
+                local._hostPaused = clock.pausedAt != null;
+                return Object.assign({}, data, { shotClock: local });
+            }
+
             window._broadcastState = function() {
                 /* REPLAY TAP: the recorder rides the exact same sync points the
                    online guest does — every _broadcastState call is a potential
@@ -4198,7 +4444,9 @@
                 if (typeof window._ewRecTick === 'function') {
                     try { window._ewRecTick(); } catch (e) {}
                 }
-                if (!NET.online || NET.role !== 'host' || !NET.socket) return;
+                if (!NET.online || NET.role !== 'host' || !NET.socket || !NET.socket.connected) return;
+                if (NET._recovering && !state.winner) return;
+                if (state.winner && NET._recovering) { _hideReconnectOverlay(); if (window._ewReleaseRecoveryWork) window._ewReleaseRecoveryWork(false); }
 
                 if (state.winner && state.isRankedMatch && !NET._rankedResultEmitted) {
                     NET._rankedResultEmitted = true;
@@ -4234,6 +4482,8 @@
                     NET._csumSeq = (NET._csumSeq || 0) + 1;
                     s._csumSeq = NET._csumSeq;
                     s._csum = _ewStateChecksum(window._gameState);
+                    _packClock(s);
+                    s._matchId = NET.matchId;
                     NET.socket.emit('state-sync', s);
                 } catch (e) {
                     console.error('[NET] Serialize error:', e);
@@ -4294,8 +4544,10 @@
 
             function _applyRemoteState(data) {
                 var st = window._gameState;
-                if (!st) return;
+                if (!st || !data || typeof data !== 'object') return false;
+                data = _unpackClock(data);
                 try {
+                    _restoreOnlineContext(data);
 
                     var savedUI = {};
                     _guestUIKeys.forEach(function(k) {
@@ -4310,6 +4562,7 @@
                     // A host snapshot may replace the entire shotClock object.
                     // Reapply viewer-local suspension before UI/clock consumers.
                     if (typeof window._applyShotClockPause === 'function') window._applyShotClockPause();
+                    if (st.phase === 'battle' && typeof window._ensureMatchClockInterval === 'function') window._ensureMatchClockInterval();
 
                     /* The authoritative result is here — retire the guest's
                        latency-hiding move hologram (tag set on emit). */
@@ -4470,7 +4723,7 @@
 
                     if (typeof window.render === 'function') window.render();
 
-                    if (prevPhase === 'setup' && st.phase === 'battle') {
+                    if ((prevPhase === 'setup' || (NET._recovering && prevPhase !== 'battle')) && st.phase === 'battle') {
 
                         /* fresh match on the guest ⇒ void stale intro-skip /
                            ready votes (the host's OWN match-ready for THIS match
@@ -4480,7 +4733,7 @@
                         window._ewRemoteMatchReady = false;
                         window._ewRemoteIntroDone = false;
 
-                        var _splashFn = typeof showVSSplash === 'function' ? showVSSplash
+                        var _splashFn = NET._recovering ? function(done) { done(); } : typeof showVSSplash === 'function' ? showVSSplash
                                       : typeof window.showVSSplash === 'function' ? window.showVSSplash
                                       : typeof window.showVsSplash === 'function' ? window.showVsSplash
                                       : null;
@@ -4489,7 +4742,7 @@
                             // track + sprites — battle.js showBattleLoadingScreen),
                             // then the VS splash. Mirrors the host's startMatch
                             // intro so the guest doesn't watch units pop 2D→3D.
-                            var _introFn = (typeof window.showBattleLoadingScreen === 'function')
+                            var _introFn = NET._recovering ? _splashFn : (typeof window.showBattleLoadingScreen === 'function')
                                 ? function (cb) { window.showBattleLoadingScreen(function () { _splashFn(cb); }); }
                                 : _splashFn;
                             _introFn(function _afterGuestVSSplash() {
@@ -4498,7 +4751,7 @@
                                    the engine start (round 1, shot clock) on
                                    this (battle.js _syncedAfterVSSplash). */
                                 if (NET.socket) {
-                                    NET.socket.emit('relay', { type: 'intro-done', from: NET.myPlayer || 0 });
+                                    NET.socket.emit('relay', { matchId: NET.matchId, type: 'intro-done', from: NET.myPlayer || 0 });
                                 }
 
                                 CONFIG.tileSize = BASE_TILE;
@@ -4572,7 +4825,7 @@
                         var _csNow = Date.now();
                         if (!NET._lastCsumReportAt || _csNow - NET._lastCsumReportAt > 1500) {
                             NET._lastCsumReportAt = _csNow;
-                            NET.socket.emit('relay', {
+                            NET.socket.emit('relay', { matchId: NET.matchId,
                                 type: 'state-checksum',
                                 seq: data._csumSeq,
                                 round: st.round,
@@ -4582,13 +4835,15 @@
                     }
                 } catch (e) {
                     console.error('[NET] State apply error:', e);
+                    return false;
                 }
+                return true;
             }
 
             window._sendPartyConfig = function() {
                 if (!NET.socket || NET.role !== 'guest') return;
                 var st = window._gameState;
-                NET.socket.emit('party-config', {
+                NET.socket.emit('party-config', { matchId: NET.matchId,
                     builds: st.partyBuilds[2],
                     loadouts: st.loadouts[2],
                     name: st.partyNames ? st.partyNames[2] : 'Player 2',
@@ -5588,4 +5843,5 @@
                 loadSaved: _loadSavedReplay
             };
         })();
+
 

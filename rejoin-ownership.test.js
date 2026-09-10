@@ -20,7 +20,7 @@ function harness() {
         findRoomBySocket(sid) { for (const [code, room] of rooms) {
             if (room.host === sid || room.guest === sid) return { room, code };
         } return null; },
-        clearTimeout: timer => cleared.push(timer), replayWrite() {} });
+        setTimeout: () => 123, clearTimeout: timer => cleared.push(timer), replayWrite() {} });
     if (source.includes('function emitRoomFull('))
         vm.runInContext(between('function emitRoomFull(', 'function generateCode('), c);
     vm.runInContext(between("    socket.on('create-room'", "    socket.on('friendly-config'"), c);

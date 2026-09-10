@@ -81,6 +81,8 @@ test('incoming state applies local suspension immediately after clock replacemen
     h.c.window._gameState = h.st;
     h.c.window._applyShotClockPause = h.c._applyShotClockPause;
     h.c._guestUIKeys = [];
+    h.c.NET = { online: false };
+    vm.runInContext(between(read('online.js'), '            function _packClock(', '            window._broadcastState ='), h.c);
     h.c._deserializeInto = (st, data) => Object.assign(st, data);
     // Execute the production state-application prefix through deserialization;
     // subsequent rendering is deliberately outside this clock-boundary test.
@@ -91,23 +93,10 @@ test('incoming state applies local suspension immediately after clock replacemen
     assert.equal(h.st.shotClock.pausedAt, 1000);
     h.at(50000); h.tick(); assert.equal(h.ended(), 0);
 });
-test('rejoin forces a host snapshot for either returning role; guest never broadcasts', () => {
-    const body = between(read('online.js'), "                NET.socket.on('player-rejoined', function(data) {",
-        "                NET.socket.on('match-forfeit'");
-    for (const role of ['host', 'guest']) for (const returning of ['host', 'guest']) {
-        let handler, sent = 0, hidden = 0;
-        const NET = { role, online: true, connected: false, lastSyncJson: 'unchanged',
-            socket: { on(name, fn) { handler = fn; } } };
-        vm.runInNewContext(body, { NET, window: { _broadcastState() { sent++; assert.equal(NET.lastSyncJson, ''); } },
-            _hideReconnectOverlay() { hidden++; }, ewToast() {} });
-        handler({ role: returning });
-        assert.equal(NET.connected, true); assert.equal(hidden, 1);
-        assert.equal(sent, role === 'host' ? 1 : 0);
-    }
-});
 test('banner refresh and teardown release only reconnect, preserving a cinematic pause', () => {
     const h = harness();
     const elements = new Map();
+    h.c.NET = {};
     h.c.document = {
         getElementById: id => elements.get(id) || null,
         createElement: () => ({ style: {}, remove() { elements.delete(this.id); } }),
@@ -130,4 +119,20 @@ test('a timestamp of zero is a valid pause and resumes without losing its durati
     const h = harness(); h.at(0); h.c._startShotClock(); h.c._pauseShotClock('reconnect');
     h.at(40000); h.tick(); assert.equal(h.ended(), 0);
     h.c._resumeShotClock('reconnect'); assert.equal(h.st.shotClock.startedAt, 40000);
+});
+test('the host cannot disarm the clock for the remotely controlled player', () => {
+    const h = harness(2); h.st.controllers[2] = 'remote'; h.c._startShotClock();
+    h.at(32000); h.tick();
+    assert.equal(h.st.shotClock.active, true); assert.equal(h.ended(), 0);
+});
+test('reconnect release cannot release a cinematic pause imported from the host', () => {
+    const h = harness(); h.c._startShotClock(); h.c._pauseShotClock('reconnect');
+    h.st.shotClock._hostPaused = true; h.at(40000); h.c._resumeShotClock('reconnect');
+    assert.equal(h.st.shotClock.pausedAt, 1000); h.tick(); assert.equal(h.ended(), 0);
+});
+test('an expired activation emits only once even when a heartbeat restores its active clock', () => {
+    const h = harness(2); h.c._startShotClock(); h.at(32000); h.tick();
+    assert.equal(h.ended(), 1);
+    h.st.shotClock.active = true; h.tick(); assert.equal(h.ended(), 1);
+    h.c._startShotClock(); h.at(64000); h.tick(); assert.equal(h.ended(), 2);
 });

@@ -13,14 +13,14 @@ function between(src, a, b) {
 }
 function harness() {
     const handlers = {}, rooms = new Map(), sent = [], timers = [], cleared = [], results = [];
-    let now = 1000;
+    let now = 1000, serial = 0;
     const room = { host: 'host-original', guest: 'guest-original', _matchStarted: true,
         rejoinTokens: { host: 'host-secret', guest: 'guest-secret' }, ranked: false };
     rooms.set('ABCDE', room);
     const live = new Map([[room.host, {}], [room.guest, {}]]);
     const send = target => ({ emit(event, data) { sent.push({ target, event, data }); } });
     const socket = { id: room.host, on(event, fn) { handlers[event] = fn; }, to: send, join() {} };
-    const c = vm.createContext({ socket, rooms, io: { to: send, sockets: { sockets: live } },
+    const c = vm.createContext({ socket, rooms, uuid: () => 'id-' + (++serial), io: { to: send, sockets: { sockets: live } },
         console: { log() {}, warn() {} }, Date: { now: () => now },
         setTimeout(fn, ms) { const t = { fn, ms }; timers.push(t); return t; },
         clearTimeout(t) { cleared.push(t); },
@@ -48,14 +48,14 @@ function harness() {
             handlers['rejoin-room']({ roomCode: 'ABCDE', rejoinToken: room.rejoinTokens[role] }, r => reply = r);
             return reply;
         },
-        sync(data) { socket.id = room.host; handlers['state-sync'](data); }
+        sync(data) { socket.id = room.host; handlers['state-sync']({ ...data, _matchId: room._matchId }); }
     };
 }
 
 function finish(h) { h.sync({ phase: 'battle', winner: 1 }); }
 function request(h, role, from = role === 'host' ? 1 : 2) {
     h.socket.id = h.room[role];
-    h.handlers.relay({ type: 'rematch-request', from });
+    h.handlers.relay({ type: 'rematch-request', from, matchId: h.room._matchId });
 }
 function restart(h) { h.sync({ phase: 'partyBuilder', winner: null, activePlayer: 1, round: 1 }); }
 test('winner-free snapshot without consent cannot reopen a completed match', () => {

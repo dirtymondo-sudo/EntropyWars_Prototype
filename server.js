@@ -340,9 +340,10 @@ const rooms = new Map();
 // Socket.IO gives each socket a private room named by its id. Keep the other
 // seat's reconnect credential out of room-wide lobby messages in both queues.
 function emitRoomFull(room, data) {
+    if (!room._matchId) room._matchId = uuid();
     for (const role of ['host', 'guest']) {
         if (room[role]) io.to(room[role]).emit('room-full', {
-            ...data, rejoinToken: room.rejoinTokens[role]
+            ...data, matchId: room._matchId, rejoinToken: room.rejoinTokens[role]
         });
     }
 }
@@ -353,6 +354,29 @@ function clearDisconnectDeadlines(room) {
     const pending = room._disconnected;
     room._disconnected = null;
     if (pending) for (const dc of Object.values(pending)) clearTimeout(dc.timer);
+}
+
+// Recovery is a server-owned transaction tied to this room and these sockets.
+function cancelRecovery(room) {
+    if (room._recovery) clearTimeout(room._recovery.timer);
+    room._recovery = null;
+}
+function failRecovery(room, code, recovery, reason) {
+    if (rooms.get(code) !== room || room._recovery !== recovery) return;
+    cancelRecovery(room);
+    clearDisconnectDeadlines(room);
+    io.to(code).emit('recovery-failed', { id: recovery.id, matchId: room._matchId, reason });
+    replayEnd(room, 'recovery-failed');
+    rooms.delete(code); // No fabricated winner or rating loss for a protocol failure.
+}
+function beginRecovery(room, code, role, socketId) {
+    cancelRecovery(room);
+    if (!room._matchId) room._matchId = uuid();
+    const recovery = room._recovery = { id: uuid(), host: room.host, guest: room.guest,
+        snapshot: null, checksum: null, timer: null };
+    recovery.timer = setTimeout(() => failRecovery(room, code, recovery,
+        'The match could not be restored. Please return to the main menu.'), 20000);
+    io.to(code).emit('player-rejoined', { role, socketId, recoveryId: recovery.id, matchId: room._matchId });
 }
 
 function generateCode() {
@@ -646,7 +670,7 @@ setInterval(() => {
     const now = Date.now();
     for (const [code, room] of rooms) {
         if (!room.ranked || !room._matchStarted || room._matchEnded || room._resultProcessed) continue;
-        if (room._disconnected) continue;   // rejoin window has its own 90s timer
+        if (room._disconnected || room._recovery) continue;   // rejoin window has its own 90s timer
         if (!room._battleStartAt) continue; // battle not underway yet
         const ls = room._lastState;
         let stalled = 0, why = '';
@@ -1840,6 +1864,7 @@ io.on('connection', (socket) => {
         if (!found) return;
         const { room, code } = found;
         if (!allowEvent(socket.id, 'game-action')) return;
+        if (room._disconnected || room._recovery || (room._matchId && (!data || data.matchId !== room._matchId))) return;
 
         // Direction: only the GUEST ever emits game-action (the host applies
         // its own input locally and broadcasts state-sync). Anything else is
@@ -1854,8 +1879,9 @@ io.on('connection', (socket) => {
         // it — so a mutating action while activePlayer is 1 is out-of-turn.
         // Non-mutating UI mirroring (selectUnit/setTool/…) and forfeit stay
         // allowed at any time.
-        const MUTATING = { clickTile: 1, engine: 1, triggerEndTurn: 1, useRosterItem: 1, recall: 1 };
+        const MUTATING = { clickTile: 1, engine: 1, triggerEndTurn: 1, useRosterItem: 1, recall: 1, quickMoveTowards: 1, armRepeat: 1 };
         const ls = room._lastState;
+        if (data && MUTATING[data.type] && ls && ls.shotClockId != null && data.activationId !== ls.shotClockId) return;
         if (data && MUTATING[data.type] && ls && ls.phase === 'battle' && !ls.winner &&
             typeof ls.activePlayer === 'number' && ls.activePlayer !== 2) {
             console.warn(`[GUARD] out-of-turn '${data.type}' from guest in room ${code} — dropped`);
@@ -1891,6 +1917,8 @@ io.on('connection', (socket) => {
             return;
         }
 
+        if (!data || (room._matchId && data._matchId !== room._matchId)) return;
+        if (room._recovery && !data.winner) return;
         if (data && typeof data === 'object') {
             // Rematch: the host clears the winner and restarts. Re-arm the
             // room — forfeits count again and the rematch may report its own
@@ -1904,8 +1932,13 @@ io.on('connection', (socket) => {
                     votes.guest !== room.guest || !io.sockets.sockets.has(room.host) ||
                     !io.sockets.sockets.has(room.guest)) return;
                 room._rematchVotes = null;
+                cancelRecovery(room);
+                room._matchId = uuid();
+                io.to(code).emit('match-generation', { matchId: room._matchId });
                 clearDisconnectDeadlines(room);
                 room._matchEnded = false;
+                room._terminalSnapshot = null;
+                room._outageAt = null;
                 room._resultProcessed = false;
                 room._battleStartAt = null;
                 room._turnMark = null;
@@ -1914,6 +1947,7 @@ io.on('connection', (socket) => {
             }
             room._lastState = {
                 activePlayer: data.activePlayer,
+                shotClockId: data.shotClock && data.shotClock.activationId,
                 phase: data.phase,
                 winner: data.winner ?? null,
                 round: data.round,
@@ -1936,6 +1970,10 @@ io.on('connection', (socket) => {
             // Result bookkeeping must work even when replay recording is off.
             if (data.winner === 1 || data.winner === 2) {
                 room._matchEnded = true;
+                room._terminalSnapshot = { ...data, _matchId: room._matchId };
+                delete room._terminalSnapshot._csum;
+                room._outageAt = null;
+                cancelRecovery(room);
                 clearDisconnectDeadlines(room);
             }
             // Ranked outcome is DERIVED from this mirrored stream — the same
@@ -1959,7 +1997,7 @@ io.on('connection', (socket) => {
                 delete data._csum;
             }
         }
-        socket.to(code).emit('state-sync', data);
+        socket.to(code).emit('state-sync', { ...data, _matchId: room._matchId });
     });
 
     socket.on('party-config', async (data) => {
@@ -1967,6 +2005,7 @@ io.on('connection', (socket) => {
         if (!found) return;
         const { room } = found;
         if (!allowEvent(socket.id, 'party-config')) return;
+        if (room._disconnected || room._recovery || (room._matchId && (!data || data.matchId !== room._matchId))) return;
 
         // Ranked guest parties get server-side validation before relay: clamp
         // every array to the match team size (a modified client could field
@@ -2000,6 +2039,9 @@ io.on('connection', (socket) => {
             }
         }
 
+        if (rooms.get(found.code) !== room || findRoomBySocket(socket.id)?.room !== room ||
+            room._disconnected || room._recovery || (room._matchId && data.matchId !== room._matchId)) return;
+
         // Loadouts are needed to reconstruct a match; they usually arrive
         // before match-started, so stash them until the replay file opens.
         const entry = {
@@ -2020,6 +2062,7 @@ io.on('connection', (socket) => {
         const found = findRoomBySocket(socket.id);
         if (!found) return;
         if (!allowEvent(socket.id, 'relay')) return;
+        if (found.room._matchId && (!data || data.matchId !== found.room._matchId)) return;
 
         // Guest state-checksum report (anomaly detection). The guest hashes
         // its applied state after each sync (online.js _ewStateChecksum) and
@@ -2049,7 +2092,7 @@ io.on('connection', (socket) => {
         // Do not collect requests during play or while either seat is absent.
         if (data && data.type === 'rematch-request') {
             const room = found.room;
-            if (!room._matchEnded || room._disconnected ||
+            if ((room._matchId && data.matchId !== room._matchId) || !room._matchEnded || room._disconnected || room._recovery ||
                 !io.sockets.sockets.has(room.host) || !io.sockets.sockets.has(room.guest)) return;
             const role = socket.id === room.host ? 'host' : 'guest';
             if (!room._rematchVotes) room._rematchVotes = {};
@@ -2112,6 +2155,64 @@ io.on('connection', (socket) => {
         console.log(`[IO] Room ${found.code} match started`);
     });
 
+    socket.on('recovery-snapshot', data => {
+        const found = findRoomBySocket(socket.id);
+        if (!found || !allowEvent(socket.id, 'state-sync')) return;
+        const { room, code } = found, r = room._recovery;
+        if (!r || socket.id !== r.host || room.host !== r.host || room.guest !== r.guest ||
+            !data || data.id !== r.id || data.matchId !== room._matchId || r.snapshot) return;
+        const state = data.state;
+        if (!state || !Array.isArray(state.units) || !state.phase || typeof data.checksum !== 'string') return;
+        r.snapshot = state;
+        r.checksum = data.checksum;
+        io.to(r.guest).emit('recovery-snapshot', { id: r.id, matchId: room._matchId, state });
+    });
+    socket.on('recovery-applied', data => {
+        const found = findRoomBySocket(socket.id);
+        if (!found || !allowEvent(socket.id, 'state-sync')) return;
+        const { room, code } = found, r = room._recovery;
+        if (!r || socket.id !== r.guest || room.host !== r.host || room.guest !== r.guest ||
+            !io.sockets.sockets.has(r.host) || !io.sockets.sockets.has(r.guest) ||
+            !data || data.id !== r.id || data.matchId !== room._matchId || !r.snapshot) return;
+        if (data.checksum !== r.checksum) return failRecovery(room, code, r,
+            'The restored match did not match the host. Please return to the main menu.');
+        r.guestApplied = true;
+        io.to(r.host).emit('recovery-verify', { id: r.id, matchId: room._matchId });
+    });
+    socket.on('recovery-confirmed', data => {
+        const found = findRoomBySocket(socket.id);
+        if (!found || !allowEvent(socket.id, 'state-sync')) return;
+        const { room, code } = found, r = room._recovery;
+        if (!r || socket.id !== r.host || !r.guestApplied || !data || data.id !== r.id ||
+            data.matchId !== room._matchId || !io.sockets.sockets.has(r.host) || !io.sockets.sockets.has(r.guest)) return;
+        if (data.checksum !== r.checksum) return failRecovery(room, code, r,
+            'The host changed during recovery. Please start a new match.');
+        room._lastState = { activePlayer: r.snapshot.activePlayer, shotClockId: r.snapshot.shotClock && r.snapshot.shotClock.activationId, phase: r.snapshot.phase,
+            winner: r.snapshot.winner ?? null, round: r.snapshot.round };
+        cancelRecovery(room);
+        const pausedMs = room._outageAt ? Date.now() - room._outageAt : 0;
+        if (room._turnMark) room._turnMark.at += pausedMs;
+        room._lastSyncAt = Date.now();
+        room._outageAt = null;
+        io.to(code).emit('recovery-complete', { id: r.id, matchId: room._matchId });
+    });
+    socket.on('recovery-retry', data => {
+        const found = findRoomBySocket(socket.id);
+        if (!found || !allowEvent(socket.id, 'state-sync')) return;
+        const { room } = found, r = room._recovery;
+        if (!r || !data || data.id !== r.id || data.matchId !== room._matchId) return;
+        if (r.guestApplied) io.to(r.host).emit('recovery-verify', { id: r.id, matchId: room._matchId });
+        else if (r.snapshot) io.to(r.guest).emit('recovery-snapshot', { id: r.id, matchId: room._matchId, state: r.snapshot });
+        else io.to(r.host).emit('player-rejoined', { recoveryId: r.id, matchId: room._matchId });
+    });
+    socket.on('recovery-unavailable', data => {
+        const found = findRoomBySocket(socket.id);
+        if (!found || !allowEvent(socket.id, 'state-sync')) return;
+        const r = found.room._recovery;
+        if (r && socket.id === r.host && data && data.id === r.id && data.matchId === found.room._matchId)
+            failRecovery(found.room, found.code, r, 'The host page lost its active match. Please start a new match.');
+    });
+
     socket.on('rejoin-room', (data, callback) => {
         const code = data && typeof data.roomCode === 'string' ? data.roomCode.toUpperCase().trim() : '';
         const token = data && data.rejoinToken;
@@ -2120,6 +2221,16 @@ io.on('connection', (socket) => {
         const role = room && room.rejoinTokens && typeof token === 'string'
             ? ['host', 'guest'].find(seat => room.rejoinTokens[seat] === token) : null;
         const dc = role && room._disconnected && room._disconnected[role];
+        // A result retires grace deadlines, but the absent seat still owns its result.
+        if (role && room._matchEnded && room._terminalSnapshot && !findRoomBySocket(socket.id) &&
+            !io.sockets.sockets.has(room[role])) {
+            room[role] = socket.id;
+            socket.join(code);
+            if (typeof callback === 'function') callback({ ok: true, role, myPlayer: role === 'host' ? 1 : 2,
+                matchId: room._matchId, result: room._terminalSnapshot });
+            io.to(code).emit('result-rejoined', { matchId: room._matchId, role });
+            return;
+        }
         if (!dc || room._matchEnded || room._resultProcessed ||
             Date.now() >= dc.deadline || findRoomBySocket(socket.id)) {
             if (typeof callback === 'function') callback({ error: 'Room not found or invalid token.' });
@@ -2142,14 +2253,14 @@ io.on('connection', (socket) => {
         replayWrite(room, { t: Date.now(), e: 'rejoin', role });
 
         if (typeof callback === 'function') callback({
-            ok: true, role, myPlayer: role === 'host' ? 1 : 2,
+            ok: true, matchId: room._matchId, role, myPlayer: role === 'host' ? 1 : 2,
             waitingForOpponent: !!waiting,
             remainingSeconds: waiting ? Math.max(0, Math.ceil((waiting.deadline - Date.now()) / 1000)) : 0
         });
 
         // Connectivity is restored only after both seats are back. Snapshot
         // application acknowledgement remains a separate recovery step.
-        if (!waiting) io.to(code).emit('player-rejoined', { role, socketId: socket.id });
+        if (!waiting) beginRecovery(room, code, role, socket.id);
     });
 
     socket.on('disconnect', () => {
@@ -2172,6 +2283,8 @@ io.on('connection', (socket) => {
         // A new socket/session must consent again; queued old requests cannot
         // carry agreement across an outage or into the next match.
         room._rematchVotes = null;
+        cancelRecovery(room);
+        if (!room._outageAt) room._outageAt = Date.now();
 
         if (!room._matchStarted) {
             clearDisconnectDeadlines(room);
@@ -2231,4 +2344,5 @@ server.listen(PORT, () => {
         .then(backfillTokenHashes)
         .catch(err => console.error('[DB] boot migration failed:', err.message));
 });
+
 

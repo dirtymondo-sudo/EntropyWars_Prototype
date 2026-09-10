@@ -13,13 +13,14 @@ function between(src, a, b) {
 }
 function harness() {
     const handlers = {}, rooms = new Map(), sent = [], timers = [], cleared = [], results = [];
-    let now = 1000;
+    let now = 1000, serial = 0;
     const room = { host: 'host-original', guest: 'guest-original', _matchStarted: true,
         rejoinTokens: { host: 'host-secret', guest: 'guest-secret' }, ranked: false };
     rooms.set('ABCDE', room);
+    const live = new Map([[room.host, {}], [room.guest, {}]]);
     const send = target => ({ emit(event, data) { sent.push({ target, event, data }); } });
     const socket = { id: room.host, on(event, fn) { handlers[event] = fn; }, to: send, join() {} };
-    const c = vm.createContext({ socket, rooms, io: { to: send },
+    const c = vm.createContext({ socket, rooms, uuid: () => 'id-' + (++serial), io: { to: send, sockets: { sockets: live } },
         console: { log() {}, warn() {} }, Date: { now: () => now },
         setTimeout(fn, ms) { const t = { fn, ms }; timers.push(t); return t; },
         clearTimeout(t) { cleared.push(t); },
@@ -39,14 +40,15 @@ function harness() {
     vm.runInContext(between(source, "    socket.on('rejoin-room'", '\n});\n\nconst PORT'), c);
     return { c, room, rooms, sent, timers, cleared, results, handlers, socket,
         at(value) { now = value; },
-        disconnect(role) { socket.id = room[role]; handlers.disconnect(); },
+        disconnect(role) { socket.id = room[role]; live.delete(socket.id); handlers.disconnect(); },
         rejoin(role, id = role + '-returned') {
             socket.id = id;
+            live.set(id, {});
             let reply;
             handlers['rejoin-room']({ roomCode: 'ABCDE', rejoinToken: room.rejoinTokens[role] }, r => reply = r);
             return reply;
         },
-        sync(data) { socket.id = room.host; handlers['state-sync'](data); }
+        sync(data) { socket.id = room.host; handlers['state-sync']({ ...data, _matchId: room._matchId }); }
     };
 }
 test('control: a single disconnected seat can return before its deadline', () => {
@@ -91,7 +93,7 @@ for (const first of ['host', 'guest']) {
         assert.equal(h.rejoin(second).ok, true);
         assert.equal(h.room._disconnected, null);
         assert.equal(h.sent.filter(m => m.event === 'player-rejoined').length, 1);
-        for (const timer of h.timers) timer.fn(); // emulate already queued callbacks
+        for (const timer of h.timers.filter(t => t.ms === 90000)) timer.fn(); // queued disconnect deadlines only
         assert.equal(h.results.length, 0); assert.equal(h.rooms.get('ABCDE'), h.room);
     });
 }
@@ -100,7 +102,7 @@ test('a second outage cannot be forfeited by the first outage callback', () => {
     assert.equal(h.rejoin('guest').ok, true); h.disconnect('guest');
     old.fn();
     assert.equal(h.rooms.get('ABCDE'), h.room); assert.equal(h.results.length, 0);
-    h.timers[1].fn();
+    h.timers[h.timers.length - 1].fn();
     assert.equal(h.results.length, 1); assert.equal(h.rooms.size, 0);
 });
 test('an old room deadline cannot delete a replacement room with the same code', () => {
@@ -117,7 +119,7 @@ test('finished friendly match retires deadlines with replay recording disabled',
     h.timers[0].fn();
     assert.equal(h.sent.filter(m => m.event === 'match-forfeit').length, 0);
     assert.equal(h.rooms.get('ABCDE'), h.room);
-    assert.ok(h.rejoin('guest').error);
+    assert.equal(h.rejoin('guest').result.winner, 1);
 });
 test('a rejected absent-seat rematch cannot revive the previous disconnect callback', () => {
     const h = harness(); h.disconnect('guest');
@@ -129,7 +131,7 @@ test('a rejected absent-seat rematch cannot revive the previous disconnect callb
 });
 test('only one deadline settles the match when both players remain disconnected', () => {
     const h = harness(); h.disconnect('host'); h.disconnect('guest');
-    h.timers[0].fn(); h.timers[1].fn();
+    h.timers[0].fn(); h.timers[h.timers.length - 1].fn();
     assert.equal(h.results.length, 1); assert.equal(h.results[0][2], 2);
     assert.equal(h.sent.filter(m => m.event === 'match-forfeit').length, 1);
     assert.equal(h.cleared.length, 2);
@@ -155,13 +157,13 @@ for (const role of ['host', 'guest']) {
     test(`${role} reconnect callback keeps the clock/banner waiting until opponent returns`, () => {
         const src = fs.readFileSync(path.join(root, 'online.js'), 'utf8');
         const handlers = {}, calls = [];
-        const NET = { _wasInMatch: true, roomCode: 'ABCDE', rejoinToken: 'secret',
+        const NET = { online: true, _wasInMatch: true, roomCode: 'ABCDE', rejoinToken: 'secret',
             socket: { on(e, fn) { handlers[e] = fn; }, emit(e, data, cb) {
                 cb({ ok: true, role, myPlayer: role === 'host' ? 1 : 2,
                     waitingForOpponent: true, remainingSeconds: 47 });
             } }
         };
-        const c = vm.createContext({ NET, console: { log() {} }, ewToast() {}, onReady() {},
+        const c = vm.createContext({ NET, sessionStorage: { setItem() {} }, _recoveryAttempt: 0, console: { log() {} }, ewToast() {}, onReady() {},
             _showReconnectOverlay(label, seconds) { calls.push(['show', label, seconds]); },
             _hideReconnectOverlay() { calls.push(['hide']); }
         });
