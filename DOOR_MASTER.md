@@ -1866,3 +1866,9 @@ source-scan test, 164 green + 1 skip). Story track still ON HOLD (A14).
   → battle visual checks for both viewers, modal focus trap/restore and full
   shared pause presentation. Continue UX-01 in the review plan, then reconnect
   and effect boundaries. Story track remains ON HOLD under A14.
+
+### 2026-09-09 — Settings keyboard focus continuation (local delivery)
+
+The shared Settings page in `map.js` now owns keyboard focus, retains the focused control on redraw, releases focus on page exits, and restores an eligible launcher/destination control through the existing HQ-or-menu Back route. Spell Library return reacquires Settings focus. Existing HQ suspension/resume and pointer-lock behavior are unchanged; no canon, rooms, cast or assets changed.
+
+Baseline: repository main `e92ee26153b65c2047963544c56310ea838220bb`. Full suite: 215 passed, 0 failed, 2 expected skips, including five new Settings focus regression tests and the JavaScript syntax check. Browser/HQ/controller acceptance remains pending. The review plan records the newly confirmed PAUSE-06 controller page-visibility/root gap as the next batch. Complete `map.js` goes to R2, refreshed `index.html` to Render; these logs, tests and review plan are repository-only. Nothing deployed.

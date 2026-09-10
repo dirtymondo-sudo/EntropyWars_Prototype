@@ -251,3 +251,106 @@ test('pause yields to a nested dialog and never restores a removed launcher', ()
     h.ctx.state.uiDialog = null; h.origin.isConnected = false;
     h.ctx.closePauseMenu(); assert.notEqual(h.doc.activeElement, h.origin);
 });
+
+function settingsHarness() {
+    const src = source('map.js'), listeners = new Map();
+    const doc = { activeElement: null, addEventListener: (k, fn) => listeners.set(k, fn),
+        removeEventListener: k => listeners.delete(k) };
+    function control(id, owner, opts = {}) {
+        return { ...element(), id, owner, isConnected: true, tabIndex: 0, tagName: 'BUTTON',
+            disabled: false, hidden: false, action: id,
+            getClientRects() { return this.hidden || (this.owner && !this.owner.classList.contains('active')) ? [] : [{}]; },
+            matches() { return this.disabled; }, closest() { return null; },
+            getAttribute(k) { return k === 'onclick' ? this.action : null; },
+            focus() { doc.activeElement = this; }, ...opts };
+    }
+    const pages = ['settingsPage', 'mainMenuPage', 'spellLibraryPage', 'hqPage'].map(id => control(id));
+    const [page, home] = pages; home.classList.add('active');
+    page.getClientRects = () => page.classList.contains('active') ? [{}] : [];
+    let controls = [];
+    page.querySelectorAll = () => controls;
+    page.contains = el => el === page || controls.includes(el);
+    page.setAttribute = () => {};
+    page.addEventListener = (k, fn) => listeners.set('page-' + k, fn);
+    const origin = control('launcher', home), fallback = control('fallback', home);
+    home.querySelectorAll = () => [origin, fallback];
+    pages[3].querySelectorAll = () => [fallback];
+    doc.activeElement = origin;
+    const body = {};
+    Object.defineProperty(body, 'innerHTML', { set() {
+        controls.forEach(el => { el.isConnected = false; });
+        controls = [control('back', page), control('volume', page), control('toggle', page)];
+        doc.activeElement = doc;
+    } });
+    doc.getElementById = id => id === 'mmSettingsBody' ? body : pages.find(p => p.id === id) || null;
+    const ctx = vm.createContext({ document: doc, window: { _buildPerfSettingsHTML: () => '' },
+        state: {}, GS: { MAIN_MENU: 'menu' }, playSfx() {},
+        getComputedStyle: () => ({ visibility: 'visible' }),
+        startOverlay: { querySelectorAll: () => pages, querySelector: () => pages.find(p => p.classList.contains('active')) } });
+    const cut = (a, b) => src.slice(src.indexOf(a), src.indexOf(b, src.indexOf(a)));
+    vm.runInContext(cut('        function _showTitlePage(pageId)', '        let _enterGameAudioHandled') +
+        cut('        let _mmSettingsReturnFocus', '        window._goToCodex') +
+        cut('        function _renderMainMenuSettings()', '        const _TRAIN_MAP_POOL') +
+        cut('        window._goToSpellLibrary', '        /* ── Standalone Party Builder'), ctx);
+    let returns = 0;
+    ctx.window._hqReturnOrMenu = () => { returns++; ctx._showTitlePage('mainMenuPage'); };
+    function key(key, shiftKey = false) {
+        const e = { key, shiftKey, stopped: false, prevented: false,
+            stopPropagation() { this.stopped = true; }, preventDefault() { this.prevented = true; } };
+        ctx._mmSettingsKeydown(e); return e;
+    }
+    return { ctx, doc, page, origin, fallback, controls: () => controls, listeners, key, returns: () => returns };
+}
+
+test('settings owns focus and Tab boundaries while preserving native control keys', () => {
+    const h = settingsHarness(); h.ctx.window._openMainMenuSettings();
+    const [first, middle, last] = h.controls();
+    assert.equal(h.doc.activeElement, first);
+    last.focus(); assert.equal(h.key('Tab').prevented, true); assert.equal(h.doc.activeElement, first);
+    h.key('Tab', true); assert.equal(h.doc.activeElement, last);
+    middle.focus(); assert.equal(h.key('Tab').prevented, false);
+    const arrow = h.key('ArrowRight'); assert.equal(arrow.stopped, true); assert.equal(arrow.prevented, false);
+    last.disabled = true; middle.hidden = true; first.focus();
+    h.key('Tab'); assert.equal(h.doc.activeElement, first);
+    first.hidden = true; h.key('Tab'); assert.equal(h.doc.activeElement, h.page);
+});
+
+test('settings production redraw and repeated opening preserve control and original launcher', () => {
+    const h = settingsHarness(); h.ctx.window._openMainMenuSettings();
+    h.controls()[1].focus(); const old = h.doc.activeElement;
+    h.ctx._renderMainMenuSettings(); assert.equal(old.isConnected, false);
+    assert.equal(h.doc.activeElement, h.controls()[1]);
+    h.ctx.window._openMainMenuSettings(); assert.equal(h.doc.activeElement, h.controls()[1]);
+    h.key('Escape'); assert.equal(h.doc.activeElement, h.origin); assert.equal(h.returns(), 1);
+    h.ctx.window._settingsBack(); assert.equal(h.returns(), 1);
+    assert.equal(h.listeners.has('focusin'), false);
+});
+
+test('settings releases focus for library and page exits and yields to nested dialogs', () => {
+    const h = settingsHarness(); h.ctx.window._openMainMenuSettings();
+    h.ctx.state.uiDialog = {}; h.doc.activeElement = h.doc;
+    h.ctx._mmSettingsFocusGuard({ target: h.doc }); assert.equal(h.doc.activeElement, h.doc);
+    assert.equal(h.key('Escape').stopped, false); assert.equal(h.returns(), 0);
+    h.ctx.state.uiDialog = null;
+    h.ctx.window._goToSpellLibrary(); assert.equal(h.listeners.has('focusin'), false);
+    assert.equal(h.key('Tab').stopped, false);
+    h.ctx.window._spellLibraryBack(); assert.equal(h.doc.activeElement, h.controls()[0]);
+    h.key('Escape'); assert.equal(h.doc.activeElement, h.origin);
+    h.ctx.window._openMainMenuSettings(); h.ctx._showTitlePage('mainMenuPage');
+    h.fallback.focus(); h.ctx.window._openMainMenuSettings(); h.key('Escape');
+    assert.equal(h.doc.activeElement, h.fallback);
+});
+
+test('settings Back uses a visible destination control when its launcher disappears', () => {
+    const h = settingsHarness(); h.ctx.window._openMainMenuSettings();
+    h.origin.isConnected = false; h.key('Escape'); assert.equal(h.doc.activeElement, h.fallback);
+});
+
+test('settings rejects focus in inactive pages even when opacity-hidden pages retain layout', () => {
+    const h = settingsHarness();
+    const inactive = element();
+    const retained = { isConnected: true, tabIndex: 0, matches: () => false,
+        getClientRects: () => [{}], closest: selector => selector === '.title-page' ? inactive : null };
+    assert.equal(h.ctx._mmSettingsCanFocus(retained), false);
+    inactive.classList.add('active'); assert.equal(Boolean(h.ctx._mmSettingsCanFocus(retained)), true);
+});

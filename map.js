@@ -25,6 +25,13 @@
         window.backToModeSelect = backToModeSelect;
 
         function _showTitlePage(pageId) {
+            if (pageId !== 'settingsPage') {
+                document.removeEventListener('focusin', _mmSettingsFocusGuard);
+                if (pageId !== 'spellLibraryPage') {
+                    _mmSettingsSession = false;
+                    _mmSettingsReturnFocus = null;
+                }
+            }
             const pages = startOverlay?.querySelectorAll('.title-page');
             if (!pages) return;
             pages.forEach(p => {
@@ -1773,16 +1780,94 @@
             });
         }
 
+        let _mmSettingsReturnFocus = null;
+        let _mmSettingsSession = false;
+        function _mmSettingsActive() {
+            const page = document.getElementById('settingsPage');
+            return page && page.classList.contains('active') && page.getClientRects().length
+                && !page.closest('[aria-hidden="true"], [inert]');
+        }
+        function _mmSettingsFocusable() {
+            const page = document.getElementById('settingsPage');
+            return page ? Array.from(page.querySelectorAll('button, input, select, textarea, a[href], [tabindex]'))
+                .filter(_mmSettingsCanFocus) : [];
+        }
+        function _mmSettingsCanFocus(el) {
+            const page = el && el.closest('.title-page');
+            return el && el.isConnected && el.tabIndex >= 0 && !el.matches(':disabled')
+                && el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden'
+                && (!page || page.classList.contains('active'))
+                && !el.closest('[inert], [aria-hidden="true"]');
+        }
+        function _mmSettingsSnapshot() {
+            const controls = _mmSettingsFocusable(), el = document.activeElement;
+            const index = controls.indexOf(el);
+            return index < 0 ? null : { index, id: el.id, tag: el.tagName,
+                action: el.getAttribute('onclick') || el.getAttribute('onchange') || el.getAttribute('oninput') };
+        }
+        function _mmSettingsFocus(snapshot) {
+            if (!_mmSettingsActive() || state.uiDialog) return;
+            const controls = _mmSettingsFocusable();
+            let target = snapshot && controls.find(el => snapshot.id ? el.id === snapshot.id
+                : snapshot.action && el.tagName === snapshot.tag
+                    && (el.getAttribute('onclick') || el.getAttribute('onchange') || el.getAttribute('oninput')) === snapshot.action);
+            target = target || (snapshot && controls[snapshot.index]) || controls[0] || document.getElementById('settingsPage');
+            target.focus({ preventScroll: true });
+        }
+        function _mmSettingsFocusGuard(e) {
+            const page = document.getElementById('settingsPage');
+            if (_mmSettingsActive() && !state.uiDialog && !page.contains(e.target)) _mmSettingsFocus(null);
+        }
+        function _mmSettingsKeydown(e) {
+            if (!_mmSettingsActive() || state.uiDialog) return;
+            e.stopPropagation();
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                window._settingsBack();
+            } else if (e.key === 'Tab') {
+                const controls = _mmSettingsFocusable(), index = controls.indexOf(document.activeElement);
+                if (index < 0 || (!e.shiftKey && index === controls.length - 1) || (e.shiftKey && index === 0)) {
+                    e.preventDefault();
+                    (controls[e.shiftKey ? controls.length - 1 : 0] || document.getElementById('settingsPage')).focus({ preventScroll: true });
+                }
+            }
+        }
         window._openMainMenuSettings = function() {
+            if (!_mmSettingsSession) {
+                _mmSettingsReturnFocus = document.activeElement;
+                _mmSettingsSession = true;
+            }
+            const snapshot = _mmSettingsSnapshot();
             playSfx('uiButtonConfirm');
             _renderMainMenuSettings();
             _showTitlePage('settingsPage');
+            const page = document.getElementById('settingsPage');
+            if (page) {
+                page.tabIndex = -1;
+                page.setAttribute('role', 'dialog');
+                page.setAttribute('aria-modal', 'true');
+                page.setAttribute('aria-label', 'Settings');
+                page.addEventListener('keydown', _mmSettingsKeydown);
+                document.addEventListener('focusin', _mmSettingsFocusGuard);
+                _mmSettingsFocus(snapshot);
+            }
         };
 
         window._settingsBack = function() {
+            if (!_mmSettingsActive()) return;
+            const target = _mmSettingsReturnFocus;
+            _mmSettingsReturnFocus = null;
+            _mmSettingsSession = false;
+            document.removeEventListener('focusin', _mmSettingsFocusGuard);
             playSfx('uiButtonConfirm');
             state.gameState = GS.MAIN_MENU;
             window._hqReturnOrMenu();
+            if (!state.uiDialog) {
+                const activePage = startOverlay && startOverlay.querySelector('.title-page.active');
+                const fallback = activePage && Array.from(activePage.querySelectorAll('button, input, select, a[href], [tabindex]')).find(_mmSettingsCanFocus);
+                if (_mmSettingsCanFocus(target)) target.focus({ preventScroll: true });
+                else if (fallback) fallback.focus({ preventScroll: true });
+            }
         };
 
         window._goToCodex = function() {
@@ -1806,10 +1891,8 @@
             if (typeof window._renderSpellLibrary === 'function') window._renderSpellLibrary();
         };
         window._spellLibraryBack = function() {
-            playSfx('uiButtonConfirm');
             state.gameState = GS.MAIN_MENU;
-            _showTitlePage('settingsPage');
-            if (typeof _renderMainMenuSettings === 'function') _renderMainMenuSettings();
+            window._openMainMenuSettings();
         };
 
         /* ── Standalone Party Builder (main menu → team archive) ──────────
@@ -2645,6 +2728,7 @@
         function _renderMainMenuSettings() {
             const body = document.getElementById('mmSettingsBody');
             if (!body) return;
+            const focusSnapshot = _mmSettingsSnapshot();
             const musicVol = document.getElementById('musicVolumeSlider')?.value || 68;
             const sfxVol = document.getElementById('sfxVolumeSlider')?.value || 90;
             const ambVol = document.getElementById('ambienceVolumeSlider')?.value || 80;
@@ -2754,6 +2838,7 @@
                         </div>
                     </div>
                 </div>`;
+            _mmSettingsFocus(focusSnapshot);
         }
 
         const _TRAIN_MAP_POOL = [
@@ -15865,4 +15950,3 @@
                 window._hqReturnOrMenu();
             }
         };
-

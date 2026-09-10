@@ -1,19 +1,21 @@
-# Pause focus continuation — upload manifest
+# Settings keyboard focus — complete-file upload manifest
 
-Baseline: 41f8e76b67120eea58c17fd968c5c72d70ef035e. Complete files, not patches.
+Baseline: e92ee26153b65c2047963544c56310ea838220bb.
 
-- R2: ui.js
+- R2: map.js
 - Render: index.html
-- Repository only: scene-lifecycle.test.js, ENTROPY_WARS_ADVERSARIAL_REVIEW_PLAN.md
-- Sync ui.js and index.html to the repository too.
+- Repository only: scene-lifecycle.test.js, ENTROPY_WARS_ADVERSARIAL_REVIEW_PLAN.md, DOOR_MASTER.md, DOOR_HQ_BUILD_PLAN.md
+- Sync map.js and index.html to the repository too.
 
-Shared cache token: 20260910-040923-focus-cors
+Shared cache token: 20260910-042512-settings-cors
 
-Validation: 210 passed, 0 failed, 2 skipped (missing animation GLBs/server dependencies). No live deployment or browser playtest.
+Validation: 215 passed, 0 failed, 2 expected skips (animation GLBs/server dependencies absent). No browser/controller acceptance or deployment.
 
 SHA-256:
 
-- ui.js: 43f6988716b88fd5639e14d4dc38daf36a0d90c1ddde2806bd07000ece72034d
-- index.html: 8dac720b36843793ced6ba6551832c040477743bf25038abd9cb0d3fc5d96f94
-- scene-lifecycle.test.js: 53615255f809f5603228f94e42cceaedf4966fe270428ae675dfe0ceeed66135
-- ENTROPY_WARS_ADVERSARIAL_REVIEW_PLAN.md: 5837ffff51cfca2982bc4eaa64999abdd589c047102cdf3aabcc22a263cc179b
+- map.js: ea9aac3bb548ff3b0c275929b15cbfc0ff5492d84fb74b0486e5a26ff7366c25
+- index.html: 0f65b9be3e16b96f781cf0b6a3384818429b964f3c9b72362cc9833b717d54b0
+- scene-lifecycle.test.js: d040b195e264f183aca1950bdc820e499d810f221dc5f291add97a99cbd6152a
+- ENTROPY_WARS_ADVERSARIAL_REVIEW_PLAN.md: 6c67582f6739648f29cfa2617fba89841cd4a499376d4b152f707a0f5ff2dd4b
+- DOOR_MASTER.md: dbabb8881f6b757172bcbbb6dc0d1598a6a7df74185fb76901c53f46130635fb
+- DOOR_HQ_BUILD_PLAN.md: 52f7a9059de47882675094eadcc3c27df3d1594ebc9217535d2b4b1cda01e62b
