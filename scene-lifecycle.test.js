@@ -354,3 +354,79 @@ test('settings rejects focus in inactive pages even when opacity-hidden pages re
     assert.equal(h.ctx._mmSettingsCanFocus(retained), false);
     inactive.classList.add('active'); assert.equal(Boolean(h.ctx._mmSettingsCanFocus(retained)), true);
 });
+
+function controllerSettingsHarness() {
+    const doc = { activeElement: null };
+    function control(id, page = null) {
+        return Object.assign(element(), { id, page, offsetParent: {}, visibility: 'visible',
+            blocked: false, disabled: false, tagName: 'BUTTON', clicks: 0, events: [],
+            getBoundingClientRect() { return { width: 100, height: 30 }; },
+            closest(selector) { return selector === '.title-page' ? this.page :
+                (this.blocked || this.page?.blocked ? this : null); },
+            focus() { doc.activeElement = this; }, click() { this.clicks++; },
+            dispatchEvent(e) { this.events.push(e.type); }, querySelectorAll() { return this.controls || []; },
+        });
+    }
+    const page = control('settingsPage'), pause = control('pauseOverlay'), dialog = control('uiDialogOverlay');
+    const back = control('back', page), slider = control('volume', page), menu = control('mainMenu');
+    slider.tagName = 'INPUT'; slider.type = 'range'; slider.value = '5'; slider.step = '1';
+    page.controls = [back, slider]; page.classList.add('active'); dialog.offsetParent = null;
+    pause.controls = [control('resume')]; dialog.controls = [control('dialogConfirm')];
+    doc.body = control('body'); doc.body.controls = [back, slider, menu]; doc.activeElement = doc.body;
+    const els = { settingsPage: page, pauseOverlay: pause, uiDialogOverlay: dialog };
+    doc.getElementById = id => els[id] || null;
+    const ctx = vm.createContext({ document: doc, window: {}, rebind: false,
+        state: { titleScreenVisible: true }, getComputedStyle: el => ({ visibility: el.visibility }),
+        Event: class { constructor(type) { this.type = type; } } });
+    vm.runInContext(section(source('state.js'), '            function _pauseOpen()', '\n            /* ── synthetic keys:')
+        .replace('            /* ── synthetic keys:', ''), ctx);
+    return { ctx, doc, page, back, slider, menu, pause, dialog, els };
+}
+
+test('controller Settings ownership rejects inactive pages with retained geometry and hidden roots', () => {
+    const h = controllerSettingsHarness();
+    assert.equal(h.ctx._mmSettingsOpen(), true); assert.equal(h.ctx._context(), 'domnav');
+    h.page.classList.remove('active');
+    assert.equal(h.page.getBoundingClientRect().width, 100);
+    assert.equal(h.ctx._mmSettingsOpen(), false); assert.equal(h.ctx._context(), 'title');
+    assert.equal(h.ctx._domNavRoot(), h.doc.body);
+    assert.deepEqual(Array.from(h.ctx._domNavEls()), [h.menu]);
+    h.page.classList.add('active');
+    for (const [key, value] of [['blocked', true], ['visibility', 'hidden'], ['offsetParent', null]]) {
+        const old = h.page[key]; h.page[key] = value;
+        assert.equal(h.ctx._mmSettingsOpen(), false, key); h.page[key] = old;
+    }
+    h.page.getBoundingClientRect = () => ({ width: 0, height: 0 });
+    assert.equal(h.ctx._mmSettingsOpen(), false);
+    delete h.els.settingsPage; assert.equal(h.ctx._mmSettingsOpen(), false);
+});
+
+test('controller navigates the whole Settings page including Back and preserves owner precedence', () => {
+    const h = controllerSettingsHarness();
+    assert.equal(h.ctx._domNavRoot(), h.page);
+    h.ctx._domNavStep(1); assert.equal(h.doc.activeElement, h.back);
+    h.ctx._domNavStep(-1); assert.equal(h.doc.activeElement, h.slider);
+    h.ctx._domNavStep(1); h.ctx._domNavActivate(); assert.equal(h.back.clicks, 1);
+    h.ctx.state.uiDialog = {}; h.dialog.offsetParent = {};
+    assert.equal(h.ctx._context(), 'dialog'); assert.equal(h.ctx._domNavRoot(), h.dialog);
+    h.pause.classList.add('active');
+    assert.equal(h.ctx._context(), 'domnav'); assert.equal(h.ctx._domNavRoot(), h.pause);
+    h.ctx.rebind = true; assert.equal(h.ctx._context(), 'rebind');
+});
+
+test('controller Confirm and adjustment cannot act on stale or ineligible focused controls', () => {
+    const h = controllerSettingsHarness();
+    h.menu.focus(); h.ctx._domNavActivate();
+    assert.equal(h.menu.clicks, 0); assert.equal(h.doc.activeElement, h.back);
+    h.slider.focus(); assert.equal(h.ctx._domNavAdjust(1), true);
+    assert.equal(h.slider.value, '6'); assert.deepEqual(h.slider.events, ['input', 'change']);
+    h.page.classList.remove('active');
+    assert.equal(h.ctx._domNavAdjust(1), false); assert.equal(h.slider.value, '6');
+    h.ctx._domNavActivate(); assert.equal(h.slider.clicks, 0); assert.equal(h.doc.activeElement, h.menu);
+    h.page.classList.add('active');
+    for (const [key, value] of [['disabled', true], ['blocked', true], ['visibility', 'hidden'], ['offsetParent', null]]) {
+        const old = h.slider[key]; h.slider[key] = value; h.slider.focus();
+        assert.equal(h.ctx._domNavAdjust(1), false, key);
+        h.ctx._domNavActivate(); assert.equal(h.slider.clicks, 0, key); h.slider[key] = old;
+    }
+});

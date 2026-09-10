@@ -1,21 +1,18 @@
-# Settings keyboard focus — complete-file upload manifest
+# PAUSE-06 controller Settings delivery
 
-Baseline: e92ee26153b65c2047963544c56310ea838220bb.
+Baseline: GitHub main f546e7fff61edb012e3fae536aee995996257c4f.
+Complete files with original root names; includes all earlier fixes in these files.
 
-- R2: map.js
-- Render: index.html
-- Repository only: scene-lifecycle.test.js, ENTROPY_WARS_ADVERSARIAL_REVIEW_PLAN.md, DOOR_MASTER.md, DOOR_HQ_BUILD_PLAN.md
-- Sync map.js and index.html to the repository too.
+- R2: state.js
+- Render: index.html (shared cache token 20260910-045746-controller-cors)
+- Repository only: scene-lifecycle.test.js, ENTROPY_WARS_ADVERSARIAL_REVIEW_PLAN.md
+- Sync both runtime files to the repository as well.
 
-Shared cache token: 20260910-042512-settings-cors
+Validation: 220 tests; 218 passed, 0 failed, 2 existing skips (missing animation GLBs and server dependencies). Repository-wide JS syntax passed. No browser, controller or host/guest runtime acceptance. Nothing deployed.
 
-Validation: 215 passed, 0 failed, 2 expected skips (animation GLBs/server dependencies absent). No browser/controller acceptance or deployment.
+## SHA-256
 
-SHA-256:
-
-- map.js: ea9aac3bb548ff3b0c275929b15cbfc0ff5492d84fb74b0486e5a26ff7366c25
-- index.html: 0f65b9be3e16b96f781cf0b6a3384818429b964f3c9b72362cc9833b717d54b0
-- scene-lifecycle.test.js: d040b195e264f183aca1950bdc820e499d810f221dc5f291add97a99cbd6152a
-- ENTROPY_WARS_ADVERSARIAL_REVIEW_PLAN.md: 6c67582f6739648f29cfa2617fba89841cd4a499376d4b152f707a0f5ff2dd4b
-- DOOR_MASTER.md: dbabb8881f6b757172bcbbb6dc0d1598a6a7df74185fb76901c53f46130635fb
-- DOOR_HQ_BUILD_PLAN.md: 52f7a9059de47882675094eadcc3c27df3d1594ebc9217535d2b4b1cda01e62b
+- `state.js`: `d3bd3794ad2a4dc16981daa125c9116474cc361b55c5e435384446818c170648`
+- `index.html`: `788b231506a2da6c1e870d1bfa0c842b9ea29ee20dab8656262a197a053c4799`
+- `scene-lifecycle.test.js`: `a33f85ed6fa3593917efc667755ec4a609811302166ef0d2b7c854c28affce24`
+- `ENTROPY_WARS_ADVERSARIAL_REVIEW_PLAN.md`: `e37d08367826d6fca1592d612d4021247d6e1a466666f7fb9771efe6a62c926e`

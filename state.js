@@ -6285,8 +6285,11 @@
                 return !!(ov && ov.classList.contains('active'));
             }
             function _mmSettingsOpen() {
-                const el = document.getElementById('mmSettingsBody');
-                if (!el) return false;
+                // Inactive title pages keep layout boxes while CSS fades them out.
+                const el = document.getElementById('settingsPage');
+                if (!el || !el.classList.contains('active') ||
+                    el.closest('[inert], [aria-hidden="true"]') ||
+                    getComputedStyle(el).visibility !== 'visible') return false;
                 const r = el.getBoundingClientRect();
                 return r.width > 0 && r.height > 0 && el.offsetParent !== null;
             }
@@ -6313,8 +6316,8 @@
                 if (pause && pause.classList.contains('active')) return pause;
                 const dlg = document.getElementById('uiDialogOverlay');
                 if (dlg && dlg.offsetParent !== null) return dlg;
-                const mm = document.getElementById('mmSettingsBody');
-                if (mm && mm.offsetParent !== null) return mm.closest('.mm-modal') || mm;
+                // Back is a sibling of the settings body, inside the full page.
+                if (_mmSettingsOpen()) return document.getElementById('settingsPage');
                 return document.body;
             }
             function _domNavEls() {
@@ -6325,6 +6328,10 @@
                 ));
                 return els.filter(el => {
                     if (el.disabled) return false;
+                    const page = el.closest('.title-page');
+                    if (page && !page.classList.contains('active')) return false;
+                    if (el.closest('[inert], [aria-hidden="true"]') ||
+                        getComputedStyle(el).visibility !== 'visible') return false;
                     if (el.offsetParent === null) return false;
                     const r = el.getBoundingClientRect();
                     return r.width > 2 && r.height > 2;
@@ -6343,12 +6350,13 @@
             }
             function _domNavActivate() {
                 const el = document.activeElement;
-                if (!el || el === document.body) { _domNavStep(1); return; }
+                if (!_domNavEls().includes(el)) { _domNavStep(1); return; }
                 if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
                 el.click();
             }
             function _domNavAdjust(dir) {
                 const el = document.activeElement;
+                if (!_domNavEls().includes(el)) return false;
                 if (el && el.tagName === 'INPUT' && el.type === 'range') {
                     const step = parseFloat(el.step) || 1;
                     el.value = String(parseFloat(el.value || '0') + dir * step);
@@ -6698,4 +6706,3 @@
             };
         })();
         window.EWPad = EWPad;
-
