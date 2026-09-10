@@ -6,6 +6,18 @@ Baseline: Phase 1 source review pinned to main commit `f0a4c3341631d60cee2ac544e
 Continuation baseline: main commit `4c740fcf6624a30d59e30c4d4dfea1a16dd85b03`, checked 2026-09-09 (America/Chicago). This commit and its predecessor `3da54eff8abbef3da87a1c0f72272919d84bd15e` changed only the uploaded review document; the inspected game source and line references remain unchanged.
 Delivery: this document is repository/reference material. The first delivery is now present in repository main `41f8e76b67120eea58c17fd968c5c72d70ef035e`; R2/Render deployment is unverified. The pause-focus delivery is also present in repository main `e92ee26153b65c2047963544c56310ea838220bb`. The Settings-focus delivery is present in repository main `f546e7fff61edb012e3fae536aee995996257c4f`. The PAUSE-06 controller delivery is present in repository main `88b3bc65adc93fc8ed2e84c28c112b0c81565b3f`; the PAUSE-07 delivery is present in repository main `82494b38fa3dea84f89f32a8723602289fa51b3f`; R2/Render deployment remains unverified.
 
+### Latest continuation — 2026-09-10: LIFE-06 / VFX-03 electric and combo callbacks
+
+**Implemented and locally validated; not deployed or browser-playtested.** This entry supersedes older next-task ordering. Five direct timer sites now use the existing `_fxDelay` lifetime owner: electric_arcs cue bursts, generic electric impact arcs, combo convergence heads, nested combo trails, and the combo arrival explosion. Retirement cancels pending timers and makes already-queued callbacks inert across subsequent battles/previews. Nested trails already scheduled by a convergence head are retired too. These callbacks only emit effects; none is responsible for resource disposal. Normal delays, particle counts, elemental sprites, geometry and relay payloads are preserved.
+
+**Evidence and validation:** ten production-function regression checks pass; seven fail against the downloaded unchanged effects file and three normal-emission controls pass. Tests exercise current-lifetime timing/counts, timer cancellation, stale queued callbacks, new-lifetime emission and retirement after nested combo work begins. Full package test command via bundled Node (`node --test *.test.js`, npm unavailable): **390 total, 386 passed, 2 failed, 2 skipped**. The failures remain the recorded Phase 6 starter assertion and lunar-lander ceiling assertion; the corresponding code/data/tests are unchanged. Syntax checks: **79/79 clean**. This is the existing mixed local review workspace, not a full-main CI checkout or WebGL/host-guest acceptance.
+
+**Source:** downloaded current main three-vfx-effects.js, index.html, CLAUDE.md and this tracker before editing. Effects and tracker were byte-identical to the previous local delivery; the effects Git blob was `ed7ace9b41010ddb39c8acfd8fb4c63b7bc7e24c`. Read the updated character/preview rules and retained all current effects. No synced sources edited. Both online viewers run the same local effect cleanup; no authority or network contract changed.
+
+**Delivery:** `ENTROPY_WARS_ELECTRIC_COMBO_FIXES.zip` contains complete three-vfx-effects.js (R2), index.html (Render), electric-combo-lifetime.test.js, EFFECT_CALLBACK_INVENTORY.md and this tracker (repository only), with validation logs and SHA-256 manifests. Cache token: `20260910-electric-combo-retirement-01-cors`. No commit, push or deployment.
+
+**Exact next task:** continue semantic ownership review at `_fireDescent`: delayed flyover, nested smoke trail, descent/warhead spawn and impact callbacks. Then remaining mapped/bespoke spell callbacks and asset completion attachment. Preserve shared weapon-cache warmup and give resource-disposal callbacks an owner before cancellation. VFX-04 endpoint/list visibility (`sx/sy`, tiles, chain aliases) remains open. LIFE-06/VFX-03 remain partial; no claim of complete timer coverage or live acceptance.
+
 ### Latest continuation — 2026-09-10: LIFE-06 / VFX-03 bespoke delays and dust-devil ownership
 
 **Implemented and locally validated; not deployed or browser-playtested.** This entry supersedes older next-task ordering. The dash landing ring, legacy teleport arrival and Blizzard Present delayed shards now use the existing lifetime-bound delay helper. Retirement cancels the underlying timers and rejects callbacks already queued, even when another battle or preview permits effects. Current-lifetime timing and emissions are preserved.
@@ -975,7 +987,7 @@ After each phase:
 
 ## Resume instructions
 
-**Current continuation:** use the bespoke delays/dust-devil entry at the top and `ENTROPY_WARS_BESPOKE_EFFECT_FIXES.zip`. Continue remaining callback classification using EFFECT_CALLBACK_INVENTORY.md, then VFX-04 visibility. The three named spawn delays and dust-devil polling cleanup are locally fixed; broader lifecycle and live acceptance remain open.
+**Current continuation:** use the electric/combo entry at the top and `ENTROPY_WARS_ELECTRIC_COMBO_FIXES.zip`. Resume callback classification at `_fireDescent` using EFFECT_CALLBACK_INVENTORY.md, then VFX-04 visibility. Prior bespoke and DOM fixes are preserved; broader lifecycle and live acceptance remain open.
 
 **Latest continuation:** the LIFE-05 delivery at the top supersedes the older next-step notes below. Use `ENTROPY_WARS_RECONNECT_CLOCK_FIXES.zip`. The next implementation is acknowledged current-match state recovery; persistent clock suspension and forced rejoin resend are implemented and locally validated, not deployed. LIFE-05 remains open.
 
@@ -991,3 +1003,5 @@ Phase log addition — 2026-09-10, Phase 1 / LIFE-05: implemented and packaged t
 Phase log addition — 2026-09-10, Phase 1 / LIFE-06 and Phase 5 / VFX-03: owner-aware battle/preview handoff, lifetime-bound recipe/cue/teleport delays and reentrant ticker retirement implemented. New tests 12/12; full suite 358 passed, 2 previously recorded failures, 2 skips; syntax 76/76. Bespoke callback cleanup and VFX-04 remain open. Complete-file package prepared; not deployed.
 
 Phase log addition — 2026-09-10, LIFE-06/VFX-03: owned disposal for flashback/end-card/psychedelic DOM effects and canvas tint handoff. Nine new tests pass (eight fail before); full suite 367 passed, two unchanged failures, two skips; syntax 77/77. Complete-file delivery prepared, not deployed. Next: bespoke spawn/polling ownership, then VFX-04.
+
+Phase log addition — 2026-09-10, LIFE-06/VFX-03: electric cue/impact and combo head/trail/arrival timers now retire with their effect lifetime. Ten new checks pass (seven fail before); full suite 386 passed, two previously recorded failures, two skips; syntax 79/79. Complete files packaged locally, not deployed. Next: `_fireDescent` callback ownership, remaining bespoke timers, then VFX-04.

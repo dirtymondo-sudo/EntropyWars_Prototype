@@ -1,16 +1,25 @@
 # Remaining effect callback inventory
 
-Generated from the delivered three-vfx-effects.js. This is a complete textual index of direct window.setTimeout call sites, not a completed semantic audit. Helper-owned callbacks and application cache warmup are included and must not be blindly converted. The dust-devil polling interval has been removed. Asset completion callbacks and other scheduling APIs still need separate review.
+Updated 2026-09-10 after electric/combo timer retirement. This is a complete textual index of direct window.setTimeout sites, not an exhaustive semantic audit. Asset completion callbacks and other scheduling APIs still need separate review.
+
+## Classified and fixed in this batch
+
+| Consumer | Timer purpose | Disposition |
+| --- | --- | --- |
+| electric_arcs | Delayed lightning bursts, 60 ms spacing | Lifetime-owned emission; no cleanup obligation. |
+| fire electric impact | Delayed lightning bursts, 40 ms spacing | Lifetime-owned emission; no cleanup obligation. |
+| fireCombo convergence | Delayed heads at 0/60 ms | Lifetime-owned emission; creates nested trails. |
+| fireCombo trail | Thirteen trailing particles per head, 26 ms spacing | Lifetime-owned emission, including when the parent already fired. |
+| fireCombo arrival | Delayed target explosion | Lifetime-owned emission. |
+
+The prior dash, legacy teleport, Blizzard Present, dust-devil and DOM fixes remain in place. Shared _wpnLoad boot/staggered warmup has application lifetime and must not be bulk-canceled. The two helper timer sites below are already owned.
+
+## Remaining direct timer sites
 
 | Line | Direct timer call |
 | --- | --- |
 | 10 | `var id = window.setTimeout(function () {` |
 | 48 | `var id = window.setTimeout(function () {` |
-| 3478 | `window.setTimeout(function() {` |
-| 3652 | `window.setTimeout(function() {` |
-| 4009 | `window.setTimeout(function() {` |
-| 4030 | `window.setTimeout(function() {` |
-| 4057 | `window.setTimeout(function() {` |
 | 4175 | `window.setTimeout(function() {` |
 | 4229 | `window.setTimeout(function() {` |
 | 4249 | `window.setTimeout(function() {` |
@@ -94,4 +103,4 @@ Generated from the delivered three-vfx-effects.js. This is a complete textual in
 | 21352 | `window.setTimeout(function () {` |
 | 21355 | `window.setTimeout(function () {` |
 
-Next: inspect electric_arcs and the subsequent bespoke spell callbacks for delayed emission versus resource disposal; keep _wpnLoad boot/staggered warmup application-owned. Test each conversion across retirement/reentry. Then address VFX-04 endpoint and list visibility aliases.
+Next: trace `_fireDescent` flyover, nested trails, descent/warhead and impact callbacks. Identify delayed emissions versus disposal before conversion, including cold/warm model paths. Continue subsequent mapped/bespoke functions and asset completion attachment, then VFX-04 endpoint/list visibility.

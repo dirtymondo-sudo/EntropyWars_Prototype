@@ -3475,7 +3475,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var nB = Math.max(2, Math.round(3 * q.s));
             for (var i = 0; i < nB; i++) {
                 (function(idx) {
-                    window.setTimeout(function() {
+                    _fxDelay(function() {
                         if (_suppressed() || !_LT()) return;
                         var arcLen = q.ts * (0.4 + Math.random() * 0.55) * q.s;
                         var ang = Math.random() * 6.2832;
@@ -3649,7 +3649,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var _zapCount = /taser|chainLightning/i.test(spellId) ? 3 : 2;
             for (var _zi = 0; _zi < _zapCount; _zi++) {
                 (function(idx) {
-                    window.setTimeout(function() {
+                    _fxDelay(function() {
                         if (typeof state !== 'undefined' && (state.devAutoSim && !state._devSimShowAnims || state._aiTurbo)) return;
                         var _zc = tilePx(params.tx, params.ty);
                         var _zz = unitSurfaceZ(params.tx, params.ty);
@@ -4006,7 +4006,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function fireCombo(unitATx, unitATy, unitBTx, unitBTy, targetTx, targetTy, typeA, typeB) {
         if (_suppressed() || _catOff('combos')) return;
         var _spawnConverge = function(fromTx, fromTy, delayMs, sprite) {
-            window.setTimeout(function() {
+            _fxDelay(function() {
                 var fromPx = tilePx(fromTx, fromTy);
                 var toPx   = tilePx(targetTx, targetTy);
                 var dx = toPx.x - fromPx.x, dy = toPx.y - fromPx.y;
@@ -4027,7 +4027,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 });
                 for (var i = 0; i < 13; i++) {
                     (function(idx) {
-                        window.setTimeout(function() {
+                        _fxDelay(function() {
                             _spawn({
                                 x: fromPx.x + rn(-8, 8), y: fromPx.y + rn(-8, 8),
                                 z: unitSurfaceZ(fromTx, fromTy) + unitZBoost(),
@@ -4054,7 +4054,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var distA = Math.sqrt(dxA * dxA + dyA * dyA) || 1;
         var arrivalMs = Math.round((distA / 400) * 1000) + 150;
 
-        window.setTimeout(function() {
+        _fxDelay(function() {
             _fireUtility('_combo_explosion', { tx: targetTx, ty: targetTy });
         }, arrivalMs);
     }
