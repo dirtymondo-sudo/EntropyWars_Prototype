@@ -33239,6 +33239,7 @@
                 paused: false,
                 startedAt: Date.now(),
             };
+            _resumeShotClock(); // Retire the previous match's cinematic owner.
             state.shotClock = { startedAt: 0, limitSec: 30, active: false };
 
             if (_aiTrainingMode && _trainMapSetting === 'rotate') {
@@ -35208,6 +35209,7 @@
                 if (!window.EW_NO_IMITATION) addLog('🧠 The CPU studies every decision you make and re-tunes its weights toward your play — summary at match end.');
             }
 
+            _resumeShotClock(); // Keep reconnect suspension, discard old cinematic ownership.
             state.shotClock = { startedAt: 0, limitSec: 30, active: false };
 
             _startMatchClockInterval();
@@ -54603,6 +54605,15 @@
             return 0;
         }
 
+        // Suspension belongs to its caller, not to a particular turn's clock.
+        // Keep this outside synchronized state: each viewer owns its connection.
+        const _shotClockPauseReasons = new Set();
+        function _applyShotClockPause() {
+            if (_shotClockPauseReasons.size && state.shotClock && state.shotClock.active && state.shotClock.pausedAt == null) {
+                state.shotClock.pausedAt = Date.now();
+            }
+        }
+
         let _matchClockInterval = null;
         function _startMatchClockInterval() {
             _stopMatchClockInterval();
@@ -54618,8 +54629,9 @@
 
                 if (typeof renderTurnClock === 'function') renderTurnClock();
 
+                _applyShotClockPause();
                 if (state.shotClock && state.shotClock.active && !state.winner) {
-                    if (state.shotClock.pausedAt) {
+                    if (state.shotClock.pausedAt != null) {
                         // Paused (opponent reconnecting) — hold the countdown.
                         _renderShotClockPill(null, true);
                     } else {
@@ -54643,6 +54655,7 @@
         }
 
         function _shotClockExpired() {
+            if (_shotClockPauseReasons.size || !state.shotClock || !state.shotClock.active || state.shotClock.pausedAt != null) return;
             if (!state._blitzActiveUnitId || state.winner) return;
             const unit = state.units.find(u => u.id === state._blitzActiveUnitId);
             if (!unit || unit.dead) return;
@@ -54680,6 +54693,7 @@
             state.shotClock.startedAt = Date.now();
             state.shotClock.pausedAt = null;
             state.shotClock.active = true;
+            _applyShotClockPause();
         }
 
         function _stopShotClock() {
@@ -54689,17 +54703,18 @@
             _renderShotClockPill(null, false);
         }
 
-        /* Pause/resume for the reconnect window: while a player is
-           disconnected the match can't progress, so nobody should lose their
-           turn to the timer. Resume shifts startedAt forward by the paused
-           span so the remaining time is exactly what it was at pause. */
-        function _pauseShotClock() {
-            if (!state.shotClock || !state.shotClock.active || state.shotClock.pausedAt) return;
-            state.shotClock.pausedAt = Date.now();
+        /* Existing no-argument callers own the sky-cinematic pause. Networking
+           owns 'reconnect', which survives inactive/replaced clocks. Releasing
+           either reason cannot release the other. These suspend only the shot
+           clock, not in-flight actions or the whole match simulation. */
+        function _pauseShotClock(reason) {
+            _shotClockPauseReasons.add(reason || 'cinematic');
+            _applyShotClockPause();
         }
 
-        function _resumeShotClock() {
-            if (!state.shotClock || !state.shotClock.pausedAt) return;
+        function _resumeShotClock(reason) {
+            if (!_shotClockPauseReasons.delete(reason || 'cinematic')) return;
+            if (_shotClockPauseReasons.size || !state.shotClock || state.shotClock.pausedAt == null) return;
             state.shotClock.startedAt += Date.now() - state.shotClock.pausedAt;
             state.shotClock.pausedAt = null;
         }
@@ -54738,6 +54753,7 @@
         window._stopShotClock = _stopShotClock;
         window._pauseShotClock = _pauseShotClock;
         window._resumeShotClock = _resumeShotClock;
+        window._applyShotClockPause = _applyShotClockPause;
 
         function tickMatchClock() {
             if (!state.matchClock || state.matchClock.paused || state.winner) return;

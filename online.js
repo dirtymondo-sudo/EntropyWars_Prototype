@@ -2807,7 +2807,7 @@
                disconnect. Same function names/call sites as the old overlay. */
             function _showReconnectOverlay(oppLabel, seconds) {
                 _hideReconnectOverlay();
-                if (typeof window._pauseShotClock === 'function') window._pauseShotClock();
+                if (typeof window._pauseShotClock === 'function') window._pauseShotClock('reconnect');
                 var isSelf = oppLabel === 'You';
                 var msg = isSelf
                     ? '⚠️ Connection lost — reconnecting…'
@@ -2844,7 +2844,7 @@
                 if (_reconnectOverlay) { _reconnectOverlay.remove(); _reconnectOverlay = null; }
                 var existing = document.getElementById('reconnectOverlay');
                 if (existing) existing.remove();
-                if (typeof window._resumeShotClock === 'function') window._resumeShotClock();
+                if (typeof window._resumeShotClock === 'function') window._resumeShotClock('reconnect');
             }
             /* Exposed so the main-menu teardown (defined in the wrapper scope
                above this closure) can clear a live banner. */
@@ -3060,6 +3060,13 @@
                 NET.socket.on('player-rejoined', function(data) {
                     NET.connected = true;
                     _hideReconnectOverlay();
+                    // The server broadcasts this to both seats after assigning
+                    // the rejoined socket. Force a full host snapshot even on
+                    // an unchanged host turn; the normal heartbeat deduplicates it.
+                    if (NET.online && NET.role === 'host') {
+                        NET.lastSyncJson = '';
+                        if (window._broadcastState) window._broadcastState();
+                    }
                     ewToast((data.role === 'host' ? 'Player 1' : 'Player 2') + ' reconnected!', 3000);
                 });
 
@@ -4295,6 +4302,9 @@
                     var prevPhase = st.phase;
 
                     _deserializeInto(st, data);
+                    // A host snapshot may replace the entire shotClock object.
+                    // Reapply viewer-local suspension before UI/clock consumers.
+                    if (typeof window._applyShotClockPause === 'function') window._applyShotClockPause();
 
                     /* The authoritative result is here — retire the guest's
                        latency-hiding move hologram (tag set on emit). */
