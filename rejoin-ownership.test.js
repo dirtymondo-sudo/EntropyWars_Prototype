@@ -37,7 +37,7 @@ function harness() {
             handlers['rejoin-room']({ roomCode: host.code, rejoinToken: token }, r => reply = r);
             return reply;
         },
-        disconnect(role) { room._disconnected = { role, socketId: room[role], timer: 'deadline' }; }
+        disconnect(role) { room._disconnected = { [role]: { role, socketId: room[role], timer: 'deadline', deadline: Date.now() + 90000 } }; }
     };
 }
 test('friendly seats receive distinct credentials and private room-full payloads', () => {
@@ -106,7 +106,7 @@ test('ranked matchmaking privately delivers the matching credential to each assi
         const m = messages.find(m => m.target === room[role]);
         assert.ok(m); assert.equal(m.data.rejoinToken, room.rejoinTokens[role]);
         assert.equal(m.data.ranked, true); assert.equal(m.data.mapModeId, 'test-map');
-        room._disconnected = { role, timer: 'ranked-deadline' };
+        room._disconnected = { [role]: { role, timer: 'ranked-deadline', deadline: Date.now() + 90000 } };
         assert.equal(h.rejoin(m.data.rejoinToken, 'returning-' + role).role, role);
     }
 });

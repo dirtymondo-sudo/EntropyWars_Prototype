@@ -2872,9 +2872,14 @@
                                 NET.myPlayer = resp.myPlayer;
                                 NET.connected = true;
                                 NET.online = true;
-                                _hideReconnectOverlay();
+                                if (resp.waitingForOpponent) {
+                                    _showReconnectOverlay(resp.role === 'host' ? 'Player 2' : 'Player 1',
+                                        resp.remainingSeconds);
+                                } else {
+                                    _hideReconnectOverlay();
+                                }
                                 NET._wasInMatch = false;
-                                ewToast('Reconnected!', 2000);
+                                ewToast(resp.waitingForOpponent ? 'Connected — waiting for your opponent.' : 'Reconnected!', 2000);
                             } else {
                                 console.log('[NET] Rejoin failed:', resp && resp.error);
                                 ewToast('Failed to rejoin: ' + (resp && resp.error || 'unknown'), 4000);
@@ -5583,3 +5588,4 @@
                 loadSaved: _loadSavedReplay
             };
         })();
+

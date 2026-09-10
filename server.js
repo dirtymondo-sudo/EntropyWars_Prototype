@@ -347,6 +347,14 @@ function emitRoomFull(room, data) {
     }
 }
 
+// Each absent seat owns its deadline. Retiring a room/match invalidates all
+// callbacks as well as clearing timers (a queued callback may still execute).
+function clearDisconnectDeadlines(room) {
+    const pending = room._disconnected;
+    room._disconnected = null;
+    if (pending) for (const dc of Object.values(pending)) clearTimeout(dc.timer);
+}
+
 function generateCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
     let code = '';
@@ -519,6 +527,7 @@ async function applyRankedElo(room, code, winnerPlayerNum, reason) {
     if (winnerPlayerNum !== 1 && winnerPlayerNum !== 2) return;
     room._resultProcessed = true;
     room._matchEnded = true;
+    clearDisconnectDeadlines(room);
 
     // Duration is measured server-side from the first battle-phase sync.
     const durationMs = room._battleStartAt ? Date.now() - room._battleStartAt : 0;
@@ -1887,6 +1896,7 @@ io.on('connection', (socket) => {
             // room — forfeits count again and the rematch may report its own
             // ranked result — and start a fresh replay segment.
             if (room._matchEnded && !data.winner && data.phase) {
+                clearDisconnectDeadlines(room);
                 room._matchEnded = false;
                 room._resultProcessed = false;
                 room._battleStartAt = null;
@@ -1915,6 +1925,11 @@ io.on('connection', (socket) => {
                 }
             }
             maybeReplaySnapshot(room, data);
+            // Result bookkeeping must work even when replay recording is off.
+            if (data.winner === 1 || data.winner === 2) {
+                room._matchEnded = true;
+                clearDisconnectDeadlines(room);
+            }
             // Ranked outcome is DERIVED from this mirrored stream — the same
             // state the guest renders — not from the host's ranked-result claim.
             if (room.ranked && room._matchStarted && !room._resultProcessed
@@ -2078,36 +2093,43 @@ io.on('connection', (socket) => {
     });
 
     socket.on('rejoin-room', (data, callback) => {
-        const code = (data && data.roomCode) ? data.roomCode.toUpperCase().trim() : '';
+        const code = data && typeof data.roomCode === 'string' ? data.roomCode.toUpperCase().trim() : '';
         const token = data && data.rejoinToken;
         const room = rooms.get(code);
 
-        const dc = room && room._disconnected;
-        // A reconnect credential belongs to exactly one seat. Never infer its
-        // owner from whichever player happens to be disconnected.
-        if (!dc || !room.rejoinTokens || typeof token !== 'string' ||
-            token !== room.rejoinTokens[dc.role] || findRoomBySocket(socket.id)) {
-            if (callback) callback({ error: 'Room not found or invalid token.' });
+        const role = room && room.rejoinTokens && typeof token === 'string'
+            ? ['host', 'guest'].find(seat => room.rejoinTokens[seat] === token) : null;
+        const dc = role && room._disconnected && room._disconnected[role];
+        if (!dc || room._matchEnded || room._resultProcessed ||
+            Date.now() >= dc.deadline || findRoomBySocket(socket.id)) {
+            if (typeof callback === 'function') callback({ error: 'Room not found or invalid token.' });
             return;
         }
 
         if (dc.timer) clearTimeout(dc.timer);
 
-        const role = dc.role;
         if (role === 'host') {
             room.host = socket.id;
         } else {
             room.guest = socket.id;
         }
-        room._disconnected = null;
+        delete room._disconnected[role];
+        const waiting = Object.values(room._disconnected)[0];
+        if (!waiting) room._disconnected = null;
 
         socket.join(code);
         console.log(`[IO] ${role} rejoined room ${code} as ${socket.id}`);
         replayWrite(room, { t: Date.now(), e: 'rejoin', role });
 
-        if (callback) callback({ ok: true, role: role, myPlayer: role === 'host' ? 1 : 2 });
+        if (typeof callback === 'function') callback({
+            ok: true, role, myPlayer: role === 'host' ? 1 : 2,
+            waitingForOpponent: !!waiting,
+            remainingSeconds: waiting ? Math.max(0, Math.ceil((waiting.deadline - Date.now()) / 1000)) : 0
+        });
 
-        io.to(code).emit('player-rejoined', { role: role, socketId: socket.id });
+        // Connectivity is restored only after both seats are back. Snapshot
+        // application acknowledgement remains a separate recovery step.
+        if (!waiting) io.to(code).emit('player-rejoined', { role, socketId: socket.id });
     });
 
     socket.on('disconnect', () => {
@@ -2128,6 +2150,7 @@ io.on('connection', (socket) => {
         const role = room.host === socket.id ? 'host' : 'guest';
 
         if (!room._matchStarted) {
+            clearDisconnectDeadlines(room);
             socket.to(code).emit('player-disconnected', { role, reconnectable: false });
             rooms.delete(code);
             return;
@@ -2138,6 +2161,7 @@ io.on('connection', (socket) => {
         // forfeit. Close the room cleanly — postMatch tells the remaining
         // client to keep its result screen instead of reloading.
         if (room._matchEnded || room._resultProcessed) {
+            clearDisconnectDeadlines(room);
             console.log(`[IO] ${role} left room ${code} post-match — closing room`);
             socket.to(code).emit('player-disconnected', { role, reconnectable: false, postMatch: true });
             replayEnd(room, 'closed');
@@ -2150,10 +2174,18 @@ io.on('connection', (socket) => {
         socket.to(code).emit('player-disconnected', { role, reconnectable: true });
         replayWrite(room, { t: Date.now(), e: 'disconnect', role });
 
-        room._disconnected = {
-            role: role,
+        if (!room._disconnected) room._disconnected = {};
+        if (room._disconnected[role]) return; // duplicate notification cannot extend grace
+        const pending = room._disconnected;
+        const dc = pending[role] = {
+            role,
             socketId: socket.id,
+            deadline: Date.now() + 90 * 1000,
             timer: setTimeout(() => {
+                if (rooms.get(code) !== room || room._disconnected !== pending ||
+                    pending[role] !== dc || room[role] !== dc.socketId ||
+                    room._matchEnded || room._resultProcessed) return;
+                clearDisconnectDeadlines(room);
 
                 console.log(`[IO] ${role} failed to rejoin room ${code} — forfeit`);
                 const forfeitPlayer = role === 'host' ? 1 : 2;
@@ -2175,4 +2207,5 @@ server.listen(PORT, () => {
         .then(backfillTokenHashes)
         .catch(err => console.error('[DB] boot migration failed:', err.message));
 });
+
 
