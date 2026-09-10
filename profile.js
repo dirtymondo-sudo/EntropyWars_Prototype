@@ -272,6 +272,7 @@ function migrateOldData() {
             cls: pb[i],
             race: meta[1]?.[i]?.race || 'human',
             gender: meta[1]?.[i]?.gender || 'male',
+            appearance: window.normalizeCharacterAppearance?.(meta[1]?.[i]?.appearance) || null,
             unitName: (names[1] || [])[i] || pb[i],
             customSpells: meta[1]?.[i]?.customSpells || [],
             secondaryJob: meta[1]?.[i]?.secondaryJob || null,

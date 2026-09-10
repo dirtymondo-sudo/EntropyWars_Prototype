@@ -1741,8 +1741,55 @@ const RACE_MODELS_3D = {
   }
 })();
 
-function getRace3DModel(race, gender) {
+// Character creator: cosmetic data only. Versioned, bounded and allowlisted
+// before use (including presets and remote party data). No user asset URLs.
+const EW_APPEARANCE_LIMITS = {
+  height: [0.85, 1.15, 1], width: [0.85, 1.15, 1],
+  chest: [-1, 1, 0], waist: [-1, 1, 0], hips: [-1, 1, 0],
+  head: [-1, 1, 0], jaw: [-1, 1, 0], nose: [-1, 1, 0], cheeks: [-1, 1, 0]
+};
+function normalizeCharacterAppearance(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  if (value.version != null && value.version !== 1) return null;
+  const out = { version: 1 };
+  for (const key of Object.keys(EW_APPEARANCE_LIMITS)) {
+    const [lo, hi, def] = EW_APPEARANCE_LIMITS[key];
+    const n = value[key];
+    out[key] = typeof n === 'number' && Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : def;
+  }
+  const defaults = { skin: '#b98362', hairColor: '#27201c', topColor: '#344a50', bottomColor: '#242b34' };
+  for (const key of Object.keys(defaults)) out[key] = typeof value[key] === 'string' && /^#[0-9a-f]{6}$/i.test(value[key]) ? value[key].toLowerCase() : defaults[key];
+  out.hair = ['bald', 'crop', 'crest'].includes(value.hair) ? value.hair : 'crop';
+  out.outfit = ['suit', 'tee', 'tank'].includes(value.outfit) ? value.outfit : 'tee';
+  return out;
+}
+const EW_CHARACTER_BASES = {};
+for (const gender of ['male', 'female']) {
+  EW_CHARACTER_BASES[gender] = _mkUAL('', '', {
+    model: 'https://cdn.entropywars.net/Assets/Models/Meshy_AI_human_body_base_mesh_' + gender + '_biped_Character_output.glb?ewcors=1',
+    creatorBase: true, heightRatio: 1, basicAttackKind: 'punch'
+  });
+}
+function getCharacterModelFallback(url) {
+  for (const gender of ['male', 'female']) {
+    if (EW_CHARACTER_BASES[gender].model === url) return '/api/character-model/' + gender;
+  }
+  return null;
+}
+function getCharacterAppearanceModel(race, gender, appearance) {
+  const a = race === 'homosapien' && normalizeCharacterAppearance(appearance);
+  return a ? Object.assign({}, EW_CHARACTER_BASES[gender === 'female' ? 'female' : 'male'], { heightRatio: a.height }) : null;
+}
+if (typeof window !== 'undefined') {
+  window.normalizeCharacterAppearance = normalizeCharacterAppearance;
+  window.EW_APPEARANCE_LIMITS = EW_APPEARANCE_LIMITS;
+  window.getCharacterAppearanceModel = getCharacterAppearanceModel;
+}
+
+function getRace3DModel(race, gender, appearance) {
   if (typeof window !== 'undefined' && window.EW_DISABLE_3D_UNITS) return null;
+  const custom = getCharacterAppearanceModel(race, gender, appearance);
+  if (custom) return custom;
   // Werewolf transformation: a human (Homosapien Freelancer male) by day,
   // the beast by night. The _computeUnitStructuralSerial() serial tags the
   // werewolf's tod, so the entry rebuilds — and re-resolves this model — on

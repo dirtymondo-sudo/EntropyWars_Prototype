@@ -3006,6 +3006,7 @@
                 faction: raceProfile.faction,
                 types: [...(raceProfile.types || [])],
                 gender,
+                appearance: race === 'homosapien' && typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(identity.appearance) : null,
                 zodiac: identity.zodiac || archetype.zodiac || 'aries',
                 sleepPreference: identity.sleepPreference || archetype.sleepPreference || 'none',
                 terrainPreference: getTerrainPreferenceForRace(race),
@@ -3810,6 +3811,7 @@
                     const rebuiltMeta = {
                         race: race,
                         gender: priorMeta.gender || archetype.gender || 'other',
+                        appearance: race === 'homosapien' && typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(priorMeta.appearance) : null,
                         zodiac: priorMeta.zodiac || archetype.zodiac || 'aries',
                         sleepPreference: priorMeta.sleepPreference || archetype.sleepPreference || 'none',
                         terrainPreference: getTerrainPreferenceForRace(race),

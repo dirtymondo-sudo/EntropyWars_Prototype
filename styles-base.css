@@ -4883,3 +4883,27 @@ body.diorama-3d .tile-underpass.jump::before {
     .pb-party { --pb-portrait: 64px; }
     .pb-party-name { font-size: 12px; }
 }
+
+/* Character creator — inside the Forge's existing Gear zone. */
+.pb-creator { overflow-y: auto; padding: 12px 16px 24px; color: #eee1be; }
+.pb-creator p { font-size: 12px; line-height: 1.6; }
+.pb-creator-controls { border: 0; padding: 0; margin: 12px 0; min-width: 0; }
+.pb-creator-controls legend, .pb-creator h3 { color: var(--ph-bright, #f0cc83); font-size: 12px; letter-spacing: .12em; margin: 14px 0 10px; }
+.pb-creator-options { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+.pb-creator-options button { min-height: 34px; }
+.pb-creator-slider { display: block; margin: 12px 0; font-size: 12px; }
+.pb-creator-slider span { display: flex; justify-content: space-between; gap: 12px; }
+.pb-creator-slider output { font-variant-numeric: tabular-nums; color: #f0cc83; }
+.pb-creator-slider input { display: block; width: 100%; min-height: 28px; accent-color: #e6c178; cursor: pointer; }
+.pb-creator-color { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 0; font-size: 12px; }
+.pb-creator-color input { width: 52px; height: 34px; border: 1px solid #8e7951; border-radius: 9px; background: transparent; cursor: pointer; }
+.pb-creator-swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+.pb-creator-swatch { width: 32px; height: 32px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
+.pb-creator-swatch[aria-pressed="true"] { outline: 2px solid #f0cc83; outline-offset: 3px; }
+.pb-creator :focus-visible { outline: 2px solid #fff0c8; outline-offset: 3px; }
+.pb-creator-note { color: #c6b995; }
+.pb-creator-controls:disabled { opacity: .6; }
+
+.pb-custom-model .pb-hero3d-fallback { display: none; }
+.pb-creator-load-error { display: none; position: absolute; top: 40%; left: 40%; right: 20%; z-index: 5; padding: 16px; border-radius: 16px; background: #211e19; color: #f0cc83; pointer-events: auto; text-align: center; }
+.ew-cv-fail .pb-creator-load-error { display: block; }

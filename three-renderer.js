@@ -9017,7 +9017,8 @@ const ThreeRenderer = (function () {
             h = _hashVal(h, u.id);
             h = _hashInt(h, u.x); h = _hashInt(h, u.y); h = _hashInt(h, u.z || 0);
             h = _hashInt(h, u.hp); h = _hashInt(h, u.mp); h = _hashInt(h, u.ap);
-            h = _hashInt(h, u.player); h = _hashInt(h, u.shield || 0);
+            h = _hashInt(h, u.player);
+            if (u.appearance) h = _hashStr(h, JSON.stringify(u.appearance)); h = _hashInt(h, u.shield || 0);
             if (typeof getActiveStatusKeys === 'function' && u.status) {
                 var sk = getActiveStatusKeys(u);
                 for (var si = 0; si < sk.length; si++) h = _hashStr(h, sk[si]);
@@ -9708,6 +9709,7 @@ const ThreeRenderer = (function () {
     var _unitModelRigs = new Map();    // unit id -> { url, inner, mixer, actions, modelMats, silMats }
     function _disposeModelRig(rig) {
         if (!rig) return;
+        if (rig.appearanceRig) rig.appearanceRig.dispose();
         try { if (rig.inner && rig.inner.parent) rig.inner.parent.remove(rig.inner); } catch (_e) {}
         try { if (rig.mixer) { rig.mixer.stopAllAction(); rig.mixer.uncacheRoot(rig.mixer.getRoot()); } } catch (_e) {}
         var mats = (rig.modelMats || []).concat(rig.silMats || []).concat(rig.outlineMats || []);
@@ -9730,8 +9732,9 @@ const ThreeRenderer = (function () {
         }
         e = _unitGlbCache[url] = { root: null, clips: null, bbox: null, loading: true, failed: false, cbs: [cb] };
         if (typeof THREE.GLTFLoader !== 'function') { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); return; }
-        try {
-            new THREE.GLTFLoader().load(url, function (gltf) {
+        function loadAttempt(requestUrl, fallbackUsed) {
+          try {
+            new THREE.GLTFLoader().load(requestUrl, function (gltf) {
                 var root = gltf.scene || (gltf.scenes && gltf.scenes[0]);
                 if (!root) { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); return; }
                 // Geometry is shared by every clone — protect it from _disposeR.
@@ -9745,10 +9748,14 @@ const ThreeRenderer = (function () {
                 _flushGlbDoneCbs(e);
                 invalidateUnits();   // swap placeholders for the model on the next frame
             }, undefined, function () {
+                var fallback = !fallbackUsed && typeof getCharacterModelFallback === 'function' && getCharacterModelFallback(url);
+                if (fallback) { loadAttempt(fallback, true); return; }
                 e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e);
                 console.warn('[ThreeRenderer] unit model failed to load:', url);
             });
-        } catch (ex) { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); }
+          } catch (ex) { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); }
+        }
+        loadAttempt(url, false);
     }
 
     /* Settlement hooks for the preload gate: unlike e.cbs (success-only,
@@ -9775,7 +9782,7 @@ const ThreeRenderer = (function () {
         (units || []).forEach(function (u) {
             if (!u || u.dead) return;
             var def = (typeof getRace3DModel === 'function')
-                ? getRace3DModel(u.race, u.gender || 'male') : null;
+                ? getRace3DModel(u.race, u.gender || 'male', u.appearance) : null;
             if (!def || !def.model) return;
             // Alternate 3D forms (honda civic car ↔ robot) must warm too, or
             // the first transform of the match pops a placeholder slab while
@@ -10334,7 +10341,8 @@ const ThreeRenderer = (function () {
         // such a rig on the battle board rendered every unit at ~45% size
         // (second game onward, once the GLBs resolve synchronously from
         // cache). A rig baked for a different tile size is stale: re-bake.
-        if (_rig && _rig.ts !== ts) {
+        var appearanceKey = def.creatorBase ? JSON.stringify(normalizeCharacterAppearance(unit.appearance)) : '';
+        if (_rig && (_rig.ts !== ts || _rig.appearanceKey !== appearanceKey)) {
             _disposeModelRig(_rig);
             _unitModelRigs.delete(unit.id);
             _rig = null;
@@ -10398,6 +10406,7 @@ const ThreeRenderer = (function () {
                 -bb.min.y * s,                        // feet on the tile top
                 -((bb.min.z + bb.max.z) * 0.5) * s
             );
+            var appearanceRig = def.creatorBase ? _createAppearanceRig(m, unit.appearance, true) : null;
             inner.add(m);
             wrap.add(inner);
 
@@ -10427,7 +10436,7 @@ const ThreeRenderer = (function () {
                         tex.encoding = THREE.LinearEncoding;
                         tex.needsUpdate = true;
                     }
-                    var lm = new THREE.MeshLambertMaterial({ map: tex });
+                    var lm = new THREE.MeshLambertMaterial({ map: tex, vertexColors: !!(sm && sm.vertexColors) });
                     if (n.isSkinnedMesh) lm.skinning = true;
                     lm.color.setRGB(_mdiff, _mdiff, _mdiff);
                     // Body pixels stamp this unit's stencil ref so the team-
@@ -10508,6 +10517,7 @@ const ThreeRenderer = (function () {
             // (they stay null for unrigged static models).
             var _rigRec = {
                 url: def.model, ts: ts, inner: inner, mixer: null, actions: null,
+                appearanceKey: appearanceKey, appearanceRig: appearanceRig,
                 modelMats: entry.modelMats, silMats: entry.modelSilMats,
                 outlineMats: entry.modelOutlineMats
             };
@@ -10904,7 +10914,7 @@ const ThreeRenderer = (function () {
         // _attachUnitModel swaps it out when the model arrives.
         var _m3dDef = (typeof getRace3DModel === 'function'
                        && typeof THREE.GLTFLoader === 'function')
-            ? getRace3DModel(unit.race, unit.gender || 'male') : null;
+            ? getRace3DModel(unit.race, unit.gender || 'male', unit.appearance) : null;
         /* Sprite-override state (transform sprites, sentai color swaps…):
            a def may map override URLs to alternate 3D FORMS — the honda
            civic's def.overrideForms swaps the sedan for the rigged robot on
@@ -28588,8 +28598,116 @@ const ThreeRenderer = (function () {
     var _cv = null;          // singleton viewer state
     var _cvToken = 0;        // staleness guard for async loads
 
-    function _cvResolveDef(race, gender) {
+    /* CHARACTER CREATOR: fitted, skinned shells built from the verified base
+       meshes. Each instance owns its buffers; the GLB cache is never edited.
+       Geometry shaping is deliberately modest until authored morphs exist.
+       Keep all coordinates in the original metre-scale bind mesh, NOT the
+       armature's centimetre space. The existing retargeter owns the bones. */
+    function _createAppearanceRig(root, initial, unmanagedColor) {
+        var parts = [], ownedGeometries = [], ownedMaterials = [];
+        var targets = [];
+        root.traverse(function (n) { if (n.isSkinnedMesh && n.geometry) targets.push(n); });
+        function material() {
+            var mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, metalness: 0, vertexColors: true, skinning: true, side: THREE.DoubleSide });
+            ownedMaterials.push(mat); return mat;
+        }
+        function geometry(src) {
+            var g = src.clone(); g._ew_shared = true;
+            g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 3), 3));
+            ownedGeometries.push(g); return g;
+        }
+        targets.forEach(function (mesh) {
+            var src = mesh.geometry;
+            var positions = new Float32Array(src.attributes.position.array);
+            var normals = new Float32Array(src.attributes.normal.array);
+            var ids = src.index ? Array.from(src.index.array) : Array.from({ length: src.attributes.position.count }, function (_, i) { return i; });
+            src.computeBoundingBox();
+            var box = src.boundingBox;
+            var height = box.max.y - box.min.y;
+            mesh.geometry = geometry(src); mesh.material = material();
+            function shell(name) {
+                var n = new THREE.SkinnedMesh(geometry(src), material());
+                n.name = 'EWCreator_' + name; n.frustumCulled = false;
+                n.position.copy(mesh.position); n.quaternion.copy(mesh.quaternion); n.scale.copy(mesh.scale);
+                n.bindMode = mesh.bindMode; n.bind(mesh.skeleton, mesh.bindMatrix);
+                n.bindMatrixInverse.copy(mesh.bindMatrixInverse);
+                mesh.parent.add(n); return n;
+            }
+            parts.push({ body: mesh, clothes: shell('clothes'), hair: shell('hair'), positions: positions,
+                normals: normals, ids: ids, height: height, minY: box.min.y });
+        });
+        function bump(t, center, radius) { var d = (t - center) / radius; return Math.exp(-d * d * 2); }
+        function update(value) {
+            var a = normalizeCharacterAppearance(value) || normalizeCharacterAppearance({});
+            function color(hex) { var c = new THREE.Color(hex); return unmanagedColor ? c : c.convertSRGBToLinear(); }
+            var skin = color(a.skin), top = color(a.topColor), bottom = color(a.bottomColor), hair = color(a.hairColor);
+            parts.forEach(function (p) {
+                var bodyP = p.body.geometry.attributes.position, clothP = p.clothes.geometry.attributes.position, hairP = p.hair.geometry.attributes.position;
+                var bodyC = p.body.geometry.attributes.color, clothC = p.clothes.geometry.attributes.color, hairC = p.hair.geometry.attributes.color;
+                var H = p.height;
+                for (var i = 0; i < bodyP.count; i++) {
+                    var x = p.positions[i * 3], y = p.positions[i * 3 + 1], z = p.positions[i * 3 + 2];
+                    var t = (y - p.minY) / H;
+                    var central = bump(x / H, 0, 0.16);
+                    var bulk = central * (a.chest * 0.10 * bump(t, 0.74, 0.09) + a.waist * 0.18 * bump(t, 0.61, 0.075) + a.hips * 0.12 * bump(t, 0.52, 0.075));
+                    x *= (1 + bulk) * a.width; z *= 1 + bulk;
+                    var headMask = bump(t, 0.935, 0.085);
+                    x *= 1 + a.head * 0.10 * headMask;
+                    z *= 1 + a.head * 0.06 * headMask;
+                    x *= 1 + a.jaw * 0.13 * bump(t, 0.873, 0.025) * central;
+                    x *= 1 + a.cheeks * 0.10 * bump(t, 0.916, 0.022) * central;
+                    // +Z is the face in both uploaded bases. Restrict the nose
+                    // displacement to the front and centre, never the cranium.
+                    z += a.nose * H * 0.008 * bump(t, 0.927, 0.025) * bump(x / H, 0, 0.019) * Math.max(0, Math.min(1, z / (H * 0.045)));
+                    bodyP.setXYZ(i, x, y, z);
+                    var nx = p.normals[i * 3], ny = p.normals[i * 3 + 1], nz = p.normals[i * 3 + 2];
+                    clothP.setXYZ(i, x + nx * H * 0.0035, y + ny * H * 0.0035, z + nz * H * 0.0035);
+                    var lift = a.hair === 'crest' ? H * 0.045 * bump(x / H, 0, 0.025) * Math.max(0, (t - 0.94) / 0.06) : 0;
+                    hairP.setXYZ(i, x + nx * H * 0.006, y + ny * H * 0.006 + lift, z + nz * H * 0.006);
+                    bodyC.setXYZ(i, skin.r, skin.g, skin.b);
+                    var c = t < 0.565 ? bottom : top;
+                    clothC.setXYZ(i, c.r, c.g, c.b); hairC.setXYZ(i, hair.r, hair.g, hair.b);
+                }
+                var bodyIds = [], clothIds = [], hairIds = [];
+                for (var k = 0; k < p.ids.length; k += 3) {
+                    var tri = p.ids.slice(k, k + 3), tx = 0, ty = 0, tz = 0;
+                    tri.forEach(function (id) { tx += p.positions[id * 3] / 3; ty += p.positions[id * 3 + 1] / 3; tz += p.positions[id * 3 + 2] / 3; });
+                    var t = (ty - p.minY) / H, ax = Math.abs(tx) / H;
+                    var trouser = t > 0.075 && t < 0.565 && ax < 0.16;
+                    var shirt = t >= 0.555 && t < 0.824 && ax < (a.outfit === 'suit' ? 0.285 : a.outfit === 'tee' ? 0.205 : 0.105);
+                    var clothed = trouser || shirt;
+                    (clothed ? clothIds : bodyIds).push.apply(clothed ? clothIds : bodyIds, tri);
+                    var scalp = t > 0.953 || (t > 0.918 && tz < -H * 0.005);
+                    if (a.hair !== 'bald' && scalp) hairIds.push.apply(hairIds, tri);
+                }
+                [ [p.body, bodyIds], [p.clothes, clothIds], [p.hair, hairIds] ].forEach(function (pair) {
+                    var g = pair[0].geometry;
+                    g.setIndex(pair[1]); g.attributes.position.needsUpdate = true; g.attributes.color.needsUpdate = true;
+                    // Compute on the complete topology first to avoid seams at
+                    // the clothing mask, then retain the shell's source normals.
+                    g.computeBoundingBox(); g.computeBoundingSphere();
+                    pair[0].visible = pair[1].length > 0;
+                });
+                // Body and shells use the deformed complete body's smooth normals.
+                var oldIndex = p.body.geometry.index;
+                p.body.geometry.setIndex(p.ids); p.body.geometry.computeVertexNormals(); p.body.geometry.setIndex(oldIndex);
+                p.clothes.geometry.attributes.normal.copy(p.body.geometry.attributes.normal);
+                p.hair.geometry.computeVertexNormals();
+                p.clothes.geometry.attributes.normal.needsUpdate = true;
+            });
+        }
+        update(initial);
+        return { update: update, dispose: function () {
+            ownedGeometries.forEach(function (g) { g.dispose(); });
+            ownedMaterials.forEach(function (m) { m.dispose(); });
+            parts = []; ownedGeometries = []; ownedMaterials = [];
+        } };
+    }
+
+    function _cvResolveDef(race, gender, appearance) {
         if (typeof window !== 'undefined' && window.EW_DISABLE_3D_UNITS) return null;
+        var custom = typeof getCharacterAppearanceModel === 'function' && getCharacterAppearanceModel(race, gender, appearance);
+        if (custom) return { def: custom, gender: gender };
         if (typeof RACE_MODELS_3D === 'undefined') return null;
         var set = RACE_MODELS_3D[race];
         if (!set) return null;
@@ -28778,6 +28896,9 @@ const ThreeRenderer = (function () {
 
     function _cvClearModel() {
         if (!_cv) return;
+        ++_cvToken; // unmount also invalidates an in-flight model load
+        if (_cv.appearanceRig) _cv.appearanceRig.dispose();
+        _cv.appearanceRig = null; _cv.appearanceRoot = null;
         if (_cv.model) {
             _cv.stage.remove(_cv.model);
             // clones share the cached base GLB's geometry AND materials — never
@@ -28841,7 +28962,7 @@ const ThreeRenderer = (function () {
         v.stage.position.x = v.heroX; v.stage.position.y = v.heroY;
         v.blob.position.x = v.heroX; v.circle.position.x = v.heroX;
         v.circle.rotation.z += dt * 0.05;
-        var cy = v.h * 0.52;
+        var cy = v.h * (v.focusHead ? 0.92 : 0.52);
         var pol = v.polar;
         // THE FRAME: the camera's rest distance is dist0 / zoom on the +Z
         // axis looking at the hero; while a beat runs `frameTo` names the
@@ -28897,7 +29018,9 @@ const ThreeRenderer = (function () {
         var v = _cvEnsure();
         if (!v) return false;
         opts = opts || {};
-        var res = _cvResolveDef(race, gender);
+        var res = _cvResolveDef(race, gender, opts.appearance);
+        var appearance = typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(opts.appearance) : null;
+        v.characterRequest = { race: race, gender: gender, opts: opts };
         var host = v.host;
         if (!res) {
             _cvClearModel();
@@ -28908,6 +29031,12 @@ const ThreeRenderer = (function () {
         // faction accent stains the summoning circle
         if (opts.accent) { try { v.circleMat.color.set(opts.accent); } catch (_e) {} }
         if (v.url === def.model && v.model) {              // same character
+            if (v.appearanceRig) {
+                v.appearanceRig.update(appearance);
+                v.h = def.heightRatio;
+                v.appearanceRoot.scale.setScalar(v.appearanceScale * v.h);
+                v.appearanceRoot.position.y = v.appearanceY * v.h;
+            }
             _cvHostState(host, 'ready');
             return true;
         }
@@ -28917,7 +29046,7 @@ const ThreeRenderer = (function () {
         _cvHostState(host, 'loading');
         v.url = def.model;
         // fresh mount = fresh framing (straight on — polar 0)
-        v.yaw = 0; v.polar = 0; v.zoom = 1; v.lastTouch = 0;
+        v.yaw = 0; v.polar = 0; v.zoom = 1; v.lastTouch = 0; v.focusHead = false;
         var tok = ++_cvToken;
         _loadUnitGLB(def.model, function (entry) {
             if (!_cv || tok !== _cvToken) return;      // stale — user moved on
@@ -28969,6 +29098,10 @@ const ThreeRenderer = (function () {
                 });
                 if (changed) n.material = Array.isArray(n.material) ? out : out[0];
             });
+            if (def.creatorBase) {
+                v.appearanceRig = _createAppearanceRig(m, appearance);
+                v.appearanceRoot = m; v.appearanceScale = s / h; v.appearanceY = m.position.y / h;
+            }
             // wrap (frame-loop yaw) → inner (authored yawOffset) → model —
             // same nesting as the board, so the turntable never clobbers a
             // model's authored facing correction.
@@ -29034,7 +29167,9 @@ const ThreeRenderer = (function () {
         });
         // a failed base GLB never fires the success cb — watch the cache entry
         var ce = _unitGlbCache[def.model];
-        if (ce && !ce.root) {
+        if (ce && ce.failed) {
+            _cvHostState(host, 'fail');
+        } else if (ce && !ce.root) {
             (ce.doneCbs = ce.doneCbs || []).push(function (e2) {
                 if (!_cv || tok !== _cvToken) return;
                 if (e2.failed) _cvHostState(v.host, 'fail');   // ring off, sprite returns
@@ -29559,6 +29694,17 @@ const ThreeRenderer = (function () {
             return true;
         },
         setCharacter: function (race, gender, opts) { return _cvSetCharacter(race, gender, opts); },
+        retryCharacter: function () {
+            if (!_cv || !_cv.characterRequest) return;
+            var req = _cv.characterRequest;
+            if (_cv.url && _unitGlbCache[_cv.url] && _unitGlbCache[_cv.url].failed) delete _unitGlbCache[_cv.url];
+            _cvSetCharacter(req.race, req.gender, req.opts);
+        },
+        viewHead: function () {
+            if (!_cv) return;
+            _cvBeatCancel(true); _cvPreviewEnd(true);
+            _cv.focusHead = true; _cv.zoom = 2.6; _cv.polar = 0;
+        },
         unmount: function () {
             if (!_cv) return;
             _cvStageExit();                        // the pools go home before any match starts (§5.3)
@@ -29579,7 +29725,7 @@ const ThreeRenderer = (function () {
         },
         resetView: function () {
             if (!_cv) return;
-            _cv.yaw = 0; _cv.polar = 0; _cv.zoom = 1; _cv.lastTouch = 0;
+            _cv.yaw = 0; _cv.polar = 0; _cv.zoom = 1; _cv.lastTouch = 0; _cv.focusHead = false;
         },
         isMounted: function () { return !!(_cv && _cv.host && _cv.host.isConnected); },
         /* MOVE PREVIEW (PARTY_BUILDER_PLAN §5.2). play(slotOrChain, { full,

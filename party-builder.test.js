@@ -241,7 +241,7 @@ test('ROSTER is the wall (Stage 4): tiles, round filters, hover → the stage, n
     }
     assert.ok(/const PB_TYPE_GLYPH = \{ human: 'HU', alien: 'AL', divine: 'DV', unholy: 'UH', tech: 'TK', anomaly: 'AN' \};/.test(PB), 'the six type glyphs are missing');
     assert.ok(/onMouseEnter: \(\) => rosterHoverIn\(entry\)/.test(PB) && /className: 'pb-roster', onMouseLeave: rosterHoverOut/.test(PB), 'the wall must preview on hover and restore on leave');
-    assert.ok(/h\(HeroViewer3D, \{ race:stageRace, gender:stageGender, cls:stageCls, faction:stageFaction, focus: stageCx \}\)/.test(PB), 'the stage must follow the hovered vessel');
+    assert.ok(/h\(HeroViewer3D, \{ race:stageRace, gender:stageGender, cls:stageCls, faction:stageFaction, focus: stageCx, appearance: !stageEntry && unitRace === 'homosapien' \? meta\.appearance : null \}\)/.test(PB), 'the stage must follow the hovered vessel');
     assert.ok(/pbMenu === 'sort'/.test(PB) && /pbMenu === 'job'/.test(PB), 'the SORT / JOB menus must be glass windows');
     const rosterSrc = PB.slice(PB.indexOf('const rosterPanel = h(React.Fragment'), PB.indexOf('// TECHNIQUES: the abilities head'));
     assert.ok(!/h\('select'/.test(rosterSrc), 'no native <select> on the wall (C-9)');

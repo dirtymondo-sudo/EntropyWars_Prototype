@@ -868,7 +868,7 @@ function PortraitSprite({ race, gender, cls, glow, style: extraStyle }) {
    the vessel's rigged GLB with its retargeted idle, drag to orbit,
    wheel to zoom, double-click to reset. The flat sprite renders
    underneath as the loading frame and stays for sprite-only vessels. */
-function HeroViewer3D({ race, gender, cls, faction, focus }) {
+function HeroViewer3D({ race, gender, cls, faction, focus, appearance }) {
   const hostRef = React.useRef(null);
   const accent = getFactionColor(faction);
   const supported = !!(window.EWCharViewer && window.EWCharViewer.supports && window.EWCharViewer.supports(race, gender));
@@ -876,13 +876,13 @@ function HeroViewer3D({ race, gender, cls, faction, focus }) {
     const host = hostRef.current;
     if (!host) return;
     if (supported) {
-      window.EWCharViewer.mount(host, race, gender, { accent });
+      window.EWCharViewer.mount(host, race, gender, { accent, appearance });
     } else if (window.EWCharViewer) {
       // sprite-only vessel — release the canvas if it was sitting in our host
       if (host.querySelector('canvas[data-ew-charviewer]')) window.EWCharViewer.unmount();
       host.classList.remove('ew-cv-loading', 'ew-cv-ready', 'ew-cv-fail');
     }
-  }, [race, gender, supported, accent]);
+  }, [race, gender, supported, accent, JSON.stringify(appearance)]);
   // the hero stands at `focus` (0..1 of the host's width) — the band between the circuit and the stats
   React.useEffect(() => {
     if (window.EWCharViewer && typeof window.EWCharViewer.setFocus === 'function') window.EWCharViewer.setFocus(focus == null ? 0.5 : focus);
@@ -891,7 +891,10 @@ function HeroViewer3D({ race, gender, cls, faction, focus }) {
     // component teardown: put the singleton viewer to sleep
     if (window.EWCharViewer) window.EWCharViewer.unmount();
   }, []);
-  return h('div', { ref: hostRef, className: 'pb-hero3d' },
+  return h('div', { ref: hostRef, className: 'pb-hero3d' + (appearance ? ' pb-custom-model' : '') },
+    appearance ? h('div', { className: 'pb-creator-load-error', role: 'alert' },
+      h('p', null, 'The base model could not load.'),
+      h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.retryCharacter() }, 'RETRY')) : null,
     h('div', { className: 'pb-hero3d-fallback' },
       h(Sprite, { race, gender, cls, size: '100%', glow: faction, style: { width: '100%', height: '97%' } })),
     supported ? h('div', { className: 'pb-hero3d-hint' }, '⟲ DRAG · ⌕ SCROLL · ✕2 RESET') : null);
@@ -1931,6 +1934,7 @@ function PartyBuilder(props) {
   const hideSpellTip = () => setSpellTip(null);
   /* the four tabs on the glass (PB_TABS); ROSTER first, as the references open */
   const [pbTab, setPbTab] = React.useState('roster');
+  const [creatorOpen, setCreatorOpen] = React.useState(false);
   const setTab = (id) => { if (!PB_TABS.some(t => t.id === id) || id === pbTab) return; setPbTab(id); sfx('uiCursorMove'); };
   const cycleTab = (d) => { const i = Math.max(0, PB_TABS.findIndex(t => t.id === pbTab)); setTab(PB_TABS[(i + d + PB_TABS.length) % PB_TABS.length].id); };
   React.useEffect(() => { window._pbSetTab = setTab; return () => { if (window._pbSetTab === setTab) delete window._pbSetTab; }; });
@@ -1993,6 +1997,7 @@ function PartyBuilder(props) {
         cls: cn,
         race: mt.race || 'homosapien',
         gender: mt.gender || 'male',
+        appearance: window.normalizeCharacterAppearance?.(mt.appearance) || null,
         unitName: (st.partyNames?.[player] || [])[i] || cn,
         customSpells: mt.customSpells ? mt.customSpells.slice() : [],
         secondaryJob: mt.secondaryJob || null,
@@ -2052,6 +2057,7 @@ function PartyBuilder(props) {
       if (!st.partyMeta[player][i]) st.partyMeta[player][i] = {};
       st.partyMeta[player][i].race = s.race;
       st.partyMeta[player][i].gender = s.gender;
+      st.partyMeta[player][i].appearance = window.normalizeCharacterAppearance?.(s.appearance) || null;
       st.partyMeta[player][i].zodiac = s.zodiac || 'aries';
       if (s.customSpells?.length) st.partyMeta[player][i].customSpells = s.customSpells.slice();
       else delete st.partyMeta[player][i].customSpells;
@@ -2942,6 +2948,7 @@ function PartyBuilder(props) {
       h('b', null, 'Gear'),
       h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.14em', marginLeft:'auto' } }, totalItemsUsed, '/', itemSlotMax, ' ITEMS CARRIED')),
     h('div', { className: 'pb-zone-body pb-gear' },
+      h('button', { className: 'ms-tty-btn primary', onClick: () => setCreatorOpen(true) }, 'CHARACTER CREATOR'),
       h('div', { className: 'pb-gear-row' },
         h('div', { className: 'pb-gear-label' }, 'GEAR', h('small', null, 'TWO SLOTS')),
         h('div', { className: 'pb-gear-slots' },
@@ -3148,7 +3155,72 @@ function PartyBuilder(props) {
       raceLabel: (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace),
       onVerb: techVerb, onPreview: (info) => pbPreview(info.sp || null),
       previewOff, previewing: !!previewState, used: (customSpells || []).length, slotCap })) : null;
-  const zoneContent = pbTab === 'roster' ? rosterPanel : pbTab === 'tech' ? techPanel : pbTab === 'gear' ? gearPanel : dossierPanel;
+  // Cosmetics belong to the selected slot, independent of its job/loadout.
+  const appearance = window.normalizeCharacterAppearance?.(meta.appearance) || null;
+  const changeAppearance = (changes, gender) => {
+    if (isWaitingOnline || unitRace !== 'homosapien') return;
+    const target = st.partyMeta[player][slot];
+    st.teamLockedIn = false;
+    target.appearance = window.normalizeCharacterAppearance({ ...(appearance || {}), ...changes });
+    if (gender) target.gender = gender;
+    if (st.builderConfirmedSlots?.[player]) st.builderConfirmedSlots[player][slot] = false;
+    refresh();
+  };
+  const creatorPanel = h(React.Fragment, null,
+    h('div', { className: 'pb-zone-head' }, h('b', null, 'Character creator'),
+      h('button', { className: 'ms-tty-btn', onClick: () => setCreatorOpen(false) }, 'BACK TO GEAR')),
+    h('div', { className: 'pb-zone-body pb-creator' },
+      unitRace !== 'homosapien'
+        ? h('p', null, 'Select a Homosapien on the Roster tab to customize the male or female base model.')
+        : !appearance
+          ? h(React.Fragment, null,
+              h('p', null, 'Build a custom appearance for this character. Your job, techniques and equipment stay attached to this slot.'),
+              h('button', { className: 'ms-tty-btn primary', disabled: isWaitingOnline, onClick: () => changeAppearance({}) }, 'CREATE APPEARANCE'))
+          : h(React.Fragment, null,
+            h('p', { className: 'pb-creator-note' }, 'Solid-color base models · simple fitted hair and clothes · basic face shaping. Save your team to keep this appearance.'),
+            h('fieldset', { className: 'pb-creator-controls', disabled: isWaitingOnline },
+              h('legend', null, 'BODY'),
+              h('div', { className: 'pb-creator-options', 'aria-label': 'Base model' }, ['male', 'female'].map(g =>
+                h('button', { key: g, className: 'ms-tty-btn' + (identity.gender === g ? ' primary' : ''), 'aria-pressed': identity.gender === g, onClick: () => changeAppearance({}, g) }, g.toUpperCase()))),
+              [['height', 'Height'], ['width', 'Build'], ['chest', 'Chest'], ['waist', 'Waist'], ['hips', 'Hips'], ['head', 'Head width'], ['jaw', 'Jaw width'], ['nose', 'Nose projection'], ['cheeks', 'Cheek fullness']].map(([key, label]) => {
+                const limits = window.EW_APPEARANCE_LIMITS[key];
+                return h('label', { key, className: 'pb-creator-slider' },
+                  h('span', null, label, h('output', null, key === 'height' || key === 'width' ? Math.round(appearance[key] * 100) + '%' : (appearance[key] > 0 ? '+' : '') + Math.round(appearance[key] * 100))),
+                  h('input', { type: 'range', min: limits[0], max: limits[1], step: 0.01, value: appearance[key], 'aria-label': label, onChange: e => changeAppearance({ [key]: Number(e.target.value) }) }));
+              }),
+              h('h3', null, 'SKIN'),
+              h('div', { className: 'pb-creator-swatches' }, ['#f4d7bf', '#dfb18c', '#b98362', '#916044', '#66422e', '#3c291f'].map(color =>
+                h('button', { key: color, className: 'pb-creator-swatch', style: { background: color }, 'aria-label': 'Skin tone ' + color, 'aria-pressed': appearance.skin === color, onClick: () => changeAppearance({ skin: color }) }))),
+              h('label', { className: 'pb-creator-color' }, 'Custom skin tone', h('input', { type: 'color', value: appearance.skin, onChange: e => changeAppearance({ skin: e.target.value }) })),
+              h('h3', null, 'HAIR'),
+              h('div', { className: 'pb-creator-options' }, [['bald', 'Bald'], ['crop', 'Close crop'], ['crest', 'Crest']].map(([key, label]) =>
+                h('button', { key, className: 'ms-tty-btn' + (appearance.hair === key ? ' primary' : ''), 'aria-pressed': appearance.hair === key, onClick: () => changeAppearance({ hair: key }) }, label))),
+              h('label', { className: 'pb-creator-color' }, 'Hair color', h('input', { type: 'color', value: appearance.hairColor, onChange: e => changeAppearance({ hairColor: e.target.value }) })),
+              h('h3', null, 'CLOTHES'),
+              h('div', { className: 'pb-creator-options' }, [['suit', 'Bodysuit'], ['tee', 'T-shirt'], ['tank', 'Tank top']].map(([key, label]) =>
+                h('button', { key, className: 'ms-tty-btn' + (appearance.outfit === key ? ' primary' : ''), 'aria-pressed': appearance.outfit === key, onClick: () => changeAppearance({ outfit: key }) }, label))),
+              h('p', { className: 'pb-creator-note' }, 'Each outfit includes fitted trousers. Clothing is cosmetic.'),
+              [['topColor', 'Top color'], ['bottomColor', 'Trouser color']].map(([key, label]) =>
+                h('label', { key, className: 'pb-creator-color' }, label, h('input', { type: 'color', value: appearance[key], onChange: e => changeAppearance({ [key]: e.target.value }) }))),
+              h('div', { className: 'pb-creator-options' },
+                h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(window.normalizeCharacterAppearance({})) }, 'RESET SHAPE & COLORS'),
+                h('button', { className: 'ms-tty-btn', onClick: () => {
+                  if (isWaitingOnline) return;
+                  st.teamLockedIn = false;
+                  delete st.partyMeta[player][slot].appearance;
+                  if (st.builderConfirmedSlots?.[player]) st.builderConfirmedSlots[player][slot] = false;
+                  refresh();
+                } }, 'USE ORIGINAL MODEL'))),
+            h('div', { className: 'pb-creator-options' },
+              h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.resetView() }, 'FULL BODY'),
+              h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.viewHead() }, 'FACE CLOSE-UP'),
+              h('button', { className: 'ms-tty-btn', onClick: () => {
+                window.EWCharViewer?.resetView();
+                const ms = window.EWCharViewer?.play('walk', { full: true, name: 'Walk' });
+                if (!ms) pbNote('Animation is still loading. Try again shortly.');
+              } }, 'PREVIEW WALK')))));
+
+  const zoneContent = pbTab === 'roster' ? rosterPanel : pbTab === 'tech' ? techPanel : pbTab === 'gear' ? (creatorOpen ? creatorPanel : gearPanel) : dossierPanel;
   const body = h('div', { className: 'pb-body', 'data-tab': pbTab, 'data-panel': hasPanel ? '1' : '0' },
     h('div', { key: 'tech', className: 'pb-zone pb-zone-tech pb-zone-' + pbTab }, zoneContent),
     // The stage spans the WHOLE body on TECHNIQUES / GEAR / DOSSIER (the side
@@ -3159,7 +3231,7 @@ function PartyBuilder(props) {
       h('div', { className: 'pb-stage-view' },
         h('div', { className: 'pb-stage-glow', style:{ background:`radial-gradient(circle, ${fc}26, transparent 62%)` } }),
         h('div', { className: 'pb-stage-floor', style:{ background:`radial-gradient(ellipse, ${fc}66, transparent 70%)` } }),
-        h(HeroViewer3D, { race:stageRace, gender:stageGender, cls:stageCls, faction:stageFaction, focus: stageCx }),
+        h(HeroViewer3D, { race:stageRace, gender:stageGender, cls:stageCls, faction:stageFaction, focus: stageCx, appearance: !stageEntry && unitRace === 'homosapien' ? meta.appearance : null }),
         // MOVE PREVIEW pill (plan §5.2 item 5): shows while a cast clip runs
         // on the stage; the note for vessels that cannot preview; PREVIEW OFF
         // on TECHNIQUES when the trigger is disabled.

@@ -67,6 +67,19 @@ const limitRead = httpRateLimit('read', 120, 60);       // profiles/leaderboard/
 const limitMapWrite = httpRateLimit('map-write', 10, 10); // map submit/rate/delete
 const limitProgress = httpRateLimit('progress', 20, 12);  // achievement progress sync
 
+// Same-origin fallback when R2's CORS policy blocks the creator GLBs.
+// Only these two public repository assets are addressable, never arbitrary paths.
+app.get('/api/character-model/:gender', limitRead, (req, res) => {
+    const gender = req.params.gender;
+    if (gender !== 'male' && gender !== 'female') return res.sendStatus(404);
+    const file = path.join(__dirname, 'rigged_animations',
+        'Meshy_AI_human_body_base_mesh_' + gender + '_biped_Character_output.glb');
+    res.type('model/gltf-binary');
+    res.sendFile(file, { maxAge: '1h' }, err => {
+        if (err && !res.headersSent) res.sendStatus(err.statusCode === 404 ? 404 : 500);
+    });
+});
+
 // Serve ONLY the entry page. Every script/style/asset the game uses loads
 // from the CDN, so blanket express.static(__dirname) exposed things that must
 // never be public: server.js itself (guard/anti-cheat logic), the internal

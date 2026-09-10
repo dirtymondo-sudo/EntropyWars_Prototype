@@ -9031,6 +9031,7 @@
                 race: identity.race,
                 types: [...identity.types],
                 gender: identity.gender,
+                appearance: identity.appearance || null,
                 zodiac: identity.zodiac,
                 sleepPreference: identity.sleepPreference,
                 terrainPreference: identity.terrainPreference,
