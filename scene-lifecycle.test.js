@@ -504,7 +504,7 @@ test('opening pause or rendering a dialog clears a held direction before another
     assert.equal(h.ctx._mdHeldMoveKeys.size, 0);
     const held = new Set(['w']), card = { innerHTML: '', onchange: null };
     const overlay = { ...element(), setAttribute() {} };
-    const ctx = vm.createContext({ state: { uiDialog: { type: 'unknown' } },
+    const ctx = vm.createContext({ window: {}, state: { uiDialog: { type: 'unknown' } },
         document: { getElementById: id => id === 'uiDialogCard' ? card : overlay },
         _mdHeldMoveKeys: held });
     vm.runInContext(section(source('ui.js'), '        function renderUiDialog() {',

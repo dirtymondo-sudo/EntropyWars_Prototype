@@ -17,7 +17,7 @@ Each phase must leave behind evidence, prioritized findings, a bounded improveme
 - [x] Phase 0 — establish scope, inspect project instructions, and identify initial risks.
 - [ ] Phase 1 — first batch implemented locally: battle label retirement and HQ loading-card ownership pass regression tests; broader lifecycle work and runtime acceptance pending.
 - [ ] Phase 2 — static triage and capture protocol documented; performance baseline and optimizations pending.
-- [ ] Phase 3 — Tab/controller routing fixes are in repository main; battle/editor pause focus is now implemented locally and regression-tested. Main-menu/HQ Settings keyboard focus is in repository main. Controller page visibility/root selection (PAUSE-06) is in repository main. PAUSE-07 board movement/held-key isolation is in repository main and regression-tested; PAUSE-08 free-roam/shooter capture and retained-input gaps are source-confirmed, with implementation pending; broader input ownership, shared menu, and runtime acceptance remain pending.
+- [ ] Phase 3 — Tab/controller routing fixes are in repository main; battle/editor pause focus is now implemented locally and regression-tested. Main-menu/HQ Settings keyboard focus is in repository main. Controller page visibility/root selection (PAUSE-06) is in repository main. PAUSE-07 board movement/held-key isolation is in repository main and regression-tested; PAUSE-08 free-roam/shooter input handoff is implemented locally and regression-tested; broader input ownership, shared menu, and runtime acceptance remain pending.
 - [ ] Phase 4 — camera source review, framing gaps, and shot acceptance matrix documented; visual verification pending.
 - [ ] Phase 5 — timing/relay/lifetime review and representative spell matrix documented; implementation and captures pending.
 - [ ] Phase 6 — Arena/TDM rule audit, navigation/planning findings, and decision scenarios documented; observed CPU play pending.
@@ -161,6 +161,26 @@ This pass extends source review across all eight areas; it does not claim every 
 8. Deliver complete changed files. Every R2 change also requires the matching fresh index.html cache token, preserving its suffix. No automatic commit, push, or deployment.
 9. Existing project instructions require explicit playtest authorization. Static review proceeds now; runtime acceptance items remain pending until actual testing is authorized and performed. Read PLAYTEST_NOTES.md before those runs; use the existing P1-versus-CPU harness.
 10. Update this plan after every phase, including partial phases, and update subsystem logs when implementation touches them.
+
+### PAUSE-08 implementation — shared walker and shooter handoff (2026-09-10)
+
+Baseline: repository main `9dfcea9570fa49afe64e3d29d23f0ad87ccfcb7c`. Before editing, compared the local Git blob hashes for `AGENTS.md`, `CLAUDE.md`, `battle.js`, `three-renderer.js`, `ui.js`, `state.js` and `index.html` with GitHub's main tree; all matched. Previous delivered gameplay fixes are preserved. This batch is implemented and tested locally, not uploaded or verified live.
+
+Complete changes in the existing runtime files:
+
+- `three-renderer.js`: the shared Guild Hub/battle walker exposes one input-eligibility check for pause, dialogs, editable controls (including SELECT), hidden/unfocused documents and controller rebinding. Capture handlers, pad input, jump presses and the frame consumer use it. Clearing input retires keyboard and pad movement, sprint and pending jump presses without stopping the walker or writing its logical tile. Blur, visibility and editable focus clear retained samples immediately. Replacing a walker removes the previous listeners and pad sample. Existing `parkAtUnit` behavior is preserved.
+- `battle.js`: ShooterControls separates action eligibility from camera ownership. Keyboard and pointer capture yield before preventing menu events; mouse-lock requests, pad dispatch, movement frames, firing and Strike's engine input bridge all respect the eligibility boundary. One reset clears movement, sprint, jump input, fire, ADS, scoreboard, trigger-edge state and the lock-acquisition click suppression. It runs on modal handoff, lock loss, blur, visibility loss, editable focus, controller disconnect, camera ownership loss and explicit respawn reentry. Menu opening releases only shooter-owned pointer lock; a late grant during the menu is released too. Deliberate board clicking still reacquires the lock. Pause takes priority over all other actions in the same controller sample.
+- `ui.js`: both pause opening and dialog rendering immediately hand off shooter and walker input, alongside the existing board-held-key clear. The reset happens before the next frame or key event. Pending targeting state is untouched.
+- `index.html`: all shared version URLs use `20260910-060125-shooter-input-cors`. No assets or embedded asset URLs changed.
+
+Validation: **234 tests total; 232 passed, 0 failed, 2 skipped** using bundled Node v24.19.0 and the exact package test command, `node --test *.test.js` (npm is unavailable). The full suite includes repository-wide JavaScript syntax checking; edited runtime scripts also passed individual syntax checks. Ten new tests in `shooter-input.test.js` execute production listener/closure and movement-frame boundaries with controlled browser objects. They cover Guild Hub movement, both shooter modes, keyboard/mouse pass-through, pad/frame/engine rejection, immediate menu/dialog handoff, lock loss/late grants/HQ lock isolation, focus/blur/visibility/disconnect, fresh controller samples and simultaneous Pause+Fire. The existing dialog regression's fixture now supplies `window`; its assertions are unchanged. Skips remain absent animation GLBs and absent server dependencies.
+
+Scope and evidence limits: local-input behavior applies to both seats through the same client handlers. No simulation rules, authoritative actions, synchronized fields or relay payloads changed. Online world/clock suspension policy is unchanged. Camera ownership remains independent of modal input so opening pause does not hand back the camera or invoke movement commit/rollback. Real browser, keyboard/controller, host/guest and visual acceptance have not run; this is not a claim that all UX-01 or Phase 3 acceptance criteria are complete. The separate D.O.O.R. HQ walker is unchanged.
+
+Delivery: `ENTROPY_WARS_SHOOTER_INPUT_FIXES.zip` contains full root-named files. Upload `battle.js`, `three-renderer.js` and `ui.js` together to R2, and `index.html` to Render. Sync those plus both test files and this plan to the repository. The manifest and validation log are reference-only. No deployment was performed.
+
+Exact next task: implement nested-dialog focus return in the existing UI shell with production-function regressions; then begin the LIFE-05 reconnect/current-state/clock batch by tracing server rejoin ordering. Keep browser/controller and both-seat acceptance pending until playtesting is requested. Do not repeat the PAUSE-08 source-only trace as the next delivery.
+
 
 ## Coverage and order
 
@@ -786,6 +806,8 @@ After each phase:
 | 2026-09-10 | 3 / PAUSE-07 board held-key ownership | Added shared board input eligibility, immediate menu-open clearing, editable/visibility/blur clearing and unconditional key release; verified prior controller delivery in main. | Full suite: 222 passed, 0 failed, 2 expected skips; syntax passed. Four production-boundary regressions; no runtime acceptance or deployment. | Trace free-roam/ShooterControls capture and frame consumers across pause/dialog/pointer lock, then nested-dialog return focus. |
 
 | 2026-09-10 | 3 / PAUSE-08 source trace | Verified PAUSE-07 in main; traced Guild Hub/shared walker, shooter capture/frame handlers, retained controller input and pointer-lock reset gaps. Added a bounded fix contract and acceptance checks. | Pinned Git blob hash checks and source/document review only; no runtime edits, tests, playtest or deployment. | Implement PAUSE-08 input handoff and production-boundary regressions, then nested-dialog return focus. |
+
+| 2026-09-10 | 3 / PAUSE-08 implementation | Fixed capture, retained keyboard/pad/action inputs, immediate pause/dialog handoff, pointer-lock release and stale lock grants across Guild Hub and both shooter modes. Three runtime scripts changed; complete files and cache-busted entry prepared. | 232 passed, 0 failed, 2 expected skips (234 total); ten new production-boundary regressions; syntax passed. No browser/device/host-guest acceptance or deployment. | Implement nested-dialog focus return, then LIFE-05 reconnect/state/clock recovery. |
 
 ## Resume instructions
 

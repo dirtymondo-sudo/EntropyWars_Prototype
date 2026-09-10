@@ -15754,6 +15754,33 @@
             }
             window._shooterCamOwns = _owns;
 
+            function _inputAllowed(target) {
+                return _owns() && typeof ThreeRenderer !== 'undefined'
+                    && ThreeRenderer.hubFreeRoam.inputAllowed(target);
+            }
+            function _clearInput(releaseLock) {
+                heldDirs = {}; runHeld = false; padVec = null;
+                fireHeld = false; adsHeld = false; _padRtPrev = false;
+                suppressClickUntil = 0;
+                _rtJump(false);
+                try { ThreeRenderer.hubFreeRoam.clearInput(); } catch (e) {}
+                if (scoreHeld) {
+                    scoreHeld = false;
+                    try { if (typeof StrikeEngine !== 'undefined' && StrikeEngine.showScoreboard) StrikeEngine.showScoreboard(false); } catch (e) {}
+                }
+                if (releaseLock && locked) {
+                    locked = false;
+                    if (document.pointerLockElement === _canvas()) {
+                        try { document.exitPointerLock(); } catch (e) {}
+                    }
+                }
+            }
+            function _acceptInput(target) {
+                if (_inputAllowed(target)) return true;
+                _clearInput(true);
+                return false;
+            }
+
             function _canvas() {
                 try {
                     return (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getCanvas)
@@ -15890,8 +15917,7 @@
                     }
                     _enterShot(_localUnit());
                 } else {
-                    heldDirs = {}; padVec = null; runHeld = false;
-                    fireHeld = false; adsHeld = false;
+                    _clearInput(true);
                     if (prevFov) {
                         try { if (typeof ThreeCamera !== 'undefined' && ThreeCamera.setFOV) ThreeCamera.setFOV(prevFov); } catch (e) {}
                         prevFov = 0;
@@ -15911,6 +15937,7 @@
 
             /* ── pointer lock ── */
             function _requestLock() {
+                if (!_acceptInput()) return;
                 const c = _canvas();
                 if (c && c.requestPointerLock) { try { c.requestPointerLock(); } catch (e) {} }
             }
@@ -15925,7 +15952,8 @@
                    while walking (2026-09-05). */
                 const el = document.pointerLockElement;
                 locked = !!el && el === _canvas() && _enabled();
-                if (!locked) { heldDirs = {}; runHeld = false; }
+                if (!locked) _clearInput(false);
+                else if (!_inputAllowed()) _clearInput(true);
                 _refreshHud(true);
             });
 
@@ -15933,7 +15961,7 @@
                stream in the CAPTURE phase so the renderer's hover/click
                handlers never act on stale coordinates. */
             window.addEventListener('mousemove', (e) => {
-                if (!locked) return;
+                if (!_acceptInput(e.target) || !locked) return;
                 e.stopImmediatePropagation();
                 if (!_owns()) return;
                 /* sensitivity: player-tunable (Settings → Controls → Strike
@@ -15951,7 +15979,7 @@
             }, true);
 
             window.addEventListener('mousedown', (e) => {
-                if (!_enabled()) return;
+                if (!_acceptInput(e.target) || !_enabled()) return;
                 const c = _canvas();
                 if (!c) return;
                 if (!locked) {
@@ -15979,22 +16007,23 @@
                 else if (e.button === 2) _cancelAim();
             }, true);
             window.addEventListener('mouseup', (e) => {
-                if (!_rt() || !_enabled()) return;
                 const act = _bindAction('Mouse' + e.button);
                 if (act === 'fire') fireHeld = false;
                 else if (act === 'aim') adsHeld = false;
                 else if (act === 'jump') _rtJump(false);
             }, true);
             window.addEventListener('click', (e) => {
+                if (!_acceptInput(e.target)) return;
                 if (locked || performance.now() < suppressClickUntil) {
                     if (_enabled()) { e.preventDefault(); e.stopImmediatePropagation(); }
                 }
             }, true);
             window.addEventListener('contextmenu', (e) => {
+                if (!_acceptInput(e.target)) return;
                 if (locked && _enabled()) { e.preventDefault(); e.stopImmediatePropagation(); }
             }, true);
             window.addEventListener('wheel', (e) => {
-                if (!locked || !_owns()) return;
+                if (!_acceptInput(e.target) || !locked) return;
                 e.preventDefault(); e.stopImmediatePropagation();
                 /* Minecraft rules: the wheel scrolls the hotbar. Zoom (a
                    much rarer need at a fixed TPS boom) moved to Ctrl+wheel
@@ -16036,7 +16065,7 @@
             }
 
             window.addEventListener('keydown', (e) => {
-                if (!_battleActive() || _typing(e) || state.uiDialog) return;
+                if (!_acceptInput(e.target) || !_battleActive()) return;
                 if (_rt()) {
                     /* ── REAL-TIME key layout (all rebindable) ──
                        move / sprint / jump / abilities / scoreboard. No end
@@ -16137,14 +16166,10 @@
                     } catch (er) {}
                 }
             }, true);
-            window.addEventListener('blur', () => {
-                heldDirs = {}; runHeld = false; padVec = null;
-                fireHeld = false; adsHeld = false;
-                if (scoreHeld) {
-                    scoreHeld = false;
-                    try { if (typeof StrikeEngine !== 'undefined' && StrikeEngine.showScoreboard) StrikeEngine.showScoreboard(false); } catch (er) {}
-                }
-            });
+            window.addEventListener('blur', () => _clearInput(true));
+            window.addEventListener('gamepaddisconnected', () => _clearInput(false));
+            document.addEventListener('visibilitychange', () => { if (document.hidden) _clearInput(true); });
+            document.addEventListener('focusin', (e) => { if (!_inputAllowed(e.target)) _clearInput(true); }, true);
 
             /* ── abilities ── */
             function _abilityList(u) {
@@ -16256,6 +16281,7 @@
             }
 
             function _fire() {
+                if (!_acceptInput()) return;
                 const u = _localUnit();
                 if (!u || (!_rt() && state._actionExecuting)) return;
                 const aim = _aimClient();
@@ -16347,6 +16373,7 @@
                 if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
             }
             function _roamFrameRT(now) {
+                if (!_acceptInput()) return;
                 const u = _localUnit();
                 if (!u) { if (roamOn) _stopRoam(); return; }
                 const stunned = typeof unitHasStatus === 'function'
@@ -16409,6 +16436,7 @@
                 } catch (e) {}
             }
             function _roamFrame(now) {
+                if (!_acceptInput()) return;
                 if (_rt()) { _roamFrameRT(now); return; }
                 const u = _localUnit();
                 const busy = !u || state._actionExecuting || state.uiDialog
@@ -16696,6 +16724,7 @@
                 requestAnimationFrame(_frame);
                 const now = performance.now();
                 const own = _owns();
+                if (!_inputAllowed()) _clearInput(true);
                 if (own !== lastOwn) { _onOwnChange(own); lastOwn = own; }
 
                 /* release OUR stale pointer lock when the mode ends (`locked`
@@ -16758,7 +16787,7 @@
                    Real-time skips the hover pipeline entirely — no tile
                    range/AoE previews in a shooter; the pick alone drives the
                    reticle tint and StrikeEngine's aim resolution. */
-                if (_aimActive() && typeof ThreeRenderer !== 'undefined') {
+                if (_inputAllowed() && _aimActive() && typeof ThreeRenderer !== 'undefined') {
                     const aim = _aimClient();
                     if (aim) {
                         if (!_rt() && ThreeRenderer.hoverAtScreen && _battleActive()
@@ -16789,7 +16818,15 @@
                left stick walk, right stick look, A fire, B cancel, X end turn,
                triggers zoom, L/R cycle spells, +/start pause. ── */
             window._shooterPadFrame = function (gp, dt, now, pressed, prevPressed, ctx) {
-                if (!_owns()) return false;
+                if (!_acceptInput()) return false;
+                // Pause owns the entire sample, even if another button is held.
+                const pauseIndex = (window.EWPad && EWPad.getBinding) ? EWPad.getBinding('pause') : -1;
+                if (pauseIndex >= 0 && pressed[pauseIndex] && !prevPressed[pauseIndex]
+                    && typeof togglePauseMenu === 'function') {
+                    togglePauseMenu();
+                    _clearInput(true);
+                    return true;
+                }
                 const opts = (window.EWPad && EWPad.getOpts) ? EWPad.getOpts()
                     : { deadzone: 0.18, sensitivity: 1, invertX: false, invertY: false };
                 const curve = (v) => {
@@ -16846,7 +16883,6 @@
                     if (just('cancel')) _cancelAim();
                     if (just('endTurn') && typeof window._ewRequestEndTurn === 'function') window._ewRequestEndTurn();
                 }
-                if (just('pause') && typeof togglePauseMenu === 'function') togglePauseMenu();
                 if (!_rt() && just('overview') && typeof showFullMapOverview === 'function') showFullMapOverview();
                 if (just('targetPrev')) _scrollSelect(-1);
                 if (just('targetNext')) _scrollSelect(1);
@@ -16862,24 +16898,26 @@
 
             return {
                 owns: _owns,
+                suspendInput() { _clearInput(true); },
                 isLocked() { return locked; },
                 setSensitivity(mult) { /* superseded by StrikeControlsConfig */ },
                 /* ── StrikeEngine bridge (real-time mode) ── */
                 rtInput() {
+                    const inputLive = _acceptInput();
                     return {
                         fireHeld: fireHeld,
                         adsHeld: adsHeld,
                         selSlot: selSlot,
                         aim: _aimClient(),
-                        aimActive: _aimActive(),
-                        pick: lastPick,
+                        aimActive: inputLive && _aimActive(),
+                        pick: inputLive ? lastPick : null,
                         yaw: yaw,
                         pitch: pitch,
                         locked: locked,
                     };
                 },
                 /* re-frame the camera behind the player (used on respawn) */
-                reenter() { const u = _localUnit(); if (u) _enterShot(u); },
+                reenter() { _clearInput(false); const u = _localUnit(); if (u) _enterShot(u); },
                 refreshHud() { _refreshHud(true); },
             };
         })();

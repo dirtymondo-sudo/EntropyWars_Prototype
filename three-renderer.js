@@ -19115,8 +19115,31 @@ const ThreeRenderer = (function () {
        each tick so a controller can walk the hub like the keyboard does */
     var _frPad = null;      // { ix, iy, run } or null
 
+    // Shared walker/shooter input boundary. Camera ownership stays independent.
+    function _freeRoamInputAllowed(target) {
+        if ((typeof _gamePaused !== 'undefined' && _gamePaused) || state.uiDialog || document.hidden) return false;
+        if (typeof document.hasFocus === 'function' && !document.hasFocus()) return false;
+        if (window.EWPad && window.EWPad.isRebinding && window.EWPad.isRebinding()) return false;
+        var editable = function (el) {
+            return el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].indexOf(el.tagName) >= 0);
+        };
+        return !editable(target) && !editable(document.activeElement);
+    }
+    function _freeRoamClearInput() {
+        _frPad = null;
+        if (!_freeRoam) return;
+        _freeRoam.keys = {};
+        _freeRoam.moving = false;
+        _freeRoam.running = false;
+        _freeRoam.want = 'idle';
+        _freeRoam.lastMs = 0;
+    }
+    window.addEventListener('blur', _freeRoamClearInput);
+    document.addEventListener('visibilitychange', function () { if (document.hidden) _freeRoamClearInput(); });
+    document.addEventListener('focusin', function (e) { if (!_freeRoamInputAllowed(e.target)) _freeRoamClearInput(); }, true);
+
     function _freeRoamSetPad(ix, iy, run) {
-        if (!_freeRoam) { _frPad = null; return; }
+        if (!_freeRoam || !_freeRoamInputAllowed()) { _freeRoamClearInput(); return; }
         _frPad = (ix || iy) ? { ix: ix, iy: iy, run: !!run } : null;
     }
 
@@ -19144,6 +19167,8 @@ const ThreeRenderer = (function () {
                       owns the position; a stop must never write it) */
     function _freeRoamStart(uid, opts) {
         if (!uid) return;
+        if (_freeRoam) _freeRoamStop();
+        _frPad = null;
         var unit = null;
         try { unit = (state.units || []).find(function (u) { return u.id === uid; }); } catch (e) {}
         _freeRoam = {
@@ -19156,8 +19181,7 @@ const ThreeRenderer = (function () {
         if (!_freeRoam.opts.noKeys) {
             _frKeyDown = function (e) {
                 if (!_freeRoam) return;
-                var t = e.target;
-                if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+                if (!_freeRoamInputAllowed(e.target)) { _freeRoamClearInput(); return; }
                 var k = _frNormKey(e);
                 if (!k) return;
                 _freeRoam.keys[k] = true;
@@ -19168,7 +19192,7 @@ const ThreeRenderer = (function () {
                 var k = _frNormKey(e);
                 if (k) _freeRoam.keys[k] = false;
             };
-            _frBlur = function () { if (_freeRoam) _freeRoam.keys = {}; };
+            _frBlur = _freeRoamClearInput;
             window.addEventListener('keydown', _frKeyDown, true);
             window.addEventListener('keyup', _frKeyUp, true);
             window.addEventListener('blur', _frBlur);
@@ -19219,6 +19243,7 @@ const ThreeRenderer = (function () {
 
     function _freeRoamTick() {
         if (!_freeRoam) return;
+        if (!_freeRoamInputAllowed()) { _freeRoamClearInput(); return; }
         var fr = _freeRoam;
         var now = performance.now();
         var dt = fr.lastMs ? Math.min(0.05, (now - fr.lastMs) / 1000) : 0.016;
@@ -33689,9 +33714,11 @@ const ThreeRenderer = (function () {
             stop: _freeRoamStop,
             active: function () { return !!_freeRoam; },
             setPadInput: _freeRoamSetPad,
+            inputAllowed: _freeRoamInputAllowed,
+            clearInput: _freeRoamClearInput,
             /* external jump channel (Strike Mode runs the walker with noKeys,
                so battle.js forwards its own SPACE handling through this) */
-            setJump: function (on) { if (_freeRoam) _freeRoam.keys.space = !!on; },
+            setJump: function (on) { if (_freeRoam) _freeRoam.keys.space = !!on && _freeRoamInputAllowed(); },
             pos: function () { return _freeRoam ? { x: _freeRoam.fx, y: _freeRoam.fy } : null; },
             uid: function () { return _freeRoam ? _freeRoam.uid : null; },
         },

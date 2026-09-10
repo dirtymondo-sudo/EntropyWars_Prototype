@@ -5799,7 +5799,11 @@
             const card = document.getElementById('uiDialogCard');
             if (!overlay || !card) return;
             const dialog = state.uiDialog;
-            if (dialog) _mdHeldMoveKeys.clear();
+            if (dialog) {
+                _mdHeldMoveKeys.clear();
+                if (window.ShooterControls) window.ShooterControls.suspendInput();
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hubFreeRoam && ThreeRenderer.hubFreeRoam.clearInput) ThreeRenderer.hubFreeRoam.clearInput();
+            }
             /* onclick is (re)assigned per dialog type below; onchange is only
                used by the Mystery Dungeon party picker — always reset it so a
                stale handler never leaks into the next dialog. */
@@ -6522,6 +6526,8 @@
             if (!_gamePaused) _pauseReturnFocus = document.activeElement;
             _gamePaused = true;
             _mdHeldMoveKeys.clear();
+            if (window.ShooterControls) window.ShooterControls.suspendInput();
+            if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hubFreeRoam && ThreeRenderer.hubFreeRoam.clearInput) ThreeRenderer.hubFreeRoam.clearInput();
 
             if (_cinematicEl) {
                 _cinematicEl.remove();

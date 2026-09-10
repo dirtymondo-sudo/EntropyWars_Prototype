@@ -1,17 +1,29 @@
-# Upload manifest — held movement keys
+# Upload manifest — PAUSE-08 input fixes
 
-Baseline: `88b3bc65adc93fc8ed2e84c28c112b0c81565b3f`. Local delivery only.
+This package contains COMPLETE updated files, based on repository main `9dfcea9570fa49afe64e3d29d23f0ad87ccfcb7c`. It preserves the earlier review fixes. No upload or deployment has been performed.
 
-- `ui.js`: R2.
-- `index.html`: Render. Shared cache token: `20260910-052918-heldkeys-cors`.
-- `scene-lifecycle.test.js` and `ENTROPY_WARS_ADVERSARIAL_REVIEW_PLAN.md`: repository only.
-- Sync both runtime files to the repository as well.
+| Destination | Files |
+| --- | --- |
+| R2 — upload together | battle.js, three-renderer.js, ui.js |
+| Render | index.html |
+| Repository only | shooter-input.test.js, scene-lifecycle.test.js, ENTROPY_WARS_ADVERSARIAL_REVIEW_PLAN.md |
+| Reference only | UPLOAD_MANIFEST.md, VALIDATION.txt |
 
-Validation: 222 passed, 0 failed, 2 dependency-related skips; all JavaScript syntax checks passed. Live acceptance remains pending.
+Sync the runtime files and index.html to the repository too. Preserve the filenames and repository-root paths shown above. Deploy the R2 scripts before the Render entry page so its new token points to the matching set.
 
-SHA-256:
+Cache token: `20260910-060125-shooter-input-cors`. No asset upload or extra embedded-asset refresh is needed.
 
-- `ui.js`: `24e01793cd8b86adbefa2f501aec5f3441a8c975eaf0b92939b8f01578a320b5`
-- `index.html`: `9603c167fe10217a16ed135464587fb53cae7d5b7de8ec878e4715ba6ef8de69`
-- `scene-lifecycle.test.js`: `7a41276ecae406cac845c6951f12e1097a7145d20cc5aedaae8ac48f4a01aec9`
-- `ENTROPY_WARS_ADVERSARIAL_REVIEW_PLAN.md`: `c561785f994415692c6ecca7260ad731e3754d953410f64c23838b8925d59caa`
+Fixes: menu keyboard/mouse input isolation; stale walk/sprint/jump/fire/ADS/scoreboard/trigger cleanup; owned mouse-lock release and late-grant rejection; controller pause precedence; walker listener cleanup. Camera ownership and movement commit rules remain independent.
+
+Validation: 234 total, 232 passed, 0 failed, 2 expected skips (animation GLBs and server dependencies absent). Full package test command and JavaScript syntax checks passed. Browser/device/online acceptance has not been run. See VALIDATION.txt for the full test output.
+
+## SHA-256
+
+- `ENTROPY_WARS_ADVERSARIAL_REVIEW_PLAN.md`: `b5cd72858a3ae707f6934de1cd1c8857d86c7551a3a257d90cffff445f3b2290`
+- `VALIDATION.txt`: `d1b1d720640802cd0e89b0ea5b1a118c26d73c9172ad1b498cffbd478ebaa2bf`
+- `battle.js`: `8432c93d5aa990c1ebe3bc63afda3ceaf03f8557f5bc56dc38ea8d9e97a57df6`
+- `index.html`: `cf29bffb45c97fed57ab538e6b3a143f08eb8f0a579b336a0b081600fba07890`
+- `scene-lifecycle.test.js`: `a405bb2b59eaad1c41c69d01d611feb944bdf2c482af6c1b51704131fe3dfb18`
+- `shooter-input.test.js`: `2b73a5172fdf3f7363ad8dea42b4f7d2e740e445ef05dbd83c951b5c3e067e6a`
+- `three-renderer.js`: `348a68976964b297d51b740059729dcf1e04a0bf95654552b708ff8ab1639834`
+- `ui.js`: `5d9f8d3df1f315836d3ec50d9e1085713fd2aa4bcee47db91537a198943c3d44`
