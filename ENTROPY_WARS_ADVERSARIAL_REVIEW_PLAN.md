@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-09 (America/Chicago)
 Repository: https://github.com/dirtymondo-sudo/EntropyWars_Prototype
-Baseline: files fetched from main on this date; no immutable commit baseline captured yet.
+Baseline: Phase 1 source review pinned to main commit `f0a4c3341631d60cee2ac544e543a13754d21624` (2026-09-09 in America/Chicago). Phase 0 used an unpinned main snapshot.
 Delivery: this document is repository/reference material only. No R2 upload or cache bump required.
 
 ## Objective
@@ -14,7 +14,7 @@ Each phase must leave behind evidence, prioritized findings, a bounded improveme
 ## Current status
 
 - [x] Phase 0 — establish scope, inspect project instructions, and identify initial risks.
-- [ ] Phase 1 — loading, scene transitions, and stale battle UI.
+- [ ] Phase 1 — in progress: source review and prioritized fix batch documented; implementation and runtime acceptance pending.
 - [ ] Phase 2 — performance baseline and optimizations that preserve the look.
 - [ ] Phase 3 — one pause menu across battle and DOOR HQ.
 - [ ] Phase 4 — cinematic camera composition and continuity.
@@ -55,7 +55,7 @@ Phase 0 is a scoped reconnaissance pass, not a completed game audit. No gameplay
 
 Reviewed the local project reference and delivery instructions; read targeted sections of current CLAUDE.md and source excerpts from state.js, map.js, ui.js, three-camera.js, and ai.js, plus package.json. Retrieved hud.js and the DOOR master/HQ plan for subsequent inspection; their full contents have not yet been audited.
 
-The connected GitHub fetch could not return three-renderer.js because the file was too large or unsupported. Renderer internals therefore remain unreviewed. Obtain that file through another supported read/download route before diagnosing texture readiness, renderer cleanup, or voxel cost.
+The Phase 0 GitHub fetch could not return three-renderer.js because the file was too large or unsupported. Resolved during Phase 1: downloaded complete three-renderer.js and battle.js from the pinned commit. Relevant loading, label, minimap, and HQ lifecycle paths are now inspected; this is not a full renderer or voxel-performance audit.
 
 ### Initial findings
 
@@ -102,6 +102,87 @@ Fix demonstrated cleanup and readiness failures in existing files. Give asynchro
 ### Completion evidence
 
 Transition ownership table; findings with source locations; complete changed files; targeted lifecycle checks and test results. Runtime gate: repeated match/HQ cycles leave no old minimap, labels, effects, or input owner; cold and warm loads reveal the correct scene or a clear recoverable failure. Memory/resource counts must plateau after warm-up rather than grow each cycle.
+
+### Phase 1 source review — 2026-09-09
+
+The strongest findings concern two separate contracts: handing the shared renderer from battle to HQ, and deciding when a scene is ready to reveal. The current code already contains substantial cleanup and loading work. The fixes should close gaps in those paths rather than replace them wholesale.
+
+This pass is a static review. No reported symptom has been reproduced, no game implementation has changed, and Phase 1 remains open. Complete source snapshots are retained locally in `review-source/` for follow-up; they are reference copies, not upload deliverables. Source locations below refer to the pinned commit, not the live deployment.
+
+#### Transition and resource ownership
+
+| Resource / transition | Current owner and source | What the source establishes |
+| --- | --- | --- |
+| Screen state | `state.js:4824`, `transitionTo` | Updates screen/phase flags and dirties screen rendering. Has no HQ branch and does not itself tear down renderer resources or cancel asynchronous boot work. |
+| Results → builder | `battle.js:33309`, `backToPartyBuilder` | Clears selection/result state and calls `render()`. Does not directly deactivate the renderer. Follow the downstream render/screen code before deciding where cleanup belongs. |
+| Results → HQ/menu | `battle.js:33342`, `backToMainMenu`; `map.js:635`, `_hqReturnOrMenu`; `map.js:395`, `_hqEnter` | Main-menu transition establishes setup phase; HQ entry parks an active battle renderer when phase is not battle. Direct HQ entry during battle is refused by the renderer. |
+| Shared canvas and CSS labels | `three-renderer.js:25386`, `activate`; `25433`, `deactivate`; `32871`, `_hqEnter`; `32993`, `_hqLeave` | Battle deactivation hides the CSS label layer. HQ reparents and reveals that same layer, then renders its own scene. HQ exit returns the shared elements to the battle parent. |
+| Unit nameplates and health bars | `three-renderer.js:11537`, `_clearPlates`; `11186`, unit rebuild; `27900`, dispose | Unit rebuild and full disposal clear the plate registry. Battle deactivation clears tower plates and nexus bars but does not call `_clearPlates`. |
+| Floating text, intent badges, arrows, ghosts | `three-renderer.js:25433–25512`, `deactivate` | Existing deactivation clears/hides these. Reuse that cleanup instead of adding unrelated DOM removal at each menu. Other effect and timer lifetimes still need a complete inventory. |
+| Minimap / dungeon scanner | `three-renderer.js:26637`, `_ensureMinimap`; `26746`, `_mdScannerActive`; `27027`, `_updateMinimap`; `25488`, deactivation | Wrapper lives under `document.body`. Deactivation hides it, removes scanner mode, and resets discovery identity. Frame updates check renderer activity and board availability; scanner eligibility checks dungeon state, not the foreground screen. |
+| HQ loading card | `map.js:426–460`; renderer `32565`, `32863` | Entry displays the card. Avatar attachment or the nine-second fallback calls `onReady`; delayed callbacks then fade and hide the shared card. |
+| Battle loading / intro | `battle.js:33938–34333`, `showBattleLoadingScreen`; `35117`, `startMatch` | Warms models, images, textures, music, and intro assets, then hands off to the intro/engine boot chain. The gate can resolve after failures or a 45-second cap. |
+| Online start barrier | `battle.js:33813`, `_lsAwaitRemoteReady`; `online.js:3175`, ready relay; `4460–4490`, guest phase change | Both viewers run loading. Ready and intro-done use global latches and callbacks. Guest phase changes reset votes; waits have time limits. This is already a two-player system and must stay one. |
+
+#### Prioritized findings
+
+**LIFE-02 — High: battle unit labels survive deactivation before HQ reuses their DOM layer.**
+
+Evidence: `deactivate()` hides `css2dRenderer.domElement` but leaves `_plateObjs` intact. HQ entry reparents that same element and restores its display. `_clearPlates()` exists and removes plate objects from their parents, but is called on unit rebuild/full disposal, not this handoff. This is a concrete ownership gap and a strong candidate for REP-03. Whether the retained DOM is visible in the reported case still needs verification against the loaded CSS2D implementation and an actual transition.
+
+Proposed fix: retire battle-owned unit labels at battle deactivation, before another scene reveals the shared overlay. Preserve unrelated HQ labels and the existing bar-animation history contract; rebuild battle labels on the next activation. Verify tower/nexus labels, floating text, and both viewers at the same boundary. Do not clear the whole shared DOM indiscriminately.
+
+**LOAD-01 — Medium: an old HQ fade callback can hide a newer room's loading card.**
+
+Evidence: `map.js:453–460` schedules two nested timeouts. Both target the shared `hqLoad`; neither checks entry identity. `_hqLeave` at `map.js:572` does not cancel them. Renderer room replacement does leave the old room, but cannot cancel timeouts that its earlier `onReady` already scheduled in map.js.
+
+Failure scenario to test: room A becomes ready and schedules its fade; enter room B before A's delayed hide runs. B displays the card, then A's callback hides it. Proposed fix: give each entry an identity and track/cancel both fade timers on entry, leave, and failed entry. Check identity again inside each callback. This addresses card ownership; it does not make textures ready.
+
+**LOAD-02 — High: HQ readiness does not wait for room textures.**
+
+Evidence: `three-renderer.js:32565` signals ready when the player model attaches; `32863` signals ready after nine seconds regardless. `_hqTex` at `29849` starts and caches asynchronous texture loads without registering them with that readiness decision or providing a local failure handler. Room shell/setting build exceptions are logged and entry continues (`32971` onward). A ready avatar therefore does not establish a ready room.
+
+Proposed fix: track required room textures/models during the current entry and distinguish success, intentional fallback, and failure. Reveal after required resources have settled into a usable scene and that scene has rendered. On timeout, show a recoverable status or a deliberate fallback. Keep optional detail from blocking entry indefinitely. REP-01 remains unconfirmed: missing textures, material/lighting behavior, and GPU upload are still possible contributors.
+
+**LOAD-03 — High: battle loading presents failure or timeout as success.**
+
+Evidence: image and texture warmers use the same completion path for `onload` and `onerror` (`battle.js:34000–34070`). Model preload also settles on failure (`three-renderer.js:9754–9772`). `assetsReady` races all warmers against 45 seconds (`battle.js:34092`); the visible path then forces the bar to 100% and announces “SYNC COMPLETE” (`34296–34315`). The terrain warmer fills the browser cache; it does not establish that every scene material is bound and rendered.
+
+Proposed fix: retain bounded loading, but return separate loaded/failed/timed-out results and track required resources. Make the displayed outcome match those results. Connect scene readiness to actual renderer consumers, including assets first requested by map scenery. Do not replace the cap with an unlimited wait or extend a fixed delay as a readiness fix. Audit the asset list against one affected map before expanding it.
+
+**LIFE-03 — Medium: the minimap's visibility contract is weaker than screen ownership.**
+
+Evidence: `_updateMinimap` gates on `active` and board data, while the scanner predicate checks dungeon mode/floor/run state. Neither requires the battle to be the foreground screen. Results-to-builder does not directly call deactivation. However, normal tactical minimaps are already hidden by `hud.js:9267` (`#battleMinimap:not(.md-scanner)`), and HQ deactivation already hides the scanner. These protections rule out a blanket claim that the minimap has no cleanup.
+
+Next verification: inspect `render()`/screen-mode consumers and dungeon exit state to establish whether a builder or loading transition leaves an active scanner. Identify whether REP-02 is the dungeon scanner, a tactical minimap under missing/older CSS, or another element. Proposed fix if that route is confirmed: tie scanner visibility to the current scene and clear its mode/discovery state on departure. Preserve dungeon discovery within the same floor and existing fog filtering.
+
+**LIFE-04 — Medium: boot callbacks have per-call completion guards but no visible match identity.**
+
+Evidence: loading `finish()` prevents duplicate completion of its own call, but does not check whether that match is still current (`battle.js:33938`). Loading fade/auto-dismiss callbacks and `_syncedAfterVSSplash`'s 20-second fallback can later call the boot continuation (`35222–35246`). Ready messages contain `type` and `from`, and the receiver sets global flags (`33813–33833`, `online.js:3175–3181`). Current guest resets and ordered socket delivery provide protection within the expected flow; they do not by themselves prove cancellation across an abandoned/replaced flow.
+
+Proposed fix: establish one current boot identity and cancellation path across loading, intro, timers, and ready waiters. Ignore stale local callbacks. If matching identity is added to relays, carry it consistently through host state, guest state, senders, and receivers. First verify which exits are reachable during boot; stale callbacks are a source risk, not a reproduced restart/disconnect failure.
+
+#### Bounded implementation order
+
+1. **Label handoff and HQ card ownership:** LIFE-02 and LOAD-01 in existing renderer/map files. This is the first fix batch: small scope, direct ownership evidence, no visual redesign.
+2. **Loading outcomes and readiness:** LOAD-02 and LOAD-03. Define required/fallback assets for one representative HQ site and battle map, then connect those consumers to readiness. Keep failure status distinct from success on both clients.
+3. **Match cancellation and minimap:** complete the caller audit for LIFE-03/LIFE-04, then implement only demonstrated gaps. Avoid adding a global teardown to ordinary redraws or resuming HQ while battle still owns the canvas.
+
+No implementation is included in this document delivery. Each code batch must include complete changed files, applicable checks, and a fresh `index.html` cache token. Renderer/map/battle/online files go to R2; `index.html` goes to Render. The plan and any updated subsystem logs are repository-only.
+
+#### Acceptance checks for Phase 1
+
+| Check | Required evidence | Current status |
+| --- | --- | --- |
+| Battle → HQ → battle | Old unit/tower/nexus labels, damage text, arrows, and intent badges disappear; new labels belong only to the new scene. Check host and guest exits. | Pending |
+| Rapid room changes and leave during fade | Run A's delayed callbacks after B starts and after leaving HQ; neither may hide B's card or mutate departed UI. | Pending |
+| Cold HQ entry with fast avatar and slow room textures | Card remains until required scene assets or deliberate fallbacks are usable; a valid scene frame precedes reveal. | Pending |
+| Required texture fails; optional asset fails; timeout | Outcome distinguishes these cases, offers usable recovery, and does not falsely report complete asset success. | Pending |
+| Dungeon floor → builder/HQ → Arena or TDM | Scanner does not survive into menus/loading or the next mode; same-floor exploration remains intact. | Pending; finish caller audit first |
+| Leave/restart/disconnect during loading or intro | Late callbacks do not boot a departed match; ready messages and engine start remain tied to the same match for both players. | Pending |
+| Repeated warm transitions | Resource/DOM counts plateau across repeated cycles; no accumulating input handlers, timers, or scene owners. | Pending; no memory measurement yet |
+
+Validation performed: manual source tracing and document content review only. No syntax/game tests were needed for this documentation-only delivery. No browser, simulation, FPS, network-failure, or memory test ran. The first two files that previously blocked inspection are now available; remaining uncertainty is in behavior and untraced callers, not access to those files.
 
 ## Phase 2 — performance without changing the art style
 
@@ -246,8 +327,8 @@ After each phase:
 | Date | Phase | Completed work | Validation | Next task |
 | --- | --- | --- | --- | --- |
 | 2026-09-09 | 0 | Established all eight review areas, dependencies, acceptance criteria, and initial source findings. | Documentation content review; selected source inspection only. No code changes or gameplay tests. | Phase 1: obtain three-renderer.js and battle.js; trace startMatch/loading completion, minimap and nameplate ownership, result/HQ exit paths, and stale asynchronous callbacks. |
+| 2026-09-09 | 1 — source review in progress | Pinned the source baseline; obtained renderer/battle files; mapped principal scene owners; added LIFE-02/03/04 and LOAD-02/03, expanded LOAD-01, and defined three fix batches. | Static source and document review only. No game changes, runtime reproduction, or deployment. | Implement and validate the first bounded batch: retire battle labels during deactivation and cancel/identify HQ loading-card callbacks. Refresh source first; read relevant HQ logs before editing and include updated logs in delivery. Continue the minimap/boot caller audit before claiming those symptoms explained. |
 
 ## Resume instructions
 
 Use this file as the review tracker. Continue with the first unfinished phase and refresh the relevant repository files before editing. Preserve finding IDs and evidence distinctions. Do not mark reported bugs fixed based on a plausible source change alone.
-
