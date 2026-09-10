@@ -1,18 +1,17 @@
-# PAUSE-06 controller Settings delivery
+# Upload manifest — held movement keys
 
-Baseline: GitHub main f546e7fff61edb012e3fae536aee995996257c4f.
-Complete files with original root names; includes all earlier fixes in these files.
+Baseline: `88b3bc65adc93fc8ed2e84c28c112b0c81565b3f`. Local delivery only.
 
-- R2: state.js
-- Render: index.html (shared cache token 20260910-045746-controller-cors)
-- Repository only: scene-lifecycle.test.js, ENTROPY_WARS_ADVERSARIAL_REVIEW_PLAN.md
+- `ui.js`: R2.
+- `index.html`: Render. Shared cache token: `20260910-052918-heldkeys-cors`.
+- `scene-lifecycle.test.js` and `ENTROPY_WARS_ADVERSARIAL_REVIEW_PLAN.md`: repository only.
 - Sync both runtime files to the repository as well.
 
-Validation: 220 tests; 218 passed, 0 failed, 2 existing skips (missing animation GLBs and server dependencies). Repository-wide JS syntax passed. No browser, controller or host/guest runtime acceptance. Nothing deployed.
+Validation: 222 passed, 0 failed, 2 dependency-related skips; all JavaScript syntax checks passed. Live acceptance remains pending.
 
-## SHA-256
+SHA-256:
 
-- `state.js`: `d3bd3794ad2a4dc16981daa125c9116474cc361b55c5e435384446818c170648`
-- `index.html`: `788b231506a2da6c1e870d1bfa0c842b9ea29ee20dab8656262a197a053c4799`
-- `scene-lifecycle.test.js`: `a33f85ed6fa3593917efc667755ec4a609811302166ef0d2b7c854c28affce24`
-- `ENTROPY_WARS_ADVERSARIAL_REVIEW_PLAN.md`: `e37d08367826d6fca1592d612d4021247d6e1a466666f7fb9771efe6a62c926e`
+- `ui.js`: `24e01793cd8b86adbefa2f501aec5f3441a8c975eaf0b92939b8f01578a320b5`
+- `index.html`: `9603c167fe10217a16ed135464587fb53cae7d5b7de8ec878e4715ba6ef8de69`
+- `scene-lifecycle.test.js`: `7a41276ecae406cac845c6951f12e1097a7145d20cc5aedaae8ac48f4a01aec9`
+- `ENTROPY_WARS_ADVERSARIAL_REVIEW_PLAN.md`: `c561785f994415692c6ecca7260ad731e3754d953410f64c23838b8925d59caa`

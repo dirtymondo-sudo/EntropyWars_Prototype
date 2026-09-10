@@ -196,6 +196,7 @@ function pauseHarness() {
     const ctx = vm.createContext({ document: doc, window: {}, state: { phase: 'battle', actionMode: 'spell' },
         getComputedStyle: () => ({ visibility: 'visible' }), requestAnimationFrame: fn => frames.push(fn),
         _cinematicEl: null, _activeCinematic: null, _pauseTab: 'scoreboard',
+        _mdHeldMoveKeys: new Set(),
         _buildPauseScoreboard: () => '', _buildPauseMusic: () => '' });
     vm.runInContext(section(src, '        let _pauseOverlay = null;', '\n        function togglePauseMenu()').replace('        function togglePauseMenu()', '') + '\n' +
         section(src, '        function openPauseMenu()', '\n        window.openPauseMenu = openPauseMenu;') + '\n' +
@@ -429,4 +430,84 @@ test('controller Confirm and adjustment cannot act on stale or ineligible focuse
         assert.equal(h.ctx._domNavAdjust(1), false, key);
         h.ctx._domNavActivate(); assert.equal(h.slider.clicks, 0, key); h.slider[key] = old;
     }
+});
+
+function battleMoveHarness() {
+    const handlers = { document: {}, window: {} }, steps = [];
+    const surface = name => ({ addEventListener(type, fn) {
+        (handlers[name][type] ||= []).push(fn);
+    } });
+    const doc = surface('document'), win = surface('window');
+    win._mdLockstepActive = () => true;
+    win._mdLockstepStep = (dx, dy) => { steps.push([dx, dy]); return true; };
+    const ctx = vm.createContext({ document: doc, window: win,
+        state: { phase: 'battle', activePlayer: 1, pendingTarget: { x: 3, y: 4 } },
+        _gamePaused: false, _wasdAnimating: false, _wasdOrigin: null,
+        scheduleBoardRender() {} });
+    vm.runInContext(section(source('ui.js'), '        const _mdHeldMoveKeys = new Set();',
+        '\n        const _origClickTile = clickTile;').replace('        const _origClickTile = clickTile;', ''), ctx);
+    const fire = (type, extra = {}, name = 'document') => {
+        const e = { key: '', target: { tagName: 'DIV' }, prevented: false,
+            preventDefault() { this.prevented = true; }, ...extra };
+        for (const fn of handlers[name][type] || []) fn(e);
+        return e;
+    };
+    return { ctx, doc, win, steps, fire,
+        held: () => Array.from(vm.runInContext('_mdHeldMoveKeys', ctx)) };
+}
+
+test('battle movement rejects pause, dialog, title and editable input without changing targets', () => {
+    const h = battleMoveHarness(), pending = h.ctx.state.pendingTarget;
+    for (const owner of ['pause', 'dialog', 'title', 'input', 'textarea', 'select', 'editable']) {
+        h.ctx._gamePaused = owner === 'pause';
+        h.ctx.state.uiDialog = owner === 'dialog' ? {} : null;
+        h.ctx.state.titleScreenVisible = owner === 'title';
+        const target = { tagName: owner.toUpperCase(), isContentEditable: owner === 'editable' };
+        for (const key of ['w', 'ArrowRight', 'Enter']) {
+            assert.equal(h.fire('keydown', { key, target }).prevented, false, owner);
+        }
+        assert.deepEqual(h.held(), [], owner);
+    }
+    assert.deepEqual(h.steps, []);
+    assert.equal(h.ctx.state.pendingTarget, pending);
+});
+
+test('dungeon diagonals resume without directions held in menus and release survives ownership changes', () => {
+    const h = battleMoveHarness();
+    h.fire('keydown', { key: 'w' }); h.fire('keydown', { key: 'd' });
+    assert.deepEqual(h.steps, [[0, -1], [1, -1]]);
+    h.ctx._gamePaused = true; h.fire('keydown', { key: 's' }); h.fire('keyup', { key: 'w' });
+    assert.deepEqual(h.held(), []);
+    h.ctx._gamePaused = false; h.fire('keydown', { key: 'd' });
+    assert.deepEqual(h.steps.at(-1), [1, 0]);
+    h.ctx.state.uiDialog = {}; h.fire('keyup', { key: 'd' });
+    assert.deepEqual(h.held(), []);
+});
+
+test('held battle directions clear on editable focus, hidden document, blur and drum arrow ownership', () => {
+    const h = battleMoveHarness();
+    for (const release of [
+        () => h.fire('focusin', { target: { isContentEditable: true } }),
+        () => { h.doc.hidden = true; h.fire('visibilitychange'); h.doc.hidden = false; },
+        () => h.fire('blur', {}, 'window'),
+        () => { h.win._hrlgArrowsOwned = true; h.fire('keydown', { key: 'ArrowRight' }); h.win._hrlgArrowsOwned = false; },
+    ]) {
+        h.fire('keydown', { key: 'w' }); release(); assert.deepEqual(h.held(), []);
+        h.fire('keydown', { key: 'd' }); assert.deepEqual(h.steps.at(-1), [1, 0]);
+        h.fire('keyup', { key: 'd' });
+    }
+});
+
+test('opening pause or rendering a dialog clears a held direction before another key event', () => {
+    const h = pauseHarness();
+    h.ctx._mdHeldMoveKeys.add('w'); h.ctx.openPauseMenu();
+    assert.equal(h.ctx._mdHeldMoveKeys.size, 0);
+    const held = new Set(['w']), card = { innerHTML: '', onchange: null };
+    const overlay = { ...element(), setAttribute() {} };
+    const ctx = vm.createContext({ state: { uiDialog: { type: 'unknown' } },
+        document: { getElementById: id => id === 'uiDialogCard' ? card : overlay },
+        _mdHeldMoveKeys: held });
+    vm.runInContext(section(source('ui.js'), '        function renderUiDialog() {',
+        "            overlay.setAttribute('aria-hidden', 'false');") + '\n}', ctx);
+    ctx.renderUiDialog(); assert.equal(held.size, 0);
 });

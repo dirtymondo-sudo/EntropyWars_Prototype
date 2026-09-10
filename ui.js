@@ -5799,6 +5799,7 @@
             const card = document.getElementById('uiDialogCard');
             if (!overlay || !card) return;
             const dialog = state.uiDialog;
+            if (dialog) _mdHeldMoveKeys.clear();
             /* onclick is (re)assigned per dialog type below; onchange is only
                used by the Mystery Dungeon party picker — always reset it so a
                stale handler never leaks into the next dialog. */
@@ -6520,6 +6521,7 @@
         function openPauseMenu() {
             if (!_gamePaused) _pauseReturnFocus = document.activeElement;
             _gamePaused = true;
+            _mdHeldMoveKeys.clear();
 
             if (_cinematicEl) {
                 _cinematicEl.remove();
@@ -12463,10 +12465,24 @@
            second key keeps stepping diagonally). Tracked independently of
            the main handler so keyups are never missed. */
         const _mdHeldMoveKeys = new Set();
+        function _battleMoveInputBlocked(target) {
+            return _gamePaused || state.uiDialog || state.titleScreenVisible ||
+                state.phase !== 'battle' || state.winner ||
+                !!(target && (target.isContentEditable ||
+                    ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)));
+        }
         {
             const _mdMoveKeySet = { 'w': 1, 'a': 1, 's': 1, 'd': 1, 'arrowup': 1, 'arrowdown': 1, 'arrowleft': 1, 'arrowright': 1 };
             document.addEventListener('keydown', (e) => {
+                if (_battleMoveInputBlocked(e.target)) {
+                    _mdHeldMoveKeys.clear();
+                    return;
+                }
                 const k = (e.key || '').toLowerCase();
+                if (window._hrlgArrowsOwned && k.startsWith('arrow')) {
+                    _mdHeldMoveKeys.clear();
+                    return;
+                }
                 if (_mdMoveKeySet[k]) _mdHeldMoveKeys.add(k);
             }, true);
             document.addEventListener('keyup', (e) => {
@@ -12474,16 +12490,19 @@
                 _mdHeldMoveKeys.delete(k);
             }, true);
             window.addEventListener('blur', () => _mdHeldMoveKeys.clear());
+            document.addEventListener('focusin', (e) => {
+                if (_battleMoveInputBlocked(e.target)) _mdHeldMoveKeys.clear();
+            }, true);
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) _mdHeldMoveKeys.clear();
+            });
         }
 
         document.addEventListener('keydown', (event) => {
-            if (state.phase !== 'battle' || state.winner) return;
-            if (state.uiDialog) return;
+            if (_battleMoveInputBlocked(event.target)) return;
             if (state.autoPlayers?.[state.activePlayer]) return;
             if (_wasdAnimating) return;
             if (state._actionExecuting) return;
-            const tag = event.target?.tagName;
-            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
             const key = event.key.toLowerCase();
 

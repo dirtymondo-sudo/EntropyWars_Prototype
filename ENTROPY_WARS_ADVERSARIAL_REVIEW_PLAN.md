@@ -1,10 +1,10 @@
 # Entropy Wars — adversarial review plan
 
-Last updated: 2026-09-09 (America/Chicago)
+Last updated: 2026-09-10 (America/Chicago)
 Repository: https://github.com/dirtymondo-sudo/EntropyWars_Prototype
 Baseline: Phase 1 source review pinned to main commit `f0a4c3341631d60cee2ac544e543a13754d21624` (2026-09-09 in America/Chicago). Phase 0 used an unpinned main snapshot.
 Continuation baseline: main commit `4c740fcf6624a30d59e30c4d4dfea1a16dd85b03`, checked 2026-09-09 (America/Chicago). This commit and its predecessor `3da54eff8abbef3da87a1c0f72272919d84bd15e` changed only the uploaded review document; the inspected game source and line references remain unchanged.
-Delivery: this document is repository/reference material. The first delivery is now present in repository main `41f8e76b67120eea58c17fd968c5c72d70ef035e`; R2/Render deployment is unverified. The pause-focus delivery is also present in repository main `e92ee26153b65c2047963544c56310ea838220bb`. The Settings-focus delivery is present in repository main `f546e7fff61edb012e3fae536aee995996257c4f`. The PAUSE-06 controller continuation below is local only; R2/Render deployment remains unverified.
+Delivery: this document is repository/reference material. The first delivery is now present in repository main `41f8e76b67120eea58c17fd968c5c72d70ef035e`; R2/Render deployment is unverified. The pause-focus delivery is also present in repository main `e92ee26153b65c2047963544c56310ea838220bb`. The Settings-focus delivery is present in repository main `f546e7fff61edb012e3fae536aee995996257c4f`. The PAUSE-06 controller delivery is present in repository main `88b3bc65adc93fc8ed2e84c28c112b0c81565b3f`; the PAUSE-07 continuation below is local only; R2/Render deployment remains unverified.
 
 ## Objective
 
@@ -17,7 +17,7 @@ Each phase must leave behind evidence, prioritized findings, a bounded improveme
 - [x] Phase 0 — establish scope, inspect project instructions, and identify initial risks.
 - [ ] Phase 1 — first batch implemented locally: battle label retirement and HQ loading-card ownership pass regression tests; broader lifecycle work and runtime acceptance pending.
 - [ ] Phase 2 — static triage and capture protocol documented; performance baseline and optimizations pending.
-- [ ] Phase 3 — Tab/controller routing fixes are in repository main; battle/editor pause focus is now implemented locally and regression-tested. Main-menu/HQ Settings keyboard focus is in repository main. Controller page visibility/root selection (PAUSE-06) is now locally implemented and regression-tested; broader input ownership, shared menu, and runtime acceptance remain pending.
+- [ ] Phase 3 — Tab/controller routing fixes are in repository main; battle/editor pause focus is now implemented locally and regression-tested. Main-menu/HQ Settings keyboard focus is in repository main. Controller page visibility/root selection (PAUSE-06) is in repository main. PAUSE-07 board movement/held-key isolation is locally implemented and regression-tested; broader input ownership, shared menu, and runtime acceptance remain pending.
 - [ ] Phase 4 — camera source review, framing gaps, and shot acceptance matrix documented; visual verification pending.
 - [ ] Phase 5 — timing/relay/lifetime review and representative spell matrix documented; implementation and captures pending.
 - [ ] Phase 6 — Arena/TDM rule audit, navigation/planning findings, and decision scenarios documented; observed CPU play pending.
@@ -94,6 +94,22 @@ Validation: **220 tests total, 218 passed, 0 failed, 2 skipped**. Executed the p
 Scope: PAUSE-06 is locally implemented and regression-tested, not verified live. Both seats use the same local controller functions; no serialized match fields, host actions or relay events changed. This batch changes generic controller routing only; HQ scene, suspension, pointer lock and canon are unchanged. UX-01 and Phase 3 remain open. Next: trace held-key release, window-capture shortcuts, pointer ownership and nested-dialog return focus, then address reconnect/effect boundaries separately.
 
 Complete-file delivery: `state.js` → R2; `index.html` → Render (shared token `20260910-045746-controller-cors`); `scene-lifecycle.test.js` and this plan → repository only. Sync the runtime files to the repository too. Earlier fixes are preserved. No assets changed. No commit, push, upload or deployment performed.
+
+### PAUSE-07 continuation — board movement and held-key ownership (2026-09-10 America/Chicago)
+
+Baseline: repository main `88b3bc65adc93fc8ed2e84c28c112b0c81565b3f`. Verified `AGENTS.md`, `CLAUDE.md`, `ui.js`, `index.html`, regression tests and this plan against pinned GitHub tree blob hashes. This confirms the prior controller delivery is in the repository; live R2/Render deployment is unverified.
+
+**PAUSE-07 — High, source-confirmed input boundary defect:** the independent capture listener in `ui.js` recorded dungeon movement keys under menus and editable fields. The later board movement/Enter handler lacked a pause check and ignored contenteditable elements. Existing pause bubbling containment protects ordinary focused menu events, but does not make that independent handler safe for document-dispatched events. A retained direction can contaminate a later diagonal. This is production-source evidence and controlled-handler reproduction, not an observed live symptom.
+
+Implemented in existing `ui.js`: one board movement eligibility helper rejects pause, dialogs, title pages, nonbattle/won states and editable controls. Both held-key capture and the movement/Enter handler use it. Opening pause or rendering a dialog clears held directions immediately; blocked input, editable focus, page hiding and window blur also clear them. Key release remains unconditional. Horologe-owned arrows cannot become dungeon directions. Normal movement, diagonal combination, and pending aiming targets are preserved.
+
+Validation: **224 tests total, 222 passed, 0 failed, 2 skipped**, using the exact package command `node --test *.test.js` with bundled Node v24.19.0. Four new tests execute production input boundaries, covering blocked movement/Enter, retained-target identity, normal diagonals, menu return, unconditional release, focus/visibility/blur clearing, drum arrow ownership and immediate menu-open clearing. Repository-wide JavaScript syntax checks passed. Skips remain missing animation-library GLBs and server smoke-test dependencies. No browser playtest, gameplay simulation, actual controller exercise or host/guest acceptance ran.
+
+Both seats retain the same local input handlers; no authoritative actions, state-sync fields or relays were added. This fixes the board/dungeon held-key slice of UX-01. Free-roam/window-capture keys, pointer lock, nested-dialog focus return and real-device acceptance remain open. The free-roam capture handler in `three-renderer.js` (`_freeRoamStart`, `_frKeyDown`) is the next concrete trace: it records movement without a modal check; inspect its frame consumer and ShooterControls before changing that separate owner.
+
+Complete-file delivery: `ui.js` → R2; `index.html` → Render (fresh shared token `20260910-052918-heldkeys-cors`); `scene-lifecycle.test.js` and this plan → repository only. Sync runtime files to the repository too. Earlier fixes are preserved; no assets changed. No commit, push, upload or deployment performed.
+
+Exact next task: trace free-roam and ShooterControls capture/frame input through pause, dialog, key release and pointer-lock changes; implement the smallest confirmed ownership fix and validate it. Then nested-dialog focus return, followed by reconnect/effect boundaries. UX-01 and Phase 3 remain open.
 
 ### Review conclusions so far
 
@@ -736,6 +752,8 @@ After each phase:
 | 2026-09-09 | 3 / UX-01 Settings keyboard focus | Implemented Settings focus containment, redraw and launcher restoration, page-exit cleanup and Spell Library return in map.js. Found PAUSE-06 from opacity-hidden page CSS and controller roots. | Full suite: 215 passed, 0 failed, 2 expected skips; syntax checks passed. Five new controlled-DOM tests. No runtime acceptance or deployment. | Fix PAUSE-06, then held-key/window-capture/pointer ownership and nested-dialog return focus. UX-01 and Phase 3 remain open. |
 
 | 2026-09-09 | 3 / PAUSE-06 controller ownership | Required active exposed Settings page, included Back in navigation root, excluded inactive controls and rejected stale activation/adjustment. Prior Settings delivery verified in main. | Full suite: 218 passed, 0 failed, 2 expected skips; syntax passed. Three new controller function regressions; no runtime acceptance or deployment. | Continue held-key/window-capture/pointer ownership and nested-dialog return focus. UX-01 and Phase 3 remain open. |
+
+| 2026-09-10 | 3 / PAUSE-07 board held-key ownership | Added shared board input eligibility, immediate menu-open clearing, editable/visibility/blur clearing and unconditional key release; verified prior controller delivery in main. | Full suite: 222 passed, 0 failed, 2 expected skips; syntax passed. Four production-boundary regressions; no runtime acceptance or deployment. | Trace free-roam/ShooterControls capture and frame consumers across pause/dialog/pointer lock, then nested-dialog return focus. |
 
 ## Resume instructions
 
