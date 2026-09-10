@@ -6,6 +6,16 @@ Baseline: Phase 1 source review pinned to main commit `f0a4c3341631d60cee2ac544e
 Continuation baseline: main commit `4c740fcf6624a30d59e30c4d4dfea1a16dd85b03`, checked 2026-09-09 (America/Chicago). This commit and its predecessor `3da54eff8abbef3da87a1c0f72272919d84bd15e` changed only the uploaded review document; the inspected game source and line references remain unchanged.
 Delivery: this document is repository/reference material. The first delivery is now present in repository main `41f8e76b67120eea58c17fd968c5c72d70ef035e`; R2/Render deployment is unverified. The pause-focus delivery is also present in repository main `e92ee26153b65c2047963544c56310ea838220bb`. The Settings-focus delivery is present in repository main `f546e7fff61edb012e3fae536aee995996257c4f`. The PAUSE-06 controller delivery is present in repository main `88b3bc65adc93fc8ed2e84c28c112b0c81565b3f`; the PAUSE-07 delivery is present in repository main `82494b38fa3dea84f89f32a8723602289fa51b3f`; R2/Render deployment remains unverified.
 
+### Latest continuation — 2026-09-10: LIFE-06 / VFX-03 laser terminus retirement
+
+**Implemented and locally validated; not deployed or browser-playtested.** `_spawnLaserBeam3D` now schedules its terminus orb, starburst and ground shock ring through `_fxDelay`. Retiring the originating battle/preview cancels this pending emission and rejects an already-queued callback even after a fresh cast. This is an emission callback, not a resource-disposal callback. Beam cylinders and riding rings keep their existing `_animate3D` / `_cleanup3D` ownership. Normal lance timing, impact coordinates, colors, counts, geometry and sprite fallback are preserved. Both online viewers execute this same helper locally; no relay or authority changes.
+
+**Validation:** six production-helper tests pass. Two fail against the downloaded unchanged source (pending cancellation and stale callback after a new lifetime); four controls pass before and after. Checks also cover actual beam registration/disposal, suppression, missing-scene fallback and normal impact payloads. Full package test command via bundled Node (`node --test *.test.js`, npm unavailable): **414 total, 410 passed, 2 previously recorded failures, 2 skips**. Failures remain the Phase 6 starter assertion and lunar-lander ceiling assertion. Syntax: **82/82 clean**. Tests use controlled rendering objects; WebGL and live host/guest acceptance remain unverified. This is the accumulated local review workspace, not full-main CI.
+
+**Source and delivery:** refreshed main effects, index, CLAUDE.md and review plan before editing. Effects, index and CLAUDE.md matched the existing working copies byte-for-byte. Complete files and baseline hashes are in `ENTROPY_WARS_LASER_IMPACT_FIXES.zip`: three-vfx-effects.js → R2; index.html → Render; regression test, inventory and plan → repository only. Shared cache token: `20260910-laser-impact-retirement-01-cors`. No synced source edits, commit, push or deployment.
+
+**Exact next task:** implement `_sigSwordWave3D` route sparks and terminal speed burst ownership, then `_sigBreathBlast3D` charge/release and nested emissions and `_sigSonicBoomerang3D` outbound/return rings, turnaround and catch. Those direct timers were inspected and remain open; their `_sigRun` geometry ownership must be preserved. Trace transitive wall geometry and asset attachment next, preserving shared cache warmup, then VFX-04 visibility. LIFE-06/VFX-03 remain partial.
+
 ### Latest continuation — 2026-09-10: LIFE-06 / VFX-03 mapped wall, chain and beam timers
 
 **Implemented and locally validated; not deployed or browser-playtested.** Three direct timer sites in `_fireWall`, `_fireChain` and `_fireBeamMapped` now use `_fxDelay`. Pending wall repetitions, chain hops/lightning and the generic beam charge callback retire with their originating lifetime. Already-queued callbacks remain inert after a new cast. Normal delays, coordinates, primary-chain behavior, beam fallback, scorch and impact payloads are preserved. These callbacks emit work and do not own disposal. Existing local cleanup applies to both online viewers; relay payloads and authority are unchanged.
@@ -1009,7 +1019,7 @@ After each phase:
 
 ## Resume instructions
 
-**Current continuation:** use the mapped wall/chain/beam entry at the top and `ENTROPY_WARS_MAPPED_EFFECT_FIXES.zip`. Continue `_spawnLaserBeam3D` delayed terminus emission, then bespoke/transitive geometry timers and VFX-04. Prior fixes remain preserved; live acceptance remains open.
+**Current continuation:** use the laser terminus entry at the top and `ENTROPY_WARS_LASER_IMPACT_FIXES.zip`. Continue sword-wave, breath and boomerang callback ownership, then transitive wall geometry and VFX-04. Prior fixes remain preserved; live acceptance remains open.
 
 **Latest continuation:** the LIFE-05 delivery at the top supersedes the older next-step notes below. Use `ENTROPY_WARS_RECONNECT_CLOCK_FIXES.zip`. The next implementation is acknowledged current-match state recovery; persistent clock suspension and forced rejoin resend are implemented and locally validated, not deployed. LIFE-05 remains open.
 

@@ -5735,7 +5735,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ip = tilePx(toTx, toTy);
         var iz = unitSurfaceZ(toTx, toTy) + unitZBoost();
         var izFloor = tileZ(toTx, toTy) + 1;
-        window.setTimeout(function () {
+        _fxDelay(function () {
             if (_suppressed()) return;
             /* the terminus ORB — beams used to just spark and stop; now the
                energy visibly detonates where the line ends */

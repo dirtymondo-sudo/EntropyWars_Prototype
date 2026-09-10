@@ -1,6 +1,6 @@
 # Remaining effect callback inventory
 
-Updated 2026-09-10 after mapped wall/chain/beam timer retirement. This is a complete textual index of direct window.setTimeout sites, not an exhaustive semantic audit. Asset completion callbacks and other scheduling APIs still need separate review.
+Updated 2026-09-10 after laser terminus timer retirement. This is a complete textual index of direct window.setTimeout sites, not an exhaustive semantic audit. Asset completion callbacks and other scheduling APIs still need separate review.
 
 ## Classified and fixed in this batch
 
@@ -24,7 +24,7 @@ Next: `_fireWall`, `_fireChain`, `_fireBeamMapped`, then remaining mapped/bespok
 
 Three direct emission timers now use `_fxDelay`: sustained wall repetitions, chain hop particles/lightning, and generic beam charge completion. `_spawnEffect` already owns delayed recipe layers. No resource disposal callback was canceled.
 
-Geometry trace: `_spawnLaserBeam3D` registers cylinders and rings with `_animate3D`, which retires through `_cleanup3D`. Its separate delayed terminus emission remains open and is the exact next implementation target. Wall geometry dispatch and sword-wave/breath/boomerang branches need further transitive review; no complete geometry-coverage claim is made.
+Geometry trace: `_spawnLaserBeam3D` registers cylinders and rings with `_animate3D`, which retires through `_cleanup3D`. Its separate delayed terminus emission is now lifetime-owned through `_fxDelay`, verified with production-helper regression tests. Wall geometry dispatch and sword-wave/breath/boomerang branches need further transitive review; no complete geometry-coverage claim is made.
 
 ## Remaining direct timer sites
 
@@ -36,7 +36,6 @@ Geometry trace: `_spawnLaserBeam3D` registers cylinders and rings with `_animate
 | 5117 | `window.setTimeout(function() {` |
 | 5146 | `window.setTimeout(function() {` |
 | 5161 | `window.setTimeout(function() {` |
-| 5738 | `window.setTimeout(function () {` |
 | 5880 | `window.setTimeout(function () {` |
 | 6150 | `window.setTimeout(function() {` |
 | 8272 | `window.setTimeout(function() {` |
@@ -104,3 +103,9 @@ Geometry trace: `_spawnLaserBeam3D` registers cylinders and rings with `_animate
 | 21168 | `window.setTimeout(function () {` |
 | 21352 | `window.setTimeout(function () {` |
 | 21355 | `window.setTimeout(function () {` |
+
+## Laser terminus batch
+
+The terminus orb, 31 impact particles and ground ring now retire with the originating lifetime. Existing cylinders and riding rings retain their animation cleanup; regression checks confirm exactly-once disposal of their instance geometry/materials. No asset cache or relay changes.
+
+Next inspected sites: `_sigSwordWave3D` has route spark and terminal speed-burst timers; `_sigBreathBlast3D` has a charge/release callback with nested work; `_sigSonicBoomerang3D` has outbound rings, turnaround, return dash, reverse rings and catch timers. They remain unmodified and require their own behavioral regressions. Wall geometry remains a transitive audit task.
