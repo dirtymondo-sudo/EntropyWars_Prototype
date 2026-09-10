@@ -1896,6 +1896,14 @@ io.on('connection', (socket) => {
             // room — forfeits count again and the rematch may report its own
             // ranked result — and start a fresh replay segment.
             if (room._matchEnded && !data.winner && data.phase) {
+                // A snapshot alone is not rematch consent. Require requests
+                // from both current seats and two live sockets; a result may
+                // have retired the absent opponent's disconnect deadline.
+                const votes = room._rematchVotes;
+                if (room._disconnected || !votes || votes.host !== room.host ||
+                    votes.guest !== room.guest || !io.sockets.sockets.has(room.host) ||
+                    !io.sockets.sockets.has(room.guest)) return;
+                room._rematchVotes = null;
                 clearDisconnectDeadlines(room);
                 room._matchEnded = false;
                 room._resultProcessed = false;
@@ -2037,6 +2045,18 @@ io.on('connection', (socket) => {
             return;
         }
 
+        // Consent belongs to the authenticated room seat, not data.from.
+        // Do not collect requests during play or while either seat is absent.
+        if (data && data.type === 'rematch-request') {
+            const room = found.room;
+            if (!room._matchEnded || room._disconnected ||
+                !io.sockets.sockets.has(room.host) || !io.sockets.sockets.has(room.guest)) return;
+            const role = socket.id === room.host ? 'host' : 'guest';
+            if (!room._rematchVotes) room._rematchVotes = {};
+            room._rematchVotes[role] = socket.id;
+            data = { ...data, from: role === 'host' ? 1 : 2 };
+        }
+
         // Only the small semantic relays matter for replays — the VFX /
         // floating-text / camera streams are re-derivable from the actions.
         const SEMANTIC = { 'rematch-request': 1, 'guest-locked': 1, 'host-locked': 1, 'pickup-response': 1 };
@@ -2149,6 +2169,10 @@ io.on('connection', (socket) => {
         const { code, room } = found;
         const role = room.host === socket.id ? 'host' : 'guest';
 
+        // A new socket/session must consent again; queued old requests cannot
+        // carry agreement across an outage or into the next match.
+        room._rematchVotes = null;
+
         if (!room._matchStarted) {
             clearDisconnectDeadlines(room);
             socket.to(code).emit('player-disconnected', { role, reconnectable: false });
@@ -2207,5 +2231,4 @@ server.listen(PORT, () => {
         .then(backfillTokenHashes)
         .catch(err => console.error('[DB] boot migration failed:', err.message));
 });
-
 

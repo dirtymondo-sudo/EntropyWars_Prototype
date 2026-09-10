@@ -119,11 +119,11 @@ test('finished friendly match retires deadlines with replay recording disabled',
     assert.equal(h.rooms.get('ABCDE'), h.room);
     assert.ok(h.rejoin('guest').error);
 });
-test('a rematch cannot inherit the previous match disconnect callback', () => {
+test('a rejected absent-seat rematch cannot revive the previous disconnect callback', () => {
     const h = harness(); h.disconnect('guest');
     h.sync({ phase: 'battle', winner: 1 });
     h.sync({ phase: 'battle', winner: null, activePlayer: 1, round: 1 });
-    assert.equal(h.room._matchEnded, false);
+    assert.equal(h.room._matchEnded, true);
     h.timers[0].fn();
     assert.equal(h.results.length, 0); assert.equal(h.rooms.get('ABCDE'), h.room);
 });
