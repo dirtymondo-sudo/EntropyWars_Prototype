@@ -6,7 +6,19 @@ Baseline: Phase 1 source review pinned to main commit `f0a4c3341631d60cee2ac544e
 Continuation baseline: main commit `4c740fcf6624a30d59e30c4d4dfea1a16dd85b03`, checked 2026-09-09 (America/Chicago). This commit and its predecessor `3da54eff8abbef3da87a1c0f72272919d84bd15e` changed only the uploaded review document; the inspected game source and line references remain unchanged.
 Delivery: this document is repository/reference material. The first delivery is now present in repository main `41f8e76b67120eea58c17fd968c5c72d70ef035e`; R2/Render deployment is unverified. The pause-focus delivery is also present in repository main `e92ee26153b65c2047963544c56310ea838220bb`. The Settings-focus delivery is present in repository main `f546e7fff61edb012e3fae536aee995996257c4f`. The PAUSE-06 controller delivery is present in repository main `88b3bc65adc93fc8ed2e84c28c112b0c81565b3f`; the PAUSE-07 delivery is present in repository main `82494b38fa3dea84f89f32a8723602289fa51b3f`; R2/Render deployment remains unverified.
 
-### Latest delivery — 2026-09-10: AI navigation and beam planning
+### Latest delivery — 2026-09-10: UX-01 game-dialog focus
+
+Completed the unfinished local game-dialog focus implementation in existing `ui.js` and corrected two additional defects: loss of the original Settings control after a background redraw, and inclusion of aria-hidden controls in keyboard navigation.
+
+- **Behavior:** `state.uiDialog` owns keyboard focus while open. Tab wraps in both directions; Escape invokes the existing cancel action once, except required job selection remains open. Native Enter/Space activation remains available. Redraw retains the selected control; replacing a dialog preserves the original launcher. Close removes the focus guard and restores a usable launcher, an equivalent pause/Settings control after redraw, or avoids restoring a hidden/inactive destination.
+- **Baseline:** fetched GitHub main versions of `ui.js`, `index.html`, `map.js` and this tracker on 2026-09-10. Main UI matches the working source outside the unfinished dialog block and terminal whitespace. Main entry differs only by cache token; the delivered entry is based on the fetched main file. This tracker matches main apart from terminal whitespace. No claim that the local dialog implementation was already uploaded.
+- **Validation:** full package test command (`node --test *.test.js`) using bundled Node: **257 total, 255 passed, 0 failed, 2 existing skips**. Eight production-function dialog checks pass. The two new defect checks fail against the unfinished pre-continuation implementation and pass after the fixes. JavaScript syntax: **70/70 clean**. Controlled DOM tests validate focus/control flow; browser, keyboard-device and controller acceptance remain pending.
+- **Delivery:** complete `ui.js` to R2; complete `index.html` to Render with shared token `20260910-133100-dialog-focus-cors`. `dialog-focus.test.js`, this tracker, validation output and upload manifest are repository-only. Package: `ENTROPY_WARS_DIALOG_FOCUS_FIXES.zip`. Not deployed.
+- **Online/scope:** focus is local to each viewer; no new gameplay state, authoritative actions or relayed events. This batch covers `state.uiDialog`, including a dialog over pause or Settings. Separate `ewConfirm` / `ewSaveLoadModal` overlays still need input-owner review. UX-01 and Phase 3 remain open.
+
+Next implementation task: LIFE-05 reconnect/state/clock recovery. Remaining UX-01 work: separate banner/save-load overlays and actual keyboard/controller acceptance.
+
+### Previous delivery — 2026-09-10: AI navigation and beam planning
 
 Implemented AI-02, AI-03 and the center-ray planning defect in AI-05 in the existing `ai.js`. This batch advances the concrete AI backlog ahead of nested-dialog focus/reconnect work because these source-confirmed defects have independent, deterministic acceptance cases. Those earlier tasks remain open.
 
@@ -828,6 +840,8 @@ After each phase:
 
 ## Resume instructions
 
-Latest implementation continuation: 2026-09-10 AI navigation batch above supersedes the older next-step ordering. AI-02/03 and the AI-05 center-ray defect are locally implemented with 15 new regression tests. Complete files are in `ENTROPY_WARS_AI_NAVIGATION_FIXES.zip`; upload and live acceptance are unverified.
+Phase log addition — 2026-09-10, Phase 3 / UX-01: completed and packaged game-dialog focus containment, redraw retention and launcher restoration, including Settings snapshot and aria-hidden corrections. Full local suite: 255 passed, 0 failed, 2 existing skips; syntax 70/70. No browser run or deployment. Next: LIFE-05 reconnect recovery. The inspected main `map.js` additionally carries an unrelated character appearance field absent from this local test workspace; no `map.js` replacement is included, and its Settings focus helpers are unchanged.
+
+Latest implementation continuation: 2026-09-10 UX-01 game-dialog focus batch above supersedes the older next-step ordering. Complete files are in `ENTROPY_WARS_DIALOG_FOCUS_FIXES.zip`; upload and live acceptance are unverified. Eight dialog regressions pass, including two additional fixes to the unfinished local implementation. Continue with LIFE-05 reconnect/state/clock recovery; keep separate banner/save-load ownership and runtime acceptance open.
 
 Use this file as the review tracker. Read the current conclusions, the relevant findings, and the Phase 8 backlog before work. Refresh the relevant repository files and preserve newer local deliveries. All eight areas now have source-review material; do not restart reconnaissance or deliver another outline of the same phases. Continue with a concrete implementation batch or a named unresolved evidence gap. Preserve finding IDs and evidence distinctions. Do not mark reported bugs fixed based on a plausible source change alone.

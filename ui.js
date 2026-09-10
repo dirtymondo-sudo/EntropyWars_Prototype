@@ -5794,7 +5794,91 @@
             }
         }
 
+        let _uiDialogFocusOwner = null;
+        let _uiDialogReturnFocus = null;
+        let _uiDialogPauseFocus = null;
+        let _uiDialogSettingsFocus = null;
+
+        function _uiDialogFocusable(root) {
+            return Array.from(root.querySelectorAll('button, input, select, textarea, a[href], [tabindex]'))
+                .filter(el => el.tabIndex >= 0 && !el.matches(':disabled') && el.getClientRects().length
+                    && getComputedStyle(el).visibility !== 'hidden' && !el.closest('[inert], [aria-hidden="true"]'));
+        }
+        function _uiDialogFocus(root, snapshot) {
+            const controls = _uiDialogFocusable(root);
+            const target = (snapshot && controls.find(el => snapshot.id ? el.id === snapshot.id
+                : snapshot.key && el.outerHTML === snapshot.key))
+                || (snapshot && controls[snapshot.index]) || controls[0] || root;
+            target.focus({ preventScroll: true });
+        }
+        function _uiDialogFocusGuard(e) {
+            const root = document.getElementById('uiDialogCard');
+            if (state.uiDialog && _uiDialogFocusOwner && root && !root.contains(e.target)) _uiDialogFocus(root);
+        }
+        function _uiDialogKeydown(e) {
+            if (!state.uiDialog) return;
+            // Run at the dialog, before document shortcuts. Preserve native
+            // Enter/Space, select and input behavior on the focused control.
+            e.stopPropagation();
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                if (!e.repeat) handleUiDialogSecondary();
+                return;
+            }
+            if (e.key !== 'Tab') return;
+            const root = document.getElementById('uiDialogCard');
+            const controls = _uiDialogFocusable(root);
+            const index = controls.indexOf(document.activeElement);
+            if (index < 0 || (!e.shiftKey && index === controls.length - 1) || (e.shiftKey && index === 0)) {
+                e.preventDefault();
+                (controls[e.shiftKey ? controls.length - 1 : 0] || root).focus({ preventScroll: true });
+            }
+        }
         function renderUiDialog() {
+            const root = document.getElementById('uiDialogCard');
+            if (!root) return;
+            const dialog = state.uiDialog;
+            const controls = _uiDialogFocusOwner && dialog === _uiDialogFocusOwner ? _uiDialogFocusable(root) : [];
+            const active = document.activeElement;
+            const index = controls.indexOf(active);
+            const snapshot = index < 0 ? null : { index, id: active.id, key: active.outerHTML };
+            if (dialog && !_uiDialogFocusOwner) {
+                _uiDialogReturnFocus = active;
+                _uiDialogPauseFocus = typeof _gamePaused !== 'undefined' && _gamePaused ? _pauseFocusSnapshot() : null;
+                _uiDialogSettingsFocus = typeof _mmSettingsActive === 'function' && _mmSettingsActive()
+                    ? _mmSettingsSnapshot() : null;
+                document.addEventListener('focusin', _uiDialogFocusGuard);
+            }
+            _renderUiDialogContent();
+            if (dialog) {
+                _uiDialogFocusOwner = dialog;
+                root.tabIndex = -1;
+                root.setAttribute('role', 'dialog');
+                root.setAttribute('aria-modal', 'true');
+                root.setAttribute('aria-label', 'Game dialog');
+                root.onkeydown = _uiDialogKeydown;
+                _uiDialogFocus(root, snapshot);
+            } else if (_uiDialogFocusOwner) {
+                _uiDialogFocusOwner = null;
+                root.onkeydown = null;
+                document.removeEventListener('focusin', _uiDialogFocusGuard);
+                const target = _uiDialogReturnFocus;
+                const pauseSnapshot = _uiDialogPauseFocus;
+                const settingsSnapshot = _uiDialogSettingsFocus;
+                _uiDialogReturnFocus = _uiDialogPauseFocus = _uiDialogSettingsFocus = null;
+                if (target && target.isConnected && !target.matches(':disabled') && target.getClientRects().length
+                    && getComputedStyle(target).visibility !== 'hidden' && !target.closest('[inert], [aria-hidden="true"]')
+                    && (typeof _mmSettingsCanFocus !== 'function' || _mmSettingsCanFocus(target))) {
+                    target.focus({ preventScroll: true });
+                } else if (typeof _gamePaused !== 'undefined' && _gamePaused) {
+                    _pauseFocusRestore(pauseSnapshot);
+                } else if (typeof _mmSettingsActive === 'function' && _mmSettingsActive()) {
+                    _mmSettingsFocus(settingsSnapshot);
+                }
+            }
+        }
+
+        function _renderUiDialogContent() {
             const overlay = document.getElementById('uiDialogOverlay');
             const card = document.getElementById('uiDialogCard');
             if (!overlay || !card) return;
