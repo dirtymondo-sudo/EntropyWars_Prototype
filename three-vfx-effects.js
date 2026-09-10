@@ -4,6 +4,7 @@ const ThreeVFXEffects = (function () {
     // Delayed recipe emissions belong to the effect lifetime that queued them.
     // A phase check alone cannot distinguish two battles or two previews.
     var _fxLifetime = 0, _fxDelays = new Set();
+    var _fxDomOwners = new Set(), _fxTintOwner = null;
     function _fxDelay(fn, ms) {
         var lifetime = _fxLifetime;
         var id = window.setTimeout(function () {
@@ -18,6 +19,53 @@ const ThreeVFXEffects = (function () {
         _fxLifetime++;
         _fxDelays.forEach(function (id) { window.clearTimeout(id); });
         _fxDelays.clear();
+        Array.from(_fxDomOwners).forEach(function (owner) { owner.stop(); });
+    }
+    // DOM effects own both their callbacks and disposal; cancellation alone
+    // would leave overlays and canvas filters behind when a scene retires.
+    function _fxDomOwner(dispose) {
+        var done = false, frames = new Set(), timers = new Set();
+        var owner = {
+            stop: function () {
+                if (done) return;
+                done = true;
+                _fxDomOwners.delete(owner);
+                frames.forEach(function (id) { cancelAnimationFrame(id); });
+                timers.forEach(function (id) { window.clearTimeout(id); });
+                frames.clear(); timers.clear();
+                dispose();
+            },
+            frame: function (fn) {
+                if (done) return;
+                var id = requestAnimationFrame(function () {
+                    frames.delete(id);
+                    if (!done) fn();
+                });
+                frames.add(id);
+            },
+            delay: function (fn, ms) {
+                if (done) return;
+                var id = window.setTimeout(function () {
+                    timers.delete(id);
+                    if (!done) fn();
+                }, ms);
+                timers.add(id);
+            }
+        };
+        _fxDomOwners.add(owner);
+        return owner;
+    }
+    function _fxCanvasTint(cv, overlay, release) {
+        if (_fxTintOwner) _fxTintOwner.stop();
+        var previous = cv.style.filter;
+        var owner = _fxDomOwner(function () {
+            cv.style.filter = previous;
+            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+            if (_fxTintOwner === owner) _fxTintOwner = null;
+            release();
+        });
+        _fxTintOwner = owner;
+        return owner;
     }
     function clearBattle() {
         // The preview borrows this singleton. A parked board must not clear it.
@@ -15989,6 +16037,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _sigFlashbackActive = false;
     function _sigFlashbackTint(opts) {
         opts = opts || {};
+        var owner;
         try {
             if (typeof document === 'undefined') return;
             if (_catOff('spells')) return;
@@ -16006,13 +16055,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             vig.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;pointer-events:none;z-index:8998;opacity:0;'
                 + 'background:radial-gradient(ellipse at center, rgba(0,0,0,0) 52%, rgba(0,0,0,0.55) 100%);';
             document.body.appendChild(vig);
+            owner = _fxCanvasTint(cv, vig, function () { _sigFlashbackActive = false; });
             var t0 = performance.now();
             function frame() {
                 var el = performance.now() - t0;
                 if (el >= total) {
-                    cv.style.filter = '';
-                    if (vig.parentNode) vig.parentNode.removeChild(vig);
-                    _sigFlashbackActive = false;
+                    owner.stop();
                     return;
                 }
                 var k;
@@ -16024,15 +16072,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 cv.style.filter = 'grayscale(' + k.toFixed(3) + ') sepia(' + (k * sepia).toFixed(3)
                     + ') contrast(' + (1 + k * 0.08).toFixed(3) + ') brightness(' + ((1 - k * 0.08) * flick).toFixed(3) + ')';
                 vig.style.opacity = (k * 0.9).toFixed(3);
-                requestAnimationFrame(frame);
+                owner.frame(frame);
             }
-            requestAnimationFrame(frame);
-        } catch (e) { _sigFlashbackActive = false; }
+            owner.frame(frame);
+        } catch (e) { if (owner) owner.stop(); _sigFlashbackActive = false; }
     }
 
     /* the manga end-card: an arrow banner slides in from the left, holds,
        and slides back out. Pure DOM — sits above the flashback tint. */
     function _sigToBeContinuedBanner(holdMs) {
+        var owner;
         try {
             if (typeof document === 'undefined') return;
             if (_catOff('spells')) return;
@@ -16046,16 +16095,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 + 'text-shadow:2px 2px 0 #000;transform:translateX(-105%);'
                 + 'transition:transform 360ms cubic-bezier(0.22,1,0.36,1);';
             document.body.appendChild(el);
-            requestAnimationFrame(function () { requestAnimationFrame(function () {
+            owner = _fxDomOwner(function () { if (el.parentNode) el.parentNode.removeChild(el); });
+            owner.frame(function () { owner.frame(function () {
                 el.style.transform = 'translateX(0)';
             }); });
-            window.setTimeout(function () {
+            owner.delay(function () {
                 el.style.transition = 'transform 300ms ease-in, opacity 300ms ease-in';
                 el.style.transform = 'translateX(-105%)';
                 el.style.opacity = '0';
-                window.setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 340);
+                owner.delay(function () { owner.stop(); }, 340);
             }, holdMs || 1500);
-        } catch (e) {}
+        } catch (e) { if (owner) owner.stop(); }
     }
 
     /* ═══════════════════════════════════════════════════════════════════════
@@ -16425,6 +16475,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _sigTripActive = false;
     function _sigPsychedelicTint(opts) {
         opts = opts || {};
+        var owner;
         try {
             if (typeof document === 'undefined') return;
             if (_catOff('spells')) return;
@@ -16471,19 +16522,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 + 'background:radial-gradient(circle at 50% 50%, rgba(255,0,190,0.30) 0%,'
                 + ' rgba(0,255,220,0.16) 42%, rgba(255,220,0,0.22) 70%, rgba(120,0,255,0.30) 100%);';
             document.body.appendChild(wash);
-            var done = false;
-            function cleanup() {
-                if (done) return;
-                done = true;
-                cv.style.filter = '';
-                if (wash.parentNode) wash.parentNode.removeChild(wash);
-                _sigTripActive = false;
-            }
+            owner = _fxCanvasTint(cv, wash, function () { _sigTripActive = false; });
             var t0 = performance.now();
-            _fxSchedule(function () {
-                if (done) return false;
+            function frame() {
                 var el = performance.now() - t0;
-                if (el >= total) { cleanup(); return false; }
+                if (el >= total) { owner.stop(); return; }
                 var k = el < inMs ? _sigEaseOutCubic(el / inMs)
                       : (el < inMs + holdMs ? 1 : 1 - (el - inMs - holdMs) / outMs);
                 var hue = (el * spin) % 360;
@@ -16492,12 +16535,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     + (1 + (sat - 1) * k).toFixed(2) + ') contrast('
                     + (1 + 0.22 * k).toFixed(2) + ') brightness(' + wob.toFixed(3) + ')';
                 wash.style.opacity = (k * 0.5).toFixed(3);
-                return true;
-            });
-            /* belt-and-braces: clearAll() can kill the ticker mid-wash, and a
-               battlefield stuck under a hue-rotate filter is unplayable */
-            window.setTimeout(cleanup, total + 400);
-        } catch (e) { _sigTripActive = false; }
+                owner.frame(frame);
+            }
+            owner.frame(frame);
+        } catch (e) { if (owner) owner.stop(); _sigTripActive = false; }
     }
 
     /* ── SPECTRUM BURST — the rainbow detonation: a white core, seven

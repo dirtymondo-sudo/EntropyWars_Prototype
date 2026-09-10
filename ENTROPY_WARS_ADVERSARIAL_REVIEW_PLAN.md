@@ -6,6 +6,29 @@ Baseline: Phase 1 source review pinned to main commit `f0a4c3341631d60cee2ac544e
 Continuation baseline: main commit `4c740fcf6624a30d59e30c4d4dfea1a16dd85b03`, checked 2026-09-09 (America/Chicago). This commit and its predecessor `3da54eff8abbef3da87a1c0f72272919d84bd15e` changed only the uploaded review document; the inspected game source and line references remain unchanged.
 Delivery: this document is repository/reference material. The first delivery is now present in repository main `41f8e76b67120eea58c17fd968c5c72d70ef035e`; R2/Render deployment is unverified. The pause-focus delivery is also present in repository main `e92ee26153b65c2047963544c56310ea838220bb`. The Settings-focus delivery is present in repository main `f546e7fff61edb012e3fae536aee995996257c4f`. The PAUSE-06 controller delivery is present in repository main `88b3bc65adc93fc8ed2e84c28c112b0c81565b3f`; the PAUSE-07 delivery is present in repository main `82494b38fa3dea84f89f32a8723602289fa51b3f`; R2/Render deployment remains unverified.
 
+### Latest continuation — 2026-09-10: LIFE-06 / VFX-03 DOM effect disposal
+
+**Implemented and locally validated; not deployed or browser-playtested.** This entry supersedes all older continuation ordering. Flashback tint, the To Be Continued end-card, and the psychedelic CSS fallback now register owned animation frames, timers, and disposal with effect retirement. Clear removes their DOM immediately, restores the preceding canvas filter, releases active flags, and makes already-queued callbacks inert. Normal completion unregisters the owner. Competing CSS tints explicitly hand ownership over so an earlier effect cannot reset a later tint. The shader-based psychedelic path is unchanged.
+
+The existing clearAll → delay retirement boundary now also disposes these DOM owners. The previously implemented battle/preview ownership rules are retained; the same local cleanup runs on both online viewers without changing relay payloads or authority.
+
+**Validation:** nine new production-function regression tests pass; eight fail against the unchanged source and the normal end-card control passes. Checks cover immediate retirement, old queued frames/timers, reentry, normal completion, prior-filter restoration and overlapping tint handoff in a controlled DOM, without WebGL. Full package test command via bundled Node: **371 total, 367 passed, 2 failed, 2 skipped**. The failures remain the recorded Phase 6 starter assertion and lunar-lander ceiling assertion; their files were untouched. Syntax: **77/77 clean**. This is the existing mixed local review workspace, not full-main CI or live acceptance.
+
+**Baseline:** downloaded complete current main effects source; verified Git blob `b06d226f69435fa551aba18b061719dfe27f5d87`, byte-identical to the previous local delivery. Downloaded the current main entry page before its cache bump. Existing CLAUDE.md and relevant effect/preview rules were read. No synced sources were edited.
+
+**Timer inventory for continuation (bounded source triage, not a completed exhaustive audit):**
+
+| Callback class | Inspected example | Status / next handling |
+| --- | --- | --- |
+| Independent DOM frames + removal timers | Flashback, end-card, psychedelic CSS fallback | Owned cancellation plus immediate disposal implemented in this batch. |
+| Delayed scene spawning | raceBlizzardPresent delayed shards; fireTeleportLegacy arrival; delayed dash shock ring | Still open. Convert after tracing callers and test clear/reentry; a phase check alone is insufficient. |
+| Resource cleanup polling | entry.done polling before group removal and geometry/material disposal | Still open. Register disposal before canceling its interval; cancellation alone leaks resources. |
+| Shared cache warmup | _wpnLoad boot and staggered warmup timers | Separate application/cache lifetime; do not bulk-cancel with battle timers. Asset callbacks need separate scene-attachment review. |
+
+**Delivery:** `ENTROPY_WARS_DOM_EFFECT_CLEANUP.zip`: complete three-vfx-effects.js to R2; complete index.html to Render; dom-effect-lifetime.test.js and this plan to repository only. Cache token: `20260910-dom-effect-cleanup-02-cors`. Includes before/after validation logs and SHA-256 manifest. Nothing committed, pushed or deployed.
+
+**Exact next task:** finish the bespoke spawn/cleanup callback inventory and implement delayed scene-spawn retirement plus polling disposal. Then implement VFX-04 endpoint/list visibility filtering, including sx/sy, tiles and chain aliases. LIFE-06/VFX-03 remain partially implemented; VFX-04 remains open. Browser and host/guest visual acceptance remain unverified.
+
 ### Latest continuation — 2026-09-10: LIFE-06 / VFX-03 effect lifetime, first implementation
 
 **Status: concrete lifecycle fixes implemented and locally validated; broader effect lifetime work and VFX-04 remain open. Not deployed or browser-playtested.** This continuation supersedes the older next-task ordering below.
@@ -938,7 +961,7 @@ After each phase:
 
 ## Resume instructions
 
-**Current continuation:** use the LIFE-06/VFX-03 effect lifetime implementation at the top. Complete files are in `ENTROPY_WARS_EFFECT_LIFETIME_FIXES.zip`. Continue remaining bespoke asynchronous effect cleanup, then VFX-04 endpoint/list visibility. Reconnect is already locally implemented; all live acceptance remains unverified.
+**Current continuation:** use the DOM effect disposal entry at the top and `ENTROPY_WARS_DOM_EFFECT_CLEANUP.zip`. Continue bespoke spawn timers and cleanup polling, then VFX-04 visibility. Reconnect and generic effect lifetime are already locally implemented; live acceptance remains unverified.
 
 **Latest continuation:** the LIFE-05 delivery at the top supersedes the older next-step notes below. Use `ENTROPY_WARS_RECONNECT_CLOCK_FIXES.zip`. The next implementation is acknowledged current-match state recovery; persistent clock suspension and forced rejoin resend are implemented and locally validated, not deployed. LIFE-05 remains open.
 
@@ -952,3 +975,5 @@ Use this file as the review tracker. Read the current conclusions, the relevant 
 Phase log addition — 2026-09-10, Phase 1 / LIFE-05: implemented and packaged the current-generation recovery transaction, duration-based clock transfer, activation-owned timeout/action guards, pause-aware engine boundaries, refreshed-page context, bounded failure and terminal result recovery. Reconnect checks 93/93; full suite 346 passed, 2 unchanged failures, 2 existing skips; syntax 75/75. No deployment or live playtest. See the latest continuation for supported recovery and host-page-loss boundaries. Next implementation: LIFE-06 / VFX-03/04.
 
 Phase log addition — 2026-09-10, Phase 1 / LIFE-06 and Phase 5 / VFX-03: owner-aware battle/preview handoff, lifetime-bound recipe/cue/teleport delays and reentrant ticker retirement implemented. New tests 12/12; full suite 358 passed, 2 previously recorded failures, 2 skips; syntax 76/76. Bespoke callback cleanup and VFX-04 remain open. Complete-file package prepared; not deployed.
+
+Phase log addition — 2026-09-10, LIFE-06/VFX-03: owned disposal for flashback/end-card/psychedelic DOM effects and canvas tint handoff. Nine new tests pass (eight fail before); full suite 367 passed, two unchanged failures, two skips; syntax 77/77. Complete-file delivery prepared, not deployed. Next: bespoke spawn/polling ownership, then VFX-04.
