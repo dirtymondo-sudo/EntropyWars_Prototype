@@ -16839,17 +16839,69 @@ const DOOR_HQ = {
            Catalogue flags any GLB entry can use: `lay` (lie flat — the
            thinnest bbox axis becomes vertical, for rugs/mats), `block`
            (keep the `foot` blocker even when `mount`ed, for waist-high
-           fixtures like the sink). */
+           fixtures like the sink).
+           2026-09-10: `hook_rail`, `vent_grille`, `floor_drain` and
+           `rotary_phone` graduated to real GLBs (see the batch below);
+           `clipboard` stays procedural because the model the user made is
+           authored FACE-UP (a desk clipboard, `clipboard_flat`) and a wall
+           mount needs it standing. Six procedural props remain. */
         tanker_desk:       { proc: 'tanker_desk',    span: 1.5,  foot: 0.7, wall: true, depth: 0.75 },
-        floor_drain:       { proc: 'floor_drain',    span: 0.36, foot: 0 },
-        vent_grille:       { proc: 'vent_grille',    span: 0.45, foot: 0, wall: true, mount: 2.35, depth: 0.03 },
         wall_shelf:        { proc: 'wall_shelf',     span: 0.9,  foot: 0, wall: true, mount: 1.6,  depth: 0.25 },
         metal_shelving:    { proc: 'metal_shelving', h: 1.8,     foot: 0.5, wall: true, depth: 0.4 },
-        hook_rail:         { proc: 'hook_rail',      span: 0.6,  foot: 0, wall: true, mount: 1.75, depth: 0.08 },
         broom:             { proc: 'broom',          h: 1.3,     foot: 0 },
-        rotary_phone:      { proc: 'rotary_phone',   span: 0.22, foot: 0 },
         toilet_paper:      { proc: 'toilet_paper',   span: 0.23, foot: 0 },
         clipboard:         { proc: 'clipboard',      span: 0.32, foot: 0, wall: true, mount: 1.4,  depth: 0.03 },
+        /* ══ THE 2026-09-10 BATCH (30 Meshy GLBs, R2 Assets/door/models/) ══
+           The user's cafeteria / office / mission kit. Four of them RETIRE a
+           procedural prop (plan 2.7 said "replace any of them by giving the
+           entry a `file`"): the coat rail, the vent, the floor drain and the
+           desk phone are real models now — every existing placement in the
+           closet (101) and the Training Room (64) upgrades for free.
+           Sizes were measured off each GLB's bbox (unit-normalised, one mesh,
+           no rig) and turned into the metre target the renderer fits to.
+           `manila_folder`, `round_fridge` and `mars_rover` are the three
+           whose authored pose could not be read from the bbox alone — if one
+           lands wrong, its `h`/`span` (or a `lay: true`) is the only edit. */
+        /* ── the retired procedurals (now real models) ── */
+        hook_rail:         { file: 'Meshy_AI_coat_hook_rail_0910054259_texture.glb',                span: 0.60, foot: 0, wall: true, mount: 1.75 },
+        hook_rail_long:    { file: 'Meshy_AI_hook_rail_0910054853_texture.glb',                     span: 1.10, foot: 0, wall: true, mount: 1.80 },
+        vent_grille:       { file: 'Meshy_AI_vent_0910054228_texture.glb',                          span: 0.45, foot: 0, wall: true, mount: 2.35 },
+        floor_drain:       { file: 'Meshy_AI_water_drain_0910054212_texture.glb',                   span: 0.36, foot: 0 },
+        rotary_phone:      { file: 'Meshy_AI_analog_phone_0910054719_texture.glb',                  span: 0.24, foot: 0 },
+        /* ── the cafeteria kit (Room 86, HQ plan 7.4 / 5.6 — the serving
+           counter is the `reception_wedge`, as the plan's fallback says) ── */
+        cafeteria_chair:   { file: 'Meshy_AI_cafeteria_chair_0910054640_texture.glb',               h: 0.86, foot: 0.28 },
+        molded_chair:      { file: 'Meshy_AI_a_molded_cafeteria_ch_0910054600_texture.glb',         h: 0.82, foot: 0.28 },
+        meal_tray:         { file: 'Meshy_AI_cafeteria_meal_tray_w_0910054631_texture.glb',         span: 0.45, foot: 0 },
+        meal_tray_empty:   { file: 'Meshy_AI_cafeteria_meal_tray_w_0910054659_texture.glb',         span: 0.42, foot: 0 },
+        microwave:         { file: 'Meshy_AI_beige_1980s_microwave_0910054901_texture.glb',         span: 0.50, foot: 0 },
+        coffee_maker:      { file: 'Meshy_AI_coffee_maker_0910054513_texture.glb',                  h: 0.38, foot: 0 },
+        cash_register:     { file: 'Meshy_AI_beige_1980s_cash_regi_0910054541_texture.glb',         h: 0.34, foot: 0 },
+        mini_fridge:       { file: 'Meshy_AI_mini_fridge_0910054504_texture.glb',                   h: 0.85, foot: 0.30 },
+        round_fridge:      { file: 'Meshy_AI_round_fridge_0910054551_texture.glb',                  h: 1.05, foot: 0.45 },
+        coffee_mug:        { file: 'Meshy_AI_cup_0910054308_texture.glb',                           span: 0.12, foot: 0 },
+        solo_cup:          { file: 'Meshy_AI_red_solo_cup_0910054318_texture.glb',                  h: 0.12, foot: 0 },
+        trash_bin:         { file: 'Meshy_AI_trash_bin_0910054450_texture.glb',                     h: 0.75, foot: 0.28 },
+        /* ── the desk / office kit ── */
+        clipboard_flat:    { file: 'Meshy_AI_office_clipboard_0910054838_texture.glb',              span: 0.32, foot: 0 },
+        manila_folders:    { file: 'Meshy_AI_office_manila_folders_0910054352_texture.glb',         span: 0.33, foot: 0 },
+        manila_folder:     { file: 'Meshy_AI_tapered_manila_folder_0910054403_texture.glb',         span: 0.34, foot: 0 },
+        stapler:           { file: 'Meshy_AI_stapler_0910054326_texture.glb',                       span: 0.17, foot: 0 },
+        retro_radio:       { file: 'Meshy_AI_retro_radio_0910054335_texture.glb',                   h: 0.30, foot: 0 },
+        retro_speakers:    { file: 'Meshy_AI_retro_speakers_0910054343_texture.glb',                span: 0.50, foot: 0 },
+        /* the round cubicle: 2.2 m across, 1.8 m high — a whole workstation.
+           It needs a 1 m collision disc, so it never goes on the mezzanine
+           slab (doorhq.test.js's walkable-band check would fail it). */
+        round_cubicle:     { file: 'Meshy_AI_round_cubicle_0910054648_texture.glb',                 span: 2.20, foot: 1.00 },
+        /* three round frames, all empty (the building has nothing to hang) */
+        picture_round_a:   { file: 'Meshy_AI_round_empty_picture_f_0910054412_texture.glb',         span: 0.62, foot: 0, wall: true, mount: 1.95 },
+        picture_round_b:   { file: 'Meshy_AI_round_empty_picture_f_0910054431_texture.glb',         span: 0.55, foot: 0, wall: true, mount: 1.90 },
+        picture_round_c:   { file: 'Meshy_AI_round_empty_picture_f_0910054439_texture.glb',         span: 0.72, foot: 0, wall: true, mount: 2.05 },
+        /* ── the mission kit: the two site rooms that are off-world, and the
+           one tree the terrazzo lobby has always deserved ── */
+        mars_rover:        { file: 'Meshy_AI_mars_rover_realistic_0910054045_texture.glb',          span: 2.40, foot: 1.10 },
+        lunar_lander:      { file: 'Meshy_AI_lunar_lander_realis_0910054105_texture.glb',           h: 3.20, foot: 1.50 },
+        palm_tree:         { file: 'Meshy_AI_palm_tree_0910054114_texture.glb',                     h: 3.20, foot: 0.35 },
         /* ── door leaves (`leaf` marks them; the frame is procedural and is
            CUT TO THE LEAF — HQ plan D8). Every field below was measured
            offline from the GLB (2026-09-04, scratch glbinfo over /doors):
@@ -17709,6 +17761,10 @@ const DOOR_HQ = {
                     { key: 'cardboard_box',  x: 12.6,  z: -12.4, face: 60 },
                     { key: 'desk_fan',       x: -14.45, z: -1.2, y: 0.76, face: 100 },
                     { key: 'broom',          x: -13.4, z: 11.8, face: 200 },
+                    /* 2026-09-10: two date palms on the walkway. The originals
+                       are on loan and overdue. */
+                    { key: 'palm_tree',      x: 13.9,  z: 6.2,  face: 0 },
+                    { key: 'palm_tree',      x: -13.9, z: -6.4, face: 0, rot: 60 },
                 ],
             },
             /* 777 · HEAVEN — a waiting chair by the east wall, the guest book
@@ -17814,6 +17870,10 @@ const DOOR_HQ = {
                     { key: 'cot',            x: 13.9,  z: -11.6, face: 0 },
                     { key: 'fire_extinguisher', wall: 'e', z: 9.0 },
                     { key: 'cardboard_box',  x: -14.2, z: 12.4, face: 20 },
+                    /* 2026-09-10: the rover. It is dead. It is parked on the
+                       walkway because the walkway is the only flat surface
+                       Records would sign for. */
+                    { key: 'mars_rover',     x: 12.4,  z: 12.2, face: 315 },
                 ],
             },
             /* 51 · AREA 51 — the guard shack's terminal in the north-east
@@ -17918,6 +17978,10 @@ const DOOR_HQ = {
                     { key: 'tube_tv',        x: 14.4,  z: -10.9, y: 0, face: 250 },
                     { key: 'clipboard',      wall: 'w', z: 8.8 },
                     { key: 'paper_sheet',    x: -12.4, z: 11.8, y: 0.01, face: 210 },
+                    /* 2026-09-10: the lander, standing in the corner of the
+                       room the way it stands on the site. The footprints lead
+                       in. Nobody has filed where they lead out. */
+                    { key: 'lunar_lander',   x: -12.6, z: -12.4, face: 135 },
                 ],
             },
             /* 888 · VATICAN CITY — a chair by the east arm of the colonnade,
@@ -18130,6 +18194,13 @@ const DOOR_HQ = {
                 { key: 'desk_lamp',    deg: 330, r: 4.6, level: 0, y: 1.05, rot: 200 },
                 { key: 'desk_fan',     deg: 80,  r: 4.9, level: 0, y: 1.05, rot: 90 },
                 { key: 'pen',          deg: 175, r: 4.9, level: 0, y: 1.05, rot: 70 },
+                /* the 2026-09-10 kit on the dispatch top: the stapler, the
+                   folders that never leave, Rhonda's mug */
+                { key: 'stapler',      deg: 212, r: 4.75, level: 0, y: 1.05, rot: 30 },
+                { key: 'manila_folders', deg: 68, r: 4.6, level: 0, y: 1.05, rot: -15 },
+                { key: 'manila_folder', deg: 292, r: 4.75, level: 0, y: 1.05, rot: 25 },
+                { key: 'clipboard_flat', deg: 118, r: 4.7, level: 0, y: 1.05, rot: 10 },
+                { key: 'coffee_mug',   deg: 176, r: 4.6, level: 0, y: 1.05, rot: 40 },
                 { key: 'cardboard_box', deg: 40, r: 6.3, level: 0 },
                 { key: 'cardboard_box', deg: 46, r: 6.5, level: 0, rot: 35 },
                 { key: 'cardboard_boxes', deg: 140, r: 6.6, level: 0, rot: 20 },
@@ -18142,6 +18213,12 @@ const DOOR_HQ = {
                 { key: 'papers_a',        deg: 130.5, r: 18.3, level: 0, y: 0.77, rot: 20 },
                 { key: 'pen',             deg: 131.5, r: 18.15, level: 0, y: 0.77, rot: 60 },
                 { key: 'notebook_paper',  deg: 128.3, r: 18.05, level: 0, y: 0.77, rot: -25 },   // Rhonda's: conveniently misfiled (DOOR_CAST)
+                /* the LOST CARD FEE has a till (2026-09-10): the beige 1980s
+                   register on the transaction ledge, a clipboard beside it,
+                   the bin the forms end up in */
+                { key: 'cash_register',   deg: 124.5, r: 18.4, level: 0, y: 0.77, rot: -10 },
+                { key: 'clipboard_flat',  deg: 132.5, r: 18.35, level: 0, y: 0.77, rot: 15 },
+                { key: 'trash_bin',       deg: 131.5, r: 19.4, level: 0 },
                 /* the briefing table: four 45° table sectors as a half-ring
                    (r 1.28 m) opening toward the hall, folding chairs on the
                    convex side facing in — the seats are at the sectors'
@@ -18183,7 +18260,39 @@ const DOOR_HQ = {
                 { key: 'office_locker',  deg: 134, level: 0, wall: true },
                 { key: 'locker',         deg: 137, level: 0, wall: true },
                 { key: 'vending_machine', deg: 105, level: 0, wall: true },
+                /* THE BREAK NOOK (2026-09-10) — the corner of the hall that
+                   has been standing in for the Cafeterium (Room 86, plan 7.4)
+                   since before there was a Cafeterium: a round fridge with the
+                   microwave and the coffee maker on top of it, the hook rail
+                   nobody hangs anything on, and the bin. When 86 is built this
+                   nook is what moves out of the hall and into the room. */
+                { key: 'hook_rail_long', deg: 98,  level: 0, wall: true, mount: 1.8 },
+                { key: 'round_fridge',   deg: 101, r: 19.9,  level: 0 },
+                { key: 'microwave',      deg: 100.3, r: 19.9, level: 0, y: 1.05, rot: -6 },
+                { key: 'coffee_maker',   deg: 102.0, r: 19.95, level: 0, y: 1.05, rot: 8 },
+                { key: 'coffee_mug',     deg: 102.9, r: 20.05, level: 0, y: 1.05, rot: 40 },
+                { key: 'solo_cup',       deg: 99.4, r: 19.8,  level: 0, y: 1.05 },
+                { key: 'trash_bin',      deg: 107, r: 20.2,  level: 0, rot: 15 },
                 { key: 'water_cooler',   deg: 196, level: 0, wall: true },
+                /* the two palms the terrazzo lobby has always deserved (2026-09-10) */
+                { key: 'palm_tree',      deg: 68,  r: 17.2, level: 0 },
+                { key: 'palm_tree',      deg: 292, r: 17.4, level: 0, rot: 40 },
+                /* THE CUBICLE POOL (2026-09-10): two round cubicles in the
+                   quiet arc between the stair and the leaderboard — the only
+                   right angles in the building are inside them, and they are
+                   round on the outside, so Form 90 was never filed. They carry
+                   a 1 m collision disc: ground floor only, never the slab. */
+                { key: 'round_cubicle',  deg: 325, r: 15.4, level: 0, rot: 20 },
+                { key: 'round_cubicle',  deg: 337, r: 16.2, level: 0, rot: -15 },
+                { key: 'office_chair',   deg: 322, r: 14.3, level: 0, rot: 40 },
+                { key: 'office_chair',   deg: 340, r: 17.6, level: 0, rot: 200 },
+                /* the building's muzak, on top of the lockers */
+                { key: 'retro_speakers', deg: 135.5, r: 20.35, level: 0, y: 1.85 },
+                /* three empty round frames on the lower wall. Records has the
+                   photographs. Records is not releasing the photographs. */
+                { key: 'picture_round_a', deg: 188, level: 0, wall: true },
+                { key: 'picture_round_b', deg: 218, level: 0, wall: true },
+                { key: 'picture_round_c', deg: 250, level: 0, wall: true },
                 { key: 'potted_plant',   deg: 76,  r: 19.2, level: 0 },
                 { key: 'potted_plant',   deg: 284, r: 19.2, level: 0 },
                 { key: 'fire_extinguisher', deg: 172, level: 0, wall: true },
@@ -18226,6 +18335,20 @@ const DOOR_HQ = {
                 { key: 'teal_chair',     deg: 327.7, r: 23.05, level: 1, rot: -60 },
                 { key: 'table_lamp',     deg: 323.6, r: 23.1, level: 1, y: 0.76 },
                 { key: 'notebook_paper', deg: 325.8, r: 22.95, level: 1, y: 0.76, rot: -20 },
+                /* the 2026-09-10 kit on the slab: the clerks' coffee (the one
+                   at 100° keeps the pot; the one at 325° keeps the radio), the
+                   bin, the coat rail, two more empty frames. Everything on a
+                   desk sits above y 0.5 and is exempt from the walkable-band
+                   check — nothing NEW with a footprint goes on the slab. */
+                { key: 'coffee_maker',   deg: 98.4,  r: 23.1,  level: 1, y: 0.76, rot: 6 },
+                { key: 'coffee_mug',     deg: 102.2, r: 23.05, level: 1, y: 0.76, rot: 30 },
+                { key: 'stapler',        deg: 99.0,  r: 22.9,  level: 1, y: 0.76, rot: 60 },
+                { key: 'retro_radio',    deg: 322.6, r: 23.15, level: 1, y: 0.76, rot: 200 },
+                { key: 'manila_folders', deg: 327.4, r: 22.95, level: 1, y: 0.76, rot: 15 },
+                { key: 'trash_bin',      deg: 105.5, r: 23.3,  level: 1 },
+                { key: 'hook_rail_long', deg: 342,   level: 1, wall: true, mount: 1.8 },
+                { key: 'picture_round_a', deg: 32,   level: 1, wall: true },
+                { key: 'picture_round_c', deg: 288,  level: 1, wall: true },
             ],
             /* where DOOR agents stand (fixed) and roster vessels loiter */
             agents: [
@@ -18292,6 +18415,7 @@ const DOOR_HQ = {
                 { key: 'sink',          wall: 'n', x: -1.15 },
                 { key: 'wall_shelf',    wall: 'n', x: -1.15, mount: 1.55 },
                 { key: 'wall_shelf',    wall: 'n', x: -1.15, mount: 2.0 },
+                { key: 'retro_radio',   x: -1.3, z: -2.12, y: 2.0, face: 170 },    // 2026-09-10: the shelf above the sink
                 { key: 'breaker_panel', wall: 'n', x: 0.1 },
                 { key: 'tanker_desk',   wall: 'n', x: 1.65 },
                 { key: 'clipboard',     wall: 'n', x: 1.35, mount: 1.5, rot: 3 },
@@ -18304,20 +18428,27 @@ const DOOR_HQ = {
                 { key: 'papers_a',      x: 1.55, z: -1.7,  y: 0.76, face: 15 },
                 { key: 'pen',           x: 1.95, z: -1.66, y: 0.76, face: 75 },
                 { key: 'notebook_paper',x: 2.25, z: -1.72, y: 0.76, face: -10 },
+                { key: 'clipboard_flat',x: 1.1,  z: -1.72, y: 0.76, face: -20 },   // 2026-09-10
+                { key: 'coffee_mug',    x: 2.3,  z: -1.68, y: 0.76, face: 20 },
+                { key: 'trash_bin',     x: 0.55, z: -2.0,  face: 10 },
                 { key: 'folding_chair', x: 1.65, z: -1.22, face: 0 },
                 /* the east wall: the locker (toilet paper on top), the cot, a shelf with the fan */
                 { key: 'locker',        wall: 'e', z: -1.3 },
                 { key: 'toilet_paper',  x: 2.58, z: -1.3, y: 1.85, face: 270 },
+                { key: 'manila_folders',x: 2.55, z: -0.95, y: 1.85, face: 270 },   // 2026-09-10: on the locker, where they will stay
                 { key: 'cot',           x: 2.28, z: 0.85, face: 90 },
+                { key: 'meal_tray',     x: 2.25, z: 0.9,  y: 0.46, face: 90 },     // 2026-09-10: dinner, on the cot, again
                 { key: 'wall_shelf',    wall: 'e', z: 0.1, mount: 2.0 },
                 { key: 'desk_fan',      x: 2.62, z: 0.1, y: 2.0, face: 250 },
                 /* the south wall (behind you as you come in) */
                 { key: 'wall_clock',    wall: 's', x: 0.9, mount: 2.3 },
                 { key: 'fire_extinguisher', wall: 's', x: -0.6 },
+                { key: 'picture_round_b',   wall: 's', x: -1.9, mount: 1.9 },      // 2026-09-10: empty. It came with the room.
                 { key: 'cardboard_boxes', x: 0.3, z: 1.9, face: -15 },
                 { key: 'cardboard_box', x: -1.5, z: 1.95, face: 25 },
                 /* the west wall beside the door: the cleaning shelves */
                 { key: 'metal_shelving', wall: 'w', z: 1.65 },
+                { key: 'mini_fridge',    x: -2.35, z: 0.45, face: 90 },            // 2026-09-10: requisitioned; nobody has asked
                 { key: 'wet_floor_sign', x: -1.7, z: 1.15, face: 140 },
                 /* the floor: the bucket by the sink, the drain, the rug */
                 { key: 'mop_bucket',    x: -1.45, z: -1.5, face: 20 },
@@ -18388,6 +18519,7 @@ const DOOR_HQ = {
                 { key: 'crt_terminal',  x: -9.6,  z: -0.35, y: 0.76, face: 90 },
                 { key: 'rotary_phone',  x: -9.62, z: 0.42,  y: 0.76, face: 70 },
                 { key: 'papers_a',      x: -9.5,  z: 0.05,  y: 0.76, face: 100 },
+                { key: 'clipboard_flat',x: -9.45, z: 0.78,  y: 0.76, face: 95 },     // 2026-09-10: the clipboard at the end of the range
                 /* the VHS CRT: a tube TV on a crate beside the console, aimed at the grid (4.3 plays the tape) */
                 { key: 'cardboard_boxes', x: -8.9, z: 1.9, face: 90 },
                 { key: 'tube_tv',       x: -8.9,  z: 1.9,  y: 0.95, face: 90 },
@@ -18400,9 +18532,21 @@ const DOOR_HQ = {
                    is a long time; the sign takes x −7.4…−2.6) */
                 { key: 'wall_clock',    wall: 's', x: 2.5 },
                 { key: 'water_cooler',  wall: 's', x: -7.8 },
+                /* THE FORTY-FOUR-MINUTE CORNER (2026-09-10) — the instructor
+                   takes his break at forty-four and he takes it here: a crate
+                   for a counter, the coffee maker, two cafeteria chairs that
+                   were signed out of 86 and never signed back in. */
+                { key: 'cardboard_boxes', x: -6.5, z: 8.9, face: 0 },
+                { key: 'coffee_maker',  x: -6.5,  z: 8.9,  y: 0.95, face: 0 },
+                { key: 'solo_cup',      x: -6.05, z: 8.75, y: 0.95 },
+                { key: 'molded_chair',  x: -5.4,  z: 8.6,  face: 330 },
+                { key: 'cafeteria_chair', x: -4.5, z: 8.9, face: 20 },
+                { key: 'trash_bin',     x: -7.05, z: 9.3,  face: 45 },
                 /* east wall: lockers for the trainees, chairs under the east booth */
                 { key: 'locker',        wall: 'e', z: -6.6 },
                 { key: 'locker',        wall: 'e', z: -5.7 },
+                { key: 'hook_rail',     wall: 'e', z: -4.8 },                       // 2026-09-10
+                { key: 'vent_grille',   wall: 'e', z: -2.0, mount: 3.4 },
                 { key: 'folding_chair', x: 8.6, z: 3.9, face: 280 },
                 { key: 'folding_chair', x: 8.6, z: 2.4, face: 260 },
                 /* the wet-floor sign stands over the SW floor crack. It is not wet. */

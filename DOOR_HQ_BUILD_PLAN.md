@@ -1006,6 +1006,100 @@ exactly this; the building gives it a wall.
 6. `npm test`; index.html bump; deliver data.js + three-renderer.js (+
    server.js for ranked) per RULE #1.
 
+#### 7.11 ⚙ ✅ (2026-09-10, §9) THE PROP KIT — thirty models, and Room 86's furniture arrives early
+The user uploaded thirty Meshy GLBs to R2 `Assets/door/models/` on
+2026-09-10. All thirty are wired into `DOOR_HQ.catalogue` in the same
+session; twenty-six are new keys, four RETIRE a procedural prop.
+
+**The four that graduated (plan 2.7 always said they could).** Giving a
+`proc` entry a `file` upgrades every existing placement for free — the
+closet (101) and the Training Room (64) got real art without moving a
+prop:
+
+| key | model | was |
+|---|---|---|
+| `hook_rail` | `coat_hook_rail_0910054259` | `proc: 'hook_rail'` |
+| `vent_grille` | `vent_0910054228` | `proc: 'vent_grille'` |
+| `floor_drain` | `water_drain_0910054212` | `proc: 'floor_drain'` |
+| `rotary_phone` | `analog_phone_0910054719` | `proc: 'rotary_phone'` |
+
+`clipboard` STAYS procedural: the model the user made
+(`office_clipboard_0910054838`) is authored FACE-UP — a bbox of
+0.73 × 0.35 × 1.00 is a clipboard lying on a desk, not one hanging on a
+wall — so it went in as a separate key, `clipboard_flat`, and the wall
+clipboards in 101 keep the builder. Six procedural props remain
+(`tanker_desk`, `wall_shelf`, `metal_shelving`, `broom`,
+`toilet_paper`, `clipboard`).
+
+**Sizing.** Every target was read off the GLB's own bbox — Meshy
+normalises the longest axis to 1, so the ratios name the pose. Three
+could not be read from the numbers alone and are the ones to check first
+on the next walkthrough: `manila_folder` (0.74 : 0.92 : 1.00 — tapered,
+possibly open), `round_fridge` (a true 1 : 1 : 1 cube, so it went in
+squat at h 1.05) and `mars_rover` (span 2.40). If one lands wrong, its
+`h` / `span` (or a `lay: true`) is the only edit — never a renderer
+change.
+
+**Where they went today.**
+- **Central egress, ground** — THE BREAK NOOK beside the vending machine
+  at 98–107°: `round_fridge` with the `microwave` and `coffee_maker` on
+  top of it, `coffee_mug`, `solo_cup`, `hook_rail_long`, `trash_bin`.
+  This is Room 86 standing in the hall until Room 86 exists; when 86 is
+  built, the nook is what moves.
+- **Central egress, ground** — the LOST CARD FEE finally has a till:
+  `cash_register` on the reception wedge's transaction ledge, with a
+  `clipboard_flat` and a bin. Two `palm_tree`s in the lobby at 68° / 292°.
+  THE CUBICLE POOL: two `round_cubicle`s at 325° / 337° (the only right
+  angles in the building are inside them, and they are round on the
+  outside, so Form 90 was never filed) with a chair each.
+  `retro_speakers` on top of the lockers — the building's muzak has a
+  source now. Three `picture_round_*` frames on the lower wall, all
+  empty; Records has the photographs and is not releasing them.
+- **Central egress, mezzanine** — the clerks' coffee (`coffee_maker`,
+  `coffee_mug`, `stapler` at 100°; `retro_radio`, `manila_folders` at
+  325°), a `trash_bin`, a `hook_rail_long` at 342°, two more frames.
+  Nothing NEW with a footprint went on the slab (the walkable-band check
+  at doorhq.test.js — the round cubicle in particular can never go up
+  there, its disc is 1 m and the slab is 2.2 m wide).
+- **Desk tops** — `stapler`, `manila_folders`, `manila_folder`,
+  `clipboard_flat`, `coffee_mug` on the dispatch ring.
+- **101 · your office** — `mini_fridge` (requisitioned; nobody has
+  asked), `meal_tray` on the cot, `retro_radio` on the shelf above the
+  sink, `clipboard_flat` + `coffee_mug` + `trash_bin` at the desk,
+  `manila_folders` on the locker, `picture_round_b` on the south wall.
+- **64 · Training Room** — THE FORTY-FOUR-MINUTE CORNER by the water
+  cooler, because the instructor's line already promised it: a crate for
+  a counter, the `coffee_maker`, a `solo_cup`, a `molded_chair` and a
+  `cafeteria_chair` signed out of 86 and never signed back in; a
+  `trash_bin`, a `hook_rail` by the lockers, a `vent_grille`, and the
+  `clipboard_flat` at the end of the range.
+- **Site rooms** — `mars_rover` on the walkway of Mars's room,
+  `lunar_lander` in the corner of the Moon's, two `palm_tree`s in Giza's.
+  doorhq.test.js's ceiling check now exempts a free-standing prop in an
+  OUTDOOR room (`shell.open`): the lander is 3.2 m and the Moon's
+  perimeter wall is 3.0 m, which is correct — a MOUNTED prop still has
+  to fit under its wall.
+
+**Held for Room 86 (7.4) — the kit is on the shelf, the room is not
+built.** `meal_tray_empty`, and second helpings of `cafeteria_chair`,
+`molded_chair`, `meal_tray`, `microwave`, `coffee_maker`,
+`cash_register`, `mini_fridge`, `round_fridge`, `coffee_mug`,
+`solo_cup`, `trash_bin`, `hook_rail_long`. When 86 is built it is a
+`kind: 'box'` room off the egress and needs nothing new from the user:
+
+| the room | built from |
+|---|---|
+| the serving line | `reception_wedge` (§5.6's own fallback), `cash_register` at the till end, `meal_tray` / `meal_tray_empty` stacked along it, the sneeze guard = an `observation_window` laid on the counter |
+| the hot side | `microwave` and `coffee_maker` on a `tanker_desk` behind the line, `round_fridge` + `mini_fridge` against the back wall, `hook_rail_long` for the aprons |
+| the floor | `conference_table` ×2 with `cafeteria_chair` / `molded_chair` around them, `meal_tray` + `coffee_mug` + `solo_cup` on the tables, `trash_bin` by the door, `rug_office`, `potted_plant`, a `palm_tree` in the corner |
+| the walls | `picture_round_*` (still empty), the notice board (mirrors 247's sheet — `proc: 'board'`, as the leaderboard counter does), `wall_clock` ×2 that disagree, `exit_sign`, `vent_grille` |
+| the door | plate `ROOM 86`, sub `SUPPORT SERVICES`; the after-hours variant reads `MÖBIUS STRIP CLUB` and the bar counter is one lathe |
+| the people | `npcSpots` for the roster ON BREAK, the online silhouettes from `#mmOnlineCount` (§8's open question — this is where they go) |
+
+Two things 86 still wants from the user: the serving counter itself
+(§5.6's hero prop — everything else on that row is now delivered), and
+the cafeteria clatter bed on §5.6's audio list.
+
 ---
 
 ## 5. Assets
@@ -1212,7 +1306,7 @@ built:**
 | 711 Gas Station | two gas pumps + a price sign | boxes + a canvas sign |
 | 411 National Park | a tent + a picnic table | `_nrHouse` at tent scale |
 | 432 Cathedral | the organ console | pipes are cylinders; the console is a tanker desk |
-| 86 Cafeterium | serving counter, coffee machine, tray + food, a microwave | the reception wedge is the counter |
+| 86 Cafeterium | ✅ **DELIVERED 2026-09-10** (7.11): the coffee maker, both meal trays, the 1980s microwave, the cash register, two chairs, both fridges, the mug and the solo cup. Only the serving counter itself is still missing | the reception wedge is the counter |
 | 247 Clock Room | a punch clock + a large wall calendar (canvas) | a box with a slot |
 | 360 Observatorium | the planetarium projector (the star ball) + a telescope | a lathe ball on a tripod |
 | 1111 Medical | a gurney, an IV stand, a curtain rail | the cot; a pipe run |
@@ -3623,3 +3717,57 @@ index.html; docs.
 The shared Settings page in `map.js` now owns keyboard focus, retains the focused control on redraw, releases focus on page exits, and restores an eligible launcher/destination control through the existing HQ-or-menu Back route. Spell Library return reacquires Settings focus. Existing HQ suspension/resume and pointer-lock behavior are unchanged; no canon, rooms, cast or assets changed.
 
 Baseline: repository main `e92ee26153b65c2047963544c56310ea838220bb`. Full suite: 215 passed, 0 failed, 2 expected skips, including five new Settings focus regression tests and the JavaScript syntax check. Browser/HQ/controller acceptance remains pending. The review plan records the newly confirmed PAUSE-06 controller page-visibility/root gap as the next batch. Complete `map.js` goes to R2, refreshed `index.html` to Render; these logs, tests and review plan are repository-only. Nothing deployed.
+
+### 2026-09-10 — 7.11 SHIPPED: thirty models into the building, and Room 86's furniture arrives before Room 86
+
+The user uploaded thirty Meshy GLBs to R2 `Assets/door/models/` (the
+cafeteria kit, an office kit, and three mission pieces). All thirty are
+wired in one data.js delivery — HQ plan §7.11 has the full table.
+
+- **Catalogue (`DOOR_HQ.catalogue`, data.js).** Twenty-six new keys in a
+  `THE 2026-09-10 BATCH` block; four EXISTING procedural entries were
+  given a `file` and retired their builder — `hook_rail`, `vent_grille`,
+  `floor_drain`, `rotary_phone`. That upgrades every placement already
+  standing in 101 and 64 without moving a prop, which is exactly what
+  plan 2.7's "replace any of them by giving the entry a `file`" was for.
+  Six procedural props remain. `clipboard` is deliberately NOT one of
+  the four: the user's clipboard model is authored FACE-UP (bbox
+  0.73 × 0.35 × 1.00 is a clipboard lying on a desk), so it went in as
+  `clipboard_flat` and the wall clipboards keep the builder.
+- **Sizing was measured, not guessed.** Each GLB's JSON chunk was pulled
+  off the CDN with a range request and its POSITION accessor min/max
+  read; Meshy normalises the longest axis to 1, so the ratios name the
+  pose (`analog_phone` at 1 : 0.49 : 0.73 is a desk phone; `microwave`
+  at 1 : 0.61 : 0.72 is a microwave; `coffee_maker` at 0.51 : 1 : 1 is
+  upright). Three were unreadable from the numbers and are flagged in
+  7.11 for the next walkthrough: `manila_folder`, `round_fridge`,
+  `mars_rover`.
+- **Placed today.** THE BREAK NOOK in the egress at 98–107° (round
+  fridge + microwave + coffee maker + mug + solo cup + coat rail + bin)
+  — Room 86 standing in the hall until Room 86 exists. A cash register
+  on the reception ledge for the LOST CARD FEE. Two palms in the lobby.
+  THE CUBICLE POOL at 325° / 337° (round cubicles, ground floor only —
+  the 1 m disc can never go on the 2.2 m slab). Retro speakers on the
+  lockers. Five empty round frames. The clerks' coffee, radio, stapler,
+  folders and bin on the mezzanine desks. 101 got a mini fridge, a meal
+  tray on the cot, a radio on the shelf and a frame on the south wall.
+  64 got THE FORTY-FOUR-MINUTE CORNER by the water cooler, which the
+  instructor's existing line had already promised. The Mars room got the
+  rover, the Moon room the lander, Giza two date palms.
+- **One test refinement.** doorhq.test.js's "mounts through the ceiling"
+  check now exempts a FREE-STANDING prop in an OUTDOOR room
+  (`shell.open`) — the Moon's lander is 3.2 m and the Moon's perimeter
+  wall is 3.0 m, which is right. A MOUNTED prop still has to fit under
+  its wall everywhere.
+- **Held for 86.** `meal_tray_empty` plus second helpings of the whole
+  cafeteria kit. 7.11 has the room's build sheet — every piece of it
+  comes from the existing catalogue, so building 86 needs nothing new
+  from the user except the serving counter itself (§5.6's hero prop, now
+  the only unticked item on that row) and the cafeteria clatter bed.
+- **Validation.** `npm test` — 249 tests, 248 pass, 0 fail, 1 expected
+  skip (server deps). No playtest (RULE #1c); no renderer, map.js or
+  online.js change, so RULE #2 is unaffected — the HQ is single-player
+  and no `state.*` field moved.
+- **Delivery (RULE #1 / #1b).** `data.js` to R2, `index.html` to Render,
+  token `20260910-071500-door-props-cors`. `doorhq.test.js`, this log
+  and the plan are repository-only. Nothing committed or pushed.

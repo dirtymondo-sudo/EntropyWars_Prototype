@@ -1872,3 +1872,57 @@ source-scan test, 164 green + 1 skip). Story track still ON HOLD (A14).
 The shared Settings page in `map.js` now owns keyboard focus, retains the focused control on redraw, releases focus on page exits, and restores an eligible launcher/destination control through the existing HQ-or-menu Back route. Spell Library return reacquires Settings focus. Existing HQ suspension/resume and pointer-lock behavior are unchanged; no canon, rooms, cast or assets changed.
 
 Baseline: repository main `e92ee26153b65c2047963544c56310ea838220bb`. Full suite: 215 passed, 0 failed, 2 expected skips, including five new Settings focus regression tests and the JavaScript syntax check. Browser/HQ/controller acceptance remains pending. The review plan records the newly confirmed PAUSE-06 controller page-visibility/root gap as the next batch. Complete `map.js` goes to R2, refreshed `index.html` to Render; these logs, tests and review plan are repository-only. Nothing deployed.
+
+### 2026-09-10 — 7.11 SHIPPED: thirty models into the building, and Room 86's furniture arrives before Room 86
+
+The user uploaded thirty Meshy GLBs to R2 `Assets/door/models/` (the
+cafeteria kit, an office kit, and three mission pieces). All thirty are
+wired in one data.js delivery — HQ plan §7.11 has the full table.
+
+- **Catalogue (`DOOR_HQ.catalogue`, data.js).** Twenty-six new keys in a
+  `THE 2026-09-10 BATCH` block; four EXISTING procedural entries were
+  given a `file` and retired their builder — `hook_rail`, `vent_grille`,
+  `floor_drain`, `rotary_phone`. That upgrades every placement already
+  standing in 101 and 64 without moving a prop, which is exactly what
+  plan 2.7's "replace any of them by giving the entry a `file`" was for.
+  Six procedural props remain. `clipboard` is deliberately NOT one of
+  the four: the user's clipboard model is authored FACE-UP (bbox
+  0.73 × 0.35 × 1.00 is a clipboard lying on a desk), so it went in as
+  `clipboard_flat` and the wall clipboards keep the builder.
+- **Sizing was measured, not guessed.** Each GLB's JSON chunk was pulled
+  off the CDN with a range request and its POSITION accessor min/max
+  read; Meshy normalises the longest axis to 1, so the ratios name the
+  pose (`analog_phone` at 1 : 0.49 : 0.73 is a desk phone; `microwave`
+  at 1 : 0.61 : 0.72 is a microwave; `coffee_maker` at 0.51 : 1 : 1 is
+  upright). Three were unreadable from the numbers and are flagged in
+  7.11 for the next walkthrough: `manila_folder`, `round_fridge`,
+  `mars_rover`.
+- **Placed today.** THE BREAK NOOK in the egress at 98–107° (round
+  fridge + microwave + coffee maker + mug + solo cup + coat rail + bin)
+  — Room 86 standing in the hall until Room 86 exists. A cash register
+  on the reception ledge for the LOST CARD FEE. Two palms in the lobby.
+  THE CUBICLE POOL at 325° / 337° (round cubicles, ground floor only —
+  the 1 m disc can never go on the 2.2 m slab). Retro speakers on the
+  lockers. Five empty round frames. The clerks' coffee, radio, stapler,
+  folders and bin on the mezzanine desks. 101 got a mini fridge, a meal
+  tray on the cot, a radio on the shelf and a frame on the south wall.
+  64 got THE FORTY-FOUR-MINUTE CORNER by the water cooler, which the
+  instructor's existing line had already promised. The Mars room got the
+  rover, the Moon room the lander, Giza two date palms.
+- **One test refinement.** doorhq.test.js's "mounts through the ceiling"
+  check now exempts a FREE-STANDING prop in an OUTDOOR room
+  (`shell.open`) — the Moon's lander is 3.2 m and the Moon's perimeter
+  wall is 3.0 m, which is right. A MOUNTED prop still has to fit under
+  its wall everywhere.
+- **Held for 86.** `meal_tray_empty` plus second helpings of the whole
+  cafeteria kit. 7.11 has the room's build sheet — every piece of it
+  comes from the existing catalogue, so building 86 needs nothing new
+  from the user except the serving counter itself (§5.6's hero prop, now
+  the only unticked item on that row) and the cafeteria clatter bed.
+- **Validation.** `npm test` — 249 tests, 248 pass, 0 fail, 1 expected
+  skip (server deps). No playtest (RULE #1c); no renderer, map.js or
+  online.js change, so RULE #2 is unaffected — the HQ is single-player
+  and no `state.*` field moved.
+- **Delivery (RULE #1 / #1b).** `data.js` to R2, `index.html` to Render,
+  token `20260910-071500-door-props-cors`. `doorhq.test.js`, this log
+  and the plan are repository-only. Nothing committed or pushed.

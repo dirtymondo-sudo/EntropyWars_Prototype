@@ -466,7 +466,10 @@ test('box-room props resolve (kit or procedural), sit inside the walls, wall pro
                 if ((c.wall) && !onWall && p.y == null) { /* a wall-kit prop used free-standing is allowed (shelving, desks) */ }
             }
             const mount = (p.mount != null) ? p.mount : (c.mount || 0);
-            if (mount + (c.h || 0) > S.h - 0.05) problems.push(k + ': prop ' + p.key + ' mounts through the ceiling');
+            /* an OUTDOOR room (S.open) has no ceiling: a MOUNTED prop still has
+               to fit under the top of its wall, but a free-standing one may
+               stand taller than the perimeter (the Moon's lander does). */
+            if (mount + (c.h || 0) > S.h - 0.05 && (mount > 0 || !S.open)) problems.push(k + ': prop ' + p.key + ' mounts through the ceiling');
             if ((p.y || 0) > S.h - 0.1) problems.push(k + ': prop ' + p.key + ' sits above the ceiling');
             if ((c.ceil || p.ceil) && !(c.span || p.span || c.h)) problems.push(k + ': ceiling prop ' + p.key + ' has no size');
             if (c.proc && c.wall && onWall && !(c.depth > 0)) problems.push(k + ': proc wall prop ' + p.key + ' needs a depth');
