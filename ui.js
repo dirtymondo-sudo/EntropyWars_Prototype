@@ -6420,6 +6420,55 @@
 
         let _pauseOverlay = null;
         let _gamePaused = false;
+        let _pauseReturnFocus = null;
+
+        function _pauseFocusable() {
+            if (!_pauseOverlay) return [];
+            return Array.from(_pauseOverlay.querySelectorAll('button, input, select, textarea, a[href], [tabindex]'))
+                .filter(el => el.tabIndex >= 0 && !el.matches(':disabled') && el.getClientRects().length
+                    && getComputedStyle(el).visibility !== 'hidden' && !el.closest('[inert]'));
+        }
+        function _pauseFocusSnapshot() {
+            const controls = _pauseFocusable();
+            const el = document.activeElement;
+            const index = controls.indexOf(el);
+            return index < 0 ? null : { index, id: el.id, tag: el.tagName,
+                action: el.getAttribute('onclick') || el.getAttribute('onchange') || el.getAttribute('oninput') };
+        }
+        function _pauseFocusRestore(snapshot) {
+            if (!_gamePaused || state.uiDialog) return;
+            const controls = _pauseFocusable();
+            let target = snapshot && controls.find(el => snapshot.id ? el.id === snapshot.id
+                : snapshot.action && el.tagName === snapshot.tag
+                    && (el.getAttribute('onclick') || el.getAttribute('onchange') || el.getAttribute('oninput')) === snapshot.action);
+            // Dynamic toggle handlers can change with the value; their position
+            // is stable within the same tab. A different tab selects its header.
+            if (!target && snapshot) target = controls[snapshot.index];
+            target = target || controls.find(el => el.matches('.pause-tab.active')) || controls[0] || _pauseOverlay;
+            target.focus({ preventScroll: true });
+        }
+        function _pauseKeydown(e) {
+            if (!_gamePaused || state.uiDialog) return;
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                closePauseMenu();
+                return;
+            }
+            // Keep native button/slider behavior but do not bubble menu keys
+            // to document-level battle shortcuts. Window rebind capture runs first.
+            e.stopPropagation();
+            if (e.key !== 'Tab') return;
+            const controls = _pauseFocusable();
+            const index = controls.indexOf(document.activeElement);
+            if (index < 0 || (!e.shiftKey && index === controls.length - 1) || (e.shiftKey && index === 0)) {
+                e.preventDefault();
+                (controls[e.shiftKey ? controls.length - 1 : 0] || _pauseOverlay).focus({ preventScroll: true });
+            }
+        }
+        function _pauseFocusGuard(e) {
+            if (_gamePaused && !state.uiDialog && _pauseOverlay && !_pauseOverlay.contains(e.target)) _pauseFocusRestore(null);
+        }
 
         function togglePauseMenu() {
             if (_gamePaused) closePauseMenu();
@@ -6469,6 +6518,7 @@
         let _pauseTab = 'scoreboard';
 
         function openPauseMenu() {
+            if (!_gamePaused) _pauseReturnFocus = document.activeElement;
             _gamePaused = true;
 
             if (_cinematicEl) {
@@ -6481,16 +6531,24 @@
                 _pauseOverlay = document.createElement('div');
                 _pauseOverlay.className = 'pause-overlay';
                 _pauseOverlay.id = 'pauseOverlay';
+                _pauseOverlay.tabIndex = -1;
+                _pauseOverlay.setAttribute('role', 'dialog');
+                _pauseOverlay.setAttribute('aria-modal', 'true');
+                _pauseOverlay.setAttribute('aria-label', 'Match menu');
+                _pauseOverlay.addEventListener('keydown', _pauseKeydown);
                 (document.getElementById("game-viewport") || document.body).appendChild(_pauseOverlay);
             }
             _renderPauseMenu();
             _pauseOverlay.classList.remove('hidden');
-            requestAnimationFrame(() => _pauseOverlay.classList.add('active'));
+            document.addEventListener('focusin', _pauseFocusGuard);
+            _pauseFocusRestore(null);
+            requestAnimationFrame(() => { if (_gamePaused) _pauseOverlay.classList.add('active'); });
         }
         window.openPauseMenu = openPauseMenu;
 
         function _renderPauseMenu() {
             if (!_pauseOverlay) return;
+            const focusSnapshot = _pauseFocusSnapshot();
             /* In the map editor there is no match, so the scoreboard tab is
                meaningless — land on Audio (the reason to pause in the editor is
                almost always "change the song / volumes"). */
@@ -6550,11 +6608,13 @@
                 </div>
             </div>
             `;
+            _pauseFocusRestore(focusSnapshot);
         }
 
         window._setPauseTab = function(tab) {
             _pauseTab = tab;
             _renderPauseMenu();
+            _pauseFocusRestore(null);
         };
 
         /* 📖 Status Effect Library (2026-07-23) — player-facing reference of
@@ -7503,10 +7563,18 @@
         }
 
         function closePauseMenu() {
+            const wasOpen = _gamePaused;
             _gamePaused = false;
+            document.removeEventListener('focusin', _pauseFocusGuard);
             if (_pauseOverlay) {
                 _pauseOverlay.classList.remove('active');
                 _pauseOverlay.classList.add('hidden');
+            }
+            const target = _pauseReturnFocus;
+            _pauseReturnFocus = null;
+            if (wasOpen && !state.uiDialog && target && target.isConnected && !target.matches(':disabled')
+                && target.getClientRects().length && getComputedStyle(target).visibility !== 'hidden') {
+                target.focus({ preventScroll: true });
             }
         }
         window.closePauseMenu = closePauseMenu;
@@ -12840,4 +12908,3 @@
         requestAnimationFrame(_fpsLoop);
       };
     })();
-

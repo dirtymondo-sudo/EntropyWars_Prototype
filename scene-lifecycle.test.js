@@ -168,3 +168,86 @@ test('Tab leaves battle targets untouched under pause/dialog and still cycles af
     ctx.state.actionMode = 'attack'; listener({ ...event, shiftKey: true });
     assert.equal(cycles, 0); assert.equal(prevented, 2);
 });
+
+function pauseHarness() {
+    const src = source('ui.js'), frames = [], listeners = new Map();
+    const doc = { activeElement: null, body: { appendChild() {} },
+        getElementById: () => null, createElement: () => overlay,
+        addEventListener: (name, fn) => listeners.set(name, fn),
+        removeEventListener: name => listeners.delete(name) };
+    function control(id, opts = {}) {
+        return { ...element(), id, tabIndex: 0, tagName: 'BUTTON', isConnected: true,
+            hidden: false, disabled: false, active: false, action: id,
+            getClientRects() { return this.hidden ? [] : [{}]; },
+            matches(sel) { return sel === ':disabled' ? this.disabled : this.active; },
+            closest() { return null; }, getAttribute(name) { return name === 'onclick' ? this.action : null; },
+            focus() { doc.activeElement = this; }, ...opts };
+    }
+    let controls = [];
+    const overlay = control('pauseOverlay', { querySelectorAll: () => controls,
+        contains: el => el === overlay || controls.includes(el),
+        setAttribute() {}, addEventListener() {} });
+    Object.defineProperty(overlay, 'innerHTML', { set() {
+        controls.forEach(el => { el.isConnected = false; });
+        controls = [control('tab', { active: true }), control('setting'), control('resume')];
+        doc.activeElement = doc.body;
+    } });
+    const origin = control('aim'); doc.activeElement = origin;
+    const ctx = vm.createContext({ document: doc, window: {}, state: { phase: 'battle', actionMode: 'spell' },
+        getComputedStyle: () => ({ visibility: 'visible' }), requestAnimationFrame: fn => frames.push(fn),
+        _cinematicEl: null, _activeCinematic: null, _pauseTab: 'scoreboard',
+        _buildPauseScoreboard: () => '', _buildPauseMusic: () => '' });
+    vm.runInContext(section(src, '        let _pauseOverlay = null;', '\n        function togglePauseMenu()').replace('        function togglePauseMenu()', '') + '\n' +
+        section(src, '        function openPauseMenu()', '\n        window.openPauseMenu = openPauseMenu;') + '\n' +
+        section(src, '        function _renderPauseMenu()', '\n        window._setPauseTab = function(tab)') .replace('        window._setPauseTab = function(tab)', '') + '\n' +
+        section(src, '        window._setPauseTab = function(tab)', '\n        };') + '\n' +
+        section(src, '        function closePauseMenu()', '\n        window.closePauseMenu = closePauseMenu;'), ctx);
+    const key = (name, shift = false) => {
+        const e = { key: name, shiftKey: shift, prevented: false, stopped: false,
+            preventDefault() { this.prevented = true; }, stopPropagation() { this.stopped = true; } };
+        ctx._pauseKeydown(e); return e;
+    };
+    return { ctx, doc, overlay, origin, frames, listeners, key, controls: () => controls };
+}
+
+test('pause focuses the menu, wraps both Tab boundaries and contains shortcut bubbling', () => {
+    const h = pauseHarness(); h.ctx.openPauseMenu();
+    const [first, middle, last] = h.controls();
+    assert.equal(h.doc.activeElement, first);
+    last.focus(); assert.equal(h.key('Tab').prevented, true); assert.equal(h.doc.activeElement, first);
+    assert.equal(h.key('Tab', true).prevented, true); assert.equal(h.doc.activeElement, last);
+    middle.focus(); assert.equal(h.key('Tab').prevented, false);
+    assert.equal(h.key('ArrowRight').prevented, false); assert.equal(h.key('ArrowRight').stopped, true);
+    middle.disabled = true; last.hidden = true; first.focus();
+    assert.equal(h.key('Tab').prevented, true); assert.equal(h.doc.activeElement, first);
+    h.controls().forEach(el => { el.hidden = true; });
+    h.key('Tab'); assert.equal(h.doc.activeElement, h.overlay);
+});
+
+test('pause redraw restores an equivalent setting and changing tabs focuses the header', () => {
+    const h = pauseHarness(); h.ctx.openPauseMenu();
+    const old = h.controls()[1]; old.focus(); h.ctx._renderPauseMenu();
+    assert.equal(old.isConnected, false);
+    assert.equal(h.doc.activeElement, h.controls()[1]);
+    h.ctx.window._setPauseTab('audio'); assert.equal(h.doc.activeElement, h.controls()[0]);
+    h.ctx._pauseFocusGuard({ target: h.origin }); assert.equal(h.doc.activeElement, h.controls()[0]);
+});
+
+test('pause restores aiming focus once and a queued open frame cannot reactivate a closed menu', () => {
+    const h = pauseHarness(); h.ctx.openPauseMenu(); h.ctx.openPauseMenu();
+    h.key('Escape');
+    assert.equal(h.doc.activeElement, h.origin);
+    assert.equal(h.ctx.state.actionMode, 'spell');
+    h.frames.forEach(fn => fn()); assert.equal(h.overlay.classList.contains('active'), false);
+    assert.equal(h.listeners.has('focusin'), false);
+    h.doc.activeElement = h.doc.body; h.ctx.closePauseMenu(); assert.equal(h.doc.activeElement, h.doc.body);
+});
+
+test('pause yields to a nested dialog and never restores a removed launcher', () => {
+    const h = pauseHarness(); h.ctx.openPauseMenu(); h.ctx.state.uiDialog = {};
+    h.doc.activeElement = h.doc.body;
+    h.ctx._pauseFocusGuard({ target: h.doc.body }); assert.equal(h.doc.activeElement, h.doc.body);
+    assert.equal(h.key('Escape').stopped, false);
+    h.ctx.state.uiDialog = null; h.origin.isConnected = false;
+    h.ctx.closePauseMenu(); assert.notEqual(h.doc.activeElement, h.origin);
+});

@@ -4,7 +4,7 @@ Last updated: 2026-09-09 (America/Chicago)
 Repository: https://github.com/dirtymondo-sudo/EntropyWars_Prototype
 Baseline: Phase 1 source review pinned to main commit `f0a4c3341631d60cee2ac544e543a13754d21624` (2026-09-09 in America/Chicago). Phase 0 used an unpinned main snapshot.
 Continuation baseline: main commit `4c740fcf6624a30d59e30c4d4dfea1a16dd85b03`, checked 2026-09-09 (America/Chicago). This commit and its predecessor `3da54eff8abbef3da87a1c0f72272919d84bd15e` changed only the uploaded review document; the inspected game source and line references remain unchanged.
-Delivery: this document is repository/reference material. The accompanying local implementation includes four R2 scripts and a matching Render entry page; see the delivery record below. Nothing has been uploaded or deployed.
+Delivery: this document is repository/reference material. The first delivery is now present in repository main `41f8e76b67120eea58c17fd968c5c72d70ef035e`; R2/Render deployment is unverified. The new pause-focus continuation below is local only.
 
 ## Objective
 
@@ -17,7 +17,7 @@ Each phase must leave behind evidence, prioritized findings, a bounded improveme
 - [x] Phase 0 — establish scope, inspect project instructions, and identify initial risks.
 - [ ] Phase 1 — first batch implemented locally: battle label retirement and HQ loading-card ownership pass regression tests; broader lifecycle work and runtime acceptance pending.
 - [ ] Phase 2 — static triage and capture protocol documented; performance baseline and optimizations pending.
-- [ ] Phase 3 — Tab and controller settings routing fixed locally and regression-tested; focus ownership and shared menu implementation pending.
+- [ ] Phase 3 — Tab/controller routing fixes are in repository main; battle/editor pause focus is now implemented locally and regression-tested. Main-menu/HQ settings focus, broader input ownership, shared menu, and runtime acceptance remain pending.
 - [ ] Phase 4 — camera source review, framing gaps, and shot acceptance matrix documented; visual verification pending.
 - [ ] Phase 5 — timing/relay/lifetime review and representative spell matrix documented; implementation and captures pending.
 - [ ] Phase 6 — Arena/TDM rule audit, navigation/planning findings, and decision scenarios documented; observed CPU play pending.
@@ -41,7 +41,24 @@ Full suite: **208 tests, 206 passed, 0 failed, 2 skipped**, including all eight 
 
 Upload the complete `map.js`, `three-renderer.js`, `state.js`, and `ui.js` files to **R2**. The complete `index.html` goes to **Render**, with shared token `20260910-033727-review-cors`. Sync those files plus `scene-lifecycle.test.js`, this plan, `DOOR_MASTER.md`, and `DOOR_HQ_BUILD_PLAN.md` to the repository. Tests and Markdown are repository-only. No assets or embedded asset URLs changed. The accompanying ZIP preserves original root filenames and includes an upload manifest with checksums.
 
-Next: complete UX-01 focus ownership in the existing pause/settings shell, including focus after tab re-render and return to aiming; then address reconnect suspension and effect lifetime/visibility as separate reviewed changes. Do not expand the shared pause design before defining its online/offline suspension contract. Keep visual/FPS acceptance pending until authorized testing supplies evidence.
+Next: complete the remaining UX-01 main-menu/HQ settings focus and broader input-owner audit; the battle/editor pause-focus portion is implemented in the continuation below. Then address reconnect suspension and effect lifetime/visibility as separate reviewed changes. Do not expand the shared pause design before defining its online/offline suspension contract. Keep visual/FPS acceptance pending until authorized testing supplies evidence.
+
+### UX-01 continuation — battle/editor pause focus (2026-09-09 America/Chicago)
+
+Baseline: repository main `41f8e76b67120eea58c17fd968c5c72d70ef035e`. Verified `ui.js`, `index.html`, and this plan against GitHub blob hashes before editing; current `CLAUDE.md` content also matches the local reference. This confirms repository upload of the previous delivery, not deployment to R2/Render.
+
+Implemented locally in existing `ui.js`:
+
+- The pause overlay is a labeled dialog and receives focus on opening. Tab/Shift+Tab wrap over visible enabled controls; an empty menu falls back to the overlay. Focus leaving the menu is redirected while it owns input.
+- Settings redraw records the focused control before replacing the markup and restores its equivalent afterward, with an ordinal fallback for dynamic handlers. Changing tabs focuses the selected tab header.
+- Menu key events retain native control behavior while stopping propagation to document-level battle shortcuts. Escape closes the menu once. Existing window capture for key rebinding runs first; a nested `state.uiDialog` retains priority.
+- Resume restores the connected, visible, enabled prior control once, without changing the pending aiming state. A removed/hidden launcher is not focused. An opening animation callback cannot reactivate an already closed menu.
+
+Validation: **212 tests total, 210 passed, 0 failed, 2 skipped**. Ran the exact package test command with bundled Node v24.19.0 because npm is unavailable. Includes four additional production-function tests for focus boundaries, redraw/tab focus, repeated opening/closing, late animation callbacks, nested-dialog priority, and removed launchers. Repository-wide JavaScript syntax checks passed. Tests use controlled DOM boundaries; no browser playtest, simulation, FPS capture, real controller exercise, or host/guest runtime acceptance ran.
+
+Scope limit: this completes the battle/editor pause-focus slice, not all of UX-01. Main-menu/HQ settings use a separate renderer and still need focus lifecycle work. Window-level capture handlers, held-key release, mouse/pointer-lock ownership, nested-dialog return focus, and controller acceptance remain in the broader input-owner audit. No state-sync fields or relay events were introduced: each player's menu focus stays local. Existing cinematic cancellation and suspension semantics are unchanged and remain separate findings.
+
+Complete-file delivery: `ui.js` → R2; `index.html` → Render (fresh shared token `20260910-040923-focus-cors`); `scene-lifecycle.test.js` and this plan → repository only. Sync the two runtime files to the repository as well. Earlier lifecycle fixes are preserved. No assets changed. This continuation has not been uploaded, committed, pushed, or deployed.
 
 ### Review conclusions so far
 
@@ -619,7 +636,7 @@ Severity describes potential player impact; confidence describes evidence. A Hig
 | Order / batch | Findings and outcome | Files likely involved | Scope / dependency | Required validation |
 | --- | --- | --- | --- | --- |
 | 1. Scene handoff | LIFE-02, LOAD-01: retire battle labels and cancel stale HQ card fades. | `three-renderer.js`, `map.js`, HQ logs, `index.html` | Small; locally implemented and tested in this delivery. | Focused ownership/timer checks; syntax/full suite; repeated transition acceptance. |
-| 2. Input ownership | PAUSE-04/05, UX-01: menu controls cannot mutate the battle or route through the splash. | `state.js`, `ui.js`, `map.js`, `index.html` | Medium; PAUSE-04/05 locally implemented and tested; UX-01 focus work remains. | Target preserved under Tab, controller settings route, focus restore, one Escape action. |
+| 2. Input ownership | PAUSE-04/05, UX-01: menu controls cannot mutate the battle or route through the splash. | `state.js`, `ui.js`, `map.js`, `index.html` | Medium; PAUSE-04/05 locally implemented and tested; Battle/editor pause focus is locally implemented and tested; main-menu/HQ settings and broader input ownership remain. | Target preserved under Tab, controller settings route, focus restore, one Escape action. |
 | 3. Reconnect and boot | LIFE-04/05: current match identity, state recovery, clock suspension across activation. | `battle.js`, `online.js`, possibly `server.js`, `index.html` | Large; inspect relays and server event ordering before adding fields. | Both roles; idle and active turn rejoin; before/after intro timeout; forfeit/rematch. |
 | 4. Effect lifetime and visibility | LIFE-06, VFX-03/04: retire old effects and filter hidden endpoints correctly. | `three-renderer.js`, `three-vfx-effects.js`, `online.js`, `index.html` | Medium; share scene identity with batch 3 where appropriate. | Long/delayed effects across exit; visible/hidden source and destination; preview isolation. |
 | 5. Truthful loading | LOAD-02/03/04: required resource outcomes and usable-frame readiness. | `map.js`, `battle.js`, `three-renderer.js`, `index.html` | Large; pilot one HQ site and battle map. | Cold/warm, failed/slow asset, shader failure, fallback, both-player readiness. |
@@ -642,7 +659,7 @@ Every runtime delivery includes complete changed files and a fresh shared cache 
 
 This is now a cross-system source review with bounded implementation work, not a finished runtime audit. REP-01 through REP-06 still need reproduction or matched captures; the pause divergence is source-confirmed, and new input findings have concrete source paths. A phase closes only when its implementation and listed acceptance evidence are complete. Do not mark all eight phases done because each now has a populated section.
 
-Batch 1 and the PAUSE-04/05 portion of batch 2 are now delivered together, with separate regression checks and no shared-menu redesign. Complete batch 2's focus ownership next, then address reconnect/effect boundaries. Further document-only work should deepen a specific unresolved trace or attach evidence, rather than keep restating the same plan. The most valuable remaining traces are the exact REP-02 element/exit route, full action/scene cancellation ownership, and all current spell kinds' target/scorer/executor correspondence.
+Batch 1 and the PAUSE-04/05 portion of batch 2 are now delivered together, with separate regression checks and no shared-menu redesign. Continue batch 2 with main-menu/HQ settings focus and broader input ownership; battle/editor pause focus is locally implemented. Then address reconnect/effect boundaries. Further document-only work should deepen a specific unresolved trace or attach evidence, rather than keep restating the same plan. The most valuable remaining traces are the exact REP-02 element/exit route, full action/scene cancellation ownership, and all current spell kinds' target/scorer/executor correspondence.
 
 ### Player review
 
@@ -680,6 +697,8 @@ After each phase:
 | 2026-09-09 | 1 follow-up / 3 preparation | Verified main's latest document upload with unchanged source; resolved normal dungeon result and pause-footer bindings; added LIFE-05 reconnect clock persistence finding; expanded PAUSE-01/02 and added PAUSE-03, menu context contract, and acceptance checks. | Source-path and document review only. No game edits, runtime reproduction, or deployment. | First code batch remains LIFE-02/LOAD-01. Next document pass: inspect server rejoin/state delivery for LIFE-05, then main-menu settings close/HQ resume, controller and Tab routing, and cinematic completion ownership for Phase 3. Keep LIFE-03 conditional until the reported minimap element and exit route are identified. |
 | 2026-09-09 | Extended review — all eight areas | Traced server rejoin/heartbeat and effects retirement; confirmed Tab/controller input defects; reviewed model/pair/AoE camera fits and competing beats; traced VFX timing/visibility; resolved standard Arena/TDM rule suspicions; added AI navigation/cache/joint-legality/endgame findings; inventoried generated maps and existing assets; consolidated nine implementation batches. | Data enumeration plus three existing test files: 11 passed, 0 failed, 1 GLB-dependent check skipped. Source and document review; no gameplay changes, full-suite run, browser playtest, simulation, performance capture, or deployment. | Implement batch 1 (LIFE-02/LOAD-01), then batch 2 (PAUSE-04/05 and focus ownership), with complete files and required validation. For continued review, trace full action/scene cancellation and all-kind target/scorer/executor correspondence; attach runtime evidence only when authorized. |
 | 2026-09-09 | 1 implementation / 3 input fixes | Implemented LIFE-02, LOAD-01, PAUSE-04 and PAUSE-05 in four existing scripts; added eight regression checks, refreshed the entry token, and updated both HQ logs. Complete-file delivery prepared. | Full package test command: 206 passed, 0 failed, 2 expected skips; all repo JS syntax checks passed. No live/browser, simulation, FPS, or host/guest acceptance. Not uploaded. | Complete UX-01 focus trap/restore and focus after settings re-render in the existing shell. Then reconnect/effect boundaries; keep texture-readiness and camera/AI findings open. |
+
+| 2026-09-09 | 3 / UX-01 pause-focus implementation | Added battle/editor pause focus trap, redraw/tab focus, local shortcut bubbling boundary, Resume restoration, and late-open callback guard in ui.js. Verified the prior delivery is in repository main. | Full suite: 210 passed, 0 failed, 2 expected skips; syntax checks passed. Four new controlled-DOM regression tests; no browser/controller/host-guest acceptance. | Continue main-menu/HQ settings focus and broader input-owner audit; do not mark UX-01 or Phase 3 complete. New delivery remains local. |
 
 ## Resume instructions
 
