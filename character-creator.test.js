@@ -113,7 +113,17 @@ test('both base rigs remain finite and isolated across all fitted outfits and sh
                     assert.ok(v.length() < 5, 'fitted geometry escaped the metre-scale rig');
                 }
             }
-            assert.equal(bodies[0].geometry.index.count + bodies[1].geometry.index.count, original.geometry.index.count, 'clothing masks must cover exactly the removed body triangles');
+            assert.ok(bodies[0].geometry.index.count > 0 && bodies[1].geometry.index.count > 0);
+            assert.equal(bodies[2].visible, hair !== 'bald');
+            for (const mesh of bodies) {
+                const g = mesh.geometry, weights = g.attributes.skinWeight;
+                for (let i = 0; i < weights.count; i++) {
+                    const sum = weights.getX(i)+weights.getY(i)+weights.getZ(i)+weights.getW(i);
+                    assert.ok(Math.abs(sum-1) < 1e-5, 'cut vertices retain normalized skin weights');
+                }
+                assert.ok(Array.from(g.index.array).every(i => i < g.attributes.position.count));
+                assert.ok(Array.from(g.attributes.normal.array).every(Number.isFinite));
+            }
             assert.deepEqual(Array.from(original.geometry.attributes.position.array), before);
         }
         let disposed = 0; bodies.forEach(n => n.geometry.addEventListener('dispose', () => disposed++));

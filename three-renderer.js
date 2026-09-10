@@ -28607,99 +28607,223 @@ const ThreeRenderer = (function () {
         var parts = [], ownedGeometries = [], ownedMaterials = [];
         var targets = [];
         root.traverse(function (n) { if (n.isSkinnedMesh && n.geometry) targets.push(n); });
-        function material() {
-            var mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, metalness: 0, vertexColors: true, skinning: true, side: THREE.DoubleSide });
-            ownedMaterials.push(mat); return mat;
+        function material(roughness) {
+            var m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: roughness, metalness: 0,
+                vertexColors: true, skinning: true, side: THREE.DoubleSide });
+            ownedMaterials.push(m); return m;
         }
-        function geometry(src) {
-            var g = src.clone(); g._ew_shared = true;
-            g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 3), 3));
+        function geometry() {
+            var g = new THREE.BufferGeometry(); g._ew_shared = true;
             ownedGeometries.push(g); return g;
         }
         targets.forEach(function (mesh) {
-            var src = mesh.geometry;
-            var positions = new Float32Array(src.attributes.position.array);
-            var normals = new Float32Array(src.attributes.normal.array);
-            var ids = src.index ? Array.from(src.index.array) : Array.from({ length: src.attributes.position.count }, function (_, i) { return i; });
-            src.computeBoundingBox();
-            var box = src.boundingBox;
-            var height = box.max.y - box.min.y;
-            mesh.geometry = geometry(src); mesh.material = material();
-            function shell(name) {
-                var n = new THREE.SkinnedMesh(geometry(src), material());
+            var src = mesh.geometry, pos = src.attributes.position;
+            var ids = src.index ? Array.from(src.index.array) : Array.from({ length: pos.count }, function (_, i) { return i; });
+            // Read bounds without changing even the cached source's metadata.
+            var box = new THREE.Box3().setFromBufferAttribute(pos);
+            var adjacent = Array.from({ length: pos.count }, function () { return new Set(); });
+            for (var i = 0; i < ids.length; i += 3) for (var j = 0; j < 3; j++) {
+                adjacent[ids[i + j]].add(ids[i + (j + 1) % 3]); adjacent[ids[i + j]].add(ids[i + (j + 2) % 3]);
+            }
+            mesh.geometry = geometry(); mesh.material = material(0.84);
+            function shell(name, roughness) {
+                var n = new THREE.SkinnedMesh(geometry(), material(roughness));
                 n.name = 'EWCreator_' + name; n.frustumCulled = false;
                 n.position.copy(mesh.position); n.quaternion.copy(mesh.quaternion); n.scale.copy(mesh.scale);
                 n.bindMode = mesh.bindMode; n.bind(mesh.skeleton, mesh.bindMatrix);
-                n.bindMatrixInverse.copy(mesh.bindMatrixInverse);
-                mesh.parent.add(n); return n;
+                n.bindMatrixInverse.copy(mesh.bindMatrixInverse); mesh.parent.add(n); return n;
             }
-            parts.push({ body: mesh, clothes: shell('clothes'), hair: shell('hair'), positions: positions,
-                normals: normals, ids: ids, height: height, minY: box.min.y });
+            parts.push({ body: mesh, clothes: shell('clothes', 0.96), hair: shell('hair', 0.68),
+                src: src, ids: ids, adjacent: adjacent, height: box.max.y - box.min.y, minY: box.min.y });
         });
         function bump(t, center, radius) { var d = (t - center) / radius; return Math.exp(-d * d * 2); }
+        // Cut triangles at the garment/hairline, interpolating the ORIGINAL
+        // bone weights at every new vertex. Never interpolate bone indices.
+        function mix(a, b, t) {
+            var v = { q: [], p: [], n: [], w: {} };
+            ['q', 'p', 'n'].forEach(function (key) {
+                for (var j = 0; j < 3; j++) v[key][j] = a[key][j] + (b[key][j] - a[key][j]) * t;
+            });
+            Object.keys(a.w).forEach(function (k) { v.w[k] = a.w[k] * (1 - t); });
+            Object.keys(b.w).forEach(function (k) { v.w[k] = (v.w[k] || 0) + b.w[k] * t; });
+            return v;
+        }
+        function split(poly, distance) {
+            var inside = [], outside = [], edge = [];
+            for (var i = 0; i < poly.length; i++) {
+                var a = poly[i], b = poly[(i + 1) % poly.length], da = distance(a.q), db = distance(b.q);
+                (da >= 0 ? inside : outside).push(a);
+                if ((da >= 0) !== (db >= 0)) {
+                    var v = mix(a, b, da / (da - db)); inside.push(v); outside.push(v); edge.push(v);
+                }
+            }
+            return { inside: inside, outside: outside, edge: edge };
+        }
         function update(value) {
             var a = normalizeCharacterAppearance(value) || normalizeCharacterAppearance({});
             function color(hex) { var c = new THREE.Color(hex); return unmanagedColor ? c : c.convertSRGBToLinear(); }
             var skin = color(a.skin), top = color(a.topColor), bottom = color(a.bottomColor), hair = color(a.hairColor);
-            parts.forEach(function (p) {
-                var bodyP = p.body.geometry.attributes.position, clothP = p.clothes.geometry.attributes.position, hairP = p.hair.geometry.attributes.position;
-                var bodyC = p.body.geometry.attributes.color, clothC = p.clothes.geometry.attributes.color, hairC = p.hair.geometry.attributes.color;
-                var H = p.height;
-                for (var i = 0; i < bodyP.count; i++) {
-                    var x = p.positions[i * 3], y = p.positions[i * 3 + 1], z = p.positions[i * 3 + 2];
-                    var t = (y - p.minY) / H;
-                    var central = bump(x / H, 0, 0.16);
+            parts.forEach(function (part) {
+                var H = part.height, src = part.src, vertices = [], ids = part.ids;
+                var si = src.attributes.skinIndex, sw = src.attributes.skinWeight, pos = src.attributes.position, normal = src.attributes.normal;
+                for (var i = 0; i < pos.count; i++) {
+                    var x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), t = (y - part.minY) / H;
+                    var q = [x / H, t, z / H], central = bump(q[0], 0, 0.16);
                     var bulk = central * (a.chest * 0.10 * bump(t, 0.74, 0.09) + a.waist * 0.18 * bump(t, 0.61, 0.075) + a.hips * 0.12 * bump(t, 0.52, 0.075));
                     x *= (1 + bulk) * a.width; z *= 1 + bulk;
-                    var headMask = bump(t, 0.935, 0.085);
-                    x *= 1 + a.head * 0.10 * headMask;
-                    z *= 1 + a.head * 0.06 * headMask;
+                    x *= 1 + a.head * 0.10 * bump(t, 0.935, 0.085); z *= 1 + a.head * 0.06 * bump(t, 0.935, 0.085);
                     x *= 1 + a.jaw * 0.13 * bump(t, 0.873, 0.025) * central;
                     x *= 1 + a.cheeks * 0.10 * bump(t, 0.916, 0.022) * central;
-                    // +Z is the face in both uploaded bases. Restrict the nose
-                    // displacement to the front and centre, never the cranium.
                     z += a.nose * H * 0.008 * bump(t, 0.927, 0.025) * bump(x / H, 0, 0.019) * Math.max(0, Math.min(1, z / (H * 0.045)));
-                    bodyP.setXYZ(i, x, y, z);
-                    var nx = p.normals[i * 3], ny = p.normals[i * 3 + 1], nz = p.normals[i * 3 + 2];
-                    clothP.setXYZ(i, x + nx * H * 0.0035, y + ny * H * 0.0035, z + nz * H * 0.0035);
-                    var lift = a.hair === 'crest' ? H * 0.045 * bump(x / H, 0, 0.025) * Math.max(0, (t - 0.94) / 0.06) : 0;
-                    hairP.setXYZ(i, x + nx * H * 0.006, y + ny * H * 0.006 + lift, z + nz * H * 0.006);
-                    bodyC.setXYZ(i, skin.r, skin.g, skin.b);
-                    var c = t < 0.565 ? bottom : top;
-                    clothC.setXYZ(i, c.r, c.g, c.b); hairC.setXYZ(i, hair.r, hair.g, hair.b);
+                    var v = { q: q, p: [x, y, z], n: [normal.getX(i), normal.getY(i), normal.getZ(i)], w: {} };
+                    for (var j = 0; j < 4; j++) { var bone = si.array[i * 4 + j]; v.w[bone] = (v.w[bone] || 0) + sw.array[i * 4 + j]; }
+                    vertices.push(v);
                 }
-                var bodyIds = [], clothIds = [], hairIds = [];
-                for (var k = 0; k < p.ids.length; k += 3) {
-                    var tri = p.ids.slice(k, k + 3), tx = 0, ty = 0, tz = 0;
-                    tri.forEach(function (id) { tx += p.positions[id * 3] / 3; ty += p.positions[id * 3 + 1] / 3; tz += p.positions[id * 3 + 2] / 3; });
-                    var t = (ty - p.minY) / H, ax = Math.abs(tx) / H;
-                    var trouser = t > 0.075 && t < 0.565 && ax < 0.16;
-                    var shirt = t >= 0.555 && t < 0.824 && ax < (a.outfit === 'suit' ? 0.285 : a.outfit === 'tee' ? 0.205 : 0.105);
-                    var clothed = trouser || shirt;
-                    (clothed ? clothIds : bodyIds).push.apply(clothed ? clothIds : bodyIds, tri);
-                    var scalp = t > 0.953 || (t > 0.918 && tz < -H * 0.005);
-                    if (a.hair !== 'bald' && scalp) hairIds.push.apply(hairIds, tri);
+                // Relax anatomical creases for cloth while retaining limb shape.
+                var relaxed = vertices.map(function (v) { return v.p.slice(); });
+                for (var pass = 0; pass < 10; pass++) {
+                    relaxed = relaxed.map(function (p, i) {
+                        var sum = [0, 0, 0], neighbors = part.adjacent[i];
+                        neighbors.forEach(function (n) { for (var j = 0; j < 3; j++) sum[j] += relaxed[n][j]; });
+                        return p.map(function (x, j) { return neighbors.size ? x * 0.55 + sum[j] / neighbors.size * 0.45 : x; });
+                    });
                 }
-                [ [p.body, bodyIds], [p.clothes, clothIds], [p.hair, hairIds] ].forEach(function (pair) {
-                    var g = pair[0].geometry;
-                    g.setIndex(pair[1]); g.attributes.position.needsUpdate = true; g.attributes.color.needsUpdate = true;
-                    // Compute on the complete topology first to avoid seams at
-                    // the clothing mask, then retain the shell's source normals.
-                    g.computeBoundingBox(); g.computeBoundingSphere();
-                    pair[0].visible = pair[1].length > 0;
+                // Smooth shaped-body normals, shared by clipped boundary vertices.
+                function smoothSurface(surface) {
+                var smooth = surface.map(function () { return [0, 0, 0]; });
+                for (var k = 0; k < ids.length; k += 3) {
+                    var pa = surface[ids[k]].p, pb = surface[ids[k + 1]].p, pc = surface[ids[k + 2]].p;
+                    var u = pb.map(function (x, j) { return x - pa[j]; }), v = pc.map(function (x, j) { return x - pa[j]; });
+                    var n = [u[1]*v[2]-u[2]*v[1], u[2]*v[0]-u[0]*v[2], u[0]*v[1]-u[1]*v[0]];
+                    for (var j = 0; j < 3; j++) for (var d = 0; d < 3; d++) smooth[ids[k+j]][d] += n[d];
+                }
+                surface.forEach(function (v, i) { var l = Math.hypot.apply(null, smooth[i]) || 1; v.n = smooth[i].map(function (x) { return x / l; }); });
+                }
+                smoothSurface(vertices);
+                var chestRows = Array.from({ length: 41 }, function () { return 0; });
+                vertices.forEach(function(v) {
+                    if (v.q[1] >= 0.60 && v.q[1] <= 0.80 && Math.abs(v.q[0]) < 0.08 && v.q[2] > 0) {
+                        var row = Math.max(0, Math.min(40, Math.round((v.q[1]-0.60)*200)));
+                        chestRows[row] = Math.max(chestRows[row], v.p[2]);
+                    }
                 });
-                // Body and shells use the deformed complete body's smooth normals.
-                var oldIndex = p.body.geometry.index;
-                p.body.geometry.setIndex(p.ids); p.body.geometry.computeVertexNormals(); p.body.geometry.setIndex(oldIndex);
-                p.clothes.geometry.attributes.normal.copy(p.body.geometry.attributes.normal);
-                p.hair.geometry.computeVertexNormals();
-                p.clothes.geometry.attributes.normal.needsUpdate = true;
+                chestRows = chestRows.map(function(value, row) {
+                    var sum = 0, weight = 0;
+                    for (var r = Math.max(0,row-7); r <= Math.min(40,row+7); r++) {
+                        var w = Math.exp(-Math.pow((r-row)/4,2));
+                        if (chestRows[r] > 0) { sum += chestRows[r]*w; weight += w; }
+                    }
+                    return weight ? sum/weight : value;
+                });
+                var clothVertices = vertices.map(function (v, i) {
+                    var c = mix(v, v, 0), t = v.q[1];
+                    // Generous torso and trouser ease, smaller at cuffs and neck.
+                    var ease = a.outfit === 'suit' ? 0.005 : 0.009;
+                    var offset = H * (ease + 0.004 * bump(t, 0.65, 0.13));
+                    for (var j = 0; j < 3; j++) c.p[j] = relaxed[i][j] + v.n[j] * offset;
+                    c.p[1] = v.p[1]; // Straight hems remain level after cloth relaxation.
+                    // Broad front panels bridge anatomical valleys. A local row
+                    // envelope follows chest/waist sliders without a breast-shaped shell.
+                    if (t > 0.62 && t < 0.80 && v.q[2] > 0 && Math.abs(v.q[0]) < 0.09) {
+                        var row = Math.max(0, Math.min(40, Math.round((t-0.60)*200)));
+                        var rf = Math.max(0, Math.min(39.999, (t-0.60)*200));
+                        var ri = Math.floor(rf), peak = chestRows[ri]*(1-rf+ri)+chestRows[ri+1]*(rf-ri);
+                        var panel = peak * Math.sqrt(Math.max(0.2, 1-0.35*Math.pow(v.q[0]/0.09,2))) + H*ease;
+                        var blend = Math.min(1, (t-0.62)/0.025, (0.80-t)/0.025);
+                        c.p[2] += Math.max(0, panel-c.p[2])*blend;
+                    }
+                    return c;
+                });
+                smoothSurface(clothVertices);
+                var buffers = [0,1,2].map(function () { return { position: [], normal: [], color: [], skinIndex: [], skinWeight: [] }; });
+                function emit(poly, target, baseColor, shade) {
+                    if (poly.length < 3) return;
+                    var b = buffers[target];
+                    for (var k = 1; k < poly.length - 1; k++) [poly[0], poly[k], poly[k+1]].forEach(function (v) {
+                        b.position.push.apply(b.position, v.p); b.normal.push.apply(b.normal, v.n);
+                        var gain = shade || 1, t = v.q[1];
+                        if (target === 1) {
+                            // Narrow sewn hems and waistband, with restrained fabric variation.
+                            gain *= 0.97 + 0.025 * Math.sin(t * 230 + v.q[0] * 90);
+                            if (Math.abs(t - 0.565) < 0.006 || Math.abs(t - 0.08) < 0.005) gain *= 0.70;
+                        }
+                        if (target === 2) gain *= 0.88 + 0.12 * Math.cos(v.q[0] * 850 + v.q[2] * 110);
+                        b.color.push(baseColor.r * gain, baseColor.g * gain, baseColor.b * gain);
+                        var weights = Object.keys(v.w).map(function (id) { return [Number(id), v.w[id]]; }).sort(function (a,b) { return b[1]-a[1]; }).slice(0,4);
+                        var total = weights.reduce(function (s,w) { return s+w[1]; }, 0) || 1;
+                        for (var j = 0; j < 4; j++) { b.skinIndex.push(weights[j] ? weights[j][0] : 0); b.skinWeight.push(weights[j] ? weights[j][1]/total : 0); }
+                    });
+                }
+                var sleeve = a.outfit === 'suit' ? 0.285 : a.outfit === 'tee' ? 0.155 : 0.093;
+                var collar = a.outfit === 'tank' ? 0.792 : 0.819;
+                // A curved neckline leaves the shoulders covered and avoids the
+                // original horizontal off-shoulder cut. All cuts share body edges.
+                var shirtCuts = [function(q) { return q[1]-0.565; }, function(q) { return sleeve-Math.abs(q[0]); },
+                    function(q) { return collar + 0.035 * (1-Math.exp(-Math.pow(q[0]/0.038,2))) - q[1]; }];
+                var pantsCuts = [function(q) { return q[1]-0.08; }, function(q) { return 0.565-q[1]; }, function(q) { return 0.16-Math.abs(q[0]); }];
+                function garment(poly, cuts, baseColor, draw) {
+                    var remaining = poly, rejected = [];
+                    cuts.forEach(function (cut) {
+                        var s = split(remaining, cut); if (s.outside.length >= 3) rejected.push(s.outside);
+                        remaining = s.inside;
+                    });
+                    if (draw) {
+                        emit(remaining, 1, baseColor);
+                        // Turn the open rim inward: collar, sleeves and cuffs have thickness.
+                        for (var j = 0; j < remaining.length; j++) {
+                            var v = remaining[j], w = remaining[(j+1)%remaining.length];
+                            if (cuts.some(function(c) { return Math.abs(c(v.q)) < 0.00005 && Math.abs(c(w.q)) < 0.00005; })) {
+                                var vi = mix(v,v,0), wi = mix(w,w,0);
+                                for (var d = 0; d < 3; d++) { vi.p[d] -= vi.n[d]*H*0.006; wi.p[d] -= wi.n[d]*H*0.006; }
+                                emit([v,vi,wi,w], 1, baseColor, 0.76);
+                            }
+                        }
+                    }
+                    return rejected;
+                }
+                for (var k = 0; k < ids.length; k += 3) {
+                    var tri = ids.slice(k,k+3).map(function(i) { return vertices[i]; });
+                    var uncovered = garment(tri, shirtCuts, top, false);
+                    uncovered.forEach(function(poly) { garment(poly, pantsCuts, bottom, false).forEach(function(p) { emit(p,0,skin); }); });
+                    var ct = ids.slice(k,k+3).map(function(i) { return clothVertices[i]; });
+                    garment(ct, shirtCuts, top, true); garment(ct, pantsCuts, bottom, true);
+                    if (a.hair !== 'bald') {
+                        var scalp = split(tri, function(q) {
+                            var angle = Math.atan2(q[0], q[2]);
+                            var front = Math.max(0, Math.cos(angle));
+                            var line = 0.906 + 0.049 * front + 0.008 * Math.sin(angle)*Math.sin(angle);
+                            return q[1] - line;
+                        }).inside;
+                        scalp = scalp.map(function(v) {
+                            var h = mix(v,v,0), crown = Math.max(0, Math.min(1, (v.q[1]-0.947)/0.053));
+                            crown = crown*crown*(3-2*crown);
+                            var sweep = a.hair === 'crest' ? 0.030 * bump(v.q[0], -0.012, 0.05) : 0.008;
+                            var ridges = 0.0016 * Math.cos(v.q[0]*650 + v.q[2]*80) * crown;
+                            for (var j = 0; j < 3; j++) h.p[j] += h.n[j]*H*(0.004+0.006*crown+ridges);
+                            h.p[1] += H*sweep*crown; h.p[0] += H*sweep*0.48*crown;
+                            h.p[2] -= H*sweep*0.22*crown;
+                            return h;
+                        });
+                        emit(scalp,2,hair);
+                    }
+                }
+                [part.body,part.clothes,part.hair].forEach(function(mesh,index) {
+                    var g = mesh.geometry, b = buffers[index];
+                    if (g.attributes.position) g.dispose(); // Release old GPU buffers before replacing topology.
+                    ['position','normal','color','skinIndex','skinWeight'].forEach(function(key) {
+                        var arr = key === 'skinIndex' ? new Uint16Array(b[key]) : new Float32Array(b[key]);
+                        g.setAttribute(key, new THREE.BufferAttribute(arr, key.indexOf('skin') === 0 ? 4 : 3));
+                    });
+                    g.setIndex(Array.from({ length: b.position.length/3 }, function(_,i) { return i; }));
+                    // Keep the interpolated smooth body normals across cut triangles.
+                    g.normalizeNormals(); g.computeBoundingBox(); g.computeBoundingSphere();
+                    mesh.visible = b.position.length > 0;
+                });
             });
         }
         update(initial);
         return { update: update, dispose: function () {
-            ownedGeometries.forEach(function (g) { g.dispose(); });
-            ownedMaterials.forEach(function (m) { m.dispose(); });
+            ownedGeometries.forEach(function (g) { g.dispose(); }); ownedMaterials.forEach(function (m) { m.dispose(); });
             parts = []; ownedGeometries = []; ownedMaterials = [];
         } };
     }
