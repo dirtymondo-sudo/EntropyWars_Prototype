@@ -854,7 +854,7 @@ const ThreeVFXEffects = (function () {
         var scene = (window.ThreeVFX && ThreeVFX._getScene) ? ThreeVFX._getScene() : null;
         if (!scene) return;
         if (scene !== _flameBurstScene) {
-            _disposeAllFlameBursts(true);
+            _disposeAllFlameBursts();
             _flameBurstScene = scene;
         }
         var key = tx + ',' + ty;
@@ -883,7 +883,7 @@ const ThreeVFXEffects = (function () {
         _flameBurstTime += dt;
         var scene = (window.ThreeVFX && ThreeVFX._getScene) ? ThreeVFX._getScene() : null;
         if (scene !== _flameBurstScene) {
-            _disposeAllFlameBursts(true);
+            _disposeAllFlameBursts();
             _flameBurstScene = scene;
             return;
         }
@@ -9158,7 +9158,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             group.add(tor);
         }
 
-        return _sigRun(group, ms, function (el) {
+        var entry = _sigRun(group, ms, function (el) {
             var t = _sigClamp01(el / ms);
             var e = _sigEaseOutCubic(t);
             var r = r0 + (r1 - r0) * e;
@@ -9170,6 +9170,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 torMat.opacity = 0.5 * (1 - t);
             }
         });
+        // Registration can refuse at the active cap or after scene retirement.
+        if (!entry) {
+            mesh.geometry.dispose(); mat.dispose();
+            if (tor) { tor.geometry.dispose(); torMat.dispose(); }
+        }
+        return entry;
     }
 
     /* ── floating, expanding light orb ───────────────────────────────────
@@ -9280,13 +9286,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         mesh.renderOrder = 166;
         group.add(mesh);
 
-        return _sigRun(group, ms, function (el) {
+        var entry = _sigRun(group, ms, function (el) {
             var t = _sigClamp01(el / ms);
             var s = size * (0.55 + 0.9 * _sigEaseOutCubic(t));
             mesh.scale.set(s, s, s);
             mesh.rotation.z = t * 0.5;
             mat.opacity = 0.95 * (1 - t) * (t < 0.12 ? t / 0.12 : 1);
         });
+        // Registration can refuse at the active cap or after scene retirement.
+        if (!entry) {
+            mesh.geometry.dispose(); mat.dispose();
+        }
+        return entry;
     }
 
     /* ── vertical column of light (heaven pillar) ──────────────────────────
