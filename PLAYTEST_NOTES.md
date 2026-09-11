@@ -10043,3 +10043,17 @@ fit, fabric + face bake — on swiftshader. Prints page errors and every
 tests could not see. It needs `node_modules/{three@0.128.0,react,react-dom}`
 — install them in ONE `npm i --no-save` (a later `--no-save` install prunes
 the earlier extras).
+
+**Headless renders without a browser (2026-09-11 rev 4):** `node creator-render.js
+[male|female] [tee|tank|suit] [tag] ['{"beard":"goatee",…}']` (needs only
+`three@0.128.0`) builds the rig the way character-creator.test.js does and
+software-rasterises body / top / bottom / the FACE shell with its baked texture
+to `shots/creator-render/<tag>_<gender>_<outfit>_<view>.png` — `VIEWS=torso,
+torso34,side,head,head34,eyes,full`, `CROP=1` for a 3× texel crop round each
+eye, `RENDERER=<path>` for a before / after of another three-renderer.js copy.
+Lambert + key + fill, no hair / fabric textures — geometry, normals and paint.
+It found the chest plank, the temple-set eyes, the under-jaw "mouth bag"
+patches and the rectangular beard in one session; reach for it before the
+Playwright probe. Timing caveat: the vm sandbox (this tool and the test) makes
+global lookups interceptor-slow — a bake reads ~4 s there and ~265 ms in the
+same realm / the browser.

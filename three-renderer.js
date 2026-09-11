@@ -29006,10 +29006,20 @@ const ThreeRenderer = (function () {
      *  `node character-rig.js bodies`) into
      *    • BODY   — the base mesh, shaped by the sliders (bump fields on the
      *               torso and face), drawn only where no garment covers it,
-     *               wearing a PAINTED skin texture: skin tone + eyes (on the
-     *               sculpted eyeballs found by _ccFaceLandmarks), brows, lips,
-     *               facial hair, a touch of blush — rasterised through the
-     *               base mesh's own UVs (_ccBakeSkin), one canvas per instance.
+     *               the skin tone as VERTEX colour (no texture at all).
+     *    • FACE   — rev 4 (2026-09-11): the head triangles (t > CC_HEAD_T) are
+     *               their OWN shell wearing a PAINTED skin texture at
+     *               CC_FACE_TEX (2048×1024, half on mobile) through its OWN
+     *               CYLINDRICAL UVs (`_ccFaceUv`: u = the angle round the
+     *               head, seam at the back, v = height — the base's atlas
+     *               scatters the head over islands at ~9 texels/cm and ran a
+     *               seam through one eye; this gives ~35 texels/cm and no
+     *               seam on the face): skin tone + eyes, brows, lips, facial
+     *               hair, a touch of blush, rasterised in that UV space
+     *               (_ccBakeSkin), one canvas per instance. The eyes sit where
+     *               a face HAS eyes (_ccFaceLandmarks: anthropometric — the
+     *               bases' sockets are too faint to detect, the old recess
+     *               search drifted to the temples).
      *    • TOP / BOTTOM — garment shells cut from the relaxed body topology
      *               (interpolated clipping; cut vertices carry blended bone
      *               weights) with a FABRIC tileable (sprites.js EW_FABRICS)
@@ -29019,6 +29029,13 @@ const ThreeRenderer = (function () {
      *               style's scalp cap; top-aligned; refits when the head
      *               slider moves), skinned 100 % to the Head bone, its diffuse
      *               turned to a grey mask and tinted by vertex colour.
+     *  SHADING (rev 4): the 30k-tri bases are lumpy, so every shell's vertex
+     *  normals are relaxed over the welded one-ring (`smoothNormals`, strong
+     *  on the body and the cloth, light on the face so the nose and lips keep
+     *  their edges) and the skin is matte-ish (roughness 0.8). THE DRAPE (rev
+     *  4): the shirt front is no longer a flat chest plank — cloth bridges the
+     *  sternum valley with the per-row upper hull and hangs from the bust
+     *  (a column drape with a maximum fall slope), see `drapeFront`.
      *  Every buffer, material and canvas texture is instance-owned and
      *  disposed by rig.dispose(); the GLB caches are never edited. Tints
      *  travel as VERTEX COLOURS (not material.color) because the board
@@ -29030,7 +29047,10 @@ const ThreeRenderer = (function () {
      *  [x/H, (y-minY)/H, z/H] is the pose-independent body frame every
      *  landmark below is written in (t = q[1]: feet 0, crown 1).
      * ══════════════════════════════════════════════════════════════════ */
-    var CC_SKIN_TEX = 1024;     // painted skin canvas (px)
+    var CC_FACE_TEX = 2048;     // painted face canvas width (px, height = half); halved on mobile (window.EW_MOBILE)
+    var CC_HEAD_T = 0.856;      // the face shell starts here (q units) — above the highest collar (0.854)
+    var CC_FACE_V0 = 0.85;      // the face texture's v range in q height: [CC_FACE_V0, CC_FACE_V1] → v 1 … 0
+    var CC_FACE_V1 = 1.005;
     var CC_FABRIC_TEX = 512;    // fabric tile working size (px)
     var _ccImageCache = {};     // url → { img, cbs, failed }
     var _ccFabricCache = {};    // url|enc → { tex, cbs, failed }
@@ -29040,7 +29060,20 @@ const ThreeRenderer = (function () {
     // The face in q units (see _ccFaceLandmarks for the eyes). Both bases share
     // these to the millimetre (measured 2026-09-11: mouth line 0.889, nose tip
     // 0.911–0.918, chin 0.868, neck 0.862, ear tops 0.936).
-    var CC_FACE = { mouthT: 0.889, mouthHalfW: 0.0185, upperLip: 0.0078, lowerLip: 0.0068, noseT: 0.915, chinT: 0.868, neckT: 0.861, cheekT: 0.913, cheekX: 0.031 };
+    var CC_FACE = { mouthT: 0.889, mouthHalfW: 0.0155, upperLip: 0.0056, lowerLip: 0.0062, noseT: 0.915, chinT: 0.868, neckT: 0.861, cheekT: 0.913, cheekX: 0.031 };
+    function _ccFaceTexSize() { return (typeof window !== 'undefined' && window.EW_MOBILE) ? CC_FACE_TEX >> 1 : CC_FACE_TEX; }
+    /* The face shell's own UVs from the q frame (pose- and slider-independent):
+       u = the angle round the head's axis (0.5 = straight ahead, the seam at
+       the back), v = height. Triangles that cross the seam are re-emitted with
+       their own vertices (u + 1, RepeatWrapping) — see rebuildGeometry. */
+    function _ccFaceUv(Q, N) {
+        var uv = new Float32Array(N * 2);
+        for (var i = 0; i < N; i++) {
+            uv[i * 2] = 0.5 + Math.atan2(Q[i * 3], Q[i * 3 + 2]) / (2 * Math.PI);
+            uv[i * 2 + 1] = 1 - (Q[i * 3 + 1] - CC_FACE_V0) / (CC_FACE_V1 - CC_FACE_V0);
+        }
+        return uv;
+    }
 
     function _ccEncoding(unmanaged) { return unmanaged ? THREE.LinearEncoding : THREE.sRGBEncoding; }
     function _ccHex(hex) { var c = new THREE.Color(hex); return [c.r, c.g, c.b]; }
@@ -29170,30 +29203,28 @@ const ThreeRenderer = (function () {
         done();
     }
 
-    /* Where the eyes are, per base mesh: the depth-weighted centroid of the
-       recessed vertices in each socket (a vertex is recessed by how far it sits
-       behind the highest neighbour within 12 mm — the eyeball floor of the
-       socket, not the brow ridge or the nose bridge). Measured 2026-09-11:
-       male ±0.0295 / 0.9415, female ±0.0287 / 0.9384. Falls back to the male
-       numbers when a mesh has no readable sockets. */
+    /* Where the eyes are, per base mesh — ANTHROPOMETRIC (rev 4, 2026-09-11).
+       The bases' sockets are a faint 3–5 mm dip (measured on the fine depth map:
+       male x ±0.020 / t 0.938, female ±0.021 / 0.936), far too soft for the old
+       depth-weighted recess search, which settled on the deep outer corners by
+       the temples (±0.0295 — a 10 cm pupil distance, "eyes too far apart").
+       A face's eyes sit at ±0.53 × the front half-width at eye level (real
+       heads: 63 mm apart on a 150 mm skull) and 53 % of the way from the chin
+       to the crown; both are read off the mesh so a wider base keeps its
+       proportions. Falls back to the male numbers when the head is unreadable. */
     function _ccFaceLandmarks(q, nz) {
-        var out = { eyes: [] };
-        for (var side = -1; side <= 1; side += 2) {
-            var cand = [];
-            for (var i = 0; i < q.length; i++) {
-                var v = q[i];
-                if (v[1] > 0.925 && v[1] < 0.962 && Math.sign(v[0]) === side && Math.abs(v[0]) > 0.014 && Math.abs(v[0]) < 0.052 && v[2] > 0.02 && nz[i] > -0.2) cand.push(v);
-            }
-            var sx = 0, st = 0, sw = 0;
-            for (var a = 0; a < cand.length; a++) {
-                var va = cand[a], hull = va[2];
-                for (var b = 0; b < cand.length; b++) { var vb = cand[b]; if (vb[2] > hull && Math.abs(vb[0] - va[0]) < 0.012 && Math.abs(vb[1] - va[1]) < 0.012) hull = vb[2]; }
-                var depth = hull - va[2];
-                if (depth > 0.003) { sx += va[0] * depth; st += va[1] * depth; sw += depth; }
-            }
-            out.eyes.push(sw > 0 ? { x: sx / sw, t: st / sw } : { x: side * 0.0295, t: 0.9415 });
+        var frontW = 0, chin = Infinity, crown = 0;
+        for (var i = 0; i < q.length; i++) {
+            var v = q[i];
+            if (v[1] > 0.93 && v[1] < 0.95 && v[2] > 0.02 && nz[i] > -0.2) { var ax = Math.abs(v[0]); if (ax > frontW) frontW = ax; }
+            if (v[2] > 0.03 && Math.abs(v[0]) < 0.012 && v[1] > 0.85 && v[1] < 0.9 && v[1] < chin) chin = v[1];
+            if (v[1] > crown) crown = v[1];
         }
-        return out;
+        if (!(frontW > 0.02 && frontW < 0.06)) frontW = 0.0368;
+        if (!(chin > 0.85 && chin < 0.89)) chin = CC_FACE.chinT;
+        if (!(crown > 0.95)) crown = 1;
+        var ex = 0.53 * frontW, et = chin + 0.53 * (crown - chin);
+        return { eyes: [{ x: -ex, t: et }, { x: ex, t: et }], frontW: frontW, chin: chin };
     }
 
     /* Bake the skin: fill with the skin tone, then paint the face onto the head
@@ -29203,111 +29234,157 @@ const ThreeRenderer = (function () {
        whatever the UV layout does. Returns a CanvasTexture (flipY false, glTF
        UV convention) or null without a DOM. */
     function _ccBakeSkin(part, a, unmanaged) {
-        var W = CC_SKIN_TEX, cnv = _ccCanvas(W, W);
+        var W = _ccFaceTexSize(), HT = W >> 1, cnv = _ccCanvas(W, HT);
         if (!cnv) return null;
         var g = cnv.getContext('2d');
         var skin = _ccHex(a.skin), hair = _ccHex(a.hairColor), eye = _ccHex(a.eyeColor), lip = _ccHex(a.lipColor);
-        g.fillStyle = a.skin; g.fillRect(0, 0, W, W);
-        var id = g.getImageData(0, 0, W, W), px = id.data;
-        var lm = part.face, E0 = lm.eyes[0], E1 = lm.eyes[1];
-        var eyeK = 1 + 0.22 * a.eyeSize;
-        var rx = 0.0097 * eyeK, ry = 0.0059 * eyeK, irisR = 0.0054 * (1 + 0.12 * a.eyeSize), pupilR = 0.0023;
-        var browH = 0.0011 + 0.0023 * a.brows;
+        g.fillStyle = a.skin; g.fillRect(0, 0, W, HT);
+        var id = g.getImageData(0, 0, W, HT), px = id.data;
+        var lm = part.landmarks, E0 = lm.eyes[0], E1 = lm.eyes[1];
+        // eye proportions (q units, H ≈ 1.7 m): a 3 cm wide, 1.6 cm tall almond, the iris
+        // ~45 % of the width, the pupil a third of the iris — real proportions, a touch large
+        var eyeK = 1 + 0.2 * a.eyeSize;
+        var rx = 0.0088 * eyeK, ry = 0.0048 * eyeK, irisR = 0.0042 * (1 + 0.12 * a.eyeSize), pupilR = 0.0017;
+        var browH = 0.0024 + 0.0018 * a.brows;        // half-height at the inner end (q): ~5 mm brows by default
         var brow = [hair[0] * 0.55, hair[1] * 0.55, hair[2] * 0.55];
         if (_ccLum(brow) > 0.5) brow = [brow[0] * 0.6, brow[1] * 0.6, brow[2] * 0.6];
         var beardCol = [hair[0] * 0.62, hair[1] * 0.62, hair[2] * 0.62];
-        var beardA = a.beard === 'stubble' ? 0.42 : a.beard === 'none' ? 0 : 0.94;
-        var F = CC_FACE, blush = [Math.min(1, skin[0] * 1.05 + 0.08), skin[1] * 0.78, skin[2] * 0.78];
-        function mix(c, d, k) { c[0] += (d[0] - c[0]) * k; c[1] += (d[1] - c[1]) * k; c[2] += (d[2] - c[2]) * k; }
-        function sstep(e0, e1, x) { var t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); }
+        var beardA = a.beard === 'stubble' ? 0.4 : a.beard === 'none' ? 0 : 0.86;
+        var F = CC_FACE, blushR = Math.min(1, skin[0] * 1.05 + 0.08), blushG = skin[1] * 0.78, blushB = skin[2] * 0.78;
+        var creaseR = skin[0] * 0.72, creaseG = skin[1] * 0.66, creaseB = skin[2] * 0.64;
+        var lipDR = lip[0] * 0.85, lipDG = lip[1] * 0.85, lipDB = lip[2] * 0.85;
+        // The painter runs per texel over ~1M texels: no allocations (scalar mixes), every feature
+        // gated by a cheap band test first (rev 4 — the array-literal version took 1.7 s per bake).
+        function mix3(r, g, bb, k) { col[0] += (r - col[0]) * k; col[1] += (g - col[1]) * k; col[2] += (bb - col[2]) * k; }
+        function sstep(e0, e1, x) { var t = (x - e0) / (e1 - e0); t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); }
         var col = [0, 0, 0];
+        var browTop = E0.t + 0.0128 + 0.0032 + 0.0012 + browH * 1.3 + 0.002, browBot = E0.t + 0.0128 - browH * 1.3 - 0.002;
+        var eyeBandT = 2.2 * ry;
         function faceColor(x, t, z, nx, ny, nz) {
             col[0] = skin[0]; col[1] = skin[1]; col[2] = skin[2];
-            // gentle pore / tone variation so the skin is not a flat plastic
-            var grain = 1 + 0.025 * Math.sin(x * 3100 + t * 1700) * Math.sin(t * 4300 - z * 2900);
+            // gentle pore / tone variation so the skin is not a flat plastic (kept faint: at this
+            // resolution a strong sine grain reads as a moiré)
+            var grain = 1 + 0.012 * Math.sin(x * 1500 + t * 900) * Math.sin(t * 2100 - z * 1300);
             col[0] *= grain; col[1] *= grain; col[2] *= grain;
-            var front = nz > -0.15;
-            // the mouth bag (geometry inside the head) stays dark
-            if (z < 0.03 && t > 0.878 && t < 0.9 && Math.abs(x) < 0.022) { mix(col, [0.12, 0.05, 0.05], 0.85); return col; }
-            if (front) {
-                // blush
-                var bx = (Math.abs(x) - F.cheekX) / 0.016, bt = (t - F.cheekT) / 0.011;
-                var bd = bx * bx + bt * bt; if (bd < 1) mix(col, blush, 0.11 * (1 - bd));
-                // lips
-                var lw = F.mouthHalfW, dt = t - F.mouthT;
-                if (Math.abs(x) < lw) {
-                    var bow = 1 - 0.22 * Math.exp(-(x * x) / (0.0045 * 0.0045));   // cupid's bow dips the upper edge
-                    var half = Math.sqrt(Math.max(0, 1 - (x / lw) * (x / lw)));
-                    if (dt >= 0 && dt < F.upperLip * half * bow) { var ku = 1 - sstep(0.75, 1, dt / (F.upperLip * half * bow)); mix(col, [lip[0] * 0.82, lip[1] * 0.82, lip[2] * 0.82], 0.72 * ku); }
-                    else if (dt < 0 && -dt < F.lowerLip * half) { var kl = 1 - sstep(0.7, 1, -dt / (F.lowerLip * half)); mix(col, lip, 0.66 * kl); var shine = Math.exp(-Math.pow((-dt - F.lowerLip * 0.4) / 0.0016, 2)) * Math.exp(-x * x / 0.0002); mix(col, [1, 0.95, 0.93], 0.18 * shine); }
-                    if (Math.abs(dt) < 0.0007 * half + 0.0002) mix(col, [0.22, 0.08, 0.08], 0.7 * half);
-                }
-                // facial hair (jaw, chin, upper lip) — never on the lips, never under the jaw
-                if (beardA > 0 && ny > -0.55 && z > -0.012 && t > F.neckT && t < F.mouthT + 0.015) {
-                    var onLip = Math.abs(x) < lw && dt > -F.lowerLip && dt < F.upperLip;
-                    var moustache = dt > F.upperLip * 0.6 && dt < 0.014 && Math.abs(x) < 0.03;
-                    var chin = dt < -F.lowerLip * 0.5;
-                    // the sides: cheeks below the cheekbone line, outside the mouth, down the jaw
-                    var sides = Math.abs(x) > lw * 0.9 && dt < 0.012 && dt >= -F.lowerLip * 0.5;
-                    var zone = a.beard === 'goatee' ? ((chin && Math.abs(x) < 0.017 + 0.3 * (F.mouthT - t)) || moustache) : (chin || moustache || sides);
-                    if (zone && !onLip) {
-                        var edge = sstep(F.neckT, F.neckT + 0.006, t) * (chin ? sstep(-F.lowerLip * 0.5, -F.lowerLip * 0.5 - 0.004, dt) : sides ? sstep(0.014, 0.008, dt) * sstep(lw * 0.9, lw * 1.3, Math.abs(x)) : sstep(0.014, 0.011, dt));
-                        var strands = 0.75 + 0.25 * Math.sin(x * 5200 + t * 900) * Math.sin(t * 6100 + z * 700);
-                        mix(col, beardCol, beardA * edge * strands);
+            // the mouth bag (geometry INSIDE the head, behind the lips) stays dark — z < 0 only: the
+            // under-jaw skin sits at z 0.015–0.03 in the same t band and used to get the same paint
+            if (z < -0.008) { if (t > 0.878 && t < 0.9 && Math.abs(x) < 0.025) mix3(0.12, 0.05, 0.05, 0.85); return col; }
+            if (nz <= -0.15 || t > browTop || t < F.neckT) return col;
+            var ax = Math.abs(x), lw = F.mouthHalfW, dt = t - F.mouthT;
+            // blush
+            var bx = (ax - F.cheekX) / 0.016, bt = (t - F.cheekT) / 0.011;
+            var bd = bx * bx + bt * bt; if (bd < 1) mix3(blushR, blushG, blushB, 0.11 * (1 - bd));
+            // lips
+            if (ax < lw && dt > -F.lowerLip && dt < F.upperLip) {
+                var bow = 1 - 0.22 * Math.exp(-(x * x) / (0.0045 * 0.0045));   // cupid's bow dips the upper edge
+                var half = Math.sqrt(Math.max(0, 1 - (x / lw) * (x / lw)));
+                if (dt >= 0 && dt < F.upperLip * half * bow) { var ku = 1 - sstep(0.7, 1, dt / (F.upperLip * half * bow)); mix3(lipDR, lipDG, lipDB, 0.55 * ku); }
+                else if (dt < 0 && -dt < F.lowerLip * half) { var kl = 1 - sstep(0.65, 1, -dt / (F.lowerLip * half)); mix3(lip[0], lip[1], lip[2], 0.5 * kl); var shine = Math.exp(-Math.pow((-dt - F.lowerLip * 0.4) / 0.0016, 2)) * Math.exp(-x * x / 0.0002); mix3(1, 0.95, 0.93, 0.16 * shine); }
+                if (Math.abs(dt) < 0.0005 * half + 0.00015) mix3(0.3, 0.12, 0.12, 0.6 * half);
+            }
+            // facial hair — THE BEARD MASK (rev 4): the chin, the jaw and the cheeks below a line that
+            // rises from the mouth corners toward the ears (sideburns), the upper lip, and the jaw's
+            // UNDERSIDE (down-facing normals); never the lips, the ears, the jaw angle's far side or
+            // the neck (the old rule was a band at mouth height out to the ears plus everything
+            // down to the neck line — crisp paint showed it as rectangles). Every edge is soft.
+            if (beardA > 0 && z > -0.02 && nz > -0.75 && t > F.neckT - 0.006 && t < F.mouthT + 0.032) {
+                var sideT = F.mouthT + 0.010 + 0.016 * sstep(lw + 0.005, 0.045, ax);   // the beard's top edge by |x|: cheek → sideburn
+                var mask = sstep(sideT + 0.005, sideT - 0.003, t)
+                    * Math.max(sstep(0.868, 0.878, t), sstep(-0.1, -0.4, ny))            // below the chin only on the jaw's underside
+                    * sstep(-0.012, 0.006, z) * sstep(-0.7, -0.3, nz)                     // stops at the jaw angle
+                    * (1 - sstep(0.036, 0.048, ax) * sstep(0.02, 0.006, z))               // never the ear (far out and not forward)
+                    * sstep(F.neckT - 0.004, F.neckT + 0.004, t);
+                if (mask > 0.01) {
+                    var inLip = sstep(lw * 1.25, lw * 0.95, ax) * sstep(-F.lowerLip * 1.4, -F.lowerLip * 0.9, dt) * sstep(F.upperLip * 1.4, F.upperLip * 0.9, dt);
+                    mask *= 1 - inLip;
+                    if (a.beard === 'goatee') {
+                        var chinZone = sstep(0.018 + 0.25 * (F.mouthT - t), 0.011 + 0.25 * (F.mouthT - t), ax) * sstep(-F.lowerLip * 0.5, -F.lowerLip * 1.1, dt);
+                        var moustacheZone = sstep(lw * 1.25, lw * 0.9, ax) * sstep(F.upperLip * 0.6, F.upperLip * 1.1, dt) * sstep(0.014, 0.010, dt);
+                        mask *= Math.max(chinZone, moustacheZone);
                     }
+                    var strands = 0.82 + 0.18 * Math.sin(x * 5200 + t * 900) * Math.sin(t * 6100 + z * 700);   // a soft mottle, never a hatching
+                    mix3(beardCol[0], beardCol[1], beardCol[2], beardA * mask * strands);
                 }
-                // eyes + brows
-                for (var e = 0; e < 2; e++) {
-                    var E = e ? E1 : E0, side = E.x < 0 ? -1 : 1;
-                    var ex = (x - E.x) / rx, et = (t - E.t) / ry, d = Math.sqrt(ex * ex + et * et);
-                    if (d < 1.2) {
-                        if (d < 1) {
-                            var sclera = [0.96, 0.94, 0.92];
-                            mix(col, sclera, 1);
-                            var ix = (x - E.x) / irisR, it = (t - E.t + 0.0004) / irisR, di = Math.sqrt(ix * ix + it * it);
-                            if (di < 1.06) {
-                                var rim = sstep(1.06, 0.92, di);
-                                var shade = 0.55 + 0.6 * (1 - di * di) ;
-                                mix(col, [eye[0] * shade, eye[1] * shade, eye[2] * shade], rim);
-                                var fib = 1 + 0.12 * Math.sin(Math.atan2(it, ix) * 26) * di;
-                                col[0] *= fib; col[1] *= fib; col[2] *= fib;
-                                var dp = Math.sqrt(ix * ix + it * it) * irisR / pupilR;
-                                mix(col, [0.03, 0.02, 0.02], sstep(1.15, 0.85, dp));
-                                var hx = ix + 0.42 * side, ht = it - 0.42, hd = Math.sqrt(hx * hx + ht * ht);
-                                mix(col, [1, 1, 1], 0.85 * sstep(0.3, 0.12, hd));
-                            }
-                            // lid shadow across the top of the eye
-                            if (et > 0.25) mix(col, [0.35, 0.25, 0.22], 0.35 * sstep(0.25, 1, et) * (1 - sstep(0.85, 1, d)));
-                            mix(col, [0.16, 0.09, 0.08], 0.9 * sstep(0.88, 1, d) * (et > -0.2 ? 1 : 0.35));   // lash line
-                        } else {
-                            var lashK = et > 0 ? sstep(1.2, 1.02, d) : 0.4 * sstep(1.12, 1.0, d);
-                            mix(col, [0.16, 0.09, 0.08], 0.75 * lashK);
+            }
+            if (t < E0.t - eyeBandT) return col;
+            // eyes + brows
+            for (var e = 0; e < 2; e++) {
+                var E = e ? E1 : E0, side = E.x < 0 ? -1 : 1;
+                // THE ALMOND (rev 4): ex runs -1 (inner corner) … +1 (outer corner); the opening is a
+                // lens — a flatter upper lid, a shallower lower lid, the outer corner a touch higher —
+                // and the iris is as tall as the opening, its top under the upper lid, so the eye
+                // reads relaxed instead of wide-eyed (a round white with a small iris in the middle).
+                var ex = (x - E.x) / rx * side;
+                if (ex > -1.3 && ex < 1.3 && Math.abs(t - E.t) < eyeBandT) {
+                    var et = (t - E.t) / ry - 0.15 * ex;
+                    var lens = Math.max(0, 1 - ex * ex);
+                    var up = Math.pow(lens, 0.72), lo = 0.78 * Math.pow(lens, 0.9);
+                    var dU = up - et, dL = et + lo;           // signed distance (ry units) inside each lid
+                    // every edge below is ~2 texels soft — hard edges alias
+                    if (lens > 0 && dU > -0.1 && dL > -0.1) {
+                        mix3(0.93, 0.91, 0.89, sstep(-0.1, 0.12, Math.min(dU, dL)));
+                        // the whites turn warm toward the corners and fall into the upper lid's shadow
+                        mix3(0.72, 0.55, 0.52, 0.4 * Math.pow(ex * ex, 2));
+                        mix3(0.42, 0.28, 0.26, 0.42 * sstep(0.5, 0, dU));
+                        var ix = (x - E.x) / irisR, it = (t - (E.t + 0.08 * ry)) / irisR, di = Math.sqrt(ix * ix + it * it);
+                        if (di < 1.14) {
+                            var rim = sstep(1.14, 0.9, di);
+                            var shade = 0.5 + 0.65 * (1 - di * di);
+                            mix3(eye[0] * shade, eye[1] * shade, eye[2] * shade, rim);
+                            var fib = 1 + 0.1 * Math.sin(Math.atan2(it, ix) * 24) * di;
+                            col[0] *= fib; col[1] *= fib; col[2] *= fib;
+                            mix3(0.05, 0.03, 0.03, 0.7 * sstep(0.78, 1.0, di) * rim);        // limbal ring
+                            mix3(0.03, 0.02, 0.02, sstep(1.25, 0.8, di * irisR / pupilR));    // pupil
+                            var hx = ix - 0.36, ht = it - 0.36, hd = Math.sqrt(hx * hx + ht * ht);  // one key light: the same side in both eyes
+                            mix3(1, 1, 1, 0.9 * sstep(0.34, 0.12, hd));
+                            mix3(0.42, 0.28, 0.26, 0.35 * sstep(0.5, 0, dU) * rim);           // the lid's shadow crosses the iris too
                         }
+                        mix3(0.14, 0.08, 0.07, 0.5 * sstep(0.2, 0, Math.min(dU, dL * 1.6)));   // the wet line at both rims
                     }
-                    // brow: an arc above the socket, thicker inside, tapering outward, outer end higher
-                    var u = (x - E.x) / 0.0175 * side;               // -1 inner … +1 outer
-                    if (u > -1.05 && u < 1.15) {
-                        var arcT = E.t + 0.0172 + 0.0036 * (1 - Math.pow(u - 0.2, 2)) + 0.0009 * u;
-                        var hh = browH * (1 - 0.45 * Math.max(0, u)) * (1 - 0.35 * Math.max(0, -u - 0.5) / 0.5);
+                    if (lens > 0) {
+                        // lashes: a full upper line, thicker toward the outer corner; a faint lower one (soft both ways)
+                        var upperLash = sstep(-0.34 - 0.12 * Math.max(0, ex), -0.12, dU) * sstep(0.12, -0.04, dU);
+                        var lowerLash = sstep(-0.16, -0.04, dL) * sstep(0.1, -0.02, dL);
+                        mix3(0.13, 0.07, 0.06, (0.85 * upperLash + 0.3 * lowerLash) * sstep(0, 0.12, lens));
+                        // the crease of the upper lid, a soft shadow a little above the lash line
+                        mix3(creaseR, creaseG, creaseB, 0.26 * Math.exp(-Math.pow((-dU - 0.62) / 0.24, 2)) * lens);
+                    }
+                }
+                // brow: an arc above the socket, thicker inside, tapering outward, outer end higher.
+                // Its inner end stops short of the nose bridge (the eyes are close now — no unibrow).
+                if (t > browBot) {
+                    var u = (x - E.x) / 0.0165 * side;               // -0.7 inner … +1.15 outer
+                    if (u > -0.8 && u < 1.2) {
+                        var arcT = E.t + 0.0128 + 0.0032 * (1 - Math.pow(u - 0.15, 2)) + 0.0012 * u;
+                        var hh = browH * (1 - 0.5 * Math.max(0, u)) * (1 - 0.35 * Math.max(0, -u - 0.25) / 0.5);
                         var dd = Math.abs(t - arcT) / Math.max(1e-4, hh);
-                        var ends = sstep(-1.05, -0.9, u) * sstep(1.15, 0.95, u);
-                        var hairs = 0.8 + 0.2 * Math.sin(x * 6200 + t * 1400);
-                        mix(col, brow, 0.92 * sstep(1.15, 0.7, dd) * ends * hairs);
+                        if (dd < 1.25) {
+                            var ends = sstep(-0.78, -0.5, u) * sstep(1.2, 0.9, u);
+                            var hairs = 0.975 + 0.025 * Math.sin(x * 9000 + t * 2600);   // the faintest grain — stripes read as hatching
+                            mix3(brow[0], brow[1], brow[2], 0.88 * sstep(1.25, 0.5, dd) * ends * hairs);
+                        }
                     }
                 }
             }
             return col;
         }
-        // rasterise the head triangles in UV space
-        var src = part.src, pos = src.attributes.position, nrm = src.attributes.normal, uv = src.attributes.uv, ids = part.ids;
+        // rasterise the head triangles in the face shell's cylindrical UV space (seam triangles unwrap to u + 1 and wrap back per texel)
+        var src = part.src, pos = src.attributes.position, nrm = src.attributes.normal, uv = part.faceUv, ids = part.ids;
         var H = part.height, minY = part.minY, tris = part.headTris;
+        var Qz = part.Q, zoneT = browTop + 0.004;
+        function inZone(i) { var qz = Qz[i * 3 + 2], qt = Qz[i * 3 + 1]; return qt < zoneT && (qz > -0.015 || (Math.abs(Qz[i * 3]) < 0.03 && qt > 0.875 && qt < 0.9)); }
         for (var k = 0; k < tris.length; k++) {
             var ti = tris[k], i0 = ids[ti], i1 = ids[ti + 1], i2 = ids[ti + 2];
-            var u0 = uv.getX(i0) * W, v0 = uv.getY(i0) * W, u1 = uv.getX(i1) * W, v1 = uv.getY(i1) * W, u2 = uv.getX(i2) * W, v2 = uv.getY(i2) * W;
+            // the back of the head and the crown are the fill colour — only the face gets painted
+            if (!inZone(i0) && !inZone(i1) && !inZone(i2)) continue;
+            var fu0 = uv[i0 * 2], fu1 = uv[i1 * 2], fu2 = uv[i2 * 2];
+            if (Math.max(fu0, fu1, fu2) - Math.min(fu0, fu1, fu2) > 0.5) { if (fu0 < 0.5) fu0 += 1; if (fu1 < 0.5) fu1 += 1; if (fu2 < 0.5) fu2 += 1; }
+            var u0 = fu0 * W, v0 = uv[i0 * 2 + 1] * HT, u1 = fu1 * W, v1 = uv[i1 * 2 + 1] * HT, u2 = fu2 * W, v2 = uv[i2 * 2 + 1] * HT;
             var det = (u1 - u0) * (v2 - v0) - (u2 - u0) * (v1 - v0);
             if (Math.abs(det) < 1e-6) continue;
-            var minx = Math.max(0, Math.floor(Math.min(u0, u1, u2) - 1)), maxx = Math.min(W - 1, Math.ceil(Math.max(u0, u1, u2) + 1));
-            var miny = Math.max(0, Math.floor(Math.min(v0, v1, v2) - 1)), maxy = Math.min(W - 1, Math.ceil(Math.max(v0, v1, v2) + 1));
+            var minx = Math.floor(Math.min(u0, u1, u2) - 1), maxx = Math.ceil(Math.max(u0, u1, u2) + 1);
+            var miny = Math.max(0, Math.floor(Math.min(v0, v1, v2) - 1)), maxy = Math.min(HT - 1, Math.ceil(Math.max(v0, v1, v2) + 1));
+            if (maxx - minx > W) { minx = 0; maxx = W - 1; }   // a pole triangle spanning the whole width
             // edge tolerance ≈ 1 px so texel centres just outside still paint (filter bleed)
             var l0 = Math.hypot(u2 - u1, v2 - v1) || 1, l1 = Math.hypot(u2 - u0, v2 - v0) || 1, l2 = Math.hypot(u1 - u0, v1 - v0) || 1;
             var tol0 = -1.1 * l0 / Math.abs(det), tol1 = -1.1 * l1 / Math.abs(det), tol2 = -1.1 * l2 / Math.abs(det);
@@ -29324,12 +29401,13 @@ const ThreeRenderer = (function () {
                 var c0 = Math.max(0, w0), c1 = Math.max(0, w1), c2 = Math.max(0, w2), cs = c0 + c1 + c2 || 1; c0 /= cs; c1 /= cs; c2 /= cs;
                 var c = faceColor(qx0 * c0 + qx1 * c1 + qx2 * c2, qt0 * c0 + qt1 * c1 + qt2 * c2, qz0 * c0 + qz1 * c1 + qz2 * c2,
                                   nx0 * c0 + nx1 * c1 + nx2 * c2, ny0 * c0 + ny1 * c1 + ny2 * c2, nz0 * c0 + nz1 * c1 + nz2 * c2);
-                var o = (y * W + x) * 4;
+                var o = (y * W + ((x % W) + W) % W) * 4;
                 px[o] = Math.max(0, Math.min(255, c[0] * 255)); px[o + 1] = Math.max(0, Math.min(255, c[1] * 255)); px[o + 2] = Math.max(0, Math.min(255, c[2] * 255)); px[o + 3] = 255;
             }
         }
         g.putImageData(id, 0, 0);
         var tex = new THREE.CanvasTexture(cnv);
+        tex.wrapS = THREE.RepeatWrapping;  // the seam triangles read u in [1, 1.5]
         tex.flipY = false;                 // glTF UV convention (origin top-left)
         tex.encoding = _ccEncoding(unmanaged);
         tex.anisotropy = 4;
@@ -29394,11 +29472,13 @@ const ThreeRenderer = (function () {
                 nz[v] = nrmA ? nrmA.getZ(v) : 1;
             }
             var headTris = [];
-            for (var k = 0; k < ids.length; k += 3) { if (q[ids[k]][1] > 0.845 && q[ids[k + 1]][1] > 0.845 && q[ids[k + 2]][1] > 0.845) headTris.push(k); }
+            var headMask = new Uint8Array(ids.length / 3);
+            for (var k = 0; k < ids.length; k += 3) { if (q[ids[k]][1] > CC_HEAD_T && q[ids[k + 1]][1] > CC_HEAD_T && q[ids[k + 2]][1] > CC_HEAD_T) { headTris.push(k); headMask[k / 3] = 1; } }
             var faceKey = src.uuid;
             var face = _ccFaceCache[faceKey] || (_ccFaceCache[faceKey] = _ccFaceLandmarks(q, nz));
             mesh.geometry = geometry();
-            mesh.material = material({ roughness: 0.62, side: THREE.FrontSide });
+            // skin is matte-ish: a lumpy 30k-tri surface under a tight highlight shows every lump
+            mesh.material = material({ roughness: 0.8, side: THREE.FrontSide, vertexColors: true });
             var headBone = -1;
             if (mesh.skeleton && mesh.skeleton.bones) {
                 headBone = mesh.skeleton.bones.findIndex(function (b) { return b.name === 'Head'; });
@@ -29414,7 +29494,8 @@ const ThreeRenderer = (function () {
                 n.bindMatrixInverse.copy(mesh.bindMatrixInverse); mesh.parent.add(n); return n;
             }
             parts.push({ body: mesh, top: shell('top', material({ roughness: 0.95 })), bottom: shell('bottom', material({ roughness: 0.92 })),
-                shell: shell, src: src, ids: ids, count: pos.count, Q: Q, weld: weld, repCount: repCount, adjOff: adjOff, adjIdx: adjIdx, height: H, minY: minY, headTris: headTris, face: face, headBone: headBone,
+                face: shell('face', material({ roughness: 0.72, side: THREE.FrontSide })),
+                shell: shell, src: src, ids: ids, count: pos.count, Q: Q, weld: weld, repCount: repCount, adjOff: adjOff, adjIdx: adjIdx, height: H, minY: minY, headTris: headTris, headMask: headMask, faceUv: _ccFaceUv(Q, pos.count), landmarks: face, headBone: headBone,
                 skinTex: null, hair: [], hairId: null, hairUrl: null, hairRoot: null, skull: null, fabricUrl: { top: null, bottom: null } });
         });
         function bump(t, center, radius) { var d = (t - center) / radius; return Math.exp(-d * d * 2); }
@@ -29494,6 +29575,95 @@ const ThreeRenderer = (function () {
                 out[i * 3] = acc[r] / l; out[i * 3 + 1] = acc[r + 1] / l; out[i * 3 + 2] = acc[r + 2] / l;
             }
         }
+        /* Relax vertex normals over the welded one-ring (in place). `w(t)` is
+           the per-vertex blend toward the neighbour mean per pass, by body
+           height — the body and the cloth take it fully (the bases are lumpy
+           and the cloth relaxation cannot iron every ridge), the face lightly
+           so the nose, lips and lids keep their edges. */
+        function smoothNormals(Nrm, part, passes, wOf) {
+            var weld = part.weld, RC = part.repCount, off = part.adjOff, adj = part.adjIdx, Q = part.Q, N = part.count, i, k;
+            var A = new Float32Array(RC * 3), B = new Float32Array(RC * 3), Wt = new Float32Array(RC);
+            for (i = 0; i < N; i++) { var r = weld[i] * 3; A[r] = Nrm[i * 3]; A[r + 1] = Nrm[i * 3 + 1]; A[r + 2] = Nrm[i * 3 + 2]; Wt[weld[i]] = wOf(Q[i * 3 + 1]); }
+            for (var pass = 0; pass < passes; pass++) {
+                for (i = 0; i < RC; i++) {
+                    var s0 = off[i], s1 = off[i + 1], cnt = s1 - s0, i3 = i * 3;
+                    if (!cnt || Wt[i] <= 0) { B[i3] = A[i3]; B[i3 + 1] = A[i3 + 1]; B[i3 + 2] = A[i3 + 2]; continue; }
+                    var sx = 0, sy = 0, sz = 0;
+                    for (k = s0; k < s1; k++) { var n3 = adj[k] * 3; sx += A[n3]; sy += A[n3 + 1]; sz += A[n3 + 2]; }
+                    var w = Wt[i], nx = A[i3] * (1 - w) + sx / cnt * w, ny = A[i3 + 1] * (1 - w) + sy / cnt * w, nz = A[i3 + 2] * (1 - w) + sz / cnt * w;
+                    var l = Math.hypot(nx, ny, nz) || 1;
+                    B[i3] = nx / l; B[i3 + 1] = ny / l; B[i3 + 2] = nz / l;
+                }
+                var t = A; A = B; B = t;
+            }
+            for (i = 0; i < N; i++) { var r2 = weld[i] * 3; Nrm[i * 3] = A[r2]; Nrm[i * 3 + 1] = A[r2 + 1]; Nrm[i * 3 + 2] = A[r2 + 2]; }
+        }
+        function bodyNormalWeight(t) { return t < 0.84 ? 0.6 : t > 0.87 ? 0.32 : 0.6 - 0.28 * (t - 0.84) / 0.03; }
+        function clothNormalWeight() { return 0.6; }
+        /* THE DRAPE (rev 4): the shirt front over the torso. A grid of the
+           relaxed cloth's front depth (max z per 5 mm cell, q frame); each ROW
+           takes its upper convex hull between the torso's edges (cloth spans
+           the sternum valley and the hollow under a collarbone, but a convex
+           cross-section is its own hull, so the sides stay round); each COLUMN
+           then drapes downward — the cloth may fall back at most `slope` z per
+           t (about 17° off vertical), so a shirt hangs from the bust / pecs
+           instead of hugging the hollow under them. Returns a sampler in
+           metres, or null where the grid is empty. */
+        var DR = { x0: -0.105, x1: 0.105, t0: 0.555, t1: 0.84, cell: 0.005, slope: 0.3 };
+        function drapeFront(C, NB, Q, N, H) {
+            var NX = Math.round((DR.x1 - DR.x0) / DR.cell) + 1, NT = Math.round((DR.t1 - DR.t0) / DR.cell) + 1;
+            var grid = new Float32Array(NX * NT), has = new Uint8Array(NX * NT), i, r, c;
+            for (i = 0; i < N; i++) {
+                var qx = Q[i * 3], qt = Q[i * 3 + 1];
+                if (qx < DR.x0 || qx > DR.x1 || qt < DR.t0 || qt > DR.t1 || Q[i * 3 + 2] <= 0 || NB[i * 3 + 2] < 0.1) continue;
+                c = Math.round((qx - DR.x0) / DR.cell); r = Math.round((qt - DR.t0) / DR.cell);
+                var o = r * NX + c, z = C[i * 3 + 2];
+                if (!has[o] || z > grid[o]) { grid[o] = z; has[o] = 1; }
+            }
+            var mid = Math.round(-DR.x0 / DR.cell);
+            // rows: the upper hull over the run of filled cells around the centre line
+            var px = [], pz = [], hull = [];
+            for (r = 0; r < NT; r++) {
+                var lo = mid, hi = mid;
+                if (!has[r * NX + mid]) { var seek = 1; while (seek < 3 && !has[r * NX + mid + seek] && !has[r * NX + mid - seek]) seek++; if (seek >= 3) continue; lo = hi = has[r * NX + mid + seek] ? mid + seek : mid - seek; }
+                while (lo > 0 && has[r * NX + lo - 1]) lo--;
+                while (hi < NX - 1 && has[r * NX + hi + 1]) hi++;
+                px.length = 0; pz.length = 0; hull.length = 0;
+                for (c = lo; c <= hi; c++) { px.push(c); pz.push(grid[r * NX + c]); }
+                for (i = 0; i < px.length; i++) {
+                    while (hull.length >= 2) {
+                        var a = hull[hull.length - 2], b = hull[hull.length - 1];
+                        // pop b when it lies under the chord a→i (upper hull, x increasing)
+                        if ((px[b] - px[a]) * (pz[i] - pz[a]) - (pz[b] - pz[a]) * (px[i] - px[a]) >= 0) hull.pop(); else break;
+                    }
+                    hull.push(i);
+                }
+                for (var hseg = 0; hseg + 1 < hull.length; hseg++) {
+                    var ha = hull[hseg], hb = hull[hseg + 1];
+                    for (c = px[ha]; c <= px[hb]; c++) { var f = (c - px[ha]) / Math.max(1, px[hb] - px[ha]), zz = pz[ha] + (pz[hb] - pz[ha]) * f; if (zz > grid[r * NX + c]) grid[r * NX + c] = zz; }
+                }
+            }
+            // columns: drape downward from the top row
+            var fall = DR.slope * DR.cell * H;
+            for (c = 0; c < NX; c++) {
+                var prev = -Infinity;
+                for (r = NT - 1; r >= 0; r--) {
+                    var oc = r * NX + c;
+                    if (!has[oc]) { prev = -Infinity; continue; }
+                    if (prev > -Infinity && grid[oc] < prev - fall) grid[oc] = prev - fall;
+                    prev = grid[oc];
+                }
+            }
+            return function (qx, qt) {
+                var fx = (qx - DR.x0) / DR.cell, ft = (qt - DR.t0) / DR.cell;
+                var c0 = Math.floor(fx), r0 = Math.floor(ft);
+                if (c0 < 0 || r0 < 0 || c0 >= NX - 1 || r0 >= NT - 1) return null;
+                var ax = fx - c0, at = ft - r0, sum = 0, wsum = 0;
+                var cells = [[c0, r0, (1 - ax) * (1 - at)], [c0 + 1, r0, ax * (1 - at)], [c0, r0 + 1, (1 - ax) * at], [c0 + 1, r0 + 1, ax * at]];
+                for (var k = 0; k < 4; k++) { var oo = cells[k][1] * NX + cells[k][0]; if (has[oo]) { sum += grid[oo] * cells[k][2]; wsum += cells[k][2]; } }
+                return wsum > 0.25 ? sum / wsum : null;
+            };
+        }
         /* ── the geometry pass: shape the body, relax + cut the garments ── */
         function rebuildGeometry(part, a) {
             var H = part.height, src = part.src, ids = part.ids, N = part.count, Q = part.Q;
@@ -29521,7 +29691,7 @@ const ThreeRenderer = (function () {
             var weld = part.weld, RC = part.repCount, off = part.adjOff, adj = part.adjIdx;
             var Rr = new Float32Array(RC * 3), R2 = new Float32Array(RC * 3);
             for (i = 0; i < N; i++) { var wr = weld[i] * 3; Rr[wr] = P[i * 3]; Rr[wr + 1] = P[i * 3 + 1]; Rr[wr + 2] = P[i * 3 + 2]; }
-            for (var pass = 0; pass < 10; pass++) {
+            for (var pass = 0; pass < 14; pass++) {
                 for (i = 0; i < RC; i++) {
                     var s0 = off[i], s1 = off[i + 1], cnt = s1 - s0;
                     if (!cnt) { R2[i * 3] = Rr[i * 3]; R2[i * 3 + 1] = Rr[i * 3 + 1]; R2[i * 3 + 2] = Rr[i * 3 + 2]; continue; }
@@ -29535,36 +29705,27 @@ const ThreeRenderer = (function () {
             for (i = 0; i < N; i++) { var wq = weld[i] * 3; R[i * 3] = Rr[wq]; R[i * 3 + 1] = Rr[wq + 1]; R[i * 3 + 2] = Rr[wq + 2]; }
             var NB = new Float32Array(N * 3);
             surfaceNormals(P, ids, NB, weld, RC);
-            // A local row envelope of the chest front so the shirt panel bridges the valleys.
-            var chestRows = new Float64Array(41);
-            for (i = 0; i < N; i++) {
-                var tq = Q[i * 3 + 1];
-                if (tq >= 0.60 && tq <= 0.80 && Math.abs(Q[i * 3]) < 0.08 && Q[i * 3 + 2] > 0) {
-                    var row = Math.max(0, Math.min(40, Math.round((tq - 0.60) * 200)));
-                    if (P[i * 3 + 2] > chestRows[row]) chestRows[row] = P[i * 3 + 2];
-                }
-            }
-            var rowsS = new Float64Array(41);
-            for (var r0 = 0; r0 <= 40; r0++) {
-                var sum = 0, weight = 0;
-                for (var r = Math.max(0, r0 - 7); r <= Math.min(40, r0 + 7); r++) { var w = Math.exp(-Math.pow((r - r0) / 4, 2)); if (chestRows[r] > 0) { sum += chestRows[r] * w; weight += w; } }
-                rowsS[r0] = weight ? sum / weight : chestRows[r0];
-            }
-            var ease = a.outfit === 'suit' ? 0.005 : 0.009;
+            smoothNormals(NB, part, 3, bodyNormalWeight);
+            var ease = a.outfit === 'suit' ? 0.005 : 0.007;
             var C = new Float32Array(N * 3);
             for (i = 0; i < N; i++) {
-                var tt = Q[i * 3 + 1], offset = H * (ease + 0.004 * bump(tt, 0.65, 0.13));
+                var tt = Q[i * 3 + 1], offset = H * (ease + 0.003 * bump(tt, 0.65, 0.13));
                 C[i * 3] = R[i * 3] + NB[i * 3] * offset; C[i * 3 + 1] = P[i * 3 + 1]; C[i * 3 + 2] = R[i * 3 + 2] + NB[i * 3 + 2] * offset;
-                if (tt > 0.62 && tt < 0.80 && Q[i * 3 + 2] > 0 && Math.abs(Q[i * 3]) < 0.09) {
-                    var rf = Math.max(0, Math.min(39.999, (tt - 0.60) * 200)), ri = Math.floor(rf);
-                    var peak = rowsS[ri] * (1 - rf + ri) + rowsS[ri + 1] * (rf - ri);
-                    var panel = peak * Math.sqrt(Math.max(0.2, 1 - 0.35 * Math.pow(Q[i * 3] / 0.09, 2))) + H * ease;
-                    var blend = Math.min(1, (tt - 0.62) / 0.025, (0.80 - tt) / 0.025);
-                    C[i * 3 + 2] += Math.max(0, panel - C[i * 3 + 2]) * blend;
-                }
+            }
+            // THE DRAPE: the front of the shirt bridges the valleys and hangs from the bust
+            var drape = drapeFront(C, NB, Q, N, H);
+            if (drape) for (i = 0; i < N; i++) {
+                var td = Q[i * 3 + 1], xd = Q[i * 3];
+                if (td < 0.57 || td > 0.83 || Q[i * 3 + 2] <= 0 || NB[i * 3 + 2] < 0.1 || Math.abs(xd) > 0.1) continue;
+                var zt = drape(xd, td);
+                if (zt == null) continue;
+                var blend = Math.min(1, (td - 0.57) / 0.03, (0.83 - td) / 0.03, (0.1 - Math.abs(xd)) / 0.02);
+                var lift = zt - H * 0.0015 - C[i * 3 + 2];
+                if (lift > 0) C[i * 3 + 2] += lift * blend;
             }
             var NC = new Float32Array(N * 3);
             surfaceNormals(C, ids, NC, weld, RC);
+            smoothNormals(NC, part, 3, clothNormalWeight);
             function gainAt(target, t, x, shade) {
                 var gain = shade || 1;
                 if (target === 1 || target === 2) {
@@ -29573,10 +29734,10 @@ const ThreeRenderer = (function () {
                 }
                 return gain;
             }
-            var buffers = [0, 1, 2].map(function (target) {
+            var buffers = [0, 1, 2, 3].map(function (target) {
                 var gainBase = new Float32Array(N);
                 for (var gi = 0; gi < N; gi++) gainBase[gi] = gainAt(target, Q[gi * 3 + 1], Q[gi * 3], 1);
-                return { S: target === 0 ? P : C, NS: target === 0 ? NB : NC, gainBase: gainBase, index: [], xPos: [], xNrm: [], xUv: [], xGain: [], xSi: [], xSw: [], xCount: 0, gain: null };
+                return { S: (target === 0 || target === 3) ? P : C, NS: (target === 0 || target === 3) ? NB : NC, gainBase: gainBase, index: [], xPos: [], xNrm: [], xUv: [], xGain: [], xSi: [], xSw: [], xCount: 0, gain: null };
             });
             /* a base vertex indexes itself; a cut / rim vertex is appended */
             function vertexIndex(b, target, v, shade) {
@@ -29642,8 +29803,20 @@ const ThreeRenderer = (function () {
                 q1[0] = Q[i1 * 3]; q1[1] = Q[i1 * 3 + 1]; q1[2] = Q[i1 * 3 + 2];
                 q2[0] = Q[i2 * 3]; q2[1] = Q[i2 * 3 + 1]; q2[2] = Q[i2 * 3 + 2];
                 var cs = classify(shirtCuts), cp = classify(pantsCuts);
-                // the body shows only where nothing covers it
-                if (cs === -1 && cp === -1) emitTri(0, P, NB, i0, i1, i2);
+                // the body shows only where nothing covers it; the head is the FACE shell (its painted texture)
+                if (cs === -1 && cp === -1) {
+                    if (!part.headMask[k / 3]) emitTri(0, P, NB, i0, i1, i2);
+                    else {
+                        var fuv = part.faceUv, fa = fuv[i0 * 2], fb = fuv[i1 * 2], fc = fuv[i2 * 2];
+                        if (Math.max(fa, fb, fc) - Math.min(fa, fb, fc) <= 0.5) emitTri(3, P, NB, i0, i1, i2);
+                        else {
+                            // crosses the seam at the back of the head: its own three vertices, u unwrapped past 1
+                            var seam = [rec(i0, P, NB), rec(i1, P, NB), rec(i2, P, NB)];
+                            for (var sv = 0; sv < 3; sv++) { var srec = seam[sv], ui = sv === 0 ? i0 : sv === 1 ? i1 : i2; srec.idx = -1; srec.uv = [fuv[ui * 2] < 0.5 ? fuv[ui * 2] + 1 : fuv[ui * 2], fuv[ui * 2 + 1]]; }
+                            emit(seam, 3);
+                        }
+                    }
+                }
                 else if (cs !== 1 && cp !== 1) {
                     var tri = [rec(i0, P, NB), rec(i1, P, NB), rec(i2, P, NB)];
                     var uncovered = cs === -1 ? [tri] : garment(tri, shirtCuts, 1, false);
@@ -29659,16 +29832,16 @@ const ThreeRenderer = (function () {
                 else if (cp === 0) garment([rec(i0, C, NC), rec(i1, C, NC), rec(i2, C, NC)], pantsCuts, 2, true);
             }
             part.buffers = buffers;
-            [part.body, part.top, part.bottom].forEach(function (mesh, index) {
-                writeGeometry(mesh.geometry, buffers[index], N, uvA, si, sw);
+            [part.body, part.top, part.bottom, part.face].forEach(function (mesh, index) {
+                writeGeometry(mesh.geometry, buffers[index], N, index === 3 ? part.faceUv : uvA, si, sw);
                 mesh.visible = buffers[index].index.length > 0;
             });
         }
-        /* ── colours: garment tints as vertex colours (gain-shaded) ── */
+        /* ── colours: skin + garment tints as vertex colours (gain-shaded); the face wears its texture ── */
         function paintGarments(part, a) {
-            var tints = [null, color(a.topColor), color(a.bottomColor)];
-            var hasMap = [false, !!_ccFabricDef(a.topFabric).file, !!_ccFabricDef(a.bottomFabric).file];
-            [part.body, part.top, part.bottom].forEach(function (mesh, index) {
+            var tints = [color(a.skin), color(a.topColor), color(a.bottomColor), null];
+            var hasMap = [false, !!_ccFabricDef(a.topFabric).file, !!_ccFabricDef(a.bottomFabric).file, false];
+            [part.body, part.top, part.bottom, part.face].forEach(function (mesh, index) {
                 var g = mesh.geometry, b = part.buffers && part.buffers[index];
                 if (!b || !g.attributes.color) return;
                 var arr = g.attributes.color.array, tint = tints[index], lift = hasMap[index] ? 1.18 : 1;
@@ -29678,8 +29851,8 @@ const ThreeRenderer = (function () {
                     else { arr[i * 3] = arr[i * 3 + 1] = arr[i * 3 + 2] = 1; }
                 }
                 g.attributes.color.needsUpdate = true;
-                var m = mesh.material;   // the CURRENT material — the board may have swapped ours for its Lambert copy
-                if (m && m.vertexColors !== (index !== 0)) { m.vertexColors = index !== 0; m.needsUpdate = true; }
+                var m = mesh.material, wantVC = index !== 3;   // the CURRENT material — the board may have swapped ours for its Lambert copy
+                if (m && m.vertexColors !== wantVC) { m.vertexColors = wantVC; m.needsUpdate = true; }
             });
         }
         function setFabric(part, which, a) {
@@ -29800,7 +29973,7 @@ const ThreeRenderer = (function () {
             var old = part.skinTex;
             part.skinTex = tex;
             if (tex) ownedTextures.push(tex);
-            var m = part.body.material;
+            var m = part.face.material;
             if (m) { m.map = tex || null; if (m.emissiveMap) m.emissiveMap = tex || null; m.needsUpdate = true; }
             if (old) { var oi = ownedTextures.indexOf(old); if (oi >= 0) ownedTextures.splice(oi, 1); old.dispose(); }
         }

@@ -220,7 +220,7 @@ test('both rigged bases dress, fit the hair to the skull and stay finite across 
             const rig = c._createAppearanceRig(clone, { hair: 'hair003' }, true);
             const skinned = () => { const out = []; clone.traverse(n => { if (n.isSkinnedMesh && n.parent) out.push(n); }); return out; };
             let bodies = skinned();
-            assert.equal(bodies.filter(n => !/hair/.test(n.name)).length, 3, 'body + top + bottom');
+            assert.equal(bodies.filter(n => !/hair/.test(n.name)).length, 4, 'body + top + bottom + face');
             const hairMeshes = bodies.filter(n => /EWCreator_hair/.test(n.name));
             assert.ok(hairMeshes.length >= 2, 'hair parts skinned in');
             const body = bodies.find(n => !/EWCreator/.test(n.name));

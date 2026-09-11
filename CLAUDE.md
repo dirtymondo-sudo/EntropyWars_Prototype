@@ -998,6 +998,29 @@ Kill-switches (console): `window.EW_DISABLE_3D_UNITS = true` (all 3D),
   To persist new files, hand them to the user (SendUserFile) to upload via GitHub
   manually. Don't waste time retrying pushes.
 
+## CHARACTER CREATOR rev 4 — the drape, the face shell, the eyes (2026-09-11, local delivery)
+Three fixes to the rev 3 rig (three-renderer.js "CHARACTER CREATOR RUNTIME"):
+**THE DRAPE** — the shirt front is no longer a flat chest plank: `drapeFront`
+grids the relaxed cloth's front depth, takes each row's upper convex hull
+(bridges the sternum valley, keeps convex sides round) and drapes each column
+downward at a max fall slope (`DR.slope`), so a shirt hangs from the bust /
+pecs. **SHADING** — every shell's normals are relaxed over the welded one-ring
+(`smoothNormals`; strong on body + cloth, light on the face), skin roughness
+0.8. **THE FACE SHELL** — the head (t > `CC_HEAD_T`) is a FOURTH shell
+(`EWCreator_face`) with its own seam-free cylindrical UVs (`_ccFaceUv`, seam
+at the back, seam triangles re-emitted at u + 1) and a 2048×1024 painted
+texture (`CC_FACE_TEX`, half on mobile); the body wears the skin tone as vertex
+colour, no texture. Eyes are ANTHROPOMETRIC (`_ccFaceLandmarks`: ±0.53 × the
+front half-width, 53 % chin → crown — the bases' sockets are too faint to
+detect and the old recess search put them at the temples), almond-shaped with
+the iris under the lid, soft edges; the painter `faceColor` is allocation-free
+with band gates (~265 ms per repaint in the browser; the vm test harness is
+~15× slower — interceptor globals — don't trust its timings); the beard mask
+follows the jaw. **`node creator-render.js`** (repo tooling, needs
+three@0.128.0) renders the rig headlessly — body, cloth and the painted face —
+to PNG; use it before the Playwright probe (see PLAYTEST_NOTES). The test
+expects four shells. Full log: PARTY_BUILDER_PLAN.md §9 (rev 4 entry).
+
 ## CHARACTER CREATOR rev 3 — the charactercreation/ assets (2026-09-11, local delivery)
 The Forge's GEAR → CHARACTER CREATOR dresses Homosapien slots from the
 user's `charactercreation/` folder (repo + R2 `Assets/Models/charactercreation/`).
