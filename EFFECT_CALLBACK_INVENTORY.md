@@ -1,6 +1,6 @@
 # Remaining effect callback inventory
 
-Updated 2026-09-10 after shared shock-ring, speed-burst and flame cleanup review. This is a complete textual index of direct window.setTimeout sites, not an exhaustive semantic audit. Asset completion callbacks and other scheduling APIs still need separate review.
+Updated 2026-09-11 after the wall geometry audit and the `_sigRun` refusal sweep. This is a complete textual index of direct window.setTimeout sites, not an exhaustive semantic audit. Asset completion callbacks and other scheduling APIs still need separate review.
 
 ## Classified and fixed in this batch
 
@@ -41,53 +41,53 @@ Geometry trace: `_spawnLaserBeam3D` registers cylinders and rings with `_animate
 | 8272 | `window.setTimeout(function() {` |
 | 8335 | `window.setTimeout(function() {` |
 | 8370 | `window.setTimeout(function() {` |
-| 10284 | `window.setTimeout(function () {` |
-| 10296 | `window.setTimeout(function () { _wpnLoad(key); }, 4500 + idx * 700);` |
-| 10347 | `window.setTimeout(function () {` |
-| 10536 | `window.setTimeout(function () {` |
-| 11031 | `window.setTimeout(function () {` |
-| 11410 | `window.setTimeout(function () {` |
-| 11810 | `window.setTimeout(function () {` |
-| 12170 | `window.setTimeout(function () {` |
-| 12607 | `window.setTimeout(function () {` |
-| 13797 | `window.setTimeout(function () {` |
-| 14435 | `window.setTimeout(function () {` |
-| 14454 | `window.setTimeout(function () {` |
-| 15079 | `window.setTimeout(function () {` |
-| 15291 | `window.setTimeout(function () {` |
-| 15510 | `window.setTimeout(function () {` |
-| 15543 | `window.setTimeout(function () {` |
-| 16898 | `if (s.at) window.setTimeout(go, s.at); else go();` |
-| 17182 | `window.setTimeout(function () {` |
-| 17203 | `window.setTimeout(function () {` |
-| 17262 | `window.setTimeout(function () {` |
-| 17265 | `window.setTimeout(function () {` |
-| 17300 | `window.setTimeout(function () {` |
-| 17322 | `window.setTimeout(function () {` |
-| 17566 | `window.setTimeout(function () {` |
-| 17936 | `window.setTimeout(function () {` |
-| 18083 | `window.setTimeout(function () {` |
-| 18212 | `window.setTimeout(function () {` |
-| 18252 | `window.setTimeout(function () {` |
-| 18361 | `window.setTimeout(function () {` |
-| 18716 | `window.setTimeout(function() {` |
-| 18825 | `window.setTimeout(function () {` |
-| 18846 | `window.setTimeout(function () {` |
-| 18994 | `window.setTimeout(function () {` |
-| 19314 | `window.setTimeout(function () {` |
-| 19330 | `window.setTimeout(function () {` |
-| 19514 | `window.setTimeout(function () { if (!_suppressed()) burst(); }, rideMs * 0.9);` |
-| 19597 | `window.setTimeout(function () {` |
-| 19695 | `window.setTimeout(function () {` |
-| 20558 | `window.setTimeout(function() {` |
-| 20707 | `window.setTimeout(function () {` |
-| 20927 | `if (idx === 0) go(); else window.setTimeout(go, idx * 260);` |
-| 21018 | `if (idx === 0) go(); else window.setTimeout(go, idx * 120);` |
-| 21036 | `window.setTimeout(function () {` |
-| 21185 | `window.setTimeout(function () {` |
-| 21200 | `window.setTimeout(function () {` |
-| 21384 | `window.setTimeout(function () {` |
-| 21387 | `window.setTimeout(function () {` |
+| 10301 | `window.setTimeout(function () {` |
+| 10313 | `window.setTimeout(function () { _wpnLoad(key); }, 4500 + idx * 700);` |
+| 10364 | `window.setTimeout(function () {` |
+| 10553 | `window.setTimeout(function () {` |
+| 11048 | `window.setTimeout(function () {` |
+| 11427 | `window.setTimeout(function () {` |
+| 11827 | `window.setTimeout(function () {` |
+| 12187 | `window.setTimeout(function () {` |
+| 12624 | `window.setTimeout(function () {` |
+| 13814 | `window.setTimeout(function () {` |
+| 14452 | `window.setTimeout(function () {` |
+| 14471 | `window.setTimeout(function () {` |
+| 15096 | `window.setTimeout(function () {` |
+| 15308 | `window.setTimeout(function () {` |
+| 15527 | `window.setTimeout(function () {` |
+| 15560 | `window.setTimeout(function () {` |
+| 16915 | `if (s.at) window.setTimeout(go, s.at); else go();` |
+| 17199 | `window.setTimeout(function () {` |
+| 17220 | `window.setTimeout(function () {` |
+| 17279 | `window.setTimeout(function () {` |
+| 17282 | `window.setTimeout(function () {` |
+| 17317 | `window.setTimeout(function () {` |
+| 17339 | `window.setTimeout(function () {` |
+| 17583 | `window.setTimeout(function () {` |
+| 17953 | `window.setTimeout(function () {` |
+| 18100 | `window.setTimeout(function () {` |
+| 18229 | `window.setTimeout(function () {` |
+| 18269 | `window.setTimeout(function () {` |
+| 18378 | `window.setTimeout(function () {` |
+| 18733 | `window.setTimeout(function() {` |
+| 18842 | `window.setTimeout(function () {` |
+| 18863 | `window.setTimeout(function () {` |
+| 19011 | `window.setTimeout(function () {` |
+| 19331 | `window.setTimeout(function () {` |
+| 19347 | `window.setTimeout(function () {` |
+| 19531 | `window.setTimeout(function () { if (!_suppressed()) burst(); }, rideMs * 0.9);` |
+| 19614 | `window.setTimeout(function () {` |
+| 19712 | `window.setTimeout(function () {` |
+| 20575 | `window.setTimeout(function() {` |
+| 20724 | `window.setTimeout(function () {` |
+| 20944 | `if (idx === 0) go(); else window.setTimeout(go, idx * 260);` |
+| 21035 | `if (idx === 0) go(); else window.setTimeout(go, idx * 120);` |
+| 21053 | `window.setTimeout(function () {` |
+| 21202 | `window.setTimeout(function () {` |
+| 21217 | `window.setTimeout(function () {` |
+| 21401 | `window.setTimeout(function () {` |
+| 21404 | `window.setTimeout(function () {` |
 
 ## Laser terminus batch
 
@@ -112,3 +112,11 @@ Next: audit `spawnFlameBurst3D`, `_sigShockRing3D`, `_sigSpeedBurst3D`, then tra
 Audited `spawnFlameBurst3D`, `_sigShockRing3D` and `_sigSpeedBurst3D`: no unowned timers inside these helpers. Shock ring (including optional torus) and speed burst now dispose geometry/materials on registration refusal, preserving shared textures. Flame spawn/tick scene changes now remove old groups from their parent before disposing materials. The shared box geometry cache remains intact. Normal expiration and explicit clear already detached groups.
 
 13 tests pass; eight reproduce failures on the unchanged baseline. Tests exercise actual scheduling/cleanup functions with rendering doubles and a stub flame builder; no browser or network acceptance claim. Next: transitive `_fireWall` geometry dispatch, other `_sigRun` refusal paths and asynchronous asset attachment, then VFX-04. Previous next-task paragraphs record historical batch boundaries.
+
+## Wall geometry and `_sigRun` refusal batch (current)
+
+`_fireWall` transitive audit closed: recipe timers already `_fxDelay`-owned; `_spawnEffect` owns recipe layers; the only wall spell with 3D geometry is Walk the Plank (`_sigPlank3D`), which had no unowned timers but leaked its board/strap geometry and materials on a refused registration. Sweep of all `_sigRun` callers: 47 ignored the returned entry. `_sigDisposeGroup` is now the single disposal rule (used by `finish` and by the new `_sigRunOwned`); all 47 call `_sigRunOwned`, the 28 self-cleaning callers keep `_sigRun`. `sig-refusal-cleanup.test.js` source-scans that no `_sigRun` call ignores its entry. Lines 10 and 48 in the table are `_fxDelay` / `_fxDomOwner` themselves; the weapon-library boot warmup (`_wpnLoad` burst + drip) is application-lifetime and must not be canceled.
+
+Asynchronous asset attachment inspected: `_wpnLoad` and `_loadCachedTex` write only into caches; casts clone or fall back, never attach a late load into a live group. No change needed.
+
+Next: the bespoke emission timers in the table (candle puffs, burning-cross licks, and the rest) → `_fxDelay` per helper with regressions, then VFX-04.

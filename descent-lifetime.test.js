@@ -19,7 +19,7 @@ function harness(warm=false){
  _spawn:p=>events.push(['particle',p.sprite]),playSfx:s=>events.push(['sound',s]),rn:(a,b)=>(a+b)/2,
  _wpnReady:key=>warm&&key==='missile',_wpnInstance:()=>({group:new Group(),len:100,setFade(){}}),
  _worldPos:()=>({x:0,y:0,z:0,ts:128}),_sigMat:()=>({}),_sigGlowTex:()=>null,
- _sigRun:()=>events.push(['model']),_sigClamp01:v=>Math.min(1,Math.max(0,v)),
+ _sigRun:()=>events.push(['model']),_sigRunOwned:()=>events.push(['model']),_sigClamp01:v=>Math.min(1,Math.max(0,v)),
  _spawnEffect:d=>events.push(['effect',d.id||d.layers.map(l=>l.sprite).join(',')]),
  _geom3D:()=>null,_LT:()=>({strikeFromSky:()=>events.push(['lightning'])}),state:{}
  });

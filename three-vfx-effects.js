@@ -4198,7 +4198,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                         ab.renderOrder = 164;
                         roll.add(ab);
                     }
-                    _sigRun(jg, flyMs, function (elJ) {
+                    _sigRunOwned(jg, flyMs, function (elJ) {
                         jg.position.x = (startX - pad2) + fVx * (elJ / 1000);
                         jg.position.z = (startY - pad2) + fVy * (elJ / 1000);
                         roll.rotation.z = 0.20 * Math.sin(elJ * 0.004);   /* gentle bank */
@@ -5085,7 +5085,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                             mg.add(ex2);
                             mg.rotation.y = Math.atan2(vxMs, vyMs);
                             var horizV = Math.sqrt(vxMs * vxMs + vyMs * vyMs) || 1;
-                            _sigRun(mg, flyMs, function (elM) {
+                            _sigRunOwned(mg, flyMs, function (elM) {
                                 var tM = elM / 1000;
                                 mg.position.set(
                                     casterPx.x + vxMs * tM - padG,
@@ -8972,15 +8972,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var _sei = _sigEntries.indexOf(entry);
             if (_sei >= 0) _sigEntries.splice(_sei, 1);
             scene.remove(group);
-            group.traverse(function (o) {
-                /* GLB weapon-model geometry is shared between clones
-                   (_ew_shared) — dispose only per-effect geometry */
-                if (o.geometry && !o.geometry._ew_shared) o.geometry.dispose();
-                if (o.material) {
-                    var mats = Array.isArray(o.material) ? o.material : [o.material];
-                    for (var i = 0; i < mats.length; i++) mats[i].dispose();
-                }
-            });
+            _sigDisposeGroup(group);
         }
         function loop() {
             if (entry.done) return false;
@@ -8996,6 +8988,31 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         _fxSchedule(loop);
         entry.finish = finish;
+        return entry;
+    }
+    /* The ONE disposal rule for a signature group — what _sigRun's finish
+       applies when a run ends, and what a refused registration applies to
+       a group that never acquired an owner. GLB weapon-model geometry is
+       shared between clones (_ew_shared) — dispose only per-effect
+       geometry; materials are cloned per instance and are always ours.
+       Textures are never disposed here (shared caches). */
+    function _sigDisposeGroup(group) {
+        group.traverse(function (o) {
+            if (o.geometry && !o.geometry._ew_shared) o.geometry.dispose();
+            if (o.material) {
+                var mats = Array.isArray(o.material) ? o.material : [o.material];
+                for (var i = 0; i < mats.length; i++) mats[i].dispose();
+            }
+        });
+    }
+    /* _sigRun for callers that build a fresh group and do not read the
+       entry back: a refused registration (active cap, no scene) disposes
+       the group with the same rule finish would have applied, instead of
+       leaking one build per refused cast. Callers that own their refusal
+       cleanup (they check the returned entry) keep calling _sigRun. */
+    function _sigRunOwned(group, totalMs, tick) {
+        var entry = _sigRun(group, totalMs, tick);
+        if (!entry) _sigDisposeGroup(group);
         return entry;
     }
 
@@ -10381,7 +10398,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         glow.renderOrder = 163;
         g.add(glow);
 
-        _sigRun(g, total, function (el) {
+        _sigRunOwned(g, total, function (el) {
             var f;
             if (el < riseMs) {
                 var t = _sigEaseOutCubic(el / riseMs);
@@ -10466,7 +10483,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var fadeMs = 420;
         var settle = 640;
         var total = settle + holdMs + fadeMs;
-        _sigRun(g, total, function (el) {
+        _sigRunOwned(g, total, function (el) {
             var op = el > settle + holdMs
                 ? Math.max(0, 1 - (el - settle - holdMs) / fadeMs) : 1;
             for (var j = 0; j < pieces.length; j++) {
@@ -10550,7 +10567,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
         }
 
-        _sigRun(g, total, function (el) {
+        _sigRunOwned(g, total, function (el) {
             var f = el > dropMs + holdMs
                 ? Math.max(0, 1 - (el - dropMs - holdMs) / fadeMs) : 1;
             inst.setFade(f);
@@ -10632,7 +10649,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             fadeMs: 260, spin: 0.005, opacity: 0.7,
         });
 
-        _sigRun(g, total, function (el) {
+        _sigRunOwned(g, total, function (el) {
             var f = 1;
             arm.position.y = punchY;
             if (el < cockMs) {
@@ -10751,7 +10768,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var cracked = false, crackAt = 0;
         var c = tilePx(tx, ty), bz = tileZ(tx, ty);
 
-        _sigRun(g, total, function (el) {
+        _sigRunOwned(g, total, function (el) {
             var f = 1;
             if (el < inMs) {
                 var t = _sigEaseOutCubic(el / inMs);
@@ -10856,7 +10873,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var total = 160 + 2 * 150 + riseMs + holdMs + exitMs;
         var exitAt = total - exitMs;
         var burst = false;
-        _sigRun(g, total, function (el) {
+        _sigRunOwned(g, total, function (el) {
             deck.setFade(el < exitAt ? Math.min(1, el / 160) : Math.max(0, 1 - (el - exitAt) / 200));
             deck.group.rotation.y += 0.01;
             deck.group.position.y = ts * 0.55 + Math.sin(el * 0.004) * ts * 0.03;
@@ -10920,7 +10937,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var inMs = 260, flipMs = 330, holdMs = 620, outMs = 260;
         var total = inMs + flipMs + holdMs + outMs;
         var flared = false;
-        _sigRun(g, total, function (el) {
+        _sigRunOwned(g, total, function (el) {
             var f = 1;
             var y;
             if (el < inMs) {
@@ -10976,7 +10993,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             pivot.add(eye);
             var inMs = 300, holdMs = 1150, outMs = 320;
             var total = inMs + holdMs + outMs;
-            _sigRun(g, total, function (el) {
+            _sigRunOwned(g, total, function (el) {
                 var f = el < inMs ? _sigEaseOutCubic(el / inMs)
                       : el > inMs + holdMs ? Math.max(0, 1 - (el - inMs - holdMs) / outMs) : 1;
                 pivot.position.y = ts * (0.95 + 0.06 * Math.sin(el * 0.004));
@@ -11045,7 +11062,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             })(wI);
         }
 
-        _sigRun(g, rideMs + 140, function (el) {
+        _sigRunOwned(g, rideMs + 140, function (el) {
             var t = _sigClamp01(el / rideMs);
             var f = el < 90 ? el / 90
                   : el > rideMs ? Math.max(0, 1 - (el - rideMs) / 140) : 1;
@@ -11108,7 +11125,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             })(tI);
         }
 
-        _sigRun(g, ms + 40, function (el) {
+        _sigRunOwned(g, ms + 40, function (el) {
             var t = _sigClamp01(el / ms);
             body.position.y = fromY * (1 - t * t) + len * 0.5;
             inst.group.rotation.z = el * 0.004;             /* slow rifling roll */
@@ -11346,7 +11363,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         streakB.scale.set(ts * 0.5, hoverH, 1);
 
         var impactFired = false;
-        _sigRun(group, total, function (el) {
+        _sigRunOwned(group, total, function (el) {
             if (el < summonMs) {
                 var t = el / summonMs;
                 var s = Math.max(0.01, _sigEaseOutBack(t));
@@ -11518,7 +11535,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
 
         var impactFired = false;
-        _sigRun(group, total, function (el) {
+        _sigRunOwned(group, total, function (el) {
             var vis = 1;
             fist.position.y = punchY;
             if (el < windMs) {
@@ -11709,7 +11726,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
         _sigScreenFlash(_sigCss(color), 140, 0.10);
 
-        _sigRun(group, total, function (el) {
+        _sigRunOwned(group, total, function (el) {
             /* advance to the phase owning this time slice */
             while (cur < phases.length - 1 && el >= phases[cur].t1) {
                 var prevP = phases[cur];
@@ -11940,7 +11957,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             spin: 0.005, opacity: 0.8,
         });
         var impactFired = false;
-        _sigRun(group, total, function (el) {
+        _sigRunOwned(group, total, function (el) {
             if (el < summonMs) {
                 var t = el / summonMs;
                 var s = Math.max(0.01, _sigEaseOutBack(t));
@@ -12013,7 +12030,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             holdMs: total - 500, fadeMs: 300, spin: 0.0022, opacity: 0.7,
         });
 
-        _sigRun(group, total, function (el) {
+        _sigRunOwned(group, total, function (el) {
             group.rotation.y = el * 0.00045;
             for (var i2 = 0; i2 < shields.length; i2++) {
                 var s2 = shields[i2];
@@ -12126,7 +12143,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
 
         var snapped = false;
-        _sigRun(group, total, function (el) {
+        _sigRunOwned(group, total, function (el) {
             var vis = 1, gap, bite;
             if (el < openMs) {
                 var t = el / openMs;
@@ -12296,7 +12313,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         mark.renderOrder = 164;
         group.add(mark);
 
-        _sigRun(group, total, function (el) {
+        _sigRunOwned(group, total, function (el) {
             for (var k = 0; k < swipes.length; k++) {
                 var s = swipes[k];
                 var lt = el - s.t0;
@@ -12495,7 +12512,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var fired = false, landed = false;
         var trailAcc = 0, lastEl = 0;
 
-        _sigRun(root, total, function (el) {
+        _sigRunOwned(root, total, function (el) {
             var dt = el - lastEl; lastEl = el;
             var vis;
             if (el < matMs) {
@@ -13131,7 +13148,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             holdMs: looseAt + 150, fadeMs: 200, spin: 0.006, opacity: 0.7,
         });
 
-        _sigRun(root, total, function (el) {
+        _sigRunOwned(root, total, function (el) {
             var dt = el - lastEl; lastEl = el;
             var f = _sigClamp01(el / matMs);
             if (el > total - fadeMs) f = Math.max(0, (total - el) / fadeMs);
@@ -13242,7 +13259,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         var holdMs = 620, fadeMs = 260;
         var total = 420 + 170 + holdMs + fadeMs;
-        _sigRun(g, total, function (el) {
+        _sigRunOwned(g, total, function (el) {
             var groupF = el > total - fadeMs ? Math.max(0, (total - el) / fadeMs) : 1;
             if (shaftMat) { shaftMat.opacity = groupF; headMat.opacity = groupF; }
             for (var i = 0; i < arrows.length; i++) {
@@ -13323,7 +13340,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var boilAt = inMs + holdMs * 0.45;
         var boiled = false;
         var bubbleAcc = 0, lastEl = 0;
-        _sigRun(g, total, function (el) {
+        _sigRunOwned(g, total, function (el) {
             var dt = el - lastEl; lastEl = el;
             var op;
             if (el < inMs) {
@@ -13415,7 +13432,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var tipEmbed = -ts * 0.30;
         var impactFired = false;
         var moteAcc = 0, lastEl = 0;
-        _sigRun(g, total, function (el) {
+        _sigRunOwned(g, total, function (el) {
             var dt = el - lastEl; lastEl = el;
             var f = 1;
             if (el < riseMs) {
@@ -13507,7 +13524,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var total = windMs + sweepMs + stillMs + cutMs;
         var a0 = -2.2, a1 = 2.2;
         var swept = false, cutFired = false;
-        _sigRun(g, total, function (el) {
+        _sigRunOwned(g, total, function (el) {
             if (el < windMs) {
                 pivot.rotation.y = a0;
                 inst.setFade(Math.min(1, el / 120));
@@ -13569,7 +13586,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var total = spinMs + fadeMs;
         var slashFired = [false, false, false];
         var endFired = false;
-        _sigRun(g, total, function (el) {
+        _sigRunOwned(g, total, function (el) {
             var t = _sigClamp01(el / spinMs);
             g.rotation.y = 4.6 * t * t * (3 - 2 * t);   /* smoothstep spin-up */
             var f = el < 120 ? el / 120 : (el > spinMs ? Math.max(0, 1 - (el - spinMs) / fadeMs) : 1);
@@ -13622,7 +13639,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         g.add(core);
 
         var travelMs = 240, lingerMs = 160;
-        _sigRun(g, travelMs + lingerMs, function (el) {
+        _sigRunOwned(g, travelMs + lingerMs, function (el) {
             var t = _sigClamp01(el / travelMs);
             var z = dist * t;
             wave.position.z = z; core.position.z = z;
@@ -13684,7 +13701,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         var inMs = 180, holdMs = opts.holdMs != null ? opts.holdMs : 900, fadeMs = 280;
         var total = inMs + holdMs + fadeMs;
-        _sigRun(g, total, function (el) {
+        _sigRunOwned(g, total, function (el) {
             var op;
             if (el < inMs) op = _sigEaseOutCubic(el / inMs);
             else if (el < inMs + holdMs) op = 1;
@@ -13733,7 +13750,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         var inMs = 380, holdMs = 850, fadeMs = 300;
         var total = inMs + holdMs + fadeMs;
-        _sigRun(g, total, function (el) {
+        _sigRunOwned(g, total, function (el) {
             var op;
             if (el < inMs) {
                 var t0 = _sigEaseOutCubic(el / inMs);
@@ -13766,7 +13783,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sw.group.rotation.z = 0.35;   /* canted across the guard line */
         g.add(sw.group);
         var inMs = 160, holdMs = 800, fadeMs = 260;
-        _sigRun(g, inMs + holdMs + fadeMs, function (el) {
+        _sigRunOwned(g, inMs + holdMs + fadeMs, function (el) {
             var f = el < inMs ? el / inMs
                   : el < inMs + holdMs ? 1
                   : Math.max(0, 1 - (el - inMs - holdMs) / fadeMs);
@@ -13968,7 +13985,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var retractMs = opts.retractMs != null ? opts.retractMs : 420;
         var total = extendMs + holdMs + retractMs;
 
-        _sigRun(pivot, total, function (el) {
+        _sigRunOwned(pivot, total, function (el) {
             if (el < extendMs) {
                 var t = el / extendMs;
                 board.scale.z = Math.max(0.01, _sigEaseOutBack(t));
@@ -14050,7 +14067,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             group.add(beam);
         }
 
-        _sigRun(group, total, function (el) {
+        _sigRunOwned(group, total, function (el) {
             for (var i = 0; i < ufo.lights.length; i++) {
                 ufo.lights[i].opacity = 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(el * 0.006 - i * 0.63));
             }
@@ -14334,7 +14351,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             });
         }
 
-        _sigRun(group, total, function (el) {
+        _sigRunOwned(group, total, function (el) {
             for (var i = 0; i < ships.length; i++) {
                 var sh = ships[i], ufo = sh.ufo, R = sh.R;
                 var t = el - sh.delay;
@@ -14502,7 +14519,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         g.add(halo);
 
         var totalMs = growMs + holdMs + fadeMs;
-        _sigRun(g, totalMs, function (el) {
+        _sigRunOwned(g, totalMs, function (el) {
             var op;
             if (el < growMs) op = _sigEaseOutCubic(el / growMs);
             else if (el < growMs + holdMs) op = 1;
@@ -14590,7 +14607,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         var inMs = 300, holdMs = opts.holdMs != null ? opts.holdMs : (laugh ? 1000 : 850), fadeMs = 380;
         var totalMs = inMs + holdMs + fadeMs;
-        _sigRun(g, totalMs, function (el) {
+        _sigRunOwned(g, totalMs, function (el) {
             var op;
             if (el < inMs) {
                 var t0 = _sigEaseOutCubic(el / inMs);
@@ -14695,7 +14712,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var holdMs = opts.holdMs != null ? opts.holdMs : 650;
         var fadeMs = 420;
         var totalMs = settleMs + holdMs + fadeMs;
-        _sigRun(g, totalMs, function (el) {
+        _sigRunOwned(g, totalMs, function (el) {
             var op = (el > settleMs + holdMs)
                 ? 1 - (el - settleMs - holdMs) / fadeMs : 1;
             boneMat.opacity = op * 0.95;
@@ -14773,7 +14790,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         var riseMs = 380, holdMs = opts.holdMs != null ? opts.holdMs : 1100, sinkMs = 450;
         var totalMs = riseMs + holdMs + sinkMs;
-        _sigRun(g, totalMs, function (el) {
+        _sigRunOwned(g, totalMs, function (el) {
             var op, sy;
             if (el < riseMs) {
                 var t0 = _sigEaseOutCubic(el / riseMs);
@@ -14844,7 +14861,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var inMs = 280, holdMs = opts.holdMs != null ? opts.holdMs : 900, fadeMs = 350;
         var totalMs = inMs + holdMs + fadeMs;
         var flashAt = inMs + holdMs * 0.62;
-        _sigRun(g, totalMs, function (el) {
+        _sigRunOwned(g, totalMs, function (el) {
             var op;
             if (el < inMs) { var t0 = _sigEaseOutCubic(el / inMs); op = t0; g.position.y = baseY - ts * 0.3 * (1 - t0); }
             else if (el < inMs + holdMs) { op = 1; g.position.y = baseY + Math.sin((el - inMs) * 0.004) * ts * 0.05; }
@@ -14916,7 +14933,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         var inMs = 320, holdMs = opts.holdMs != null ? opts.holdMs : 1000, fadeMs = 360;
         var totalMs = inMs + holdMs + fadeMs;
-        _sigRun(g, totalMs, function (el) {
+        _sigRunOwned(g, totalMs, function (el) {
             var op, open;
             if (el < inMs) {
                 var t0 = _sigEaseOutCubic(el / inMs);
@@ -14978,7 +14995,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         var inMs = 240, holdMs = opts.holdMs != null ? opts.holdMs : 800, fadeMs = 340;
         var totalMs = inMs + holdMs + fadeMs;
-        _sigRun(g, totalMs, function (el) {
+        _sigRunOwned(g, totalMs, function (el) {
             var op;
             if (el < inMs) {
                 var t0 = _sigEaseOutBack(el / inMs);
@@ -15094,7 +15111,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     group.add(mesh);
                     var flip = idx % 2 ? 1 : -1;
                     var shattered = false;
-                    _sigRun(group, noteMs, function (el) {
+                    _sigRunOwned(group, noteMs, function (el) {
                         var t = _sigClamp01(el / noteMs);
                         group.position.y = y0 + ts * (gentle ? 0.9 : 0.65) * _sigEaseOutCubic(t);
                         if (gentle) {
@@ -15473,7 +15490,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             });
         }
 
-        _sigRun(group, total, function (el) {
+        _sigRunOwned(group, total, function (el) {
             for (var k = 0; k < spears.length; k++) {
                 var s = spears[k];
                 var fade = 1;
@@ -15558,7 +15575,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     var s1 = s0 * 2.1;
                     var puffMs = ms * (0.55 + 0.4 * ((idx * 1.3) % 1));
                     var churnPh = idx * 2.1;
-                    _sigRun(group, puffMs, function (el) {
+                    _sigRunOwned(group, puffMs, function (el) {
                         var t = _sigClamp01(el / puffMs);
                         var s = s0 + (s1 - s0) * _sigEaseOutCubic(t);
                         mesh.scale.set(s, s, s);
@@ -15913,7 +15930,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var inMs = 200, unrollMs = 420, holdMs = opts.holdMs != null ? opts.holdMs : 1050, fadeMs = 340;
         var totalMs = inMs + unrollMs + holdMs + fadeMs;
         var stamped = false;
-        _sigRun(g, totalMs, function (el) {
+        _sigRunOwned(g, totalMs, function (el) {
             var op, roll;
             if (el < inMs) {
                 op = el / inMs; roll = 0.06;
@@ -16002,7 +16019,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var dropH = ts * 2.6;
         var popped = false;
         var lidVy = 0;
-        _sigRun(g, totalMs, function (el) {
+        _sigRunOwned(g, totalMs, function (el) {
             if (el < dropMs) {
                 var t0 = _sigEaseInCubic(el / dropMs);
                 g.position.y = wp.y + dropH * (1 - t0);
@@ -19258,7 +19275,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
             var totalMs = 1250;
             var trampled = false;
-            _sigRun(g, totalMs, function (el) {
+            _sigRunOwned(g, totalMs, function (el) {
                 for (var j = 0; j < runners.length; j++) {
                     var R2 = runners[j];
                     var t = (el - R2.delay) / R2.runMs;
@@ -19361,7 +19378,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var dropMs = 170, holdMs = 420, riseMs = 260;
             var startY = ts0 * 3.2, hitY = ts0 * 0.16;
             var slammed = false;
-            _sigRun(g, dropMs + holdMs + riseMs, function (el) {
+            _sigRunOwned(g, dropMs + holdMs + riseMs, function (el) {
                 var y;
                 if (el < dropMs) {
                     var t = el / dropMs;
