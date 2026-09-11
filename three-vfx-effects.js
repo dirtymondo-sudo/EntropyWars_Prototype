@@ -10361,7 +10361,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var puffs = Math.max(3, Math.round(total / 240));
         for (var i = 0; i < puffs; i++) {
             (function (idx) {
-                window.setTimeout(function () {
+                _fxDelay(function () {
                     if (_suppressed()) return;
                     var na = Math.random() * Math.PI * 2;
                     var nr = key === 'candleRing' ? footR * (0.82 + Math.random() * 0.18)
@@ -10550,7 +10550,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var licks = Math.round((holdMs + dropMs) / 90);
             for (var fi = 0; fi < licks; fi++) {
                 (function (idx) {
-                    window.setTimeout(function () {
+                    _fxDelay(function () {
                         if (_suppressed()) return;
                         var onArm = Math.random() < 0.4;
                         var fx2 = onArm ? rn(-h * 0.26, h * 0.26) : rn(-h * 0.05, h * 0.05);
