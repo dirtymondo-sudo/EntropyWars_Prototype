@@ -43,8 +43,6 @@ Geometry trace: `_spawnLaserBeam3D` registers cylinders and rings with `_animate
 | 8370 | `window.setTimeout(function() {` |
 | 10301 | `window.setTimeout(function () {` |
 | 10313 | `window.setTimeout(function () { _wpnLoad(key); }, 4500 + idx * 700);` |
-| 11048 | `window.setTimeout(function () {` |
-| 11427 | `window.setTimeout(function () {` |
 | 11827 | `window.setTimeout(function () {` |
 | 12187 | `window.setTimeout(function () {` |
 | 12624 | `window.setTimeout(function () {` |
@@ -124,3 +122,9 @@ Next: the bespoke emission timers in the table (candle puffs, burning-cross lick
 `_sigCandleProp3D` embers and `_sigCrossDescent3D` burning licks now use `_fxDelay`. They emit particles only; geometry retirement remains with `_sigRunOwned`. Candle cold-cache emissions are owned too. Timing, payloads, suppression, non-burning cross and pillar fallback are unchanged. Sixteen production-helper regressions pass; nine fail against pinned unchanged source. Real registration/animation cleanup is exercised with rendering doubles, including shared geometry retention and cap refusal. No browser or network acceptance.
 
 Next: `_sigSleighRide3D` frost wake (line 11048) and `_sigStandSword3D` dissolve motes (line 11427), then the other direct emission sites above, then VFX-04. The first two table entries implement the lifetime helpers themselves; weapon-library boot and staggered warmup remain application-owned. Prior next-task text records historical batch boundaries.
+
+## Sleigh/stand-sword batch (current)
+
+Both frost-wake and dissolve-mote timer sites now use `_fxDelay`; they emit particles and own no disposal. Existing `_sigRunOwned` animations and cached assets are preserved. Thirteen production-helper tests pass, five fail before fixes. Full suite: 492 passed, zero failed, two skipped; syntax 90/90. Browser and online acceptance remain open.
+
+Next: `_sigSlashCombo3D` dissolve motes (11827) and `_sigJawsBite3D` terminal mist (12187), then the remaining direct emissions and VFX-04. Earlier next-task entries are historical.

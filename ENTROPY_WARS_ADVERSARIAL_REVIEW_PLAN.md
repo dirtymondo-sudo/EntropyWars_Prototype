@@ -6,6 +6,16 @@ Baseline: Phase 1 source review pinned to main commit `f0a4c3341631d60cee2ac544e
 Continuation baseline: main commit `4c740fcf6624a30d59e30c4d4dfea1a16dd85b03`, checked 2026-09-09 (America/Chicago). This commit and its predecessor `3da54eff8abbef3da87a1c0f72272919d84bd15e` changed only the uploaded review document; the inspected game source and line references remain unchanged.
 Delivery: this document is repository/reference material. The first delivery is now present in repository main `41f8e76b67120eea58c17fd968c5c72d70ef035e`; R2/Render deployment is unverified. The pause-focus delivery is also present in repository main `e92ee26153b65c2047963544c56310ea838220bb`. The Settings-focus delivery is present in repository main `f546e7fff61edb012e3fae536aee995996257c4f`. The PAUSE-06 controller delivery is present in repository main `88b3bc65adc93fc8ed2e84c28c112b0c81565b3f`; the PAUSE-07 delivery is present in repository main `82494b38fa3dea84f89f32a8723602289fa51b3f`; R2/Render deployment remains unverified.
 
+### Latest continuation — 2026-09-10: LIFE-06 / VFX-03 sleigh and stand-sword emissions
+
+**Implemented and locally validated; not deployed or browser-playtested.** Continued the exact next helper batch. GitHub main blob hashes matched the local effects, entry page, CLAUDE.md, plan and inventory before editing (recorded in BASELINE_HASHES.txt). Two direct emission sites now use `_fxDelay`: `_sigSleighRide3D` frost wake and `_sigStandSword3D` dissolve motes. Retirement cancels pending timers and rejects already-queued callbacks after a fresh battle/preview, including a partially emitted wake. Particle payloads, timing, suppression, cold-model fallback and `_sigRunOwned` resource ownership are preserved. Shared textures/model geometry remain cached. Both viewers execute these local helpers; relay payloads and authority are unchanged.
+
+**Validation:** 13 new production-helper checks pass; five cancellation regressions fail against the unchanged baseline and eight controls pass. Controlled timers/rendering doubles exercise actual lifetime and animation owners; sword model construction is doubled. Full package test command via bundled Node 24 (`node --test --test-reporter=tap *.test.js`; npm unavailable): **494 total, 492 passed, 0 failed, 2 skipped**. Syntax: **90/90 clean**. Skips remain the fitted-outfit rig and server boot dependency checks. No browser, WebGL or live host/guest acceptance.
+
+**Delivery:** `ENTROPY_WARS_SLEIGH_SWORD_FIXES.zip` contains complete files. `three-vfx-effects.js` → R2; `index.html` → Render (shared token `20260910-sleigh-sword-retirement-01-cors`); tests, logs, inventory, CLAUDE.md and plan → repository only. No commit, push or deployment.
+
+**Exact next task:** `_sigSlashCombo3D` dissolve motes and `_sigJawsBite3D` terminal mist (remaining direct timer sites at lines 11827 and 12187), then remaining bespoke emission helpers and VFX-04 endpoint/list visibility. LIFE-06/VFX-03 remain partial; retain application-owned weapon cache warmup.
+
 ### Latest continuation — 2026-09-10 (America/Chicago): LIFE-06 / VFX-03 candle and cross emission retirement
 
 **Implemented and locally validated; not deployed or browser-playtested.** Continued after Claude's wall/refusal sweep from a fresh full repository archive pinned to main `ccbdde65b0ca8636ef45a0ab29d1f9af059443f9`. The previous 2026-09-11 entry is retained with its original date. Main was checked again after implementation and still matched this revision.
@@ -1079,7 +1089,7 @@ After each phase:
 
 ## Resume instructions
 
-**Current continuation:** use the candle/cross entry at the top and `ENTROPY_WARS_RITUAL_EMISSION_FIXES.zip`. Next: `_sigSleighRide3D` frost wake, `_sigStandSword3D` dissolve motes, remaining bespoke timers, then VFX-04. Earlier continuation paragraphs are historical; preserve Claude's refusal sweep.
+**Current continuation:** use the sleigh/stand-sword entry at the top and `ENTROPY_WARS_SLEIGH_SWORD_FIXES.zip`. Next: slash-combo dissolve motes and jaws terminal mist, remaining bespoke timers, then VFX-04. Earlier continuation paragraphs are historical; preserve the refusal sweep.
 
 **Latest continuation:** the LIFE-05 delivery at the top supersedes the older next-step notes below. Use `ENTROPY_WARS_RECONNECT_CLOCK_FIXES.zip`. The next implementation is acknowledged current-match state recovery; persistent clock suspension and forced rejoin resend are implemented and locally validated, not deployed. LIFE-05 remains open.
 

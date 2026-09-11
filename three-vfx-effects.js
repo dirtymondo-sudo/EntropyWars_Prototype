@@ -11045,7 +11045,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var wakeN = Math.round(rideMs / 34);
         for (var wI = 0; wI < wakeN; wI++) {
             (function (idx) {
-                window.setTimeout(function () {
+                _fxDelay(function () {
                     if (_suppressed()) return;
                     var t = idx / wakeN;
                     _spawn({
@@ -11424,7 +11424,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
 
         /* dissolve motes as the blade fades back out of existence */
-        window.setTimeout(function () {
+        _fxDelay(function () {
             if (_suppressed()) return;
             _sigSparks(tx, ty, opts.moteSprite || 'psi-pulse', 10, { vxy: 40, vz0: 40, vz1: 140, gravity: -20 });
         }, summonMs + holdMs + plungeMs + lingerMs);
