@@ -1753,49 +1753,180 @@ const RACE_MODELS_3D = {
   }
 })();
 
-// Character creator: cosmetic data only. Versioned, bounded and allowlisted
-// before use (including presets and remote party data). No user asset URLs.
+// ═══════════════════════════════════════════════════════════════════════════
+// CHARACTER CREATOR — cosmetic data only (v2, 2026-09-11)
+// Versioned, bounded and allowlisted before use (presets, saves, remote party
+// data all pass through normalizeCharacterAppearance). No user asset URLs —
+// every asset is picked by ID from the catalogues below and resolved to a
+// fixed R2 path (Assets/Models/charactercreation/, the user's 2026-09-11
+// upload) with a same-origin fallback served by server.js.
+//
+// ASSETS (what the renderer builds from):
+//  • BASES: Meshy_AI_human_body_base_mesh_<gender>_rigged.glb — the 30k-tri
+//    UV-unwrapped bases, rigged by `node character-rig.js bodies` (repo
+//    tooling: the old donor exports' 24-joint skin weights transferred onto
+//    the new meshes). NEVER wire the unrigged …_<gender>.glb: no skeleton.
+//  • HAIR: hair/hairNNN.glb — one static GLB per style, split from
+//    HairPackPT1.glb by `node character-rig.js hair` (diffuse + normal
+//    embedded, centred on the style's scalp cap). The renderer fits each
+//    to the skull and skins it rigidly to the Head bone.
+//  • FABRICS: clothingtextures/<key>_basecolor.png — 1024² tileables laid
+//    over the garment shells through the base mesh's own UVs (`repeat` =
+//    tiles per UV unit; ~1.7 m of body per UV unit).
+//  • FACE: painted at runtime into a per-instance skin texture (eyes,
+//    brows, lips, facial hair) — there is no authored face art yet.
+// ═══════════════════════════════════════════════════════════════════════════
+const EW_CHARACTER_ASSET_BASE = 'https://cdn.entropywars.net/Assets/Models/charactercreation';
+// Builder order. Labels are provisional (named from the mesh silhouettes) —
+// rename freely; the id is what saves carry.
+const EW_HAIR_STYLES = [
+  { id: 'hair000', label: 'Spiked',          short: true },
+  { id: 'hair003', label: 'Slicked back',    short: true },
+  { id: 'hair006', label: 'Pixie',           short: true },
+  { id: 'hair002', label: 'Swept fringe',    short: true },
+  { id: 'hair009', label: 'Mohawk',          short: true },
+  { id: 'hair008', label: 'Bun' },
+  { id: 'hair012', label: 'Top knot' },
+  { id: 'hair010', label: 'Ponytail' },
+  { id: 'hair013', label: 'Tied back' },
+  { id: 'hair007', label: 'Shag' },
+  { id: 'hair004', label: 'Shoulder length' },
+  { id: 'hair005', label: 'Layered bangs' },
+  { id: 'hair001', label: 'Long straight' },
+  { id: 'hair014', label: 'Wild mane' },
+];
+const EW_HAIR_STYLE_IDS = EW_HAIR_STYLES.map(s => s.id);
+// key → { label, file, repeat (tiles per UV unit), rough (0..1), metal (0..1) }
+const EW_FABRICS = {
+  plain:         { label: 'Plain',       file: null,                          repeat: 0,  rough: 0.92, metal: 0 },
+  cotton:        { label: 'Cotton',      file: 'cotton_basecolor.png',        repeat: 16, rough: 0.95, metal: 0 },
+  cloth:         { label: 'Cloth',       file: 'cloth_basecolor.png',         repeat: 14, rough: 0.95, metal: 0 },
+  denim:         { label: 'Denim',       file: 'denim_basecolor.png',         repeat: 12, rough: 0.9,  metal: 0 },
+  wool:          { label: 'Wool',        file: 'wool_basecolor.png',          repeat: 12, rough: 1,    metal: 0 },
+  'ribbed-knit': { label: 'Ribbed knit', file: 'ribbed-knit_basecolor.png',   repeat: 10, rough: 1,    metal: 0 },
+  canvas:        { label: 'Canvas',      file: 'canvas_basecolor.png',        repeat: 12, rough: 0.95, metal: 0 },
+  nylon:         { label: 'Nylon',       file: 'nylon_basecolor.png',         repeat: 14, rough: 0.6,  metal: 0 },
+  mesh:          { label: 'Mesh',        file: 'mesh_basecolor.png',          repeat: 16, rough: 0.8,  metal: 0 },
+  silk:          { label: 'Silk',        file: 'silk_basecolor.png',          repeat: 14, rough: 0.35, metal: 0 },
+  velvet:        { label: 'Velvet',      file: 'velvet_basecolor.png',        repeat: 12, rough: 0.98, metal: 0 },
+  leather:       { label: 'Leather',     file: 'leather_basecolor.png',       repeat: 8,  rough: 0.55, metal: 0 },
+  suede:         { label: 'Suede',       file: 'suede_basecolor.png',         repeat: 10, rough: 0.98, metal: 0 },
+  rubber:        { label: 'Rubber',      file: 'rubber_basecolor.png',        repeat: 10, rough: 0.45, metal: 0 },
+  chainmail:     { label: 'Chainmail',   file: 'chainmail_basecolor.png',     repeat: 14, rough: 0.45, metal: 0.8 },
+  metal:         { label: 'Plate',       file: 'metal_basecolor.png',         repeat: 6,  rough: 0.35, metal: 0.9 },
+  brass:         { label: 'Brass',       file: 'brass_basecolor.png',         repeat: 6,  rough: 0.4,  metal: 0.9 },
+};
+const EW_FABRIC_IDS = Object.keys(EW_FABRICS);
+// numeric fields: [min, max, default]
 const EW_APPEARANCE_LIMITS = {
   height: [0.85, 1.15, 1], width: [0.85, 1.15, 1],
   chest: [-1, 1, 0], waist: [-1, 1, 0], hips: [-1, 1, 0],
-  head: [-1, 1, 0], jaw: [-1, 1, 0], nose: [-1, 1, 0], cheeks: [-1, 1, 0]
+  head: [-1, 1, 0], jaw: [-1, 1, 0], nose: [-1, 1, 0], cheeks: [-1, 1, 0],
+  eyeSize: [-1, 1, 0], brows: [0, 1, 0.5]
 };
+// enum fields: allowed values (first = default)
+const EW_APPEARANCE_ENUMS = {
+  hair: ['bald'].concat(EW_HAIR_STYLE_IDS),
+  beard: ['none', 'stubble', 'beard', 'goatee'],
+  outfit: ['tee', 'tank', 'suit'],            // suit = long sleeve
+  bottoms: ['trousers', 'shorts'],
+  topFabric: EW_FABRIC_IDS,
+  bottomFabric: EW_FABRIC_IDS,
+};
+const EW_APPEARANCE_COLORS = { skin: '#b98362', hairColor: '#27201c', eyeColor: '#4a6b8a', lipColor: '#9c5a5c', topColor: '#8fa3a8', bottomColor: '#5e6f80' };
+const EW_APPEARANCE_DEFAULTS = { hair: 'hair003', outfit: 'tee', bottoms: 'trousers', beard: 'none', topFabric: 'cotton', bottomFabric: 'denim' };
+// v1 (2026-09-10 procedural shells) → v2 ids
+const _EW_APPEARANCE_LEGACY_HAIR = { crop: 'hair003', crest: 'hair000', bald: 'bald' };
 function normalizeCharacterAppearance(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  if (value.version != null && value.version !== 1) return null;
-  const out = { version: 1 };
+  if (value.version != null && value.version !== 1 && value.version !== 2) return null;
+  const out = { version: 2 };
   for (const key of Object.keys(EW_APPEARANCE_LIMITS)) {
     const [lo, hi, def] = EW_APPEARANCE_LIMITS[key];
     const n = value[key];
     out[key] = typeof n === 'number' && Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : def;
   }
-  const defaults = { skin: '#b98362', hairColor: '#27201c', topColor: '#344a50', bottomColor: '#242b34' };
-  for (const key of Object.keys(defaults)) out[key] = typeof value[key] === 'string' && /^#[0-9a-f]{6}$/i.test(value[key]) ? value[key].toLowerCase() : defaults[key];
-  out.hair = ['bald', 'crop', 'crest'].includes(value.hair) ? value.hair : 'crop';
-  out.outfit = ['suit', 'tee', 'tank'].includes(value.outfit) ? value.outfit : 'tee';
+  for (const key of Object.keys(EW_APPEARANCE_COLORS)) {
+    out[key] = typeof value[key] === 'string' && /^#[0-9a-f]{6}$/i.test(value[key]) ? value[key].toLowerCase() : EW_APPEARANCE_COLORS[key];
+  }
+  for (const key of Object.keys(EW_APPEARANCE_ENUMS)) {
+    let v = value[key];
+    if (key === 'hair' && typeof v === 'string' && _EW_APPEARANCE_LEGACY_HAIR[v]) v = _EW_APPEARANCE_LEGACY_HAIR[v];
+    out[key] = EW_APPEARANCE_ENUMS[key].includes(v) ? v : (EW_APPEARANCE_DEFAULTS[key] || EW_APPEARANCE_ENUMS[key][0]);
+  }
   return out;
+}
+// A fresh random look (the builder's RANDOMIZE). Plain Math.random — cosmetic only.
+function randomCharacterAppearance(rng) {
+  const r = typeof rng === 'function' ? rng : Math.random;
+  const pick = a => a[Math.floor(r() * a.length)];
+  const hex = (h, s, l) => { // hsl → #rrggbb
+    const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l);
+    const f = n => Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)))));
+    return '#' + [f(0), f(8), f(4)].map(c => c.toString(16).padStart(2, '0')).join('');
+  };
+  const skinTones = ['#f4d7bf', '#e8c4a2', '#dfb18c', '#c9946b', '#b98362', '#a06a48', '#916044', '#7a4e36', '#66422e', '#4d3226', '#3c291f'];
+  const hairTones = ['#0f0d0c', '#27201c', '#3b2a1f', '#5a3b25', '#7a4a2a', '#a0662e', '#c98a4a', '#e2c184', '#f1e2b3', '#8b1e1e', '#b5b5b5', '#f2f2f2'];
+  const eyeTones = ['#2d2a26', '#4a3222', '#6b4b2a', '#3d5a3a', '#4a6b8a', '#6a8fb5', '#7a8c6a', '#9a9a9a'];
+  const out = { version: 2 };
+  for (const key of Object.keys(EW_APPEARANCE_LIMITS)) { const [lo, hi] = EW_APPEARANCE_LIMITS[key]; out[key] = Math.round((lo + (hi - lo) * (0.2 + 0.6 * r())) * 100) / 100; }
+  out.skin = pick(skinTones); out.hairColor = pick(hairTones); out.eyeColor = pick(eyeTones);
+  out.lipColor = hex(350 + r() * 20, 0.25 + r() * 0.3, 0.32 + r() * 0.2);
+  out.topColor = hex(r() * 360, 0.15 + r() * 0.5, 0.35 + r() * 0.35);
+  out.bottomColor = hex(r() * 360, 0.1 + r() * 0.4, 0.25 + r() * 0.35);
+  for (const key of Object.keys(EW_APPEARANCE_ENUMS)) out[key] = pick(EW_APPEARANCE_ENUMS[key]);
+  if (r() < 0.6) out.beard = 'none';
+  return normalizeCharacterAppearance(out);
 }
 const EW_CHARACTER_BASES = {};
 for (const gender of ['male', 'female']) {
   EW_CHARACTER_BASES[gender] = _mkUAL('', '', {
-    model: 'https://cdn.entropywars.net/Assets/Models/Meshy_AI_human_body_base_mesh_' + gender + '_biped_Character_output.glb?ewcors=1',
+    model: EW_CHARACTER_ASSET_BASE + '/Meshy_AI_human_body_base_mesh_' + gender + '_rigged.glb?ewcors=1',
     creatorBase: true, heightRatio: 1, basicAttackKind: 'punch'
   });
 }
+function getHairStyleUrl(id) {
+  return EW_HAIR_STYLE_IDS.includes(id) ? EW_CHARACTER_ASSET_BASE + '/hair/' + id + '.glb?ewcors=1' : null;
+}
+function getFabricTextureUrl(key) {
+  const f = EW_FABRICS[key];
+  return f && f.file ? EW_CHARACTER_ASSET_BASE + '/clothingtextures/' + f.file + '?ewcors=1' : null;
+}
+// Same-origin retry for the CDN (CORS / edge hiccups): ONLY the allowlisted
+// creator assets map to server.js /api/character-model/*; anything else → null.
 function getCharacterModelFallback(url) {
   for (const gender of ['male', 'female']) {
     if (EW_CHARACTER_BASES[gender].model === url) return '/api/character-model/' + gender;
   }
+  for (const id of EW_HAIR_STYLE_IDS) if (getHairStyleUrl(id) === url) return '/api/character-model/hair/' + id;
+  for (const key of EW_FABRIC_IDS) if (EW_FABRICS[key].file && getFabricTextureUrl(key) === url) return '/api/character-model/fabric/' + key;
   return null;
 }
 function getCharacterAppearanceModel(race, gender, appearance) {
   const a = race === 'homosapien' && normalizeCharacterAppearance(appearance);
   return a ? Object.assign({}, EW_CHARACTER_BASES[gender === 'female' ? 'female' : 'male'], { heightRatio: a.height }) : null;
 }
+// Every remote asset a look needs besides its base (the match-start preload
+// gate warms these so the first board build is not a bald unit in plain cloth).
+function getCharacterAppearanceAssets(appearance) {
+  const a = normalizeCharacterAppearance(appearance);
+  if (!a) return { hair: null, fabrics: [] };
+  const fabrics = [];
+  for (const key of [a.topFabric, a.bottomFabric]) { const u = getFabricTextureUrl(key); if (u && !fabrics.includes(u)) fabrics.push(u); }
+  return { hair: getHairStyleUrl(a.hair), fabrics };
+}
 if (typeof window !== 'undefined') {
   window.normalizeCharacterAppearance = normalizeCharacterAppearance;
+  window.randomCharacterAppearance = randomCharacterAppearance;
   window.EW_APPEARANCE_LIMITS = EW_APPEARANCE_LIMITS;
+  window.EW_APPEARANCE_ENUMS = EW_APPEARANCE_ENUMS;
+  window.EW_APPEARANCE_COLORS = EW_APPEARANCE_COLORS;
+  window.EW_HAIR_STYLES = EW_HAIR_STYLES;
+  window.EW_FABRICS = EW_FABRICS;
+  window.getHairStyleUrl = getHairStyleUrl;
+  window.getFabricTextureUrl = getFabricTextureUrl;
   window.getCharacterAppearanceModel = getCharacterAppearanceModel;
+  window.getCharacterAppearanceAssets = getCharacterAppearanceAssets;
 }
 
 function getRace3DModel(race, gender, appearance) {

@@ -2998,7 +2998,12 @@
             const validGenders = (typeof getAvailableGendersForRace === 'function')
                 ? getAvailableGendersForRace(race) : ['male', 'female'];
             let gender = identity.gender;
-            if (!gender || !validGenders.includes(gender)) {
+            // THE CHARACTER CREATOR (2026-09-11) ships rigged male AND female
+            // Homosapien bases, so a slot that carries a creator look may wear
+            // either gender even though the roster's stock human model is male-only.
+            const creatorLook = race === 'homosapien' && identity.appearance && typeof normalizeCharacterAppearance === 'function' && normalizeCharacterAppearance(identity.appearance);
+            if (creatorLook && (gender === 'male' || gender === 'female')) { /* keep the chosen base */ }
+            else if (!gender || !validGenders.includes(gender)) {
                 gender = validGenders[randInt(validGenders.length)];
             }
             return {

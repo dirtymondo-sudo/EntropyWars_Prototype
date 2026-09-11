@@ -9949,7 +9949,20 @@ const ThreeRenderer = (function () {
                 urls.push(url);
             }
         });
-        var total = urls.length;
+        // CHARACTER CREATOR looks: the hair style GLB (through the same cache)
+        // and the fabric tiles (texture cache, board encoding) — so the first
+        // board build is never a bald unit in plain cloth.
+        var fabricUrls = [];
+        (units || []).forEach(function (u) {
+            if (!u || u.dead || !u.appearance || u.race !== 'homosapien' || typeof getCharacterAppearanceAssets !== 'function') return;
+            var as = getCharacterAppearanceAssets(u.appearance);
+            if (as.hair && !seen[as.hair] && !(_unitGlbCache[as.hair] && (_unitGlbCache[as.hair].root || _unitGlbCache[as.hair].failed))) { seen[as.hair] = true; urls.push(as.hair); }
+            (as.fabrics || []).forEach(function (fu) {
+                var e = _ccFabricCache[fu + '|L'];
+                if (fabricUrls.indexOf(fu) < 0 && !(e && (e.tex || e.failed))) fabricUrls.push(fu);
+            });
+        });
+        var total = urls.length + fabricUrls.length;
         if (onProgress) { try { onProgress(0, total); } catch (_ex) {} }
         if (!total || typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function') {
             return Promise.resolve({ loaded: 0, total: 0 });
@@ -9967,6 +9980,7 @@ const ThreeRenderer = (function () {
                 if (!e || e.root || e.failed) { fileDone(); return; }
                 (e.doneCbs = e.doneCbs || []).push(fileDone);
             });
+            fabricUrls.forEach(function (fu) { _ccLoadFabric(fu, true, function () { fileDone(); }); });
         });
     }
 
@@ -10586,6 +10600,16 @@ const ThreeRenderer = (function () {
                     var lm = new THREE.MeshLambertMaterial({ map: tex, vertexColors: !!(sm && sm.vertexColors) });
                     if (n.isSkinnedMesh) lm.skinning = true;
                     lm.color.setRGB(_mdiff, _mdiff, _mdiff);
+                    // Carry the source's surface flags: the CHARACTER CREATOR's hair
+                    // cards are alpha-cut + double-sided and its shells double-sided
+                    // (Meshy exports are plain opaque FrontSide, so this is a no-op
+                    // for every other model).
+                    if (sm) {
+                        if (sm.side != null) lm.side = sm.side;
+                        if (sm.alphaTest) lm.alphaTest = sm.alphaTest;
+                        if (sm.transparent) { lm.transparent = true; lm.opacity = sm.opacity; }
+                        if (sm.depthWrite === false) lm.depthWrite = false;
+                    }
                     // Body pixels stamp this unit's stencil ref so the team-
                     // outline hull (below) can mask itself down to the true
                     // screen-space perimeter.
@@ -10612,7 +10636,7 @@ const ThreeRenderer = (function () {
             var _silColor = (unit.player === _viewerPlayerNum())
                 ? SILHOUETTE_OWN_COLOR : SILHOUETTE_ENEMY_COLOR;
             var _silTargets = [];
-            m.traverse(function (n) { if (n.isMesh && !n._ew_silhouette) _silTargets.push(n); });
+            m.traverse(function (n) { if (n.isMesh && !n._ew_silhouette && !n._ew_noTwin) _silTargets.push(n); });
             _silTargets.forEach(function (n) {
                 var silMat = _makeModelSilhouetteMaterial(_silColor, !!n.isSkinnedMesh);
                 silMat._ew_shared = true;   // rig-cache owned
@@ -28972,54 +28996,452 @@ const ThreeRenderer = (function () {
     var _cv = null;          // singleton viewer state
     var _cvToken = 0;        // staleness guard for async loads
 
-    /* CHARACTER CREATOR: fitted, skinned shells built from the verified base
-       meshes. Each instance owns its buffers; the GLB cache is never edited.
-       Geometry shaping is deliberately modest until authored morphs exist.
-       Keep all coordinates in the original metre-scale bind mesh, NOT the
-       armature's centimetre space. The existing retargeter owns the bones. */
+    /* ══════════════════════════════════════════════════════════════════
+     *  CHARACTER CREATOR RUNTIME — rev 3 (2026-09-11, the charactercreation/
+     *  assets: rigged 30k-tri UV bases · the HunterHairs pack · 16 fabrics)
+     *
+     *  One generator, two consumers (the Forge stage and the battle board):
+     *  _createAppearanceRig(root, appearance, unmanagedColor) turns a clone of
+     *  the rigged base (sprites.js EW_CHARACTER_BASES — built by
+     *  `node character-rig.js bodies`) into
+     *    • BODY   — the base mesh, shaped by the sliders (bump fields on the
+     *               torso and face), drawn only where no garment covers it,
+     *               wearing a PAINTED skin texture: skin tone + eyes (on the
+     *               sculpted eyeballs found by _ccFaceLandmarks), brows, lips,
+     *               facial hair, a touch of blush — rasterised through the
+     *               base mesh's own UVs (_ccBakeSkin), one canvas per instance.
+     *    • TOP / BOTTOM — garment shells cut from the relaxed body topology
+     *               (interpolated clipping; cut vertices carry blended bone
+     *               weights) with a FABRIC tileable (sprites.js EW_FABRICS)
+     *               through the same UVs, tinted by vertex colour.
+     *    • HAIR   — the chosen hair/hairNNN.glb (static meshes, one per part)
+     *               fitted to the SKULL (scale = skull width/depth ÷ the
+     *               style's scalp cap; top-aligned; refits when the head
+     *               slider moves), skinned 100 % to the Head bone, its diffuse
+     *               turned to a grey mask and tinted by vertex colour.
+     *  Every buffer, material and canvas texture is instance-owned and
+     *  disposed by rig.dispose(); the GLB caches are never edited. Tints
+     *  travel as VERTEX COLOURS (not material.color) because the board
+     *  swaps every material for its Lambert copy, which carries map +
+     *  vertexColors + side/alpha but nothing else. Textures are keyed per
+     *  encoding: the board's pipeline is unmanaged (LinearEncoding), the
+     *  stage is colour-managed (sRGB) — `unmanagedColor` picks.
+     *  Coordinates stay in the base mesh's metre-scale bind frame; q =
+     *  [x/H, (y-minY)/H, z/H] is the pose-independent body frame every
+     *  landmark below is written in (t = q[1]: feet 0, crown 1).
+     * ══════════════════════════════════════════════════════════════════ */
+    var CC_SKIN_TEX = 1024;     // painted skin canvas (px)
+    var CC_FABRIC_TEX = 512;    // fabric tile working size (px)
+    var _ccImageCache = {};     // url → { img, cbs, failed }
+    var _ccFabricCache = {};    // url|enc → { tex, cbs, failed }
+    var _ccHairTexCache = {};   // srcTex.uuid|enc → THREE.Texture (grey mask)
+    var _ccFaceCache = {};      // landmark key → landmarks (per base mesh)
+    var _ccThumbCache = {};     // fabric key → data-URL swatch (EWCharViewer.fabricThumb)
+    // The face in q units (see _ccFaceLandmarks for the eyes). Both bases share
+    // these to the millimetre (measured 2026-09-11: mouth line 0.889, nose tip
+    // 0.911–0.918, chin 0.868, neck 0.862, ear tops 0.936).
+    var CC_FACE = { mouthT: 0.889, mouthHalfW: 0.0185, upperLip: 0.0078, lowerLip: 0.0068, noseT: 0.915, chinT: 0.868, neckT: 0.861, cheekT: 0.913, cheekX: 0.031 };
+
+    function _ccEncoding(unmanaged) { return unmanaged ? THREE.LinearEncoding : THREE.sRGBEncoding; }
+    function _ccHex(hex) { var c = new THREE.Color(hex); return [c.r, c.g, c.b]; }
+    function _ccLum(rgb) { return rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114; }
+    function _ccCanvas(w, h) {
+        if (typeof document === 'undefined') return null;
+        var c = document.createElement('canvas'); c.width = w; c.height = h; return c;
+    }
+
+    /* Shared <img> loads (CORS-clean) with the same-origin retry sprites.js
+       allowlists. cb(img | null). */
+    function _ccLoadImage(url, cb) {
+        var e = _ccImageCache[url];
+        if (e) { if (e.img) { cb(e.img); return; } if (e.failed) { cb(null); return; } e.cbs.push(cb); return; }
+        e = _ccImageCache[url] = { img: null, cbs: [cb], failed: false };
+        if (typeof Image === 'undefined') { e.failed = true; e.cbs.length = 0; cb(null); return; }
+        function settle(img) {
+            e.img = img; e.failed = !img;
+            var cbs = e.cbs; e.cbs = [];
+            for (var i = 0; i < cbs.length; i++) { try { cbs[i](img); } catch (_ex) {} }
+        }
+        function attempt(u, retried) {
+            var img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = function () { settle(img); };
+            img.onerror = function () {
+                var fb = !retried && typeof getCharacterModelFallback === 'function' && getCharacterModelFallback(url);
+                if (fb) attempt(fb, true); else { console.warn('[ThreeRenderer] creator image failed:', url); settle(null); }
+            };
+            img.src = u;
+        }
+        attempt(url, false);
+    }
+
+    /* A fabric tileable as a RepeatWrapping texture: luminance normalised to a
+       0.8 mean so tint × fabric reads like the swatch (the 1024² sources vary
+       from near-black rubber to bright silk), downsampled to CC_FABRIC_TEX.
+       Cached per url + encoding for the app's lifetime. cb(tex | null). */
+    function _ccLoadFabric(url, unmanaged, cb) {
+        if (!url) { cb(null); return; }
+        var key = url + '|' + (unmanaged ? 'L' : 'S');
+        var e = _ccFabricCache[key];
+        if (e) { if (e.tex) { cb(e.tex); return; } if (e.failed) { cb(null); return; } e.cbs.push(cb); return; }
+        e = _ccFabricCache[key] = { tex: null, cbs: [cb], failed: false };
+        function settle(tex) {
+            e.tex = tex; e.failed = !tex;
+            var cbs = e.cbs; e.cbs = [];
+            for (var i = 0; i < cbs.length; i++) { try { cbs[i](tex); } catch (_ex) {} }
+        }
+        _ccLoadImage(url, function (img) {
+            if (!img) { settle(null); return; }
+            var cnv = _ccCanvas(CC_FABRIC_TEX, CC_FABRIC_TEX);
+            if (!cnv) { settle(null); return; }
+            try {
+                var g = cnv.getContext('2d');
+                g.drawImage(img, 0, 0, CC_FABRIC_TEX, CC_FABRIC_TEX);
+                var id = g.getImageData(0, 0, CC_FABRIC_TEX, CC_FABRIC_TEX), d = id.data, sum = 0, n = d.length / 4;
+                for (var i = 0; i < d.length; i += 4) sum += d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+                var mean = sum / n / 255 || 0.5, k = Math.max(0.5, Math.min(2.6, 0.8 / mean));
+                if (Math.abs(k - 1) > 0.02) {
+                    for (var j = 0; j < d.length; j += 4) { d[j] = Math.min(255, d[j] * k); d[j + 1] = Math.min(255, d[j + 1] * k); d[j + 2] = Math.min(255, d[j + 2] * k); }
+                    g.putImageData(id, 0, 0);
+                }
+            } catch (ex) { console.warn('[ThreeRenderer] fabric normalise failed (tainted canvas?):', url); }
+            var tex = new THREE.CanvasTexture(cnv);
+            tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+            tex.encoding = _ccEncoding(unmanaged);
+            tex.anisotropy = 4;
+            var rep = 12;
+            if (typeof EW_FABRICS !== 'undefined') for (var fk in EW_FABRICS) { if (EW_FABRICS[fk].file && typeof getFabricTextureUrl === 'function' && getFabricTextureUrl(fk) === url) { rep = EW_FABRICS[fk].repeat || rep; break; } }
+            tex.repeat.set(rep, rep);
+            tex._ew_shared = true;   // cache-owned
+            settle(tex);
+        });
+    }
+    function _ccFabricDef(key) { return (typeof EW_FABRICS !== 'undefined' && EW_FABRICS[key]) || { rough: 0.92, metal: 0, repeat: 0 }; }
+
+    /* The pack's hair diffuse → a grey mask (mean luminance 0.72, alpha kept)
+       so ANY hair colour tints it — the authored browns only ever tint darker.
+       Cached per source texture + encoding; the source is never touched. */
+    function _ccHairTexture(src, unmanaged) {
+        if (!src || !src.image) return null;
+        var key = src.uuid + '|' + (unmanaged ? 'L' : 'S');
+        if (_ccHairTexCache[key]) return _ccHairTexCache[key];
+        var img = src.image, w = img.width || img.naturalWidth || 512, h = img.height || img.naturalHeight || 512;
+        var cnv = _ccCanvas(w, h);
+        if (!cnv) return null;
+        try {
+            var g = cnv.getContext('2d');
+            g.drawImage(img, 0, 0, w, h);
+            var id = g.getImageData(0, 0, w, h), d = id.data, sum = 0, wsum = 0;
+            for (var i = 0; i < d.length; i += 4) { var a = d[i + 3] / 255, l = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114; sum += l * a; wsum += a; }
+            var mean = (wsum ? sum / wsum : 128) / 255 || 0.5, k = Math.max(0.6, Math.min(2.4, 0.72 / mean));
+            for (var j = 0; j < d.length; j += 4) { var lum = Math.min(255, (d[j] * 0.299 + d[j + 1] * 0.587 + d[j + 2] * 0.114) * k); d[j] = d[j + 1] = d[j + 2] = lum; }
+            g.putImageData(id, 0, 0);
+        } catch (ex) { return null; }
+        var tex = new THREE.CanvasTexture(cnv);
+        tex.flipY = src.flipY; tex.wrapS = src.wrapS; tex.wrapT = src.wrapT;
+        tex.encoding = _ccEncoding(unmanaged);
+        tex.anisotropy = 4;
+        tex._ew_shared = true;
+        _ccHairTexCache[key] = tex;
+        return tex;
+    }
+
+    /* A hair style GLB through the unit-model cache (same-origin retry, done
+       hooks). cb(root | null) — fires on failure too. */
+    function _ccLoadHair(url, cb) {
+        if (!url || typeof _loadUnitGLB !== 'function') { cb(null); return; }
+        _loadUnitGLB(url, function (e) { cb(e && e.root ? e.root : null); });
+        var e = _unitGlbCache[url];
+        if (!e || e.root) return;
+        if (e.failed) { cb(null); return; }
+        (e.doneCbs = e.doneCbs || []).push(function (en) { if (!en.root) cb(null); });
+    }
+
+    /* Warm everything a look needs besides its base (the preload gate and the
+       board's build both call it): hair GLB + fabric tiles. cb() when every
+       asset settled, capped at 6 s. */
+    function _ccWarmAssets(appearance, unmanaged, cb) {
+        var assets = (typeof getCharacterAppearanceAssets === 'function') ? getCharacterAppearanceAssets(appearance) : { hair: null, fabrics: [] };
+        var pending = 1, fired = false;
+        var timer = setTimeout(function () { if (!fired) { fired = true; cb(); } }, 6000);
+        function done() { if (--pending <= 0 && !fired) { fired = true; clearTimeout(timer); cb(); } }
+        if (assets.hair) { pending++; _ccLoadHair(assets.hair, done); }
+        (assets.fabrics || []).forEach(function (u) { pending++; _ccLoadFabric(u, unmanaged, done); });
+        done();
+    }
+
+    /* Where the eyes are, per base mesh: the depth-weighted centroid of the
+       recessed vertices in each socket (a vertex is recessed by how far it sits
+       behind the highest neighbour within 12 mm — the eyeball floor of the
+       socket, not the brow ridge or the nose bridge). Measured 2026-09-11:
+       male ±0.0295 / 0.9415, female ±0.0287 / 0.9384. Falls back to the male
+       numbers when a mesh has no readable sockets. */
+    function _ccFaceLandmarks(q, nz) {
+        var out = { eyes: [] };
+        for (var side = -1; side <= 1; side += 2) {
+            var cand = [];
+            for (var i = 0; i < q.length; i++) {
+                var v = q[i];
+                if (v[1] > 0.925 && v[1] < 0.962 && Math.sign(v[0]) === side && Math.abs(v[0]) > 0.014 && Math.abs(v[0]) < 0.052 && v[2] > 0.02 && nz[i] > -0.2) cand.push(v);
+            }
+            var sx = 0, st = 0, sw = 0;
+            for (var a = 0; a < cand.length; a++) {
+                var va = cand[a], hull = va[2];
+                for (var b = 0; b < cand.length; b++) { var vb = cand[b]; if (vb[2] > hull && Math.abs(vb[0] - va[0]) < 0.012 && Math.abs(vb[1] - va[1]) < 0.012) hull = vb[2]; }
+                var depth = hull - va[2];
+                if (depth > 0.003) { sx += va[0] * depth; st += va[1] * depth; sw += depth; }
+            }
+            out.eyes.push(sw > 0 ? { x: sx / sw, t: st / sw } : { x: side * 0.0295, t: 0.9415 });
+        }
+        return out;
+    }
+
+    /* Bake the skin: fill with the skin tone, then paint the face onto the head
+       region through the UVs — every head triangle is rasterised in texture
+       space with its 3D position / normal interpolated per texel, so the
+       features are painted in BODY coordinates (q) and land on the sculpt
+       whatever the UV layout does. Returns a CanvasTexture (flipY false, glTF
+       UV convention) or null without a DOM. */
+    function _ccBakeSkin(part, a, unmanaged) {
+        var W = CC_SKIN_TEX, cnv = _ccCanvas(W, W);
+        if (!cnv) return null;
+        var g = cnv.getContext('2d');
+        var skin = _ccHex(a.skin), hair = _ccHex(a.hairColor), eye = _ccHex(a.eyeColor), lip = _ccHex(a.lipColor);
+        g.fillStyle = a.skin; g.fillRect(0, 0, W, W);
+        var id = g.getImageData(0, 0, W, W), px = id.data;
+        var lm = part.face, E0 = lm.eyes[0], E1 = lm.eyes[1];
+        var eyeK = 1 + 0.22 * a.eyeSize;
+        var rx = 0.0097 * eyeK, ry = 0.0059 * eyeK, irisR = 0.0054 * (1 + 0.12 * a.eyeSize), pupilR = 0.0023;
+        var browH = 0.0011 + 0.0023 * a.brows;
+        var brow = [hair[0] * 0.55, hair[1] * 0.55, hair[2] * 0.55];
+        if (_ccLum(brow) > 0.5) brow = [brow[0] * 0.6, brow[1] * 0.6, brow[2] * 0.6];
+        var beardCol = [hair[0] * 0.62, hair[1] * 0.62, hair[2] * 0.62];
+        var beardA = a.beard === 'stubble' ? 0.42 : a.beard === 'none' ? 0 : 0.94;
+        var F = CC_FACE, blush = [Math.min(1, skin[0] * 1.05 + 0.08), skin[1] * 0.78, skin[2] * 0.78];
+        function mix(c, d, k) { c[0] += (d[0] - c[0]) * k; c[1] += (d[1] - c[1]) * k; c[2] += (d[2] - c[2]) * k; }
+        function sstep(e0, e1, x) { var t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); }
+        var col = [0, 0, 0];
+        function faceColor(x, t, z, nx, ny, nz) {
+            col[0] = skin[0]; col[1] = skin[1]; col[2] = skin[2];
+            // gentle pore / tone variation so the skin is not a flat plastic
+            var grain = 1 + 0.025 * Math.sin(x * 3100 + t * 1700) * Math.sin(t * 4300 - z * 2900);
+            col[0] *= grain; col[1] *= grain; col[2] *= grain;
+            var front = nz > -0.15;
+            // the mouth bag (geometry inside the head) stays dark
+            if (z < 0.03 && t > 0.878 && t < 0.9 && Math.abs(x) < 0.022) { mix(col, [0.12, 0.05, 0.05], 0.85); return col; }
+            if (front) {
+                // blush
+                var bx = (Math.abs(x) - F.cheekX) / 0.016, bt = (t - F.cheekT) / 0.011;
+                var bd = bx * bx + bt * bt; if (bd < 1) mix(col, blush, 0.11 * (1 - bd));
+                // lips
+                var lw = F.mouthHalfW, dt = t - F.mouthT;
+                if (Math.abs(x) < lw) {
+                    var bow = 1 - 0.22 * Math.exp(-(x * x) / (0.0045 * 0.0045));   // cupid's bow dips the upper edge
+                    var half = Math.sqrt(Math.max(0, 1 - (x / lw) * (x / lw)));
+                    if (dt >= 0 && dt < F.upperLip * half * bow) { var ku = 1 - sstep(0.75, 1, dt / (F.upperLip * half * bow)); mix(col, [lip[0] * 0.82, lip[1] * 0.82, lip[2] * 0.82], 0.72 * ku); }
+                    else if (dt < 0 && -dt < F.lowerLip * half) { var kl = 1 - sstep(0.7, 1, -dt / (F.lowerLip * half)); mix(col, lip, 0.66 * kl); var shine = Math.exp(-Math.pow((-dt - F.lowerLip * 0.4) / 0.0016, 2)) * Math.exp(-x * x / 0.0002); mix(col, [1, 0.95, 0.93], 0.18 * shine); }
+                    if (Math.abs(dt) < 0.0007 * half + 0.0002) mix(col, [0.22, 0.08, 0.08], 0.7 * half);
+                }
+                // facial hair (jaw, chin, upper lip) — never on the lips, never under the jaw
+                if (beardA > 0 && ny > -0.55 && z > -0.012 && t > F.neckT && t < F.mouthT + 0.015) {
+                    var onLip = Math.abs(x) < lw && dt > -F.lowerLip && dt < F.upperLip;
+                    var moustache = dt > F.upperLip * 0.6 && dt < 0.014 && Math.abs(x) < 0.03;
+                    var chin = dt < -F.lowerLip * 0.5;
+                    // the sides: cheeks below the cheekbone line, outside the mouth, down the jaw
+                    var sides = Math.abs(x) > lw * 0.9 && dt < 0.012 && dt >= -F.lowerLip * 0.5;
+                    var zone = a.beard === 'goatee' ? ((chin && Math.abs(x) < 0.017 + 0.3 * (F.mouthT - t)) || moustache) : (chin || moustache || sides);
+                    if (zone && !onLip) {
+                        var edge = sstep(F.neckT, F.neckT + 0.006, t) * (chin ? sstep(-F.lowerLip * 0.5, -F.lowerLip * 0.5 - 0.004, dt) : sides ? sstep(0.014, 0.008, dt) * sstep(lw * 0.9, lw * 1.3, Math.abs(x)) : sstep(0.014, 0.011, dt));
+                        var strands = 0.75 + 0.25 * Math.sin(x * 5200 + t * 900) * Math.sin(t * 6100 + z * 700);
+                        mix(col, beardCol, beardA * edge * strands);
+                    }
+                }
+                // eyes + brows
+                for (var e = 0; e < 2; e++) {
+                    var E = e ? E1 : E0, side = E.x < 0 ? -1 : 1;
+                    var ex = (x - E.x) / rx, et = (t - E.t) / ry, d = Math.sqrt(ex * ex + et * et);
+                    if (d < 1.2) {
+                        if (d < 1) {
+                            var sclera = [0.96, 0.94, 0.92];
+                            mix(col, sclera, 1);
+                            var ix = (x - E.x) / irisR, it = (t - E.t + 0.0004) / irisR, di = Math.sqrt(ix * ix + it * it);
+                            if (di < 1.06) {
+                                var rim = sstep(1.06, 0.92, di);
+                                var shade = 0.55 + 0.6 * (1 - di * di) ;
+                                mix(col, [eye[0] * shade, eye[1] * shade, eye[2] * shade], rim);
+                                var fib = 1 + 0.12 * Math.sin(Math.atan2(it, ix) * 26) * di;
+                                col[0] *= fib; col[1] *= fib; col[2] *= fib;
+                                var dp = Math.sqrt(ix * ix + it * it) * irisR / pupilR;
+                                mix(col, [0.03, 0.02, 0.02], sstep(1.15, 0.85, dp));
+                                var hx = ix + 0.42 * side, ht = it - 0.42, hd = Math.sqrt(hx * hx + ht * ht);
+                                mix(col, [1, 1, 1], 0.85 * sstep(0.3, 0.12, hd));
+                            }
+                            // lid shadow across the top of the eye
+                            if (et > 0.25) mix(col, [0.35, 0.25, 0.22], 0.35 * sstep(0.25, 1, et) * (1 - sstep(0.85, 1, d)));
+                            mix(col, [0.16, 0.09, 0.08], 0.9 * sstep(0.88, 1, d) * (et > -0.2 ? 1 : 0.35));   // lash line
+                        } else {
+                            var lashK = et > 0 ? sstep(1.2, 1.02, d) : 0.4 * sstep(1.12, 1.0, d);
+                            mix(col, [0.16, 0.09, 0.08], 0.75 * lashK);
+                        }
+                    }
+                    // brow: an arc above the socket, thicker inside, tapering outward, outer end higher
+                    var u = (x - E.x) / 0.0175 * side;               // -1 inner … +1 outer
+                    if (u > -1.05 && u < 1.15) {
+                        var arcT = E.t + 0.0172 + 0.0036 * (1 - Math.pow(u - 0.2, 2)) + 0.0009 * u;
+                        var hh = browH * (1 - 0.45 * Math.max(0, u)) * (1 - 0.35 * Math.max(0, -u - 0.5) / 0.5);
+                        var dd = Math.abs(t - arcT) / Math.max(1e-4, hh);
+                        var ends = sstep(-1.05, -0.9, u) * sstep(1.15, 0.95, u);
+                        var hairs = 0.8 + 0.2 * Math.sin(x * 6200 + t * 1400);
+                        mix(col, brow, 0.92 * sstep(1.15, 0.7, dd) * ends * hairs);
+                    }
+                }
+            }
+            return col;
+        }
+        // rasterise the head triangles in UV space
+        var src = part.src, pos = src.attributes.position, nrm = src.attributes.normal, uv = src.attributes.uv, ids = part.ids;
+        var H = part.height, minY = part.minY, tris = part.headTris;
+        for (var k = 0; k < tris.length; k++) {
+            var ti = tris[k], i0 = ids[ti], i1 = ids[ti + 1], i2 = ids[ti + 2];
+            var u0 = uv.getX(i0) * W, v0 = uv.getY(i0) * W, u1 = uv.getX(i1) * W, v1 = uv.getY(i1) * W, u2 = uv.getX(i2) * W, v2 = uv.getY(i2) * W;
+            var det = (u1 - u0) * (v2 - v0) - (u2 - u0) * (v1 - v0);
+            if (Math.abs(det) < 1e-6) continue;
+            var minx = Math.max(0, Math.floor(Math.min(u0, u1, u2) - 1)), maxx = Math.min(W - 1, Math.ceil(Math.max(u0, u1, u2) + 1));
+            var miny = Math.max(0, Math.floor(Math.min(v0, v1, v2) - 1)), maxy = Math.min(W - 1, Math.ceil(Math.max(v0, v1, v2) + 1));
+            // edge tolerance ≈ 1 px so texel centres just outside still paint (filter bleed)
+            var l0 = Math.hypot(u2 - u1, v2 - v1) || 1, l1 = Math.hypot(u2 - u0, v2 - v0) || 1, l2 = Math.hypot(u1 - u0, v1 - v0) || 1;
+            var tol0 = -1.1 * l0 / Math.abs(det), tol1 = -1.1 * l1 / Math.abs(det), tol2 = -1.1 * l2 / Math.abs(det);
+            var qx0 = pos.getX(i0) / H, qt0 = (pos.getY(i0) - minY) / H, qz0 = pos.getZ(i0) / H;
+            var qx1 = pos.getX(i1) / H, qt1 = (pos.getY(i1) - minY) / H, qz1 = pos.getZ(i1) / H;
+            var qx2 = pos.getX(i2) / H, qt2 = (pos.getY(i2) - minY) / H, qz2 = pos.getZ(i2) / H;
+            var nx0 = nrm.getX(i0), ny0 = nrm.getY(i0), nz0 = nrm.getZ(i0), nx1 = nrm.getX(i1), ny1 = nrm.getY(i1), nz1 = nrm.getZ(i1), nx2 = nrm.getX(i2), ny2 = nrm.getY(i2), nz2 = nrm.getZ(i2);
+            for (var y = miny; y <= maxy; y++) for (var x = minx; x <= maxx; x++) {
+                var pxc = x + 0.5, pyc = y + 0.5;
+                var w0 = ((u1 - pxc) * (v2 - pyc) - (u2 - pxc) * (v1 - pyc)) / det;
+                var w1 = ((u2 - pxc) * (v0 - pyc) - (u0 - pxc) * (v2 - pyc)) / det;
+                var w2 = 1 - w0 - w1;
+                if (w0 < tol0 || w1 < tol1 || w2 < tol2) continue;
+                var c0 = Math.max(0, w0), c1 = Math.max(0, w1), c2 = Math.max(0, w2), cs = c0 + c1 + c2 || 1; c0 /= cs; c1 /= cs; c2 /= cs;
+                var c = faceColor(qx0 * c0 + qx1 * c1 + qx2 * c2, qt0 * c0 + qt1 * c1 + qt2 * c2, qz0 * c0 + qz1 * c1 + qz2 * c2,
+                                  nx0 * c0 + nx1 * c1 + nx2 * c2, ny0 * c0 + ny1 * c1 + ny2 * c2, nz0 * c0 + nz1 * c1 + nz2 * c2);
+                var o = (y * W + x) * 4;
+                px[o] = Math.max(0, Math.min(255, c[0] * 255)); px[o + 1] = Math.max(0, Math.min(255, c[1] * 255)); px[o + 2] = Math.max(0, Math.min(255, c[2] * 255)); px[o + 3] = 255;
+            }
+        }
+        g.putImageData(id, 0, 0);
+        var tex = new THREE.CanvasTexture(cnv);
+        tex.flipY = false;                 // glTF UV convention (origin top-left)
+        tex.encoding = _ccEncoding(unmanaged);
+        tex.anisotropy = 4;
+        tex._ew_shared = true;             // owned by the rig, not _disposeR
+        return tex;
+    }
+
     function _createAppearanceRig(root, initial, unmanagedColor) {
-        var parts = [], ownedGeometries = [], ownedMaterials = [];
+        var parts = [], ownedGeometries = [], ownedMaterials = [], ownedTextures = [];
         var targets = [];
         root.traverse(function (n) { if (n.isSkinnedMesh && n.geometry) targets.push(n); });
-        function material(roughness) {
-            var m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: roughness, metalness: 0,
-                vertexColors: true, skinning: true, side: THREE.DoubleSide });
+        var alive = true;
+        function material(opts) {
+            var o = Object.assign({ color: 0xffffff, roughness: 0.9, metalness: 0, skinning: true, side: THREE.DoubleSide }, opts || {});
+            var m;
+            if (typeof window !== 'undefined' && window.EW_CC_DEBUG_UNLIT) {   // diagnostics: geometry / colour with no lighting
+                delete o.roughness; delete o.metalness; delete o.normalMap; delete o.normalScale;
+                m = new THREE.MeshBasicMaterial(o);
+            } else m = new THREE.MeshStandardMaterial(o);
             ownedMaterials.push(m); return m;
         }
         function geometry() {
             var g = new THREE.BufferGeometry(); g._ew_shared = true;
             ownedGeometries.push(g); return g;
         }
+        function color(hex) { var c = new THREE.Color(hex); return unmanagedColor ? c : c.convertSRGBToLinear(); }
         targets.forEach(function (mesh) {
             var src = mesh.geometry, pos = src.attributes.position;
+            if (!src.attributes.uv) { console.warn('[ThreeRenderer] creator base has no UVs — skipping', mesh.name); return; }
             var ids = src.index ? Array.from(src.index.array) : Array.from({ length: pos.count }, function (_, i) { return i; });
-            // Read bounds without changing even the cached source's metadata.
             var box = new THREE.Box3().setFromBufferAttribute(pos);
-            var adjacent = Array.from({ length: pos.count }, function () { return new Set(); });
-            for (var i = 0; i < ids.length; i += 3) for (var j = 0; j < 3; j++) {
-                adjacent[ids[i + j]].add(ids[i + (j + 1) % 3]); adjacent[ids[i + j]].add(ids[i + (j + 2) % 3]);
+            var H = box.max.y - box.min.y, minY = box.min.y;
+            // The unwrapped base splits its vertices along every UV seam. Relaxing
+            // or averaging normals per INDEX would pull the two sides of a seam
+            // apart (the 2026-09-11 "shredded shirt") — so weld by position and
+            // run both over the welded graph; the duplicates copy their weld's result.
+            var weld = new Int32Array(pos.count), weldKeys = new Map(), repCount = 0;
+            for (var wi = 0; wi < pos.count; wi++) {
+                var wk = pos.getX(wi).toFixed(5) + '|' + pos.getY(wi).toFixed(5) + '|' + pos.getZ(wi).toFixed(5);
+                var wr = weldKeys.get(wk);
+                if (wr == null) { wr = repCount++; weldKeys.set(wk, wr); }
+                weld[wi] = wr;
             }
-            mesh.geometry = geometry(); mesh.material = material(0.84);
-            function shell(name, roughness) {
-                var n = new THREE.SkinnedMesh(geometry(), material(roughness));
+            weldKeys = null;
+            // one-ring adjacency over welded vertices as CSR arrays (the relaxation walks it 10× per rebuild)
+            var adjSets = Array.from({ length: repCount }, function () { return new Set(); });
+            for (var i = 0; i < ids.length; i += 3) for (var j = 0; j < 3; j++) {
+                var wa = weld[ids[i + j]], wb = weld[ids[i + (j + 1) % 3]], wc = weld[ids[i + (j + 2) % 3]];
+                if (wb !== wa) adjSets[wa].add(wb); if (wc !== wa) adjSets[wa].add(wc);
+            }
+            var adjOff = new Uint32Array(repCount + 1), adjTotal = 0;
+            for (var ai = 0; ai < repCount; ai++) { adjOff[ai] = adjTotal; adjTotal += adjSets[ai].size; }
+            adjOff[repCount] = adjTotal;
+            var adjIdx = new Uint32Array(adjTotal), ap = 0;
+            for (var aj = 0; aj < repCount; aj++) adjSets[aj].forEach(function (n) { adjIdx[ap++] = n; });
+            adjSets = null;
+            // q frame (pose-independent body coordinates) + the head triangle list (for the bake) + the eye landmarks
+            var q = new Array(pos.count), Q = new Float32Array(pos.count * 3), nz = new Float32Array(pos.count), nrmA = src.attributes.normal;
+            for (var v = 0; v < pos.count; v++) {
+                q[v] = [pos.getX(v) / H, (pos.getY(v) - minY) / H, pos.getZ(v) / H];
+                Q[v * 3] = q[v][0]; Q[v * 3 + 1] = q[v][1]; Q[v * 3 + 2] = q[v][2];
+                nz[v] = nrmA ? nrmA.getZ(v) : 1;
+            }
+            var headTris = [];
+            for (var k = 0; k < ids.length; k += 3) { if (q[ids[k]][1] > 0.845 && q[ids[k + 1]][1] > 0.845 && q[ids[k + 2]][1] > 0.845) headTris.push(k); }
+            var faceKey = src.uuid;
+            var face = _ccFaceCache[faceKey] || (_ccFaceCache[faceKey] = _ccFaceLandmarks(q, nz));
+            mesh.geometry = geometry();
+            mesh.material = material({ roughness: 0.62, side: THREE.FrontSide });
+            var headBone = -1;
+            if (mesh.skeleton && mesh.skeleton.bones) {
+                headBone = mesh.skeleton.bones.findIndex(function (b) { return b.name === 'Head'; });
+                if (headBone < 0) headBone = mesh.skeleton.bones.findIndex(function (b) { return /head/i.test(b.name); });
+                if (headBone < 0) headBone = mesh.skeleton.bones.findIndex(function (b) { return /neck/i.test(b.name); });
+                if (headBone < 0) headBone = 0;
+            }
+            function shell(name, mat) {
+                var n = new THREE.SkinnedMesh(geometry(), mat);
                 n.name = 'EWCreator_' + name; n.frustumCulled = false;
                 n.position.copy(mesh.position); n.quaternion.copy(mesh.quaternion); n.scale.copy(mesh.scale);
                 n.bindMode = mesh.bindMode; n.bind(mesh.skeleton, mesh.bindMatrix);
                 n.bindMatrixInverse.copy(mesh.bindMatrixInverse); mesh.parent.add(n); return n;
             }
-            parts.push({ body: mesh, clothes: shell('clothes', 0.96), hair: shell('hair', 0.68),
-                src: src, ids: ids, adjacent: adjacent, height: box.max.y - box.min.y, minY: box.min.y });
+            parts.push({ body: mesh, top: shell('top', material({ roughness: 0.95 })), bottom: shell('bottom', material({ roughness: 0.92 })),
+                shell: shell, src: src, ids: ids, count: pos.count, Q: Q, weld: weld, repCount: repCount, adjOff: adjOff, adjIdx: adjIdx, height: H, minY: minY, headTris: headTris, face: face, headBone: headBone,
+                skinTex: null, hair: [], hairId: null, hairUrl: null, hairRoot: null, skull: null, fabricUrl: { top: null, bottom: null } });
         });
         function bump(t, center, radius) { var d = (t - center) / radius; return Math.exp(-d * d * 2); }
-        // Cut triangles at the garment/hairline, interpolating the ORIGINAL
-        // bone weights at every new vertex. Never interpolate bone indices.
+        /* Vertex records exist only for the few thousand triangles a garment
+           line actually crosses; whole triangles stream straight from the flat
+           arrays. A cut vertex blends p / n / uv / q and MERGES the two bone
+           weight sets (top four, renormalised) — bone indices are never
+           interpolated. */
+        function mergeSkin(a, b, t) {
+            var m = {}, j, k;
+            for (j = 0; j < 4; j++) {
+                if (a.sw[j] > 0) m[a.si[j]] = (m[a.si[j]] || 0) + a.sw[j] * (1 - t);
+                if (b.sw[j] > 0) m[b.si[j]] = (m[b.si[j]] || 0) + b.sw[j] * t;
+            }
+            var keys = Object.keys(m).sort(function (x, y) { return m[y] - m[x]; }).slice(0, 4), tot = 0;
+            for (k = 0; k < keys.length; k++) tot += m[keys[k]];
+            tot = tot || 1;
+            var si = [0, 0, 0, 0], sw = [0, 0, 0, 0];
+            for (k = 0; k < keys.length; k++) { si[k] = +keys[k]; sw[k] = m[keys[k]] / tot; }
+            return { si: si, sw: sw };
+        }
         function mix(a, b, t) {
-            var v = { q: [], p: [], n: [], w: {} };
-            ['q', 'p', 'n'].forEach(function (key) {
-                for (var j = 0; j < 3; j++) v[key][j] = a[key][j] + (b[key][j] - a[key][j]) * t;
-            });
-            Object.keys(a.w).forEach(function (k) { v.w[k] = a.w[k] * (1 - t); });
-            Object.keys(b.w).forEach(function (k) { v.w[k] = (v.w[k] || 0) + b.w[k] * t; });
+            var v = { idx: -1, q: [0, 0, 0], p: [0, 0, 0], n: [0, 0, 0], uv: [0, 0], si: null, sw: null }, j;
+            for (j = 0; j < 3; j++) { v.q[j] = a.q[j] + (b.q[j] - a.q[j]) * t; v.p[j] = a.p[j] + (b.p[j] - a.p[j]) * t; v.n[j] = a.n[j] + (b.n[j] - a.n[j]) * t; }
+            v.uv[0] = a.uv[0] + (b.uv[0] - a.uv[0]) * t; v.uv[1] = a.uv[1] + (b.uv[1] - a.uv[1]) * t;
+            if (t <= 0) { v.si = a.si; v.sw = a.sw; } else if (t >= 1) { v.si = b.si; v.sw = b.sw; }
+            else { var ms = mergeSkin(a, b, t); v.si = ms.si; v.sw = ms.sw; }
             return v;
         }
         function split(poly, distance) {
@@ -29033,173 +29455,382 @@ const ThreeRenderer = (function () {
             }
             return { inside: inside, outside: outside, edge: edge };
         }
+        /* Indexed: every base vertex of the surface (shaped body or relaxed
+           cloth) is present once; the garment-line cut vertices are appended
+           after them. Whole triangles cost three indices, nothing else. */
+        function writeGeometry(g, b, N, baseUv, baseSi, baseSw) {
+            if (g.attributes.position) g.dispose();   // release old GPU buffers before replacing topology
+            var total = N + b.xCount;
+            var position = new Float32Array(total * 3); position.set(b.S); position.set(b.xPos, N * 3);
+            var normal = new Float32Array(total * 3); normal.set(b.NS); normal.set(b.xNrm, N * 3);
+            var uv = new Float32Array(total * 2); uv.set(baseUv); uv.set(b.xUv, N * 2);
+            var skinIndex = new Uint16Array(total * 4); skinIndex.set(baseSi); skinIndex.set(b.xSi, N * 4);
+            var skinWeight = new Float32Array(total * 4); skinWeight.set(baseSw); skinWeight.set(b.xSw, N * 4);
+            var gain = new Float32Array(total); gain.set(b.gainBase); gain.set(b.xGain, N);
+            b.gain = gain;
+            g.setAttribute('position', new THREE.BufferAttribute(position, 3));
+            g.setAttribute('normal', new THREE.BufferAttribute(normal, 3));
+            g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+            g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(total * 3), 3));
+            g.setAttribute('skinIndex', new THREE.BufferAttribute(skinIndex, 4));
+            g.setAttribute('skinWeight', new THREE.BufferAttribute(skinWeight, 4));
+            g.setIndex(new THREE.BufferAttribute(new Uint32Array(b.index), 1));
+            g.normalizeNormals(); g.computeBoundingBox(); g.computeBoundingSphere();
+        }
+        /* Face-area-weighted vertex normals of a surface (flat arrays), accumulated
+           per WELDED vertex so UV-seam duplicates shade as one surface. */
+        function surfaceNormals(P, ids, out, weld, repCount) {
+            var i, k, acc = new Float32Array(repCount * 3);
+            for (k = 0; k < ids.length; k += 3) {
+                var a = ids[k] * 3, b = ids[k + 1] * 3, c = ids[k + 2] * 3;
+                var ux = P[b] - P[a], uy = P[b + 1] - P[a + 1], uz = P[b + 2] - P[a + 2];
+                var vx = P[c] - P[a], vy = P[c + 1] - P[a + 1], vz = P[c + 2] - P[a + 2];
+                var nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+                var ra = weld[ids[k]] * 3, rb = weld[ids[k + 1]] * 3, rc = weld[ids[k + 2]] * 3;
+                acc[ra] += nx; acc[ra + 1] += ny; acc[ra + 2] += nz; acc[rb] += nx; acc[rb + 1] += ny; acc[rb + 2] += nz; acc[rc] += nx; acc[rc + 1] += ny; acc[rc + 2] += nz;
+            }
+            for (i = 0; i < out.length / 3; i++) {
+                var r = weld[i] * 3, l = Math.hypot(acc[r], acc[r + 1], acc[r + 2]) || 1;
+                out[i * 3] = acc[r] / l; out[i * 3 + 1] = acc[r + 1] / l; out[i * 3 + 2] = acc[r + 2] / l;
+            }
+        }
+        /* ── the geometry pass: shape the body, relax + cut the garments ── */
+        function rebuildGeometry(part, a) {
+            var H = part.height, src = part.src, ids = part.ids, N = part.count, Q = part.Q;
+            var si = src.attributes.skinIndex.array, sw = src.attributes.skinWeight.array, pos = src.attributes.position.array, uvA = src.attributes.uv.array;
+            var P = new Float32Array(N * 3), i, j, k;
+            var skull = { halfW: 0, zMin: Infinity, zMax: -Infinity, topY: -Infinity, cx: 0, n: 0 };
+            for (i = 0; i < N; i++) {
+                var x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2], qx = Q[i * 3], t = Q[i * 3 + 1];
+                var central = bump(qx, 0, 0.16);
+                var bulk = central * (a.chest * 0.10 * bump(t, 0.74, 0.09) + a.waist * 0.18 * bump(t, 0.61, 0.075) + a.hips * 0.12 * bump(t, 0.52, 0.075));
+                x *= (1 + bulk) * a.width; z *= 1 + bulk;
+                var hb = bump(t, 0.935, 0.085);
+                x *= 1 + a.head * 0.10 * hb; z *= 1 + a.head * 0.06 * hb;
+                x *= 1 + a.jaw * 0.13 * bump(t, 0.873, 0.025) * central;
+                x *= 1 + a.cheeks * 0.10 * bump(t, 0.916, 0.022) * central;
+                z += a.nose * H * 0.008 * bump(t, 0.927, 0.025) * bump(x / H, 0, 0.019) * Math.max(0, Math.min(1, z / (H * 0.045)));
+                P[i * 3] = x; P[i * 3 + 1] = y; P[i * 3 + 2] = z;
+                if (t >= 0.955) { var ax = Math.abs(x); if (ax > skull.halfW) skull.halfW = ax; if (z < skull.zMin) skull.zMin = z; if (z > skull.zMax) skull.zMax = z; skull.cx += x; skull.n++; }
+                if (t >= 0.9 && y > skull.topY) skull.topY = y;
+            }
+            skull.cx = skull.n ? skull.cx / skull.n : 0;
+            part.skull = skull;
+            // Relax anatomical creases for cloth while retaining limb shape — over the
+            // WELDED vertices (CSR adjacency, ping-pong buffers), then fan out to the seam duplicates.
+            var weld = part.weld, RC = part.repCount, off = part.adjOff, adj = part.adjIdx;
+            var Rr = new Float32Array(RC * 3), R2 = new Float32Array(RC * 3);
+            for (i = 0; i < N; i++) { var wr = weld[i] * 3; Rr[wr] = P[i * 3]; Rr[wr + 1] = P[i * 3 + 1]; Rr[wr + 2] = P[i * 3 + 2]; }
+            for (var pass = 0; pass < 10; pass++) {
+                for (i = 0; i < RC; i++) {
+                    var s0 = off[i], s1 = off[i + 1], cnt = s1 - s0;
+                    if (!cnt) { R2[i * 3] = Rr[i * 3]; R2[i * 3 + 1] = Rr[i * 3 + 1]; R2[i * 3 + 2] = Rr[i * 3 + 2]; continue; }
+                    var sx = 0, sy = 0, sz = 0;
+                    for (k = s0; k < s1; k++) { var n3 = adj[k] * 3; sx += Rr[n3]; sy += Rr[n3 + 1]; sz += Rr[n3 + 2]; }
+                    R2[i * 3] = Rr[i * 3] * 0.55 + sx / cnt * 0.45; R2[i * 3 + 1] = Rr[i * 3 + 1] * 0.55 + sy / cnt * 0.45; R2[i * 3 + 2] = Rr[i * 3 + 2] * 0.55 + sz / cnt * 0.45;
+                }
+                var tmp = Rr; Rr = R2; R2 = tmp;
+            }
+            var R = new Float32Array(N * 3);
+            for (i = 0; i < N; i++) { var wq = weld[i] * 3; R[i * 3] = Rr[wq]; R[i * 3 + 1] = Rr[wq + 1]; R[i * 3 + 2] = Rr[wq + 2]; }
+            var NB = new Float32Array(N * 3);
+            surfaceNormals(P, ids, NB, weld, RC);
+            // A local row envelope of the chest front so the shirt panel bridges the valleys.
+            var chestRows = new Float64Array(41);
+            for (i = 0; i < N; i++) {
+                var tq = Q[i * 3 + 1];
+                if (tq >= 0.60 && tq <= 0.80 && Math.abs(Q[i * 3]) < 0.08 && Q[i * 3 + 2] > 0) {
+                    var row = Math.max(0, Math.min(40, Math.round((tq - 0.60) * 200)));
+                    if (P[i * 3 + 2] > chestRows[row]) chestRows[row] = P[i * 3 + 2];
+                }
+            }
+            var rowsS = new Float64Array(41);
+            for (var r0 = 0; r0 <= 40; r0++) {
+                var sum = 0, weight = 0;
+                for (var r = Math.max(0, r0 - 7); r <= Math.min(40, r0 + 7); r++) { var w = Math.exp(-Math.pow((r - r0) / 4, 2)); if (chestRows[r] > 0) { sum += chestRows[r] * w; weight += w; } }
+                rowsS[r0] = weight ? sum / weight : chestRows[r0];
+            }
+            var ease = a.outfit === 'suit' ? 0.005 : 0.009;
+            var C = new Float32Array(N * 3);
+            for (i = 0; i < N; i++) {
+                var tt = Q[i * 3 + 1], offset = H * (ease + 0.004 * bump(tt, 0.65, 0.13));
+                C[i * 3] = R[i * 3] + NB[i * 3] * offset; C[i * 3 + 1] = P[i * 3 + 1]; C[i * 3 + 2] = R[i * 3 + 2] + NB[i * 3 + 2] * offset;
+                if (tt > 0.62 && tt < 0.80 && Q[i * 3 + 2] > 0 && Math.abs(Q[i * 3]) < 0.09) {
+                    var rf = Math.max(0, Math.min(39.999, (tt - 0.60) * 200)), ri = Math.floor(rf);
+                    var peak = rowsS[ri] * (1 - rf + ri) + rowsS[ri + 1] * (rf - ri);
+                    var panel = peak * Math.sqrt(Math.max(0.2, 1 - 0.35 * Math.pow(Q[i * 3] / 0.09, 2))) + H * ease;
+                    var blend = Math.min(1, (tt - 0.62) / 0.025, (0.80 - tt) / 0.025);
+                    C[i * 3 + 2] += Math.max(0, panel - C[i * 3 + 2]) * blend;
+                }
+            }
+            var NC = new Float32Array(N * 3);
+            surfaceNormals(C, ids, NC, weld, RC);
+            function gainAt(target, t, x, shade) {
+                var gain = shade || 1;
+                if (target === 1 || target === 2) {
+                    gain *= 0.97 + 0.025 * Math.sin(t * 230 + x * 90);   // restrained fabric variation
+                    if (Math.abs(t - 0.565) < 0.006 || Math.abs(t - 0.08) < 0.005 || Math.abs(t - 0.36) < 0.005) gain *= 0.72;   // waistband / hems
+                }
+                return gain;
+            }
+            var buffers = [0, 1, 2].map(function (target) {
+                var gainBase = new Float32Array(N);
+                for (var gi = 0; gi < N; gi++) gainBase[gi] = gainAt(target, Q[gi * 3 + 1], Q[gi * 3], 1);
+                return { S: target === 0 ? P : C, NS: target === 0 ? NB : NC, gainBase: gainBase, index: [], xPos: [], xNrm: [], xUv: [], xGain: [], xSi: [], xSw: [], xCount: 0, gain: null };
+            });
+            /* a base vertex indexes itself; a cut / rim vertex is appended */
+            function vertexIndex(b, target, v, shade) {
+                if (v.idx >= 0 && !shade) return v.idx;
+                b.xPos.push(v.p[0], v.p[1], v.p[2]); b.xNrm.push(v.n[0], v.n[1], v.n[2]); b.xUv.push(v.uv[0], v.uv[1]);
+                b.xGain.push(gainAt(target, v.q[1], v.q[0], shade));
+                b.xSi.push(v.si[0], v.si[1], v.si[2], v.si[3]); b.xSw.push(v.sw[0], v.sw[1], v.sw[2], v.sw[3]);
+                return N + b.xCount++;
+            }
+            function emitTri(target, S, NS, i0, i1, i2) { buffers[target].index.push(i0, i1, i2); }
+            function emit(poly, target, shade) {
+                if (poly.length < 3) return;
+                var b = buffers[target], idx = [];
+                for (var e = 0; e < poly.length; e++) idx.push(vertexIndex(b, target, poly[e], shade));
+                for (var m = 1; m < poly.length - 1; m++) b.index.push(idx[0], idx[m], idx[m + 1]);
+            }
+            function rec(i, S, NS) {
+                var i3 = i * 3, i2 = i * 2, i4 = i * 4;
+                return { idx: i, q: [Q[i3], Q[i3 + 1], Q[i3 + 2]], p: [S[i3], S[i3 + 1], S[i3 + 2]], n: [NS[i3], NS[i3 + 1], NS[i3 + 2]], uv: [uvA[i2], uvA[i2 + 1]],
+                    si: [si[i4], si[i4 + 1], si[i4 + 2], si[i4 + 3]], sw: [sw[i4], sw[i4 + 1], sw[i4 + 2], sw[i4 + 3]] };
+            }
+            var sleeve = a.outfit === 'suit' ? 0.285 : a.outfit === 'tee' ? 0.155 : 0.093;
+            var collar = a.outfit === 'tank' ? 0.792 : 0.819;
+            var hemT = a.bottoms === 'shorts' ? 0.36 : 0.08;
+            var shirtCuts = [function (q) { return q[1] - 0.565; }, function (q) { return sleeve - Math.abs(q[0]); },
+                function (q) { return collar + 0.035 * (1 - Math.exp(-Math.pow(q[0] / 0.038, 2))) - q[1]; }];
+            var pantsCuts = [function (q) { return q[1] - hemT; }, function (q) { return 0.565 - q[1]; }, function (q) { return 0.16 - Math.abs(q[0]); }];
+            var q0 = [0, 0, 0], q1 = [0, 0, 0], q2 = [0, 0, 0];
+            /* 1 = whole triangle inside every cut, -1 = wholly outside one cut, 0 = straddles */
+            function classify(cuts) {
+                var res = 1;
+                for (var c = 0; c < cuts.length; c++) {
+                    var d0 = cuts[c](q0), d1 = cuts[c](q1), d2 = cuts[c](q2);
+                    if (d0 < 0 && d1 < 0 && d2 < 0) return -1;
+                    if (d0 < 0 || d1 < 0 || d2 < 0) res = 0;
+                }
+                return res;
+            }
+            function garment(poly, cuts, target, draw) {
+                var remaining = poly, rejected = [];
+                cuts.forEach(function (cut) {
+                    var s = split(remaining, cut); if (s.outside.length >= 3) rejected.push(s.outside);
+                    remaining = s.inside;
+                });
+                if (draw) {
+                    emit(remaining, target);
+                    // Turn the open rim inward: collar, sleeves and cuffs have thickness.
+                    for (var jj = 0; jj < remaining.length; jj++) {
+                        var v = remaining[jj], w = remaining[(jj + 1) % remaining.length];
+                        if (cuts.some(function (c) { return Math.abs(c(v.q)) < 0.00005 && Math.abs(c(w.q)) < 0.00005; })) {
+                            var vi = mix(v, v, 0), wi = mix(w, w, 0);
+                            vi.p = v.p.slice(); wi.p = w.p.slice();
+                            for (var d = 0; d < 3; d++) { vi.p[d] -= vi.n[d] * H * 0.006; wi.p[d] -= wi.n[d] * H * 0.006; }
+                            emit([v, vi, wi, w], target, 0.76);
+                        }
+                    }
+                }
+                return rejected;
+            }
+            for (k = 0; k < ids.length; k += 3) {
+                var i0 = ids[k], i1 = ids[k + 1], i2 = ids[k + 2];
+                q0[0] = Q[i0 * 3]; q0[1] = Q[i0 * 3 + 1]; q0[2] = Q[i0 * 3 + 2];
+                q1[0] = Q[i1 * 3]; q1[1] = Q[i1 * 3 + 1]; q1[2] = Q[i1 * 3 + 2];
+                q2[0] = Q[i2 * 3]; q2[1] = Q[i2 * 3 + 1]; q2[2] = Q[i2 * 3 + 2];
+                var cs = classify(shirtCuts), cp = classify(pantsCuts);
+                // the body shows only where nothing covers it
+                if (cs === -1 && cp === -1) emitTri(0, P, NB, i0, i1, i2);
+                else if (cs !== 1 && cp !== 1) {
+                    var tri = [rec(i0, P, NB), rec(i1, P, NB), rec(i2, P, NB)];
+                    var uncovered = cs === -1 ? [tri] : garment(tri, shirtCuts, 1, false);
+                    for (var u = 0; u < uncovered.length; u++) {
+                        var rest = cp === -1 ? [uncovered[u]] : garment(uncovered[u], pantsCuts, 2, false);
+                        for (var rr = 0; rr < rest.length; rr++) emit(rest[rr], 0);
+                    }
+                }
+                // the garments, on the relaxed cloth surface
+                if (cs === 1) emitTri(1, C, NC, i0, i1, i2);
+                else if (cs === 0) garment([rec(i0, C, NC), rec(i1, C, NC), rec(i2, C, NC)], shirtCuts, 1, true);
+                if (cp === 1) emitTri(2, C, NC, i0, i1, i2);
+                else if (cp === 0) garment([rec(i0, C, NC), rec(i1, C, NC), rec(i2, C, NC)], pantsCuts, 2, true);
+            }
+            part.buffers = buffers;
+            [part.body, part.top, part.bottom].forEach(function (mesh, index) {
+                writeGeometry(mesh.geometry, buffers[index], N, uvA, si, sw);
+                mesh.visible = buffers[index].index.length > 0;
+            });
+        }
+        /* ── colours: garment tints as vertex colours (gain-shaded) ── */
+        function paintGarments(part, a) {
+            var tints = [null, color(a.topColor), color(a.bottomColor)];
+            var hasMap = [false, !!_ccFabricDef(a.topFabric).file, !!_ccFabricDef(a.bottomFabric).file];
+            [part.body, part.top, part.bottom].forEach(function (mesh, index) {
+                var g = mesh.geometry, b = part.buffers && part.buffers[index];
+                if (!b || !g.attributes.color) return;
+                var arr = g.attributes.color.array, tint = tints[index], lift = hasMap[index] ? 1.18 : 1;
+                for (var i = 0; i < b.gain.length; i++) {
+                    var k = b.gain[i] * lift;
+                    if (tint) { arr[i * 3] = Math.min(1, tint.r * k); arr[i * 3 + 1] = Math.min(1, tint.g * k); arr[i * 3 + 2] = Math.min(1, tint.b * k); }
+                    else { arr[i * 3] = arr[i * 3 + 1] = arr[i * 3 + 2] = 1; }
+                }
+                g.attributes.color.needsUpdate = true;
+                var m = mesh.material;   // the CURRENT material — the board may have swapped ours for its Lambert copy
+                if (m && m.vertexColors !== (index !== 0)) { m.vertexColors = index !== 0; m.needsUpdate = true; }
+            });
+        }
+        function setFabric(part, which, a) {
+            var key = which === 'top' ? a.topFabric : a.bottomFabric, def = _ccFabricDef(key);
+            var url = (typeof getFabricTextureUrl === 'function') ? getFabricTextureUrl(key) : null;
+            var mesh = part[which];
+            if (mesh.material && mesh.material.isMeshStandardMaterial) { mesh.material.roughness = def.rough != null ? def.rough : 0.9; mesh.material.metalness = def.metal || 0; }
+            if (part.fabricUrl[which] === url && (!url || (mesh.material && mesh.material.map))) return;
+            part.fabricUrl[which] = url;
+            if (!url) { if (mesh.material && mesh.material.map) { mesh.material.map = null; mesh.material.emissiveMap = null; mesh.material.needsUpdate = true; } return; }
+            _ccLoadFabric(url, unmanagedColor, function (tex) {
+                if (!alive || part.fabricUrl[which] !== url) return;
+                var m = mesh.material; if (!m) return;
+                m.map = tex || null;
+                if (m.emissiveMap) m.emissiveMap = tex || null;
+                m.needsUpdate = true;
+            });
+        }
+        /* ── hair: the style GLB fitted to the skull, riding the Head bone ── */
+        function dropHair(part) {
+            part.hair.forEach(function (h) {
+                if (h.mesh.parent) h.mesh.parent.remove(h.mesh);
+                h.mesh.geometry.dispose(); var gi = ownedGeometries.indexOf(h.mesh.geometry); if (gi >= 0) ownedGeometries.splice(gi, 1);
+                if (h.mesh.material && !h.mesh.material._ew_shared) { h.mesh.material.dispose(); var mi = ownedMaterials.indexOf(h.mesh.material); if (mi >= 0) ownedMaterials.splice(mi, 1); }
+            });
+            part.hair = []; part.hairRoot = null;
+        }
+        function buildHair(part, root, a) {
+            dropHair(part);
+            part.hairRoot = root;
+            var meshes = [];
+            root.traverse(function (n) { if (n.isMesh && n.geometry && n.geometry.attributes.position) meshes.push(n); });
+            // the scalp cap = the head the style was modelled for
+            var scalp = null, all = new THREE.Box3();
+            meshes.forEach(function (n) {
+                if (!n.geometry.boundingBox) n.geometry.computeBoundingBox();
+                all.union(n.geometry.boundingBox);
+                var kind = (n.userData && n.userData.ewPart) || n.name || '';
+                if (/scalp/i.test(kind)) { scalp = scalp || new THREE.Box3(); scalp.union(n.geometry.boundingBox); }
+            });
+            var ref = scalp || all;
+            part.hairRef = { w: (ref.max.x - ref.min.x) || 0.13, d: (ref.max.z - ref.min.z) || 0.16, top: ref.max.y, cz: (ref.min.z + ref.max.z) / 2, cx: (ref.min.x + ref.max.x) / 2 };
+            meshes.forEach(function (n) {
+                var kind = (n.userData && n.userData.ewPart) || n.name || 'hair';
+                var srcMat = Array.isArray(n.material) ? n.material[0] : n.material;
+                var isTie = /tie/i.test(kind);
+                var mat = material({ roughness: isTie ? 0.7 : 0.55, metalness: 0, side: THREE.DoubleSide, vertexColors: true,
+                    alphaTest: isTie ? 0 : (/scalp/i.test(kind) ? 0.35 : 0.5), transparent: false, depthWrite: true });
+                if (srcMat) {
+                    var grey = isTie ? null : _ccHairTexture(srcMat.map, unmanagedColor);
+                    mat.map = grey || srcMat.map || null;
+                    if (srcMat.normalMap) { mat.normalMap = srcMat.normalMap; mat.normalScale = new THREE.Vector2(0.6, 0.6); }
+                }
+                var g = geometry(), sg = n.geometry;
+                var count = sg.attributes.position.count;
+                var si = new Uint16Array(count * 4), swt = new Float32Array(count * 4);
+                for (var i = 0; i < count; i++) { si[i * 4] = Math.max(0, part.headBone); swt[i * 4] = 1; }
+                g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
+                g.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
+                if (sg.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(Float32Array.from(sg.attributes.uv.array), 2));
+                g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
+                g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4));
+                g.setAttribute('skinWeight', new THREE.BufferAttribute(swt, 4));
+                if (sg.index) g.setIndex(sg.index.clone());
+                var mesh = part.shell('hair_' + kind, mat);
+                mesh.geometry.dispose(); ownedGeometries.splice(ownedGeometries.indexOf(mesh.geometry), 1);
+                mesh.geometry = g;
+                mesh._ew_noTwin = true;          // no x-ray / outline hull for alpha-cut hair cards
+                mesh._ew_creatorHair = true;
+                mesh.renderOrder = 2;
+                part.hair.push({ mesh: mesh, kind: kind, isTie: isTie, srcPos: sg.attributes.position.array, srcNrm: sg.attributes.normal ? sg.attributes.normal.array : null, count: count });
+            });
+            fitHair(part);
+            paintHair(part, a);
+        }
+        function fitHair(part) {
+            if (!part.hair.length || !part.skull || !part.hairRef) return;
+            var S = part.skull, R = part.hairRef, H = part.height;
+            var sx = (2 * S.halfW) / R.w * 1.02, sz = (S.zMax - S.zMin) / R.d * 1.04;
+            if (!isFinite(sx) || sx <= 0) sx = 1; if (!isFinite(sz) || sz <= 0) sz = sx;
+            var sy = (sx + sz) / 2;
+            var ox = S.cx - R.cx * sx, oy = S.topY + 0.003 * H - R.top * sy, oz = (S.zMin + S.zMax) / 2 - R.cz * sz;
+            part.hair.forEach(function (h) {
+                var p = h.mesh.geometry.attributes.position.array, n = h.mesh.geometry.attributes.normal.array, sp = h.srcPos, sn = h.srcNrm;
+                for (var i = 0; i < h.count; i++) {
+                    p[i * 3] = sp[i * 3] * sx + ox; p[i * 3 + 1] = sp[i * 3 + 1] * sy + oy; p[i * 3 + 2] = sp[i * 3 + 2] * sz + oz;
+                    if (sn) { var nx = sn[i * 3] / sx, ny = sn[i * 3 + 1] / sy, nzv = sn[i * 3 + 2] / sz, l = Math.hypot(nx, ny, nzv) || 1; n[i * 3] = nx / l; n[i * 3 + 1] = ny / l; n[i * 3 + 2] = nzv / l; }
+                    else { n[i * 3] = 0; n[i * 3 + 1] = 1; n[i * 3 + 2] = 0; }
+                }
+                var g = h.mesh.geometry;
+                g.attributes.position.needsUpdate = true; g.attributes.normal.needsUpdate = true;
+                g.computeBoundingBox(); g.computeBoundingSphere();
+            });
+        }
+        function paintHair(part, a) {
+            var tint = color(a.hairColor);
+            part.hair.forEach(function (h) {
+                var arr = h.mesh.geometry.attributes.color.array, k = h.isTie ? 1 : 1.22;
+                var r = h.isTie ? 1 : Math.min(1, tint.r * k), gg = h.isTie ? 1 : Math.min(1, tint.g * k), b = h.isTie ? 1 : Math.min(1, tint.b * k);
+                for (var i = 0; i < h.count; i++) { arr[i * 3] = r; arr[i * 3 + 1] = gg; arr[i * 3 + 2] = b; }
+                h.mesh.geometry.attributes.color.needsUpdate = true;
+            });
+        }
+        function setHair(part, a, shapeChanged) {
+            var id = a.hair, url = (id !== 'bald' && typeof getHairStyleUrl === 'function') ? getHairStyleUrl(id) : null;
+            if (part.hairUrl !== url) {
+                part.hairUrl = url; part.hairId = id;
+                dropHair(part);
+                if (url) _ccLoadHair(url, function (root) {
+                    if (!alive || part.hairUrl !== url || !root) return;
+                    buildHair(part, root, state.last);
+                });
+            } else if (shapeChanged) fitHair(part);
+            paintHair(part, a);
+        }
+        function paintSkin(part, a) {
+            var tex = _ccBakeSkin(part, a, unmanagedColor);
+            var old = part.skinTex;
+            part.skinTex = tex;
+            if (tex) ownedTextures.push(tex);
+            var m = part.body.material;
+            if (m) { m.map = tex || null; if (m.emissiveMap) m.emissiveMap = tex || null; m.needsUpdate = true; }
+            if (old) { var oi = ownedTextures.indexOf(old); if (oi >= 0) ownedTextures.splice(oi, 1); old.dispose(); }
+        }
+        var state = { shapeKey: null, paintKey: null, last: null };
         function update(value) {
+            if (!alive) return;
             var a = normalizeCharacterAppearance(value) || normalizeCharacterAppearance({});
-            function color(hex) { var c = new THREE.Color(hex); return unmanagedColor ? c : c.convertSRGBToLinear(); }
-            var skin = color(a.skin), top = color(a.topColor), bottom = color(a.bottomColor), hair = color(a.hairColor);
-            parts.forEach(function (part) {
-                var H = part.height, src = part.src, vertices = [], ids = part.ids;
-                var si = src.attributes.skinIndex, sw = src.attributes.skinWeight, pos = src.attributes.position, normal = src.attributes.normal;
-                for (var i = 0; i < pos.count; i++) {
-                    var x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), t = (y - part.minY) / H;
-                    var q = [x / H, t, z / H], central = bump(q[0], 0, 0.16);
-                    var bulk = central * (a.chest * 0.10 * bump(t, 0.74, 0.09) + a.waist * 0.18 * bump(t, 0.61, 0.075) + a.hips * 0.12 * bump(t, 0.52, 0.075));
-                    x *= (1 + bulk) * a.width; z *= 1 + bulk;
-                    x *= 1 + a.head * 0.10 * bump(t, 0.935, 0.085); z *= 1 + a.head * 0.06 * bump(t, 0.935, 0.085);
-                    x *= 1 + a.jaw * 0.13 * bump(t, 0.873, 0.025) * central;
-                    x *= 1 + a.cheeks * 0.10 * bump(t, 0.916, 0.022) * central;
-                    z += a.nose * H * 0.008 * bump(t, 0.927, 0.025) * bump(x / H, 0, 0.019) * Math.max(0, Math.min(1, z / (H * 0.045)));
-                    var v = { q: q, p: [x, y, z], n: [normal.getX(i), normal.getY(i), normal.getZ(i)], w: {} };
-                    for (var j = 0; j < 4; j++) { var bone = si.array[i * 4 + j]; v.w[bone] = (v.w[bone] || 0) + sw.array[i * 4 + j]; }
-                    vertices.push(v);
-                }
-                // Relax anatomical creases for cloth while retaining limb shape.
-                var relaxed = vertices.map(function (v) { return v.p.slice(); });
-                for (var pass = 0; pass < 10; pass++) {
-                    relaxed = relaxed.map(function (p, i) {
-                        var sum = [0, 0, 0], neighbors = part.adjacent[i];
-                        neighbors.forEach(function (n) { for (var j = 0; j < 3; j++) sum[j] += relaxed[n][j]; });
-                        return p.map(function (x, j) { return neighbors.size ? x * 0.55 + sum[j] / neighbors.size * 0.45 : x; });
-                    });
-                }
-                // Smooth shaped-body normals, shared by clipped boundary vertices.
-                function smoothSurface(surface) {
-                var smooth = surface.map(function () { return [0, 0, 0]; });
-                for (var k = 0; k < ids.length; k += 3) {
-                    var pa = surface[ids[k]].p, pb = surface[ids[k + 1]].p, pc = surface[ids[k + 2]].p;
-                    var u = pb.map(function (x, j) { return x - pa[j]; }), v = pc.map(function (x, j) { return x - pa[j]; });
-                    var n = [u[1]*v[2]-u[2]*v[1], u[2]*v[0]-u[0]*v[2], u[0]*v[1]-u[1]*v[0]];
-                    for (var j = 0; j < 3; j++) for (var d = 0; d < 3; d++) smooth[ids[k+j]][d] += n[d];
-                }
-                surface.forEach(function (v, i) { var l = Math.hypot.apply(null, smooth[i]) || 1; v.n = smooth[i].map(function (x) { return x / l; }); });
-                }
-                smoothSurface(vertices);
-                var chestRows = Array.from({ length: 41 }, function () { return 0; });
-                vertices.forEach(function(v) {
-                    if (v.q[1] >= 0.60 && v.q[1] <= 0.80 && Math.abs(v.q[0]) < 0.08 && v.q[2] > 0) {
-                        var row = Math.max(0, Math.min(40, Math.round((v.q[1]-0.60)*200)));
-                        chestRows[row] = Math.max(chestRows[row], v.p[2]);
-                    }
-                });
-                chestRows = chestRows.map(function(value, row) {
-                    var sum = 0, weight = 0;
-                    for (var r = Math.max(0,row-7); r <= Math.min(40,row+7); r++) {
-                        var w = Math.exp(-Math.pow((r-row)/4,2));
-                        if (chestRows[r] > 0) { sum += chestRows[r]*w; weight += w; }
-                    }
-                    return weight ? sum/weight : value;
-                });
-                var clothVertices = vertices.map(function (v, i) {
-                    var c = mix(v, v, 0), t = v.q[1];
-                    // Generous torso and trouser ease, smaller at cuffs and neck.
-                    var ease = a.outfit === 'suit' ? 0.005 : 0.009;
-                    var offset = H * (ease + 0.004 * bump(t, 0.65, 0.13));
-                    for (var j = 0; j < 3; j++) c.p[j] = relaxed[i][j] + v.n[j] * offset;
-                    c.p[1] = v.p[1]; // Straight hems remain level after cloth relaxation.
-                    // Broad front panels bridge anatomical valleys. A local row
-                    // envelope follows chest/waist sliders without a breast-shaped shell.
-                    if (t > 0.62 && t < 0.80 && v.q[2] > 0 && Math.abs(v.q[0]) < 0.09) {
-                        var row = Math.max(0, Math.min(40, Math.round((t-0.60)*200)));
-                        var rf = Math.max(0, Math.min(39.999, (t-0.60)*200));
-                        var ri = Math.floor(rf), peak = chestRows[ri]*(1-rf+ri)+chestRows[ri+1]*(rf-ri);
-                        var panel = peak * Math.sqrt(Math.max(0.2, 1-0.35*Math.pow(v.q[0]/0.09,2))) + H*ease;
-                        var blend = Math.min(1, (t-0.62)/0.025, (0.80-t)/0.025);
-                        c.p[2] += Math.max(0, panel-c.p[2])*blend;
-                    }
-                    return c;
-                });
-                smoothSurface(clothVertices);
-                var buffers = [0,1,2].map(function () { return { position: [], normal: [], color: [], skinIndex: [], skinWeight: [] }; });
-                function emit(poly, target, baseColor, shade) {
-                    if (poly.length < 3) return;
-                    var b = buffers[target];
-                    for (var k = 1; k < poly.length - 1; k++) [poly[0], poly[k], poly[k+1]].forEach(function (v) {
-                        b.position.push.apply(b.position, v.p); b.normal.push.apply(b.normal, v.n);
-                        var gain = shade || 1, t = v.q[1];
-                        if (target === 1) {
-                            // Narrow sewn hems and waistband, with restrained fabric variation.
-                            gain *= 0.97 + 0.025 * Math.sin(t * 230 + v.q[0] * 90);
-                            if (Math.abs(t - 0.565) < 0.006 || Math.abs(t - 0.08) < 0.005) gain *= 0.70;
-                        }
-                        if (target === 2) gain *= 0.88 + 0.12 * Math.cos(v.q[0] * 850 + v.q[2] * 110);
-                        b.color.push(baseColor.r * gain, baseColor.g * gain, baseColor.b * gain);
-                        var weights = Object.keys(v.w).map(function (id) { return [Number(id), v.w[id]]; }).sort(function (a,b) { return b[1]-a[1]; }).slice(0,4);
-                        var total = weights.reduce(function (s,w) { return s+w[1]; }, 0) || 1;
-                        for (var j = 0; j < 4; j++) { b.skinIndex.push(weights[j] ? weights[j][0] : 0); b.skinWeight.push(weights[j] ? weights[j][1]/total : 0); }
-                    });
-                }
-                var sleeve = a.outfit === 'suit' ? 0.285 : a.outfit === 'tee' ? 0.155 : 0.093;
-                var collar = a.outfit === 'tank' ? 0.792 : 0.819;
-                // A curved neckline leaves the shoulders covered and avoids the
-                // original horizontal off-shoulder cut. All cuts share body edges.
-                var shirtCuts = [function(q) { return q[1]-0.565; }, function(q) { return sleeve-Math.abs(q[0]); },
-                    function(q) { return collar + 0.035 * (1-Math.exp(-Math.pow(q[0]/0.038,2))) - q[1]; }];
-                var pantsCuts = [function(q) { return q[1]-0.08; }, function(q) { return 0.565-q[1]; }, function(q) { return 0.16-Math.abs(q[0]); }];
-                function garment(poly, cuts, baseColor, draw) {
-                    var remaining = poly, rejected = [];
-                    cuts.forEach(function (cut) {
-                        var s = split(remaining, cut); if (s.outside.length >= 3) rejected.push(s.outside);
-                        remaining = s.inside;
-                    });
-                    if (draw) {
-                        emit(remaining, 1, baseColor);
-                        // Turn the open rim inward: collar, sleeves and cuffs have thickness.
-                        for (var j = 0; j < remaining.length; j++) {
-                            var v = remaining[j], w = remaining[(j+1)%remaining.length];
-                            if (cuts.some(function(c) { return Math.abs(c(v.q)) < 0.00005 && Math.abs(c(w.q)) < 0.00005; })) {
-                                var vi = mix(v,v,0), wi = mix(w,w,0);
-                                for (var d = 0; d < 3; d++) { vi.p[d] -= vi.n[d]*H*0.006; wi.p[d] -= wi.n[d]*H*0.006; }
-                                emit([v,vi,wi,w], 1, baseColor, 0.76);
-                            }
-                        }
-                    }
-                    return rejected;
-                }
-                for (var k = 0; k < ids.length; k += 3) {
-                    var tri = ids.slice(k,k+3).map(function(i) { return vertices[i]; });
-                    var uncovered = garment(tri, shirtCuts, top, false);
-                    uncovered.forEach(function(poly) { garment(poly, pantsCuts, bottom, false).forEach(function(p) { emit(p,0,skin); }); });
-                    var ct = ids.slice(k,k+3).map(function(i) { return clothVertices[i]; });
-                    garment(ct, shirtCuts, top, true); garment(ct, pantsCuts, bottom, true);
-                    if (a.hair !== 'bald') {
-                        var scalp = split(tri, function(q) {
-                            var angle = Math.atan2(q[0], q[2]);
-                            var front = Math.max(0, Math.cos(angle));
-                            var line = 0.906 + 0.049 * front + 0.008 * Math.sin(angle)*Math.sin(angle);
-                            return q[1] - line;
-                        }).inside;
-                        scalp = scalp.map(function(v) {
-                            var h = mix(v,v,0), crown = Math.max(0, Math.min(1, (v.q[1]-0.947)/0.053));
-                            crown = crown*crown*(3-2*crown);
-                            var sweep = a.hair === 'crest' ? 0.030 * bump(v.q[0], -0.012, 0.05) : 0.008;
-                            var ridges = 0.0016 * Math.cos(v.q[0]*650 + v.q[2]*80) * crown;
-                            for (var j = 0; j < 3; j++) h.p[j] += h.n[j]*H*(0.004+0.006*crown+ridges);
-                            h.p[1] += H*sweep*crown; h.p[0] += H*sweep*0.48*crown;
-                            h.p[2] -= H*sweep*0.22*crown;
-                            return h;
-                        });
-                        emit(scalp,2,hair);
-                    }
-                }
-                [part.body,part.clothes,part.hair].forEach(function(mesh,index) {
-                    var g = mesh.geometry, b = buffers[index];
-                    if (g.attributes.position) g.dispose(); // Release old GPU buffers before replacing topology.
-                    ['position','normal','color','skinIndex','skinWeight'].forEach(function(key) {
-                        var arr = key === 'skinIndex' ? new Uint16Array(b[key]) : new Float32Array(b[key]);
-                        g.setAttribute(key, new THREE.BufferAttribute(arr, key.indexOf('skin') === 0 ? 4 : 3));
-                    });
-                    g.setIndex(Array.from({ length: b.position.length/3 }, function(_,i) { return i; }));
-                    // Keep the interpolated smooth body normals across cut triangles.
-                    g.normalizeNormals(); g.computeBoundingBox(); g.computeBoundingSphere();
-                    mesh.visible = b.position.length > 0;
-                });
+            state.last = a;
+            var shapeKey = [a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, a.outfit, a.bottoms].join('|');
+            var shapeChanged = shapeKey !== state.shapeKey;
+            if (shapeChanged) { state.shapeKey = shapeKey; parts.forEach(function (p) { rebuildGeometry(p, a); }); }
+            var paintKey = [a.skin, a.eyeColor, a.hairColor, a.lipColor, a.brows, a.eyeSize, a.beard].join('|');
+            if (paintKey !== state.paintKey) { state.paintKey = paintKey; parts.forEach(function (p) { paintSkin(p, a); }); }
+            parts.forEach(function (p) {
+                paintGarments(p, a);
+                setFabric(p, 'top', a); setFabric(p, 'bottom', a);
+                setHair(p, a, shapeChanged);
             });
         }
         update(initial);
-        return { update: update, dispose: function () {
-            ownedGeometries.forEach(function (g) { g.dispose(); }); ownedMaterials.forEach(function (m) { m.dispose(); });
-            parts = []; ownedGeometries = []; ownedMaterials = [];
-        } };
+        return {
+            update: update,
+            appearance: function () { return state.last; },
+            dispose: function () {
+                alive = false;
+                parts.forEach(function (p) { dropHair(p); });
+                ownedGeometries.forEach(function (g) { g.dispose(); }); ownedMaterials.forEach(function (m) { m.dispose(); }); ownedTextures.forEach(function (t) { t.dispose(); });
+                parts = []; ownedGeometries = []; ownedMaterials = []; ownedTextures = [];
+            }
+        };
     }
 
     function _cvResolveDef(race, gender, appearance) {
@@ -29397,6 +30028,9 @@ const ThreeRenderer = (function () {
         ++_cvToken; // unmount also invalidates an in-flight model load
         if (_cv.appearanceRig) _cv.appearanceRig.dispose();
         _cv.appearanceRig = null; _cv.appearanceRoot = null;
+        _cv.appearancePending = null;   // a coalesced slider update must not land on the next model
+        if (_cv.appearanceRaf && typeof cancelAnimationFrame === 'function') { try { cancelAnimationFrame(_cv.appearanceRaf); } catch (_e) {} }
+        _cv.appearanceRaf = 0;
         if (_cv.model) {
             _cv.stage.remove(_cv.model);
             // clones share the cached base GLB's geometry AND materials — never
@@ -29530,10 +30164,22 @@ const ThreeRenderer = (function () {
         if (opts.accent) { try { v.circleMat.color.set(opts.accent); } catch (_e) {} }
         if (v.url === def.model && v.model) {              // same character
             if (v.appearanceRig) {
-                v.appearanceRig.update(appearance);
+                // A slider drag fires many changes per frame; the rig rebuild
+                // (30k-tri body, garment cuts, a 1024² face bake) is heavy, so
+                // coalesce to ONE update per animation frame — the last value wins.
+                v.appearancePending = appearance;
                 v.h = def.heightRatio;
                 v.appearanceRoot.scale.setScalar(v.appearanceScale * v.h);
                 v.appearanceRoot.position.y = v.appearanceY * v.h;
+                if (!v.appearanceRaf) {
+                    var raf = (typeof requestAnimationFrame === 'function') ? requestAnimationFrame : function (fn) { return setTimeout(fn, 16); };
+                    v.appearanceRaf = raf(function () {
+                        if (!_cv || _cv !== v) return;
+                        v.appearanceRaf = 0;
+                        var pend = v.appearancePending; v.appearancePending = null;
+                        if (v.appearanceRig && pend) { try { v.appearanceRig.update(pend); } catch (e) { console.warn('[ThreeRenderer] creator update failed', e); } }
+                    });
+                }
             }
             _cvHostState(host, 'ready');
             return true;
@@ -30194,6 +30840,24 @@ const ThreeRenderer = (function () {
             return true;
         },
         setCharacter: function (race, gender, opts) { return _cvSetCharacter(race, gender, opts); },
+        /* CHARACTER CREATOR swatches: a 96 px data-URL thumbnail of a fabric
+           tile — the SAME normalised tile the rig wears (see _ccLoadFabric), so
+           the builder's grid never downloads the 1024² sources twice.
+           cb(dataUrl | null); cached for the app's lifetime. */
+        fabricThumb: function (key, cb) {
+            var url = (typeof getFabricTextureUrl === 'function') ? getFabricTextureUrl(key) : null;
+            if (!url) { cb(null); return; }
+            if (_ccThumbCache[key]) { cb(_ccThumbCache[key]); return; }
+            _ccLoadFabric(url, false, function (tex) {
+                if (!tex || !tex.image) { cb(null); return; }
+                try {
+                    var c = _ccCanvas(96, 96); if (!c) { cb(null); return; }
+                    c.getContext('2d').drawImage(tex.image, 0, 0, 256, 256, 0, 0, 96, 96);
+                    _ccThumbCache[key] = c.toDataURL('image/jpeg', 0.72);
+                    cb(_ccThumbCache[key]);
+                } catch (_e) { cb(null); }
+            });
+        },
         retryCharacter: function () {
             if (!_cv || !_cv.characterRequest) return;
             var req = _cv.characterRequest;

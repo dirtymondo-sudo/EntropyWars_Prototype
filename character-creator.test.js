@@ -1,3 +1,9 @@
+// character-creator.test.js — the CHARACTER CREATOR (rev 3, 2026-09-11): the
+// v2 appearance data model, the charactercreation/ asset catalogues (rigged
+// bases · hair styles · fabrics), the same-origin fallbacks, the rig generator
+// and every source site the feature leans on. Asset-level checks run against
+// the REAL files in charactercreation/ (skipped when three@0.128 is absent:
+// `npm i --no-save three@0.128.0`).
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -5,34 +11,104 @@ const path = require('node:path');
 const vm = require('node:vm');
 const read = f => fs.readFileSync(path.join(__dirname, f), 'utf8');
 const sprites = read('sprites.js'), renderer = read('three-renderer.js');
+const CC = path.join(__dirname, 'charactercreation');
 const context = { window: {}, _mkUAL: (folder, prefix, opts) => opts };
 vm.createContext(context);
-vm.runInContext(sprites.slice(sprites.indexOf('const EW_APPEARANCE_LIMITS'), sprites.indexOf('function getRace3DModel')), context);
+vm.runInContext(sprites.slice(sprites.indexOf('const EW_CHARACTER_ASSET_BASE'), sprites.indexOf('function getRace3DModel')), context);
 const normalize = context.normalizeCharacterAppearance;
+const HAIR_IDS = context.window.EW_HAIR_STYLES.map(s => s.id);
+const RENDER_BLOCK = [renderer.indexOf('     *  CHARACTER CREATOR RUNTIME'), renderer.indexOf('    function _cvResolveDef(')];
 
-test('appearance data clamps values, rejects future versions and strips arbitrary assets', () => {
+test('appearance data clamps values, allowlists every id, upgrades v1 and rejects future versions', () => {
     assert.equal(normalize(null), null);
     assert.equal(normalize([]), null);
-    assert.equal(normalize({ version: 2 }), null);
-    const a = normalize({ height: 50, width: -2, nose: NaN, jaw: Infinity, skin: 'url(evil)', hair: 'url', model: 'https://evil', waist: '1' });
+    assert.equal(normalize({ version: 3 }), null);
+    const a = normalize({ height: 50, width: -2, nose: NaN, jaw: Infinity, skin: 'url(evil)', hair: 'url', model: 'https://evil', waist: '1',
+        topFabric: '../../server.js', bottomFabric: 'denim', beard: 'x', outfit: 'suit', bottoms: 'kilt', eyeColor: '#ABCDEF', brows: 9 });
+    assert.equal(a.version, 2);
     assert.equal(a.height, 1.15); assert.equal(a.width, 0.85);
-    assert.equal(a.nose, 0); assert.equal(a.jaw, 0); assert.equal(a.waist, 0);
-    assert.equal(a.skin, '#b98362'); assert.equal(a.hair, 'crop');
-    assert.equal(a.model, undefined);
+    assert.equal(a.nose, 0); assert.equal(a.jaw, 0); assert.equal(a.waist, 0); assert.equal(a.brows, 1);
+    assert.equal(a.skin, '#b98362'); assert.equal(a.hair, 'hair003'); assert.equal(a.model, undefined);
+    assert.equal(a.topFabric, 'cotton'); assert.equal(a.bottomFabric, 'denim'); assert.equal(a.beard, 'none');
+    assert.equal(a.outfit, 'suit'); assert.equal(a.bottoms, 'trousers'); assert.equal(a.eyeColor, '#abcdef');
     assert.equal(normalize({ skin: ['#ffaa00'] }).skin, '#b98362');
+    // v1 saves (2026-09-10 procedural shells) keep their meaning
+    assert.equal(normalize({ version: 1, hair: 'crop' }).hair, 'hair003');
+    assert.equal(normalize({ version: 1, hair: 'crest' }).hair, 'hair000');
+    assert.equal(normalize({ version: 1, hair: 'bald' }).hair, 'bald');
+    for (const id of HAIR_IDS) assert.equal(normalize({ hair: id }).hair, id);
     assert.deepEqual(JSON.parse(JSON.stringify(normalize(a))), JSON.parse(JSON.stringify(a)));
+    // the randomiser only ever produces legal looks
+    let seed = 7; const rng = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+    for (let i = 0; i < 40; i++) { const r = context.window.randomCharacterAppearance(rng); assert.deepEqual(normalize(r), r); }
 });
 
-test('custom bases are opt-in for humans, with only two allowlisted fallback URLs', () => {
+test('custom bases are opt-in for humans; every creator asset has exactly one allowlisted fallback', () => {
     assert.equal(context.getCharacterAppearanceModel('fairy', 'male', {}), null);
     assert.equal(context.getCharacterAppearanceModel('homosapien', 'male', null), null);
     for (const gender of ['male', 'female']) {
         const def = context.getCharacterAppearanceModel('homosapien', gender, { height: 1.1 });
-        assert.equal(def.heightRatio, 1.1);
-        assert.match(def.model, new RegExp('/Assets/Models/.*_' + gender + '_biped_Character_output.glb'));
+        assert.equal(def.heightRatio, 1.1); assert.equal(def.creatorBase, true);
+        assert.match(def.model, new RegExp('/Assets/Models/charactercreation/Meshy_AI_human_body_base_mesh_' + gender + '_rigged\\.glb\\?ewcors=1$'));
         assert.equal(context.getCharacterModelFallback(def.model), '/api/character-model/' + gender);
     }
+    for (const id of HAIR_IDS) {
+        const url = context.window.getHairStyleUrl(id);
+        assert.match(url, new RegExp('/charactercreation/hair/' + id + '\\.glb\\?ewcors=1$'));
+        assert.equal(context.getCharacterModelFallback(url), '/api/character-model/hair/' + id);
+    }
+    assert.equal(context.window.getHairStyleUrl('bald'), null); assert.equal(context.window.getHairStyleUrl('hair999'), null);
+    for (const key of Object.keys(context.window.EW_FABRICS)) {
+        const url = context.window.getFabricTextureUrl(key);
+        if (!context.window.EW_FABRICS[key].file) { assert.equal(url, null); continue; }
+        assert.match(url, /\/charactercreation\/clothingtextures\/[a-z-]+_basecolor\.png\?ewcors=1$/);
+        assert.equal(context.getCharacterModelFallback(url), '/api/character-model/fabric/' + key);
+    }
     assert.equal(context.getCharacterModelFallback('https://evil.example/a.glb'), null);
+    const assets = context.window.getCharacterAppearanceAssets({ hair: 'hair010', topFabric: 'denim', bottomFabric: 'denim' });
+    assert.equal(assets.hair, context.window.getHairStyleUrl('hair010'));
+    // (values cross the vm realm — compare by content, not prototype)
+    assert.deepEqual([...assets.fabrics], [context.window.getFabricTextureUrl('denim')]);
+    assert.equal(JSON.stringify(context.window.getCharacterAppearanceAssets({ hair: 'bald', topFabric: 'plain', bottomFabric: 'plain' })), JSON.stringify({ hair: null, fabrics: [] }));
+});
+
+// GLB header reader (no deps) — the catalogue must match the files on disk.
+function glbJson(file) {
+    const buf = fs.readFileSync(file);
+    assert.equal(buf.readUInt32LE(0), 0x46546c67, file + ' is a GLB');
+    return JSON.parse(buf.slice(20, 20 + buf.readUInt32LE(12)).toString('utf8'));
+}
+test('the catalogues match charactercreation/ on disk: rigged bases, one GLB per hair style, one tile per fabric', () => {
+    for (const gender of ['male', 'female']) {
+        const j = glbJson(path.join(CC, 'Meshy_AI_human_body_base_mesh_' + gender + '_rigged.glb'));
+        assert.equal(j.skins.length, 1); assert.equal(j.skins[0].joints.length, 24);
+        const names = j.skins[0].joints.map(i => j.nodes[i].name);
+        for (const b of ['Hips', 'Spine', 'Head', 'LeftArm', 'RightUpLeg']) assert.ok(names.includes(b), gender + ' rig has ' + b);
+        const prim = j.meshes[0].primitives[0];
+        for (const attr of ['POSITION', 'NORMAL', 'TEXCOORD_0', 'JOINTS_0', 'WEIGHTS_0']) assert.ok(prim.attributes[attr] != null, gender + ' has ' + attr);
+        assert.ok(j.accessors[prim.attributes.POSITION].count > 15000, 'the high-resolution base, not the old export');
+        assert.ok(j.animations && j.animations.length >= 1);
+        assert.equal(j.asset.extras.ewCharacterRig.source, 'Meshy_AI_human_body_base_mesh_' + gender + '.glb');
+    }
+    for (const id of HAIR_IDS) {
+        const j = glbJson(path.join(CC, 'hair', id + '.glb'));
+        assert.equal(j.asset.extras.ewHair.id, id);
+        assert.ok(j.asset.extras.ewHair.parts.includes('scalp'), id + ' carries its scalp cap');
+        assert.ok(j.nodes.some(n => n.extras && n.extras.ewPart === 'scalp'));
+        assert.ok(j.images.length >= 2 && j.images.every(im => im.bufferView != null), id + ' embeds its textures');
+        assert.equal(j.skins, undefined, id + ' is static (the runtime skins it to the Head bone)');
+    }
+    for (const key of Object.keys(context.window.EW_FABRICS)) {
+        const f = context.window.EW_FABRICS[key];
+        if (!f.file) continue;
+        const file = path.join(CC, 'clothingtextures', f.file);
+        assert.ok(fs.existsSync(file), key + ' tile exists');
+        const b = fs.readFileSync(file);
+        assert.equal(b.readUInt32BE(16), 1024, key + ' is 1024 wide');
+        assert.ok(f.repeat > 0 && f.rough >= 0 && f.rough <= 1);
+    }
+    // the unrigged uploads are never wired (no skeleton)
+    assert.ok(!sprites.includes("base_mesh_' + gender + '.glb"));
 });
 
 test('identity resolution preserves a sanitized human appearance and ignores it on other races', () => {
@@ -42,8 +118,8 @@ test('identity resolution preserves a sanitized human appearance and ignores it 
         getTerrainPreferenceForRace: () => 'none', randInt: () => 0 };
     vm.createContext(c);
     vm.runInContext(s.slice(s.indexOf('        function resolveIdentityForBuild('), s.indexOf('        function randomizeIdentity(')), c);
-    const a = c.resolveIdentityForBuild('Freelancer', { race: 'homosapien', gender: 'female', appearance: { waist: 0.5 } });
-    assert.equal(a.appearance.waist, 0.5); assert.equal(a.gender, 'female');
+    const a = c.resolveIdentityForBuild('Freelancer', { race: 'homosapien', gender: 'female', appearance: { waist: 0.5, hair: 'hair014' } });
+    assert.equal(a.appearance.waist, 0.5); assert.equal(a.appearance.hair, 'hair014'); assert.equal(a.gender, 'female');
     assert.equal(c.resolveIdentityForBuild('Freelancer', { race: 'fairy', appearance: {} }).appearance, null);
 });
 
@@ -60,75 +136,126 @@ test('creator appearances survive team save/load, unit creation and the existing
     assert.match(pb, /if \(isWaitingOnline \|\| unitRace !== 'homosapien'\) return/);
 });
 
-test('same-origin fallback serves only male and female GLBs', () => {
-    const s = read('server.js'), start = s.indexOf("app.get('/api/character-model/:gender'");
+test('the builder panel, the renderer and the CSS carry the rev 3 sites', () => {
+    const pb = read('party-builder.js'), css = read('styles-base.css');
+    for (const s of ['ccFabricTiles', 'pb-hair-tile', 'pb-fabric-tile', 'randomCharacterAppearance', "ccSlider('eyeSize'", "ccSlider('brows'", "ccColorRow('eyeColor'", "ccColorRow('lipColor'",
+        "ccChoice('beard'", "ccChoice('bottoms'", 'EWCharViewer.fabricThumb', 'USE ORIGINAL MODEL', 'FACE CLOSE-UP']) assert.ok(pb.includes(s), 'party-builder has ' + s);
+    for (const s of ['.pb-cc-tile', '.pb-fabric-tile', '.pb-hair-tile', '.pb-creator-grid', '.pb-creator-colorrow']) assert.ok(css.includes(s), 'css has ' + s);
+    const block = renderer.slice(RENDER_BLOCK[0], RENDER_BLOCK[1]);
+    for (const s of ['function _ccBakeSkin', 'function _ccFaceLandmarks', 'function _ccLoadFabric', 'function _ccHairTexture', 'function _ccLoadHair', 'function _ccWarmAssets',
+        'function _createAppearanceRig', 'mesh._ew_noTwin = true', 'RepeatWrapping', 'flipY = false']) assert.ok(block.includes(s), 'renderer block has ' + s);
+    // the board keeps the creator's surface flags when it swaps materials, skips twins for hair, warms hair + fabrics at match start
+    assert.match(renderer, /if \(sm\.alphaTest\) lm\.alphaTest = sm\.alphaTest;/);
+    assert.match(renderer, /if \(n\.isMesh && !n\._ew_silhouette && !n\._ew_noTwin\) _silTargets\.push\(n\);/);
+    assert.match(renderer, /var as = getCharacterAppearanceAssets\(u\.appearance\);/);
+    assert.match(renderer, /fabricUrls\.forEach\(function \(fu\) \{ _ccLoadFabric\(fu, true/);
+    assert.match(renderer, /v\.appearancePending = appearance;/);
+    assert.match(renderer, /fabricThumb: function \(key, cb\)/);
+    // tints ride vertex colours (never material.color — the board's Lambert copy drops it)
+    assert.ok(!/material\.color\.set\(a\.(top|bottom|hair)Color/.test(block));
+});
+
+test('same-origin fallback serves only the rigged bases, hairNNN styles and lowercase fabric keys', () => {
+    const s = read('server.js'), start = s.indexOf('// CHARACTER CREATOR same-origin fallback');
     const calls = [];
     const c = { __dirname, path, limitRead: () => {}, app: { get: (...args) => calls.push(args) } };
     vm.createContext(c); vm.runInContext(s.slice(start, s.indexOf('// Serve ONLY', start)), c);
-    const handler = calls[0][2];
-    for (const gender of ['male', 'female', '../server.js', 'other']) {
-        let status, file;
-        const response = { sendStatus: n => status = n, type: () => {}, sendFile: f => file = f };
-        handler({ params: { gender } }, response);
-        if (gender === 'male' || gender === 'female') assert.equal(file, path.join(__dirname, 'rigged_animations', 'Meshy_AI_human_body_base_mesh_' + gender + '_biped_Character_output.glb'));
-        else { assert.equal(status, 404); assert.equal(file, undefined); }
-    }
+    const routes = Object.fromEntries(calls.map(a => [a[0], a[2]]));
+    assert.deepEqual(Object.keys(routes).sort(), ['/api/character-model/:gender', '/api/character-model/fabric/:key', '/api/character-model/hair/:id']);
+    const run = (route, params) => { let status, file; const res = { sendStatus: n => status = n, type: () => {}, sendFile: f => file = f }; routes[route]({ params }, res); return { status, file }; };
+    for (const gender of ['male', 'female']) assert.equal(run('/api/character-model/:gender', { gender }).file, path.join(CC, 'Meshy_AI_human_body_base_mesh_' + gender + '_rigged.glb'));
+    for (const bad of ['../server.js', 'other', 'MALE']) assert.deepEqual(run('/api/character-model/:gender', { gender: bad }), { status: 404, file: undefined });
+    assert.equal(run('/api/character-model/hair/:id', { id: 'hair010' }).file, path.join(CC, 'hair', 'hair010.glb'));
+    for (const bad of ['hair', 'hair10', 'hair0100', '../x', 'HAIR000', 'hair00x']) assert.deepEqual(run('/api/character-model/hair/:id', { id: bad }), { status: 404, file: undefined });
+    assert.equal(run('/api/character-model/fabric/:key', { key: 'ribbed-knit' }).file, path.join(CC, 'clothingtextures', 'ribbed-knit_basecolor.png'));
+    for (const bad of ['../x', 'Denim', 'denim_basecolor.png', 'a-b-c', 'a--b', '']) assert.deepEqual(run('/api/character-model/fabric/:key', { key: bad }), { status: 404, file: undefined });
 });
 
 // Optional asset-level validation: npm install --no-save three@0.128.0.
 // Uses the real r128 CPU skinning math, with no browser or gameplay automation.
 let THREE;
 try { THREE = require('three'); } catch (_) {}
-const haveModels = fs.existsSync(path.join(__dirname, 'rigged_animations', 'Meshy_AI_human_body_base_mesh_male_biped_Character_output.glb'));
-test('both base rigs remain finite and isolated across all fitted outfits and shape limits', { skip: !THREE || !haveModels }, async () => {
-    const c = { THREE, console, TextDecoder, URL, Blob, setTimeout, clearTimeout, normalizeCharacterAppearance: normalize };
+const haveModels = fs.existsSync(path.join(CC, 'Meshy_AI_human_body_base_mesh_male_rigged.glb')) && fs.existsSync(path.join(CC, 'hair', 'hair003.glb'));
+test('both rigged bases dress, fit the hair to the skull and stay finite across outfits and shape limits', { skip: !THREE || !haveModels }, async () => {
+    const c = { THREE, console, TextDecoder, URL, Blob, setTimeout, clearTimeout, performance, normalizeCharacterAppearance: normalize,
+        getHairStyleUrl: context.window.getHairStyleUrl, getFabricTextureUrl: context.window.getFabricTextureUrl, getCharacterAppearanceAssets: context.window.getCharacterAppearanceAssets,
+        getCharacterModelFallback: context.getCharacterModelFallback, EW_FABRICS: context.window.EW_FABRICS, _unitGlbCache: {} };
     c.self = c; c.window = c;
+    c._loadUnitGLB = (url, cb) => { const e = c._unitGlbCache[url]; if (e && e.root) cb(e); };
     vm.createContext(c);
     vm.runInContext(fs.readFileSync(require.resolve('three/examples/js/loaders/GLTFLoader.js'), 'utf8'), c);
     vm.runInContext(fs.readFileSync(require.resolve('three/examples/js/utils/SkeletonUtils.js'), 'utf8'), c);
-    vm.runInContext(renderer.slice(renderer.indexOf('    function _createAppearanceRig('), renderer.indexOf('    function _cvResolveDef(')), c);
-    for (const gender of ['male', 'female']) {
-        const b = fs.readFileSync(path.join(__dirname, 'rigged_animations', 'Meshy_AI_human_body_base_mesh_' + gender + '_biped_Character_output.glb'));
-        const gltf = await new Promise((ok, fail) => new THREE.GLTFLoader().parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength), '', ok, fail));
-        let original; gltf.scene.traverse(n => { if (n.isSkinnedMesh) original = n; });
-        const before = Array.from(original.geometry.attributes.position.array);
-        const clone = THREE.SkeletonUtils.clone(gltf.scene), other = THREE.SkeletonUtils.clone(gltf.scene);
-        let untouched; other.traverse(n => { if (n.isSkinnedMesh) untouched = n; });
-        const rig = c._createAppearanceRig(clone, {});
-        let bodies = []; clone.traverse(n => { if (n.isSkinnedMesh) bodies.push(n); });
-        assert.equal(bodies.length, 3);
-        for (const outfit of ['suit', 'tee', 'tank']) for (const hair of ['bald', 'crop', 'crest']) for (const sign of [-1, 0, 1]) {
-            rig.update({ outfit, hair, width: 1 + sign * .15, chest: sign, waist: sign, hips: sign, head: sign, jaw: sign, cheeks: sign, nose: sign });
-            const arm = bodies[0].skeleton.bones.find(b => b.name === 'LeftArm'); arm.rotation.z = .4;
-            clone.updateMatrixWorld(true);
-            for (const n of bodies) {
-                assert.notEqual(n.geometry, original.geometry);
-                assert.notEqual(n.skeleton, untouched.skeleton);
-                assert.ok(Array.from(n.geometry.attributes.position.array).every(Number.isFinite));
-                n.skeleton.update();
-                const pos = n.geometry.attributes.position, v = new THREE.Vector3();
-                for (let i = 0; i < pos.count; i += 11) {
-                    n.boneTransform(i, v); v.applyMatrix4(n.matrixWorld);
-                    assert.ok([v.x, v.y, v.z].every(Number.isFinite));
-                    assert.ok(v.length() < 5, 'fitted geometry escaped the metre-scale rig');
-                }
+    vm.runInContext(renderer.slice(renderer.indexOf('    /* ══════════════════════════════════════════════════════════════════\n     *  CHARACTER CREATOR RUNTIME'), RENDER_BLOCK[1]), c);
+    // Node has no <img>: embedded hair textures become empty Textures (geometry is what we test)
+    const origLoad = THREE.TextureLoader.prototype.load;
+    THREE.TextureLoader.prototype.load = function (url, onLoad) { const t = new THREE.Texture(); if (onLoad) setTimeout(() => onLoad(t), 0); return t; };
+    const load = f => new Promise((ok, fail) => { const b = fs.readFileSync(f); new THREE.GLTFLoader().parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength), '', ok, fail); });
+    try {
+        const hairUrl = context.window.getHairStyleUrl('hair003');
+        const hg = await load(path.join(CC, 'hair', 'hair003.glb'));
+        hg.scene.traverse(n => { if (n.isMesh) n.geometry._ew_shared = true; });
+        c._unitGlbCache[hairUrl] = { root: hg.scene, clips: [], loading: false, failed: false, cbs: [] };
+        for (const gender of ['male', 'female']) {
+            const gltf = await load(path.join(CC, 'Meshy_AI_human_body_base_mesh_' + gender + '_rigged.glb'));
+            let original; gltf.scene.traverse(n => { if (n.isSkinnedMesh) original = n; });
+            const before = Array.from(original.geometry.attributes.position.array);
+            const clone = THREE.SkeletonUtils.clone(gltf.scene), other = THREE.SkeletonUtils.clone(gltf.scene);
+            let untouched; other.traverse(n => { if (n.isSkinnedMesh) untouched = n; });
+            const rig = c._createAppearanceRig(clone, { hair: 'hair003' }, true);
+            const skinned = () => { const out = []; clone.traverse(n => { if (n.isSkinnedMesh && n.parent) out.push(n); }); return out; };
+            let bodies = skinned();
+            assert.equal(bodies.filter(n => !/hair/.test(n.name)).length, 3, 'body + top + bottom');
+            const hairMeshes = bodies.filter(n => /EWCreator_hair/.test(n.name));
+            assert.ok(hairMeshes.length >= 2, 'hair parts skinned in');
+            const body = bodies.find(n => !/EWCreator/.test(n.name));
+            body.geometry.computeBoundingBox();
+            const headTop = body.geometry.boundingBox.max.y;
+            for (const hm of hairMeshes) {
+                hm.geometry.computeBoundingBox();
+                const bb = hm.geometry.boundingBox;
+                assert.ok(bb.max.y > headTop - 0.02 && bb.max.y < headTop + 0.035, gender + ' hair crown sits on the skull top (' + bb.max.y.toFixed(3) + ' vs ' + headTop.toFixed(3) + ')');
+                assert.ok(bb.max.x < 0.2 && bb.min.x > -0.2, 'hair width is head-sized');
+                const si = hm.geometry.attributes.skinIndex, headBone = body.skeleton.bones.findIndex(b => b.name === 'Head');
+                assert.equal(si.getX(0), headBone, 'hair rides the Head bone');
+                assert.equal(hm._ew_noTwin, true);
+                assert.ok(hm.material.alphaTest > 0 || /tie/.test(hm.name));
             }
-            assert.ok(bodies[0].geometry.index.count > 0 && bodies[1].geometry.index.count > 0);
-            assert.equal(bodies[2].visible, hair !== 'bald');
-            for (const mesh of bodies) {
-                const g = mesh.geometry, weights = g.attributes.skinWeight;
-                for (let i = 0; i < weights.count; i++) {
-                    const sum = weights.getX(i)+weights.getY(i)+weights.getZ(i)+weights.getW(i);
-                    assert.ok(Math.abs(sum-1) < 1e-5, 'cut vertices retain normalized skin weights');
+            for (const outfit of ['suit', 'tee', 'tank']) for (const bottoms of ['trousers', 'shorts']) for (const sign of [-1, 0, 1]) {
+                rig.update({ outfit, bottoms, hair: sign < 0 ? 'bald' : 'hair003', topFabric: sign ? 'denim' : 'plain', width: 1 + sign * .15, chest: sign, waist: sign, hips: sign, head: sign, jaw: sign, cheeks: sign, nose: sign });
+                const arm = body.skeleton.bones.find(b => b.name === 'LeftArm'); arm.rotation.z = .4;
+                clone.updateMatrixWorld(true);
+                bodies = skinned();
+                assert.equal(bodies.some(n => /EWCreator_hair/.test(n.name)), sign >= 0, 'bald drops the hair meshes');
+                for (const n of bodies) {
+                    assert.notEqual(n.geometry, original.geometry);
+                    assert.notEqual(n.skeleton, untouched.skeleton);
+                    const pos = n.geometry.attributes.position;
+                    assert.ok(Array.from(pos.array).every(Number.isFinite));
+                    n.skeleton.update();
+                    const v = new THREE.Vector3();
+                    for (let i = 0; i < pos.count; i += 37) {
+                        n.boneTransform(i, v); v.applyMatrix4(n.matrixWorld);
+                        assert.ok([v.x, v.y, v.z].every(Number.isFinite));
+                        assert.ok(v.length() < 5, 'fitted geometry escaped the metre-scale rig');
+                    }
+                    const weights = n.geometry.attributes.skinWeight;
+                    for (let i = 0; i < weights.count; i += 7) {
+                        const sum = weights.getX(i) + weights.getY(i) + weights.getZ(i) + weights.getW(i);
+                        assert.ok(Math.abs(sum - 1) < 1e-5, 'cut vertices retain normalized skin weights');
+                    }
+                    assert.ok(Array.from(n.geometry.index.array).every(i => i < pos.count));
+                    assert.ok(n.geometry.attributes.uv && n.geometry.attributes.uv.count === pos.count, 'every shell carries UVs for its texture');
                 }
-                assert.ok(Array.from(g.index.array).every(i => i < g.attributes.position.count));
-                assert.ok(Array.from(g.attributes.normal.array).every(Number.isFinite));
+                const top = bodies.find(n => n.name === 'EWCreator_top'), bottom = bodies.find(n => n.name === 'EWCreator_bottom');
+                assert.ok(top.geometry.index.count > 0 && bottom.geometry.index.count > 0);
+                assert.equal(top.material.vertexColors, true);
             }
-            assert.deepEqual(Array.from(original.geometry.attributes.position.array), before);
+            assert.deepEqual(Array.from(original.geometry.attributes.position.array), before, 'the cached base geometry is never edited');
+            let disposed = 0; skinned().forEach(n => n.geometry.addEventListener('dispose', () => disposed++));
+            const count = skinned().length;
+            rig.dispose(); assert.equal(disposed, count);
         }
-        let disposed = 0; bodies.forEach(n => n.geometry.addEventListener('dispose', () => disposed++));
-        rig.dispose(); assert.equal(disposed, 3);
-    }
+    } finally { THREE.TextureLoader.prototype.load = origLoad; }
 });
 
 test('R2 load failure retries only the allowlisted model and settles the existing cache', () => {
@@ -147,4 +274,30 @@ test('R2 load failure retries only the allowlisted model and settles the existin
     assert.equal(result.root, root); assert.equal(result.loading, false);
     c._loadUnitGLB(url, e => assert.equal(e, result));
     assert.equal(calls.length, 2, 'second caller should reuse the settled model');
+    const hair = context.window.getHairStyleUrl('hair014');
+    c._loadUnitGLB(hair, () => {});
+    assert.deepEqual(calls.slice(2), [hair, '/api/character-model/hair/hair014']);
+});
+
+test('character-rig.js reproduces the rigged bases from the donors (weights transferred, tree kept)', () => {
+    const tool = require('./character-rig.js');
+    const donor = tool.readGlb(tool.DONOR('male')), out = tool.readGlb(tool.RIGGED('male'));
+    assert.deepEqual(out.json.nodes.map(n => n.name), donor.json.nodes.map(n => n.name), 'the donor node tree is kept verbatim');
+    assert.deepEqual(out.json.skins[0].joints, donor.json.skins[0].joints);
+    const prim = out.json.meshes[0].primitives[0];
+    const w = tool.readAccessor(out, prim.attributes.WEIGHTS_0), j = tool.readAccessor(out, prim.attributes.JOINTS_0), p = tool.readAccessor(out, prim.attributes.POSITION);
+    assert.equal(w.length, j.length); assert.equal(w.length / 4, p.length / 3);
+    for (let i = 0; i < w.length; i += 4 * 97) { const s = w[i] + w[i + 1] + w[i + 2] + w[i + 3]; assert.ok(Math.abs(s - 1) < 1e-4); for (let k = 0; k < 4; k++) assert.ok(j[i + k] < 24); }
+    const acc = out.json.accessors[prim.attributes.POSITION];
+    assert.ok(Math.abs((acc.max[1] - acc.min[1]) - 1.7) < 0.01, 'the donor\'s metre-scale bind frame (1.70 m)');
+    assert.ok(acc.min[1] > -0.01 && acc.min[1] < 0.01, 'feet on the donor floor');
+    // the closest-point routine the transfer rests on
+    const q = tool.closestOnTriangle([0.2, 0.2, 1], [0, 0, 0], [1, 0, 0], [0, 1, 0]);
+    assert.deepEqual(q.p.map(v => +v.toFixed(6)), [0.2, 0.2, 0]);
+    assert.ok(Math.abs(q.bary[0] + q.bary[1] + q.bary[2] - 1) < 1e-9);
+    assert.deepEqual(tool.closestOnTriangle([-1, -1, 0], [0, 0, 0], [1, 0, 0], [0, 1, 0]).bary, [1, 0, 0]);
+    assert.equal(tool.partKind('Dransvitry\\HunterHairs\\Hair010.mdl_HairTie_HairTie.dmx_MESH'), 'tie');
+    assert.equal(tool.partKind('Hair009.mdl_HairUnder_HairUnder.dmx_MESH'), 'under');
+    assert.equal(tool.partKind('Hair003.mdl_Scalp01_Scalp01.dmx_MESH'), 'scalp');
+    assert.equal(tool.partKind('Hair003.mdl_Hair_Hair.dmx_MESH'), 'hair');
 });

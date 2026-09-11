@@ -1935,6 +1935,18 @@ function PartyBuilder(props) {
   /* the four tabs on the glass (PB_TABS); ROSTER first, as the references open */
   const [pbTab, setPbTab] = React.useState('roster');
   const [creatorOpen, setCreatorOpen] = React.useState(false);
+  // fabric swatch thumbnails — the stage's own normalised fabric tiles (EWCharViewer.fabricThumb),
+  // requested once the creator opens; a tile shows its label until its thumb lands
+  const [pbFabricThumbs, setPbFabricThumbs] = React.useState({});
+  React.useEffect(() => {
+    if (!creatorOpen || !window.EWCharViewer || typeof window.EWCharViewer.fabricThumb !== 'function') return;
+    let live = true;
+    Object.keys(window.EW_FABRICS || {}).forEach(key => {
+      if (!window.EW_FABRICS[key].file || pbFabricThumbs[key]) return;
+      window.EWCharViewer.fabricThumb(key, url => { if (live && url) setPbFabricThumbs(prev => prev[key] ? prev : { ...prev, [key]: url }); });
+    });
+    return () => { live = false; };
+  }, [creatorOpen]);
   const setTab = (id) => { if (!PB_TABS.some(t => t.id === id) || id === pbTab) return; setPbTab(id); sfx('uiCursorMove'); };
   const cycleTab = (d) => { const i = Math.max(0, PB_TABS.findIndex(t => t.id === pbTab)); setTab(PB_TABS[(i + d + PB_TABS.length) % PB_TABS.length].id); };
   React.useEffect(() => { window._pbSetTab = setTab; return () => { if (window._pbSetTab === setTab) delete window._pbSetTab; }; });
@@ -3156,6 +3168,11 @@ function PartyBuilder(props) {
       onVerb: techVerb, onPreview: (info) => pbPreview(info.sp || null),
       previewOff, previewing: !!previewState, used: (customSpells || []).length, slotCap })) : null;
   // Cosmetics belong to the selected slot, independent of its job/loadout.
+  // THE CHARACTER CREATOR (rev 3, 2026-09-11): every control writes ONE
+  // sanitized appearance object (sprites.js normalizeCharacterAppearance —
+  // catalogues EW_HAIR_STYLES / EW_FABRICS / EW_APPEARANCE_ENUMS); the stage
+  // (EWCharViewer → three-renderer.js _createAppearanceRig) re-dresses the
+  // model live. Sections: BODY · FACE · SKIN · HAIR · CLOTHES.
   const appearance = window.normalizeCharacterAppearance?.(meta.appearance) || null;
   const changeAppearance = (changes, gender) => {
     if (isWaitingOnline || unitRace !== 'homosapien') return;
@@ -3166,6 +3183,36 @@ function PartyBuilder(props) {
     if (st.builderConfirmedSlots?.[player]) st.builderConfirmedSlots[player][slot] = false;
     refresh();
   };
+  const ccLimits = window.EW_APPEARANCE_LIMITS || {}, ccEnums = window.EW_APPEARANCE_ENUMS || {};
+  const ccHair = window.EW_HAIR_STYLES || [], ccFabrics = window.EW_FABRICS || {};
+  const ccSlider = (key, label, pct) => {
+    const limits = ccLimits[key]; if (!limits || !appearance) return null;
+    const v = appearance[key];
+    const shown = pct ? Math.round(v * 100) + '%' : (limits[0] === 0 ? Math.round(v * 100) : (v > 0 ? '+' : '') + Math.round(v * 100));
+    return h('label', { key, className: 'pb-creator-slider' },
+      h('span', null, label, h('output', null, shown)),
+      h('input', { type: 'range', min: limits[0], max: limits[1], step: 0.01, value: v, 'aria-label': label, onChange: e => changeAppearance({ [key]: Number(e.target.value) }) }));
+  };
+  const ccColorRow = (key, label, swatches) => h('div', { key, className: 'pb-creator-colorrow' },
+    h('span', { className: 'pb-creator-colorlabel' }, label),
+    h('div', { className: 'pb-creator-swatches' }, swatches.map(color =>
+      h('button', { key: color, className: 'pb-creator-swatch', style: { background: color }, 'aria-label': label + ' ' + color, 'aria-pressed': appearance[key] === color, onClick: () => changeAppearance({ [key]: color }) })),
+      h('label', { className: 'pb-creator-custom', title: 'Custom ' + label.toLowerCase() }, h('input', { type: 'color', value: appearance[key], 'aria-label': 'Custom ' + label, onChange: e => changeAppearance({ [key]: e.target.value }) }), h('i', null, '+'))));
+  const ccChoice = (key, options) => h('div', { className: 'pb-creator-options', role: 'group' }, options.map(([id, label]) =>
+    h('button', { key: id, className: 'ms-tty-btn' + (appearance[key] === id ? ' primary' : ''), 'aria-pressed': appearance[key] === id, onClick: () => changeAppearance({ [key]: id }) }, label)));
+  const ccFabricTiles = (key) => h('div', { className: 'pb-cc-tiles pb-cc-fabrics', role: 'group', 'aria-label': key === 'topFabric' ? 'Top fabric' : 'Trouser fabric' },
+    (ccEnums[key] || []).map(id => {
+      const def = ccFabrics[id] || { label: id }, thumb = def.file ? pbFabricThumbs[id] : null;
+      return h('button', { key: id, className: 'pb-cc-tile pb-fabric-tile' + (thumb ? ' has-thumb' : '') + (def.file ? '' : ' plain'), 'aria-pressed': appearance[key] === id, title: def.label,
+        style: thumb ? { backgroundImage: 'url(' + thumb + ')' } : undefined, onClick: () => changeAppearance({ [key]: id }) },
+        h('span', null, def.label));
+    }));
+  const skinSwatches = ['#f4d7bf', '#e8c4a2', '#dfb18c', '#c9946b', '#b98362', '#a06a48', '#916044', '#7a4e36', '#66422e', '#4d3226', '#3c291f'];
+  const hairSwatches = ['#0f0d0c', '#27201c', '#3b2a1f', '#5a3b25', '#7a4a2a', '#a0662e', '#c98a4a', '#e2c184', '#f1e2b3', '#8b1e1e', '#b5b5b5', '#f2f2f2', '#3b5bdb', '#b03aa0', '#2e8b57'];
+  const eyeSwatches = ['#2d2a26', '#4a3222', '#6b4b2a', '#3d5a3a', '#4a6b8a', '#6a8fb5', '#7a8c6a', '#9a9a9a', '#b8860b', '#8b1e1e'];
+  const lipSwatches = ['#b98a7a', '#9c5a5c', '#a0413f', '#7a2e33', '#c26a8a', '#3a2a2a'];
+  const clothSwatches = ['#f0ece2', '#8fa3a8', '#5e6f80', '#344a50', '#2a2f38', '#141518', '#7a1f1f', '#c0392b', '#b8741a', '#c9a227', '#2e7d32', '#1f5f8b', '#5b3a8a', '#ad4c86'];
+  const viewerLoads = !!(window.EWCharViewer && window.EWCharViewer.supports && window.EWCharViewer.supports('homosapien', identity.gender || 'male'));
   const creatorPanel = h(React.Fragment, null,
     h('div', { className: 'pb-zone-head' }, h('b', null, 'Character creator'),
       h('button', { className: 'ms-tty-btn', onClick: () => setCreatorOpen(false) }, 'BACK TO GEAR')),
@@ -3175,35 +3222,43 @@ function PartyBuilder(props) {
         : !appearance
           ? h(React.Fragment, null,
               h('p', null, 'Build a custom appearance for this character. Your job, techniques and equipment stay attached to this slot.'),
-              h('button', { className: 'ms-tty-btn primary', disabled: isWaitingOnline, onClick: () => changeAppearance({}) }, 'CREATE APPEARANCE'))
+              h('div', { className: 'pb-creator-options' },
+                h('button', { className: 'ms-tty-btn primary', disabled: isWaitingOnline, onClick: () => changeAppearance({}) }, 'CREATE APPEARANCE'),
+                h('button', { className: 'ms-tty-btn', disabled: isWaitingOnline, onClick: () => changeAppearance(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}) }, '⚄ RANDOM')))
           : h(React.Fragment, null,
-            h('p', { className: 'pb-creator-note' }, 'Solid-color base models · simple fitted hair and clothes · basic face shaping. Save your team to keep this appearance.'),
+            !viewerLoads ? h('p', { className: 'pb-creator-note' }, 'The 3D stage is unavailable here — changes still save with the team.') : null,
             h('fieldset', { className: 'pb-creator-controls', disabled: isWaitingOnline },
               h('legend', null, 'BODY'),
               h('div', { className: 'pb-creator-options', 'aria-label': 'Base model' }, ['male', 'female'].map(g =>
                 h('button', { key: g, className: 'ms-tty-btn' + (identity.gender === g ? ' primary' : ''), 'aria-pressed': identity.gender === g, onClick: () => changeAppearance({}, g) }, g.toUpperCase()))),
-              [['height', 'Height'], ['width', 'Build'], ['chest', 'Chest'], ['waist', 'Waist'], ['hips', 'Hips'], ['head', 'Head width'], ['jaw', 'Jaw width'], ['nose', 'Nose projection'], ['cheeks', 'Cheek fullness']].map(([key, label]) => {
-                const limits = window.EW_APPEARANCE_LIMITS[key];
-                return h('label', { key, className: 'pb-creator-slider' },
-                  h('span', null, label, h('output', null, key === 'height' || key === 'width' ? Math.round(appearance[key] * 100) + '%' : (appearance[key] > 0 ? '+' : '') + Math.round(appearance[key] * 100))),
-                  h('input', { type: 'range', min: limits[0], max: limits[1], step: 0.01, value: appearance[key], 'aria-label': label, onChange: e => changeAppearance({ [key]: Number(e.target.value) }) }));
-              }),
+              h('div', { className: 'pb-creator-grid' }, ccSlider('height', 'Height', true), ccSlider('width', 'Build', true), ccSlider('chest', 'Chest'), ccSlider('waist', 'Waist'), ccSlider('hips', 'Hips')),
+              h('h3', null, 'FACE'),
+              h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'), ccSlider('eyeSize', 'Eye size'), ccSlider('brows', 'Brow weight')),
+              ccColorRow('eyeColor', 'Eyes', eyeSwatches),
+              ccColorRow('lipColor', 'Lips', lipSwatches),
+              h('div', { className: 'pb-creator-colorlabel' }, 'Facial hair'),
+              ccChoice('beard', [['none', 'Clean'], ['stubble', 'Stubble'], ['goatee', 'Goatee'], ['beard', 'Beard']]),
               h('h3', null, 'SKIN'),
-              h('div', { className: 'pb-creator-swatches' }, ['#f4d7bf', '#dfb18c', '#b98362', '#916044', '#66422e', '#3c291f'].map(color =>
-                h('button', { key: color, className: 'pb-creator-swatch', style: { background: color }, 'aria-label': 'Skin tone ' + color, 'aria-pressed': appearance.skin === color, onClick: () => changeAppearance({ skin: color }) }))),
-              h('label', { className: 'pb-creator-color' }, 'Custom skin tone', h('input', { type: 'color', value: appearance.skin, onChange: e => changeAppearance({ skin: e.target.value }) })),
+              ccColorRow('skin', 'Skin tone', skinSwatches),
               h('h3', null, 'HAIR'),
-              h('div', { className: 'pb-creator-options' }, [['bald', 'Bald'], ['crop', 'Close crop'], ['crest', 'Crest']].map(([key, label]) =>
-                h('button', { key, className: 'ms-tty-btn' + (appearance.hair === key ? ' primary' : ''), 'aria-pressed': appearance.hair === key, onClick: () => changeAppearance({ hair: key }) }, label))),
-              h('label', { className: 'pb-creator-color' }, 'Hair color', h('input', { type: 'color', value: appearance.hairColor, onChange: e => changeAppearance({ hairColor: e.target.value }) })),
+              h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'Hair style' },
+                [{ id: 'bald', label: 'Bald' }].concat(ccHair).map(style =>
+                  h('button', { key: style.id, className: 'pb-cc-tile pb-hair-tile' + (style.short ? ' short' : ''), 'aria-pressed': appearance.hair === style.id, onClick: () => changeAppearance({ hair: style.id }) },
+                    h('i', { className: 'pb-hair-glyph' }), h('span', null, style.label)))),
+              ccColorRow('hairColor', 'Hair colour', hairSwatches),
               h('h3', null, 'CLOTHES'),
-              h('div', { className: 'pb-creator-options' }, [['suit', 'Bodysuit'], ['tee', 'T-shirt'], ['tank', 'Tank top']].map(([key, label]) =>
-                h('button', { key, className: 'ms-tty-btn' + (appearance.outfit === key ? ' primary' : ''), 'aria-pressed': appearance.outfit === key, onClick: () => changeAppearance({ outfit: key }) }, label))),
-              h('p', { className: 'pb-creator-note' }, 'Each outfit includes fitted trousers. Clothing is cosmetic.'),
-              [['topColor', 'Top color'], ['bottomColor', 'Trouser color']].map(([key, label]) =>
-                h('label', { key, className: 'pb-creator-color' }, label, h('input', { type: 'color', value: appearance[key], onChange: e => changeAppearance({ [key]: e.target.value }) }))),
+              h('div', { className: 'pb-creator-colorlabel' }, 'Top'),
+              ccChoice('outfit', [['tee', 'T-shirt'], ['tank', 'Tank top'], ['suit', 'Long sleeve']]),
+              ccFabricTiles('topFabric'),
+              ccColorRow('topColor', 'Top tint', clothSwatches),
+              h('div', { className: 'pb-creator-colorlabel' }, 'Bottoms'),
+              ccChoice('bottoms', [['trousers', 'Trousers'], ['shorts', 'Shorts']]),
+              ccFabricTiles('bottomFabric'),
+              ccColorRow('bottomColor', 'Bottom tint', clothSwatches),
+              h('p', { className: 'pb-creator-note' }, 'Clothing and hair are cosmetic. Tints multiply the fabric; plain = no weave. Save your team to keep this look.'),
               h('div', { className: 'pb-creator-options' },
-                h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(window.normalizeCharacterAppearance({})) }, 'RESET SHAPE & COLORS'),
+                h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}) }, '⚄ RANDOMIZE'),
+                h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(window.normalizeCharacterAppearance({})) }, 'RESET'),
                 h('button', { className: 'ms-tty-btn', onClick: () => {
                   if (isWaitingOnline) return;
                   st.teamLockedIn = false;
@@ -3211,7 +3266,7 @@ function PartyBuilder(props) {
                   if (st.builderConfirmedSlots?.[player]) st.builderConfirmedSlots[player][slot] = false;
                   refresh();
                 } }, 'USE ORIGINAL MODEL'))),
-            h('div', { className: 'pb-creator-options' },
+            h('div', { className: 'pb-creator-options pb-creator-views' },
               h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.resetView() }, 'FULL BODY'),
               h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.viewHead() }, 'FACE CLOSE-UP'),
               h('button', { className: 'ms-tty-btn', onClick: () => {

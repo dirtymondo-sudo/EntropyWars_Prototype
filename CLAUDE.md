@@ -998,10 +998,41 @@ Kill-switches (console): `window.EW_DISABLE_3D_UNITS = true` (all 3D),
   To persist new files, hand them to the user (SendUserFile) to upload via GitHub
   manually. Don't waste time retrying pushes.
 
-## Character creator — 2026-09-10 local delivery, not deployed
-The Forge's GEAR → CHARACTER CREATOR customizes Homosapien male/female base models. See PARTY_BUILDER_PLAN.md §9's 2026-09-10 entry for capabilities, limitations, tests and upload locations. Appearance data lives in partyMeta.appearance, is sanitized by sprites.js normalizeCharacterAppearance, and follows existing team presets/identity/unit/online serialization. Geometry generation is shared by preview and battle through three-renderer.js _createAppearanceRig. Keep its geometry/materials instance-owned; do not mutate the GLB cache or animation bones for sliders. Appearance changes are cosmetic, independent of class/spells/equipment. Current hair/clothes are fitted procedural shells and face changes are basic geometry shaping; neither uploaded base contains textures or authored morphs. R2 uses Assets/Models, with an allowlisted same-origin GLB fallback in server.js when CORS blocks the CDN. Retain both rigged_animations/Meshy_AI_human_body_base_mesh_{male,female}_biped_Character_output.glb files in Render's repository. Do not claim the local delivery is live.
-
-Creator visual iteration 2 replaces the original triangle masks with interpolated boundaries, relaxed garment panels and volume-shaped hair. See the latest PARTY_BUILDER_PLAN.md build entry. Keep cut-vertex skin weights normalized and dispose old geometry buffers when rebuilding; do not restore the original triangle-count conservation test because clipping subdivides faces and adds garment rims.
+## CHARACTER CREATOR rev 3 — the charactercreation/ assets (2026-09-11, local delivery)
+The Forge's GEAR → CHARACTER CREATOR dresses Homosapien slots from the
+user's `charactercreation/` folder (repo + R2 `Assets/Models/charactercreation/`).
+**The bases there are UNRIGGED** (Meshy "low_poly_unwrapped", 30k tris, UVs,
+no skeleton) — never wire `…_<gender>.glb` directly. `node character-rig.js`
+(repo tooling, zero deps) makes the runtime assets: `bodies` transfers the
+old donor exports' (`rigged_animations/…_biped_Character_output.glb`, keep
+them) 24-joint skin weights onto the new meshes → `…_<gender>_rigged.glb`;
+`hair` splits `hair-pack-part-1/source/HairPackPT1.glb` into
+`hair/hairNNN.glb` (one static GLB per style, textures embedded, centred on
+its scalp cap). A new unrigged human base or a hair-pack-part-2 goes through
+the same two commands. Data model = sprites.js `normalizeCharacterAppearance`
+(v2; catalogues `EW_HAIR_STYLES`, `EW_FABRICS`, `EW_APPEARANCE_ENUMS`;
+URL helpers `getHairStyleUrl` / `getFabricTextureUrl`; every asset has ONE
+same-origin fallback via `getCharacterModelFallback` → server.js
+`/api/character-model/*`). Runtime = three-renderer.js "CHARACTER CREATOR
+RUNTIME" block (`_createAppearanceRig` + `_ccBakeSkin` / `_ccFaceLandmarks` /
+`_ccLoadFabric` / `_ccHairTexture` / `_ccLoadHair` / `_ccWarmAssets`): the face
+(eyes / brows / lips / facial hair) is PAINTED per texel through the base's
+UVs onto an instance-owned skin canvas; garments are cut shells wearing a
+fabric tileable; hair is the style GLB fitted to the skull and skinned to the
+Head bone; tints are VERTEX colours (the board's Lambert swap keeps map +
+vertexColors + side/alpha only). Rules that came with it: relax / average
+normals over position-WELDED vertices (the unwrapped base splits every UV
+seam — per-index maths tears the cloth); keep geometry INDEXED (base
+vertices shared, cut vertices appended — a rebuild is ~0.2 s, not 1.7 s);
+mutate `mesh.material` (the CURRENT one), never a stored material; hair
+meshes wear `_ew_noTwin`; `state.js resolveIdentityForBuild` keeps a creator
+look's gender (the stock human model is male-only). Dev: `EW_CC_DEBUG_UNLIT`
+(unlit creator materials). Verify with `NODE_USE_ENV_PROXY=1 node
+playtest_creator.js [tag]` (serves the creator assets from disk; see
+PLAYTEST_NOTES "THE CHARACTER CREATOR PROBE"). `npm test` runs
+`character-creator.test.js` against the real files. Full history + the
+asset wishlist: PARTY_BUILDER_PLAN.md §9 (2026-09-11 entry). Not deployed
+until the user uploads the rigged bases + hair GLBs and the edited files.
 
 ## Adversarial continuation — 2026-09-10: shared VFX helper cleanup (local delivery)
 

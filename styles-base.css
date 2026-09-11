@@ -4934,3 +4934,29 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-custom-model .pb-hero3d-fallback { display: none; }
 .pb-creator-load-error { display: none; position: absolute; top: 40%; left: 40%; right: 20%; z-index: 5; padding: 16px; border-radius: 16px; background: #211e19; color: #f0cc83; pointer-events: auto; text-align: center; }
 .ew-cv-fail .pb-creator-load-error { display: block; }
+
+/* ── CHARACTER CREATOR rev 3 (2026-09-11): slider grid, swatch rows, hair /
+   fabric tiles. Lives in the GEAR tab's creator sub-panel (.pb-creator). ── */
+.pb-creator-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 14px; }
+.pb-creator-grid .pb-creator-slider { margin: 6px 0; }
+.pb-creator-colorrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 8px 0 10px; }
+.pb-creator-colorlabel { font-size: 11px; letter-spacing: .1em; color: #d8c9a0; text-transform: uppercase; margin: 8px 0 2px; min-width: 64px; }
+.pb-creator-colorrow .pb-creator-swatches { gap: 7px; align-items: center; }
+.pb-creator-swatch { width: 26px; height: 26px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18), 0 1px 2px rgba(0,0,0,.5); }
+.pb-creator-custom { position: relative; width: 26px; height: 26px; border-radius: 50%; border: 1px dashed #b39b6a; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; }
+.pb-creator-custom input { position: absolute; inset: -6px; width: 40px; height: 40px; opacity: 0; cursor: pointer; }
+.pb-creator-custom i { font-style: normal; color: #e6c178; font-size: 16px; line-height: 1; pointer-events: none; }
+.pb-cc-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 7px; margin: 8px 0 10px; }
+.pb-cc-tile { position: relative; min-height: 52px; border-radius: 10px; border: 1px solid #6f5d3d; background: #1d1a15; color: #eee1be; font: inherit; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 6px 4px; overflow: hidden; }
+.pb-cc-tile span { position: relative; z-index: 1; text-align: center; line-height: 1.15; }
+.pb-cc-tile:hover { border-color: #c9ad6d; }
+.pb-cc-tile[aria-pressed="true"] { border-color: #f0cc83; box-shadow: 0 0 0 2px rgba(240, 204, 131, .55), inset 0 0 18px rgba(240, 204, 131, .18); }
+.pb-hair-tile { min-height: 58px; }
+.pb-hair-glyph { width: 28px; height: 22px; border-radius: 14px 14px 6px 6px; background: linear-gradient(180deg, #7a5a3a, #3b2a1f); margin-bottom: 4px; opacity: .85; }
+.pb-hair-tile.short .pb-hair-glyph { height: 14px; border-radius: 14px 14px 3px 3px; }
+.pb-hair-tile[aria-pressed="true"] .pb-hair-glyph { background: linear-gradient(180deg, #f0cc83, #b8741a); }
+.pb-fabric-tile { background-size: cover; background-position: center; min-height: 56px; }
+.pb-fabric-tile.has-thumb::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,.72)); }
+.pb-fabric-tile.plain { background: repeating-linear-gradient(135deg, #2a2620 0 6px, #201d18 6px 12px); }
+.pb-creator-views { border-top: 1px solid #4b3f2a; padding-top: 10px; margin-top: 12px; }
+@media (max-width: 1180px) { .pb-creator-grid { grid-template-columns: 1fr; } }

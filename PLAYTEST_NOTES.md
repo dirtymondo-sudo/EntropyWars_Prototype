@@ -10024,3 +10024,22 @@ renderer yet — no `_updateStrikeApproach` exists); a heavy-punch slot on
 Melee_Hook; Sword_Heavy_Combo for ultimates; Hit_Knockback + LayToIdle for
 push victims; the Pistol_* aim set (Aim_Up/Down/Neutral are 0.17 s poses —
 an aim blend, not clips).
+
+## THE CHARACTER CREATOR PROBE (2026-09-11): the creator assets from disk
+
+`NODE_USE_ENV_PROXY=1 node playtest_creator.js [tag]` (server on :3000;
+`PW_W` / `PW_H` size the viewport) boots the title with the local R2 files,
+opens the standalone forge → GEAR → CHARACTER CREATOR → CREATE APPEARANCE and
+photographs `shots/creator/<tag>_NN_*.png`: default body, face close-up,
+beard + eye colour, three hair styles, two fabrics + long sleeve + shorts,
+the female base (body + face), a random look, the walk. Unlike the forge
+probe, the RIGGED GLBs, hair GLBs and fabric tiles DO load: every
+`cdn.entropywars.net/Assets/Models/charactercreation/*` request is fulfilled
+from the repo's `charactercreation/` folder (the exact files the user uploads
+to R2), so this exercises the real path — GLB parse, weight skinning, hair
+fit, fabric + face bake — on swiftshader. Prints page errors and every
+`[ThreeRenderer]` line. First run 2026-09-11: it caught two real bugs
+(the UV-seam cloth tears and FEMALE snapping back to male) that the Node
+tests could not see. It needs `node_modules/{three@0.128.0,react,react-dom}`
+— install them in ONE `npm i --no-save` (a later `--no-save` install prunes
+the earlier extras).

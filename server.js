@@ -69,15 +69,33 @@ const limitProgress = httpRateLimit('progress', 20, 12);  // achievement progres
 
 // Same-origin fallback when R2's CORS policy blocks the creator GLBs.
 // Only these two public repository assets are addressable, never arbitrary paths.
-app.get('/api/character-model/:gender', limitRead, (req, res) => {
-    const gender = req.params.gender;
-    if (gender !== 'male' && gender !== 'female') return res.sendStatus(404);
-    const file = path.join(__dirname, 'rigged_animations',
-        'Meshy_AI_human_body_base_mesh_' + gender + '_biped_Character_output.glb');
-    res.type('model/gltf-binary');
+// CHARACTER CREATOR same-origin fallback (sprites.js getCharacterModelFallback):
+// when the CDN copy of a creator asset fails (CORS / edge hiccup) the renderer
+// retries the SAME file from the repo. Strict allowlists — a request outside
+// them is a 404, never a path lookup. Bodies are the character-rig.js output
+// (the rigged 30k-tri bases; keep both in Render's repository), hair styles the
+// per-style split GLBs, fabrics the 1024² tileables.
+const CC_DIR = path.join(__dirname, 'charactercreation');
+function sendCreatorFile(res, file, type) {
+    res.type(type);
     res.sendFile(file, { maxAge: '1h' }, err => {
         if (err && !res.headersSent) res.sendStatus(err.statusCode === 404 ? 404 : 500);
     });
+}
+app.get('/api/character-model/:gender', limitRead, (req, res) => {
+    const gender = req.params.gender;
+    if (gender !== 'male' && gender !== 'female') return res.sendStatus(404);
+    sendCreatorFile(res, path.join(CC_DIR, 'Meshy_AI_human_body_base_mesh_' + gender + '_rigged.glb'), 'model/gltf-binary');
+});
+app.get('/api/character-model/hair/:id', limitRead, (req, res) => {
+    const id = req.params.id;
+    if (!/^hair\d{3}$/.test(id)) return res.sendStatus(404);
+    sendCreatorFile(res, path.join(CC_DIR, 'hair', id + '.glb'), 'model/gltf-binary');
+});
+app.get('/api/character-model/fabric/:key', limitRead, (req, res) => {
+    const key = req.params.key;
+    if (!/^[a-z]+(-[a-z]+)?$/.test(key)) return res.sendStatus(404);
+    sendCreatorFile(res, path.join(CC_DIR, 'clothingtextures', key + '_basecolor.png'), 'image/png');
 });
 
 // Serve ONLY the entry page. Every script/style/asset the game uses loads
