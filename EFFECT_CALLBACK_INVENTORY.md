@@ -1,6 +1,6 @@
 # Remaining effect callback inventory
 
-Updated 2026-09-11 after the wall geometry audit and the `_sigRun` refusal sweep. This is a complete textual index of direct window.setTimeout sites, not an exhaustive semantic audit. Asset completion callbacks and other scheduling APIs still need separate review.
+Updated 2026-09-10 (America/Chicago), after the prior entry labeled 2026-09-11 and the candle/cross emission batch. This is a textual index, not an exhaustive semantic audit.
 
 ## Classified and fixed in this batch
 
@@ -43,8 +43,6 @@ Geometry trace: `_spawnLaserBeam3D` registers cylinders and rings with `_animate
 | 8370 | `window.setTimeout(function() {` |
 | 10301 | `window.setTimeout(function () {` |
 | 10313 | `window.setTimeout(function () { _wpnLoad(key); }, 4500 + idx * 700);` |
-| 10364 | `window.setTimeout(function () {` |
-| 10553 | `window.setTimeout(function () {` |
 | 11048 | `window.setTimeout(function () {` |
 | 11427 | `window.setTimeout(function () {` |
 | 11827 | `window.setTimeout(function () {` |
@@ -120,3 +118,9 @@ Audited `spawnFlameBurst3D`, `_sigShockRing3D` and `_sigSpeedBurst3D`: no unowne
 Asynchronous asset attachment inspected: `_wpnLoad` and `_loadCachedTex` write only into caches; casts clone or fall back, never attach a late load into a live group. No change needed.
 
 Next: the bespoke emission timers in the table (candle puffs, burning-cross licks, and the rest) → `_fxDelay` per helper with regressions, then VFX-04.
+
+## Candle/cross emission batch (current)
+
+`_sigCandleProp3D` embers and `_sigCrossDescent3D` burning licks now use `_fxDelay`. They emit particles only; geometry retirement remains with `_sigRunOwned`. Candle cold-cache emissions are owned too. Timing, payloads, suppression, non-burning cross and pillar fallback are unchanged. Sixteen production-helper regressions pass; nine fail against pinned unchanged source. Real registration/animation cleanup is exercised with rendering doubles, including shared geometry retention and cap refusal. No browser or network acceptance.
+
+Next: `_sigSleighRide3D` frost wake (line 11048) and `_sigStandSword3D` dissolve motes (line 11427), then the other direct emission sites above, then VFX-04. The first two table entries implement the lifetime helpers themselves; weapon-library boot and staggered warmup remain application-owned. Prior next-task text records historical batch boundaries.

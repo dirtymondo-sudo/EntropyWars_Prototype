@@ -1,10 +1,22 @@
 # Entropy Wars — adversarial review plan
 
-Last updated: 2026-09-11 (America/Chicago)
+Last updated: 2026-09-10 (America/Chicago; continuation after the prior entry labeled 2026-09-11)
 Repository: https://github.com/dirtymondo-sudo/EntropyWars_Prototype
 Baseline: Phase 1 source review pinned to main commit `f0a4c3341631d60cee2ac544e543a13754d21624` (2026-09-09 in America/Chicago). Phase 0 used an unpinned main snapshot.
 Continuation baseline: main commit `4c740fcf6624a30d59e30c4d4dfea1a16dd85b03`, checked 2026-09-09 (America/Chicago). This commit and its predecessor `3da54eff8abbef3da87a1c0f72272919d84bd15e` changed only the uploaded review document; the inspected game source and line references remain unchanged.
 Delivery: this document is repository/reference material. The first delivery is now present in repository main `41f8e76b67120eea58c17fd968c5c72d70ef035e`; R2/Render deployment is unverified. The pause-focus delivery is also present in repository main `e92ee26153b65c2047963544c56310ea838220bb`. The Settings-focus delivery is present in repository main `f546e7fff61edb012e3fae536aee995996257c4f`. The PAUSE-06 controller delivery is present in repository main `88b3bc65adc93fc8ed2e84c28c112b0c81565b3f`; the PAUSE-07 delivery is present in repository main `82494b38fa3dea84f89f32a8723602289fa51b3f`; R2/Render deployment remains unverified.
+
+### Latest continuation — 2026-09-10 (America/Chicago): LIFE-06 / VFX-03 candle and cross emission retirement
+
+**Implemented and locally validated; not deployed or browser-playtested.** Continued after Claude's wall/refusal sweep from a fresh full repository archive pinned to main `ccbdde65b0ca8636ef45a0ab29d1f9af059443f9`. The previous 2026-09-11 entry is retained with its original date. Main was checked again after implementation and still matched this revision.
+
+Two direct emission timer sites now use `_fxDelay`: `_sigCandleProp3D` flame-breath embers (including the cold-model fallback) and `_sigCrossDescent3D` burning-cross flame licks. Retirement cancels pending work and rejects callbacks already queued, including after partial emission and during a fresh battle/preview. Normal delays, particle payloads, suppression and non-burning/cold-cross fallback behavior are preserved. Neither timer owns resource disposal. Claude's `_sigRunOwned` animation/refusal cleanup remains intact; shared model geometry and textures remain cached. Both online viewers execute these local helpers; relay payloads and authority are unchanged.
+
+**Validation:** `ritual-emission-lifetime.test.js`: 16 passed; nine cancellation regressions fail against the unchanged pinned source, and seven behavior/animation controls pass before and after. Tests exercise production helpers, `_fxDelay`, `_sigRun` and `_sigRunOwned` with deterministic timers and rendering doubles. Full package test command run directly through bundled Node 24 (`node --test --test-reporter=tap *.test.js`; npm executable unavailable): **481 total, 479 passed, 0 failed, 2 skipped**. Skips: fitted-outfit rig check and server boot dependency check. Syntax: **89/89 clean**. This is the current full repository archive with the new test, not the older accumulated review workspace. No WebGL or live host/guest acceptance.
+
+**Delivery:** `ENTROPY_WARS_RITUAL_EMISSION_FIXES.zip` contains complete updated files. `three-vfx-effects.js` → R2; `index.html` → Render (token `20260910-ritual-retirement-01-cors`, preserving all current open-sites changes); test, inventory, CLAUDE.md and plan → repository only. Baseline hashes and test logs included. No commit, push or deployment.
+
+**Exact next task:** `_sigSleighRide3D` frost-wake timers and `_sigStandSword3D` dissolve-mote timer, then remaining bespoke emission sites in the inventory, in helper-sized batches with regressions; then VFX-04 endpoint/list visibility. LIFE-06/VFX-03 remain partial for those timers; browser/host-guest acceptance remains open.
 
 ### Latest continuation — 2026-09-11: LIFE-06 / VFX-03 wall geometry audit and the `_sigRun` refusal sweep
 
@@ -1067,7 +1079,7 @@ After each phase:
 
 ## Resume instructions
 
-**Current continuation:** use the breath/boomerang entry at the top and `ENTROPY_WARS_BREATH_BOOMERANG_FIXES.zip`. Continue remaining downstream geometry and wall ownership, asset attachment, then VFX-04. Older continuation paragraphs below are historical; prior fixes remain preserved and live acceptance remains open.
+**Current continuation:** use the candle/cross entry at the top and `ENTROPY_WARS_RITUAL_EMISSION_FIXES.zip`. Next: `_sigSleighRide3D` frost wake, `_sigStandSword3D` dissolve motes, remaining bespoke timers, then VFX-04. Earlier continuation paragraphs are historical; preserve Claude's refusal sweep.
 
 **Latest continuation:** the LIFE-05 delivery at the top supersedes the older next-step notes below. Use `ENTROPY_WARS_RECONNECT_CLOCK_FIXES.zip`. The next implementation is acknowledged current-match state recovery; persistent clock suspension and forced rejoin resend are implemented and locally validated, not deployed. LIFE-05 remains open.
 

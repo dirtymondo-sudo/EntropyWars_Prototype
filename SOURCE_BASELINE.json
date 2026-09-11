@@ -1,0 +1,31 @@
+{
+  "repository": "https://github.com/dirtymondo-sudo/EntropyWars_Prototype",
+  "baseline_commit": "ccbdde65b0ca8636ef45a0ab29d1f9af059443f9",
+  "main_rechecked_same": true,
+  "files": {
+    "three-vfx-effects.js": {
+      "baseline_git_blob": "33fdbaae9126fc7086b16b4aad517f4c3e9592e2",
+      "delivered_sha256": "6795af3ec430a41d2cc088c425c912b46de5ddd43c25b53e5f5a897c061c693f"
+    },
+    "index.html": {
+      "baseline_git_blob": "80ae08e07226b6014433926018d98a9c456240b0",
+      "delivered_sha256": "a423f801006ceb61ae36eac24788385b7964a1c0758a80f025dfb0033a519a3a"
+    },
+    "ritual-emission-lifetime.test.js": {
+      "baseline_git_blob": null,
+      "delivered_sha256": "7a57b542fecf6aa5c69f3b38633587a26d8a87d734244f4bd5c48719b3aacac3"
+    },
+    "EFFECT_CALLBACK_INVENTORY.md": {
+      "baseline_git_blob": "de6fc0bfbb0ffac8bc5f85536be690fb67e6864e",
+      "delivered_sha256": "80a46f54c1a99f7eb88cf43464ceb92a444a3436425ab55afb01255c5f3e457a"
+    },
+    "CLAUDE.md": {
+      "baseline_git_blob": "c0f9d9ca3d55582d30808a8144937cd7b73c7e5c",
+      "delivered_sha256": "cb9ce7298e8a912861e1e9f96d73386f1bbafab36813c05579c3f5e23dda410a"
+    },
+    "ENTROPY_WARS_ADVERSARIAL_REVIEW_PLAN.md": {
+      "baseline_git_blob": "d19a79abbce3489dd833d52a4989b49fc910f623",
+      "delivered_sha256": "2d1b7b043e8f140f14ed4faca536a85de96493e24c2d21e13b07fa646c6f480c"
+    }
+  }
+}
