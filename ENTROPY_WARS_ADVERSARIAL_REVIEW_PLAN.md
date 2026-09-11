@@ -6,6 +6,18 @@ Baseline: Phase 1 source review pinned to main commit `f0a4c3341631d60cee2ac544e
 Continuation baseline: main commit `4c740fcf6624a30d59e30c4d4dfea1a16dd85b03`, checked 2026-09-09 (America/Chicago). This commit and its predecessor `3da54eff8abbef3da87a1c0f72272919d84bd15e` changed only the uploaded review document; the inspected game source and line references remain unchanged.
 Delivery: this document is repository/reference material. The first delivery is now present in repository main `41f8e76b67120eea58c17fd968c5c72d70ef035e`; R2/Render deployment is unverified. The pause-focus delivery is also present in repository main `e92ee26153b65c2047963544c56310ea838220bb`. The Settings-focus delivery is present in repository main `f546e7fff61edb012e3fae536aee995996257c4f`. The PAUSE-06 controller delivery is present in repository main `88b3bc65adc93fc8ed2e84c28c112b0c81565b3f`; the PAUSE-07 delivery is present in repository main `82494b38fa3dea84f89f32a8723602289fa51b3f`; R2/Render deployment remains unverified.
 
+### Latest continuation — 2026-09-10: LIFE-06 / VFX-03 cannon ownership and four emission helpers
+
+**Implemented and locally validated; not deployed or browser-playtested.** All five edited baseline files matched GitHub main tree `6ba36803a60c1da727e122a610d9cc753940a4ce` by Git blob hash before editing. `_sigCannonShot3D` now places its carriage and cannonball under one identity-transform group registered with `_sigRunOwned`. The ball retains world-space coordinates independently of carriage recoil. Normal animation completion, explicit retirement, registration refusal and the existing tick-error path dispose both through the established owner. Removed the detached-ball disposal timer; cancellation alone would have leaked its resources. Ball/glow resources are disposed once; the existing shared-material traversal policy is unchanged, and textures remain cached.
+
+Four additional helpers now use `_fxDelay`: `_sigTeslaCoil3D` arcs, `_sigStormStrike3D` impact, `_sigJudgmentSword3D` pillar, and `_sigMusicNotes3D` staggered note creation. These callbacks create effects rather than dispose resources. Retirement blocks pending and already-queued callbacks in a fresh lifetime. Existing delays, suppression, options, music animation/refusal cleanup and downstream owners are preserved. Both online viewers execute these shared local helpers; no relay or authoritative gameplay changes.
+
+**Validation:** 27 production-helper regressions pass; 15 fail against unchanged source and 12 controls pass. Controlled timers and rendering doubles exercise actual helper, scheduling and animation ownership code; matrix transforms and downstream visual helpers are doubled, so this is not WebGL acceptance. Full package test command (`node --test --test-reporter=tap *.test.js`, bundled Node; npm unavailable): **536 total, 534 passed, zero failed, two existing skips**. Syntax **92/92 clean**. No browser, device or live host/guest acceptance.
+
+**Delivery:** `ENTROPY_WARS_CANNON_EMISSION_FIXES.zip`; complete `three-vfx-effects.js` → R2, `index.html` → Render (shared token `20260910-cannon-emissions-retirement-01-cors`), new test and updated documentation/logs → repository only. No commit, push or deployment.
+
+**Exact next task:** `_sigWhiteout3D` delayed second shock ring, then `_sigRuneSphere3D` and subsequent bespoke timers in the inventory. Audit each callback for disposal obligations before converting it. Continue VFX-04 endpoint/list visibility afterward; LIFE-06/VFX-03 remain partial. Application-owned weapon-cache warmup stays untouched. This entry supersedes all older next-step ordering below.
+
 ### Latest continuation — 2026-09-10: LIFE-06 / VFX-03 slash-combo and jaws emissions
 
 **Implemented and locally validated; not deployed or browser-playtested.** GitHub main blob hashes matched all five local baseline files before editing (see BASELINE_HASHES.txt in the delivery). `_sigSlashCombo3D` dissolve motes and `_sigJawsBite3D` terminal mist now use `_fxDelay`. Scene retirement cancels pending emissions and rejects already-queued callbacks after a fresh battle/preview or a partially completed animation. These timers emit particles and own no disposal. Existing animation/refusal cleanup, shared textures, timing, coordinates, custom options and suppression remain intact. Both online viewers execute the same local helpers; no relay payload or authoritative gameplay changes.
@@ -1099,7 +1111,7 @@ After each phase:
 
 ## Resume instructions
 
-**Current continuation:** use the sleigh/stand-sword entry at the top and `ENTROPY_WARS_SLEIGH_SWORD_FIXES.zip`. Next: slash-combo dissolve motes and jaws terminal mist, remaining bespoke timers, then VFX-04. Earlier continuation paragraphs are historical; preserve the refusal sweep.
+**Current continuation:** use the cannon/four-emission entry at the top and `ENTROPY_WARS_CANNON_EMISSION_FIXES.zip`. Next: whiteout second ring, rune sphere and remaining bespoke timers, then VFX-04. Earlier continuation paragraphs are historical.
 
 **Latest continuation:** the LIFE-05 delivery at the top supersedes the older next-step notes below. Use `ENTROPY_WARS_RECONNECT_CLOCK_FIXES.zip`. The next implementation is acknowledged current-match state recovery; persistent clock suspension and forced rejoin resend are implemented and locally validated, not deployed. LIFE-05 remains open.
 

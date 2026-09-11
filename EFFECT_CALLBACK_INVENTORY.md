@@ -43,45 +43,40 @@ Geometry trace: `_spawnLaserBeam3D` registers cylinders and rings with `_animate
 | 8370 | `window.setTimeout(function() {` |
 | 10301 | `window.setTimeout(function () {` |
 | 10313 | `window.setTimeout(function () { _wpnLoad(key); }, 4500 + idx * 700);` |
-| 12624 | `window.setTimeout(function () {` |
-| 13814 | `window.setTimeout(function () {` |
-| 14452 | `window.setTimeout(function () {` |
-| 14471 | `window.setTimeout(function () {` |
-| 15096 | `window.setTimeout(function () {` |
-| 15308 | `window.setTimeout(function () {` |
-| 15527 | `window.setTimeout(function () {` |
-| 15560 | `window.setTimeout(function () {` |
-| 16915 | `if (s.at) window.setTimeout(go, s.at); else go();` |
-| 17199 | `window.setTimeout(function () {` |
-| 17220 | `window.setTimeout(function () {` |
-| 17279 | `window.setTimeout(function () {` |
-| 17282 | `window.setTimeout(function () {` |
-| 17317 | `window.setTimeout(function () {` |
-| 17339 | `window.setTimeout(function () {` |
-| 17583 | `window.setTimeout(function () {` |
-| 17953 | `window.setTimeout(function () {` |
-| 18100 | `window.setTimeout(function () {` |
-| 18229 | `window.setTimeout(function () {` |
-| 18269 | `window.setTimeout(function () {` |
-| 18378 | `window.setTimeout(function () {` |
-| 18733 | `window.setTimeout(function() {` |
-| 18842 | `window.setTimeout(function () {` |
-| 18863 | `window.setTimeout(function () {` |
-| 19011 | `window.setTimeout(function () {` |
-| 19331 | `window.setTimeout(function () {` |
-| 19347 | `window.setTimeout(function () {` |
-| 19531 | `window.setTimeout(function () { if (!_suppressed()) burst(); }, rideMs * 0.9);` |
-| 19614 | `window.setTimeout(function () {` |
-| 19712 | `window.setTimeout(function () {` |
-| 20575 | `window.setTimeout(function() {` |
-| 20724 | `window.setTimeout(function () {` |
-| 20944 | `if (idx === 0) go(); else window.setTimeout(go, idx * 260);` |
-| 21035 | `if (idx === 0) go(); else window.setTimeout(go, idx * 120);` |
-| 21053 | `window.setTimeout(function () {` |
-| 21202 | `window.setTimeout(function () {` |
-| 21217 | `window.setTimeout(function () {` |
-| 21401 | `window.setTimeout(function () {` |
-| 21404 | `window.setTimeout(function () {` |
+| 15306 | `window.setTimeout(function () {` |
+| 15525 | `window.setTimeout(function () {` |
+| 15558 | `window.setTimeout(function () {` |
+| 16913 | `if (s.at) window.setTimeout(go, s.at); else go();` |
+| 17197 | `window.setTimeout(function () {` |
+| 17218 | `window.setTimeout(function () {` |
+| 17277 | `window.setTimeout(function () {` |
+| 17280 | `window.setTimeout(function () {` |
+| 17315 | `window.setTimeout(function () {` |
+| 17337 | `window.setTimeout(function () {` |
+| 17581 | `window.setTimeout(function () {` |
+| 17951 | `window.setTimeout(function () {` |
+| 18098 | `window.setTimeout(function () {` |
+| 18227 | `window.setTimeout(function () {` |
+| 18267 | `window.setTimeout(function () {` |
+| 18376 | `window.setTimeout(function () {` |
+| 18731 | `window.setTimeout(function() {` |
+| 18840 | `window.setTimeout(function () {` |
+| 18861 | `window.setTimeout(function () {` |
+| 19009 | `window.setTimeout(function () {` |
+| 19329 | `window.setTimeout(function () {` |
+| 19345 | `window.setTimeout(function () {` |
+| 19529 | `window.setTimeout(function () { if (!_suppressed()) burst(); }, rideMs * 0.9);` |
+| 19612 | `window.setTimeout(function () {` |
+| 19710 | `window.setTimeout(function () {` |
+| 20573 | `window.setTimeout(function() {` |
+| 20722 | `window.setTimeout(function () {` |
+| 20942 | `if (idx === 0) go(); else window.setTimeout(go, idx * 260);` |
+| 21033 | `if (idx === 0) go(); else window.setTimeout(go, idx * 120);` |
+| 21051 | `window.setTimeout(function () {` |
+| 21200 | `window.setTimeout(function () {` |
+| 21215 | `window.setTimeout(function () {` |
+| 21399 | `window.setTimeout(function () {` |
+| 21402 | `window.setTimeout(function () {` |
 
 ## Laser terminus batch
 
@@ -130,3 +125,7 @@ Next: `_sigSlashCombo3D` dissolve motes (11827) and `_sigJawsBite3D` terminal mi
 ## Slash-combo/jaws batch (current)
 
 Both terminal emission sites now use `_fxDelay`; geometry disposal remains with `_sigRunOwned`. Fifteen production-helper checks pass (six fail before fixes); full suite 507 pass, zero fail, two skips; syntax 91/91. Next: `_sigCannonShot3D` detached-ball disposal ownership (a cleanup timer, not an emission; do not simply cancel), remaining emission helpers, then VFX-04. Application cache warmup is unchanged. No browser or online acceptance. Earlier next-task statements are historical.
+
+## Cannon and four emission helpers (current)
+
+Cannon's detached-ball disposal timer is removed. An identity parent owns carriage and ball under `_sigRunOwned`, preserving world-space flight and retiring both on completion/refusal/scene exit. Tesla arcs, storm impact, judgment pillar and music-note creation now use `_fxDelay`; these four sites emit work and own no disposal. 27 tests pass, 15 fail before; full suite 534 pass, zero fail, two skips; syntax 92/92. No browser or online acceptance. Next: `_sigWhiteout3D` second ring, `_sigRuneSphere3D` and subsequent bespoke timers, then VFX-04. Older next-task entries are historical.

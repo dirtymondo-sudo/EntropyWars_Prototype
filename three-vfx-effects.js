@@ -12480,7 +12480,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         ball.renderOrder = 161;
         var ballGlow = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.15, 10, 8), _sigMat(0xff8833));
         ball.add(ballGlow);
-        scene.add(ball);   /* flies in world space, cleaned up manually */
+        /* Identity parent keeps the ball in world space while the carriage
+           recoils independently. One animation owner retires both together. */
+        var shot = new THREE.Group();
+        shot.add(root);
+        shot.add(ball);
 
         /* muzzle flash cross-planes */
         var flashMat = _sigMat(0xffcc66, { map: _sigBurstTex() });
@@ -12512,7 +12516,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var fired = false, landed = false;
         var trailAcc = 0, lastEl = 0;
 
-        _sigRunOwned(root, total, function (el) {
+        _sigRunOwned(shot, total, function (el) {
             var dt = el - lastEl; lastEl = el;
             var vis;
             if (el < matMs) {
@@ -12620,12 +12624,6 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 }
             }
         });
-        /* the ball lives outside the rig group — dispose it when the run ends */
-        window.setTimeout(function () {
-            scene.remove(ball);
-            ball.geometry.dispose(); ballMat.dispose();
-            ballGlow.geometry.dispose(); ballGlow.material.dispose();
-        }, total + 60);
     }
 
     /* ── SPECTRAL FIREARMS — giant stand-summoned guns for the gunslinger /
@@ -13811,7 +13809,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var topZ = unitSurfaceZ(tx, ty) + 3 + ts * 0.62;
             for (var i = 0; i < 5; i++) {
                 (function (idx) {
-                    window.setTimeout(function () {
+                    _fxDelay(function () {
                         if (_suppressed()) return;
                         var a = rn(0, Math.PI * 2);
                         var r = ts * rn(0.45, 0.85);
@@ -14449,7 +14447,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             growMs: 140, holdMs: Math.max(160, delayMs - 140), fadeMs: 300,
             spin: 0.006, opacity: 0.75,
         });
-        window.setTimeout(function () {
+        _fxDelay(function () {
             if (_suppressed()) return;
             _sigShockRing3D(tx, ty, { color: color, r1: ts * 2.0, ms: 380 });
             _sigSpeedBurst3D(tx, ty, { color: 0xffffff });
@@ -14468,7 +14466,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         o.holdMs = Math.max(80, Math.round(dm * 0.5));
         o.plungeMs = Math.max(60, Math.round(dm * 0.2));
         _sigStandSword3D(tx, ty, o);
-        window.setTimeout(function () {
+        _fxDelay(function () {
             if (_suppressed()) return;
             _sigLightPillar3D(tx, ty, {
                 color: o.pillarColor != null ? o.pillarColor : 0xffe9a8,
@@ -15093,7 +15091,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var tex = _sigNoteTex(broken);
         for (var i = 0; i < n; i++) {
             (function (idx) {
-                window.setTimeout(function () {
+                _fxDelay(function () {
                     if (_suppressed()) return;
                     var group = new THREE.Group();
                     var a = (idx / n) * Math.PI * 2 + 0.7;
