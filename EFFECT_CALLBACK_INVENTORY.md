@@ -43,8 +43,6 @@ Geometry trace: `_spawnLaserBeam3D` registers cylinders and rings with `_animate
 | 8370 | `window.setTimeout(function() {` |
 | 10301 | `window.setTimeout(function () {` |
 | 10313 | `window.setTimeout(function () { _wpnLoad(key); }, 4500 + idx * 700);` |
-| 11827 | `window.setTimeout(function () {` |
-| 12187 | `window.setTimeout(function () {` |
 | 12624 | `window.setTimeout(function () {` |
 | 13814 | `window.setTimeout(function () {` |
 | 14452 | `window.setTimeout(function () {` |
@@ -128,3 +126,7 @@ Next: `_sigSleighRide3D` frost wake (line 11048) and `_sigStandSword3D` dissolve
 Both frost-wake and dissolve-mote timer sites now use `_fxDelay`; they emit particles and own no disposal. Existing `_sigRunOwned` animations and cached assets are preserved. Thirteen production-helper tests pass, five fail before fixes. Full suite: 492 passed, zero failed, two skipped; syntax 90/90. Browser and online acceptance remain open.
 
 Next: `_sigSlashCombo3D` dissolve motes (11827) and `_sigJawsBite3D` terminal mist (12187), then the remaining direct emissions and VFX-04. Earlier next-task entries are historical.
+
+## Slash-combo/jaws batch (current)
+
+Both terminal emission sites now use `_fxDelay`; geometry disposal remains with `_sigRunOwned`. Fifteen production-helper checks pass (six fail before fixes); full suite 507 pass, zero fail, two skips; syntax 91/91. Next: `_sigCannonShot3D` detached-ball disposal ownership (a cleanup timer, not an emission; do not simply cancel), remaining emission helpers, then VFX-04. Application cache warmup is unchanged. No browser or online acceptance. Earlier next-task statements are historical.

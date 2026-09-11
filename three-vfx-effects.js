@@ -11824,7 +11824,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
 
         /* dissolve motes as the blade fades back out of existence */
-        window.setTimeout(function () {
+        _fxDelay(function () {
             if (_suppressed()) return;
             _sigSparks(tx, ty, opts.moteSprite || 'psi-pulse', 10, { vxy: 40, vz0: 40, vz1: 140, gravity: -20 });
         }, fadeAt);
@@ -12184,7 +12184,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             toothMat.opacity = vis;
             mawMat.opacity = 0.30 * vis;
         });
-        window.setTimeout(function () {
+        _fxDelay(function () {
             if (_suppressed()) return;
             _sigSparks(tx, ty, 'void-mist', 6, { vxy: 50, vz0: 20, vz1: 90, gravity: -30 });
         }, openMs + snapMs + clenchMs);
