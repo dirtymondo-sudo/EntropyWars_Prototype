@@ -1,6 +1,6 @@
 # Remaining effect callback inventory
 
-Updated 2026-09-10 (America/Chicago), after the prior entry labeled 2026-09-11 and the candle/cross emission batch. This is a textual index, not an exhaustive semantic audit.
+Updated 2026-09-10 (America/Chicago), after the Aurora Curtain/Spiral Beam/Bad Trip batch. This is a textual index, not an exhaustive semantic audit.
 
 ## Classified and fixed in this batch
 
@@ -43,10 +43,6 @@ Geometry trace: `_spawnLaserBeam3D` registers cylinders and rings with `_animate
 | 8370 | `window.setTimeout(function() {` |
 | 10301 | `window.setTimeout(function () {` |
 | 10313 | `window.setTimeout(function () { _wpnLoad(key); }, 4500 + idx * 700);` |
-| 15306 | `window.setTimeout(function () {` |
-| 15525 | `window.setTimeout(function () {` |
-| 15558 | `window.setTimeout(function () {` |
-| 16913 | `if (s.at) window.setTimeout(go, s.at); else go();` |
 | 17197 | `window.setTimeout(function () {` |
 | 17218 | `window.setTimeout(function () {` |
 | 17277 | `window.setTimeout(function () {` |
@@ -129,3 +125,15 @@ Both terminal emission sites now use `_fxDelay`; geometry disposal remains with 
 ## Cannon and four emission helpers (current)
 
 Cannon's detached-ball disposal timer is removed. An identity parent owns carriage and ball under `_sigRunOwned`, preserving world-space flight and retiring both on completion/refusal/scene exit. Tesla arcs, storm impact, judgment pillar and music-note creation now use `_fxDelay`; these four sites emit work and own no disposal. 27 tests pass, 15 fail before; full suite 534 pass, zero fail, two skips; syntax 92/92. No browser or online acceptance. Next: `_sigWhiteout3D` second ring, `_sigRuneSphere3D` and subsequent bespoke timers, then VFX-04. Older next-task entries are historical.
+
+## Whiteout/seal/gas batch (current)
+
+Three emission sites now use `_fxDelay`: `_sigWhiteout3D` second ring, `_sigSpearPrison3D` finisher (including nested Whiteout ownership), and `_sigGasCloud3D` staggered puff allocation. No disposal timer was canceled. `_sigRuneSphere3D` returns `_sigRunOwned`, preserving its public return while cleaning refused allocation. Shared textures remain cached. 24 tests pass, 11 fail before; full suite 558 pass, zero fail, two existing skips; syntax 93/93. No browser or online acceptance.
+
+Correction to the earlier refusal sweep: returning an entry is not proof of local refusal cleanup. Rune Sphere leaked when its registration returned null. `_sigAuroraCurtain3D` and `_sigSpiralBeam3D` have the same return-only pattern and are the next bounded audit/test batch. Review the remaining return-only callers before claiming complete coverage. Then continue `_sigBadTrip3D` staggered skulls (16913) and subsequent bespoke timers, followed by VFX-04. Application-owned weapon cache warmup remains unchanged. Earlier next-task entries are historical.
+
+## Aurora Curtain / Spiral Beam / Bad Trip (current)
+
+Aurora Curtain and Spiral Beam now return `_sigRunOwned`: their refusal paths dispose instance geometry/materials and preserve shared textures. Bad Trip's delayed skulls at 150/300 ms use `_fxDelay`; the initial skull is immediate. Sixteen new tests pass (six fail before), bringing the full suite to 574 passed, zero failures, two existing skips; syntax 94/94. Bad Trip downstream primitives are doubled in these tests, so their internal cleanup is not covered.
+
+Next: `_sigMagicCircle3D`, `_sigMagicOrb3D`, `_sigLightPillar3D` (returned-entry refusal cleanup, including transitive circle callers), then Crescent Slash, Orb Burst, Neon Grid, Fractal Tunnel, Kaleidoscope, Spectrum Burst, Prism Refraction and Stat Rings. Afterward continue Psychosis and subsequent emission timers, then VFX-04. No claim of exhaustive graph cleanup or browser/online acceptance. Application cache warmup stays unchanged; older next-task entries are historical.
