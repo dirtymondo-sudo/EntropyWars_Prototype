@@ -2022,3 +2022,46 @@ the bartender's lines are Claude placeholders (A15 — rewrite at will).
 Files: data.js, three-renderer.js, map.js, online.js, index.html
 (`20260911-room86-cafeterium-01-cors`), doorhq.test.js (62 green).
 Story track still ON HOLD (A14).
+
+### 2026-09-11 (rev 3) — Room 247 · THE CLOCK ROOM and FORM 365 are on file (logged from the shipped code)
+HQ plan **7.4** (the 247 row) and **7.9** (the dailies) shipped in the
+2026-09-11 00:39 upload (`20260911-room247-form365-01-cors`) without a
+log entry; this one is written from the code. The Clock Room is a box
+room off the ground ring at 225° (a frosted door between Medical and
+Records): the timekeeper's desk under five world clocks (SHASTA · GIZA ·
+LOCAL · CERN · THE MOON) that disagree on purpose, four more clocks hung
+at four heights, the punch clock and its card rack, and FORM 365 on the
+east wall. **FORM 365 = Daily Office Operations Requirements** (the user's
+D.O.O.R. joke, now a mechanic): three lines a day drawn from the date and
+the employee number — win a crossing at a named room, win by a named
+condition, secure N Keys, N confirmed exits, win with a native of a named
+bay on the roster, fire an Entropy Strike, win a Δ crossing, respond to
+the Code Red — judged at the end of every standard match, 💰 120 Hazard
+Pay a line and 💰 150 for the sheet, the count on the strip and on Room
+86's notice board, the day's canon date on the sheet. **The punch clock**
+is the login streak: the front door punches you in once a day; a missed
+day ends the streak; the rack keeps the best. Vocabulary (A8): **a line**
+is one requirement; **filed** is met; **the sheet** is the day. Overheard
+lines and the timekeeper's are Claude placeholders (A15 — rewrite at will).
+Story track still ON HOLD (A14). Files: data.js, three-renderer.js,
+map.js, battle.js, styles-base.css, index.html, doorhq.test.js.
+
+### 2026-09-11 (rev 4) — Room 1287 · OCCAM'S BARBERSHOP: you choose what you walk the building as
+HQ plan **7.4** (the 1287 row; the number was Claude's fill, decided with
+row 22) and the answer to the plan's open **D13**. A glass door between
+the Quartermaster and Reception, a pole in the hall beside it. Two chairs
+facing two mirrors under vanity bulbs, the barber standing between them,
+a regular on the bench, the roster waiting. **THE CHAIR** is a counter:
+sit, and walk out as the recruit (the Player model — still the default),
+your most-played vessel, a D.O.O.R. agent in black, or any declassified
+vessel with a rigged file; the model swaps in place, no door-blink, and
+the choice is on the profile (`door.hq.avatar`; the in-tray counts the
+cuts). **THE MIRROR** is the ID card, and the card's photo follows the
+chair. Nothing else changes — no stats, no roster, no rank; the building
+is single-player and nothing is relayed. Canon note: William of Ockham,
+b. c. 1287 — the plate reads "the simplest cut", and the barber's line
+("Two ways to explain how you look. I only do the shorter one."), the
+regular's and the overheard lines are Claude placeholders (A15). Story
+track still ON HOLD (A14). Files: data.js, three-renderer.js, map.js,
+profile.js, index.html (`20260911-room1287-barbershop-01-cors`),
+doorhq.test.js.

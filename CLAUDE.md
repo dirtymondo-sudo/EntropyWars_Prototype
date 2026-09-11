@@ -284,6 +284,67 @@ Every reader goes through `DOOR_HQ.rooms[id]` — never cache a room
 object across visits. doorhq.test.js guards the room, the roll, the
 apply / restore and the source sites.
 
+## ROOM 247 + FORM 365 + THE PUNCH CLOCK (HQ plan 7.4 / 7.9) — shipped 2026-09-11
+`DOOR_HQ.rooms.clockroom` (data.js) is THE CLOCK ROOM, a `kind: 'box'` room
+off the ground ring at 225° (`central_egress.doors` id `clockroom`,
+`leaf_frosted`, between MEDICAL and RECORDS). Three counters: `form365`
+→ `overlay: 'form365'` (map.js `_hqForm365Html`), `punch` → `overlay:
+'punch'` (`_hqPunchHtml`), `codered` → the hall's Code Red panel. Three
+procs in `_hqProcBuilders`: `world_clocks` (SHASTA · GIZA · LOCAL · CERN ·
+THE MOON, none agree), `punch_clock`, `form_sheet`; every `wall_clock` in
+the room hangs at its own height. **FORM 365 = Daily Office Operations
+Requirements** (data.js, the block after `hqCodeRed`): `DOOR_HQ.dailyOps =
+{ pay: 120, allBonus: 150, count: 3, force }`; `hqDailyOpsRows` draws three
+lines from `HQ_DAILY_TEMPLATES` (site · cond · keys · exits · native ·
+strike · delta · codered) seeded by `hqHash(date | employee no | 'form365')`
+— the same sheet all day, a new one tomorrow; `hqDailyOps(profile, opts)`
+reads progress from `door.hq.dailies` (date-matched); `hqDailyRowMet(row,
+ev)` is the rule per template (lines that say WIN need a win); battle.js
+`commitAchProgress` calls `hqDailyOpsJudge(p, ev)` AFTER the Code Red
+commit (so a cleared Code Red counts), credits Hazard Pay locally
+(`creditLocalGold`), sets `window._lastHqForm365` for the result stamp
+(`_stampHqSite` → `.drs-site.form365`), and logs a 📋 line. Standard matches
+only (`kind === 'match'`; MD / campaign never). The strip pill `#hqForm365`
+(index.html, `.hq-strip-form`, map.js `_hqFillStrip`) mirrors the count and
+opens the sheet (`window._hqOpenForm365`); Room 86's notice board mirrors it
+too. Dev: `?form365=site,keys,strike` / `DOOR_HQ.dailyOps.force`.
+`hqCanonToday(date)` = the day's canon date. **THE PUNCH CLOCK** = the
+login streak: map.js `_hqRecordVisit(null)` (a fresh arrival from Play)
+calls `hqPunchIn(profile)` once a day (`door.hq.punch = { last, streak,
+best, days }`); `hqPunchClock(profile)` reads it (a missed day → streak 0,
+`lapsed`). Viewer-local, nothing relayed (RULE #2). doorhq.test.js guards
+the room, the sheet, the judge, the punch and the source sites.
+
+## ROOM 1287 + THE HQ AVATAR (Occam's Barbershop, HQ plan 7.4) — added 2026-09-11
+`DOOR_HQ.rooms.barbershop` (data.js) is OCCAM'S BARBERSHOP, a `kind:
+'box'` room off the ground ring at 105° (`central_egress.doors` id
+`barbershop`, `leaf_glass`, between the Quartermaster and Reception; the
+vending machine moved to 98°, a `barber_pole` wall proc hangs at 111°).
+**THE CHAIR** (counter `chair` → `overlay: 'barber'`, map.js
+`_hqBarberHtml`) is where the officer chooses what they WALK THE BUILDING
+AS: data.js `hqAvatarPref(profile)` → `{ mode: 'player' | 'vessel' | 'agent'
+| 'race', race?, gender? }` from `door.hq.avatar` (default `player` = the
+recruit, the Player cast model); `hqSetAvatar(profile, choice)` validates
+and writes it (`door.hq.cuts` counts changes); `hqAvatarLabel(pref)` is the
+wording. map.js `_hqAvatar(profile)` reads the pref AFTER the dev override
+`EW_HQ_AVATAR` (`'vessel'` still forces the most-played rule); a `race`
+whose model is missing falls through to the recruit. Picking = buttons with
+`data-avatar` (`player` / `vessel` / `agent` / `race:<race>:<gender>`) →
+`window._hqPickAvatar` → save → `ThreeRenderer.hq.setAvatar(av)` swaps
+the model IN PLACE (same spot, heading, camera; the `hq-player` rig record
+is evicted and respawned — never a room rebuild) → the panel re-renders.
+Only declassified races with a rigged, animated model are offered
+(`profile.account.unlockedUnits`, `getRace3DModel`, `_DEV_UNLOCK_ALL`).
+**THE MIRROR** (counter `mirror` → `_mountReactProfile`) is the ID card;
+profile.js `doorCardPortrait` now lets a `race` / `agent` pick lead the
+photo (the recruit / vessel modes keep the most-played rule). Procs:
+`barber_chair` (floor, `block`), `barber_mirror` (wall, the catalogue
+`glow` = its vanity bulbs), `barber_pole` (wall, a canvas-helix stripe
+texture cached in `_hqPoleTex`; it does not turn). The in-tray shows a
+WALKS AS row. Cosmetic and viewer-local — nothing on `state`, nothing
+relayed (RULE #2). This answers HQ plan D13. doorhq.test.js guards the
+room, the helpers and the source sites.
+
 ## MAP SETTINGS (near scenery) — added 2026-09-06
 Every Δ board is dressed like the Training Room: a NEAR builder builds the
 board's immediate surroundings (apron/plateau, moats, walls, buildings, trees,

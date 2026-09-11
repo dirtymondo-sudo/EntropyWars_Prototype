@@ -371,7 +371,18 @@
                model (sprites.js DOOR_CAST_MODELS.player) — whenever it is
                wired. EW_HQ_AVATAR = 'vessel' (console) keeps the pre-cast
                rule below: your most-played vessel, else an agent in black. */
-            if (ov !== 'vessel' && typeof getCastModel === 'function' && getCastModel('player')) return { cast: 'player', race: 'men in black', gender: 'male' };
+            /* OCCAM'S BARBERSHOP (Room 1287, 2026-09-11): the chair's pick on
+               the profile (data.js hqAvatarPref → door.hq.avatar) — 'player'
+               is the default; a 'race' whose model is missing falls through */
+            const pref = (typeof window.hqAvatarPref === 'function') ? window.hqAvatarPref(profile) : { mode: 'player' };
+            const mode = (ov === 'vessel') ? 'vessel' : pref.mode;
+            if (mode === 'agent') return { race: 'men in black', gender: 'male' };
+            if (mode === 'race' && typeof getRace3DModel === 'function') {
+                if (getRace3DModel(pref.race, pref.gender)) return { race: pref.race, gender: pref.gender };
+                const alt = pref.gender === 'male' ? 'female' : 'male';
+                if (getRace3DModel(pref.race, alt)) return { race: pref.race, gender: alt };
+            }
+            if (mode !== 'vessel' && typeof getCastModel === 'function' && getCastModel('player')) return { cast: 'player', race: 'men in black', gender: 'male' };
             try {
                 if (typeof getRace3DModel === 'function' && profile && profile.raceStats) {
                     let best = null, bestN = 0;
@@ -1039,6 +1050,71 @@
             html += '<p class="hq-panel-note">The clock punches you in when you come through the front door; there is no button for it, and the red one does nothing. Every clock in this room shows a different time. The card believes whichever one you do.</p>';
             return html;
         }
+        /* OCCAM'S BARBERSHOP (Room 1287, plan 7.4, 2026-09-11): THE CHAIR —
+           who you walk the building as. The pick is saved on the profile
+           (data.js hqSetAvatar → door.hq.avatar), read by _hqAvatar, and the
+           renderer swaps the model in place (hq.setAvatar) — no rebuild, no
+           door-blink; the card's photo follows (profile.js). Buttons carry
+           data-avatar = 'player' | 'vessel' | 'agent' | 'race:<race>:<gender>'. */
+        function _hqBarberHtml() {
+            const profile = _hqProfile();
+            let html = '<div class="hq-panel-hd"><b>THE CHAIR</b><span>OCCAM’S BARBERSHOP · WALK OUT AS · THE SIMPLEST CUT</span></div>';
+            if (!profile) return html + '<p class="hq-panel-desc">No card, no chair. Sign in at Reception first.</p><div class="hq-panel-actions"><button class="hq-btn" data-close="1">NOTED</button></div>';
+            const pref = (typeof window.hqAvatarPref === 'function') ? window.hqAvatarPref(profile) : { mode: 'player' };
+            const has3d = (r, g) => { try { return typeof getRace3DModel === 'function' && !!getRace3DModel(r, g); } catch (e) { return false; } };
+            const walks = (r, g) => { try { const d = getRace3DModel(r, g); return !!(d && (d.libClips || (d.clips && Object.keys(d.clips).length))); } catch (e) { return false; } };
+            const rl = (r, g) => String((typeof getRaceLabel === 'function') ? getRaceLabel(r, g) : r).toUpperCase();
+            const av = _hqAvatar(profile);
+            const onFile = (typeof window.hqAvatarLabel === 'function') ? window.hqAvatarLabel(pref) : 'THE RECRUIT';
+            const inMirror = av.cast ? 'THE RECRUIT' : rl(av.race, av.gender);
+            html += `<div class="hq-site"><span class="hq-row-stamp tone-admit">IN THE CHAIR</span>`
+                + `<span class="hq-site-kv"><b>ON FILE</b> ${_hqEsc(onFile)}</span>`
+                + `<span class="hq-site-kv"><b>IN THE MIRROR</b> ${_hqEsc(inMirror)}${window.EW_HQ_AVATAR ? ' · DEV OVERRIDE (EW_HQ_AVATAR)' : ''}</span></div>`;
+            const btn = (spec, label, on, ok, title) => `<button class="hq-btn hq-btn-sm${on ? ' hq-btn-primary' : ''}" data-avatar="${_hqEsc(spec)}" ${ok ? '' : 'disabled'} title="${_hqEsc(title || '')}">${_hqEsc(label)}${on ? ' ✓' : ''}</button>`;
+            const playerOk = (typeof getCastModel === 'function') && !!getCastModel('player');
+            let best = null, bestN = 0;
+            try { for (const [race, rs] of Object.entries(profile.raceStats || {})) { const n = (rs && rs.played) || 0; if (n > bestN && (has3d(race, 'male') || has3d(race, 'female'))) { best = race; bestN = n; } } } catch (e) {}
+            html += '<div class="hq-chips"><span>THE STANDING ORDERS</span>'
+                + btn('player', 'THE RECRUIT', pref.mode === 'player', playerOk, playerOk ? 'The Player model — the default since orientation' : 'The recruit’s file has not loaded')
+                + btn('vessel', 'MOST-PLAYED VESSEL' + (best ? ' · ' + rl(best, has3d(best, 'male') ? 'male' : 'female') : ''), pref.mode === 'vessel', !!best, best ? 'Whoever you have crossed with most; it changes as you do' : 'No crossings on file with a rigged vessel yet')
+                + btn('agent', 'A D.O.O.R. AGENT', pref.mode === 'agent', true, 'Black suit, black tie, no comment')
+                + '</div>';
+            const unl = (profile.account && Array.isArray(profile.account.unlockedUnits)) ? profile.account.unlockedUnits : [];
+            const pool = (typeof AVAILABLE_RACES !== 'undefined') ? AVAILABLE_RACES : [];
+            const chips = [];
+            pool.forEach(r => {
+                if (r === 'men in black') return;
+                if (unl.length && unl.indexOf(r) < 0 && !window._DEV_UNLOCK_ALL) return;
+                ['male', 'female'].forEach(g => {
+                    if (!walks(r, g)) return;
+                    chips.push(btn('race:' + r + ':' + g, rl(r, g), pref.mode === 'race' && pref.race === r && pref.gender === g, true, r + ' · ' + g));
+                });
+            });
+            html += `<div class="hq-chips"><span>DECLASSIFIED VESSELS · ${chips.length} WITH A RIGGED FILE</span>${chips.length ? chips.join('') : '<i class="hq-chip dim">NONE ON FILE — THE QUARTERMASTER DECLASSIFIES</i>'}</div>`;
+            html += '<div class="hq-panel-actions"><button class="hq-btn" data-fn="_mountReactProfile">THE MIRROR ▸ YOUR CARD</button><button class="hq-btn" data-close="1">NOTED</button></div>';
+            html += '<p class="hq-panel-note">The chair changes what you walk the building as; nothing else — no stats, no roster, no rank. The card’s photo follows a vessel or an agent. Two explanations for how you look: he only does the shorter one.</p>';
+            return html;
+        }
+        window._hqPickAvatar = function (spec) {
+            if (_hqSuspended || state.gameState !== GS.HQ) return false;
+            if (typeof window.hqSetAvatar !== 'function') return false;
+            try {
+                const PS = window.ProfileSystem;
+                if (!PS || typeof PS.getActiveProfileIndex !== 'function') return false;
+                const idx = PS.getActiveProfileIndex();
+                if (idx === null || idx === undefined) return false;
+                const p = PS.loadProfile(idx);
+                if (!p) return false;
+                let choice = spec;
+                if (/^race:/.test(String(spec))) { const m = String(spec).split(':'); choice = { mode: 'race', race: m[1], gender: m[2] }; }
+                window.hqSetAvatar(p, choice);
+                PS.saveProfile(idx, p);
+            } catch (e) { console.warn('[HQ] the chair could not file the cut', e); return false; }
+            try { if (typeof playDoorSfx === 'function') playDoorSfx('stamp', { volume: 0.5 }); } catch (e) {}
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.setAvatar) ThreeRenderer.hq.setAvatar(_hqAvatar(_hqProfile())); } catch (e) { console.warn('[HQ] avatar swap failed', e); }
+            if (_hqPanelTarget) _hqOpenPanel(_hqPanelTarget);   // the panel re-reads the pick
+            return true;
+        };
         window._hqOpenForm365 = function () {
             if (_hqSuspended || state.gameState !== GS.HQ) return;
             if (_hqPanelTarget) window._hqClosePanel();
@@ -1249,6 +1325,7 @@
             if (pend) html += `<div class="hq-row hq-row-tray"><b>DIRECTIVE</b><span>PENDING</span><i class="hq-lamp-chip st-unstable">OPEN</i></div><p class="hq-panel-desc">${_hqEsc(typeof pend === 'string' ? pend : (pend.text || pend.title || 'See attached.'))}</p>`;
             else html += '<div class="hq-row hq-row-tray"><b>DIRECTIVE</b><span>NONE PENDING</span><i class="hq-lamp-chip st-off">EMPTY</i></div>';
             html += `<div class="hq-row hq-row-tray"><b>VISITS TO HQ</b><span>SIGN-IN SHEET</span><i class="hq-lamp-chip st-open">${(hq.visits || 0)}</i></div>`;
+            if (typeof window.hqAvatarLabel === 'function' && typeof window.hqAvatarPref === 'function') html += `<div class="hq-row hq-row-tray"><b>WALKS AS</b><span>OCCAM’S BARBERSHOP · ROOM 1287${hq.cuts ? ' · ' + (hq.cuts | 0) + ' CUT' + (hq.cuts === 1 ? '' : 'S') : ''}</span><i class="hq-lamp-chip st-open">${_hqEsc(window.hqAvatarLabel(window.hqAvatarPref(profile)))}</i></div>`;
             if (mc) html += `<div class="hq-row hq-row-tray"><b>THRESHOLDS STABILIZED</b><span>GREEN LAMPS</span><i class="hq-lamp-chip st-${mc.mastered ? 'stabilized' : 'off'}">${mc.mastered} / ${mc.total}</i></div>`;
             const keys = (typeof window.hqKeys === 'function') ? window.hqKeys(profile) : null;
             if (keys) html += `<div class="hq-row hq-row-tray"><b>KEYS SECURED</b><span>FIELD${keys.issued ? ' + ISSUED' : ''}</span><i class="hq-lamp-chip st-${keys.keys ? 'open' : 'off'}">${keys.keys}</i></div>`;
@@ -1309,6 +1386,7 @@
             if (act.overlay === 'codered') return _hqCodeRedHtml();
             if (act.overlay === 'form365') return _hqForm365Html();
             if (act.overlay === 'punch') return _hqPunchHtml();
+            if (act.overlay === 'barber') return _hqBarberHtml();
             if (act.overlay === 'training') return _hqTrainingHtml();
             if (act.overlay === 'crossing') return _hqCrossingHtml(t);
             let html = `<div class="hq-panel-hd"><b>${_hqEsc(c.label)}</b><span>${_hqEsc(c.sub || '')}</span></div>`;
@@ -1468,6 +1546,9 @@
         document.addEventListener('click', (e) => {
             const body = _hqEl('hqPanelBody');
             if (!body || !body.contains(e.target)) return;
+            /* THE CHAIR (Room 1287): a pick swaps the avatar in place */
+            const avBtn = e.target.closest('[data-avatar]');
+            if (avBtn && !avBtn.disabled) { window._hqPickAvatar(avBtn.getAttribute('data-avatar')); return; }
             const fnBtn = e.target.closest('[data-fn]');
             if (fnBtn && !fnBtn.disabled) { window._hqDoAction({ fn: fnBtn.getAttribute('data-fn') }); return; }
             const roomBtn = e.target.closest('[data-room]');

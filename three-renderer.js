@@ -32032,6 +32032,7 @@ const ThreeRenderer = (function () {
     /* ── procedural props (catalogue `proc`): the closet pieces the kit
        has no model for. Each builder returns a Group in WORLD units, base
        on y = 0, centred, front toward +Z (into the room when wall-hung). */
+    var _hqPoleTex = null;   // the barber pole's stripes (Room 1287), drawn once
     var _hqProcBuilders = {
         tanker_desk: function (U) {
             var g = new THREE.Group();
@@ -32260,6 +32261,80 @@ const ThreeRenderer = (function () {
             var stIn = _hqBox(0.24, 0.07, 0.003, _hqBasic(0xefe8d2)); stIn.position.set(0.14 * U, 0.12 * U, 0.0385 * U); stIn.rotation.z = -0.12; g.add(stIn);
             var stTex = (typeof _hzTextTex === 'function') ? _hzTextTex('hqform365_stamp', ['DUE TODAY'], { w: 256, h: 64, bg: '#efe8d2', color: '#b3261e', pad: 0.18 }) : null;
             if (stTex) { var stM = new THREE.Mesh(new THREE.PlaneGeometry(0.22 * U, 0.06 * U), new THREE.MeshBasicMaterial({ map: stTex })); stM.position.set(0.14 * U, 0.12 * U, 0.0435 * U); stM.rotation.z = -0.12; g.add(stM); }
+            return g;
+        },
+        /* OCCAM'S BARBERSHOP (Room 1287, 2026-09-11 — plan 7.4). Three procs:
+           the CHAIR (a floor proc, front = +z — the sitter faces the mirror),
+           the MIRROR (wall, origin at the mount, front = +z; the building has
+           no environment map to reflect, so the pane is a hard-shined dark
+           glass with a sheen and six vanity bulbs — the catalogue's glow is
+           their light) and the POLE (wall; the stripes are one canvas helix,
+           seamless round the drum; it does not turn — it has not since 1287). */
+        barber_chair: function (U) {
+            var g = new THREE.Group();
+            var chrome = _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 90, specular: 0xaaaaaa });
+            var steel = _hqMat(null, 1, 1, { color: 0x3c4048, shininess: 40, specular: 0x555555 });
+            var pad = _hqMat('oxblood', 2, 2, { color: 0x9a6a58, shininess: 34, specular: 0x553322 });
+            var base = new THREE.Mesh(new THREE.CylinderGeometry(0.34 * U, 0.38 * U, 0.06 * U, 28), chrome); base.position.y = 0.03 * U; g.add(base);
+            var pump = new THREE.Mesh(new THREE.CylinderGeometry(0.12 * U, 0.12 * U, 0.08 * U, 16), steel); pump.position.y = 0.1 * U; g.add(pump);
+            var col = new THREE.Mesh(new THREE.CylinderGeometry(0.07 * U, 0.09 * U, 0.42 * U, 16), chrome); col.position.y = 0.3 * U; g.add(col);
+            var lever = _hqBox(0.03, 0.03, 0.3, chrome); lever.position.set(0.12 * U, 0.14 * U, 0.2 * U); lever.rotation.x = -0.3; g.add(lever);
+            var seat = _hqBox(0.62, 0.15, 0.56, pad); seat.position.set(0, 0.555 * U, 0.02 * U); g.add(seat);
+            var back = _hqBox(0.56, 0.62, 0.15, pad); back.position.set(0, 0.92 * U, -0.3 * U); back.rotation.x = -0.14; g.add(back);
+            var head = _hqBox(0.28, 0.14, 0.11, pad); head.position.set(0, 1.13 * U, -0.36 * U); head.rotation.x = -0.14; g.add(head);
+            [-0.34, 0.34].forEach(function (x) {
+                var arm = _hqBox(0.07, 0.05, 0.5, chrome); arm.position.set(x * U, 0.8 * U, -0.02 * U); g.add(arm);
+                var p1 = _hqBox(0.04, 0.2, 0.04, chrome); p1.position.set(x * U, 0.68 * U, 0.18 * U); g.add(p1);
+                var p2 = _hqBox(0.04, 0.2, 0.04, chrome); p2.position.set(x * U, 0.68 * U, -0.2 * U); g.add(p2);
+            });
+            var foot = _hqBox(0.36, 0.03, 0.18, chrome); foot.position.set(0, 0.3 * U, 0.4 * U); foot.rotation.x = 0.35; g.add(foot);
+            var strut = _hqBox(0.05, 0.03, 0.34, chrome); strut.position.set(0, 0.36 * U, 0.24 * U); strut.rotation.x = 0.55; g.add(strut);
+            return g;
+        },
+        barber_mirror: function (U) {
+            var g = new THREE.Group();
+            var W = 1.2, H = 1.35;
+            var chrome = _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 90, specular: 0xaaaaaa });
+            var frame = _hqBox(W, H, 0.05, chrome); frame.position.set(0, (H / 2) * U, 0.025 * U); g.add(frame);
+            var glass = new THREE.Mesh(new THREE.PlaneGeometry((W - 0.1) * U, (H - 0.16) * U), _hqMat(null, 1, 1, { color: 0x7f93a4, shininess: 140, specular: 0xffffff, emissive: 0x141a22 }));
+            glass.position.set(0, (H / 2 - 0.02) * U, 0.052 * U); g.add(glass);
+            var sheen = new THREE.Mesh(new THREE.PlaneGeometry(0.18 * U, (H - 0.3) * U), _hqBasic(0xffffff, { transparent: true, opacity: 0.12 }));
+            sheen.position.set(-0.28 * U, (H / 2 - 0.02) * U, 0.054 * U); sheen.rotation.z = 0.12; g.add(sheen);
+            var bulb = _hqBasic(0xfff1d6);
+            for (var i = 0; i < 6; i++) {
+                var b = new THREE.Mesh(new THREE.SphereGeometry(0.035 * U, 10, 8), bulb);
+                b.position.set((-0.45 + i * 0.18) * U, (H - 0.045) * U, 0.075 * U); g.add(b);
+            }
+            var sill = _hqBox(W, 0.04, 0.08, chrome); sill.position.set(0, 0.02 * U, 0.04 * U); g.add(sill);
+            return g;
+        },
+        barber_pole: function (U) {
+            var g = new THREE.Group();
+            var chrome = _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 90, specular: 0xaaaaaa });
+            var steel = _hqMat(null, 1, 1, { color: 0x3c4048, shininess: 40, specular: 0x555555 });
+            var br = _hqBox(0.08, 0.5, 0.1, steel); br.position.set(0, 0.45 * U, -0.05 * U); g.add(br);
+            var arm = _hqBox(0.06, 0.05, 0.12, steel); arm.position.set(0, 0.45 * U, 0.02 * U); g.add(arm);
+            if (!_hqPoleTex) {
+                try {
+                    var cv = document.createElement('canvas'); cv.width = 64; cv.height = 256;
+                    var cx = cv.getContext('2d'), img = cx.createImageData(64, 256), cols = [[214, 40, 40], [240, 236, 226], [40, 70, 170]];
+                    for (var y = 0; y < 256; y++) for (var x = 0; x < 64; x++) {
+                        var band = Math.floor(((y / 256) * 3 + x / 64) * 3) % 3;   // a helix: seamless round the drum
+                        var o = (y * 64 + x) * 4, c = cols[band];
+                        img.data[o] = c[0]; img.data[o + 1] = c[1]; img.data[o + 2] = c[2]; img.data[o + 3] = 255;
+                    }
+                    cx.putImageData(img, 0, 0);
+                    _hqPoleTex = new THREE.CanvasTexture(cv);
+                    _hqPoleTex.wrapS = _hqPoleTex.wrapT = THREE.RepeatWrapping;
+                } catch (e) { _hqPoleTex = null; }
+            }
+            var drumMat = _hqPoleTex ? new THREE.MeshPhongMaterial({ map: _hqPoleTex, shininess: 60, specular: 0x666666 }) : _hqMat(null, 1, 1, { color: 0xd62828, shininess: 60 });
+            var drum = new THREE.Mesh(new THREE.CylinderGeometry(0.085 * U, 0.085 * U, 0.66 * U, 24, 1, true), drumMat);
+            drum.position.set(0, 0.45 * U, 0.08 * U); g.add(drum);
+            [0.1, 0.8].forEach(function (yy) { var cap = new THREE.Mesh(new THREE.CylinderGeometry(0.105 * U, 0.105 * U, 0.05 * U, 24), chrome); cap.position.set(0, yy * U, 0.08 * U); g.add(cap); });
+            var glass = _hqMat(null, 1, 1, { color: 0xf4f1ea, shininess: 80, specular: 0xffffff, emissive: 0x332e22 });
+            var top = new THREE.Mesh(new THREE.SphereGeometry(0.075 * U, 14, 10), glass); top.position.set(0, 0.87 * U, 0.08 * U); g.add(top);
+            var bot = new THREE.Mesh(new THREE.SphereGeometry(0.06 * U, 12, 8), chrome); bot.position.set(0, 0.04 * U, 0.08 * U); g.add(bot);
             return g;
         },
         /* the MÖBIUS BAR: one band with a half twist round a 1.5 m ring at
@@ -34015,6 +34090,28 @@ const ThreeRenderer = (function () {
            (map.js _hqOpenTerminal), pull it back, and whether it is there */
         focusScreen: _hqFocusScreen,
         unfocus: _hqUnfocus,
+        /* OCCAM'S BARBERSHOP (Room 1287, 2026-09-11): swap the avatar IN
+           PLACE — same spot, same heading, same camera, no rebuild. The old
+           rig record is evicted (the id is reused) and the new model is
+           spawned under it. `av` is map.js _hqAvatar's spec. */
+        setAvatar: function (av) {
+            if (!_hq || !_hq.player) return false;
+            var pl = _hq.player; av = av || {};
+            try {
+                var rig = _unitModelRigs.get(pl.id);
+                if (rig) { _disposeModelRig(rig); _unitModelRigs.delete(pl.id); }
+                _modelAnimState.delete(pl.id);
+            } catch (e) {}
+            try { _hq.charGroup.remove(pl.entry.group); _disposeR(pl.entry.group); } catch (e) {}
+            var ci = _hq.chars.indexOf(pl); if (ci >= 0) _hq.chars.splice(ci, 1);
+            var avDef = (av.cast && typeof getCastModel === 'function') ? getCastModel(av.cast) : null;
+            var nu = _hqSpawnCharacter({ id: pl.id, kind: 'player', race: av.race || 'men in black', gender: av.gender || 'male', def: avDef || undefined, x: pl.x, z: pl.z, y: pl.y, level: 0, face: 0, label: 'YOU' });
+            if (!nu) { _hq.player = null; return false; }
+            nu.yaw = nu.targetYaw = pl.yaw; nu.visY = pl.visY; nu.air = pl.air; nu.vy = pl.vy; nu.jumpT = pl.jumpT;
+            nu.unit.facing = { dx: Math.sin(pl.yaw), dy: Math.cos(pl.yaw) };
+            _hq.player = nu; _hq.dirty = true;
+            return true;
+        },
         focused: function () { return !!(_hq && _hq.focus && !_hq.focus.out); },
         refreshLamps: _hqRefreshLamps,
         goTo: _hqGoTo,

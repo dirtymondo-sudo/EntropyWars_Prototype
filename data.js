@@ -16871,6 +16871,13 @@ const DOOR_HQ = {
         punch_clock:       { proc: 'punch_clock',    h: 0.46,    foot: 0, wall: true, mount: 1.30, depth: 0.22 },
         form_sheet:        { proc: 'form_sheet',     h: 1.02,    foot: 0, wall: true, mount: 1.25, depth: 0.05 },
         mobius_bar:        { proc: 'mobius_bar',     h: 1.5,     foot: 1.4, block: true },
+        /* Occam's Barbershop (Room 1287, 2026-09-11, plan 7.4): the chair (a
+           floor proc the walker cannot enter), the mirror with its vanity
+           bulbs (the glow is the bulbs), the pole — inside by the door and
+           out in the hall beside it (a polar room hangs it on the drum) */
+        barber_chair:      { proc: 'barber_chair',   h: 1.2,     foot: 0.48, block: true },
+        barber_mirror:     { proc: 'barber_mirror',  h: 1.35,    foot: 0, wall: true, mount: 1.05, depth: 0.08, glow: { y: 1.28, size: 1.5, color: 0xfff1d6 } },
+        barber_pole:       { proc: 'barber_pole',    h: 0.9,     foot: 0, wall: true, mount: 1.35, depth: 0.2 },
         /* ══ THE 2026-09-10 BATCH (30 Meshy GLBs, R2 Assets/door/models/) ══
            The user's cafeteria / office / mission kit. Four of them RETIRE a
            procedural prop (plan 2.7 said "replace any of them by giving the
@@ -18232,6 +18239,13 @@ const DOOR_HQ = {
                    room, same number (DOOR_HQ.rooms.cafeteria.variants). */
                 { id: 'cafeteria',      deg: 75,  level: 0, leaf: 'leaf_saloon',                    label: 'THE CAFETERIUM',          sub: 'SUPPORT SERVICES · ON BREAK', action: { room: 'cafeteria', at: 'egress' }, desc: 'Room 86. The menu is out of it. The clocks disagree, the chairs are signed out, and the vending machine that was on the other side yesterday is on this side today. Doors swing both ways; nobody has decided which.' },
                 { id: 'quartermaster',  deg: 90,  level: 0, leaf: 'leaf_vault',        wide: true,  label: 'QUARTERMASTER',           sub: 'CUSTOMS & ADMISSIONS',       action: { fn: '_goToShop' },        desc: 'Declassification and asset reassignment. The Shop, and the manifests locker.', alt: { label: 'PARTY BUILDER', fn: '_goToTeamBuilder' } },
+                /* ROOM 1287 (2026-09-11, plan 7.4): OCCAM'S BARBERSHOP between the
+                   Quartermaster and Reception — 15° each way (5.5 m of wall at
+                   r 21; 2.9 and 2.5 needed, 2 m of pier is the rule). A glass
+                   shop door; the pole hangs in the hall beside it (111°). The
+                   vending machine moved from 105° to 98° to make the doorway. */
+                { id: 'barbershop',     deg: 105, level: 0, leaf: 'leaf_glass',                     label: 'OCCAM’S BARBERSHOP',      sub: 'SUPPORT SERVICES · THE SIMPLEST CUT', action: { room: 'barbershop', at: 'egress' },
+                  desc: 'Room 1287. Change your appearance: sit, and walk out as the recruit, your most-played vessel, an agent in black, or anything the Department has declassified. The mirror is Reception’s — the photo on your card follows the chair. Two explanations for how you look; he only does the shorter one.' },
                 { id: 'reception',      deg: 120, level: 0, leaf: 'leaf_glass',                     label: 'RECEPTION · INTAKE',      sub: 'HUMAN RESOURCES',            action: { fn: '_mountReactProfile' }, roomNo: '1', why: 'one foot in the door; forms start at 1', desc: 'Employee ID cards, laminator, LOST CARD FEE. Your profile lives here.' },
                 { id: 'office',         deg: 150, level: 0, leaf: 'leaf_closet_warped',             label: 'YOUR OFFICE',             sub: 'JANITORIAL (CONVERTED)',     action: { room: 'office', at: 'egress' }, desc: 'A converted janitor’s closet. Cot, mop bucket, CRT, phone, drain. The in-tray is where the story arrives.', rankDoor: true },
                 { id: 'training',       deg: 180, level: 0, leaf: 'leaf_exit',                      label: 'TRAINING FACILITY',       sub: 'DOWNSTAIRS · ORIENTATION',   action: { room: 'training', at: 'egress' }, desc: 'Room 64. The only authorized square room in the building — an 8×8 grid, deemed totally safe, notoriously leaky. ORTHOGONAL GEOMETRY EXPOSURE AREA · MAX OCCUPANCY 45 MINUTES.' },
@@ -18340,7 +18354,8 @@ const DOOR_HQ = {
                 { key: 'cardboard_boxes', deg: 256, r: 19.3, level: 0, rot: 15 },
                 { key: 'office_locker',  deg: 134, level: 0, wall: true },
                 { key: 'locker',         deg: 137, level: 0, wall: true },
-                { key: 'vending_machine', deg: 105, level: 0, wall: true },
+                { key: 'vending_machine', deg: 98,  level: 0, wall: true },     // 105° until Room 1287's door took the spot (2026-09-11)
+                { key: 'barber_pole',    deg: 111, level: 0, wall: true },     // Occam's, next door
                 /* THE BREAK NOOK (2026-09-10 → 2026-09-11): the round fridge, the
                    microwave, the coffee maker, the mug, the cup, the rail and the
                    bin stood in for the Cafeterium at 98–107° until Room 86 was
@@ -18840,6 +18855,104 @@ const DOOR_HQ = {
                 '“The clocks disagree so that one of them is always right. It is a redundancy.”',
             ],
             spawn: { x: -3.3, z: 0, face: 90 },
+        },
+
+        /* ── ROOM 1287 · OCCAM'S BARBERSHOP (HQ plan 7.4, 2026-09-11) — a box
+           room off the ground ring at 105°, between the Quartermaster and
+           Reception. "Change your appearance": THE CHAIR is where you choose
+           what you walk the building as — the recruit (the Player model),
+           your most-played vessel, a D.O.O.R. agent, or any declassified
+           vessel with a rigged file (hqAvatarPref / hqSetAvatar → door.hq
+           .avatar; map.js _hqAvatar reads it; the renderer swaps you in
+           place, hq.setAvatar). THE MIRROR is the ID card — the photo on
+           it follows the chair (profile.js doorCardPortrait). William of
+           Ockham, b. c. 1287: the simplest cut. The pole has not turned
+           since. ── */
+        barbershop: {
+            label: 'OCCAM’S BARBERSHOP',
+            sub: 'SUPPORT SERVICES · THE SIMPLEST CUT',
+            roomNo: '1287', why: 'William of Ockham, b. c. 1287 — the simplest cut',
+            kind: 'box',
+            shell: {
+                w: 8, d: 6, h: 3.3,
+                wallH: 3.3, dadoH: 1.05,
+                floor: 'checkerboard', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
+                pipes: false,
+                light: { x: 0, z: 0.4 },
+                plate: { x: 0, z: -2.75, y: 2.8 },
+            },
+            doors: [
+                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_glass',
+                  label: 'CENTRAL EGRESS', sub: 'OPERATIONS RING · THE WAY BACK',
+                  action: { room: 'central_egress', at: 'barbershop' },
+                  desc: 'The way back to the hall. The lettering on the glass reads OCCAM’S from the hall and, from in here, whatever you walked in as.' },
+            ],
+            counters: [
+                /* THE CHAIR → who you walk the building as (the HQ avatar) */
+                { id: 'chair', x: -1.6, z: -1.55, face: 0, plateY: 1.9, radius: 1.7, verb: 'SIT',
+                  label: 'THE CHAIR', sub: 'WALK OUT AS · THE SIMPLEST CUT', action: { overlay: 'barber' } },
+                /* THE MIRROR → the ID card (the photo follows the chair) */
+                { id: 'mirror', x: 1.6, z: -2.55, face: 0, plateY: 2.45, radius: 1.5, verb: 'LOOK',
+                  label: 'MIRROR', sub: 'YOUR ID-CARD PHOTO · RECEPTION LAMINATES', action: { fn: '_mountReactProfile' } },
+            ],
+            props: [
+                /* ── the north wall: two mirrors, the shelves under them, the two chairs ── */
+                { key: 'barber_mirror',  wall: 'n', x: -1.6 },
+                { key: 'barber_mirror',  wall: 'n', x: 1.6 },
+                { key: 'wall_shelf',     wall: 'n', x: -1.6, mount: 0.95 },
+                { key: 'wall_shelf',     wall: 'n', x: 1.6,  mount: 0.95 },
+                { key: 'solo_cup',       x: -2.0, z: -2.73, y: 0.98, face: 0 },       // the comb jar
+                { key: 'coffee_mug',     x: -1.2, z: -2.73, y: 0.98, face: 40 },
+                { key: 'clipboard_flat', x: 1.4,  z: -2.73, y: 0.98, face: 10 },      // the price list, face down
+                { key: 'solo_cup',       x: 2.05, z: -2.73, y: 0.98, face: 0 },
+                { key: 'barber_chair',   x: -1.6, z: -1.55, face: 0 },
+                { key: 'barber_chair',   x: 1.6,  z: -1.55, face: 0 },
+                { key: 'vent_grille',    wall: 'n', x: 3.3, mount: 2.6 },
+                /* ── the east wall: the sink, the towels, a clock that is early ── */
+                { key: 'sink',           wall: 'e', z: -1.4 },
+                { key: 'hook_rail_long', wall: 'e', z: 0.6 },
+                { key: 'wall_clock',     wall: 'e', z: 2.0, mount: 2.5 },
+                { key: 'trash_bin',      x: 3.6, z: -0.2, face: 270 },
+                /* ── the south wall: the bench, the magazines, the radio ── */
+                { key: 'folding_chair',  x: -2.6, z: 2.55, face: 0 },
+                { key: 'folding_chair',  x: -1.7, z: 2.55, face: 0 },
+                { key: 'folding_chair',  x: -0.8, z: 2.55, face: 0 },
+                { key: 'wall_shelf',     wall: 's', x: 1.2, mount: 1.15 },
+                { key: 'papers_a',       x: 0.95, z: 2.73, y: 1.18, face: 190 },      // the magazines, all from before
+                { key: 'retro_radio',    x: 1.5,  z: 2.73, y: 1.18, face: 180 },
+                { key: 'picture_round_b', wall: 's', x: 2.8 },
+                { key: 'fire_extinguisher', wall: 's', x: 3.5 },
+                { key: 'potted_plant',   x: 3.5, z: 2.5 },
+                /* ── the west wall: the way out, the pole inside the door, the frame ── */
+                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.7 },
+                { key: 'barber_pole',    wall: 'w', z: -1.9 },
+                { key: 'picture_round_a', wall: 'w', z: 1.9 },
+                { key: 'rug_office',     x: -0.4, z: 0.9, face: 90 },
+                /* ── the ceiling ── */
+                { key: 'fluorescent',    x: -1.8, z: 0.2, ceil: true, face: 90 },
+                { key: 'fluorescent',    x: 1.8,  z: 0.2, ceil: true, face: 90 },
+            ],
+            agents: [
+                { x: 0, z: -2.3, face: 180, pose: 'hqTalk', gender: 'male', label: 'THE BARBER', reach: 1.6,
+                  line: '“Two ways to explain how you look. I only do the shorter one.”' },
+                { x: -1.7, z: 2.55, face: 0, pose: 'hqSit', gender: 'female', label: 'THE REGULAR', reach: 1.8,
+                  line: '“Same as last time.” “Last time you were a different person.” “Same as that, then.”' },
+            ],
+            npcSpots: [
+                { x: -2.6, z: 1.85, face: 0 },     // waiting, standing
+                { x: -0.8, z: 1.85, face: 20 },
+                { x: 2.5,  z: -0.6, face: 300 },   // next for the second chair
+            ],
+            onlineSpots: [
+                { x: 1.0, z: 1.2, face: 340 },
+            ],
+            lines: [
+                '“Just a trim.” “Of what?” “Whatever is simplest.”',
+                '“The mirror is not a window.” “It has been both.”',
+                '“Walk-ins welcome. Walk-outs are the Department’s business.”',
+                '“He does not cut hair. He cuts explanations.”',
+            ],
+            spawn: { x: -3.1, z: 0, face: 90 },
         },
 
         /* ── THE TRAINING ROOM (HQ plan 6.1a, 2026-09-04) — the walkable
@@ -19975,6 +20088,49 @@ function hqPunchIn(profile, opts) {
     rec.last = date;
     return { punched: true, date: date, streak: rec.streak, best: rec.best, days: rec.days, first: first, continued: continued };
 }
+/* ── OCCAM'S BARBERSHOP (Room 1287, HQ plan 7.4, 2026-09-11): who you walk
+   the building as. THE CHAIR writes door.hq.avatar = { mode, race?,
+   gender? }; map.js _hqAvatar reads it through hqAvatarPref (the dev
+   override EW_HQ_AVATAR still wins). Modes: 'player' (the recruit — the
+   Player cast model, the default since 2026-09-06), 'vessel' (your
+   most-played rigged vessel, the pre-cast rule), 'agent' (a D.O.O.R. agent
+   in black), 'race' (any declassified vessel with a rigged file — the chair
+   checks the model and the declassification, this only checks the roster).
+   The ID card's photo follows a 'race' / 'agent' pick (profile.js
+   doorCardPortrait). hqAvatarLabel(pref) is the plate's wording. ── */
+const HQ_AVATAR_MODES = ['player', 'vessel', 'agent', 'race'];
+function hqAvatarPref(profile) {
+    let rec = null;
+    try { rec = profile && profile.door && profile.door.hq && profile.door.hq.avatar; } catch (e) {}
+    if (!rec || typeof rec !== 'object' || HQ_AVATAR_MODES.indexOf(rec.mode) < 0) return { mode: 'player' };
+    if (rec.mode === 'race') {
+        if (!rec.race || (typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES.indexOf(rec.race) < 0)) return { mode: 'player' };
+        return { mode: 'race', race: rec.race, gender: rec.gender === 'female' ? 'female' : 'male' };
+    }
+    return { mode: rec.mode };
+}
+function hqSetAvatar(profile, choice) {
+    if (!profile) return null;
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
+    const c = (typeof choice === 'string') ? { mode: choice } : (choice || {});
+    let pref = { mode: 'player' };
+    if (c.mode === 'race' && c.race && (typeof AVAILABLE_RACES === 'undefined' || AVAILABLE_RACES.indexOf(c.race) >= 0)) pref = { mode: 'race', race: c.race, gender: c.gender === 'female' ? 'female' : 'male' };
+    else if (HQ_AVATAR_MODES.indexOf(c.mode) >= 0 && c.mode !== 'race') pref = { mode: c.mode };
+    const before = JSON.stringify(hqAvatarPref(profile));
+    profile.door.hq.avatar = pref;
+    if (JSON.stringify(pref) !== before) profile.door.hq.cuts = (profile.door.hq.cuts | 0) + 1;   // every change of appearance on file (the in-tray counts them)
+    return pref;
+}
+function hqAvatarLabel(pref) {
+    pref = pref || { mode: 'player' };
+    switch (pref.mode) {
+        case 'vessel': return 'YOUR MOST-PLAYED VESSEL';
+        case 'agent':  return 'A D.O.O.R. AGENT';
+        case 'race':   return String((typeof getRaceLabel === 'function') ? getRaceLabel(pref.race, pref.gender) : pref.race).toUpperCase();
+    }
+    return 'THE RECRUIT';
+}
 /* Door lamp state (HQ plan §3.5): sealed | clearance | codered | unstable |
    stabilized | open. Rooms: open unless a clearance / Keys gate holds.
    Bays: green once every map in the sector is mastered, red while the
@@ -20785,6 +20941,9 @@ if (typeof window !== 'undefined') {
     window.hqPunchClock = hqPunchClock;
     window.hqPunchIn = hqPunchIn;
     window.hqCanonToday = hqCanonToday;
+    window.hqAvatarPref = hqAvatarPref;
+    window.hqSetAvatar = hqSetAvatar;
+    window.hqAvatarLabel = hqAvatarLabel;
     window.hqYesterday = hqYesterday;
     window.hqCodeRedPool = hqCodeRedPool;
     window.DOOR_CAST = DOOR_CAST;

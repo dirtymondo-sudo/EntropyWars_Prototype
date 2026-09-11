@@ -1785,6 +1785,16 @@ const DOOR_T = () => (typeof window !== 'undefined' && window.DOOR_TEXT) || null
 function doorCardPortrait(profile) {
   try {
     if (typeof RACE_PORTRAITS === 'undefined') return null;
+    /* OCCAM'S BARBERSHOP (HQ Room 1287, 2026-09-11): the chair's pick leads —
+       a vessel or an agent chosen there IS the photo; the recruit and the
+       most-played vessel keep the rule below (data.js hqAvatarPref) */
+    const pref = (typeof window.hqAvatarPref === 'function') ? window.hqAvatarPref(profile) : null;
+    if (pref && (pref.mode === 'race' || pref.mode === 'agent')) {
+      const r = pref.mode === 'agent' ? 'men in black' : pref.race;
+      const set = RACE_PORTRAITS[r];
+      const url = set ? ((pref.gender === 'female') ? (set.female || set.male) : (set.male || set.female)) : null;
+      if (url) return { race: r, url };
+    }
     let best = null, bestN = 0;
     for (const [race, rs] of Object.entries((profile && profile.raceStats) || {})) {
       const n = (rs && rs.played) || 0;

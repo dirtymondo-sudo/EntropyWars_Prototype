@@ -2063,3 +2063,95 @@ test('source scan: the renderer builds the clocks, the punch clock and the sheet
     assert.match(bt, /el\.className = 'drs-site on form365';/, 'the tag');
     assert.ok(bt.indexOf("if (kind === 'match' && typeof DOOR_HQ !== 'undefined' && typeof hqDailyOpsJudge === 'function')") > bt.indexOf("console.warn('[HQ] code red commit skipped', e)"), 'judged after the Code Red so a cleared one counts');
 });
+
+/* ── ROOM 1287 · OCCAM'S BARBERSHOP (HQ plan 7.4, 2026-09-11): the chair is
+   who you walk the building as ── */
+const BARBER = HQ.rooms.barbershop;
+
+test('Room 1287 is a box room off the ground ring at 105°: the way in, the way out, the number, the chair and the mirror, the pole in the hall', () => {
+    assert.ok(BARBER && BARBER.kind === 'box' && BARBER.roomNo === '1287', 'rooms.barbershop kind box, Room 1287');
+    assert.strictEqual(D.hqRoomNo('barbershop'), '1287');
+    assert.ok(!BARBER.shell.open && BARBER.shell.pipes === false && BARBER.shell.h >= 3.2, 'an indoor room under a ceiling');
+    assert.ok(HQ.textures[BARBER.shell.floor] || new RegExp('^\\s+' + BARBER.shell.floor + ':\\s+\\[', 'm').test(SPRITES_SRC), 'the floor is a texture the renderer can find (the HQ table, else the terrain sheet in sprites.js)');
+    const eg = ROOM.doors.find(d => d.id === 'barbershop');
+    assert.ok(eg && eg.deg === 105 && (eg.level || 0) === 0 && eg.action.room === 'barbershop' && eg.action.at === 'egress', 'the egress door at 105° walks into the room at its way out');
+    assert.strictEqual(D.hqDoorNo(eg), '1287', 'the plate over the hall door reads 1287');
+    const out = BARBER.doors.find(d => d.id === 'egress');
+    assert.ok(out && out.wall === 'w' && out.action.room === 'central_egress' && out.action.at === 'barbershop' && out.leaf === eg.leaf && !!out.wide === !!eg.wide, 'the way out is the same glass door and lands at the hall door');
+    assert.ok(!D.DOOR_TEXT.CLEARANCE.some(r => r.door === eg.leaf), 'not a rank leaf');
+    assert.strictEqual(D.doorSiteState(eg, null), 'open');
+    /* between the Quartermaster (90°) and Reception (120°), a pier to each */
+    const qm = ROOM.doors.find(d => d.id === 'quartermaster'), rc = ROOM.doors.find(d => d.id === 'reception');
+    const wOf = d => (d.wide ? 3.3 : 2.5) / 2;
+    assert.ok((eg.deg - qm.deg) * Math.PI / 180 * ROOM.shell.radius - wOf(eg) - wOf(qm) >= 2.0, 'a pier to the vault');
+    assert.ok((rc.deg - eg.deg) * Math.PI / 180 * ROOM.shell.radius - wOf(eg) - wOf(rc) >= 2.0, 'a pier to Reception');
+    assert.ok(!ROOM.props.some(p => (p.level || 0) === 0 && p.wall && Math.abs(p.deg - eg.deg) < 5), 'no wall prop stands in the new doorway (the vending machine moved)');
+    assert.ok(!ROOM.props.some(p => (p.level || 0) === 0 && p.r > 18.5 && Math.abs(p.deg - eg.deg) < 5), 'nothing stands in front of it');
+    assert.ok(ROOM.props.some(p => p.key === 'vending_machine' && (p.level || 0) === 0 && p.wall), 'the hall keeps its vending machine');
+    assert.ok(ROOM.props.some(p => p.key === 'barber_pole' && (p.level || 0) === 0 && p.wall && Math.abs(p.deg - eg.deg) >= 5 && Math.abs(p.deg - eg.deg) <= 10), 'the pole hangs in the hall beside the door');
+    /* the build sheet */
+    const has = key => BARBER.props.filter(p => p.key === key).length;
+    for (const key of ['barber_chair', 'barber_mirror', 'barber_pole', 'wall_shelf', 'sink', 'hook_rail_long', 'wall_clock', 'folding_chair', 'papers_a', 'retro_radio', 'exit_sign', 'fluorescent', 'rug_office', 'trash_bin']) assert.ok(has(key) >= 1, 'Room 1287 has its ' + key);
+    assert.strictEqual(has('barber_chair'), 2, 'two chairs'); assert.strictEqual(has('barber_mirror'), 2, 'two mirrors');
+    assert.ok(has('folding_chair') >= 3, 'the bench');
+    assert.deepStrictEqual(boxPropProblems('barbershop', BARBER), []);
+    /* the two counters: THE CHAIR (the avatar) and THE MIRROR (the card) */
+    const ch = BARBER.counters.find(c => c.id === 'chair'), mi = BARBER.counters.find(c => c.id === 'mirror');
+    assert.ok(ch && ch.action.overlay === 'barber' && ch.radius > 0 && ch.verb, 'the chair is a counter with its own overlay');
+    assert.ok(mi && mi.action.fn === '_mountReactProfile' && mi.radius > 0 && mi.verb, 'the mirror is the card');
+    assert.ok(BARBER.props.some(p => p.key === 'barber_chair' && Math.hypot(p.x - ch.x, p.z - ch.z) < 0.05), 'the counter stands on a chair');
+    assert.ok(BARBER.props.some(p => p.key === 'barber_mirror' && p.wall === 'n' && Math.abs(p.x - mi.x) < 0.3), 'a mirror hangs where its counter stands');
+    for (const c of BARBER.props.filter(p => p.key === 'barber_chair')) assert.ok((c.face || 0) === 0 && BARBER.props.some(m => m.key === 'barber_mirror' && Math.abs(m.x - c.x) < 0.05), 'a chair faces its mirror (face 0 = north)');
+    /* the people: the barber standing at the mirrors, the regular on the bench, spots and lines */
+    const barber = BARBER.agents.find(a => a.label === 'THE BARBER'), reg = BARBER.agents.find(a => a.label === 'THE REGULAR');
+    assert.ok(barber && barber.pose !== 'hqSit' && Math.abs(barber.x) < 1.0 && barber.z < -1.8, 'the barber stands between the chairs');
+    assert.ok(reg && reg.pose === 'hqSit' && BARBER.props.some(p => p.key === 'folding_chair' && Math.hypot(p.x - reg.x, p.z - reg.z) < 0.05), 'the regular sits on a bench chair');
+    assert.ok(BARBER.npcSpots.length >= 2 && BARBER.onlineSpots.length >= 1 && BARBER.lines.length >= 3, 'spots and lines');
+    /* the three procs */
+    const cc = HQ.catalogue.barber_chair, cm = HQ.catalogue.barber_mirror, cp = HQ.catalogue.barber_pole;
+    assert.ok(cc && cc.proc === 'barber_chair' && cc.foot >= 0.4 && cc.block, 'the chair is a floor proc the walker cannot enter');
+    assert.ok(cm && cm.proc === 'barber_mirror' && cm.wall && cm.depth > 0 && cm.mount > 0 && cm.glow && cm.glow.size > 0, 'the mirror is a wall proc with a glow (the bulbs)');
+    assert.ok(cp && cp.proc === 'barber_pole' && cp.wall && cp.depth > 0 && cp.mount > 0, 'the pole is a wall proc');
+    /* the register lists it once, as a room */
+    const rows = D.hqRoomRegister().filter(r => r.no === '1287');
+    assert.strictEqual(rows.length, 1); assert.strictEqual(rows[0].kind, 'room'); assert.strictEqual(rows[0].id, 'barbershop');
+});
+
+test('the chair (Room 1287): hqAvatarPref / hqSetAvatar / hqAvatarLabel — four modes, a roster check, the recruit by default, every change is a cut', () => {
+    const p = { username: 'probe', door: { hq: {} } };
+    assert.strictEqual(JSON.stringify(D.hqAvatarPref(p)), JSON.stringify({ mode: 'player' }), 'the default');
+    assert.strictEqual(JSON.stringify(D.hqAvatarPref(null)), JSON.stringify({ mode: 'player' }));
+    assert.strictEqual(JSON.stringify(D.hqAvatarPref({ door: { hq: { avatar: { mode: 'nonsense' } } } })), JSON.stringify({ mode: 'player' }), 'an unknown mode is the default');
+    assert.strictEqual(JSON.stringify(D.hqAvatarPref({ door: { hq: { avatar: { mode: 'race', race: 'not a race' } } } })), JSON.stringify({ mode: 'player' }), 'a race off the roster is the default');
+    assert.strictEqual(JSON.stringify(D.hqSetAvatar(p, 'agent')), JSON.stringify({ mode: 'agent' })); assert.strictEqual(p.door.hq.cuts, 1);
+    assert.strictEqual(JSON.stringify(D.hqSetAvatar(p, 'agent')), JSON.stringify({ mode: 'agent' })); assert.strictEqual(p.door.hq.cuts, 1, 'the same cut again is not a cut');
+    assert.strictEqual(JSON.stringify(D.hqSetAvatar(p, { mode: 'race', race: 'pirate', gender: 'female' })), JSON.stringify({ mode: 'race', race: 'pirate', gender: 'female' }));
+    assert.strictEqual(JSON.stringify(D.hqAvatarPref(p)), JSON.stringify({ mode: 'race', race: 'pirate', gender: 'female' }), 'read back');
+    assert.strictEqual(D.hqAvatarLabel(D.hqAvatarPref(p)), D.getRaceLabel('pirate', 'female').toUpperCase());
+    assert.strictEqual(JSON.stringify(D.hqSetAvatar(p, { mode: 'race', race: 'pirate', gender: 'other' })), JSON.stringify({ mode: 'race', race: 'pirate', gender: 'male' }), 'gender is male or female');
+    assert.strictEqual(JSON.stringify(D.hqSetAvatar(p, { mode: 'race', race: 'not a race' })), JSON.stringify({ mode: 'player' }), 'a race off the roster is refused');
+    assert.strictEqual(JSON.stringify(D.hqSetAvatar(p, 'vessel')), JSON.stringify({ mode: 'vessel' }));
+    assert.strictEqual(D.hqAvatarLabel({ mode: 'vessel' }), 'YOUR MOST-PLAYED VESSEL');
+    assert.strictEqual(D.hqAvatarLabel({ mode: 'agent' }), 'A D.O.O.R. AGENT');
+    assert.strictEqual(D.hqAvatarLabel(null), 'THE RECRUIT');
+    assert.strictEqual(D.hqSetAvatar(null, 'agent'), null);
+    assert.strictEqual(p.door.hq.cuts, 5);
+});
+
+test('source scan: the renderer builds the chair, the mirror and the pole and swaps the avatar in place; map.js reads the chair, files the cut and re-reads the panel; the card follows', () => {
+    const tr = fs.readFileSync(path.join(__dirname, 'three-renderer.js'), 'utf8');
+    const mp = fs.readFileSync(path.join(__dirname, 'map.js'), 'utf8');
+    const pf = fs.readFileSync(path.join(__dirname, 'profile.js'), 'utf8');
+    for (const k of ['barber_chair', 'barber_mirror', 'barber_pole']) assert.match(tr, new RegExp('        ' + k + ': function \\(U\\) \\{'), 'the ' + k + ' builder');
+    assert.match(tr, /        setAvatar: function \(av\) \{/, 'hq.setAvatar');
+    assert.match(tr, /var nu = _hqSpawnCharacter\(\{ id: pl\.id, kind: 'player'/, 'respawned under the same id, in place');
+    assert.match(tr, /_unitModelRigs\.delete\(pl\.id\)/, 'the old rig record is evicted first');
+    assert.match(mp, /const pref = \(typeof window\.hqAvatarPref === 'function'\) \? window\.hqAvatarPref\(profile\) : \{ mode: 'player' \};/, '_hqAvatar reads the chair');
+    assert.match(mp, /if \(act\.overlay === 'barber'\) return _hqBarberHtml\(\);/, 'the chair panel');
+    assert.match(mp, /window\._hqPickAvatar = function \(spec\)/, 'the pick');
+    assert.match(mp, /ThreeRenderer\.hq\.setAvatar\(_hqAvatar\(_hqProfile\(\)\)\)/, 'the swap in place');
+    assert.match(mp, /e\.target\.closest\('\[data-avatar\]'\)/, 'the click');
+    assert.ok(mp.indexOf("closest('[data-avatar]')") < mp.indexOf("closest('[data-fn]')"), 'the chair is read before the function buttons');
+    assert.match(pf, /window\.hqAvatarPref\(profile\)/, 'the card reads the chair');
+    assert.ok(pf.indexOf('window.hqAvatarPref(profile)') < pf.indexOf('let best = null, bestN = 0;'), 'the chair leads the most-played rule');
+});
