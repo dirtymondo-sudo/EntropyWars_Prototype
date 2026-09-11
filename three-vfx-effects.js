@@ -9926,7 +9926,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         for (var wi = 0; wi < waves; wi++) {
             (function (idx) {
-                window.setTimeout(function () {
+                _fxDelay(function () {
                     if (_suppressed()) return;
                     var group = new THREE.Group();
                     group.position.set(a.x, a.y + ts * 0.5, a.z);
@@ -9937,7 +9937,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     mesh.renderOrder = 165;
                     group.add(mesh);
                     var size = (opts.size != null ? opts.size : ts * 1.15) * (1 + idx * 0.18);
-                    _sigRun(group, travelMs + 140, function (el) {
+                    var run = _sigRun(group, travelMs + 140, function (el) {
                         var t = _sigClamp01(el / travelMs);
                         var e = _sigEaseOutCubic(t);
                         group.position.set(
@@ -9948,6 +9948,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                         mat.opacity = (t < 0.1 ? t / 0.1 : 1)
                             * (el > travelMs ? Math.max(0, 1 - (el - travelMs) / 140) : 0.95);
                     });
+                    if (!run) {
+                        // Registration refused: these meshes never acquired a cleanup owner.
+                        group.traverse(function (o) {
+                            if (o.geometry) o.geometry.dispose();
+                            if (o.material) o.material.dispose();
+                        });
+                    }
                 }, idx * (opts.staggerMs != null ? opts.staggerMs : 90));
             })(wi);
         }
@@ -9981,7 +9988,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var nD = opts.dust != null ? opts.dust : 6;
             for (var di = 0; di < nD; di++) {
                 (function (t2) {
-                    window.setTimeout(function () {
+                    _fxDelay(function () {
                         if (_suppressed() || !_canSpawn()) return;
                         _spawn({
                             x: cFrom.x + vdx * t2 + rn(-10, 10),
@@ -15124,7 +15131,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         for (var i = 0; i < rings; i++) {
             (function (idx) {
-                window.setTimeout(function () {
+                _fxDelay(function () {
                     if (_suppressed()) return;
                     var group = new THREE.Group();
                     group.position.set(wp.x, wp.y + mouthY, wp.z);
@@ -15145,7 +15152,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     }
                     var echoFade = 1 - idx * (0.55 / Math.max(1, rings));
                     var r0 = ts * 0.22, r1 = ts * rTiles * (1 - idx * 0.08);
-                    _sigRun(group, ringMs, function (el) {
+                    var run = _sigRun(group, ringMs, function (el) {
                         var t = _sigClamp01(el / ringMs);
                         var e = _sigEaseOutCubic(t);
                         var r = r0 + (r1 - r0) * e;
@@ -15159,6 +15166,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                             upMat.opacity = 0.7 * (1 - t);
                         }
                     });
+                    if (!run) {
+                        // Registration refused: these meshes never acquired a cleanup owner.
+                        group.traverse(function (o) {
+                            if (o.geometry) o.geometry.dispose();
+                            if (o.material) o.material.dispose();
+                        });
+                    }
                     if (idx === 0 && !gentle) {
                         _sigShake(opts.shake || 'normal');
                         _sigScreenFlash(_sigCss(color), 120, opts.flashPeak != null ? opts.flashPeak : 0.13);
@@ -17619,7 +17633,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             opacity0: 0.9, opacity1: 0,
         });
 
-        window.setTimeout(function () {
+        _fxDelay(function () {
             if (_suppressed()) return;
             if (def.shake) _sigShake(def.shake);
 
@@ -17674,7 +17688,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     mkCone(ts * 0.36, theme.mid,  theme.hot,  0.85, 1.8, 2.0, 211),
                     mkCone(ts * 0.20, theme.hot,  0xffffff,   0.95, 2.0, 2.6, 212),
                 ];
-                _sigRun(group, beamMs, function (el) {
+                var run = _sigRun(group, beamMs, function (el) {
                     var ext = _sigEaseOutCubic(_sigClamp01(el / lanceMs));
                     var curLen = fullLen * ext;
                     var mid3 = start.clone().addScaledVector(dir, curLen * 0.5);
@@ -17694,6 +17708,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                         L.mat.uniforms.uOpacity.value = L.baseOp * op;
                     }
                 });
+                if (!run) {
+                    // Registration refused: these meshes never acquired a cleanup owner.
+                    group.traverse(function (o) {
+                        if (o.geometry) o.geometry.dispose();
+                        if (o.material) o.material.dispose();
+                    });
+                }
             }
 
             /* ── flame tongues billowing down the inside of the cone ── */
@@ -17702,7 +17723,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var waves = Math.max(3, Math.floor(holdEnd / waveGap));
             for (var w = 0; w < waves; w++) {
                 (function (at) {
-                    window.setTimeout(function () {
+                    _fxDelay(function () {
                         if (_suppressed() || !_canSpawn()) return;
                         for (var k = 0; k < 3; k++) {
                             var sp = tongueSpd * rn(0.75, 1.15);
@@ -17729,7 +17750,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             /* ── per-tile washes as the front passes ── */
             for (var ti = 0; ti < hitTiles.length; ti++) {
                 (function (t2, at) {
-                    window.setTimeout(function () {
+                    _fxDelay(function () {
                         if (_suppressed()) return;
                         if (iteId && EFFECTS[iteId]) {
                             _spawnEffect(EFFECTS[iteId], { tx: t2.x, ty: t2.y });
@@ -17750,7 +17771,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
 
             /* ── terminal blast at the far end ── */
-            window.setTimeout(function () {
+            _fxDelay(function () {
                 if (_suppressed()) return;
                 _sigShockRing3D(end.x, end.y, {
                     color: theme.mid, r0: ts * 0.2, r1: ts * 1.35, ms: 420, height: ts * 0.25 });
@@ -17761,7 +17782,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
             /* ── lingering smoke / steam near the far half (fire themes) ── */
             if (theme.smoke) {
-                window.setTimeout(function () {
+                _fxDelay(function () {
                     if (_suppressed() || !_canSpawn()) return;
                     for (var s = 0; s < 4; s++) {
                         var frac = rn(0.5, 1);
@@ -17796,7 +17817,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* rings pop down the line as the wave passes */
         for (var i = 0; i < hitTiles.length; i++) {
             (function (t2, at) {
-                window.setTimeout(function () {
+                _fxDelay(function () {
                     if (_suppressed()) return;
                     _sigShockRing3D(t2.x, t2.y, { color: color, r1: ts * 0.9, ms: 300, height: ts * 0.45 });
                 }, at);
@@ -17804,7 +17825,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
 
         /* …the crack of the turn-around… */
-        window.setTimeout(function () {
+        _fxDelay(function () {
             if (_suppressed()) return;
             try { _sigSonicBoom3D(end.x, end.y, { color: color, rings: 3, radiusTiles: 1.1, height: 0.45 }); } catch (e) {}
             _sigShake('soft');
@@ -17812,7 +17833,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         /* …and BACK, rings in reverse order */
         var backAt = travelMs + 170;
-        window.setTimeout(function () {
+        _fxDelay(function () {
             if (_suppressed()) return;
             _sigDashWave3D(end.x, end.y, fromX, fromY, {
                 color: color, waves: 3, ms: travelMs, staggerMs: 70, streaks: 8, dust: 0
@@ -17820,14 +17841,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }, backAt);
         for (var j = hitTiles.length - 1; j >= 0; j--) {
             (function (t3, at) {
-                window.setTimeout(function () {
+                _fxDelay(function () {
                     if (_suppressed()) return;
                     _sigShockRing3D(t3.x, t3.y, { color: 0xffffff, r1: ts * 0.8, ms: 280, height: ts * 0.45 });
                 }, at);
             })(hitTiles[j], backAt + (travelMs * (hitTiles.length - j)) / hitTiles.length);
         }
         /* caught! — a snap at the caster's hand */
-        window.setTimeout(function () {
+        _fxDelay(function () {
             if (_suppressed()) return;
             _sigSparks(fromX, fromY, 'spark-blue', 8, { vxy: 140, vz0: 30, vz1: 140, gravity: 160, z: ts * 0.4 });
             _sigScreenFlash('#bfefff', 120, 0.12);

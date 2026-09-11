@@ -1,6 +1,6 @@
 # Remaining effect callback inventory
 
-Updated 2026-09-10 after sword-wave timer retirement. This is a complete textual index of direct window.setTimeout sites, not an exhaustive semantic audit. Asset completion callbacks and other scheduling APIs still need separate review.
+Updated 2026-09-10 after breath/boomerang and transitive dash/sonic timer retirement. This is a complete textual index of direct window.setTimeout sites, not an exhaustive semantic audit. Asset completion callbacks and other scheduling APIs still need separate review.
 
 ## Classified and fixed in this batch
 
@@ -41,66 +41,53 @@ Geometry trace: `_spawnLaserBeam3D` registers cylinders and rings with `_animate
 | 8272 | `window.setTimeout(function() {` |
 | 8335 | `window.setTimeout(function() {` |
 | 8370 | `window.setTimeout(function() {` |
-| 9929 | `window.setTimeout(function () {` |
-| 9984 | `window.setTimeout(function () {` |
-| 10266 | `window.setTimeout(function () {` |
-| 10278 | `window.setTimeout(function () { _wpnLoad(key); }, 4500 + idx * 700);` |
-| 10329 | `window.setTimeout(function () {` |
-| 10518 | `window.setTimeout(function () {` |
-| 11013 | `window.setTimeout(function () {` |
-| 11392 | `window.setTimeout(function () {` |
-| 11792 | `window.setTimeout(function () {` |
-| 12152 | `window.setTimeout(function () {` |
-| 12589 | `window.setTimeout(function () {` |
-| 13779 | `window.setTimeout(function () {` |
-| 14417 | `window.setTimeout(function () {` |
-| 14436 | `window.setTimeout(function () {` |
-| 15061 | `window.setTimeout(function () {` |
-| 15127 | `window.setTimeout(function () {` |
-| 15266 | `window.setTimeout(function () {` |
-| 15485 | `window.setTimeout(function () {` |
-| 15518 | `window.setTimeout(function () {` |
-| 16873 | `if (s.at) window.setTimeout(go, s.at); else go();` |
-| 17157 | `window.setTimeout(function () {` |
-| 17178 | `window.setTimeout(function () {` |
-| 17237 | `window.setTimeout(function () {` |
-| 17240 | `window.setTimeout(function () {` |
-| 17275 | `window.setTimeout(function () {` |
-| 17297 | `window.setTimeout(function () {` |
-| 17541 | `window.setTimeout(function () {` |
-| 17622 | `window.setTimeout(function () {` |
-| 17705 | `window.setTimeout(function () {` |
-| 17732 | `window.setTimeout(function () {` |
-| 17753 | `window.setTimeout(function () {` |
-| 17764 | `window.setTimeout(function () {` |
-| 17799 | `window.setTimeout(function () {` |
-| 17807 | `window.setTimeout(function () {` |
-| 17815 | `window.setTimeout(function () {` |
-| 17823 | `window.setTimeout(function () {` |
-| 17830 | `window.setTimeout(function () {` |
-| 17904 | `window.setTimeout(function () {` |
-| 18051 | `window.setTimeout(function () {` |
-| 18180 | `window.setTimeout(function () {` |
-| 18220 | `window.setTimeout(function () {` |
-| 18329 | `window.setTimeout(function () {` |
-| 18684 | `window.setTimeout(function() {` |
-| 18793 | `window.setTimeout(function () {` |
+| 10273 | `window.setTimeout(function () {` |
+| 10285 | `window.setTimeout(function () { _wpnLoad(key); }, 4500 + idx * 700);` |
+| 10336 | `window.setTimeout(function () {` |
+| 10525 | `window.setTimeout(function () {` |
+| 11020 | `window.setTimeout(function () {` |
+| 11399 | `window.setTimeout(function () {` |
+| 11799 | `window.setTimeout(function () {` |
+| 12159 | `window.setTimeout(function () {` |
+| 12596 | `window.setTimeout(function () {` |
+| 13786 | `window.setTimeout(function () {` |
+| 14424 | `window.setTimeout(function () {` |
+| 14443 | `window.setTimeout(function () {` |
+| 15068 | `window.setTimeout(function () {` |
+| 15280 | `window.setTimeout(function () {` |
+| 15499 | `window.setTimeout(function () {` |
+| 15532 | `window.setTimeout(function () {` |
+| 16887 | `if (s.at) window.setTimeout(go, s.at); else go();` |
+| 17171 | `window.setTimeout(function () {` |
+| 17192 | `window.setTimeout(function () {` |
+| 17251 | `window.setTimeout(function () {` |
+| 17254 | `window.setTimeout(function () {` |
+| 17289 | `window.setTimeout(function () {` |
+| 17311 | `window.setTimeout(function () {` |
+| 17555 | `window.setTimeout(function () {` |
+| 17925 | `window.setTimeout(function () {` |
+| 18072 | `window.setTimeout(function () {` |
+| 18201 | `window.setTimeout(function () {` |
+| 18241 | `window.setTimeout(function () {` |
+| 18350 | `window.setTimeout(function () {` |
+| 18705 | `window.setTimeout(function() {` |
 | 18814 | `window.setTimeout(function () {` |
-| 18962 | `window.setTimeout(function () {` |
-| 19282 | `window.setTimeout(function () {` |
-| 19298 | `window.setTimeout(function () {` |
-| 19482 | `window.setTimeout(function () { if (!_suppressed()) burst(); }, rideMs * 0.9);` |
-| 19565 | `window.setTimeout(function () {` |
-| 19663 | `window.setTimeout(function () {` |
-| 20526 | `window.setTimeout(function() {` |
-| 20675 | `window.setTimeout(function () {` |
-| 20895 | `if (idx === 0) go(); else window.setTimeout(go, idx * 260);` |
-| 20986 | `if (idx === 0) go(); else window.setTimeout(go, idx * 120);` |
-| 21004 | `window.setTimeout(function () {` |
-| 21153 | `window.setTimeout(function () {` |
-| 21168 | `window.setTimeout(function () {` |
-| 21352 | `window.setTimeout(function () {` |
-| 21355 | `window.setTimeout(function () {` |
+| 18835 | `window.setTimeout(function () {` |
+| 18983 | `window.setTimeout(function () {` |
+| 19303 | `window.setTimeout(function () {` |
+| 19319 | `window.setTimeout(function () {` |
+| 19503 | `window.setTimeout(function () { if (!_suppressed()) burst(); }, rideMs * 0.9);` |
+| 19586 | `window.setTimeout(function () {` |
+| 19684 | `window.setTimeout(function () {` |
+| 20547 | `window.setTimeout(function() {` |
+| 20696 | `window.setTimeout(function () {` |
+| 20916 | `if (idx === 0) go(); else window.setTimeout(go, idx * 260);` |
+| 21007 | `if (idx === 0) go(); else window.setTimeout(go, idx * 120);` |
+| 21025 | `window.setTimeout(function () {` |
+| 21174 | `window.setTimeout(function () {` |
+| 21189 | `window.setTimeout(function () {` |
+| 21373 | `window.setTimeout(function () {` |
+| 21376 | `window.setTimeout(function () {` |
 
 ## Laser terminus batch
 
@@ -111,3 +98,11 @@ Next inspected sites: `_sigSwordWave3D` has route spark and terminal speed-burst
 ## Sword-wave batch
 
 Route sparks and terminal speed burst now use `_fxDelay`; neither owns resource disposal. Existing `_sigRun` geometry ownership is preserved and exercised by regression tests. Six checks pass; three cancellation checks fail before the change. Breath and boomerang remain the next implementation tasks. Their downstream helper graph, wall geometry and asset attachment still require review.
+
+## Breath/boomerang batch (current)
+
+Thirteen sites are now lifetime-owned: five breath emissions, five boomerang emissions, two shared dash emissions and one shared sonic-boom ring emission. No disposal timer was canceled. Tests exercise the real dash and sonic helpers, with controlled rendering objects, after partial completion and a new lifetime. The three newly allocated geometry paths explicitly dispose resources if registration is refused; textures stay shared. `_sigRun` retains its existing contract.
+
+16 tests pass (12 fail before fixes, four controls pass). Fire and water normal payloads, route/return timing, cap refusal, cleanup and stale callbacks are covered. Shared helper changes apply to their other callers, including dash dust.
+
+Next: audit `spawnFlameBurst3D`, `_sigShockRing3D`, `_sigSpeedBurst3D`, then transitive wall geometry and asynchronous asset attachment. Earlier next-task statements above record historical batch boundaries. This does not close the complete transitive graph or VFX-04.
