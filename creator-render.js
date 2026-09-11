@@ -8,9 +8,15 @@
    Lambert + a key light and a fill; the textures the browser would load (hair, fabrics) are
    not — geometry, paint and normals are what this shows.
 
+   rev 5 (2026-09-11): the fabric tiles (charactercreation/clothingtextures/*.png, decoded here — a
+   tiny PNG reader, no deps) map onto the top / bottom through their UVs exactly as the runtime does
+   (luminance-normalised, tint × 1.18), and a hair style ('{"hair":"hair000"}') loads from
+   charactercreation/hair/ with its embedded alpha texture so bald spots / skull pokes show; new views
+   back, side, top, hair34, hairside, hairback (`pitch` looks down).
+
    Needs: npm i --no-save three@0.128.0
-   Usage: node creator-render.js [male|female] [tee|tank|suit] [tag] ['{"beard":"goatee",…}'] 
-          VIEWS=torso,torso34,side,head,head34,eyes,full  OUT=shots/creator-render
+   Usage: node creator-render.js [male|female] [tee|tank|suit] [tag] ['{"beard":"goatee","hair":"hair000","topFabric":"denim",…}']
+          VIEWS=torso,torso34,side,back,head,head34,eyes,full,top,hair34,hairside,hairback  OUT=shots/creator-render
           CROP=1 also dumps a 3× texel crop of the baked texture round each eye.
           RENDERER=/path/to/other/three-renderer.js renders a different copy (before / after).
    Output: <OUT>/<tag>_<gender>_<outfit>_<view>.png (default OUT shots/creator-render, gitignored). */
@@ -61,16 +67,67 @@ function png(w, h, rgb) {
   const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 2;
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
 }
+/* A minimal PNG reader (8 / 16-bit, colour types 0 2 3 4 6, non-interlaced) → { w, h, d: RGBA }. */
+function decodePNG(buf) {
+  let p = 8, w = 0, h = 0, depth = 8, ctype = 2, plte = null, trns = null; const idat = [];
+  while (p + 8 <= buf.length) {
+    const len = buf.readUInt32BE(p), type = buf.toString('ascii', p + 4, p + 8), data = buf.slice(p + 8, p + 8 + len);
+    if (type === 'IHDR') { w = data.readUInt32BE(0); h = data.readUInt32BE(4); depth = data[8]; ctype = data[9]; if (data[12]) throw new Error('interlaced PNG'); }
+    else if (type === 'PLTE') plte = data; else if (type === 'tRNS') trns = data; else if (type === 'IDAT') idat.push(data);
+    p += 12 + len;
+  }
+  const raw = zlib.inflateSync(Buffer.concat(idat)), ch = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 }[ctype], bps = depth === 16 ? 2 : 1, bpp = ch * bps, stride = w * bpp;
+  const d = new Uint8ClampedArray(w * h * 4); let prev = Buffer.alloc(stride), q = 0;
+  for (let y = 0; y < h; y++) {
+    const f = raw[q++], cur = Buffer.from(raw.slice(q, q + stride)); q += stride;
+    for (let i = 0; i < stride; i++) {
+      const a = i >= bpp ? cur[i - bpp] : 0, b = prev[i], c = i >= bpp ? prev[i - bpp] : 0;
+      if (f === 1) cur[i] += a; else if (f === 2) cur[i] += b; else if (f === 3) cur[i] += (a + b) >> 1;
+      else if (f === 4) { const pp = a + b - c, pa = Math.abs(pp - a), pb = Math.abs(pp - b), pc = Math.abs(pp - c); cur[i] += pa <= pb && pa <= pc ? a : pb <= pc ? b : c; }
+    }
+    for (let x = 0; x < w; x++) {
+      const o = (y * w + x) * 4, s = x * bpp, v = k => cur[s + k * bps];
+      if (ctype === 0) { d[o] = d[o + 1] = d[o + 2] = v(0); d[o + 3] = 255; }
+      else if (ctype === 2) { d[o] = v(0); d[o + 1] = v(1); d[o + 2] = v(2); d[o + 3] = 255; }
+      else if (ctype === 3) { const i3 = cur[s] * 3; d[o] = plte[i3]; d[o + 1] = plte[i3 + 1]; d[o + 2] = plte[i3 + 2]; d[o + 3] = trns && cur[s] < trns.length ? trns[cur[s]] : 255; }
+      else if (ctype === 4) { d[o] = d[o + 1] = d[o + 2] = v(0); d[o + 3] = v(1); }
+      else { d[o] = v(0); d[o + 1] = v(1); d[o + 2] = v(2); d[o + 3] = v(3); }
+    }
+    prev = cur;
+  }
+  return { w, h, d };
+}
+/* The baseColor image of every mesh in a GLB, by mesh name (GLB header → JSON chunk → bufferView → PNG). */
+function glbBaseColorImages(buf) {
+  const jl = buf.readUInt32LE(12), j = JSON.parse(buf.toString('utf8', 20, 20 + jl)), bl = buf.readUInt32LE(20 + jl), bin = buf.slice(28 + jl, 28 + jl + bl), out = {};
+  for (const m of j.meshes || []) {
+    const mat = (j.materials || [])[m.primitives[0].material]; const bc = mat && mat.pbrMetallicRoughness && mat.pbrMetallicRoughness.baseColorTexture;
+    if (!bc) continue;
+    const img = j.images[j.textures[bc.index].source]; if (img.bufferView == null || !/png/.test(img.mimeType || '')) continue;
+    const bv = j.bufferViews[img.bufferView];
+    try { out[m.name] = decodePNG(bin.slice(bv.byteOffset || 0, (bv.byteOffset || 0) + bv.byteLength)); } catch (e) { console.warn('hair texture', m.name, e.message); }
+  }
+  return out;
+}
+/* The runtime's normalisations: a fabric tile to a 0.8 mean luminance, a hair diffuse to a 0.72-mean grey mask (alpha kept). */
+function normaliseTile(T, target, grey) {
+  let sum = 0, wsum = 0; const d = T.d;
+  for (let i = 0; i < d.length; i += 4) { const a = d[i + 3] / 255, l = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114; sum += l * a; wsum += a; }
+  const mean = (wsum ? sum / wsum : 128) / 255 || 0.5, k = Math.max(0.5, Math.min(2.6, target / mean)), o = new Uint8ClampedArray(d.length);
+  for (let i = 0; i < d.length; i += 4) { if (grey) { const l = Math.min(255, (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) * k); o[i] = o[i + 1] = o[i + 2] = l; } else { o[i] = Math.min(255, d[i] * k); o[i + 1] = Math.min(255, d[i + 1] * k); o[i + 2] = Math.min(255, d[i + 2] * k); } o[i + 3] = d[i + 3]; }
+  return { w: T.w, h: T.h, d: o };
+}
 function render(meshes, view) {
   const W = view.w, Hh = view.h, rgb = Buffer.alloc(W * Hh * 3, 24), depth = new Float32Array(W * Hh).fill(-Infinity);
-  const yaw = (view.yaw || 0) * Math.PI / 180, cy = Math.cos(yaw), sy = Math.sin(yaw);
+  const yaw = (view.yaw || 0) * Math.PI / 180, cy = Math.cos(yaw), sy = Math.sin(yaw), pitch = (view.pitch || 0) * Math.PI / 180, cp = Math.cos(pitch), spp = Math.sin(pitch);
   const L = [0.35, 0.6, 0.72]; const ll = Math.hypot(...L); L[0] /= ll; L[1] /= ll; L[2] /= ll;
   const L2 = [-0.7, 0.2, 0.4]; const l2 = Math.hypot(...L2); L2[0] /= l2; L2[1] /= l2; L2[2] /= l2;
-  const xf = p => { const x = p[0] - view.cx, y = p[1] - view.cy, z = p[2] - view.cz; return [x * cy + z * sy, y, -x * sy + z * cy]; };
-  const xn = n => [n[0] * cy + n[2] * sy, n[1], -n[0] * sy + n[2] * cy];
+  const rot = (x, y, z) => { const rx = x * cy + z * sy, rz = -x * sy + z * cy; return [rx, y * cp - rz * spp, y * spp + rz * cp]; };   // yaw about y, then pitch (positive = looking down from above)
+  const xf = p => rot(p[0] - view.cx, p[1] - view.cy, p[2] - view.cz);
+  const xn = n => rot(n[0], n[1], n[2]);
   for (const m of meshes) {
-    const P = m.pos, N = m.nrm, I = m.idx, UV = m.uv, T = m.tex;
-    const sample = (u, v) => { if (!T) return m.color; u = u - Math.floor(u); const x = Math.max(0, Math.min(T.w - 1, u * T.w - 0.5)), y = Math.max(0, Math.min(T.h - 1, v * T.h - 0.5)); const x0 = Math.floor(x), y0 = Math.floor(y), x1 = Math.min(T.w - 1, x0 + 1), y1 = Math.min(T.h - 1, y0 + 1), fx = x - x0, fy = y - y0; const out = [0, 0, 0]; for (let ch = 0; ch < 3; ch++) { const a = T.d[(y0 * T.w + x0) * 4 + ch], b = T.d[(y0 * T.w + x1) * 4 + ch], cc = T.d[(y1 * T.w + x0) * 4 + ch], d = T.d[(y1 * T.w + x1) * 4 + ch]; out[ch] = (a * (1 - fx) + b * fx) * (1 - fy) + (cc * (1 - fx) + d * fx) * fy; } return out; };
+    const P = m.pos, N = m.nrm, I = m.idx, UV = m.uv, T = m.tex, rep = m.repeat || 1, tint = m.tint, VC = m.vcol;
+    const sample = (u, v) => { if (!T) return m.color; u = u * rep; v = v * rep; u = u - Math.floor(u); v = v - Math.floor(v); const x = Math.max(0, Math.min(T.w - 1, u * T.w - 0.5)), y = Math.max(0, Math.min(T.h - 1, v * T.h - 0.5)); const x0 = Math.floor(x), y0 = Math.floor(y), x1 = Math.min(T.w - 1, x0 + 1), y1 = Math.min(T.h - 1, y0 + 1), fx = x - x0, fy = y - y0; const out = [0, 0, 0, 255]; for (let ch = 0; ch < 4; ch++) { const a = T.d[(y0 * T.w + x0) * 4 + ch], b = T.d[(y0 * T.w + x1) * 4 + ch], cc = T.d[(y1 * T.w + x0) * 4 + ch], d = T.d[(y1 * T.w + x1) * 4 + ch]; out[ch] = (a * (1 - fx) + b * fx) * (1 - fy) + (cc * (1 - fx) + d * fx) * fy; } if (tint) { out[0] = out[0] * tint[0] / 255; out[1] = out[1] * tint[1] / 255; out[2] = out[2] * tint[2] / 255; } return out; };
     for (let k = 0; k < I.length; k += 3) {
       const a = I[k], b = I[k + 1], d = I[k + 2];
       const pa = xf([P[a * 3], P[a * 3 + 1], P[a * 3 + 2]]), pb = xf([P[b * 3], P[b * 3 + 1], P[b * 3 + 2]]), pd = xf([P[d * 3], P[d * 3 + 1], P[d * 3 + 2]]);
@@ -87,10 +144,13 @@ function render(meshes, view) {
         if (w0 < 0 || w1 < 0 || w2 < 0) continue;
         const z = pa[2] * w0 + pb[2] * w1 + pd[2] * w2, o = y * W + x;
         if (z <= depth[o]) continue;
+        let col = UV ? sample(UV[a * 2] * w0 + UV[b * 2] * w1 + UV[d * 2] * w2, UV[a * 2 + 1] * w0 + UV[b * 2 + 1] * w1 + UV[d * 2 + 1] * w2) : m.color;
+        if (m.alphaTest && col[3] != null && col[3] < m.alphaTest * 255) continue;
         depth[o] = z;
+        if (VC) { const k = VC[a * 3] * w0 + VC[b * 3] * w1 + VC[d * 3] * w2; col = [col[0] * k, col[1] * k, col[2] * k]; }
         let nx = na[0] * w0 + nb[0] * w1 + nd[0] * w2, ny = na[1] * w0 + nb[1] * w1 + nd[1] * w2, nz = na[2] * w0 + nb[2] * w1 + nd[2] * w2;
         const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
-        const col = UV ? sample(UV[a * 2] * w0 + UV[b * 2] * w1 + UV[d * 2] * w2, UV[a * 2 + 1] * w0 + UV[b * 2 + 1] * w1 + UV[d * 2 + 1] * w2) : m.color;
+        if (m.twoSided && nz < 0) { nx = -nx; ny = -ny; nz = -nz; }
         const diff = Math.max(0, nx * L[0] + ny * L[1] + nz * L[2]), fill = Math.max(0, nx * L2[0] + ny * L2[1] + nz * L2[2]);
         const hv = [L[0], L[1], L[2] + 1]; const hl = Math.hypot(...hv); const spec = Math.pow(Math.max(0, (nx * hv[0] + ny * hv[1] + nz * hv[2]) / hl), 24) * (m.spec || 0.2);
         const sh = 0.3 + 0.62 * diff + 0.18 * fill;
@@ -103,15 +163,33 @@ function render(meshes, view) {
 (async () => {
   const gender = process.argv[2] || 'male', outfit = process.argv[3] || 'tee', tag = process.argv[4] || 'look';
   const opts = JSON.parse(process.argv[5] || '{}');
-  const look = Object.assign({ hair: 'bald', outfit, bottoms: 'trousers' }, opts);
+  const look = Object.assign({ hair: 'bald', outfit, bottoms: 'trousers' }, opts), A = normalize(look);
+  // the hair style through the unit-GLB cache the runtime reads (the test does the same); its textures decoded here for alpha
+  let hairImgs = {};
+  if (A.hair !== 'bald') {
+    const hf = path.join(CC, 'hair', A.hair + '.glb'), hg = await load(hf);
+    hg.scene.traverse(n => { if (n.isMesh) n.geometry._ew_shared = true; });
+    c._unitGlbCache[c.getHairStyleUrl(A.hair)] = { root: hg.scene, clips: [], loading: false, failed: false, cbs: [] };
+    hairImgs = glbBaseColorImages(fs.readFileSync(hf));
+  }
+  c._loadUnitGLB = (url, cb) => { const e = c._unitGlbCache[url]; if (e && e.root) cb(e); };
+  const fabricTex = key => { const def = c.EW_FABRICS[key]; if (!def || !def.file) return null; try { return { tex: normaliseTile(decodePNG(fs.readFileSync(path.join(CC, 'clothingtextures', def.file))), 0.8, false), repeat: def.repeat || 12 }; } catch (e) { console.warn('fabric', key, e.message); return null; } };
   const gltf = await load(path.join(CC, 'Meshy_AI_human_body_base_mesh_' + gender + '_rigged.glb'));
   const clone = THREE.SkeletonUtils.clone(gltf.scene);
   c._createAppearanceRig(clone, look, true);
   const meshes = []; clone.traverse(n => { if (n.isSkinnedMesh && n.parent && n.visible) meshes.push(n); });
-  const skin = hexRGB(normalize(look).skin), top = hexRGB(normalize(look).topColor), bottom = hexRGB(normalize(look).bottomColor);
-  const list = meshes.map(n => { const g = n.geometry, isFace = /face/.test(n.name), kind = /top/.test(n.name) ? 'top' : /bottom/.test(n.name) ? 'bottom' : 'body';
-    const map = n.material.map, tex = isFace && map && map.image && map.image._d ? { d: map.image._d, w: map.image.width, h: map.image.height } : null;
-    return { pos: g.attributes.position.array, nrm: g.attributes.normal.array, idx: g.index.array, uv: isFace ? g.attributes.uv.array : null, tex, color: kind === 'top' ? top : kind === 'bottom' ? bottom : skin, spec: isFace || kind === 'body' ? 0.3 : 0.05 }; });
+  const skin = hexRGB(A.skin), top = hexRGB(A.topColor), bottom = hexRGB(A.bottomColor), hairCol = hexRGB(A.hairColor);
+  const fabrics = { top: fabricTex(A.topFabric), bottom: fabricTex(A.bottomFabric) };
+  const list = meshes.map(n => { const g = n.geometry, isFace = /face/.test(n.name), isHair = /EWCreator_hair/.test(n.name), kind = /top/.test(n.name) ? 'top' : /bottom/.test(n.name) ? 'bottom' : 'body';
+    const map = n.material.map, faceTex = isFace && map && map.image && map.image._d ? { d: map.image._d, w: map.image.width, h: map.image.height } : null;
+    if (isHair) {
+      const part = n.name.replace('EWCreator_hair_', ''), img = hairImgs[part], isTie = /tie/.test(part);
+      const tex = img ? (isTie ? img : normaliseTile(img, 0.72, true)) : null, tint = isTie ? [255, 255, 255] : hairCol.map(v => Math.min(255, v * 1.22));
+      return { pos: g.attributes.position.array, nrm: g.attributes.normal.array, idx: g.index.array, uv: tex ? g.attributes.uv.array : null, tex, tint: tex ? tint : null, color: tint, alphaTest: n.material.alphaTest || 0, twoSided: true, spec: 0.25 };
+    }
+    const fab = (kind === 'top' || kind === 'bottom') && fabrics[kind];
+    if (fab) return { pos: g.attributes.position.array, nrm: g.attributes.normal.array, idx: g.index.array, uv: g.attributes.uv.array, tex: fab.tex, repeat: fab.repeat, tint: (kind === 'top' ? top : bottom).map(v => Math.min(255, v * 1.18)), vcol: null, color: kind === 'top' ? top : bottom, spec: 0.05 };
+    return { pos: g.attributes.position.array, nrm: g.attributes.normal.array, idx: g.index.array, uv: isFace ? g.attributes.uv.array : null, tex: faceTex, color: kind === 'top' ? top : kind === 'bottom' ? bottom : skin, spec: isFace || kind === 'body' ? 0.3 : 0.05 }; });
   const body = meshes.find(n => !/EWCreator/.test(n.name)); body.geometry.computeBoundingBox();
   const bb = body.geometry.boundingBox, H = bb.max.y - bb.min.y, minY = bb.min.y;
   const out = process.env.OUT || path.join(REPO, 'shots', 'creator-render'); fs.mkdirSync(out, { recursive: true });
@@ -123,6 +201,11 @@ function render(meshes, view) {
     head34: { w: 800, h: 800, yaw: 35, cx: 0, cy: minY + 0.925 * H, cz: 0, scale: 3000 },
     eyes: { w: 900, h: 480, yaw: 0, cx: 0, cy: minY + 0.928 * H, cz: 0, scale: 5200 },
     full: { w: 500, h: 900, yaw: 20, cx: 0, cy: minY + 0.5 * H, cz: 0, scale: 480 },
+    back: { w: 700, h: 700, yaw: 180, cx: 0, cy: minY + 0.66 * H, cz: 0, scale: 900 },
+    top: { w: 800, h: 800, yaw: 0, pitch: 90, cx: 0, cy: minY + 0.93 * H, cz: 0, scale: 3000 },
+    hair34: { w: 800, h: 800, yaw: 35, pitch: 20, cx: 0, cy: minY + 0.93 * H, cz: 0, scale: 3000 },
+    hairside: { w: 800, h: 800, yaw: 90, cx: 0, cy: minY + 0.93 * H, cz: 0, scale: 3000 },
+    hairback: { w: 800, h: 800, yaw: 180, pitch: 15, cx: 0, cy: minY + 0.93 * H, cz: 0, scale: 3000 },
   };
   for (const v of (process.env.VIEWS || 'torso,torso34,head,eyes,full').split(',')) {
     if (!views[v]) { console.warn('unknown view', v); continue; }

@@ -998,6 +998,36 @@ Kill-switches (console): `window.EW_DISABLE_3D_UNITS = true` (all 3D),
   To persist new files, hand them to the user (SendUserFile) to upload via GitHub
   manually. Don't waste time retrying pushes.
 
+## CHARACTER CREATOR rev 5 — the face off the mesh, the skull map, the cloth frame, welded weights (2026-09-11, local delivery)
+Four fixes to the rev 4 rig (three-renderer.js "CHARACTER CREATOR RUNTIME"):
+**THE FACE IS MEASURED, NEVER TABLED** — the two bases do NOT share a face
+(male mouth line t 0.8985 / nose tip 0.918, female 0.8915 / 0.912; the old
+`CC_FACE` put the male's lips in his chin). `_ccFaceLandmarks(q, nz, ids)`
+rasterises the head's front into a depth map and reads nose tip, mouth line,
+subnasale, sulcus, chin, nasion (eyes 3 mm(q) under it), mouth width and the
+BROW RIDGE off the centreline / eye-column profiles into `lm.F`; the painter
+reads `lm.F || CC_FACE` (the table is the fallback only). Brows sit on the
+ridge, 2.6 cm(q) long. **THE SKULL MAP** — `buildSkullMap` (a radial height
+field of the head, 64 × 32 bins) and `fitHair` push every hair card ≥ 4.5 mm
+off it, conform the scalp cap to +1.5 mm and tuck the cap's rim under the
+nape; the fit is centred on the skull's BOX centre (the centroid leaned one
+way → one temple bald). Under any style the crown is painted in the hair
+colour (`scalpOn` in `_ccBakeSkin`; `paintKey` carries bald ↔ hair). **THE
+CLOTH FRAME** — garment UVs are cut like cloth in METRES on five centred
+polyline cylinders (torso · arms from |x| > 0.155 q · legs incl. the pelvis;
+`polyline` / `limbUv` / `clothRegion` / `clothUvOf` / `centreLimb`,
+`fixClothUv` re-emits seam / region straddlers with their own vertices, cut
+vertices re-project from position) — the Meshy atlas's islands made every
+fabric a shattered patchwork. `EW_FABRICS.repeat` = tiles PER METRE now.
+**WELDED SKIN WEIGHTS** — the rigged bases give the two copies of a seam
+vertex different weights (2,835 pairs, up to 0.48 apart); a posed rig tore at
+every UV seam ("cracks" on the shins and the shirt — invisible in the bind
+pose, so invisible to every headless render). `part.siW` / `part.swW` weld
+them per position group; every shell reads those. Tooling: `creator-render.js`
+now renders fabrics + hair (+ `back` / `top` / `hair*` views); a crack the
+headless tool cannot reproduce is a POSE problem → the Playwright probe.
+Full log: PARTY_BUILDER_PLAN.md §9 (rev 5 entry).
+
 ## CHARACTER CREATOR rev 4 — the drape, the face shell, the eyes (2026-09-11, local delivery)
 Three fixes to the rev 3 rig (three-renderer.js "CHARACTER CREATOR RUNTIME"):
 **THE DRAPE** — the shirt front is no longer a flat chest plank: `drapeFront`

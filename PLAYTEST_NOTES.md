@@ -10057,3 +10057,23 @@ patches and the rectangular beard in one session; reach for it before the
 Playwright probe. Timing caveat: the vm sandbox (this tool and the test) makes
 global lookups interceptor-slow — a bake reads ~4 s there and ~265 ms in the
 same realm / the browser.
+
+**rev 5 (2026-09-11):** `creator-render.js` now decodes the fabric tiles
+(its own 40-line PNG reader — `'{"topFabric":"denim"}'` maps them through the
+garment UVs exactly as the runtime does, luminance-normalised, tint × 1.18) and
+loads a hair style with its embedded alpha texture (`'{"hair":"hair000"}'`,
+alpha-tested cards, the grey mask × the hair colour), so bald spots, the
+scalp cap and fabric seams are all visible headlessly; new views `back`,
+`top` (looks straight down), `hair34`, `hairside`, `hairback` (`pitch`
+tilts a view). It found the off-centre hair fit, the atlas-island "cracked"
+fabric and the skull poking through the crown in one pass. **What it CANNOT
+see: skinning.** Every headless render is the bind pose — the 2,835 seam
+duplicates with different weights (the real "cracks": thin dark lines on the
+shins, light ones on the shirt, only once the rig is posed) showed only in
+the Playwright probe's screenshots. Rule: a "crack" that the headless tool
+does not reproduce is a POSE problem — go to the browser. Crop a probe
+screenshot for a close look with a 20-line node script that reuses
+creator-render.js's `decodePNG` / `png` (eval the two function sources) —
+there is no PIL in the sandbox. The probe run needs
+`npm i --no-save three@0.128.0 react@18.3.1 react-dom@18.3.1 playwright@1.63.0`
+in ONE command (a second `--no-save` install prunes the first).

@@ -1,4 +1,4 @@
-// character-creator.test.js — the CHARACTER CREATOR (rev 3, 2026-09-11): the
+// character-creator.test.js — the CHARACTER CREATOR (rev 3 → rev 5, 2026-09-11): the
 // v2 appearance data model, the charactercreation/ asset catalogues (rigged
 // bases · hair styles · fabrics), the same-origin fallbacks, the rig generator
 // and every source site the feature leans on. Asset-level checks run against
@@ -159,7 +159,15 @@ test('the builder panel, the renderer and the CSS carry the rev 3 sites', () => 
     for (const s of ['.pb-cc-tile', '.pb-fabric-tile', '.pb-hair-tile', '.pb-creator-grid', '.pb-creator-colorrow']) assert.ok(css.includes(s), 'css has ' + s);
     const block = renderer.slice(RENDER_BLOCK[0], RENDER_BLOCK[1]);
     for (const s of ['function _ccBakeSkin', 'function _ccFaceLandmarks', 'function _ccLoadFabric', 'function _ccHairTexture', 'function _ccLoadHair', 'function _ccWarmAssets',
-        'function _createAppearanceRig', 'mesh._ew_noTwin = true', 'RepeatWrapping', 'flipY = false']) assert.ok(block.includes(s), 'renderer block has ' + s);
+        'function _createAppearanceRig', 'mesh._ew_noTwin = true', 'RepeatWrapping', 'flipY = false',
+        // rev 5: the face read off the mesh, the skull map under the hair, the cloth frame's UVs, the scalp under the hair
+        'function _ccFaceLandmarks(q, nz, ids)', '_ccFaceLandmarks(q, nz, ids)', 'function buildSkullMap', 'function skullRadius', 'part.skullMap = buildSkullMap(',
+        'function clothRegion(', 'function clothUvOf(', 'function fixClothUv(', 'function emitClothTri(', "var scalpOn = a.hair && a.hair !== 'bald'"]) assert.ok(block.includes(s), 'renderer block has ' + s);
+    // the painter reads the MEASURED table, never the constant one; a bald ↔ hair flip repaints
+    assert.match(block, /var F = lm\.F \|\| CC_FACE/);
+    assert.match(block, /a\.hair === 'bald' \? 'bald' : 'hair'\]\.join/);
+    // the garments' UVs are the cloth frame's (metres), the face shell's its cylinder, the body the atlas
+    assert.match(block, /index === 3 \? part\.faceUv : \(index === 1 \|\| index === 2\) \? CUV : uvA/);
     // the board keeps the creator's surface flags when it swaps materials, skips twins for hair, warms hair + fabrics at match start
     assert.match(renderer, /if \(sm\.alphaTest\) lm\.alphaTest = sm\.alphaTest;/);
     assert.match(renderer, /if \(n\.isMesh && !n\._ew_silhouette && !n\._ew_noTwin\) _silTargets\.push\(n\);/);
@@ -207,6 +215,25 @@ test('both rigged bases dress, fit the hair to the skull and stay finite across 
     THREE.TextureLoader.prototype.load = function (url, onLoad) { const t = new THREE.Texture(); if (onLoad) setTimeout(() => onLoad(t), 0); return t; };
     const load = f => new Promise((ok, fail) => { const b = fs.readFileSync(f); new THREE.GLTFLoader().parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength), '', ok, fail); });
     try {
+        // rev 5: the face is READ OFF each base — the two differ by a centimetre at the mouth and the nose
+        const faces = {};
+        for (const gender of ['male', 'female']) {
+            const gltf = await load(path.join(CC, 'Meshy_AI_human_body_base_mesh_' + gender + '_rigged.glb'));
+            let m; gltf.scene.traverse(n => { if (n.isSkinnedMesh) m = m || n; });
+            const pos = m.geometry.attributes.position, nr = m.geometry.attributes.normal, box = new THREE.Box3().setFromBufferAttribute(pos), H = box.max.y - box.min.y;
+            const q = [], nz = [];
+            for (let i = 0; i < pos.count; i++) { q.push([pos.getX(i) / H, (pos.getY(i) - box.min.y) / H, pos.getZ(i) / H]); nz.push(nr.getZ(i)); }
+            faces[gender] = c._ccFaceLandmarks(q, nz, Array.from(m.geometry.index.array));
+            const F = faces[gender].F;
+            assert.equal(faces[gender].measured, true, gender + ' face measured off the mesh');
+            assert.ok(F.mouthT > F.chinT + 0.015 && F.mouthT < F.subnasale - 0.006 && F.subnasale < F.noseT, gender + ' mouth between chin and nose: ' + JSON.stringify(F));
+            assert.ok(faces[gender].eyes[1].t > F.noseT + 0.012 && faces[gender].eyes[1].t < F.browT - 0.007, gender + ' eyes between the nose tip and the brow ridge');
+            assert.ok(F.browT - faces[gender].eyes[1].t <= 0.013 + 1e-9, gender + ' brow within 13 mm(q) of the eye');
+            assert.ok(F.mouthHalfW >= 0.012 && F.mouthHalfW <= 0.017 && F.upperLip >= 0.0035 && F.lowerLip >= 0.004);
+        }
+        assert.ok(Math.abs(faces.male.F.mouthT - 0.8985) < 0.0025, 'male mouth line on the mesh crease (' + faces.male.F.mouthT + ')');
+        assert.ok(Math.abs(faces.female.F.mouthT - 0.8915) < 0.0025, 'female mouth line on the mesh crease (' + faces.female.F.mouthT + ')');
+        assert.ok(faces.male.F.noseT - faces.female.F.noseT > 0.003, 'the bases do not share a nose');
         const hairUrl = context.window.getHairStyleUrl('hair003');
         const hg = await load(path.join(CC, 'hair', 'hair003.glb'));
         hg.scene.traverse(n => { if (n.isMesh) n.geometry._ew_shared = true; });
@@ -226,6 +253,23 @@ test('both rigged bases dress, fit the hair to the skull and stay finite across 
             const body = bodies.find(n => !/EWCreator/.test(n.name));
             body.geometry.computeBoundingBox();
             const headTop = body.geometry.boundingBox.max.y;
+            // rev 5: every hair vertex stands OFF the skull (the collision pass) — sample the skull as the body's head vertices
+            const bodyPos = body.geometry.attributes.position, headPts = [];
+            body.geometry.computeBoundingBox(); const bbb = body.geometry.boundingBox, Hb = bbb.max.y - bbb.min.y;
+            for (let i = 0; i < bodyPos.count; i++) if ((bodyPos.getY(i) - bbb.min.y) / Hb > 0.9) headPts.push([bodyPos.getX(i), bodyPos.getY(i), bodyPos.getZ(i)]);
+            const scalp = hairMeshes.find(n => /scalp/.test(n.name));
+            assert.ok(scalp, 'the style has a scalp cap');
+            { const sp = scalp.geometry.attributes.position; let inside = 0, tested = 0;
+              for (let i = 0; i < sp.count; i += 3) {
+                  const y = sp.getY(i); if ((y - bbb.min.y) / Hb < 0.94) continue;   // the cap's crown only (its rim is tucked / conformed elsewhere)
+                  tested++;
+                  const px = sp.getX(i), pz = sp.getZ(i);
+                  // inside = some head vertex within 4 mm laterally lies FURTHER out than the cap in its own direction
+                  const cx = 0, cz = 0; const r = Math.hypot(px - cx, pz - cz);
+                  for (const h of headPts) { if (Math.abs(h[1] - y) > 0.004) continue; const hr = Math.hypot(h[0] - cx, h[2] - cz); const ang = Math.abs(Math.atan2(h[0] - cx, h[2] - cz) - Math.atan2(px - cx, pz - cz)); if (ang < 0.05 && hr > r + 0.006) { inside++; break; } }
+              }
+              assert.ok(tested > 20, 'sampled the crown of the cap');
+              assert.ok(inside / tested < 0.03, gender + ' scalp cap sits outside the skull (' + inside + '/' + tested + ' inside)'); }
             for (const hm of hairMeshes) {
                 hm.geometry.computeBoundingBox();
                 const bb = hm.geometry.boundingBox;
@@ -265,6 +309,14 @@ test('both rigged bases dress, fit the hair to the skull and stay finite across 
                 const top = bodies.find(n => n.name === 'EWCreator_top'), bottom = bodies.find(n => n.name === 'EWCreator_bottom');
                 assert.ok(top.geometry.index.count > 0 && bottom.geometry.index.count > 0);
                 assert.equal(top.material.vertexColors, true);
+                // rev 5: garment UVs are the cloth frame's, in METRES — v spans the shirt's height, u the arc round the body,
+                // and no drawn triangle straddles a seam (every |Δu| within a triangle stays under half a torso turn)
+                for (const [gm, minSpan] of [[top, 0.15], [bottom, 0.2]]) {
+                    const uv = gm.geometry.attributes.uv, idx = gm.geometry.index.array; let vmin = Infinity, vmax = -Infinity, worst = 0;
+                    for (let i = 0; i < idx.length; i += 3) { const u0 = uv.getX(idx[i]), u1 = uv.getX(idx[i + 1]), u2 = uv.getX(idx[i + 2]); worst = Math.max(worst, Math.max(u0, u1, u2) - Math.min(u0, u1, u2)); for (const k of [idx[i], idx[i + 1], idx[i + 2]]) { const vv = uv.getY(k); if (vv < vmin) vmin = vv; if (vv > vmax) vmax = vv; } }
+                    assert.ok(vmax - vmin > minSpan && vmax - vmin < 2.0, gm.name + ' v runs the garment\'s height in metres (' + (vmax - vmin).toFixed(3) + ')');
+                    assert.ok(worst < Math.PI * 0.15 * 1.05, gm.name + ' no triangle spans the seam (worst Δu ' + worst.toFixed(3) + ')');
+                }
             }
             assert.deepEqual(Array.from(original.geometry.attributes.position.array), before, 'the cached base geometry is never edited');
             let disposed = 0; skinned().forEach(n => n.geometry.addEventListener('dispose', () => disposed++));
