@@ -23,5 +23,9 @@ jobs:
           # its postinstall must not pull browser binaries in CI.
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
         run: npm install --no-audit --no-fund
+      - name: Generate the character creator assets (rigged bases + hair styles)
+        # character-rig.js is zero-dependency and runs in ~4 s; its outputs are
+        # what character-creator.test.js checks against the catalogues.
+        run: node character-rig.js
       - name: npm test
         run: npm test
