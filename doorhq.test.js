@@ -1911,3 +1911,155 @@ test('source scan: the renderer builds the board and the bar, seats the online s
     assert.match(ol, /window\._ewOnlineCount = count \| 0;/, 'the lobby counter is published');
     assert.ok(mp.indexOf('window.hqRollRoomVariants(') < mp.indexOf('const roomDef = DOOR_HQ.rooms[roomId];'), 'rolled before the room is read');
 });
+
+/* ── ROOM 247 · THE CLOCK ROOM + FORM 365 (HQ plan 7.4 / 7.9, 2026-09-11) ── */
+const CLOCK = HQ.rooms.clockroom;
+
+test('Room 247 is a box room off the ground ring at 225°: the way in, the way out, the number, three counters, five clocks that disagree', () => {
+    assert.ok(CLOCK && CLOCK.kind === 'box' && CLOCK.roomNo === '247', 'rooms.clockroom kind box, Room 247');
+    assert.strictEqual(D.hqRoomNo('clockroom'), '247');
+    assert.ok(!CLOCK.shell.open && CLOCK.shell.pipes === false && CLOCK.shell.h >= 3.2, 'an indoor room under a ceiling');
+    const eg = ROOM.doors.find(d => d.id === 'clockroom');
+    assert.ok(eg && eg.deg === 225 && (eg.level || 0) === 0 && eg.action.room === 'clockroom' && eg.action.at === 'egress', 'the egress door at 225° walks into the room at its way out');
+    assert.strictEqual(D.hqDoorNo(eg), '247', 'the plate over the hall door reads 247');
+    const out = CLOCK.doors.find(d => d.id === 'egress');
+    assert.ok(out && out.wall === 'w' && out.action.room === 'central_egress' && out.action.at === 'clockroom' && out.leaf === eg.leaf && !!out.wide === !!eg.wide, 'the way out is the same frosted door and lands at the hall door');
+    assert.ok(!D.DOOR_TEXT.CLEARANCE.some(r => r.door === eg.leaf), 'not a rank leaf');
+    assert.strictEqual(D.doorSiteState(eg, null), 'open');
+    /* between MEDICAL (210°) and RECORDS (240°), a pier to each */
+    const med = ROOM.doors.find(d => d.id === 'medical'), rec = ROOM.doors.find(d => d.id === 'records');
+    const wOf = d => (d.wide ? 3.3 : 2.5) / 2;
+    assert.ok((eg.deg - med.deg) * Math.PI / 180 * ROOM.shell.radius - wOf(eg) - wOf(med) >= 2.0, 'a pier to Medical');
+    assert.ok((rec.deg - eg.deg) * Math.PI / 180 * ROOM.shell.radius - wOf(eg) - wOf(rec) >= 2.0, 'a pier to Records');
+    assert.ok(!ROOM.props.some(p => (p.level || 0) === 0 && p.wall && Math.abs(p.deg - eg.deg) < 5), 'no wall prop stands in the new doorway (the cabinets and the picture moved)');
+    assert.ok(!ROOM.props.some(p => (p.level || 0) === 0 && p.r > 18.5 && Math.abs(p.deg - eg.deg) < 5), 'nothing stands in front of it');
+    /* the build sheet */
+    const has = key => CLOCK.props.filter(p => p.key === key).length;
+    for (const key of ['world_clocks', 'punch_clock', 'form_sheet', 'notice_board', 'tanker_desk', 'crt_terminal', 'rotary_phone', 'office_chair', 'filing_cabinet',
+                       'folding_chair', 'water_cooler', 'exit_sign', 'breaker_panel', 'fire_extinguisher', 'fluorescent', 'wall_clock']) {
+        assert.ok(has(key) >= 1, 'Room 247 has its ' + key);
+    }
+    assert.ok(has('wall_clock') >= 4, 'four more clocks on the walls (with the rail, none agree)');
+    assert.strictEqual(new Set(CLOCK.props.filter(p => p.key === 'wall_clock').map(p => p.mount)).size, has('wall_clock'), 'every wall clock hangs at its own height');
+    assert.deepStrictEqual(boxPropProblems('clockroom', CLOCK), []);
+    /* the three counters: FORM 365, the punch clock, today's Code Red (the hall's panel) */
+    const f = CLOCK.counters.find(c => c.id === 'form365'), pu = CLOCK.counters.find(c => c.id === 'punch'), cr = CLOCK.counters.find(c => c.id === 'codered');
+    assert.ok(f && f.action.overlay === 'form365' && f.radius > 0 && f.verb, 'FORM 365 is a counter with its own overlay');
+    assert.ok(pu && pu.action.overlay === 'punch' && pu.radius > 0, 'the punch clock is a counter');
+    assert.ok(cr && cr.action.overlay === 'codered' && cr.radius > 0, 'the notice board posts the Code Red');
+    assert.ok(CLOCK.props.some(p => p.key === 'form_sheet' && p.wall === 'e' && Math.abs(p.z - f.z) < 0.3), 'the sheet hangs where its counter stands');
+    assert.ok(CLOCK.props.some(p => p.key === 'punch_clock' && p.wall === 'e' && Math.abs(p.z - pu.z) < 0.3), 'the clock hangs where its counter stands');
+    assert.ok(CLOCK.props.some(p => p.key === 'notice_board' && p.wall === 's' && Math.abs(p.x - cr.x) < 0.3), 'the board hangs where its counter stands');
+    /* the timekeeper sits at the desk; the roster and the shift have spots */
+    assert.ok(CLOCK.agents.length >= 1 && CLOCK.agents[0].pose === 'hqSit' && CLOCK.props.some(p => p.key === 'office_chair' && Math.hypot(p.x - CLOCK.agents[0].x, p.z - CLOCK.agents[0].z) < 0.05), 'the timekeeper sits on the desk chair');
+    assert.ok(CLOCK.npcSpots.length >= 2 && CLOCK.onlineSpots.length >= 1 && CLOCK.lines.length >= 3, 'spots and lines');
+    /* the three procs */
+    for (const [k, h] of [['world_clocks', 0.5], ['punch_clock', 0.4], ['form_sheet', 0.9]]) {
+        const c = HQ.catalogue[k];
+        assert.ok(c && c.proc === k && c.wall && c.depth > 0 && c.mount > 0 && c.h >= h, k + ' is a wall proc with a depth and a mount');
+    }
+    /* the register lists it once, as a room */
+    const rows = D.hqRoomRegister().filter(r => r.no === '247');
+    assert.strictEqual(rows.length, 1); assert.strictEqual(rows[0].kind, 'room'); assert.strictEqual(rows[0].id, 'clockroom');
+});
+
+test('FORM 365 (plan 7.9): three lines a day, seeded by the date and the employee number, over counters the commit keeps; the judge marks and pays them once', () => {
+    const P = HQ.dailyOps;
+    assert.ok(P && P.pay > 0 && P.allBonus > 0 && P.count === 3, 'dailyOps config');
+    const prof = () => ({ username: 'probe', createdAt: '2026-01-01T00:00:00Z', door: { hq: {} } });
+    const a = D.hqDailyOps(prof(), { date: '2026-09-11' }), b = D.hqDailyOps(prof(), { date: '2026-09-11' }), c = D.hqDailyOps(prof(), { date: '2026-09-12' });
+    assert.ok(a && a.rows.length === 3 && a.total === 3 && a.done === 0 && !a.allDone, 'three open lines');
+    assert.strictEqual(JSON.stringify(a.rows.map(r => r.key)), JSON.stringify(b.rows.map(r => r.key)), 'the same sheet all day');
+    assert.notStrictEqual(JSON.stringify(a.rows.map(r => r.key)), JSON.stringify(c.rows.map(r => r.key)), 'a new one tomorrow');
+    assert.strictEqual(new Set(a.rows.map(r => r.id)).size, 3, 'three different templates');
+    const other = D.hqDailyOps({ username: 'someone else', createdAt: '2025-03-03T00:00:00Z', door: { hq: {} } }, { date: '2026-09-11' });
+    assert.notStrictEqual(JSON.stringify(a.rows.map(r => r.key)), JSON.stringify(other.rows.map(r => r.key)), 'seeded by the employee number');
+    for (const r of a.rows) assert.ok(r.id && r.key && r.label && r.sub && typeof r.done === 'boolean', 'a row has id / key / label / sub / done');
+    assert.strictEqual(D.hqDailyOps(null, { date: '2026-09-11' }), null, 'no profile, no sheet');
+    /* every template builds, and each one reads the event it says it does */
+    const all = D.hqDailyOps(prof(), { date: '2026-09-11', force: ['site', 'cond', 'keys', 'exits', 'native', 'strike', 'delta'] });
+    assert.strictEqual(all.rows.length, 3, 'the count caps a forced list');
+    const ids = ['site', 'cond', 'keys', 'exits', 'native', 'strike', 'delta'];
+    const rowsOf = {};
+    for (const id of ids) { const sh = D.hqDailyOps(prof(), { date: '2026-09-11', force: [id] }); assert.strictEqual(sh.rows.length, 1); assert.strictEqual(sh.rows[0].id, id); rowsOf[id] = sh.rows[0]; }
+    assert.ok(rowsOf.site.site && rowsOf.site.sector && /^ROOM /.test(rowsOf.site.sub), 'the site line names a numbered room');
+    assert.ok(HQ.masteryConditions.includes(rowsOf.cond.cond), 'the condition line is a mastery condition');
+    assert.ok(rowsOf.keys.n >= 2 && rowsOf.exits.n >= 3, 'the counts');
+    assert.ok(rowsOf.native.sector && rowsOf.native.races.length >= 1 && rowsOf.native.races.every(r => D.DOOR_TEXT.POINT_OF_ENTRY[r]), 'the native line lists the bay\'s own entities');
+    const win = (o) => Object.assign({ won: true, kind: 'match', delta: false, races: [], kills: 0, hourglasses: 0, entropyStrikes: 0, codeRedCleared: false }, o || {});
+    assert.ok(D.hqDailyRowMet(rowsOf.site, win({ mapId: rowsOf.site.site })) && !D.hqDailyRowMet(rowsOf.site, win({ mapId: rowsOf.site.site, won: false })), 'the site line needs a win there');
+    assert.ok(D.hqDailyRowMet(rowsOf.cond, win({ cond: rowsOf.cond.cond })) && !D.hqDailyRowMet(rowsOf.cond, win({ cond: 'other' })));
+    assert.ok(D.hqDailyRowMet(rowsOf.keys, win({ won: false, hourglasses: rowsOf.keys.n })) && !D.hqDailyRowMet(rowsOf.keys, win({ hourglasses: rowsOf.keys.n - 1 })), 'Keys count win or lose');
+    assert.ok(D.hqDailyRowMet(rowsOf.exits, win({ won: false, kills: rowsOf.exits.n })) && !D.hqDailyRowMet(rowsOf.exits, win({ kills: 0 })));
+    assert.ok(D.hqDailyRowMet(rowsOf.native, win({ races: [rowsOf.native.races[0]] })) && !D.hqDailyRowMet(rowsOf.native, win({ races: [rowsOf.native.races[0]], won: false })));
+    assert.ok(D.hqDailyRowMet(rowsOf.strike, win({ won: false, entropyStrikes: 1 })) && !D.hqDailyRowMet(rowsOf.strike, win({})));
+    assert.ok(D.hqDailyRowMet(rowsOf.delta, win({ delta: true })) && !D.hqDailyRowMet(rowsOf.delta, win({ delta: false })));
+    /* the Code Red line exists only when a Code Red does, and is met by clearing it */
+    assert.strictEqual(D.hqDailyOps(prof(), { date: '2026-09-11', force: ['codered'] }), null, 'no Code Red (nothing stabilized) → no line, and no sheet from a forced empty list');
+    const crRow = D.hqDailyOps(prof(), { date: '2026-09-11', force: ['codered', 'strike'] }).rows;
+    assert.strictEqual(crRow.length, 1); assert.strictEqual(crRow[0].id, 'strike');
+    /* the judge: marks, pays once per line, the sheet bonus once, ignores MD / campaign, resets tomorrow */
+    const p = prof();
+    HQ.dailyOps.force = ['keys', 'exits', 'strike'];
+    try {
+        let r = D.hqDailyOpsJudge(p, win({ won: false, kills: 9, date: '2026-09-11' }));
+        assert.strictEqual(r.newly.length, 1); assert.strictEqual(r.newly[0].id, 'exits'); assert.strictEqual(r.pay, P.pay); assert.strictEqual(r.bonus, 0); assert.strictEqual(r.done, 1);
+        r = D.hqDailyOpsJudge(p, win({ kills: 9, date: '2026-09-11' }));
+        assert.strictEqual(r.newly.length, 0, 'a line pays once'); assert.strictEqual(r.pay, 0);
+        assert.strictEqual(D.hqDailyOpsJudge(p, win({ kind: 'md', hourglasses: 9, entropyStrikes: 3, date: '2026-09-11' })), null, 'a dungeon run is not a crossing');
+        r = D.hqDailyOpsJudge(p, win({ hourglasses: 9, entropyStrikes: 3, date: '2026-09-11' }));
+        assert.strictEqual(r.newly.length, 2); assert.strictEqual(r.pay, 2 * P.pay); assert.strictEqual(r.bonus, P.allBonus); assert.ok(r.allDone, 'the sheet completes and pays its bonus');
+        const sh = D.hqDailyOps(p, { date: '2026-09-11' });
+        assert.ok(sh.allDone && sh.done === 3 && sh.allPaid && sh.paid === 3 * P.pay + P.allBonus, 'the sheet reads back filed and paid');
+        assert.strictEqual(p.door.hq.dailiesFiled, 3); assert.strictEqual(p.door.hq.sheetsCompleted, 1);
+        r = D.hqDailyOpsJudge(p, win({ hourglasses: 9, entropyStrikes: 3, kills: 9, date: '2026-09-11' }));
+        assert.strictEqual(r.newly.length, 0); assert.strictEqual(r.bonus, 0, 'the bonus pays once');
+        r = D.hqDailyOpsJudge(p, win({ kills: 9, date: '2026-09-12' }));
+        assert.strictEqual(r.newly.length, 1); assert.strictEqual(r.done, 1, 'tomorrow is a new sheet');
+        assert.strictEqual(D.hqDailyOps(p, { date: '2026-09-12' }).done, 1);
+    } finally { HQ.dailyOps.force = null; }
+    assert.strictEqual(D.hqYesterday('2026-03-01'), '2026-02-28');
+    assert.match(D.hqCanonToday('2026-09-11'), /^\d+ (BC|AD)$/);
+});
+
+test('the punch clock (Room 247): the front door punches you in once a day; a missed day ends the streak, the rack keeps the best', () => {
+    const p = { username: 'probe', createdAt: '2026-01-01T00:00:00Z', door: { hq: {} } };
+    let r = D.hqPunchIn(p, { date: '2026-09-11' });
+    assert.ok(r.punched && r.first && r.streak === 1 && r.days === 1, 'the first card');
+    r = D.hqPunchIn(p, { date: '2026-09-11' });
+    assert.ok(!r.punched && r.streak === 1, 'once a day');
+    r = D.hqPunchIn(p, { date: '2026-09-12' });
+    assert.ok(r.punched && r.continued && r.streak === 2 && r.best === 2 && r.days === 2, 'the next day continues it');
+    let c = D.hqPunchClock(p, { date: '2026-09-13' });
+    assert.ok(!c.today && c.streak === 2 && !c.lapsed, 'still alive the morning after');
+    c = D.hqPunchClock(p, { date: '2026-09-14' });
+    assert.ok(c.streak === 0 && c.lapsed && c.best === 2, 'a missed day ends it; the best is kept');
+    r = D.hqPunchIn(p, { date: '2026-09-14' });
+    assert.ok(r.punched && !r.continued && r.streak === 1 && r.best === 2 && r.days === 3, 'starts over');
+    assert.strictEqual(D.hqPunchClock(null).streak, 0);
+});
+
+test('source scan: the renderer builds the clocks, the punch clock and the sheet; map.js punches in on arrival, hangs FORM 365 on the strip and the wall; battle.js judges the sheet at the commit and tags the stamp', () => {
+    const tr = fs.readFileSync(path.join(__dirname, 'three-renderer.js'), 'utf8');
+    const mp = fs.readFileSync(path.join(__dirname, 'map.js'), 'utf8');
+    const bt = fs.readFileSync(path.join(__dirname, 'battle.js'), 'utf8');
+    const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+    const css = fs.readFileSync(path.join(__dirname, 'styles-base.css'), 'utf8');
+    for (const k of ['world_clocks', 'punch_clock', 'form_sheet']) assert.match(tr, new RegExp('        ' + k + ': function \\(U\\) \\{'), 'the ' + k + ' builder');
+    assert.match(tr, /var names = \['SHASTA', 'GIZA', 'LOCAL', 'CERN', 'THE MOON'\];/, 'five named clocks');
+    assert.match(tr, /var walks = function \(def\) \{ return !!\(def && \(def\.libClips \|\| \(def\.clips && Object\.keys\(def\.clips\)\.length\)\)\); \};/, 'a static vessel never joins the roster draw (the sedan in Room 86)');
+    assert.match(mp, /if \(act\.overlay === 'form365'\) return _hqForm365Html\(\);/, 'the FORM 365 panel');
+    assert.match(mp, /if \(act\.overlay === 'punch'\) return _hqPunchHtml\(\);/, 'the punch clock panel');
+    assert.match(mp, /window\.hqPunchIn\(p\)/, 'the front door punches you in');
+    assert.match(mp, /const fp = _hqEl\('hqForm365'\);/, 'the strip pill');
+    assert.match(mp, /window\._hqOpenForm365 = function/, 'the pill opens the sheet');
+    assert.match(html, /id="hqForm365" class="hq-strip-stat hq-strip-form"/, 'the strip span');
+    assert.match(css, /\.hq-strip-stat\.hq-strip-form \{/, 'its paint');
+    assert.match(css, /\.door-result-stamp \.drs-site\.form365 \{/, 'the stamp colour');
+    assert.match(bt, /const res = hqDailyOpsJudge\(p, ev\);/, 'the commit judges the sheet');
+    assert.match(bt, /entropyStrikes: folded\.deltas\.entropyStrikes \| 0, codeRedCleared: !!window\._lastHqCodeRed,/, 'from the fold and the Code Red');
+    assert.match(bt, /window\._lastHqForm365 = res;/, 'the stamp reads it');
+    assert.ok(bt.indexOf('window._lastHqCodeRed = null;\n                window._lastHqForm365 = null;') >= 0, 'reset per commit');
+    assert.match(bt, /el\.className = 'drs-site on form365';/, 'the tag');
+    assert.ok(bt.indexOf("if (kind === 'match' && typeof DOOR_HQ !== 'undefined' && typeof hqDailyOpsJudge === 'function')") > bt.indexOf("console.warn('[HQ] code red commit skipped', e)"), 'judged after the Code Red so a cleared one counts');
+});

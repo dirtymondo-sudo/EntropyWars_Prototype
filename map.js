@@ -321,7 +321,12 @@
                 if (!p.door.hq || typeof p.door.hq !== 'object') p.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
                 if (p.door.hq.variantSeed == null) p.door.hq.variantSeed = Math.floor(Math.random() * 1e9);   // the variant roll's salt (plan 5.1), once per profile
                 if (doorId) { p.door.hq.lastDoor = doorId; p.door.hq.lastRoom = _hqCurRoom; }
-                else p.door.hq.visits = (p.door.hq.visits || 0) + 1;
+                else {
+                    p.door.hq.visits = (p.door.hq.visits || 0) + 1;
+                    /* THE PUNCH CLOCK (Room 247, plan 7.9): the front door
+                       punches you in once a day — the login streak */
+                    try { if (typeof window.hqPunchIn === 'function') { const pr = window.hqPunchIn(p); if (pr && pr.punched) window._hqLastPunch = pr; } } catch (e) {}
+                }
                 PS.saveProfile(idx, p);
             } catch (e) {}
         }
@@ -407,6 +412,17 @@
                     const k = (typeof window.hqKeys === 'function') ? window.hqKeys(profile) : null;
                     ks.innerHTML = k ? `KEYS <b>${k.keys}</b>` : '';
                     ks.title = k ? `Keys secured: ${k.pickups} recovered in the field${k.issued ? ` + ${k.issued} issued by the Department` : ''}. Restricted doors ask for rank AND Keys.` : '';
+                }
+                /* FORM 365 (plan 7.9 / Room 247): the day's three lines, mirrored on the strip */
+                const fp = _hqEl('hqForm365');
+                if (fp) {
+                    const sh = (typeof window.hqDailyOps === 'function') ? window.hqDailyOps(profile) : null;
+                    if (sh) {
+                        fp.style.display = '';
+                        fp.classList.toggle('done', !!sh.allDone);
+                        fp.innerHTML = `FORM 365 <b>${sh.done}</b> / ${sh.total}`;
+                        fp.title = 'Daily Office Operations Requirements — ' + sh.rows.map(r => (r.done ? '☑ ' : '☐ ') + r.label).join(' · ') + '. Click for the sheet; it hangs in the Clock Room (Room 247).';
+                    } else { fp.style.display = 'none'; fp.innerHTML = ''; }
                 }
                 /* the day's Code Red (plan 3.3): strobes until cleared */
                 const cp = _hqEl('hqCodeRed');
@@ -972,6 +988,62 @@
             try { const p = ThreeRenderer.hq.pos(); return p ? window.hqRingSectorAt(room, p.deg) : null; } catch (e) { return null; }
         }
         /* the strip pill / anywhere in the building: the brief + the way there */
+        /* FORM 365 — Daily Office Operations Requirements (HQ plan 7.9 /
+           Room 247, 2026-09-11): the day's three lines, what each pays,
+           the punch clock, today's canon date; a walk button for a line
+           that names a bay; the sheet is read through data.js hqDailyOps. */
+        function _hqForm365Html() {
+            const profile = _hqProfile();
+            const sh = (typeof window.hqDailyOps === 'function') ? window.hqDailyOps(profile) : null;
+            let html = '<div class="hq-panel-hd"><b>FORM 365</b><span>DAILY OFFICE OPERATIONS REQUIREMENTS · THREE LINES A DAY</span></div>';
+            if (!sh) return html + '<p class="hq-panel-desc">No sheet on the wall. Sign in at Reception and one will be issued; it always is.</p><div class="hq-panel-actions"><button class="hq-btn" data-close="1">NOTED</button></div>';
+            const name = (profile && profile.username) || 'UNFILED';
+            const canon = (typeof window.hqCanonToday === 'function') ? window.hqCanonToday(sh.date) : '';
+            const pc = (typeof window.hqPunchClock === 'function') ? window.hqPunchClock(profile) : null;
+            html += `<div class="hq-site"><span class="hq-row-stamp tone-${sh.allDone ? 'admit' : 'deny'}">${sh.allDone ? 'COMPLETE' : (sh.done ? 'IN PROGRESS' : 'DUE TODAY')}</span>`
+                + `<span class="hq-site-kv"><b>DATE</b> ${_hqEsc(sh.date)}${canon ? ' · CANON ' + _hqEsc(canon) : ''} · THE SHEET RENEWS AT MIDNIGHT, YOUR CLOCK</span>`
+                + `<span class="hq-site-kv"><b>OFFICER</b> ${_hqEsc(name)} · EMPLOYEE NO. ${_hqEsc(sh.who)}</span>`
+                + `<span class="hq-site-kv"><b>PAY</b> 💰 ${sh.pay} HAZARD PAY PER LINE · 💰 ${sh.allBonus} FOR THE WHOLE SHEET${sh.paid ? ' · PAID TODAY 💰 ' + sh.paid : ''}</span></div>`;
+            html += '<div class="hq-rows">' + sh.rows.map((r, i) => `<div class="hq-row hq-row-tray"><b>${i + 1}. ${_hqEsc(r.label)}</b><span>${_hqEsc(r.sub || '')}</span><i class="hq-lamp-chip st-${r.done ? 'stabilized' : 'unstable'}">${r.done ? 'FILED' : 'OPEN'}</i></div>`).join('') + '</div>';
+            if (pc) html += `<div class="hq-chips"><span>PUNCH CLOCK</span><i class="hq-chip">${pc.streak ? 'DAY ' + pc.streak + ' IN A ROW' : 'NOT PUNCHED IN'}</i><i class="hq-chip dim">BEST ${pc.best}</i><i class="hq-chip dim">${pc.days} DAY${pc.days === 1 ? '' : 'S'} ON THE CLOCK</i></div>`;
+            html += '<div class="hq-panel-actions">';
+            const walk = sh.rows.find(r => !r.done && r.sector && (r.id === 'site' || r.id === 'codered' || r.id === 'native'));
+            if (walk && _hqCurRoom !== 'central_egress') {
+                const bayId = (typeof window.hqBayId === 'function') ? window.hqBayId(walk.sector) : ('bay_' + walk.sector);
+                if (_hqRoomExists(bayId)) html += `<button class="hq-btn" data-room="${_hqEsc(bayId)}" data-at="${_hqEsc(_hqBayEntry(walk.sector))}">GO TO BAY ${_hqEsc(String((typeof window.hqBayNo === 'function' && window.hqBayNo(walk.sector)) || '?'))}</button>`;
+            }
+            html += '<button class="hq-btn hq-btn-primary" data-fn="_goToQuickPlay">ANSWER A BELL CALL ▸ QUICK PLAY</button>';
+            if (_hqCurRoom === 'clockroom') html += '<button class="hq-btn" data-goto="punch">THE PUNCH CLOCK</button>';
+            html += '<button class="hq-btn" data-close="1">NOTED</button></div>';
+            html += '<p class="hq-panel-note">A new sheet every day, drawn from the date and your employee number. Lines that say WIN need a win; the rest count win or lose. Each line pays on the way out of the crossing; the whole sheet pays once. Nobody has ever done four.</p>';
+            return html;
+        }
+        /* the PUNCH CLOCK (Room 247): the login streak — the front door
+           punches you in on a fresh arrival (map.js _hqRecordVisit) */
+        function _hqPunchHtml() {
+            const profile = _hqProfile();
+            const pc = (typeof window.hqPunchClock === 'function') ? window.hqPunchClock(profile) : null;
+            let html = '<div class="hq-panel-hd"><b>PUNCH CLOCK</b><span>TIME & ATTENDANCE · THE CARD RACK</span></div>';
+            if (!pc) return html + '<p class="hq-panel-desc">No card in the rack. Sign in at Reception first.</p><div class="hq-panel-actions"><button class="hq-btn" data-close="1">NOTED</button></div>';
+            const lp = window._hqLastPunch;
+            html += '<div class="hq-rows">';
+            html += `<div class="hq-row hq-row-tray"><b>PUNCHED IN TODAY</b><span>${_hqEsc(pc.date)}${lp && lp.first ? ' · YOUR FIRST CARD' : ''}</span><i class="hq-lamp-chip st-${pc.today ? 'stabilized' : 'off'}">${pc.today ? 'YES' : 'NO'}</i></div>`;
+            html += `<div class="hq-row hq-row-tray"><b>DAYS IN A ROW</b><span>${pc.lapsed ? 'THE LAST STREAK LAPSED — MISS A DAY AND THE CARD STARTS OVER' : 'ONE PUNCH A DAY KEEPS IT ALIVE'}</span><i class="hq-lamp-chip st-${pc.streak ? 'open' : 'off'}">${pc.streak}</i></div>`;
+            html += `<div class="hq-row hq-row-tray"><b>BEST STREAK</b><span>THE RACK REMEMBERS</span><i class="hq-lamp-chip st-${pc.best ? 'open' : 'off'}">${pc.best}</i></div>`;
+            html += `<div class="hq-row hq-row-tray"><b>DAYS ON THE CLOCK</b><span>EVERY CARD EVER PUNCHED</span><i class="hq-lamp-chip st-${pc.days ? 'open' : 'off'}">${pc.days}</i></div>`;
+            if (pc.last) html += `<div class="hq-row hq-row-tray"><b>LAST PUNCH</b><span>ON YOUR CLOCK</span><i class="hq-lamp-chip st-open">${_hqEsc(pc.last)}</i></div>`;
+            html += '</div>';
+            html += '<div class="hq-panel-actions">';
+            if (_hqCurRoom === 'clockroom') html += '<button class="hq-btn hq-btn-primary" data-goto="form365">FORM 365 ▸ THE SHEET</button>';
+            html += '<button class="hq-btn" data-close="1">NOTED</button></div>';
+            html += '<p class="hq-panel-note">The clock punches you in when you come through the front door; there is no button for it, and the red one does nothing. Every clock in this room shows a different time. The card believes whichever one you do.</p>';
+            return html;
+        }
+        window._hqOpenForm365 = function () {
+            if (_hqSuspended || state.gameState !== GS.HQ) return;
+            if (_hqPanelTarget) window._hqClosePanel();
+            _hqOpenPanel({ kind: 'counter', id: 'form365', label: 'FORM 365', sub: 'DAILY OFFICE OPERATIONS REQUIREMENTS', counter: { id: 'form365', action: { overlay: 'form365' } } });
+        };
         function _hqCodeRedHtml() {
             const profile = _hqProfile();
             const cr = (typeof window.hqCodeRed === 'function') ? window.hqCodeRed(profile) : null;
@@ -1235,10 +1307,17 @@
             if (act.overlay === 'directory') return _hqDirectoryHtml();
             if (act.overlay === 'intray') return _hqInTrayHtml();
             if (act.overlay === 'codered') return _hqCodeRedHtml();
+            if (act.overlay === 'form365') return _hqForm365Html();
+            if (act.overlay === 'punch') return _hqPunchHtml();
             if (act.overlay === 'training') return _hqTrainingHtml();
             if (act.overlay === 'crossing') return _hqCrossingHtml(t);
             let html = `<div class="hq-panel-hd"><b>${_hqEsc(c.label)}</b><span>${_hqEsc(c.sub || '')}</span></div>`;
             if (c.id === 'board') html += '<p class="hq-panel-desc">Six laminated photographs. The frame in the corner has been empty since 1987. Nobody comments on it.</p>';
+            /* Room 86's notice board mirrors FORM 365 (Room 247, plan 7.9): the day's count and a way to the sheet */
+            if (c.id === 'notice') {
+                const sh = (typeof window.hqDailyOps === 'function') ? window.hqDailyOps(_hqProfile()) : null;
+                if (sh) html += `<p class="hq-panel-desc">Pinned under the photographs: today's FORM 365 — <b>${sh.done} / ${sh.total}</b> lines filed${sh.allDone ? ', the sheet is complete' : ''}. The sheet itself hangs in the Clock Room.</p><div class="hq-panel-actions"><button class="hq-btn" onclick="window._hqOpenForm365()">FORM 365 ▸ THE SHEET</button></div>`;
+            }
             if (act.fn) html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="${_hqEsc(act.fn)}">${_hqEsc(c.verb ? (String(c.verb).toUpperCase() + ' AT THE ' + String(c.label || 'COUNTER').toUpperCase()) : 'READ THE BOARD')} ▸ ${_hqEsc(_HQ_FN_LABELS[act.fn] || act.fn)}</button></div>`;
             return html;
         }

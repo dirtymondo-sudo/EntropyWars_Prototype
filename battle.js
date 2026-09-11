@@ -11307,11 +11307,13 @@
                     window._lastRecordsBroken = [];
                     window._lastHqSiteFlag = null;   // …nor a stale HQ site tag on the stamp
                     window._lastHqCodeRed = null;
+                    window._lastHqForm365 = null;
                     return;
                 }
                 _achCommittedMatchKey = _matchKey;
                 window._lastHqSiteFlag = null;   // per match: the result screen only tags a flag written by THIS commit
                 window._lastHqCodeRed = null;
+                window._lastHqForm365 = null;
 
                 const viewer = getViewerPlayer();
                 const won = state.winner === viewer;
@@ -11488,6 +11490,41 @@
                         }
                     }
                 } catch (e) { console.warn('[HQ] code red commit skipped', e); }
+
+                /* FORM 365 — Daily Office Operations Requirements (HQ plan
+                   7.9 / Room 247, 2026-09-11): the day's three lines are
+                   judged against THIS match (data.js hqDailyOpsJudge reads
+                   the same per-unit counters the fold above does); every
+                   line met pays Hazard Pay (local-mirror credit, like the
+                   Code Red bonus), the whole sheet pays once more. Standard
+                   matches only, win or lose (the line says which). Viewer-
+                   local, never on state (RULE #2). */
+                try {
+                    if (kind === 'match' && typeof DOOR_HQ !== 'undefined' && typeof hqDailyOpsJudge === 'function') {
+                        const PS = window.ProfileSystem;
+                        const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
+                        const p = (idx !== null && idx !== undefined && typeof PS.loadProfile === 'function') ? PS.loadProfile(idx) : null;
+                        if (p) {
+                            const mineU = (state.units || []).filter(u => u.player === viewer && !u._mdNpc);
+                            const gm = String(activeGameMode || '');
+                            const ev = {
+                                won, kind, bucket, date: (typeof hqToday === 'function') ? hqToday() : undefined,
+                                mapId: (typeof hqSiteId === 'function') ? hqSiteId(gm) : gm.replace(/_delta$/, ''),
+                                delta: /_delta$/.test(gm), cond: state._winCondition || null,
+                                races: mineU.map(u => u.race), kills: folded.deltas.kills | 0, hourglasses: folded.deltas.hourglasses | 0,
+                                entropyStrikes: folded.deltas.entropyStrikes | 0, codeRedCleared: !!window._lastHqCodeRed,
+                            };
+                            const res = hqDailyOpsJudge(p, ev);
+                            if (res && res.newly.length) {
+                                PS.saveProfile(idx, p);
+                                const total = (res.pay | 0) + (res.bonus | 0);
+                                if (total > 0 && typeof PS.creditLocalGold === 'function') PS.creditLocalGold(total);
+                                window._lastHqForm365 = res;
+                                addLog(`📋 FORM 365 — ${res.newly.map(r => r.label).join(' · ')} filed (${res.done}/${res.total}${res.allDone ? ', sheet complete' : ''}). Hazard Pay 💰 +${total}.`);
+                            }
+                        }
+                    }
+                } catch (e) { console.warn('[HQ] form 365 commit skipped', e); }
 
                 /* Personal records (§5): fold this match's bests into the
                    bucket's board. Standard matches only (the helper gates on
@@ -29666,9 +29703,18 @@
                site was already stabilized; what happened today is the bonus */
             const cr = window._lastHqCodeRed;
             window._lastHqCodeRed = null;
+            /* FORM 365 lines filed by this match (plan 7.9) ride the same tag */
+            const f3 = window._lastHqForm365;
+            window._lastHqForm365 = null;
+            const f3Tag = (f3 && f3.newly && f3.newly.length) ? 'FORM 365 · ' + f3.newly.map(r => r.label).join(' · ') + (f3.allDone ? ' · SHEET COMPLETE' : ' · ' + f3.done + '/' + f3.total) + ' · 💰 +' + ((f3.pay | 0) + (f3.bonus | 0)) : '';
             if (cr && cr.site && typeof DOOR_HQ !== 'undefined') {
-                el.textContent = 'CODE RED CLEARED · ' + cr.label + ' · 💰 +' + (cr.bonus | 0) + ' HAZARD PAY';
+                el.textContent = 'CODE RED CLEARED · ' + cr.label + ' · 💰 +' + (cr.bonus | 0) + ' HAZARD PAY' + (f3Tag ? ' · ' + f3Tag : '');
                 el.className = 'drs-site on codered';
+                return;
+            }
+            if (f3Tag && typeof DOOR_HQ !== 'undefined') {
+                el.textContent = f3Tag + ' HAZARD PAY';
+                el.className = 'drs-site on form365';
                 return;
             }
             if (!flag || !flag.site || typeof DOOR_HQ === 'undefined') { el.className = 'drs-site'; el.textContent = ''; return; }

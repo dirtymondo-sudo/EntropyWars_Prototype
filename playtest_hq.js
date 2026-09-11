@@ -16,36 +16,72 @@ const fs = require('fs'), path = require('path');
 const REPO = __dirname;
 const { chromium } = require(path.join(REPO, 'node_modules/playwright'));
 const crypto = require('crypto');
-const LOCAL = new Set(['sprites.js', 'data.js', 'three-renderer.js', 'map.js']);
+const LOCAL = new Set(fs.readdirSync(REPO).filter(f => /\.(js|css)$/.test(f) && !/\.test\.js$/.test(f)));   // every repo script / style (the local edits under test)
 const HOSTS = new Set(['cdn.entropywars.net', 'cdnjs.cloudflare.com', 'cdn.jsdelivr.net', 'cdn.socket.io']);
 const CACHE = path.join(REPO, '.asset-cache'); fs.mkdirSync(CACHE, { recursive: true });
 const CT = { '.js': 'application/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.glb': 'model/gltf-binary', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.wav': 'audio/wav' };
-/* Chromium cannot reach the CDN through the sandbox proxy (resets); Node fetch can — so the browser runs with no network and every CDN asset is fetched Node-side, cached on disk, and fulfilled. */
+/* Chromium cannot reach the CDN through the sandbox proxy (resets); Node fetch can — so every CDN
+   asset is fetched Node-side ONCE into .asset-cache/ and served back to the browser. Since 2026-09-11
+   the bytes go over a LOCAL HTTP MIRROR (an in-process server on :3999) and the page route only
+   REDIRECTS there: fulfilling multi-megabyte GLBs through route.fulfill() pushes them down Chromium's
+   DevTools pipe, and with a warm cache (everything landing at once) the browser exited cleanly
+   ~10 s after launch ("Connection terminated while reading from pipe") on every run. */
+const http = require('http');
+const inflight = new Map();
+function startAssetMirror(port) {
+  const srv = http.createServer(async (req, res) => {
+    const u = new URL(req.url, 'http://x');
+    res.setHeader('Access-Control-Allow-Origin', '*'); res.setHeader('Cache-Control', 'no-store');
+    try {
+      if (u.pathname.startsWith('/local/')) {
+        const f = path.join(REPO, path.basename(u.pathname));
+        if (!fs.existsSync(f)) { res.statusCode = 404; return res.end(); }
+        res.setHeader('Content-Type', CT[path.extname(f)] || 'application/javascript');
+        return fs.createReadStream(f).pipe(res);
+      }
+      if (u.pathname === '/a') {
+        const url = u.searchParams.get('u'); const U = new URL(url);
+        const base = path.basename(U.pathname);
+        const key = crypto.createHash('md5').update(U.origin + U.pathname).digest('hex').slice(0, 12) + '_' + base;
+        const file = path.join(CACHE, key), ct = CT[path.extname(base).toLowerCase()] || 'application/octet-stream';
+        if (!fs.existsSync(file)) {
+          if (!inflight.has(key)) inflight.set(key, (async () => {
+            const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status);
+            fs.writeFileSync(file + '.part', Buffer.from(await r.arrayBuffer())); fs.renameSync(file + '.part', file);
+          })().finally(() => inflight.delete(key)));
+          try { await inflight.get(key); } catch (e) { res.statusCode = 502; return res.end(String(e.message)); }
+        }
+        res.setHeader('Content-Type', ct); res.setHeader('Content-Length', fs.statSync(file).size);
+        return fs.createReadStream(file).pipe(res);
+      }
+      res.statusCode = 404; res.end();
+    } catch (e) { res.statusCode = 500; res.end(String(e.message)); }
+  });
+  srv.listen(port, '127.0.0.1');
+  return srv;
+}
 async function installNodeFetchCache(context) {
-  let hits = 0, misses = 0, fails = 0;
+  let local = 0, mirrored = 0, aborted = 0;
+  const A = 'http://127.0.0.1:' + MIRROR_PORT;
   await context.route('**/*', async (route) => {
     const url = route.request().url(); let u; try { u = new URL(url); } catch (e) { return route.continue(); }
     if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') return route.continue();
-    if (!HOSTS.has(u.host)) return route.abort();
+    if (!HOSTS.has(u.host)) { aborted++; return route.abort(); }
     const base = path.basename(u.pathname);
-    if (LOCAL.has(base)) return route.fulfill({ status: 200, contentType: 'application/javascript', body: fs.readFileSync(path.join(REPO, base)) });
-    const key = crypto.createHash('md5').update(u.origin + u.pathname).digest('hex').slice(0, 12) + '_' + base;
-    const file = path.join(CACHE, key), ct = CT[path.extname(base).toLowerCase()] || 'application/octet-stream';
-    if (fs.existsSync(file)) { hits++; return route.fulfill({ status: 200, contentType: ct, body: fs.readFileSync(file) }); }
-    try {
-      const r = await fetch(url); if (!r.ok) { fails++; return route.fulfill({ status: r.status, body: '' }); }
-      const buf = Buffer.from(await r.arrayBuffer()); fs.writeFileSync(file, buf); misses++;
-      return route.fulfill({ status: 200, contentType: ct, body: buf });
-    } catch (e) { fails++; return route.abort(); }
+    if (LOCAL.has(base)) { local++; return route.fulfill({ status: 302, headers: { location: A + '/local/' + base } }); }
+    mirrored++;
+    return route.fulfill({ status: 302, headers: { location: A + '/a?u=' + encodeURIComponent(u.origin + u.pathname) } });
   });
-  return { stats: () => ({ hits, misses, fails }) };
+  return { stats: () => ({ local, mirrored, aborted }) };
 }
+const MIRROR_PORT = +(process.env.EW_MIRROR_PORT || 3999);
 const room = process.argv[2] || 'central_egress';
 const force = JSON.parse(process.argv[3] || '{}');
 const tag = process.argv[4] || '';
 const OUT = path.join(REPO, 'shots/hq');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 (async () => {
+  const mirror = startAssetMirror(MIRROR_PORT);
   const exe = process.env.PW_CHROMIUM || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
   const browser = await chromium.launch({ headless: true, executablePath: fs.existsSync(exe) ? exe : undefined,
     args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage', '--proxy-server=direct://', '--proxy-bypass-list=*'] });
@@ -59,7 +95,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await page.goto('http://localhost:3000/?hq', { waitUntil: 'commit', timeout: 70000 });
   /* the page may reload once (?hq dev flag); poll the globals, tolerating navigations */
   { const t0 = Date.now(); let ok = false, last = null;
-    while (Date.now() - t0 < 180000) { try { last = await page.evaluate(() => [document.readyState, typeof window._hqEnter, typeof window.hqCastInRoom, typeof ThreeRenderer, !!(typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq)]); if (last[0] === 'complete' && last[1] === 'function' && last[2] === 'function' && last[4]) { ok = true; break; } } catch (e) { last = ['nav']; } await sleep(1000); }
+    while (Date.now() - t0 < 180000) { try { last = await page.evaluate(() => [document.readyState, typeof window._hqEnter, typeof window.hqCastInRoom, typeof ThreeRenderer, !!(typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq)]); if ((last[0] === 'complete' || (last[0] === 'interactive' && Date.now() - t0 > 30000)) && last[1] === 'function' && last[2] === 'function' && last[4]) { ok = true; break; } } catch (e) { last = ['nav']; } await sleep(1000); }
     console.log('page state', JSON.stringify(last), 'after', ((Date.now() - t0) / 1000).toFixed(0), 's');
     if (!ok) { console.log('failed requests:', JSON.stringify(failed.slice(0, 6))); console.log('errors:', JSON.stringify(errs.slice(0, 6))); await browser.close(); process.exit(1); } }
   await page.evaluate((force) => {
@@ -116,4 +152,5 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   console.log('ERRORS', JSON.stringify(errs.slice(0, 8)));
   console.log('LOGS', JSON.stringify(logs.slice(0, 30)));
   await browser.close();
+  mirror.close();
 })().catch(e => { console.error('PROBE FAIL', e); process.exit(1); });

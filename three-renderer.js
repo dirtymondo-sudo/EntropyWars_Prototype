@@ -10200,14 +10200,29 @@ const ThreeRenderer = (function () {
         var urls = _libUrls(def);
         var bakeKey = urls.join('|') + (_libStandardPose(def) ? '|std' : '|keep') + '|' + Object.keys(def.libClips || {}).length;
         if (modelEntry._libBakedFrom === bakeKey) { cb(modelEntry._libBaked); return; }
-        if (modelEntry._libBakeCbs) { modelEntry._libBakeCbs.push(cb); return; }
+        if (modelEntry._libBakeCbs) {
+            /* a bake is in flight on this model: join it only when it is the
+               SAME slot set — a posed building agent (the cast poses merged
+               into the agent-in-black def, 45 slots) sharing the model with a
+               plain agent (33) used to be handed the plain bake and stood
+               beside its chair (2026-09-11, the Clock Room's timekeeper);
+               a different key waits for the flight to land, then bakes */
+            if (modelEntry._libBakingKey === bakeKey) { modelEntry._libBakeCbs.push(cb); return; }
+            (modelEntry._libBakeAfter = modelEntry._libBakeAfter || []).push(function () { _animLibBakeForModel(def, modelEntry, cb); });
+            return;
+        }
         modelEntry._libBakeCbs = [cb];
+        modelEntry._libBakingKey = bakeKey;
         function settle(result) {
             modelEntry._libBaked = result;
             modelEntry._libBakedFrom = bakeKey;
             var cbs = modelEntry._libBakeCbs;
             modelEntry._libBakeCbs = null;
+            modelEntry._libBakingKey = null;
             for (var i = 0; i < cbs.length; i++) { try { cbs[i](result); } catch (_e) {} }
+            var after = modelEntry._libBakeAfter;
+            modelEntry._libBakeAfter = null;
+            if (after) for (var j = 0; j < after.length; j++) { try { after[j](); } catch (_e2) {} }
         }
         var pending = urls.length;
         function onOneSettled() {
@@ -31851,6 +31866,82 @@ const ThreeRenderer = (function () {
             var strip = _hqBox(W - 0.3, 0.05, 0.004, _hqBasic(0xd9b45a)); strip.position.set(0, (H - 0.1) * U, (D * 0.3 + 0.022) * U); g.add(strip);
             return g;
         },
+        /* THE CLOCK ROOM (Room 247, 2026-09-11 — plan 7.4 / 7.9). Three
+           procs, all wall-mounted, front = +z like the notice board. */
+        /* five clock faces on one rail — SHASTA · GIZA · LOCAL · CERN · THE
+           MOON — every one of them set to a different time on purpose */
+        world_clocks: function (U) {
+            var g = new THREE.Group();
+            var W = 2.5, H = 0.62;
+            var rail = _hqBox(W, H, 0.04, _hqMat('teal', 3, 1, { shininess: 30 })); rail.position.set(0, (H / 2) * U, 0.02 * U); g.add(rail);
+            var rim = _hqMat(null, 1, 1, { color: 0x2a2a30, shininess: 60, specular: 0x666666 });
+            var face = _hqMat(null, 1, 1, { color: 0xf1ead6, shininess: 4 });
+            var hand = _hqBasic(0x1a1a1e), red = _hqBasic(0xd83a3a);
+            var names = ['SHASTA', 'GIZA', 'LOCAL', 'CERN', 'THE MOON'];
+            var times = [[10, 10], [3, 40], [7, 22], [11, 58], [1, 5]];   // none of them agree
+            for (var i = 0; i < 5; i++) {
+                var x = (-1 + i * 0.5) * U, y = 0.37 * U;
+                var ring = new THREE.Mesh(new THREE.CylinderGeometry(0.15 * U, 0.15 * U, 0.05 * U, 28), rim); ring.rotation.x = Math.PI / 2; ring.position.set(x, y, 0.065 * U); g.add(ring);
+                var dial = new THREE.Mesh(new THREE.CylinderGeometry(0.13 * U, 0.13 * U, 0.056 * U, 28), face); dial.rotation.x = Math.PI / 2; dial.position.set(x, y, 0.068 * U); g.add(dial);
+                for (var t = 0; t < 12; t++) { var tk = _hqBox(0.008, t % 3 ? 0.018 : 0.03, 0.004, hand); tk.geometry.translate(0, (0.115 - (t % 3 ? 0.009 : 0.015)) * U, 0); tk.rotation.z = -t / 12 * Math.PI * 2; tk.position.set(x, y, 0.098 * U); g.add(tk); }
+                var hh = (times[i][0] % 12) + times[i][1] / 60, mm = times[i][1];
+                var hb = _hqBox(0.016, 0.075, 0.005, hand); hb.geometry.translate(0, 0.03 * U, 0); hb.rotation.z = -hh / 12 * Math.PI * 2; hb.position.set(x, y, 0.1 * U); g.add(hb);
+                var mb = _hqBox(0.011, 0.11, 0.005, hand); mb.geometry.translate(0, 0.048 * U, 0); mb.rotation.z = -mm / 60 * Math.PI * 2; mb.position.set(x, y, 0.104 * U); g.add(mb);
+                var sb = _hqBox(0.005, 0.115, 0.004, red); sb.geometry.translate(0, 0.045 * U, 0); sb.rotation.z = -((i * 7 + 3) % 12) / 12 * Math.PI * 2; sb.position.set(x, y, 0.108 * U); g.add(sb);
+                var pin = new THREE.Mesh(new THREE.SphereGeometry(0.01 * U, 8, 6), red); pin.position.set(x, y, 0.11 * U); g.add(pin);
+                var tex = (typeof _hzTextTex === 'function') ? _hzTextTex('hqclk_' + i, [names[i]], { w: 256, h: 64, bg: '#15151a', color: '#e9dfc6', pad: 0.2 }) : null;
+                if (tex) { var lab = new THREE.Mesh(new THREE.PlaneGeometry(0.42 * U, 0.105 * U), new THREE.MeshBasicMaterial({ map: tex })); lab.position.set(x, 0.1 * U, 0.045 * U); g.add(lab); }
+            }
+            return g;
+        },
+        /* the PUNCH CLOCK: the machine with a card in its slot, the dial, the
+           red button, and the card rack beside it (two rows of time cards) */
+        punch_clock: function (U) {
+            var g = new THREE.Group();
+            var steel = _hqMat(null, 1, 1, { color: 0x3c4048, shininess: 40, specular: 0x555555 });
+            var chrome = _hqMat(null, 1, 1, { color: 0xb8bcc4, shininess: 80, specular: 0x888888 });
+            var manila = _hqMat(null, 1, 1, { color: 0xd9c48a, shininess: 2 }), ink = _hqBasic(0x1a1a1e), red = _hqBasic(0xd83a3a);
+            var body = _hqBox(0.32, 0.4, 0.2, steel); body.position.set(-0.22 * U, 0.2 * U, 0.1 * U); g.add(body);
+            var lip = _hqBox(0.34, 0.03, 0.22, chrome); lip.position.set(-0.22 * U, 0.405 * U, 0.11 * U); g.add(lip);
+            var slot = _hqBox(0.12, 0.014, 0.05, ink); slot.position.set(-0.22 * U, 0.422 * U, 0.08 * U); g.add(slot);
+            var card = _hqBox(0.085, 0.17, 0.004, manila); card.position.set(-0.22 * U, 0.49 * U, 0.08 * U); card.rotation.z = 0.03; g.add(card);
+            var dialRim = new THREE.Mesh(new THREE.CylinderGeometry(0.095 * U, 0.095 * U, 0.02 * U, 24), chrome); dialRim.rotation.x = Math.PI / 2; dialRim.position.set(-0.22 * U, 0.28 * U, 0.205 * U); g.add(dialRim);
+            var dial = new THREE.Mesh(new THREE.CylinderGeometry(0.08 * U, 0.08 * U, 0.024 * U, 24), _hqMat(null, 1, 1, { color: 0xf1ead6, shininess: 4 })); dial.rotation.x = Math.PI / 2; dial.position.set(-0.22 * U, 0.28 * U, 0.208 * U); g.add(dial);
+            var hb = _hqBox(0.012, 0.05, 0.004, ink); hb.geometry.translate(0, 0.02 * U, 0); hb.rotation.z = -(8 + 47 / 60) / 12 * Math.PI * 2; hb.position.set(-0.22 * U, 0.28 * U, 0.222 * U); g.add(hb);
+            var mb = _hqBox(0.008, 0.07, 0.004, ink); mb.geometry.translate(0, 0.03 * U, 0); mb.rotation.z = -47 / 60 * Math.PI * 2; mb.position.set(-0.22 * U, 0.28 * U, 0.224 * U); g.add(mb);
+            var btn = _hqBox(0.07, 0.035, 0.025, red); btn.position.set(-0.22 * U, 0.1 * U, 0.21 * U); g.add(btn);
+            var plate = _hqBox(0.4, 0.42, 0.02, _hqMat('teal', 1, 1, { shininess: 30 })); plate.position.set(0.2 * U, 0.21 * U, 0.01 * U); g.add(plate);
+            for (var r = 0; r < 2; r++) for (var c = 0; c < 4; c++) {
+                if (r === 1 && c === 2) continue;   // one card is in the machine
+                var tc = _hqBox(0.075, 0.15, 0.004, manila); tc.position.set((0.065 + c * 0.09) * U, (0.31 - r * 0.19) * U, 0.024 * U); tc.rotation.z = ((r * 4 + c) % 3 - 1) * 0.02; g.add(tc);
+                var ln = _hqBox(0.05, 0.004, 0.002, ink); ln.position.set((0.065 + c * 0.09) * U, (0.36 - r * 0.19) * U, 0.027 * U); g.add(ln);
+            }
+            return g;
+        },
+        /* FORM 365 on the wall: a clipboard board, the header, three ruled
+           lines with a box each — the day's sheet (the counter reads it) */
+        form_sheet: function (U) {
+            var g = new THREE.Group();
+            var W = 0.76, H = 1.02;
+            var board = _hqBox(W, H, 0.03, _hqMat('teal', 1, 1, { shininess: 30 })); board.position.set(0, (H / 2) * U, 0.015 * U); g.add(board);
+            var paper = _hqBox(W - 0.1, H - 0.12, 0.004, _hqMat(null, 1, 1, { color: 0xefe8d2, shininess: 2 })); paper.position.set(0, (H / 2 - 0.02) * U, 0.033 * U); g.add(paper);
+            var clip = _hqBox(0.16, 0.05, 0.05, _hqMat(null, 1, 1, { color: 0xb8bcc4, shininess: 80, specular: 0x888888 })); clip.position.set(0, (H - 0.03) * U, 0.03 * U); g.add(clip);
+            var tex = (typeof _hzTextTex === 'function') ? _hzTextTex('hqform365', ['FORM 365', 'DAILY OFFICE OPERATIONS REQUIREMENTS', 'THREE LINES · ONE DAY · NO FOURTH LINE'], { w: 512, h: 192, bg: '#efe8d2', color: '#2c241c', pad: 0.12, sizes: [64, 30, 22] }) : null;
+            if (tex) { var head = new THREE.Mesh(new THREE.PlaneGeometry(0.62 * U, 0.23 * U), new THREE.MeshBasicMaterial({ map: tex })); head.position.set(0, 0.79 * U, 0.037 * U); g.add(head); }
+            var ink = _hqBasic(0x2c241c), stamp = _hqBasic(0xb3261e);
+            for (var i = 0; i < 3; i++) {
+                var y = (0.58 - i * 0.16) * U;
+                var fr = _hqBox(0.07, 0.07, 0.003, ink); fr.position.set(-0.24 * U, y, 0.036 * U); g.add(fr);
+                var inn = _hqBox(0.058, 0.058, 0.003, _hqBasic(0xefe8d2)); inn.position.set(-0.24 * U, y, 0.0375 * U); g.add(inn);
+                var rule = _hqBox(0.42, 0.005, 0.002, ink); rule.position.set(0.05 * U, (y / U - 0.03) * U, 0.037 * U); g.add(rule);
+                var rule2 = _hqBox(0.42, 0.003, 0.002, ink); rule2.position.set(0.05 * U, (y / U + 0.02) * U, 0.037 * U); g.add(rule2);
+            }
+            var st = _hqBox(0.26, 0.09, 0.003, stamp); st.position.set(0.14 * U, 0.12 * U, 0.037 * U); st.rotation.z = -0.12; g.add(st);
+            var stIn = _hqBox(0.24, 0.07, 0.003, _hqBasic(0xefe8d2)); stIn.position.set(0.14 * U, 0.12 * U, 0.0385 * U); stIn.rotation.z = -0.12; g.add(stIn);
+            var stTex = (typeof _hzTextTex === 'function') ? _hzTextTex('hqform365_stamp', ['DUE TODAY'], { w: 256, h: 64, bg: '#efe8d2', color: '#b3261e', pad: 0.18 }) : null;
+            if (stTex) { var stM = new THREE.Mesh(new THREE.PlaneGeometry(0.22 * U, 0.06 * U), new THREE.MeshBasicMaterial({ map: stTex })); stM.position.set(0.14 * U, 0.12 * U, 0.0435 * U); stM.rotation.z = -0.12; g.add(stM); }
+            return g;
+        },
         /* the MÖBIUS BAR: one band with a half twist round a 1.5 m ring at
            1.05 m (the counter's centreline), three chrome posts, a brass foot
            rail and a pink strip light under the lip. One side, one edge; the
@@ -32489,9 +32580,13 @@ const ThreeRenderer = (function () {
             var prof = opts.profile;
             var unl = (prof && prof.account && prof.account.unlockedUnits) || [];
             var pool = (typeof AVAILABLE_RACES !== 'undefined') ? AVAILABLE_RACES.slice() : [];
+            /* a vessel that WALKS: a rigged model with clips (its own or the
+               library's) — a static mesh (the parked sedan) never joins the
+               lunch queue (2026-09-11 walkthrough: a car in Room 86) */
+            var walks = function (def) { return !!(def && (def.libClips || (def.clips && Object.keys(def.clips).length))); };
             pool.forEach(function (rk) {
                 if (rk === (av.race || '') || rk === 'men in black') return;
-                if (typeof getRace3DModel !== 'function' || !getRace3DModel(rk, 'male') && !getRace3DModel(rk, 'female')) return;
+                if (typeof getRace3DModel !== 'function' || !walks(getRace3DModel(rk, 'male')) && !walks(getRace3DModel(rk, 'female'))) return;
                 if (unl.length && unl.indexOf(rk) < 0 && !(window._DEV_UNLOCK_ALL)) return;
                 owned.push(rk);
             });
@@ -33613,6 +33708,8 @@ const ThreeRenderer = (function () {
         dev: {
             /* the live scene graph (repo probes: playtest_maps.js PROBE) */
             scene: function () { return scene; },
+            /* the building's own scene (the walkthrough probes, 2026-09-11) */
+            hqScene: function () { return _hq ? _hq.scene : null; },
             /* {deg, r} | {x, z}, level, y (extra), face (heading), pitch, dist, fp */
             teleport: function (o) {
                 if (!_hq || !_hq.player) return false;
@@ -33661,7 +33758,15 @@ const ThreeRenderer = (function () {
             props: function () {
                 if (!_hq) return [];
                 var U = _hqUnits(), out = [];
-                _hq.propGroup.children.forEach(function (g) { out.push({ name: g.name || '', x: +(g.position.x / U).toFixed(2), z: +(g.position.z / U).toFixed(2), y: +(g.position.y / U).toFixed(2) }); });
+                /* + the catalogue key and the world box in metres (2026-09-11:
+                   the walkthrough probes measure the furniture with it) */
+                _hq.propGroup.children.forEach(function (g) {
+                    var key = ''; for (var i = 0; i < _hq.props.length; i++) if (_hq.props[i].grp === g) { key = _hq.props[i].key; break; }
+                    var b = new THREE.Box3().setFromObject(g), ok = isFinite(b.min.y) && isFinite(b.max.y);
+                    out.push({ name: g.name || '', key: key, x: +(g.position.x / U).toFixed(2), z: +(g.position.z / U).toFixed(2), y: +(g.position.y / U).toFixed(2),
+                        minY: ok ? +(b.min.y / U).toFixed(2) : null, maxY: ok ? +(b.max.y / U).toFixed(2) : null,
+                        w: ok ? +((b.max.x - b.min.x) / U).toFixed(2) : null, d: ok ? +((b.max.z - b.min.z) / U).toFixed(2) : null });
+                });
                 return out;
             },
         },

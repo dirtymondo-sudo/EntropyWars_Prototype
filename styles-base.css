@@ -4123,6 +4123,9 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-strip-stat { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.22em; color: #8fd3a0; }
 .hq-strip-stat b { color: #ece7d8; font-weight: 600; }
 .hq-strip-stat.hq-strip-keys { color: #d9b45a; }
+/* FORM 365 (Room 247, plan 7.9): the day's three lines on the strip — click for the sheet */
+.hq-strip-stat.hq-strip-form { color: #d9c27a; cursor: pointer; border: 1px solid rgba(217,194,122,0.35); padding: 3px 8px; }
+.hq-strip-stat.hq-strip-form.done { color: #8fd3a0; border-color: rgba(143,211,160,0.45); }
 /* the CODE RED pill on the strip (HQ plan 3.3): strobes with the door lamps; click = the brief */
 .hq-strip-alert { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.22em; color: #ffd2d2; background: rgba(120,10,10,0.75); border: 1px solid #ff4a4a; padding: 4px 9px; cursor: pointer; animation: hqStrobe 0.52s steps(2) infinite; }
 .hq-strip-alert b { color: #fff; font-weight: 600; }
@@ -4170,6 +4173,7 @@ body.diorama-3d .tile-underpass.jump::before {
 .door-result-stamp .drs-site.on { display: block; }
 .door-result-stamp .drs-site.partial { background: #b8862a; }
 .door-result-stamp .drs-site.codered { background: #b3261e; }
+.door-result-stamp .drs-site.form365 { background: #3a5fa8; }
 /* loading card: clearance check */
 .hq-load { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #050507; z-index: 40; transition: opacity 0.6s ease; }
 .hq-load.done { opacity: 0; pointer-events: none; }

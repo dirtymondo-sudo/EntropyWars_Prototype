@@ -16865,6 +16865,11 @@ const DOOR_HQ = {
            after-hours counter: one lathe, one side, one edge (plan 5.1's
            first variant). Both are three-renderer.js `_hqProcBuilders`. */
         notice_board:      { proc: 'notice_board',   h: 1.15,    foot: 0, wall: true, mount: 1.2,  depth: 0.06 },
+        /* the Clock Room's three (2026-09-11, plan 7.4 / 7.9): the world
+           clocks that disagree, the punch clock with its card rack, FORM 365 */
+        world_clocks:      { proc: 'world_clocks',   h: 0.62,    foot: 0, wall: true, mount: 2.05, depth: 0.10 },
+        punch_clock:       { proc: 'punch_clock',    h: 0.46,    foot: 0, wall: true, mount: 1.30, depth: 0.22 },
+        form_sheet:        { proc: 'form_sheet',     h: 1.02,    foot: 0, wall: true, mount: 1.25, depth: 0.05 },
         mobius_bar:        { proc: 'mobius_bar',     h: 1.5,     foot: 1.4, block: true },
         /* ══ THE 2026-09-10 BATCH (30 Meshy GLBs, R2 Assets/door/models/) ══
            The user's cafeteria / office / mission kit. Four of them RETIRE a
@@ -17025,6 +17030,20 @@ const DOOR_HQ = {
        site the same day) pays a hazard bonus. `force` = a launch-map id
        that overrides the pick (dev: ?codered=<mapId>, no mastery needed). */
     codeRed: { bonusGold: 200, force: null },
+
+    /* FORM 365 — Daily Office Operations Requirements (HQ plan 7.9 / Room
+       247, 2026-09-11): three requirements a day, drawn like the Code Red
+       from the local date + the employee number (the same sheet all day, a
+       new one tomorrow) over counters the match commit already keeps — a
+       win on a named site, a win by a named condition, Keys / exits in one
+       crossing, a native of a named bay on the roster, an Entropy Strike, a
+       Δ crossing, the day's Code Red. Each line pays `pay` Hazard Pay when
+       it is met (win or lose where the line does not say WIN), the whole
+       sheet pays `allBonus` on top. `hqDailyOps(profile)` reads the sheet,
+       `hqDailyOpsJudge(profile, ev)` marks it at the commit (battle.js),
+       the strip mirrors it, the Clock Room hangs it on the wall. `force` =
+       a list of template ids for a dev run (?form365=site,keys,strike). */
+    dailyOps: { pay: 120, allBonus: 150, count: 3, force: null },
 
     /* ── the seven bays as corridors (HQ plan 2.6, 2026-09-03) ──
        Every sector bay is a short CURVED corridor off the egress ring: the
@@ -18217,6 +18236,8 @@ const DOOR_HQ = {
                 { id: 'office',         deg: 150, level: 0, leaf: 'leaf_closet_warped',             label: 'YOUR OFFICE',             sub: 'JANITORIAL (CONVERTED)',     action: { room: 'office', at: 'egress' }, desc: 'A converted janitor’s closet. Cot, mop bucket, CRT, phone, drain. The in-tray is where the story arrives.', rankDoor: true },
                 { id: 'training',       deg: 180, level: 0, leaf: 'leaf_exit',                      label: 'TRAINING FACILITY',       sub: 'DOWNSTAIRS · ORIENTATION',   action: { room: 'training', at: 'egress' }, desc: 'Room 64. The only authorized square room in the building — an 8×8 grid, deemed totally safe, notoriously leaky. ORTHOGONAL GEOMETRY EXPOSURE AREA · MAX OCCUPANCY 45 MINUTES.' },
                 { id: 'medical',        deg: 210, level: 0, leaf: 'leaf_hospital',                  label: 'MEDICAL',                 sub: 'SUPPORT SERVICES',           action: { fn: '_goToCampaign' },    roomNo: '1111', why: 'the number you dial', desc: 'Where EXITED operatives are processed. Revives, retries, the Challenge services desk.' },
+                { id: 'clockroom',      deg: 225, level: 0, leaf: 'leaf_frosted',        wide: true,  label: 'THE CLOCK ROOM',          sub: 'SUPPORT SERVICES · FORM 365', action: { room: 'clockroom', at: 'egress' },
+                  desc: 'Daily Office Operations Requirements. Three lines a day, the punch clock, and every clock in the room — none of them agree, all of them are right somewhere.' },
                 { id: 'records',        deg: 240, level: 0, leaf: 'leaf_wired_double', wide: true,  label: 'RECORDS',                 sub: 'ARCHIVES · ENTITY REGISTRY', action: { fn: '_goToCodex' },       roomNo: '42', why: 'the room with the answer; it only keeps the file', desc: '“We only keep the file.” Entity dossiers, the tape library, unfiled sites.', alt: { label: 'REPLAY (TAPE LIBRARY)', fn: '_ewReplayLastMatch' }, alt2: { label: 'UNFILED SITES (COMMUNITY MAPS)', fn: '_mountCommunityMaps' } },
                 { id: 'bay_terrestrial',deg: 270, level: 0, leaf: 'leaf_suburban_house',            label: 'BAY 1 · TERRESTRIAL',    sub: 'CONTAINMENT BAY',            action: { sector: 'terrestrial' } },
                 /* ── mezzanine (support / executive access) ── */
@@ -18314,8 +18335,8 @@ const DOOR_HQ = {
                 { key: 'globe_lamp',   deg: 340, r: 9.9, level: 0 },
                 { key: 'globe_lamp',   deg: 20,  r: 9.9, level: 0 },
                 /* against the lower wall, between doors */
-                { key: 'filing_cabinet', deg: 226, level: 0, wall: true },
-                { key: 'filing_cabinet', deg: 229, level: 0, wall: true },
+                { key: 'filing_cabinet', deg: 232, level: 0, wall: true },   // moved 6° for the Clock Room's door at 225° (2026-09-11)
+                { key: 'filing_cabinet', deg: 235, level: 0, wall: true },
                 { key: 'cardboard_boxes', deg: 256, r: 19.3, level: 0, rot: 15 },
                 { key: 'office_locker',  deg: 134, level: 0, wall: true },
                 { key: 'locker',         deg: 137, level: 0, wall: true },
@@ -18343,7 +18364,7 @@ const DOOR_HQ = {
                 /* three empty round frames on the lower wall. Records has the
                    photographs. Records is not releasing the photographs. */
                 { key: 'picture_round_a', deg: 188, level: 0, wall: true },
-                { key: 'picture_round_b', deg: 218, level: 0, wall: true },
+                { key: 'picture_round_b', deg: 216, level: 0, wall: true },   // 2° west for the Clock Room's door (2026-09-11)
                 { key: 'picture_round_c', deg: 250, level: 0, wall: true },
                 { key: 'potted_plant',   deg: 84,  r: 19.2, level: 0 },   // 2026-09-11: was 76° — Room 86's door is there now
                 { key: 'potted_plant',   deg: 284, r: 19.2, level: 0 },
@@ -18557,7 +18578,7 @@ const DOOR_HQ = {
                 /* the notice board on the south wall → EMPLOYEE OF THE MONTH (the
                    leaderboard) until the Clock Room's FORM 365 exists (plan 7.9) */
                 { id: 'notice', x: -2.0, z: 3.9, face: 0, plateY: 2.05, radius: 1.9, verb: 'READ',
-                  label: 'NOTICE BOARD', sub: 'EMPLOYEE OF THE MONTH · FORM 365 (PENDING)', action: { fn: '_mountLeaderboard' } },
+                  label: 'NOTICE BOARD', sub: 'EMPLOYEE OF THE MONTH · FORM 365 IS IN ROOM 247', action: { fn: '_mountLeaderboard' } },
                 /* the till at the end of the line → the Quartermaster's satellite counter */
                 { id: 'till', x: 1.95, z: -2.65, face: 180, plateY: 1.9, radius: 1.8, verb: 'PAY',
                   label: 'THE TILL', sub: 'QUARTERMASTER · SATELLITE COUNTER', action: { fn: '_goToShop' } },
@@ -18569,7 +18590,7 @@ const DOOR_HQ = {
                 { key: 'tanker_desk',    wall: 'n', x: -1.2 },
                 { key: 'tanker_desk',    wall: 'n', x: 0.3 },
                 { key: 'reception_wedge', x: 1.95, z: -3.35, face: 200 },                    // the curved till: a straight counter needs a form
-                { key: 'cash_register',  x: 1.95, z: -3.3, y: 1.10, face: 180 },
+                { key: 'cash_register',  x: 1.55, z: -3.12, y: 0.76, face: 200 },           // on the wedge's counter (0.76 m — the 1.10 is its monitor), the arm the monitor leaves free
                 { key: 'meal_tray',      x: -4.4, z: -3.2, y: 0.76, face: 10 },
                 { key: 'meal_tray',      x: -3.6, z: -3.15, y: 0.76, face: -8 },
                 { key: 'meal_tray',      x: -2.2, z: -3.2, y: 0.76 },
@@ -18698,8 +18719,8 @@ const DOOR_HQ = {
                     ],
                     counters: [
                         { id: 'notice', x: -2.0, z: 3.9, face: 0, plateY: 2.05, radius: 1.9, verb: 'READ',
-                          label: 'NOTICE BOARD', sub: 'EMPLOYEE OF THE MONTH · FORM 365 (PENDING)', action: { fn: '_mountLeaderboard' } },
-                        { id: 'bar', x: 0, z: 2.9, face: 0, plateY: 1.75, radius: 2.2, verb: 'ORDER',
+                          label: 'NOTICE BOARD', sub: 'EMPLOYEE OF THE MONTH · FORM 365 IS IN ROOM 247', action: { fn: '_mountLeaderboard' } },
+                        { id: 'bar', x: 0, z: 2.1, face: 0, plateY: 1.45, radius: 2.2, verb: 'ORDER',
                           label: 'THE BAR', sub: 'QUARTERMASTER · ONE SIDE ONLY', action: { fn: '_goToShop' } },
                     ],
                     agents: [
@@ -18719,6 +18740,106 @@ const DOOR_HQ = {
                     ],
                 },
             },
+        },
+
+        /* ── ROOM 247 · THE CLOCK ROOM (HQ plan 7.4 / 7.9, 2026-09-11) — a box
+           room off the ground ring at 225°, between MEDICAL and RECORDS. The
+           user's 247 and 365 merged: 24/7, and the form number is the year.
+           FORM 365 (Daily Office Operations Requirements) hangs on the east
+           wall — the counter reads the day's sheet (hqDailyOps); the PUNCH
+           CLOCK beside it is the login streak (hqPunchClock); the notice
+           board on the south wall posts today's Code Red (the existing panel).
+           The WORLD CLOCKS over the timekeeper's desk read SHASTA · GIZA ·
+           LOCAL · CERN · THE MOON, and every clock in the room disagrees on
+           purpose (three more on the walls, hung at different heights). ── */
+        clockroom: {
+            label: 'THE CLOCK ROOM',
+            sub: 'SUPPORT SERVICES · FORM 365',
+            roomNo: '247', why: '24/7 — every clock in here is right somewhere; the form is the year',
+            kind: 'box',
+            shell: {
+                w: 9, d: 7, h: 3.4,
+                wallH: 3.4, dadoH: 1.05,
+                floor: 'terrazzo', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
+                pipes: false,
+                light: { x: 0, z: 0 },
+                plate: { x: 0, z: -3.25, y: 2.85 },
+            },
+            doors: [
+                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_frosted', wide: true,
+                  label: 'CENTRAL EGRESS', sub: 'OPERATIONS RING · THE WAY BACK',
+                  action: { room: 'central_egress', at: 'clockroom' },
+                  desc: 'The way back to the hall. The frosted glass says CLOCK ROOM backwards from this side, which is the right way round for the clocks.' },
+            ],
+            counters: [
+                /* FORM 365 on the east wall → the day's three requirements */
+                { id: 'form365', x: 3.55, z: -0.7, face: 90, plateY: 2.35, radius: 2.0, verb: 'READ',
+                  label: 'FORM 365', sub: 'DAILY OFFICE OPERATIONS REQUIREMENTS', action: { overlay: 'form365' } },
+                /* the punch clock → the login streak */
+                { id: 'punch', x: 3.55, z: 1.5, face: 90, plateY: 1.95, radius: 1.7, verb: 'PUNCH',
+                  label: 'PUNCH CLOCK', sub: 'TIME & ATTENDANCE', action: { overlay: 'punch' } },
+                /* the notice board on the south wall → today's Code Red (the hall's own panel) */
+                { id: 'codered', x: -1.6, z: 2.95, face: 180, plateY: 2.05, radius: 1.8, verb: 'READ',
+                  label: 'TODAY’S CODE RED', sub: 'POSTED · BOUNDARY EVENT', action: { overlay: 'codered' } },
+            ],
+            props: [
+                /* ── the north wall: the timekeeper's desk under the world clocks ── */
+                { key: 'world_clocks',   wall: 'n', x: -1.6 },
+                { key: 'tanker_desk',    x: -1.6, z: -2.35, face: 180 },
+                { key: 'crt_terminal',   x: -2.15, z: -2.45, y: 0.76, face: 180 },
+                { key: 'rotary_phone',   x: -0.95, z: -2.4, y: 0.76, face: 160 },
+                { key: 'papers_a',       x: -1.5, z: -2.15, y: 0.76, face: 15 },
+                { key: 'stapler',        x: -1.05, z: -2.05, y: 0.76, face: 40 },
+                { key: 'office_chair',   x: -1.6, z: -2.95, face: 180 },
+                { key: 'filing_cabinet', wall: 'n', x: 1.3 },
+                { key: 'filing_cabinet', wall: 'n', x: 2.0 },
+                { key: 'cardboard_boxes', x: 3.6, z: -2.9, face: 25 },
+                { key: 'vent_grille',    wall: 'n', x: 3.4, mount: 2.5 },
+                /* ── the east wall: FORM 365, the punch clock, the card rack ── */
+                { key: 'form_sheet',     wall: 'e', z: -0.7 },
+                { key: 'punch_clock',    wall: 'e', z: 1.5 },
+                { key: 'wall_clock',     wall: 'e', z: -2.4, mount: 2.85 },                   // disagrees with the north wall
+                { key: 'folding_chair',  x: 3.3, z: 2.6, face: 300 },                        // where you wait to punch in
+                { key: 'trash_bin',      x: 3.9, z: 0.4, face: 270 },
+                /* ── the south wall: today's Code Red, two more clocks, the breaker ── */
+                { key: 'notice_board',   wall: 's', x: -1.6 },
+                { key: 'wall_clock',     wall: 's', x: 0.5, mount: 2.8 },                    // …and with the east wall
+                { key: 'wall_clock',     wall: 's', x: 1.6, mount: 2.45 },                   // …and with the one beside it
+                { key: 'breaker_panel',  wall: 's', x: 3.4 },
+                { key: 'fire_extinguisher', wall: 's', x: 2.5 },
+                { key: 'water_cooler',   x: -3.8, z: 2.7 },
+                { key: 'folding_chair',  x: -2.9, z: 2.75, face: 20 },
+                /* ── the west wall: the way out, one clock over it ── */
+                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.75 },
+                { key: 'wall_clock',     wall: 'w', z: -2.2, mount: 2.7 },                   // the fifth clock; nobody has set it
+                { key: 'picture_round_c', wall: 'w', z: 2.2 },
+                { key: 'rug_office',     x: -3.1, z: 0, face: 90 },
+                { key: 'potted_plant',   x: -3.9, z: -2.9 },
+                /* ── the ceiling ── */
+                { key: 'fluorescent',    x: -1.9, z: 0, ceil: true, face: 90 },
+                { key: 'fluorescent',    x: 1.9,  z: 0, ceil: true, face: 90 },
+            ],
+            agents: [
+                { x: -1.6, z: -2.95, face: 180, pose: 'hqSit', gender: 'male', label: 'THE TIMEKEEPER', reach: 2.6,
+                  line: '“Which clock?” “The right one.” “They are all the right one. That is the job.”' },
+            ],
+            npcSpots: [
+                { x: 2.7, z: 1.5,  face: 90 },     // punching in
+                { x: 2.4, z: -0.7, face: 90 },     // reading the form
+                { x: -2.6, z: 1.6, face: 30 },
+            ],
+            onlineSpots: [
+                { x: 1.9, z: 2.1, face: 60 },
+                { x: 0.6, z: -1.6, face: 20 },
+            ],
+            lines: [
+                '“Three lines a day. Nobody has ever done four.” “Is there a fourth line?” “No.”',
+                '“Punch in.” “I punched in yesterday.” “Then you are a day behind.”',
+                '“The Moon clock is slow.” “The Moon is slow.”',
+                '“Form 365 is due every day.” “Including today?” “Especially today.”',
+                '“The clocks disagree so that one of them is always right. It is a redundancy.”',
+            ],
+            spawn: { x: -3.3, z: 0, face: 90 },
         },
 
         /* ── THE TRAINING ROOM (HQ plan 6.1a, 2026-09-04) — the walkable
@@ -19489,7 +19610,10 @@ function hqSiteRoom(mapId) {
             mood: mood,
             light: { x: 0, z: 0 },
             lights: lightsAt,
-            plate: { x: 0, z: -(half - 0.4), y: roomH - 0.45 },
+            /* the room plate (CSS2D): wall height indoors; over the signboards
+               outdoors (2026-09-11 walkthrough: at wall height it floated in
+               the sky above Mars) */
+            plate: { x: 0, z: -(half - 0.4), y: open ? Math.min(roomH - 0.45, 3.15) : roomH - 0.45 },
             grid: { cells: cells, cell: cell },
         },
         doors: doors, counters: counters, props: keptProps,
@@ -19679,6 +19803,177 @@ function hqCodeRedPool(cr, n) {
     for (const r of base) if (out.indexOf(r) < 0) out.push(r);
     out.natives = 1;
     return out;
+}
+/* ── FORM 365 — Daily Office Operations Requirements (HQ plan 7.9 / Room
+   247, 2026-09-11) ────────────────────────────────────────────────────
+   hqDailyOps(profile, opts) → the day's sheet or null: { date, who, seed,
+   rows: [{ id, key, label, sub, n?, site?, sector?, cond?, races?, done,
+   at }], done, total, pay, allBonus, allDone, allPaid, forced } — three
+   lines drawn from the templates below by the local date + the employee
+   number (hqHash, like the Code Red), each parameter seeded the same way;
+   progress is read from door.hq.dailies (date-matched, else a blank
+   sheet). hqDailyOpsJudge(profile, ev) marks the lines a finished match
+   meets (battle.js commitAchProgress: ev = { won, kind, mapId, cond, delta,
+   races, kills, hourglasses, entropyStrikes, codeRedCleared, date }) and
+   returns { newly, pay, bonus, done, total, allDone } — the caller saves
+   the profile and credits the Hazard Pay. Lines that say WIN need a win;
+   the rest count win or lose. */
+const HQ_DAILY_TEMPLATES = ['site', 'cond', 'keys', 'exits', 'native', 'strike', 'delta', 'codered'];
+function hqYesterday(date) {
+    const d = new Date(String(date || hqToday()) + 'T12:00:00');
+    d.setDate(d.getDate() - 1);
+    return hqToday(d);
+}
+/* today's canon date — the Clock Room's canon clock (one per local day) */
+function hqCanonToday(date) {
+    date = date || hqToday();
+    return doorCanonDate((hqHash(date + '|canon') % (12500 + 3333 + 1)) - 12500);
+}
+function hqDailyOpsRows(profile, opts) {
+    opts = opts || {};
+    const P = DOOR_HQ.dailyOps || {};
+    const date = opts.date || hqToday();
+    const who = (typeof doorEmployeeNo === 'function') ? doorEmployeeNo(profile) : 'PENDING';
+    const seed = hqHash(date + '|' + who + '|form365');
+    const META = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META : [];
+    const labels = DOOR_HQ.masteryLabels || {};
+    const pick = (list, salt) => list.length ? list[hqHash(seed + '|' + salt) % list.length] : null;
+    const sectors = Object.keys(DOOR_HQ.sectors).filter(k => !DOOR_HQ.sectors[k].locked);
+    const sites = [];
+    sectors.forEach(k => DOOR_HQ.sectors[k].maps.forEach(id => { if (META.some(m => m.id === id)) sites.push(id); }));
+    const labelOf = (id) => { const m = META.find(x => x.id === id); return (m && m.label) || id; };
+    const cr = hqCodeRed(profile, { date: date });
+    const build = {
+        site: () => {
+            const site = pick(sites, 'site'); if (!site) return null;
+            const sector = hqSectorOfMap(site);
+            return { key: 'site:' + site, site: site, sector: sector, label: 'WIN A CROSSING AT ' + labelOf(site).toUpperCase(),
+                     sub: 'ROOM ' + (hqRoomNo(site) || '—') + ' · BAY ' + (hqBayNo(sector) != null ? hqBayNo(sector) : '?') + ' · ' + String((DOOR_HQ.sectors[sector] || {}).label || sector).toUpperCase() };
+        },
+        cond: () => {
+            const cond = pick(DOOR_HQ.masteryConditions || [], 'cond'); if (!cond) return null;
+            return { key: 'cond:' + cond, cond: cond, label: 'WIN BY ' + String(labels[cond] || cond).toUpperCase(), sub: 'ANY SITE · ANY MODE THAT CAN END THAT WAY' };
+        },
+        keys: () => { const n = 2 + hqHash(seed + '|keys') % 2; return { key: 'keys:' + n, n: n, label: 'SECURE ' + n + ' KEYS IN ONE CROSSING', sub: 'WIN OR LOSE · YOUR ROSTER’S PICKUPS' }; },
+        exits: () => { const n = 3 + hqHash(seed + '|exits') % 3; return { key: 'exits:' + n, n: n, label: n + ' CONFIRMED EXITS IN ONE CROSSING', sub: 'WIN OR LOSE · KILLS BY YOUR ROSTER' }; },
+        native: () => {
+            const sector = pick(sectors, 'bay'); if (!sector) return null;
+            const races = [];
+            (DOOR_HQ.sectors[sector].maps || []).forEach(id => { const rs = (typeof doorSiteCrossings === 'function') ? doorSiteCrossings(labelOf(id)) : []; rs.forEach(r => { if (races.indexOf(r) < 0) races.push(r); }); });
+            if (!races.length) return null;
+            return { key: 'native:' + sector, sector: sector, races: races, label: 'WIN WITH A NATIVE OF BAY ' + hqBayNo(sector) + ' · ' + String(DOOR_HQ.sectors[sector].label || sector).toUpperCase() + ' ON THE ROSTER',
+                     sub: races.slice(0, 4).map(r => String(r).toUpperCase()).join(' · ') + (races.length > 4 ? ' · …' : '') };
+        },
+        strike: () => ({ key: 'strike', label: 'FIRE AN ENTROPY STRIKE', sub: 'A FULL GAUGE · ANY APOCALYPSE · WIN OR LOSE' }),
+        delta: () => ({ key: 'delta', label: 'WIN A Δ CROSSING', sub: 'THE 8×8 BOARD · ANY SITE' }),
+        codered: () => cr ? { key: 'codered:' + cr.site, site: cr.site, sector: cr.sector, cleared: !!cr.cleared, label: 'RESPOND TO TODAY’S CODE RED', sub: String(cr.label).toUpperCase() + ' · ' + String(cr.race).toUpperCase() + ' OUT OF PLACE' } : null,
+    };
+    let force = (opts.force !== undefined) ? opts.force : P.force;
+    if (typeof force === 'string') force = force.split(',').map(x => x.trim()).filter(Boolean);
+    const forced = Array.isArray(force) && force.length > 0;
+    const order = forced ? force.filter(id => HQ_DAILY_TEMPLATES.indexOf(id) >= 0)
+        : HQ_DAILY_TEMPLATES.slice().sort((a, b) => hqHash(seed + '|t|' + a) - hqHash(seed + '|t|' + b) || (a < b ? -1 : 1));
+    const rows = [];
+    const count = Math.max(1, P.count | 0 || 3);
+    for (const id of order) {
+        if (rows.length >= count) break;
+        const row = build[id] ? build[id]() : null;
+        if (row) { row.id = id; rows.push(row); }
+    }
+    return { date: date, who: who, seed: seed, rows: rows, forced: forced, pay: P.pay | 0, allBonus: P.allBonus | 0 };
+}
+function hqDailyOps(profile, opts) {
+    if (!profile) return null;
+    const sh = hqDailyOpsRows(profile, opts);
+    if (!sh || !sh.rows.length) return null;
+    let rec = null;
+    try { rec = profile.door && profile.door.hq && profile.door.hq.dailies; } catch (e) {}
+    const live = rec && rec.date === sh.date && rec.done ? rec : null;
+    sh.rows.forEach(r => {
+        const at = live ? live.done[r.key] : null;
+        r.done = !!at || !!r.cleared;
+        r.at = at || null;
+    });
+    sh.done = sh.rows.filter(r => r.done).length;
+    sh.total = sh.rows.length;
+    sh.allDone = sh.done >= sh.total;
+    sh.allPaid = !!(live && live.allPaid);
+    sh.paid = live ? (live.paid | 0) : 0;
+    return sh;
+}
+function hqDailyRowMet(row, ev) {
+    ev = ev || {};
+    switch (row.id) {
+        case 'site':    return !!ev.won && ev.mapId === row.site;
+        case 'cond':    return !!ev.won && ev.cond === row.cond;
+        case 'keys':    return (ev.hourglasses | 0) >= row.n;
+        case 'exits':   return (ev.kills | 0) >= row.n;
+        case 'native':  return !!ev.won && (ev.races || []).some(r => row.races.indexOf(r) >= 0);
+        case 'strike':  return (ev.entropyStrikes | 0) >= 1;
+        case 'delta':   return !!ev.won && !!ev.delta;
+        case 'codered': return !!ev.codeRedCleared || !!row.cleared;
+    }
+    return false;
+}
+function hqDailyOpsJudge(profile, ev) {
+    ev = ev || {};
+    if (!profile || ev.kind === 'md' || ev.kind === 'campaign') return null;
+    const sh = hqDailyOpsRows(profile, { date: ev.date });
+    if (!sh || !sh.rows.length) return null;
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
+    const hq = profile.door.hq;
+    if (!hq.dailies || hq.dailies.date !== sh.date || !hq.dailies.done) hq.dailies = { date: sh.date, done: {}, paid: 0, allPaid: false };
+    const rec = hq.dailies;
+    const newly = [];
+    for (const row of sh.rows) {
+        if (rec.done[row.key]) continue;
+        if (hqDailyRowMet(row, ev)) { rec.done[row.key] = Date.now(); newly.push(row); }
+    }
+    const done = sh.rows.filter(r => rec.done[r.key]).length;
+    const allDone = done >= sh.rows.length;
+    let pay = newly.length * (sh.pay | 0), bonus = 0;
+    if (allDone && !rec.allPaid && newly.length) { rec.allPaid = true; bonus = sh.allBonus | 0; }
+    rec.paid = (rec.paid | 0) + pay + bonus;
+    hq.dailiesFiled = (hq.dailiesFiled | 0) + newly.length;
+    if (bonus) hq.sheetsCompleted = (hq.sheetsCompleted | 0) + 1;
+    return { date: sh.date, newly: newly, pay: pay, bonus: bonus, done: done, total: sh.rows.length, allDone: allDone };
+}
+
+/* ── the PUNCH CLOCK (Room 247): the login streak. hqPunchIn(profile) is
+   called by map.js on a fresh arrival in the building (the front door
+   punches you in); hqPunchClock(profile) reads the card: a streak that
+   missed a day is over (0 until the next punch), the rack remembers the
+   best one and how many days were ever punched. door.hq.punch = { last,
+   streak, best, days }. ── */
+function hqPunchClock(profile, opts) {
+    opts = opts || {};
+    const date = opts.date || hqToday();
+    let rec = null;
+    try { rec = profile && profile.door && profile.door.hq && profile.door.hq.punch; } catch (e) {}
+    const last = rec ? (rec.last || null) : null;
+    const today = last === date;
+    const live = today || last === hqYesterday(date);
+    const streak = rec ? (rec.streak | 0) : 0;
+    return { date: date, last: last, today: today, streak: live ? streak : 0, best: rec ? Math.max(rec.best | 0, streak) : 0, days: rec ? (rec.days | 0) : 0, lapsed: !!(last && !live) };
+}
+function hqPunchIn(profile, opts) {
+    opts = opts || {};
+    if (!profile) return null;
+    const date = opts.date || hqToday();
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
+    const hq = profile.door.hq;
+    if (!hq.punch || typeof hq.punch !== 'object') hq.punch = { last: null, streak: 0, best: 0, days: 0 };
+    const rec = hq.punch;
+    if (rec.last === date) return { punched: false, date: date, streak: rec.streak | 0, best: rec.best | 0, days: rec.days | 0, first: false, continued: false };
+    const continued = rec.last === hqYesterday(date);
+    const first = !rec.last;
+    rec.streak = continued ? (rec.streak | 0) + 1 : 1;
+    rec.best = Math.max(rec.best | 0, rec.streak);
+    rec.days = (rec.days | 0) + 1;
+    rec.last = date;
+    return { punched: true, date: date, streak: rec.streak, best: rec.best, days: rec.days, first: first, continued: continued };
 }
 /* Door lamp state (HQ plan §3.5): sealed | clearance | codered | unstable |
    stabilized | open. Rooms: open unless a clearance / Keys gate holds.
@@ -20483,6 +20778,14 @@ if (typeof window !== 'undefined') {
     window.hqToday = hqToday;
     window.hqHash = hqHash;
     window.hqCodeRed = hqCodeRed;
+    window.hqDailyOps = hqDailyOps;
+    window.hqDailyOpsRows = hqDailyOpsRows;
+    window.hqDailyOpsJudge = hqDailyOpsJudge;
+    window.hqDailyRowMet = hqDailyRowMet;
+    window.hqPunchClock = hqPunchClock;
+    window.hqPunchIn = hqPunchIn;
+    window.hqCanonToday = hqCanonToday;
+    window.hqYesterday = hqYesterday;
     window.hqCodeRedPool = hqCodeRedPool;
     window.DOOR_CAST = DOOR_CAST;
     window.hqCastInRoom = hqCastInRoom;
