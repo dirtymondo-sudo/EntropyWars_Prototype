@@ -21209,6 +21209,29 @@ const ThreeRenderer = (function () {
     function _hzPropGLB(key, target) {
         return _hzMiscGLB(key, target, { matPick: _hzPropLitPick });
     }
+    // ── The D.O.O.R. kit on the board (2026-09-11) ─────────────────────────
+    // A DOOR_HQ.catalogue prop (R2 Assets/door/models/ — the user's Meshy
+    // kit) as a lit board prop: the mars rover, the lunar lander, the palm
+    // tree. Fitted like the building fits it (the catalogue's `span` /
+    // `h`, in metres — `metres` overrides; ts = one 1.75 m tile). The group
+    // carries `_ew_footM` (a collision disc in metres) so the walkable site
+    // room registers a blocker for it BEFORE the GLB has loaded
+    // (_hqBuildSetting: an empty box is otherwise skipped). `fallback` is
+    // the procedural builder used when the catalogue / loader is missing.
+    function _hzDoorKitGLB(key, o) {
+        o = o || {};
+        var ts = CONFIG.tileSize || BASE_TILE, mPerTs = 1.75;
+        var cat = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.catalogue) ? DOOR_HQ.catalogue[key] : null;
+        if (!cat || !cat.file || typeof _hqModelUrl !== 'function' || typeof THREE.GLTFLoader !== 'function') {
+            return o.fallback ? o.fallback(o.rng || Math.random) : new THREE.Group();
+        }
+        var fitSpan = (cat.span != null && cat.h == null);
+        var metres = (o.metres != null) ? o.metres : (fitSpan ? cat.span : cat.h);
+        var g = _miscModelInstance(_hqModelUrl(cat), true, metres / mPerTs * ts, { fit: fitSpan ? 'span' : 'height', matPick: _hzPropLitPick });
+        g._ew_footM = (o.foot != null) ? o.foot : (cat.foot || 0);
+        g._ew_kit = key;
+        return g;
+    }
 
     // ── Grid-snapped board props (real Meshy GLBs from Assets/misc) ───────
     // These five are true on-board furniture, not horizon scenery: each one
@@ -24089,6 +24112,12 @@ const ThreeRenderer = (function () {
         _nrColonnade(K, { d: 1.8, spacing: 1.6, glb: true, h: 2.2, beam: true, tex: 'marble_light', color: 0xcfe6ea, gates: true });
         _nrProp(K, _hzGreekRuin, K.BX0 - 4.2 * ts, K.CZ, { s: 0.45, ry: Math.PI / 2 }); _nrProp(K, _hzGreekRuin, K.BX1 + 4.2 * ts, K.CZ, { s: 0.45, ry: -Math.PI / 2 });
         var spire = _hzCrystalShards(rng); spire.position.set(K.BX1 + 3.4 * ts, K.fy - 0.3 * ts, K.BZ0 - 3.4 * ts); spire.scale.setScalar(0.8); K.add(spire);
+        /* the palms (2026-09-11: the user's `palm_tree` GLB) — what is left
+           of the island's shore, standing on the quay past the moat, one at
+           each corner, clear of the way in and the console */
+        [[K.BX0 - 3.6 * ts, K.BZ0 - 2.0 * ts, 0.3], [K.BX1 + 3.8 * ts, K.BZ1 + 2.4 * ts, 2.1], [K.BX0 - 2.4 * ts, K.BZ1 + 3.8 * ts, 4.0], [K.BX1 + 2.2 * ts, K.BZ0 - 4.0 * ts, 5.3]].forEach(function (p, i) {
+            _nrProp(K, function (rng) { return _hzDoorKitGLB('palm_tree', { metres: 3.2 + (i % 2) * 0.5, foot: 0.35, rng: rng }); }, p[0], p[1], { ry: p[2] });
+        });
         var kelp = K.mat('leaves_3', 0x3aa880);
         for (var i = 0; i < 18; i++) { var a = rng() * Math.PI * 2, r = ts * (5.2 + rng() * 2.5); var h = ts * (0.6 + rng() * 1.2); var k = K.cyl(0.02 * ts, 0.08 * ts, h, 5, kelp); k.position.set(K.CX + Math.cos(a) * r, K.fy - 1.2 * ts + h / 2, K.CZ + Math.sin(a) * r); k.rotation.z = (rng() - 0.5) * 0.5; K.add(k); }
         for (var b = 0; b < 10; b++) { var s = K.lamp(K.X0 + rng() * (K.X1 - K.X0), K.fy + rng() * 3 * ts, K.Z0 + rng() * (K.Z1 - K.Z0), 0xbfe8ff, 0.25 * ts, 0.4); K.add(s); }
@@ -24126,7 +24155,9 @@ const ThreeRenderer = (function () {
         var mesa = K.mat('mars_2', 0xa86048);
         [[K.BX0 - 3.8 * ts, K.BZ0 - 3.2 * ts, 3.2, 2.2, 2.4], [K.BX1 + 3.8 * ts, K.BZ1 + 3.2 * ts, 3.6, 2.4, 2.8], [K.BX1 + 9 * ts, K.BZ0 - 6 * ts, 6, 4, 3.6]].forEach(function (m) { var b = K.box(m[2] * ts, m[4] * ts, m[3] * ts, mesa, 0.5); b.position.set(m[0], K.fy + m[4] * ts / 2 - 0.3 * ts, m[1]); b.rotation.y = 0.3; K.add(K.lit(b, true)); var cap = K.box(m[2] * ts * 1.04, 0.2 * ts, m[3] * ts * 1.04, K.mat('mars', 0xc88a5a)); cap.position.set(m[0], K.fy + m[4] * ts - 0.2 * ts, m[1]); cap.rotation.y = 0.3; K.add(cap); });
         for (var i = 0; i < 5; i++) { var a = rng() * Math.PI * 2, r = ts * (2.5 + rng() * 3); var cr = new THREE.Mesh(new THREE.TorusGeometry(ts * (0.6 + rng() * 0.6), ts * 0.18, 6, 18), mesa); cr.rotation.x = Math.PI / 2; cr.position.set(K.CX + Math.cos(a) * r, K.fy + 0.02 * ts, K.CZ + Math.sin(a) * r); if (cr.position.x > K.BX0 - 0.8 * ts && cr.position.x < K.BX1 + 0.8 * ts && cr.position.z > K.BZ0 - 0.8 * ts && cr.position.z < K.BZ1 + 0.8 * ts) continue; K.add(K.lit(cr, true)); }
-        _nrProp(K, _hzRover, K.BX1 + 1.9 * ts, K.BZ0 - 2.4 * ts, { s: 0.75, ry: 0.8 });
+        /* the rover is the user's real model (2026-09-11: DOOR_HQ.catalogue
+           `mars_rover`, 2.6 m long here); the procedural buggy is its fallback */
+        _nrProp(K, function (rng) { return _hzDoorKitGLB('mars_rover', { metres: 2.6, foot: 1.1, rng: rng, fallback: _hzRover }); }, K.BX1 + 1.9 * ts, K.BZ0 - 2.4 * ts, { ry: 0.8 });
         _nrProp(K, _hzBiodome, K.BX0 - 2.8 * ts, K.BZ1 + 2.6 * ts, { s: 0.8 });
         _nrRocks(K, { tex: 'mars_2', color: 0x9a5a44, d: 1.0, p: 0.4, r: 0.3 });
         K.add(K.lamp(K.CX, K.fy + 0.5 * ts, K.CZ, 0xff9a60, 30 * ts, 0.05));
@@ -24213,10 +24244,17 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < 8; i++) { var a = rng() * Math.PI * 2, r = ts * (2.2 + rng() * 3.2); var cr = new THREE.Mesh(new THREE.TorusGeometry(ts * (0.5 + rng() * 0.8), ts * 0.16, 6, 18), reg); cr.rotation.x = Math.PI / 2; cr.position.set(K.CX + Math.cos(a) * r * 1.3, K.fy + 0.02 * ts, K.CZ + Math.sin(a) * r); if (cr.position.x > K.BX0 - 0.9 * ts && cr.position.x < K.BX1 + 0.9 * ts && cr.position.z > K.BZ0 - 0.9 * ts && cr.position.z < K.BZ1 + 0.9 * ts) continue; K.add(K.lit(cr, true)); }
         _nrMounds(K, { tex: 'moon_3', color: 0xa0a4b8, d: 3.6, spacing: 2.4, r: 1.6, flat: 0.3, p: 0.6 });
         _nrRocks(K, { tex: 'moon_3', color: 0x9a9eb0, d: 1.0, p: 0.4, r: 0.3 });
-        var lx = K.BX1 + 2.6 * ts, lz = K.BZ0 - 2.4 * ts, foil = K.mat('gold', 0xd8b050), alu = K.mat('aluminium', 0xd0d4dc);
-        var desc = K.box(1.3 * ts, 0.7 * ts, 1.3 * ts, foil); desc.position.set(lx, K.fy + 0.75 * ts, lz); desc.rotation.y = Math.PI / 4; K.add(K.lit(desc, true));
-        var asc = K.box(0.9 * ts, 0.6 * ts, 0.9 * ts, alu); asc.position.set(lx, K.fy + 1.4 * ts, lz); K.add(K.lit(asc, true));
-        for (var l = 0; l < 4; l++) { var la = l * Math.PI / 2 + Math.PI / 4; var leg = K.cyl(0.03 * ts, 0.04 * ts, 1.1 * ts, 5, alu); leg.position.set(lx + Math.cos(la) * 0.9 * ts, K.fy + 0.45 * ts, lz + Math.sin(la) * 0.9 * ts); leg.rotation.set(Math.sin(la) * 0.5, 0, -Math.cos(la) * 0.5); K.add(leg); var pad = K.cyl(0.18 * ts, 0.18 * ts, 0.05 * ts, 8, alu); pad.position.set(lx + Math.cos(la) * 1.15 * ts, K.fy + 0.03 * ts, lz + Math.sin(la) * 1.15 * ts); K.add(pad); }
+        var lx = K.BX1 + 2.6 * ts, lz = K.BZ0 - 2.4 * ts;
+        /* the lander is the user's real model (2026-09-11: DOOR_HQ.catalogue
+           `lunar_lander`, 3.2 m tall); the foil-and-legs box is its fallback */
+        var landerProc = function () {
+            var g = new THREE.Group(), foil = K.mat('gold', 0xd8b050), alu = K.mat('aluminium', 0xd0d4dc);
+            var desc = K.box(1.3 * ts, 0.7 * ts, 1.3 * ts, foil); desc.position.set(0, 0.75 * ts, 0); desc.rotation.y = Math.PI / 4; g.add(K.lit(desc, true));
+            var asc = K.box(0.9 * ts, 0.6 * ts, 0.9 * ts, alu); asc.position.set(0, 1.4 * ts, 0); g.add(K.lit(asc, true));
+            for (var l = 0; l < 4; l++) { var la = l * Math.PI / 2 + Math.PI / 4; var leg = K.cyl(0.03 * ts, 0.04 * ts, 1.1 * ts, 5, alu); leg.position.set(Math.cos(la) * 0.9 * ts, 0.45 * ts, Math.sin(la) * 0.9 * ts); leg.rotation.set(Math.sin(la) * 0.5, 0, -Math.cos(la) * 0.5); g.add(leg); var pad = K.cyl(0.18 * ts, 0.18 * ts, 0.05 * ts, 8, alu); pad.position.set(Math.cos(la) * 1.15 * ts, 0.03 * ts, Math.sin(la) * 1.15 * ts); g.add(pad); }
+            return g;
+        };
+        _nrProp(K, function (rng) { return _hzDoorKitGLB('lunar_lander', { metres: 3.2, foot: 1.5, rng: rng, fallback: landerProc }); }, lx, lz, { ry: 0.55 });
         _nrProp(K, _hzFlag, lx - 1.6 * ts, lz + 0.4 * ts, { s: 0.5, ry: 0.4 });
         _nrProp(K, _hzRover, K.BX0 - 2.4 * ts, K.BZ1 + 2.2 * ts, { s: 0.7, ry: 2.4 });
         var trk = new THREE.MeshBasicMaterial({ color: 0x7a7e90, transparent: true, opacity: 0.5, depthWrite: false });
@@ -30117,6 +30155,8 @@ const ThreeRenderer = (function () {
     var _hqGlyphTex = null;
     var _hqSealTex = null;
     var HQ_BODY_R = 0.34;                // walker body radius (m)
+    var HQ_EDGE_KERB_H = 0.05;           // an 'open' site room's paving edge (m) — flush, walked over (2026-09-11, THE EDGE)
+    var HQ_EDGE_LOW_H = 0.95;            // a 'low' site room's field wall (m) — a wall to the walker
     var HQ_STEP_TOL = 0.62;              // max CLIMB per move (m) — a step up onto a box / ledge; taller is a wall
     var HQ_DROP_MAX = 1.6;               // max walk-off drop (m, 2026-09-05): counters, couches, the desk well — the 4.2 m mezzanine is a balcony (railed)
     var HQ_FALL_MIN = 0.5;               // a drop taller than this is a fall (airborne, gravity) — shorter is a stair tread
@@ -30661,21 +30701,63 @@ const ThreeRenderer = (function () {
             sk.position.y = -1.5 * U - 1.0;
             G.add(sk);
         }
+        /* THE EDGE (2026-09-11, data.js hqSiteRoom → shell.edge): the four
+           walls stand only on a 'walls' room. An 'open' room has NOTHING at
+           its bound but a flush paving edge in the trim texture (the ground
+           runs out; the way in is the door's own 3.3 m panel standing alone,
+           _hqBuildDoors); a 'low' room has a knee-high field wall in the
+           wall texture, broken at the way in (the door's panel is proud of
+           it) — the wall's height is HQ_EDGE_LOW_H, a wall to the walker. */
+        var edge = (S.edge === 'open' || S.edge === 'low') ? S.edge : 'walls';
+        var edgeGaps = (edge === 'walls') ? [] : (room.doors || []).map(function (d) { return { wall: d.wall, at: (d.wall === 'e' || d.wall === 'w') ? (d.z || 0) : (d.x || 0), half: (d.wide ? 3.3 : 2.5) / 2 + 0.02 }; });
         [['n', W], ['s', W], ['e', Dp], ['w', Dp]].forEach(function (ws) {
             var B = _hqBoxWall(room, ws[0]), len = ws[1];
             /* a slab along the wall: local x runs along it, local z is the inward normal */
-            function slab(y0, y1, inset, thick, mat) {
-                var m = _hqBox(len, y1 - y0, thick, mat);
-                m.position.set((B.wx + B.nx * inset) * U, ((y0 + y1) / 2) * U, (B.wz + B.nz * inset) * U);
+            function slab(y0, y1, inset, thick, mat, run) {
+                var L = run ? (run[1] - run[0]) : len, mid = run ? (run[0] + run[1]) / 2 : 0;
+                var m = _hqBox(L, y1 - y0, thick, mat);
+                /* `along` runs +x on n / s and +z on e / w (the _hqBoxWall convention) */
+                var ax = (ws[0] === 'n' || ws[0] === 's') ? 1 : 0, az = 1 - ax;
+                m.position.set((B.wx + B.nx * inset + ax * mid) * U, ((y0 + y1) / 2) * U, (B.wz + B.nz * inset + az * mid) * U);
                 m.rotation.y = B.yaw;
                 return m;
             }
-            G.add(slab(0, H, -0.02, 0.04, _hqMat(texWall, len / (TR || 3.2), H / (TR || 3.2), open ? { shininess: 4, specular: 0x101010 } : {})));
-            G.add(slab(0.06, S.dadoH, 0.02, 0.03, _hqMat(texDado, len / (TR || 2.2), TR ? S.dadoH / TR : 1, { shininess: open ? 4 : 14 })));
-            var trim = _hqMat(texTrim, len / 1.5, 1, { shininess: 40, specular: 0x555555 });
-            G.add(slab(0, 0.08, 0.03, 0.05, trim));
-            G.add(slab(S.dadoH, S.dadoH + 0.09, 0.03, 0.05, trim));
-            G.add(slab(H - 0.1, H, 0.03, 0.05, trim));
+            if (edge === 'walls') {
+                G.add(slab(0, H, -0.02, 0.04, _hqMat(texWall, len / (TR || 3.2), H / (TR || 3.2), open ? { shininess: 4, specular: 0x101010 } : {})));
+                G.add(slab(0.06, S.dadoH, 0.02, 0.03, _hqMat(texDado, len / (TR || 2.2), TR ? S.dadoH / TR : 1, { shininess: open ? 4 : 14 })));
+                var trim = _hqMat(texTrim, len / 1.5, 1, { shininess: 40, specular: 0x555555 });
+                G.add(slab(0, 0.08, 0.03, 0.05, trim));
+                G.add(slab(S.dadoH, S.dadoH + 0.09, 0.03, 0.05, trim));
+                G.add(slab(H - 0.1, H, 0.03, 0.05, trim));
+                return;
+            }
+            /* the runs along this side, broken at every door panel on it */
+            var runs = [[-len / 2, len / 2]];
+            edgeGaps.filter(function (gp) { return gp.wall === ws[0]; }).forEach(function (gp) {
+                var next = [];
+                runs.forEach(function (rn) {
+                    if (gp.at - gp.half > rn[0]) next.push([rn[0], Math.min(rn[1], gp.at - gp.half)]);
+                    if (gp.at + gp.half < rn[1]) next.push([Math.max(rn[0], gp.at + gp.half), rn[1]]);
+                });
+                runs = next.filter(function (rn) { return rn[1] - rn[0] > 0.2; });
+            });
+            var edgeTrim = _hqMat(texTrim, len / 1.5, 1, { shininess: 12, specular: 0x222222 });
+            if (edge === 'open') {
+                /* the paving edge: flush, a border line where the walkway meets the ground */
+                runs.forEach(function (rn) { G.add(slab(0, HQ_EDGE_KERB_H, 0.16, 0.34, edgeTrim, rn)); });
+                return;
+            }
+            /* 'low': the field wall, a cap on it */
+            var lowH = HQ_EDGE_LOW_H;
+            var lowMat = _hqMat(texWall, len / (TR || 3.2), lowH / (TR || 3.2), { shininess: 4, specular: 0x101010 });
+            runs.forEach(function (rn) {
+                G.add(slab(0, lowH, 0.0, 0.42, lowMat, rn));
+                G.add(slab(lowH, lowH + 0.07, 0.0, 0.5, edgeTrim, rn));
+                /* a wall to the walker: one rect blocker per run */
+                var ax = (ws[0] === 'n' || ws[0] === 's') ? 1 : 0, mid = (rn[0] + rn[1]) / 2, L = rn[1] - rn[0];
+                var lb = new THREE.Object3D(); lb.position.set((B.wx + ax * mid) * U, 0, (B.wz + (1 - ax) * mid) * U); G.add(lb);
+                _hq.blockers.push({ obj: lb, y: 0, top: null, rad: L / 2, rect: { hw: ax ? L / 2 : 0.25, hd: ax ? 0.25 : L / 2 }, site: true });
+            });
         });
         /* conduits across the ceiling near the far wall, one dropping to the floor in the corner */
         if (S.pipes !== false) {
@@ -31308,8 +31390,28 @@ const ThreeRenderer = (function () {
         var lampC = (mood.lamp != null) ? mood.lamp : 0xff4a4a, glowC = (mood.glow != null) ? mood.glow : 0xff3a3a, stripC = (mood.strip != null) ? mood.strip : 0xf2f7ff;
         var signY = S.h - 0.9, lampY = S.h - 1.0;
         var SL = mood.signLines || {};
-        sign('site_n_' + room.site, SL.n || [String(room.label || room.site), 'ROOM ' + (no || '—'), 'THE SITE · WALK IT'], 4.8, 1.7, 5.0, signY, -wallIn, 0, Object.assign({ sizes: [72, 96, 40] }, mood.signN || {}));
-        sign('site_s_' + room.site, SL.s || [(sf && sf.status) || 'ON FILE', 'THE THRESHOLD IS BEHIND YOU', 'THE CROSSING IS AT THE CONSOLE'], 4.8, 1.7, -5.0, signY, wallIn, Math.PI, Object.assign({ sizes: [92, 44, 44], bg: '#2a1416', border: '#d8a0a0', color: '#f2d8d2' }, mood.signS || {}));
+        /* THE EDGE (2026-09-11): with no wall to hang on, each sign is a
+           freestanding SIGNBOARD — two posts and a rail, the board lower
+           (its foot at eye height), a hair inside the old wall line */
+        var noWall = (S.edge === 'open' || S.edge === 'low');
+        var signIn = noWall ? wallIn - 0.55 : wallIn, signYb = noWall ? 2.55 : signY;
+        var signboard = function (x, z, ry, wM, hM) {
+            var postMat = new THREE.MeshPhongMaterial({ color: 0x4a4d55, shininess: 24, specular: 0x555555 });
+            var top = signYb + hM / 2 + 0.12, ax = Math.cos(ry), az = -Math.sin(ry);   // the board's local +x in room space
+            [-1, 1].forEach(function (sg) {
+                var post = new THREE.Mesh(new THREE.CylinderGeometry(0.05 * U, 0.06 * U, top * U, 8), postMat);
+                post.position.set((x + sg * ax * (wM / 2 - 0.2)) * U, (top / 2) * U, (z + sg * az * (wM / 2 - 0.2)) * U); G.add(post);
+                var pb = new THREE.Object3D(); pb.position.set(post.position.x, 0, post.position.z); G.add(pb);
+                _hq.blockers.push({ obj: pb, y: 0, top: null, rad: 0.12, site: true });
+            });
+            var rail = _hqBox(wM, 0.06, 0.06, postMat); rail.position.set(x * U, top * U, z * U); rail.rotation.y = ry; G.add(rail);
+            /* the board's back: a dark panel just behind the face (the face is one-sided) */
+            var back = _hqBox(wM + 0.08, hM + 0.08, 0.05, new THREE.MeshPhongMaterial({ color: 0x24262b, shininess: 6 }));
+            back.position.set((x - Math.sin(ry) * 0.04) * U, signYb * U, (z - Math.cos(ry) * 0.04) * U); back.rotation.y = ry; G.add(back);
+        };
+        if (noWall) { signboard(5.0, -signIn, 0, 4.8, 1.7); signboard(-5.0, signIn, Math.PI, 4.8, 1.7); }
+        sign('site_n_' + room.site, SL.n || [String(room.label || room.site), 'ROOM ' + (no || '—'), 'THE SITE · WALK IT'], 4.8, 1.7, 5.0, signYb, -signIn, 0, Object.assign({ sizes: [72, 96, 40] }, mood.signN || {}));
+        sign('site_s_' + room.site, SL.s || [(sf && sf.status) || 'ON FILE', 'THE THRESHOLD IS BEHIND YOU', 'THE CROSSING IS AT THE CONSOLE'], 4.8, 1.7, -5.0, signYb, signIn, Math.PI, Object.assign({ sizes: [92, 44, 44], bg: '#2a1416', border: '#d8a0a0', color: '#f2d8d2' }, mood.signS || {}));
         /* an OUTDOOR room (stage 3): lamp masts on the walkway corners where
            the indoor room hangs its fluorescents — a pole, a head, the lens
            and its glow in the mood's colour; no containment kit, no strips */
@@ -31428,16 +31530,31 @@ const ThreeRenderer = (function () {
             else zones.push({ x0: cx - 2.8, x1: cx + 2.8, z0: cz > 0 ? half - 2.4 : -half - 1, z1: cz > 0 ? half + 1 : -(half - 2.4) });
         });
         var box = new THREE.Box3(), wp = new THREE.Vector3(), kept = 0, dropped = 0, blockers = 0;
+        /* THE EDGE (2026-09-11): a room without facility walls KEEPS the
+           setting's own perimeter — the picket fence, the wire, the tree
+           line are the natural walls now */
+        var walled = !(S.edge === 'open' || S.edge === 'low');
         units.forEach(function (u) {
             if (u.o.isSprite) return;
             box.setFromObject(u.o);
-            if (box.isEmpty()) return;
+            if (box.isEmpty()) {
+                /* a D.O.O.R.-kit GLB still loading (_hzDoorKitGLB): its
+                   collision disc is known now, so the walker never walks
+                   through the rover / the lander / a palm before it lands */
+                if (u.o._ew_footM > 0) {
+                    u.o.getWorldPosition(wp);
+                    var kb = new THREE.Object3D(); kb.position.set(wp.x, 0, wp.z); H.shellGroup.add(kb);
+                    H.blockers.push({ obj: kb, y: 0, top: null, rad: u.o._ew_footM, site: true, setting: true });
+                    kept++; blockers++;
+                }
+                return;
+            }
             var x0 = box.min.x / U, x1 = box.max.x / U, z0 = box.min.z / U, z1 = box.max.z / U, y0 = box.min.y / U, y1 = box.max.y / U;
             var w = x1 - x0, d = z1 - z0, h = y1 - y0;
             var flat = h < 0.35, high = y0 > 1.5;
             /* the perimeter doubled: a thin long run hugging the room's wall */
-            var hugX = w < 1.4 && d > 6 && (x1 > half - 0.9 || x0 < -(half - 0.9));
-            var hugZ = d < 1.4 && w > 6 && (z1 > half - 0.9 || z0 < -(half - 0.9));
+            var hugX = walled && w < 1.4 && d > 6 && (x1 > half - 0.9 || x0 < -(half - 0.9));
+            var hugZ = walled && d < 1.4 && w > 6 && (z1 > half - 0.9 || z0 < -(half - 0.9));
             var inZone = zones.some(function (zn) { return x1 > zn.x0 && x0 < zn.x1 && z1 > zn.z0 && z0 < zn.z1; });
             if ((hugX || hugZ || inZone) && !high && !flat) { u.parent.remove(u.o); _disposeR(u.o); dropped++; return; }
             kept++;
@@ -32351,14 +32468,21 @@ const ThreeRenderer = (function () {
        Order matters: stairs → top landings → mezzanine slab → ground; a
        move is refused when it would change height by more than HQ_STEP_TOL
        (that is the railing, the slab edge, the stair side). */
+    /* THE EDGE (2026-09-11): how far past a box room's wall line the walker
+       (and the camera boom) may go — `shell.roam` on an 'open' site room, 0
+       for everything walled or fenced */
+    function _hqRoamM(S) { return (S && S.edge === 'open' && S.roam > 0) ? S.roam : 0; }
     function _hqSurface(x, z, curY, ignoreBlockers) {
         var room = _hq.room, S = room.shell;
         var r = Math.hypot(x, z);
         var deg = _hqNormDeg(Math.atan2(x, -z) * 180 / Math.PI);
         var y = null;
         if (room.kind === 'box') {
-            /* a box: inside the four walls, one level */
-            if (Math.abs(x) > S.w / 2 - HQ_BODY_R - 0.08 || Math.abs(z) > S.d / 2 - HQ_BODY_R - 0.08) return null;
+            /* a box: inside the four walls, one level — an 'open' site room
+               (THE EDGE, 2026-09-11) lets you roam `shell.roam` m past the
+               old wall line onto the apron */
+            var roamB = _hqRoamM(S);
+            if (Math.abs(x) > S.w / 2 + roamB - HQ_BODY_R - 0.08 || Math.abs(z) > S.d / 2 + roamB - HQ_BODY_R - 0.08) return null;
             y = 0;
             /* the site board (plan 7.2): a cell's own top — a pit for a lake,
                nothing at all for lava / deep water; raised cells are blockers
@@ -32507,7 +32631,8 @@ const ThreeRenderer = (function () {
         var room = _hq.room, S = room.shell;
         var r = Math.hypot(x, z);
         if (room.kind === 'box') {
-            if (Math.abs(x) > S.w / 2 - HQ_BODY_R - 0.08 || Math.abs(z) > S.d / 2 - HQ_BODY_R - 0.08) return false;
+            var roamA = _hqRoamM(S);
+            if (Math.abs(x) > S.w / 2 + roamA - HQ_BODY_R - 0.08 || Math.abs(z) > S.d / 2 + roamA - HQ_BODY_R - 0.08) return false;
             /* the site board (plan 7.2): lava / deep water is never overflown; a pit's floor stays under the feet */
             if (_hq.site) { var sc = _hqSiteCellAt(x, z); if (sc) { if (!sc.walk) return false; if (sc.top < 0 && y < sc.top - 0.05) return false; } }
         } else if (room.kind === 'bay') {
@@ -32531,7 +32656,8 @@ const ThreeRenderer = (function () {
         var S = _hq.room.shell;
         var r = Math.hypot(px, pz);
         if (_hq.room.kind === 'box') {
-            if (Math.abs(px) > S.w / 2 - 0.28 || Math.abs(pz) > S.d / 2 - 0.28) return true;
+            var roamC = _hqRoamM(S);
+            if (Math.abs(px) > S.w / 2 + roamC - 0.28 || Math.abs(pz) > S.d / 2 + roamC - 0.28) return true;
             if (!S.open && py > S.h - 0.3) return true;   // an outdoor room has no ceiling
             if (_hq.site) {
                 /* the site board (plan 7.2): the boom stays out of raised cells and off a pit's floor */

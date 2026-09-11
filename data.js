@@ -17193,7 +17193,38 @@ const DOOR_HQ = {
            Opt out per room with `shells[id].setting: false`; the console
            moves off a filled wall with `shells[id].console = { wall, at }`.
            Flavour props keep their distance to the wall when the room
-           grows (`fitted: true` on the flavour entry = already placed). */
+           grows (`fitted: true` on the flavour entry = already placed).
+           ── THE EDGE (2026-09-11) ──────────────────────────────────────
+           The doorway is a doorway to the ACTUAL place, so an outdoor site
+           does not stand inside four facility walls unless the place itself
+           is walled. `shells[id].edge` names what stands at the room's
+           bound (hqSiteRoom → shell.edge; the renderer's box shell reads it):
+             'open'   (the default for an `open` room) NOTHING — the ground
+                      runs out past the walkway under the map's sky; the way
+                      in is the threshold's own 3.3 m panel standing alone
+                      (the lone door of the crossing / the main menu), the
+                      signs are freestanding signboards, the console desk
+                      stands free, and you may ROAM `shell.roam` metres out
+                      onto the apron (the walker's bound moves with it).
+                      Wall-MOUNTED props (a clipboard, an extinguisher, a
+                      clock — `mount` > 0 or no footprint) are dropped, since
+                      there is nothing to hang them on; a piece that STANDS
+                      (lockers, shelving, the cooler, the tanker desk — a
+                      `foot`) keeps its place at the old wall line.
+             'low'    a knee-high field wall in the shell's `wall` texture
+                      (a dry-stone wall on the downs, the earth lip of the
+                      plane) with a gap at the way in; no roaming past it;
+                      props as 'open'.
+             'walls'  the full box (every INDOOR room — hqSiteRoom forces
+                      it — and the outdoor places whose enclosure IS a
+                      building or a cavern: the stadium's bowl, the castle's
+                      curtain wall, the tenements, the tower's court, the
+                      two caverns). The setting's own perimeter pieces are
+                      culled against these walls as before; on an 'open' /
+                      'low' room the renderer KEEPS them — the picket fence,
+                      the perimeter fence and the tree lines are the natural
+                      walls now (natural walls are fine; facility walls are
+                      not). */
         near: {
             dumb: { w: 3.0, h: 3.4 }, cern: { w: 3.2, h: 3.6 }, backrooms: { w: 4.0 },
             nuketown: { w: 4.5 }, stadium: { w: 4.5, stands: true },
@@ -17227,7 +17258,7 @@ const DOOR_HQ = {
             /* 50 · FOOTBALL STADIUM — the bowl at night: the inner concrete
                wall round the field, turf underfoot, floodlight masts, the
                city's roster and its stars overhead; the turnstile lets you in */
-            prebuilt_stadium: { open: true, floor: 'grass_2', wall: 'concrete_floor', dado: 'concrete_floor', trim: 'concrete', ceiling: null, h: 4.2, dadoH: 1.0, pipes: false, console: { wall: 'n', at: 7 },
+            prebuilt_stadium: { open: true, edge: 'walls', floor: 'grass_2', wall: 'concrete_floor', dado: 'concrete_floor', trim: 'concrete', ceiling: null, h: 4.2, dadoH: 1.0, pipes: false, console: { wall: 'n', at: 7 },
                 apron: 'concrete_floor', skirt: 'concrete_floor', apronColor: 0x9a9a96, floorColor: 0x5ec46a,
                 mood: { lamp: 0xeaf4ff, glow: 0xbfe0ff, strip: 0xffffff, light: 0xe8f2ff, night: 1,
                     signN: { bg: '#10203a', border: '#ffd34a', color: '#ffffff' }, signS: { bg: '#1a1a1a', border: '#f4f4f4', color: '#f4f4f4' },
@@ -17251,7 +17282,7 @@ const DOOR_HQ = {
                tint / quay from the board. */
             /* i · CAMELOT — the bailey lawn for a quay, the curtain wall
                round it, the drawbridge down over the moat; torchlight */
-            prebuilt_camelot: { open: true, pad: 5.0, floor: 'grass_2', wall: 'bricks_2', dado: 'bricks_2', trim: 'wood', ceiling: null, h: 4.4, dadoH: 1.0, pipes: false,
+            prebuilt_camelot: { open: true, edge: 'walls', pad: 5.0, floor: 'grass_2', wall: 'bricks_2', dado: 'bricks_2', trim: 'wood', ceiling: null, h: 4.4, dadoH: 1.0, pipes: false,
                 apron: 'grass_2', skirt: 'rock_wall_1', apronColor: 0xa8b890, floorColor: 0xa8b890,
                 moat: { key: 'water', gap: 2.6, bank: 'rock_wall_1', bankColor: 0xb8b0a0, bed: 'dirt_3', deck: 'wood_planks', deckColor: 0xa88458, causeways: ['s', 'n'] },
                 mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xffe0b0, night: 1,
@@ -17281,9 +17312,10 @@ const DOOR_HQ = {
                 mood: { lamp: 0xffa040, glow: 0xff8a30, strip: 0x3fe0d8, light: 0xffc890, night: 1,
                     signN: { bg: '#0e2a2c', border: '#3fe0d8', color: '#dffcf8' }, signS: { bg: '#2a1a0c', border: '#ffa040', color: '#ffe8c8' },
                     signLines: { n: ['TECHNOTICLAN', 'ROOM 2012', 'THE CALENDAR · STILL RUNNING'], s: ['TEMPLE GATE', 'IRON OVER OBSIDIAN', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 88 · AGARTHA — the cavern wall, marble underfoot, the inner
-               sea round the island, crystal light; day, by the inner sun */
-            prebuilt_agartha: { open: true, pad: 5.0, floor: 'marble_light', wall: 'rocks_dark_fantasy', dado: 'rocks_dark_fantasy', trim: 'crystal', ceiling: null, h: 4.8, dadoH: 1.1, pipes: false,
+            /* 88 · AGARTHA — the cavern wall (a cavern: the walls stay),
+               marble underfoot, the inner sea round the island, crystal
+               light; day, by the inner sun */
+            prebuilt_agartha: { open: true, edge: 'walls', pad: 5.0, floor: 'marble_light', wall: 'rocks_dark_fantasy', dado: 'rocks_dark_fantasy', trim: 'crystal', ceiling: null, h: 4.8, dadoH: 1.1, pipes: false,
                 apron: 'marble_light', skirt: 'rocks_dark_fantasy', apronColor: 0xbfe8c8, floorColor: 0xbfe8c8,
                 moat: { key: 'water', gap: 2.6, bank: 'rocks_dark_fantasy', bankColor: 0x8a9a88, bed: 'rocks_dark_fantasy', deck: 'marble_light', deckColor: 0xbfe8c8, causeways: ['s', 'n'] },
                 mood: { lamp: 0x9affe4, glow: 0x6af0d0, strip: 0xd0fff0, light: 0xe0fff4, night: 0,
@@ -17319,7 +17351,7 @@ const DOOR_HQ = {
             /* 56 · STONEHENGE — the down at night: the sarsen ring stands in
                the room, a dry-stone wall round it, the ditch under the wall;
                violet light off the ley-lines */
-            prebuilt_stonehenge: { open: true, floor: 'grass_2', wall: 'rock_wall_1', dado: 'dirt', trim: 'ruins', ceiling: null, h: 4.4, dadoH: 0.9, pipes: false,
+            prebuilt_stonehenge: { open: true, edge: 'low', floor: 'grass_2', wall: 'rock_wall_1', dado: 'dirt', trim: 'ruins', ceiling: null, h: 4.4, dadoH: 0.9, pipes: false,
                 apron: 'grass_2', skirt: 'dirt', apronColor: 0x9ab080,
                 mood: { lamp: 0xb8a0ff, glow: 0x9a7aff, strip: 0xd8ccff, light: 0xd0c8ff, night: 1,
                     signN: { bg: '#241b3e', border: '#b8a0ff', color: '#efe8ff' }, signS: { bg: '#2a2418', border: '#d8c8a0', color: '#f4ecd8' },
@@ -17343,7 +17375,7 @@ const DOOR_HQ = {
             /* 2047 · CYBERPUNK CITY — the intersection: asphalt, the tenement
                walls with the towers right behind them, neon strips, rain
                that is not falling in here; night */
-            prebuilt_cyberpunk: { open: true, floor: 'urban_street', wall: 'urban_wall', dado: 'metal_3', trim: 'metal', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
+            prebuilt_cyberpunk: { open: true, edge: 'walls', floor: 'urban_street', wall: 'urban_wall', dado: 'metal_3', trim: 'metal', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
                 apron: 'urban_street', skirt: 'urban_wall', apronColor: 0x9a96a8, floorColor: 0x8a86a0,
                 mood: { lamp: 0xff3ad8, glow: 0x35e0ff, strip: 0xff6ad8, light: 0xcfe8ff, night: 1,
                     signN: { bg: '#1a0f33', border: '#ff3ad8', color: '#ffe0f8' }, signS: { bg: '#0f1a2a', border: '#35e0ff', color: '#dffaff' },
@@ -17352,7 +17384,7 @@ const DOOR_HQ = {
                terraces up the flanks (`stands`), the console on the north
                wall under the plate (the north terraces make way for it);
                torchlight under a dust sky */
-            prebuilt_babel: { open: true, floor: 'bricks_1', wall: 'bricks_1', dado: 'bricks_1', trim: 'wood', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false, console: { wall: 'n', at: 0 },
+            prebuilt_babel: { open: true, edge: 'walls', floor: 'bricks_1', wall: 'bricks_1', dado: 'bricks_1', trim: 'wood', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false, console: { wall: 'n', at: 0 },
                 apron: 'bricks_1', skirt: 'dirt_2', apronColor: 0xd8a878, floorColor: 0xd8a878,
                 mood: { lamp: 0xffa040, glow: 0xff8a30, strip: 0xffd8a0, light: 0xffe0b0, night: 0,
                     signN: { bg: '#3a2410', border: '#ffc070', color: '#fff0d8' }, signS: { bg: '#2a1a0c', border: '#d8a060', color: '#f4e4c8' },
@@ -17365,9 +17397,9 @@ const DOOR_HQ = {
                 mood: { lamp: 0x9fd0ff, glow: 0x7ab8ff, strip: 0xffffff, light: 0xf0f6ff, night: 0,
                     signN: { bg: '#f4f4ee', border: '#ffe27a', color: '#3a3a5a' }, signS: { bg: '#2a3048', border: '#9fd0ff', color: '#eef4ff' },
                     signLines: { n: ['MOUNT OLYMPUS', 'ROOM 12', 'THE TWELVE · IN SESSION'], s: ['THE LINTEL IS A TREATY', 'DO NOT LOOK DOWN. THE CLOUDS OBJECT', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 4 · MARS — the regolith flat: a rock wall, a metal trim, the
-               mesas and the rover in the room, the biodome by the way in;
-               red day */
+            /* 4 · MARS — the regolith flat: no wall (the airlock stands in
+               the open), the mesas and the rover in the room, the biodome
+               by the way in; red day */
             prebuilt_mars: { open: true, floor: 'moon_2', wall: 'mars_2', dado: 'mars_2', trim: 'metal', ceiling: null, h: 4.4, dadoH: 1.0, pipes: false,
                 apron: 'mars', skirt: 'mars_2', apronColor: 0xc07a58, floorColor: 0xc88a5a,
                 mood: { lamp: 0xff9a60, glow: 0xff7a40, strip: 0xffd0b0, light: 0xffe0c8, night: 0,
@@ -17393,7 +17425,7 @@ const DOOR_HQ = {
             /* 180 · HOLLOW EARTH — the cavern floor: cave walls, crystal
                trim, the stalagmites and the fungus in the room, the inner
                sun overhead; the far side's ceiling is this side's floor */
-            prebuilt_hollow_earth: { open: true, floor: 'cave_floor', wall: 'cave_wall', dado: 'cave_wall', trim: 'crystal', ceiling: null, h: 4.8, dadoH: 1.1, pipes: false,
+            prebuilt_hollow_earth: { open: true, edge: 'walls', floor: 'cave_floor', wall: 'cave_wall', dado: 'cave_wall', trim: 'crystal', ceiling: null, h: 4.8, dadoH: 1.1, pipes: false,
                 apron: 'cave_floor', skirt: 'cave_wall', apronColor: 0x8a7a9c, floorColor: 0x8a7a9c,
                 mood: { lamp: 0x9affe4, glow: 0x6af0d0, strip: 0xd0fff0, light: 0xc8e8ff, night: 1,
                     signN: { bg: '#1c1428', border: '#9affe4', color: '#e8fff8' }, signS: { bg: '#2a2038', border: '#c8b0e8', color: '#f0e8ff' },
@@ -17406,9 +17438,10 @@ const DOOR_HQ = {
                 mood: { lamp: 0x9affd0, glow: 0xffd0f2, strip: 0xcfe0ff, light: 0xd8ffe8, night: 1,
                     signN: { bg: '#0e2a1a', border: '#9affd0', color: '#e8fff0' }, signS: { bg: '#2a1a2a', border: '#ffd0f2', color: '#ffeefa' },
                     signLines: { n: ['FAIRY FOREST', 'ROOM 420', 'THE MUSHROOMS ARE NOT THAT KIND'], s: ['COMPLAINT LODGED', 'THE DOOR IS A TREE. THE TREE OBJECTED', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 1969 · MOON — Tranquility: regolith, a LOW berm for a wall (the
-               door had no wall; Records built one), the lander and the
-               monolith in the room, the Earth in the sky; night */
+            /* 1969 · MOON — Tranquility: regolith, NO wall (the door stands
+               without one, as the footage shows; the berm Records built is
+               gone again — 2026-09-11), the lander and the monolith in the
+               room, the Earth in the sky; night */
             prebuilt_moon: { open: true, floor: 'moon', wall: 'moon_3', dado: 'moon_3', trim: 'aluminium', ceiling: null, h: 3.0, dadoH: 0.8, pipes: false,
                 apron: 'moon', skirt: 'moon_3', apronColor: 0xc8ccd8, floorColor: 0xc8ccd8,
                 mood: { lamp: 0xeaf0ff, glow: 0xcfd8ff, strip: 0xffffff, light: 0xe8ecff, night: 1,
@@ -17433,7 +17466,7 @@ const DOOR_HQ = {
             /* 9600 · GÖBEKLI TEPE — the tell: a dry-stone wall, the ring
                walls and the T-pillars in the room, the digs, the hills over
                the wall; day */
-            prebuilt_gobekli: { open: true, floor: 'grass_2', wall: 'rock_wall_1', dado: 'rock_wall_1', trim: 'ruins', ceiling: null, h: 4.4, dadoH: 0.9, pipes: false,
+            prebuilt_gobekli: { open: true, edge: 'low', floor: 'grass_2', wall: 'rock_wall_1', dado: 'rock_wall_1', trim: 'ruins', ceiling: null, h: 4.4, dadoH: 0.9, pipes: false,
                 apron: 'grass_2', skirt: 'dirt_3', apronColor: 0xa8b070, floorColor: 0xa8b070,
                 mood: { lamp: 0xffd8a0, glow: 0xffc070, strip: 0xfff0d8, light: 0xfff4e4, night: 0,
                     signN: { bg: '#3a2c18', border: '#d8c098', color: '#f8f0dc' }, signS: { bg: '#2a2418', border: '#c0a888', color: '#f0e8d8' },
@@ -17451,7 +17484,7 @@ const DOOR_HQ = {
                nothing in the room but the board and the paperwork (no
                setting: the plane's apron is fourteen tiles; see above);
                pale day, nothing overhead but the eyes */
-            prebuilt_flatlands: { open: true, setting: false, pad: 7.0, floor: 'grass_2', wall: 'dirt_2', dado: 'dirt_2', trim: 'dirt_2', ceiling: null, h: 3.0, dadoH: 0.8, pipes: false,
+            prebuilt_flatlands: { open: true, edge: 'low', setting: false, pad: 7.0, floor: 'grass_2', wall: 'dirt_2', dado: 'dirt_2', trim: 'dirt_2', ceiling: null, h: 3.0, dadoH: 0.8, pipes: false,
                 apron: 'grass_2', skirt: 'dirt_2', apronColor: 0xc0c8b8, floorColor: 0xc0c8b8,
                 mood: { lamp: 0xe8ece0, glow: 0xd0d8c8, strip: 0xf4f4f0, light: 0xf0f0ea, night: 0,
                     signN: { bg: '#d0d8c8', border: '#8a8a80', color: '#3a3a38' }, signS: { bg: '#3a3a38', border: '#d0d8c8', color: '#f0f0ea' },
@@ -17630,6 +17663,8 @@ const DOOR_HQ = {
                     'The drain goes down. Everything here goes down.',
                 ],
                 props: [
+                    /* (2026-09-11: Hell stands in the open — hqSitePropStands drops
+                       this with the wall it hung on; compliance is noted) */
                     { key: 'fire_extinguisher', wall: 'e', z: -6.0 },
                     { key: 'tube_tv',        x: 10.9,  z: -7.0, y: 0, face: 250 },
                     { key: 'folding_chair',  x: 9.9,   z: -6.2, face: 60 },
@@ -17878,10 +17913,11 @@ const DOOR_HQ = {
                     { key: 'cot',            x: 13.9,  z: -11.6, face: 0 },
                     { key: 'fire_extinguisher', wall: 'e', z: 9.0 },
                     { key: 'cardboard_box',  x: -14.2, z: 12.4, face: 20 },
-                    /* 2026-09-10: the rover. It is dead. It is parked on the
-                       walkway because the walkway is the only flat surface
-                       Records would sign for. */
-                    { key: 'mars_rover',     x: 12.4,  z: 12.2, face: 315 },
+                    /* 2026-09-11: the rover is no longer parked here as a
+                       room prop — the SITE's own rover (the mars setting,
+                       three-renderer.js _NR_BUILDERS.mars) is the user's
+                       real model now, and it stands where the map puts it,
+                       in the battle and in the room alike. */
                 ],
             },
             /* 51 · AREA 51 — the guard shack's terminal in the north-east
@@ -17971,7 +18007,7 @@ const DOOR_HQ = {
             /* 1969 · MOON — the soundstage side of it: the director's chair,
                the monitor, the props crate, the shot list on the berm */
             prebuilt_moon: {
-                agent: '“Room 1969. The door stood without a wall until Records built one. The footprints lead in. Do not follow them out.”',
+                agent: '“Room 1969. The door stands without a wall. Records built one once; the footage disagreed. The footprints lead in. Do not follow them out.”',
                 lines: [
                     'The footage is real. The Moon is the reconstruction.',
                     'One small step. The form is longer.',
@@ -17986,10 +18022,12 @@ const DOOR_HQ = {
                     { key: 'tube_tv',        x: 14.4,  z: -10.9, y: 0, face: 250 },
                     { key: 'clipboard',      wall: 'w', z: 8.8 },
                     { key: 'paper_sheet',    x: -12.4, z: 11.8, y: 0.01, face: 210 },
-                    /* 2026-09-10: the lander, standing in the corner of the
-                       room the way it stands on the site. The footprints lead
-                       in. Nobody has filed where they lead out. */
-                    { key: 'lunar_lander',   x: -12.6, z: -12.4, face: 135 },
+                    /* 2026-09-11: the lander is no longer a room prop in the
+                       corner — the SITE's own lander (the moon setting,
+                       three-renderer.js _NR_BUILDERS.moon) is the user's real
+                       model now, with its flag beside it, in the battle and
+                       in the room alike. The footprints lead in. Nobody has
+                       filed where they lead out. */
                 ],
             },
             /* 888 · VATICAN CITY — a chair by the east arm of the colonnade,
@@ -19070,6 +19108,17 @@ function hqSiteBoardInfo(mapId) {
     })));
     return { w: b.w, h: b.h, base: B, cells: cells, walls: walls, mons: mons, objs: objs, nexus: nexus, name: b.name || '' };
 }
+/* THE EDGE (2026-09-11): does this prop still stand when the room has no
+   wall? A floor / ceiling-free prop always does; a `wall` prop only if its
+   catalogue entry STANDS on the floor (a footprint and no mount) — the
+   renderer places it at the old wall line either way. */
+function hqSitePropStands(p) {
+    if (!p || typeof p.wall !== 'string') return true;
+    const cat = (DOOR_HQ.catalogue || {})[p.key];
+    if (!cat) return false;
+    const mount = (p.mount != null) ? p.mount : (cat.mount || 0);
+    return !!(cat.foot > 0) && !(mount > 0);
+}
 function hqSiteRoom(mapId) {
     const id = hqSiteId(mapId);
     const SR = DOOR_HQ.siteRooms || {};
@@ -19102,6 +19151,11 @@ function hqSiteRoom(mapId) {
     /* an OUTDOOR room (stage 3): no ceiling, the map's sky and far roster
        overhead, the lights are masts on the walkway corners */
     const open = !!shell.open;
+    /* THE EDGE (2026-09-11): what stands at the room's bound — an indoor
+       room is always the full box; an outdoor room is OPEN unless its shell
+       says the place is walled ('walls') or fenced knee-high ('low') */
+    const edge = !open ? 'walls' : (shell.edge === 'walls' || shell.edge === 'low') ? shell.edge : 'open';
+    const roam = (edge === 'open') ? ((shell.roam != null) ? shell.roam : 5.0) : 0;
     const mood = Object.assign({}, ((SR.shell || {}).mood) || {}, (shell.mood) || {});
     const lightsAt = open
         ? [{ x: -(half - 1.3), z: -(half - 1.3) }, { x: half - 1.3, z: -(half - 1.3) }, { x: -(half - 1.3), z: half - 1.3 }, { x: half - 1.3, z: half - 1.3 }]
@@ -19159,7 +19213,9 @@ function hqSiteRoom(mapId) {
         at(W(0.05, 0.5), { key: 'papers_a', y: 0.76, face: F(100) }),
         Object.assign({ key: 'clipboard' }, WA(-1.6)),
         /* the south wall: the way in at x 0 (a 3.3 m panel), the extinguisher
-           and the breaker either side of it, the wet-floor sign on the sill */
+           and the breaker either side of it, the wet-floor sign on the sill
+           (on an open edge the panel stands alone: the two fixtures go — see
+           the wall-prop filter below — the sign on the sill stays) */
         { key: 'fire_extinguisher', wall: 's', x: 3.4 },
         { key: 'breaker_panel', wall: 's', x: -3.4 },
         { key: 'wet_floor_sign', x: 2.6, z: half - 1.4, face: 150 },
@@ -19185,6 +19241,11 @@ function hqSiteRoom(mapId) {
     const dry0 = cells * cell / 2 + moatGapM - 0.05;
     const fit = (v) => (grow > 0 && v != null && Math.abs(v) >= dry0) ? rc(Math.sign(v) * (Math.abs(v) + grow)) : v;
     (FL.props || []).forEach(p => props.push(Object.assign({}, p, (FL.fitted || p.wall) ? {} : { x: fit(p.x), z: fit(p.z) })));
+    /* THE EDGE: with no wall to hang on, a wall-MOUNTED prop goes (a
+       clipboard, an extinguisher, a breaker, a clock, a shelf, a rail —
+       `mount` > 0 or no footprint); a piece that STANDS at the wall line
+       (lockers, shelving, the cooler, the tanker desk) keeps its place */
+    const keptProps = (edge === 'walls') ? props : props.filter(p => hqSitePropStands(p));
     /* the natives on the walkway (hqMissionPool: natives first) — a race hint
        per spot; a race with no rigged model falls back to the roster draw;
        on the n/s strips when the setting's stands fill the sides */
@@ -19205,6 +19266,9 @@ function hqSiteRoom(mapId) {
             pipes: !open && shell.pipes !== false,
             /* an outdoor room (stage 3): the sky it stands under, the ground past its walls */
             open: open, sky: sky,
+            /* THE EDGE (2026-09-11): 'walls' | 'open' | 'low' — what stands at
+               the bound; `roam` = how far past it the walker may go (open only) */
+            edge: edge, roam: roam,
             /* the moat room (stage 4): the quay's inner edge, the causeways, the liquid */
             moat: moat,
             apron: open ? (shell.apron || shell.floor || 'grass_2') : null, skirt: open ? (shell.skirt || 'dirt') : null,
@@ -19216,7 +19280,7 @@ function hqSiteRoom(mapId) {
             plate: { x: 0, z: -(half - 0.4), y: roomH - 0.45 },
             grid: { cells: cells, cell: cell },
         },
-        doors: doors, counters: counters, props: props,
+        doors: doors, counters: counters, props: keptProps,
         /* the site guard: just inside the way in, facing across the board */
         agents: [{ x: -4.4, z: half - 1.5, face: 20, line: FL.agent || '“Sign the book. Then sign it again on the way out; they compare the signatures.”' }],
         npcSpots: npcSpots,
@@ -20080,6 +20144,7 @@ if (typeof window !== 'undefined') {
     window.hqRingSpot = hqRingSpot;
     window.hqSiteRoomId = hqSiteRoomId;
     window.hqSiteRoom = hqSiteRoom;
+    window.hqSitePropStands = hqSitePropStands;
     window.hqSiteBoard = hqSiteBoard;
     window.hqSiteBoardInfo = hqSiteBoardInfo;
     window.hqRoomNo = hqRoomNo;

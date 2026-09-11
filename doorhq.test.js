@@ -1527,7 +1527,8 @@ test('every built site is a launch map with a threshold and generates a box room
     const hel = moatRoom('prebuilt_hell');
     assert.ok(hel.shell.moat.key === 'lava' && hel.shell.moat.walk === false && hel.shell.moat.deck === 'obsidian', 'Hell: a lava moat never waded, basalt causeways');
     assert.ok(hel.doors[0].leaf === 'leaf_hell_arch' && hel.shell.wall === 'obsidian' && ((hel.shell.mood.lamp >> 16) > (hel.shell.mood.lamp & 0xff)), 'Hell: the arch, obsidian, red light');
-    assert.ok(hel.props.some(p => p.key === 'fire_extinguisher' && p.wall === 'e'), 'Hell: the extinguisher, inspected monthly');
+    /* THE EDGE (2026-09-11): Hell stands in the open now — the compliance extinguisher went with the wall it hung on (it is still on the shell's flavour sheet) */
+    assert.ok(HQ.siteRooms.flavour.prebuilt_hell.props.some(p => p.key === 'fire_extinguisher' && p.wall === 'e') && !hel.props.some(p => p.key === 'fire_extinguisher'), 'Hell: the extinguisher was inspected monthly; the wall it hung on is gone');
     const tec = moatRoom('prebuilt_technoticlan');
     assert.ok(tec.shell.moat.key === 'water' && tec.shell.moat.tint === '#3fe0d8' && tec.shell.wall === 'bricks_3', 'Technoticlan: the canal cyan, the glyph wall');
     assert.ok(tec.doors[0].leaf === 'leaf_portcullis' && tec.props.some(p => p.key === 'crt_terminal' && p.z < -5), 'Technoticlan: the temple gate, the calendar terminal in the corner');
@@ -1571,6 +1572,72 @@ test('every built site is a launch map with a threshold and generates a box room
     /* day and night follow the map's sky */
     for (const [id, night] of [['prebuilt_heaven', 0], ['prebuilt_giza', 0], ['prebuilt_vatican', 0], ['prebuilt_cyberpunk', 1], ['prebuilt_area51', 1], ['prebuilt_stonehenge', 1], ['prebuilt_northpole', 1]])
         assert.strictEqual(HQ.rooms[D.hqSiteRoomId(id)].shell.sky.night, night, id + ': day/night');
+});
+
+/* THE EDGE (2026-09-11): the doorway is a doorway to the ACTUAL place — an
+   outdoor site stands in the open unless the place itself is walled */
+test('the edge: outdoor site rooms stand without facility walls unless the place is walled; the props that need a wall go with it', () => {
+    const CAT = HQ.catalogue;
+    const built = HQ.siteRooms.built;
+    const WALLED_OUTDOORS = ['prebuilt_stadium', 'prebuilt_camelot', 'prebuilt_cyberpunk', 'prebuilt_babel', 'prebuilt_agartha', 'prebuilt_hollow_earth'];
+    const LOW = ['prebuilt_stonehenge', 'prebuilt_gobekli', 'prebuilt_flatlands'];
+    for (const id of built) {
+        const room = HQ.rooms[D.hqSiteRoomId(id)], S = room.shell, sh = HQ.siteRooms.shells[id] || {};
+        assert.ok(['walls', 'open', 'low'].includes(S.edge), id + ': edge is walls | open | low');
+        if (!S.open) assert.strictEqual(S.edge, 'walls', id + ': an indoor room is always the full box');
+        else if (WALLED_OUTDOORS.includes(id)) assert.ok(S.edge === 'walls' && sh.edge === 'walls', id + ': the place is walled (a building, a cavern) — its shell says so');
+        else if (LOW.includes(id)) assert.ok(S.edge === 'low' && sh.edge === 'low', id + ': a knee-high field wall');
+        else assert.strictEqual(S.edge, 'open', id + ': an outdoor place stands in the open (the default)');
+        /* roaming: only past an open edge, and never through a wall or a field wall */
+        assert.strictEqual(S.roam, S.edge === 'open' ? 5 : 0, id + ': roam ' + S.roam);
+        if (S.edge === 'walls') continue;
+        /* nothing hangs on a wall that is not there; what stands, stands */
+        for (const p of room.props) {
+            if (typeof p.wall !== 'string') continue;
+            const c = CAT[p.key];
+            assert.ok(c && c.foot > 0 && !(c.mount > 0) && !(p.mount > 0), id + ': ' + p.key + ' hangs on a wall the room does not have');
+            assert.ok(D.hqSitePropStands(p), id + ': ' + p.key + ' stands');
+        }
+        assert.ok(!room.props.some(p => p.key === 'clipboard' || p.key === 'fire_extinguisher' || p.key === 'breaker_panel'), id + ': the wall fixtures went with the wall');
+        assert.ok(room.props[0].key === 'tanker_desk' && room.props.some(p => p.key === 'crt_terminal') && room.props.some(p => p.key === 'wet_floor_sign'), id + ': the console desk and the sill sign stay');
+        /* the way in is still a door on the south line — the lone panel of the crossing */
+        assert.ok(room.doors[0].wall === 's' && room.doors[0].x === 0, id + ': the lone door stands where the wall was');
+    }
+    assert.strictEqual(D.hqSitePropStands({ key: 'locker', wall: 'n', x: 1 }), true);
+    assert.strictEqual(D.hqSitePropStands({ key: 'clipboard', wall: 'w', z: 1 }), false);
+    assert.strictEqual(D.hqSitePropStands({ key: 'metal_shelving', wall: 'e', z: 1, mount: 1.2 }), false, 'a mounted placement of a standing piece still needs the wall');
+    assert.strictEqual(D.hqSitePropStands({ key: 'wet_floor_sign', x: 1, z: 1 }), true, 'a floor prop never needed one');
+    /* the Moon: the door stands without a wall again (the threshold's own note) */
+    const moon = HQ.rooms[D.hqSiteRoomId('prebuilt_moon')];
+    assert.ok(moon.shell.edge === 'open' && /without a wall/.test(moon.agents[0].line) && !/until Records built one/.test(moon.agents[0].line), 'the Moon: no wall, and the guard says so');
+    /* the site's own rover / lander come from the SETTING now (the user's real models) — not doubled as room props */
+    assert.ok(!HQ.rooms[D.hqSiteRoomId('prebuilt_mars')].props.some(p => p.key === 'mars_rover'), 'Mars: one rover, the setting\'s');
+    assert.ok(!moon.props.some(p => p.key === 'lunar_lander'), 'the Moon: one lander, the setting\'s');
+    for (const k of ['mars_rover', 'lunar_lander', 'palm_tree']) assert.ok(CAT[k] && CAT[k].file && CAT[k].foot > 0, k + ': in the kit with a footprint');
+    /* the renderer: the shell reads the edge, the walker roams past an open one, the setting keeps its own perimeter, the kit stands on the boards */
+    const tr = require('fs').readFileSync(require('path').join(__dirname, 'three-renderer.js'), 'utf8');
+    assert.match(tr, /var edge = \(S\.edge === 'open' \|\| S\.edge === 'low'\) \? S\.edge : 'walls';/, 'the box shell reads shell.edge');
+    assert.match(tr, /if \(edge === 'walls'\) \{\s*G\.add\(slab\(0, H, -0\.02, 0\.04/, 'full walls only on a walled room');
+    assert.match(tr, /var HQ_EDGE_KERB_H = 0\.05;/, 'an open edge is a flush paving line');
+    assert.match(tr, /var HQ_EDGE_LOW_H = 0\.95;/, 'a low edge is knee-high');
+    assert.match(tr, /rect: \{ hw: ax \? L \/ 2 : 0\.25, hd: ax \? 0\.25 : L \/ 2 \}, site: true \}\);/, 'the field wall is a wall to the walker');
+    assert.match(tr, /function _hqRoamM\(S\) \{ return \(S && S\.edge === 'open' && S\.roam > 0\) \? S\.roam : 0; \}/, 'roam reads shell.roam on an open edge only');
+    for (const fn of ['_hqSurface', '_hqAirOK', '_hqCamBlocked']) {
+        const body = tr.slice(tr.indexOf('function ' + fn + '('), tr.indexOf('function ' + fn + '(') + 1400);
+        assert.match(body, /_hqRoamM\(S\)/, fn + ' honours the roam');
+    }
+    assert.match(tr, /var walled = !\(S\.edge === 'open' \|\| S\.edge === 'low'\);/, 'the setting cull knows the edge');
+    assert.match(tr, /var hugX = walled && /, 'a wall-less room keeps the setting\'s perimeter (the natural walls)');
+    assert.match(tr, /if \(u\.o\._ew_footM > 0\) \{/, 'a kit GLB still loading gets its collision disc');
+    assert.match(tr, /var noWall = \(S\.edge === 'open' \|\| S\.edge === 'low'\);/, 'the signs know the edge');
+    assert.match(tr, /if \(noWall\) \{ signboard\(5\.0, -signIn, 0, 4\.8, 1\.7\); signboard\(-5\.0, signIn, Math\.PI, 4\.8, 1\.7\); \}/, 'freestanding signboards where the walls were');
+    assert.match(tr, /function _hzDoorKitGLB\(key, o\)/, 'the D.O.O.R. kit on the board');
+    assert.match(tr, /_hzDoorKitGLB\('mars_rover', \{ metres: 2\.6, foot: 1\.1, rng: rng, fallback: _hzRover \}\)/, 'Mars: the real rover, the buggy as fallback');
+    assert.match(tr, /_hzDoorKitGLB\('lunar_lander', \{ metres: 3\.2, foot: 1\.5, rng: rng, fallback: landerProc \}\)/, 'the Moon: the real lander, the foil box as fallback');
+    assert.match(tr, /_hzDoorKitGLB\('palm_tree', \{ metres: 3\.2 \+ \(i % 2\) \* 0\.5, foot: 0\.35, rng: rng \}\)/, 'Atlantis: the palms');
+    const atl = tr.slice(tr.indexOf('_NR_BUILDERS.atlantis = function'), tr.indexOf('_NR_BUILDERS.babel = function'));
+    assert.strictEqual((atl.match(/_hzDoorKitGLB\('palm_tree'/g) || []).length, 1, 'one palm call, four corners');
+    assert.match(atl, /\.forEach\(function \(p, i\) \{\s*_nrProp\(K, function \(rng\) \{ return _hzDoorKitGLB\('palm_tree'/, 'the palms stand through _nrProp');
 });
 
 test('source scan: the renderer builds the site board and walks it; map.js walks a threshold in and crosses from the console', () => {

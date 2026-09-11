@@ -3771,3 +3771,78 @@ wired in one data.js delivery — HQ plan §7.11 has the full table.
 - **Delivery (RULE #1 / #1b).** `data.js` to R2, `index.html` to Render,
   token `20260910-071500-door-props-cors`. `doorhq.test.js`, this log
   and the plan are repository-only. Nothing committed or pushed.
+
+### 2026-09-11 — THE EDGE: the outdoor sites lose their facility walls; the real rover, lander and palms stand on the boards
+
+The user's brief: the doorways are doorways to the ACTUAL places, so a
+site room should not be four facility walls unless the place is indoors
+(or walled by itself — a fence, a tree line, a building is fine); and the
+three mission GLBs (`mars_rover`, `lunar_lander`, `palm_tree`) should be
+used on Mars, the Moon and Atlantis.
+
+- **`shells[id].edge` (data.js `DOOR_HQ.siteRooms`, read by hqSiteRoom →
+  `shell.edge`, `shell.roam`).** Three values. `'open'` — the default for
+  every `open` room — draws NOTHING at the bound but a flush paving line
+  (`HQ_EDGE_KERB_H` 0.05 m in the trim texture); the ground runs out under
+  the map's sky, the way in is the threshold's own 3.3 m door panel
+  standing alone (the crossing's lone door — `_hqBuildDoors` unchanged),
+  both signs become freestanding SIGNBOARDS (two posts, a rail, a dark
+  back, the board at 2.55 m), the console's tanker desk stands free, and
+  the walker may ROAM `shell.roam` = 5 m past the old wall line onto the
+  apron (`_hqRoamM` in `_hqSurface` / `_hqAirOK` / `_hqCamBlocked`).
+  `'low'` — a knee-high field wall (`HQ_EDGE_LOW_H` 0.95 m, the shell's
+  wall texture, capped, broken at the door panel, a rect blocker per run):
+  Stonehenge, Göbekli Tepe, Flat Lands (the plane's "low earth wall").
+  `'walls'` — the full box, forced on every indoor room and set by hand on
+  the outdoor places whose enclosure is a building or a cavern: the
+  Stadium's bowl, Camelot's curtain wall, Cyberpunk's tenements, Babel's
+  court, Agartha and Hollow Earth (caverns). Everything else outdoors is
+  open: Nuketown (the picket fence is the wall now), Atlantis, Hell,
+  Technoticlan, Antarctica, Shasta, Giza, Heaven, Olympus, Mars, Area 51
+  (the wire and the towers), Skinwalker (the rail fence), Fairy Forest,
+  the Moon, the Vatican (the colonnade arms), Bohemian Grove, North Pole.
+- **The props that needed a wall went with it.** `hqSitePropStands(p)`:
+  a `wall` prop survives only if its catalogue entry STANDS (a `foot`, no
+  `mount`) — lockers, shelving, the cooler, the tanker desk keep their
+  place at the old wall line; clipboards, extinguishers, breakers, clocks,
+  shelves, rails, vents, frames, the Backrooms' exit signs are dropped in
+  a wall-less room (Hell's compliance extinguisher included — the test
+  notes it is still on the flavour sheet).
+- **The setting keeps its own perimeter.** `_hqBuildSetting`'s
+  "perimeter doubled" cull (`hugX` / `hugZ`) now runs only on a walled
+  room — on an open / low room the fence, the wire, the tree line ARE
+  the natural walls. A D.O.O.R.-kit GLB still loading gets its collision
+  disc from `_ew_footM` at cull time (an empty box used to be skipped —
+  the walker would have walked through the rover until it landed).
+- **The real models on the boards (battle AND room, since the room runs
+  the same builder).** three-renderer.js `_hzDoorKitGLB(key, o)` loads a
+  `DOOR_HQ.catalogue` prop as a lit board prop (fit to metres, seated on
+  y = 0, `fallback` = the procedural builder when the catalogue / loader
+  is missing). `_NR_BUILDERS.mars` swaps `_hzRover` for the rover (2.6 m);
+  `_NR_BUILDERS.moon` swaps the foil-and-legs box for the lander (3.2 m,
+  the flag still beside it); `_NR_BUILDERS.atlantis` grows four palms
+  on the quay corners (3.2 / 3.7 m). The room props `mars_rover` (Mars's
+  walkway) and `lunar_lander` (the Moon's corner) placed 2026-09-10 are
+  REMOVED — one rover, one lander, the site's own. Giza's and the lobby's
+  palms stay. The Moon's procedural LRV stays (the rover is Mars's).
+- **Copy.** The Moon guard: "The door stands without a wall. Records
+  built one once; the footage disagreed." (the old line said Records
+  built one). Shell comments for Mars / the Moon / Agartha updated.
+- **Tests.** doorhq.test.js "the edge": every built room's `edge` is
+  walls | open | low, indoor ⇒ walls, the six walled outdoor rooms and
+  the three low rooms named, `roam` 5 iff open, no mounted prop survives
+  a wall-less room (the console desk, the CRT and the sill sign do), the
+  lone door still on the south line, `hqSitePropStands` truth table, the
+  Moon's line, no doubled rover / lander, the three kit keys, and source
+  scans of the shell / roam / cull / signboards / the three builders.
+  `npm test`: 465 tests, 463 pass, 0 fail, 2 expected skips.
+- **Not done / to look at on the next walkthrough.** No playtest (RULE
+  #1c). The rover's and the lander's authored FACING is unread (the
+  `ry` values are the procedural ones); if either lands sideways, the
+  `ry` in its `_nrProp` call is the only edit. The room plate (CSS2D)
+  still floats at the north edge at wall height — harmless, but a lower
+  `plate.y` on open rooms would read better.
+- **Delivery (RULE #1 / #1b).** `data.js` + `three-renderer.js` to R2,
+  `index.html` to Render, token `20260911-open-sites-01-cors`.
+  `doorhq.test.js`, this log, DOOR_MASTER Part D and CLAUDE.md are
+  repository-only. Nothing committed or pushed.

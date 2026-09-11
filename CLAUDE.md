@@ -226,7 +226,18 @@ That's why online kept drifting behind VS-CPU. So, for EVERY change:
   opt OUT of its setting (`shells[id].setting: false` + a plain `pad`
   — Flat Lands, whose builder's apron is fourteen tiles). **Adding a
   site room today = `built` + `shells[id]` + a `near` row (`w` = the
-  builder's) + `flavour[id]`; nothing in the renderer.** A room's
+  builder's) + `flavour[id]`; nothing in the renderer.** **THE EDGE
+  (2026-09-11)**: `shells[id].edge` = `'open'` (the default for an
+  outdoor room — NO facility walls, a flush paving line, the lone door
+  panel, freestanding signboards, `shell.roam` 5 m onto the apron) |
+  `'low'` (a knee-high field wall) | `'walls'` (forced indoors; set by
+  hand only where the place itself is walled — the Stadium, Camelot,
+  Cyberpunk, Babel, Agartha, Hollow Earth). A wall prop survives a
+  wall-less room only if it STANDS (`hqSitePropStands`); the setting's
+  own perimeter (fence / wire / trees) is KEPT there (natural walls are
+  fine). The D.O.O.R. kit stands on the boards through three-renderer.js
+  `_hzDoorKitGLB` (the Mars rover, the Moon lander, Atlantis's palms —
+  battle and room alike; never double them as room props). A room's
   LIGHT is `shells[id].mood` (lamp / glow / strip / light colours, the two
   sign palettes, optional `signLines`) merged over `siteRooms.shell.mood`
   (= D.U.M.B.'s red); the renderer's signs and lamps hang from `S.h`.
