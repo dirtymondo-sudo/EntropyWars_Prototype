@@ -6,6 +6,16 @@ Baseline: Phase 1 source review pinned to main commit `f0a4c3341631d60cee2ac544e
 Continuation baseline: main commit `4c740fcf6624a30d59e30c4d4dfea1a16dd85b03`, checked 2026-09-09 (America/Chicago). This commit and its predecessor `3da54eff8abbef3da87a1c0f72272919d84bd15e` changed only the uploaded review document; the inspected game source and line references remain unchanged.
 Delivery: this document is repository/reference material. The first delivery is now present in repository main `41f8e76b67120eea58c17fd968c5c72d70ef035e`; R2/Render deployment is unverified. The pause-focus delivery is also present in repository main `e92ee26153b65c2047963544c56310ea838220bb`. The Settings-focus delivery is present in repository main `f546e7fff61edb012e3fae536aee995996257c4f`. The PAUSE-06 controller delivery is present in repository main `88b3bc65adc93fc8ed2e84c28c112b0c81565b3f`; the PAUSE-07 delivery is present in repository main `82494b38fa3dea84f89f32a8723602289fa51b3f`; R2/Render deployment remains unverified.
 
+### Latest continuation — 2026-09-10: LIFE-06 / VFX-03 sword-wave retirement
+
+**Implemented and locally validated; not deployed or browser-playtested.** Both `_sigSwordWave3D` emission timer sites now use `_fxDelay`: route sparks and terminal speed burst. Retirement cancels pending emissions and rejects already-queued callbacks after a fresh cast, including when the first route spark already fired. Existing crescent geometry continues through `_sigRun`; timing, coordinates and visual payloads are preserved. Both online viewers use the same local helper; relay and authority are unchanged.
+
+**Validation:** six production-helper regressions pass. Three cancellation checks fail against the unchanged source; three normal-behavior/geometry/suppression controls pass before and after. Real `_sigRun` is exercised with controlled rendering objects, including animation and exactly-once disposal. Full package test command through bundled Node (`node --test *.test.js`; npm unavailable): **420 total, 416 passed, 2 previously recorded failures, 2 skips**. Failures remain the Phase 6 starter assertion and lunar-lander ceiling assertion. Syntax: **83/83 clean**. WebGL and live host/guest acceptance remain unverified; this accumulated workspace is not full-main CI.
+
+**Source and delivery:** refreshed main effects, index, CLAUDE.md and plan; effects, index and CLAUDE.md matched local copies byte-for-byte. Complete files, baseline hashes and validation evidence are in `ENTROPY_WARS_SWORD_WAVE_FIXES.zip`. three-vfx-effects.js → R2; index.html → Render; test, inventory and review plan → repository only. Token: `20260910-sword-wave-retirement-01-cors`. No synced reference edits, commit, push or deployment.
+
+**Exact next task:** implement `_sigBreathBlast3D` charge/release and nested emissions, then `_sigSonicBoomerang3D` outbound/return rings, turnaround and catch. Preserve geometry ownership and inspect allocation cleanup if `_sigRun` refuses a group at its cap. Trace transitive wall geometry and asset attachment, preserving shared cache warmup, then VFX-04 visibility. LIFE-06/VFX-03 remain partial.
+
 ### Latest continuation — 2026-09-10: LIFE-06 / VFX-03 laser terminus retirement
 
 **Implemented and locally validated; not deployed or browser-playtested.** `_spawnLaserBeam3D` now schedules its terminus orb, starburst and ground shock ring through `_fxDelay`. Retiring the originating battle/preview cancels this pending emission and rejects an already-queued callback even after a fresh cast. This is an emission callback, not a resource-disposal callback. Beam cylinders and riding rings keep their existing `_animate3D` / `_cleanup3D` ownership. Normal lance timing, impact coordinates, colors, counts, geometry and sprite fallback are preserved. Both online viewers execute this same helper locally; no relay or authority changes.
@@ -1019,7 +1029,7 @@ After each phase:
 
 ## Resume instructions
 
-**Current continuation:** use the laser terminus entry at the top and `ENTROPY_WARS_LASER_IMPACT_FIXES.zip`. Continue sword-wave, breath and boomerang callback ownership, then transitive wall geometry and VFX-04. Prior fixes remain preserved; live acceptance remains open.
+**Current continuation:** use the sword-wave entry at the top and `ENTROPY_WARS_SWORD_WAVE_FIXES.zip`. Continue breath and boomerang callback ownership, then transitive wall geometry and VFX-04. Prior fixes remain preserved; live acceptance remains open.
 
 **Latest continuation:** the LIFE-05 delivery at the top supersedes the older next-step notes below. Use `ENTROPY_WARS_RECONNECT_CLOCK_FIXES.zip`. The next implementation is acknowledged current-match state recovery; persistent clock suspension and forced rejoin resend are implemented and locally validated, not deployed. LIFE-05 remains open.
 

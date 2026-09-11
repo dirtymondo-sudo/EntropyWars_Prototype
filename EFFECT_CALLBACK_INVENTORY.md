@@ -1,6 +1,6 @@
 # Remaining effect callback inventory
 
-Updated 2026-09-10 after laser terminus timer retirement. This is a complete textual index of direct window.setTimeout sites, not an exhaustive semantic audit. Asset completion callbacks and other scheduling APIs still need separate review.
+Updated 2026-09-10 after sword-wave timer retirement. This is a complete textual index of direct window.setTimeout sites, not an exhaustive semantic audit. Asset completion callbacks and other scheduling APIs still need separate review.
 
 ## Classified and fixed in this batch
 
@@ -52,8 +52,6 @@ Geometry trace: `_spawnLaserBeam3D` registers cylinders and rings with `_animate
 | 11792 | `window.setTimeout(function () {` |
 | 12152 | `window.setTimeout(function () {` |
 | 12589 | `window.setTimeout(function () {` |
-| 13621 | `window.setTimeout(function () {` |
-| 13627 | `window.setTimeout(function () {` |
 | 13779 | `window.setTimeout(function () {` |
 | 14417 | `window.setTimeout(function () {` |
 | 14436 | `window.setTimeout(function () {` |
@@ -109,3 +107,7 @@ Geometry trace: `_spawnLaserBeam3D` registers cylinders and rings with `_animate
 The terminus orb, 31 impact particles and ground ring now retire with the originating lifetime. Existing cylinders and riding rings retain their animation cleanup; regression checks confirm exactly-once disposal of their instance geometry/materials. No asset cache or relay changes.
 
 Next inspected sites: `_sigSwordWave3D` has route spark and terminal speed-burst timers; `_sigBreathBlast3D` has a charge/release callback with nested work; `_sigSonicBoomerang3D` has outbound rings, turnaround, return dash, reverse rings and catch timers. They remain unmodified and require their own behavioral regressions. Wall geometry remains a transitive audit task.
+
+## Sword-wave batch
+
+Route sparks and terminal speed burst now use `_fxDelay`; neither owns resource disposal. Existing `_sigRun` geometry ownership is preserved and exercised by regression tests. Six checks pass; three cancellation checks fail before the change. Breath and boomerang remain the next implementation tasks. Their downstream helper graph, wall geometry and asset attachment still require review.

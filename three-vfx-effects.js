@@ -13618,13 +13618,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* sparks ripple down the route as the wave passes each tile */
         for (var i = 0; i < hitTiles.length; i++) {
             (function (t2, d) {
-                window.setTimeout(function () {
+                _fxDelay(function () {
                     if (_suppressed()) return;
                     _sigSparks(t2.x, t2.y, 'steel-spark', 5, { vxy: 140, vz0: 30, vz1: 130, gravity: 300 });
                 }, d);
             })(hitTiles[i], (i + 1) * (travelMs / (hitTiles.length + 1)));
         }
-        window.setTimeout(function () {
+        _fxDelay(function () {
             if (_suppressed()) return;
             _sigSpeedBurst3D(lt.x, lt.y, { color: color, ms: 240 });
         }, travelMs);
