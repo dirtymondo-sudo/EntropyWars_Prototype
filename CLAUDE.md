@@ -345,6 +345,42 @@ WALKS AS row. Cosmetic and viewer-local — nothing on `state`, nothing
 relayed (RULE #2). This answers HQ plan D13. doorhq.test.js guards the
 room, the helpers and the source sites.
 
+## ROOM 360 + THE STAR CHART (The Observatorium, HQ plan 7.4) — added 2026-09-11
+`DOOR_HQ.rooms.observatorium` (data.js) is THE OBSERVATORIUM, a `kind:
+'box'` room off the MEZZANINE at 240° (`central_egress.doors` id
+`observatorium`, `level: 1`, `leaf_holographic`, directly above Records
+between Bay 3 and Bay 6; the office locker moved to 232°). A planetarium:
+counter `projector` → `_ewReplayLastMatch` (Replay MOVED here from
+Records — Records' door `alt` is now `{ room: 'observatorium', at:
+'projector' }`; map.js `_hqDoorPanelHtml` renders a door alt with `room`
+/ `at` as a `data-room` button) and counter `chart` → `overlay:
+'starmap'` (map.js `_hqStarmapHtml`). **`hqStarChart(profile)`**
+(data.js, before the Keys block; on `window`) is the ONE layout every
+reader shares: a unit disc (x east, z south) in equal wedges in bay
+order, Bay 1 at twelve and clockwise, each bay's sites zigzagging from
+the rim inward in roster order (seeded by `hqHash(id + '|star')`, never
+the clock), joined in that order; every star carries `st` (=
+`doorSiteState` on a synthesized `{ action: { mission } }` door:
+stabilized / unstable / codered / sealed), `done / total` and `siteRoom`.
+Readers: three-renderer.js procs `star_dome` (ceiling Points + the
+constellation LineSegments + a number plane per star facing down),
+`star_chart` (a wall proc; `_hqStarChartTex` canvas, cached by the lamps
+it shows), `star_projector` (the room's light) and `telescope`; the
+panel's SVG (`.hq-starmap` / `.hq-sky-*` / `.hq-star` in
+styles-base.css). **Point at a star** = `[data-star]` in the panel click
+handler (read before `[data-fn]`) → `window._hqOpenThreshold(mapId,
+{ star: true })` opens the threshold's OWN door panel from anywhere in
+the building (a door synthesized from `DOOR_HQ.thresholds[id]` like the
+CROSSING console's, id `chart` so the launch's `doorId` returns you to
+the chart post-match); `d.star` adds ◂ THE CHART (`[data-starmap]` →
+`window._hqOpenStarmap`). A box shell can be painted down:
+`shell.floorColor` / `wallColor` / `dadoColor` / `ceilColor` and
+`ceilTile` (metres per ceiling tile) — `_hqBuildBoxShell`; the room's
+ceiling is the `void` terrain sheet. `_hqStarColor(st)` is the one
+colour rule (green / amber / red / grey). Viewer-local, nothing relayed
+(RULE #2). doorhq.test.js guards the room, the layout and the source
+sites.
+
 ## MAP SETTINGS (near scenery) — added 2026-09-06
 Every Δ board is dressed like the Training Room: a NEAR builder builds the
 board's immediate surroundings (apron/plateau, moats, walls, buildings, trees,

@@ -2065,3 +2065,24 @@ regular's and the overheard lines are Claude placeholders (A15). Story
 track still ON HOLD (A14). Files: data.js, three-renderer.js, map.js,
 profile.js, index.html (`20260911-room1287-barbershop-01-cors`),
 doorhq.test.js.
+
+### 2026-09-11 (rev 5) — Room 360 · THE OBSERVATORIUM: the sky on file, a star for every door
+HQ plan **7.4** (the 360 row — the user's number). A holographic door on
+the mezzanine at 240°, directly above Records. A planetarium: the
+PROJECTOR in the middle is the tape library's projection (Replay moved
+up from Records' door panel; Records now sends you upstairs), the
+PROJECTED SKY on the ceiling is every threshold in the building as a
+star in its lamp's colour — seven constellations, one per bay, Bay 1 at
+twelve o'clock, the same sky for every officer and only the lamps
+theirs — and THE STAR CHART on the wall is the counter that opens the
+star-map: point at a star and that threshold's own door panel opens
+from here (CROSS ▸ Δ, DEEP, WALK IN, the Code Red brief), ◂ THE CHART
+comes back, and after the crossing you stand at the chart again. A
+fast route to any site; nothing about match setup is bypassed. The
+dome is painted (the void sheet); the telescope is pointed at the
+paint. Vocabulary (A8): **a star** is a threshold on the chart; **to
+point at** one is to open its door from Room 360; **the sky on file**
+is the chart. The astronomer's, the usher's and the overheard lines are
+Claude placeholders (A15 — rewrite at will). Story track still ON HOLD
+(A14). Files: data.js, three-renderer.js, map.js, styles-base.css,
+index.html (`20260911-room360-observatorium-01-cors`), doorhq.test.js.

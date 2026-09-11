@@ -31024,7 +31024,8 @@ const ThreeRenderer = (function () {
             G.add(fl);
         }
         if (!open) {
-            var ce = new THREE.Mesh(new THREE.PlaneGeometry(W * U, Dp * U), _hqMat(texCeil, W / 1.4, Dp / 1.4, { shininess: 2 }));
+            /* `ceilTile` = metres per tile (Room 360's nebula tiles at 4.5 m); `ceilColor` paints it */
+            var ce = new THREE.Mesh(new THREE.PlaneGeometry(W * U, Dp * U), _hqMat(texCeil, W / (S.ceilTile || 1.4), Dp / (S.ceilTile || 1.4), { shininess: 2, color: (S.ceilColor != null) ? S.ceilColor : 0xffffff }));
             ce.rotation.x = Math.PI / 2; ce.position.y = H * U;
             G.add(ce);
         } else {
@@ -31057,9 +31058,13 @@ const ThreeRenderer = (function () {
                 m.rotation.y = B.yaw;
                 return m;
             }
+            /* `wallColor` / `dadoColor` (2026-09-11, Room 360) paint the kit's textures down — a dark room without a dark texture */
+            var wallOpts = open ? { shininess: 4, specular: 0x101010 } : {}, dadoOpts = { shininess: open ? 4 : 14 };
+            if (S.wallColor != null) wallOpts.color = S.wallColor;
+            if (S.dadoColor != null) dadoOpts.color = S.dadoColor;
             if (edge === 'walls') {
-                G.add(slab(0, H, -0.02, 0.04, _hqMat(texWall, len / (TR || 3.2), H / (TR || 3.2), open ? { shininess: 4, specular: 0x101010 } : {})));
-                G.add(slab(0.06, S.dadoH, 0.02, 0.03, _hqMat(texDado, len / (TR || 2.2), TR ? S.dadoH / TR : 1, { shininess: open ? 4 : 14 })));
+                G.add(slab(0, H, -0.02, 0.04, _hqMat(texWall, len / (TR || 3.2), H / (TR || 3.2), wallOpts)));
+                G.add(slab(0.06, S.dadoH, 0.02, 0.03, _hqMat(texDado, len / (TR || 2.2), TR ? S.dadoH / TR : 1, dadoOpts)));
                 var trim = _hqMat(texTrim, len / 1.5, 1, { shininess: 40, specular: 0x555555 });
                 G.add(slab(0, 0.08, 0.03, 0.05, trim));
                 G.add(slab(S.dadoH, S.dadoH + 0.09, 0.03, 0.05, trim));
@@ -32378,7 +32383,222 @@ const ThreeRenderer = (function () {
             var lamp = new THREE.PointLight(0xff5fa8, 0.9, 7 * U, 2); lamp.position.y = 1.4 * U; g.add(lamp);
             return g;
         },
+        /* THE OBSERVATORIUM (Room 360, 2026-09-11 — plan 7.4). Four procs.
+           The PROJECTOR (floor, front = +z): a planetarium star projector —
+           a drum base, a column, a chrome yoke, a tilted axle with a star
+           ball at each end (the lenses are one InstancedMesh per ball),
+           the cage rings, a control box, and the room's light: a cool
+           point light at the axle (the catalogue's glow is its halo). */
+        star_projector: function (U) {
+            var g = new THREE.Group();
+            var steel = _hqMat(null, 1, 1, { color: 0x3a3d46, shininess: 50, specular: 0x666666 });
+            var chrome = _hqMat(null, 1, 1, { color: 0xb8bcc4, shininess: 90, specular: 0x999999 });
+            var dark = _hqMat(null, 1, 1, { color: 0x15161c, shininess: 30, specular: 0x333333 });
+            var lens = _hqBasic(0xbfe6ff);
+            var base = new THREE.Mesh(new THREE.CylinderGeometry(0.55 * U, 0.62 * U, 0.12 * U, 32), steel); base.position.y = 0.06 * U; g.add(base);
+            var step = new THREE.Mesh(new THREE.CylinderGeometry(0.34 * U, 0.4 * U, 0.1 * U, 24), dark); step.position.y = 0.17 * U; g.add(step);
+            var col = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * U, 0.14 * U, 0.7 * U, 16), steel); col.position.y = 0.57 * U; g.add(col);
+            var yoke = _hqBox(0.5, 0.08, 0.16, chrome); yoke.position.y = 0.95 * U; g.add(yoke);
+            var arm = _hqBox(0.06, 0.28, 0.1, chrome); arm.position.set(0.24 * U, 1.08 * U, 0); g.add(arm);
+            var arm2 = _hqBox(0.06, 0.28, 0.1, chrome); arm2.position.set(-0.24 * U, 1.08 * U, 0); g.add(arm2);
+            var pivot = new THREE.Group(); pivot.position.y = 1.15 * U; pivot.rotation.z = _hqRad(28); g.add(pivot);
+            pivot.add(new THREE.Mesh(new THREE.CylinderGeometry(0.05 * U, 0.05 * U, 1.2 * U, 12), chrome));
+            var hub = new THREE.Mesh(new THREE.CylinderGeometry(0.13 * U, 0.13 * U, 0.24 * U, 16), dark); pivot.add(hub);
+            var ballGeo = new THREE.SphereGeometry(0.3 * U, 24, 16), lensGeo = new THREE.CylinderGeometry(0.03 * U, 0.036 * U, 0.05 * U, 8);
+            var N = 34, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1), pos = new THREE.Vector3(), dir = new THREE.Vector3();
+            [-0.6, 0.6].forEach(function (yy) {
+                var ball = new THREE.Mesh(ballGeo, dark); ball.position.y = yy * U; pivot.add(ball);
+                var inst = new THREE.InstancedMesh(lensGeo, lens, N);
+                for (var i = 0; i < N; i++) {
+                    var t = (i + 0.5) / N, ph = Math.acos(1 - 2 * t), th = i * 2.399963;
+                    dir.set(Math.sin(ph) * Math.cos(th), Math.cos(ph), Math.sin(ph) * Math.sin(th));
+                    pos.copy(dir).multiplyScalar(0.3 * U); pos.y += yy * U;
+                    q.setFromUnitVectors(up, dir); m4.compose(pos, q, one); inst.setMatrixAt(i, m4);
+                }
+                inst.instanceMatrix.needsUpdate = true; pivot.add(inst);
+                var cage = new THREE.Mesh(new THREE.TorusGeometry(0.36 * U, 0.012 * U, 6, 40), chrome); cage.position.y = yy * U; cage.rotation.x = Math.PI / 2; pivot.add(cage);
+            });
+            var box = _hqBox(0.22, 0.14, 0.1, steel); box.position.set(0.16 * U, 0.7 * U, 0.08 * U); g.add(box);
+            var knob = new THREE.Mesh(new THREE.SphereGeometry(0.015 * U, 8, 6), _hqBasic(0xff5a5a)); knob.position.set(0.2 * U, 0.7 * U, 0.14 * U); g.add(knob);
+            var lamp = new THREE.PointLight(0x9fd0ff, 1.15, 16 * U, 2); lamp.position.y = 1.3 * U; g.add(lamp);
+            return g;
+        },
+        /* THE PROJECTED SKY (ceiling; the group hangs `cat.h` under the
+           ceiling, so it builds UP from 0): a seeded field of faint stars
+           over a 6 m disc, and over it hqStarChart's one layout — every
+           threshold a big star in its lamp's colour (mastered stars wear a
+           halo), the seven constellations' lines, the room number beside
+           each star on a small plane facing down. The profile's lamps are
+           read at build (the room rebuilds on every visit). */
+        star_dome: function (U) {
+            var g = new THREE.Group();
+            var R = 6.0, tex = _hqStarTex();
+            var chart = null;
+            try {
+                var prof = (typeof window !== 'undefined' && window.ProfileSystem && window.ProfileSystem.getActiveProfile) ? window.ProfileSystem.getActiveProfile() : null;
+                chart = (typeof hqStarChart === 'function') ? hqStarChart(prof) : null;
+            } catch (e) { chart = null; }
+            var seed = 0x5eed;
+            function rnd() { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; }
+            var NB = 720, bp = new Float32Array(NB * 3), bc = new Float32Array(NB * 3);
+            for (var i = 0; i < NB; i++) {
+                var rr = Math.sqrt(rnd()) * R, a = rnd() * Math.PI * 2, b = 0.3 + rnd() * 0.7, warm = rnd();
+                bp[i * 3] = Math.cos(a) * rr * U; bp[i * 3 + 1] = (0.1 + rnd() * 0.2) * U; bp[i * 3 + 2] = Math.sin(a) * rr * U;
+                bc[i * 3] = b * (warm > 0.7 ? 1.0 : 0.85); bc[i * 3 + 1] = b * 0.9; bc[i * 3 + 2] = b * (warm > 0.7 ? 0.8 : 1.0);
+            }
+            var bgGeo = new THREE.BufferGeometry();
+            bgGeo.setAttribute('position', new THREE.BufferAttribute(bp, 3));
+            bgGeo.setAttribute('color', new THREE.BufferAttribute(bc, 3));
+            var bg = new THREE.Points(bgGeo, new THREE.PointsMaterial({ size: 0.075 * U, map: tex || null, vertexColors: true, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true }));
+            bg.frustumCulled = false; g.add(bg);
+            if (!chart || !chart.stars.length) return g;
+            var NS = chart.stars.length, sp = new Float32Array(NS * 3), sc = new Float32Array(NS * 3), hp = [], lp = [];
+            chart.stars.forEach(function (st, k) {
+                var x = st.x * R * 0.92 * U, z = st.z * R * 0.92 * U;
+                sp[k * 3] = x; sp[k * 3 + 1] = 0.3 * U; sp[k * 3 + 2] = z;
+                var c = new THREE.Color(_hqStarColor(st.st)); sc[k * 3] = c.r; sc[k * 3 + 1] = c.g; sc[k * 3 + 2] = c.b;
+                if (st.st === 'stabilized') hp.push(x, 0.3 * U, z);
+                var lab = (typeof _hzTextTex === 'function') ? _hzTextTex('hqstar_' + st.id, [String(st.no || '—')], { w: 128, h: 48, bg: 'rgba(0,0,0,0)', color: (st.st === 'codered') ? '#ff8a8a' : '#cfd6e6', pad: 0.12 }) : null;
+                if (lab) {
+                    var pl = new THREE.Mesh(new THREE.PlaneGeometry(0.42 * U, 0.16 * U), new THREE.MeshBasicMaterial({ map: lab, transparent: true, depthWrite: false }));
+                    pl.position.set(x, 0.29 * U, z + 0.3 * U); pl.rotation.set(Math.PI / 2, 0, Math.PI);   // faces down, its top to the north
+                    g.add(pl);
+                }
+            });
+            chart.bays.forEach(function (bay) {
+                for (var k = 1; k < bay.stars.length; k++) {
+                    var a0 = bay.stars[k - 1], a1 = bay.stars[k];
+                    lp.push(a0.x * R * 0.92 * U, 0.295 * U, a0.z * R * 0.92 * U, a1.x * R * 0.92 * U, 0.295 * U, a1.z * R * 0.92 * U);
+                }
+            });
+            var sGeo = new THREE.BufferGeometry();
+            sGeo.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+            sGeo.setAttribute('color', new THREE.BufferAttribute(sc, 3));
+            var sites = new THREE.Points(sGeo, new THREE.PointsMaterial({ size: 0.3 * U, map: tex || null, vertexColors: true, transparent: true, opacity: 1, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true }));
+            sites.frustumCulled = false; g.add(sites);
+            if (hp.length) {
+                var hGeo = new THREE.BufferGeometry(); hGeo.setAttribute('position', new THREE.Float32BufferAttribute(hp, 3));
+                var halo = new THREE.Points(hGeo, new THREE.PointsMaterial({ size: 0.6 * U, map: tex || null, color: 0x9dffb8, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true }));
+                halo.frustumCulled = false; g.add(halo);
+            }
+            if (lp.length) {
+                var lGeo = new THREE.BufferGeometry(); lGeo.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3));
+                var lines = new THREE.LineSegments(lGeo, new THREE.LineBasicMaterial({ color: 0x5a7ab0, transparent: true, opacity: 0.55, depthWrite: false }));
+                lines.frustumCulled = false; g.add(lines);
+            }
+            return g;
+        },
+        /* THE STAR CHART (wall, origin at the mount, front = +z): a teal
+           frame round the same sky on paper — _hqStarChartTex draws it
+           from hqStarChart (the rings, the seven spokes, the bay labels,
+           the stars in their lamps' colours with the room numbers, the
+           constellation lines) — unlit, so it reads in the dark; a brass
+           plate under it. The counter that opens the star-map panel. */
+        star_chart: function (U) {
+            var g = new THREE.Group();
+            var W = 1.3, H = 1.5;
+            var frame = _hqBox(W + 0.1, H + 0.1, 0.05, _hqMat('teal', 3, 3, { shininess: 45 })); frame.position.set(0, (H / 2) * U, 0.025 * U); g.add(frame);
+            var tex = _hqStarChartTex();
+            var paper = new THREE.Mesh(new THREE.PlaneGeometry(W * U, H * U), new THREE.MeshBasicMaterial({ map: tex || null, color: tex ? 0xffffff : 0x0b0f1c }));
+            paper.position.set(0, (H / 2) * U, 0.055 * U); g.add(paper);
+            var plate = _hqBox(0.56, 0.08, 0.012, _hqBasic(0xc9a24a)); plate.position.set(0, -0.09 * U, 0.03 * U); g.add(plate);
+            var pt = (typeof _hzTextTex === 'function') ? _hzTextTex('hqstar_plate', ['THE SKY ON FILE · ROOM 360'], { w: 512, h: 72, bg: '#c9a24a', color: '#2c2410', pad: 0.2 }) : null;
+            if (pt) { var pm = new THREE.Mesh(new THREE.PlaneGeometry(0.54 * U, 0.07 * U), new THREE.MeshBasicMaterial({ map: pt })); pm.position.set(0, -0.09 * U, 0.037 * U); g.add(pm); }
+            return g;
+        },
+        /* THE TELESCOPE (floor, front = +z): a chrome tripod, the hub, a
+           navy refractor tube tilted 35° from vertical toward its front,
+           the finder, the eyepiece. Pointed at the ceiling, which is painted. */
+        telescope: function (U) {
+            var g = new THREE.Group();
+            var chrome = _hqMat(null, 1, 1, { color: 0xb8bcc4, shininess: 90, specular: 0x999999 });
+            var navy = _hqMat(null, 1, 1, { color: 0x1e2a48, shininess: 60, specular: 0x556688 });
+            var hubY = 1.15, up = new THREE.Vector3(0, 1, 0), q = new THREE.Quaternion();
+            for (var i = 0; i < 3; i++) {
+                var ang = i * Math.PI * 2 / 3 + Math.PI / 6, foot = new THREE.Vector3(Math.cos(ang) * 0.42, 0, Math.sin(ang) * 0.42), hub = new THREE.Vector3(0, hubY, 0);
+                var d = hub.clone().sub(foot), L = d.length();
+                var leg = new THREE.Mesh(new THREE.CylinderGeometry(0.014 * U, 0.02 * U, L * U, 8), chrome);
+                q.setFromUnitVectors(up, d.normalize()); leg.quaternion.copy(q);
+                leg.position.copy(foot.clone().add(hub).multiplyScalar(0.5 * U)); g.add(leg);
+                var tip = new THREE.Mesh(new THREE.SphereGeometry(0.025 * U, 8, 6), _hqBasic(0x222226)); tip.position.copy(foot.clone().multiplyScalar(U)); g.add(tip);
+            }
+            var hubM = new THREE.Mesh(new THREE.SphereGeometry(0.07 * U, 12, 8), chrome); hubM.position.y = hubY * U; g.add(hubM);
+            var mount = _hqBox(0.16, 0.05, 0.16, chrome); mount.position.y = (hubY + 0.06) * U; g.add(mount);
+            var tilt = new THREE.Group(); tilt.position.y = (hubY + 0.1) * U; tilt.rotation.x = _hqRad(35); g.add(tilt);
+            var tube = new THREE.Mesh(new THREE.CylinderGeometry(0.07 * U, 0.075 * U, 1.1 * U, 16), navy); tube.position.y = 0.12 * U; tilt.add(tube);
+            var cap = new THREE.Mesh(new THREE.TorusGeometry(0.075 * U, 0.012 * U, 6, 24), chrome); cap.rotation.x = Math.PI / 2; cap.position.y = 0.67 * U; tilt.add(cap);
+            var eye = new THREE.Mesh(new THREE.CylinderGeometry(0.03 * U, 0.035 * U, 0.14 * U, 10), chrome); eye.position.y = -0.5 * U; tilt.add(eye);
+            var finder = new THREE.Mesh(new THREE.CylinderGeometry(0.018 * U, 0.02 * U, 0.32 * U, 8), chrome); finder.position.set(0.1 * U, 0.35 * U, 0); tilt.add(finder);
+            var ring = new THREE.Mesh(new THREE.TorusGeometry(0.08 * U, 0.01 * U, 6, 20), chrome); ring.rotation.x = Math.PI / 2; ring.position.y = 0.1 * U; tilt.add(ring);
+            return g;
+        },
     };
+    /* a round soft star sprite for the projected sky (Room 360), drawn once */
+    function _hqStarTex() {
+        if (_hzFacTexCache.hqstar) return _hzFacTexCache.hqstar;
+        if (typeof document === 'undefined') return null;
+        var c = document.createElement('canvas'); c.width = c.height = 64;
+        var g = c.getContext('2d');
+        var gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+        gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.25, 'rgba(255,255,255,0.85)'); gr.addColorStop(0.6, 'rgba(255,255,255,0.18)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+        var t = new THREE.CanvasTexture(c);
+        _hzFacTexCache.hqstar = t;
+        return t;
+    }
+    /* a star's colour is its lamp's (the bay panel's chips) */
+    function _hqStarColor(st) { return st === 'stabilized' ? 0x9dffb8 : st === 'codered' ? 0xff5a5a : st === 'sealed' ? 0x6c6c7a : 0xffd28a; }
+    /* THE STAR CHART on paper (Room 360): the same layout drawn on a canvas.
+       Cached by the lamps it shows, so a rebuild after a win redraws it. */
+    function _hqStarChartTex() {
+        if (typeof document === 'undefined') return null;
+        var chart = null;
+        try {
+            var prof = (typeof window !== 'undefined' && window.ProfileSystem && window.ProfileSystem.getActiveProfile) ? window.ProfileSystem.getActiveProfile() : null;
+            chart = (typeof hqStarChart === 'function') ? hqStarChart(prof) : null;
+        } catch (e) { chart = null; }
+        if (!chart) return null;
+        var key = 'hqstarchart|' + chart.stars.map(function (st) { return st.st.charAt(0) + st.done; }).join('');
+        if (_hzFacTexCache[key]) return _hzFacTexCache[key];
+        var W = 1024, H = 1182, c = document.createElement('canvas'); c.width = W; c.height = H;
+        var g = c.getContext('2d');
+        g.fillStyle = '#0b0f1c'; g.fillRect(0, 0, W, H);
+        g.strokeStyle = 'rgba(184,160,96,0.55)'; g.lineWidth = 6; g.strokeRect(22, 22, W - 44, H - 44);
+        g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillStyle = '#e9dfc6'; g.font = 'bold 54px "Arial Narrow", "Helvetica Neue", Arial, sans-serif'; g.fillText('THE SKY ON FILE', W / 2, 92);
+        g.fillStyle = '#b8a060'; g.font = '26px "Arial Narrow", "Helvetica Neue", Arial, sans-serif'; g.fillText('ROOM 360 · SEVEN CONSTELLATIONS · ONE STAR PER THRESHOLD', W / 2, 142);
+        var cx = W / 2, cy = 660, R = 400;
+        g.fillStyle = '#070a14'; g.beginPath(); g.arc(cx, cy, R + 16, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = 'rgba(184,160,96,0.5)'; g.lineWidth = 3; g.beginPath(); g.arc(cx, cy, R + 16, 0, Math.PI * 2); g.stroke();
+        g.strokeStyle = 'rgba(127,217,221,0.16)'; g.lineWidth = 2; g.setLineDash([6, 9]);
+        [0.33, 0.66, 1].forEach(function (f) { g.beginPath(); g.arc(cx, cy, R * f, 0, Math.PI * 2); g.stroke(); });
+        g.setLineDash([]);
+        g.strokeStyle = 'rgba(184,160,96,0.28)'; g.lineWidth = 2;
+        chart.bays.forEach(function (b) {
+            g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(b.a0) * R, cy + Math.sin(b.a0) * R); g.stroke();
+            var am = (b.a0 + b.a1) / 2;
+            g.fillStyle = b.locked ? '#5e5a50' : '#b8a060'; g.font = 'bold 22px "Arial Narrow", "Helvetica Neue", Arial, sans-serif';
+            g.fillText('BAY ' + (b.bayNo || '?'), cx + Math.cos(am) * (R + 52), cy + Math.sin(am) * (R + 52));
+            g.strokeStyle = 'rgba(127,217,221,0.45)'; g.lineWidth = 2.5; g.beginPath();
+            b.stars.forEach(function (st, k) { var x = cx + st.x * R, y = cy + st.z * R; if (k) g.lineTo(x, y); else g.moveTo(x, y); });
+            if (b.stars.length > 1) g.stroke();
+            g.strokeStyle = 'rgba(184,160,96,0.28)'; g.lineWidth = 2;
+        });
+        chart.stars.forEach(function (st) {
+            var x = cx + st.x * R, y = cy + st.z * R, rad = 6 + st.done * 3;
+            var col = '#' + ('000000' + _hqStarColor(st.st).toString(16)).slice(-6);
+            if (st.st === 'stabilized') { g.fillStyle = 'rgba(157,255,184,0.18)'; g.beginPath(); g.arc(x, y, rad + 10, 0, Math.PI * 2); g.fill(); }
+            g.fillStyle = col; g.beginPath(); g.arc(x, y, rad, 0, Math.PI * 2); g.fill();
+            g.fillStyle = '#cfd6e6'; g.font = '20px "Courier New", monospace'; g.textAlign = 'left'; g.fillText(String(st.no || ''), x + rad + 6, y - rad - 4); g.textAlign = 'center';
+        });
+        g.fillStyle = '#8f8a7a'; g.font = '20px "Arial Narrow", "Helvetica Neue", Arial, sans-serif';
+        g.fillText('BAY 1 AT TWELVE · CLOCKWISE · SIZE = WIN CONDITIONS ON FILE · GREEN = STABILIZED · RED = CODE RED', W / 2, H - 62);
+        var t = new THREE.CanvasTexture(c);
+        t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.generateMipmaps = true;
+        try { t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy() || 1); } catch (e) {}
+        _hzFacTexCache[key] = t;
+        return t;
+    }
     function _hqProcProp(name) {
         var b = _hqProcBuilders[name];
         if (!b) return null;

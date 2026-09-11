@@ -2155,3 +2155,146 @@ test('source scan: the renderer builds the chair, the mirror and the pole and sw
     assert.match(pf, /window\.hqAvatarPref\(profile\)/, 'the card reads the chair');
     assert.ok(pf.indexOf('window.hqAvatarPref(profile)') < pf.indexOf('let best = null, bestN = 0;'), 'the chair leads the most-played rule');
 });
+
+/* ── Room 360 (2026-09-11, plan 7.4): THE OBSERVATORIUM — the sky on file ── */
+const OBS = HQ.rooms.observatorium;
+
+test('Room 360 is a box room off the mezzanine at 240° (above Records): the way in, the way out, the number, the chart and the projector, the sky over the seats', () => {
+    assert.ok(OBS && OBS.kind === 'box' && OBS.roomNo === '360', 'rooms.observatorium kind box, Room 360');
+    assert.strictEqual(D.hqRoomNo('observatorium'), '360');
+    assert.ok(!OBS.shell.open && OBS.shell.pipes === false && OBS.shell.h >= 5.0, 'a tall indoor room, nothing crossing the sky');
+    for (const k of ['floor', 'wall', 'dado', 'ceiling']) assert.ok(HQ.textures[OBS.shell[k]] || new RegExp('^\\s+' + OBS.shell[k] + ':\\s+\\[', 'm').test(SPRITES_SRC), 'the ' + k + ' is a texture the renderer can find');
+    assert.ok(OBS.shell.wallColor != null && OBS.shell.floorColor != null && OBS.shell.mood && OBS.shell.mood.light != null, 'painted down, one blue strip');
+    const eg = ROOM.doors.find(d => d.id === 'observatorium');
+    assert.ok(eg && eg.deg === 240 && eg.level === 1 && eg.action.room === 'observatorium' && eg.action.at === 'egress', 'the mezzanine door at 240° walks into the room at its way out');
+    assert.strictEqual(D.hqDoorNo(eg), '360', 'the plate over the mezzanine door reads 360');
+    const rec = ROOM.doors.find(d => d.id === 'records');
+    assert.strictEqual(rec.deg, eg.deg, 'directly above Records');
+    const out = OBS.doors.find(d => d.id === 'egress');
+    assert.ok(out && out.wall === 'w' && out.action.room === 'central_egress' && out.action.at === 'observatorium' && out.leaf === eg.leaf && !!out.wide === !!eg.wide, 'the way out is the same holographic door and lands at the mezzanine door');
+    assert.ok(!D.DOOR_TEXT.CLEARANCE.some(r => r.door === eg.leaf), 'not a rank leaf');
+    assert.strictEqual(D.doorSiteState(eg, null), 'open');
+    /* between Bay 3 (210°) and Bay 6 (270°) on the upper drum, a pier to each */
+    const b3 = ROOM.doors.find(d => d.id === 'bay_hollow'), b6 = ROOM.doors.find(d => d.id === 'bay_quarantined');
+    const wOf = d => (d.wide ? 3.3 : 2.5) / 2, Rm = ROOM.shell.mezz.outer;
+    assert.ok((eg.deg - b3.deg) * Math.PI / 180 * Rm - wOf(eg) - wOf(b3) >= 2.0, 'a pier to Bay 3');
+    assert.ok((b6.deg - eg.deg) * Math.PI / 180 * Rm - wOf(eg) - wOf(b6) >= 2.0, 'a pier to Bay 6');
+    assert.ok(!ROOM.props.some(p => (p.level || 0) === 1 && p.wall && Math.abs(p.deg - eg.deg) < 5), 'no wall prop stands in the new doorway (the locker moved)');
+    assert.ok(!ROOM.props.some(p => (p.level || 0) === 1 && p.r != null && p.r > 21.5 && Math.abs(p.deg - eg.deg) < 5), 'nothing stands in front of it');
+    assert.ok(ROOM.props.some(p => p.key === 'office_locker' && (p.level || 0) === 1 && p.wall), 'the mezzanine keeps its locker');
+    /* the build sheet */
+    const has = key => OBS.props.filter(p => p.key === key).length;
+    for (const key of ['star_projector', 'star_dome', 'star_chart', 'telescope', 'curved_couch', 'tanker_desk', 'crt_terminal', 'office_chair', 'metal_shelving', 'filing_cabinet', 'tube_tv',
+                       'cardboard_boxes', 'wall_clock', 'observation_window', 'breaker_panel', 'fire_extinguisher', 'potted_plant', 'globe_lamp', 'exit_sign', 'hook_rail', 'picture_round_a']) {
+        assert.ok(has(key) >= 1, 'Room 360 has its ' + key);
+    }
+    assert.strictEqual(has('star_projector'), 1); assert.strictEqual(has('star_dome'), 1); assert.strictEqual(has('star_chart'), 1);
+    assert.ok(has('curved_couch') >= 3, 'seats round the projector');
+    assert.strictEqual(has('fluorescent'), 1, 'one fixture — it is a planetarium');
+    const fl = OBS.props.find(p => p.key === 'fluorescent');
+    assert.ok(fl.ceil && Math.abs(fl.x - OBS.shell.light.x) < 0.05 && Math.abs(fl.z - OBS.shell.light.z) < 0.05 && fl.x < -4.5, 'it hangs at the shell’s one strip, over the way in');
+    assert.strictEqual(has('globe_lamp'), 2, 'two lamps in the corners');
+    assert.deepStrictEqual(boxPropProblems('observatorium', OBS), []);
+    /* the projector stands under the sky, in the middle, and the seats face it */
+    const pj = OBS.props.find(p => p.key === 'star_projector'), dm = OBS.props.find(p => p.key === 'star_dome');
+    assert.ok(Math.abs(pj.x) < 0.05 && Math.abs(pj.z) < 0.05 && Math.abs(dm.x) < 0.05 && Math.abs(dm.z) < 0.05 && dm.ceil, 'the projector in the middle, the dome over it');
+    for (const c of OBS.props.filter(p => p.key === 'curved_couch')) {
+        const want = ((Math.atan2(-c.x, c.z) * 180 / Math.PI) + 360) % 360;   // the compass heading from the seat to the middle (0 = north = −z, 90 = east)
+        const diff = Math.abs((((c.face || 0) - want) + 540) % 360 - 180);
+        assert.ok(diff < 3, 'a couch faces the projector (face ' + c.face + ', wanted ' + want.toFixed(0) + ')');
+        assert.ok(Math.hypot(c.x, c.z) >= HQ.catalogue.curved_couch.foot + HQ.catalogue.star_projector.foot + 0.9, 'a walker can pass between the seat and the projector');
+    }
+    /* the two counters: THE STAR CHART (the star-map) and THE PROJECTOR (the tape library) */
+    const ch = OBS.counters.find(c => c.id === 'chart'), pr = OBS.counters.find(c => c.id === 'projector');
+    assert.ok(ch && ch.action.overlay === 'starmap' && ch.radius > 0 && ch.verb, 'the chart is a counter with its own overlay');
+    assert.ok(pr && pr.action.fn === '_ewReplayLastMatch' && pr.radius > 0 && pr.verb, 'the projector plays the tape');
+    assert.ok(OBS.props.some(p => p.key === 'star_chart' && p.wall === 'n' && Math.abs(p.x - ch.x) < 0.3), 'the chart hangs where its counter stands');
+    assert.ok(Math.hypot(pj.x - pr.x, pj.z - pr.z) < 0.05, 'the projector counter stands on the projector');
+    /* Records sent the tape library upstairs: its door's alt now leads into this room */
+    assert.ok(rec.alt && rec.alt.room === 'observatorium' && rec.alt.at === 'projector' && !rec.alt.fn, 'Records’ REPLAY alt is the way up to the projector');
+    assert.ok(!(rec.alt2 && rec.alt2.fn === '_ewReplayLastMatch'), 'and Replay is not on Records’ panel twice');
+    /* the people: the astronomer at the desk, the usher by the door, spots and lines */
+    const ast = OBS.agents.find(a => a.label === 'THE ASTRONOMER'), ush = OBS.agents.find(a => a.label === 'THE USHER');
+    assert.ok(ast && ast.pose === 'hqSit' && OBS.props.some(p => p.key === 'office_chair' && Math.hypot(p.x - ast.x, p.z - ast.z) < 0.05), 'the astronomer sits on the desk chair');
+    assert.ok(ush && ush.pose !== 'hqSit' && ush.x < -3.5, 'the usher stands by the way in');
+    assert.ok(OBS.npcSpots.length >= 3 && OBS.onlineSpots.length >= 2 && OBS.lines.length >= 3, 'spots and lines');
+    for (const sp of OBS.npcSpots.concat(OBS.onlineSpots, OBS.agents)) {
+        if (sp.pose === 'hqSit') continue;   // a sitter sits AT the furniture
+        for (const p of OBS.props) { const c = HQ.catalogue[p.key]; if (c && c.foot > 0 && !p.wall && p.key !== 'office_chair') assert.ok(Math.hypot(p.x - sp.x, p.z - sp.z) >= c.foot + 0.34, 'a person stands clear of the ' + p.key); }
+    }
+    /* the four procs */
+    const cp = HQ.catalogue.star_projector, cd = HQ.catalogue.star_dome, cc = HQ.catalogue.star_chart, ct = HQ.catalogue.telescope;
+    assert.ok(cp && cp.proc === 'star_projector' && cp.foot >= 0.6 && cp.block && cp.glow && cp.glow.size > 0, 'the projector is a floor proc the walker cannot enter, with a glow');
+    assert.ok(cd && cd.proc === 'star_dome' && cd.ceil && cd.foot === 0 && cd.h > 0 && cd.h < 1, 'the dome hangs from the ceiling and blocks nothing');
+    assert.ok(cc && cc.proc === 'star_chart' && cc.wall && cc.depth > 0 && cc.mount > 0, 'the chart is a wall proc');
+    assert.ok(ct && ct.proc === 'telescope' && ct.foot > 0 && ct.block, 'the telescope is a floor proc the walker cannot enter');
+    /* the register lists it once, as a room */
+    const rows = D.hqRoomRegister().filter(r => r.no === '360');
+    assert.strictEqual(rows.length, 1); assert.strictEqual(rows[0].kind, 'room'); assert.strictEqual(rows[0].id, 'observatorium');
+});
+
+test('the star chart (Room 360): hqStarChart — seven constellations in bay order, every threshold a star once, inside its wedge, the lamps from the profile, one layout for every reader', () => {
+    assert.strictEqual(typeof D.hqStarChart, 'function');
+    const c = D.hqStarChart(null);
+    const bayKeys = Object.keys(HQ.sectors).filter(k => Array.isArray(HQ.sectors[k].maps));
+    assert.strictEqual(c.bays.length, bayKeys.length, 'one constellation per bay');
+    assert.strictEqual(c.n, c.bays.length);
+    /* bay order, equal wedges, Bay 1 at twelve o'clock, clockwise */
+    for (let i = 0; i < c.bays.length; i++) {
+        const b = c.bays[i];
+        assert.strictEqual(b.bayNo, i + 1, 'the constellations run Bay 1 → Bay ' + c.bays.length);
+        assert.ok(Math.abs((b.a1 - b.a0) - Math.PI * 2 / c.n) < 1e-9, 'an equal wedge');
+        if (i) assert.ok(Math.abs(b.a0 - c.bays[i - 1].a1) < 1e-9, 'wedges abut');
+    }
+    assert.ok(Math.abs(c.bays[0].a0 + Math.PI / 2) < 1e-9, 'Bay 1 starts at twelve');
+    /* every launch map on a bay's roster is a star, once, and every star is a registered threshold */
+    const all = bayKeys.reduce((a, k) => a.concat(HQ.sectors[k].maps), []);
+    assert.strictEqual(JSON.stringify(Array.from(c.stars.map(s => s.id)).sort()), JSON.stringify(Array.from(all).sort()), 'every threshold once');   // JSON: the sandbox's arrays are another realm's
+    for (const st of c.stars) {
+        const b = c.bays.find(x => x.sector === st.sector);
+        assert.ok(b && b.stars.includes(st), st.id + ' sits in its bay');
+        assert.ok(st.ang >= b.a0 - 1e-9 && st.ang <= b.a1 + 1e-9, st.id + ' inside its wedge');
+        assert.ok(st.r >= 0.3 && st.r <= 0.93 && Math.hypot(st.x, st.z) <= 0.94, st.id + ' inside the disc, off the middle');
+        assert.strictEqual(st.no, D.hqRoomNo(st.id), st.id + ' wears its room number');
+        assert.ok(st.label && st.label === st.label.toUpperCase(), 'a label in caps');
+        assert.ok(['stabilized', 'unstable', 'codered', 'sealed'].includes(st.st), 'a lamp word');
+        assert.strictEqual(st.done, 0, 'no profile, nothing filed');
+        assert.strictEqual(st.total, HQ.masteryConditions.length);
+        assert.ok(st.siteRoom === null || HQ.rooms[st.siteRoom], 'a site room, if named, exists');
+    }
+    /* no two stars on top of each other */
+    for (let i = 0; i < c.stars.length; i++) for (let j = i + 1; j < c.stars.length; j++) assert.ok(Math.hypot(c.stars[i].x - c.stars[j].x, c.stars[i].z - c.stars[j].z) > 0.05, c.stars[i].id + ' and ' + c.stars[j].id + ' overlap');
+    /* the lamps follow the profile; the layout does not */
+    const cond = HQ.masteryConditions;
+    const un = {}; cond.forEach(k => { un['site:prebuilt_mars:' + k] = 1; });
+    const p = { username: 'probe', door: { hq: {} }, progress: { unlocked: un }, matchHistory: [] };
+    const c2 = D.hqStarChart(p);
+    const mars = c2.stars.find(s => s.id === 'prebuilt_mars');
+    assert.ok(mars && (mars.st === 'stabilized' || mars.st === 'codered') && mars.done === cond.length, 'Mars is a green star (or, as the only stabilized site, tonight’s red one)');
+    assert.ok(c2.stars.some(s => s.st === 'unstable' && s.done === 0), 'the rest are amber');
+    assert.strictEqual(JSON.stringify(c2.stars.map(s => [s.id, s.x, s.z])), JSON.stringify(c.stars.map(s => [s.id, s.x, s.z])), 'the same sky for every officer');
+    assert.strictEqual(JSON.stringify(D.hqStarChart(null).stars.map(s => [s.x, s.z])), JSON.stringify(c.stars.map(s => [s.x, s.z])), 'deterministic');
+});
+
+test('source scan: the renderer builds the projector, the dome, the chart and the telescope, paints a box shell down; map.js reads the chart, points at a star and opens its door, comes back; the tape library went upstairs', () => {
+    const tr = fs.readFileSync(path.join(__dirname, 'three-renderer.js'), 'utf8');
+    const mp = fs.readFileSync(path.join(__dirname, 'map.js'), 'utf8');
+    const css = fs.readFileSync(path.join(__dirname, 'styles-base.css'), 'utf8');
+    for (const k of ['star_projector', 'star_dome', 'star_chart', 'telescope']) assert.match(tr, new RegExp('        ' + k + ': function \\(U\\) \\{'), 'the ' + k + ' builder');
+    assert.match(tr, /function _hqStarChartTex\(\)/, 'the chart on paper');
+    assert.match(tr, /function _hqStarColor\(st\)/, 'one colour rule');
+    assert.match(tr, /chart = \(typeof hqStarChart === 'function'\) \? hqStarChart\(prof\) : null;/, 'the dome and the chart read hqStarChart');
+    assert.match(tr, /if \(S\.wallColor != null\) wallOpts\.color = S\.wallColor;/, 'a box shell can be painted down');
+    assert.match(tr, /S\.ceilTile \|\| 1\.4/, 'the ceiling tiles by the shell');
+    assert.match(mp, /if \(act\.overlay === 'starmap'\) return _hqStarmapHtml\(\);/, 'the chart panel');
+    assert.match(mp, /window\._hqOpenThreshold = function \(mapId, o\)/, 'a threshold panel from anywhere');
+    assert.match(mp, /window\._hqOpenStarmap = function \(\)/, 'the way back to the chart');
+    assert.match(mp, /e\.target\.closest\('\[data-star\]'\)/, 'a star is a click');
+    assert.match(mp, /e\.target\.closest\('\[data-starmap\]'\)/, '◂ THE CHART is a click');
+    assert.ok(mp.indexOf("closest('[data-star]')") < mp.indexOf("closest('[data-fn]')"), 'the stars are read before the function buttons');
+    assert.match(mp, /if \(d\.star\) html \+= '<div class="hq-panel-actions"><button class="hq-btn" data-starmap="1">/, 'a threshold pointed at from the chart carries the way back');
+    assert.match(mp, /else if \(a && a\.room && _hqRoomExists\(a\.room\)\) html \+= `<button class="hq-btn" \$\{locked \? 'disabled' : ''\} data-room=/, 'a door’s alt may lead into a room');
+    assert.match(mp, /id: o\.doorId \|\| 'chart'/, 'the launch carries the chart as the door (post-match you stand at it)');
+    assert.match(css, /\.hq-star\.st-codered \.hq-star-dot/, 'the red star blinks');
+    assert.match(css, /\.hq-starmap svg/, 'the chart fills the panel');
+});

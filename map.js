@@ -1120,6 +1120,78 @@
             if (_hqPanelTarget) window._hqClosePanel();
             _hqOpenPanel({ kind: 'counter', id: 'form365', label: 'FORM 365', sub: 'DAILY OFFICE OPERATIONS REQUIREMENTS', counter: { id: 'form365', action: { overlay: 'form365' } } });
         };
+        /* ══ THE STAR CHART (Room 360, HQ plan 7.4 — 2026-09-11) ══
+           The site star-map: hqStarChart's one layout (data.js — the same
+           sky the ceiling and the wall chart draw) as an SVG — seven wedges
+           (the bays, Bay 1 at twelve), a star per threshold in its lamp's
+           colour, its size the mastery count, the constellation lines —
+           every star a button that opens the threshold's OWN door panel
+           from here (_hqOpenThreshold: CROSS ▸ Δ / DEEP / WALK IN, the Code
+           Red brief, the checklist), with ◂ THE CHART to come back. Under
+           it the register by bay. A fast route to any site; nothing about
+           match setup is bypassed — the launch is the door panel's own. */
+        function _hqStarmapHtml() {
+            const profile = _hqProfile();
+            const chart = (typeof window.hqStarChart === 'function') ? window.hqStarChart(profile) : null;
+            let html = `<div class="hq-panel-hd">${_hqNoTag('360', '360° — the whole sky from one chair')}<b>THE STAR CHART</b><span>THE SKY ON FILE · EVERY THRESHOLD IS A STAR · POINT AT ONE</span></div>`;
+            if (!chart || !chart.stars.length) return html + '<p class="hq-panel-desc">The chart is blank. Records has been informed.</p><div class="hq-panel-actions"><button class="hq-btn" data-close="1">NOTED</button></div>';
+            const mc = (typeof window.hqMasteryCount === 'function') ? window.hqMasteryCount(profile) : null;
+            const cr = (typeof window.hqCodeRed === 'function') ? window.hqCodeRed(profile) : null;
+            const S = 420, C = S / 2, R = 168, f1 = v => v.toFixed(1);
+            let svg = `<svg viewBox="0 0 ${S} ${S}" role="img" aria-label="the star chart">`;
+            svg += `<circle class="hq-sky-disc" cx="${C}" cy="${C}" r="${R + 14}"/>`;
+            [0.33, 0.66, 1].forEach(f => { svg += `<circle class="hq-sky-ring" cx="${C}" cy="${C}" r="${f1(R * f)}"/>`; });
+            chart.bays.forEach(b => {
+                svg += `<line class="hq-sky-spoke" x1="${C}" y1="${C}" x2="${f1(C + Math.cos(b.a0) * R)}" y2="${f1(C + Math.sin(b.a0) * R)}"/>`;
+                const am = (b.a0 + b.a1) / 2;
+                svg += `<text class="hq-sky-bay${b.locked ? ' dim' : ''}" x="${f1(C + Math.cos(am) * (R + 26))}" y="${f1(C + Math.sin(am) * (R + 26))}" text-anchor="middle" dominant-baseline="middle">BAY ${b.bayNo || '?'}</text>`;
+                if (b.stars.length > 1) svg += `<polyline class="hq-sky-line" points="${b.stars.map(st => f1(C + st.x * R) + ',' + f1(C + st.z * R)).join(' ')}"/>`;
+            });
+            chart.stars.forEach(st => {
+                const x = C + st.x * R, y = C + st.z * R, rad = 2.6 + st.done * 1.1;
+                svg += `<g class="hq-star st-${_hqEsc(st.st)}" data-star="${_hqEsc(st.id)}" tabindex="0"><title>ROOM ${_hqEsc(st.no || '—')} · ${_hqEsc(st.label)} · ${st.done}/${st.total}${st.st === 'codered' ? ' · CODE RED' : ''}</title>`
+                    + `<circle class="hq-star-hit" cx="${f1(x)}" cy="${f1(y)}" r="11"/><circle class="hq-star-dot" cx="${f1(x)}" cy="${f1(y)}" r="${f1(rad)}"/><text x="${f1(x + 7)}" y="${f1(y - 6)}">${_hqEsc(st.no || '')}</text></g>`;
+            });
+            svg += '</svg>';
+            html += `<div class="hq-starmap">${svg}</div>`;
+            html += `<div class="hq-chips"><span>THE KEY${mc ? ` · ${mc.mastered}/${mc.total} STABILIZED` : ''}</span><i class="hq-chip hq-sky-key st-stabilized">● STABILIZED</i><i class="hq-chip hq-sky-key st-unstable">● UNSTABLE</i><i class="hq-chip hq-sky-key st-codered">● CODE RED</i><i class="hq-chip hq-sky-key st-sealed">● SEALED</i><i class="hq-chip dim">SIZE = WIN CONDITIONS ON FILE</i></div>`;
+            if (cr && !cr.cleared) html += `<p class="hq-panel-note">TONIGHT’S RED STAR: ${_hqEsc(_hqMapLabel(cr.site).toUpperCase())} — ${_hqEsc(String(cr.label || 'CODE RED'))}. Point at it.</p>`;
+            chart.bays.forEach(b => {
+                html += `<div class="hq-chips" style="margin-top:8px"><span>BAY ${b.bayNo || '?'} · ${_hqEsc(b.label)} · ${_hqEsc(b.sub)}${b.locked ? ' · SEALED' : ''}</span></div><div class="hq-rows">`;
+                b.stars.forEach(st => {
+                    const chip = st.st === 'codered' ? '<i class="hq-lamp-chip st-codered">CODE RED</i>' : `<i class="hq-lamp-chip st-${_hqEsc(st.st)}">${st.st === 'stabilized' ? 'STABILIZED' : (st.st === 'sealed' ? 'SEALED' : `${st.done}/${st.total}`)}</i>`;
+                    html += `<div class="hq-row"><b>${_hqNoTag(st.no)}${_hqEsc(st.label)}</b><span>${st.siteRoom ? 'A ROOM · WALK IT' : 'THRESHOLD'}</span>${chip}<button class="hq-btn hq-btn-sm" data-star="${_hqEsc(st.id)}">POINT ▸</button></div>`;
+                });
+                html += '</div>';
+            });
+            html += '<p class="hq-panel-note">Point at a star and its door opens from here — CROSS ▸ Δ, DEEP, or WALK IN to the room. Bay 1 is at twelve o’clock; the sky goes round the way the building does. The dome overhead is the same chart, painted. Nothing is filed until you cross.</p>';
+            return html;
+        }
+        window._hqOpenStarmap = function () {
+            if (_hqSuspended || state.gameState !== GS.HQ) return;
+            if (_hqPanelTarget) window._hqClosePanel();
+            _hqOpenPanel({ kind: 'counter', id: 'chart', label: 'THE STAR CHART', sub: 'THE SKY ON FILE', counter: { id: 'chart', action: { overlay: 'starmap' } } });
+        };
+        /* a threshold's own door panel opened from anywhere in the building
+           (the star chart): the same panel the bay door shows, the door
+           synthesized from the threshold row the way the CROSSING console
+           does it; `o.star` adds ◂ THE CHART. The launch buttons carry the
+           CHART counter as the door, so post-match you stand at the chart. */
+        window._hqOpenThreshold = function (mapId, o) {
+            o = o || {};
+            if (_hqSuspended || state.gameState !== GS.HQ) return false;
+            const id = (typeof window.hqSiteId === 'function') ? window.hqSiteId(mapId) : String(mapId || '').replace(/_delta$/, '');
+            const th = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.thresholds && DOOR_HQ.thresholds[id]) || null;
+            if (!th) return false;
+            const sector = (typeof window.hqSectorOfMap === 'function') ? window.hqSectorOfMap(id) : null;
+            const sec = (sector && DOOR_HQ.sectors[sector]) || {};
+            const bayNo = (sector && typeof window.hqBayNo === 'function') ? window.hqBayNo(sector) : null;
+            const door = { id: o.doorId || 'chart', label: _hqMapLabel(id).toUpperCase(), sub: `BAY ${bayNo || '?'} · ${sec.label || ''} · POINTED AT FROM ROOM 360`, action: { mission: id },
+                           note: th.note || '', why: th.why || '', roomNo: (th.roomNo != null) ? String(th.roomNo) : null, star: !!o.star };
+            if (_hqPanelTarget) window._hqClosePanel();
+            _hqOpenPanel({ kind: 'door', id: door.id, label: door.label, sub: door.sub, door: door });
+            return true;
+        };
         function _hqCodeRedHtml() {
             const profile = _hqProfile();
             const cr = (typeof window.hqCodeRed === 'function') ? window.hqCodeRed(profile) : null;
@@ -1171,6 +1243,7 @@
             const siteRoom = _hqSiteRoomId(id);
             const walkIn = (siteRoom && _hqRoomExists(siteRoom) && siteRoom !== _hqCurRoom && t.door && t.door.action && t.door.action.mission) ? `<button class="hq-btn" ${canCross ? '' : 'disabled'} data-room="${_hqEsc(siteRoom)}" data-at="egress" title="The site is a room: walk the board, cross from the console inside">WALK IN ▸ ROOM ${_hqEsc(_hqSiteNo(id) || '')}</button>` : '';
             html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" ${canCross ? '' : 'disabled'} data-cross="${_hqEsc(id)}" title="Arena · 4v4 on the 8×8 Δ board · CPU fields the site's natives">CROSS ▸ Δ BOARD · 4v4</button><button class="hq-btn" ${canCross ? '' : 'disabled'} data-deep="${_hqEsc(id)}" title="Arena on the full map at its own team size">DEEP CROSSING ▸ FULL SITE${meta && meta.teamSize ? ` · ${meta.teamSize}v${meta.teamSize}` : ''}</button>${walkIn}</div>`;
+            if (d.star) html += '<div class="hq-panel-actions"><button class="hq-btn" data-starmap="1">◂ THE CHART · ROOM 360</button></div>';
             if (st === 'sealed') html += '<p class="hq-panel-note">SEALED — this threshold opens with a story chapter.</p>';
             else html += '<p class="hq-panel-note">CROSS ▸ Δ = Arena, 4v4 on the site’s 8×8 board, the CPU fielding the entities on file for it. DEEP = the full map. Each ☐ is a win condition still to be filed; all three turn the lamp green.</p>';
             return html;
@@ -1239,7 +1312,10 @@
                 if (act.fn) html += `<button class="hq-btn hq-btn-primary" ${locked ? 'disabled' : ''} data-fn="${_hqEsc(act.fn)}">ENTER ▸ ${_hqEsc(_HQ_FN_LABELS[act.fn] || act.fn)}</button>`;
                 else if (act.room && _hqRoomExists(act.room)) html += `<button class="hq-btn hq-btn-primary" ${locked ? 'disabled' : ''} data-room="${_hqEsc(act.room)}" data-at="${_hqEsc(act.at || '')}">${locked ? _hqGateLabel(d, cl, profile) : 'GO THROUGH ▸ ' + _hqEsc(DOOR_HQ.rooms[act.room].label || act.room)}</button>`;
                 else if (act.room) html += `<button class="hq-btn hq-btn-primary" disabled>${locked ? _hqGateLabel(d, cl, profile) : 'INTERIOR NOT YET BUILT'}</button>`;
-                [d.alt, d.alt2].forEach(a => { if (a && a.fn) html += `<button class="hq-btn" ${locked ? 'disabled' : ''} data-fn="${_hqEsc(a.fn)}">${_hqEsc(a.label)}</button>`; });
+                [d.alt, d.alt2].forEach(a => {
+                    if (a && a.fn) html += `<button class="hq-btn" ${locked ? 'disabled' : ''} data-fn="${_hqEsc(a.fn)}">${_hqEsc(a.label)}</button>`;
+                    else if (a && a.room && _hqRoomExists(a.room)) html += `<button class="hq-btn" ${locked ? 'disabled' : ''} data-room="${_hqEsc(a.room)}" data-at="${_hqEsc(a.at || '')}">${_hqEsc(a.label)}</button>`;   // Records → Room 360 (2026-09-11)
+                });
                 html += '</div>';
                 if (locked) html += `<p class="hq-panel-note">${_hqGateText(d, cl, profile)}</p>`;
                 else if (d.requiresKeys) html += `<p class="hq-panel-note">KEYS ${d.requiresKeys} on file · you hold ${(typeof window.hqKeys === 'function') ? window.hqKeys(profile).keys : 0}. Admitted.</p>`;
@@ -1387,9 +1463,12 @@
             if (act.overlay === 'form365') return _hqForm365Html();
             if (act.overlay === 'punch') return _hqPunchHtml();
             if (act.overlay === 'barber') return _hqBarberHtml();
+            if (act.overlay === 'starmap') return _hqStarmapHtml();
             if (act.overlay === 'training') return _hqTrainingHtml();
             if (act.overlay === 'crossing') return _hqCrossingHtml(t);
             let html = `<div class="hq-panel-hd"><b>${_hqEsc(c.label)}</b><span>${_hqEsc(c.sub || '')}</span></div>`;
+            /* THE PROJECTOR (Room 360): the tape library's projection — the last tape on file */
+            if (c.id === 'projector') html += '<p class="hq-panel-desc">The last crossing on file, projected on the dome. Records sent the tapes up with a note: DO NOT REWIND. The projector rewinds them anyway.</p>';
             if (c.id === 'board') html += '<p class="hq-panel-desc">Six laminated photographs. The frame in the corner has been empty since 1987. Nobody comments on it.</p>';
             /* Room 86's notice board mirrors FORM 365 (Room 247, plan 7.9): the day's count and a way to the sheet */
             if (c.id === 'notice') {
@@ -1549,6 +1628,10 @@
             /* THE CHAIR (Room 1287): a pick swaps the avatar in place */
             const avBtn = e.target.closest('[data-avatar]');
             if (avBtn && !avBtn.disabled) { window._hqPickAvatar(avBtn.getAttribute('data-avatar')); return; }
+            /* THE STAR CHART (Room 360): a star opens its threshold's door panel; ◂ THE CHART comes back */
+            const star = e.target.closest('[data-star]');
+            if (star) { window._hqOpenThreshold(star.getAttribute('data-star'), { star: true }); return; }
+            if (e.target.closest('[data-starmap]')) { window._hqOpenStarmap(); return; }
             const fnBtn = e.target.closest('[data-fn]');
             if (fnBtn && !fnBtn.disabled) { window._hqDoAction({ fn: fnBtn.getAttribute('data-fn') }); return; }
             const roomBtn = e.target.closest('[data-room]');

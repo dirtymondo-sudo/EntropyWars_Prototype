@@ -16878,6 +16878,16 @@ const DOOR_HQ = {
         barber_chair:      { proc: 'barber_chair',   h: 1.2,     foot: 0.48, block: true },
         barber_mirror:     { proc: 'barber_mirror',  h: 1.35,    foot: 0, wall: true, mount: 1.05, depth: 0.08, glow: { y: 1.28, size: 1.5, color: 0xfff1d6 } },
         barber_pole:       { proc: 'barber_pole',    h: 0.9,     foot: 0, wall: true, mount: 1.35, depth: 0.2 },
+        /* THE OBSERVATORIUM (Room 360, 2026-09-11 — plan 7.4): the planetarium
+           projector (a floor proc the walker cannot enter; its lamp is the
+           room's light), the PROJECTED SKY (a ceiling proc — every threshold
+           in the building a star, hqStarChart's layout), the wall chart
+           (the same sky on paper, the counter that opens the star-map) and
+           the telescope (pointed at the paint). */
+        star_projector:    { proc: 'star_projector', h: 1.7,     foot: 0.75, block: true, glow: { y: 1.3, size: 1.7, color: 0xbfe6ff } },
+        star_dome:         { proc: 'star_dome',      h: 0.4,     foot: 0, ceil: true },
+        star_chart:        { proc: 'star_chart',     h: 1.5,     foot: 0, wall: true, mount: 1.0,  depth: 0.06 },
+        telescope:         { proc: 'telescope',      h: 1.6,     foot: 0.45, block: true },
         /* ══ THE 2026-09-10 BATCH (30 Meshy GLBs, R2 Assets/door/models/) ══
            The user's cafeteria / office / mission kit. Four of them RETIRE a
            procedural prop (plan 2.7 said "replace any of them by giving the
@@ -18252,7 +18262,7 @@ const DOOR_HQ = {
                 { id: 'medical',        deg: 210, level: 0, leaf: 'leaf_hospital',                  label: 'MEDICAL',                 sub: 'SUPPORT SERVICES',           action: { fn: '_goToCampaign' },    roomNo: '1111', why: 'the number you dial', desc: 'Where EXITED operatives are processed. Revives, retries, the Challenge services desk.' },
                 { id: 'clockroom',      deg: 225, level: 0, leaf: 'leaf_frosted',        wide: true,  label: 'THE CLOCK ROOM',          sub: 'SUPPORT SERVICES · FORM 365', action: { room: 'clockroom', at: 'egress' },
                   desc: 'Daily Office Operations Requirements. Three lines a day, the punch clock, and every clock in the room — none of them agree, all of them are right somewhere.' },
-                { id: 'records',        deg: 240, level: 0, leaf: 'leaf_wired_double', wide: true,  label: 'RECORDS',                 sub: 'ARCHIVES · ENTITY REGISTRY', action: { fn: '_goToCodex' },       roomNo: '42', why: 'the room with the answer; it only keeps the file', desc: '“We only keep the file.” Entity dossiers, the tape library, unfiled sites.', alt: { label: 'REPLAY (TAPE LIBRARY)', fn: '_ewReplayLastMatch' }, alt2: { label: 'UNFILED SITES (COMMUNITY MAPS)', fn: '_mountCommunityMaps' } },
+                { id: 'records',        deg: 240, level: 0, leaf: 'leaf_wired_double', wide: true,  label: 'RECORDS',                 sub: 'ARCHIVES · ENTITY REGISTRY', action: { fn: '_goToCodex' },       roomNo: '42', why: 'the room with the answer; it only keeps the file', desc: '“We only keep the file.” Entity dossiers, unfiled sites. The tape library went upstairs with the projector — Room 360, directly overhead.', alt: { label: 'THE TAPE LIBRARY ▸ ROOM 360 (UPSTAIRS)', room: 'observatorium', at: 'projector' }, alt2: { label: 'UNFILED SITES (COMMUNITY MAPS)', fn: '_mountCommunityMaps' } },
                 { id: 'bay_terrestrial',deg: 270, level: 0, leaf: 'leaf_suburban_house',            label: 'BAY 1 · TERRESTRIAL',    sub: 'CONTAINMENT BAY',            action: { sector: 'terrestrial' } },
                 /* ── mezzanine (support / executive access) ── */
                 { id: 'elevator',       deg: 0,   level: 1, leaf: null, proc: 'elevator',          label: 'ELEVATOR',                sub: 'EXECUTIVE RING',             action: { room: 'executive' },      minClearance: 4, requiresKeys: 12, floors: ['B', 'G', 'M', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '14', 'PH'], desc: 'Director offices. KEYHOLDER clearance and above; the car does not move without Keys.' },
@@ -18261,6 +18271,15 @@ const DOOR_HQ = {
                 { id: 'bay_diplomatic', deg: 150, level: 1, leaf: 'leaf_revolving',    wide: true,  label: 'BAY 5 · DIPLOMATIC',      sub: 'CONTAINMENT BAY',            action: { sector: 'diplomatic' } },
                 { id: 'bay_urban',      deg: 180, level: 1, leaf: 'leaf_glass',                     label: 'BAY 7 · URBAN',           sub: 'CONTAINMENT BAY',            action: { sector: 'urban' } },
                 { id: 'bay_hollow',     deg: 210, level: 1, leaf: 'leaf_wired_double', wide: true,  label: 'BAY 3 · HOLLOW',          sub: 'CONTAINMENT BAY',            action: { sector: 'hollow' } },
+                /* ROOM 360 (2026-09-11, plan 7.4): THE OBSERVATORIUM on the
+                   mezzanine at 240°, directly above Records — between Bay 3
+                   (210°) and Bay 6 (270°): 30° each way is 12.6 m of the upper
+                   drum at r 24 for panels needing 3.3 / 2.5. The office locker
+                   that stood at 240° moved to 232°. A holographic door (the
+                   Cyberpunk tenement wears the same; leaves are not exclusive
+                   below rank). */
+                { id: 'observatorium',  deg: 240, level: 1, leaf: 'leaf_holographic',              label: 'THE OBSERVATORIUM',       sub: 'MEZZANINE · THE SKY ON FILE', action: { room: 'observatorium', at: 'egress' },
+                  desc: 'Room 360. The whole sky from one chair: every threshold in the building is a star on the ceiling — point at one on the chart and its door opens from here. The tape library came upstairs with the projector. The dome is painted; the telescope is pointed at the paint.' },
                 { id: 'bay_quarantined',deg: 270, level: 1, leaf: 'leaf_cell',                      label: 'BAY 6 · QUARANTINED',     sub: 'CONTAINMENT BAY',            action: { sector: 'quarantined' } },
                 { id: 'continuity',     deg: 315, level: 1, leaf: 'leaf_suburban_house',            label: 'BUREAU OF CONTINUITY',    sub: 'THE CANON OFFICE',           action: { room: 'continuity' },     minClearance: 5, requiresKeys: 24, roomNo: '№ — CONTESTED', why: 'a joke, and a policy', desc: 'Canon notices. The motto plaque. The only department that suspects the schedule. GATEKEEPER clearance and two dozen Keys.' },
             ],
@@ -18400,7 +18419,7 @@ const DOOR_HQ = {
                 { key: 'round_cabinet',  deg: 120, r: 22.9, level: 1 },
                 { key: 'cardboard_boxes', deg: 133, r: 23.0, level: 1, rot: 40 },   // moved from 180° for Bay 7's door (plan 7.5)
                 { key: 'cardboard_box',  deg: 136, r: 22.8, level: 1 },
-                { key: 'office_locker',  deg: 240, level: 1, wall: true },
+                { key: 'office_locker',  deg: 232, level: 1, wall: true },   // moved from 240° for Room 360's door (plan 7.4)
                 { key: 'potted_plant',   deg: 300, r: 23.0, level: 1 },
                 { key: 'globe_lamp',     deg: 335, r: 22.7, level: 1 },
                 { key: 'globe_lamp',     deg: 70,  r: 22.7, level: 1 },
@@ -18953,6 +18972,118 @@ const DOOR_HQ = {
                 '“He does not cut hair. He cuts explanations.”',
             ],
             spawn: { x: -3.1, z: 0, face: 90 },
+        },
+
+        /* ── ROOM 360 · THE OBSERVATORIUM (HQ plan 7.4, 2026-09-11) — a box
+           room off the MEZZANINE at 240°, directly above Records. The user's
+           "360°": a planetarium. The PROJECTOR in the middle is the tape
+           library's projection (the counter → Replay, moved up from
+           Records' door panel); the PROJECTED SKY on the ceiling
+           (`star_dome`, three-renderer.js) is every threshold in the
+           building as a star — seven constellations, one per bay, laid out
+           by `hqStarChart` — and THE STAR CHART on the north wall is the
+           counter that opens the star-map panel (map.js `_hqStarmapHtml`):
+           point at a star and its threshold's door panel opens from here,
+           CROSS / DEEP / WALK IN and all. A fast route to any site — the
+           real function the plan asked for. The room is dark on purpose:
+           the shell's one strip is blue and over the way in, the projector
+           and two globe lamps light the rest; `floorColor` / `wallColor` /
+           `dadoColor` paint the kit's textures down, the ceiling is the
+           `void` terrain sheet (a nebula). The telescope is pointed at the
+           ceiling, which is painted. Overheard lines and the two agents'
+           lines are Claude placeholders (A15 — rewrite at will). Viewer-
+           local, nothing relayed (RULE #2). */
+        observatorium: {
+            label: 'THE OBSERVATORIUM',
+            sub: 'MEZZANINE · THE SKY ON FILE',
+            roomNo: '360', why: '360° — the whole sky from one chair',
+            kind: 'box',
+            shell: {
+                w: 13, d: 13, h: 5.6,
+                wallH: 5.6, dadoH: 1.05,
+                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'void',
+                floorColor: 0x5c5862, wallColor: 0x3b3e4a, dadoColor: 0x4c2e33,   // painted down: a dark room
+                pipes: false,                 // nothing crosses the sky
+                light: { x: -5.4, z: 0 },     // one strip, over the way in
+                mood: { light: 0x3a4a80 },    // and it is blue
+                plate: { x: 0, z: -6.25, y: 5.1 },
+            },
+            doors: [
+                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_holographic',
+                  label: 'CENTRAL EGRESS', sub: 'MEZZANINE · THE WAY BACK',
+                  action: { room: 'central_egress', at: 'observatorium' },
+                  desc: 'The way back to the mezzanine. The door hums; Facilities says that is the paint drying.' },
+            ],
+            counters: [
+                /* THE STAR CHART → the star-map: every threshold a star; point at one and its door opens */
+                { id: 'chart', x: 0, z: -5.9, face: 0, plateY: 2.75, radius: 2.3, verb: 'READ',
+                  label: 'THE STAR CHART', sub: 'EVERY THRESHOLD IS A STAR · POINT AT ONE', action: { overlay: 'starmap' } },
+                /* THE PROJECTOR → the tape library's projection (Replay) */
+                { id: 'projector', x: 0, z: 0, face: 180, plateY: 2.3, radius: 2.1, verb: 'USE',
+                  label: 'THE PROJECTOR', sub: 'THE TAPE LIBRARY · THE LAST CROSSING, PROJECTED', action: { fn: '_ewReplayLastMatch' } },
+            ],
+            props: [
+                /* ── the middle: the projector under the projected sky, three seats round it ── */
+                { key: 'star_projector', x: 0, z: 0, face: 0 },
+                { key: 'star_dome',      x: 0, z: 0, ceil: true },
+                { key: 'curved_couch',   x: 0,    z: 3.8,  face: 0 },      // the seats face the projector
+                { key: 'curved_couch',   x: 3.3,  z: -1.9, face: 240 },
+                { key: 'curved_couch',   x: -3.3, z: -1.9, face: 120 },
+                { key: 'telescope',      x: 4.6,  z: 4.4,  face: 315 },    // pointed at the ceiling, which is painted
+                /* ── the north wall: the chart, two photographs of the sky (Records has the negatives) ── */
+                { key: 'star_chart',     wall: 'n', x: 0 },
+                { key: 'picture_round_a', wall: 'n', x: -3.4 },
+                { key: 'picture_round_b', wall: 'n', x: 3.4 },
+                { key: 'vent_grille',    wall: 'n', x: 5.4, mount: 4.8 },
+                /* ── the east wall: the astronomer's desk, the tape library on the shelves ── */
+                { key: 'tanker_desk',    x: 5.4,  z: 0.6,  face: 270 },
+                { key: 'crt_terminal',   x: 5.5,  z: 0.15, y: 0.76, face: 270 },
+                { key: 'papers_b',       x: 5.35, z: 1.05, y: 0.76, face: 300 },
+                { key: 'coffee_mug',     x: 5.75, z: 1.1,  y: 0.76, face: 20 },
+                { key: 'desk_lamp',      x: 5.75, z: -0.05, y: 0.76, face: 250 },
+                { key: 'office_chair',   x: 6.0,  z: 0.6,  face: 270 },
+                { key: 'metal_shelving', wall: 'e', z: -3.6 },
+                { key: 'metal_shelving', wall: 'e', z: 3.8 },
+                { key: 'filing_cabinet', wall: 'e', z: -2.1 },
+                { key: 'tube_tv',        x: 6.15, z: -2.1, y: 1.33, face: 270 },   // the viewing set, on the cabinet
+                { key: 'cardboard_boxes', x: 5.6, z: -5.1, face: 20 },             // the tapes that did not fit
+                { key: 'wall_clock',     wall: 'e', z: 2.4, mount: 3.4 },          // sidereal: four minutes fast a day
+                /* ── the south wall: the porthole, the panel, the extinguisher, a plant that has never seen the sun ── */
+                { key: 'observation_window', wall: 's', x: 0, mount: 3.4 },
+                { key: 'breaker_panel',  wall: 's', x: -4.6 },
+                { key: 'fire_extinguisher', wall: 's', x: 4.8 },
+                { key: 'potted_plant',   x: 5.6,  z: 5.7 },
+                { key: 'globe_lamp',     x: -5.5, z: 5.5 },
+                /* ── the west wall: the way out, the coats, a frame ── */
+                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.75 },
+                { key: 'hook_rail',      wall: 'w', z: 2.4 },
+                { key: 'picture_round_c', wall: 'w', z: -3.0 },
+                { key: 'globe_lamp',     x: -5.5, z: -5.5 },
+                /* ── the ceiling: ONE fixture, over the way in, at the shell's strip (blue) — the sky has the rest ── */
+                { key: 'fluorescent',    x: -5.4, z: 0, ceil: true, face: 90 },
+            ],
+            agents: [
+                { x: 6.0, z: 0.6, face: 270, pose: 'hqSit', gender: 'female', label: 'THE ASTRONOMER', reach: 2.0,
+                  line: '“I chart them. I don’t open them. Point at one and take it up with the door.”' },
+                { x: -4.9, z: -2.5, face: 110, pose: 'hqTalk', gender: 'male', label: 'THE USHER', reach: 1.7,
+                  line: '“Mind the step. There isn’t one. People mind it anyway.”' },
+            ],
+            npcSpots: [
+                { x: 2.2,  z: 3.3,  face: 300 },   // looking up
+                { x: -2.7, z: 3.0,  face: 40 },
+                { x: 2.6,  z: -4.9, face: 200 },   // at the chart
+            ],
+            onlineSpots: [
+                { x: -2.1, z: -4.7, face: 0 },
+                { x: 3.9,  z: 2.9,  face: 315 },
+            ],
+            lines: [
+                '“Which one is ours?” “The one that keeps moving.”',
+                '“The dome is painted.” “Painted from what?”',
+                '“Every star is a door.” “Every door is a star. Records disagrees about the direction.”',
+                '“Do not touch the projector. It is the only thing in the building pointed at the ceiling on purpose.”',
+            ],
+            spawn: { x: -5.7, z: 0, face: 90 },
         },
 
         /* ── THE TRAINING ROOM (HQ plan 6.1a, 2026-09-04) — the walkable
@@ -19825,6 +19956,50 @@ function hqRoomRegister() {
     }
     out.sort((a, b) => hqRoomNoCompare(a.no, b.no) || (a.label < b.label ? -1 : 1));
     return out;
+}
+/* ── THE STAR CHART (Room 360, HQ plan 7.4 — 2026-09-11) ─────────────
+   Every launch map on a bay's roster is a STAR; a bay is a CONSTELLATION.
+   ONE layout, read by the ceiling (three-renderer.js `star_dome`), the
+   wall chart (`star_chart`) and the panel (map.js `_hqStarmapHtml`): a
+   unit disc (x east, z south — the room's floor frame seen from above)
+   cut into equal wedges in bay order, Bay 1 at twelve o'clock and
+   clockwise; a bay's sites are strung along its wedge from the rim
+   inward (roster order) with a seeded sideways jitter, and joined in
+   that order — the constellation's stick figure. Deterministic: hqHash
+   of the map id, nothing from the clock. With a profile every star
+   carries its lamp (`st` = doorSiteState's word for the threshold —
+   stabilized / unstable / codered / sealed — and the mastery count). */
+function hqStarChart(profile) {
+    const secs = DOOR_HQ.sectors || {};
+    const keys = Object.keys(secs).filter(k => secs[k] && Array.isArray(secs[k].maps));
+    keys.sort((a, b) => ((hqBayNo(a) || 99) - (hqBayNo(b) || 99)) || (a < b ? -1 : 1));
+    const n = keys.length || 1;
+    const META = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META : [];
+    const bays = [], stars = [];
+    keys.forEach((k, bi) => {
+        const sec = secs[k];
+        const a0 = -Math.PI / 2 + (bi / n) * Math.PI * 2, a1 = a0 + Math.PI * 2 / n;
+        const bay = { sector: k, label: sec.label || k, sub: sec.sub || '', bayNo: hqBayNo(k), a0, a1, locked: !!sec.locked, stars: [] };
+        const m = sec.maps.length || 1;
+        sec.maps.forEach((id, si) => {
+            const h = hqHash(id + '|star');
+            const along = (h % 1000) / 999, across = ((h >>> 10) % 1000) / 999;
+            /* from the rim inward by roster order, ± a little; sideways alternating left / right of the
+               wedge's spine (± a little) — a zigzag, so neighbours never crowd and the figure reads */
+            const r = Math.min(0.93, Math.max(0.3, 0.9 - 0.56 * ((si + 0.5) / m) + (along - 0.5) * 0.14));
+            const ang = a0 + (((si % 2) ? 0.7 : 0.3) + (across - 0.5) * 0.3) * (a1 - a0);
+            const meta = META.find(x => x.id === id);
+            const st = profile ? doorSiteState({ action: { mission: id } }, profile) : (sec.locked ? 'sealed' : 'unstable');
+            const sm = profile ? hqSiteMastery(id, profile) : null;
+            const star = { id, no: hqRoomNo(id), label: ((meta && meta.label) || id).toUpperCase(), sector: k, bayNo: bay.bayNo, i: si,
+                           x: Math.cos(ang) * r, z: Math.sin(ang) * r, r, ang, st,
+                           done: sm ? sm.done : 0, total: sm ? sm.total : (DOOR_HQ.masteryConditions || []).length,
+                           siteRoom: DOOR_HQ.rooms[hqSiteRoomId(id)] ? hqSiteRoomId(id) : null };
+            bay.stars.push(star); stars.push(star);
+        });
+        bays.push(bay);
+    });
+    return { bays, stars, n };
 }
 /* ── Keys (HQ plan 3.2) ────────────────────────────────────────────────
    { keys, pickups, issued }: pickups = the `hourglasses` achievement counter
@@ -20928,6 +21103,7 @@ if (typeof window !== 'undefined') {
     window.hqDoorNo = hqDoorNo;
     window.hqRoomNoCompare = hqRoomNoCompare;
     window.hqRoomRegister = hqRoomRegister;
+    window.hqStarChart = hqStarChart;
     window.doorSiteState = doorSiteState;
     window.hqKeys = hqKeys;
     window.hqKeysShort = hqKeysShort;
