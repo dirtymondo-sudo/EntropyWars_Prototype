@@ -319,6 +319,7 @@
                 if (!p) return;
                 if (!p.door || typeof p.door !== 'object') p.door = {};
                 if (!p.door.hq || typeof p.door.hq !== 'object') p.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
+                if (p.door.hq.variantSeed == null) p.door.hq.variantSeed = Math.floor(Math.random() * 1e9);   // the variant roll's salt (plan 5.1), once per profile
                 if (doorId) { p.door.hq.lastDoor = doorId; p.door.hq.lastRoom = _hqCurRoom; }
                 else p.door.hq.visits = (p.door.hq.visits || 0) + 1;
                 PS.saveProfile(idx, p);
@@ -344,6 +345,14 @@
         function _hqEsc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
         function _hqRoom() { return (typeof DOOR_HQ !== 'undefined') ? (DOOR_HQ.rooms[_hqCurRoom] || DOOR_HQ.rooms.central_egress) : null; }
         function _hqRoomExists(id) { return !!(typeof DOOR_HQ !== 'undefined' && id && DOOR_HQ.rooms[id]); }
+        /* a forced room variant for a dev run: '<id>' stands it, 'none' / '' stands the sheet, undefined = roll */
+        function _hqVariantForce() {
+            let f = null;
+            try { const m = /[?&]hqvariant=([^&#]*)/.exec(location.search); if (m) f = decodeURIComponent(m[1]); } catch (e) {}
+            if (window.EW_HQ_VARIANT != null) f = String(window.EW_HQ_VARIANT);
+            if (f == null) return undefined;
+            return (f === 'none' || f === 'off' || f === '0') ? '' : f;
+        }
         /* the walkable site behind a threshold (HQ plan 7.2): data.js hqSiteRoomId; '' when the helper is missing */
         function _hqSiteRoomId(mapId) { try { return (typeof window.hqSiteRoomId === 'function') ? window.hqSiteRoomId(mapId) : ''; } catch (e) { return ''; } }
         /* HQ plan D13: walk as your most-played vessel (the ID-card photo)
@@ -428,6 +437,14 @@
             let roomId = opts.room || (returning ? _hqLastRoom : 'central_egress');
             if (!_hqRoomExists(roomId)) roomId = 'central_egress';
             _hqCurRoom = roomId;
+            /* ROOM VARIANTS (HQ plan 5.1, 2026-09-11): a fresh arrival rolls the
+               building's variants for this visit (Room 86 after hours = the
+               MÖBIUS STRIP CLUB); a return from a screen or a match and a
+               walk between rooms keep the roll. `?hqvariant=<id>` /
+               `window.EW_HQ_VARIANT` force one ('none' = the sheet). */
+            if (!returning && !walking && typeof window.hqRollRoomVariants === 'function') {
+                try { window.hqRollRoomVariants(_hqProfile(), { force: _hqVariantForce() }); } catch (e) { console.warn('[HQ] variant roll failed', e); }
+            }
             const roomDef = DOOR_HQ.rooms[roomId];
             try { playSfx('uiButtonConfirm'); } catch (e) {}
             /* the strike plate buzzes on the way IN from Play; a return from a
@@ -1222,7 +1239,7 @@
             if (act.overlay === 'crossing') return _hqCrossingHtml(t);
             let html = `<div class="hq-panel-hd"><b>${_hqEsc(c.label)}</b><span>${_hqEsc(c.sub || '')}</span></div>`;
             if (c.id === 'board') html += '<p class="hq-panel-desc">Six laminated photographs. The frame in the corner has been empty since 1987. Nobody comments on it.</p>';
-            if (act.fn) html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="${_hqEsc(act.fn)}">READ THE BOARD ▸ ${_hqEsc(_HQ_FN_LABELS[act.fn] || act.fn)}</button></div>`;
+            if (act.fn) html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="${_hqEsc(act.fn)}">${_hqEsc(c.verb ? (String(c.verb).toUpperCase() + ' AT THE ' + String(c.label || 'COUNTER').toUpperCase()) : 'READ THE BOARD')} ▸ ${_hqEsc(_HQ_FN_LABELS[act.fn] || act.fn)}</button></div>`;
             return html;
         }
         function _hqNpcPanelHtml(t) {

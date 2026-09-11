@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 25 (2026-09-08 rev 5 — 5.4a stage 2 SHIPPED: THE CONTAINMENT RING is ONE CORRIDOR PER FLOOR — the bays of a floor are segments of a single hallway framed just outside the egress drum (ground ring r 21.5–25.5 behind Bays 1 and 4, mezzanine ring r 24.5–28.5 behind Bays 2 · 5 · 7 · 3 · 6), every egress bay door is the ring's inner-wall door at the same angle, the thresholds spread along the outer wall either side of it, no rebuild between bays, the caps wear the fire door to each other across the service side; data.js `bayShell.corridor`, `hqRingLayout` / `hqRingRoom` / `hqBayEntry` / `hqBayNo` / `hqRingSectorAt` / `hqRingSpot`, `hqBayId(sector)` → the floor's ring; the renderer learns only `shell.full`; map.js lands through `hqBayEntry`; the cast's bay spots carry over; kill-switch `corridor.on: false`; rev 24 2026-09-08 rev 4 — 7.2 stage 6 SHIPPED: THE REST OF THE REGISTER — every launch map is a walkable room: Rooms 14179 · SHASTA, 56 · STONEHENGE, 444 · GIZA, 777 · HEAVEN, 2047 · CYBERPUNK CITY, 11 · BABEL, 12 · OLYMPUS, 4 · MARS, 51 · AREA 51, 512 · SKINWALKER RANCH, 180 · HOLLOW EARTH, 420 · FAIRY FOREST, 1969 · MOON, 888 · VATICAN CITY, 23 · BOHEMIAN GROVE, 9600 · GÖBEKLI TEPE, 1225 · NORTH POLE and 2D · FLAT LANDS are outdoor rooms behind their bay thresholds, each with its map's setting inside it at 1:1 and its sky overhead (Flat Lands opts out of its fourteen-tile setting), four consoles off the west wall, Babel's terraces as stands, the Moon under a 3 m berm; data-only — `siteRooms.built` / `near` / `shells` / `flavour`, no renderer change; doorhq.test.js now insists every site in the register has a room; rev 23 2026-09-08 rev 3 — 7.2 stage 5 SHIPPED: THE SETTING IN THE ROOM — every walkable site room now runs its map's own MAP SETTINGS near builder inside it at 1:1 (D.U.M.B.'s server racks and blast door, CERN's beamline and terminals, the Backrooms' partitions and stalk fluorescents, Nuketown's picket fence, houses, road and buses, the Stadium's tiers and floodlights, Camelot's curtain wall with its towers and drawbridge, Atlantis' colonnade and kelp, Hell's spires and braziers, Technoticlan's temple tiers and torches, Agartha's crystal spires, Antarctica's ice ridges and igloo) — the room grows to the setting's apron (`siteRooms.near[key].w` tiles, + the moat's gap), the kit's enclosure primitives are no-ops in the room (the shell is those), every piece is culled clear of the way in and the console and becomes a blocker, natives and props are nudged off the houses and the stands, and four consoles moved to the north wall (`shells[id].console`); `hqSiteRoom` `near`, three-renderer.js `_hqBuildSetting` / `_hqSettingFreeSpot`, `_nrKit` `ctx.hq`; rev 22 2026-09-08 rev 2 — 7.2 stage 4 SHIPPED: the MOAT rooms — Rooms i · CAMELOT, H-20 · ATLANTIS, 666 · HELL, 2012 · TECHNOTICLAN, 88 · AGARTHA and 90S · ANTARCTICA are outdoor sites whose walkway is a QUAY: the ring between the island and the quay is the map's own liquid one level down in the battle's animated fluid sheet, board-edge canals open into it, a causeway either way (the south one is the way in), deep water and lava never entered; `shells[id].moat`, `hqSiteRoom` → `shell.moat`, three-renderer.js `_hqSiteOnCauseway` / `_hqTickMoat`, and a site room's floor is now a FRAME so every board pit finally shows; rev 21 2026-09-08 — 7.2 stage 3 SHIPPED: the first OUTDOOR rooms — Room 1945 · NUKETOWN and Room 50 · FOOTBALL STADIUM are walkable sites with no ceiling, the map's own sky on the battle's firmament dome, its far roster drifting round the room, lamp masts on the walkway corners, a fence / the bowl's wall for a perimeter and the ground running out past it; `shells[id].open`, `shell.sky`, three-renderer.js `_hqBuildSky` / `_hqTickSky`, `_hqTex` reads terrain keys; rev 20 2026-09-07 rev 5 — 7.2 stage 2 SHIPPED: Rooms 999 · CERN and 90 · BACKROOMS are walkable sites, each in its own LIGHT (`siteRooms.shell.mood`: lamps, strips, sign palettes, `signLines`; the Backrooms under a low yellow ceiling with no conduits, the almond water tinted); rev 19 2026-09-07 rev 4 — 7.2 stage 1 SHIPPED: the first WALKABLE SITE — Room 555 · D.U.M.B. is a room behind its bay threshold, its own Δ board in the middle at 1:1 (steps climbed, blocks solid, the cell walls, the specimen tubes, the nexus ring), the CROSSING console files the crossing, the natives loiter on the walkway; `hqSiteRoom` / `hqSiteBoardInfo`, the renderer's `_hqBuildSiteBoard` + the board layer in `_hqSurface`; rev 18 2026-09-07 rev 3 — 7.5 SHIPPED + THE CONTAINMENT RING (new 5.4a) stage 1: Bay 7 · URBAN on the mezzanine, the rebalance (C-22 + C-23 DECIDED), and every bay's end caps wear fire doors into the next bay on its floor — 1 ⇄ 4 downstairs, 2 → 5 → 7 → 3 → 6 → 2 upstairs; rev 17 2026-09-07 rev 2 — 7.1 SHIPPED, the numbers are on the doors: `roomNo` on every threshold and numbered room, `hqRoomNo` / `hqRoomRegister`, the plate · the panels · the SITE FILE header · the result stamp · the loading card · the directory's register; the elevator skips 13; rev 16 2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
+### The walkable facility that replaces the Play menu · rev 26 (2026-09-11 rev 2 — 7.4 ROOM 86 SHIPPED + 5.1's FIRST VARIANT: THE CAFETERIUM is a box room off the ground ring at 75° (the serving line, the hot side that was the hall's break nook, two long tables, the notice board → the leaderboard, the till → the Quartermaster, the roster on break, the other operatives on shift from the lobby's online count), and after hours the same door reads MÖBIUS STRIP CLUB (`rooms.cafeteria.variants.after_hours`: the bar is one lathe with one side, pink light, a bartender — `hqRollRoomVariants` per visit, `?hqvariant=after_hours`); rev 25 2026-09-08 rev 5 — 5.4a stage 2 SHIPPED: THE CONTAINMENT RING is ONE CORRIDOR PER FLOOR — the bays of a floor are segments of a single hallway framed just outside the egress drum (ground ring r 21.5–25.5 behind Bays 1 and 4, mezzanine ring r 24.5–28.5 behind Bays 2 · 5 · 7 · 3 · 6), every egress bay door is the ring's inner-wall door at the same angle, the thresholds spread along the outer wall either side of it, no rebuild between bays, the caps wear the fire door to each other across the service side; data.js `bayShell.corridor`, `hqRingLayout` / `hqRingRoom` / `hqBayEntry` / `hqBayNo` / `hqRingSectorAt` / `hqRingSpot`, `hqBayId(sector)` → the floor's ring; the renderer learns only `shell.full`; map.js lands through `hqBayEntry`; the cast's bay spots carry over; kill-switch `corridor.on: false`; rev 24 2026-09-08 rev 4 — 7.2 stage 6 SHIPPED: THE REST OF THE REGISTER — every launch map is a walkable room: Rooms 14179 · SHASTA, 56 · STONEHENGE, 444 · GIZA, 777 · HEAVEN, 2047 · CYBERPUNK CITY, 11 · BABEL, 12 · OLYMPUS, 4 · MARS, 51 · AREA 51, 512 · SKINWALKER RANCH, 180 · HOLLOW EARTH, 420 · FAIRY FOREST, 1969 · MOON, 888 · VATICAN CITY, 23 · BOHEMIAN GROVE, 9600 · GÖBEKLI TEPE, 1225 · NORTH POLE and 2D · FLAT LANDS are outdoor rooms behind their bay thresholds, each with its map's setting inside it at 1:1 and its sky overhead (Flat Lands opts out of its fourteen-tile setting), four consoles off the west wall, Babel's terraces as stands, the Moon under a 3 m berm; data-only — `siteRooms.built` / `near` / `shells` / `flavour`, no renderer change; doorhq.test.js now insists every site in the register has a room; rev 23 2026-09-08 rev 3 — 7.2 stage 5 SHIPPED: THE SETTING IN THE ROOM — every walkable site room now runs its map's own MAP SETTINGS near builder inside it at 1:1 (D.U.M.B.'s server racks and blast door, CERN's beamline and terminals, the Backrooms' partitions and stalk fluorescents, Nuketown's picket fence, houses, road and buses, the Stadium's tiers and floodlights, Camelot's curtain wall with its towers and drawbridge, Atlantis' colonnade and kelp, Hell's spires and braziers, Technoticlan's temple tiers and torches, Agartha's crystal spires, Antarctica's ice ridges and igloo) — the room grows to the setting's apron (`siteRooms.near[key].w` tiles, + the moat's gap), the kit's enclosure primitives are no-ops in the room (the shell is those), every piece is culled clear of the way in and the console and becomes a blocker, natives and props are nudged off the houses and the stands, and four consoles moved to the north wall (`shells[id].console`); `hqSiteRoom` `near`, three-renderer.js `_hqBuildSetting` / `_hqSettingFreeSpot`, `_nrKit` `ctx.hq`; rev 22 2026-09-08 rev 2 — 7.2 stage 4 SHIPPED: the MOAT rooms — Rooms i · CAMELOT, H-20 · ATLANTIS, 666 · HELL, 2012 · TECHNOTICLAN, 88 · AGARTHA and 90S · ANTARCTICA are outdoor sites whose walkway is a QUAY: the ring between the island and the quay is the map's own liquid one level down in the battle's animated fluid sheet, board-edge canals open into it, a causeway either way (the south one is the way in), deep water and lava never entered; `shells[id].moat`, `hqSiteRoom` → `shell.moat`, three-renderer.js `_hqSiteOnCauseway` / `_hqTickMoat`, and a site room's floor is now a FRAME so every board pit finally shows; rev 21 2026-09-08 — 7.2 stage 3 SHIPPED: the first OUTDOOR rooms — Room 1945 · NUKETOWN and Room 50 · FOOTBALL STADIUM are walkable sites with no ceiling, the map's own sky on the battle's firmament dome, its far roster drifting round the room, lamp masts on the walkway corners, a fence / the bowl's wall for a perimeter and the ground running out past it; `shells[id].open`, `shell.sky`, three-renderer.js `_hqBuildSky` / `_hqTickSky`, `_hqTex` reads terrain keys; rev 20 2026-09-07 rev 5 — 7.2 stage 2 SHIPPED: Rooms 999 · CERN and 90 · BACKROOMS are walkable sites, each in its own LIGHT (`siteRooms.shell.mood`: lamps, strips, sign palettes, `signLines`; the Backrooms under a low yellow ceiling with no conduits, the almond water tinted); rev 19 2026-09-07 rev 4 — 7.2 stage 1 SHIPPED: the first WALKABLE SITE — Room 555 · D.U.M.B. is a room behind its bay threshold, its own Δ board in the middle at 1:1 (steps climbed, blocks solid, the cell walls, the specimen tubes, the nexus ring), the CROSSING console files the crossing, the natives loiter on the walkway; `hqSiteRoom` / `hqSiteBoardInfo`, the renderer's `_hqBuildSiteBoard` + the board layer in `_hqSurface`; rev 18 2026-09-07 rev 3 — 7.5 SHIPPED + THE CONTAINMENT RING (new 5.4a) stage 1: Bay 7 · URBAN on the mezzanine, the rebalance (C-22 + C-23 DECIDED), and every bay's end caps wear fire doors into the next bay on its floor — 1 ⇄ 4 downstairs, 2 → 5 → 7 → 3 → 6 → 2 upstairs; rev 17 2026-09-07 rev 2 — 7.1 SHIPPED, the numbers are on the doors: `roomNo` on every threshold and numbered room, `hqRoomNo` / `hqRoomRegister`, the plate · the panels · the SITE FILE header · the result stamp · the loading card · the directory's register; the elevator skips 13; rev 16 2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -411,6 +411,11 @@ lamp/frame details → furniture → fixtures → machinery.
 ### Phase 5 — The building is not reliable (1 session, ⚙ + 🧊 optional)
 - 5.1 Variants: alternate door/prop tables per room, rolled per visit
   after chapter N (seeded by `variantSeed` + day). Nobody comments.
+  **First shipped 2026-09-11 (§9, with Room 86):** `rooms.<id>.variants`
+  on the sheet, `hqVariantRoll` (the clock, else a seeded roll per
+  visit), `hqApplyRoomVariant` (swaps `DOOR_HQ.rooms[id]`, re-plates the
+  doors into it), `hqRollRoomVariants` from map.js `_hqEnter` on a fresh
+  arrival; `?hqvariant=<id>` forces one. No chapter gate yet (A14).
 - 5.2 Department swaps; the directory insists it was always so.
 - 5.3 Stabilized doors as shortcuts into deeper rings.
 - 5.4 Rings: Support / Operations / Executive as further rotunda instances
@@ -810,7 +815,7 @@ the hero prop named in §5.6.
 | **4C** | The Corner Office | Executive (L4+) | your office once the ladder passes L3 (A5, 5.4): the in-tray, plaques, the window that should not exist | the user's; a corner office in a round building — one dimension short of Room 4D, and a Form 90 problem |
 | **8** | The Infinity Pool | Executive (L4+) | an amenity: the pool edge over the void, loungers, the top of the leaderboard on break; optional later: its own board | the user's; ∞ on its side |
 | **42** | Records · Archives | Support | ✅ exists as a door → Codex / Replay / Community Maps; walkable later | REC — if the stadium takes 50, 42 goes to the room that has the answer to everything and only keeps the file |
-| **86** | The Cafeterium | Support | the roster ON BREAK (`npcSpots`), online silhouettes from `#mmOnlineCount` (§8 open question — this is where they go), the vending machine that was on the other side yesterday, the notice board (mirrors 247's sheet). **After hours (a Phase 5.1 variant, rolled per visit) the door reads `MÖBIUS STRIP CLUB`** — same room, the bar counter is a Möbius loop (one lathe), nobody comments | the user's; 86'd — the menu is always out of it |
+| **86** | The Cafeterium ✅ (2026-09-11, §9) | Support | ✅ SHIPPED — `rooms.cafeteria`, the door at 75° on the ground ring; the roster ON BREAK (`npcSpots`), online silhouettes from `#mmOnlineCount` (§8 open question — this is where they go), the vending machine that was on the other side yesterday, the notice board (mirrors 247's sheet). **After hours (a Phase 5.1 variant, rolled per visit) the door reads `MÖBIUS STRIP CLUB`** — same room, the bar counter is a Möbius loop (one lathe), nobody comments | the user's; 86'd — the menu is always out of it |
 | **101** | Your office (the closet) | Support | ✅ shipped | the user's; Orwell's room holds your worst fear, and yours is a closet |
 | **111** | The Trophy Case | mezzanine, beside EMPLOYEE OF THE MONTH | a counter → `_mountReactProfile` on the Achievements / Records tab (ACHIEVEMENTS_PLAN's trophy case); a glass cabinet with plaques | the user's |
 | **247** | The Clock Room | Support | **D.O.O.R. = Daily Office Operations Requirements** (the user's) as `FORM 365`: three tasks a day seeded like Code Red, Hazard Pay + SP (ROADMAP §8.1's daily loop — engine work, 7.9); the punch clock (login streak); the canon-date clock; today's Code Red posted. Every clock in the room disagrees on purpose | the user's 247 and 365 merged — 24/7, and the form number is the year |
@@ -3771,6 +3776,110 @@ wired in one data.js delivery — HQ plan §7.11 has the full table.
 - **Delivery (RULE #1 / #1b).** `data.js` to R2, `index.html` to Render,
   token `20260910-071500-door-props-cors`. `doorhq.test.js`, this log
   and the plan are repository-only. Nothing committed or pushed.
+
+### 2026-09-11 (rev 2) — 7.4 ROOM 86 SHIPPED: THE CAFETERIUM, and the building's first VARIANT (5.1) — after hours it is the MÖBIUS STRIP CLUB
+
+The next unticked row of the register with its kit already on the shelf
+(7.11 held the whole cafeteria batch for it). Built from the existing
+catalogue plus two procedural pieces; nothing new from the user.
+
+- **The door (data.js `central_egress.doors`).** `cafeteria` at 75° on
+  the ground ring — the one free stretch, between the east stair's top
+  (62° + the 7° margin) and the Quartermaster's vault at 90° (7.5 measured
+  it for a bay and gave the bay to the mezzanine). 15° is 5.5 m of wall
+  at r 21 for two panels needing 2.9, so doorhq.test.js's "≥ 25° apart"
+  rule became what it was a proxy for: 25°, OR ≥ 2 m of pier between the
+  panel edges at the wall radius. `leaf_saloon` (the doors swing both
+  ways). The plate reads ROOM 86 through `hqDoorNo` (the room's number,
+  one place). The potted plant at 76° moved to 84°.
+- **The room (`rooms.cafeteria`, `kind: 'box'`, 12 × 9 × 3.7, terrazzo /
+  drywall / oxblood dado, an acoustic ceiling with NO conduits).** The
+  serving line on the north wall: four `tanker_desk`s, the curved till
+  (a `reception_wedge`) with the `cash_register` on it, trays along the
+  line, the `observation_window` as the kitchen hatch (the kitchen is not
+  on the plan). The hot side on the east wall is THE BREAK NOOK moved in
+  from the hall — round fridge with the `retro_speakers` on it, microwave,
+  coffee maker, mug, cup, coat rail, bin — plus a `vending_machine` ("the
+  one that was on the other side yesterday"; the hall keeps its own, which
+  has always been there). Two `conference_table`s with twelve chairs
+  (`cafeteria_chair` / `molded_chair`), trays and cups on them, someone's
+  papers (working through lunch). The south wall: the NOTICE BOARD (new
+  proc `notice_board` — the leaderboard counter's look as a wall prop:
+  teal frame, cork, seven pinned sheets), two empty round frames, a
+  clock; a second clock on the north wall that disagrees. `exit_sign`
+  over the door, the rug inside it, a wet-floor sign, a palm in the SE
+  corner, three fluorescents.
+- **The counters.** `notice` → `_mountLeaderboard` (EMPLOYEE OF THE
+  MONTH until the Clock Room's FORM 365 exists, 7.9); `till` →
+  `_goToShop` (the Quartermaster's satellite counter). map.js's counter
+  panel button now reads the counter's `verb` ("PAY AT THE TILL ▸ SHOP")
+  instead of the hard-coded "READ THE BOARD".
+- **The people.** Five `npcSpots` (the queue, the aisles) for the roster
+  on break (the renderer draws three); one D.O.O.R. agent, THE CASHIER,
+  at the till. **`onlineSpots` (new, plan §8's open question answered):
+  one anonymous D.O.O.R. agent per online player besides you** — online.js
+  `_updateCounterUI` now publishes `window._ewOnlineCount` (the lobby's
+  live `#mmOnlineCount`, connected 1.5 s after load on every page) and
+  three-renderer.js `_hqSpawnPopulation` seats `min(count − 1, spots)`
+  agents labelled OPERATIVE · ON SHIFT / ONLINE · ANOTHER TERMINAL.
+  `window.EW_HQ_ONLINE = n` forces a crowd for a screenshot. Overheard
+  lines are Claude placeholders (A15 — the user may rewrite).
+- **AFTER HOURS — the first ROOM VARIANT (plan 5.1).** `rooms.cafeteria
+  .variants.after_hours`: `when: { hours: [22, 5], p: 0.2 }` (the local
+  clock wins; otherwise one visit in five, seeded by the profile's
+  `variantSeed` — set once per profile by map.js `_hqRecordVisit` — plus
+  the day plus the visit count, so the roll is per VISIT and re-entering
+  the room in the same visit is the same room), `label` MÖBIUS STRIP
+  CLUB, `door` re-plates the hall door (label / sub / desc), `shell.mood
+  .light` 0xff4f9a (the fluorescents and the room lights go pink — the
+  renderer already read `S.mood.light` for site rooms), `drop` sends the
+  serving line, the tables, the chairs, the trays and the paperwork
+  home, `add` stands the **`mobius_bar`** (new proc: a 1.5 m ring band
+  with a half twist at 1.05 m, `DoubleSide`, three chrome posts, a brass
+  foot rail, a pink strip light and a point light; `foot` 1.4 + `block`
+  so the walker stays on the one side there is), six chairs round it,
+  cups on the band, two globe lamps, floor speakers, the coat check (two
+  folding chairs); `counters` = the board + THE BAR (→ the shop);
+  `agents` = THE BARTENDER; its own lines and npcSpots. The mechanism:
+  `hqRoomBase(id)` (the sheet, kept in `DOOR_HQ.roomsBase`),
+  `hqVariantRoll(id, profile, { force, now })`, `hqApplyRoomVariant(id,
+  vid)` — swaps `DOOR_HQ.rooms[id]` for a merged copy (same `roomNo`,
+  `kind`, `doors`; `shell` merged over) and patches every door whose
+  action leads into the room, keeping the sheet's plate in `d._base` and
+  restoring it on the next apply — and `hqRollRoomVariants(profile,
+  opts)` for every room with variants. map.js `_hqEnter` rolls on a
+  FRESH arrival only (not a return from a screen / match, not a walk
+  between rooms); `?hqvariant=after_hours` / `window.EW_HQ_VARIANT`
+  force one (`none` = the sheet). Because every reader goes through
+  `DOOR_HQ.rooms[id]`, the renderer, the panels, the register and the
+  directory all see the variant with no special case — "the directory
+  insists it was always so" (5.2) came free. No chapter gate yet (the
+  story track is on hold, A14). Nobody comments.
+- **Tests.** doorhq.test.js: the relaxed door rule; "Room 86" (the door,
+  the way back, the number, the pier to the vault, the nook gone from the
+  hall, every row of 7.11's build sheet, the props / spots inside the
+  walls and under the ceiling, the counters and what they reach, the two
+  procs, the register row); "room variants" (ids, the forced / clocked /
+  seeded roll, the applied room and its re-plated door, the register's
+  night label, idempotence, the restore, the building-wide roll); a
+  source scan of the two builders, the online seats, the `_hqEnter` roll
+  order, the seed and the published count. `npm test`: 577 pass, 0 fail,
+  2 expected skips.
+- **Not done / to look at on the next walkthrough.** No playtest (RULE
+  #1c). The `reception_wedge` at the end of the line and the two
+  `conference_table`s are placed by catalogue size, not by eye — if the
+  wedge's curve faces the wrong way, its `face` is the only edit; if the
+  tables' long axis runs north–south, swap the chairs' x / z. The
+  Möbius band's material is the oxblood plaster tinted — a laminate
+  texture would read better. §5.6's serving counter (the hero prop) and
+  the cafeteria clatter bed are still the user's; the line is four steel
+  desks until then. RULE #2: single-player only (no `state.*`, nothing
+  relayed).
+- **Delivery (RULE #1 / #1b).** `data.js` + `three-renderer.js` +
+  `map.js` + `online.js` to R2, `index.html` to Render, token
+  `20260911-room86-cafeterium-01-cors`. `doorhq.test.js`, this log,
+  DOOR_MASTER Part D and CLAUDE.md are repository-only. Nothing
+  committed or pushed.
 
 ### 2026-09-11 — THE EDGE: the outdoor sites lose their facility walls; the real rover, lander and palms stand on the boards
 

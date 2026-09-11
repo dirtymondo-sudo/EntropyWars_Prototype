@@ -92,14 +92,22 @@ test('doors carry exactly one action and unique ids', () => {
     assert.deepStrictEqual(problems, []);
 });
 
-test('doors on a level are ≥ 25° apart and clear of the stair arcs', () => {
+test('doors on a level are ≥ 25° apart (or leave ≥ 2 m of wall between their panels) and clear of the stair arcs', () => {
     const problems = [];
     const norm = d => ((d % 360) + 360) % 360;
     const diff = (a, b) => { const x = norm(a - b); return Math.min(x, 360 - x); };
+    /* Room 86 (2026-09-11) sits 15° from the Quartermaster: at the lower wall
+       that is 5.5 m of wall for two panels needing 2.9 — the angle rule was a
+       proxy for the wall, so the wall is the rule now (2 m of pier between
+       the panel edges); the 25° still passes on its own */
+    const panel = d => (d.wide || (d.leaf && HQ.catalogue[d.leaf] && HQ.catalogue[d.leaf].wide)) ? 3.3 : 2.5;
     for (const level of [0, 1]) {
+        const R = level ? ROOM.shell.mezz.outer : ROOM.shell.radius;
         const ds = ROOM.doors.filter(d => (d.level || 0) === level);
         for (let i = 0; i < ds.length; i++) for (let j = i + 1; j < ds.length; j++) {
-            if (diff(ds[i].deg, ds[j].deg) < 25) problems.push(`${ds[i].id} and ${ds[j].id} are ${diff(ds[i].deg, ds[j].deg)}° apart on level ${level}`);
+            const dg = diff(ds[i].deg, ds[j].deg);
+            const pier = dg * Math.PI / 180 * R - (panel(ds[i]) + panel(ds[j])) / 2;
+            if (dg < 25 && pier < 2.0) problems.push(`${ds[i].id} and ${ds[j].id} are ${dg}° apart on level ${level} (${pier.toFixed(2)} m of pier)`);
         }
     }
     for (const d of ROOM.doors.filter(d => !(d.level || 0))) {
@@ -1742,4 +1750,164 @@ test('the terminal: consoles light their own screen, the pointer comes back (sou
     assert.match(ms, /className: 'ms-crt ms-crt-' \+ frame \+ ' ms-crt-' \+ variant/, 'inside the monitor');
     assert.match(ms, /if \(variant === 'site' && deltaIdx < 0 && fullIdx < 0\) variant = 'full';/, 'a site without a launch entry falls back to the desk');
     assert.match(ms, /function pickBoard\(b\)/, 'Δ board ↔ the full site');
+});
+
+
+/* ── ROOM 86 · THE CAFETERIUM (HQ plan 7.4, 2026-09-11) and the first ROOM
+   VARIANT (plan 5.1): after hours the same room is the MÖBIUS STRIP CLUB ── */
+const CAFE = HQ.rooms.cafeteria;
+const boxPropProblems = (k, room) => {
+    const S = room.shell, out = [];
+    for (const p of room.props) {
+        const c = HQ.catalogue[p.key];
+        if (!c) { out.push(k + ': ' + p.key + ' not in catalogue'); continue; }
+        if (typeof p.wall === 'string') { const a = alongOf(S, p.wall, p); if (Math.abs(a.v) > a.half - 0.15) out.push(k + ': wall prop ' + p.key + ' runs off wall ' + p.wall); }
+        else if (Math.abs(p.x) > S.w / 2 - 0.1 || Math.abs(p.z) > S.d / 2 - 0.1) out.push(k + ': ' + p.key + ' @' + p.x + ',' + p.z + ' is in a wall');
+        const mount = (p.mount != null) ? p.mount : (c.mount || 0);
+        if (mount + (c.h || 0) > S.h - 0.05) out.push(k + ': ' + p.key + ' mounts through the ceiling');
+        if ((p.y || 0) > S.h - 0.1) out.push(k + ': ' + p.key + ' sits above the ceiling');
+    }
+    for (const sp of (room.npcSpots || []).concat(room.onlineSpots || [], room.agents || [])) if (!(Math.abs(sp.x) < S.w / 2 - 0.4 && Math.abs(sp.z) < S.d / 2 - 0.4)) out.push(k + ': a person stands in a wall @' + sp.x + ',' + sp.z);
+    return out;
+};
+
+test('Room 86 is a box room off the ground ring at 75°: the way in, the way out, the number, the kit that moved in from the hall', () => {
+    assert.ok(CAFE && CAFE.kind === 'box' && CAFE.roomNo === '86', 'rooms.cafeteria kind box, Room 86');
+    assert.strictEqual(D.hqRoomNo('cafeteria'), '86');
+    assert.ok(!CAFE.shell.open && CAFE.shell.pipes === false && CAFE.shell.h >= 3.4, 'an indoor room under an acoustic ceiling, no conduits');
+    const eg = ROOM.doors.find(d => d.id === 'cafeteria');
+    assert.ok(eg && eg.deg === 75 && (eg.level || 0) === 0 && eg.action.room === 'cafeteria' && eg.action.at === 'egress', 'the egress door at 75° walks into the room at its way out');
+    assert.strictEqual(D.hqDoorNo(eg), '86', 'the plate over the hall door reads 86');
+    const out = CAFE.doors.find(d => d.id === 'egress');
+    assert.ok(out && out.wall === 'w' && out.action.room === 'central_egress' && out.action.at === 'cafeteria' && out.leaf === eg.leaf, 'the way out is the same saloon door and lands at the hall door');
+    assert.strictEqual(D.doorSiteState(eg, null), 'open');
+    /* between the east stair's top and the Quartermaster, clear of both */
+    const qm = ROOM.doors.find(d => d.id === 'quartermaster');
+    const pier = (qm.deg - eg.deg) * Math.PI / 180 * ROOM.shell.radius - (3.3 + 2.5) / 2;
+    assert.ok(pier > 2.0, 'a pier of ' + pier.toFixed(2) + ' m to the vault door');
+    assert.ok(eg.deg > ROOM.stairs.find(s => s.id === 'stair_e').to + 7, 'clear of the east stair');
+    assert.ok(!ROOM.props.some(p => (p.level || 0) === 0 && p.wall && Math.abs(p.deg - eg.deg) < 5), 'no wall prop stands in the new doorway');
+    assert.ok(!ROOM.props.some(p => (p.level || 0) === 0 && p.r > 18.5 && Math.abs(p.deg - eg.deg) < 5), 'nothing stands in front of it');
+    /* the break nook left the hall (the vending machine has always been there) */
+    for (const key of ['round_fridge', 'microwave', 'coffee_maker', 'hook_rail_long']) {
+        assert.ok(!ROOM.props.some(p => p.key === key && (p.level || 0) === 0 && p.deg >= 95 && p.deg <= 110), 'the hall keeps no ' + key + ' at the old nook');
+    }
+    assert.ok(ROOM.props.some(p => p.key === 'vending_machine' && (p.level || 0) === 0), 'the hall keeps its vending machine');
+    /* 7.11's build sheet, every row */
+    const has = key => CAFE.props.filter(p => p.key === key).length;
+    for (const key of ['tanker_desk', 'reception_wedge', 'cash_register', 'meal_tray', 'meal_tray_empty', 'observation_window', 'microwave', 'coffee_maker',
+                       'round_fridge', 'mini_fridge', 'hook_rail_long', 'conference_table', 'cafeteria_chair', 'molded_chair', 'coffee_mug', 'solo_cup', 'trash_bin',
+                       'rug_office', 'potted_plant', 'palm_tree', 'picture_round_a', 'notice_board', 'wall_clock', 'exit_sign', 'vent_grille', 'vending_machine', 'fluorescent']) {
+        assert.ok(has(key) >= 1, 'Room 86 has its ' + key);
+    }
+    assert.strictEqual(has('conference_table'), 2, 'two long tables');
+    assert.strictEqual(has('wall_clock'), 2, 'two clocks that disagree');
+    assert.ok(has('cafeteria_chair') + has('molded_chair') >= 10, 'chairs round both tables');
+    assert.deepStrictEqual(boxPropProblems('cafeteria', CAFE), []);
+    /* the counters: the notice board → the leaderboard, the till → the Quartermaster */
+    const notice = CAFE.counters.find(c => c.id === 'notice'), till = CAFE.counters.find(c => c.id === 'till');
+    assert.ok(notice && notice.action.fn === '_mountLeaderboard' && notice.verb && notice.radius > 0, 'the notice board reads the leaderboard');
+    assert.ok(till && till.action.fn === '_goToShop' && till.verb && till.radius > 0, 'the till is the shop');
+    assert.ok(CAFE.props.some(p => p.key === 'notice_board' && p.wall === 's' && Math.abs(p.x - notice.x) < 0.5), 'the board hangs where its counter stands');
+    assert.ok(CAFE.props.some(p => p.key === 'cash_register' && Math.hypot(p.x - till.x, p.z - till.z) < till.radius), 'the register is within reach of the till');
+    /* the people: the roster on break, the operatives on shift, one cashier */
+    assert.ok(CAFE.npcSpots.length >= 3 && CAFE.onlineSpots.length >= 2 && CAFE.agents.length >= 1, 'spots for the roster, the online shift and the cashier');
+    assert.ok(CAFE.lines.length >= 3, 'overheard lines');
+    /* the two procedural pieces */
+    const nb = HQ.catalogue.notice_board, mb = HQ.catalogue.mobius_bar;
+    assert.ok(nb && nb.proc === 'notice_board' && nb.wall && nb.depth > 0 && nb.mount > 0, 'the notice board is a wall proc with a depth');
+    assert.ok(mb && mb.proc === 'mobius_bar' && mb.foot >= 1.2 && mb.block, 'the bar is a floor proc the walker cannot enter');
+    /* the register lists it once, as a room */
+    const rows = D.hqRoomRegister().filter(r => r.no === '86');
+    assert.strictEqual(rows.length, 1); assert.strictEqual(rows[0].kind, 'room'); assert.strictEqual(rows[0].id, 'cafeteria');
+});
+
+test('room variants (plan 5.1): after hours Room 86 is the MÖBIUS STRIP CLUB — same room, same number, re-plated door, restored on the way back', () => {
+    /* (JSON: the sandbox's arrays are another realm's) */
+    assert.strictEqual(JSON.stringify(D.hqRoomVariantIds('cafeteria')), '["after_hours"]');
+    assert.strictEqual(JSON.stringify(D.hqRoomVariantIds('office')), '[]');
+    assert.strictEqual(D.hqRoomBase('cafeteria'), CAFE, 'the sheet is the base');
+    const V = CAFE.variants.after_hours;
+    assert.ok(V.when && Array.isArray(V.when.hours) && V.when.p > 0 && V.when.p < 1, 'after hours by the clock, else a roll');
+    /* the roll: forced, by the clock, by the seed */
+    const prof = seed => ({ door: { hq: { variantSeed: seed, visits: 3 } } });
+    assert.strictEqual(D.hqVariantRoll('cafeteria', prof(1), { force: 'after_hours' }), 'after_hours');
+    assert.strictEqual(D.hqVariantRoll('cafeteria', prof(1), { force: '' }), null);
+    assert.strictEqual(D.hqVariantRoll('cafeteria', prof(1), { force: 'nope' }), null);
+    assert.strictEqual(D.hqVariantRoll('office', prof(1), {}), null, 'a room without variants never rolls one');
+    const night = new Date(2026, 8, 11, 23, 30), noon = new Date(2026, 8, 11, 12, 0), small = new Date(2026, 8, 12, 3, 0);
+    for (let sd = 0; sd < 20; sd++) { assert.strictEqual(D.hqVariantRoll('cafeteria', prof(sd), { now: night }), 'after_hours'); assert.strictEqual(D.hqVariantRoll('cafeteria', prof(sd), { now: small }), 'after_hours'); }
+    let hits = 0;
+    for (let sd = 0; sd < 400; sd++) if (D.hqVariantRoll('cafeteria', prof(sd), { now: noon }) === 'after_hours') hits++;
+    assert.ok(hits > 30 && hits < 200, 'one visit in five, roughly (' + hits + '/400 at noon)');
+    assert.strictEqual(D.hqVariantRoll('cafeteria', prof(7), { now: noon }), D.hqVariantRoll('cafeteria', prof(7), { now: noon }), 'the same visit is the same room');
+    assert.strictEqual(D.hqVariantRoll('cafeteria', null, { now: noon }), D.hqVariantRoll('cafeteria', undefined, { now: noon }), 'no profile is a seed of 0');
+    /* apply: the room, the door, the register — then restore */
+    const eg = ROOM.doors.find(d => d.id === 'cafeteria');
+    const baseLabel = eg.label, baseSub = eg.sub, baseDesc = eg.desc;
+    try {
+        const r = D.hqApplyRoomVariant('cafeteria', 'after_hours');
+        assert.strictEqual(HQ.rooms.cafeteria, r);
+        assert.notStrictEqual(r, CAFE);
+        assert.strictEqual(r.variant, 'after_hours');
+        assert.strictEqual(r.label, 'MÖBIUS STRIP CLUB');
+        assert.strictEqual(r.roomNo, '86'); assert.strictEqual(r.kind, 'box');
+        assert.strictEqual(D.hqRoomNo('cafeteria'), '86', 'the number does not change after hours');
+        assert.strictEqual(D.hqDoorNo(eg), '86');
+        assert.strictEqual(eg.label, 'MÖBIUS STRIP CLUB', 'the hall door is re-plated');
+        assert.ok(eg._base && eg._base.label === baseLabel, 'the sheet\'s plate is kept');
+        assert.strictEqual(r.doors, CAFE.doors, 'the doors are the room\'s own');
+        assert.strictEqual(r.shell.w, CAFE.shell.w); assert.strictEqual(r.shell.mood.light, 0xff4f9a, 'the light goes pink');
+        assert.strictEqual(CAFE.shell.mood, undefined, 'the sheet\'s shell is untouched');
+        assert.ok(!r.props.some(p => p.key === 'tanker_desk' || p.key === 'conference_table' || p.key === 'cash_register'), 'the serving line and the tables went home');
+        assert.ok(r.props.some(p => p.key === 'mobius_bar'), 'the bar is one lathe');
+        assert.ok(r.props.filter(p => p.key === 'cafeteria_chair').length >= 6, 'chairs round it');
+        assert.ok(r.props.some(p => p.key === 'vending_machine') && r.props.some(p => p.key === 'notice_board') && r.props.filter(p => p.key === 'fluorescent').length === CAFE.props.filter(p => p.key === 'fluorescent').length, 'what was not dropped still stands');
+        assert.deepStrictEqual(boxPropProblems('cafeteria/after_hours', r), []);
+        assert.ok(r.counters.some(c => c.id === 'bar' && c.action.fn === '_goToShop') && r.counters.some(c => c.id === 'notice'), 'the bar is the shop; the board stays');
+        assert.ok(r.agents.length >= 1 && r.lines.length >= 3 && r.npcSpots.length >= 3 && r.onlineSpots.length >= 2, 'a bartender, the lines, the spots');
+        const row = D.hqRoomRegister().find(x => x.no === '86');
+        assert.strictEqual(row.label, 'MÖBIUS STRIP CLUB', 'the directory insists it was always so');
+        /* the same variant twice is idempotent; the sheet is never patched */
+        D.hqApplyRoomVariant('cafeteria', 'after_hours');
+        assert.strictEqual(eg._base.label, baseLabel, 'the kept plate is still the sheet\'s');
+        assert.ok(!('variant' in CAFE), 'the sheet wears no variant');
+    } finally {
+        D.hqApplyRoomVariant('cafeteria', null);
+    }
+    assert.strictEqual(HQ.rooms.cafeteria, CAFE, 'restored: the sheet stands');
+    assert.strictEqual(eg.label, baseLabel); assert.strictEqual(eg.sub, baseSub); assert.strictEqual(eg.desc, baseDesc);
+    assert.ok(!('_base' in eg), 'the door forgets the night');
+    assert.strictEqual(D.hqRoomRegister().find(x => x.no === '86').label, 'THE CAFETERIUM');
+    /* the building-wide roll */
+    try {
+        assert.strictEqual(JSON.stringify(D.hqRollRoomVariants(prof(1), { force: { cafeteria: 'after_hours' } })), '{"cafeteria":"after_hours"}');
+        assert.strictEqual(HQ.rooms.cafeteria.label, 'MÖBIUS STRIP CLUB');
+        assert.strictEqual(JSON.stringify(D.hqRollRoomVariants(prof(1), { force: '' })), '{"cafeteria":null}');
+        assert.strictEqual(HQ.rooms.cafeteria, CAFE);
+        const rolled = D.hqRollRoomVariants(prof(1), { now: night });
+        assert.strictEqual(rolled.cafeteria, 'after_hours');
+    } finally {
+        D.hqApplyRoomVariant('cafeteria', null);
+    }
+    assert.strictEqual(HQ.rooms.cafeteria, CAFE);
+});
+
+test('source scan: the renderer builds the board and the bar, seats the online shift; map.js rolls the variants on a fresh arrival; online.js publishes the count', () => {
+    const tr = fs.readFileSync(path.join(__dirname, 'three-renderer.js'), 'utf8');
+    const mp = fs.readFileSync(path.join(__dirname, 'map.js'), 'utf8');
+    const ol = fs.readFileSync(path.join(__dirname, 'online.js'), 'utf8');
+    assert.match(tr, /notice_board: function \(U\) \{/, 'the notice board builder');
+    assert.match(tr, /mobius_bar: function \(U\) \{/, 'the Möbius bar builder');
+    assert.match(tr, /var rr = R \+ v \* Math\.cos\(u \/ 2\);/, 'one half twist');
+    assert.match(tr, /side: THREE\.DoubleSide/, 'one side, drawn from both');
+    assert.match(tr, /var os = room\.onlineSpots \|\| \[\];/, 'the online spots');
+    assert.match(tr, /window\._ewOnlineCount\) \|\| 0\) \| 0\) - 1\)/, 'one operative per online player besides you');
+    assert.match(tr, /label: 'OPERATIVE · ON SHIFT'/, 'anonymous');
+    assert.match(mp, /if \(!returning && !walking && typeof window\.hqRollRoomVariants === 'function'\)/, 'a fresh arrival rolls the variants');
+    assert.match(mp, /window\.hqRollRoomVariants\(_hqProfile\(\), \{ force: _hqVariantForce\(\) \}\)/, 'with the dev override');
+    assert.match(mp, /function _hqVariantForce\(\)/, '?hqvariant=');
+    assert.match(mp, /if \(p\.door\.hq\.variantSeed == null\) p\.door\.hq\.variantSeed = Math\.floor\(Math\.random\(\) \* 1e9\);/, 'the seed is set once per profile');
+    assert.match(ol, /window\._ewOnlineCount = count \| 0;/, 'the lobby counter is published');
+    assert.ok(mp.indexOf('window.hqRollRoomVariants(') < mp.indexOf('const roomDef = DOOR_HQ.rooms[roomId];'), 'rolled before the room is read');
 });

@@ -257,6 +257,33 @@ That's why online kept drifting behind VS-CPU. So, for EVERY change:
   (repo tooling; needs the server + `NODE_USE_ENV_PROXY=1`) — see
   PLAYTEST_NOTES "THE CAST IN THE HEADQUARTERS" before moving anyone.
 
+## ROOM 86 + ROOM VARIANTS (HQ plan 7.4 / 5.1) — added 2026-09-11
+`DOOR_HQ.rooms.cafeteria` (data.js) is THE CAFETERIUM, a `kind: 'box'`
+room off the ground ring at 75° (`central_egress.doors` id `cafeteria`,
+`leaf_saloon`; the hall's break nook moved in). Counters: `notice` →
+`_mountLeaderboard`, `till` → `_goToShop` (map.js's counter panel reads
+the counter's `verb`). `npcSpots` = the roster on break; **`onlineSpots`**
+= one anonymous D.O.O.R. agent per online player besides you
+(online.js `_updateCounterUI` publishes `window._ewOnlineCount`;
+three-renderer.js `_hqSpawnPopulation` seats them; `EW_HQ_ONLINE = n`
+forces a crowd). Two new procs in `_hqProcBuilders`: `notice_board`
+(wall, `depth`) and `mobius_bar` (the after-hours counter, `block`).
+**VARIANTS**: a sheet room may carry `variants: { <id>: { when: { hours,
+p }, label, sub, why, door, shell, drop, add, counters, agents, npcSpots,
+onlineSpots, lines, spawn } }`. `hqRoomBase(id)` is the sheet
+(`DOOR_HQ.roomsBase`); `hqVariantRoll(id, profile, { force, now })` = the
+clock, else a roll seeded by `profile.door.hq.variantSeed` (set once per
+profile in map.js `_hqRecordVisit`) + the day + the visit count;
+`hqApplyRoomVariant(id, vid)` SWAPS `DOOR_HQ.rooms[id]` for the merged
+copy (same `roomNo` / `kind` / `doors`) and re-plates every door whose
+action leads into the room (`d._base` keeps the sheet's plate; `null`
+restores); `hqRollRoomVariants(profile, opts)` does every room and is
+called from map.js `_hqEnter` on a FRESH arrival only. Dev:
+`?hqvariant=after_hours` / `window.EW_HQ_VARIANT` (`none` = the sheet).
+Every reader goes through `DOOR_HQ.rooms[id]` — never cache a room
+object across visits. doorhq.test.js guards the room, the roll, the
+apply / restore and the source sites.
+
 ## MAP SETTINGS (near scenery) — added 2026-09-06
 Every Δ board is dressed like the Training Room: a NEAR builder builds the
 board's immediate surroundings (apron/plateau, moats, walls, buildings, trees,

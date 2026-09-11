@@ -2001,3 +2001,24 @@ used on Mars, the Moon and Atlantis.
   `index.html` to Render, token `20260911-open-sites-01-cors`.
   `doorhq.test.js`, this log, DOOR_MASTER Part D and CLAUDE.md are
   repository-only. Nothing committed or pushed.
+
+### 2026-09-11 (rev 2) — Room 86 · THE CAFETERIUM is built; after hours it is the MÖBIUS STRIP CLUB
+HQ plan **7.4** (the row is ticked; §9 there has the mechanics) and the
+first **5.1** room variant. The Cafeterium is a box room off the ground
+ring at 75° (a saloon door between the east stair and the Quartermaster):
+the serving line and its till, the hot side (the hall's break nook moved
+in, plus the vending machine that was on the other side yesterday), two
+long tables and the chairs Training keeps signing out, the notice board
+(→ EMPLOYEE OF THE MONTH until FORM 365 exists), two clocks that
+disagree, the roster on break, and — plan §8's open question, answered —
+one anonymous D.O.O.R. agent ON SHIFT per online player besides you.
+After hours (22:00–05:00 local, else one visit in five, rolled per visit)
+the same door reads MÖBIUS STRIP CLUB: the tables go home, the bar is one
+lathe with one side, the light goes pink, a bartender says "Members
+only." Nobody comments. Same room, same number. Vocabulary (A8): **a
+variant** is the same room wearing another sheet; `hqRollRoomVariants`
+rolls the building on a fresh arrival. Overheard lines, the cashier's and
+the bartender's lines are Claude placeholders (A15 — rewrite at will).
+Files: data.js, three-renderer.js, map.js, online.js, index.html
+(`20260911-room86-cafeterium-01-cors`), doorhq.test.js (62 green).
+Story track still ON HOLD (A14).

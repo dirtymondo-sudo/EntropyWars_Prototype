@@ -2425,6 +2425,7 @@
             (function() {
                 var _counterSocket = null;
                 function _updateCounterUI(count) {
+                    window._ewOnlineCount = count | 0;   // the headquarters reads it: the other operatives on shift (Room 86, 2026-09-11)
                     var el = document.getElementById('mmOnlineCount');
                     var numEl = document.getElementById('mmOnlineNum');
                     if (el && numEl) {

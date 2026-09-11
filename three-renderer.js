@@ -31832,6 +31832,66 @@ const ThreeRenderer = (function () {
             var clip = _hqBox(0.08, 0.035, 0.02, _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 80, specular: 0x999999 })); clip.position.set(0, 0.3 * U, 0.02 * U); g.add(clip);
             return g;
         },
+        /* ── ROOM 86 (2026-09-11, HQ plan 7.4 / 5.1) ── */
+        /* the cork NOTICE BOARD: a wall prop (origin at the mount height, the
+           panel centred z = 0 within `depth`), the leaderboard counter's look
+           — teal frame, dark cork, pinned sheets, one red form on top */
+        notice_board: function (U) {
+            var g = new THREE.Group();
+            var W = 1.6, H = 1.15, D = 0.06;
+            var frame = _hqBox(W, H, D * 0.6, _hqMat('teal', 3, 2, { shininess: 45 })); frame.position.set(0, (H / 2) * U, 0); g.add(frame);
+            var cork = _hqBox(W - 0.12, H - 0.12, 0.02, _hqMat(null, 1, 1, { color: 0x6b4a2e, shininess: 3 })); cork.position.set(0, (H / 2) * U, (D * 0.3 + 0.01) * U); g.add(cork);
+            var pinMat = _hqBasic(0xd83a3a), paper = _hqMat(null, 1, 1, { color: 0xe8e2cc, shininess: 2 }), form = _hqMat(null, 1, 1, { color: 0xd9b45a, shininess: 2 });
+            var sheets = [[-0.5, 0.78, 0.26, 0.34, 4, paper], [-0.12, 0.74, 0.22, 0.3, -6, paper], [0.28, 0.8, 0.3, 0.24, 2, form], [0.58, 0.72, 0.2, 0.28, -3, paper],
+                          [-0.48, 0.36, 0.24, 0.3, -5, paper], [-0.05, 0.32, 0.34, 0.26, 3, paper], [0.42, 0.34, 0.22, 0.3, 7, paper]];
+            sheets.forEach(function (sh) {
+                var m = _hqBox(sh[2], sh[3], 0.004, sh[5]); m.position.set(sh[0] * U, sh[1] * U, (D * 0.3 + 0.024) * U); m.rotation.z = _hqRad(sh[4]); g.add(m);
+                var pin = new THREE.Mesh(new THREE.SphereGeometry(0.012 * U, 8, 6), pinMat); pin.position.set(sh[0] * U, (sh[1] + sh[3] / 2 - 0.02) * U, (D * 0.3 + 0.03) * U); g.add(pin);
+            });
+            var strip = _hqBox(W - 0.3, 0.05, 0.004, _hqBasic(0xd9b45a)); strip.position.set(0, (H - 0.1) * U, (D * 0.3 + 0.022) * U); g.add(strip);
+            return g;
+        },
+        /* the MÖBIUS BAR: one band with a half twist round a 1.5 m ring at
+           1.05 m (the counter's centreline), three chrome posts, a brass foot
+           rail and a pink strip light under the lip. One side, one edge; the
+           walker stays outside its disc (the catalogue's `foot`). */
+        mobius_bar: function (U) {
+            var g = new THREE.Group();
+            var R = 1.5, W = 0.42, Y = 1.05, NU = 96, NV = 6;
+            var pos = [], uv = [], idx = [];
+            for (var i = 0; i <= NU; i++) {
+                var u = (i / NU) * Math.PI * 2;
+                for (var k = 0; k <= NV; k++) {
+                    var v = -W + (k / NV) * 2 * W;
+                    var rr = R + v * Math.cos(u / 2);
+                    pos.push(rr * Math.cos(u) * U, (Y + v * Math.sin(u / 2)) * U, rr * Math.sin(u) * U);
+                    uv.push(i / NU * 8, k / NV);
+                }
+            }
+            for (var a = 0; a < NU; a++) for (var b = 0; b < NV; b++) {
+                var p0 = a * (NV + 1) + b, p1 = p0 + NV + 1;
+                idx.push(p0, p1, p0 + 1, p1, p1 + 1, p0 + 1);
+            }
+            var geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+            geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+            geo.setIndex(idx);
+            geo.computeVertexNormals();
+            var band = new THREE.Mesh(geo, _hqMat('oxblood', 6, 1, { color: 0x8a5a48, shininess: 70, specular: 0x886655, side: THREE.DoubleSide }));
+            g.add(band);
+            var chrome = _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 90, specular: 0xaaaaaa });
+            for (var n = 0; n < 3; n++) {
+                var ang = n * Math.PI * 2 / 3 + 0.3;
+                var post = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.035 * U, Y * U, 10), chrome);
+                post.position.set(R * Math.cos(ang) * U, (Y / 2) * U, R * Math.sin(ang) * U); g.add(post);
+            }
+            var rail = new THREE.Mesh(new THREE.TorusGeometry((R + 0.45) * U, 0.025 * U, 8, 64), _hqMat(null, 1, 1, { color: 0xc9a24a, shininess: 80, specular: 0x998855 }));
+            rail.rotation.x = Math.PI / 2; rail.position.y = 0.22 * U; g.add(rail);
+            var glowRing = new THREE.Mesh(new THREE.TorusGeometry((R - 0.1) * U, 0.02 * U, 6, 64), _hqBasic(0xff5fa8));
+            glowRing.rotation.x = Math.PI / 2; glowRing.position.y = 0.92 * U; g.add(glowRing);
+            var lamp = new THREE.PointLight(0xff5fa8, 0.9, 7 * U, 2); lamp.position.y = 1.4 * U; g.add(lamp);
+            return g;
+        },
     };
     function _hqProcProp(name) {
         var b = _hqProcBuilders[name];
@@ -32462,6 +32522,22 @@ const ThreeRenderer = (function () {
                 _hqSpawnCharacter({ id: 'hq-npc-' + k, kind: 'npc', race: rk2, gender: g, deg: spots[k].deg, r: spots[k].r, x: ksp.x, z: ksp.z, level: spots[k].level || 0, face: spots[k].face || 0 });
             }
         } catch (e) { console.warn('[HQ] roster NPCs skipped', e); }
+        /* THE OTHER OPERATIVES ON SHIFT (Room 86, 2026-09-11; plan §8's open
+           question, answered): one D.O.O.R. agent per online player besides
+           you (online.js `_ewOnlineCount`, the lobby's live counter) at the
+           room's `onlineSpots`. Anonymous — the label is the shift, not the
+           name. `window.EW_HQ_ONLINE` forces a crowd for a screenshot. */
+        try {
+            var os = room.onlineSpots || [];
+            var onl = Math.max(0, (((typeof window !== 'undefined' && window._ewOnlineCount) || 0) | 0) - 1);
+            if (typeof window !== 'undefined' && window.EW_HQ_ONLINE != null) onl = Math.max(0, window.EW_HQ_ONLINE | 0);
+            for (var oi = 0; oi < Math.min(onl, os.length); oi++) {
+                var osp = os[oi];
+                _hqSpawnCharacter({ id: 'hq-online-' + oi, kind: 'npc', race: 'men in black', gender: (oi % 2) ? 'female' : 'male',
+                                    deg: osp.deg, r: osp.r, x: osp.x, z: osp.z, level: osp.level || 0, face: osp.face || 0,
+                                    label: 'OPERATIVE · ON SHIFT', sub: 'ONLINE · ANOTHER TERMINAL' });
+            }
+        } catch (e) { console.warn('[HQ] online operatives skipped', e); }
     }
 
     /* ── walkable query: returns the floor height (m) at (x,z) or null ────

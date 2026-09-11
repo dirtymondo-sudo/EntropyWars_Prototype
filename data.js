@@ -16859,6 +16859,13 @@ const DOOR_HQ = {
         broom:             { proc: 'broom',          h: 1.3,     foot: 0 },
         toilet_paper:      { proc: 'toilet_paper',   span: 0.23, foot: 0 },
         clipboard:         { proc: 'clipboard',      span: 0.32, foot: 0, wall: true, mount: 1.4,  depth: 0.03 },
+        /* ── ROOM 86 (2026-09-11, plan 7.4): two more procedural pieces —
+           the cork NOTICE BOARD (the leaderboard counter's look, hung as a
+           wall prop so a box room can wear it) and the MÖBIUS BAR, the
+           after-hours counter: one lathe, one side, one edge (plan 5.1's
+           first variant). Both are three-renderer.js `_hqProcBuilders`. */
+        notice_board:      { proc: 'notice_board',   h: 1.15,    foot: 0, wall: true, mount: 1.2,  depth: 0.06 },
+        mobius_bar:        { proc: 'mobius_bar',     h: 1.5,     foot: 1.4, block: true },
         /* ══ THE 2026-09-10 BATCH (30 Meshy GLBs, R2 Assets/door/models/) ══
            The user's cafeteria / office / mission kit. Four of them RETIRE a
            procedural prop (plan 2.7 said "replace any of them by giving the
@@ -18198,6 +18205,13 @@ const DOOR_HQ = {
             doors: [
                 /* ── ground ring (operations) ── */
                 { id: 'bay_celestial',  deg: 0,   level: 0, leaf: 'leaf_bulkhead',     wide: true,  label: 'BAY 4 · CELESTIAL',      sub: 'CONTAINMENT BAY',            action: { sector: 'celestial' } },
+                /* ROOM 86 (2026-09-11, plan 7.4): the one free stretch of the ground
+                   ring, between the east stair's top and the Quartermaster (plan 7.5
+                   measured it for a bay and gave the bay to the mezzanine instead);
+                   5.5 m of wall to the vault door, 2.9 needed. The saloon leaf swings
+                   both ways. After hours the plate reads MÖBIUS STRIP CLUB — same
+                   room, same number (DOOR_HQ.rooms.cafeteria.variants). */
+                { id: 'cafeteria',      deg: 75,  level: 0, leaf: 'leaf_saloon',                    label: 'THE CAFETERIUM',          sub: 'SUPPORT SERVICES · ON BREAK', action: { room: 'cafeteria', at: 'egress' }, desc: 'Room 86. The menu is out of it. The clocks disagree, the chairs are signed out, and the vending machine that was on the other side yesterday is on this side today. Doors swing both ways; nobody has decided which.' },
                 { id: 'quartermaster',  deg: 90,  level: 0, leaf: 'leaf_vault',        wide: true,  label: 'QUARTERMASTER',           sub: 'CUSTOMS & ADMISSIONS',       action: { fn: '_goToShop' },        desc: 'Declassification and asset reassignment. The Shop, and the manifests locker.', alt: { label: 'PARTY BUILDER', fn: '_goToTeamBuilder' } },
                 { id: 'reception',      deg: 120, level: 0, leaf: 'leaf_glass',                     label: 'RECEPTION · INTAKE',      sub: 'HUMAN RESOURCES',            action: { fn: '_mountReactProfile' }, roomNo: '1', why: 'one foot in the door; forms start at 1', desc: 'Employee ID cards, laminator, LOST CARD FEE. Your profile lives here.' },
                 { id: 'office',         deg: 150, level: 0, leaf: 'leaf_closet_warped',             label: 'YOUR OFFICE',             sub: 'JANITORIAL (CONVERTED)',     action: { room: 'office', at: 'egress' }, desc: 'A converted janitor’s closet. Cot, mop bucket, CRT, phone, drain. The in-tray is where the story arrives.', rankDoor: true },
@@ -18306,19 +18320,11 @@ const DOOR_HQ = {
                 { key: 'office_locker',  deg: 134, level: 0, wall: true },
                 { key: 'locker',         deg: 137, level: 0, wall: true },
                 { key: 'vending_machine', deg: 105, level: 0, wall: true },
-                /* THE BREAK NOOK (2026-09-10) — the corner of the hall that
-                   has been standing in for the Cafeterium (Room 86, plan 7.4)
-                   since before there was a Cafeterium: a round fridge with the
-                   microwave and the coffee maker on top of it, the hook rail
-                   nobody hangs anything on, and the bin. When 86 is built this
-                   nook is what moves out of the hall and into the room. */
-                { key: 'hook_rail_long', deg: 98,  level: 0, wall: true, mount: 1.8 },
-                { key: 'round_fridge',   deg: 101, r: 19.9,  level: 0 },
-                { key: 'microwave',      deg: 100.3, r: 19.9, level: 0, y: 1.05, rot: -6 },
-                { key: 'coffee_maker',   deg: 102.0, r: 19.95, level: 0, y: 1.05, rot: 8 },
-                { key: 'coffee_mug',     deg: 102.9, r: 20.05, level: 0, y: 1.05, rot: 40 },
-                { key: 'solo_cup',       deg: 99.4, r: 19.8,  level: 0, y: 1.05 },
-                { key: 'trash_bin',      deg: 107, r: 20.2,  level: 0, rot: 15 },
+                /* THE BREAK NOOK (2026-09-10 → 2026-09-11): the round fridge, the
+                   microwave, the coffee maker, the mug, the cup, the rail and the
+                   bin stood in for the Cafeterium at 98–107° until Room 86 was
+                   built. They moved in (rooms.cafeteria, the hot side). What stays
+                   is the vending machine, which has always been there. */
                 { key: 'water_cooler',   deg: 196, level: 0, wall: true },
                 /* the two palms the terrazzo lobby has always deserved (2026-09-10) */
                 { key: 'palm_tree',      deg: 68,  r: 17.2, level: 0 },
@@ -18339,7 +18345,7 @@ const DOOR_HQ = {
                 { key: 'picture_round_a', deg: 188, level: 0, wall: true },
                 { key: 'picture_round_b', deg: 218, level: 0, wall: true },
                 { key: 'picture_round_c', deg: 250, level: 0, wall: true },
-                { key: 'potted_plant',   deg: 76,  r: 19.2, level: 0 },
+                { key: 'potted_plant',   deg: 84,  r: 19.2, level: 0 },   // 2026-09-11: was 76° — Room 86's door is there now
                 { key: 'potted_plant',   deg: 284, r: 19.2, level: 0 },
                 { key: 'fire_extinguisher', deg: 172, level: 0, wall: true },
                 { key: 'fire_extinguisher', deg: 258, level: 0, wall: true },
@@ -18507,6 +18513,212 @@ const DOOR_HQ = {
             npcSpots: [],
             lines: [],
             spawn: { x: -1.55, z: -0.5, face: 90 },
+        },
+
+        /* ── ROOM 86 · THE CAFETERIUM (HQ plan 7.4, built 2026-09-11) — the
+           roster ON BREAK. A 12 × 9 box off the ground ring at 75°: the
+           serving line along the north wall (four steel counters, the curved
+           till at the east end, the kitchen hatch above it), the hot side on
+           the east wall (the break nook that stood in the hall until today —
+           round fridge, microwave, coffee maker — plus the vending machine
+           that was on the other side yesterday), two long tables and the
+           chairs Training keeps signing out, the notice board on the south
+           wall (a counter → the leaderboard until FORM 365 exists, plan 7.9),
+           two clocks that disagree. `npcSpots` seat the roster draw;
+           `onlineSpots` are where the OTHER operatives on shift stand — one
+           per online player besides you (online.js `_ewOnlineCount`).
+           AFTER HOURS (plan 5.1's first variant, `variants.after_hours`,
+           rolled per visit by hqRollRoomVariants — 22:00–05:00 local, else
+           one visit in five) the door reads MÖBIUS STRIP CLUB, the serving
+           line and the tables are gone, the bar counter is one lathe with one
+           side, the light goes pink, and nobody comments. Same room, same
+           number. Overheard lines are Claude placeholders (A15 — rewrite at
+           will); the cast's own lines are the user's. */
+        cafeteria: {
+            label: 'THE CAFETERIUM',
+            sub: 'SUPPORT SERVICES · ON BREAK',
+            roomNo: '86', why: '86’d — the menu is always out of it',
+            kind: 'box',
+            shell: {
+                w: 12, d: 9, h: 3.7,
+                wallH: 3.7, dadoH: 1.05,
+                floor: 'terrazzo', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
+                pipes: false,                 // an acoustic ceiling; the conduits run over the hall, not the lunch
+                light: { x: 0, z: 0 },
+                plate: { x: 0, z: -4.25, y: 3.0 },
+            },
+            doors: [
+                { id: 'egress', wall: 'w', z: 1.2, leaf: 'leaf_saloon',
+                  label: 'CENTRAL EGRESS', sub: 'OPERATIONS RING · THE WAY BACK',
+                  action: { room: 'central_egress', at: 'cafeteria' },
+                  desc: 'The way back to the hall. The doors swing both ways, which Facilities calls a feature and Continuity calls a position.' },
+            ],
+            counters: [
+                /* the notice board on the south wall → EMPLOYEE OF THE MONTH (the
+                   leaderboard) until the Clock Room's FORM 365 exists (plan 7.9) */
+                { id: 'notice', x: -2.0, z: 3.9, face: 0, plateY: 2.05, radius: 1.9, verb: 'READ',
+                  label: 'NOTICE BOARD', sub: 'EMPLOYEE OF THE MONTH · FORM 365 (PENDING)', action: { fn: '_mountLeaderboard' } },
+                /* the till at the end of the line → the Quartermaster's satellite counter */
+                { id: 'till', x: 1.95, z: -2.65, face: 180, plateY: 1.9, radius: 1.8, verb: 'PAY',
+                  label: 'THE TILL', sub: 'QUARTERMASTER · SATELLITE COUNTER', action: { fn: '_goToShop' } },
+            ],
+            props: [
+                /* ── the north wall: THE SERVING LINE, west to east ── */
+                { key: 'tanker_desk',    wall: 'n', x: -4.2 },
+                { key: 'tanker_desk',    wall: 'n', x: -2.7 },
+                { key: 'tanker_desk',    wall: 'n', x: -1.2 },
+                { key: 'tanker_desk',    wall: 'n', x: 0.3 },
+                { key: 'reception_wedge', x: 1.95, z: -3.35, face: 200 },                    // the curved till: a straight counter needs a form
+                { key: 'cash_register',  x: 1.95, z: -3.3, y: 1.10, face: 180 },
+                { key: 'meal_tray',      x: -4.4, z: -3.2, y: 0.76, face: 10 },
+                { key: 'meal_tray',      x: -3.6, z: -3.15, y: 0.76, face: -8 },
+                { key: 'meal_tray',      x: -2.2, z: -3.2, y: 0.76 },
+                { key: 'meal_tray_empty', x: -1.4, z: -3.2, y: 0.76, face: 15 },
+                { key: 'meal_tray_empty', x: -0.4, z: -3.25, y: 0.76, face: -20 },
+                { key: 'coffee_mug',     x: -0.9, z: -3.1, y: 0.76, face: 30 },
+                { key: 'solo_cup',       x: 0.2,  z: -3.05, y: 0.76 },
+                { key: 'clipboard_flat', x: 0.55, z: -3.2, y: 0.76, face: -12 },              // the seconds sheet; nobody has had seconds
+                { key: 'observation_window', wall: 'n', x: -2.0, mount: 1.45 },              // the kitchen hatch; the kitchen is not on the plan
+                { key: 'hook_rail_long', wall: 'n', x: 4.4, mount: 1.8 },                    // the aprons (the rail nobody hangs anything on, moved in)
+                { key: 'wall_clock',     wall: 'n', x: 3.6, mount: 2.9 },
+                { key: 'vent_grille',    wall: 'n', x: 5.3, mount: 2.4 },
+                /* ── the east wall: THE HOT SIDE (the break nook, moved in from the hall) ── */
+                { key: 'tanker_desk',    wall: 'e', z: -2.9 },
+                { key: 'microwave',      x: 5.55, z: -3.15, y: 0.76, face: 270 },
+                { key: 'coffee_maker',   x: 5.55, z: -2.65, y: 0.76, face: 270 },
+                { key: 'solo_cup',       x: 5.4,  z: -2.4, y: 0.76 },
+                { key: 'round_fridge',   x: 5.5,  z: -1.7, face: 270 },
+                { key: 'retro_speakers', x: 5.5,  z: -1.7, y: 1.05, face: 270 },              // the muzak followed the fridge
+                { key: 'mini_fridge',    x: 5.6,  z: -0.9, face: 270 },
+                { key: 'vending_machine', wall: 'e', z: 0.4 },                               // the one that was on the other side yesterday
+                { key: 'trash_bin',      x: 5.55, z: 1.5, face: 270 },
+                { key: 'palm_tree',      x: 5.2,  z: 3.8 },
+                { key: 'cardboard_boxes', x: 4.6, z: -3.9, face: -15 },
+                /* ── the floor: two long tables and the chairs ── */
+                { key: 'conference_table', x: -2.4, z: 0.9, face: 0 },
+                { key: 'cafeteria_chair', x: -3.9, z: 0.9,  face: 90 },
+                { key: 'cafeteria_chair', x: -0.9, z: 0.9,  face: 270 },
+                { key: 'cafeteria_chair', x: -3.1, z: -0.2, face: 180 },
+                { key: 'cafeteria_chair', x: -1.7, z: -0.2, face: 180 },
+                { key: 'cafeteria_chair', x: -3.1, z: 2.0,  face: 0 },
+                { key: 'molded_chair',    x: -1.7, z: 2.05, face: 0 },
+                { key: 'meal_tray',      x: -2.9, z: 0.6,  y: 0.74, face: 5 },
+                { key: 'coffee_mug',     x: -1.9, z: 1.1,  y: 0.74 },
+                { key: 'solo_cup',       x: -2.6, z: 1.3,  y: 0.74 },
+                { key: 'papers_a',       x: -1.6, z: 0.4,  y: 0.74, face: 30 },              // somebody is working through lunch
+                { key: 'conference_table', x: 2.2, z: 0.9, face: 0 },
+                { key: 'cafeteria_chair', x: 0.7,  z: 0.9,  face: 90 },
+                { key: 'cafeteria_chair', x: 3.7,  z: 0.9,  face: 270 },
+                { key: 'molded_chair',    x: 1.5,  z: -0.2, face: 180 },
+                { key: 'cafeteria_chair', x: 2.9,  z: -0.2, face: 180 },
+                { key: 'cafeteria_chair', x: 1.5,  z: 2.0,  face: 0 },
+                { key: 'molded_chair',    x: 2.9,  z: 2.05, face: 0 },
+                { key: 'meal_tray',      x: 2.6,  z: 1.2,  y: 0.74, face: -10 },
+                { key: 'meal_tray_empty', x: 1.5, z: 0.6,  y: 0.74, face: 12 },
+                { key: 'solo_cup',       x: 2.2,  z: 0.3,  y: 0.74 },
+                { key: 'coffee_mug',     x: 3.0,  z: 0.5,  y: 0.74 },
+                /* ── the door end and the south wall ── */
+                { key: 'rug_office',     x: -4.0, z: 1.2, face: 0 },
+                { key: 'trash_bin',      x: -5.3, z: 2.7, face: 60 },
+                { key: 'wet_floor_sign', x: -4.4, z: 3.2, face: 130 },
+                { key: 'potted_plant',   x: -5.4, z: -3.9 },
+                { key: 'exit_sign',      wall: 'w', z: 1.2, mount: 2.75 },
+                { key: 'picture_round_b', wall: 'w', z: -2.4 },
+                { key: 'fire_extinguisher', wall: 's', x: 4.6 },
+                { key: 'notice_board',   wall: 's', x: -2.0 },
+                { key: 'picture_round_a', wall: 's', x: 0.6 },
+                { key: 'picture_round_c', wall: 's', x: 2.4 },
+                { key: 'wall_clock',     wall: 's', x: -4.6, mount: 2.95 },                  // disagrees with the north one on purpose
+                /* ── the ceiling ── */
+                { key: 'fluorescent',    x: -2.4, z: 0.2, ceil: true, face: 90 },
+                { key: 'fluorescent',    x: 2.2,  z: 0.2, ceil: true, face: 90 },
+                { key: 'fluorescent',    x: 0,    z: -3.0, ceil: true, face: 0 },
+            ],
+            agents: [
+                { x: 3.1, z: -3.25, face: 240, gender: 'female', label: 'CASHIER', reach: 2.0, line: '“Hazard Pay or exact change. We do not make change.”' },
+            ],
+            /* the roster on break (the renderer draws three) */
+            npcSpots: [
+                { x: -3.4, z: -1.7, face: 180 },    // in the queue
+                { x: 0.9,  z: -1.7, face: 200 },
+                { x: -2.2, z: 3.3,  face: 0 },
+                { x: 1.0,  z: 3.4,  face: 340 },
+                { x: 3.9,  z: 2.9,  face: 300 },
+            ],
+            /* the other operatives on shift: one per online player besides you */
+            onlineSpots: [
+                { x: -0.6, z: 3.6,  face: 20 },
+                { x: 3.2,  z: 3.5,  face: 350 },
+                { x: -4.6, z: -1.6, face: 120 },
+                { x: 4.2,  z: -1.2, face: 240 },
+            ],
+            lines: [
+                '“The menu is out of it.” “Out of what?” “Everything. That is the menu.”',
+                '“Somebody signed two chairs out to Training and never signed them back in.”',
+                '“The vending machine was on the other side yesterday.” “This is the other side.”',
+                '“The clocks disagree. Lunch is whichever one you believe.”',
+                '“Do not sit in the corner.” There is no corner. That is the point.',
+            ],
+            spawn: { x: -4.6, z: 1.2, face: 90 },
+            /* ── AFTER HOURS: MÖBIUS STRIP CLUB (plan 5.1 · 7.4). Rolled per
+               visit (hqRollRoomVariants): `when.hours` = the local clock,
+               `when.p` = the seeded roll otherwise. `drop` = base prop keys
+               that go home for the night; `add` = the night's furniture;
+               `door` re-plates the egress door while it lasts. ── */
+            variants: {
+                after_hours: {
+                    when: { hours: [22, 5], p: 0.2 },
+                    label: 'MÖBIUS STRIP CLUB',
+                    sub: 'AFTER HOURS · ONE SIDE · NO COVER',
+                    why: '86’d by day; after hours the bar has one side, and nobody comments',
+                    door: { label: 'MÖBIUS STRIP CLUB', sub: 'AFTER HOURS · SAME ROOM', desc: 'Room 86, after hours. The bar is a Möbius strip: one side, one edge, no last call. Nobody comments. Nobody has ever commented.' },
+                    shell: { mood: { light: 0xff4f9a } },
+                    drop: ['tanker_desk', 'reception_wedge', 'cash_register', 'meal_tray', 'meal_tray_empty', 'observation_window',
+                           'conference_table', 'cafeteria_chair', 'molded_chair', 'papers_a', 'clipboard_flat', 'wet_floor_sign', 'rug_office',
+                           'coffee_mug', 'solo_cup'],
+                    add: [
+                        { key: 'mobius_bar',      x: 0, z: 0.3, face: 0 },
+                        /* six chairs round the one side, facing the middle */
+                        { key: 'cafeteria_chair', x: 0,     z: -2.15, face: 180 },
+                        { key: 'cafeteria_chair', x: 2.12,  z: -0.93, face: 240 },
+                        { key: 'cafeteria_chair', x: 2.12,  z: 1.53,  face: 300 },
+                        { key: 'cafeteria_chair', x: 0,     z: 2.75,  face: 0 },
+                        { key: 'cafeteria_chair', x: -2.12, z: 1.53,  face: 60 },
+                        { key: 'cafeteria_chair', x: -2.12, z: -0.93, face: 120 },
+                        /* on the band (its centreline stands at 1.05 m all the way round) */
+                        { key: 'solo_cup',        x: 1.5,  z: 0.3,  y: 1.05 },
+                        { key: 'solo_cup',        x: -1.5, z: 0.3,  y: 1.05 },
+                        { key: 'solo_cup',        x: 0,    z: -1.2, y: 1.05 },
+                        { key: 'coffee_mug',      x: 0,    z: 1.8,  y: 1.05, face: 40 },   // somebody is still working through lunch
+                        { key: 'globe_lamp',      x: -5.2, z: -3.6 },
+                        { key: 'globe_lamp',      x: 5.2,  z: -3.6 },
+                        { key: 'retro_speakers',  x: -5.4, z: 3.7, face: 40 },
+                        { key: 'folding_chair',   x: -5.2, z: -1.0, face: 90 },               // the coat check
+                        { key: 'folding_chair',   x: -5.2, z: -0.4, face: 90 },
+                    ],
+                    counters: [
+                        { id: 'notice', x: -2.0, z: 3.9, face: 0, plateY: 2.05, radius: 1.9, verb: 'READ',
+                          label: 'NOTICE BOARD', sub: 'EMPLOYEE OF THE MONTH · FORM 365 (PENDING)', action: { fn: '_mountLeaderboard' } },
+                        { id: 'bar', x: 0, z: 2.9, face: 0, plateY: 1.75, radius: 2.2, verb: 'ORDER',
+                          label: 'THE BAR', sub: 'QUARTERMASTER · ONE SIDE ONLY', action: { fn: '_goToShop' } },
+                    ],
+                    agents: [
+                        { x: 0, z: 0.3, face: 180, gender: 'male', label: 'BARTENDER', reach: 2.6, line: '“Members only.” Everyone is a member. That is the strip.' },
+                    ],
+                    npcSpots: [
+                        { x: -3.6, z: 2.6,  face: 40 },
+                        { x: 3.6,  z: 2.6,  face: 320 },
+                        { x: -3.4, z: -2.2, face: 130 },
+                        { x: 3.6,  z: -2.0, face: 230 },
+                    ],
+                    lines: [
+                        '“Which side of the bar are you on?” “Yes.”',
+                        '“Last call is a straight line. We do not have those here.”',
+                        '“It was a cafeteria an hour ago.” “It has always been a bar.”',
+                        '“Do not comment on the bar.” Nobody was going to.',
+                    ],
+                },
+            },
         },
 
         /* ── THE TRAINING ROOM (HQ plan 6.1a, 2026-09-04) — the walkable
@@ -20117,6 +20329,120 @@ function hqCastLine(id) {
     return pool[Math.floor(Math.random() * pool.length)];
 }
 
+
+/* ── ROOM VARIANTS (HQ plan 5.1, first shipped 2026-09-11 with Room 86's
+   MÖBIUS STRIP CLUB). A room on the sheet may carry `variants: { <id>:
+   { when, label, sub, why, door, shell, drop, add, counters, agents,
+   npcSpots, onlineSpots, lines, spawn } }`. The sheet's room is THE BASE
+   (kept in DOOR_HQ.roomsBase once a variant has ever been applied);
+   `DOOR_HQ.rooms[id]` is whichever version stands right now — every
+   reader (the renderer, map.js, the register, the directory) sees the
+   variant with no special case, and "the directory insists it was always
+   so" (5.2) comes for free. The roll is per VISIT (map.js _hqEnter on a
+   fresh arrival): `when.hours = [from, to]` = the local clock (wrapping
+   past midnight), else `when.p` = a roll seeded by the profile's
+   `variantSeed` + the day + the visit count, so re-entering the same
+   room in the same visit is the same room. Nobody comments.
+     hqRoomBase(id)                → the sheet's room (never a variant)
+     hqVariantRoll(id, profile, o) → the variant id to stand, or null
+                                     (o.force: an id, or '' for the base;
+                                      o.now: a Date / ms for the clock)
+     hqApplyRoomVariant(id, vid)   → swaps DOOR_HQ.rooms[id] (null = base);
+                                     re-plates every door INTO the room
+                                     (`door` fields) and restores them
+     hqRollRoomVariants(profile,o) → rolls + applies every room with
+                                     variants; { id: vid | null }
+   A variant keeps the room's number, kind, shell (merged over) and its
+   doors — it is the same room. `drop` names base prop KEYS that go home;
+   `add` props stand with what is left. */
+function hqRoomBase(roomId) {
+    const B = DOOR_HQ.roomsBase || (DOOR_HQ.roomsBase = {});
+    if (!B[roomId] && DOOR_HQ.rooms[roomId]) B[roomId] = DOOR_HQ.rooms[roomId];
+    return B[roomId] || null;
+}
+function hqRoomVariantIds(roomId) {
+    const b = hqRoomBase(roomId);
+    return (b && b.variants && typeof b.variants === 'object') ? Object.keys(b.variants) : [];
+}
+function hqVariantHours(hour, hours) {
+    if (!Array.isArray(hours) || hours.length !== 2) return false;
+    const a = hours[0], b = hours[1];
+    return (a <= b) ? (hour >= a && hour < b) : (hour >= a || hour < b);   // [22, 5] wraps midnight
+}
+function hqVariantRoll(roomId, profile, opts) {
+    opts = opts || {};
+    const ids = hqRoomVariantIds(roomId);
+    if (!ids.length) return null;
+    if (opts.force != null) return (ids.indexOf(opts.force) >= 0) ? opts.force : null;
+    const base = hqRoomBase(roomId);
+    const hq = (profile && profile.door && profile.door.hq) || {};
+    const seed = (hq.variantSeed != null) ? hq.variantSeed : 0;
+    const visits = hq.visits || 0;
+    const now = (opts.now != null) ? new Date(opts.now) : new Date();
+    const day = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
+    for (const vid of ids) {
+        const w = (base.variants[vid] && base.variants[vid].when) || {};
+        if (w.hours && hqVariantHours(now.getHours(), w.hours)) return vid;
+        const p = (typeof w.p === 'number') ? w.p : 0;
+        if (p > 0 && (hqHash(roomId + '|' + vid + '|' + seed + '|' + day + '|' + visits) % 10000) / 10000 < p) return vid;
+    }
+    return null;
+}
+function hqApplyRoomVariant(roomId, vid) {
+    const base = hqRoomBase(roomId);
+    if (!base) return null;
+    /* every door into the room wears the sheet's plate again first */
+    for (const rid in DOOR_HQ.rooms) {
+        const R = DOOR_HQ.rooms[rid];
+        if (!R || !Array.isArray(R.doors)) continue;
+        for (const d of R.doors) {
+            if (!(d && d.action && d.action.room === roomId)) continue;
+            if (d._base) { Object.assign(d, d._base); delete d._base; }
+        }
+    }
+    const v = (vid && base.variants) ? base.variants[vid] : null;
+    if (!v) { DOOR_HQ.rooms[roomId] = base; return base; }
+    const drop = new Set(Array.isArray(v.drop) ? v.drop : []);
+    const room = Object.assign({}, base, {
+        variant: vid,
+        label: v.label || base.label, sub: v.sub || base.sub, why: v.why || base.why,
+        shell: v.shell ? Object.assign({}, base.shell, v.shell) : base.shell,
+        props: (base.props || []).filter(p => !drop.has(p.key)).concat(Array.isArray(v.add) ? v.add : []),
+        counters: v.counters || base.counters, agents: v.agents || base.agents,
+        npcSpots: v.npcSpots || base.npcSpots, onlineSpots: v.onlineSpots || base.onlineSpots,
+        lines: v.lines || base.lines, spawn: v.spawn || base.spawn,
+    });
+    DOOR_HQ.rooms[roomId] = room;
+    if (v.door) {
+        for (const rid in DOOR_HQ.rooms) {
+            const R = DOOR_HQ.rooms[rid];
+            if (!R || !Array.isArray(R.doors)) continue;
+            for (const d of R.doors) {
+                if (!(d && d.action && d.action.room === roomId)) continue;
+                d._base = { label: d.label, sub: d.sub, desc: d.desc };
+                if (v.door.label != null) d.label = v.door.label;
+                if (v.door.sub != null) d.sub = v.door.sub;
+                if (v.door.desc != null) d.desc = v.door.desc;
+            }
+        }
+    }
+    return room;
+}
+function hqRollRoomVariants(profile, opts) {
+    opts = opts || {};
+    const out = {};
+    const force = (opts.force && typeof opts.force === 'object') ? opts.force : null;
+    /* the sheet's rooms only — a variant never nests a variant */
+    const ids = Object.keys(DOOR_HQ.rooms).filter(id => hqRoomVariantIds(id).length);
+    for (const id of ids) {
+        const f = force ? force[id] : (typeof opts.force === 'string' ? opts.force : undefined);
+        const vid = hqVariantRoll(id, profile, { force: (f === undefined) ? undefined : (f == null ? '' : f), now: opts.now });
+        hqApplyRoomVariant(id, vid);
+        out[id] = vid;
+    }
+    return out;
+}
+
 if (typeof window !== 'undefined') {
     window.DOOR_HQ = DOOR_HQ;
     window.DOOR_ROSTER_LINES = DOOR_ROSTER_LINES;
@@ -20161,4 +20487,9 @@ if (typeof window !== 'undefined') {
     window.DOOR_CAST = DOOR_CAST;
     window.hqCastInRoom = hqCastInRoom;
     window.hqCastLine = hqCastLine;
+    window.hqRoomBase = hqRoomBase;
+    window.hqRoomVariantIds = hqRoomVariantIds;
+    window.hqVariantRoll = hqVariantRoll;
+    window.hqApplyRoomVariant = hqApplyRoomVariant;
+    window.hqRollRoomVariants = hqRollRoomVariants;
 }
