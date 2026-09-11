@@ -176,6 +176,7 @@ function render(meshes, view) {
   const fabricTex = key => { const def = c.EW_FABRICS[key]; if (!def || !def.file) return null; try { return { tex: normaliseTile(decodePNG(fs.readFileSync(path.join(CC, 'clothingtextures', def.file))), 0.8, false), repeat: def.repeat || 12 }; } catch (e) { console.warn('fabric', key, e.message); return null; } };
   const gltf = await load(path.join(CC, 'Meshy_AI_human_body_base_mesh_' + gender + '_rigged.glb'));
   const clone = THREE.SkeletonUtils.clone(gltf.scene);
+  if (process.env.NO_HEMS) c.EW_CC_NO_HEMS = true;   // the bare cut edges, no inward hem strips
   c._createAppearanceRig(clone, look, true);
   const meshes = []; clone.traverse(n => { if (n.isSkinnedMesh && n.parent && n.visible) meshes.push(n); });
   const skin = hexRGB(A.skin), top = hexRGB(A.topColor), bottom = hexRGB(A.bottomColor), hairCol = hexRGB(A.hairColor);
@@ -207,6 +208,8 @@ function render(meshes, view) {
     hairside: { w: 800, h: 800, yaw: 90, cx: 0, cy: minY + 0.93 * H, cz: 0, scale: 3000 },
     hairback: { w: 800, h: 800, yaw: 180, pitch: 15, cx: 0, cy: minY + 0.93 * H, cz: 0, scale: 3000 },
   };
+  // VIEW='{"name":"strap","yaw":20,"cx":0.13,"ct":0.83,"scale":4000}' — one custom view (cx / ct in q units, cy = ct)
+  if (process.env.VIEW) { const cv = JSON.parse(process.env.VIEW); views[cv.name || 'custom'] = Object.assign({ w: 800, h: 800, yaw: 0, cx: 0, cy: minY + 0.8 * H, cz: 0, scale: 3000 }, cv, cv.ct != null ? { cy: minY + cv.ct * H } : {}, cv.cx != null ? { cx: cv.cx * H } : {}); }
   for (const v of (process.env.VIEWS || 'torso,torso34,head,eyes,full').split(',')) {
     if (!views[v]) { console.warn('unknown view', v); continue; }
     const f = path.join(out, `${tag}_${gender}_${outfit}_${v}.png`);

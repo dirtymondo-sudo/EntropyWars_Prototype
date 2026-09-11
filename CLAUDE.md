@@ -998,6 +998,33 @@ Kill-switches (console): `window.EW_DISABLE_3D_UNITS = true` (all 3D),
   To persist new files, hand them to the user (SendUserFile) to upload via GitHub
   manually. Don't waste time retrying pushes.
 
+## CHARACTER CREATOR rev 6 — the sleeves, the straps, nine tops (2026-09-11, local delivery)
+The tops are `CC_TOPS` (three-renderer.js "CHARACTER CREATOR RUNTIME") ↔
+sprites.js `EW_OUTFIT_STYLES` (id + label; `EW_APPEARANCE_ENUMS.outfit`
+derives from it, the builder's Top row reads it): tee · vneck · suit (the
+v1 long sleeve) · jacket · crop · tank · atank (the A-shirt) · racer ·
+bikini. Every top is CUTS in the q frame built by the rig's `topCuts`:
+`hem`; a `neck` with separate front / back depths (blended by `frontness`)
+rising to 0.852 by |x| = w (quarter-ellipse or v; `top` caps a stand
+collar); `sleeve` = metres ALONG THE ARM'S POLYLINE (`armAt` — the cut is a
+plane normal to the arm axis gated to the arm, a ring in every pose; never
+an x-plane) or `null` = sleeveless: the arm goes by the rig's SKIN WEIGHTS
+(`part.arm` → q[3] ARMNESS, interpolated by `mix`) and a `scoop`
+superellipse keyed off `part.shoulder.x` shapes the front armhole / strap
+(front / back may differ — the racerback); `bikini` = band + triangle cups
++ straps. Adding a top = one `CC_TOPS` row + one `EW_OUTFIT_STYLES` entry
+(character-creator.test.js diffs them). RULES that came with it: the cloth
+relaxation moves vertices along their NORMAL only (a plain Laplacian slid
+them a centimetre and every bind-frame cut came out as a sawtooth); `split`
+refines each crossing with secant steps (cuts are curves) — never a
+clamped constant inside a cut (it flattens the interpolation); rim edges
+are found by `on` masks (`split(poly, cut, bit)`), the hem strip is planar
+with its own outward normal; the bottoms hang at their own ease (`CB`).
+Tooling: `creator-render.js` `VIEW='{"name","yaw","cx","ct","scale"}'`
+(a custom close-up, q units) and `NO_HEMS=1`; `playtest_creator.js <tag>
+--tops` photographs every top on both bases posed. Full log:
+PARTY_BUILDER_PLAN.md §9 (rev 6 entry).
+
 ## CHARACTER CREATOR rev 5 — the face off the mesh, the skull map, the cloth frame, welded weights (2026-09-11, local delivery)
 Four fixes to the rev 4 rig (three-renderer.js "CHARACTER CREATOR RUNTIME"):
 **THE FACE IS MEASURED, NEVER TABLED** — the two bases do NOT share a face

@@ -6,7 +6,7 @@
 // intercepting cdn.entropywars.net/Assets/Models/charactercreation/* — so this verifies the real
 // runtime path (GLB parse, weight skinning, hair fit, fabric + face bake) without the CDN.
 //   npm start   (server on :3000)
-//   NODE_USE_ENV_PROXY=1 node playtest_creator.js [tag]        PW_W / PW_H size the viewport
+//   NODE_USE_ENV_PROXY=1 node playtest_creator.js [tag] [--tops]   PW_W / PW_H size the viewport; --tops = every top on both bases, posed
 const fs = require('fs'), path = require('path');
 const REPO = __dirname;
 const { chromium } = require(path.join(REPO, 'node_modules/playwright'));
@@ -106,6 +106,27 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await sleep(4000);
   console.log('panel present:', await page.evaluate(() => !!document.querySelector('#teamBuilderPage .pb-creator-controls')), '| hair tiles:', await page.evaluate(() => document.querySelectorAll('#teamBuilderPage .pb-hair-tile').length), '| fabric tiles:', await page.evaluate(() => document.querySelectorAll('#teamBuilderPage .pb-fabric-tile').length));
   await shot('01_default_body');
+  // --tops (rev 6): every top of the catalogue on BOTH bases, posed (the idle / the walk) — the
+  // headless renders are the bind pose; this is where a sleeve or a strap shows how it hangs
+  if (process.argv.includes('--tops')) {
+    const tops = await page.evaluate(() => (window.EW_OUTFIT_STYLES || []).map(o => o.label));
+    console.log('tops:', tops.join(' · '));
+    await click('Bald', '.pb-hair-tile'); await sleep(1500);
+    for (const gender of ['male', 'female']) {
+      if (gender === 'female') { console.log('female:', await click('FEMALE')); await sleep(1500); console.log('stage:', await waitReady(60000)); await sleep(2500); }
+      for (const label of tops) {
+        console.log(gender, label + ':', await click(label)); await sleep(3500);
+        await shot('top_' + gender + '_' + label.replace(/[^a-z]+/gi, '_').toLowerCase());
+      }
+      await click('Tank top'); await sleep(2500);
+      console.log('walk:', await click('PREVIEW WALK')); await sleep(900);
+      await shot('top_' + gender + '_tank_walk');
+      await click('FULL BODY'); await sleep(1200);
+    }
+    console.log('page errors:', errs.length ? errs : 'none');
+    console.log('renderer notes:', warns.length ? warns.slice(0, 12) : 'none');
+    await browser.close(); return;
+  }
   console.log('face:', await click('FACE CLOSE-UP')); await sleep(2500);
   await shot('02_default_face');
   console.log('beard:', await click('Beard'), 'eye swatch:', await page.evaluate(() => { const s = document.querySelector('#teamBuilderPage .pb-creator-swatch[aria-label^="Eyes #3d5a3a"]'); if (s) { s.click(); return true; } return false; }));

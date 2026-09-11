@@ -10077,3 +10077,15 @@ creator-render.js's `decodePNG` / `png` (eval the two function sources) —
 there is no PIL in the sandbox. The probe run needs
 `npm i --no-save three@0.128.0 react@18.3.1 react-dom@18.3.1 playwright@1.63.0`
 in ONE command (a second `--no-save` install prunes the first).
+
+**rev 6 (2026-09-11):** `creator-render.js` takes `VIEW='{"name":"strap",
+"yaw":25,"cx":0.09,"ct":0.815,"scale":3600}'` — ONE custom view (cx / ct in
+q units, `pitch` optional; add its name to `VIEWS`) — and `NO_HEMS=1`
+renders the bare cut edges without the inward hem strips (that pair is how
+the sawtoothed openings were pinned on the RELAXATION sliding vertices, not
+on the hems). Any catalogue top is a valid positional arg (`node
+creator-render.js female racer tag`). `playtest_creator.js <tag> --tops`
+photographs every top of `EW_OUTFIT_STYLES` on both bases posed
+(`shots/creator/<tag>_top_<gender>_<label>.png`) plus the tank on the walk
+— the headless renders are the bind pose, so a sleeve or a strap that
+hangs wrong only once the arm drops shows here.

@@ -3248,7 +3248,7 @@ function PartyBuilder(props) {
               ccColorRow('hairColor', 'Hair colour', hairSwatches),
               h('h3', null, 'CLOTHES'),
               h('div', { className: 'pb-creator-colorlabel' }, 'Top'),
-              ccChoice('outfit', [['tee', 'T-shirt'], ['tank', 'Tank top'], ['suit', 'Long sleeve']]),
+              ccChoice('outfit', (window.EW_OUTFIT_STYLES || [{ id: 'tee', label: 'T-shirt' }, { id: 'tank', label: 'Tank top' }, { id: 'suit', label: 'Long sleeve' }]).map(o => [o.id, o.label])),
               ccFabricTiles('topFabric'),
               ccColorRow('topColor', 'Top tint', clothSwatches),
               h('div', { className: 'pb-creator-colorlabel' }, 'Bottoms'),

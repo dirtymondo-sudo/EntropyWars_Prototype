@@ -1817,6 +1817,19 @@ const EW_FABRICS = {
   brass:         { label: 'Brass',       file: 'brass_basecolor.png',         repeat: 6,  rough: 0.4,  metal: 0.9 },
 };
 const EW_FABRIC_IDS = Object.keys(EW_FABRICS);
+// The TOPS (rev 6, 2026-09-11): the id is what saves carry (`suit` = the v1 long
+// sleeve), the cut lives in three-renderer.js CC_TOPS. Builder order.
+const EW_OUTFIT_STYLES = [
+  { id: 'tee',    label: 'T-shirt' },
+  { id: 'vneck',  label: 'V-neck' },
+  { id: 'suit',   label: 'Long sleeve' },
+  { id: 'jacket', label: 'Jacket' },
+  { id: 'crop',   label: 'Crop top' },
+  { id: 'tank',   label: 'Tank top' },
+  { id: 'atank',  label: 'Athletic tank' },
+  { id: 'racer',  label: 'Racerback' },
+  { id: 'bikini', label: 'Bikini top' },
+];
 // numeric fields: [min, max, default]
 const EW_APPEARANCE_LIMITS = {
   height: [0.85, 1.15, 1], width: [0.85, 1.15, 1],
@@ -1828,7 +1841,7 @@ const EW_APPEARANCE_LIMITS = {
 const EW_APPEARANCE_ENUMS = {
   hair: ['bald'].concat(EW_HAIR_STYLE_IDS),
   beard: ['none', 'stubble', 'beard', 'goatee'],
-  outfit: ['tee', 'tank', 'suit'],            // suit = long sleeve
+  outfit: EW_OUTFIT_STYLES.map(o => o.id),
   bottoms: ['trousers', 'shorts'],
   topFabric: EW_FABRIC_IDS,
   bottomFabric: EW_FABRIC_IDS,
@@ -1923,6 +1936,7 @@ if (typeof window !== 'undefined') {
   window.EW_APPEARANCE_COLORS = EW_APPEARANCE_COLORS;
   window.EW_HAIR_STYLES = EW_HAIR_STYLES;
   window.EW_FABRICS = EW_FABRICS;
+  window.EW_OUTFIT_STYLES = EW_OUTFIT_STYLES;
   window.getHairStyleUrl = getHairStyleUrl;
   window.getFabricTextureUrl = getFabricTextureUrl;
   window.getCharacterAppearanceModel = getCharacterAppearanceModel;

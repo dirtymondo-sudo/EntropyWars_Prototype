@@ -1,4 +1,4 @@
-// character-creator.test.js — the CHARACTER CREATOR (rev 3 → rev 5, 2026-09-11): the
+// character-creator.test.js — the CHARACTER CREATOR (rev 3 → rev 6, 2026-09-11): the
 // v2 appearance data model, the charactercreation/ asset catalogues (rigged
 // bases · hair styles · fabrics), the same-origin fallbacks, the rig generator
 // and every source site the feature leans on. Asset-level checks run against
@@ -179,6 +179,25 @@ test('the builder panel, the renderer and the CSS carry the rev 3 sites', () => 
     assert.ok(!/material\.color\.set\(a\.(top|bottom|hair)Color/.test(block));
 });
 
+test('rev 6 — every top in the catalogue has a cut in CC_TOPS, the builder lists the catalogue, sleeves are cut across the arm', () => {
+    const block = renderer.slice(RENDER_BLOCK[0], RENDER_BLOCK[1]);
+    const tops = block.slice(block.indexOf('var CC_TOPS = {'), block.indexOf('function _ccTopDef('));
+    const ids = context.window.EW_OUTFIT_STYLES.map(o => o.id);
+    assert.deepEqual(context.window.EW_APPEARANCE_ENUMS.outfit, ids, 'the enum is the catalogue');
+    assert.ok(ids.includes('suit') && ids.includes('tee') && ids.includes('tank'), 'the v1 ids survive (saves carry them)');
+    for (const id of ids) assert.ok(new RegExp('\\n\\s+' + id + ':\\s*\\{').test(tops), 'CC_TOPS row for ' + id);
+    for (const m of tops.matchAll(/\n\s+(\w+):\s*\{/g)) assert.ok(ids.includes(m[1]), 'CC_TOPS row ' + m[1] + ' is in the catalogue');
+    assert.ok(new Set(context.window.EW_OUTFIT_STYLES.map(o => o.label)).size === ids.length, 'labels are distinct');
+    // sleeved tops end along the arm's polyline, never on an x-plane; sleeveless ones read the arm weights (q[3])
+    assert.ok(/len - A\.along, A\.perp - gate/.test(block), 'the sleeve is cut square across the arm');
+    assert.ok(/\(0\.5 - q\[3\]\)/.test(block) && /q\[3\] = a\.q\[3\]/.test(block), 'sleeveless tops read the interpolated arm weight');
+    assert.ok(!/sleeve - Math\.abs\(q\[0\]\)/.test(block), 'the rev 5 x-plane sleeve is gone');
+    assert.ok(/RN\[i3\] \* dn/.test(block), 'the cloth relaxation moves along the normal only');
+    assert.ok(/v\.on \|= \(bit \|\| 0\)/.test(block) && /if \(!\(v\.on & w\.on\)\)|var shared = v\.on & w\.on/.test(block), 'rims are found by the cut masks');
+    const pb = read('party-builder.js');
+    assert.ok(/ccChoice\('outfit', \(window\.EW_OUTFIT_STYLES/.test(pb), 'the builder lists the catalogue');
+});
+
 test('same-origin fallback serves only the rigged bases, hairNNN styles and lowercase fabric keys', () => {
     const s = read('server.js'), start = s.indexOf('// CHARACTER CREATOR same-origin fallback');
     const calls = [];
@@ -280,7 +299,7 @@ test('both rigged bases dress, fit the hair to the skull and stay finite across 
                 assert.equal(hm._ew_noTwin, true);
                 assert.ok(hm.material.alphaTest > 0 || /tie/.test(hm.name));
             }
-            for (const outfit of ['suit', 'tee', 'tank']) for (const bottoms of ['trousers', 'shorts']) for (const sign of [-1, 0, 1]) {
+            for (const outfit of context.window.EW_APPEARANCE_ENUMS.outfit) for (const bottoms of ['trousers', 'shorts']) for (const sign of [-1, 0, 1]) {
                 rig.update({ outfit, bottoms, hair: sign < 0 ? 'bald' : 'hair003', topFabric: sign ? 'denim' : 'plain', width: 1 + sign * .15, chest: sign, waist: sign, hips: sign, head: sign, jaw: sign, cheeks: sign, nose: sign });
                 const arm = body.skeleton.bones.find(b => b.name === 'LeftArm'); arm.rotation.z = .4;
                 clone.updateMatrixWorld(true);
