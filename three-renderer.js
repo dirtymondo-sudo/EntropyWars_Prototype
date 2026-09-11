@@ -850,17 +850,87 @@ const ThreeRenderer = (function () {
         'uniform float uOpacity;',
         'uniform float uTime;',
         'uniform float uPhase;',
+        /* RING VITALS (uMeters = 1): the ring line becomes two concentric
+           meters — HP on the ring's own radius, MP just inside it. uMeterRot
+           is the plane-space angle of the SCREEN's 12 o'clock (fed per frame
+           from the camera azimuth minus the facing yaw), so both meters
+           always fill clockwise from the top of the screen whatever the
+           unit faces or where the camera orbits. uPrev / uPrevHeal are the
+           confirm-step forecast slices (fractions of max HP) that blink at
+           the leading edge, same as the plate bar's .tp-dmg-preview. */
+        'uniform float uMeters;',
+        'uniform float uHp;',
+        'uniform float uMp;',
+        'uniform float uShield;',
+        'uniform float uPrev;',
+        'uniform float uPrevHeal;',
+        'uniform float uMeterRot;',
+        'uniform vec3 uHpCol;',
+        'uniform vec3 uMpCol;',
         'varying vec2 vUv;',
         'float segDist(vec2 p, vec2 a, vec2 b) {',
         '  vec2 pa = p - a, ba = b - a;',
         '  float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);',
         '  return length(pa - ba * h);',
         '}',
+        /* arc mask: 1 where the clockwise fraction f lies in [lo, hi] */
+        'float arcIn(float f, float lo, float hi) {',
+        '  return smoothstep(lo - 0.004, lo + 0.004, f) * (1.0 - smoothstep(hi - 0.004, hi + 0.004, f));',
+        '}',
         'void main() {',
         '  vec2 p = (vUv - 0.5) * 1.30;',        // tile-space coords, facing = +y
         '  float d = length(p);',
         '  float ang = atan(p.x, p.y);',          // 0 at the facing heading
         '  float pulse = 0.88 + 0.12 * sin(uTime * 2.2 + uPhase);',
+        '  if (uMeters > 0.5) {',
+        /* clockwise fraction around the ring, 0 at the screen's 12 o'clock */
+        '    float frac = fract((uMeterRot - ang) / 6.2832);',
+        /* HP meter on the reticle's own radius (0.42), MP meter inside it */
+        '    float R = 0.42;',
+        '    float rd = abs(d - R);',
+        '    float hpBand  = 1.0 - smoothstep(0.028, 0.038, rd);',
+        '    float hpOuter = 1.0 - smoothstep(0.036, 0.048, rd);',
+        '    float mrd = abs(d - 0.335);',
+        '    float mpBand  = 1.0 - smoothstep(0.019, 0.027, mrd);',
+        '    float mpOuter = 1.0 - smoothstep(0.026, 0.036, mrd);',
+        /* fills — the spent part of each meter is the dark track */
+        /* a FULL meter is the whole ring — no AA sliver at the 12 o'clock seam */
+        '    float hpFill = max(1.0 - smoothstep(uHp - 0.004, uHp + 0.004, frac), step(0.999, uHp));',
+        '    float shEnd  = min(1.0, uHp + uShield);',
+        '    float shFill = arcIn(frac, uHp, shEnd) * step(0.001, uShield);',
+        '    float mpFill = max(1.0 - smoothstep(uMp - 0.004, uMp + 0.004, frac), step(0.999, uMp));',
+        /* confirm-step forecast: the slice about to be lost blinks white,',
+           a heal forecast blinks pale green past the fill's edge */
+        '    float blink = 0.55 + 0.45 * sin(uTime * 9.0);',
+        '    float prevMask = arcIn(frac, max(0.0, uHp - uPrev), uHp) * step(0.001, uPrev);',
+        '    float healMask = arcIn(frac, uHp, min(1.0, uHp + uPrevHeal)) * step(0.001, uPrevHeal);',
+        '    vec3 track = vec3(0.05, 0.05, 0.07);',
+        '    vec3 rim = vec3(0.02, 0.02, 0.03);',
+        '    vec3 hpC = mix(uHpCol, vec3(1.0), 0.22 * (1.0 - smoothstep(0.0, 0.026, rd)));',
+        '    vec3 hpCol = mix(track, hpC, hpFill);',
+        '    hpCol = mix(hpCol, vec3(0.55, 0.82, 1.0), shFill * 0.9);',
+        '    hpCol = mix(hpCol, vec3(1.0), prevMask * blink);',
+        '    hpCol = mix(hpCol, vec3(0.62, 1.0, 0.72), healMask * blink * 0.85);',
+        '    hpCol = mix(rim, hpCol, hpBand);',
+        '    vec3 mpC = mix(uMpCol, vec3(1.0), 0.18 * (1.0 - smoothstep(0.0, 0.016, mrd)));',
+        '    vec3 mpCol = mix(rim, mix(track, mpC, mpFill), mpBand);',
+        '    float hpA = hpOuter * mix(0.78, 1.0, max(hpFill, shFill)) * (0.94 + 0.06 * pulse);',
+        '    float mpA = mpOuter * mix(0.74, 1.0, mpFill) * (0.94 + 0.06 * pulse);',
+        /* facing chevron OUTSIDE the meters, unchanged (team colour) */
+        '    float ch = min(segDist(p, vec2(0.0, 0.60), vec2(-0.105, 0.455)),',
+        '                   segDist(p, vec2(0.0, 0.60), vec2( 0.105, 0.455)));',
+        '    float chCore = 1.0 - smoothstep(0.008, 0.022, ch);',
+        '    float chGlow = exp(-ch * ch * 420.0) * 0.5;',
+        '    float ch2 = min(segDist(p, vec2(0.0, 0.525), vec2(-0.075, 0.425)),',
+        '                    segDist(p, vec2(0.0, 0.525), vec2( 0.075, 0.425)));',
+        '    float ch2Core = (1.0 - smoothstep(0.006, 0.016, ch2)) * 0.55;',
+        '    float chA = min(chCore + chGlow * pulse + ch2Core, 1.0);',
+        '    vec3 chCol = mix(uColor, vec3(1.0), clamp(chCore + ch2Core, 0.0, 1.0) * 0.45);',
+        '    float a = hpA + mpA + chA;',
+        '    vec3 col = (hpCol * hpA + mpCol * mpA + chCol * chA) / max(a, 0.0001);',
+        '    gl_FragColor = vec4(col, min(a, 1.0) * uOpacity);',
+        '    return;',
+        '  }',
         /* main ring — crisp core line + gaussian glow, gapped toward facing */
         '  float R = 0.42;',
         '  float rd = abs(d - R);',
@@ -896,13 +966,23 @@ const ThreeRenderer = (function () {
         '}'
     ].join('\n');
 
-    function _makeTeamReticleMaterial(color, phase) {
+    function _makeTeamReticleMaterial(color, phase, hpColor) {
         return new THREE.ShaderMaterial({
             uniforms: {
                 uColor:   { value: new THREE.Color(color) },
                 uOpacity: { value: 1.0 },
                 uTime:    _hlGlobalTime,
-                uPhase:   { value: phase || 0.0 }
+                uPhase:   { value: phase || 0.0 },
+                /* ring vitals (see _plateLook) — driven by _updateRingVitals */
+                uMeters:   { value: _plateLook.rings ? 1.0 : 0.0 },
+                uHp:       { value: 1.0 },
+                uMp:       { value: 1.0 },
+                uShield:   { value: 0.0 },
+                uPrev:     { value: 0.0 },
+                uPrevHeal: { value: 0.0 },
+                uMeterRot: { value: 0.0 },
+                uHpCol:    { value: new THREE.Color(hpColor || color) },
+                uMpCol:    { value: new THREE.Color(RING_MP_COLOR) }
             },
             vertexShader: _ringVertexShader,
             fragmentShader: _reticleFragmentShader,
@@ -1246,6 +1326,35 @@ const ThreeRenderer = (function () {
             if (fg !== null) _perfSettings.fogGrid = fg !== '0';
         } catch (e) {}
     })();
+
+    /* ── RING VITALS + NAMEPLATE STYLE (Video settings, viewer-local) ──
+       rings: HP / MP drawn as two concentric meters ON the team reticle at
+       the unit's feet (outer = HP, inner = MP; filled clockwise from the
+       screen's 12 o'clock, a dark track where spent) instead of the bars on
+       the nameplate. style: what the floating plate shows —
+         'bars'    = the classic plate (name + type chips + HP/MP bars),
+         'compact' = name + type chips, no bars (for use with the rings),
+         'side'    = a short white leader line + the name, off to the side
+                     of the reticle at foot level (numbers underneath).
+       Purely cosmetic and per viewer: nothing here is relayed or synced —
+       both online seats read their own synced unit hp/mp.
+       ThreeRenderer.setRingVitals / setPlateStyle flip these live. */
+    var _plateLook = { rings: false, style: 'bars' };
+    (function () {
+        try {
+            if (typeof localStorage === 'undefined') return;
+            var rv = localStorage.getItem('ew_ringVitals');
+            if (rv !== null) _plateLook.rings = rv === '1';
+            var ps = localStorage.getItem('ew_plateStyle');
+            if (ps === 'bars' || ps === 'compact' || ps === 'side') _plateLook.style = ps;
+        } catch (e) {}
+    })();
+    /* Plate colours the ring meters share with the bars: ally HP is ALWAYS
+       green, enemy HP ALWAYS red, MP always the same blue (see the
+       .tp-hp-ally / .tp-hp-enemy / .tp-mp-fill gradients). */
+    var RING_HP_ALLY_COLOR  = 0x2ed158;
+    var RING_HP_ENEMY_COLOR = 0xff4a56;
+    var RING_MP_COLOR       = 0x2f9dff;
 
     /* Fog-grid VISUAL toggle (Video settings): when off, the holographic fog
        boxes and the terrain dimming are not rendered — the whole map is
@@ -7763,7 +7872,11 @@ const ThreeRenderer = (function () {
                         if (_clonePlate) {
                             _clonePlate.css2d.position.set(0, dSprH / 2 - dTop + 14, 0);
                             mesh.add(_clonePlate.css2d);
-                            _decoyPlates.push({ css2d: _clonePlate.css2d, el: _clonePlate.el, mesh: mesh });
+                            var _dpo = { css2d: _clonePlate.css2d, el: _clonePlate.el, mesh: mesh,
+                                         _headY: dSprH / 2 - dTop + 14,
+                                         _footY: -(dSprH / 2) + dBottom + SELECTED_RING_OFFSET + 2 };
+                            _decoyPlates.push(_dpo);
+                            _anchorPlateForStyle(_dpo);
                         }
                         continue;
                     }
@@ -9178,12 +9291,31 @@ const ThreeRenderer = (function () {
             var oldPo = _plateObjs.get(_dmgPrevUnitId);
             var oldEl = (oldPo && oldPo.el) ? oldPo.el.querySelector('.tp-dmg-preview') : null;
             if (oldEl) oldEl.remove();
+            var oldRet = _reticleOfUnit(_dmgPrevUnitId);
+            if (oldRet && oldRet.material.uniforms) {
+                oldRet.material.uniforms.uPrev.value = 0;
+                oldRet.material.uniforms.uPrevHeal.value = 0;
+            }
             _dmgPrevUnitId = null;
         }
         if (!info) return;
         var u = null;
         for (var i = 0; i < (state.units || []).length; i++) {
             if (state.units[i].id === info.unitId) { u = state.units[i]; break; }
+        }
+        /* Ring vitals carry the same forecast slice on the HP meter. */
+        var ret = _reticleOfUnit(info.unitId);
+        if (u && !u.dead && ret && ret.material.uniforms) {
+            var _rMax = u.maxHp || 1;
+            var _rHp = _ringFrac(u.hp || 0, _rMax);
+            if (info.heal > 0) {
+                ret.material.uniforms.uPrev.value = 0;
+                ret.material.uniforms.uPrevHeal.value = Math.min(1 - _rHp, _ringFrac(info.heal, _rMax));
+            } else {
+                ret.material.uniforms.uPrevHeal.value = 0;
+                ret.material.uniforms.uPrev.value = Math.min(_rHp, _ringFrac(info.dmg || 0, _rMax));
+            }
+            _dmgPrevUnitId = info.unitId;
         }
         var po = _plateObjs.get(info.unitId);
         if (!u || u.dead || !po || !po.el) return;
@@ -11124,9 +11256,14 @@ const ThreeRenderer = (function () {
         for (var _rpI = 0; _rpI < _rpStr.length; _rpI++) _rpHash = (_rpHash * 31 + _rpStr.charCodeAt(_rpI)) % 997;
         var reticle = new THREE.Mesh(
             new THREE.PlaneGeometry(ts * RETICLE_SPAN, ts * RETICLE_SPAN),
-            _makeTeamReticleMaterial(ringCol, (_rpHash % 63) * 0.1)
+            _makeTeamReticleMaterial(ringCol, (_rpHash % 63) * 0.1,
+                _isAllyPlayer(unit.player) ? RING_HP_ALLY_COLOR : RING_HP_ENEMY_COLOR)
         );
         reticle.rotation.x = Math.PI / 2;   // flatten; shader +v → world +Z
+        reticle._ew_reticle = true;
+        /* Ring vitals start at the unit's real fill (a rebuilt entry must not
+           re-drain from full); _updateRingVitals eases them from here. */
+        _seedRingVitals(reticle, unit);
         /* The reticle is decoration, not the unit: it's a wide horizontal
            plane at foot level, and from an angled camera an ELEVATED unit's
            plane projects down over the tile at the base of its column —
@@ -11193,9 +11330,63 @@ const ThreeRenderer = (function () {
            frame straight from unit state, so it survives rebuilds and needs
            no teardown hook (the old head-torch flame this replaced did). */
 
-        var entryObj = { group: group, sprite: spriteMesh, silhouette: silhouetteMesh, outlines: outlineMeshes };
+        var entryObj = { group: group, sprite: spriteMesh, silhouette: silhouetteMesh, outlines: outlineMeshes, reticle: reticle };
         if (_m3dDef) _attachUnitModel(entryObj, unit, _m3dDef, ts);
         return entryObj;
+    }
+
+    /* ── RING VITALS — the meters on the team reticle ───────────────────
+       Per-frame from _updateUnitFacing (which already holds the camera, the
+       unit and its eased facing yaw): the screen-up angle uniform, and the
+       HP / MP / shield fills eased toward the unit's live values so a hit
+       drains the ring the way the plate bar's width-transition drains it.
+       Nothing runs while the rings are off (uMeters = 0 → classic reticle). */
+    function _ringFrac(n, d) {
+        if (!(d > 0)) return 0;
+        var f = n / d;
+        return f < 0 ? 0 : (f > 1 ? 1 : f);
+    }
+    function _seedRingVitals(reticle, unit) {
+        var u = reticle && reticle.material && reticle.material.uniforms;
+        if (!u || !unit) return;
+        u.uHp.value = _ringFrac(unit.hp, unit.maxHp || 1);
+        u.uMp.value = _ringFrac(unit.mp, unit.maxMp || 0);
+        u.uShield.value = _ringFrac(unit.shield || 0, unit.maxHp || 1);
+        u.uMeters.value = _plateLook.rings ? 1.0 : 0.0;
+    }
+    function _easeRingUniform(uni, target, k) {
+        var cur = uni.value;
+        var diff = target - cur;
+        if (Math.abs(diff) < 0.0015) { uni.value = target; return; }
+        uni.value = cur + diff * k;
+    }
+    function _updateRingVitals(reticle, unit, g, cam, facingYaw, dtSec) {
+        var u = reticle.material.uniforms;
+        /* plane-space angle of the screen's 12 o'clock: world azimuth AWAY
+           from the camera (camAz + π), minus the facing yaw the plane's
+           wrapper group is rotated by (world az = plane angle + yaw). */
+        var camAz = Math.atan2(cam.position.x - g.position.x, cam.position.z - g.position.z);
+        u.uMeterRot.value = camAz + Math.PI - facingYaw;
+        var k = (dtSec > 0) ? Math.min(1, dtSec * 7.5) : 1;
+        _easeRingUniform(u.uHp, _ringFrac(unit.hp, unit.maxHp || 1), k);
+        _easeRingUniform(u.uMp, _ringFrac(unit.mp, unit.maxMp || 0), k);
+        _easeRingUniform(u.uShield, _ringFrac(unit.shield || 0, unit.maxHp || 1), k);
+    }
+    /* The reticle of a live unit entry (null while it has none). */
+    function _reticleOfUnit(uid) {
+        var ue = unitEntries.get(uid);
+        return (ue && ue.reticle) ? ue.reticle : null;
+    }
+    /* Flip every reticle between the classic team ring and the ring vitals
+       without a rebuild (uMeters is a uniform on the shared shader). */
+    function _applyRingVitalsMode() {
+        var on = _plateLook.rings ? 1.0 : 0.0;
+        unitEntries.forEach(function (ue, uid) {
+            if (!ue.reticle || !ue.reticle.material || !ue.reticle.material.uniforms) return;
+            var unit = _unitById.get(uid) || null;
+            if (unit) _seedRingVitals(ue.reticle, unit);
+            ue.reticle.material.uniforms.uMeters.value = on;
+        });
     }
 
     function rebuildUnits() {
@@ -11553,7 +11744,64 @@ const ThreeRenderer = (function () {
                 '.tp-wrap.tp-far .tp-name { font-size: 14px; height: 19px; margin-bottom: 1px; }',
                 '.tp-wrap.tp-far .tp-bars { padding-right: 48px; }',
                 '.tp-wrap.tp-far .tp-bar { height: 8px; }',
-                '.tp-wrap.tp-far .tp-bar-num { font-size: 12px; }'
+                '.tp-wrap.tp-far .tp-bar-num { font-size: 12px; }',
+
+                /* ---- Plate styles (Video settings → Nameplate) ------------
+                   'compact': the plate without its HP/MP bars — name row +
+                   the type chips laid out as one centred row. Pairs with the
+                   ring vitals at the feet. */
+                '.tp-wrap .tp-side-line { display: none; }',
+                '.tp-wrap.tp-compact:not(.tp-far) .tp-bars { display: none; }',
+                '.tp-wrap.tp-compact:not(.tp-far) .tp-body { justify-content: center; }',
+                '.tp-wrap.tp-compact:not(.tp-far) .tp-types { flex-direction: row; gap: 2px; }',
+                '.tp-wrap.tp-compact:not(.tp-far) .tp-type { flex: none; min-height: 11px; padding: 1px 6px; }',
+                '.tp-wrap.tp-compact:not(.tp-far) .tp-name { justify-content: center; }',
+
+                /* 'side': a short white leader line + the name, off to the
+                   right of the reticle at foot level (the CSS2D anchor sits
+                   on the ring; _writePlateTransform pushes the element out by
+                   the ring's projected radius). Vitals are text only — the
+                   nnn/nnn numbers in a row under the name — since the rings
+                   draw the fills. Left-anchored so it grows AWAY from the
+                   unit as the camera closes in. */
+                '.tp-wrap.tp-side:not(.tp-far) {',
+                '  width: auto; max-width: 190px; bottom: auto; top: 0;',
+                '  display: flex; align-items: center; gap: 6px;',
+                '  transform-origin: left center;',
+                '}',
+                '.tp-wrap.tp-side:not(.tp-far) .tp-side-line {',
+                '  display: block; flex: none; width: 18px; height: 2px;',
+                '  background: #fff; border-radius: 1px;',
+                '  box-shadow: 0 0 5px rgba(255,255,255,0.75), 0 1px 2px rgba(0,0,0,0.9);',
+                '}',
+                '.tp-wrap.tp-side:not(.tp-far) .tp-main { flex: 0 1 auto; min-width: 0; }',
+                '.tp-wrap.tp-side:not(.tp-far) .tp-name {',
+                '  height: auto; min-height: 15px; margin-bottom: 0; padding: 0;',
+                '  border-bottom: 1px solid rgba(255,255,255,0.55);',
+                '}',
+                '.tp-wrap.tp-side:not(.tp-far) .tp-body { gap: 5px; align-items: center; padding-top: 2px; }',
+                '.tp-wrap.tp-side:not(.tp-far) .tp-types { flex-direction: row; gap: 2px; }',
+                '.tp-wrap.tp-side:not(.tp-far) .tp-type { flex: none; min-height: 11px; padding: 1px 5px; }',
+                '.tp-wrap.tp-side:not(.tp-far) .tp-bars {',
+                '  flex: none; flex-direction: row; gap: 7px; padding-right: 0; align-items: center;',
+                '}',
+                '.tp-wrap.tp-side:not(.tp-far) .tp-bar {',
+                '  width: auto; height: auto; background: none; box-shadow: none !important;',
+                '}',
+                '.tp-wrap.tp-side:not(.tp-far) .tp-hp-fill, .tp-wrap.tp-side:not(.tp-far) .tp-mp-fill,',
+                '.tp-wrap.tp-side:not(.tp-far) .tp-shield, .tp-wrap.tp-side:not(.tp-far) .tp-dmg-preview { display: none; }',
+                '.tp-wrap.tp-side:not(.tp-far) .tp-bar-num {',
+                '  position: static; transform: none; margin: 0; font-size: 10px;',
+                '}',
+                '.tp-wrap.tp-side:not(.tp-far) .tp-hp-ally .tp-bar-num { color: #7df0a5; }',
+                '.tp-wrap.tp-side:not(.tp-far) .tp-hp-enemy .tp-bar-num { color: #ff96a0; }',
+                '.tp-wrap.tp-side:not(.tp-far) .tp-bar-num::before {',
+                '  font-size: 8px; letter-spacing: 0.1em; color: #9a94b0; margin-right: 3px;',
+                '}',
+                '.tp-wrap.tp-side:not(.tp-far) .tp-bar:not(.tp-bar-mp) .tp-bar-num::before { content: "HP"; }',
+                '.tp-wrap.tp-side:not(.tp-far) .tp-bar-mp .tp-bar-num::before { content: "MP"; }',
+                '.tp-wrap.tp-side:not(.tp-far) .tp-status-row { justify-content: flex-start; }',
+                '.tp-wrap.tp-side:not(.tp-far) .tp-eff-badge { right: auto; left: -8px; }'
             ].join('\n');
             document.head.appendChild(s);
         }
@@ -11675,7 +11923,7 @@ const ThreeRenderer = (function () {
 
         var blitzUnit = (typeof getBlitzTurnUnit === 'function') ? getBlitzTurnUnit() : null;
         if (blitzUnit && blitzUnit.id === unit.id) pCls += ' tp-active';
-        wrap.className = 'tp-wrap ' + pCls;
+        wrap.className = 'tp-wrap ' + pCls + _plateStyleClass();
 
         var lvl = (typeof getUnitLevel === 'function') ? getUnitLevel(unit) : 1;
         var mode = state.nametagMode || 'name';
@@ -11728,6 +11976,8 @@ const ThreeRenderer = (function () {
            info side by side; near zoom keeps it display:none. */
         wrap.innerHTML =
             _platePortraitHtml(unit) +
+            /* leader line for the 'side' plate style (display:none otherwise) */
+            '<div class="tp-side-line"></div>' +
             '<div class="tp-main">' +
             /* The label is wrapped in its own span so it — and only it —
                ellipsizes. As a bare text node it was an anonymous flex item
@@ -11765,14 +12015,19 @@ const ThreeRenderer = (function () {
 
         var css2d = new THREE.CSS2DObject(outer);
         var ue = unitEntries.get(unit.id);
+        var _headY = 0;
         if (ue && ue.group) {
 
             var localY = ue.group._ew_spriteTopY - ue.group.position.y + 12;
+            _headY = localY;
             css2d.position.set(0, localY, 0);
             ue.group.add(css2d);
         }
 
-        _plateObjs.set(unit.id, { css2d: css2d, el: wrap, statusBadgesHtml: _sbInner });
+        var _po = { css2d: css2d, el: wrap, statusBadgesHtml: _sbInner,
+                    _headY: _headY, _footY: SELECTED_RING_OFFSET + 2 };
+        _plateObjs.set(unit.id, _po);
+        _anchorPlateForStyle(_po);
 
         /* The fill was rendered at its previous width (hpStartPct/mpStartPct). On the
            next frame, set it to the real value so the CSS width-transition animates the
@@ -11800,7 +12055,7 @@ const ThreeRenderer = (function () {
         outer.className = 'tp-plate-outer';
 
         var wrap = document.createElement('div');
-        wrap.className = 'tp-wrap ' + (ownerPlayer === 1 ? 'tp-p1' : 'tp-p2');
+        wrap.className = 'tp-wrap ' + (ownerPlayer === 1 ? 'tp-p1' : 'tp-p2') + _plateStyleClass();
 
         var lvl = 1;
         try { if (typeof getUnitLevel === 'function') lvl = getUnitLevel(su); } catch (e) {}
@@ -11830,6 +12085,7 @@ const ThreeRenderer = (function () {
            plate is indistinguishable from a real one at any zoom. */
         wrap.innerHTML =
             _platePortraitHtml(su) +
+            '<div class="tp-side-line"></div>' +
             '<div class="tp-main">' +
             '<div class="tp-name">' +
                 '<span class="tp-lvl">' + lvl + '</span>' +
@@ -11910,11 +12166,7 @@ const ThreeRenderer = (function () {
             /* scale so plate is at least as wide as one tile, with a legibility floor */
             var s = Math.min(MAX_PLATE_SCALE, Math.max(projW / PLATE_BASE_W, MIN_PLATE_SCALE));
 
-            /* §4.8: skip the style write (and the style recalc it triggers)
-               when the camera hasn't meaningfully changed this plate's scale. */
-            if (po._lastScale !== undefined && Math.abs(po._lastScale - s) < 0.004) return;
-            po._lastScale = s;
-            po.el.style.transform = 'translateX(-50%) scale(' + s.toFixed(3) + ')';
+            _writePlateTransform(po, s, projW);
         });
 
         /* Scale decoy nameplates the same way so they don't betray the decoy by
@@ -11929,10 +12181,59 @@ const ThreeRenderer = (function () {
             var _dprojW = (_drefW * screenH) / (2 * _ddist * halfTanFov);
             _plateFarToggle(_dse, _dse.el, _dprojW);
             var _ds = Math.min(MAX_PLATE_SCALE, Math.max(_dprojW / PLATE_BASE_W, MIN_PLATE_SCALE));
-            if (_dse._lastScale !== undefined && Math.abs(_dse._lastScale - _ds) < 0.004) continue;
-            _dse._lastScale = _ds;
-            _dse.el.style.transform = 'translateX(-50%) scale(' + _ds.toFixed(3) + ')';
+            _writePlateTransform(_dse, _ds, _dprojW);
         }
+    }
+
+    /* ── Plate style ('bars' / 'compact' / 'side') plumbing ──────────
+       The 'side' plate hangs off the RIGHT of the reticle at foot level:
+       the CSS2D anchor drops from the head to the ring (po._footY) and the
+       element is pushed right by the ring's projected radius so the white
+       leader line starts just outside the reticle. The far-zoom card
+       (.tp-far, the plate BECOMES the unit) always returns to the head
+       anchor and the centred layout — a side card would float off the
+       tiny far sprite. */
+    var SIDE_PLATE_OFFSET_TILES = 0.50;   // leader line starts here (tile widths from the unit's centre)
+    var SIDE_PLATE_GAP_PX = 3;
+    function _plateStyleClass() {
+        if (_plateLook.style === 'compact') return ' tp-compact';
+        if (_plateLook.style === 'side') return ' tp-side';
+        return '';
+    }
+    function _plateIsSide(holder) {
+        return _plateLook.style === 'side' && !holder._farMode;
+    }
+    function _anchorPlateForStyle(holder) {
+        if (!holder || !holder.css2d) return;
+        var y = _plateIsSide(holder) ? holder._footY : holder._headY;
+        if (y == null || holder.css2d.position.y === y) return;
+        holder.css2d.position.y = y;
+    }
+    function _writePlateTransform(holder, s, projW) {
+        var side = _plateIsSide(holder);
+        _anchorPlateForStyle(holder);
+        var off = side ? Math.round(projW * SIDE_PLATE_OFFSET_TILES + SIDE_PLATE_GAP_PX) : 0;
+        /* §4.8: skip the style write (and the style recalc it triggers)
+           when the camera hasn't meaningfully changed this plate's scale. */
+        if (holder._lastScale !== undefined && Math.abs(holder._lastScale - s) < 0.004
+            && holder._lastSide === side && holder._lastOff === off) return;
+        holder._lastScale = s; holder._lastSide = side; holder._lastOff = off;
+        holder.el.style.transform = side
+            ? ('translate(' + off + 'px, -50%) scale(' + s.toFixed(3) + ')')
+            : ('translateX(-50%) scale(' + s.toFixed(3) + ')');
+    }
+    /* Re-plate every live plate (real + decoy) for the current style — no
+       rebuild: swap the class, drop the anchor, force the transform write. */
+    function _applyPlateStyleLive() {
+        var fix = function (holder) {
+            if (!holder || !holder.el) return;
+            holder.el.classList.toggle('tp-compact', _plateLook.style === 'compact');
+            holder.el.classList.toggle('tp-side', _plateLook.style === 'side');
+            holder._lastScale = undefined;
+            _anchorPlateForStyle(holder);
+        };
+        _plateObjs.forEach(function (po) { fix(po); });
+        for (var i = 0; i < _decoyPlates.length; i++) fix(_decoyPlates[i]);
     }
 
     /* 🛗 Units riding a building's lift (unit._insideBuildingId) are inside the
@@ -16365,7 +16666,22 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < unitGroup.children.length; i++) {
             var g = unitGroup.children[i];
             var uid = g._ew_unitId;
-            if (!uid || !g.children || g._ew_isBatSwarm) continue;
+            if (!uid || !g.children) continue;
+            if (g._ew_isBatSwarm) {
+                /* A bat swarm has no facing to turn, but its reticle still
+                   wears the ring vitals — keep the meters' screen-up angle
+                   and fills live from the wrapper's resting yaw. */
+                if (_plateLook.rings && cam) {
+                    for (var bk = 0; bk < g.children.length; bk++) {
+                        var bch = g.children[bk];
+                        if (!bch._ew_facingIndicator) continue;
+                        var bunit = _findUnit(uid);
+                        var brv = bch.children[0];
+                        if (bunit && brv && brv._ew_reticle) _updateRingVitals(brv, bunit, g, cam, bch.rotation.y, dtSec);
+                    }
+                }
+                continue;
+            }
             var unit = _findUnit(uid);
             if (!unit) continue;
 
@@ -16408,6 +16724,10 @@ const ThreeRenderer = (function () {
                 var ch = g.children[k];
                 if (ch._ew_facingSprite || ch._ew_facingIndicator) {
                     ch.rotation.y = curYaw;
+                    if (ch._ew_facingIndicator && _plateLook.rings && cam) {
+                        var _rv = ch.children[0];
+                        if (_rv && _rv._ew_reticle) _updateRingVitals(_rv, unit, g, cam, curYaw, dtSec);
+                    }
                 } else if (ch._ew_silhouette && cam) {
                     // Face the camera and sit in front of the unit's entire
                     // slab (half sprite width covers the worst case: the slab
@@ -34362,6 +34682,21 @@ const ThreeRenderer = (function () {
             _shadowsDirty = true;
         },
         isFogGridOn: function () { return _perfSettings.fogGrid !== false; },
+
+        /* Ring vitals + nameplate style (Video settings → Vitals / Nameplate).
+           Viewer-local cosmetics, persisted in localStorage, applied live. */
+        setRingVitals: function (on) {
+            _plateLook.rings = !!on;
+            try { localStorage.setItem('ew_ringVitals', on ? '1' : '0'); } catch (e) {}
+            _applyRingVitalsMode();
+        },
+        isRingVitalsOn: function () { return !!_plateLook.rings; },
+        setPlateStyle: function (style) {
+            _plateLook.style = (style === 'compact' || style === 'side') ? style : 'bars';
+            try { localStorage.setItem('ew_plateStyle', _plateLook.style); } catch (e) {}
+            _applyPlateStyleLive();
+        },
+        getPlateStyle: function () { return _plateLook.style; },
 
         setHorizonFog,
 

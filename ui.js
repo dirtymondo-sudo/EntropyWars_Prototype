@@ -7345,6 +7345,7 @@
                             <button class="pm-seg-btn${nametagMode==='none'?' active':''}" onclick="state.nametagMode='none';markDirty('board');renderIfDirty();_renderPauseMenu();">Lv</button>
                         </div>
                     </div>
+                    ${typeof window._buildVitalsLookHTML === 'function' ? window._buildVitalsLookHTML('_renderPauseMenu();') : ''}
                 </div>
 
                 <div class="pm-set-group pm-collapsible">

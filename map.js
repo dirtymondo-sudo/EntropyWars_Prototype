@@ -2821,6 +2821,40 @@
                 </div>`;
         };
 
+        /* Shared Vitals / Nameplate section HTML — rendered in the main-menu
+           Settings AND the pause menu (ui.js, under the Nametags row).
+           Ring vitals = HP / MP as two concentric meters on the team reticle
+           at the unit's feet (three-renderer.js _plateLook); the nameplate
+           style picks what the floating plate still shows. refreshJs
+           re-renders the host page. */
+        window._buildVitalsLookHTML = function (refreshJs) {
+            const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+            if (!TR || typeof TR.setRingVitals !== 'function') return '';
+            const rings = !!(TR.isRingVitalsOn && TR.isRingVitalsOn());
+            const style = (TR.getPlateStyle && TR.getPlateStyle()) || 'bars';
+            const ringSeg = (v, label) => `<button class="pm-seg-btn${rings === v ? ' active' : ''}" onclick="ThreeRenderer.setRingVitals(${v});${refreshJs}">${label}</button>`;
+            const styleSeg = (v, label) => `<button class="pm-seg-btn${style === v ? ' active' : ''}" onclick="ThreeRenderer.setPlateStyle('${v}');${refreshJs}">${label}</button>`;
+            return `
+                <div class="pm-set-row pm-setting-row" style="margin-top:6px">
+                    <span class="pm-setting-label">Vitals</span>
+                    <div class="pm-seg-group">
+                        ${ringSeg(false, 'Bars on plate')}${ringSeg(true, 'Rings at feet')}
+                    </div>
+                </div>
+                <div class="pm-set-row" style="margin-top:2px">
+                    <span class="pm-toggle-hint">Rings: HP is the outer ring, MP the inner — both fill clockwise from the top of the screen on the unit's selection ring, dark where spent.</span>
+                </div>
+                <div class="pm-set-row pm-setting-row" style="margin-top:6px">
+                    <span class="pm-setting-label">Nameplate</span>
+                    <div class="pm-seg-group">
+                        ${styleSeg('bars', 'Classic')}${styleSeg('compact', 'No bars')}${styleSeg('side', 'Side line')}
+                    </div>
+                </div>
+                <div class="pm-set-row" style="margin-top:2px">
+                    <span class="pm-toggle-hint">Classic = name + bars over the head · No bars = name + type chips only · Side line = a white leader line and the name beside the ring, numbers underneath.</span>
+                </div>`;
+        };
+
         function _renderMainMenuSettings() {
             const body = document.getElementById('mmSettingsBody');
             if (!body) return;
@@ -2864,6 +2898,7 @@
                             <button class="pm-set-btn${isFs ? ' active' : ''}" id="mmFsBtn" onclick="toggleFullscreen();setTimeout(()=>{const b=document.getElementById('mmFsBtn');if(b)b.textContent=document.fullscreenElement?'Exit Fullscreen':'⛶ Fullscreen';},120);">${isFs ? 'Exit Fullscreen' : '⛶ Fullscreen'}</button>
                         </div>
                         ${window._buildPerfSettingsHTML('window._openMainMenuSettings();')}
+                        ${typeof window._buildVitalsLookHTML === 'function' ? window._buildVitalsLookHTML('window._openMainMenuSettings();') : ''}
                     </div>
                     ${(typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && typeof DOOR_HQ !== 'undefined') ? (() => {
                         const on = (typeof window._hqEnabled === 'function') && window._hqEnabled();

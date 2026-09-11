@@ -937,3 +937,34 @@ Whiteout second ring, Spear Prison finisher and Gas Cloud puffs now use `_fxDela
 ## Adversarial continuation — 2026-09-10: Aurora Curtain/Spiral Beam/Bad Trip (local delivery)
 
 Aurora Curtain and Spiral Beam return `_sigRunOwned` to dispose refused allocations while preserving entry/null results and shared textures. Bad Trip delayed skulls use `_fxDelay`; its first skull remains immediate. 16 new checks pass (six fail before); full suite 574 pass, zero fail, two existing skips; syntax 94/94. ENTROPY_WARS_CONTINUED_VFX_FIXES.zip includes these three fixes plus the preceding four whiteout/seal/gas fixes and both test files (40 new checks total). Not deployed or browser-playtested. Next: Magic Circle, Magic Orb and Light Pillar refusal paths, then remaining return-only consumers and Psychosis timers; VFX-04 remains open. See the review plan's top entry for evidence limits.
+
+## RING VITALS + NAMEPLATE STYLES (Video settings) — added 2026-09-11
+An alternative to the HP/MP bars on the nameplate: the two meters are drawn
+ON the team reticle at the unit's feet. three-renderer.js `_plateLook`
+(`rings`, `style`; localStorage `ew_ringVitals` / `ew_plateStyle`; API
+`ThreeRenderer.setRingVitals / isRingVitalsOn / setPlateStyle /
+getPlateStyle`, applied LIVE — no rebuild). The reticle shader
+(`_reticleFragmentShader`) has a `uMeters` branch: HP is the outer meter on
+the ring's own radius (0.42), MP the inner one (0.335), both filled
+CLOCKWISE FROM THE SCREEN'S 12 O'CLOCK over a dark track — `uMeterRot` =
+camera azimuth + π − facing yaw, fed per frame by `_updateRingVitals` from
+`_updateUnitFacing` (bat swarms included); fills ease toward the unit's live
+hp/mp/shield (`_seedRingVitals` at build so a rebuild never re-drains).
+Colours: ally HP green / enemy HP red / MP blue (`RING_HP_ALLY_COLOR`,
+`RING_HP_ENEMY_COLOR`, `RING_MP_COLOR` = the bar gradients); the facing
+chevron keeps the team colour, the gap + ticks + accent arc are off in
+meter mode. `_updateDmgPreviewPlates` also drives `uPrev` / `uPrevHeal`
+(the confirm-step forecast blinks on the ring). Unit entries expose
+`entry.reticle` (`_reticleOfUnit(uid)`). Plate STYLES: `'bars'` (classic),
+`'compact'` (`.tp-compact`, no bars, type chips in a row), `'side'`
+(`.tp-side`: a white leader line `.tp-side-line` + the name beside the
+ring at foot level, HP/MP numbers under it — the CSS2D anchor drops to
+`po._footY`, `_writePlateTransform` pushes it right by
+`SIDE_PLATE_OFFSET_TILES` × the projected tile width; the far-zoom card
+always wins and returns to the head anchor). Real AND decoy plates wear the
+style (`_plateStyleClass`, `_anchorPlateForStyle`, `_applyPlateStyleLive`).
+Settings: map.js `window._buildVitalsLookHTML(refreshJs)` (Vitals: Bars on
+plate / Rings at feet · Nameplate: Classic / No bars / Side line) rendered
+in the pause menu (ui.js, under Nametags) and the main-menu Settings
+Display group. Viewer-local cosmetics — nothing relayed (both online seats
+read their own synced hp/mp). `npm test` runs `ring-vitals.test.js`.
