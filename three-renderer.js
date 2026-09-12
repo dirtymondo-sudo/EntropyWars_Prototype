@@ -1438,6 +1438,10 @@ const ThreeRenderer = (function () {
        _updateFluidWaves is O(1) no matter how many tiles are on the board. */
     var _fluidTimeUniform = { value: 0 };
     var _fluidTileUniform = { value: 1 };   // world units per tile (tracks _lastBuiltTileSize)
+    /* MOVING MAPS (2026-09-12): the world-space shift of every water top's
+       caustic web — the sea streams past the ship (a Vector2 made on first
+       use; THREE is not on the window when this file's top runs) */
+    var _fluidFlowUniform = { value: null };
 
     var _fluidTextures = {};
 
@@ -2131,6 +2135,8 @@ const ThreeRenderer = (function () {
             if (isWater) {
                 shader.uniforms.uFluidTime = _fluidTimeUniform;
                 shader.uniforms.uFluidTile = _fluidTileUniform;
+                if (!_fluidFlowUniform.value) _fluidFlowUniform.value = new THREE.Vector2(0, 0);
+                shader.uniforms.uFluidFlow = _fluidFlowUniform;
 
                 /* r128's <worldpos_vertex> only defines worldPosition behind
                    envmap/shadow defines, so carry our own varying. `transformed`
@@ -2150,6 +2156,7 @@ const ThreeRenderer = (function () {
                     'void main() {',
                     'uniform float uFluidTime;\n' +
                     'uniform float uFluidTile;\n' +
+                    'uniform vec2 uFluidFlow;\n' +
                     'varying vec3 vEwWorldPos;\n' +
                     'void main() {'
                 );
@@ -2163,7 +2170,7 @@ const ThreeRenderer = (function () {
                     '#include <emissivemap_fragment>\n' +
                     '{\n' +
                     '  float ewT = uFluidTime;\n' +
-                    '  vec2 ewP = vEwWorldPos.xz / max(uFluidTile, 0.0001);\n' +
+                    '  vec2 ewP = (vEwWorldPos.xz + uFluidFlow) / max(uFluidTile, 0.0001);\n' +
                     /* Caustics: the classic iterative sin/cos turbulence — a
                        flowing web of thin bright filaments (real refracted-
                        sunlight look) instead of the old round sin-interference
@@ -20000,6 +20007,8 @@ const ThreeRenderer = (function () {
         'uniform vec3 uFogColor; uniform float uFogAmount; uniform float uFogTop; uniform float uFogBand;',
         // per-map sky preset (state.mapEnv): palette wash + star/nebula dimmers
         'uniform vec3 uMapTint; uniform float uMapTintAmt; uniform float uMapStars; uniform float uMapNebula;',
+        // MOVING MAPS (2026-09-12): the sky streams with the travel, the sun / moon swell on a close pass
+        'uniform float uSkyFlow; uniform float uSunNear; uniform float uMoonNear;',
         '#define PI 3.14159265359',
         '#define TAU 6.28318530718',
         'float hash11(float p){p=fract(p*0.1031);p*=p+33.33;p*=p+p;return fract(p);}',
@@ -20163,8 +20172,8 @@ const ThreeRenderer = (function () {
         '  vec3 deepHi=mix(vec3(0.014,0.024,0.060),vec3(0.004,0.006,0.020),night);\n' +
         '  vec3 col=mix(deepLo,deepMd,smoothstep(0.0,0.55,v)); col=mix(col,deepHi,smoothstep(0.45,1.0,v));\n' +
         // ── volumetric nebula clouds, slowly drifting, multi-hue ──
-        '  float n1=fbm(nd*vec2(2.4,3.0)+vec2(t*0.004,0.0));\n' +
-        '  float n2=fbm(nd*vec2(5.5,6.5)-vec2(t*0.006,0.4));\n' +
+        '  float n1=fbm(nd*vec2(2.4,3.0)+vec2(t*0.004+uSkyFlow,0.0));\n' +
+        '  float n2=fbm(nd*vec2(5.5,6.5)-vec2(t*0.006+uSkyFlow*1.35,0.4));\n' +
         '  float n3=fbm(nd*vec2(11.0,13.0)+vec2(0.0,t*0.003));\n' +
         '  float neb=clamp(n1*0.65+n2*0.45+n3*0.20-0.34,0.0,1.0); neb=pow(neb,1.6);\n' +
         '  vec3 nebMag =mix(vec3(0.46,0.12,0.52),vec3(0.22,0.05,0.34),night);\n' +
@@ -20200,16 +20209,16 @@ const ThreeRenderer = (function () {
         //  constellation lines can draw on during the sky cinematic. The old
         //  in-shader node dots / random 6-star cluster lived here.
         // ── sun (a warm star, or a black sun during a solar eclipse) ──
-        '  float sa=acos(clamp(dot(rd,sunDir),-1.0,1.0)); float sunVis=1.0-night*0.85; float sunR=0.05;\n' +
-        '  float disc=smoothstep(sunR,sunR*0.8,sa); float corona=exp(-sa*5.0)*0.8+exp(-sa*1.3)*0.18;\n' +
-        '  vec3 sunWarm=mix(vec3(1.0,0.92,0.70),vec3(1.0,0.66,0.32),wSand);\n' +
+        '  float sa=acos(clamp(dot(rd,sunDir),-1.0,1.0)); float sunVis=max(1.0-night*0.85,uSunNear); float sunR=0.05+0.42*uSunNear;\n' +
+        '  float disc=smoothstep(sunR,sunR*0.8,sa); float corona=exp(-sa*(5.0-3.4*uSunNear))*(0.8+1.4*uSunNear)+exp(-sa*1.3)*(0.18+0.55*uSunNear);\n' +
+        '  vec3 sunWarm=mix(vec3(1.0,0.92,0.70),vec3(1.0,0.66,0.32),wSand); sunWarm=mix(sunWarm,vec3(1.0,0.58,0.22),uSunNear*0.7);\n' +
         '  vec3 sunC=disc*sunWarm*3.0+corona*sunWarm*1.2;\n' +
         '  vec3 blackSunC=-disc*vec3(2.5)+smoothstep(sunR*1.7,sunR*1.05,abs(sa-sunR*1.25))*vec3(1.0,0.9,0.7)*2.8+corona*vec3(0.9,0.7,0.95)*0.5;\n' +
         '  col+=mix(sunC*sunVis,blackSunC,bsun);\n' +
         // ── moon ──
-        '  float ma=acos(clamp(dot(rd,moonDir),-1.0,1.0)); float moonVis=0.35+0.65*night; float moonR=mix(0.06,0.095,bloodM);\n' +
-        '  float mdisc=smoothstep(moonR,moonR*0.85,ma); float craters=fbm((rd.xy-moonDir.xy)*42.0);\n' +
-        '  vec3 moonGrey=vec3(0.85,0.88,0.95)*(0.8+0.3*craters); float mGlow=exp(-ma*7.0)*0.4;\n' +
+        '  float ma=acos(clamp(dot(rd,moonDir),-1.0,1.0)); float moonVis=max(0.35+0.65*night,uMoonNear); float moonR=mix(0.06,0.095,bloodM)+0.42*uMoonNear;\n' +
+        '  float mdisc=smoothstep(moonR,moonR*0.85,ma); float craters=fbm((rd.xy-moonDir.xy)*(42.0/(1.0+6.0*uMoonNear)));\n' +
+        '  vec3 moonGrey=vec3(0.85,0.88,0.95)*(0.8+0.3*craters); float mGlow=exp(-ma*(7.0-5.2*uMoonNear))*(0.4+0.5*uMoonNear);\n' +
         '  float mMesh=1.0-uMoonMesh;\n' +   // 3D moon model on screen → hide the painted disc, keep the halo
         '  vec3 moonC=mdisc*moonGrey*1.6*mMesh+mGlow*moonGrey*0.6;\n' +
         '  vec3 moonRed=vec3(0.75,0.12,0.07)*(0.7+0.5*craters);\n' +
@@ -20217,7 +20226,7 @@ const ThreeRenderer = (function () {
         '  col+=mix(moonC*moonVis,moonEv,max(bloodM,lun));\n' +
         '  col+=smoothstep(0.85,1.0,el)*mix(vec3(0.10,0.08,0.18),vec3(0.30,0.25,0.45),night)*0.14*uOccult;\n' +
         // ── storm overcast: seamless, weighted to the lower sky, no hard edge ──
-        '  if(wStorm>0.01){ float cl=fbm(vec2(az*2.2+t*0.05, v*3.0 - t*0.02));\n' +
+        '  if(wStorm>0.01){ float cl=fbm(vec2(az*2.2+t*0.05+uSkyFlow*5.0, v*3.0 - t*0.02));\n' +
         '    float cover=smoothstep(0.70,0.12,v);\n' +
         '    vec3 cloud=mix(vec3(0.16,0.17,0.22),vec3(0.03,0.035,0.06),night);\n' +
         '    col=mix(col,cloud,cover*smoothstep(0.40,0.70,cl)*wStorm*0.85); }\n' +
@@ -20225,6 +20234,9 @@ const ThreeRenderer = (function () {
         '  col=mix(col,col*vec3(0.85,0.95,1.15)+vec3(0.04,0.06,0.09),wSnow*0.4);\n' +
         '  col=mix(col,col*vec3(1.18,1.00,0.74)+vec3(0.05,0.03,0.0),wSand*0.35);\n' +
         '  col=mix(col,col*vec3(1.30,0.50,0.45)+vec3(0.05,0.0,0.0),wBlood*0.45);\n' +
+        // MOVING MAPS: the close pass — the whole sky goes hot and gold beside the sun, cold and pale under the moon
+        '  col=mix(col,col*vec3(1.35,0.85,0.55)+vec3(0.10,0.04,0.0),uSunNear*0.55);\n' +
+        '  col=mix(col,col*vec3(0.90,0.92,1.15)+vec3(0.03,0.03,0.08),uMoonNear*0.35);\n' +
         '  col=col/(col+vec3(0.6)); col=pow(max(col,0.0),vec3(0.92));\n' +
         // ── per-map sky wash (state.mapEnv.tint): pull the dome toward the
         //    map's palette; highlights (sun/moon/stars) still modulate it ──
@@ -20270,7 +20282,11 @@ const ThreeRenderer = (function () {
                 uMapStars: { value: 1.0 },
                 uMapNebula: { value: 1.0 },
                 // 1 while the real 3D moon model is visible (see _updateSkyMoon)
-                uMoonMesh: { value: 0.0 }
+                uMoonMesh: { value: 0.0 },
+                // MOVING MAPS: written by _motionTick every frame (0 on a still map, and in the HQ / menu)
+                uSkyFlow: { value: 0.0 },
+                uSunNear: { value: 0.0 },
+                uMoonNear: { value: 0.0 }
             };
 
             var groundMat = new THREE.ShaderMaterial({
@@ -20412,10 +20428,11 @@ const ThreeRenderer = (function () {
             if (!_mapTintScratch) { _mapTintScratch = new THREE.Color(); _mapTintTarget = new THREE.Vector3(); }
             _mapTintScratch.setHex(me.tint);
             _mapTintTarget.set(_mapTintScratch.r, _mapTintScratch.g, _mapTintScratch.b);
+            if (_motion.sunNear > 0.001) _mapTintTarget.lerp(_MOTION_SUN_TINT, _motion.sunNear * 0.65);   // the close pass gilds the whole sky
             _envUni.uMapTint.value.lerp(_mapTintTarget, 0.08);
         }
         _envUni.uMapTintAmt.value = S.mapTintAmt;
-        _envUni.uMapStars.value = S.mapStars;
+        _envUni.uMapStars.value = S.mapStars * (1 - 0.7 * _motion.sunNear);   // stars drown beside the sun (MOVING MAPS)
         _envUni.uMapNebula.value = S.mapNebula;
         // map fog feeds the same uFog* pipeline as the retro-fog filter (which
         // wins while enabled); scenery haze shares those uniforms and follows
@@ -20429,12 +20446,22 @@ const ThreeRenderer = (function () {
         _hzTheme = (me && me.scenery) || 'cosmic';
         _hzThemeDensity = (me && me.density != null) ? me.density : 1;
         _hzNear = (me && me.near) || null;                 // the board's near setting (MAP SETTINGS, 2026-09-06)
+        /* MOVING MAPS (2026-09-12): env.motion — the setting travels; the
+           tick advances the distance from state.round's speed (synced
+           online, so both seats see one speed) */
+        _hzMotion = (me && me.motion && typeof me.motion === 'object' && !(typeof window !== 'undefined' && window.EW_NO_MAP_MOTION)) ? me.motion : null;
+        _motionTick(performance.now() / 1000);
 
         _envUni.uDayNight.value = S.night;
         _envUni.uSkyEvent.value = S.skyEvent;
         _envUni.uSkyAmt.value = S.skyAmt;
         _envUni.uZodiac.value = S.zodiac;
-        _envUni.uWeather.value.set(S.storm, S.snow, S.sand, S.blood);
+        /* MOVING MAPS: the storm a sea map sails into builds with the rounds
+           (a floor under the weather's own storm, never a real weather) */
+        _envUni.uWeather.value.set(Math.max(S.storm, _motion.storm), S.snow, S.sand, S.blood);
+        _envUni.uSkyFlow.value = _motion.skyFlow;
+        _envUni.uSunNear.value = _motion.sunNear;
+        _envUni.uMoonNear.value = _motion.moonNear;
         _envUni.uTime.value = performance.now() / 1000;
 
         // keep the real horizon scenery in sync + atmospherically graded
@@ -20507,7 +20534,7 @@ const ThreeRenderer = (function () {
         var bloodM = (S.skyEvent > 0.5 && S.skyEvent < 1.5) ? S.skyAmt : 0;
         var lun = (S.skyEvent >= 2.5) ? S.skyAmt : 0;
         var red = Math.max(bloodM, lun);
-        _skyMoon.scale.setScalar(1 + 0.58 * bloodM);   // old disc grew 0.06 → 0.095 rad on blood moons
+        _skyMoon.scale.setScalar((1 + 0.58 * bloodM) * (1 + 7.0 * _motion.moonNear));   // old disc grew 0.06 → 0.095 rad on blood moons; the Looking-Glass's pass swells it eightfold
         if (!_skyMoonCol) { _skyMoonCol = new THREE.Color(); _SKY_MOON_RED = new THREE.Color(0xc22014); }
         // faint by day, bright by night (the old moonVis beat), washed red by events
         _skyMoonCol.setScalar(0.55 + 0.75 * S.night);
@@ -23992,6 +24019,9 @@ const ThreeRenderer = (function () {
         if (o.key === 'lava' && mat.emissive) { mat.emissiveIntensity = 0.85; }
         var m = new THREE.Mesh(geo, mat); m.name = 'moat:' + (o.key || 'water');
         m.rotation.x = -Math.PI / 2; m.position.set((x0 + x1) / 2, y, (z0 + z1) / 2); m.receiveShadow = true;
+        /* MOVING MAPS: a streaming sea — the sheet slides one texture period
+           and wraps (seamless: one texture per tile), see _motionAnimate */
+        if (o.stream) _motionSheets.push({ mesh: m, x0: m.position.x, z0: m.position.z, per: ts });
         return K.add(m);
     }
     /* Curtain walls at distance d (to the wall's centreline) with height h and
@@ -24925,6 +24955,210 @@ const ThreeRenderer = (function () {
         var circle = new THREE.Mesh(new THREE.RingGeometry(3.2 * ts, 3.4 * ts, 48), new THREE.MeshBasicMaterial({ color: 0xb0a890, transparent: true, opacity: 0.35, depthWrite: false })); circle.rotation.x = -Math.PI / 2; circle.position.set(K.BX0 - 7 * ts, K.fy + 0.8, K.BZ1 + 5 * ts); K.add(circle);
         var stone = K.box(0.5 * ts, 0.7 * ts, 0.3 * ts, K.mat('rocks_1', 0xa8a8a0)); stone.position.set(K.BX0 - 7 * ts, K.fy + 0.3 * ts, K.BZ1 + 5 * ts); stone.rotation.y = 0.4; K.add(K.lit(stone, true));
     };
+    // ── MOVING MAPS (2026-09-12): the settings that travel ────────────────
+    /* the sea's level under a deck (tiles below the board top); the meta
+       row's motion.seaDepth must say the same for the far roster's islands */
+    var _NR_SEA_DEPTH = 2.4;
+    /* a ship's rail along one board side at the apron's outer edge: posts and
+       two rails, the spawn lane (the gangway) left open */
+    function _nrShipRail(K, side, o) {
+        var ts = K.ts, fy = K.fy, mat = K.mat(o.tex || 'wood', o.color == null ? 0xffffff : o.color), h = (o.h || 0.5) * ts;
+        var z = side === 'n' ? K.Z0 + 0.12 * ts : K.Z1 - 0.12 * ts, x0 = K.X0 + 0.15 * ts, x1 = K.X1 - 0.15 * ts;
+        var n = Math.max(2, Math.round((x1 - x0) / (0.8 * ts))), prev = null;
+        for (var i = 0; i <= n; i++) {
+            var x = x0 + (x1 - x0) * i / n, gate = K.inLane(x, z, 1.75 * ts);
+            if (!gate) { var post = K.box(0.09 * ts, h, 0.09 * ts, mat); post.position.set(x, fy + h / 2, z); K.add(K.lit(post, true)); }
+            if (prev != null && !gate && !K.inLane(prev, z, 1.75 * ts)) [0.48, 0.92].forEach(function (f) { var rail = K.box(x - prev, 0.06 * ts, 0.05 * ts, mat); rail.position.set((x + prev) / 2, fy + h * f, z); K.add(rail); });
+            prev = x;
+        }
+    }
+    /* a scrolling wake sheet: an additive streak plane lying on the water
+       that scrolls with the travel (its own texture clone) */
+    function _nrWake(K, x, z, len, wid, op, seed, ry) {
+        var ts = K.ts, base = _nrStreakTex(seed || 1); if (!base) return null;
+        var tex = base.clone(); tex.needsUpdate = true; tex.wrapS = THREE.RepeatWrapping;
+        var geo = new THREE.PlaneGeometry(len, wid); _nrUV(geo, len / ts * 0.5, 1);
+        var mat = new THREE.MeshBasicMaterial({ map: tex, color: 0xffffff, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+        var m = new THREE.Mesh(geo, mat); m.rotation.x = -Math.PI / 2; m.rotation.z = ry || 0; m.position.set(x, K.fy - _NR_SEA_DEPTH * ts - 0.18 * ts + 0.6, z); m.renderOrder = 2;
+        _motionScroll.push({ tex: tex, per: 2 * ts, sign: 1 });
+        return K.add(m);
+    }
+    /* QUEEN ANNE'S REVENGE — the board is the main deck of a galleon under
+       way, bow to the EAST (+X, the travel axis): the hull round it (the
+       deck rim is the apron, the hull block its skirt), the bow with its
+       bowsprit, the sterncastle with lit windows and lanterns, two masts
+       with yards, bellied sails, crow's nests, pennants and rigging, the
+       rails with the gangway open, cannon, barrels — and the sea: a
+       streaming sheet with a scrolling wake down each side and astern,
+       spray at the bow. Tall pieces fade when they stand between the
+       camera and the board (occ). */
+    _NR_BUILDERS.revenge = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 1.6, gap: 0, occ: true }), ts = K.ts, fy = K.fy, rng = K.rng, HQ = !!K.hq;
+        _nrApron(K, { tex: 'wood_planks', deep: true, skirt: 'wood', skirtColor: 0x8a5e38 });
+        _nrMoat(K, { key: 'deep_water', depth: _NR_SEA_DEPTH, pad: 40, stream: true });
+        var hull = K.mat('wood', 0x8a5e38), deck = K.mat('wood_planks', 0xffffff), darkWood = K.mat('wood', 0x5a3c26), iron = K.mat('gunmetal', 0x7a7e86);
+        var top = fy - 0.6, bulwarkH = 0.45 * ts;
+        /* the bow: two bulwarks converging on the prow, the deck between them, the bowsprit, the lantern */
+        var prowX = K.X1 + 4.4 * ts, halfW = (K.Z1 - K.Z0) / 2;
+        [[K.Z0, -1], [K.Z1, 1]].forEach(function (sd) {
+            var dx = prowX - K.X1, dz = K.CZ - sd[0], L = Math.hypot(dx, dz), hH = top + bulwarkH;
+            var b = K.box(L, hH, 0.28 * ts, hull); b.position.set((K.X1 + prowX) / 2, hH / 2, (sd[0] + K.CZ) / 2); b.rotation.y = -Math.atan2(dz, dx); K.addW('e', K.lit(b, true));
+        });
+        var tri = new THREE.Shape(); tri.moveTo(K.X1, -K.Z0); tri.lineTo(prowX, -K.CZ); tri.lineTo(K.X1, -K.Z1); tri.lineTo(K.X1, -K.Z0);
+        var capGeo = new THREE.ShapeGeometry(tri); _nrUV(capGeo, 1 / ts, 1 / ts);
+        var cap = new THREE.Mesh(capGeo, deck); cap.rotation.x = -Math.PI / 2; cap.position.y = top - 0.02 * ts; K.addW('e', K.lit(cap));
+        var sprit = K.cyl(0.05 * ts, 0.08 * ts, 4.2 * ts, 6, darkWood); sprit.rotation.z = -Math.PI / 2 + 0.34; sprit.position.set(prowX - 0.4 * ts + Math.cos(0.34) * 2.1 * ts, top + 0.25 * ts + Math.sin(0.34) * 2.1 * ts, K.CZ); K.addW('e', K.lit(sprit));
+        K.addW('e', K.lamp(prowX - 0.2 * ts, top + 0.6 * ts, K.CZ, 0xffc070, 1.1 * ts, 0.5));
+        /* the sterncastle: a deck-and-a-third of cabin, the transom's windows, two lanterns, the name */
+        var castleH = top + 1.35 * ts, castle = K.box(3.0 * ts, castleH, K.Z1 - K.Z0, K.mat('wood_planks', 0xc8956a)); castle.position.set(K.X0 - 1.5 * ts, castleH / 2, K.CZ); K.addW('w', K.lit(castle, true));
+        var winMat = K.glow(0xffc070, 0.75); _hzPulse(winMat, null, 0.08, 0, 1.3);
+        [-1.2, 0, 1.2].forEach(function (f) { var w = new THREE.Mesh(new THREE.PlaneGeometry(0.34 * ts, 0.28 * ts), winMat); w.position.set(K.X0 - 3.0 * ts - 0.5, top + 0.62 * ts, K.CZ + f * ts); w.rotation.y = -Math.PI / 2; K.addW('w', w); });
+        [K.Z0 + 0.4 * ts, K.Z1 - 0.4 * ts].forEach(function (z) { K.addW('w', K.lamp(K.X0 - 2.9 * ts, castleH + 0.25 * ts, z, 0xffb060, 1.3 * ts, 0.55)); });
+        _nrSign(K, 'qar_name', ["QUEEN ANNE'S REVENGE"], 3.4 * ts, 0.42 * ts, K.X0 - 3.0 * ts - 1, top + 0.16 * ts, K.CZ, -Math.PI / 2, { bg: '#2a1a10', border: '#d8a860', color: '#f4e4c8', emissive: 0x3a2a14 });
+        var poopRail = K.box(0.06 * ts, 0.5 * ts, K.Z1 - K.Z0, darkWood); poopRail.position.set(K.X0 - 0.06 * ts, castleH + 0.25 * ts, K.CZ); K.addW('w', poopRail);
+        /* the masts: the foremast on the bow deck, the mizzen before the castle; yards, bellied sails, a nest, the pennant, rigging */
+        var sailMat = _hzLit(null, 0xe8e0d0, { side: THREE.DoubleSide }); sailMat.emissive = new THREE.Color(0x2a2620);
+        var lineMat = new THREE.LineBasicMaterial({ color: 0x2a2118 });
+        var flagTex = _hzTextTex('qar_flag', ['\u2620'], { w: 128, h: 96, bg: '#111111', color: '#eeeeee', pad: 0.1, sizes: [70] });
+        function mast(x, z, h, side) {
+            var m = K.cyl(0.06 * ts, 0.1 * ts, h, 7, darkWood); m.position.set(x, top + h / 2, z); K.addW(side, K.lit(m, true));
+            [[0.6, 4.6], [0.84, 3.4]].forEach(function (yd, i) {
+                var yy = top + h * yd[0], len = yd[1] * ts;
+                var yard = K.cyl(0.035 * ts, 0.045 * ts, len, 5, darkWood); yard.rotation.x = Math.PI / 2; yard.position.set(x, yy, z); K.addW(side, yard);
+                var sh = h * (i === 0 ? 0.22 : 0.16), sg = new THREE.PlaneGeometry(len * 0.92, sh, 12, 1), pos = sg.getAttribute('position');
+                for (var v = 0; v < pos.count; v++) { var u = (pos.getX(v) / (len * 0.92)) + 0.5, w = (pos.getY(v) / sh) + 0.5; pos.setZ(v, Math.sin(u * Math.PI) * Math.sin(w * Math.PI) * 0.55 * ts); }
+                sg.computeVertexNormals();
+                var sail = new THREE.Mesh(sg, sailMat); sail.rotation.y = Math.PI / 2; sail.position.set(x + 0.04 * ts, yy - sh / 2 - 0.02 * ts, z); K.addW(side, K.lit(sail, true));
+            });
+            var nest = K.cyl(0.24 * ts, 0.2 * ts, 0.26 * ts, 8, darkWood); nest.position.set(x, top + h * 0.74, z); K.addW(side, nest);
+            if (flagTex) { var fm = new THREE.MeshBasicMaterial({ map: flagTex, side: THREE.DoubleSide }); var flag = new THREE.Mesh(new THREE.PlaneGeometry(0.55 * ts, 0.38 * ts), fm); flag.position.set(x - 0.3 * ts, top + h + 0.2 * ts, z); K.addW(side, flag); }
+            if (!HQ) [[K.X0 + 0.3 * ts, K.Z0 + 0.3 * ts], [K.X0 + 0.3 * ts, K.Z1 - 0.3 * ts], [K.X1 - 0.3 * ts, K.Z0 + 0.3 * ts], [K.X1 - 0.3 * ts, K.Z1 - 0.3 * ts], [x, K.Z0 + 0.2 * ts], [x, K.Z1 - 0.2 * ts]].forEach(function (p) {   // (no rigging in the room: a line's bounds would block the quay)
+                var g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x, top + h * 0.95, z), new THREE.Vector3(p[0], top + 0.5 * ts, p[1])]);
+                K.addW(side, new THREE.Line(g, lineMat));
+            });
+        }
+        mast(K.X1 + 0.9 * ts, K.CZ, 6.2 * ts, 'e');
+        mast(K.X0 + 0.8 * ts, K.CZ, 7.0 * ts, 'w');
+        /* the rails (the gangway open), cannon on the strips, barrels, coils */
+        _nrShipRail(K, 'n', { tex: 'wood', color: 0xffffff, h: 0.5 }); _nrShipRail(K, 's', { tex: 'wood', color: 0xffffff, h: 0.5 });
+        [[1.0, 'n'], [2.2, 'n'], [5.8, 'n'], [7.0, 'n'], [1.0, 's'], [2.2, 's'], [5.8, 's'], [7.0, 's']].forEach(function (c) {
+            var x = K.BX0 + c[0] * ts, z = c[1] === 'n' ? K.BZ0 - 0.8 * ts : K.BZ1 + 0.8 * ts;
+            var carriage = K.box(0.36 * ts, 0.2 * ts, 0.5 * ts, darkWood); carriage.position.set(x, top + 0.1 * ts, z); K.add(K.lit(carriage, true));
+            var barrel = K.cyl(0.07 * ts, 0.1 * ts, 0.78 * ts, 8, iron); barrel.rotation.x = Math.PI / 2; barrel.position.set(x, top + 0.26 * ts, z + (c[1] === 'n' ? -0.1 : 0.1) * ts); K.add(K.lit(barrel, true));
+        });
+        [[K.X0 + 0.5 * ts, K.Z0 + 0.5 * ts], [K.X0 + 0.5 * ts, K.Z1 - 0.5 * ts], [K.X1 - 0.5 * ts, K.Z1 - 0.5 * ts], [K.X0 + 1.1 * ts, K.Z0 + 0.5 * ts]].forEach(function (p) {
+            var b = K.cyl(0.26 * ts, 0.26 * ts, 0.5 * ts, 9, K.mat('wood', 0xa07040)); b.position.set(p[0], top + 0.25 * ts, p[1]); K.add(K.lit(b, true));
+        });
+        [[K.X1 - 0.5 * ts, K.Z0 + 0.5 * ts], [K.X0 + 1.1 * ts, K.Z1 - 0.5 * ts]].forEach(function (p) {
+            var coil = new THREE.Mesh(new THREE.TorusGeometry(0.22 * ts, 0.07 * ts, 6, 14), K.mat('wood', 0xc0a070)); coil.rotation.x = Math.PI / 2; coil.position.set(p[0], top + 0.07 * ts, p[1]); K.add(coil);
+        });
+        /* the sea's work: the wake down each side and astern, spray at the bow (nothing of this in the building) */
+        if (!HQ) {
+            var len = prowX - (K.X0 - 3.0 * ts) + 4 * ts, mid = (prowX + K.X0 - 3.0 * ts) / 2 - 2 * ts;
+            _nrWake(K, mid, K.Z0 - 0.85 * ts, len, 1.5 * ts, 0.5, 1); _nrWake(K, mid, K.Z1 + 0.85 * ts, len, 1.5 * ts, 0.5, 2);
+            _nrWake(K, K.X0 - 3.0 * ts - 6.5 * ts, K.CZ, 13 * ts, (K.Z1 - K.Z0) * 1.15, 0.3, 3);
+            for (var i = 0; i < 6; i++) { var sp = _hzGlowSprite(ts * (0.35 + rng() * 0.4), 0xe8f6ff, 0.55, 0.35, 0.25, 4 + rng() * 5); sp.position.set(prowX - ts * (0.2 + rng() * 1.6), fy - _NR_SEA_DEPTH * ts + ts * (0.1 + rng() * 0.5), K.CZ + (rng() - 0.5) * ts * 2.2); K.add(sp); }
+        }
+    };
+    /* THE DERELICT — the board is a surviving stretch of deck plate: torn
+       plating round it (the gangways in the spawn lanes are whole, the
+       rest is dropped and tilted), the ship's ribs arching over it, girders
+       poking out with live cables sparking at their ends, a bulkhead
+       fragment with a porthole and a warning strobe, the reactor bell
+       astern with its cold light, loose debris drifting alongside. No
+       apron and no sea: the board's own bed (void under hull plate) shows
+       where the plating is gone. */
+    _NR_BUILDERS.derelict = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 2.2, gap: 0 }), ts = K.ts, fy = K.fy, rng = K.rng, HQ = !!K.hq;
+        var plate = K.mat('metal_3', 0xffffff), dark = K.mat('gunmetal', 0xffffff), top = fy - 0.6, T = 0.35 * ts;
+        function slab(x0, z0, x1, z1, drop, tx, tz) {
+            var w = x1 - x0, d = z1 - z0; if (w <= 0 || d <= 0 || HQ) return null;   // (the room's quay stands for the plating)
+            var m = K.box(w, T, d, plate); m.position.set((x0 + x1) / 2, top - T / 2 - (HQ ? 0 : drop || 0) * ts, (z0 + z1) / 2);
+            if (!HQ) { m.rotation.x = tx || 0; m.rotation.z = tz || 0; }
+            return K.add(K.lit(m, true));
+        }
+        var W = K.W, lane = 2.3 * ts;
+        /* north and south: the gangway whole, torn plates either side */
+        [[K.Z0, K.BZ0], [K.BZ1, K.Z1]].forEach(function (zz, i) {
+            slab(K.CX - lane, zz[0], K.CX + lane, zz[1], 0, 0, 0);
+            slab(K.X0 + 0.2 * ts, zz[0] + 0.1 * ts, K.X0 + 3.1 * ts, zz[1] - 0.1 * ts, 0.18, (i ? -1 : 1) * 0.07, 0.05);
+            slab(K.X1 - 2.4 * ts, zz[0] + 0.2 * ts, K.X1 - 0.3 * ts, zz[1], 0.3, (i ? 1 : -1) * 0.05, -0.09);
+        });
+        /* east (the bow that is left) and west (engineering): two plates each */
+        slab(K.BX1, K.Z0 + 0.6 * ts, K.X1 - 0.2 * ts, K.Z0 + 3.4 * ts, 0.12, 0.03, 0.06);
+        slab(K.BX1, K.Z1 - 3.0 * ts, K.X1 - 0.6 * ts, K.Z1 - 0.3 * ts, 0.26, -0.04, 0.08);
+        slab(K.X0, K.BZ0 - 0.6 * ts, K.BX0, K.BZ1 + 0.6 * ts, 0, 0, 0);
+        /* the ribs: hoops over the deck, open below, one of them broken */
+        var ribMat = K.mat('gunmetal', 0xffffff);
+        [[K.BX0 - 0.6 * ts, Math.PI * 0.85], [K.CX, Math.PI * 0.9], [K.BX1 + 0.6 * ts, Math.PI * 0.55]].forEach(function (rb, i) {
+            var R = 6.4 * ts, geo = new THREE.TorusGeometry(R, 0.15 * ts, 6, 30, rb[1]); _nrUV(geo, 8, 1);
+            var m = new THREE.Mesh(geo, ribMat); m.position.set(rb[0], fy - 0.4 * ts, K.CZ); m.rotation.y = Math.PI / 2;   // the hoop's ends clear head height (the room reads it as overhead) m.rotateZ(Math.PI / 2 - rb[1] / 2 + (i === 2 ? 0.5 : 0));
+            K.add(K.lit(m, true));
+        });
+        /* girders and cables with live ends */
+        for (var g = 0; g < (HQ ? 0 : 7); g++) {
+            var side = g % 2 ? -1 : 1, x = K.X0 + rng() * (K.X1 - K.X0), z = side < 0 ? K.Z0 + rng() * 0.6 * ts : K.Z1 - rng() * 0.6 * ts;
+            if (K.inLane(x, z, 2.6 * ts)) continue;
+            var len = ts * (2.5 + rng() * 3.5), b = K.box(0.13 * ts, 0.13 * ts, len, dark); b.position.set(x, top - 0.1 * ts + (rng() - 0.5) * ts, z + side * len * 0.45); b.rotation.set(side * (0.2 + rng() * 0.5), (rng() - 0.5) * 0.6, (rng() - 0.5) * 0.3); K.add(K.lit(b, true));
+            var sp = _hzGlowSprite(ts * 0.55, 0x9fd8ff, 0.8, 0.6, 0.35, 5 + rng() * 6); sp.position.set(x + (rng() - 0.5) * ts, b.position.y + Math.sin(-b.rotation.x) * len * 0.45 * side, z + side * len * 0.9); K.add(sp);
+        }
+        /* engineering: the bulkhead fragment, the porthole, the strobe, the reactor bell astern */
+        var wallH = 2.6 * ts, wall = K.box(0.4 * ts, wallH, (K.Z1 - K.Z0) * 0.7, plate); wall.position.set(K.X0 - 0.1 * ts, top + wallH / 2 - 0.3 * ts, K.CZ); K.add(K.lit(wall, true));
+        var port = new THREE.Mesh(new THREE.CircleGeometry(0.28 * ts, 16), K.glow(0x7fd8ff, 0.8)); port.rotation.y = Math.PI / 2; port.position.set(K.X0 + 0.11 * ts, top + 1.3 * ts, K.CZ + 1.4 * ts); K.add(port);
+        var strobeMat = K.glow(0xff3a20, 0.9); var strobe = _hzGlowSprite(ts * 1.2, 0xff3a20, 0.75, 0.7, 0.2, 7); strobe.position.set(K.X0 + 0.3 * ts, top + wallH - 0.2 * ts, K.CZ - 1.6 * ts); K.add(strobe);
+        var bell = K.cyl(1.35 * ts, 1.0 * ts, 2.4 * ts, 14, dark); bell.rotation.z = Math.PI / 2; bell.position.set(K.X0 - 1.9 * ts, fy - 0.5 * ts, K.CZ); K.add(K.lit(bell, true));
+        var core = _hzGlowCore(0.7 * ts, 0xbfe8ff, 0x4fa0ff); core.position.set(K.X0 - 2.6 * ts, fy - 0.5 * ts, K.CZ); K.add(core);
+        var exhaust = new THREE.Mesh(new THREE.PlaneGeometry(7 * ts, 1.6 * ts), K.glow(0x6fb8ff, 0.12)); exhaust.position.set(K.X0 - 6.5 * ts, fy - 0.5 * ts, K.CZ); K.add(exhaust);
+        K.add(K.lamp(K.X1 - 0.6 * ts, top + 0.9 * ts, K.Z0 + 1.0 * ts, 0xbfe0ff, 1.4 * ts, 0.45)); K.add(K.lamp(K.X0 + 1.2 * ts, top + 1.2 * ts, K.Z1 - 0.8 * ts, 0xbfe0ff, 1.4 * ts, 0.45));
+        /* loose debris drifting alongside (bobs and tumbles with the floaters) */
+        if (!HQ) for (var d = 0; d < 14; d++) {
+            var a = rng() * Math.PI * 2, r = ts * (5.5 + rng() * 5), sz = ts * (0.18 + rng() * 0.4);
+            var deb = new THREE.Mesh(new THREE.DodecahedronGeometry(sz, 0), rng() < 0.5 ? plate : dark); deb.position.set(K.CX + Math.cos(a) * r * 1.3, fy + (rng() - 0.5) * 4 * ts, K.CZ + Math.sin(a) * r); deb.rotation.set(rng() * 3, rng() * 3, rng() * 3); K.add(K.lit(deb));
+            _horizonFloaters.push({ obj: deb, baseY: deb.position.y, amp: ts * (0.15 + rng() * 0.35), spd: 0.2 + rng() * 0.4, phase: rng() * 6, spin: (rng() < 0.5 ? 1 : -1) * (0.002 + rng() * 0.006) });
+        }
+    };
+    /* THE LOOKING-GLASS — the board is the board: a thin marble rim round it
+       (the apron), an inverted marble keel under it so it reads as one
+       flying slab, the pieces standing on the rim at house size (rooks on
+       the corners, king and queen astern, bishops ahead, a knight either
+       flank), card soldiers between them, teacups, violet lamps, a few
+       unfinished shapes tumbling alongside. The void of shapes streams past
+       beyond. */
+    _NR_BUILDERS.lookingglass = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 1.2, gap: 0 }), ts = K.ts, fy = K.fy, rng = K.rng, HQ = !!K.hq;
+        _nrApron(K, { tex: 'marble_light', color: 0xffffff, thick: 0.6, skirt: 'marble', skirtColor: 0xffffff });
+        var white = K.mat('marble_light', 0xffffff), black = K.mat('marble', 0xffffff), top = fy - 0.6;
+        if (!HQ) {
+            var half = (K.X1 - K.X0) / 2, r = half * Math.SQRT2 * 1.02, h = 7 * ts;
+            var kg = new THREE.ConeGeometry(r, h, 4, 1); _nrUV(kg, 4, 4);
+            var keel = new THREE.Mesh(kg, black); keel.rotation.set(Math.PI, Math.PI / 4, 0); keel.position.set(K.CX, top - 0.6 * ts - h / 2, K.CZ); K.add(K.lit(keel));
+        }
+        function piece(kind, x, z, hh, dark, ry) { var p = _hzChessPiece(kind, hh * ts, dark ? black : white, ts); p.position.set(x, top, z); p.rotation.y = ry || 0; p.traverse(function (o) { if (o.isMesh) K.lit(o, true); }); K.add(p); return p; }
+        var e = 0.6 * ts;
+        piece('rook', K.X0 + e, K.Z0 + e, 1.7, false); piece('rook', K.X0 + e, K.Z1 - e, 1.7, false);
+        piece('rook', K.X1 - e, K.Z0 + e, 1.7, true); piece('rook', K.X1 - e, K.Z1 - e, 1.7, true);
+        piece('king', K.X0 + e, K.CZ - 1.7 * ts, 2.4, false); piece('queen', K.X0 + e, K.CZ + 1.7 * ts, 2.2, false);
+        piece('bishop', K.X1 - e, K.CZ - 1.7 * ts, 2.0, true); piece('bishop', K.X1 - e, K.CZ + 1.7 * ts, 2.0, true);
+        piece('knight', K.CX - 3.3 * ts, K.Z0 + e, 1.9, false, Math.PI); piece('knight', K.CX + 3.3 * ts, K.Z1 - e, 1.9, true, 0);
+        piece('pawn', K.CX + 3.3 * ts, K.Z0 + e, 1.4, true); piece('pawn', K.CX - 3.3 * ts, K.Z1 - e, 1.4, false);
+        /* the card soldiers: a face each, standing at the rim between the pieces */
+        [[K.X0 + e, K.CZ - 3.4 * ts, 0, 1], [K.X0 + e, K.CZ + 3.4 * ts, 1, 0], [K.X1 - e, K.CZ - 3.4 * ts, 2, 3], [K.X1 - e, K.CZ + 3.4 * ts, 3, 2]].forEach(function (c) {
+            var suit = _CARD_SUITS[c[2]], tex = _hzTextTex('cardsoldier_' + c[2], [suit[0], _CARD_RANKS[c[3]], suit[0]], { w: 256, h: 384, bg: '#f6f2ea', border: '#3a2a30', color: suit[1], pad: 0.06, sizes: [110, 130, 110] });
+            var m = new THREE.Mesh(new THREE.PlaneGeometry(0.62 * ts, 0.92 * ts), new THREE.MeshLambertMaterial({ map: tex || null, color: 0xffffff, side: THREE.DoubleSide, emissive: 0x333333 }));
+            m.position.set(c[0], top + 0.46 * ts, c[1]); m.rotation.y = K.face(c[0], c[1]) + (rng() - 0.5) * 0.5; K.add(K.lit(m, true));
+        });
+        /* teacups on the strips, lamps on the corners */
+        [[K.CX + 2.4 * ts, K.Z0 + e], [K.CX - 2.4 * ts, K.Z1 - e]].forEach(function (p, i) { var cup = _hzTeacup(0.55 * ts, K.mat(null, i ? 0xffd0e0 : 0xd8ecff), ts); cup.position.set(p[0], top, p[1]); cup.rotation.y = rng() * 6; cup.traverse(function (o) { if (o.isMesh) K.lit(o, true); }); K.add(cup); });
+        [[K.X0 + 0.3 * ts, K.Z0 + 0.3 * ts], [K.X1 - 0.3 * ts, K.Z0 + 0.3 * ts], [K.X0 + 0.3 * ts, K.Z1 - 0.3 * ts], [K.X1 - 0.3 * ts, K.Z1 - 0.3 * ts]].forEach(function (p) { K.add(K.lamp(p[0], top + 0.9 * ts, p[1], 0xd8a0ff, 1.5 * ts, 0.4)); });
+        /* unfinished shapes tumbling alongside */
+        if (!HQ) for (var i = 0; i < 10; i++) {
+            var a = rng() * Math.PI * 2, rr = ts * (5 + rng() * 5), sz = ts * (0.3 + rng() * 0.7), col = _VOID_PASTELS[(rng() * _VOID_PASTELS.length) | 0];
+            var geo = i % 3 === 0 ? new THREE.OctahedronGeometry(sz, 0) : i % 3 === 1 ? new THREE.BoxGeometry(sz, sz, sz) : new THREE.TorusGeometry(sz * 0.7, sz * 0.22, 6, 14);
+            var m = new THREE.Mesh(geo, rng() < 0.4 ? new THREE.MeshBasicMaterial({ color: col, wireframe: true, fog: false }) : _hzLit(null, col));
+            m.position.set(K.CX + Math.cos(a) * rr * 1.3, fy + (rng() - 0.3) * 4 * ts, K.CZ + Math.sin(a) * rr); m.rotation.set(rng() * 3, rng() * 3, rng() * 3); K.add(m);
+            _horizonFloaters.push({ obj: m, baseY: m.position.y, amp: ts * (0.2 + rng() * 0.5), spd: 0.15 + rng() * 0.4, phase: rng() * 6, spin: (rng() < 0.5 ? 1 : -1) * (0.003 + rng() * 0.008) });
+        }
+    };
     var _HZ_NEAR_BUILDERS = { training_room: _hzTrainingRoom, holosim: _hzHoloApron };
     Object.keys(_NR_BUILDERS).forEach(function (k) { _HZ_NEAR_BUILDERS[k] = _NR_BUILDERS[k]; });
     /* Run a near builder into its own sub-group and tag everything it made as
@@ -25057,6 +25291,231 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    // ════════════════════════════════════════════════════════════════════
+    //  MOVING MAPS (2026-09-12) — three far rosters that STREAM past a
+    //  travelling board (see MOTION): the sea round the galleon, the
+    //  wreckage field round the derelict, the void of shapes round the
+    //  flying chessboard. Built from the same _hz* kit; the sea bodies carry
+    //  the 'sea' tag (on the water — _hzPlaceStream puts them at the sea's
+    //  level), the rest hang at the row's height like every roster body.
+    // ════════════════════════════════════════════════════════════════════
+    /* a chess piece: a lathe profile (units of the height; radius scaled per
+       kind), trims for the rook's crenels, the king's cross, the knight's
+       head. Base on y = 0, height h. Shared by the far roster and the
+       Looking-Glass's rim (a lit material there, a graded one out here). */
+    var _CHESS_PROFILES = {
+        pawn:   { rk: 1.00, pts: [[0, 0], [0.34, 0], [0.34, 0.05], [0.26, 0.10], [0.17, 0.18], [0.13, 0.50], [0.20, 0.56], [0.20, 0.60], [0.12, 0.64], [0.20, 0.74], [0.19, 0.88], [0.10, 0.97], [0, 1]] },
+        rook:   { rk: 0.85, pts: [[0, 0], [0.36, 0], [0.36, 0.06], [0.28, 0.12], [0.24, 0.20], [0.22, 0.70], [0.30, 0.78], [0.32, 0.82], [0.32, 1.0], [0, 1.0]] },
+        bishop: { rk: 0.80, pts: [[0, 0], [0.34, 0], [0.34, 0.05], [0.25, 0.12], [0.15, 0.20], [0.11, 0.55], [0.20, 0.62], [0.12, 0.66], [0.18, 0.78], [0.14, 0.90], [0.05, 0.96], [0, 1]] },
+        queen:  { rk: 0.75, pts: [[0, 0], [0.36, 0], [0.36, 0.05], [0.26, 0.12], [0.14, 0.22], [0.11, 0.60], [0.20, 0.66], [0.13, 0.70], [0.24, 0.84], [0.22, 0.90], [0.10, 0.94], [0.08, 1.0], [0, 1]] },
+        king:   { rk: 0.72, pts: [[0, 0], [0.36, 0], [0.36, 0.05], [0.26, 0.12], [0.14, 0.22], [0.11, 0.60], [0.20, 0.66], [0.13, 0.70], [0.22, 0.82], [0.20, 0.90], [0.09, 0.92], [0, 0.92]] },
+        knight: { rk: 0.90, pts: [[0, 0], [0.34, 0], [0.34, 0.05], [0.26, 0.12], [0.20, 0.20], [0.18, 0.42], [0, 0.42]] },
+    };
+    var _CHESS_KINDS = ['pawn', 'pawn', 'rook', 'bishop', 'knight', 'queen', 'king'];
+    function _hzChessPiece(kind, h, mat, ts) {
+        ts = ts || (CONFIG.tileSize || BASE_TILE);
+        var P = _CHESS_PROFILES[kind] || _CHESS_PROFILES.pawn, g = new THREE.Group();
+        var pts = P.pts.map(function (p) { return new THREE.Vector2(p[0] * h * P.rk, p[1] * h); });
+        var geo = new THREE.LatheGeometry(pts, 22); _hzScaleUV(geo, 2, Math.max(1, h / ts));
+        var body = new THREE.Mesh(geo, mat); g.add(body);
+        var r = 0.36 * h * P.rk;
+        function box(w, hh, d, x, y, z, ry) { var b = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), mat); b.position.set(x, y, z); if (ry) b.rotation.y = ry; g.add(b); return b; }
+        if (kind === 'rook') { for (var i = 0; i < 4; i++) { var a = i * Math.PI / 2 + Math.PI / 4; box(r * 0.5, h * 0.09, r * 0.34, Math.cos(a) * r * 0.62, h * 1.04, Math.sin(a) * r * 0.62, -a); } }
+        if (kind === 'king') { box(h * 0.05, h * 0.16, h * 0.05, 0, h * 0.99, 0); box(h * 0.13, h * 0.045, h * 0.05, 0, h * 1.02, 0); }
+        if (kind === 'knight') {
+            var head = box(r * 0.62, h * 0.34, r * 1.05, 0, h * 0.60, r * 0.10); head.rotation.x = -0.22;   // the neck, leaning forward
+            box(r * 0.5, h * 0.16, r * 0.62, 0, h * 0.80, r * 0.62);                                         // the muzzle
+            box(r * 0.5, h * 0.06, r * 0.34, 0, h * 0.66, r * 0.86);                                         // the nose
+            box(r * 0.16, h * 0.10, r * 0.16, -r * 0.2, h * 0.86, r * 0.18); box(r * 0.16, h * 0.10, r * 0.16, r * 0.2, h * 0.86, r * 0.18);   // the ears
+            box(r * 0.3, h * 0.30, r * 0.2, 0, h * 0.62, -r * 0.5);                                          // the mane
+        }
+        return g;
+    }
+    /* a streak texture for wakes and spray: soft white streaks along u on
+       a clear ground, tiling along u (cached; clone per scrolling user) */
+    function _nrStreakTex(seed) {
+        var key = 'streak' + (seed || 0);
+        if (_hzFacTexCache[key]) return _hzFacTexCache[key];
+        if (typeof document === 'undefined') return null;
+        var rng = _mulberry32(0x5ea + (seed || 0) * 977);
+        var c = document.createElement('canvas'); c.width = 256; c.height = 64;
+        var g = c.getContext('2d'); g.clearRect(0, 0, 256, 64);
+        for (var i = 0; i < 18; i++) {
+            var y = 4 + rng() * 56, x0 = rng() * 256, len = 40 + rng() * 150, w = 1 + rng() * 2.6;
+            var grad = g.createLinearGradient(x0, 0, x0 + len, 0);
+            grad.addColorStop(0, 'rgba(255,255,255,0)'); grad.addColorStop(0.25, 'rgba(255,255,255,' + (0.5 + rng() * 0.5) + ')'); grad.addColorStop(1, 'rgba(255,255,255,0)');
+            g.strokeStyle = grad; g.lineWidth = w; g.lineCap = 'round';
+            g.beginPath(); g.moveTo(x0, y); g.lineTo(x0 + len, y + (rng() - 0.5) * 3); g.stroke();
+            if (x0 + len > 256) { g.beginPath(); g.moveTo(x0 - 256, y); g.lineTo(x0 - 256 + len, y); g.stroke(); }   // wrap the tail
+        }
+        var t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.ClampToEdgeWrapping;
+        t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter;
+        _hzFacTexCache[key] = t; return t;
+    }
+    // ── the sea ──
+    /* an island on the water: a low rock cone (its base under the sea) with
+       a grassy crown, palms / pines, sometimes a lighthouse */
+    function _hzSeaIsland(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
+        var r = ts * (2.5 + rng() * 4.5), h = ts * (0.8 + rng() * 1.6);
+        var rock = _hzTex('rocks_1') || _hzTex('cliff'), top = _hzTex('grass_2') || _hzTex('dirt');
+        var geo = new THREE.ConeGeometry(r, h * 2.2, 9, 1); _hzTileUV(geo, r, h * 2.2, ts);
+        var m = new THREE.Mesh(geo, _hzGeoMat(rock, 0x6e7a6a)); m.position.y = h * 2.2 * 0.5 - h * 1.1; m.rotation.y = rng() * 6; g.add(m);
+        var cg = new THREE.ConeGeometry(r * 0.58, h * 0.95, 9, 1); _hzTileUV(cg, r, h, ts);
+        var cap = new THREE.Mesh(cg, _hzGeoMat(top, 0x7fa060)); cap.position.y = h * 0.62; cap.rotation.y = m.rotation.y; g.add(cap);
+        var n = 2 + (rng() * 4 | 0), trunkMat = _hzGeoMat(_hzTex('wood') || null, 0x6a4a30), leafMat = _hzGeoMat(_hzTex('leaves') || null, 0x3f8a4a);
+        for (var i = 0; i < n; i++) {
+            var a = rng() * Math.PI * 2, rad = r * (0.15 + rng() * 0.35), th = ts * (0.9 + rng() * 1.3);
+            var tr = _hzCyl(ts * 0.05, ts * 0.09, th, 5, ts, trunkMat); tr.position.set(Math.cos(a) * rad, h * 0.9 + th / 2, Math.sin(a) * rad); tr.rotation.z = (rng() - 0.5) * 0.4; g.add(tr);
+            var can = new THREE.Mesh(new THREE.SphereGeometry(ts * (0.35 + rng() * 0.3), 7, 6), leafMat); can.position.set(tr.position.x + Math.sin(tr.rotation.z) * th * 0.5, h * 0.9 + th, tr.position.z); can.scale.y = 0.6; g.add(can);
+        }
+        if (rng() < 0.3) { var lh = _hzLighthouse(rng); lh.scale.setScalar(0.75); lh.position.y = h * 1.05; g.add(lh); }
+        return g;
+    }
+    /* sea stacks: two or three rock pillars standing out of the water */
+    function _hzSeaStack(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
+        var rock = _hzTex('cliff') || _hzTex('rocks_1'), mat = _hzGeoMat(rock, 0x66706a);
+        var n = 1 + (rng() * 3 | 0);
+        for (var i = 0; i < n; i++) {
+            var h = ts * (2 + rng() * 5), r = ts * (0.5 + rng() * 1.1);
+            var m = _hzCyl(r * (0.5 + rng() * 0.4), r, h, 7, ts, mat); m.position.set((rng() - 0.5) * ts * 5, h / 2 - ts * 0.6, (rng() - 0.5) * ts * 5); m.rotation.z = (rng() - 0.5) * 0.12; g.add(m);
+        }
+        return g;
+    }
+    /* a lighthouse on a rock: red and white bands, a lamp, a beam that turns */
+    function _hzLighthouse(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
+        var rock = _hzGeoMat(_hzTex('cliff') || _hzTex('rocks_1'), 0x6a7270);
+        var base = _hzCyl(ts * 1.4, ts * 1.9, ts * 1.2, 9, ts, rock); base.position.y = ts * 0.6 - ts * 0.5; g.add(base);
+        var h = ts * (3.2 + rng() * 1.6), bands = 4, white = _hzGeoMat(null, 0xf2efe6), red = _hzGeoMat(null, 0xc83a3a);
+        for (var i = 0; i < bands; i++) { var seg = _hzCyl(ts * (0.42 - i * 0.05), ts * (0.46 - i * 0.05), h / bands, 12, ts, i % 2 ? red : white); seg.position.y = ts * 0.7 + h / bands * (i + 0.5); g.add(seg); }
+        var lamp = _hzGlowCore(ts * 0.3, 0xfff1c8, 0xffd080); lamp.position.y = ts * 0.7 + h + ts * 0.25; g.add(lamp);
+        var beamMat = _hzGlowMat(0xfff1c8, 0.16);
+        var beam = new THREE.Group(); beam.position.y = ts * 0.7 + h + ts * 0.25;
+        var bm = new THREE.Mesh(new THREE.PlaneGeometry(ts * 9, ts * 0.5), beamMat); bm.position.x = ts * 4.5; beam.add(bm);
+        var bm2 = bm.clone(); bm2.rotation.x = Math.PI / 2; beam.add(bm2);
+        g.add(beam);
+        _horizonFloaters.push({ obj: beam, baseY: beam.position.y, amp: 0, spd: 0, phase: 0, spin: 0.012 + rng() * 0.01 });   // the lamp turns
+        return g;
+    }
+    /* a ghost ship on the horizon: a dark hull, pale sails that glow, one lantern */
+    function _hzGhostShip(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
+        var L = ts * (7 + rng() * 6), W = L * 0.24, H = L * 0.13;
+        var hullMat = _hzGeoMat(_hzTex('wood') || null, 0x3a2c22);
+        var hull = _hzBox(L * 0.7, H, W, ts, hullMat); hull.position.set(0, H * 0.35, 0); g.add(hull);
+        var bow = new THREE.Mesh(new THREE.ConeGeometry(W * 0.5, L * 0.3, 4, 1), hullMat); bow.rotation.z = -Math.PI / 2; bow.rotation.x = Math.PI / 4; bow.scale.y = 1; bow.position.set(L * 0.5, H * 0.35, 0); g.add(bow);
+        var castle = _hzBox(L * 0.2, H * 0.9, W * 0.9, ts, hullMat); castle.position.set(-L * 0.28, H * 1.1, 0); g.add(castle);
+        var sailMat = _hzGlowMat(0xb8ffd8, 0.32), mastMat = _hzGeoMat(null, 0x2a201a);
+        [-0.22, 0.12, 0.38].forEach(function (f, i) {
+            var mh = L * (0.42 + (i === 1 ? 0.14 : 0)), mast = _hzCyl(ts * 0.04, ts * 0.06, mh, 5, ts, mastMat); mast.position.set(L * f, H * 0.8 + mh / 2, 0); g.add(mast);
+            var sw = W * (1.1 + (i === 1 ? 0.5 : 0)), sail = new THREE.Mesh(new THREE.PlaneGeometry(sw, mh * 0.5), sailMat); sail.position.set(L * f + L * 0.02, H * 0.8 + mh * 0.62, 0); sail.rotation.y = Math.PI / 2; g.add(sail);
+            _hzPulse(sailMat, null, 0.08, 0, 0.3 + rng() * 0.3);
+        });
+        var lamp = _hzGlowCore(ts * 0.18, 0xd0ffe4, 0x7fffb0); lamp.position.set(-L * 0.34, H * 1.9, 0); g.add(lamp);
+        g.rotation.y = rng() < 0.5 ? 0 : Math.PI;
+        return g;
+    }
+    // ── the wreckage field ──
+    /* an asteroid: a rock solid with its vertices jostled */
+    function _hzAsteroid(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
+        var r = ts * (1.2 + rng() * 5.5);
+        var geo = new THREE.DodecahedronGeometry(r, 1), pos = geo.getAttribute('position'), seed = rng() * 900;
+        /* non-indexed geometry: every face carries its own copy of a vertex, so
+           the jostle is a hash of the vertex's POSITION (all copies agree — no torn faces) */
+        var jos = function (x, y, z) { var v = Math.sin(Math.round(x / r * 9) * 12.9898 + Math.round(y / r * 9) * 78.233 + Math.round(z / r * 9) * 37.719 + seed) * 43758.5453; return v - Math.floor(v); };
+        var squash = 0.7 + rng() * 0.5;
+        for (var i = 0; i < pos.count; i++) { var px = pos.getX(i), py = pos.getY(i), pz = pos.getZ(i), k = 0.78 + jos(px, py, pz) * 0.44; pos.setXYZ(i, px * k, py * k * squash, pz * k); }
+        geo.computeVertexNormals(); _hzScaleUV(geo, 3, 3);
+        var m = new THREE.Mesh(geo, _hzGeoMat(_hzTex('moon_3') || _hzTex('rocks_3'), rng() < 0.5 ? 0x8a8a94 : 0x6e6a66)); g.add(m);
+        if (rng() < 0.25) { var ice = _hzGlowSprite(r * 1.6, 0x9fd8ff, 0.12, 0.05, 0.03, 0.4); g.add(ice); }
+        return g;
+    }
+    /* a piece of the ship: a torn plate with girders and a live spark, or a
+       length of fuselage with a lit porthole */
+    function _hzHullChunk(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
+        var plateTex = _hzTex('metal_3') || _hzTex('metal'), mat = _hzGeoMat(plateTex, 0x9aa2aa), dark = _hzGeoMat(_hzTex('gunmetal') || plateTex, 0x5a6068);
+        if (rng() < 0.5) {
+            var w = ts * (2.5 + rng() * 6), d = ts * (1.5 + rng() * 4);
+            var p = _hzBox(w, ts * 0.3, d, ts, mat); g.add(p);
+            var n = 2 + (rng() * 3 | 0);
+            for (var i = 0; i < n; i++) { var gl = ts * (1.5 + rng() * 3.5), gd = _hzBox(ts * 0.12, ts * 0.12, gl, ts, dark); gd.position.set((rng() - 0.5) * w, ts * 0.1 + rng() * ts * 0.5, (rng() - 0.5) * d); gd.rotation.set((rng() - 0.5) * 0.8, rng() * 6, (rng() - 0.5) * 0.8); g.add(gd); }
+            var sp = _hzGlowSprite(ts * 0.9, 0x9fd8ff, 0.7, 0.55, 0.3, 5 + rng() * 6); sp.position.set((rng() - 0.5) * w, ts * 0.3, (rng() - 0.5) * d); g.add(sp);
+        } else {
+            var R = ts * (1.2 + rng() * 2.2), len = ts * (3 + rng() * 6);
+            var geo = new THREE.CylinderGeometry(R, R, len, 12, 1, true, 0, Math.PI * (1.1 + rng() * 0.7)); _hzScaleUV(geo, 4, Math.max(1, len / ts));
+            var f = new THREE.Mesh(geo, mat); f.material.side = THREE.DoubleSide; f.rotation.z = Math.PI / 2; g.add(f);
+            var win = _hzGlowSprite(R * 0.6, 0xffd080, 0.6, 0.2, 0.1, 1.5 + rng()); win.position.set((rng() - 0.5) * len * 0.6, R * 0.6, R * 0.8); g.add(win);
+            var ring = new THREE.Mesh(new THREE.TorusGeometry(R * 1.02, ts * 0.1, 6, 20), dark); ring.rotation.y = Math.PI / 2; ring.position.x = len * (rng() < 0.5 ? 0.5 : -0.5); g.add(ring);
+        }
+        return g;
+    }
+    /* a knot of girders — crossed beams, a live cable */
+    function _hzGirderKnot(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
+        var mat = _hzGeoMat(_hzTex('gunmetal') || _hzTex('metal'), 0x6a7078);
+        var n = 3 + (rng() * 3 | 0);
+        for (var i = 0; i < n; i++) { var l = ts * (3 + rng() * 6), b = _hzBox(ts * 0.16, ts * 0.16, l, ts, mat); b.rotation.set(rng() * Math.PI, rng() * Math.PI, rng() * Math.PI); b.position.set((rng() - 0.5) * ts, (rng() - 0.5) * ts, (rng() - 0.5) * ts); g.add(b); }
+        var sp = _hzGlowSprite(ts * 0.7, 0xbfe8ff, 0.6, 0.5, 0.3, 6 + rng() * 5); sp.position.set((rng() - 0.5) * ts * 3, (rng() - 0.5) * ts * 3, (rng() - 0.5) * ts * 3); g.add(sp);
+        return g;
+    }
+    // ── the void of shapes ──
+    /* an unfinished shape: a platonic solid, a torus, a knot — flat pastel or
+       a wireframe, some with a light inside */
+    var _VOID_PASTELS = [0xff9fd0, 0x9fd8ff, 0xfff0a0, 0xb38cff, 0x8fffd0, 0xffb080, 0xf4f0ea, 0x2a2634];
+    function _hzVoidSolid(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
+        var r = ts * (1.5 + rng() * 5), k = rng() * 7 | 0, geo;
+        if (k === 0) geo = new THREE.TetrahedronGeometry(r, 0); else if (k === 1) geo = new THREE.OctahedronGeometry(r, 0); else if (k === 2) geo = new THREE.IcosahedronGeometry(r, 0);
+        else if (k === 3) geo = new THREE.DodecahedronGeometry(r, 0); else if (k === 4) geo = new THREE.BoxGeometry(r * 1.4, r * 1.4, r * 1.4); else if (k === 5) geo = new THREE.TorusGeometry(r, r * 0.3, 8, 22); else geo = new THREE.TorusKnotGeometry(r * 0.7, r * 0.2, 60, 8);
+        var col = _VOID_PASTELS[(rng() * _VOID_PASTELS.length) | 0];
+        var wire = rng() < 0.4;
+        var mat = wire ? new THREE.MeshBasicMaterial({ color: new THREE.Color(col), wireframe: true, fog: false, transparent: true, opacity: 0.85 }) : _hzGeoMat(null, col);
+        g.add(new THREE.Mesh(geo, mat));
+        if (wire || rng() < 0.3) { var core = _hzGlowCore(r * 0.35, col, col); g.add(core); }
+        return g;
+    }
+    function _hzChessPieceFar(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var kind = _CHESS_KINDS[(rng() * _CHESS_KINDS.length) | 0], dark = rng() < 0.5, h = ts * (5 + rng() * 7);
+        var mat = _hzGeoMat(_hzTex('marble_light') || null, dark ? 0x2a2634 : 0xf6f2ea);
+        var g = _hzChessPiece(kind, h, mat, ts);
+        if (!dark && rng() < 0.4) { var aura = _hzGlowSprite(h * 0.6, 0xd8b0ff, 0.14, 0.05, 0.03, 0.3); aura.position.y = h * 0.5; g.add(aura); }
+        return g;
+    }
+    /* a teacup on its saucer — the lathe, a torus handle */
+    function _hzTeacup(h, mat, ts) {
+        var g = new THREE.Group();
+        var pts = [[0.42, 0], [0.42, 0.04], [0.16, 0.06], [0.18, 0.10], [0.30, 0.55], [0.36, 0.98], [0.38, 1.0], [0.34, 1.0], [0.32, 0.98], [0.27, 0.6], [0.16, 0.14], [0, 0.14]].map(function (p) { return new THREE.Vector2(p[0] * h, p[1] * h); });
+        var geo = new THREE.LatheGeometry(pts, 22); _hzScaleUV(geo, 2, 1);
+        var cup = new THREE.Mesh(geo, mat); cup.material.side = THREE.DoubleSide; g.add(cup);
+        var handle = new THREE.Mesh(new THREE.TorusGeometry(h * 0.2, h * 0.04, 6, 18, Math.PI * 1.4), mat); handle.position.set(h * 0.4, h * 0.55, 0); handle.rotation.z = -Math.PI * 0.2; g.add(handle);
+        var tea = new THREE.Mesh(new THREE.CircleGeometry(h * 0.3, 18), _hzGlowMat(0xd8a860, 0.5)); tea.rotation.x = -Math.PI / 2; tea.position.y = h * 0.8; g.add(tea);
+        return g;
+    }
+    function _hzTeacupFar(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, h = ts * (2.5 + rng() * 4);
+        var col = [0xf6f2ea, 0xffd0e0, 0xd8ecff, 0xfff4c0][(rng() * 4) | 0];
+        return _hzTeacup(h, _hzGeoMat(null, col), ts);
+    }
+    /* a playing card: a face drawn once per suit and rank, both sides */
+    var _CARD_SUITS = [['\u2660', '#1a1a20'], ['\u2665', '#c8202a'], ['\u2666', '#c8202a'], ['\u2663', '#1a1a20']];
+    var _CARD_RANKS = ['A', 'K', 'Q', 'J', '10', '7', '2'];
+    function _hzPlayingCard(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
+        var si = (rng() * 4) | 0, ri = (rng() * _CARD_RANKS.length) | 0, suit = _CARD_SUITS[si];
+        var h = ts * (3 + rng() * 4), w = h * 0.68;
+        var tex = _hzTextTex('card_' + si + '_' + ri, [suit[0], _CARD_RANKS[ri], suit[0]], { w: 256, h: 384, bg: '#f6f2ea', border: '#3a2a30', color: suit[1], pad: 0.06, sizes: [110, 130, 110] });
+        var mat = new THREE.MeshBasicMaterial({ map: tex || null, color: tex ? 0xffffff : 0xf6f2ea, side: THREE.DoubleSide, fog: false });
+        mat._ew_hzBase = new THREE.Color(0xffffff); _horizonMats.push(mat);
+        g.add(new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat));
+        return g;
+    }
+    function _hzMushroomFar(rng) { var g = _hzPropMushroom(rng); g.scale.setScalar(2.5 + rng() * 4); return g; }
+
     function _hzThemeRoster(name) {
         if (!_HZ_THEME_ROSTERS) _HZ_THEME_ROSTERS = {
             divine: [
@@ -25111,6 +25570,25 @@ const ThreeRenderer = (function () {
                 [0.70, _hzGateway, false, -0.45, 0.55],
                 [0.79, _hzObelisk, false, -0.45, 0.58], [0.87, _hzGrinSkull, false, -0.45, 0.40],
                 [0.94, _hzModelClock, false, -0.42, 0.55], [1.00, _hzWoodCross, false, -0.42, 0.45]],
+            // MOVING MAPS (2026-09-12): three rosters that stream past a travelling
+            // board. A sixth field 'sea' = on the water (the sea's level from the
+            // motion config, + row[3] tiles); the sky rows use the disc factors.
+            sea: [
+                [0.30, _hzSeaIsland, false, 0, 0, 'sea'], [0.46, _hzSeaStack, false, 0, 0, 'sea'],
+                [0.58, _hzGhostShip, false, 0, 0, 'sea'], [0.66, _hzLighthouse, false, 0, 0, 'sea'],
+                [0.78, _hzLenticular, false, 0.14, 0.45], [0.88, _hzAstralOrbs, true, 0.12, 0.5],
+                [1.00, _hzSacredRings, true, 0.14, 0.6]],
+            wreckage: [
+                [0.34, _hzAsteroid, true, -0.60, 0.75], [0.52, _hzHullChunk, true, -0.55, 0.70],
+                [0.62, _hzGirderKnot, true, -0.50, 0.65], [0.72, _hzModelPlanet, false, -0.60, 0.78],
+                [0.78, _hzModelStar, false, -0.55, 0.80], [0.86, _hzModelCraft, false, -0.35, 0.70],
+                [0.92, _hzCrystalShards, true, -0.60, 0.70], [1.00, _hzAstralOrbs, true, -0.60, 0.76]],
+            wonder: [
+                [0.26, _hzVoidSolid, true, -0.60, 0.75], [0.44, _hzChessPieceFar, false, -0.50, 0.60],
+                [0.54, _hzTeacupFar, false, -0.45, 0.60], [0.64, _hzPlayingCard, true, -0.55, 0.70],
+                [0.72, _hzModelClock, false, -0.45, 0.62], [0.80, _hzStairway, false, -0.50, 0.55],
+                [0.88, _hzMushroomFar, false, -0.50, 0.50], [0.94, _hzSacredRings, true, -0.60, 0.72],
+                [1.00, _hzAstralOrbs, true, -0.64, 0.76]],
             // Holo Sim (2026-09-04): neon rings + dark ring-glyph monoliths in a
             // black starfield; the near apron is _hzHoloApron (_HZ_NEAR_BUILDERS)
             holosim: [
@@ -25145,6 +25623,192 @@ const ThreeRenderer = (function () {
             [1.00,  _hzModelCraft,    false, -0.30,  0.68]    // UFO / spaceship on patrol
         ];
     }
+    // ════════════════════════════════════════════════════════════════════
+    //  MOVING MAPS (2026-09-12) — the setting travels
+    //  The board never moves (every rule, pick and camera is untouched); the
+    //  world around it streams past along one axis, faster every round:
+    //    • the far roster is laid along the travel band and wraps (a body
+    //      that leaves behind the board re-enters ahead of it)
+    //    • the near setting's sea sheet slides one texture period and wraps
+    //      (seamless), the caustic web flows with it (uFluidFlow), and the
+    //      wake textures scroll
+    //    • the dome's clouds / nebula stream (uSkyFlow); a sea map sails into
+    //      a storm that builds with the rounds; a close pass swells the sun
+    //      or the moon (uSunNear / uMoonNear, the 3D moon mesh with it)
+    //    • motes — spray at the waterline, dust in space — streak past close
+    //      to the board, stretched by the speed
+    //  Cost: uniform writes + one position write per streaming body per
+    //  frame (~60 bodies, 40 motes, a sheet or two). No allocation in the
+    //  tick. Speed = env.motion.speed tiles/s × min(max, 1 + ramp·(round−1)),
+    //  eased over ~2 s at each round; state.round syncs to the guest, so
+    //  online both seats see one speed with nothing relayed (RULE #2).
+    //  Kill-switch: window.EW_NO_MAP_MOTION. Low-perf halves the motes.
+    // ════════════════════════════════════════════════════════════════════
+    var _hzMotion = null;          // env.motion of the map on screen (null = still)
+    var _motion = { dist: 0, speed: 0, last: 0, skyFlow: 0, storm: 0, sunNear: 0, moonNear: 0, axis: 'x', frac: 0 };
+    var _motionStreams = [];       // { obj, along, lat, y, L }  far bodies streaming past
+    var _motionSheets = [];        // { mesh, x0, z0, per }        fluid sheets that slide + wrap
+    var _motionScroll = [];        // { tex, per, sign }           textures that scroll with the travel (wakes)
+    var _motionMotes = null;       // { sprites: [{ sp, along, lat, y, len }], L }
+    var _MOTION_SUN_TINT = null;
+    function _motionReset() {
+        _motionStreams.length = 0; _motionSheets.length = 0; _motionScroll.length = 0; _motionMotes = null;
+    }
+    function _motionSpeedMult(m) {
+        var round = (typeof state !== 'undefined' && state && state.round > 0) ? state.round : 1;
+        var ramp = (m.ramp != null) ? m.ramp : 0.15, max = (m.max != null) ? m.max : 4;
+        return Math.min(max, 1 + ramp * (round - 1));
+    }
+    /* the per-frame clock: distance, eased speed, the storm floor, the pass */
+    function _motionTick(t) {
+        var m = _hzMotion;
+        if (!_MOTION_SUN_TINT && typeof THREE !== 'undefined') _MOTION_SUN_TINT = new THREE.Vector3(1.0, 0.62, 0.30);
+        if (!m) {
+            _motion.speed = 0; _motion.dist = 0; _motion.skyFlow = 0; _motion.storm = 0; _motion.sunNear = 0; _motion.moonNear = 0; _motion.frac = 0; _motion.last = t;
+            return;
+        }
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var dt = _motion.last ? Math.min(0.05, Math.max(0, t - _motion.last)) : 0;
+        _motion.last = t;
+        _motion.axis = (m.axis === 'z') ? 'z' : 'x';
+        var base = (m.speed != null ? m.speed : 1) * ts;
+        var target = base * _motionSpeedMult(m);
+        _motion.speed += (target - _motion.speed) * Math.min(1, dt * 0.9);   // ~2 s ease into each round's pace
+        _motion.dist += _motion.speed * dt;
+        _motion.frac = (m.max > 0) ? Math.min(1, _motion.speed / (base * m.max)) : 0.5;
+        _motion.skyFlow = (m.sky != null ? m.sky : 1) * _motion.dist / (60 * ts);
+        /* the storm: overcast builds from round `from` to `to` (a sea map's weather floor) */
+        var st = 0;
+        if (m.storm && m.storm.to > m.storm.from) {
+            var round = (typeof state !== 'undefined' && state && state.round > 0) ? state.round : 1;
+            st = Math.max(0, Math.min(1, (round - m.storm.from) / (m.storm.to - m.storm.from)));
+        }
+        _motion.storm += (st - _motion.storm) * Math.min(1, dt * 0.25);
+        /* the close pass: an orbit measured in tiles travelled — far at the
+           start, perigee half-way round, and round again sooner as the
+           speed climbs */
+        var sun = 0, moon = 0;
+        if (m.orbit && m.orbit.period > 0) {
+            var ph = (_motion.dist / (m.orbit.period * ts)) % 1;
+            var near = Math.pow(0.5 - 0.5 * Math.cos(ph * Math.PI * 2), 2.2) * ((m.orbit.near != null) ? m.orbit.near : 1);
+            if (m.orbit.body === 'moon') moon = near; else sun = near;
+        }
+        _motion.sunNear = sun; _motion.moonNear = moon;
+    }
+    /* Lay a roster body along the travel band instead of the ring: a random
+       station along the band (±L about the board), off to one side (never
+       through the board — the lateral keep-out grows when the body hangs
+       near the board's level), at the row's height. Rows may carry a sixth
+       field: 'sea' = on the water (the sea's level from the motion config),
+       'door' = upright and facing across the travel. Bobs and spins like
+       every floater (it joins _horizonFloaters), streams via _motionStreams. */
+    function _hzPlaceStream(mesh, rng, row, st) {
+        var ts = st.ts, discR = st.discR, L = discR * 1.3;
+        var tag = row[5] || null, tumble = !!row[2];
+        var boardY = _motionBoardY(ts);
+        var y;
+        if (tag === 'sea') {
+            var depth = (_hzMotion && _hzMotion.seaDepth != null) ? _hzMotion.seaDepth : 2.4;
+            y = boardY - depth * ts - 0.18 * ts + (row[3] || 0) * ts;
+        } else {
+            y = (row[3] + rng() * (row[4] - row[3])) * discR;
+        }
+        var nearLevel = Math.abs(y - boardY) < 0.3 * discR;
+        var latMin = (tag === 'sea') ? 0.26 : (nearLevel ? 0.30 : 0.06), latMax = 1.0;
+        var side = rng() < 0.5 ? -1 : 1;
+        var lat = side * discR * (latMin + rng() * (latMax - latMin));
+        var along = (rng() * 2 - 1) * L;
+        if (tumble) mesh.rotation.set(rng() * Math.PI * 2, rng() * Math.PI * 2, rng() * Math.PI * 2);
+        else if (tag === 'door') { mesh.rotation.y += (st.axis === 'x' ? 0 : Math.PI / 2) + (side < 0 ? Math.PI : 0) + (rng() - 0.5) * 0.4; mesh.rotation.z += (rng() - 0.5) * 0.12; }
+        else { mesh.rotation.y = rng() * Math.PI * 2; mesh.rotation.z += (rng() - 0.5) * 0.10; mesh.rotation.x += (rng() - 0.5) * 0.06; }
+        _stampHorizonHaze(mesh, Math.abs(lat), y, discR);
+        _horizonGroup.add(mesh);
+        var spin = tumble ? (rng() < 0.5 ? 1 : -1) * (0.0012 + rng() * 0.0028) : (rng() < 0.4 ? (rng() < 0.5 ? 1 : -1) * (0.0003 + rng() * 0.0008) : 0);
+        var amp = (tag === 'sea') ? ts * (0.08 + rng() * 0.16) : ts * (0.5 + rng() * 1.6);
+        _horizonFloaters.push({ obj: mesh, baseY: y, amp: amp, spd: 0.08 + rng() * 0.22, phase: rng() * Math.PI * 2, spin: spin });
+        _motionStreams.push({ obj: mesh, along: along, lat: lat, L: L });
+        var e = _motionStreams[_motionStreams.length - 1];
+        _motionPlace(e, st.cx, st.cz, 0);
+    }
+    /* the board's deck level: the spawn row is protected flat on every Δ (a corner tile may be a raised step) */
+    function _motionBoardY(ts) {
+        var _bw = (typeof bw === 'function') ? bw() : 16;
+        var B = _hLevelAt(Math.min(3, _bw - 1), 0); if (!(B > 0)) B = _hLevelAt(0, 0) || 5;
+        return B * ts * ELEV_STEP_RATIO;
+    }
+    function _motionPlace(e, cx, cz, dist) {
+        var p = e.along - dist, L2 = e.L * 2;
+        p = ((p + e.L) % L2 + L2) % L2 - e.L;
+        if (_motion.axis === 'z') { e.obj.position.x = cx + e.lat; e.obj.position.z = cz + p; }
+        else { e.obj.position.x = cx + p; e.obj.position.z = cz + e.lat; }
+    }
+    /* the motes: spray at the waterline of a sea map, dust in space, sparks
+       of the void — additive streaks close round the board, stretched by
+       the speed, wrapping on a short band */
+    function _motionBuildMotes(rng, st) {
+        var ts = st.ts, kind = st.kind;
+        var low = (typeof window !== 'undefined' && window.EW_PERF_LOW);
+        var n = kind === 'drift' ? 0 : (low ? 18 : 40);
+        if (!n) return;
+        var boardY = _motionBoardY(ts);
+        var col = kind === 'sea' ? 0xdff2ff : kind === 'space' ? 0xbfd8ff : 0xe8c8ff;
+        var L = ts * 22;
+        var motes = { L: L, sprites: [] };
+        var bw = st.cx * 2 / ts, bh = st.cz * 2 / ts;
+        for (var i = 0; i < n; i++) {
+            var op = kind === 'sea' ? 0.35 + rng() * 0.35 : 0.18 + rng() * 0.3;
+            var sp = _hzGlowSprite(ts * 0.18, col, op, 0, 0, 0);
+            var side = rng() < 0.5 ? -1 : 1;
+            var lat, y;
+            if (kind === 'sea') {
+                var depth = (_hzMotion && _hzMotion.seaDepth != null) ? _hzMotion.seaDepth : 2.4;
+                lat = side * ts * ((st.axis === 'x' ? bh : bw) * 0.5 + 1.9 + rng() * 2.2);
+                y = boardY - depth * ts + ts * (0.05 + rng() * 0.35);
+            } else {
+                lat = side * ts * ((st.axis === 'x' ? bh : bw) * 0.5 + 0.8 + rng() * 7.0);
+                y = boardY + ts * (-2.5 + rng() * 6.0);
+            }
+            var e = { sp: sp, along: (rng() * 2 - 1) * L, lat: lat, y: y, len: 0.5 + rng() * 0.8, thick: 0.05 + rng() * 0.08 };
+            sp.position.y = y;
+            motes.sprites.push(e);
+            _horizonGroup.add(sp);
+        }
+        _motionMotes = motes;
+    }
+    /* per frame, from _animateFloaters: place the streams, slide the sheets,
+       scroll the wakes, streak the motes */
+    function _motionAnimate(t) {
+        if (!_hzMotion) return;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var _bw = (typeof bw === 'function') ? bw() : 16, _bh = (typeof bh === 'function') ? bh() : 8;
+        var cx = _bw * ts * 0.5, cz = _bh * ts * 0.5;
+        var d = _motion.dist;
+        for (var i = 0; i < _motionStreams.length; i++) _motionPlace(_motionStreams[i], cx, cz, d);
+        for (var k = 0; k < _motionSheets.length; k++) {
+            var sh = _motionSheets[k], off = d % sh.per;
+            if (_motion.axis === 'z') sh.mesh.position.z = sh.z0 - off; else sh.mesh.position.x = sh.x0 - off;
+        }
+        for (var j = 0; j < _motionScroll.length; j++) {
+            var sc = _motionScroll[j];
+            sc.tex.offset.x = ((d / sc.per) * (sc.sign || 1)) % 1;
+        }
+        var M = _motionMotes;
+        if (M) {
+            var stretch = ts * (0.45 + 3.2 * _motion.frac), L2 = M.L * 2;
+            for (var q = 0; q < M.sprites.length; q++) {
+                var e = M.sprites[q], p = e.along - d * 1.15;
+                p = ((p + M.L) % L2 + L2) % L2 - M.L;
+                if (_motion.axis === 'z') { e.sp.position.x = cx + e.lat; e.sp.position.z = cz + p; }
+                else { e.sp.position.x = cx + p; e.sp.position.z = cz + e.lat; }
+                e.sp.scale.set(stretch * e.len, ts * e.thick, 1);
+            }
+        }
+    }
+    /* exported for tooling / the HUD (window.ThreeRenderer.motion) */
+    function _motionInfo() {
+        return _hzMotion ? { kind: _hzMotion.kind || 'drift', axis: _motion.axis, tilesPerSec: _motion.speed / (CONFIG.tileSize || BASE_TILE), mult: _motionSpeedMult(_hzMotion), dist: _motion.dist, storm: _motion.storm, sunNear: _motion.sunNear, moonNear: _motion.moonNear, streams: _motionStreams.length, motes: _motionMotes ? _motionMotes.sprites.length : 0 } : null;
+    }
+
     function _buildHorizonScenery() {
         if (!scene || typeof THREE === 'undefined') return;
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -25152,7 +25816,7 @@ const ThreeRenderer = (function () {
         var _bh = (typeof bh === 'function') ? bh() : 8;
         var cx = _bw * ts * 0.5, cz = _bh * ts * 0.5;
         var discR = Math.min(11000, Math.max(6000, Math.max(_bw, _bh) * ts * 2.5 + 3500));
-        var key = cx.toFixed(0) + ',' + cz.toFixed(0) + ',' + discR.toFixed(0) + ',' + _hzTheme + ',' + _hzThemeDensity + ',' + (_hzNear || '');
+        var key = cx.toFixed(0) + ',' + cz.toFixed(0) + ',' + discR.toFixed(0) + ',' + _hzTheme + ',' + _hzThemeDensity + ',' + (_hzNear || '') + ',' + (_hzMotion ? 'm:' + (_hzMotion.kind || 'x') + ':' + (_hzMotion.axis || 'x') : '');
         if (_horizonGroup && _horizonKey === key) return;
         if (_horizonGroup) { scene.remove(_horizonGroup); _disposeR(_horizonGroup); }
         _facilityNearGroup = null;
@@ -25161,6 +25825,7 @@ const ThreeRenderer = (function () {
         _hzGlowPulse.length = 0;
         _nrPending.length = 0;
         _nrLastKit = null;
+        _motionReset();
         _horizonGroup = new THREE.Group();
         _horizonGroup.name = 'horizonScenery';
         _horizonGroup.renderOrder = -40;
@@ -25200,6 +25865,10 @@ const ThreeRenderer = (function () {
         // rest hang roughly upright with a slow turn and an organic tilt.
         //   thr,  builder,          tumble, yLoFactor, yHiFactor   (× discR)
         var ROSTER = themeRoster || _hzCosmicRoster();
+        /* MOVING MAPS: on a travelling map the bodies are laid along the travel
+           band instead of the ring, and _motionAnimate streams them past */
+        var streaming = !!_hzMotion;
+        var stream = { cx: cx, cz: cz, discR: discR, ts: ts, axis: (_hzMotion && _hzMotion.axis === 'z') ? 'z' : 'x', kind: (_hzMotion && _hzMotion.kind) || 'drift' };
 
         var slots = 132;
         for (var i = 0; i < slots; i++) {
@@ -25217,6 +25886,7 @@ const ThreeRenderer = (function () {
             var mesh = pick[1](rng);
             if (!mesh) continue;
             var tumble = pick[2];
+            if (streaming) { _hzPlaceStream(mesh, rng, pick, stream); continue; }
             var y = (pick[3] + rng() * (pick[4] - pick[3])) * discR;
             mesh.position.set(x, y, z);
 
@@ -25251,6 +25921,7 @@ const ThreeRenderer = (function () {
         for (var rgi = 0; rgi < ringWant; rgi++) {
             var rMesh = _hzSacredRings(rng);
             if (!rMesh) continue;
+            if (streaming) { _hzPlaceStream(rMesh, rng, [1, null, true, -0.60, 0.72], stream); continue; }
             var rAng = (rgi / ringWant) * Math.PI * 2 + (rng() - 0.5) * 0.80;
             var rRad = discR * (0.62 + rng() * 0.78);
             var rX = cx + Math.cos(rAng) * rRad;
@@ -25278,6 +25949,7 @@ const ThreeRenderer = (function () {
         for (var dgi = 0; dgi < doorWant; dgi++) {
             var dMesh = _hzLoneDoor(rng);
             if (!dMesh) continue;
+            if (streaming) { _hzPlaceStream(dMesh, rng, [1, null, false, -0.45, 0.55, 'door'], stream); continue; }
             var dAng = (dgi / doorWant) * Math.PI * 2 + (rng() - 0.5) * 0.9 + 0.7;
             var dRad = discR * (0.58 + rng() * 0.7);
             var dX = cx + Math.cos(dAng) * dRad, dZ = cz + Math.sin(dAng) * dRad;
@@ -25297,6 +25969,7 @@ const ThreeRenderer = (function () {
             });
         }
 
+        if (streaming) _motionBuildMotes(rng, stream);
         if (nearBuild) _hzRunNearBuilder(nearBuild, nearCtx);
         scene.add(_horizonGroup);
     }
@@ -25569,6 +26242,7 @@ const ThreeRenderer = (function () {
             f.obj.position.y = f.baseY + Math.sin(t * f.spd + f.phase) * f.amp;
             f.obj.rotation.y += f.spin;
         }
+        _motionAnimate(t);   // MOVING MAPS: the streams, the motes, the sea, the wake
         // breathe the self-lit glow accents — a slow luminous swell
         for (var j = 0; j < _hzGlowPulse.length; j++) {
             var p = _hzGlowPulse[j];
@@ -26157,6 +26831,12 @@ const ThreeRenderer = (function () {
            one write here animates all tiles (caustics/glints/swell). */
         _fluidTimeUniform.value = t;
         _fluidTileUniform.value = (_lastBuiltTileSize > 0) ? _lastBuiltTileSize : 1;
+        /* MOVING MAPS: the caustic web streams with the sea (the sheet itself is
+           moved by _motionAnimate; the board's own tiles just see the web slide) */
+        if (_fluidFlowUniform.value) {
+            if (_hzMotion && _hzMotion.sea) _fluidFlowUniform.value.set(_motion.axis === 'z' ? 0 : _motion.dist, _motion.axis === 'z' ? _motion.dist : 0);
+            else _fluidFlowUniform.value.set(0, 0);
+        }
         var types = Object.keys(_FLUID_DRIFT_3D);   // all liquids, tinted ones included
         for (var ti = 0; ti < types.length; ti++) {
             var fKey = types[ti];
@@ -34061,6 +34741,7 @@ const ThreeRenderer = (function () {
         var u = _envUni, t = now / 1000;
         u.uTime.value = t; u.uDayNight.value = sk.night; u.uSkyEvent.value = 0; u.uSkyAmt.value = 0; u.uZodiac.value = 0;
         u.uWeather.value.set(0, 0, 0, 0); u.uMoonMesh.value = 0;
+        u.uSkyFlow.value = 0; u.uSunNear.value = 0; u.uMoonNear.value = 0;   // MOVING MAPS: still in the building
         u.uCenter.value.set(0, 0, 0); u.uDiscR.value = 6000;
         u.uMapTint.value.set(sk.tint.r, sk.tint.g, sk.tint.b);
         u.uMapTintAmt.value = (env.tint != null && env.tintAmt != null) ? env.tintAmt : 0;
@@ -36020,6 +36701,7 @@ const ThreeRenderer = (function () {
         var t = _fluidTimeSec;
         _fluidTimeUniform.value = t;
         _fluidTileUniform.value = mt.tile;
+        if (_fluidFlowUniform.value) _fluidFlowUniform.value.set(0, 0);   // the building's water holds still (MOVING MAPS)
         var drift = _FLUID_DRIFT_3D[mt.key];
         var o1 = _fluidTextures[mt.key + '_off1'], o2 = _fluidTextures[mt.key + '_off2'];
         if (drift && o1) { o1.x = (drift.l1dx * t) % 1.0; o1.y = (drift.l1dy * t) % 1.0; }
@@ -37093,6 +37775,8 @@ const ThreeRenderer = (function () {
             _applyRingVitalsMode();
         },
         isRingVitalsOn: function () { return !!_plateLook.rings; },
+        /* MOVING MAPS (2026-09-12): the travel readout — null on a still map */
+        motion: function () { return _motionInfo(); },
         setPlateStyle: function (style) {
             _plateLook.style = (style === 'compact' || style === 'side') ? style : 'bars';
             try { localStorage.setItem('ew_plateStyle', _plateLook.style); } catch (e) {}

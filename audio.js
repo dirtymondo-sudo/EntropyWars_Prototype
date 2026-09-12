@@ -960,6 +960,9 @@
             if (lava >= 6) val = 'lavaBubble';
             else if (total > 0 && cloud / total >= 0.3) val = 'ambWindHigh';
             else if (state.mapEnv && state.mapEnv.scenery === 'crystals') val = 'ambCavern';
+            /* MOVING MAPS (2026-09-12): a travelling map names its own bed (the
+               wind over the sea); the picker keeps the lava / cloud rules first */
+            else if (state.mapEnv && state.mapEnv.motion && typeof state.mapEnv.motion.ambience === 'string' && _R2_AMBIENCE[state.mapEnv.motion.ambience]) val = state.mapEnv.motion.ambience;
             _ambFlavourCache = { at: now, val };
             return val;
         }
@@ -967,6 +970,16 @@
         // Stackable layers: weather + map flavour + day/night can all play at
         // once (night crickets under a thunderstorm). One exception: daytime
         // birdsong under a raging storm reads wrong, so the storm replaces it.
+        /* MOVING MAPS (2026-09-12): the storm a sea map sails into (env.motion.storm
+           { from, to } rounds → 0..1); the thunder bed joins once it is half built.
+           state.round syncs, so the guest hears the same weather. */
+        function _motionStormLevel() {
+            try {
+                const mo = state.mapEnv && state.mapEnv.motion, st = mo && mo.storm;
+                if (!st || !(st.to > st.from)) return 0;
+                return Math.max(0, Math.min(1, ((state.round || 1) - st.from) / (st.to - st.from)));
+            } catch (e) { return 0; }
+        }
         function _desiredAmbienceKeys() {
             try {
                 if (window.EW_DISABLE_AMBIENCE) return [];
@@ -974,7 +987,7 @@
                 if (state.phase !== 'battle' || state.winner) return [];
                 const keys = [];
                 const aw = state.activeWeather || [];
-                const storm = aw.some(w => w && (w.type === 'thunderstorm' || w.type === 'hurricane'));
+                const storm = aw.some(w => w && (w.type === 'thunderstorm' || w.type === 'hurricane')) || _motionStormLevel() >= 0.5;
                 if (storm) keys.push('thunderAmbience');
                 const flav = _ambienceMapFlavour();
                 if (flav) keys.push(flav);

@@ -749,6 +749,10 @@ const MAP_POOL = [
     { modeId: 'prebuilt_backrooms_delta', w: 8, h: 8, team: 4 },
     { modeId: 'prebuilt_northpole_delta', w: 8, h: 8, team: 4 },
     { modeId: 'prebuilt_flatlands_delta', w: 8, h: 8, team: 4 },
+    // MOVING MAPS (2026-09-12)
+    { modeId: 'prebuilt_revenge_delta', w: 8, h: 8, team: 4 },
+    { modeId: 'prebuilt_derelict_delta', w: 8, h: 8, team: 4 },
+    { modeId: 'prebuilt_lookingglass_delta', w: 8, h: 8, team: 4 },
     // full launch maps (6v6 / 8v8 queues)
     { modeId: 'prebuilt_nuketown', w: 14, h: 14, team: 6 },
     { modeId: 'prebuilt_stonehenge', w: 16, h: 16, team: 6 },
@@ -759,6 +763,9 @@ const MAP_POOL = [
     { modeId: 'prebuilt_backrooms', w: 16, h: 16, team: 6 },
     { modeId: 'prebuilt_northpole', w: 16, h: 16, team: 6 },
     { modeId: 'prebuilt_flatlands', w: 16, h: 16, team: 6 },
+    { modeId: 'prebuilt_revenge', w: 16, h: 16, team: 6 },
+    { modeId: 'prebuilt_derelict', w: 16, h: 16, team: 6 },
+    { modeId: 'prebuilt_lookingglass', w: 16, h: 16, team: 6 },
     { modeId: 'prebuilt_shasta', w: 20, h: 20, team: 6 },
     { modeId: 'prebuilt_giza', w: 20, h: 20, team: 6 },
     { modeId: 'prebuilt_heaven', w: 20, h: 20, team: 6 },

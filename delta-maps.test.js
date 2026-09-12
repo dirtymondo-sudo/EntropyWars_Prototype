@@ -52,11 +52,12 @@ function fail(id, msg) { failures++; problems.push(id + ': ' + msg); if (ascii) 
 
 const deltas = EW_MAP_META.filter(m => m.isDelta);
 if (ascii) console.log('delta boards: ' + deltas.length);
-/* 29 = one Δ per launch map; the D.O.O.R. facility boards (data.js
-   EW_FACILITY_META, `facility: true`) ride the Δ roster too and obey the
-   same house rules, but they have no parent full map. */
+/* 32 = one Δ per launch map (29 + the three MOVING MAPS, 2026-09-12); the
+   D.O.O.R. facility boards (data.js EW_FACILITY_META, `facility: true`) ride
+   the Δ roster too and obey the same house rules, but they have no parent
+   full map. */
 const facility = deltas.filter(m => m.facility);
-if (deltas.length - facility.length !== 29) fail('roster', 'expected 29 Δ boards, got ' + (deltas.length - facility.length));
+if (deltas.length - facility.length !== 32) fail('roster', 'expected 32 Δ boards, got ' + (deltas.length - facility.length));
 if (facility.length !== 2) fail('roster', 'expected 2 facility boards, got ' + facility.length);
 if (EW_MAP_META.some(m => m.isDeltaArena)) fail('roster', 'isDeltaArena entries still exist');
 
@@ -84,9 +85,9 @@ for (const meta of deltas) {
             if (col[i].z !== i) fail(id, 'non-contiguous stack at ' + x + ',' + y);
             if (!TID2KEY[col[i].tid]) fail(id, 'bad voxel tid at ' + x + ',' + y);
         }
-        // the shared bed
+        // the bed: the shared lava bed, or the board's own (MOVING MAPS — `bed` on the entry)
         if (H[y][x] >= B) {
-            const bed = ['lava', 'cave_floor', 'cave_wall', 'dirt_4', 'dirt_3'];
+            const bed = (Array.isArray(d.bed) && d.bed.length === 5) ? d.bed : ['lava', 'cave_floor', 'cave_wall', 'dirt_4', 'dirt_3'];
             for (let z = 0; z < 5; z++) if (TID2KEY[col[z].tid] !== bed[z]) { fail(id, 'bed layer z' + z + ' at ' + x + ',' + y + ' is ' + TID2KEY[col[z].tid]); break; }
         }
         for (const e of O[y][x]) if (!OID2KEY[e.oid]) fail(id, 'bad oid ' + e.oid + ' at ' + x + ',' + y);

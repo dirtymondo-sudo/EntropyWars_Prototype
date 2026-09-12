@@ -12751,6 +12751,115 @@ _MF_BUILDERS.prebuilt_flatlands = function () {
     return M;
 };
 
+/* ═══════════════════════ MOVING MAPS (2026-09-12) ══════════════════════════
+   Three sites that TRAVEL. The board stands still (every rule, every
+   click, every camera is untouched); the SETTING round it streams past —
+   three-renderer.js MOTION, driven by `env.motion` on the meta row and
+   state.round (faster every round; the guest's round syncs, so both seats
+   see the same speed with nothing relayed). Their Δ boards carry their
+   own bed (cfg.strata on _mfDeltaNew) instead of the shared lava bed. */
+
+/* QUEEN ANNE'S REVENGE — 16×16 6v6. Blackbeard's galleon under way, bow to
+   the EAST: the main deck between a raised fo'c'sle (east) and quarterdeck
+   (west), the cabin roof over the stern, hatches into a flooding hold,
+   cargo stacks, the mainmast foot amidships, low gunwales on the long
+   sides (the gangway amidships stays open). */
+_MF_BUILDERS.prebuilt_revenge = function () {
+    const M = _mfNew({
+        name: "Queen Anne's Revenge", w: 16, h: 16, base: 'wood_planks', baseH: 3, seed: 1717,
+        strata: ['deep_water', 'deep_water', 'wood'], underTop: 'wood',
+        tints: { wood_planks: '#b9885a', wood: '#7a5636', deep_water: '#1c3e52' },
+    });
+    // the raised ends: fo'c'sle (east) and quarterdeck (west), one step up
+    M.rect(13, 0, 15, 15, 'wood_planks', 4);
+    M.rect(0, 0, 2, 15, 'wood_planks', 4);
+    M.rect(0, 5, 0, 10, 'wood', 5);                                   // the cabin roof over the stern
+    // hatches into the hold — the pumps lost; you can wade, you should not linger
+    M.rect(7, 3, 8, 4, 'deep_water', 2); M.rect(7, 11, 8, 12, 'deep_water', 2);
+    M.rect(4, 7, 4, 8, 'deep_water', 2); M.rect(11, 7, 11, 8, 'deep_water', 2);
+    // cargo: crate stacks (+2) and single crates (+1)
+    M.rect(4, 2, 4, 2, 'wood', 5); M.rect(11, 13, 11, 13, 'wood', 5);
+    M.rect(11, 2, 11, 2, 'wood', 5); M.rect(4, 13, 4, 13, 'wood', 5);
+    M.rect(6, 5, 6, 5, 'wood', 4); M.rect(9, 10, 9, 10, 'wood', 4);
+    M.rect(9, 5, 9, 5, 'wood', 4); M.rect(6, 10, 6, 10, 'wood', 4);
+    M.rect(13, 7, 13, 8, 'wood', 5);                                   // the fo'c'sle's forward rail
+    M.sym180();
+    // the mainmast foot amidships (a real collision stamp), lanterns on the rails
+    M.mon('monolith', 7, 7, 1, 3, {});
+    M.obj(2, 3, 'torch', { leaf: 'floor' }); M.obj(13, 12, 'torch', { leaf: 'floor' });
+    M.obj(13, 3, 'torch', { leaf: 'floor' }); M.obj(2, 12, 'torch', { leaf: 'floor' });
+    // gunwales: a low wooden parapet on the outer long edges
+    for (let x = 0; x < 16; x++) { M.wall(x, 0, 'N', { tex: 'wood', h: 1, low: true }); M.wall(x, 15, 'S', { tex: 'wood', h: 1, low: true }); }
+    M.spawnEdges('s', 6);
+    M.finishSpawns('wood_planks');
+    return M;
+};
+
+/* THE DERELICT — 16×16 6v6. A ship torn in half and still falling: the
+   deck plate open to the stars (bottomless breaches), bulkhead stubs, the
+   reactor's holo glow, coolant slicks, specimen tubes and a blast door
+   that still cycles. Bow to the EAST (what is left of it). */
+_MF_BUILDERS.prebuilt_derelict = function () {
+    const M = _mfNew({
+        name: 'The Derelict', w: 16, h: 16, base: 'metal_3', baseH: 3, seed: 426,
+        strata: ['void', 'void', 'gunmetal'], underTop: 'gunmetal',
+        tints: { metal_3: '#8c949c', gunmetal: '#5a6068', metal: '#a8b0b8', metal_2: '#7a8290', holo: '#7fd8ff', oil: '#101418', void: '#05060d' },
+    });
+    // the tear: breaches open to space along the north-west and south-east corners
+    [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [0, 2], [3, 0], [0, 3]].forEach(p => M.hole(p[0], p[1], 'void'));
+    [[15, 2], [14, 1], [15, 1], [15, 0], [14, 0], [13, 0]].forEach(p => M.hole(p[0], p[1], 'void'));
+    // scorched craters (one step down, black)
+    M.disc(5.5, 3.5, 1.2, 'void', 2); M.disc(10.5, 12.5, 1.2, 'void', 2);
+    // bulkhead stubs (+2 hull plate) — the corridor walls that are left
+    M.rect(4, 6, 4, 9, 'gunmetal', 5); M.rect(11, 6, 11, 9, 'gunmetal', 5);
+    M.rect(6, 4, 9, 4, 'gunmetal', 5); M.rect(6, 11, 9, 11, 'gunmetal', 5);
+    M.rect(7, 4, 8, 4, 'metal_3', 3); M.rect(7, 11, 8, 11, 'metal_3', 3);     // the doorways
+    // the reactor: a holo-lit floor at the heart, consoles (+1) round it
+    M.rect(6, 6, 9, 9, 'holo', 3);
+    M.rect(5, 5, 5, 5, 'metal_2', 4); M.rect(10, 10, 10, 10, 'metal_2', 4);
+    M.rect(10, 5, 10, 5, 'metal_2', 4); M.rect(5, 10, 5, 10, 'metal_2', 4);
+    // coolant slicks
+    M.rect(2, 9, 3, 10, 'oil', 3); M.rect(12, 5, 13, 6, 'oil', 3);
+    // catwalk grating along the surviving sides
+    M.rect(0, 12, 15, 12, 'metal_2', 3); M.rect(0, 3, 15, 3, 'metal_2', 3);
+    M.sym180();
+    // specimen tubes and the blast door that still cycles
+    M.monSym('greytube', 2, 6, 1, 3, {});
+    M.monSym('greytube', 13, 6, 1, 3, {});
+    M.mon('blastdoor', 7, 7, 3, 2, { solid: false });
+    M.spawnEdges('s', 6);
+    M.finishSpawns('metal_3');
+    return M;
+};
+
+/* THE LOOKING-GLASS — 16×16 6v6. Carroll's chess problem, still in play:
+   a marble chessboard flying through a place of unfinished shapes. The
+   pieces are cover (rooks as columns, bishops as obelisks, pawns as
+   blocks), a hedge runs the flanks, the pool of tears lies to one side. */
+_MF_BUILDERS.prebuilt_lookingglass = function () {
+    const M = _mfNew({
+        name: 'The Looking-Glass', w: 16, h: 16, base: 'marble_light', baseH: 3, seed: 64,
+        strata: ['void', 'void', 'marble'], underTop: 'marble',
+        tints: { marble_light: '#f2eee6', marble: '#2c2a38', water: '#8ab4e8', leaves: '#3f9a4a', void: '#150a24' },
+    });
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if ((x + y) % 2) M.t(x, y, 'marble');
+    // pawns on the second ranks (+2), knights' squares one step up
+    [2, 5, 10, 13].forEach(x => { M.rect(x, 2, x, 2, (x + 2) % 2 ? 'marble' : 'marble_light', 5); M.rect(15 - x, 13, 15 - x, 13, (15 - x + 13) % 2 ? 'marble' : 'marble_light', 5); });
+    M.rect(6, 5, 6, 5, 'marble_light', 4); M.rect(9, 10, 9, 10, 'marble_light', 4);
+    M.rect(9, 5, 9, 5, 'marble', 4); M.rect(6, 10, 6, 10, 'marble', 4);
+    // the pool of tears
+    M.disc(2.5, 8, 1.6, 'water', 2); M.disc(13.5, 7, 1.6, 'water', 2);
+    // the hedge on the flanks (impassable, ranged cover)
+    for (let y = 4; y <= 11; y++) { if (y === 7 || y === 8) continue; M.tree(0, y, 'tree_2'); M.tree(15, 15 - y, 'tree_2'); }
+    M.sym180();
+    // rooks (columns) on the corners of the middle ranks, bishops (obelisks) beside the pawns
+    M.monSym('greekcol', 1, 4, 1, 2, {}); M.monSym('greekcol', 14, 4, 1, 2, {});
+    M.monSym('obelisk3d', 4, 4, 1, 3, {}); M.monSym('obelisk3d', 11, 4, 1, 3, {});
+    M.spawnEdges('s', 6);
+    M.finishSpawns('marble_light');
+    return M;
+};
+
 /* ═══════════════════════════════════════════════════════════════════════════
    DELTA FORGE — hand-authored 8×8 Δ boards (2026-09-01 delta redesign)
    ─────────────────────────────────────────────────────────────────────────────
@@ -12794,6 +12903,11 @@ _MF_BUILDERS.prebuilt_flatlands = function () {
 const MF_DELTA_S = 8;
 const MF_DELTA_BASE_H = 5;
 const MF_DELTA_STRATA = ['lava', 'cave_floor', 'cave_wall', 'dirt_4', 'dirt_3'];
+/* MOVING MAPS (2026-09-12): a Δ may carry its OWN five-layer bed (cfg.strata
+   + cfg.underTop on _mfDeltaNew) — deep water and wood under a ship's deck,
+   void and hull plate under a wreck, void and marble under a flying board.
+   The entry records it as `bed`; delta-maps.test.js checks each board
+   against its own bed (the shared lava bed stays the default). */
 /* monument kinds with a real collision stamp (map.js _MON_COLLISION / _MON_GRID) */
 const MF_DELTA_SOLID_MONS = new Set(['tpillar', 'greekcol', 'mushroom', 'mushroom2', 'obelisk3d', 'monolith', 'greytube', 'dumpster', 'obelisk', 'colossus', 'greek']);
 
@@ -12801,7 +12915,7 @@ function _mfDeltaNew(cfg) {
     const S = MF_DELTA_S, B = MF_DELTA_BASE_H;
     const M = _mfNew({
         name: cfg.name, w: S, h: S, base: cfg.base || 'grass_2', baseH: B, seed: cfg.seed || 8008,
-        strata: MF_DELTA_STRATA, underTop: 'dirt_3', fillAbove: 'surface', tints: cfg.tints || null,
+        strata: cfg.strata || MF_DELTA_STRATA, underTop: cfg.underTop || 'dirt_3', fillAbove: 'surface', tints: cfg.tints || null,
     });
     M.B = B;
     M.deltaDesc = cfg.desc || '';
@@ -12864,6 +12978,7 @@ function _mfDeltaNew(cfg) {
         M.mons.forEach(m => { if (!MF_DELTA_SOLID_MONS.has(m.kind)) m.solid = false; });
         const entry = M.finish();
         entry.isDelta = true;
+        entry.bed = M.strata.slice(); entry.underTop = M.underTop;   // the board's own bed (MOVING MAPS)
         entry.base = M.cfg.base || 'grass_2';
         entry.deltaDesc = M.deltaDesc;
         return entry;
@@ -13300,6 +13415,62 @@ _MF_DELTA_BUILDERS.prebuilt_flatlands = function () {
     return M.finishDelta();
 };
 
+/* MOVING MAPS (2026-09-12) ─────────────────────────────────────────────── */
+
+/* QUEEN ANNE'S REVENGE — the main deck: the fo'c'sle and quarterdeck
+   corners one step up, the hold hatches flooded (deep water — wade, do
+   not linger), crate stacks, lanterns on the rails. Bed: the sea under
+   the hull's wood, so a dug hatch shows the bilge and then the water. */
+_MF_DELTA_BUILDERS.prebuilt_revenge = function () {
+    const M = _mfDeltaNew({ name: "Queen Anne's Revenge", base: 'wood_planks', seed: 8401,
+        strata: ['deep_water', 'deep_water', 'wood', 'wood', 'wood'], underTop: 'wood',
+        tints: { wood_planks: '#b9885a', wood: '#7a5636', deep_water: '#1c3e52' },
+        desc: 'the main deck under way — the raised ends, the flooded hatches, crate stacks, lanterns; the sea streams past faster every round' });
+    M.step(0, 0, 'wood_planks'); M.step(1, 0, 'wood_planks'); M.step(0, 1, 'wood_planks');   // the raised corner
+    M.lake(2, 2, 'deep_water', 2);                                                            // the hatch: the hold below is flooding
+    M.block(6, 2, 'wood'); M.step(5, 2, 'wood');                                              // cargo
+    M.step(0, 3, 'wood');
+    M.obj(7, 1, 'torch', { leaf: 'floor' });
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE DERELICT — the deck plate: breaches scorched black one step down,
+   bulkhead stubs, a console, the coolant slick, the reactor's holo glow,
+   two specimen tubes. Bed: the void under hull plate. */
+_MF_DELTA_BUILDERS.prebuilt_derelict = function () {
+    const M = _mfDeltaNew({ name: 'The Derelict', base: 'metal_3', seed: 8402,
+        strata: ['void', 'void', 'gunmetal', 'gunmetal', 'gunmetal'], underTop: 'gunmetal',
+        tints: { metal_3: '#8c949c', gunmetal: '#5a6068', metal_2: '#7a8290', holo: '#7fd8ff', oil: '#101418', void: '#05060d' },
+        desc: 'the deck plate — breaches, bulkhead stubs, a console, the coolant slick, the reactor glow; the wreckage field streams past as the hull swings in close to the sun' });
+    M.lake(0, 0, 'void', 1); M.lake(7, 2, 'void', 1);                 // breaches (one step down, black)
+    M.block(1, 2, 'gunmetal'); M.block(2, 2, 'gunmetal');             // a bulkhead stub
+    M.step(6, 2, 'metal_2');                                          // a console
+    M.lake(0, 3, 'oil', 1);                                           // coolant
+    M.t(3, 2, 'holo'); M.t(4, 2, 'holo');                             // the reactor's light
+    M.symAll();
+    M.pillarSym('greytube', 7, 1, 3);
+    return M.finishDelta();
+};
+
+/* THE LOOKING-GLASS — the board itself: marble squares, pawns as blocks,
+   a rook column and a bishop obelisk, the pool of tears. Bed: the void
+   under a slab of marble. */
+_MF_DELTA_BUILDERS.prebuilt_lookingglass = function () {
+    const M = _mfDeltaNew({ name: 'The Looking-Glass', base: 'marble_light', seed: 8403,
+        strata: ['void', 'void', 'marble', 'marble', 'marble'], underTop: 'marble',
+        tints: { marble_light: '#f2eee6', marble: '#2c2a38', water: '#8ab4e8', void: '#150a24' },
+        desc: 'the board in play — marble squares, pawns as blocks, a rook and a bishop, the pool of tears; the void of shapes streams past and the moon keeps coming round' });
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) if ((x + y) % 2) M.t(x, y, 'marble');
+    M.block(1, 2, 'marble_light'); M.block(6, 2, 'marble');            // pawns
+    M.step(3, 2, 'marble_light');                                      // a knight's square
+    M.lake(7, 3, 'water', 1);                                          // the pool of tears
+    M.symAll();
+    M.pillarSym('greekcol', 0, 0, 2);                                  // rooks
+    M.pillarSym('obelisk3d', 7, 2, 3);                                 // bishops
+    return M.finishDelta();
+};
+
 /* ═══════════════════════ META — roster, biomes, skies ══════════════════════
    One row per launch map. Everything downstream is generated from this table:
    PREBUILT_MAPS + MAP_LAYOUT_PRESETS here; GAME_MODES / compatibleMaps in
@@ -13328,7 +13499,8 @@ const EW_MAP_META = [
     { id: 'prebuilt_heaven', label: 'Heaven', w: 20, h: 20, teamSize: 6, tier: 1, base: 'cloud_2',
       biomes: ['divine'], deltaPad: 'cloud_2', near: 'heaven',
       desc: '20×20 prebuilt, 6v6 — cloud islands over the void: the gilded gates, light-pillar daises, healing pools & bottomless rifts',
-      env: { tint: 0xfff3d0, tintAmt: 0.38, stars: 0.15, nebula: 0.35, fog: { color: 0xfdf2d8, amount: 0.55, top: 0.05, band: 0.5 }, scenery: 'divine' } },
+      env: { tint: 0xfff3d0, tintAmt: 0.38, stars: 0.15, nebula: 0.35, fog: { color: 0xfdf2d8, amount: 0.55, top: 0.05, band: 0.5 }, scenery: 'divine',
+             motion: { kind: 'drift', axis: 'x', speed: 0.25, ramp: 0.04, max: 1.5, sky: 0.35 } } },   // the cloud islands drift past (MOVING MAPS, a gentle one)
     { id: 'prebuilt_hell', label: 'Hell', w: 20, h: 20, teamSize: 6, tier: 1, base: 'scorched',
       biomes: ['infernal'], deltaPad: 'scorched', near: 'hell',
       desc: '20×20 prebuilt, 6v6 — the mirror of Heaven: a lava river, obsidian altar, basalt spike cover & the chained colossi',
@@ -13427,6 +13599,27 @@ const EW_MAP_META = [
       biomes: ['astral'], deltaPad: 'grass_2', near: 'flatlands',
       desc: '16×16 prebuilt, 6v6 — the eerie empty plane: two shallow dips, one dead tree, a circle you can barely see. You are being watched',
       env: { tint: 0xc0c8b8, tintAmt: 0.60, stars: 0.05, nebula: 0.1, fog: { color: 0xd0d8c8, amount: 0.8, top: 0.20, band: 0.9 }, scenery: 'eyes', density: 0.35 } },
+    // ── MOVING MAPS (2026-09-12) — the setting travels. `env.motion` (three-renderer.js MOTION):
+    //    kind sea|space|void|drift · axis (the world streams toward −axis) · speed tiles/s at round 1 ·
+    //    ramp per round · max multiplier · sea (the fluid sheets scroll) · seaDepth (tiles under the
+    //    deck) · sky (dome cloud/nebula streaming) · storm {from,to} (overcast builds between those
+    //    rounds) · orbit {body sun|moon, period in tiles travelled, near 0..1} (a close pass that
+    //    swells the sun / moon) · ambience (an audio.js bed under the music). Kill: EW_NO_MAP_MOTION. ──
+    { id: 'prebuilt_revenge', label: "Queen Anne's Revenge", w: 16, h: 16, teamSize: 6, tier: 3, base: 'wood_planks',
+      biomes: ['deep_sea', 'gothic'], deltaPad: 'wood_planks', near: 'revenge',
+      desc: "16×16 prebuilt, 6v6 — Blackbeard's galleon under full sail: the main deck between the fo'c'sle and the quarterdeck, flooding hatches, cargo, the gunwales — and the sea racing past, faster every round, into the storm",
+      env: { tint: 0x22344a, tintAmt: 0.42, stars: 0.45, nebula: 0.4, fog: { color: 0x1a2838, amount: 0.6, top: 0.06, band: 0.5 }, scenery: 'sea',
+             motion: { kind: 'sea', axis: 'x', speed: 1.0, ramp: 0.18, max: 4.0, sea: true, seaDepth: 2.4, sky: 1.0, storm: { from: 4, to: 12 }, ambience: 'ambWindHigh' } } },
+    { id: 'prebuilt_derelict', label: 'The Derelict', w: 16, h: 16, teamSize: 6, tier: 3, base: 'metal_3',
+      biomes: ['space', 'astral'], deltaPad: 'metal_3', near: 'derelict',
+      desc: '16×16 prebuilt, 6v6 — a ship torn in half and still falling: deck plate open to the stars, bulkhead stubs, the reactor glow, coolant slicks — and the wreckage field streaming past as the hull swings in close to the sun',
+      env: { tint: 0x06070f, tintAmt: 0.55, stars: 1.9, nebula: 0.3, fog: { color: 0x0a0c16, amount: 0.12, top: 0.02, band: 0.3 }, scenery: 'wreckage', density: 0.9,
+             motion: { kind: 'space', axis: 'x', speed: 1.2, ramp: 0.2, max: 4.5, sky: 0.6, orbit: { body: 'sun', period: 110, near: 1.0 } } } },
+    { id: 'prebuilt_lookingglass', label: 'The Looking-Glass', w: 16, h: 16, teamSize: 6, tier: 3, base: 'marble_light',
+      biomes: ['astral', 'arthurian'], deltaPad: 'marble_light', near: 'lookingglass',
+      desc: '16×16 prebuilt, 6v6 — a chessboard flying through a void of unfinished shapes: marble squares, the pieces as cover, the pool of tears — and the Cheshire moon swinging in close, faster every round',
+      env: { tint: 0x2a1640, tintAmt: 0.48, stars: 0.8, nebula: 1.5, fog: { color: 0x3a2458, amount: 0.45, top: 0.06, band: 0.5 }, scenery: 'wonder', density: 1.1,
+             motion: { kind: 'void', axis: 'x', speed: 1.0, ramp: 0.2, max: 4.5, sky: 0.8, orbit: { body: 'moon', period: 80, near: 0.9 } } } },
 ];
 
 /* Build + register everything: full maps and their Δ variants. */
@@ -16464,7 +16657,7 @@ const DOOR_TEXT = {
     // Where each entity crossed — one of the existing site maps, so the roster
     // and the map roster point at each other for free.
     POINT_OF_ENTRY: {
-        'homosapien': 'Nuketown', 'pirate': 'Atlantis', 'swordfighter': 'Camelot', 'knight': 'Camelot',
+        'homosapien': 'Nuketown', 'pirate': "Queen Anne's Revenge", 'swordfighter': 'Camelot', 'knight': 'Camelot',
         'shaman': 'Mount Shasta', 'mad scientist': 'D.U.M.B.', 'cowboy': 'Area 51', 'men in black': 'Area 51',
         'telepath': 'D.U.M.B.', 'marksman': 'Antarctica', 'priest': 'Vatican City', 'wizard': 'Stonehenge',
         'gangster': 'Cyberpunk City', 'nun': 'Vatican City',
@@ -16477,9 +16670,9 @@ const DOOR_TEXT = {
         'gargoyle': 'Vatican City', 'djinn': 'Pyramids of Giza', 'anubis': 'Pyramids of Giza', 'catgirl': 'Cyberpunk City',
         'mantid': 'Moon', 'antperson': 'Hollow Earth', 'mothman': 'Skinwalker Ranch', 'siren': 'Atlantis',
         'scarecrow': 'Flat Lands', 'glitch': 'CERN', 'machine elves': 'CERN', 'cyclops': 'Mount Olympus',
-        'cyborg': 'Technoticlan', 'demon prince': 'Hell', 'demon princess': 'Hell', 'dreameater': 'Backrooms',
+        'cyborg': 'Technoticlan', 'demon prince': 'Hell', 'demon princess': 'Hell', 'dreameater': 'The Looking-Glass',
         'fallen angel': 'Hell', 'goatman': 'Skinwalker Ranch', 'halfdemon': 'Hell', 'mermaid': 'Atlantis',
-        'nephilim': 'Göbekli Tepe', 'vampire': 'Bohemian Grove', 'voidweaver': 'Moon', 'cosmic wraith': 'Mars',
+        'nephilim': 'Göbekli Tepe', 'vampire': 'Bohemian Grove', 'voidweaver': 'Moon', 'cosmic wraith': 'The Derelict',
         'superhero': 'Cyberpunk City', 'general': 'Nuketown', 'droid': 'Mars', 'antihero': 'Cyberpunk City',
         'conspiracy theorist': 'Area 51', 'overlord': 'Tower of Babel', 'chosen one': 'Mount Olympus', 'politician': 'Bohemian Grove',
         'atlantean': 'Atlantis', 'dinosaur': 'Hollow Earth', 'dragon': 'Camelot', 'ghoul': 'Hell',
@@ -16487,8 +16680,8 @@ const DOOR_TEXT = {
         'yeti': 'Antarctica', 'barbarella': 'Moon', 'black goo': 'D.U.M.B.', 'golem': 'Tower of Babel',
         'honda civic': 'Nuketown', 'ice queen': 'North Pole', 'juggernaut': 'D.U.M.B.', 'ki fighter': 'Mount Shasta',
         'king arthur': 'Camelot', 'king kong': 'Hollow Earth', 'minotaur': 'Mount Olympus', 'necromancer': 'Stonehenge',
-        'occulus': 'Backrooms', 'quarterback': 'Football Stadium', 'robinhood': 'Camelot', 'santa clause': 'North Pole',
-        'super sentai': 'Technoticlan', 'symbiote': 'D.U.M.B.', 'valkraye': 'Heaven', 'watcher': 'Göbekli Tepe',
+        'occulus': 'The Looking-Glass', 'quarterback': 'Football Stadium', 'robinhood': 'Camelot', 'santa clause': 'North Pole',
+        'super sentai': 'Technoticlan', 'symbiote': 'The Derelict', 'valkraye': 'Heaven', 'watcher': 'Göbekli Tepe',
     },
 
     // "D.O.O.R. ANNOTATION" — an extra paragraph on the dossiers where the
@@ -16516,6 +16709,13 @@ const DOOR_TEXT = {
     //   summary — EXECUTIVE SUMMARY: the real place and its lore, loosely
     //             educational, one cheeky line. Short. Not about the Department.
     SITE_FILES: {
+        /* MOVING MAPS (2026-09-12) */
+        prebuilt_revenge: { tone: 'deny', status: 'UNDER WAY', juris: 'Admiralty · flag of no nation · Customs by grappling hook',
+            summary: "Blackbeard took a French slaver called La Concorde off Martinique in 1717, gave her forty guns and a new name, and ran her aground at Beaufort Inlet the next spring; divers found the wreck in 1996 with the cannon still loaded. This one never went aground. It does not stop, it does not slow down, and the storm it is sailing into has been arriving since the paperwork was filed." },
+        prebuilt_derelict: { tone: 'deny', status: 'DISTRESS SIGNAL', juris: 'Salvage law · nobody has claimed it twice',
+            summary: 'A ship of unknown make, broken in half, falling sunward with the lights still on. The transmission the Department picked up was catalogued as a distress call for eleven years before Records translated it. It was a warning. The reactor is still warm, the coolant is still leaking, and something has been walking the deck in the dark between the stars and the sun.' },
+        prebuilt_lookingglass: { tone: 'void', status: 'IN PLAY', juris: 'The Red Queen · immunity claimed · check',
+            summary: 'Lewis Carroll laid the second Alice book out as a chess problem in 1871: eleven moves, a pawn to the eighth rank, a crown. The board has been in play since. It is flying through a place of shapes nobody finished, the pieces are the size of houses, and the moon that keeps coming round is smiling. Do not agree to a game. Do not take the queen.' },
         prebuilt_shasta: { tone: 'admit', status: 'ACTIVE CROSSING', juris: 'Customs & Admissions · Siskiyou County, California',
             summary: 'Dormant volcano, active legend. The mountain has been "about to erupt" since 1250 and the Lemurians beneath it have been "about to make contact" since 1931; both remain pending. Lenticular clouds park over the summit and get reported as saucers roughly weekly. The town below sells crystals to believers and geologists alike. Both keep buying.' },
         prebuilt_stonehenge: { tone: 'admit', status: 'ACTIVE CROSSING', juris: 'Customs & Admissions · Salisbury Plain, Wiltshire',
@@ -17033,11 +17233,11 @@ const DOOR_HQ = {
         ancient:     { label: 'ANCIENT', sub: 'first crossings',
             maps: ['prebuilt_stonehenge', 'prebuilt_giza', 'prebuilt_babel', 'prebuilt_gobekli', 'prebuilt_camelot', 'prebuilt_technoticlan'] },
         hollow:      { label: 'HOLLOW', sub: 'inner earth · polar · the deep',
-            maps: ['prebuilt_shasta', 'prebuilt_hollow_earth', 'prebuilt_agartha', 'prebuilt_antarctica', 'prebuilt_northpole', 'prebuilt_atlantis'] },
+            maps: ['prebuilt_shasta', 'prebuilt_hollow_earth', 'prebuilt_agartha', 'prebuilt_antarctica', 'prebuilt_northpole', 'prebuilt_atlantis', 'prebuilt_revenge'] },
         celestial:   { label: 'CELESTIAL', sub: 'space · the far future',
-            maps: ['prebuilt_mars', 'prebuilt_moon'] },
+            maps: ['prebuilt_mars', 'prebuilt_moon', 'prebuilt_derelict'] },
         diplomatic:  { label: 'DIPLOMATIC', sub: 'immunity claimed',
-            maps: ['prebuilt_heaven', 'prebuilt_hell', 'prebuilt_olympus', 'prebuilt_fairy_forest', 'prebuilt_vatican'] },
+            maps: ['prebuilt_heaven', 'prebuilt_hell', 'prebuilt_olympus', 'prebuilt_fairy_forest', 'prebuilt_vatican', 'prebuilt_lookingglass'] },   // the Looking-Glass claims immunity (plan 7.6 had it Quarantined — sealed until a chapter; the Queen's court is a mythic ecosystem, and it must be playable)
         quarantined: { label: 'QUARANTINED', sub: 'astral anomalies', locked: true,
             maps: ['prebuilt_backrooms', 'prebuilt_flatlands'] },
         urban:       { label: 'URBAN', sub: 'cities · the strip · the night shift',
@@ -17178,6 +17378,10 @@ const DOOR_HQ = {
         prebuilt_fairy_forest:  { roomNo: '420', leaf: 'leaf_shabby_wood',    why: 'the mushrooms are not that kind', note: 'a door made of one plank of a tree that objected' },
         prebuilt_backrooms:     { roomNo: '90', leaf: 'leaf_exit',           why: 'it is 90 degrees', note: 'an EXIT door; the sign is a lie' },
         prebuilt_flatlands:     { roomNo: '2D', leaf: 'leaf_frame_only',     why: 'two dimensions; pairs with 4D', note: 'a frame with no door; flat all the way through' },
+        /* MOVING MAPS (2026-09-12): the plan's 1717 (7.7 Pirate Bay, now the ship itself) and E4 (7.6 #6, in play and under way); 426 is new */
+        prebuilt_revenge:       { roomNo: '1717', leaf: 'leaf_shabby_wood',    why: 'the year the Revenge was taken', note: 'a cabin door hung on a gimbal; the sea is on the other side and it does not hold still' },
+        prebuilt_derelict:      { roomNo: '426', leaf: 'leaf_bulkhead',       wide: true, why: 'LV-426; the signal was a warning', note: 'an airlock hatch onto a ship that is mostly not there; it cycles anyway' },
+        prebuilt_lookingglass:  { roomNo: 'E4', leaf: 'leaf_frame_only',     why: 'the first move; the board is 64, the room is one square', note: 'a mirror frame with no glass in it; the board is on the far side, and it is moving' },
     },
     /* The two FACILITY boards (HQ plan 7.0 rule 3) are not sites: no bay,
        no threshold. They wear the room they are projected in — the Training
@@ -17226,7 +17430,9 @@ const DOOR_HQ = {
                 /* stage 6 (2026-09-08 rev 4): the rest of the register — every launch map is a room */
                 'prebuilt_shasta', 'prebuilt_stonehenge', 'prebuilt_giza', 'prebuilt_heaven', 'prebuilt_cyberpunk', 'prebuilt_babel',
                 'prebuilt_olympus', 'prebuilt_mars', 'prebuilt_area51', 'prebuilt_skinwalker', 'prebuilt_hollow_earth', 'prebuilt_fairy_forest',
-                'prebuilt_moon', 'prebuilt_vatican', 'prebuilt_bohemian_grove', 'prebuilt_gobekli', 'prebuilt_northpole', 'prebuilt_flatlands'],
+                'prebuilt_moon', 'prebuilt_vatican', 'prebuilt_bohemian_grove', 'prebuilt_gobekli', 'prebuilt_northpole', 'prebuilt_flatlands',
+                /* MOVING MAPS (2026-09-12): the ship on a quay (a moat room), the wreck on hull plate, the board on its slab */
+                'prebuilt_revenge', 'prebuilt_derelict', 'prebuilt_lookingglass'],
         shell: { pad: 4.0, h: 4.4, dadoH: 1.05, floor: 'concrete', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling', pipes: true,
             /* the room's LIGHT (plan 7.2 stage 2): `lamp` = the containment
                lamps in the corners (lens + glow), `strip` = the wall strips,
@@ -17296,6 +17502,8 @@ const DOOR_HQ = {
             shasta: { w: 4.5 }, stonehenge: { w: 4.5 }, giza: { w: 4.5 }, heaven: { w: 4.5 }, cyberpunk: { w: 3.2 }, babel: { w: 4.5, stands: true },
             olympus: { w: 4.0 }, mars: { w: 5.0 }, area51: { w: 4.5 }, skinwalker: { w: 5.0 }, hollow_earth: { w: 4.5 }, fairy_forest: { w: 4.5 },
             moon: { w: 5.0 }, vatican: { w: 4.5 }, bohemian_grove: { w: 5.0 }, gobekli: { w: 5.0 }, northpole: { w: 4.5 },
+            /* MOVING MAPS (2026-09-12): the deck rim, the torn plating, the slab's marble rim */
+            revenge: { w: 1.6 }, derelict: { w: 2.2 }, lookingglass: { w: 1.2 },
         },
         shells: {
             prebuilt_dumb: { floor: 'concrete', wall: 'concrete', dado: 'teal', trim: 'teal', ceiling: 'concrete' },
@@ -17510,6 +17718,32 @@ const DOOR_HQ = {
                 mood: { lamp: 0xeaf0ff, glow: 0xcfd8ff, strip: 0xffffff, light: 0xe8ecff, night: 1,
                     signN: { bg: '#05060d', border: '#cfd8ff', color: '#f4f6ff' }, signS: { bg: '#1a1a20', border: '#d8b050', color: '#fff0c8' },
                     signLines: { n: ['MOON', 'ROOM 1969', 'THE FOOTAGE'], s: ['SOUNDSTAGE B', 'THE FOOTPRINTS LEAD IN. NONE LEAD OUT', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* ── MOVING MAPS (2026-09-12) ─────────────────────────────── */
+            /* 1717 · QUEEN ANNE'S REVENGE — the deck on a quay in a dark dock:
+               planks for a walkway, the hull for a bank, the sea one level
+               down (a moat room), lantern light; the ship's own hull, masts
+               and sails stand round the board (the setting at 1:1) */
+            prebuilt_revenge: { open: true, pad: 5.0, floor: 'wood_planks', wall: 'wood', dado: 'wood', trim: 'gold', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
+                apron: 'wood_planks', skirt: 'wood', apronColor: 0xb9885a, floorColor: 0xb9885a,
+                moat: { key: 'deep_water', gap: 2.6, bank: 'wood', bankColor: 0x7a5636, bed: 'rocks_dark_fantasy', bedColor: 0x3a4a58, deck: 'wood_planks', deckColor: 0xb9885a, causeways: ['s', 'n'] },
+                mood: { lamp: 0xffb060, glow: 0xff9040, strip: 0xffd8a0, light: 0xffe0c0, night: 1,
+                    signN: { bg: '#1a1410', border: '#d8a860', color: '#f4e4c8' }, signS: { bg: '#101820', border: '#7fb0d0', color: '#dff0ff' },
+                    signLines: { n: ["QUEEN ANNE'S REVENGE", 'ROOM 1717', 'THE SEA DOES NOT HOLD STILL'], s: ['GANGWAY', 'MIND THE SWELL · IT IS ON THE FORM', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 426 · THE DERELICT — hull plate for a floor, gunmetal for a
+               bank, the stars overhead, the reactor's cold light and the
+               warning strobe */
+            prebuilt_derelict: { open: true, floor: 'metal_3', wall: 'gunmetal', dado: 'gunmetal', trim: 'metal', ceiling: null, h: 4.4, dadoH: 1.0, pipes: false,
+                apron: 'metal_3', skirt: 'gunmetal', apronColor: 0x8c949c, floorColor: 0x8c949c,
+                mood: { lamp: 0xff6a3a, glow: 0xff4a20, strip: 0x9fd8ff, light: 0xb8d8ff, night: 1,
+                    signN: { bg: '#0a0c14', border: '#9fd8ff', color: '#e0f4ff' }, signS: { bg: '#1a0c08', border: '#ff6a3a', color: '#ffe0d0' },
+                    signLines: { n: ['THE DERELICT', 'ROOM 426', 'THE SIGNAL WAS A WARNING'], s: ['AIRLOCK', 'PRESSURE NOT GUARANTEED ON EITHER SIDE', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* E4 · THE LOOKING-GLASS — a checkered floor, marble for a rim,
+               violet light, the void of shapes overhead */
+            prebuilt_lookingglass: { open: true, floor: 'checkerboard', wall: 'marble_light', dado: 'marble', trim: 'gold', ceiling: null, h: 4.6, dadoH: 1.1, pipes: false,
+                apron: 'marble_light', skirt: 'marble', apronColor: 0xf2eee6, floorColor: 0xe8e4dc,
+                mood: { lamp: 0xd8a0ff, glow: 0xb070ff, strip: 0xf0e0ff, light: 0xe8d8ff, night: 1,
+                    signN: { bg: '#f4f0ea', border: '#8a5ac8', color: '#3a2458' }, signS: { bg: '#1c1030', border: '#d8a0ff', color: '#f0e0ff' },
+                    signLines: { n: ['THE LOOKING-GLASS', 'ROOM E4', 'THE FIRST MOVE'], s: ['MIRROR FRAME · NO GLASS', 'DO NOT AGREE TO A GAME', 'THE CROSSING IS AT THE CONSOLE'] } } },
             /* 888 · VATICAN CITY — the piazza: cobbles, a marble wall, the
                colonnade arms in the room, the basilica front across the
                north, the dome over the wall; day */
@@ -17554,6 +17788,56 @@ const DOOR_HQ = {
                     signLines: { n: ['FLAT LANDS', 'ROOM 2D', 'TWO DIMENSIONS · NO DEPTH'], s: ['HOLLOW ALL THE WAY THROUGH', 'YOU ARE BEING WATCHED. SIGN HERE', 'THE CROSSING IS AT THE CONSOLE'] } } },
         },
         flavour: {
+            /* ── MOVING MAPS (2026-09-12) — placeholders in the house voice; the user may rewrite any line (A15) ── */
+            prebuilt_revenge: {
+                agent: '“Room 1717. The deck is on a quay. The quay is not moving. The deck is. Do not look at the horizon for long; it will start to agree with the deck.”',
+                lines: [
+                    'The ship was taken in 1717. It has not been taken since. It has not been anywhere since. It is still going.',
+                    'The hold is flooding. Records says the water is on a schedule.',
+                    'The captain has not been seen. The lanterns are lit every night. Nobody lights them.',
+                    'The storm is not on the map. The storm is on the form. It arrives faster every round.',
+                    'The sea on this side is one level down and holds still. Do not trust the sea on the other side.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'cardboard_box',  x: 10.8,  z: -10.4, face: 30 },
+                    { key: 'folding_chair',  x: 11.2,  z: 8.6,   face: 200 },
+                    { key: 'tube_tv',        x: 10.4,  z: 10.9,  y: 0, face: 235 },
+                    { key: 'paper_sheet',    x: -10.6, z: 10.8,  y: 0.01, face: 40 },
+                ],
+            },
+            prebuilt_derelict: {
+                agent: '“Room 426. The airlock cycles whether or not there is air. The ship on the other side is half a ship. The half that is missing is the half with the lifeboats.”',
+                lines: [
+                    'The signal was catalogued as a distress call for eleven years. It was a warning. Records has apologised to nobody.',
+                    'The reactor is warm. Do not stand on the blue tiles for long. Do not stand on the black ones at all.',
+                    'Every crossing it is closer to the sun. Every crossing it is going faster. Records has the numbers; the numbers are going up.',
+                    'Something walks the deck between the stars and the sun. It has not filed anything. It has excellent footing.',
+                    'Salvage law says the first to board may claim it. Nobody has claimed it twice.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'cardboard_box',  x: 9.4,   z: -9.2,  face: 15 },
+                    { key: 'folding_chair',  x: 9.8,   z: 8.4,   face: 210 },
+                    { key: 'paper_sheet',    x: -9.6,  z: 9.4,   y: 0.01, face: 40 },
+                ],
+            },
+            prebuilt_lookingglass: {
+                agent: '“Room E4. The frame has no glass. The board on the other side is in play and has been since 1871. You are a pawn until proven otherwise. Do not agree to a game.”',
+                lines: [
+                    'The Queen claims immunity. The Queen claims everything. Diplomatic filed it under D and moved on.',
+                    'The board flies. The pieces do not move themselves. Records has a form for both and they disagree.',
+                    'The moon comes round faster each time. It is smiling. It is always smiling.',
+                    'A pawn that reaches the eighth rank is crowned. Nobody in this building has reached the eighth rank.',
+                    'The shapes outside were never finished. Do not finish them.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'office_chair',   x: 8.2,   z: -8.0,  face: 40 },
+                    { key: 'paper_sheet',    x: -8.3,  z: 8.2,   y: 0.01, face: 300 },
+                    { key: 'potted_plant',   x: 8.3,   z: 8.1 },
+                ],
+            },
             prebuilt_dumb: {
                 agent: '“Level 7. There is no Level 4. If you find one, you were never here, and neither was it.”',
                 lines: [

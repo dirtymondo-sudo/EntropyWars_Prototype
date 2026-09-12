@@ -1252,6 +1252,55 @@ Whiteout second ring, Spear Prison finisher and Gas Cloud puffs now use `_fxDela
 
 Aurora Curtain and Spiral Beam return `_sigRunOwned` to dispose refused allocations while preserving entry/null results and shared textures. Bad Trip delayed skulls use `_fxDelay`; its first skull remains immediate. 16 new checks pass (six fail before); full suite 574 pass, zero fail, two existing skips; syntax 94/94. ENTROPY_WARS_CONTINUED_VFX_FIXES.zip includes these three fixes plus the preceding four whiteout/seal/gas fixes and both test files (40 new checks total). Not deployed or browser-playtested. Next: Magic Circle, Magic Orb and Light Pillar refusal paths, then remaining return-only consumers and Psychosis timers; VFX-04 remains open. See the review plan's top entry for evidence limits.
 
+## MOVING MAPS — the setting travels (2026-09-12)
+Three sites whose WORLD streams past the board, faster every round —
+**Room 1717 · QUEEN ANNE'S REVENGE** (`prebuilt_revenge`, Hollow bay: the
+main deck of Blackbeard's galleon, bow to +X, a wood-and-deep-water bed,
+the sea racing past into a storm), **Room 426 · THE DERELICT**
+(`prebuilt_derelict`, Celestial: a ship torn in half, void under hull
+plate, the wreckage field streaming by as it swings in close to the SUN)
+and **Room E4 · THE LOOKING-GLASS** (`prebuilt_lookingglass`, Diplomatic —
+plan 7.6 #6 had it Quarantined, which is SEALED until a story chapter, so
+the Queen claims immunity instead: a marble chessboard flying through a
+void of unfinished shapes, the Cheshire MOON swinging in close). Heaven
+drifts too (a gentle one). The board itself NEVER moves (every rule, pick
+and camera is untouched); the ENVIRONMENT does. One row does it all:
+`env.motion` on the EW_MAP_META row (data.js) — `{ kind: sea|space|void|
+drift, axis: 'x', speed (tiles/s at round 1), ramp (per round), max
+(multiplier cap), sea + seaDepth (the moat sheet streams), sky (dome
+cloud/nebula flow), storm: { from, to } (overcast builds between those
+rounds), orbit: { body: sun|moon, period (tiles travelled), near 0..1 } (a
+close pass that SWELLS the sun / moon), ambience (an audio.js bed) }`.
+three-renderer.js **MOTION** block (right before `_buildHorizonScenery`):
+`_motionTick` (distance, eased speed = speed × min(max, 1 + ramp·(round−1))
+— reads `state.round`, which SYNCS to the guest, so online both seats see
+one speed with nothing relayed, RULE #2), `_hzPlaceStream` (the far
+roster laid along the travel band and WRAPPED instead of the ring; rows
+may carry a sixth field `'sea'` = on the water / `'door'`),
+`_motionBuildMotes` (spray / dust streaks stretched by the speed),
+`_motionAnimate` (streams, sheets, wake textures, motes — from
+`_animateFloaters`). Sky: `uSkyFlow` / `uSunNear` / `uMoonNear` on
+`_envUni` (the dome swells the sun / moon, the 3D moon mesh scales with
+it, the map tint gilds near the sun; `_hqTickSky` zeroes them — the
+building is still). Sea: `_nrMoat({ stream: true })` registers the sheet
+in `_motionSheets` (slides one tile and wraps — seamless), the caustic web
+follows through `_fluidFlowUniform` / `uFluidFlow` (reset by
+`_hqTickMoat`). Three far rosters (`sea` · `wreckage` · `wonder`) and
+three settings (`_NR_BUILDERS.revenge` / `.derelict` / `.lookingglass`;
+`_hzChessPiece` is the lathe both the rim and the roster use; a setting
+must skip its wake / rigging / plating / keel under `K.hq` — their
+bounds would block the site room's quay). Cost: uniform writes + one
+position write per streaming body per frame. Kill-switch
+`window.EW_NO_MAP_MOTION`; `EW_PERF_LOW` halves the motes; readout
+`ThreeRenderer.motion()`. The Δ FORGE takes a per-board bed
+(`cfg.strata` / `underTop` on `_mfDeltaNew`, recorded as `entry.bed`;
+delta-maps.test.js checks each board against its own). Adding a moving
+map = the 7.10 checklist + an `env.motion` row (+ a roster if none fits).
+`npm test` runs `motion-maps.test.js`. NOT playtested (RULE #1c) — the
+first thing to eyeball is the speed at round 1 and the cap (`speed`,
+`ramp`, `max` on the row), then the sea's level under the hull
+(`_NR_SEA_DEPTH` ↔ `seaDepth`), then the sun's swell at perigee.
+
 ## RING VITALS + NAMEPLATE STYLES (Video settings) — added 2026-09-11
 An alternative to the HP/MP bars on the nameplate: the two meters are drawn
 ON the team reticle at the unit's feet. three-renderer.js `_plateLook`

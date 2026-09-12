@@ -186,7 +186,85 @@ playtested (RULE #1c) — eyeball on a real GPU first.
 - Cold cache: the procedural panel shows until the GLB lands; a visit to the
   building or the loading-screen warmer makes it hot.
 
-## 🏞 MAP SETTINGS — every Δ board gets a place around it (2026-09-06, LATEST) — three-renderer.js, data.js, playtest_maps.js, index.html
+## 🚢 MOVING MAPS — three sites whose world streams past the board (2026-09-12, LATEST) — data.js, three-renderer.js, audio.js, server.js, index.html
+User asked for maps "where the background is moving kinda fast to make it
+intense" — a pirate ship on the ocean, a half-broken spaceship through
+space, a chessboard through a void of shapes — faster with the rounds,
+maybe orbiting the sun or the moon, without tanking the frame rate.
+NOT playtested (RULE #1c); every number below is a first guess to eyeball.
+
+### What shipped
+- **Three sites** (the 7.10 checklist each): `prebuilt_revenge` (Room 1717
+  · QUEEN ANNE'S REVENGE, Hollow; leaf_shabby_wood), `prebuilt_derelict`
+  (Room 426 · THE DERELICT, Celestial; leaf_bulkhead), `prebuilt_lookingglass`
+  (Room E4 · THE LOOKING-GLASS, Diplomatic; leaf_frame_only). Full 16×16
+  maps + hand-authored Δ boards (delta-maps.test.js passes: symmetry,
+  reachability, no choke, cover ≥ 4) with their OWN beds (`cfg.strata` on
+  `_mfDeltaNew`: deep water + wood / void + gunmetal / void + marble —
+  the user's "instead of the lava and cave dirt bed layers"). SITE_FILES,
+  thresholds, bays, walkable rooms (the Revenge is a MOAT room — the deck
+  on a quay over deep water), natives (pirate → the Revenge; cosmic wraith
+  + symbiote → the Derelict; dreameater + occulus → the Looking-Glass),
+  server MAP_POOL rows. Bay 6 (Quarantined) is SEALED until a story chapter
+  (map.js refuses a sealed threshold), so the Looking-Glass went to
+  Diplomatic instead of the plan's Quarantined — "immunity claimed".
+- **MOTION** (three-renderer.js, before `_buildHorizonScenery`): the board
+  stands still; the world streams along `env.motion.axis` (all three: +X
+  = across the screen from the default camera). Speed = `speed` tiles/s ×
+  min(`max`, 1 + `ramp`·(round−1)), eased ~2 s per round; state.round
+  syncs online (no relay). Streams: the far roster is laid along a ±1.3·discR
+  band (lateral keep-out 0.30·discR near board level, 0.06 above/below,
+  0.26 for on-water bodies) and wraps; the moat sheet slides one tile and
+  wraps; the caustic web flows (`uFluidFlow`); wake textures scroll; 40
+  motes (18 low-perf) streak past, stretched by the speed. Sky:
+  `uSkyFlow` streams the nebula / storm clouds; a sea map's storm builds
+  between `storm.from` and `storm.to` rounds (a floor under the weather
+  uniform; thunder bed joins at 50%); `orbit` swells the sun (`uSunNear`:
+  disc 0.05 → 0.47 rad, corona, a gold wash, stars drown) or the moon
+  (`uMoonNear` + the 3D moon mesh ×8) on a cosine over `period` tiles
+  travelled — so the pass comes round sooner as the speed climbs.
+- **Settings**: the galleon (hull block = the apron with a wood skirt, bow
+  bulwarks + planked cap + bowsprit, sterncastle with lit windows / lanterns
+  / the name plate, two masts with yards, bellied sails, nests, ☠ pennants,
+  rigging lines; rails with the gangway open; cannon, barrels, coils; three
+  scrolling wakes + bow spray); the wreck (torn plates — whole in the spawn
+  lanes so the crossing doors stand on something — ribs arching overhead,
+  girders with sparking ends, a bulkhead with a porthole + strobe, the
+  reactor bell astern, debris drifting alongside; no apron — the Δ's void
+  bed shows where the plating is gone); the board (a 0.6-tile marble rim +
+  an inverted keel, house-sized chess pieces on the rim, card soldiers,
+  teacups, violet lamps, shapes tumbling alongside). Rosters: `sea`
+  (islands on the water, sea stacks, a lighthouse whose lamp turns, a ghost
+  ship, lenticulars), `wreckage` (asteroids, hull chunks, girder knots,
+  planets, the star, craft), `wonder` (platonic solids / wireframes, giant
+  chess pieces, teacups, playing cards, clocks, stairways, mushrooms).
+- **Perf**: no allocation in the tick; ~60 streaming bodies + 40 motes +
+  1–3 sheets get one position write each per frame; everything else is a
+  uniform. The settings are in the same weight class as Camelot / Cyberpunk.
+  Kill: `window.EW_NO_MAP_MOTION` (still map); `EW_NO_FACILITY_SCENERY`
+  (no setting). Readout: `ThreeRenderer.motion()` → { tilesPerSec, mult,
+  dist, storm, sunNear, moonNear, streams, motes }.
+
+### To eyeball (no playtest run)
+- Round-1 speed (1.0–1.2 tiles/s) and the cap (4–4.5×): too fast reads as
+  a treadmill, too slow as a still. Tune `speed` / `ramp` / `max` on the
+  meta row; nothing in the renderer.
+- The sea's level under the hull (`_NR_SEA_DEPTH` 2.4 ↔ `seaDepth`): the
+  wake planes sit 0.6 units above it; islands sit ON it (their base cone is
+  under the water — the sheet is opaque, so nothing shows below).
+- The sun at perigee (`orbit.near` 1.0): if the gold wash flattens the
+  board, lower `near` or the `uSunNear*0.55` mix in `_envDomeFS`.
+- The crossing doors: the Derelict's gangway plates (CX ± 2.3 tiles) must
+  hold the door at `doorOut` (edge + 0.85); the Revenge's rails leave the
+  lane open (`_nrShipRail` gates at ±1.75 tiles).
+- Occlusion: the galleon's sterncastle / masts / sails are in `occ` wall
+  groups (they fade between the camera and the board); the wreck and the
+  board are not (nothing tall stands between).
+- The HQ rooms: the settings run inside at 1:1 (rigging / wake / plating /
+  keel / debris are skipped under `K.hq` — their bounds would block the
+  quay); the Revenge's masts stand on the quay as blockers.
+
+## 🏞 MAP SETTINGS — every Δ board gets a place around it (2026-09-06) — three-renderer.js, data.js, playtest_maps.js, index.html
 User asked for the Training Room treatment ("a moat and set pieces and a
 setting, making it feel more real") on the other maps — Cyberpunk City "looks
 nothing like a cyberpunk city". Playtesting was explicitly allowed for this

@@ -1,5 +1,5 @@
 # D.O.O.R. — MASTER FILE
-### Story bible + integration design + build log — rev 20 (2026-09-08 rev 5 — THE CONTAINMENT RING is one corridor per floor: the bays of a floor are segments of a single hallway just outside the egress drum, every egress bay door its inner-wall door, the thresholds along its outer wall, the caps a fire door to each other across the service side (HQ plan 5.4a stage 2); rev 19 2026-09-07 rev 4 — the first WALKABLE SITE: Room 555 · D.U.M.B. is a room behind its threshold with its own Δ board on the floor (HQ plan 7.2 stage 1); rev 18 2026-09-07 rev 3 — C-22 and C-23 DECIDED and shipped: seven bays (Bay 7 · URBAN), the CONTAINMENT RING joins the bays end to end on each floor (HQ plan 5.4a); rev 17 2026-09-07 — the ROOM REGISTER proposed: room numbers on every site and HQ room, seven new sites, a seventh bay — HQ plan Phase 7, Part C rows 22–24, Part D; rev 16 2026-09-06 — THE CAST: twenty characters hand-authored by the user (A0 #6–#9, A16, `DOOR_STORY.md` §2), fifteen rigged models placed in the headquarters (Part D); rev 15 2026-09-05 — roster dialogue shipped, see A15 + Part D rev 6; 2026-09-04 — story canon separated from ChatGPT scaffolding (A0); the authoring process recorded (A14); `DOOR_STORY.md` created as the empty worksheet. Story track code stays ON HOLD until the user writes the outline per A14.)
+### Story bible + integration design + build log — rev 21 (2026-09-12 — MOVING MAPS: three new sites whose world streams past the board — 1717 · Queen Anne's Revenge (Hollow), 426 · The Derelict (Celestial), E4 · The Looking-Glass (Diplomatic, not Quarantined: a sealed bay is unplayable until a chapter) — Part D 2026-09-12; rev 20 (2026-09-08 rev 5 — THE CONTAINMENT RING is one corridor per floor: the bays of a floor are segments of a single hallway just outside the egress drum, every egress bay door its inner-wall door, the thresholds along its outer wall, the caps a fire door to each other across the service side (HQ plan 5.4a stage 2); rev 19 2026-09-07 rev 4 — the first WALKABLE SITE: Room 555 · D.U.M.B. is a room behind its threshold with its own Δ board on the floor (HQ plan 7.2 stage 1); rev 18 2026-09-07 rev 3 — C-22 and C-23 DECIDED and shipped: seven bays (Bay 7 · URBAN), the CONTAINMENT RING joins the bays end to end on each floor (HQ plan 5.4a); rev 17 2026-09-07 — the ROOM REGISTER proposed: room numbers on every site and HQ room, seven new sites, a seventh bay — HQ plan Phase 7, Part C rows 22–24, Part D; rev 16 2026-09-06 — THE CAST: twenty characters hand-authored by the user (A0 #6–#9, A16, `DOOR_STORY.md` §2), fifteen rigged models placed in the headquarters (Part D); rev 15 2026-09-05 — roster dialogue shipped, see A15 + Part D rev 6; 2026-09-04 — story canon separated from ChatGPT scaffolding (A0); the authoring process recorded (A14); `DOOR_STORY.md` created as the empty worksheet. Story track code stays ON HOLD until the user writes the outline per A14.)
 
 This file MERGES the two earlier DOOR documents and supersedes both:
 - `entropy_wars_claude_brief.md` (the ChatGPT-assisted story/world brief, 2026-09) → Part A
@@ -406,9 +406,9 @@ opening on the other cap across the service side.
 |---|---|---|
 | **TERRESTRIAL** (clandestine / the bases) — Bay 1, ground | amber | Nuketown (the suburban closet door), **Area 51** (the MIB's rival account), Skinwalker Ranch, Bohemian Grove, D.U.M.B., **CERN** |
 | **ANCIENT** — Bay 2, mezzanine | amber | Stonehenge, Pyramids of Giza, Tower of Babel, Göbekli Tepe, **Camelot** (the Round Table was early HINGE technology with no privileged side), Technoticlan |
-| **HOLLOW** (inner earth + polar + the deep) — Bay 3, mezzanine | amber | Mount Shasta, Hollow Earth, Agartha, **Antarctica** (the first Black Cube DOOR claims to have destroyed), North Pole, Atlantis (the wet submarine bulkhead; moved from Ancient, C-23) |
-| **CELESTIAL** (space + the far future) — Bay 4, ground | amber | Mars, **the Moon** (a door standing without a wall; footprints from missions that never happened) |
-| **DIPLOMATIC** (mythic ecosystems, "immunity claimed") — Bay 5, mezzanine | amber | **Heaven**, **Hell**, Mount Olympus, Fairy Forest, Vatican City (a sovereign state; moved from Terrestrial, C-23) |
+| **HOLLOW** (inner earth + polar + the deep) — Bay 3, mezzanine | amber | Mount Shasta, Hollow Earth, Agartha, **Antarctica** (the first Black Cube DOOR claims to have destroyed), North Pole, Atlantis (the wet submarine bulkhead; moved from Ancient, C-23), **Queen Anne's Revenge** (1717 — the galleon itself under way, the sea streaming past; a cabin door on a gimbal) |
+| **CELESTIAL** (space + the far future) — Bay 4, ground | amber | Mars, **the Moon** (a door standing without a wall; footprints from missions that never happened), **The Derelict** (426 — a ship torn in half, falling sunward; the airlock cycles anyway) |
+| **DIPLOMATIC** (mythic ecosystems, "immunity claimed") — Bay 5, mezzanine | amber | **Heaven**, **Hell**, Mount Olympus, Fairy Forest, Vatican City (a sovereign state; moved from Terrestrial, C-23), **The Looking-Glass** (E4 — Carroll's board, in play and flying; the Queen claims immunity; HQ plan 7.6 #6 had it Quarantined, but a sealed bay is unplayable until a chapter) |
 | **QUARANTINED** (astral anomalies) — Bay 6, mezzanine | red until cleared | **Backrooms** (→ H-Wing, C-12), Flat Lands, (the Desert threshold — an isolated absurd door where no structure should exist — is a future map) |
 | **URBAN** (cities · the strip · the night shift) — Bay 7, mezzanine at 180°, a glass shopfront | amber | Cyberpunk City (from Celestial), Football Stadium (from Terrestrial); the Strip and Downtown join from wave 1 (HQ plan 7.6), Club 27 and the Gas Station later |
 
@@ -2099,3 +2099,24 @@ glowing BATTLE beacon at its board centre (counter `battle`) that opens
 the crossing terminal. Files: data.js, three-renderer.js, map.js,
 index.html (`20260912-hq-plates-battle-01-cors`), doorhq.test.js. Full
 entry: DOOR_HQ_BUILD_PLAN.md §9.
+
+### 2026-09-12 — MOVING MAPS: three sites whose world streams past the board
+User request ("maps where the background is moving kinda fast to make it
+intense… faster and faster the more rounds… orbit the sun or the moon").
+Three new sites, the 7.10 checklist each: **1717 · QUEEN ANNE'S REVENGE**
+(Hollow — Blackbeard's galleon under way, the deck is the board, the sea
+races past into a storm that builds with the rounds; the pirate's point of
+entry moved here from Atlantis), **426 · THE DERELICT** (Celestial — a ship
+torn in half falling sunward, the wreckage field streaming by, the SUN
+swelling on a close pass; cosmic wraith + symbiote filed here), **E4 · THE
+LOOKING-GLASS** (Diplomatic — the chess problem still in play, the board
+flying through a void of unfinished shapes, the Cheshire MOON swinging in;
+dreameater + occulus filed here; the plan's Quarantined bay is sealed until
+a chapter, so the Queen claims immunity). Heaven's cloud islands drift.
+The board never moves — the setting does (three-renderer.js MOTION,
+`env.motion` on the meta row; state.round syncs, nothing relayed). Each Δ
+carries its own bed (deep water + wood / void + hull plate / void +
+marble). Files: data.js, three-renderer.js, audio.js, server.js,
+index.html (`20260912-moving-maps-01-cors`), motion-maps.test.js,
+delta-maps.test.js. Full entry: DOOR_HQ_BUILD_PLAN.md §9 2026-09-12. Not
+playtested (RULE #1c).
