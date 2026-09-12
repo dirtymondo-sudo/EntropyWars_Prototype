@@ -17168,7 +17168,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _sigEgoDeath3D(tx, ty, opts) {
         opts = opts || {};
         if (_catOff('spells')) return;
-        if (_suppressed()) return;
+        if (_suppressed() || _catOff('spells')) return;
         var ts = _cfg().tileSize || 128;
         var implodeMs = opts.implodeMs != null ? opts.implodeMs : 1080;
         var totalMs = implodeMs + 1150;
@@ -17204,8 +17204,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             spiralDeg: 300, sprite: 'psi-pulse', sizeMul: 1.2
         });
         /* second, tighter spectrum wave so the in-fall reads as a colour wheel */
-        window.setTimeout(function () {
-            if (_suppressed() || !_canSpawn()) return;
+        _fxDelay(function () {
+            if (_suppressed() || _catOff('spells') || !_canSpawn()) return;
             var c0 = tilePx(tx, ty), zf0 = unitSurfaceZ(tx, ty);
             for (var i = 0; i < 21; i++) {
                 var a = (i / 21) * 6.2832;
@@ -17225,8 +17225,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }, Math.max(0, implodeMs * 0.25));
 
         /* Phase B — the point lets go */
-        window.setTimeout(function () {
-            if (_suppressed()) return;
+        _fxDelay(function () {
+            if (_suppressed() || _catOff('spells')) return;
             var p = _post();
             try { if (p && p.spellGradeKick) p.spellGradeKick(14, 280); } catch (e) {}
             _sigOrbBurst3D(tx, ty, {
@@ -17263,7 +17263,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _sigTimeRewind3D(tx, ty, opts) {
         opts = opts || {};
         if (_catOff('spells')) return;
-        if (_suppressed()) return;
+        if (_suppressed() || _catOff('spells')) return;
         var ts = _cfg().tileSize || 128;
         var ms = opts.ms != null ? opts.ms : 1250;
         var p = _post();
@@ -17284,11 +17284,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             });
         }
         try { if (p && p.spellGradeKick) p.spellGradeKick(8, 140); } catch (e) {}
-        window.setTimeout(function () {
-            try { if (p && p.spellGradeKick && !_suppressed()) p.spellGradeKick(10, 160); } catch (e) {}
+        _fxDelay(function () {
+            try { if (p && p.spellGradeKick && !_suppressed() && !_catOff('spells')) p.spellGradeKick(10, 160); } catch (e) {}
         }, 300);
-        window.setTimeout(function () {
-            try { if (p && p.spellGradeKick && !_suppressed()) p.spellGradeKick(12, 200); } catch (e) {}
+        _fxDelay(function () {
+            try { if (p && p.spellGradeKick && !_suppressed() && !_catOff('spells')) p.spellGradeKick(12, 200); } catch (e) {}
         }, 640);
 
         /* the clock face, running the wrong way */
@@ -17322,8 +17322,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                into the body, oldest first */
             for (var g = 0; g < 4; g++) {
                 (function (idx) {
-                    window.setTimeout(function () {
-                        if (_suppressed() || !_canSpawn()) return;
+                    _fxDelay(function () {
+                        if (_suppressed() || _catOff('spells') || !_canSpawn()) return;
                         var ga = rn(0, Math.PI * 2), gr = ts * (0.9 - idx * 0.18);
                         _spawn({
                             x: c.x + Math.cos(ga) * gr, y: c.y + Math.sin(ga) * gr,
@@ -17344,8 +17344,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             mode: 'in', color: 0x7fe8ff, ms: Math.max(300, ms * 0.5),
             r0: ts * 0.12, r1: ts * 1.1, opacity: 0.7
         });
-        window.setTimeout(function () {
-            if (_suppressed()) return;
+        _fxDelay(function () {
+            if (_suppressed() || _catOff('spells')) return;
             _sigOrbBurst3D(tx, ty, {
                 mode: 'out', color: 0xbfefff, ms: 380,
                 r0: ts * 0.1, r1: ts * 0.95, opacity: 0.7
