@@ -10089,3 +10089,23 @@ photographs every top of `EW_OUTFIT_STYLES` on both bases posed
 (`shots/creator/<tag>_top_<gender>_<label>.png`) plus the tank on the walk
 — the headless renders are the bind pose, so a sleeve or a strap that
 hangs wrong only once the arm drops shows here.
+
+
+**rev 7 (2026-09-12):** `creator-render.js` renders every LAYER with its own
+fabric + tint — `'{"outer":"blazer","bottoms":"skirt","feet":"boots",
+"gloves":"gloves","belt":"belt"}'` dresses the whole wardrobe, the skirt
+lathe, the coat's tail, the sole slabs and the buckle included, and the
+vertex-gain shading (hems, lapels, soles) rides through (`vcol` is per
+vertex × 3 — the rasteriser reads `VC[v * 3]`). It found, in order: the
+lathe's triangles drawn over the chest (generated geometry indexed from 0
+instead of past the layer's base vertices), the bikini's straps as dashes
+(a 3D capsule on a 4 mm ease), the band's "fringe" (per-vertex hem
+darkening fanning across coarse triangles — now ramps), the vest's
+z-fighting opening (a hem strip pushed through the tank beneath). What it
+CANNOT see, again, is the pose: the skirt's leg poke-through and the
+trousers under a dress showed only in `playtest_creator.js <tag>
+--layers` (every bottoms / outer / feet style, the gloves + belt, the
+dress + gown and the WALK on both bases, `shots/creator/<tag>_layer_*`)
+— the lathe's columns now follow the nearest leg with a swing allowance
+on the front / back panels. Run `--layers` after any lathe or weights
+change; the headless renders after any cut.

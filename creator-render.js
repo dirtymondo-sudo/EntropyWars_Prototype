@@ -15,7 +15,8 @@
    back, side, top, hair34, hairside, hairback (`pitch` looks down).
 
    Needs: npm i --no-save three@0.128.0
-   Usage: node creator-render.js [male|female] [tee|tank|suit] [tag] ['{"beard":"goatee","hair":"hair000","topFabric":"denim",…}']
+   Usage: node creator-render.js [male|female] [tee|tank|…any CC_TOPS id] [tag] ['{"bottoms":"skirt","outer":"blazer","feet":"boots","gloves":"gloves","belt":"belt","hair":"hair000","topFabric":"denim",…}']
+          (rev 7: every layer renders with its own fabric + tint — outer / feet / gloves / belt / the skirt lathe / the buckle)
           VIEWS=torso,torso34,side,back,head,head34,eyes,full,top,hair34,hairside,hairback  OUT=shots/creator-render
           CROP=1 also dumps a 3× texel crop of the baked texture round each eye.
           RENDERER=/path/to/other/three-renderer.js renders a different copy (before / after).
@@ -181,16 +182,25 @@ function render(meshes, view) {
   const meshes = []; clone.traverse(n => { if (n.isSkinnedMesh && n.parent && n.visible) meshes.push(n); });
   const skin = hexRGB(A.skin), top = hexRGB(A.topColor), bottom = hexRGB(A.bottomColor), hairCol = hexRGB(A.hairColor);
   const fabrics = { top: fabricTex(A.topFabric), bottom: fabricTex(A.bottomFabric) };
-  const list = meshes.map(n => { const g = n.geometry, isFace = /face/.test(n.name), isHair = /EWCreator_hair/.test(n.name), kind = /top/.test(n.name) ? 'top' : /bottom/.test(n.name) ? 'bottom' : 'body';
+  const LAYER_KEYS = { top: ['topFabric', 'topColor'], bottom: ['bottomFabric', 'bottomColor'], outer: ['outerFabric', 'outerColor'], feet: ['feetFabric', 'feetColor'], gloves: ['glovesFabric', 'glovesColor'], belt: ['beltFabric', 'beltColor'] };
+  LAYER_KEYS.skirt = LAYER_KEYS[/dress|gown/.test(A.outfit) ? 'top' : 'bottom'];
+  const layerOf = name => { const m = /^EWCreator_(top|bottom|outer|feet|gloves|belt|skirt|buckle)$/.exec(name); return m ? m[1] : null; };
+  const list = meshes.map(n => { const g = n.geometry, isFace = /face/.test(n.name), isHair = /EWCreator_hair/.test(n.name), layer = layerOf(n.name), kind = layer ? (layer === 'top' ? 'top' : layer === 'bottom' ? 'bottom' : layer) : 'body';
     const map = n.material.map, faceTex = isFace && map && map.image && map.image._d ? { d: map.image._d, w: map.image.width, h: map.image.height } : null;
     if (isHair) {
       const part = n.name.replace('EWCreator_hair_', ''), img = hairImgs[part], isTie = /tie/.test(part);
       const tex = img ? (isTie ? img : normaliseTile(img, 0.72, true)) : null, tint = isTie ? [255, 255, 255] : hairCol.map(v => Math.min(255, v * 1.22));
       return { pos: g.attributes.position.array, nrm: g.attributes.normal.array, idx: g.index.array, uv: tex ? g.attributes.uv.array : null, tex, tint: tex ? tint : null, color: tint, alphaTest: n.material.alphaTest || 0, twoSided: true, spec: 0.25 };
     }
-    const fab = (kind === 'top' || kind === 'bottom') && fabrics[kind];
-    if (fab) return { pos: g.attributes.position.array, nrm: g.attributes.normal.array, idx: g.index.array, uv: g.attributes.uv.array, tex: fab.tex, repeat: fab.repeat, tint: (kind === 'top' ? top : bottom).map(v => Math.min(255, v * 1.18)), vcol: null, color: kind === 'top' ? top : bottom, spec: 0.05 };
-    return { pos: g.attributes.position.array, nrm: g.attributes.normal.array, idx: g.index.array, uv: isFace ? g.attributes.uv.array : null, tex: faceTex, color: kind === 'top' ? top : kind === 'bottom' ? bottom : skin, spec: isFace || kind === 'body' ? 0.3 : 0.05 }; });
+    if (layer === 'buckle') return { pos: g.attributes.position.array, nrm: g.attributes.normal.array, idx: g.index.array, uv: null, tex: null, color: [240, 207, 126], spec: 0.6 };
+    if (layer && LAYER_KEYS[layer]) {
+      const keys = LAYER_KEYS[layer], tintC = hexRGB(A[keys[1]]), fab = fabricTex(A[keys[0]]);
+      const vc = g.attributes.color ? g.attributes.color.array : null;   // the gain shading (hems, soles, lapels) rides the vertex colour
+      const ch = tintC.indexOf(Math.max(...tintC)), gain = vc ? Float32Array.from({ length: vc.length }, (_, i) => vc[(i - i % 3) + ch] / Math.max(1e-3, tintC[ch] / 255 * (fab ? 1.18 : 1))) : null;   // the renderer reads VC[v * 3]
+      if (fab) return { pos: g.attributes.position.array, nrm: g.attributes.normal.array, idx: g.index.array, uv: g.attributes.uv.array, tex: fab.tex, repeat: fab.repeat, tint: tintC.map(v => Math.min(255, v * 1.18)), vcol: gain, color: tintC, spec: 0.05 };
+      return { pos: g.attributes.position.array, nrm: g.attributes.normal.array, idx: g.index.array, uv: null, tex: null, color: tintC, vcol: gain, spec: layer === 'feet' || layer === 'belt' ? 0.25 : 0.05 };
+    }
+    return { pos: g.attributes.position.array, nrm: g.attributes.normal.array, idx: g.index.array, uv: isFace ? g.attributes.uv.array : null, tex: faceTex, color: skin, spec: 0.3 }; });
   const body = meshes.find(n => !/EWCreator/.test(n.name)); body.geometry.computeBoundingBox();
   const bb = body.geometry.boundingBox, H = bb.max.y - bb.min.y, minY = bb.min.y;
   const out = process.env.OUT || path.join(REPO, 'shots', 'creator-render'); fs.mkdirSync(out, { recursive: true });

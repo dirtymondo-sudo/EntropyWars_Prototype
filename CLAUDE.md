@@ -998,6 +998,49 @@ Kill-switches (console): `window.EW_DISABLE_3D_UNITS = true` (all 3D),
   To persist new files, hand them to the user (SendUserFile) to upload via GitHub
   manually. Don't waste time retrying pushes.
 
+## CHARACTER CREATOR rev 7 — the wardrobe: LAYERS, straps that hold, skirts (2026-09-12, local delivery)
+Every garment is a LAYER shell (`CC_LAYER_NAMES` = body · top · bottom ·
+face · outer · feet · gloves · belt · skirt · buckle; each a SkinnedMesh
+hidden when its cut is empty) with its own cloth surface at its own ease
+(`clothSurface`), cuts, t-range, shading, fabric + tint (`LAYER_KEYS`;
+sprites.js `EW_APPEARANCE_LAYERS` names the keys — `outerFabric` /
+`outerColor` etc.; the skirt wears the top's for a dress, else the
+bottoms'). Tables in three-renderer.js: `CC_TOPS` (tee · vneck · suit ·
+crop · tank · atank · racer · tube · bikini · dress · gown), `CC_OUTER`
+(jacket · blazer · vest · coat — an OPEN FRONT `open` + a `lapel` band;
+the coat has a lathe `tail`), `CC_BOTTOMS` (trousers · shorts ·
+shortshorts · briefs · bikini — a `leg` line — · miniskirt · skirt ·
+longskirt — `skirt` = the lathe only), `CC_FEET` (sneakers · boots ·
+highboots + `buildSole`), `CC_GLOVES`, `CC_BELT` (+ `buildBuckle`) ↔
+sprites.js `EW_*_STYLES` catalogues (character-creator.test.js diffs
+every one; the rev 6 `jacket` TOP maps to `outer: 'jacket'` in
+`normalizeCharacterAppearance`). **THE ARM IS GEOMETRIC** (`armMask`:
+the measured radius profile `part.armR` round the arm polyline + 9 mm,
+plus a 13.5 cm hand sphere round the wrist joint) — never read the skin
+weights (q[3]) for a cut again: they wander to |x| 0.06 on the back and
+their isoline is a sawtooth. **A SLEEVELESS TOP = two PANELS + STRAPS**:
+`panelCut` (the neck U `depth` → `xIn` ≥ 0.056 — the neck base is 5
+cm(q) wide, anything inside climbs the neck — the panel `top`, the
+armhole `xOut` → `pit` keyed off the shoulder joint) blended front /
+back and UNIONED with `strapPath` capsules (a path sampled on the
+shoulder, distance measured in the unrolled (x, arc) plane so the width
+never depends on the ease or the mesh) and the racerback's `spine`.
+**THE LATHE** (`buildLathe`): skirts, dresses, the coat's tail — the
+pelvis as a radial map off the NORMAL-offset skin, draped vertically,
+flared, a SWING allowance on the front / back panels (growing below the
+knee), every column weighted to the nearest leg (a 50/50 blend of both
+over ±27° at the front / back centre — a split lathe gaped in the idle
+stance), the flare 35 % to the Hips. Rules: a straddling triangle is
+subdivided before the cut (`refine`; `thin` layers also test midpoints);
+a rim strip over another layer ends 1.5 mm past it (`under`); strip
+normals come from the cut's gradient; every shade is a ramp (`line` /
+`band`); generated geometry indexes past the layer's base (`nBase`).
+Adding a garment = a table row + a catalogue entry (+ a `ccLayer` row in
+party-builder.js for a new layer); `node creator-render.js male tee tag
+'{"outer":"coat","bottoms":"skirt",…}'` renders any look headlessly;
+`playtest_creator.js <tag> --layers` photographs every layer posed. Full
+log: PARTY_BUILDER_PLAN.md §9 (rev 7 entry).
+
 ## CHARACTER CREATOR rev 6 — the sleeves, the straps, nine tops (2026-09-11, local delivery)
 The tops are `CC_TOPS` (three-renderer.js "CHARACTER CREATOR RUNTIME") ↔
 sprites.js `EW_OUTFIT_STYLES` (id + label; `EW_APPEARANCE_ENUMS.outfit`

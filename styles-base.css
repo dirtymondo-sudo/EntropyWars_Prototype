@@ -4959,4 +4959,7 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-fabric-tile.has-thumb::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,.72)); }
 .pb-fabric-tile.plain { background: repeating-linear-gradient(135deg, #2a2620 0 6px, #201d18 6px 12px); }
 .pb-creator-views { border-top: 1px solid #4b3f2a; padding-top: 10px; margin-top: 12px; }
+/* rev 7 (2026-09-12): the LAYERS rows (outer · feet · gloves · belt) show their fabric grid compact */
+.pb-cc-tiles.pb-cc-compact { grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 5px; }
+.pb-cc-compact .pb-cc-tile { min-height: 38px; font-size: 9px; padding: 4px 3px; }
 @media (max-width: 1180px) { .pb-creator-grid { grid-template-columns: 1fr; } }

@@ -1817,18 +1817,54 @@ const EW_FABRICS = {
   brass:         { label: 'Brass',       file: 'brass_basecolor.png',         repeat: 6,  rough: 0.4,  metal: 0.9 },
 };
 const EW_FABRIC_IDS = Object.keys(EW_FABRICS);
-// The TOPS (rev 6, 2026-09-11): the id is what saves carry (`suit` = the v1 long
-// sleeve), the cut lives in three-renderer.js CC_TOPS. Builder order.
+// THE WARDROBE (rev 7, 2026-09-12): the id is what saves carry (`suit` = the v1
+// long sleeve; the v1 `jacket` TOP maps to the OUTER layer), the cut lives in
+// three-renderer.js CC_TOPS / CC_OUTER / CC_BOTTOMS / CC_FEET / CC_GLOVES.
+// Builder order. Every layer takes a fabric + a tint of its own.
 const EW_OUTFIT_STYLES = [
   { id: 'tee',    label: 'T-shirt' },
   { id: 'vneck',  label: 'V-neck' },
   { id: 'suit',   label: 'Long sleeve' },
-  { id: 'jacket', label: 'Jacket' },
   { id: 'crop',   label: 'Crop top' },
   { id: 'tank',   label: 'Tank top' },
   { id: 'atank',  label: 'Athletic tank' },
   { id: 'racer',  label: 'Racerback' },
+  { id: 'tube',   label: 'Tube top' },
   { id: 'bikini', label: 'Bikini top' },
+  { id: 'dress',  label: 'Dress' },
+  { id: 'gown',   label: 'Gown' },
+];
+const EW_BOTTOM_STYLES = [
+  { id: 'trousers',    label: 'Trousers' },
+  { id: 'shorts',      label: 'Shorts' },
+  { id: 'shortshorts', label: 'Short shorts' },
+  { id: 'briefs',      label: 'Briefs' },
+  { id: 'bikini',      label: 'Bikini bottom' },
+  { id: 'miniskirt',   label: 'Mini skirt' },
+  { id: 'skirt',       label: 'Skirt' },
+  { id: 'longskirt',   label: 'Long skirt' },
+];
+const EW_OUTER_STYLES = [
+  { id: 'none',   label: 'None' },
+  { id: 'jacket', label: 'Jacket' },
+  { id: 'blazer', label: 'Blazer' },
+  { id: 'vest',   label: 'Vest' },
+  { id: 'coat',   label: 'Coat' },
+];
+const EW_FEET_STYLES = [
+  { id: 'none',      label: 'Barefoot' },
+  { id: 'sneakers',  label: 'Sneakers' },
+  { id: 'boots',     label: 'Boots' },
+  { id: 'highboots', label: 'High boots' },
+];
+const EW_GLOVE_STYLES = [
+  { id: 'none',       label: 'None' },
+  { id: 'gloves',     label: 'Gloves' },
+  { id: 'longgloves', label: 'Long gloves' },
+];
+const EW_BELT_STYLES = [
+  { id: 'none', label: 'None' },
+  { id: 'belt', label: 'Belt' },
 ];
 // numeric fields: [min, max, default]
 const EW_APPEARANCE_LIMITS = {
@@ -1842,17 +1878,36 @@ const EW_APPEARANCE_ENUMS = {
   hair: ['bald'].concat(EW_HAIR_STYLE_IDS),
   beard: ['none', 'stubble', 'beard', 'goatee'],
   outfit: EW_OUTFIT_STYLES.map(o => o.id),
-  bottoms: ['trousers', 'shorts'],
+  bottoms: EW_BOTTOM_STYLES.map(o => o.id),
+  outer: EW_OUTER_STYLES.map(o => o.id),
+  feet: EW_FEET_STYLES.map(o => o.id),
+  gloves: EW_GLOVE_STYLES.map(o => o.id),
+  belt: EW_BELT_STYLES.map(o => o.id),
   topFabric: EW_FABRIC_IDS,
   bottomFabric: EW_FABRIC_IDS,
+  outerFabric: EW_FABRIC_IDS,
+  feetFabric: EW_FABRIC_IDS,
+  glovesFabric: EW_FABRIC_IDS,
+  beltFabric: EW_FABRIC_IDS,
 };
-const EW_APPEARANCE_COLORS = { skin: '#b98362', hairColor: '#27201c', eyeColor: '#4a6b8a', lipColor: '#9c5a5c', topColor: '#8fa3a8', bottomColor: '#5e6f80' };
-const EW_APPEARANCE_DEFAULTS = { hair: 'hair003', outfit: 'tee', bottoms: 'trousers', beard: 'none', topFabric: 'cotton', bottomFabric: 'denim' };
+const EW_APPEARANCE_COLORS = { skin: '#b98362', hairColor: '#27201c', eyeColor: '#4a6b8a', lipColor: '#9c5a5c', topColor: '#8fa3a8', bottomColor: '#5e6f80', outerColor: '#2a2f38', feetColor: '#2b241f', glovesColor: '#3a2a22', beltColor: '#4a3220' };
+const EW_APPEARANCE_DEFAULTS = { hair: 'hair003', outfit: 'tee', bottoms: 'trousers', outer: 'none', feet: 'sneakers', gloves: 'none', belt: 'none', beard: 'none', topFabric: 'cotton', bottomFabric: 'denim', outerFabric: 'canvas', feetFabric: 'leather', glovesFabric: 'leather', beltFabric: 'leather' };
+// the fabric + tint keys of every layer (the builder's rows, the renderer's paint, the asset warm-up)
+const EW_APPEARANCE_LAYERS = [
+  { id: 'top',    fabric: 'topFabric',    color: 'topColor' },
+  { id: 'bottom', fabric: 'bottomFabric', color: 'bottomColor' },
+  { id: 'outer',  fabric: 'outerFabric',  color: 'outerColor' },
+  { id: 'feet',   fabric: 'feetFabric',   color: 'feetColor' },
+  { id: 'gloves', fabric: 'glovesFabric', color: 'glovesColor' },
+  { id: 'belt',   fabric: 'beltFabric',   color: 'beltColor' },
+];
 // v1 (2026-09-10 procedural shells) → v2 ids
 const _EW_APPEARANCE_LEGACY_HAIR = { crop: 'hair003', crest: 'hair000', bald: 'bald' };
 function normalizeCharacterAppearance(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   if (value.version != null && value.version !== 1 && value.version !== 2) return null;
+  // the rev 6 `jacket` TOP (a long sleeve with a collar) is the OUTER layer over a tee since rev 7
+  if (value.outfit === 'jacket') value = Object.assign({}, value, { outfit: 'tee', outer: value.outer == null ? 'jacket' : value.outer });
   const out = { version: 2 };
   for (const key of Object.keys(EW_APPEARANCE_LIMITS)) {
     const [lo, hi, def] = EW_APPEARANCE_LIMITS[key];
@@ -1887,8 +1942,16 @@ function randomCharacterAppearance(rng) {
   out.lipColor = hex(350 + r() * 20, 0.25 + r() * 0.3, 0.32 + r() * 0.2);
   out.topColor = hex(r() * 360, 0.15 + r() * 0.5, 0.35 + r() * 0.35);
   out.bottomColor = hex(r() * 360, 0.1 + r() * 0.4, 0.25 + r() * 0.35);
+  out.outerColor = hex(r() * 360, 0.1 + r() * 0.4, 0.2 + r() * 0.35);
+  out.feetColor = hex(r() * 360, 0.05 + r() * 0.4, 0.12 + r() * 0.4);
+  out.glovesColor = hex(r() * 360, 0.1 + r() * 0.4, 0.15 + r() * 0.4);
+  out.beltColor = hex(20 + r() * 30, 0.3 + r() * 0.4, 0.15 + r() * 0.25);
   for (const key of Object.keys(EW_APPEARANCE_ENUMS)) out[key] = pick(EW_APPEARANCE_ENUMS[key]);
   if (r() < 0.6) out.beard = 'none';
+  if (r() < 0.5) out.outer = 'none';
+  if (r() < 0.7) out.gloves = 'none';
+  if (r() < 0.5) out.belt = 'none';
+  if (out.feet === 'none' && r() < 0.7) out.feet = 'sneakers';
   return normalizeCharacterAppearance(out);
 }
 const EW_CHARACTER_BASES = {};
@@ -1925,7 +1988,7 @@ function getCharacterAppearanceAssets(appearance) {
   const a = normalizeCharacterAppearance(appearance);
   if (!a) return { hair: null, fabrics: [] };
   const fabrics = [];
-  for (const key of [a.topFabric, a.bottomFabric]) { const u = getFabricTextureUrl(key); if (u && !fabrics.includes(u)) fabrics.push(u); }
+  for (const layer of EW_APPEARANCE_LAYERS) { const u = getFabricTextureUrl(a[layer.fabric]); if (u && !fabrics.includes(u)) fabrics.push(u); }
   return { hair: getHairStyleUrl(a.hair), fabrics };
 }
 if (typeof window !== 'undefined') {
@@ -1937,6 +2000,12 @@ if (typeof window !== 'undefined') {
   window.EW_HAIR_STYLES = EW_HAIR_STYLES;
   window.EW_FABRICS = EW_FABRICS;
   window.EW_OUTFIT_STYLES = EW_OUTFIT_STYLES;
+  window.EW_BOTTOM_STYLES = EW_BOTTOM_STYLES;
+  window.EW_OUTER_STYLES = EW_OUTER_STYLES;
+  window.EW_FEET_STYLES = EW_FEET_STYLES;
+  window.EW_GLOVE_STYLES = EW_GLOVE_STYLES;
+  window.EW_BELT_STYLES = EW_BELT_STYLES;
+  window.EW_APPEARANCE_LAYERS = EW_APPEARANCE_LAYERS;
   window.getHairStyleUrl = getHairStyleUrl;
   window.getFabricTextureUrl = getFabricTextureUrl;
   window.getCharacterAppearanceModel = getCharacterAppearanceModel;

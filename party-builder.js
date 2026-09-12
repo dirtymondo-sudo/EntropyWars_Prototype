@@ -3200,7 +3200,17 @@ function PartyBuilder(props) {
       h('label', { className: 'pb-creator-custom', title: 'Custom ' + label.toLowerCase() }, h('input', { type: 'color', value: appearance[key], 'aria-label': 'Custom ' + label, onChange: e => changeAppearance({ [key]: e.target.value }) }), h('i', null, '+'))));
   const ccChoice = (key, options) => h('div', { className: 'pb-creator-options', role: 'group' }, options.map(([id, label]) =>
     h('button', { key: id, className: 'ms-tty-btn' + (appearance[key] === id ? ' primary' : ''), 'aria-pressed': appearance[key] === id, onClick: () => changeAppearance({ [key]: id }) }, label)));
-  const ccFabricTiles = (key) => h('div', { className: 'pb-cc-tiles pb-cc-fabrics', role: 'group', 'aria-label': key === 'topFabric' ? 'Top fabric' : 'Trouser fabric' },
+  // a wardrobe LAYER row: the style buttons, then (while something is worn) its fabric tiles + tint swatches
+  const ccLayer = (label, key, catalogue, fabricKey, colorKey) => {
+    const list = (window[catalogue] || [{ id: 'none', label: 'None' }]).map(o => [o.id, o.label]);
+    const worn = appearance[key] !== 'none';
+    return h(React.Fragment, { key },
+      h('div', { className: 'pb-creator-colorlabel' }, label),
+      ccChoice(key, list),
+      worn ? ccFabricTiles(fabricKey, label, true) : null,
+      worn ? ccColorRow(colorKey, label + ' tint', clothSwatches) : null);
+  };
+  const ccFabricTiles = (key, label, compact) => h('div', { className: 'pb-cc-tiles pb-cc-fabrics' + (compact ? ' pb-cc-compact' : ''), role: 'group', 'aria-label': (label || (key === 'topFabric' ? 'Top' : 'Trouser')) + ' fabric' },
     (ccEnums[key] || []).map(id => {
       const def = ccFabrics[id] || { label: id }, thumb = def.file ? pbFabricThumbs[id] : null;
       return h('button', { key: id, className: 'pb-cc-tile pb-fabric-tile' + (thumb ? ' has-thumb' : '') + (def.file ? '' : ' plain'), 'aria-pressed': appearance[key] === id, title: def.label,
@@ -3249,13 +3259,19 @@ function PartyBuilder(props) {
               h('h3', null, 'CLOTHES'),
               h('div', { className: 'pb-creator-colorlabel' }, 'Top'),
               ccChoice('outfit', (window.EW_OUTFIT_STYLES || [{ id: 'tee', label: 'T-shirt' }, { id: 'tank', label: 'Tank top' }, { id: 'suit', label: 'Long sleeve' }]).map(o => [o.id, o.label])),
-              ccFabricTiles('topFabric'),
+              ccFabricTiles('topFabric', 'Top'),
               ccColorRow('topColor', 'Top tint', clothSwatches),
               h('div', { className: 'pb-creator-colorlabel' }, 'Bottoms'),
-              ccChoice('bottoms', [['trousers', 'Trousers'], ['shorts', 'Shorts']]),
-              ccFabricTiles('bottomFabric'),
+              ccChoice('bottoms', (window.EW_BOTTOM_STYLES || [{ id: 'trousers', label: 'Trousers' }, { id: 'shorts', label: 'Shorts' }]).map(o => [o.id, o.label])),
+              ccFabricTiles('bottomFabric', 'Bottoms'),
               ccColorRow('bottomColor', 'Bottom tint', clothSwatches),
-              h('p', { className: 'pb-creator-note' }, 'Clothing and hair are cosmetic. Tints multiply the fabric; plain = no weave. Save your team to keep this look.'),
+              // THE LAYERS (rev 7, 2026-09-12): each layer takes a fabric + a tint of its own once it is worn
+              h('h3', null, 'LAYERS'),
+              ccLayer('Outer layer', 'outer', 'EW_OUTER_STYLES', 'outerFabric', 'outerColor'),
+              ccLayer('Feet', 'feet', 'EW_FEET_STYLES', 'feetFabric', 'feetColor'),
+              ccLayer('Gloves', 'gloves', 'EW_GLOVE_STYLES', 'glovesFabric', 'glovesColor'),
+              ccLayer('Belt', 'belt', 'EW_BELT_STYLES', 'beltFabric', 'beltColor'),
+              h('p', { className: 'pb-creator-note' }, 'Clothing and hair are cosmetic. Tints multiply the fabric; plain = no weave. A dress or a gown wears the top\u2019s fabric down to its hem. Save your team to keep this look.'),
               h('div', { className: 'pb-creator-options' },
                 h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}) }, '⚄ RANDOMIZE'),
                 h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(window.normalizeCharacterAppearance({})) }, 'RESET'),

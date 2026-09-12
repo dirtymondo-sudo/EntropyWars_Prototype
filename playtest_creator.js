@@ -6,7 +6,8 @@
 // intercepting cdn.entropywars.net/Assets/Models/charactercreation/* — so this verifies the real
 // runtime path (GLB parse, weight skinning, hair fit, fabric + face bake) without the CDN.
 //   npm start   (server on :3000)
-//   NODE_USE_ENV_PROXY=1 node playtest_creator.js [tag] [--tops]   PW_W / PW_H size the viewport; --tops = every top on both bases, posed
+//   NODE_USE_ENV_PROXY=1 node playtest_creator.js [tag] [--tops|--layers]   PW_W / PW_H size the viewport; --tops = every top on both bases, posed;
+//   --layers (rev 7) = every bottoms / outer / feet style, gloves + belt, the dress + gown, the walk, on both bases
 const fs = require('fs'), path = require('path');
 const REPO = __dirname;
 const { chromium } = require(path.join(REPO, 'node_modules/playwright'));
@@ -122,6 +123,34 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       console.log('walk:', await click('PREVIEW WALK')); await sleep(900);
       await shot('top_' + gender + '_tank_walk');
       await click('FULL BODY'); await sleep(1200);
+    }
+    console.log('page errors:', errs.length ? errs : 'none');
+    console.log('renderer notes:', warns.length ? warns.slice(0, 12) : 'none');
+    await browser.close(); return;
+  }
+  // --layers (rev 7): the bottoms, the outer layer, the feet, the gloves and the belt on BOTH bases,
+  // posed — the lathe skirts, the coat's tail, the open fronts and the soles in the real pipeline
+  if (process.argv.includes('--layers')) {
+    const cats = await page.evaluate(() => ({ bottoms: (window.EW_BOTTOM_STYLES || []).map(o => o.label), outer: (window.EW_OUTER_STYLES || []).map(o => o.label), feet: (window.EW_FEET_STYLES || []).map(o => o.label), gloves: (window.EW_GLOVE_STYLES || []).map(o => o.label) }));
+    console.log('layers:', JSON.stringify(cats));
+    // a row's button by the row label above it (several rows carry a "None")
+    const rowClick = async (row, label) => page.evaluate(([row, label]) => { const labels = [...document.querySelectorAll('#teamBuilderPage .pb-creator-colorlabel')]; const l = labels.find(x => (x.textContent || '').trim().toUpperCase() === row.toUpperCase()); if (!l) return false; const group = l.nextElementSibling; const b = group && [...group.querySelectorAll('button')].find(x => (x.textContent || '').trim().toUpperCase() === label.toUpperCase()); if (b) { b.click(); return true; } return false; }, [row, label]);
+    await click('Bald', '.pb-hair-tile'); await sleep(1500);
+    for (const gender of ['male', 'female']) {
+      if (gender === 'female') { console.log('female:', await click('FEMALE')); await sleep(1500); console.log('stage:', await waitReady(60000)); await sleep(2500); }
+      await click('Tank top'); await sleep(1500);
+      for (const label of cats.bottoms) { console.log(gender, 'bottoms', label + ':', await rowClick('Bottoms', label)); await sleep(3500); await shot('layer_' + gender + '_bottoms_' + label.replace(/[^a-z]+/gi, '_').toLowerCase()); }
+      await rowClick('Bottoms', 'Trousers'); await sleep(1500);
+      for (const label of cats.outer.filter(x => x !== 'None')) { console.log(gender, 'outer', label + ':', await rowClick('Outer layer', label)); await sleep(3500); await shot('layer_' + gender + '_outer_' + label.replace(/[^a-z]+/gi, '_').toLowerCase()); }
+      await rowClick('Outer layer', 'None'); await sleep(1200);
+      for (const label of cats.feet.filter(x => x !== 'Barefoot')) { console.log(gender, 'feet', label + ':', await rowClick('Feet', label)); await sleep(3000); }
+      console.log(gender, 'gloves:', await rowClick('Gloves', 'Long gloves'), 'belt:', await rowClick('Belt', 'Belt')); await sleep(3500);
+      await shot('layer_' + gender + '_boots_gloves_belt');
+      console.log('walk:', await click('PREVIEW WALK')); await sleep(900);
+      await shot('layer_' + gender + '_walk');
+      await click('FULL BODY'); await sleep(1200);
+      for (const label of ['Dress', 'Gown']) { console.log(gender, label + ':', await click(label)); await sleep(3500); await shot('layer_' + gender + '_' + label.toLowerCase()); await click('PREVIEW WALK'); await sleep(900); await shot('layer_' + gender + '_' + label.toLowerCase() + '_walk'); await click('FULL BODY'); await sleep(1200); }
+      await click('Tank top'); await rowClick('Gloves', 'None'); await rowClick('Belt', 'None'); await rowClick('Feet', 'Barefoot'); await sleep(1500);
     }
     console.log('page errors:', errs.length ? errs : 'none');
     console.log('renderer notes:', warns.length ? warns.slice(0, 12) : 'none');

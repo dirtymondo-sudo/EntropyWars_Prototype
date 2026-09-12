@@ -29162,52 +29162,119 @@ const ThreeRenderer = (function () {
         });
     }
     function _ccFabricDef(key) { return (typeof EW_FABRICS !== 'undefined' && EW_FABRICS[key]) || { rough: 0.92, metal: 0, repeat: 0 }; }
-    /* THE TOPS (rev 6, 2026-09-11 — the sleeves and the straps). Every top is a
-       list of CUTS in the q frame (t = height, x = across, z = depth) built by
-       the rig's `topCuts`:
+    /* THE WARDROBE (rev 7, 2026-09-12 — layers, straps, skirts). Every garment is
+       a list of CUTS in the q frame (t = height, x = across, z = depth) built by
+       the rig's `topCuts` / `bottomCuts` / `feetCuts` / `gloveCuts`, or a LATHE
+       (`buildLathe` — skirts, dresses, the coat's tail). Sleeved tops:
          hem     the bottom edge (t).
          neck    the opening: `front` / `back` = the centre depth (t) on the
                  chest / the back (blended by z), rising to `top` (0.852, under
-                 the face shell) by |x| = `w` — a QUARTER-ELLIPSE (crew / scoop:
-                 flat at the centre, vertical at the side) or a LINE (v);
-                 `wBack` / `shapeBack` for a different back. A `top` below
-                 0.852 caps the collar (the jacket's stand collar).
+                 the face shell) by |x| = `w` — a QUARTER-ELLIPSE (crew) or a
+                 LINE (v); `wBack` / `shapeBack` for a different back. A `top`
+                 below 0.852 caps the collar (the jacket's stand collar).
          sleeve  metres ALONG THE ARM'S POLYLINE from the shoulder joint where
                  the sleeve ends — the cut is SQUARE across the arm (a plane
                  normal to the arm axis, gated to the arm by the distance from
                  the axis), so the opening is a ring round the arm in every
-                 pose; rev 5's cut was a vertical x-plane through a diagonal
-                 arm (a slanted, ragged opening that slewed further when the
-                 arm dropped). 'wrist' = the whole arm minus a cuff.
-                 null = SLEEVELESS: the arm is removed as a CAPSULE round its
-                 polyline (`arm.rJoint` at the shoulder joint → `arm.rArm`
-                 down the arm, metres) and the `scoop` ellipse (centre |x| =
-                 the shoulder joint + dx, t = ct; radii rx / rt; `front` /
-                 `back` may differ — the racerback) shapes the strap's OUTER
-                 edge on the shoulder; the strap's inner edge is the neck's w.
-         bikini  band [t0, t1] all round, TRIANGLE cups on the front (the
-                 inner edge from `centreT` up to the `apex` [|x|, t], the outer
-                 edge from the apex down to the band at |x| = `outer`), straps
-                 `strapW` (q) either side of the apex' |x| over the shoulder.
-         ease    the cloth's stand-off from the skin (metres).
+                 pose. 'wrist' = the whole arm minus a cuff.
+       Sleeveless tops (`sleeve: null`, rev 7): the ARM is removed GEOMETRICALLY
+       — a capsule round the arm's polyline whose radius is the arm's own
+       MEASURED radius per 2 cm of its length (`part.armR`, off the mesh at
+       setup) plus 9 mm, and a sphere round the wrist joint for the hand
+       (`armMask`). Rev 6 read the rig's skin weights (q[3]) for this, but the
+       transferred weights wander in to |x| 0.06 on the back and their isoline
+       is jagged — every tank's back armhole was a sawtooth. The top itself is
+         front / back   a PANEL each: `depth` = the neck opening's centre
+                 (t), rising as a quarter-ellipse to `top` by |x| = `xIn` (the
+                 strap's inner edge — the neck base is 5 cm(q) wide on both
+                 bases, so xIn ≥ 0.056 or the cloth climbs the neck: the rev 6
+                 racerback's Y ran up the neck at 0.035); `top` is the panel's
+                 top; the ARMHOLE runs from the strap's outer edge (`xOut`, at
+                 `top`, vertical) round to the armpit `pit` [dx from the
+                 shoulder joint, t] with a horizontal tangent, and everything
+                 outboard of the pit above it is gone (the capsule takes the
+                 arm below).
+         straps  each strap is a CAPSULE of width `w` round a path SAMPLED ON
+                 THE SHOULDER (`strapPath`: rays from a pivot under the joint
+                 sweep from the front attachment [x, t] over the ridge (x =
+                 `top`) to the back attachment, the skin found as the farthest
+                 vertex on each ray, pushed out by the ease) — a band of even
+                 width in every pose, clear of the neck. The panel + the straps
+                 are a UNION (one cut), so the U meets the strap's inner edge
+                 tangentially and the armhole continues its outer edge.
+         spine   the racerback's centre panel on the back: |x| < w up to `top`.
+         bikini  `band` [t0, t1] all round, triangle `cups` on the front (the
+                 inner edge from `centreT` up to the apex [|x|, t], the outer
+                 edge from the apex down to the band at |x| = `outer`) and
+                 `straps` as above (from the apex over the shoulder).
+         skirt   { hem, flare } — a dress: the lathe hangs from the hem cut.
+         open    an OPEN FRONT (outer layers): the cloth is removed on the front
+                 within |x| < w(t), `hem` wide at the hem widening to `chest` by
+                 `chestT` and to `top` up at the collar; `lapel` = a band of
+                 that width along the opening, shaded and raised 4 mm.
+         ease    the cloth's stand-off from the skin (q ≈ metres / 1.7).
          hemBand / zip / cuff  shading (a band at the hem, a darker line down
                  the front, a cuff at the wrist).
-       Ids are what saves carry (sprites.js EW_APPEARANCE_ENUMS.outfit);
-       `suit` stays the long sleeve's id from v1. Measures are q (÷ height)
-       unless marked metres — both bases read alike, the shoulder joint
-       (part.shoulder) sets the scoops so the female's narrower frame fits. */
+       Ids are what saves carry (sprites.js EW_APPEARANCE_ENUMS); `suit` stays
+       the long sleeve's id from v1, the v1 `jacket` top maps to the outer layer.
+       Measures are q (÷ height) unless marked metres — both bases read alike;
+       the pits key off the shoulder joint (part.shoulder) so the female's
+       narrower frame fits. */
+    var CC_TANK_FRONT = { depth: 0.778, xIn: 0.056, top: 0.80, xOut: 0.088, pit: [0.003, 0.745] };
+    var CC_TANK_BACK = { depth: 0.818, xIn: 0.056, top: 0.826, xOut: 0.088, pit: [0.003, 0.752] };
+    var CC_TANK_STRAPS = { w: 0.032, front: [0.072, 0.80], top: 0.072, back: [0.072, 0.826] };
     var CC_TOPS = {
         tee:    { sleeve: 0.155, neck: { shape: 'crew', front: 0.806, back: 0.828, w: 0.048 }, hem: 0.565, ease: 0.007 },
         vneck:  { sleeve: 0.155, neck: { shape: 'v', front: 0.758, back: 0.828, w: 0.056 }, hem: 0.565, ease: 0.007 },
         suit:   { sleeve: 'wrist', neck: { shape: 'crew', front: 0.812, back: 0.83, w: 0.046 }, hem: 0.565, ease: 0.005, cuff: true },
-        jacket: { sleeve: 'wrist', neck: { shape: 'v', front: 0.812, back: 0.848, w: 0.04, top: 0.848 }, hem: 0.548, ease: 0.011, cuff: true, zip: true, hemBand: true },
         crop:   { sleeve: 0.075, neck: { shape: 'crew', front: 0.80, back: 0.828, w: 0.05 }, hem: 0.678, ease: 0.006, hemBand: true },
-        tank:   { sleeve: null, scoop: { front: { dx: 0.035, ct: 0.80, rx: 0.045, rt: 0.055, sq: true }, back: { dx: 0.035, ct: 0.80, rx: 0.05, rt: 0.05, sq: true } }, neck: { shape: 'scoop', front: 0.778, back: 0.818, w: 0.06 }, hem: 0.565, ease: 0.006 },
-        atank:  { sleeve: null, scoop: { front: { dx: 0.035, ct: 0.79, rx: 0.062, rt: 0.068, sq: true }, back: { dx: 0.035, ct: 0.79, rx: 0.062, rt: 0.06, sq: true } }, neck: { shape: 'scoop', front: 0.752, back: 0.80, w: 0.05 }, hem: 0.565, ease: 0.006 },
-        racer:  { sleeve: null, scoop: { front: { dx: 0.035, ct: 0.80, rx: 0.045, rt: 0.055, sq: true }, back: { dx: -0.005, ct: 0.785, rx: 0.07, rt: 0.065 } }, neck: { shape: 'scoop', front: 0.775, back: 0.80, w: 0.06, wBack: 0.035 }, hem: 0.565, ease: 0.006 },
-        bikini: { sleeve: null, bikini: { band: [0.70, 0.728], centreT: 0.742, apex: [0.058, 0.80], outer: 0.105, strapW: 0.009 }, hem: 0.70, ease: 0.004 }
+        tank:   { sleeve: null, front: CC_TANK_FRONT, back: CC_TANK_BACK, straps: CC_TANK_STRAPS, hem: 0.565, ease: 0.006 },
+        atank:  { sleeve: null, front: { depth: 0.752, xIn: 0.058, top: 0.79, xOut: 0.084, pit: [0.0, 0.725] }, back: { depth: 0.80, xIn: 0.058, top: 0.815, xOut: 0.084, pit: [0.0, 0.732] },
+                  straps: { w: 0.026, front: [0.071, 0.79], top: 0.071, back: [0.071, 0.815] }, hem: 0.565, ease: 0.006 },
+        racer:  { sleeve: null, front: { depth: 0.775, xIn: 0.056, top: 0.80, xOut: 0.086, pit: [0.003, 0.745] }, back: { depth: 0.775, top: 0.775, xIn: 0, xOut: 0.03, pit: [0.003, 0.745] },
+                  straps: { w: 0.03, front: [0.071, 0.80], top: 0.071, back: [0.03, 0.76] }, spine: { w: 0.03, top: 0.79 }, hem: 0.565, ease: 0.006 },
+        tube:   { sleeve: null, front: { depth: 0.772, top: 0.772, xIn: 0, xOut: 0.2, pit: [0.003, 0.745] }, back: { depth: 0.792, top: 0.792, xIn: 0, xOut: 0.2, pit: [0.003, 0.752] }, hem: 0.60, ease: 0.005, hemBand: true },
+        bikini: { sleeve: null, bikini: { band: [0.70, 0.728], centreT: 0.742, apex: [0.058, 0.80], outer: 0.105, straps: { w: 0.012, front: [0.058, 0.80], top: 0.06, back: [0.06, 0.736] } }, hem: 0.70, ease: 0.004 },
+        dress:  { sleeve: null, front: CC_TANK_FRONT, back: CC_TANK_BACK, straps: CC_TANK_STRAPS, hem: 0.565, ease: 0.006, skirt: { hem: 0.30, flare: 0.22 } },
+        gown:   { sleeve: null, front: { depth: 0.772, top: 0.772, xIn: 0, xOut: 0.2, pit: [0.003, 0.745] }, back: { depth: 0.792, top: 0.792, xIn: 0, xOut: 0.2, pit: [0.003, 0.752] }, hem: 0.565, ease: 0.005, skirt: { hem: 0.025, flare: 0.16 } }
     };
+    /* THE OUTER LAYER (rev 7): worn over the top at its own ease, open down the front. */
+    var CC_OUTER = {
+        jacket: { sleeve: 'wrist', neck: { shape: 'v', front: 0.79, back: 0.848, w: 0.05, top: 0.848 }, hem: 0.548, ease: 0.017, cuff: true, zip: false, hemBand: true, open: { hem: 0.018, chest: 0.045, chestT: 0.78, top: 0.05 }, lapel: 0.012 },
+        blazer: { sleeve: 'wrist', neck: { shape: 'v', front: 0.77, back: 0.848, w: 0.052, top: 0.848 }, hem: 0.53, ease: 0.017, cuff: false, open: { hem: 0.03, chest: 0.062, chestT: 0.77, top: 0.052 }, lapel: 0.03 },
+        vest:   { sleeve: null, front: { depth: 0.83, top: 0.83, xIn: 0.056, xOut: 0.10, pit: [0.004, 0.748] }, back: { depth: 0.838, top: 0.838, xIn: 0.056, xOut: 0.10, pit: [0.004, 0.755] },
+                  straps: { w: 0.044, front: [0.078, 0.83], top: 0.078, back: [0.078, 0.838] }, hem: 0.548, ease: 0.014, hemBand: true, open: { hem: 0.02, chest: 0.05, chestT: 0.75, top: 0.056 }, lapel: 0.014 },
+        coat:   { sleeve: 'wrist', neck: { shape: 'v', front: 0.78, back: 0.848, w: 0.052, top: 0.848 }, hem: 0.52, ease: 0.018, cuff: true, open: { hem: 0.024, chest: 0.06, chestT: 0.77, top: 0.052 }, lapel: 0.028, tail: { hem: 0.40, flare: 0.12, gap: 0.16 } }
+    };
+    /* THE BOTTOMS (rev 7): `hem` / `waist` bands of the legs' tube; a `leg` line
+       is a leg OPENING (briefs, the bikini bottom): cloth above `centre` (t) at
+       the crotch rising to `side` by |x| = `xw`, the back lower by `seat`; a
+       `waist` may be { centre, side } (a dipped waist); `skirt` = the lathe only. */
+    var CC_BOTTOMS = {
+        trousers:    { hem: 0.08, waist: 0.565, ease: 0.007 },
+        shorts:      { hem: 0.36, waist: 0.565, ease: 0.007 },
+        shortshorts: { hem: 0.44, waist: 0.56, ease: 0.006 },
+        briefs:      { leg: { centre: 0.462, side: 0.522, xw: 0.10, seat: 0.012 }, waist: 0.548, ease: 0.004 },
+        bikini:      { leg: { centre: 0.465, side: 0.54, xw: 0.10, seat: 0.014 }, waist: { centre: 0.52, side: 0.552 }, ease: 0.004 },
+        skirt:       { skirt: { hem: 0.30, flare: 0.25 }, waist: 0.565 },
+        miniskirt:   { skirt: { hem: 0.42, flare: 0.28 }, waist: 0.565 },
+        longskirt:   { skirt: { hem: 0.035, flare: 0.18 }, waist: 0.565 }
+    };
+    /* THE FEET (rev 7): the foot's skin under `top` at `ease`, the sole (t < `sole`) pushed out `soleEase` more and shaded. */
+    var CC_FEET = {
+        sneakers:  { top: 0.052, sole: 0.012, ease: 0.007, soleEase: 0.006, toe: true, soleLight: true },
+        boots:     { top: 0.135, sole: 0.014, ease: 0.008, soleEase: 0.007 },
+        highboots: { top: 0.25, sole: 0.014, ease: 0.008, soleEase: 0.007 }
+    };
+    /* THE GLOVES (rev 7): the hand + `len` metres of the arm above the wrist joint. */
+    var CC_GLOVES = { gloves: { len: 0.025 }, longgloves: { len: 0.33 } };
+    var CC_BELT = { t0: 0.547, t1: 0.573, ease: 0.013 };
     function _ccTopDef(id) { return CC_TOPS[id] || CC_TOPS.tee; }
+    function _ccBottomDef(id) { return CC_BOTTOMS[id] || CC_BOTTOMS.trousers; }
+    function _ccOuterDef(id) { return CC_OUTER[id] || null; }
+    function _ccFeetDef(id) { return CC_FEET[id] || null; }
+    function _ccGloveDef(id) { return CC_GLOVES[id] || null; }
+    var CC_LAYER_NAMES = ['body', 'top', 'bottom', 'face', 'outer', 'feet', 'gloves', 'belt', 'skirt', 'buckle'];   // the shells, in buffer order
 
     /* The pack's hair diffuse → a grey mask (mean luminance 0.72, alpha kept)
        so ANY hair colour tints it — the authored browns only ever tint darker.
@@ -29676,54 +29743,182 @@ const ThreeRenderer = (function () {
         function armLength(part) { var L = part.limbs.armL, S = L.segs[L.segs.length - 1]; return S.cum + S.len; }
         /* front / back blend by depth: 1 on the chest, 0 on the back, the shoulder's ridge (z ≈ −0.01) counts as front */
         function frontness(q) { return Math.max(0, Math.min(1, 0.5 + (q[2] + 0.015) / 0.03)); }
-        /* the top's cuts (see CC_TOPS) — every cut is a signed q-unit function of q, ≥ 0 = cloth */
+        /* the same blend lower down (the pelvis is centred a touch behind the chest) */
+        function frontnessAt(q, zc) { return Math.max(0, Math.min(1, 0.5 + (q[2] - zc) / 0.03)); }
+        /* THE ARM (rev 7): geometric. The arm's measured radius per 2 cm of `along`
+           (part.armR, metres, off the mesh at setup — the deltoid at the joint down
+           to the wrist) plus 9 mm makes a capsule round the polyline; the hand is a
+           sphere of 13.5 cm round the wrist joint. ≥ 0 = on the arm. */
+        function armMask(part, q) {
+            var A = armAt(part, q), H = part.height, Hm = H / 1.7, prof = part.armR;
+            var i = Math.min(prof.r.length - 1, Math.max(0, Math.floor(A.along / prof.step)));
+            var d = (prof.r[i] + 0.009 * Hm - A.perp) / H;
+            var L = q[0] >= 0 ? part.limbs.armL : part.limbs.armR, w = L.pts[L.pts.length - 1];
+            var dx = q[0] * H - w[0], dy = q[1] * H + part.minY - w[1], dz = q[2] * H - w[2];
+            var hand = (0.135 * Hm - Math.sqrt(dx * dx + dy * dy + dz * dz)) / H;
+            return d > hand ? d : hand;
+        }
+        /* the skin's depth at (|x|, t): the farthest vertex forward (front) or back within a 1 cm window (q) */
+        function skinZ(part, x, t, front) {
+            var Q = part.Q, idx = part.shoulderIdx, best = front ? -Infinity : Infinity;
+            for (var k = 0; k < idx.length; k++) {
+                var i = idx[k] * 3;
+                if (Math.abs(Math.abs(Q[i]) - x) > 0.01 || Math.abs(Q[i + 1] - t) > 0.01) continue;
+                var z = Q[i + 2];
+                if (front ? z > best : z < best) best = z;
+            }
+            return isFinite(best) ? best : (front ? 0.04 : -0.06);
+        }
+        /* THE STRAP PATH (rev 7): rays from a pivot under the shoulder joint sweep from
+           the front attachment over the ridge to the back attachment; on each ray the
+           skin is the farthest vertex within ±3° and ±1.2 cm(q) of the ray's x. Points
+           come back in q on the +x side (the cut mirrors by |x|), pushed out by the ease. */
+        function strapPath(part, S, ease) {
+            var Q = part.Q, idx = part.shoulderIdx, pivT = part.shoulder.t - 0.035, pivZ = part.shoulder.z + 0.005;
+            // the capsule's ends are round: the path runs half a width PAST each attachment so the straight
+            // band reaches the panel's top and its edges continue into the armhole and the neck U
+            var ext = S.w * 0.5, SS = { w: S.w, top: S.top, front: [S.front[0], S.front[1] - ext], back: [S.back[0], S.back[1] - ext] };
+            var out = strapPath3D(part, SS, ease, pivT, pivZ);
+            // THE METRIC: a strap's distance is measured in the UNROLLED plane (x across, s = the arc round the
+            // pivot at the path's mean radius) — the radial (normal) component is ignored, so the band keeps
+            // its width whatever the cloth's ease (a 3D capsule thinned to nothing on a 4 mm ease: the bikini's
+            // straps came out as dashes) and whatever the mesh's density
+            var rho = 0, k;
+            for (k = 0; k < out.length; k++) rho += Math.hypot(out[k][1] - pivT, out[k][2] - pivZ);
+            rho /= out.length;
+            var pts = out.map(function (p) { var ph = Math.atan2(p[1] - pivT, p[2] - pivZ); return [p[0], ph]; });
+            for (k = 1; k < pts.length; k++) while (pts[k][1] < pts[k - 1][1] - Math.PI) pts[k][1] += Math.PI * 2;
+            return { pivT: pivT, pivZ: pivZ, rho: rho, pts: pts.map(function (p) { return [p[0], p[1] * rho]; }), ph0: pts[0][1], ph1: pts[pts.length - 1][1] };
+        }
+        function strapPath3D(part, S, ease, pivT, pivZ) {
+            var Q = part.Q, idx = part.shoulderIdx;
+            var zF = skinZ(part, S.front[0], S.front[1], true), zB = skinZ(part, S.back[0], S.back[1], false);
+            var phF = Math.atan2(S.front[1] - pivT, zF - pivZ), phB = Math.atan2(S.back[1] - pivT, zB - pivZ);
+            if (phB < phF) phB += Math.PI * 2;
+            var K = 14, path = [];
+            for (var s = 0; s <= K; s++) {
+                var ph = phF + (phB - phF) * s / K, x;
+                if (ph <= Math.PI / 2) x = S.front[0] + (S.top - S.front[0]) * (ph - phF) / Math.max(1e-6, Math.PI / 2 - phF);
+                else x = S.top + (S.back[0] - S.top) * (ph - Math.PI / 2) / Math.max(1e-6, phB - Math.PI / 2);
+                var cp = Math.cos(ph), sp = Math.sin(ph), br = -1;
+                for (var k = 0; k < idx.length; k++) {
+                    var i = idx[k] * 3, ax = Math.abs(Q[i]);
+                    if (Math.abs(ax - x) > 0.012) continue;
+                    var dz = Q[i + 2] - pivZ, dt = Q[i + 1] - pivT, r = Math.sqrt(dz * dz + dt * dt);
+                    if (r < 1e-6 || (dz * cp + dt * sp) / r < 0.9986) continue;
+                    if (r > br) br = r;
+                }
+                if (br < 0) br = 0.07;
+                br += ease;
+                path.push([x, pivT + sp * br, pivZ + cp * br]);
+            }
+            return path;
+        }
+        function pathDist(path, q) {
+            var ax = Math.abs(q[0]), ph = Math.atan2(q[1] - path.pivT, q[2] - path.pivZ);
+            // the angle continuous with the path's sweep (the seam sits opposite its middle)
+            var mid = (path.ph0 + path.ph1) / 2;
+            while (ph < mid - Math.PI) ph += Math.PI * 2;
+            while (ph > mid + Math.PI) ph -= Math.PI * 2;
+            var sq = ph * path.rho, pts = path.pts, best = Infinity;
+            for (var s = 0; s + 1 < pts.length; s++) {
+                var a = pts[s], b = pts[s + 1], ex = b[0] - a[0], es = b[1] - a[1], l2 = ex * ex + es * es || 1e-12;
+                var u = ((ax - a[0]) * ex + (sq - a[1]) * es) / l2; u = u < 0 ? 0 : u > 1 ? 1 : u;
+                var dx = ax - a[0] - ex * u, ds = sq - a[1] - es * u, d = dx * dx + ds * ds;
+                if (d < best) best = d;
+            }
+            return Math.sqrt(best);
+        }
+        /* a sleeveless PANEL (see CC_TOPS): the neck U up to the strap's inner edge, the armhole from the strap's outer edge to the pit → fn(|x|, t) */
+        function panelCut(P, sx) {
+            var top = P.top, depth = P.depth != null ? P.depth : top, xIn = P.xIn || 0, pitX = sx + (P.pit ? P.pit[0] : 0.003), pitT = P.pit ? P.pit[1] : top, xOut = P.xOut != null ? P.xOut : 1;
+            return function (ax, t) {
+                var u = xIn > 0 ? Math.min(1, ax / xIn) : 1, U = depth + (top - depth) * (1 - Math.sqrt(Math.max(0, 1 - u * u)));
+                var neck = U - t, arm;
+                if (t >= top) arm = xOut - ax;
+                else if (t > pitT) { var v = (top - t) / Math.max(1e-6, top - pitT); arm = xOut + (pitX - xOut) * (1 - Math.sqrt(Math.max(0, 1 - v * v))) - ax; }
+                else arm = pitX - ax + (pitT - t) * 10;
+                return neck < arm ? neck : arm;
+            };
+        }
+        function sleevelessCut(part, T) {
+            var sx = part.shoulder.x, F = panelCut(T.front, sx), B = panelCut(T.back, sx), SP = T.spine;
+            var straps = T.straps ? strapPath(part, T.straps, T.ease) : null, hw = T.straps ? T.straps.w / 2 : 0;
+            return function (q) {
+                var ax = Math.abs(q[0]), t = q[1], wf = frontness(q);
+                var d = F(ax, t) * wf + B(ax, t) * (1 - wf);
+                if (SP) { var sp = Math.min(SP.w - ax, SP.top - t - (ax / SP.w) * (ax / SP.w) * 0.008, (0.3 - wf) * 0.1); if (sp > d) d = sp; }
+                if (straps) { var s = hw - pathDist(straps, q); if (s > d) d = s; }
+                return d;
+            };
+        }
+        function bikiniCut(part, T) {
+            var B = T.bikini, straps = strapPath(part, B.straps, T.ease), hw = B.straps.w / 2;
+            return function (q) {
+                var ax = Math.abs(q[0]), t = q[1];
+                var band = B.band[1] - t;
+                var cupIn = B.centreT + (B.apex[1] - B.centreT) * Math.min(1, ax / B.apex[0]) - t;
+                var cupOut = B.apex[1] - (B.apex[1] - B.band[1]) * Math.max(0, (ax - B.apex[0]) / (B.outer - B.apex[0])) - t;
+                // the cups are FRONT only — the gate is a real depth distance (a clamped constant flattened the
+                // split's interpolation and tore the band's top edge on the back into teeth)
+                var cup = Math.min(cupIn, cupOut, q[2] - 0.008);
+                var s = hw - pathDist(straps, q);
+                return Math.max(band, cup, s);
+            };
+        }
+        /* the open front's half-width at t (outer layers) */
+        function openWidth(O, hem, t) {
+            var u = Math.max(0, Math.min(1, (t - hem) / (O.chestT - hem))), w = O.hem + (O.chest - O.hem) * Math.pow(u, 1.4);
+            if (t > O.chestT && O.top != null) w = O.chest + (O.top - O.chest) * Math.min(1, (t - O.chestT) / 0.06);
+            return w;
+        }
+        /* a top-like garment's cuts (tops and the outer layer) — every cut is a signed q-unit function of q, ≥ 0 = cloth */
         function topCuts(part, T) {
-            var H = part.height, Hm = H / 1.7, sx = part.shoulder.x, cuts = [], hem = T.hem;
+            var H = part.height, Hm = H / 1.7, cuts = [], hem = T.hem;
             cuts.push(function (q) { return q[1] - hem; });
-            var NK = T.neck;
-            if (NK) {
-                var top = NK.top || 0.852, wB = NK.wBack || NK.w, shF = NK.shape, shB = NK.shapeBack || (shF === 'v' ? 'crew' : shF);
-                var rise = function (ax, w, shape) { var u = Math.min(1, ax / w); return shape === 'v' ? u : 1 - Math.sqrt(Math.max(0, 1 - u * u)); };
-                cuts.push(function (q) {
-                    var ax = Math.abs(q[0]), wf = frontness(q);
-                    var f = NK.front + (top - NK.front) * rise(ax, NK.w, shF), b = NK.back + (top - NK.back) * rise(ax, wB, shB);
-                    return f * wf + b * (1 - wf) - q[1];
-                });
-            }
-            if (T.bikini) {
-                var B = T.bikini;
-                cuts.push(function (q) {
-                    var ax = Math.abs(q[0]), t = q[1];
-                    var band = B.band[1] - t;
-                    var cupIn = B.centreT + (B.apex[1] - B.centreT) * Math.min(1, ax / B.apex[0]) - t;
-                    var cupOut = B.apex[1] - (B.apex[1] - B.band[1]) * Math.max(0, (ax - B.apex[0]) / (B.outer - B.apex[0])) - t;
-                    // the cups are FRONT only — the gate is a real depth distance (a clamped constant flattened the
-                    // split's interpolation and tore the band's top edge on the back into teeth)
-                    var cup = Math.min(cupIn, cupOut, q[2] - 0.008);
-                    var strap = B.strapW - Math.abs(ax - B.apex[0]);
-                    return Math.max(band, cup, strap);
-                });
-            }
             if (T.sleeve != null) {
+                var NK = T.neck;
+                if (NK) {
+                    var top = NK.top || 0.852, wB = NK.wBack || NK.w, shF = NK.shape, shB = NK.shapeBack || (shF === 'v' ? 'crew' : shF);
+                    var rise = function (ax, w, shape) { var u = Math.min(1, ax / w); return shape === 'v' ? u : 1 - Math.sqrt(Math.max(0, 1 - u * u)); };
+                    cuts.push(function (q) {
+                        var ax = Math.abs(q[0]), wf = frontness(q);
+                        var f = NK.front + (top - NK.front) * rise(ax, NK.w, shF), b = NK.back + (top - NK.back) * rise(ax, wB, shB);
+                        return f * wf + b * (1 - wf) - q[1];
+                    });
+                }
                 var len = T.sleeve === 'wrist' ? armLength(part) - 0.012 * Hm : T.sleeve * Hm, gate = 0.078 * Hm;
                 cuts.push(function (q) { var A = armAt(part, q); return Math.max(len - A.along, A.perp - gate) / H; });
             } else {
-                // sleeveless: the ARM by the rig's own weights (q[3] > 0.5), the SCOOP — a superellipse
-                // (`sq`: exponent 4, a rounded rectangle — the armhole's inner edge runs straight down
-                // the front instead of bulging into the chest) — for the front deltoid and the strap's edge
-                var scF = T.scoop && (T.scoop.front || T.scoop), scB = T.scoop && (T.scoop.back || scF);
-                var scoopDist = function (S, ax, t) {
-                    var ex = Math.abs(ax - (sx + S.dx)) / S.rx, et = Math.abs(t - S.ct) / S.rt, r = S.sq ? Math.pow(ex * ex * ex * ex + et * et * et * et, 0.25) : Math.sqrt(ex * ex + et * et);
-                    return (r - 1) * Math.min(S.rx, S.rt);
-                };
-                cuts.push(function (q) {
-                    var d = (0.5 - q[3]) * 0.05;
-                    if (scF) { var ax = Math.abs(q[0]), wf = frontness(q), s = scoopDist(scF, ax, q[1]) * wf + scoopDist(scB, ax, q[1]) * (1 - wf); if (s < d) d = s; }
-                    return d;
-                });
+                cuts.push(function (q) { return -armMask(part, q); });
+                cuts.push(T.bikini ? bikiniCut(part, T) : sleevelessCut(part, T));
             }
+            if (T.open) { var O = T.open; cuts.push(function (q) { return Math.abs(q[0]) - openWidth(O, hem, q[1]) * frontness(q); }); }
             return cuts;
         }
+        /* the bottoms' cuts: the legs' tube between the hem (or the leg line) and the waist, the arms / hands out */
+        function bottomCuts(part, B, zc) {
+            var cuts = [];
+            if (B.leg) {
+                var LG = B.leg;
+                cuts.push(function (q) {
+                    var ax = Math.abs(q[0]), u = Math.min(1, ax / LG.xw), rise = 1 - (1 - u) * (1 - u), wf = frontnessAt(q, zc);
+                    var side = LG.side - LG.seat * (1 - wf);
+                    return q[1] - (LG.centre + (side - LG.centre) * rise);
+                });
+            } else cuts.push(function (q) { return q[1] - B.hem; });
+            var W = B.waist;
+            if (typeof W === 'object') cuts.push(function (q) { var u = Math.min(1, Math.abs(q[0]) / 0.1); return W.centre + (W.side - W.centre) * u * u - q[1]; });
+            else cuts.push(function (q) { return W - q[1]; });
+            cuts.push(function (q) { return 0.16 - Math.abs(q[0]); });
+            return cuts;
+        }
+        function feetCuts(part, F) { return [function (q) { return F.top - q[1]; }]; }
+        function gloveCuts(part, G) {
+            var Hm = part.height / 1.7, armLen = armLength(part), H = part.height;
+            return [function (q) { var A = armAt(part, q); return Math.min(armMask(part, q), (A.along - (armLen - G.len * Hm)) / H); }];
+        }
+        function beltCuts() { return [function (q) { return q[1] - CC_BELT.t0; }, function (q) { return CC_BELT.t1 - q[1]; }, function (q) { return 0.16 - Math.abs(q[0]); }]; }
         targets.forEach(function (mesh) {
             var src = mesh.geometry, pos = src.attributes.position;
             if (!src.attributes.uv) { console.warn('[ThreeRenderer] creator base has no UVs — skipping', mesh.name); return; }
@@ -29867,10 +30062,40 @@ const ThreeRenderer = (function () {
                 n.bindMode = mesh.bindMode; n.bind(mesh.skeleton, mesh.bindMatrix);
                 n.bindMatrixInverse.copy(mesh.bindMatrixInverse); mesh.parent.add(n); return n;
             }
-            parts.push({ body: mesh, top: shell('top', material({ roughness: 0.95 })), bottom: shell('bottom', material({ roughness: 0.92 })),
+            /* THE LAYERS (rev 7): every garment is its own shell, hidden when its cut is empty —
+               top · bottom · face · outer (jacket / blazer / vest / coat) · feet · gloves · belt
+               (+ its buckle) · skirt (the lathe: skirt bottoms, a dress's skirt, the coat's tail). */
+            var shells = {
+                top: shell('top', material({ roughness: 0.95 })), bottom: shell('bottom', material({ roughness: 0.92 })),
                 face: shell('face', material({ roughness: 0.72, side: THREE.FrontSide })),
+                outer: shell('outer', material({ roughness: 0.9 })), feet: shell('feet', material({ roughness: 0.6 })),
+                gloves: shell('gloves', material({ roughness: 0.7 })), belt: shell('belt', material({ roughness: 0.55 })),
+                skirt: shell('skirt', material({ roughness: 0.92 })),
+                buckle: shell('buckle', material({ roughness: 0.32, metalness: 0.85, vertexColors: true }))
+            };
+            var part = { body: mesh, top: shells.top, bottom: shells.bottom, face: shells.face, shells: shells,
                 shell: shell, src: src, ids: ids, count: pos.count, Q: Q, weld: weld, repCount: repCount, adjOff: adjOff, adjIdx: adjIdx, height: H, minY: minY, headTris: headTris, headMask: headMask, faceUv: _ccFaceUv(Q, pos.count), landmarks: face, headBone: headBone,
-                limbs: limbs, shoulder: { x: Math.abs(shJ[0]) / H, t: (shJ[1] - minY) / H }, arm: armW, siW: siW, swW: swW, skinTex: null, hair: [], hairId: null, hairUrl: null, hairRoot: null, skull: null, skullMap: null, fabricUrl: { top: null, bottom: null } });
+                limbs: limbs, bones: bones, shoulder: { x: Math.abs(shJ[0]) / H, t: (shJ[1] - minY) / H, z: shJ[2] / H }, arm: armW, siW: siW, swW: swW, skinTex: null, hair: [], hairId: null, hairUrl: null, hairRoot: null, skull: null, skullMap: null, fabricUrl: {}, skirtOwner: 'bottom' };
+            // the shoulder's vertices (the strap paths and the skin-depth reads search these)
+            var shIdx = [], si0;
+            for (si0 = 0; si0 < pos.count; si0++) { var sxq = Math.abs(Q[si0 * 3]); if (Q[si0 * 3 + 1] > 0.68 && sxq > 0.005 && sxq < 0.17) shIdx.push(si0); }
+            part.shoulderIdx = Int32Array.from(shIdx);
+            /* THE ARM PROFILE (rev 7): the arm's radius per 2 cm along its polyline, measured on the
+               vertices past the shoulder joint (|x| > the joint + 1.2 cm(q); the hand left out) — the
+               capsule `armMask` builds round it is the ARM, whatever the transferred weights say. */
+            var aStep = 0.02 * Hm, aLen = armLength(part), nBins = Math.ceil(aLen / aStep) + 1, aR = new Float32Array(nBins), aHas = new Uint8Array(nBins), ai2;
+            for (ai2 = 0; ai2 < pos.count; ai2++) {
+                if (Math.abs(Q[ai2 * 3]) < part.shoulder.x + 0.012 || Q[ai2 * 3 + 1] < 0.5) continue;
+                var AA = armAt(part, q[ai2]);
+                if (AA.along > aLen - 0.012 * Hm) continue;
+                var bin = Math.min(nBins - 1, Math.floor(AA.along / aStep));
+                if (AA.perp > aR[bin]) aR[bin] = AA.perp;
+                aHas[bin] = 1;
+            }
+            for (ai2 = 0; ai2 < nBins; ai2++) if (!aHas[ai2]) { var lo = ai2 - 1, hi = ai2 + 1; while (lo >= 0 && !aHas[lo]) lo--; while (hi < nBins && !aHas[hi]) hi++; aR[ai2] = lo >= 0 && hi < nBins ? (aR[lo] + aR[hi]) / 2 : lo >= 0 ? aR[lo] : hi < nBins ? aR[hi] : 0.05 * Hm; }
+            for (var aPass = 0; aPass < 2; aPass++) for (ai2 = 1; ai2 < nBins - 1; ai2++) { var am = (aR[ai2 - 1] + aR[ai2 + 1]) / 2; if (am > aR[ai2]) aR[ai2] = am; }
+            part.armR = { r: aR, step: aStep };
+            parts.push(part);
         });
         function bump(t, center, radius) { var d = (t - center) / radius; return Math.exp(-d * d * 2); }
         /* THE SKULL MAP (rev 5, 2026-09-11): the head as a radial height field —
@@ -29983,9 +30208,9 @@ const ThreeRenderer = (function () {
             var total = N + b.xCount;
             var position = new Float32Array(total * 3); position.set(b.S); position.set(b.xPos, N * 3);
             var normal = new Float32Array(total * 3); normal.set(b.NS); normal.set(b.xNrm, N * 3);
-            var uv = new Float32Array(total * 2); uv.set(baseUv); uv.set(b.xUv, N * 2);
-            var skinIndex = new Uint16Array(total * 4); skinIndex.set(baseSi); skinIndex.set(b.xSi, N * 4);
-            var skinWeight = new Float32Array(total * 4); skinWeight.set(baseSw); skinWeight.set(b.xSw, N * 4);
+            var uv = new Float32Array(total * 2); uv.set(baseUv.subarray(0, N * 2)); uv.set(b.xUv, N * 2);
+            var skinIndex = new Uint16Array(total * 4); skinIndex.set(baseSi.subarray(0, N * 4)); skinIndex.set(b.xSi, N * 4);
+            var skinWeight = new Float32Array(total * 4); skinWeight.set(baseSw.subarray(0, N * 4)); skinWeight.set(b.xSw, N * 4);
             var gain = new Float32Array(total); gain.set(b.gainBase); gain.set(b.xGain, N);
             b.gain = gain;
             g.setAttribute('position', new THREE.BufferAttribute(position, 3));
@@ -30157,38 +30382,53 @@ const ThreeRenderer = (function () {
             }
             var R = new Float32Array(N * 3);
             for (i = 0; i < N; i++) { var wq = weld[i] * 3; R[i * 3] = Rr[wq]; R[i * 3 + 1] = Rr[wq + 1]; R[i * 3 + 2] = Rr[wq + 2]; }
-            var TOP = _ccTopDef(a.outfit), ease = TOP.ease;
-            var C = new Float32Array(N * 3);
-            for (i = 0; i < N; i++) {
-                var tt = Q[i * 3 + 1], offset = H * (ease + 0.003 * bump(tt, 0.65, 0.13));
-                C[i * 3] = R[i * 3] + NB[i * 3] * offset; C[i * 3 + 1] = P[i * 3 + 1]; C[i * 3 + 2] = R[i * 3 + 2] + NB[i * 3 + 2] * offset;
-            }
-            // THE DRAPE: the front of the shirt bridges the valleys and hangs from the bust
-            var drape = drapeFront(C, NB, Q, N, H);
-            if (drape) for (i = 0; i < N; i++) {
-                var td = Q[i * 3 + 1], xd = Q[i * 3];
-                if (td < 0.57 || td > 0.83 || Q[i * 3 + 2] <= 0 || NB[i * 3 + 2] < 0.1 || Math.abs(xd) > 0.1) continue;
-                var zt = drape(xd, td);
-                if (zt == null) continue;
-                var blend = Math.min(1, (td - 0.57) / 0.03, (0.83 - td) / 0.03, (0.1 - Math.abs(xd)) / 0.02);
-                var lift = zt - H * 0.0015 - C[i * 3 + 2];
-                if (lift > 0) C[i * 3 + 2] += lift * blend;
-            }
-            var NC = new Float32Array(N * 3);
-            surfaceNormals(C, ids, NC, weld, RC);
-            smoothNormals(NC, part, 3, clothNormalWeight);
-            // the BOTTOMS hang at their own ease (rev 6): a jacket's 11 mm stand-off put the trousers'
-            // waistband on the same surface as its hem and the two z-fought
-            var CB = C, NCB = NC, easeB = 0.007;
-            if (Math.abs(ease - easeB) > 1e-6) {
-                CB = new Float32Array(N * 3); NCB = new Float32Array(N * 3);
-                for (i = 0; i < N; i++) {
-                    var tb = Q[i * 3 + 1], offB = H * (easeB + 0.003 * bump(tb, 0.65, 0.13));
-                    CB[i * 3] = R[i * 3] + NB[i * 3] * offB; CB[i * 3 + 1] = P[i * 3 + 1]; CB[i * 3 + 2] = R[i * 3 + 2] + NB[i * 3 + 2] * offB;
+            var TOP = _ccTopDef(a.outfit), BOT = _ccBottomDef(a.bottoms), OUT = _ccOuterDef(a.outer), FEET = _ccFeetDef(a.feet), GLV = _ccGloveDef(a.gloves), BELT = a.belt === 'belt';
+            var dress = !!TOP.skirt, skirtBottom = !!BOT.skirt, latheBottom = skirtBottom && !dress, Hm = H / 1.7, armLen = armLength(part), ARM = part.arm, minY = part.minY;   // a skirt under a dress is nothing at all
+            part.skirtOwner = dress ? 'top' : 'bottom';
+            // the pelvis centre (depth) — the bottoms' front / back blend and the lathe's axis
+            var zcP = 0, zcN = 0;
+            for (i = 0; i < N; i++) { var tzc = Q[i * 3 + 1]; if (tzc > 0.45 && tzc < 0.58 && Math.abs(Q[i * 3]) < 0.16) { zcP += Q[i * 3 + 2]; zcN++; } }
+            zcP = zcN ? zcP / zcN : 0;
+            /* a cloth SURFACE at an ease off the relaxed skin (`easeOf(t, x, z)` in q); torso
+               layers are DRAPED (rev 4: the front bridges the chest valleys and hangs from the
+               bust); `floor` lets the surface drop below the skin but never under the feet */
+            function clothSurface(easeOf, draped, floor) {
+                var S = new Float32Array(N * 3), NS = new Float32Array(N * 3), ii;
+                for (ii = 0; ii < N; ii++) {
+                    var tt = Q[ii * 3 + 1], offset = H * (easeOf(tt, Q[ii * 3], Q[ii * 3 + 2]) + 0.003 * bump(tt, 0.65, 0.13));
+                    S[ii * 3] = R[ii * 3] + NB[ii * 3] * offset; S[ii * 3 + 2] = R[ii * 3 + 2] + NB[ii * 3 + 2] * offset;
+                    S[ii * 3 + 1] = floor ? Math.max(minY, P[ii * 3 + 1] + NB[ii * 3 + 1] * offset) : P[ii * 3 + 1];
                 }
-                surfaceNormals(CB, ids, NCB, weld, RC);
-                smoothNormals(NCB, part, 3, clothNormalWeight);
+                if (draped) {
+                    var drape = drapeFront(S, NB, Q, N, H);
+                    if (drape) for (ii = 0; ii < N; ii++) {
+                        var td = Q[ii * 3 + 1], xd = Q[ii * 3];
+                        if (td < 0.57 || td > 0.83 || Q[ii * 3 + 2] <= 0 || NB[ii * 3 + 2] < 0.1 || Math.abs(xd) > 0.1) continue;
+                        var zt = drape(xd, td);
+                        if (zt == null) continue;
+                        var blend = Math.min(1, (td - 0.57) / 0.03, (0.83 - td) / 0.03, (0.1 - Math.abs(xd)) / 0.02);
+                        var lift = zt - H * 0.0015 - S[ii * 3 + 2];
+                        if (lift > 0) S[ii * 3 + 2] += lift * blend;
+                    }
+                }
+                surfaceNormals(S, ids, NS, weld, RC);
+                smoothNormals(NS, part, 3, clothNormalWeight);
+                return { S: S, NS: NS };
             }
+            var constEase = function (e) { return function () { return e; }; };
+            var sTop = clothSurface(constEase(TOP.ease), true, false);
+            var sBot = skirtBottom ? null : clothSurface(constEase(BOT.ease || 0.007), false, false);
+            var sOut = OUT ? clothSurface(function (t, x, z) {
+                var e = OUT.ease;
+                if (OUT.open && OUT.lapel && z > 0.005) {   // THE LAPEL: the band along the opening stands 4 mm proud
+                    var ow = openWidth(OUT.open, OUT.hem, t), ax = Math.abs(x);
+                    if (ax > ow - 0.004 && ax < ow + OUT.lapel + 0.012) e += 0.004 * Math.min(1, (ax - ow + 0.004) / 0.006, (ow + OUT.lapel + 0.012 - ax) / 0.014);
+                }
+                return e;
+            }, true, false) : null;
+            var sFeet = FEET ? clothSurface(function (t) { return FEET.ease + (t < FEET.sole ? FEET.soleEase : t < FEET.sole + 0.004 ? FEET.soleEase * (FEET.sole + 0.004 - t) / 0.004 : 0); }, false, true) : null;
+            var sGlv = GLV ? clothSurface(constEase(0.004), false, false) : null;
+            var sBelt = BELT ? clothSurface(constEase(CC_BELT.ease), false, false) : null;
             // THE CLOTH FRAME: which cylinder a vertex hangs on (0 torso · 1 / 2 arms · 3 / 4 legs) and its UV in metres
             // the frame follows the Build slider: the polylines' x scales with the body (a 0.85 build moved the ankle's
             // skin 2 cm off an unscaled axis and the trouser hem swirled at the heel)
@@ -30197,7 +30437,7 @@ const ThreeRenderer = (function () {
             function clothRadius(reg) { return reg === 0 ? LB.torso.R : reg < 3 ? LB.armL.R : LB.legL.R; }
             var CUV = new Float32Array(N * 2), REG = new Uint8Array(N);
             for (i = 0; i < N; i++) {
-                var rg = clothRegion(Q[i * 3], Q[i * 3 + 1]), cuv = clothUvOf(LB, rg, C[i * 3], C[i * 3 + 1], C[i * 3 + 2]);
+                var rg = clothRegion(Q[i * 3], Q[i * 3 + 1]), cuv = clothUvOf(LB, rg, R[i * 3], R[i * 3 + 1], R[i * 3 + 2]);
                 REG[i] = rg; CUV[i * 2] = cuv[0]; CUV[i * 2 + 1] = cuv[1];
             }
             /* a polygon that straddles two cylinders or a seam gets its own vertices in ONE projection */
@@ -30214,25 +30454,64 @@ const ThreeRenderer = (function () {
                 var halfTurn = Math.PI * clothRadius(maj);
                 if (umax - umin > halfTurn) for (i = 0; i < poly.length; i++) if (poly[i].uv[0] < umin + halfTurn) { poly[i].uv = [poly[i].uv[0] + 2 * halfTurn, poly[i].uv[1]]; poly[i].idx = -1; }
             }
-            var pantsHem = a.bottoms === 'shorts' ? 0.36 : 0.08, armLen = armLength(part), Hm = H / 1.7;
-            function gainAt(target, q, shade) {
-                var gain = shade || 1, t = q[1], x = q[0];
-                if (target === 1 || target === 2) {
-                    gain *= 0.97 + 0.025 * Math.sin(t * 230 + x * 90);   // restrained fabric variation
-                    if (target === 2) { if (Math.abs(t - 0.565) < 0.006 || Math.abs(t - pantsHem) < 0.005) gain *= 0.72; }   // waistband / hems
-                    else {
-                        if (TOP.hemBand) { if (t < TOP.hem + 0.014) gain *= 0.8; }
-                        else if (Math.abs(t - TOP.hem) < 0.006) gain *= 0.72;
-                        if (TOP.zip && Math.abs(x) < 0.0045 && q[2] > 0.01 && t < 0.84) gain *= 0.6;
-                        if (TOP.cuff) { var A = armAt(part, q); if (A.along > armLen - 0.04 * Hm && A.perp < 0.09 * Hm) gain *= 0.8; }
-                    }
-                }
-                return gain;
+            /* ── shading per layer: gain multipliers (restrained fabric variation, hems, waistbands, zips, cuffs, lapels, soles) ── */
+            /* every shade is a RAMP over ~a vertex spacing (1.2 cm): a hard step per vertex fanned dark
+               spikes across the coarse triangles round every hem and lapel (the bikini band's "fringe") */
+            var weave = function (q) { return 0.97 + 0.025 * Math.sin(q[1] * 230 + q[0] * 90); };
+            var line = function (t, at, w, k) { var u = 1 - Math.abs(t - at) / w; return u > 0 ? 1 - k * u * u : 1; };          // a dark line at `at`
+            var band = function (t, from, w, k) { var u = (from - t) / w; return u >= 1 ? 1 - k : u > 0 ? 1 - k * u : 1; };   // dark below `from`, ramped in over w
+            function topShade(T) {
+                return function (q, s) {
+                    var gain = (s || 1) * weave(q), t = q[1], x = q[0];
+                    if (T.hemBand) gain *= band(t, T.hem + 0.018, 0.01, 0.2); else gain *= line(t, T.hem, 0.012, 0.28);
+                    if (T.zip && q[2] > 0.01 && t < 0.84) gain *= line(x, 0, 0.009, 0.4);
+                    if (T.cuff) { var A = armAt(part, q); if (A.perp < 0.09 * Hm) gain *= band(armLen - A.along, 0.045 * Hm, 0.012 * Hm, 0.2); }
+                    if (T.open && T.lapel && q[2] > 0.005) { var ow = openWidth(T.open, T.hem, t); gain *= band(Math.abs(x), ow + T.lapel + 0.006, 0.012, 0.14); }
+                    return gain;
+                };
             }
-            var buffers = [0, 1, 2, 3].map(function (target) {
-                var gainBase = new Float32Array(N), gq = [0, 0, 0];
-                for (var gi = 0; gi < N; gi++) { gq[0] = Q[gi * 3]; gq[1] = Q[gi * 3 + 1]; gq[2] = Q[gi * 3 + 2]; gainBase[gi] = gainAt(target, gq, 1); }
-                return { S: (target === 0 || target === 3) ? P : target === 2 ? CB : C, NS: (target === 0 || target === 3) ? NB : target === 2 ? NCB : NC, gainBase: gainBase, index: [], xPos: [], xNrm: [], xUv: [], xGain: [], xSi: [], xSw: [], xCount: 0, gain: null };
+            function bottomShade(B) {
+                var W = typeof B.waist === 'object' ? B.waist.centre : B.waist;
+                return function (q, s) { var gain = (s || 1) * weave(q), t = q[1]; gain *= line(t, W, 0.012, 0.28); if (B.hem != null) gain *= line(t, B.hem, 0.012, 0.28); return gain; };
+            }
+            function skirtShade(tTop, tHem) { return function (q, s) { var gain = (s || 1) * weave(q), t = q[1]; gain *= band(tTop - t + 0.012, 0.012, 0.012, 0.25); gain *= line(t, tHem, 0.012, 0.2); return gain; }; }
+            function feetShade(F) { return function (q, s) { var gain = s || 1, t = q[1]; gain *= band(t, F.sole + 0.006, 0.008, F.soleLight ? -0.35 : 0.5); if (F.toe && t < 0.035) gain *= 1 + 0.12 * Math.max(0, Math.min(1, (q[2] - 0.03) / 0.01)); gain *= band(F.top - t + 0.01, 0.01, 0.01, 0.15); return gain; }; }
+            function gloveShade(G) { return function (q, s) { var gain = (s || 1) * weave(q), A = armAt(part, q), cuff = armLen - G.len * Hm; gain *= band(A.along - cuff + 0.02 * Hm, 0.02 * Hm, 0.012 * Hm, 0.2); return gain; }; }
+            function beltShade() { return function (q, s) { return (s || 1) * 0.92; }; }
+            /* ── THE LAYERS: index = buffer / shell (CC_LAYER_NAMES), lo / hi = the t range a cut can be ≥ 0 in ── */
+            var LAYERS = [
+                { name: 'body', S: P, NS: NB, uv: uvA },
+                { name: 'top', S: sTop.S, NS: sTop.NS, cuts: topCuts(part, TOP), ease: TOP.ease, shade: topShade(TOP), lo: TOP.hem - 0.001, hi: 0.86, cloth: true, refine: TOP.bikini ? 2 : 1, thin: !!TOP.bikini },
+                { name: 'bottom', S: sBot && sBot.S, NS: sBot && sBot.NS, cuts: sBot ? bottomCuts(part, BOT, zcP) : null, ease: BOT.ease || 0.007, shade: bottomShade(BOT), lo: 0, hi: 0.6, cloth: true, refine: 1 },
+                { name: 'face', S: P, NS: NB, uv: part.faceUv },
+                { name: 'outer', S: sOut && sOut.S, NS: sOut && sOut.NS, cuts: OUT ? topCuts(part, OUT) : null, ease: OUT ? OUT.ease : 0, shade: OUT ? topShade(OUT) : null, lo: OUT ? OUT.hem - 0.001 : 0, hi: 0.86, cloth: true, refine: 1, under: TOP.ease },
+                { name: 'feet', S: sFeet && sFeet.S, NS: sFeet && sFeet.NS, cuts: FEET ? feetCuts(part, FEET) : null, ease: FEET ? FEET.ease : 0, shade: FEET ? feetShade(FEET) : null, lo: 0, hi: FEET ? FEET.top + 0.001 : 0, cloth: true },
+                { name: 'gloves', S: sGlv && sGlv.S, NS: sGlv && sGlv.NS, cuts: GLV ? gloveCuts(part, GLV) : null, ease: 0.004, shade: GLV ? gloveShade(GLV) : null, lo: 0.40, hi: 0.78, cloth: true },
+                { name: 'belt', S: sBelt && sBelt.S, NS: sBelt && sBelt.NS, cuts: BELT ? beltCuts() : null, ease: CC_BELT.ease, shade: beltShade(), lo: CC_BELT.t0 - 0.001, hi: CC_BELT.t1 + 0.001, cloth: true, under: sBot ? (BOT.ease || 0.007) : 0 },
+                { name: 'skirt', lathe: true, cloth: true },
+                { name: 'buckle', lathe: true }
+            ];
+            var buffers = LAYERS.map(function (L, index) {
+                var has = !!L.S && !L.lathe, n = has ? N : 0, gainBase = new Float32Array(n), gq = [0, 0, 0, 0];
+                if (L.shade && L.cuts) for (var gi = 0; gi < n; gi++) { gq[0] = Q[gi * 3]; gq[1] = Q[gi * 3 + 1]; gq[2] = Q[gi * 3 + 2]; gq[3] = ARM[gi]; gainBase[gi] = gainAt(index, gq, 1); }
+                else gainBase.fill(1);
+                L.target = index; L.base = n;
+                return { S: has ? L.S : new Float32Array(0), NS: has ? L.NS : new Float32Array(0), gainBase: gainBase, index: [], xPos: [], xNrm: [], xUv: [], xGain: [], xSi: [], xSw: [], xCount: 0, gain: null };
+            });
+            function gainAt(target, q, shade) { var L = LAYERS[target]; return L.shade ? L.shade(q, shade) : (shade || 1); }
+            var garments = LAYERS.filter(function (L) { return !!L.cuts; });
+            // every cut evaluated ONCE per base vertex (the classification reads these; the splits evaluate the curves themselves)
+            garments.forEach(function (L) {
+                L.vals = L.cuts.map(function (cut) {
+                    var arr = new Float32Array(N), qq = [0, 0, 0, 0];
+                    for (var vi = 0; vi < N; vi++) {
+                        var tv = Q[vi * 3 + 1];
+                        if (tv < L.lo || tv > L.hi) { arr[vi] = -1; continue; }
+                        qq[0] = Q[vi * 3]; qq[1] = tv; qq[2] = Q[vi * 3 + 2]; qq[3] = ARM[vi];
+                        arr[vi] = cut(qq);
+                    }
+                    return arr;
+                });
             });
             /* a base vertex indexes itself; a cut / rim vertex is appended */
             function vertexIndex(b, target, v, shade) {
@@ -30243,18 +30522,17 @@ const ThreeRenderer = (function () {
                 return N + b.xCount++;
             }
             function emitTri(target, S, NS, i0, i1, i2) { buffers[target].index.push(i0, i1, i2); }
-            function emitClothTri(target, i0, i1, i2) {
+            function emitClothTri(L, i0, i1, i2) {
                 var r0 = REG[i0];
                 if (r0 === REG[i1] && r0 === REG[i2]) {
                     var u0 = CUV[i0 * 2], u1 = CUV[i1 * 2], u2 = CUV[i2 * 2];
-                    if (Math.max(u0, u1, u2) - Math.min(u0, u1, u2) <= Math.PI * clothRadius(r0)) { buffers[target].index.push(i0, i1, i2); return; }
+                    if (Math.max(u0, u1, u2) - Math.min(u0, u1, u2) <= Math.PI * clothRadius(r0)) { buffers[L.target].index.push(i0, i1, i2); return; }
                 }
-                var SC = target === 2 ? CB : C, SN = target === 2 ? NCB : NC;
-                emit([rec(i0, SC, SN, CUV), rec(i1, SC, SN, CUV), rec(i2, SC, SN, CUV)], target);
+                emit([rec(i0, L.S, L.NS, CUV), rec(i1, L.S, L.NS, CUV), rec(i2, L.S, L.NS, CUV)], L.target);
             }
             function emit(poly, target, shade) {
                 if (poly.length < 3) return;
-                if (target === 1 || target === 2) fixClothUv(poly);
+                if (LAYERS[target].cloth) fixClothUv(poly);
                 var b = buffers[target], idx = [];
                 for (var e = 0; e < poly.length; e++) idx.push(vertexIndex(b, target, poly[e], shade));
                 for (var m = 1; m < poly.length - 1; m++) b.index.push(idx[0], idx[m], idx[m + 1]);
@@ -30264,20 +30542,19 @@ const ThreeRenderer = (function () {
                 return { idx: i, q: [Q[i3], Q[i3 + 1], Q[i3 + 2], ARM[i]], p: [S[i3], S[i3 + 1], S[i3 + 2]], n: [NS[i3], NS[i3 + 1], NS[i3 + 2]], uv: [U[i2], U[i2 + 1]],
                     si: [si[i4], si[i4 + 1], si[i4 + 2], si[i4 + 3]], sw: [sw[i4], sw[i4 + 1], sw[i4 + 2], sw[i4 + 3]], on: 0 };
             }
-            var shirtCuts = topCuts(part, TOP);
-            var pantsCuts = [function (q) { return q[1] - pantsHem; }, function (q) { return 0.565 - q[1]; }, function (q) { return 0.16 - Math.abs(q[0]); }];
-            var q0 = [0, 0, 0, 0], q1 = [0, 0, 0, 0], q2 = [0, 0, 0, 0], ARM = part.arm;
             /* 1 = whole triangle inside every cut, -1 = wholly outside one cut, 0 = straddles */
-            function classify(cuts) {
+            function classify(L, i0, i1, i2) {
+                var t0 = Q[i0 * 3 + 1], t1 = Q[i1 * 3 + 1], t2 = Q[i2 * 3 + 1];
+                if ((t0 < L.lo && t1 < L.lo && t2 < L.lo) || (t0 > L.hi && t1 > L.hi && t2 > L.hi)) return -1;
                 var res = 1;
-                for (var c = 0; c < cuts.length; c++) {
-                    var d0 = cuts[c](q0), d1 = cuts[c](q1), d2 = cuts[c](q2);
+                for (var c = 0; c < L.vals.length; c++) {
+                    var V = L.vals[c], d0 = V[i0], d1 = V[i1], d2 = V[i2];
                     if (d0 < 0 && d1 < 0 && d2 < 0) return -1;
                     if (d0 < 0 || d1 < 0 || d2 < 0) res = 0;
                 }
                 return res;
             }
-            function garment(poly, cuts, target, draw) {
+            function garment(poly, cuts, target, draw, ease, under) {
                 var remaining = poly, rejected = [];
                 cuts.forEach(function (cut, ci) {
                     var s = split(remaining, cut, 1 << ci); if (s.outside.length >= 3) rejected.push(s.outside);
@@ -30301,7 +30578,7 @@ const ThreeRenderer = (function () {
                         if (!shared) continue;
                         // the strip is PLANAR (one inward direction for both ends — the mean normal; per-vertex normals on a
                         // lumpy mesh twisted every quad into a sawtooth) and reaches just through the skin
-                        var vo = cloneRec(v), wo = cloneRec(w), vi = cloneRec(v), wi = cloneRec(w), th = ease * H / 1.7 + 0.004 * H / 1.7, d;
+                        var vo = cloneRec(v), wo = cloneRec(w), vi = cloneRec(v), wi = cloneRec(w), th = (under ? Math.max(0.004, ease - under + 0.0015) : ease + 0.004) * H / 1.7, d;
                         var mx = v.n[0] + w.n[0], my = v.n[1] + w.n[1], mz = v.n[2] + w.n[2], ml = Math.hypot(mx, my, mz) || 1;
                         mx /= ml; my /= ml; mz /= ml;
                         vi.p[0] -= mx * th; vi.p[1] -= my * th; vi.p[2] -= mz * th; wi.p[0] -= mx * th; wi.p[1] -= my * th; wi.p[2] -= mz * th;
@@ -30310,28 +30587,231 @@ const ThreeRenderer = (function () {
                         if (nl < 1e-12) continue;
                         nx /= nl; ny /= nl; nz /= nl;
                         // orient it OUT of the opening: down the cut's gradient (numeric, q frame — same orientation as p);
-                        // a cut with no spatial gradient here (the arm weights) falls back to "away from the polygon"
+                        // a cut with no spatial gradient here falls back to "away from the polygon"
                         var ci = 0; while (!(shared & (1 << ci))) ci++;
                         var cutF = cuts[ci], qg = v.q.slice(), gx, gy, gz, EPS = 0.0005;
                         qg[0] += EPS; gx = cutF(qg); qg[0] -= 2 * EPS; gx -= cutF(qg); qg[0] += EPS;
                         qg[1] += EPS; gy = cutF(qg); qg[1] -= 2 * EPS; gy -= cutF(qg); qg[1] += EPS;
                         qg[2] += EPS; gz = cutF(qg); qg[2] -= 2 * EPS; gz -= cutF(qg);
-                        var dotOut = Math.hypot(gx, gy, gz) > 1e-9 ? -(nx * gx + ny * gy + nz * gz) : (nx * (v.p[0] - cx) + ny * (v.p[1] - cy) + nz * (v.p[2] - cz));
-                        if (dotOut < 0) { nx = -nx; ny = -ny; nz = -nz; }
+                        var gl = Math.hypot(gx, gy, gz);
+                        if (gl > 1e-9) {
+                            // the strip faces DOWN the cut's gradient, in the cloth's tangent plane — one smooth field along
+                            // the whole rim (a normal from each quad's own geometry faceted a 1 cm strip into a zigzag)
+                            gx /= -gl; gy /= -gl; gz /= -gl;
+                            var gm = gx * mx + gy * my + gz * mz; gx -= mx * gm; gy -= my * gm; gz -= mz * gm;
+                            var gl2 = Math.hypot(gx, gy, gz);
+                            if (gl2 > 1e-6) { nx = gx / gl2; ny = gy / gl2; nz = gz / gl2; }
+                        } else { var dotOut = nx * (v.p[0] - cx) + ny * (v.p[1] - cy) + nz * (v.p[2] - cz); if (dotOut < 0) { nx = -nx; ny = -ny; nz = -nz; } }
                         vo.n[0] = vi.n[0] = wo.n[0] = wi.n[0] = nx; vo.n[1] = vi.n[1] = wo.n[1] = wi.n[1] = ny; vo.n[2] = vi.n[2] = wo.n[2] = wi.n[2] = nz;
                         emit([vo, vi, wi, wo], target, 0.76);
                     }
                 }
                 return rejected;
             }
+            /* weights for generated geometry: a skin vertex's welded weights blended toward one bone */
+            var hipsBone = part.bones.findIndex(function (bb) { return bb.name === 'Hips'; }); if (hipsBone < 0) hipsBone = 0;
+            function top4(acc) {
+                var keys = Object.keys(acc).sort(function (x, y) { return acc[y] - acc[x]; }).slice(0, 4), tot = 0, outI = [0, 0, 0, 0], outW = [0, 0, 0, 0], k;
+                for (k = 0; k < keys.length; k++) tot += acc[keys[k]];
+                for (k = 0; k < keys.length; k++) { outI[k] = +keys[k]; outW[k] = acc[keys[k]] / (tot || 1); }
+                if (!keys.length) outW[0] = 1;
+                return { si: outI, sw: outW };
+            }
+            function skinOf(v) { if (typeof v !== 'number') return v; var i4 = v * 4; return { si: [si[i4], si[i4 + 1], si[i4 + 2], si[i4 + 3]], sw: [sw[i4], sw[i4 + 1], sw[i4 + 2], sw[i4 + 3]] }; }
+            function blendSkin(va, vb, w) {
+                var A = skinOf(va), B = skinOf(vb), acc = {}, k;
+                for (k = 0; k < 4; k++) { if (A.sw[k] > 0) acc[A.si[k]] = (acc[A.si[k]] || 0) + A.sw[k] * (1 - w); if (B.sw[k] > 0) acc[B.si[k]] = (acc[B.si[k]] || 0) + B.sw[k] * w; }
+                return top4(acc);
+            }
+            function blendSkinTo(vi, bone, w) {
+                var V = skinOf(vi), acc = {}, k;
+                for (k = 0; k < 4; k++) if (V.sw[k] > 0) acc[V.si[k]] = (acc[V.si[k]] || 0) + V.sw[k] * (1 - w);
+                acc[bone] = (acc[bone] || 0) + w;
+                return top4(acc);
+            }
+            /* THE LATHE (rev 7): a skirt hung from the body — the pelvis as a radial map
+               (72 azimuths × 1 cm rows: the farthest skin per bin from the axis through the
+               pelvis centre, arms and hands left out, holes filled from the neighbours),
+               DRAPED vertically (a column never narrows going down — cloth hangs straight
+               from the widest point above), flared from 6 cm(q) under the waist, the rows
+               smoothed round so the legs' bumps do not print through. Each vertex rides
+               the skin vertex that set its radius (welded weights), blended toward the Hips
+               bone at the front / back centre (the panels between the legs would tear on a
+               walk) and with the flare. `gap` (radians) leaves the front open (the coat's
+               tail). The hem is an inward strip like every other rim. */
+            function buildLathe(opts, b, shade, nBase) {
+                var NTH = 72, tTop = opts.tTop, tHem = opts.tHem, ease = opts.ease, flare = opts.flare || 0, gap = opts.gap || 0, ii, r2, c2, pass;
+                var rows = Math.max(2, Math.round((tTop - tHem) / 0.01) + 1), rowT = function (r) { return tTop - (tTop - tHem) * r / (rows - 1); };
+                var zc = zcP * H;
+                var map = new Float32Array(NTH * rows).fill(-1), rep = new Int32Array(NTH * rows).fill(-1);
+                var t0 = tHem - 0.012, t1 = tTop + 0.004;   // (a wider band above the waist gave the dress's top ring the lower back's flare and it poked through a blazer)
+                for (ii = 0; ii < N; ii++) {
+                    var tq2 = Q[ii * 3 + 1];
+                    if (tq2 < t0 || tq2 > t1 || Math.abs(Q[ii * 3]) > 0.19 || ARM[ii] > 0.3) continue;
+                    // the skin pushed out along its NORMAL by the ease (as every shell is) — a radial ease under-cleared
+                    // the spine groove, where a normal offset gains little radius, and the waist ring poked through a blazer
+                    var px = P[ii * 3] + NB[ii * 3] * ease * H, pz = P[ii * 3 + 2] + NB[ii * 3 + 2] * ease * H - zc, r = Math.sqrt(px * px + pz * pz);
+                    var th = Math.atan2(px, pz), bt = ((Math.round(th / (2 * Math.PI) * NTH) % NTH) + NTH) % NTH, br = Math.round((tTop - tq2) / (tTop - tHem) * (rows - 1));
+                    if (br < 0 || br >= rows) continue;
+                    var o = br * NTH + bt; if (r > map[o]) { map[o] = r; rep[o] = ii; }
+                }
+                for (pass = 0; pass < NTH; pass++) {
+                    var holes = 0;
+                    for (r2 = 0; r2 < rows; r2++) for (c2 = 0; c2 < NTH; c2++) {
+                        var o2 = r2 * NTH + c2; if (map[o2] >= 0) continue;
+                        holes++;
+                        var ol = r2 * NTH + (c2 + NTH - 1) % NTH, orr = r2 * NTH + (c2 + 1) % NTH, l = map[ol], rr = map[orr];
+                        if (l >= 0 && rr >= 0) { map[o2] = (l + rr) / 2; rep[o2] = rep[ol]; } else if (l >= 0) { map[o2] = l; rep[o2] = rep[ol]; } else if (rr >= 0) { map[o2] = rr; rep[o2] = rep[orr]; }
+                    }
+                    if (!holes) break;
+                }
+                for (r2 = 0; r2 < rows; r2++) for (c2 = 0; c2 < NTH; c2++) if (map[r2 * NTH + c2] < 0) { map[r2 * NTH + c2] = 0.12 * Hm; rep[r2 * NTH + c2] = 0; }   // an empty row (never on a body)
+                // the vertical drape: a column never narrows going down — the RADIUS comes from above, the WEIGHTS stay
+                // the row's own skin (a column that took the hip vertex's weights hung still while the thigh under it
+                // swung forward on the walk and pushed straight through)
+                for (c2 = 0; c2 < NTH; c2++) for (r2 = 1; r2 < rows; r2++) { var oa = (r2 - 1) * NTH + c2, ob = r2 * NTH + c2; if (map[ob] < map[oa]) map[ob] = map[oa]; }
+                var RAD = new Float32Array(NTH * rows), fl = new Float32Array(rows), swing = opts.swing == null ? 0.03 * Hm : opts.swing * Hm;
+                for (r2 = 0; r2 < rows; r2++) {
+                    var tr = rowT(r2); fl[r2] = flare * Math.max(0, (tTop - 0.06) - tr) * H;
+                    // THE SWING ALLOWANCE: a walking thigh swings forward / back, so the front and back panels
+                    // stand off further under the hips (cos² across the panel, ramped in over 6 cm(q) below the waist)
+                    var sw = swing * Math.min(1, Math.max(0, (tTop - 0.04 - tr) / 0.06)) + 0.10 * Hm * Math.max(0, 0.32 - tr);
+                    for (c2 = 0; c2 < NTH; c2++) { var cth = Math.cos(c2 / NTH * 2 * Math.PI); RAD[r2 * NTH + c2] = map[r2 * NTH + c2] + fl[r2] + sw * cth * cth; }
+                }
+                // the rows are max-smoothed round (cloth bridges the hollows) — but not the waistband, which hugs the
+                // skin like the trousers' (a bridged spine groove put the skirt's top ring 9 mm outside a blazer)
+                for (pass = 0; pass < 4; pass++) for (r2 = 0; r2 < rows; r2++) {
+                    var fs = Math.max(0, Math.min(1, (tTop - rowT(r2) - 0.02) / 0.06)); if (!fs) continue;
+                    for (c2 = 0; c2 < NTH; c2++) { var m2 = (RAD[r2 * NTH + (c2 + NTH - 1) % NTH] + RAD[r2 * NTH + (c2 + 1) % NTH]) / 2; if (m2 > RAD[r2 * NTH + c2]) RAD[r2 * NTH + c2] += (m2 - RAD[r2 * NTH + c2]) * fs; }
+                }
+                // ONE connected lathe (a split at the front / back was tried: a walking leg opened a clean slit, but the
+                // idle pose — legs apart sideways — gaped it 10 cm open on a long skirt; a connected panel stretches instead)
+                var half = -1, cols = NTH + 1, thA = gap, thB = 2 * Math.PI - gap, base = (nBase || 0) + b.xCount, Ru = 0.15 * Hm;
+                var colTheta = function (c) { return thA + (thB - thA) * c / (cols - 1); };
+                var vIdx = function (r, c) { return r * cols + c; };
+                var radAt = function (r, th2) { var fb = th2 / (2 * Math.PI) * NTH, b0 = Math.floor(fb), fr = fb - b0, ra = RAD[r * NTH + ((b0 % NTH) + NTH) % NTH], rb2 = RAD[r * NTH + (((b0 + 1) % NTH) + NTH) % NTH]; return ra + (rb2 - ra) * fr; };
+                for (r2 = 0; r2 < rows; r2++) for (c2 = 0; c2 < cols; c2++) {
+                    var th2 = colTheta(c2), bt2 = ((Math.round(th2 / (2 * Math.PI) * NTH) % NTH) + NTH) % NTH;
+                    var rad = radAt(r2, th2), tr2 = rowT(r2), y = minY + tr2 * H, sx2 = Math.sin(th2), cz2 = Math.cos(th2);
+                    b.xPos.push(rad * sx2, y, zc + rad * cz2);
+                    b.xNrm.push(sx2, 0, cz2);
+                    b.xUv.push(th2 * Ru, (tTop - tr2) * H);
+                    b.xGain.push(shade([rad * sx2 / H, tr2, (zc + rad * cz2) / H], 1));
+                    // the column rides the skin vertex that set its radius (the nearest leg below the hips — a
+                    // hips-weighted panel let a walking thigh push straight through); at the front / back centre the
+                    // two legs' columns blend half and half over ±27° so a sideways stance stretches the panel; the
+                    // flare leans on the Hips but never lets go of the leg (a hips-only hem let the shins through)
+                    var ri = rep[r2 * NTH + bt2]; if (ri < 0) ri = 0;
+                    var mirror = rep[r2 * NTH + ((NTH - bt2) % NTH)]; if (mirror < 0) mirror = ri;
+                    var wMirror = 0.5 * Math.max(0, 1 - Math.abs(sx2) / 0.45), sk0 = blendSkin(ri, mirror, wMirror);
+                    var sk = blendSkinTo(sk0, hipsBone, 0.35 * Math.min(1, fl[r2] / (0.06 * Hm)));
+                    b.xSi.push(sk.si[0], sk.si[1], sk.si[2], sk.si[3]); b.xSw.push(sk.sw[0], sk.sw[1], sk.sw[2], sk.sw[3]);
+                    b.xCount++;
+                }
+                var XP = b.xPos, XN = b.xNrm, xb = base - (nBase || 0);   // xPos / xNrm slots
+                for (r2 = 0; r2 < rows; r2++) for (c2 = 0; c2 < cols; c2++) {
+                    var v0 = xb + vIdx(r2, c2), vl = xb + vIdx(r2, Math.max(0, c2 - 1)), vr = xb + vIdx(r2, Math.min(cols - 1, c2 + 1)), vu = xb + vIdx(Math.max(0, r2 - 1), c2), vd = xb + vIdx(Math.min(rows - 1, r2 + 1), c2);
+                    if (gap === 0) { if (c2 === 0) vl = xb + vIdx(r2, cols - 2); if (c2 === cols - 1) vr = xb + vIdx(r2, 1); }
+                    if (c2 === half) vr = xb + vIdx(r2, half + 2); if (c2 === half + 1) vl = xb + vIdx(r2, half - 1);   // the doubled back column shades as one
+                    var rx = XP[vr * 3] - XP[vl * 3], ry = XP[vr * 3 + 1] - XP[vl * 3 + 1], rz = XP[vr * 3 + 2] - XP[vl * 3 + 2];
+                    var dx = XP[vd * 3] - XP[vu * 3], dy = XP[vd * 3 + 1] - XP[vu * 3 + 1], dz = XP[vd * 3 + 2] - XP[vu * 3 + 2];
+                    var nx = dy * rz - dz * ry, ny = dz * rx - dx * rz, nz = dx * ry - dy * rx, nl = Math.hypot(nx, ny, nz) || 1;
+                    XN[v0 * 3] = nx / nl; XN[v0 * 3 + 1] = ny / nl; XN[v0 * 3 + 2] = nz / nl;
+                }
+                for (r2 = 0; r2 + 1 < rows; r2++) for (c2 = 0; c2 + 1 < cols; c2++) {
+                    if (c2 === half) continue;   // the split at the back
+                    var a0 = base + vIdx(r2, c2), a1 = base + vIdx(r2, c2 + 1), a2 = base + vIdx(r2 + 1, c2), a3 = base + vIdx(r2 + 1, c2 + 1);
+                    b.index.push(a0, a2, a1, a1, a2, a3);
+                }
+                if (!(typeof window !== 'undefined' && window.EW_CC_NO_HEMS)) {
+                    // the hem strip: the last row again, moved in radially, the strip facing DOWN out of the opening
+                    var th3 = ease * H + 0.004 * Hm, hb = (nBase || 0) + b.xCount, last = rows - 1;
+                    for (c2 = 0; c2 < cols; c2++) {
+                        var vo = xb + vIdx(last, c2), thh = colTheta(c2), rad2 = Math.max(0.01, radAt(last, thh) - th3);
+                        b.xPos.push(rad2 * Math.sin(thh), XP[vo * 3 + 1], zc + rad2 * Math.cos(thh));
+                        b.xNrm.push(0, -1, 0); b.xUv.push(b.xUv[vo * 2], b.xUv[vo * 2 + 1]); b.xGain.push(b.xGain[vo] * 0.76);
+                        b.xSi.push(b.xSi[vo * 4], b.xSi[vo * 4 + 1], b.xSi[vo * 4 + 2], b.xSi[vo * 4 + 3]); b.xSw.push(b.xSw[vo * 4], b.xSw[vo * 4 + 1], b.xSw[vo * 4 + 2], b.xSw[vo * 4 + 3]);
+                        b.xCount++;
+                    }
+                    for (c2 = 0; c2 + 1 < cols; c2++) { if (c2 === half) continue; var o0 = base + vIdx(last, c2), o1 = base + vIdx(last, c2 + 1), i0h = hb + c2, i1h = hb + c2 + 1; b.index.push(o0, i0h, o1, o1, i0h, i1h); }
+                }
+            }
+            /* THE SOLE (rev 7): a flat slab under each foot — the foot's footprint (t < 3 cm(q), 48 azimuths round
+               its centre, the farthest skin per bin + 6 mm) extruded from the floor up to the sole line, a dark
+               band round it and a cap underneath, riding the foot's own skin weights */
+            function buildSole(b, side, F) {
+                var cx = 0, cz = 0, n = 0, ii, best = -1;
+                for (ii = 0; ii < N; ii++) if (Q[ii * 3 + 1] < 0.03 && Q[ii * 3] * side > 0) { cx += P[ii * 3]; cz += P[ii * 3 + 2]; n++; if (best < 0 || P[ii * 3 + 1] < P[best * 3 + 1]) best = ii; }
+                if (n < 20) return;
+                cx /= n; cz /= n;
+                var NA = 48, rad = new Float32Array(NA).fill(-1), k2;
+                for (ii = 0; ii < N; ii++) {
+                    if (Q[ii * 3 + 1] >= 0.03 || Q[ii * 3] * side <= 0) continue;
+                    var dx = P[ii * 3] - cx, dz = P[ii * 3 + 2] - cz, r = Math.sqrt(dx * dx + dz * dz), bin = ((Math.round(Math.atan2(dx, dz) / (2 * Math.PI) * NA) % NA) + NA) % NA;
+                    if (r > rad[bin]) rad[bin] = r;
+                }
+                for (k2 = 0; k2 < NA; k2++) if (rad[k2] < 0) rad[k2] = Math.max(rad[(k2 + NA - 1) % NA], rad[(k2 + 1) % NA], 0.03 * Hm);
+                for (var pass = 0; pass < 2; pass++) for (k2 = 0; k2 < NA; k2++) { var m = (rad[(k2 + NA - 1) % NA] + rad[(k2 + 1) % NA]) / 2; if (m > rad[k2]) rad[k2] = m; }
+                var base = (LAYERS[CC_LAYER_NAMES.indexOf('feet')].base || 0) + b.xCount, yTop = minY + F.sole * H, yBot = minY, gainBand = F.soleLight ? 1.35 : 0.45, i4 = best * 4;
+                var push = function (x, y, z, nx, ny, nz, gain) {
+                    b.xPos.push(x, y, z); b.xNrm.push(nx, ny, nz); b.xUv.push(x * 4, z * 4); b.xGain.push(gain);
+                    b.xSi.push(si[i4], si[i4 + 1], si[i4 + 2], si[i4 + 3]); b.xSw.push(sw[i4], sw[i4 + 1], sw[i4 + 2], sw[i4 + 3]); b.xCount++;
+                };
+                for (k2 = 0; k2 <= NA; k2++) {
+                    var th = k2 / NA * 2 * Math.PI, rr = rad[k2 % NA] + 0.006 * Hm, sx2 = Math.sin(th), cz2 = Math.cos(th);
+                    push(cx + rr * sx2, yTop, cz + rr * cz2, sx2, 0, cz2, gainBand);
+                    push(cx + rr * sx2, yBot, cz + rr * cz2, sx2, 0, cz2, gainBand);
+                }
+                for (k2 = 0; k2 < NA; k2++) { var a0 = base + k2 * 2, a1 = a0 + 1, b0 = base + (k2 + 1) * 2, b1 = b0 + 1; b.index.push(a0, a1, b0, b0, a1, b1); }
+                var cap = base + (NA + 1) * 2;
+                push(cx, yBot, cz, 0, -1, 0, gainBand * 0.8);
+                for (k2 = 0; k2 <= NA; k2++) { var th2 = k2 / NA * 2 * Math.PI, rr2 = rad[k2 % NA] + 0.006 * Hm; push(cx + rr2 * Math.sin(th2), yBot, cz + rr2 * Math.cos(th2), 0, -1, 0, gainBand * 0.8); }
+                for (k2 = 0; k2 < NA; k2++) b.index.push(cap, cap + 1 + k2, cap + 2 + k2);
+            }
+            /* the belt's buckle: a brass box on the front centre, riding the skin vertex under it */
+            function buildBuckle(b) {
+                var best = -1, bz = -Infinity, ii;
+                for (ii = 0; ii < N; ii++) if (Math.abs(Q[ii * 3]) < 0.012 && Math.abs(Q[ii * 3 + 1] - 0.56) < 0.007 && P[ii * 3 + 2] > bz) { bz = P[ii * 3 + 2]; best = ii; }
+                if (best < 0) return;
+                var cx = 0, cy = P[best * 3 + 1], czb = bz + (CC_BELT.ease + 0.0045) * H, w = 0.03 * Hm, h = 0.024 * Hm, d = 0.006 * Hm;
+                var box = new THREE.BoxGeometry(w, h, d), bp = box.attributes.position.array, bn = box.attributes.normal.array, buv = box.attributes.uv.array, bi = box.index.array, base = b.xCount;
+                for (ii = 0; ii < bp.length / 3; ii++) {
+                    b.xPos.push(cx + bp[ii * 3], cy + bp[ii * 3 + 1], czb + bp[ii * 3 + 2]); b.xNrm.push(bn[ii * 3], bn[ii * 3 + 1], bn[ii * 3 + 2]); b.xUv.push(buv[ii * 2], buv[ii * 2 + 1]); b.xGain.push(1);
+                    b.xSi.push(si[best * 4], si[best * 4 + 1], si[best * 4 + 2], si[best * 4 + 3]); b.xSw.push(sw[best * 4], sw[best * 4 + 1], sw[best * 4 + 2], sw[best * 4 + 3]); b.xCount++;
+                }
+                for (ii = 0; ii < bi.length; ii++) b.index.push(base + bi[ii]);
+                box.dispose();
+            }
+            var cls = new Array(garments.length), g, u, _midQ = [0, 0, 0, 0], q0 = [0, 0, 0, 0], q1 = [0, 0, 0, 0], q2 = [0, 0, 0, 0];
+            function insideAt(L, qa, qb, qc, wa, wb, wc) {
+                for (var j = 0; j < 4; j++) _midQ[j] = qa[j] * wa + qb[j] * wb + qc[j] * wc;
+                for (var c = 0; c < L.cuts.length; c++) if (L.cuts[c](_midQ) < 0) return false;
+                return true;
+            }
+            /* split a polygon (a triangle) into four through its edge midpoints; `levels` deep */
+            function subdivide(tri, levels) {
+                if (!levels) return [tri];
+                var m01 = mix(tri[0], tri[1], 0.5), m12 = mix(tri[1], tri[2], 0.5), m20 = mix(tri[2], tri[0], 0.5), out = [];
+                [[tri[0], m01, m20], [m01, tri[1], m12], [m20, m12, tri[2]], [m01, m12, m20]].forEach(function (t) { out.push.apply(out, subdivide(t, levels - 1)); });
+                return out;
+            }
             for (k = 0; k < ids.length; k += 3) {
-                var i0 = ids[k], i1 = ids[k + 1], i2 = ids[k + 2];
-                q0[0] = Q[i0 * 3]; q0[1] = Q[i0 * 3 + 1]; q0[2] = Q[i0 * 3 + 2]; q0[3] = ARM[i0];
-                q1[0] = Q[i1 * 3]; q1[1] = Q[i1 * 3 + 1]; q1[2] = Q[i1 * 3 + 2]; q1[3] = ARM[i1];
-                q2[0] = Q[i2 * 3]; q2[1] = Q[i2 * 3 + 1]; q2[2] = Q[i2 * 3 + 2]; q2[3] = ARM[i2];
-                var cs = classify(shirtCuts), cp = classify(pantsCuts);
+                var i0 = ids[k], i1 = ids[k + 1], i2 = ids[k + 2], anyFull = false, anyPart = false;
+                for (g = 0; g < garments.length; g++) {
+                    var cg = classify(garments[g], i0, i1, i2), Lt = garments[g];
+                    if (cg === -1 && Lt.thin) {
+                        var ta = Q[i0 * 3 + 1], tb = Q[i1 * 3 + 1], tc = Q[i2 * 3 + 1];
+                        if (!((ta < Lt.lo && tb < Lt.lo && tc < Lt.lo) || (ta > Lt.hi && tb > Lt.hi && tc > Lt.hi))) {
+                            q0[0] = Q[i0 * 3]; q0[1] = ta; q0[2] = Q[i0 * 3 + 2]; q0[3] = ARM[i0];
+                            q1[0] = Q[i1 * 3]; q1[1] = tb; q1[2] = Q[i1 * 3 + 2]; q1[3] = ARM[i1];
+                            q2[0] = Q[i2 * 3]; q2[1] = tc; q2[2] = Q[i2 * 3 + 2]; q2[3] = ARM[i2];
+                            if (insideAt(Lt, q0, q1, q2, 0.5, 0.5, 0) || insideAt(Lt, q0, q1, q2, 0, 0.5, 0.5) || insideAt(Lt, q0, q1, q2, 0.5, 0, 0.5) || insideAt(Lt, q0, q1, q2, 1 / 3, 1 / 3, 1 / 3)) cg = 0;
+                        }
+                    }
+                    cls[g] = cg; if (cg === 1) anyFull = true; else if (cg === 0) anyPart = true;
+                }
                 // the body shows only where nothing covers it; the head is the FACE shell (its painted texture)
-                if (cs === -1 && cp === -1) {
+                if (!anyFull && !anyPart) {
                     if (!part.headMask[k / 3]) emitTri(0, P, NB, i0, i1, i2);
                     else {
                         var fuv = part.faceUv, fa = fuv[i0 * 2], fb = fuv[i1 * 2], fc = fuv[i2 * 2];
@@ -30344,48 +30824,70 @@ const ThreeRenderer = (function () {
                         }
                     }
                 }
-                else if (cs !== 1 && cp !== 1) {
-                    var tri = [rec(i0, P, NB), rec(i1, P, NB), rec(i2, P, NB)];
-                    var uncovered = cs === -1 ? [tri] : garment(tri, shirtCuts, 1, false);
-                    for (var u = 0; u < uncovered.length; u++) {
-                        var rest = cp === -1 ? [uncovered[u]] : garment(uncovered[u], pantsCuts, 2, false);
-                        for (var rr = 0; rr < rest.length; rr++) emit(rest[rr], 0);
+                else if (!anyFull) {
+                    // partly covered: cut every partial layer's coverage away and draw what is left of the skin
+                    var unc = [[rec(i0, P, NB), rec(i1, P, NB), rec(i2, P, NB)]];
+                    for (g = 0; g < garments.length; g++) {
+                        if (cls[g] !== 0) continue;
+                        var next = [];
+                        for (u = 0; u < unc.length; u++) {
+                            var pieces = unc[u].length === 3 ? subdivide(unc[u], garments[g].refine || 0) : [unc[u]];
+                            for (var pc = 0; pc < pieces.length; pc++) { var rej = garment(pieces[pc], garments[g].cuts, garments[g].target, false, garments[g].ease, garments[g].under); for (var rj = 0; rj < rej.length; rj++) next.push(rej[rj]); }
+                        }
+                        unc = next;
+                    }
+                    for (u = 0; u < unc.length; u++) emit(unc[u], 0);
+                }
+                // the garments, on their own surfaces, in the cloth frame's UVs
+                for (g = 0; g < garments.length; g++) {
+                    var Lg = garments[g];
+                    if (cls[g] === 1) emitClothTri(Lg, i0, i1, i2);
+                    else if (cls[g] === 0) {
+                        var sub = subdivide([rec(i0, Lg.S, Lg.NS, CUV), rec(i1, Lg.S, Lg.NS, CUV), rec(i2, Lg.S, Lg.NS, CUV)], Lg.refine || 0);
+                        for (var sb = 0; sb < sub.length; sb++) garment(sub[sb], Lg.cuts, Lg.target, true, Lg.ease, Lg.under);
                     }
                 }
-                // the garments, on the relaxed cloth surface, in the cloth frame's UVs
-                if (cs === 1) emitClothTri(1, i0, i1, i2);
-                else if (cs === 0) garment([rec(i0, C, NC, CUV), rec(i1, C, NC, CUV), rec(i2, C, NC, CUV)], shirtCuts, 1, true);
-                if (cp === 1) emitClothTri(2, i0, i1, i2);
-                else if (cp === 0) garment([rec(i0, CB, NCB, CUV), rec(i1, CB, NCB, CUV), rec(i2, CB, NCB, CUV)], pantsCuts, 2, true);
             }
+            // the lathes: a dress's skirt (the top's cloth), a skirt (the bottoms'), the coat's tail (the outer's)
+            var skirtIdx = CC_LAYER_NAMES.indexOf('skirt'), outerIdx = CC_LAYER_NAMES.indexOf('outer');
+            if (dress) buildLathe({ tTop: TOP.hem, tHem: TOP.skirt.hem, ease: TOP.ease + 0.004, flare: TOP.skirt.flare }, buffers[skirtIdx], skirtShade(TOP.hem, TOP.skirt.hem), 0);
+            else if (latheBottom) buildLathe({ tTop: BOT.waist, tHem: BOT.skirt.hem, ease: 0.009, flare: BOT.skirt.flare }, buffers[skirtIdx], skirtShade(BOT.waist, BOT.skirt.hem), 0);
+            if (OUT && OUT.tail) buildLathe({ tTop: OUT.hem, tHem: OUT.tail.hem, ease: OUT.ease, flare: OUT.tail.flare, gap: OUT.tail.gap }, buffers[outerIdx], skirtShade(OUT.hem, OUT.tail.hem), LAYERS[outerIdx].base);
+            if (BELT) buildBuckle(buffers[CC_LAYER_NAMES.indexOf('buckle')]);
+            if (FEET) { buildSole(buffers[CC_LAYER_NAMES.indexOf('feet')], 1, FEET); buildSole(buffers[CC_LAYER_NAMES.indexOf('feet')], -1, FEET); }
             part.buffers = buffers;
-            [part.body, part.top, part.bottom, part.face].forEach(function (mesh, index) {
-                writeGeometry(mesh.geometry, buffers[index], N, index === 3 ? part.faceUv : (index === 1 || index === 2) ? CUV : uvA, si, sw);
-                mesh.visible = buffers[index].index.length > 0;
+            LAYERS.forEach(function (L, index) {
+                var mesh = index === 0 ? part.body : part.shells[L.name], b = buffers[index], n = L.base;
+                writeGeometry(mesh.geometry, b, n, L.uv || CUV, si, sw);
+                mesh.visible = b.index.length > 0;
             });
         }
         /* ── colours: skin + garment tints as vertex colours (gain-shaded); the face wears its texture ── */
+        var LAYER_KEYS = { top: ['topFabric', 'topColor'], bottom: ['bottomFabric', 'bottomColor'], outer: ['outerFabric', 'outerColor'], feet: ['feetFabric', 'feetColor'], gloves: ['glovesFabric', 'glovesColor'], belt: ['beltFabric', 'beltColor'] };
+        function layerKeys(part, name) { return name === 'skirt' ? LAYER_KEYS[part.skirtOwner || 'bottom'] : LAYER_KEYS[name]; }
         function paintGarments(part, a) {
-            var tints = [color(a.skin), color(a.topColor), color(a.bottomColor), null];
-            var hasMap = [false, !!_ccFabricDef(a.topFabric).file, !!_ccFabricDef(a.bottomFabric).file, false];
-            [part.body, part.top, part.bottom, part.face].forEach(function (mesh, index) {
-                var g = mesh.geometry, b = part.buffers && part.buffers[index];
+            CC_LAYER_NAMES.forEach(function (name, index) {
+                var mesh = index === 0 ? part.body : part.shells[name], g = mesh.geometry, b = part.buffers && part.buffers[index];
                 if (!b || !g.attributes.color) return;
-                var arr = g.attributes.color.array, tint = tints[index], lift = hasMap[index] ? 1.18 : 1;
+                var tint = null, lift = 1;
+                if (name === 'body') tint = color(a.skin);
+                else if (name === 'buckle') tint = color('#f0cf7e');
+                else if (name !== 'face') { var keys = layerKeys(part, name); tint = color(a[keys[1]]); lift = _ccFabricDef(a[keys[0]]).file ? 1.18 : 1; }
+                var arr = g.attributes.color.array;
                 for (var i = 0; i < b.gain.length; i++) {
                     var k = b.gain[i] * lift;
                     if (tint) { arr[i * 3] = Math.min(1, tint.r * k); arr[i * 3 + 1] = Math.min(1, tint.g * k); arr[i * 3 + 2] = Math.min(1, tint.b * k); }
                     else { arr[i * 3] = arr[i * 3 + 1] = arr[i * 3 + 2] = 1; }
                 }
                 g.attributes.color.needsUpdate = true;
-                var m = mesh.material, wantVC = index !== 3;   // the CURRENT material — the board may have swapped ours for its Lambert copy
+                var m = mesh.material, wantVC = name !== 'face';   // the CURRENT material — the board may have swapped ours for its Lambert copy
                 if (m && m.vertexColors !== wantVC) { m.vertexColors = wantVC; m.needsUpdate = true; }
             });
         }
         function setFabric(part, which, a) {
-            var key = which === 'top' ? a.topFabric : a.bottomFabric, def = _ccFabricDef(key);
+            var keys = layerKeys(part, which), key = a[keys[0]], def = _ccFabricDef(key);
             var url = (typeof getFabricTextureUrl === 'function') ? getFabricTextureUrl(key) : null;
-            var mesh = part[which];
+            var mesh = part.shells[which];
             if (mesh.material && mesh.material.isMeshStandardMaterial) { mesh.material.roughness = def.rough != null ? def.rough : 0.9; mesh.material.metalness = def.metal || 0; }
             if (part.fabricUrl[which] === url && (!url || (mesh.material && mesh.material.map))) return;
             part.fabricUrl[which] = url;
@@ -30530,14 +31032,14 @@ const ThreeRenderer = (function () {
             if (!alive) return;
             var a = normalizeCharacterAppearance(value) || normalizeCharacterAppearance({});
             state.last = a;
-            var shapeKey = [a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, a.outfit, a.bottoms].join('|');
+            var shapeKey = [a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt].join('|');
             var shapeChanged = shapeKey !== state.shapeKey;
             if (shapeChanged) { state.shapeKey = shapeKey; parts.forEach(function (p) { rebuildGeometry(p, a); }); }
             var paintKey = [a.skin, a.eyeColor, a.hairColor, a.lipColor, a.brows, a.eyeSize, a.beard, a.hair === 'bald' ? 'bald' : 'hair'].join('|');
             if (paintKey !== state.paintKey) { state.paintKey = paintKey; parts.forEach(function (p) { paintSkin(p, a); }); }
             parts.forEach(function (p) {
                 paintGarments(p, a);
-                setFabric(p, 'top', a); setFabric(p, 'bottom', a);
+                ['top', 'bottom', 'outer', 'feet', 'gloves', 'belt', 'skirt'].forEach(function (n) { setFabric(p, n, a); });
                 setHair(p, a, shapeChanged);
             });
         }
