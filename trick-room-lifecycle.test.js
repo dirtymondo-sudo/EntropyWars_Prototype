@@ -49,8 +49,8 @@ for (const name of ['randomizeParty','prepareBattleStateFromCurrentBuilds','rese
 }
 test('active Trick Room still reverses exactly three future Blitz order builds',()=>{
     const h=fixture();h.state._trickRoomRounds=data.SPELL_BY_ID.raceTrickRoom.trickRoomDuration;
-    for(let n=2;n>=0;n--){assert.deepEqual(h.build(),['slow','fast']);assert.equal(h.state._trickRoomRounds,n);}
-    assert.deepEqual(h.build(),['fast','slow']);assert.equal(h.state._trickRoomRounds,0);
+    for(let n=2;n>=0;n--){h.state.round++;assert.deepEqual(h.build(),['slow','fast']);assert.equal(h.state._trickRoomRounds,n);}
+    h.state.round++;assert.deepEqual(h.build(),['fast','slow']);assert.equal(h.state._trickRoomRounds,0);
 });
 test('Trick Room uses live speed and preserves Quickdraw ties',()=>{
     const h=fixture();h.state.units[0].liveSpd=100;h.state._trickRoomRounds=2;
@@ -61,7 +61,8 @@ test('Trick Room uses live speed and preserves Quickdraw ties',()=>{
 test('setting Trick Room does not reorder an already built round',()=>{
     const h=fixture();h.build();h.state._trickRoomRounds=3;
     assert.deepEqual(Array.from(h.state._blitzTurnOrderIds),['fast','slow']);
-    assert.deepEqual(h.build(),['slow','fast']);
+    assert.deepEqual(h.build(),['fast','slow']); // repeated build cannot change this round
+    h.state.round++;assert.deepEqual(h.build(),['slow','fast']);
 });
 test('host serializer carries active and cleared Trick Room values',()=>{
     const h=fixture();h.ctx.window={_gameState:h.state};

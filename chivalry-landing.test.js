@@ -32,6 +32,9 @@ function fixture(player = 1) {
         capture:(u,raw,opts)=>{hits.push({id:u.id,raw,opts,x:u.x,y:u.y,z:u.z});return true;}
     };
     vm.createContext(ctx);
+    if (battle.includes('        function getChivalryLanding(')) {
+        vm.runInContext(between(battle, '        function getChivalryLanding(', '        function applyDamageToUnit('), ctx);
+    }
     // Real map landing predicates; only the board queries are controlled.
     vm.runInContext(between(map, '        function nearestWalkableZ(', '        /* Units riding a building') +
         between(map, '        function unitAt3D(', '        function unitsAtColumn('), ctx);

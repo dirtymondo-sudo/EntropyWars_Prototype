@@ -1,0 +1,1045 @@
+{
+  "registry": "loadGameData().SPELL_BY_ID",
+  "spellCount": 501,
+  "kindCount": 65,
+  "limitation": "Direct dispatch source inventory only. Conditions, spell-ID utility subcases, caller gates, legality, balance and engine effects require separate validation. engineKindMention is textual evidence only.",
+  "missingDirectScorer": [],
+  "missingDirectTargetPicker": [],
+  "wideBeams": [
+    {
+      "id": "racePlasmaCannon",
+      "kind": "line",
+      "lineWidth": 2,
+      "range": 4
+    },
+    {
+      "id": "raceTsunami",
+      "kind": "linePush",
+      "lineWidth": 3,
+      "range": 4
+    }
+  ],
+  "rows": [
+    {
+      "kind": "aoe",
+      "spellIds": [
+        "groundSlam",
+        "meteor",
+        "empBurst",
+        "raceMerkaba",
+        "raceSupernova",
+        "raceWingGust",
+        "raceShamblingHorde",
+        "raceMarrowstorm",
+        "raceGlitterBomb",
+        "raceGlitterburst",
+        "raceFaeRing",
+        "raceCrowStorm",
+        "raceTremorStomp",
+        "raceDeafeningWail",
+        "raceMortarSalvo",
+        "raceChassisSlam",
+        "raceTitanStep",
+        "raceCannonball",
+        "raceBlessedBlade",
+        "racePlandemic",
+        "raceOvercharge",
+        "raceDynamite",
+        "raceFanTheHammer",
+        "raceWarOfTheWorlds",
+        "raceAuroraRay",
+        "raceCropCircle",
+        "raceEMPGrenade",
+        "raceClusterRockets",
+        "raceDarkDominion",
+        "raceDemonicRoar",
+        "raceDarkLullaby",
+        "raceNightmarePulse",
+        "raceEternalSlumber",
+        "raceBaphometsRite",
+        "raceBatSwarm",
+        "raceWebSnare",
+        "raceHeatDeath",
+        "sharedNebula",
+        "raceCosmicSlam",
+        "raceFluorideWater",
+        "raceInfernalDecree",
+        "racePrimalRoar",
+        "raceCataclysmStomp",
+        "raceSkyscraperToss",
+        "raceDepthCharge",
+        "raceTidalSlam",
+        "raceCorrosiveSplash",
+        "raceMissileBarrage",
+        "raceBoneBarrage",
+        "raceRigormortis",
+        "raceSpikeTheBall",
+        "raceBombArrow",
+        "raceArrowRain",
+        "raceSnowballVolley",
+        "raceBlizzardPresent",
+        "sentaiYellowThunder",
+        "sentaiMegazordBlast",
+        "raceRealityPulse",
+        "empBurst",
+        "raceChassisSlam"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "aoePull",
+      "spellIds": [
+        "raceSingularity",
+        "raceGravityWell",
+        "raceDustDevil",
+        "sharedBlackHole",
+        "raceRiptide",
+        "sharedVortexSlam"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "aoeShield",
+      "spellIds": [
+        "raceLuminousShield",
+        "racePleiadianShield",
+        "raceHolyBulwark",
+        "raceFirewallProtocol",
+        "raceTinkersContraption",
+        "raceOvertinker",
+        "racePupilShield",
+        "raceShieldMaiden",
+        "raceAstralBarrier"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "barrage",
+      "spellIds": [
+        "requiem",
+        "racePhotonScatter",
+        "raceDreadAura",
+        "raceMeow",
+        "racePoseidonsWrath",
+        "raceDragonfear",
+        "raceFear",
+        "raceSpaceDisco",
+        "raceSplash",
+        "raceToxicNova",
+        "raceQuake",
+        "raceBrutalSlam",
+        "raceChestPound",
+        "raceLabyrinthRoar"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "bomb",
+      "spellIds": [
+        "placeBomb"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "buff",
+      "spellIds": [
+        "protect1",
+        "overclock",
+        "camouflage",
+        "jackOfAll",
+        "raceRapture",
+        "raceStoneform",
+        "racePhaseShift",
+        "raceHowl",
+        "raceSparkle",
+        "racePixieDust",
+        "raceMimicry",
+        "raceRealityShift",
+        "raceSiegeMode",
+        "raceOvercalculate",
+        "raceUnderdogSpirit",
+        "raceIndomitableWill",
+        "raceSadBackstory",
+        "racePlotArmor",
+        "raceAyahuascaRetreat",
+        "raceMonsterSerum",
+        "racePsychicBarrier",
+        "raceIncendiaryRounds",
+        "raceBlessing",
+        "raceChitinArmor",
+        "raceWishGranted",
+        "raceAbyssalWings",
+        "raceBloodRitual",
+        "raceInnerDemon",
+        "raceInvulnerable",
+        "raceIronBulwark",
+        "raceGrimResolve",
+        "raceTinFoilHat",
+        "raceHellfireCrown",
+        "raceProphecyFulfilled",
+        "raceAwakening",
+        "raceBlackBudget",
+        "raceMitosisSplit",
+        "raceStoneSkin",
+        "raceNitroBoost",
+        "raceThickHide",
+        "raceKiCharge",
+        "raceApeFury",
+        "raceDeathPact",
+        "raceEndZoneDance",
+        "raceForestAmbush",
+        "sentaiBlackGuard",
+        "raceSymbioteArmor",
+        "overclock"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "cannibalize",
+      "spellIds": [
+        "raceCannibalize"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "cleanse",
+      "spellIds": [
+        "cleanse"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "cleanseArea",
+      "spellIds": [
+        "racePurify"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "cross",
+      "spellIds": [
+        "crossfire",
+        "judgment",
+        "bladeWaltz",
+        "raceDivineJudgment",
+        "raceCrusade",
+        "raceArcaneBlast",
+        "raceResonancePulse",
+        "raceFallenGrace",
+        "raceWrathOfTheWatchers",
+        "raceDiamondDust"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "damage",
+      "spellIds": [
+        "fire1",
+        "guardSlash",
+        "dragonSlash",
+        "radiantBolt",
+        "thunder1",
+        "trunkThrow",
+        "knifeThrow",
+        "sneakSlash",
+        "lullaby",
+        "skullCrack",
+        "precisionShot",
+        "headshot",
+        "improvise",
+        "reallyGoodPunch",
+        "deadEye",
+        "mindShatter",
+        "kneecapShot",
+        "poisonDart",
+        "crossSlash",
+        "raceBoo",
+        "raceSmite",
+        "raceDivineSmite",
+        "raceStonefall",
+        "raceSleepParalysis",
+        "raceInfectiousBite",
+        "raceZombieRush",
+        "raceWeighTheHeart",
+        "raceBoneToss",
+        "raceGraveChill",
+        "raceShadowBind",
+        "racePounce",
+        "raceBloodFrenzy",
+        "raceTailWhip",
+        "raceBorrowedClaw",
+        "raceBigKick",
+        "raceSasquatchSmash",
+        "raceCrashLoop",
+        "raceTimeRewind",
+        "raceRecursiveLoop",
+        "raceHydraulicCrush",
+        "raceRocketFist",
+        "raceSyntheticBlade",
+        "raceBoulderHurl",
+        "raceColossalCrush",
+        "raceLoveBite",
+        "raceElbowGrease",
+        "raceBoardingRush",
+        "raceToBeContinued",
+        "raceBadTrip",
+        "sharedEgoDeath",
+        "raceQuickDraw",
+        "raceHighNoon",
+        "raceClassifiedWeapon",
+        "raceMindCrush",
+        "exorcism",
+        "raceStompOut",
+        "raceHocusPocus",
+        "raceHeatRay",
+        "raceProbe",
+        "raceAmbushLunge",
+        "raceAncientMagic",
+        "raceStoneThrow",
+        "raceHydraulicPunch",
+        "raceGoreCharge",
+        "raceDemonicClaw",
+        "raceVenomFang",
+        "raceHeroicLeap",
+        "raceTaserBolt",
+        "raceDarkJustice",
+        "raceNoMercy",
+        "raceTruthBomb",
+        "raceDinoTailWhip",
+        "raceJurassicJaw",
+        "raceTerrorPounce",
+        "raceAvalancheStrike",
+        "raceFrozenPunch",
+        "raceIceShard",
+        "raceStunRay",
+        "racePlasmaWhip",
+        "raceGooShot",
+        "raceRoboPunch",
+        "raceIceSpear",
+        "raceAbsoluteZero",
+        "raceDragonFist",
+        "raceExcaliburStrike",
+        "racePrimalSmash",
+        "raceDeathGaze",
+        "raceHailMary",
+        "raceFireArrow",
+        "racePoisonArrow",
+        "raceLumpOfCoal",
+        "sentaiRedSlash",
+        "sentaiGreenArrow",
+        "raceTendrilStrike",
+        "raceWebLaunch",
+        "raceValkyrieSpear",
+        "racePlasmaWhip"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "dash",
+      "spellIds": [
+        "rampage",
+        "raceDriveBy",
+        "raceGiantSmash",
+        "raceShadowInfiltration",
+        "raceDarkFeather",
+        "raceApexCharge",
+        "raceIceSlide",
+        "raceRamCharge",
+        "raceUnstoppableCharge",
+        "raceBullRush",
+        "raceBlitz",
+        "raceSleighDash",
+        "rampage"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "debuff",
+      "spellIds": [
+        "psychosis",
+        "provoke",
+        "discordance",
+        "ironGrip",
+        "raceHaunt",
+        "raceCalcify",
+        "raceContract",
+        "raceCharm",
+        "raceRedEyes",
+        "sharedHexOfToil",
+        "raceMemoryLeak",
+        "raceBlueScreen",
+        "racePredictiveModel",
+        "raceNeuralHack",
+        "raceAnchor",
+        "sharedShrinkRay",
+        "raceDeneuralizer",
+        "raceBrainwash",
+        "raceSpellsteal",
+        "racePolymorph",
+        "raceStarCrossed",
+        "raceCurseOfMisfortune",
+        "raceStasisBeam",
+        "raceImplant",
+        "raceInfernalConscription",
+        "raceSystemAnalysis",
+        "raceExecutiveOrder",
+        "raceHypnoticPulse",
+        "raceStealFromRich",
+        "raceNaughtyList"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "delayed",
+      "spellIds": [
+        "raceProphecyOfDisaster",
+        "sharedNuke",
+        "raceFireForEffect",
+        "raceCrystalBall",
+        "raceStarDecree",
+        "raceArtilleryStrike",
+        "raceCataclysmDecree"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "deployObject",
+      "spellIds": [
+        "raceStuffedDouble",
+        "raceTeslaTrap",
+        "raceCloneDecoy",
+        "raceFederationBeacon",
+        "raceLucidTrap",
+        "racePhantomDouble",
+        "raceFlashbangMine"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "deployPair",
+      "spellIds": [
+        "raceGravePassage",
+        "raceTunnelNetwork"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "deployTurret",
+      "spellIds": [
+        "deployTurret",
+        "fiveGTower",
+        "raceClockworkTurret"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "displacement",
+      "spellIds": [
+        "haymaker",
+        "kineticHurl",
+        "raceBodyCheck",
+        "raceHornToss"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "encore",
+      "spellIds": [
+        "encore"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "escape",
+      "spellIds": [
+        "raceShedSkin",
+        "raceTreelineRetreat",
+        "raceEject",
+        "raceNimbleDodge",
+        "raceSpiritWalk",
+        "raceAgentVanish",
+        "raceMistForm",
+        "raceCorpseCrawl",
+        "raceDeepDive",
+        "raceCryptidVanish",
+        "raceQBSneak"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "guard",
+      "spellIds": [
+        "raceChivalry"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "heal",
+      "spellIds": [
+        "heal1",
+        "repair",
+        "raceAbsolution",
+        "raceHerbalRemedy",
+        "raceDivineLight",
+        "raceSpiritChannel",
+        "sentaiPinkHeal"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "healAll",
+      "spellIds": [
+        "shieldBash",
+        "healAll",
+        "raceYoHo",
+        "raceHallelujah",
+        "raceNordicAccord"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "leapStrike",
+      "spellIds": [
+        "raceFeralDive",
+        "raceTitanDrop",
+        "raceCliffCharge",
+        "raceSeismicLeap",
+        "racePredatorLeap",
+        "raceDivineSwoop"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "leechSeed",
+      "spellIds": [
+        "leechSeed"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "lifeDrain",
+      "spellIds": [
+        "lifeDrain",
+        "raceVoidContract",
+        "raceSoulSuck",
+        "raceDrainingEmbrace",
+        "raceBite",
+        "raceKissOfDecay",
+        "raceDreamSiphon",
+        "raceLifetap",
+        "raceFrenzy",
+        "raceGhoulishBite",
+        "raceAbsorb",
+        "raceSoulDrain",
+        "raceSymbioticDrain"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "line",
+      "spellIds": [
+        "railgun",
+        "swordBeam",
+        "raceHellmouth",
+        "raceFormicAcid",
+        "raceSonicBoomerang",
+        "raceSuppressiveFire",
+        "raceChoppa",
+        "raceBalefulGaze",
+        "racePlasmaCannon",
+        "raceEntropicBeam",
+        "raceLaserBeam",
+        "raceFreezeBreath",
+        "raceChemtrails",
+        "raceDragonBreath",
+        "raceDragonfire",
+        "raceAtomicBreath",
+        "raceKiWave",
+        "racePsychicBeam",
+        "raceBulletPass",
+        "sentaiBlueWave",
+        "raceJudgmentBeam",
+        "raceSuppressiveFire"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "linePush",
+      "spellIds": [
+        "raceSonicBreaker",
+        "sharedTidalSurge",
+        "raceShockwaveClap",
+        "raceTsunami",
+        "racePiercingArrow"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "link",
+      "spellIds": [
+        "raceSoulBind",
+        "raceVoodoo"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "manaRestoreAll",
+      "spellIds": [
+        "freeEnergy"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "multiHit",
+      "spellIds": [
+        "doubleShot",
+        "raceNinefoldScratch",
+        "raceMandibleStrike",
+        "raceKiBlast",
+        "raceFlurryOfBlows",
+        "sentaiTeamStrike"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "placeMirror",
+      "spellIds": [
+        "racePrismMirror"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "possess",
+      "spellIds": [
+        "racePossession",
+        "raceEnthrall",
+        "raceInfect",
+        "raceThrallBite"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "pull",
+      "spellIds": [
+        "raceHarvestHook",
+        "raceEarthenGrasp",
+        "raceLasso",
+        "raceSirenSong",
+        "raceTentacleLash"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "pulseLattice",
+      "spellIds": [
+        "racePulseLattice"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "raiseDead",
+      "spellIds": [
+        "raceRaiseDead"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "rallyPull",
+      "spellIds": [
+        "raceKnightsOfRound"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "remoteView",
+      "spellIds": [
+        "raceRangefinder"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "revive",
+      "spellIds": [
+        "revive1",
+        "raceChooserOfSlain"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "ricochet",
+      "spellIds": [
+        "ricochet1",
+        "racePrismBurst",
+        "raceSplittingArrow"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "scan",
+      "spellIds": [
+        "raceOmniVision",
+        "raceCosmicSight"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "seedHeal",
+      "spellIds": [
+        "healingSeed"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "seedPoison",
+      "spellIds": [
+        "poisonSeed"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "selfHeal",
+      "spellIds": [
+        "raceReassemble",
+        "raceSelfRepairProtocol",
+        "raceAdrenalineRush",
+        "raceCarrionFeast"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "shadowRealm",
+      "spellIds": [
+        "raceShadowRealm"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "shield",
+      "spellIds": [
+        "fortify",
+        "racePrayer"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "skyDrop",
+      "spellIds": [
+        "raceStoneDrop",
+        "raceAbduction",
+        "racePredatorDrop"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "skySlam",
+      "spellIds": [
+        "raceDescendingWrath"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "skyThrow",
+      "spellIds": [
+        "raceInfernalHurl",
+        "raceAbductionBeam",
+        "raceRocketToss",
+        "raceDragonToss"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "splitBeam",
+      "spellIds": [
+        "raceFractalNeedle"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "steal",
+      "spellIds": [
+        "raceHitALick"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "summonUnit",
+      "spellIds": [
+        "raceSummonCreation",
+        "raceWhistle"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "summonWeather",
+      "spellIds": [
+        "thunderstorm",
+        "sharedSummonBloodRain",
+        "sharedSummonSandstorm",
+        "sharedSummonBlizzard"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "swap",
+      "spellIds": [
+        "raceWingsOfMercy",
+        "raceSkinSwap",
+        "raceDimensionalFold",
+        "raceTemporalShift"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "tackle",
+      "spellIds": [
+        "raceSkyTackle"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "teleport",
+      "spellIds": [
+        "teleport",
+        "voidRush",
+        "raceMirrorBlink",
+        "raceShadowStep",
+        "racePhaseWalk",
+        "raceGravityBoots",
+        "raceIckySurprise",
+        "raceInstantTransmission"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "terrainCreate",
+      "spellIds": [
+        "rampart",
+        "wallOfFire",
+        "sharedFlashFreeze",
+        "raceGothicRampart",
+        "sharedFissure",
+        "sharedScorchedEarth",
+        "sharedPoisonSwamp",
+        "raceCallOfTheDeep",
+        "raceWalkThePlank",
+        "raceShieldWall",
+        "raceZigguratProtocol",
+        "raceFlood",
+        "racePermafrost",
+        "raceOozeTrail",
+        "racePlaguefield",
+        "raceSacredGeometry",
+        "rampart"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "transfer",
+      "spellIds": [
+        "raceSacrifice"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "transform",
+      "spellIds": [
+        "raceTransform"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "trickRoom",
+      "spellIds": [
+        "raceTrickRoom"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "tuneFrequency",
+      "spellIds": [
+        "raceTuneFrequency"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "utility",
+      "spellIds": [
+        "racePlunder",
+        "raceGrapple"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "warCry",
+      "spellIds": [
+        "warCry",
+        "raceFairyDust",
+        "raceSwarmSignal",
+        "raceOathOfValor",
+        "raceTelepathicLink",
+        "raceExtendedClips",
+        "raceTarotDraw",
+        "raceRallyCommand",
+        "raceApexRoar",
+        "raceRoyalDecree",
+        "raceAudible"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "zoneDebuff",
+      "spellIds": [
+        "raceColdSpot",
+        "raceOutbreak",
+        "sharedSmokeScreen",
+        "sharedLowGravity",
+        "sharedGravityCrush",
+        "raceDimensionalWeb",
+        "raceFilibuster",
+        "raceInkCloud",
+        "raceExhaustCloud",
+        "raceWhiteChristmas"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    },
+    {
+      "kind": "zoneHeal",
+      "spellIds": [
+        "raceSanctuary",
+        "raceTidalBlessing",
+        "raceTemporalTide"
+      ],
+      "directScorer": true,
+      "directTargetPicker": true,
+      "engineKindMention": true
+    }
+  ]
+}

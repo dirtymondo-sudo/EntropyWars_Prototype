@@ -21944,6 +21944,18 @@
             flashUnit(target.id, 'heal');
         }
 
+        // Pure landing query shared by interception and CPU valuation. A full
+        // ring preserves the existing in-place interception fallback.
+        function getChivalryLanding(guardian, ward) {
+            for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+                const x = ward.x + dx, y = ward.y + dy;
+                if (!isInside(x, y)) continue;
+                const z = nearestWalkableZ(x, y, ward.z ?? 0);
+                if (canOccupy3D(x, y, z)) return { x, y, z };
+            }
+            return { x: guardian.x, y: guardian.y, z: guardian.z ?? 0 };
+        }
+
         function applyDamageToUnit(target, damage, sourceText, opts = {}) {
             if (!target || target.dead || target._dying) return false;
 
@@ -21956,19 +21968,7 @@
                     target._guardedBy = null;
                     guardian._guardingAlly = null;
                     // Dash the guardian to an open tile beside their ward for the intercept.
-                    const _adj = [{ dx: 0, dy: 1 }, { dx: 0, dy: -1 }, { dx: 1, dy: 0 }, { dx: -1, dy: 0 }];
-                    for (const a of _adj) {
-                        const nx = target.x + a.dx, ny = target.y + a.dy;
-                        if (!isInside(nx, ny)) continue;
-                        // Use the same surface/terrain/occupancy contract as
-                        // other landings, near the ward's elevation. If every
-                        // adjacent tile is blocked the oath still intercepts
-                        // from the guardian's current position.
-                        const nz = nearestWalkableZ(nx, ny, target.z ?? 0);
-                        if (!canOccupy3D(nx, ny, nz)) continue;
-                        guardian.x = nx; guardian.y = ny; guardian.z = nz;
-                        break;
-                    }
+                    Object.assign(guardian, getChivalryLanding(guardian, target));
                     addLog(`🛡 ${unitDisplayName(guardian)} honors their oath of Chivalry and intercepts the attack meant for ${unitDisplayName(target)}!`);
                     showFloatingTextForUnit(target, 'GUARDED!', 'protect-block', { durationMs: 1000 });
                     scheduleBoardRender();
@@ -23134,6 +23134,21 @@
             if (!unit) return 0;
             return (unit.spellPower || 0) + (typeof getHourglassPower === 'function' ? getHourglassPower(unit) : 0);
         }
+        // Pure payload forecast shared with CPU valuation. Frequency changes
+        // type and riders, but these hits do NOT carry an elemental damage tag.
+        function getMirrorHitProfile(player, kind, power, net, offset = 0) {
+            let index = _mirrorFreqIndexFor(player);
+            if (index < 0 || index >= MIRROR_FREQS.length) index = 0;
+            const frequency = MIRROR_FREQS[(index + offset + MIRROR_FREQS.length) % MIRROR_FREQS.length];
+            let damage;
+            if (kind === 'walk') damage = Math.max(28, Math.floor((42 + power * 0.5) * frequency.dmgMult));
+            else if (kind === 'burn') damage = Math.max(22, Math.floor((34 + power * 0.45) * frequency.dmgMult));
+            else {
+                const base = Math.max(60, Math.floor((95 + (power || 0)) * frequency.dmgMult));
+                damage = Math.floor(base * (net.isPrism ? 3 : net.is3DVolume ? 1.8 : 1));
+            }
+            return { frequency, damage };
+        }
         function _mirrorTileHeight(x, y) {
             if (typeof getBaseHeightAt === 'function') return getBaseHeightAt(x, y) || 0;
             if (typeof getHeightAt === 'function') return getHeightAt(x, y) || 0;
@@ -23329,10 +23344,8 @@
 
         // Pulse Lattice — discharge every linked beam (and any enclosed volume).
         function doPulseLattice(unit, net, spellPower) {
-            const f = _mirrorFreqFor(unit.player);
-            const base = Math.max(60, Math.floor((95 + (spellPower || 0) * 1.0) * f.dmgMult));
-            const mult = net.isPrism ? 3.0 : net.is3DVolume ? 1.8 : 1.0;
-            const dmg = Math.floor(base * mult);
+            const profile = getMirrorHitProfile(unit.player, 'pulse', spellPower, net);
+            const f = profile.frequency, dmg = profile.damage;
             const tiles = new Set(net.beamTiles);
             for (const t of net.volumeTiles) tiles.add(t);
             // Flash each beam segment.
@@ -25037,6 +25050,8 @@
             state.mirrors = [];
             state._mirrorFreq = { 1: 0, 2: 0 };
             state._trickRoomRounds = 0;   // initiative reversal belongs to this match
+            state._trickRoomOrderRound = null;
+            state._trickRoomOrderReversed = false;
             state._deployedObjects = [];
             state._delayedSpells = [];
             state._gatePairs = [];
@@ -26400,6 +26415,20 @@
 
             // Tiles `spell` can be aimed at from where the unit stands.
             spellTiles(unit, spell) { return getSpellRangeTiles(unit, spell); },
+
+            // Unit targets use the same range, elevation, LOS and team rules
+            // as the action drum and Simul executor.
+            spellTargets(unit, spell) { return _getSpellValidTargets(unit, spell); },
+            chivalryLanding(guardian, ward) { return getChivalryLanding(guardian, ward); },
+
+            mirrorHitProfile(unit, spell, net, kind = 'pulse', offset = 0) {
+                const power = kind === 'pulse'
+                    ? (unit.spellPower || 0) + getHourglassPower(unit) + getSpellStatBonus(unit, spell)
+                        + getPlantedTreeBonus(unit) + getTreeThrowBonus(unit, spell) + getJobPassiveSpellBonus(unit)
+                    : _networkPower(unit.player);
+                const source = kind === 'pulse' ? unit : unitFromId(laserOwnerUnitId(unit.player));
+                return { ...getMirrorHitProfile(unit.player, kind, power, net, offset), source };
+            },
 
             // Living enemies the team-attack can hit (fog-aware).
             entropyStrikeTargets(unit) { return getEntropyStrikeTargets(unit); },
@@ -33001,6 +33030,8 @@
             state.mirrors = [];
             state._mirrorFreq = { 1: 0, 2: 0 };
             state._trickRoomRounds = 0;   // initiative reversal belongs to this match
+            state._trickRoomOrderRound = null;
+            state._trickRoomOrderReversed = false;
             state._deployedObjects = [];
             state._delayedSpells = [];
             state._gatePairs = [];
@@ -33576,6 +33607,8 @@
             state.mirrors = [];
             state._mirrorFreq = { 1: 0, 2: 0 };
             state._trickRoomRounds = 0;   // initiative reversal belongs to this match
+            state._trickRoomOrderRound = null;
+            state._trickRoomOrderReversed = false;
             state._deployedObjects = [];
             state._delayedSpells = [];
             state._gatePairs = [];
@@ -33806,6 +33839,8 @@
             state.mirrors = [];
             state._mirrorFreq = { 1: 0, 2: 0 };
             state._trickRoomRounds = 0;   // initiative reversal belongs to this match
+            state._trickRoomOrderRound = null;
+            state._trickRoomOrderReversed = false;
             state._deployedObjects = [];
             state._delayedSpells = [];
             state._gatePairs = [];
@@ -36452,6 +36487,7 @@
                             z: c.target ? c.target.z : undefined,
                             targetId: c.target ? (c.target.id ?? null) : null,
                             dmg: spellDealsDamage(c.spell),
+                            ...(c.spell.kind === 'guard' ? { _aiChivalry: true } : {}),
                         };
                     case 'guard': return { type: 'guard' };
                     case 'entropyStrike': return { type: 'entropyStrike', strikeType: c.strikeType || null };
@@ -36558,17 +36594,19 @@
                     return { player: p, plan, unit, speed };
                 });
                 addLog(`♟️ ORDERS REVEALED — P1: ${_describeEntry(entries[0])} · P2: ${_describeEntry(entries[1])}`);
+                const reverseSpeed = state._trickRoomOrderRound === state.round && state._trickRoomOrderReversed === true;
                 const order = entries.slice().sort((a, b) => {
+                    if (!a.unit || !b.unit) return a.unit ? -1 : b.unit ? 1 : 0;
                     const pa = _planPriority(a.plan), pb = _planPriority(b.plan);
                     if (pa !== pb) return pb - pa;
                     const sa = a.speed;
                     const sb = b.speed;
-                    if (sa !== sb) return sb - sa;
+                    if (sa !== sb) return reverseSpeed ? sa - sb : sb - sa;
                     return (a.player === state._simulInitiative) ? -1 : 1;
                 });
                 if (order[0].unit && order[1].unit) {
                     const why = _planPriority(order[0].plan) > _planPriority(order[1].plan) ? 'priority'
-                        : (order[0].speed !== order[1].speed ? 'speed' : 'initiative');
+                        : (order[0].speed !== order[1].speed ? (reverseSpeed ? 'Trick Room speed' : 'speed') : 'initiative');
                     addLog(`⚡ ${unitDisplayName(order[0].unit)} acts first (${why}).`);
                 }
                 _execPlanEntry(order[0], () => {
@@ -36775,6 +36813,12 @@
                 const isLineDir = spell.kind === 'line' || spell.kind === 'linePush';
                 if (isSpellSelfCast(spell)) {
                     cx = unit.x; cy = unit.y; cz = unit.z;
+                } else if (spell.kind === 'guard' && step._aiChivalry && step.targetId && typeof window._aiReaimChivalry === 'function') {
+                    // A tracked CPU pledge needs a fresh net-benefit decision;
+                    // nearest/lowest-HP fallback can sacrifice the knight.
+                    const ward = window._aiReaimChivalry(unit, spell);
+                    if (!ward) { _spellWhiff(unit, spell); return 600; }
+                    cx = ward.x; cy = ward.y; cz = ward.z;
                 } else if (isLineDir) {
                     /* Re-aim the beam from the caster's current position. */
                     if (step.targetId && typeof window._aiReaimLineSpell === 'function') {
@@ -41103,6 +41147,7 @@
                 // Dead units are invisible to targeting EXCEPT for revive, whose
                 // whole job is targeting a fallen ally's gravestone — and raiseDead,
                 // which reanimates ANY unconsumed remains (ally grave or enemy bones).
+                if (spell.kind === 'guard' && (u.id === unit.id || u._dying)) continue;
                 if (u.dead) {
                     if (spellTargetsCorpses(spell)) {
                         if (u._corpseConsumed) continue;

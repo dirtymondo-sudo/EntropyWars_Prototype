@@ -1540,3 +1540,17 @@ Picker: map.js `_buildHudThemeHTML(refreshJs)` under the Vitals row in
 BOTH the pause menu (ui.js) and the main-menu Settings Display group.
 Adding a theme = one `HUD_THEMES` row + one token block;
 `hud-theme.test.js` ties catalogue ↔ blocks ↔ picker ↔ scoreboard ink.
+
+### 2026-09-12 — Phase 6 utility decisions (local delivery)
+
+Fresh complete main archive/ref `e59e19aac5b14cec212a6cb2c012356fdc73909a`; blob verification and final listing comparison preserve the newer moving-map and intervening changes. Chivalry now uses the shared legal target drum, shared pure landing query and initial net-transfer/pledge-replacement valuation. Ordinary CPU and explicitly marked CPU Simul casts recheck their ward; human Simul ward choices retain their intent. No live unit moves during scoring.
+
+Trick Room owns reversal once per actual round, before countdown. Rebuilds cannot shorten it; Simul honors the final affected round while retaining priority/effective-speed/initiative order. Both new scalars reset at all four existing match boundaries and travel in host snapshots. Its self-targeted scorer compares additional future rounds, live speed gains/losses, deadline and mode activation count.
+
+Pulse shares the engine's exact raw frequency/shape profile, uses the engine spell-power terms once and prices actual damage/riders instead of fixed hit counts. Tune compares only the next frequency using discounted beam burn and an affordable future player-wide Pulse, including Tune's mana use. Existing MP weight routing remains. AI stamp `v4.7-2026-09-12-utility-decisions`; do not mix balance exports across stamps.
+
+109 focused utility checks pass; full package script: 899 total / 897 pass / zero failures / two skips. 60 new checks, 45 fail with unchanged AI/source controls; one strengthened existing round-rebuild check also fails before. Syntax 121/121 including three saved baseline files. The utility diagnostic now runs asserted regressions. Prior prism tests preserve execution/ownership/geometry coverage while replacing obsolete constant-score assertions.
+
+These are initial utility estimates, not full damage replay or proven tactical intelligence. Chivalry still needs complex multi-hit/area/indirect and counter/status scenarios. Lattice valuation needs persistence/crossing and complex-interaction scenarios. Trick Room's exchange fraction requires observed decisions. Controlled scorer microtiming is not full decision timing. No browser playtest, simulation, live guest acceptance or deployment. See the review plan's newest entry and VALIDATION_UTILITY.md for evidence limits.
+
+Next: AI-06 tied/leading/trailing TDM and Arena immediate-win/denial decisions, destructive-beam prediction, scenario/timing audit and authorized P1 CPU observations. One broad coding group remains (may split into two batches), plus acceptance. Phase 6 remains open. Complete flat delivery: ENTROPY_WARS_PHASE6_UTILITY_DECISIONS.zip. ai.js/battle.js/state.js → R2; index.html → Render (`20260912-ai-utility-decisions-01-cors`); tests/runner/docs/evidence → repository. No commit/push/deployment.

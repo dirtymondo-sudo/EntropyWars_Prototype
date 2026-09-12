@@ -598,7 +598,16 @@
                 ? (u => unitPassiveValue(u, 'speedTiePriority') === true) : (() => false);
 
             // Trick Room: while active, reverse the speed ordering so the slowest units act first.
-            const trickRoomActive = (state._trickRoomRounds || 0) > 0;
+            // Own the reversal at round start, BEFORE consuming its duration.
+            // Simul reads this same snapshot for every reveal in the round;
+            // a mid-round cast affects future rounds, never sealed orders.
+            // Rebuilding an existing round cannot consume another duration.
+            if (state._trickRoomOrderRound !== state.round) {
+                state._trickRoomOrderRound = state.round;
+                state._trickRoomOrderReversed = (state._trickRoomRounds || 0) > 0;
+                if (state._trickRoomRounds > 0) state._trickRoomRounds--;
+            }
+            const trickRoomActive = state._trickRoomOrderReversed === true;
             const sortedSpeeds = Object.keys(tiers).map(Number).sort((a, b) => trickRoomActive ? (a - b) : (b - a));
 
             _blitzTurnOrder = [];
@@ -627,9 +636,6 @@
                 }
             }
             _blitzTurnIndex = 0;
-
-            // Trick Room counts down one round each time a new turn order is built.
-            if (state._trickRoomRounds > 0) state._trickRoomRounds--;
 
             state._blitzTurnOrderIds = _blitzTurnOrder.map(u => u.id);
         }
@@ -4199,6 +4205,8 @@
             mirrors: [],
             _mirrorFreq: { 1: 0, 2: 0 },
             _trickRoomRounds: 0,
+            _trickRoomOrderRound: null,
+            _trickRoomOrderReversed: false,
             plantedSeeds: [],
             warpRunes: [],
             wards: [],

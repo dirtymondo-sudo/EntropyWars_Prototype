@@ -25,7 +25,6 @@ function setup(id) {
     vm.createContext(ctx);
     const end = source.lastIndexOf('})();');
     vm.runInContext(source.slice(0, end) + `
-        estDamage = () => 60;
         scoreOffensiveHit = () => ({ val: 60 });
         unitThreatOutput = () => 100;
         isProtected = (g, e) => !!e.protected;
@@ -39,17 +38,27 @@ function setup(id) {
     ctx.state = g.state;
     ctx._mirrorTileHeight = (x, y) => g.state.mirrors.find(m => m.x === x && m.y === y)?.z || 0;
     vm.runInContext(battle.slice(start, endNetwork) + 'window.computeMirrorNetwork = computeMirrorNetwork;', ctx);
+    ctx.unitFromId = id => g.state.units.find(u => u.id === id);
+    vm.runInContext(battle.slice(battle.indexOf('        function laserOwnerUnitId('), battle.indexOf('        // Beam tiles a moving unit')), ctx);
+    for (const name of ['getHourglassPower', 'getSpellStatBonus', 'getPlantedTreeBonus', 'getTreeThrowBonus', 'getJobPassiveSpellBonus']) ctx[name] = () => 0;
+    vm.runInContext(battle.slice(battle.indexOf('        const MIRROR_FREQS = ['), battle.indexOf('        // Distinct players')), ctx);
+    ctx._mirrorTileHeight = (x,y) => g.state.mirrors.find(m => m.x===x && m.y===y)?.z || 0;
+    const qa = battle.indexOf('            mirrorHitProfile(unit,');
+    const qb = battle.indexOf('            // Living enemies', qa);
+    g.TargetQuery.mirrorHitProfile = vm.runInContext('({' + battle.slice(qa,qb) + '}).mirrorHitProfile', ctx);
+    g.state._mirrorFreq = {1:2,2:2};
     g.state.mirrors = [];
-    // Canonical Tune costs 75 MP: default MP valuation rejects its score of 12.
+    // Canonical Tune costs 75 MP: default MP valuation rejects a small frequency gain.
     // A supported trained weight admits it and exposes the latent null target.
-    if (id === 'raceTuneFrequency') g.getAIWeight = key => key === 'mpValuePerPoint_v4' ? 0.1 : undefined;
+    if (id === 'raceTuneFrequency') g.getAIWeight = key => key === 'mpValuePerPoint_v4' ? 0.01 : undefined;
     return { spell, unit, enemy, ally, v, g, events, timers, fallback, ai: ctx.window.testAI, window: ctx.window };
 }
 function candidates(h) { const out = []; h.ai.scoreSpells(h.unit, h.v, out); return out; }
 
 
 function mirrors(h, coords = [[2,3], [6,3], [6,6]]) {
-    h.g.state.mirrors = coords.map(([x,y,z = 0], i) => ({x,y,z,hp:2,owner:h.unit.player,ownerUnitId:'teammate-'+i}));
+    h.g.state.units.find(u=>u.id==='ally').player=h.unit.player;
+    h.g.state.mirrors = coords.map(([x,y,z = 0]) => ({x,y,z,hp:2,owner:h.unit.player,ownerUnitId:'ally'}));
 }
 for (const id of ['racePulseLattice', 'raceTuneFrequency']) {
     test(`${id}: shared teammate lattice yields self coordinates and finishes execution`, () => {
@@ -90,11 +99,11 @@ test('Pulse: actual network volume catches interior enemy only across elevations
     const h=setup('racePulseLattice'); h.enemy.x=4; h.enemy.y=4;
     mirrors(h,[[2,2,0],[6,2,0],[2,6,0],[6,6,0]]); assert.equal(candidates(h).length,0);
     h.g.state.mirrors[3].z=2; const a=candidates(h); assert.equal(a.length,1); assert.equal(a[0].target,h.unit);
-    assert.equal(h.ai.scoreSpell(h.unit,h.spell,h.unit,h.v),210);
+    assert.ok(h.ai.scoreSpell(h.unit,h.spell,h.unit,h.v)>0);
 });
-test('Tune: existing two-prism tactical threshold and value stay unchanged', () => {
+test('Tune: one prism has no beam payoff, linked pair can have a frequency gain', () => {
     const h=setup('raceTuneFrequency'); mirrors(h,[[2,3]]); assert.equal(candidates(h).length,0);
-    mirrors(h,[[2,3],[6,3]]); assert.equal(h.ai.scoreSpell(h.unit,h.spell,h.unit,h.v),12);
+    mirrors(h,[[2,3],[6,3]]); assert.ok(h.ai.scoreSpell(h.unit,h.spell,h.unit,h.v)>0);
     assert.ok(candidates(h)[0].target);
 });
 

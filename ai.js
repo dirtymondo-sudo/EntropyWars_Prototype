@@ -67,7 +67,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.6-2026-09-12-match-deadline'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.7-2026-09-12-utility-decisions'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -415,12 +415,24 @@
     function estDamage(g, unit, tg, sp, opts) {
         opts = opts || {};
         if (!tg || tg.dead) return 0;
-        if (isProtected(g, tg)) return 0;
+        const basicMagic = !sp && opts.interceptionForecast && typeof unitPassiveValue === 'function'
+            && unitPassiveValue(unit, 'basicAttackMagic') === true;
+        if (opts.interceptionForecast) {
+            // This is an enemy hit on an ally: the deciding CPU is NOT its
+            // source. Interception happens before the recipient's immunities.
+            const defs = g.STATUS_DEFS || (typeof STATUS_DEFS !== 'undefined' ? STATUS_DEFS : {});
+            if (Object.keys(tg.status || {}).some(k => tg.status[k] > 0 && defs[k]?.invulnerable)
+                || g.unitHasStatus(tg, 'protect')) return 0;
+            if (typeof window.isUnitRealmShieldedFrom === 'function'
+                && window.isUnitRealmShieldedFrom(tg, unit)) return 0;
+            if (typeof unitPassiveValue === 'function'
+                && unitPassiveValue(tg, 'immuneDamageType') === (basicMagic || sp?.damageType === 'magic' ? 'magic' : 'physical')) return 0;
+        } else if (isProtected(g, tg)) return 0;
 
         // Element-drinking passives (Thermal Regen): a spell whose element
         // the target HEALS from is worth zero — never "damage" a kaiju
         // with fire.
-        if (sp && typeof unitPassiveValue === 'function' && typeof classifySpellElement === 'function') {
+        if (sp && !opts.noElement && typeof unitPassiveValue === 'function' && typeof classifySpellElement === 'function') {
             try {
                 const _drink = unitPassiveValue(tg, 'healedByElement');
                 if (_drink && classifySpellElement(sp) === _drink) return 0;
@@ -429,7 +441,7 @@
         // 🜂 Elemental affinity (2026-09-01): an immune/absorb target takes
         // nothing from this element — same zero as the drink check above.
         let _elAff = null;
-        if (sp) {
+        if (sp && !opts.noElement) {
             try {
                 const _el = (typeof getSpellElement === 'function') ? getSpellElement(sp) : null;
                 _elAff = (_el && typeof unitElementAffinity === 'function')
@@ -446,17 +458,17 @@
 
         let raw, damageType, ignoreArmor = false;
         if (sp) {
-            raw = _baseSpellDmg(sp);
+            raw = opts.rawBase != null ? opts.rawBase : _baseSpellDmg(sp);
             if (raw <= 0) return 0;
-            raw += _spellPowerOf(g, unit, sp);
+            if (opts.rawBase == null) raw += _spellPowerOf(g, unit, sp);
             damageType = sp.damageType === 'magic' ? 'magic' : 'physical';
             ignoreArmor = !!sp.ignoreArmor;
         } else {
             // doAttack: max(24, floor(pwrAtk×0.65) ± 8) + attackBonus + hourglass
-            raw = Math.max(24, Math.floor(_pwrAtk(unit) * 0.65));
-            try { raw += g.getEffectiveAttackBonus(unit) || 0; } catch (e) {}
+            raw = Math.max(24, Math.floor((basicMagic ? _pwrInt(unit) : _pwrAtk(unit)) * 0.65));
+            try { raw += g.getEffectiveAttackBonus(unit, basicMagic ? 'magic' : 'physical') || 0; } catch (e) {}
             try { raw += g.getHourglassPower(unit) || 0; } catch (e) {}
-            damageType = 'physical';
+            damageType = basicMagic ? 'magic' : 'physical';
         }
         // applyDamageToUnit adds the axis attack bonus for enemy hits.
         if (sp) {
@@ -472,7 +484,7 @@
         if (_elAff === 'weak') offMult *= 1.5;
         else if (_elAff === 'resist') offMult *= 0.5;
         if (!ignoreArmor && myH > tgH) offMult *= 1 + 0.1 * (myH - tgH);      // downhill
-        offMult *= _rangeMult(unit, dist);                                    // range profile
+        if (!opts.noRangeMult) offMult *= _rangeMult(unit, dist);               // range profile
         if (sp && sp.bonusVsStatus && _bonusVsMatches(tg, sp.bonusVsStatus)) {
             offMult *= (sp.bonusVsStatus.mult || 1.5);                        // status combo
         }
@@ -484,14 +496,14 @@
         let arc = 'front';
         if (!sp) {
             try {
-                arc = g.getAttackArc({ x: fromX, y: fromY }, tg) || 'front';
+                arc = g.getAttackArc({ x: fromX, y: fromY }, opts.basicArcTarget || tg) || 'front';
                 est *= g.getFacingDamageMult(arc) || 1;
             } catch (e) {}
         }
 
         // Marked: +40 flat on physical hits (consumed — count once).
         try {
-            if (damageType === 'physical' && g.unitHasStatus(tg, 'marked')) {
+            if (opts.allowMarkBonus !== false && (damageType === 'physical' || basicMagic) && g.unitHasStatus(tg, 'marked')) {
                 est += (tg.markBonus || 40);
             }
         } catch (e) {}
@@ -515,6 +527,14 @@
                 if (m && m !== 1) est *= m;
             }
         } catch (e) {}
+
+        if (opts.interceptionForecast) {
+            if (damageType === 'magic' && typeof getStatusMagicDamageTakenMultiplier === 'function') {
+                est *= getStatusMagicDamageTakenMultiplier(tg);
+            } else if (damageType === 'physical' && typeof getStatusRangedDamageTakenMultiplier === 'function') {
+                est *= getStatusRangedDamageTakenMultiplier(tg) ?? 1;
+            }
+        }
 
         return Math.max(1, Math.round(est));
     }
@@ -1938,6 +1958,220 @@
     // uniformly at the end of scoreSpells.
     // ═════════════════════════════════════════════════════════════════════
 
+    // Chivalry is a ONE-hit transfer, not new shield HP. Only visible,
+    // presently reachable basic attacks and single-hit damage spells enter
+    // this conservative horizon; do not infer unseen attackers or paths.
+    function _chivalryHits(g, ward, v) {
+        const hits = [];
+        for (const enemy of v.visibleEnemies || []) {
+            if (enemy.dead || enemy._dying) continue;
+            if (typeof window.isUnitRealmShieldedFrom === 'function' && window.isUnitRealmShieldedFrom(ward, enemy)) continue;
+            const defs = g.STATUS_DEFS || (typeof STATUS_DEFS !== 'undefined' ? STATUS_DEFS : {});
+            if (Object.keys(enemy.status || {}).some(k => enemy.status[k] > 0 && defs[k]?.blockAction)) continue;
+            const d = _reach(g, enemy.x, enemy.y, enemy.z, ward, (g.getEffectiveRange(enemy) || 1) > 1);
+            const taunter = g.getTauntTargeter?.(enemy);
+            if ((!taunter || taunter.id === ward.id) && d >= 1 && d <= g.getEffectiveRange(enemy)
+                && !g.isRangeBlockedByTerrain(enemy.x, enemy.y, ward.x, ward.y, enemy.z ?? 0)) {
+                hits.push({ enemy, spell: null, probability: _landP(g, enemy, ward) * (g.unitHasStatus(enemy, 'blind') ? 0.5 : 1) });
+            }
+            if (g.unitHasStatus(enemy, 'silence')) continue;
+            for (const spell of enemy.spells || []) {
+                // Multi-hit/area/indirect attacks need their own first-hit
+                // contract; never transfer the total of a multi-hit cast.
+                if (spell.kind !== 'damage' || !(spell.dmg > 0) || spell.hitDamages
+                    || (enemy.mp || 0) < _mpCost(enemy, spell)) continue;
+                if (typeof getSpellCooldownRemaining === 'function' && getSpellCooldownRemaining(enemy, spell) > 0) continue;
+                if (g.TargetQuery.spellTargets(enemy, spell).some(t => t.unit?.id === ward.id)) {
+                    hits.push({ enemy, spell, probability: 1 });
+                }
+            }
+        }
+        return hits;
+    }
+
+    function _chivalryLoss(g, enemy, recipient, spell, ward, v) {
+        const damage = estDamage(g, enemy, recipient, spell, {
+            interceptionForecast: true, basicArcTarget: ward
+        });
+        const hp = effHp(recipient);
+        let value = Math.min(hp, damage);
+        // One-hit survival effects must not be advertised as saved kills.
+        if (damage >= hp && hp > 0 && !g.unitHasStatus(recipient, 'indomitable')) {
+            value += killValue(g, enemy, recipient, v);
+        }
+        return value;
+    }
+
+    function _chivalryPledgeValue(g, guardian, ward, v) {
+        if (!guardian || guardian.dead || guardian._dying || !ward || ward.dead || ward._dying
+            || guardian.id === ward.id) return 0;
+        const landing = g.TargetQuery.chivalryLanding(guardian, ward);
+        // Copy only the top level; every query below is read-only. Never move
+        // the live knight while scoring (including move-then-cast probes).
+        const landed = { ...guardian, ...landing };
+        const hits = _chivalryHits(g, ward, v);
+        if (!hits.length) return 0;
+        let weighted = 0, weight = 0;
+        for (const hit of hits) {
+            const prevented = _chivalryLoss(g, hit.enemy, ward, hit.spell, ward, v);
+            const transferred = _chivalryLoss(g, hit.enemy, landed, hit.spell, ward, v);
+            // Equal likelihood over plausible first hits is a heuristic,
+            // not a sum of shields or a prediction of enemy target choice.
+            weighted += hit.probability * (prevented - transferred);
+            weight += 1;
+        }
+        const hazardDelta = aiHazardPenaltyAt(landed, landing.x, landing.y)
+            - aiHazardPenaltyAt(guardian, guardian.x, guardian.y);
+        // Account for newly exposed follow-up fire without crediting an
+        // uncertain escape from current danger as free healing.
+        const incoming = target => _chivalryHits(g, target, v).reduce((sum, hit) =>
+            sum + hit.probability * _chivalryLoss(g, hit.enemy, target, hit.spell, target, v), 0);
+        const exposure = Math.max(0, incoming(landed) - incoming(guardian));
+        return weighted / weight - Math.max(0, hazardDelta) - exposure * tuneW(g, 'threatCostFactor');
+    }
+
+    function _reaimChivalry(unit, spell) {
+        const v = buildVision(unit);
+        const target = findSpellTarget(unit, spell, v);
+        return target && _chivalryScore(unit, spell, target, v) > _mpCost(unit, spell) * tuneW(G(), 'mpValuePerPoint')
+            ? target : null;
+    }
+    window._aiReaimChivalry = _reaimChivalry;
+
+    function _chivalryScore(unit, spell, target, v) {
+        const g = G();
+        if (!target || target.id === unit.id || target.dead || target._dying
+            || !g.TargetQuery.spellTargets?.(unit, spell).some(t => t.unit?.id === target.id)) return 0;
+        if (target._guardedBy === unit.id) return 0; // no duration to refresh
+        let value = _chivalryPledgeValue(g, unit, target, v);
+        const oldGuardian = g.state.units.find(u => u.id === target._guardedBy);
+        // Replacing another knight's pledge changes only the marginal value.
+        value -= _chivalryPledgeValue(g, oldGuardian, target, v);
+        const oldWard = g.state.units.find(u => u.id === unit._guardingAlly && u._guardedBy === unit.id);
+        if (oldWard && oldWard.id !== target.id) value -= _chivalryPledgeValue(g, unit, oldWard, v);
+        return value;
+    }
+
+    function _trickRoomScore(unit, spell, v) {
+        const g = G();
+        const simul = typeof window._isSimulMode === 'function' && window._isSimulMode();
+        const turnMode = typeof getActiveGameMode === 'function' ? getActiveGameMode() : null;
+        if (!simul && !turnMode?.blitzMode) return 0;
+        const duration = spell.trickRoomDuration || 3;
+        const mode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
+        const limit = g.state.matchClock?.roundLimit || mode?.roundLimit || 0;
+        // The current round is already owned. Only additional FUTURE rounds
+        // benefit, and recasting an equally long reversal changes nothing.
+        const horizon = limit > 0 && !g.state.suddenDeathActive
+            ? Math.max(0, limit - (g.state.round || 0)) : duration;
+        const added = Math.max(0, Math.min(duration, horizon) - Math.min(g.state._trickRoomRounds || 0, horizon));
+        if (!added) return 0;
+        const allies = [unit, ...(v.allies || [])].filter(u => !u.dead && !u._dying);
+        const enemies = (v.visibleEnemies || []).filter(u => !u.dead && !u._dying);
+        if (!enemies.length) return 0;
+        const speed = u => typeof getEffectiveSpd === 'function' ? getEffectiveSpd(u) : (u.spd || 0);
+        let swing = 0;
+        for (const ally of allies) for (const enemy of enemies) {
+            const a = speed(ally), b = speed(enemy);
+            if (a === b) continue; // existing Quickdraw/initiative ties survive
+            const reach = u => {
+                let range = g.getEffectiveRange(u) || 1;
+                for (const s of u.spells || []) if (DMG_KINDS.has(s.kind) && (u.mp || 0) >= _mpCost(u, s)) {
+                    range = Math.max(range, _effRange(u, s));
+                }
+                return range + (g.getEffectiveMove?.(u) || 0);
+            };
+            if (_dist(g, ally.x, ally.y, ally.z, enemy) > Math.max(reach(ally), reach(enemy))) continue;
+            // Initiative is a chance to deliver/deny part of one exchange,
+            // not a whole free attack. This initial 0.35 estimate needs play
+            // evidence; fast allies pay the same loss that slow allies gain.
+            const exchange = (unitThreatOutput(g, ally, enemy) + unitThreatOutput(g, enemy, ally)) * 0.35;
+            swing += (a < b ? 1 : -1) * exchange;
+        }
+        // Blitz activates every ally; Simul chooses only one per side. Do not
+        // multiply the latter's benefit by the entire bench or inspect sealed
+        // opposing plans. Priority still outranks speed in actual resolution.
+        const exchanges = simul ? allies.length * enemies.length : enemies.length;
+        return swing / Math.max(1, exchanges) * added;
+    }
+
+    function _mirrorStatusValue(g, source, target, effect, v) {
+        if (!effect || g.unitHasStatus(target, effect.id)) return 0;
+        const defs = g.STATUS_DEFS || (typeof STATUS_DEFS !== 'undefined' ? STATUS_DEFS : {});
+        if (typeof unitPassiveBlocksStatus === 'function' && unitPassiveBlocksStatus(target, effect.id)) return 0;
+        if (typeof unitPassiveValue === 'function' && defs[effect.id]?.kind
+            && unitPassiveValue(target, 'immuneKind') === defs[effect.id].kind) return 0;
+        if (effect.id === 'burn' && (g.unitHasStatus(target, 'wet')
+            || (typeof _unitIsSoaked === 'function' && _unitIsSoaked(target))
+            || (typeof _unitInRain === 'function' && _unitInRain(target)))) return 0;
+        if (defs[effect.id]?.stageMod && g.unitHasStatus(target, 'statLock')) return 0;
+        const element = typeof statusAffinityElement === 'function' ? statusAffinityElement(effect.id, null) : null;
+        const affinity = element && typeof unitElementAffinity === 'function' ? unitElementAffinity(target, element) : null;
+        if (affinity === 'immune' || affinity === 'absorb') return 0;
+        if (typeof unitHasAccessory === 'function' && unitHasAccessory(target, 'purity_censer')
+            && target._censerRound !== (g.state.round || 0)) return 0;
+        const probability = typeof getStatusApplyChance === 'function'
+            ? getStatusApplyChance(source, target, effect) : (affinity === 'resist' ? 0.45 : 0.9);
+        const duration = (effect.duration || 1) + (source.cls === 'Psychic' ? 1 : 0);
+        return probability * (ccDenialValue(g, source, target, effect.id, duration, v)
+            + statusSetupValue(g, source, target, effect.id, v));
+    }
+
+    function _mirrorNetworkValue(unit, spell, v, net, offset, kind = 'pulse') {
+        const g = G();
+        const profile = g.TargetQuery.mirrorHitProfile?.(unit, spell, net, kind, offset);
+        if (!profile?.source || profile.source.dead || profile.source._dying) return 0;
+        const source = profile.source, f = profile.frequency;
+        const tiles = new Set(net.beamTiles);
+        if (kind === 'pulse') for (const tile of net.volumeTiles) tiles.add(tile);
+        const hitSpell = { dmg: profile.damage, damageType: 'magic', spellType: f.spellType };
+        let value = 0;
+        for (const target of v.visibleEnemies || []) {
+            if (target.dead || target._dying || !tiles.has(target.x + ',' + target.y)) continue;
+            const damage = estDamage(g, source, target, hitSpell, {
+                rawBase: profile.damage, noElement: true, noRangeMult: true,
+                allowMarkBonus: false, interceptionForecast: true
+            });
+            value += Math.min(damage, effHp(target));
+            const killed = damage >= effHp(target) && !g.unitHasStatus(target, 'indomitable');
+            if (killed && damage > 0) value += killValue(g, source, target, v);
+            // Riders follow the damage recipient's immunity path; DEF shred
+            // is a separate engine call and can apply even through Protect.
+            if (!killed && damage > 0) value += _mirrorStatusValue(g, source, target, f.status, v);
+            if (!killed && f.stageBoost && !g.unitHasStatus(target, 'statLock')
+                && !(typeof unitPassiveValue === 'function' && unitPassiveValue(target, 'immuneStatDown') === true)) {
+                value += statusRiderValue(g, source, target, { statStageBoost: f.stageBoost }, v);
+            }
+        }
+        return value;
+    }
+
+    function _tuneFrequencyScore(unit, spell, v, net) {
+        const g = G();
+        // Compare ONLY the next legal frequency, not the best of all three.
+        // One imminent beam burn and one affordable future pulse are the
+        // bounded horizon. Unknown future crossing paths earn no free value.
+        let value = 0.5 * (_mirrorNetworkValue(unit, spell, v, net, 1, 'burn')
+            - _mirrorNetworkValue(unit, spell, v, net, 0, 'burn'));
+        if (net.count < 3) return value;
+        let before = 0, after = 0;
+        for (const mate of [unit, ...(v.allies || [])]) {
+            if (mate.dead || mate._dying || g.unitHasStatus(mate, 'silence')) continue;
+            for (const pulse of mate.spells || []) {
+                if (pulse.kind !== 'pulseLattice') continue;
+                if (typeof getSpellCooldownRemaining === 'function' && getSpellCooldownRemaining(mate, pulse) > 0) continue;
+                const cost = _mpCost(mate, pulse), mp = mate.mp || 0;
+                if (mp < cost) continue;
+                before = Math.max(before, _mirrorNetworkValue(mate, pulse, v, net, 0) - cost * tuneW(g, 'mpValuePerPoint'));
+                // Tuning cannot spend the mana reserved for the promised
+                // follow-up, and promises no second spell in this activation.
+                if (mp - (mate.id === unit.id ? _mpCost(unit, spell) : 0) < cost) continue;
+                after = Math.max(after, _mirrorNetworkValue(mate, pulse, v, net, 1) - cost * tuneW(g, 'mpValuePerPoint'));
+            }
+        }
+        return value + 0.5 * (after - before);
+    }
+
     function scoreSpells(unit, v, out) {
         const g = G();
         const ap = unit.ap || 0;
@@ -1970,6 +2204,9 @@
         const kind = spell.kind;
 
         // ── single-target damage family ──
+        if (kind === 'guard') return _chivalryScore(unit, spell, target, v);
+        if (kind === 'trickRoom') return _trickRoomScore(unit, spell, v);
+
         if (['damage', 'ricochet', 'multiHit', 'tackle'].includes(kind)) {
             // Elemental tile cast: the target is a TILE the reaction makes
             // worthwhile (bolt the pool, torch the brush).
@@ -2666,25 +2903,16 @@
             if (owned.length < 3) s += 20;      // ramp toward a pulsable lattice
             return s;
         }
-        if (kind === 'pulseLattice') {
+        if (kind === 'pulseLattice' || kind === 'tuneFrequency') {
             const owned = (g.state.mirrors || []).filter(m => m.owner === unit.player && m.hp > 0);
-            if (owned.length < 3) return 0;
+            if (owned.length < (kind === 'pulseLattice' ? 3 : 1)) return 0;
             let net = null;
             if (typeof window !== 'undefined' && typeof window.computeMirrorNetwork === 'function') {
                 net = window.computeMirrorNetwork(unit.player);
             }
-            if (!net) return 0;
-            const tiles = new Set(net.beamTiles);
-            for (const t of net.volumeTiles) tiles.add(t);
-            const caught = v.visibleEnemies.filter(e => tiles.has(e.x + ',' + e.y)).length;
-            if (caught === 0) return 0;
-            let s = 60 + caught * 80;
-            if (net.isPrism) s += 150; else if (net.is3DVolume) s += 70;
-            return s;
-        }
-        if (kind === 'tuneFrequency') {
-            const owned = (g.state.mirrors || []).filter(m => m.owner === unit.player && m.hp > 0);
-            return owned.length < 2 ? 0 : 12;
+            if (!net || (!net.beamTiles.size && !net.volumeTiles.size)) return 0;
+            if (kind === 'pulseLattice') return net.count >= 3 ? _mirrorNetworkValue(unit, spell, v, net, 0) : 0;
+            return _tuneFrequencyScore(unit, spell, v, net);
         }
 
         if (kind === 'placeBlock' && target) {
@@ -4092,6 +4320,18 @@
         const g = G();
         const kind = spell.kind;
 
+        if (kind === 'trickRoom') return unit;
+
+        if (kind === 'guard') {
+            let best = null, bestValue = 0;
+            for (const entry of g.TargetQuery.spellTargets?.(unit, spell) || []) {
+                const target = entry.unit;
+                const value = _chivalryScore(unit, spell, target, v);
+                if (value > bestValue) { best = target; bestValue = value; }
+            }
+            return best;
+        }
+
         // Lattice spells affect the player's network, but both executors
         // still need a concrete self-cast target (including elevation).
         if (kind === 'pulseLattice' || kind === 'tuneFrequency') return unit;
@@ -5137,6 +5377,18 @@
                     // Line beams: re-aim from the caster's CURRENT position at
                     // cast time — the target may have moved during telegraph.
                     let _castX = action.target.x, _castY = action.target.y, _castZ = action.target.z;
+                    if (action.spell.kind === 'guard') {
+                        const ward = _reaimChivalry(unit, action.spell);
+                        if (!ward) {
+                            _failedSpells.add(action.spell.name);
+                            g.state.actionMode = null;
+                            g.state.selectedTool = null;
+                            g.state.aiThinking = false;
+                            g.maybeTriggerComputerTurn();
+                            return;
+                        }
+                        _castX = ward.x; _castY = ward.y; _castZ = ward.z;
+                    }
                     if (action.spell.kind === 'line' || action.spell.kind === 'linePush') {
                         const aim = _reaimLineSpell(unit, action.spell, action.target?.id);
                         if (!aim) {
