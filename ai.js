@@ -67,7 +67,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.4-2026-09-12-prism-selfcast'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.5-2026-09-12-wide-beams'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -269,6 +269,47 @@
             tiles.push({ x, y });
         }
         return tiles;
+    }
+    // Match battle.js lane offsets and non-boring footprint: the spine
+    // determines reach; side cells need passability, not their own LOS ray.
+    function _lineFootprintAI(g, from, spell, dx, dy) {
+        const spine = _lineRayTilesAI(g, from, spell, dx, dy);
+        const tiles = spine.slice();
+        const seen = new Set(tiles.map(t => `${t.x},${t.y}`));
+        const width = Math.max(1, Math.min(3, spell.lineWidth || 1));
+        const lanes = width <= 1 ? [] : width === 2 ? [[-dy, dx]] : [[-dy, dx], [dy, -dx]];
+        for (const [ox, oy] of lanes) for (const c of spine) {
+            const x = c.x + ox, y = c.y + oy, key = `${x},${y}`;
+            if (x < 0 || y < 0 || x >= g.bw() || y >= g.bh() || seen.has(key)) continue;
+            if (typeof g.isTerrainPassable === 'function' && !g.isTerrainPassable(x, y)) continue;
+            seen.add(key); tiles.push({ x, y });
+        }
+        return tiles;
+    }
+
+    function _bestLineAimAI(unit, spell, v, preferredTargetId) {
+        const g = G();
+        let best = null;
+        for (const [dx, dy] of [[1,0], [-1,0], [0,1], [0,-1], [1,1], [1,-1], [-1,1], [-1,-1]]) {
+            const tiles = _lineFootprintAI(g, unit, spell, dx, dy);
+            const victims = v.visibleEnemies.filter(e => !e.dead && !isProtected(g, e)
+                && tiles.some(t => t.x === e.x && t.y === e.y));
+            if (!victims.length) continue;
+            // Retain a victim identity for Simul's existing re-aim contract,
+            // but never use an off-spine victim's coordinates as the direction.
+            const first = victims[0];
+            const ax = first.x - unit.x, ay = first.y - unit.y;
+            const onSpine = Math.sign(ax) === dx && Math.sign(ay) === dy
+                && (ax === 0 || ay === 0 || Math.abs(ax) === Math.abs(ay));
+            const target = onSpine ? first : { x: unit.x + dx, y: unit.y + dy, id: first.id };
+            const score = scoreSpell(unit, spell, target, v);
+            const preferred = victims.some(e => e.id === preferredTargetId);
+            if (score > 0 && (!best || score > best.score
+                || (score === best.score && preferred && !best.preferred))) {
+                best = { target, score, preferred, hits: victims.length };
+            }
+        }
+        return best;
     }
     function standH(g, u) { try { return g.getUnitStandingHeight(u); } catch (e) { return u.z ?? 0; } }
     function tileH(g, t) {
@@ -2121,16 +2162,16 @@
 
         if (kind === 'line' || kind === 'linePush') {
             if (!target) return 0;
-            // Beams fire along sign(target−caster) rays and stop at walls; a
-            // target off the 8 rays can NEVER be hit.
+            // Beams fire along sign(target−caster) rays and stop at walls; the
+            // aim must stay on the spine even when victims occupy side lanes.
             const adx = Math.abs(target.x - unit.x), ady = Math.abs(target.y - unit.y);
             const aligned = (adx === 0 || ady === 0 || adx === ady) && (adx + ady > 0);
             if (!aligned) return 0;
             const dx = Math.sign(target.x - unit.x), dy = Math.sign(target.y - unit.y);
             let s = 0, hits = 0, first = true;
-            for (const { x: tx, y: ty } of _lineRayTilesAI(g, unit, spell, dx, dy)) {
+            for (const { x: tx, y: ty } of _lineFootprintAI(g, unit, spell, dx, dy)) {
                 const e = v.visibleEnemies.find(en => en.x === tx && en.y === ty);
-                if (e && !isProtected(g, e)) {
+                if (e && !e.dead && !isProtected(g, e)) {
                     hits++;
                     s += scoreOffensiveHit(g, unit, e, spell, v, { splash: !first }).val;
                     if (kind === 'linePush') s += (spell.pushDistance || 1) * 16;
@@ -2975,21 +3016,22 @@
                 }
                 // damage spells from this tile
                 for (const ds of dmgSpells) {
-                    if (ds.sp.kind === 'line' || ds.sp.kind === 'linePush') {
-                        const ax = Math.abs(e.x - t.x), ay = Math.abs(e.y - t.y);
-                        if (!(ax === 0 || ay === 0 || ax === ay) || ax + ay === 0) continue;
-                        const ray = _lineRayTilesAI(g, { x: t.x, y: t.y, z: th }, ds.sp,
-                            Math.sign(e.x - t.x), Math.sign(e.y - t.y));
-                        if (!ray.some(p => p.x === e.x && p.y === e.y)) continue;
-                    } else {
-                        const reach = _reach(g, t.x, t.y, t.z, e, _isLongRange(ds.sp));
-                        if (reach > ds.er) continue;
-                        if (!ds.sp.ignoresLineOfSight && blocked(t.x, t.y, e)) continue;
-                    }
+                    if (ds.sp.kind === 'line' || ds.sp.kind === 'linePush') continue;
+                    const reach = _reach(g, t.x, t.y, t.z, e, _isLongRange(ds.sp));
+                    if (reach > ds.er) continue;
+                    if (!ds.sp.ignoresLineOfSight && blocked(t.x, t.y, e)) continue;
                     const hit = scoreOffensiveHit(g, unit, e, ds.sp, v, { fromX: t.x, fromY: t.y, fromH: th, splash: false });
                     const val = hit.val - ds.mp * tuneW(g, 'mpValuePerPoint');
                     if (val > bestShot) bestShot = val;
                 }
+            }
+            // Evaluate each beam once per destination, summing the whole
+            // direction and charging MP once for the cast, not per victim.
+            const moved = { ...unit, x: t.x, y: t.y, z: th };
+            for (const ds of dmgSpells) {
+                if (ds.sp.kind !== 'line' && ds.sp.kind !== 'linePush') continue;
+                const aim = _bestLineAimAI(moved, ds.sp, v);
+                if (aim) bestShot = Math.max(bestShot, aim.score - ds.mp * tuneW(g, 'mpValuePerPoint'));
             }
             // tower shot from this tile
             if (hasTower) {
@@ -3995,35 +4037,13 @@
     function _reaimLineSpell(unit, spell, preferredTargetId) {
         const g = G();
         if (!g) return null;
-        const dirs = [{ dx: 1, dy: 0 }, { dx: -1, dy: 0 }, { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
-                      { dx: 1, dy: 1 }, { dx: 1, dy: -1 }, { dx: -1, dy: 1 }, { dx: -1, dy: -1 }];
-        const len = spell.range || 4;
         const enemies = g.getHostileUnits(unit.player).filter(e => !e.dead &&
             !(g.unitHasStatus(e, 'invisible') && !g.unitHasStatus(e, 'marked'))
             && !(typeof g.isUnitConcealedFrom === 'function' && g.isUnitConcealedFrom(e, unit.player))
             && (!g.state.fogOfWar || typeof g.isUnitSeenByTeam !== 'function'
                 || g.isUnitSeenByTeam(e, unit.player)));
-        let best = null;
-        for (const dir of dirs) {
-            let hits = 0, first = null, hasPreferred = false;
-            for (let i = 1; i <= len; i++) {
-                const tx = unit.x + dir.dx * i, ty = unit.y + dir.dy * i;
-                if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) break;
-                if (typeof g.isTerrainPassable === 'function' && !g.isTerrainPassable(tx, ty) && !spell.destroysObstacles) break;
-                if (!spell.ignoresLineOfSight && typeof g.isRangeBlockedByTerrain === 'function'
-                    && g.isRangeBlockedByTerrain(unit.x, unit.y, tx, ty, unit.z ?? null)) break;
-                const e = enemies.find(en => en.x === tx && en.y === ty);
-                if (e) {
-                    hits++;
-                    if (!first) first = { x: tx, y: ty };
-                    if (preferredTargetId && e.id === preferredTargetId) hasPreferred = true;
-                }
-            }
-            if (!hits) continue;
-            const score = hits * 10 + (hasPreferred ? 5 : 0);
-            if (!best || score > best.score) best = { x: first.x, y: first.y, hits, score };
-        }
-        return best;
+        const best = _bestLineAimAI(unit, spell, { visibleEnemies: enemies }, preferredTargetId);
+        return best ? { x: best.target.x, y: best.target.y, hits: best.hits, score: best.score } : null;
     }
     window._aiReaimLineSpell = _reaimLineSpell;
 
@@ -4590,21 +4610,7 @@
         if (kind === 'scan' || kind === 'remoteView') return { x: unit.x, y: unit.y };
 
         if (kind === 'line' || kind === 'linePush') {
-            const dirs = [{ dx: 1, dy: 0 }, { dx: -1, dy: 0 }, { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
-                          { dx: 1, dy: 1 }, { dx: 1, dy: -1 }, { dx: -1, dy: 1 }, { dx: -1, dy: -1 }];
-            let bestDir = null, bestHits = 0, bestTarget = null;
-            for (const dir of dirs) {
-                let hits = 0, firstEnemy = null;
-                for (const { x: tx, y: ty } of _lineRayTilesAI(g, unit, spell, dir.dx, dir.dy)) {
-                    const enemy = v.visibleEnemies.find(e => e.x === tx && e.y === ty);
-                    if (enemy) { hits++; if (!firstEnemy) firstEnemy = enemy; }
-                }
-                if (hits > bestHits || (hits === bestHits && firstEnemy && bestTarget &&
-                    getTargetPriority(firstEnemy, unit, v) > getTargetPriority(bestTarget, unit, v))) {
-                    bestHits = hits; bestDir = dir; bestTarget = firstEnemy;
-                }
-            }
-            return bestTarget || null;
+            return _bestLineAimAI(unit, spell, v)?.target || null;
         }
 
         if (kind === 'cross') {
