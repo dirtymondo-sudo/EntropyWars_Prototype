@@ -4198,6 +4198,7 @@
             bombs: [],
             mirrors: [],
             _mirrorFreq: { 1: 0, 2: 0 },
+            _trickRoomRounds: 0,
             plantedSeeds: [],
             warpRunes: [],
             wards: [],

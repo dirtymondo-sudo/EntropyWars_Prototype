@@ -25012,6 +25012,7 @@
             state.turrets = [];
             state.mirrors = [];
             state._mirrorFreq = { 1: 0, 2: 0 };
+            state._trickRoomRounds = 0;   // initiative reversal belongs to this match
             state._deployedObjects = [];
             state._delayedSpells = [];
             state._gatePairs = [];
@@ -32975,6 +32976,7 @@
             state.turrets = [];
             state.mirrors = [];
             state._mirrorFreq = { 1: 0, 2: 0 };
+            state._trickRoomRounds = 0;   // initiative reversal belongs to this match
             state._deployedObjects = [];
             state._delayedSpells = [];
             state._gatePairs = [];
@@ -33549,6 +33551,7 @@
             state.turrets = [];
             state.mirrors = [];
             state._mirrorFreq = { 1: 0, 2: 0 };
+            state._trickRoomRounds = 0;   // initiative reversal belongs to this match
             state._deployedObjects = [];
             state._delayedSpells = [];
             state._gatePairs = [];
@@ -33778,6 +33781,7 @@
             state.turrets = [];
             state.mirrors = [];
             state._mirrorFreq = { 1: 0, 2: 0 };
+            state._trickRoomRounds = 0;   // initiative reversal belongs to this match
             state._deployedObjects = [];
             state._delayedSpells = [];
             state._gatePairs = [];
