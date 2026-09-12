@@ -21940,9 +21940,14 @@
                     const _adj = [{ dx: 0, dy: 1 }, { dx: 0, dy: -1 }, { dx: 1, dy: 0 }, { dx: -1, dy: 0 }];
                     for (const a of _adj) {
                         const nx = target.x + a.dx, ny = target.y + a.dy;
-                        if (typeof isInside === 'function' && !isInside(nx, ny)) continue;
-                        if (typeof unitAt === 'function' && unitAt(nx, ny)) continue;
-                        guardian.x = nx; guardian.y = ny;
+                        if (!isInside(nx, ny)) continue;
+                        // Use the same surface/terrain/occupancy contract as
+                        // other landings, near the ward's elevation. If every
+                        // adjacent tile is blocked the oath still intercepts
+                        // from the guardian's current position.
+                        const nz = nearestWalkableZ(nx, ny, target.z ?? 0);
+                        if (!canOccupy3D(nx, ny, nz)) continue;
+                        guardian.x = nx; guardian.y = ny; guardian.z = nz;
                         break;
                     }
                     addLog(`🛡 ${unitDisplayName(guardian)} honors their oath of Chivalry and intercepts the attack meant for ${unitDisplayName(target)}!`);
