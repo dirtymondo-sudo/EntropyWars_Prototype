@@ -1368,3 +1368,36 @@ at the board centre (`proc: 'battle_marker'`, `verb: 'BATTLE'`, `overlay:
 'crossing'` — the same terminal as the console, post-match returns you
 there); three-renderer.js `_hqBuildBattleMarker` draws the beacon on the
 centre cell's top, `_hqTickWorld` spins it. doorhq.test.js checks both.
+
+## THE ROUNDED HUD + THE PARTY DOCK — added 2026-09-12
+**THE ROUNDING PASS** (hud.js `_injectHudHideStyles`, the block "THE
+ROUNDING PASS" at the END of the injected stylesheet): nothing on the
+battle HUD keeps a hard 90° corner any more — plates wear soft radii + a
+bevelled rim, command rows are asymmetric BLADES (`.hrlg-body` 7px left /
+15px right, the left spine still carries the function colour), chips are
+pills, bars are capsules, the scoreboard plate (`.ew-score-plate`) and the
+match-meta pill (`.ew-meta-plate`) are classes now (their inline
+background/border stay in the JS), `ClipPanel` is a rounded plate
+(`corner` = the radius), `UnitSprite` frames / turn chips / FrameCorners
+round inline. The overrides live AFTER the rules they soften — restyle
+there, never by re-editing the original blocks. The HP bar on the identity
+column can NOT clip (the heartbeat trace escapes it) — the fill wears the
+capsule itself. **THE PARTY DOCK** (hud.js `PartyRoster` → `PartyPortrait`,
+CSS `.ew-party-*` / `.ew-pp*`): a bottom-right row of circular portraits
+for the VIEWER's party (home seat via `unitHomePlayer` — a possessed body
+stays in its owner's row, chained), each wearing HP (outer) and MP (inner)
+as ring meters drawn in SVG (`_ppArc`: `pathLength=100` circles,
+dasharray = the fill, rotation = where it starts; both transition on the
+same curve so the arc's end stays pinned at 12). **The rings DEPLETE
+CLOCKWISE**: the fill ends at the screen's 12 o'clock and the spent track
+sweeps clockwise from it, like a cooldown — and the 3D reticle ring
+vitals (`_reticleFragmentShader`, `frac = fract((ang − uMeterRot)/2π)`)
+were flipped the same day to match (ring-vitals.test.js pins it). Shield
+leads the HP fill in pale blue; `getPendingDamagePreview` blinks the
+forecast slice; RenderBus `unit:damaged` blinks the face; the acting unit
+wears a turning halo (`.active`), spent units dim, the fallen go grey
+under a skull; click = `selectUnit`. Gauntlet reserves ride a pill strip
+above the row; the dock is OFF on Mystery Dungeon floors (the SCANNER
+owns that corner). Sits above the bottom-centre description bar at the
+same lift as the Horologe rig, scales with `--ew-ui-scale`. Viewer-local,
+nothing relayed (RULE #2).

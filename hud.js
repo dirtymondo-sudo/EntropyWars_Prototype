@@ -87,7 +87,8 @@ function typeBadgeStyle(base, opts) {
     color: opts.text || base,
     background: '#100d19',
     border: '1px solid ' + base,
-    padding: opts.padding || '1px 6px',
+    padding: opts.padding || '1px 7px',
+    borderRadius: 999,
     textShadow: '0 1px 2px rgba(0,0,0,0.85)',
   };
 }
@@ -273,14 +274,18 @@ function useMenusHidden(st) {
 }
 
 function ClipPanel({ children, style, factionColor, corner = 14, ...props }) {
-  // PS1 data-plate: a plain hairline rectangle — no cut corners. The
-  // faction accent survives as the 2px left spine.
+  // Rounded data-plate (the 2026-09-12 rounding pass): soft corners, a
+  // bevelled rim, the faction accent as the 2px left spine (clipped to the
+  // curve by overflow:hidden).
   const fc = factionColor || EW.space;
   return h('div', {
     style: {
       position: 'relative',
       background: EW.panel,
       border: '1px solid ' + EW.panelEdge,
+      borderRadius: corner,
+      overflow: 'hidden',
+      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 0 rgba(0,0,0,0.45), 0 10px 24px rgba(0,0,0,0.5)',
       ...style,
     },
     ...props,
@@ -361,6 +366,7 @@ function UnitSprite({ unit, size, glow }) {
     width: size, height: size * 1.4,
     background: 'linear-gradient(180deg, ' + fc + '1a, rgba(0,0,0,0.5))',
     border: '1px solid ' + EW.panelEdge,
+    borderRadius: Math.max(4, Math.round(size * 0.22)),
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     overflow: 'hidden', position: 'relative', flexShrink: 0,
   }},
@@ -625,7 +631,7 @@ function TurnChip({ entry, size }) {
         opacity: 0.5, filter: 'saturate(0.08) brightness(0.8)', padding: '0 1px',
       },
     },
-      h('div', { style: { width: size, height: 2, background: ac, opacity: 0.3 }}),
+      h('div', { style: { width: size, height: 2, background: ac, opacity: 0.3, borderRadius: 2 }}),
       h('div', { style: { position: 'relative' }},
         h(UnitSprite, { unit: u, size }),
         h('div', { style: {
@@ -655,13 +661,14 @@ function TurnChip({ entry, size }) {
 
     h('div', { style: {
       width: size, height: 2, background: ac, opacity: active ? 1 : 0.6,
-      boxShadow: active ? '0 0 7px ' + ac : 'none',
+      boxShadow: active ? '0 0 7px ' + ac : 'none', borderRadius: 2,
     }}),
 
     h('div', { style: { position: 'relative' }},
       h(UnitSprite, { unit: u, size, glow: active }),
       active && h('div', { style: {
         position: 'absolute', inset: -2, border: '1px solid ' + ac,
+        borderRadius: Math.max(6, Math.round(size * 0.22) + 2),
         boxShadow: '0 0 10px ' + ac + ', inset 0 0 7px ' + ac + '55', pointerEvents: 'none',
       }}),
     ),
@@ -735,7 +742,7 @@ function TurnFlank({ st, player, side, nextId }) {
       style: {
         alignSelf: 'center', fontFamily: '"IBM Plex Mono", monospace', fontSize: 9,
         color: EW.inkMute, letterSpacing: '0.04em', padding: '0 3px',
-        border: '1px solid ' + EW.panelEdge, background: 'rgba(0,0,0,0.3)',
+        border: '1px solid ' + EW.panelEdge, background: 'rgba(0,0,0,0.3)', borderRadius: 6,
         minWidth: small, height: small, display: 'flex', alignItems: 'center', justifyContent: 'center',
       },
     }, '+' + overflow));
@@ -1187,11 +1194,11 @@ function Scoreboard({ st }) {
       },
     },
       h('div', {
+        className: 'ew-score-plate',
         style: {
           display: 'flex', alignItems: 'center', gap: 14,
           background: EW.panel, border: '1px solid ' + EW.panelEdge,
           boxShadow: '0 6px 28px rgba(0,0,0,0.5)', padding: '7px 20px 8px',
-          /* square PS1 plate — no cut corners */
         },
       },
         h('span', { style: { fontFamily: mdMono, fontSize: 10, letterSpacing: '0.18em', color: EW.inkMute, textTransform: 'uppercase' } },
@@ -1297,13 +1304,13 @@ function Scoreboard({ st }) {
       /* centre cluster — the mockup's score box: a bordered PS1 data-plate
          with the mode name over a hairline divider, the big serif score,
          and the caption·time·round mono line under it. */
-      h('div', { style: {
+      h('div', { className: 'ew-score-plate', style: {
         position: 'relative', padding: '5px 20px 7px', display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', gap: 3, minWidth: 150,
         background: EW.panel, border: '1px solid ' + EW.panelEdge,
       }},
         h('div', { className: 'ew-scoreboard-sheen', style: {
-          position: 'absolute', top: -1, left: -1, right: -1, height: 1, pointerEvents: 'none',
+          position: 'absolute', top: -1, left: 14, right: 14, height: 1, pointerEvents: 'none', borderRadius: 1,
           background: 'linear-gradient(90deg, transparent, ' + EW.space + '88 30%, ' + EW.chaos + '88 70%, transparent)',
         }}),
 
@@ -1416,10 +1423,10 @@ function MatchMeta({ st }) {
       textShadow: '0 0 12px rgba(214,178,255,0.35), 0 1px 3px rgba(0,0,0,0.8)',
       padding: '2px 2px 0 0', pointerEvents: 'none',
     }}, '◈ ' + mapName),
-    h('div', { style: {
+    h('div', { className: 'ew-meta-plate', style: {
       display: 'flex', alignItems: 'center', gap: 10,
       background: EW.panel, border: '1px solid ' + EW.panelEdge,
-      padding: '6px 12px',
+      padding: '6px 14px 6px 16px',
       fontFamily: '"IBM Plex Mono", monospace', fontSize: 11,
       letterSpacing: '0.12em', color: EW.inkMute,
     }},
@@ -1618,55 +1625,226 @@ function CombatLog({ st }) {
 /* The viewer's party is now shown in the scoreboard turn-order flank, so the
    old bottom-right roster is gone. This panel survives only to surface Gauntlet
    RESERVES (units not yet deployed), which the scoreboard can't represent. */
+/* ═══════════════ THE PARTY DOCK — bottom-right portrait row ═══════════════
+   One circular portrait per unit of the VIEWER's party, in slot order, each
+   wearing its vitals as two concentric rings — HP on the outside, MP inside —
+   exactly like the ring vitals on the reticle at a unit's feet
+   (three-renderer.js _reticleFragmentShader). Both meters DEPLETE CLOCKWISE:
+   the full ring is anchored at the screen's 12 o'clock and the spent part of
+   the track sweeps clockwise from there, so a wounded unit reads like a
+   cooldown running out. Shield rides the HP fill's leading edge in pale blue;
+   the confirm-step forecast (getPendingDamagePreview) blinks the slice about
+   to be lost (or healed) on the same ring the target row / nameplate blink.
+   A hit blinks the face white (RenderBus 'unit:damaged'), the acting unit
+   wears a slow-turning halo, spent units dim, the fallen go grey under a
+   skull. Click = selectUnit — the same camera pan / menu a scoreboard chip
+   gives you. The party is read by HOME seat (unitHomePlayer) so a possessed
+   body stays in its owner's row, chained. Viewer-local, nothing relayed
+   (RULE #2 — both online seats read their own synced hp/mp). Gauntlet
+   reserves ride a small strip above the row. Off on Mystery Dungeon floors,
+   where the vector SCANNER owns that corner. */
+const PP_HP = HP_ALLY;            // the dock is always YOUR party → ally green
+const PP_MP = MP_BLUE;
+const PP_SHIELD = '#8fd0ff';
+const PP_HEAL = '#9ef5b8';
+
+function _ppClamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function _ppSlot(u) { const n = parseInt(String(u.id).split('-')[1], 10); return isNaN(n) ? 99 : n; }
+
+/* One meter arc on a pathLength=100 circle. `len` = percent of the circle
+   the arc covers, `start` = where it BEGINS, in percent of a turn clockwise
+   from 12 o'clock. A meter at p% therefore starts at (100 − p) and runs to
+   12 — the spent track is [12, 100 − p], growing clockwise as p falls.
+   stroke-dasharray + the rotation both transition with the same curve, so
+   the arc's end stays pinned at 12 while it shrinks. */
+function _ppArc(r, len, start, cls, extra) {
+  return h('circle', {
+    cx: 50, cy: 50, r: r, pathLength: 100, fill: 'none',
+    className: 'ew-pp-arc' + (cls ? ' ' + cls : ''),
+    style: Object.assign({
+      strokeDasharray: _ppClamp(len, 0, 100) + ' 100',
+      transform: 'rotate(' + (-90 + _ppClamp(start, 0, 100) * 3.6) + 'deg)',
+    }, extra || {}),
+  });
+}
+
+function PartyPortrait({ unit, size, active, finished, next, possessed, forecast }) {
+  const hitRef = useRef(null);
+  // one-shot white blink when THIS unit takes hit damage (same bus event
+  // the Horologe face listens to)
+  useEffect(() => {
+    if (!window.RenderBus || !unit) return;
+    const onHit = (ev) => {
+      if (!ev || !ev.unit || ev.unit.id !== unit.id) return;
+      const el = hitRef.current; if (!el) return;
+      el.classList.remove('go'); void el.getBoundingClientRect(); el.classList.add('go');
+    };
+    window.RenderBus.on('unit:damaged', onHit);
+    return () => { window.RenderBus.off('unit:damaged', onHit); };
+  }, [unit && unit.id]);
+
+  const [src, isFace] = useMemo(() => {
+    if (!unit) return ['', false];
+    if (typeof getUnitPortraitUrl === 'function') {
+      const p = getUnitPortraitUrl(unit);
+      if (p) return [p, true];
+    }
+    if (typeof getBattleMapSpriteUrl === 'function') {
+      const s = getBattleMapSpriteUrl(unit);
+      if (s) return [s, false];
+    }
+    if (typeof getUnitSprite === 'function') return [getUnitSprite(unit.cls, unit.player, unit), false];
+    return ['', false];
+  }, [unit && unit.id, unit && unit.race, unit && unit.cls, unit && unit.gender]);
+
+  const dead = !!unit.dead;
+  const maxHp = unit.maxHp || 0, maxMp = unit.maxMp || 0;
+  const hpPct = (dead || maxHp <= 0) ? 0 : _ppClamp((unit.hp / maxHp) * 100, 0, 100);
+  const shPct = (dead || maxHp <= 0 || !(unit.shield > 0)) ? 0 : _ppClamp((unit.shield / maxHp) * 100, 0, 100 - hpPct);
+  const mpPct = (dead || maxMp <= 0) ? 0 : _ppClamp((unit.mp / maxMp) * 100, 0, 100);
+  let dmgPct = 0, healPct = 0, lethal = false;
+  if (forecast && !dead && maxHp > 0 && forecast.unitId === unit.id) {
+    if (forecast.dmg > 0) { dmgPct = _ppClamp((forecast.dmg / maxHp) * 100, 0, hpPct); lethal = !!forecast.lethal; }
+    else if (forecast.heal > 0) healPct = _ppClamp((forecast.heal / maxHp) * 100, 0, 100 - hpPct);
+  }
+  const name = (typeof unitDisplayName === 'function' ? unitDisplayName(unit) : (unit.name || unit.cls)) || '';
+  const slot = _ppSlot(unit) + 1;
+  const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'][slot - 1] || String(slot);
+  const fc = getFactionColor(unit);
+  const title = roman + ' · ' + name
+    + (dead ? ' — DOWN' + (unit._spawnLocked ? ' · NO SPAWN POINT' : '')
+      : ('  HP ' + Math.max(0, Math.round(unit.hp || 0)) + '/' + maxHp
+        + (maxMp > 0 ? '  ·  MP ' + Math.max(0, Math.round(unit.mp || 0)) + '/' + maxMp : '')
+        + (unit.shield > 0 ? '  ·  🛡 ' + Math.round(unit.shield) : '')
+        + (possessed ? '  ·  ⛓ POSSESSED' : '')));
+  const clipId = 'ppclip-' + String(unit.id).replace(/[^a-z0-9_-]/gi, '_');
+
+  // geometry (viewBox 0 0 100): HP ring on the outside, MP just inside it,
+  // the face disc in the middle — the same nesting as the 3D reticle
+  const R_HP = 43, R_MP = 36.5, R_FACE = 30.5, R_HALO = 48;
+
+  return h('div', {
+    className: 'ew-pp'
+      + (active ? ' active' : '')
+      + (finished ? ' spent' : '')
+      + (next ? ' next' : '')
+      + (dead ? ' dead' : '')
+      + (possessed ? ' possessed' : ''),
+    style: { '--pp': size + 'px', '--pp-fc': fc },
+    title: title,
+    onClick: () => { if (!dead && typeof selectUnit === 'function') selectUnit(unit.id); },
+  },
+    h('svg', { viewBox: '0 0 100 100', className: 'ew-pp-svg' },
+      h('defs', null,
+        h('clipPath', { id: clipId }, h('circle', { cx: 50, cy: 50, r: R_FACE })),
+      ),
+      /* the acting unit's halo — a slow-turning dashed ring outside the meters */
+      h('circle', { cx: 50, cy: 50, r: R_HALO, className: 'ew-pp-halo', pathLength: 100 }),
+      /* dark tracks */
+      h('circle', { cx: 50, cy: 50, r: R_HP, className: 'ew-pp-track hp' }),
+      h('circle', { cx: 50, cy: 50, r: R_MP, className: 'ew-pp-track mp' }),
+      /* HP meter: shield leads the fill, then the fill, then the forecast slices */
+      shPct > 0 && _ppArc(R_HP, shPct, 100 - hpPct - shPct, 'hp shield', { stroke: PP_SHIELD }),
+      _ppArc(R_HP, hpPct, 100 - hpPct, 'hp fill', { stroke: PP_HP }),
+      dmgPct > 0 && _ppArc(R_HP, dmgPct, 100 - hpPct, 'hp prev' + (lethal ? ' lethal' : ''), { stroke: '#ffffff' }),
+      healPct > 0 && _ppArc(R_HP, healPct, 100 - hpPct - healPct, 'hp prev heal', { stroke: PP_HEAL }),
+      /* MP meter */
+      maxMp > 0 && _ppArc(R_MP, mpPct, 100 - mpPct, 'mp fill', { stroke: PP_MP }),
+      /* the face disc */
+      h('circle', { cx: 50, cy: 50, r: R_FACE + 1.2, className: 'ew-pp-bezel' }),
+      h('g', { clipPath: 'url(#' + clipId + ')' },
+        h('circle', { cx: 50, cy: 50, r: R_FACE, className: 'ew-pp-disc' }),
+        src && h('image', {
+          href: src, x: 50 - R_FACE, y: 50 - R_FACE, width: R_FACE * 2, height: R_FACE * 2,
+          preserveAspectRatio: isFace ? 'xMidYMid slice' : 'xMidYMax meet',
+          className: 'ew-pp-img',
+          style: { imageRendering: 'pixelated' },
+        }),
+        h('circle', { cx: 50, cy: 50, r: R_FACE, className: 'ew-pp-vig' }),
+        h('circle', { ref: hitRef, cx: 50, cy: 50, r: R_FACE, className: 'ew-pp-hit' }),
+      ),
+      dead && h('text', { x: 50, y: 60, textAnchor: 'middle', className: 'ew-pp-skull' }, '☠'),
+      possessed && !dead && h('text', { x: 50, y: 22, textAnchor: 'middle', className: 'ew-pp-chain' }, '⛓'),
+    ),
+    h('div', { className: 'ew-pp-tag' },
+      h('span', { className: 'ew-pp-roman' }, roman),
+      h('span', { className: 'ew-pp-name' }, name),
+    ),
+  );
+}
+
 function PartyRoster({ st }) {
   if (!st) return null;
+  // Mystery Dungeon: the vector SCANNER (#battleMinimap.md-scanner) owns the
+  // bottom-right corner, and the party rides the scoreboard's tactic chips.
+  if (typeof window._isDungeonMode === 'function' && window._isDungeonMode()) return null;
 
   const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
+  const home = (u) => (typeof unitHomePlayer === 'function') ? unitHomePlayer(u) : u.player;
+  const party = (st.units || [])
+    .filter(u => u && !u._mdNpc && home(u) === viewer)
+    .sort((a, b) => _ppSlot(a) - _ppSlot(b));
 
   const isGaunt = typeof _isGauntlet === 'function' && _isGauntlet();
-  if (!isGaunt) return null;
-  const reserves = typeof _gauntletReserves === 'function' ? _gauntletReserves(viewer) : [];
+  const reserves = isGaunt && typeof _gauntletReserves === 'function' ? (_gauntletReserves(viewer) || []) : [];
+  if (!party.length && !reserves.length) return null;
 
-  return h('div', { style: {
-    position: 'absolute', bottom: 12, right: 12,
-    display: 'flex', flexDirection: 'column', gap: 6, zIndex: 10,
-  }},
+  const n = party.length;
+  const size = n >= 7 ? 54 : (n >= 5 ? 60 : 68);
+  const forecast = (typeof getPendingDamagePreview === 'function') ? getPendingDamagePreview() : null;
 
-    (() => {
-      return h('div', { style: {
-        display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'flex-end',
-        background: EW.panel, border: '1px solid ' + EW.panelEdge, padding: '5px 8px',
-      }},
-        h('span', { style: {
-          fontFamily: '"IBM Plex Mono", monospace', fontSize: 7, color: EW.inkMute,
-          letterSpacing: '0.14em', marginRight: 2,
-        }}, 'RESERVES'),
-        reserves.length === 0 && h('span', { style: {
-          fontFamily: '"IBM Plex Mono", monospace', fontSize: 8, color: EW.inkDim,
-        }}, '—'),
-        reserves.map(r => {
-          const fc = getFactionColor(r);
-          const hpPct = r.maxHp > 0 ? (r.hp / r.maxHp) * 100 : 0;
-          return h('div', {
-            key: r.id,
-            title: (typeof unitDisplayName === 'function' ? unitDisplayName(r) : r.name) + ' · ' + Math.round(hpPct) + '% HP',
-            style: {
-              position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center',
-              gap: 2, padding: '2px', opacity: 0.85,
-              border: '1px solid ' + EW.panelEdge, background: 'rgba(0,0,0,0.3)',
-            },
-          },
-            h(UnitSprite, { unit: r, size: 20 }),
-            h('div', { style: { width: 22, height: 3, background: 'rgba(255,255,255,0.12)' }},
-              h('div', { style: {
-                width: hpPct + '%', height: '100%',
-                background: HP_ALLY_FILL, boxShadow: HP_ALLY_GLOW,
-              }}),
-            ),
-          );
-        }),
-      );
-    })(),
+  /* who's acting / spent / next — the same read as the scoreboard flanks */
+  const turn = {};
+  let nextId = null, _bestKey = Infinity, _bestSpd = -1;
+  for (const e of _scoreboardTurnData(st)) {
+    turn[e.id] = e;
+    if (e.active || e.finished || e.dead) continue;
+    const spd = e.unit.spd || 0;
+    if (e.sortKey < _bestKey || (e.sortKey === _bestKey && spd > _bestSpd)) {
+      _bestKey = e.sortKey; _bestSpd = spd; nextId = e.id;
+    }
+  }
+
+  return h('div', { className: 'ew-party-dock' },
+    /* one shared radial vignette for every portrait disc */
+    h('svg', { width: 0, height: 0, style: { position: 'absolute', width: 0, height: 0 }, 'aria-hidden': true },
+      h('defs', null,
+        h('radialGradient', { id: 'ewPpVig', cx: '50%', cy: '50%', r: '50%' },
+          h('stop', { offset: '0%', stopColor: '#08070f', stopOpacity: 0 }),
+          h('stop', { offset: '72%', stopColor: '#08070f', stopOpacity: 0.05 }),
+          h('stop', { offset: '100%', stopColor: '#08070f', stopOpacity: 0.75 }),
+        ),
+      ),
+    ),
+
+    isGaunt && h('div', { className: 'ew-party-reserves' },
+      h('span', { className: 'ew-party-reserves-lbl' }, 'RESERVES'),
+      reserves.length === 0 && h('span', { className: 'ew-party-reserves-none' }, '—'),
+      reserves.map(r => {
+        const hpPct = r.maxHp > 0 ? (r.hp / r.maxHp) * 100 : 0;
+        return h('div', {
+          key: r.id, className: 'ew-party-reserve',
+          title: (typeof unitDisplayName === 'function' ? unitDisplayName(r) : r.name) + ' · ' + Math.round(hpPct) + '% HP',
+        },
+          h(UnitSprite, { unit: r, size: 20 }),
+          h('div', { className: 'ew-party-reserve-bar' },
+            h('div', { style: { width: hpPct + '%', height: '100%', background: HP_ALLY_FILL, boxShadow: HP_ALLY_GLOW, borderRadius: 2 }}),
+          ),
+        );
+      }),
+    ),
+
+    party.length > 0 && h('div', { className: 'ew-party-row' },
+      party.map(u => {
+        const e = turn[u.id] || {};
+        return h(PartyPortrait, {
+          key: u.id, unit: u, size: size,
+          active: !!e.active, finished: !!e.finished, next: !!nextId && u.id === nextId,
+          possessed: u.player !== viewer,
+          forecast: forecast,
+        });
+      }),
+    ),
   );
 }
 
@@ -7721,13 +7899,14 @@ function hideSpellTooltip() {
 // (default handleBackAction) drives the header ‹ chip; the clock's crown
 // and ESC do the same thing.
 function FrameCorners() {
+  // rounded viewfinder brackets — the screen's four corners, softened
   const c = EW.panelEdgeHi;
-  const s = { position: 'absolute', width: 20, height: 20 };
+  const s = { position: 'absolute', width: 22, height: 22, opacity: 0.9 };
   return h(React.Fragment, null,
-    h('div', { style: { ...s, top: 6, left: 6, borderTop: '1px solid ' + c, borderLeft: '1px solid ' + c }}),
-    h('div', { style: { ...s, top: 6, right: 6, borderTop: '1px solid ' + c, borderRight: '1px solid ' + c }}),
-    h('div', { style: { ...s, bottom: 6, left: 6, borderBottom: '1px solid ' + c, borderLeft: '1px solid ' + c }}),
-    h('div', { style: { ...s, bottom: 6, right: 6, borderBottom: '1px solid ' + c, borderRight: '1px solid ' + c }}),
+    h('div', { style: { ...s, top: 6, left: 6, borderTop: '1px solid ' + c, borderLeft: '1px solid ' + c, borderTopLeftRadius: 11 }}),
+    h('div', { style: { ...s, top: 6, right: 6, borderTop: '1px solid ' + c, borderRight: '1px solid ' + c, borderTopRightRadius: 11 }}),
+    h('div', { style: { ...s, bottom: 6, left: 6, borderBottom: '1px solid ' + c, borderLeft: '1px solid ' + c, borderBottomLeftRadius: 11 }}),
+    h('div', { style: { ...s, bottom: 6, right: 6, borderBottom: '1px solid ' + c, borderRight: '1px solid ' + c, borderBottomRightRadius: 11 }}),
   );
 }
 
@@ -9344,6 +9523,182 @@ function _injectHudHideStyles() {
       bottom: calc(20px + 66px * var(--ew-ui-scale, 1)) !important;
       align-items: flex-end !important;
     }
+
+    /* ══════════ THE ROUNDING PASS (2026-09-12) ══════════
+       Retro-futuristic chrome: nothing on the HUD keeps a hard 90° corner
+       any more. Plates get soft radii and a bevelled rim (a bright top lip,
+       a dark bottom seam, a hard pixel drop), command rows become
+       asymmetric BLADES (tight left corner, capsule right end — the left
+       spine still carries the function colour), chips become pills, bars
+       become capsules. Every override lives HERE, after the rule it
+       softens, so each original block keeps its layout logic untouched.
+       Restraint on purpose: radii stay small, the plate still reads as a
+       console, not a bubble. */
+    /* the identity column */
+    .hrlg-side { border-radius: 16px 16px 12px 12px; }
+    .hrlg-side::before { border-radius: 15px 15px 0 0; }
+    .hrlg-side::after { border-radius: 0 15px 0 0; }
+    .hrlg-push { border-radius: 7px 15px 15px 7px; }
+    .hrlg-push.entropy { border-radius: 9px 19px 19px 9px; }
+    .hrlg-schip { border-radius: 999px; padding: 3px 7px; }
+    .hrlg-vbar { border-radius: 7px; }
+    /* the HP bar can't clip (the heartbeat trace escapes it) — the fill
+       wears the capsule itself */
+    .hrlg-vfill { border-radius: 7px; }
+    .hrlg-vspend { border-radius: 0 7px 7px 0; }
+    .hrlg-pip, .hrlg-cpip { border-radius: 2px; }
+    .hrlg-item-slot { border-radius: 13px; }
+    .hrlg-list::-webkit-scrollbar-thumb { border-radius: 3px; }
+    /* the command panels */
+    .hrlg-thead { border-radius: 8px 16px 8px 8px; overflow: hidden; }
+    .hrlg-mode { border-radius: 8px 16px 16px 8px; }
+    .hrlg-body { border-radius: 7px 15px 15px 7px; }
+    .hrlg-blade.trow .hrlg-body, .hrlg-blade.two .hrlg-body { border-radius: 9px 18px 18px 9px; }
+    .hrlg-panel.bg .hrlg-blade.active .hrlg-body { border-radius: 9px 20px 20px 9px; }
+    .hrlg-flash { border-radius: inherit; }
+    .hrlg-blade.sel::after { left: 10px; right: 16px; border-radius: 2px; }
+    .hrlg-tport { border-radius: 50%; }
+    .hrlg-tport.sprite { border-radius: 10px; }
+    .hrlg-thp { border-radius: 6px; overflow: hidden; }
+    .hrlg-chip, .hrlg-tag, .hrlg-note, .hrlg-check { border-radius: 999px; }
+    .hrlg-chip { padding: 1px 7px; }
+    .hrlg-tag { padding: 1px 6px; }
+    .hrlg-note { padding: 1px 6px; }
+    .hrlg-check { padding: 2px 8px; }
+    .hrlg-confirm { border-radius: 8px 19px 19px 8px; }
+    .hrlg-confirm-inline { border-radius: 999px; padding: 0 12px 0 9px; }
+    .hrlg-backchip { border-radius: 999px; padding: 0 12px 0 10px; }
+    .hrlg-blade.cfm .hrlg-body { padding-right: 116px; }
+    /* scoreboard · match meta · hints · modals */
+    .ew-score-plate {
+      border-radius: 10px 10px 18px 18px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), inset 0 -1px 0 rgba(0,0,0,0.6),
+                  0 3px 0 rgba(0,0,0,0.5), 0 8px 22px rgba(0,0,0,0.45);
+    }
+    .ew-meta-plate {
+      border-radius: 999px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), inset 0 -1px 0 rgba(0,0,0,0.55), 0 2px 0 rgba(0,0,0,0.5);
+    }
+    .ew-hints-bar { border-radius: 999px; padding: 4px 16px; }
+    .ew-keycap { border-radius: 5px; }
+    .ew-padbtn-shoulder, .ew-padbtn-stick, .ew-padbtn-sys, .ew-padbtn-dpad { border-radius: 7px; }
+    .ew-weather-tip { border-radius: 12px; padding: 9px 12px; }
+    .rhud-row, .rhud-back, .rhud-target { border-radius: 8px; }
+    .md-tactic-chip, .md-descend-btn { border-radius: 999px; }
+    .float-settings-panel { border-radius: 14px !important; }
+    #battleMinimap.md-scanner { border-radius: 12px !important; }
+    /* the 3D nameplates */
+    .unit-plate { border-radius: 7px !important; }
+    .p1 > .unit-plate::before, .p2 > .unit-plate::before { border-radius: 7px 0 0 7px !important; }
+    .plate-level { border-radius: 4px !important; }
+    .plate-types .type-badge { border-radius: 999px !important; }
+    .hp-bar, .mp-bar { border-radius: 5px !important; }
+    .hp-fill, .mp-fill { border-radius: 4px !important; }
+
+    /* ══════════ THE PARTY DOCK — bottom-right portrait row ══════════
+       (hud.js PartyRoster / PartyPortrait). Sized by --pp per portrait;
+       the whole dock scales with --ew-ui-scale like the Horologe rig and
+       sits above the bottom-centre spell description bar. */
+    .ew-party-dock {
+      position: absolute; right: 12px;
+      bottom: calc(14px + 66px * var(--ew-ui-scale, 1));
+      display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+      z-index: 12; pointer-events: none;
+      transform: scale(var(--ew-ui-scale, 1)); transform-origin: 100% 100%;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+    .ew-party-row { display: flex; align-items: flex-end; gap: 6px; pointer-events: none; }
+    .ew-pp {
+      position: relative; width: var(--pp); flex: none;
+      display: flex; flex-direction: column; align-items: center; gap: 1px;
+      cursor: pointer; pointer-events: auto;
+      transition: transform 0.22s cubic-bezier(0.22,1,0.36,1), opacity 0.3s ease, filter 0.3s ease;
+    }
+    .ew-pp:hover { transform: translateY(-3px); }
+    .ew-pp:active { transform: translateY(-1px) scale(0.97); }
+    .ew-pp-svg {
+      width: var(--pp); height: var(--pp); overflow: visible; display: block;
+      filter: drop-shadow(0 3px 5px rgba(0,0,0,0.75));
+      animation: ewPpIn 0.4s cubic-bezier(0.16,1.4,0.3,1) both;
+    }
+    @keyframes ewPpIn {
+      0%   { opacity: 0; transform: scale(0.55) rotate(-25deg); }
+      100% { opacity: 1; transform: scale(1) rotate(0); }
+    }
+    .ew-pp-track { fill: none; stroke: #0b0a12; }
+    .ew-pp-track.hp { stroke-width: 6; }
+    .ew-pp-track.mp { stroke-width: 4; }
+    /* the meters: one arc per fill, anchored at 12 o'clock, shrinking so
+       the spent track grows CLOCKWISE (both dasharray and rotation ease on
+       the same curve, which keeps the arc's end pinned at 12) */
+    .ew-pp-arc {
+      fill: none; stroke-linecap: butt;
+      transform-box: view-box; transform-origin: 50% 50%;
+      transition: stroke-dasharray 0.45s cubic-bezier(0.22,1,0.36,1),
+                  transform 0.45s cubic-bezier(0.22,1,0.36,1);
+    }
+    .ew-pp-arc.hp { stroke-width: 5; }
+    .ew-pp-arc.mp { stroke-width: 3.2; }
+    .ew-pp-arc.hp.fill { filter: drop-shadow(0 0 3px rgba(46,209,88,0.75)); }
+    .ew-pp-arc.mp.fill { filter: drop-shadow(0 0 3px rgba(47,157,255,0.75)); }
+    .ew-pp-arc.shield { opacity: 0.92; }
+    .ew-pp-arc.prev { animation: dmgPreviewBlink 0.85s ease-in-out infinite; }
+    .ew-pp-arc.prev.lethal { stroke: #ffd0d5 !important; }
+    .ew-pp-bezel { fill: #0d0b15; stroke: var(--pp-fc, #55506a); stroke-width: 1; opacity: 0.95; }
+    .ew-pp-disc { fill: #100e19; }
+    .ew-pp-img { opacity: 0.96; }
+    .ew-pp-vig { fill: url(#ewPpVig); pointer-events: none; }
+    .ew-pp-hit { fill: #fff; opacity: 0; pointer-events: none; }
+    .ew-pp-hit.go { animation: hrlgHitFlash 0.45s ease-out; }
+    /* the acting unit's halo: a slow-turning dashed ring outside the meters */
+    .ew-pp-halo {
+      fill: none; stroke: var(--pp-fc, #4fd8ff); stroke-width: 1.2; opacity: 0;
+      stroke-dasharray: 3 4; transform-box: view-box; transform-origin: 50% 50%;
+      transition: opacity 0.25s ease;
+    }
+    @keyframes ewPpHalo { 0% { transform: rotate(0); } 100% { transform: rotate(360deg); } }
+    .ew-pp.next .ew-pp-halo { opacity: 0.4; stroke-dasharray: 1 5; }
+    .ew-pp.active { transform: translateY(-4px) scale(1.08); z-index: 2; }
+    .ew-pp.active:hover { transform: translateY(-6px) scale(1.08); }
+    .ew-pp.active .ew-pp-halo { opacity: 0.95; animation: ewPpHalo 9s linear infinite; }
+    .ew-pp.active .ew-pp-svg {
+      filter: drop-shadow(0 3px 5px rgba(0,0,0,0.75)) drop-shadow(0 0 9px var(--pp-fc, #4fd8ff));
+    }
+    .ew-pp.spent { opacity: 0.55; filter: saturate(0.45); }
+    .ew-pp.spent:hover { opacity: 0.9; }
+    .ew-pp.dead { cursor: default; opacity: 0.5; filter: saturate(0.08) brightness(0.8); }
+    .ew-pp.dead:hover { transform: none; }
+    .ew-pp-skull { font-size: 30px; fill: #e8e4d8; paint-order: stroke; stroke: #000; stroke-width: 2px; pointer-events: none; }
+    .ew-pp.possessed .ew-pp-halo {
+      opacity: 0.9; stroke: #c9a5ff; stroke-dasharray: 2 2;
+      animation: ewPpHalo 4s linear infinite reverse;
+    }
+    .ew-pp-chain { font-size: 13px; fill: #c9a5ff; paint-order: stroke; stroke: #000; stroke-width: 2px; pointer-events: none; }
+    .ew-pp-tag {
+      display: flex; align-items: baseline; justify-content: center; gap: 4px;
+      max-width: calc(var(--pp) + 12px); line-height: 1; margin-top: 2px;
+    }
+    .ew-pp-roman { flex: none; font-family: 'Cormorant SC', serif; font-style: italic; font-size: 10px; color: var(--pp-fc, #4fd8ff); text-shadow: 0 1px 2px #000; }
+    .ew-pp-name {
+      min-width: 0; font-size: 8px; letter-spacing: 0.1em; color: #a8a295; text-transform: uppercase;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 2px #000;
+    }
+    .ew-pp.active .ew-pp-name { color: #fff; }
+    .ew-pp.dead .ew-pp-name { text-decoration: line-through; }
+    /* Gauntlet reserves — a small pill strip riding above the row */
+    .ew-party-reserves {
+      display: flex; align-items: center; gap: 5px; pointer-events: auto;
+      background: rgba(8,7,12,0.88); border: 1px solid #3a3548; border-radius: 999px;
+      padding: 4px 10px 4px 12px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 0 rgba(0,0,0,0.5);
+    }
+    .ew-party-reserves-lbl { font-size: 7px; color: #7a7490; letter-spacing: 0.14em; margin-right: 2px; }
+    .ew-party-reserves-none { font-size: 8px; color: #5e5875; }
+    .ew-party-reserve {
+      display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 2px; opacity: 0.85;
+      border: 1px solid #3a3548; border-radius: 8px; background: rgba(0,0,0,0.3);
+    }
+    .ew-party-reserve-bar { width: 22px; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.12); overflow: hidden; }
   `;
   document.head.appendChild(style);
   // CRT veil kill switch (console: window.EW_DISABLE_CRT = true, then re-enter battle)

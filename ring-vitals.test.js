@@ -23,7 +23,11 @@ test('reticle shader carries the ring-vitals uniforms and the meters branch', ()
         assert.ok(glsl.includes('uniform ' + (u.endsWith('Col') ? 'vec3 ' : 'float ') + u + ';'), 'uniform ' + u);
     }
     assert.ok(glsl.includes('if (uMeters > 0.5) {'), 'meters branch');
-    assert.ok(glsl.includes('fract((uMeterRot - ang) / 6.2832)'), 'clockwise-from-screen-top fraction');
+    // the meters DEPLETE CLOCKWISE: the fraction runs counter-clockwise
+    // from the screen's 12 o'clock so the fill ends at 12 and the spent
+    // track sweeps clockwise (2026-09-12 — matches the party-dock rings)
+    assert.ok(glsl.includes('fract((ang - uMeterRot) / 6.2832)'), 'counter-clockwise-from-screen-top fraction (deplete clockwise)');
+    assert.ok(!glsl.includes('fract((uMeterRot - ang) / 6.2832)'), 'the old fill-clockwise fraction is gone');
     /* every uniform the shader reads is declared on the material */
     const m = renderer.indexOf('function _makeTeamReticleMaterial(color, phase, hpColor)');
     assert.ok(m > 0, 'material factory takes the HP colour');

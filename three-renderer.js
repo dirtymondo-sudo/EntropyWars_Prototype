@@ -854,8 +854,9 @@ const ThreeRenderer = (function () {
            meters — HP on the ring's own radius, MP just inside it. uMeterRot
            is the plane-space angle of the SCREEN's 12 o'clock (fed per frame
            from the camera azimuth minus the facing yaw), so both meters
-           always fill clockwise from the top of the screen whatever the
-           unit faces or where the camera orbits. uPrev / uPrevHeal are the
+           always DEPLETE CLOCKWISE from the top of the screen whatever the
+           unit faces or where the camera orbits (the fill ends at 12, the
+           spent track sweeps clockwise from it). uPrev / uPrevHeal are the
            confirm-step forecast slices (fractions of max HP) that blink at
            the leading edge, same as the plate bar's .tp-dmg-preview. */
         'uniform float uMeters;',
@@ -883,8 +884,13 @@ const ThreeRenderer = (function () {
         '  float ang = atan(p.x, p.y);',          // 0 at the facing heading
         '  float pulse = 0.88 + 0.12 * sin(uTime * 2.2 + uPhase);',
         '  if (uMeters > 0.5) {',
-        /* clockwise fraction around the ring, 0 at the screen's 12 o'clock */
-        '    float frac = fract((uMeterRot - ang) / 6.2832);',
+        /* COUNTER-clockwise fraction around the ring, 0 at the screen's 12
+           o'clock: a meter at p fills [12 − p·360°, 12], so the SPENT track
+           grows CLOCKWISE from 12 as the value falls (a cooldown sweep) —
+           the same convention as the HUD's party-dock portrait rings
+           (hud.js PartyPortrait). Flipped 2026-09-12; it used to fill
+           clockwise from 12 (the empty part grew counter-clockwise). */
+        '    float frac = fract((ang - uMeterRot) / 6.2832);',
         /* HP meter on the reticle's own radius (0.42), MP meter inside it */
         '    float R = 0.42;',
         '    float rd = abs(d - R);',
