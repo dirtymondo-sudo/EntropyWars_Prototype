@@ -67,7 +67,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.3-2026-09-12-spell-routing'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.4-2026-09-12-prism-selfcast'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -1901,7 +1901,7 @@
 
             const target = findSpellTarget(unit, spell, v);
             const noTargetKinds = ['healAll', 'manaRestoreAll', 'barrage', 'warCry', 'encore', 'deployTurret', 'utility',
-                'escape', 'selfHeal', 'tuneFrequency', 'pulseLattice', 'transform'];
+                'escape', 'selfHeal', 'transform'];
             if (!target && !noTargetKinds.includes(spell.kind)) continue;
 
             let score = scoreSpell(unit, spell, target, v);
@@ -4052,6 +4052,10 @@
     function findSpellTarget(unit, spell, v) {
         const g = G();
         const kind = spell.kind;
+
+        // Lattice spells affect the player's network, but both executors
+        // still need a concrete self-cast target (including elevation).
+        if (kind === 'pulseLattice' || kind === 'tuneFrequency') return unit;
 
         if (['damage', 'ricochet', 'debuff', 'multiHit', 'lifeDrain', 'tackle'].includes(kind)) {
             const R = _effRange(unit, spell);
