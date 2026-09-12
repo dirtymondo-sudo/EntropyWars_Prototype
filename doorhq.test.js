@@ -1281,7 +1281,8 @@ test('one number, one place: the register is unique, every entry resolves, and i
     assert.strictEqual(D.hqDoorNo(stone), '56');
     assert.strictEqual(stone.roomNo, '56');
     const atl = HQ.rooms.bay_hollow.doors.find(d => d.action && d.action.mission === 'prebuilt_atlantis');   // Atlantis → Hollow (plan 7.5)
-    assert.strictEqual(atl.sub, 'DEEP OCEAN ORICHALCUM RESEARCH', "a threshold's sub replaces the bay sub-line");
+    assert.strictEqual(atl.sub, 'BATTLE SITE', 'a threshold door plate reads its game function (2026-09-12: no second title)');
+    assert.ok(!HQ.thresholds.prebuilt_atlantis.sub, 'Atlantis wears one name');
     /* the Canon Office's plate is a joke and a policy */
     assert.ok(/CONTESTED/.test(D.hqRoomNo('continuity')));
 });
@@ -1459,6 +1460,9 @@ test('every built site is a launch map with a threshold and generates a box room
         /* the way on: the CROSSING console at the tanker desk */
         const cc = room.counters.find(c => c.id === 'crossing');
         assert.ok(cc && cc.action.overlay === 'crossing' && cc.site === id && cc.radius > 0 && cc.verb === 'CROSS', id + ': the crossing console');
+        /* THE BATTLE MARKER (2026-09-12): a beacon at the board centre, the same crossing terminal */
+        const bm = room.counters.find(c => c.id === 'battle');
+        assert.ok(bm && bm.proc === 'battle_marker' && bm.x === 0 && bm.z === 0 && bm.action.overlay === 'crossing' && bm.site === id && bm.verb === 'BATTLE' && bm.label === 'BATTLE', id + ': the battle marker');
         assert.strictEqual(D.hqDoorNo(cc), th.roomNo, 'the console\'s plate wears the site\'s number');
         const desk = room.props.find(p => p.key === 'tanker_desk');
         const cWall = (HQ.siteRooms.shells[id] && HQ.siteRooms.shells[id].console && HQ.siteRooms.shells[id].console.wall) || 'w';

@@ -4301,3 +4301,47 @@ a console switch (`EW_HQ_AVATAR`), becomes a chair in a room.
   `20260911-room1287-barbershop-01-cors`. `doorhq.test.js`, this log,
   DOOR_MASTER Part D and CLAUDE.md are repository-only. Nothing committed
   or pushed.
+
+### 2026-09-12 — THE PLATES SAY WHAT THE ROOM DOES + THE BATTLE MARKER (user request)
+The user: too many rooms wore two names and neither said what the room
+does ("RECEPTION · INTAKE / HUMAN RESOURCES"). Every plate in the building
+now reads **ROOM № · ONE NAME · THE GAME FUNCTION** — the number from the
+register as before, the name kept (Reception, the Cafeterium, Occam's
+Barbershop…), the sub-line replaced by what pressing E gets you:
+- Hall doors: RECEPTION → VIEW PROFILE · QUARTERMASTER → SHOP · RECORDS →
+  CODEX · MEDICAL → CHALLENGE MODE · ARCANE ENGINEERING → MAP EDITOR ·
+  TRAINING ROOM → PRACTICE · GAUNTLET · DUNGEON · THE CLOCK ROOM → DAILY
+  TASKS · LOGIN STREAK · OCCAM'S BARBERSHOP → CHANGE AVATAR · THE
+  CAFETERIUM → LEADERBOARD · SHOP · THE OBSERVATORIUM → MAP SELECT ·
+  REPLAY · YOUR OFFICE → STORY · CASE FILE · ELEVATOR → EXECUTIVE FLOORS ·
+  KEYHOLDER RANK · BUREAU OF CONTINUITY → STORY CANON · GATEKEEPER RANK ·
+  every bay → BATTLE MAPS. Counters: DISPATCH → QUICK PLAY · ONLINE MATCH,
+  BUILDING DIRECTORY → ROOM LIST · FAST TRAVEL.
+- Inside the rooms the same rule (THE CHAIR → CHANGE AVATAR, MIRROR →
+  VIEW PROFILE, FORM 365 → DAILY TASKS, PUNCH CLOCK → LOGIN STREAK, CODE
+  RED → TODAY'S BONUS BATTLE, THE STAR CHART → MAP SELECT, THE PROJECTOR →
+  REPLAY LAST BATTLE, RANGE CONSOLE → PRACTICE BATTLE, CHALLENGE RANGE →
+  GAUNTLET, CONDEMNED CROSSING → MYSTERY DUNGEON, IN-TRAY → STORY · READ
+  THE CASE FILE, NOTICE BOARD → LEADERBOARD · DAILY TASKS, THE TILL / THE
+  BAR → SHOP). Every way-back door → BACK TO THE MAIN HALL / BACK TO THE
+  BAY; ring cap doors → NEXT BAY · CLOCKWISE; ring threshold doors →
+  BATTLE SITE (Atlantis lost its second title — `thresholds[id].sub` still
+  overrides, none uses it); the site room's own line → BATTLE SITE · BAY n;
+  the console → BATTLE SETUP (map.js `_hqCrossingHtml` matches). Room
+  sub-lines (the strip, the room sign) follow the same wording.
+- **THE BATTLE MARKER**: every playable site room has a glowing beacon at
+  its board centre — data.js `hqSiteRoom` adds counter `battle` (`x: 0,
+  z: 0`, `proc: 'battle_marker'`, `verb: 'BATTLE'`, `overlay: 'crossing'`,
+  plate ROOM № · BATTLE · <SITE>); three-renderer.js `_hqBuildCounters`
+  builds it via `_hqBuildBattleMarker` (amber floor ring + cyan outer ring
+  + a light column + a spinning, bobbing octahedron with a glow sprite, all
+  on the centre cell's own top via `_hqSiteCellAt`; `_hqTickWorld` turns
+  it, `_hq.fxPulse` breathes it). E opens the SAME crossing terminal the
+  console does (`_hqConsoleTerminal` — no CRT within reach, so no camera
+  push) and post-match returns you to the marker. The console stays.
+- doorhq.test.js: the Atlantis pin → BATTLE SITE, plus the marker per site.
+- **Delivery (RULE #1 / #1b).** `data.js` + `three-renderer.js` + `map.js`
+  to R2, `index.html` to Render, token `20260912-hq-plates-battle-01-cors`.
+  `doorhq.test.js`, this log, DOOR_MASTER Part D and CLAUDE.md are
+  repository-only. Nothing committed or pushed. Not browser-playtested
+  (RULE #1c) — the marker's look is worth one screenshot.

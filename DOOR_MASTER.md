@@ -2086,3 +2086,16 @@ is the chart. The astronomer's, the usher's and the overheard lines are
 Claude placeholders (A15 — rewrite at will). Story track still ON HOLD
 (A14). Files: data.js, three-renderer.js, map.js, styles-base.css,
 index.html (`20260911-room360-observatorium-01-cors`), doorhq.test.js.
+
+### 2026-09-12 — The plates say what the room does; the BATTLE marker
+User request. Every HQ plate now reads ROOM № · one name · the game
+function (RECEPTION → VIEW PROFILE, QUARTERMASTER → SHOP, RECORDS → CODEX,
+bays → BATTLE MAPS, ring thresholds → BATTLE SITE, way-back doors → BACK
+TO THE MAIN HALL…); the second titles (INTAKE / HUMAN RESOURCES, SUPPORT
+SERVICES, ORTHOGONAL GEOMETRY EXPOSURE AREA, Atlantis's DEEP OCEAN
+ORICHALCUM RESEARCH) are gone from the plates. Lore lines (`desc`, the
+cast's lines, the guards) are untouched. Every playable site room wears a
+glowing BATTLE beacon at its board centre (counter `battle`) that opens
+the crossing terminal. Files: data.js, three-renderer.js, map.js,
+index.html (`20260912-hq-plates-battle-01-cors`), doorhq.test.js. Full
+entry: DOOR_HQ_BUILD_PLAN.md §9.

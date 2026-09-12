@@ -1446,7 +1446,7 @@
             const id = c.site || (room && room.site);
             if (!id) return `<div class="hq-panel-hd"><b>${_hqEsc(c.label || 'CROSSING CONSOLE')}</b><span>NO SITE ON FILE</span></div><div class="hq-panel-actions"><button class="hq-btn" data-close="1">NOTED</button></div>`;
             const th = (DOOR_HQ.thresholds || {})[id] || {};
-            const door = { id: c.id || 'crossing', label: (c.label || 'CROSSING CONSOLE'), sub: (room && room.label ? room.label + ' · ' : '') + 'THE WAY ON', action: { mission: id },
+            const door = { id: c.id || 'crossing', label: (c.label || 'CROSSING CONSOLE'), sub: 'BATTLE SETUP' + (room && room.label ? ' · ' + room.label : ''), action: { mission: id },
                            note: th.note || '', why: th.why || '', roomNo: (th.roomNo != null) ? String(th.roomNo) : null };
             const st = (typeof window.doorSiteState === 'function') ? window.doorSiteState(door, _hqProfile()) : 'unstable';
             let html = _hqThresholdPanelHtml({ kind: 'door', id: door.id, label: door.label, sub: door.sub, door: door }, st);

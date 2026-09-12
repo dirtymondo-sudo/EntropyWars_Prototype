@@ -17125,7 +17125,7 @@ const DOOR_HQ = {
        number on the plate over the door — one number, one place, never
        shared (doorhq.test.js), alphanumerics allowed (i, 2D, 90S, H-20) —
        and `why` is the one-clause hook the panel prints beside it. A
-       threshold's `sub` replaces the bay's THRESHOLD · SECTOR sub-line.
+       threshold's `sub` replaces the door's BATTLE SITE sub-line (2026-09-12: none does — one name per site).
        `hqRoomNo(mapId)` reads it (Δ suffix stripped); `hqRoomRegister()`
        lists every numbered place in the building, sorted for a directory. */
     thresholds: {
@@ -17143,7 +17143,7 @@ const DOOR_HQ = {
         prebuilt_gobekli:       { roomNo: '9600', leaf: 'leaf_frame_only',     why: '9600 BC', note: 'the oldest doorway on file; no leaf was ever made' },
         prebuilt_camelot:       { roomNo: 'i', leaf: 'leaf_portcullis',     wide: true, why: 'the imaginary kingdom (√−1)', note: 'the portcullis; HINGE technology, no privileged side' },
         prebuilt_technoticlan:  { roomNo: '2012', leaf: 'leaf_portcullis',     wide: true, why: 'the calendar', note: 'the temple gate, iron over obsidian' },
-        prebuilt_atlantis:      { roomNo: 'H-20', sub: 'DEEP OCEAN ORICHALCUM RESEARCH', leaf: 'leaf_bulkhead',       wide: true, why: 'the formula, as filed', note: 'the wet submarine bulkhead; it drips on this side too' },
+        prebuilt_atlantis:      { roomNo: 'H-20', leaf: 'leaf_bulkhead',       wide: true, why: 'the formula, as filed', note: 'the wet submarine bulkhead; it drips on this side too' },
         prebuilt_shasta:        { roomNo: '14179', leaf: 'leaf_closet',         why: 'the summit, in feet', note: 'a cabin door with a mountain behind it' },
         prebuilt_hollow_earth:  { roomNo: '180', leaf: 'leaf_frame_only',     why: 'the floor on the far side is the ceiling', note: 'a frame; the floor on the far side is the ceiling' },
         prebuilt_agartha:       { roomNo: '88', leaf: 'leaf_vault',          wide: true, why: '∞ stacked on ∞ — the world inside the world', note: 'the inner gate; polished by a very long queue' },
@@ -18206,7 +18206,7 @@ const DOOR_HQ = {
     rooms: {
         central_egress: {
             label: 'CENTRAL EGRESS',
-            sub: 'OPERATIONS RING',
+            sub: 'THE MAIN HALL',
             kind: 'rotunda',
             shell: {
                 radius: 21,            // ground-floor drum (inner face of the lower wall)
@@ -18240,37 +18240,37 @@ const DOOR_HQ = {
                Bay 1, not a floor). */
             doors: [
                 /* ── ground ring (operations) ── */
-                { id: 'bay_celestial',  deg: 0,   level: 0, leaf: 'leaf_bulkhead',     wide: true,  label: 'BAY 4 · CELESTIAL',      sub: 'CONTAINMENT BAY',            action: { sector: 'celestial' } },
+                { id: 'bay_celestial',  deg: 0,   level: 0, leaf: 'leaf_bulkhead',     wide: true,  label: 'BAY 4 · CELESTIAL',      sub: 'BATTLE MAPS',            action: { sector: 'celestial' } },
                 /* ROOM 86 (2026-09-11, plan 7.4): the one free stretch of the ground
                    ring, between the east stair's top and the Quartermaster (plan 7.5
                    measured it for a bay and gave the bay to the mezzanine instead);
                    5.5 m of wall to the vault door, 2.9 needed. The saloon leaf swings
                    both ways. After hours the plate reads MÖBIUS STRIP CLUB — same
                    room, same number (DOOR_HQ.rooms.cafeteria.variants). */
-                { id: 'cafeteria',      deg: 75,  level: 0, leaf: 'leaf_saloon',                    label: 'THE CAFETERIUM',          sub: 'SUPPORT SERVICES · ON BREAK', action: { room: 'cafeteria', at: 'egress' }, desc: 'Room 86. The menu is out of it. The clocks disagree, the chairs are signed out, and the vending machine that was on the other side yesterday is on this side today. Doors swing both ways; nobody has decided which.' },
-                { id: 'quartermaster',  deg: 90,  level: 0, leaf: 'leaf_vault',        wide: true,  label: 'QUARTERMASTER',           sub: 'CUSTOMS & ADMISSIONS',       action: { fn: '_goToShop' },        desc: 'Declassification and asset reassignment. The Shop, and the manifests locker.', alt: { label: 'PARTY BUILDER', fn: '_goToTeamBuilder' } },
+                { id: 'cafeteria',      deg: 75,  level: 0, leaf: 'leaf_saloon',                    label: 'THE CAFETERIUM',          sub: 'LEADERBOARD · SHOP', action: { room: 'cafeteria', at: 'egress' }, desc: 'Room 86. The menu is out of it. The clocks disagree, the chairs are signed out, and the vending machine that was on the other side yesterday is on this side today. Doors swing both ways; nobody has decided which.' },
+                { id: 'quartermaster',  deg: 90,  level: 0, leaf: 'leaf_vault',        wide: true,  label: 'QUARTERMASTER',           sub: 'SHOP',       action: { fn: '_goToShop' },        desc: 'Declassification and asset reassignment. The Shop, and the manifests locker.', alt: { label: 'PARTY BUILDER', fn: '_goToTeamBuilder' } },
                 /* ROOM 1287 (2026-09-11, plan 7.4): OCCAM'S BARBERSHOP between the
                    Quartermaster and Reception — 15° each way (5.5 m of wall at
                    r 21; 2.9 and 2.5 needed, 2 m of pier is the rule). A glass
                    shop door; the pole hangs in the hall beside it (111°). The
                    vending machine moved from 105° to 98° to make the doorway. */
-                { id: 'barbershop',     deg: 105, level: 0, leaf: 'leaf_glass',                     label: 'OCCAM’S BARBERSHOP',      sub: 'SUPPORT SERVICES · THE SIMPLEST CUT', action: { room: 'barbershop', at: 'egress' },
+                { id: 'barbershop',     deg: 105, level: 0, leaf: 'leaf_glass',                     label: 'OCCAM’S BARBERSHOP',      sub: 'CHANGE AVATAR', action: { room: 'barbershop', at: 'egress' },
                   desc: 'Room 1287. Change your appearance: sit, and walk out as the recruit, your most-played vessel, an agent in black, or anything the Department has declassified. The mirror is Reception’s — the photo on your card follows the chair. Two explanations for how you look; he only does the shorter one.' },
-                { id: 'reception',      deg: 120, level: 0, leaf: 'leaf_glass',                     label: 'RECEPTION · INTAKE',      sub: 'HUMAN RESOURCES',            action: { fn: '_mountReactProfile' }, roomNo: '1', why: 'one foot in the door; forms start at 1', desc: 'Employee ID cards, laminator, LOST CARD FEE. Your profile lives here.' },
-                { id: 'office',         deg: 150, level: 0, leaf: 'leaf_closet_warped',             label: 'YOUR OFFICE',             sub: 'JANITORIAL (CONVERTED)',     action: { room: 'office', at: 'egress' }, desc: 'A converted janitor’s closet. Cot, mop bucket, CRT, phone, drain. The in-tray is where the story arrives.', rankDoor: true },
-                { id: 'training',       deg: 180, level: 0, leaf: 'leaf_exit',                      label: 'TRAINING FACILITY',       sub: 'DOWNSTAIRS · ORIENTATION',   action: { room: 'training', at: 'egress' }, desc: 'Room 64. The only authorized square room in the building — an 8×8 grid, deemed totally safe, notoriously leaky. ORTHOGONAL GEOMETRY EXPOSURE AREA · MAX OCCUPANCY 45 MINUTES.' },
-                { id: 'medical',        deg: 210, level: 0, leaf: 'leaf_hospital',                  label: 'MEDICAL',                 sub: 'SUPPORT SERVICES',           action: { fn: '_goToCampaign' },    roomNo: '1111', why: 'the number you dial', desc: 'Where EXITED operatives are processed. Revives, retries, the Challenge services desk.' },
-                { id: 'clockroom',      deg: 225, level: 0, leaf: 'leaf_frosted',        wide: true,  label: 'THE CLOCK ROOM',          sub: 'SUPPORT SERVICES · FORM 365', action: { room: 'clockroom', at: 'egress' },
+                { id: 'reception',      deg: 120, level: 0, leaf: 'leaf_glass',                     label: 'RECEPTION',               sub: 'VIEW PROFILE',            action: { fn: '_mountReactProfile' }, roomNo: '1', why: 'one foot in the door; forms start at 1', desc: 'Employee ID cards, laminator, LOST CARD FEE. Your profile lives here.' },
+                { id: 'office',         deg: 150, level: 0, leaf: 'leaf_closet_warped',             label: 'YOUR OFFICE',             sub: 'STORY · CASE FILE',          action: { room: 'office', at: 'egress' }, desc: 'A converted janitor’s closet. Cot, mop bucket, CRT, phone, drain. The in-tray is where the story arrives.', rankDoor: true },
+                { id: 'training',       deg: 180, level: 0, leaf: 'leaf_exit',                      label: 'TRAINING ROOM',           sub: 'PRACTICE · GAUNTLET · DUNGEON',   action: { room: 'training', at: 'egress' }, desc: 'Room 64. The only authorized square room in the building — an 8×8 grid, deemed totally safe, notoriously leaky. ORTHOGONAL GEOMETRY EXPOSURE AREA · MAX OCCUPANCY 45 MINUTES.' },
+                { id: 'medical',        deg: 210, level: 0, leaf: 'leaf_hospital',                  label: 'MEDICAL',                 sub: 'CHALLENGE MODE',           action: { fn: '_goToCampaign' },    roomNo: '1111', why: 'the number you dial', desc: 'Where EXITED operatives are processed. Revives, retries, the Challenge services desk.' },
+                { id: 'clockroom',      deg: 225, level: 0, leaf: 'leaf_frosted',        wide: true,  label: 'THE CLOCK ROOM',          sub: 'DAILY TASKS · LOGIN STREAK', action: { room: 'clockroom', at: 'egress' },
                   desc: 'Daily Office Operations Requirements. Three lines a day, the punch clock, and every clock in the room — none of them agree, all of them are right somewhere.' },
-                { id: 'records',        deg: 240, level: 0, leaf: 'leaf_wired_double', wide: true,  label: 'RECORDS',                 sub: 'ARCHIVES · ENTITY REGISTRY', action: { fn: '_goToCodex' },       roomNo: '42', why: 'the room with the answer; it only keeps the file', desc: '“We only keep the file.” Entity dossiers, unfiled sites. The tape library went upstairs with the projector — Room 360, directly overhead.', alt: { label: 'THE TAPE LIBRARY ▸ ROOM 360 (UPSTAIRS)', room: 'observatorium', at: 'projector' }, alt2: { label: 'UNFILED SITES (COMMUNITY MAPS)', fn: '_mountCommunityMaps' } },
-                { id: 'bay_terrestrial',deg: 270, level: 0, leaf: 'leaf_suburban_house',            label: 'BAY 1 · TERRESTRIAL',    sub: 'CONTAINMENT BAY',            action: { sector: 'terrestrial' } },
+                { id: 'records',        deg: 240, level: 0, leaf: 'leaf_wired_double', wide: true,  label: 'RECORDS',                 sub: 'CODEX', action: { fn: '_goToCodex' },       roomNo: '42', why: 'the room with the answer; it only keeps the file', desc: '“We only keep the file.” Entity dossiers, unfiled sites. The tape library went upstairs with the projector — Room 360, directly overhead.', alt: { label: 'THE TAPE LIBRARY ▸ ROOM 360 (UPSTAIRS)', room: 'observatorium', at: 'projector' }, alt2: { label: 'UNFILED SITES (COMMUNITY MAPS)', fn: '_mountCommunityMaps' } },
+                { id: 'bay_terrestrial',deg: 270, level: 0, leaf: 'leaf_suburban_house',            label: 'BAY 1 · TERRESTRIAL',    sub: 'BATTLE MAPS',            action: { sector: 'terrestrial' } },
                 /* ── mezzanine (support / executive access) ── */
-                { id: 'elevator',       deg: 0,   level: 1, leaf: null, proc: 'elevator',          label: 'ELEVATOR',                sub: 'EXECUTIVE RING',             action: { room: 'executive' },      minClearance: 4, requiresKeys: 12, floors: ['B', 'G', 'M', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '14', 'PH'], desc: 'Director offices. KEYHOLDER clearance and above; the car does not move without Keys.' },
-                { id: 'bay_ancient',    deg: 45,  level: 1, leaf: 'leaf_portcullis',   wide: true,  label: 'BAY 2 · ANCIENT',         sub: 'CONTAINMENT BAY',            action: { sector: 'ancient' } },
-                { id: 'engineering',    deg: 90,  level: 1, leaf: 'leaf_glass_exec',                label: 'ARCANE ENGINEERING',      sub: 'CARTOGRAPHY · RESEARCH',     action: { fn: '_goToMapEditor' },   desc: 'Research offices. The Map Editor, the Spell Library, and the fourth door that wasn’t there yesterday.' },
-                { id: 'bay_diplomatic', deg: 150, level: 1, leaf: 'leaf_revolving',    wide: true,  label: 'BAY 5 · DIPLOMATIC',      sub: 'CONTAINMENT BAY',            action: { sector: 'diplomatic' } },
-                { id: 'bay_urban',      deg: 180, level: 1, leaf: 'leaf_glass',                     label: 'BAY 7 · URBAN',           sub: 'CONTAINMENT BAY',            action: { sector: 'urban' } },
-                { id: 'bay_hollow',     deg: 210, level: 1, leaf: 'leaf_wired_double', wide: true,  label: 'BAY 3 · HOLLOW',          sub: 'CONTAINMENT BAY',            action: { sector: 'hollow' } },
+                { id: 'elevator',       deg: 0,   level: 1, leaf: null, proc: 'elevator',          label: 'ELEVATOR',                sub: 'EXECUTIVE FLOORS · KEYHOLDER RANK',             action: { room: 'executive' },      minClearance: 4, requiresKeys: 12, floors: ['B', 'G', 'M', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '14', 'PH'], desc: 'Director offices. KEYHOLDER clearance and above; the car does not move without Keys.' },
+                { id: 'bay_ancient',    deg: 45,  level: 1, leaf: 'leaf_portcullis',   wide: true,  label: 'BAY 2 · ANCIENT',         sub: 'BATTLE MAPS',            action: { sector: 'ancient' } },
+                { id: 'engineering',    deg: 90,  level: 1, leaf: 'leaf_glass_exec',                label: 'ARCANE ENGINEERING',      sub: 'MAP EDITOR',     action: { fn: '_goToMapEditor' },   desc: 'Research offices. The Map Editor, the Spell Library, and the fourth door that wasn’t there yesterday.' },
+                { id: 'bay_diplomatic', deg: 150, level: 1, leaf: 'leaf_revolving',    wide: true,  label: 'BAY 5 · DIPLOMATIC',      sub: 'BATTLE MAPS',            action: { sector: 'diplomatic' } },
+                { id: 'bay_urban',      deg: 180, level: 1, leaf: 'leaf_glass',                     label: 'BAY 7 · URBAN',           sub: 'BATTLE MAPS',            action: { sector: 'urban' } },
+                { id: 'bay_hollow',     deg: 210, level: 1, leaf: 'leaf_wired_double', wide: true,  label: 'BAY 3 · HOLLOW',          sub: 'BATTLE MAPS',            action: { sector: 'hollow' } },
                 /* ROOM 360 (2026-09-11, plan 7.4): THE OBSERVATORIUM on the
                    mezzanine at 240°, directly above Records — between Bay 3
                    (210°) and Bay 6 (270°): 30° each way is 12.6 m of the upper
@@ -18278,16 +18278,16 @@ const DOOR_HQ = {
                    that stood at 240° moved to 232°. A holographic door (the
                    Cyberpunk tenement wears the same; leaves are not exclusive
                    below rank). */
-                { id: 'observatorium',  deg: 240, level: 1, leaf: 'leaf_holographic',              label: 'THE OBSERVATORIUM',       sub: 'MEZZANINE · THE SKY ON FILE', action: { room: 'observatorium', at: 'egress' },
+                { id: 'observatorium',  deg: 240, level: 1, leaf: 'leaf_holographic',              label: 'THE OBSERVATORIUM',       sub: 'MAP SELECT · REPLAY',        action: { room: 'observatorium', at: 'egress' },
                   desc: 'Room 360. The whole sky from one chair: every threshold in the building is a star on the ceiling — point at one on the chart and its door opens from here. The tape library came upstairs with the projector. The dome is painted; the telescope is pointed at the paint.' },
-                { id: 'bay_quarantined',deg: 270, level: 1, leaf: 'leaf_cell',                      label: 'BAY 6 · QUARANTINED',     sub: 'CONTAINMENT BAY',            action: { sector: 'quarantined' } },
-                { id: 'continuity',     deg: 315, level: 1, leaf: 'leaf_suburban_house',            label: 'BUREAU OF CONTINUITY',    sub: 'THE CANON OFFICE',           action: { room: 'continuity' },     minClearance: 5, requiresKeys: 24, roomNo: '№ — CONTESTED', why: 'a joke, and a policy', desc: 'Canon notices. The motto plaque. The only department that suspects the schedule. GATEKEEPER clearance and two dozen Keys.' },
+                { id: 'bay_quarantined',deg: 270, level: 1, leaf: 'leaf_cell',                      label: 'BAY 6 · QUARANTINED',     sub: 'BATTLE MAPS',            action: { sector: 'quarantined' } },
+                { id: 'continuity',     deg: 315, level: 1, leaf: 'leaf_suburban_house',            label: 'BUREAU OF CONTINUITY',    sub: 'STORY CANON · GATEKEEPER RANK',           action: { room: 'continuity' },     minClearance: 5, requiresKeys: 24, roomNo: '№ — CONTESTED', why: 'a joke, and a policy', desc: 'Canon notices. The motto plaque. The only department that suspects the schedule. GATEKEEPER clearance and two dozen Keys.' },
             ],
             /* walk-up interactions that are not doors */
             counters: [
-                { id: 'dispatch',  deg: 180, r: 6.9,  level: 0, label: 'DISPATCH',               sub: 'BELL CONSOLE',          action: { overlay: 'dispatch' }, radius: 2.4 },
+                { id: 'dispatch',  deg: 180, r: 6.9,  level: 0, label: 'DISPATCH',               sub: 'QUICK PLAY · ONLINE MATCH',          action: { overlay: 'dispatch' }, radius: 2.4 },
                 { id: 'board',     deg: 288, r: 20.1, level: 0, label: 'EMPLOYEE OF THE MONTH',  sub: 'LEADERBOARD',           action: { fn: '_mountLeaderboard' }, radius: 2.2, proc: 'board' },
-                { id: 'directory', deg: 165, r: 19.6, level: 0, label: 'BUILDING DIRECTORY',     sub: 'YOU ARE HERE',          action: { overlay: 'directory' }, radius: 1.8, proc: 'directory' },
+                { id: 'directory', deg: 165, r: 19.6, level: 0, label: 'BUILDING DIRECTORY',     sub: 'ROOM LIST · FAST TRAVEL',          action: { overlay: 'directory' }, radius: 1.8, proc: 'directory' },
             ],
             /* the dressing — catalogue key + polar spot; `rot` = extra yaw
                (deg, clockwise) on top of facing the hall centre; `wall`
@@ -18494,7 +18494,7 @@ const DOOR_HQ = {
            (`rankDoor`) — it is the same door from both sides. */
         office: {
             label: 'YOUR OFFICE',
-            sub: 'JANITORIAL (CONVERTED)',
+            sub: 'STORY · CASE FILE',
             roomNo: '101', why: 'the room holds your worst fear; yours is a closet',
             kind: 'box',
             shell: {
@@ -18507,12 +18507,12 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: -0.5, leaf: 'leaf_closet_warped', rankDoor: true,
-                  label: 'CENTRAL EGRESS', sub: 'OPERATIONS RING · THE WAY BACK',
+                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
                   action: { room: 'central_egress', at: 'office' },
                   desc: 'Your door. It is the only thing in this room that is issued by rank.' },
             ],
             counters: [
-                { id: 'intray', x: 1.65, z: -1.55, label: 'IN-TRAY', sub: 'CASE FILE · YOUR DESK', action: { overlay: 'intray' }, radius: 1.5, verb: 'READ' },
+                { id: 'intray', x: 1.65, z: -1.55, label: 'IN-TRAY', sub: 'STORY · READ THE CASE FILE', action: { overlay: 'intray' }, radius: 1.5, verb: 'READ' },
             ],
             props: [
                 /* the north wall, left to right: hooks + tools, the sink under its shelves, the breaker panel, the desk, the vent */
@@ -18591,7 +18591,7 @@ const DOOR_HQ = {
            will); the cast's own lines are the user's. */
         cafeteria: {
             label: 'THE CAFETERIUM',
-            sub: 'SUPPORT SERVICES · ON BREAK',
+            sub: 'LEADERBOARD · SHOP',
             roomNo: '86', why: '86’d — the menu is always out of it',
             kind: 'box',
             shell: {
@@ -18604,7 +18604,7 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 1.2, leaf: 'leaf_saloon',
-                  label: 'CENTRAL EGRESS', sub: 'OPERATIONS RING · THE WAY BACK',
+                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
                   action: { room: 'central_egress', at: 'cafeteria' },
                   desc: 'The way back to the hall. The doors swing both ways, which Facilities calls a feature and Continuity calls a position.' },
             ],
@@ -18612,10 +18612,10 @@ const DOOR_HQ = {
                 /* the notice board on the south wall → EMPLOYEE OF THE MONTH (the
                    leaderboard) until the Clock Room's FORM 365 exists (plan 7.9) */
                 { id: 'notice', x: -2.0, z: 3.9, face: 0, plateY: 2.05, radius: 1.9, verb: 'READ',
-                  label: 'NOTICE BOARD', sub: 'EMPLOYEE OF THE MONTH · FORM 365 IS IN ROOM 247', action: { fn: '_mountLeaderboard' } },
+                  label: 'NOTICE BOARD', sub: 'LEADERBOARD · DAILY TASKS', action: { fn: '_mountLeaderboard' } },
                 /* the till at the end of the line → the Quartermaster's satellite counter */
                 { id: 'till', x: 1.95, z: -2.65, face: 180, plateY: 1.9, radius: 1.8, verb: 'PAY',
-                  label: 'THE TILL', sub: 'QUARTERMASTER · SATELLITE COUNTER', action: { fn: '_goToShop' } },
+                  label: 'THE TILL', sub: 'SHOP', action: { fn: '_goToShop' } },
             ],
             props: [
                 /* ── the north wall: THE SERVING LINE, west to east ── */
@@ -18724,9 +18724,9 @@ const DOOR_HQ = {
                 after_hours: {
                     when: { hours: [22, 5], p: 0.2 },
                     label: 'MÖBIUS STRIP CLUB',
-                    sub: 'AFTER HOURS · ONE SIDE · NO COVER',
+                    sub: 'AFTER HOURS · LEADERBOARD · SHOP',
                     why: '86’d by day; after hours the bar has one side, and nobody comments',
-                    door: { label: 'MÖBIUS STRIP CLUB', sub: 'AFTER HOURS · SAME ROOM', desc: 'Room 86, after hours. The bar is a Möbius strip: one side, one edge, no last call. Nobody comments. Nobody has ever commented.' },
+                    door: { label: 'MÖBIUS STRIP CLUB', sub: 'AFTER HOURS · LEADERBOARD · SHOP', desc: 'Room 86, after hours. The bar is a Möbius strip: one side, one edge, no last call. Nobody comments. Nobody has ever commented.' },
                     shell: { mood: { light: 0xff4f9a } },
                     drop: ['tanker_desk', 'reception_wedge', 'cash_register', 'meal_tray', 'meal_tray_empty', 'observation_window',
                            'conference_table', 'cafeteria_chair', 'molded_chair', 'papers_a', 'clipboard_flat', 'wet_floor_sign', 'rug_office',
@@ -18753,9 +18753,9 @@ const DOOR_HQ = {
                     ],
                     counters: [
                         { id: 'notice', x: -2.0, z: 3.9, face: 0, plateY: 2.05, radius: 1.9, verb: 'READ',
-                          label: 'NOTICE BOARD', sub: 'EMPLOYEE OF THE MONTH · FORM 365 IS IN ROOM 247', action: { fn: '_mountLeaderboard' } },
+                          label: 'NOTICE BOARD', sub: 'LEADERBOARD · DAILY TASKS', action: { fn: '_mountLeaderboard' } },
                         { id: 'bar', x: 0, z: 2.1, face: 0, plateY: 1.45, radius: 2.2, verb: 'ORDER',
-                          label: 'THE BAR', sub: 'QUARTERMASTER · ONE SIDE ONLY', action: { fn: '_goToShop' } },
+                          label: 'THE BAR', sub: 'SHOP', action: { fn: '_goToShop' } },
                     ],
                     agents: [
                         { x: 0, z: 0.3, face: 180, gender: 'male', label: 'BARTENDER', reach: 2.6, line: '“Members only.” Everyone is a member. That is the strip.' },
@@ -18788,7 +18788,7 @@ const DOOR_HQ = {
            purpose (three more on the walls, hung at different heights). ── */
         clockroom: {
             label: 'THE CLOCK ROOM',
-            sub: 'SUPPORT SERVICES · FORM 365',
+            sub: 'DAILY TASKS · LOGIN STREAK',
             roomNo: '247', why: '24/7 — every clock in here is right somewhere; the form is the year',
             kind: 'box',
             shell: {
@@ -18801,20 +18801,20 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_frosted', wide: true,
-                  label: 'CENTRAL EGRESS', sub: 'OPERATIONS RING · THE WAY BACK',
+                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
                   action: { room: 'central_egress', at: 'clockroom' },
                   desc: 'The way back to the hall. The frosted glass says CLOCK ROOM backwards from this side, which is the right way round for the clocks.' },
             ],
             counters: [
                 /* FORM 365 on the east wall → the day's three requirements */
                 { id: 'form365', x: 3.55, z: -0.7, face: 90, plateY: 2.35, radius: 2.0, verb: 'READ',
-                  label: 'FORM 365', sub: 'DAILY OFFICE OPERATIONS REQUIREMENTS', action: { overlay: 'form365' } },
+                  label: 'FORM 365', sub: 'DAILY TASKS', action: { overlay: 'form365' } },
                 /* the punch clock → the login streak */
                 { id: 'punch', x: 3.55, z: 1.5, face: 90, plateY: 1.95, radius: 1.7, verb: 'PUNCH',
-                  label: 'PUNCH CLOCK', sub: 'TIME & ATTENDANCE', action: { overlay: 'punch' } },
+                  label: 'PUNCH CLOCK', sub: 'LOGIN STREAK', action: { overlay: 'punch' } },
                 /* the notice board on the south wall → today's Code Red (the hall's own panel) */
                 { id: 'codered', x: -1.6, z: 2.95, face: 180, plateY: 2.05, radius: 1.8, verb: 'READ',
-                  label: 'TODAY’S CODE RED', sub: 'POSTED · BOUNDARY EVENT', action: { overlay: 'codered' } },
+                  label: 'CODE RED', sub: 'TODAY’S BONUS BATTLE', action: { overlay: 'codered' } },
             ],
             props: [
                 /* ── the north wall: the timekeeper's desk under the world clocks ── */
@@ -18889,7 +18889,7 @@ const DOOR_HQ = {
            since. ── */
         barbershop: {
             label: 'OCCAM’S BARBERSHOP',
-            sub: 'SUPPORT SERVICES · THE SIMPLEST CUT',
+            sub: 'CHANGE AVATAR',
             roomNo: '1287', why: 'William of Ockham, b. c. 1287 — the simplest cut',
             kind: 'box',
             shell: {
@@ -18902,17 +18902,17 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_glass',
-                  label: 'CENTRAL EGRESS', sub: 'OPERATIONS RING · THE WAY BACK',
+                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
                   action: { room: 'central_egress', at: 'barbershop' },
                   desc: 'The way back to the hall. The lettering on the glass reads OCCAM’S from the hall and, from in here, whatever you walked in as.' },
             ],
             counters: [
                 /* THE CHAIR → who you walk the building as (the HQ avatar) */
                 { id: 'chair', x: -1.6, z: -1.55, face: 0, plateY: 1.9, radius: 1.7, verb: 'SIT',
-                  label: 'THE CHAIR', sub: 'WALK OUT AS · THE SIMPLEST CUT', action: { overlay: 'barber' } },
+                  label: 'THE CHAIR', sub: 'CHANGE AVATAR', action: { overlay: 'barber' } },
                 /* THE MIRROR → the ID card (the photo follows the chair) */
                 { id: 'mirror', x: 1.6, z: -2.55, face: 0, plateY: 2.45, radius: 1.5, verb: 'LOOK',
-                  label: 'MIRROR', sub: 'YOUR ID-CARD PHOTO · RECEPTION LAMINATES', action: { fn: '_mountReactProfile' } },
+                  label: 'MIRROR', sub: 'VIEW PROFILE', action: { fn: '_mountReactProfile' } },
             ],
             props: [
                 /* ── the north wall: two mirrors, the shelves under them, the two chairs ── */
@@ -18995,7 +18995,7 @@ const DOOR_HQ = {
            local, nothing relayed (RULE #2). */
         observatorium: {
             label: 'THE OBSERVATORIUM',
-            sub: 'MEZZANINE · THE SKY ON FILE',
+            sub: 'MAP SELECT · REPLAY',
             roomNo: '360', why: '360° — the whole sky from one chair',
             kind: 'box',
             shell: {
@@ -19010,17 +19010,17 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_holographic',
-                  label: 'CENTRAL EGRESS', sub: 'MEZZANINE · THE WAY BACK',
+                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
                   action: { room: 'central_egress', at: 'observatorium' },
                   desc: 'The way back to the mezzanine. The door hums; Facilities says that is the paint drying.' },
             ],
             counters: [
                 /* THE STAR CHART → the star-map: every threshold a star; point at one and its door opens */
                 { id: 'chart', x: 0, z: -5.9, face: 0, plateY: 2.75, radius: 2.3, verb: 'READ',
-                  label: 'THE STAR CHART', sub: 'EVERY THRESHOLD IS A STAR · POINT AT ONE', action: { overlay: 'starmap' } },
+                  label: 'THE STAR CHART', sub: 'MAP SELECT', action: { overlay: 'starmap' } },
                 /* THE PROJECTOR → the tape library's projection (Replay) */
                 { id: 'projector', x: 0, z: 0, face: 180, plateY: 2.3, radius: 2.1, verb: 'USE',
-                  label: 'THE PROJECTOR', sub: 'THE TAPE LIBRARY · THE LAST CROSSING, PROJECTED', action: { fn: '_ewReplayLastMatch' } },
+                  label: 'THE PROJECTOR', sub: 'REPLAY LAST BATTLE', action: { fn: '_ewReplayLastMatch' } },
             ],
             props: [
                 /* ── the middle: the projector under the projected sky, three seats round it ── */
@@ -19104,7 +19104,7 @@ const DOOR_HQ = {
            egress door panel — the facility is their physical home now. */
         training: {
             label: 'TRAINING ROOM',
-            sub: 'ORTHOGONAL GEOMETRY EXPOSURE AREA',
+            sub: 'PRACTICE · GAUNTLET · DUNGEON',
             roomNo: '64', why: '8 × 8',
             kind: 'box',
             fx: 'training',
@@ -19120,13 +19120,13 @@ const DOOR_HQ = {
             doors: [
                 /* the way back, centred on the north wall so the barrier gap
                    lines up with it — in from the egress, straight onto the grid */
-                { id: 'egress',    wall: 'n', x: 0,   leaf: 'leaf_exit', label: 'CENTRAL EGRESS', sub: 'UPSTAIRS · THE WAY BACK',
+                { id: 'egress',    wall: 'n', x: 0,   leaf: 'leaf_exit', label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
                   action: { room: 'central_egress', at: 'training' },
                   desc: 'The way back up. The EXIT sign over this one is accurate, which is why it was chosen.' },
-                { id: 'challenge', wall: 's', x: 0,   leaf: 'leaf_wired_double', wide: true, label: 'CHALLENGE RANGE', sub: 'GAUNTLET · SURVIVAL',
+                { id: 'challenge', wall: 's', x: 0,   leaf: 'leaf_wired_double', wide: true, label: 'CHALLENGE RANGE', sub: 'GAUNTLET',
                   action: { fn: '_goToCampaign' },
                   desc: 'The long range. Consecutive crossings, no resupply, a clipboard at the end. Medical is aware of you.' },
-                { id: 'condemned', wall: 'e', z: 6.2, leaf: 'leaf_shabby_wood', label: 'CONDEMNED CROSSING', sub: 'MYSTERY DUNGEON · DO NOT ENTER',
+                { id: 'condemned', wall: 'e', z: 6.2, leaf: 'leaf_shabby_wood', label: 'CONDEMNED CROSSING', sub: 'MYSTERY DUNGEON',
                   action: { fn: '_goToMysteryDungeon' },
                   desc: 'Condemned in 1987. The field office on the far side never acknowledged the memo, and somebody keeps oiling the hinges.' },
             ],
@@ -19134,7 +19134,7 @@ const DOOR_HQ = {
                 /* the launch console on the west wall (the tanker desk below
                    is the physical counter; this is the interaction) */
                 { id: 'range', x: -8.9, z: 0, face: 90, plateY: 1.9, radius: 2.4, verb: 'USE',
-                  label: 'RANGE CONSOLE', sub: 'ORIENTATION · PRACTICE', action: { overlay: 'training' } },
+                  label: 'RANGE CONSOLE', sub: 'PRACTICE BATTLE', action: { overlay: 'training' } },
             ],
             props: [
                 /* the range console: tanker desk against the west wall, CRT + phone + paperwork on it */
@@ -19354,7 +19354,7 @@ function hqBayRoom(sectorKey) {
     const label = bayDoor.label || ('BAY · ' + sec.label);
     const doors = [{
         id: 'egress', deg: 0, side: 'in', level: 0, leaf: bayDoor.leaf || 'leaf_closet_alt', wide: !!bayDoor.wide,
-        label: 'CENTRAL EGRESS', sub: 'OPERATIONS RING · THE WAY BACK',
+        label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
         action: { room: 'central_egress', at: bayDoor.id || null },
         desc: 'Back to the ring. The desk will still be there. Probably the same desk.',
     }];
@@ -19365,7 +19365,7 @@ function hqBayRoom(sectorKey) {
         doors.push({
             id: 'site_' + id, deg: -(n * stepDeg) / 2 + stepDeg * (i + 0.5), side: 'out', level: 0,
             leaf: th.leaf || 'leaf_closet_alt', wide: !!th.wide,
-            label: ((meta && meta.label) || id).toUpperCase(), sub: th.sub || ('THRESHOLD · ' + sec.label),
+            label: ((meta && meta.label) || id).toUpperCase(), sub: th.sub || 'BATTLE SITE',
             action: { mission: id }, note: th.note || '',
             /* the plate's number (HQ plan 7.1): the site's roomNo, one place one number */
             roomNo: (th.roomNo != null) ? String(th.roomNo) : null, why: th.why || '',
@@ -19384,7 +19384,7 @@ function hqBayRoom(sectorKey) {
             doors.push({
                 id: 'cap_' + cap, cap: cap, deg: (cap === 'cw') ? half : -half, level: 0,
                 leaf: B.ringLeaf || 'leaf_wired_double', wide: !!((DOOR_HQ.catalogue[B.ringLeaf || 'leaf_wired_double'] || {}).wide),
-                label: nbDoor.label || ('BAY · ' + (nbSec.label || nbSector).toUpperCase()), sub: 'CONTAINMENT RING · ' + way,
+                label: nbDoor.label || ('BAY · ' + (nbSec.label || nbSector).toUpperCase()), sub: 'NEXT BAY · ' + way,
                 action: { sector: nbSector, at: farCap }, ring: true,
                 desc: 'The ring. Fire door, held open by a wedge that is not on the inventory. The next bay is on the other side, the same way round.',
             });
@@ -19408,7 +19408,7 @@ function hqBayRoom(sectorKey) {
     props.push({ key: 'papers_a', deg: Math.round((half - 5 - capBack) * 10) / 10, r: B.rIn + 0.62, y: 1.32, rot: 15 });
     (F.props || []).forEach(p => props.push(Object.assign({}, p)));
     return {
-        label: label, sub: 'CONTAINMENT BAY · ' + (sec.sub || '').toUpperCase(),
+        label: label, sub: 'BATTLE MAPS · ' + (sec.sub || '').toUpperCase(),
         kind: 'bay', sector: sectorKey, bayNo: bayNo ? +bayNo[1] : null, level: bayDoor.level || 0, ring: ring,
         shell: { rIn: B.rIn, rOut: B.rOut, arc: [-half, half], wallH: B.wallH, dadoH: B.dadoH,
                  floor: B.floor, wall: B.wall, dado: B.dado, trim: B.trim, ceiling: B.ceiling },
@@ -19538,7 +19538,7 @@ function hqRingRoom(level) {
         /* the way back: the egress door at the very angle it wears on the egress wall */
         doors.push({
             id: 'egress_' + seg.sector, deg: norm(seg.deg), side: 'in', level: 0, leaf: bd.leaf || 'leaf_closet_alt', wide: !!bd.wide,
-            label: 'CENTRAL EGRESS', sub: 'OPERATIONS RING · THE WAY BACK · ' + seg.label, sector: seg.sector, bay: seg.label,
+            label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL', sector: seg.sector, bay: seg.label,
             action: { room: 'central_egress', at: bd.id || null },
             desc: 'Back to the ring. The desk will still be there. Probably the same desk.',
         });
@@ -19549,7 +19549,7 @@ function hqRingRoom(level) {
             doors.push({
                 id: 'site_' + id, deg: norm(seg.c - seg.w / 2 + lay.stepDeg * (i + 0.5)), side: 'out', level: 0,
                 leaf: th.leaf || 'leaf_closet_alt', wide: !!th.wide,
-                label: ((meta && meta.label) || id).toUpperCase(), sub: th.sub || ('THRESHOLD · ' + sec.label), sector: seg.sector, bay: seg.label,
+                label: ((meta && meta.label) || id).toUpperCase(), sub: th.sub || 'BATTLE SITE', sector: seg.sector, bay: seg.label,
                 action: { mission: id }, note: th.note || '',
                 roomNo: (th.roomNo != null) ? String(th.roomNo) : null, why: th.why || '',
             });
@@ -19587,7 +19587,7 @@ function hqRingRoom(level) {
             doors.push({
                 id: 'cap_' + cap, cap: cap, deg: norm(at), level: 0,
                 leaf: B.ringLeaf || 'leaf_wired_double', wide: !!((DOOR_HQ.catalogue[B.ringLeaf || 'leaf_wired_double'] || {}).wide),
-                label: 'CONTAINMENT RING', sub: 'SERVICE SIDE · CONTINUES ' + way,
+                label: 'CONTAINMENT RING', sub: 'CONTINUES ' + way,
                 action: { room: lay.id, at: far }, ring: true,
                 desc: 'The ring continues past the service core. Fire door, held open by a wedge that is not on the inventory. That stretch is not on the plan and is not lit; Records says it is shorter than it looks.',
             });
@@ -19757,7 +19757,7 @@ function hqSiteRoom(mapId) {
            the south wall (P1's spawn lane is the south row), landing at the
            bay's own threshold door with it at your back */
         id: 'egress', wall: 's', x: 0, leaf: leaf, wide: !!((DOOR_HQ.catalogue[leaf] || {}).wide),
-        label: bayDoor.label || ('BAY · ' + (sec.label || sector).toUpperCase()), sub: 'CONTAINMENT BAY · THE WAY BACK',
+        label: bayDoor.label || ('BAY · ' + (sec.label || sector).toUpperCase()), sub: 'BACK TO THE BAY',
         action: { room: hqBayId(sector), at: 'site_' + id }, note: T.note || '',
         desc: 'The same door from the other side. ' + (T.note ? T.note.charAt(0).toUpperCase() + T.note.slice(1) + '. ' : '') + 'The bay is behind it; the paperwork is in front of you.',
     }];
@@ -19780,8 +19780,17 @@ function hqSiteRoom(mapId) {
     const counters = [Object.assign(at(W(0, 1.1)), {
         /* the CROSSING console: the site file, CROSS ▸ Δ / DEEP, at the tanker desk */
         id: 'crossing', face: F(90), plateY: 1.9, radius: 2.4, verb: 'CROSS', site: id,
-        label: 'CROSSING CONSOLE', sub: label + ' · THE WAY ON', action: { overlay: 'crossing' },
-    })];
+        label: 'CROSSING CONSOLE', sub: 'BATTLE SETUP', action: { overlay: 'crossing' },
+    }),
+    /* THE BATTLE MARKER (2026-09-12): a glowing beacon at the board's
+       centre, plated ROOM <no> · BATTLE · <site>. Walk up, E = the same
+       crossing terminal the console opens (map.js _hqConsoleTerminal;
+       no CRT within reach, so no camera push), and post-match you stand
+       back at the marker (doorId → _hqLastDoor). three-renderer.js
+       _hqBuildCounters draws the `proc: 'battle_marker'` beacon on the
+       centre cell's own top. */
+    { id: 'battle', x: 0, z: 0, face: 180, plateY: 2.35, radius: 2.3, verb: 'BATTLE', site: id, proc: 'battle_marker',
+      label: 'BATTLE', sub: label, action: { overlay: 'crossing' } }];
     const stands = !!(near && near.stands);
     const props = [
         Object.assign({ key: 'tanker_desk' }, WA(0)),
@@ -19833,7 +19842,7 @@ function hqSiteRoom(mapId) {
         : [{ x: half - 1.4, z: -4.2, face: 270 }, { x: half - 1.4, z: 4.6, face: 290 }, { x: -(half - 1.4), z: 5.6, face: 80 }];
     const npcSpots = spotXZ.map((sp, i) => Object.assign({}, sp, (i < nat && pool[i]) ? { race: pool[i] } : {}));
     return {
-        label: label, sub: T.sub || ('THE SITE · ' + (sec.label || sector).toUpperCase() + ' · BAY ' + (hqBayNo(sector) != null ? hqBayNo(sector) : '?')),
+        label: label, sub: T.sub || ('BATTLE SITE · BAY ' + (hqBayNo(sector) != null ? hqBayNo(sector) : '?')),
         kind: 'box', fx: 'site', site: id, sector: sector, why: T.why || '',
         shell: {
             w: size, d: size, h: roomH, wallH: roomH, dadoH: shell.dadoH || 1.05,
@@ -19934,7 +19943,7 @@ function hqRoomRegister() {
         const meta = META.find(m => m.id === id);
         const sector = hqSectorOfMap(id);
         const bay = sector ? DOOR_HQ.rooms[hqBayId(sector)] : null;
-        out.push({ no: hqRoomNoStr(T[id].roomNo), label: ((meta && meta.label) || id).toUpperCase(), sub: T[id].sub || ('THRESHOLD · ' + ((DOOR_HQ.sectors[sector] || {}).label || '')),
+        out.push({ no: hqRoomNoStr(T[id].roomNo), label: ((meta && meta.label) || id).toUpperCase(), sub: T[id].sub || 'BATTLE SITE',
                    kind: 'site', id: id, mapId: id, room: bay ? hqBayId(sector) : null, sector: sector, bayNo: sector ? hqBayNo(sector) : null, why: T[id].why || '',
                    siteRoom: DOOR_HQ.rooms[hqSiteRoomId(id)] ? hqSiteRoomId(id) : null });
     }

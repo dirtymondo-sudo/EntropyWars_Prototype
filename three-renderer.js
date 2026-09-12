@@ -34759,12 +34759,20 @@ const ThreeRenderer = (function () {
             var level = c.level || 0, y0 = level ? S.wallH : 0;
             var Rw = (room.kind === 'box') ? 0 : (level ? S.mezz.outer : S.radius);
             var grp = new THREE.Group();
-            var plateY = 2.6;
+            var plateY = 2.6, marker = null;
             if (room.kind === 'box') {
                 /* a box room's counter sits at (x, z) and faces `face` (a plate, no kiosk) */
                 grp.position.set((c.x || 0) * U, y0 * U, (c.z || 0) * U);
                 grp.rotation.y = _hqHeadingYaw(c.face || 0);
                 plateY = (c.plateY != null) ? c.plateY : 1.55;
+                /* THE BATTLE MARKER (2026-09-12): a site room's beacon at the
+                   board centre — it stands on the centre cell's own top */
+                if (c.proc === 'battle_marker') {
+                    var bcell = _hqSiteCellAt(c.x || 0, c.z || 0);
+                    if (bcell && bcell.top > 0) grp.position.y += bcell.top * U;
+                    marker = _hqBuildBattleMarker(U);
+                    grp.add(marker.g);
+                }
             } else if (c.proc === 'board') {
                 grp.position.copy(_hqPolarW(c.deg, Rw - 0.12, y0));
                 grp.rotation.y = _hqFaceCentreYaw(c.deg);
@@ -34793,15 +34801,45 @@ const ThreeRenderer = (function () {
                 plateY = 1.7;
             }
             var el = document.createElement('div');
-            el.className = 'hq-plate hq-plate-counter';
+            el.className = 'hq-plate hq-plate-counter' + (marker ? ' hq-plate-battle' : '');
+            if (marker) { el.style.borderColor = 'rgba(255,176,32,0.75)'; el.style.boxShadow = '0 0 14px rgba(255,176,32,0.35)'; }
             var cNo = _hqPlateNo(c);
             el.innerHTML = (cNo ? '<em>ROOM ' + cNo + '</em>' : '') + '<b>' + c.label + '</b><span>' + (c.sub || '') + '</span>';
             var plate = new THREE.CSS2DObject(el);
             plate.position.set(0, plateY * U, 0);
             grp.add(plate);
             G.add(grp);
-            _hq.counters.push({ counter: c, group: grp, level: level, plateEl: el, x: null, z: null });
+            _hq.counters.push({ counter: c, group: grp, level: level, plateEl: el, x: null, z: null, marker: marker });
         });
+    }
+    /* THE BATTLE MARKER (2026-09-12): the glowing beacon every playable
+       site wears at its board centre — an amber floor ring, a soft column
+       of light and a spinning, bobbing crystal with a glow behind it. The
+       counter it sits on (data.js hqSiteRoom, id 'battle') opens the same
+       crossing terminal as the console; _hqTickWorld turns the crystal. */
+    function _hqBuildBattleMarker(U) {
+        var g = new THREE.Group();
+        var ring = new THREE.Mesh(new THREE.RingGeometry(0.52 * U, 0.66 * U, 40), _hzGlowMat(0xffb020, 0.7));
+        ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03 * U; ring.renderOrder = 3; g.add(ring);
+        var ring2 = new THREE.Mesh(new THREE.RingGeometry(0.86 * U, 0.9 * U, 48), _hzGlowMat(0x7fd9dd, 0.4));
+        ring2.rotation.x = -Math.PI / 2; ring2.position.y = 0.025 * U; ring2.renderOrder = 3; g.add(ring2);
+        var disc = new THREE.Mesh(new THREE.CircleGeometry(0.5 * U, 40), _hzGlowMat(0xffb020, 0.14));
+        disc.rotation.x = -Math.PI / 2; disc.position.y = 0.02 * U; disc.renderOrder = 2; g.add(disc);
+        var beam = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * U, 0.16 * U, 2.0 * U, 14, 1, true), _hzGlowMat(0xffc860, 0.16));
+        beam.position.y = 1.0 * U; beam.renderOrder = 2; g.add(beam);
+        var icon = new THREE.Group(); icon.position.y = 1.45 * U;
+        var gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.26 * U, 0), new THREE.MeshPhongMaterial({ color: 0xffd060, emissive: 0xff9a10, emissiveIntensity: 0.9, shininess: 90, specular: 0xffffff, transparent: true, opacity: 0.92 }));
+        icon.add(gem);
+        var edge = new THREE.Mesh(new THREE.OctahedronGeometry(0.31 * U, 0), _hzGlowMat(0xffe0a0, 0.28));
+        edge.material.wireframe = true; icon.add(edge);
+        var halo = _hzGlowSprite(1.7 * U, 0xffb020, 0.42, 0, 0, 0); icon.add(halo);
+        g.add(icon);
+        if (_hq && _hq.fxPulse) {
+            _hq.fxPulse.push({ mat: ring.material, baseOp: 0.7, opAmp: 0.22, spd: 1.6, phase: 0 });
+            _hq.fxPulse.push({ mat: beam.material, baseOp: 0.16, opAmp: 0.07, spd: 1.1, phase: 1.2 });
+            _hq.fxPulse.push({ mat: halo.material, baseOp: 0.42, opAmp: 0.14, spd: 1.6, phase: 0.6 });
+        }
+        return { g: g, icon: icon, ring2: ring2, y: 1.45 };
     }
 
     /* ── props: the Meshy kit, placed from the layout table ─────────────── */
@@ -35865,6 +35903,11 @@ const ThreeRenderer = (function () {
             var cc = H.counters[ci];
             var dd = Math.hypot(cc.group.position.x - H.camera.position.x, cc.group.position.z - H.camera.position.z) / _hqUnits();
             cc.plateEl.style.opacity = String(Math.max(0, Math.min(1, 1 - (dd - 12) / 9)));
+            if (cc.marker) {
+                cc.marker.icon.rotation.y += dt * 1.3;
+                cc.marker.icon.position.y = (cc.marker.y + Math.sin(now * 0.0021) * 0.11) * _hqUnits();
+                cc.marker.ring2.rotation.z += dt * 0.35;
+            }
         }
         /* interaction prompt */
         var t = _hqFindTarget();

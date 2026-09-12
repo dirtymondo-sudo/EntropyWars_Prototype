@@ -1302,3 +1302,18 @@ Main tree `3aeb17bbc68def72faa5885617f921ee93c621cc` verified unchanged before/a
 Simul identity-tracked beams with no current target use one committed-resource whiff instead of casting at stale coordinates. Explicit tile shots remain unchanged. Simul resolution snapshots effective SPD once, preserving plan priority and initiative ties; logs use the same snapshot. Trick Room reversal remains open because its counter decrements at common order building: it needs round ownership, not a naive positive-counter comparator.
 23 added regressions (20 fail before, three controls pass), focused 51/51; full suite 815 pass, zero fail, two skips (817 total); JS syntax 112/112 plus 12 inline scripts and import-map JSON. Controlled production function tests, not browser/simulation/live multiplayer acceptance. No deployment.
 Complete package `ENTROPY_WARS_PHASE6_DEADLINE_SIMUL.zip`: ai.js and battle.js → R2; index.html → Render, token `20260912-ai-deadline-simul-01-cors`; tests, diagnostic and documents → repository. See latest review tracker for remaining Chivalry, Trick Room, frequency valuation and endgame/breach batches plus acceptance gates. Next: Chivalry net-interception scoring. Preserve unuploaded delivery on refresh.
+
+## HQ PLATES = ROOM № · NAME · FUNCTION + THE BATTLE MARKER — added 2026-09-12
+Every door / counter / room `label` + `sub` in `DOOR_HQ` (data.js) follows
+ONE rule: the plate reads **ROOM № · one name · what pressing E does**
+(RECEPTION → VIEW PROFILE, QUARTERMASTER → SHOP, RECORDS → CODEX, MEDICAL →
+CHALLENGE MODE, bays → BATTLE MAPS, ring thresholds → BATTLE SITE, the
+site room → BATTLE SITE · BAY n, every way-back door → BACK TO THE MAIN
+HALL / BACK TO THE BAY, the console → BATTLE SETUP). No second titles,
+departments or lore on a plate — lore stays in `desc`. A new door /
+counter = a name + its function in `sub`, nothing else. **THE BATTLE
+MARKER**: `hqSiteRoom` gives every playable site room a counter `battle`
+at the board centre (`proc: 'battle_marker'`, `verb: 'BATTLE'`, `overlay:
+'crossing'` — the same terminal as the console, post-match returns you
+there); three-renderer.js `_hqBuildBattleMarker` draws the beacon on the
+centre cell's top, `_hqTickWorld` spins it. doorhq.test.js checks both.
