@@ -2493,6 +2493,9 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
     '--bc-hi': b.catColor + '2e', '--bc-lo': b.catColor + '12',
   } : null;
   return h('div', {
+    // the blade's id rides the DOM so THE COLOUR PASS (stylesheet) can
+    // give each root verb its own colour (attack red, abilities blue…)
+    'data-bid': b.id,
     className: 'hrlg-blade'
       + (dead ? ' dead' : '')
       + (ghost && !dead ? ' ghost' : '')
@@ -9594,6 +9597,156 @@ function _injectHudHideStyles() {
     .plate-types .type-badge { border-radius: 999px !important; }
     .hp-bar, .mp-bar { border-radius: 5px !important; }
     .hp-fill, .mp-fill { border-radius: 4px !important; }
+
+    /* ══════════ THE COLOUR PASS (2026-09-12) ══════════
+       The violet-black PS1 chrome is gone: every plate on the Horologe and
+       the scoreboard wears CLASSIC FF BLUE — a deep royal-blue gradient
+       under a bone-white double frame. The two plate tokens below are the
+       ONE place to change the material (black: --ew-plate-bg:
+       linear-gradient(180deg,#141414,#050505); none: transparent). Root
+       VERBS each wear their own colour edge-to-edge (MOVE teal · ATTACK
+       red · ABILITIES blue · COMBO violet · ITEMS green · GUARD amber ·
+       SWITCH orange · END / CANCEL red) keyed by [data-bid]; spell rows
+       keep their job colour (--bc from catVars). The row under the cursor
+       (or hovered, or the ARMED verb in a dimmed parent) turns GOLD — text,
+       glyph and frame — like the FF hand cursor it leads. Every override
+       lives HERE, after the rounding pass; restyle here, never upstream. */
+    .hrlg-rig, .ew-scoreboard, .ew-meta-plate {
+      --ew-plate-bg: linear-gradient(180deg, #1f34a8 0%, #15258a 45%, #0c165e 100%);
+      --ew-plate-edge: #e6e8f4;
+      --ew-plate-seam: #061040;
+      --ew-plate-rim: #6b7fd6;
+      --ew-row-bg: linear-gradient(180deg, #24399f 0%, #1a2c86 55%, #12206c 100%);
+      --ew-row-sel-bg: linear-gradient(180deg, #3550c4 0%, #2841ab 55%, #1e359a 100%);
+      --ew-row-edge: #7b90dc;
+      --ew-sel: #f0d060;
+      --ew-sel-soft: rgba(240,208,96,0.55);
+      --ew-sel-faint: rgba(240,208,96,0.2);
+    }
+    /* ── the identity column ── */
+    .hrlg-side {
+      background:
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0 1px, rgba(0,0,0,0.05) 1px 2px, transparent 2px 3px),
+        var(--ew-plate-bg);
+      border: 1px solid var(--ew-plate-edge);
+      box-shadow:
+        inset 0 0 0 1px var(--ew-plate-seam),
+        inset 0 0 0 2px var(--ew-plate-rim),
+        inset 0 3px 0 rgba(255,255,255,0.08),
+        0 3px 0 rgba(0,0,0,0.55),
+        0 8px 18px rgba(0,0,0,0.45);
+    }
+    .hrlg-side::before {
+      color: #c9d2ff;
+      background: linear-gradient(180deg, #2a42b8 0%, #1a2c8e 100%);
+      border-bottom: 1px solid var(--ew-plate-seam);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
+    }
+    .hrlg-push {
+      background:
+        linear-gradient(100deg, var(--pc-faint), rgba(8,7,12,0)),
+        var(--ew-row-bg);
+      border: 1px solid var(--ew-row-edge); border-left: 3px solid var(--pc);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.45), 0 2px 0 rgba(0,0,0,0.5);
+    }
+    .hrlg-push-lbl { color: #f2f2f2; }
+    .hrlg-push-sub { color: #aab4e6; }
+    .hrlg-item-slot {
+      background: var(--ew-row-bg);
+      border: 1px solid var(--ew-row-edge);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.45), 0 2px 0 rgba(0,0,0,0.45);
+    }
+    .hrlg-item-slot.armed, .hrlg-item-slot:hover:not(.empty):not(.off) {
+      border-color: var(--ew-sel); box-shadow: 0 0 12px var(--ew-sel-soft), inset 0 0 8px var(--ew-sel-faint);
+    }
+    /* ── the command panels: header blade, mode strip ── */
+    .hrlg-thead {
+      background:
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0 1px, rgba(0,0,0,0.05) 1px 2px, transparent 2px 3px),
+        var(--ew-plate-bg);
+      border: 1px solid var(--ew-plate-edge); border-left: 3px solid var(--hfc);
+      box-shadow: inset 0 0 0 1px var(--ew-plate-seam), inset 0 1px 0 rgba(255,255,255,0.08), 0 3px 0 rgba(0,0,0,0.55);
+    }
+    .hrlg-thead.enemy { border-left-color: #ff4a56; }
+    .hrlg-thead.ally  { border-left-color: #2ed158; }
+    .hrlg-view-tab { border-bottom: 1px solid rgba(255,255,255,0.14); }
+    .hrlg-view-tab-text { color: #f4f4f8; }
+    .hrlg-view-tab-count { color: #aab4e6; }
+    .hrlg-mode {
+      background: var(--ew-plate-bg);
+      border: 1px solid var(--ew-plate-edge); border-left: 3px solid var(--ew-sel);
+      box-shadow: inset 0 0 0 1px var(--ew-plate-seam), inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 0 rgba(0,0,0,0.5);
+      color: #f4f4f8;
+    }
+    .hrlg-list { scrollbar-color: var(--ew-plate-rim) rgba(0,0,0,0.25); }
+    .hrlg-list::-webkit-scrollbar-thumb { background: var(--ew-plate-rim); }
+    /* ── command rows ── */
+    .hrlg-body {
+      background:
+        linear-gradient(100deg, var(--bc-hi, rgba(255,255,255,0.06)) 0%, var(--bc-lo, rgba(255,255,255,0.02)) 100%),
+        var(--ew-row-bg);
+      border: 1px solid var(--ew-row-edge); border-left: 3px solid var(--bc, var(--hfc));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.45), 0 2px 0 rgba(0,0,0,0.5);
+    }
+    .hrlg-blabel { color: #f4f4f8; }
+    .hrlg-subline, .hrlg-cfree, .hrlg-meta { color: #b8c1ee; }
+    /* the root verbs, each in its own colour (edge + glyph + a wash) */
+    .hrlg-blade[data-bid="move"] .hrlg-body,
+    .hrlg-blade[data-bid="jump"] .hrlg-body { --bc: #3fd9c8; --bc-soft: #3fd9c888; --bc-faint: #3fd9c82a; --bc-hi: #3fd9c83a; --bc-lo: #3fd9c814; }
+    .hrlg-blade[data-bid="attack"] .hrlg-body { --bc: #ff5a4a; --bc-soft: #ff5a4a88; --bc-faint: #ff5a4a2a; --bc-hi: #ff5a4a44; --bc-lo: #ff5a4a18; }
+    .hrlg-blade[data-bid="abil"] .hrlg-body  { --bc: #5aa8ff; --bc-soft: #5aa8ff88; --bc-faint: #5aa8ff2a; --bc-hi: #5aa8ff44; --bc-lo: #5aa8ff18; }
+    .hrlg-blade[data-bid="combo"] .hrlg-body { --bc: #b98bff; --bc-soft: #b98bff88; --bc-faint: #b98bff2a; --bc-hi: #b98bff40; --bc-lo: #b98bff16; }
+    .hrlg-blade[data-bid="items"] .hrlg-body { --bc: #4fe08a; --bc-soft: #4fe08a88; --bc-faint: #4fe08a2a; --bc-hi: #4fe08a44; --bc-lo: #4fe08a18; }
+    .hrlg-blade[data-bid="guard"] .hrlg-body { --bc: #f2b84a; --bc-soft: #f2b84a88; --bc-faint: #f2b84a2a; --bc-hi: #f2b84a40; --bc-lo: #f2b84a16; }
+    .hrlg-blade[data-bid="switch"] .hrlg-body { --bc: #ff9a3c; --bc-soft: #ff9a3c88; --bc-faint: #ff9a3c2a; --bc-hi: #ff9a3c40; --bc-lo: #ff9a3c16; }
+    .hrlg-blade[data-bid="move"] .hrlg-glyph, .hrlg-blade[data-bid="jump"] .hrlg-glyph,
+    .hrlg-blade[data-bid="attack"] .hrlg-glyph, .hrlg-blade[data-bid="abil"] .hrlg-glyph,
+    .hrlg-blade[data-bid="combo"] .hrlg-glyph, .hrlg-blade[data-bid="items"] .hrlg-glyph,
+    .hrlg-blade[data-bid="guard"] .hrlg-glyph, .hrlg-blade[data-bid="switch"] .hrlg-glyph {
+      color: var(--bc); text-shadow: 0 0 10px var(--bc-soft);
+    }
+    /* THE SELECTED ROW IS GOLD: text, glyph and frame; the blue fill lifts
+       and the function colour stays on the left spine */
+    .hrlg-blade.sel .hrlg-body,
+    .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body {
+      background:
+        linear-gradient(100deg, var(--bc-hi, rgba(255,255,255,0.06)) 0%, var(--bc-lo, rgba(255,255,255,0.02)) 100%),
+        var(--ew-row-sel-bg);
+      border-color: var(--ew-sel); border-left-color: var(--bc, var(--hfc));
+      box-shadow: 0 0 16px var(--ew-sel-faint), inset 3px 0 0 var(--bc, var(--hfc)), inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 0 rgba(0,0,0,0.5);
+    }
+    .hrlg-blade.sel .hrlg-blabel,
+    .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-blabel {
+      color: var(--ew-sel); text-shadow: 0 1px 2px rgba(0,0,0,0.8), 0 0 10px var(--ew-sel-soft);
+    }
+    .hrlg-blade.sel .hrlg-glyph,
+    .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-glyph { color: var(--ew-sel); text-shadow: 0 0 10px var(--ew-sel-soft); }
+    .hrlg-blade.sel .hrlg-tcol .hrlg-blabel { color: var(--ew-sel); }
+    /* the ARMED verb in a dimmed parent panel (the sub-menu you are in) */
+    .hrlg-panel.bg .hrlg-blade.active .hrlg-body { border-color: var(--ew-sel); }
+    .hrlg-panel.bg .hrlg-blade.active .hrlg-blabel { color: var(--ew-sel); text-shadow: 0 1px 2px rgba(0,0,0,0.8), 0 0 10px var(--ew-sel-soft); }
+    .hrlg-panel.bg .hrlg-blade.active .hrlg-glyph { color: var(--ew-sel); }
+    .hrlg-blade.active .hrlg-body { border-color: var(--ew-sel); }
+    /* disabled rows: a dead navy, not the old violet */
+    .hrlg-blade.dead .hrlg-body, .hrlg-blade.ghost .hrlg-body {
+      background: #0b1440; border-color: #2a3670; border-left: 3px dashed #3c4a8c;
+    }
+    .hrlg-blade.dead .hrlg-glyph, .hrlg-blade.dead .hrlg-blabel,
+    .hrlg-blade.ghost .hrlg-glyph, .hrlg-blade.ghost .hrlg-blabel { color: #7c88c4; }
+    .hrlg-blade.ghost.sel .hrlg-body { border-color: var(--ew-sel-soft); }
+    /* ── the scoreboard + the match-meta pill (inline background beaten
+       here on purpose — the JS keeps its layout, the material lives here) ── */
+    .ew-score-plate, .ew-meta-plate {
+      background: var(--ew-plate-bg) !important;
+      border: 1px solid var(--ew-plate-edge) !important;
+    }
+    .ew-score-plate {
+      box-shadow: inset 0 0 0 1px var(--ew-plate-seam), inset 0 0 0 2px var(--ew-plate-rim), inset 0 3px 0 rgba(255,255,255,0.08),
+                  0 3px 0 rgba(0,0,0,0.5), 0 8px 22px rgba(0,0,0,0.45) !important;
+    }
+    .ew-meta-plate {
+      box-shadow: inset 0 0 0 1px var(--ew-plate-seam), inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 0 rgba(0,0,0,0.5) !important;
+    }
 
     /* ══════════ THE PARTY DOCK — bottom-right portrait row ══════════
        (hud.js PartyRoster / PartyPortrait). Sized by --pp per portrait;

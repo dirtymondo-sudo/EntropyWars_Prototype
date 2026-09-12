@@ -1401,3 +1401,18 @@ above the row; the dock is OFF on Mystery Dungeon floors (the SCANNER
 owns that corner). Sits above the bottom-centre description bar at the
 same lift as the Horologe rig, scales with `--ew-ui-scale`. Viewer-local,
 nothing relayed (RULE #2).
+**THE COLOUR PASS (same day, after the rounding pass in the injected
+sheet)**: the violet-black chrome is gone — every Horologe plate (identity
+column, header blade, mode strip, tool rows, item slots, command rows),
+the scoreboard plate and the match-meta pill wear CLASSIC FF BLUE under a
+bone-white double frame. The material is two tokens on `.hrlg-rig` /
+`.ew-scoreboard` / `.ew-meta-plate` (`--ew-plate-bg`, `--ew-plate-edge`;
+rows `--ew-row-bg` / `--ew-row-sel-bg`) — black or "none" is a one-line
+swap there. The scoreboard's inline `EW.panel` background is beaten with
+`!important` in that block on purpose. Every blade carries `data-bid`
+(its id) so the ROOT VERBS wear their own colour (MOVE teal · ATTACK red ·
+ABILITIES blue · COMBO violet · ITEMS green · GUARD amber · SWITCH orange
+· END / CANCEL red via `.danger`); spell rows keep `catVars`. The
+SELECTED row (cursor / hover / the armed verb in a dimmed parent) turns
+GOLD (`--ew-sel`): text, glyph and frame, the blue fill lifts. Restyle in
+that block, never upstream.
