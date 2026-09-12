@@ -1252,54 +1252,107 @@ Whiteout second ring, Spear Prison finisher and Gas Cloud puffs now use `_fxDela
 
 Aurora Curtain and Spiral Beam return `_sigRunOwned` to dispose refused allocations while preserving entry/null results and shared textures. Bad Trip delayed skulls use `_fxDelay`; its first skull remains immediate. 16 new checks pass (six fail before); full suite 574 pass, zero fail, two existing skips; syntax 94/94. ENTROPY_WARS_CONTINUED_VFX_FIXES.zip includes these three fixes plus the preceding four whiteout/seal/gas fixes and both test files (40 new checks total). Not deployed or browser-playtested. Next: Magic Circle, Magic Orb and Light Pillar refusal paths, then remaining return-only consumers and Psychosis timers; VFX-04 remains open. See the review plan's top entry for evidence limits.
 
-## MOVING MAPS — the setting travels (2026-09-12)
+## MOVING MAPS — the setting travels (2026-09-12, rev 2 the same day)
 Three sites whose WORLD streams past the board, faster every round —
-**Room 1717 · QUEEN ANNE'S REVENGE** (`prebuilt_revenge`, Hollow bay: the
-main deck of Blackbeard's galleon, bow to +X, a wood-and-deep-water bed,
-the sea racing past into a storm), **Room 426 · THE DERELICT**
-(`prebuilt_derelict`, Celestial: a ship torn in half, void under hull
-plate, the wreckage field streaming by as it swings in close to the SUN)
-and **Room E4 · THE LOOKING-GLASS** (`prebuilt_lookingglass`, Diplomatic —
-plan 7.6 #6 had it Quarantined, which is SEALED until a story chapter, so
-the Queen claims immunity instead: a marble chessboard flying through a
+**Room 1717 · THE FLYING DUTCHMAN** (`prebuilt_revenge` — the id stays,
+the label / names / site file / cast lines were renamed from Queen Anne's
+Revenge in rev 2; Hollow bay: the main deck of the ghost ship, bow to +X,
+a wood-and-deep-water bed, the sea racing past into a storm), **Room 426 ·
+THE DERELICT** (`prebuilt_derelict`, Celestial: the DORSAL DECK of a dead
+starship, void under hull plate, the wreckage field streaming by as it
+swings in close to the SUN) and **Room E4 · THE LOOKING-GLASS**
+(`prebuilt_lookingglass`, Diplomatic: a marble chessboard flying through a
 void of unfinished shapes, the Cheshire MOON swinging in close). Heaven
-drifts too (a gentle one). The board itself NEVER moves (every rule, pick
-and camera is untouched); the ENVIRONMENT does. One row does it all:
+drifts too (a gentle one). **Rev 2 added four more movers**: Stonehenge
+and Area 51 WHEEL (the far roster + the dome turn about the board), the
+Tower of Babel RISES (the world streams down past a climbing board), Hell
+SINKS (`dir: -1`). The board itself NEVER moves (every rule, pick and
+camera is untouched); the ENVIRONMENT does. One row does it all:
 `env.motion` on the EW_MAP_META row (data.js) — `{ kind: sea|space|void|
-drift, axis: 'x', speed (tiles/s at round 1), ramp (per round), max
+drift|wheel|rise, axis: 'x' (the streaming kinds), dir: ±1 (rise), speed
+(tiles/s at round 1 — for `wheel` tiles/s along the ring at the roster's
+radius, so the dome and the roster turn as one), ramp (per round), max
 (multiplier cap), sea + seaDepth (the moat sheet streams), sky (dome
-cloud/nebula flow), storm: { from, to } (overcast builds between those
-rounds), orbit: { body: sun|moon, period (tiles travelled), near 0..1 } (a
-close pass that SWELLS the sun / moon), ambience (an audio.js bed) }`.
-three-renderer.js **MOTION** block (right before `_buildHorizonScenery`):
-`_motionTick` (distance, eased speed = speed × min(max, 1 + ramp·(round−1))
-— reads `state.round`, which SYNCS to the guest, so online both seats see
-one speed with nothing relayed, RULE #2), `_hzPlaceStream` (the far
-roster laid along the travel band and WRAPPED instead of the ring; rows
-may carry a sixth field `'sea'` = on the water / `'door'`),
-`_motionBuildMotes` (spray / dust streaks stretched by the speed),
+cloud/nebula flow; the yaw on a wheel; the lift on a rise), storm: { from,
+to } (overcast builds between those rounds), orbit: { body: sun|moon,
+period (tiles travelled), near 0..1 } (a close pass that SWELLS the sun /
+moon), ambience (an audio.js bed) }`. Rev 2 PACE: the three travellers run
+3–3.6 tiles/s at round 1 with a 5–5.5× cap (15+ tiles/s by round 17) —
+motion-maps.test.js insists on ≥ 3 / ≥ 5; tune `speed` / `ramp` / `max`
+on the row. three-renderer.js **MOTION** block (right before
+`_buildHorizonScenery`): `_motionTick` (distance, eased speed = speed ×
+min(max, 1 + ramp·(round−1)) — reads `state.round`, which SYNCS to the
+guest, so online both seats see one speed with nothing relayed, RULE #2;
+`_motion.ang` / `skyYaw` on a wheel, `skyLift` on a rise),
+`_hzPlaceStream` (streaming kinds: the far roster laid along the travel
+band and WRAPPED instead of the ring; wheel / rise: placed ON the ring and
+then turned about the board / streamed up a vertical band by
+`_motionPlace` — `e.mode`; rows may carry a sixth field `'sea'` = on the
+water / `'door'`), `_motionBuildMotes` (spray / dust streaks stretched by
+the speed; sparks orbiting on a wheel, vertical streaks on a rise),
 `_motionAnimate` (streams, sheets, wake textures, motes — from
-`_animateFloaters`). Sky: `uSkyFlow` / `uSunNear` / `uMoonNear` on
-`_envUni` (the dome swells the sun / moon, the 3D moon mesh scales with
-it, the map tint gilds near the sun; `_hqTickSky` zeroes them — the
-building is still). Sea: `_nrMoat({ stream: true })` registers the sheet
-in `_motionSheets` (slides one tile and wraps — seamless), the caustic web
-follows through `_fluidFlowUniform` / `uFluidFlow` (reset by
-`_hqTickMoat`). Three far rosters (`sea` · `wreckage` · `wonder`) and
-three settings (`_NR_BUILDERS.revenge` / `.derelict` / `.lookingglass`;
-`_hzChessPiece` is the lathe both the rim and the roster use; a setting
-must skip its wake / rigging / plating / keel under `K.hq` — their
-bounds would block the site room's quay). Cost: uniform writes + one
-position write per streaming body per frame. Kill-switch
-`window.EW_NO_MAP_MOTION`; `EW_PERF_LOW` halves the motes; readout
-`ThreeRenderer.motion()`. The Δ FORGE takes a per-board bed
-(`cfg.strata` / `underTop` on `_mfDeltaNew`, recorded as `entry.bed`;
-delta-maps.test.js checks each board against its own). Adding a moving
-map = the 7.10 checklist + an `env.motion` row (+ a roster if none fits).
-`npm test` runs `motion-maps.test.js`. NOT playtested (RULE #1c) — the
-first thing to eyeball is the speed at round 1 and the cap (`speed`,
-`ramp`, `max` on the row), then the sea's level under the hull
-(`_NR_SEA_DEPTH` ↔ `seaDepth`), then the sun's swell at perigee.
+`_animateFloaters`). Sky: `uSkyFlow` / `uSunNear` / `uMoonNear` /
+`uSkyYaw` (rotates `rd` about Y — the whole dome wheels, sun and moon
+included) / `uSkyLift` (the cloud fbm's second axis) on `_envUni`; the
+dome swells the sun / moon, the 3D moon mesh scales with it, the map tint
+gilds near the sun; `_hqTickSky` zeroes them all — the building is still.
+Sea: `_nrMoat({ stream: true })` registers the sheet in `_motionSheets`
+(slides one tile and wraps — seamless), the caustic web follows through
+`_fluidFlowUniform` / `uFluidFlow` (reset by `_hqTickMoat`).
+**THE HULLS (rev 2)**: `_nrLoft(rings, ts, { open, capStart, capEnd })`
+is the one lofting helper (R rings of N points → an indexed surface, UVs
+in tiles, DoubleSide it); `_nrShipPlan(K, { hb, sternX, prowX })` the
+deck plan of a ship (a rounded transom, a clipper bow), `_nrPlanRing` /
+`_nrPlanDeck` its rings and deck. The Dutchman is that plan lofted to a
+keel with tumblehome + a rounded bilge, two wales, the deck cut to the
+plan, a BULWARK ribbon following the sheer with the gangways open at the
+spawn lanes, stanchions and `_nrTorch` TORCHES in brackets on every third
+post (the game's torch model, `_torchRegisterFlame` entries wearing
+`_ew_nr` so `_buildHorizonScenery` prunes them with the setting, point
+lights on eight + the prow torch, reach 2.4× a floor torch's), the
+sterncastle lofted off the stern of the plan (transom windows, the name).
+The Derelict is a FUSELAGE of rounded-box sections along X (a blunt stern
+with three burning engine bells + plumes, the widest section under the
+board, a drooping nose), the deck plate = the deep apron on its back with
+a lip, nacelles on pylons, the bridge forward, flank light strips, running
+lights, a breach with sparking cables. **`_ew_occSkip`** on a mesh exempts
+it from the line-of-sight fade (`_occComputeBlockers` skips the hit): the
+hull / fuselage / deck the board rides on carry it — their closed back
+lies under every tile, so the jittered rays below a subject's feet hit it
+from any angle and the whole ship faded out. Hull materials carry a
+STRONG self-lit `lift` (0.4–0.55): a plain Lambert side face is black
+under a night sky / in space. Both hulls are battle-only (`!HQ`) — the
+site room keeps its quay. **THE PIECES (rev 2)**: the Looking-Glass's
+cover is six chess MONUMENT kinds `chess_pawn / knight / rook / bishop /
+queen / king` — 1×1 tile boxes in map.js `_MON_GRID` (pawn + knight 2
+high, the rest 3: they block the way AND the sight like any block) mirrored
+in three-renderer.js `_MON_GRID` and delta-maps.test.js, allowed on Δ
+boards by `MF_DELTA_SOLID_MONS`, placed by the forge's `M.pieceSym(kind,
+x, y, h)` (the authored one dark = P2's half, the twin light), built by
+`_hzChessMon(kind)` (the `_hzChessPiece` lathe, slimmer via its new
+`rMul`, on a plinth that fills the tile so the horizontal-first fit leaves
+the piece slim; lit Lambert). Monument builders now receive `(rng, mon)`
+in the battle AND the site room — `mon.dark` is the only reader so far.
+The editor catalogue lists them. Three far rosters (`sea` · `wreckage` ·
+`wonder`) and three settings (`_NR_BUILDERS.revenge` / `.derelict` /
+`.lookingglass`; `_hzChessPiece` is the lathe both the rim and the roster
+use; a setting must skip its wake / rigging / hull under `K.hq`). Cost:
+uniform writes + one position write per streaming body per frame.
+Kill-switch `window.EW_NO_MAP_MOTION`; `EW_PERF_LOW` halves the motes;
+readout `ThreeRenderer.motion()` (now with `angleDeg` / `skyYaw` /
+`skyLift` / `dir`). The Δ FORGE takes a per-board bed (`cfg.strata` /
+`underTop` on `_mfDeltaNew`, recorded as `entry.bed`). Adding a moving
+map = the 7.10 checklist + an `env.motion` row (+ a roster if none fits);
+a wheel / rise needs NO new roster (the map's own turns / streams).
+`npm test` runs `motion-maps.test.js`. **Screenshot them** with
+`NODE_USE_ENV_PROXY=1 POSES=far,side,bow node playtest_maps.js
+prebuilt_revenge prebuilt_derelict` (the tool was re-pointed at the CRT
+match-select in rev 2 and launches through the selection mirrors;
+`PROBE_EVAL='<js expr>'` prints any page value, e.g. `ThreeRenderer.
+motion()`; see PLAYTEST_NOTES "MOVING MAPS rev 2"). First things to
+eyeball: the pace at round 1 and the cap, the Dutchman's env light (rev 2
+lifted the tint a notch — she is still a dark map), the wheel's rate on
+Area 51.
 
 ## RING VITALS + NAMEPLATE STYLES (Video settings) — added 2026-09-11
 An alternative to the HP/MP bars on the nameplate: the two meters are drawn

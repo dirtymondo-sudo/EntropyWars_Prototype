@@ -50,6 +50,10 @@ const CAM = {
   wide: { x: 3.5, y: 3.5, zoom: 0.42, tilt: 40, yaw: 45 },
   low:  { x: 3.5, y: 3.5, zoom: 0.55, tilt: 62, yaw: 25 },
   top:  { x: 3.5, y: 3.5, zoom: 0.5,  tilt: 12, yaw: 45 },
+  // MOVING MAPS rev 2 (2026-09-12): the whole setting — far out and low, and broadside
+  far:  { x: 3.5, y: 3.5, zoom: 0.16, tilt: 50, yaw: 35 },
+  side: { x: 3.5, y: 3.5, zoom: 0.2,  tilt: 68, yaw: 90 },
+  bow:  { x: 3.5, y: 3.5, zoom: 0.2,  tilt: 66, yaw: 0 },
 };
 (async () => {
   const exe = process.env.PW_CHROMIUM || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
@@ -79,17 +83,31 @@ const CAM = {
       if (m !== list[0]) { await page.reload({ waitUntil: 'commit', timeout: 70000 }); for (let i = 0; i < 90; i++) { if (await page.evaluate(() => !!(window.GAME && window._goToVsCpu)).catch(() => false)) break; await sleep(1000); } await page.evaluate(() => { window.EW_DISABLE_INTRO_CINE = true; }); }
       await page.evaluate(() => window._goToVsCpu());
       await sleep(1500);
+      // THE TERMINAL (2026-09-08): the CRT match-select — site cards are .ms-tty-card
+      // (a <b> with the name), modes .ms-tty-row, FILE is .ms-tty-btn.primary. Fallback:
+      // the render-mirrored selection globals + _msConfirm (the launch contract).
       const picked = await page.evaluate((label) => {
-        const cards = [...document.querySelectorAll('.ms-map-card')];
-        const c = cards.find(b => (b.textContent || '').includes(label));
+        const cards = [...document.querySelectorAll('.ms-tty-card, .ms-map-card')];
+        const c = cards.find(b => { const t = b.querySelector('b'); return ((t && t.textContent) || b.textContent || '').trim() === label || (b.textContent || '').includes(label); });
         if (c) { c.click(); return (c.textContent || '').slice(0, 60); }
         return null;
       }, m.label);
-      if (!picked) { console.log('  ! map card not found for', m.label); continue; }
+      if (!picked) console.log('  ~ no card for', m.label, '— launching through the selection mirrors');
       await sleep(500);
-      await page.evaluate(() => { const el = [...document.querySelectorAll('.ms-mode-card')].find(b => /death\s*match/i.test(b.textContent || '')); if (el) el.click(); });
+      await page.evaluate(() => { const el = [...document.querySelectorAll('.ms-tty-row, .ms-mode-card')].find(b => /team\s*death\s*match/i.test(b.textContent || '')); if (el) el.click(); });
       await sleep(600);
-      await page.evaluate(() => { const b = document.querySelector('.ms-btn-primary'); if (b) b.click(); });
+      const launched = await page.evaluate((id) => {
+        try {
+          const list = (typeof MS_MAP_LIST !== 'undefined') ? MS_MAP_LIST : null;
+          const mi = list ? list.findIndex(x => x.modeId === id) : -1;
+          if (mi >= 0 && typeof _msSelectedMap !== 'undefined') { _msSelectedMap = mi; }
+          if (typeof MS_GAME_MODES !== 'undefined' && typeof _msSelectedGM !== 'undefined') { const gi = MS_GAME_MODES.findIndex(x => x.id === 'tdm'); if (gi >= 0) _msSelectedGM = gi; }
+          if (typeof window._msConfirm === 'function') { window._msConfirm(); return 'mirror:' + mi; }
+        } catch (e) { return 'err:' + e.message; }
+        const b = document.querySelector('.ms-tty-btn.primary, .ms-btn-primary'); if (b) { b.click(); return 'click'; }
+        return 'none';
+      }, m.id);
+      console.log('  launch via', launched);
       await sleep(2000);
       for (let i = 0; i < 2; i++) { await page.evaluate(() => { const b = document.querySelector('.pb-btn-primary'); if (b) b.click(); }); await sleep(1400); if (await page.evaluate(() => window.GAME.state.phase) === 'battle') break; }
       await page.evaluate(() => { const st = window.GAME.state; if (st.phase !== 'battle') { try { window.applyPartyBuild(false); } catch (e) {} st.teamLockedIn = true; try { window.startMatch(); } catch (e) {} } });
@@ -115,6 +133,7 @@ const CAM = {
       const info = await page.evaluate(() => { const st = window.GAME.state; return { mode: st.modeId || st.mapId, env: st.mapEnv && { scenery: st.mapEnv.scenery, near: st.mapEnv.near }, w: st.boardW || (st.board && st.board[0] && st.board[0].length), three: (typeof ThreeRenderer !== 'undefined') && ThreeRenderer.isActive() }; });
       console.log('  battle', JSON.stringify(info));
       await sleep(7000);   // let the GLB props + horizon models arrive
+      if (process.env.PRE_EVAL) { try { console.log('  PRE_EVAL', JSON.stringify(await page.evaluate(process.env.PRE_EVAL)).slice(0, 2500)); } catch (e) { console.log('  PRE_EVAL failed', String(e.message).split('\n')[0]); } await sleep(800); }
       for (const pose of POSES) {
         const c = CAM[pose]; if (c === undefined) continue;
         if (c) await page.evaluate((c) => { camera.snap({ _force: true, x: c.x, y: c.y, zoom: c.zoom, tilt: c.tilt, yaw: c.yaw }); camera._smoothX = c.x; camera._smoothY = c.y; camera._smoothZoom = c.zoom; camera._smoothTilt = c.tilt; camera._smoothYaw = c.yaw; }, c);
@@ -123,6 +142,7 @@ const CAM = {
         try { await page.screenshot({ path: f, timeout: +(process.env.SHOT_TIMEOUT || 25000), animations: 'disabled' }); console.log('  shot', path.basename(f)); }
         catch (e) { console.log('  ! screenshot failed', pose, String(e.message).split('\n')[0]); }
       }
+      if (process.env.PROBE_EVAL) { try { console.log('  EVAL', JSON.stringify(await page.evaluate(process.env.PROBE_EVAL)).slice(0, 2500)); } catch (e) { console.log('  EVAL failed', String(e.message).split('\n')[0]); } }
       if (process.env.PROBE) {
         const probe = await page.evaluate(() => {
           const out = { roots: 0, byType: {}, neon: [], errs: [] };

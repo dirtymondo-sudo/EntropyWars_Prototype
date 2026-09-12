@@ -2120,3 +2120,19 @@ marble). Files: data.js, three-renderer.js, audio.js, server.js,
 index.html (`20260912-moving-maps-01-cors`), motion-maps.test.js,
 delta-maps.test.js. Full entry: DOOR_HQ_BUILD_PLAN.md §9 2026-09-12. Not
 playtested (RULE #1c).
+
+**2026-09-12 · MOVING MAPS rev 2 (local delivery).** Room 1717 is **THE
+FLYING DUTCHMAN** now (the user's call; the id `prebuilt_revenge` and the
+number stay — "the year the Dutchman was last logged making for port");
+the pirate's point of entry, the site file, the sign and the agent's
+lines follow. The three travellers run three times faster (3 tiles/s at
+round 1, a 5× cap). The ship is a HULL (a lofted plan, a bulwark with
+torches that burn at night), the Derelict the dorsal deck of a starship
+with its engines still lit, the Looking-Glass's cover is the chess pieces
+themselves (real monuments — they block the way and the sight). Four more
+sites move: Stonehenge and Area 51 wheel, Babel rises, Hell sinks. Files:
+data.js, three-renderer.js, map.js, index.html
+(`20260912-moving-maps-02-cors`), motion-maps.test.js,
+delta-maps.test.js, playtest_maps.js. Screenshots taken this time (the
+user allowed it): PLAYTEST_NOTES "MOVING MAPS rev 2".
+

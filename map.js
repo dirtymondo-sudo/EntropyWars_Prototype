@@ -4336,7 +4336,16 @@
             greekcol:  [1, 1, 2],
             mushroom:  [1, 1, 2],
             mushroom2: [1, 1, 1],
-            obelisk3d: [1, 1, 3]
+            obelisk3d: [1, 1, 3],
+            // 2026-09-12 the Looking-Glass's pieces (procedural lathes, three-renderer.js
+            // _hzChessPiece): pawns and knights two high, the rest three — cover you can
+            // neither walk through nor see past
+            chess_pawn:   [1, 1, 2],
+            chess_knight: [1, 1, 2],
+            chess_rook:   [1, 1, 3],
+            chess_bishop: [1, 1, 3],
+            chess_queen:  [1, 1, 3],
+            chess_king:   [1, 1, 3]
         };
         function _stampMonumentCollision() {
             state._monumentTiles = null;
@@ -10198,6 +10207,14 @@
             { kind: 'mushroom',    label: 'Mushroom',        emoji: '🍄', foot: 1, maxH: 2 },
             { kind: 'mushroom2',   label: 'Mushroom (Real)', emoji: '🍄', foot: 1, maxH: 1 },
             { kind: 'obelisk3d',   label: 'Obelisk (3D)',    emoji: '🗿', foot: 1, maxH: 3 },
+            // 2026-09-12 the Looking-Glass's chess pieces — 1×1 tile boxes (place with
+            // { dark: true } for the black set; the editor's default is the white one)
+            { kind: 'chess_pawn',   label: 'Pawn',            emoji: '♙', foot: 1, maxH: 2 },
+            { kind: 'chess_knight', label: 'Knight',          emoji: '♘', foot: 1, maxH: 2 },
+            { kind: 'chess_rook',   label: 'Rook',            emoji: '♖', foot: 1, maxH: 3 },
+            { kind: 'chess_bishop', label: 'Bishop',          emoji: '♗', foot: 1, maxH: 3 },
+            { kind: 'chess_queen',  label: 'Queen',           emoji: '♕', foot: 1, maxH: 3 },
+            { kind: 'chess_king',   label: 'King',            emoji: '♔', foot: 1, maxH: 3 },
         ];
         const ME_MON_BY_KIND = {};
         ME_MONUMENT_KINDS.forEach(m => { ME_MON_BY_KIND[m.kind] = m; });

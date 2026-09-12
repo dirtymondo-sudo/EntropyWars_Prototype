@@ -42,7 +42,8 @@ const MON_COLLISION = {
     greytube: (dx, dy) => (dx === 0 && dy === 0) ? 6 : 0,
     blastdoor: (dx, dy) => (dy === 0) ? 6 : 0,
 };
-const MON_GRID = { dumpster: [2, 1, 1], greekcol: [1, 1, 2], mushroom: [1, 1, 2], mushroom2: [1, 1, 1], obelisk3d: [1, 1, 3] };
+const MON_GRID = { dumpster: [2, 1, 1], greekcol: [1, 1, 2], mushroom: [1, 1, 2], mushroom2: [1, 1, 1], obelisk3d: [1, 1, 3],
+    chess_pawn: [1, 1, 2], chess_knight: [1, 1, 2], chess_rook: [1, 1, 3], chess_bishop: [1, 1, 3], chess_queen: [1, 1, 3], chess_king: [1, 1, 3] };   // the Looking-Glass's pieces (2026-09-12)
 
 const S = 8, B = 5;
 const ascii = process.argv.includes('--ascii');

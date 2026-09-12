@@ -10249,3 +10249,53 @@ object on a unit or on `state` — store the id and resolve it.
 (Unrelated console line from the same session: `_spawnEffect called on def
 without layers` for `raceDarkDominion` — a VFX wrapper passed where a
 layered def belongs; cosmetic, not the freeze.)
+
+## MOVING MAPS rev 2 (2026-09-12): faster, the Flying Dutchman's hull, the starship, the pieces, wheel + rise
+Playtested with `playtest_maps.js` (the user allowed it this session) —
+the tool's selectors were three days stale (`.ms-map-card` / `.ms-mode-card`
+/ `.ms-btn-primary` predate THE TERMINAL): it now clicks `.ms-tty-card` /
+`.ms-tty-row` and launches through the render-mirrored `_msSelectedMap` /
+`_msSelectedGM` + `window._msConfirm()` (the launch contract — no DOM at
+all if the card is filtered away). New poses `far` (zoom 0.16, tilt 50),
+`side` (yaw 90) and `bow` (yaw 0) frame a whole setting; `PROBE_EVAL='<js>'`
+prints any page expression after the shots (use `ThreeRenderer.hq.dev.
+scene()` for the scene — `scene` is closure-local).
+- **Pace**: rev 1 was 1.0–1.2 tiles/s at round 1 with a 4–4.5× cap; the
+  user wanted faster → 3.0 / 3.6 / 3.0 with 5–5.5× caps (`ThreeRenderer.
+  motion().tilesPerSec` read 2.6 easing to 3.0 at round 1). The sea sheet,
+  wakes and motes take any speed (they wrap per tile).
+- **The hull was a box**: the apron strips + a triangular bow cap + a box
+  castle read as a barge. Now `_nrShipPlan` → `_nrLoft`: a real hull to
+  the keel, a bulwark following the sheer, torches on the posts. The far
+  shot at "day" (probe: `phase: 'day'`) was still nearly black — that is
+  the map's env (dark tint + dark fog + the storm floor), not a bug; rev 2
+  lifted the tint / fog a notch and gave every hull material a strong
+  self-lit `lift`. 9 point lights in the near group (8 rail + the prow).
+- **The fuselage vanished**: the first Derelict shots showed the light
+  strips and the bridge but NO fuselage — the line-of-sight fade. With
+  `occ: true` the board's centre + corner tiles are subjects, each with
+  five jittered rays (one 0.45 tile BELOW the point); a ray below the deck
+  hits the fuselage's closed back under the board from every angle → the
+  whole mesh faded to 0.05. Fix: `_ew_occSkip` on the hull / fuselage /
+  deck meshes, honoured in `_occComputeBlockers`' hit loop. (The
+  Dutchman's hull is open at the top, so it never faded — but it wears the
+  flag too.)
+- **The sea roster crowded the ship**: lighthouses and islands stood 12
+  tiles off the rail at deck level and dwarfed her. `latMin` for `'sea'`
+  rows 0.26 → 0.44 of the disc, the lighthouse share trimmed.
+- **The pieces**: the Looking-Glass's Δ and full board now stamp
+  `chess_*` monuments (1×1 boxes: pawn / knight h2, rook / bishop / queen
+  / king h3). delta-maps.test.js' two-disjoint-routes rule still passes
+  with the knight solid (it was a climbable step before). Screenshot:
+  dark pawns on P2's half, light on P1's, the rook and bishop columns
+  read at a glance as cover.
+- **Wheel / rise** (Stonehenge, Area 51 / Babel, Hell): not screenshotted
+  (a still frame cannot show a turn). Read `ThreeRenderer.motion()
+  .angleDeg` over a few seconds to verify a wheel; the dome turns with
+  `skyYaw` (sun and moon included — the henge is an observatory on
+  fast-forward). If Area 51's wheel is dizzying, drop its `speed` (3.0)
+  or `max`.
+- Untested in the browser: the HQ site rooms after the builder rewrite
+  (both hulls are `!HQ`; the room keeps its quay, masts and deck props),
+  online (nothing new is relayed — the speed reads `state.round`).
+

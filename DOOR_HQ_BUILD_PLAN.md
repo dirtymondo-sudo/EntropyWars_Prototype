@@ -949,7 +949,7 @@ monuments / near kit, and a number that lands. Each = the checklist in 7.10.
 | 451 | The Library of Alexandria | Ancient | the fire spreading as `lava` / `scorched` (Hell's vocabulary, orange), `bricks_1`, `tablet` monuments as scroll racks, `torch`; the Pharos as a far `_nrTower`; "We only keep the file" |
 | 711 | The Gas Station | Urban | night, `urban_street`, `_nrLamps`, an `_nrHouse` canopy, `dumpster`, `traffic_light`; far `eyes`; natives cowboy, scarecrow, conspiracy theorist, zombie, mothman, and the honda civic — Sedaniel is paid in oil changes |
 | 1600 | The White House | Terrestrial | the Vatican recipe: lawn, `_nrColonnade` + `_nrHouse` facade, fence, `_nrPool`; natives politician, general, men in black, marksman |
-| 1717 | ~~Pirate Bay~~ → **QUEEN ANNE'S REVENGE** ✅ 2026-09-12 | Hollow | shipped as a MOVING MAP: the galleon itself under way (the deck is the board, the hull / masts / sails the setting, the sea streaming past into a storm) rather than a cove; the cove's pieces (gangplanks, the wrecked hull, whalebones) can still join a later shore site; natives pirate (+ Atlantis's siren / mermaid / kraken as biome neighbours) — §9 2026-09-12 |
+| 1717 | ~~Pirate Bay~~ → **THE FLYING DUTCHMAN** (was Queen Anne's Revenge until rev 2 the same day) ✅ 2026-09-12 | Hollow | shipped as a MOVING MAP: the galleon itself under way (the deck is the board, the hull / masts / sails the setting, the sea streaming past into a storm) rather than a cove; the cove's pieces (gangplanks, the wrecked hull, whalebones) can still join a later shore site; natives pirate (+ Atlantis's siren / mermaid / kraken as biome neighbours) — §9 2026-09-12 |
 | 411 | The National Park | Terrestrial | the fourth forest (Shasta, Fairy, Grove exist): Shasta's pines + a ranger cabin + a campfire + trail `_nrSign`s + a `securitycam` on a tree — Agent Forrest's woods, "invaded by cameras" (DOOR_STORY §2 #17) |
 | 343 | The Mothership | Celestial | the saucer, inside: `aluminium` / `metal_3` / `holo`, `federation_beacon`, `tower_cube`; the D.U.M.B. room recipe in silver; natives grey, nordic, mantid, black goo, symbiote |
 | 2001 | Jupiter | Celestial | gas-giant cloud tops (`cloud_2`, `storm`, `cloud_gap`) with the monolith; after Saturn |
@@ -4405,3 +4405,17 @@ calls were left to Claude.
   pushed. NOT browser-playtested (RULE #1c) — PLAYTEST_NOTES "MOVING MAPS"
   lists what to eyeball first (the round-1 speed and the cap, the sea's
   level under the hull, the sun at perigee).
+
+### 2026-09-12 (rev 2) — MOVING MAPS: the Flying Dutchman, the starship, the pieces, wheel + rise
+Room 1717 renamed THE FLYING DUTCHMAN (id unchanged). Faster travel
+(×3, cap 5×). `_nrLoft` / `_nrShipPlan` (three-renderer.js) — the
+galleon's box apron is a lofted hull with a bulwark and rail torches
+(`_nrTorch`); the Derelict is a fuselage with engines, nacelles, a bridge
+and a breach; both hulls battle-only (`!HQ`) so the site rooms' quays are
+untouched. The Looking-Glass's Δ and full board carry `chess_*`
+monuments (map.js / renderer `_MON_GRID`, `MF_DELTA_SOLID_MONS`, the
+forge's `M.pieceSym`). New `env.motion` kinds `wheel` (Stonehenge, Area
+51 — `uSkyYaw` turns the dome) and `rise` (Babel up, Hell down —
+`uSkyLift`). `_ew_occSkip` keeps a hull out of the line-of-sight fade.
+Full notes: CLAUDE.md "MOVING MAPS", PLAYTEST_NOTES "MOVING MAPS rev 2".
+
