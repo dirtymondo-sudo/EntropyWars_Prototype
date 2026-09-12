@@ -1219,3 +1219,7 @@ plate / Rings at feet · Nameplate: Classic / No bars / Side line) rendered
 in the pause menu (ui.js, under Nametags) and the main-menu Settings
 Display group. Viewer-local cosmetics — nothing relayed (both online seats
 read their own synced hp/mp). `npm test` runs `ring-vitals.test.js`.
+
+## Adversarial continuation — 2026-09-11: magic helper ownership (local delivery)
+
+Fresh complete main archive `2042f1062c480cf68d3d2ec70d6061f88d39df94`. Magic Circle, Magic Orb and Light Pillar return `_sigRunOwned` for refusal disposal. `_sigDisposeGroup` retains engine-shared Sprite geometry (`isSprite`) as well as `_ew_shared` geometry, while disposing instance materials and keeping cached textures. Preserve this rule when fixing remaining return-only consumers. 21 new tests pass (15 fail before); 12 supplemental real Three.js r128 object checks pass. Full suite 618 pass, zero fail, two existing skips; syntax 99/99. Complete files: ENTROPY_WARS_MAGIC_OWNERSHIP_FIXES.zip. Not deployed or browser-playtested. Next: Crescent Slash and Orb Burst, then six remaining return-only helpers; Psychosis has no direct timer in current source, so inspect its downstream helpers and subsequent Ego Death emissions. See the review plan's top entry for evidence limits.

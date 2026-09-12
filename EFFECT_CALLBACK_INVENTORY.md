@@ -1,6 +1,6 @@
 # Remaining effect callback inventory
 
-Updated 2026-09-10 (America/Chicago), after the Aurora Curtain/Spiral Beam/Bad Trip batch. This is a textual index, not an exhaustive semantic audit.
+Updated 2026-09-11 (America/Chicago), after the magic helper ownership batch. This is a textual index, not an exhaustive semantic audit.
 
 ## Classified and fixed in this batch
 
@@ -137,3 +137,9 @@ Correction to the earlier refusal sweep: returning an entry is not proof of loca
 Aurora Curtain and Spiral Beam now return `_sigRunOwned`: their refusal paths dispose instance geometry/materials and preserve shared textures. Bad Trip's delayed skulls at 150/300 ms use `_fxDelay`; the initial skull is immediate. Sixteen new tests pass (six fail before), bringing the full suite to 574 passed, zero failures, two existing skips; syntax 94/94. Bad Trip downstream primitives are doubled in these tests, so their internal cleanup is not covered.
 
 Next: `_sigMagicCircle3D`, `_sigMagicOrb3D`, `_sigLightPillar3D` (returned-entry refusal cleanup, including transitive circle callers), then Crescent Slash, Orb Burst, Neon Grid, Fractal Tunnel, Kaleidoscope, Spectrum Burst, Prism Refraction and Stat Rings. Afterward continue Psychosis and subsequent emission timers, then VFX-04. No claim of exhaustive graph cleanup or browser/online acceptance. Application cache warmup stays unchanged; older next-task entries are historical.
+
+## Magic helper ownership — 2026-09-11
+
+Pinned full main snapshot: `2042f1062c480cf68d3d2ec70d6061f88d39df94`. Magic Circle, Magic Orb and Light Pillar now return `_sigRunOwned`; their refused instance allocations are released. `_sigDisposeGroup` now skips engine-shared Sprite geometry on normal finish and refusal, retaining material cleanup. No timers or cache loaders changed. Twenty-one production-helper tests pass (15 fail before), plus 12 real Three.js r128 object checks. Browser/GPU behavior is untested.
+
+Remaining return-only `_sigRun` consumers: Crescent Slash (9555), Orb Burst (9845), Neon Grid (16359), Fractal Tunnel (16428), Kaleidoscope (16473), Spectrum Burst (16646), Prism Refraction (16798), Stat Rings (20850). Lines refer to this delivery. Audit builders, shared assets and animation before replacing calls. The current Psychosis body has no direct timer; the earlier timer-specific continuation lead should instead point to its downstream helpers and the subsequent Ego Death emission timers. This remains a partial semantic audit.

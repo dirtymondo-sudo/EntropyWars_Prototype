@@ -1,10 +1,24 @@
 # Entropy Wars — adversarial review plan
 
-Last updated: 2026-09-10 (America/Chicago; continuation after the prior entry labeled 2026-09-11)
+Last updated: 2026-09-11 (America/Chicago)
 Repository: https://github.com/dirtymondo-sudo/EntropyWars_Prototype
 Baseline: Phase 1 source review pinned to main commit `f0a4c3341631d60cee2ac544e543a13754d21624` (2026-09-09 in America/Chicago). Phase 0 used an unpinned main snapshot.
 Continuation baseline: main commit `4c740fcf6624a30d59e30c4d4dfea1a16dd85b03`, checked 2026-09-09 (America/Chicago). This commit and its predecessor `3da54eff8abbef3da87a1c0f72272919d84bd15e` changed only the uploaded review document; the inspected game source and line references remain unchanged.
 Delivery: this document is repository/reference material. The first delivery is now present in repository main `41f8e76b67120eea58c17fd968c5c72d70ef035e`; R2/Render deployment is unverified. The pause-focus delivery is also present in repository main `e92ee26153b65c2047963544c56310ea838220bb`. The Settings-focus delivery is present in repository main `f546e7fff61edb012e3fae536aee995996257c4f`. The PAUSE-06 controller delivery is present in repository main `88b3bc65adc93fc8ed2e84c28c112b0c81565b3f`; the PAUSE-07 delivery is present in repository main `82494b38fa3dea84f89f32a8723602289fa51b3f`; R2/Render deployment remains unverified.
+
+### Latest continuation — 2026-09-11: LIFE-06 / VFX-03 magic helper ownership
+
+**Implemented and locally validated; not deployed or browser-playtested.** Downloaded the complete repository archive at main commit `2042f1062c480cf68d3d2ec70d6061f88d39df94` (2026-09-11 America/Chicago). This fresh baseline includes the recent HQ, character creator rev 7 and ring-vitals changes. No older working copy was used as the implementation baseline.
+
+Four fixes: Magic Circle, Magic Orb and Light Pillar now return `_sigRunOwned`, releasing their fresh geometry/materials when the active cap or scene loss refuses registration. Their returned entry/null contract and normal animation are preserved. `_sigDisposeGroup` now retains Three.js Sprite geometry while still releasing instance materials. Three.js r128 shares one geometry across Sprite instances; the prior normal-finish path disposed that shared resource, and extending it to refused builds without this correction would repeat that invalidation. Shared textures and `_ew_shared` model geometry remain retained. All current Sprite construction sites in this file use the engine-provided geometry; no custom Sprite geometry assignment was found. Both online viewers use these local helpers; relay payloads and authority are unchanged.
+
+**Validation:** 21 production-helper tests pass, with 15 failures reproduced against the untouched pinned source and six controls passing before/after. Coverage includes cap/scene-loss refusal, missing scene, normal completion, early retirement, old frames after a new cast, concurrent sprite effects, tick-error cleanup, colors, custom options, particle payloads, growth/rise/spin/fade and shader time/erosion. Controlled rendering doubles preserve the r128 shared-Sprite-geometry contract. Twelve supplemental checks using real Three.js r128 objects pass across refusal, normal finish and retirement. No WebGL, browser, live host/guest or GPU performance acceptance is claimed.
+
+Full repository package test command via bundled Node (`node --test --test-reporter=tap *.test.js`; npm unavailable): **620 total, 618 passed, zero failures, two existing skips** (rigged outfit fixture prerequisites and server boot dependencies). Syntax: **99/99 clean**. Asset binaries were downloaded with the snapshot but were not changed.
+
+**Delivery:** `ENTROPY_WARS_MAGIC_OWNERSHIP_FIXES.zip`: complete `three-vfx-effects.js` → R2; complete `index.html` → Render with shared token `20260912-magic-ownership-01-cors`; the new test and three updated documents → repository only. Validation evidence is in `evidence/`. Sync the two runtime files to the repository as usual. No commit, push or deployment.
+
+**Exact next task:** audit Crescent Slash and Orb Burst refusal paths with production-builder allocation and normal-animation regressions, then Neon Grid, Fractal Tunnel, Kaleidoscope, Spectrum Burst, Prism Refraction and Stat Rings (eight remaining return-only `_sigRun` sites). Keep the corrected shared-Sprite geometry policy; do not infer full cleanup coverage from a caller's test. The earlier Psychosis timer lead is imprecise: the current Psychosis body has no direct timer; review its downstream ownership and the subsequent Ego Death direct emission timers instead. Continue VFX-04 endpoint/list visibility afterward. LIFE-06/VFX-03 remain partial; cache warmup and browser/online acceptance remain separate.
 
 ### Latest continuation — 2026-09-10: LIFE-06 / VFX-03 Aurora Curtain, Spiral Beam and Bad Trip
 

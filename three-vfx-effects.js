@@ -8995,10 +8995,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        a group that never acquired an owner. GLB weapon-model geometry is
        shared between clones (_ew_shared) — dispose only per-effect
        geometry; materials are cloned per instance and are always ours.
+       Sprite geometry belongs to Three.js and is shared across all sprites.
        Textures are never disposed here (shared caches). */
     function _sigDisposeGroup(group) {
         group.traverse(function (o) {
-            if (o.geometry && !o.geometry._ew_shared) o.geometry.dispose();
+            if (o.geometry && !o.isSprite && !o.geometry._ew_shared) o.geometry.dispose();
             if (o.material) {
                 var mats = Array.isArray(o.material) ? o.material : [o.material];
                 for (var i = 0; i < mats.length; i++) mats[i].dispose();
@@ -9122,7 +9123,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         glow.renderOrder = (opts.renderOrder != null ? opts.renderOrder : 156) - 1;
         group.add(glow);
 
-        return _sigRun(group, total, function (el) {
+        return _sigRunOwned(group, total, function (el) {
             var s, o;
             if (el < growMs) {
                 var t = el / growMs;
@@ -9267,7 +9268,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
 
         var peakO = opts.opacity != null ? opts.opacity : 1.0;
-        return _sigRun(group, ms, function (el) {
+        return _sigRunOwned(group, ms, function (el) {
             var t = _sigClamp01(el / ms);
             var grow = _sigEaseOutCubic(t);
             var breathe = 1 + 0.07 * Math.sin(el * 0.02);
@@ -9370,7 +9371,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         ring.renderOrder = 158;
         group.add(ring);
 
-        return _sigRun(group, ms, function (el) {
+        return _sigRunOwned(group, ms, function (el) {
             var t = _sigClamp01(el / ms);
             var grow = _sigEaseOutCubic(_sigClamp01(el / 160));
             var fade = t > 0.65 ? 1 - (t - 0.65) / 0.35 : 1;
