@@ -155,6 +155,7 @@ function client(role = 'host') {
         sessionStorage: { removeItem() {} }, backToMainMenu() {}, ewToast() {},
         setTimeout(fn) { timers.push(fn); return timers.length; }, clearTimeout() {}, setInterval() { return 1; }, clearInterval() {},
         _serializeState: () => JSON.parse(JSON.stringify(st)), _ewStateChecksum: () => 'correct',
+        _ewSafeStringify: (o) => JSON.stringify(o),
         _applyRemoteState() { applied++; return applyOK; } });
     vm.runInContext(between(source, '            function _packClock(', '            window._broadcastState ='), c);
     vm.runInContext(between(source, '            var _reconnectTimer =', '            function _connectSocket('), c);

@@ -9210,7 +9210,7 @@ const STATUS_DEFS = {
             // environmental). Credit-only: damage math stays source-less.
             const _srcId = stacks === 0 && unit._statusSrc ? unit._statusSrc.burn : null;
             const _src = (_srcId && typeof unitFromId === 'function') ? unitFromId(_srcId) : null;
-            if (_src && !_src.dead && _src.player !== unit.player) unit._lastDamageSource = _src;
+            if (_src && !_src.dead && _src.player !== unit.player) unit._lastDamageSourceId = _src.id;
             const _hpB = unit.hp;
             applyDamageToUnit(unit, dmg, label, {
                 ignoreArmor: true,
@@ -9249,7 +9249,7 @@ const STATUS_DEFS = {
             // source-less on purpose (no atk/type multipliers on DOTs).
             const _srcId = unit._statusSrc && unit._statusSrc.poison;
             const _src = (_srcId && typeof unitFromId === 'function') ? unitFromId(_srcId) : null;
-            if (_src && !_src.dead && _src.player !== unit.player) unit._lastDamageSource = _src;
+            if (_src && !_src.dead && _src.player !== unit.player) unit._lastDamageSourceId = _src.id;
             const _hpB = unit.hp;
             applyDamageToUnit(unit, 32, `Poison harms ${unitDisplayName(unit)}: `, {
                 ignoreArmor: true,
@@ -9283,7 +9283,7 @@ const STATUS_DEFS = {
         onRoundEnd(unit) {
             const _srcId = unit._statusSrc && unit._statusSrc.bleed;
             const _src = (_srcId && typeof unitFromId === 'function') ? unitFromId(_srcId) : null;
-            if (_src && !_src.dead && _src.player !== unit.player) unit._lastDamageSource = _src;
+            if (_src && !_src.dead && _src.player !== unit.player) unit._lastDamageSourceId = _src.id;
             const _hpB = unit.hp;
             applyDamageToUnit(unit, 20, `${unitDisplayName(unit)} bleeds: `, {
                 ignoreArmor: true,
@@ -9384,7 +9384,7 @@ const STATUS_DEFS = {
         onRoundEnd(unit) {
             const _srcId = unit._statusSrc && unit._statusSrc.haunted;
             const _src = (_srcId && typeof unitFromId === 'function') ? unitFromId(_srcId) : null;
-            if (_src && !_src.dead && _src.player !== unit.player) unit._lastDamageSource = _src;
+            if (_src && !_src.dead && _src.player !== unit.player) unit._lastDamageSourceId = _src.id;
             const _hpB = unit.hp;
             applyDamageToUnit(unit, 28, `${unitDisplayName(unit)} is wracked by the haunting: `, {
                 ignoreArmor: true,
@@ -9417,7 +9417,7 @@ const STATUS_DEFS = {
         onRoundEnd(unit) {
             const _srcId = unit._statusSrc && unit._statusSrc.corroded;
             const _src = (_srcId && typeof unitFromId === 'function') ? unitFromId(_srcId) : null;
-            if (_src && !_src.dead && _src.player !== unit.player) unit._lastDamageSource = _src;
+            if (_src && !_src.dead && _src.player !== unit.player) unit._lastDamageSourceId = _src.id;
             const _hpB = unit.hp;
             applyDamageToUnit(unit, 44, `Corrosion eats at ${unitDisplayName(unit)}: `, {
                 ignoreArmor: true,

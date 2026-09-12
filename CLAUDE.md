@@ -107,6 +107,12 @@ That's why online kept drifting behind VS-CPU. So, for EVERY change:
   leak positions to the opponent).
 - Before delivering, ask: "what does PLAYER 2 (guest) see when this fires?"
   If the answer is "nothing" and it's player-facing, it's not done.
+- NEVER store a unit / state OBJECT on a unit or on `state` — store the ID
+  (`_lastDamageSourceId`, resolve with `unitFromId`). A back reference made
+  `state.units` cyclic and every host snapshot threw (2026-09-12 freeze; see
+  PLAYTEST_NOTES "Online freeze"). online.js `_ewSafeStringify` now cuts a
+  cycle and warns with the key instead of killing the sync — treat that
+  warning as a bug in the writer.
 
 ## DOOR docs (story + headquarters) — read before ANY DOOR / story / hub work
 - `DOOR_MASTER.md` — the single DOOR file: Part A canon (world, factions,

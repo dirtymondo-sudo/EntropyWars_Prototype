@@ -7630,7 +7630,7 @@
                 const dmgAmt = Math.max(_lvlScaledMin(16, unit), Math.round(unit.maxHp * SEED_POISON_PCT));
                 // Credit-only (no sourceUnit: that would add atk/type mults to
                 // the tick): _lastDamageSource routes the kill to the planter.
-                if (caster && !caster.dead) unit._lastDamageSource = caster;
+                if (caster && !caster.dead) unit._lastDamageSourceId = caster.id;
                 applyDamageToUnit(unit, dmgAmt, `🌿 Poison Seed stings ${unitDisplayName(unit)}: `, {
                     ignoreArmor: true,
                     damageType: 'dot',
@@ -7655,7 +7655,7 @@
                     const caster = unitFromId(seed.casterUnitId);
                     const hpBefore = unit.hp;
                     const drainAmt = Math.max(_lvlScaledMin(12, unit), Math.round(unit.maxHp * SEED_LEECH_PCT));
-                    if (caster && !caster.dead) unit._lastDamageSource = caster;
+                    if (caster && !caster.dead) unit._lastDamageSourceId = caster.id;
                     applyDamageToUnit(unit, drainAmt, `🌿 Leech Seed drains ${unitDisplayName(unit)}: `, {
                         ignoreArmor: true,
                         damageType: 'dot',
@@ -7824,7 +7824,7 @@
                 const caster = unitFromId(tree.casterUnitId);
                 const hpBefore = unit.hp;
                 const dmgAmt = Math.max(_lvlScaledMin(14, unit), Math.round(unit.maxHp * TREE_AURA_POISON_PCT));
-                if (caster && !caster.dead) unit._lastDamageSource = caster;
+                if (caster && !caster.dead) unit._lastDamageSourceId = caster.id;
                 applyDamageToUnit(unit, dmgAmt, `🌳 Toxin Tree sickens ${unitDisplayName(unit)}: `, {
                     ignoreArmor: true,
                     damageType: 'dot',
@@ -7848,7 +7848,7 @@
                 const caster = unitFromId(tree.casterUnitId);
                 const hpBefore = unit.hp;
                 const drainAmt = Math.max(_lvlScaledMin(12, unit), Math.round(unit.maxHp * TREE_AURA_LEECH_PCT));
-                if (caster && !caster.dead) unit._lastDamageSource = caster;
+                if (caster && !caster.dead) unit._lastDamageSourceId = caster.id;
                 applyDamageToUnit(unit, drainAmt, `🌳 Leech Tree saps ${unitDisplayName(unit)}: `, {
                     ignoreArmor: true,
                     damageType: 'dot',
@@ -8505,7 +8505,7 @@
             const _echo = (victim, pct, srcId, label, icon) => {
                 if (!victim || victim.dead || victim._dying || !(pct > 0)) return;
                 const src = (srcId && typeof unitFromId === 'function') ? unitFromId(srcId) : null;
-                if (src && !src.dead && src.player !== victim.player) victim._lastDamageSource = src;
+                if (src && !src.dead && src.player !== victim.player) victim._lastDamageSourceId = src.id;
                 const amount = Math.max(1, Math.round(dealt * pct));
                 const hpB = victim.hp;
                 applyDamageToUnit(victim, amount, `${icon} ${label}: `, {
@@ -8708,7 +8708,7 @@
                 addLog(`${def.icon || '🪢'} ${unitDisplayName(v)} is dragged ${tiles} tile${tiles === 1 ? '' : 's'} behind ${unitDisplayName(roper)}!`);
                 const dmg = (def.dragDamagePerTile || 0) * tiles;
                 if (dmg > 0) {
-                    if (roper.player !== v.player) v._lastDamageSource = roper;
+                    if (roper.player !== v.player) v._lastDamageSourceId = roper.id;
                     const hpB = v.hp;
                     applyDamageToUnit(v, dmg, 'Dragged by the rope: ', {
                         ignoreArmor: true,
@@ -22435,7 +22435,7 @@
                         setUnitFacing(target, sourceUnit.x - target.x, sourceUnit.y - target.y);
                     }
 
-                    target._lastDamageSource = sourceUnit;
+                    target._lastDamageSourceId = sourceUnit.id;   // the ID, never the unit: a unit object here made state.units cyclic (A hits B, B hits A) and JSON.stringify of every online snapshot threw
                     target._lastDamageSourceRound = state.round || 0;
                     if (!target._damageContributors) target._damageContributors = {};
                     target._damageContributors[sourceUnit.id] = (target._damageContributors[sourceUnit.id] || 0) + finalDamage;
@@ -22737,7 +22737,7 @@
                 // Credit only flows to a true ENEMY of the victim: a same-team
                 // finisher (friendly fire) earns no XP/gold/streaks, no
                 // matchKills score, and can never trigger the sudden-death win.
-                const _lastHitter = sourceUnit || target._lastDamageSource || null;
+                const _lastHitter = sourceUnit || (target._lastDamageSourceId != null ? unitFromId(target._lastDamageSourceId) : null) || null;
                 const killer = (_lastHitter && (typeof isEnemyUnit === 'function'
                     ? isEnemyUnit(_lastHitter, target)
                     : _lastHitter.player !== target.player)) ? _lastHitter : null;
@@ -22789,7 +22789,7 @@
 
                 target._damageContributors = {};
                 target._debuffContributors = {};
-                target._lastDamageSource = null;
+                target._lastDamageSourceId = null;
                 return true;
             }
 
@@ -43130,7 +43130,7 @@
                 const target = unitAt(tile.x, tile.y);
                 if (target && target.player !== bomb.owner) {
                     const _hpBefore = target.hp;
-                    if (_bombCaster) target._lastDamageSource = _bombCaster;
+                    if (_bombCaster) target._lastDamageSourceId = _bombCaster.id;
                     applyDamageToUnit(target, bomb.dmg, `Bomb blast at ${coordLabel(bomb.x, bomb.y)}: `, {
                         allowMarkBonus: false
                     });

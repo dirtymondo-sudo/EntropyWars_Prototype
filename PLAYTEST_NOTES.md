@@ -10109,3 +10109,24 @@ dress + gown and the WALK on both bases, `shots/creator/<tag>_layer_*`)
 — the lathe's columns now follow the nearest leg with a swing allowance
 on the front / back panels. Run `--layers` after any lathe or weights
 change; the headless renders after any cut.
+## Online freeze: "cyclic object value" in _broadcastState (2026-09-12)
+Symptom: mid-match both players lose the action menu for good; the host
+console repeats `[NET] Serialize error: TypeError: cyclic object value`
+from `_broadcastState` (heartbeat, maybeAdvanceTurn, _afterTowerDamage…).
+Cause: battle.js `applyDamageToUnit` stored the ATTACKER UNIT OBJECT as
+`target._lastDamageSource` (kill-credit fallback; the DoT / link / tether /
+bomb / status-tick setters in battle.js + data.js did the same). Two units
+trading blows made `state.units` cyclic (A._lastDamageSource = B,
+B._lastDamageSource = A); every JSON.stringify of the snapshot threw, was
+caught, and the guest never received another state-sync — the host kept
+waiting for the handoff, the guest for the snapshot. Fix: the field is
+`_lastDamageSourceId` (an id) everywhere; the killer fallback resolves it
+through `unitFromId`. Belt-and-braces: online.js `_ewSafeStringify` (used
+by `_broadcastState` and the recovery snapshot) cuts a true cycle instead
+of throwing, warns once per key naming it, and re-parses a clean copy
+before socket.io serializes the object. `npm test` runs
+`net-snapshot-cycle.test.js`. RULE for writers: NEVER put a unit / state
+object on a unit or on `state` — store the id and resolve it.
+(Unrelated console line from the same session: `_spawnEffect called on def
+without layers` for `raceDarkDominion` — a VFX wrapper passed where a
+layered def belongs; cosmetic, not the freeze.)

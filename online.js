@@ -2950,7 +2950,7 @@
                             var snapshot = _serializeState();
                             _packClock(snapshot);
                             NET._recoverySnapshot = { id: id, matchId: NET.matchId,
-                                state: JSON.parse(JSON.stringify(snapshot)), checksum: _ewStateChecksum(st) };
+                                state: JSON.parse(_ewSafeStringify(snapshot)), checksum: _ewStateChecksum(st) };
                             NET.socket.emit('recovery-snapshot', NET._recoverySnapshot);
                             sent = true;
                         }
@@ -4162,6 +4162,43 @@
             }
             window._ewStateChecksum = _ewStateChecksum;
 
+            /* Cycle-safe JSON for the host snapshot. A whole-object back
+               reference planted on state (2026-09-12: applyDamageToUnit
+               stored the ATTACKER UNIT as target._lastDamageSource, so two
+               units trading blows made state.units cyclic) turned every
+               JSON.stringify in _broadcastState into "TypeError: cyclic
+               object value" — caught, logged, and the guest never received
+               another snapshot: both players sat with no action menu until
+               the tab was closed. The replacer keeps a stack of the objects
+               currently being written (its ancestors), drops a value that is
+               already on that stack (a true cycle — SHARED references that are
+               not ancestors are kept intact) and warns ONCE per key so the
+               root cause is named in the console instead of the sync dying.
+               _ewSafeStringify.dropped counts the drops of the last call so
+               the caller can re-parse a clean copy before socket.io (which
+               would choke on the same cycle) sees the object. */
+            var _safeStringifyWarned = {};
+            function _ewSafeStringify(obj) {
+                var stack = [];
+                _ewSafeStringify.dropped = 0;
+                return JSON.stringify(obj, function(key, value) {
+                    if (value && typeof value === 'object') {
+                        while (stack.length && stack[stack.length - 1] !== this) stack.pop();
+                        if (stack.indexOf(value) !== -1) {
+                            _ewSafeStringify.dropped++;
+                            if (!_safeStringifyWarned[key]) {
+                                _safeStringifyWarned[key] = 1;
+                                console.warn('[NET] Dropped a cyclic reference from the state snapshot at key "' + key + '" — a whole object was stored on state where an id belongs; fix the writer.');
+                            }
+                            return undefined;
+                        }
+                        stack.push(value);
+                    }
+                    return value;
+                });
+            }
+            window._ewSafeStringify = _ewSafeStringify;
+
             function _serializeState() {
                 var st = window._gameState;
                 if (!st) return null;
@@ -4474,9 +4511,12 @@
                 try {
                     var s = _serializeState();
                     if (!s) return;
-                    var json = JSON.stringify(s);
+                    var json = _ewSafeStringify(s);
                     if (json === NET.lastSyncJson) return;
                     NET.lastSyncJson = json;
+                    /* a cycle was cut — emit the CLEAN copy, socket.io
+                       serializes the object it is handed, not our string */
+                    if (_ewSafeStringify.dropped) s = JSON.parse(json);
                     /* Checksum stamp — added AFTER the dedup compare (the seq
                        increments every send, so including it in `json` would
                        make every snapshot look "changed" and kill the dedup). */
