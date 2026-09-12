@@ -41,8 +41,8 @@ const priority=slice('            function _stepPriority(','            function
 const sort=slice('                const order = entries.slice().sort(', '                if (order[0].unit');
 for(const rounds of [0,3]){
  const c={state:{_trickRoomRounds:rounds,_simulInitiative:1},entries:[
- {player:1,unit:{spd:10},plan:{steps:[{type:'attack'}]}},
- {player:2,unit:{spd:90},plan:{steps:[{type:'attack'}]}}]};
+ {player:1,unit:{spd:10},speed:10,plan:{steps:[{type:'attack'}]}},
+ {player:2,unit:{spd:90},speed:90,plan:{steps:[{type:'attack'}]}}]};
  report.simul.push({rounds,firstPlayer:vm.runInNewContext(priority+sort+'order[0].player',c)});
 }
 process.stdout.write(JSON.stringify(report,null,2)+'\n');

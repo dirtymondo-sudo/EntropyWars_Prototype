@@ -36520,7 +36520,7 @@
                         : st.type === 'entropyStrike' ? ('⚛ ' + ((st.strikeType && typeof getEntropyStrikeType === 'function') ? getEntropyStrikeType(st.strikeType).name.toUpperCase() : 'ENTROPY STRIKE'))
                         : st.type === 'build' ? '🔨 Build'
                         : st.type).join(' → ');
-                return `${unitDisplayName(e.unit)} (SPD ${e.unit.spd || 0}): ${verbs}`;
+                return `${unitDisplayName(e.unit)} (SPD ${e.speed}): ${verbs}`;
             }
 
             function _resolvePlans() {
@@ -36531,20 +36531,23 @@
                 const entries = [1, 2].map(p => {
                     const plan = state._simulPlans ? state._simulPlans[p] : null;
                     const unit = (plan && plan.unitId) ? state.units.find(u => u.id === plan.unitId) : null;
-                    return { player: p, plan, unit };
+                    // Lock effective SPD with the revealed orders. Effects
+                    // during the first plan do not reorder the second plan.
+                    const speed = unit ? getEffectiveSpd(unit) : -1;
+                    return { player: p, plan, unit, speed };
                 });
                 addLog(`♟️ ORDERS REVEALED — P1: ${_describeEntry(entries[0])} · P2: ${_describeEntry(entries[1])}`);
                 const order = entries.slice().sort((a, b) => {
                     const pa = _planPriority(a.plan), pb = _planPriority(b.plan);
                     if (pa !== pb) return pb - pa;
-                    const sa = a.unit ? (a.unit.spd || 0) : -1;
-                    const sb = b.unit ? (b.unit.spd || 0) : -1;
+                    const sa = a.speed;
+                    const sb = b.speed;
                     if (sa !== sb) return sb - sa;
                     return (a.player === state._simulInitiative) ? -1 : 1;
                 });
                 if (order[0].unit && order[1].unit) {
                     const why = _planPriority(order[0].plan) > _planPriority(order[1].plan) ? 'priority'
-                        : ((order[0].unit.spd || 0) !== (order[1].unit.spd || 0) ? 'speed' : 'initiative');
+                        : (order[0].speed !== order[1].speed ? 'speed' : 'initiative');
                     addLog(`⚡ ${unitDisplayName(order[0].unit)} acts first (${why}).`);
                 }
                 _execPlanEntry(order[0], () => {
@@ -36755,7 +36758,11 @@
                     /* Re-aim the beam from the caster's current position. */
                     if (step.targetId && typeof window._aiReaimLineSpell === 'function') {
                         const aim = window._aiReaimLineSpell(unit, spell, step.targetId);
-                        if (aim) { cx = aim.x; cy = aim.y; cz = undefined; }
+                        if (!aim) {
+                            _spellWhiff(unit, spell);
+                            return 600;
+                        }
+                        cx = aim.x; cy = aim.y; cz = undefined;
                     }
                 } else if (step.targetId && !meta.tileTargeted) {
                     const t = state.units.find(u2 => u2.id === step.targetId);

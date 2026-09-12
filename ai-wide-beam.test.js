@@ -6,7 +6,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const data = require('./load-data').loadGameData();
 const source = fs.readFileSync(process.env.EW_AI_TEST_SOURCE || path.join(__dirname, 'ai.js'), 'utf8');
-const battle = fs.readFileSync(path.join(__dirname, 'battle.js'), 'utf8');
+const battle = fs.readFileSync(process.env.EW_BATTLE_TEST_SOURCE || path.join(__dirname, 'battle.js'), 'utf8');
 const dirs = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
 function setup(id = 'racePlasmaCannon') {
     const spell = data.SPELL_BY_ID[id];
@@ -126,4 +126,36 @@ test('narrow beam retains aligned target coordinates and diagonal step reach',()
     const h=setup();h.spell={...h.spell,lineWidth:1};h.unit.spells=[h.spell];
     const e=h.enemy(9,9);assert.equal(h.ai.findSpellTarget(h.unit,h.spell,h.v),e);
     assert.equal(h.ai.scoreSpell(h.unit,h.spell,e,h.v),100);
+});
+for (const id of ['racePlasmaCannon','raceTsunami']) {
+    for (const seat of [1,2]) test(`${id}: Simul P${seat} lost target whiffs once without casting stale aim`,()=>{
+        const h=setup(id);h.unit.player=seat;const e=h.enemy(8,6);e.player=3-seat;
+        const a=candidates(h)[0];assert.ok(a);e.unseen=true;
+        const sa=battle.indexOf('            function _execSpell(unit, step) {');
+        const sb=battle.indexOf('            function _execItem(',sa);
+        const wa=battle.indexOf('            function _spellWhiff(unit, spell) {');
+        const wb=battle.indexOf('            function _execStep(',wa);
+        let whiffs=0;
+        const ctx={window:{_aiReaimLineSpell:h.reaim},state:h.g.state,
+            canAffordSpell:()=>true,getSpellMpCostFor:()=>h.spell.cost,
+            getSpellApCost:()=>h.spell.apCost,spellEndsTurn:()=>false,
+            spendAP:(u,n)=>u.ap-=n,spendAllAP:u=>u.ap=0,_whiff:()=>whiffs++,
+            _kindMeta:()=>({}),isSpellSelfCast:()=>false,doSpell:h.g.doSpell};
+        const exec=vm.runInNewContext(battle.slice(wa,wb)+battle.slice(sa,sb)+'_execSpell',ctx);
+        const mp=h.unit.mp,ap=h.unit.ap;
+        assert.equal(exec(h.unit,{tool:h.spell.name,targetId:e.id,x:a.target.x,y:a.target.y}),600);
+        assert.equal(whiffs,1);assert.equal(h.events.length,0);
+        assert.equal(h.unit.mp,mp-h.spell.cost);assert.equal(h.unit.ap,ap-h.spell.apCost);
+        assert.equal(h.g.state.selectedTool,undefined);assert.equal(h.g.state.actionMode,undefined);
+    });
+}
+test('Simul explicitly aimed player beam retains its chosen direction without AI retargeting',()=>{
+    const h=setup();const sa=battle.indexOf('            function _execSpell(unit, step) {');
+    const sb=battle.indexOf('            function _execItem(',sa);
+    const exec=vm.runInNewContext(battle.slice(sa,sb)+'_execSpell',{
+        window:{_aiReaimLineSpell:()=>{throw Error('must not re-aim a tile order');}},state:h.g.state,
+        canAffordSpell:()=>true,getSpellMpCostFor:()=>h.spell.cost,_kindMeta:()=>({}),
+        isSpellSelfCast:()=>false,doSpell:h.g.doSpell});
+    assert.equal(exec(h.unit,{tool:h.spell.name,x:6,y:5}),650);
+    assert.deepEqual(h.events,[{x:6,y:5,z:undefined}]);
 });

@@ -67,7 +67,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.5-2026-09-12-wide-beams'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.6-2026-09-12-match-deadline'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -1083,7 +1083,17 @@
         ).length;
 
         const round = g.state.round || 0;
-        const roundUrgency = round >= 40 ? 3 : round >= 25 ? 2 : round >= 15 ? 1 : 0;
+        const mode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
+        // Match the engine's clock override / mode fallback. Count the current
+        // round as playable: expiry occurs when round > roundLimit.
+        const roundLimit = g.state.matchClock?.roundLimit || mode?.roundLimit || 0;
+        const roundsRemaining = roundLimit > 0 && !g.state.suddenDeathActive
+            ? Math.max(0, roundLimit - round + 1) : null;
+        // Urgency is deadline pressure, not a claim that our team is winning.
+        // Unlimited modes have none; sudden death is immediately decisive.
+        const roundUrgency = g.state.suddenDeathActive ? 3 : roundLimit <= 0 ? 0
+            : roundsRemaining <= 1 ? 3 : round / roundLimit >= 0.9 ? 2
+            : round / roundLimit >= 0.75 ? 1 : 0;
 
         let phase = 'even';
         if (myHG >= hgTarget - 1) phase = 'hg_winning';
@@ -1094,7 +1104,6 @@
         else if (enemyDeadCount >= 1 && myAlive >= enemyAlive + 1) phase = 'tower_push';
         else if (myAlive >= enemyAlive + 2) phase = 'tower_push';
         else if (myAlive > enemyAlive) phase = 'numbers_advantage';
-        else if (roundUrgency >= 2) phase = 'numbers_advantage';
         else if (enemyAlive >= myAlive + 2) phase = 'numbers_disadvantage';
 
         return {
@@ -1102,7 +1111,7 @@
             ownTowerPct, enemyTowerPct,
             myAlive, enemyAlive,
             enemyDeadCount, enemyMinRespawn, enemyImminentRespawns,
-            roundUrgency, phase,
+            roundLimit, roundsRemaining, roundUrgency, phase,
         };
     }
 

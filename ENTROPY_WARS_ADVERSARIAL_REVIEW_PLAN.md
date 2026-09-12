@@ -1,6 +1,6 @@
 # Entropy Wars — adversarial review plan
 
-Last updated: 2026-09-11 (America/Chicago)
+Last updated: 2026-09-12 (America/Chicago)
 Repository: https://github.com/dirtymondo-sudo/EntropyWars_Prototype
 Baseline: Phase 1 source review pinned to main commit `f0a4c3341631d60cee2ac544e543a13754d21624` (2026-09-09 in America/Chicago). Phase 0 used an unpinned main snapshot.
 Continuation baseline: main commit `4c740fcf6624a30d59e30c4d4dfea1a16dd85b03`, checked 2026-09-09 (America/Chicago). This commit and its predecessor `3da54eff8abbef3da87a1c0f72272919d84bd15e` changed only the uploaded review document; the inspected game source and line references remain unchanged.
@@ -11,6 +11,24 @@ Delivery: this document is repository/reference material. The first delivery is 
 Stop the incremental VFX helper cleanup batches here. Continue **Phase 6 — Arena and Team Deathmatch AI**, using its existing findings and prior navigation fixes rather than restarting reconnaissance. The next bounded review is AI-04 fallback/target-scorer-executor correspondence and remaining wide-beam targeting, after refreshing relevant main files.
 
 LIFE-06/VFX-03 remain partially validated with residual callback ownership deferred to the backlog. A current source count finds 24 direct timer sites from Merkaba onward; this is an inspection inventory, not 24 confirmed bugs or spells. Earlier direct timers also include infrastructure, cleanup and cache work. VFX-04 endpoint/list visibility remains open and deferred; it is not an exit gate for starting Phase 6. Preserve all completed fixes and their evidence. Do not resume spell-helper batches unless requested or a concrete blocker is found during the next phase.
+
+### Latest continuation — 2026-09-12: Phase 6 deadline and Simul correctness
+
+**Implemented and locally validated; not deployed.** Current main tree `3aeb17bbc68def72faa5885617f921ee93c621cc` was verified against local Git blob hashes before edits, including all present top-level JS, documents, entry and package files; no mismatches or missing top-level tests. Main remained unchanged at final verification. Preserved the uploaded Chivalry landing and online snapshot-cycle fixes. Baseline copies are in `phase6-readiness-baseline`.
+
+**AI-05-S — fixed locally: Simul stale beam aim.** An identity-tracked line/linePush plan now calls the existing `_spellWhiff` once when current re-aim finds no eligible target, then returns the existing 600ms failure delay. It cannot fall through to `doSpell` at stale coordinates. The committed MP/AP cost follows the existing Simul policy; this is not the free retry used by ordinary AI execution. Explicit tile orders remain unchanged. Successful alternative targeting still works. Both seats and wide spell kinds are covered using production re-aim, executor and resource-consuming whiff code, with controlled visibility and action boundaries.
+
+**AI-06a — fixed locally: deadline input and false numerical advantage.** `assessWinCondition` uses the engine's match-clock override / mode fallback instead of rounds 15/25/40. It returns `roundLimit` and inclusive `roundsRemaining` (expiry is round > limit). Urgency becomes 1 in the final quarter, 2 in the final tenth, and 3 in the final playable round or sudden death. Unlimited modes have zero deadline urgency; sudden death has no remaining-round countdown. Threshold fractions are an explicit initial heuristic, not playtested tuning. Deadline urgency no longer fabricates `numbers_advantage` or masks `numbers_disadvantage`. Tests load actual mode declarations, cover TDM/Simul both seats, Arena, custom and zero-fallback clocks, unlimited Gauntlet, sudden death and expired/single-round limits. No new score-lead policy is claimed: AI-06 remains open for protecting a lead versus seeking a needed kill, and immediate win/denial decisions.
+
+**AI-04b-T1 — fixed locally: Simul ignores effective SPD.** Revealed entries now snapshot `getEffectiveSpd(unit)` once before sorting. Priority remains first, effective SPD second, initiative breaks ties. Revealed SPD and the reason shown in the log use that same snapshot. Mid-resolution buffs do not reorder locked plans. Six production resolution checks cover both seats, live/base inversions, speed ties, priority, mixed movement/guard orders and one-time snapshots. Trick Room reversal is deliberately still open: common round building decrements its counter before Simul resolves plans, so simply reversing on a positive remaining counter would lose the final affected round and could incorrectly change already-started rounds. Resolve an explicit round-owned reversal snapshot and lifecycle before implementing its AI scorer.
+
+**Validation:** 23 added checks, 20 fail on untouched baseline and three controls pass before/after. Focused suite: 51/51. Full package command (`node --test *.test.js`, same script as npm test): **817 total, 815 passed, zero failed, two existing skips**. Syntax 112/112 JS files; 12 inline scripts clean and import-map JSON valid. Utility diagnostic rerun with updated speed-snapshot fixture; its output remains observations, not acceptance. No browser playtest, AI simulation, performance measurements or live host/guest acceptance.
+
+**Distance to Phase 7:** four substantive implementation batches remain as a planning estimate, then Phase 6 acceptance evidence. (1) Chivalry legal-target and guardian/ward net-transfer valuation, including replacement and landing consequences. (2) Trick Room round-owned Simul reversal and mode-aware order-benefit scoring. (3) Coupled Tune/Pulse frequency valuation with canonical effects, susceptibility and resource opportunity cost. (4) AI-06 score-aware endgame decisions plus remaining AI-05 destructive-breach prediction and scenario audit. The fourth batch may split if new defects appear. This is a scope estimate, not a promised session count or completion percentage. Required closure evidence also includes expected decisions/legality scenarios, decision-time measurements and explicitly authorized P1-versus-CPU observations. Phase 7 preparation can start separately, but Phase 6 is not complete. Deferred VFX work is not a Phase 6 gate.
+
+**Delivery:** `ENTROPY_WARS_PHASE6_DEADLINE_SIMUL.zip`: complete ai.js and battle.js → R2; index.html → Render (`20260912-ai-deadline-simul-01-cors`); three tests, updated utility diagnostic, AI_REDESIGN.md, CLAUDE.md and this tracker → repository only. Runtime files also sync to the repository. AI stamp `v4.6-2026-09-12-match-deadline`. No commit, push or deployment.
+
+**Exact next task:** Chivalry legal-target/net-interception scoring using corrected landing and guardian-specific defenses; test pledge replacement and ordinary/Simul execution. Then the remaining batches above. Preserve this delivery if main has not yet received it; do not replace newer local changes with old main files.
 
 ### Latest continuation — 2026-09-11: Phase 6 / AI-04b-L2 Chivalry landing
 
@@ -1051,7 +1069,7 @@ Spell identity/timing matrix, code changes, and representative captures at suppo
 
 ## Phase 6 — Arena and Team Deathmatch AI
 
-**Status: in progress.** Navigation, AI-04a dispatch, prism self-cast coordinates and wide-beam correspondence are implemented and locally validated. This continuation fixes Trick Room match-reset leakage and deepens AI-04b/AI-04c utility contracts. Chivalry/Trick Room scoring, Simul reversal, Tune/Pulse frequency valuation, AI-05 residuals, AI-06 and gameplay acceptance remain open.
+**Status: in progress.** Navigation, dispatch, prism self-cast coordinates, wide beams, Chivalry landing, Simul null-re-aim handling, effective-speed resolution and mode deadline inputs are implemented and locally validated. Chivalry/Trick Room scoring, round-owned Simul reversal, Tune/Pulse valuation, destructive-breach prediction, score-aware endgame decisions and acceptance remain open. See the latest continuation for the four-batch estimate and validation limits.
 
 ### Rules and existing strengths
 
