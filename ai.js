@@ -67,7 +67,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.2-2026-09-10-navigation'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.3-2026-09-12-spell-routing'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -2730,6 +2730,50 @@
             return s;
         }
 
+        /* CHAMP_REWORK_PLAN Phase 6 (2026-09-08): the `steal` kind (Hit
+           a Lick) — the plunder's scoring plus the hit itself. */
+        if (kind === 'steal') {
+            if (!target) return 0;
+            let s = 30;
+            const est = estDamage(g, unit, target, spell);
+            s += Math.min(est, effHp(target));
+            if (est >= effHp(target)) s += killValue(g, unit, target, v) * 0.9;
+            if ((target.hourglasses || 0) > 0) s += 110;
+            if (target.items && Object.keys(target.items).some(k => target.items[k] > 0)) s += 35;
+            return s;
+        }
+        /* Phase 6: `cleanseArea` (Purify) — target is the centre TILE.
+           Allies in the 3×3 pay out per debuff (crippling ones by the
+           output they unlock), enemies per buff stripped. */
+        if (kind === 'cleanseArea') {
+            if (!target) return 0;
+            const defs = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS : (g.STATUS_DEFS || {});
+            const area = getSquareArea(target.x, target.y, spell.aoeRadius || 1);
+            const inArea = u => !u.dead && area.some(t => t.x === u.x && t.y === u.y);
+            let s = 0;
+            for (const a of [unit, ...v.allies]) {
+                if (!inArea(a) || !a.status) continue;
+                for (const key of Object.keys(a.status)) {
+                    if (!(a.status[key] > 0) || !defs[key] || defs[key].kind !== 'debuff') continue;
+                    if (['stun', 'sleep', 'freeze', 'frozen', 'silence', 'charm', 'feared', 'possessed', 'infected'].includes(key)) {
+                        s += 0.6 * unitThreatOutput(g, a, v.closestEnemy || unit);
+                    } else if (['slow', 'root', 'stagger', 'jammed', 'blind', 'confuse', 'tethered', 'grievous'].includes(key)) {
+                        s += 70;
+                    } else {
+                        s += 45;
+                    }
+                }
+                if ((a.hourglasses || 0) > 0 && s > 0) s += 20;
+            }
+            for (const e of v.visibleEnemies) {
+                if (!inArea(e) || !e.status) continue;
+                for (const key of Object.keys(e.status)) {
+                    if (e.status[key] > 0 && defs[key] && defs[key].kind === 'buff') s += 55;
+                }
+            }
+            return s;
+        }
+
         if (kind === 'utility') {
             const sid = spell.id;
             if ((sid === 'grapple' || sid === 'raceGrapple') && target) {
@@ -2740,47 +2784,6 @@
                 s += meleeAllies * 50;
                 s += getTargetPriority(target, unit, v) * 0.25;
                 if (g.getEffectiveRange(target) >= 3) s += 40;
-                return s;
-            }
-            /* CHAMP_REWORK_PLAN Phase 6 (2026-09-08): the `steal` kind (Hit
-               a Lick) — the plunder's scoring plus the hit itself. */
-            if (kind === 'steal' && target) {
-                let s = 30;
-                const est = estDamage(g, unit, target, spell);
-                s += Math.min(est, effHp(target));
-                if (est >= effHp(target)) s += killValue(g, unit, target, v) * 0.9;
-                if ((target.hourglasses || 0) > 0) s += 110;
-                if (target.items && Object.keys(target.items).some(k => target.items[k] > 0)) s += 35;
-                return s;
-            }
-            /* Phase 6: `cleanseArea` (Purify) — target is the centre TILE.
-               Allies in the 3×3 pay out per debuff (crippling ones by the
-               output they unlock), enemies per buff stripped. */
-            if (kind === 'cleanseArea' && target) {
-                const defs = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS : (g.STATUS_DEFS || {});
-                const area = getSquareArea(target.x, target.y, spell.aoeRadius || 1);
-                const inArea = u => !u.dead && area.some(t => t.x === u.x && t.y === u.y);
-                let s = 0;
-                for (const a of [unit, ...v.allies]) {
-                    if (!inArea(a) || !a.status) continue;
-                    for (const key of Object.keys(a.status)) {
-                        if (!(a.status[key] > 0) || !defs[key] || defs[key].kind !== 'debuff') continue;
-                        if (['stun', 'sleep', 'freeze', 'frozen', 'silence', 'charm', 'feared', 'possessed', 'infected'].includes(key)) {
-                            s += 0.6 * unitThreatOutput(g, a, v.closestEnemy || unit);
-                        } else if (['slow', 'root', 'stagger', 'jammed', 'blind', 'confuse', 'tethered', 'grievous'].includes(key)) {
-                            s += 70;
-                        } else {
-                            s += 45;
-                        }
-                    }
-                    if ((a.hourglasses || 0) > 0 && s > 0) s += 20;
-                }
-                for (const e of v.visibleEnemies) {
-                    if (!inArea(e) || !e.status) continue;
-                    for (const key of Object.keys(e.status)) {
-                        if (e.status[key] > 0 && defs[key] && defs[key].kind === 'buff') s += 55;
-                    }
-                }
                 return s;
             }
             if ((sid === 'plunder' || sid === 'racePlunder') && target) {
@@ -4172,6 +4175,47 @@
             return bestTile;
         }
 
+        /* Phase 6: `steal` — an enemy in reach, Key carriers first. */
+        if (kind === 'steal') {
+            const inReach = v.visibleEnemies.filter(e => {
+                const d = _dist(g, unit.x, unit.y, unit.z, e);
+                return d >= 1 && d <= (_effRange(unit, spell) || 1) && !isProtected(g, e)
+                    && !g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y);
+            });
+            inReach.sort((a, b) => {
+                const aHG = (a.hourglasses || 0) > 0 ? 100 : 0;
+                const bHG = (b.hourglasses || 0) > 0 ? 100 : 0;
+                const aIt = a.items && Object.keys(a.items).some(k => a.items[k] > 0) ? 30 : 0;
+                const bIt = b.items && Object.keys(b.items).some(k => b.items[k] > 0) ? 30 : 0;
+                return (bHG + bIt + getTargetPriority(b, unit, v)) - (aHG + aIt + getTargetPriority(a, unit, v));
+            });
+            return inReach[0] || null;
+        }
+        /* Phase 6: `cleanseArea` — the 3×3 in range that lifts the most
+           ally debuffs / strips the most enemy buffs; returns the tile. */
+        if (kind === 'cleanseArea') {
+            const defs = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS : (g.STATUS_DEFS || {});
+            const R = _effRange(unit, spell) || 3;
+            const countOf = (u, want) => {
+                if (!u.status) return 0;
+                let n = 0;
+                for (const key of Object.keys(u.status)) if (u.status[key] > 0 && defs[key] && defs[key].kind === want) n++;
+                return n;
+            };
+            const centres = [unit, ...v.allies].filter(a => !a.dead && countOf(a, 'debuff') > 0)
+                .concat(v.visibleEnemies.filter(e => countOf(e, 'buff') > 0));
+            let best = null, bestScore = 0;
+            for (const c of centres) {
+                if (Math.abs(c.x - unit.x) + Math.abs(c.y - unit.y) > R) continue;
+                const area = getSquareArea(c.x, c.y, spell.aoeRadius || 1);
+                let score = 0;
+                for (const a of [unit, ...v.allies]) if (!a.dead && area.some(t => t.x === a.x && t.y === a.y)) score += countOf(a, 'debuff') * 2;
+                for (const e of v.visibleEnemies) if (area.some(t => t.x === e.x && t.y === e.y)) score += countOf(e, 'buff');
+                if (score > bestScore) { bestScore = score; best = { x: c.x, y: c.y }; }
+            }
+            return best;
+        }
+
         if (kind === 'utility') {
             const sid = spell.id;
             if (sid === 'grapple' || sid === 'raceGrapple') {
@@ -4182,46 +4226,6 @@
                     })
                     .sort((a, b) => getTargetPriority(b, unit, v) - getTargetPriority(a, unit, v));
                 return inRange[0] || null;
-            }
-            /* Phase 6: `steal` — an enemy in reach, Key carriers first. */
-            if (kind === 'steal') {
-                const inReach = v.visibleEnemies.filter(e => {
-                    const d = _dist(g, unit.x, unit.y, unit.z, e);
-                    return d >= 1 && d <= (_effRange(unit, spell) || 1) && !isProtected(g, e)
-                        && !g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y);
-                });
-                inReach.sort((a, b) => {
-                    const aHG = (a.hourglasses || 0) > 0 ? 100 : 0;
-                    const bHG = (b.hourglasses || 0) > 0 ? 100 : 0;
-                    const aIt = a.items && Object.keys(a.items).some(k => a.items[k] > 0) ? 30 : 0;
-                    const bIt = b.items && Object.keys(b.items).some(k => b.items[k] > 0) ? 30 : 0;
-                    return (bHG + bIt + getTargetPriority(b, unit, v)) - (aHG + aIt + getTargetPriority(a, unit, v));
-                });
-                return inReach[0] || null;
-            }
-            /* Phase 6: `cleanseArea` — the 3×3 in range that lifts the most
-               ally debuffs / strips the most enemy buffs; returns the tile. */
-            if (kind === 'cleanseArea') {
-                const defs = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS : (g.STATUS_DEFS || {});
-                const R = _effRange(unit, spell) || 3;
-                const countOf = (u, want) => {
-                    if (!u.status) return 0;
-                    let n = 0;
-                    for (const key of Object.keys(u.status)) if (u.status[key] > 0 && defs[key] && defs[key].kind === want) n++;
-                    return n;
-                };
-                const centres = [unit, ...v.allies].filter(a => !a.dead && countOf(a, 'debuff') > 0)
-                    .concat(v.visibleEnemies.filter(e => countOf(e, 'buff') > 0));
-                let best = null, bestScore = 0;
-                for (const c of centres) {
-                    if (Math.abs(c.x - unit.x) + Math.abs(c.y - unit.y) > R) continue;
-                    const area = getSquareArea(c.x, c.y, spell.aoeRadius || 1);
-                    let score = 0;
-                    for (const a of [unit, ...v.allies]) if (!a.dead && area.some(t => t.x === a.x && t.y === a.y)) score += countOf(a, 'debuff') * 2;
-                    for (const e of v.visibleEnemies) if (area.some(t => t.x === e.x && t.y === e.y)) score += countOf(e, 'buff');
-                    if (score > bestScore) { bestScore = score; best = { x: c.x, y: c.y }; }
-                }
-                return best;
             }
             if (sid === 'plunder' || sid === 'racePlunder') {
                 const adjacent = v.visibleEnemies.filter(e => {

@@ -945,8 +945,9 @@ test('Phase 6: the engine honours steal, cleanseArea and the dash afterShot (sou
     assert.ok(/case 'cleanseArea':/.test(battleSrc) && /case 'steal':/.test(battleSrc) && /spell\.afterShot\s*\?\s*nm \+ ': select a tile to dash to — you then fire/.test(battleSrc), 'targeting prompts');
     assert.ok(/cleanse: 1, cleanseArea: 1,/.test(battleSrc) && /else if \(kind === 'cleanseArea'\) \{\s*tiles = getSquareArea\(tx, ty/.test(battleSrc), 'glow footprint');
     assert.ok(/\|\| kind === 'steal'\) cat = kind;/.test(battleSrc) && /kind === 'cleanse' \|\| kind === 'cleanseArea'\) cat = 'cleanse';/.test(battleSrc), 'Simul categories');
-    // ai.js: scorer + targeter for both kinds, the afterShot rider in the dash scorer/targeter.
-    assert.ok(/if \(kind === 'steal' && target\) \{/.test(aiSrc) && /if \(kind === 'cleanseArea' && target\) \{/.test(aiSrc), 'ai.js scoreSpell');
+    // Direct AI dispatch plus null-target guards; production behavior is covered by ai-spell-routing.test.js.
+    // The old text-only check also passed when these handlers were unreachable inside utility.
+    assert.ok(/^        if \(kind === 'steal'\) \{\s*if \(!target\) return 0;/m.test(aiSrc) && /^        if \(kind === 'cleanseArea'\) \{\s*if \(!target\) return 0;/m.test(aiSrc), 'ai.js scoreSpell');
     assert.ok(/if \(kind === 'steal'\) \{\s*const inReach/.test(aiSrc) && /if \(kind === 'cleanseArea'\) \{\s*const defs/.test(aiSrc), 'ai.js findSpellTarget');
     assert.ok(/if \(spell\.afterShot\) \{\s*const _asR = spell\.afterShot\.range \|\| 3;\s*const _asC = v\.visibleEnemies/.test(aiSrc) && /if \(hits === 0 && shot === 0\) continue;/.test(aiSrc), 'ai.js afterShot');
     // HUD + library + highlight.

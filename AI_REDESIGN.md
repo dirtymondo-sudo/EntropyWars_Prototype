@@ -191,3 +191,30 @@ The complete runtime files are `ai.js` (R2) and cache-busted `index.html`
   Harbinger/WM win rates move, melee/utility races (swordfighter, knight,
   king arthur, shaman, werewolf) rise, Requiem whiff ≈ 0, Teleport/Cleanse/
   Encore/Ground Slam cast counts > 0.
+
+### 2026-09-11 — adversarial Phase 6 spell dispatch (local delivery)
+
+Pinned main: `82906801a763c0ce5fe943bdde48980d60ee7776`. AI stamp:
+`v4.3-2026-09-12-spell-routing`. Hit a Lick (`steal`) and Purify
+(`cleanseArea`) had scorer and target-picker branches nested under
+`utility`, so normal spell selection skipped them. Both now dispatch at
+kind level; missing targets score zero. Existing values and all execution,
+resource, failed-action and online contracts are preserved.
+
+`ai-spell-routing.test.js` executes production dispatch/candidate/executor
+functions with canonical data and controlled board, damage and engine-call
+doubles: 13 pass, 10 fail on the pinned baseline, three controls pass on both.
+The champion source guard now requires direct dispatch and null guards.
+Full suite: 720 total, 718 passed, zero failed, two existing skips. No browser
+playtest, simulation, actual doSpell-effects validation or deployment.
+
+`check-ai-spell-dispatch.js` inventories 501 canonical spells / 65 kinds.
+It does not prove every utility ID or executor works. Remaining direct
+scorer/picker gaps: guard/Trick Room. Prism self-casts have scorers and
+no-target admission but no target coordinates for the generic executor;
+inspect mirror ownership as well. Wide Plasma Cannon/Tsunami still use
+spine-only AI geometry. The review plan contains evidence and the exact
+next task: prism self-cast contract, then wide-beam direction/footprint.
+
+Complete files: ai.js → R2, index.html → Render (shared token
+`20260912-ai-spell-routing-01-cors`); tests, tooling and docs → repository.
