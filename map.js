@@ -3019,6 +3019,29 @@
                 </div>`;
         };
 
+        /* HUD THEME picker (2026-09-12) — the battle HUD's material (hud.js
+           HUD_THEMES: Classic Blue / Void / Onyx / Leather / Parchment /
+           Glass) as one segmented row, shared by the main-menu Settings and
+           the pause menu. setHudTheme flips data-hud-theme on <html> live —
+           nothing rebuilds, nothing is relayed. */
+        window._buildHudThemeHTML = function (refreshJs) {
+            const themes = window.HUD_THEMES;
+            if (!Array.isArray(themes) || typeof window.setHudTheme !== 'function') return '';
+            const cur = window.getHudTheme();
+            const curRow = themes.find(t => t.id === cur) || themes[0];
+            const seg = themes.map(t => `<button class="pm-seg-btn${cur === t.id ? ' active' : ''}" onclick="window.setHudTheme('${t.id}');${refreshJs}">${t.label}</button>`).join('');
+            return `
+                <div class="pm-set-row pm-setting-row" style="margin-top:6px">
+                    <span class="pm-setting-label">HUD Theme</span>
+                    <div class="pm-seg-group" style="flex-wrap:wrap">
+                        ${seg}
+                    </div>
+                </div>
+                <div class="pm-set-row" style="margin-top:2px">
+                    <span class="pm-toggle-hint">${curRow.hint} The Horologe, its command rows and the scoreboard all follow it.</span>
+                </div>`;
+        };
+
         function _renderMainMenuSettings() {
             const body = document.getElementById('mmSettingsBody');
             if (!body) return;
@@ -3063,6 +3086,7 @@
                         </div>
                         ${window._buildPerfSettingsHTML('window._openMainMenuSettings();')}
                         ${typeof window._buildVitalsLookHTML === 'function' ? window._buildVitalsLookHTML('window._openMainMenuSettings();') : ''}
+                        ${typeof window._buildHudThemeHTML === 'function' ? window._buildHudThemeHTML('window._openMainMenuSettings();') : ''}
                     </div>
                     ${(typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && typeof DOOR_HQ !== 'undefined') ? (() => {
                         const on = (typeof window._hqEnabled === 'function') && window._hqEnabled();

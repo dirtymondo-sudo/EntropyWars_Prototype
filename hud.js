@@ -29,10 +29,53 @@ const EW = {
   warn:     '#f0d060',
 };
 
+// ── HUD THEMES (2026-09-12) ─────────────────────────────────────────────
+// The battle HUD's material is a set of CSS tokens (--ew-plate-bg, --ew-ink,
+// --ew-sel …) read by THE COLOUR PASS at the end of the injected stylesheet.
+// A THEME is one token set, keyed by data-hud-theme on <html>; the picker
+// lives in the pause menu + the main-menu Settings (map.js
+// _buildHudThemeHTML). Viewer-local (localStorage), nothing relayed.
+const HUD_THEMES = [
+  { id: 'crystal',   label: 'Classic Blue', hint: 'Royal-blue plates under a bone-white frame — the classic Final Fantasy window.' },
+  { id: 'void',      label: 'Void',         hint: 'The original violet-black PS1 chrome.' },
+  { id: 'onyx',      label: 'Onyx',         hint: 'Near-black plates with a steel hairline.' },
+  { id: 'leather',   label: 'Leather',      hint: 'Saddle-brown plates under a brass frame.' },
+  { id: 'parchment', label: 'Parchment',    hint: 'Cream paper and umber ink — a light HUD.' },
+  { id: 'glass',     label: 'Glass',        hint: 'Barely there — a smoked hairline and the text over the board.' },
+];
+const HUD_THEME_DEFAULT = 'crystal';
+const HUD_THEME_KEY = 'ew_hud_theme';
+window.HUD_THEMES = HUD_THEMES;
+window.getHudTheme = function () {
+  try { const v = localStorage.getItem(HUD_THEME_KEY); if (HUD_THEMES.some(t => t.id === v)) return v; } catch (e) {}
+  return HUD_THEME_DEFAULT;
+};
+window.setHudTheme = function (id) {
+  if (!HUD_THEMES.some(t => t.id === id)) id = HUD_THEME_DEFAULT;
+  try { localStorage.setItem(HUD_THEME_KEY, id); } catch (e) {}
+  window.applyHudTheme(id);
+  return id;
+};
+window.applyHudTheme = function (id) {
+  const root = document.documentElement;
+  if (!root) return;
+  if (id === HUD_THEME_DEFAULT) delete root.dataset.hudTheme; else root.dataset.hudTheme = id;
+};
+window.applyHudTheme(window.getHudTheme());
+
 // ── Canonical vital-bar palette (shared with the 3D nameplates in
 // three-renderer.js and the inspect card in styles-base.css): ally HP is
 // ALWAYS green, enemy HP is ALWAYS red — no low-health hue swap — and MP
 // is always the same blue. Fills fade to a pale tip at the leading edge.
+// The scoreboard / meta pill write their ink INLINE; these wrappers let the
+// theme tokens (THE COLOUR PASS) darken it on a light plate.
+const EW_T = {
+  ink:     'var(--ew-ink, ' + EW.ink + ')',
+  body:    'var(--ew-ink, ' + EW.body + ')',
+  inkMute: 'var(--ew-ink-mute, ' + EW.inkMute + ')',
+  inkDim:  'var(--ew-ink-dim, ' + EW.inkDim + ')',
+};
+
 const HP_ALLY = '#2ed158';
 const HP_ENEMY = '#ff4a56';
 const MP_BLUE = '#2f9dff';
@@ -791,12 +834,12 @@ function ScoreSideColumn({ st, mode, player, side, color, nextId }) {
         }}),
         h('span', { style: {
           fontFamily: mono, fontSize: 12, letterSpacing: '0.12em',
-          color: EW.ink, fontWeight: 600, whiteSpace: 'nowrap',
+          color: EW_T.ink, fontWeight: 600, whiteSpace: 'nowrap',
           textShadow: '0 1px 3px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.6)',
         }}, name),
       ),
       sub != null && !showTower && h('span', { style: {
-        fontFamily: mono, fontSize: 9, color: EW.inkMute, letterSpacing: '0.08em', whiteSpace: 'nowrap',
+        fontFamily: mono, fontSize: 9, color: EW_T.inkMute, letterSpacing: '0.08em', whiteSpace: 'nowrap',
         textShadow: '0 1px 3px rgba(0,0,0,0.95)',
       }}, sub + (mode.subLabel ? ' ' + mode.subLabel : '')),
       showTower && towerMax > 0 && h('div', { style: {
@@ -812,14 +855,14 @@ function ScoreSideColumn({ st, mode, player, side, color, nextId }) {
           }}),
         ),
         h('span', { style: {
-          fontFamily: mono, fontSize: 8, color: EW.inkMute, letterSpacing: '0.08em',
+          fontFamily: mono, fontSize: 8, color: EW_T.inkMute, letterSpacing: '0.08em',
           textShadow: '0 1px 3px rgba(0,0,0,0.95)',
         }}, '🏰 ' + towerHp + '/' + towerMax),
         /* Keys carried / Keys needed — the win-condition readout for the
            fixed Arena pool (3 of 5). Flares when one Key from the win. */
         (mode.keysToWin | 0) > 0 && h('span', { style: {
           fontFamily: mono, fontSize: 8, letterSpacing: '0.08em',
-          color: mode.keyAlertPlayer === player ? '#ffd76a' : EW.inkMute,
+          color: mode.keyAlertPlayer === player ? '#ffd76a' : EW_T.inkMute,
           fontWeight: mode.keyAlertPlayer === player ? 700 : 400,
           textShadow: mode.keyAlertPlayer === player
             ? '0 1px 3px rgba(0,0,0,0.95), 0 0 8px rgba(255,215,106,0.7)'
@@ -1201,13 +1244,13 @@ function Scoreboard({ st }) {
           boxShadow: '0 6px 28px rgba(0,0,0,0.5)', padding: '7px 20px 8px',
         },
       },
-        h('span', { style: { fontFamily: mdMono, fontSize: 10, letterSpacing: '0.18em', color: EW.inkMute, textTransform: 'uppercase' } },
+        h('span', { style: { fontFamily: mdMono, fontSize: 10, letterSpacing: '0.18em', color: EW_T.inkMute, textTransform: 'uppercase' } },
           (mdD ? mdD.label : 'Mystery Dungeon')),
         h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 3 } },
-          h('span', { style: { fontFamily: mdMono, fontSize: 9, letterSpacing: '0.2em', color: EW.inkMute } }, 'FLOOR'),
+          h('span', { style: { fontFamily: mdMono, fontSize: 9, letterSpacing: '0.2em', color: EW_T.inkMute } }, 'FLOOR'),
           h('span', { style: { fontFamily: mdSerif, fontSize: 24, fontWeight: 600, color: EW.time, lineHeight: 1, textShadow: '0 0 10px ' + EW.time + '55', marginLeft: 4 } },
             st._mdRun.floor),
-          h('span', { style: { fontFamily: mdMono, fontSize: 12, color: EW.inkMute } }, '/' + mdTotal),
+          h('span', { style: { fontFamily: mdMono, fontSize: 12, color: EW_T.inkMute } }, '/' + mdTotal),
         ),
         h('span', { style: { width: 1, height: 22, background: EW.panelEdge } }),
         h('span', { style: { fontFamily: mdMono, fontSize: 11, color: mdAlive ? EW.chaos : '#7fdc9a' } },
@@ -1216,7 +1259,7 @@ function Scoreboard({ st }) {
            turn counter only ever ticks when the player does something. */
         (typeof window._mdLockstepActive === 'function' && window._mdLockstepActive()) && h('span', {
           title: 'The dungeon moves when you move — every step or action is one turn for everyone.',
-          style: { fontFamily: mdMono, fontSize: 10, letterSpacing: '0.14em', color: st._mdTickBusy ? EW.chaos : EW.inkMute },
+          style: { fontFamily: mdMono, fontSize: 10, letterSpacing: '0.14em', color: st._mdTickBusy ? EW.chaos : EW_T.inkMute },
         }, (st._mdTickBusy ? '⧗ WORLD MOVES' : '⧗ TURN ' + (st._mdTickN || 0))),
         mdOnStairs
           ? h('button', {
@@ -1224,7 +1267,7 @@ function Scoreboard({ st }) {
               title: 'Your leader is on the stairs — descend to the next floor',
               onClick: () => { if (window._mdConfirmDescend) window._mdConfirmDescend(); },
             }, '⬇ DESCEND')
-          : h('span', { style: { fontFamily: mdMono, fontSize: 10, color: EW.inkMute } }, '🗝 find the stairs'),
+          : h('span', { style: { fontFamily: mdMono, fontSize: 10, color: EW_T.inkMute } }, '🗝 find the stairs'),
       ),
 
       /* tactic chips — one per party member; click cycles Manual → Auto → Stay Close */
@@ -1316,7 +1359,7 @@ function Scoreboard({ st }) {
 
         h('span', { className: isSuddenDeath ? 'ew-sudden-death' : undefined, style: {
           fontFamily: mono, fontSize: 8, letterSpacing: '0.32em', lineHeight: 1,
-          color: isSuddenDeath ? EW.bad : EW.inkMute, textTransform: 'uppercase',
+          color: isSuddenDeath ? EW.bad : EW_T.inkMute, textTransform: 'uppercase',
           textShadow: isSuddenDeath ? '0 0 8px ' + EW.bad : 'none', whiteSpace: 'nowrap',
           alignSelf: 'stretch', textAlign: 'center',
           borderBottom: '1px solid #262233', paddingBottom: 4, marginBottom: 1,
@@ -1325,27 +1368,27 @@ function Scoreboard({ st }) {
         h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 8 }},
           h('span', { style: {
             fontFamily: mono, fontSize: 22, fontWeight: 500, lineHeight: 1, letterSpacing: '0.08em',
-            color: EW.ink, textShadow: '0 0 14px ' + EW.space + '66',
+            color: EW_T.ink, textShadow: '0 0 14px ' + EW.space + '66',
             minWidth: 18, textAlign: 'right',
           }}, mode.p1Score),
           h('span', { style: {
-            fontFamily: mono, fontSize: 13, color: EW.inkDim, lineHeight: 1,
+            fontFamily: mono, fontSize: 13, color: EW_T.inkDim, lineHeight: 1,
           }}, '–'),
           h('span', { style: {
             fontFamily: mono, fontSize: 22, fontWeight: 500, lineHeight: 1, letterSpacing: '0.08em',
-            color: EW.ink, textShadow: '0 0 14px ' + EW.chaos + '66',
+            color: EW_T.ink, textShadow: '0 0 14px ' + EW.chaos + '66',
             minWidth: 18, textAlign: 'left',
           }}, mode.p2Score),
         ),
 
         h('div', { style: {
           display: 'flex', alignItems: 'baseline', gap: 6, lineHeight: 1, whiteSpace: 'nowrap',
-          fontFamily: mono, fontSize: 9, letterSpacing: '0.1em', color: EW.inkMute,
+          fontFamily: mono, fontSize: 9, letterSpacing: '0.1em', color: EW_T.inkMute,
         }},
-          scoreCaption && h('span', { style: { color: EW.inkDim, letterSpacing: '0.16em' }}, scoreCaption),
-          scoreCaption && h('span', { style: { color: EW.inkDim }}, '·'),
-          h('span', { style: { fontWeight: 700, color: EW.ink }}, mins + ':' + secs),
-          h('span', { style: { color: EW.inkDim }}, '·'),
+          scoreCaption && h('span', { style: { color: EW_T.inkDim, letterSpacing: '0.16em' }}, scoreCaption),
+          scoreCaption && h('span', { style: { color: EW_T.inkDim }}, '·'),
+          h('span', { style: { fontWeight: 700, color: EW_T.ink }}, mins + ':' + secs),
+          h('span', { style: { color: EW_T.inkDim }}, '·'),
           h('span', null,
             'R', h('span', { style: {
               fontFamily: serif, fontSize: 12, fontWeight: 600, color: EW.time,
@@ -1419,7 +1462,7 @@ function MatchMeta({ st }) {
   }},
     mapName && h('div', { style: {
       fontFamily: '"Cormorant SC", serif', fontSize: 13, fontWeight: 600,
-      letterSpacing: '0.18em', lineHeight: 1, color: EW.ink,
+      letterSpacing: '0.18em', lineHeight: 1, color: EW_T.ink,
       textShadow: '0 0 12px rgba(214,178,255,0.35), 0 1px 3px rgba(0,0,0,0.8)',
       padding: '2px 2px 0 0', pointerEvents: 'none',
     }}, '◈ ' + mapName),
@@ -1428,11 +1471,11 @@ function MatchMeta({ st }) {
       background: EW.panel, border: '1px solid ' + EW.panelEdge,
       padding: '6px 14px 6px 16px',
       fontFamily: '"IBM Plex Mono", monospace', fontSize: 11,
-      letterSpacing: '0.12em', color: EW.inkMute,
+      letterSpacing: '0.12em', color: EW_T.inkMute,
     }},
       /* Weather chip — hover for a breakdown of every active weather's
          effects (icon, label, rounds left, what it actually does). */
-      h('span', { className: 'ew-weather-chip', style: { color: EW.ink }},
+      h('span', { className: 'ew-weather-chip', style: { color: EW_T.ink }},
         weatherText,
         h('div', { className: 'ew-weather-tip' },
           weather.length === 0 && h('div', { className: 'ew-weather-tip-desc' },
@@ -1459,17 +1502,17 @@ function MatchMeta({ st }) {
           fontSize: 15, color: zodiacBlessed ? '#f0d060' : EW.time,
           textShadow: zodiacBlessed ? '0 0 8px rgba(240,208,96,0.9), 0 0 16px rgba(240,208,96,0.5)' : undefined,
         }}, zodiacIcon),
-        h('span', { style: { color: EW.ink }}, zodiacLabel),
+        h('span', { style: { color: EW_T.ink }}, zodiacLabel),
       ),
       /* Series record chip — only meaningful once a rematch chain has a
          result. In a single match it sat there as a confusing "MATCH 0 — 0"
          next to the real score, so it stays hidden until someone has won. */
       (p1Score > 0 || p2Score > 0) && h('span', { style: { width: 1, height: 10, background: EW.panelEdge }}),
       (p1Score > 0 || p2Score > 0) && h('span', null, 'MATCH'),
-      (p1Score > 0 || p2Score > 0) && h('span', { style: { color: EW.ink, fontWeight: 600 }}, p1Score + ' — ' + p2Score),
+      (p1Score > 0 || p2Score > 0) && h('span', { style: { color: EW_T.ink, fontWeight: 600 }}, p1Score + ' — ' + p2Score),
       h('span', { style: { width: 1, height: 10, background: EW.panelEdge }}),
       h('span', {
-        style: { cursor: 'pointer', color: EW.inkMute, fontSize: 16 },
+        style: { cursor: 'pointer', color: EW_T.inkMute, fontSize: 16 },
         onClick: () => { if (typeof togglePauseMenu === 'function') togglePauseMenu(); },
       }, '☰'),
     ),
@@ -9598,85 +9641,216 @@ function _injectHudHideStyles() {
     .hp-bar, .mp-bar { border-radius: 5px !important; }
     .hp-fill, .mp-fill { border-radius: 4px !important; }
 
-    /* ══════════ THE COLOUR PASS (2026-09-12) ══════════
-       The violet-black PS1 chrome is gone: every plate on the Horologe and
-       the scoreboard wears CLASSIC FF BLUE — a deep royal-blue gradient
-       under a bone-white double frame. The two plate tokens below are the
-       ONE place to change the material (black: --ew-plate-bg:
-       linear-gradient(180deg,#141414,#050505); none: transparent). Root
-       VERBS each wear their own colour edge-to-edge (MOVE teal · ATTACK
-       red · ABILITIES blue · COMBO violet · ITEMS green · GUARD amber ·
-       SWITCH orange · END / CANCEL red) keyed by [data-bid]; spell rows
-       keep their job colour (--bc from catVars). The row under the cursor
-       (or hovered, or the ARMED verb in a dimmed parent) turns GOLD — text,
-       glyph and frame — like the FF hand cursor it leads. Every override
-       lives HERE, after the rounding pass; restyle here, never upstream. */
-    .hrlg-rig, .ew-scoreboard, .ew-meta-plate {
+    /* ══════════ THE COLOUR PASS + THE THEMES (2026-09-12) ══════════
+       The violet-black PS1 chrome is no longer hard-wired: every plate on
+       the Horologe and the scoreboard reads its MATERIAL from the tokens
+       below, and a THEME (data-hud-theme on <html>, hud.js HUD_THEMES /
+       setHudTheme, picker in map.js _buildHudThemeHTML) is one token set.
+       The default (no attribute) is CLASSIC BLUE — a deep royal-blue
+       gradient under a bone-white double frame. Root VERBS each wear
+       their own colour edge-to-edge (MOVE teal · ATTACK red · ABILITIES
+       blue · COMBO violet · ITEMS green · GUARD amber · SWITCH orange ·
+       END / CANCEL red) keyed by [data-bid]; spell rows keep their job
+       colour (--bc from catVars). The row under the cursor (or hovered,
+       or the ARMED verb in a dimmed parent) turns the theme's SELECT
+       colour — gold — on text, glyph and frame. Every override lives
+       HERE, after the rounding pass; restyle here, never upstream.
+       Adding a theme = one HUD_THEMES row + one :root[data-hud-theme]
+       token block (hud-theme.test.js ties them). */
+    :root {
+      /* CLASSIC BLUE (crystal) */
       --ew-plate-bg: linear-gradient(180deg, #1f34a8 0%, #15258a 45%, #0c165e 100%);
       --ew-plate-edge: #e6e8f4;
       --ew-plate-seam: #061040;
       --ew-plate-rim: #6b7fd6;
+      --ew-plate-lip: rgba(255,255,255,0.08);
+      --ew-plate-scan: repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0 1px, rgba(0,0,0,0.05) 1px 2px, transparent 2px 3px);
+      --ew-head-bg: linear-gradient(180deg, #2a42b8 0%, #1a2c8e 100%);
+      --ew-head-ink: #c9d2ff;
       --ew-row-bg: linear-gradient(180deg, #24399f 0%, #1a2c86 55%, #12206c 100%);
       --ew-row-sel-bg: linear-gradient(180deg, #3550c4 0%, #2841ab 55%, #1e359a 100%);
       --ew-row-edge: #7b90dc;
+      --ew-row-lip: rgba(255,255,255,0.1);
+      --ew-ink: #f4f4f8;
+      --ew-ink-mute: #b8c1ee;
+      --ew-ink-dim: #7c88c4;
+      --ew-hair: rgba(255,255,255,0.14);
+      --ew-dead-bg: #0b1440;
+      --ew-dead-edge: #2a3670;
+      --ew-dead-ink: #7c88c4;
       --ew-sel: #f0d060;
       --ew-sel-soft: rgba(240,208,96,0.55);
       --ew-sel-faint: rgba(240,208,96,0.2);
+      --ew-tshadow: 0 1px 2px rgba(0,0,0,0.7);
+      --ew-drop: 0 3px 0 rgba(0,0,0,0.55), 0 8px 18px rgba(0,0,0,0.45);
+    }
+    :root[data-hud-theme="void"] {
+      --ew-plate-bg: linear-gradient(180deg, #1c1929 0%, #14111f 45%, #0d0b15 100%);
+      --ew-plate-edge: #565070;
+      --ew-plate-seam: #080710;
+      --ew-plate-rim: #2c2840;
+      --ew-plate-lip: rgba(255,255,255,0.05);
+      --ew-head-bg: linear-gradient(180deg, #272238 0%, #1a1728 100%);
+      --ew-head-ink: #9a93b5;
+      --ew-row-bg: linear-gradient(180deg, #1a1725 0%, #121020 55%, #0d0b16 100%);
+      --ew-row-sel-bg: linear-gradient(180deg, #272236 0%, #1a1729 55%, #141122 100%);
+      --ew-row-edge: #403a55;
+      --ew-row-lip: rgba(255,255,255,0.06);
+      --ew-ink: #e8e4d8;
+      --ew-ink-mute: #7a7490;
+      --ew-ink-dim: #5e5875;
+      --ew-hair: #262233;
+      --ew-dead-bg: #0a0910;
+      --ew-dead-edge: #232030;
+      --ew-dead-ink: #5e5875;
+    }
+    :root[data-hud-theme="onyx"] {
+      --ew-plate-bg: linear-gradient(180deg, #1c1c1f 0%, #0f0f11 50%, #050506 100%);
+      --ew-plate-edge: #8c8c96;
+      --ew-plate-seam: #000;
+      --ew-plate-rim: #3a3a42;
+      --ew-plate-lip: rgba(255,255,255,0.06);
+      --ew-head-bg: linear-gradient(180deg, #28282c 0%, #161618 100%);
+      --ew-head-ink: #a8a8b2;
+      --ew-row-bg: linear-gradient(180deg, #212124 0%, #151517 55%, #0c0c0e 100%);
+      --ew-row-sel-bg: linear-gradient(180deg, #303034 0%, #222226 55%, #19191d 100%);
+      --ew-row-edge: #46464e;
+      --ew-row-lip: rgba(255,255,255,0.07);
+      --ew-ink: #f2f2f2;
+      --ew-ink-mute: #9c9ca6;
+      --ew-ink-dim: #6c6c76;
+      --ew-hair: rgba(255,255,255,0.1);
+      --ew-dead-bg: #070708;
+      --ew-dead-edge: #202024;
+      --ew-dead-ink: #5e5e68;
+    }
+    :root[data-hud-theme="leather"] {
+      --ew-plate-bg: linear-gradient(180deg, #5c3621 0%, #3f2415 45%, #261409 100%);
+      --ew-plate-edge: #dcb66c;
+      --ew-plate-seam: #1a0d05;
+      --ew-plate-rim: #8a683a;
+      --ew-plate-lip: rgba(255,230,180,0.1);
+      --ew-head-bg: linear-gradient(180deg, #6d4024 0%, #4a2a16 100%);
+      --ew-head-ink: #eacb8c;
+      --ew-row-bg: linear-gradient(180deg, #5e3b22 0%, #452918 55%, #321c10 100%);
+      --ew-row-sel-bg: linear-gradient(180deg, #7c4e2d 0%, #5e3a21 55%, #4b2d18 100%);
+      --ew-row-edge: #a0784a;
+      --ew-row-lip: rgba(255,230,180,0.12);
+      --ew-ink: #f7e9d0;
+      --ew-ink-mute: #d4b68e;
+      --ew-ink-dim: #9c7c58;
+      --ew-hair: rgba(255,220,160,0.16);
+      --ew-dead-bg: #1c1008;
+      --ew-dead-edge: #3a2818;
+      --ew-dead-ink: #7c624a;
+      --ew-sel: #ffd96c;
+      --ew-sel-soft: rgba(255,217,108,0.55);
+      --ew-sel-faint: rgba(255,217,108,0.2);
+    }
+    :root[data-hud-theme="parchment"] {
+      --ew-plate-bg: linear-gradient(180deg, #f6ecd4 0%, #eddebc 50%, #e3cfa6 100%);
+      --ew-plate-edge: #5a3e22;
+      --ew-plate-seam: #cbb48c;
+      --ew-plate-rim: #aa8e5e;
+      --ew-plate-lip: rgba(255,255,255,0.55);
+      --ew-plate-scan: none;
+      --ew-head-bg: linear-gradient(180deg, #dbc59c 0%, #cab186 100%);
+      --ew-head-ink: #4a3418;
+      --ew-row-bg: linear-gradient(180deg, #f9f0da 0%, #f0e3c4 55%, #e7d6b2 100%);
+      --ew-row-sel-bg: linear-gradient(180deg, #fff8e4 0%, #f9ecca 55%, #f3e3ba 100%);
+      --ew-row-edge: #a28c5e;
+      --ew-row-lip: rgba(255,255,255,0.6);
+      --ew-ink: #2c1e0e;
+      --ew-ink-mute: #6c5438;
+      --ew-ink-dim: #9c866a;
+      --ew-hair: rgba(0,0,0,0.14);
+      --ew-dead-bg: #d9ccb1;
+      --ew-dead-edge: #b9a989;
+      --ew-dead-ink: #9c8e76;
+      --ew-sel: #b07a08;
+      --ew-sel-soft: rgba(176,122,8,0.5);
+      --ew-sel-faint: rgba(176,122,8,0.18);
+      --ew-tshadow: none;
+      --ew-drop: 0 3px 0 rgba(90,62,34,0.35), 0 8px 18px rgba(0,0,0,0.3);
+    }
+    :root[data-hud-theme="glass"] {
+      --ew-plate-bg: rgba(4,4,10,0.3);
+      --ew-plate-edge: rgba(255,255,255,0.38);
+      --ew-plate-seam: transparent;
+      --ew-plate-rim: transparent;
+      --ew-plate-lip: transparent;
+      --ew-plate-scan: none;
+      --ew-head-bg: rgba(0,0,0,0.25);
+      --ew-head-ink: #dcdce4;
+      --ew-row-bg: rgba(0,0,0,0.3);
+      --ew-row-sel-bg: rgba(255,255,255,0.1);
+      --ew-row-edge: rgba(255,255,255,0.3);
+      --ew-row-lip: transparent;
+      --ew-ink: #fff;
+      --ew-ink-mute: #cacad2;
+      --ew-ink-dim: #8e8e9a;
+      --ew-hair: rgba(255,255,255,0.22);
+      --ew-dead-bg: rgba(0,0,0,0.2);
+      --ew-dead-edge: rgba(255,255,255,0.12);
+      --ew-dead-ink: #8c8c96;
+      --ew-tshadow: 0 1px 2px #000, 0 0 6px rgba(0,0,0,0.85);
+      --ew-drop: 0 2px 8px rgba(0,0,0,0.35);
     }
     /* ── the identity column ── */
     .hrlg-side {
-      background:
-        repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0 1px, rgba(0,0,0,0.05) 1px 2px, transparent 2px 3px),
-        var(--ew-plate-bg);
+      background: var(--ew-plate-scan), var(--ew-plate-bg);
       border: 1px solid var(--ew-plate-edge);
+      color: var(--ew-ink);
       box-shadow:
         inset 0 0 0 1px var(--ew-plate-seam),
         inset 0 0 0 2px var(--ew-plate-rim),
-        inset 0 3px 0 rgba(255,255,255,0.08),
-        0 3px 0 rgba(0,0,0,0.55),
-        0 8px 18px rgba(0,0,0,0.45);
+        inset 0 3px 0 var(--ew-plate-lip),
+        var(--ew-drop);
     }
     .hrlg-side::before {
-      color: #c9d2ff;
-      background: linear-gradient(180deg, #2a42b8 0%, #1a2c8e 100%);
+      color: var(--ew-head-ink);
+      background: var(--ew-head-bg);
       border-bottom: 1px solid var(--ew-plate-seam);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
+      box-shadow: inset 0 1px 0 var(--ew-plate-lip);
     }
+    .hrlg-name { color: var(--ew-ink); text-shadow: var(--ew-tshadow); }
+    .hrlg-ap-lbl, .hrlg-mats-lbl { color: var(--ew-ink-mute); }
+    .hrlg-ap-num { color: var(--ew-ink); }
+    .hrlg-mat.none { color: var(--ew-ink-dim); }
     .hrlg-push {
       background:
         linear-gradient(100deg, var(--pc-faint), rgba(8,7,12,0)),
         var(--ew-row-bg);
       border: 1px solid var(--ew-row-edge); border-left: 3px solid var(--pc);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.45), 0 2px 0 rgba(0,0,0,0.5);
+      box-shadow: inset 0 1px 0 var(--ew-row-lip), inset 0 -1px 0 rgba(0,0,0,0.35), 0 2px 0 rgba(0,0,0,0.45);
     }
-    .hrlg-push-lbl { color: #f2f2f2; }
-    .hrlg-push-sub { color: #aab4e6; }
+    .hrlg-push-lbl { color: var(--ew-ink); text-shadow: var(--ew-tshadow); }
+    .hrlg-push-sub { color: var(--ew-ink-mute); }
     .hrlg-item-slot {
       background: var(--ew-row-bg);
       border: 1px solid var(--ew-row-edge);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.45), 0 2px 0 rgba(0,0,0,0.45);
+      box-shadow: inset 0 1px 0 var(--ew-row-lip), inset 0 -1px 0 rgba(0,0,0,0.35), 0 2px 0 rgba(0,0,0,0.4);
     }
     .hrlg-item-slot.armed, .hrlg-item-slot:hover:not(.empty):not(.off) {
       border-color: var(--ew-sel); box-shadow: 0 0 12px var(--ew-sel-soft), inset 0 0 8px var(--ew-sel-faint);
     }
     /* ── the command panels: header blade, mode strip ── */
     .hrlg-thead {
-      background:
-        repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0 1px, rgba(0,0,0,0.05) 1px 2px, transparent 2px 3px),
-        var(--ew-plate-bg);
+      background: var(--ew-plate-scan), var(--ew-plate-bg);
       border: 1px solid var(--ew-plate-edge); border-left: 3px solid var(--hfc);
-      box-shadow: inset 0 0 0 1px var(--ew-plate-seam), inset 0 1px 0 rgba(255,255,255,0.08), 0 3px 0 rgba(0,0,0,0.55);
+      color: var(--ew-ink);
+      box-shadow: inset 0 0 0 1px var(--ew-plate-seam), inset 0 1px 0 var(--ew-plate-lip), 0 3px 0 rgba(0,0,0,0.45);
     }
     .hrlg-thead.enemy { border-left-color: #ff4a56; }
     .hrlg-thead.ally  { border-left-color: #2ed158; }
-    .hrlg-view-tab { border-bottom: 1px solid rgba(255,255,255,0.14); }
-    .hrlg-view-tab-text { color: #f4f4f8; }
-    .hrlg-view-tab-count { color: #aab4e6; }
+    .hrlg-view-tab { border-bottom: 1px solid var(--ew-hair); }
+    .hrlg-view-tab-text { color: var(--ew-ink); text-shadow: var(--ew-tshadow); }
+    .hrlg-view-tab-count { color: var(--ew-ink-mute); }
     .hrlg-mode {
       background: var(--ew-plate-bg);
       border: 1px solid var(--ew-plate-edge); border-left: 3px solid var(--ew-sel);
-      box-shadow: inset 0 0 0 1px var(--ew-plate-seam), inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 0 rgba(0,0,0,0.5);
-      color: #f4f4f8;
+      box-shadow: inset 0 0 0 1px var(--ew-plate-seam), inset 0 1px 0 var(--ew-plate-lip), 0 2px 0 rgba(0,0,0,0.45);
+      color: var(--ew-ink); text-shadow: var(--ew-tshadow);
     }
     .hrlg-list { scrollbar-color: var(--ew-plate-rim) rgba(0,0,0,0.25); }
     .hrlg-list::-webkit-scrollbar-thumb { background: var(--ew-plate-rim); }
@@ -9686,10 +9860,11 @@ function _injectHudHideStyles() {
         linear-gradient(100deg, var(--bc-hi, rgba(255,255,255,0.06)) 0%, var(--bc-lo, rgba(255,255,255,0.02)) 100%),
         var(--ew-row-bg);
       border: 1px solid var(--ew-row-edge); border-left: 3px solid var(--bc, var(--hfc));
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.45), 0 2px 0 rgba(0,0,0,0.5);
+      box-shadow: inset 0 1px 0 var(--ew-row-lip), inset 0 -1px 0 rgba(0,0,0,0.35), 0 2px 0 rgba(0,0,0,0.45);
     }
-    .hrlg-blabel { color: #f4f4f8; }
-    .hrlg-subline, .hrlg-cfree, .hrlg-meta { color: #b8c1ee; }
+    .hrlg-blabel { color: var(--ew-ink); text-shadow: var(--ew-tshadow); }
+    .hrlg-subline, .hrlg-cfree, .hrlg-meta { color: var(--ew-ink-mute); }
+    .hrlg-cursor { color: var(--ew-sel); text-shadow: 2px 2px 0 rgba(0,0,0,0.6), 0 0 9px var(--ew-sel-soft); }
     /* the root verbs, each in its own colour (edge + glyph + a wash) */
     .hrlg-blade[data-bid="move"] .hrlg-body,
     .hrlg-blade[data-bid="jump"] .hrlg-body { --bc: #3fd9c8; --bc-soft: #3fd9c888; --bc-faint: #3fd9c82a; --bc-hi: #3fd9c83a; --bc-lo: #3fd9c814; }
@@ -9705,47 +9880,49 @@ function _injectHudHideStyles() {
     .hrlg-blade[data-bid="guard"] .hrlg-glyph, .hrlg-blade[data-bid="switch"] .hrlg-glyph {
       color: var(--bc); text-shadow: 0 0 10px var(--bc-soft);
     }
-    /* THE SELECTED ROW IS GOLD: text, glyph and frame; the blue fill lifts
-       and the function colour stays on the left spine */
+    /* THE SELECTED ROW wears the theme's select colour (gold): text, glyph
+       and frame; the fill lifts and the function colour stays on the spine */
     .hrlg-blade.sel .hrlg-body,
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body {
       background:
         linear-gradient(100deg, var(--bc-hi, rgba(255,255,255,0.06)) 0%, var(--bc-lo, rgba(255,255,255,0.02)) 100%),
         var(--ew-row-sel-bg);
       border-color: var(--ew-sel); border-left-color: var(--bc, var(--hfc));
-      box-shadow: 0 0 16px var(--ew-sel-faint), inset 3px 0 0 var(--bc, var(--hfc)), inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 0 rgba(0,0,0,0.5);
+      box-shadow: 0 0 16px var(--ew-sel-faint), inset 3px 0 0 var(--bc, var(--hfc)), inset 0 1px 0 var(--ew-row-lip), 0 2px 0 rgba(0,0,0,0.45);
     }
     .hrlg-blade.sel .hrlg-blabel,
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-blabel {
-      color: var(--ew-sel); text-shadow: 0 1px 2px rgba(0,0,0,0.8), 0 0 10px var(--ew-sel-soft);
+      color: var(--ew-sel); text-shadow: var(--ew-tshadow), 0 0 10px var(--ew-sel-soft);
     }
     .hrlg-blade.sel .hrlg-glyph,
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-glyph { color: var(--ew-sel); text-shadow: 0 0 10px var(--ew-sel-soft); }
     .hrlg-blade.sel .hrlg-tcol .hrlg-blabel { color: var(--ew-sel); }
     /* the ARMED verb in a dimmed parent panel (the sub-menu you are in) */
     .hrlg-panel.bg .hrlg-blade.active .hrlg-body { border-color: var(--ew-sel); }
-    .hrlg-panel.bg .hrlg-blade.active .hrlg-blabel { color: var(--ew-sel); text-shadow: 0 1px 2px rgba(0,0,0,0.8), 0 0 10px var(--ew-sel-soft); }
+    .hrlg-panel.bg .hrlg-blade.active .hrlg-blabel { color: var(--ew-sel); text-shadow: var(--ew-tshadow), 0 0 10px var(--ew-sel-soft); }
     .hrlg-panel.bg .hrlg-blade.active .hrlg-glyph { color: var(--ew-sel); }
     .hrlg-blade.active .hrlg-body { border-color: var(--ew-sel); }
-    /* disabled rows: a dead navy, not the old violet */
+    /* disabled rows */
     .hrlg-blade.dead .hrlg-body, .hrlg-blade.ghost .hrlg-body {
-      background: #0b1440; border-color: #2a3670; border-left: 3px dashed #3c4a8c;
+      background: var(--ew-dead-bg); border-color: var(--ew-dead-edge); border-left: 3px dashed var(--ew-dead-edge);
     }
     .hrlg-blade.dead .hrlg-glyph, .hrlg-blade.dead .hrlg-blabel,
-    .hrlg-blade.ghost .hrlg-glyph, .hrlg-blade.ghost .hrlg-blabel { color: #7c88c4; }
+    .hrlg-blade.ghost .hrlg-glyph, .hrlg-blade.ghost .hrlg-blabel { color: var(--ew-dead-ink); }
     .hrlg-blade.ghost.sel .hrlg-body { border-color: var(--ew-sel-soft); }
     /* ── the scoreboard + the match-meta pill (inline background beaten
-       here on purpose — the JS keeps its layout, the material lives here) ── */
+       here on purpose — the JS keeps its layout, the material lives here;
+       their ink is written inline as var(--ew-ink…) through EW_T) ── */
     .ew-score-plate, .ew-meta-plate {
       background: var(--ew-plate-bg) !important;
       border: 1px solid var(--ew-plate-edge) !important;
+      color: var(--ew-ink);
     }
     .ew-score-plate {
-      box-shadow: inset 0 0 0 1px var(--ew-plate-seam), inset 0 0 0 2px var(--ew-plate-rim), inset 0 3px 0 rgba(255,255,255,0.08),
-                  0 3px 0 rgba(0,0,0,0.5), 0 8px 22px rgba(0,0,0,0.45) !important;
+      box-shadow: inset 0 0 0 1px var(--ew-plate-seam), inset 0 0 0 2px var(--ew-plate-rim), inset 0 3px 0 var(--ew-plate-lip),
+                  var(--ew-drop) !important;
     }
     .ew-meta-plate {
-      box-shadow: inset 0 0 0 1px var(--ew-plate-seam), inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 0 rgba(0,0,0,0.5) !important;
+      box-shadow: inset 0 0 0 1px var(--ew-plate-seam), inset 0 1px 0 var(--ew-plate-lip), 0 2px 0 rgba(0,0,0,0.45) !important;
     }
 
     /* ══════════ THE PARTY DOCK — bottom-right portrait row ══════════

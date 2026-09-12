@@ -13,7 +13,13 @@ local server. So Claude CANNOT make changes go live. The ONLY correct workflow:
    already there; that rule protects the fixed R2 upload set. Repo-only dev
    tooling at the repo root (check-*.js, *.test.js, deploy.js, load-data.js)
    is fine and expected — see TOOLING).
-2. Hand the user the COMPLETE edited file(s) in the chat (SendUserFile).
+2. Hand the user the COMPLETE edited file(s) in the chat AS ONE ZIP
+   (SendUserFile). STANDARD since 2026-09-12 (the user's rule): every
+   delivery is a single `ENTROPY_WARS_<TOPIC>.zip` built with `zip -j`
+   (flat, no folders) in the scratchpad, holding every changed file —
+   the R2 scripts, the bumped index.html (RULE #1b), and any repo-only
+   files (tests, docs, CLAUDE.md). Never a loose file list. The chat
+   caption says which files go to R2, which to Render, which to the repo.
 3. The user uploads them to the R2 bucket (and manually syncs the repo so future
    sessions start from the latest) — or runs `npm run deploy` (see TOOLING),
    which uploads + cache-busts in one command.
@@ -1416,3 +1422,19 @@ ABILITIES blue · COMBO violet · ITEMS green · GUARD amber · SWITCH orange
 SELECTED row (cursor / hover / the armed verb in a dimmed parent) turns
 GOLD (`--ew-sel`): text, glyph and frame, the blue fill lifts. Restyle in
 that block, never upstream.
+**HUD THEMES (same day)**: the material is a TOKEN SET on `:root`
+(`--ew-plate-bg/-edge/-seam/-rim/-lip/-scan`, `--ew-head-bg/-ink`,
+`--ew-row-bg/-sel-bg/-edge/-lip`, `--ew-ink/-mute/-dim`, `--ew-hair`,
+`--ew-dead-*`, `--ew-sel/-soft/-faint`, `--ew-tshadow`, `--ew-drop`) and
+a THEME is one `:root[data-hud-theme="<id>"]` block overriding it. hud.js
+`HUD_THEMES` (crystal = Classic Blue, the default and the bare `:root`
+block · void = the old violet-black · onyx · leather · parchment (light,
+umber ink, dark-gold select) · glass); `window.getHudTheme /
+setHudTheme / applyHudTheme` (localStorage `ew_hud_theme`, applied at
+script load as `data-hud-theme` on `<html>`, live — no rebuild). The
+scoreboard / meta pill write their inline ink through `EW_T` (`var(--ew-
+ink…)`) so a light theme darkens it; `EW.time/space/chaos` stay literal.
+Picker: map.js `_buildHudThemeHTML(refreshJs)` under the Vitals row in
+BOTH the pause menu (ui.js) and the main-menu Settings Display group.
+Adding a theme = one `HUD_THEMES` row + one token block;
+`hud-theme.test.js` ties catalogue ↔ blocks ↔ picker ↔ scoreboard ink.
