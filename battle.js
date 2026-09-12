@@ -7171,13 +7171,26 @@
                 let _szRegenUnits = 0, _szCleanseUnits = 0;
                 for (const unit of state.units) {
                     if (unit.dead) continue;
-                    const zoneOwner = getSpawnZoneOwnerAt(unit.x, unit.y);
+                    /* NEXUS REWORK (2026-09-12): a NEXUS zone (the centre, and
+                       in Arena the spawn zones too) heals the team that OWNS
+                       it and burns the other one — a neutral zone does
+                       nothing. Spawn zones in modes without nexuses (TDM…)
+                       keep the home-team rule. */
+                    const _nzAt = (typeof getNexusAtUnit === 'function') ? getNexusAtUnit(unit) : null;
+                    const _zoneIsNexus = !!_nzAt;
+                    const zoneOwner = _zoneIsNexus ? (_nzAt.nexus.owner || 0) : getSpawnZoneOwnerAt(unit.x, unit.y);
                     if (!zoneOwner) continue;
+                    if (_zoneIsNexus && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
+                    const _zoneIcon = _zoneIsNexus ? '⬡' : '🏠';
+                    const _zoneWord = _zoneIsNexus ? 'Nexus' : 'Spawn zone';
+                    const _zoneHealPct = _zoneIsNexus
+                        ? ((typeof NEXUS_HOLD_HEAL_PCT !== 'undefined') ? NEXUS_HOLD_HEAL_PCT : SPAWN_ZONE_HEAL_PCT)
+                        : SPAWN_ZONE_HEAL_PCT;
 
                     if (unit.player === zoneOwner) {
-                        /* Friendly in own spawn zone: 15% HP/MP regen + debuff cleanse */
-                        const healAmt = Math.floor(unit.maxHp * SPAWN_ZONE_HEAL_PCT);
-                        const manaAmt = Math.floor(unit.maxMp * SPAWN_ZONE_HEAL_PCT);
+                        /* Friendly in a zone the team owns: HP/MP regen + debuff cleanse */
+                        const healAmt = Math.floor(unit.maxHp * _zoneHealPct);
+                        const manaAmt = Math.floor(unit.maxMp * _zoneHealPct);
                         const hpBefore = unit.hp;
                         applyHealingToUnit(unit, healAmt, null);
                         const healed = unit.hp - hpBefore;
@@ -7202,28 +7215,29 @@
                             let evt = events.find(e => e.unit === unit);
                             if (!evt) { evt = { unit, msgs: [], floats: [] }; events.push(evt); }
                             if (healed > 0) {
-                                evt.msgs.push(`<span class="dlg-heal">🏠 Spawn zone restores ${unitDisplayName(unit)} for ${healed} HP</span>`);
+                                evt.msgs.push(`<span class="dlg-heal">${_zoneIcon} ${_zoneWord} restores ${unitDisplayName(unit)} for ${healed} HP</span>`);
                                 evt.didHeal = true; // applyHealingToUnit already showed the "+N" float
                             }
                             if (manaAmt > 0) {
-                                evt.msgs.push(`<span class="dlg-heal">🏠 Spawn zone restores ${unitDisplayName(unit)} ${manaAmt} MP</span>`);
+                                evt.msgs.push(`<span class="dlg-heal">${_zoneIcon} ${_zoneWord} restores ${unitDisplayName(unit)} ${manaAmt} MP</span>`);
                                 evt.didMana = true; // blue restore signature in _showFieldEffects
                             }
                             if (cleansedAny) {
-                                evt.msgs.push(`<span class="dlg-heal">🏠 Spawn zone cleanses ${unitDisplayName(unit)}</span>`);
+                                evt.msgs.push(`<span class="dlg-heal">${_zoneIcon} ${_zoneWord} cleanses ${unitDisplayName(unit)}</span>`);
                             }
                             if (healed > 0 || manaAmt > 0) _szRegenUnits++;
                             if (cleansedAny) _szCleanseUnits++;
                         }
                     } else {
-                        /* Enemy in opponent's spawn zone: 35% maxHP damage —
+                        /* Enemy in a zone the other team owns: % maxHP burn —
                            deferred to the paced beat below so the hit lands
                            while the camera is on the victim. */
+                        unit._zoneBurnIsNexus = _zoneIsNexus;
                         spawnHits.push(unit);
                     }
                 }
                 if (_szRegenUnits > 0 || _szCleanseUnits > 0) {
-                    let _szMsg = '🏠 Spawn zones ';
+                    let _szMsg = '⬡ Held zones ';
                     if (_szRegenUnits > 0) _szMsg += `restore ${_szRegenUnits} unit${_szRegenUnits > 1 ? 's' : ''}`;
                     if (_szRegenUnits > 0 && _szCleanseUnits > 0) _szMsg += ' and ';
                     if (_szCleanseUnits > 0) _szMsg += `cleanse ${_szCleanseUnits} unit${_szCleanseUnits > 1 ? 's' : ''}`;
@@ -7236,11 +7250,16 @@
                (XP/gold/assists/matchKills) falls back to the last enemy who
                damaged the victim, not an arbitrary zone-owner unit. */
             function _applySpawnScorch(unit) {
-                const dmgAmt = Math.max(1, Math.floor(unit.maxHp * SPAWN_ZONE_ENEMY_DMG_PCT));
+                const _isNx = !!unit._zoneBurnIsNexus;
+                delete unit._zoneBurnIsNexus;
+                const _pct = _isNx
+                    ? ((typeof NEXUS_HOSTILE_DMG_PCT !== 'undefined') ? NEXUS_HOSTILE_DMG_PCT : SPAWN_ZONE_ENEMY_DMG_PCT)
+                    : SPAWN_ZONE_ENEMY_DMG_PCT;
+                const dmgAmt = Math.max(1, Math.floor(unit.maxHp * _pct));
                 const hpBefore = unit.hp;
-                applyDamageToUnit(unit, dmgAmt, 'Spawn zone: ', { ignoreArmor: true });
+                applyDamageToUnit(unit, dmgAmt, _isNx ? 'Hostile Nexus: ' : 'Spawn zone: ', { ignoreArmor: true });
                 const dealt = hpBefore - Math.max(0, unit.hp);
-                addLog(`Enemy spawn zone deals ${dealt} damage to ${unitDisplayName(unit)}.`);
+                addLog(`${_isNx ? '⬡ The enemy-held Nexus burns' : 'Enemy spawn zone deals'} ${dealt} damage to ${unitDisplayName(unit)}.`);
                 return dealt;
             }
 
@@ -35379,7 +35398,9 @@
                 const rl = (state.matchClock && state.matchClock.roundLimit) || mpMode.roundLimit || '?';
                 const _kr = getArenaKeyRules(mpMode);
                 const _keyTxt = _kr.fixedPool ? `carry ${_kr.toWin} of the ${_kr.spawn} Keys` : 'secure the Keys';
-                addLog(`🏰 Arena! Destroy the Cube, ${_keyTxt}, wipe out the enemy, or hold every Nexus zone — a win condition MUST be met. ${rl}-round safety cap (Arena score, then Sudden Death) only stops a match that would run forever.`);
+                const _nxThr = (typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined') ? NEXUS_CAPTURE_THRESHOLD : 4;
+                addLog(`🏰 Arena! Destroy the Cube, ${_keyTxt}, or wipe out the enemy — a win condition MUST be met. ${rl}-round safety cap (Arena score, then Sudden Death) only stops a match that would run forever.`);
+                addLog(`⬡ Nexus rules: ${_nxThr} ticks flip a zone — step in (+1 each), channel (1 AP, +1), or hold it at the round end. A zone you own heals your team standing in it and burns the enemy; you RESPAWN only on a zone you hold (no zone = no respawns!); every non-home zone held is ×1.5 Cube damage. Zones can be built on, dug and flooded.`);
             } else if (mpMode.id === 'dungeon') {
                 if (state._mdPhase === 'hub') {
                     addLog('🏘 Guild Hub — your unlocked characters hang out here. Rest at the spring, then step onto the cave entrance (east edge) to start the dungeon!');
@@ -43172,6 +43193,9 @@
             checkStealthReveals(unit);
 
             if (typeof checkFlagPickup === 'function') checkFlagPickup(unit);
+            /* Nexus step-on tick (2026-09-12): boots on a zone count the
+               moment they land — see ui.js nexusOnUnitArrive. */
+            if (typeof nexusOnUnitArrive === 'function') nexusOnUnitArrive(unit);
 
             if (typeof _mdCheckStairs === 'function') _mdCheckStairs(unit);
 
@@ -45227,6 +45251,10 @@
                     damage = Math.round(damage * levelScale(getUnitLevel(unit)));
                 }
                 damage = Math.max(1, damage - (tw.def || 0));
+                /* NEXUS REWORK (2026-09-12): every non-home zone the team
+                   holds is a siege engine — ×1.5 with one, ×2 with both. */
+                const _nxSiege = (typeof getCubeDamageMult === 'function') ? getCubeDamageMult(unit.player) : 1;
+                if (_nxSiege > 1) damage = Math.round(damage * _nxSiege);
 
                 spendAllAP(unit);   // attacking ends the turn
                 state.actionMode = null;
@@ -45238,7 +45266,8 @@
                 if (state.cameraDisabled) {
                     tw.hp = Math.max(0, tw.hp - damage);
                     unit._matchTowerDmg = (unit._matchTowerDmg || 0) + damage;
-                    addLog(`⬡ ${unitDisplayName(unit)} attacks Player ${tw.owner}'s Cube for ${damage} damage! (Cube HP: ${tw.hp}/${tw.maxHp})`);
+                    addLog(`⬡ ${unitDisplayName(unit)} attacks Player ${tw.owner}'s Cube for ${damage} damage!${_nxSiege > 1 ? ` (Nexus siege ×${_nxSiege})` : ''} (Cube HP: ${tw.hp}/${tw.maxHp})`);
+                    if (_nxSiege > 1) showFloatingTextAtTile(x, y, `⬡ SIEGE ×${_nxSiege}`, 'nexus', { durationMs: 1200 });
                     grantXP(unit, XP_TOWER_DAMAGE_FLAT, 'towerDmg');
                     addEntropy(unit.player, ENTROPY_PTS.destructTerrain, 'towerHit', null);
                     playSfx('uiConfirm');
@@ -45287,10 +45316,11 @@
                     camera.snap({ x: x, y: y, zoom: towerCamZoom });
                     tw.hp = Math.max(0, tw.hp - damage);
                     unit._matchTowerDmg = (unit._matchTowerDmg || 0) + damage;
-                    addLog(`⬡ ${unitDisplayName(unit)} attacks Player ${tw.owner}'s Cube for ${damage} damage! (Cube HP: ${tw.hp}/${tw.maxHp})`);
+                    addLog(`⬡ ${unitDisplayName(unit)} attacks Player ${tw.owner}'s Cube for ${damage} damage!${_nxSiege > 1 ? ` (Nexus siege ×${_nxSiege})` : ''} (Cube HP: ${tw.hp}/${tw.maxHp})`);
                     grantXP(unit, XP_TOWER_DAMAGE_FLAT, 'towerDmg');
                     addEntropy(unit.player, ENTROPY_PTS.destructTerrain, 'towerHit', null);
-                    showFloatingTextAtTile(x, y, `-${damage}`, 'damage');
+                    showFloatingTextAtTile(x, y, `-${damage}`, _nxSiege > 1 ? 'crit' : 'damage');
+                    if (_nxSiege > 1) showFloatingTextAtTile(x, y, `⬡ SIEGE ×${_nxSiege}`, 'nexus', { durationMs: 1200 });
                     playHitEffect(x, y);
                     playSfx('damage');
                     shakeBoard('normal');
@@ -46081,18 +46111,13 @@
             return _inspectDelay;
         }
 
+        /* NEXUS REWORK (2026-09-12): only the Cubes are untouchable. Nexus
+           and spawn zones are BUILDABLE ground — raise, dig, flood, wall,
+           block them (zone membership is by coordinate, never by terrain
+           key, so a raised or flooded zone tile still captures / respawns;
+           map.js processRespawns skips a tile that became impassable). */
         function isObjectiveTile(x, y) {
-            if (isTowerTile(x, y)) return true;
-            if (typeof isInNexusZone === 'function' && isInNexusZone(x, y)) return true;
-
-            if (state.roamingNexus) {
-                const rn = state.roamingNexus;
-                if (x >= rn.zoneX && x < rn.zoneX + rn.zoneSize &&
-                    y >= rn.zoneY && y < rn.zoneY + rn.zoneSize) return true;
-            }
-
-            if (typeof isInAnySpawnZone === 'function' && isInAnySpawnZone(x, y)) return true;
-            return false;
+            return isTowerTile(x, y);
         }
 
         /* The EXACT altitude a takeoff (doAltitudeChange 'ascend') will put
@@ -54503,16 +54528,10 @@
                 }
             }
 
-            // Arena: NEXUS DOMINANCE — holding EVERY nexus zone simultaneously is
-            // an instant win. Only live on maps with 3+ zones (flat single-zone
-            // maps would otherwise turn the lone earth nexus into the whole game).
-            if (!state.winner && mpMode.id === 'arena' && state.nexusPoints) {
-                const _ndZones = Object.keys(state.nexusPoints).map(k => state.nexusPoints[k]).filter(n => n && n.zoneSize);
-                if (_ndZones.length >= 3) {
-                    if (_ndZones.every(n => n.owner === 1)) { state.winner = 1; state._winCondition = 'nexus_dominance'; }
-                    else if (_ndZones.every(n => n.owner === 2)) { state.winner = 2; state._winCondition = 'nexus_dominance'; }
-                }
-            }
+            // Arena: the old NEXUS DOMINANCE instant win is gone (2026-09-12).
+            // Holding every zone now locks the enemy out of respawning
+            // (map.js processRespawns) — the match still ends on the Cube,
+            // the Keys or a wipeout, which the lockout makes reachable.
 
             if (!state.winner && wcs.includes('most_captures') && state.matchScores) {
                 const target = 3;

@@ -503,9 +503,9 @@ function _getModeInfo(st) {
   const p2TowerHp = p2Tower ? Math.max(0, p2Tower.hp) : 0;
   const p2TowerMax = p2Tower ? (p2Tower.maxHp || 1500) : 0;
 
-  /* Nexus ownership pips — one per zone (cave/earth/sky). Owning ALL zones
-     on a 3-zone map is an instant win, so the scoreboard shows live zone
-     control and screams when one team is a single zone from victory. */
+  /* Nexus ownership pips — one per zone (spawn1 / centre / spawn2). Since
+     the 2026-09-12 rework a team with NO zone cannot respawn, so the
+     scoreboard shows live control and screams SPAWN LOCKED for that team. */
   let nexusPips = null, nexusAlertPlayer = 0;
   if (st.nexusPoints) {
     const labels = window.NEXUS_LABELS || {};
@@ -513,15 +513,14 @@ function _getModeInfo(st) {
       key: k, name: labels[k] || k, icon: '⬡',
       owner: st.nexusPoints[k].owner || 0,
       progress: st.nexusPoints[k].progress || 0,
+      isSpawn: !!st.nexusPoints[k].isSpawn,
     }));
-    if (nexusPips.length >= 3) {
+    if (nexusPips.some(z => z.isSpawn)) {
       for (const p of [1, 2]) {
-        const owned = nexusPips.filter(z => z.owner === p).length;
-        if (owned === nexusPips.length - 1) nexusAlertPlayer = p;
+        if (nexusPips.filter(z => z.owner === p).length === 0) nexusAlertPlayer = p;
       }
-    } else if (nexusPips.length === 0) {
-      nexusPips = null;
     }
+    if (nexusPips.length === 0) nexusPips = null;
   }
 
   /* Keys carried vs the win target (Arena rules pass 2026-09-07: carry 3 of
@@ -620,7 +619,7 @@ function TurnChip({ entry, size }) {
   if (entry.dead) {
     return h('div', {
       className: 'ew-turn-chip ew-turn-chip-dead',
-      title: name + ' — DOWN',
+      title: name + (u._spawnLocked ? ' — DOWN · NO SPAWN POINT (hold a Nexus to respawn)' : ' — DOWN'),
       style: {
         position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
         opacity: 0.5, filter: 'saturate(0.08) brightness(0.8)', padding: '0 1px',
@@ -1349,8 +1348,8 @@ function Scoreboard({ st }) {
           ),
         ),
 
-        /* Nexus zone control pips (Arena) — cave/earth/sky ownership at a
-           glance; pulses red-hot when a team is ONE zone from an instant win. */
+        /* Nexus zone control pips (Arena) — ownership at a glance; the
+           SPAWN LOCKED tag pulses for a team that holds no zone at all. */
         mode.nexusPips && h('div', { style: {
           display: 'flex', alignItems: 'center', gap: 7, lineHeight: 1,
         }},
@@ -1360,7 +1359,7 @@ function Scoreboard({ st }) {
             return h('span', {
               key: z.key,
               title: z.name + ' Nexus — ' + (z.owner ? 'Player ' + z.owner : contested ? 'contested' : 'unclaimed'),
-              className: mode.nexusAlertPlayer && z.owner === mode.nexusAlertPlayer ? 'ew-sudden-death' : undefined,
+              className: mode.nexusAlertPlayer && z.isSpawn && z.key === 'spawn' + mode.nexusAlertPlayer ? 'ew-sudden-death' : undefined,
               style: {
                 fontFamily: mono, fontSize: 11, color: zColor,
                 textShadow: z.owner ? '0 0 7px ' + zColor : 'none',
@@ -1370,7 +1369,7 @@ function Scoreboard({ st }) {
           mode.nexusAlertPlayer > 0 && h('span', { className: 'ew-sudden-death', style: {
             fontFamily: mono, fontSize: 8, letterSpacing: '0.14em', color: EW.bad,
             textShadow: '0 0 8px ' + EW.bad,
-          }}, 'P' + mode.nexusAlertPlayer + ' NEEDS 1 NEXUS!'),
+          }}, '⛔ P' + mode.nexusAlertPlayer + ' SPAWN LOCKED'),
         ),
       ),
 
@@ -4230,14 +4229,18 @@ function ActionMenu({ st, hidden }) {
   if (_modeHasNexus && typeof getNexusAtUnit === 'function') {
     const _nex = getNexusAtUnit(unit);
     const _chCost = typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1;
+    const _chThr = typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined' ? NEXUS_CAPTURE_THRESHOLD : 4;
     const _capturable = _nex && (!_nex.nexus.owner || _nex.nexus.owner !== unit.player);
     const _chOk = _capturable && (unit.ap || 0) >= _chCost;
+    const _chProg = _nex ? (unit.player === 1 ? Math.max(0, _nex.nexus.progress || 0) : Math.max(0, -(_nex.nexus.progress || 0))) : 0;
+    const _chLocked = typeof isSpawnLockedOut === 'function' && isSpawnLockedOut(unit.player);
     pushers.push({
-      id: 'nexus', glyph: '⬡', label: 'CHANNEL', color: '#5fd6ff',
+      id: 'nexus', glyph: '⬡', label: 'CHANNEL', color: _chLocked ? '#ff8a7a' : '#5fd6ff',
       available: _chOk,
-      sub: !_nex ? 'Not on a nexus' : (!_capturable ? 'Already yours' : 'No AP'),
+      sub: !_nex ? (_chLocked ? '⛔ NO SPAWN — take a zone' : 'Not on a nexus')
+         : (!_capturable ? 'Already yours' : (_chOk ? '⬡ ' + _chProg + '/' + _chThr + (_chProg === _chThr - 1 ? ' · ONE MORE' : '') : 'No AP')),
       hint: _chCost + ' AP',
-      title: 'Channel this Nexus (' + _chCost + ' AP)',
+      title: 'Channel this Nexus (' + _chCost + ' AP, +1 tick; ' + _chThr + ' ticks capture it — stepping in also ticks)',
       fire: () => { if (typeof channelNexus === 'function' && typeof getSelectedUnit === 'function') channelNexus(getSelectedUnit()); },
     });
   }

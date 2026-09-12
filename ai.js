@@ -3153,11 +3153,12 @@
             }
         }
 
-        // Arena EMERGENCY: enemy holds all-but-one zone → sprint to flip.
+        // Arena EMERGENCY (2026-09-12): we hold NO zone → our fallen cannot
+        // respawn. Sprint to the nearest zone we don't own and flip it.
         if (modeId === 'arena' && g.state.nexusPoints) {
             const zones = Object.keys(g.state.nexusPoints).map(k => g.state.nexusPoints[k]).filter(n => n && n.zoneSize);
-            const enemyPlayer = unit.player === 1 ? 2 : 1;
-            if (zones.length >= 3 && zones.filter(n => n.owner === enemyPlayer).length >= zones.length - 1) {
+            const _lockAware = !!g.state.nexusPoints['spawn' + unit.player];
+            if (_lockAware && zones.filter(n => n.owner === unit.player).length === 0) {
                 let best = null, bestD = Infinity, bestC = null;
                 for (const nex of zones) {
                     if (nex.owner === unit.player) continue;
@@ -3269,7 +3270,13 @@
                     if (ownedCount === 0) s += 35;
                     s += ownedCount * 25;
                     if (best.owner === enemyPlayer) s += 25;
-                    if (zones.length >= 3 && ownedCount === zones.length - 1) s += 130;
+                    /* Their LAST zone (or their spawn nexus) → capturing it
+                       locks their respawns; a home spawn stolen from us → get
+                       it back before the deaths pile up. */
+                    const _enemyOwnedZ = zones.filter(n => n.owner === enemyPlayer).length;
+                    if (best.owner === enemyPlayer && _enemyOwnedZ === 1) s += 110;
+                    if (best.isSpawn && best.owner === enemyPlayer) s += 50;
+                    if (best === g.state.nexusPoints['spawn' + unit.player]) s += 80;
                     if (v.enemyTower && v.enemyTower.hp < v.enemyTower.maxHp * 0.25) s -= 50;
                     const alliesNear = g.state.units.filter(u =>
                         u.player === unit.player && !u.dead && u.id !== unit.id &&
@@ -3766,12 +3773,15 @@
             const mpMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
             if (mpMode && (mpMode.id === 'domination' || mpMode.id === 'arena')) score += 90;
             if (mpMode && mpMode.id === 'arena') {
-                const _zoneList = Object.values(g.state.nexusPoints).filter(n => n && n.zoneSize);
-                if (_zoneList.length >= 3) {
-                    const _enemyP = unit.player === 1 ? 2 : 1;
-                    if (ownedCount === _zoneList.length - 1) score += 200;   // capturing our last zone = win
-                    if (_zoneList.filter(n => n.owner === _enemyP).length >= _zoneList.length - 1) score += 130;
-                }
+                /* NEXUS REWORK (2026-09-12): no instant win any more — the
+                   prize is the SPAWN LOCKOUT. We hold nothing → this tick is
+                   the road back to respawning; the enemy's last zone → we
+                   lock THEM out; their spawn nexus → both at once. */
+                const _enemyP = unit.player === 1 ? 2 : 1;
+                const _enemyOwned = Object.values(g.state.nexusPoints).filter(n => n && n.owner === _enemyP).length;
+                if (ownedCount === 0) score += 200;
+                if (_enemyOwned === 1 && nex.owner === _enemyP) score += 130;
+                if (nex.isSpawn && nex.owner === _enemyP) score += 60;
             }
             const myProg = unit.player === 1 ? Math.max(0, nex.progress) : Math.max(0, -nex.progress);
             const threshold = typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined' ? NEXUS_CAPTURE_THRESHOLD : 6;

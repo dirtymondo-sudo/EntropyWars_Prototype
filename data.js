@@ -10344,8 +10344,28 @@ const GOLD_PASSIVE_PER_ROUND = 2;
 
 const NEXUS_GOLD_PER_ROUND = 5;
 const NEXUS_CHANNEL_COST_AP = 1;
-const NEXUS_CAPTURE_THRESHOLD = 6;
+/* ── NEXUS REWORK (2026-09-12) — Arena's zones are the whole economy ──
+   A zone flips at NEXUS_CAPTURE_THRESHOLD ticks (was 6). Ticks come from
+   THREE sources, all through ui.js `_nexusApplyTicks`: a channel (1 AP =
+   +1), STEPPING INTO the zone (+1 per unit per round, ui.js
+   `nexusOnUnitArrive` — four bodies on a 2×2 zone flip it on the spot),
+   and standing there at the round transition (+1 / +2 for two or more,
+   `processNexusIncome`). Owning a zone: every ally standing in it heals
+   NEXUS_HOLD_HEAL_PCT HP + MP and is cleansed at the round end; an enemy
+   standing in a zone YOU own burns NEXUS_HOSTILE_DMG_PCT of max HP. There
+   is no instant win any more — the SPAWN LOCKOUT is the prize: a team
+   respawns only on a zone it owns (home spawn first, then the centre —
+   map.js `getRespawnZoneFor`), so a team with no zone is stuck with the
+   units still on the field. Each non-home zone held also multiplies the
+   team's Cube damage (+NEXUS_CUBE_DMG_PER_ZONE, ui.js `getCubeDamageMult`).
+   Zones are BUILDABLE: reshape / dig / flood / block all work on nexus and
+   spawn tiles (battle.js `isObjectiveTile` guards the Cubes only). */
+const NEXUS_CAPTURE_THRESHOLD = 4;
 const NEXUS_ZONE_SIZE = 2;
+const NEXUS_HOLD_HEAL_PCT = 0.15;      // allies in a zone you own: +15% max HP & MP + cleanse per round
+const NEXUS_HOSTILE_DMG_PCT = 0.25;    // enemies in a zone you own: 25% max HP per round (armour ignored)
+const NEXUS_CUBE_DMG_PER_ZONE = 0.5;   // Cube damage ×(1 + 0.5 per non-home zone held) → ×1.5 / ×2
+const NEXUS_CUBE_DMG_MAX_MULT = 2.0;
 
 // ── ARENA COMPOSITE SCORING — single source of truth ──────────────────
 // Read by the timer-expiry resolver + victory screen (battle.js) and the

@@ -9796,6 +9796,47 @@ cinematic camera shot on a fogged enemy — every director beat is
 `_see`-gated; a position leak is a bug.
 
 
+## NEXUS REWORK — 4-tick zones, step-on ticks, spawn lockout, buildable zones (2026-09-12)
+Design request: nexuses should be faster, juicier and STRATEGIC. Shipped
+(data.js / ui.js / battle.js / map.js / state.js / ai.js / hud.js /
+online.js / three-renderer.js; guard test `nexus-rework.test.js`):
+- **4 ticks capture** (`NEXUS_CAPTURE_THRESHOLD`). Ticks: channel (1 AP),
+  STEP IN (+1 per unit per zone per round — the last body of a full team
+  flips a fresh zone the instant it lands), hold at the round transition
+  (+1 / +2). An enemy-held zone drains their 4 pips first (NEUTRALIZED
+  banner), then yours build. Contested (both teams inside) = frozen.
+- **Hold = heal, enemy hold = burn** at the round end (15% HP+MP + cleanse /
+  25% max HP, armour ignored — the paced scorch beat). Neutral = nothing.
+- **Spawn lockout replaces the instant win.** You respawn ONLY on a zone
+  you hold: home spawn first, else the nearest held zone (centre / their
+  spawn — automatic, logged "returns through the Central Nexus"). Hold
+  nothing → the fallen wait in the void (`_spawnLocked`, scoreboard
+  `⛔ Pn SPAWN LOCKED`, dead chip tooltip, the spawn's meter reads LOCKED
+  OUT) until the team reclaims any zone (`⬡ SPAWN RESTORED` banner; they
+  return at the next round transition). Wipeout is unchanged — attrition
+  under lockout now ends matches.
+- **Cube siege**: ×1.5 Cube damage with one non-home zone held, ×2 with
+  both (`⬡ SIEGE ×1.5` float on the hit).
+- **Zones are buildable**: `isObjectiveTile` guards the Cube tiles only.
+  Reshape / dig / flood / block / terrainCreate work on nexus + spawn
+  tiles. Respawn skips a zone tile that became lava / deep water / wall and
+  falls back to the nearest open tile.
+- **Visibility**: every zone (spawn nexuses too) wears a terrain-hugging
+  perimeter — rim line + halo on each exposed edge at that tile's top,
+  gradient skirts down cliff faces (between zone tiles as well), owner
+  wash per tile, short curtain — rebuilt the frame the terrain changes.
+- **Juice**: 4-pip meter that pops on every change, `⬡ n/4` float at the
+  zone centre in a new gold `nexus` float kind, aura VFX per tick, capture
+  banner + shake + fanfare, `ONE MORE` on the CHANNEL row, all relayed to
+  the online guest (`nexus-fx`).
+Not browser-playtested this session (RULE #1c). Things to watch on the
+first Arena run: (1) the perimeter's curtain on very bright terrain — it
+is additive, drop `curtainH` or the gradient alpha in `rebuildNexusWalls`
+if it washes out; (2) the 8-tick swing to flip a HELD zone (4 to break +
+4 to take) — if that feels slow, the one knob is `_nexusApplyTicks`
+(e.g. drain the owner 2 per tick); (3) `NEXUS_HOSTILE_DMG_PCT` 0.25 vs the
+old spawn-only 0.35 — one rule for every zone now.
+
 ## ARENA RULES PASS — fixed 5-Key pool, 3 to win, 100-round safety cap (2026-09-07)
 Balance/AI-training request: every Arena win condition must stay live and
 a match ends ONLY on a real win. Shipped in state.js / battle.js / hud.js /

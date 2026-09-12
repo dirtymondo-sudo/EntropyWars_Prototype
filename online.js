@@ -1152,6 +1152,26 @@
             };
         }
 
+        /* NEXUS REWORK (2026-09-12): every zone beat (tick / contested /
+           neutral / capture / lockout / restored) goes through ui.js
+           window._nexusFx. The host relays the event; the guest replays it
+           with relayed=true, which fires the banner / SFX / shake only —
+           the floats and VFX arrive through their own relays (RULE #2). */
+        if (typeof window._nexusFx === 'function') {
+            const _origNexusFx = window._nexusFx;
+            window._nexusFx = function(ev, relayed) {
+                _origNexusFx(ev, relayed);
+                var _netOn = window._NET && window._NET.online;
+                if (!relayed && (_netOn && _isHost() || _ewRecOn()) && ev && state.phase === 'battle') {
+                    _emit('relay', {
+                        type: 'nexus-fx',
+                        kind: ev.kind, section: ev.section || null, player: ev.player || 0,
+                        x: ev.x, y: ev.y, prog: ev.prog, thr: ev.thr, sub: ev.sub || ''
+                    });
+                }
+            };
+        }
+
         const _origShowFloatingTextAtTile = showFloatingTextAtTile;
         showFloatingTextAtTile = function(x, y, textValue, kind, opts) {
             _origShowFloatingTextAtTile(x, y, textValue, kind, opts);
@@ -3576,6 +3596,19 @@
                                 ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
                             window.showStealthRevealBanner(_srbUnit
                                 || { player: data.player, name: data.name || 'A unit' });
+                        }
+                    }
+
+                    if (data.type === 'nexus-fx' && _ewMirrorView()) {
+                        /* Zone beat on the mirror: banner / SFX / shake only
+                           (relayed=true) — zones are public knowledge, no fog
+                           gate; the positional floats came through
+                           'floating-text' with their own gate. */
+                        if (typeof window._nexusFx === 'function') {
+                            window._nexusFx({
+                                kind: data.kind, section: data.section, player: data.player,
+                                x: data.x, y: data.y, prog: data.prog, thr: data.thr, sub: data.sub
+                            }, true);
                         }
                     }
 

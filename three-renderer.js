@@ -1504,6 +1504,7 @@ const ThreeRenderer = (function () {
     var css2dRenderer = null;
 
     var _nexusBarObjs = new Map();
+    var _nexusBarLastProg = {};   /* key → last progress drawn (the pop trigger) */
     var _nexusBarGroup = null;
     var _lastNexusBarSerial = '';
 
@@ -1747,6 +1748,8 @@ const ThreeRenderer = (function () {
         'xp':            { color: '#dda0ff', stroke: '#22103a', fontSize: 33, label: true },
         'levelup':       { color: '#ffe27a', grad: _GRAD_GOLD, stroke: '#3a2600', fontSize: 52, label: true },
         'streak':        { color: '#ff6a4a', grad: _GRAD_FIRE, stroke: '#240202', fontSize: 44, label: true },
+        /* Nexus zone beats (2026-09-12): the meter count / CAPTURED pop at the zone centre */
+        'nexus':         { color: '#ffd86b', grad: _GRAD_GOLD, stroke: '#2a1440', fontSize: 50, label: true },
         'laststd':       { color: '#ffe27a', grad: _GRAD_GOLD, stroke: '#3a2600', fontSize: 50, label: true },
         'overkill':      { color: '#ff3a2a', grad: _GRAD_FIRE, stroke: '#240202', fontSize: 56, label: true },
         'achieve':       { color: '#ffd700', grad: _GRAD_GOLD, stroke: '#3a2600', fontSize: 38, label: true },
@@ -7970,6 +7973,11 @@ const ThreeRenderer = (function () {
 
     function _computeNexusSerial() {
         var h = 29;
+        /* The outline hugs the terrain cubes (2026-09-12) — any reshape /
+           dig / flood under a zone must rebuild it. */
+        h = _hashInt(h, state._terrainVersion || 0);
+        h = _hashInt(h, state._heightVersion || 0);
+        h = _hashInt(h, state._voxelVersion || 0);
         if (state.nexusPoints) {
             for (var key in state.nexusPoints) {
                 var n = state.nexusPoints[key];
@@ -7977,6 +7985,8 @@ const ThreeRenderer = (function () {
                     h = _hashStr(h, key);
                     h = _hashInt(h, n.zoneX); h = _hashInt(h, n.zoneY); h = _hashInt(h, n.zoneSize || 2);
                     h = _hashInt(h, n.owner || 0); h = _hashVal(h, n.progress || 0);
+                    h = _hashInt(h, n.isSpawn ? 1 : 0);
+                    if (n.tiles) for (var ti = 0; ti < n.tiles.length; ti++) { h = _hashInt(h, n.tiles[ti].x); h = _hashInt(h, n.tiles[ti].y); }
                 }
             }
         }
@@ -8235,22 +8245,48 @@ const ThreeRenderer = (function () {
         _applyShadowFlags(wallGroup);
     }
 
+    /* Every tile of a zone: the Arena spawn nexuses carry an explicit
+       `tiles` list (the spawn strip), the rest are zoneSize² squares. */
+    function _nexusZoneTiles(nex) {
+        var out = [];
+        if (Array.isArray(nex.tiles) && nex.tiles.length) {
+            for (var i = 0; i < nex.tiles.length; i++) out.push({ x: nex.tiles[i].x, y: nex.tiles[i].y });
+            return out;
+        }
+        var zs = nex.zoneSize || 2;
+        for (var dy = 0; dy < zs; dy++) for (var dx = 0; dx < zs; dx++) out.push({ x: nex.zoneX + dx, y: nex.zoneY + dy });
+        return out;
+    }
+
+    var _nexusLineMats = [];   /* the bright rim — pulses gently, never fades out */
+
+    /* ══ THE ZONE PERIMETER (NEXUS REWORK 2026-09-12) ══════════════════════
+       "It's really hard to even see the nexus / spawn zones any more." Every
+       zone — the centre, the diagonal pair, the Arena spawn nexuses, the
+       hotspot — now wears a perimeter that HUGS THE TERRAIN: per tile a
+       tinted floor wash on that tile's own top; per exposed edge a bright
+       rim line + halo at that tile's top, a gradient SKIRT down the cliff
+       face wherever the ground steps across the edge (so the line stays
+       connected round a raised or dug tile instead of floating), and a
+       short additive curtain wall standing on the edge. Everything is keyed
+       to tileTopY, and _computeNexusSerial folds the terrain / height /
+       voxel versions in, so building on a zone re-draws it that frame.
+       Owner colour = the viewer-relative team colour, gold while neutral. */
     function rebuildNexusWalls() {
         if (!_nexusWallGroup) return;
 
         for (var ci = 0; ci < _nexusWallMats.length; ci++) {
-            if (_nexusWallMats[ci].map) _nexusWallMats[ci].map.dispose();
+            if (_nexusWallMats[ci].map && _nexusWallMats[ci]._ew_ownMap) _nexusWallMats[ci].map.dispose();
         }
         _clearGroup(_nexusWallGroup);
         _nexusWallMats.length = 0;
+        _nexusLineMats.length = 0;
 
         var zones = [];
         if (state.nexusPoints) {
             for (var key in state.nexusPoints) {
                 var n = state.nexusPoints[key];
-                /* Arena spawn nexuses reuse the sanctuary walls (recolored by
-                   owner in rebuildSanctuaryWalls) — no gold nexus box on top. */
-                if (n && !n.isSpawn) zones.push(n);
+                if (n && (n.zoneSize || (n.tiles && n.tiles.length))) zones.push(n);
             }
         }
         if (state.roamingNexus) zones.push(state.roamingNexus);
@@ -8258,93 +8294,155 @@ const ThreeRenderer = (function () {
 
         var ts = CONFIG.tileSize || BASE_TILE;
         var elevStep = ts * ELEV_STEP_RATIO;
-        var wallHeight = 2 * elevStep;
+        var curtainH = 1.1 * elevStep;
+        var lineT = ts * 0.06;
+        var lineLift = 0.45;
+        var _bw = (typeof bw === 'function') ? bw() : 16;
+        var _bh = (typeof bh === 'function') ? bh() : 8;
 
         for (var zi = 0; zi < zones.length; zi++) {
             var nex = zones[zi];
-            var zs = nex.zoneSize || 2;
-            var zx = nex.zoneX;
-            var zy = nex.zoneY;
             var color = _nexusOwnerColor(nex.owner || 0);
+            var tiles = _nexusZoneTiles(nex);
+            var tileSet = {};
+            var ti;
+            for (ti = 0; ti < tiles.length; ti++) tileSet[tiles[ti].x + ',' + tiles[ti].y] = true;
 
-            var edges = [];
-            for (var dy = 0; dy < zs; dy++) {
-                for (var dx = 0; dx < zs; dx++) {
-                    var tx = zx + dx;
-                    var ty = zy + dy;
-
-                    if (dy === 0) edges.push({ x: tx, y: ty, dir: 'n' });
-
-                    if (dy === zs - 1) edges.push({ x: tx, y: ty, dir: 's' });
-
-                    if (dx === 0) edges.push({ x: tx, y: ty, dir: 'w' });
-
-                    if (dx === zs - 1) edges.push({ x: tx, y: ty, dir: 'e' });
-                }
+            /* ── floor wash: one tinted plane per tile on ITS OWN top ── */
+            for (ti = 0; ti < tiles.length; ti++) {
+                var ft = tiles[ti];
+                if (ft.x < 0 || ft.y < 0 || ft.x >= _bw || ft.y >= _bh) continue;
+                var washMat = new THREE.MeshBasicMaterial({
+                    color: color, transparent: true, opacity: 0.16,
+                    depthWrite: false, side: THREE.DoubleSide,
+                    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
+                });
+                _nexusLineMats.push(washMat);
+                var wash = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.96, ts * 0.96), washMat);
+                wash.rotation.x = -Math.PI / 2;
+                wash.position.set(ft.x * ts + ts / 2, tileTopY(ft.x, ft.y) + ts * 0.012, ft.y * ts + ts / 2);
+                _nexusWallGroup.add(wash);
             }
+
+            /* ── perimeter edges: a tile edge whose neighbour is not in the zone ── */
+            var edges = [];
+            for (ti = 0; ti < tiles.length; ti++) {
+                var tx = tiles[ti].x, ty = tiles[ti].y;
+                if (!tileSet[tx + ',' + (ty - 1)]) edges.push({ x: tx, y: ty, dir: 'n' });
+                if (!tileSet[tx + ',' + (ty + 1)]) edges.push({ x: tx, y: ty, dir: 's' });
+                if (!tileSet[(tx - 1) + ',' + ty]) edges.push({ x: tx, y: ty, dir: 'w' });
+                if (!tileSet[(tx + 1) + ',' + ty]) edges.push({ x: tx, y: ty, dir: 'e' });
+            }
+
+            var r = (color >> 16) & 0xff, g_c = (color >> 8) & 0xff, b = color & 0xff;
+            var canvas = document.createElement('canvas');
+            canvas.width = 4; canvas.height = 64;
+            var ctx = canvas.getContext('2d');
+            var grad = ctx.createLinearGradient(0, 0, 0, 64);
+            grad.addColorStop(0, 'rgba(' + r + ',' + g_c + ',' + b + ',0)');
+            grad.addColorStop(0.35, 'rgba(' + r + ',' + g_c + ',' + b + ',0.2)');
+            grad.addColorStop(1, 'rgba(' + r + ',' + g_c + ',' + b + ',0.6)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 4, 64);
+            var curtainTex = new THREE.CanvasTexture(canvas);
+            curtainTex.magFilter = THREE.LinearFilter;
+            curtainTex.minFilter = THREE.LinearFilter;
 
             for (var ei = 0; ei < edges.length; ei++) {
                 var e = edges[ei];
-                var tileY = tileTopY(e.x, e.y);
+                if (e.x < 0 || e.y < 0 || e.x >= _bw || e.y >= _bh) continue;
+                var yIn = tileTopY(e.x, e.y);
+                var horiz = (e.dir === 'n' || e.dir === 's');
+                var bx = e.x * ts, bz = e.y * ts;
+                var posX = (e.dir === 'w') ? bx : (e.dir === 'e') ? bx + ts : bx + ts / 2;
+                var posZ = (e.dir === 'n') ? bz : (e.dir === 's') ? bz + ts : bz + ts / 2;
 
-                var geo = new THREE.PlaneGeometry(ts, wallHeight);
-
-                var canvas = document.createElement('canvas');
-                canvas.width = 4; canvas.height = 64;
-                var ctx = canvas.getContext('2d');
-                var r = (color >> 16) & 0xff;
-                var g_c = (color >> 8) & 0xff;
-                var b = color & 0xff;
-                /* additive + DoubleSide means near AND far walls of the zone
-                   stack along the view ray — keep peak alpha low enough that
-                   two stacked walls stay colored light, not blown-out white */
-                var grad = ctx.createLinearGradient(0, 0, 0, 64);
-                grad.addColorStop(0, 'rgba(' + r + ',' + g_c + ',' + b + ',0)');
-                grad.addColorStop(0.3, 'rgba(' + r + ',' + g_c + ',' + b + ',0.18)');
-                grad.addColorStop(0.7, 'rgba(' + r + ',' + g_c + ',' + b + ',0.38)');
-                grad.addColorStop(1, 'rgba(' + r + ',' + g_c + ',' + b + ',0.55)');
-                ctx.fillStyle = grad;
-                ctx.fillRect(0, 0, 4, 64);
-
-                var tex = new THREE.CanvasTexture(canvas);
-                tex.magFilter = THREE.LinearFilter;
-                tex.minFilter = THREE.LinearFilter;
-
-                var mat = new THREE.MeshBasicMaterial({
-                    map: tex,
-                    transparent: true,
-                    depthWrite: false,
-                    side: THREE.DoubleSide,
-                    blending: THREE.AdditiveBlending
+                /* rim line — extended one thickness so corners join cleanly */
+                var lineMat = new THREE.MeshBasicMaterial({
+                    color: color, transparent: true, opacity: 0.95,
+                    depthWrite: false, side: THREE.DoubleSide
                 });
-                mat._ew_nexusBaseColor = color;
-                _nexusWallMats.push(mat);
+                _nexusLineMats.push(lineMat);
+                var line = new THREE.Mesh(new THREE.PlaneGeometry(horiz ? ts + lineT : lineT, horiz ? lineT : ts + lineT), lineMat);
+                line.rotation.x = -Math.PI / 2;
+                line.position.set(posX, yIn + lineLift, posZ);
+                _nexusWallGroup.add(line);
 
-                var mesh = new THREE.Mesh(geo, mat);
+                /* soft halo hugging the line */
+                var haloMat = new THREE.MeshBasicMaterial({
+                    color: color, transparent: true, opacity: 0.22,
+                    depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending
+                });
+                _nexusLineMats.push(haloMat);
+                var halo = new THREE.Mesh(new THREE.PlaneGeometry(horiz ? ts * 1.05 : lineT * 4.5, horiz ? lineT * 4.5 : ts * 1.05), haloMat);
+                halo.rotation.x = -Math.PI / 2;
+                halo.position.set(posX, yIn + lineLift - 0.08, posZ);
+                _nexusWallGroup.add(halo);
 
-                var cx = e.x * ts + ts / 2;
-                var cz = e.y * ts + ts / 2;
-                var halfTs = ts / 2;
+                /* curtain — the short glowing wall standing on the edge */
+                var curMat = new THREE.MeshBasicMaterial({
+                    map: curtainTex, transparent: true, depthWrite: false,
+                    side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
+                    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
+                });
+                curMat._ew_nexusBaseColor = color;
+                curMat._ew_ownMap = (ei === 0);   /* one shared canvas per zone, disposed once */
+                _nexusWallMats.push(curMat);
+                var cur = new THREE.Mesh(new THREE.PlaneGeometry(ts, curtainH), curMat);
+                cur.position.set(posX, yIn + curtainH / 2, posZ);
+                cur.rotation.y = (e.dir === 'n') ? 0 : (e.dir === 's') ? Math.PI : (e.dir === 'w') ? Math.PI / 2 : -Math.PI / 2;
+                _nexusWallGroup.add(cur);
 
-                if (e.dir === 'n') {
-
-                    mesh.position.set(cx, tileY + wallHeight / 2, cz - halfTs);
-                    mesh.rotation.y = 0;
-                } else if (e.dir === 's') {
-
-                    mesh.position.set(cx, tileY + wallHeight / 2, cz + halfTs);
-                    mesh.rotation.y = Math.PI;
-                } else if (e.dir === 'w') {
-
-                    mesh.position.set(cx - halfTs, tileY + wallHeight / 2, cz);
-                    mesh.rotation.y = Math.PI / 2;
-                } else if (e.dir === 'e') {
-
-                    mesh.position.set(cx + halfTs, tileY + wallHeight / 2, cz);
-                    mesh.rotation.y = -Math.PI / 2;
+                /* skirt — the ground steps across this edge: hang a gradient
+                   down the cube face so the rim stays connected */
+                var nx = e.x + (e.dir === 'w' ? -1 : e.dir === 'e' ? 1 : 0);
+                var ny = e.y + (e.dir === 'n' ? -1 : e.dir === 's' ? 1 : 0);
+                if (nx >= 0 && ny >= 0 && nx < _bw && ny < _bh) {
+                    var yOut = tileTopY(nx, ny);
+                    if (Math.abs(yIn - yOut) > 1.5) {
+                        var skTop = Math.max(yIn, yOut) + lineLift * 0.5;
+                        var skBot = Math.min(yIn, yOut) + 0.1;
+                        var skirtMat = new THREE.MeshBasicMaterial({
+                            color: color, transparent: true, opacity: 0.6,
+                            map: _getZoneSkirtTex(), depthWrite: false, side: THREE.DoubleSide,
+                            polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3
+                        });
+                        _nexusLineMats.push(skirtMat);
+                        var skirt = new THREE.Mesh(new THREE.PlaneGeometry(ts, skTop - skBot), skirtMat);
+                        if (!horiz) skirt.rotation.y = Math.PI / 2;
+                        if (yIn < yOut) skirt.scale.y = -1;
+                        skirt.position.set(posX, (skTop + skBot) / 2, posZ);
+                        _nexusWallGroup.add(skirt);
+                    }
                 }
+            }
 
-                _nexusWallGroup.add(mesh);
+            /* inner step lines: where two ZONE tiles meet at different
+               heights, a thin skirt on the seam keeps the wash readable as
+               one raised / sunken block instead of a torn carpet */
+            for (ti = 0; ti < tiles.length; ti++) {
+                var a = tiles[ti];
+                var nbrs = [{ x: a.x + 1, y: a.y, horiz: false }, { x: a.x, y: a.y + 1, horiz: true }];
+                for (var ni = 0; ni < nbrs.length; ni++) {
+                    var nb = nbrs[ni];
+                    if (!tileSet[nb.x + ',' + nb.y]) continue;
+                    if (a.x < 0 || a.y < 0 || nb.x >= _bw || nb.y >= _bh) continue;
+                    var ya = tileTopY(a.x, a.y), yb = tileTopY(nb.x, nb.y);
+                    if (Math.abs(ya - yb) <= 1.5) continue;
+                    var sTop = Math.max(ya, yb) + 0.2, sBot = Math.min(ya, yb) + 0.1;
+                    var seamMat = new THREE.MeshBasicMaterial({
+                        color: color, transparent: true, opacity: 0.35,
+                        map: _getZoneSkirtTex(), depthWrite: false, side: THREE.DoubleSide,
+                        polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3
+                    });
+                    _nexusLineMats.push(seamMat);
+                    var seam = new THREE.Mesh(new THREE.PlaneGeometry(ts, sTop - sBot), seamMat);
+                    if (!nb.horiz) seam.rotation.y = Math.PI / 2;
+                    seam.position.set(nb.horiz ? a.x * ts + ts / 2 : a.x * ts + ts,
+                                      (sTop + sBot) / 2,
+                                      nb.horiz ? a.y * ts + ts : a.y * ts + ts / 2);
+                    _nexusWallGroup.add(seam);
+                }
             }
         }
 
@@ -8389,6 +8487,9 @@ const ThreeRenderer = (function () {
         for (var p = 1; p <= 2; p++) {
             var zone = state.spawnZones[p];
             if (!zone) continue;
+            /* Arena: the spawn zone is a nexus — rebuildNexusWalls draws its
+               owner-tinted wash + perimeter; a second wash here would double up. */
+            if (state.nexusPoints && state.nexusPoints['spawn' + p]) continue;
             var color = p === 1 ? P1_COLOR : P2_COLOR;
 
             for (var i = 0; i < zone.length; i++) {
@@ -8485,11 +8586,13 @@ const ThreeRenderer = (function () {
             var zone = state.spawnZones[p];
             if (!zone || zone.length === 0) continue;
 
-            /* Arena: the spawn zone doubles as a nexus — walls show the CURRENT
-               nexus owner (gold when neutralized), not just the home team. */
+            /* Arena: the spawn zone doubles as a nexus — since 2026-09-12 its
+               perimeter (rim + skirts + curtain, owner-tinted) comes from
+               rebuildNexusWalls; the sanctuary curtain here would stack on it. */
             var _spNex = state.nexusPoints && state.nexusPoints['spawn' + p];
-            var _spOwner = _spNex ? (_spNex.owner || 0) : p;
-            var color = _spOwner === 0 ? 0xddaa33 : _viewerPlayerColor(_spOwner);
+            if (_spNex) continue;
+            var _spOwner = p;
+            var color = _viewerPlayerColor(_spOwner);
 
             /* Build a Set of zone tile keys for fast neighbor lookup */
             var zoneSet = {};
@@ -8811,12 +8914,19 @@ const ThreeRenderer = (function () {
     }
 
     function _updateNexusWallPulse() {
-        if (_nexusWallMats.length === 0) return;
         var t = performance.now() / 1000;
-
-        var pulse = 0.55 + 0.15 * Math.sin(t * 2.0);
-        for (var i = 0; i < _nexusWallMats.length; i++) {
-            _nexusWallMats[i].opacity = pulse;
+        if (_nexusWallMats.length) {
+            var pulse = 0.55 + 0.15 * Math.sin(t * 2.0);
+            for (var i = 0; i < _nexusWallMats.length; i++) _nexusWallMats[i].opacity = pulse;
+        }
+        if (_nexusLineMats.length) {
+            /* the rim never dips below readable — a shimmer, not a fade */
+            var shimmer = 1 - 0.08 * (0.5 + 0.5 * Math.sin(t * 2.6));
+            for (var j = 0; j < _nexusLineMats.length; j++) {
+                var m = _nexusLineMats[j];
+                if (m._baseOp === undefined) m._baseOp = m.opacity;
+                m.opacity = m._baseOp * shimmer;
+            }
         }
     }
 
@@ -8922,6 +9032,41 @@ const ThreeRenderer = (function () {
                 '  50% { border-color: rgba(255,200,60,0.6); }',
                 '}',
 
+                /* NEXUS REWORK (2026-09-12): the meter is PIPS — one cell per
+                   tick, filled in the leading team's colour, the count beside
+                   them; the whole wrap pops when the count changes so a
+                   step-on / channel reads instantly. */
+                '.nb-wrap .nb-pips {',
+                '  display: flex; gap: 3px; align-items: center; justify-content: center;',
+                '  padding: 3px 6px; background: rgba(0,0,0,0.78); border-radius: 4px;',
+                '  border: 1px solid rgba(255,255,255,0.18);',
+                '  box-shadow: 0 2px 10px rgba(0,0,0,0.9), inset 0 1px 3px rgba(0,0,0,0.5);',
+                '}',
+                '.nb-wrap .nb-pip {',
+                '  width: 22px; height: 10px; border-radius: 2px;',
+                '  background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.22);',
+                '  transition: background 0.18s ease-out, box-shadow 0.18s ease-out;',
+                '}',
+                '.nb-wrap .nb-pip.on-p1 { background: linear-gradient(180deg, #7ab4ff 0%, #2266cc 60%, #1a4488 100%); box-shadow: 0 0 8px rgba(80,150,255,0.8); border-color: rgba(150,200,255,0.8); }',
+                '.nb-wrap .nb-pip.on-p2 { background: linear-gradient(180deg, #ff8a7a 0%, #cc2222 60%, #881a1a 100%); box-shadow: 0 0 8px rgba(255,80,80,0.8); border-color: rgba(255,170,160,0.8); }',
+                '.nb-wrap .nb-count {',
+                '  font-size: 11px; font-weight: 800; color: #fff; margin-left: 4px; line-height: 1;',
+                '  text-shadow: 0 0 4px #000, 0 1px 2px #000; letter-spacing: 0.06em;',
+                '}',
+                '.nb-wrap.nb-pop { animation: nb-pop 0.55s cubic-bezier(0.2, 1.6, 0.4, 1) both; }',
+                '@keyframes nb-pop {',
+                '  0% { transform: translate(-50%, -100%) scale(1); }',
+                '  35% { transform: translate(-50%, -100%) scale(1.35); }',
+                '  100% { transform: translate(-50%, -100%) scale(1); }',
+                '}',
+                '.nb-wrap .nb-lock {',
+                '  font-size: 8px; font-weight: 800; letter-spacing: 0.12em; color: #ff8a7a;',
+                '  text-shadow: 0 0 6px rgba(255,60,40,0.8), 0 1px 2px #000; margin-top: 2px; line-height: 1;',
+                '  animation: nb-contest-pulse 1.2s ease-in-out infinite;',
+                '}',
+                'body.is-p2-viewer .nb-wrap .nb-pip.on-p1 { background: linear-gradient(180deg, #ff8a7a 0%, #cc2222 60%, #881a1a 100%); box-shadow: 0 0 8px rgba(255,80,80,0.8); }',
+                'body.is-p2-viewer .nb-wrap .nb-pip.on-p2 { background: linear-gradient(180deg, #7ab4ff 0%, #2266cc 60%, #1a4488 100%); box-shadow: 0 0 8px rgba(80,150,255,0.8); }',
+
                 '.nb-wrap .nb-label {',
                 '  font-size: 7px; font-weight: 800; letter-spacing: 0.12em;',
                 '  color: rgba(255,255,255,0.5); margin-top: 2px; line-height: 1;',
@@ -9013,30 +9158,34 @@ const ThreeRenderer = (function () {
         else if (nex.owner === 2) { ownerText = 'P2 CONTROLLED'; ownerCls = 'nb-owner nb-owner-p2'; }
         if (isContested) ownerText = 'CONTESTED';
 
-        var fillHtml = '';
-        if (prog > 0) {
-            var pct1 = Math.min(1, absProgress / capThreshold) * 50;
-            fillHtml = '<div class="nb-fill-p1" style="width:' + pct1.toFixed(1) + '%"></div>';
-        } else if (prog < 0) {
-            var pct2 = Math.min(1, absProgress / capThreshold) * 50;
-            fillHtml = '<div class="nb-fill-p2" style="width:' + pct2.toFixed(1) + '%"></div>';
+        /* Pips: one per tick, lit in the leading team's colour. */
+        var pipCls = prog > 0 ? 'on-p1' : prog < 0 ? 'on-p2' : '';
+        var pipsHtml = '';
+        for (var pi = 0; pi < capThreshold; pi++) {
+            pipsHtml += '<div class="nb-pip' + (pi < absProgress && pipCls ? ' ' + pipCls : '') + '"></div>';
         }
-
         var progText = absProgress + '/' + capThreshold;
-        if (prog === 0 && nex.owner === 0) progText = 'UNCLAIMED';
+        if (prog === 0 && nex.owner === 0) progText = '0/' + capThreshold;
 
         var modeLabel = 'NEXUS';
         if (key === 'roaming' || (state.roamingNexus && nex === state.roamingNexus)) modeLabel = 'HOTSPOT';
         if (nex.isSpawn) modeLabel = 'SPAWN NEXUS';
+        /* Spawn lockout readout: the home team of this spawn holds no zone at all. */
+        var lockHtml = '';
+        if (nex.isSpawn && typeof window.isSpawnLockedOut === 'function') {
+            var homeP = (key === 'spawn1') ? 1 : (key === 'spawn2') ? 2 : 0;
+            if (homeP && window.isSpawnLockedOut(homeP)) lockHtml = '<div class="nb-lock">⛔ P' + homeP + ' LOCKED OUT</div>';
+        }
+
+        /* Pop when the count moved since the last build of this bar. */
+        if (_nexusBarLastProg[key] !== undefined && _nexusBarLastProg[key] !== prog) cls += ' nb-pop';
+        _nexusBarLastProg[key] = prog;
+        wrap.className = cls;
 
         wrap.innerHTML =
             '<div class="' + ownerCls + '">' + ownerText + '</div>' +
-            '<div class="nb-track">' +
-                fillHtml +
-                '<div class="nb-center"></div>' +
-                '<div class="nb-prog">' + progText + '</div>' +
-            '</div>' +
-            '<div class="nb-label">' + modeLabel + '</div>';
+            '<div class="nb-pips">' + pipsHtml + '<div class="nb-count">' + progText + '</div></div>' +
+            '<div class="nb-label">' + modeLabel + '</div>' + lockHtml;
 
         var css2d = new THREE.CSS2DObject(wrap);
         var zs = nex.zoneSize || 2;

@@ -708,6 +708,57 @@ screens voice it. Online: `strikeType` rides the `doEntropyStrike`
 game-action and the `entropy-cine` relay; Simul plan steps carry it too.
 `npm test` runs `entropy-strike.test.js` (catalogue ↔ directors ↔ CSS).
 
+## NEXUS REWORK — Arena's zones are the economy — added 2026-09-12
+data.js `NEXUS_CAPTURE_THRESHOLD` is **4** (was 6) + `NEXUS_HOLD_HEAL_PCT`
+(0.15) / `NEXUS_HOSTILE_DMG_PCT` (0.25) / `NEXUS_CUBE_DMG_PER_ZONE` (0.5,
+cap `NEXUS_CUBE_DMG_MAX_MULT` 2). ONE tick engine — ui.js
+`_nexusApplyTicks(nex, section, team, ticks, creditUnit)` — fed by three
+sources: `channelNexus` (1 AP, +1), **`nexusOnUnitArrive(unit)`** (the
+step-on tick: +1 per unit per zone per round, `unit._nexusStepStamp`;
+called from battle.js `completeMoveAlongPath` next to `checkFlagPickup` —
+four bodies on a fresh 2×2 zone flip it on the spot; an enemy already
+standing there = CONTESTED, no tick) and `processNexusIncome` (round
+transition, +1 / +2). A tick against an OWNED zone drains the owner's
+pips first; the zone goes neutral when they hit 0 (the enemy loses it
+right there), then your own pips build. **No instant Nexus-Dominance win
+any more** — the prize is the **SPAWN LOCKOUT**: map.js
+`getRespawnZoneFor(player)` → the home spawn nexus while you hold it,
+else the nearest other zone you hold (the centre, their spawn), else
+`{ locked: true }` and `processRespawns` parks the unit (`_respawnIn` 0,
+`_spawnLocked`) until the team reclaims a zone; `_respawnTileSafe` skips a
+zone tile that was dug into lava / flooded / walled (zones are BUILDABLE:
+battle.js `isObjectiveTile` now guards the Cube tiles ONLY — reshape /
+dig / flood / block / terrainCreate all work on nexus and spawn tiles;
+zone membership is by coordinate, never by terrain key). Zone perks
+(battle.js end-of-round block, was spawn-only): every unit standing in a
+zone reads the NEXUS owner first (`getNexusAtUnit`) — ally of the owner
+heals HP + MP + cleanse, enemy of the owner burns `NEXUS_HOSTILE_DMG_PCT`
+(the paced scorch beat); map.js `getSpawnZoneOwnerAt` answers the spawn
+nexus's owner in Arena (0 while neutral), the home team elsewhere. Cube
+siege: ui.js `getCubeDamageMult(player)` = 1 + 0.5 per held zone that is
+not your own spawn, applied in doAttack's Cube branch (both paths, `⬡
+SIEGE ×1.5` float). Presentation goes through ONE door — ui.js
+`_nexusFx({ kind: tick|contested|neutral|capture|lockout|restored, section,
+player, x, y, prog, thr })` (floats at the zone centre in the new `nexus`
+float kind, the `_nexusProgress/_nexusChannel` auras, banners, SFX,
+shake) — routed through `window._nexusFx` so online.js's wrapper relays it
+(`nexus-fx`; the guest replays with `relayed = true` = banner / SFX /
+shake only, the floats + VFX ride their own relays). Renderer:
+`rebuildNexusWalls` draws EVERY zone (spawn nexuses included — the
+sanctuary curtain / spawn wash skip them in Arena) as a terrain-hugging
+perimeter: per-tile owner wash on that tile's top, rim line + halo on each
+exposed edge at `tileTopY`, gradient SKIRTS down cliff faces where the
+ground steps across an edge or between two zone tiles, a short additive
+curtain; `_computeNexusSerial` folds `_terrainVersion / _heightVersion /
+_voxelVersion` in so building on a zone redraws it that frame. The zone
+meter is PIPS (`.nb-pips`, one per tick, `nb-pop` on change, `⛔ Pn LOCKED
+OUT` under a stolen spawn). HUD: CHANNEL row shows `⬡ n/4` (+ `ONE MORE`),
+the scoreboard's `⛔ Pn SPAWN LOCKED`, dead turn chips say NO SPAWN POINT.
+AI: `scoreNexusChannel` / the Arena macro goals score the lockout (we
+hold nothing → +200 / sprint; their last zone or spawn → lock them). Legacy
+`nexus_dominance` labels stay for old records. `npm test` runs
+`nexus-rework.test.js` (source guards for all of the above).
+
 ## ARENA RULES — fixed Key pool + round safety cap — added 2026-09-07
 Arena (state.js `MULTIPLAYER_MODES.arena`) scatters a FIXED pool of
 `keySpawnCount` (5) Keys and wins THRESHOLD STABILIZED when one team CARRIES

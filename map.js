@@ -3269,7 +3269,7 @@
         };
 
         const MS_GAME_MODES = [
-            { id: 'arena', icon: '🏰', label: 'Arena', desc: 'Destroy the Cube, wipe out the enemy, secure 3 of the 5 Keys — or hold ALL 3 Nexus zones at once for an instant win: the center Nexus plus BOTH spawn zones (yours starts captured — steal theirs by surviving inside their spawn). One win condition MUST be met; a 100-round safety cap (Arena score, then Sudden Death) only stops matches that would run forever.', tag: null, locked: false },
+            { id: 'arena', icon: '🏰', label: 'Arena', desc: 'Destroy the Cube, wipe out the enemy, or secure 3 of the 5 Keys. Three Nexus zones (the center + both spawns, yours starts captured) are the economy: 4 ticks flip one — step in, channel, or hold it — a zone you hold heals your team and burns the enemy, you RESPAWN only on a zone you hold (lose them all and your fallen stay down), and every non-home zone is ×1.5 Cube damage. Zones can be built on, dug and flooded. A 100-round safety cap (Arena score, then Sudden Death) only stops matches that would run forever.', tag: null, locked: false },
             { id: 'tdm', icon: '💀', label: 'Team Deathmatch', desc: 'Most kills in 12 rounds wins. Wipeout also wins instantly. Sudden Death if tied.', tag: null, locked: false },
             { id: 'clash', icon: '🎴', label: 'Clash', desc: 'Classic JRPG battle — 4v4 on a fixed stage, no movement. Two parties face off across the field: attack, cast, use an item, or Guard, then the next unit steps up. Wipe out the enemy party to win.', tag: 'NEW', locked: false },
             { id: 'simul', icon: '♟️', label: 'Simul', desc: 'SIMULTANEOUS turns — both sides secretly order one unit (any unit, 2 AP), then the orders play out together: priority first, then speed. Displaced targets are re-acquired or the action whiffs. Most kills in 12 rounds wins.', tag: 'EXPERIMENTAL', locked: false },
@@ -8822,8 +8822,13 @@
         }
 
         function getSpawnZoneOwnerAt(x, y) {
-            if (isInSpawnZone(x, y, 1)) return 1;
-            if (isInSpawnZone(x, y, 2)) return 2;
+            /* Arena (2026-09-12): a spawn zone is a nexus — it belongs to
+               whoever HOLDS it (0 while neutral), not to the home team. */
+            for (const p of [1, 2]) {
+                if (!isInSpawnZone(x, y, p)) continue;
+                const nx = state.nexusPoints && state.nexusPoints['spawn' + p];
+                return nx ? (nx.owner || 0) : p;
+            }
             return 0;
         }
 
@@ -8997,6 +9002,54 @@
             unit._turnKills = 0;
         }
 
+        /* ── NEXUS REWORK (2026-09-12) — where does this team come back? ──
+           Arena registers both spawn zones as nexuses (spawn1 / spawn2). A
+           team respawns on its HOME spawn while it still owns it, else on the
+           nearest other zone it holds (nearest to home, so a stolen enemy
+           spawn only becomes the fallback when the centre is gone too), else
+           nowhere: { locked: true }. Modes whose spawn zones aren't nexuses
+           (TDM, Simul, CTF…) always answer with the fixed home tiles. */
+        function getRespawnZoneFor(player) {
+            const home = (state.spawnZones && state.spawnZones[player]) || [];
+            const nx = state.nexusPoints;
+            const homeNex = nx && nx['spawn' + player];
+            if (!homeNex) return { section: 'home', label: 'Spawn', tiles: home, home: true, locked: false };
+            if (homeNex.owner === player) return { section: 'spawn' + player, label: 'Spawn', tiles: home, home: true, locked: false };
+            const hc = home.length ? home[Math.floor(home.length / 2)] : { x: 0, y: 0 };
+            let best = null, bestD = Infinity;
+            for (const key of Object.keys(nx)) {
+                const n = nx[key];
+                if (!n || n.owner !== player) continue;
+                let tiles;
+                if (Array.isArray(n.tiles) && n.tiles.length) tiles = n.tiles.map(t => ({ x: t.x, y: t.y }));
+                else if (n.zoneSize) {
+                    tiles = [];
+                    for (let dy = 0; dy < n.zoneSize; dy++) for (let dx = 0; dx < n.zoneSize; dx++) tiles.push({ x: n.zoneX + dx, y: n.zoneY + dy, z: n.z });
+                } else continue;
+                const mid = tiles[Math.floor(tiles.length / 2)];
+                const d = Math.abs(mid.x - hc.x) + Math.abs(mid.y - hc.y);
+                if (d < bestD) {
+                    bestD = d;
+                    const lbl = (window.NEXUS_LABELS && window.NEXUS_LABELS[key]) || key;
+                    best = { section: key, label: lbl, tiles, home: false, locked: false };
+                }
+            }
+            return best || { section: null, label: '', tiles: [], home: false, locked: true };
+        }
+        window.getRespawnZoneFor = getRespawnZoneFor;
+
+        /* Zones are buildable now — a respawn tile must still be standable. */
+        function _respawnTileSafe(x, y) {
+            const w = bw(), h = bh();
+            if (x < 0 || y < 0 || x >= w || y >= h) return false;
+            const t = state.boardTerrain?.[y]?.[x];
+            const rule = getTerrainRule(t || 'grass');
+            if (!rule || rule.passable === false) return false;
+            if (t === 'lava' || t === 'deep_water' || t === 'chasm' || t === 'void' || t === 'tower_base') return false;
+            if (typeof isTowerTile === 'function' && isTowerTile(x, y)) return false;
+            return true;
+        }
+
         function processRespawns() {
             for (const unit of state.units) {
                 if (!unit.dead) continue;
@@ -9101,55 +9154,55 @@
                         }
                     }
 
-                    /* Spawn Zone respawn: fixed tile, full HP/MP */
-                    const zoneArr = state.spawnZones?.[unit.player];
-                    const spawnIdx = unit._spawnIndex ?? 0;
-                    const zoneTile = zoneArr?.[spawnIdx];
+                    /* ── NEXUS REWORK (2026-09-12): you respawn on a zone you HOLD.
+                       getRespawnZoneFor → the home spawn nexus while it is
+                       yours, else the nearest other zone you own (the centre,
+                       the enemy's spawn…); no zone = SPAWN LOCKOUT: the unit
+                       waits in the void until the team reclaims one. Modes
+                       whose spawn zones aren't nexuses keep the fixed tile. */
+                    const _rz = getRespawnZoneFor(unit.player);
+                    if (_rz.locked) {
+                        unit._respawnIn = 0;
+                        unit._spawnLocked = true;
+                        if (!state._nexusLockLog) state._nexusLockLog = {};
+                        if (state._nexusLockLog[unit.player] !== state.round) {
+                            state._nexusLockLog[unit.player] = state.round;
+                            addLog(`⛔ Player ${unit.player} holds NO Nexus — the fallen cannot respawn. Reclaim a zone to bring them back!`);
+                        }
+                        continue;
+                    }
+                    unit._spawnLocked = false;
+                    const zoneArr = _rz.tiles;
+                    const spawnIdx = (_rz.home ? (unit._spawnIndex ?? 0) : 0) % Math.max(1, zoneArr.length);
+                    const zoneTile = zoneArr[spawnIdx];
 
                     if (zoneTile) {
-                        /* Push enemy off tile if occupied */
+                        /* A living unit on the chosen tile: an enemy is pushed
+                           off (it's our ground now), a friend keeps it and we
+                           take the next open tile of the zone. A zone tile
+                           that was dug into lava / flooded deep / walled off
+                           (zones are buildable now) is skipped the same way. */
                         const blocker = state.units.find(u => !u.dead && u.x === zoneTile.x && u.y === zoneTile.y && u.id !== unit.id);
-                        if (blocker) {
-                            if (blocker.player !== unit.player) {
-                                pushUnitToNearestOpen(blocker, zoneTile.x, zoneTile.y);
-                                addLog(`⚡ ${unitDisplayName(blocker)} is pushed out of spawn zone!`);
-                            } else {
-                                /* Friendly on tile — find nearest open zone tile */
-                                let placed = false;
-                                for (const zt of zoneArr) {
-                                    if (!state.units.some(u => !u.dead && u.x === zt.x && u.y === zt.y)) {
-                                        unit.x = zt.x;
-                                        unit.y = zt.y;
-                                        unit.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(zt.x, zt.y, zt.z) : 0;
-                                        placed = true;
-                                        break;
-                                    }
-                                }
-                                if (!placed) {
-                                    pushUnitToNearestOpen(unit, zoneTile.x, zoneTile.y);
-                                    placed = true;
-                                }
-                                unit.dead = false;
-                                unit._dying = false;
-                                unit.hp = unit.maxHp;
-                                unit.mp = unit.maxMp;
-                                unit.shield = 0;
-                                unit.ap = 0;
-                                unit.status = { spawnGuard: 1 };
-                                delete unit.statStageMods;   // fresh life — no carried stat stages
-                                unit._respawnIn = null;
-                                unit._justRespawned = true;
-                                unit._showRespawnBanner = true;
-                                resetUnitPowerState(unit);
-                                addLog(`🔄 ${unitDisplayName(unit)} has respawned at spawn zone! (${unit.hp}/${unit.maxHp} HP) 🛡️ Spawn Guard: half damage for 1 round.`);
-                                if (window.RenderBus) window.RenderBus.emit('unit:spawned', { unit });
-                                continue;
-                            }
+                        if (blocker && blocker.player !== unit.player && _respawnTileSafe(zoneTile.x, zoneTile.y)) {
+                            pushUnitToNearestOpen(blocker, zoneTile.x, zoneTile.y);
+                            addLog(`⚡ ${unitDisplayName(blocker)} is pushed out of the respawn zone!`);
                         }
-
-                        unit.x = zoneTile.x;
-                        unit.y = zoneTile.y;
-                        unit.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(zoneTile.x, zoneTile.y, zoneTile.z) : 0;
+                        let placed = false;
+                        const _order = zoneArr.slice(spawnIdx).concat(zoneArr.slice(0, spawnIdx));
+                        for (const zt of _order) {
+                            if (!_respawnTileSafe(zt.x, zt.y)) continue;
+                            if (state.units.some(u => !u.dead && u.x === zt.x && u.y === zt.y && u.id !== unit.id)) continue;
+                            unit.x = zt.x;
+                            unit.y = zt.y;
+                            unit.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(zt.x, zt.y, zt.z) : 0;
+                            placed = true;
+                            break;
+                        }
+                        if (!placed) {
+                            const _mid = zoneArr[Math.floor(zoneArr.length / 2)] || zoneTile;
+                            pushUnitToNearestOpen(unit, _mid.x, _mid.y);
+                        }
+                        if (!_rz.home) addLog(`⬡ ${unitDisplayName(unit)} returns through the ${_rz.label} Nexus.`);
                     } else {
                         /* Fallback: spiral from tower if no zone */
                         const tower = getTower(unit.player);

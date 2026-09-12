@@ -250,7 +250,7 @@
                 id: 'arena',
                 label: 'Arena',
                 icon: '🏰',
-                desc: 'Destroy the Cube, secure 3 of the 5 Keys, wipe out the enemy — or hold all 3 Nexus zones (center + both spawns; yours starts captured). A win condition MUST be met; the 100-round cap is only a safety net (composite score, then Sudden Death).',
+                desc: 'Destroy the Cube, secure 3 of the 5 Keys, or wipe out the enemy. Three Nexus zones (center + both spawns; yours starts captured): 4 ticks flip one, a held zone heals you and burns the enemy, you respawn ONLY on a zone you hold, non-home zones are ×1.5 Cube damage. A win condition MUST be met; the 100-round cap is only a safety net (composite score, then Sudden Death).',
                 /* 2026-09-07 Arena rules pass: matches end ONLY on a real win
                    condition. The round cap is a "never literally forever"
                    backstop (AI training / balance runs want every objective to
