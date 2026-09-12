@@ -1,6 +1,6 @@
 # Remaining effect callback inventory
 
-Updated 2026-09-11 (America/Chicago), after the magic helper ownership batch. This is a textual index, not an exhaustive semantic audit.
+Updated 2026-09-11 (America/Chicago), after the six remaining returned-entry helpers. This is a textual index, not an exhaustive semantic audit.
 
 ## Classified and fixed in this batch
 
@@ -143,3 +143,15 @@ Next: `_sigMagicCircle3D`, `_sigMagicOrb3D`, `_sigLightPillar3D` (returned-entry
 Pinned full main snapshot: `2042f1062c480cf68d3d2ec70d6061f88d39df94`. Magic Circle, Magic Orb and Light Pillar now return `_sigRunOwned`; their refused instance allocations are released. `_sigDisposeGroup` now skips engine-shared Sprite geometry on normal finish and refusal, retaining material cleanup. No timers or cache loaders changed. Twenty-one production-helper tests pass (15 fail before), plus 12 real Three.js r128 object checks. Browser/GPU behavior is untested.
 
 Remaining return-only `_sigRun` consumers: Crescent Slash (9555), Orb Burst (9845), Neon Grid (16359), Fractal Tunnel (16428), Kaleidoscope (16473), Spectrum Burst (16646), Prism Refraction (16798), Stat Rings (20850). Lines refer to this delivery. Audit builders, shared assets and animation before replacing calls. The current Psychosis body has no direct timer; the earlier timer-specific continuation lead should instead point to its downstream helpers and the subsequent Ego Death emission timers. This remains a partial semantic audit.
+
+## Crescent Slash / Orb Burst — 2026-09-11
+
+Full baseline main `4f9e0fdcbd1fffa970b62a1127be7739f7e85169`. Both helpers return `_sigRunOwned`. Slash refusal releases private ribbon geometry, materials and its main-material-owned texture clone; echo texture sharing remains unchanged. Orb Burst retains its early cap guard and releases refused instance materials on scene loss, retaining shared sphere/plane and Sprite geometry. 22 focused checks pass, four fail before; full suite 640 pass / 0 fail / 2 skips; syntax 100/100. Controlled unit tests only, no browser/GPU acceptance.
+
+Remaining return-only consumers (this delivery): Neon Grid (16359), Fractal Tunnel (16428), Kaleidoscope (16473), Spectrum Burst (16646), Prism Refraction (16798), Stat Rings (20850). Earlier next-task lists are historical; this entry and the review plan's top entry supersede them. The overall semantic audit remains partial.
+
+## Remaining six helper owners — 2026-09-11
+
+Neon Grid, Fractal Tunnel, Kaleidoscope, Spectrum Burst, Prism Refraction and Stat Rings return `_sigRunOwned`. Refused groups now release instance allocations. `_sigDisposeGroup` deduplicates aliased materials and disposes the wireframe owner reference even when edges cannot be built. Actual wireframe construction and nested Prism → Spectrum paths are exercised by 51 tests, passing both with doubles and real Three.js r128 objects; 27 fail before. Full suite 691 pass, 0 fail, 2 skips; syntax 101/101.
+
+Zero `return _sigRun(` sites remain in this delivery. Older next-task lists are historical. Next semantic work: downstream Psychosis ownership and Ego Death emission timers, then VFX-04 endpoint/list visibility. The full effect graph, WebGL rendering and live multiplayer are not certified by this batch. Cumulative delivery ENTROPY_WARS_SIX_HELPER_FIXES.zip includes the preceding Crescent Slash/Orb Burst work.

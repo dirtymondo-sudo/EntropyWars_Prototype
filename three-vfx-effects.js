@@ -8998,12 +8998,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        Sprite geometry belongs to Three.js and is shared across all sprites.
        Textures are never disposed here (shared caches). */
     function _sigDisposeGroup(group) {
+        /* Wireframe bars/joints alias one instance material. Dispose it once,
+           including the owner reference when no usable edges were built. */
+        var disposedMaterials = new Set();
+        function disposeMaterial(mat) {
+            if (!mat || disposedMaterials.has(mat)) return;
+            disposedMaterials.add(mat);
+            mat.dispose();
+        }
         group.traverse(function (o) {
             if (o.geometry && !o.isSprite && !o.geometry._ew_shared) o.geometry.dispose();
             if (o.material) {
                 var mats = Array.isArray(o.material) ? o.material : [o.material];
-                for (var i = 0; i < mats.length; i++) mats[i].dispose();
+                for (var i = 0; i < mats.length; i++) disposeMaterial(mats[i]);
             }
+            if (o.userData && o.userData.wireMat) disposeMaterial(o.userData.wireMat);
         });
     }
     /* _sigRun for callers that build a fresh group and do not read the
@@ -9552,7 +9561,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var sweep = opts.sweep != null ? opts.sweep : 2.4;
         var roll = opts.roll || 0;
 
-        return _sigRun(group, ms, function (el) {
+        return _sigRunOwned(group, ms, function (el) {
             var t = _sigClamp01(el / ms);
             var e = _sigEaseOutCubic(t);
             mesh.rotation.z = roll + sweep * e * dir;
@@ -9842,7 +9851,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
         }
 
-        return _sigRun(group, ms, function (el) {
+        return _sigRunOwned(group, ms, function (el) {
             var t = _sigClamp01(el / ms);
             var r, fade;
             if (mode === 'in') {
@@ -16356,7 +16365,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
 
         var col = new THREE.Color();
-        return _sigRun(group, ms, function (el) {
+        return _sigRunOwned(group, ms, function (el) {
             var t = _sigClamp01(el / ms);
             var env = t < 0.12 ? (t / 0.12) : (t > 0.72 ? 1 - (t - 0.72) / 0.28 : 1);
             var pulse = 0.62 + 0.38 * Math.sin(el * 0.012);
@@ -16425,7 +16434,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
 
         var col = new THREE.Color();
-        return _sigRun(group, ms, function (el) {
+        return _sigRunOwned(group, ms, function (el) {
             var t = _sigClamp01(el / ms);
             var env = t < 0.1 ? t / 0.1 : (t > 0.74 ? 1 - (t - 0.74) / 0.26 : 1);
             for (var i2 = 0; i2 < rings.length; i2++) {
@@ -16470,7 +16479,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ceil = disc(ts * (opts.ceilingH != null ? opts.ceilingH : 2.0), true, 201);
 
         var col = new THREE.Color();
-        return _sigRun(group, ms, function (el) {
+        return _sigRunOwned(group, ms, function (el) {
             var t = _sigClamp01(el / ms);
             var env = t < 0.1 ? t / 0.1 : (t > 0.7 ? 1 - (t - 0.7) / 0.3 : 1);
             var breathe = 1 + 0.09 * Math.sin(el * 0.008);
@@ -16643,7 +16652,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (typeof ThreePost !== 'undefined' && ThreePost.bloomPulse) ThreePost.bloomPulse(0.45, 320);
         } catch (e) {}
 
-        return _sigRun(group, ms, function (el) {
+        return _sigRunOwned(group, ms, function (el) {
             var t = _sigClamp01(el / ms);
 
             var cs = R * (0.25 + _sigEaseOutCubic(t) * 1.3);
@@ -16795,7 +16804,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         var fired = false, splitPopped = false;
         var wobbleQ = new THREE.Quaternion();
-        return _sigRun(root, totalMs, function (el) {
+        return _sigRunOwned(root, totalMs, function (el) {
             var outFade = el > flyMs + 160 ? Math.max(0, 1 - (el - flyMs - 160) / 420) : 1;
 
             /* prism folds out of nowhere and hangs, breathing */
@@ -20847,7 +20856,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             group.add(tor);
             rings.push({ mesh: mesh, mat: mat, tor: tor, torMat: torMat, at: i * stagger });
         }
-        return _sigRun(group, total, function (el) {
+        return _sigRunOwned(group, total, function (el) {
             for (var i = 0; i < rings.length; i++) {
                 var rg = rings[i];
                 var t = (el - rg.at) / ms;
