@@ -6,6 +6,12 @@ Baseline: Phase 1 source review pinned to main commit `f0a4c3341631d60cee2ac544e
 Continuation baseline: main commit `4c740fcf6624a30d59e30c4d4dfea1a16dd85b03`, checked 2026-09-09 (America/Chicago). This commit and its predecessor `3da54eff8abbef3da87a1c0f72272919d84bd15e` changed only the uploaded review document; the inspected game source and line references remain unchanged.
 Delivery: this document is repository/reference material. The first delivery is now present in repository main `41f8e76b67120eea58c17fd968c5c72d70ef035e`; R2/Render deployment is unverified. The pause-focus delivery is also present in repository main `e92ee26153b65c2047963544c56310ea838220bb`. The Settings-focus delivery is present in repository main `f546e7fff61edb012e3fae536aee995996257c4f`. The PAUSE-06 controller delivery is present in repository main `88b3bc65adc93fc8ed2e84c28c112b0c81565b3f`; the PAUSE-07 delivery is present in repository main `82494b38fa3dea84f89f32a8723602289fa51b3f`; R2/Render deployment remains unverified.
 
+### Current priority — move to Phase 6 (user direction, 2026-09-11)
+
+Stop the incremental VFX helper cleanup batches here. Continue **Phase 6 — Arena and Team Deathmatch AI**, using its existing findings and prior navigation fixes rather than restarting reconnaissance. The next bounded review is AI-04 fallback/target-scorer-executor correspondence and remaining wide-beam targeting, after refreshing relevant main files.
+
+LIFE-06/VFX-03 remain partially validated with residual callback ownership deferred to the backlog. A current source count finds 24 direct timer sites from Merkaba onward; this is an inspection inventory, not 24 confirmed bugs or spells. Earlier direct timers also include infrastructure, cleanup and cache work. VFX-04 endpoint/list visibility remains open and deferred; it is not an exit gate for starting Phase 6. Preserve all completed fixes and their evidence. Do not resume spell-helper batches unless requested or a concrete blocker is found during the next phase.
+
 ### Latest continuation — 2026-09-11: LIFE-06 / VFX-03 Ego Death and Time Rewind emissions
 
 **Implemented and locally validated; not deployed or browser-playtested.** Main commit `8bc3bf594b79786a059c0dee77d008fdeec0270d` includes the preceding eight-helper delivery. Verified Git blob identities for three-vfx-effects.js, index.html and all three delivered documents against the current main tree; the commit changes only the seven files of that prior package. Continued the existing full local snapshot without overwriting newer source.
