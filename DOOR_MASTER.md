@@ -2136,3 +2136,13 @@ data.js, three-renderer.js, map.js, index.html
 delta-maps.test.js, playtest_maps.js. Screenshots taken this time (the
 user allowed it): PLAYTEST_NOTES "MOVING MAPS rev 2".
 
+
+### 2026-09-13 — Room 426 is THE SPACESHIP (renamed from The Derelict)
+The user wanted a generic name: the site's label, the forge names, the
+race home-site rows (cosmic wraith, symbiote) and the room's north sign
+now read **Spaceship**; the id `prebuilt_derelict`, the `near: 'derelict'`
+key and the room number 426 stay, so nothing on file moves. Same delivery:
+the deck plate is plain brushed aluminium (the grate was too busy), the
+specimen tanks on the board are CARGO STACKS (monument `cargo`), the
+fuselage wears frame ribs and hatches, and every moving site runs faster
+(rev 3 pace — see CLAUDE.md "THE SPACESHIP").

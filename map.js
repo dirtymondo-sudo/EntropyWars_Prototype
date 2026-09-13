@@ -4333,6 +4333,7 @@
            three-renderer.js _MON_GRID (the matching visual fit). */
         const _MON_GRID = {
             dumpster:  [2, 1, 1],
+            cargo:     [1, 1, 3],   // 2026-09-13 the Spaceship's cargo stack (three crates, a full-height wall)
             greekcol:  [1, 1, 2],
             mushroom:  [1, 1, 2],
             mushroom2: [1, 1, 1],
@@ -10194,6 +10195,7 @@
             { kind: 'effigy',      label: 'Effigy',          emoji: '🪦', foot: 2, maxH: 1 },
             { kind: 'tpillar',     label: 'T-Pillar',        emoji: '🇹', foot: 1, maxH: 3 },
             { kind: 'greytube',    label: 'Specimen Tank',   emoji: '🧪', foot: 1, maxH: 3 },
+            { kind: 'cargo',       label: 'Cargo Stack',     emoji: '📦', foot: 1, maxH: 3 },
             { kind: 'blastdoor',   label: 'Blast Door',      emoji: '🚪', foot: 2, maxH: 3 },
             { kind: 'beamring',    label: 'Beamline',        emoji: '🧲', foot: 3, maxH: 2 },
             { kind: 'securitycam', label: 'Security Camera', emoji: '📹', foot: 1, maxH: 3 },

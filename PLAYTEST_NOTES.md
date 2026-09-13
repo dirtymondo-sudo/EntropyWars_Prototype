@@ -10250,6 +10250,28 @@ object on a unit or on `state` — store the id and resolve it.
 without layers` for `raceDarkDominion` — a VFX wrapper passed where a
 layered def belongs; cosmetic, not the freeze.)
 
+## THE SPACESHIP (2026-09-13): the Derelict renamed, the deck de-busied, cargo for cover, rev 3 pace
+User asks: the `metal_3` grate on the 8×8 floor was too busy while the
+fuselage was too plain ("something in between for both"), the specimen
+tanks had to go, the name should be generic, and the moving maps faster
+still. Done in data.js / three-renderer.js / map.js (see CLAUDE.md "THE
+SPACESHIP"). Playtest: the CDN AND every other CDN (cdnjs, jsdelivr,
+socket.io) were egress-blocked this session, so `playtest_maps.js` could
+not fetch a single asset. Workaround that worked: a scratch copy of the
+tool whose router serves `three.min.js` + `three@0.128.0/examples/js/*`
+from `node_modules/three` (`npm i --no-save three@0.128.0 react@18
+react-dom@18 three.meshline@1.4.0` — install them in ONE call, a second
+`--no-save` install prunes the first), React / MeshLine / socket.io from
+their packages, every cdn.entropywars.net `.js` / `.css` from the repo and
+404s the rest. The page boots in 2 s, the match launches through the
+selection mirrors, four poses in 41 s, zero page errors. What that shows:
+geometry and glow only — every `_hzTex` surface is BLACK (a texture whose
+image never arrives), so a floor / hull sheet cannot be judged here; the
+ribs, the hatches, the stacks' silhouettes and the pace readout can.
+`PROBE_EVAL='ThreeRenderer.motion()'` → 5.28 tiles/s easing to 6 at
+round 1 on the Spaceship. (Never `pkill -f "node server.js"` from the
+tool shell — it matches the shell's own command line and kills it.)
+
 ## MOVING MAPS rev 2 (2026-09-12): faster, the Flying Dutchman's hull, the starship, the pieces, wheel + rise
 Playtested with `playtest_maps.js` (the user allowed it this session) —
 the tool's selectors were three days stale (`.ms-map-card` / `.ms-mode-card`

@@ -34,7 +34,7 @@ test('the three moving maps are launch maps with a Δ, a near setting, a far ros
         const mo = meta.env.motion;
         assert.ok(mo && mo.kind === M.kind && (mo.axis === 'x' || mo.axis === 'z'), M.id + ': env.motion kind + axis');
         assert.ok(mo.speed > 0 && mo.ramp > 0 && mo.max >= 1, M.id + ': speed / ramp / max');
-        assert.ok(mo.speed >= 3 && mo.max >= 5, M.id + ': rev 2 pace — at least 3 tiles/s at round 1 and a cap of 5× (the user wanted them faster)');
+        assert.ok(mo.speed >= 5 && mo.max >= 7, M.id + ': rev 3 pace — at least 5 tiles/s at round 1 and a cap of 7× (the user wanted them faster again, 2026-09-13)');
         assert.ok(mo.sky == null || (mo.sky >= 0 && mo.sky <= 2), M.id + ': sky streaming amount');
         if (mo.orbit) assert.ok(['sun', 'moon'].includes(mo.orbit.body) && mo.orbit.period > 0 && mo.orbit.near > 0 && mo.orbit.near <= 1, M.id + ': orbit');
         if (mo.storm) assert.ok(mo.storm.to > mo.storm.from && mo.storm.from >= 1, M.id + ': storm window');

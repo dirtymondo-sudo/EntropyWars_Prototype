@@ -12802,15 +12802,17 @@ _MF_BUILDERS.prebuilt_revenge = function () {
     return M;
 };
 
-/* THE DERELICT — 16×16 6v6. A ship torn in half and still falling: the
-   deck plate open to the stars (bottomless breaches), bulkhead stubs, the
-   reactor's holo glow, coolant slicks, specimen tubes and a blast door
-   that still cycles. Bow to the EAST (what is left of it). */
+/* THE SPACESHIP (id prebuilt_derelict — the id stays; renamed from The
+   Derelict 2026-09-13) — 16×16 6v6. A ship torn in half and still falling:
+   the deck plate open to the stars (bottomless breaches), bulkhead stubs,
+   the reactor's holo glow, coolant slicks, cargo stacks and a blast door
+   that still cycles. Bow to the EAST (what is left of it). The deck is
+   plain brushed `aluminium` (the `metal_3` grate was too busy for a floor). */
 _MF_BUILDERS.prebuilt_derelict = function () {
     const M = _mfNew({
-        name: 'The Derelict', w: 16, h: 16, base: 'metal_3', baseH: 3, seed: 426,
+        name: 'Spaceship', w: 16, h: 16, base: 'aluminium', baseH: 3, seed: 426,
         strata: ['void', 'void', 'gunmetal'], underTop: 'gunmetal',
-        tints: { metal_3: '#8c949c', gunmetal: '#5a6068', metal: '#a8b0b8', metal_2: '#7a8290', holo: '#7fd8ff', oil: '#101418', void: '#05060d' },
+        tints: { aluminium: '#8e98a2', metal_3: '#8c949c', gunmetal: '#5a6068', metal: '#a8b0b8', metal_2: '#7a8290', holo: '#7fd8ff', oil: '#101418', void: '#05060d' },
     });
     // the tear: breaches open to space along the north-west and south-east corners
     [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [0, 2], [3, 0], [0, 3]].forEach(p => M.hole(p[0], p[1], 'void'));
@@ -12820,7 +12822,7 @@ _MF_BUILDERS.prebuilt_derelict = function () {
     // bulkhead stubs (+2 hull plate) — the corridor walls that are left
     M.rect(4, 6, 4, 9, 'gunmetal', 5); M.rect(11, 6, 11, 9, 'gunmetal', 5);
     M.rect(6, 4, 9, 4, 'gunmetal', 5); M.rect(6, 11, 9, 11, 'gunmetal', 5);
-    M.rect(7, 4, 8, 4, 'metal_3', 3); M.rect(7, 11, 8, 11, 'metal_3', 3);     // the doorways
+    M.rect(7, 4, 8, 4, 'aluminium', 3); M.rect(7, 11, 8, 11, 'aluminium', 3); // the doorways
     // the reactor: a holo-lit floor at the heart, consoles (+1) round it
     M.rect(6, 6, 9, 9, 'holo', 3);
     M.rect(5, 5, 5, 5, 'metal_2', 4); M.rect(10, 10, 10, 10, 'metal_2', 4);
@@ -12830,12 +12832,12 @@ _MF_BUILDERS.prebuilt_derelict = function () {
     // catwalk grating along the surviving sides
     M.rect(0, 12, 15, 12, 'metal_2', 3); M.rect(0, 3, 15, 3, 'metal_2', 3);
     M.sym180();
-    // specimen tubes and the blast door that still cycles
-    M.monSym('greytube', 2, 6, 1, 3, {});
-    M.monSym('greytube', 13, 6, 1, 3, {});
+    // cargo stacks (the specimen tubes went 2026-09-13) and the blast door that still cycles
+    M.monSym('cargo', 2, 6, 1, 3, {});
+    M.monSym('cargo', 13, 6, 1, 3, {});
     M.mon('blastdoor', 7, 7, 3, 2, { solid: false });
     M.spawnEdges('s', 6);
-    M.finishSpawns('metal_3');
+    M.finishSpawns('aluminium');
     return M;
 };
 
@@ -12898,7 +12900,7 @@ _MF_BUILDERS.prebuilt_lookingglass = function () {
          M.tree(x,y,kind)     tree object — blocks walking + sight.
          M.pillarSym(kind,…)  ONLY collision monuments are allowed here
                               (tpillar, greekcol, mushroom, mushroom2, obelisk3d,
-                              monolith, greytube, dumpster, the chess_* pieces):
+                              monolith, greytube, cargo, dumpster, the chess_* pieces):
                               they stamp real voxels, so what looks like cover
                               IS cover. M.pieceSym(kind, x, y, h) is a chess
                               piece + its twin (dark / light).
@@ -12921,7 +12923,7 @@ const MF_DELTA_STRATA = ['lava', 'cave_floor', 'cave_wall', 'dirt_4', 'dirt_3'];
    The entry records it as `bed`; delta-maps.test.js checks each board
    against its own bed (the shared lava bed stays the default). */
 /* monument kinds with a real collision stamp (map.js _MON_COLLISION / _MON_GRID) */
-const MF_DELTA_SOLID_MONS = new Set(['tpillar', 'greekcol', 'mushroom', 'mushroom2', 'obelisk3d', 'monolith', 'greytube', 'dumpster', 'obelisk', 'colossus', 'greek',
+const MF_DELTA_SOLID_MONS = new Set(['tpillar', 'greekcol', 'mushroom', 'mushroom2', 'obelisk3d', 'monolith', 'greytube', 'cargo', 'dumpster', 'obelisk', 'colossus', 'greek',
     'chess_pawn', 'chess_rook', 'chess_knight', 'chess_bishop', 'chess_queen', 'chess_king']);   // the Looking-Glass's pieces (2026-09-12)
 
 function _mfDeltaNew(cfg) {
@@ -13448,13 +13450,14 @@ _MF_DELTA_BUILDERS.prebuilt_revenge = function () {
     return M.finishDelta();
 };
 
-/* THE DERELICT — the deck plate: breaches scorched black one step down,
+/* THE SPACESHIP — the deck plate: breaches scorched black one step down,
    bulkhead stubs, a console, the coolant slick, the reactor's holo glow,
-   two specimen tubes. Bed: the void under hull plate. */
+   two cargo stacks. Bed: the void under hull plate. The deck is plain
+   brushed aluminium (2026-09-13). */
 _MF_DELTA_BUILDERS.prebuilt_derelict = function () {
-    const M = _mfDeltaNew({ name: 'The Derelict', base: 'metal_3', seed: 8402,
+    const M = _mfDeltaNew({ name: 'Spaceship', base: 'aluminium', seed: 8402,
         strata: ['void', 'void', 'gunmetal', 'gunmetal', 'gunmetal'], underTop: 'gunmetal',
-        tints: { metal_3: '#8c949c', gunmetal: '#5a6068', metal_2: '#7a8290', holo: '#7fd8ff', oil: '#101418', void: '#05060d' },
+        tints: { aluminium: '#8e98a2', gunmetal: '#5a6068', metal_2: '#7a8290', holo: '#7fd8ff', oil: '#101418', void: '#05060d' },
         desc: 'the dorsal deck of a dead starship — breaches, bulkhead stubs, a console, the coolant slick, the reactor glow; the engines still burn astern, the wreckage field streams past as the hull swings in close to the sun' });
     M.lake(0, 0, 'void', 1); M.lake(7, 2, 'void', 1);                 // breaches (one step down, black)
     M.block(1, 2, 'gunmetal'); M.block(2, 2, 'gunmetal');             // a bulkhead stub
@@ -13462,7 +13465,7 @@ _MF_DELTA_BUILDERS.prebuilt_derelict = function () {
     M.lake(0, 3, 'oil', 1);                                           // coolant
     M.t(3, 2, 'holo'); M.t(4, 2, 'holo');                             // the reactor's light
     M.symAll();
-    M.pillarSym('greytube', 7, 1, 3);
+    M.pillarSym('cargo', 7, 1, 3);                                    // cargo stacks in the corners (were specimen tubes)
     return M.finishDelta();
 };
 
@@ -13502,7 +13505,7 @@ const EW_MAP_META = [
       biomes: ['ancient', 'arthurian'], deltaPad: 'grass_2', near: 'stonehenge',
       desc: '16×16 prebuilt, 6v6 — the sarsen ring on crossing ley-lines: pillar cover, cardinal entrances, an armillary over the altar',
       env: { tint: 0x241b3e, tintAmt: 0.42, stars: 1.3, nebula: 0.9, fog: { color: 0x35284f, amount: 0.5, top: 0.06, band: 0.5 }, scenery: 'ruins',
-             motion: { kind: 'wheel', speed: 1.6, ramp: 0.2, max: 4.0, sky: 1.0 } } },   // MOVING MAPS rev 2: the heavens wheel round the henge — the stones are an observatory, and the night is on fast-forward
+             motion: { kind: 'wheel', speed: 2.4, ramp: 0.3, max: 5.0, sky: 1.0 } } },   // MOVING MAPS rev 2: the heavens wheel round the henge — the stones are an observatory, and the night is on fast-forward
     { id: 'prebuilt_giza', label: 'Pyramids of Giza', w: 20, h: 20, teamSize: 6, tier: 1, base: 'desert',
       biomes: ['desert', 'ancient'], deltaPad: 'dirt_2', near: 'giza',
       desc: '20×20 prebuilt, 6v6 — three pyramids on the great diagonal, twin obelisks, processional avenues & excavation trenches',
@@ -13520,7 +13523,7 @@ const EW_MAP_META = [
       biomes: ['infernal'], deltaPad: 'scorched', near: 'hell',
       desc: '20×20 prebuilt, 6v6 — the mirror of Heaven: a lava river, obsidian altar, basalt spike cover & the chained colossi',
       env: { tint: 0x3a0505, tintAmt: 0.50, stars: 0.25, nebula: 0.55, fog: { color: 0x5a0f08, amount: 0.65, top: 0.08, band: 0.6 }, scenery: 'infernal',
-             motion: { kind: 'rise', dir: -1, speed: 1.0, ramp: 0.3, max: 5.0, sky: 0.8 } } },   // MOVING MAPS rev 2: the board SINKS — a circle deeper every round, the infernal roster rising past
+             motion: { kind: 'rise', dir: -1, speed: 1.6, ramp: 0.4, max: 6.0, sky: 0.8 } } },   // MOVING MAPS rev 2: the board SINKS — a circle deeper every round, the infernal roster rising past
     { id: 'prebuilt_cyberpunk', label: 'Cyberpunk City', w: 24, h: 24, teamSize: 8, tier: 1, base: 'urban_wall', streetLamps: true,
       biomes: ['neon_city', 'urban'], deltaPad: 'urban_street', near: 'cyberpunk',
       desc: '24×24 prebuilt, 8v8 — rain-slick neon grid: fast avenues, walkable rooftops, holo-plaza & alley chokes',
@@ -13542,7 +13545,7 @@ const EW_MAP_META = [
       biomes: ['ancient', 'desert'], deltaPad: 'bricks_1', near: 'babel',
       desc: '16×24 prebuilt, 6v6 — the unfinished tower: a grand climbable ziggurat, brick streets, scaffolds & the rubble of scattered tongues',
       env: { tint: 0x8a6a3a, tintAmt: 0.40, stars: 0.55, nebula: 0.6, fog: { color: 0xa8854e, amount: 0.55, top: 0.06, band: 0.5 }, scenery: 'pyramids',
-             motion: { kind: 'rise', dir: 1, speed: 1.2, ramp: 0.25, max: 4.5, sky: 1.0 } } },   // MOVING MAPS rev 2: the tower is still going up — the board climbs, the plain and the clouds sink past
+             motion: { kind: 'rise', dir: 1, speed: 1.8, ramp: 0.35, max: 6.0, sky: 1.0 } } },   // MOVING MAPS rev 2: the tower is still going up — the board climbs, the plain and the clouds sink past
     { id: 'prebuilt_olympus', label: 'Mount Olympus', w: 24, h: 24, teamSize: 8, tier: 2, base: 'cloud_2',
       biomes: ['divine', 'ancient'], deltaPad: 'marble_light', near: 'olympus',
       desc: '24×24 prebuilt, 8v8 — the marble acropolis over the cloud sea: temple terraces, stair ascents, storm lanes & void rifts',
@@ -13555,7 +13558,7 @@ const EW_MAP_META = [
       biomes: ['clandestine', 'space', 'desert'], deltaPad: 'dirt_4', near: 'area51',
       desc: '20×20 prebuilt, 6v6 — the fenced base: airstrip, floodlight towers, twin hangars & the tarped saucer on its test rig',
       env: { tint: 0x0d1226, tintAmt: 0.50, stars: 1.5, nebula: 0.8, fog: { color: 0x1a2340, amount: 0.5, top: 0.06, band: 0.5 }, scenery: 'orbs',
-             motion: { kind: 'wheel', speed: 3.0, ramp: 0.25, max: 4.0, sky: 0.6 } } },   // MOVING MAPS rev 2: the orbs and the craft circle the base — a wheel of lights, quicker every round
+             motion: { kind: 'wheel', speed: 4.0, ramp: 0.35, max: 5.0, sky: 0.6 } } },   // MOVING MAPS rev 2: the orbs and the craft circle the base — a wheel of lights, quicker every round
     { id: 'prebuilt_antarctica', label: 'Antarctica', w: 24, h: 24, teamSize: 8, tier: 2, base: 'marble_light',
       biomes: ['polar', 'deep_sea'], deltaPad: 'marble_light', near: 'antarctica', deltaY: 7,
       desc: '24×24 prebuilt, 8v8 — the ice wall and what waits behind it: seawater channels, iceberg hops, slide-gap chokes & a frozen colossus',
@@ -13632,17 +13635,17 @@ const EW_MAP_META = [
       biomes: ['deep_sea', 'gothic'], deltaPad: 'wood_planks', near: 'revenge',
       desc: "16×16 prebuilt, 6v6 — the ghost ship under full sail: the main deck between the fo'c'sle and the quarterdeck, flooding hatches, cargo, torches on the rail — and the sea racing past, faster every round, into the storm",
       env: { tint: 0x33506a, tintAmt: 0.40, stars: 0.45, nebula: 0.4, fog: { color: 0x243a52, amount: 0.5, top: 0.06, band: 0.5 }, scenery: 'sea',
-             motion: { kind: 'sea', axis: 'x', speed: 3.0, ramp: 0.25, max: 5.0, sea: true, seaDepth: 2.4, sky: 1.4, storm: { from: 4, to: 12 }, ambience: 'ambWindHigh' } } },
-    { id: 'prebuilt_derelict', label: 'The Derelict', w: 16, h: 16, teamSize: 6, tier: 3, base: 'metal_3',
-      biomes: ['space', 'astral'], deltaPad: 'metal_3', near: 'derelict',
+             motion: { kind: 'sea', axis: 'x', speed: 5.0, ramp: 0.4, max: 7.0, sea: true, seaDepth: 2.4, sky: 1.4, storm: { from: 4, to: 12 }, ambience: 'ambWindHigh' } } },
+    { id: 'prebuilt_derelict', label: 'Spaceship', w: 16, h: 16, teamSize: 6, tier: 3, base: 'aluminium',
+      biomes: ['space', 'astral'], deltaPad: 'aluminium', near: 'derelict',
       desc: '16×16 prebuilt, 6v6 — the dorsal deck of a dead starship, still under way: breaches open to the stars, bulkhead stubs, the reactor glow, coolant slicks — the engines still burning astern, the wreckage field streaming past as the hull swings in close to the sun',
       env: { tint: 0x06070f, tintAmt: 0.55, stars: 1.9, nebula: 0.3, fog: { color: 0x0a0c16, amount: 0.12, top: 0.02, band: 0.3 }, scenery: 'wreckage', density: 0.9,
-             motion: { kind: 'space', axis: 'x', speed: 3.6, ramp: 0.3, max: 5.5, sky: 0.9, orbit: { body: 'sun', period: 220, near: 1.0 } } } },
+             motion: { kind: 'space', axis: 'x', speed: 6.0, ramp: 0.45, max: 7.0, sky: 0.9, orbit: { body: 'sun', period: 220, near: 1.0 } } } },
     { id: 'prebuilt_lookingglass', label: 'The Looking-Glass', w: 16, h: 16, teamSize: 6, tier: 3, base: 'marble_light',
       biomes: ['astral', 'arthurian'], deltaPad: 'marble_light', near: 'lookingglass',
       desc: '16×16 prebuilt, 6v6 — a chessboard flying through a void of unfinished shapes: marble squares, the pieces standing on it as cover (they block the way and the line of sight), the pool of tears — and the Cheshire moon swinging in close, faster every round',
       env: { tint: 0x2a1640, tintAmt: 0.48, stars: 0.8, nebula: 1.5, fog: { color: 0x3a2458, amount: 0.45, top: 0.06, band: 0.5 }, scenery: 'wonder', density: 1.1,
-             motion: { kind: 'void', axis: 'x', speed: 3.0, ramp: 0.3, max: 5.5, sky: 1.2, orbit: { body: 'moon', period: 180, near: 0.9 } } } },
+             motion: { kind: 'void', axis: 'x', speed: 5.0, ramp: 0.4, max: 7.0, sky: 1.2, orbit: { body: 'moon', period: 180, near: 0.9 } } } },
 ];
 
 /* Build + register everything: full maps and their Δ variants. */
@@ -16695,7 +16698,7 @@ const DOOR_TEXT = {
         'scarecrow': 'Flat Lands', 'glitch': 'CERN', 'machine elves': 'CERN', 'cyclops': 'Mount Olympus',
         'cyborg': 'Technoticlan', 'demon prince': 'Hell', 'demon princess': 'Hell', 'dreameater': 'The Looking-Glass',
         'fallen angel': 'Hell', 'goatman': 'Skinwalker Ranch', 'halfdemon': 'Hell', 'mermaid': 'Atlantis',
-        'nephilim': 'Göbekli Tepe', 'vampire': 'Bohemian Grove', 'voidweaver': 'Moon', 'cosmic wraith': 'The Derelict',
+        'nephilim': 'Göbekli Tepe', 'vampire': 'Bohemian Grove', 'voidweaver': 'Moon', 'cosmic wraith': 'Spaceship',
         'superhero': 'Cyberpunk City', 'general': 'Nuketown', 'droid': 'Mars', 'antihero': 'Cyberpunk City',
         'conspiracy theorist': 'Area 51', 'overlord': 'Tower of Babel', 'chosen one': 'Mount Olympus', 'politician': 'Bohemian Grove',
         'atlantean': 'Atlantis', 'dinosaur': 'Hollow Earth', 'dragon': 'Camelot', 'ghoul': 'Hell',
@@ -16704,7 +16707,7 @@ const DOOR_TEXT = {
         'honda civic': 'Nuketown', 'ice queen': 'North Pole', 'juggernaut': 'D.U.M.B.', 'ki fighter': 'Mount Shasta',
         'king arthur': 'Camelot', 'king kong': 'Hollow Earth', 'minotaur': 'Mount Olympus', 'necromancer': 'Stonehenge',
         'occulus': 'The Looking-Glass', 'quarterback': 'Football Stadium', 'robinhood': 'Camelot', 'santa clause': 'North Pole',
-        'super sentai': 'Technoticlan', 'symbiote': 'The Derelict', 'valkraye': 'Heaven', 'watcher': 'Göbekli Tepe',
+        'super sentai': 'Technoticlan', 'symbiote': 'Spaceship', 'valkraye': 'Heaven', 'watcher': 'Göbekli Tepe',
     },
 
     // "D.O.O.R. ANNOTATION" — an extra paragraph on the dossiers where the
@@ -17760,14 +17763,14 @@ const DOOR_HQ = {
                 mood: { lamp: 0xffb060, glow: 0xff9040, strip: 0xffd8a0, light: 0xffe0c0, night: 1,
                     signN: { bg: '#1a1410', border: '#d8a860', color: '#f4e4c8' }, signS: { bg: '#101820', border: '#7fb0d0', color: '#dff0ff' },
                     signLines: { n: ['THE FLYING DUTCHMAN', 'ROOM 1717', 'THE SEA DOES NOT HOLD STILL'], s: ['GANGWAY', 'MIND THE SWELL · IT IS ON THE FORM', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 426 · THE DERELICT — hull plate for a floor, gunmetal for a
-               bank, the stars overhead, the reactor's cold light and the
-               warning strobe */
-            prebuilt_derelict: { open: true, floor: 'metal_3', wall: 'gunmetal', dado: 'gunmetal', trim: 'metal', ceiling: null, h: 4.4, dadoH: 1.0, pipes: false,
-                apron: 'metal_3', skirt: 'gunmetal', apronColor: 0x8c949c, floorColor: 0x8c949c,
+            /* 426 · SPACESHIP (was THE DERELICT) — brushed aluminium for a
+               floor, gunmetal for a bank, the stars overhead, the reactor's
+               cold light and the warning strobe */
+            prebuilt_derelict: { open: true, floor: 'aluminium', wall: 'gunmetal', dado: 'gunmetal', trim: 'metal', ceiling: null, h: 4.4, dadoH: 1.0, pipes: false,
+                apron: 'aluminium', skirt: 'gunmetal', apronColor: 0x8e98a2, floorColor: 0x8e98a2,
                 mood: { lamp: 0xff6a3a, glow: 0xff4a20, strip: 0x9fd8ff, light: 0xb8d8ff, night: 1,
                     signN: { bg: '#0a0c14', border: '#9fd8ff', color: '#e0f4ff' }, signS: { bg: '#1a0c08', border: '#ff6a3a', color: '#ffe0d0' },
-                    signLines: { n: ['THE DERELICT', 'ROOM 426', 'THE SIGNAL WAS A WARNING'], s: ['AIRLOCK', 'PRESSURE NOT GUARANTEED ON EITHER SIDE', 'THE CROSSING IS AT THE CONSOLE'] } } },
+                    signLines: { n: ['SPACESHIP', 'ROOM 426', 'THE SIGNAL WAS A WARNING'], s: ['AIRLOCK', 'PRESSURE NOT GUARANTEED ON EITHER SIDE', 'THE CROSSING IS AT THE CONSOLE'] } } },
             /* E4 · THE LOOKING-GLASS — a checkered floor, marble for a rim,
                violet light, the void of shapes overhead */
             prebuilt_lookingglass: { open: true, floor: 'checkerboard', wall: 'marble_light', dado: 'marble', trim: 'gold', ceiling: null, h: 4.6, dadoH: 1.1, pipes: false,

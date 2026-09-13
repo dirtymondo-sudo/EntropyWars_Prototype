@@ -6468,7 +6468,7 @@ const ThreeRenderer = (function () {
             fairyring: _hzFairyRing,
             holopyramid: _hzHoloPyramid, geode: _hzGeode, basilicadome: _hzBasilicaDome,
             censer: _hzCenser, effigy: _hzEffigy, tpillar: _hzTPillar,
-            greytube: _hzGreyTube, blastdoor: _hzBlastDoor,
+            greytube: _hzGreyTube, cargo: _hzCargo, blastdoor: _hzBlastDoor,
             beamring: _hzBeamRing,
             securitycam: _hzSecurityCam, sleigh: _hzSleigh, candycane: _hzCandyCane,
             // 2026-07-28 real-GLB props (Assets/misc Meshy models, grid-snapped)
@@ -6504,6 +6504,7 @@ const ThreeRenderer = (function () {
        _MON_GRID — that table stamps the matching solid collision. */
     var _MON_GRID = {
         dumpster:  [2, 1, 1],
+        cargo:     [1, 1, 3],   // 2026-09-13 the Spaceship's cargo stack (map.js _MON_GRID says the same)
         greekcol:  [1, 1, 2],
         mushroom:  [1, 1, 2],
         mushroom2: [1, 1, 1],
@@ -23177,6 +23178,46 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    /* ── THE CARGO STACK (2026-09-13) — the Spaceship's cover, in place of the
+       specimen tanks the user disliked: three strapped freight crates on a
+       pallet, one tile square and three tiles tall (a grid monument — map.js
+       _MON_GRID `cargo` [1, 1, 3] stamps the wall), the middle one skewed a
+       little, corner frames, a hazard band and a status lamp. Authored at
+       exactly 1 × 3 tiles so the grid fit is 1:1. ── */
+    function _hzCargo(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var skin = function (c) { return _hzGeoMat(_hzTex('aluminium') || _hzTex('metal'), c || 0x8a949e); };
+        var frame = function () { return _hzGeoMat(_hzTex('gunmetal') || _hzTex('metal'), 0x3a4048); };
+        var W = ts * 0.88, F = ts * 0.06;
+        /* the pallet */
+        _hzAt(g, _hzBox(ts * 0.96, ts * 0.08, ts * 0.96, ts, frame()), 0, ts * 0.04, 0);
+        var y = ts * 0.08, hs = [ts * 0.98, ts * 0.92, ts * 1.02], tints = [0x8a949e, 0x7a8896, 0x929aa4], yaws = [0, 0.14, -0.08];
+        for (var i = 0; i < 3; i++) {
+            var h = hs[i], w = i === 1 ? W * 0.94 : W, crate = new THREE.Group();
+            _hzAt(crate, _hzBox(w, h, w, ts, skin(tints[i])), 0, h / 2, 0);
+            /* the corner frames: four uprights and two horizontal bands */
+            [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(function (c) { _hzAt(crate, _hzBox(F, h, F, ts, frame()), c[0] * (w / 2 - F / 2), h / 2, c[1] * (w / 2 - F / 2)); });
+            [0.25, 0.75].forEach(function (f) {
+                _hzAt(crate, _hzBox(w + F * 0.6, F * 0.7, w + F * 0.6, ts, frame()), 0, h * f, 0);
+            });
+            /* the hazard band on the middle crate, a status lamp on the top one */
+            if (i === 1) {
+                var band = new THREE.Mesh(new THREE.BoxGeometry(w + F * 0.9, h * 0.12, w + F * 0.9), _hzGlowMat(0xffb020, 0.35));
+                _hzAt(crate, band, 0, h * 0.5, 0);
+            }
+            if (i === 2) {
+                var lampMat = _hzGlowMat(0x7fd8ff, 0.8); _hzPulse(lampMat, null, 0.3, 0, 1.3 + rng() * 0.6);
+                _hzAt(crate, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.05, 6, 5), lampMat), w / 2 - F, h * 0.85, w / 2 + F * 0.3);
+            }
+            crate.rotation.y = yaws[i] + (rng() - 0.5) * 0.08;
+            crate.position.y = y;
+            g.add(crate);
+            y += h;
+        }
+        return g;
+    }
+
     // ── D.U.M.B.: the blast door (what are they keeping in? or out?) ──
     /* 2026-09-12: the bank-vault GLB IS the blast door now (D.U.M.B.'s two
        chokes, the `blastdoor` monument on the boards) — its door faces +Z
@@ -25443,8 +25484,9 @@ const ThreeRenderer = (function () {
        room (K.hq) only the deck furniture stands. */
     _NR_BUILDERS.derelict = function (group, ctx) {
         var K = _nrKit(group, ctx, { w: 2.2, gap: 0, occ: true }), ts = K.ts, fy = K.fy, rng = K.rng, HQ = !!K.hq;
-        var plate = K.mat('metal_3', 0xffffff, { lift: 0.4 }), dark = K.mat('gunmetal', 0xffffff, { lift: 0.4 }), top = fy - 0.6;
-        _nrApron(K, { tex: 'metal_3', color: 0xffffff, deep: true, skirt: 'gunmetal', skirtColor: 0xffffff });
+        /* 2026-09-13: the deck and its apron are brushed aluminium now (the metal_3 grate was too busy for a floor) */
+        var plate = K.mat('aluminium', 0xffffff, { lift: 0.4 }), dark = K.mat('gunmetal', 0xffffff, { lift: 0.4 }), top = fy - 0.6;
+        _nrApron(K, { tex: 'aluminium', color: 0xffffff, deep: true, skirt: 'gunmetal', skirtColor: 0xffffff });
         if (!HQ) {
             /* space has no fill light and the map's tint darkens every K.mat: the fuselage
                wears UNTINTED metal with a strong self-lit lift (the first cut was a black
@@ -25452,8 +25494,12 @@ const ThreeRenderer = (function () {
             /* UNLIT, day/night-graded plain colour (the far roster's own material — the
                asteroids read from every angle; a lit Lambert was a black blob twice over):
                the form comes from the strakes, the strips and the running lights */
-            var hullMat = _hzGeoMat(null, 0x9aa4b2); hullMat.side = THREE.DoubleSide;
+            /* 2026-09-13: the skin wears the brushed-aluminium sheet at a coarse
+               repeat (one texture per ~3 tiles — grain, not tiles) and FRAME RIBS
+               every other station: plain, with a little texture, as the user asked */
+            var hullMat = _hzGeoMat(_hzTex('aluminium') || null, 0x9aa4b2); hullMat.side = THREE.DoubleSide;
             var trimMat = _hzGeoMat(null, 0x3a4048); trimMat.side = THREE.DoubleSide;
+            var HULL_UV = 0.7;   // × HZ_TEX_DENSITY (0.5) → 0.35 repeats per tile
             var podMat = _hzGeoMat(null, 0x8a94a2), bellMat = _hzGeoMat(null, 0x4a5058);
             var HW = (K.Z1 - K.Z0) / 2 + 2.6 * ts, HH = 1.75 * ts;   // the widest half-beam, the half-height of the section there
             var sternX = K.X0 - 9.0 * ts, noseX = K.X1 + 15.0 * ts;
@@ -25480,7 +25526,18 @@ const ThreeRenderer = (function () {
             var stations = [], NS = 16;
             for (var si = 0; si <= NS; si++) { var t = si / NS; stations.push(sternX + (noseX - sternX) * (0.5 - 0.5 * Math.cos(t * Math.PI))); }
             stations.push(K.X0, K.X1); stations.sort(function (a, b) { return a - b; });
-            var fuselage = new THREE.Mesh(_nrLoft(stations.map(function (x) { return section(x); }), ts, { capStart: true, capEnd: true }), hullMat); fuselage._ew_occSkip = true; K.add(K.lit(fuselage, true));
+            var fuselageGeo = _nrLoft(stations.map(function (x) { return section(x); }), ts, { capStart: true, capEnd: true }); _hzScaleUV(fuselageGeo, HULL_UV, HULL_UV);
+            var fuselage = new THREE.Mesh(fuselageGeo, hullMat); fuselage._ew_occSkip = true; K.add(K.lit(fuselage, true));
+            /* the frame ribs: a thin dark band proud of the skin at every other station (the bridge's and the deck's own stations skipped) */
+            stations.forEach(function (x, i) {
+                if (i % 2 || x === K.X0 || x === K.X1 || x < sternX + 0.4 * ts || x > noseX - 1.2 * ts) return;
+                var rib = new THREE.Mesh(_nrLoft([section(x - 0.05 * ts, 1.012), section(x + 0.05 * ts, 1.012)], ts, {}), trimMat); rib._ew_occSkip = true; K.add(rib);
+            });
+            /* a few hull hatches on the flanks: dark plates set into the skin at the widest line */
+            [[0.22, -1], [0.55, 1], [0.78, -1], [0.4, 1]].forEach(function (hp) {
+                var hx = K.X0 + hp[0] * (K.X1 - K.X0), hz = K.CZ + hp[1] * hw(hx) * 1.006, hy = top - SINK - hh(hx) - droop(hx);
+                var hatch = K.box(1.3 * ts, 0.9 * ts, 0.05 * ts, trimMat); hatch.position.set(hx, hy, hz); hatch.rotation.y = hp[1] > 0 ? 0 : Math.PI; hatch._ew_occSkip = true; K.add(hatch);
+            });
             /* a dark belly strake and a dorsal spine strake: thin lofts proud of the skin */
             var belly = new THREE.Mesh(_nrLoft(stations.map(function (x) { return section(x, 1.02); }).map(function (r) { return r.filter(function (p, i) { return i >= 14 && i <= 19; }); }), ts, { open: true }), trimMat); K.add(belly);
             /* dorsal strakes: two dark panel lines along the back, either side of the spine, fore and aft of the plate */

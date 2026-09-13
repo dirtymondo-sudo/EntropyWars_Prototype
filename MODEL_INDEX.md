@@ -62,12 +62,12 @@ V = a spell (`_WPN_MODELS`), H = the headquarters (`DOOR_HQ.catalogue`).
 | `wreck` | Meshy_AI_a_ghost_ship_wreck_0912231131_texture.glb | bow −X | | **sea** (`_hzGhostShip` is GLB-first; `_hzGhostShipProc` fallback) | | | | |
 | `shark` | Meshy_AI_shark_0912231236_texture.glb | nose +Z | | **sea** (`_hzSharkFar`, half under) | | | | |
 | `palmisle` | Meshy_AI_a_tiny_island_with_palm_tree_0912231720_texture.glb | — | | **sea** (`_hzPalmIsleFar`, sand at the waterline) | | | | |
-| `nacelle` | Meshy_AI_an_engine_nacelle_0912231313_texture.glb | bell +X | Derelict ×2 (the pylons astern, `yaw π` = bell aft; glow disc + plume kept) | | | | | |
-| `dish` | Meshy_AI_a_satellite_dish_0912231301_texture.glb | face +Z | Derelict (on the bridge mast, `yaw π/2`, `tilt −0.75`) | | | | | |
-| `escapepod` | Meshy_AI_an_escape_pod_0912231249_texture.glb | window +Z | Derelict (docked on the aft port strip; room too) | **wreckage** (`_hzEscapePodFar`) | | | | |
-| `hullplate` | Meshy_AI_a_torn_hull_plate_with_wiring_0912231409_texture.glb | wires +Z | Derelict (peeled off the breach, `tilt 0.55`) | **wreckage** (half of `_hzHullChunk`) | | | | |
-| `astronaut` | Meshy_AI_dead_astronaut_0912231349_texture.glb | upright | Derelict (adrift off the breach, laid over, slow tumble) | **wreckage** (`_hzAstronautFar`) | | | | |
-| `dockring` | Meshy_AI_a_spaceship_docking_ring_0912231400_texture.glb | face +Z | Derelict (the collar on the port flank amidships) | **wreckage** (`_hzDockRingFar`) | | | | |
+| `nacelle` | Meshy_AI_an_engine_nacelle_0912231313_texture.glb | bell +X | Spaceship ×2 (the pylons astern, `yaw π` = bell aft; glow disc + plume kept) | | | | | |
+| `dish` | Meshy_AI_a_satellite_dish_0912231301_texture.glb | face +Z | Spaceship (on the bridge mast, `yaw π/2`, `tilt −0.75`) | | | | | |
+| `escapepod` | Meshy_AI_an_escape_pod_0912231249_texture.glb | window +Z | Spaceship (docked on the aft port strip; room too) | **wreckage** (`_hzEscapePodFar`) | | | | |
+| `hullplate` | Meshy_AI_a_torn_hull_plate_with_wiring_0912231409_texture.glb | wires +Z | Spaceship (peeled off the breach, `tilt 0.55`) | **wreckage** (half of `_hzHullChunk`) | | | | |
+| `astronaut` | Meshy_AI_dead_astronaut_0912231349_texture.glb | upright | Spaceship (adrift off the breach, laid over, slow tumble) | **wreckage** (`_hzAstronautFar`) | | | | |
+| `dockring` | Meshy_AI_a_spaceship_docking_ring_0912231400_texture.glb | face +Z | Spaceship (the collar on the port flank amidships) | **wreckage** (`_hzDockRingFar`) | | | | |
 | `teapot` | Meshy_AI_teapot_0912231417_texture.glb | spout +X | Looking-Glass (the tea party on the rim, `yaw −π/2`) | **wonder** (`_hzTeapotFar`) | | | | |
 | `teacups` | Meshy_AI_stacked_teacups_0912231425_texture.glb | — | Looking-Glass | **wonder** (`_hzTeacupsFar`; the lathe cup is the fallback) | | | | |
 | `caterpillar` | Meshy_AI_caterpillar_0912231445_texture.glb | — | Looking-Glass | **wonder** (`_hzCaterpillarFar` — on the mushroom GLB's cap) | | | | |

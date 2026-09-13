@@ -1576,6 +1576,37 @@ figurehead, card soldiers, a cryo tube. Measure a new GLB before wiring
 (PLAYTEST_NOTES "Rigged 3D unit models" has the parser; a Playwright
 contact sheet with an AxesHelper settles the facing in one look).
 
+## THE SPACESHIP (was THE DERELICT) + THE CARGO STACK + MOVING MAPS rev 3 — 2026-09-13
+`prebuilt_derelict` (the id, the `near: 'derelict'` key and every builder
+name STAY) is labelled **Spaceship** everywhere the player reads it: the
+meta row, both forge builders, the race home-site table, Room 426's sign.
+The deck is plain brushed **`aluminium`** (base / deltaPad / the doorway
+tiles / finishSpawns / the site room's floor + apron, tint `#8e98a2`) —
+the `metal_3` grate was too busy for a floor; the bulkhead stubs stay
+gunmetal. The fuselage (three-renderer.js `_NR_BUILDERS.derelict`) wears
+the same sheet at a coarse repeat (`HULL_UV` 0.7 × HZ_TEX_DENSITY → one
+texture per ~3 tiles: grain, not tiles), FRAME RIBS at every other
+station (thin dark `_nrLoft` bands proud of the skin, `_ew_occSkip`) and
+four flank hatches — plain with a little texture; swap the key in the two
+`K.mat('aluminium'` / `_hzTex('aluminium')` sites if the sheet reads
+wrong live. **THE CARGO STACK** replaces the specimen tanks on this map
+only: monument kind `cargo` (three-renderer.js `_hzCargo` — three strapped
+freight crates on a pallet, corner frames, a hazard band, a status lamp;
+authored at exactly 1 × 3 tiles), a GRID monument `[1, 1, 3]` in map.js /
+three-renderer.js `_MON_GRID` + delta-maps.test.js (a full-height wall,
+the same collision the tank had), in `MF_DELTA_SOLID_MONS`, in the editor
+catalogue (📦 Cargo Stack). `greytube` is untouched for Area 51 / D.U.M.B.
+**Rev 3 pace**: the travellers run 5 / 6 / 5 tiles/s at round 1 with a 7×
+cap (Dutchman `ramp` 0.4, Spaceship 0.45, Looking-Glass 0.4); Stonehenge
+2.4 / Area 51 4.0 (wheel), Hell 1.6 / Babel 1.8 (rise), caps 5–6; Heaven's
+drift unchanged. motion-maps.test.js insists on ≥ 5 / ≥ 7. Screenshotted
+offline (every CDN is egress-blocked in this sandbox: a scratch variant of
+playtest_maps.js served three / React / MeshLine / socket.io from
+node_modules and the scripts from the repo — geometry only, no textures):
+the ribs, the hatches and the stacks render, zero page errors,
+`ThreeRenderer.motion()` eased to 5.3 tiles/s at round 1. The textures
+themselves are UNSEEN — the user eyeballs the sheet live.
+
 ## SHARED-TILE TARGETING + STRUCTURE FACING — added 2026-09-13
 A flyer can hover over a ground unit in ONE column. A board click carries
 the flyer's own z only when the pointer hit its sprite; a click on the
