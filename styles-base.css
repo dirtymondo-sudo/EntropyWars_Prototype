@@ -4688,6 +4688,67 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-bus-cell.c::before { left: calc(-1 * var(--pb-lane-gap)); right: calc(-1 * var(--pb-lane-gap)); }
 .pb-bus-cell.r::before { left: calc(-1 * var(--pb-lane-gap)); right: calc(100% - var(--pb-disc) / 2); border-radius: 0 2px 2px 0; }
 .pb-bus-cell .pb-tn { position: absolute; left: 0; right: 0; top: calc(var(--pb-disc) / -2 + 1px); height: var(--pb-disc); }
+/* ── THE FORK + THE CASCADE (2026-09-13, the spell-tree UX pass). A twin
+   tier is a FORK: both options stand on the tier as their own discs, the
+   chain running through the LEFT option's column, an ⇄ bridge to the right
+   one; each option carries its own state (equipped / SWAP IN / reachable /
+   far / blocked / sealed) and its own hover + select. Hovering an EQUIPPED
+   node paints the cascade — every node that would go with it turns red
+   (.will-drop) and the links above it are cut (.pb-link.cut). The slot
+   pips forecast the click: +N along the path (.pend, gold, pulsing;
+   .over past the cap), −N under an unequip (.drop, red). A refused click
+   says why in .pb-tree-note for 1.6 s. ── */
+.pb-tn.pb-tn-fork { height: auto; min-height: var(--pb-row); flex-direction: column; align-items: stretch; gap: 0; padding: 3px 0 2px; border-radius: 12px; cursor: default; }
+.pb-tn.pb-tn-fork:hover { background: transparent; }
+.pb-tn-fork-tag { font-style: normal; font-size: 7px; letter-spacing: 0.22em; color: var(--ph-gold); opacity: 0.75; margin: 0 0 3px calc(var(--pb-disc) + 8px); white-space: nowrap; line-height: 1; }
+.pb-tn-fork-row { display: flex; align-items: flex-start; gap: 16px; min-width: 0; }
+.pb-tn-opt { --nc: var(--ph-dim); position: relative; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 2px 4px 2px 0; border-radius: 12px; transition: background 0.12s; }
+.pb-tn-opt.can { cursor: pointer; }
+.pb-tn-opt.can:hover { background: rgba(255,255,255,0.05); }
+.pb-tn-opt.can:hover .pb-tn-disc { transform: scale(1.08); filter: brightness(1.12); }
+.pb-tn-opt + .pb-tn-opt::before { content: ''; position: absolute; left: -16px; width: 16px; top: calc(var(--pb-disc) * 0.43 + 2px); height: 0; border-top: 2px dashed rgba(242,196,104,0.45); pointer-events: none; }
+.pb-tn-opt + .pb-tn-opt::after { content: '⇄'; position: absolute; left: -13px; top: calc(var(--pb-disc) * 0.43 - 6px); font-size: 9px; line-height: 1; color: var(--ph-gold); background: #0d0d13; padding: 1px 1px; border-radius: 4px; pointer-events: none; }
+.pb-tn-opt .pb-tn-disc { width: calc(var(--pb-disc) * 0.86); height: calc(var(--pb-disc) * 0.86); font-size: 15px; }
+.pb-tn-opt .pb-tn-text { width: 100%; }
+.pb-tn-opt .pb-tn-name { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: clamp(11px, 1.35vh, 13px); line-height: 1.05; }
+.pb-tn-opt .pb-tn-meta { line-height: 13px; }
+.pb-tn-meta.swap em { color: var(--ph-gold); font-weight: 700; }
+/* the option states mirror the node states (styles-base "THE CIRCUIT") */
+.pb-tn-opt.is-reachable .pb-tn-disc { background: color-mix(in srgb, var(--nc) 22%, #0d0d13); }
+.pb-tn-opt.is-equipped .pb-tn-disc { background: var(--nc); border-color: #fff; color: #0d0d13; box-shadow: 0 0 10px rgba(255,255,255,0.65), 0 0 20px color-mix(in srgb, var(--nc) 60%, transparent); }
+.pb-tn-opt.is-equipped .pb-tn-name { color: #fff; }
+.pb-tn-opt.is-equipped .pb-tn-meta { color: var(--ph); }
+.pb-tn-opt.is-swap .pb-tn-disc { border-style: dashed; border-color: var(--ph-gold); color: var(--nc); background: color-mix(in srgb, var(--nc) 14%, #0d0d13); }
+.pb-tn-opt.is-swap .pb-tn-name { color: var(--ph); }
+.pb-tn-opt.is-swap.can:hover .pb-tn-disc { border-style: solid; box-shadow: 0 0 10px rgba(255,205,107,0.5); }
+.pb-tn-opt.is-far .pb-tn-disc { border-color: color-mix(in srgb, var(--nc) 45%, transparent); color: color-mix(in srgb, var(--nc) 60%, transparent); }
+.pb-tn-opt.is-far .pb-tn-name { color: var(--ph-dim); }
+.pb-tn-opt.is-far .pb-tn-meta { color: var(--ph-faint); }
+.pb-tn-opt.is-blocked .pb-tn-disc, .pb-tn-opt.is-sealed .pb-tn-disc { border-style: dashed; border-color: rgba(255,255,255,0.2); color: var(--ph-faint); background: #0d0d13; }
+.pb-tn-opt.is-blocked .pb-tn-name, .pb-tn-opt.is-sealed .pb-tn-name { color: var(--ph-faint); }
+.pb-tn-opt.is-sealed { cursor: not-allowed; }
+.pb-tn-opt.on-path .pb-tn-disc { box-shadow: 0 0 0 2px #000, 0 0 0 3.5px var(--ph-gold), 0 0 12px rgba(255,205,107,0.5); }
+.pb-tn-opt.on-path .pb-tn-name { color: var(--ph-gold); }
+.pb-tn-opt.sel .pb-tn-disc { box-shadow: 0 0 0 3px #000, 0 0 0 5px var(--ph-gold), 0 0 16px var(--ph-gold); }
+.pb-tn-opt.sel .pb-tn-name { color: #fff; }
+.pb-tn.pb-tn-fork.cap .pb-tn-disc::after { inset: -5px; }
+/* the cascade preview */
+.pb-tn.will-drop:not(.pb-tn-fork) .pb-tn-disc, .pb-tn-opt.will-drop .pb-tn-disc { background: #2a0d10; border-color: var(--ph-red); color: var(--ph-red); box-shadow: 0 0 0 2px #000, 0 0 0 3.5px var(--ph-red), 0 0 12px rgba(255,90,90,0.55); animation: pbDropPulse 0.7s ease-in-out infinite alternate; }
+.pb-tn.will-drop:not(.pb-tn-fork) .pb-tn-name, .pb-tn-opt.will-drop .pb-tn-name { color: var(--ph-red); text-decoration: line-through; text-decoration-color: rgba(255,90,90,0.7); }
+.pb-tn.will-drop:not(.pb-tn-fork) .pb-tn-meta, .pb-tn-opt.will-drop .pb-tn-meta { color: rgba(255,90,90,0.6); }
+.pb-link.cut { background: repeating-linear-gradient(180deg, var(--ph-red) 0 3px, transparent 3px 7px); box-shadow: none; opacity: 0.85; }
+@keyframes pbDropPulse { from { filter: brightness(0.85); } to { filter: brightness(1.25); } }
+/* the pips' forecast */
+.pb-pips i.pend { border-color: var(--ph-gold); box-shadow: inset 0 0 0 2px rgba(255,205,107,0.45), 0 0 6px rgba(255,205,107,0.45); animation: pbPipPend 0.6s ease-in-out infinite alternate; }
+.pb-pips i.pend.over { border-color: var(--ph-red); box-shadow: inset 0 0 0 2px rgba(255,90,90,0.5), 0 0 6px rgba(255,90,90,0.5); }
+.pb-pips i.on.drop { background: var(--ph-red); border-color: var(--ph-red); box-shadow: 0 0 6px rgba(255,90,90,0.55); animation: pbPipPend 0.6s ease-in-out infinite alternate; }
+.pb-pips small.over { color: var(--ph-red); }
+@keyframes pbPipPend { from { opacity: 0.55; } to { opacity: 1; } }
+@keyframes pbTipIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+.pb-tree-note { font-size: 8px; letter-spacing: 0.14em; color: #ff9b9b; border: 1px solid rgba(255,120,120,0.5); border-radius: 999px; padding: 3px 9px 2px; background: rgba(60,8,12,0.75); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 46%; animation: pbTipIn 0.14s ease-out; }
+.pb-technique-keys { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; font-size: 8px; letter-spacing: 0.12em; color: var(--ph-dim); margin-top: 2px; }
+.pb-technique-keys kbd { font: inherit; font-size: 7.5px; padding: 1px 5px 0; border: 1px solid var(--ph-line-hi); border-radius: 4px; color: var(--ph); background: rgba(0,0,0,0.45); }
+@media (prefers-reduced-motion: reduce) { .pb-tn.will-drop .pb-tn-disc, .pb-tn-opt.will-drop .pb-tn-disc, .pb-pips i.pend, .pb-pips i.on.drop { animation: none; } }
 .pb-technique { flex-shrink: 0; display: flex; gap: 10px; align-items: flex-start; margin: 4px 6px 4px 6px; padding: 9px 10px 8px; border: 1px solid var(--ph-line); border-left: 3px solid var(--tc, var(--ph-line-hi)); border-radius: var(--pb-r-sm); background: rgba(3,3,2,0.62); min-height: 112px; }
 .pb-technique.empty { border-left-color: var(--ph-line); }
 .pb-technique-disc { width: 44px; height: 44px; flex-shrink: 0; border-radius: 50%; border: 2px solid; display: flex; align-items: center; justify-content: center; font-family: 'Cormorant SC', serif; font-size: 20px; font-weight: 700; box-sizing: border-box; box-shadow: 0 0 10px rgba(0,0,0,0.6); }

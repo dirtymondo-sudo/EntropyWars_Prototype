@@ -41,7 +41,7 @@ selected); `ewTreeReachPulse`/`ewTreeCapstoneGlow` keyframes are now unused.
 3) TRADITIONAL ORDER: the ring-2/ring-3 cross-links are REMOVED from
 `getTreeEdges()` (§1.1 cross-links and §1.2 rule-4 "two capstones = 6" are
 overruled). Each pillar is a strict chain, so a capstone always costs its
-full 4-node pillar and a second capstone can never fit in 6 slots — max ONE
+full 4-node pillar and a second capstone can never fit in 7 slots — max ONE
 capstone per unit. Legality/AI/host-validation/UI all derive from
 `getTreeEdges()`, so the change is global; stale cross-link loadouts are
 auto-repaired by the existing `treeLegalSubset` pass.
@@ -124,10 +124,15 @@ you). Right pillar (Mercy) = **Primary Job**. Left pillar (Severity) = **Seconda
 ### 1.2 Rules
 
 1. **Equip rule:** a spell can be equipped iff it is adjacent (via a functional path) to
-   an already-equipped node (root counts). 1 slot each, `SPELL_SLOT_MAX = 6`.
-2. **Unequip rule:** only if the remaining equipped set stays connected to the root.
-   Otherwise block with a shake + tooltip ("would sever X, Y"). (Cascade-refund was
-   considered; blocking is more predictable.)
+   an already-equipped node (root counts). 1 slot each, `SPELL_SLOT_MAX = 7` (6 → 7 on
+   2026-09-13).
+2. **Unequip rule (REVISED 2026-09-13 — THE CASCADE):** unequipping a node always
+   lands: it drops the node AND every equipped technique that hung off it (the rest
+   of its pillar above it). Hovering an equipped node paints the cascade in red on the
+   circuit and forecasts −N on the slot pips before the click. (The original
+   "block with a shake" rule read as a dead click — the user asked for the cascade.)
+   **Twin nodes are THE FORK:** both alternates stand on the tier as visible option
+   discs; clicking the unworn one while the node is worn SWAPS in place.
 3. **Tiers are the rings:** ring 1–2 = tier I, ring 3 = tier II, ring 4 = tier III.
    This *replaces* the current half-implemented tier system as the source of truth.
 4. **Capstone scarcity is emergent, no extra rule needed:**

@@ -644,6 +644,29 @@ own `.pb-zone-panel` cell under the lanes, beside the party bar (which is
 a body cell, `grid-area: party`; the stage spans both rows). Portraits
 84 px, closer; the bar's summary is gone (identity = STATS column).
 
+## THE SPELL TREE UX PASS — the fork, the cascade, 7 slots (2026-09-13, local delivery)
+`SPELL_SLOT_MAX` is **7** (data.js; was 6 — one capstone per unit still
+holds, 4 + 4 > 7). On the forge's TECHNIQUES circuit (party-builder.js
+`SpellTreePanel`): a TWIN node is **THE FORK** — both alternates stand on
+the tier as `.pb-tn-opt` option discs (the chain through the left one, an
+⇄ bridge to the right), each with its own state from `treeAltState(tree,
+sealed, equipped, key, altId)` (`equipped` / **`swap`** = the node wears
+the other option, one click trades in place / reachable / far / blocked /
+sealed), its own hover + select (`techHoverAlt` / `techSelAlt`;
+`pbTechInfo(…, altId)` → `alt` / `otherAlt` / `drop` / `dropCount`) and
+its own click (`treeAltClick` → `twinPickSpell(twinKey, spellId)`). The
+twin picker window is gone (the Freelancer socket window stays). A fork's
+wrapper wears `st-<state>`, never `is-<state>`. **THE CASCADE**: an
+unequip always lands — `treeDropIds(tree, equipped, id)` (data.js
+`treeReachableKeys` without the id) = the node + everything that hung off
+it, dropped together (`treeLegalSubset` is the safety net); hovering an
+equipped node paints `.will-drop` + `.pb-link.cut` and the pips forecast
+`−N`; hovering a reachable node lights the gold path and the pips forecast
+`+N` (`.pend` / `.over`). Every refused click explains itself through
+`flashTreeNote` → `.pb-tree-note` (1.6 s). TAB on a selected fork = the
+other option. `npm test` runs `spell-tree-ux.test.js`. PARTY_BUILDER_PLAN
+§9 has the entry.
+
 ## TRAINING MATCH (instant CPU turns vs a human) — added 2026-09-07
 Match-select → CONFIG column → **CPU TEMPO: Cinematic / ⚡ Training**
 (match-select.js, sticky via localStorage `ew_training_match`; mirrored into

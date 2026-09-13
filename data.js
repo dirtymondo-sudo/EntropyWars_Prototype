@@ -8823,7 +8823,7 @@ function computeSpellManaCost(s){
 })();
 
 // --- Spell SLOT costs (the loadout budget) ---
-// Every unit has SPELL_SLOT_MAX (6) spell slots and every spell occupies
+// Every unit has SPELL_SLOT_MAX (7 since 2026-09-13; was 6) spell slots and every spell occupies
 // exactly ONE of them: one spell = one slot. The power-scaled 1-3 slot
 // costs were retired 2026-08-03; legacy spell.slotCost fields are ignored.
 // (cls/secJob params kept for call-site compatibility.)
@@ -8875,7 +8875,7 @@ function getSpellIdsSlotCost(spellIds, cls, secJob) {
 // skipping (not truncating at) anything that no longer fits — the graceful
 // "over budget" path for saved parties built before the budget existed.
 function trimSpellIdsToSlotBudget(spellIds, cls, secJob, budget) {
-    const cap = budget || (typeof SPELL_SLOT_MAX !== 'undefined' ? SPELL_SLOT_MAX : 6);
+    const cap = budget || (typeof SPELL_SLOT_MAX !== 'undefined' ? SPELL_SLOT_MAX : 7);
     const kept = [];
     const seen = new Set();
     let used = 0;
@@ -14716,7 +14716,7 @@ const BOSS_BUFF_DEFS = {
 
 const BOSS_GOLD_SPLIT_MODE = 'equal';
 
-const SPELL_SLOT_MAX = 6;
+const SPELL_SLOT_MAX = 7;   // 6 → 7 on 2026-09-13 (the user's call)
 
 // ============================================================================
 // Level 100 scaling — single source of truth.
@@ -15344,7 +15344,7 @@ function _treeTwinConflict(race, cls, ids) {
    nodes; each pillar is a strict chain (traditional skill-tree order —
    ring N requires ring N-1 of the SAME pillar). No cross-links: reaching
    a capstone always costs its full pillar (4 slots), so a second capstone
-   can never fit in the 6-slot budget (4+4 > 6). */
+   can never fit in the 7-slot budget (4+4 > 7). */
 function getTreeEdges() {
     return [
         ['root', 'R1'], ['root', 'P1'], ['root', 'S1'],
@@ -15551,7 +15551,7 @@ function _treeConnectedEquipped(tree, equippedIds) {
 function isTreeLoadoutLegal(race, cls, secJob, spellIds) {
     if (!classHasSpellTree(cls)) return true;
     const ids = (spellIds || []).filter(Boolean);
-    const cap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 6;
+    const cap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7;
     if (ids.length > cap) return false;
     if (new Set(ids).size !== ids.length) return false;
     if (_treeTwinConflict(race, cls, ids)) return false;   // both alternates of one node
@@ -15570,7 +15570,7 @@ function isTreeLoadoutLegal(race, cls, secJob, spellIds) {
 /* Graceful repair for stale saves / vessel swaps: keep the largest
    root-connected subset of the wish-list (earlier picks win), capped. */
 function treeLegalSubset(race, cls, secJob, spellIds) {
-    const cap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 6;
+    const cap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7;
     if (!classHasSpellTree(cls)) return (spellIds || []).filter(Boolean).slice(0, cap);
     if (cls === 'Freelancer') {
         /* Sockets re-place themselves per candidate set, so keep-the-largest
@@ -15617,8 +15617,8 @@ function treeLegalSubset(race, cls, secJob, spellIds) {
    over currently-reachable nodes. Retries a few times to land at least one
    damage spell so CPU units never roll an all-utility kit. */
 function buildTreeLegalLoadout(race, cls, secJob, budget, rng) {
-    const cap = Math.min(budget || ((typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 6),
-        (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 6);
+    const cap = Math.min(budget || ((typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7),
+        (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7);
     if (!classHasSpellTree(cls)) return [];
     const rand = (typeof rng === 'function') ? rng : Math.random;
     if (cls === 'Freelancer') {
