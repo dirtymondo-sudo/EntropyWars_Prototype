@@ -21734,7 +21734,45 @@ const ThreeRenderer = (function () {
         greekcol:  'Meshy_AI_greek_column_0727195651_texture.glb',
         mushroom:  'Meshy_AI_mushroom_0727200342_texture.glb',
         mushroom2: 'Meshy_AI_mushroom_realistic_0727202046_texture.glb',
-        obelisk3d: 'Meshy_AI_obelisk_0727195707_texture.glb'
+        obelisk3d: 'Meshy_AI_obelisk_0727195707_texture.glb',
+        /* 2026-09-12 THE MOVING-MAPS BATCH (28 Meshy props the user uploaded to
+           Assets/misc/ — see MODEL_INDEX.md for where each one stands). Every
+           file is a unit-normalised, centred, single-mesh GLB; the axes were
+           measured off contact sheets before wiring (the facing noted where
+           it matters — the kit helper _hzMiscKit takes a `yaw` to turn it):
+           the cannon's muzzle is −X, the rowboat's bow is −X, the wreck's bow
+           is −X, the shark's nose is +Z, the flamingo faces −Z, the nacelle's
+           open bell is +X, the crane's jib is −X, the teapot's spout is +X;
+           the vault door, the wheel, the anchor, the docking ring, the hull
+           plate, the trilithon and the hanging watch all FACE +Z. */
+        vault:         'Meshy_AI_a_bank_vault_0912231605_texture.glb',
+        flamingo:      'Meshy_AI_a_flamingo_0912231434_texture.glb',
+        wreck:         'Meshy_AI_a_ghost_ship_wreck_0912231131_texture.glb',
+        lantern:       'Meshy_AI_a_hanging_lantern_0912231043_texture.glb',
+        tentacle:      'Meshy_AI_a_kraken_tentacle_0912231121_texture.glb',
+        tentacle2:     'Meshy_AI_a_kraken_tentacle_2_0912231110_texture.glb',
+        watch:         'Meshy_AI_a_pocket_watch_0912231541_texture.glb',
+        watch_hang:    'Meshy_AI_a_pocket_watch_hanging_0912231556_texture.glb',
+        rowboat:       'Meshy_AI_a_rowboat_0912231059_texture.glb',
+        dish:          'Meshy_AI_a_satellite_dish_0912231301_texture.glb',
+        crane:         'Meshy_AI_a_scaffold_crane_0912231516_texture.glb',
+        wheel:         'Meshy_AI_a_ship_s_wheel_0912230950_texture.glb',
+        dockring:      'Meshy_AI_a_spaceship_docking_ring_0912231400_texture.glb',
+        standingstone: 'Meshy_AI_a_standing_stone_0912231506_texture.glb',
+        palmisle:      'Meshy_AI_a_tiny_island_with_palm_tree_0912231720_texture.glb',
+        hullplate:     'Meshy_AI_a_torn_hull_plate_with_wiring_0912231409_texture.glb',
+        nacelle:       'Meshy_AI_an_engine_nacelle_0912231313_texture.glb',
+        escapepod:     'Meshy_AI_an_escape_pod_0912231249_texture.glb',
+        caterpillar:   'Meshy_AI_caterpillar_0912231445_texture.glb',
+        astronaut:     'Meshy_AI_dead_astronaut_0912231349_texture.glb',
+        saucer_lg:     'Meshy_AI_flying_saucer_with_landing_gear_0912231529_texture.glb',
+        cannon:        'Meshy_AI_iron_canon_0912231022_texture.glb',
+        chest:         'Meshy_AI_pirate_treasure_chest_0912231220_texture.glb',
+        shark:         'Meshy_AI_shark_0912231236_texture.glb',
+        anchor:        'Meshy_AI_ship_anchor_0912231033_texture.glb',
+        teacups:       'Meshy_AI_stacked_teacups_0912231425_texture.glb',
+        teapot:        'Meshy_AI_teapot_0912231417_texture.glb',
+        trilithon:     'Meshy_AI_trilithon_0912231457_texture.glb'
     };
 
     // keep the GLB's own baked texture, just unlit — the misc-model default
@@ -21771,6 +21809,62 @@ const ThreeRenderer = (function () {
     }
     function _hzPropGLB(key, target) {
         return _hzMiscGLB(key, target, { matPick: _hzPropLitPick });
+    }
+    // Lit board prop with a self-lit LIFT: the GLB's bake as emissiveMap at
+    // `lift` — a Lambert side face is black under a night sky / in space (the
+    // Dutchman, the Derelict), and the map's tint darkens everything again.
+    var _hzLiftPicks = {};
+    function _hzPropLitLiftPick(lift) {
+        var k = Math.round(lift * 100);
+        if (!_hzLiftPicks[k]) _hzLiftPicks[k] = function (node, srcMat) {
+            var map = (srcMat && srcMat.map) || null;
+            var m = new THREE.MeshLambertMaterial({ map: map, side: THREE.FrontSide });
+            m.emissive = new THREE.Color(lift, lift, lift); if (map) m.emissiveMap = map;
+            return m;
+        };
+        return _hzLiftPicks[k];
+    }
+    // ── THE MISC KIT (2026-09-12) — the moving-maps batch as props ──────
+    // One call places a Meshy prop from _MISC_GLB the way _hzDoorKitGLB
+    // places a D.O.O.R.-kit prop: `tiles` (or `metres`, 1.75 m = a tile) is
+    // the target size along `fit` ('height' | 'span'), `lit` (default) = the
+    // board's Lambert grade (+ `lift` self-lit, `cast` shadows), `yaw` /
+    // `tilt` / `roll` pre-turn the MODEL inside the group (so the caller's own
+    // rotation.y still means what it means — a prop whose front is −X gets
+    // yaw π/2 and faces +Z like every procedural builder does), `hang` = the
+    // model's TOP at y = 0 (lanterns, a watch on its chain), `sink` = tiles
+    // below y = 0 (a tentacle rising out of the sea), `foot` = the collision
+    // disc in metres (the walkable site room reads it before the GLB lands),
+    // `fallback` = the procedural builder used when the loader is missing or
+    // low-performance mode skips the download (`low: 'skip'` — scenery that
+    // has a procedural stand-in; on-board cover NEVER passes it).
+    function _hzMiscKit(key, o) {
+        o = o || {};
+        var ts = CONFIG.tileSize || BASE_TILE, rng = o.rng || Math.random;
+        var off = !_MISC_GLB[key] || typeof THREE.GLTFLoader !== 'function' ||
+                  (typeof window !== 'undefined' && window.EW_PERF_LOW && o.low === 'skip');
+        if (off) return o.fallback ? (o.fallback(rng) || new THREE.Group()) : new THREE.Group();
+        var target = o.tiles != null ? o.tiles * ts : (o.metres != null ? o.metres / 1.75 * ts : ts);
+        var lit = o.lit !== false;
+        var pick = lit ? (o.lift ? _hzPropLitLiftPick(o.lift) : _hzPropLitPick) : _hzMiscUnlitPick;
+        var g = _miscModelInstance(_R2_MISC + _MISC_GLB[key], true, target, {
+            fit: o.fit || 'height', matPick: pick, repeat: o.repeat,
+            onDone: function (grp, s, bb) {
+                var kids = grp.children.slice();
+                if (o.hang) kids.forEach(function (m) { m.position.y -= (bb.max.y - bb.min.y) * s; });
+                if (o.sink) kids.forEach(function (m) { m.position.y -= o.sink * ts; });
+                if (o.yaw || o.tilt || o.roll) {
+                    var pv = new THREE.Group();
+                    kids.forEach(function (m) { grp.remove(m); pv.add(m); });
+                    pv.rotation.set(o.tilt || 0, o.yaw || 0, o.roll || 0);
+                    grp.add(pv);
+                }
+                grp.traverse(function (n) { if (n.isMesh) { n.castShadow = !!(lit && o.cast); n.receiveShadow = lit; } });
+                if (o.onDone) o.onDone(grp, s, bb);
+            }
+        });
+        g._ew_footM = o.foot || 0; g._ew_kit = key;
+        return g;
     }
     // ── The D.O.O.R. kit on the board (2026-09-11) ─────────────────────────
     // A DOOR_HQ.catalogue prop (R2 Assets/door/models/ — the user's Meshy
@@ -22591,7 +22685,13 @@ const ThreeRenderer = (function () {
     }
 
     // ── Stonehenge: a true trilithon — two sarsen uprights + lintel ──
+    /* 2026-09-12: the user's trilithon GLB stands here (faces +Z like the
+       boxes did); the procedural pair below is its fallback */
     function _hzTrilithon(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        return _hzMiscKit('trilithon', { tiles: 4.4, fit: 'height', rng: rng, cast: true, foot: 1.6, low: 'skip', fallback: _hzTrilithonProc });
+    }
+    function _hzTrilithonProc(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var tex = _hzTex('rocks_1') || _hzTex('cliff');
@@ -22663,7 +22763,13 @@ const ThreeRenderer = (function () {
     }
 
     // ── Babel: the builders' great crane, abandoned mid-lift ──
+    /* 2026-09-12: the user's scaffold-crane GLB (its jib is −X — yaw π/2
+       swings it onto +Z, the way the procedural crane's jib reaches over
+       the board when a placement faces it); the timber crane is its fallback */
     function _hzBabelCrane(rng) {
+        return _hzMiscKit('crane', { tiles: 4.6, fit: 'height', yaw: Math.PI / 2, rng: rng, cast: true, foot: 0.9, low: 'skip', fallback: _hzBabelCraneProc });
+    }
+    function _hzBabelCraneProc(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var wood = function () { return _hzGeoMat(_hzTex('wood') || _hzTex('wood_planks'), 0x8a6b40); };
@@ -22774,6 +22880,22 @@ const ThreeRenderer = (function () {
         var beam = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.9, lift + ts * 0.4, 10, 1, true), beamMat);
         _hzAt(g, beam, 0, (lift + ts * 0.4) / 2, 0);
         _hzPulse(beamMat, null, 0.10, 0, 0.5);
+        return g;
+    }
+
+    // ── Area 51 (2026-09-12): the saucer ON ITS GEAR — the user's landing-
+    // gear saucer GLB parked on the tarmac (the test rig), a soft under-
+    // glow and the pulsing dome lamp kept as accents; the flying procedural
+    // saucer above stays the horizon's craft and the fallback here.
+    function _hzSaucerLanded(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = _hzMiscKit('saucer_lg', { tiles: 3.8, fit: 'span', rng: rng, cast: true, lift: 0.18, foot: 1.9, fallback: _hzSaucer });
+        if (g._ew_kit !== 'saucer_lg') return g;
+        var beamMat = _hzGlowMat(0xa0ffd0, 0.12);
+        var beam = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.9, ts * 0.9, 10, 1, true), beamMat);
+        _hzAt(g, beam, 0, ts * 0.45, 0);
+        _hzPulse(beamMat, null, 0.10, 0, 0.5);
+        var dome = _hzGlowSprite(ts * 0.9, 0x9adcff, 0.35, 0.12, 0.06, 0.6 + rng() * 0.4); dome.position.y = ts * 1.9; g.add(dome);
         return g;
     }
 
@@ -23056,7 +23178,13 @@ const ThreeRenderer = (function () {
     }
 
     // ── D.U.M.B.: the blast door (what are they keeping in? or out?) ──
+    /* 2026-09-12: the bank-vault GLB IS the blast door now (D.U.M.B.'s two
+       chokes, the `blastdoor` monument on the boards) — its door faces +Z
+       like the spoked wheel did; the steel wheel-door is the fallback */
     function _hzBlastDoor(rng) {
+        return _hzMiscKit('vault', { tiles: 3.0, fit: 'height', rng: rng, cast: true, foot: 1.4, fallback: _hzBlastDoorProc });
+    }
+    function _hzBlastDoorProc(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var steel = function (c) { return _hzGeoMat(_hzTex('metal'), c || 0x848a94); };
@@ -24556,7 +24684,13 @@ const ThreeRenderer = (function () {
             var m = K.box(w, h, d, stone); m.position.set(x, K.fy + h / 2 - ts * 0.15, z); m.rotation.y = -a + Math.PI / 2; m.rotation.z = (rng() - 0.5) * 0.06; K.add(K.lit(m, true));
             if (rng() < 0.6) { var lintel = K.box(R * Math.PI * 2 / n * 1.05, ts * 0.55, d * 1.1, stone); lintel.position.set(K.CX + Math.cos(a + Math.PI / n) * R * 1.0, K.fy + h + ts * 0.12, K.CZ + Math.sin(a + Math.PI / n) * R * 0.98); lintel.rotation.y = -(a + Math.PI / n) + Math.PI / 2; K.add(K.lit(lintel, true)); }
         }
-        _nrProp(K, _hzTrilithon, K.BX0 - 2.6 * ts, K.BZ0 - 2.6 * ts, { s: 0.9 }); _nrProp(K, _hzTrilithon, K.BX1 + 2.6 * ts, K.BZ1 + 2.6 * ts, { s: 0.9 });
+        _nrProp(K, _hzTrilithon, K.BX0 - 2.6 * ts, K.BZ0 - 2.6 * ts, { s: 0.9 }); _nrProp(K, _hzTrilithon, K.BX1 + 2.6 * ts, K.BZ1 + 2.6 * ts, { s: 0.9 });   // (the user's trilithon GLB since 2026-09-12)
+        /* the bluestones (2026-09-12): the user's standing-stone GLB in a broken outer horseshoe, each its own height, never in the lanes */
+        for (var b = 0; b < 9; b++) {
+            var ab = b * Math.PI * 2 / 9 + 0.35 + (rng() - 0.5) * 0.3, xb = K.CX + Math.cos(ab) * R * 1.62, zb = K.CZ + Math.sin(ab) * R * 1.56;
+            if (K.inLane(xb, zb, 2.2 * ts) || rng() < 0.2) continue;
+            _nrProp(K, function (r) { return _hzMiscKit('standingstone', { tiles: 1.5 + r() * 1.2, rng: r, cast: true, foot: 0.5, low: 'skip' }); }, xb, zb, { ry: rng() * 6.3, y: -0.12 });
+        }
         _nrMounds(K, { tex: 'grass_2', d: 7.5, spacing: 3.5, r: 2.0, flat: 0.18, p: 0.5 });
         var ditch = K.mat('dirt', 0x8a7a60); var ring = new THREE.Mesh(new THREE.RingGeometry(R * 1.28, R * 1.42, 40), ditch); ring.rotation.x = -Math.PI / 2; ring.position.set(K.CX, K.fy + 0.4, K.CZ); K.add(ring);
     };
@@ -24741,7 +24875,7 @@ const ThreeRenderer = (function () {
         [[K.BX0 - 3.3 * ts, K.BZ0 - 3.3 * ts], [K.BX1 + 3.3 * ts, K.BZ0 - 3.3 * ts], [K.BX0 - 3.3 * ts, K.BZ1 + 3.3 * ts], [K.BX1 + 3.3 * ts, K.BZ1 + 3.3 * ts]].forEach(function (p) { _nrTower(K, p[0], p[1], { h: 4.2 }); });
         var alu = K.mat('aluminium', 0xcfd8e0);
         [['w', K.BX0 - 2.4 * ts, K.CZ - 1.5 * ts], ['e', K.BX1 + 2.4 * ts, K.CZ + 1.5 * ts]].forEach(function (h) { var geo = new THREE.CylinderGeometry(1.4 * ts, 1.4 * ts, 3.2 * ts, 12, 1, false, 0, Math.PI); _nrUV(geo, 4, 3); var hg = new THREE.Mesh(geo, alu); hg.rotation.z = Math.PI / 2; hg.position.set(h[1], K.fy, h[2]); K.addW(h[0], K.lit(hg, true)); var mouth = K.plane(2.6 * ts, 1.2 * ts, _hzLit(null, 0x1a1c20)); mouth.position.set(h[1] + (h[0] === 'w' ? 1.61 * ts : -1.61 * ts), K.fy + 0.6 * ts, h[2]); mouth.rotation.y = h[0] === 'w' ? Math.PI / 2 : -Math.PI / 2; K.addW(h[0], mouth); });
-        _nrProp(K, _hzSaucer, K.BX1 + 2.6 * ts, K.BZ0 - 2.2 * ts, { s: 0.7 });
+        _nrProp(K, _hzSaucerLanded, K.BX1 + 2.6 * ts, K.BZ0 - 2.2 * ts, { s: 0.85 });   // 2026-09-12: the user's landing-gear saucer GLB on the rig
         _nrSign(K, 'a51_s1', ['RESTRICTED AREA', 'USE OF DEADLY FORCE', 'AUTHORIZED'], 1.8 * ts, 1.0 * ts, K.CX + 2.0 * ts, K.fy + 1.1 * ts, K.BZ0 - 3.3 * ts, 0, { sizes: [64, 46, 46], bg: '#f4f0e0', color: '#b81818', border: '#b81818' });
         _nrSign(K, 'a51_s2', ['WARNING', 'PHOTOGRAPHY PROHIBITED'], 1.8 * ts, 0.9 * ts, K.CX - 2.0 * ts, K.fy + 1.1 * ts, K.BZ1 + 3.3 * ts, Math.PI, { sizes: [80, 40], bg: '#f4f0e0', color: '#202020', border: '#b81818' });
         [[K.BX0 - 1.3 * ts, K.BZ1 + 2.4 * ts], [K.BX1 + 1.4 * ts, K.BZ1 + 2.2 * ts]].forEach(function (p, i) { var c = K.box(0.8 * ts, 0.7 * ts, 0.8 * ts, K.mat('metal_2', 0x9fb2bd)); c.position.set(p[0], K.fy + 0.35 * ts, p[1]); c.rotation.y = i * 0.5; K.add(K.lit(c, true)); });
@@ -25206,6 +25340,30 @@ const ThreeRenderer = (function () {
             /* the prow: the bowsprit and its torch */
             var sprit = K.cyl(0.05 * ts, 0.08 * ts, 4.2 * ts, 6, darkWood); sprit.rotation.z = -Math.PI / 2 + 0.30; sprit.position.set(prowX - 0.6 * ts + Math.cos(0.30) * 2.1 * ts, top + 0.45 * ts + Math.sin(0.30) * 2.1 * ts, K.CZ); K.addW('e', K.lit(sprit));
             _nrTorch(K, prowX - 0.55 * ts, top + bulwarkH, K.CZ, { scale: 1.0, light: true });
+            /* THE MISC KIT (2026-09-12) — the user's Meshy props on the ghost ship:
+               the helm on the quarterdeck (the wheel's face is +Z; turned to +X so
+               the helmsman looks down the deck to the bow), the anchor catted on
+               the starboard bow, the ship's boat towed astern on the sea (its bow
+               is −X — yaw π points it at the transom; it rides the swell with the
+               floaters and a tow line runs to the taffrail), and the KRAKEN — two
+               tentacles standing out of the sea off the port quarter, rising and
+               sinking on the swell. All of it battle-only (the room's quay is the
+               deck, its moat the sea). */
+            var helm = _hzMiscKit('wheel', { tiles: 0.95, fit: 'height', lift: 0.45, cast: true, foot: 0.3, rng: rng });
+            helm.position.set(xc - 1.05 * ts, castleH, K.CZ); helm.rotation.y = Math.PI / 2; K.addW('w', helm);
+            var anchor = _hzMiscKit('anchor', { tiles: 1.05, fit: 'height', lift: 0.4, cast: true, foot: 0.3, rng: rng });
+            anchor.position.set(prowX - 2.1 * ts, top + 0.02 * ts, K.CZ + hb * 0.62); anchor.rotation.y = K.face(prowX - 2.1 * ts, K.CZ + hb * 0.62) + 0.5; anchor.rotation.z = -0.22; K.addW('e', anchor);
+            var seaY = fy - _NR_SEA_DEPTH * ts - 0.18 * ts;
+            var boat = _hzMiscKit('rowboat', { tiles: 1.7, fit: 'span', yaw: Math.PI, lift: 0.4, rng: rng });
+            boat.position.set(sternX - 3.4 * ts, seaY + 0.03 * ts, K.CZ + 0.9 * ts); boat.rotation.y = 0.12; K.add(boat);
+            _horizonFloaters.push({ obj: boat, baseY: boat.position.y, amp: 0.07 * ts, spd: 0.55, phase: rng() * 6, spin: 0 });
+            var towGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(sternX - 0.2 * ts, top + 0.3 * ts, K.CZ + 0.5 * ts), new THREE.Vector3(sternX - 2.6 * ts, seaY + 0.12 * ts, K.CZ + 0.85 * ts)]);
+            K.add(new THREE.Line(towGeo, new THREE.LineBasicMaterial({ color: 0x2a2118 })));
+            [['tentacle', K.X0 - 1.6 * ts, K.CZ - hb - 2.4 * ts, 5.6, 0.7, 0.9], ['tentacle2', K.X0 + 2.4 * ts, K.CZ - hb - 3.9 * ts, 4.6, 0.6, 3.6]].forEach(function (t, i) {
+                var arm = _hzMiscKit(t[0], { tiles: t[3], fit: 'height', sink: t[4], lift: 0.3, cast: true, rng: rng, low: 'skip' });
+                arm.position.set(t[1], seaY, t[2]); arm.rotation.y = t[5]; arm.rotation.z = (i ? -1 : 1) * 0.12; K.add(arm);
+                _horizonFloaters.push({ obj: arm, baseY: seaY, amp: 0.35 * ts, spd: 0.22 + i * 0.09, phase: rng() * 6, spin: 0 });
+            });
         } else {
             _nrShipRail(K, 'n', { tex: 'wood', color: 0xffffff, h: 0.5 }); _nrShipRail(K, 's', { tex: 'wood', color: 0xffffff, h: 0.5 });
         }
@@ -25224,6 +25382,13 @@ const ThreeRenderer = (function () {
                 var sail = new THREE.Mesh(sg, sailMat); sail.rotation.y = Math.PI / 2; sail.position.set(x + 0.04 * ts, yy - sh / 2 - 0.02 * ts, z); K.addW(side, K.lit(sail, true));
             });
             var nest = K.cyl(0.24 * ts, 0.2 * ts, 0.26 * ts, 8, darkWood); nest.position.set(x, top + h * 0.74, z); K.addW(side, nest);
+            /* 2026-09-12: a hanging lantern (the user's GLB, hung by its ring) at each end of the lower yard, its own warm halo under it */
+            [-1, 1].forEach(function (sd) {
+                var ly = top + h * 0.6 - 0.04 * ts, lz = z + sd * 2.1 * ts;
+                var lan = _hzMiscKit('lantern', { tiles: 0.42, fit: 'height', hang: true, lift: 0.75, rng: rng, low: 'skip' });
+                lan.position.set(x, ly, lz); K.addW(side, lan);
+                K.addW(side, K.lamp(x, ly - 0.3 * ts, lz, 0xffc070, 0.9 * ts, 0.45));
+            });
             if (flagTex) { var fm = new THREE.MeshBasicMaterial({ map: flagTex, side: THREE.DoubleSide }); var flag = new THREE.Mesh(new THREE.PlaneGeometry(0.55 * ts, 0.38 * ts), fm); flag.position.set(x - 0.3 * ts, top + h + 0.2 * ts, z); K.addW(side, flag); }
             if (!HQ) [[K.X0 + 0.3 * ts, K.Z0 + 0.3 * ts], [K.X0 + 0.3 * ts, K.Z1 - 0.3 * ts], [K.X1 - 0.3 * ts, K.Z0 + 0.3 * ts], [K.X1 - 0.3 * ts, K.Z1 - 0.3 * ts], [x, K.Z0 + 0.2 * ts], [x, K.Z1 - 0.2 * ts]].forEach(function (p) {   // (no rigging in the room: a line's bounds would block the quay)
                 var g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x, top + h * 0.95, z), new THREE.Vector3(p[0], top + 0.5 * ts, p[1])]);
@@ -25235,10 +25400,19 @@ const ThreeRenderer = (function () {
         /* cannon on the strips, barrels, coils */
         [[1.0, 'n'], [2.2, 'n'], [5.8, 'n'], [7.0, 'n'], [1.0, 's'], [2.2, 's'], [5.8, 's'], [7.0, 's']].forEach(function (c) {
             var x = K.BX0 + c[0] * ts, z = c[1] === 'n' ? K.BZ0 - 0.8 * ts : K.BZ1 + 0.8 * ts;
-            var carriage = K.box(0.36 * ts, 0.2 * ts, 0.5 * ts, darkWood); carriage.position.set(x, top + 0.1 * ts, z); K.add(K.lit(carriage, true));
-            var barrel = K.cyl(0.07 * ts, 0.1 * ts, 0.78 * ts, 8, iron); barrel.rotation.x = Math.PI / 2; barrel.position.set(x, top + 0.26 * ts, z + (c[1] === 'n' ? -0.1 : 0.1) * ts); K.add(K.lit(barrel, true));
+            /* 2026-09-12: the user's iron-cannon GLB (its muzzle is −X: yaw π/2 turns it onto +Z, the strip's own turn points it outboard); the box-and-tube gun is the fallback */
+            var cannon = _hzMiscKit('cannon', { tiles: 1.25, fit: 'span', yaw: Math.PI / 2, lift: 0.42, cast: true, foot: 0.6, rng: rng, fallback: function () {
+                var fg = new THREE.Group();
+                var carriage = K.box(0.36 * ts, 0.2 * ts, 0.5 * ts, darkWood); carriage.position.set(0, 0.1 * ts, 0); fg.add(K.lit(carriage, true));
+                var barrel = K.cyl(0.07 * ts, 0.1 * ts, 0.78 * ts, 8, iron); barrel.rotation.x = Math.PI / 2; barrel.position.set(0, 0.26 * ts, 0.1 * ts); fg.add(K.lit(barrel, true));
+                return fg;
+            } });
+            cannon.position.set(x, top, z); cannon.rotation.y = c[1] === 'n' ? Math.PI : 0; K.add(cannon);
         });
-        [[K.X0 + 0.5 * ts, K.Z0 + 0.5 * ts], [K.X0 + 0.5 * ts, K.Z1 - 0.5 * ts], [K.X1 - 0.5 * ts, K.Z1 - 0.5 * ts], [K.X0 + 1.1 * ts, K.Z0 + 0.5 * ts]].forEach(function (p) {
+        /* the strongbox (2026-09-12): the pirate chest GLB open on the deck at the starboard-bow corner, its lock to the board */
+        var chest = _hzMiscKit('chest', { tiles: 0.7, fit: 'span', lift: 0.4, cast: true, foot: 0.5, rng: rng });
+        chest.position.set(K.X1 - 0.55 * ts, top, K.Z1 - 0.55 * ts); chest.rotation.y = K.face(K.X1 - 0.55 * ts, K.Z1 - 0.55 * ts); K.add(chest);
+        [[K.X0 + 0.5 * ts, K.Z0 + 0.5 * ts], [K.X0 + 0.5 * ts, K.Z1 - 0.5 * ts], [K.X0 + 1.1 * ts, K.Z0 + 0.5 * ts]].forEach(function (p) {
             var b = K.cyl(0.26 * ts, 0.26 * ts, 0.5 * ts, 9, K.mat('wood', 0xa07040)); b.position.set(p[0], top + 0.25 * ts, p[1]); K.add(K.lit(b, true));
         });
         [[K.X1 - 0.5 * ts, K.Z0 + 0.5 * ts], [K.X0 + 1.1 * ts, K.Z1 - 0.5 * ts]].forEach(function (p) {
@@ -25336,8 +25510,16 @@ const ThreeRenderer = (function () {
             [-1, 1].forEach(function (sd) {
                 var xN = K.X0 - 4.5 * ts, zN = K.CZ + sd * (HW + 1.9 * ts), yN = top - 0.9 * ts;
                 var pylon = K.box(1.6 * ts, 0.3 * ts, 2.2 * ts, trimMat); pylon.position.set(xN + 0.4 * ts, yN - 0.1 * ts, K.CZ + sd * (HW + 0.6 * ts)); pylon.rotation.x = sd * 0.35; K.add(K.lit(pylon, true));
-                var pod = K.cyl(0.62 * ts, 0.72 * ts, 6.4 * ts, 12, podMat); pod.rotation.z = Math.PI / 2; pod.position.set(xN, yN, zN); K.add(K.lit(pod, true));
-                var nose = new THREE.Mesh(new THREE.SphereGeometry(0.62 * ts, 12, 8), podMat); nose.position.set(xN + 3.2 * ts, yN, zN); K.add(K.lit(nose, true));
+                /* 2026-09-12: the user's engine-nacelle GLB (its open bell is +X — yaw π
+                   turns the bell astern); the glow disc, the plume and the lamp stay as
+                   its exhaust. The cylinder + sphere pod is the fallback. */
+                var pod = _hzMiscKit('nacelle', { tiles: 6.4, fit: 'span', yaw: Math.PI, lift: 0.45, cast: true, rng: rng, fallback: function () {
+                    var fg = new THREE.Group();
+                    var pc = K.cyl(0.62 * ts, 0.72 * ts, 6.4 * ts, 12, podMat); pc.rotation.z = Math.PI / 2; pc.position.y = 0.72 * ts; fg.add(K.lit(pc, true));
+                    var nose = new THREE.Mesh(new THREE.SphereGeometry(0.62 * ts, 12, 8), podMat); nose.position.set(3.2 * ts, 0.72 * ts, 0); fg.add(K.lit(nose, true));
+                    return fg;
+                } });
+                pod.position.set(xN, yN - 0.32 * 6.4 * ts, zN); pod._ew_occSkip = true; K.add(pod);
                 var gm = K.glow(0x8fdcff, 0.9); _hzPulse(gm, null, 0.14, 0, 1.9 + sd * 0.3);
                 var d2 = new THREE.Mesh(new THREE.CircleGeometry(0.6 * ts, 16), gm); d2.rotation.y = -Math.PI / 2; d2.position.set(xN - 3.22 * ts, yN, zN); K.add(d2);
                 var pm = K.glow(0x5fb0ff, 0.14); var pl2 = new THREE.Mesh(new THREE.PlaneGeometry(8 * ts, 1.3 * ts), pm); pl2.position.set(xN - 7.2 * ts, yN, zN); K.add(pl2);
@@ -25359,7 +25541,9 @@ const ThreeRenderer = (function () {
             var wf = new THREE.Mesh(new THREE.PlaneGeometry(bd2 * 0.9, 0.34 * ts), winMat); wf.rotation.y = Math.PI / 2; wf.position.set(bx + 0.6 * ts + bw2 + 0.5, top + bh1 + bh2 * 0.6 - 0.1 * ts, K.CZ); K.addW('e', wf);
             [-1, 1].forEach(function (sd) { var ws = new THREE.Mesh(new THREE.PlaneGeometry(bw2 * 0.85, 0.3 * ts), winMat); ws.rotation.y = sd > 0 ? 0 : Math.PI; ws.position.set(bx + 0.6 * ts + bw2 / 2, top + bh1 + bh2 * 0.6 - 0.1 * ts, K.CZ + sd * (bd2 / 2 + 0.5)); K.addW('e', ws); });
             var mast = K.cyl(0.05 * ts, 0.08 * ts, 3.2 * ts, 6, dark); mast.position.set(bx + 1.2 * ts, top + bh1 + bh2 + 1.5 * ts, K.CZ - bd2 * 0.3); K.addW('e', K.lit(mast));
-            var dish = K.cyl(0.02 * ts, 0.6 * ts, 0.3 * ts, 12, dark); dish.rotation.x = -0.9; dish.position.set(bx + 1.2 * ts, top + bh1 + bh2 + 2.4 * ts, K.CZ - bd2 * 0.3); K.addW('e', K.lit(dish));
+            /* 2026-09-12: the user's satellite-dish GLB on the mast (its face is +Z — yaw π/2 turns it forward, the tilt lifts it to the stars) */
+            var dish = _hzMiscKit('dish', { tiles: 1.4, fit: 'height', yaw: Math.PI / 2, tilt: -0.75, lift: 0.4, rng: rng, fallback: function () { var dc = K.cyl(0.02 * ts, 0.6 * ts, 0.3 * ts, 12, dark); dc.rotation.x = -0.9; dc.position.y = 0.3 * ts; return dc; } });
+            dish.position.set(bx + 1.2 * ts, top + bh1 + bh2 + 2.0 * ts, K.CZ - bd2 * 0.3); K.addW('e', dish);
             var mastLight = _hzGlowSprite(0.35 * ts, 0xff4040, 0.9, 0.9, 0.2, 1.6); mastLight.position.set(bx + 1.2 * ts, top + bh1 + bh2 + 3.15 * ts, K.CZ - bd2 * 0.3); K.addW('e', mastLight);
             /* the flanks of the deck: hatches, pipes and vents outside the lanes */
             for (var g = 0; g < 10; g++) {
@@ -25378,10 +25562,24 @@ const ThreeRenderer = (function () {
                 var cab = K.box(0.08 * ts, 0.08 * ts, ts * (0.8 + rng() * 1.4), dark); cab.position.set(brX + (rng() - 0.5) * 2.2 * ts, brY + (rng() - 0.5) * 1.2 * ts, brZ + 0.5 * ts); cab.rotation.set((rng() - 0.5) * 0.8, (rng() - 0.5) * 0.8, (rng() - 0.5) * 0.6); K.add(K.lit(cab, true));
                 var spk = _hzGlowSprite(ts * 0.5, 0x9fd8ff, 0.85, 0.7, 0.4, 6 + rng() * 7); spk.position.set(cab.position.x, cab.position.y, brZ + 0.9 * ts); K.add(spk);
             }
+            /* THE MISC KIT (2026-09-12): the torn hull plate peeled off the breach
+               (the user's GLB — its wired face is +Z, hung outward and tilted off the
+               skin), a dead astronaut adrift off the breach on a slow tumble, and the
+               docking collar on the port flank amidships. Battle-only. */
+            var plate = _hzMiscKit('hullplate', { tiles: 3.0, fit: 'height', tilt: 0.55, lift: 0.45, cast: true, rng: rng, low: 'skip' });
+            plate.position.set(brX + 1.3 * ts, brY - 0.4 * ts, brZ + 0.7 * ts); plate.rotation.y = -0.35; K.add(plate);
+            var crew = _hzMiscKit('astronaut', { tiles: 1.15, fit: 'height', tilt: 1.25, roll: 0.4, lift: 0.35, rng: rng, low: 'skip' });
+            crew.position.set(brX - 2.6 * ts, top - 0.6 * ts, K.Z1 + 3.4 * ts); K.add(crew);
+            _horizonFloaters.push({ obj: crew, baseY: crew.position.y, amp: 0.3 * ts, spd: 0.12, phase: rng() * 6, spin: 0.0016 });
+            var collar = _hzMiscKit('dockring', { tiles: 2.6, fit: 'height', lift: 0.45, cast: true, rng: rng });
+            collar.position.set(K.CX + 1.6 * ts, top - SINK - hh(K.CX) * 0.55 - 1.3 * ts, K.CZ - hw(K.CX) * 1.0 - 0.12 * ts); collar._ew_occSkip = true; K.add(collar);
             for (var gi = 0; gi < 3; gi++) {
                 var gl = ts * (1.6 + rng() * 1.6), gb = K.box(0.13 * ts, 0.13 * ts, gl, dark); gb.position.set(brX + (rng() - 0.5) * 2.5 * ts, top - 0.3 * ts + (rng() - 0.5) * 0.4 * ts, K.Z1 + gl * 0.4); gb.rotation.set(0.35 + rng() * 0.4, (rng() - 0.5) * 0.5, (rng() - 0.5) * 0.3); K.add(K.lit(gb, true));
             }
         }
+        /* the lifeboat that never launched (2026-09-12): the user's escape-pod GLB in its cradle on the aft port strip, its window to the board */
+        var podDock = _hzMiscKit('escapepod', { tiles: 1.6, fit: 'span', lift: 0.42, cast: true, foot: 0.8, rng: rng });
+        podDock.position.set(K.X0 + 1.3 * ts, top, K.Z0 + 1.0 * ts); podDock.rotation.y = K.face(K.X0 + 1.3 * ts, K.Z0 + 1.0 * ts); K.addW('w', podDock);
         /* engineering: the bulkhead fragment at the aft end of the deck, the porthole, the strobe */
         var wallH = 2.6 * ts, wall = K.box(0.4 * ts, wallH, (K.Z1 - K.Z0) * 0.7, plate); wall.position.set(K.X0 - 0.1 * ts, top + wallH / 2 - 0.3 * ts, K.CZ); K.addW('w', K.lit(wall, true));
         var port = new THREE.Mesh(new THREE.CircleGeometry(0.28 * ts, 16), K.glow(0x7fd8ff, 0.8)); port.rotation.y = Math.PI / 2; port.position.set(K.X0 + 0.11 * ts, top + 1.3 * ts, K.CZ + 1.4 * ts); K.addW('w', port);
@@ -25425,7 +25623,11 @@ const ThreeRenderer = (function () {
             m.position.set(c[0], top + 0.46 * ts, c[1]); m.rotation.y = K.face(c[0], c[1]) + (rng() - 0.5) * 0.5; K.add(K.lit(m, true));
         });
         /* teacups on the strips, lamps on the corners */
-        [[K.CX + 2.4 * ts, K.Z0 + e], [K.CX - 2.4 * ts, K.Z1 - e]].forEach(function (p, i) { var cup = _hzTeacup(0.55 * ts, K.mat(null, i ? 0xffd0e0 : 0xd8ecff), ts); cup.position.set(p[0], top, p[1]); cup.rotation.y = rng() * 6; cup.traverse(function (o) { if (o.isMesh) K.lit(o, true); }); K.add(cup); });
+        /* the tea party on the strips (2026-09-12): the teapot (spout +X → yaw −π/2), the stacked cups, the caterpillar and the croquet flamingo (faces −Z → yaw π) — the user's GLBs, each turned to the board; the pocket watch lies open at the king's feet */
+        [[K.CX + 2.4 * ts, K.Z0 + e, 'teapot', 0.6, 'span', -Math.PI / 2], [K.CX - 2.4 * ts, K.Z1 - e, 'teacups', 0.85, 'height', 0], [K.CX - 2.4 * ts, K.Z0 + e, 'caterpillar', 0.95, 'span', 0], [K.CX + 2.4 * ts, K.Z1 - e, 'flamingo', 1.15, 'height', Math.PI], [K.X0 + e, K.CZ, 'watch', 0.8, 'span', 0]].forEach(function (t) {
+            var m = _hzMiscKit(t[2], { tiles: t[3], fit: t[4], yaw: t[5], lift: 0.25, cast: true, foot: 0.4, rng: rng, fallback: t[2] === 'teacups' || t[2] === 'teapot' ? function (r) { return _hzTeacup(0.55 * ts, K.mat(null, 0xffd0e0), ts); } : null });
+            m.position.set(t[0], top, t[1]); m.rotation.y = K.face(t[0], t[1]) + (rng() - 0.5) * 0.5; K.add(m);
+        });
         [[K.X0 + 0.3 * ts, K.Z0 + 0.3 * ts], [K.X1 - 0.3 * ts, K.Z0 + 0.3 * ts], [K.X0 + 0.3 * ts, K.Z1 - 0.3 * ts], [K.X1 - 0.3 * ts, K.Z1 - 0.3 * ts]].forEach(function (p) { K.add(K.lamp(p[0], top + 0.9 * ts, p[1], 0xd8a0ff, 1.5 * ts, 0.4)); });
         /* unfinished shapes tumbling alongside */
         if (!HQ) for (var i = 0; i < 10; i++) {
@@ -25676,8 +25878,17 @@ const ThreeRenderer = (function () {
         _horizonFloaters.push({ obj: beam, baseY: beam.position.y, amp: 0, spd: 0, phase: 0, spin: 0.012 + rng() * 0.01 });   // the lamp turns
         return g;
     }
-    /* a ghost ship on the horizon: a dark hull, pale sails that glow, one lantern */
+    /* a ghost ship on the horizon — 2026-09-12: the user's ghost-ship-wreck GLB
+       (bow −X; unlit like every horizon model, one green lantern kept), the
+       procedural hull below is the low-performance fallback */
     function _hzGhostShip(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = _hzMiscKit('wreck', { tiles: 9 + rng() * 6, fit: 'span', lit: false, rng: rng, low: 'skip', fallback: _hzGhostShipProc });
+        if (g._ew_kit !== 'wreck') return g;
+        var lamp = _hzGlowCore(ts * 0.22, 0xd0ffe4, 0x7fffb0); lamp.position.set(-ts * 1.5, ts * 3.6, 0); g.add(lamp);
+        return g;
+    }
+    function _hzGhostShipProc(rng) {
         var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
         var L = ts * (7 + rng() * 6), W = L * 0.24, H = L * 0.13;
         var hullMat = _hzGeoMat(_hzTex('wood') || null, 0x3a2c22);
@@ -25693,6 +25904,23 @@ const ThreeRenderer = (function () {
         var lamp = _hzGlowCore(ts * 0.18, 0xd0ffe4, 0x7fffb0); lamp.position.set(-L * 0.34, H * 1.9, 0); g.add(lamp);
         g.rotation.y = rng() < 0.5 ? 0 : Math.PI;
         return g;
+    }
+    /* THE MISC KIT on the sea (2026-09-12): a kraken arm standing out of the
+       water (either tentacle, sunk a little so it rises from the swell), a
+       shark's fin line just under the surface (nose +Z — the streaming
+       placement turns it any way, the sea rows bob it), a tiny island with
+       one palm (its sand disc sunk to the waterline). Unlit horizon models. */
+    function _hzKrakenFar(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        return _hzMiscKit(rng() < 0.5 ? 'tentacle' : 'tentacle2', { tiles: 6 + rng() * 6, fit: 'height', sink: 0.5, lit: false, rng: rng, low: 'skip', fallback: _hzSeaStack });
+    }
+    function _hzSharkFar(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        return _hzMiscKit('shark', { tiles: 3 + rng() * 2.5, fit: 'span', sink: 0.55, lit: false, rng: rng, low: 'skip' });
+    }
+    function _hzPalmIsleFar(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        return _hzMiscKit('palmisle', { tiles: 5 + rng() * 4, fit: 'span', sink: 0.45, lit: false, rng: rng, low: 'skip', fallback: _hzSeaIsland });
     }
     // ── the wreckage field ──
     /* an asteroid: a rock solid with its vertices jostled */
@@ -25714,6 +25942,12 @@ const ThreeRenderer = (function () {
        length of fuselage with a lit porthole */
     function _hzHullChunk(rng) {
         var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
+        /* 2026-09-12: half the chunks are the user's torn-hull-plate GLB with a live spark */
+        if (rng() < 0.5 && !(typeof window !== 'undefined' && window.EW_PERF_LOW)) {
+            g = _hzMiscKit('hullplate', { tiles: 3 + rng() * 5, fit: 'height', lit: false, rng: rng });
+            var spk = _hzGlowSprite(ts * 0.8, 0x9fd8ff, 0.7, 0.55, 0.3, 5 + rng() * 6); spk.position.set((rng() - 0.5) * ts, ts * (1 + rng() * 2), ts * 0.4); g.add(spk);
+            return g;
+        }
         var plateTex = _hzTex('metal_3') || _hzTex('metal'), mat = _hzGeoMat(plateTex, 0x9aa2aa), dark = _hzGeoMat(_hzTex('gunmetal') || plateTex, 0x5a6068);
         if (rng() < 0.5) {
             var w = ts * (2.5 + rng() * 6), d = ts * (1.5 + rng() * 4);
@@ -25818,6 +26052,35 @@ const ThreeRenderer = (function () {
         return g;
     }
     function _hzMushroomFar(rng) { var g = _hzPropMushroom(rng); g.scale.setScalar(2.5 + rng() * 4); return g; }
+    /* THE MISC KIT in the wreckage field (2026-09-12): an escape pod adrift, a
+       dead astronaut tumbling, a docking ring off some lost station — and in
+       the void of shapes: the White Rabbit's watch on its chain (hung, so it
+       sways with the floaters), a teapot, the stacked cups, a flamingo standing
+       on nothing, the caterpillar on a mushroom. Unlit horizon models; every
+       one has a procedural stand-in or simply thins the roster in low-perf. */
+    function _hzEscapePodFar(rng) { var ts = CONFIG.tileSize || BASE_TILE; return _hzMiscKit('escapepod', { tiles: 2.5 + rng() * 3, fit: 'span', lit: false, rng: rng, low: 'skip', fallback: _hzGirderKnot }); }
+    function _hzAstronautFar(rng) { var ts = CONFIG.tileSize || BASE_TILE; return _hzMiscKit('astronaut', { tiles: 2 + rng() * 2, fit: 'height', lit: false, rng: rng, low: 'skip' }); }
+    function _hzDockRingFar(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, g = _hzMiscKit('dockring', { tiles: 4 + rng() * 6, fit: 'height', lit: false, rng: rng, low: 'skip', fallback: _hzSacredRings });
+        if (g._ew_kit === 'dockring') { var core = _hzGlowSprite(ts * 2.2, 0x7fd8ff, 0.18, 0.06, 0.04, 0.4); core.position.y = ts * 2.5; g.add(core); }
+        return g;
+    }
+    function _hzPocketWatchFar(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, h = ts * (4 + rng() * 4);
+        var g = _hzMiscKit('watch_hang', { tiles: h / ts, fit: 'height', lit: false, rng: rng, low: 'skip', fallback: _hzModelClock });
+        if (g._ew_kit === 'watch_hang') { var aura = _hzGlowSprite(h * 1.2, 0xd8b46a, 0.16, 0.06, 0.04, 0.2 + rng() * 0.3); aura.position.y = h * 0.4; g.add(aura); }
+        return g;
+    }
+    function _hzTeapotFar(rng) { var ts = CONFIG.tileSize || BASE_TILE; return _hzMiscKit('teapot', { tiles: 3 + rng() * 4, fit: 'span', lit: false, rng: rng, low: 'skip', fallback: _hzTeacupFar }); }
+    function _hzTeacupsFar(rng) { var ts = CONFIG.tileSize || BASE_TILE; return _hzMiscKit('teacups', { tiles: 3 + rng() * 4, fit: 'height', lit: false, rng: rng, low: 'skip', fallback: _hzTeacupFar }); }
+    function _hzFlamingoFar(rng) { var ts = CONFIG.tileSize || BASE_TILE; return _hzMiscKit('flamingo', { tiles: 3 + rng() * 3, fit: 'height', lit: false, rng: rng, low: 'skip' }); }
+    function _hzCaterpillarFar(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, g = _hzMushroomFar(rng);
+        if (typeof window !== 'undefined' && window.EW_PERF_LOW) return g;
+        var cat = _hzMiscKit('caterpillar', { tiles: 1.2, fit: 'span', lit: false, rng: rng });
+        cat.position.y = ts * 1.9; cat.rotation.y = rng() * 6; g.add(cat);   // on the cap of the mushroom GLB (fitted 2 tiles high before the far scale)
+        return g;
+    }
 
     function _hzThemeRoster(name) {
         if (!_HZ_THEME_ROSTERS) _HZ_THEME_ROSTERS = {
@@ -25876,21 +26139,27 @@ const ThreeRenderer = (function () {
             // MOVING MAPS (2026-09-12): three rosters that stream past a travelling
             // board. A sixth field 'sea' = on the water (the sea's level from the
             // motion config, + row[3] tiles); the sky rows use the disc factors.
-            sea: [
-                [0.30, _hzSeaIsland, false, 0, 0, 'sea'], [0.48, _hzSeaStack, false, 0, 0, 'sea'],
-                [0.62, _hzGhostShip, false, 0, 0, 'sea'], [0.66, _hzLighthouse, false, 0, 0, 'sea'],
-                [0.78, _hzLenticular, false, 0.14, 0.45], [0.88, _hzAstralOrbs, true, 0.12, 0.5],
+            sea: [   // 2026-09-12: the wreck, the kraken, the shark and the palm island are the user's GLBs
+                [0.20, _hzSeaIsland, false, 0, 0, 'sea'], [0.32, _hzPalmIsleFar, false, 0, 0, 'sea'],
+                [0.42, _hzSeaStack, false, 0, 0, 'sea'], [0.52, _hzGhostShip, false, 0, 0, 'sea'],
+                [0.56, _hzLighthouse, false, 0, 0, 'sea'], [0.66, _hzKrakenFar, false, 0, 0, 'sea'],
+                [0.76, _hzSharkFar, false, 0, 0, 'sea'],
+                [0.84, _hzLenticular, false, 0.14, 0.45], [0.92, _hzAstralOrbs, true, 0.12, 0.5],
                 [1.00, _hzSacredRings, true, 0.14, 0.6]],
-            wreckage: [
-                [0.34, _hzAsteroid, true, -0.60, 0.75], [0.52, _hzHullChunk, true, -0.55, 0.70],
-                [0.62, _hzGirderKnot, true, -0.50, 0.65], [0.72, _hzModelPlanet, false, -0.60, 0.78],
-                [0.78, _hzModelStar, false, -0.55, 0.80], [0.86, _hzModelCraft, false, -0.35, 0.70],
-                [0.92, _hzCrystalShards, true, -0.60, 0.70], [1.00, _hzAstralOrbs, true, -0.60, 0.76]],
-            wonder: [
-                [0.26, _hzVoidSolid, true, -0.60, 0.75], [0.44, _hzChessPieceFar, false, -0.50, 0.60],
-                [0.54, _hzTeacupFar, false, -0.45, 0.60], [0.64, _hzPlayingCard, true, -0.55, 0.70],
-                [0.72, _hzModelClock, false, -0.45, 0.62], [0.80, _hzStairway, false, -0.50, 0.55],
-                [0.88, _hzMushroomFar, false, -0.50, 0.50], [0.94, _hzSacredRings, true, -0.60, 0.72],
+            wreckage: [   // 2026-09-12: the torn plate (in _hzHullChunk), the pod, the astronaut and the docking ring are the user's GLBs
+                [0.30, _hzAsteroid, true, -0.60, 0.75], [0.46, _hzHullChunk, true, -0.55, 0.70],
+                [0.54, _hzGirderKnot, true, -0.50, 0.65], [0.61, _hzEscapePodFar, true, -0.55, 0.70],
+                [0.67, _hzAstronautFar, true, -0.50, 0.68], [0.72, _hzDockRingFar, true, -0.55, 0.72],
+                [0.79, _hzModelPlanet, false, -0.60, 0.78],
+                [0.84, _hzModelStar, false, -0.55, 0.80], [0.90, _hzModelCraft, false, -0.35, 0.70],
+                [0.95, _hzCrystalShards, true, -0.60, 0.70], [1.00, _hzAstralOrbs, true, -0.60, 0.76]],
+            wonder: [   // 2026-09-12: the teapot, the cups, the watch, the flamingo and the caterpillar are the user's GLBs
+                [0.22, _hzVoidSolid, true, -0.60, 0.75], [0.36, _hzChessPieceFar, false, -0.50, 0.60],
+                [0.43, _hzTeacupsFar, false, -0.45, 0.60], [0.49, _hzTeapotFar, false, -0.45, 0.60],
+                [0.57, _hzPlayingCard, true, -0.55, 0.70], [0.64, _hzPocketWatchFar, false, -0.40, 0.66],
+                [0.70, _hzFlamingoFar, false, -0.50, 0.55], [0.75, _hzCaterpillarFar, false, -0.50, 0.50],
+                [0.80, _hzModelClock, false, -0.45, 0.62], [0.86, _hzStairway, false, -0.50, 0.55],
+                [0.91, _hzMushroomFar, false, -0.50, 0.50], [0.96, _hzSacredRings, true, -0.60, 0.72],
                 [1.00, _hzAstralOrbs, true, -0.64, 0.76]],
             // Holo Sim (2026-09-04): neon rings + dark ring-glyph monoliths in a
             // black starfield; the near apron is _hzHoloApron (_HZ_NEAR_BUILDERS)
@@ -33825,6 +34094,10 @@ const ThreeRenderer = (function () {
     }
     function _hqModelUrl(entry) {
         var D = _hqData();
+        /* 2026-09-12: a catalogue entry with `base: 'misc'` lives in the shared
+           Assets/misc/ bucket (the moving-maps batch — the pocket watch in the
+           clock room) instead of the D.O.O.R. kit folder */
+        if (entry.base === 'misc') return _R2_MISC + encodeURIComponent(entry.file);
         return D.assets.models + encodeURIComponent(entry.file);
     }
 

@@ -80,7 +80,12 @@ for (const ms of [0,300,600]) test(`cannon retirement at ${ms} disposes ball imm
  assert.equal(h.scene.children.length,0); assert.equal(b.geometry.disposals,1); assert.equal(b.material.disposals,1); assert.equal(b.children[0].geometry.disposals,1);
  h.retire(); h.tick(2000); h.timers.forEach(t=>t.fn()); assert.equal(b.geometry.disposals,1);
 });
-test('cannon refusal leaves no detached ball',()=>{const h=harness({cap:0}); h.fire('cannon'); assert.equal(h.scene.children.length,0); assert.ok(h.resources.every(r=>r.disposals>0));});
+/* 2026-09-12: the gun is the iron-cannon GLB when cached (_wpnInstance) — its
+   geometry is engine-shared (_ew_shared) and by rule never disposed; every
+   instance resource still is. The cold-cache carriage is checked too. */
+test('cannon refusal leaves no detached ball',()=>{const h=harness({cap:0}); h.fire('cannon'); assert.equal(h.scene.children.length,0); assert.ok(h.resources.filter(r=>!r._ew_shared).every(r=>r.disposals>0)); assert.ok(h.resources.some(r=>r._ew_shared));});
+test('cannon refusal (cold cache) disposes the whole carriage',()=>{const h=harness({cap:0,cold:true}); h.fire('cannon'); assert.equal(h.scene.children.length,0); assert.ok(h.resources.length>0); assert.ok(h.resources.every(r=>r.disposals>0));});
+test('cannon GLB path fades the model with the carriage timeline',()=>{const h=harness(); h.fire('cannon'); assert.ok(h.fades.length>0); h.tick(60); assert.ok(h.fades[h.fades.length-1]>0);});
 test('cannon completes impact once and disposes at animation end',()=>{const h=harness();h.fire('cannon',{aoeRadius:3}); const b=ball(h);h.tick(200);h.tick(480);h.tick(600);assert.equal(h.events.filter(e=>e[0]==='explosion').length,1);assert.equal(h.events.find(e=>e[0]==='explosion')[3],3);assert.equal(b.visible,false);h.tick(1300);assert.equal(b.geometry.disposals,1);assert.equal(h.scene.children.length,0);});
 test('cannon missing scene allocates nothing',()=>{const h=harness({missing:true});h.fire('cannon');assert.equal(h.resources.length,0);});
 for(const kind of ['tesla','storm','judgment','music']) {

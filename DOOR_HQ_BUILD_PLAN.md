@@ -4419,3 +4419,29 @@ forge's `M.pieceSym`). New `env.motion` kinds `wheel` (Stonehenge, Area
 `uSkyLift`). `_ew_occSkip` keeps a hull out of the line-of-sight fade.
 Full notes: CLAUDE.md "MOVING MAPS", PLAYTEST_NOTES "MOVING MAPS rev 2".
 
+
+### 2026-09-12 (rev 3) — THE MISC KIT: the user's 28 Meshy props on the moving maps + Room 247
+The moving-maps art batch (R2 `Assets/misc/`) wired through one helper,
+three-renderer.js `_hzMiscKit` (fit / yaw / hang / sink / lift / foot /
+fallback), with every GLB's facing measured off a Playwright contact
+sheet first. The Dutchman carries the iron cannon ×8, the helm, the
+anchor, the chest, yard lanterns, a towed rowboat and two kraken arms; the
+Derelict its nacelles, the mast dish, a docked escape pod, the torn plate,
+a dead astronaut and a docking collar; the Looking-Glass its tea party
+(teapot, cups, caterpillar, flamingo, the open watch); Stonehenge the
+bluestones (GLB trilithons); Babel the scaffold crane; Area 51 the saucer
+on its gear; D.U.M.B. the bank vault as both blast doors (and the
+`blastdoor` monument on D.U.M.B. / CERN). The `sea` / `wreckage` /
+`wonder` rosters carry GLB rows. The Cannonball spell fires the same
+cannon (`_WPN_MODELS.cannon`). **HQ**: `DOOR_HQ.catalogue` entries may
+carry `base: 'misc'` (`_hqModelUrl`); Room 247 hangs the pocket watch on
+its north wall and lays its twin on the tanker desk. The site rooms wear
+the settings' new pieces through `_hqBuildSetting` unchanged (the
+battle-only pieces — hulls, the sea, the kraken — stay out of the rooms).
+`MODEL_INDEX.md` (new) is the register of every model family; `npm test`
+runs `misc-models.test.js` (849 pass, 0 fail). Delivery: `three-renderer.js`
++ `three-vfx-effects.js` + `data.js` to R2, `index.html` to Render (token
+`20260912-misc-models-01-cors`); tests + docs repository-only. Nothing
+committed or pushed; NOT browser-playtested (RULE #1c) — eyeball first the
+cannon's facing on the rails, the nacelle bells pointing astern, the
+lanterns' height under the yards, and the kraken's size off the port quarter.

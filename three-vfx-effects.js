@@ -10192,6 +10192,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            flat craft — height-normalizing would blow it up huge). */
         ufo:         { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_Triangle_UFO_0727195842_texture.glb',
                        axis: 'flat' },
+        /* 2026-09-12: the pirate's Cannonball fires the user's iron cannon
+           (Assets/misc, the same GLB the Flying Dutchman carries on her
+           rails — see MODEL_INDEX.md). Measured: 1.0 long on X, 0.79 high,
+           the MUZZLE is −X; the long-axis swing puts it on −Z, the baked ry
+           flip on +Z where _sigCannonShot3D aims. */
+        cannon:      { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_iron_canon_0912231022_texture.glb',
+                       axis: 'z', tweak: { ry: Math.PI } },
     };
     var _wpnCache = {};   /* key → { root, size, center, loading, failed } */
 
@@ -12425,21 +12432,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var tw = _worldPos(toTx, toTy);
         var ts = fw.ts;
 
-        var ironMat = new THREE.MeshBasicMaterial({
-            map: _sigTerrainTex('gunmetal.png', 1, 1),
-            color: new THREE.Color(0x9299a4),      /* darkened gunmetal = cast iron */
-            transparent: true, opacity: 0, depthWrite: true,
-        });
-        var woodMat = new THREE.MeshBasicMaterial({
-            map: _sigTerrainTex('wood_planks.png', 1, 1),
-            color: new THREE.Color(0x9a744c),
-            transparent: true, opacity: 0, depthWrite: true,
-        });
-        var brassMat = new THREE.MeshBasicMaterial({
-            map: _sigTerrainTex('gold.png', 1, 1),
-            color: new THREE.Color(0xd9b25e),
-            transparent: true, opacity: 0, depthWrite: true,
-        });
+        /* the carriage's three materials are made only on the procedural
+           path (a material no mesh wears is one _sigDisposeGroup never sees) */
+        var ironMat = null, woodMat = null, brassMat = null;
 
         var root = new THREE.Group();
         root.position.set(fw.x, fw.y, fw.z);
@@ -12455,6 +12450,35 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             mm.renderOrder = 160;
             return mm;
         }
+        /* 2026-09-12 GLB-first: the iron-cannon model is the gun when cached
+           (it rides in `root`, so the scale-in, the recoil and the fade drive
+           both builds alike; the muzzle anchor sits at its mouth); the
+           carriage below is the cold-cache fallback. */
+        var muzzle = new THREE.Object3D();
+        var inst = _wpnReady('cannon') ? _wpnInstance('cannon', ts * 1.05) : null;
+        if (inst) {
+            inst.group.position.y = ts * 0.41;
+            inst.group.traverse(function (n) { if (n.isMesh) n.renderOrder = 160; });
+            root.add(inst.group);
+            muzzle.position.set(0, ts * 0.52, ts * 0.50);
+            root.add(muzzle);
+            inst.setFade(0);
+        } else {
+        ironMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('gunmetal.png', 1, 1),
+            color: new THREE.Color(0x9299a4),      /* darkened gunmetal = cast iron */
+            transparent: true, opacity: 0, depthWrite: true,
+        });
+        woodMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('wood_planks.png', 1, 1),
+            color: new THREE.Color(0x9a744c),
+            transparent: true, opacity: 0, depthWrite: true,
+        });
+        brassMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('gold.png', 1, 1),
+            color: new THREE.Color(0xd9b25e),
+            transparent: true, opacity: 0, depthWrite: true,
+        });
         /* barrel assembly pivots at the trunnions for elevation */
         var barrel = new THREE.Group();
         barrel.position.y = ts * 0.16;
@@ -12464,7 +12488,6 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         barrel.add(m(new THREE.TorusGeometry(ts * 0.092, ts * 0.022, 8, 16), brassMat, 0, 0, ts * 0.585));       /* muzzle ring */
         barrel.add(m(new THREE.TorusGeometry(ts * 0.122, ts * 0.02, 8, 16), brassMat, 0, 0, -ts * 0.235));       /* breech ring */
         barrel.add(m(new THREE.CylinderGeometry(ts * 0.03, ts * 0.03, ts * 0.36, 8), ironMat, 0, 0, -ts * 0.02, 0, 0, Math.PI / 2)); /* trunnion */
-        var muzzle = new THREE.Object3D();
         muzzle.position.set(0, 0, ts * 0.62);
         barrel.add(muzzle);
         barrel.rotation.x = -(opts.elev != null ? opts.elev : 0.30);
@@ -12479,6 +12502,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             root.add(m(new THREE.CylinderGeometry(ts * 0.145, ts * 0.145, ts * 0.045, 12), woodMat, wx, ts * 0.02, ts * 0.10, 0, 0, Math.PI / 2));
             root.add(m(new THREE.TorusGeometry(ts * 0.145, ts * 0.018, 8, 16), ironMat, wx, ts * 0.02, ts * 0.10, 0, Math.PI / 2));
             root.add(m(new THREE.SphereGeometry(ts * 0.035, 8, 6), brassMat, wx, ts * 0.02, ts * 0.10));
+        }
         }
         /* the cannonball */
         var ballMat = new THREE.MeshBasicMaterial({
@@ -12541,7 +12565,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (el >= total - fadeMs) {
                 vis = Math.max(0, 1 - (el - (total - fadeMs)) / fadeMs);
             }
-            ironMat.opacity = vis; woodMat.opacity = vis; brassMat.opacity = vis;
+            if (ironMat) { ironMat.opacity = vis; woodMat.opacity = vis; brassMat.opacity = vis; }
+            if (inst) inst.setFade(vis);
 
             /* burning fuse sparks at the breech */
             if (el > matMs && el < fireAt && _canSpawn()) {

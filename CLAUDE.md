@@ -1541,16 +1541,37 @@ BOTH the pause menu (ui.js) and the main-menu Settings Display group.
 Adding a theme = one `HUD_THEMES` row + one token block;
 `hud-theme.test.js` ties catalogue ↔ blocks ↔ picker ↔ scoreboard ink.
 
-### 2026-09-12 — Phase 6 utility decisions (local delivery)
-
-Fresh complete main archive/ref `e59e19aac5b14cec212a6cb2c012356fdc73909a`; blob verification and final listing comparison preserve the newer moving-map and intervening changes. Chivalry now uses the shared legal target drum, shared pure landing query and initial net-transfer/pledge-replacement valuation. Ordinary CPU and explicitly marked CPU Simul casts recheck their ward; human Simul ward choices retain their intent. No live unit moves during scoring.
-
-Trick Room owns reversal once per actual round, before countdown. Rebuilds cannot shorten it; Simul honors the final affected round while retaining priority/effective-speed/initiative order. Both new scalars reset at all four existing match boundaries and travel in host snapshots. Its self-targeted scorer compares additional future rounds, live speed gains/losses, deadline and mode activation count.
-
-Pulse shares the engine's exact raw frequency/shape profile, uses the engine spell-power terms once and prices actual damage/riders instead of fixed hit counts. Tune compares only the next frequency using discounted beam burn and an affordable future player-wide Pulse, including Tune's mana use. Existing MP weight routing remains. AI stamp `v4.7-2026-09-12-utility-decisions`; do not mix balance exports across stamps.
-
-109 focused utility checks pass; full package script: 899 total / 897 pass / zero failures / two skips. 60 new checks, 45 fail with unchanged AI/source controls; one strengthened existing round-rebuild check also fails before. Syntax 121/121 including three saved baseline files. The utility diagnostic now runs asserted regressions. Prior prism tests preserve execution/ownership/geometry coverage while replacing obsolete constant-score assertions.
-
-These are initial utility estimates, not full damage replay or proven tactical intelligence. Chivalry still needs complex multi-hit/area/indirect and counter/status scenarios. Lattice valuation needs persistence/crossing and complex-interaction scenarios. Trick Room's exchange fraction requires observed decisions. Controlled scorer microtiming is not full decision timing. No browser playtest, simulation, live guest acceptance or deployment. See the review plan's newest entry and VALIDATION_UTILITY.md for evidence limits.
-
-Next: AI-06 tied/leading/trailing TDM and Arena immediate-win/denial decisions, destructive-beam prediction, scenario/timing audit and authorized P1 CPU observations. One broad coding group remains (may split into two batches), plus acceptance. Phase 6 remains open. Complete flat delivery: ENTROPY_WARS_PHASE6_UTILITY_DECISIONS.zip. ai.js/battle.js/state.js → R2; index.html → Render (`20260912-ai-utility-decisions-01-cors`); tests/runner/docs/evidence → repository. No commit/push/deployment.
+## THE MISC KIT + MODEL_INDEX.md (the moving-maps model batch) — added 2026-09-12
+28 Meshy GLBs the user uploaded to R2 `Assets/misc/` now stand on the
+three travellers, the wheel / rise maps, D.U.M.B., the Cannonball spell
+and Room 247. **`MODEL_INDEX.md` is THE register of every 3D model family
+(kind · bucket · loader · every place it stands) — update it in the same
+delivery as any model change; misc-models.test.js checks the batch is
+named in full.** Renderer: `_MISC_GLB` (three-renderer.js) holds the
+filenames (the facing of each measured off contact sheets is in its
+comment) and **`_hzMiscKit(key, { tiles | metres, fit, yaw / tilt / roll
+(pre-turn the MODEL so the caller's rotation.y keeps its meaning), hang
+(top at y = 0), sink, lift (the bake as emissive — night / space maps),
+cast, foot (collision disc in metres for the site room), low: 'skip'
+(pure scenery skipped under EW_PERF_LOW), fallback })`** places one.
+GLB-first builders keep their names with a `…Proc` fallback:
+`_hzTrilithon`, `_hzBabelCrane`, `_hzBlastDoor` (= the bank vault; the
+`blastdoor` monument too), `_hzGhostShip`; `_hzSaucerLanded` is Area 51's
+craft on its gear (the flying `_hzSaucer` stays the horizon's). Settings:
+the Dutchman (rail cannon ×8 `yaw π/2` outboard, the helm, the anchor, the
+chest, yard lanterns, the towed rowboat, two kraken arms off the port
+quarter), the Derelict (nacelles `yaw π`, the mast dish, the docked escape
+pod, the torn plate at the breach, a dead astronaut adrift, the docking
+collar), the Looking-Glass (teapot, cups, caterpillar, flamingo, the open
+watch on the rim), Stonehenge (the standing-stone bluestones). Rosters
+`sea` / `wreckage` / `wonder` carry `_hz*Far` GLB rows (kraken, shark,
+palm isle, pod, astronaut, docking ring, hanging watch, teapot, cups,
+flamingo, caterpillar-on-mushroom). three-vfx-effects.js `_WPN_MODELS.
+cannon` (misc-bucket `url`, `tweak ry π`) is the Cannonball's gun,
+GLB-first in `_sigCannonShot3D` (the carriage materials are made only on
+the procedural path). `DOOR_HQ.catalogue` entries may carry **`base:
+'misc'`** (`_hqModelUrl`) — the two pocket watches in the clock room.
+Wish-list (still procedural): the Staunton set, a galleon hull with a
+figurehead, card soldiers, a cryo tube. Measure a new GLB before wiring
+(PLAYTEST_NOTES "Rigged 3D unit models" has the parser; a Playwright
+contact sheet with an AxesHelper settles the facing in one look).

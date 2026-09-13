@@ -17063,6 +17063,14 @@ const DOOR_HQ = {
         mop_bucket:        { file: 'Meshy_AI_a_yellow_mop_bucket_0903105455_texture.glb',             h: 0.90, foot: 0.30 },
         mop:               { file: 'Meshy_AI_a_mop_0903105505_texture.glb',                           h: 1.45, foot: 0 },
         wall_clock:        { file: 'Meshy_AI_a_clock_0903110243_texture.glb',                         h: 0.50, foot: 0, wall: true, mount: 3.05 },
+        /* 2026-09-12 from the SHARED misc bucket (`base: 'misc'` → Assets/misc/,
+           three-renderer.js _hqModelUrl): the moving-maps batch's pieces that
+           also belong in the building — the pocket watches in the clock room
+           (Room 247: one hung on the north wall by its chain, one lying open on
+           the tanker desk). The rest of that batch stands on the boards and in
+           the site rooms through the settings (MODEL_INDEX.md). */
+        pocket_watch_hung: { file: 'Meshy_AI_a_pocket_watch_hanging_0912231556_texture.glb',          base: 'misc', h: 0.62, foot: 0, wall: true, mount: 2.1 },
+        pocket_watch:      { file: 'Meshy_AI_a_pocket_watch_0912231541_texture.glb',                  base: 'misc', span: 0.16, foot: 0 },
         exit_sign:         { file: 'Meshy_AI_an_exit_sign_0903110032_texture.glb',                    span: 0.55, foot: 0, wall: true, mount: 2.75, glow: { y: 0.1, size: 0.6, color: 0x5cff7a } },
         fluorescent:       { file: 'Meshy_AI_a_fluorescent_fixture_0903105329_texture.glb',           span: 1.25, foot: 0, ceil: true },
         breaker_panel:     { file: 'Meshy_AI_a_breaker_panel_0903105436_texture.glb',                 h: 0.80, foot: 0, wall: true, mount: 1.25 },
@@ -19146,6 +19154,8 @@ const DOOR_HQ = {
             props: [
                 /* ── the north wall: the timekeeper's desk under the world clocks ── */
                 { key: 'world_clocks',   wall: 'n', x: -1.6 },
+                { key: 'pocket_watch_hung', wall: 'n', x: 0.55, rot: 4 },      // 2026-09-12: the watch that keeps a different time, on its chain
+                { key: 'pocket_watch',   x: -1.95, z: -2.28, y: 0.76, face: 25 },   //   … and its twin open on the desk
                 { key: 'tanker_desk',    x: -1.6, z: -2.35, face: 180 },
                 { key: 'crt_terminal',   x: -2.15, z: -2.45, y: 0.76, face: 180 },
                 { key: 'rotary_phone',   x: -0.95, z: -2.4, y: 0.76, face: 160 },
