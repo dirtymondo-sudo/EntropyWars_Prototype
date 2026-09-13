@@ -2234,9 +2234,11 @@ test('Room 360 is a box room off the mezzanine at 240° (above Records): the way
     assert.ok(pr && pr.action.fn === '_ewReplayLastMatch' && pr.radius > 0 && pr.verb, 'the projector plays the tape');
     assert.ok(OBS.props.some(p => p.key === 'star_chart' && p.wall === 'n' && Math.abs(p.x - ch.x) < 0.3), 'the chart hangs where its counter stands');
     assert.ok(Math.hypot(pj.x - pr.x, pj.z - pr.z) < 0.05, 'the projector counter stands on the projector');
-    /* Records sent the tape library upstairs: its door's alt now leads into this room */
-    assert.ok(rec.alt && rec.alt.room === 'observatorium' && rec.alt.at === 'projector' && !rec.alt.fn, 'Records’ REPLAY alt is the way up to the projector');
-    assert.ok(!(rec.alt2 && rec.alt2.fn === '_ewReplayLastMatch'), 'and Replay is not on Records’ panel twice');
+    /* Records sent the tape library upstairs: since Room 42 is a room (2026-09-13) the way up is its service stair, a door into this room */
+    const stair = HQ.rooms.records.doors.find(d => d.id === 'tapes');
+    assert.ok(stair && stair.action.room === 'observatorium' && stair.action.at === 'projector' && !stair.action.fn, 'Records’ service stair is the way up to the projector');
+    assert.ok(!rec.alt && !rec.alt2, 'and the hall door has no alt any more — the room holds the functions');
+    assert.ok(!HQ.rooms.records.counters.some(c => c.action && c.action.fn === '_ewReplayLastMatch'), 'and Replay is not on Records’ counters twice');
     /* the people: the astronomer at the desk, the usher by the door, spots and lines */
     const ast = OBS.agents.find(a => a.label === 'THE ASTRONOMER'), ush = OBS.agents.find(a => a.label === 'THE USHER');
     assert.ok(ast && ast.pose === 'hqSit' && OBS.props.some(p => p.key === 'office_chair' && Math.hypot(p.x - ast.x, p.z - ast.z) < 0.05), 'the astronomer sits on the desk chair');
@@ -2452,4 +2454,99 @@ test('the walkable site: a liquid cell is waded at HQ_WADE_M, a dry pit is still
     assert.ok(wade > 0.3 && wade < 1.2, 'the feet stand under the sheet (−0.3 m) but the body stays out of the water: ' + wade);
     assert.match(tr, /if \(sc\.top < 0\) y = sc\.fluid \? Math\.max\(sc\.top, -HQ_WADE_M\) : sc\.top;/, '_hqSurface wades a fluid cell and drops into a dry one');
     assert.match(tr, /cell: \{ top: -mDepth, walk: !!M\.walk, fluid: true, key: M\.key, moat: true \}/, 'the moat cell is a fluid cell (so it is waded too)');
+});
+
+/* ── ROOM 42 · RECORDS + ROOM 1337 · IT (plan 7.4, 2026-09-13) ─────────── */
+const RECS = HQ.rooms.records;
+const ITR = HQ.rooms.it;
+
+test('Room 42 is a box room behind the wired double door at 240° (Records was a door; now the room holds the file): the way in, the way out, the desk, the catalogue, the stair up', () => {
+    assert.ok(RECS && RECS.kind === 'box' && RECS.roomNo === '42', 'rooms.records kind box, Room 42');
+    assert.strictEqual(D.hqRoomNo('records'), '42');
+    const eg = ROOM.doors.find(d => d.id === 'records');
+    assert.ok(eg && eg.deg === 240 && (eg.level || 0) === 0 && eg.action.room === 'records' && eg.action.at === 'egress', 'the hall door at 240° walks into the room at its way out');
+    assert.ok(!eg.action.fn && !eg.alt && !eg.alt2, 'the door is a door now, not a screen with shortcuts');
+    assert.strictEqual(D.hqDoorNo(eg), '42', 'the plate over the hall door still reads 42');
+    assert.ok(eg.roomNo == null, 'the number lives on the room, not the door');
+    const out = RECS.doors.find(d => d.id === 'egress');
+    assert.ok(out && out.wall === 'w' && out.action.room === 'central_egress' && out.action.at === 'records' && out.leaf === eg.leaf && !!out.wide === !!eg.wide, 'the way out is the same wired double door (wide) and lands at the hall door');
+    assert.ok(!D.DOOR_TEXT.CLEARANCE.some(r => r.door === eg.leaf), 'not a rank leaf');
+    assert.strictEqual(D.doorSiteState(eg, null), 'open');
+    /* the functions the door used to hold, one counter each; the tape library's way up is a door */
+    const cx = RECS.counters.find(c => c.id === 'codex'), un = RECS.counters.find(c => c.id === 'unfiled');
+    assert.ok(cx && cx.action.fn === '_goToCodex' && cx.verb && cx.desc, 'THE READING DESK opens the Codex');
+    assert.ok(un && un.action.fn === '_mountCommunityMaps' && un.verb && un.desc, 'THE CARD CATALOGUE opens the community maps');
+    assert.ok(cx.z > RECS.shell.d / 2 - 1 && cx.face === 0, 'the desk is on the south wall, its front north');
+    assert.ok(un.x > RECS.shell.w / 2 - 1 && un.face === 270, 'the catalogue is on the east wall, its front west');
+    const st = RECS.doors.find(d => d.id === 'tapes');
+    assert.ok(st && st.wall === 'n' && st.action.room === 'observatorium' && st.action.at === 'projector' && !D.DOOR_TEXT.CLEARANCE.some(r => r.door === st.leaf), 'the service stair on the north wall goes up to Room 360’s projector (not a rank leaf)');
+    assert.ok(!RECS.props.some(p => p.wall === 'n' && p.key !== 'exit_sign' && Math.abs(p.x - st.x) < 1.35), 'nothing on the north wall stands in the stair’s doorway');
+    /* the kit */
+    const has = key => RECS.props.filter(p => p.key === key).length;
+    for (const key of ['metal_shelving', 'card_catalogue', 'filing_cabinet', 'tanker_desk', 'crt_terminal', 'desk_lamp', 'manila_folders', 'office_chair', 'wall_clock', 'exit_sign', 'fluorescent', 'rug_office', 'globe_lamp', 'breaker_panel']) assert.ok(has(key) >= 1, 'Room 42 has its ' + key);
+    assert.ok(has('metal_shelving') >= 5, 'the stacks: five shelves at least along the north wall');
+    assert.strictEqual(has('card_catalogue'), 1);
+    assert.ok(RECS.props.some(p => p.key === 'card_catalogue' && p.wall === 'e' && Math.abs(p.z - un.z) < 0.3), 'the catalogue hangs where its counter stands');
+    assert.ok(RECS.props.some(p => p.key === 'tanker_desk' && p.wall === 's' && Math.abs(p.x - cx.x) < 0.3), 'the desk stands where its counter stands');
+    assert.ok(HQ.catalogue.card_catalogue && HQ.catalogue.card_catalogue.proc === 'card_catalogue' && HQ.catalogue.card_catalogue.wall && HQ.catalogue.card_catalogue.block, 'card_catalogue is a solid wall proc');
+    assert.ok(RECS.agents.some(a => a.pose === 'hqSit' && RECS.props.some(p => p.key === 'office_chair' && Math.hypot(p.x - a.x, p.z - a.z) < 0.05)), 'the archivist sits on the desk chair');
+    assert.deepStrictEqual(boxPropProblems('records', RECS), []);
+    const rows = D.hqRoomRegister().filter(r => r.no === '42');
+    assert.strictEqual(rows.length, 1); assert.strictEqual(rows[0].kind, 'room'); assert.strictEqual(rows[0].id, 'records');
+    /* Records' door in the hall still sits directly under the Observatorium's */
+    assert.strictEqual(ROOM.doors.find(d => d.id === 'observatorium').deg, eg.deg);
+});
+
+test('Room 1337 is a box room off the mezzanine at 120° (inside Arcane Engineering, between the research offices and Bay 5): the way in, the way out, the number, the three consoles, the racks', () => {
+    assert.ok(ITR && ITR.kind === 'box' && ITR.roomNo === '1337', 'rooms.it kind box, Room 1337');
+    assert.strictEqual(D.hqRoomNo('it'), '1337');
+    const eg = ROOM.doors.find(d => d.id === 'it');
+    assert.ok(eg && eg.deg === 120 && eg.level === 1 && eg.action.room === 'it' && eg.action.at === 'egress', 'the mezzanine door at 120° walks into the room at its way out');
+    assert.strictEqual(D.hqDoorNo(eg), '1337', 'the plate over the mezzanine door reads 1337');
+    assert.ok(eg.roomNo == null, 'the door does not duplicate the room’s number');
+    const out = ITR.doors.find(d => d.id === 'egress');
+    assert.ok(out && out.wall === 'w' && out.action.room === 'central_egress' && out.action.at === 'it' && out.leaf === eg.leaf && !!out.wide === !!eg.wide, 'the way out is the same holographic door and lands at the mezzanine door');
+    assert.ok(!D.DOOR_TEXT.CLEARANCE.some(r => r.door === eg.leaf), 'not a rank leaf (the plan’s hollow core is L2’s — the keypad hangs inside instead)');
+    assert.strictEqual(D.doorSiteState(eg, null), 'open');
+    /* between ARCANE ENGINEERING (90°) and BAY 5 (150°), a pier to each on the upper drum */
+    const en = ROOM.doors.find(d => d.id === 'engineering'), b5 = ROOM.doors.find(d => d.id === 'bay_diplomatic');
+    const R1 = ROOM.shell.upperRadius || ROOM.shell.radius;
+    const wOf = d => ((d.wide || (d.leaf && HQ.catalogue[d.leaf] && HQ.catalogue[d.leaf].wide)) ? 3.3 : 2.5) / 2;
+    assert.ok((eg.deg - en.deg) * Math.PI / 180 * R1 - wOf(eg) - wOf(en) >= 2.0, 'a pier to Arcane Engineering');
+    assert.ok((b5.deg - eg.deg) * Math.PI / 180 * R1 - wOf(eg) - wOf(b5) >= 2.0, 'a pier to Bay 5');
+    assert.ok(!ROOM.props.some(p => (p.level || 0) === 1 && p.wall && Math.abs(p.deg - eg.deg) < 5), 'no wall prop stands in the new doorway');
+    assert.ok(!ROOM.props.some(p => (p.level || 0) === 1 && p.r != null && p.r > 21.5 && Math.abs(p.deg - eg.deg) < 6), 'nothing stands in front of it (the round cabinet moved)');
+    assert.ok(ROOM.props.some(p => p.key === 'round_cabinet' && (p.level || 0) === 1 && p.deg > 105 && p.deg < 115), 'the mezzanine keeps the round cabinet beside it');
+    /* the three consoles: the dev surfaces' physical home */
+    const lib = ITR.counters.find(c => c.id === 'library'), bn = ITR.counters.find(c => c.id === 'bench'), rk = ITR.counters.find(c => c.id === 'racks');
+    assert.ok(lib && lib.action.fn === '_goToSpellLibrary' && lib.verb && lib.desc, 'THE LIBRARY opens the Spell Library');
+    assert.ok(bn && bn.action.fn === '_launchBalanceSim' && bn.verb && bn.desc, 'THE BENCH runs the balance lab');
+    assert.ok(rk && rk.action.fn === '_launchAITraining' && rk.verb && rk.desc, 'THE RACKS run the AI training lab');
+    assert.ok(lib.face === 270 && bn.face === 270 && rk.face === 180, 'the desks front west off the east wall, the racks front south off the north wall');
+    const has = key => ITR.props.filter(p => p.key === key).length;
+    for (const key of ['server_rack', 'keypad', 'tanker_desk', 'crt_terminal', 'tube_tv', 'office_chair', 'breaker_panel', 'vent_grille', 'wall_clock', 'exit_sign', 'fluorescent', 'pipe_run', 'metal_shelving', 'water_cooler', 'fire_extinguisher']) assert.ok(has(key) >= 1, 'Room 1337 has its ' + key);
+    assert.ok(has('server_rack') >= 3, 'three racks at least'); assert.strictEqual(has('tanker_desk'), 2, 'two desks'); assert.strictEqual(has('keypad'), 1);
+    assert.ok(ITR.props.every(p => p.key !== 'server_rack' || p.wall === 'n'), 'the racks stand along the north wall');
+    assert.ok(ITR.props.some(p => p.key === 'server_rack' && Math.abs(p.x - rk.x) < 0.3), 'the racks counter stands at a rack');
+    assert.ok(ITR.props.some(p => p.key === 'keypad' && p.wall === 'w' && Math.abs(p.z - out.z) < 2.0 && Math.abs(p.z - out.z) > 1.3), 'the keypad hangs inside, beside the way out (not in its doorway)');
+    assert.ok(ITR.props.some(p => p.key === 'tanker_desk' && p.wall === 'e' && Math.abs(p.z - lib.z) < 0.3) && ITR.props.some(p => p.key === 'tanker_desk' && p.wall === 'e' && Math.abs(p.z - bn.z) < 0.3), 'a desk under each console');
+    for (const k of ['server_rack', 'keypad', 'card_catalogue']) assert.ok(HQ.catalogue[k] && HQ.catalogue[k].proc === k && HQ.catalogue[k].wall, k + ' is a wall proc');
+    assert.ok(HQ.catalogue.server_rack.block && HQ.catalogue.server_rack.glow, 'the racks are solid and lit');
+    assert.ok(ITR.agents.some(a => a.pose === 'hqSit' && ITR.props.some(p => p.key === 'office_chair' && Math.hypot(p.x - a.x, p.z - a.z) < 0.05)), 'the sysadmin sits on the library’s chair');
+    assert.deepStrictEqual(boxPropProblems('it', ITR), []);
+    const rows = D.hqRoomRegister().filter(r => r.no === '1337');
+    assert.strictEqual(rows.length, 1); assert.strictEqual(rows[0].kind, 'room'); assert.strictEqual(rows[0].id, 'it');
+});
+
+test('Rooms 42 + 1337 — the source sites: the community-maps modal, the three labels, the Spell Library’s way home, the three procs, the counter desc', () => {
+    const mp = fs.readFileSync(path.join(__dirname, 'map.js'), 'utf8');
+    const tr = fs.readFileSync(path.join(__dirname, 'three-renderer.js'), 'utf8');
+    assert.match(mp, /_mountCommunityMaps: '_unmountCommunityMaps'/, 'the card catalogue is a modal over the paused building (the page’s own unmount resumes it)');
+    assert.match(mp, /_goToSpellLibrary: 'SPELL LIBRARY', _launchBalanceSim: 'BALANCE LAB', _launchAITraining: 'AI TRAINING LAB'/, 'the panels name the three consoles');
+    assert.match(mp, /window\._spellLibraryBack = function\(\) \{[\s\S]{0,600}?window\._hqReturnOrMenu\(\)\) return;[\s\S]{0,80}?window\._openMainMenuSettings\(\);/, 'the Spell Library’s Back comes home to the building when it was entered from it, else to Settings');
+    assert.match(mp, /if \(c\.desc && !\/hq-panel-desc\/\.test\(html\)\) html \+= `<p class="hq-panel-desc">\$\{_hqEsc\(c\.desc\)\}<\/p>`;/, 'a counter with a desc states it on its panel');
+    for (const k of ['card_catalogue', 'server_rack', 'keypad']) assert.match(tr, new RegExp('^\\s+' + k + ': function \\(U\\) \\{', 'm'), 'the ' + k + ' proc');
+    for (const fn of ['_goToSpellLibrary', '_launchBalanceSim', '_launchAITraining']) assert.match(mp, new RegExp('window\\.' + fn + ' = function'), fn + ' exists');
+    const pf = fs.readFileSync(path.join(__dirname, 'profile.js'), 'utf8');
+    assert.match(pf, /window\._unmountCommunityMaps = function/, 'the community maps page has the unmount the modal wraps');
 });

@@ -37350,6 +37350,81 @@ const ThreeRenderer = (function () {
             var bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 0.02 * U, 10), dark); bolt.position.set(0, (H + 0.005) * U, 0); g.add(bolt);
             return g;
         },
+        /* ROOM 42 · RECORDS + ROOM 1337 · IT (2026-09-13, plan 7.4). Three
+           wall procs, front = +z like the notice board, mount 0 = the floor. */
+        /* the card catalogue: a wood cabinet, six columns of little drawers
+           with brass pulls and a label card each — UNFILED SITES */
+        card_catalogue: function (U) {
+            var g = new THREE.Group();
+            var W = 2.4, H = 1.9, D = 0.5, PL = 0.12;
+            var wood = _hqMat('oxblood', 3, 2, { color: 0x9a7a58, shininess: 26 });
+            var dark = _hqMat(null, 1, 1, { color: 0x4a3420, shininess: 18 });
+            var face = _hqMat(null, 1, 1, { color: 0x8a6a48, shininess: 22 });
+            var brass = _hqMat(null, 1, 1, { color: 0xb08a48, shininess: 90, specular: 0xffe0a0 });
+            var card = _hqBasic(0xf1ead2);
+            var body = _hqBox(W, H - PL, D, wood); body.position.set(0, (PL + (H - PL) / 2) * U, (D / 2) * U); g.add(body);
+            var plinth = _hqBox(W, PL, D - 0.04, dark); plinth.position.set(0, (PL / 2) * U, ((D - 0.04) / 2) * U); g.add(plinth);
+            var top = _hqBox(W + 0.04, 0.04, D + 0.03, dark); top.position.set(0, (H - 0.02) * U, ((D + 0.03) / 2 - 0.015) * U); g.add(top);
+            var cols = 6, rows = 8, dw = (W - 0.16) / cols, dh = (H - PL - 0.2) / rows;
+            for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) {
+                var x = (-W / 2 + 0.08 + dw * (c + 0.5)) * U, y = (PL + 0.1 + dh * (r + 0.5)) * U, z = (D + 0.006) * U;
+                var dr = _hqBox(dw - 0.03, dh - 0.03, 0.012, face); dr.position.set(x, y, z); g.add(dr);
+                var pull = new THREE.Mesh(new THREE.TorusGeometry(0.018 * U, 0.004 * U, 6, 12), brass); pull.position.set(x, y - 0.012 * U, (D + 0.02) * U); g.add(pull);
+                var lb = _hqBox(dw * 0.5, 0.028, 0.004, card); lb.position.set(x, y + dh * 0.28 * U, (D + 0.016) * U); g.add(lb);
+            }
+            /* one drawer left open, a card sticking up: the site somebody was looking for */
+            var open = _hqBox(dw - 0.04, dh - 0.04, 0.22, face); open.position.set((-W / 2 + 0.08 + dw * 2.5) * U, (PL + 0.1 + dh * 5.5) * U, (D + 0.11) * U); g.add(open);
+            var up = _hqBox(0.06, 0.09, 0.003, card); up.position.set((-W / 2 + 0.08 + dw * 2.5) * U, (PL + 0.1 + dh * 6.0 + 0.02) * U, (D + 0.18) * U); g.add(up);
+            return g;
+        },
+        /* a 42U server rack: a dark cabinet, a perforated front door, the
+           units behind it as slabs with LEDs (green, one amber) — the
+           catalogue's `glow` is the rack's light on the floor */
+        server_rack: function (U) {
+            var g = new THREE.Group();
+            var W = 0.7, H = 2.1, D = 0.8;
+            var shell = _hqMat(null, 1, 1, { color: 0x1f2328, shininess: 40, specular: 0x444a52 });
+            var frame = _hqMat(null, 1, 1, { color: 0x30353c, shininess: 30 });
+            var unit = _hqMat(null, 1, 1, { color: 0x3a3f46, shininess: 55, specular: 0x666e78 });
+            var bezel = _hqMat(null, 1, 1, { color: 0x2a2e34, shininess: 20 });
+            var green = _hqBasic(0x5cf0a8), amber = _hqBasic(0xffb347), off = _hqBasic(0x1a3a2a);
+            var body = _hqBox(W, H, D - 0.06, shell); body.position.set(0, (H / 2) * U, ((D - 0.06) / 2) * U); g.add(body);
+            var rails = [[-1, 0], [1, 0]];
+            rails.forEach(function (s) { var rl = _hqBox(0.03, H - 0.1, 0.03, frame); rl.position.set(s[0] * (W / 2 - 0.05) * U, (H / 2) * U, (D - 0.05) * U); g.add(rl); });
+            var n = 0;
+            for (var y = 0.14; y < H - 0.2; y += 0.135) {
+                var full = (n % 5 !== 3);
+                var u = _hqBox(W - 0.14, full ? 0.11 : 0.05, 0.05, full ? unit : bezel); u.position.set(0, (y + 0.06) * U, (D - 0.035) * U); g.add(u);
+                if (full) {
+                    for (var k = 0; k < 3; k++) {
+                        var lit = ((n * 7 + k * 3) % 11) !== 0;
+                        var led = _hqBox(0.012, 0.012, 0.004, lit ? (((n + k) % 9) === 4 ? amber : green) : off);
+                        led.position.set((-W / 2 + 0.11 + k * 0.03) * U, (y + 0.085) * U, (D - 0.007) * U); g.add(led);
+                    }
+                    var grille = _hqBox(W - 0.34, 0.06, 0.004, bezel); grille.position.set(0.07 * U, (y + 0.06) * U, (D - 0.007) * U); g.add(grille);
+                }
+                n++;
+            }
+            var top = _hqBox(W + 0.02, 0.03, D, frame); top.position.set(0, (H - 0.015) * U, (D / 2) * U); g.add(top);
+            var base = _hqBox(W + 0.02, 0.06, D, frame); base.position.set(0, 0.03 * U, (D / 2) * U); g.add(base);
+            /* the cable loom out the top, into the tray */
+            var loom = new THREE.Mesh(new THREE.CylinderGeometry(0.03 * U, 0.03 * U, 0.5 * U, 8), bezel); loom.rotation.x = Math.PI / 2; loom.position.set(0.2 * U, (H + 0.02) * U, 0.3 * U); g.add(loom);
+            return g;
+        },
+        /* the door's keypad: twelve keys, a green LED, and the sticky note with the code on it */
+        keypad: function (U) {
+            var g = new THREE.Group();
+            var W = 0.12, H = 0.16, D = 0.04;
+            var box = _hqBox(W, H, D, _hqMat(null, 1, 1, { color: 0xd8d4c8, shininess: 30 })); box.position.set(0, (H / 2) * U, (D / 2) * U); g.add(box);
+            var key = _hqMat(null, 1, 1, { color: 0x2a2c30, shininess: 40 });
+            for (var r = 0; r < 4; r++) for (var c = 0; c < 3; c++) {
+                var k = _hqBox(0.022, 0.018, 0.006, key); k.position.set((-0.03 + c * 0.03) * U, (0.03 + r * 0.026) * U, (D + 0.003) * U); g.add(k);
+            }
+            var led = _hqBox(0.012, 0.008, 0.004, _hqBasic(0x5cf0a8)); led.position.set(0.035 * U, (H - 0.018) * U, (D + 0.002) * U); g.add(led);
+            var note = _hqBox(0.075, 0.075, 0.003, _hqBasic(0xf3e17a)); note.position.set((W / 2 + 0.06) * U, (H * 0.55) * U, 0.004 * U); note.rotation.z = _hqRad(-7); g.add(note);
+            var ink = _hqBox(0.045, 0.006, 0.002, _hqBasic(0x2a2c30)); ink.position.set((W / 2 + 0.06) * U, (H * 0.55) * U, 0.007 * U); ink.rotation.z = _hqRad(-7); g.add(ink);
+            return g;
+        },
         notice_board: function (U) {
             var g = new THREE.Group();
             var W = 1.6, H = 1.15, D = 0.06;

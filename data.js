@@ -17585,6 +17585,10 @@ const DOOR_HQ = {
         trophy_case:       { proc: 'trophy_case',    h: 2.1,     foot: 0, wall: true, mount: 0,    depth: 0.42, block: true, glow: { y: 1.7, size: 1.6, color: 0xfff3d9 } },   // a lit glass cabinet: plaques in threes, the cups
         steel_table:       { proc: 'steel_table',    h: 0.76,    foot: 0.75, block: true },   // the interrogation table: a steel top, a ring bolt
         telescope:         { proc: 'telescope',      h: 1.6,     foot: 0.45, block: true },
+        /* ROOM 42 · RECORDS + ROOM 1337 · IT (2026-09-13, plan 7.4) */
+        card_catalogue:    { proc: 'card_catalogue', h: 1.9,     foot: 0, wall: true, mount: 0,    depth: 0.5,  block: true },   // the wall of little drawers: UNFILED SITES
+        server_rack:       { proc: 'server_rack',    h: 2.1,     foot: 0, wall: true, mount: 0,    depth: 0.8,  block: true, glow: { y: 1.2, size: 1.1, color: 0x8fe0c8 } },   // a 42U rack, the LEDs on
+        keypad:            { proc: 'keypad',         h: 0.16,    foot: 0, wall: true, mount: 1.3,  depth: 0.04 },   // the door's keypad; the code is on a sticky note
         /* ══ THE 2026-09-10 BATCH (30 Meshy GLBs, R2 Assets/door/models/) ══
            The user's cafeteria / office / mission kit. Four of them RETIRE a
            procedural prop (plan 2.7 said "replace any of them by giving the
@@ -19192,7 +19196,12 @@ const DOOR_HQ = {
                 { id: 'medical',        deg: 210, level: 0, leaf: 'leaf_hospital',                  label: 'MEDICAL',                 sub: 'CHALLENGE MODE',           action: { fn: '_goToCampaign' },    roomNo: '1111', why: 'the number you dial', desc: 'Where EXITED operatives are processed. Revives, retries, the Challenge services desk.' },
                 { id: 'clockroom',      deg: 225, level: 0, leaf: 'leaf_frosted',        wide: true,  label: 'THE CLOCK ROOM',          sub: 'DAILY TASKS · LOGIN STREAK', action: { room: 'clockroom', at: 'egress' },
                   desc: 'Daily Office Operations Requirements. Three lines a day, the punch clock, and every clock in the room — none of them agree, all of them are right somewhere.' },
-                { id: 'records',        deg: 240, level: 0, leaf: 'leaf_wired_double', wide: true,  label: 'RECORDS',                 sub: 'CODEX', action: { fn: '_goToCodex' },       roomNo: '42', why: 'the room with the answer; it only keeps the file', desc: '“We only keep the file.” Entity dossiers, unfiled sites. The tape library went upstairs with the projector — Room 360, directly overhead.', alt: { label: 'THE TAPE LIBRARY ▸ ROOM 360 (UPSTAIRS)', room: 'observatorium', at: 'projector' }, alt2: { label: 'UNFILED SITES (COMMUNITY MAPS)', fn: '_mountCommunityMaps' } },
+                /* ROOM 42 · RECORDS (plan 7.4, 2026-09-13): the door is now the way
+                   INTO the room — the reading desk (the Codex), the card catalogue
+                   (the unfiled sites), the service stair up to the tape library.
+                   The number moved onto the room (hqDoorNo reads it through). */
+                { id: 'records',        deg: 240, level: 0, leaf: 'leaf_wired_double', wide: true,  label: 'RECORDS',                 sub: 'CODEX · COMMUNITY MAPS', action: { room: 'records', at: 'egress' },
+                  desc: 'Room 42. “We only keep the file.” Entity dossiers on the reading desk, the unfiled sites in the card catalogue, and the service stair up to the tape library — Room 360, directly overhead.' },
                 /* ROOM 1984 · THE INTERROGATION ROOM (plan 7.4, 2026-09-13): between RECORDS and BAY 1 — Internal Affairs keeps its room next to the file */
                 { id: 'interrogation',  deg: 255, level: 0, leaf: 'leaf_cell',                      label: 'THE INTERROGATION ROOM',  sub: 'CPU TRAINING TRANSCRIPT', action: { room: 'interrogation', at: 'egress' },
                   desc: 'Room 1984. One table, two chairs, one lamp, one round window that is a mirror from this side. What the CPU learned from watching you play — every disagreement on file, every weight it moved. Internal Affairs sits behind the glass. Nobody comments.' },
@@ -19200,7 +19209,18 @@ const DOOR_HQ = {
                 /* ── mezzanine (support / executive access) ── */
                 { id: 'elevator',       deg: 0,   level: 1, leaf: null, proc: 'elevator',          label: 'ELEVATOR',                sub: 'EXECUTIVE FLOORS · KEYHOLDER RANK',             action: { room: 'executive' },      minClearance: 4, requiresKeys: 12, floors: ['B', 'G', 'M', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '14', 'PH'], desc: 'Director offices. KEYHOLDER clearance and above; the car does not move without Keys.' },
                 { id: 'bay_ancient',    deg: 45,  level: 1, leaf: 'leaf_portcullis',   wide: true,  label: 'BAY 2 · ANCIENT',         sub: 'BATTLE MAPS',            action: { sector: 'ancient' } },
-                { id: 'engineering',    deg: 90,  level: 1, leaf: 'leaf_glass_exec',                label: 'ARCANE ENGINEERING',      sub: 'MAP EDITOR',     action: { fn: '_goToMapEditor' },   desc: 'Research offices. The Map Editor, the Spell Library, and the fourth door that wasn’t there yesterday.' },
+                { id: 'engineering',    deg: 90,  level: 1, leaf: 'leaf_glass_exec',                label: 'ARCANE ENGINEERING',      sub: 'MAP EDITOR',     action: { fn: '_goToMapEditor' },   desc: 'Research offices. The Map Editor, and the fourth door that wasn’t there yesterday — IT, four doors down. The Spell Library moved in with them.' },
+                /* ROOM 1337 · IT (plan 7.4, 2026-09-13): the user's Hacker Room as a
+                   DOOR, not a map — inside Arcane Engineering's stretch of the
+                   mezzanine, 30° (12.6 m of the upper drum at r 24) from the
+                   research offices at 90° and from Bay 5 at 150°. The plan wanted
+                   a hollow-core door with a keypad; the hollow core is a RANK leaf
+                   (L2), so the fourth door that wasn't there yesterday is the
+                   holographic one (the Observatorium wears it too — leaves are not
+                   exclusive below rank) and the keypad hangs INSIDE, by the way
+                   out. The round cabinet that stood at 120° moved to 113°. */
+                { id: 'it',             deg: 120, level: 1, leaf: 'leaf_holographic',              label: 'IT',                      sub: 'SPELL LIBRARY · BALANCE LAB', action: { room: 'it', at: 'egress' },
+                  desc: 'Room 1337. The fourth door. It was not there yesterday and Facilities has no ticket for it. The Spell Library, the balance lab and the racks the CPU trains on; the code is on a sticky note on the keypad, on the inside.' },
                 { id: 'bay_diplomatic', deg: 150, level: 1, leaf: 'leaf_revolving',    wide: true,  label: 'BAY 5 · DIPLOMATIC',      sub: 'BATTLE MAPS',            action: { sector: 'diplomatic' } },
                 { id: 'bay_urban',      deg: 180, level: 1, leaf: 'leaf_glass',                     label: 'BAY 7 · URBAN',           sub: 'BATTLE MAPS',            action: { sector: 'urban' } },
                 { id: 'bay_hollow',     deg: 210, level: 1, leaf: 'leaf_wired_double', wide: true,  label: 'BAY 3 · HOLLOW',          sub: 'BATTLE MAPS',            action: { sector: 'hollow' } },
@@ -19352,7 +19372,7 @@ const DOOR_HQ = {
                 /* mezzanine */
                 { key: 'filing_cabinet', deg: 20,  level: 1, wall: true },
                 { key: 'filing_cabinet', deg: 23,  level: 1, wall: true },
-                { key: 'round_cabinet',  deg: 120, r: 22.9, level: 1 },
+                { key: 'round_cabinet',  deg: 113, r: 22.9, level: 1 },   // moved from 120° for IT's door (plan 7.4, 2026-09-13)
                 { key: 'cardboard_boxes', deg: 133, r: 23.0, level: 1, rot: 40 },   // moved from 180° for Bay 7's door (plan 7.5)
                 { key: 'cardboard_box',  deg: 136, r: 22.8, level: 1 },
                 { key: 'office_locker',  deg: 232, level: 1, wall: true },   // moved from 240° for Room 360's door (plan 7.4)
@@ -20100,6 +20120,226 @@ const DOOR_HQ = {
                 '“Nothing you say leaves this room.” “Where does it go?” “Into the weights.”',
             ],
             spawn: { x: -2.6, z: 0, face: 90 },
+        },
+        /* ── ROOM 42 · RECORDS (HQ plan 7.4, 2026-09-13) — the department
+           behind the wired double door at 240° on the ground ring, a
+           `kind: 'box'` room now (it was a door straight to the Codex).
+           "We only keep the file." THE READING DESK on the south wall is
+           the Codex (`_goToCodex` — the entity dossiers); THE CARD
+           CATALOGUE on the east wall is the unfiled sites (`_mountCommunity
+           Maps`, a modal over the paused building — map.js `_HQ_MODAL`);
+           the service stair on the north wall (`tapes`) is the way up to
+           the tape library — Room 360's projector, directly overhead (the
+           door's old REPLAY alt, now a door you walk through). The stacks
+           along the north wall are the file itself. The archivist sits at
+           the desk; the clerk is at the stacks. Lines are Claude
+           placeholders (A15). Viewer-local (RULE #2). */
+        records: {
+            label: 'RECORDS',
+            sub: 'CODEX · COMMUNITY MAPS',
+            roomNo: '42', why: 'the room with the answer; it only keeps the file',
+            kind: 'box',
+            shell: {
+                w: 10, d: 7, h: 3.4,
+                wallH: 3.4, dadoH: 1.1,
+                floor: 'concrete', wall: 'drywall', dado: 'wood', trim: 'teal', ceiling: 'ceiling',
+                floorColor: 0x8d8f86, wallColor: 0xc9c2ae, dadoColor: 0x6b4a2e,   // painted down: manila over green linoleum
+                pipes: false,                       // an acoustic ceiling; the file must stay dry
+                light: { x: 0, z: 0 },
+                mood: { light: 0xe9dcc0 },          // warm, and it flickers when the stacks are opened
+                plate: { x: 0, z: 3.35, y: 2.9 },
+            },
+            doors: [
+                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_wired_double', wide: true,
+                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
+                  action: { room: 'central_egress', at: 'records' },
+                  desc: 'The way back to the hall. Sign the file back in on your way out.' },
+                /* THE SERVICE STAIR → the tape library: Room 360's projector, directly overhead */
+                { id: 'tapes', wall: 'n', x: 3.4, leaf: 'leaf_exit',
+                  label: 'THE TAPE LIBRARY', sub: 'ROOM 360 · UPSTAIRS',
+                  action: { room: 'observatorium', at: 'projector' },
+                  desc: 'A service stair to the Observatorium, straight up. The tapes went up with the projector; the note on the rail says DO NOT REWIND.' },
+            ],
+            counters: [
+                /* THE READING DESK → the Codex: every entity dossier */
+                { id: 'codex', x: 1.5, z: 3.0, face: 0, plateY: 1.85, radius: 1.9, verb: 'READ',
+                  label: 'THE READING DESK', sub: 'CODEX', action: { fn: '_goToCodex' },
+                  desc: 'The dossiers. Every entity the Department has filed, declassified or not, with the archivist watching you turn the pages.' },
+                /* THE CARD CATALOGUE → the unfiled sites (community maps) */
+                { id: 'unfiled', x: 4.5, z: -1.2, face: 270, plateY: 2.1, radius: 1.9, verb: 'SEARCH',
+                  label: 'THE CARD CATALOGUE', sub: 'UNFILED SITES · COMMUNITY MAPS', action: { fn: '_mountCommunityMaps' },
+                  desc: 'Sites the register has not numbered: maps filed by other operatives, and your own. Pull a drawer and one comes out.' },
+            ],
+            props: [
+                /* ── the north wall: THE STACKS, west to east, then the stair ── */
+                { key: 'metal_shelving', wall: 'n', x: -4.2 },
+                { key: 'metal_shelving', wall: 'n', x: -3.1 },
+                { key: 'metal_shelving', wall: 'n', x: -2.0 },
+                { key: 'metal_shelving', wall: 'n', x: -0.9 },
+                { key: 'metal_shelving', wall: 'n', x: 0.2 },
+                { key: 'metal_shelving', wall: 'n', x: 1.3 },
+                { key: 'cardboard_boxes', x: -3.1, z: -2.9, y: 0.9, face: 10 },     // on the shelf, the overflow
+                { key: 'manila_folders', x: -0.9, z: -2.95, y: 0.9, face: 0 },
+                { key: 'manila_folder',  x: 1.3,  z: -2.95, y: 0.9, face: 15 },
+                { key: 'exit_sign',      wall: 'n', x: 3.4, mount: 2.8 },           // over the stair
+                /* ── the east wall: THE CARD CATALOGUE, the cabinets, the breaker ── */
+                { key: 'card_catalogue', wall: 'e', z: -1.2 },
+                { key: 'filing_cabinet', wall: 'e', z: 1.0 },
+                { key: 'filing_cabinet', wall: 'e', z: 1.7 },
+                { key: 'breaker_panel',  wall: 'e', z: 2.8 },
+                { key: 'potted_plant',   x: 4.4, z: 3.0, face: 200 },
+                /* ── the south wall: THE READING DESK, the clock, the frame ── */
+                { key: 'tanker_desk',    wall: 's', x: 1.5 },
+                { key: 'crt_terminal',   x: 1.15, z: 3.05, y: 0.76, face: 0 },
+                { key: 'desk_lamp',      x: 2.05, z: 3.1,  y: 0.76, face: 330 },
+                { key: 'manila_folders', x: 1.7,  z: 2.85, y: 0.76, face: 355 },
+                { key: 'clipboard_flat', x: 0.95, z: 2.85, y: 0.76, face: 10 },
+                { key: 'rotary_phone',   x: 2.1,  z: 2.8,  y: 0.76, face: 20 },
+                { key: 'pen',            x: 1.45, z: 2.75, y: 0.76, face: 70 },
+                { key: 'office_chair',   x: 1.5,  z: 2.35, face: 180 },              // the archivist's, facing the desk
+                { key: 'wall_clock',     wall: 's', x: -1.3, mount: 2.55 },
+                { key: 'picture_round_b', wall: 's', x: -3.0 },
+                { key: 'papers_a',       x: -1.3, z: 3.1, face: 0 },                  // the returns pile, on the floor
+                { key: 'papers_b',       x: -1.05, z: 2.95, y: 0.08, face: 30 },
+                { key: 'cardboard_box',  x: -4.0, z: 2.7, face: 20 },
+                { key: 'cardboard_box',  x: -4.0, z: 2.7, y: 0.42, face: 65 },
+                /* ── the west wall: the way in, the plate, the lamp ── */
+                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.9 },
+                { key: 'nameplate',      wall: 'w', z: -2.0, mount: 1.55 },
+                { key: 'globe_lamp',     x: -4.3, z: -2.9, face: 0 },
+                { key: 'water_cooler',   wall: 'w', z: 2.4 },
+                /* ── the floor, the ceiling ── */
+                { key: 'rug_office',     x: -1.0, z: 0.2 },
+                { key: 'trash_bin',      x: 2.7,  z: 2.9, face: 250 },
+                { key: 'fluorescent',    x: -2.2, z: 0, ceil: true, face: 0 },
+                { key: 'fluorescent',    x: 2.2,  z: 0, ceil: true, face: 0 },
+            ],
+            agents: [
+                { x: 1.5, z: 2.35, face: 180, pose: 'hqSit', gender: 'female', label: 'THE ARCHIVIST', reach: 1.9,
+                  line: '“Sign the file out. Sign it back in. We do not keep the answer; we keep the file.”' },
+                { x: -2.0, z: -2.2, face: 0, pose: 'hqReach', gender: 'male', label: 'THE CLERK', reach: 1.6,
+                  line: '“Everything is filed. Not everything is filed where it says.”' },
+            ],
+            npcSpots: [
+                { x: -3.0, z: 1.0, face: 90 },       // reading, standing up
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Do you have the answer?” “We have the file.” “Is the answer in the file?” “That is not a question this office answers.”',
+                '“The tapes went upstairs.” “All of them?” “The ones we could find.”',
+                '“Forty-two.” “What?” “The room. You asked what the room was.”',
+                '“An unfiled site is still a site. It just has not been numbered. Nobody comments on the ones that number themselves.”',
+            ],
+            spawn: { x: -3.6, z: 0, face: 90 },
+        },
+        /* ── ROOM 1337 · IT (HQ plan 7.4, 2026-09-13) — a `kind: 'box'` room
+           off the MEZZANINE at 120°, inside Arcane Engineering's stretch: the
+           user's Hacker Room as a door, not a map. A5's dev surfaces get a
+           physical home: THE LIBRARY console is the Spell Library
+           (`_goToSpellLibrary` — the spell / ability editor + the Spell Lab;
+           map.js `_spellLibraryBack` now comes home to the building), THE
+           BENCH is the balance lab (`_launchBalanceSim` — AI vs AI with
+           equal weights, the dashboard), and THE RACKS are the AI training
+           lab (`_launchAITraining` — the champion / challenger A/B rig; the
+           racks are what the CPU trains on). Every console leaves the
+           building the way the Quartermaster's shop does (a page), the
+           labs launch matches. The keypad hangs inside by the way out (the
+           door outside is holographic; the code is on the note). The
+           sysadmin sits at the library; the intern is on the phone to
+           Facilities about the fourth door. Lines are Claude placeholders
+           (A15). Viewer-local (RULE #2). */
+        it: {
+            label: 'IT',
+            sub: 'SPELL LIBRARY · BALANCE LAB',
+            roomNo: '1337', why: 'the user’s Hacker Room — leet, as a door and not a map',
+            kind: 'box',
+            shell: {
+                w: 8, d: 6, h: 3.0,
+                wallH: 3.0, dadoH: 1.0,
+                floor: 'concrete', wall: 'drywall', dado: 'teal', trim: 'teal', ceiling: 'ceiling',
+                floorColor: 0x50555e, wallColor: 0x6a7079, dadoColor: 0x2f4a4c,   // painted down: a server room, cold
+                pipes: true,                         // the cable trays are the conduits
+                light: { x: 0, z: 0 },
+                mood: { light: 0xa9e6da },            // the racks' green in the strip
+                plate: { x: 0, z: -2.75, y: 2.6 },
+            },
+            doors: [
+                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_holographic',
+                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MEZZANINE',
+                  action: { room: 'central_egress', at: 'it' },
+                  desc: 'The way back to the mezzanine. The keypad is on this side; the code is on the note; the note says DO NOT SHARE.' },
+            ],
+            counters: [
+                /* THE LIBRARY → the Spell Library (the editor + the Spell Lab) */
+                { id: 'library', x: 3.4, z: -0.9, face: 270, plateY: 1.85, radius: 1.9, verb: 'LOG IN',
+                  label: 'THE LIBRARY', sub: 'SPELL LIBRARY', action: { fn: '_goToSpellLibrary' },
+                  desc: 'Every spell and ability the Department has on file, editable. The Spell Lab is the second screen. Export before you leave; the chair does not save.' },
+                /* THE BENCH → the balance lab (AI vs AI, equal weights) */
+                { id: 'bench', x: 3.4, z: 1.4, face: 270, plateY: 1.85, radius: 1.9, verb: 'RUN',
+                  label: 'THE BENCH', sub: 'BALANCE LAB', action: { fn: '_launchBalanceSim' },
+                  desc: 'Two CPUs, the same weights, random tree-legal teams — the win rates measure the game, not the CPU. It runs until you stop it.' },
+                /* THE RACKS → the AI training lab (the champion / challenger rig) */
+                { id: 'racks', x: -1.8, z: -2.3, face: 180, plateY: 2.2, radius: 2.0, verb: 'RUN',
+                  label: 'THE RACKS', sub: 'AI TRAINING LAB', action: { fn: '_launchAITraining' },
+                  desc: 'What the CPU trains on. Champion against challenger, the weights that win promoted. The fans come on when it thinks.' },
+            ],
+            props: [
+                /* ── the north wall: THE RACKS, the breaker, the vent, the clock ── */
+                { key: 'server_rack',    wall: 'n', x: -2.6 },
+                { key: 'server_rack',    wall: 'n', x: -1.8 },
+                { key: 'server_rack',    wall: 'n', x: -1.0 },
+                { key: 'breaker_panel',  wall: 'n', x: 0.7 },
+                { key: 'vent_grille',    wall: 'n', x: 1.8, mount: 2.5 },
+                { key: 'wall_clock',     wall: 'n', x: 2.9, mount: 2.4 },
+                { key: 'cardboard_boxes', x: 2.6, z: -2.4, face: 15 },               // the spares, still boxed
+                /* ── the east wall: THE LIBRARY desk, THE BENCH desk ── */
+                { key: 'tanker_desk',    wall: 'e', z: -0.9 },
+                { key: 'crt_terminal',   x: 3.55, z: -0.9,  y: 0.76, face: 270 },
+                { key: 'papers_b',       x: 3.5,  z: -1.45, y: 0.76, face: 260 },
+                { key: 'coffee_mug',     x: 3.35, z: -0.35, y: 0.76, face: 0 },
+                { key: 'pen',            x: 3.7,  z: -0.4,  y: 0.76, face: 100 },
+                { key: 'office_chair',   x: 2.85, z: -0.9,  face: 90 },              // the sysadmin's, facing the desk
+                { key: 'tanker_desk',    wall: 'e', z: 1.4 },
+                { key: 'tube_tv',        x: 3.55, z: 1.4,   y: 0.76, face: 270 },   // the bench's dashboard
+                { key: 'retro_speakers', x: 3.6,  z: 1.95,  y: 0.76, face: 270 },
+                { key: 'desk_fan',       x: 3.6,  z: 0.85,  y: 0.76, face: 250 },
+                { key: 'solo_cup',       x: 3.3,  z: 1.05,  y: 0.76, face: 0 },
+                { key: 'office_chair',   x: 2.85, z: 1.4,   face: 90 },
+                /* ── the south wall: the shelf of spares, the cooler, the bin ── */
+                { key: 'metal_shelving', wall: 's', x: -2.4 },
+                { key: 'cardboard_box',  x: -2.4, z: 2.75, y: 0.9, face: 20 },       // on the shelf
+                { key: 'retro_radio',    x: -2.7, z: 2.75, y: 1.35, face: 0 },
+                { key: 'water_cooler',   wall: 's', x: 2.5 },
+                { key: 'trash_bin',      x: 1.6,  z: 2.6, face: 200 },
+                { key: 'wet_floor_sign', x: -0.6, z: 2.3, face: 30 },                // the cooler leaks; the ticket is open
+                /* ── the west wall: the way in, the keypad by it, the plate ── */
+                { key: 'keypad',         wall: 'w', z: 1.55 },
+                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.7 },
+                { key: 'nameplate',      wall: 'w', z: -1.7, mount: 1.55 },
+                { key: 'fire_extinguisher', wall: 'w', z: -2.5 },
+                /* ── the floor: the cable trays, the ceiling ── */
+                { key: 'pipe_run',       x: -0.6, z: -1.5, face: 90 },
+                { key: 'pipe_run',       x: 0.4,  z: -1.5, face: 90 },
+                { key: 'fluorescent',    x: -1.6, z: -0.5, ceil: true, face: 0 },
+                { key: 'fluorescent',    x: 1.6,  z: 0.5,  ceil: true, face: 0 },
+            ],
+            agents: [
+                { x: 2.85, z: -0.9, face: 90, pose: 'hqSit', gender: 'male', label: 'THE SYSADMIN', reach: 1.9,
+                  line: '“Do not touch the racks while they are thinking. You can tell by the fans.”' },
+                { x: -0.2, z: 0.9, face: 300, pose: 'hqPhone', gender: 'female', label: 'THE INTERN', reach: 1.6,
+                  line: '“Yes, the fourth door. No, there is no ticket. No, I did not open it. It was open.”' },
+            ],
+            npcSpots: [
+                { x: 0.9, z: -1.9, face: 0 },        // reading the rack labels
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Have you tried turning it off?” “It is a door.” “Have you tried closing it?”',
+                '“The code is on the note.” “The note says DO NOT SHARE.” “Then you already have it.”',
+                '“It won again.” “Against what?” “Itself. It is very pleased.”',
+                '“The Spell Library is not a library. Nothing is due back.”',
+            ],
+            spawn: { x: -2.8, z: 0, face: 90 },
         },
         /* ── ROOM 360 · THE OBSERVATORIUM (HQ plan 7.4, 2026-09-11) — a box
            room off the MEZZANINE at 240°, directly above Records. The user's

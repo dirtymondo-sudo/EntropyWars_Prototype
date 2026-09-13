@@ -189,7 +189,7 @@
         let _hqLastRoom = 'central_egress';  // the room to rebuild on return (where _hqLastDoor is)
         /* screens that are pure DOM modals over whatever page is showing —
            the building waits underneath; their unmount resumes it */
-        const _HQ_MODAL = { _mountReactProfile: '_unmountReactProfile', _mountReactTrophies: '_unmountReactProfile', _mountLeaderboard: '_unmountLeaderboard', _mountReactCreator: '_unmountReactCreator' };
+        const _HQ_MODAL = { _mountReactProfile: '_unmountReactProfile', _mountReactTrophies: '_unmountReactProfile', _mountLeaderboard: '_unmountLeaderboard', _mountReactCreator: '_unmountReactCreator', _mountCommunityMaps: '_unmountCommunityMaps' };
         /* dev: ?codered=<mapId> forces the day's Code Red onto that site (HQ
            plan 3.3) — no mastery needed; data.js hqCodeRed reads the force */
         try {
@@ -344,6 +344,8 @@
             _mountReactProfile: 'PROFILE · ID CARD', _mountReactTrophies: 'ACHIEVEMENTS', _mountReactCreator: 'CHARACTER CREATOR', _goToCampaign: 'CHALLENGE', _goToMysteryDungeon: 'MYSTERY DUNGEON',
             _goToMapEditor: 'MAP EDITOR', _mountLeaderboard: 'LEADERBOARD', _mountCommunityMaps: 'COMMUNITY MAPS',
             _ewReplayLastMatch: 'REPLAY', _goToQuickPlay: 'QUICK PLAY', _goToFriendlyMatch: 'FRIENDLY MATCH',
+            /* ROOM 1337 · IT (2026-09-13): the dev surfaces' physical home */
+            _goToSpellLibrary: 'SPELL LIBRARY', _launchBalanceSim: 'BALANCE LAB', _launchAITraining: 'AI TRAINING LAB',
         };
         function _hqEl(id) { return document.getElementById(id); }
         function _hqProfile() { try { return (window.ProfileSystem && window.ProfileSystem.getActiveProfile()) || null; } catch (e) { return null; } }
@@ -1544,6 +1546,8 @@
                 const sh = (typeof window.hqDailyOps === 'function') ? window.hqDailyOps(_hqProfile()) : null;
                 if (sh) html += `<p class="hq-panel-desc">Pinned under the photographs: today's FORM 365 — <b>${sh.done} / ${sh.total}</b> lines filed${sh.allDone ? ', the sheet is complete' : ''}. The sheet itself hangs in the Clock Room.</p><div class="hq-panel-actions"><button class="hq-btn" onclick="window._hqOpenForm365()">FORM 365 ▸ THE SHEET</button></div>`;
             }
+            /* Rooms 42 + 1337 (2026-09-13): a counter with a `desc` and no panel of its own states it */
+            if (c.desc && !/hq-panel-desc/.test(html)) html += `<p class="hq-panel-desc">${_hqEsc(c.desc)}</p>`;
             if (act.fn) html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="${_hqEsc(act.fn)}">${_hqEsc(c.verb ? (String(c.verb).toUpperCase() + ' AT THE ' + String(c.label || 'COUNTER').toUpperCase()) : 'READ THE BOARD')} ▸ ${_hqEsc(_HQ_FN_LABELS[act.fn] || act.fn)}</button></div>`;
             return html;
         }
@@ -2224,6 +2228,10 @@
         };
         window._spellLibraryBack = function() {
             state.gameState = GS.MAIN_MENU;
+            /* ROOM 1337 · IT (2026-09-13): opened from THE LIBRARY console, Back
+               comes home to the building; from Settings → Developer it still
+               returns to Settings */
+            if (typeof _hqHome !== 'undefined' && _hqHome && typeof window._hqReturnOrMenu === 'function' && window._hqReturnOrMenu()) return;
             window._openMainMenuSettings();
         };
 

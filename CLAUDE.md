@@ -385,6 +385,29 @@ has `action: {}` — `_hqCounterPanelHtml` renders its own panel by id. Proc
 `y: 0.76`). Both rooms are viewer-local (RULE #2). doorhq.test.js guards
 the rooms, the helper and the source sites.
 
+## ROOM 42 + ROOM 1337 (Records as a room, IT, HQ plan 7.4) — added 2026-09-13
+`DOOR_HQ.rooms.records` (data.js) is RECORDS, a `kind: 'box'` room behind
+the ground ring's wired double door at 240° (`central_egress.doors` id
+`records` — it was a screen door with two alts; the number `42` now sits
+on the ROOM, `hqDoorNo` reads it through). Counters: `codex` (THE READING
+DESK) → `_goToCodex`; `unfiled` (THE CARD CATALOGUE) → `_mountCommunityMaps`
+— a MODAL over the paused building (map.js `_HQ_MODAL` maps it to
+profile.js `_unmountCommunityMaps`). Door `tapes` (north wall, `leaf_exit`)
+→ `{ room: 'observatorium', at: 'projector' }` (the old REPLAY alt, walked;
+`_hqGoTo` resolves a counter id in a box room). `DOOR_HQ.rooms.it` is
+ROOM 1337 · IT, a box room off the MEZZANINE at 120° (door id `it`,
+`leaf_holographic` — `leaf_hollow_core` is the L2 rank leaf, so the plan's
+keypad hangs INSIDE by the way out; the round cabinet moved 120° → 113°).
+Counters: `library` → `_goToSpellLibrary` (map.js `_spellLibraryBack` now
+returns to the building when `_hqHome`, else to Settings), `bench` →
+`_launchBalanceSim`, `racks` → `_launchAITraining` — all three in
+`_HQ_FN_LABELS`; they leave the building like every page fn. Procs in
+`_hqProcBuilders` (three-renderer.js, wall, front +z): `card_catalogue`
+(block), `server_rack` (block, `glow`), `keypad`. A counter with a `desc`
+and no panel of its own states it (`_hqCounterPanelHtml`, before the fn
+button). Both rooms are viewer-local (RULE #2). doorhq.test.js guards the
+rooms, the moved prop, the counters ↔ props and the source sites.
+
 ## ROOM 360 + THE STAR CHART (The Observatorium, HQ plan 7.4) — added 2026-09-11
 `DOOR_HQ.rooms.observatorium` (data.js) is THE OBSERVATORIUM, a `kind:
 'box'` room off the MEZZANINE at 240° (`central_egress.doors` id
