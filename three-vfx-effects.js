@@ -3621,6 +3621,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (!effectDef) return;
 
         if (intent === 'descent')  { _fireDescent(spellId, params); return; }
+        /* THE CAPSTONE PASS (2026-09-13): an aoe def may carry `geom3D:
+           true` — its _spell3DGeometry signature runs beside the tile
+           recipe (the aoe intent never reached the registry before). */
+        if (intent === 'aoe' && effectDef.geom3D && _geom3D(spellId)) {
+            try {
+                var _gr = params.aoeRadius != null ? params.aoeRadius
+                    : (params.radius != null ? params.radius : effectDef.aoeRadius);
+                _geom3D(spellId)(params.tx, params.ty, _gr, params);
+            } catch (e) { console.warn('[VFX] aoe geometry failed', spellId, e); }
+        }
         if (intent === 'wall')     { _fireWall(spellId, params); return; }
         if (intent === 'chain')    { _fireChain(spellId, params); return; }
         if (intent === 'beam')     { _fireBeamMapped(spellId, params); return; }
@@ -4511,6 +4521,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            own charge beat, per-tile washes, terminal blast and shake. */
         if (beamDef.beamBreath) {
             try { _sigBreathBlast3D(fromX, fromY, hitTiles, beamDef); } catch (e) {}
+            return;
+        }
+
+        /* Tsunami (2026-09-13, THE CAPSTONE PASS): the WALL owns the whole
+           travel — rises behind the caster, rolls the lanes, crashes. */
+        if (beamDef.beamTsunami) {
+            try { _sigTsunami3D(fromX, fromY, hitTiles, beamDef, spellId); } catch (e) { console.warn('[VFX] tsunami failed', e); }
             return;
         }
 
@@ -17675,6 +17692,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var beamMs   = def.beamMs != null ? def.beamMs : 780;
         var iteId    = def.impactTileEffect || null;
         var end = hitTiles[hitTiles.length - 1];
+        /* THE CAPSTONE PASS (2026-09-13): `breathScale` grows the whole rig
+           (cones, tongues, muzzle) for a capstone breath; `inhale` pulls
+           motes INTO the mouth through the charge; `firestorm` plants
+           _sigFirestorm3D at the far end (Dragonfire's inferno). */
+        var BS = def.breathScale > 0 ? def.breathScale : 1;
 
         /* board-px frame (pooled particles) */
         var castPx = tilePx(fromX, fromY);
@@ -17690,9 +17712,22 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             x: muzX, y: muzY, z: castZ + ts * 0.06,
             mode: 'billboard', sprite: 'flash', tint: theme.mid,
             ml: chargeMs + 70,
-            size0: ts * 0.55, size1: ts * 0.14,
+            size0: ts * 0.55 * BS, size1: ts * 0.14,
             opacity0: 0.9, opacity1: 0,
         });
+        if (def.inhale && _canSpawn()) {
+            /* the inhale: sparks drawn into the mouth from all round */
+            for (var ih = 0; ih < Math.round(10 * BS); ih++) {
+                _spawn({
+                    x: muzX + rn(-ts * 0.9, ts * 0.9), y: muzY + rn(-ts * 0.9, ts * 0.9), z: castZ + rn(-ts * 0.2, ts * 0.5),
+                    mode: 'billboard', sprite: theme.spark, tint: theme.tongueTint,
+                    ml: chargeMs * rn(0.6, 1.0),
+                    seekIn: [chargeMs * 0.5, chargeMs * 0.95], seekInZ: [0, 0], seekSpiral: 120,
+                    size0: rn(5, 9), size1: 2, opacity0: 0.95, opacity1: 0.3,
+                });
+            }
+            _sigShake('soft');
+        }
 
         _fxDelay(function () {
             if (_suppressed()) return;
@@ -17745,9 +17780,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     return { mesh: m, mat: mat, baseR: rTip, baseOp: op };
                 }
                 var shells = [
-                    mkCone(ts * 0.50, theme.deep, theme.mid,  0.50, 1.5, 1.4, 210),
-                    mkCone(ts * 0.36, theme.mid,  theme.hot,  0.85, 1.8, 2.0, 211),
-                    mkCone(ts * 0.20, theme.hot,  0xffffff,   0.95, 2.0, 2.6, 212),
+                    mkCone(ts * 0.50 * BS, theme.deep, theme.mid,  0.50, 1.5, 1.4, 210),
+                    mkCone(ts * 0.36 * BS, theme.mid,  theme.hot,  0.85, 1.8, 2.0, 211),
+                    mkCone(ts * 0.20 * BS, theme.hot,  0xffffff,   0.95, 2.0, 2.6, 212),
                 ];
                 var run = _sigRun(group, beamMs, function (el) {
                     var ext = _sigEaseOutCubic(_sigClamp01(el / lanceMs));
@@ -17786,21 +17821,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 (function (at) {
                     _fxDelay(function () {
                         if (_suppressed() || !_canSpawn()) return;
-                        for (var k = 0; k < 3; k++) {
+                        for (var k = 0; k < Math.round(3 * BS); k++) {
                             var sp = tongueSpd * rn(0.75, 1.15);
                             var travelMs = (lenPx / sp) * 1000;
                             _spawn({
                                 x: muzX + rn(-6, 6), y: muzY + rn(-6, 6),
-                                z: castZ + rn(-ts * 0.08, ts * 0.14),
-                                vx: ux * sp + -uy * rn(-70, 70),
-                                vy: uy * sp +  ux * rn(-70, 70),
+                                z: castZ + rn(-ts * 0.08, ts * 0.14 * BS),
+                                vx: ux * sp + -uy * rn(-70, 70) * BS,
+                                vy: uy * sp +  ux * rn(-70, 70) * BS,
                                 vz: theme.water ? rn(-30, 50) : rn(15, 85),
                                 gravity: theme.water ? 260 : 0,
                                 drag: 0.25,
                                 mode: 'billboard',
                                 sprite: theme.tongue, tint: theme.tongueTint,
                                 ml: travelMs * rn(0.55, 1.05),
-                                size0: ts * rn(0.14, 0.22), size1: ts * rn(0.42, 0.58),
+                                size0: ts * rn(0.14, 0.22) * BS, size1: ts * rn(0.42, 0.58) * BS,
                                 opacity0: 0.85, opacity1: 0,
                             });
                         }
@@ -17835,10 +17870,23 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _fxDelay(function () {
                 if (_suppressed()) return;
                 _sigShockRing3D(end.x, end.y, {
-                    color: theme.mid, r0: ts * 0.2, r1: ts * 1.35, ms: 420, height: ts * 0.25 });
-                _sigSparks(end.x, end.y, theme.spark, 10, {
+                    color: theme.mid, r0: ts * 0.2, r1: ts * 1.35 * BS, ms: 420, height: ts * 0.25 });
+                _sigSparks(end.x, end.y, theme.spark, Math.round(10 * BS), {
                     vxy: 180, vz0: 60, vz1: 260,
                     gravity: theme.water ? 480 : 320, z: ts * 0.3 });
+                if (def.firestorm) {
+                    try {
+                        _sigFirestorm3D(end.x, end.y, {
+                            ms: Math.max(1200, beamMs + 500), height: ts * 3.4 * BS, radius: ts * 0.55 * BS,
+                            deep: theme.deep, mid: theme.mid, hot: theme.hot, spark: theme.spark, tongue: theme.tongue,
+                        });
+                    } catch (e) {}
+                    try { _sigScreenFlash(theme.hot, 180, 0.3); } catch (e) {}
+                    if (theme.tileFlames && typeof spawnFlameBurst3D === 'function' && hitTiles.length > 1) {
+                        var pre = hitTiles[hitTiles.length - 2];
+                        spawnFlameBurst3D(pre.x, pre.y, { lifeMs: 1100, hScale: 1.3, rScale: 1.1 });
+                    }
+                }
             }, lanceMs + 60);
 
             /* ── lingering smoke / steam near the far half (fire themes) ── */
@@ -20499,6 +20547,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ov = SPELL_STAGE_MAP[spellId] && SPELL_STAGE_MAP[spellId].weight;
         if (ov) return ov;
         if (def && def.vfxWeight) return def.vfxWeight;
+        /* THE CAPSTONE PASS (2026-09-13): a pillar's r4★ spell stages as an
+           ultimate whatever its numbers score. */
+        if (_isCapstoneSpell(spellId, def)) return 'ultimate';
         if (!def) return 'standard';
         var c = _stageEnsureCuts();
         var s = _stageRawScore(def);
@@ -21179,6 +21230,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     height: P.heavyLand ? 4 : 8
                 });
             } catch (e) {}
+
+            /* THE CAPSTONE BLOOM (2026-09-13): the shared ultimate stamp —
+               a sigil disc + a light column in the archetype's colour under
+               every capstone's burst, whatever recipe it wears on top. */
+            if (_isCapstoneSpell(spellId, _bDef)) {
+                try { _sigCapstoneBloom3D(tx, ty, P); } catch (e) {}
+            }
 
             /* kinetic archetypes carve a slash instead of blooming a ring —
                a dash or a leap should read as a CUT through the target */
@@ -23171,6 +23229,1117 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['raceHallelujah']       = Object.assign({}, SPELL_MAP['raceYoHo']);              /* nun — the team heal */
 
     /* ═════════ END VFX PASS-3 COVERAGE SECTION ═════════ */
+
+    /* ════════════════════════════════════════════════════════════════════
+       THE CAPSTONE PASS (2026-09-13)
+       ════════════════════════════════════════════════════════════════════
+       Every pillar's r4★ spell is the ultimate of its branch — and half of
+       them looked exactly like the ring-1 spell beside them: the pass-3
+       coverage aliased Tsunami to a byte-copy of Water Pulse, Glitter Bomb
+       borrowed Fae Ring, Snowball Volley borrowed Blizzard Present, Dragon
+       Breath borrowed Dragonfire's whole breath rig, Cataclysm Decree hit
+       with Infernal Decree's tiles, Hallelujah was Yo Ho, Terror Pounce was
+       Blood Frenzy, and seventeen capstones had no recipe at all (the
+       element's theme fallback — the same white blob as any sibling).
+
+       Three layers, in this order of authority:
+         1. `_isCapstoneSpell(id)` — data.js isCapstoneSpellId (the r4★
+            node of a pillar). _stageWeight promotes every capstone to the
+            'ultimate' staging tier (the hard shake, the 40 rush lines, the
+            expanding orb) and _stageBurst adds THE CAPSTONE BLOOM: a sigil
+            circle under the strike + a thin column of the archetype's
+            light — the shared "this is an ultimate" stamp, on top of
+            whatever the spell's own recipe does.
+         2. Bespoke 3D signatures for the duplicates the user named and
+            their kin: _sigTsunami3D (a lofted wave WALL three lanes wide
+            that rises behind the caster, rolls the line, curls, crashes
+            and recedes — the `beamTsunami` beam def flag), the Dragonfire
+            INFERNO (`breathScale` + `firestorm` + `inhale` on the breath
+            rig → _sigFirestorm3D at the far end), the Fae Ring's rising
+            ring of toadstool lights, Cataclysm Decree's burning crown
+            (`:mark`) and hellfire columns, Draining Embrace's closing
+            crimson wings, Crusade's cross of light. Registered on
+            _spell3DGeometry (aoe defs carry `geom3D: true` so fire('aoe')
+            runs the geometry beside the recipe).
+         3. Data-only recipes (EFFECTS + SPELL_MAP, the pass-3 idiom) so the
+            HITCHHIKERS get their own look (Dragon Breath, Glitter Bomb,
+            Snowball Volley, Artillery Strike keep the smaller sibling
+            recipe) and every theme-fallback capstone has an identity.
+       RULE #2: everything rides fire() / fireGeometry, which online.js
+       relays host→guest — nothing new to plumb. Ownership: every group
+       goes through _sigRunOwned, every timer through _fxDelay. */
+
+    function _isCapstoneSpell(spellId, def) {
+        if (!spellId) return false;
+        try {
+            if (typeof window !== 'undefined' && typeof window.isCapstoneSpellId === 'function') {
+                return !!window.isCapstoneSpellId(spellId);
+            }
+        } catch (e) {}
+        var d = def || _spellDefFor(spellId);
+        return !!(d && d.tier === 'III');
+    }
+
+    /* THE CAPSTONE BLOOM — the shared ultimate stamp under a damage burst:
+       a sigil disc in the archetype's ring colour and a thin light column
+       that burns off. Modest on purpose (the spell's own recipe is the
+       show); an Entropy Strike it is not. */
+    function _sigCapstoneBloom3D(tx, ty, P) {
+        var ts = _cfg().tileSize || 128;
+        var ring = (P && P.ring != null) ? P.ring : 0xb69cff;
+        var orb = (P && P.orb != null) ? P.orb : ring;
+        try {
+            _sigMagicCircle3D(tx, ty, {
+                color: ring, color2: orb, radiusPx: ts * 1.55,
+                growMs: 180, holdMs: 620, fadeMs: 320, opacity: 0.7, spin: 0.0022, height: 3,
+            });
+        } catch (e) {}
+        try {
+            _sigLightPillar3D(tx, ty, { color: orb, coreColor: 0xffffff, radius: ts * 0.24, height: ts * 6.5, ms: 640 });
+        } catch (e) {}
+    }
+
+    /* ── helpers shared by the signatures below ─────────────────────────── */
+    function _capEase(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+    function _capSmooth(t) { t = _sigClamp01(t); return t * t * (3 - 2 * t); }
+    function _capBoardXY(wx, wz) {
+        var pad = _cfg().boardPadding || 2;
+        return { x: wx + pad, y: wz + pad };
+    }
+
+    /* ════════════════════════════════════════════════════════════════════
+       TSUNAMI — Room 7 of the sea. `beamTsunami` on the beam def routes
+       _fireBeamMapped here (the breath / boomerang pattern). The line
+       branch hands us the SPINE tiles; the lanes come from the spell's
+       lineWidth (3) so the wall spans the whole footprint.
+         beat 0  THE SEA RISES  (chargeMs): a dome of water swells on the
+                 tile behind the caster, spray climbs, a blue sigil ring
+                 spreads under the caster's feet.
+         beat 1  THE WALL       (rollMs): a lofted curling wave — deep
+                 body, churning additive shell, foam crest — rises out of
+                 the sea to head height and rolls down the lane; every
+                 tile it crosses gets its wash, the flood sheet is revealed
+                 behind it, spray and mist stream off the crest.
+         beat 2  THE CRASH      (crashMs): the crest folds over and the
+                 wall collapses on the last tile — fountain, ring, flash,
+                 the hard shake.
+         beat 3  THE RECEDE     (recedeMs): the sheet drains, bubbles rise.
+       ════════════════════════════════════════════════════════════════════ */
+    function _sigTsunami3D(fromX, fromY, hitTiles, def, spellId) {
+        def = def || {};
+        if (!hitTiles || !hitTiles.length) return;
+        var scene = _getVFXScene();
+        var ts = _cfg().tileSize || 128;
+        var sdef = _spellDefFor(spellId);
+        var lanes = Math.max(1, (sdef && sdef.lineWidth) || def.lineWidth || 3);
+        var first = hitTiles[0], end = hitTiles[hitTiles.length - 1];
+        var n = hitTiles.length;
+        var dx = Math.sign(first.x - fromX), dy = Math.sign(first.y - fromY);
+        if (!dx && !dy) { dx = 1; }
+        var ux = dx, uz = dy;                      /* world x ↔ tile x, world z ↔ tile y */
+        var dlen = Math.sqrt(ux * ux + uz * uz) || 1; ux /= dlen; uz /= dlen;
+        var lx = -uz, lz = ux;                     /* lateral (screen-left of the travel) */
+        var iteId = def.impactTileEffect || null;
+
+        var chargeMs = def.chargeMs != null ? def.chargeMs : 420;
+        var rollMs   = def.rollMs != null ? def.rollMs : 320 + 170 * n;
+        var crashMs  = def.crashMs != null ? def.crashMs : 340;
+        var recedeMs = def.recedeMs != null ? def.recedeMs : 900;
+        var totalMs  = chargeMs + rollMs + crashMs + recedeMs;
+
+        var deep = 0x1a5f9e, mid = 0x3a9be0, hot = 0xeaf8ff;
+        var wp0 = _worldPos(fromX, fromY);
+        var startD = -ts * 0.25;                    /* the wall is born just behind the caster's front edge */
+        var endD = (n + 0.45) * ts * dlen;
+        var width = lanes * ts + ts * 0.35;
+        var H = ts * 1.75;                          /* crest height — over head height */
+
+        /* tile under a distance along the spine (surface height sampling) */
+        function tileAt(d) {
+            var k = Math.round(d / (ts * dlen));
+            if (k <= 0) return { x: fromX, y: fromY };
+            if (k >= n) return { x: end.x, y: end.y };
+            return hitTiles[k - 1];
+        }
+        function surfaceYAt(d) { var t = tileAt(d); return _worldPos(t.x, t.y).y; }
+
+        /* ── beat 0: the sea rises behind the caster ── */
+        var cPx = tilePx(fromX, fromY);
+        var cZ = unitSurfaceZ(fromX, fromY);
+        var backPx = { x: cPx.x - ux * ts * 0.85, y: cPx.y - uz * ts * 0.85 };
+        try {
+            _sigShockRing3D(fromX, fromY, { color: mid, r0: ts * 0.2, r1: ts * 1.6, ms: chargeMs + 120, height: 5 });
+        } catch (e) {}
+        for (var w = 0; w < 4; w++) {
+            (function (at) {
+                _fxDelay(function () {
+                    if (_suppressed() || !_canSpawn()) return;
+                    for (var k = 0; k < 6; k++) {
+                        _spawn({
+                            x: backPx.x + rn(-ts * 0.4, ts * 0.4), y: backPx.y + rn(-ts * 0.4, ts * 0.4), z: cZ + 4,
+                            vx: rn(-30, 30), vy: rn(-30, 30), vz: rn(120, 320),
+                            gravity: 380, drag: 0.6,
+                            mode: 'billboard', sprite: 'water-splash',
+                            ml: rn(380, 640), size0: rn(8, 14), size1: 3,
+                            opacity0: 0.95, opacity1: 0,
+                        });
+                    }
+                    _spawn({
+                        x: backPx.x, y: backPx.y, z: cZ + 2,
+                        mode: 'world', sprite: 'wave-1',
+                        ml: 520, size0: ts * 0.5, size1: ts * 1.6,
+                        opacity0: 0.6, opacity1: 0,
+                    });
+                }, at);
+            })(w * (chargeMs / 4));
+        }
+
+        if (!scene) return;
+        var group = new THREE.Group();
+        group.position.set(wp0.x, wp0.y, wp0.z);
+        group.rotation.y = Math.atan2(ux, uz);      /* local +Z = travel, local +X = lateral */
+
+        /* the swell: a flattened sphere rising behind the caster */
+        var swellMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(mid), transparent: true, opacity: 0,
+            side: THREE.DoubleSide, depthWrite: false, blending: THREE.NormalBlending });
+        var swell = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12), swellMat);
+        swell.position.set(0, 0, -ts * 0.85);
+        swell.renderOrder = 150;
+        group.add(swell);
+        var swellGlowMat = _sigEnergyMat(mid, { hot: hot, opacity: 0.5, gain: 1.4, s1y: -0.6, s2y: -0.3, scale1: 2.2, scale2: 1.1, vFadeLo: 0.0, vFadeHi: 0.95 });
+        var swellGlow = new THREE.Mesh(new THREE.SphereGeometry(1.03, 20, 12), swellGlowMat);
+        swellGlow.position.copy(swell.position);
+        swellGlow.renderOrder = 151;
+        group.add(swellGlow);
+
+        /* the wall: a lofted sheet, COLS across the width × ROWS up the profile */
+        var COLS = Math.max(12, lanes * 7), ROWS = 13;
+        var geo = new THREE.PlaneGeometry(1, 1, COLS, ROWS);
+        var pos = geo.attributes.position;
+        var cols = new Float32Array(pos.count * 3);
+        var cDeep = new THREE.Color(deep), cMid = new THREE.Color(mid), cHot = new THREE.Color(hot);
+        for (var vi = 0; vi < pos.count; vi++) {
+            var v = geo.attributes.uv.getY(vi);
+            var c = v < 0.55 ? cDeep.clone().lerp(cMid, v / 0.55) : cMid.clone().lerp(cHot, (v - 0.55) / 0.45);
+            cols[vi * 3] = c.r; cols[vi * 3 + 1] = c.g; cols[vi * 3 + 2] = c.b;
+        }
+        geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+        var bodyMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0,
+            side: THREE.DoubleSide, depthWrite: false, blending: THREE.NormalBlending });
+        var body = new THREE.Mesh(geo, bodyMat);
+        body.renderOrder = 152;
+        group.add(body);
+        var churnMat = _sigEnergyMat(mid, { hot: hot, opacity: 0.55, gain: 1.6, s1x: 0.35, s1y: -0.9, s2x: -0.2, s2y: -0.45, scale1: 2.6, scale2: 1.3, vFadeLo: 0.02, vFadeHi: 0.92 });
+        var churn = new THREE.Mesh(geo, churnMat);
+        churn.renderOrder = 153;
+        group.add(churn);
+
+        /* the flood sheet revealed behind the wall */
+        var sheetMat = _sigMat(mid, { map: _sigGlowTex() });
+        var sheet = new THREE.Mesh(new THREE.PlaneGeometry(width, 1), sheetMat);
+        sheet.rotation.x = Math.PI / 2;             /* local +Y → +Z (down the lane) */
+        sheet.position.y = 2;
+        sheet.renderOrder = 149;
+        group.add(sheet);
+
+        var uvAttr = geo.attributes.uv;
+        function writeWall(frontD, height, curl, baseY, collapse) {
+            for (var i = 0; i < pos.count; i++) {
+                var u = uvAttr.getX(i), v = uvAttr.getY(i);
+                var edge = _capSmooth(u / 0.09) * _capSmooth((1 - u) / 0.09);
+                var h = height * edge * Math.sin(v * (Math.PI / 2 + curl * 0.95));
+                var f = height * (0.22 * v + curl * 0.8 * Math.pow(v, 2.2));
+                var wob = 1 + 0.07 * Math.sin(u * 9.0 + frontD * 0.02) + 0.04 * Math.sin(v * 11 + frontD * 0.031);
+                pos.setXYZ(i, (u - 0.5) * width, baseY + h * wob * (1 - collapse * v), frontD - height * 0.45 + f);
+            }
+            pos.needsUpdate = true;
+        }
+
+        var washed = 0, sprayAcc = 0, lastEl = 0, crashed = false;
+        var wallDoneD = endD;
+        _sigRunOwned(group, totalMs, function (el) {
+            var dt = Math.max(0, el - lastEl); lastEl = el;
+            var frontD, height, curl, collapse = 0, sheetLen = 0, sheetO = 0, bodyO = 0;
+            if (el < chargeMs) {
+                var ct = _sigClamp01(el / chargeMs);
+                var sw = ts * 0.75 * _sigEaseOutCubic(ct);
+                swell.scale.set(sw, sw * 0.55, sw); swellGlow.scale.copy(swell.scale);
+                swellMat.opacity = 0.55 * ct; swellGlowMat.uniforms.uOpacity.value = 0.5 * ct;
+                _sigEnergyTick(swellGlowMat, el, 0.1);
+                frontD = startD; height = H * 0.12 * ct; curl = 0.15;
+                bodyO = 0.35 * ct;
+            } else if (el < chargeMs + rollMs) {
+                var rt = _sigClamp01((el - chargeMs) / rollMs);
+                frontD = startD + (endD - startD) * _capEase(rt);
+                height = H * (0.35 + 0.65 * _capSmooth(rt / 0.35));
+                curl = 0.2 + 0.85 * _capSmooth((rt - 0.15) / 0.85);
+                var sd = 1 - _sigClamp01((el - chargeMs) / 260);
+                var sws = ts * 0.75 * sd;
+                swell.scale.set(sws, sws * 0.55, sws); swellGlow.scale.copy(swell.scale);
+                swellMat.opacity = 0.55 * sd; swellGlowMat.uniforms.uOpacity.value = 0.5 * sd;
+                bodyO = 0.82; sheetLen = Math.max(0, frontD - startD); sheetO = 0.42;
+                /* spray + mist streaming off the crest */
+                sprayAcc += dt;
+                if (sprayAcc > 34 && _canSpawn()) {
+                    sprayAcc = 0;
+                    var crestW = frontD - height * 0.45 + height * (0.22 + curl * 0.8);
+                    var wx = wp0.x + ux * crestW, wz = wp0.z + uz * crestW;
+                    var bxy = _capBoardXY(wx, wz);
+                    var baseZ = surfaceYAt(frontD) - 3;
+                    for (var s = 0; s < 3; s++) {
+                        var lat = rn(-0.5, 0.5) * width;
+                        _spawn({
+                            x: bxy.x + lx * lat, y: bxy.y + lz * lat, z: baseZ + height * rn(0.8, 1.05),
+                            vx: ux * rn(140, 260) + lx * rn(-40, 40), vy: uz * rn(140, 260) + lz * rn(-40, 40), vz: rn(40, 160),
+                            gravity: 420, drag: 0.5,
+                            mode: 'billboard', sprite: s === 2 ? 'frost-mist' : 'water-splash',
+                            ml: rn(260, 480), size0: s === 2 ? rn(18, 28) : rn(7, 13), size1: s === 2 ? rn(36, 52) : 2,
+                            opacity0: s === 2 ? 0.45 : 0.95, opacity1: 0,
+                        });
+                    }
+                }
+                /* the washes as the front crosses each tile row */
+                while (washed < n && frontD >= (washed + 0.55) * ts * dlen) {
+                    var row = hitTiles[washed]; washed++;
+                    for (var L = 0; L < lanes; L++) {
+                        var off = L - (lanes - 1) / 2;
+                        var tX = row.x + Math.round(lx * off), tY = row.y + Math.round(lz * off);
+                        (function (tX2, tY2, delay) {
+                            _fxDelay(function () {
+                                if (_suppressed()) return;
+                                if (iteId && EFFECTS[iteId]) _spawnEffect(EFFECTS[iteId], { tx: tX2, ty: tY2 });
+                                try { _sigShockRing3D(tX2, tY2, { color: mid, r0: ts * 0.12, r1: ts * 0.95, ms: 360, height: 5, torus: false }); } catch (e) {}
+                            }, delay);
+                        })(tX, tY, Math.abs(off) * 30);
+                    }
+                }
+                if (rt > 0.3 && rt < 0.34 && !group._ewShook) { group._ewShook = true; _sigShake('normal'); }
+            } else if (el < chargeMs + rollMs + crashMs) {
+                var kt = _sigClamp01((el - chargeMs - rollMs) / crashMs);
+                frontD = endD + ts * 0.25 * kt;
+                height = H; curl = 1.05 + 0.4 * kt; collapse = _capSmooth(kt);
+                bodyO = 0.82 * (1 - kt * 0.7); sheetLen = endD - startD + ts * 0.3 * kt; sheetO = 0.48;
+                if (!crashed) {
+                    crashed = true;
+                    _sigShake('hard');
+                    try { _sigScreenFlash(0xbfe8ff, 170, 0.28); } catch (e) {}
+                    try { _sigShockRing3D(end.x, end.y, { color: hot, r0: ts * 0.3, r1: ts * 2.6, ms: 520, height: 8 }); } catch (e) {}
+                    var ePx = tilePx(end.x, end.y), eZ = unitSurfaceZ(end.x, end.y);
+                    if (_canSpawn()) {
+                        for (var q = 0; q < 30; q++) {
+                            var lat2 = rn(-0.5, 0.5) * width;
+                            _spawn({
+                                x: ePx.x + lx * lat2 + rn(-10, 10), y: ePx.y + lz * lat2 + rn(-10, 10), z: eZ + rn(4, 30),
+                                vx: ux * rn(-40, 220) + lx * rn(-90, 90), vy: uz * rn(-40, 220) + lz * rn(-90, 90), vz: rn(180, 520),
+                                gravity: 560, drag: 0.7,
+                                mode: 'billboard', sprite: q % 4 === 3 ? 'frost-mist' : 'water-splash',
+                                ml: rn(420, 820), size0: q % 4 === 3 ? rn(22, 34) : rn(8, 16), size1: q % 4 === 3 ? rn(50, 70) : 2,
+                                opacity0: q % 4 === 3 ? 0.5 : 1, opacity1: 0,
+                            });
+                        }
+                        for (var q2 = 0; q2 < 3; q2++) {
+                            _spawn({
+                                x: ePx.x, y: ePx.y, z: eZ + 2,
+                                mode: 'world', sprite: 'wave-' + (1 + q2), delayMs: q2 * 90,
+                                ml: 640, size0: ts * 0.5, size1: ts * (2.4 + q2 * 0.4),
+                                opacity0: 0.6, opacity1: 0,
+                            });
+                        }
+                    }
+                }
+            } else {
+                var rt2 = _sigClamp01((el - chargeMs - rollMs - crashMs) / recedeMs);
+                frontD = endD + ts * 0.25; height = H * (1 - rt2) * 0.15; curl = 1.4; collapse = 1;
+                bodyO = 0; sheetLen = endD - startD + ts * 0.3; sheetO = 0.48 * (1 - _capSmooth(rt2));
+                sprayAcc += dt;
+                if (sprayAcc > 90 && _canSpawn() && rt2 < 0.7) {
+                    sprayAcc = 0;
+                    var bd = rn(0, endD), bt = tileAt(bd), bpx = tilePx(bt.x, bt.y);
+                    var lat3 = rn(-0.5, 0.5) * width;
+                    _spawn({
+                        x: bpx.x + lx * lat3, y: bpx.y + lz * lat3, z: unitSurfaceZ(bt.x, bt.y) + 3,
+                        vz: rn(20, 45), drag: 0.3, mode: 'billboard', sprite: 'bubble',
+                        ml: rn(400, 700), size0: rn(5, 9), size1: rn(8, 13), opacity0: 0.7, opacity1: 0,
+                    });
+                }
+            }
+            var baseY = surfaceYAt(frontD) - wp0.y;
+            writeWall(frontD, height, curl, baseY, collapse);
+            bodyMat.opacity = bodyO;
+            churnMat.uniforms.uOpacity.value = 0.55 * (bodyO / 0.82);
+            _sigEnergyTick(churnMat, el, 0.12 + 0.5 * collapse);
+            sheet.scale.y = Math.max(0.01, sheetLen);
+            sheet.position.z = startD + sheetLen / 2;
+            sheetMat.opacity = sheetO;
+        });
+    }
+
+    /* ════════════════════════════════════════════════════════════════════
+       FIRESTORM — the far end of a capstone breath. Three twisted energy
+       cones widening upward (a fire tornado), a base glow, embers spiralling
+       up the column, flame tongues climbing inside. The breath rig calls it
+       when the beam def carries `firestorm: true`.
+       ════════════════════════════════════════════════════════════════════ */
+    function _sigFirestorm3D(tx, ty, o) {
+        o = o || {};
+        var scene = _getVFXScene(); if (!scene) return null;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var ms = o.ms || 1500;
+        var h = o.height || ts * 3.4;
+        var r = o.radius || ts * 0.55;
+        var deep = o.deep != null ? o.deep : 0xd8380c, mid = o.mid != null ? o.mid : 0xff8a24, hot = o.hot != null ? o.hot : 0xffeec2;
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y, wp.z);
+        function shell(rB, rT, color, hotC, op, scr, order) {
+            var g = new THREE.CylinderGeometry(rT, rB, 1, 22, 1, true);
+            var m = _sigEnergyMat(color, { hot: hotC, opacity: op, gain: 1.7, s1x: 0.5, s1y: -scr, s2x: -0.35, s2y: -scr * 0.55, scale1: 2.4, scale2: 1.2, vFadeLo: 0.02, vFadeHi: 0.82 });
+            var mesh = new THREE.Mesh(g, m);
+            mesh.position.y = h / 2; mesh.renderOrder = order;
+            group.add(mesh);
+            return { mesh: mesh, mat: m, op: op };
+        }
+        var shells = [
+            shell(r * 1.0, r * 2.2, deep, mid, 0.55, 1.2, 205),
+            shell(r * 0.75, r * 1.6, mid, hot, 0.8, 1.9, 206),
+            shell(r * 0.42, r * 0.9, hot, 0xffffff, 0.9, 2.6, 207),
+        ];
+        var flareMat = _sigMagicOrbMat(mid, _sigGlowTex());
+        var flare = new THREE.Sprite(flareMat);
+        flare.position.y = ts * 0.12; flare.renderOrder = 208;
+        group.add(flare);
+        var ringMat = _sigMat(mid, { map: _sigRingTex() });
+        var ring = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), ringMat);
+        ring.rotation.x = -Math.PI / 2; ring.position.y = 2; ring.renderOrder = 204;
+        group.add(ring);
+
+        var c = tilePx(tx, ty), bz = unitSurfaceZ(tx, ty), acc = 0, last = 0;
+        return _sigRunOwned(group, ms, function (el) {
+            var t = _sigClamp01(el / ms);
+            var grow = _sigEaseOutCubic(_sigClamp01(el / 260));
+            var fade = t > 0.7 ? 1 - (t - 0.7) / 0.3 : 1;
+            var erode = t > 0.65 ? (t - 0.65) / 0.35 * 0.9 : 0.1;
+            for (var i = 0; i < shells.length; i++) {
+                var S = shells[i];
+                var wob = 1 + 0.08 * Math.sin(el * 0.02 + i * 1.7);
+                S.mesh.scale.set(grow * wob, h * (0.3 + 0.7 * grow), grow * wob);
+                S.mesh.position.y = h * (0.3 + 0.7 * grow) / 2;
+                S.mesh.rotation.y = el * (0.006 + i * 0.004) * (i % 2 ? -1 : 1);
+                _sigEnergyTick(S.mat, el, erode);
+                S.mat.uniforms.uOpacity.value = S.op * grow * fade;
+            }
+            flareMat.opacity = 0.9 * grow * fade;
+            var fs = r * (3.2 + 0.6 * Math.sin(el * 0.02)) * grow;
+            flare.scale.set(fs, fs * 0.6, 1);
+            var rs = r * (2.6 + t * 1.2) * grow;
+            ring.scale.set(rs, rs, 1); ringMat.opacity = 0.55 * grow * (1 - t);
+            var dt = el - last; last = el; acc += dt;
+            if (acc > 42 && fade > 0.2 && _canSpawn()) {
+                acc = 0;
+                for (var k = 0; k < 3; k++) {
+                    var a = rn(0, Math.PI * 2), rr = r * rn(0.6, 1.4);
+                    _spawn({
+                        x: c.x + Math.cos(a) * rr, y: c.y + Math.sin(a) * rr, z: bz + rn(4, h * 0.3),
+                        vx: -Math.sin(a) * rn(90, 170), vy: Math.cos(a) * rn(90, 170), vz: rn(160, 340),
+                        gravity: -60, drag: 0.35,
+                        mode: 'billboard', sprite: o.spark || 'ember',
+                        ml: rn(420, 760), size0: rn(6, 11), size1: 2, opacity0: 1, opacity1: 0,
+                    });
+                }
+                _spawn({
+                    x: c.x + rn(-r * 0.5, r * 0.5), y: c.y + rn(-r * 0.5, r * 0.5), z: bz + rn(0, h * 0.2),
+                    vz: rn(120, 260), drag: 0.3,
+                    mode: 'y-locked', sprite: o.tongue || 'flame',
+                    ml: rn(360, 620), w0: rn(20, 32), w1: rn(8, 14), h0: rn(40, 60), h1: rn(90, 140),
+                    opacity0: 0.9, opacity1: 0,
+                });
+            }
+        });
+    }
+
+    /* ════════════════════════════════════════════════════════════════════
+       FAE RING — the fairy's capstone. The toadstool bursts on every ring
+       tile stay (raceFaeRing_aoe); this adds the RING itself: a nature
+       sigil circle the size of the ring, sixteen columns of pastel light
+       rising tile by tile round the rim, a firefly swarm, and the centre
+       kept dark (never step inside).
+       ════════════════════════════════════════════════════════════════════ */
+    function _sigFaeRing3D(tx, ty, r) {
+        r = r || 2;
+        var scene = _getVFXScene(); if (!scene) return null;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var green = 0x9dff5e, pink = 0xff9ae0, gold = 0xfff0a8;
+        try {
+            _sigMagicCircle3D(tx, ty, { color: green, color2: pink, radiusPx: (r + 0.5) * ts * 1.02, growMs: 220, holdMs: 900, fadeMs: 360, opacity: 0.75, spin: -0.0018, height: 3 });
+        } catch (e) {}
+        try { _sigScreenFlash(0xc8ffbe, 150, 0.18); } catch (e) {}
+        var tiles = _buildTileOffsets('ring', r);
+        tiles.sort(function (a, b) { return Math.atan2(a.dy, a.dx) - Math.atan2(b.dy, b.dx); });
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y, wp.z);
+        var colGeo = new THREE.CylinderGeometry(0.85, 1, 1, 10, 1, true);
+        var cols = [];
+        for (var i = 0; i < tiles.length; i++) {
+            var m = _sigMat(i % 2 ? pink : green);
+            var mesh = new THREE.Mesh(colGeo, m);
+            mesh.position.set(tiles[i].dx * ts, 0, tiles[i].dy * ts);
+            mesh.renderOrder = 156;
+            group.add(mesh);
+            var gm = _sigMagicOrbMat(i % 2 ? pink : gold, _sigGlowTex());
+            var glow = new THREE.Sprite(gm);
+            glow.position.set(tiles[i].dx * ts, ts * 0.08, tiles[i].dy * ts);
+            glow.renderOrder = 157;
+            group.add(glow);
+            cols.push({ mesh: mesh, mat: m, glow: glow, gm: gm, at: 60 + i * 38 });
+        }
+        var ms = 1500, acc = 0, last = 0;
+        var c = tilePx(tx, ty), bz = unitSurfaceZ(tx, ty);
+        return _sigRunOwned(group, ms, function (el) {
+            var t = _sigClamp01(el / ms);
+            var fade = t > 0.72 ? 1 - (t - 0.72) / 0.28 : 1;
+            for (var i = 0; i < cols.length; i++) {
+                var C = cols[i];
+                var lt = _sigClamp01((el - C.at) / 260);
+                var up = _sigEaseOutBack(lt);
+                var hgt = ts * 1.7 * Math.max(0.01, up) * (1 + 0.05 * Math.sin(el * 0.015 + i));
+                C.mesh.scale.set(ts * 0.07, hgt, ts * 0.07);
+                C.mesh.position.y = hgt / 2;
+                C.mat.opacity = 0.85 * lt * fade;
+                var gs = ts * (0.5 + 0.12 * Math.sin(el * 0.02 + i * 0.8)) * lt;
+                C.glow.scale.set(gs, gs * 0.5, 1);
+                C.gm.opacity = 0.8 * lt * fade;
+            }
+            group.rotation.y = 0;
+            var dt = el - last; last = el; acc += dt;
+            if (acc > 48 && fade > 0.3 && _canSpawn()) {
+                acc = 0;
+                var k = (Math.random() * tiles.length) | 0;
+                _spawn({
+                    x: c.x + tiles[k].dx * ts + rn(-20, 20), y: c.y + tiles[k].dy * ts + rn(-20, 20), z: bz + rn(6, 40),
+                    vz: rn(30, 90), drag: 0.6, wander: { amp: 40, freq: 1.4 },
+                    mode: 'billboard', sprite: Math.random() < 0.6 ? 'divine-sparkle' : 'petal',
+                    tint: Math.random() < 0.5 ? pink : gold,
+                    ml: rn(600, 1100), size0: rn(5, 9), size1: rn(3, 6), opacity0: 0.95, opacity1: 0,
+                });
+            }
+        });
+    }
+
+    /* ════════════════════════════════════════════════════════════════════
+       CATACLYSM DECREE — the overlord's capstone (a `delayed` cast).
+         `:mark` — the burning crown: a red sigil hangs tilted over the
+                   marked zone, embers drifting down (the round it waits).
+         detonate — the crown DESCENDS onto the ground, then hellfire
+                   columns slam the nine tiles in a spiral, lava glow pools
+                   on every tile, ember rain, the hard shake and the flash.
+       ════════════════════════════════════════════════════════════════════ */
+    function _sigCataclysmMark3D(tx, ty) {
+        var ts = _cfg().tileSize || 128;
+        try {
+            _sigMagicCircle3D(tx, ty, { color: 0xff3a1a, color2: 0xff9a3a, radiusPx: ts * 1.8, growMs: 260, holdMs: 1500, fadeMs: 400, opacity: 0.7, spin: 0.0014, height: ts * 2.4, tiltRad: 0.35 });
+        } catch (e) {}
+        var c = tilePx(tx, ty), bz = unitSurfaceZ(tx, ty);
+        for (var i = 0; i < 4; i++) {
+            (function (at) {
+                _fxDelay(function () {
+                    if (_suppressed() || !_canSpawn()) return;
+                    for (var k = 0; k < 4; k++) {
+                        _spawn({
+                            x: c.x + rn(-ts, ts), y: c.y + rn(-ts, ts), z: bz + ts * rn(1.6, 2.4),
+                            vz: rn(-70, -30), drag: 0.4, wander: { amp: 20, freq: 1.0 },
+                            mode: 'billboard', sprite: 'ember',
+                            ml: rn(700, 1100), size0: rn(5, 9), size1: 2, opacity0: 0.9, opacity1: 0,
+                        });
+                    }
+                }, at);
+            })(200 + i * 320);
+        }
+    }
+    function _sigCataclysmDecree3D(tx, ty, r) {
+        r = r != null ? r : 1;
+        var scene = _getVFXScene(); if (!scene) return null;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var red = 0xff3a1a, orange = 0xff8a24, hot = 0xffd9a8;
+        /* the crown comes down */
+        try {
+            _sigMagicCircle3D(tx, ty, { color: red, color2: orange, radiusPx: (r + 0.6) * ts * 1.25, growMs: 120, holdMs: 900, fadeMs: 500, opacity: 0.85, spin: 0.003, height: ts * 2.4, rise: -ts * 2.36 });
+        } catch (e) {}
+        var tiles = _buildTileOffsets('square', r);
+        tiles.sort(function (a, b) {
+            var da = Math.abs(a.dx) + Math.abs(a.dy), db = Math.abs(b.dx) + Math.abs(b.dy);
+            return da !== db ? da - db : Math.atan2(a.dy, a.dx) - Math.atan2(b.dy, b.dx);
+        });
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y, wp.z);
+        var colGeo = new THREE.CylinderGeometry(1.25, 0.8, 1, 14, 1, true);
+        var cols = [];
+        for (var i = 0; i < tiles.length; i++) {
+            var m = _sigEnergyMat(i === 0 ? hot : orange, { hot: 0xffffff, opacity: 0.9, gain: 1.6, s1y: -1.1, s2y: -0.5, scale1: 2.2, scale2: 1.1, vFadeLo: 0.02, vFadeHi: 0.8 });
+            var mesh = new THREE.Mesh(colGeo, m);
+            mesh.position.set(tiles[i].dx * ts, 0, tiles[i].dy * ts);
+            mesh.renderOrder = 205;
+            group.add(mesh);
+            var glowM = _sigMagicOrbMat(orange, _sigGlowTex());
+            var glow = new THREE.Sprite(glowM);
+            glow.position.set(tiles[i].dx * ts, ts * 0.1, tiles[i].dy * ts);
+            glow.renderOrder = 206;
+            group.add(glow);
+            cols.push({ mesh: mesh, mat: m, glow: glow, gm: glowM, at: 380 + i * 70, r: i === 0 ? ts * 0.42 : ts * 0.26, h: i === 0 ? ts * 5.5 : ts * 3.4, dx: tiles[i].dx, dy: tiles[i].dy });
+        }
+        var ms = 2100, fired = 0;
+        var c = tilePx(tx, ty), bz = unitSurfaceZ(tx, ty);
+        _fxDelay(function () {
+            if (_suppressed()) return;
+            _sigShake('hard');
+            try { _sigScreenFlash(0xff6a2a, 220, 0.36); } catch (e) {}
+            try { _sigShockRing3D(tx, ty, { color: red, r0: ts * 0.3, r1: ts * (r + 1.2) * 1.4, ms: 560, height: 6 }); } catch (e) {}
+        }, 380);
+        return _sigRunOwned(group, ms, function (el) {
+            var t = _sigClamp01(el / ms);
+            var fade = t > 0.7 ? 1 - (t - 0.7) / 0.3 : 1;
+            for (var i = 0; i < cols.length; i++) {
+                var C = cols[i];
+                var lt = _sigClamp01((el - C.at) / 180);
+                var hgt = C.h * Math.max(0.01, _sigEaseOutCubic(lt));
+                var wob = 1 + 0.1 * Math.sin(el * 0.02 + i);
+                C.mesh.scale.set(C.r * wob, hgt, C.r * wob);
+                C.mesh.position.y = hgt / 2;
+                C.mesh.rotation.y = el * 0.004 * (i % 2 ? -1 : 1);
+                var erode = t > 0.6 ? (t - 0.6) / 0.4 * 0.9 : 0.12;
+                _sigEnergyTick(C.mat, el, erode);
+                C.mat.uniforms.uOpacity.value = 0.9 * lt * fade;
+                var gs = C.r * (3.6 + 0.6 * Math.sin(el * 0.017 + i)) * lt;
+                C.glow.scale.set(gs, gs * 0.55, 1);
+                C.gm.opacity = 0.85 * lt * (t > 0.5 ? 1 - (t - 0.5) / 0.5 : 1);
+                if (lt > 0 && fired <= i && el >= C.at) {
+                    fired = i + 1;
+                    var tX = tx + C.dx, tY = ty + C.dy;
+                    try { if (typeof spawnFlameBurst3D === 'function') spawnFlameBurst3D(tX, tY, { lifeMs: 900, hScale: 1.35, rScale: 1.1 }); } catch (e) {}
+                    try { _sigSparks(tX, tY, 'ember', 8, { vxy: 220, vz0: 120, vz1: 380, gravity: 300, z: 8 }); } catch (e) {}
+                    if (_canSpawn()) {
+                        _spawn({
+                            x: c.x + C.dx * ts, y: c.y + C.dy * ts, z: bz + 2,
+                            mode: 'world', sprite: 'fire-glow', ml: 1800,
+                            size0: ts * 0.7, size1: ts * 1.05, opacity0: 0.75, opacity1: 0,
+                        });
+                        _spawn({
+                            x: c.x + C.dx * ts, y: c.y + C.dy * ts, z: bz + 6,
+                            vz: rn(30, 60), drag: 0.4, mode: 'y-locked', sprite: 'smoke', ml: rn(900, 1400),
+                            size0: ts * 0.3, size1: ts * 0.9, opacity0: 0.45, opacity1: 0,
+                        });
+                    }
+                }
+            }
+        });
+    }
+
+    /* ════════════════════════════════════════════════════════════════════
+       DRAINING EMBRACE — the succubus's capstone. Two crimson wings close
+       around the victim from behind, a heart of light swells at the chest,
+       and the stolen life streams to the caster as pink soul-motes and
+       crimson petals — a kiss, not a bite.
+       ════════════════════════════════════════════════════════════════════ */
+    function _sigDrainingEmbrace3D(tx, ty, r, params) {
+        var scene = _getVFXScene(); if (!scene) return null;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var crimson = 0xff2d6b, pink = 0xff8ad0, pale = 0xffd0e8;
+        var yaw = _sigYawToward(tx, ty);           /* caster → victim direction */
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y, wp.z);
+        group.rotation.y = yaw;
+        var H = ts * 1.35, R = ts * 0.62;
+        var wingGeo = new THREE.CylinderGeometry(R * 0.8, R, H, 18, 1, true, 0, Math.PI * 0.92);
+        function wing(sign) {
+            var m = _sigEnergyMat(crimson, { hot: pale, opacity: 0.85, gain: 1.5, s1x: 0.3 * sign, s1y: -0.5, s2x: -0.15 * sign, s2y: -0.22, scale1: 2.0, scale2: 1.0, vFadeLo: 0.05, vFadeHi: 0.9 });
+            var mesh = new THREE.Mesh(wingGeo, m);
+            mesh.position.y = H * 0.55; mesh.renderOrder = 205;
+            group.add(mesh);
+            return { mesh: mesh, mat: m, sign: sign };
+        }
+        var wings = [wing(1), wing(-1)];
+        var heartM = _sigMagicOrbMat(pink, _sigGlowTex());
+        var heart = new THREE.Sprite(heartM);
+        heart.position.y = ts * 0.55; heart.renderOrder = 207;
+        group.add(heart);
+        var ringMat = _sigMat(crimson, { map: _sigRingTex() });
+        var ring = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), ringMat);
+        ring.rotation.x = -Math.PI / 2; ring.position.y = 3; ring.renderOrder = 204;
+        group.add(ring);
+
+        var ms = 1350, acc = 0, last = 0;
+        var c = tilePx(tx, ty), bz = unitSurfaceZ(tx, ty);
+        var cp = _sigCasterPos(tx, ty);
+        var cpx = cp ? tilePx(cp.x, cp.y) : null;
+        return _sigRunOwned(group, ms, function (el) {
+            var t = _sigClamp01(el / ms);
+            var close = _sigEaseOutCubic(_sigClamp01(el / 380));   /* the wings fold shut */
+            var fade = t > 0.7 ? 1 - (t - 0.7) / 0.3 : 1;
+            for (var i = 0; i < wings.length; i++) {
+                var W = wings[i];
+                /* open behind the victim (facing away from the caster), fold round to the front */
+                W.mesh.rotation.y = W.sign * (Math.PI * 0.95 - close * Math.PI * 0.82) + Math.PI;
+                var sc = 0.6 + 0.4 * close;
+                W.mesh.scale.set(sc, 1, sc);
+                _sigEnergyTick(W.mat, el, t > 0.6 ? (t - 0.6) / 0.4 * 0.8 : 0.08);
+                W.mat.uniforms.uOpacity.value = 0.85 * _sigClamp01(el / 120) * fade;
+            }
+            var beat = 1 + 0.18 * Math.max(0, Math.sin(el * 0.012));
+            var hs = ts * (0.35 + 0.55 * close) * beat;
+            heart.scale.set(hs, hs, 1);
+            heartM.opacity = 0.9 * close * fade;
+            var rs = ts * (0.9 + 0.5 * t);
+            ring.scale.set(rs, rs, 1); ringMat.opacity = 0.55 * (1 - t);
+            var dt = el - last; last = el; acc += dt;
+            if (acc > 40 && close > 0.8 && fade > 0.2 && _canSpawn()) {
+                acc = 0;
+                var z0 = bz + ts * 0.5 + rn(-10, 16);
+                if (cpx) {
+                    var ddx = cpx.x - c.x, ddy = cpx.y - c.y, dl = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
+                    var life = rn(420, 640), spd = dl / (life / 1000);
+                    for (var k = 0; k < 2; k++) {
+                        _spawn({
+                            x: c.x + rn(-10, 10), y: c.y + rn(-10, 10), z: z0,
+                            vx: ddx / dl * spd + rn(-30, 30), vy: ddy / dl * spd + rn(-30, 30), vz: rn(20, 70),
+                            gravity: 60, drag: 0,
+                            mode: 'billboard', sprite: k ? 'heal-glow' : 'spark-pink', tint: k ? pink : null,
+                            ml: life, size0: rn(7, 12), size1: 3, opacity0: 1, opacity1: 0.2,
+                        });
+                    }
+                }
+                _spawn({
+                    x: c.x + rn(-ts * 0.3, ts * 0.3), y: c.y + rn(-ts * 0.3, ts * 0.3), z: z0 + rn(0, 30),
+                    vz: rn(-40, -10), drag: 0.5, wander: { amp: 26, freq: 1.1 },
+                    mode: 'billboard', sprite: 'petal', tint: crimson,
+                    ml: rn(500, 900), size0: rn(7, 11), size1: rn(5, 8), opacity0: 0.9, opacity1: 0,
+                });
+            }
+        });
+    }
+
+    /* ════════════════════════════════════════════════════════════════════
+       CRUSADE — the knight's capstone (a `cross` cast): four blades of holy
+       light lance out from the target along the cross, a taller column at
+       the heart, gold motes ascending. A cross OF light for a crusade.
+       ════════════════════════════════════════════════════════════════════ */
+    function _sigCrusade3D(tx, ty, r) {
+        r = r != null && r > 0 ? r : 2;
+        var scene = _getVFXScene(); if (!scene) return null;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var gold = 0xffe9a8, white = 0xfff8e8;
+        try { _sigLightPillar3D(tx, ty, { color: gold, coreColor: 0xffffff, radius: ts * 0.5, height: ts * 7, ms: 1000 }); } catch (e) {}
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y + 4, wp.z);
+        var arms = [];
+        var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+        for (var i = 0; i < 4; i++) {
+            var len = r * ts + ts * 0.5;
+            var m = _sigEnergyMat(gold, { hot: white, opacity: 0.9, gain: 1.6, s1x: -0.9, s1y: 0.0, s2x: -0.4, s2y: 0.1, scale1: 2.0, scale2: 1.0, vFadeLo: 0.0, vFadeHi: 1.0 });
+            var mesh = new THREE.Mesh(new THREE.BoxGeometry(1, ts * 0.42, ts * 0.5), m);
+            mesh.rotation.y = Math.atan2(dirs[i][1], dirs[i][0]) * -1;
+            mesh.position.y = ts * 0.22; mesh.renderOrder = 206;
+            group.add(mesh);
+            arms.push({ mesh: mesh, mat: m, len: len, dx: dirs[i][0], dz: dirs[i][1] });
+        }
+        var ms = 1100;
+        var c = tilePx(tx, ty), bz = unitSurfaceZ(tx, ty);
+        _fxDelay(function () { if (!_suppressed()) { _sigShake('normal'); try { _sigScreenFlash(0xfff2c8, 150, 0.22); } catch (e) {} } }, 60);
+        return _sigRunOwned(group, ms, function (el) {
+            var t = _sigClamp01(el / ms);
+            var ext = _sigEaseOutCubic(_sigClamp01(el / 220));
+            var fade = t > 0.6 ? 1 - (t - 0.6) / 0.4 : 1;
+            for (var i = 0; i < arms.length; i++) {
+                var A = arms[i];
+                var L = Math.max(1, A.len * ext);
+                A.mesh.scale.set(L, 1, 1);
+                A.mesh.position.x = A.dx * L / 2;
+                A.mesh.position.z = A.dz * L / 2;
+                _sigEnergyTick(A.mat, el, t > 0.55 ? (t - 0.55) / 0.45 * 0.85 : 0.05);
+                A.mat.uniforms.uOpacity.value = 0.9 * fade;
+            }
+            if (((el / 60) | 0) !== (((el - 16) / 60) | 0) && fade > 0.3 && _canSpawn()) {
+                var a = arms[(Math.random() * 4) | 0], d = rn(0, a.len);
+                _spawn({
+                    x: c.x + a.dx * d, y: c.y + a.dz * d, z: bz + rn(6, 30),
+                    vz: rn(80, 200), drag: 0.5, mode: 'billboard', sprite: 'holy-light',
+                    ml: rn(400, 700), size0: rn(6, 11), size1: 3, opacity0: 1, opacity1: 0,
+                });
+            }
+        });
+    }
+
+    /* ── the registry (written through Object.assign — every READ of the
+       table still goes through _geom3D, party-builder.test.js counts) ── */
+    Object.assign(_spell3DGeometry, {
+        'raceFaeRing':              function (tx, ty, r) { _sigFaeRing3D(tx, ty, r != null ? r : 2); },
+        'raceCataclysmDecree':      function (tx, ty, r) { _sigCataclysmDecree3D(tx, ty, r != null ? r : 1); },
+        'raceCataclysmDecree:mark': function (tx, ty) { _sigCataclysmMark3D(tx, ty); },
+        'raceDrainingEmbrace':      function (tx, ty, r, params) { _sigDrainingEmbrace3D(tx, ty, r, params); },
+        'raceCrusade':              function (tx, ty, r) { _sigCrusade3D(tx, ty, r); },
+    });
+
+    /* ── THE BEAM DEFS: Tsunami + the capstone breaths ───────────────────
+       Tsunami stops being Water Pulse: its own beam def with `beamTsunami`
+       (the wall), its own wash tile. Dragon Breath (r1) keeps the PLAIN
+       fire breath as its own def; Dragonfire (the capstone) is the INFERNO
+       — the rig at 1.7× with the firestorm at the far end and the inhale.
+       Atomic Breath (Kaiju★) and Hellmouth (Demon★) grow too. */
+    EFFECTS['raceTsunami_impact_tile'] = {
+        layers: [
+            { count: 8, sprite: 'water-splash', ml: [320, 600], z: 4, offsetXY: 16,
+              vxRange: 140, vyRange: 140, vzRange: [80, 260], gravity: 420, drag: 1.2, size0: [7, 13], size1: 2, opacity0: 0.95 },
+            { count: 2, sprite: 'frost-mist', ml: [420, 700], z: 10, offsetXY: 14,
+              vzRange: [30, 70], drag: 0.5, size0: [22, 30], size1: [46, 62], opacity0: 0.45 },
+            { anchor: 'floor', mode: 'world', sprite: 'wave-2', ml: 700, z: 2, size0: 40, size1: 150, opacity0: 0.6 },
+            { count: 3, sprite: 'bubble', ml: [500, 800], z: 3, offsetXY: 20, delayMs: 300,
+              vzRange: [20, 50], drag: 0.3, size0: [5, 8], size1: [8, 12], opacity0: 0.7 },
+        ]
+    };
+    EFFECTS['raceTsunami_beam'] = {
+        beamTsunami: true, lineWidth: 3, chargeMs: 420, crashMs: 340, recedeMs: 900,
+        impactTileEffect: 'raceTsunami_impact_tile', shake: 'hard',
+    };
+    SPELL_MAP['raceTsunami'] = { beam: 'raceTsunami_beam', impact: 'raceTsunami_impact_tile' };
+
+    EFFECTS['raceDragonBreath_beam'] = {              /* the r1 gout — the plain rig */
+        beamBreath: true, breathTheme: 'fire', chargeMs: 150, beamMs: 720,
+        impactTileEffect: 'raceDragonBreath_impact_tile', shake: 'soft',
+    };
+    EFFECTS['raceDragonBreath_impact_tile'] = {
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1100, z: 1, size0: 64, size1: 84, opacity0: 0.75 },
+            { count: 5, sprite: 'ember', ml: [260, 520], z: 4, offsetXY: 8,
+              vxRange: 100, vyRange: 100, vzRange: [40, 140], gravity: 300, drag: 1.4, size0: [5, 9], size1: 2 },
+        ]
+    };
+    SPELL_MAP['raceDragonBreath'] = { beam: 'raceDragonBreath_beam', impact: 'raceDragonBreath_impact_tile' };
+    EFFECTS['raceDragonfire_beam'] = {                /* the capstone — the INFERNO */
+        beamBreath: true, breathTheme: 'fire', breathScale: 1.7, inhale: true, firestorm: true,
+        chargeMs: 340, beamMs: 1150,
+        impactTileEffect: 'raceDragonfire_impact_tile', shake: 'hard',
+    };
+    EFFECTS['raceDragonfire_impact_tile'] = {
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1600, z: 1, size0: 96, size1: 124, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'fire-glow', ml: 1100, z: 2, size0: 90, size1: 120, opacity0: 0.7 },
+            { count: 12, sprite: 'ember', ml: [340, 680], z: 4, offsetXY: 12,
+              vxRange: 150, vyRange: 150, vzRange: [60, 220], gravity: 300, drag: 1.3, size0: [6, 11], size1: 2 },
+            { count: 3, anchor: 'floor', mode: 'y-locked', sprite: 'flame', ml: [420, 700], offsetXY: 24,
+              w0: [16, 26], w1: [8, 12], h0: [40, 60], h1: [90, 140], opacity0: 0.9 },
+            { count: 3, delayMs: 60, mode: 'y-locked', sprite: 'smoke', ml: [700, 1100], offsetXY: 14,
+              vzRange: [25, 50], drag: 0.4, size0: [28, 42], size1: [60, 90], opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceAtomicBreath_beam'].breathScale = 1.45;
+    EFFECTS['raceAtomicBreath_beam'].inhale = true;
+    EFFECTS['raceHellmouth_beam'].breathScale = 1.35;
+    EFFECTS['raceHellmouth_beam'].inhale = true;
+
+    /* ── THE HITCHHIKERS: the r1 twins that borrowed a capstone's recipe ── */
+    EFFECTS['raceGlitterBomb_impact_center'] = {      /* the white-out */
+        shake: 'normal',
+        layers: [
+            { sprite: 'flash', ml: 260, size0: 150, size1: 40, tint: 0xffffff, opacity0: 0.95 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 520, z: 2, tint: 0xfff0ff, size0: 40, size1: 220, opacity0: 0.7 },
+        ]
+    };
+    EFFECTS['raceGlitterBomb_impact_tile'] = {        /* glitter everywhere */
+        layers: [
+            { count: 14, sprite: 'divine-sparkle', ml: [500, 900], z: 6, offsetXY: 18,
+              vxRange: 170, vyRange: 170, vzRange: [120, 320], gravity: 260, drag: 1.0, size0: [4, 8], size1: 2, opacity0: 1 },
+            { count: 6, sprite: 'spark-pink', ml: [400, 800], z: 6, offsetXY: 14,
+              vxRange: 150, vyRange: 150, vzRange: [100, 280], gravity: 260, drag: 1.0, size0: [5, 9], size1: 2 },
+            { count: 4, sprite: 'petal', ml: [700, 1100], z: 40, offsetXY: 22, tint: 0xffe8ff,
+              vzRange: [-30, -10], gravity: 20, wander: { amp: 34, freq: 0.9 }, size0: [7, 11], size1: [5, 8], opacity0: 0.9 },
+        ]
+    };
+    EFFECTS['raceGlitterBomb_aoe'] = { aoeRadius: 1, impactTileEffect: 'raceGlitterBomb_impact_tile', impactCenterEffect: 'raceGlitterBomb_impact_center' };
+    SPELL_MAP['raceGlitterBomb'] = { aoe: 'raceGlitterBomb_aoe' };
+    /* Fae Ring keeps the toadstool bursts and gains the ring (geom3D) */
+    EFFECTS['raceFaeRing_aoe'].geom3D = true;
+
+    EFFECTS['raceSnowballVolley_impact_tile'] = {     /* a snowball bursts */
+        layers: [
+            { sprite: 'frost-mist', ml: 320, z: 8, size0: 28, size1: 70, opacity0: 0.7 },
+            { count: 7, sprite: 'snowflake', ml: [380, 700], z: 6, offsetXY: 10,
+              vxRange: 120, vyRange: 120, vzRange: [40, 160], gravity: 240, drag: 1.2, size0: [4, 8], size1: 2, opacity0: 0.95 },
+            { anchor: 'floor', mode: 'world', sprite: 'frost-mist', ml: 900, z: 2, size0: 50, size1: 80, opacity0: 0.45 },
+        ]
+    };
+    EFFECTS['raceSnowballVolley_aoe'] = {
+        aoeRadius: 1, impactTileEffect: 'raceSnowballVolley_impact_tile',
+        missiles: { sprite: 'frost-crystal', w: 40, h: 40, flyMs: 470, stagger: 70, arcHeight: 320, trail: false },
+    };
+    SPELL_MAP['raceSnowballVolley'] = { aoe: 'raceSnowballVolley_aoe' };
+
+    EFFECTS['raceArtilleryStrike_impact_tile'] = {    /* a shell, not a warhead */
+        layers: [
+            { sprite: 'flash', ml: 160, z: 6, size0: 90, size1: 24, tint: 0xffd9a0, opacity0: 0.95 },
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1800, z: 1, size0: 80, size1: 96, opacity0: 0.85 },
+            { count: 8, sprite: 'rock-debris', ml: [380, 700], z: 4, offsetXY: 10,
+              vxRange: 200, vyRange: 200, vzRange: [140, 340], gravity: 620, drag: 0.6, size0: [6, 11], size1: 3 },
+            { count: 3, anchor: 'floor', mode: 'y-locked', sprite: 'smoke', ml: [900, 1400], offsetXY: 14,
+              vzRange: [60, 110], drag: 0.4, size0: [30, 44], size1: [80, 120], opacity0: 0.6 },
+            { count: 6, sprite: 'ember', ml: [300, 560], z: 6, offsetXY: 12,
+              vxRange: 160, vyRange: 160, vzRange: [60, 200], gravity: 380, drag: 1.4, size0: [4, 8], size1: 2 },
+        ]
+    };
+    SPELL_MAP['raceArtilleryStrike'] = Object.assign({}, SPELL_MAP['raceArtilleryStrike'], { impact: 'raceArtilleryStrike_impact_tile' });
+
+    EFFECTS['raceTerrorPounce_impact'] = {            /* the shriek on arrival */
+        shake: 'normal',
+        layers: [
+            { sprite: 'flash', ml: 140, size0: 70, size1: 20, tint: 0x7a2cff, opacity0: 0.8 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 420, z: 2, tint: 0x2a0a3a, size0: 40, size1: 200, opacity0: 0.85 },
+            { count: 10, sprite: 'shadow-wisp', ml: [420, 760], z: 8, offsetXY: 12,
+              vxRange: 220, vyRange: 220, vzRange: [40, 160], drag: 0.8, size0: [10, 16], size1: [20, 30], opacity0: 0.8 },
+            { count: 6, sprite: 'blood-fleck', ml: [220, 420], z: 10, offsetXY: 8,
+              vxRange: 160, vyRange: 160, vzRange: [60, 200], gravity: 480, drag: 1.2, size0: [4, 8], size1: 1 },
+            { count: 2, sprite: 'psi-pulse', ml: [300, 460], z: 40, tint: 0xb066ff, size0: [30, 44], size1: [90, 130], opacity0: 0.5 },
+        ]
+    };
+    SPELL_MAP['raceTerrorPounce'] = { impact: 'raceTerrorPounce_impact' };
+
+    EFFECTS['raceHallelujah_aura'] = {                /* the choir answers: light from above */
+        pillarSprite: 'holy-pillar', pillarMs: 1300, pillarH: 40, pillarH1: 420, pillarW0: 60, pillarW1: 140, pillarOpacity0: 0.9,
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 1200, z: 2, size0: 60, size1: 260, opacity0: 0.8 },
+            { count: 16, sprite: 'divine-sparkle', ml: [700, 1200], z: [4, 30], offsetXY: 40,
+              vzRange: [90, 200], drag: 0.5, wander: { amp: 24, freq: 1.0 }, size0: [5, 9], size1: 3, opacity0: 1 },
+            { count: 6, sprite: 'holy-light', ml: [600, 1000], z: [40, 120], offsetXY: 36, delayMs: 120,
+              vzRange: [60, 140], drag: 0.4, size0: [10, 16], size1: [4, 7], opacity0: 0.9 },
+            { count: 3, sprite: 'heal-cross', ml: [500, 800], z: [20, 60], offsetXY: 26, delayMs: 200,
+              vzRange: [40, 90], size0: [10, 14], size1: 6, opacity0: 0.9 },
+        ]
+    };
+    SPELL_MAP['raceHallelujah'] = { aura: 'raceHallelujah_aura' };
+
+    /* Draining Embrace: its own hit + its own drain bead (the wings are geom) */
+    EFFECTS['raceDrainingEmbrace_impact'] = {
+        layers: [
+            { sprite: 'flash', ml: 180, size0: 70, size1: 24, tint: 0xff8ad0, opacity0: 0.8 },
+            { count: 8, sprite: 'blood-mist', ml: [400, 700], z: 30, offsetXY: 14, tint: 0xff3d7a,
+              vzRange: [10, 40], drag: 0.6, size0: [14, 20], size1: [26, 40], opacity0: 0.55 },
+            { count: 6, sprite: 'petal', ml: [600, 1000], z: 50, offsetXY: 20, tint: 0xff2d6b,
+              vzRange: [-40, -15], gravity: 20, wander: { amp: 30, freq: 1.1 }, size0: [7, 11], size1: [5, 8], opacity0: 0.9 },
+        ]
+    };
+    EFFECTS['raceDrainingEmbrace_drainHop'] = {
+        layers: [
+            { count: 3, sprite: 'spark-pink', ml: [220, 380], z: 30, offsetXY: 8,
+              vxRange: 60, vyRange: 60, vzRange: [30, 90], gravity: 40, drag: 1, size0: [6, 10], size1: 2, opacity0: 0.95 },
+            { count: 2, sprite: 'heal-glow', ml: [220, 360], z: 30, offsetXY: 6, tint: 0xff8ad0,
+              vzRange: [30, 70], size0: [8, 12], size1: 3, opacity0: 0.9 },
+        ]
+    };
+    SPELL_MAP['raceDrainingEmbrace'] = { impact: 'raceDrainingEmbrace_impact', drainHop: 'raceDrainingEmbrace_drainHop' };
+
+    /* Cataclysm Decree: its own crater tile (Infernal Decree keeps the old one) */
+    EFFECTS['raceCataclysmDecree_impact_tile'] = {
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 2200, z: 1, size0: 110, size1: 130, opacity0: 0.95 },
+            { anchor: 'floor', mode: 'world', sprite: 'fire-glow', ml: 1600, z: 2, size0: 100, size1: 130, opacity0: 0.8 },
+            { count: 10, sprite: 'rock-debris', ml: [400, 760], z: 4, offsetXY: 12,
+              vxRange: 220, vyRange: 220, vzRange: [160, 380], gravity: 600, drag: 0.6, size0: [6, 12], size1: 3 },
+            { count: 10, sprite: 'ember', ml: [400, 800], z: 6, offsetXY: 14,
+              vxRange: 160, vyRange: 160, vzRange: [80, 280], gravity: 280, drag: 1.2, size0: [5, 10], size1: 2 },
+        ]
+    };
+    SPELL_MAP['raceCataclysmDecree'] = Object.assign({}, SPELL_MAP['raceCataclysmDecree'], { impact: 'raceCataclysmDecree_impact_tile' });
+    /* Crusade: the cross recipe under the cross of light */
+    EFFECTS['raceCrusade_impact_tile'] = {
+        layers: [
+            { sprite: 'flash', ml: 160, size0: 60, size1: 20, tint: 0xfff2c8, opacity0: 0.85 },
+            { count: 6, sprite: 'holy-light', ml: [400, 700], z: 6, offsetXY: 14,
+              vzRange: [80, 200], drag: 0.5, size0: [6, 10], size1: 3, opacity0: 1 },
+            { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 700, z: 2, size0: 30, size1: 110, opacity0: 0.6 },
+        ]
+    };
+    EFFECTS['raceCrusade_aoe'] = { aoeRadius: 2, shape: 'cross', impactTileEffect: 'raceCrusade_impact_tile', geom3D: true };
+    SPELL_MAP['raceCrusade'] = { aoe: 'raceCrusade_aoe', impact: 'raceCrusade_impact_tile' };
+
+    /* ── THE THEME-FALLBACK CAPSTONES: an identity each ──────────────────
+       Every one of these fired the element's generic burst — the same blob
+       as any sibling of the same colour. Data-only recipes, one look each. */
+    EFFECTS['raceSupernova_impact_tile'] = {          /* the star's edge: white heat, then the ash */
+        layers: [
+            { sprite: 'flash', ml: 220, size0: 110, size1: 30, tint: 0xfff6d8, opacity0: 0.95 },
+            { count: 8, sprite: 'divine-sparkle', ml: [400, 760], z: 6, offsetXY: 16,
+              vxRange: 220, vyRange: 220, vzRange: [80, 260], gravity: 120, drag: 0.8, size0: [5, 9], size1: 2, opacity0: 1 },
+            { count: 3, sprite: 'smoke-soft', ml: [600, 1000], z: 12, offsetXY: 16, delayMs: 160, tint: 0x8a7a70,
+              vzRange: [30, 70], drag: 0.4, size0: [20, 30], size1: [46, 70], opacity0: 0.45 },
+        ]
+    };
+    EFFECTS['raceSupernova_impact_center'] = {
+        shake: 'hard',
+        layers: [
+            { sprite: 'flash', ml: 420, size0: 260, size1: 80, tint: 0xffffff, opacity0: 1 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 700, z: 2, tint: 0xffe9a8, size0: 60, size1: 460, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 900, z: 3, delayMs: 140, tint: 0xffc060, size0: 40, size1: 380, opacity0: 0.7 },
+            { count: 24, sprite: 'holy-light', ml: [500, 900], z: [10, 60], offsetXY: 30,
+              vxRange: 320, vyRange: 320, vzRange: [40, 220], drag: 0.7, size0: [7, 12], size1: 3, opacity0: 1 },
+        ]
+    };
+    EFFECTS['raceSupernova_aoe'] = { aoeRadius: 2, shape: 'round', impactTileEffect: 'raceSupernova_impact_tile', impactCenterEffect: 'raceSupernova_impact_center' };
+    SPELL_MAP['raceSupernova'] = { aoe: 'raceSupernova_aoe' };
+
+    EFFECTS['raceSingularity_impact_tile'] = {        /* everything pulled to the point */
+        layers: [
+            { count: 9, sprite: 'spark-blue', ml: [500, 800], z: [4, 40], offsetXY: 50,
+              seekIn: [420, 700], seekInZ: [20, 60], seekSpiral: 520, size0: [5, 9], size1: 1, opacity0: 0.95 },
+            { count: 3, sprite: 'void-mist', ml: [500, 760], z: 20, offsetXY: 40, seekIn: [400, 640], seekInZ: [20, 50],
+              size0: [16, 24], size1: [6, 10], opacity0: 0.6 },
+        ]
+    };
+    EFFECTS['raceSingularity_impact_center'] = {
+        shake: 'normal',
+        layers: [
+            { sprite: 'flash', ml: 260, size0: 30, size1: 160, tint: 0x66e8ff, opacity0: 0.9, delayMs: 480 },
+            { anchor: 'floor', mode: 'world', sprite: 'target-ring-blue', ml: 720, z: 2, size0: 300, size1: 40, opacity0: 0.85 },
+            { sprite: 'psi-pulse', ml: 560, z: 40, tint: 0x1a0a30, size0: 90, size1: 20, opacity0: 0.95 },
+            { count: 12, sprite: 'steel-spark', ml: [300, 520], z: 30, offsetXY: 8, delayMs: 500,
+              vxRange: 300, vyRange: 300, vzRange: [60, 260], gravity: 200, drag: 0.8, size0: [4, 8], size1: 1 },
+        ]
+    };
+    EFFECTS['raceSingularity_aoe'] = { aoeRadius: 2, impactTileEffect: 'raceSingularity_impact_tile', impactCenterEffect: 'raceSingularity_impact_center' };
+    SPELL_MAP['raceSingularity'] = { aoe: 'raceSingularity_aoe', impact: 'raceSingularity_impact_center' };
+
+    EFFECTS['raceMarrowstorm_impact_tile'] = {        /* a hail of bone */
+        layers: [
+            { count: 9, sprite: 'debris', ml: [360, 640], z: [60, 160], offsetXY: 22, tint: 0xe8e0cc,
+              vxRange: 60, vyRange: 60, vzRange: [-260, -160], gravity: 500, drag: 0.2, size0: [5, 9], size1: 4, opacity0: 1 },
+            { count: 4, sprite: 'dust-puff', ml: [400, 700], z: 4, offsetXY: 16, delayMs: 180, tint: 0xd8d0c0,
+              vzRange: [20, 50], size0: [14, 22], size1: [30, 44], opacity0: 0.55 },
+            { count: 2, sprite: 'shadow-wisp', ml: [500, 800], z: 10, offsetXY: 12, delayMs: 200, tint: 0x9a80c0,
+              vzRange: [40, 90], drag: 0.5, size0: [12, 18], size1: [22, 30], opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceMarrowstorm_aoe'] = { aoeRadius: 2, shape: 'round', impactTileEffect: 'raceMarrowstorm_impact_tile', shake: 'normal' };
+    SPELL_MAP['raceMarrowstorm'] = { aoe: 'raceMarrowstorm_aoe' };
+
+    EFFECTS['raceEternalSlumber_impact_tile'] = {     /* the dream closes over the tile */
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'psi-pulse', ml: 1100, z: 2, tint: 0x6a3aa0, size0: 40, size1: 130, opacity0: 0.6 },
+            { count: 5, sprite: 'spark-pink', ml: [700, 1200], z: [10, 50], offsetXY: 24, tint: 0xc0a0ff,
+              vzRange: [-30, -8], drag: 0.6, wander: { amp: 36, freq: 0.7 }, size0: [5, 8], size1: 2, opacity0: 0.9 },
+            { count: 2, sprite: 'void-mist', ml: [800, 1300], z: 14, offsetXY: 18, tint: 0x4a2a80,
+              vzRange: [8, 20], drag: 0.5, size0: [20, 30], size1: [44, 64], opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceEternalSlumber_impact_center'] = {
+        layers: [
+            { sprite: 'flash', ml: 380, size0: 140, size1: 40, tint: 0xc9b8ff, opacity0: 0.7 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 900, z: 3, tint: 0x8a5ad0, size0: 40, size1: 380, opacity0: 0.6 },
+        ]
+    };
+    EFFECTS['raceEternalSlumber_aoe'] = { aoeRadius: 2, impactTileEffect: 'raceEternalSlumber_impact_tile', impactCenterEffect: 'raceEternalSlumber_impact_center' };
+    SPELL_MAP['raceEternalSlumber'] = { aoe: 'raceEternalSlumber_aoe' };
+
+    EFFECTS['raceBaphometsRite_impact_tile'] = {      /* black candles and the sigil's fire */
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1500, z: 1, size0: 70, size1: 90, opacity0: 0.8 },
+            { count: 3, anchor: 'floor', mode: 'y-locked', sprite: 'dark-flame', ml: [500, 800], offsetXY: 20,
+              w0: [14, 22], w1: [6, 10], h0: [36, 54], h1: [80, 120], opacity0: 0.9 },
+            { count: 5, sprite: 'ember', ml: [300, 600], z: 6, offsetXY: 12, tint: 0xff5a2a,
+              vxRange: 120, vyRange: 120, vzRange: [60, 180], gravity: 300, drag: 1.2, size0: [5, 9], size1: 2 },
+        ]
+    };
+    EFFECTS['raceBaphometsRite_impact_center'] = {
+        shake: 'normal',
+        layers: [
+            { sprite: 'flash', ml: 240, size0: 120, size1: 30, tint: 0xd9a8ff, opacity0: 0.8 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 640, z: 2, tint: 0x8833cc, size0: 40, size1: 300, opacity0: 0.75 },
+            { count: 6, sprite: 'shadow-wisp', ml: [600, 900], z: [10, 40], offsetXY: 30,
+              vzRange: [60, 140], drag: 0.5, size0: [12, 18], size1: [24, 34], opacity0: 0.6 },
+        ]
+    };
+    EFFECTS['raceBaphometsRite_aoe'] = { aoeRadius: 1, impactTileEffect: 'raceBaphometsRite_impact_tile', impactCenterEffect: 'raceBaphometsRite_impact_center' };
+    SPELL_MAP['raceBaphometsRite'] = { aoe: 'raceBaphometsRite_aoe' };
+
+    EFFECTS['raceFireForEffect_impact_tile'] = {      /* the fire mission: a whole battery lands */
+        layers: [
+            { sprite: 'flash', ml: 140, z: 6, size0: 80, size1: 20, tint: 0xffd9a0, opacity0: 0.95 },
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1800, z: 1, size0: 70, size1: 90, opacity0: 0.85 },
+            { count: 6, sprite: 'rock-debris', ml: [360, 640], z: 4, offsetXY: 10,
+              vxRange: 200, vyRange: 200, vzRange: [140, 320], gravity: 620, drag: 0.6, size0: [5, 10], size1: 3 },
+            { count: 2, anchor: 'floor', mode: 'y-locked', sprite: 'smoke', ml: [900, 1300], offsetXY: 12,
+              vzRange: [60, 110], drag: 0.4, size0: [26, 40], size1: [70, 110], opacity0: 0.6 },
+            { count: 4, sprite: 'ember', ml: [300, 560], z: 6, offsetXY: 12,
+              vxRange: 160, vyRange: 160, vzRange: [60, 200], gravity: 380, drag: 1.4, size0: [4, 8], size1: 2 },
+        ]
+    };
+    EFFECTS['raceFireForEffect_aoe'] = { aoeRadius: 2, shape: 'round', impactTileEffect: 'raceFireForEffect_impact_tile', shake: 'hard' };
+    SPELL_MAP['raceFireForEffect'] = { aoe: 'raceFireForEffect_aoe', impact: 'raceFireForEffect_impact_tile' };
+
+    EFFECTS['raceIndomitableWill_aura'] = {           /* the recruit will not fall */
+        pillarSprite: 'heal-glow', pillarMs: 900, pillarH: 30, pillarH1: 260, pillarW0: 40, pillarW1: 90, pillarOpacity0: 0.8,
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 900, z: 2, tint: 0xffd9a0, size0: 60, size1: 150, opacity0: 0.8 },
+            { count: 10, sprite: 'ember', ml: [500, 900], z: [4, 30], offsetXY: 24, tint: 0xffb066,
+              vzRange: [80, 180], drag: 0.6, size0: [5, 8], size1: 2, opacity0: 1 },
+            { count: 3, sprite: 'flash', ml: [200, 300], z: [30, 70], offsetXY: 10, delayMs: 100, tint: 0xffe0b0, size0: [24, 40], size1: 8, opacity0: 0.7 },
+        ]
+    };
+    SPELL_MAP['raceIndomitableWill'] = { aura: 'raceIndomitableWill_aura' };
+
+    EFFECTS['raceAwakening_aura'] = {                 /* the chosen one wakes: a halo and the light in the eyes */
+        pillarSprite: 'holy-pillar', pillarMs: 1200, pillarH: 40, pillarH1: 380, pillarW0: 50, pillarW1: 120, pillarOpacity0: 0.85,
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 1100, z: 2, size0: 40, size1: 200, opacity0: 0.85 },
+            { sprite: 'halo-ring', ml: 1100, z: 120, size0: 30, size1: 80, opacity0: 0.9 },
+            { count: 12, sprite: 'divine-sparkle', ml: [600, 1100], z: [4, 30], offsetXY: 30,
+              vzRange: [90, 200], drag: 0.5, wander: { amp: 20, freq: 1.0 }, size0: [5, 9], size1: 3, opacity0: 1 },
+            { count: 2, sprite: 'flash', ml: [260, 360], z: [60, 90], offsetXY: 6, delayMs: 200, tint: 0xfff6d8, size0: [40, 60], size1: 10, opacity0: 0.8 },
+        ]
+    };
+    SPELL_MAP['raceAwakening'] = { aura: 'raceAwakening_aura' };
+
+    EFFECTS['raceOvertinker_aura'] = {                /* the gnome's overbuilt field: gears and arcs */
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'target-ring-blue', ml: 1000, z: 2, size0: 60, size1: 300, opacity0: 0.75 },
+            { count: 10, sprite: 'emp-arc', ml: [400, 700], z: [10, 50], offsetXY: 60,
+              seekIn: [340, 560], seekInZ: [20, 60], seekSpiral: 300, size0: [6, 10], size1: 2, opacity0: 0.9 },
+            { count: 8, sprite: 'steel-spark', ml: [300, 520], z: [6, 30], offsetXY: 20, delayMs: 200,
+              vxRange: 200, vyRange: 200, vzRange: [60, 200], gravity: 400, drag: 1.0, size0: [4, 7], size1: 1 },
+            { count: 3, sprite: 'shield-blue', ml: [500, 800], z: [30, 70], offsetXY: 30, delayMs: 260, size0: [30, 44], size1: [50, 70], opacity0: 0.5 },
+        ]
+    };
+    SPELL_MAP['raceOvertinker'] = { aura: 'raceOvertinker_aura' };
+
+    EFFECTS['raceColossalCrush_impact'] = {           /* the giant's fist: the ground gives */
+        shake: 'hard',
+        layers: [
+            { sprite: 'flash', ml: 140, size0: 90, size1: 24, tint: 0xffd9a0, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 520, z: 2, tint: 0xc8a070, size0: 40, size1: 300, opacity0: 0.8 },
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1600, z: 1, size0: 90, size1: 110, opacity0: 0.6 },
+            { count: 14, sprite: 'rock-debris', ml: [400, 760], z: 4, offsetXY: 14,
+              vxRange: 260, vyRange: 260, vzRange: [140, 380], gravity: 620, drag: 0.6, size0: [6, 12], size1: 3 },
+            { count: 6, anchor: 'floor', sprite: 'dust-puff', ml: [500, 800], z: 4, offsetXY: 30,
+              vzRange: [30, 70], size0: [20, 30], size1: [50, 70], opacity0: 0.6 },
+        ]
+    };
+    SPELL_MAP['raceColossalCrush'] = { impact: 'raceColossalCrush_impact' };
+
+    EFFECTS['raceSasquatchSmash_impact'] = {          /* bark, leaves and a footprint */
+        shake: 'hard',
+        layers: [
+            { sprite: 'flash', ml: 130, size0: 80, size1: 24, tint: 0xd8ffb0, opacity0: 0.85 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 480, z: 2, tint: 0x8a6a40, size0: 40, size1: 260, opacity0: 0.75 },
+            { count: 10, sprite: 'leaf', ml: [500, 900], z: [10, 40], offsetXY: 16,
+              vxRange: 220, vyRange: 220, vzRange: [120, 300], gravity: 180, drag: 1.2, size0: [6, 10], size1: [4, 7], opacity0: 0.95 },
+            { count: 8, sprite: 'mud-chunk', ml: [360, 640], z: 4, offsetXY: 12,
+              vxRange: 200, vyRange: 200, vzRange: [120, 320], gravity: 600, drag: 0.6, size0: [6, 11], size1: 3 },
+            { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [450, 750], z: 4, offsetXY: 26,
+              vzRange: [30, 60], size0: [18, 26], size1: [44, 60], opacity0: 0.55 },
+        ]
+    };
+    SPELL_MAP['raceSasquatchSmash'] = { impact: 'raceSasquatchSmash_impact' };
+
+    /* ── the capstone staging flag on aoe defs that own a geometry ── */
+    /* ═════════ END THE CAPSTONE PASS ═════════ */
 
     /* ── VFX3D.stage — the party builder's preview stage (§5.3) ────────
        enter({ tile, heroH, fx }) / exit() / fire(intent, spellId, params) /

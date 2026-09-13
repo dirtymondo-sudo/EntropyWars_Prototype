@@ -15138,6 +15138,31 @@ function buildTreeRingIndex() {
     return rings;
 }
 
+/* THE CAPSTONES (2026-09-13): every pillar's r4★ node — ring 3 of
+   buildTreeRingIndex (a twin capstone node marks both alternates; a
+   shared id that is a capstone somewhere but a lower ring elsewhere takes
+   its LOWEST ring, so it is NOT a capstone here — Nuke is Mech's / the
+   General's / the Politician's capstone and on no lower ring, so it is).
+   Readers: sprites.js classifySpellAnimKind (the 'ultimate' charged cast),
+   three-vfx-effects.js _isCapstoneSpell (the ultimate staging tier + the
+   capstone bloom). Cached; applyTreeRingCosts drops the cache when custom
+   content re-positions a tree. */
+let _capstoneIdSet = null;
+function capstoneSpellIds() {
+    if (!_capstoneIdSet) {
+        const rings = buildTreeRingIndex();
+        _capstoneIdSet = new Set(Object.keys(rings).filter(id => rings[id] === 3));
+    }
+    return _capstoneIdSet;
+}
+function isCapstoneSpellId(id) {
+    return !!id && capstoneSpellIds().has(id);
+}
+if (typeof window !== 'undefined') {
+    window.isCapstoneSpellId = isCapstoneSpellId;
+    window.capstoneSpellIds = capstoneSpellIds;
+}
+
 // Ladder price for one spell id, or null when the id is on no tree.
 function getTreeRingCost(id, rings) {
     if (!id) return null;
@@ -15152,6 +15177,7 @@ function getTreeRingCost(id, rings) {
    editor costs on off-tree spells. */
 function applyTreeRingCosts(skipIds, snapOffTree) {
     const rings = buildTreeRingIndex();
+    _capstoneIdSet = null;   // a re-positioned tree may move a capstone
     const seen = new Set();
     const all = [];
     for (const sp of SPELL_LIBRARY) if (!seen.has(sp)) { seen.add(sp); all.push(sp); }

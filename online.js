@@ -2323,6 +2323,13 @@
                    (2026-09-02): (sx, sy, tx, ty, opts) — fog anchors on
                    both ends; the renderer drops any hidden tile itself. */
                 tileGlow:           [[0, 1], [2, 3]],
+                /* the _spell3DGeometry registry's public door (2026-09-13,
+                   THE CAPSTONE PASS): battle.js fires '<id>:mark' at a
+                   delayed cast, '<id>:dash' at a dash, and the end-of-round
+                   apparitions (Crystal Ball, Prophecy) through it — all
+                   host-only before. Args (spellId, tx, ty, r, extra) — the
+                   trailing bag keeps its primitive fields (fromX / fromY). */
+                fireGeometry:       [[1, 2]],
             };
             Object.keys(window._VFXX_ANCHORS).forEach(function(fnName) {
                 var _origSib = VFX3D[fnName];

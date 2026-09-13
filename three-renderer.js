@@ -11006,6 +11006,7 @@ const ThreeRenderer = (function () {
             (kind === 'melee')   ? ['castMelee', 'cast'] :
             (kind === 'heal')    ? ['castHeal', 'castSupport', 'castMagic', 'cast'] :
             (kind === 'aoe')     ? ['castAOE', 'castMagic', 'cast'] :
+            (kind === 'ultimate') ? ['castUltimate', 'castAOE', 'castMagic', 'cast'] :   // 2026-09-13: the capstone's slow charge
             (kind === 'slam')    ? ['castSlam', 'castAOE', 'castMelee', 'cast'] :
             (kind === 'arrow')   ? ['castArrow', 'castRanged', 'cast'] :
             (kind === 'kick')    ? ['castKick', 'castMelee', 'cast'] :

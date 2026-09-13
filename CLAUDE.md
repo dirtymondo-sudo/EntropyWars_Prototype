@@ -1634,3 +1634,61 @@ when the shot FIRES and its delayed impact passes `keepFacing: true` to
 ~0.7 s later and spin a unit that had already squared up on its own cast
 target. `npm test` runs `shared-tile-targeting.test.js` (the resolver in
 a vm sandbox + source guards).
+
+## THE CAPSTONE PASS + THE CHARGED CAST — added 2026-09-13
+**Why Charged_Spell_Cast was rare**: sprites.js `UAL_SLOTS.castAOE` was
+the only slot on the clip and `classifySpellAnimKind` reached it only for
+`/horde|stampede/` and the terrain-raise words — every other big magic
+EVENT played the one-arm bolt push (`castMagic`). Now: **`castUltimate`**
+(same clip, ts 1.6 → 1.69 s, `strikeAt` 1.90 = the arms-to-the-sky beat)
++ `_castChainFor('ultimate')` → `['castUltimate','castAOE','castMagic',
+'cast']` (three-renderer.js); `classifySpellAnimKind` returns
+**`'ultimate'` for every CAPSTONE** (`_isCapstoneSpellForAnim` → data.js
+`isCapstoneSpellId`, `tier: 'III'` when data.js is absent) unless it is a
+weapon / adjacent physical strike, a gun, a move kind or a single-target
+heal; and **`'aoe'` for every big magical event** (aoeRadius ≥ 2,
+barrage / aoePull / delayed / summon / storm / zone / terrainCreate /
+healAll / warCry kinds, a line with `lineWidth` ≥ 2). Fixed on the way:
+`/arrow/` caught MARROWstorm (now `/(^|[^m])arrow/`), quake / tremor
+slam, the horde rule promotes a capstone. **`isCapstoneSpellId(id)` /
+`capstoneSpellIds()`** (data.js, on `window`): ring 3 of
+`buildTreeRingIndex` — the r4★ of every RACE_TREE / CLASS_TREE pillar,
+both alternates of a twin capstone, Nuke included (it sits on no lower
+ring); cached, `applyTreeRingCosts` drops the cache.
+**THE VFX** (three-vfx-effects.js "THE CAPSTONE PASS" section, right
+after the pass-3 END marker): `_isCapstoneSpell(id, def)` →
+`_stageWeight` promotes every capstone to the **`ultimate`** staging tier
+and `_stageBurst` adds **THE CAPSTONE BLOOM** (`_sigCapstoneBloom3D`: a
+sigil disc + a thin light column in the archetype's colours — the shared
+"this is an ultimate" stamp on top of the spell's own recipe; damage
+bursts only). Bespoke signatures: **`_sigTsunami3D`** (the beam def flag
+`beamTsunami` — `_fireBeamMapped` routes it like breath / boomerang; a
+lofted curling WAVE WALL `lineWidth` lanes wide rises behind the caster,
+rolls the spine, washes every lane tile, crashes on the last tile and
+recedes — Tsunami was a byte-copy of Water Pulse), the breath rig's
+**`breathScale` / `inhale` / `firestorm`** (Dragonfire = the INFERNO at
+1.7× with `_sigFirestorm3D` at the far end; Dragon Breath r1 keeps a
+plain `raceDragonBreath_beam`; Atomic Breath / Hellmouth grew),
+`_sigFaeRing3D` (the ring of toadstool lights; `EFFECTS[x].geom3D: true`
+on an aoe def makes `fire('aoe')` run the registry beside the recipe —
+the aoe intent never reached it before), `_sigCataclysmMark3D` (`:mark`,
+the burning crown) + `_sigCataclysmDecree3D` (fires from the descent
+pipeline at detonation), `_sigDrainingEmbrace3D` (the crimson wings),
+`_sigCrusade3D` (the cross of light). Registry entries are written with
+`Object.assign(_spell3DGeometry, {…})` — party-builder.test.js counts
+`_spell3DGeometry[` reads. Data-only recipes gave the HITCHHIKERS their
+own look (Glitter Bomb, Snowball Volley, Artillery Strike, Terror Pounce,
+Hallelujah, Dragon Breath) and every theme-fallback capstone an identity
+(Supernova, Singularity, Marrowstorm, Eternal Slumber, Baphomet's Rite,
+Fire for Effect, Indomitable Will, Awakening, Overtinker, Colossal Crush,
+Sasquatch Smash, Crusade). RULE #2: everything rides `fire()` /
+`fireGeometry` — and **online.js now relays `fireGeometry`** through the
+`vfx3d-x` sibling wrapper (`fireGeometry: [[1, 2]]`), so every `:mark` /
+`:dash` / end-of-round apparition reaches the guest (they were host-only).
+`npm test` runs `capstone-vfx.test.js`: the capstone set, the slot + chain
++ classify rules, the hooks, **no capstone shares an effect id with a
+sibling on its pillar**, every capstone has an identity (a map row, a
+geometry, a CINE_SEQUENCES director, or a kind whose travel is the
+signature). Smoke-tested headlessly with real three r128 (a scratch
+harness; not a playtest) — the LOOK is unseen: eyeball Tsunami, Dragonfire,
+Fae Ring, Cataclysm Decree, Draining Embrace, Crusade live first.

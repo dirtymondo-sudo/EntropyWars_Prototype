@@ -537,6 +537,17 @@ function getRaceSpriteAnimations(race, gender) {
 // 'ranged' | 'melee' | 'throw' | 'plant'. Keep this the single source of truth so
 // secondary jobs stay consistent: a Warrior who learns Fireball still plays
 // castMagic; a Black Mage swinging a wrench plays castMelee.
+// A capstone for the animation rule: the pillar's r4★ node (data.js
+// isCapstoneSpellId, derived from RACE_TREE / CLASS_TREE) — `tier: 'III'`
+// stands in when data.js is not on the page (the forge preview stage).
+function _isCapstoneSpellForAnim(spell) {
+  if (!spell) return false;
+  try {
+    if (typeof isCapstoneSpellId === 'function') return !!isCapstoneSpellId(spell.id);
+  } catch (e) { /* fall through to the tier */ }
+  return spell.tier === 'III';
+}
+
 function classifySpellAnimKind(spell) {
   if (!spell) return 'melee';
   const text = ((spell.id || '') + ' ' + (spell.name || '') + ' '
@@ -554,7 +565,7 @@ function classifySpellAnimKind(spell) {
   // hit the slam bucket below): a 360° weapons-free barrage reads as gunfire.
   if (/kill.?mode/.test(text)) return 'ranged';
   // The zombie stampede: the caster calls the horde down — charged AOE cast.
-  if (/horde|stampede/.test(text)) return 'aoe';
+  if (/horde|stampede/.test(text)) return _isCapstoneSpellForAnim(spell) ? 'ultimate' : 'aoe';
   // Potions / consumables (battle.js item use fires a synthetic spell) —
   // UAL2 Consume swig via castConsume.
   if (/potion|elixir|panacea|stim\b|consume|drink/.test(text)) return 'consume';
@@ -564,7 +575,7 @@ function classifySpellAnimKind(spell) {
   if (/trap|snare|\bmine\b|contraption|deploy|sentry/.test(text)) return 'deploy';
   // Ramparts, every "…Slam" and stomps (Tremor/Cataclysm Stomp, the giant's
   // Fee Fi Fo Fum) — two-hand charged ground slam.
-  if (/rampart|slam\b|slan\b|stomp|fee.?fi.?fo/.test(text)) return 'slam';   // raceChassisSlan typo is real
+  if (/rampart|slam\b|slan\b|stomp|quake|tremor|fee.?fi.?fo/.test(text)) return 'slam';   // raceChassisSlan typo is real
   // Seed/planting spells (Healing Seed, Poison Seed, Leech Seed…) kneel and
   // plant — the animation library's Farm_PlantSeed via the castPlant slot.
   if (/seed|sapling|sprout|plant(?!ation)/.test(text)) return 'plant';
@@ -572,7 +583,8 @@ function classifySpellAnimKind(spell) {
   // matter the damage type — the QB "just throws".
   if (/football|grenade|bomb(?!ard)|throw|toss|hurl|lob|spike/.test(text)) return 'throw';
   // Bow shots draw and loose (MAL Archery_Shot_1) whatever the damage type.
-  if (/arrow|\bbow\b|archer/.test(text)) return 'arrow';
+  // (the skeleton's MARROWstorm is not an arrow — 2026-09-13)
+  if (/(^|[^m])arrow|\bbow\b|archer/.test(text)) return 'arrow';
   // Kicks (Spartan_Kick) — check before the melee bucket.
   if (/\bkick\b/.test(text)) return 'kick';
   // Punches (UAL1 Punch_Cross) — jabs/hooks/uppercuts/fists read as a strike
@@ -584,6 +596,28 @@ function classifySpellAnimKind(spell) {
   if (/claw|scratch|\bbite\b|fang|talon|maul|pounce/.test(text)) return 'claw';
   const damaging = !!(spell.type === 'damage' || spell.dmg ||
       (Array.isArray(spell.hitDamages) && spell.hitDamages.length));
+  // ── THE CHARGED CAST (2026-09-13) ──────────────────────────────────────
+  // MAL Charged_Spell_Cast (the two-beat charge: a forward push, then both
+  // arms flung to the sky) only ever played for hordes and terrain-raising —
+  // every other big magical EVENT played the one-arm bolt push. Two rules:
+  //   'ultimate' — a CAPSTONE (the r4★ node of a pillar; data.js
+  //     isCapstoneSpellId, `tier: 'III'` as the fallback) charges the slow,
+  //     heavy cut (UAL_SLOTS castUltimate) unless it is a weapon / melee
+  //     strike, a single-target heal, or a move kind (those returned above).
+  //   'aoe' — any big magical event charges the normal cut: a radius-2+
+  //     blast, a call-down (delayed / barrage / descent), a summon, a
+  //     storm, a wide wave, a zone. Physical single-target and gun spells
+  //     keep their weapon clips.
+  const _cap = _isCapstoneSpellForAnim(spell);
+  const _bigKind = /^(barrage|aoePull|delayed|summonUnit|raiseDead|summonWeather|zoneDebuff|zoneHeal|terrainCreate|aoeShield|warCry|healAll|manaRestoreAll|cleanseArea|splitBeam|shadowRealm)$/.test(spell.kind || '');
+  const _wide = (spell.kind === 'linePush' || spell.kind === 'line') && (spell.lineWidth || 1) >= 2;
+  const _bigRadius = (spell.aoeRadius || 0) >= 2 && spell.kind !== 'damage';
+  const _gunText = /shot|shoot|gun|bullet|snipe|rifle|pistol|revolver|barrage|quick.?draw|dead.?eye|cannon|rocket|missile|artillery|mortar/.test(text);
+  const _physicalWeapon = spell.damageType === 'physical' && (_gunText || (spell.range || 1) <= 1 || spell.chargeToTarget
+      || /^(damage|multiHit|dash|tackle|leapStrike|skyDrop|skyThrow|skySlam|lifeDrain|ricochet)$/.test(spell.kind || ''));
+  const _singleHeal = !damaging && /^(heal|selfHeal|zoneHeal|revive|seedHeal)$/.test(spell.kind || '');
+  if (_cap && !_physicalWeapon && !_singleHeal) return 'ultimate';
+  if (!_physicalWeapon && (_bigKind || _wide || _bigRadius)) return 'aoe';
   if (!damaging) {
     // Heals/revives get the staff wave (castHeal) — before the raise check
     // so "Raise Dead"-style revives never read as terrain shaping.
@@ -707,6 +741,11 @@ const UAL_SLOTS = {
   // both arms flung to the sky at 1.7–2.2s. The sky-raise is the strike
   // (terrain rises, hordes are called, the storm comes down).
   castAOE:     { clip: 'Charged_Spell_Cast',     lib: 2, ts: 2.2, strikeAt: 1.90 },
+  // castUltimate (2026-09-13): the SAME two-beat charge, cut slow (2.7s →
+  // 1.69s) — the capstone's body language. classifySpellAnimKind returns
+  // 'ultimate' for a pillar's r4★ spell; the chain falls back to castAOE,
+  // then castMagic (three-renderer.js _castChainFor).
+  castUltimate:{ clip: 'Charged_Spell_Cast',     lib: 2, ts: 1.6, strikeAt: 1.90 },
   castSlam:    { clip: 'Charged_Ground_Slam',    lib: 2, ts: 2.4, strikeAt: 1.62 },   // 0.8s overhead charge, the slam at 1.6s
   // castConsume: the swig is 0.35–0.5s, the rest is standing — trimmed to
   // the drink (→0.9s at 1.0×).
