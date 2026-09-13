@@ -25566,8 +25566,8 @@ const ThreeRenderer = (function () {
                (the user's GLB — its wired face is +Z, hung outward and tilted off the
                skin), a dead astronaut adrift off the breach on a slow tumble, and the
                docking collar on the port flank amidships. Battle-only. */
-            var plate = _hzMiscKit('hullplate', { tiles: 3.0, fit: 'height', tilt: 0.55, lift: 0.45, cast: true, rng: rng, low: 'skip' });
-            plate.position.set(brX + 1.3 * ts, brY - 0.4 * ts, brZ + 0.7 * ts); plate.rotation.y = -0.35; K.add(plate);
+            var torn = _hzMiscKit('hullplate', { tiles: 3.0, fit: 'height', tilt: 0.55, lift: 0.45, cast: true, rng: rng, low: 'skip' });
+            torn.position.set(brX + 1.3 * ts, brY - 0.4 * ts, brZ + 0.7 * ts); torn.rotation.y = -0.35; K.add(torn);
             var crew = _hzMiscKit('astronaut', { tiles: 1.15, fit: 'height', tilt: 1.25, roll: 0.4, lift: 0.35, rng: rng, low: 'skip' });
             crew.position.set(brX - 2.6 * ts, top - 0.6 * ts, K.Z1 + 3.4 * ts); K.add(crew);
             _horizonFloaters.push({ obj: crew, baseY: crew.position.y, amp: 0.3 * ts, spd: 0.12, phase: rng() * 6, spin: 0.0016 });
