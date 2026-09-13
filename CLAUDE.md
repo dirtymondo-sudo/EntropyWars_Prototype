@@ -1575,3 +1575,31 @@ Wish-list (still procedural): the Staunton set, a galleon hull with a
 figurehead, card soldiers, a cryo tube. Measure a new GLB before wiring
 (PLAYTEST_NOTES "Rigged 3D unit models" has the parser; a Playwright
 contact sheet with an AxesHelper settles the facing in one look).
+
+## SHARED-TILE TARGETING + STRUCTURE FACING — added 2026-09-13
+A flyer can hover over a ground unit in ONE column. A board click carries
+the flyer's own z only when the pointer hit its sprite; a click on the
+tile resolves to the SURFACE z and `unitAt(x, y)` prefers the ground
+unit — so attacks / casts at the wrong body, "can't target" bounces and
+AoE whiffs. ONE rule now: battle.js **`resolveUnitInColumn(actor, x, y,
+z, { side: 'enemy'|'ally'|'any', inRange? })`** (right before
+`_structureAt`; global) — the exact-z unit when it suits the action, else
+the best other unit in the column (right side, then in reach, ground as
+the tie-break), else the click as it came. Readers: `doAttack`
+(`_clickedTarget` = the pick; **`z` is re-assigned to the pick's z** so
+range + every later `unitAt(x, y, z)` agree), `doSpell` (unit-targeted
+kinds only — tile / directional / self / phase-2 casts keep the click;
+side from `_kindMeta` offensive / allyOnly, twoClick = any), `doItem`
+(potions ally, banes enemy), the confirm gates `_spellTargetTeamOk` /
+`_itemTargetTeamOk`, ui.js `getPendingDamagePreview`. Never add another
+`unitAt(x, y, z) || unitAt(x, y)` at a unit-targeted site — call the
+resolver. `_applyAoeDamage` and the combo `aoe` burst hit EVERY enemy in
+a tile's column (`filter`, not `find`). FACING: every structure branch of
+`doAttack` (Cube / turret / mirror / deployed object / seed / tree chop /
+terrain smash) calls `setUnitFacing` after its `pushUndoSnapshot` — the
+attacker squares up on the Cube like on a unit. Overwatch turns the MOVER
+when the shot FIRES and its delayed impact passes `keepFacing: true` to
+`applyDamageToUnit` (the whip-around's opt-out) — the impact used to land
+~0.7 s later and spin a unit that had already squared up on its own cast
+target. `npm test` runs `shared-tile-targeting.test.js` (the resolver in
+a vm sandbox + source guards).

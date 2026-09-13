@@ -4871,9 +4871,13 @@
             let hitCount = 0;
             const _groundedThisBlast = [];
             for (const tile of tiles) {
-                const target = opts.findTarget
-                    ? opts.findTarget(tile)
-                    : enemies.find(e => e.x === tile.x && e.y === tile.y);
+                /* Shared tile: a flyer hovering over a grounded enemy — the
+                   blast hits EVERY enemy standing in the column, not just the
+                   first one found (the second body used to whiff). */
+                const _tileTargets = opts.findTarget
+                    ? [opts.findTarget(tile)].filter(Boolean)
+                    : enemies.filter(e => e.x === tile.x && e.y === tile.y);
+                for (const target of _tileTargets) {
                 if (target && !target.dead) {
                     const _vr = calcAoeVariance(!!opts.noRandom, opts.rngRange, SPELL_DMG_VARIANCE);
                     // Draw from the seeded stream ONLY when variance is live —
@@ -4945,6 +4949,7 @@
                         _groundedThisBlast.push(target);
                     }
                     hitCount++;
+                }
                 }
 
                 // (Towers are immune to spells by design — AoE blasts pass
@@ -22454,7 +22459,11 @@
                     // from that tile now strike the front arc (re-flank to
                     // backstab again). DoT ticks don't spin the victim, and
                     // non-damaging spells never reach this code.
-                    if (target.hp > 0 && damageType !== 'dot' && isEnemyUnit(sourceUnit, target)
+                    // opts.keepFacing: a DELAYED reaction hit (overwatch's
+                    // shot lands ~0.7 s after it fires) already turned the
+                    // victim when it fired — re-whipping at impact would undo
+                    // a facing the victim chose for its own action in between.
+                    if (target.hp > 0 && damageType !== 'dot' && !opts.keepFacing && isEnemyUnit(sourceUnit, target)
                         && (sourceUnit.x !== target.x || sourceUnit.y !== target.y)) {
                         setUnitFacing(target, sourceUnit.x - target.x, sourceUnit.y - target.y);
                     }
@@ -41318,9 +41327,11 @@
             if (!unit || !spell) return true;
             const km = _kindMeta(spell);
             if (isSpellTileTargeted(spell) || isSpellSelfCast(spell) || km.directional) return true;
-            // Exact-z first: gating on the ground unit of a stack would block
-            // (or wrongly allow) a cast aimed at the flyer above it.
-            const tu = ((z !== undefined && z !== null) ? unitAt(x, y, z) : null) || unitAt(x, y);
+            // Column-aware (resolveUnitInColumn): gating on the ground unit of
+            // a stack would block (or wrongly allow) a cast aimed at the flyer
+            // above it — read the body the cast is FOR, same rule as doSpell.
+            const tu = resolveUnitInColumn(unit, x, y, z, {
+                side: km.offensive ? 'enemy' : (km.allyOnly ? 'ally' : 'any') });
             if (!tu || tu.dead) return true;
             if (km.offensive && isAllyUnit(tu, unit)) return false;
             if (!km.offensive && km.allyOnly && !isAllyUnit(tu, unit)) return false;
@@ -41331,7 +41342,9 @@
            bane strips only on living enemies. Other items keep free aim. */
         function _itemTargetTeamOk(unit, tool, x, y, z) {
             if (!unit || !tool) return true;
-            const tu = ((z !== undefined && z !== null) ? unitAt(x, y, z) : null) || unitAt(x, y);
+            const _itSide = (tool === 'healPotion' || tool === 'manaPotion') ? 'ally'
+                : (ITEM_RULES[tool]?.baneType ? 'enemy' : 'any');
+            const tu = resolveUnitInColumn(unit, x, y, z, { side: _itSide });
             if (tool === 'healPotion' || tool === 'manaPotion') {
                 if (!tu || tu.dead || isEnemyUnit(tu, unit)) return false;
                 // A full-up ally is not a potion target (doItem refuses it) —
@@ -44397,6 +44410,14 @@
 
         function _fireOverwatchShot(guardian, mover, dist) {
             setUnitFacing(guardian, mover.x - guardian.x, mover.y - guardian.y);
+            // The mover whips round to the shooter NOW (the logical moment of
+            // the shot). The impact below lands ~0.7 s later — by then the
+            // mover may already be squared up on its own next target (the AI
+            // casts straight after a short walk), and the old impact-time
+            // whip spun it away from that target mid-cast.
+            if (mover.x !== guardian.x || mover.y !== guardian.y) {
+                setUnitFacing(mover, guardian.x - mover.x, guardian.y - mover.y);
+            }
             const dmg = getCounterDamage(guardian);
             addLog(`👁 OVERWATCH! ${unitDisplayName(guardian)} snaps off a reaction shot at ${unitDisplayName(mover)}!`);
             showFloatingTextForUnit(guardian, '👁 OVERWATCH!', 'counter', { durationMs: 1100 });
@@ -44418,7 +44439,7 @@
                 window.setTimeout(() => {
                     if (state.winner || mover.dead || mover._dying) return;
                     applyDamageToUnit(mover, dmg, `${unitDisplayName(guardian)}'s overwatch: `, {
-                        sourceUnit: guardian, damageType: 'physical'
+                        sourceUnit: guardian, damageType: 'physical', keepFacing: true
                     });
                     grantXP(guardian, XP_COUNTER, 'counter');
                     checkWin();
@@ -45130,6 +45151,46 @@
         /* Is there an attackable structure on (x, y) for `unit`? Mirrors the
            target order doAttack resolves below (Cube, mirror, turret, deployed
            object, planted seed). */
+        /* ── SHARED-TILE TARGET RESOLUTION (a flyer over a ground unit) ──────
+           Two units can share one column: an airborne flyer hovering above a
+           grounded unit. A board click only carries the flyer's own z when
+           the pointer hit its sprite — a click on the tile itself resolves
+           to the SURFACE z, and unitAt(x, y) prefers the ground unit — so an
+           attack / cast aimed at the flyer kept landing on (or bouncing off)
+           whoever stood beneath it, and vice versa. This is the ONE rule every
+           unit-targeted action and preview shares:
+             • the exact-z unit when it suits the action (side + reach),
+             • else the best other unit in the column (right side first, in
+               reach next, the ground unit as the tie-break),
+             • else the click as it came (the caller reports the miss).
+           intent: { side: 'enemy' | 'ally' | 'any', inRange?: u => bool }.
+           Empty column → the legacy lookup (2×2 bosses included). */
+        function resolveUnitInColumn(actor, x, y, z, intent) {
+            const it = intent || {};
+            const _zKnown = (z !== undefined && z !== null);
+            const _legacy = () => (_zKnown ? unitAt(x, y, z) : null) || unitAt(x, y) || null;
+            if (typeof unitsAtColumn !== 'function') return _legacy();
+            const col = unitsAtColumn(x, y);
+            if (col.length <= 1) return col[0] || _legacy();
+            const sideOk = u => {
+                if (!actor) return true;
+                if (it.side === 'enemy') return isEnemyUnit(actor, u);
+                if (it.side === 'ally') return isAllyUnit(u, actor);
+                return true;
+            };
+            const rangeOk = u => (typeof it.inRange === 'function') ? !!it.inRange(u) : true;
+            const exact = _zKnown ? col.find(u => u.z === z) : null;
+            if (exact && sideOk(exact) && rangeOk(exact)) return exact;
+            const zRef = _zKnown ? z : (actor ? (actor.z ?? 0) : 0);
+            const rank = u => (sideOk(u) ? 4 : 0) + (rangeOk(u) ? 2 : 0)
+                + ((typeof isUnitAirborne === 'function' && !isUnitAirborne(u)) ? 1 : 0);
+            const best = col.slice().sort((a, b) => (rank(b) - rank(a))
+                || (Math.abs((a.z ?? 0) - zRef) - Math.abs((b.z ?? 0) - zRef)))[0];
+            if (best && sideOk(best)) return best;
+            return exact || best;
+        }
+        window.resolveUnitInColumn = resolveUnitInColumn;
+
         function _structureAt(x, y, unit) {
             const tw = (typeof towerAt === 'function') ? towerAt(x, y) : null;
             if (tw && tw.hp > 0 && (!unit || tw.owner !== unit.player)) return tw;
@@ -45164,7 +45225,23 @@
             // whose cast fizzled earlier without reaching finishAction.
             _balSpellCollector = null;
 
-            const _clickedTarget = unitAt(x, y, z);
+            /* Shared tile (flyer over a ground unit): resolve WHICH unit of
+               the column this attack is for — the enemy in reach — and carry
+               its z through range, target and every later lookup, so a click
+               on the tile under a hovering enemy (or on an enemy hovering over
+               an ally) never lands on the wrong body. */
+            const _atkReach = getEffectiveRange(unit);
+            const _clickedTarget = resolveUnitInColumn(unit, x, y, z, {
+                side: 'enemy',
+                inRange: u => {
+                    const dd = (u._isBoss && u._bossSize === 2)
+                        ? distToTarget(unit.x, unit.y, u, unit.z)
+                        : combatDist(unit.x, unit.y, unit.z ?? 0, u.x, u.y, u.z ?? 0);
+                    return dd >= 1 && dd <= _atkReach;
+                }
+            });
+            if (_clickedTarget && _clickedTarget.z !== undefined && _clickedTarget.z !== null
+                && _clickedTarget.x === x && _clickedTarget.y === y) z = _clickedTarget.z;
 
             let d;
             if (_clickedTarget && _clickedTarget._isBoss && _clickedTarget._bossSize === 2) {
@@ -45224,7 +45301,7 @@
             // bystander's plate can't block the view of the unit being hit.
             _focusPlatesForImpact(unit, x, y, { holdMs: 2200 });
 
-            let target = z != null ? (unitAt(x, y, z) || unitAt(x, y)) : unitAt(x, y);
+            let target = _clickedTarget;
 
             if (target && target.id === unit.id) {
                 const colEnemy = unitsAtColumn(x, y).find(u => u.id !== unit.id && u.player !== unit.player);
@@ -45279,6 +45356,7 @@
             const tw = towerAt(x, y);
             if (tw && !target && tw.owner !== unit.player) {
                 pushUndoSnapshot(true);
+                setUnitFacing(unit, x - unit.x, y - unit.y);   // square up on the structure (Cube / turret / object / tree / column) like on a unit
                 if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
                 else animateStrikeLeap(unit, x, y);
                 let damage = Math.max(24, Math.floor(pwrAtk(unit) * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
@@ -45386,6 +45464,7 @@
                 const enemyMirror = state.mirrors.find(m => m.x === x && m.y === y && m.owner !== unit.player && m.hp > 0);
                 if (enemyMirror) {
                     pushUndoSnapshot(true);
+                setUnitFacing(unit, x - unit.x, y - unit.y);   // square up on the structure (Cube / turret / object / tree / column) like on a unit
                     if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
                     else animateStrikeLeap(unit, x, y);
                     damageMirrorAt(x, y, unit);
@@ -45407,6 +45486,7 @@
                 const enemyTurret = state.turrets.find(t => t.x === x && t.y === y && t.owner !== unit.player && t.hp > 0);
                 if (enemyTurret) {
                     pushUndoSnapshot(true);
+                setUnitFacing(unit, x - unit.x, y - unit.y);   // square up on the structure (Cube / turret / object / tree / column) like on a unit
                     if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
                     else animateStrikeLeap(unit, x, y);
                     let damage = Math.max(24, Math.floor(pwrAtk(unit) * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
@@ -45436,6 +45516,7 @@
                 if (dObjIdx >= 0) {
                     const dObj = state._deployedObjects[dObjIdx];
                     pushUndoSnapshot(true);
+                setUnitFacing(unit, x - unit.x, y - unit.y);   // square up on the structure (Cube / turret / object / tree / column) like on a unit
                     if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
                     else animateStrikeLeap(unit, x, y);
 
@@ -45467,6 +45548,7 @@
                     const seed = state.plantedSeeds[seedIdx];
                     const seedName = seed.type === 'heal' ? 'Healing' : seed.type === 'poison' ? 'Poison' : 'Leech';
                     pushUndoSnapshot(true);
+                setUnitFacing(unit, x - unit.x, y - unit.y);   // square up on the structure (Cube / turret / object / tree / column) like on a unit
                     if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
                     else animateStrikeLeap(unit, x, y);
                     state.plantedSeeds.splice(seedIdx, 1);
@@ -45488,6 +45570,7 @@
             // clears the cover/LOS block, and banks a lumber for your team.
             if ((!target || target.id === unit.id) && _tileHasTree(x, y)) {
                 pushUndoSnapshot(true);
+                setUnitFacing(unit, x - unit.x, y - unit.y);   // square up on the structure (Cube / turret / object / tree / column) like on a unit
                 _ensureTreeState();
                 const wasPlanted = state.plantedTrees.some(t => t.x === x && t.y === y);
                 if (!_unitAttacksWithClip(unit)) animateStrikeLeap(unit, x, y);
@@ -45518,6 +45601,7 @@
             // down one level — the counter to reshape pillars / tower camping.
             if ((!target || target.id === unit.id) && _tileIsSmashable(x, y)) {
                 pushUndoSnapshot(true);
+                setUnitFacing(unit, x - unit.x, y - unit.y);   // square up on the structure (Cube / turret / object / tree / column) like on a unit
                 const _oldH = getBaseHeightAt(x, y);
                 animateStrikeLeap(unit, x, y);
                 smashTerrainAt(x, y, unit);
@@ -48019,7 +48103,8 @@
                     const area = getSquareArea(targetX, targetY, combo.aoeRadius || 1);
                     const enemies = aliveUnitsOnFloor(enemyOf(initiator.player), null);
                     for (const tile of area) {
-                        const hit = enemies.find(e => e.x === tile.x && e.y === tile.y);
+                        // Every enemy in the tile's column (a flyer over a ground unit).
+                        for (const hit of enemies.filter(e => e.x === tile.x && e.y === tile.y)) {
                         if (hit && !hit.dead) {
                             const aoeDmg = Math.max(1, Math.round(((combo.dmg || 16) + combinedPower) * synergyMult));
                             applyDamageToUnit(hit, aoeDmg, `${combo.name}: `, {
@@ -48032,6 +48117,7 @@
                                     applyStatusPayload(hit, eff, `${combo.name}: `, initiator);
                                 }
                             }
+                        }
                         }
                     }
                     checkWin();
@@ -48112,7 +48198,11 @@
             // Resolve by z FIRST: unitAt(x,y) prefers the GROUND unit of a
             // stack, so a flyer using a potion on itself (or a bane aimed at
             // an airborne enemy) used to land on whoever stood beneath it.
-            const target = ((z !== undefined && z !== null) ? unitAt(x, y, z) : null) || unitAt(x, y);
+            const _itemTool = state.selectedTool;
+            const _itemSide = (_itemTool === 'healPotion' || _itemTool === 'manaPotion') ? 'ally'
+                : ((typeof ITEM_RULES !== 'undefined' && ITEM_RULES[_itemTool]?.baneType) ? 'enemy' : 'any');
+            const target = resolveUnitInColumn(unit, x, y, z, { side: _itemSide });
+            if (target && target.z !== undefined && target.z !== null && target.x === x && target.y === y) z = target.z;
             let chebyshev = Math.max(Math.abs(unit.x - x), Math.abs(unit.y - y));
 
             if (target && target._isBoss && target._bossSize === 2) {
@@ -49148,7 +49238,39 @@
 
             const _rawDxy = Math.abs(unit.x - x) + Math.abs(unit.y - y);
 
-            const _spellClickTarget = unitAt(x, y, z);
+            /* Shared tile (flyer over a ground unit): a UNIT-targeted cast
+               resolves which body of the column it is for — the spell's own
+               side, in reach — and carries that z into every lookup below
+               (range, the kind branches' unitAt(x, y, z), the offensive
+               resolver). Tile / directional / self / second-phase casts keep
+               the click as it came. */
+            let _spellClickTarget;
+            {
+                const _skmC = _kindMeta(spell);
+                const _phase2 = (spell.kind === 'teleport' && state._teleportingUnit)
+                    || (spell.kind === 'skyThrow' && unit._skyThrowGrab);
+                if (!_skmC.tileTargeted && !_skmC.directional && !_phase2 && !isSpellSelfCast(spell)
+                    && typeof unitsAtColumn === 'function' && unitsAtColumn(x, y).length > 1) {
+                    const _sideC = _skmC.twoClick ? 'any'
+                        : (_skmC.offensive ? 'enemy' : (_skmC.allyOnly ? 'ally' : 'any'));
+                    const _effRC = getEffectiveSpellRange(unit, spell);
+                    const _minRC = _skmC.minRange ?? 1;
+                    const _lrC = isLongRangeSpell(spell);
+                    _spellClickTarget = resolveUnitInColumn(unit, x, y, z, {
+                        side: _sideC,
+                        inRange: u => {
+                            const dd = (u._isBoss && u._bossSize === 2)
+                                ? spellReachToTarget(unit, spell, u)
+                                : combatReach(unit.x, unit.y, unit.z ?? 0, u.x, u.y, u.z ?? 0, _lrC);
+                            return dd >= _minRC && dd <= _effRC;
+                        }
+                    });
+                    if (_spellClickTarget && _spellClickTarget.z !== undefined && _spellClickTarget.z !== null
+                        && _spellClickTarget.x === x && _spellClickTarget.y === y) z = _spellClickTarget.z;
+                } else {
+                    _spellClickTarget = unitAt(x, y, z);
+                }
+            }
 
             const _spellLongRange = isLongRangeSpell(spell);
             let d;

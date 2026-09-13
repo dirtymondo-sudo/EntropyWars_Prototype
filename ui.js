@@ -11623,9 +11623,28 @@
             if (mode !== 'attack' && mode !== 'spell' && mode !== 'item') return null;
             const attacker = typeof getSelectedUnit === 'function' ? getSelectedUnit() : null;
             if (!attacker || attacker.dead) return null;
-            const target = (pt.z !== undefined && pt.z !== null)
-                ? (unitAt(pt.x, pt.y, pt.z) || unitAt(pt.x, pt.y))
-                : unitAt(pt.x, pt.y);
+            /* Shared tile (flyer over a ground unit): preview the body the
+               armed action is FOR — same column rule as doAttack / doSpell /
+               doItem (battle.js resolveUnitInColumn) — so the forecast never
+               blinks on the ground unit while the strike lands on the flyer. */
+            let _pvSide = 'any';
+            if (mode === 'attack') _pvSide = 'enemy';
+            else if (mode === 'spell') {
+                const _pvTool = pt.tool || state.selectedTool;
+                const _pvSpell = (attacker.spells || []).find(s => s.name === _pvTool)
+                    || (attacker._raceAbilities || []).find(s => s.name === _pvTool);
+                const _pvKm = (_pvSpell && typeof _kindMeta === 'function') ? _kindMeta(_pvSpell) : null;
+                if (_pvKm) _pvSide = _pvKm.offensive ? 'enemy' : (_pvKm.allyOnly ? 'ally' : 'any');
+            } else if (mode === 'item') {
+                const _pvItem = pt.tool || state.selectedTool;
+                _pvSide = (_pvItem === 'healPotion' || _pvItem === 'manaPotion') ? 'ally'
+                    : ((typeof ITEM_RULES !== 'undefined' && ITEM_RULES[_pvItem]?.baneType) ? 'enemy' : 'any');
+            }
+            const target = (typeof resolveUnitInColumn === 'function')
+                ? resolveUnitInColumn(attacker, pt.x, pt.y, pt.z, { side: _pvSide })
+                : ((pt.z !== undefined && pt.z !== null)
+                    ? (unitAt(pt.x, pt.y, pt.z) || unitAt(pt.x, pt.y))
+                    : unitAt(pt.x, pt.y));
             if (!target || target.dead) return null;
             // Self-target: only support casts make sense (a heal on yourself
             // previews; you can't arm an attack on yourself).
