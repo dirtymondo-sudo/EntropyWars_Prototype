@@ -604,7 +604,7 @@ test('seven bays: Bay 7 · URBAN hangs on the mezzanine at 180° and the rebalan
     assert.strictEqual(urban.level, 1);
     assert.strictEqual(urban.deg, 180);
     assert.match(urban.label, /BAY 7/);
-    assert.deepStrictEqual(Array.from(HQ.sectors.urban.maps).sort(), ['prebuilt_cyberpunk', 'prebuilt_stadium']);
+    assert.deepStrictEqual(Array.from(HQ.sectors.urban.maps).sort(), ['prebuilt_cyberpunk', 'prebuilt_downtown', 'prebuilt_stadium', 'prebuilt_strip']);   // + the 7.6 wave-1 pair (2026-09-13)
     assert.strictEqual(D.hqSectorOfMap('prebuilt_vatican'), 'diplomatic', 'Vatican City → Diplomatic');
     assert.strictEqual(D.hqSectorOfMap('prebuilt_atlantis'), 'hollow', 'Atlantis → Hollow');
     assert.ok(!HQ.sectors.celestial.maps.includes('prebuilt_cyberpunk') && !HQ.sectors.terrestrial.maps.includes('prebuilt_stadium'));
@@ -1591,7 +1591,8 @@ test('every built site is a launch map with a threshold and generates a box room
 test('the edge: outdoor site rooms stand without facility walls unless the place is walled; the props that need a wall go with it', () => {
     const CAT = HQ.catalogue;
     const built = HQ.siteRooms.built;
-    const WALLED_OUTDOORS = ['prebuilt_stadium', 'prebuilt_camelot', 'prebuilt_cyberpunk', 'prebuilt_babel', 'prebuilt_agartha', 'prebuilt_hollow_earth'];
+    const WALLED_OUTDOORS = ['prebuilt_stadium', 'prebuilt_camelot', 'prebuilt_cyberpunk', 'prebuilt_babel', 'prebuilt_agartha', 'prebuilt_hollow_earth',
+        'prebuilt_strip', 'prebuilt_downtown'];   // 7.6 wave 1: the storefronts and the city blocks are the walls
     const LOW = ['prebuilt_stonehenge', 'prebuilt_gobekli', 'prebuilt_flatlands'];
     for (const id of built) {
         const room = HQ.rooms[D.hqSiteRoomId(id)], S = room.shell, sh = HQ.siteRooms.shells[id] || {};

@@ -12872,6 +12872,235 @@ _MF_BUILDERS.prebuilt_lookingglass = function () {
     return M;
 };
 
+
+/* ═══════════════ 7.6 WAVE 1 — THE NEW SITES (2026-09-13) ═══════════════ */
+
+/* THE HAUNTED HOUSE — 16×16 6v6 (HQ plan 7.6 #1, Room 13). The ground floor
+   of the mansion cut open across the middle of the board — the parlour, the
+   hall and the library under no roof, THIN walls (bricks outside, wallpaper
+   in) with two front doors and windows you can shoot through but not walk
+   through — and the graveyard out back on BOTH sides: each team spawns among
+   the stones and fights in through the house. The gothic point of entry. */
+_MF_BUILDERS.prebuilt_haunted = function () {
+    const M = _mfNew({
+        name: 'The Haunted House', w: 16, h: 16, base: 'dirt_2', baseH: 3, seed: 1313,
+        strata: ['lava', 'cave_floor', 'dirt'], underTop: 'rocks_1',
+        tints: { dirt_2: '#4a4238', grass_dark_fantasy: '#35402e', dark_woods: '#233020', wood: '#5a3a28', carpet_2: '#5c1a24',
+                 bricks_2: '#5a5058', wallpaper: '#4a3a4e', water: '#2a3a30', checkerboard: '#8a8078', rocks_1: '#3a3634' },
+    });
+    // the graveyard (north; the south is its mirror): mossy plots, the thicket on the flanks, the bog, the path to the doors
+    M.rect(0, 0, 15, 4, 'grass_dark_fantasy');
+    M.rect(0, 0, 0, 4, 'dark_woods'); M.rect(15, 0, 15, 4, 'dark_woods');
+    M.rect(6, 3, 9, 4, 'dirt_2');
+    M.disc(2.5, 2, 1.2, 'water', 2);                          // the bog (a dip, wadeable)
+    [[3, 1], [4, 3], [11, 2], [12, 3], [14, 1], [2, 4]].forEach(p => M.obj(p[0], p[1], 'gravestone'));
+    M.obj(11, 0, 'bone_pile'); M.obj(13, 3, 'bone_pile');
+    M.tree(1, 3, 'tree_5'); M.tree(13, 0, 'tree_6'); M.tree(3, 0, 'tree_5');
+    M.rect(12, 1, 13, 1, 'bricks_2', 5);                      // the family crypt (a +2 wall, blocks sight)
+    // the house: the front wall along the top of row 5, the floors behind it
+    M.rect(0, 5, 15, 10, 'wood');
+    M.rect(0, 6, 4, 9, 'carpet_2'); M.rect(11, 6, 15, 9, 'carpet_2');   // the parlour rug, the library rug
+    M.rect(6, 7, 9, 8, 'checkerboard');                       // the hall's tiles under the chandelier
+    for (let x = 0; x < 16; x++) {
+        if (x === 3 || x === 12) continue;                    // the two front doors (the back doors mirror to 12 / 3)
+        M.wall(x, 5, 'N', { h: 2, tex: 'bricks_2', texIn: 'wallpaper', see: (x === 1 || x === 8 || x === 14) });   // windows at 1 · 8 · 14
+    }
+    // the partitions: parlour | hall | library, a doorway on rows 7 / 8 only (sym180 mirrors the walls)
+    [5, 10].forEach(x => { M.wall(x, 5, 'W', { h: 2, tex: 'wallpaper' }); M.wall(x, 6, 'W', { h: 2, tex: 'wallpaper' }); });
+    // the hearths (+2, a wall), the furniture (+1, climbable cover), the columns of the hall
+    M.rect(0, 7, 0, 7, 'bricks_2', 5);                        // the parlour hearth (its twin: the library's)
+    M.rect(2, 6, 2, 6, 'wood', 4);                            // the piano
+    M.rect(14, 6, 14, 6, 'wood', 5);                          // the library's tall case
+    M.rect(13, 7, 13, 7, 'wood', 4);                          // the reading table
+    M.obj(6, 6, 'column_1'); M.obj(9, 6, 'column_2');
+    M.sym180();
+    M.monSym('door', 1, 5, 1, 3, { solid: false });           // a door standing in the parlour, numbered 237; it is not from this house
+    M.monSym('woodcross', 14, 3, 1, 3, { solid: false });     // by the crypt
+    M.monSym('brazier', 1, 0, 1, 2, { solid: false });        // the coven's fire in the far corner
+    M.spawnEdges('s', 6);
+    M.finishSpawns('grass_dark_fantasy');
+    return M;
+};
+
+/* THE LODGE — 16×16 6v6 (HQ plan 7.6 #2, Room 33). A temple interior: the
+   mosaic pavement, the sanctum in the middle of the board behind thin
+   damask walls with the great doors at both ends, the two pillars flanking
+   the altar, the ambulatory round it, the lodge hall at each end where the
+   teams sit — and the Tomb (322) sunk into the floor either side of the
+   sanctum. The all-seeing eye hangs over the board (the setting). Indoors:
+   no sky, no far roster. */
+_MF_BUILDERS.prebuilt_lodge = function () {
+    const M = _mfNew({
+        name: 'The Lodge', w: 16, h: 16, base: 'checkerboard', baseH: 3, seed: 3333,
+        strata: ['lava', 'cave_floor', 'dungeon'], underTop: 'dungeon_3',
+        tints: { checkerboard: '#d8ccb0', damask: '#6a2438', wood: '#6a4a30', marble_light: '#e8e0d0', gold: '#d8b050', carpet: '#7a1a28', dungeon_3: '#4a4048', dungeon: '#3a3238' },
+    });
+    // the lodge hall (north; the south mirrors it): oak floor, the runner to the great doors, the benches
+    M.rect(0, 0, 15, 4, 'wood');
+    M.rect(7, 0, 8, 4, 'carpet');
+    M.rect(3, 2, 5, 2, 'wood', 4); M.rect(10, 2, 12, 2, 'wood', 4);     // benches (+1)
+    M.obj(1, 1, 'torch'); M.obj(14, 1, 'torch');
+    // the sanctum: thin damask walls (the great doors at x 7..8), the pillars, the altar
+    for (let x = 2; x <= 13; x++) { if (x === 7 || x === 8) continue; M.wall(x, 5, 'N', { h: 2, tex: 'damask', texIn: 'damask' }); }
+    for (let y = 5; y <= 7; y++) { M.wall(2, y, 'W', { h: 2, tex: 'damask', texIn: 'damask' }); M.wall(13, y, 'E', { h: 2, tex: 'damask', texIn: 'damask' }); }
+    M.rect(6, 6, 9, 9, 'marble_light');                                 // the altar floor
+    M.rect(7, 7, 8, 8, 'gold');
+    M.obj(6, 6, 'column_1'); M.obj(9, 6, 'column_2');                   // the two pillars (mirrored: four)
+    M.obj(3, 6, 'torch'); M.obj(12, 6, 'torch');
+    M.rect(4, 6, 4, 6, 'marble_light', 5); M.rect(11, 6, 11, 6, 'marble_light', 5);   // statue plinths (+2)
+    // the ambulatory outside the sanctum walls; the Tomb sunk into it
+    M.rect(0, 5, 1, 7, 'checkerboard'); M.rect(14, 5, 15, 7, 'checkerboard');
+    M.rect(0, 6, 1, 7, 'dungeon_3', 2);                                 // the Tomb, sub-basement (a dip)
+    M.obj(0, 7, 'bone_pile');
+    M.sym180();
+    M.mon('tablet', 7, 7, 2, 2, { solid: false });                      // the altar
+    M.monSym('censer', 5, 7, 1, 2, { solid: false });
+    M.monSym('skull', 1, 6, 1, 2, { solid: false });                    // 322
+    M.spawnEdges('s', 6);
+    M.finishSpawns('wood');
+    return M;
+};
+
+/* THE SINGULARITY — 16×16 6v6 (HQ plan 7.6 #7, Room 0). The user's Void and
+   Singularity as one map: two arms of rock shards spiralling in over
+   nothing toward the point at the centre, every tile off the arms a
+   bottomless void column. Each team starts at the tail of its own arm; the
+   arms meet at the core. Cheapest of the seven: tiles and far scenery. */
+_MF_BUILDERS.prebuilt_singularity = function () {
+    const M = _mfNew({
+        name: 'The Singularity', w: 16, h: 16, base: 'moon_3', baseH: 3, seed: 1,
+        strata: ['void', 'void', 'obsidian'], underTop: 'obsidian',
+        tints: { moon_3: '#5a4a78', crystal: '#b08cff', obsidian: '#1c1428', void: '#08040f', holo: '#d0b8ff', checkerboard: '#3a2c58' },
+    });
+    /* the arms: a tile stays if it lies on one of the two spiral arms
+       (point-symmetric — mod π) or in the core; the rest is void */
+    const keep = (x, y) => {
+        const dx = x - 7.5, dy = y - 7.5, r = Math.hypot(dx, dy);
+        if (r < 2.6) return true;
+        let p = (Math.atan2(dy, dx) - r * 0.5) % Math.PI; if (p < 0) p += Math.PI;
+        return p < 1.55;
+    };
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 16; x++) if (!keep(x, y)) M.hole(x, y, 'void');
+    // the shards: crystal steps along the arms, the event horizon at the core
+    [[2, 3], [5, 1], [10, 0], [13, 4], [4, 6]].forEach(p => { if (keep(p[0], p[1])) M.rect(p[0], p[1], p[0], p[1], 'crystal', 4); });
+    M.rect(6, 2, 6, 2, 'crystal', 5); M.rect(12, 5, 12, 5, 'crystal', 5);
+    M.disc(7.5, 7.5, 2.2, 'checkerboard');
+    M.rect(7, 7, 8, 8, 'holo');
+    M.sym180();
+    M.mon('beamring', 7, 7, 2, 3, { solid: false });                    // the accretion ring
+    M.mon('lightpillar', 7, 7, 1, 4, { solid: false });                 // the point
+    M.monSym('crystal', 3, 2, 2, 2, { solid: false });
+    M.spawnEdges('s', 6);
+    M.finishSpawns('moon_3');
+    return M;
+};
+
+/* SATURN — 16×16 6v6 (HQ plan 7.6 #5, Room 6). The north-pole hexagon storm:
+   a hexagonal plateau of ochre cloud-rock one step up, the hydrocarbon lakes
+   sunk into it, the storm's wall of thick cloud round the rim (slow), gaps
+   into nothing at the corners, and the Saturnian cubes as cover — smaller
+   cubes; do not stack. The Cube's home. */
+_MF_BUILDERS.prebuilt_saturn = function () {
+    const M = _mfNew({
+        name: 'Saturn', w: 16, h: 16, base: 'cloud_thick', baseH: 3, seed: 6006,
+        strata: ['cloud_thick', 'cloud_thick', 'cloud'], underTop: 'cloud_thick',
+        tints: { cloud_thick: '#a88a58', storm: '#7a6a58', mars_2: '#c8a060', moon_3: '#b89868', oil: '#2a2418', gunmetal: '#3a3a44', cloud: '#c0a878' },
+    });
+    const hex = (x, y, R) => { const dx = Math.abs(x - 7.5), dy = Math.abs(y - 7.5); return dx <= R && dy <= R * 0.866 && (dx * 0.5 + dy * 0.866) <= R * 0.9; };
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 16; x++) {
+        if (hex(x, y, 6.6)) { M.t(x, y, 'mars_2'); M.h(x, y, 4); }             // the plateau (+1)
+        else if (hex(x, y, 7.6)) M.t(x, y, 'storm');                            // the storm wall (slow)
+    }
+    [[0, 0], [1, 0], [0, 1], [15, 0], [14, 0], [15, 1]].forEach(p => M.hole(p[0], p[1]));   // the gaps at the corners
+    M.rect(5, 0, 10, 1, 'mars_2');                                                 // the landing: firm ground under the spawn rows
+    M.rect(6, 3, 9, 3, 'moon_3', 4); M.rect(7, 2, 8, 2, 'moon_3', 4);             // a lighter vein
+    M.disc(3.5, 5, 1.3, 'oil', 3);                                                 // a hydrocarbon lake, sunk into the plateau
+    M.disc(11.5, 3, 1.0, 'oil', 3);
+    M.obj(5, 2, 'tower_cube'); M.obj(10, 5, 'tower_cube'); M.obj(2, 6, 'tower_cube');   // the cubes (solid, block sight)
+    M.rect(12, 6, 12, 6, 'gunmetal', 5);                                           // one cube worn down to a block (+2 on the plateau)
+    M.sym180();
+    M.mon('rings', 7, 7, 2, 3, { solid: false });                                  // the hexagon's eye
+    M.monSym('lenticular', 13, 1, 2, 3, { solid: false });
+    M.spawnEdges('s', 6);
+    M.finishSpawns('mars_2');
+    return M;
+};
+
+/* THE STRIP — 16×16 6v6 (HQ plan 7.6 #3, Room 21). Not a casino floor — the
+   boulevard: the Strip runs north–south down the middle of the board with
+   its sidewalks, the fountain plazas either side of the centre, the wedding
+   chapel and the storefronts (roof-walkable) along it, palms, the Luxor's
+   pyramid and obelisk off the far corner. Night, neon. */
+_MF_BUILDERS.prebuilt_strip = function () {
+    const M = _mfNew({
+        name: 'The Strip', w: 16, h: 16, base: 'concrete_floor', baseH: 3, seed: 2121,
+        strata: ['lava', 'cave_floor', 'urban_wall'], underTop: 'urban_wall',
+        tints: { concrete_floor: '#8a8a94', urban_street: '#4a4a56', water: '#5ad8ff', marble_light: '#f0e8d8', checkerboard: '#e0c070', urban_wall: '#6a6a78', gold: '#ffd870', grass_2: '#4a9a58' },
+    });
+    // the boulevard: four lanes with a planted median, the sidewalks, the crosswalks
+    M.rect(5, 0, 10, 15, 'urban_street');
+    M.rect(7, 0, 8, 15, 'grass_2');                                    // the median
+    M.rect(4, 0, 4, 15, 'concrete_floor'); M.rect(11, 0, 11, 15, 'concrete_floor');
+    M.rect(5, 4, 10, 4, 'marble_light');                               // the crosswalk
+    M.rect(7, 4, 8, 4, 'marble_light');
+    // the fountain plaza (north; mirrored south): the basin, the palms, the marquee
+    M.rect(0, 5, 3, 7, 'checkerboard');
+    M.disc(1.5, 6, 1.1, 'water', 2);                                   // the fountain basin
+    M.tree(0, 4, 'tree_3'); M.tree(3, 4, 'tree_3'); M.tree(12, 4, 'tree_3'); M.tree(15, 3, 'tree_3');
+    M.obj(4, 2, 'lamp_post'); M.obj(11, 2, 'lamp_post'); M.obj(4, 6, 'lamp_post'); M.obj(11, 6, 'lamp_post');
+    M.obj(4, 4, 'traffic_light'); M.obj(11, 4, 'traffic_light');
+    // the storefronts: raised plinths (+1) the roofs of the low buildings stand on; the tall ones are +2
+    M.rect(12, 0, 15, 0, 'urban_wall', 4);
+    M.rect(13, 6, 15, 7, 'urban_wall', 5);                             // the casino's side wall (a block)
+    M.rect(0, 0, 1, 2, 'urban_wall', 4);
+    M.rect(7, 7, 8, 7, 'gold');                                        // the median's fountain plaza at the centre
+    M.sym180();
+    M.buildingSym(12, 1, 'church');                                    // the wedding chapel (roof-walkable)
+    M.buildingSym(0, 1, 'building_3');                                 // a storefront
+    M.monSym('jumbotron', 13, 5, 2, 3, { rot: 90, solid: false });     // the marquees
+    M.monSym('obelisk', 2, 2, 1, 4, { solid: false });                 // the Luxor's obelisk
+    M.mon('rings', 7, 7, 2, 2, { solid: false });                      // the sign's halo over the centre
+    M.spawnEdges('s', 6);
+    M.finishSpawns('urban_street');
+    return M;
+};
+
+/* DOWNTOWN — 16×16 6v6 (HQ plan 7.6 #4, Room 1954). The monster-movie
+   downtown in daylight concrete: the avenue and the cross street, city
+   blocks with their roof-walkable buildings, the rubble where something
+   walked through, the collapsed tower across the intersection as a ramp
+   of debris, traffic lights, a dumpster in every alley. */
+_MF_BUILDERS.prebuilt_downtown = function () {
+    const M = _mfNew({
+        name: 'Downtown', w: 16, h: 16, base: 'concrete_floor', baseH: 3, seed: 1954,
+        strata: ['lava', 'cave_floor', 'urban_wall'], underTop: 'concrete_floor',
+        tints: { concrete_floor: '#b0aeaa', urban_street: '#5a5a5e', rubble_1: '#9a9490', rubble_2: '#8a8480', rubble_3: '#a09a94', rubble_4: '#8e8884', urban_wall: '#9a9aa0', marble_light: '#e8e8e4' },
+    });
+    // the avenue (N–S) and the cross street (E–W), the crosswalks
+    M.rect(6, 0, 9, 15, 'urban_street'); M.rect(0, 6, 15, 9, 'urban_street');
+    M.rect(6, 5, 9, 5, 'marble_light'); M.rect(5, 6, 5, 9, 'marble_light');
+    // the blocks: buildings (2×2, roof-walkable) on the four corners of the intersection
+    M.rect(0, 0, 4, 4, 'concrete_floor');
+    // the kaiju's path: rubble across the north-west block, the collapsed tower as debris steps (+1 / +2)
+    M.rect(1, 2, 3, 4, 'rubble_2'); M.rect(2, 3, 2, 3, 'rubble_1', 4); M.rect(3, 4, 3, 4, 'rubble_3', 4);
+    M.rect(1, 3, 1, 3, 'rubble_4', 5);
+    M.rect(10, 1, 12, 2, 'rubble_1');
+    M.rect(4, 0, 4, 0, 'rubble_2', 4);
+    // the street furniture
+    M.obj(5, 5, 'traffic_light'); M.obj(10, 5, 'traffic_light');
+    M.obj(5, 2, 'lamp_post'); M.obj(10, 2, 'lamp_post_2');
+    M.obj(11, 5, 'stairs');
+    M.sym180();
+    M.buildingSym(1, 0, 'building_1');                                 // the office block
+    M.buildingSym(12, 1, 'building_8');                                // the department store
+    M.buildingSym(12, 4, 'abandoned_building_2');                      // the one it leaned on
+    M.mon('dumpster', 4, 3, 2, 1, { rot: 0 }); M.mon('dumpster', 10, 12, 2, 1, { rot: 180 });   // a dumpster in every alley (2×1: (4,3)-(5,3) and its twin (10,12)-(11,12), by hand)
+    M.monSym('securitycam', 10, 4, 1, 3, { rot: 210, solid: false });
+    M.monSym('fluorescent', 2, 5, 1, 2, { rot: 90, solid: false });    // a fallen sign, still lit
+    M.spawnEdges('s', 6);
+    M.finishSpawns('urban_street');
+    return M;
+};
 /* ═══════════════════════════════════════════════════════════════════════════
    DELTA FORGE — hand-authored 8×8 Δ boards (2026-09-01 delta redesign)
    ─────────────────────────────────────────────────────────────────────────────
@@ -13488,6 +13717,106 @@ _MF_DELTA_BUILDERS.prebuilt_lookingglass = function () {
     return M.finishDelta();
 };
 
+
+/* ═══════════════ 7.6 WAVE 1 — THE NEW SITES (2026-09-13) ═══════════════ */
+
+/* THE HAUNTED HOUSE — the parlour: the hearth, a wallpaper partition with
+   its doorway, the window onto the graveyard (shoot through, not walk), a
+   dead tree and an open grave with the rain in it. */
+_MF_DELTA_BUILDERS.prebuilt_haunted = function () {
+    const M = _mfDeltaNew({ name: 'The Haunted House', base: 'wood', seed: 8413,
+        tints: { wood: '#5a3a28', carpet_2: '#5c1a24', bricks_2: '#5a5058', wallpaper: '#4a3a4e', grass_dark_fantasy: '#35402e', water: '#2a3a30' },
+        desc: 'the parlour — the hearth, a partition with a doorway, the window onto the graveyard (shoot through it, not walk), a dead tree and an open grave' });
+    M.rect(6, 0, 7, 3, 'grass_dark_fantasy');                 // the yard past the east wall
+    M.rect(0, 1, 1, 3, 'carpet_2');                           // the rug
+    M.block(0, 1, 'bricks_2');                                // the hearth
+    M.step(1, 2, 'wood');                                     // the piano (climbable)
+    M.wrun(1, 3, 2, 3, 'N', { h: 2, tex: 'wallpaper' });      // the partition; the doorway is at x 0
+    M.wall(6, 2, 'W', { h: 2, tex: 'bricks_2', texIn: 'wallpaper', see: true });   // the window
+    M.wall(6, 3, 'W', { h: 2, tex: 'bricks_2', texIn: 'wallpaper' });              // the wall beside it
+    M.tree(7, 1, 'tree_5');                                   // the dead tree
+    M.lake(7, 3, 'water', 1);                                 // the open grave
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE LODGE — the sanctum: the damask wall with the great door in the
+   middle, a plinth to climb, a pillar, the Tomb sunk in the corner. */
+_MF_DELTA_BUILDERS.prebuilt_lodge = function () {
+    const M = _mfDeltaNew({ name: 'The Lodge', base: 'checkerboard', seed: 8433,
+        tints: { checkerboard: '#d8ccb0', damask: '#6a2438', wood: '#6a4a30', marble_light: '#e8e0d0', dungeon_3: '#4a4048', gold: '#d8b050' },
+        desc: 'the sanctum — the damask wall with the great doors in it, a plinth to climb, the pillars, the Tomb sunk in the corner' });
+    M.rect(0, 0, 7, 1, 'wood');                                        // the lodge hall
+    M.wrun(0, 2, 1, 2, 'N', { h: 2, tex: 'damask' }); M.wrun(6, 2, 7, 2, 'N', { h: 2, tex: 'damask' });   // the sanctum wall; the doors x 2..5
+    M.step(1, 3, 'marble_light');                                      // the plinth
+    M.lake(0, 3, 'dungeon_3', 1);                                      // the Tomb (322), a step down
+    M.rect(3, 3, 4, 3, 'gold');
+    M.symAll();
+    M.pillarSym('greekcol', 6, 3, 2);                                  // the pillars
+    return M.finishDelta();
+};
+
+/* THE SINGULARITY — the core: shards over the void (the gaps are sunk void
+   you can still cross — the full map's arms are the real drop). */
+_MF_DELTA_BUILDERS.prebuilt_singularity = function () {
+    const M = _mfDeltaNew({ name: 'The Singularity', base: 'moon_3', seed: 8400,
+        strata: ['void', 'void', 'void', 'obsidian', 'obsidian'], underTop: 'obsidian',
+        tints: { moon_3: '#5a4a78', crystal: '#b08cff', obsidian: '#1c1428', void: '#08040f', holo: '#d0b8ff' },
+        desc: 'the core — crystal shards on the rock over nothing, sunk void between them, the point at the centre' });
+    M.block(0, 1, 'crystal'); M.step(1, 2, 'crystal');                 // a shard and its foot
+    M.block(6, 2, 'crystal');
+    M.lake(7, 0, 'void', 2); M.lake(7, 1, 'void', 2);                  // the void, sunk
+    M.lake(0, 3, 'void', 2);
+    M.rect(3, 3, 4, 3, 'holo');
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* SATURN — the hexagon: cubes on the plateau, an oil pool, a storm lane. */
+_MF_DELTA_BUILDERS.prebuilt_saturn = function () {
+    const M = _mfDeltaNew({ name: 'Saturn', base: 'mars_2', seed: 8406,
+        strata: ['cloud_thick', 'cloud_thick', 'cloud', 'cloud_thick', 'cloud_thick'], underTop: 'cloud_thick',
+        tints: { mars_2: '#c8a060', storm: '#7a6a58', moon_3: '#b89868', oil: '#2a2418', gunmetal: '#3a3a44', cloud_thick: '#a88a58' },
+        desc: 'the hexagon — the Saturnian cubes as cover, a hydrocarbon pool sunk in the plateau, the storm wall along one edge (slow)' });
+    M.rect(0, 0, 0, 3, 'storm');                                       // the storm wall
+    M.block(1, 2, 'gunmetal'); M.block(6, 2, 'gunmetal');              // the cubes (+2; never beside a spawn tile)
+    M.step(2, 2, 'moon_3');                                            // a lighter vein, one step up
+    M.lake(7, 3, 'oil', 1);                                            // the pool
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE STRIP — the boulevard: sidewalks, a storefront to climb, the
+   fountain basin, palms, the marquee's obelisk. */
+_MF_DELTA_BUILDERS.prebuilt_strip = function () {
+    const M = _mfDeltaNew({ name: 'The Strip', base: 'urban_street', seed: 8421,
+        tints: { urban_street: '#4a4a56', concrete_floor: '#8a8a94', water: '#5ad8ff', urban_wall: '#6a6a78', checkerboard: '#e0c070' },
+        desc: 'the boulevard — the sidewalks, a storefront to climb, the fountain basin, palms, the Luxor\'s obelisk' });
+    M.rect(0, 0, 0, 7, 'concrete_floor'); M.rect(7, 0, 7, 7, 'concrete_floor');   // the sidewalks
+    M.block(0, 1, 'urban_wall'); M.step(0, 2, 'urban_wall');           // the storefront and its awning step
+    M.lake(7, 3, 'water', 1);                                          // the fountain basin
+    M.tree(7, 1, 'tree_3');                                            // a palm
+    M.rect(1, 3, 1, 3, 'checkerboard');
+    M.symAll();
+    M.pillarSym('obelisk3d', 6, 2, 3);                                 // the obelisk
+    return M.finishDelta();
+};
+
+/* DOWNTOWN — the intersection: a building corner, rubble steps where the
+   tower came down, dumpsters in the alleys. */
+_MF_DELTA_BUILDERS.prebuilt_downtown = function () {
+    const M = _mfDeltaNew({ name: 'Downtown', base: 'urban_street', seed: 8454,
+        tints: { urban_street: '#5a5a5e', concrete_floor: '#b0aeaa', rubble_1: '#9a9490', rubble_2: '#8a8480', urban_wall: '#9a9aa0' },
+        desc: 'the intersection — a building corner (three high), the rubble where the tower came down (steps), dumpsters in the alleys' });
+    M.rect(0, 0, 1, 3, 'concrete_floor'); M.rect(6, 0, 7, 3, 'concrete_floor');   // the sidewalks
+    M.block(0, 1, 'urban_wall', 3);                                    // the building corner (a wall for everyone)
+    M.step(1, 2, 'rubble_1'); M.step(6, 3, 'rubble_2');                // the rubble
+    M.block(7, 2, 'rubble_1');                                         // the slab that came down
+    M.symAll();
+    M.mon('dumpster', 5, 3, 2, 1, { rot: 0 });                         // (5,3)-(6,3)
+    M.mon('dumpster', 1, 4, 2, 1, { rot: 180 });                       // (1,4)-(2,4)
+    return M.finishDelta();
+};
 /* ═══════════════════════ META — roster, biomes, skies ══════════════════════
    One row per launch map. Everything downstream is generated from this table:
    PREBUILT_MAPS + MAP_LAYOUT_PRESETS here; GAME_MODES / compatibleMaps in
@@ -13686,6 +14015,38 @@ const EW_MAP_META = [
       env: { world: { kind: 'void', root: false },
              tint: 0x2a1640, tintAmt: 0.48, stars: 0.8, nebula: 1.5, fog: { color: 0x3a2458, amount: 0.45, top: 0.06, band: 0.5 }, scenery: 'wonder', density: 1.1,
              motion: { kind: 'void', axis: 'x', speed: 5.0, ramp: 0.4, max: 7.0, sky: 1.2, orbit: { body: 'moon', period: 180, near: 0.9 } } } },
+    /* 7.6 WAVE 1 (2026-09-13): the new sites — Room 13 first (the gothic point of entry) */
+    { id: 'prebuilt_haunted', label: 'The Haunted House', w: 16, h: 16, teamSize: 6, tier: 2, base: 'dirt_2',
+      biomes: ['gothic', 'clandestine'], deltaPad: 'wood', near: 'haunted',
+      desc: '16×16 prebuilt, 6v6 — the ground floor of the mansion cut open across the middle (the parlour, the hall, the library: thin walls, two front doors, windows you can shoot through) and the graveyard out back on both sides — the stones, the crypt, the bog, the coven\'s fire',
+      env: { world: { kind: 'plain', rim: [{ kind: 'trees', kinds: ['tree_5', 'tree_6'], d: 13, n: 48, s: 2.0, ranks: 2 }, { kind: 'hills', d: 20, n: 12, r: 4 }, { kind: 'town', d: 25, n: 5, p: 0.5, tex: 'wood_planks', color: 0x4a4048, roofColor: 0x2a2228, window: 0xffb060 }] },
+             tint: 0x1a1428, tintAmt: 0.52, stars: 0.9, nebula: 0.6, fog: { color: 0x2a2438, amount: 0.62, top: 0.08, band: 0.55 }, scenery: 'dark', density: 0.7,
+             ambience: 'ambNight' } },   // a still map names its bed too (audio.js reads env.ambience since 2026-09-13)
+    { id: 'prebuilt_lodge', label: 'The Lodge', w: 16, h: 16, teamSize: 6, tier: 2, base: 'checkerboard',
+      biomes: ['clandestine', 'gothic'], deltaPad: 'checkerboard', near: 'lodge',
+      desc: '16×16 prebuilt, 6v6 — the temple interior: the mosaic pavement, the sanctum behind thin damask walls with the great doors at both ends, the two pillars and the altar, the ambulatory, the lodge hall where the teams sit — and the Tomb sunk into the floor',
+      env: { world: { kind: 'room' },
+             tint: 0x2a1418, tintAmt: 0.58, stars: 0.0, nebula: 0.1, fog: { color: 0x3a1c22, amount: 0.7, top: 0.12, band: 0.7 }, scenery: 'none' } },
+    { id: 'prebuilt_singularity', label: 'The Singularity', w: 16, h: 16, teamSize: 6, tier: 3, base: 'moon_3',
+      biomes: ['astral', 'space'], deltaPad: 'moon_3', near: 'singularity',
+      desc: '16×16 prebuilt, 6v6 — two arms of rock shards spiralling in over nothing toward the point at the centre; every tile off the arms is a drop, the core is the event horizon',
+      env: { world: { kind: 'void', root: false },
+             tint: 0x1a0a30, tintAmt: 0.55, stars: 2.0, nebula: 1.6, fog: { color: 0x2a1448, amount: 0.35, top: 0.04, band: 0.4 }, scenery: 'space', density: 1.3 } },
+    { id: 'prebuilt_saturn', label: 'Saturn', w: 16, h: 16, teamSize: 6, tier: 2, base: 'cloud_thick',
+      biomes: ['space', 'divine'], deltaPad: 'mars_2', near: 'saturn',
+      desc: '16×16 prebuilt, 6v6 — the north-pole hexagon storm: an ochre plateau one step up, hydrocarbon lakes sunk into it, the storm wall round the rim (slow), gaps into nothing at the corners, the Saturnian cubes as cover',
+      env: { world: { kind: 'void', root: false },
+             tint: 0x8a6a30, tintAmt: 0.45, stars: 1.2, nebula: 0.5, fog: { color: 0xc0a060, amount: 0.55, top: 0.05, band: 0.45 }, scenery: 'space', density: 0.8 } },
+    { id: 'prebuilt_strip', label: 'The Strip', w: 16, h: 16, teamSize: 6, tier: 2, base: 'concrete_floor',
+      biomes: ['urban', 'neon_city'], deltaPad: 'urban_street', near: 'strip',
+      desc: '16×16 prebuilt, 6v6 — the boulevard at night: the Strip down the middle with its median and sidewalks, fountain plazas, the wedding chapel and the storefronts (roof-walkable), palms, the marquees, the Luxor\'s obelisk',
+      env: { world: { kind: 'plain', rim: [{ kind: 'city', d: 17, n: 20, h: 8, lights: [0xff3ad8, 0x35e0ff, 0xffd34a] }, { kind: 'peaks', tex: 'wasteland', color: 0xb08868, mesa: true, d: 34, n: 12, h: 6, ranks: 1 }], fogTop: 0.16 },
+             tint: 0x2a1030, tintAmt: 0.5, stars: 0.6, nebula: 0.9, fog: { color: 0xa040c0, amount: 0.45, top: 0.09, band: 0.5 }, scenery: 'city', ambience: 'ambNight' } },
+    { id: 'prebuilt_downtown', label: 'Downtown', w: 16, h: 16, teamSize: 6, tier: 1, base: 'concrete_floor',
+      biomes: ['urban', 'stadium'], deltaPad: 'urban_street', near: 'downtown',
+      desc: '16×16 prebuilt, 6v6 — the monster-movie downtown in daylight: the avenue and the cross street, roof-walkable blocks, the rubble where something walked through, the collapsed tower as a ramp of debris, a dumpster in every alley',
+      env: { world: { kind: 'plain', rim: [{ kind: 'city', d: 17, n: 22, h: 11, tex: 'concrete_floor', color: 0xb8b8bc, lights: false }, { kind: 'city', d: 32, n: 26, h: 18, tex: 'urban_wall', color: 0xa0a4ac, lights: false, ranks: 1 }], fogTop: 0.2 },
+             tint: 0xb8c0cc, tintAmt: 0.3, stars: 0.05, nebula: 0.2, fog: { color: 0xc8ccd4, amount: 0.55, top: 0.1, band: 0.5 }, scenery: 'city', density: 0.5, ambience: 'ambDay' } },
 ];
 
 /* Build + register everything: full maps and their Δ variants. */
@@ -16751,29 +17112,29 @@ const DOOR_TEXT = {
     POINT_OF_ENTRY: {
         'homosapien': 'Nuketown', 'pirate': 'The Flying Dutchman', 'swordfighter': 'Camelot', 'knight': 'Camelot',
         'shaman': 'Mount Shasta', 'mad scientist': 'D.U.M.B.', 'cowboy': 'Area 51', 'men in black': 'Area 51',
-        'telepath': 'D.U.M.B.', 'marksman': 'Antarctica', 'priest': 'Vatican City', 'wizard': 'Stonehenge',
+        'telepath': 'D.U.M.B.', 'marksman': 'The Lodge', 'priest': 'Vatican City', 'wizard': 'Stonehenge',
         'gangster': 'Cyberpunk City', 'nun': 'Vatican City',
         'fortune teller': 'Bohemian Grove', 'giant': 'Göbekli Tepe', 'fairy': 'Fairy Forest', 'martian': 'Mars',
-        'nordic': 'Antarctica', 'grey': 'Area 51', 'bigfoot': 'Mount Shasta', 'shadow entity': 'Backrooms',
+        'nordic': 'Antarctica', 'grey': 'Saturn', 'bigfoot': 'Mount Shasta', 'shadow entity': 'Backrooms',
         'reptilian': 'Hollow Earth', 'ai': 'Cyberpunk City', 'robot': 'Technoticlan', 'android': 'Cyberpunk City',
         'angel': 'Heaven', 'seraphim': 'Heaven', 'orb of light': 'Mount Olympus', 'demon': 'Hell',
-        'succubus': 'Hell', 'skeleton': 'Hell', 'mech': 'Technoticlan', 'ghost': 'Backrooms',
-        'zombie': 'Nuketown', 'annunaki': 'Pyramids of Giza', 'skinwalker': 'Skinwalker Ranch', 'werewolf': 'Fairy Forest',
+        'succubus': 'Hell', 'skeleton': 'Hell', 'mech': 'Technoticlan', 'ghost': 'The Haunted House',
+        'zombie': 'Downtown', 'annunaki': 'Pyramids of Giza', 'skinwalker': 'Skinwalker Ranch', 'werewolf': 'The Haunted House',
         'gargoyle': 'Vatican City', 'djinn': 'Pyramids of Giza', 'anubis': 'Pyramids of Giza', 'catgirl': 'Cyberpunk City',
         'mantid': 'Moon', 'antperson': 'Hollow Earth', 'mothman': 'Skinwalker Ranch', 'siren': 'Atlantis',
         'scarecrow': 'Flat Lands', 'glitch': 'CERN', 'machine elves': 'CERN', 'cyclops': 'Mount Olympus',
         'cyborg': 'Technoticlan', 'demon prince': 'Hell', 'demon princess': 'Hell', 'dreameater': 'The Looking-Glass',
         'fallen angel': 'Hell', 'goatman': 'Skinwalker Ranch', 'halfdemon': 'Hell', 'mermaid': 'Atlantis',
-        'nephilim': 'Göbekli Tepe', 'vampire': 'Bohemian Grove', 'voidweaver': 'Moon', 'cosmic wraith': 'Spaceship',
-        'superhero': 'Cyberpunk City', 'general': 'Nuketown', 'droid': 'Mars', 'antihero': 'Cyberpunk City',
-        'conspiracy theorist': 'Area 51', 'overlord': 'Tower of Babel', 'chosen one': 'Mount Olympus', 'politician': 'Bohemian Grove',
-        'atlantean': 'Atlantis', 'dinosaur': 'Hollow Earth', 'dragon': 'Camelot', 'ghoul': 'Hell',
+        'nephilim': 'Göbekli Tepe', 'vampire': 'The Haunted House', 'voidweaver': 'Moon', 'cosmic wraith': 'The Singularity',
+        'superhero': 'Downtown', 'general': 'The Lodge', 'droid': 'Mars', 'antihero': 'Downtown',
+        'conspiracy theorist': 'The Strip', 'overlord': 'Tower of Babel', 'chosen one': 'Mount Olympus', 'politician': 'The Lodge',
+        'atlantean': 'Atlantis', 'dinosaur': 'Hollow Earth', 'dragon': 'Camelot', 'ghoul': 'The Haunted House',
         'gnome': 'Fairy Forest', 'kaiju': 'Antarctica', 'kraken': 'Atlantis', 'loch ness monster': 'Agartha',
-        'yeti': 'Antarctica', 'barbarella': 'Moon', 'black goo': 'D.U.M.B.', 'golem': 'Tower of Babel',
-        'honda civic': 'Nuketown', 'ice queen': 'North Pole', 'juggernaut': 'D.U.M.B.', 'ki fighter': 'Mount Shasta',
-        'king arthur': 'Camelot', 'king kong': 'Hollow Earth', 'minotaur': 'Mount Olympus', 'necromancer': 'Stonehenge',
+        'yeti': 'Antarctica', 'barbarella': 'Moon', 'black goo': 'Saturn', 'golem': 'Tower of Babel',
+        'honda civic': 'The Strip', 'ice queen': 'North Pole', 'juggernaut': 'D.U.M.B.', 'ki fighter': 'Mount Shasta',
+        'king arthur': 'Camelot', 'king kong': 'Downtown', 'minotaur': 'Mount Olympus', 'necromancer': 'Stonehenge',
         'occulus': 'The Looking-Glass', 'quarterback': 'Football Stadium', 'robinhood': 'Camelot', 'santa clause': 'North Pole',
-        'super sentai': 'Technoticlan', 'symbiote': 'Spaceship', 'valkraye': 'Heaven', 'watcher': 'Göbekli Tepe',
+        'super sentai': 'Technoticlan', 'symbiote': 'Spaceship', 'valkraye': 'Heaven', 'watcher': 'The Singularity',
     },
 
     // "D.O.O.R. ANNOTATION" — an extra paragraph on the dossiers where the
@@ -16801,6 +17162,19 @@ const DOOR_TEXT = {
     //   summary — EXECUTIVE SUMMARY: the real place and its lore, loosely
     //             educational, one cheeky line. Short. Not about the Department.
     SITE_FILES: {
+        /* 7.6 WAVE 1 (2026-09-13) */
+        prebuilt_haunted: { tone: 'deny', status: 'CONDEMNED', juris: 'The estate · probate open since 1888 · nobody will sign',
+            summary: 'Every town has the one house. This is the one the others are copied from: gables, a widow\'s walk, a graveyard where the lawn should be, and a floor the hotels leave out. It has been for sale since 1888 and sold eleven times; the deed keeps coming back. The lights are on and nobody pays the bill. One of the doors inside is numbered 237, and it is not from this house.' },
+        prebuilt_lodge: { tone: 'deny', status: 'BY INVITATION', juris: 'The Lodge · 33rd degree · no jurisdiction admits to it',
+            summary: 'Every city has a building with no windows and a very good lawyer. Inside: a mosaic floor, two pillars named after a temple that fell in 587 BC, an eye painted on the ceiling that the members insist is decorative, and a sub-basement called the Tomb where the class of 1832 keeps a skull it says is a general\'s. The handshake is real. The conspiracy is a fundraising dinner.' },
+        prebuilt_singularity: { tone: 'void', status: 'NO RETURN', juris: 'Nobody · the point has no volume to claim',
+            summary: 'A point of zero volume and infinite density, which is a way of saying the arithmetic gives up. Everything that falls in falls forever from the outside and arrives at once from the inside; light does neither. The shards on the way down are the last of a world that got too close, spiralling. The Department filed it as Room 0 because no other number fits, and nothing that files there is expected back.' },
+        prebuilt_saturn: { tone: 'admit', status: 'ACTIVE CROSSING', juris: 'Celestial · the rings are a treaty, unsigned',
+            summary: 'Sixth planet, ninety-five Earths of gas, a day nine hours long. At its north pole a hexagon of cloud twenty thousand miles across has been turning since Voyager saw it in 1981 and nobody has explained the corners. The rings are ice and are younger than the dinosaurs. The black cube in the egress is Saturnian; it says so on the plaque, and the plaque is Saturnian too.' },
+        prebuilt_strip: { tone: 'admit', status: 'OPEN 24 H', juris: 'Clark County · what happens here is filed here',
+            summary: 'Four miles of boulevard built by a mob accountant on a road to nowhere in 1941, now the brightest spot on the planet from orbit. It has a pyramid, an Eiffel Tower, a Venice and eleven chapels that marry anyone standing still. Nothing here is the thing it is shaped like, and the fountains dance on schedule. The Department loses money at every table and calls it fieldwork.' },
+        prebuilt_downtown: { tone: 'deny', status: 'EVACUATED', juris: 'The city · insurance pending · the monster has not filed',
+            summary: 'A downtown of the kind that gets stepped on: an avenue, a cross street, the office block, the department store, and a tower now lying across the intersection. The first film was 1954 and the city was Tokyo; the city has been every city since. The rule is that the army is useless, the scientist is right too late, and the monster was here first. The evacuation order is still in force.' },
         /* MOVING MAPS (2026-09-12) */
         prebuilt_revenge: { tone: 'deny', status: 'UNDER WAY', juris: 'Admiralty · flag of no nation · Customs by grappling hook',
             summary: "A Dutch East Indiaman that tried to round the Cape in a gale in the 1600s and never did; every sailor who has seen her since saw her under full sail, lit from inside, going somewhere fast, and every one of them was dead within the year. The Department filed her in 1717, the year she was last logged making for a port she did not reach. She does not stop, she does not slow down, the lanterns light themselves at dusk, and the storm she is sailing into has been arriving since the paperwork was filed." },
@@ -17332,19 +17706,19 @@ const DOOR_HQ = {
            Terrestrial); Vatican City → Diplomatic (a sovereign state);
            Atlantis → Hollow (the deep). Wave-1 sites join their bays here. */
         terrestrial: { label: 'TERRESTRIAL', sub: 'clandestine · the bases',
-            maps: ['prebuilt_nuketown', 'prebuilt_area51', 'prebuilt_skinwalker', 'prebuilt_bohemian_grove', 'prebuilt_dumb', 'prebuilt_cern'] },
+            maps: ['prebuilt_nuketown', 'prebuilt_area51', 'prebuilt_skinwalker', 'prebuilt_bohemian_grove', 'prebuilt_dumb', 'prebuilt_cern', 'prebuilt_haunted', 'prebuilt_lodge'] },   // 7.6 wave 1: Rooms 13 + 33
         ancient:     { label: 'ANCIENT', sub: 'first crossings',
             maps: ['prebuilt_stonehenge', 'prebuilt_giza', 'prebuilt_babel', 'prebuilt_gobekli', 'prebuilt_camelot', 'prebuilt_technoticlan'] },
         hollow:      { label: 'HOLLOW', sub: 'inner earth · polar · the deep',
             maps: ['prebuilt_shasta', 'prebuilt_hollow_earth', 'prebuilt_agartha', 'prebuilt_antarctica', 'prebuilt_northpole', 'prebuilt_atlantis', 'prebuilt_revenge'] },
         celestial:   { label: 'CELESTIAL', sub: 'space · the far future',
-            maps: ['prebuilt_mars', 'prebuilt_moon', 'prebuilt_derelict'] },
+            maps: ['prebuilt_mars', 'prebuilt_moon', 'prebuilt_derelict', 'prebuilt_saturn', 'prebuilt_singularity'] },   // 7.6 wave 1: Rooms 6 + 0 (the Singularity, like the Looking-Glass, out of the sealed Quarantined bay so it is playable)
         diplomatic:  { label: 'DIPLOMATIC', sub: 'immunity claimed',
             maps: ['prebuilt_heaven', 'prebuilt_hell', 'prebuilt_olympus', 'prebuilt_fairy_forest', 'prebuilt_vatican', 'prebuilt_lookingglass'] },   // the Looking-Glass claims immunity (plan 7.6 had it Quarantined — sealed until a chapter; the Queen's court is a mythic ecosystem, and it must be playable)
         quarantined: { label: 'QUARANTINED', sub: 'astral anomalies', locked: true,
             maps: ['prebuilt_backrooms', 'prebuilt_flatlands'] },
         urban:       { label: 'URBAN', sub: 'cities · the strip · the night shift',
-            maps: ['prebuilt_cyberpunk', 'prebuilt_stadium'] },
+            maps: ['prebuilt_cyberpunk', 'prebuilt_stadium', 'prebuilt_strip', 'prebuilt_downtown'] },   // 7.6 wave 1: Rooms 21 + 1954
     },
 
     /* Mastery v1 (HQ plan D9): a door turns green once the map has been won
@@ -17485,6 +17859,13 @@ const DOOR_HQ = {
         prebuilt_revenge:       { roomNo: '1717', leaf: 'leaf_shabby_wood',    why: 'the year the Dutchman was last logged making for port', note: 'a cabin door hung on a gimbal; the sea is on the other side and it does not hold still' },
         prebuilt_derelict:      { roomNo: '426', leaf: 'leaf_bulkhead',       wide: true, why: 'LV-426; the signal was a warning', note: 'an airlock hatch onto a ship that is mostly not there; it cycles anyway' },
         prebuilt_lookingglass:  { roomNo: 'E4', leaf: 'leaf_frame_only',     why: 'the first move; the board is 64, the room is one square', note: 'a mirror frame with no glass in it; the board is on the far side, and it is moving' },
+        /* 7.6 WAVE 1 (2026-09-13): Room 13 — the plate says 13, the door says 237 (the user's Hotel folds in) */
+        prebuilt_haunted:       { roomNo: '13', leaf: 'leaf_hotel',          why: 'the floor hotels leave out', note: 'a hotel room door; the plate says 13, the door says 237' },
+        prebuilt_lodge:         { roomNo: '33', leaf: 'leaf_vault',          wide: true, why: 'the 33rd degree; Skull & Bones (322) is its basement', note: 'the lodge vault; the combination is a handshake' },
+        prebuilt_singularity:   { roomNo: '0', leaf: 'leaf_frame_only',     why: 'a point of zero volume; the user\'s Void (0) and Singularity (1) as one', note: 'a frame; there is no other side' },
+        prebuilt_saturn:        { roomNo: '6', leaf: 'leaf_bulkhead',       wide: true, why: 'the sixth planet', note: 'the Mars airlock\'s twin; frost on the other side' },
+        prebuilt_strip:         { roomNo: '21', leaf: 'leaf_motel',          why: 'blackjack', note: 'a motel door with a DO NOT DISTURB sign that is a lie' },
+        prebuilt_downtown:      { roomNo: '1954', leaf: 'leaf_glass',          why: 'REC — the first kaiju film', note: 'a lobby door; the glass is taped, the lobby is not there' },
     },
     /* The two FACILITY boards (HQ plan 7.0 rule 3) are not sites: no bay,
        no threshold. They wear the room they are projected in — the Training
@@ -17535,7 +17916,9 @@ const DOOR_HQ = {
                 'prebuilt_olympus', 'prebuilt_mars', 'prebuilt_area51', 'prebuilt_skinwalker', 'prebuilt_hollow_earth', 'prebuilt_fairy_forest',
                 'prebuilt_moon', 'prebuilt_vatican', 'prebuilt_bohemian_grove', 'prebuilt_gobekli', 'prebuilt_northpole', 'prebuilt_flatlands',
                 /* MOVING MAPS (2026-09-12): the ship on a quay (a moat room), the wreck on hull plate, the board on its slab */
-                'prebuilt_revenge', 'prebuilt_derelict', 'prebuilt_lookingglass'],
+                'prebuilt_revenge', 'prebuilt_derelict', 'prebuilt_lookingglass',
+                /* 7.6 WAVE 1 (2026-09-13): the new sites */
+                'prebuilt_haunted', 'prebuilt_lodge', 'prebuilt_singularity', 'prebuilt_saturn', 'prebuilt_strip', 'prebuilt_downtown'],
         shell: { pad: 4.0, h: 4.4, dadoH: 1.05, floor: 'concrete', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling', pipes: true,
             /* the room's LIGHT (plan 7.2 stage 2): `lamp` = the containment
                lamps in the corners (lens + glow), `strip` = the wall strips,
@@ -17607,6 +17990,8 @@ const DOOR_HQ = {
             moon: { w: 5.0 }, vatican: { w: 4.5 }, bohemian_grove: { w: 5.0 }, gobekli: { w: 5.0 }, northpole: { w: 4.5 },
             /* MOVING MAPS (2026-09-12): the deck rim, the torn plating, the slab's marble rim */
             revenge: { w: 1.6 }, derelict: { w: 2.2 }, lookingglass: { w: 1.2 },
+            /* 7.6 WAVE 1 (2026-09-13) */
+            haunted: { w: 4.5 }, lodge: { w: 3.4, h: 3.6 }, singularity: { w: 4.0 }, saturn: { w: 5.0 }, strip: { w: 4.0 }, downtown: { w: 3.6 },
         },
         shells: {
             prebuilt_dumb: { floor: 'concrete', wall: 'concrete', dado: 'teal', trim: 'teal', ceiling: 'concrete' },
@@ -17847,6 +18232,44 @@ const DOOR_HQ = {
                 mood: { lamp: 0xd8a0ff, glow: 0xb070ff, strip: 0xf0e0ff, light: 0xe8d8ff, night: 1,
                     signN: { bg: '#f4f0ea', border: '#8a5ac8', color: '#3a2458' }, signS: { bg: '#1c1030', border: '#d8a0ff', color: '#f0e0ff' },
                     signLines: { n: ['THE LOOKING-GLASS', 'ROOM E4', 'THE FIRST MOVE'], s: ['MIRROR FRAME · NO GLASS', 'DO NOT AGREE TO A GAME', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 13 · THE HAUNTED HOUSE (7.6 wave 1, 2026-09-13) — the graveyard
+               under the house's own night: no facility walls (the iron fence
+               and the dead trees are the perimeter), the console off the north
+               wall (the wings stand west and east), candle-amber lamps */
+            prebuilt_haunted: { open: true, floor: 'grass_dark_fantasy', wall: 'bricks_2', dado: 'bricks_2', trim: 'wood', ceiling: null, h: 4.4, dadoH: 1.0, pipes: false,
+                apron: 'dirt_2', skirt: 'rock_wall_1', apronColor: 0x6a6058, floorColor: 0x5a6650, console: { wall: 'n', at: 0 },
+                mood: { lamp: 0xffa040, glow: 0xff8030, strip: 0xffe0b0, light: 0xffd0a0, night: 1,
+                    signN: { bg: '#1a1216', border: '#8a7a60', color: '#e8dcc0' }, signS: { bg: '#2a1a1e', border: '#c89060', color: '#f0e0c0' },
+                    signLines: { n: ['THE HAUNTED HOUSE', 'ROOM 13', 'THE FLOOR HOTELS LEAVE OUT'], s: ['ROOM 237 IS NOT ON THIS FLOOR', 'DO NOT KNOCK', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 33 · THE LODGE (7.6 wave 1) — indoors: damask over an oak dado, the mosaic under foot, candle light */
+            prebuilt_lodge: { floor: 'checkerboard', wall: 'damask', dado: 'wood', trim: 'gold', ceiling: 'ceiling', pipes: false, h: 3.6, dadoH: 1.0, floorColor: 0xd8ccb0,
+                mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xffe0b0,
+                    signN: { bg: '#2a1018', border: '#d8b050', color: '#f4e4c0' }, signS: { bg: '#1a1216', border: '#c89060', color: '#f0e0c0' },
+                    signLines: { n: ['THE LODGE', 'ROOM 33', 'BY INVITATION'], s: ['THE TOMB IS DOWNSTAIRS', 'DO NOT SHAKE HANDS', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 0 · THE SINGULARITY (7.6 wave 1) — a slab of rock over nothing under the deep sky; violet light */
+            prebuilt_singularity: { open: true, floor: 'moon_3', wall: 'obsidian', dado: 'obsidian', trim: 'crystal', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
+                apron: 'moon_3', skirt: 'obsidian', apronColor: 0x5a4a78, floorColor: 0x5a4a78,
+                mood: { lamp: 0xb08cff, glow: 0x9060ff, strip: 0xe0d0ff, light: 0xc8b0ff, night: 1,
+                    signN: { bg: '#100818', border: '#b08cff', color: '#e8dcff' }, signS: { bg: '#1c1428', border: '#d0b8ff', color: '#f0e8ff' },
+                    signLines: { n: ['THE SINGULARITY', 'ROOM 0', 'NO RETURN'], s: ['THERE IS NO OTHER SIDE', 'DO NOT LEAN OUT', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 6 · SATURN (7.6 wave 1) — the plateau in the storm; ochre light under the ring plane */
+            prebuilt_saturn: { open: true, floor: 'mars_2', wall: 'cloud_thick', dado: 'cloud_thick', trim: 'gunmetal', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
+                apron: 'cloud_thick', skirt: 'cloud_thick', apronColor: 0xa88a58, floorColor: 0xc8a060,
+                mood: { lamp: 0xffd080, glow: 0xffb050, strip: 0xfff0c0, light: 0xffe8b0, night: 1,
+                    signN: { bg: '#2a2010', border: '#d8b060', color: '#f8ecc8' }, signS: { bg: '#1a1a20', border: '#a0a0b0', color: '#e8e8f0' },
+                    signLines: { n: ['SATURN', 'ROOM 6', 'THE HEXAGON'], s: ['SMALLER CUBES · DO NOT STACK', 'THE RINGS ARE A TREATY', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 21 · THE STRIP (7.6 wave 1) — the boulevard at night; the storefronts are the walls, neon light */
+            prebuilt_strip: { open: true, edge: 'walls', floor: 'concrete_floor', wall: 'urban_wall', dado: 'urban_wall', trim: 'gold', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
+                apron: 'urban_street', skirt: 'urban_wall', apronColor: 0x4a4a56, floorColor: 0x8a8a94,
+                mood: { lamp: 0xff3ad8, glow: 0xff60e0, strip: 0x35e0ff, light: 0xffd0f0, night: 1,
+                    signN: { bg: '#1a0820', border: '#ff3ad8', color: '#ffe0f8' }, signS: { bg: '#081820', border: '#35e0ff', color: '#e0f8ff' },
+                    signLines: { n: ['THE STRIP', 'ROOM 21', 'OPEN 24 H'], s: ['WHAT HAPPENS HERE IS FILED HERE', 'NO CREDIT', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 1954 · DOWNTOWN (7.6 wave 1) — the intersection in daylight; the blocks are the walls */
+            prebuilt_downtown: { open: true, edge: 'walls', floor: 'urban_street', wall: 'concrete_floor', dado: 'urban_wall', trim: 'gunmetal', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
+                apron: 'concrete_floor', skirt: 'urban_wall', apronColor: 0xb0aeaa, floorColor: 0x5a5a5e,
+                mood: { lamp: 0xf4f7ff, glow: 0xe0e8ff, strip: 0xffffff, light: 0xf8f8ff, night: 0,
+                    signN: { bg: '#e8e4d8', border: '#3a3a3c', color: '#1a1a1c' }, signS: { bg: '#c82020', border: '#f8e8e8', color: '#ffffff' },
+                    signLines: { n: ['DOWNTOWN', 'ROOM 1954', 'EVACUATED'], s: ['THE MONSTER WAS HERE FIRST', 'MIND THE TOWER', 'THE CROSSING IS AT THE CONSOLE'] } } },
             /* 888 · VATICAN CITY — the piazza: cobbles, a marble wall, the
                colonnade arms in the room, the basilica front across the
                north, the dome over the wall; day */
@@ -17923,6 +18346,106 @@ const DOOR_HQ = {
                     { key: 'cardboard_box',  x: 9.4,   z: -9.2,  face: 15 },
                     { key: 'folding_chair',  x: 9.8,   z: 8.4,   face: 210 },
                     { key: 'paper_sheet',    x: -9.6,  z: 9.4,   y: 0.01, face: 40 },
+                ],
+            },
+            /* 33 · THE LODGE (7.6 wave 1) */
+            prebuilt_lodge: {
+                agent: '“Room 33. You were not invited. Nobody is invited; that is the invitation. Sign the book and do not look at the ceiling. It looks back.”',
+                lines: [
+                    'The eye on the ceiling is decorative. The members insist. The eye has not commented.',
+                    'The Tomb is downstairs. The class of 1832 keeps a skull there. Records has asked whose. Records has been asked to leave.',
+                    'Thirty-three degrees. Continuity checked: it is a temperature, an angle and a rank, and the Lodge means all three.',
+                    'The handshake is real. The conspiracy is a dinner. The dinner is catered by the Cafeterium.',
+                    'The two pillars hold up nothing. They are named. That is the whole job.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'cardboard_box',  x: 11.6,  z: -11.4, face: 30 },
+                    { key: 'paper_sheet',    x: -11.4, z: 11.6,  y: 0.01, face: 300 },
+                    { key: 'table_lamp',     x: -11.6, z: -11.4, y: 0.0 },
+                ],
+            },
+            /* 0 · THE SINGULARITY (7.6 wave 1) */
+            prebuilt_singularity: {
+                agent: '“Room 0. The frame has no other side. Anything you drop here you have already dropped, from the far side\'s point of view. Do not drop the form.”',
+                lines: [
+                    'Zero volume. Infinite density. Facilities has asked how to clean it.',
+                    'The shards are a world that got too close. They are still arriving. They arrived already.',
+                    'Nothing filed here comes back. Records files a copy. The copy does not come back either.',
+                    'The point is the centre. Everything is the centre from the inside. Do not stand in the middle.',
+                    'Room 0 is the only room with no number. It has a number. It is 0. Continuity is not finished.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'cardboard_box',  x: 13.0,  z: -12.8, face: 30 },
+                    { key: 'paper_sheet',    x: -12.8, z: 13.0,  y: 0.01, face: 300 },
+                ],
+            },
+            /* 6 · SATURN (7.6 wave 1) */
+            prebuilt_saturn: {
+                agent: '“Room 6. The plateau is a cloud that thinks it is a floor. Mind the corners; the storm has six and none of them is the way out. The cubes are smaller here. Do not stack them.”',
+                lines: [
+                    'The hexagon has been turning since 1981. Records has the footage. The footage has corners.',
+                    'The rings are younger than the dinosaurs. The Department is older than the rings. Nobody likes this.',
+                    'The black cube in the egress came from here. It has never said so. The plaque says so.',
+                    'A day here is nine hours. The shift is eight. Facilities calls that a win.',
+                    'The lakes are not water. Do not drink from them. Do not light them.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'cardboard_box',  x: 14.6,  z: -14.4, face: 30 },
+                    { key: 'paper_sheet',    x: -14.4, z: 14.6,  y: 0.01, face: 300 },
+                ],
+            },
+            /* 21 · THE STRIP (7.6 wave 1) */
+            prebuilt_strip: {
+                agent: '“Room 21. Everything here is shaped like somewhere else. The pyramid is a hotel, the chapel is a business and the fountain is on a timer. Keep your receipts. Records will not.”',
+                lines: [
+                    'The Department loses at every table and expenses it as fieldwork. Finance has approved the fieldwork.',
+                    'Eleven chapels. One will marry you to the honda civic. Do not let it.',
+                    'The pyramid has a beam on top that you can see from space. Records has a form for the beam. The beam has not filed it.',
+                    'Twenty-one. Blackjack. The dealer is a politician now. The politician was always a dealer.',
+                    'What happens here is filed here. The filing is the thing that happens.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'cardboard_box',  x: 13.0,  z: -12.8, face: 30 },
+                    { key: 'paper_sheet',    x: -12.8, z: 13.0,  y: 0.01, face: 300 },
+                    { key: 'trash_bin',      x: 12.6,  z: 12.8 },
+                ],
+            },
+            /* 1954 · DOWNTOWN (7.6 wave 1) */
+            prebuilt_downtown: {
+                agent: '“Room 1954. The evacuation order is in force. You are the evacuation. Mind the tower across the intersection; it is load-bearing for the plot.”',
+                lines: [
+                    'The army is useless. The scientist is right too late. The monster was here first. That is the treaty.',
+                    'The tower came down in 1954 and has come down every year since. Facilities has stopped rebuilding it.',
+                    'The department store is open. Nothing in it is for sale. Everything in it is stepped on.',
+                    'Superheroes file here. The antiheroes file next door and say it is not filing.',
+                    'The traffic lights still work. Nobody is driving. The lights have not been told.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'cardboard_box',  x: 12.4,  z: -12.2, face: 30 },
+                    { key: 'paper_sheet',    x: -12.2, z: 12.4,  y: 0.01, face: 300 },
+                    { key: 'trash_bin',      x: 12.0,  z: 12.2 },
+                ],
+            },
+            /* 13 · THE HAUNTED HOUSE (7.6 wave 1) — the officer at the gate */
+            prebuilt_haunted: {
+                agent: '“Room 13. The plate says 13; the door says 237. Both are correct and neither is the room number of the house. Sign the release. The house has already signed.”',
+                lines: [
+                    'The house is for sale. The house has always been for sale. Records lists the price as "the price".',
+                    'Nobody pays the light bill. The lights stay on. Facilities has stopped asking.',
+                    'Room 237 is on the second floor. The house has one floor. Continuity has a form for this and it is in the hall.',
+                    'The graveyard is out back. Both backs. Do not ask which side is the front.',
+                    'The coven meets on the thirty-first. Every month has a thirty-first here.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'cardboard_box',  x: 13.6,  z: -13.4, face: 30 },
+                    { key: 'paper_sheet',    x: -13.4, z: 13.6,  y: 0.01, face: 300 },
+                    { key: 'table_lamp',     x: -13.6, z: -13.4, y: 0.0 },
                 ],
             },
             prebuilt_lookingglass: {

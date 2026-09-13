@@ -12,7 +12,10 @@
 
 'use strict';
 
-const { loadGameData, loadServerEconomy } = require('./load-data');
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
+const { loadGameData, loadServerEconomy, extractConst, REPO_ROOT } = require('./load-data');
 
 function asSet(v) { return new Set(v instanceof Set ? [...v] : v); }
 
@@ -54,6 +57,26 @@ function runParityChecks() {
     for (const r of setDiff(cStart, cRaces)) problems.push(`starter '${r}' is not in data.js AVAILABLE_RACES`);
     for (const r of setDiff(sStart, sRaces)) problems.push(`starter '${r}' is not in server.js AVAILABLE_RACES`);
 
+    // 6. The ranked MAP_POOL (server.js) is a hand-synced mirror of the launch
+    //    roster (data.js EW_MAP_META: every launch map + its Δ) — plan 7.10 #5
+    //    (2026-09-13, the 7.6 wave-1 sites). A map missing on the server never
+    //    comes up in ranked; an id the client no longer builds would be dealt
+    //    and refused. The facility boards (Training Room / Holo Sim) are not
+    //    sites and stay out of the pool.
+    try {
+        const pool = extractConst(fs.readFileSync(path.join(REPO_ROOT, 'server.js'), 'utf8'), 'MAP_POOL');
+        const meta = vm.runInContext('EW_MAP_META', client);
+        const launch = meta.filter(m => !m.facility && m.id !== 'prebuilt_training' && m.id !== 'prebuilt_holosim');
+        const cIds = new Set(launch.map(m => m.id)), sIds = new Set(pool.map(m => m.modeId));
+        for (const id of setDiff(cIds, sIds)) problems.push(`MAP_POOL: '${id}' is a launch map in data.js but missing from server.js (never dealt in ranked)`);
+        for (const id of setDiff(sIds, cIds)) problems.push(`MAP_POOL: '${id}' in server.js but data.js has no such launch map`);
+        for (const row of pool) {
+            const m = launch.find(x => x.id === row.modeId); if (!m) continue;
+            if (m.w !== row.w || m.h !== row.h) problems.push(`MAP_POOL: '${row.modeId}' is ${row.w}×${row.h} on the server, ${m.w}×${m.h} in data.js`);
+            if (!m.isDelta && m.teamSize !== row.team) problems.push(`MAP_POOL: '${row.modeId}' team ${row.team} on the server, ${m.teamSize} in data.js`);
+        }
+    } catch (e) { problems.push('MAP_POOL: could not compare — ' + e.message); }
+
     return problems;
 }
 
@@ -66,5 +89,5 @@ if (require.main === module) {
         for (const p of problems) console.error('  • ' + p);
         process.exit(1);
     }
-    console.log('client/server canonical data in sync (economy constants, PvP modes, starters, race list)');
+    console.log('client/server canonical data in sync (economy constants, PvP modes, starters, race list, ranked map pool)');
 }

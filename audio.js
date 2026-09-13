@@ -963,6 +963,9 @@
             /* MOVING MAPS (2026-09-12): a travelling map names its own bed (the
                wind over the sea); the picker keeps the lava / cloud rules first */
             else if (state.mapEnv && state.mapEnv.motion && typeof state.mapEnv.motion.ambience === 'string' && _R2_AMBIENCE[state.mapEnv.motion.ambience]) val = state.mapEnv.motion.ambience;
+            /* 7.6 WAVE 1 (2026-09-13): a still map may name its bed on the meta
+               row itself (env.ambience — the Haunted House's night) */
+            else if (state.mapEnv && typeof state.mapEnv.ambience === 'string' && _R2_AMBIENCE[state.mapEnv.ambience]) val = state.mapEnv.ambience;
             _ambFlavourCache = { at: now, val };
             return val;
         }

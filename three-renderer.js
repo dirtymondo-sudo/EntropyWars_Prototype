@@ -25171,6 +25171,172 @@ const ThreeRenderer = (function () {
         var circle = new THREE.Mesh(new THREE.RingGeometry(3.2 * ts, 3.4 * ts, 48), new THREE.MeshBasicMaterial({ color: 0xb0a890, transparent: true, opacity: 0.35, depthWrite: false })); circle.rotation.x = -Math.PI / 2; circle.position.set(K.BX0 - 7 * ts, K.fy + 0.8, K.BZ1 + 5 * ts); K.add(circle);
         var stone = K.box(0.5 * ts, 0.7 * ts, 0.3 * ts, K.mat('rocks_1', 0xa8a8a0)); stone.position.set(K.BX0 - 7 * ts, K.fy + 0.3 * ts, K.BZ1 + 5 * ts); stone.rotation.y = 0.4; K.add(K.lit(stone, true));
     };
+    // ── 7.6 WAVE 1 (2026-09-13): the new sites ───────────────────────────
+    /* THE HAUNTED HOUSE (Room 13) — the rest of the house: two-storey gabled
+       wings west and east of the cut-open floor with their windows lit, the
+       turret with the widow's walk on the east wing, the iron fence round
+       the plots with the gates at the lanes, dead trees, the pumpkin patch
+       and the coven's bonfire in the north corners, the wooden cross by the
+       crypt, candle lamps at the gates. Night; the far roster is 'dark'. */
+    _NR_BUILDERS.haunted = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 4.5, occ: true }), ts = K.ts, fy = K.fy, rng = K.rng;
+        _nrApron(K, { tex: 'dirt_2', color: 0x6a6058, deep: true, skirt: 'rock_wall_1', skirtColor: 0x6a6268 });
+        var clap = 0x5a5260, roofC = 0x2a2430, win = 0xffb85a;
+        /* the wings: the board is the ground floor cut open; these are the rooms either side, two storeys */
+        _nrHouse(K, K.BX0 - 2.6 * ts, K.CZ - 2.3 * ts, { w: 4.0, d: 2.8, h: 2.6, tex: 'wood_planks', color: clap, roofTex: 'wood', roofColor: roofC, ry: Math.PI / 2, window: win, doorColor: 0x1a1216 });
+        _nrHouse(K, K.BX0 - 2.6 * ts, K.CZ + 2.3 * ts, { w: 3.6, d: 2.8, h: 2.2, tex: 'wood_planks', color: clap, roofTex: 'wood', roofColor: roofC, ry: Math.PI / 2, window: win, chimney: false });
+        _nrHouse(K, K.BX1 + 2.6 * ts, K.CZ + 2.3 * ts, { w: 4.0, d: 2.8, h: 2.6, tex: 'wood_planks', color: clap, roofTex: 'wood', roofColor: roofC, ry: -Math.PI / 2, window: win, doorColor: 0x1a1216 });
+        _nrHouse(K, K.BX1 + 2.6 * ts, K.CZ - 2.3 * ts, { w: 3.6, d: 2.8, h: 2.2, tex: 'wood_planks', color: clap, roofTex: 'wood', roofColor: roofC, ry: -Math.PI / 2, window: win, chimney: false });
+        /* the turret with the widow's walk, between the east wings */
+        var tx = K.BX1 + 2.6 * ts;
+        var tw = K.cyl(0.8 * ts, 0.9 * ts, 3.6 * ts, 10, K.mat('wood_planks', clap)); tw.position.set(tx, fy + 1.8 * ts, K.CZ); K.addW('e', K.lit(tw, true));
+        var cg = new THREE.ConeGeometry(1.05 * ts, 1.5 * ts, 10, 1); _nrUV(cg, 2, 1);
+        var cone = new THREE.Mesh(cg, K.mat('wood', roofC)); cone.position.set(tx, fy + 4.35 * ts, K.CZ); K.addW('e', K.lit(cone, true));
+        var rail = K.cyl(0.95 * ts, 0.95 * ts, 0.06 * ts, 10, K.mat('metal', 0x2a2a32)); rail.position.set(tx, fy + 3.62 * ts, K.CZ); K.addW('e', rail);
+        var am = K.glow(win, 0.75); var aw = new THREE.Mesh(new THREE.PlaneGeometry(0.34 * ts, 0.5 * ts), am); aw.position.set(tx - 0.86 * ts, fy + 2.7 * ts, K.CZ); aw.rotation.y = -Math.PI / 2; K.addW('e', aw); _hzPulse(am, null, 0.3, 0, 0.6);
+        /* the iron fence round the plots, the gates at the lanes */
+        _nrFence(K, { d: 1.2, h: 0.85, spacing: 1.1, tex: 'metal', color: 0x2a2a32, gates: true });
+        /* the dead trees (the DeadTree models), the pumpkin patch, the coven's fire */
+        _nrTrees(K, { d: 3.4, spacing: 2.0, kinds: ['tree_5', 'tree_6'], p: 0.6, h: 2.4, sink: 0.05 });
+        var pk = K.mat('leaves', 0xe07a1e, { lift: 0.3 });
+        for (var i = 0; i < 9; i++) {
+            var pr = ts * (0.16 + rng() * 0.12), pg = new THREE.SphereGeometry(pr, 8, 6); _nrUV(pg, 2, 1);
+            var p = new THREE.Mesh(pg, pk); p.scale.y = 0.7; p.position.set(K.BX0 - (1.8 + rng() * 1.6) * ts, fy + pr * 0.6, K.BZ0 - (1.6 + rng() * 1.6) * ts); K.addW('n', K.lit(p, true));
+            if (i % 3 === 0) K.addW('n', K.lamp(p.position.x, p.position.y + pr * 0.4, p.position.z, 0xffa040, 0.45 * ts, 0.7));   // the carved ones
+        }
+        _nrProp(K, _hzBrazier, K.BX1 + 2.4 * ts, K.BZ0 - 2.6 * ts, { s: 0.75 });
+        K.addW('n', K.lamp(K.BX1 + 2.4 * ts, fy + 1.0 * ts, K.BZ0 - 2.6 * ts, 0xff8030, 1.4 * ts, 0.5));
+        _nrProp(K, _hzWoodCross, K.BX0 - 2.2 * ts, K.BZ1 + 2.6 * ts, { s: 0.55 });
+        /* candle lamps either side of each way in */
+        [[K.CX - 1.9 * ts, K.Z0 + 0.9 * ts], [K.CX + 1.9 * ts, K.Z0 + 0.9 * ts], [K.CX - 1.9 * ts, K.Z1 - 0.9 * ts], [K.CX + 1.9 * ts, K.Z1 - 0.9 * ts]].forEach(function (q) {
+            var post = K.box(0.12 * ts, 1.3 * ts, 0.12 * ts, K.mat('metal', 0x2a2a32)); post.position.set(q[0], fy + 0.65 * ts, q[1]); K.add(K.lit(post, true));
+            K.add(K.lamp(q[0], fy + 1.4 * ts, q[1], 0xffc070, 0.6 * ts, 0.6));
+        });
+        _nrSign(K, 'hh_sign', ['THE HAUNTED HOUSE', 'FOR SALE · SINCE 1888'], 2.4 * ts, 1.0 * ts, K.CX + 2.4 * ts, K.fy + 1.1 * ts, K.Z0 + 1.4 * ts, 0, { sizes: [92, 44], bg: '#1a1216', border: '#8a7a60', color: '#e8dcc0' });
+    };
+    /* THE LODGE (Room 33) — the temple interior: damask walls over an oak
+       dado, the ambulatory's columns along the flanks, torches in brackets,
+       censers by the great doors, banners, and the ALL-SEEING EYE (the
+       `eyes` roster's eyeball OBJ) hung over the board as the lamp — in
+       the battle only; the walkable room lights itself. Indoors: no sky. */
+    _NR_BUILDERS.lodge = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 3.4, occ: true }), ts = K.ts, fy = K.fy, rng = K.rng, HQ = !!K.hq;
+        _nrApron(K, { tex: 'checkerboard', color: 0xd8ccb0, deep: true });
+        _nrRoom(K, { tex: 'damask', color: 0x8a3050, dadoTex: 'wood', dadoColor: 0x6a4a30, h: 3.6, dh: 1.0, trim: 0x3a2818, strip: 0xffc070 });
+        _nrColonnade(K, { d: 1.7, spacing: 1.7, glb: true, h: 2.6, tex: 'marble_light', only: ['w', 'e'], gates: false });
+        var banner = K.mat('damask', 0xc0a040, { side: THREE.DoubleSide });
+        _nrRectRing(K, 2.6 * ts, 2.8 * ts, function (x, z, side) { var b = K.plane(0.5 * ts, 1.4 * ts, banner); b.position.set(x, fy + 2.2 * ts, z); b.rotation.y = K.face(x, z); K.addW(side, b); }, { skipLanes: true, corners: false });
+        _nrRectRing(K, 2.0 * ts, 2.3 * ts, function (x, z, side) { _nrTorch(K, x, fy + 1.3 * ts, z, { scale: 0.8 }); K.addW(side, K.lamp(x, fy + 1.7 * ts, z, 0xffb060, 1.2 * ts, 0.45)); }, { skipLanes: true, corners: true });
+        _nrProp(K, _hzCenser, K.CX - 1.9 * ts, K.BZ0 - 1.2 * ts, { s: 0.6 }); _nrProp(K, _hzCenser, K.CX + 1.9 * ts, K.BZ1 + 1.2 * ts, { s: 0.6 });
+        _nrProp(K, _hzTablet, K.BX0 - 2.4 * ts, K.BZ0 - 2.4 * ts, { s: 0.7 }); _nrProp(K, _hzTablet, K.BX1 + 2.4 * ts, K.BZ1 + 2.4 * ts, { s: 0.7 });
+        if (!HQ) {
+            var eye = _hzModelEyeball(rng); eye.scale.setScalar(0.42); eye.position.set(K.CX, fy + 2.6 * ts, K.CZ); eye.rotation.x = 0.9; K.add(eye);
+            K.add(K.lamp(K.CX, fy + 2.4 * ts, K.CZ, 0xffd090, 3.0 * ts, 0.35));
+        }
+        _nrSign(K, 'lodge_n', ['THE LODGE', '33° · BY INVITATION'], 2.6 * ts, 1.0 * ts, K.CX + 2.6 * ts, fy + 2.7 * ts, K.Z0 + 0.06 * ts, 0, { sizes: [96, 42], bg: '#2a1018', border: '#d8b050', color: '#f4e4c0' });
+        _nrSign(K, 'lodge_s', ['THE TOMB', 'SUB-BASEMENT · 322'], 2.6 * ts, 1.0 * ts, K.CX - 2.6 * ts, fy + 2.7 * ts, K.Z1 - 0.06 * ts, Math.PI, { sizes: [96, 42], bg: '#1a1216', border: '#c89060', color: '#f0e0c0' });
+    };
+    /* THE SINGULARITY (Room 0) — the slab the arms hang from: a thin apron of
+       rock, crystal shards leaning out over the drop, the accretion light
+       under the board (a pillar of light and a ring hung beneath it), dust
+       sparks. The far roster is 'space' at high density. */
+    _NR_BUILDERS.singularity = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 4.0 }), ts = K.ts, fy = K.fy, rng = K.rng, HQ = !!K.hq;
+        _nrApron(K, { tex: 'moon_3', color: 0x5a4a78, deep: true, skirt: 'obsidian', skirtColor: 0x1c1428 });
+        var shard = K.mat('crystal', 0xb08cff, { lift: 0.5 });
+        _nrRectRing(K, 2.4 * ts, 1.6 * ts, function (x, z) { if (rng() > 0.6) return; var h = ts * (1.2 + rng() * 2.4), r = ts * (0.18 + rng() * 0.22); var g = new THREE.ConeGeometry(r, h, 5, 1); _nrUV(g, 1, 2); var m = new THREE.Mesh(g, shard); m.position.set(x + (rng() - 0.5) * ts, fy + h * 0.35, z + (rng() - 0.5) * ts); m.rotation.set((rng() - 0.5) * 0.9, rng() * 6, (rng() - 0.5) * 0.9); K.add(K.lit(m, true)); K.add(K.lamp(m.position.x, m.position.y + h * 0.2, m.position.z, 0xb08cff, 0.7 * ts, 0.35)); }, { skipLanes: true, corners: true });
+        _nrRocks(K, { tex: 'moon_3', color: 0x6a5a88, d: 1.0, p: 0.45, r: 0.3 });
+        if (!HQ) {
+            var below = fy - 0.6 - 4.0 * ts;
+            var ring = new THREE.Mesh(new THREE.TorusGeometry(6.5 * ts, 0.25 * ts, 8, 48), K.glow(0xd0b8ff, 0.55)); ring.rotation.x = Math.PI / 2; ring.position.set(K.CX, below, K.CZ); K.add(ring); _hzPulse(ring.material, ring, 0.2, 0.04, 0.5);
+            var ring2 = new THREE.Mesh(new THREE.TorusGeometry(9.5 * ts, 0.14 * ts, 8, 56), K.glow(0x8a60ff, 0.35)); ring2.rotation.x = Math.PI / 2; ring2.rotation.z = 0.2; ring2.position.set(K.CX, below - 2.0 * ts, K.CZ); K.add(ring2);
+            K.add(K.lamp(K.CX, below, K.CZ, 0xc8a8ff, 16 * ts, 0.16));
+            var lp = _hzLightPillar(rng); lp.scale.setScalar(0.5); lp.position.set(K.CX, below - 6 * ts, K.CZ); K.add(lp);
+        }
+        _nrSign(K, 'sing_n', ['THE SINGULARITY', 'ROOM 0 · NO RETURN'], 2.6 * ts, 1.0 * ts, K.CX + 2.6 * ts, fy + 1.2 * ts, K.Z0 + 1.0 * ts, 0, { sizes: [80, 44], bg: '#100818', border: '#b08cff', color: '#e8dcff' });
+    };
+    /* SATURN (Room 6) — the hexagon storm: the cloud sea round the plateau in
+       thick-cloud mounds, storm wisps, the cubes standing off the rim, the
+       RING PLANE cutting the sky (a wide flat annulus tilted off level, in
+       the battle only) and the storm's lightning glow. */
+    _NR_BUILDERS.saturn = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 5.0 }), ts = K.ts, fy = K.fy, rng = K.rng, HQ = !!K.hq;
+        _nrApron(K, { tex: 'cloud_thick', color: 0xa88a58, deep: true, skirt: 'cloud_thick', skirtColor: 0x8a7048, dens: 0.5 });
+        _nrMounds(K, { tex: 'cloud_thick', color: 0xc0a068, d: 2.6, spacing: 2.0, r: 1.8, flat: 0.35, p: 0.85, skipLanes: true });
+        _nrMounds(K, { tex: 'storm', color: 0x9a8870, d: 4.4, spacing: 2.4, r: 2.2, flat: 0.3, p: 0.7, skipLanes: false });
+        var cube = K.mat('gunmetal', 0x3a3a44, { lift: 0.35 });
+        [[K.BX0 - 2.2 * ts, K.BZ0 - 2.6 * ts, 1.0], [K.BX1 + 2.4 * ts, K.BZ1 + 2.2 * ts, 1.3], [K.BX1 + 3.0 * ts, K.BZ0 - 1.6 * ts, 0.7], [K.BX0 - 3.2 * ts, K.BZ1 + 3.0 * ts, 0.9]].forEach(function (c) {
+            var b = K.box(c[2] * ts, c[2] * ts, c[2] * ts, cube, 0.5); b.position.set(c[0], fy + c[2] * ts / 2, c[1]); b.rotation.y = rng() * 0.6; K.add(K.lit(b, true));
+        });
+        _nrRectRing(K, 3.6 * ts, 3.0 * ts, function (x, z) { if (rng() < 0.4) return; var l = K.lamp(x, fy + 0.6 * ts, z, 0xfff0c0, 1.6 * ts, 0.18); K.add(l); _hzPulse(l.material, l, 0.15, 0.1, 0.15 + rng() * 0.25); }, { skipLanes: true, corners: true });   // the storm's flicker
+        if (!HQ) {
+            var rg = new THREE.RingGeometry(34 * ts, 62 * ts, 72, 1); _nrUV(rg, 8, 1);
+            var rm = new THREE.MeshBasicMaterial({ color: 0xd8c8a0, transparent: true, opacity: 0.32, side: THREE.DoubleSide, depthWrite: false, fog: false });
+            var ringPlane = new THREE.Mesh(rg, rm); ringPlane.rotation.x = -Math.PI / 2 + 0.42; ringPlane.rotation.z = 0.3; ringPlane.position.set(K.CX, fy + 14 * ts, K.CZ); K.add(ringPlane);
+            var gap = new THREE.Mesh(new THREE.RingGeometry(46 * ts, 47.5 * ts, 72, 1), new THREE.MeshBasicMaterial({ color: 0x2a2018, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false, fog: false }));
+            gap.rotation.copy(ringPlane.rotation); gap.position.copy(ringPlane.position); gap.position.y += 0.2; K.add(gap);   // the Cassini division
+        }
+        _nrSign(K, 'saturn_n', ['SATURN', 'ROOM 6 · THE HEXAGON'], 2.6 * ts, 1.0 * ts, K.CX + 2.6 * ts, fy + 1.2 * ts, K.Z0 + 1.0 * ts, 0, { sizes: [96, 42], bg: '#2a2010', border: '#d8b060', color: '#f8ecc8' });
+    };
+    /* THE STRIP (Room 21) — the boulevard: storefront blocks with neon on
+       both flanks, the marquee towers, street lamps, palms, the fountain
+       pools with their jets at the corners, the wedding chapel with its
+       steeple, and the LUXOR off the far corner — the Pyramid GLB with an
+       obelisk before it and its beam. Night. */
+    _NR_BUILDERS.strip = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 4.0, occ: true }), ts = K.ts, fy = K.fy, rng = K.rng, HQ = !!K.hq;
+        _nrApron(K, { tex: 'urban_street', color: 0x4a4a56, deep: true, skirt: 'urban_wall', skirtColor: 0x6a6a78 });
+        var curb = K.mat('concrete_floor', 0x8a8a94);
+        [[K.X0, K.BZ0 - 1.6 * ts, K.BX0 - 1.6 * ts, K.BZ1 + 1.6 * ts], [K.BX1 + 1.6 * ts, K.BZ0 - 1.6 * ts, K.X1, K.BZ1 + 1.6 * ts]].forEach(function (r) { var w = r[2] - r[0], d = r[3] - r[1]; if (w <= 0 || d <= 0) return; var m = K.box(w, 0.12 * ts, d, curb); m.position.set(r[0] + w / 2, fy + 0.06 * ts - 0.6, r[1] + d / 2); K.add(K.lit(m)); });
+        _nrRoadLines(K, { color: 0xf2d24a });
+        _nrBlocks(K, { d: 3.0, depth: 2.6, minW: 2.4, maxW: 4.0, minH: 3, maxH: 9, tex: 'urban_wall', color: 0x8a7a98, roofTex: 'concrete_floor', winStyle: 'neon', neon: [0xff3ad8, 0x35e0ff, 0xffd34a, 0xff6040], neonP: 0.9, gates: true, only: ['w', 'e'], signs: ['CASINO', 'LUXOR', 'WEDDINGS', '24H', 'BUFFET', 'SLOTS', 'LOANS', 'ELVIS', 'SHOWGIRLS', 'VACANCY'] });
+        _nrLamps(K, { d: 1.3, spacing: 3.0, color: 0xfff0c0, aura: 0xffb060, only: ['n', 's'] });
+        _nrTrees(K, { d: 1.6, spacing: 2.4, kinds: ['tree_3'], p: 0.7, h: 2.6, only: ['n', 's'] });
+        [[K.BX0 - 1.4 * ts, K.BZ0 - 2.6 * ts], [K.BX1 + 1.4 * ts, K.BZ1 + 2.6 * ts]].forEach(function (p) { _nrPool(K, p[0], p[1], 0.9 * ts, 'water', { jet: 0x8ad8ff, rimTex: 'marble_light', rimColor: 0xf0e8d8 }); K.add(K.lamp(p[0], fy + 0.9 * ts, p[1], 0x8ad8ff, 1.6 * ts, 0.4)); });
+        /* the chapel: a white house with a steeple, on the north-east corner */
+        var cx = K.BX1 + 2.6 * ts, cz = K.BZ0 - 2.6 * ts;
+        _nrHouse(K, cx, cz, { w: 2.4, d: 2.0, h: 1.4, tex: 'marble_light', color: 0xf8f4ec, roofTex: 'wood', roofColor: 0x4a3a58, ry: Math.PI, window: 0xffd0f0, chimney: false });
+        var sp = K.cyl(0.02 * ts, 0.16 * ts, 1.6 * ts, 6, K.mat('marble_light', 0xf8f4ec)); sp.position.set(cx, fy + 2.5 * ts, cz - 0.3 * ts); K.addW('n', K.lit(sp, true));
+        var heart = K.lamp(cx, fy + 3.3 * ts, cz - 0.3 * ts, 0xff4a90, 1.0 * ts, 0.8); K.addW('n', heart); _hzPulse(heart.material, heart, 0.3, 0.1, 1.1);
+        /* the Luxor: the pyramid GLB off the far corner, the obelisk before it, the beam */
+        if (!HQ) {
+            var px = K.BX0 - 7.5 * ts, pz = K.BZ1 + 7.5 * ts;
+            _nrProp(K, _hzModelPyramid, px, pz, { s: 0.4, wall: false });
+            _nrProp(K, _hzObelisk, px + 3.2 * ts, pz - 3.2 * ts, { s: 0.35, wall: false });
+            var beam = new THREE.Mesh(new THREE.CylinderGeometry(0.25 * ts, 0.5 * ts, 30 * ts, 8, 1, true), K.glow(0xf8f8ff, 0.16)); beam.position.set(px, fy + 18 * ts, pz); K.add(beam); _hzPulse(beam.material, null, 0.06, 0, 2.4);
+        }
+        _nrSign(K, 'strip_n', ['THE STRIP', 'ROOM 21 · OPEN 24 H'], 2.6 * ts, 1.0 * ts, K.CX + 2.6 * ts, fy + 1.2 * ts, K.Z0 + 1.0 * ts, 0, { sizes: [96, 42], bg: '#1a0820', border: '#ff3ad8', color: '#ffe0f8' });
+        var wet = new THREE.Mesh(new THREE.PlaneGeometry(K.X1 - K.X0, K.Z1 - K.Z0), new THREE.MeshBasicMaterial({ color: 0xff6ad8, transparent: true, opacity: 0.04, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+        wet.rotation.x = -Math.PI / 2; wet.position.set(K.CX, fy + 1.2, K.CZ); K.add(wet); _hzPulse(wet.material, null, 0.03, 0, 0.9);
+    };
+    /* DOWNTOWN (Room 1954) — the Cyberpunk block recipe in daylight concrete:
+       office blocks with dark windows on every flank, one tower COLLAPSED
+       across the apron (a tilted box on a heap of rubble — battle only),
+       dumpsters, a security camera, traffic lights on their poles, the
+       evacuation barriers at the lanes. Day. */
+    _NR_BUILDERS.downtown = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 3.6, occ: true }), ts = K.ts, fy = K.fy, rng = K.rng, HQ = !!K.hq;
+        _nrApron(K, { tex: 'concrete_floor', color: 0xb0aeaa, deep: true, skirt: 'urban_wall', skirtColor: 0x9a9aa0 });
+        _nrRoadLines(K, { color: 0xf0f0e8 });
+        _nrBlocks(K, { d: 2.6, depth: 2.8, minW: 2.6, maxW: 4.2, minH: 5, maxH: 12, tex: 'concrete_floor', color: 0xc8c6c0, roofTex: 'concrete_floor', winStyle: 'warm', gates: true });
+        _nrMounds(K, { tex: 'rubble_3', color: 0xa09a94, d: 1.2, spacing: 2.6, r: 0.9, flat: 0.3, p: 0.4, only: ['w', 'e'] });
+        [[K.BX0 - 1.2 * ts, K.CZ - 2.4 * ts, 0.4], [K.BX1 + 1.2 * ts, K.CZ + 2.6 * ts, -0.3]].forEach(function (p) { var d = _hzPropGLB('dumpster', 1.0 * ts); d.position.set(p[0], fy, p[1]); d.rotation.y = p[2]; K.add(d); });
+        _nrProp(K, _hzSecurityCam, K.BX1 + 2.0 * ts, K.BZ0 - 2.0 * ts, { s: 0.8 });
+        var steel = K.mat('gunmetal', 0x5a5a60);
+        [[K.CX - 1.8 * ts, K.Z0 + 0.8 * ts], [K.CX + 1.8 * ts, K.Z0 + 0.8 * ts], [K.CX - 1.8 * ts, K.Z1 - 0.8 * ts], [K.CX + 1.8 * ts, K.Z1 - 0.8 * ts]].forEach(function (p) {
+            var pole = K.cyl(0.05 * ts, 0.06 * ts, 2.2 * ts, 6, steel); pole.position.set(p[0], fy + 1.1 * ts, p[1]); K.add(pole);
+            var head = K.box(0.16 * ts, 0.5 * ts, 0.16 * ts, K.mat('gunmetal', 0x2a2a30)); head.position.set(p[0], fy + 2.3 * ts, p[1]); K.add(head);
+            K.add(K.lamp(p[0], fy + 2.45 * ts, p[1], 0xff3030, 0.3 * ts, 0.7));
+        });
+        if (!HQ) {
+            /* the collapsed tower: leaning from the south-west block across the apron, its foot on a heap of rubble */
+            var rub = K.mat('rubble_2', 0x8a8480);
+            var heap = new THREE.Mesh(new THREE.SphereGeometry(2.2 * ts, 10, 7), rub); heap.scale.set(1.4, 0.45, 1.0); heap.position.set(K.BX0 - 2.6 * ts, fy - 0.3 * ts, K.BZ1 + 2.4 * ts); K.add(K.lit(heap, true));
+            var tower = K.box(2.4 * ts, 11 * ts, 2.4 * ts, K.mat('concrete_floor', 0xb8b6b0), 0.5); tower.position.set(K.BX0 - 3.4 * ts, fy + 2.6 * ts, K.BZ1 + 5.2 * ts); tower.rotation.set(0.35, 0.3, 1.15); K.add(K.lit(tower, true));
+            var smoke = K.lamp(K.BX0 - 2.8 * ts, fy + 2.2 * ts, K.BZ1 + 3.0 * ts, 0x8a8a90, 3.0 * ts, 0.25); K.add(smoke); _hzPulse(smoke.material, smoke, 0.1, 0.2, 0.2);
+        }
+        _nrSign(K, 'dt_n', ['DOWNTOWN', 'EVACUATION ORDER IN FORCE'], 2.6 * ts, 1.0 * ts, K.CX + 2.6 * ts, fy + 1.2 * ts, K.Z0 + 1.0 * ts, 0, { sizes: [96, 40], bg: '#c82020', border: '#f8e8e8', color: '#ffffff' });
+    };
     // ── MOVING MAPS (2026-09-12): the settings that travel ────────────────
     /* the sea's level under a deck (tiles below the board top); the meta
        row's motion.seaDepth must say the same for the far roster's islands */

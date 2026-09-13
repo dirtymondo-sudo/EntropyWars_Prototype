@@ -1776,6 +1776,36 @@ figurehead, card soldiers, a cryo tube. Measure a new GLB before wiring
 (PLAYTEST_NOTES "Rigged 3D unit models" has the parser; a Playwright
 contact sheet with an AxesHelper settles the facing in one look).
 
+## 7.6 WAVE 1 — THE SIX NEW SITES (HQ plan 7.6) — shipped 2026-09-13
+Six launch maps in one delivery, each the plan's 7.10 checklist end to end:
+**13 · THE HAUNTED HOUSE** (`prebuilt_haunted`, Terrestrial, `near:
+'haunted'`; the gothic point of entry — ghost / werewolf / vampire /
+ghoul), **33 · THE LODGE** (`prebuilt_lodge`, Terrestrial, indoors,
+`near: 'lodge'` w 3.4 h 3.6; politician / general / marksman), **0 · THE
+SINGULARITY** (`prebuilt_singularity`, CELESTIAL — the Quarantined bay is
+sealed and a map must be playable, the E4 precedent; watcher / cosmic
+wraith), **6 · SATURN** (`prebuilt_saturn`, Celestial; grey / black goo),
+**21 · THE STRIP** (`prebuilt_strip`, Urban; conspiracy theorist / honda
+civic) and **1954 · DOWNTOWN** (`prebuilt_downtown`, Urban, `leaf_glass`
+— doorhq.test.js rations `leaf_revolving` to Bay 5; superhero / antihero
+/ zombie / king kong). The full builders sit in a "7.6 WAVE 1" block right
+before the DELTA FORGE banner in data.js, the Δs before the META banner,
+the near builders before the MOVING MAPS block in three-renderer.js.
+Rules that came with it: a full map's thin walls are `M.wall` (`see:
+true` = a window: blocks walking, not sight; `sym180` mirrors walls —
+author rows 0..7 ONLY, a row-8 edit is overwritten by the mirror); a Δ
+never holes (the Singularity's void is a depth-2 `M.lake`); a +2 block
+beside a spawn tile is clamped and fails the forge test; the 2×1 dumpster
+mirrors by hand (`(4,3)-(5,3)` ↔ `(10,12)-(11,12)`); a site's flavour
+props must sit inside its room (half = 4 + pad·… — the test says "in a
+wall"). `env.ambience` on a meta row names a still map's bed (audio.js,
+read after the moving-map rule). check-data-parity.js #6 now diffs
+server.js `MAP_POOL` against EW_MAP_META (ids · sizes · team) — a new map
+without its two pool rows fails `npm test`. delta-maps.test.js expects 38
+Δ boards. Unseen live (RULE #1c): eyeball the house's windows, the eye over
+the Lodge, the Singularity's drop, Saturn's ring plane, the Luxor's scale,
+the collapsed tower. Full log: DOOR_HQ_BUILD_PLAN.md §9 (2026-09-13 wave 1).
+
 ## THE SPACESHIP (was THE DERELICT) + THE CARGO STACK + MOVING MAPS rev 3 — 2026-09-13
 `prebuilt_derelict` (the id, the `near: 'derelict'` key and every builder
 name STAY) is labelled **Spaceship** everywhere the player reads it: the

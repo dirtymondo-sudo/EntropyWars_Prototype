@@ -2146,3 +2146,17 @@ the deck plate is plain brushed aluminium (the grate was too busy), the
 specimen tanks on the board are CARGO STACKS (monument `cargo`), the
 fuselage wears frame ribs and hatches, and every moving site runs faster
 (rev 3 pace — see CLAUDE.md "THE SPACESHIP").
+
+
+### 2026-09-13 — 7.6 WAVE 1: six new sites
+Rooms 13 · THE HAUNTED HOUSE (Terrestrial), 33 · THE LODGE (Terrestrial,
+indoors), 0 · THE SINGULARITY (Celestial — the Quarantined bay is sealed,
+so like E4 it files where it can be played), 6 · SATURN (Celestial), 21 ·
+THE STRIP (Urban) and 1954 · DOWNTOWN (Urban) are launch maps with Δ
+boards, site files, thresholds, walkable rooms with their settings and
+ranked pool rows. Thirteen races moved their point of entry (the gothic
+seven's gap closed: ghost, werewolf, vampire, ghoul → the house); the
+Moon's three stay. Files: data.js, three-renderer.js, audio.js → R2;
+server.js → Render; index.html (`20260913-wave1-01-cors`) → Render;
+delta-maps.test.js, doorhq.test.js, check-data-parity.js, docs → the repo.
+Full log: DOOR_HQ_BUILD_PLAN.md §9 (2026-09-13 wave 1). Not playtested.

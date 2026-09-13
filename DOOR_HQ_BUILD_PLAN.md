@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 30 (2026-09-13 — 7.4 ROOMS 111 + 1984 SHIPPED: THE TROPHY CASE is a box room off the MEZZANINE at 290°, over EMPLOYEE OF THE MONTH — two lit glass cabinets (`trophy_case` proc: plaques gold for the engraved ones, `hqTrophyCount` reads the achievements ledger), THE CABINET counter opens the profile ON its Achievements tab (`_mountReactTrophies`); THE INTERROGATION ROOM is a box room off the ground ring at 255°, between RECORDS and BAY 1 — a steel table (`steel_table` proc), two folding chairs, one lamp, the round observation window as the one-way mirror, and THE TABLE counter opens the CPU TRAINING TRANSCRIPT (map.js `_hqTranscriptHtml`: the imitation ledger — matches watched, decisions scored, agreement, every weight moved off default, the last report) — the one function that had no physical home; §9 2026-09-13; rev 29 2026-09-12 — MOVING MAPS: three sites whose world streams past the board, faster every round — Room 1717 · QUEEN ANNE'S REVENGE (Hollow; the 7.7 Pirate Bay number, the ship itself instead of a cove), Room 426 · THE DERELICT (Celestial, new), Room E4 · THE LOOKING-GLASS (7.6 #6, shipped to DIPLOMATIC because Bay 6 is sealed until a chapter); `env.motion` on the meta row → three-renderer.js MOTION (streaming far roster, a sliding sea, a storm that builds, the sun / moon swelling on a close pass), each Δ with its own bed; Heaven drifts; §9 2026-09-12; rev 28 (2026-09-11 rev 5 — 7.4 ROOM 360 SHIPPED: THE OBSERVATORIUM is a box room off the MEZZANINE at 240°, directly above Records (a holographic door between Bay 3 and Bay 6): a planetarium — the PROJECTOR in the middle is the tape library's projection (Replay moved up from Records' door panel; Records' alt now leads upstairs), the PROJECTED SKY on the ceiling is every threshold in the building as a star in its lamp's colour (seven constellations, one per bay, Bay 1 at twelve — data.js `hqStarChart`, ONE layout read by three-renderer.js `star_dome`, the wall `star_chart` and the panel), and THE STAR CHART counter opens the star-map (map.js `_hqStarmapHtml`): point at a star and its threshold's OWN door panel opens from here (`_hqOpenThreshold` — CROSS ▸ Δ / DEEP / WALK IN, ◂ THE CHART back), a fast route to any site, nothing about match setup bypassed; a box shell can now be painted down (`wallColor` / `dadoColor` / `ceilColor` / `ceilTile`); rev 27 2026-09-11 rev 4 — 7.4 ROOM 1287 SHIPPED: OCCAM'S BARBERSHOP is a box room off the ground ring at 105° (a glass door between the Quartermaster and Reception, the pole in the hall), and THE CHAIR answers D13 — sit and walk the building as the recruit, your most-played vessel, a D.O.O.R. agent or any declassified rigged vessel (data.js `hqAvatarPref` / `hqSetAvatar` → `door.hq.avatar`, map.js `_hqAvatar` reads it, three-renderer.js `hq.setAvatar` swaps the model in place), the mirror is the ID card and the card's photo follows the chair; rev 3 2026-09-11 — 7.9 + 7.4 ROOM 247 SHIPPED, logged from the code (the 00:39 upload carried no entry): THE CLOCK ROOM at 225° with the world clocks that disagree, the punch clock (the login streak, `hqPunchIn` from the front door) and FORM 365 — Daily Office Operations Requirements, three lines a day seeded like the Code Red (`hqDailyOps`), judged at the match commit (`hqDailyOpsJudge`), 💰 120 a line + 💰 150 the sheet, the count on the strip; rev 26 2026-09-11 rev 2 — 7.4 ROOM 86 SHIPPED + 5.1's FIRST VARIANT: THE CAFETERIUM is a box room off the ground ring at 75° (the serving line, the hot side that was the hall's break nook, two long tables, the notice board → the leaderboard, the till → the Quartermaster, the roster on break, the other operatives on shift from the lobby's online count), and after hours the same door reads MÖBIUS STRIP CLUB (`rooms.cafeteria.variants.after_hours`: the bar is one lathe with one side, pink light, a bartender — `hqRollRoomVariants` per visit, `?hqvariant=after_hours`); rev 25 2026-09-08 rev 5 — 5.4a stage 2 SHIPPED: THE CONTAINMENT RING is ONE CORRIDOR PER FLOOR — the bays of a floor are segments of a single hallway framed just outside the egress drum (ground ring r 21.5–25.5 behind Bays 1 and 4, mezzanine ring r 24.5–28.5 behind Bays 2 · 5 · 7 · 3 · 6), every egress bay door is the ring's inner-wall door at the same angle, the thresholds spread along the outer wall either side of it, no rebuild between bays, the caps wear the fire door to each other across the service side; data.js `bayShell.corridor`, `hqRingLayout` / `hqRingRoom` / `hqBayEntry` / `hqBayNo` / `hqRingSectorAt` / `hqRingSpot`, `hqBayId(sector)` → the floor's ring; the renderer learns only `shell.full`; map.js lands through `hqBayEntry`; the cast's bay spots carry over; kill-switch `corridor.on: false`; rev 24 2026-09-08 rev 4 — 7.2 stage 6 SHIPPED: THE REST OF THE REGISTER — every launch map is a walkable room: Rooms 14179 · SHASTA, 56 · STONEHENGE, 444 · GIZA, 777 · HEAVEN, 2047 · CYBERPUNK CITY, 11 · BABEL, 12 · OLYMPUS, 4 · MARS, 51 · AREA 51, 512 · SKINWALKER RANCH, 180 · HOLLOW EARTH, 420 · FAIRY FOREST, 1969 · MOON, 888 · VATICAN CITY, 23 · BOHEMIAN GROVE, 9600 · GÖBEKLI TEPE, 1225 · NORTH POLE and 2D · FLAT LANDS are outdoor rooms behind their bay thresholds, each with its map's setting inside it at 1:1 and its sky overhead (Flat Lands opts out of its fourteen-tile setting), four consoles off the west wall, Babel's terraces as stands, the Moon under a 3 m berm; data-only — `siteRooms.built` / `near` / `shells` / `flavour`, no renderer change; doorhq.test.js now insists every site in the register has a room; rev 23 2026-09-08 rev 3 — 7.2 stage 5 SHIPPED: THE SETTING IN THE ROOM — every walkable site room now runs its map's own MAP SETTINGS near builder inside it at 1:1 (D.U.M.B.'s server racks and blast door, CERN's beamline and terminals, the Backrooms' partitions and stalk fluorescents, Nuketown's picket fence, houses, road and buses, the Stadium's tiers and floodlights, Camelot's curtain wall with its towers and drawbridge, Atlantis' colonnade and kelp, Hell's spires and braziers, Technoticlan's temple tiers and torches, Agartha's crystal spires, Antarctica's ice ridges and igloo) — the room grows to the setting's apron (`siteRooms.near[key].w` tiles, + the moat's gap), the kit's enclosure primitives are no-ops in the room (the shell is those), every piece is culled clear of the way in and the console and becomes a blocker, natives and props are nudged off the houses and the stands, and four consoles moved to the north wall (`shells[id].console`); `hqSiteRoom` `near`, three-renderer.js `_hqBuildSetting` / `_hqSettingFreeSpot`, `_nrKit` `ctx.hq`; rev 22 2026-09-08 rev 2 — 7.2 stage 4 SHIPPED: the MOAT rooms — Rooms i · CAMELOT, H-20 · ATLANTIS, 666 · HELL, 2012 · TECHNOTICLAN, 88 · AGARTHA and 90S · ANTARCTICA are outdoor sites whose walkway is a QUAY: the ring between the island and the quay is the map's own liquid one level down in the battle's animated fluid sheet, board-edge canals open into it, a causeway either way (the south one is the way in), deep water and lava never entered; `shells[id].moat`, `hqSiteRoom` → `shell.moat`, three-renderer.js `_hqSiteOnCauseway` / `_hqTickMoat`, and a site room's floor is now a FRAME so every board pit finally shows; rev 21 2026-09-08 — 7.2 stage 3 SHIPPED: the first OUTDOOR rooms — Room 1945 · NUKETOWN and Room 50 · FOOTBALL STADIUM are walkable sites with no ceiling, the map's own sky on the battle's firmament dome, its far roster drifting round the room, lamp masts on the walkway corners, a fence / the bowl's wall for a perimeter and the ground running out past it; `shells[id].open`, `shell.sky`, three-renderer.js `_hqBuildSky` / `_hqTickSky`, `_hqTex` reads terrain keys; rev 20 2026-09-07 rev 5 — 7.2 stage 2 SHIPPED: Rooms 999 · CERN and 90 · BACKROOMS are walkable sites, each in its own LIGHT (`siteRooms.shell.mood`: lamps, strips, sign palettes, `signLines`; the Backrooms under a low yellow ceiling with no conduits, the almond water tinted); rev 19 2026-09-07 rev 4 — 7.2 stage 1 SHIPPED: the first WALKABLE SITE — Room 555 · D.U.M.B. is a room behind its bay threshold, its own Δ board in the middle at 1:1 (steps climbed, blocks solid, the cell walls, the specimen tubes, the nexus ring), the CROSSING console files the crossing, the natives loiter on the walkway; `hqSiteRoom` / `hqSiteBoardInfo`, the renderer's `_hqBuildSiteBoard` + the board layer in `_hqSurface`; rev 18 2026-09-07 rev 3 — 7.5 SHIPPED + THE CONTAINMENT RING (new 5.4a) stage 1: Bay 7 · URBAN on the mezzanine, the rebalance (C-22 + C-23 DECIDED), and every bay's end caps wear fire doors into the next bay on its floor — 1 ⇄ 4 downstairs, 2 → 5 → 7 → 3 → 6 → 2 upstairs; rev 17 2026-09-07 rev 2 — 7.1 SHIPPED, the numbers are on the doors: `roomNo` on every threshold and numbered room, `hqRoomNo` / `hqRoomRegister`, the plate · the panels · the SITE FILE header · the result stamp · the loading card · the directory's register; the elevator skips 13; rev 16 2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
+### The walkable facility that replaces the Play menu · rev 31 (2026-09-13 — 7.6 WAVE 1 SHIPPED, all six: Room 13 · THE HAUNTED HOUSE (Terrestrial — the mansion's ground floor cut open across the board with the graveyard on both sides; the gothic point of entry: ghost, werewolf, vampire, ghoul), Room 33 · THE LODGE (Terrestrial, indoors — the temple: the sanctum behind thin damask walls, the pillars, the altar, the Tomb sunk in the floor; politician, general, marksman), Room 0 · THE SINGULARITY (CELESTIAL, not Quarantined — like E4, the sealed bay is unplayable; two spiral arms of shards over nothing; watcher, cosmic wraith), Room 6 · SATURN (Celestial — the hexagon plateau in the storm, oil lakes, the cubes; grey, black goo), Room 21 · THE STRIP (Urban — the boulevard at night, the chapel, the marquees, the Luxor; conspiracy theorist, honda civic), Room 1954 · DOWNTOWN (Urban, daylight — the intersection, the rubble, the collapsed tower; superhero, antihero, zombie, king kong). Each = full 16×16 + Δ + site file + threshold + bay + a walkable room with its setting + server MAP_POOL rows (now parity-checked); `env.ambience` names a still map's bed; §9 2026-09-13 wave 1; rev 30 2026-09-13 — 7.4 ROOMS 111 + 1984 SHIPPED: THE TROPHY CASE is a box room off the MEZZANINE at 290°, over EMPLOYEE OF THE MONTH — two lit glass cabinets (`trophy_case` proc: plaques gold for the engraved ones, `hqTrophyCount` reads the achievements ledger), THE CABINET counter opens the profile ON its Achievements tab (`_mountReactTrophies`); THE INTERROGATION ROOM is a box room off the ground ring at 255°, between RECORDS and BAY 1 — a steel table (`steel_table` proc), two folding chairs, one lamp, the round observation window as the one-way mirror, and THE TABLE counter opens the CPU TRAINING TRANSCRIPT (map.js `_hqTranscriptHtml`: the imitation ledger — matches watched, decisions scored, agreement, every weight moved off default, the last report) — the one function that had no physical home; §9 2026-09-13; rev 29 2026-09-12 — MOVING MAPS: three sites whose world streams past the board, faster every round — Room 1717 · QUEEN ANNE'S REVENGE (Hollow; the 7.7 Pirate Bay number, the ship itself instead of a cove), Room 426 · THE DERELICT (Celestial, new), Room E4 · THE LOOKING-GLASS (7.6 #6, shipped to DIPLOMATIC because Bay 6 is sealed until a chapter); `env.motion` on the meta row → three-renderer.js MOTION (streaming far roster, a sliding sea, a storm that builds, the sun / moon swelling on a close pass), each Δ with its own bed; Heaven drifts; §9 2026-09-12; rev 28 (2026-09-11 rev 5 — 7.4 ROOM 360 SHIPPED: THE OBSERVATORIUM is a box room off the MEZZANINE at 240°, directly above Records (a holographic door between Bay 3 and Bay 6): a planetarium — the PROJECTOR in the middle is the tape library's projection (Replay moved up from Records' door panel; Records' alt now leads upstairs), the PROJECTED SKY on the ceiling is every threshold in the building as a star in its lamp's colour (seven constellations, one per bay, Bay 1 at twelve — data.js `hqStarChart`, ONE layout read by three-renderer.js `star_dome`, the wall `star_chart` and the panel), and THE STAR CHART counter opens the star-map (map.js `_hqStarmapHtml`): point at a star and its threshold's OWN door panel opens from here (`_hqOpenThreshold` — CROSS ▸ Δ / DEEP / WALK IN, ◂ THE CHART back), a fast route to any site, nothing about match setup bypassed; a box shell can now be painted down (`wallColor` / `dadoColor` / `ceilColor` / `ceilTile`); rev 27 2026-09-11 rev 4 — 7.4 ROOM 1287 SHIPPED: OCCAM'S BARBERSHOP is a box room off the ground ring at 105° (a glass door between the Quartermaster and Reception, the pole in the hall), and THE CHAIR answers D13 — sit and walk the building as the recruit, your most-played vessel, a D.O.O.R. agent or any declassified rigged vessel (data.js `hqAvatarPref` / `hqSetAvatar` → `door.hq.avatar`, map.js `_hqAvatar` reads it, three-renderer.js `hq.setAvatar` swaps the model in place), the mirror is the ID card and the card's photo follows the chair; rev 3 2026-09-11 — 7.9 + 7.4 ROOM 247 SHIPPED, logged from the code (the 00:39 upload carried no entry): THE CLOCK ROOM at 225° with the world clocks that disagree, the punch clock (the login streak, `hqPunchIn` from the front door) and FORM 365 — Daily Office Operations Requirements, three lines a day seeded like the Code Red (`hqDailyOps`), judged at the match commit (`hqDailyOpsJudge`), 💰 120 a line + 💰 150 the sheet, the count on the strip; rev 26 2026-09-11 rev 2 — 7.4 ROOM 86 SHIPPED + 5.1's FIRST VARIANT: THE CAFETERIUM is a box room off the ground ring at 75° (the serving line, the hot side that was the hall's break nook, two long tables, the notice board → the leaderboard, the till → the Quartermaster, the roster on break, the other operatives on shift from the lobby's online count), and after hours the same door reads MÖBIUS STRIP CLUB (`rooms.cafeteria.variants.after_hours`: the bar is one lathe with one side, pink light, a bartender — `hqRollRoomVariants` per visit, `?hqvariant=after_hours`); rev 25 2026-09-08 rev 5 — 5.4a stage 2 SHIPPED: THE CONTAINMENT RING is ONE CORRIDOR PER FLOOR — the bays of a floor are segments of a single hallway framed just outside the egress drum (ground ring r 21.5–25.5 behind Bays 1 and 4, mezzanine ring r 24.5–28.5 behind Bays 2 · 5 · 7 · 3 · 6), every egress bay door is the ring's inner-wall door at the same angle, the thresholds spread along the outer wall either side of it, no rebuild between bays, the caps wear the fire door to each other across the service side; data.js `bayShell.corridor`, `hqRingLayout` / `hqRingRoom` / `hqBayEntry` / `hqBayNo` / `hqRingSectorAt` / `hqRingSpot`, `hqBayId(sector)` → the floor's ring; the renderer learns only `shell.full`; map.js lands through `hqBayEntry`; the cast's bay spots carry over; kill-switch `corridor.on: false`; rev 24 2026-09-08 rev 4 — 7.2 stage 6 SHIPPED: THE REST OF THE REGISTER — every launch map is a walkable room: Rooms 14179 · SHASTA, 56 · STONEHENGE, 444 · GIZA, 777 · HEAVEN, 2047 · CYBERPUNK CITY, 11 · BABEL, 12 · OLYMPUS, 4 · MARS, 51 · AREA 51, 512 · SKINWALKER RANCH, 180 · HOLLOW EARTH, 420 · FAIRY FOREST, 1969 · MOON, 888 · VATICAN CITY, 23 · BOHEMIAN GROVE, 9600 · GÖBEKLI TEPE, 1225 · NORTH POLE and 2D · FLAT LANDS are outdoor rooms behind their bay thresholds, each with its map's setting inside it at 1:1 and its sky overhead (Flat Lands opts out of its fourteen-tile setting), four consoles off the west wall, Babel's terraces as stands, the Moon under a 3 m berm; data-only — `siteRooms.built` / `near` / `shells` / `flavour`, no renderer change; doorhq.test.js now insists every site in the register has a room; rev 23 2026-09-08 rev 3 — 7.2 stage 5 SHIPPED: THE SETTING IN THE ROOM — every walkable site room now runs its map's own MAP SETTINGS near builder inside it at 1:1 (D.U.M.B.'s server racks and blast door, CERN's beamline and terminals, the Backrooms' partitions and stalk fluorescents, Nuketown's picket fence, houses, road and buses, the Stadium's tiers and floodlights, Camelot's curtain wall with its towers and drawbridge, Atlantis' colonnade and kelp, Hell's spires and braziers, Technoticlan's temple tiers and torches, Agartha's crystal spires, Antarctica's ice ridges and igloo) — the room grows to the setting's apron (`siteRooms.near[key].w` tiles, + the moat's gap), the kit's enclosure primitives are no-ops in the room (the shell is those), every piece is culled clear of the way in and the console and becomes a blocker, natives and props are nudged off the houses and the stands, and four consoles moved to the north wall (`shells[id].console`); `hqSiteRoom` `near`, three-renderer.js `_hqBuildSetting` / `_hqSettingFreeSpot`, `_nrKit` `ctx.hq`; rev 22 2026-09-08 rev 2 — 7.2 stage 4 SHIPPED: the MOAT rooms — Rooms i · CAMELOT, H-20 · ATLANTIS, 666 · HELL, 2012 · TECHNOTICLAN, 88 · AGARTHA and 90S · ANTARCTICA are outdoor sites whose walkway is a QUAY: the ring between the island and the quay is the map's own liquid one level down in the battle's animated fluid sheet, board-edge canals open into it, a causeway either way (the south one is the way in), deep water and lava never entered; `shells[id].moat`, `hqSiteRoom` → `shell.moat`, three-renderer.js `_hqSiteOnCauseway` / `_hqTickMoat`, and a site room's floor is now a FRAME so every board pit finally shows; rev 21 2026-09-08 — 7.2 stage 3 SHIPPED: the first OUTDOOR rooms — Room 1945 · NUKETOWN and Room 50 · FOOTBALL STADIUM are walkable sites with no ceiling, the map's own sky on the battle's firmament dome, its far roster drifting round the room, lamp masts on the walkway corners, a fence / the bowl's wall for a perimeter and the ground running out past it; `shells[id].open`, `shell.sky`, three-renderer.js `_hqBuildSky` / `_hqTickSky`, `_hqTex` reads terrain keys; rev 20 2026-09-07 rev 5 — 7.2 stage 2 SHIPPED: Rooms 999 · CERN and 90 · BACKROOMS are walkable sites, each in its own LIGHT (`siteRooms.shell.mood`: lamps, strips, sign palettes, `signLines`; the Backrooms under a low yellow ceiling with no conduits, the almond water tinted); rev 19 2026-09-07 rev 4 — 7.2 stage 1 SHIPPED: the first WALKABLE SITE — Room 555 · D.U.M.B. is a room behind its bay threshold, its own Δ board in the middle at 1:1 (steps climbed, blocks solid, the cell walls, the specimen tubes, the nexus ring), the CROSSING console files the crossing, the natives loiter on the walkway; `hqSiteRoom` / `hqSiteBoardInfo`, the renderer's `_hqBuildSiteBoard` + the board layer in `_hqSurface`; rev 18 2026-09-07 rev 3 — 7.5 SHIPPED + THE CONTAINMENT RING (new 5.4a) stage 1: Bay 7 · URBAN on the mezzanine, the rebalance (C-22 + C-23 DECIDED), and every bay's end caps wear fire doors into the next bay on its floor — 1 ⇄ 4 downstairs, 2 → 5 → 7 → 3 → 6 → 2 upstairs; rev 17 2026-09-07 rev 2 — 7.1 SHIPPED, the numbers are on the doors: `roomNo` on every threshold and numbered room, `hqRoomNo` / `hqRoomRegister`, the plate · the panels · the SITE FILE header · the result stamp · the loading card · the directory's register; the elevator skips 13; rev 16 2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -863,7 +863,7 @@ Chosen for: a roster gap (races with no home of their own), a silhouette
 none of the 29 has, buildable from the existing tiles / objects /
 monuments / near kit, and a number that lands. Each = the checklist in 7.10.
 
-1. **Room 13 · THE HAUNTED HOUSE** (gothic; Terrestrial). The gap: seven
+1. **Room 13 · THE HAUNTED HOUSE** (gothic; Terrestrial). ✅ SHIPPED 2026-09-13 (§9). The gap: seven
    races carry the `gothic` tag (wizard, ghost, werewolf, gargoyle, vampire,
    necromancer, ghoul) and none has a gothic point of entry — they are
    filed at the Grove, the Forest, the Backrooms, the Vatican, Stonehenge,
@@ -877,7 +877,7 @@ monuments / near kit, and a number that lands. Each = the checklist in 7.10.
    Ambience: `ambNight` + `thunderAmbience` exist. Threshold leaf:
    `leaf_hotel` — the plate says 13, the door says 237 (the user's Hotel
    folds in: one of the doors inside is the Overlook's, the film's number).
-2. **Room 33 · THE LODGE** (clandestine, indoor; Terrestrial). The mosaic
+2. **Room 33 · THE LODGE** (clandestine, indoor; Terrestrial). ✅ SHIPPED 2026-09-13 (§9). The mosaic
    pavement is the `checkerboard` tile; the two pillars are `column_1` /
    `column_2` flanking the nexus; the altar a `tablet`; the all-seeing eye is
    the `eyeball` OBJ that already floats in the `eyes` roster, hung over the
@@ -887,7 +887,7 @@ monuments / near kit, and a number that lands. Each = the checklist in 7.10.
    DEEP CROSSING — "THE TOMB, sub-basement". Natives: men in black,
    general, politician, conspiracy theorist, marksman, halfdemon, fortune
    teller (biome neighbours until retagged). Leaf: `leaf_vault`.
-3. **Room 21 · THE STRIP** (urban / neon; Urban). Not a casino floor (no
+3. **Room 21 · THE STRIP** (urban / neon; Urban). ✅ SHIPPED 2026-09-13 (§9). Not a casino floor (no
    slot-machine object exists) — the boulevard: `urban_street` +
    `_nrRoadLines`, the fountain (`_nrPool` with the Vatican's jets), palms
    (`tree_3`), the wedding chapel (the `church` object), `lamp_post` and
@@ -896,7 +896,7 @@ monuments / near kit, and a number that lands. Each = the checklist in 7.10.
    towers with lit windows, text neon (`_hzTextTex`), `jumbotron` marquees,
    `_nrLamps`. Far: `city`. Natives: homosapien, politician, conspiracy
    theorist, superhero, antihero, honda civic, zombie. Leaf: `leaf_motel`.
-4. **Room 1954 · DOWNTOWN** (urban, monster-movie; Urban). The gap: kaiju,
+4. **Room 1954 · DOWNTOWN** (urban, monster-movie; Urban). ✅ SHIPPED 2026-09-13 (§9). The gap: kaiju,
    king kong, superhero, super sentai, antihero, zombie have no downtown
    (their entries are Antarctica, Hollow Earth, Cyberpunk, Technoticlan,
    Nuketown). Board: `urban_street` / `concrete_floor` / `rubble_1..4`,
@@ -905,7 +905,7 @@ monuments / near kit, and a number that lands. Each = the checklist in 7.10.
    concrete, one tower collapsed across the apron (a tilted `K.box`),
    `dumpster`s, a `securitycam`. Far: `city`. Ambience: `ambDay`. Leaf:
    `leaf_revolving` (a lobby door, revolving the wrong way).
-5. **Room 6 · SATURN** (space; Celestial). The Cube's home. Board: the
+5. **Room 6 · SATURN** (space; Celestial). ✅ SHIPPED 2026-09-13 (§9). The Cube's home. Board: the
    north-pole hexagon storm — a hex-ish plateau of `moon_3` / `mars_2`
    tinted ochre, `oil` tiles as the hydrocarbon lakes, `storm` /
    `cloud_thick` at the rim (Olympus's cloud-sea vocabulary), `tower_cube`
@@ -930,7 +930,7 @@ monuments / near kit, and a number that lands. Each = the checklist in 7.10.
    oversize, a teacup or two. Natives: glitch, machine elves, dreameater,
    fortune teller, telepath, occulus, and the knights (knight, king arthur —
    "the knight's move"). Leaf: `leaf_frame_only`, mirrored.
-7. **Room 0 · THE SINGULARITY** (astral / space; Quarantined). The user's
+7. **Room 0 · THE SINGULARITY** (astral / space; Quarantined). ✅ SHIPPED 2026-09-13 to CELESTIAL (§9; the sealed bay rule, as E4). The user's
    Void and Singularity as one map: a spiral of rock shards (`moon_3`,
    `crystal`) over nothing (`void` / `chasm` tiles are the gaps), falling
    toward the nexus. Far: `space` at high density with a `beamring` +
@@ -1020,8 +1020,9 @@ exactly this; the building gives it a wall.
 4. data.js `DOOR_HQ.thresholds[id]` (leaf + `roomNo` + note) and the
    sector's `maps` list (doorhq.test.js: the partition, the leaf exists,
    rank leaves untouched, the corridor's door spacing).
-5. server.js `MAP_POOL` rows (Δ + full) for ranked — hand-synced and NOT
-   parity-checked today; add it to check-data-parity.js while there.
+5. server.js `MAP_POOL` rows (Δ + full) for ranked — hand-synced; since
+   2026-09-13 check-data-parity.js (#6) diffs it against EW_MAP_META, so a
+   missing row fails `npm test`.
 6. `npm test`; index.html bump; deliver data.js + three-renderer.js (+
    server.js for ranked) per RULE #1.
 
@@ -4523,3 +4524,94 @@ runs `misc-models.test.js` (849 pass, 0 fail). Delivery: `three-renderer.js`
 committed or pushed; NOT browser-playtested (RULE #1c) — eyeball first the
 cannon's facing on the rails, the nacelle bells pointing astern, the
 lanterns' height under the yards, and the kraken's size off the port quarter.
+
+### 2026-09-13 — 7.6 WAVE 1 SHIPPED: the six new sites (one session)
+The whole wave in one delivery, each site the 7.10 checklist end to end:
+a full 16×16 6v6 map + a hand-authored Δ (`_MF_BUILDERS` /
+`_MF_DELTA_BUILDERS`), the EW_MAP_META row, a SITE_FILE, the natives
+retagged in POINT_OF_ENTRY, the threshold (leaf + roomNo + why + note),
+the bay, a walkable room (`siteRooms.built` / `near` / `shells` /
+`flavour`), a MAP SETTINGS near builder (`_NR_BUILDERS.<key>`) and the
+server's MAP_POOL rows.
+- **Room 13 · THE HAUNTED HOUSE** (`prebuilt_haunted`, Terrestrial,
+  `leaf_hotel` — the plate says 13, the door says 237). The ground floor
+  of the mansion cut open across the MIDDLE of the board (the parlour, the
+  hall under its chandelier, the library) between two graveyards, one per
+  team — thin `M.wall` bricks-outside / wallpaper-inside with two front
+  doors (x 3 / 12) and windows (`see: true` — shoot through, not walk),
+  hearths (+2), a piano and a reading table (+1), the crypt, the bog, the
+  lone `door` monument numbered 237 in the parlour, the coven's brazier.
+  Setting `haunted`: two-storey gabled wings west and east with lit
+  windows, the turret with the widow's walk, an iron fence with gates at
+  the lanes, DeadTree models, the pumpkin patch (carved ones lit), the
+  bonfire, the wooden cross, candle lamps. Room: open edge, the console
+  moved to the north wall (the wings stand west). Natives: ghost (from
+  the Backrooms), werewolf (Fairy Forest), vampire (the Grove), ghoul
+  (Hell) — the gothic point of entry the plan asked for. `env.ambience:
+  'ambNight'` — audio.js now reads a still map's bed off the row.
+- **Room 33 · THE LODGE** (`prebuilt_lodge`, Terrestrial, `leaf_vault`).
+  Indoors (`world.kind: 'room'`, scenery none): the mosaic pavement, the
+  lodge hall at each end (oak, the runner, benches +1), the sanctum in the
+  middle behind thin damask walls with the great doors at x 7..8, the two
+  pillars (`column_1` / `column_2`), the altar (`tablet`), plinths (+2),
+  censers, the Tomb (322) sunk into the ambulatory either side (a dip with
+  a `skull`). Setting `lodge` (w 3.4, h 3.6): damask over an oak dado,
+  the ambulatory colonnade, torches in brackets, banners, censers, tablets,
+  and the ALL-SEEING EYE (the `eyes` roster's eyeball OBJ) hung over the
+  board as the lamp — battle only. Natives: politician, general, marksman.
+- **Room 0 · THE SINGULARITY** (`prebuilt_singularity`, CELESTIAL,
+  `leaf_frame_only` — "a frame; there is no other side"). Shipped to
+  Celestial for the reason E4 went to Diplomatic: a locked bay's
+  thresholds read SEALED and the map must be playable. Two spiral arms of
+  rock (`keep(x, y)`: angle − 0.5·r mod π, point-symmetric) over
+  `M.hole(x, y, 'void')` columns, crystal shards (+1 / +2), the
+  checkerboard core with the `holo` point, a `beamring` + `lightpillar`
+  at the centre; the Δ sinks its void as depth-2 lakes (no holes on a Δ).
+  Setting `singularity`: leaning shards lit violet, an accretion ring
+  and a light pillar hung UNDER the board (battle only), the `space`
+  roster at density 1.3. Natives: watcher, cosmic wraith.
+- **Room 6 · SATURN** (`prebuilt_saturn`, Celestial, `leaf_bulkhead`).
+  The hexagon: a real hexagon mask (`hex(x, y, R)`) one step up in
+  ochre `mars_2`, the storm wall of `storm` round it (slow), cloud-gap
+  holes at the corners, `oil` lakes sunk into the plateau, `tower_cube`
+  objects and one gunmetal block as the cubes, a firm `mars_2` landing
+  under the spawn rows, the `rings` at the eye, lenticulars. Setting
+  `saturn` (w 5.0): thick-cloud and storm mounds, cubes off the rim, the
+  storm's flicker, and the RING PLANE — a wide flat annulus tilted off
+  level with the Cassini division, battle only. Natives: grey, black goo.
+- **Room 21 · THE STRIP** (`prebuilt_strip`, Urban, `leaf_motel`). The
+  boulevard N–S down the middle with a planted median and sidewalks,
+  crosswalks, fountain plazas (a water dip), palms, lamp posts and
+  traffic lights, the wedding chapel and a storefront (roof-walkable
+  `church` / `building_3` on +1 plinths), the casino's side wall (+2)
+  with the `jumbotron` marquee on it, the `obelisk`, the sign's `rings`
+  over the centre. Setting `strip`: neon storefront blocks on the flanks
+  (CASINO · LUXOR · WEDDINGS · 24H · …), lamps and palms on the lanes, the
+  fountain pools with jets, the chapel with its steeple and a pulsing
+  heart, and the Luxor off the far corner — the Pyramid GLB, an obelisk,
+  the beam (battle only). Edge `walls` (the storefronts). Natives:
+  conspiracy theorist, honda civic. `ambNight`.
+- **Room 1954 · DOWNTOWN** (`prebuilt_downtown`, Urban, `leaf_glass` —
+  the revolving door is rationed to Bay 5 by doorhq.test.js). Daylight:
+  the avenue and the cross street, roof-walkable blocks (`building_1`,
+  `building_8`, `abandoned_building_2`), the rubble where the kaiju
+  walked (+1 / +2 steps), a dumpster in every alley (2×1, twins by hand),
+  a security camera, a fallen sign still lit. Setting `downtown`: the
+  Cyberpunk block recipe in light concrete (warm windows, no neon), rubble
+  mounds, dumpsters, traffic lights on poles at the lanes, and the tower
+  COLLAPSED across the apron on a heap of rubble with its smoke (battle
+  only). Edge `walls`. Natives: superhero, antihero, zombie, king kong.
+  `ambDay`.
+- **Plumbing**: `env.ambience` on a meta row names a still map's bed
+  (audio.js, after the moving-map rule); check-data-parity.js #6 diffs
+  server.js MAP_POOL against EW_MAP_META (ids, sizes, team) — plan 7.10
+  #5 is no longer "not parity-checked"; delta-maps.test.js expects 38 Δ
+  boards; doorhq.test.js pins Bay 7's four maps and lists the Strip and
+  Downtown among the walled outdoor rooms. Tests: 950 pass, 0 fail.
+- **Not done / to eyeball live** (RULE #1c — nothing rendered): the
+  house's thin walls and windows on the board, the eye's height over the
+  Lodge, the Singularity's arms from the gameplay camera (the far tiles
+  are a drop — no fence), Saturn's ring plane against the dome, the
+  Luxor's pyramid scale, the collapsed tower's lean. The Δ boards passed
+  the forge's headless rules (routes, symmetry, protected tiles). Cast
+  lines and site-room lines are Claude placeholders (A15).
