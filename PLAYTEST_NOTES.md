@@ -10384,3 +10384,20 @@ sandbox before `_createAppearanceRig` (the runtime calls it once per rebuild wit
 after three render passes had only shown the symptom. Verified headlessly on both bases (bind
 pose): every outer layer, the tank / atank / racer / bikini straps, the coat tail, the dress, the
 prints. Still unseen: a POSED jacket over a tee (`playtest_creator.js <tag> --layers`).
+
+**rev 9 (2026-09-13) — THE PROBE IS POSED NOW:** `playtest_creator.js` serves
+`cdn.entropywars.net/Assets/Models/*` from `rigged_animations/Assets_Models_<file>`
+(UAL1 / UAL2 / MAL1 + the Meshy clips), so the idle and PREVIEW WALK play and every
+shot is a POSE — until this run every "posed" creator probe in these notes was the
+bind pose, which is why the coat's torn lathe tail and the right wrist were never
+seen. Recipe for a close-up: wheel events on the stage canvas zoom
+(`page.mouse.wheel(0, -400)` × n), a pointer drag yaws / tilts, `FULL BODY` resets,
+and `EWCharViewer.dev.state()` exposes the live record (`.appearanceRig.tick()`
+returns nothing but runs the skirt collision; `.model` is the posed rig — read a
+bone's world quaternion from it). Measuring beats guessing: a scratch `bones.js`
+(three r128 in a vm, GLTFLoader) printed both bases' hand rest quaternions and the
+mesh palm normals (mirror-symmetric) and `clipsym.js` sampled MAL1 `Idle_5` — the
+RIGHT wrist is bent 67° / twisted 51° in the clip itself; the left 16°. That is the
+"contorted hand": the source animation, capped by `def.wristLimit` now.
+`EW_NO_CLOTH_COLLIDE` / `EW_CC_NO_DETAILS` toggle the rev 9 passes live for an A/B
+screenshot.

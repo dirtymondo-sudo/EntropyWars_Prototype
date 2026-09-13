@@ -211,7 +211,7 @@ test('rev 6 / rev 7 — every catalogue id has a cut, the builder lists the cata
     assert.ok(new Set(context.window.EW_OUTFIT_STYLES.map(o => o.label)).size === ids.length, 'labels are distinct');
     // sleeved tops end along the arm's polyline, never on an x-plane; sleeveless ones (rev 7) remove the arm by the
     // measured capsule + the hand sphere and wear straps as capsules round a path sampled on the shoulder
-    assert.ok(/len - A\.along, A\.perp - gate/.test(block), 'the sleeve is cut square across the arm');
+    assert.ok(/Math\.max\(len - A\.along, A\.perp - gate\), wristPlane - A\.past/.test(block), 'the sleeve is cut square across the arm and never past the wrist plane (rev 9)');
     assert.ok(/cuts\.push\(function \(q\) \{ return -armMask\(part, q\); \}\)/.test(block), 'sleeveless tops remove the geometric arm');
     assert.ok(!/\(0\.5 - q\[3\]\) \* 0\.05/.test(block), 'the rev 6 weight-isoline arm is gone');
     assert.ok(/var s = hw - pathDist\(straps, q\)/.test(block), 'straps are capsules round the sampled path');
@@ -229,7 +229,7 @@ test('rev 6 / rev 7 — every catalogue id has a cut, the builder lists the cata
     // (arrays cross vm realms — compare by content)
     assert.equal(JSON.stringify(Object.keys(cc.CC_TOPS).sort()), JSON.stringify([...ids].sort()), 'CC_TOPS is exactly the catalogue');
     assert.ok(!ids.includes('jacket'), 'the jacket is an outer layer now');
-    assert.equal(JSON.stringify([...cc.CC_LAYER_NAMES]), JSON.stringify(['body', 'top', 'bottom', 'face', 'outer', 'feet', 'gloves', 'belt', 'skirt', 'buckle']));
+    assert.equal(JSON.stringify([...cc.CC_LAYER_NAMES]), JSON.stringify(['body', 'top', 'bottom', 'face', 'outer', 'feet', 'gloves', 'belt', 'skirt', 'buckle', 'trim', 'tie', 'glasses']));   // rev 9: + trim · tie · glasses
     assert.ok(/RN\[i3\] \* dn/.test(block), 'the cloth relaxation moves along the normal only');
     assert.ok(/v\.on \|= \(bit \|\| 0\)/.test(block) && /if \(!\(v\.on & w\.on\)\)|var shared = v\.on & w\.on/.test(block), 'rims are found by the cut masks');
     const pb = read('party-builder.js');
@@ -304,9 +304,9 @@ test('both rigged bases dress, fit the hair to the skull and stay finite across 
             const rig = c._createAppearanceRig(clone, { hair: 'hair003' }, true);
             const skinned = () => { const out = []; clone.traverse(n => { if (n.isSkinnedMesh && n.parent) out.push(n); }); return out; };
             let bodies = skinned();
-            assert.equal(bodies.filter(n => !/hair/.test(n.name)).length, 10, 'body + top + bottom + face + outer + feet + gloves + belt + skirt + buckle (rev 7)');
+            assert.equal(bodies.filter(n => !/hair/.test(n.name)).length, 13, 'body + top + bottom + face + outer + feet + gloves + belt + skirt + buckle (rev 7) + trim + tie + glasses (rev 9)');
             const shellNames = bodies.filter(n => /EWCreator_/.test(n.name) && !/hair/.test(n.name)).map(n => n.name.replace('EWCreator_', '')).sort();
-            assert.deepEqual(shellNames, ['belt', 'bottom', 'buckle', 'face', 'feet', 'gloves', 'outer', 'skirt', 'top'].sort());
+            assert.deepEqual(shellNames, ['belt', 'bottom', 'buckle', 'face', 'feet', 'gloves', 'outer', 'skirt', 'top', 'trim', 'tie', 'glasses'].sort());
             const hairMeshes = bodies.filter(n => /EWCreator_hair/.test(n.name));
             assert.ok(hairMeshes.length >= 2, 'hair parts skinned in');
             const body = bodies.find(n => !/EWCreator/.test(n.name));
@@ -340,11 +340,12 @@ test('both rigged bases dress, fit the hair to the skull and stay finite across 
                 assert.ok(hm.material.alphaTest > 0 || /tie/.test(hm.name));
             }
             const EN = context.window.EW_APPEARANCE_ENUMS, cyc = (arr, i) => arr[i % arr.length];
+            const cc = {}; { const block = renderer.slice(RENDER_BLOCK[0], RENDER_BLOCK[1]); vm.runInContext(block.slice(block.indexOf('var CC_TANK_FRONT'), block.indexOf("/* The pack's hair diffuse")), vm.createContext(cc)); }
             let step = 0;
             for (const outfit of EN.outfit) for (const sign of [-1, 0, 1]) {
                 // rev 7: the other layers cycle through their catalogues alongside (every id is worn at least once per base)
-                const bottoms = cyc(EN.bottoms, step), outer = cyc(EN.outer, step), feet = cyc(EN.feet, step), gloves = cyc(EN.gloves, step), belt = cyc(EN.belt, step); step++;
-                rig.update({ outfit, bottoms, outer, feet, gloves, belt, hair: sign < 0 ? 'bald' : 'hair003', topFabric: sign ? 'denim' : 'plain', outerFabric: 'wool', width: 1 + sign * .15, chest: sign, waist: sign, hips: sign, head: sign, jaw: sign, cheeks: sign, nose: sign });
+                const bottoms = cyc(EN.bottoms, step), outer = cyc(EN.outer, step), feet = cyc(EN.feet, step), gloves = cyc(EN.gloves, step), belt = cyc(EN.belt, step), neckwear = cyc(EN.neckwear, step), glasses = cyc(EN.glasses, step); step++;
+                rig.update({ outfit, bottoms, outer, feet, gloves, belt, neckwear, glasses, hair: sign < 0 ? 'bald' : 'hair003', topFabric: sign ? 'denim' : 'plain', outerFabric: 'wool', width: 1 + sign * .15, chest: sign, waist: sign, hips: sign, head: sign, jaw: sign, cheeks: sign, nose: sign });
                 const arm = body.skeleton.bones.find(b => b.name === 'LeftArm'); arm.rotation.z = .4;
                 clone.updateMatrixWorld(true);
                 bodies = skinned();
@@ -380,7 +381,13 @@ test('both rigged bases dress, fit the hair to the skull and stay finite across 
                 assert.equal(shellOf('gloves').geometry.index.count > 0, gloves !== 'none', gloves + ' gloves shell');
                 assert.equal(shellOf('belt').geometry.index.count > 0, belt === 'belt', belt + ' belt shell');
                 assert.equal(shellOf('buckle').geometry.index.count > 0, belt === 'belt', belt + ' buckle');
-                for (const nm of ['outer', 'feet', 'gloves', 'belt', 'skirt', 'buckle']) assert.equal(shellOf(nm).visible, shellOf(nm).geometry.index.count > 0, nm + ' hidden when empty');
+                for (const nm of ['outer', 'feet', 'gloves', 'belt', 'skirt', 'buckle', 'trim', 'tie', 'glasses']) assert.equal(shellOf(nm).visible, shellOf(nm).geometry.index.count > 0, nm + ' hidden when empty');
+                // rev 9: the accessories draw iff worn; the details of a row land in its layer / the trim shell
+                assert.equal(shellOf('tie').geometry.index.count > 0, neckwear !== 'none', neckwear + ' neckwear shell');
+                assert.equal(shellOf('glasses').geometry.index.count > 0, glasses !== 'none', glasses + ' glasses shell');
+                const CO = cc.CC_OUTER[outer], CT = cc.CC_TOPS[outfit], wantsTrim = !!((CO && (CO.buttons || CO.zipTape)) || (CT && CT.placket) || neckwear === 'bowtie');
+                assert.equal(shellOf('trim').geometry.index.count > 0, wantsTrim, outer + ' / ' + outfit + ' trim (buttons, zip, placket buttons, a bow knot)');
+                if (CO && CO.collar) assert.ok(shellOf('outer').geometry.index.count > 0, outer + ' has its collar');
                 assert.equal(top.material.vertexColors, true);
                 // rev 5: garment UVs are the cloth frame's, in METRES — v spans the shirt's height, u the arc round the body,
                 // and no drawn triangle straddles a seam (every |Δu| within a triangle stays under half a torso turn)
@@ -476,7 +483,7 @@ test('rev 8 — the prints: the catalogue is the enum, every pattern masks 0..1 
     pc._ccPatternBytes(w, S, 'stripes', '#ffffff', '#ffffff');
     assert.ok(w.every((v, i) => i % 4 === 3 || v === 128), 'white × white leaves the tile');
     // the renderer's wiring + the tools + the builder + the CSS
-    for (const s of ['function _ccPatternMask(id, u, v)', 'function _ccPatternBytes(d, S, pat, c1, c2, cells)', 'function _ccPatternTexture(fabTex, pat, c1, c2, def, unmanaged)', "topPattern', 'topColor2'", 'function layerPrinted(a, keys)', "tint = layerPrinted(a, keys) ? color('#ffffff') : color(a[keys[1]])", "var want = printed ? ('P|'", 'part.patTex[which]']) assert.ok(block.includes(s), 'renderer block has ' + s);
+    for (const s of ['function _ccPatternMask(id, u, v)', 'function _ccPatternBytes(d, S, pat, c1, c2, cells)', 'function _ccPatternTexture(fabTex, pat, c1, c2, def, unmanaged, size)', "topPattern', 'topColor2'", 'function layerPrinted(a, keys)', "tint = layerPrinted(a, keys) ? color('#ffffff') : color(a[keys[1]])", "var want = printed ? ('P|'", 'part.patTex[which]']) assert.ok(block.includes(s), 'renderer block has ' + s);
     assert.match(renderer, /patternThumb: function \(fabricKey, pat, c1, c2, cb\)/);
     const pb = read('party-builder.js'), css = read('styles-base.css'), cr = read('creator-render.js');
     for (const s of ['const ccPrint = (fabricKey, colorKey, label)', "ccPrint('topFabric', 'topColor', 'Top')", "ccPrint('bottomFabric', 'bottomColor', 'Bottom')", 'worn ? ccPrint(fabricKey, colorKey, label) : null', 'pb-pattern-tile', 'EWCharViewer.patternThumb', "' colour 2'"]) assert.ok(pb.includes(s), 'party-builder has ' + s);
@@ -493,9 +500,10 @@ test('rev 8 — the outer layer: tapered sleeves, no collar cap, the folded rims
         assert.ok(!O.neck.top, id + ' has no collar cap (the cut stays on the 0.852 ridge)');
     }
     assert.ok(cc.CC_OUTER.vest.front.top <= 0.80 && cc.CC_OUTER.vest.straps.w >= 0.04, 'the vest wears the tank heights with wide straps');
-    assert.ok(cc.CC_OUTER.coat.tail.swing != null && cc.CC_OUTER.coat.tail.flare < 0.1, 'the coat tail has its own swing and a gentle flare');
+    // rev 9: the coat's skirt is the shell itself (no lathe tail — it tore on every posed stance)
+    assert.ok(!cc.CC_OUTER.coat.tail && cc.CC_OUTER.coat.hem <= 0.42 && cc.CC_OUTER.coat.hemEase > cc.CC_OUTER.coat.ease && cc.CC_OUTER.coat.hemEaseFrom > cc.CC_OUTER.coat.hem, 'the coat is one shell to mid-thigh at a larger stand-off below the hips');
     for (const s of ['function layerEase(T, extra)', 'part.armFrac = armFrac', 'var lapelRaise = (OUT && OUT.open && OUT.lapel)', 'clothSurface(layerEase(OUT, lapelRaise), true, false)',
-        'proj: proj', '(0.45 + 0.55 * kb)', 'var px = R[ii * 3] + NB[ii * 3] * ease * H', 'THE FOLD (rev 8)', "emit([vo, vi, wi, wo], target, 0.86)", 'function skirtShade(tTop, tHem, plain)', 'tTop: OUT.hem + 0.006', 'window.EW_CC_DEBUG_CUTS']) assert.ok(block.includes(s), 'renderer block has ' + s);
+        'proj: proj', '(0.45 + 0.55 * kb)', 'var px = R[ii * 3] + NB[ii * 3] * ease * H', 'THE FOLD (rev 8)', "emit([vo, vi, wi, wo], target, 0.92)", 'function skirtShade(tTop, tHem, plain)', 'tTop: OUT.hem + 0.006', 'window.EW_CC_DEBUG_CUTS']) assert.ok(block.includes(s), 'renderer block has ' + s);
     assert.ok(!block.includes('0.848, w: 0.05, top: 0.848'), 'the rev 7 collar cap is gone');
 });
 
@@ -535,4 +543,32 @@ test('rev 8 — the mirror: the officer look on the profile, the chair’s look 
     assert.ok(/colour 2/.test(html) && /Outer layer/.test(html) && /<i>foot<\/i>/.test(html), 'colour 2 rows, the layer rows, the footer');
     const html2 = ReactDOMServer.renderToString(h(parts.OfficerCreator));
     for (const s of ['THE MIRROR', 'SAVE LOOK', 'PHOTO PENDING', 'TAKE PHOTO', 'pb-creator-controls', 'pb-officer-stage']) assert.ok(html2.includes(s), 'the mirror screen shows ' + s);
+});
+
+test('rev 9 — the details, the accessories, the loose cuts, the wrist limit, the cloth collision and the preview bake', () => {
+    const block = renderer.slice(RENDER_BLOCK[0], RENDER_BLOCK[1]);
+    const cc = {}; vm.runInContext(block.slice(block.indexOf('var CC_TANK_FRONT'), block.indexOf("/* The pack's hair diffuse")), vm.createContext(cc));
+    // the catalogues grew on both sides
+    for (const id of ['polo', 'henley']) assert.ok(cc.CC_TOPS[id] && cc.CC_TOPS[id].placket, id + ' is a top with a placket');
+    for (const id of ['cardigan', 'hoodie', 'trench', 'parka']) assert.ok(cc.CC_OUTER[id] && cc.CC_OUTER[id].sleeveEase < cc.CC_OUTER[id].ease, id + ' is an outer layer with a tapered sleeve');
+    for (const id of ['baggy', 'cargo', 'sweatpants']) assert.ok(cc.CC_BOTTOMS[id] && cc.CC_BOTTOMS[id].ease >= 0.014, id + ' is a loose cut');
+    assert.ok(cc.CC_FEET.sandals && cc.CC_FEET.sandals.straps.length === 2, 'sandals wear two straps');
+    assert.ok(cc.CC_OUTER.jacket.zipTape && cc.CC_OUTER.blazer.buttons && cc.CC_OUTER.coat.pockets.length && cc.CC_OUTER.trench.beltBand && cc.CC_OUTER.trench.buttons.double && cc.CC_OUTER.hoodie.collar === 'hood', 'the rows carry their details');
+    assert.ok(cc.CC_BOTTOMS.cargo.pockets.some(pk => pk.side), 'cargo pockets sit on the thigh');
+    const EN = context.window.EW_APPEARANCE_ENUMS;
+    assert.deepEqual([...EN.neckwear], ['none', 'tie', 'bowtie']); assert.deepEqual([...EN.glasses], ['none', 'round', 'square', 'shades']);
+    assert.ok(/^#[0-9a-f]{6}$/.test(normalize({}).tieColor) && /^#[0-9a-f]{6}$/.test(normalize({}).glassesColor), 'the accessories have colours');
+    assert.equal(normalize({ glasses: 'monocle' }).glasses, 'none');
+    // the engine sites
+    for (const s of ['function buildDetails()', 'function surfaceAt(x, t, mode)', 'function ribbon(b, L, pts, w, th, gain, upOf, taperW, taperH)', 'function placeBox(b, L, c, U, V, W, hw, hh, hd, gain, owner)', 'function smoothPath(pts)',
+        'function collideSkirt(part)', 'mesh.boneTransform(i, _colV)', 'part.legs = legBones', 'tick: function ()', 'v.appearanceRig.tick()', 'entry.appearanceRig.tick()', 'e.appearanceRig.tick()',
+        'function _lqLimit(rest, q, lim)', 'def.wristLimit', 'wristPlane - A.past', 'past: past', "AA.past > -0.012 * Hm",
+        'CC_FACE_PREVIEW_TEX', 'CC_SETTLE_MS', 'function update(value, opts)', "update(pend, { preview: true })", 'v.appearanceSettle', 'part.patPreview[which]',
+        "name === 'trim'", "name === 'tie'", "name === 'glasses'", 'hemEase', 'layerEaseAtQ']) assert.ok(renderer.includes(s), 'renderer has ' + s);
+    assert.ok(!/tail: \{ hem: 0\.40/.test(block), 'the coat has no lathe tail');
+    assert.match(read('sprites.js'), /wristLimit: 30/);
+    const pb = read('party-builder.js');
+    for (const s of ['queueChange', "ccChoice('neckwear'", "ccChoice('glasses'", "ccColorRow('tieColor'", "ccColorRow('glassesColor'", 'EW_NECKWEAR_STYLES', 'EW_GLASSES_STYLES']) assert.ok(pb.includes(s), 'party-builder has ' + s);
+    assert.ok(/type: 'color', value: appearance\[key\], 'aria-label': 'Custom ' \+ label, onChange: e => queueChange/.test(pb), 'the colour input coalesces per frame');
+    assert.ok(read('creator-render.js').includes('trim|tie|glasses'), 'creator-render.js renders the new shells');
 });

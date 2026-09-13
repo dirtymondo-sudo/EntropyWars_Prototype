@@ -1061,6 +1061,54 @@ Kill-switches (console): `window.EW_DISABLE_3D_UNITS = true` (all 3D),
   To persist new files, hand them to the user (SendUserFile) to upload via GitHub
   manually. Don't waste time retrying pushes.
 
+## CHARACTER CREATOR rev 9 — the picker lag, the coat, the wrist, cloth collision, THE DETAILS, the wardrobe (2026-09-13, local delivery)
+**THE LAG**: every colour change re-baked the 2048² face (~265 ms) and the
+native colour input fires per pointer move. Now the rig's `update(value,
+{ preview: true })` bakes the face at `CC_FACE_PREVIEW_TEX` (512) and a
+printed tile at a quarter size; the viewer's per-frame coalesced update is
+a preview and ONE full bake runs `CC_SETTLE_MS` (240) after the last change
+(`v.appearanceSettle`); party-builder.js `CreatorControls` sends colour /
+slider values through `queueChange` (one change per animation frame).
+**THE COAT**: no lathe tail any more — the coat is ONE shell to mid-thigh
+(`CC_OUTER.coat.hem` 0.40) at a larger stand-off below the hips (`hemEase`
+/ `hemEaseFrom`, `layerEase` + `layerEaseAtQ`); the tail tore on every
+posed stance. **THE HAND**: a 'wrist' sleeve is never cloth past the wrist
+joint's plane (`armAt().past`, `wristPlane − A.past` in the sleeve cut) and
+the arm profile leaves the hand out — the thumb projected before the joint
+and every long sleeve capped it in cloth; a rim strip's depth reads the
+layer's LOCAL ease and stays under 45 % of the limb's radius. **THE WRIST**:
+the sniper's `Idle_5` (every rig's default idle) holds its right wrist bent
+67° with a 51° twist; `def.wristLimit` (degrees; the creator bases wear 30,
+sprites.js `EW_CHARACTER_BASES`) caps a hand bone's rotation off its rest in
+`_libBakeClips` (`_lqLimit`). **CLOTH COLLISION**: a cut garment rides the
+body's own topology + weights and can never clip; the LATHES (skirts) can,
+so `collideSkirt(part)` runs every frame after the mixer (`rig.tick()` at
+the board / HQ / viewer mixer sites): each skirt vertex is skinned on the
+CPU (`SkinnedMesh.boneTransform`), pushed out of the two leg capsules
+(`part.legs` — hip → knee → ankle radius profiles measured at setup, the
+joints from the bones' world matrices) and carried back to bind space
+through its own skin matrix. Kill-switch `EW_NO_CLOTH_COLLIDE`. No Blender
+pass is needed for any of this: the cloth IS the body, offset. **THE
+DETAILS** (`buildDetails`, kill-switch `EW_CC_NO_DETAILS`): trim geometry
+placed on a layer's cloth surface at (|x|, t) off the nearest base vertex
+(`surfaceAt` — front / back / the thigh's side / the top of the foot) and
+riding that vertex's weights — `placeBox`, `disc`, `ribbon` (+ `smoothPath`,
+the raw samples zigzag). Row fields: `buttons { n, x, from, to, r, double }`,
+`placket { buttons, from, to, w }`, `zipTape`, `pockets [{ x, t, w, h, kind:
+patch | welt, side, back, flap }]`, `collar: 'band' | 'hood'`, `beltBand`,
+`straps` (sandals). Fabric pieces land in their layer's buffer (the owner
+vertex's cloth UV + the corner offset); hardware in the `trim` shell,
+neckwear in `tie` (`tieColor`), glasses in `glasses` (`glassesColor`) — three
+new shells (`CC_LAYER_NAMES` = 13). **THE WARDROBE**: tops polo · henley;
+outer cardigan · hoodie · trench · parka; bottoms baggy · cargo · sweatpants;
+feet sandals; accessories `neckwear` (tie · bowtie) + `glasses` (round ·
+square · shades — rims round the measured eyes, temples to the ears) with
+the builder's ACCESSORIES section. `EWCharViewer.dev.state()/model()` = the
+live stage record for probes; `playtest_creator.js` now serves the animation
+libraries from `rigged_animations/` so its shots are POSED. On Meshy
+garments: see PARTY_BUILDER_PLAN §9 (rev 9 entry) — when to model, how to
+fit. `npm test`: character-creator.test.js (+ the rev 9 guard).
+
 ## CHARACTER CREATOR rev 8 — the outer layer fixed, THE PRINTS, THE MIRROR (2026-09-13, local delivery)
 The 2nd layer (`CC_OUTER`: jacket · blazer · vest · coat) verified on BOTH
 bases with `creator-render.js` (baseline → fix, every view): sleeved

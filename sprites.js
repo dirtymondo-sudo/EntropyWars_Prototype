@@ -1892,6 +1892,9 @@ const EW_OUTFIT_STYLES = [
   { id: 'bikini', label: 'Bikini top' },
   { id: 'dress',  label: 'Dress' },
   { id: 'gown',   label: 'Gown' },
+  // rev 9 (2026-09-13): a polo (band collar, three buttons) and a henley (the placket alone)
+  { id: 'polo',   label: 'Polo' },
+  { id: 'henley', label: 'Henley' },
 ];
 const EW_BOTTOM_STYLES = [
   { id: 'trousers',    label: 'Trousers' },
@@ -1902,6 +1905,10 @@ const EW_BOTTOM_STYLES = [
   { id: 'miniskirt',   label: 'Mini skirt' },
   { id: 'skirt',       label: 'Skirt' },
   { id: 'longskirt',   label: 'Long skirt' },
+  // rev 9: the loose cuts
+  { id: 'baggy',       label: 'Baggy pants' },
+  { id: 'cargo',       label: 'Cargo pants' },
+  { id: 'sweatpants',  label: 'Sweatpants' },
 ];
 const EW_OUTER_STYLES = [
   { id: 'none',   label: 'None' },
@@ -1909,12 +1916,18 @@ const EW_OUTER_STYLES = [
   { id: 'blazer', label: 'Blazer' },
   { id: 'vest',   label: 'Vest' },
   { id: 'coat',   label: 'Coat' },
+  // rev 9: four more second layers
+  { id: 'cardigan', label: 'Cardigan' },
+  { id: 'hoodie',   label: 'Hoodie' },
+  { id: 'trench',   label: 'Trench coat' },
+  { id: 'parka',    label: 'Parka' },
 ];
 const EW_FEET_STYLES = [
   { id: 'none',      label: 'Barefoot' },
   { id: 'sneakers',  label: 'Sneakers' },
   { id: 'boots',     label: 'Boots' },
   { id: 'highboots', label: 'High boots' },
+  { id: 'sandals',   label: 'Sandals' },   // rev 9
 ];
 const EW_GLOVE_STYLES = [
   { id: 'none',       label: 'None' },
@@ -1924,6 +1937,19 @@ const EW_GLOVE_STYLES = [
 const EW_BELT_STYLES = [
   { id: 'none', label: 'None' },
   { id: 'belt', label: 'Belt' },
+];
+// rev 9 (2026-09-13): THE ACCESSORIES — neckwear on the top (under any outer layer) and glasses on the measured eyes;
+// each wears one colour (`tieColor` / `glassesColor`), no fabric. Cut in three-renderer.js buildDetails.
+const EW_NECKWEAR_STYLES = [
+  { id: 'none',   label: 'None' },
+  { id: 'tie',    label: 'Tie' },
+  { id: 'bowtie', label: 'Bow tie' },
+];
+const EW_GLASSES_STYLES = [
+  { id: 'none',   label: 'None' },
+  { id: 'round',  label: 'Round' },
+  { id: 'square', label: 'Square' },
+  { id: 'shades', label: 'Shades' },
 ];
 // numeric fields: [min, max, default]
 const EW_APPEARANCE_LIMITS = {
@@ -1942,6 +1968,8 @@ const EW_APPEARANCE_ENUMS = {
   feet: EW_FEET_STYLES.map(o => o.id),
   gloves: EW_GLOVE_STYLES.map(o => o.id),
   belt: EW_BELT_STYLES.map(o => o.id),
+  neckwear: EW_NECKWEAR_STYLES.map(o => o.id),   // rev 9
+  glasses: EW_GLASSES_STYLES.map(o => o.id),     // rev 9
   topFabric: EW_FABRIC_IDS,
   bottomFabric: EW_FABRIC_IDS,
   outerFabric: EW_FABRIC_IDS,
@@ -1958,8 +1986,10 @@ const EW_APPEARANCE_ENUMS = {
 };
 const EW_APPEARANCE_COLORS = { skin: '#b98362', hairColor: '#27201c', eyeColor: '#4a6b8a', lipColor: '#9c5a5c', topColor: '#8fa3a8', bottomColor: '#5e6f80', outerColor: '#2a2f38', feetColor: '#2b241f', glovesColor: '#3a2a22', beltColor: '#4a3220',
   // rev 8: the print's colour (colour 2) per layer
-  topColor2: '#f0ece2', bottomColor2: '#f0ece2', outerColor2: '#c9a227', feetColor2: '#f0ece2', glovesColor2: '#f0ece2', beltColor2: '#f0cf7e' };
-const EW_APPEARANCE_DEFAULTS = { hair: 'hair003', outfit: 'tee', bottoms: 'trousers', outer: 'none', feet: 'sneakers', gloves: 'none', belt: 'none', beard: 'none', topFabric: 'cotton', bottomFabric: 'denim', outerFabric: 'canvas', feetFabric: 'leather', glovesFabric: 'leather', beltFabric: 'leather',
+  topColor2: '#f0ece2', bottomColor2: '#f0ece2', outerColor2: '#c9a227', feetColor2: '#f0ece2', glovesColor2: '#f0ece2', beltColor2: '#f0cf7e',
+  // rev 9: the accessories' colours
+  tieColor: '#7a1f1f', glassesColor: '#1b1b1f' };
+const EW_APPEARANCE_DEFAULTS = { hair: 'hair003', outfit: 'tee', bottoms: 'trousers', outer: 'none', feet: 'sneakers', gloves: 'none', belt: 'none', beard: 'none', neckwear: 'none', glasses: 'none', topFabric: 'cotton', bottomFabric: 'denim', outerFabric: 'canvas', feetFabric: 'leather', glovesFabric: 'leather', beltFabric: 'leather',
   topPattern: 'solid', bottomPattern: 'solid', outerPattern: 'solid', feetPattern: 'solid', glovesPattern: 'solid', beltPattern: 'solid' };
 // the fabric + tint (+ rev 8: pattern + colour 2) keys of every layer (the builder's rows, the renderer's paint, the asset warm-up)
 const EW_APPEARANCE_LAYERS = [
@@ -2022,6 +2052,10 @@ function randomCharacterAppearance(rng) {
     out[L.color2] = hex(r() * 360, 0.1 + r() * 0.5, r() < 0.5 ? 0.82 + r() * 0.12 : 0.12 + r() * 0.2);
   }
   if (r() < 0.6) out.beard = 'none';
+  if (r() < 0.7) out.neckwear = 'none';
+  if (r() < 0.65) out.glasses = 'none';
+  out.tieColor = hex(r() * 360, 0.35 + r() * 0.4, 0.2 + r() * 0.3);
+  out.glassesColor = r() < 0.6 ? '#1b1b1f' : hex(r() * 360, 0.3 + r() * 0.4, 0.2 + r() * 0.4);
   if (r() < 0.5) out.outer = 'none';
   if (r() < 0.7) out.gloves = 'none';
   if (r() < 0.5) out.belt = 'none';
@@ -2032,7 +2066,8 @@ const EW_CHARACTER_BASES = {};
 for (const gender of ['male', 'female']) {
   EW_CHARACTER_BASES[gender] = _mkUAL('', '', {
     model: EW_CHARACTER_ASSET_BASE + '/Meshy_AI_human_body_base_mesh_' + gender + '_rigged.glb?ewcors=1',
-    creatorBase: true, heightRatio: 1, basicAttackKind: 'punch'
+    creatorBase: true, heightRatio: 1, basicAttackKind: 'punch',
+    wristLimit: 30   // rev 9: cap each hand's rotation off its rest (degrees) — the sniper idle's holster wrist read as a broken hand on a bare human
   });
 }
 function getHairStyleUrl(id) {
@@ -2079,6 +2114,8 @@ if (typeof window !== 'undefined') {
   window.EW_FEET_STYLES = EW_FEET_STYLES;
   window.EW_GLOVE_STYLES = EW_GLOVE_STYLES;
   window.EW_BELT_STYLES = EW_BELT_STYLES;
+  window.EW_NECKWEAR_STYLES = EW_NECKWEAR_STYLES;
+  window.EW_GLASSES_STYLES = EW_GLASSES_STYLES;
   window.EW_APPEARANCE_LAYERS = EW_APPEARANCE_LAYERS;
   window.EW_PATTERNS = EW_PATTERNS;
   window.getHairStyleUrl = getHairStyleUrl;

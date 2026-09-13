@@ -875,6 +875,18 @@ function PortraitSprite({ race, gender, cls, glow, style: extraStyle }) {
    action row (the forge's RANDOMIZE / RESET / USE ORIGINAL MODEL). */
 function CreatorControls({ appearance, gender, disabled, onChange, footer }) {
   const changeAppearance = (changes, g) => onChange(changes, g);
+  /* rev 9 (2026-09-13 — the colour-picker lag): a native <input type=color> and a range slider fire a
+     change per pointer move, and each one re-rendered the whole forge and re-dressed the stage. Continuous
+     controls go through `queueChange`: the values coalesce and ONE change lands per animation frame (the
+     last wins); the stage's own settle timer then does the full-resolution bake. Clicks stay immediate. */
+  const ccQueued = React.useRef(null), ccRaf = React.useRef(0);
+  const queueChange = (changes) => {
+    ccQueued.current = Object.assign(ccQueued.current || {}, changes);
+    if (ccRaf.current) return;
+    const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
+    ccRaf.current = raf(() => { ccRaf.current = 0; const c = ccQueued.current; ccQueued.current = null; if (c) changeAppearance(c); });
+  };
+  React.useEffect(() => () => { if (ccRaf.current && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(ccRaf.current); ccRaf.current = 0; }, []);
   const [pbFabricThumbs, setPbFabricThumbs] = React.useState({});
   const [pbPatternThumbs, setPbPatternThumbs] = React.useState({});
   const pbPatternPending = React.useRef({});
@@ -902,13 +914,13 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer }) {
     const shown = pct ? Math.round(v * 100) + '%' : (limits[0] === 0 ? Math.round(v * 100) : (v > 0 ? '+' : '') + Math.round(v * 100));
     return h('label', { key, className: 'pb-creator-slider' },
       h('span', null, label, h('output', null, shown)),
-      h('input', { type: 'range', min: limits[0], max: limits[1], step: 0.01, value: v, 'aria-label': label, onChange: e => changeAppearance({ [key]: Number(e.target.value) }) }));
+      h('input', { type: 'range', min: limits[0], max: limits[1], step: 0.01, value: v, 'aria-label': label, onChange: e => queueChange({ [key]: Number(e.target.value) }) }));
   };
   const ccColorRow = (key, label, swatches) => h('div', { key, className: 'pb-creator-colorrow' },
     h('span', { className: 'pb-creator-colorlabel' }, label),
     h('div', { className: 'pb-creator-swatches' }, swatches.map(color =>
       h('button', { key: color, className: 'pb-creator-swatch', style: { background: color }, 'aria-label': label + ' ' + color, 'aria-pressed': appearance[key] === color, onClick: () => changeAppearance({ [key]: color }) })),
-      h('label', { className: 'pb-creator-custom', title: 'Custom ' + label.toLowerCase() }, h('input', { type: 'color', value: appearance[key], 'aria-label': 'Custom ' + label, onChange: e => changeAppearance({ [key]: e.target.value }) }), h('i', null, '+'))));
+      h('label', { className: 'pb-creator-custom', title: 'Custom ' + label.toLowerCase() }, h('input', { type: 'color', value: appearance[key], 'aria-label': 'Custom ' + label, onChange: e => queueChange({ [key]: e.target.value }) }), h('i', null, '+'))));
   const ccChoice = (key, options) => h('div', { className: 'pb-creator-options', role: 'group' }, options.map(([id, label]) =>
     h('button', { key: id, className: 'ms-tty-btn' + (appearance[key] === id ? ' primary' : ''), 'aria-pressed': appearance[key] === id, onClick: () => changeAppearance({ [key]: id }) }, label)));
   // a wardrobe LAYER row: the style buttons, then (while something is worn) its fabric tiles + the print + the colours
@@ -954,6 +966,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer }) {
   const eyeSwatches = ['#2d2a26', '#4a3222', '#6b4b2a', '#3d5a3a', '#4a6b8a', '#6a8fb5', '#7a8c6a', '#9a9a9a', '#b8860b', '#8b1e1e'];
   const lipSwatches = ['#b98a7a', '#9c5a5c', '#a0413f', '#7a2e33', '#c26a8a', '#3a2a2a'];
   const clothSwatches = ['#f0ece2', '#8fa3a8', '#5e6f80', '#344a50', '#2a2f38', '#141518', '#7a1f1f', '#c0392b', '#b8741a', '#c9a227', '#2e7d32', '#1f5f8b', '#5b3a8a', '#ad4c86'];
+  const frameSwatches = ['#1b1b1f', '#4a3222', '#8a6a3a', '#c9a227', '#b5b5b5', '#f2f2f2', '#7a1f1f', '#1f5f8b', '#2e7d32', '#ad4c86'];
   return h('fieldset', { className: 'pb-creator-controls', disabled },
               h('legend', null, 'BODY'),
               h('div', { className: 'pb-creator-options', 'aria-label': 'Base model' }, ['male', 'female'].map(g =>
@@ -988,6 +1001,14 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer }) {
               ccLayer('Feet', 'feet', 'EW_FEET_STYLES', 'feetFabric', 'feetColor'),
               ccLayer('Gloves', 'gloves', 'EW_GLOVE_STYLES', 'glovesFabric', 'glovesColor'),
               ccLayer('Belt', 'belt', 'EW_BELT_STYLES', 'beltFabric', 'beltColor'),
+              // THE ACCESSORIES (rev 9, 2026-09-13): neckwear + glasses, one colour each
+              h('h3', null, 'ACCESSORIES'),
+              h('div', { className: 'pb-creator-colorlabel' }, 'Neckwear'),
+              ccChoice('neckwear', (window.EW_NECKWEAR_STYLES || [{ id: 'none', label: 'None' }]).map(o => [o.id, o.label])),
+              appearance.neckwear !== 'none' ? ccColorRow('tieColor', 'Neckwear colour', clothSwatches) : null,
+              h('div', { className: 'pb-creator-colorlabel' }, 'Glasses'),
+              ccChoice('glasses', (window.EW_GLASSES_STYLES || [{ id: 'none', label: 'None' }]).map(o => [o.id, o.label])),
+              appearance.glasses !== 'none' ? ccColorRow('glassesColor', 'Frame colour', frameSwatches) : null,
               h('p', { className: 'pb-creator-note' }, 'Clothing and hair are cosmetic. Colour 1 tints the fabric; a print adds colour 2 over it; plain = no weave. A dress or a gown wears the top\u2019s fabric down to its hem. Save your team to keep this look.'),
     footer || null);
 }

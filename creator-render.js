@@ -191,7 +191,7 @@ function render(meshes, view) {
   const fabrics = { top: fabricTex(A.topFabric), bottom: fabricTex(A.bottomFabric) };
   const LAYER_KEYS = { top: ['topFabric', 'topColor', 'topPattern', 'topColor2'], bottom: ['bottomFabric', 'bottomColor', 'bottomPattern', 'bottomColor2'], outer: ['outerFabric', 'outerColor', 'outerPattern', 'outerColor2'], feet: ['feetFabric', 'feetColor', 'feetPattern', 'feetColor2'], gloves: ['glovesFabric', 'glovesColor', 'glovesPattern', 'glovesColor2'], belt: ['beltFabric', 'beltColor', 'beltPattern', 'beltColor2'] };
   LAYER_KEYS.skirt = LAYER_KEYS[/dress|gown/.test(A.outfit) ? 'top' : 'bottom'];
-  const layerOf = name => { const m = /^EWCreator_(top|bottom|outer|feet|gloves|belt|skirt|buckle)$/.exec(name); return m ? m[1] : null; };
+  const layerOf = name => { const m = /^EWCreator_(top|bottom|outer|feet|gloves|belt|skirt|buckle|trim|tie|glasses)$/.exec(name); return m ? m[1] : null; };
   const list = meshes.map(n => { const g = n.geometry, isFace = /face/.test(n.name), isHair = /EWCreator_hair/.test(n.name), layer = layerOf(n.name), kind = layer ? (layer === 'top' ? 'top' : layer === 'bottom' ? 'bottom' : layer) : 'body';
     const map = n.material.map, faceTex = isFace && map && map.image && map.image._d ? { d: map.image._d, w: map.image.width, h: map.image.height } : null;
     if (isHair) {
@@ -200,6 +200,12 @@ function render(meshes, view) {
       return { pos: g.attributes.position.array, nrm: g.attributes.normal.array, idx: g.index.array, uv: tex ? g.attributes.uv.array : null, tex, tint: tex ? tint : null, color: tint, alphaTest: n.material.alphaTest || 0, twoSided: true, spec: 0.25 };
     }
     if (layer === 'buckle') return { pos: g.attributes.position.array, nrm: g.attributes.normal.array, idx: g.index.array, uv: null, tex: null, color: [240, 207, 126], spec: 0.6 };
+    // rev 9: the hardware, the neckwear, the glasses — solid tints, the gain riding the vertex colour
+    if (layer === 'trim' || layer === 'tie' || layer === 'glasses') {
+      const tintC = layer === 'trim' ? [42, 43, 49] : hexRGB(layer === 'tie' ? A.tieColor : A.glassesColor), vc = g.attributes.color ? g.attributes.color.array : null;
+      const ch = tintC.indexOf(Math.max(...tintC)), gain = vc ? Float32Array.from({ length: vc.length }, (_, i) => vc[(i - i % 3) + ch] / Math.max(1e-3, tintC[ch] / 255)) : null;
+      return { pos: g.attributes.position.array, nrm: g.attributes.normal.array, idx: g.index.array, uv: null, tex: null, color: tintC, vcol: gain, spec: layer === 'tie' ? 0.1 : 0.5, twoSided: true };
+    }
     if (layer && LAYER_KEYS[layer]) {
       const keys = LAYER_KEYS[layer], printed = A[keys[2]] && A[keys[2]] !== 'solid', tintC = printed ? [255, 255, 255] : hexRGB(A[keys[1]]), hasFile = !!(c.EW_FABRICS[A[keys[0]]] || {}).file;
       const fab = printed ? printedTex(A[keys[0]], A[keys[2]], A[keys[1]], A[keys[3]]) : fabricTex(A[keys[0]]);

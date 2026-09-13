@@ -40,6 +40,9 @@ async function installRoutes(context) {
       if (fs.existsSync(f)) { creator++; return serve(f); }
       console.log('  MISSING creator asset', u.pathname); return route.fulfill({ status: 404, body: '' });
     }
+    // rev 9 (2026-09-13): the ANIMATION LIBRARIES + the Meshy clips from rigged_animations/ (Assets_Models_<file>) — so the
+    // rig is POSED (the idle, the walk) even with every CDN blocked; without them every shot was the bind pose
+    if (u.host === 'cdn.entropywars.net' && u.pathname.startsWith('/Assets/Models/')) { const f = path.join(REPO, 'rigged_animations', u.pathname.slice(1).replace(/\//g, '_')); if (fs.existsSync(f)) { creator++; return serve(f); } }
     if (u.host === 'cdn.entropywars.net' && fs.existsSync(path.join(REPO, base)) && /\.(js|css)$/.test(base)) return serve(path.join(REPO, base));
     if (u.host === 'cdn.entropywars.net' && base === 'react.production.min.js') return serve(path.join(NM, 'react/umd/react.production.min.js'));
     if (u.host === 'cdn.entropywars.net' && base === 'react-dom.production.min.js') return serve(path.join(NM, 'react-dom/umd/react-dom.production.min.js'));
