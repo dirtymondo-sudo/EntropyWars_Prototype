@@ -32552,7 +32552,7 @@ const ThreeRenderer = (function () {
                 var step = 0.02 * Hm, nb = Math.ceil(lenL / step) + 1, r = new Float32Array(nb), has = new Uint8Array(nb), k;
                 for (k = 0; k < pos.count; k++) {
                     var qx = Q[k * 3], qt = Q[k * 3 + 1];
-                    if ((side === 'Left' ? qx <= 0 : qx >= 0) || qt > 0.52 || qt < 0.06 || Math.abs(qx) > 0.16) continue;   // the thigh to the ankle, this side, arms / hands out
+                    if ((side === 'Left' ? qx <= 0 : qx >= 0) || qt > 0.45 || qt < 0.06 || Math.abs(qx) > 0.16) continue;   // the thigh to the ankle, this side, arms / hands out (rev 11: from the CROTCH down — the pelvis is not a leg)
                     var nn = limbNearest(L, bindP[k * 3], bindP[k * 3 + 1], bindP[k * 3 + 2]), al = nn.S.cum + nn.along, pp = Math.sqrt(nn.ex * nn.ex + nn.ey * nn.ey + nn.ez * nn.ez);
                     var bn = Math.min(nb - 1, Math.floor(al / step));
                     if (pp > r[bn]) r[bn] = pp;
@@ -32560,7 +32560,19 @@ const ThreeRenderer = (function () {
                 }
                 for (k = 0; k < nb; k++) if (!has[k]) { var lo = k - 1, hi = k + 1; while (lo >= 0 && !has[lo]) lo--; while (hi < nb && !has[hi]) hi++; r[k] = lo >= 0 && hi < nb ? (r[lo] + r[hi]) / 2 : lo >= 0 ? r[lo] : hi < nb ? r[hi] : 0.07 * Hm; }
                 for (var lp = 0; lp < 2; lp++) for (k = 1; k < nb - 1; k++) { var lm = (r[k - 1] + r[k + 1]) / 2; if (lm > r[k]) r[k] = lm; }
-                legBones[side] = { bones: idx, r: r, step: step, len: lenL };
+                /* rev 11: the capsule ABOVE THE CROTCH is the thigh's own radius, not the pelvis's — the profile used to take
+                   the farthest skin per bin up to the hip joint, so the top of each capsule was a 16 cm circle round the
+                   thigh bone (the hip's width) that stood 10 cm proud of the skin at the front and the back and pushed the
+                   whole waist of every skirt out in the BIND pose. The bins whose centre lies above t = 0.45 (the polyline
+                   sampled at that distance) hold the first bin below the crotch. */
+                var firstLeg = -1;
+                for (k = 0; k < nb; k++) {
+                    var sAt = (k + 0.5) * step, sg = L.segs[0]; for (var sj = 0; sj < L.segs.length; sj++) if (L.segs[sj].cum <= sAt) sg = L.segs[sj];
+                    var yAt = sg.a[1] + sg.axis[1] * Math.min(sg.len, Math.max(0, sAt - sg.cum)), tAt = (yAt - minY) / H;
+                    if (tAt <= 0.45) { firstLeg = k; break; }
+                }
+                if (firstLeg > 0) for (k = 0; k < firstLeg; k++) r[k] = r[firstLeg];
+                legBones[side] = { bones: idx, r: r, step: step, len: lenL, pts: pts };
             });
             part.legs = legBones;
             parts.push(part);
@@ -33205,6 +33217,8 @@ const ThreeRenderer = (function () {
                 var rows = Math.max(2, Math.round((tTop - tHem) / 0.01) + 1), rowT = function (r) { return tTop - (tTop - tHem) * r / (rows - 1); };
                 var zc = zcP * H;
                 var map = new Float32Array(NTH * rows).fill(-1), rep = new Int32Array(NTH * rows).fill(-1);
+                // rev 11: a layer WORN OVER the lathe (a jacket over a skirt) — its surface's radius per bin, the lathe is kept inside it
+                var OVER = opts.over || null, overT = opts.overT == null ? -1 : opts.overT, OVL = opts.overLathe || null, omap = OVER ? new Float32Array(NTH * rows).fill(-1) : null;
                 var t0 = tHem - 0.012, t1 = tTop + 0.004;   // (a wider band above the waist gave the dress's top ring the lower back's flare and it poked through a blazer)
                 for (ii = 0; ii < N; ii++) {
                     var tq2 = Q[ii * 3 + 1];
@@ -33223,6 +33237,16 @@ const ThreeRenderer = (function () {
                     var th = Math.atan2(px, pz), bt = ((Math.round(th / (2 * Math.PI) * NTH) % NTH) + NTH) % NTH, br = Math.round((tTop - tq2) / (tTop - tHem) * (rows - 1));
                     if (br < 0 || br >= rows) continue;
                     var o = br * NTH + bt; if (r > map[o]) { map[o] = r; rep[o] = ii; }
+                    if (omap) { var ox0 = OVER[ii * 3] - 0, oz0 = OVER[ii * 3 + 2] - zc, orr0 = Math.sqrt(ox0 * ox0 + oz0 * oz0); if (orr0 > omap[o]) omap[o] = orr0; }
+                }
+                if (omap) for (pass = 0; pass < NTH; pass++) {
+                    var oh = 0;
+                    for (r2 = 0; r2 < rows; r2++) for (c2 = 0; c2 < NTH; c2++) {
+                        var oo = r2 * NTH + c2; if (omap[oo] >= 0) continue;
+                        oh++; var oL = omap[r2 * NTH + (c2 + NTH - 1) % NTH], oR = omap[r2 * NTH + (c2 + 1) % NTH];
+                        if (oL >= 0 && oR >= 0) omap[oo] = (oL + oR) / 2; else if (oL >= 0) omap[oo] = oL; else if (oR >= 0) omap[oo] = oR;
+                    }
+                    if (!oh) break;
                 }
                 for (pass = 0; pass < NTH; pass++) {
                     var holes = 0;
@@ -33272,6 +33296,66 @@ const ThreeRenderer = (function () {
                 for (c2 = 0; c2 < NTH; c2++) for (r2 = 1; r2 < rows; r2++) { var oa2 = (r2 - 1) * NTH + c2, ob2 = r2 * NTH + c2; if (RAD[ob2] < RAD[oa2]) RAD[ob2] = RAD[oa2]; }
                 // …and never under the measured maximum (the skin + the layers worn under it): the blur lowers the peaks
                 for (r2 = 0; r2 < rows; r2++) for (c2 = 0; c2 < NTH; c2++) { var o7 = r2 * NTH + c2; if (RAD[o7] < map[o7] + 0.0005 * H) RAD[o7] = map[o7] + 0.0005 * H; }
+                /* rev 11: UNDER THE LAYER WORN OVER IT — a skirt under a jacket used to stand off at its own swing allowance and
+                   flare while the jacket hugged the hips, so the skirt came through the jacket's hem as a ragged white line.
+                   Every row the outer covers is held 6 mm inside the outer's surface (its own cut shell, `over`) or inside
+                   the coat's tail lathe (`overLathe`), eased in over the 3 cm above the outer's hem so there is no step at
+                   the hem, and never under the skin + the ease (the skin wins over a layer tighter than that) */
+                var overLim = function (r, c) {
+                    var lim = Infinity, t = rowT(r);
+                    if (omap && t > overT - 0.03) { var cw = Math.min(1, (t - (overT - 0.03)) / 0.03); cw = cw * cw * (3 - 2 * cw); var l1 = omap[r * NTH + c] - 0.006 * H; lim = Math.min(lim, l1 + (1 - cw) * 10 * Hm); }
+                    if (OVL && t > OVL.tHem - 0.03 && t < OVL.tTop) {
+                        var fr = (OVL.tTop - t) / (OVL.tTop - OVL.tHem) * (OVL.rows - 1), r0 = Math.max(0, Math.min(OVL.rows - 1, Math.floor(fr))), r1 = Math.min(OVL.rows - 1, r0 + 1), ff = Math.max(0, Math.min(1, fr - r0));
+                        var l2 = (OVL.RAD[r0 * NTH + c] * (1 - ff) + OVL.RAD[r1 * NTH + c] * ff) - 0.006 * H, cw2 = Math.min(1, (t - (OVL.tHem - 0.03)) / 0.03); cw2 = cw2 * cw2 * (3 - 2 * cw2);
+                        lim = Math.min(lim, l2 + (1 - cw2) * 10 * Hm);
+                    }
+                    return lim;
+                };
+                if (omap || OVL) {
+                    for (r2 = 0; r2 < rows; r2++) for (c2 = 0; c2 < NTH; c2++) { var o8 = r2 * NTH + c2, lm8 = overLim(r2, c2), fl8 = map[o8] + 0.0005 * H; if (RAD[o8] > lm8) RAD[o8] = Math.max(fl8, lm8); }
+                    // …and below the outer's hem the skirt widens back out as a CONE, never a shelf: a row grows at most 0.7 cm
+                    // per 1 cm row (35°) over the row above it (a dress under a fitted coat stood out under its hem as a flat ledge)
+                    var grow = 0.007 * H;
+                    for (c2 = 0; c2 < NTH; c2++) for (r2 = 1; r2 < rows; r2++) { var oc = r2 * NTH + c2, ou = oc - NTH; if (RAD[oc] > RAD[ou] + grow) RAD[oc] = RAD[ou] + grow; }
+                }
+                /* rev 11 — THE SMOOTH WEIGHT FIELD ("why is the hem so jagged"): every column used to ride the ONE skin vertex
+                   that set its radius (`rep`), and neighbouring bins land on vertices with different bone weights — worst
+                   near the centre front / back, where the ray from the axis passes between the thighs and the farthest
+                   vertex flips from one leg to the other bin by bin — so the moment the legs posed, each column moved its
+                   own way and the hem tore into a sawtooth (invisible in the bind pose, where every headless render is
+                   made). Now the weights are a FIELD over the (row, azimuth) grid in three ROLES — hips (+ the spine and
+                   anything else), the upper leg, the lower leg (+ the foot), the two SIDES folded together — accumulated
+                   from the rep vertices' welded weights, blurred round each row (8 passes of a 3-tap, ~10°) and down each
+                   column (3 passes); every lathe vertex interpolates the field between its two bins and hands the leg
+                   roles to the LEFT / RIGHT bones by one smooth function of the azimuth (`wL`: a smoothstep of sin θ over
+                   ±0.5 — the left leg stands at +x), 50 / 50 at the centre front / back. A continuous function of the
+                   azimuth, so neighbours move together in any pose; the lean on the Hips with the flare rides on top. */
+                var SIW = part.siW, SWW = part.swW, wi, wk, wb, bnm = function (i2) { return (part.bones[i2] && part.bones[i2].name) || ''; };
+                var LU = part.bones.findIndex(function (bb) { return bb.name === 'LeftUpLeg'; }), RU = part.bones.findIndex(function (bb) { return bb.name === 'RightUpLeg'; });
+                var LL = part.bones.findIndex(function (bb) { return bb.name === 'LeftLeg'; }), RL = part.bones.findIndex(function (bb) { return bb.name === 'RightLeg'; });
+                var legsOk = LU >= 0 && RU >= 0 && LL >= 0 && RL >= 0;
+                var roleOf = function (bi) { if (!legsOk) return 0; var nm = bnm(bi); if (/UpLeg$/.test(nm)) return 1; if (/Leg$|Foot$|ToeBase$|Toe_End$/.test(nm)) return 2; return 0; };
+                var roleCache = {}, WF = new Float32Array(NTH * rows * 3), WS = new Float32Array(NTH * rows * 3);
+                for (wi = 0; wi < NTH * rows; wi++) {
+                    var wv = rep[wi], wo0 = wi * 3, tot = 0;
+                    if (wv >= 0) for (wk = 0; wk < 4; wk++) { var ww = SWW[wv * 4 + wk]; if (!(ww > 0)) continue; wb = SIW[wv * 4 + wk]; if (roleCache[wb] == null) roleCache[wb] = roleOf(wb); WF[wo0 + roleCache[wb]] += ww; tot += ww; }
+                    if (tot > 0) { WF[wo0] /= tot; WF[wo0 + 1] /= tot; WF[wo0 + 2] /= tot; } else WF[wo0] = 1;
+                }
+                for (pass = 0; pass < 8; pass++) {
+                    for (r2 = 0; r2 < rows; r2++) for (c2 = 0; c2 < NTH; c2++) { var wo = (r2 * NTH + c2) * 3, wl = (r2 * NTH + (c2 + NTH - 1) % NTH) * 3, wr = (r2 * NTH + (c2 + 1) % NTH) * 3; for (wk = 0; wk < 3; wk++) WS[wo + wk] = (WF[wl + wk] + 2 * WF[wo + wk] + WF[wr + wk]) / 4; }
+                    WF.set(WS);
+                }
+                for (pass = 0; pass < 3; pass++) {
+                    for (r2 = 0; r2 < rows; r2++) for (c2 = 0; c2 < NTH; c2++) { var wo2 = (r2 * NTH + c2) * 3, wu = (Math.max(0, r2 - 1) * NTH + c2) * 3, wd = (Math.min(rows - 1, r2 + 1) * NTH + c2) * 3; for (wk = 0; wk < 3; wk++) WS[wo2 + wk] = (WF[wu + wk] + 2 * WF[wo2 + wk] + WF[wd + wk]) / 4; }
+                    WF.set(WS);
+                }
+                var fieldAt = function (r, th2, acc, w) {   // the field interpolated between two bins, the sides by wL(θ), added into acc at weight w
+                    var fb = th2 / (2 * Math.PI) * NTH, b0 = Math.floor(fb), fr = fb - b0, ba = ((b0 % NTH) + NTH) % NTH, bb2 = (ba + 1) % NTH, oa = (r * NTH + ba) * 3, ob = (r * NTH + bb2) * 3;
+                    var h = WF[oa] * (1 - fr) + WF[ob] * fr, u = WF[oa + 1] * (1 - fr) + WF[ob + 1] * fr, l = WF[oa + 2] * (1 - fr) + WF[ob + 2] * fr;
+                    var sL = Math.sin(th2) / 0.5, wL = sL <= -1 ? 0 : sL >= 1 ? 1 : (sL + 1) / 2; wL = wL * wL * (3 - 2 * wL);
+                    var add = function (bi, v) { if (v > 1e-4) acc[bi] = (acc[bi] || 0) + v * w; };
+                    add(hipsBone, h); if (legsOk) { add(LU, u * wL); add(RU, u * (1 - wL)); add(LL, l * wL); add(RL, l * (1 - wL)); } else add(hipsBone, u + l);
+                };
                 // ONE connected lathe (a split at the front / back was tried: a walking leg opened a clean slit, but the
                 // idle pose — legs apart sideways — gaped it 10 cm open on a long skirt; a connected panel stretches instead)
                 var half = -1, cols = NTH + 1, thA = gap, thB = 2 * Math.PI - gap, base = (nBase || 0) + b.xCount, Ru = 0.15 * Hm;
@@ -33289,10 +33373,10 @@ const ThreeRenderer = (function () {
                     // hips-weighted panel let a walking thigh push straight through); at the front / back centre the
                     // two legs' columns blend half and half over ±27° so a sideways stance stretches the panel; the
                     // flare leans on the Hips but never lets go of the leg (a hips-only hem let the shins through)
-                    var ri = rep[r2 * NTH + bt2]; if (ri < 0) ri = 0;
-                    var mirror = rep[r2 * NTH + ((NTH - bt2) % NTH)]; if (mirror < 0) mirror = ri;
-                    var wMirror = 0.5 * Math.max(0, 1 - Math.abs(sx2) / 0.45), sk0 = blendSkin(ri, mirror, wMirror);
-                    var sk = blendSkinTo(sk0, hipsBone, 0.35 * Math.min(1, fl[r2] / (0.06 * Hm)));
+                    var wHips = 0.35 * Math.min(1, fl[r2] / (0.06 * Hm)), accW = {};
+                    fieldAt(r2, th2, accW, 1 - wHips);
+                    accW[hipsBone] = (accW[hipsBone] || 0) + wHips;
+                    var sk = top4(accW);
                     b.xSi.push(sk.si[0], sk.si[1], sk.si[2], sk.si[3]); b.xSw.push(sk.sw[0], sk.sw[1], sk.sw[2], sk.sw[3]);
                     b.xCount++;
                 }
@@ -33323,6 +33407,9 @@ const ThreeRenderer = (function () {
                     }
                     for (c2 = 0; c2 + 1 < cols; c2++) { if (c2 === half) continue; var o0 = base + vIdx(last, c2), o1 = base + vIdx(last, c2 + 1), i0h = hb + c2, i1h = hb + c2 + 1; b.index.push(o0, i0h, o1, o1, i0h, i1h); }
                 }
+                // rev 11: the skirt's grid for the collision pass (rows × cols, + the hem strip row) and the field for a lathe hung over this one
+                if (opts.grid) part.skirtGrid = { rows: rows, cols: cols, hem: !(typeof window !== 'undefined' && window.EW_CC_NO_HEMS), base: base - (nBase || 0) };
+                return { RAD: RAD, rows: rows, tTop: tTop, tHem: tHem, NTH: NTH };
             }
             /* THE SOLE (rev 7): a flat slab under each foot — the foot's footprint (t < 3 cm(q), 48 azimuths round
                its centre, the farthest skin per bin + 6 mm) extruded from the floor up to the sole line, a dark
@@ -33714,13 +33801,18 @@ const ThreeRenderer = (function () {
             // rev 10: the lathe's top rows MATCH the bodice's own surface (`surface`), so the join is flush — the +6 mm ring
             // used to stand proud of the bodice as a ledge; a skirt worn over (bottoms2 / a second top's dress) rides higher
             var underSkirt = [sBot && sBot.S, sBot2 && sBot2.S];
-            if (dress) buildLathe({ tTop: TOP.hem + 0.004, tHem: TOP.skirt.hem, ease: TOP.ease + 0.003, flare: TOP.skirt.flare, surface: sTop.S, under: underSkirt }, buffers[skirtIdx], skirtShade(TOP.hem, TOP.skirt.hem), 0);
-            else if (dress2) buildLathe({ tTop: TOP2.hem + 0.004, tHem: TOP2.skirt.hem, ease: TOP2.ease + 0.003, flare: TOP2.skirt.flare, surface: sTop2.S, under: underSkirt }, buffers[skirtIdx], skirtShade(TOP2.hem, TOP2.skirt.hem), 0);
-            else if (latheBottom2) buildLathe({ tTop: BOT2.waist, tHem: BOT2.skirt.hem, ease: 0.009 + (sBot ? botEase : 0) + 0.004, flare: BOT2.skirt.flare, surface: sBot ? sBot.S : null, under: [sBot && sBot.S] }, buffers[skirtIdx], skirtShade(BOT2.waist, BOT2.skirt.hem), 0);
-            else if (latheBottom) buildLathe({ tTop: BOT.waist, tHem: BOT.skirt.hem, ease: 0.009, flare: BOT.skirt.flare }, buffers[skirtIdx], skirtShade(BOT.waist, BOT.skirt.hem), 0);
             // the coat's tail (rev 8): hung from 6 mm above the coat's hem (the join hides under the hem strip), at the
-            // coat's ease + 2 mm, its own swing allowance, shaded like the coat
-            if (OUT && OUT.tail) buildLathe({ tTop: OUT.hem + 0.006, tHem: OUT.tail.hem, ease: OUT.ease + 0.002, flare: OUT.tail.flare, gap: OUT.tail.gap, swing: OUT.tail.swing }, buffers[outerIdx], skirtShade(OUT.hem, OUT.tail.hem, true), LAYERS[outerIdx].base);
+            // coat's ease + 2 mm, its own swing allowance, shaded like the coat — built FIRST (rev 11) so a skirt can hang inside it
+            var tailField = (OUT && OUT.tail) ? buildLathe({ tTop: OUT.hem + 0.006, tHem: OUT.tail.hem, ease: OUT.ease + 0.002, flare: OUT.tail.flare, gap: OUT.tail.gap, swing: OUT.tail.swing }, buffers[outerIdx], skirtShade(OUT.hem, OUT.tail.hem, true), LAYERS[outerIdx].base) : null;
+            // rev 11: a skirt / a dress's skirt stays INSIDE the outer layer worn over it (the jacket's own surface down to its
+            // hem, the coat's tail below that) — see `overLim` in buildLathe; `grid: true` records the skirt's grid for the
+            // collision pass
+            var overSkirt = { over: sOut && sOut.S, overT: OUT ? OUT.hem : -1, overLathe: tailField, grid: true };
+            part.skirtGrid = null;
+            if (dress) buildLathe(Object.assign({ tTop: TOP.hem + 0.004, tHem: TOP.skirt.hem, ease: TOP.ease + 0.003, flare: TOP.skirt.flare, surface: sTop.S, under: underSkirt }, overSkirt), buffers[skirtIdx], skirtShade(TOP.hem, TOP.skirt.hem), 0);
+            else if (dress2) buildLathe(Object.assign({ tTop: TOP2.hem + 0.004, tHem: TOP2.skirt.hem, ease: TOP2.ease + 0.003, flare: TOP2.skirt.flare, surface: sTop2.S, under: underSkirt }, overSkirt), buffers[skirtIdx], skirtShade(TOP2.hem, TOP2.skirt.hem), 0);
+            else if (latheBottom2) buildLathe(Object.assign({ tTop: BOT2.waist, tHem: BOT2.skirt.hem, ease: 0.009 + (sBot ? botEase : 0) + 0.004, flare: BOT2.skirt.flare, surface: sBot ? sBot.S : null, under: [sBot && sBot.S] }, overSkirt), buffers[skirtIdx], skirtShade(BOT2.waist, BOT2.skirt.hem), 0);
+            else if (latheBottom) buildLathe(Object.assign({ tTop: BOT.waist, tHem: BOT.skirt.hem, ease: 0.009, flare: BOT.skirt.flare }, overSkirt), buffers[skirtIdx], skirtShade(BOT.waist, BOT.skirt.hem), 0);
             if (BELT) buildBuckle(buffers[CC_LAYER_NAMES.indexOf('buckle')]);
             if (!(typeof window !== 'undefined' && window.EW_CC_NO_DETAILS)) buildDetails();   // rev 9
             if (FEET) { buildSole(buffers[CC_LAYER_NAMES.indexOf('feet')], 1, FEET); buildSole(buffers[CC_LAYER_NAMES.indexOf('feet')], -1, FEET); }
@@ -33733,6 +33825,30 @@ const ThreeRenderer = (function () {
             // the skirt's bind positions (the collision pass restores them before every push)
             var skG = part.shells.skirt.geometry;
             part.skirtBind = (skG.attributes.position && skG.attributes.position.count) ? new Float32Array(skG.attributes.position.array) : null;
+            /* rev 11: THE REST DEPTH — how far inside each leg capsule every skirt vertex already sits in the BIND pose (a
+               capsule is a circle round the bone at the thigh's widest radius, so it stands a little proud of the skin at
+               the front and the back where the thigh is flatter — and the lathe was built outside the skin on purpose).
+               The collision pass pushes only what a POSE adds beyond this, so the bind pose is left exactly as built. */
+            part.skirtRest = null;
+            if (part.skirtBind && part.legs) {
+                var SBp = part.skirtBind, nSk = SBp.length / 3, restD = new Float32Array(nSk), mg0 = 0.011, sdk, anyRest = false;
+                for (var vk = 0; vk < nSk; vk++) {
+                    var vx = SBp[vk * 3], vy = SBp[vk * 3 + 1], vz = SBp[vk * 3 + 2], bestR = 0;
+                    for (sdk in part.legs) {
+                        var LG = part.legs[sdk], cumR = 0;
+                        for (var sg2 = 0; sg2 + 1 < LG.pts.length; sg2++) {
+                            var pa = LG.pts[sg2], pb = LG.pts[sg2 + 1], ex = pb[0] - pa[0], ey = pb[1] - pa[1], ez = pb[2] - pa[2], l2 = ex * ex + ey * ey + ez * ez || 1e-9, ln = Math.sqrt(l2);
+                            var tt = Math.max(0, Math.min(1, ((vx - pa[0]) * ex + (vy - pa[1]) * ey + (vz - pa[2]) * ez) / l2));
+                            var qx2 = pa[0] + ex * tt - vx, qy2 = pa[1] + ey * tt - vy, qz2 = pa[2] + ez * tt - vz, dd = Math.sqrt(qx2 * qx2 + qy2 * qy2 + qz2 * qz2);
+                            var bn2 = Math.min(LG.r.length - 1, Math.max(0, Math.floor((cumR + tt * ln) / LG.step))), dep = LG.r[bn2] + mg0 - dd;
+                            if (dep > bestR) bestR = dep;
+                            cumR += ln;
+                        }
+                    }
+                    restD[vk] = bestR; if (bestR > 0) anyRest = true;
+                }
+                part.skirtRest = anyRest ? restD : null;
+            }
         }
         /* ── CLOTH COLLISION (rev 9, 2026-09-13): the skirt against the legs, every frame ──
            Every cut garment rides the body's own topology + weights, so it can never clip
@@ -33757,16 +33873,34 @@ const ThreeRenderer = (function () {
             var bones = mesh.skeleton.bones, sides = [], sk;
             for (sk in part.legs) {
                 var lg = part.legs[sk], pts = lg.bones.map(function (bi) { return new THREE.Vector3().setFromMatrixPosition(bones[bi].matrixWorld); });
-                sides.push({ pts: pts, r: lg.r, step: lg.step });
+                /* rev 11: THE SCALE IS THE BONES' — the pass used to scale the measured leg radii by the MESH node's world
+                   scale, but the base GLB's mesh node is scaled 0.01 while its skeleton is not (the bind matrix carries the
+                   difference), so every capsule was 1/100 of a leg and the collision never pushed anything: the legs came
+                   through every skirt exactly as if there were no pass. The bones are rigid, so the world length of the
+                   hip → knee → ankle polyline over its bind length is the exact bind → world scale, whatever the parents do. */
+                var wl = 0; for (var pk = 0; pk + 1 < pts.length; pk++) wl += pts[pk].distanceTo(pts[pk + 1]);
+                var lsc = lg.len > 1e-9 ? wl / lg.len : 1;
+                sides.push({ pts: pts, r: lg.r, step: lg.step, sc: lsc });
             }
             if (!sides.length) return;
             mesh.skeleton.update();
-            var mw = mesh.matrixWorld, sc = _colT.setFromMatrixColumn(mw, 0).length() || 1, margin = 0.011 * sc;   // rev 10: 1.1 cm (was 6 mm — a thigh's cloth still cut in at the knee)
+            var mw = mesh.matrixWorld, sc = sides[0].sc || 1, margin = 0.011 * sc;   // rev 10: 1.1 cm (was 6 mm — a thigh's cloth still cut in at the knee)
             var bm = mesh.skeleton.boneMatrices, si = g.attributes.skinIndex.array, sw = g.attributes.skinWeight.array, changed = false;
-            for (var i = 0; i < posA.count; i++) {
+            /* rev 11 — THE TENT: the push used to be per vertex (each one shoved straight out of the capsule it sat in,
+               its neighbours left where they were), so a knee coming through the panel printed as a sawtooth of poked
+               vertices. Now the pass is two steps: (1) every vertex's world position, its nearest capsule point and its
+               PUSH (how far inside the capsule + margin it sits, 0 outside) are recorded; (2) the push is RELAXED over the
+               skirt's own grid — a slope limit of 6 mm per column and 4 mm per row, so a vertex is pushed out at least as
+               far as its neighbour minus that step (cloth tents over a knee, it does not dimple round it) — and only then
+               applied, each vertex along its own outward direction. Without the grid (no skirt lathe) it is the old pass. */
+            var nV = posA.count, grid = part.skirtGrid || null;
+            if (!part._colBuf || part._colBuf.n !== nV) part._colBuf = { n: nV, W: new Float32Array(nV * 3), D: new Float32Array(nV * 3), P: new Float32Array(nV) };
+            var CB = part._colBuf, WP = CB.W, DP = CB.D, PU = CB.P, any = false, REST = part.skirtRest && part.skirtRest.length === nV ? part.skirtRest : null;
+            for (var i = 0; i < nV; i++) {
                 mesh.boneTransform(i, _colV);           // the skinned vertex, mesh space
                 _colV.applyMatrix4(mw);                 // → world
-                var pushed = false;
+                WP[i * 3] = _colV.x; WP[i * 3 + 1] = _colV.y; WP[i * 3 + 2] = _colV.z;
+                var best = -Infinity, bx = 0, by = 0, bz = 0, bd = 1;
                 for (var sd = 0; sd < sides.length; sd++) {
                     var S = sides[sd], cum = 0;
                     for (var seg = 0; seg + 1 < S.pts.length; seg++) {
@@ -33775,20 +33909,42 @@ const ThreeRenderer = (function () {
                         _colB.subVectors(_colV, a); var t = Math.max(0, Math.min(1, _colB.dot(_colA) / L2));
                         _colT.copy(a).addScaledVector(_colA, t);          // the nearest point on the segment
                         _colB.subVectors(_colV, _colT); var d = _colB.length();
-                        var along = (cum + t * len) / sc, bin = Math.min(S.r.length - 1, Math.max(0, Math.floor(along / S.step))), rr = S.r[bin] * sc + margin;
-                        if (d < rr && d > 1e-6) { _colV.copy(_colT).addScaledVector(_colB, rr / d); pushed = true; }
+                        var along = (cum + t * len) / S.sc, bin = Math.min(S.r.length - 1, Math.max(0, Math.floor(along / S.step))), rr = S.r[bin] * S.sc + margin;
+                        var depth = rr - d;   // > 0 inside the capsule
+                        if (depth > best && d > 1e-6) { best = depth; bx = _colB.x / d; by = _colB.y / d; bz = _colB.z / d; bd = d; }
                         cum += len;
                     }
                 }
-                if (!pushed) continue;
+                DP[i * 3] = bx; DP[i * 3 + 1] = by; DP[i * 3 + 2] = bz;
+                if (REST) best -= REST[i] * sc;   // only what the pose adds beyond the bind pose's own depth
+                PU[i] = best > 0 ? best : 0; if (best > 0) any = true;
+            }
+            if (any && grid && grid.rows * grid.cols + (grid.hem ? grid.cols : 0) + grid.base <= nV) {
+                // the relaxation over the grid (the hem strip row is the last row again — it takes the row above's push)
+                var rows = grid.rows, cols = grid.cols, gb = grid.base, kC = 0.006 * sc, kR = 0.004 * sc, rIt, cIt, moved = true, its = 0;
+                while (moved && its++ < 40) {
+                    moved = false;
+                    for (rIt = 0; rIt < rows; rIt++) for (cIt = 0; cIt < cols; cIt++) {
+                        var vi = gb + rIt * cols + cIt, p = PU[vi], q = p;
+                        if (cIt > 0) q = Math.max(q, PU[vi - 1] - kC); if (cIt + 1 < cols) q = Math.max(q, PU[vi + 1] - kC);
+                        if (cols > 2) { if (cIt === 0) q = Math.max(q, PU[gb + rIt * cols + cols - 2] - kC); if (cIt === cols - 1) q = Math.max(q, PU[gb + rIt * cols + 1] - kC); }   // the seam column is doubled
+                        if (rIt > 0) q = Math.max(q, PU[vi - cols] - kR); if (rIt + 1 < rows) q = Math.max(q, PU[vi + cols] - kR);
+                        if (q > p + 1e-6) { PU[vi] = q; moved = true; }
+                    }
+                }
+                if (grid.hem) for (cIt = 0; cIt < cols; cIt++) { var hv = gb + rows * cols + cIt, lv = gb + (rows - 1) * cols + cIt; if (PU[lv] > PU[hv]) PU[hv] = PU[lv]; }
+            }
+            for (var i2 = 0; i2 < nV; i2++) {
+                var pu = PU[i2]; if (!(pu > 0)) continue;
+                _colV.set(WP[i2 * 3] + DP[i2 * 3] * pu, WP[i2 * 3 + 1] + DP[i2 * 3 + 1] * pu, WP[i2 * 3 + 2] + DP[i2 * 3 + 2] * pu);
                 // back to bind space through this vertex's own skin matrix (bindMatrixInverse · Σ w B · bindMatrix)
-                var e = _colS.elements, i4 = i * 4, k, m, w;
+                var e = _colS.elements, i4 = i2 * 4, k, m, w;
                 for (k = 0; k < 16; k++) e[k] = 0;
                 for (k = 0; k < 4; k++) { w = sw[i4 + k]; if (!w) continue; var o = si[i4 + k] * 16; for (m = 0; m < 16; m++) e[m] += bm[o + m] * w; }
                 _colM.copy(mesh.bindMatrixInverse).multiply(_colS).multiply(mesh.bindMatrix).premultiply(mw);
                 if (_colM.invert) _colM.invert(); else _colM.getInverse(_colM.clone());
                 _colV.applyMatrix4(_colM);
-                posA.array[i * 3] = _colV.x; posA.array[i * 3 + 1] = _colV.y; posA.array[i * 3 + 2] = _colV.z;
+                posA.array[i2 * 3] = _colV.x; posA.array[i2 * 3 + 1] = _colV.y; posA.array[i2 * 3 + 2] = _colV.z;
                 changed = true;
             }
             if (changed || part._skirtWasPushed) { posA.needsUpdate = true; part._skirtWasPushed = changed; }

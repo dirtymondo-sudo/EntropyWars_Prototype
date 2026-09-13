@@ -663,3 +663,53 @@ test('rev 10 — topless, the extra layers and the beard on the real rig', { ski
         rig.dispose();
     } finally { THREE.TextureLoader.prototype.load = origLoad; }
 });
+
+test('rev 11 — the skirt hem: a smooth weight field, the collision at the bones\' scale, the rest depth, the skirt under an outer (source)', () => {
+    const block = renderer.slice(RENDER_BLOCK[0], RENDER_BLOCK[1]);
+    for (const s of ['THE SMOOTH WEIGHT FIELD', 'var roleOf = function (bi)', 'var fieldAt = function (r, th2, acc, w)', 'THE SCALE IS THE BONES', 'sc: lsc }', 'var along = (cum + t * len) / S.sc', 'THE REST DEPTH', 'part.skirtRest = ', 'if (REST) best -= REST[i] * sc;', 'THE TENT', 'part.skirtGrid = { rows: rows, cols: cols', 'var overLim = function (r, c)', 'overLathe: tailField, grid: true', 'qt > 0.45 || qt < 0.06', 'if (firstLeg > 0) for (k = 0; k < firstLeg; k++) r[k] = r[firstLeg];'])
+        assert.ok(block.includes(s), 'renderer block has ' + s);
+    assert.ok(!/blendSkin\(ri, mirror, wMirror\)/.test(block), 'the lathe no longer rides one rep vertex per column');
+    assert.ok(!/sc = _colT\.setFromMatrixColumn\(mw, 0\)\.length\(\)/.test(block), 'the capsule scale is no longer the mesh node\'s');
+    assert.ok(/var tailField = \(OUT && OUT\.tail\) \? buildLathe\(/.test(block) && block.indexOf('var tailField') < block.indexOf('if (dress) buildLathe('), 'the coat tail is built before the skirt so the skirt can hang inside it');
+    assert.ok(read('creator-render.js').includes("const POSE = process.env.POSE || 'bind'"), 'creator-render.js renders posed');
+});
+
+test('rev 11 — the posed hem on the real rig: no sawtooth, the bind pose untouched, the collision pushes the knee out', { skip: !THREE || !haveModels }, async () => {
+    const c = { THREE, console, TextDecoder, URL, Blob, setTimeout, clearTimeout, performance, normalizeCharacterAppearance: normalize,
+        getHairStyleUrl: () => null, getFabricTextureUrl: context.window.getFabricTextureUrl, getCharacterAppearanceAssets: context.window.getCharacterAppearanceAssets,
+        getCharacterModelFallback: context.getCharacterModelFallback, EW_FABRICS: context.window.EW_FABRICS, _unitGlbCache: {} };
+    c.self = c; c.window = c; c._loadUnitGLB = () => {};
+    vm.createContext(c);
+    vm.runInContext(fs.readFileSync(require.resolve('three/examples/js/loaders/GLTFLoader.js'), 'utf8'), c);
+    vm.runInContext(fs.readFileSync(require.resolve('three/examples/js/utils/SkeletonUtils.js'), 'utf8'), c);
+    vm.runInContext(renderer.slice(renderer.indexOf('    /* ══════════════════════════════════════════════════════════════════\n     *  CHARACTER CREATOR RUNTIME'), RENDER_BLOCK[1]), c);
+    const origLoad = THREE.TextureLoader.prototype.load;
+    THREE.TextureLoader.prototype.load = function (url, onLoad) { const t = new THREE.Texture(); if (onLoad) setTimeout(() => onLoad(t), 0); return t; };
+    const load = f => new Promise((ok, fail) => { const b = fs.readFileSync(f); new THREE.GLTFLoader().parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength), '', ok, fail); });
+    try {
+        const gltf = await load(path.join(CC, 'Meshy_AI_human_body_base_mesh_female_rigged.glb'));
+        const hem = (pose) => {
+            const clone = THREE.SkeletonUtils.clone(gltf.scene), rig = c._createAppearanceRig(clone, { hair: 'bald', outfit: 'tee', bottoms: 'skirt', outer: 'jacket' }, true);
+            const bone = n => { let b = null; clone.traverse(o => { if (o.isBone && o.name === n) b = o; }); return b; };
+            for (const [n, a] of pose) bone(n).rotateX(a);
+            clone.updateMatrixWorld(true);
+            let sk; clone.traverse(n => { if (n.isSkinnedMesh && n.name === 'EWCreator_skirt') sk = n; });
+            sk.skeleton.update();
+            const pre = new Float32Array(sk.geometry.attributes.position.array);
+            rig.tick();
+            const A = sk.geometry.attributes.position.array; let moved = 0; for (let i = 0; i < A.length; i += 3) if (Math.hypot(A[i] - pre[i], A[i + 1] - pre[i + 1], A[i + 2] - pre[i + 2]) > 1e-6) moved++;
+            sk.skeleton.update();
+            const v = new THREE.Vector3(), cols = 97, rows = Math.floor(sk.geometry.attributes.position.count / cols), Y = [];
+            for (let cc = 0; cc < cols; cc++) { sk.boneTransform((rows - 1) * cols + cc, v); v.applyMatrix4(sk.matrixWorld); Y.push(v.y); }
+            let s2 = 0, mx = 0; for (let cc = 1; cc + 1 < cols; cc++) { const y2 = Math.abs(Y[cc - 1] - 2 * Y[cc] + Y[cc + 1]); s2 += y2; mx = Math.max(mx, y2); }
+            rig.dispose();
+            return { mean: s2 / (cols - 2), max: mx, moved };
+        };
+        const bind = hem([]), walk = hem([['LeftUpLeg', 0.55], ['RightUpLeg', -0.35], ['LeftLeg', 0.35]]), kick = hem([['LeftUpLeg', 1.0], ['RightUpLeg', -0.2]]);
+        assert.equal(bind.moved, 0, 'the bind pose is left exactly as built (the rest depth)');
+        assert.ok(bind.mean < 0.0002, 'bind hem flat');
+        assert.ok(walk.mean < 0.0025, 'walk hem mean |Δ²y| ' + (walk.mean * 1000).toFixed(2) + ' mm (the rev 10 lathe: 5.4 mm)');
+        assert.ok(walk.max < 0.04, 'walk hem max |Δ²y| ' + (walk.max * 1000).toFixed(1) + ' mm (the rev 10 lathe: 156 mm)');
+        assert.ok(walk.moved > 50 && kick.moved > walk.moved, 'the collision pushes the leg out (' + walk.moved + ' / ' + kick.moved + ' vertices)');
+    } finally { THREE.TextureLoader.prototype.load = origLoad; }
+});

@@ -1112,6 +1112,51 @@ Kill-switches (console): `window.EW_DISABLE_3D_UNITS = true` (all 3D),
   To persist new files, hand them to the user (SendUserFile) to upload via GitHub
   manually. Don't waste time retrying pushes.
 
+## CHARACTER CREATOR rev 11 — THE SKIRT HEM (the sawtooth, the collision that never ran, the skirt under a jacket) (2026-09-13, local delivery)
+The user, again: "the edges of the skirt are messed up… jagged… the back looks
+messed up… why is it so hard to make a skirt". Root cause, measured: the lathe
+was PERFECT in the bind pose (where every headless render is made) and tore the
+moment the legs posed, because every column rode the ONE skin vertex that set
+its radius (`rep`) — neighbouring bins land on vertices with different bone
+weights (a thigh vertex beside a hip vertex beside the OTHER thigh, worst near
+the centre front / back where the ray passes between the legs), so each column
+moved its own way: hem |Δ²y| 5.4 mm mean / 156 mm max in a walk. Four fixes in
+three-renderer.js: **(1) THE SMOOTH WEIGHT FIELD** (`buildLathe`): the weights
+are a field over the (row, azimuth) grid in three ROLES (hips + everything
+else · upper leg · lower leg + foot, the two sides folded together), blurred
+round each row (~10°) and down the columns, interpolated between bins per
+vertex, the leg roles handed to LEFT / RIGHT by ONE smooth `wL(θ)` (a
+smoothstep of sin θ over ±0.5, the left leg at +x); the old mirror blend is
+gone (`sw` inside buildLathe is the SWING allowance — read the welded weights
+as `part.siW / part.swW` there). Walk hem now 1.3 mm mean / 27 mm max, and the
+27 is the fold between the legs, not a tooth. **(2) THE COLLISION NEVER RAN**:
+`collideSkirt` scaled the leg radii by the MESH node's world scale, but the
+base GLB's mesh node is scaled 0.01 while its skeleton is not (the bind matrix
+carries the difference) — every capsule was 1/100 of a leg. The scale is now
+THE BONES' (`S.sc` = the world length of hip → knee → ankle over its bind
+length, `lg.len`); the capsule above the CROTCH holds the thigh's radius
+(`firstLeg`, the profile measured from t ≤ 0.45 — the pelvis is not a leg);
+**THE REST DEPTH** (`part.skirtRest`, computed at rebuild against the bind
+polyline `lg.pts`) = how far inside a capsule each vertex already sits in the
+bind pose, and the pass pushes only what a POSE adds (the bind pose is left
+exactly as built — 0 vertices moved); **THE TENT**: the push is recorded per
+vertex (`part._colBuf`), relaxed over the skirt's own grid (`part.skirtGrid`
+from `opts.grid`; slope limit 6 mm / column, 4 mm / row) and only then applied
+along each vertex's own outward direction — cloth tents over a knee, it does
+not dimple round it. **(3) THE SKIRT UNDER AN OUTER**: `opts.over` (the outer's
+surface) / `overT` (its hem) / `overLathe` (the coat tail's field — the tail is
+built FIRST now and `buildLathe` returns `{ RAD, rows, tTop, tHem, NTH }`)
+hold every covered row 6 mm inside the layer worn over it (`overLim`, eased in
+over the 3 cm above the hem), and below the hem the skirt widens back as a
+CONE (≤ 0.7 cm per 1 cm row) never a shelf — the skirt used to come through a
+jacket's hem as a ragged line. **(4) THE PROBE**: `POSE=walk|idle|kick node
+creator-render.js …` renders the rig POSED (CPU-skinned after the collision
+tick) and prints `HEM` (the sawtooth number) + `COLLIDE` — the bind pose hides
+all of this; never judge a skirt from it again. character-creator.test.js: two
+rev 11 tests (source + the real rig posed: bind untouched, walk mean < 2.5 mm,
+the kick pushes more than the walk). Unseen live: the browser's lit hem, the
+long skirt over a raised foot (the capsule ends at the ankle).
+
 ## CHARACTER CREATOR rev 10 — the locker, the name, topless, the extra layers, the beard, the prints (2026-09-13, local delivery)
 **THE NAME + THE LOCKER**: party-builder.js `SavedLooks` (rendered first
 inside `CreatorControls`, which now takes `name / onName / onLoad`) — the

@@ -512,6 +512,28 @@ visual information and feedback for quick decision making".
   fork's fit at narrow widths (two options in a third of the tech column — names clamp to two lines) is the first
   thing to eyeball.
 
+### 2026-09-13 — CHARACTER CREATOR rev 11 (THE SKIRT HEM: the sawtooth, the collision that never ran, the skirt under a jacket) — local delivery
+The user's screenshots (Robin, the mini skirt under a jacket): a sawtooth hem, the back panel crumpled, the skirt
+through the jacket's hem. Every previous "smooth the lathe" pass worked on the RADIUS field and was verified in the
+bind pose — where the hem is a perfect circle by construction. The tear is a SKINNING fault: it exists only posed.
+- **Measured first** (a scratch posed render: rotate the leg bones, tick, CPU-skin, render; the walk / idle / kick
+  stances): hem mean |Δ²y| 5.4 mm, max 156 mm in the walk, 0 in bind. The worst columns sat where the ray from the
+  axis passes between the thighs and the farthest vertex flips leg to leg bin by bin.
+- **The smooth weight field** — three roles (hips · upper leg · lower leg), sides folded, blurred, the sides handed
+  back by one smoothstep of sin θ. Walk: 1.3 mm mean, 27 mm max (the fold between the legs). The top-4 truncation
+  is continuous by symmetry (the dropped fifth weight is the same on either side of the flip).
+- **The collision never ran** — `sc` was the mesh node's 0.01; the capsules were 1.6 mm. Now the bones' own scale.
+  Then it ran too well: a capsule is a circle at the thigh's widest radius, proud of the flatter front / back, and the
+  hip bins took the pelvis — 1,500 vertices pushed up to 96 mm in the BIND pose. Fixed by the crotch cap + the rest
+  depth (only what the pose adds). Then the tent (a relaxed push over the grid) so a knee lifts the panel as cloth.
+- **The skirt under an outer** — held 6 mm inside the jacket / the coat tail, the cone under the hem (a dress under a
+  fitted coat first stood out as a flat shelf: the drape rule had run before the clamp).
+- Verified: `npm test`; posed shots walk / idle / kick with skirt + jacket, dress + coat, longskirt (POSE= in
+  creator-render.js, repo tool). Unseen live: the lit hem in the browser; a long skirt over a raised foot (the capsule
+  stops at the ankle — the foot may show in an extreme kick).
+- Open: the fold between the legs on a wide stride is a smooth crease, not a slit (a split lathe gaped in the idle);
+  the jacket's hem fold can still show a speck of skirt at the centre back in a long stride (6 mm margin).
+
 ### 2026-09-13 — CHARACTER CREATOR rev 10 (the locker, the name, topless, the extra layers, the beard, 20 prints) — local delivery
 The user's list: name the character on the creator screen · save / load custom characters · collars and hoods "not the
 right geometry" · the bow tie and the hoodie pocket "too square" · dress / gown / skirt clipping and rough edges · a

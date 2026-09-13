@@ -10229,6 +10229,11 @@ Playwright probe. Timing caveat: the vm sandbox (this tool and the test) makes
 global lookups interceptor-slow — a bake reads ~4 s there and ~265 ms in the
 same realm / the browser.
 
+**rev 11 (2026-09-13) — POSED:** `POSE=walk|idle|kick node creator-render.js female tee tag '{"bottoms":"skirt","outer":"jacket"}'`
+poses the leg bones, runs the cloth-collision tick, CPU-skins every shell and renders it posed; prints `HEM <pose> mean |Δ²y|` (the
+skirt hem's sawtooth number — bind 0, the rev 10 lathe 5.4 mm in the walk, rev 11 1.3 mm) and `COLLIDE moved n` (the pass moves 0 in
+bind by design). The bind pose hides every skinning fault — judge a skirt / dress / coat tail POSED. Needs three@0.128.0 like the rest.
+
 **rev 5 (2026-09-11):** `creator-render.js` now decodes the fabric tiles
 (its own 40-line PNG reader — `'{"topFabric":"denim"}'` maps them through the
 garment UVs exactly as the runtime does, luminance-normalised, tint × 1.18) and

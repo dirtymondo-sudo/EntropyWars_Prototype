@@ -16,6 +16,7 @@
 
    Needs: npm i --no-save three@0.128.0
    Usage: node creator-render.js [male|female] [tee|tank|…any CC_TOPS id] [tag] ['{"bottoms":"skirt","outer":"blazer","feet":"boots","gloves":"gloves","belt":"belt","hair":"hair000","topFabric":"denim",…}']
+          POSE=walk|idle|kick renders the rig POSED (CPU-skinned after the cloth-collision tick; rev 11) — the only way to see a skirt's hem tear
           (rev 7: every layer renders with its own fabric + tint — outer / feet / gloves / belt / the skirt lathe / the buckle)
           VIEWS=torso,torso34,side,back,head,head34,eyes,full,top,hair34,hairside,hairback  OUT=shots/creator-render
           CROP=1 also dumps a 3× texel crop of the baked texture round each eye.
@@ -185,7 +186,33 @@ function render(meshes, view) {
   const gltf = await load(path.join(CC, 'Meshy_AI_human_body_base_mesh_' + gender + '_rigged.glb'));
   const clone = THREE.SkeletonUtils.clone(gltf.scene);
   if (process.env.NO_HEMS) c.EW_CC_NO_HEMS = true;   // the bare cut edges, no inward hem strips
-  c._createAppearanceRig(clone, look, true);
+  const rig = c._createAppearanceRig(clone, look, true);
+  /* rev 11 (2026-09-13): POSE=walk|idle|kick — the bind pose hides every skinning fault (a lathe skirt's hem tore into a
+     sawtooth only once the legs posed). The rig is posed by rotating the leg bones, the cloth-collision tick runs
+     (rig.tick — the same pass the board / HQ / viewer run after the mixer), every SkinnedMesh is skinned on the CPU
+     (boneTransform → world) and the geometry rendered posed; HEM prints the skirt hem's mean |Δ²| round the ring (mm —
+     the sawtooth number: the bind pose is 0, the old lathe was 5.4 mm in the walk). COLLIDE prints what the pass moved. */
+  const POSE = process.env.POSE || 'bind';
+  if (POSE !== 'bind') {
+    const bone = n => { let b = null; clone.traverse(o => { if (o.isBone && o.name === n) b = o; }); return b; };
+    const rx = (n, a) => { const b = bone(n); if (b) b.rotateX(a); }, rz = (n, a) => { const b = bone(n); if (b) b.rotateZ(a); };
+    if (POSE === 'walk') { rx('LeftUpLeg', 0.55); rx('RightUpLeg', -0.35); rx('LeftLeg', 0.35); rx('RightLeg', 0.15); }
+    else if (POSE === 'idle') { rz('LeftUpLeg', 0.16); rz('RightUpLeg', -0.16); rx('LeftUpLeg', 0.12); rx('RightUpLeg', -0.05); }
+    else if (POSE === 'kick') { rx('LeftUpLeg', 1.0); rx('LeftLeg', 0.2); rx('RightUpLeg', -0.2); }
+    else console.warn('unknown POSE', POSE, '(walk | idle | kick)');
+    clone.updateMatrixWorld(true);
+    clone.traverse(n => { if (n.isSkinnedMesh) n.skeleton.update(); });
+    let pre = null; clone.traverse(n => { if (n.isSkinnedMesh && n.name === 'EWCreator_skirt') pre = new Float32Array(n.geometry.attributes.position.array); });
+    if (rig && rig.tick) rig.tick();
+    clone.traverse(n => { if (n.isSkinnedMesh && n.name === 'EWCreator_skirt' && pre) { const A = n.geometry.attributes.position.array; let mx = 0, cnt = 0; for (let i = 0; i < A.length; i += 3) { const d = Math.hypot(A[i] - pre[i], A[i + 1] - pre[i + 1], A[i + 2] - pre[i + 2]); if (d > 1e-6) cnt++; mx = Math.max(mx, d); } console.log('COLLIDE moved', cnt, 'skirt vertices, max', (mx * 1000).toFixed(1), 'mm'); } });
+    const v = new THREE.Vector3();
+    clone.traverse(n => { if (!n.isSkinnedMesh) return; const g = n.geometry, P = g.attributes.position, out = new Float32Array(P.array.length);
+      for (let i = 0; i < P.count; i++) { n.boneTransform(i, v); v.applyMatrix4(n.matrixWorld); out[i * 3] = v.x; out[i * 3 + 1] = v.y; out[i * 3 + 2] = v.z; }
+      g.setAttribute('position', new THREE.BufferAttribute(out, 3)); g.computeVertexNormals(); });
+    clone.traverse(n => { if (!(n.isSkinnedMesh && n.name === 'EWCreator_skirt' && n.visible)) return; const P = n.geometry.attributes.position.array, cols = 97, rows = Math.floor(P.length / 3 / cols);
+      let s2 = 0, mx = 0; for (let cc = 1; cc + 1 < cols; cc++) { const o = ((rows - 1) * cols + cc) * 3, y2 = Math.abs(P[o - 3 + 1] - 2 * P[o + 1] + P[o + 3 + 1]); s2 += y2; mx = Math.max(mx, y2); }
+      console.log('HEM', POSE, 'mean |Δ²y|', (s2 / (cols - 2) * 1000).toFixed(2), 'mm, max', (mx * 1000).toFixed(1), 'mm'); });
+  }
   const meshes = []; clone.traverse(n => { if (n.isSkinnedMesh && n.parent && n.visible) meshes.push(n); });
   const skin = hexRGB(A.skin), top = hexRGB(A.topColor), bottom = hexRGB(A.bottomColor), hairCol = hexRGB(A.hairColor);
   const fabrics = { top: fabricTex(A.topFabric), bottom: fabricTex(A.bottomFabric) };
