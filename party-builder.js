@@ -873,7 +873,65 @@ function PortraitSprite({ race, gender, cls, glow, style: extraStyle }) {
    the two-colour prints) are the stage's own painter (EWCharViewer
    .fabricThumb / .patternThumb) and live here. `footer` = the home's own
    action row (the forge's RANDOMIZE / RESET / USE ORIGINAL MODEL). */
-function CreatorControls({ appearance, gender, disabled, onChange, footer }) {
+/* ── THE LOCKER (rev 10, 2026-09-13 — "save and load custom characters") ──
+   Saved characters = { id, name, gender, appearance, at } in localStorage
+   `ew_saved_looks` (PB_LOOKS_MAX of them, newest first; every appearance goes
+   back through normalizeCharacterAppearance on load). Shared by both homes of
+   the creator: SAVE CHARACTER files the look under the name in the NAME field
+   (the same name overwrites), a chip LOADs it (appearance + base + name),
+   ✕ forgets it. window._ewSavedLooks exposes it (the tests, the HQ). */
+const PB_LOOKS_KEY = 'ew_saved_looks', PB_LOOKS_MAX = 40;
+function pbLooksLoad() {
+  try {
+    const raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(PB_LOOKS_KEY) : null, arr = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(arr)) return [];
+    return arr.filter(e => e && typeof e === 'object' && e.appearance && typeof e.appearance === 'object').map(e => ({
+      id: String(e.id || ''), name: String(e.name || 'Unnamed').slice(0, 24), gender: e.gender === 'female' ? 'female' : 'male',
+      appearance: window.normalizeCharacterAppearance ? window.normalizeCharacterAppearance(e.appearance) : e.appearance, at: +e.at || 0,
+    })).filter(e => e.id && e.appearance);
+  } catch (e) { return []; }
+}
+function pbLooksStore(list) { try { localStorage.setItem(PB_LOOKS_KEY, JSON.stringify(list.slice(0, PB_LOOKS_MAX))); return true; } catch (e) { return false; } }
+function pbLooksSave(name, gender, appearance) {
+  const nm = String(name || '').trim().slice(0, 24) || 'Unnamed', list = pbLooksLoad().filter(e => e.name.toLowerCase() !== nm.toLowerCase());
+  const entry = { id: 'look-' + Date.now().toString(36) + '-' + Math.floor(Math.random() * 1e6).toString(36), name: nm, gender: gender === 'female' ? 'female' : 'male',
+    appearance: window.normalizeCharacterAppearance ? window.normalizeCharacterAppearance(appearance || {}) : (appearance || {}), at: Date.now() };
+  list.unshift(entry);
+  return pbLooksStore(list) ? entry : null;
+}
+function pbLooksDelete(id) { const list = pbLooksLoad().filter(e => e.id !== id); pbLooksStore(list); return list; }
+if (typeof window !== 'undefined') window._ewSavedLooks = { load: pbLooksLoad, save: pbLooksSave, remove: pbLooksDelete, key: PB_LOOKS_KEY, max: PB_LOOKS_MAX };
+/* the NAME field + the locker's rack — one block at the top of the creator (`name` / `onName` / `onLoad` from the home) */
+function SavedLooks({ name, gender, appearance, disabled, onName, onLoad }) {
+  const [list, setList] = React.useState(() => pbLooksLoad());
+  const [note, setNote] = React.useState('');
+  const nameRef = React.useRef(null);
+  const commitName = () => { const v = nameRef.current ? nameRef.current.value : name; if (onName && v !== name) onName(v); return v; };
+  const save = () => {
+    if (disabled) return;
+    const nm = commitName();
+    const entry = pbLooksSave(nm, gender, appearance);
+    if (!entry) { setNote('Could not save (storage is full or blocked).'); return; }
+    setList(pbLooksLoad()); setNote('Saved “' + entry.name + '”.');
+    try { if (typeof playDoorSfx === 'function') playDoorSfx('stamp', { volume: 0.35 }); } catch (e) {}
+  };
+  return h('div', { className: 'pb-looks' },
+    h('div', { className: 'pb-creator-name' },
+      h('span', { className: 'pb-creator-colorlabel' }, 'Name'),
+      h('input', { key: name, ref: nameRef, className: 'pb-gear-input', defaultValue: name || '', maxLength: 24, placeholder: 'Character name', 'aria-label': 'Character name', disabled: !onName || disabled,
+        onBlur: commitName, onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); commitName(); e.target.blur(); } } }),
+      h('button', { className: 'ms-tty-btn primary', disabled, onClick: save, title: 'File this character (name, base, every appearance choice) in the locker' }, '💾 SAVE CHARACTER')),
+    list.length ? h('div', { className: 'pb-look-rack', role: 'list', 'aria-label': 'Saved characters' }, list.map(e =>
+      h('div', { key: e.id, className: 'pb-look-chip', role: 'listitem' },
+        h('button', { className: 'pb-look-load', disabled, title: 'Load ' + e.name + ' (' + e.gender + ')', onClick: () => { if (onLoad) onLoad(e); setNote('Loaded “' + e.name + '”.'); } },
+          h('i', { className: 'pb-look-swatch', style: { background: 'linear-gradient(135deg, ' + (e.appearance.topColor || '#888') + ' 50%, ' + (e.appearance.bottomColor || '#555') + ' 50%)' } }),
+          h('span', null, e.name), h('small', null, e.gender === 'female' ? '♀' : '♂')),
+        h('button', { className: 'pb-look-del', disabled, 'aria-label': 'Forget ' + e.name, title: 'Forget', onClick: () => { setList(pbLooksDelete(e.id)); setNote('Forgot “' + e.name + '”.'); } }, '✕'))))
+      : h('p', { className: 'pb-creator-note pb-looks-empty' }, 'No saved characters yet — name this one and SAVE CHARACTER to keep it for any slot, any team.'),
+    note ? h('div', { className: 'pb-looks-note', role: 'status' }, note) : null);
+}
+
+function CreatorControls({ appearance, gender, disabled, onChange, footer, name, onName, onLoad }) {
   const changeAppearance = (changes, g) => onChange(changes, g);
   /* rev 9 (2026-09-13 — the colour-picker lag): a native <input type=color> and a range slider fire a
      change per pointer move, and each one re-rendered the whole forge and re-dressed the stage. Continuous
@@ -924,15 +982,31 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer }) {
   const ccChoice = (key, options) => h('div', { className: 'pb-creator-options', role: 'group' }, options.map(([id, label]) =>
     h('button', { key: id, className: 'ms-tty-btn' + (appearance[key] === id ? ' primary' : ''), 'aria-pressed': appearance[key] === id, onClick: () => changeAppearance({ [key]: id }) }, label)));
   // a wardrobe LAYER row: the style buttons, then (while something is worn) its fabric tiles + the print + the colours
-  const ccLayer = (label, key, catalogue, fabricKey, colorKey) => {
-    const list = (window[catalogue] || [{ id: 'none', label: 'None' }]).map(o => [o.id, o.label]);
+  const ccLayer = (label, key, catalogue, fabricKey, colorKey, onRemove) => {
+    const list = (Array.isArray(catalogue) ? catalogue : (window[catalogue] || [{ id: 'none', label: 'None' }])).map(o => [o.id, o.label]);
     const worn = appearance[key] !== 'none';
     return h(React.Fragment, { key },
-      h('div', { className: 'pb-creator-colorlabel' }, label),
+      h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, label, onRemove ? h('button', { className: 'ms-tty-btn pb-layer-remove', title: 'Take this layer off', onClick: onRemove }, '✕ REMOVE') : null),
       ccChoice(key, list),
       worn ? ccFabricTiles(fabricKey, label, true) : null,
       worn ? ccPrint(fabricKey, colorKey, label) : null);
   };
+  /* THE EXTRA LAYERS (rev 10, 2026-09-13 — "a plus sign icon so I can wear briefs over trousers"): sprites.js
+     EW_APPEARANCE_LAYERS rows with `extra: true` (a second top over the top, a second pair of bottoms over the
+     bottoms). ＋ ADD LAYER lists the ones not worn; each worn one is a full layer row (style · fabric · print · colours)
+     with ✕ REMOVE. */
+  const [addOpen, setAddOpen] = React.useState(false);
+  const extraLayers = ccLayers.filter(L => L.extra);
+  const extraStyles = (L) => (L.slot === 'outfit2' ? (window.EW_OUTFIT_STYLES || []) : (window.EW_BOTTOM_STYLES || [])).filter(o => o.id !== 'none');
+  const extraDefault = (L) => L.slot === 'outfit2' ? 'tank' : 'briefs';
+  const ccExtraLayers = () => h(React.Fragment, null,
+    extraLayers.filter(L => appearance[L.slot] && appearance[L.slot] !== 'none').map(L =>
+      ccLayer(L.label || L.id, L.slot, extraStyles(L), L.fabric, L.color, () => changeAppearance({ [L.slot]: 'none' }))),
+    extraLayers.some(L => !appearance[L.slot] || appearance[L.slot] === 'none') ? h('div', { className: 'pb-cc-add' },
+      h('button', { className: 'ms-tty-btn pb-cc-add-btn', 'aria-expanded': addOpen, onClick: () => setAddOpen(o => !o), title: 'Wear another layer over what you have on' }, h('b', null, '＋'), ' ADD LAYER'),
+      addOpen ? h('div', { className: 'pb-creator-options pb-cc-add-menu', role: 'menu' },
+        extraLayers.filter(L => !appearance[L.slot] || appearance[L.slot] === 'none').map(L =>
+          h('button', { key: L.slot, className: 'ms-tty-btn', role: 'menuitem', onClick: () => { setAddOpen(false); changeAppearance({ [L.slot]: extraDefault(L) }); } }, (L.label || L.id).toUpperCase()))) : null) : null);
   /* THE PRINT (rev 8, 2026-09-13): a layer's pattern tiles (each a live swatch drawn by the rig's own painter —
      EWCharViewer.patternThumb — in the layer's current two colours over its fabric) and its two colour rows:
      COLOUR 1 = the ground / the tint, COLOUR 2 = the print (only while a print is on). The pattern key and the
@@ -968,6 +1042,8 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer }) {
   const clothSwatches = ['#f0ece2', '#8fa3a8', '#5e6f80', '#344a50', '#2a2f38', '#141518', '#7a1f1f', '#c0392b', '#b8741a', '#c9a227', '#2e7d32', '#1f5f8b', '#5b3a8a', '#ad4c86'];
   const frameSwatches = ['#1b1b1f', '#4a3222', '#8a6a3a', '#c9a227', '#b5b5b5', '#f2f2f2', '#7a1f1f', '#1f5f8b', '#2e7d32', '#ad4c86'];
   return h('fieldset', { className: 'pb-creator-controls', disabled },
+              // rev 10: the NAME and THE LOCKER first — name the character where the look is made, save / load it
+              h(SavedLooks, { name: name || '', gender, appearance, disabled, onName, onLoad }),
               h('legend', null, 'BODY'),
               h('div', { className: 'pb-creator-options', 'aria-label': 'Base model' }, ['male', 'female'].map(g =>
                 h('button', { key: g, className: 'ms-tty-btn' + (gender === g ? ' primary' : ''), 'aria-pressed': gender === g, onClick: () => changeAppearance({}, g) }, g.toUpperCase()))),
@@ -977,7 +1053,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer }) {
               ccColorRow('eyeColor', 'Eyes', eyeSwatches),
               ccColorRow('lipColor', 'Lips', lipSwatches),
               h('div', { className: 'pb-creator-colorlabel' }, 'Facial hair'),
-              ccChoice('beard', [['none', 'Clean'], ['stubble', 'Stubble'], ['goatee', 'Goatee'], ['beard', 'Beard']]),
+              ccChoice('beard', [['none', 'Clean'], ['stubble', 'Stubble'], ['moustache', 'Moustache'], ['goatee', 'Goatee'], ['beard', 'Beard'], ['fullbeard', 'Full beard']]),   // rev 10: + moustache · full beard
               h('h3', null, 'SKIN'),
               ccColorRow('skin', 'Skin tone', skinSwatches),
               h('h3', null, 'HAIR'),
@@ -989,8 +1065,8 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer }) {
               h('h3', null, 'CLOTHES'),
               h('div', { className: 'pb-creator-colorlabel' }, 'Top'),
               ccChoice('outfit', (window.EW_OUTFIT_STYLES || [{ id: 'tee', label: 'T-shirt' }, { id: 'tank', label: 'Tank top' }, { id: 'suit', label: 'Long sleeve' }]).map(o => [o.id, o.label])),
-              ccFabricTiles('topFabric', 'Top'),
-              ccPrint('topFabric', 'topColor', 'Top'),
+              appearance.outfit !== 'none' ? ccFabricTiles('topFabric', 'Top') : h('p', { className: 'pb-creator-note' }, 'Topless — no top shell; an outer layer or neckwear sits on the skin.'),
+              appearance.outfit !== 'none' ? ccPrint('topFabric', 'topColor', 'Top') : null,
               h('div', { className: 'pb-creator-colorlabel' }, 'Bottoms'),
               ccChoice('bottoms', (window.EW_BOTTOM_STYLES || [{ id: 'trousers', label: 'Trousers' }, { id: 'shorts', label: 'Shorts' }]).map(o => [o.id, o.label])),
               ccFabricTiles('bottomFabric', 'Bottoms'),
@@ -1001,6 +1077,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer }) {
               ccLayer('Feet', 'feet', 'EW_FEET_STYLES', 'feetFabric', 'feetColor'),
               ccLayer('Gloves', 'gloves', 'EW_GLOVE_STYLES', 'glovesFabric', 'glovesColor'),
               ccLayer('Belt', 'belt', 'EW_BELT_STYLES', 'beltFabric', 'beltColor'),
+              ccExtraLayers(),
               // THE ACCESSORIES (rev 9, 2026-09-13): neckwear + glasses, one colour each
               h('h3', null, 'ACCESSORIES'),
               h('div', { className: 'pb-creator-colorlabel' }, 'Neckwear'),
@@ -1009,7 +1086,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer }) {
               h('div', { className: 'pb-creator-colorlabel' }, 'Glasses'),
               ccChoice('glasses', (window.EW_GLASSES_STYLES || [{ id: 'none', label: 'None' }]).map(o => [o.id, o.label])),
               appearance.glasses !== 'none' ? ccColorRow('glassesColor', 'Frame colour', frameSwatches) : null,
-              h('p', { className: 'pb-creator-note' }, 'Clothing and hair are cosmetic. Colour 1 tints the fabric; a print adds colour 2 over it; plain = no weave. A dress or a gown wears the top\u2019s fabric down to its hem. Save your team to keep this look.'),
+              h('p', { className: 'pb-creator-note' }, 'Clothing and hair are cosmetic. Colour 1 tints the fabric; a print adds colour 2 over it; plain = no weave. A dress or a gown wears the top\u2019s fabric down to its hem. SAVE CHARACTER keeps the look in the locker; saving the team keeps it on the slot.'),
     footer || null);
 }
 
@@ -3337,7 +3414,9 @@ function PartyBuilder(props) {
                 h('button', { className: 'ms-tty-btn', disabled: isWaitingOnline, onClick: () => changeAppearance(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}) }, '⚄ RANDOM')))
           : h(React.Fragment, null,
             !viewerLoads ? h('p', { className: 'pb-creator-note' }, 'The 3D stage is unavailable here — changes still save with the team.') : null,
-            h(CreatorControls, { appearance, gender: identity.gender || 'male', disabled: isWaitingOnline, onChange: changeAppearance, footer:
+            h(CreatorControls, { appearance, gender: identity.gender || 'male', disabled: isWaitingOnline, onChange: changeAppearance,
+              name: unitName, onName: (v) => { handleNameChange(v); refresh(); },
+              onLoad: (e) => { changeAppearance(e.appearance, e.gender); handleNameChange(e.name); refresh(); }, footer:
               h('div', { className: 'pb-creator-options' },
                 h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}) }, '⚄ RANDOMIZE'),
                 h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(window.normalizeCharacterAppearance({})) }, 'RESET'),
@@ -3617,6 +3696,7 @@ function OfficerCreator() {
   const [gender, setGender] = React.useState(onFile ? onFile.gender : 'male');
   const [appearance, setAppearance] = React.useState(() => onFile ? onFile.appearance : (window.normalizeCharacterAppearance ? window.normalizeCharacterAppearance({}) : null));
   const [photo, setPhoto] = React.useState(onFile ? onFile.portrait : null);
+  const [lookName, setLookName] = React.useState(onFile && onFile.name ? onFile.name : '');   // rev 10: the look wears a name
   const [status, setStatus] = React.useState(onFile ? 'A look is on file. Change it here; SAVE files it and takes the photo.' : 'No look on file yet. Build one — SAVE files it on your card and takes the photo.');
   const [dirty, setDirty] = React.useState(false);
   const change = (changes, g) => {
@@ -3632,7 +3712,7 @@ function OfficerCreator() {
   const save = () => {
     if (!profile || typeof window.hqSetLook !== 'function') { setStatus('No card on file — sign in at Reception first.'); return; }
     const url = (window.EWCharViewer && typeof window.EWCharViewer.snapshot === 'function' ? window.EWCharViewer.snapshot({ w: 256, h: 320 }) : null) || photo || null;
-    window.hqSetLook(profile, { gender, appearance, portrait: url });
+    window.hqSetLook(profile, { gender, appearance, portrait: url, name: lookName });
     if (typeof window.hqSetAvatar === 'function') window.hqSetAvatar(profile, 'look');
     PS.saveProfile(idx, profile);
     setPhoto(url); setDirty(false);
@@ -3670,7 +3750,8 @@ function OfficerCreator() {
         !viewerLoads ? h('p', { className: 'pb-creator-note', style: { position: 'absolute', left: 16, top: 16 } }, 'The 3D stage is unavailable here — the look still files.') : null),
       h('div', { className: 'pb-officer-controls' },
         h('div', { className: 'pb-creator' },
-          h(CreatorControls, { appearance, gender, disabled: !profile, onChange: change, footer:
+          h(CreatorControls, { appearance, gender, disabled: !profile, onChange: change,
+            name: lookName, onName: (v) => { setLookName(v); setDirty(true); }, onLoad: (e) => { change(e.appearance, e.gender); setLookName(e.name); }, footer:
             h('div', { className: 'pb-creator-options' },
               h('button', { className: 'ms-tty-btn', onClick: () => change(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}) }, '⚄ RANDOMIZE'),
               h('button', { className: 'ms-tty-btn', onClick: () => change(window.normalizeCharacterAppearance ? window.normalizeCharacterAppearance({}) : {}) }, 'RESET')) })))),

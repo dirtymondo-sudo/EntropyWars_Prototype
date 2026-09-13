@@ -1874,6 +1874,15 @@ const EW_PATTERNS = [
   { id: 'argyle',    label: 'Argyle' },
   { id: 'camo',      label: 'Camo' },
   { id: 'stars',     label: 'Stars' },
+  // rev 10 (2026-09-13): eight more prints — the horizontal pinstripe, hearts, fine dots, diamonds, houndstooth, zebra, leopard, crosshatch
+  { id: 'hpinstripe',  label: 'H. pinstripe' },
+  { id: 'hearts',      label: 'Hearts' },
+  { id: 'minidots',    label: 'Fine dots' },
+  { id: 'diamonds',    label: 'Diamonds' },
+  { id: 'houndstooth', label: 'Houndstooth' },
+  { id: 'zebra',       label: 'Zebra' },
+  { id: 'leopard',     label: 'Leopard' },
+  { id: 'crosshatch',  label: 'Crosshatch' },
 ];
 const EW_PATTERN_IDS = EW_PATTERNS.map(p => p.id);
 // THE WARDROBE (rev 7, 2026-09-12): the id is what saves carry (`suit` = the v1
@@ -1895,7 +1904,13 @@ const EW_OUTFIT_STYLES = [
   // rev 9 (2026-09-13): a polo (band collar, three buttons) and a henley (the placket alone)
   { id: 'polo',   label: 'Polo' },
   { id: 'henley', label: 'Henley' },
+  // rev 10 (2026-09-13): TOPLESS — no top shell at all (the skin shows; an outer layer / neckwear sit on the body)
+  { id: 'none',   label: 'Topless' },
 ];
+// rev 10: THE EXTRA LAYERS — a second top worn OVER the top (`outfit2`) and a second pair of bottoms worn OVER the
+// bottoms (`bottoms2`: briefs over trousers = the superhero) at a larger stand-off; 'none' = not worn. The builder's
+// ＋ ADD LAYER button sets them; each carries its own fabric / tint / print keys (EW_APPEARANCE_LAYERS top2 / bottom2).
+const EW_OUTFIT2_IDS = ['none'].concat(EW_OUTFIT_STYLES.map(o => o.id).filter(id => id !== 'none'));
 const EW_BOTTOM_STYLES = [
   { id: 'trousers',    label: 'Trousers' },
   { id: 'shorts',      label: 'Shorts' },
@@ -1910,6 +1925,7 @@ const EW_BOTTOM_STYLES = [
   { id: 'cargo',       label: 'Cargo pants' },
   { id: 'sweatpants',  label: 'Sweatpants' },
 ];
+const EW_BOTTOMS2_IDS = ['none'].concat(EW_BOTTOM_STYLES.map(o => o.id));
 const EW_OUTER_STYLES = [
   { id: 'none',   label: 'None' },
   { id: 'jacket', label: 'Jacket' },
@@ -1961,7 +1977,9 @@ const EW_APPEARANCE_LIMITS = {
 // enum fields: allowed values (first = default)
 const EW_APPEARANCE_ENUMS = {
   hair: ['bald'].concat(EW_HAIR_STYLE_IDS),
-  beard: ['none', 'stubble', 'beard', 'goatee'],
+  beard: ['none', 'stubble', 'beard', 'goatee', 'moustache', 'fullbeard'],   // rev 10: + moustache · full beard
+  outfit2: EW_OUTFIT2_IDS,    // rev 10: the extra layers
+  bottoms2: EW_BOTTOMS2_IDS,
   outfit: EW_OUTFIT_STYLES.map(o => o.id),
   bottoms: EW_BOTTOM_STYLES.map(o => o.id),
   outer: EW_OUTER_STYLES.map(o => o.id),
@@ -1976,6 +1994,8 @@ const EW_APPEARANCE_ENUMS = {
   feetFabric: EW_FABRIC_IDS,
   glovesFabric: EW_FABRIC_IDS,
   beltFabric: EW_FABRIC_IDS,
+  top2Fabric: EW_FABRIC_IDS,      // rev 10
+  bottom2Fabric: EW_FABRIC_IDS,
   // rev 8: the print on each layer
   topPattern: EW_PATTERN_IDS,
   bottomPattern: EW_PATTERN_IDS,
@@ -1983,22 +2003,30 @@ const EW_APPEARANCE_ENUMS = {
   feetPattern: EW_PATTERN_IDS,
   glovesPattern: EW_PATTERN_IDS,
   beltPattern: EW_PATTERN_IDS,
+  top2Pattern: EW_PATTERN_IDS,    // rev 10
+  bottom2Pattern: EW_PATTERN_IDS,
 };
 const EW_APPEARANCE_COLORS = { skin: '#b98362', hairColor: '#27201c', eyeColor: '#4a6b8a', lipColor: '#9c5a5c', topColor: '#8fa3a8', bottomColor: '#5e6f80', outerColor: '#2a2f38', feetColor: '#2b241f', glovesColor: '#3a2a22', beltColor: '#4a3220',
   // rev 8: the print's colour (colour 2) per layer
   topColor2: '#f0ece2', bottomColor2: '#f0ece2', outerColor2: '#c9a227', feetColor2: '#f0ece2', glovesColor2: '#f0ece2', beltColor2: '#f0cf7e',
   // rev 9: the accessories' colours
-  tieColor: '#7a1f1f', glassesColor: '#1b1b1f' };
+  tieColor: '#7a1f1f', glassesColor: '#1b1b1f',
+  // rev 10: the extra layers' colours
+  top2Color: '#c0392b', top2Color2: '#f0ece2', bottom2Color: '#c0392b', bottom2Color2: '#f0cf7e' };
 const EW_APPEARANCE_DEFAULTS = { hair: 'hair003', outfit: 'tee', bottoms: 'trousers', outer: 'none', feet: 'sneakers', gloves: 'none', belt: 'none', beard: 'none', neckwear: 'none', glasses: 'none', topFabric: 'cotton', bottomFabric: 'denim', outerFabric: 'canvas', feetFabric: 'leather', glovesFabric: 'leather', beltFabric: 'leather',
-  topPattern: 'solid', bottomPattern: 'solid', outerPattern: 'solid', feetPattern: 'solid', glovesPattern: 'solid', beltPattern: 'solid' };
+  topPattern: 'solid', bottomPattern: 'solid', outerPattern: 'solid', feetPattern: 'solid', glovesPattern: 'solid', beltPattern: 'solid',
+  outfit2: 'none', bottoms2: 'none', top2Fabric: 'cotton', bottom2Fabric: 'cotton', top2Pattern: 'solid', bottom2Pattern: 'solid' };
 // the fabric + tint (+ rev 8: pattern + colour 2) keys of every layer (the builder's rows, the renderer's paint, the asset warm-up)
+// rev 10: `slot` = the style key the layer is worn through, `extra` = an ADD LAYER layer (the builder's ＋)
 const EW_APPEARANCE_LAYERS = [
-  { id: 'top',    fabric: 'topFabric',    color: 'topColor',    pattern: 'topPattern',    color2: 'topColor2' },
-  { id: 'bottom', fabric: 'bottomFabric', color: 'bottomColor', pattern: 'bottomPattern', color2: 'bottomColor2' },
-  { id: 'outer',  fabric: 'outerFabric',  color: 'outerColor',  pattern: 'outerPattern',  color2: 'outerColor2' },
-  { id: 'feet',   fabric: 'feetFabric',   color: 'feetColor',   pattern: 'feetPattern',   color2: 'feetColor2' },
-  { id: 'gloves', fabric: 'glovesFabric', color: 'glovesColor', pattern: 'glovesPattern', color2: 'glovesColor2' },
-  { id: 'belt',   fabric: 'beltFabric',   color: 'beltColor',   pattern: 'beltPattern',   color2: 'beltColor2' },
+  { id: 'top',     slot: 'outfit',   fabric: 'topFabric',     color: 'topColor',     pattern: 'topPattern',     color2: 'topColor2' },
+  { id: 'bottom',  slot: 'bottoms',  fabric: 'bottomFabric',  color: 'bottomColor',  pattern: 'bottomPattern',  color2: 'bottomColor2' },
+  { id: 'outer',   slot: 'outer',    fabric: 'outerFabric',   color: 'outerColor',   pattern: 'outerPattern',   color2: 'outerColor2' },
+  { id: 'feet',    slot: 'feet',     fabric: 'feetFabric',    color: 'feetColor',    pattern: 'feetPattern',    color2: 'feetColor2' },
+  { id: 'gloves',  slot: 'gloves',   fabric: 'glovesFabric',  color: 'glovesColor',  pattern: 'glovesPattern',  color2: 'glovesColor2' },
+  { id: 'belt',    slot: 'belt',     fabric: 'beltFabric',    color: 'beltColor',    pattern: 'beltPattern',    color2: 'beltColor2' },
+  { id: 'top2',    slot: 'outfit2',  fabric: 'top2Fabric',    color: 'top2Color',    pattern: 'top2Pattern',    color2: 'top2Color2',    extra: true, label: 'Second top' },
+  { id: 'bottom2', slot: 'bottoms2', fabric: 'bottom2Fabric', color: 'bottom2Color', pattern: 'bottom2Pattern', color2: 'bottom2Color2', extra: true, label: 'Second bottoms' },
 ];
 // v1 (2026-09-10 procedural shells) → v2 ids
 const _EW_APPEARANCE_LEGACY_HAIR = { crop: 'hair003', crest: 'hair000', bald: 'bald' };
@@ -2057,6 +2085,10 @@ function randomCharacterAppearance(rng) {
   out.tieColor = hex(r() * 360, 0.35 + r() * 0.4, 0.2 + r() * 0.3);
   out.glassesColor = r() < 0.6 ? '#1b1b1f' : hex(r() * 360, 0.3 + r() * 0.4, 0.2 + r() * 0.4);
   if (r() < 0.5) out.outer = 'none';
+  if (out.outfit === 'none' && r() < 0.85) out.outfit = 'tee';   // rev 10: topless is a choice, not a roll
+  if (r() < 0.88) out.outfit2 = 'none';
+  if (r() < 0.85) out.bottoms2 = 'none';
+  if (out.bottoms2 !== 'none' && r() < 0.6) out.bottoms2 = 'briefs';
   if (r() < 0.7) out.gloves = 'none';
   if (r() < 0.5) out.belt = 'none';
   if (out.feet === 'none' && r() < 0.7) out.feet = 'sneakers';
@@ -2097,7 +2129,7 @@ function getCharacterAppearanceAssets(appearance) {
   const a = normalizeCharacterAppearance(appearance);
   if (!a) return { hair: null, fabrics: [] };
   const fabrics = [];
-  for (const layer of EW_APPEARANCE_LAYERS) { const u = getFabricTextureUrl(a[layer.fabric]); if (u && !fabrics.includes(u)) fabrics.push(u); }
+  for (const layer of EW_APPEARANCE_LAYERS) { if (layer.extra && a[layer.slot] === 'none') continue; const u = getFabricTextureUrl(a[layer.fabric]); if (u && !fabrics.includes(u)) fabrics.push(u); }   // (rev 10: an extra layer warms only while worn)
   return { hair: getHairStyleUrl(a.hair), fabrics };
 }
 if (typeof window !== 'undefined') {

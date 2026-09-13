@@ -20707,7 +20707,8 @@ function hqLook(profile) {
     if (!rec || typeof rec !== 'object' || !rec.appearance || typeof rec.appearance !== 'object') return null;
     const appearance = (typeof normalizeCharacterAppearance === 'function') ? normalizeCharacterAppearance(rec.appearance) : rec.appearance;
     if (!appearance) return null;
-    return { gender: rec.gender === 'female' ? 'female' : 'male', appearance, portrait: (typeof rec.portrait === 'string' && /^data:image\//.test(rec.portrait)) ? rec.portrait : null, at: rec.at || 0 };
+    return { gender: rec.gender === 'female' ? 'female' : 'male', appearance, portrait: (typeof rec.portrait === 'string' && /^data:image\//.test(rec.portrait)) ? rec.portrait : null, at: rec.at || 0,
+        name: typeof rec.name === 'string' ? rec.name.slice(0, 24) : '' };   // rev 10: the look's own name (the mirror's NAME field)
 }
 function hqSetLook(profile, look) {
     if (!profile) return null;
@@ -20719,7 +20720,8 @@ function hqSetLook(profile, look) {
         if (profile.door.hq.avatar && profile.door.hq.avatar.mode === 'look') profile.door.hq.avatar = { mode: 'player' };   // nothing to walk as any more
     } else {
         const appearance = (typeof normalizeCharacterAppearance === 'function') ? normalizeCharacterAppearance(look.appearance || {}) : (look.appearance || {});
-        profile.door.hq.look = { gender: look.gender === 'female' ? 'female' : 'male', appearance, portrait: (typeof look.portrait === 'string' && /^data:image\//.test(look.portrait)) ? look.portrait : null, at: Date.now() };
+        profile.door.hq.look = { gender: look.gender === 'female' ? 'female' : 'male', appearance, portrait: (typeof look.portrait === 'string' && /^data:image\//.test(look.portrait)) ? look.portrait : null, at: Date.now(),
+            name: typeof look.name === 'string' ? look.name.trim().slice(0, 24) : '' };
     }
     const after = hqLook(profile);
     if (JSON.stringify(after || null) !== before) profile.door.hq.cuts = (profile.door.hq.cuts | 0) + 1;

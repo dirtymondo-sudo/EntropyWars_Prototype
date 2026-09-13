@@ -207,7 +207,7 @@ test('rev 6 / rev 7 — every catalogue id has a cut, the builder lists the cata
     const ids = context.window.EW_OUTFIT_STYLES.map(o => o.id);
     assert.deepEqual(context.window.EW_APPEARANCE_ENUMS.outfit, ids, 'the enum is the catalogue');
     assert.ok(ids.includes('suit') && ids.includes('tee') && ids.includes('tank'), 'the v1 ids survive (saves carry them)');
-    for (const id of ids) assert.ok(new RegExp('\\n\\s+' + id + ':\\s*\\{').test(tops), 'CC_TOPS row for ' + id);
+    for (const id of ids) if (id !== 'none') assert.ok(new RegExp('\\n\\s+' + id + ':\\s*\\{').test(tops), 'CC_TOPS row for ' + id);   // rev 10: 'none' = topless, no row
     assert.ok(new Set(context.window.EW_OUTFIT_STYLES.map(o => o.label)).size === ids.length, 'labels are distinct');
     // sleeved tops end along the arm's polyline, never on an x-plane; sleeveless ones (rev 7) remove the arm by the
     // measured capsule + the hand sphere and wear straps as capsules round a path sampled on the shoulder
@@ -218,7 +218,7 @@ test('rev 6 / rev 7 — every catalogue id has a cut, the builder lists the cata
     assert.ok(!/sleeve - Math\.abs\(q\[0\]\)/.test(block), 'the rev 5 x-plane sleeve is gone');
     // every sleeveless top has both panels (or a bikini) and, if it has straps, xIn clear of the neck base
     const cc = {}; vm.runInContext(block.slice(block.indexOf('var CC_TANK_FRONT'), block.indexOf("/* The pack's hair diffuse")), vm.createContext(cc));
-    for (const id of ids) { const T = cc.CC_TOPS[id]; if (T.sleeve == null && !T.bikini) { assert.ok(T.front && T.back, id + ' has panels'); if (T.straps) assert.ok(T.front.xIn >= 0.056 && T.straps.w > 0.01, id + ' straps clear the neck base'); } }
+    for (const id of ids) { const T = cc.CC_TOPS[id]; if (T && T.sleeve == null && !T.bikini) { assert.ok(T.front && T.back, id + ' has panels'); if (T.straps) assert.ok(T.front.xIn >= 0.056 && T.straps.w > 0.01, id + ' straps clear the neck base'); } }
     // rev 7: every catalogue id of the other layers has a row (none = nothing worn)
     for (const [cat, table] of [['EW_BOTTOM_STYLES', 'CC_BOTTOMS'], ['EW_OUTER_STYLES', 'CC_OUTER'], ['EW_FEET_STYLES', 'CC_FEET'], ['EW_GLOVE_STYLES', 'CC_GLOVES']]) {
         const catIds = context.window[cat].map(o => o.id).filter(x => x !== 'none');
@@ -227,9 +227,9 @@ test('rev 6 / rev 7 — every catalogue id has a cut, the builder lists the cata
         for (const id of Object.keys(cc[table])) assert.ok(catIds.includes(id), table + ' row ' + id + ' is in the catalogue');
     }
     // (arrays cross vm realms — compare by content)
-    assert.equal(JSON.stringify(Object.keys(cc.CC_TOPS).sort()), JSON.stringify([...ids].sort()), 'CC_TOPS is exactly the catalogue');
+    assert.equal(JSON.stringify(Object.keys(cc.CC_TOPS).sort()), JSON.stringify(ids.filter(x => x !== 'none').sort()), 'CC_TOPS is exactly the catalogue (minus topless)');
     assert.ok(!ids.includes('jacket'), 'the jacket is an outer layer now');
-    assert.equal(JSON.stringify([...cc.CC_LAYER_NAMES]), JSON.stringify(['body', 'top', 'bottom', 'face', 'outer', 'feet', 'gloves', 'belt', 'skirt', 'buckle', 'trim', 'tie', 'glasses']));   // rev 9: + trim · tie · glasses
+    assert.equal(JSON.stringify([...cc.CC_LAYER_NAMES]), JSON.stringify(['body', 'top', 'bottom', 'face', 'outer', 'feet', 'gloves', 'belt', 'skirt', 'buckle', 'trim', 'tie', 'glasses', 'top2', 'bottom2']));   // rev 9: + trim · tie · glasses; rev 10: + the extra layers
     assert.ok(/RN\[i3\] \* dn/.test(block), 'the cloth relaxation moves along the normal only');
     assert.ok(/v\.on \|= \(bit \|\| 0\)/.test(block) && /if \(!\(v\.on & w\.on\)\)|var shared = v\.on & w\.on/.test(block), 'rims are found by the cut masks');
     const pb = read('party-builder.js');
@@ -304,9 +304,9 @@ test('both rigged bases dress, fit the hair to the skull and stay finite across 
             const rig = c._createAppearanceRig(clone, { hair: 'hair003' }, true);
             const skinned = () => { const out = []; clone.traverse(n => { if (n.isSkinnedMesh && n.parent) out.push(n); }); return out; };
             let bodies = skinned();
-            assert.equal(bodies.filter(n => !/hair/.test(n.name)).length, 13, 'body + top + bottom + face + outer + feet + gloves + belt + skirt + buckle (rev 7) + trim + tie + glasses (rev 9)');
+            assert.equal(bodies.filter(n => !/hair/.test(n.name)).length, 15, 'body + top + bottom + face + outer + feet + gloves + belt + skirt + buckle (rev 7) + trim + tie + glasses (rev 9) + top2 + bottom2 (rev 10)');
             const shellNames = bodies.filter(n => /EWCreator_/.test(n.name) && !/hair/.test(n.name)).map(n => n.name.replace('EWCreator_', '')).sort();
-            assert.deepEqual(shellNames, ['belt', 'bottom', 'buckle', 'face', 'feet', 'gloves', 'outer', 'skirt', 'top', 'trim', 'tie', 'glasses'].sort());
+            assert.deepEqual(shellNames, ['belt', 'bottom', 'buckle', 'face', 'feet', 'gloves', 'outer', 'skirt', 'top', 'trim', 'tie', 'glasses', 'top2', 'bottom2'].sort());
             const hairMeshes = bodies.filter(n => /EWCreator_hair/.test(n.name));
             assert.ok(hairMeshes.length >= 2, 'hair parts skinned in');
             const body = bodies.find(n => !/EWCreator/.test(n.name));
@@ -373,7 +373,7 @@ test('both rigged bases dress, fit the hair to the skull and stay finite across 
                 const top = bodies.find(n => n.name === 'EWCreator_top'), bottom = bodies.find(n => n.name === 'EWCreator_bottom'), skirt = bodies.find(n => n.name === 'EWCreator_skirt');
                 const shellOf = nm => bodies.find(n => n.name === 'EWCreator_' + nm);
                 const isSkirtBottom = /skirt/.test(bottoms), isDress = /dress|gown/.test(outfit);
-                assert.ok(top.geometry.index.count > 0, outfit + ' drew a top');
+                assert.equal(top.geometry.index.count > 0, outfit !== 'none', outfit + ' drew a top (rev 10: topless draws none)');
                 assert.equal(bottom.geometry.index.count > 0, !isSkirtBottom, bottoms + ' bottom shell drawn iff it is a cut (' + outfit + ')');
                 assert.equal(skirt.geometry.index.count > 0, isDress || isSkirtBottom, 'the lathe is drawn for a dress / gown / skirt (' + outfit + ' + ' + bottoms + ')');
                 assert.equal(shellOf('outer').geometry.index.count > 0, outer !== 'none', outer + ' outer shell');
@@ -387,12 +387,12 @@ test('both rigged bases dress, fit the hair to the skull and stay finite across 
                 assert.equal(shellOf('glasses').geometry.index.count > 0, glasses !== 'none', glasses + ' glasses shell');
                 const CO = cc.CC_OUTER[outer], CT = cc.CC_TOPS[outfit], wantsTrim = !!((CO && (CO.buttons || CO.zipTape)) || (CT && CT.placket) || neckwear === 'bowtie');
                 assert.equal(shellOf('trim').geometry.index.count > 0, wantsTrim, outer + ' / ' + outfit + ' trim (buttons, zip, placket buttons, a bow knot)');
-                if (CO && CO.collar) assert.ok(shellOf('outer').geometry.index.count > 0, outer + ' has its collar');
                 assert.equal(top.material.vertexColors, true);
                 // rev 5: garment UVs are the cloth frame's, in METRES — v spans the shirt's height, u the arc round the body,
                 // and no drawn triangle straddles a seam (every |Δu| within a triangle stays under half a torso turn)
                 for (const [gm, minSpan] of [[top, 0.15], [bottom, 0.2]]) {
                     if (gm.geometry.index.count === 0) continue;
+                    // rev 10: u runs at the LOCAL radius, so the seam check is on the angle (a full turn ≤ 2π × 0.25 m) — the metre bound loosened to match
                     const uv = gm.geometry.attributes.uv, idx = gm.geometry.index.array; let vmin = Infinity, vmax = -Infinity, worst = 0;
                     for (let i = 0; i < idx.length; i += 3) { const u0 = uv.getX(idx[i]), u1 = uv.getX(idx[i + 1]), u2 = uv.getX(idx[i + 2]); worst = Math.max(worst, Math.max(u0, u1, u2) - Math.min(u0, u1, u2)); for (const k of [idx[i], idx[i + 1], idx[i + 2]]) { const vv = uv.getY(k); if (vv < vmin) vmin = vv; if (vv > vmax) vmax = vv; } }
                     assert.ok(vmax - vmin > (gm === bottom && /briefs|bikini|shortshorts/.test(bottoms) ? 0.05 : minSpan) && vmax - vmin < 2.0, gm.name + ' v runs the garment\'s height in metres (' + (vmax - vmin).toFixed(3) + ', ' + bottoms + ')');
@@ -483,7 +483,7 @@ test('rev 8 — the prints: the catalogue is the enum, every pattern masks 0..1 
     pc._ccPatternBytes(w, S, 'stripes', '#ffffff', '#ffffff');
     assert.ok(w.every((v, i) => i % 4 === 3 || v === 128), 'white × white leaves the tile');
     // the renderer's wiring + the tools + the builder + the CSS
-    for (const s of ['function _ccPatternMask(id, u, v)', 'function _ccPatternBytes(d, S, pat, c1, c2, cells)', 'function _ccPatternTexture(fabTex, pat, c1, c2, def, unmanaged, size)', "topPattern', 'topColor2'", 'function layerPrinted(a, keys)', "tint = layerPrinted(a, keys) ? color('#ffffff') : color(a[keys[1]])", "var want = printed ? ('P|'", 'part.patTex[which]']) assert.ok(block.includes(s), 'renderer block has ' + s);
+    for (const s of ['function _ccPatternMask(id, u, v)', 'function _ccPatternBytes(d, S, pat, c1, c2, cells)', 'function _ccPatternTexture(fabTex, pat, c1, c2, def, unmanaged, size, cellsMul)', "topPattern', 'topColor2'", 'function layerPrinted(a, keys)', "tint = layerPrinted(a, keys) ? color('#ffffff') : color(a[keys[1]])", "var want = printed ? ('P|'", 'part.patTex[which]']) assert.ok(block.includes(s), 'renderer block has ' + s);
     assert.match(renderer, /patternThumb: function \(fabricKey, pat, c1, c2, cb\)/);
     const pb = read('party-builder.js'), css = read('styles-base.css'), cr = read('creator-render.js');
     for (const s of ['const ccPrint = (fabricKey, colorKey, label)', "ccPrint('topFabric', 'topColor', 'Top')", "ccPrint('bottomFabric', 'bottomColor', 'Bottom')", 'worn ? ccPrint(fabricKey, colorKey, label) : null', 'pb-pattern-tile', 'EWCharViewer.patternThumb', "' colour 2'"]) assert.ok(pb.includes(s), 'party-builder has ' + s);
@@ -513,7 +513,7 @@ test('rev 8 — the mirror: the officer look on the profile, the chair’s look 
     for (const s of ["_mountReactCreator: '_unmountReactCreator'", "_mountReactCreator: 'CHARACTER CREATOR'", "if (mode === 'look' && typeof window.hqLook === 'function')", "return { race: 'homosapien', gender: lk.gender, appearance: lk.appearance };", "btn('look', 'YOUR OWN LOOK'", 'data-fn="_mountReactCreator"', 'window._hqRefreshAvatar = function ()']) assert.ok(mp.includes(s), 'map.js has ' + s);
     for (const s of ['getRace3DModel(race, gender, spec.appearance || undefined)', 'if (spec.appearance && def && def.creatorBase) unit.appearance = spec.appearance;', 'appearance: av.appearance || null', 'snapshot: function (opts)', "v.canvas.toDataURL('image/jpeg', q)"]) assert.ok(renderer.includes(s), 'three-renderer has ' + s);
     for (const s of ["const look = (typeof window.hqLook === 'function') ? window.hqLook(profile) : null;", "return { race: 'your own look', url: look.portrait, look: true };", "className: portrait.look ? 'door-photo-look' : undefined"]) assert.ok(pf.includes(s), 'profile.js has ' + s);
-    for (const s of ['function CreatorControls({ appearance, gender, disabled, onChange, footer })', 'function OfficerCreator()', 'window._mountReactCreator = function ()', 'window._unmountReactCreator = function ()', "window.EWCharViewer.snapshot({ w: 256, h: 320 })", "window.hqSetAvatar(profile, 'look')", "'USE YOUR OWN LOOK'"]) assert.ok(pb.includes(s), 'party-builder has ' + s);
+    for (const s of ['function CreatorControls({ appearance, gender, disabled, onChange, footer, name, onName, onLoad })', 'function OfficerCreator()', 'window._mountReactCreator = function ()', 'window._unmountReactCreator = function ()', "window.EWCharViewer.snapshot({ w: 256, h: 320 })", "window.hqSetAvatar(profile, 'look')", "'USE YOUR OWN LOOK'"]) assert.ok(pb.includes(s), 'party-builder has ' + s);
     assert.ok(ih.includes('<div id="creatorOverlay"></div>'), 'index.html hosts the mirror');
     assert.ok(css.includes('.pb-officer') && css.includes('.door-photo-look'), 'css has the mirror sheet and the photo');
     // the two screens render headlessly with React (skipped without react + react-dom)
@@ -538,7 +538,7 @@ test('rev 8 — the mirror: the officer look on the profile, the chair’s look 
     const h = React.createElement;
     const a = normalize({ outer: 'jacket', outerPattern: 'camo', topPattern: 'stripes', feet: 'boots', belt: 'belt', gloves: 'gloves' });
     const html = ReactDOMServer.renderToString(h(parts.CreatorControls, { appearance: a, gender: 'female', disabled: false, onChange: () => {}, footer: h('i', null, 'foot') }));
-    const pats = context.window.EW_PATTERNS.length, layers = context.window.EW_APPEARANCE_LAYERS.length;
+    const pats = context.window.EW_PATTERNS.length, layers = context.window.EW_APPEARANCE_LAYERS.filter(L => !L.extra || a[L.slot] !== 'none').length;   // rev 10: the extra layers only while worn
     assert.equal((html.match(/pb-pattern-tile/g) || []).length, pats * layers, 'every worn layer shows every print');
     assert.ok(/colour 2/.test(html) && /Outer layer/.test(html) && /<i>foot<\/i>/.test(html), 'colour 2 rows, the layer rows, the footer');
     const html2 = ReactDOMServer.renderToString(h(parts.OfficerCreator));
@@ -553,7 +553,7 @@ test('rev 9 — the details, the accessories, the loose cuts, the wrist limit, t
     for (const id of ['cardigan', 'hoodie', 'trench', 'parka']) assert.ok(cc.CC_OUTER[id] && cc.CC_OUTER[id].sleeveEase < cc.CC_OUTER[id].ease, id + ' is an outer layer with a tapered sleeve');
     for (const id of ['baggy', 'cargo', 'sweatpants']) assert.ok(cc.CC_BOTTOMS[id] && cc.CC_BOTTOMS[id].ease >= 0.014, id + ' is a loose cut');
     assert.ok(cc.CC_FEET.sandals && cc.CC_FEET.sandals.straps.length === 2, 'sandals wear two straps');
-    assert.ok(cc.CC_OUTER.jacket.zipTape && cc.CC_OUTER.blazer.buttons && cc.CC_OUTER.coat.pockets.length && cc.CC_OUTER.trench.beltBand && cc.CC_OUTER.trench.buttons.double && cc.CC_OUTER.hoodie.collar === 'hood', 'the rows carry their details');
+    assert.ok(cc.CC_OUTER.jacket.zipTape && cc.CC_OUTER.blazer.buttons && cc.CC_OUTER.coat.pockets.length && cc.CC_OUTER.trench.beltBand && cc.CC_OUTER.trench.buttons.double && cc.CC_OUTER.hoodie.pockets.length, 'the rows carry their details');   // rev 10: no collars / hoods any more
     assert.ok(cc.CC_BOTTOMS.cargo.pockets.some(pk => pk.side), 'cargo pockets sit on the thigh');
     const EN = context.window.EW_APPEARANCE_ENUMS;
     assert.deepEqual([...EN.neckwear], ['none', 'tie', 'bowtie']); assert.deepEqual([...EN.glasses], ['none', 'round', 'square', 'shades']);
@@ -571,4 +571,95 @@ test('rev 9 — the details, the accessories, the loose cuts, the wrist limit, t
     for (const s of ['queueChange', "ccChoice('neckwear'", "ccChoice('glasses'", "ccColorRow('tieColor'", "ccColorRow('glassesColor'", 'EW_NECKWEAR_STYLES', 'EW_GLASSES_STYLES']) assert.ok(pb.includes(s), 'party-builder has ' + s);
     assert.ok(/type: 'color', value: appearance\[key\], 'aria-label': 'Custom ' \+ label, onChange: e => queueChange/.test(pb), 'the colour input coalesces per frame');
     assert.ok(read('creator-render.js').includes('trim|tie|glasses'), 'creator-render.js renders the new shells');
+});
+
+test('rev 10 — the locker, the name, topless, the extra layers, the eight prints, the beard styles, the foot frame, the patches (source + data)', () => {
+    const W = context.window, EN = W.EW_APPEARANCE_ENUMS, block = renderer.slice(RENDER_BLOCK[0], RENDER_BLOCK[1]);
+    // the data model
+    const pats = W.EW_PATTERNS.map(p => p.id);
+    for (const id of ['hpinstripe', 'hearts', 'minidots', 'diamonds', 'houndstooth', 'zebra', 'leopard', 'crosshatch']) assert.ok(pats.includes(id), 'print ' + id);
+    assert.ok(pats.length >= 20 && new Set(pats).size === pats.length);
+    assert.ok(EN.outfit.includes('none') && normalize({ outfit: 'none' }).outfit === 'none' && normalize({}).outfit === 'tee', 'topless is a choice, the tee the default');
+    assert.deepEqual([...EN.beard], ['none', 'stubble', 'beard', 'goatee', 'moustache', 'fullbeard']);
+    assert.deepEqual([...EN.outfit2], ['none'].concat(EN.outfit.filter(x => x !== 'none'))); assert.deepEqual([...EN.bottoms2], ['none'].concat(EN.bottoms));
+    assert.equal(normalize({}).outfit2, 'none'); assert.equal(normalize({}).bottoms2, 'none'); assert.equal(normalize({ bottoms2: 'briefs' }).bottoms2, 'briefs'); assert.equal(normalize({ outfit2: 'none2' }).outfit2, 'none');
+    const extras = W.EW_APPEARANCE_LAYERS.filter(L => L.extra);
+    assert.equal(JSON.stringify(extras.map(L => [L.id, L.slot])), JSON.stringify([['top2', 'outfit2'], ['bottom2', 'bottoms2']]));   // (cross-realm: compare by content)
+    for (const L of W.EW_APPEARANCE_LAYERS) { assert.ok(L.slot && EN[L.slot], L.id + ' names its style slot'); assert.ok(EN[L.fabric] && EN[L.pattern] && /^#[0-9a-f]{6}$/.test(normalize({})[L.color]) && /^#[0-9a-f]{6}$/.test(normalize({})[L.color2]), L.id + ' keys'); }
+    // an unworn extra layer warms nothing; a worn one warms its fabric
+    const base = { hair: 'bald', topFabric: 'plain', bottomFabric: 'plain', outerFabric: 'plain', feetFabric: 'plain', glovesFabric: 'plain', beltFabric: 'plain', top2Fabric: 'wool', bottom2Fabric: 'silk' };
+    assert.equal(W.getCharacterAppearanceAssets(base).fabrics.length, 0);
+    assert.deepEqual([...W.getCharacterAppearanceAssets(Object.assign({ outfit2: 'tank', bottoms2: 'briefs' }, base)).fabrics], [W.getFabricTextureUrl('wool'), W.getFabricTextureUrl('silk')]);
+    // the renderer
+    const cc = {}; vm.runInContext(block.slice(block.indexOf('var CC_TANK_FRONT'), block.indexOf("/* The pack's hair diffuse")), vm.createContext(cc));
+    assert.ok(!Object.values(cc.CC_TOPS).some(T => T.collar) && !Object.values(cc.CC_OUTER).some(T => T.collar), 'no collar / hood rows');
+    assert.ok(!/A COLLAR — a band standing up/.test(block) && !block.includes("T.collar === 'hood'"), 'the collar ribbon is gone');
+    assert.ok(cc._ccTopDef('none') === null && cc._ccTopDef('tee') === cc.CC_TOPS.tee, 'topless has no cut');
+    assert.ok(typeof cc._ccOverDef === 'function' && cc._ccOverDef(cc.CC_BOTTOMS.briefs, 0.007).ease > cc.CC_BOTTOMS.briefs.ease, 'an extra layer rides at a larger ease');
+    for (const s of ['function surfacePatch(b, L, cx, t, hw, hh, mode, th, gain, opts)', "if (qt < 0.15) return qx >= 0 ? 5 : 6", 'var _armRegX = 0.155', '_armRegX = part.shoulder.x + 0.012', "limbs['foot' + sd] = polyline(", 'Ft.uOff = uvL[0] - uvF[0]',
+        'ANG = new Float32Array(N), TURN = new Float32Array(N)', 'if (amax - amin > Math.PI)', "var TOP2 = a.outfit2 && a.outfit2 !== 'none'", "var BOT2 = a.bottoms2 && a.bottoms2 !== 'none'", "{ name: 'top2'", "{ name: 'bottom2'", "top2: shell('top2'", "bottom2: shell('bottom2'",
+        'var bPush = bStyle', 'surfaceNormals(P, ids, NB, weld, RC);\n                smoothNormals(NB, part, 3, bodyNormalWeight);\n            }', "beardStyle === 'moustache'", "beardStyle === 'fullbeard'", 'var strand = Math.pow(', 'var NTH = 96', 'UNDER = (opts.under || [])', 'if (RAD[o7] < map[o7] + 0.0005 * H)',
+        'THE BOW (rev 10)', 'var covered = (L.name === \'bottom\'', "a.outfit2, a.bottoms2, a.beard].join('|')", "['top', 'bottom', 'outer', 'feet', 'gloves', 'belt', 'skirt', 'top2', 'bottom2'].forEach", "(which === 'feet' || which === 'gloves' || which === 'belt') ? 2 : 1", "top2: ['top2Fabric'", "margin = 0.011 * sc"]) assert.ok(block.includes(s), 'renderer block has ' + s);
+    assert.ok(!block.includes('function limbProfile('), 'u stays at one radius per limb (the skin-radius u fanned the stripes)');
+    // the builder, the css, the profile
+    const pb = read('party-builder.js'), css = read('styles-base.css'), dj = read('data.js');
+    for (const s of ['function SavedLooks({ name, gender, appearance, disabled, onName, onLoad })', "const PB_LOOKS_KEY = 'ew_saved_looks'", 'function pbLooksLoad()', 'function pbLooksSave(name, gender, appearance)', 'function pbLooksDelete(id)', 'window._ewSavedLooks =', "'💾 SAVE CHARACTER'", 'h(SavedLooks, { name: name ||',
+        "' ADD LAYER'", 'const ccExtraLayers = ()', "'✕ REMOVE'", "['moustache', 'Moustache']", "['fullbeard', 'Full beard']", "appearance.outfit !== 'none' ? ccFabricTiles('topFabric', 'Top')", 'name: unitName, onName: (v) => { handleNameChange(v); refresh(); }', "onLoad: (e) => { changeAppearance(e.appearance, e.gender); handleNameChange(e.name); refresh(); }",
+        'const [lookName, setLookName]', 'portrait: url, name: lookName']) assert.ok(pb.includes(s), 'party-builder has ' + s);
+    for (const s of ['.pb-looks', '.pb-look-chip', '.pb-creator-name', '.pb-cc-add-btn', '.pb-layer-remove']) assert.ok(css.includes(s), 'css has ' + s);
+    assert.ok(dj.includes("name: typeof rec.name === 'string' ? rec.name.slice(0, 24) : ''") && dj.includes("name: typeof look.name === 'string' ? look.name.trim().slice(0, 24) : ''"), 'the officer look carries a name');
+    assert.ok(read('creator-render.js').includes('top2|bottom2|top|bottom'), 'creator-render.js renders the extra layers');
+    // the locker in a sandbox with a fake localStorage
+    const store = {}, win = { localStorage: { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } }, normalizeCharacterAppearance: normalize, Date, JSON, Math, String, Array, Object, Number, console };
+    win.window = win; vm.createContext(win);
+    vm.runInContext(pb.slice(pb.indexOf("const PB_LOOKS_KEY = 'ew_saved_looks'"), pb.indexOf('/* the NAME field + the locker')), win);
+    assert.equal(win.pbLooksLoad().length, 0);
+    const e1 = win.pbLooksSave('  Ada ', 'female', { outfit: 'gown', bottoms2: 'briefs', topColor: '#ABCDEF' });
+    assert.ok(e1 && e1.name === 'Ada' && e1.gender === 'female' && e1.appearance.outfit === 'gown' && e1.appearance.bottoms2 === 'briefs' && e1.appearance.topColor === '#abcdef', 'saved sanitized');
+    win.pbLooksSave('Bob', 'male', {}); win.pbLooksSave('ada', 'male', { outfit: 'tee' });
+    const list = win.pbLooksLoad();
+    assert.equal(JSON.stringify(list.map(e => e.name)), JSON.stringify(['ada', 'Bob']), 'the same name (case-insensitive) overwrites, newest first');
+    assert.equal(list[0].gender, 'male');
+    assert.equal(JSON.stringify(win.pbLooksDelete(list[1].id).map(e => e.name)), JSON.stringify(['ada']));
+    store['ew_saved_looks'] = '{"not":"an array"}'; assert.equal(win.pbLooksLoad().length, 0, 'a bad store reads as empty');
+    store['ew_saved_looks'] = 'garbage'; assert.equal(win.pbLooksLoad().length, 0);
+});
+
+test('rev 10 — topless, the extra layers and the beard on the real rig', { skip: !THREE || !haveModels }, async () => {
+    const c = { THREE, console, TextDecoder, URL, Blob, setTimeout, clearTimeout, performance, normalizeCharacterAppearance: normalize,
+        getHairStyleUrl: () => null, getFabricTextureUrl: context.window.getFabricTextureUrl, getCharacterAppearanceAssets: context.window.getCharacterAppearanceAssets,
+        getCharacterModelFallback: context.getCharacterModelFallback, EW_FABRICS: context.window.EW_FABRICS, _unitGlbCache: {} };
+    c.self = c; c.window = c; c._loadUnitGLB = () => {};
+    vm.createContext(c);
+    vm.runInContext(fs.readFileSync(require.resolve('three/examples/js/loaders/GLTFLoader.js'), 'utf8'), c);
+    vm.runInContext(fs.readFileSync(require.resolve('three/examples/js/utils/SkeletonUtils.js'), 'utf8'), c);
+    vm.runInContext(renderer.slice(renderer.indexOf('    /* ══════════════════════════════════════════════════════════════════\n     *  CHARACTER CREATOR RUNTIME'), RENDER_BLOCK[1]), c);
+    const origLoad = THREE.TextureLoader.prototype.load;
+    THREE.TextureLoader.prototype.load = function (url, onLoad) { const t = new THREE.Texture(); if (onLoad) setTimeout(() => onLoad(t), 0); return t; };
+    const load = f => new Promise((ok, fail) => { const b = fs.readFileSync(f); new THREE.GLTFLoader().parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength), '', ok, fail); });
+    try {
+        const gltf = await load(path.join(CC, 'Meshy_AI_human_body_base_mesh_male_rigged.glb'));
+        const clone = THREE.SkeletonUtils.clone(gltf.scene);
+        const rig = c._createAppearanceRig(clone, { hair: 'bald' }, true);
+        const shellOf = nm => { let out = null; clone.traverse(n => { if (n.name === 'EWCreator_' + nm) out = n; }); return out; };
+        const count = nm => shellOf(nm).geometry.index.count, finite = nm => Array.from(shellOf(nm).geometry.attributes.position.array).every(Number.isFinite);
+        const body = () => { let b = null; clone.traverse(n => { if (n.isSkinnedMesh && !/EWCreator/.test(n.name)) b = n; }); return b; };
+        rig.update({ hair: 'bald', outfit: 'none', neckwear: 'bowtie' });
+        assert.equal(count('top'), 0, 'topless draws no top'); assert.ok(body().geometry.index.count > 0 && count('tie') > 0 && count('trim') > 0, 'the skin shows, the bow sits on it');
+        rig.update({ hair: 'bald', outfit: 'suit', outfit2: 'tank', bottoms: 'trousers', bottoms2: 'briefs', belt: 'belt' });
+        assert.ok(count('top') > 0 && count('top2') > 0 && count('bottom') > 0 && count('bottom2') > 0 && count('belt') > 0, 'both extra layers draw over their base layers');
+        assert.ok(finite('top2') && finite('bottom2'));
+        assert.ok(shellOf('top2').visible && shellOf('bottom2').visible);
+        rig.update({ hair: 'bald', outfit: 'tee', bottoms: 'trousers', bottoms2: 'skirt' });
+        assert.ok(count('skirt') > 0 && count('bottom') > 0 && count('bottom2') === 0, 'a skirt worn over is the lathe (the trousers stay), no cut bottom2 shell');
+        rig.update({ hair: 'bald', outfit: 'none', outfit2: 'none', bottoms2: 'none' });
+        assert.ok(count('top2') === 0 && count('bottom2') === 0 && !shellOf('top2').visible, 'unworn extras hide');
+        // the beard has volume: the chin's front moves out between clean and full beard
+        const chinZ = () => { const b = body(), P = b.geometry.attributes.position, bb = new THREE.Box3().setFromBufferAttribute(P), H = bb.max.y - bb.min.y; let best = -1e9; for (let i = 0; i < P.count; i++) { const t = (P.getY(i) - bb.min.y) / H; if (t > 0.872 && t < 0.885 && Math.abs(P.getX(i)) < 0.01 * H && P.getZ(i) > best) best = P.getZ(i); } return best; };
+        rig.update({ hair: 'bald', outfit: 'tee', beard: 'none' }); const z0 = chinZ();
+        rig.update({ hair: 'bald', outfit: 'tee', beard: 'fullbeard' }); const z1 = chinZ();
+        assert.ok(z1 - z0 > 0.003 && z1 - z0 < 0.012, 'a full beard stands the chin out 4–8 mm (' + (z1 - z0).toFixed(4) + ')');
+        rig.update({ hair: 'bald', outfit: 'tee', beard: 'moustache' }); assert.ok(Math.abs(chinZ() - z0) < 1e-4, 'a moustache adds no chin');
+        rig.dispose();
+    } finally { THREE.TextureLoader.prototype.load = origLoad; }
 });

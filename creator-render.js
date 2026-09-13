@@ -190,8 +190,10 @@ function render(meshes, view) {
   const skin = hexRGB(A.skin), top = hexRGB(A.topColor), bottom = hexRGB(A.bottomColor), hairCol = hexRGB(A.hairColor);
   const fabrics = { top: fabricTex(A.topFabric), bottom: fabricTex(A.bottomFabric) };
   const LAYER_KEYS = { top: ['topFabric', 'topColor', 'topPattern', 'topColor2'], bottom: ['bottomFabric', 'bottomColor', 'bottomPattern', 'bottomColor2'], outer: ['outerFabric', 'outerColor', 'outerPattern', 'outerColor2'], feet: ['feetFabric', 'feetColor', 'feetPattern', 'feetColor2'], gloves: ['glovesFabric', 'glovesColor', 'glovesPattern', 'glovesColor2'], belt: ['beltFabric', 'beltColor', 'beltPattern', 'beltColor2'] };
-  LAYER_KEYS.skirt = LAYER_KEYS[/dress|gown/.test(A.outfit) ? 'top' : 'bottom'];
-  const layerOf = name => { const m = /^EWCreator_(top|bottom|outer|feet|gloves|belt|skirt|buckle|trim|tie|glasses)$/.exec(name); return m ? m[1] : null; };
+  // rev 10: the extra layers (top2 / bottom2) and the skirt's owner (a dress > a second top's dress > a skirt worn over > the bottoms' skirt)
+  LAYER_KEYS.top2 = ['top2Fabric', 'top2Color', 'top2Pattern', 'top2Color2']; LAYER_KEYS.bottom2 = ['bottom2Fabric', 'bottom2Color', 'bottom2Pattern', 'bottom2Color2'];
+  LAYER_KEYS.skirt = LAYER_KEYS[/dress|gown/.test(A.outfit) ? 'top' : /dress|gown/.test(A.outfit2) ? 'top2' : /skirt/.test(A.bottoms2) ? 'bottom2' : 'bottom'];
+  const layerOf = name => { const m = /^EWCreator_(top2|bottom2|top|bottom|outer|feet|gloves|belt|skirt|buckle|trim|tie|glasses)$/.exec(name); return m ? m[1] : null; };
   const list = meshes.map(n => { const g = n.geometry, isFace = /face/.test(n.name), isHair = /EWCreator_hair/.test(n.name), layer = layerOf(n.name), kind = layer ? (layer === 'top' ? 'top' : layer === 'bottom' ? 'bottom' : layer) : 'body';
     const map = n.material.map, faceTex = isFace && map && map.image && map.image._d ? { d: map.image._d, w: map.image.width, h: map.image.height } : null;
     if (isHair) {

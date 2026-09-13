@@ -1061,6 +1061,63 @@ Kill-switches (console): `window.EW_DISABLE_3D_UNITS = true` (all 3D),
   To persist new files, hand them to the user (SendUserFile) to upload via GitHub
   manually. Don't waste time retrying pushes.
 
+## CHARACTER CREATOR rev 10 — the locker, the name, topless, the extra layers, the beard, the prints (2026-09-13, local delivery)
+**THE NAME + THE LOCKER**: party-builder.js `SavedLooks` (rendered first
+inside `CreatorControls`, which now takes `name / onName / onLoad`) — the
+NAME field lives where the look is made (the forge writes `partyNames`
+through `handleNameChange`; the mirror files it as `door.hq.look.name`,
+data.js `hqLook` / `hqSetLook`), 💾 SAVE CHARACTER files `{ id, name,
+gender, appearance, at }` in localStorage `ew_saved_looks` (`pbLooksLoad /
+pbLooksSave / pbLooksDelete`, `PB_LOOKS_MAX` 40, the same name
+overwrites, newest first; `window._ewSavedLooks`), a chip LOADs it
+(appearance + base + name, either home), ✕ forgets it. **TOPLESS**:
+`outfit: 'none'` (sprites.js EW_OUTFIT_STYLES; `_ccTopDef('none')` →
+null — every TOP read in `rebuildGeometry` is guarded; neckwear then sits
+on the skin). **THE EXTRA LAYERS (＋ ADD LAYER)**: `outfit2` (a second top
+over the top) and `bottoms2` (a second pair of bottoms over the bottoms —
+briefs over trousers) with `top2* / bottom2*` fabric / colour / pattern
+keys (`EW_APPEARANCE_LAYERS` rows carry `slot` for every layer and `extra:
+true` for these); renderer shells `top2` / `bottom2` (`CC_LAYER_NAMES` =
+15), cut by `_ccOverDef(def, extra)` = the catalogue row at a larger
+ease, `under` = the layer beneath; the belt rides up over bottoms2; ONE
+lathe: a dress > a second top's dress > a skirt worn over (`bottoms2`) >
+the bottoms' skirt (`part.skirtOwner` names the keys). The builder's
+`ccExtraLayers` (＋ ADD LAYER menu → a full layer row with ✕ REMOVE).
+**COLLARS / HOODS ARE GONE** (the ribbon read as teeth; every neckline is
+the cloth's own rim fold) — no `collar` field on any row. **CONFORMING
+PATCHES**: `surfacePatch(b, L, cx, t, hw, hh, mode, th, gain, { n, k,
+puff, shape })` samples a rounded outline (a superellipse or a custom
+`shape(s)`) ON the surface — patch pockets, the kangaroo pocket, a tie's
+knot, THE BOW's two pinched wings (in the `tie` shell) — never
+`placeBox` for anything wider than a welt. **THE BEARD**: styles
+`moustache` + `fullbeard` (enum); VOLUME — `rebuildGeometry` pushes the
+masked jaw / chin / cheeks out along the WELDED normals (4 / 3 / 6 mm,
+`bPush`; the base's split normals cracked the cheek) and redoes NB; PAINT
+— strands across a growth-direction field (down + outward), two octaves,
+a slow noise wander, clumps, darker roots / lighter tips; stubble = the
+field thresholded. `beard` is in the shape key. **THE PRINTS**: 20
+patterns (+ hpinstripe · hearts · minidots · diamonds · houndstooth ·
+zebra · leopard · crosshatch); feet / gloves / belt print at 2× cells
+(`_ccPatternTexture(…, cellsMul)`). **THE CLOTH FRAME**: the arm region
+starts at the SHOULDER JOINT (`_armRegX` = shoulder.x + 1.2 cm; a
+sleeve is its own tube, the switch is the shoulder seam) and the FEET
+are their own polyline (`limbs.footL/R`, a hand above the ankle → the
+ankle → the toe, `qt < 0.15`; u / v continue the leg's through `uOff /
+vOff`) — a shoe used to be the leg cylinder's clamped end (stripes fanned
+round the ankle whatever the fabric); the seam guards compare ANGLES
+(`ANG / TURN`), u stays at ONE radius per limb (a skin-radius u was tried
+and fanned every stripe in at the waist — cloth hangs at one
+circumference). **THE LATHE**: 96 azimuths, the radius field blurred
+round and down (`fs2` below the waistband) then held ≥ the measured
+maximum + the layers worn UNDER it (`opts.surface` for the bodice band,
+`opts.under` for the trousers — they poked through a dress), no pockets
+on covered bottoms, the collision margin 1.1 cm. `npm test`:
+character-creator.test.js (two rev 10 tests, one on the real rig).
+Screenshotted headlessly (`creator-render.js` renders top2 / bottom2):
+the beard, the bow, briefs over trousers, the striped tee, the boots, the
+dress waist — the LOOK in the browser is unseen; the hoodie's kangaroo
+pocket is subtle under flat light.
+
 ## CHARACTER CREATOR rev 9 — the picker lag, the coat, the wrist, cloth collision, THE DETAILS, the wardrobe (2026-09-13, local delivery)
 **THE LAG**: every colour change re-baked the 2048² face (~265 ms) and the
 native colour input fires per pointer move. Now the rig's `update(value,
