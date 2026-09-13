@@ -1968,6 +1968,26 @@ signature). Smoke-tested headlessly with real three r128 (a scratch
 harness; not a playtest) — the LOOK is unseen: eyeball Tsunami, Dragonfire,
 Fae Ring, Cataclysm Decree, Draining Embrace, Crusade live first.
 
+## THE CRATER FIX + THE WADE (the roofed-over crater) — 2026-09-13
+Two "my unit is under the floor" bugs, one delivery. **BATTLE**: THE
+WORLD's ground disc (`_worldBuild`, `world:ground`; the moat maps'
+`world:liquid` disc too) was a FULL circle 2.5 px under the base tile
+tops, spanning under the whole board — so every tile dug below the base
+(Meteor's `terrainDeform`, the Build dig, Flat Earth) was ROOFED OVER: the
+engine had the crater, the unit dropped into it, the eye saw a flat board
+with the unit under it. Now `_wdIslandDisc(K, R, ts)` = the disc with the
+BOARD FOOTPRINT (`K.BX0..BX1 × BZ0..BZ1`, grown 2 % of a tile) cut out
+(a `THREE.Shape` with a hole; the board's own voxel columns fill that
+footprint to y 0 and their faces are the crater's walls; the apron covers
+the seam). RULE: nothing of the world / a setting may lie under the tiles
+inside the footprint — a crater must always open onto the columns' own
+faces. world-ground.test.js fails on a `CircleGeometry` under the island.
+**HQ**: `_hqSurface` dropped the walker to a walkable LIQUID cell's BED
+(a lake: −1.75 m; deep: −3.5 m) under the sheet drawn at −0.3 m — the
+walker vanished under the water. Now a fluid cell (the moat included) is
+WADED at `HQ_WADE_M` (0.55 m — thigh-deep, always visible); a dry pit (a
+trench) is still a drop to its floor. doorhq.test.js guards it.
+
 ## THE WORLD — grounded ↔ floating (the horizon pass) — added 2026-09-13
 Every Δ board used to end at its square apron in the sky. Now a map's
 **`env.world`** row (data.js EW_MAP_META, all 32 launch maps; the doc

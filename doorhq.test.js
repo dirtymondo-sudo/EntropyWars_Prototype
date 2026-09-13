@@ -2440,3 +2440,16 @@ test('Rooms 111 + 1984 — the source sites: the cabinet mount, the transcript o
     assert.match(tr, /^\s+steel_table: function \(U\) \{/m, 'the steel_table proc');
     assert.match(tr, /window\.hqTrophyCount\(prof\)/, 'the plaques read the ledger');
 });
+
+/* THE WADE (2026-09-13): a walkable liquid cell (a lake, the moat) is waded
+   just under its sheet — the walker used to drop to the cell's BED, a whole
+   level (or two) under a sheet at −0.3 m, and vanished under the water. */
+test('the walkable site: a liquid cell is waded at HQ_WADE_M, a dry pit is still a drop', () => {
+    const tr = require('fs').readFileSync(require('path').join(__dirname, 'three-renderer.js'), 'utf8');
+    const m = tr.match(/var HQ_WADE_M = ([0-9.]+);/);
+    assert.ok(m, 'HQ_WADE_M is declared');
+    const wade = parseFloat(m[1]);
+    assert.ok(wade > 0.3 && wade < 1.2, 'the feet stand under the sheet (−0.3 m) but the body stays out of the water: ' + wade);
+    assert.match(tr, /if \(sc\.top < 0\) y = sc\.fluid \? Math\.max\(sc\.top, -HQ_WADE_M\) : sc\.top;/, '_hqSurface wades a fluid cell and drops into a dry one');
+    assert.match(tr, /cell: \{ top: -mDepth, walk: !!M\.walk, fluid: true, key: M\.key, moat: true \}/, 'the moat cell is a fluid cell (so it is waded too)');
+});

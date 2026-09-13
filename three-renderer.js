@@ -27049,6 +27049,31 @@ const ThreeRenderer = (function () {
         if (key === 'lava') { m.emissive = new THREE.Color(0xff4411); m.emissiveIntensity = 0.5; m.emissiveMap = null; }
         return m;
     }
+    /* THE CRATER FIX (2026-09-13): the ground / liquid disc under the island
+       is a disc with the BOARD'S FOOTPRINT CUT OUT of it. It used to be a full
+       circle 2.5 px under the base tile tops, spanning under the whole board —
+       so any tile dug below the base (a Meteor crater, the Build verb's dig,
+       Flat Earth) was ROOFED OVER by it: the crater existed for the engine,
+       the unit dropped into it, and the eye saw a flat board with the unit
+       under it. The board's own voxel columns fill the footprint down to
+       y 0 (their exposed faces ARE the crater's walls); the apron strips
+       cover the seam outside it; nothing of the world may lie under the
+       tiles. `hole` = the footprint grown by 2 % of a tile (a hair past the
+       edge tiles so the rim never z-fights). Same UV density as the old
+       CircleGeometry (one sheet per 1.5 tiles). */
+    function _wdIslandDisc(K, R, ts) {
+        var shape = new THREE.Shape();
+        shape.absarc(0, 0, R, 0, Math.PI * 2, false);
+        var m = 0.02 * ts;
+        /* the mesh is rotated x −90°: shape (x, y) → world (x, −z) */
+        var x0 = K.BX0 - K.CX - m, x1 = K.BX1 - K.CX + m, y0 = -(K.BZ1 - K.CZ) - m, y1 = -(K.BZ0 - K.CZ) + m;
+        var hole = new THREE.Path();
+        hole.moveTo(x0, y0); hole.lineTo(x1, y0); hole.lineTo(x1, y1); hole.lineTo(x0, y1); hole.closePath();
+        shape.holes.push(hole);
+        var geo = new THREE.ShapeGeometry(shape, 96);
+        _nrUV(geo, 1 / (ts * 1.5), 1 / (ts * 1.5));
+        return geo;
+    }
     function _worldBuild(ctx) {
         _wd.g = null; _wd.row = null; _wd.mats.length = 0; _wd.root = null; _wd.rootMats.length = 0; _wd.wall = null; _wd.extras.length = 0; _wd.hasGround = false; _wd.stab = -1;
         var row = _wdRow(); if (!row || typeof THREE === 'undefined' || !_horizonGroup) return;
@@ -27077,15 +27102,15 @@ const ThreeRenderer = (function () {
             if (moat) {   // the liquid: a full disc a hair under the moat sheet, to the shore or the horizon
                 var lm = _wdLiquidMat(K, moat, row);
                 var lr = sea ? R : shore + 1.5 * ts;
-                var ld = new THREE.Mesh(new THREE.CircleGeometry(lr, 96), lm); _nrUV(ld.geometry, lr * 2 / ts / 1.5, lr * 2 / ts / 1.5);
+                var ld = new THREE.Mesh(_wdIslandDisc(K, lr, ts), lm);   // the board's footprint cut out (THE CRATER FIX)
                 ld.rotation.x = -Math.PI / 2; ld.position.set(K.CX, ly, K.CZ); ld.receiveShadow = true; ld.name = 'world:liquid';
                 _wdInject(lm, { r0: fogR0, r1: fogR1 }); g.add(ld); _wd.hasGround = true;
             }
             if (!sea) {   // the land: from the shore to the horizon
                 var gtex = row.ground || kit.tex || 'grass_2', gcol = row.groundColor != null ? row.groundColor : (kit.color != null ? kit.color : 0xffffff);
                 var gm = K.mat(gtex, gcol, { lift: 0.24 });
-                var geo = moat ? new THREE.RingGeometry(shore, R, 96, 4) : new THREE.CircleGeometry(R, 96);
-                _nrUV(geo, R * 2 / ts / 1.5, R * 2 / ts / 1.5);
+                var geo = moat ? new THREE.RingGeometry(shore, R, 96, 4) : _wdIslandDisc(K, R, ts);   // a dry island: the board's footprint cut out (THE CRATER FIX)
+                if (moat) _nrUV(geo, R * 2 / ts / 1.5, R * 2 / ts / 1.5);
                 var gd = new THREE.Mesh(geo, gm); gd.rotation.x = -Math.PI / 2; gd.position.set(K.CX, groundY, K.CZ); gd.receiveShadow = true; gd.name = 'world:ground';
                 _wdInject(gm, { r0: fogR0, r1: fogR1 }); g.add(gd); _wd.hasGround = true;
                 if (moat) {   // the bank: the shore's face down into the water
@@ -36463,8 +36488,9 @@ const ThreeRenderer = (function () {
        WALKING: everything raised is a RECT blocker with `step` = one level
        (+ a hair), so _hqSurface climbs a +1 step (the boards' jump-1 rule)
        and treats a +2 block as a wall; edge walls are thin blockers with
-       no top; a lake is a −1 pit the walker drops into and wades (shallow
-       water) or cannot enter at all (lava, deep water: `walk: false` in
+       no top; a lake is a −1 pit the walker WADES at HQ_WADE_M under its
+       sheet (never down on its bed — THE WADE, 2026-09-13; a dry trench is
+       still a drop) or cannot enter at all (lava, deep water: `walk: false` in
        _hq.site.cells → null). _hq.site = { N, C, half, cells } is the board
        layer _hqSurface / _hqAirOK read (metres, room frame: board x east,
        board y south, so the P1 spawn row is the south edge by the way in). */
@@ -38445,6 +38471,7 @@ const ThreeRenderer = (function () {
        (and the camera boom) may go — `shell.roam` on an 'open' site room, 0
        for everything walled or fenced */
     function _hqRoamM(S) { return (S && S.edge === 'open' && S.roam > 0) ? S.roam : 0; }
+    var HQ_WADE_M = 0.55;   // THE WADE: how far under a liquid cell's sheet (at −0.3 m) the walker's feet stand — thigh-deep, always visible
     function _hqSurface(x, z, curY, ignoreBlockers) {
         var room = _hq.room, S = room.shell;
         var r = Math.hypot(x, z);
@@ -38462,7 +38489,13 @@ const ThreeRenderer = (function () {
                below (climbable one level at a time) */
             if (_hq.site) {
                 var sc = _hqSiteCellAt(x, z);
-                if (sc) { if (!sc.walk) return null; if (sc.top < 0) y = sc.top; }
+                /* THE WADE (2026-09-13): a walkable LIQUID cell (a lake, the
+                   moat) is waded at HQ_WADE_M under its sheet, never walked on
+                   its bed — the bed is a whole level (1.75 m, 3.5 m for a deep
+                   cell) under a sheet at −0.3 m, so the walker vanished
+                   under the water ("my character falls below the floor").
+                   A dry pit (a trench) is still a drop to its floor. */
+                if (sc) { if (!sc.walk) return null; if (sc.top < 0) y = sc.fluid ? Math.max(sc.top, -HQ_WADE_M) : sc.top; }
             }
         } else if (room.kind === 'bay') {
             /* a corridor: between the two wall arcs, short of the end caps (a full ring has none) */

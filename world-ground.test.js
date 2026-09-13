@@ -120,3 +120,19 @@ test('index.html was cache-busted with the delivery', () => {
     const m = /three-renderer\.js\?v=(\d{8})[A-Za-z0-9-]*-cors/.exec(IX);
     assert.ok(m && +m[1] >= 20260913, 'the token is the world delivery’s or a later one');
 });
+
+/* THE CRATER FIX (2026-09-13): the ground / liquid disc under a dry island
+   must have the board's footprint cut out of it — a full circle 2.5 px under
+   the base tile tops roofed over every Meteor crater / dug tile (the unit
+   stood in a crater the eye could not see). */
+test('the world ground and liquid discs cut the board footprint out (no full circle under the island)', () => {
+    const i = TR.indexOf('    function _worldBuild(ctx) {'), j = TR.indexOf('    function _worldTick(', i);
+    assert.ok(i > 0 && j > i, '_worldBuild is there');
+    const body = TR.slice(i, j);
+    assert.ok(TR.includes('function _wdIslandDisc(K, R, ts)'), 'the island disc helper exists');
+    assert.match(TR, /shape\.holes\.push\(hole\)/, 'the helper cuts a hole');
+    assert.match(TR, /var x0 = K\.BX0 - K\.CX - m, x1 = K\.BX1 - K\.CX \+ m/, 'the hole is the BOARD footprint (BX0..BX1), a hair grown');
+    assert.match(body, /var ld = new THREE\.Mesh\(_wdIslandDisc\(K, lr, ts\), lm\)/, 'the liquid disc is holed');
+    assert.match(body, /_wdIslandDisc\(K, R, ts\)/, 'the dry ground disc is holed');
+    assert.doesNotMatch(body, /new THREE\.CircleGeometry\(/, 'no full CircleGeometry under the island any more');
+});
