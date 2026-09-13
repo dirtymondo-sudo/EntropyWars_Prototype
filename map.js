@@ -1101,6 +1101,30 @@
             html += '<p class="hq-panel-note">The clock punches you in when you come through the front door; there is no button for it, and the red one does nothing. Every clock in this room shows a different time. The card believes whichever one you do.</p>';
             return html;
         }
+        /* MEDICAL (Room 1111, plan 7.4, 2026-09-13 rev 3): THE CHART — the
+           ward's record of you, read through data.js hqMedicalRecord off the
+           profile's career stats + the punch clock; the CONDITION line is the
+           one Room 5150's hold panel repeats. Viewer-local (RULE #2). */
+        function _hqChartHtml() {
+            const profile = _hqProfile();
+            const mr = (typeof window.hqMedicalRecord === 'function') ? window.hqMedicalRecord(profile) : null;
+            let html = '<div class="hq-panel-hd"><b>THE CHART</b><span>MEDICAL · YOUR RECORD · ROOM 1111</span></div>';
+            if (!profile || !mr) return html + '<p class="hq-panel-desc">No chart on the hook. Sign in at Reception first.</p><div class="hq-panel-actions"><button class="hq-btn" data-close="1">NOTED</button></div>';
+            html += '<div class="hq-rows">';
+            html += `<div class="hq-row hq-row-tray"><b>CONDITION</b><span>${_hqEsc(mr.note)}</span><i class="hq-lamp-chip st-${_hqEsc(mr.tone)}">${_hqEsc(mr.condition)}</i></div>`;
+            html += `<div class="hq-row hq-row-tray"><b>CROSSINGS ON FILE</b><span>EVERY MATCH THE WARD COUNTED</span><i class="hq-lamp-chip st-${mr.matches ? 'open' : 'off'}">${mr.matches}</i></div>`;
+            html += `<div class="hq-row hq-row-tray"><b>RELEASED</b><span>WINS · ${mr.rate}% OF THE FILE</span><i class="hq-lamp-chip st-${mr.wins ? 'stabilized' : 'off'}">${mr.wins}</i></div>`;
+            html += `<div class="hq-row hq-row-tray"><b>EXITED</b><span>PROCESSED, NOT DEAD — THE DESK FILES THE RETRY</span><i class="hq-lamp-chip st-${mr.exits ? 'unstable' : 'off'}">${mr.exits}</i></div>`;
+            html += `<div class="hq-row hq-row-tray"><b>HEALING ON FILE</b><span>HP THE WARD DID NOT HAVE TO</span><i class="hq-lamp-chip st-${mr.healing ? 'open' : 'off'}">${mr.healing}</i></div>`;
+            html += `<div class="hq-row hq-row-tray"><b>DODGED · CRITICAL</b><span>WHAT MISSED YOU · WHAT DID NOT MISS THEM</span><i class="hq-lamp-chip st-${(mr.dodges || mr.crits) ? 'open' : 'off'}">${mr.dodges} · ${mr.crits}</i></div>`;
+            html += `<div class="hq-row hq-row-tray"><b>DAYS ON THE CLOCK</b><span>THE PUNCH CLOCK’S COUNT, ROOM 247</span><i class="hq-lamp-chip st-${mr.days ? 'open' : 'off'}">${mr.days}</i></div>`;
+            html += '</div>';
+            html += '<div class="hq-panel-actions">';
+            if (_hqCurRoom === 'medical') html += '<button class="hq-btn hq-btn-primary" data-fn="_goToCampaign">CHECK IN AT THE DESK ▸ CHALLENGE</button>';
+            html += '<button class="hq-btn" data-close="1">NOTED</button></div>';
+            html += '<p class="hq-panel-note">The chart hangs at the foot of the bed. It is never asked whether it is right; it is asked whether you are fit for duty, and it always answers.</p>';
+            return html;
+        }
         /* OCCAM'S BARBERSHOP (Room 1287, plan 7.4, 2026-09-11): THE CHAIR —
            who you walk the building as. The pick is saved on the profile
            (data.js hqSetAvatar → door.hq.avatar), read by _hqAvatar, and the
@@ -1523,6 +1547,7 @@
             if (act.overlay === 'barber') return _hqBarberHtml();
             if (act.overlay === 'starmap') return _hqStarmapHtml();
             if (act.overlay === 'transcript') return _hqTranscriptHtml();
+            if (act.overlay === 'chart') return _hqChartHtml();
             if (act.overlay === 'training') return _hqTrainingHtml();
             if (act.overlay === 'crossing') return _hqCrossingHtml(t);
             let html = `<div class="hq-panel-hd"><b>${_hqEsc(c.label)}</b><span>${_hqEsc(c.sub || '')}</span></div>`;
@@ -1534,6 +1559,15 @@
                 html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'A round window that is a mirror from this side.') + '</p>';
                 html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">LOOK AWAY</button></div>';
                 html += '<p class="hq-panel-note">Internal Affairs sits on the other side. Whether anyone is there today is not a question this office answers.</p>';
+                return html;
+            }
+            /* THE HOLD (Room 5150): a panel and the condition line off the chart; nothing else */
+            if (c.id === 'hold') {
+                const mr = (typeof window.hqMedicalRecord === 'function') ? window.hqMedicalRecord(_hqProfile()) : null;
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'A cot, a drain, three soft walls and a hard one.') + '</p>';
+                if (mr) html += `<div class="hq-rows"><div class="hq-row hq-row-tray"><b>CONDITION</b><span>${_hqEsc(mr.note)}</span><i class="hq-lamp-chip st-${_hqEsc(mr.tone)}">${_hqEsc(mr.condition)}</i></div></div>`;
+                html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">' + (mr && mr.leave ? 'SERVE IT' : 'NOT TODAY') + '</button></div>';
+                html += '<p class="hq-panel-note">Leave is served here when it is served. The door is not locked. Nobody comments on why that is the part that worries people.</p>';
                 return html;
             }
             /* THE CABINET (Room 111): the count on the way in */

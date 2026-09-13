@@ -385,6 +385,31 @@ has `action: {}` — `_hqCounterPanelHtml` renders its own panel by id. Proc
 `y: 0.76`). Both rooms are viewer-local (RULE #2). doorhq.test.js guards
 the rooms, the helper and the source sites.
 
+## ROOM 1111 + ROOM 5150 (Medical as a ward, The Padded Room, HQ plan 7.4) — added 2026-09-13 rev 3
+`DOOR_HQ.rooms.medical` (data.js) is MEDICAL, a `kind: 'box'` room behind
+the ground ring's hospital door at 210° (`central_egress.doors` id
+`medical` — it was a door straight to `_goToCampaign`; the number `1111`
+now sits on the ROOM, `hqDoorNo` reads it through). Counters: `desk` (THE
+SERVICES DESK) → `_goToCampaign` (Challenge mode); `chart` (THE CHART, a
+`clipboard` on the east wall between the two cots) → `overlay: 'chart'` →
+map.js `_hqChartHtml`, which reads **`hqMedicalRecord(profile)`** (data.js,
+on `window`, beside `hqTrophyCount`) = `{ matches, wins, exits, rate,
+healing, dodges, crits, days, leave, condition, tone, note }` off
+`profile.career` + the punch clock — the ONE read for the ward; the
+CONDITION line is INTAKE / FIT FOR DUTY / UNDER OBSERVATION (exits >
+wins) / ADMINISTRATIVE LEAVE (`profile.door.leave` truthy — the story's
+hook, nothing sets it yet). Door `padded` (north wall, `leaf_cell`) →
+`{ room: 'padded', at: 'egress' }`. `DOOR_HQ.rooms.padded` is ROOM 5150 ·
+THE PADDED ROOM, a 3.6 × 3.6 box room: three walls wear the wall proc
+`wall_padding` (three-renderer.js `_hqProcBuilders`, front +z, mount
+0.1, no block), the fourth is the door's back to the ward; counter `hold`
+has `action: {}` — `_hqCounterPanelHtml` renders its panel by id (the
+chart's condition row + SERVE IT / NOT TODAY). Both rooms are viewer-local
+(RULE #2). doorhq.test.js guards the rooms, the helper and the source
+sites. NOTE for tests that read data.js through the vm sandbox: never
+`deepStrictEqual` an array from it (a different `Array` realm fails on
+identical contents) — compare `.join(',')` or `.length`.
+
 ## ROOM 42 + ROOM 1337 (Records as a room, IT, HQ plan 7.4) — added 2026-09-13
 `DOOR_HQ.rooms.records` (data.js) is RECORDS, a `kind: 'box'` room behind
 the ground ring's wired double door at 240° (`central_egress.doors` id

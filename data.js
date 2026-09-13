@@ -17589,6 +17589,7 @@ const DOOR_HQ = {
         card_catalogue:    { proc: 'card_catalogue', h: 1.9,     foot: 0, wall: true, mount: 0,    depth: 0.5,  block: true },   // the wall of little drawers: UNFILED SITES
         server_rack:       { proc: 'server_rack',    h: 2.1,     foot: 0, wall: true, mount: 0,    depth: 0.8,  block: true, glow: { y: 1.2, size: 1.1, color: 0x8fe0c8 } },   // a 42U rack, the LEDs on
         keypad:            { proc: 'keypad',         h: 0.16,    foot: 0, wall: true, mount: 1.3,  depth: 0.04 },   // the door's keypad; the code is on a sticky note
+        wall_padding:      { proc: 'wall_padding',   h: 2.4,     foot: 0, wall: true, mount: 0.1,  depth: 0.14 },   // Room 5150: a wall of tufted vinyl cushions (plan 7.4, 2026-09-13 rev 3)
         /* ══ THE 2026-09-10 BATCH (30 Meshy GLBs, R2 Assets/door/models/) ══
            The user's cafeteria / office / mission kit. Four of them RETIRE a
            procedural prop (plan 2.7 said "replace any of them by giving the
@@ -19193,7 +19194,12 @@ const DOOR_HQ = {
                 { id: 'reception',      deg: 120, level: 0, leaf: 'leaf_glass',                     label: 'RECEPTION',               sub: 'VIEW PROFILE',            action: { fn: '_mountReactProfile' }, roomNo: '1', why: 'one foot in the door; forms start at 1', desc: 'Employee ID cards, laminator, LOST CARD FEE. Your profile lives here.' },
                 { id: 'office',         deg: 150, level: 0, leaf: 'leaf_closet_warped',             label: 'YOUR OFFICE',             sub: 'STORY · CASE FILE',          action: { room: 'office', at: 'egress' }, desc: 'A converted janitor’s closet. Cot, mop bucket, CRT, phone, drain. The in-tray is where the story arrives.', rankDoor: true },
                 { id: 'training',       deg: 180, level: 0, leaf: 'leaf_exit',                      label: 'TRAINING ROOM',           sub: 'PRACTICE · GAUNTLET · DUNGEON',   action: { room: 'training', at: 'egress' }, desc: 'Room 64. The only authorized square room in the building — an 8×8 grid, deemed totally safe, notoriously leaky. ORTHOGONAL GEOMETRY EXPOSURE AREA · MAX OCCUPANCY 45 MINUTES.' },
-                { id: 'medical',        deg: 210, level: 0, leaf: 'leaf_hospital',                  label: 'MEDICAL',                 sub: 'CHALLENGE MODE',           action: { fn: '_goToCampaign' },    roomNo: '1111', why: 'the number you dial', desc: 'Where EXITED operatives are processed. Revives, retries, the Challenge services desk.' },
+                /* ROOM 1111 · MEDICAL (plan 7.4, 2026-09-13 rev 3): the door is now the
+                   way INTO the ward — the services desk (Challenge mode), the chart
+                   (your record), the cell door into Room 5150. The number moved onto
+                   the room (hqDoorNo reads it through). */
+                { id: 'medical',        deg: 210, level: 0, leaf: 'leaf_hospital',                  label: 'MEDICAL',                 sub: 'CHALLENGE MODE',           action: { room: 'medical', at: 'egress' },
+                  desc: 'Room 1111. Where EXITED operatives are processed. The services desk files your retries, the chart at the foot of the bed is your record, and the door at the back of the ward is Room 5150. Nobody comments on the door at the back of the ward.' },
                 { id: 'clockroom',      deg: 225, level: 0, leaf: 'leaf_frosted',        wide: true,  label: 'THE CLOCK ROOM',          sub: 'DAILY TASKS · LOGIN STREAK', action: { room: 'clockroom', at: 'egress' },
                   desc: 'Daily Office Operations Requirements. Three lines a day, the punch clock, and every clock in the room — none of them agree, all of them are right somewhere.' },
                 /* ROOM 42 · RECORDS (plan 7.4, 2026-09-13): the door is now the way
@@ -20024,6 +20030,181 @@ const DOOR_HQ = {
             spawn: { x: -3.1, z: 0, face: 90 },
         },
 
+        /* ── ROOM 1111 · MEDICAL (HQ plan 7.4, 2026-09-13 rev 3) — the ward
+           behind the hospital door at 210° on the ground ring, a `kind:
+           'box'` room now (it was a door straight to Challenge mode).
+           "Where EXITED operatives are processed." THE SERVICES DESK on
+           the south wall is Challenge mode (`_goToCampaign` — revives,
+           retries, the services desk); THE CHART on the east wall between
+           the two beds is your record (`overlay: 'chart'` → map.js
+           _hqChartHtml, read through data.js hqMedicalRecord: matches,
+           wins, EXITS (the losses), what the ward counted, and the
+           CONDITION line — INTAKE / FIT FOR DUTY / UNDER OBSERVATION /
+           ADMINISTRATIVE LEAVE); the cell door on the north wall (`padded`)
+           is Room 5150. The nurse sits at the desk, the orderly stands by
+           the cell door, a patient sits on the far cot. Lines are Claude's
+           stage dressing (the room's overheard pool), not cast lines (A15).
+           Viewer-local, nothing relayed (RULE #2). ── */
+        medical: {
+            label: 'MEDICAL',
+            sub: 'CHALLENGE MODE',
+            roomNo: '1111', why: 'the number you dial',
+            kind: 'box',
+            shell: {
+                w: 8, d: 6, h: 3.2,
+                wallH: 3.2, dadoH: 1.1,
+                floor: 'terrazzo', wall: 'drywall', dado: 'teal', trim: 'teal', ceiling: 'ceiling',
+                floorColor: 0xd9dad2, wallColor: 0xdde6dc, dadoColor: 0x7fa89a,   // painted down: hospital green over pale terrazzo
+                pipes: false,                       // an acoustic ceiling; the ward is the one clean room
+                light: { x: 0, z: 0 },
+                mood: { light: 0xeef4ee },          // cold white, and it never goes off
+                plate: { x: -1.5, z: -2.95, y: 2.75 },
+            },
+            doors: [
+                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_hospital',
+                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
+                  action: { room: 'central_egress', at: 'medical' },
+                  desc: 'The way back to the hall. Discharged operatives sign the clipboard on the way out; the clipboard is the chart.' },
+                /* THE CELL DOOR → Room 5150, the Padded Room */
+                { id: 'padded', wall: 'n', x: 2.6, leaf: 'leaf_cell',
+                  label: 'THE PADDED ROOM', sub: 'ROOM 5150 · ADMINISTRATIVE LEAVE',
+                  action: { room: 'padded', at: 'egress' },
+                  desc: 'A cell door with a slot, at the back of the ward. Administrative leave is served on the other side of it. It is not locked. It has never needed to be.' },
+            ],
+            counters: [
+                /* THE SERVICES DESK → Challenge mode: revives, retries */
+                { id: 'desk', x: -1.5, z: 2.2, face: 0, plateY: 1.85, radius: 1.9, verb: 'CHECK IN',
+                  label: 'THE SERVICES DESK', sub: 'CHALLENGE MODE', action: { fn: '_goToCampaign' },
+                  desc: 'Challenge services. Revives, retries, the ladder — the nurse files the attempt and the ward keeps the count.' },
+                /* THE CHART → your record: matches, wins, exits, the condition line */
+                { id: 'chart', x: 3.2, z: -0.1, face: 270, plateY: 1.9, radius: 1.7, verb: 'READ',
+                  label: 'THE CHART', sub: 'YOUR RECORD', action: { overlay: 'chart' },
+                  desc: 'The clipboard at the foot of the bed. Every crossing the ward counted, every exit it processed, and the line at the bottom that says whether you are fit for duty.' },
+            ],
+            props: [
+                /* ── the north wall: the sink, the shelves, the breaker, the supplies, the cell door ── */
+                { key: 'sink',           wall: 'n', x: -3.0 },
+                { key: 'wall_shelf',     wall: 'n', x: -3.0, mount: 1.55 },
+                { key: 'wall_shelf',     wall: 'n', x: -3.0, mount: 2.0 },
+                { key: 'toilet_paper',   x: -3.15, z: -2.85, y: 2.0, face: 180 },
+                { key: 'coffee_mug',     x: -2.8,  z: -2.85, y: 1.55, face: 160 },
+                { key: 'vent_grille',    wall: 'n', x: -2.2, mount: 2.4 },
+                { key: 'breaker_panel',  wall: 'n', x: -1.5 },
+                { key: 'hook_rail',      wall: 'n', x: -0.7 },
+                { key: 'metal_shelving', wall: 'n', x: 0.4 },
+                { key: 'manila_folders', x: 0.4,  z: -2.85, y: 0.9,  face: 5 },      // the supplies: the files, the boxes
+                { key: 'cardboard_box',  x: 0.55, z: -2.85, y: 1.3,  face: 20 },
+                { key: 'exit_sign',      wall: 'n', x: 2.6, mount: 2.75 },           // over the cell door — it says EXIT; it is not one
+                /* ── the east wall: THE WARD — two cots, the chart between them, the visitor's chair ── */
+                { key: 'cot',            x: 3.5, z: -1.6, face: 90 },
+                { key: 'cot',            x: 3.5, z: 1.4,  face: 90 },
+                { key: 'meal_tray_empty', x: 3.45, z: 1.7, y: 0.46, face: 100 },   // lunch came; it went untouched
+                { key: 'clipboard',      wall: 'e', z: -0.1, mount: 1.4, rot: 2 },   // THE CHART
+                { key: 'folding_chair',  x: 2.6, z: -1.6, face: 90 },                // the visitor's, nobody visits
+                { key: 'potted_plant',   x: 3.5, z: -2.5, face: 200 },
+                { key: 'locker',         wall: 'e', z: 2.6 },
+                /* ── the south wall: THE SERVICES DESK, the notice board, the clock, the extinguisher ── */
+                { key: 'tanker_desk',    wall: 's', x: -1.5 },
+                { key: 'crt_terminal',   x: -1.85, z: 2.55, y: 0.76, face: 0 },
+                { key: 'desk_lamp',      x: -0.95, z: 2.6,  y: 0.76, face: 330 },
+                { key: 'clipboard_flat', x: -1.3,  z: 2.35, y: 0.76, face: 10 },
+                { key: 'rotary_phone',   x: -0.85, z: 2.3,  y: 0.76, face: 20 },
+                { key: 'pen',            x: -1.55, z: 2.25, y: 0.76, face: 70 },
+                { key: 'manila_folders', x: -2.1,  z: 2.35, y: 0.76, face: 355 },
+                { key: 'office_chair',   x: -1.5,  z: 2.35, face: 180 },              // the nurse's, facing the desk
+                { key: 'notice_board',   wall: 's', x: 1.6 },
+                { key: 'wall_clock',     wall: 's', x: 3.2, mount: 2.5 },
+                { key: 'fire_extinguisher', wall: 's', x: 3.0 },
+                { key: 'trash_bin',      x: 0.4, z: 2.6, face: 250 },
+                /* ── the west wall: the way in, the plate, the cooler, the waiting chairs ── */
+                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.75 },
+                { key: 'nameplate',      wall: 'w', z: -1.6, mount: 1.55 },
+                { key: 'filing_cabinet', wall: 'w', z: -2.3 },
+                { key: 'water_cooler',   wall: 'w', z: 2.5 },
+                { key: 'folding_chair',  x: -3.2, z: 1.1,  face: 90 },               // the waiting room, such as it is
+                { key: 'folding_chair',  x: -3.2, z: 1.75, face: 90 },
+                { key: 'papers_a',       x: -3.3, z: 2.05, y: 0.42, face: 20 },      // a magazine from 1987, on the second chair
+                /* ── the floor, the ceiling ── */
+                { key: 'wet_floor_sign', x: 0.4, z: 1.5, face: 140 },
+                { key: 'floor_drain',    x: 0.6, z: -0.6 },
+                { key: 'fluorescent',    x: -2.0, z: 0, ceil: true, face: 0 },
+                { key: 'fluorescent',    x: 2.0,  z: 0, ceil: true, face: 0 },
+            ],
+            agents: [
+                { x: -1.5, z: 2.35, face: 180, pose: 'hqSit', gender: 'female', label: 'THE NURSE', reach: 1.9,
+                  line: '“Name, employee number, and how many times. Do not round down.”' },
+                { x: 2.0, z: -2.3, face: 180, pose: 'hqArms', gender: 'male', label: 'THE ORDERLY', reach: 1.6,
+                  line: '“The door at the back is not locked. Everyone asks. Nobody has tried it.”' },
+                { x: 3.5, z: 1.4, face: 270, pose: 'hqSit', gender: 'male', label: 'THE PATIENT', reach: 1.6,
+                  line: '“I was EXITED on the Moon. They processed me. I feel processed.”' },
+            ],
+            npcSpots: [
+                { x: -3.2, z: 1.1, face: 90 },      // waiting, on the first chair
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Fit for duty?” “The chart says so.” “Is the chart ever wrong?” “The chart is never asked.”',
+                '“EXITED is not dead.” “What is it?” “Processed.”',
+                '“Retries are filed at the desk. Revives are filed at the desk. Complaints are filed at the desk, under retries.”',
+                '“The door at the back?” “Room 5150.” “What is it for?” “Leave.” “Whose?” “Yours, eventually.”',
+            ],
+            spawn: { x: -2.6, z: 0, face: 90 },
+        },
+        /* ── ROOM 5150 · THE PADDED ROOM (HQ plan 7.4, 2026-09-13 rev 3) —
+           the one-cell box room behind the cell door at the back of the
+           ward. Story: administrative leave (DOOR_STORY.md §4 — the party
+           placed on leave for ignoring orders) is served here; the hearing
+           is Room 1984's. Today the door is open and the room is empty:
+           three walls of tufted vinyl (`wall_padding`, a wall proc), a cot
+           bolted to the floor, one drain, one tube behind a cage, and THE
+           HOLD — a counter with no action (a panel, the condition line off
+           the chart, and the sense that it is waiting for you). California's
+           involuntary hold. Viewer-local, nothing relayed (RULE #2). ── */
+        padded: {
+            label: 'THE PADDED ROOM',
+            sub: 'ADMINISTRATIVE LEAVE',
+            roomNo: '5150', why: 'California’s involuntary hold; leave is served here',
+            kind: 'box',
+            shell: {
+                w: 3.6, d: 3.6, h: 3.2,
+                wallH: 3.2, dadoH: 0.1,
+                floor: 'carpet', wall: 'drywall', dado: 'drywall', trim: 'teal', ceiling: 'ceiling',
+                floorColor: 0xe8e4dc, wallColor: 0xf2efe6, dadoColor: 0xe6e2d8,   // painted down: cream on cream
+                pipes: false,
+                light: { x: 0, z: 0 },
+                mood: { light: 0xf4f1e8 },          // one tube, behind a cage, never off
+                plate: { x: 0, z: -1.75, y: 2.7 },
+            },
+            doors: [
+                { id: 'egress', wall: 's', x: 0, leaf: 'leaf_cell',
+                  label: 'MEDICAL', sub: 'BACK TO THE WARD',
+                  action: { room: 'medical', at: 'padded' },
+                  desc: 'The way back to the ward. The slot is at eye height from the other side.' },
+            ],
+            counters: [
+                /* THE HOLD → nothing; the panel is the whole interaction */
+                { id: 'hold', x: 0, z: -0.2, face: 180, plateY: 1.9, radius: 1.6, verb: 'SIT',
+                  label: 'THE HOLD', sub: 'ADMINISTRATIVE LEAVE', action: {},
+                  desc: 'A cot, a drain, three soft walls and a hard one. Leave is served here when it is served. The chart in the ward says whether that is today.' },
+            ],
+            props: [
+                { key: 'wall_padding',   wall: 'n', x: 0 },
+                { key: 'wall_padding',   wall: 'e', z: 0 },
+                { key: 'wall_padding',   wall: 'w', z: 0 },
+                { key: 'cot',            x: 0, z: -1.05, face: 0 },                 // bolted down; the bolts are the only metal in the room
+                { key: 'clipboard',      wall: 's', x: -1.35, mount: 1.4, rot: -3 },   // the hold order, beside the door
+                { key: 'floor_drain',    x: 0.8, z: 0.7 },
+                { key: 'fluorescent',    x: 0, z: 0, ceil: true, face: 90 },
+            ],
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [
+                '“How long?” “Administrative.” “That is not a length.” “It is here.”',
+                '“Three soft walls.” “And the fourth?” “The fourth is the door.”',
+            ],
+            spawn: { x: 0, z: 1.0, face: 0 },
+        },
         /* ── ROOM 1984 · THE INTERROGATION ROOM (HQ plan 7.4, 2026-09-13) — a
            box room off the ground ring at 255°, between RECORDS (240°) and
            BAY 1 (270°): Internal Affairs keeps its room next to the file.
@@ -21618,6 +21799,33 @@ function hqDailyOpsJudge(profile, ev) {
    for a champion line, 'feat_<id>' for a legacy feat). `total` counts the
    catalogue's tiers only — the champion lines are per race and would swamp
    the cabinet; they ride `champs` on their own. */
+/* ── THE CHART (Room 1111 · MEDICAL, HQ plan 7.4 — 2026-09-13 rev 3) ──
+   The ward's record of the operative, read off `profile.career` (the
+   battle stats profile.js mirrors after every match) and the punch clock:
+   matches, wins, EXITS (the losses — an EXITED operative is processed,
+   not dead), what the ward counted (healing, dodges, kills), and ONE
+   condition line — INTAKE (no crossing on file) / FIT FOR DUTY / UNDER
+   OBSERVATION (more exits than wins) / ADMINISTRATIVE LEAVE
+   (`door.leave` truthy — the story's hook, DOOR_STORY §4; nothing sets
+   it yet). map.js _hqChartHtml renders it; Room 5150's hold panel reads
+   the condition. Viewer-local (RULE #2). */
+function hqMedicalRecord(profile) {
+    const c = (profile && profile.career) || {};
+    const n = v => (typeof v === 'number' && isFinite(v)) ? v : 0;
+    const out = {
+        matches: n(c.matchesPlayed), wins: n(c.wins), exits: n(c.losses),
+        kills: n(c.totalKills), healing: Math.round(n(c.totalHealing)), dodges: n(c.totalDodges), crits: n(c.totalCrits),
+        streak: n(c.currentWinStreak), best: n(c.bestWinStreak),
+        days: 0, leave: !!(profile && profile.door && profile.door.leave),
+        condition: 'INTAKE', tone: 'off', note: 'No crossing on file. The ward has not counted you yet.',
+    };
+    try { const pc = (typeof hqPunchClock === 'function') ? hqPunchClock(profile) : null; if (pc) out.days = n(pc.days); } catch (e) {}
+    out.rate = out.matches ? Math.round(100 * out.wins / out.matches) : 0;
+    if (out.leave) { out.condition = 'ADMINISTRATIVE LEAVE'; out.tone = 'codered'; out.note = 'Leave is served in Room 5150. The chart does not say for how long; the chart is not asked.'; }
+    else if (out.matches > 0 && out.exits > out.wins) { out.condition = 'UNDER OBSERVATION'; out.tone = 'unstable'; out.note = 'More exits than wins on file. The ward keeps a bed made up. Nobody comments on which one.'; }
+    else if (out.matches > 0) { out.condition = 'FIT FOR DUTY'; out.tone = 'stabilized'; out.note = 'Processed and released. The desk will file the next attempt when there is one.'; }
+    return out;
+}
 function hqTrophyCount(profile) {
     const cat = (typeof ACH_CATALOG !== 'undefined' && Array.isArray(ACH_CATALOG)) ? ACH_CATALOG : [];
     const out = { done: 0, total: 0, champs: 0, feats: 0, lines: [] };
@@ -22564,6 +22772,7 @@ if (typeof window !== 'undefined') {
     window.hqDailyRowMet = hqDailyRowMet;
     window.hqPunchClock = hqPunchClock;
     window.hqTrophyCount = hqTrophyCount;
+    window.hqMedicalRecord = hqMedicalRecord;
     window.hqPunchIn = hqPunchIn;
     window.hqCanonToday = hqCanonToday;
     window.hqAvatarPref = hqAvatarPref;

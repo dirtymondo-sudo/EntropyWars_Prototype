@@ -37425,6 +37425,25 @@ const ThreeRenderer = (function () {
             var ink = _hqBox(0.045, 0.006, 0.002, _hqBasic(0x2a2c30)); ink.position.set((W / 2 + 0.06) * U, (H * 0.55) * U, 0.007 * U); ink.rotation.z = _hqRad(-7); g.add(ink);
             return g;
         },
+        /* ROOM 5150 · THE PADDED ROOM (2026-09-13 rev 3, plan 7.4): a wall of
+           tufted vinyl cushions — 4 × 3 cream panels on a backing slab, each
+           pressed in at the centre with a button; front = +z, mount 0.1 =
+           just off the floor. Three walls wear it; the door's wall is hard. */
+        wall_padding: function (U) {
+            var g = new THREE.Group();
+            var W = 3.4, H = 2.4, D = 0.14, NX = 4, NY = 3, GAP = 0.05;
+            var back = _hqBox(W, H, 0.03, _hqMat(null, 1, 1, { color: 0xd8d2c2, shininess: 8 })); back.position.set(0, (H / 2) * U, 0.015 * U); g.add(back);
+            var vinyl = _hqMat(null, 1, 1, { color: 0xece7da, shininess: 38, specular: 0x777770 });
+            var seam = _hqMat(null, 1, 1, { color: 0xc9c2b0, shininess: 12 });
+            var cw = (W - GAP * (NX + 1)) / NX, ch = (H - GAP * (NY + 1)) / NY;
+            for (var iy = 0; iy < NY; iy++) for (var ix = 0; ix < NX; ix++) {
+                var cx = (-W / 2 + GAP + cw / 2 + ix * (cw + GAP)), cy = (GAP + ch / 2 + iy * (ch + GAP));
+                var pad = _hqBox(cw, ch, D - 0.04, vinyl); pad.position.set(cx * U, cy * U, ((D - 0.04) / 2 + 0.03) * U); g.add(pad);
+                var crown = _hqBox(cw - 0.12, ch - 0.12, 0.04, vinyl); crown.position.set(cx * U, cy * U, (D - 0.02) * U); g.add(crown);
+                var btn = new THREE.Mesh(new THREE.SphereGeometry(0.03 * U, 10, 8), seam); btn.position.set(cx * U, cy * U, (D - 0.035) * U); g.add(btn);
+            }
+            return g;
+        },
         notice_board: function (U) {
             var g = new THREE.Group();
             var W = 1.6, H = 1.15, D = 0.06;

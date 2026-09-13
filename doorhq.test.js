@@ -2550,3 +2550,88 @@ test('Rooms 42 + 1337 — the source sites: the community-maps modal, the three 
     const pf = fs.readFileSync(path.join(__dirname, 'profile.js'), 'utf8');
     assert.match(pf, /window\._unmountCommunityMaps = function/, 'the community maps page has the unmount the modal wraps');
 });
+
+/* ── ROOM 1111 · MEDICAL + ROOM 5150 · THE PADDED ROOM (HQ plan 7.4, 2026-09-13 rev 3) ── */
+const MED = HQ.rooms.medical, PAD = HQ.rooms.padded;
+
+test('Room 1111 is a box room off the ground ring at 210° (between the Training Room and the Clock Room): the way in, the way out, the number, the desk, the chart, the cell door', () => {
+    assert.ok(MED && MED.kind === 'box' && MED.roomNo === '1111', 'rooms.medical kind box, Room 1111');
+    assert.strictEqual(D.hqRoomNo('medical'), '1111');
+    assert.ok(!MED.shell.open && MED.shell.pipes === false && MED.shell.h >= 3.0, 'an indoor ward under a ceiling, no conduits');
+    const eg = ROOM.doors.find(d => d.id === 'medical');
+    assert.ok(eg && eg.deg === 210 && (eg.level || 0) === 0 && eg.action.room === 'medical' && eg.action.at === 'egress', 'the hall door at 210° walks into the ward at its way out');
+    assert.strictEqual(D.hqDoorNo(eg), '1111', 'the plate over the hall door reads 1111');
+    assert.ok(eg.roomNo == null, 'the hall door does not duplicate the room’s number');
+    assert.ok(!eg.alt && !eg.action.fn, 'no screen alt left on the door (Challenge mode is the desk inside)');
+    const out = MED.doors.find(d => d.id === 'egress');
+    assert.ok(out && out.wall === 'w' && out.action.room === 'central_egress' && out.action.at === 'medical' && out.leaf === eg.leaf && !!out.wide === !!eg.wide, 'the way out is the same hospital door and lands at the hall door');
+    assert.ok(!D.DOOR_TEXT.CLEARANCE.some(r => r.door === eg.leaf), 'not a rank leaf');
+    assert.strictEqual(D.doorSiteState(eg, null), 'open');
+    /* the cell door on the north wall → Room 5150, and back */
+    const cell = MED.doors.find(d => d.id === 'padded');
+    assert.ok(cell && cell.wall === 'n' && cell.leaf === 'leaf_cell' && cell.action.room === 'padded' && cell.action.at === 'egress', 'the cell door on the north wall walks into Room 5150 at its way out');
+    assert.ok(Math.abs(cell.x) < MED.shell.w / 2 - 1.25, 'the cell door fits its wall');
+    assert.ok(!MED.props.some(p => p.wall === 'n' && p.key !== 'exit_sign' && Math.abs(p.x - cell.x) < 1.25), 'no wall prop stands in the cell doorway (the exit sign hangs over it)');
+    /* the desk: Challenge mode; the chart: the record */
+    const dk = MED.counters.find(c => c.id === 'desk'), ch = MED.counters.find(c => c.id === 'chart');
+    assert.ok(dk && dk.action.fn === '_goToCampaign' && dk.verb && dk.desc, 'THE SERVICES DESK checks you into Challenge mode');
+    assert.ok(ch && ch.action.overlay === 'chart' && ch.verb && ch.desc, 'THE CHART opens the record');
+    assert.ok(MED.props.some(p => p.key === 'tanker_desk' && p.wall === 's' && Math.abs(p.x - dk.x) < 0.3), 'a desk under the desk counter');
+    assert.ok(MED.props.some(p => p.key === 'clipboard' && p.wall === 'e' && Math.abs(p.z - ch.z) < 0.3), 'the chart is a clipboard on the east wall at the counter');
+    const has = key => MED.props.filter(p => p.key === key).length;
+    for (const key of ['cot', 'sink', 'wall_shelf', 'clipboard', 'tanker_desk', 'crt_terminal', 'office_chair', 'folding_chair', 'metal_shelving', 'filing_cabinet', 'notice_board', 'wall_clock', 'water_cooler', 'exit_sign', 'fluorescent', 'fire_extinguisher', 'breaker_panel', 'floor_drain']) assert.ok(has(key) >= 1, 'Room 1111 has its ' + key);
+    assert.ok(has('cot') >= 2, 'a ward: two cots at least'); assert.ok(MED.props.every(p => p.key !== 'cot' || p.x > MED.shell.w / 2 - 1.0), 'the cots stand along the east wall');
+    assert.ok(MED.agents.some(a => a.pose === 'hqSit' && MED.props.some(p => p.key === 'office_chair' && Math.hypot(p.x - a.x, p.z - a.z) < 0.05)), 'the nurse sits on the desk chair');
+    assert.ok(MED.agents.some(a => a.pose === 'hqSit' && MED.props.some(p => p.key === 'cot' && Math.hypot(p.x - a.x, p.z - a.z) < 0.05)), 'the patient sits on a cot');
+    assert.deepStrictEqual(boxPropProblems('medical', MED), []);
+    const rows = D.hqRoomRegister().filter(r => r.no === '1111');
+    assert.strictEqual(rows.length, 1); assert.strictEqual(rows[0].kind, 'room'); assert.strictEqual(rows[0].id, 'medical');
+});
+
+test('Room 5150 is the one-cell box room behind the ward’s cell door: three padded walls, the cot, the hold, the way back', () => {
+    assert.ok(PAD && PAD.kind === 'box' && PAD.roomNo === '5150', 'rooms.padded kind box, Room 5150');
+    assert.strictEqual(D.hqRoomNo('padded'), '5150');
+    assert.ok(PAD.shell.w <= 4 && PAD.shell.d <= 4 && PAD.shell.pipes === false && !PAD.shell.open, 'one cell, no conduits');
+    const cell = MED.doors.find(d => d.id === 'padded');
+    assert.strictEqual(D.hqDoorNo(cell), '5150', 'the plate over the cell door reads 5150');
+    const out = PAD.doors.find(d => d.id === 'egress');
+    assert.ok(out && out.wall === 's' && out.leaf === 'leaf_cell' && out.action.room === 'medical' && out.action.at === 'padded', 'the way back is the same cell door and lands at the ward’s door');
+    assert.strictEqual(PAD.doors.length, 1, 'one door');
+    const pads = PAD.props.filter(p => p.key === 'wall_padding');
+    assert.strictEqual(pads.map(p => p.wall).sort().join(','), 'e,n,w', 'the three walls that are not the door’s wear the padding');
+    assert.ok(!PAD.props.some(p => p.wall === 's' && Math.abs(p.x - out.x) < 1.25), 'nothing hangs in the doorway');
+    assert.ok(HQ.catalogue.wall_padding && HQ.catalogue.wall_padding.proc === 'wall_padding' && HQ.catalogue.wall_padding.wall && !HQ.catalogue.wall_padding.block, 'wall_padding is a wall proc');
+    const hold = PAD.counters.find(c => c.id === 'hold');
+    assert.ok(hold && !hold.action.fn && !hold.action.overlay && !hold.action.room && hold.desc, 'THE HOLD has a panel and no action');
+    assert.strictEqual(PAD.props.filter(p => p.key === 'cot').length, 1, 'one cot');
+    assert.strictEqual(PAD.agents.length, 0, 'nobody is serving leave today');
+    assert.deepStrictEqual(boxPropProblems('padded', PAD), []);
+    const rows = D.hqRoomRegister().filter(r => r.no === '5150');
+    assert.strictEqual(rows.length, 1); assert.strictEqual(rows[0].kind, 'room'); assert.strictEqual(rows[0].id, 'padded');
+});
+
+test('Rooms 1111 + 5150 — the chart: hqMedicalRecord off the career stats, the condition line', () => {
+    assert.strictEqual(typeof D.hqMedicalRecord, 'function');
+    const blank = D.hqMedicalRecord(null);
+    assert.strictEqual(blank.condition, 'INTAKE'); assert.strictEqual(blank.matches, 0); assert.strictEqual(blank.tone, 'off');
+    const fit = D.hqMedicalRecord({ career: { matchesPlayed: 5, wins: 3, losses: 2, totalHealing: 120.4, totalDodges: 4, totalCrits: 7, totalKills: 9 } });
+    assert.strictEqual(fit.condition, 'FIT FOR DUTY'); assert.strictEqual(fit.exits, 2); assert.strictEqual(fit.rate, 60); assert.strictEqual(fit.healing, 120); assert.strictEqual(fit.tone, 'stabilized');
+    const obs = D.hqMedicalRecord({ career: { matchesPlayed: 4, wins: 1, losses: 3 } });
+    assert.strictEqual(obs.condition, 'UNDER OBSERVATION'); assert.strictEqual(obs.tone, 'unstable');
+    const lv = D.hqMedicalRecord({ career: { matchesPlayed: 4, wins: 4, losses: 0 }, door: { leave: true } });
+    assert.strictEqual(lv.condition, 'ADMINISTRATIVE LEAVE'); assert.ok(lv.leave && lv.tone === 'codered');
+    const tie = D.hqMedicalRecord({ career: { matchesPlayed: 2, wins: 1, losses: 1 } });
+    assert.strictEqual(tie.condition, 'FIT FOR DUTY', 'a tie is fit for duty');
+});
+
+test('Rooms 1111 + 5150 — the source sites: the chart overlay, the hold panel, the padding proc, the export', () => {
+    const mp = fs.readFileSync(path.join(__dirname, 'map.js'), 'utf8');
+    const tr = fs.readFileSync(path.join(__dirname, 'three-renderer.js'), 'utf8');
+    const dj = fs.readFileSync(path.join(__dirname, 'data.js'), 'utf8');
+    assert.match(mp, /if \(act\.overlay === 'chart'\) return _hqChartHtml\(\);/, 'the chart overlay is dispatched');
+    assert.match(mp, /function _hqChartHtml\(\) \{[\s\S]{0,400}?window\.hqMedicalRecord/, 'the chart reads hqMedicalRecord');
+    assert.match(mp, /if \(c\.id === 'hold'\) \{[\s\S]{0,300}?window\.hqMedicalRecord/, 'the hold panel repeats the condition line');
+    assert.match(mp, /_goToCampaign: 'CHALLENGE'/, 'the desk’s fn is labelled');
+    assert.match(tr, /^\s+wall_padding: function \(U\) \{/m, 'the wall_padding proc');
+    assert.match(dj, /window\.hqMedicalRecord = hqMedicalRecord;/, 'hqMedicalRecord is on window for map.js');
+});
