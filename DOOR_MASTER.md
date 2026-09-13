@@ -775,11 +775,14 @@ Doorman; every other hand is Opener or Closer, which is the point.
 - **● Mystery Dungeon hub = the headquarters** (2026-09-05): the old
   `md_hub` board is out of the flow; the "condemned crossing" door in the
   Training Facility opens the delver + party page and drops to Floor 1.
-- **○ Tutorial = ORIENTATION, DAY 1.** VHS tape ("D.O.O.R. ORIENTATION ·
+- **◐ Tutorial = ORIENTATION, DAY 1.** VHS tape ("D.O.O.R. ORIENTATION ·
   TAPE 1 OF 1 · 1987 · BE KIND, REWIND"), tracking lines, chipper narrator,
   FIELD MANUAL bullets; mistakes earn a memo, not a fail; ends with the card
   being laminated and Directive 1. The ident's VHS OSD / tracking CSS is
-  reusable. Played in the Training Room (HQ plan).
+  reusable. Played in the Training Room (HQ plan). **Shipped 2026-09-13
+  (Part D): the tape (draft narration — the user's to write), the shelf, nine
+  scripted lessons, the drift register. Still open: the lamination /
+  Directive 1 beat, the user's narration.**
 - **◐ System text in DOOR voice.** Intake errors done; disconnects
   ("CROSSING UNSTABLE — re-establishing"), rate limit ("Too many forms.
   Please take a number.") open. A disconnect is an EXIT event.
@@ -2160,3 +2163,19 @@ Moon's three stay. Files: data.js, three-renderer.js, audio.js → R2;
 server.js → Render; index.html (`20260913-wave1-01-cors`) → Render;
 delta-maps.test.js, doorhq.test.js, check-data-parity.js, docs → the repo.
 Full log: DOOR_HQ_BUILD_PLAN.md §9 (2026-09-13 wave 1). Not playtested.
+
+### 2026-09-13 — 4.3 ORIENTATION: the tape and the tutorial
+Main menu → TUTORIAL (and the RANGE console in Room 64): THE ORIENTATION
+TAPE (ten drawn beats on the tube TV — the corner, the round facility and
+its one square room, the Entropy Wars, the vessels, the turn, the three ways
+a crossing closes, Room 64, "please do not turn around"; the narration is a
+DRAFT for the user, A11), three CORE tapes (FIRST STEPS · THE PRESS · THE
+THREE WAYS OUT) and six optional ones, each a scripted crossing on the
+Training Room grid against the Department's dummies with a coach card, the
+verbs gated per step. Optional, unscored, nothing filed. THE DRIFT REGISTER
+(data.js `TUTORIAL_MECHANICS`, check-tutorial-drift.js) makes the user's
+rule mechanical: a changed number or rule fails `npm test` naming the tape.
+Files: data.js, ui.js, battle.js, state.js, hud.js, map.js, styles-base.css,
+styles-cinematic.css → R2; index.html (`20260913-tutorial-01-cors`) → Render;
+tutorial.test.js, check-tutorial-drift.js, docs → the repo. Full log:
+DOOR_HQ_BUILD_PLAN.md §9 (2026-09-13 rev 4). Not playtested.

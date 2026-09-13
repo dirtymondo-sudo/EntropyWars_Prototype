@@ -10275,6 +10275,7 @@
             // Training-match imitation: the CPU learns which apocalypse the
             // human reaches for (ai.js _candMatchesHuman knows strikeType).
             try { if (typeof _imitObserve === 'function') _imitObserve(unit, { type: 'entropyStrike', strikeType: def.id }); } catch (err) {}
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('entropy', { uid: unit.id, player: unit.player, strikeType: def.id });
 
             // Spend everything up front (host-authoritative, sync-safe).
             ensureEntropyGauge();
@@ -27264,6 +27265,7 @@
                 result.apDelta = (unit.ap || 0) - before; // <= 0
                 result.penalty = result.apDelta < 0;
                 unit._pressPenaltiesThisTurn = (unit._pressPenaltiesThisTurn || 0) + 1;
+                if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('press', { uid: unit.id, outcome, apDelta: result.apDelta, pressed: false });
                 return result;
             }
 
@@ -27314,6 +27316,7 @@
             if (refund > 0) {
                 addEntropy(unit.player, refund * ENTROPY_PTS.pressRefund, 'pressRefund', null);
             }
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('press', { uid: unit.id, outcome, apDelta: result.apDelta, pressed: result.pressed });
             return result;
         }
 
@@ -38102,6 +38105,7 @@
 
                 state.activePlayer = nextUnit.player;
                 state._blitzActiveUnitId = nextUnit.id;
+                if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('activation', { uid: nextUnit.id, player: nextUnit.player });
 
                 // Training match: turbo ON for a CPU unit, OFF for the human's.
                 _syncTrainingTurbo(nextUnit);
@@ -40750,8 +40754,10 @@
                 try { if (_mdEnemyRoam(unit)) return; } catch (e) { console.error('[MD] enemy roam failed:', e); }
             }
 
-            if (false) {
-
+            /* THE TUTORIAL (ui.js _tutCpuTurn): a training dummy follows the
+               live step's plan (hold / approach / attack / guard), never the AI. */
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutCpuTurn === 'function') {
+                try { if (window._tutCpuTurn(unit)) return; } catch (e) { console.error('[Tutorial] dummy turn failed:', e); }
             }
 
             if (typeof window.aiTakeTurn === 'function') {
@@ -44949,7 +44955,10 @@
                 }
                 return false;
             }
+            /* THE TUTORIAL (ui.js): the live step's allow-list, then the report */
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('move', unit)) return false;
             _imitObserve(unit, { type: 'move', x, y });
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('move', { uid: unit.id, x, y, fromX: unit.x, fromY: unit.y });
             const moveTiles = getMoveTiles(unit);
 
             let _matchedTile = null;
@@ -45701,7 +45710,12 @@
                     return 0;
                 }
             }
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('attack', unit)) return 0;
             _imitObserve(unit, { type: 'attack', x, y });
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') {
+                const _tutTgt = unitAt(x, y);
+                window._tutEvent('attack', { uid: unit.id, x, y, tid: _tutTgt ? _tutTgt.id : null, arc: (_tutTgt && typeof getAttackArc === 'function') ? getAttackArc(unit, _tutTgt) : null });
+            }
             // Balance Lab: a basic attack must never be attributed to a spell
             // whose cast fizzled earlier without reaching finishAction.
             _balSpellCollector = null;
@@ -45859,6 +45873,7 @@
                    holds is a siege engine — ×1.5 with one, ×2 with both. */
                 const _nxSiege = (typeof getCubeDamageMult === 'function') ? getCubeDamageMult(unit.player) : 1;
                 if (_nxSiege > 1) damage = Math.round(damage * _nxSiege);
+                if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('cube', { uid: unit.id, player: unit.player, damage });
 
                 spendAllAP(unit);   // attacking ends the turn
                 state.actionMode = null;
@@ -46575,6 +46590,8 @@
                 addLog('Terrain blocks that scan line.');
                 return;
             }
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('inspect', unit)) return;
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('inspect', { uid: unit.id, x, y });
 
             pushUndoSnapshot(true);
 
@@ -48676,6 +48693,8 @@
                 return;
             }
 
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('item', unit)) return;
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('item', { uid: unit.id, x, y, tool: state.selectedTool });
             // Resolve by z FIRST: unitAt(x,y) prefers the GROUND unit of a
             // stack, so a flyer using a potion on itself (or a bane aimed at
             // an airborne enemy) used to land on whoever stood beneath it.
@@ -49658,7 +49677,9 @@
                 return 0;
             }
 
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('spell', unit, spell.id)) return 0;
             _imitObserve(unit, { type: 'spell', x, y, spellId: spell.id, spellName: spell.name });
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('spell', { uid: unit.id, x, y, spellId: spell.id });
 
             if (spell.kind !== 'teleport') state._teleportingUnit = null;
 
@@ -55088,6 +55109,8 @@
 
             /* Spell Lab never ends — the dummy dying is a feature. */
             if (state._spellLabMode) return false;
+            /* THE TUTORIAL: a lesson ends itself (ui.js _tutFinish), never by a win. */
+            if (typeof window !== 'undefined' && window._tutActive) return false;
 
             const mpMode = getActiveMultiplayerMode();
             const wcs = mpMode.winConditions || [];
@@ -55120,6 +55143,8 @@
             }
             /* Spell Lab sandbox: no winner, ever — exit is the Exit button. */
             if (state._spellLabMode) return;
+            /* THE TUTORIAL: no result screen — a forfeit (the pause menu) just leaves the lesson. */
+            if (typeof window !== 'undefined' && window._tutActive) { if (state.winner && typeof window._tutorialLeave === 'function') { state.winner = null; window._tutorialLeave(true); } return; }
             if (state.winner) {
                 if (!state._winLogged) {
                     state._winLogged = true;

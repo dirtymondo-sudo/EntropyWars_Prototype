@@ -17409,6 +17409,570 @@ if (typeof window !== 'undefined') {
     window.doorCanonDate = doorCanonDate;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE TUTORIAL — ORIENTATION (HQ plan 4.3, shipped 2026-09-13)
+   ─────────────────────────────────────────────────────────────────────────
+   Content only. The RUNTIME (the scripted match, the step engine, the coach
+   panel, the tape player) is ui.js "THE TUTORIAL RUNTIME"; the hooks it needs
+   sit in battle.js / state.js / hud.js as one-liners guarded by
+   `window._tutActive`.
+
+   TUTORIAL_TAPE ......... the ORIENTATION tape (ui.js doorTapePlay). DRAFT
+                           narration — the user owns the tape's words
+                           (DOOR_MASTER A11 / the Chapter 1 beats); rewrite
+                           the `cap` strings freely, the `art` keys are the
+                           drawn slides.
+   TUTORIAL_LESSONS ...... the lessons, each a scripted crossing in Room 64
+                           (`prebuilt_training`; THE HIGH GROUND runs on the
+                           Holo Sim, the Training Facility's other board):
+                           `board` = both teams pinned (race · job · tile ·
+                           spells · name), `order` = the forced turn order,
+                           `steps` = the script. A step is
+                             { id, title?, say, hint?, focus?, allow?, goal?,
+                               cpu?, enter?, auto? }
+                           say ..... the coach's text ({{KEY}} → tutorialFacts)
+                           focus ... { unit | tile:[x,y] | hud:'move' |
+                                       el:'#css' } (camera + a glow)
+                           allow ... the verbs the player may use while the
+                                     step is live: move attack spell
+                                     spell:<id> guard end item inspect
+                                     channel entropy combo · 'all' · []
+                           goal .... what completes it (ui.js _tutGoalMet):
+                                     ack (the CONTINUE button) · move ·
+                                     attack · spell · press · guard · end ·
+                                     inspect · channel · entropy · cpuDone ·
+                                     round · nexus · key · cube · visible ·
+                                     activation
+                           cpu ..... the dummies' plan while the step is
+                                     live: { <unitKey>: hold | approach |
+                                     attack | guard | pass } (default hold)
+                           enter ... effects on arrival: [['gauge', n],
+                                     ['fog', bool], ['key', x, y], ['ap',
+                                     unitKey, n], ['camera', x, y]]
+                           auto .... ms; a pure-say step that advances itself
+   TUTORIAL_MECHANICS .... THE DRIFT REGISTER. Every mechanic a lesson teaches
+                           names (a) the numbers the copy states (`pins`,
+                           read from source by tutorial.test.js) and (b) the
+                           rule functions whose body the lesson describes
+                           (`watch`, fingerprinted by check-tutorial-drift.js).
+                           A changed number or a changed function FAILS
+                           `npm test` with the lesson named, until someone
+                           re-reads the lesson, fixes its copy / steps, and
+                           re-stamps the pin or the hash. That is the whole
+                           "the tutorial must be flagged for update" rule —
+                           see CLAUDE.md "THE TUTORIAL".
+   ═══════════════════════════════════════════════════════════════════════ */
+const TUTORIAL_TAPE = {
+    label: 'D.O.O.R. ORIENTATION · TAPE 1 OF 1 · 1987 · BE KIND, REWIND',
+    osd: '▶ PLAY   SP',
+    skip: 'ESC · SKIP THE TAPE',
+    next: 'SPACE · NEXT',
+    draft: true,   // A15 / A11: the narration below is Claude's DRAFT — the user rewrites it
+    beats: [
+        { id: 'leader',   ms: 3200, art: 'leader',  title: '',
+          cap: '' },
+        { id: 'welcome',  ms: 7200, art: 'seal',    title: 'DEPARTMENT OF ORTHOGONAL REALITIES',
+          cap: 'Welcome, new hire. You are watching Orientation Tape One. There is no Tape Two. Please give the tape your full attention. The tape will know.' },
+        { id: 'corner',   ms: 8200, art: 'corner',  title: 'PART 1 · WHERE REALITIES MEET',
+          cap: 'Reality is not parallel. Parallel lines never meet. Realities meet at RIGHT ANGLES — at corners. Every corner in every room is a potential door. Please do not stand in corners.' },
+        { id: 'round',    ms: 7600, art: 'round',   title: 'PART 2 · THE FACILITY',
+          cap: 'This is why the Department is round. It is also why there is exactly one square room in the building. It is eight by eight. You are about to be sent to it.' },
+        { id: 'wars',     ms: 8200, art: 'globe',   title: 'PART 3 · THE ENTROPY WARS',
+          cap: 'Uncontrolled thresholds are opening across Canon Reality. What comes through does not fill in a form. The Department calls this the Entropy Wars. You may call it Tuesday.' },
+        { id: 'vessels',  ms: 8600, art: 'grid',    title: 'PART 4 · THE VESSELS',
+          cap: 'You will not fight them yourself. You will file a crossing and command four VESSELS — entities already through the door, and already on payroll. Four against four. Eight by eight.' },
+        { id: 'turn',     ms: 9000, art: 'turn',    title: 'PART 5 · THE TURN',
+          cap: 'Vessels act one at a time, fastest first. Each vessel has {{AP}} ACTION POINTS a turn. Moving costs one. Striking costs everything you have left — unless you strike a WEAKNESS. Then you strike again.' },
+        { id: 'threeway', ms: 9000, art: 'three',   title: 'PART 6 · HOW A CROSSING CLOSES',
+          cap: 'In the field a crossing closes one of three ways: destroy the BLACK CUBE, secure {{KEYS_TO_WIN}} of the {{KEYS_POOL}} KEYS, or remove every hostile entity. Any one will do. The Department is not picky. The Department is thorough.' },
+        { id: 'room64',   ms: 8000, art: 'room64',  title: 'PART 7 · REPORT TO ROOM 64',
+          cap: 'Your instructor is waiting in Room 64, the Orthogonal Geometry Exposure Area. Maximum occupancy forty-five minutes. Please proceed to Room 64. Please do not run. Please do not stand in the corners.' },
+        { id: 'turnaround', ms: 8400, art: 'dark',  title: '',
+          cap: 'One last item. During the remainder of the tape, please do not turn around.  …  Thank you for not turning around. This concludes Orientation Tape One.' },
+    ],
+};
+
+/* The nine lessons. Board coordinates are the Δ frame: x 0..7 west→east,
+   y 0..7 north→south; P1 spawns row 7 (south), P2 row 0 (north); the centre
+   nexus is x 3..4 × y 3..4. Unit keys are `p<seat>-<slot>`. */
+const TUTORIAL_LESSONS = [
+    /* ── CORE 1 ─────────────────────────────────────────────────────── */
+    {
+        id: 'first_steps', no: 1, tier: 'core', minutes: 4,
+        title: 'FIRST STEPS', sub: 'MOVE · ATTACK · ACTION POINTS · THE TURN',
+        teaches: ['turn', 'ap', 'move', 'attack', 'guard'],
+        map: 'prebuilt_training', mode: 'tdm', rounds: 30,
+        board: {
+            p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: 'BLADE', x: 3, y: 6, spells: [] },
+                  { race: 'marksman',     job: 'Sniper',      gender: 'female', name: 'SCOPE', x: 2, y: 7, spells: [] } ],
+            p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: 'DUMMY A', x: 3, y: 3, spells: [] },
+                  { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: 'DUMMY B', x: 5, y: 2, spells: [] } ],
+        },
+        order: ['p1-0', 'p1-1', 'p2-0', 'p2-1'],
+        steps: [
+            { id: 'welcome', title: 'ROOM 64',
+              say: 'The only square room in the building. Two vessels are yours — <b>BLADE</b>, a swordfighter, and <b>SCOPE</b>, a marksman. The two at the far end are the Department\'s training dummies. Nothing in here is filed.',
+              goal: { type: 'ack' } },
+            { id: 'clock', title: 'THE TURN',
+              say: 'Vessels act <b>one at a time, fastest first</b>. It is BLADE\'s turn. Every vessel carries <b>{{AP}} ACTION POINTS</b> (AP) a turn — the pips beside the name. Every action costs at least one.',
+              focus: { hud: 'ap' }, goal: { type: 'ack' } },
+            { id: 'move', title: 'MOVE',
+              say: 'Press <b>MOVE</b>, then click an orange tile. A move costs <b>1 AP</b> and hands the menu back. Walk BLADE up until DUMMY A is within reach.',
+              hint: 'MOVE · then a tile next to DUMMY A',
+              focus: { hud: 'move' }, allow: ['move'],
+              goal: { type: 'move', unit: 'p1-0', inRangeOf: 'p2-0' } },
+            { id: 'ap-left', title: 'ONE AP LEFT',
+              say: 'BLADE still has AP, so BLADE still has the turn. <b>Attacking costs everything you have left</b> — it ends the turn.',
+              focus: { hud: 'ap' }, auto: 3200 },
+            { id: 'attack', title: 'ATTACK',
+              say: 'Press <b>ATTACK</b> and click DUMMY A. Click it again to confirm the strike.',
+              hint: 'ATTACK · DUMMY A · click twice',
+              focus: { hud: 'attack' }, allow: ['attack'],
+              goal: { type: 'attack', unit: 'p1-0', target: 'p2-0' } },
+            { id: 'attack-done', title: 'TURN OVER',
+              say: 'The strike spent BLADE\'s AP. The clock moves to the next vessel: <b>SCOPE</b>.',
+              auto: 3000 },
+            { id: 'scope', title: 'RANGE',
+              say: 'SCOPE is a marksman — a basic attack reaches <b>RNG</b> tiles. Don\'t walk up. Press ATTACK and shoot DUMMY B from here.',
+              hint: 'ATTACK · DUMMY B',
+              focus: { hud: 'attack' }, allow: ['attack', 'move'],
+              goal: { type: 'attack', unit: 'p1-1' } },
+            { id: 'enemy', title: 'THEIR TURN',
+              say: 'Both of yours have acted. The dummies take theirs — watch the <b>TURN CLOCK</b>. DUMMY A swings at BLADE; DUMMY B shambles closer.',
+              cpu: { 'p2-0': 'attack', 'p2-1': 'approach' },
+              goal: { type: 'cpuDone' } },
+            { id: 'round', title: 'A NEW ROUND',
+              say: 'When every vessel has acted the <b>round</b> ends: AP refills, statuses tick, and the clock starts over.',
+              focus: { el: '#roundLabel' }, auto: 3400 },
+            { id: 'guard', title: 'GUARD',
+              say: 'BLADE took a hit. <b>GUARD</b> raises DEF and M DEF and arms <b>OVERWATCH</b> — the first enemy to stop within reach eats a free shot. Guard ends the turn.',
+              hint: 'GUARD',
+              focus: { hud: 'guard' }, allow: ['guard', 'move'],
+              goal: { type: 'guard', unit: 'p1-0' } },
+            { id: 'two-moves', title: 'TWO MOVES',
+              say: 'SCOPE: press <b>MOVE</b> twice. The second move of a turn costs <b>all remaining AP</b> — moving twice is a whole turn. (<b>END TURN</b> — SPACE — passes whatever is left.)',
+              hint: 'MOVE · MOVE · or END TURN',
+              focus: { hud: 'move' }, allow: ['move', 'end'],
+              goal: { type: 'end', unit: 'p1-1' } },
+            { id: 'done', title: 'THAT IS THE TURN',
+              say: 'MOVE costs 1 AP. ATTACK ends the turn. GUARD ends the turn. Two MOVEs are a whole turn. Everything else in this building is built on those four sentences.<br><br>Next: <b>THE PRESS</b> — weakness, criticals and the Entropy Gauge.',
+              goal: { type: 'ack', finish: true } },
+        ],
+    },
+    /* ── CORE 2 ─────────────────────────────────────────────────────── */
+    {
+        id: 'the_press', no: 2, tier: 'core', minutes: 5,
+        title: 'THE PRESS', sub: 'TYPES · WEAKNESS · THE PRESS · THE ENTROPY GAUGE',
+        teaches: ['types', 'press', 'entropy'],
+        map: 'prebuilt_training', mode: 'tdm', rounds: 30,
+        board: {
+            p1: [ { race: 'nun',          job: 'White Mage',  gender: 'female', name: 'SISTER', x: 3, y: 6, spells: ['raceSmite', 'raceBlessing'] },
+                  { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: 'BLADE',  x: 2, y: 7, spells: [] } ],
+            p2: [ { race: 'zombie', job: 'Raider',  gender: 'male', name: 'DUMMY A', x: 3, y: 3, spells: [] },
+                  { race: 'grey',   job: 'Psychic', gender: 'male', name: 'DUMMY B', x: 5, y: 3, spells: [] } ],
+        },
+        order: ['p1-0', 'p1-1', 'p2-0', 'p2-1'],
+        steps: [
+            { id: 'types', title: 'THE SIX TYPES',
+              say: 'Every entity has a <b>TYPE</b>: HUMAN · ALIEN · DIVINE · UNHOLY · TECH · ANOMALY. They chase each other round a wheel: <b>DIVINE › UNHOLY › ANOMALY › TECH › HUMAN › ALIEN › DIVINE</b>. A hit down the wheel finds a <b>WEAKNESS</b> (×{{WEAK_MULT}}). A hit against it is <b>RESISTED</b> (×{{RESIST_MULT}}).',
+              goal: { type: 'ack' } },
+            { id: 'cast', title: 'SISTER',
+              say: '<b>SISTER</b> is DIVINE. DUMMY A is a zombie — UNHOLY. Her <b>SMITE</b> goes straight down the wheel. Open <b>ABILITIES</b>, pick SMITE, and click DUMMY A twice.',
+              hint: 'ABILITIES · SMITE · DUMMY A',
+              focus: { hud: 'abil' }, allow: ['spell:raceSmite', 'move'],
+              goal: { type: 'press', unit: 'p1-0', outcome: 'weak' } },
+            { id: 'press', title: 'THE PRESS',
+              say: '<b>WEAKNESS — +{{PRESS_AP}} AP.</b> That is THE PRESS: the turn\'s first weakness or critical hit hands the AP straight back. A free action, once per turn. Spend it — SMITE again.',
+              hint: 'ABILITIES · SMITE · DUMMY A',
+              focus: { hud: 'abil' }, allow: ['spell:raceSmite', 'attack', 'move'],
+              goal: { type: 'spell', unit: 'p1-0' } },
+            { id: 'blade', title: 'BLADE',
+              say: 'A second weakness in the same turn can\'t press again — it <b>vents into the ENTROPY GAUGE</b> instead (top of the screen). BLADE: walk up or END TURN; the dummies are holding still.',
+              hint: 'MOVE · or END TURN',
+              allow: ['move', 'attack', 'end', 'guard'],
+              goal: { type: 'end', unit: 'p1-1' } },
+            { id: 'wait', title: 'THEIR TURN',
+              say: 'The dummies pass. Round 2 next.',
+              cpu: { 'p2-0': 'pass', 'p2-1': 'pass' },
+              goal: { type: 'cpuDone' } },
+            { id: 'resist', title: 'THE OTHER WAY',
+              say: 'Now the wheel bites back. DUMMY B is a grey — <b>ALIEN</b>, which beats DIVINE. SMITE it anyway and watch what a <b>RESIST</b> costs.',
+              hint: 'ABILITIES · SMITE · DUMMY B',
+              focus: { hud: 'abil' }, allow: ['spell:raceSmite', 'move'],
+              goal: { type: 'press', unit: 'p1-0', outcome: 'resist' } },
+            { id: 'resist-done', title: 'WASTED',
+              say: 'RESISTED: ×{{RESIST_MULT}} damage, and the turn drains <b>{{PRESS_PENALTY}} extra AP</b>. A miss does the same. Every fumble also shrinks what a later press can refund. Read the type before you swing.',
+              auto: 4200 },
+            { id: 'gauge', title: 'THE ENTROPY GAUGE',
+              say: 'Kills, overkill, destruction and every press you can\'t hold feed the team\'s <b>ENTROPY GAUGE</b>. At {{GAUGE_MAX}} it is an apocalypse. The Department has filled yours for training.',
+              focus: { el: '#ewEntropyMeterP1' }, enter: [['gauge', 1, 100]],
+              goal: { type: 'ack' } },
+            { id: 'strike', title: 'ENTROPY STRIKE',
+              say: 'On your next vessel\'s turn press <b>⚛ ENTROPY</b> on the bezel and choose an apocalypse — six, one per type. <b>REVELATIONS</b> is DIVINE. It hits every hostile you can see, typed.',
+              hint: '⚛ ENTROPY · REVELATIONS',
+              focus: { hud: 'entropy' }, allow: ['entropy', 'move', 'attack', 'spell', 'end'],
+              cpu: { 'p2-0': 'pass', 'p2-1': 'pass' },
+              goal: { type: 'entropy', player: 1 } },
+            { id: 'done', title: 'THE PRESS',
+              say: 'Weakness or crit: <b>+{{PRESS_AP}} AP</b>, once a turn. Resist or miss: <b>−{{PRESS_PENALTY}} AP</b>. Overflow feeds the gauge; the gauge is the team attack.<br><br>Next: <b>THE THREE WAYS OUT</b> — how a crossing actually closes.',
+              goal: { type: 'ack', finish: true } },
+        ],
+    },
+    /* ── CORE 3 ─────────────────────────────────────────────────────── */
+    {
+        id: 'three_ways', no: 3, tier: 'core', minutes: 6,
+        title: 'THE THREE WAYS OUT', sub: 'ARENA · KEYS · THE NEXUS · THE BLACK CUBE',
+        teaches: ['arena', 'keys', 'nexus', 'cube'],
+        map: 'prebuilt_training', mode: 'arena', rounds: 40,
+        board: {
+            p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: 'BLADE', x: 3, y: 6, spells: [] },
+                  { race: 'marksman',     job: 'Sniper',      gender: 'female', name: 'SCOPE', x: 4, y: 6, spells: [] } ],
+            p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: 'DUMMY A', x: 1, y: 1, spells: [] },
+                  { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: 'DUMMY B', x: 6, y: 1, spells: [] } ],
+        },
+        order: ['p1-0', 'p1-1', 'p2-0', 'p2-1'],
+        keys: [[4, 5], [0, 3], [7, 4], [1, 5], [6, 5]],   // the fixed pool, the first one beside SCOPE
+        steps: [
+            { id: 'arena', title: 'ARENA',
+              say: 'A real crossing closes one of <b>three</b> ways: <b>⬡ destroy the BLACK CUBE</b> · <b>🗝 carry {{KEYS_TO_WIN}} of the {{KEYS_POOL}} KEYS</b> · <b>☠ remove every hostile</b>. Any one ends it. The scoreboard at the top tracks all three.',
+              focus: { el: '#scoreboard' }, goal: { type: 'ack' } },
+            { id: 'key', title: 'THE KEYS',
+              say: 'A <b>KEY</b> lies on the marked tile beside SCOPE. Keys are picked up by <b>scanning</b>: click the tile, choose <b>🔍 INSPECT</b> (1 AP). The scan uncovers the tiles around it and pockets any Key it finds.',
+              hint: 'click the marked tile · 🔍 INSPECT',
+              focus: { tile: [4, 5] }, allow: ['inspect', 'move'],
+              goal: { type: 'key', player: 1, count: 1 } },
+            { id: 'key-done', title: 'ONE OF THREE',
+              say: 'Carried Keys buff the carrier — and drop where they fall. {{KEYS_TO_WIN}} carried at once is <b>THRESHOLD STABILIZED</b>.',
+              focus: { el: '#scoreboard' }, auto: 3600 },
+            { id: 'nexus', title: 'THE NEXUS',
+              say: 'The centre 2×2 is a <b>NEXUS</b>. <b>{{NEXUS_TICKS}} ticks</b> flip it: stepping in (+1 per vessel per round), <b>CHANNEL</b> (1 AP, +1), or holding it when the round ends. A zone you hold <b>heals</b> your vessels standing in it and <b>burns</b> the enemy\'s — and it is the only place your fallen respawn.',
+              focus: { tile: [3, 3] }, goal: { type: 'ack' } },
+            { id: 'capture', title: 'TAKE THE CENTRE',
+              say: 'Walk BLADE and SCOPE into the centre and press <b>⬡ CHANNEL</b> on the bezel until the zone flips. Two steps and two channels is four.',
+              hint: 'MOVE into the centre · ⬡ CHANNEL',
+              focus: { hud: 'nexus' }, allow: ['move', 'channel', 'end'],
+              cpu: { 'p2-0': 'pass', 'p2-1': 'pass' },
+              goal: { type: 'nexus', player: 1, section: 'earth' } },
+            { id: 'cube', title: 'THE BLACK CUBE',
+              say: 'Captured. Every non-home zone you hold is <b>×{{SIEGE}} SIEGE</b> damage on the enemy\'s <b>BLACK CUBE</b> — the block at the far end. Only <b>physical strikes</b> hurt it. Walk up and hit it.',
+              hint: 'MOVE · ATTACK the Cube',
+              focus: { cube: 2 }, allow: ['move', 'attack', 'end', 'guard', 'channel'],
+              cpu: { 'p2-0': 'pass', 'p2-1': 'pass' },
+              goal: { type: 'cube', player: 1 } },
+            { id: 'wipe', title: 'OR EVERY HOSTILE',
+              say: 'The third way needs no objective at all: <b>remove every hostile</b>. The dummies count. Respawns come back on a zone their team holds — hold every zone and nothing comes back.',
+              goal: { type: 'ack' } },
+            { id: 'done', title: 'THE THREE WAYS OUT',
+              say: '<b>Cube · Keys · Wipe.</b> The Nexus is the economy underneath all three: healing, respawns, siege. That is the core. Everything else is optional reading.<br><br>The rest of the tapes are on the shelf — take them in any order.',
+              goal: { type: 'ack', finish: true } },
+        ],
+    },
+    /* ── OPTIONAL ───────────────────────────────────────────────────── */
+    {
+        id: 'high_ground', no: 4, tier: 'optional', minutes: 3,
+        title: 'THE HIGH GROUND', sub: 'HEIGHT · RANGE · FALL DAMAGE  (the Holo Sim projects the terrain)',
+        teaches: ['height'],
+        map: 'prebuilt_holosim', mode: 'tdm', rounds: 30,
+        board: {
+            p1: [ { race: 'marksman',     job: 'Sniper',      gender: 'female', name: 'SCOPE', x: 4, y: 6, spells: [] },
+                  { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: 'BLADE', x: 2, y: 7, spells: [] } ],
+            p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: 'DUMMY A', x: 5, y: 2, spells: [] },
+                  { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: 'DUMMY B', x: 1, y: 0, spells: [] } ],
+        },
+        order: ['p1-0', 'p1-1', 'p2-0', 'p2-1'],
+        steps: [
+            { id: 'height', title: 'HEIGHT',
+              say: 'Room 404 projects a floor with two <b>risers</b>. Attacking <b>downhill</b> is ×{{DOWNHILL}} per level; attacking <b>uphill</b> costs a flat −{{HIGH_DEF}} damage per level. A ranged vessel two levels up reaches <b>+{{HIGH_RANGE}}</b> tile.',
+              goal: { type: 'ack' } },
+            { id: 'climb', title: 'CLIMB',
+              say: 'Move SCOPE onto the marked riser (one level up).',
+              hint: 'MOVE · the riser',
+              focus: { tile: [5, 5] }, allow: ['move'],
+              goal: { type: 'move', unit: 'p1-0', to: [5, 5] } },
+            { id: 'shoot', title: 'DOWNHILL',
+              say: 'Now shoot DUMMY A. Watch the damage note — <b>⛰ HIGH GROUND</b>.',
+              hint: 'ATTACK · DUMMY A',
+              focus: { hud: 'attack' }, allow: ['attack', 'move'],
+              goal: { type: 'attack', unit: 'p1-0', target: 'p2-0' } },
+            { id: 'done', title: 'THE HIGH GROUND',
+              say: 'Height is damage both ways. Climbing more than one level takes a jump (SPD 90+ leaps two), and a long fall hurts. Take the hill before the enemy does.',
+              goal: { type: 'ack', finish: true } },
+        ],
+    },
+    {
+        id: 'fog', no: 5, tier: 'optional', minutes: 3,
+        title: 'FOG & AWARENESS', sub: 'LINE OF SIGHT · AWR · CLOAKED ENTITIES',
+        teaches: ['fog'],
+        map: 'prebuilt_training', mode: 'tdm', rounds: 30, fog: true,
+        board: {
+            p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: 'BLADE', x: 3, y: 6, spells: [] },
+                  { race: 'marksman',     job: 'Sniper',      gender: 'female', name: 'SCOPE', x: 4, y: 7, spells: [] } ],
+            p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: 'DUMMY A', x: 3, y: 0, spells: [] },
+                  { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: 'DUMMY B', x: 7, y: 0, spells: [] } ],
+        },
+        order: ['p1-0', 'p1-1', 'p2-0', 'p2-1'],
+        steps: [
+            { id: 'fog', title: 'FOG',
+              say: 'Online, the fog is always on. You see what your vessels see — <b>pure line of sight</b>, blocked by walls and blocks. <b>AWR</b> does not extend sight: it sharpens it (crit chance, and at 84+ a cloaked enemy two tiles out).',
+              goal: { type: 'ack' } },
+            { id: 'find', title: 'FIND THE DUMMY',
+              say: 'Something is at the far end. Walk BLADE north until it comes into view.',
+              hint: 'MOVE north',
+              allow: ['move', 'end'],
+              goal: { type: 'visible', player: 1, unit: 'p2-0' } },
+            { id: 'done', title: 'SEEN',
+              say: 'A fogged enemy can\'t be targeted, pinged or panned to. Spread your vessels to widen the view; a scan (🔍 INSPECT) uncovers tiles too.',
+              goal: { type: 'ack', finish: true } },
+        ],
+    },
+    {
+        id: 'facing', no: 6, tier: 'optional', minutes: 4,
+        title: 'FACING & OVERWATCH', sub: 'THE BACK ARC · GUARD · THE REACTION SHOT',
+        teaches: ['facing', 'guard'],
+        map: 'prebuilt_training', mode: 'tdm', rounds: 30,
+        board: {
+            p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: 'BLADE', x: 3, y: 6, spells: [] },
+                  { race: 'marksman',     job: 'Sniper',      gender: 'female', name: 'SCOPE', x: 5, y: 6, spells: [] } ],
+            p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: 'DUMMY A', x: 3, y: 3, spells: [], face: [0, 1] },
+                  { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: 'DUMMY B', x: 5, y: 0, spells: [] } ],
+        },
+        order: ['p1-0', 'p1-1', 'p2-0', 'p2-1'],
+        steps: [
+            { id: 'facing', title: 'FACING',
+              say: 'Every vessel faces the way it last moved or struck. A hit from the <b>side</b> is ×{{SIDE_MULT}}; a hit in the <b>back arc</b> is ×{{BACK_MULT}} and <b>cannot be dodged</b>. DUMMY A faces south. Get behind it.',
+              goal: { type: 'ack' } },
+            { id: 'behind', title: 'THE BACK ARC',
+              say: 'Move BLADE round DUMMY A and strike it from behind.',
+              hint: 'MOVE behind DUMMY A · ATTACK',
+              allow: ['move', 'attack', 'end'],
+              goal: { type: 'attack', unit: 'p1-0', target: 'p2-0', arc: 'back' } },
+            { id: 'guard', title: 'OVERWATCH',
+              say: 'SCOPE: <b>GUARD</b>. It ends the turn, raises DEF, and arms <b>OVERWATCH</b> — the first enemy to finish a move inside SCOPE\'s range takes a reaction shot.',
+              hint: 'GUARD',
+              focus: { hud: 'guard' }, allow: ['guard', 'move', 'end'],
+              goal: { type: 'guard', unit: 'p1-1' } },
+            { id: 'bait', title: 'THEIR TURN',
+              say: 'DUMMY B walks in. Watch the trap.',
+              cpu: { 'p2-0': 'pass', 'p2-1': 'approach' },
+              goal: { type: 'cpuDone' } },
+            { id: 'done', title: 'FACING & OVERWATCH',
+              say: 'Flank for the back arc; GUARD when you have nothing better — it is never a dead click.',
+              goal: { type: 'ack', finish: true } },
+        ],
+    },
+    {
+        id: 'abilities', no: 7, tier: 'optional', minutes: 4,
+        title: 'ABILITIES & MP', sub: 'RANGE · MP · ONE CAST A TURN · BUFFS DON\'T END THE TURN',
+        teaches: ['spells', 'ap'],
+        map: 'prebuilt_training', mode: 'tdm', rounds: 30,
+        board: {
+            p1: [ { race: 'nun',          job: 'White Mage',  gender: 'female', name: 'SISTER', x: 3, y: 6, spells: ['raceBlessing', 'raceSmite'] },
+                  { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: 'BLADE',  x: 4, y: 6, spells: [] } ],
+            p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: 'DUMMY A', x: 3, y: 3, spells: [] },
+                  { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: 'DUMMY B', x: 6, y: 0, spells: [] } ],
+        },
+        order: ['p1-0', 'p1-1', 'p2-0', 'p2-1'],
+        steps: [
+            { id: 'mp', title: 'ABILITIES',
+              say: 'Abilities cost <b>MP</b> (the blue bar) and have their own <b>range</b>. A vessel may cast <b>one ability a turn</b> — two after a press. A buff, heal or ward costs 1 AP and <b>keeps the turn</b>; a damaging cast ends it.',
+              focus: { hud: 'abil' }, goal: { type: 'ack' } },
+            { id: 'bless', title: 'BLESSING',
+              say: 'Open ABILITIES and cast <b>BLESSING</b> on BLADE. It costs 1 AP — SISTER keeps her turn.',
+              hint: 'ABILITIES · BLESSING · BLADE',
+              focus: { hud: 'abil' }, allow: ['spell:raceBlessing', 'move'],
+              goal: { type: 'spell', unit: 'p1-0', spellId: 'raceBlessing' } },
+            { id: 'gate', title: 'ONE CAST',
+              say: 'Try ABILITIES again — SMITE is grey: <b>1 spell/turn</b>. Spend the last AP on a MOVE, or END TURN.',
+              hint: 'MOVE · or END TURN',
+              allow: ['move', 'end', 'spell'],
+              goal: { type: 'end', unit: 'p1-0' } },
+            { id: 'done', title: 'ABILITIES & MP',
+              say: 'Buff first, strike second — in that order the buff costs a point and the strike costs the rest. MP trickles back every round, faster on a zone you hold.',
+              goal: { type: 'ack', finish: true } },
+        ],
+    },
+    {
+        id: 'items', no: 8, tier: 'optional', minutes: 2,
+        title: 'ITEMS', sub: 'THE BAG · POTIONS · BANES',
+        teaches: ['items'],
+        map: 'prebuilt_training', mode: 'tdm', rounds: 30,
+        board: {
+            p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male', name: 'BLADE', x: 3, y: 6, spells: [], items: { healPotion: 2, manaPotion: 1 }, hp: 0.5 } ],
+            p2: [ { race: 'zombie', job: 'Raider', gender: 'male', name: 'DUMMY A', x: 3, y: 2, spells: [] } ],
+        },
+        order: ['p1-0', 'p2-0'],
+        steps: [
+            { id: 'bag', title: 'THE BAG',
+              say: 'Every vessel carries up to {{ITEM_SLOTS}} kinds of item, packed in the Party Builder. <b>ITEMS</b> costs 1 AP and keeps the turn. BLADE is hurt and carries two potions.',
+              focus: { hud: 'items' }, goal: { type: 'ack' } },
+            { id: 'drink', title: 'POTION',
+              say: 'Open <b>ITEMS</b>, pick the HEAL POTION and click BLADE.',
+              hint: 'ITEMS · HEAL POTION · BLADE',
+              focus: { hud: 'items' }, allow: ['item', 'move'],
+              goal: { type: 'item', unit: 'p1-0' } },
+            { id: 'done', title: 'ITEMS',
+              say: 'Potions target allies; <b>BANES</b> are thrown at enemies and press on a type weakness like a spell. Items never come back — the bag is the whole supply.',
+              goal: { type: 'ack', finish: true } },
+        ],
+    },
+    {
+        id: 'hud_tour', no: 9, tier: 'optional', minutes: 2,
+        title: 'THE HOROLOGE', sub: 'A TOUR OF THE BATTLE SCREEN',
+        teaches: ['hud'],
+        map: 'prebuilt_training', mode: 'arena', rounds: 30,
+        board: {
+            p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: 'BLADE', x: 3, y: 6, spells: [] },
+                  { race: 'marksman',     job: 'Sniper',      gender: 'female', name: 'SCOPE', x: 4, y: 7, spells: [] } ],
+            p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: 'DUMMY A', x: 3, y: 1, spells: [] },
+                  { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: 'DUMMY B', x: 5, y: 1, spells: [] } ],
+        },
+        order: ['p1-0', 'p1-1', 'p2-0', 'p2-1'],
+        steps: [
+            { id: 'rig', title: 'THE HOROLOGE',
+              say: 'Bottom left: the active vessel\'s plate — HP, MP, the AP pips — and the command ladder. Each verb wears its own colour.',
+              focus: { hud: 'move' }, goal: { type: 'ack' } },
+            { id: 'score', title: 'THE SCOREBOARD',
+              say: 'Top: round, the turn clock, and the objectives — Cube HP, Keys held, the Nexus pips.',
+              focus: { el: '#scoreboard' }, goal: { type: 'ack' } },
+            { id: 'gauge', title: 'THE GAUGE',
+              say: 'The wings: each team\'s <b>ENTROPY GAUGE</b>. Full means an apocalypse is ready.',
+              focus: { el: '#ewEntropyMeterP1' }, goal: { type: 'ack' } },
+            { id: 'dock', title: 'THE PARTY DOCK',
+              say: 'Bottom right: your party as portraits, HP and MP as rings that empty clockwise. Click one to select it.',
+              focus: { el: '.ew-party-dock' }, goal: { type: 'ack' } },
+            { id: 'done', title: 'THE HOROLOGE',
+              say: 'ESC opens the pause menu: settings, nameplates, vitals, the world. That is the whole screen.',
+              goal: { type: 'ack', finish: true } },
+        ],
+    },
+];
+
+/* THE DRIFT REGISTER — see the header. `pins` are numbers the copy STATES
+   (name · the file it lives in · the value the lesson was written against);
+   `watch` are the rule functions the lesson DESCRIBES (fingerprinted by
+   check-tutorial-drift.js; `hash` = the first 10 hex of sha1 over the
+   whitespace-normalised function body). A drift fails tutorial.test.js
+   with the lesson named. Re-stamp = `node check-tutorial-drift.js --print`. */
+const TUTORIAL_MECHANICS = {
+    turn:    { label: 'the blitz turn / rounds', lessons: ['first_steps'],
+               pins: [], watch: [{ file: 'state.js', fn: 'buildBlitzTurnOrder', hash: 'e855b64652' }, { file: 'state.js', fn: 'getNextBlitzUnit', hash: 'b68dee33a6' }] },
+    ap:      { label: 'action points', lessons: ['first_steps', 'abilities'],
+               pins: [{ name: 'UNIT_MAX_AP', file: 'battle.js', value: 2 }, { name: 'AP_COST_ACTION', file: 'battle.js', value: 1 }, { name: 'UNIT_MAX_MOVES', file: 'battle.js', value: 2 }],
+               watch: [{ file: 'battle.js', fn: 'getUnitMaxAP', hash: '7be409729d' }, { file: 'battle.js', fn: 'canUnitMove', hash: 'baf7b896d5' }, { file: 'battle.js', fn: 'getMoveRangeThisTurn', hash: 'f51807202c' }] },
+    move:    { label: 'moving', lessons: ['first_steps'], pins: [], watch: [{ file: 'battle.js', fn: 'getMoveRangeThisTurn', hash: 'f51807202c' }] },
+    attack:  { label: 'the basic attack ends the turn', lessons: ['first_steps'], pins: [], watch: [{ file: 'battle.js', fn: 'spendAllAP', hash: '69c209f05f' }, { file: 'battle.js', fn: 'unitFinished', hash: 'a4d207d2a7' }] },
+    guard:   { label: 'guard + overwatch', lessons: ['first_steps', 'facing'], pins: [], watch: [{ file: 'ui.js', fn: 'doGuard', hash: '143601bae5' }] },
+    types:   { label: 'the type wheel', lessons: ['the_press'],
+               pins: [{ name: 'STAB_MULTIPLIER', file: 'data.js', value: 1.25 }],
+               watch: [{ file: 'state.js', fn: 'getTypeDamageMultiplier', hash: 'f531ce108a' }], chart: { divine: 'unholy', unholy: 'anomaly', anomaly: 'tech', tech: 'human', human: 'alien', alien: 'divine' }, mults: { weak: 1.30, resist: 0.75 } },
+    press:   { label: 'the press turn', lessons: ['the_press'],
+               pins: [{ name: 'PRESS_REFUND_AP', file: 'battle.js', value: 2 }, { name: 'PRESS_MISS_PENALTY_AP', file: 'battle.js', value: 1 }, { name: 'PRESS_MAX_BONUS_AP', file: 'battle.js', value: 2 }],
+               watch: [{ file: 'battle.js', fn: 'applyPressTurn', hash: 'bf21a9e8fb' }, { file: 'battle.js', fn: 'resolvePressOutcome', hash: '042c7b0420' }] },
+    entropy: { label: 'the entropy gauge + strike', lessons: ['the_press'],
+               pins: [{ name: 'ENTROPY_GAUGE_MAX', file: 'battle.js', value: 100 }, { name: 'ENTROPY_STRIKE_AP_COST', file: 'battle.js', value: 1 }],
+               watch: [{ file: 'battle.js', fn: 'canUseEntropyStrike', hash: 'b27f726ec3' }, { file: 'battle.js', fn: 'getEntropyStrikeTargets', hash: 'b9fe29157b' }] },
+    arena:   { label: 'the arena win conditions', lessons: ['three_ways'], pins: [], watch: [{ file: 'battle.js', fn: 'checkWinConditionOnly', hash: 'a7640bb597' }, { file: 'battle.js', fn: 'getArenaKeyRules', hash: 'ce10b994ec' }] },
+    keys:    { label: 'keys (hourglasses)', lessons: ['three_ways'], pins: [], watch: [{ file: 'battle.js', fn: 'getKeysToWin', hash: 'aca1e13cb1' }], modePins: { keySpawnCount: 5, keysToWin: 3 } },
+    nexus:   { label: 'the nexus zones', lessons: ['three_ways'],
+               pins: [{ name: 'NEXUS_CAPTURE_THRESHOLD', file: 'data.js', value: 4 }, { name: 'NEXUS_HOLD_HEAL_PCT', file: 'data.js', value: 0.15 }, { name: 'NEXUS_HOSTILE_DMG_PCT', file: 'data.js', value: 0.25 }, { name: 'NEXUS_CHANNEL_COST_AP', file: 'data.js', value: 1 }],
+               watch: [{ file: 'ui.js', fn: '_nexusApplyTicks', hash: '099ed0f47a' }, { file: 'ui.js', fn: 'nexusOnUnitArrive', hash: 'bc153a39e3' }, { file: 'map.js', fn: 'getRespawnZoneFor', hash: '4263f18a4d' }] },
+    cube:    { label: 'the black cube', lessons: ['three_ways'],
+               pins: [{ name: 'NEXUS_CUBE_DMG_PER_ZONE', file: 'data.js', value: 0.5 }, { name: 'NEXUS_CUBE_DMG_MAX_MULT', file: 'data.js', value: 2 }],
+               watch: [{ file: 'ui.js', fn: 'getCubeDamageMult', hash: '234d153d7e' }] },
+    height:  { label: 'high ground', lessons: ['high_ground'],
+               pins: [{ name: 'HIGH_GROUND_RANGE_BONUS', file: 'battle.js', value: 1 }, { name: 'HIGH_GROUND_DEF_BONUS', file: 'battle.js', value: 5 }, { name: 'DOWNHILL_DAMAGE_BONUS', file: 'battle.js', value: 0.1 }],
+               watch: [] },
+    fog:     { label: 'fog + awareness', lessons: ['fog'], pins: [], watch: [{ file: 'map.js', fn: 'computeVisibleTiles', hash: '7d2fa9517e' }] },
+    facing:  { label: 'facing arcs', lessons: ['facing'],
+               pins: [{ name: 'FACING_BACK_DMG_MULT', file: 'battle.js', value: 1.25 }, { name: 'FACING_SIDE_DMG_MULT', file: 'battle.js', value: 1.10 }],
+               watch: [{ file: 'battle.js', fn: 'getAttackArc', hash: '11db93a9af' }, { file: 'battle.js', fn: 'getFacingDamageMult', hash: '54478fcae2' }] },
+    spells:  { label: 'abilities, MP, one cast a turn', lessons: ['abilities'],
+               pins: [{ name: 'AP_COST_SPELL', file: 'battle.js', value: 1 }],
+               watch: [{ file: 'battle.js', fn: 'getSpellBlockReason', hash: '22681034cb' }, { file: 'battle.js', fn: 'canAffordSpell', hash: '4b921c5b88' }] },
+    items:   { label: 'items', lessons: ['items'], pins: [], watch: [] },
+    hud:     { label: 'the battle screen', lessons: ['hud_tour'], pins: [], watch: [] },
+};
+
+/* The numbers the copy interpolates ({{KEY}}). Read LIVE from the engine
+   when it is loaded (the browser), else from the register's pins (the vm
+   sandbox / a headless test) — so a rule change shows in the copy at once
+   AND fails the pin test until the lesson is re-read. */
+function tutorialFacts() {
+    const g = (typeof window !== 'undefined') ? window : {};
+    /* the engine's closure constants come through ui.js _tutEngineFacts
+       (battle.js declares them inside its own script); data.js's own live
+       on the global */
+    const eng = (typeof g._tutEngineFacts === 'function') ? (g._tutEngineFacts() || {}) : {};
+    const live = (name) => {
+        if (typeof eng[name] === 'number') return eng[name];
+        if (typeof g[name] === 'number') return g[name];
+        return undefined;
+    };
+    const pin = (name) => {
+        for (const m of Object.values(TUTORIAL_MECHANICS)) for (const p of (m.pins || [])) if (p.name === name) return p.value;
+        return undefined;
+    };
+    const n = (name, fb) => { const v = live(name); return (v !== undefined) ? v : (pin(name) !== undefined ? pin(name) : fb); };
+    const pct = v => Math.round(v * 100);
+    const mp = (typeof MULTIPLAYER_MODES !== 'undefined' && MULTIPLAYER_MODES.arena) ? MULTIPLAYER_MODES.arena : {};
+    const chart = TUTORIAL_MECHANICS.types.mults;
+    return {
+        AP: n('UNIT_MAX_AP', 2),
+        MOVES: n('UNIT_MAX_MOVES', 2),
+        PRESS_AP: n('PRESS_REFUND_AP', 2),
+        PRESS_PENALTY: n('PRESS_MISS_PENALTY_AP', 1),
+        WEAK_MULT: chart.weak.toFixed(2), RESIST_MULT: chart.resist.toFixed(2),
+        STAB: n('STAB_MULTIPLIER', 1.25),
+        GAUGE_MAX: n('ENTROPY_GAUGE_MAX', 100),
+        NEXUS_TICKS: n('NEXUS_CAPTURE_THRESHOLD', 4),
+        NEXUS_HEAL: pct(n('NEXUS_HOLD_HEAL_PCT', 0.15)),
+        NEXUS_BURN: pct(n('NEXUS_HOSTILE_DMG_PCT', 0.25)),
+        SIEGE: (1 + n('NEXUS_CUBE_DMG_PER_ZONE', 0.5)).toFixed(1),
+        KEYS_TO_WIN: (typeof mp.keysToWin === 'number') ? mp.keysToWin : TUTORIAL_MECHANICS.keys.modePins.keysToWin,
+        KEYS_POOL: (typeof mp.keySpawnCount === 'number') ? mp.keySpawnCount : TUTORIAL_MECHANICS.keys.modePins.keySpawnCount,
+        HIGH_DEF: n('HIGH_GROUND_DEF_BONUS', 5),
+        DOWNHILL: (1 + n('DOWNHILL_DAMAGE_BONUS', 0.1)).toFixed(1),
+        HIGH_RANGE: n('HIGH_GROUND_RANGE_BONUS', 1),
+        BACK_MULT: n('FACING_BACK_DMG_MULT', 1.25).toFixed(2), SIDE_MULT: n('FACING_SIDE_DMG_MULT', 1.10).toFixed(2),
+        ITEM_SLOTS: (typeof CONFIG !== 'undefined' && CONFIG.unitItemSlots) || 3,
+    };
+}
+function tutorialText(str, facts) {
+    const f = facts || tutorialFacts();
+    return String(str == null ? '' : str).replace(/\{\{(\w+)\}\}/g, (m, k) => (f[k] !== undefined ? String(f[k]) : m));
+}
+function tutorialLesson(id) { return TUTORIAL_LESSONS.find(l => l.id === id) || null; }
+/* the profile's ledger: door.tutorial = { tape: iso|null, done: { <lessonId>: iso } } */
+function tutorialProgress(profile) {
+    const t = (profile && profile.door && profile.door.tutorial) || {};
+    const done = (t.done && typeof t.done === 'object') ? t.done : {};
+    const core = TUTORIAL_LESSONS.filter(l => l.tier === 'core');
+    const coreDone = core.filter(l => !!done[l.id]).length;
+    return { tape: t.tape || null, done, coreDone, coreTotal: core.length,
+             total: TUTORIAL_LESSONS.length, doneCount: TUTORIAL_LESSONS.filter(l => !!done[l.id]).length,
+             next: TUTORIAL_LESSONS.find(l => !done[l.id]) || null };
+}
+function tutorialMarkDone(profile, lessonId, now) {
+    if (!profile) return null;
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.tutorial || typeof profile.door.tutorial !== 'object') profile.door.tutorial = { tape: null, done: {} };
+    const t = profile.door.tutorial;
+    if (!t.done || typeof t.done !== 'object') t.done = {};
+    const iso = new Date(now || Date.now()).toISOString();
+    if (lessonId === 'tape') t.tape = iso; else if (tutorialLesson(lessonId)) t.done[lessonId] = iso;
+    return t;
+}
+if (typeof window !== 'undefined') {
+    window.TUTORIAL_TAPE = TUTORIAL_TAPE;
+    window.TUTORIAL_LESSONS = TUTORIAL_LESSONS;
+    window.TUTORIAL_MECHANICS = TUTORIAL_MECHANICS;
+    window.tutorialFacts = tutorialFacts;
+    window.tutorialText = tutorialText;
+    window.tutorialLesson = tutorialLesson;
+    window.tutorialProgress = tutorialProgress;
+    window.tutorialMarkDone = tutorialMarkDone;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    D.O.O.R. HEADQUARTERS — layout data (DOOR_HQ_BUILD_PLAN.md §3.2)
    The Central Egress as a polar layout table. three-renderer.js builds the

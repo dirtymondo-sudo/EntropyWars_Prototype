@@ -638,6 +638,13 @@
             _blitzTurnIndex = 0;
 
             state._blitzTurnOrderIds = _blitzTurnOrder.map(u => u.id);
+            /* THE TUTORIAL (ui.js): a lesson dictates who acts first */
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutTurnOrder === 'function') {
+                try {
+                    const _tutIds = window._tutTurnOrder();
+                    if (Array.isArray(_tutIds) && _tutIds.length) { state._blitzTurnOrderIds = _tutIds; rebuildBlitzTurnOrderFromIds(); }
+                } catch (e) { console.warn('[Tutorial] turn order', e); }
+            }
         }
 
         function rebuildBlitzTurnOrderFromIds() {

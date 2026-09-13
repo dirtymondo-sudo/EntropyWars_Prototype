@@ -4,6 +4,38 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## 📋 THE TUTORIAL — ORIENTATION, DAY 1 (2026-09-13, LATEST) — data.js, ui.js, battle.js, state.js, hud.js, map.js, index.html, styles-base.css, styles-cinematic.css, tutorial.test.js, check-tutorial-drift.js
+Token → `20260913-tutorial-01-cors`. Main menu → TUTORIAL → the shelf: the
+ORIENTATION TAPE (ui.js `doorTapePlay`, `#doorTape`), three core lessons and
+six optional ones (data.js `TUTORIAL_LESSONS`), each a scripted VS-CPU match on
+`prebuilt_training` driven by ui.js "THE TUTORIAL RUNTIME" (`window.Tutorial`).
+See CLAUDE.md "THE TUTORIAL" for the architecture and THE DRIFT REGISTER rule.
+
+### Driving it from a harness
+- `window._goToTutorial()` → the shelf; `window.doorTapePlay()` → the tape
+  (returns a Promise; `doorTapeSkip()` ends it); `Tutorial.start('first_steps')`
+  → boots the lesson directly (no tape); `Tutorial.state()` → `{ lesson, step,
+  idx, finished, events }`; `Tutorial.skipStep()` → advances the live step
+  (ack steps too); `Tutorial.leave(true)` → tears the lesson down quietly.
+- The boot poll waits for `state.phase === 'battle' && state.round >= 1 &&
+  state._blitzActiveUnitId` (the loading screen + the classic VS card run
+  first; the intro cinematic is forced off for the lesson).
+- Unit ids are `1-0`, `1-1`, `2-0`, `2-1` (lesson keys `p1-0`…). A lesson
+  step's goal reads `_tut.events` (the engine's `_tutEvent` reports) + live
+  state; a refused verb (`_tutActionAllowed`) nudges the coach and plays the
+  error sfx — a harness that clicks a greyed blade gets nothing, by design.
+- The coach is `#tutCoach` in `#game-viewport`; `[data-tut="continue"]` is the
+  CONTINUE button; `.tut-glow` marks the pointed-at HUD element;
+  `.hrlg-blade.tut` the taught verb.
+- Nothing is recorded (no finalizeMatch); `checkWin` is blind while
+  `window._tutActive`. A forfeit from the pause menu just leaves the lesson.
+
+### To eyeball (no playtest run — RULE #1c)
+The coach card's placement (top-right, 340 px), the tape's beat timings and
+the drawn slides, the dummies' pacing, SMITE reading WEAK on the zombie, the
+marksman's reach from the spawn row, the `visible` goal under fog, the RANGE
+console round-trip (tape → lesson → back at the console).
+
 ## 🧠 AI GEN-305 CHAMPION ADOPTED + HEADLESS LAB RUNNER + SIM CLOCK (2026-09-06, LATEST) — battle.js, ai.js, map.js, state.js, three-renderer.js, index.html, train_headless.js, ai-weights.test.js, asset_cache.js
 Token → `20260906e-cors`. The user's gen-305 export (17,832 matches, 18 passes,
 `ewaiweightsgen305.json`) is now the shipped default weight set, the trainer

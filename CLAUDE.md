@@ -357,6 +357,58 @@ WALKS AS row. Cosmetic and viewer-local — nothing on `state`, nothing
 relayed (RULE #2). This answers HQ plan D13. doorhq.test.js guards the
 room, the helpers and the source sites.
 
+## THE TUTORIAL — ORIENTATION, DAY 1 (HQ plan 4.3) — shipped 2026-09-13
+Main menu → **Tutorial** (`_goToTutorial`, index.html `.mm-btn-tutorial`)
+→ `#tutorialPage` THE SHELF (map.js `_renderTutorialPage`): the ORIENTATION
+TAPE, three CORE tapes (1 FIRST STEPS · 2 THE PRESS · 3 THE THREE WAYS OUT)
+and six OPTIONAL ones (high ground · fog · facing/overwatch · abilities/MP ·
+items · the HUD tour), each stamped FILED off `profile.door.tutorial`
+(data.js `tutorialProgress` / `tutorialMarkDone`). Completely optional,
+unscored, nothing recorded. In the building the RANGE console (Room 64)
+offers the same (`data-tutorial="tape"` → the tape + lesson 1, returning to
+the console; `_goToTutorial` → the shelf). **CONTENT = data.js** (the block
+after `DOOR_TEXT`): `TUTORIAL_TAPE` (the beats; `draft: true` — the
+narration is Claude's DRAFT for the user to rewrite, A11/A15),
+`TUTORIAL_LESSONS` (board · order · steps: `say` / `hint` / `focus` /
+`allow` / `goal` / `cpu` / `enter` / `auto` — the header comment is the
+schema), `TUTORIAL_MECHANICS` (THE DRIFT REGISTER, below), `tutorialFacts`
+(the `{{numbers}}` in every copy string, read LIVE from the engine through
+ui.js `_tutEngineFacts`, else from the pins). **RUNTIME = ui.js "THE
+TUTORIAL RUNTIME"**: a lesson is a REAL VS-CPU match on `prebuilt_training`
+(the spell lab's recipe: `applyGameMode` + pinned partyBuilds / partyMeta
+`customSpells` + `applyPartyBuild(false)` + `startMatch()`; intro cine off;
+no party builder, no match select), the dummies are CTRL.AI units whose
+activation runs `_tutCpuTurn` (hold / approach / attack / guard / pass)
+instead of aiTakeTurn, the player's verbs are gated by the step's `allow`
+(`_tutActionAllowed` at doMove / doAttack / doSpell / doItem / doInspect /
+doGuard / triggerEndTurn / channelNexus / chooseActionMenu; hud.js
+`_tutFilterBlades` greys the ladder LATER and `b.tut` glows the taught
+verb), the engine reports through `_tutEvent` (activation · move · attack
+· press · spell · item · inspect · guard · endTurn · channel · entropy ·
+cube), a 200 ms poll judges `goal` (`_tutGoalMet`), THE COACH (`#tutCoach`,
+styles-base.css "THE COACH", `.tut-glow` = the pointer) says the step, the
+lesson's `order` is the initiative (state.js `buildBlitzTurnOrder` →
+`_tutTurnOrder`), `checkWin` / `checkWinConditionOnly` never end a lesson,
+leaving = `backToMainMenu()` → `window._tutReturnPage` (map.js
+`_hqReturnOrMenu`) or the console. **THE TAPE** = ui.js `doorTapePlay()`
+(`#doorTape`, styles-cinematic.css "THE ORIENTATION TAPE": the ident kit's
+power-on / tracking bar / OSD round drawn SVG slides `_TAPE_ART`, a typed
+caption, SPACE next / ESC skip / reduced-motion). Dev: `Tutorial.start(id)`
+· `Tutorial.skipStep()` · `Tutorial.state()` · `doorTapePlay()`.
+**THE RULE — a mechanic change must flag its tape.** `TUTORIAL_MECHANICS`
+names, per mechanic, the numbers the copy states (`pins`: name · file ·
+value, read from SOURCE by `check-tutorial-drift.js` / load-data
+`extractConst`) and the rule functions the lesson describes (`watch`: file ·
+fn · `hash` = sha1 of the whitespace-collapsed body). `npm test`
+(tutorial.test.js) FAILS on any drift, naming the lesson. When you change a
+pinned constant, a watched function, the type wheel or the arena row: RE-READ
+the named lesson (copy, steps, board), fix it, then update the pin's value /
+`node check-tutorial-drift.js --stamp`. Adding a lesson = a `TUTORIAL_LESSONS`
+row + its mechanics in the register (`teaches` ↔ `lessons` must agree — the
+test checks). Never edit a hash without re-reading the lesson. Viewer-local,
+VS-CPU only (RULE #2 has nothing to relay). UNSEEN LIVE (RULE #1c): the
+coach's placement over the HUD, the tape's timing, the dummies' pacing.
+
 ## ROOM 111 + ROOM 1984 (The Trophy Case, The Interrogation Room, HQ plan 7.4) — added 2026-09-13
 `DOOR_HQ.rooms.trophycase` (data.js) is THE TROPHY CASE, a `kind: 'box'`
 room off the MEZZANINE at 290° (`central_egress.doors` id `trophycase`,

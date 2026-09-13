@@ -401,9 +401,11 @@ lamp/frame details → furniture → fixtures → machinery.
   (`door.hq.codeRedsCleared`) as a commendation + SP bonus; promotion via
   `promoteTo` lands on `_hqCheckPromotion` for free.
 - 4.2 First-visit micro-scenes per place (`playCutscene`); the handler.
-- 4.3 Orientation in the Training Room: the VHS tape (ident CSS kit),
-  "please do not turn around", the tutorial match on the Phase 6 map,
-  lamination.
+- 4.3 ✅ (2026-09-13, §9 rev 4) Orientation in the Training Room: the VHS
+  tape (ident CSS kit, `doorTapePlay`), "please do not turn around", the
+  scripted lessons on the Phase 6 board (main menu → TUTORIAL → the shelf;
+  the RANGE console in Room 64). The narration is a draft for the user; the
+  lamination / Directive 1 beat is still open.
 - 4.4 The motto plaque reads the chapter band; canon notices on the
   Bureau of Continuity door.
 - 4.5 `minChapter` sealing (planks); rings gate on rank.
@@ -4770,3 +4772,87 @@ screen, and the Padded Room was planned as one cell behind it.
   three-renderer.js, map.js → R2; index.html
   (`?v=20260913-hq1111-01-cors`) → Render; doorhq.test.js, this file,
   CLAUDE.md → the repo.
+
+### 2026-09-13 (rev 4) — 4.3 ORIENTATION SHIPPED: the tape, the shelf, nine scripted lessons in Room 64 (data.js, ui.js, battle.js, state.js, hud.js, map.js, index.html, styles-base.css, styles-cinematic.css; tutorial.test.js, check-tutorial-drift.js)
+
+The user: "start working on the tutorial… 1-3 scripted battle slices that
+explain the main mechanics, then 5-10 optional tutorials… any future changes
+made to these mechanics, the tutorial needs to be flagged for update…
+available as a button on the main menu… completely optional… all of this
+should take place in the training room… do the beginning training video
+sequence as well". Token `20260913-hq1111-01-cors` → `20260913-tutorial-01-cors`.
+
+- **The shelf (main menu → TUTORIAL, `#tutorialPage`).** THE ORIENTATION
+  TAPE (▶ PLAY · THEN TAPE 1 / REWATCH), THE CORE (three tapes, in order),
+  OPTIONAL READING (six, any order); every card FILED off
+  `profile.door.tutorial` (data.js `tutorialProgress` / `tutorialMarkDone`).
+  Nothing is filed as a match: no career, no achievements, no result
+  overlay — a lesson ends itself with a LESSON COMPLETE card (NEXT TAPE /
+  THE SHELF). In Room 64 the RANGE console grew ORIENTATION ▸ THE TAPE +
+  LESSON 1 (`data-tutorial`, back to the console after) and LESSONS ▸ THE
+  SHELF; the old free 4v4 is SPARRING now.
+- **The tape (`doorTapePlay`, `#doorTape`).** Ten beats on drawn SVG slides
+  — the film leader, the seal, PART 1 the corner (parallel lines vs the
+  right angle and the door), PART 2 the round facility with its one square
+  room, PART 3 the Entropy Wars (thresholds popping on a globe), PART 4 the
+  vessels (four a side, eight by eight), PART 5 the turn (the clock, two AP,
+  the weakness), PART 6 the three ways a crossing closes, PART 7 the Room 64
+  card, then "please do not turn around" over three knocks — a typed caption
+  per beat, the ident kit's power-on / tracking bar / OSD, SPACE next, ESC
+  skip, prefers-reduced-motion honoured, crtOn in / vhsEject out.
+  **The narration is a DRAFT (`TUTORIAL_TAPE.draft`)** — the user owns the
+  tape's words (A11); the slides are keyed by `art` so the copy can change
+  without touching ui.js. The scaffolding gags (A0) were NOT used.
+- **The lessons (data.js `TUTORIAL_LESSONS`).** Each a scripted crossing:
+  pinned races / jobs / tiles / spells for both sides, the initiative
+  forced, the Department's dummies on a per-step plan, the player's verbs
+  gated per step (the ladder reads LATER, a refused click nudges the coach),
+  a goal the engine's own events satisfy. CORE 1 FIRST STEPS (move · the
+  AP pips · attack ends the turn · range · their turn · the round · guard +
+  overwatch · two moves / END TURN), CORE 2 THE PRESS (the six-type wheel ·
+  SMITE on the unholy dummy → WEAKNESS +2 AP → the second cast · the grey
+  RESISTS → −1 AP · the gauge filled for training · ⚛ ENTROPY, REVELATIONS),
+  CORE 3 THE THREE WAYS OUT (Arena · a Key scanned with 🔍 INSPECT · the
+  centre Nexus stepped + channelled to four · the Cube struck under SIEGE ·
+  the wipe). Optional: THE HIGH GROUND (Room 404's risers), FOG &
+  AWARENESS, FACING & OVERWATCH (the back arc, the reaction shot), ABILITIES
+  & MP (a buff keeps the turn, one cast a turn), ITEMS, THE HOROLOGE (a tour).
+- **The runtime (ui.js "THE TUTORIAL RUNTIME").** The spell lab's launch
+  recipe generalised; hooks are one-liners guarded by `window._tutActive` in
+  battle.js (the gates + `_tutEvent` reports at doMove / doAttack / doSpell /
+  doItem / doInspect / doEntropyStrike / applyPressTurn / the Cube branch /
+  the activation / runComputerTurn → `_tutCpuTurn`; checkWin blind), ui.js
+  (doGuard / triggerEndTurn / channelNexus / chooseActionMenu), state.js
+  (`buildBlitzTurnOrder` → `_tutTurnOrder`), hud.js (`_tutFilterBlades`, the
+  `.tut` glow, `data-pid` on the pushers), map.js (`_hqReturnOrMenu` honours
+  `_tutReturnPage`). THE COACH is a DOM card top-right (`#tutCoach`).
+- **THE DRIFT REGISTER (`TUTORIAL_MECHANICS` + `check-tutorial-drift.js` +
+  tutorial.test.js).** The user's rule made mechanical: every number a lesson
+  states is a pin read from source; every rule function a lesson describes is
+  fingerprinted; the type wheel and the arena row are diffed. A drift fails
+  `npm test` naming the lesson; `--stamp` re-stamps after the re-read.
+- **Tests.** tutorial.test.js (9): the register clean, teaches ↔ lessons,
+  every `{{fact}}` resolves, the wheel, every lesson legal on the 8×8 (races,
+  jobs, spells, tiles, verbs, goals, plans, equal sides), the arena / press
+  lessons teach the real rules, the ledger, the wiring source-scan, one
+  cache token. doorhq.test.js unchanged (the RANGE presets keep their shape).
+
+**Could not verify here (RULE #1c — no playtest).** The coach card over the
+HUD at 1280 × 720 (it sits top-right under the scoreboard, clear of the rig
+and the dock — nudge `.tut-coach { top/right }` if it covers the objectives),
+the tape's beat timings (all in `TUTORIAL_TAPE.beats[].ms`), the dummies'
+pacing (`_tutCpuTurn` waits `actionMs(560)` then acts), whether SMITE on the
+zombie always reads WEAK (bonusVsUnholy rides the damage, the press reads
+the type tier — it should), the marksman's reach on the 8×8 (Sniper range 5
++ 1 — SCOPE shoots DUMMY B from the spawn row), the `visible` goal under fog.
+First things to eyeball live: (1) the TUTORIAL button → the shelf; (2) ▶
+PLAY → the tape → TAPE 1 boots into Room 64 with BLADE active and the coach
+up; (3) MOVE greys everything else; the attack step's two clicks; (4) the
+dummies' turn; (5) LESSON COMPLETE → NEXT TAPE; (6) THE PRESS: +2 AP after
+Smite, the ⚛ pusher after the gauge fill; (7) the console in Room 64 → the
+tape → lesson → back at the console.
+
+**Next (in order):** the user's narration on the tape; a walkable tutorial
+beat IN the room (the coach as a cast member is A15 — the voice stays
+SYSTEM until the user writes it); Directive 1 / the lamination at the end
+of TAPE 3 (plan 4.3's last clause); 4.1 the case-file screen.

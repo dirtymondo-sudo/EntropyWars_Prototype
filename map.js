@@ -340,7 +340,7 @@
             } catch (e) {}
         };
         const _HQ_FN_LABELS = {
-            _goToShop: 'SHOP', _goToTeamBuilder: 'PARTY BUILDER', _goToCodex: 'CODEX',
+            _goToShop: 'SHOP', _goToTeamBuilder: 'PARTY BUILDER', _goToCodex: 'CODEX', _goToTutorial: 'ORIENTATION · THE SHELF',
             _mountReactProfile: 'PROFILE · ID CARD', _mountReactTrophies: 'ACHIEVEMENTS', _mountReactCreator: 'CHARACTER CREATOR', _goToCampaign: 'CHALLENGE', _goToMysteryDungeon: 'MYSTERY DUNGEON',
             _goToMapEditor: 'MAP EDITOR', _mountLeaderboard: 'LEADERBOARD', _mountCommunityMaps: 'COMMUNITY MAPS',
             _ewReplayLastMatch: 'REPLAY', _goToQuickPlay: 'QUICK PLAY', _goToFriendlyMatch: 'FRIENDLY MATCH',
@@ -724,6 +724,19 @@
             fallbackPage = fallbackPage || 'mainMenuPage';
             const enabled = window._hqEnabled();
             const alive = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active());
+            /* THE TUTORIAL: a lesson started from the shelf goes back to the shelf */
+            if (window._tutReturnPage && !(enabled && _hqHome)) {
+                const pg = window._tutReturnPage;
+                window._tutReturnPage = null;
+                if (alive) window._hqLeave();
+                _hqHome = false;
+                window._hqRelabelMenuButtons();
+                state.gameState = GS.MAIN_MENU;
+                _showTitlePage(pg);
+                if (pg === 'tutorialPage' && typeof window._renderTutorialPage === 'function') window._renderTutorialPage();
+                return false;
+            }
+            window._tutReturnPage = null;
             if (enabled && _hqHome) {
                 if (alive && _hqSuspended && window._hqResume()) return true;
                 if (alive) window._hqLeave();
@@ -947,7 +960,7 @@
                 delta: true, roster: [], doorId: counterId || 'range', doorLabel: 'RANGE CONSOLE', counterId: counterId || 'range', variant: 'full',
                 /* the facility boards are 8×8 already — they have no Δ cut (launchId = the site) */
                 presets: [
-                    { id: 'orientation', label: 'ORIENTATION · TRAINING ROOM', launchId: 'prebuilt_training', gm: 'arena', teamSize: 4, title: 'Arena · 4v4 on the 8×8 Training Room board · free CPU pool' },
+                    { id: 'orientation', label: 'SPARRING · TRAINING ROOM', launchId: 'prebuilt_training', gm: 'arena', teamSize: 4, title: 'Arena · 4v4 on the 8×8 Training Room board · free CPU pool' },
                     { id: 'practice', label: 'PRACTICE · HOLO SIM', launchId: 'prebuilt_holosim', gm: 'arena', teamSize: 4, title: 'Arena · 4v4 on the Holo Sim floor · free CPU pool · nothing is filed' },
                 ],
             });
@@ -1509,8 +1522,13 @@
         function _hqTrainingHtml() {
             let html = '<div class="hq-panel-hd"><b>RANGE CONSOLE</b><span>TRAINING FACILITY · SIMULATED CROSSINGS · NO PAPERWORK</span></div>';
             html += '<p class="hq-panel-desc">A tanker desk, a signature CRT, and a tube TV wearing a label gun’s best work: “D.O.O.R. ORIENTATION · TAPE 1 OF 1 · 1987 · BE KIND, REWIND”. The tape is cued. Please do not turn around during the tape.</p>';
+            /* THE TUTORIAL (plan 4.3): the tape on the tube TV, then the lessons on the grid */
+            const _tp = (typeof window.tutorialProgress === 'function') ? window.tutorialProgress(_hqProfile()) : null;
+            const _tpLine = _tp ? (_tp.coreDone + '/' + _tp.coreTotal + ' CORE TAPES FILED' + (_tp.tape ? ' · TAPE WATCHED' : '')) : '';
             html += '<div class="hq-panel-actions">'
-                + '<button class="hq-btn hq-btn-primary" data-range="prebuilt_training" title="Arena · 4v4 on the 8×8 Training Room board · free CPU pool">ORIENTATION ▸ TRAINING ROOM · 4v4</button>'
+                + '<button class="hq-btn hq-btn-primary" data-tutorial="tape" title="The orientation tape on the tube TV, then TAPE 1 · FIRST STEPS on this grid">ORIENTATION ▸ THE TAPE + LESSON 1</button>'
+                + '<button class="hq-btn" data-fn="_goToTutorial" title="Every lesson on the shelf — core and optional">LESSONS ▸ THE SHELF' + (_tpLine ? ' · ' + _hqEsc(_tpLine) : '') + '</button>'
+                + '<button class="hq-btn" data-range="prebuilt_training" title="Arena · 4v4 on the 8×8 Training Room board · free CPU pool">SPARRING ▸ TRAINING ROOM · 4v4</button>'
                 + '<button class="hq-btn" data-range="prebuilt_holosim" title="Arena · 4v4 on the Holo Sim floor · free CPU pool · nothing is filed">PRACTICE ▸ HOLO SIM · 4v4</button>'
                 + '<button class="hq-btn" data-close="1">NOTED</button></div>';
             html += '<p class="hq-panel-note">Simulated crossings are INTERNAL: no site file, no mastery, no Code Red. The walls are real; the stakes are not. The grid beside you is the one you will fight on.</p>';
@@ -1742,6 +1760,18 @@
             /* THE TABLE (Room 1984): the last training report opens over the building, the panel stays */
             const tr = e.target.closest('[data-transcript]');
             if (tr && !tr.disabled) { try { if (typeof window._ewImitationReport === 'function') window._ewImitationReport(); } catch (err) { console.warn('[HQ] transcript', err); } return; }
+            /* THE TUTORIAL (Room 64): the tape + a lesson from the RANGE console; the match returns you to the console */
+            const tutBtn = e.target.closest('[data-tutorial]');
+            if (tutBtn && !tutBtn.disabled) {
+                const id = tutBtn.getAttribute('data-tutorial');
+                window._hqClosePanel({ keepPaused: true });
+                _hqLastDoor = 'range'; _hqLastRoom = _hqCurRoom; _hqRecordVisit('range');
+                try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.5 }); } catch (err) {}
+                window._hqLeave();
+                state.gameState = GS.MAIN_MENU;
+                if (typeof window._tutorialStartFromHq === 'function') window._tutorialStartFromHq(id);
+                return;
+            }
             const fnBtn = e.target.closest('[data-fn]');
             if (fnBtn && !fnBtn.disabled) { window._hqDoAction({ fn: fnBtn.getAttribute('data-fn') }); return; }
             const roomBtn = e.target.closest('[data-room]');
@@ -2251,6 +2281,116 @@
             state.gameState = GS.MAIN_MENU;
             window._hqReturnOrMenu();
         };
+
+        /* ══════════════════════════════════════════════════════════════════
+           THE TUTORIAL — the shelf page + the tape (HQ plan 4.3, 2026-09-13)
+           Main menu → TUTORIAL → #tutorialPage (the shelf: the ORIENTATION
+           tape, the three core tapes, the optional ones, each FILED when its
+           lesson completes — data.js tutorialProgress off door.tutorial).
+           START launches ui.js _tutorialLaunch (a scripted crossing in Room
+           64); the lesson comes back here through window._tutReturnPage
+           (_hqReturnOrMenu). In the building the RANGE console offers the
+           same tape + lesson 1 (data-tutorial) and returns you to the console.
+           ══════════════════════════════════════════════════════════════════ */
+        window._goToTutorial = function () {
+            playSfx('uiButtonConfirm');
+            state.gameState = GS.MAIN_MENU;
+            _showTitlePage('tutorialPage');
+            window._renderTutorialPage();
+        };
+        window._tutorialBack = function () {
+            playSfx('uiButtonConfirm');
+            state.gameState = GS.MAIN_MENU;
+            window._hqReturnOrMenu();
+        };
+        function _tutProfile() { try { return (window.ProfileSystem && window.ProfileSystem.getActiveProfile()) || null; } catch (e) { return null; } }
+        function _tutMarkTape() {
+            try {
+                const PS = window.ProfileSystem;
+                const idx = PS && PS.getActiveProfileIndex();
+                if (idx === null || idx === undefined) return;
+                const p = PS.loadProfile(idx);
+                if (!p) return;
+                if (typeof window.tutorialMarkDone === 'function') window.tutorialMarkDone(p, 'tape');
+                PS.saveProfile(idx, p);
+            } catch (e) {}
+        }
+        window._renderTutorialPage = function () {
+            const body = document.getElementById('tutorialBody');
+            if (!body || typeof TUTORIAL_LESSONS === 'undefined') return;
+            const prog = (typeof window.tutorialProgress === 'function') ? window.tutorialProgress(_tutProfile()) : { done: {}, coreDone: 0, coreTotal: 3, tape: null };
+            const esc = _hqEsc;
+            const facts = (typeof window.tutorialFacts === 'function') ? window.tutorialFacts() : {};
+            const T = (typeof window.tutorialText === 'function') ? (s => window.tutorialText(s, facts)) : (s => s);
+            const card = (L) => {
+                const done = !!prog.done[L.id];
+                const chips = (L.teaches || []).map(t => '<i>' + esc(((typeof TUTORIAL_MECHANICS !== 'undefined' && TUTORIAL_MECHANICS[t]) || { label: t }).label) + '</i>').join('');
+                return `<div class="tut-card${done ? ' filed' : ''}" data-lesson="${esc(L.id)}">
+                    <div class="tut-card-no">TAPE ${esc(L.no)}</div>
+                    <div class="tut-card-main">
+                        <div class="tut-card-title">${esc(L.title)}${done ? '<span class="door-stamp tut-stamp">FILED</span>' : ''}</div>
+                        <div class="tut-card-sub">${esc(T(L.sub || ''))}</div>
+                        <div class="tut-card-chips">${chips}<span>~${esc(L.minutes || 3)} MIN · ${esc(L.map === 'prebuilt_holosim' ? 'ROOM 404 · HOLO SIM' : 'ROOM 64')}</span></div>
+                    </div>
+                    <div class="tut-card-actions"><button class="hq-btn${done ? '' : ' hq-btn-primary'}" data-tut-start="${esc(L.id)}">${done ? 'REPLAY' : 'START'} ▸</button></div>
+                </div>`;
+            };
+            const core = TUTORIAL_LESSONS.filter(l => l.tier === 'core');
+            const opt = TUTORIAL_LESSONS.filter(l => l.tier !== 'core');
+            body.innerHTML = `
+                <div class="tut-shelf-hd">
+                    <div class="tut-shelf-kicker">TRAINING FACILITY · ROOM 64 · ORTHOGONAL GEOMETRY EXPOSURE AREA</div>
+                    <div class="tut-shelf-line">Orientation is <b>optional</b> and unscored: nothing here is filed as a match, mistakes earn a memo, not a fail. Every tape is a scripted crossing on the Training Room grid with the Department's dummies. <b>${esc(prog.coreDone)}/${esc(prog.coreTotal)}</b> core tapes filed · ${esc(prog.doneCount)}/${esc(prog.total)} in all.</div>
+                </div>
+                <div class="tut-tape${prog.tape ? ' filed' : ''}">
+                    <div class="tut-tape-cassette"><div class="tut-tape-label">${esc((typeof TUTORIAL_TAPE !== 'undefined' && TUTORIAL_TAPE.label) || 'D.O.O.R. ORIENTATION')}</div><div class="tut-tape-reels"><i></i><i></i></div></div>
+                    <div class="tut-tape-main">
+                        <div class="tut-card-title">THE ORIENTATION TAPE${prog.tape ? '<span class="door-stamp tut-stamp">WATCHED</span>' : ''}</div>
+                        <div class="tut-card-sub">Ninety seconds of Department training graphics, 1987. The tape plays, then TAPE 1 · FIRST STEPS starts. Please do not turn around during the tape.</div>
+                    </div>
+                    <div class="tut-card-actions">
+                        <button class="hq-btn hq-btn-primary" data-tut-tape="then">▶ PLAY · THEN TAPE 1</button>
+                        <button class="hq-btn" data-tut-tape="only">REWATCH</button>
+                    </div>
+                </div>
+                <div class="tut-shelf-sec">THE CORE · three tapes, in order</div>
+                <div class="tut-shelf-list">${core.map(card).join('')}</div>
+                <div class="tut-shelf-sec">OPTIONAL READING · any order</div>
+                <div class="tut-shelf-list">${opt.map(card).join('')}</div>
+                <div class="tut-shelf-foot">A rule that changes flags its tape: <code>npm test</code> (tutorial.test.js) fails on a drifted number or rule until the lesson is re-read. Dev: <code>Tutorial.start('the_press')</code> · <code>Tutorial.skipStep()</code> · <code>doorTapePlay()</code>.</div>`;
+        };
+        window._tutorialPlayTape = function (opts) {
+            opts = opts || {};
+            if (typeof window.doorTapePlay !== 'function') return Promise.resolve({ watched: false, skipped: true });
+            return window.doorTapePlay().then(r => { _tutMarkTape(); return r; });
+        };
+        /* the RANGE console (Room 64): the tape + lesson 1, or one lesson, back to the console after */
+        window._tutorialStartFromHq = function (id) {
+            const go = (lessonId) => { if (typeof window._tutorialLaunch === 'function') window._tutorialLaunch(lessonId, { from: 'hq' }); };
+            if (id === 'tape') window._tutorialPlayTape().then(() => go('first_steps'));
+            else go(id);
+        };
+        document.addEventListener('click', (e) => {
+            const page = document.getElementById('tutorialPage');
+            if (!page || !page.classList.contains('active')) return;
+            const tape = e.target.closest('[data-tut-tape]');
+            if (tape) {
+                e.preventDefault();
+                playSfx('uiButtonConfirm');
+                const then = tape.getAttribute('data-tut-tape') === 'then';
+                window._tutorialPlayTape().then(() => {
+                    if (then && typeof window._tutorialLaunch === 'function') window._tutorialLaunch('first_steps', { from: 'menu' });
+                    else window._renderTutorialPage();
+                });
+                return;
+            }
+            const start = e.target.closest('[data-tut-start]');
+            if (start) {
+                e.preventDefault();
+                playSfx('uiButtonConfirm');
+                if (typeof window._tutorialLaunch === 'function') window._tutorialLaunch(start.getAttribute('data-tut-start'), { from: 'menu' });
+            }
+        });
 
         /* ── Spell Library (Settings → Developer): the spell/ability dev
            editor + Spell Lab. Rendering lives in ui.js (_renderSpellLibrary),

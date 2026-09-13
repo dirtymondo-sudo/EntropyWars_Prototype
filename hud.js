@@ -2550,6 +2550,7 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
       + (b.check ? ' pend' : '')
       + (confirmBtn ? ' cfm' : '')
       + (active ? ' active' : '')
+      + (b.tut ? ' tut' : '')
       + (fireId === b.id ? ' fire' : ''),
     style: {
       ...(catVars || {}),
@@ -3053,6 +3054,7 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
       const live = p.available !== false;
       toolRows.push(h('div', {
         key: p.id,
+        'data-pid': p.id,   // THE TUTORIAL's coach finds the pusher by id (⚛ / ⬡)
         className: 'hrlg-push' + (live ? ' live pulse' : ' off') + (p.active ? ' armed' : '')
           + (p.id === 'entropyStrike' ? ' entropy' : ''),
         style: { '--pc': p.color, '--pc-soft': p.color + '88', '--pc-faint': p.color + '22' },
@@ -4562,7 +4564,9 @@ function ActionMenu({ st, hidden }) {
   const cancelBlade = { id: 'cancel', label: 'CANCEL', icon: '‹', available: true, danger: true, hint: _hintKey('cancel', 'ESC') };
   // root verbs are short words → the root panel is narrow; the grey-out
   // reason renders UNDER the name (subBelow) instead of as a right-side tag
-  const rootBlades = actions.map(a => ({ ...a, subBelow: true }));   // declared order IS the menu order
+  let rootBlades = actions.map(a => ({ ...a, subBelow: true }));   // declared order IS the menu order
+  /* THE TUTORIAL (ui.js _tutFilterBlades): verbs the live step hasn't taught yet read LATER */
+  if (typeof window !== 'undefined' && window._tutActive && typeof window._tutFilterBlades === 'function') rootBlades = window._tutFilterBlades(rootBlades, unit);
   // (The old ⓘ Inspect blade is gone — the unit stat card is the INFO
   // button riding beside the name under the clock now, not an action.)
   // simul planning phase: ending the turn COMMITS the queued order — say so
@@ -10029,6 +10033,9 @@ function _injectHudHideStyles() {
       border: 1px solid #3a3548; border-radius: 8px; background: rgba(0,0,0,0.3);
     }
     .ew-party-reserve-bar { width: 22px; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.12); overflow: hidden; }
+    /* THE TUTORIAL (ui.js): the coach's pointer on a blade (b.tut) and the LATER rows */
+    .hrlg-blade.tut .hrlg-body { outline: 2px solid #ffcd6b; outline-offset: 1px; box-shadow: 0 0 14px rgba(255,205,107,0.55); animation: hrlgTutGlow 1.1s ease-in-out infinite; }
+    @keyframes hrlgTutGlow { 0%, 100% { outline-color: #ffcd6b; } 50% { outline-color: rgba(255,205,107,0.25); } }
   `;
   document.head.appendChild(style);
   // CRT veil kill switch (console: window.EW_DISABLE_CRT = true, then re-enter battle)

@@ -4732,6 +4732,11 @@
                 addLog(`${unitDisplayName(unit)} already acted this round.`);
                 return;
             }
+            /* THE TUTORIAL: the submenus open only when the step allows the verb */
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function') {
+                const _tutVerb = { spells: 'spell', items: 'item', entropy: 'entropy', switch: 'switch' }[view];
+                if (_tutVerb && !window._tutActionAllowed(_tutVerb, unit)) return;
+            }
             if (view === 'spells' && unitSpellsBlocked(unit)) {
                 addLog(`${unitDisplayName(unit)} is silenced and cannot cast this turn.`);
                 return;
@@ -4816,7 +4821,9 @@
                 addLog('Guard requires at least 1 AP.');
                 return;
             }
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('guard', unit)) return;
             if (typeof window._imitObserve === 'function') window._imitObserve(unit, { type: 'guard' });
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('guard', { uid: unit.id });
             pushUndoSnapshot(true);
 
             applyStatusEffects(unit, [{ id: 'guarding', duration: 1 }], 'Guard: ');
@@ -4967,6 +4974,8 @@
                 addLog('Not this unit\'s turn.', typeof getViewerPlayer === 'function' ? getViewerPlayer() : 0);
                 return;
             }
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('end', unit)) return;
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('endTurn', { uid: unit.id });
             pushUndoSnapshot(true);
             unit.ap = 0;
             state.actionMode = null;
@@ -5271,6 +5280,8 @@
                 playErrorSfx();
                 return;
             }
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('channel', unit)) return;
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('channel', { uid: unit.id });
 
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) {
                 addLog('Cannot channel a Nexus while airborne. Land first!');
@@ -12481,6 +12492,705 @@
                 setTimeout(function () { try { window._hqEnter({ fromUrl: true }); } catch (e) { console.error('[HQ] autostart failed', e); } }, 350);
             }
         } catch (e) {}
+
+        /* ═══════════════════════════════════════════════════════════════════
+           THE TUTORIAL RUNTIME — ORIENTATION (HQ plan 4.3, 2026-09-13)
+           ───────────────────────────────────────────────────────────────────
+           The content is data.js (TUTORIAL_TAPE / TUTORIAL_LESSONS /
+           TUTORIAL_MECHANICS — read that header first). This block is the
+           machine: a lesson is a REAL VS-CPU match on the Training Room
+           board (the spell lab's launch recipe — applyGameMode + pinned
+           partyBuilds / partyMeta + applyPartyBuild(false) + startMatch(),
+           no party builder, no match select), the dummies are CTRL.AI units
+           whose activation runs THIS script instead of aiTakeTurn
+           (battle.js runComputerTurn → _tutCpuTurn), and the player's verbs
+           are gated by the live step's `allow` list (battle.js doMove /
+           doAttack / doSpell / doItem / doInspect, ui.js doGuard /
+           triggerEndTurn / channelNexus / chooseActionMenu →
+           _tutActionAllowed; hud.js greys the ladder through
+           _tutFilterBlades). The engine reports what happened through
+           _tutEvent (activation · move · attack · press · spell · item ·
+           inspect · guard · endTurn · channel · entropy · cube), a 200 ms
+           poll judges the step's `goal` against those events + the live
+           state, and the COACH (#tutCoach, styles-base.css "THE COACH")
+           says the step. checkWin / checkWinConditionOnly never end a lesson
+           (the lesson ends itself); nothing is recorded (no
+           finalizeMatch, no career, no achievements); the turn order is the
+           lesson's (state.js buildBlitzTurnOrder → _tutTurnOrder). Leaving
+           = backToMainMenu() (the spell lab's teardown) → the tutorial page
+           (window._tutReturnPage, honoured by map.js _hqReturnOrMenu) or
+           the RANGE console when the lesson was started in Room 64.
+           Viewer-local, VS-CPU only — nothing here can run online (RULE #2).
+           Dev: window.Tutorial.start('the_press'), .skipStep(), .state().
+           ═══════════════════════════════════════════════════════════════ */
+        const _tut = { lesson: null, stepIdx: -1, step: null, events: [], active: false, finished: false, booting: false,
+                       from: 'menu', saved: null, poll: null, autoTimer: null, tileTimer: null, metAt: 0, stepMark: 0,
+                       stepActiveId: null, nudgeAt: 0, bootPoll: null, cpuTimer: null };
+        window._tutActive = false;
+        const _TUT_VERB_OF_BLADE = { move: 'move', jump: 'move', attack: 'attack', abil: 'spell', combo: 'combo', items: 'item', guard: 'guard', switch: 'switch', end: 'end' };
+        const _TUT_HUD_SEL = { move: '.hrlg-blade[data-bid="move"]', jump: '.hrlg-blade[data-bid="jump"]', attack: '.hrlg-blade[data-bid="attack"]',
+                               abil: '.hrlg-blade[data-bid="abil"]', combo: '.hrlg-blade[data-bid="combo"]', items: '.hrlg-blade[data-bid="items"]',
+                               guard: '.hrlg-blade[data-bid="guard"]', end: '.hrlg-blade[data-bid="end"]', ap: '.hrlg-ap',
+                               entropy: '.hrlg-push[data-pid="entropyStrike"]', nexus: '.hrlg-push[data-pid="nexus"]' };
+        /* the engine's closure constants, for data.js tutorialFacts (the
+           copy's {{numbers}} are always the live rule) */
+        window._tutEngineFacts = function () {
+            const rd = (fn) => { try { const v = fn(); return (typeof v === 'number') ? v : undefined; } catch (e) { return undefined; } };
+            return {
+                UNIT_MAX_AP: rd(() => UNIT_MAX_AP), AP_COST_ACTION: rd(() => AP_COST_ACTION), AP_COST_SPELL: rd(() => AP_COST_SPELL), UNIT_MAX_MOVES: rd(() => UNIT_MAX_MOVES),
+                PRESS_REFUND_AP: rd(() => PRESS_REFUND_AP), PRESS_MISS_PENALTY_AP: rd(() => PRESS_MISS_PENALTY_AP), PRESS_MAX_BONUS_AP: rd(() => PRESS_MAX_BONUS_AP),
+                ENTROPY_GAUGE_MAX: rd(() => ENTROPY_GAUGE_MAX), ENTROPY_STRIKE_AP_COST: rd(() => ENTROPY_STRIKE_AP_COST),
+                HIGH_GROUND_RANGE_BONUS: rd(() => HIGH_GROUND_RANGE_BONUS), HIGH_GROUND_DEF_BONUS: rd(() => HIGH_GROUND_DEF_BONUS), DOWNHILL_DAMAGE_BONUS: rd(() => DOWNHILL_DAMAGE_BONUS),
+                FACING_BACK_DMG_MULT: rd(() => FACING_BACK_DMG_MULT), FACING_SIDE_DMG_MULT: rd(() => FACING_SIDE_DMG_MULT),
+                STAB_MULTIPLIER: rd(() => STAB_MULTIPLIER), NEXUS_CAPTURE_THRESHOLD: rd(() => NEXUS_CAPTURE_THRESHOLD),
+                NEXUS_HOLD_HEAL_PCT: rd(() => NEXUS_HOLD_HEAL_PCT), NEXUS_HOSTILE_DMG_PCT: rd(() => NEXUS_HOSTILE_DMG_PCT),
+                NEXUS_CUBE_DMG_PER_ZONE: rd(() => NEXUS_CUBE_DMG_PER_ZONE), NEXUS_CHANNEL_COST_AP: rd(() => NEXUS_CHANNEL_COST_AP),
+            };
+        };
+        const _tutId = key => String(key || '').replace(/^p/, '');            // 'p1-0' → the unit id createUnit gives it ('1-0')
+        const _tutKeyOf = id => 'p' + String(id || '');
+        function _tutUnit(key) { const id = _tutId(key); return (state.units || []).find(u => u.id === id) || null; }
+        function _tutFacts() { return (typeof tutorialFacts === 'function') ? tutorialFacts() : {}; }
+        function _tutT(s) { return (typeof tutorialText === 'function') ? tutorialText(s, _tutFacts()) : String(s || ''); }
+        function _tutProfileRW(fn) {
+            try {
+                const PS = window.ProfileSystem;
+                if (!PS || typeof PS.getActiveProfileIndex !== 'function') return null;
+                const idx = PS.getActiveProfileIndex();
+                if (idx === null || idx === undefined) return null;
+                const p = PS.loadProfile(idx);
+                if (!p) return null;
+                const r = fn(p);
+                PS.saveProfile(idx, p);
+                return r;
+            } catch (e) { return null; }
+        }
+        /* ── launch ─────────────────────────────────────────────────────── */
+        window._tutorialLaunch = function (lessonId, opts) {
+            opts = opts || {};
+            const L = (typeof tutorialLesson === 'function') ? tutorialLesson(lessonId) : null;
+            if (!L) { console.warn('[Tutorial] no lesson', lessonId); return false; }
+            if (_tut.booting) return false;
+            if (state.phase === 'battle' && !_tut.active) { console.warn('[Tutorial] a match is live'); return false; }
+            if (_tut.active) _tutStopMatchSide();
+            const n1 = L.board.p1.length, n2 = L.board.p2.length;
+            _tut.saved = _tut.saved || { introCine: window.EW_DISABLE_INTRO_CINE, fog: state.fogOfWar };
+            window.EW_DISABLE_INTRO_CINE = true;
+            _tut.from = opts.from || 'menu';
+            if (_tut.from !== 'hq') window._tutReturnPage = 'tutorialPage';
+            try {
+                applyGameMode(L.map);
+                activeMultiplayerMode = L.mode || 'tdm';
+                CONFIG.teamSize = Math.max(n1, n2);
+                CONFIG.gauntletDeploy = 0;
+                SPAWNS[1] = L.board.p1.map(u => ({ x: u.x, y: u.y }));
+                SPAWNS[2] = L.board.p2.map(u => ({ x: u.x, y: u.y }));
+                DEFAULT_BUILDS[1] = L.board.p1.map(u => u.job);
+                DEFAULT_BUILDS[2] = L.board.p2.map(u => u.job);
+                const side = (list) => ({
+                    builds: list.map(u => u.job),
+                    names: list.map(u => u.name),
+                    loadouts: list.map(u => { const lo = emptyLoadout(); if (u.items) Object.assign(lo.items, u.items); return lo; }),
+                    meta: list.map(u => ({ race: u.race, gender: u.gender || 'male', customSpells: (u.spells && u.spells.length) ? u.spells.slice() : undefined })),
+                });
+                const s1 = side(L.board.p1), s2 = side(L.board.p2);
+                state.partyBuilds = { 1: s1.builds, 2: s2.builds };
+                state.partyNames = { 1: s1.names, 2: s2.names };
+                state.loadouts = { 1: s1.loadouts, 2: s2.loadouts };
+                state.partyMeta = { 1: s1.meta, 2: s2.meta };
+                state.controllers[1] = CTRL.LOCAL;
+                state.controllers[2] = CTRL.AI;
+                state.autoPlayers = {};
+                state.devAutoSim = false; state.devSimSpeed = 1;
+                state.squadLeaderMode = false; state.isRankedMatch = false; state.trainingMatch = false;
+                state.isCampaign = false; state.campaignLevelId = null;
+                state._customRoundLimit = L.rounds || 30;
+                state.fogOfWar = !!L.fog;
+                state.showPlayer2Builder = false; state.builderSelectedPlayer = 1;
+                if (window._NET && !window._NET.online) window._NET.myPlayer = 1;
+                window._hqCpuPool = null; window._hqPreselect = null; window._hqCodeRedRun = null; window._msCpuOnly = true;
+                _tut.lesson = L; _tut.active = true; window._tutActive = true;
+                _tut.stepIdx = -1; _tut.step = null; _tut.events = []; _tut.finished = false; _tut.booting = true; _tut.metAt = 0;
+                const ov = document.getElementById('startOverlay');
+                if (ov) { ov.classList.add('hidden'); ov.style.display = 'none'; ov.style.pointerEvents = 'none'; ov.setAttribute('aria-hidden', 'true'); }
+                state.teamLockedIn = true;
+                applyPartyBuild(false);
+                startMatch();
+            } catch (e) {
+                console.error('[Tutorial] launch failed', e);
+                _tut.active = false; window._tutActive = false; _tut.booting = false; window._tutReturnPage = null;
+                if (_tut.saved) { window.EW_DISABLE_INTRO_CINE = _tut.saved.introCine; state.fogOfWar = _tut.saved.fog; _tut.saved = null; }
+                return false;
+            }
+            let waited = 0;
+            if (_tut.bootPoll) clearInterval(_tut.bootPoll);
+            _tut.bootPoll = setInterval(() => {
+                waited += 200;
+                const ready = state.phase === 'battle' && state.round >= 1 && state._blitzActiveUnitId && (state.units || []).length >= n1 + n2;
+                if (ready || waited > 40000) {
+                    clearInterval(_tut.bootPoll); _tut.bootPoll = null;
+                    if (ready) _tutOnBoot(); else { console.error('[Tutorial] boot timed out'); window._tutorialLeave(true); }
+                }
+            }, 200);
+            return true;
+        };
+        function _tutOnBoot() {
+            const L = _tut.lesson;
+            _tut.booting = false;
+            try {
+                if (state.matchClock) state.matchClock.roundLimit = L.rounds || 30;
+                [['p1', 1], ['p2', 2]].forEach(([k, p]) => (L.board[k] || []).forEach((row, i) => {
+                    const u = _tutUnit('p' + p + '-' + i);
+                    if (!u) return;
+                    if (typeof row.hp === 'number' && row.hp > 0 && row.hp < 1) u.hp = Math.max(1, Math.round(u.maxHp * row.hp));
+                    if (Array.isArray(row.face) && typeof setUnitFacing === 'function') setUnitFacing(u, row.face[0], row.face[1]);
+                    if (p === 2) u._tutDummy = true;
+                }));
+                /* the Keys: the lesson's fixed pool, the first one in plain view */
+                if (Array.isArray(L.keys) && Array.isArray(state.hourglasses)) {
+                    L.keys.forEach((xy, i) => {
+                        const h = state.hourglasses[i];
+                        if (!h) return;
+                        h.x = xy[0]; h.y = xy[1]; h.carriedBy = null;
+                        if (i === 0) { h.visibleTo[1] = true; h.visibleTo[2] = true; }
+                    });
+                }
+                if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+                if (typeof markDirty === 'function') { markDirty('board'); markDirty('actions'); }
+                if (typeof renderIfDirty === 'function') renderIfDirty();
+            } catch (e) { console.error('[Tutorial] boot dressing', e); }
+            _tutMountCoach();
+            if (_tut.poll) clearInterval(_tut.poll);
+            _tut.poll = setInterval(_tutPoll, 200);
+            _tutGoto(0);
+        }
+        /* the lesson's own initiative — state.js buildBlitzTurnOrder asks */
+        window._tutTurnOrder = function () {
+            if (!_tut.active || !_tut.lesson || !Array.isArray(_tut.lesson.order)) return null;
+            const ids = _tut.lesson.order.map(_tutId).filter(id => (state.units || []).some(u => u.id === id && !u.dead));
+            const rest = (state.units || []).filter(u => !u.dead && !ids.includes(u.id) && !u._mdNpc).map(u => u.id);
+            return ids.concat(rest);
+        };
+        /* ── the step engine ────────────────────────────────────────────── */
+        function _tutGoto(i) {
+            const L = _tut.lesson;
+            if (!L) return;
+            if (_tut.autoTimer) { clearTimeout(_tut.autoTimer); _tut.autoTimer = null; }
+            _tut.stepIdx = i;
+            const st = L.steps[i];
+            _tut.step = st || null;
+            _tut.prevStepMark = _tut.stepMark || 0;
+            _tut.stepMark = _tut.events.length;
+            _tut.stepActiveId = state._blitzActiveUnitId || null;
+            _tut.metAt = 0;
+            if (!st) { _tutFinish(); return; }
+            try { (st.enter || []).forEach(fx => _tutEffect(fx)); } catch (e) { console.error('[Tutorial] enter effect', e); }
+            _tutFocus(st.focus);
+            _tutRenderCoach();
+            if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+            if (typeof markDirty === 'function') { markDirty('actions'); markDirty('board'); }
+            if (typeof renderIfDirty === 'function') renderIfDirty();
+            try { playSfx('uiCursorMove'); } catch (e) {}
+            if (st.auto) _tut.autoTimer = setTimeout(() => { _tut.autoTimer = null; _tutAdvance(); }, st.auto);
+        }
+        function _tutAdvance() {
+            const L = _tut.lesson, st = _tut.step;
+            if (!L || _tut.finished) return;
+            if (st && st.goal && st.goal.finish) { _tutFinish(); return; }
+            if (_tut.stepIdx + 1 < L.steps.length) _tutGoto(_tut.stepIdx + 1);
+            else _tutFinish();
+        }
+        function _tutEffect(fx) {
+            const k = fx[0];
+            if (k === 'gauge') {
+                const p = fx[1] || 1, v = Math.max(0, Math.min((typeof ENTROPY_GAUGE_MAX !== 'undefined') ? ENTROPY_GAUGE_MAX : 100, fx[2] == null ? 100 : fx[2]));
+                if (!state.entropyGauge) state.entropyGauge = { 1: 0, 2: 0 };
+                state.entropyGauge[p] = v;
+                try { if (typeof window._updateEntropyGaugeHUD === 'function') window._updateEntropyGaugeHUD(); } catch (e) {}
+                try { if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache(); } catch (e) {}
+            } else if (k === 'fog') {
+                state.fogOfWar = !!fx[1];
+            } else if (k === 'ap') {
+                const u = _tutUnit(fx[1]); if (u) u.ap = fx[2];
+            } else if (k === 'hp') {
+                const u = _tutUnit(fx[1]); if (u) u.hp = Math.max(1, Math.round(u.maxHp * fx[2]));
+            } else if (k === 'key') {
+                const h = (state.hourglasses || []).find(x => !x.carriedBy);
+                if (h) { h.x = fx[1]; h.y = fx[2]; h.visibleTo[1] = true; h.visibleTo[2] = true; }
+            } else if (k === 'camera') {
+                _tutCamera(fx[1], fx[2]);
+            }
+        }
+        function _tutCamera(x, y) {
+            try { if (!state.cameraDisabled && typeof focusBoardCameraOnTiles === 'function') focusBoardCameraOnTiles([{ x, y }], { transitionMs: 700 }); } catch (e) {}
+        }
+        function _tutFocusTile() {
+            const st = _tut.step;
+            if (!st || !st.focus) return null;
+            if (Array.isArray(st.focus.tile)) return { x: st.focus.tile[0], y: st.focus.tile[1] };
+            if (st.focus.unit) { const u = _tutUnit(st.focus.unit); if (u && !u.dead) return { x: u.x, y: u.y }; }
+            if (st.focus.cube) { const tw = state.towers && state.towers[st.focus.cube]; if (tw) return { x: tw.x, y: tw.y }; }
+            return null;
+        }
+        function _tutFocus(focus) {
+            if (_tut.tileTimer) { clearInterval(_tut.tileTimer); _tut.tileTimer = null; }
+            if (!focus) return;
+            const t = _tutFocusTile();
+            if (t) {
+                _tutCamera(t.x, t.y);
+                const mark = () => {
+                    const tt = _tutFocusTile();
+                    if (!tt || !_tut.active || _tut.finished) return;
+                    try { if (typeof showFloatingTextAtTile === 'function') showFloatingTextAtTile(tt.x, tt.y, '▼', 'pickup', { durationMs: 1100 }); } catch (e) {}
+                };
+                mark();
+                _tut.tileTimer = setInterval(mark, 1400);
+            }
+        }
+        /* the glow on a HUD element — re-applied by the poll (React repaints the ladder) */
+        function _tutApplyGlow() {
+            const st = _tut.step;
+            document.querySelectorAll('.tut-glow').forEach(el => el.classList.remove('tut-glow'));
+            if (!st || !st.focus || _tut.finished) return;
+            let sel = null;
+            if (st.focus.hud) sel = _TUT_HUD_SEL[st.focus.hud] || null;
+            else if (st.focus.el) sel = st.focus.el;
+            if (!sel) return;
+            try { document.querySelectorAll(sel).forEach(el => el.classList.add('tut-glow')); } catch (e) {}
+        }
+        /* ── what the player may do ─────────────────────────────────────── */
+        function _tutAllowList() {
+            const st = _tut.step;
+            if (!st) return [];
+            if (st.allow === 'all') return null;
+            return Array.isArray(st.allow) ? st.allow : [];
+        }
+        window._tutActionAllowed = function (kind, unit, detail) {
+            if (!_tut.active) return true;
+            if (unit && unit.player !== 1) return true;                       // the dummies follow the script, not the gate
+            if (_tut.finished || _tut.booting) return false;
+            const allow = _tutAllowList();
+            if (allow === null) return true;
+            let ok = allow.includes(kind);
+            if (!ok && kind === 'spell') ok = allow.some(a => a === 'spell' || (detail && a === 'spell:' + detail));
+            if (ok && kind === 'spell' && detail && allow.some(a => a.startsWith('spell:')) && !allow.includes('spell') && !allow.includes('spell:' + detail)) ok = false;
+            if (!ok) _tutNudge();
+            return ok;
+        };
+        /* the ladder's rows: greyed with LATER unless the step allows the verb */
+        window._tutFilterBlades = function (blades, unit) {
+            if (!_tut.active || !Array.isArray(blades)) return blades;
+            const st = _tut.step;
+            const allow = _tutAllowList();
+            const focusHud = (st && st.focus && st.focus.hud) || null;
+            return blades.map(b => {
+                const verb = _TUT_VERB_OF_BLADE[b.id];
+                if (!verb) return b;
+                let ok = _tut.finished ? false : (allow === null || allow.includes(verb) || (verb === 'spell' && allow.some(a => a.startsWith('spell:'))));
+                const out = { ...b };
+                if (!ok) { out.available = false; out.sub = 'LATER'; out.tutOff = true; }
+                if (focusHud && focusHud === b.id) out.tut = true;
+                return out;
+            });
+        };
+        function _tutNudge() {
+            const now = Date.now();
+            if (now - _tut.nudgeAt < 900) return;
+            _tut.nudgeAt = now;
+            const st = _tut.step;
+            const hint = st && st.hint ? st.hint : (st && st.goal && st.goal.type === 'ack' ? 'press CONTINUE' : 'follow the coach');
+            try { playErrorSfx(); } catch (e) {}
+            const el = document.getElementById('tutCoach');
+            if (el) { el.classList.remove('nudge'); void el.offsetWidth; el.classList.add('nudge'); }
+            try { if (typeof showBattleDialogue === 'function') showBattleDialogue(['<span class="dlg-status">📋 Not yet — ' + escapeHtml(hint) + '</span>'], 1400); } catch (e) {}
+        }
+        /* ── the engine reports ─────────────────────────────────────────── */
+        window._tutEvent = function (type, p) {
+            if (!_tut.active) return;
+            const ev = Object.assign({ type, t: Date.now(), round: state.round }, p || {});
+            _tut.events.push(ev);
+            if (_tut.events.length > 400) _tut.events.splice(0, 100);
+        };
+        function _tutSince(type, pred) {
+            for (let i = _tut.stepMark; i < _tut.events.length; i++) {
+                const e = _tut.events[i];
+                if (e.type === type && (!pred || pred(e))) return e;
+            }
+            return null;
+        }
+        function _tutGoalMet(g) {
+            if (!g) return false;
+            const u = g.unit ? _tutUnit(g.unit) : null;
+            const uid = u ? u.id : null;
+            const busy = !!state._actionExecuting;
+            switch (g.type) {
+                case 'ack': return false;
+                case 'move': {
+                    if (!u) return false;
+                    const ev = _tutSince('move', e => e.uid === uid);
+                    if (!ev || busy) return false;
+                    if (Array.isArray(g.to)) return u.x === g.to[0] && u.y === g.to[1];
+                    if (g.inRangeOf) {
+                        const t = _tutUnit(g.inRangeOf);
+                        if (!t || t.dead) return true;
+                        try { return (getAttackTiles(u) || []).some(tt => tt.x === t.x && tt.y === t.y); } catch (e) { return false; }
+                    }
+                    if (g.closer) { const t = _tutUnit(g.closer); if (!t) return true; return Math.abs(u.x - t.x) + Math.abs(u.y - t.y) < Math.abs(ev.fromX - t.x) + Math.abs(ev.fromY - t.y); }
+                    return true;
+                }
+                case 'attack': {
+                    const ev = _tutSince('attack', e => (!uid || e.uid === uid) && (!g.target || e.tid === _tutId(g.target)) && (!g.arc || e.arc === g.arc));
+                    return !!ev && !busy;
+                }
+                case 'press': return !!_tutSince('press', e => (!uid || e.uid === uid) && (!g.outcome || e.outcome === g.outcome || (g.outcome === 'weak' && e.outcome === 'weakCrit'))) && !busy;
+                case 'spell': return !!_tutSince('spell', e => (!uid || e.uid === uid) && (!g.spellId || e.spellId === g.spellId)) && !busy;
+                case 'item': return !!_tutSince('item', e => !uid || e.uid === uid) && !busy;
+                case 'inspect': return !!_tutSince('inspect', e => !uid || e.uid === uid) && !busy;
+                case 'guard': return !!_tutSince('guard', e => !uid || e.uid === uid);
+                case 'channel': return !!_tutSince('channel', e => !uid || e.uid === uid) && !busy;
+                case 'entropy': return !!_tutSince('entropy', e => !g.player || e.player === g.player) && !busy;
+                case 'cube': return !!_tutSince('cube', e => !g.player || e.player === g.player) && !busy;
+                case 'end': {
+                    /* the unit's activation is over: it was active (at the step
+                       start, or activated since) and is not any more */
+                    if (!u) return false;
+                    const was = _tut.stepActiveId === uid || !!_tutSince('activation', e => e.uid === uid);
+                    return was && state._blitzActiveUnitId !== uid && !busy;
+                }
+                case 'cpuDone': {
+                    /* a dummy activated since the previous step opened (its turn
+                       can land before this step's mark — the poll latches 650 ms)
+                       and the clock has come back to the player since */
+                    let cpuIdx = -1;
+                    for (let i = _tut.events.length - 1; i >= (_tut.prevStepMark || 0); i--) { if (_tut.events[i].type === 'activation' && _tut.events[i].player === 2) { cpuIdx = i; break; } }
+                    if (cpuIdx < 0) return false;
+                    const back = _tut.events.slice(cpuIdx + 1).some(e => e.type === 'activation' && e.player === 1);
+                    return back && !state.aiThinking && !busy;
+                }
+                case 'round': return state.round >= (g.n || 2);
+                case 'nexus': {
+                    const nex = state.nexusPoints && state.nexusPoints[g.section || 'earth'];
+                    return !!nex && nex.owner === (g.player || 1);
+                }
+                case 'key': {
+                    const p = g.player || 1;
+                    const carried = (state.units || []).filter(x => x.player === p && !x.dead).reduce((s, x) => s + (x.hourglasses || 0), 0);
+                    return carried >= (g.count || 1) && !busy;
+                }
+                case 'visible': {
+                    const t = _tutUnit(g.unit);
+                    if (!t || t.dead) return true;
+                    if (!state.fogOfWar) return true;
+                    try {
+                        if (typeof computeVisibleTilesCached === 'function') return computeVisibleTilesCached(g.player || 1).has(posKey(t.x, t.y));
+                    } catch (e) {}
+                    return (state.units || []).some(v => v.player === (g.player || 1) && !v.dead && typeof isInVision === 'function' && isInVision(v, t.x, t.y));
+                }
+                case 'activation': return !!_tutSince('activation', e => !uid || e.uid === uid);
+                default: return false;
+            }
+        }
+        function _tutPoll() {
+            if (!_tut.active || _tut.finished || _tut.booting) return;
+            _tutApplyGlow();
+            if (state.phase !== 'battle') return;
+            const st = _tut.step;
+            if (!st || !st.goal || st.goal.type === 'ack') return;
+            if (_tut.metAt) { if (Date.now() - _tut.metAt > 650) { _tut.metAt = 0; _tutAdvance(); } return; }
+            let met = false;
+            try { met = _tutGoalMet(st.goal); } catch (e) { console.warn('[Tutorial] goal', e); }
+            if (met) {
+                _tut.metAt = Date.now();
+                const el = document.getElementById('tutCoach');
+                if (el) el.classList.add('met');
+                try { playSfx('uiConfirm'); } catch (e) {}
+            }
+        }
+        /* ── the dummies ───────────────────────────────────────────────── */
+        window._tutCpuTurn = function (unit) {
+            if (!_tut.active || !unit || unit.player !== 2) return false;
+            const st = _tut.step;
+            const plan = (!_tut.finished && st && st.cpu && st.cpu[_tutKeyOf(unit.id)]) || 'hold';
+            const gen = state._blitzActiveUnitId;
+            const live = () => _tut.active && state.phase === 'battle' && !state.winner && state._blitzActiveUnitId === gen && !unit.dead;
+            const done = () => { if (!live()) return; unit.ap = 0; finishComputerAction(); };
+            const enemies = () => (state.units || []).filter(x => x.player === 1 && !x.dead && !x._dying);
+            const nearest = () => { let b = null, bd = 1e9; for (const e of enemies()) { const d = Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y); if (d < bd) { bd = d; b = e; } } return b; };
+            const inReach = (t) => { try { return (getAttackTiles(unit) || []).some(tt => tt.x === t.x && tt.y === t.y); } catch (e) { return false; } };
+            const swing = (t) => { try { doAttack(unit, t.x, t.y, t.z); } catch (e) { console.warn('[Tutorial] dummy swing', e); } finishComputerAction(); };
+            const ms = (typeof actionMs === 'function') ? actionMs(560) : 560;
+            if (_tut.cpuTimer) clearTimeout(_tut.cpuTimer);
+            _tut.cpuTimer = setTimeout(() => {
+                _tut.cpuTimer = null;
+                if (!live()) return;
+                if (plan === 'hold' || plan === 'pass') return done();
+                if (plan === 'guard') { try { doGuard(unit); } catch (e) { done(); } return; }
+                const t = nearest();
+                if (!t) return done();
+                if (plan === 'attack' && inReach(t)) return swing(t);
+                /* approach: the reachable tile nearest the target */
+                let tiles = [];
+                try { tiles = getMoveTiles(unit) || []; } catch (e) {}
+                let best = null, bd = Math.abs(unit.x - t.x) + Math.abs(unit.y - t.y);
+                for (const tt of tiles) {
+                    const d = Math.abs(tt.x - t.x) + Math.abs(tt.y - t.y);
+                    if (d < bd || (d === bd && best && Math.abs(tt.y - t.y) < Math.abs(best.y - t.y))) { bd = d; best = tt; }
+                }
+                if (!best) return done();
+                try { doMove(unit, best.x, best.y, best.z); } catch (e) { return done(); }
+                _waitForAnimationsThen(() => {
+                    if (!live()) return;
+                    if (plan === 'attack' && (unit.ap || 0) > 0 && inReach(t)) return swing(t);
+                    done();
+                });
+            }, ms);
+            return true;
+        };
+        /* ── the coach ─────────────────────────────────────────────────── */
+        function _tutMountCoach() {
+            let el = document.getElementById('tutCoach');
+            if (el) return el;
+            const host = document.getElementById('game-viewport') || document.body;
+            el = document.createElement('div');
+            el.id = 'tutCoach';
+            el.className = 'tut-coach';
+            host.appendChild(el);
+            el.addEventListener('click', (e) => {
+                const b = e.target.closest('[data-tut]');
+                if (!b) return;
+                e.preventDefault(); e.stopPropagation();
+                const act = b.getAttribute('data-tut');
+                if (act === 'continue') { try { playSfx('uiButtonConfirm'); } catch (x) {} _tutAdvance(); }
+                else if (act === 'leave') window._tutorialLeave();
+                else if (act === 'next') { const n = _tutNextLesson(); if (n) _tutTeardown(() => window._tutorialLaunch(n.id, { from: _tut.from })); }
+                else if (act === 'list') window._tutorialLeave(true);
+            });
+            return el;
+        }
+        function _tutNextLesson() {
+            const L = _tut.lesson;
+            if (!L || typeof TUTORIAL_LESSONS === 'undefined') return null;
+            const i = TUTORIAL_LESSONS.findIndex(x => x.id === L.id);
+            return (i >= 0 && i + 1 < TUTORIAL_LESSONS.length) ? TUTORIAL_LESSONS[i + 1] : null;
+        }
+        function _tutRenderCoach() {
+            const el = _tutMountCoach();
+            const L = _tut.lesson, st = _tut.step;
+            if (!L || !st) return;
+            const n = _tut.stepIdx + 1, total = L.steps.length;
+            const ack = st.goal && st.goal.type === 'ack';
+            const isFinish = ack && st.goal.finish;
+            el.classList.remove('met', 'nudge', 'done');
+            el.innerHTML = '<div class="tut-coach-hd"><b>ORIENTATION</b><span>' + escapeHtml('TAPE ' + L.no + ' · ' + L.title) + '</span>'
+                + '<button class="tut-coach-x" data-tut="leave" title="Leave the lesson">✕</button></div>'
+                + (st.title ? '<div class="tut-coach-title">' + escapeHtml(st.title) + '</div>' : '')
+                + '<div class="tut-coach-body">' + _tutT(st.say) + '</div>'
+                + (st.hint && !ack ? '<div class="tut-coach-hint">▶ ' + escapeHtml(_tutT(st.hint)) + '</div>' : '')
+                + (ack ? '<div class="tut-coach-actions"><button class="tut-btn tut-btn-primary" data-tut="continue">' + (isFinish ? 'LESSON COMPLETE ▸' : 'CONTINUE ▸') + '</button></div>' : '')
+                + '<div class="tut-coach-progress" title="step ' + n + ' of ' + total + '"><i style="width:' + Math.round(100 * n / total) + '%"></i></div>';
+        }
+        function _tutRenderDone() {
+            const el = _tutMountCoach();
+            const L = _tut.lesson;
+            const next = _tutNextLesson();
+            el.classList.add('done');
+            el.innerHTML = '<div class="tut-coach-hd"><b>ORIENTATION</b><span>' + escapeHtml('TAPE ' + L.no + ' · FILED') + '</span></div>'
+                + '<div class="tut-coach-stamp">LESSON COMPLETE</div>'
+                + '<div class="tut-coach-body">' + escapeHtml(L.title) + ' is on your record. ' + (next ? 'Next on the shelf: <b>' + escapeHtml(next.title) + '</b>.' : 'That was the last tape on the shelf.') + '</div>'
+                + '<div class="tut-coach-actions">'
+                + (next ? '<button class="tut-btn tut-btn-primary" data-tut="next">NEXT TAPE ▸</button>' : '')
+                + '<button class="tut-btn" data-tut="list">' + (_tut.from === 'hq' ? 'BACK TO ROOM 64' : 'THE SHELF') + '</button></div>';
+        }
+        function _tutFinish() {
+            if (!_tut.active || _tut.finished) return;
+            _tut.finished = true;
+            if (_tut.autoTimer) { clearTimeout(_tut.autoTimer); _tut.autoTimer = null; }
+            if (_tut.tileTimer) { clearInterval(_tut.tileTimer); _tut.tileTimer = null; }
+            _tutApplyGlow();
+            try { if (typeof _stopShotClock === 'function') _stopShotClock(); } catch (e) {}
+            const L = _tut.lesson;
+            _tutProfileRW(p => { if (typeof tutorialMarkDone === 'function') tutorialMarkDone(p, L.id); return true; });
+            try { if (typeof showCombatBanner === 'function') showCombatBanner('📋 ' + L.title, 'LESSON COMPLETE · filed, not scored', 'pickup-friendly'); } catch (e) {}
+            try { playSfx('levelUp'); } catch (e) {}
+            try { if (typeof playDoorSfx === 'function') playDoorSfx('stamp', { volume: 0.7 }); } catch (e) {}
+            try { if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache(); if (typeof markDirty === 'function') markDirty('actions'); if (typeof renderIfDirty === 'function') renderIfDirty(); } catch (e) {}
+            _tutRenderDone();
+        }
+        function _tutStopMatchSide() {
+            if (_tut.poll) { clearInterval(_tut.poll); _tut.poll = null; }
+            if (_tut.bootPoll) { clearInterval(_tut.bootPoll); _tut.bootPoll = null; }
+            if (_tut.autoTimer) { clearTimeout(_tut.autoTimer); _tut.autoTimer = null; }
+            if (_tut.tileTimer) { clearInterval(_tut.tileTimer); _tut.tileTimer = null; }
+            if (_tut.cpuTimer) { clearTimeout(_tut.cpuTimer); _tut.cpuTimer = null; }
+            document.querySelectorAll('.tut-glow').forEach(el => el.classList.remove('tut-glow'));
+            const el = document.getElementById('tutCoach');
+            if (el) el.remove();
+            _tut.active = false; window._tutActive = false; _tut.finished = false; _tut.booting = false; _tut.step = null;
+        }
+        function _tutTeardown(then) {
+            const from = _tut.from;
+            _tutStopMatchSide();
+            const p = (typeof backToMainMenu === 'function') ? backToMainMenu() : Promise.resolve();
+            Promise.resolve(p).then(() => {
+                if (_tut.saved) { window.EW_DISABLE_INTRO_CINE = _tut.saved.introCine; state.fogOfWar = _tut.saved.fog; _tut.saved = null; }
+                if (then) then(from);
+            }).catch(e => { console.error('[Tutorial] teardown', e); if (then) then(from); });
+        }
+        /* ✕ / THE SHELF: leave the lesson. `quiet` = no confirm (a finished
+           lesson, a failed boot) */
+        window._tutorialLeave = function (quiet) {
+            if (!_tut.active) return;
+            const go = () => _tutTeardown((from) => {
+                if (from !== 'hq' && typeof _showTitlePage === 'function') {
+                    _showTitlePage('tutorialPage');
+                    if (typeof window._renderTutorialPage === 'function') window._renderTutorialPage();
+                }
+            });
+            if (quiet || _tut.finished || typeof ewConfirm !== 'function') { go(); return; }
+            ewConfirm('Leave the lesson? Progress on this tape is not kept.', go, null, { okLabel: 'Leave', cancelLabel: 'Stay' });
+        };
+        window.Tutorial = {
+            start: (id, opts) => window._tutorialLaunch(id, opts),
+            leave: (q) => window._tutorialLeave(q),
+            skipStep: () => { if (_tut.active && !_tut.finished) _tutAdvance(); },
+            active: () => _tut.active,
+            state: () => ({ lesson: _tut.lesson && _tut.lesson.id, step: _tut.step && _tut.step.id, idx: _tut.stepIdx, finished: _tut.finished, events: _tut.events.length, from: _tut.from }),
+        };
+
+        /* ═══════════════════════════════════════════════════════════════════
+           THE ORIENTATION TAPE — doorTapePlay (HQ plan 4.3)
+           ───────────────────────────────────────────────────────────────────
+           The VHS the RANGE console's label promised: #doorTape (index.html,
+           the last child of #startOverlay; CSS styles-cinematic.css "THE
+           ORIENTATION TAPE" — the ident kit's power-on line, tracking bar
+           and VCR OSD reused) plays data.js TUTORIAL_TAPE.beats one slide
+           at a time: a drawn `art` (the SVG builders below), a typed
+           caption, a beat timer. SPACE / click = next beat, ESC = skip the
+           tape, prefers-reduced-motion = no sweep / no squish. Returns a
+           Promise<{ watched, skipped }>; the caller marks the profile
+           (`tape`) and launches the first lesson. DOOR SFX kit: crtOn in,
+           vhsEject out, a dotMatrix tick per beat.
+           ═══════════════════════════════════════════════════════════════ */
+        let _tapeActive = false, _tapeBeat = -1, _tapeTimer = null, _tapeType = null, _tapeResolve = null, _tapeT0 = 0, _tapeClock = null;
+        const _TAPE_ART = {
+            leader: () => '<svg viewBox="0 0 400 300" class="tape-svg"><circle cx="200" cy="150" r="96" class="tp-line"/><circle cx="200" cy="150" r="70" class="tp-line"/><line x1="200" y1="20" x2="200" y2="280" class="tp-line thin"/><line x1="40" y1="150" x2="360" y2="150" class="tp-line thin"/><text x="200" y="176" class="tp-big tp-count">3</text></svg>',
+            seal: () => '<div class="tape-seal"><img src="https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false"></div>',
+            corner: () => '<svg viewBox="0 0 400 300" class="tape-svg"><line x1="40" y1="80" x2="360" y2="80" class="tp-line dim draw d1"/><line x1="40" y1="120" x2="360" y2="120" class="tp-line dim draw d1"/><text x="200" y="60" class="tp-lbl dim fade d2">PARALLEL · NEVER MEET</text><line x1="120" y1="270" x2="120" y2="160" class="tp-line draw d3"/><line x1="120" y1="270" x2="300" y2="270" class="tp-line draw d3"/><path d="M120 250 h20 v20" class="tp-line draw d4"/><rect x="123" y="205" width="36" height="65" class="tp-door fade d5"/><text x="200" y="185" class="tp-lbl fade d5">ORTHOGONAL · A CORNER · A DOOR</text></svg>',
+            round: () => '<svg viewBox="0 0 400 300" class="tape-svg"><circle cx="180" cy="150" r="110" class="tp-line draw d1"/><circle cx="180" cy="150" r="34" class="tp-line dim draw d2"/><g class="fade d3"><rect x="292" y="118" width="64" height="64" class="tp-line warn"/><line x1="292" y1="150" x2="356" y2="150" class="tp-line warn thin"/><line x1="324" y1="118" x2="324" y2="182" class="tp-line warn thin"/><text x="324" y="206" class="tp-lbl warn">ROOM 64</text></g><text x="180" y="290" class="tp-lbl fade d2">THE DEPARTMENT · ROUND · NO CORNERS</text></svg>',
+            globe: () => '<svg viewBox="0 0 400 300" class="tape-svg"><circle cx="200" cy="150" r="100" class="tp-line draw d1"/><ellipse cx="200" cy="150" rx="46" ry="100" class="tp-line dim draw d1"/><line x1="100" y1="150" x2="300" y2="150" class="tp-line dim draw d1"/><ellipse cx="200" cy="110" rx="90" ry="24" class="tp-line dim draw d2"/><ellipse cx="200" cy="190" rx="90" ry="24" class="tp-line dim draw d2"/><g class="tp-doors"><rect x="140" y="98" width="12" height="20" class="tp-door pop p1"/><rect x="236" y="130" width="12" height="20" class="tp-door pop p2"/><rect x="176" y="176" width="12" height="20" class="tp-door pop p3"/><rect x="262" y="88" width="12" height="20" class="tp-door pop p4"/><rect x="118" y="160" width="12" height="20" class="tp-door pop p5"/></g><text x="200" y="290" class="tp-lbl warn fade d4">THRESHOLD EVENTS · CANON REALITY</text></svg>',
+            grid: () => { let c = ''; for (let i = 0; i <= 8; i++) { c += '<line x1="' + (60 + i * 30) + '" y1="30" x2="' + (60 + i * 30) + '" y2="270" class="tp-line dim thin draw d1"/><line x1="60" y1="' + (30 + i * 30) + '" x2="300" y2="' + (30 + i * 30) + '" class="tp-line dim thin draw d1"/>'; }
+                for (let i = 0; i < 4; i++) { c += '<circle cx="' + (135 + i * 30) + '" cy="255" r="9" class="tp-unit us fade d2"/><circle cx="' + (135 + i * 30) + '" cy="45" r="9" class="tp-unit them fade d3"/>'; }
+                return '<svg viewBox="0 0 400 300" class="tape-svg">' + c + '<text x="180" y="290" class="tp-lbl fade d3">FOUR · AGAINST · FOUR</text><text x="340" y="150" class="tp-lbl fade d2" transform="rotate(90 340 150)">EIGHT BY EIGHT</text></svg>'; },
+            turn: () => '<svg viewBox="0 0 400 300" class="tape-svg"><circle cx="110" cy="130" r="70" class="tp-line draw d1"/><line x1="110" y1="130" x2="110" y2="75" class="tp-line draw d2"/><line x1="110" y1="130" x2="150" y2="150" class="tp-line thin draw d2"/><text x="110" y="222" class="tp-lbl fade d2">FASTEST FIRST</text><g class="fade d3"><rect x="220" y="90" width="50" height="22" class="tp-pip on"/><rect x="280" y="90" width="50" height="22" class="tp-pip on"/><text x="275" y="80" class="tp-lbl">ACTION POINTS</text><text x="275" y="140" class="tp-lbl dim">MOVE · 1</text><text x="275" y="162" class="tp-lbl dim">STRIKE · ALL</text></g><g class="fade d5"><rect x="220" y="190" width="50" height="22" class="tp-pip on blink"/><rect x="280" y="190" width="50" height="22" class="tp-pip on blink"/><text x="275" y="240" class="tp-lbl warn">WEAKNESS · STRIKE AGAIN</text></g></svg>',
+            three: () => '<svg viewBox="0 0 400 300" class="tape-svg"><g class="fade d1"><rect x="50" y="90" width="70" height="70" class="tp-cube"/><rect x="60" y="80" width="70" height="70" class="tp-line"/><text x="95" y="196" class="tp-lbl">THE CUBE</text></g><g class="fade d2"><path d="M180 100 h24 a12 12 0 1 1 0 24 h-24 z M180 112 h-30 v8 h8 v-8 h8 v8 h8 v-8" class="tp-line"/><path d="M180 140 h24 a12 12 0 1 1 0 24 h-24 z M180 152 h-30 v8 h8 v-8 h8 v8 h8 v-8" class="tp-line"/><path d="M180 180 h24 a12 12 0 1 1 0 24 h-24 z M180 192 h-30 v8 h8 v-8 h8 v8 h8 v-8" class="tp-line"/><text x="190" y="236" class="tp-lbl">THREE KEYS</text></g><g class="fade d3"><circle cx="320" cy="125" r="34" class="tp-line"/><line x1="296" y1="101" x2="344" y2="149" class="tp-line warn"/><line x1="344" y1="101" x2="296" y2="149" class="tp-line warn"/><text x="320" y="196" class="tp-lbl">EVERY HOSTILE</text></g><text x="200" y="278" class="tp-lbl dim fade d4">ANY ONE WILL DO</text></svg>',
+            room64: () => '<div class="tape-card"><div class="tape-card-no">ROOM 64</div><div class="tape-card-l1">ORTHOGONAL GEOMETRY EXPOSURE AREA</div><div class="tape-card-l2">MAX OCCUPANCY 45 MINUTES · DO NOT STAND IN CORNERS</div><div class="tape-card-arrow">▶</div></div>',
+            dark: () => '<svg viewBox="0 0 400 300" class="tape-svg"><rect x="0" y="0" width="400" height="300" class="tp-black"/><g class="tp-knock k1"><line x1="330" y1="60" x2="380" y2="60" class="tp-line dim thin"/></g><g class="tp-knock k2"><line x1="330" y1="70" x2="380" y2="70" class="tp-line dim thin"/></g><g class="tp-knock k3"><line x1="330" y1="80" x2="380" y2="80" class="tp-line dim thin"/></g></svg>',
+        };
+        function _tapeEl() { return document.getElementById('doorTape'); }
+        function _tapeFmt(ms) { const s = Math.floor(ms / 1000); const m = Math.floor(s / 60); const f = Math.floor((ms % 1000) / 40); return '0:' + String(m).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0') + ':' + String(f).padStart(2, '0'); }
+        function doorTapePlay(opts) {
+            opts = opts || {};
+            const el = _tapeEl();
+            const TAPE = (typeof TUTORIAL_TAPE !== 'undefined') ? TUTORIAL_TAPE : null;
+            if (!el || !TAPE || _tapeActive) return Promise.resolve({ watched: false, skipped: false });
+            let reduced = false;
+            try { reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) {}
+            el.classList.remove('off', 'on', 'skip');
+            el.classList.toggle('reduced', reduced);
+            el.innerHTML = '<div class="ls-grain"></div><div class="door-tape-crt"></div>'
+                + '<div class="door-tape-stage"><div class="door-tape-art" id="doorTapeArt"></div><div class="door-tape-title" id="doorTapeTitle"></div><div class="door-tape-cap" id="doorTapeCap"></div></div>'
+                + '<div class="door-ident-tracking door-tape-track"></div>'
+                + '<div class="door-tape-osd"><span>' + escapeHtml(TAPE.osd || '▶ PLAY   SP') + '</span><span id="doorTapeClock">0:00:00:00</span></div>'
+                + '<div class="door-tape-label">' + escapeHtml(TAPE.label || '') + (TAPE.draft ? '<i>DRAFT NARRATION</i>' : '') + '</div>'
+                + '<div class="door-tape-hint"><span>' + escapeHtml(TAPE.next || 'SPACE · NEXT') + '</span><span>' + escapeHtml(TAPE.skip || 'ESC · SKIP') + '</span></div>'
+                + '<div class="door-tape-dots" id="doorTapeDots">' + TAPE.beats.map((b, i) => '<i data-i="' + i + '"></i>').join('') + '</div>';
+            void el.offsetWidth;
+            el.classList.add('on');
+            _tapeActive = true; window._doorTapeActive = true;
+            _tapeBeat = -1; _tapeT0 = Date.now();
+            el.onclick = (e) => { e.preventDefault(); e.stopPropagation(); _tapeNext(); };
+            if (!reduced) { try { if (typeof playDoorSfx === 'function') playDoorSfx('crtOn', { allowBeforeUnlock: true, volume: 0.5 }); } catch (e) {} }
+            _tapeClock = setInterval(() => { const c = document.getElementById('doorTapeClock'); if (c) c.textContent = _tapeFmt(Date.now() - _tapeT0); }, 80);
+            return new Promise(resolve => {
+                _tapeResolve = resolve;
+                setTimeout(() => { if (_tapeActive) _tapeShow(0); }, reduced ? 200 : 700);
+            });
+        }
+        function _tapeShow(i) {
+            const TAPE = TUTORIAL_TAPE;
+            const el = _tapeEl();
+            if (!el || !_tapeActive) return;
+            if (_tapeTimer) { clearTimeout(_tapeTimer); _tapeTimer = null; }
+            if (_tapeType) { clearInterval(_tapeType); _tapeType = null; }
+            if (i >= TAPE.beats.length) { _tapeEnd(false); return; }
+            _tapeBeat = i;
+            const b = TAPE.beats[i];
+            const art = document.getElementById('doorTapeArt'), title = document.getElementById('doorTapeTitle'), cap = document.getElementById('doorTapeCap');
+            if (art) { art.innerHTML = (_TAPE_ART[b.art] || _TAPE_ART.leader)(); art.className = 'door-tape-art art-' + (b.art || 'leader'); void art.offsetWidth; art.classList.add('in'); }
+            if (title) title.textContent = b.title || '';
+            const text = _tutT(b.cap || '');
+            if (cap) {
+                cap.textContent = '';
+                cap.classList.remove('done');
+                if (el.classList.contains('reduced') || !text) { cap.textContent = text; cap.classList.add('done'); }
+                else {
+                    let n = 0;
+                    _tapeType = setInterval(() => {
+                        n += 2;
+                        cap.textContent = text.slice(0, n);
+                        if (n >= text.length) { clearInterval(_tapeType); _tapeType = null; cap.classList.add('done'); }
+                    }, 28);
+                }
+            }
+            const dots = document.getElementById('doorTapeDots');
+            if (dots) dots.querySelectorAll('i').forEach((d, j) => { d.classList.toggle('on', j <= i); d.classList.toggle('cur', j === i); });
+            if (b.art === 'leader') {
+                /* the film leader counts down */
+                let k = 3;
+                const tick = () => { const t = el.querySelector('.tp-count'); if (t) t.textContent = String(k); };
+                const cd = setInterval(() => { k -= 1; if (k <= 0) { clearInterval(cd); return; } tick(); }, Math.max(400, Math.floor((b.ms - 400) / 3)));
+                setTimeout(() => clearInterval(cd), b.ms);
+            } else if (i > 0) {
+                try { if (typeof playDoorSfx === 'function') playDoorSfx('dotMatrix', { allowBeforeUnlock: true, volume: 0.25 }); } catch (e) {}
+            }
+            _tapeTimer = setTimeout(() => { _tapeTimer = null; _tapeShow(i + 1); }, Math.max(1200, b.ms || 6000));
+        }
+        function _tapeNext() {
+            if (!_tapeActive) return;
+            /* a caption still typing finishes first; a finished one moves on */
+            const cap = document.getElementById('doorTapeCap');
+            if (_tapeType && cap) {
+                clearInterval(_tapeType); _tapeType = null;
+                cap.textContent = _tutT((TUTORIAL_TAPE.beats[_tapeBeat] || {}).cap || '');
+                cap.classList.add('done');
+                return;
+            }
+            _tapeShow(_tapeBeat + 1);
+        }
+        function _tapeEnd(skipped) {
+            if (!_tapeActive) return;
+            _tapeActive = false; window._doorTapeActive = false;
+            if (_tapeTimer) { clearTimeout(_tapeTimer); _tapeTimer = null; }
+            if (_tapeType) { clearInterval(_tapeType); _tapeType = null; }
+            if (_tapeClock) { clearInterval(_tapeClock); _tapeClock = null; }
+            const el = _tapeEl();
+            if (el) {
+                el.onclick = null;
+                el.classList.add(skipped ? 'skip' : 'off');
+                setTimeout(() => { if (!_tapeActive) { el.classList.remove('on', 'off', 'skip'); el.innerHTML = ''; } }, skipped ? 260 : 900);
+            }
+            try { if (typeof playDoorSfx === 'function') playDoorSfx('vhsEject', { allowBeforeUnlock: true }); } catch (e) {}
+            const r = _tapeResolve; _tapeResolve = null;
+            if (r) r({ watched: !skipped, skipped: !!skipped });
+        }
+        function doorTapeSkip() { if (_tapeActive) _tapeEnd(true); }
+        window.doorTapePlay = doorTapePlay;
+        window.doorTapeSkip = doorTapeSkip;
+        document.addEventListener('keydown', (e) => {
+            if (!_tapeActive) return;
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); doorTapeSkip(); }
+            else if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); _tapeNext(); }
+        }, true);
 
         /* ── D.O.O.R. ident (DOOR_DESIGN §3.4, build step 2): the studio card
            before the feature. Plays once per page load, as soon as the game
