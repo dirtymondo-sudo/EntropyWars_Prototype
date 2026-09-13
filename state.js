@@ -5272,7 +5272,7 @@
                 const currentTransform = (boardStageEl?.style.transform || '').match(/scale\(([^)]+)\)/);
                 const displayedZoom = currentTransform ? parseFloat(currentTransform[1]) : getDefaultZoom();
                 const oldZoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? state.userZoomScale : displayedZoom;
-                const newZoom = Math.round(Math.max(0.25, Math.min(10.0, oldZoom + delta)) * 100) / 100;
+                const newZoom = Math.round(Math.max(0.3, Math.min(10.0, oldZoom + delta)) * 100) / 100;
                 if (Math.abs(newZoom - oldZoom) < 0.01) return;
                 state.userZoomScale = newZoom;
                 const btn = document.getElementById('zoomToggleBtn');
@@ -5789,7 +5789,7 @@
 
                     const curDist = _getTouchDist(e.touches[0], e.touches[1]);
                     const zoomRatio = _pinchStartDist > 10 ? (curDist / _pinchStartDist) : 1;
-                    const newZoom = Math.round(Math.max(0.25, Math.min(10.0, _pinchStartZoom * zoomRatio)) * 100) / 100;
+                    const newZoom = Math.round(Math.max(0.3, Math.min(10.0, _pinchStartZoom * zoomRatio)) * 100) / 100;
 
                     const curAngle = _getTouchAngle(e.touches[0], e.touches[1]);
                     let angleDelta = (curAngle - _twistStartAngle) * (180 / Math.PI);
@@ -6472,7 +6472,7 @@
                     const cur = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged() && state.userZoomScale)
                         ? state.userZoomScale : (camera.zoom || 1);
                     const factor = 1 + (zi - zo) * 1.6 * dt;
-                    const newZoom = Math.round(Math.max(0.25, Math.min(10.0, cur * factor)) * 1000) / 1000;
+                    const newZoom = Math.round(Math.max(0.3, Math.min(10.0, cur * factor)) * 1000) / 1000;
                     if (Math.abs(newZoom - cur) > 0.0005) {
                         state.userZoomScale = newZoom;
                         _updateZoomChip(newZoom);

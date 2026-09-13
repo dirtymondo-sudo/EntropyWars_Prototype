@@ -3042,6 +3042,26 @@
                 </div>`;
         };
 
+        /* THE WORLD (2026-09-13): grounded ↔ floating — Entropy (the gauge takes the
+           landscape apart), Grounded (always the full landscape), Floating (always the island) */
+        window._buildWorldModeHTML = function (refreshJs) {
+            if (typeof ThreeRenderer === 'undefined' || typeof ThreeRenderer.setWorldMode !== 'function') return '';
+            const cur = ThreeRenderer.getWorldMode();
+            const modes = [['entropy', 'Entropy'], ['grounded', 'Grounded'], ['floating', 'Floating']];
+            const hints = { entropy: 'The landscape holds while the ENTROPY gauge is low and breaks apart into the floating island as it fills; it reforms after the strike.', grounded: 'The full landscape to the horizon, always.', floating: 'The island adrift in the void, always.' };
+            const seg = modes.map(m => `<button class="pm-seg-btn${cur === m[0] ? ' active' : ''}" onclick="ThreeRenderer.setWorldMode('${m[0]}');${refreshJs}">${m[1]}</button>`).join('');
+            return `
+                <div class="pm-set-row pm-setting-row" style="margin-top:6px">
+                    <span class="pm-setting-label">World</span>
+                    <div class="pm-seg-group" style="flex-wrap:wrap">
+                        ${seg}
+                    </div>
+                </div>
+                <div class="pm-set-row" style="margin-top:2px">
+                    <span class="pm-toggle-hint">${hints[cur] || hints.entropy}</span>
+                </div>`;
+        };
+
         function _renderMainMenuSettings() {
             const body = document.getElementById('mmSettingsBody');
             if (!body) return;
@@ -3087,6 +3107,7 @@
                         ${window._buildPerfSettingsHTML('window._openMainMenuSettings();')}
                         ${typeof window._buildVitalsLookHTML === 'function' ? window._buildVitalsLookHTML('window._openMainMenuSettings();') : ''}
                         ${typeof window._buildHudThemeHTML === 'function' ? window._buildHudThemeHTML('window._openMainMenuSettings();') : ''}
+                        ${typeof window._buildWorldModeHTML === 'function' ? window._buildWorldModeHTML('window._openMainMenuSettings();') : ''}
                     </div>
                     ${(typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && typeof DOOR_HQ !== 'undefined') ? (() => {
                         const on = (typeof window._hqEnabled === 'function') && window._hqEnabled();

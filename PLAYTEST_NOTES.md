@@ -186,7 +186,59 @@ playtested (RULE #1c) — eyeball on a real GPU first.
 - Cold cache: the procedural panel shows until the GLB lands; a visit to the
   building or the loading-screen warmer makes it hot.
 
-## 🚢 MOVING MAPS — three sites whose world streams past the board (2026-09-12, LATEST) — data.js, three-renderer.js, audio.js, server.js, index.html
+## 🌍 THE WORLD — the landscape to the horizon, and entropy taking it apart (2026-09-13, LATEST) — three-renderer.js, data.js, state.js, map.js, ui.js, index.html
+The user's three asks in one pass: (1) the flat square landscape hanging
+in the sky at far zoom, (2) a "realistic" version of each map (endless
+desert / sea / cave walls up to the sky), (3) the normal map breaking into
+the floating island as the ENTROPY gauge fills, and back after the strike.
+- **What shipped**: `env.world` on every EW_MAP_META row + the renderer's
+  THE WORLD block (see CLAUDE.md "THE WORLD" for the contract). The ground
+  disc (56 tiles) wears the apron's own sheet; moat maps get the lake to a
+  circular shore with a bank; sea maps run the liquid to the horizon; a
+  rim of silhouettes 14–40 tiles out; a cavern wall on Hollow Earth /
+  Agartha / Hell; a root cone under the island once it's adrift. The
+  dissolve is one number driven by the fuller team's gauge (synced, so
+  online both seats agree — nothing relayed). Settings → World: Entropy /
+  Grounded / Floating. Wheel zoom floor 0.25 → 0.3.
+- **The hour lost**: the world group was invisible while every probe said
+  it was drawn. Cause: `g.renderOrder = -45` on the GROUP. three r128's
+  `projectObject` buckets children by the nearest Group's renderOrder
+  FIRST, so the world drew before the sky dome (renderOrder −1000 inside
+  group order 0, `depthTest: false`) and the dome painted over it. The
+  near-scenery group has renderOrder 0, which is why the apron showed.
+  Never put a renderOrder on a group that holds opaque world geometry.
+- **The second trap**: rim peaks with radius ≈ height carpeted the
+  ground from 18 to 42 tiles — "the ground is pale" was 30 overlapping
+  cones. A peak's radius is now ≤ 0.3 × its ring radius and ≈ half its
+  height.
+- **`playtest_world.js`** (repo tooling): the Δ probe re-pointed at the
+  world. Every CDN 403s in this sandbox, so it serves the repo scripts +
+  CSS, `node_modules` copies of three r128 (+ examples), React,
+  socket.io client and MeshLine (`npm install --no-save three@0.128.0
+  react@18.3.1 react-dom@18.3.1 three.meshline` — ONE command; a later
+  `npm install --no-save x` prunes the earlier ones), and a GENERATED
+  64×64 noise PNG per texture request coloured by file name (grass →
+  green, water → blue, mountain → grey, …) so surfaces are not black;
+  GLBs / audio / fonts 404. `CLEAN=1` writes `ew_retro = {enabled:false,
+  fogEnabled:false}` before load (the default Dreamy preset + its
+  FogExp2 turn everything past ~20 tiles violet — fine for the user,
+  useless for judging colour) → `shots/world-clean/`; else
+  `shots/world/`. `POSES=vfar,horizon,rim` (vfar zoom 0.16 — the camera
+  ends ~78 tiles out at fov 45, the frame ~65 tiles wide; horizon tilt
+  74; rim tilt 62), `STABS=1,0.5,0` (sets `window.EW_WORLD_STAB`, which
+  PINS the stability — the eased value never converges at ~2 fps),
+  `EXPERIMENTS='["<js>", …]'` (each evaluated, camera re-snapped, shot
+  as `<map>_x<i>.png`), `PROBE_EVAL`. The blitz camera re-frames on the
+  active unit between shots — every shot re-snaps + engages
+  `state.userZoomScale`. `ThreeRenderer.hq.dev.renderer()` was added for
+  `renderer.info.programs[].diagnostics` (shader errors never reach the
+  console filter otherwise).
+- **Unseen**: the real terrain sheets, the real day/night grade, the
+  retro look — eyeball Shasta (lake + pines + range), Area 51 (desert,
+  houses, mesas), Hollow Earth (the cavern wall), the Dutchman (sea),
+  Cyberpunk (the skyline) and the dissolve at ~50 % gauge live first.
+
+## 🚢 MOVING MAPS — three sites whose world streams past the board (2026-09-12) — data.js, three-renderer.js, audio.js, server.js, index.html
 User asked for maps "where the background is moving kinda fast to make it
 intense" — a pirate ship on the ocean, a half-broken spaceship through
 space, a chessboard through a void of shapes — faster with the rounds,

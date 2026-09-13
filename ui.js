@@ -7520,6 +7520,7 @@
                     </div>
                     ${typeof window._buildVitalsLookHTML === 'function' ? window._buildVitalsLookHTML('_renderPauseMenu();') : ''}
                     ${typeof window._buildHudThemeHTML === 'function' ? window._buildHudThemeHTML('_renderPauseMenu();') : ''}
+                    ${typeof window._buildWorldModeHTML === 'function' ? window._buildWorldModeHTML('_renderPauseMenu();') : ''}
                 </div>
 
                 <div class="pm-set-group pm-collapsible">

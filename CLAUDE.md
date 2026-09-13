@@ -1692,3 +1692,60 @@ geometry, a CINE_SEQUENCES director, or a kind whose travel is the
 signature). Smoke-tested headlessly with real three r128 (a scratch
 harness; not a playtest) — the LOOK is unseen: eyeball Tsunami, Dragonfire,
 Fae Ring, Cataclysm Decree, Draining Embrace, Crusade live first.
+
+## THE WORLD — grounded ↔ floating (the horizon pass) — added 2026-09-13
+Every Δ board used to end at its square apron in the sky. Now a map's
+**`env.world`** row (data.js EW_MAP_META, all 32 launch maps; the doc
+comment above the table lists the fields) continues the SETTING to the
+horizon and lets ENTROPY take it apart — three-renderer.js **THE WORLD**
+block (right before `_buildHorizonScenery`): `_worldBuild(nearCtx)` runs
+at every `scene.add(_horizonGroup)` site AFTER the near builder (it reads
+`_nrLastKit`, which `_nrApron` / `_nrMoat` now stamp with `tex / color /
+skirt / skirtColor / moatPad / moatDepth`) and builds into `_horizonGroup`
+(**never give that group a `renderOrder`** — a Group's order buckets its
+children before the dome, whose depthTest is off, and the sky paints over
+them; that cost an hour). Pieces: **the ground** (`kind: 'plain'`, a disc
+in the apron's sheet 2.5 units under the apron top; a moat map gets a
+LIQUID disc under its sheet first and the land from the SHORE = apron +
+pad outward with a BANK; `sea: true` = the liquid to the horizon), **the
+haze** (`_wdInject` = a Lambert `onBeforeCompile` chain: radial fog
+toward the dome's own `uFogColor` from `fogR0` (shore + 3) to `r` (56
+tiles), tagged `_ew_hzNear` so `_applyHorizonFog`'s altitude fog leaves
+it alone), **the rim** (`_WD_RIM` builders on `_wdRing` circles — peaks
+(`mesa`, `snow`) / hills / dunes / trees (`_nrTreeProc`, never the OBJ
+swap) / town (`_nrHouse`) / city (+ glow sprites in `_wd.extras`) /
+spires / bergs / ruins / pyramids / craters; `K._wdMinD` = the shore + 2
+keeps every one out of the lake; a peak's radius is ≤ 0.3 × its ring
+radius — fatter and they carpet the ground), **the wall** (`kind:
+'cavern'` + `wall`, a ruffled cylinder fading UP into the haze, `mode
+1`), **the root** (`_wdBuildRoot`: a superellipse lathe under the apron
+in the skirt's sheet darkened ×0.62 + stalactites, `root: false` under a
+hull; on a moat map the island is its SHEET, so the root spans apron +
+pad and hangs from `moatY` — the player's eye never goes under the tile
+tops (three-camera.js FLAT FLOOR), so it is seen at grazing angles only). **THE
+DISSOLVE**: `_wd.stab` (1 grounded → 0 adrift) eased in `_worldTick`
+(called in `_updateEnvironment` right after the horizon build, i.e.
+after `_applyDomeFog`): the world beyond `uWdKeep` is `discard`ed per
+fragment with an fbm edge that burns in the gauge's violet, veins crack
+the ground inside it, the root grows down, and the dome's fog is driven
+to FULL at / below the horizon (`uFogAmount → 1`, `uFogTop → fogTop`,
+band = top — the retro filter's fog too) while the ground holds, so the
+ground's far edge and the sky are one colour. Target = `mode`
+(`ThreeRenderer.getWorldMode / setWorldMode`, localStorage
+`ew_world_mode`, `window.EW_WORLD_MODE`): **entropy** (default — 1 − the
+fuller team's `state.entropyGauge`, cracking from 12 %, adrift at 96 %,
+reforms after the strike resets it; the gauge SYNCS, nothing relayed,
+RULE #2) · **grounded** · **floating**; `kind: 'void'` (Heaven, the
+Spaceship, the Looking-Glass) never grounds, `kind: 'room'` (D.U.M.B.,
+CERN, Backrooms) is inert. Settings row "World" (map.js
+`_buildWorldModeHTML`, pause menu + main-menu Display). Dev:
+`window.EW_WORLD_STAB = 0..1` pins it exactly; `ThreeRenderer.world()`
+reads stab / keep / the fog uniforms; `hq.dev.renderer()` = the WebGL
+renderer for shader diagnostics. The wheel-zoom floor is **0.3** now
+(state.js ×3; the world runs out at 56 tiles). `npm test` runs
+`world-ground.test.js`. Screenshots: `node playtest_world.js <map…>`
+(repo tooling; CLEAN=1 = no retro filter; POSES / STABS / EXPERIMENTS /
+PROBE_EVAL — see PLAYTEST_NOTES "THE WORLD") — every CDN is blocked
+here, so it serves the repo scripts, node_modules copies of three /
+React / socket.io / MeshLine and GENERATED stand-in textures coloured by
+file name; the real sheets are unseen — eyeball live first.

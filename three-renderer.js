@@ -20490,6 +20490,7 @@ const ThreeRenderer = (function () {
 
         // keep the real horizon scenery in sync + atmospherically graded
         _buildHorizonScenery();
+        _worldTick(performance.now());   // THE WORLD: ease the stability, blend the sky fog (after _applyDomeFog)
         if (_horizonFogDirty) _applyHorizonFog();   // re-apply retro fog after rebuilds / async model loads
         _buildArenaRuins();
         _buildStreetLamps();
@@ -24179,7 +24180,7 @@ const ThreeRenderer = (function () {
         if (K.hq) return [];                      // the room's floor + apron stand for it (stage 5)
         var ts = K.ts, fy = K.fy, G = K.G, top = fy - (o.drop || 0) * ts - 0.6;
         var T = o.deep ? top : (o.thick || 0.2) * ts;
-        if (_nrLastKit) _nrLastKit.apronTop = top;
+        if (_nrLastKit) { _nrLastKit.apronTop = top; _nrLastKit.tex = o.tex || null; _nrLastKit.color = o.color; _nrLastKit.skirt = o.skirt || null; _nrLastKit.skirtColor = o.skirtColor; }   // THE WORLD reads the apron's sheet + skirt
         var topMat = K.mat(o.tex, o.color == null ? 0xffffff : o.color);
         var sideMat = o.skirt ? K.mat(o.skirt, o.skirtColor == null ? 0xffffff : o.skirtColor) : topMat;
         var mats = [sideMat, sideMat, topMat, topMat, sideMat, sideMat];
@@ -24201,7 +24202,7 @@ const ThreeRenderer = (function () {
         if (K.hq) return null;                    // the room's own moat (_hqBuildSiteBoard) stands for it
         var ts = K.ts, depth = o.depth == null ? 1 : o.depth;
         var y = K.fy - depth * ts - (o.key === 'lava' ? 0.02 : 0.18) * ts;
-        if (_nrLastKit) { _nrLastKit.moat = o.key || 'water'; _nrLastKit.moatY = y; }
+        if (_nrLastKit) { _nrLastKit.moat = o.key || 'water'; _nrLastKit.moatY = y; _nrLastKit.moatPad = o.pad == null ? 0 : o.pad; _nrLastKit.moatDepth = depth; }   // (+ the pad: THE WORLD's shore)
         var pad = (o.pad == null ? 0 : o.pad) * ts;
         var x0 = K.X0 - pad, x1 = K.X1 + pad, z0 = K.Z0 - pad, z1 = K.Z1 + pad;
         var geo = new THREE.PlaneGeometry(x1 - x0, z1 - z0); _nrUV(geo, (x1 - x0) / ts, (z1 - z0) / ts);
@@ -26518,6 +26519,460 @@ const ThreeRenderer = (function () {
         return _hzMotion ? { kind: _hzMotion.kind || 'drift', axis: _motion.axis, dir: _motion.dir, tilesPerSec: _motion.speed / (CONFIG.tileSize || BASE_TILE), mult: _motionSpeedMult(_hzMotion), dist: _motion.dist, angleDeg: _motion.ang * 180 / Math.PI, skyYaw: _motion.skyYaw, skyLift: _motion.skyLift, storm: _motion.storm, sunNear: _motion.sunNear, moonNear: _motion.moonNear, streams: _motionStreams.length, motes: _motionMotes ? _motionMotes.sprites.length : 0 } : null;
     }
 
+    // ════════════════════════════════════════════════════════════════════
+    //  THE WORLD — grounded ↔ floating (2026-09-13)
+    //  Every Δ board used to end at its apron: a square of landscape hanging
+    //  in the sky dome, with the far roster floating thirty tiles out and
+    //  nothing in between. Now a map's `env.world` row (data.js EW_MAP_META)
+    //  continues the SETTING to the horizon and lets ENTROPY take it apart:
+    //    • THE GROUND — a disc (`kind: 'plain'`) wearing the apron's own
+    //      terrain sheet a hair under the apron top (the deep apron and the
+    //      bed hide it under the island), out to `r` tiles (56); a map with a
+    //      moat gets a LIQUID disc under the moat sheet first (the lake / the
+    //      moat / the lava), the land from the SHORE (apron + the moat's pad)
+    //      outward with a BANK down to the water; `sea: true` = the liquid
+    //      runs to the horizon (Antarctica, Atlantis, the Dutchman, Hell).
+    //    • THE HAZE — every world material is injected (_wdInject) with a
+    //      RADIAL fog toward the dome's own uFogColor (shared uniform), and
+    //      while the world stands the dome's fog band is driven to FULL at
+    //      and below the horizon line (uFogAmount → 1, uFogTop → the row's
+    //      `fogTop`, band = top) — the ground's far edge and the sky's haze
+    //      are then one colour, so there is no rim at any zoom.
+    //    • THE RIM — silhouettes on the ground 14–40 tiles out that close the
+    //      horizon (`rim`: peaks / hills / dunes / trees / town / city /
+    //      spires / bergs / ruins / pyramids / craters — _WD_RIM), fogged
+    //      like the ground. Skipped under EW_PERF_LOW.
+    //    • THE WALL — `kind: 'cavern'` + `wall` = a rock cylinder round the
+    //      whole world rising into the haze (Hollow Earth, Agartha, Hell).
+    //    • THE ROOT — the rock the island hangs from once the world lets go:
+    //      a jagged inverted cone under the apron (the skirt's sheet), with
+    //      stalactites; grows down as the ground dissolves (`root: false` on
+    //      a map that has a hull under it).
+    //    • THE DISSOLVE — one number, _wd.stab (1 = grounded, 0 = adrift):
+    //      the world beyond a KEEP radius is discarded per fragment with an
+    //      fbm edge that burns in the ENTROPY gauge's violet, glowing veins
+    //      crack the ground inside it, the root grows, the sky fog returns
+    //      to the map's own. Target: `mode` (localStorage ew_world_mode /
+    //      window.EW_WORLD_MODE — 'entropy' (default): 1 − the fuller team's
+    //      ENTROPY GAUGE (starts cracking at 12 %, fully adrift at 96 %,
+    //      reforms after the strike resets it) · 'grounded' · 'floating');
+    //      `kind: 'void'` (Heaven, the Spaceship, the Looking-Glass) never
+    //      grounds, `kind: 'room'` (D.U.M.B., CERN, the Backrooms) is inert.
+    //      state.entropyGauge SYNCS to the guest, so both seats see one world
+    //      with nothing relayed (RULE #2). Dev: window.EW_WORLD_STAB = 0..1.
+    //  Readout: ThreeRenderer.world(); setWorldMode(m) / getWorldMode().
+    // ════════════════════════════════════════════════════════════════════
+    var _wd = { g: null, row: null, kind: 'void', stab: -1, target: 1, keep: 0, r: 0, inner: 0, mats: [], root: null, rootMats: [], wall: null, extras: [], hasGround: false, fogTop: 0.14, fogBand: null, last: 0 };
+    var _wdUni = null, _wdModePref = null;
+    try { _wdModePref = (typeof localStorage !== 'undefined' && localStorage.getItem('ew_world_mode')) || null; } catch (e) {}
+    var _WD_MODES = ['entropy', 'grounded', 'floating'];
+    function _wdEnsureUni() {
+        if (_wdUni) return _wdUni;
+        _wdUni = {
+            uWdC: { value: new THREE.Vector3() }, uWdStab: { value: 1 }, uWdKeep: { value: 1e9 }, uWdTile: { value: 128 },
+            uWdGlow: { value: new THREE.Vector3(0.79, 0.65, 1.0) },   // the ENTROPY gauge's violet (#c9a5ff)
+            uWdTime: { value: 0 }, uWdFogAmt: { value: 0 }
+        };
+        return _wdUni;
+    }
+    var _WD_NOISE =
+        'float wdHash(vec2 p){vec3 p3=fract(vec3(p.xyx)*0.1031);p3+=dot(p3,p3.yzx+33.33);return fract((p3.x+p3.y)*p3.z);}\n' +
+        'float wdNoise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);float a=wdHash(i),b=wdHash(i+vec2(1,0)),c=wdHash(i+vec2(0,1)),d=wdHash(i+vec2(1,1));return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);}\n' +
+        'float wdFbm(vec2 p){float v=0.0,a=0.5;for(int i=0;i<4;i++){v+=a*wdNoise(p);p*=2.03;a*=0.5;}return v;}\n';
+    /* Inject the world's haze + dissolve into a lit material. o.r0..o.r1 =
+       the radial fade (world units from the board centre) — or heights when
+       o.mode is 1 (the cavern wall fades UP into the haze). o.dissolve false
+       = the material stays whole (the root). Tagged _ew_hzNear so the horizon
+       group's altitude fog (_applyHorizonFog) leaves it alone — that fog
+       would dissolve the whole ground, which is BELOW the horizon line. */
+    function _wdInject(mat, o) {
+        if (!mat || mat._ew_wdInjected || !mat.color) return mat;
+        o = o || {};
+        var U = _wdEnsureUni();
+        mat._ew_wdInjected = true;
+        mat._ew_hzNear = true;
+        mat.fog = false;
+        var own = { uWdR0: { value: o.r0 || 0 }, uWdR1: { value: o.r1 || 1 }, uWdMode: { value: o.mode || 0 }, uWdDissolve: { value: o.dissolve === false ? 0 : 1 } };
+        mat._ew_wdOwn = own;
+        var prev = mat.onBeforeCompile;
+        mat.onBeforeCompile = function (shader) {
+            if (prev) prev(shader);
+            shader.uniforms.uWdC = U.uWdC; shader.uniforms.uWdStab = U.uWdStab; shader.uniforms.uWdKeep = U.uWdKeep; shader.uniforms.uWdTile = U.uWdTile;
+            shader.uniforms.uWdGlow = U.uWdGlow; shader.uniforms.uWdTime = U.uWdTime; shader.uniforms.uWdFogAmt = U.uWdFogAmt;
+            shader.uniforms.uWdFog = _envUni ? _envUni.uFogColor : { value: new THREE.Vector3(0.2, 0.25, 0.3) };
+            shader.uniforms.uWdR0 = own.uWdR0; shader.uniforms.uWdR1 = own.uWdR1; shader.uniforms.uWdMode = own.uWdMode; shader.uniforms.uWdDissolve = own.uWdDissolve;
+            shader.vertexShader = shader.vertexShader
+                .replace('#include <common>', '#include <common>\nvarying vec3 vWdPos;')
+                .replace('#include <project_vertex>', '#include <project_vertex>\n  vWdPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+            shader.fragmentShader = shader.fragmentShader
+                .replace('#include <common>', '#include <common>\nvarying vec3 vWdPos;\nuniform vec3 uWdC; uniform float uWdStab; uniform float uWdKeep; uniform float uWdTile; uniform vec3 uWdGlow; uniform float uWdTime; uniform float uWdFogAmt; uniform vec3 uWdFog; uniform float uWdR0; uniform float uWdR1; uniform float uWdMode; uniform float uWdDissolve;\n' + _WD_NOISE)
+                .replace('#include <dithering_fragment>',
+                    '#include <dithering_fragment>\n' +
+                    '  { float wdD = length(vWdPos.xz - uWdC.xz);\n' +
+                    // the dissolve: beyond the keep radius the world is gone; the edge burns
+                    '    if (uWdDissolve > 0.5 && uWdStab < 0.999) {\n' +
+                    '      float wdN = wdFbm(vWdPos.xz / (uWdTile * 2.4)) - 0.5;\n' +
+                    '      float wdThr = uWdKeep + wdN * uWdTile * 6.0;\n' +
+                    '      float wdOver = wdD - wdThr;\n' +
+                    '      if (wdOver > 0.0) discard;\n' +
+                    '      float wdRim = smoothstep(-uWdTile * 1.1, 0.0, wdOver);\n' +
+                    '      float wdFl = 0.7 + 0.3 * sin(uWdTime * 5.0 + wdN * 60.0);\n' +
+                    // the veins: glowing cracks that spread inward from the edge as the world loses its grip
+                    '      float wdCr = wdFbm(vWdPos.xz / (uWdTile * 0.8) + 7.3);\n' +
+                    '      float wdVein = smoothstep(0.49, 0.52, wdCr) * smoothstep(0.58, 0.55, wdCr);\n' +
+                    '      float wdCrack = (1.0 - uWdStab) * smoothstep(uWdKeep * 0.25, uWdKeep, wdD);\n' +
+                    '      gl_FragColor.rgb = mix(gl_FragColor.rgb, uWdGlow * 1.6 * wdFl, max(wdRim * 0.92, wdVein * wdCrack * 0.85));\n' +
+                    '    }\n' +
+                    // the haze: the far ground melts into the very colour the dome's horizon band wears
+                    '    float wdT = (uWdMode > 0.5) ? vWdPos.y : wdD;\n' +
+                    '    float wdF = smoothstep(uWdR0, uWdR1, wdT);\n' +
+                    '    gl_FragColor.rgb = mix(gl_FragColor.rgb, uWdFog, wdF * uWdFogAmt); }');
+        };
+        mat.needsUpdate = true;
+        _wd.mats.push(mat);
+        return mat;
+    }
+    function _wdRow() {
+        var me = (typeof state !== 'undefined' && state && state.mapEnv) || null;
+        var w = me && me.world;
+        return (w && typeof w === 'object') ? w : null;
+    }
+    function _wdMode() {
+        if (typeof window !== 'undefined' && window.EW_WORLD_MODE && _WD_MODES.indexOf(String(window.EW_WORLD_MODE)) >= 0) return String(window.EW_WORLD_MODE);
+        return (_wdModePref && _WD_MODES.indexOf(_wdModePref) >= 0) ? _wdModePref : 'entropy';
+    }
+    function _wdSetMode(m) {
+        m = _WD_MODES.indexOf(m) >= 0 ? m : 'entropy';
+        _wdModePref = m;
+        try { localStorage.setItem('ew_world_mode', m); } catch (e) {}
+        return m;
+    }
+    /* 1 = the world stands, 0 = the island is adrift */
+    function _wdTarget() {
+        var row = _wd.row;
+        if (!row || row.kind === 'void' || row.kind === 'room') return 0;
+        if (typeof window !== 'undefined' && typeof window.EW_WORLD_STAB === 'number') return Math.max(0, Math.min(1, window.EW_WORLD_STAB));
+        var mode = _wdMode();
+        if (mode === 'grounded') return 1;
+        if (mode === 'floating') return 0;
+        var g = 0;
+        try {
+            var eg = (typeof state !== 'undefined' && state) ? state.entropyGauge : null;
+            var mx = (typeof window !== 'undefined' && window.ENTROPY_GAUGE_MAX) || 100;
+            if (eg) g = Math.max(eg[1] || 0, eg[2] || 0) / mx;
+        } catch (e) {}
+        var t = Math.max(0, Math.min(1, (g - 0.12) / (0.96 - 0.12)));
+        return 1 - t * t * (3 - 2 * t);
+    }
+    /* n stops on a circle rTiles out, jittered along the ring and in depth */
+    function _wdRing(K, rTiles, n, fn) {
+        var rng = K.rng, ts = K.ts;
+        for (var i = 0; i < n; i++) {
+            var a = (i + 0.5) / n * Math.PI * 2 + (rng() - 0.5) * (Math.PI * 2 / n) * 0.9;
+            var r = Math.max(rTiles, K._wdMinD || 0) * ts * (0.92 + rng() * 0.16);
+            fn(K.CX + Math.cos(a) * r, K.CZ + Math.sin(a) * r, a, i, r);
+        }
+    }
+    /* THE RIM — each builder: (K, spec, c) with c = { y: the ground level, shore, R, sea } */
+    var _WD_RIM = {
+        /* a mountain range in ranks; `mesa` = flat tops (the desert); `snow` = a cap sheet */
+        peaks: function (K, s, c) {
+            var ts = K.ts, rng = K.rng, rock = K.mat(s.tex || 'mountain', s.color != null ? s.color : 0xffffff, { lift: 0.28 }), snow = s.snow ? K.mat(s.snow, 0xffffff, { lift: 0.3 }) : null;
+            for (var k = 0; k < (s.ranks || 2); k++) {
+                var hh = (s.h || 7) * (1 + k * 0.3);
+                _wdRing(K, (s.d || 24) * (1 + k * 0.32), Math.round((s.n || 12) * (1 + k * 0.25)), function (x, z, a, i, rr) {
+                    if (rng() > (s.p == null ? 0.8 : s.p)) return;
+                    var h = ts * hh * (0.6 + rng() * 0.8), r = h * (0.32 + rng() * 0.25), flat = s.mesa ? 0.55 : 0;   // steep and slim: a range, not a carpet
+                    r = Math.min(r, rr - ((K._wdMinD || 0) + 1.5) * ts, rr * 0.16);   // the foot never reaches back over the shore, and never two ring-widths
+                    if (r < ts * 0.8) return;
+                    var geo = flat ? new THREE.CylinderGeometry(r * flat, r, h, 7, 1) : new THREE.ConeGeometry(r, h, 5 + (rng() * 3 | 0), 1);
+                    _nrUV(geo, r / ts / 2, h / ts / 2);
+                    var m = new THREE.Mesh(geo, rock); m.position.set(x, c.y + h / 2 - ts * 0.25, z); m.rotation.y = rng() * 6; m.scale.x = 1 + rng() * 0.8; K.add(K.lit(m));
+                    if (snow && !flat) {
+                        var cg = new THREE.ConeGeometry(r * 0.30, h * 0.30, geo.parameters.radialSegments, 1); _nrUV(cg, 0.5, 1);
+                        var cap = new THREE.Mesh(cg, snow); cap.position.set(x, c.y + h - h * 0.15 - ts * 0.25 + 1.5, z); cap.rotation.y = m.rotation.y; cap.scale.x = m.scale.x; K.add(cap);
+                    }
+                });
+            }
+        },
+        /* soft downs: squashed spheres */
+        hills: function (K, s, c) {
+            var ts = K.ts, rng = K.rng, mat = K.mat(s.tex || 'grass_2', s.color != null ? s.color : 0xffffff, { lift: 0.26 });
+            for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 16) * (1 + k * 0.4), Math.round((s.n || 16) * (1 + k * 0.3)), function (x, z, a, i, rr) {
+                if (rng() > (s.p == null ? 0.8 : s.p)) return;
+                var r = ts * (s.r || 4) * (0.6 + rng() * 0.9);
+                r = Math.min(r, (rr - ((K._wdMinD || 0) + 1) * ts) / 1.9); if (r < ts * 0.6) return;   // a hill never rolls back over the shore
+                var geo = new THREE.SphereGeometry(r, 14, 9); _nrUV(geo, r / ts * 3, r / ts * 1.5);
+                var m = new THREE.Mesh(geo, mat); m.scale.set(1 + rng() * 0.9, (s.flat || 0.3) * (0.7 + rng() * 0.6), 1 + rng() * 0.9);
+                m.position.set(x, c.y - r * 0.1, z); m.rotation.y = rng() * 6; K.add(K.lit(m));
+            });
+        },
+        dunes: function (K, s, c) { _WD_RIM.hills(K, Object.assign({ tex: 'desert', flat: 0.2, r: 4.5, n: 20, ranks: 3 }, s), c); },
+        /* a tree line (the procedural trees — far and fogged, the OBJ swap is not worth its load) */
+        trees: function (K, s, c) {
+            var ts = K.ts, rng = K.rng, kinds = s.kinds || ['tree', 'tree_2', 'tree_3'];
+            for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 14) * (1 + k * 0.16), Math.round((s.n || 44) * (1 + k * 0.2)), function (x, z) {
+                if (rng() > (s.p == null ? 0.85 : s.p)) return;
+                var t = _nrTreeProc(K, kinds[(rng() * kinds.length) | 0], { s: (s.s || 1.6) * (0.8 + rng() * 0.6) });
+                t.position.set(x, c.y - 0.05 * ts, z); t.rotation.y = rng() * 6; K.add(t);
+            });
+        },
+        /* houses and stores in the far distance */
+        town: function (K, s, c) {
+            var rng = K.rng;
+            _wdRing(K, s.d || 18, s.n || 14, function (x, z) {
+                if (rng() > (s.p == null ? 0.7 : s.p)) return;
+                var sc = 0.9 + rng() * 0.8;
+                var h = _nrHouse(K, x, z, { w: (s.w || 3) * sc, d: (s.dd || 2.4) * sc, h: (s.h || 1.6) * sc, tex: s.tex, color: s.color, roofTex: s.roofTex, roofColor: s.roofColor, window: s.window, ry: rng() < 0.5 ? K.face(x, z) + (rng() - 0.5) * 0.5 : rng() * 6.3, chimney: rng() < 0.5 });
+                if (h) h.position.y = c.y - 0.02 * K.ts;
+            });
+        },
+        /* a skyline: towers with window lights */
+        city: function (K, s, c) {
+            var ts = K.ts, rng = K.rng, mat = K.mat(s.tex || 'urban_wall', s.color != null ? s.color : 0xffffff, { lift: 0.3 }), pal = s.lights || [0x35e0ff, 0xff2f8a, 0xffd36a];
+            for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 18) * (1 + k * 0.35), Math.round((s.n || 18) * (1 + k * 0.3)), function (x, z) {
+                if (rng() > (s.p == null ? 0.75 : s.p)) return;
+                var w = ts * (2 + rng() * 2.5), d = ts * (2 + rng() * 2.5), h = ts * (s.h || 9) * (0.4 + rng() * 1.1);
+                var m = K.box(w, h, d, mat, 0.5); m.position.set(x, c.y + h / 2 - ts * 0.1, z); m.rotation.y = rng() * 6; K.add(K.lit(m));
+                var nl = s.lights === false ? 0 : 2 + (rng() * 3 | 0);
+                for (var l = 0; l < nl; l++) {
+                    var sp = _hzGlowSprite(ts * (0.6 + rng() * 0.8), pal[(rng() * pal.length) | 0], 0.45, 0.15, 0.05, 0.4 + rng());
+                    var ang = rng() * 6.3, rr = Math.max(w, d) * 0.55;
+                    sp.position.set(x + Math.cos(ang) * rr, c.y + h * (0.2 + rng() * 0.75), z + Math.sin(ang) * rr);
+                    K.add(sp); _wd.extras.push({ obj: sp, d: Math.hypot(x - K.CX, z - K.CZ) });
+                }
+            });
+        },
+        /* stalagmites and rock spires — the floor of a cavern */
+        spires: function (K, s, c) {
+            var ts = K.ts, rng = K.rng, mat = K.mat(s.tex || 'cave_wall', s.color != null ? s.color : 0xffffff, { lift: 0.24 });
+            for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 14) * (1 + k * 0.4), Math.round((s.n || 26) * (1 + k * 0.3)), function (x, z) {
+                if (rng() > (s.p == null ? 0.8 : s.p)) return;
+                var h = ts * (s.h || 8) * (0.4 + rng() * 1.1), r = ts * (s.r || 1.6) * (0.6 + rng() * 0.9);
+                var geo = new THREE.ConeGeometry(r, h, 6, 1); _nrUV(geo, r / ts, h / ts / 2);
+                var m = new THREE.Mesh(geo, mat); m.position.set(x, c.y + h / 2 - ts * 0.3, z); m.rotation.set((rng() - 0.5) * 0.25, rng() * 6, (rng() - 0.5) * 0.25); K.add(K.lit(m));
+            });
+        },
+        /* icebergs and pack ice in the sea */
+        bergs: function (K, s, c) {
+            var ts = K.ts, rng = K.rng, ice = K.mat(s.tex || 'ice_1', s.color != null ? s.color : 0xe8f6ff, { lift: 0.34 });
+            for (var k = 0; k < (s.ranks || 3); k++) _wdRing(K, (s.d || 14) * (1 + k * 0.5), Math.round((s.n || 10) * (1 + k * 0.4)), function (x, z) {
+                if (rng() > (s.p == null ? 0.7 : s.p)) return;
+                var h = ts * (s.h || 3) * (0.4 + rng() * 1.2), r = h * (0.8 + rng() * 1.2);
+                var geo = rng() < 0.5 ? new THREE.ConeGeometry(r, h, 5, 1) : new THREE.BoxGeometry(r * 1.6, h * 0.6, r * 1.1);
+                _nrUV(geo, r / ts, h / ts);
+                var m = new THREE.Mesh(geo, ice); m.position.set(x, c.y + (geo.type === 'ConeGeometry' ? h / 2 : h * 0.3) - ts * 0.15, z); m.rotation.set((rng() - 0.5) * 0.2, rng() * 6, (rng() - 0.5) * 0.2); K.add(K.lit(m));
+            });
+        },
+        /* broken columns and blocks — a drowned or buried city */
+        ruins: function (K, s, c) {
+            var ts = K.ts, rng = K.rng, mat = K.mat(s.tex || 'marble_light', s.color != null ? s.color : 0xffffff, { lift: 0.3 });
+            for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 15) * (1 + k * 0.45), Math.round((s.n || 14) * (1 + k * 0.3)), function (x, z) {
+                if (rng() > (s.p == null ? 0.7 : s.p)) return;
+                if (rng() < 0.55) {
+                    var h = ts * (s.h || 4) * (0.4 + rng() * 1.0), r = ts * (0.25 + rng() * 0.3);
+                    var col = K.cyl(r, r * 1.1, h, 9, mat); col.position.set(x, c.y + h / 2 - ts * 0.1, z); col.rotation.z = (rng() - 0.5) * 0.2; K.add(K.lit(col));
+                } else {
+                    var w = ts * (1.5 + rng() * 3), hh = ts * (0.8 + rng() * 2.2), d = ts * (1 + rng() * 2);
+                    var b = K.box(w, hh, d, mat); b.position.set(x, c.y + hh / 2 - ts * 0.2, z); b.rotation.y = rng() * 6; b.rotation.z = (rng() - 0.5) * 0.15; K.add(K.lit(b));
+                }
+            });
+        },
+        /* the necropolis on the horizon */
+        pyramids: function (K, s, c) {
+            var ts = K.ts, rng = K.rng, mat = K.mat(s.tex || 'desert', s.color != null ? s.color : 0xd6c39a, { lift: 0.3 });
+            _wdRing(K, s.d || 32, s.n || 7, function (x, z) {
+                if (rng() > (s.p == null ? 0.75 : s.p)) return;
+                var h = ts * (s.h || 14) * (0.5 + rng() * 0.9), r = h * 0.95;
+                var geo = new THREE.ConeGeometry(r, h, 4, 1); _nrUV(geo, r / ts / 2, h / ts / 2);
+                var m = new THREE.Mesh(geo, mat); m.position.set(x, c.y + h / 2 - ts * 0.3, z); m.rotation.y = Math.PI / 4 + (rng() - 0.5) * 0.4; K.add(K.lit(m));
+            });
+        },
+        /* rings and low hills — a dead world's surface */
+        craters: function (K, s, c) {
+            var ts = K.ts, rng = K.rng, mat = K.mat(s.tex || 'moon', s.color != null ? s.color : 0xffffff, { lift: 0.3 });
+            for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 15) * (1 + k * 0.55), Math.round((s.n || 10) * (1 + k * 0.4)), function (x, z) {
+                if (rng() > (s.p == null ? 0.75 : s.p)) return;
+                var r = ts * (s.r || 3) * (0.5 + rng() * 1.2);
+                var geo = new THREE.TorusGeometry(r, r * 0.22, 6, 28); _nrUV(geo, r / ts * 2, 1);
+                var m = new THREE.Mesh(geo, mat); m.rotation.x = -Math.PI / 2; m.position.set(x, c.y - r * 0.08, z); m.scale.y = 1 + rng() * 0.5; K.add(K.lit(m));
+            });
+            _WD_RIM.hills(K, Object.assign({ tex: s.tex || 'moon', color: s.color, flat: 0.28, d: (s.d || 15) * 1.7, n: 10 }, s.hills || {}), c);
+        }
+    };
+    /* THE WALL — a cavern's rock round the whole world, fading up into the haze */
+    function _wdBuildWall(K, w, o) {
+        var ts = K.ts, r = (w.r || 32) * ts, h = (w.h || 36) * ts;
+        var mat = K.mat(w.tex || 'cave_wall', w.color != null ? w.color : 0xffffff, { lift: 0.2, side: THREE.DoubleSide });
+        var geo = new THREE.CylinderGeometry(r * (w.lean || 1.0), r, h, 72, 6, true);
+        var p = geo.attributes.position;
+        for (var i = 0; i < p.count; i++) {   // ruffle the rock
+            var x = p.getX(i), z = p.getZ(i), y = p.getY(i), a = Math.atan2(z, x);
+            var n = 1 + 0.07 * Math.sin(a * 7 + y / ts) + 0.05 * Math.sin(a * 13 - y / ts * 0.6) + 0.03 * Math.sin(a * 23 + 1.7);
+            p.setXYZ(i, x * n, y, z * n);
+        }
+        p.needsUpdate = true; geo.computeVertexNormals();
+        _nrUV(geo, Math.PI * 2 * r / ts / 2, h / ts / 2);
+        var m = new THREE.Mesh(geo, mat); m.position.set(K.CX, o.y + h / 2 - 0.2 * ts, K.CZ); m.name = 'world:wall'; m._ew_occSkip = true; m.frustumCulled = false;
+        _wdInject(mat, { mode: 1, r0: o.y + h * (w.fade != null ? w.fade : 0.25), r1: o.y + h * 0.95 });
+        K.g.add(K.lit(m)); _wd.wall = m;
+    }
+    /* THE ROOT — the rock under the island: a jagged inverted cone (the apron
+       is square, so the rings follow a superellipse), stalactites under it */
+    function _wdBuildRoot(K, row, o) {
+        var ts = K.ts, rng = K.rng, kit = o.kit;
+        var tex = row.rootTex || kit.skirt || kit.tex || 'rocks_1', col = row.rootColor != null ? row.rootColor : (kit.skirtColor != null ? kit.skirtColor : 0x8a8078);
+        var mat = K.mat(tex, col, { lift: 0.12, transparent: true, side: THREE.DoubleSide });
+        mat.color.multiplyScalar(0.62); mat.emissive.multiplyScalar(0.62);   // darker than the skirt it hangs from, so it reads as rock, not more apron
+        mat._ew_hzNear = true; mat.fog = false;
+        /* a moat map's island is its SHEET (the lake bed the apron stands in), so the root spans the sheet and hangs from its underside */
+        var padW = kit.moat ? (kit.moatPad || 0) * ts : 0, topY = kit.moat ? (kit.moatY != null ? kit.moatY : 0) - 0.2 * ts : 0.5;
+        var hx = (K.X1 - K.CX) * 1.02 + padW, hz = (K.Z1 - K.CZ) * 1.02 + padW;
+        var depth = (row.rootDepth ? row.rootDepth * ts : Math.max(9 * ts, Math.max(hx, hz) * 0.85)), rings = 7, N = 40;
+        var pos = [], uv = [], idx = [];
+        function se(a) { var c = Math.cos(a), s = Math.sin(a); return 1 / Math.pow(Math.pow(Math.abs(c), 4) + Math.pow(Math.abs(s), 4), 0.25); }
+        var jit = []; for (var j = 0; j < N; j++) jit.push(0.85 + rng() * 0.3);
+        for (var r = 0; r <= rings; r++) {
+            var t = r / rings, sc = 1 - t;   // a straight taper — the player's eye only ever sees the upper half
+            for (var i = 0; i < N; i++) {
+                var a = i / N * Math.PI * 2, e = se(a), jj = r === 0 ? 1 : jit[i] * (0.9 + 0.2 * Math.sin(r * 2.1 + i * 0.7));
+                var x = Math.cos(a) * e * hx * sc * jj, z = Math.sin(a) * e * hz * sc * jj, y = -t * depth * (0.9 + 0.2 * jit[(i + r) % N]);
+                if (r === rings) { x = 0; z = 0; y = -depth; }
+                pos.push(x, y, z); uv.push(i / N * (Math.PI * 2 * hx / ts / 1.5), t * depth / ts / 1.5);
+            }
+        }
+        for (var r2 = 0; r2 < rings; r2++) for (var i2 = 0; i2 < N; i2++) {
+            var a0 = r2 * N + i2, a1 = r2 * N + (i2 + 1) % N, b0 = a0 + N, b1 = a1 + N;
+            idx.push(a0, a1, b0, a1, b1, b0);
+        }
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+        geo.setIndex(idx); geo.computeVertexNormals();
+        var m = new THREE.Mesh(geo, mat); m.position.set(K.CX, topY, K.CZ); m.name = 'world:root'; m._ew_occSkip = true; m.frustumCulled = false; m.visible = false;
+        K.lit(m);
+        for (var s = 0; s < 10; s++) {   // stalactites
+            var sa = rng() * Math.PI * 2, sr = 0.2 + rng() * 0.6, sx = Math.cos(sa) * hx * sr * se(sa), sz = Math.sin(sa) * hz * sr * se(sa);
+            var sh = ts * (1.5 + rng() * 3), sw = ts * (0.25 + rng() * 0.4);
+            var sg = new THREE.ConeGeometry(sw, sh, 5, 1); _nrUV(sg, 1, sh / ts);
+            var sm = new THREE.Mesh(sg, mat); sm.rotation.x = Math.PI; sm.position.set(sx, -depth * Math.pow(1 - sr, 0.75) * 0.9 - sh / 2 + ts * 0.3, sz); m.add(sm);
+        }
+        K.g.add(m); _wd.root = m; _wd.rootMats.push(mat);
+    }
+    /* the liquid disc's material: the moat's own sheet (a calm copy of the fluid top, no caustics) */
+    function _wdLiquidMat(K, key, row) {
+        var style = _LIQUID_STYLES[key] || null, texKey = style ? style.base : key;
+        var m = K.mat(texKey, style ? style.tint : (row.liquidColor != null ? row.liquidColor : 0xffffff), { lift: key === 'lava' ? 0.6 : 0.3 });
+        if (key === 'lava') { m.emissive = new THREE.Color(0xff4411); m.emissiveIntensity = 0.5; m.emissiveMap = null; }
+        return m;
+    }
+    function _worldBuild(ctx) {
+        _wd.g = null; _wd.row = null; _wd.mats.length = 0; _wd.root = null; _wd.rootMats.length = 0; _wd.wall = null; _wd.extras.length = 0; _wd.hasGround = false; _wd.stab = -1;
+        var row = _wdRow(); if (!row || typeof THREE === 'undefined' || !_horizonGroup) return;
+        var kind = row.kind || 'plain';
+        _wd.row = row; _wd.kind = kind;
+        if (kind === 'room') return;
+        var kit = _nrLastKit; if (!kit) return;          // no setting = nothing to continue (a facility board)
+        var ts = ctx.ts, U = _wdEnsureUni();
+        var g = new THREE.Group(); g.name = 'world';   // NO renderOrder on the group: a Group's order buckets its children BEFORE the dome (depthTest off), which then paints over them
+        var saved = _nrLastKit;
+        var K = _nrKit(g, ctx, { w: kit.W / ts, gap: kit.G / ts });
+        _nrLastKit = saved;
+        K.rng = _mulberry32(0x7d1 + Math.round(ctx.cx) * 3 + Math.round(ctx.cz) * 5);
+        var half = Math.max(K.X1 - K.CX, K.Z1 - K.CZ);   // the island: the apron's half extent
+        var R = (row.r || 56) * ts;
+        var moat = kit.moat || null, moatPad = (kit.moatPad || 0) * ts;
+        var sea = !!row.sea && !!moat;
+        var apronTop = kit.apronTop != null ? kit.apronTop : kit.fy - 0.6;
+        var groundY = apronTop - 2.5;
+        var ly = (kit.moatY != null ? kit.moatY : apronTop - ts) - 6;
+        var shore = sea ? R : (moat ? half + moatPad : half);
+        var fogR0 = Math.min(R * 0.55, shore + 3 * ts), fogR1 = R;
+        _wd.inner = half; _wd.r = R;
+        U.uWdC.value.set(K.CX, 0, K.CZ); U.uWdTile.value = ts;
+        if (kind !== 'void') {
+            if (moat) {   // the liquid: a full disc a hair under the moat sheet, to the shore or the horizon
+                var lm = _wdLiquidMat(K, moat, row);
+                var lr = sea ? R : shore + 1.5 * ts;
+                var ld = new THREE.Mesh(new THREE.CircleGeometry(lr, 96), lm); _nrUV(ld.geometry, lr * 2 / ts / 1.5, lr * 2 / ts / 1.5);
+                ld.rotation.x = -Math.PI / 2; ld.position.set(K.CX, ly, K.CZ); ld.receiveShadow = true; ld.name = 'world:liquid';
+                _wdInject(lm, { r0: fogR0, r1: fogR1 }); g.add(ld); _wd.hasGround = true;
+            }
+            if (!sea) {   // the land: from the shore to the horizon
+                var gtex = row.ground || kit.tex || 'grass_2', gcol = row.groundColor != null ? row.groundColor : (kit.color != null ? kit.color : 0xffffff);
+                var gm = K.mat(gtex, gcol, { lift: 0.24 });
+                var geo = moat ? new THREE.RingGeometry(shore, R, 96, 4) : new THREE.CircleGeometry(R, 96);
+                _nrUV(geo, R * 2 / ts / 1.5, R * 2 / ts / 1.5);
+                var gd = new THREE.Mesh(geo, gm); gd.rotation.x = -Math.PI / 2; gd.position.set(K.CX, groundY, K.CZ); gd.receiveShadow = true; gd.name = 'world:ground';
+                _wdInject(gm, { r0: fogR0, r1: fogR1 }); g.add(gd); _wd.hasGround = true;
+                if (moat) {   // the bank: the shore's face down into the water
+                    var bh = groundY - ly + 1;
+                    var bm = K.mat(row.bank || kit.skirt || gtex, row.bankColor != null ? row.bankColor : (kit.skirtColor != null ? kit.skirtColor : gcol), { lift: 0.24, side: THREE.DoubleSide });
+                    var bg = new THREE.CylinderGeometry(shore + 0.05 * ts, shore + 1.0 * ts, bh, 96, 1, true); _nrUV(bg, Math.PI * 2 * shore / ts / 1.5, bh / ts / 1.5);
+                    var bank = new THREE.Mesh(bg, bm); bank.position.set(K.CX, groundY - bh / 2 + 0.5, K.CZ); bank.name = 'world:bank';
+                    _wdInject(bm, { r0: fogR0, r1: fogR1 }); g.add(K.lit(bank));
+                }
+            }
+            var c = { y: sea ? ly + 2 : groundY, shore: shore, R: R, sea: sea, moat: moat };
+            K._wdMinD = sea ? 0 : shore / ts + 2;      // a rim never stands in the lake
+            var lowPerf = (typeof window !== 'undefined' && window.EW_PERF_LOW);
+            var rims = row.rim ? (Array.isArray(row.rim) ? row.rim : [row.rim]) : [];
+            if (!lowPerf) rims.forEach(function (spec) {
+                var b = spec && _WD_RIM[spec.kind]; if (!b) return;
+                try { b(K, spec, c); } catch (e) { console.warn('[world] rim failed', spec.kind, e); }
+            });
+            if (row.wall) _wdBuildWall(K, row.wall, { y: groundY, R: R });
+            /* every lit material the rim builders made joins the haze + the dissolve */
+            g.traverse(function (o) {
+                if (!o.material || !o.isMesh) return;
+                var ms = Array.isArray(o.material) ? o.material : [o.material];
+                for (var i = 0; i < ms.length; i++) { var mm = ms[i]; if (mm && mm.color && !mm._ew_wdInjected && mm.blending !== THREE.AdditiveBlending && !mm.isSpriteMaterial) _wdInject(mm, { r0: fogR0, r1: fogR1 }); }
+            });
+        }
+        if (row.root !== false) _wdBuildRoot(K, row, { kit: kit });
+        _wd.fogTop = row.fogTop != null ? row.fogTop : 0.14;
+        _wd.fogBand = row.fogBand != null ? row.fogBand : null;
+        _horizonGroup.add(g); _wd.g = g;
+    }
+    /* per frame, after _applyDomeFog + _buildHorizonScenery */
+    function _worldTick(now) {
+        if (!_wd.row) return;
+        var dt = _wd.last ? Math.min(0.1, (now - _wd.last) / 1000) : 0.016; _wd.last = now;
+        var target = _wdTarget(); _wd.target = target;
+        if (_wd.stab < 0) _wd.stab = target;
+        if (typeof window !== 'undefined' && typeof window.EW_WORLD_STAB === 'number') _wd.stab = target;   // the dev pin is exact (screenshots)
+        else _wd.stab += (target - _wd.stab) * Math.min(1, dt * 0.8);
+        var s = _wd.stab, ts = CONFIG.tileSize || BASE_TILE, U = _wdEnsureUni();
+        U.uWdTime.value = now / 1000; U.uWdStab.value = s;
+        var e = Math.max(0, Math.min(1, (s - 0.06) / 0.86)); e = e * e * (3 - 2 * e);
+        var keep = (_wd.inner - 2 * ts) + ((_wd.r + 8 * ts) - (_wd.inner - 2 * ts)) * e;
+        U.uWdKeep.value = keep; _wd.keep = keep;
+        if (_wd.root) {
+            var f = 1 - s, open = f < 0.03 ? 0 : Math.min(1, (f - 0.03) / 0.5);
+            _wd.root.visible = open > 0.001; _wd.root.scale.y = 0.05 + 0.95 * open;
+            for (var i = 0; i < _wd.rootMats.length; i++) _wd.rootMats[i].opacity = Math.min(1, open * 1.6);
+        }
+        for (var x = 0; x < _wd.extras.length; x++) _wd.extras[x].obj.visible = _wd.extras[x].d < keep;
+        /* the sky: while the ground holds, the dome's haze band fills the whole
+           horizon (full at and below the line) so the ground's far edge melts
+           into it (the retro filter's fog keeps its colour; its band is widened the same way) */
+        if (_envUni && _wd.hasGround) {   // (the retro filter's fog too — its colour is the same uniform, its band must still fill the horizon)
+            var amt = _envUni.uFogAmount.value, top = _envUni.uFogTop.value, band = _envUni.uFogBand.value;
+            var gTop = Math.max(top, _wd.fogTop), gBand = _wd.fogBand != null ? _wd.fogBand : gTop, mixF = s * s;
+            _envUni.uFogAmount.value = amt + (1.0 - amt) * mixF;
+            _envUni.uFogTop.value = top + (gTop - top) * mixF;
+            _envUni.uFogBand.value = band + (gBand - band) * mixF;
+        }
+        U.uWdFogAmt.value = _envUni ? _envUni.uFogAmount.value : 0;
+    }
+    function _worldInfo() {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var U = _wdUni;
+        return { kind: _wd.kind, mode: _wdMode(), stab: +_wd.stab.toFixed(3), target: +_wd.target.toFixed(3), keep: +(_wd.keep / ts).toFixed(2), r: +(_wd.r / ts).toFixed(1), inner: +(_wd.inner / ts).toFixed(2), ground: _wd.hasGround, root: !!_wd.root, wall: !!_wd.wall, mats: _wd.mats.length,
+            fog: _envUni ? { amt: +_envUni.uFogAmount.value.toFixed(3), top: +_envUni.uFogTop.value.toFixed(3), band: +_envUni.uFogBand.value.toFixed(3), color: _envUni.uFogColor.value.toArray().map(function (v) { return +v.toFixed(2); }) } : null,
+            uni: U ? { fogAmt: +U.uWdFogAmt.value.toFixed(3), keep: +(U.uWdKeep.value / ts).toFixed(2), c: U.uWdC.value.toArray().map(function (v) { return +(v / ts).toFixed(2); }) } : null };
+    }
+
     function _buildHorizonScenery() {
         if (!scene || typeof THREE === 'undefined') return;
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -26558,11 +27013,11 @@ const ThreeRenderer = (function () {
         var nearCtx = { cx: cx, cz: cz, ts: ts, bw: _bw, bh: _bh, rng: rng, discR: discR };
         if (nearBuild && !_hzThemeRoster(_hzTheme)) {
             _hzRunNearBuilder(nearBuild, nearCtx);
-            scene.add(_horizonGroup); return;
+            _worldBuild(nearCtx); scene.add(_horizonGroup); return;
         }
         // per-map theme: 'none' leaves the void completely empty (underground
         // and liminal maps) — the group still registers so the key cache holds
-        if (_hzTheme === 'none') { scene.add(_horizonGroup); return; }
+        if (_hzTheme === 'none') { _worldBuild(nearCtx); scene.add(_horizonGroup); return; }
         var themeRoster = _hzThemeRoster(_hzTheme);
         var skipP = 1.0 - (1.0 - 0.62) * Math.max(0, Math.min(1.5, _hzThemeDensity));
 
@@ -26681,6 +27136,7 @@ const ThreeRenderer = (function () {
 
         if (streaming) _motionBuildMotes(rng, stream);
         if (nearBuild) _hzRunNearBuilder(nearBuild, nearCtx);
+        _worldBuild(nearCtx);   // THE WORLD (2026-09-13): the ground, the rim, the root — after the setting so it reads the kit
         scene.add(_horizonGroup);
     }
 
@@ -37826,6 +38282,8 @@ const ThreeRenderer = (function () {
         dev: {
             /* the live scene graph (repo probes: playtest_maps.js PROBE) */
             scene: function () { return scene; },
+            /* the WebGL renderer (shader diagnostics from a probe — THE WORLD, 2026-09-13) */
+            renderer: function () { return renderer; },
             /* the building's own scene (the walkthrough probes, 2026-09-11) */
             hqScene: function () { return _hq ? _hq.scene : null; },
             /* {deg, r} | {x, z}, level, y (extra), face (heading), pitch, dist, fp */
@@ -38491,6 +38949,10 @@ const ThreeRenderer = (function () {
         isRingVitalsOn: function () { return !!_plateLook.rings; },
         /* MOVING MAPS (2026-09-12): the travel readout — null on a still map */
         motion: function () { return _motionInfo(); },
+        /* THE WORLD (2026-09-13): grounded ↔ floating readout + the mode pref (entropy / grounded / floating) */
+        world: function () { return _worldInfo(); },
+        getWorldMode: function () { return _wdMode(); },
+        setWorldMode: function (m) { return _wdSetMode(m); },
         setPlateStyle: function (style) {
             _plateLook.style = (style === 'compact' || style === 'side') ? style : 'bars';
             try { localStorage.setItem('ew_plateStyle', _plateLook.style); } catch (e) {}
