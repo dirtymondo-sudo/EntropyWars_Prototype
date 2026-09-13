@@ -866,3 +866,60 @@ Transmission — castSupport re-time covers it meanwhile).
 Every primitive lands 3–20 spells, so personality compounds fast — and every
 sequence must answer RULE #2's question before it ships: *what does Player 2
 see when this fires?*
+
+## I. THE DIRECTOR'S PASS (2026-09-13) — the camera is a character
+
+**Rule that came out of it: the camera is dedicated to the spell's HERO
+PART** — the thing that moves (the bullet, the aircraft, the bomb, the
+beam head, the falling star). Every shot below is that rule applied.
+
+- **The board is the stage** — the rig can no longer leave it. Off-board
+  ground reads clamp to the nearest edge tile (`_camGroundPx`,
+  `_cineTpsAnchor`), a beam's end-cap reverse keeps its pivot on the
+  victim and cranes DOWN over their shoulder when the rim is right behind
+  them (THE HIGH REVERSE — the beam still rushes in under the lens with
+  the board filling the frame), the side dolly parks on the inside
+  perpendicular, and every strike-tile yaw is turned toward the board.
+  (`_cineEdgeRoom`, `_cineYawTowardBoard` are the two questions to ask.)
+- **THE SNIPER KIT** (Take Aim, Precision Shot, Dead Eye, Kneecap Shot,
+  Railgun): THE SQUINT — hard cut to FIRST PERSON in the shooter's head,
+  the eyelids close from the top and bottom of frame to a slit, a
+  hairline reticle in the gap, the lens zooms onto the target while the
+  cast winds up (`cineSniperPov` + `cineEyelids`) → THE SHOT — the lids
+  blink, the eye is handed back, the camera rides the bullet
+  (`cineBulletCam`; Railgun keeps its headlight end-cap) → THE HIT — a
+  freeze on the victim's face. Take Aim keeps its slow-mo on the bullet.
+- **THE FLYOVER STRIKE** (Nuke, Artillery Strike — end-of-round
+  detonations, `playDetonationCinematic`): THE FLY-BY — level lens at the
+  aircraft's altitude, the horizon through the middle of frame, the jet
+  enters from one side in full side profile → THE PAN — the frame drifts
+  with it at a third of its speed → THE DROP — the bomb leaves the jet
+  over the target (the flyover is retimed for it, the warhead drops from
+  the jet's altitude) and the pivot rides it down to the tile, the gaze
+  pitching from level to the crater → THE BLAST — the reverse wide, the
+  Nuke's whiteout and bone desat. (`cineFlyBy`, `cineFlyByTrack`,
+  `cineFallFollow`.)
+- **THE SKY WATCH** — every other thing that falls out of the sky (the
+  meteor-class delayed strikes; cast-time descent spells with no bespoke
+  director): park over the strike tile looking UP into the airspace at
+  the release, pitch DOWN with the fall, god shot over the crater.
+  (`cineSkyWatch`, the `descentCam` family branch.)
+
+### Next shots worth building (the director's wish list)
+1. **THE BEAM HEAD RIDE** — for the big breath weapons, a short beat ON
+   the beam's head as it eats the lane (the bullet cam's rig at 0.9 tiles,
+   looking slightly down at the tiles being scorched), between the side
+   dolly and the end-cap.
+2. **THE CATCH** — thrown units / Kinetic Hurl: cut to the LANDING tile's
+   witness before the body arrives (`cineWitnessCam` at the landing tile,
+   scheduled at 60 % of the flight).
+3. **THE DUEL LINE** — melee capstones: a whip-pan (`_cineBeatMove` yaw
+   +180 over 180 ms, easing 'linear') on the impact frame instead of a
+   cut, once per cast.
+4. **THE SUMMON REVEAL** — summonUnit / raiseDead: the god shot craning
+   DOWN onto the summon as it stands up (`cineSkyWatch` in reverse).
+5. **THE PLAYER'S EYES** — the sniper POV for EVERY gun spell in
+   `CINE_GUN_SPELLS` (Quick Draw, Fan the Hammer, Suppressive Fire — a
+   shorter squint, no zoom), once the kit has been seen live.
+6. **THE DASH POV** — one beat of first person for `tackle` / `dash`
+   capstones: the lane rushing at the lens, then the side-on landing.

@@ -1023,6 +1023,13 @@
                        rule) — without this the guest cut away before the beam
                        left the caster's hands. */
                     if (opts.holdAfterLaunchMs != null) camEvt.holdAfterLaunchMs = opts.holdAfterLaunchMs;
+                    /* Sky strikes: the descent def's own clock (release +
+                       fall). The flyover / sky-fall directors and the impact
+                       kick key off it — without it the guest's Nuke cut to
+                       the bomb follow on the generic travel time. */
+                    if (opts.descentCam && (opts.descentCam.telegraphMs != null || opts.descentCam.descentMs != null)) {
+                        camEvt.descentCam = { telegraphMs: opts.descentCam.telegraphMs, descentMs: opts.descentCam.descentMs };
+                    }
                     /* Basic attacks (and other opted-out actions) must stay
                        tactical on the guest too — dropping these flags made
                        EVERY relayed attack replay as a full cinematic. */
@@ -1095,6 +1102,31 @@
             }
         };
         window.showRoundBanner = showRoundBanner;
+
+        /* THE DETONATION CINEMATIC (2026-09-13, RULE #2). state.js's
+           end-of-round detonation loop runs on the HOST only, and its
+           multi-cam (battle.js playDetonationCinematic — the F-22 fly-by,
+           the bomb follow, the blast reverse) was host-only with it: the
+           guest's descent VFX arrived under whatever camera it had. The
+           host relays the strike's facts; the guest replays the same
+           director locally, gated on its own fog (below). */
+        if (typeof window.playDetonationCinematic === 'function') {
+            const _origPlayDetonationCinematic = window.playDetonationCinematic;
+            window.playDetonationCinematic = function(ds, opts) {
+                var r = _origPlayDetonationCinematic(ds, opts);
+                var _netOn = window._NET && window._NET.online;
+                if (ds && !(opts && opts.relayed) && (_netOn && _isHost() || _ewRecOn())) {
+                    _emit('relay', {
+                        type: 'det-cine',
+                        ds: { x: ds.x, y: ds.y, z: ds.z, aoeRadius: ds.aoeRadius,
+                              spellId: ds.spellId, spellName: ds.spellName,
+                              spellType: ds.spellType },
+                        descentMs: (opts && opts.descentMs) || 0
+                    });
+                }
+                return r;
+            };
+        }
 
         /* Turn-handoff sweep ("Your Turn" / "Opponent's Turn"). The blitz
            engine only runs on the HOST, so without this relay the guest
@@ -3525,6 +3557,7 @@
                                 if (camEvt.shotKind) camOpts.shotKind = camEvt.shotKind;
                                 if (camEvt.spellId) camOpts.spellId = camEvt.spellId;
                                 if (camEvt.holdAfterLaunchMs != null) camOpts.holdAfterLaunchMs = camEvt.holdAfterLaunchMs;
+                                if (camEvt.descentCam) camOpts.descentCam = camEvt.descentCam;
                                 if (camEvt.noActionCam) camOpts.noActionCam = true;
                                 if (camEvt._noCinematic) camOpts._noCinematic = true;
                                 if (camEvt.frameTiles && camEvt.frameTiles.length) camOpts.frameTiles = camEvt.frameTiles;
@@ -3571,6 +3604,18 @@
                     if (data.type === 'round-banner' && _ewMirrorView()) {
                         if (typeof window.showRoundBanner === 'function') {
                             window.showRoundBanner(data.roundNum, function() {});
+                        }
+                    }
+
+                    /* The end-of-round detonation multi-cam (see the host
+                       wrapper above). Fog is ENFORCED: a strike on a tile the
+                       guest cannot see plays no camera (the host's own loop
+                       gates on isVisible the same way). */
+                    if (data.type === 'det-cine' && _ewMirrorView() && data.ds) {
+                        var _dsVis = !st || !st.fogOfWar
+                            || (typeof _isTileVisibleToViewer === 'function' && _isTileVisibleToViewer(data.ds.x, data.ds.y));
+                        if (_dsVis && typeof window.playDetonationCinematic === 'function') {
+                            try { window.playDetonationCinematic(data.ds, { descentMs: data.descentMs || 0, relayed: true }); } catch (e) {}
                         }
                     }
 

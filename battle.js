@@ -9264,6 +9264,20 @@
            (unitElevationZ / _tpsShoulderLift). */
         window._camGroundPx = function (tx, ty) {
             try {
+                /* OFF-BOARD → the nearest EDGE tile (2026-09-13, the beam
+                   edge bug). The world past the board is the apron / the
+                   strata / the horizon; a lookup there used to answer 0,
+                   and every rig floor keyed off it (the TPS pivot ground,
+                   the flat floor, the sky-crane base) dropped a shot whose
+                   pivot or eye sat past the edge to the STRATA under a
+                   raised board — the "underground layers in my face"
+                   frame on every beam that ended at the edge. The edge
+                   tile is the truest ground the rig can stand on there. */
+                const _bwc = bw(), _bhc = bh();
+                if (_bwc > 0 && _bhc > 0) {
+                    tx = Math.max(0, Math.min(_bwc - 1, Math.round(tx)));
+                    ty = Math.max(0, Math.min(_bhc - 1, Math.round(ty)));
+                }
                 const u = unitAt(tx, ty);
                 if (u && !u.dead && u.z !== undefined && u.z !== null
                     && state.boardColumns?.length
@@ -14165,6 +14179,9 @@
                 if (this._cineTps && this._cineShotId == null && !this._tpsHold) {
                     this._cineTps = false;
                     if (!this._tpsCollide) this._tpsSubject = null;
+                    /* A sniper POV that ended with its shot hands the eye,
+                       the hidden model and the FOV back (cineSniperPov). */
+                    if (this._cineFpOwned) { try { _cineFpRelease(); } catch (e) {} }
                 }
                 const ts = CONFIG.tileSize || BASE_TILE;
                 const gap = CONFIG.tileGap ?? 0;
@@ -18823,12 +18840,24 @@
         /* Anchor the rig's pivot at `pos` (tile coords), shoulder-lifted for
            `unit` (generic humanoid height for bare tile targets). Returns
            false — leaving the caller on the legacy maths — when 3D is off. */
-        function _cineTpsAnchor(pos, unit) {
+        function _cineTpsAnchor(pos, unit, opts = {}) {
             try {
                 if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive || !ThreeRenderer.isActive()) return false;
             } catch (e) { return false; }
             camera._cineTps = true;
-            camera._tpsSubject = { x: pos.x, y: pos.y };
+            /* The pivot's GROUND is read under the subject — clamp that
+               read onto the board (2026-09-13). A focal past the edge (the
+               beam reel's end-cap, a side dolly along the rim, the fly-by's
+               drift) is fine — its ground must be the edge tile's, never
+               the apron's 0. The focal itself keeps the caller's point. */
+            const _cl = _cineClampTile(pos.x, pos.y, 0);
+            camera._tpsSubject = { x: _cl.x, y: _cl.y };
+            if (opts.liftPx != null) {
+                /* Explicit pivot height (an altitude shot: the fly-by, the
+                   fall follow) — measured from the subject's ground. */
+                camera._tpsHeadLift = Math.max(0, opts.liftPx);
+                return true;
+            }
             /* Shoulder lift = the model's real shoulder height PLUS the gap
                between where the subject ACTUALLY is (airborne altitude, or
                standing on a walkable roof) and the ground surface the rig
@@ -19496,6 +19525,9 @@
             try { VoidStage.exit({ instant: true }); } catch (e) {}
             cineGradeClear();
             cineSlowMoClear();
+            try { _cineFpRelease(); } catch (e) {}
+            try { _cineTweenLiftCancel(); } catch (e) {}
+            try { cineEyelidsClear(); } catch (e) {}
             cineDollyZoomRelease();
         }
 
@@ -19638,9 +19670,26 @@
                would otherwise collide with). */
             const yawA = _norm(yawFwd + 90), yawB = _norm(yawFwd - 90);
             const cur = _norm(camera._tyaw ?? camera.yaw ?? 0);
-            const yaw = opts.yaw != null ? opts.yaw
-                : (Math.abs(_norm(yawA - cur)) <= Math.abs(_norm(yawB - cur)) ? yawA : yawB);
             const midX = (from.x + to.x) / 2, midY = (from.y + to.y) / 2;
+            /* BOARD-AWARE side pick (2026-09-13): a beam running along the
+               rim used to put the eye four tiles out past the edge, in the
+               apron's props / the moat / the strata. Score each side by how
+               far INSIDE the board its eye would land (the boom is
+               `boomT` tiles back from the line's midpoint); the side with
+               the eye deeper on the board wins, the current view yaw only
+               breaks a near-tie. */
+            const boomT = (opts.mode === 'hold' || len <= 4) ? len + 2.6 : (opts.dist ?? 4.0);
+            const roomFor = (yw) => {
+                const r = yw * Math.PI / 180;
+                return _cineEdgeRoom(midX + Math.sin(r) * boomT, midY + Math.cos(r) * boomT);
+            };
+            let yaw;
+            if (opts.yaw != null) yaw = opts.yaw;
+            else {
+                const ra = roomFor(yawA), rb = roomFor(yawB);
+                if (Math.abs(ra - rb) > 0.75) yaw = ra > rb ? yawA : yawB;
+                else yaw = (Math.abs(_norm(yawA - cur)) <= Math.abs(_norm(yawB - cur))) ? yawA : yawB;
+            }
             // BOTH endpoint heights: a hold shot must fit the line's vertical
             // drop as well as its length, and a travel shot must RIDE the
             // slope — a single midpoint height left uphill/downhill beams
@@ -19877,7 +19926,13 @@
             crane:      (ctx, o) => cineCrane(ctx.subject || ctx.target || ctx.caster, o),
             godShot:    (ctx, o) => cineGodShot(ctx.center || ctx.target, (o && o.span) || 6, o),
             pushIn:     (ctx, o) => cinePushIn((o && o.mult) || 1.15, (o && o.ms) || 500),
-            faceCam:    (ctx, o) => cineFaceCam(ctx.subject || ctx.target, o)
+            faceCam:    (ctx, o) => cineFaceCam(ctx.subject || ctx.target, o),
+            /* 2026-09-13 — the director's additions */
+            sniperPov:  (ctx, o) => cineSniperPov(ctx.caster, ctx.target, { sequenceId: ctx.sequenceId, ...(o || {}) }),
+            flyBy:      (ctx, o) => cineFlyBy(ctx.center || ctx.target, o),
+            fallFollow: (ctx, o) => cineFallFollow(ctx.center || ctx.target, { sequenceId: ctx.sequenceId, ...(o || {}) }),
+            skyWatch:   (ctx, o) => cineSkyWatch(ctx.center || ctx.target, o),
+            eyelids:    (ctx, o) => { cineEyelids((o && o.ms) || 900, o || {}); return true; }
         };
         function cinePlayShot(name, ctx, opts) {
             const fn = CINE_SHOTS[name];
@@ -20110,15 +20165,331 @@
             // the slope this shot stares back into — without following it the
             // fixed pitch framed empty ground under them.
             const slopeBack = Math.atan2(px0 - px, Math.max(ts * 0.5, len * ts)) * (180 / Math.PI);
-            _cineTpsAnchor({ x: to.x + dirx * 0.8, y: to.y + diry * 0.8 }, null);
+            /* BOARD-AWARE reverse (2026-09-13 — THE beam edge bug). The
+               pivot used to sit 0.8 tiles PAST the victim and the eye a
+               further 2.6 beyond — on a victim at the rim both were off the
+               board, the pivot's ground read 0, and on a raised board the
+               whole frame was the strata under the map. Now: the pivot
+               stays ON the victim's tile (0.25 past at most, clamped inside
+               the board), and the boom is measured against the room left
+               past the victim — plenty of room → the level headlight stare;
+               none → THE HIGH REVERSE: a shorter boom craned DOWN over the
+               victim's shoulder so the beam still rushes in under the lens
+               with the board (not the apron) filling the frame. */
+            const _pv = _cineClampTile(to.x + dirx * 0.25, to.y + diry * 0.25, 0);
+            let dist = opts.dist ?? 2.6;
+            let tilt = opts.tilt ?? Math.max(CINE_TILT_GUARD_MIN,
+                Math.min(CINE_TILT_GUARD_MAX, 84 + slopeBack));
+            const room = _cineEdgeRoom(_pv.x + dirx * dist, _pv.y + diry * dist);
+            if (room < 0.4) {
+                const _short = Math.max(0, 0.4 - room);          // tiles the eye hangs past the rim
+                dist = Math.max(1.7, dist - _short * 0.6);
+                tilt = Math.max(CINE_TILT_GUARD_MIN, tilt - Math.min(26, 10 + _short * 5));
+            }
+            _cineTpsAnchor(_pv, null);
             _cineHardCut({
-                x: to.x + dirx * 0.8, y: to.y + diry * 0.8,
-                zoom: _tpsZoomForBoomTiles(opts.dist ?? 2.6),
-                tilt: opts.tilt ?? Math.max(CINE_TILT_GUARD_MIN,
-                    Math.min(CINE_TILT_GUARD_MAX, 84 + slopeBack)),
+                x: _pv.x, y: _pv.y,
+                zoom: _tpsZoomForBoomTiles(dist),
+                tilt,
                 yaw: yawBack, elevZ: px + ts * 0.85
             });
             _acChromeFlash('cut');
+            return true;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════
+           BOARD GEOMETRY for the rig (2026-09-13). Every shot that puts its
+           pivot or its eye near the rim reads these two.
+           ═══════════════════════════════════════════════════════════════════ */
+        /* Clamp a tile-space point onto the board, `margin` tiles in. */
+        function _cineClampTile(x, y, margin = 0) {
+            const _w = bw(), _h = bh();
+            if (!(_w > 0 && _h > 0)) return { x, y };
+            const m = Math.min(margin, (_w - 1) / 2, (_h - 1) / 2);
+            return {
+                x: Math.max(m, Math.min(_w - 1 - m, x)),
+                y: Math.max(m, Math.min(_h - 1 - m, y))
+            };
+        }
+        /* How far INSIDE the board a tile-space point lies (tiles; negative
+           = that far past the nearest edge). Tile centres are integers, so
+           the board's physical rim is at -0.5 and w-0.5. */
+        function _cineEdgeRoom(x, y) {
+            const _w = bw(), _h = bh();
+            if (!(_w > 0 && _h > 0)) return 99;
+            return Math.min(x + 0.5, _w - 0.5 - x, y + 0.5, _h - 0.5 - y);
+        }
+        /* A yaw whose EYE lands on the board. Given the shot's preferred yaw
+           and the boom it will use, keep it when its eye sits at least half
+           a tile inside the rim; otherwise turn through the quarter turns
+           and take the one with the most room (the strike-tile shots used to
+           draw a random yaw and park the eye out over the apron on a rim
+           strike). Eye = pivot + boom·(sin yaw, cos yaw) — the view dir is
+           (−sin yaw, −cos yaw). */
+        function _cineYawTowardBoard(center, yaw, boomTiles = 5) {
+            if (!center) return yaw;
+            const room = (yw) => {
+                const r = yw * Math.PI / 180;
+                return _cineEdgeRoom(center.x + Math.sin(r) * boomTiles, center.y + Math.cos(r) * boomTiles);
+            };
+            if (room(yaw) >= 0.5) return yaw;
+            let best = yaw, bestRoom = room(yaw);
+            for (const d of [90, -90, 180, 45, -45, 135, -135]) {
+                const rr = room(yaw + d);
+                if (rr > bestRoom + 0.25) { best = yaw + d; bestRoom = rr; }
+            }
+            return best;
+        }
+        /* Tween the TPS pivot HEIGHT (camera._tpsHeadLift, px above the
+           subject's ground) — camera.moveTo tweens x/y/zoom/tilt/yaw but
+           never the pivot lift, and the altitude shots (a bomb falling from
+           a jet, a star coming down) are exactly a pivot riding the payload.
+           Guarded by the shot id so a shot that ends early drops it. */
+        let _cineLiftRaf = null;
+        function _cineTweenLift(fromPx, toPx, ms, sequenceId, opts = {}) {
+            if (_cineLiftRaf) { cancelAnimationFrame(_cineLiftRaf); _cineLiftRaf = null; }
+            const dur = Math.max(60, Number(ms) || 400);
+            const t0 = performance.now();
+            const ease = opts.easing === 'easeIn' ? (k => k * k)
+                : opts.easing === 'easeOut' ? (k => 1 - (1 - k) * (1 - k))
+                : opts.easing === 'linear' ? (k => k)
+                : (k => k * k * (3 - 2 * k));
+            const step = () => {
+                _cineLiftRaf = null;
+                if (!_cineBeatOk(sequenceId) || !camera._cineTps) return;
+                const k = Math.min(1, (performance.now() - t0) / dur);
+                camera._tpsHeadLift = fromPx + (toPx - fromPx) * ease(k);
+                if (k < 1) _cineLiftRaf = requestAnimationFrame(step);
+                else if (typeof opts.onDone === 'function') { try { opts.onDone(); } catch (e) {} }
+            };
+            _cineLiftRaf = requestAnimationFrame(step);
+        }
+        function _cineTweenLiftCancel() {
+            if (_cineLiftRaf) { cancelAnimationFrame(_cineLiftRaf); _cineLiftRaf = null; }
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════
+           THE EYELIDS (2026-09-13) — the sniper's squint. Two soft lids close
+           in from the top and bottom of the frame to a slit while the shooter
+           lines up the target, a hairline reticle sits in the gap, and the
+           blink on the shot snaps them shut for a frame. DOM only, one node,
+           CSS-timed (styles-cinematic.css ".cine-eyelids"). `amt` = how far
+           each lid closes (0..0.5 of the frame height). Viewer-local; the
+           guest reaches it through the SAME sequence (RULE #2).
+           ═══════════════════════════════════════════════════════════════════ */
+        let _cineEyelidsEl = null;
+        let _cineEyelidsTimer = null;
+        function _ensureCineEyelids() {
+            if (_cineEyelidsEl && _cineEyelidsEl.isConnected) return _cineEyelidsEl;
+            const el = document.createElement('div');
+            el.className = 'cine-eyelids';
+            el.innerHTML = '<div class="cine-lid cine-lid-top"></div><div class="cine-lid cine-lid-bot"></div>'
+                + '<div class="cine-eye-reticle"><i></i><i></i><b></b></div>';
+            (document.getElementById('game-viewport') || document.body).appendChild(el);
+            _cineEyelidsEl = el;
+            return el;
+        }
+        function cineEyelids(ms, opts = {}) {
+            if (_skipVisuals() || state.phase !== 'battle') return;
+            if (state.cinematicActionCam === false && !opts.force) return;
+            const el = _ensureCineEyelids();
+            el.style.setProperty('--lid-amt', String(Math.max(0.08, Math.min(0.5, opts.amt ?? 0.3))));
+            el.style.setProperty('--lid-ms', String(Math.max(80, opts.closeMs ?? 420)) + 'ms');
+            el.classList.toggle('reticle', opts.reticle !== false);
+            el.classList.remove('blink');
+            void el.offsetWidth;
+            el.classList.add('on');
+            if (_cineEyelidsTimer) clearTimeout(_cineEyelidsTimer);
+            _cineEyelidsTimer = window.setTimeout(() => cineEyelidsClear(), Math.max(120, Number(ms) || 900));
+        }
+        /* The shot: lids slam shut for a frame and spring back open. */
+        function cineEyelidsBlink() {
+            if (!_cineEyelidsEl || !_cineEyelidsEl.classList.contains('on')) return;
+            const el = _cineEyelidsEl;
+            el.classList.remove('blink');
+            void el.offsetWidth;
+            el.classList.add('blink');
+        }
+        function cineEyelidsClear() {
+            if (_cineEyelidsTimer) { clearTimeout(_cineEyelidsTimer); _cineEyelidsTimer = null; }
+            if (!_cineEyelidsEl) return;
+            _cineEyelidsEl.classList.remove('on', 'blink');
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════
+           THE SNIPER POV (2026-09-13) — first person. The eye sits IN the
+           shooter's head (ThreeCamera's cam._fpEye branch — Strike Mode's
+           rig, borrowed for one beat), the model is hidden (the renderer
+           reads window._ewFpHideUid per frame), the gaze is aimed down the
+           line at the target with the slope followed, and the lens ZOOMS —
+           there is no boom in first person, so zoom is the FOV narrowing
+           over `zoomMs` (the dolly-zoom's own FOV base/restore is shared).
+           Every release path drops it: the sequence's own cut-away,
+           camera._apply's cine-rig auto-release, _cineReleaseAllFx. Never
+           fires when Strike Mode owns the camera. Returns false (the caller
+           keeps its stock shot) without the 3D rig.
+           ═══════════════════════════════════════════════════════════════════ */
+        let _cineFovRaf = null;
+        function _cineFovTween(toFov, ms, sequenceId) {
+            const TC = (typeof ThreeCamera !== 'undefined') ? ThreeCamera : null;
+            if (!TC || !TC.setFOV || !TC.getFOV) return;
+            if (_cineFovRaf) { cancelAnimationFrame(_cineFovRaf); _cineFovRaf = null; }
+            if (_cineFovBase == null) _cineFovBase = TC.getFOV();
+            const from = TC.getFOV();
+            const dur = Math.max(60, Number(ms) || 500);
+            const t0 = performance.now();
+            const step = () => {
+                _cineFovRaf = null;
+                if (!_cineBeatOk(sequenceId)) return;
+                const k = Math.min(1, (performance.now() - t0) / dur);
+                const e = 1 - Math.pow(1 - k, 3);
+                try { TC.setFOV(from + (toFov - from) * e); } catch (err) {}
+                if (k < 1) _cineFovRaf = requestAnimationFrame(step);
+            };
+            _cineFovRaf = requestAnimationFrame(step);
+        }
+        function cineSniperPov(caster, target, opts = {}) {
+            if (!caster || !target || caster.id == null) return false;
+            if (typeof window._shooterCamOwns === 'function' && window._shooterCamOwns()) return false;
+            const c = (state.units || []).find(u => u.id === caster.id);
+            if (!c || c.dead || c._dying) return false;
+            const ts = CONFIG.tileSize || BASE_TILE;
+            const dx = target.x - c.x, dy = target.y - c.y;
+            const len = Math.max(0.8, Math.hypot(dx, dy));
+            const yawFwd = Math.atan2(-dx, -dy) * (180 / Math.PI);
+            let cPx = 0, tPx = 0;
+            if (typeof window._getElevationPx === 'function') {
+                const cz = _unitElevZ(c), tz = _unitElevZ(target);
+                cPx = cz > 0 ? window._getElevationPx(cz) : 0;
+                tPx = tz > 0 ? window._getElevationPx(tz) : 0;
+            }
+            /* The eye at ~92 % of the shooter's rendered height. */
+            let h = ts * 0.95;
+            try {
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getUnitVisualHeight) {
+                    h = ThreeRenderer.getUnitVisualHeight(c.id) || h;
+                }
+            } catch (e) {}
+            const eyePx = h * 0.92 + Math.max(0, (unitElevationZ(c) || 0)
+                - ((typeof window._camGroundPx === 'function') ? window._camGroundPx(c.x, c.y) : 0));
+            if (!_cineTpsAnchor(c, c, { liftPx: eyePx })) return false;
+            /* Aim at the target's chest, slope followed (HIGHER tilt = up). */
+            const slopeDeg = Math.atan2((tPx + ts * 0.45) - (cPx + eyePx), len * ts) * (180 / Math.PI);
+            const tilt = Math.max(CINE_TILT_GUARD_MIN, Math.min(CINE_TILT_GUARD_MAX, 90 + slopeDeg));
+            camera._fpEye = true;
+            camera._cineFpOwned = true;
+            window._ewFpHideUid = c.id;
+            _cineHardCut({ x: c.x, y: c.y, zoom: 1, tilt, yaw: yawFwd, elevZ: cPx + eyePx });
+            _acChromeFlash('cut');
+            if (opts.fov != null) _cineFovTween(opts.fov, opts.zoomMs ?? 700, opts.sequenceId);
+            if (opts.eyelids !== false) {
+                cineEyelids(opts.ms ?? 1200, { amt: opts.squint ?? 0.3, closeMs: opts.closeMs ?? 460 });
+            }
+            return true;
+        }
+        function _cineFpRelease() {
+            if (!camera._cineFpOwned) return;
+            camera._cineFpOwned = false;
+            camera._fpEye = false;
+            if (window._ewFpHideUid != null && !(typeof window._shooterCamOwns === 'function' && window._shooterCamOwns())) {
+                window._ewFpHideUid = null;
+            }
+            if (_cineFovRaf) { cancelAnimationFrame(_cineFovRaf); _cineFovRaf = null; }
+            cineDollyZoomRelease();
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════
+           THE FLY-BY (2026-09-13) — eye level with the aircraft. The pivot
+           is lifted to the flight altitude over the strike tile, the lens
+           is LEVEL (tilt 90) and wide enough to hold the whole crossing, and
+           the yaw is left where the previous beat put it: the descent VFX
+           flies its craft ACROSS THE SCREEN (three-vfx-effects.js
+           _camRightBoardDir reads the camera at spawn), so whichever way
+           the camera faces, the jet enters from one side of frame in full
+           side profile and exits the other. `altPx` should sit inside the
+           VFX's framed-rise clamp (1.1–6 tiles) so the craft rides the
+           pivot height. The VFX publishes its real path in
+           window._ewDescentCine; cineFlyByTrack() then pans WITH it.
+           ═══════════════════════════════════════════════════════════════════ */
+        function cineFlyBy(center, opts = {}) {
+            if (!center) return false;
+            const ts = CONFIG.tileSize || BASE_TILE;
+            const altPx = opts.altPx ?? ts * 3.2;
+            if (!_cineTpsAnchor({ x: center.x, y: center.y }, null, { liftPx: altPx })) return false;
+            const span = opts.span ?? 11;
+            const gPx = (typeof window._camGroundPx === 'function')
+                ? window._camGroundPx(Math.round(center.x), Math.round(center.y)) : 0;
+            _cineHardCut({
+                x: center.x, y: center.y,
+                zoom: _tpsZoomFitTiles(span * 0.5, span),
+                tilt: opts.tilt ?? 90,
+                yaw: opts.yaw ?? camera._tyaw,
+                elevZ: gPx + altPx
+            });
+            _acChromeFlash('cut');
+            return true;
+        }
+        /* Pan with the published craft path (a fraction of its speed — the
+           jet outruns the frame, which is what sells the pass). */
+        function cineFlyByTrack(sequenceId, opts = {}) {
+            const d = window._ewDescentCine;
+            if (!d || !d.flyover) return false;
+            const f = d.flyover;
+            const ts = CONFIG.tileSize || BASE_TILE;
+            const left = Math.max(120, f.ms - (performance.now() - f.t0));
+            const follow = opts.follow ?? 0.35;
+            const tilesLeft = (f.speed * left / 1000) / ts * follow;
+            const to = _cineClampTile(camera._tx + f.dvx * tilesLeft, camera._ty + f.dvy * tilesLeft, 0);
+            _cineBeatMove({ x: to.x, y: to.y, duration: left, easing: 'linear',
+                _bypassCap: true, _fogAllowed: true });
+            return true;
+        }
+        /* THE FALL FOLLOW — ride the payload down: the pivot lift eases from
+           the release altitude to the strike tile over the fall (easeIn —
+           the bomb accelerates), the gaze pitches from level to looking down
+           at the impact, a small push-in. Ends with the eye just above the
+           tile, staring at the crater. */
+        function cineFallFollow(center, opts = {}) {
+            if (!center) return false;
+            const ts = CONFIG.tileSize || BASE_TILE;
+            const ms = Math.max(200, opts.ms ?? 700);
+            const fromPx = opts.fromPx ?? (camera._tpsHeadLift || ts * 3);
+            const toPx = opts.toPx ?? ts * 0.9;
+            if (!camera._cineTps) _cineTpsAnchor({ x: center.x, y: center.y }, null, { liftPx: fromPx });
+            else camera._tpsSubject = _cineClampTile(center.x, center.y, 0);
+            _cineTweenLift(fromPx, toPx, ms, opts.sequenceId, { easing: 'easeIn' });
+            _cineBeatMove({
+                x: center.x, y: center.y,
+                tilt: opts.tilt ?? 58,
+                zoom: camera._tz * (opts.push ?? 1.18),
+                duration: ms, easing: 'easeIn',
+                _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+            });
+            return true;
+        }
+        /* THE SKY WATCH — the generic descent grammar for spells with no
+           bespoke director: park over the strike tile looking UP into the
+           airspace the body falls out of, then pitch DOWN with the fall so
+           the payload is on screen from release to impact. */
+        function cineSkyWatch(center, opts = {}) {
+            if (!center) return false;
+            const ts = CONFIG.tileSize || BASE_TILE;
+            if (!_cineTpsAnchor({ x: center.x, y: center.y }, null, { liftPx: ts * 0.9 })) return false;
+            const gPx = (typeof window._camGroundPx === 'function')
+                ? window._camGroundPx(Math.round(center.x), Math.round(center.y)) : 0;
+            _cineHardCut({
+                x: center.x, y: center.y,
+                zoom: _tpsZoomFitTiles(opts.span ?? 6, (opts.span ?? 6) * 1.2),
+                tilt: opts.tiltUp ?? 116, yaw: opts.yaw ?? camera._tyaw,
+                elevZ: gPx + ts * 0.9
+            });
+            _acChromeFlash('cut');
+            _cineBeatMove({
+                tilt: opts.tiltDown ?? 62,
+                zoom: camera._tz * 1.1,
+                duration: Math.max(200, opts.ms ?? 700), easing: 'easeIn',
+                _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+            });
             return true;
         }
 
@@ -20172,6 +20543,25 @@
             const { caster, target, timings, sequenceId, spell } = ctx;
             const cut = _cineCutMs(timings, ctx.shotOpts || {});
             const tail = timings.sourceHold + timings.travelMs + timings.targetHold;
+            /* THE SKY-FALL FAMILY (2026-09-13): a descent spell with no
+               bespoke director (its payload falls out of the sky for
+               telegraph + descent) gets the sky watch — park over the strike
+               tile looking UP into the airspace, pitch DOWN with the fall so
+               the body is on screen from release to impact, then the god
+               shot over the crater. The hero part of a sky strike is the
+               thing coming down; the witness cam never saw it. */
+            const _dc = ctx.shotOpts && ctx.shotOpts.descentCam;
+            if (_dc && (key === 'groundAoe' || key === 'strike' || key === 'delayed')) {
+                const T0 = timings.sourceHold;
+                const tele = actionMs(Math.max(120, _dc.telegraphMs || 800));
+                const fall = actionMs(Math.max(180, _dc.descentMs || 700));
+                const span = (spell?.aoeRadius || 1) * 2 + 4;
+                _cineAt(T0 + tele - actionMs(160), sequenceId,
+                    () => cineSkyWatch(target, { ms: fall + actionMs(160), span }));
+                _cineAt(T0 + tele + fall + actionMs(80), sequenceId,
+                    () => cineGodShot(target, span, { cut: false, duration: 520 }));
+                return;
+            }
             switch (key) {
 
                 /* Biggest family (86 spells) — do NOT slow it down, sharpen it.
@@ -20632,22 +21022,12 @@
                Timing keys off shotOpts.impactMs (telegraph + warhead fall):
                the generic sourceHold+travelMs fired the whiteout while the
                missile was still in the air. */
-            sharedNuke(ctx) {
-                const { target, timings, sequenceId, shotOpts } = ctx;
-                const impact = shotOpts?.impactMs
-                    ?? (timings.sourceHold + timings.travelMs);
-                _cineAt(impact, sequenceId, () => {
-                    cineGrade('whiteout', 300);
-                    shakeBoard('heavy');
-                });
-                _cineAt(impact + actionMs(320), sequenceId, () => {
-                    cineGrade('bone desat', 500);
-                    cineGodShot(target, 10, { tilt: 34 });
-                    _cineBeatMove({ tilt: 78, duration: actionMs(900), easing: 'easeInOut',
-                        _bypassCap: true, _fogAllowed: true });
-                });
-                return true;
-            },
+            /* ── #8 Nuke — (2026-09-13) the Nuke is a DELAYED strike: the
+               cast is a mark (doSpell → _spellFocusCamera), the payload
+               lands at the end of the round, and its camera is
+               playDetonationCinematic — THE FLYOVER STRIKE lives there
+               (the F-22 fly-by, the pan, the bomb follow, the whiteout, the
+               crater god shot). A cast-time sequence here never fired. */
 
             /* ── #9 Meteor — one camera flip makes it feel twice as big.
                2026-08-15 rebeat: the old build cut three ways in quick
@@ -20902,32 +21282,60 @@
                 return true;
             },
 
-            /* ── #47 Take Aim — the rule becomes legible. */
-            headshot(ctx) {
+            /* ── THE SNIPER KIT (2026-09-13) — the shared director for every
+               aimed shot. Three beats, three cameras:
+                 1. THE SQUINT — hard cut to FIRST PERSON inside the shooter's
+                    head (cineSniperPov): the lids close in from the top and
+                    bottom of frame, the reticle sits in the slit, and the
+                    lens ZOOMS onto the target (FOV → o.fov) while the cast
+                    winds up.
+                 2. THE SHOT — on the release frame the lids blink shut, the
+                    eye is handed back, and the camera rides the bullet
+                    (cineBulletCam — the hero part of a gun spell is the
+                    round in the air); Railgun keeps its headlight end-cap.
+                 3. THE HIT — a freeze frame on the victim's face.
+               Take Aim adds its slow-mo to beat 2 (the rule made legible).
+               No 3D rig → the POV declines and the old scope grade plays. */
+            _sniperKit(ctx, o = {}) {
                 const { caster, target, timings, sequenceId } = ctx;
-                _cineAt(timings.sourceHold, sequenceId, () => {
-                    cineSlowMo(0.35, 800);
-                    cineBulletCam(caster, target, { travelMs: Math.max(actionMs(360), timings.travelMs) });
-                    cineGrade('scope', 700);
+                const povAt = Math.max(0, timings.sourceHold - actionMs(o.leadMs ?? 900));
+                const povMs = Math.max(actionMs(300), timings.sourceHold - povAt);
+                _cineAt(povAt, sequenceId, () => {
+                    const ok = cineSniperPov(caster, target, {
+                        sequenceId, fov: o.fov ?? 22, zoomMs: Math.round(povMs * 0.8),
+                        ms: povMs + actionMs(400), squint: o.squint ?? 0.3
+                    });
+                    if (!ok) cineGrade('scope', povMs + 200);
                 });
-                return true;
-            },
-
-            /* ── #48 Railgun — the pierce mechanic is unmissable because the
-               camera pierced too. */
-            railgun(ctx) {
-                const { caster, target, timings, sequenceId } = ctx;
                 _cineAt(timings.sourceHold, sequenceId, () => {
-                    // dist was 1.4 — the boom sat INSIDE the shooter's model
-                    // and the slug's whole flight was a blur of their back.
-                    cineBulletCam(caster, target, {
-                        travelMs: Math.max(actionMs(300), timings.travelMs), tilt: 87, dist: 2.4
+                    cineEyelidsBlink();
+                    if (o.slow) cineSlowMo(0.35, 800);
+                });
+                _cineAt(timings.sourceHold + actionMs(70), sequenceId, () => {
+                    _cineFpRelease();
+                    cineEyelidsClear();
+                    if (o.bullet === false) cineReverseOts(target, caster, {});
+                    else cineBulletCam(caster, target, {
+                        travelMs: Math.max(actionMs(320), timings.travelMs - actionMs(70)),
+                        tilt: o.bulletTilt ?? 86, dist: 2.4
                     });
                 });
-                _cineAt(timings.sourceHold + timings.travelMs, sequenceId,
-                    () => cineEndCapReverse(caster, target, {}));
+                _cineAt(timings.sourceHold + timings.travelMs + actionMs(30), sequenceId, () => {
+                    if (o.endCap) cineEndCapReverse(caster, target, {});
+                    else if (_cineActorVisible(target)) cineFaceCam(target, { dist: 2.6, tilt: 78 });
+                    cineFreezeFrame(actionMs(o.freezeMs ?? 90));
+                });
                 return true;
             },
+            /* ── #47 Take Aim — the rule becomes legible (slow-mo bullet). */
+            headshot(ctx)      { return CINE_SEQUENCES._sniperKit(ctx, { slow: true, fov: 18, leadMs: 1000 }); },
+            precisionShot(ctx) { return CINE_SEQUENCES._sniperKit(ctx, { fov: 24 }); },
+            deadEye(ctx)       { return CINE_SEQUENCES._sniperKit(ctx, { fov: 20, freezeMs: 140, squint: 0.34 }); },
+            kneecapShot(ctx)   { return CINE_SEQUENCES._sniperKit(ctx, { fov: 26, bulletTilt: 80 }); },
+
+            /* ── #48 Railgun — the pierce mechanic is unmissable because the
+               camera pierced too: the squint, the slug, the headlight stare. */
+            railgun(ctx)       { return CINE_SEQUENCES._sniperKit(ctx, { fov: 24, endCap: true, bulletTilt: 87 }); },
 
             /* ── #49 Polymorph — the OTS lingers on the frog. */
             racePolymorph(ctx) {
@@ -21537,23 +21945,84 @@
 
             const groundPx = (typeof window._camGroundPx === 'function')
                 ? window._camGroundPx(Math.round(ds.x), Math.round(ds.y)) : 0;
-            const yaw1 = Math.floor(Math.random() * 4) * 90 + 25;
+            /* The yaw is picked so the eye lands on the BOARD side of the
+               strike tile (a rim strike used to draw a random yaw and park
+               the eye out over the apron). */
+            const yaw1 = _cineYawTowardBoard(ds, Math.floor(Math.random() * 4) * 90 + 25);
 
-            // ── BEAT 1 — GROUND ZERO ──
-            _cineTpsAnchor({ x: ds.x, y: ds.y }, null);
-            _cineHardCut({
-                x: ds.x, y: ds.y,
-                zoom: _tpsZoomForBoomTiles(5.4), tilt: 82, yaw: yaw1,
-                elevZ: groundPx + ts * 0.9
-            });
-            _acChromeFlash('cut');
-            _cineBeatMove({
-                zoom: _tpsZoomForBoomTiles(4.5),
-                duration: Math.max(220, inboundMs - 60), easing: 'linear',
-                _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
-            });
+            /* THE DESCENT'S OWN CLOCK (2026-09-13): release (telegraph) +
+               fall, and whether an aircraft flies the payload in. The
+               director below is chosen by what actually comes down. */
+            const VFX = (typeof window !== 'undefined') ? window.ThreeVFXEffects : null;
+            const _sid = ds.spellId || null;
+            let teleMs = 0, fallMs = 0, hasFly = false;
+            if (descentMs > 0 && VFX && _sid) {
+                try {
+                    teleMs = actionMs(VFX.getDescentTelegraphMs(_sid) || 0);
+                    fallMs = actionMs(VFX.getDescentDescentMs(_sid) || 0);
+                    hasFly = !!(VFX.getDescentFlyover && VFX.getDescentFlyover(_sid));
+                } catch (e) { teleMs = 0; fallMs = 0; hasFly = false; }
+            }
+            const _isNuke = /nuke/i.test(_sid || ds.spellName || '');
 
-            // ── BEAT 2 — THE BLAST ──
+            if (hasFly && teleMs > 0) {
+                /* ── THE FLYOVER STRIKE — the hero part is the aircraft, then
+                   the bomb, then the crater.
+                   BEAT 1 — THE FLY-BY: level lens at the jet's altitude over
+                     the strike tile, wide enough to hold the crossing. The
+                     descent VFX flies its craft ACROSS THE SCREEN (it reads
+                     the camera at spawn, fo.delayMs in), on the horizon line
+                     (fo.ndcY), so it enters from one side of frame in full
+                     side profile, comes over the target, and exits.
+                   BEAT 2 — THE PAN: once the VFX has published the path the
+                     frame drifts with it at a third of its speed — the jet
+                     outruns the camera, which is what sells the pass.
+                   BEAT 3 — THE DROP: the flyover is retimed so the craft is
+                     overhead at the release; the pivot rides the warhead
+                     down (it drops from the jet's altitude now), the gaze
+                     pitches from level to the impact point, a push-in. */
+                const alt = ts * 3.2;
+                cineFlyBy(ds, { altPx: alt, span: 11, yaw: yaw1 });
+                if (_isNuke) cineGrade('vignette', teleMs + 200);
+                window.setTimeout(() => {
+                    if (!_cineBeatOk(sequenceId)) return;
+                    cineFlyByTrack(sequenceId, { follow: 0.35 });
+                }, Math.max(60, Math.round(teleMs * 0.45)) + 80);
+                window.setTimeout(() => {
+                    if (!_cineBeatOk(sequenceId)) return;
+                    cineFallFollow(ds, {
+                        sequenceId, fromPx: camera._tpsHeadLift || alt, toPx: ts * 0.9,
+                        ms: fallMs + actionMs(40), tilt: 56, push: 1.2
+                    });
+                }, Math.max(0, teleMs - actionMs(40)));
+            } else {
+                // ── BEAT 1 — GROUND ZERO (the arming beat) ──
+                _cineTpsAnchor({ x: ds.x, y: ds.y }, null);
+                _cineHardCut({
+                    x: ds.x, y: ds.y,
+                    zoom: _tpsZoomForBoomTiles(5.4), tilt: 82, yaw: yaw1,
+                    elevZ: groundPx + ts * 0.9
+                });
+                _acChromeFlash('cut');
+                _cineBeatMove({
+                    zoom: _tpsZoomForBoomTiles(4.5),
+                    duration: Math.max(220, (teleMs > 0 ? teleMs : inboundMs) - 60), easing: 'linear',
+                    _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+                });
+                /* THE SKY WATCH (a meteor-class delayed strike): at the
+                   release, look UP into the airspace over the tile and pitch
+                   DOWN with the fall — the body is on screen from release to
+                   impact instead of arriving from off the top of frame. */
+                if (descentMs > 0 && teleMs > 0 && fallMs > 0) {
+                    window.setTimeout(() => {
+                        if (!_cineBeatOk(sequenceId)) return;
+                        cineSkyWatch(ds, { ms: fallMs + actionMs(160),
+                            span: Math.max(1, ds.aoeRadius || 1) * 2 + 4, yaw: yaw1 });
+                    }, Math.max(0, teleMs - actionMs(160)));
+                }
+            }
+
+            // ── THE BLAST ──
             window.setTimeout(() => {
                 if (camera._cineShotId !== sequenceId) return;
                 if (state.phase !== 'battle' || state.cameraDisabled) return;
@@ -21561,11 +22030,17 @@
                 _cineTpsAnchor({ x: ds.x, y: ds.y }, null);
                 _cineHardCut({
                     x: ds.x, y: ds.y,
-                    zoom: _tpsZoomForBoomTiles(6.2 + r * 1.6), tilt: 64, yaw: yaw1 + 140,
+                    zoom: _tpsZoomForBoomTiles(6.2 + r * 1.6), tilt: 64,
+                    yaw: _cineYawTowardBoard(ds, yaw1 + 140),
                     elevZ: groundPx + ts * (1.1 + r * 0.35)
                 });
                 _acChromeFlash('kill');
                 shakeBoard('hard');
+                /* The silhouette flash is the Nuke's signature frame. */
+                if (_isNuke) {
+                    cineGrade('whiteout', 300);
+                    window.setTimeout(() => { if (_cineBeatOk(sequenceId)) cineGrade('bone desat', 500); }, actionMs(320));
+                }
                 _cineBeatMove({
                     zoom: _tpsZoomForBoomTiles(5.6 + r * 1.6),
                     duration: Math.max(300, afterMs - actionMs(150)), easing: 'linear',
@@ -21885,7 +22360,10 @@
                     heavy: true, totalMs: timings.totalMs });
                 const _shotOpts = { impactMs: _impactMs, frameTiles: opts.frameTiles,
                       shotKind: opts.shotKind, spellId: _cineSpellIdForShot,
-                      holdAfterLaunchMs: opts.holdAfterLaunchMs };
+                      holdAfterLaunchMs: opts.holdAfterLaunchMs,
+                      // The descent def's own clock (release + fall) for the
+                      // flyover / sky-fall directors (2026-09-13).
+                      descentCam: opts.descentCam };
                 _playCineActionShot(sourceUnit, target, timings, _fogPassthrough, sequenceId, _shotOpts);
                 /* SPELL CINEMATICS — layer the spell's own sequence (or, for
                    the ~375 spells without one, its family treatment) over the

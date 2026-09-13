@@ -4115,6 +4115,80 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
         linear-gradient(to right, transparent calc(50% - 1px), rgba(255,60,60,.7) 50%, transparent calc(50% + 1px)),
         linear-gradient(to bottom, transparent calc(50% - 1px), rgba(255,60,60,.7) 50%, transparent calc(50% + 1px));
 }
+/* ── THE EYELIDS (2026-09-13) — the sniper's squint. Two soft lids close in
+   from the top and bottom of the frame to a slit (--lid-amt of the height
+   each) while the first-person lens lines up the target; a hairline
+   reticle sits in the gap; the blink on the shot snaps them shut for a
+   frame. Sits above the letterbox chrome — it IS the frame. */
+.cine-eyelids {
+    position: absolute; inset: 0;
+    z-index: 95;
+    pointer-events: none;
+    --lid-amt: 0.3;
+    --lid-ms: 420ms;
+}
+.cine-eyelids .cine-lid {
+    position: absolute; left: -12%; right: -12%;
+    height: 62%;
+    background: #05030a;
+    box-shadow: 0 0 40px 18px rgba(5, 3, 10, 0.85);
+    transition: transform var(--lid-ms) cubic-bezier(.2, .7, .2, 1);
+    will-change: transform;
+}
+/* the inner edge is the lid's curve — a wide ellipse, lashes of blur */
+.cine-eyelids .cine-lid-top {
+    top: 0;
+    border-radius: 0 0 60% 60% / 0 0 100% 100%;
+    transform: translateY(-100%);
+}
+.cine-eyelids .cine-lid-bot {
+    bottom: 0;
+    border-radius: 60% 60% 0 0 / 100% 100% 0 0;
+    transform: translateY(100%);
+}
+.cine-eyelids.on .cine-lid-top { transform: translateY(calc(-100% + var(--lid-amt) * 100vh)); }
+.cine-eyelids.on .cine-lid-bot { transform: translateY(calc(100% - var(--lid-amt) * 100vh)); }
+/* the blink: shut for two frames, spring back to the squint */
+.cine-eyelids.on.blink .cine-lid-top { animation: cineLidBlinkTop .26s cubic-bezier(.4, 0, .2, 1); }
+.cine-eyelids.on.blink .cine-lid-bot { animation: cineLidBlinkBot .26s cubic-bezier(.4, 0, .2, 1); }
+@keyframes cineLidBlinkTop {
+    0%, 100% { transform: translateY(calc(-100% + var(--lid-amt) * 100vh)); }
+    35%, 55% { transform: translateY(calc(-100% + 52vh)); }
+}
+@keyframes cineLidBlinkBot {
+    0%, 100% { transform: translateY(calc(100% - var(--lid-amt) * 100vh)); }
+    35%, 55% { transform: translateY(calc(100% - 52vh)); }
+}
+/* the reticle in the slit: two hairlines + a breathing ring */
+.cine-eyelids .cine-eye-reticle {
+    position: absolute; inset: 0;
+    opacity: 0;
+    transition: opacity .3s ease .2s;
+}
+.cine-eyelids.on.reticle .cine-eye-reticle { opacity: 1; }
+.cine-eyelids .cine-eye-reticle i {
+    position: absolute; left: 50%; top: 50%;
+    background: rgba(255, 70, 60, 0.75);
+    box-shadow: 0 0 6px rgba(255, 70, 60, 0.6);
+}
+.cine-eyelids .cine-eye-reticle i:first-child { width: 22vw; height: 1px; transform: translate(-50%, -50%); }
+.cine-eyelids .cine-eye-reticle i:nth-child(2)  { width: 1px; height: 14vh; transform: translate(-50%, -50%); }
+.cine-eyelids .cine-eye-reticle b {
+    position: absolute; left: 50%; top: 50%;
+    width: 9vh; height: 9vh;
+    border: 1px solid rgba(255, 70, 60, 0.7);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: cineReticleBreathe 1.6s ease-in-out infinite;
+}
+@keyframes cineReticleBreathe {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: .7; }
+    50%      { transform: translate(-50%, -50%) scale(.86); opacity: 1; }
+}
+@media (max-width: 720px) {
+    .cine-eyelids .cine-eye-reticle i:first-child { width: 40vw; }
+}
+
 /* motion-blur speed lines at the frame edges (Ram Charge, dashes) */
 .cine-grade.g-speedlines .cine-grade-lines {
     opacity: .75;

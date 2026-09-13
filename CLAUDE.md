@@ -1898,3 +1898,52 @@ PROBE_EVAL — see PLAYTEST_NOTES "THE WORLD") — every CDN is blocked
 here, so it serves the repo scripts, node_modules copies of three /
 React / socket.io / MeshLine and GENERATED stand-in textures coloured by
 file name; the real sheets are unseen — eyeball live first.
+
+## THE DIRECTOR'S PASS — the spell camera (2026-09-13, local delivery)
+Three things in battle.js's SPELL CINEMATICS block + playDetonationCinematic.
+**THE BOARD-AWARE RIG (the beam edge bug)**: a beam ending at the rim put
+the reel's end-cap pivot 0.8 tiles PAST the victim and the eye 2.6 beyond;
+off the board `_camGroundPx` answered 0, so on a raised board the rig's
+flat floor sat under the map and the frame was the strata. Now
+`window._camGroundPx` clamps every lookup to the nearest edge tile,
+`_cineTpsAnchor(pos, unit, { liftPx })` clamps the pivot's ground read
+(`_cineClampTile`) and takes an explicit pivot height, `_cineEdgeRoom(x,
+y)` = tiles inside the rim (negative past it), `cineEndCapReverse` keeps
+its pivot on the victim's tile and becomes THE HIGH REVERSE (shorter boom,
+craned down) when there is no room past the rim, `cineSideDolly` scores
+both perpendiculars by where the EYE lands and takes the inside one, and
+`_cineYawTowardBoard(center, yaw, boom)` turns any strike-tile yaw whose
+eye would hang over the apron. Any new shot near the rim reads those.
+**THE SNIPER KIT** (`CINE_SEQUENCES._sniperKit` — headshot / precisionShot
+/ deadEye / kneecapShot / railgun): `cineSniperPov(caster, target, { fov,
+zoomMs, squint })` = FIRST PERSON — ThreeCamera's `cam._fpEye` branch
+(Strike Mode's rig) with the shooter's model hidden (`window._ewFpHideUid`),
+the gaze slope-aimed down the line, the lens zooming by FOV
+(`_cineFovTween`, the dolly-zoom's base/restore) and THE EYELIDS
+(`cineEyelids(ms, { amt, closeMs })` / `cineEyelidsBlink` /
+`cineEyelidsClear`; styles-cinematic.css `.cine-eyelids`) closing to a
+slit round a reticle; the shot blinks them, `_cineFpRelease()` hands the
+eye back (the sequence, `camera._apply`'s rig auto-release via
+`_cineFpOwned`, and `_cineReleaseAllFx` all call it), then the bullet cam
+and a freeze on the victim. Never over Strike Mode (`_shooterCamOwns`).
+**THE FLYOVER STRIKE** (Nuke / Artillery Strike are DELAYED spells — the
+cast is a mark, the camera is `playDetonationCinematic` at the end of the
+round): `VFX.getDescentFlyover(id)` says a craft flies it in → `cineFlyBy`
+(level lens at 3.2 tiles over the strike tile, span 11 — the VFX flies its
+craft ACROSS THE SCREEN, now on the horizon line: `fo.ndcY` 0.1 in the
+three flyover defs) → `cineFlyByTrack` (the VFX publishes its real path in
+`window._ewDescentCine`; the frame pans at 0.35× its speed) → `cineFallFollow`
+(`_cineTweenLift` rides the pivot from the jet's altitude to the tile,
+easeIn, tilt 90 → 56; the warhead now DROPS FROM THE JET — `fromZ` in
+`_fireDescent`, and the three flyovers are retimed `delayMs` = telegraph −
+duration/2 so the craft is overhead at the release) → the blast reverse +
+the Nuke's whiteout / bone-desat. Meteor-class delayed strikes (no craft)
+get `cineSkyWatch` (look UP into the airspace at the release, pitch DOWN
+with the fall); cast-time descent spells with no director get the same
+through `_cineApplyFamily`'s sky-fall branch (`shotOpts.descentCam`, now
+relayed). RULE #2: online.js wraps `window.playDetonationCinematic` (relay
+`det-cine`, guest fog-gated) and carries `descentCam`. `npm test` runs
+`spell-camera.test.js`. **`node playtest_spellcam.js`** (repo tooling, see
+PLAYTEST_NOTES "THE SPELL CAMERA PROBE") casts any spell between two
+teleported units offline and samples the rig; `FREEZE_AT` photographs a
+beat. Unseen live: the jet under the level lens, the eyelids' paper feel.

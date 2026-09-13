@@ -10401,3 +10401,37 @@ RIGHT wrist is bent 67° / twisted 51° in the clip itself; the left 16°. That 
 "contorted hand": the source animation, capped by `def.wristLimit` now.
 `EW_NO_CLOTH_COLLIDE` / `EW_CC_NO_DETAILS` toggle the rev 9 passes live for an A/B
 screenshot.
+
+## 🎥 THE SPELL CAMERA PROBE (2026-09-13) — playtest_spellcam.js
+`node playtest_spellcam.js` (repo tooling; needs the server on :3000 and
+the offline library copies: `npm install --no-save three@0.128.0
+react@18.3.1 react-dom@18.3.1 three.meshline` — ONE command) launches a Δ
+map offline exactly like playtest_world.js (repo scripts, node_modules
+libraries, generated stand-in textures; GLBs / audio 404 → units are
+placeholder boxes, the F-22 is the billboard sprite), takes both seats,
+TELEPORTS a caster and a dummy (`CASTER=x,y TARGET=x,y`), hands the caster
+one spell (`SPELL=<id>`; classRestriction stripped, cost 0, range 30),
+casts through the real doSpell with the action cam on, SAMPLES the camera
+(controller x/y/zoom/tilt/yaw, the TPS pivot + lift, `_fpEye`, the three
+eye + view dir, the ground under the eye, on/off-board) and prints a
+verdict: the lowest eye vs the board top and how many frames sat off-board
+under the edge — the beam edge bug read −5 tiles there before the fix.
+- `DETONATE=1` (`DETONATE_AFTER=ms`): a delayed strike's camera is at the
+  END-OF-ROUND detonation — the probe forces `roundsLeft = 1` and runs
+  `processDelayedSpellDetonations` itself, re-zeroing the clock.
+- `FREEZE_AT=ms`: software GL renders ~1 fps and a screenshot takes 3–7 s,
+  so a beat can never be photographed live; this clears every pending
+  timer + the camera tween at that instant and shoots the held frame
+  (`shots/spellcam/<TAG>_frozen<ms>.png`). Camera TWEENS crawl here (they
+  are rAF-paced) — hard cuts land, glides do not; trust the numbers for
+  anything timed.
+- `SHOTS=ms,…` plain screenshots (their real wall time is printed),
+  `TAG=` file prefix, `START_CAM='{"x":..}'` a starting framing.
+- Verified this way: the beam end-cap (`raceLaserBeam` 1,7 → 7,7 on
+  Nuketown: pivot [7,7], tilt 62, eye 1.6 tiles over the edge tile,
+  board in frame), the sniper POV (`precisionShot`: `fp: true`, the eye
+  0.88 tiles over the shooter's tile, yaw down the lane, the lids + the
+  reticle in `pov2_frozen2600.png`), the Nuke fly-by (`sharedNuke`
+  DETONATE=1: tilt 90, lift 3.2 tiles, horizon mid-frame in
+  `flyby_frozen250.png`). The jet itself and the bomb follow's glide are
+  UNSEEN here (GLB 404 / rAF-paced) — eyeball live.
