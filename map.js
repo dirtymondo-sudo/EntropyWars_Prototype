@@ -189,7 +189,7 @@
         let _hqLastRoom = 'central_egress';  // the room to rebuild on return (where _hqLastDoor is)
         /* screens that are pure DOM modals over whatever page is showing —
            the building waits underneath; their unmount resumes it */
-        const _HQ_MODAL = { _mountReactProfile: '_unmountReactProfile', _mountLeaderboard: '_unmountLeaderboard', _mountReactCreator: '_unmountReactCreator' };
+        const _HQ_MODAL = { _mountReactProfile: '_unmountReactProfile', _mountReactTrophies: '_unmountReactProfile', _mountLeaderboard: '_unmountLeaderboard', _mountReactCreator: '_unmountReactCreator' };
         /* dev: ?codered=<mapId> forces the day's Code Red onto that site (HQ
            plan 3.3) — no mastery needed; data.js hqCodeRed reads the force */
         try {
@@ -341,7 +341,7 @@
         };
         const _HQ_FN_LABELS = {
             _goToShop: 'SHOP', _goToTeamBuilder: 'PARTY BUILDER', _goToCodex: 'CODEX',
-            _mountReactProfile: 'PROFILE · ID CARD', _mountReactCreator: 'CHARACTER CREATOR', _goToCampaign: 'CHALLENGE', _goToMysteryDungeon: 'MYSTERY DUNGEON',
+            _mountReactProfile: 'PROFILE · ID CARD', _mountReactTrophies: 'ACHIEVEMENTS', _mountReactCreator: 'CHARACTER CREATOR', _goToCampaign: 'CHALLENGE', _goToMysteryDungeon: 'MYSTERY DUNGEON',
             _goToMapEditor: 'MAP EDITOR', _mountLeaderboard: 'LEADERBOARD', _mountCommunityMaps: 'COMMUNITY MAPS',
             _ewReplayLastMatch: 'REPLAY', _goToQuickPlay: 'QUICK PLAY', _goToFriendlyMatch: 'FRIENDLY MATCH',
         };
@@ -1036,6 +1036,50 @@
         }
         /* the PUNCH CLOCK (Room 247): the login streak — the front door
            punches you in on a fresh arrival (map.js _hqRecordVisit) */
+        /* ROOM 1984 · THE INTERROGATION ROOM (plan 7.4, 2026-09-13): THE TABLE —
+           what the CPU learned from watching you play. battle.js keeps the
+           imitation ledger (TRAINING MATCH, CLAUDE.md): _ewImitationSnapshot()
+           = { match, total, weights } (the all-time stats + the trained weight
+           table), _ewImitationHasReport() / _ewImitationReport() = the last
+           match's report panel (it opens over the building — z 1200). Nothing
+           here is relayed; the ledger is the viewer's own (RULE #2). */
+        function _hqTranscriptHtml() {
+            let html = '<div class="hq-panel-hd"><b>THE TABLE</b><span>INTERROGATION · WHAT THE CPU LEARNED FROM YOU</span></div>';
+            const snap = (typeof window._ewImitationSnapshot === 'function') ? window._ewImitationSnapshot() : null;
+            const t = snap && snap.total;
+            const defs = (typeof AI_WEIGHT_DEFAULTS !== 'undefined') ? AI_WEIGHT_DEFAULTS : {};
+            const fmt = v => (Math.abs(v) >= 100 ? Math.round(v) : Math.round(v * 100) / 100);
+            if (!t || !t.matches) {
+                html += '<p class="hq-panel-desc">The file on the table is empty. The CPU learns from you in a TRAINING MATCH — match-select, CPU TEMPO: ⚡ Training — and every decision it disagrees with lands here.</p>';
+                html += '<div class="hq-panel-actions"><button class="hq-btn" data-close="1">NOTED</button></div>';
+                html += '<p class="hq-panel-note">“Do you know why you are here?” “Training.” “That is what it says.”</p>';
+                return html;
+            }
+            const agreePct = t.observed ? Math.round(100 * t.agree / t.observed) : 0;
+            html += '<div class="hq-rows">';
+            html += `<div class="hq-row hq-row-tray"><b>TRAINING MATCHES ON FILE</b><span>EVERY SESSION IT WATCHED YOU</span><i class="hq-lamp-chip st-open">${t.matches}</i></div>`;
+            html += `<div class="hq-row hq-row-tray"><b>DECISIONS SCORED</b><span>YOUR MOVES, RUN THROUGH ITS OWN RANKING</span><i class="hq-lamp-chip st-open">${t.observed || 0}</i></div>`;
+            html += `<div class="hq-row hq-row-tray"><b>CPU AGREEMENT</b><span>${t.agree || 0} AGREED · ${t.disagree || 0} LEARNED FROM · ${t.unmatched || 0} UNSCORABLE</span><i class="hq-lamp-chip st-${agreePct >= 60 ? 'stabilized' : (agreePct >= 30 ? 'open' : 'unstable')}">${agreePct}%</i></div>`;
+            const w = snap.weights || {};
+            const moved = Object.keys(w).filter(k => defs[k] && Math.abs(w[k] - defs[k].value) > 1e-6);
+            html += `<div class="hq-row hq-row-tray"><b>WEIGHTS MOVED OFF DEFAULT</b><span>WHAT IT KEPT — IT ONLY KEEPS WHAT BEATS IT</span><i class="hq-lamp-chip st-${moved.length ? 'codered' : 'off'}">${moved.length}</i></div>`;
+            html += '</div>';
+            if (moved.length) {
+                html += '<div class="hq-rows">';
+                for (const k of moved.slice(0, 14)) {
+                    const d = defs[k], cur = w[k];
+                    html += `<div class="hq-row hq-row-tray"><b>${_hqEsc(d.label || k)}</b><span>${fmt(d.value)} → ${fmt(cur)}${(d.min != null && d.max != null) ? ' · [' + fmt(d.min) + ' .. ' + fmt(d.max) + ']' : ''}</span><i class="hq-lamp-chip st-${cur > d.value ? 'stabilized' : 'unstable'}">${cur > d.value ? '▲' : '▼'}</i></div>`;
+                }
+                if (moved.length > 14) html += `<div class="hq-row hq-row-tray"><b>AND ${moved.length - 14} MORE</b><span>THE FULL TABLE IS IN THE LAST REPORT</span></div>`;
+                html += '</div>';
+            }
+            html += '<div class="hq-panel-actions">';
+            const hasReport = (typeof window._ewImitationHasReport === 'function') && window._ewImitationHasReport();
+            html += `<button class="hq-btn hq-btn-primary" data-transcript="report" ${hasReport ? '' : 'disabled'} title="${hasReport ? 'The last training match’s report, with every disagreement' : 'Finish a training match this session and the report is on the table'}">THE LAST SESSION ▸ FULL REPORT</button>`;
+            html += '<button class="hq-btn" data-close="1">NOTED</button></div>';
+            html += '<p class="hq-panel-note">Nothing you say leaves this room. It goes into the weights. Reset = the Training panel (dev) → Reset.</p>';
+            return html;
+        }
         function _hqPunchHtml() {
             const profile = _hqProfile();
             const pc = (typeof window.hqPunchClock === 'function') ? window.hqPunchClock(profile) : null;
@@ -1476,12 +1520,25 @@
             if (act.overlay === 'punch') return _hqPunchHtml();
             if (act.overlay === 'barber') return _hqBarberHtml();
             if (act.overlay === 'starmap') return _hqStarmapHtml();
+            if (act.overlay === 'transcript') return _hqTranscriptHtml();
             if (act.overlay === 'training') return _hqTrainingHtml();
             if (act.overlay === 'crossing') return _hqCrossingHtml(t);
             let html = `<div class="hq-panel-hd"><b>${_hqEsc(c.label)}</b><span>${_hqEsc(c.sub || '')}</span></div>`;
             /* THE PROJECTOR (Room 360): the tape library's projection — the last tape on file */
             if (c.id === 'projector') html += '<p class="hq-panel-desc">The last crossing on file, projected on the dome. Records sent the tapes up with a note: DO NOT REWIND. The projector rewinds them anyway.</p>';
             if (c.id === 'board') html += '<p class="hq-panel-desc">Six laminated photographs. The frame in the corner has been empty since 1987. Nobody comments on it.</p>';
+            /* THE GLASS (Room 1984): a mirror from this side; the panel is the whole interaction */
+            if (c.id === 'glass') {
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'A round window that is a mirror from this side.') + '</p>';
+                html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">LOOK AWAY</button></div>';
+                html += '<p class="hq-panel-note">Internal Affairs sits on the other side. Whether anyone is there today is not a question this office answers.</p>';
+                return html;
+            }
+            /* THE CABINET (Room 111): the count on the way in */
+            if (c.id === 'cabinet') {
+                const tc = (typeof window.hqTrophyCount === 'function') ? window.hqTrophyCount(_hqProfile()) : null;
+                if (tc) html += `<p class="hq-panel-desc">${_hqEsc(c.desc || '')} <b>${tc.done} / ${tc.total}</b> engraved${tc.champs ? ', ' + tc.champs + ' champion plaques on the side wall' : ''}${tc.done ? '' : ' — the cabinet is all blanks so far'}.</p>`;
+            }
             /* Room 86's notice board mirrors FORM 365 (Room 247, plan 7.9): the day's count and a way to the sheet */
             if (c.id === 'notice') {
                 const sh = (typeof window.hqDailyOps === 'function') ? window.hqDailyOps(_hqProfile()) : null;
@@ -1644,6 +1701,9 @@
             const star = e.target.closest('[data-star]');
             if (star) { window._hqOpenThreshold(star.getAttribute('data-star'), { star: true }); return; }
             if (e.target.closest('[data-starmap]')) { window._hqOpenStarmap(); return; }
+            /* THE TABLE (Room 1984): the last training report opens over the building, the panel stays */
+            const tr = e.target.closest('[data-transcript]');
+            if (tr && !tr.disabled) { try { if (typeof window._ewImitationReport === 'function') window._ewImitationReport(); } catch (err) { console.warn('[HQ] transcript', err); } return; }
             const fnBtn = e.target.closest('[data-fn]');
             if (fnBtn && !fnBtn.disabled) { window._hqDoAction({ fn: fnBtn.getAttribute('data-fn') }); return; }
             const roomBtn = e.target.closest('[data-room]');

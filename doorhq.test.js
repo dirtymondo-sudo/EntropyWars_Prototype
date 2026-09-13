@@ -2321,3 +2321,121 @@ test('source scan: the renderer builds the projector, the dome, the chart and th
     assert.match(css, /\.hq-star\.st-codered \.hq-star-dot/, 'the red star blinks');
     assert.match(css, /\.hq-starmap svg/, 'the chart fills the panel');
 });
+
+/* ── ROOM 111 · THE TROPHY CASE + ROOM 1984 · THE INTERROGATION ROOM (HQ plan
+   7.4, 2026-09-13): two box rooms off the drums, each with a real function —
+   the cabinet opens the profile on its Achievements tab, the table opens the
+   CPU training transcript (the imitation ledger). ── */
+const TROPHY = HQ.rooms.trophycase;
+const INTERR = HQ.rooms.interrogation;
+
+test('Room 111 is a box room off the mezzanine at 290° (over Employee of the Month): the way in, the way out, the number, the cabinet, the cases', () => {
+    assert.ok(TROPHY && TROPHY.kind === 'box' && TROPHY.roomNo === '111', 'rooms.trophycase kind box, Room 111');
+    assert.strictEqual(D.hqRoomNo('trophycase'), '111');
+    assert.ok(!TROPHY.shell.open && TROPHY.shell.pipes === false && TROPHY.shell.h >= 3.0, 'an indoor room, no conduits');
+    const eg = ROOM.doors.find(d => d.id === 'trophycase');
+    assert.ok(eg && eg.deg === 290 && eg.level === 1 && eg.action.room === 'trophycase' && eg.action.at === 'egress', 'the mezzanine door at 290° walks into the room at its way out');
+    assert.strictEqual(D.hqDoorNo(eg), '111', 'the plate over the mezzanine door reads 111');
+    assert.ok(eg.roomNo == null, 'the hall door does not duplicate the room’s number (hqDoorNo derives it)');
+    const board = ROOM.counters.find(c => c.id === 'board');
+    assert.ok(board && Math.abs(board.deg - eg.deg) <= 5 && (board.level || 0) === 0, 'directly over EMPLOYEE OF THE MONTH');
+    const out = TROPHY.doors.find(d => d.id === 'egress');
+    assert.ok(out && out.wall === 'w' && out.action.room === 'central_egress' && out.action.at === 'trophycase' && out.leaf === eg.leaf && !!out.wide === !!eg.wide, 'the way out is the same glass door and lands at the mezzanine door');
+    assert.ok(!D.DOOR_TEXT.CLEARANCE.some(r => r.door === eg.leaf), 'not a rank leaf');
+    assert.strictEqual(D.doorSiteState(eg, null), 'open');
+    /* between Bay 6 (270°) and the Bureau (315°) on the upper drum, a pier to each */
+    const b6 = ROOM.doors.find(d => d.id === 'bay_quarantined'), bc = ROOM.doors.find(d => d.id === 'continuity');
+    const wOf = d => (d.wide ? 3.3 : 2.5) / 2, Rm = ROOM.shell.mezz.outer;
+    assert.ok((eg.deg - b6.deg) * Math.PI / 180 * Rm - wOf(eg) - wOf(b6) >= 2.0, 'a pier to Bay 6');
+    assert.ok((bc.deg - eg.deg) * Math.PI / 180 * Rm - wOf(eg) - wOf(bc) >= 2.0, 'a pier to the Bureau');
+    assert.ok(!ROOM.props.some(p => (p.level || 0) === 1 && p.wall && Math.abs(p.deg - eg.deg) < 5), 'no wall prop stands in the new doorway (the frame moved)');
+    assert.ok(!ROOM.props.some(p => (p.level || 0) === 1 && p.r != null && p.r > 21.5 && Math.abs(p.deg - eg.deg) < 5), 'nothing stands in front of it');
+    assert.ok(ROOM.props.some(p => p.key === 'picture_round_c' && (p.level || 0) === 1 && p.wall), 'the mezzanine keeps its frame');
+    /* the cabinet: the profile on its Achievements tab */
+    const cab = TROPHY.counters.find(c => c.id === 'cabinet');
+    assert.ok(cab && cab.action.fn === '_mountReactTrophies' && cab.verb, 'THE CABINET opens the achievements');
+    const has = key => TROPHY.props.filter(p => p.key === key).length;
+    for (const key of ['trophy_case', 'nameplate', 'filing_cabinet', 'wall_clock', 'curved_couch', 'coffee_table', 'globe_lamp', 'exit_sign', 'fluorescent', 'fire_extinguisher', 'potted_plant']) assert.ok(has(key) >= 1, 'Room 111 has its ' + key);
+    assert.strictEqual(has('trophy_case'), 2, 'two cases');
+    assert.ok(TROPHY.props.some(p => p.key === 'trophy_case' && p.wall === 'n' && Math.abs(p.x - cab.x) < 0.3), 'the cabinet counter stands at a case');
+    assert.ok(HQ.catalogue.trophy_case && HQ.catalogue.trophy_case.proc === 'trophy_case' && HQ.catalogue.trophy_case.wall && HQ.catalogue.trophy_case.glow, 'trophy_case is a lit wall proc');
+    assert.deepStrictEqual(boxPropProblems('trophycase', TROPHY), []);
+    assert.ok(TROPHY.spawn && Math.abs(TROPHY.spawn.x + TROPHY.shell.w / 2) < 1.2, 'you arrive at the way out');
+    const rows = D.hqRoomRegister().filter(r => r.no === '111');
+    assert.strictEqual(rows.length, 1); assert.strictEqual(rows[0].kind, 'room'); assert.strictEqual(rows[0].id, 'trophycase');
+});
+
+test('the cabinet (Room 111): hqTrophyCount reads the achievements ledger — catalogue tiers, champion plaques and legacy feats apart, lines sorted by what is engraved', () => {
+    assert.strictEqual(typeof D.hqTrophyCount, 'function');
+    const empty = D.hqTrophyCount(null);
+    assert.ok(empty.total > 0 && empty.done === 0 && empty.lines.length === 0, 'no card, no plaques, the catalogue still sets the total');
+    const cat = D.ACH_CATALOG;
+    const a = cat[0], b = cat[1];
+    const unlocked = {};
+    unlocked[a.id + '.0'] = 1; unlocked[a.id + '.1'] = 1; unlocked[b.id + '.0'] = 1;
+    unlocked['champ.dragon.kills.0'] = 1; unlocked['feat_first'] = 1;
+    unlocked[a.id + '.99'] = 1;   // a tier past the catalogue never counts
+    const tc = D.hqTrophyCount({ progress: { unlocked } });
+    assert.strictEqual(tc.done, 3); assert.strictEqual(tc.champs, 1); assert.strictEqual(tc.feats, 1);
+    assert.strictEqual(JSON.stringify(tc.lines.map(l => l.id)), JSON.stringify([a.id, b.id]), 'most engraved first');
+    assert.strictEqual(tc.lines[0].total, a.tiers.length);
+    assert.strictEqual(tc.total, cat.reduce((n, l) => n + (l.tiers || []).length, 0));
+});
+
+test('Room 1984 is a box room off the ground ring at 255° (between Records and Bay 1): the way in, the way out, the number, the table, the glass', () => {
+    assert.ok(INTERR && INTERR.kind === 'box' && INTERR.roomNo === '1984', 'rooms.interrogation kind box, Room 1984');
+    assert.strictEqual(D.hqRoomNo('interrogation'), '1984');
+    const eg = ROOM.doors.find(d => d.id === 'interrogation');
+    assert.ok(eg && eg.deg === 255 && (eg.level || 0) === 0 && eg.action.room === 'interrogation' && eg.action.at === 'egress', 'the hall door at 255° walks into the room at its way out');
+    assert.strictEqual(D.hqDoorNo(eg), '1984', 'the plate over the hall door reads 1984');
+    assert.ok(eg.roomNo == null, 'the hall door does not duplicate the room’s number');
+    const out = INTERR.doors.find(d => d.id === 'egress');
+    assert.ok(out && out.wall === 'w' && out.action.room === 'central_egress' && out.action.at === 'interrogation' && out.leaf === eg.leaf && !!out.wide === !!eg.wide, 'the way out is the same cell door and lands at the hall door');
+    assert.ok(!D.DOOR_TEXT.CLEARANCE.some(r => r.door === eg.leaf), 'not a rank leaf');
+    assert.strictEqual(D.doorSiteState(eg, null), 'open');
+    /* between RECORDS (240°) and BAY 1 (270°), a pier to each */
+    const rec = ROOM.doors.find(d => d.id === 'records'), b1 = ROOM.doors.find(d => d.id === 'bay_terrestrial');
+    const wOf = d => ((d.wide || (d.leaf && HQ.catalogue[d.leaf] && HQ.catalogue[d.leaf].wide)) ? 3.3 : 2.5) / 2;
+    assert.ok((eg.deg - rec.deg) * Math.PI / 180 * ROOM.shell.radius - wOf(eg) - wOf(rec) >= 2.0, 'a pier to Records');
+    assert.ok((b1.deg - eg.deg) * Math.PI / 180 * ROOM.shell.radius - wOf(eg) - wOf(b1) >= 2.0, 'a pier to Bay 1');
+    assert.ok(!ROOM.props.some(p => !(p.level || 0) && p.wall && Math.abs(p.deg - eg.deg) < 5), 'no wall prop stands in the new doorway (the frame and the extinguisher moved)');
+    assert.ok(!ROOM.props.some(p => !(p.level || 0) && p.r != null && p.r > 18.5 && Math.abs(p.deg - eg.deg) < 6), 'nothing stands in front of it (the boxes moved)');
+    assert.ok(ROOM.props.some(p => p.key === 'fire_extinguisher' && !(p.level || 0) && p.wall && p.deg > 255 && p.deg < 270), 'the hall keeps the extinguisher beside it');
+    /* the table: the transcript; the glass: a panel and nothing else */
+    const tb = INTERR.counters.find(c => c.id === 'table'), gl = INTERR.counters.find(c => c.id === 'glass');
+    assert.ok(tb && tb.action.overlay === 'transcript' && tb.verb, 'THE TABLE opens the transcript');
+    assert.ok(gl && !gl.action.fn && !gl.action.overlay && gl.desc, 'THE GLASS has a panel and no action');
+    const has = key => INTERR.props.filter(p => p.key === key).length;
+    for (const key of ['steel_table', 'folding_chair', 'desk_lamp', 'observation_window', 'manila_folders', 'tube_tv', 'metal_shelving', 'filing_cabinet', 'wall_clock', 'exit_sign', 'fluorescent', 'fire_extinguisher', 'breaker_panel']) assert.ok(has(key) >= 1, 'Room 1984 has its ' + key);
+    assert.strictEqual(has('steel_table'), 1); assert.ok(has('folding_chair') >= 2, 'two chairs at the table');
+    assert.ok(INTERR.props.some(p => p.key === 'observation_window' && p.wall === 'n'), 'the one-way mirror is the round observation window on the north wall');
+    assert.ok(INTERR.props.filter(p => p.key === 'folding_chair' && Math.abs(p.x - tb.x) < 0.2 && Math.abs(Math.abs(p.z - tb.z) - 1.0) < 0.2).length === 2, 'the two chairs face each other across the table');
+    assert.ok(HQ.catalogue.steel_table && HQ.catalogue.steel_table.proc === 'steel_table' && HQ.catalogue.steel_table.block && !HQ.catalogue.steel_table.wall, 'steel_table is a solid floor proc');
+    assert.ok(INTERR.agents.some(a => a.pose === 'hqSit' && Math.abs(a.z - (tb.z - 1.0)) < 0.2), 'the interviewer sits in the far chair');
+    assert.deepStrictEqual(boxPropProblems('interrogation', INTERR), []);
+    const rows = D.hqRoomRegister().filter(r => r.no === '1984');
+    assert.strictEqual(rows.length, 1); assert.strictEqual(rows[0].kind, 'room'); assert.strictEqual(rows[0].id, 'interrogation');
+});
+
+test('Rooms 111 + 1984 — the source sites: the cabinet mount, the transcript overlay, the two procs, the report hook', () => {
+    const mp = fs.readFileSync(path.join(__dirname, 'map.js'), 'utf8');
+    const pf = fs.readFileSync(path.join(__dirname, 'profile.js'), 'utf8');
+    const tr = fs.readFileSync(path.join(__dirname, 'three-renderer.js'), 'utf8');
+    const bt = fs.readFileSync(path.join(__dirname, 'battle.js'), 'utf8');
+    assert.match(pf, /window\._mountReactTrophies = function\(\) \{ window\._mountReactProfile\(\{ tab: 'achievements' \}\); \};/, 'the cabinet opens the profile on its Achievements tab');
+    assert.match(pf, /function ProfilePage\(\{ initialTab \} = \{\}\)/, 'ProfilePage takes the tab');
+    assert.match(pf, /React\.useState\(initialTab \|\| 'overview'\)/, 'and starts on it');
+    assert.match(mp, /_mountReactTrophies: '_unmountReactProfile'/, 'the cabinet is a modal over the building (the profile’s unmount)');
+    assert.match(mp, /_mountReactTrophies: 'ACHIEVEMENTS'/, 'the panel names it');
+    assert.match(mp, /if \(act\.overlay === 'transcript'\) return _hqTranscriptHtml\(\);/, 'the table’s overlay');
+    assert.match(mp, /function _hqTranscriptHtml\(\)/, 'the transcript panel');
+    assert.match(mp, /window\._ewImitationSnapshot\(\)/, 'reads the imitation ledger');
+    assert.match(mp, /data-transcript="report"/, 'offers the last report');
+    assert.match(mp, /e\.target\.closest\('\[data-transcript\]'\)/, 'and opens it in place (never a leave-the-building fn)');
+    assert.match(mp, /if \(c\.id === 'glass'\) \{/, 'the glass has its panel');
+    assert.match(mp, /if \(c\.id === 'cabinet'\) \{/, 'the cabinet states the count');
+    assert.match(bt, /window\._ewImitationHasReport = \(\) => !!_imitLastReport;/, 'battle.js says whether a report is on file');
+    assert.match(tr, /^\s+trophy_case: function \(U\) \{/m, 'the trophy_case proc');
+    assert.match(tr, /^\s+steel_table: function \(U\) \{/m, 'the steel_table proc');
+    assert.match(tr, /window\.hqTrophyCount\(prof\)/, 'the plaques read the ledger');
+});

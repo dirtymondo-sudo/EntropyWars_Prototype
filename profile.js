@@ -2426,10 +2426,10 @@ function CommunityMapsPage() {
   );
 }
 
-function ProfilePage() {
+function ProfilePage({ initialTab } = {}) {
   const [activeSlot, setActiveSlot] = React.useState(getActiveProfileIndex);
   const [profile, setProfile] = React.useState(null);
-  const [tab, setTab] = React.useState('overview');
+  const [tab, setTab] = React.useState(initialTab || 'overview');
   const [editingName, setEditingName] = React.useState(false);
   const [newName, setNewName] = React.useState('');
   const [showCreate, setShowCreate] = React.useState(false);
@@ -2620,7 +2620,7 @@ function ProfilePage() {
 
 let _profileRoot = null;
 
-window._mountReactProfile = function() {
+window._mountReactProfile = function(opts) {
   let container = document.getElementById('profileOverlay');
   if (!container) {
     container = document.createElement('div');
@@ -2630,8 +2630,15 @@ window._mountReactProfile = function() {
   if (!_profileRoot) {
     _profileRoot = ReactDOM.createRoot(container);
   }
-  _profileRoot.render(h(ProfilePage));
+  /* opts.tab opens the page on that tab (ROOM 111 · THE TROPHY CASE, 2026-09-13:
+     the cabinet opens the Achievements tab); every other caller gets the overview */
+  _profileRoot.render(h(ProfilePage, { initialTab: (opts && opts.tab) || undefined }));
 };
+
+/* ROOM 111 · THE TROPHY CASE (HQ plan 7.4, 2026-09-13): the cabinet counter
+   opens the profile on its Achievements tab — the same page, the same
+   unmount (_unmountReactProfile; map.js _HQ_MODAL maps it). */
+window._mountReactTrophies = function() { window._mountReactProfile({ tab: 'achievements' }); };
 
 window._unmountReactProfile = function() {
   if (_profileRoot) {

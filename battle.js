@@ -29703,6 +29703,9 @@
             el.style.display = 'block';
         }
         window._ewImitationReport = () => { if (_imitLastReport) _imitShowReport(_imitLastReport); else addLog('No imitation report yet — finish a training match first.'); };
+        /* ROOM 1984 · THE INTERROGATION ROOM (HQ plan 7.4, 2026-09-13): the table's panel asks before it offers the last report */
+        window._ewImitationHasReport = () => !!_imitLastReport;
+        window._ewImitationLastReport = () => _imitLastReport;
         window._ewImitationReportClose = () => { const el = document.getElementById('imitReportPanel'); if (el) el.style.display = 'none'; };
         window._ewImitationReportExport = () => {
             if (!_imitLastReport) return;

@@ -36932,6 +36932,76 @@ const ThreeRenderer = (function () {
         /* the cork NOTICE BOARD: a wall prop (origin at the mount height, the
            panel centred z = 0 within `depth`), the leaderboard counter's look
            — teal frame, dark cork, pinned sheets, one red form on top */
+        /* ROOM 111 · THE TROPHY CASE (2026-09-13, plan 7.4): a lit glass cabinet
+           on a plinth, front = +z like every wall proc. Three shelves; the top
+           one carries the cups, the back panel three rows of three plaques —
+           GOLD for the engraved ones (data.js hqTrophyCount reads the
+           achievements ledger of the active profile; the count is read once
+           at build, the room is rebuilt on every visit), blank brass for the
+           rest. The catalogue's glow is the cabinet's own light. */
+        trophy_case: function (U) {
+            var g = new THREE.Group();
+            var W = 1.6, H = 2.1, D = 0.42, PL = 0.5;
+            var wood = _hqMat('teal', 2, 2, { shininess: 30 });
+            var chrome = _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 90, specular: 0xaaaaaa });
+            var back = _hqMat(null, 1, 1, { color: 0x2b2330, shininess: 8 });
+            var felt = _hqMat(null, 1, 1, { color: 0x4a2a30, shininess: 2 });
+            var gold = _hqMat(null, 1, 1, { color: 0xd9b45a, shininess: 120, specular: 0xfff0c0, emissive: 0x3a2a08 });
+            var brass = _hqMat(null, 1, 1, { color: 0x8a7a58, shininess: 40, specular: 0x665533 });
+            var plinth = _hqBox(W, PL, D, wood); plinth.position.set(0, (PL / 2) * U, (D / 2) * U); g.add(plinth);
+            var bk = _hqBox(W, H - PL, 0.03, back); bk.position.set(0, (PL + (H - PL) / 2) * U, 0.015 * U); g.add(bk);
+            var sideL = _hqBox(0.03, H - PL, D, chrome); sideL.position.set((-W / 2 + 0.015) * U, (PL + (H - PL) / 2) * U, (D / 2) * U); g.add(sideL);
+            var sideR = _hqBox(0.03, H - PL, D, chrome); sideR.position.set((W / 2 - 0.015) * U, (PL + (H - PL) / 2) * U, (D / 2) * U); g.add(sideR);
+            var top = _hqBox(W, 0.04, D, chrome); top.position.set(0, (H - 0.02) * U, (D / 2) * U); g.add(top);
+            var glass = new THREE.Mesh(new THREE.PlaneGeometry((W - 0.06) * U, (H - PL - 0.04) * U), _hqBasic(0xcfe4f0, { transparent: true, opacity: 0.16, side: THREE.DoubleSide }));
+            glass.position.set(0, (PL + (H - PL) / 2) * U, (D - 0.01) * U); g.add(glass);
+            var shelfY = [PL + 0.02, PL + 0.5, PL + 0.98, PL + 1.3];
+            shelfY.forEach(function (y, i) { var sh = _hqBox(W - 0.06, 0.025, D - 0.06, i ? _hqBasic(0xb8d0dc, { transparent: true, opacity: 0.45 }) : felt); sh.position.set(0, y * U, (D / 2) * U); g.add(sh); });
+            /* the plaques: three rows of three, engraved ones gold */
+            var engraved = 0;
+            try {
+                var prof = (typeof window !== 'undefined' && window.ProfileSystem && window.ProfileSystem.getActiveProfile) ? window.ProfileSystem.getActiveProfile() : null;
+                var tc = (typeof window !== 'undefined' && typeof window.hqTrophyCount === 'function') ? window.hqTrophyCount(prof) : null;
+                engraved = tc ? Math.min(9, tc.lines.length) : 0;
+            } catch (e) { engraved = 0; }
+            var n = 0;
+            for (var r = 0; r < 3; r++) for (var c = 0; c < 3; c++) {
+                var isGold = n < engraved; n++;
+                var pq = _hqBox(0.3, 0.17, 0.025, isGold ? gold : brass);
+                pq.position.set((-0.46 + c * 0.46) * U, (PL + 1.02 + (2 - r) * 0.27 - (r === 2 ? 0.02 : 0)) * U, 0.045 * U); g.add(pq);
+                var plate = _hqBox(0.22, 0.09, 0.006, isGold ? _hqBasic(0xfff1c0) : _hqBasic(0x6a5c44));
+                plate.position.set((-0.46 + c * 0.46) * U, (PL + 1.02 + (2 - r) * 0.27 - (r === 2 ? 0.02 : 0)) * U, 0.06 * U); g.add(plate);
+            }
+            /* the cups on the top shelf */
+            for (var k = 0; k < 3; k++) {
+                var cx = (-0.45 + k * 0.45) * U, cy = (PL + 1.3 + 0.0125) * U;
+                var base = new THREE.Mesh(new THREE.CylinderGeometry(0.06 * U, 0.075 * U, 0.03 * U, 16), k === 1 ? gold : brass); base.position.set(cx, cy + 0.015 * U, (D / 2) * U); g.add(base);
+                var stem = new THREE.Mesh(new THREE.CylinderGeometry(0.014 * U, 0.02 * U, 0.09 * U, 10), k === 1 ? gold : brass); stem.position.set(cx, cy + 0.075 * U, (D / 2) * U); g.add(stem);
+                var cup = new THREE.Mesh(new THREE.CylinderGeometry(0.075 * U, 0.03 * U, 0.14 * U, 16, 1, true), k === 1 ? gold : brass); cup.material = cup.material.clone(); cup.material.side = THREE.DoubleSide; cup.position.set(cx, cy + 0.19 * U, (D / 2) * U); g.add(cup);
+            }
+            /* the bulbs under the top */
+            var bulb = _hqBasic(0xfff3d9);
+            for (var b = 0; b < 4; b++) { var bl = new THREE.Mesh(new THREE.SphereGeometry(0.022 * U, 8, 6), bulb); bl.position.set((-0.6 + b * 0.4) * U, (H - 0.06) * U, (D - 0.08) * U); g.add(bl); }
+            return g;
+        },
+        /* ROOM 1984 · THE INTERROGATION ROOM (2026-09-13, plan 7.4): the steel
+           table — a brushed top on four square legs, a cross brace, the ring
+           bolt in the middle of the top. A floor proc (foot 0.75, block). */
+        steel_table: function (U) {
+            var g = new THREE.Group();
+            var W = 1.6, D = 0.8, H = 0.76;
+            var steel = _hqMat(null, 1, 1, { color: 0x9aa0a6, shininess: 70, specular: 0x99a0a8 });
+            var dark = _hqMat(null, 1, 1, { color: 0x3c4048, shininess: 40, specular: 0x555555 });
+            var top = _hqBox(W, 0.05, D, steel); top.position.set(0, (H - 0.025) * U, 0); g.add(top);
+            var lip = _hqBox(W + 0.02, 0.02, D + 0.02, dark); lip.position.set(0, (H - 0.06) * U, 0); g.add(lip);
+            [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (s) {
+                var leg = _hqBox(0.05, H - 0.06, 0.05, dark); leg.position.set(s[0] * (W / 2 - 0.06) * U, ((H - 0.06) / 2) * U, s[1] * (D / 2 - 0.06) * U); g.add(leg);
+            });
+            var brace = _hqBox(W - 0.14, 0.04, 0.04, dark); brace.position.set(0, 0.22 * U, 0); g.add(brace);
+            var ring = new THREE.Mesh(new THREE.TorusGeometry(0.045 * U, 0.008 * U, 8, 18), dark); ring.rotation.x = Math.PI / 2; ring.position.set(0, (H + 0.006) * U, 0); g.add(ring);
+            var bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 0.02 * U, 10), dark); bolt.position.set(0, (H + 0.005) * U, 0); g.add(bolt);
+            return g;
+        },
         notice_board: function (U) {
             var g = new THREE.Group();
             var W = 1.6, H = 1.15, D = 0.06;

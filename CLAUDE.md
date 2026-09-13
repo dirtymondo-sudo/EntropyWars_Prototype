@@ -357,6 +357,34 @@ WALKS AS row. Cosmetic and viewer-local — nothing on `state`, nothing
 relayed (RULE #2). This answers HQ plan D13. doorhq.test.js guards the
 room, the helpers and the source sites.
 
+## ROOM 111 + ROOM 1984 (The Trophy Case, The Interrogation Room, HQ plan 7.4) — added 2026-09-13
+`DOOR_HQ.rooms.trophycase` (data.js) is THE TROPHY CASE, a `kind: 'box'`
+room off the MEZZANINE at 290° (`central_egress.doors` id `trophycase`,
+`level: 1`, `leaf_glass_exec`, between Bay 6 and the Bureau, directly
+over the EMPLOYEE OF THE MONTH board; the frame that hung at 288° moved to
+281°). Counter `cabinet` → `fn: '_mountReactTrophies'` (profile.js) =
+`_mountReactProfile({ tab: 'achievements' })` — `ProfilePage({ initialTab })`
+is the only change to the page; map.js `_HQ_MODAL` maps the new mount to
+`_unmountReactProfile` (add any future tab-mount there too or the building
+never resumes). **`hqTrophyCount(profile)`** (data.js, on `window`) =
+`{ done, total, champs, feats, lines }` off `progress.unlocked` — the ONE
+read for the panel's count and the proc's gold. Proc `trophy_case`
+(three-renderer.js `_hqProcBuilders`, wall, `glow`): three rows of three
+plaques, gold for the first `lines.length` (read once at build). `DOOR_HQ.
+rooms.interrogation` is THE INTERROGATION ROOM, a box room off the ground
+ring at 255° (door id `interrogation`, `leaf_cell`, between Records and
+Bay 1; the frame / extinguisher / boxes there moved to 247° / 262° / 263°).
+Counter `table` → `overlay: 'transcript'` → map.js `_hqTranscriptHtml`:
+the TRAINING MATCH imitation ledger from battle.js `_ewImitationSnapshot()`
+(`total` + `weights` vs `AI_WEIGHT_DEFAULTS`) and a `[data-transcript]`
+button that opens `_ewImitationReport()` IN PLACE (never through
+`_hqDoAction` — a bare `fn` outside `_HQ_MODAL` leaves the building),
+enabled by the new one-liner `_ewImitationHasReport()`. Counter `glass`
+has `action: {}` — `_hqCounterPanelHtml` renders its own panel by id. Proc
+`steel_table` (floor, `block`, top at 0.76 — tabletop props sit at
+`y: 0.76`). Both rooms are viewer-local (RULE #2). doorhq.test.js guards
+the rooms, the helper and the source sites.
+
 ## ROOM 360 + THE STAR CHART (The Observatorium, HQ plan 7.4) — added 2026-09-11
 `DOOR_HQ.rooms.observatorium` (data.js) is THE OBSERVATORIUM, a `kind:
 'box'` room off the MEZZANINE at 240° (`central_egress.doors` id

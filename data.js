@@ -17207,6 +17207,9 @@ const DOOR_HQ = {
         star_projector:    { proc: 'star_projector', h: 1.7,     foot: 0.75, block: true, glow: { y: 1.3, size: 1.7, color: 0xbfe6ff } },
         star_dome:         { proc: 'star_dome',      h: 0.4,     foot: 0, ceil: true },
         star_chart:        { proc: 'star_chart',     h: 1.5,     foot: 0, wall: true, mount: 1.0,  depth: 0.06 },
+        /* ROOM 111 · THE TROPHY CASE + ROOM 1984 · THE INTERROGATION ROOM (2026-09-13, plan 7.4) */
+        trophy_case:       { proc: 'trophy_case',    h: 2.1,     foot: 0, wall: true, mount: 0,    depth: 0.42, block: true, glow: { y: 1.7, size: 1.6, color: 0xfff3d9 } },   // a lit glass cabinet: plaques in threes, the cups
+        steel_table:       { proc: 'steel_table',    h: 0.76,    foot: 0.75, block: true },   // the interrogation table: a steel top, a ring bolt
         telescope:         { proc: 'telescope',      h: 1.6,     foot: 0.45, block: true },
         /* ══ THE 2026-09-10 BATCH (30 Meshy GLBs, R2 Assets/door/models/) ══
            The user's cafeteria / office / mission kit. Four of them RETIRE a
@@ -18667,6 +18670,9 @@ const DOOR_HQ = {
                 { id: 'clockroom',      deg: 225, level: 0, leaf: 'leaf_frosted',        wide: true,  label: 'THE CLOCK ROOM',          sub: 'DAILY TASKS · LOGIN STREAK', action: { room: 'clockroom', at: 'egress' },
                   desc: 'Daily Office Operations Requirements. Three lines a day, the punch clock, and every clock in the room — none of them agree, all of them are right somewhere.' },
                 { id: 'records',        deg: 240, level: 0, leaf: 'leaf_wired_double', wide: true,  label: 'RECORDS',                 sub: 'CODEX', action: { fn: '_goToCodex' },       roomNo: '42', why: 'the room with the answer; it only keeps the file', desc: '“We only keep the file.” Entity dossiers, unfiled sites. The tape library went upstairs with the projector — Room 360, directly overhead.', alt: { label: 'THE TAPE LIBRARY ▸ ROOM 360 (UPSTAIRS)', room: 'observatorium', at: 'projector' }, alt2: { label: 'UNFILED SITES (COMMUNITY MAPS)', fn: '_mountCommunityMaps' } },
+                /* ROOM 1984 · THE INTERROGATION ROOM (plan 7.4, 2026-09-13): between RECORDS and BAY 1 — Internal Affairs keeps its room next to the file */
+                { id: 'interrogation',  deg: 255, level: 0, leaf: 'leaf_cell',                      label: 'THE INTERROGATION ROOM',  sub: 'CPU TRAINING TRANSCRIPT', action: { room: 'interrogation', at: 'egress' },
+                  desc: 'Room 1984. One table, two chairs, one lamp, one round window that is a mirror from this side. What the CPU learned from watching you play — every disagreement on file, every weight it moved. Internal Affairs sits behind the glass. Nobody comments.' },
                 { id: 'bay_terrestrial',deg: 270, level: 0, leaf: 'leaf_suburban_house',            label: 'BAY 1 · TERRESTRIAL',    sub: 'BATTLE MAPS',            action: { sector: 'terrestrial' } },
                 /* ── mezzanine (support / executive access) ── */
                 { id: 'elevator',       deg: 0,   level: 1, leaf: null, proc: 'elevator',          label: 'ELEVATOR',                sub: 'EXECUTIVE FLOORS · KEYHOLDER RANK',             action: { room: 'executive' },      minClearance: 4, requiresKeys: 12, floors: ['B', 'G', 'M', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '14', 'PH'], desc: 'Director offices. KEYHOLDER clearance and above; the car does not move without Keys.' },
@@ -18685,6 +18691,9 @@ const DOOR_HQ = {
                 { id: 'observatorium',  deg: 240, level: 1, leaf: 'leaf_holographic',              label: 'THE OBSERVATORIUM',       sub: 'MAP SELECT · REPLAY',        action: { room: 'observatorium', at: 'egress' },
                   desc: 'Room 360. The whole sky from one chair: every threshold in the building is a star on the ceiling — point at one on the chart and its door opens from here. The tape library came upstairs with the projector. The dome is painted; the telescope is pointed at the paint.' },
                 { id: 'bay_quarantined',deg: 270, level: 1, leaf: 'leaf_cell',                      label: 'BAY 6 · QUARANTINED',     sub: 'BATTLE MAPS',            action: { sector: 'quarantined' } },
+                /* ROOM 111 · THE TROPHY CASE (plan 7.4, 2026-09-13): the mezzanine over EMPLOYEE OF THE MONTH (288°), between Bay 6 and the Bureau */
+                { id: 'trophycase',     deg: 290, level: 1, leaf: 'leaf_glass_exec',                label: 'THE TROPHY CASE',         sub: 'ACHIEVEMENTS',            action: { room: 'trophycase', at: 'egress' },
+                  desc: 'Room 111. The glass cabinet over Employee of the Month: every commendation the Department has engraved for you. Open the cabinet and the whole record comes out. The blank plaques are not a comment.' },
                 { id: 'continuity',     deg: 315, level: 1, leaf: 'leaf_suburban_house',            label: 'BUREAU OF CONTINUITY',    sub: 'STORY CANON · GATEKEEPER RANK',           action: { room: 'continuity' },     minClearance: 5, requiresKeys: 24, roomNo: '№ — CONTESTED', why: 'a joke, and a policy', desc: 'Canon notices. The motto plaque. The only department that suspects the schedule. GATEKEEPER clearance and two dozen Keys.' },
             ],
             /* walk-up interactions that are not doors */
@@ -18774,7 +18783,7 @@ const DOOR_HQ = {
                 /* against the lower wall, between doors */
                 { key: 'filing_cabinet', deg: 232, level: 0, wall: true },   // moved 6° for the Clock Room's door at 225° (2026-09-11)
                 { key: 'filing_cabinet', deg: 235, level: 0, wall: true },
-                { key: 'cardboard_boxes', deg: 256, r: 19.3, level: 0, rot: 15 },
+                { key: 'cardboard_boxes', deg: 263, r: 19.3, level: 0, rot: 15 },   // moved from 256°: Room 1984's door (2026-09-13)
                 { key: 'office_locker',  deg: 134, level: 0, wall: true },
                 { key: 'locker',         deg: 137, level: 0, wall: true },
                 { key: 'vending_machine', deg: 98,  level: 0, wall: true },     // 105° until Room 1287's door took the spot (2026-09-11)
@@ -18803,11 +18812,11 @@ const DOOR_HQ = {
                    photographs. Records is not releasing the photographs. */
                 { key: 'picture_round_a', deg: 188, level: 0, wall: true },
                 { key: 'picture_round_b', deg: 216, level: 0, wall: true },   // 2° west for the Clock Room's door (2026-09-11)
-                { key: 'picture_round_c', deg: 250, level: 0, wall: true },
+                { key: 'picture_round_c', deg: 247, level: 0, wall: true },         // moved from 250°: Room 1984's door
                 { key: 'potted_plant',   deg: 84,  r: 19.2, level: 0 },   // 2026-09-11: was 76° — Room 86's door is there now
                 { key: 'potted_plant',   deg: 284, r: 19.2, level: 0 },
                 { key: 'fire_extinguisher', deg: 172, level: 0, wall: true },
-                { key: 'fire_extinguisher', deg: 258, level: 0, wall: true },
+                { key: 'fire_extinguisher', deg: 262, level: 0, wall: true },       // moved from 258°: Room 1984's door
                 { key: 'wall_clock',     deg: 165, level: 0, wall: true },
                 { key: 'wall_clock',     deg: 345, level: 0, wall: true },
                 { key: 'exit_sign',      deg: 180, level: 0, r: 20.42, mount: 2.62 },
@@ -18859,7 +18868,7 @@ const DOOR_HQ = {
                 { key: 'trash_bin',      deg: 105.5, r: 23.3,  level: 1 },
                 { key: 'hook_rail_long', deg: 342,   level: 1, wall: true, mount: 1.8 },
                 { key: 'picture_round_a', deg: 32,   level: 1, wall: true },
-                { key: 'picture_round_c', deg: 288,  level: 1, wall: true },
+                { key: 'picture_round_c', deg: 281,  level: 1, wall: true },        // moved from 288°: Room 111's door (2026-09-13)
             ],
             /* where DOOR agents stand (fixed) and roster vessels loiter */
             agents: [
@@ -19384,6 +19393,191 @@ const DOOR_HQ = {
             spawn: { x: -3.1, z: 0, face: 90 },
         },
 
+
+        /* ── ROOM 111 · THE TROPHY CASE (HQ plan 7.4, 2026-09-13) — a box room
+           off the MEZZANINE at 290°, over EMPLOYEE OF THE MONTH (the board at
+           288° on the floor below), between Bay 6 and the Bureau of
+           Continuity. The user's 111: first place, three times over. THE
+           CABINET is the counter →
+           profile.js _mountReactTrophies (the profile opened on its
+           Achievements tab — ACHIEVEMENTS_PLAN's trophy case, in a room). The
+           cabinets are the trophy_case proc (three-renderer.js): a lit glass
+           case, three shelves, three rows of plaques — gold for the engraved ones
+           (hqTrophyCount reads the ledger), blank for the rest — the cups on
+           the top shelf. The curator's line and the overheard lines are
+           Claude placeholders (A15 — rewrite at will). Viewer-local, nothing
+           relayed (RULE #2). ── */
+        trophycase: {
+            label: 'THE TROPHY CASE',
+            sub: 'ACHIEVEMENTS',
+            roomNo: '111', why: 'first place, three times over — the user’s',
+            kind: 'box',
+            shell: {
+                w: 8, d: 5.5, h: 3.2,
+                wallH: 3.2, dadoH: 1.05,
+                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
+                wallColor: 0xd8d2c2,          // a lighter room than the hall: the cases are the light
+                pipes: false,
+                light: { x: 0, z: 0.6 },
+                plate: { x: 0, z: -2.5, y: 2.75 },
+            },
+            doors: [
+                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_glass_exec',
+                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MEZZANINE',
+                  action: { room: 'central_egress', at: 'trophycase' },
+                  desc: 'The way back to the mezzanine. The board below is Employee of the Month; this room is everyone else.' },
+            ],
+            counters: [
+                /* THE CABINET → the profile on its Achievements tab */
+                { id: 'cabinet', x: -1.7, z: -1.75, face: 0, plateY: 2.3, radius: 1.7, verb: 'OPEN',
+                  label: 'THE CABINET', sub: 'ACHIEVEMENTS', action: { fn: '_mountReactTrophies' },
+                  desc: 'Every commendation the Department has engraved for you. Open it and the whole record comes out.' },
+            ],
+            props: [
+                /* ── the north wall: the two cases, the nameplate between ── */
+                { key: 'trophy_case',    wall: 'n', x: -1.7 },
+                { key: 'trophy_case',    wall: 'n', x: 1.7 },
+                { key: 'nameplate',      wall: 'n', x: 0, mount: 1.55 },
+                { key: 'vent_grille',    wall: 'n', x: 3.4, mount: 2.6 },
+                /* ── the east wall: the file on the cases, a clock, a plant ── */
+                { key: 'filing_cabinet', wall: 'e', z: -1.6 },
+                { key: 'picture_round_a', wall: 'e', z: 0.2 },
+                { key: 'wall_clock',     wall: 'e', z: 1.5, mount: 2.4 },
+                { key: 'potted_plant',   x: 3.5, z: 2.2 },
+                /* ── the south wall: the couch that faces the cases, the table, the reading ── */
+                { key: 'curved_couch',   x: 0.4, z: 1.9, face: 180 },
+                { key: 'coffee_table',   x: 0.4, z: 0.55 },
+                { key: 'papers_b',       x: 0.25, z: 0.55, y: 0.47, face: 15 },
+                { key: 'coffee_mug',     x: 0.75, z: 0.5, y: 0.47, face: 0 },
+                { key: 'picture_round_b', wall: 's', x: -2.6 },
+                { key: 'picture_round_c', wall: 's', x: 2.6 },
+                { key: 'fire_extinguisher', wall: 's', x: 3.5 },
+                /* ── the west wall: the way out, the lamp by it ── */
+                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.65 },
+                { key: 'globe_lamp',     x: -3.4, z: -2.1 },
+                { key: 'trash_bin',      x: -3.5, z: 2.1, face: 60 },
+                { key: 'rug_round',      x: 0.4, z: 0.4 },
+                /* ── the ceiling ── */
+                { key: 'fluorescent',    x: -1.9, z: 0.4, ceil: true, face: 90 },
+                { key: 'fluorescent',    x: 1.9,  z: 0.4, ceil: true, face: 90 },
+            ],
+            agents: [
+                { x: 2.6, z: -1.2, face: 250, pose: 'hqArms', gender: 'female', label: 'THE CURATOR', reach: 1.8,
+                  line: '“Nothing in here was given. It was filed.”' },
+            ],
+            npcSpots: [
+                { x: -0.4, z: 1.7, face: 0 },      // on the couch, reading the plaques
+                { x: 1.0,  z: -1.3, face: 0 },     // in front of the right case
+            ],
+            onlineSpots: [
+                { x: -2.7, z: 0.9, face: 40 },
+            ],
+            lines: [
+                '“Which one is yours?” “The blank ones.”',
+                '“Why 111?” “First place. Three times.” “Whose?” “Not yours yet.”',
+                '“Employee of the Month is downstairs. This is everyone else.”',
+                '“The cups are for the ones they could not fit on a plaque.”',
+            ],
+            spawn: { x: -3.1, z: 0, face: 90 },
+        },
+
+        /* ── ROOM 1984 · THE INTERROGATION ROOM (HQ plan 7.4, 2026-09-13) — a
+           box room off the ground ring at 255°, between RECORDS (240°) and
+           BAY 1 (270°): Internal Affairs keeps its room next to the file.
+           The user's 1984: a metal table, two folding chairs, one lamp, the
+           kit's round observation window as the one-way mirror (from this
+           side it is a mirror; someone is behind it). THE TABLE is the
+           counter → overlay 'transcript' (map.js _hqTranscriptHtml): what the
+           CPU learned from watching you play — the imitation ledger from the
+           training matches (battle.js _ewImitationSnapshot: all-time
+           decisions scored, agreement, every weight moved off its default)
+           and the last match's report (_ewImitationReport) — the one
+           function in the game that had no physical home. THE GLASS is a
+           counter with no action: a panel, a line, and the sense of being
+           watched. Story (plan 4.2 micro-scenes, the leave hearing) waits on
+           the user's lines (A15). Viewer-local, nothing relayed (RULE #2). ── */
+        interrogation: {
+            label: 'THE INTERROGATION ROOM',
+            sub: 'CPU TRAINING TRANSCRIPT',
+            roomNo: '1984', why: 'the year on the file; the mirror is a window from the other side',
+            kind: 'box',
+            shell: {
+                w: 7, d: 6, h: 3.0,
+                wallH: 3.0, dadoH: 1.2,
+                floor: 'concrete', wall: 'drywall', dado: 'teal', trim: 'teal', ceiling: 'ceiling',
+                wallColor: 0x9aa39c, dadoColor: 0x3f5a58, floorColor: 0x8a8a86,   // painted down: institutional green over grey
+                pipes: true,
+                light: { x: 0, z: 0 },              // one strip, over the table
+                mood: { light: 0xd9d2b8 },          // and it is tired
+                plate: { x: 0, z: -2.75, y: 2.6 },
+            },
+            doors: [
+                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_cell',
+                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
+                  action: { room: 'central_egress', at: 'interrogation' },
+                  desc: 'The way back to the hall. It locks from the outside; it has never been locked.' },
+            ],
+            counters: [
+                /* THE TABLE → the transcript: what the CPU learned from you */
+                { id: 'table', x: 0, z: 0, face: 180, plateY: 1.75, radius: 1.9, verb: 'SIT',
+                  label: 'THE TABLE', sub: 'CPU TRAINING TRANSCRIPT', action: { overlay: 'transcript' },
+                  desc: 'The file is open on the table. Every decision the CPU scored while you played, every one it disagreed with, every weight it moved because of you.' },
+                /* THE GLASS → nothing; someone is behind it */
+                { id: 'glass', x: 0, z: -2.2, face: 0, plateY: 2.45, radius: 1.5, verb: 'LOOK',
+                  label: 'THE GLASS', sub: 'INTERNAL AFFAIRS', action: {},
+                  desc: 'A round window that is a mirror from this side. You can see yourself, the table, the door. Nobody comments on the second reflection.' },
+            ],
+            props: [
+                /* ── the table in the middle, the two chairs, the lamp, the file ── */
+                { key: 'steel_table',    x: 0, z: 0, face: 0 },
+                { key: 'folding_chair',  x: 0, z: -1.0, face: 180 },    // theirs
+                { key: 'folding_chair',  x: 0, z: 1.0,  face: 0 },      // yours
+                { key: 'desk_lamp',      x: -0.55, z: -0.05, y: 0.76, face: 150 },
+                { key: 'manila_folders', x: 0.2,  z: -0.15, y: 0.76, face: 5 },
+                { key: 'clipboard_flat', x: 0.05, z: 0.2,  y: 0.76, face: 185 },
+                { key: 'pen',            x: 0.35, z: 0.25, y: 0.76, face: 60 },
+                { key: 'coffee_mug',     x: 0.65, z: 0.1,  y: 0.76, face: 0 },
+                { key: 'rotary_phone',   x: -0.5, z: 0.3,  y: 0.76, face: 200 },
+                /* ── the north wall: the one-way mirror, the vent, the camera's clock ── */
+                { key: 'observation_window', wall: 'n', x: 0, mount: 1.45 },
+                { key: 'vent_grille',    wall: 'n', x: -2.7, mount: 2.5 },
+                { key: 'wall_clock',     wall: 'n', x: 2.5, mount: 2.4 },
+                /* ── the east wall: the tape, the file, the rail ── */
+                { key: 'metal_shelving', wall: 'e', z: -1.7 },
+                { key: 'tube_tv',        x: 3.15, z: -1.7, y: 1.22, face: 270 },   // the recording, on the middle shelf
+                { key: 'filing_cabinet', wall: 'e', z: 0.4 },
+                { key: 'hook_rail',      wall: 'e', z: 1.9 },
+                { key: 'trash_bin',      x: 3.1, z: 2.5, face: 250 },
+                /* ── the south wall: the breaker, the extinguisher, the third chair nobody sits in ── */
+                { key: 'breaker_panel',  wall: 's', x: 2.2 },
+                { key: 'fire_extinguisher', wall: 's', x: 3.1 },
+                { key: 'folding_chair',  x: -2.6, z: 2.55, face: 0 },
+                { key: 'cardboard_box',  x: -3.0, z: 2.4, face: 20 },
+                /* ── the west wall: the way out, the plate by it ── */
+                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.7 },
+                { key: 'nameplate',      wall: 'w', z: -1.6, mount: 1.55 },
+                { key: 'floor_drain',    x: 1.6, z: 1.8 },
+                /* ── the ceiling: one tube, and it hums ── */
+                { key: 'fluorescent',    x: 0, z: 0, ceil: true, face: 0 },
+            ],
+            agents: [
+                { x: 0, z: -1.0, face: 180, pose: 'hqSit', gender: 'male', label: 'THE INTERVIEWER', reach: 1.9,
+                  line: '“Sit. This is not about you. It is about what it learned from you.”' },
+                { x: -2.5, z: -1.2, face: 90, pose: 'hqArms', gender: 'female', label: 'INTERNAL AFFAIRS', reach: 1.6,
+                  line: '“I am on this side of the glass today. That is not a comment.”' },
+            ],
+            npcSpots: [
+                { x: -2.6, z: 2.55, face: 0 },      // the third chair, waiting
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Do you know why you are here?” “Training.” “That is what it says.”',
+                '“The mirror is a window.” “From which side?” “Yes.”',
+                '“It watched every move you made. It agreed with most of them. Most.”',
+                '“Nothing you say leaves this room.” “Where does it go?” “Into the weights.”',
+            ],
+            spawn: { x: -2.6, z: 0, face: 90 },
+        },
         /* ── ROOM 360 · THE OBSERVATORIUM (HQ plan 7.4, 2026-09-11) — a box
            room off the MEZZANINE at 240°, directly above Records. The user's
            "360°": a planetarium. The PROJECTOR in the middle is the tape
@@ -20653,6 +20847,41 @@ function hqDailyOpsJudge(profile, ev) {
    missed a day is over (0 until the next punch), the rack remembers the
    best one and how many days were ever punched. door.hq.punch = { last,
    streak, best, days }. ── */
+/* ── ROOM 111 · THE TROPHY CASE (plan 7.4, 2026-09-13): what the cabinet
+   holds. One read every reader shares — the door plate's chip, the
+   cabinet's panel, the renderer's plaques (gold for the engraved ones).
+   `unlocked` is the achievements ledger (profile.js ensureProgress:
+   '<lineId>.<tier>' for a catalogue tier, 'champ.<race>.<metric>.<tier>'
+   for a champion line, 'feat_<id>' for a legacy feat). `total` counts the
+   catalogue's tiers only — the champion lines are per race and would swamp
+   the cabinet; they ride `champs` on their own. */
+function hqTrophyCount(profile) {
+    const cat = (typeof ACH_CATALOG !== 'undefined' && Array.isArray(ACH_CATALOG)) ? ACH_CATALOG : [];
+    const out = { done: 0, total: 0, champs: 0, feats: 0, lines: [] };
+    for (const line of cat) out.total += (line.tiers || []).length;
+    const unl = (profile && profile.progress && profile.progress.unlocked) || {};
+    const tiersOf = {};
+    for (const line of cat) tiersOf[line.id] = (line.tiers || []).length;
+    const byLine = {};
+    for (const k in unl) {
+        if (k.indexOf('champ.') === 0) { out.champs++; continue; }
+        if (k.indexOf('feat_') === 0) { out.feats++; continue; }
+        const dot = k.lastIndexOf('.');
+        if (dot < 0) continue;
+        const id = k.slice(0, dot), tier = parseInt(k.slice(dot + 1), 10);
+        if (!(tier >= 0) || tiersOf[id] == null || tier >= tiersOf[id]) continue;   // a tier the catalogue no longer has
+        byLine[id] = (byLine[id] || 0) + 1;
+    }
+    for (const line of cat) {
+        const n = byLine[line.id] || 0;
+        if (!n) continue;
+        out.done += n;
+        out.lines.push({ id: line.id, name: line.name || line.label || line.id, cat: line.cat || line.category || '', done: n, total: (line.tiers || []).length });
+    }
+    out.lines.sort((a, b) => (b.done - a.done) || String(a.name).localeCompare(String(b.name)));
+    return out;
+}
+
 function hqPunchClock(profile, opts) {
     opts = opts || {};
     const date = opts.date || hqToday();
@@ -21571,6 +21800,7 @@ if (typeof window !== 'undefined') {
     window.hqDailyOpsJudge = hqDailyOpsJudge;
     window.hqDailyRowMet = hqDailyRowMet;
     window.hqPunchClock = hqPunchClock;
+    window.hqTrophyCount = hqTrophyCount;
     window.hqPunchIn = hqPunchIn;
     window.hqCanonToday = hqCanonToday;
     window.hqAvatarPref = hqAvatarPref;
