@@ -116,5 +116,7 @@ test('the settings row is in both menus and the zoom floor is 0.3', () => {
 });
 
 test('index.html was cache-busted with the delivery', () => {
-    assert.ok(/three-renderer\.js\?v=20260913-world/.test(IX), 'the world token');
+    // the world shipped on the 20260913-world token; every later delivery bumps it (RULE #1b), so the date is what is pinned
+    const m = /three-renderer\.js\?v=(\d{8})[A-Za-z0-9-]*-cors/.exec(IX);
+    assert.ok(m && +m[1] >= 20260913, 'the token is the world delivery’s or a later one');
 });

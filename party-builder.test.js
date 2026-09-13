@@ -43,7 +43,11 @@ test('the party is a row of slots and the stage is rendered exactly once with a 
     assert.ok(PB.includes("className:'pb-party-portrait'"), 'circular portrait clip missing');
     const stages = PB.match(/key: 'stage', className: 'pb-stage'/g) || [];
     assert.strictEqual(stages.length, 1, 'exactly one keyed .pb-stage element');
-    assert.strictEqual((PB.match(/h\(HeroViewer3D,/g) || []).length, 1, 'HeroViewer3D must be mounted once (singleton canvas)');
+    // the forge mounts the stage ONCE (singleton canvas); the mirror's own screen (OfficerCreator, rev 8) is a
+    // separate page that never shares the DOM with the forge and mounts it once more
+    const forge = PB.slice(PB.indexOf('function PartyBuilder('), PB.indexOf('function OfficerCreator('));
+    assert.strictEqual((forge.match(/h\(HeroViewer3D,/g) || []).length, 1, 'HeroViewer3D must be mounted once (singleton canvas)');
+    assert.strictEqual((PB.match(/h\(HeroViewer3D,/g) || []).length, 2, 'the forge and the mirror each mount the stage once');
     assert.ok(PB.includes("'data-tab': pbTab"), 'the body grid must be keyed by the tab');
     assert.ok(/\.pb-body\[data-tab="tech"\]/.test(CSS) && /\.pb-body\[data-tab="roster"\]/.test(CSS), 'per-tab grids missing from the CSS');
 });

@@ -443,3 +443,96 @@ test('character-rig.js reproduces the rigged bases from the donors (weights tran
     assert.equal(tool.partKind('Hair003.mdl_Scalp01_Scalp01.dmx_MESH'), 'scalp');
     assert.equal(tool.partKind('Hair003.mdl_Hair_Hair.dmx_MESH'), 'hair');
 });
+
+/* ── rev 8 (2026-09-13): the outer layer's fixes, THE PRINTS (two colours on every layer), THE MIRROR (Occam's
+   Barbershop is the character creator; the officer's look; the ID card's bust) ── */
+test('rev 8 — the prints: the catalogue is the enum, every pattern masks 0..1 and tiles, the painter multiplies both colours onto a tile', () => {
+    const pats = context.window.EW_PATTERNS.map(p => p.id);
+    assert.ok(pats[0] === 'solid' && pats.length >= 10 && new Set(pats).size === pats.length, 'solid first, a dozen distinct ids');
+    for (const L of context.window.EW_APPEARANCE_LAYERS) {
+        assert.ok(L.pattern && L.color2, L.id + ' carries a pattern + colour-2 key');
+        assert.equal(JSON.stringify([...context.window.EW_APPEARANCE_ENUMS[L.pattern]]), JSON.stringify(pats), L.pattern + ' is the catalogue');
+        assert.ok(/^#[0-9a-f]{6}$/.test(normalize({})[L.color2]), L.color2 + ' has a default');
+        assert.equal(normalize({})[L.pattern], 'solid', 'solid by default');
+    }
+    assert.equal(normalize({ topPattern: 'bogus' }).topPattern, 'solid', 'an unknown print is solid');
+    assert.equal(normalize({ topPattern: 'polka', topColor2: '#ABCDEF' }).topColor2, '#abcdef');
+    // the painter, in a sandbox with a stub THREE.Color
+    const block = renderer.slice(RENDER_BLOCK[0], RENDER_BLOCK[1]);
+    const pc = { THREE: { Color: function (hex) { const n = parseInt(String(hex).slice(1), 16); this.r = ((n >> 16) & 255) / 255; this.g = ((n >> 8) & 255) / 255; this.b = (n & 255) / 255; } }, Math };
+    vm.createContext(pc);
+    vm.runInContext(block.slice(block.indexOf('var _CC_PATTERN_CELLS'), block.indexOf('/* the printed tile as an instance-owned CanvasTexture')), pc);
+    for (const id of pats) {
+        let lo = Infinity, hi = -Infinity;
+        for (let i = 0; i < 400; i++) { const m = pc._ccPatternMask(id, (i % 20) / 20 + 0.013, Math.floor(i / 20) / 20 + 0.017); assert.ok(m >= 0 && m <= 1 && Number.isFinite(m), id + ' masks 0..1'); lo = Math.min(lo, m); hi = Math.max(hi, m); }
+        if (id !== 'solid') assert.ok(hi > lo, id + ' is not flat');
+        assert.equal(pc._ccPatternMask(id, 0.3, 0.7), pc._ccPatternMask(id, 1.3, -0.3), id + ' tiles');
+    }
+    const S = 16, d = new Uint8ClampedArray(S * S * 4).fill(255);
+    pc._ccPatternBytes(d, S, 'stripes', '#ff0000', '#0000ff');
+    assert.deepEqual([d[0], d[1], d[2]], [0, 0, 255], 'the left half of a stripe cell is colour 2');
+    assert.deepEqual([d[(S - 1) * 4], d[(S - 1) * 4 + 1], d[(S - 1) * 4 + 2]], [255, 0, 0], 'the right half is colour 1');
+    const w = new Uint8ClampedArray(S * S * 4).fill(128);
+    pc._ccPatternBytes(w, S, 'stripes', '#ffffff', '#ffffff');
+    assert.ok(w.every((v, i) => i % 4 === 3 || v === 128), 'white × white leaves the tile');
+    // the renderer's wiring + the tools + the builder + the CSS
+    for (const s of ['function _ccPatternMask(id, u, v)', 'function _ccPatternBytes(d, S, pat, c1, c2, cells)', 'function _ccPatternTexture(fabTex, pat, c1, c2, def, unmanaged)', "topPattern', 'topColor2'", 'function layerPrinted(a, keys)', "tint = layerPrinted(a, keys) ? color('#ffffff') : color(a[keys[1]])", "var want = printed ? ('P|'", 'part.patTex[which]']) assert.ok(block.includes(s), 'renderer block has ' + s);
+    assert.match(renderer, /patternThumb: function \(fabricKey, pat, c1, c2, cb\)/);
+    const pb = read('party-builder.js'), css = read('styles-base.css'), cr = read('creator-render.js');
+    for (const s of ['const ccPrint = (fabricKey, colorKey, label)', "ccPrint('topFabric', 'topColor', 'Top')", "ccPrint('bottomFabric', 'bottomColor', 'Bottom')", 'worn ? ccPrint(fabricKey, colorKey, label) : null', 'pb-pattern-tile', 'EWCharViewer.patternThumb', "' colour 2'"]) assert.ok(pb.includes(s), 'party-builder has ' + s);
+    assert.ok(css.includes('.pb-pattern-tile') && css.includes('.pb-cc-prints'), 'css has the print tiles');
+    assert.ok(cr.includes('c._ccPatternBytes(d, S, pat, c1, c2)'), 'creator-render.js prints through the same painter');
+});
+
+test('rev 8 — the outer layer: tapered sleeves, no collar cap, the folded rims, the lathe on the relaxed skin, the shoulder cap', () => {
+    const block = renderer.slice(RENDER_BLOCK[0], RENDER_BLOCK[1]);
+    const cc = {}; vm.runInContext(block.slice(block.indexOf('var CC_TANK_FRONT'), block.indexOf("/* The pack's hair diffuse")), vm.createContext(cc));
+    for (const id of ['jacket', 'blazer', 'coat']) {
+        const O = cc.CC_OUTER[id];
+        assert.ok(O.sleeveEase != null && O.sleeveEase < O.ease, id + ' tapers its sleeve to the wrist');
+        assert.ok(!O.neck.top, id + ' has no collar cap (the cut stays on the 0.852 ridge)');
+    }
+    assert.ok(cc.CC_OUTER.vest.front.top <= 0.80 && cc.CC_OUTER.vest.straps.w >= 0.04, 'the vest wears the tank heights with wide straps');
+    assert.ok(cc.CC_OUTER.coat.tail.swing != null && cc.CC_OUTER.coat.tail.flare < 0.1, 'the coat tail has its own swing and a gentle flare');
+    for (const s of ['function layerEase(T, extra)', 'part.armFrac = armFrac', 'var lapelRaise = (OUT && OUT.open && OUT.lapel)', 'clothSurface(layerEase(OUT, lapelRaise), true, false)',
+        'proj: proj', '(0.45 + 0.55 * kb)', 'var px = R[ii * 3] + NB[ii * 3] * ease * H', 'THE FOLD (rev 8)', "emit([vo, vi, wi, wo], target, 0.86)", 'function skirtShade(tTop, tHem, plain)', 'tTop: OUT.hem + 0.006', 'window.EW_CC_DEBUG_CUTS']) assert.ok(block.includes(s), 'renderer block has ' + s);
+    assert.ok(!block.includes('0.848, w: 0.05, top: 0.848'), 'the rev 7 collar cap is gone');
+});
+
+test('rev 8 — the mirror: the officer look on the profile, the chair’s look mode, the walker, the card’s bust, the creator screens render', async () => {
+    const dj = read('data.js'), mp = read('map.js'), pf = read('profile.js'), pb = read('party-builder.js'), ih = read('index.html'), css = read('styles-base.css');
+    for (const s of ['function hqLook(profile)', 'function hqSetLook(profile, look)', "'player', 'vessel', 'agent', 'race', 'look'", "if (rec.mode === 'look') return hqLook(profile) ? { mode: 'look' } : { mode: 'player' };", "case 'look':   return 'YOUR OWN LOOK';", "action: { fn: '_mountReactCreator' }", 'window.hqLook = hqLook;', 'window.hqSetLook = hqSetLook;']) assert.ok(dj.includes(s), 'data.js has ' + s);
+    for (const s of ["_mountReactCreator: '_unmountReactCreator'", "_mountReactCreator: 'CHARACTER CREATOR'", "if (mode === 'look' && typeof window.hqLook === 'function')", "return { race: 'homosapien', gender: lk.gender, appearance: lk.appearance };", "btn('look', 'YOUR OWN LOOK'", 'data-fn="_mountReactCreator"', 'window._hqRefreshAvatar = function ()']) assert.ok(mp.includes(s), 'map.js has ' + s);
+    for (const s of ['getRace3DModel(race, gender, spec.appearance || undefined)', 'if (spec.appearance && def && def.creatorBase) unit.appearance = spec.appearance;', 'appearance: av.appearance || null', 'snapshot: function (opts)', "v.canvas.toDataURL('image/jpeg', q)"]) assert.ok(renderer.includes(s), 'three-renderer has ' + s);
+    for (const s of ["const look = (typeof window.hqLook === 'function') ? window.hqLook(profile) : null;", "return { race: 'your own look', url: look.portrait, look: true };", "className: portrait.look ? 'door-photo-look' : undefined"]) assert.ok(pf.includes(s), 'profile.js has ' + s);
+    for (const s of ['function CreatorControls({ appearance, gender, disabled, onChange, footer })', 'function OfficerCreator()', 'window._mountReactCreator = function ()', 'window._unmountReactCreator = function ()', "window.EWCharViewer.snapshot({ w: 256, h: 320 })", "window.hqSetAvatar(profile, 'look')", "'USE YOUR OWN LOOK'"]) assert.ok(pb.includes(s), 'party-builder has ' + s);
+    assert.ok(ih.includes('<div id="creatorOverlay"></div>'), 'index.html hosts the mirror');
+    assert.ok(css.includes('.pb-officer') && css.includes('.door-photo-look'), 'css has the mirror sheet and the photo');
+    // the two screens render headlessly with React (skipped without react + react-dom)
+    let React, ReactDOMServer;
+    try { React = require('react'); ReactDOMServer = require('react-dom/server'); } catch (_) { return; }
+    const win = Object.assign({}, context.window, {
+        React, ReactDOM: { createRoot: () => ({ render() {}, unmount() {} }) },
+        normalizeCharacterAppearance: normalize, randomCharacterAppearance: context.randomCharacterAppearance,
+        ProfileSystem: { getActiveProfileIndex: () => 0, loadProfile: () => ({ username: 'probe', door: { hq: {} } }), saveProfile: () => {}, getActiveProfile: () => ({ username: 'probe', door: { hq: {} } }) },
+        hqLook: (p) => (p && p.door && p.door.hq && p.door.hq.look) || null,
+        addEventListener() {}, removeEventListener() {}, localStorage: { getItem: () => null, setItem() {} },
+        location: { search: '' }, navigator: { userAgent: '' }, matchMedia: () => ({ matches: false, addEventListener() {} }),
+    });
+    win.window = win; win.self = win;
+    const el = () => ({ style: {}, setAttribute() {}, appendChild() {}, classList: { add() {}, remove() {} }, textContent: '' });
+    Object.assign(win, { document: { addEventListener() {}, removeEventListener() {}, getElementById: () => null, createElement: el, head: el(), body: el(), querySelector: () => null, querySelectorAll: () => [] },
+        console: { log() {}, warn() {}, error() {} }, setTimeout, clearTimeout, requestAnimationFrame: () => 0, cancelAnimationFrame() {}, performance, state: {}, getFactionColor: () => '#fff', getRaceLabel: r => r });
+    vm.createContext(win);
+    vm.runInContext(pb, win);
+    const parts = win._ewCreatorParts;
+    assert.ok(parts && parts.CreatorControls && parts.OfficerCreator, 'the parts are exposed for the tests');
+    const h = React.createElement;
+    const a = normalize({ outer: 'jacket', outerPattern: 'camo', topPattern: 'stripes', feet: 'boots', belt: 'belt', gloves: 'gloves' });
+    const html = ReactDOMServer.renderToString(h(parts.CreatorControls, { appearance: a, gender: 'female', disabled: false, onChange: () => {}, footer: h('i', null, 'foot') }));
+    const pats = context.window.EW_PATTERNS.length, layers = context.window.EW_APPEARANCE_LAYERS.length;
+    assert.equal((html.match(/pb-pattern-tile/g) || []).length, pats * layers, 'every worn layer shows every print');
+    assert.ok(/colour 2/.test(html) && /Outer layer/.test(html) && /<i>foot<\/i>/.test(html), 'colour 2 rows, the layer rows, the footer');
+    const html2 = ReactDOMServer.renderToString(h(parts.OfficerCreator));
+    for (const s of ['THE MIRROR', 'SAVE LOOK', 'PHOTO PENDING', 'TAKE PHOTO', 'pb-creator-controls', 'pb-officer-stage']) assert.ok(html2.includes(s), 'the mirror screen shows ' + s);
+});

@@ -175,6 +175,13 @@ function render(meshes, view) {
   }
   c._loadUnitGLB = (url, cb) => { const e = c._unitGlbCache[url]; if (e && e.root) cb(e); };
   const fabricTex = key => { const def = c.EW_FABRICS[key]; if (!def || !def.file) return null; try { return { tex: normaliseTile(decodePNG(fs.readFileSync(path.join(CC, 'clothingtextures', def.file))), 0.8, false), repeat: def.repeat || 12 }; } catch (e) { console.warn('fabric', key, e.message); return null; } };
+  // rev 8: a PRINT over the fabric (or over white) in two colours — the runtime's own painter (_ccPatternBytes) on the tile
+  const printedTex = (key, pat, c1, c2) => {
+    const fab = fabricTex(key), def = c.EW_FABRICS[key] || {};
+    const S = fab ? fab.tex.w : 256, d = fab ? new Uint8ClampedArray(fab.tex.d) : new Uint8ClampedArray(S * S * 4).fill(255);
+    c._ccPatternBytes(d, S, pat, c1, c2);
+    return { tex: { w: S, h: S, d }, repeat: def.repeat || 12 };
+  };
   const gltf = await load(path.join(CC, 'Meshy_AI_human_body_base_mesh_' + gender + '_rigged.glb'));
   const clone = THREE.SkeletonUtils.clone(gltf.scene);
   if (process.env.NO_HEMS) c.EW_CC_NO_HEMS = true;   // the bare cut edges, no inward hem strips
@@ -182,7 +189,7 @@ function render(meshes, view) {
   const meshes = []; clone.traverse(n => { if (n.isSkinnedMesh && n.parent && n.visible) meshes.push(n); });
   const skin = hexRGB(A.skin), top = hexRGB(A.topColor), bottom = hexRGB(A.bottomColor), hairCol = hexRGB(A.hairColor);
   const fabrics = { top: fabricTex(A.topFabric), bottom: fabricTex(A.bottomFabric) };
-  const LAYER_KEYS = { top: ['topFabric', 'topColor'], bottom: ['bottomFabric', 'bottomColor'], outer: ['outerFabric', 'outerColor'], feet: ['feetFabric', 'feetColor'], gloves: ['glovesFabric', 'glovesColor'], belt: ['beltFabric', 'beltColor'] };
+  const LAYER_KEYS = { top: ['topFabric', 'topColor', 'topPattern', 'topColor2'], bottom: ['bottomFabric', 'bottomColor', 'bottomPattern', 'bottomColor2'], outer: ['outerFabric', 'outerColor', 'outerPattern', 'outerColor2'], feet: ['feetFabric', 'feetColor', 'feetPattern', 'feetColor2'], gloves: ['glovesFabric', 'glovesColor', 'glovesPattern', 'glovesColor2'], belt: ['beltFabric', 'beltColor', 'beltPattern', 'beltColor2'] };
   LAYER_KEYS.skirt = LAYER_KEYS[/dress|gown/.test(A.outfit) ? 'top' : 'bottom'];
   const layerOf = name => { const m = /^EWCreator_(top|bottom|outer|feet|gloves|belt|skirt|buckle)$/.exec(name); return m ? m[1] : null; };
   const list = meshes.map(n => { const g = n.geometry, isFace = /face/.test(n.name), isHair = /EWCreator_hair/.test(n.name), layer = layerOf(n.name), kind = layer ? (layer === 'top' ? 'top' : layer === 'bottom' ? 'bottom' : layer) : 'body';
@@ -194,10 +201,11 @@ function render(meshes, view) {
     }
     if (layer === 'buckle') return { pos: g.attributes.position.array, nrm: g.attributes.normal.array, idx: g.index.array, uv: null, tex: null, color: [240, 207, 126], spec: 0.6 };
     if (layer && LAYER_KEYS[layer]) {
-      const keys = LAYER_KEYS[layer], tintC = hexRGB(A[keys[1]]), fab = fabricTex(A[keys[0]]);
+      const keys = LAYER_KEYS[layer], printed = A[keys[2]] && A[keys[2]] !== 'solid', tintC = printed ? [255, 255, 255] : hexRGB(A[keys[1]]), hasFile = !!(c.EW_FABRICS[A[keys[0]]] || {}).file;
+      const fab = printed ? printedTex(A[keys[0]], A[keys[2]], A[keys[1]], A[keys[3]]) : fabricTex(A[keys[0]]);
       const vc = g.attributes.color ? g.attributes.color.array : null;   // the gain shading (hems, soles, lapels) rides the vertex colour
-      const ch = tintC.indexOf(Math.max(...tintC)), gain = vc ? Float32Array.from({ length: vc.length }, (_, i) => vc[(i - i % 3) + ch] / Math.max(1e-3, tintC[ch] / 255 * (fab ? 1.18 : 1))) : null;   // the renderer reads VC[v * 3]
-      if (fab) return { pos: g.attributes.position.array, nrm: g.attributes.normal.array, idx: g.index.array, uv: g.attributes.uv.array, tex: fab.tex, repeat: fab.repeat, tint: tintC.map(v => Math.min(255, v * 1.18)), vcol: gain, color: tintC, spec: 0.05 };
+      const ch = tintC.indexOf(Math.max(...tintC)), gain = vc ? Float32Array.from({ length: vc.length }, (_, i) => vc[(i - i % 3) + ch] / Math.max(1e-3, tintC[ch] / 255 * (hasFile ? 1.18 : 1))) : null;   // the renderer reads VC[v * 3]
+      if (fab) return { pos: g.attributes.position.array, nrm: g.attributes.normal.array, idx: g.index.array, uv: g.attributes.uv.array, tex: fab.tex, repeat: fab.repeat, tint: tintC.map(v => Math.min(255, v * (hasFile ? 1.18 : 1))), vcol: gain, color: tintC, spec: 0.05 };
       return { pos: g.attributes.position.array, nrm: g.attributes.normal.array, idx: g.index.array, uv: null, tex: null, color: tintC, vcol: gain, spec: layer === 'feet' || layer === 'belt' ? 0.25 : 0.05 };
     }
     return { pos: g.attributes.position.array, nrm: g.attributes.normal.array, idx: g.index.array, uv: isFace ? g.attributes.uv.array : null, tex: faceTex, color: skin, spec: 0.3 }; });

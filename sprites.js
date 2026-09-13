@@ -1856,6 +1856,26 @@ const EW_FABRICS = {
   brass:         { label: 'Brass',       file: 'brass_basecolor.png',         repeat: 6,  rough: 0.4,  metal: 0.9 },
 };
 const EW_FABRIC_IDS = Object.keys(EW_FABRICS);
+// THE PATTERNS (rev 8, 2026-09-13): a PRINT over any fabric in two colours —
+// the layer's tint is the ground (colour 1), `<layer>Color2` the print. Drawn
+// per texel by three-renderer.js _ccPatternMask (pure maths: the browser's
+// canvas, the builder's swatches and creator-render.js all share it) and
+// multiplied onto the fabric tile. `solid` = no print (the v2 look).
+const EW_PATTERNS = [
+  { id: 'solid',     label: 'Solid' },
+  { id: 'stripes',   label: 'Stripes' },
+  { id: 'hoops',     label: 'Hoops' },
+  { id: 'pinstripe', label: 'Pinstripe' },
+  { id: 'polka',     label: 'Polka dots' },
+  { id: 'checks',    label: 'Checks' },
+  { id: 'gingham',   label: 'Gingham' },
+  { id: 'plaid',     label: 'Plaid' },
+  { id: 'chevron',   label: 'Chevron' },
+  { id: 'argyle',    label: 'Argyle' },
+  { id: 'camo',      label: 'Camo' },
+  { id: 'stars',     label: 'Stars' },
+];
+const EW_PATTERN_IDS = EW_PATTERNS.map(p => p.id);
 // THE WARDROBE (rev 7, 2026-09-12): the id is what saves carry (`suit` = the v1
 // long sleeve; the v1 `jacket` TOP maps to the OUTER layer), the cut lives in
 // three-renderer.js CC_TOPS / CC_OUTER / CC_BOTTOMS / CC_FEET / CC_GLOVES.
@@ -1928,17 +1948,27 @@ const EW_APPEARANCE_ENUMS = {
   feetFabric: EW_FABRIC_IDS,
   glovesFabric: EW_FABRIC_IDS,
   beltFabric: EW_FABRIC_IDS,
+  // rev 8: the print on each layer
+  topPattern: EW_PATTERN_IDS,
+  bottomPattern: EW_PATTERN_IDS,
+  outerPattern: EW_PATTERN_IDS,
+  feetPattern: EW_PATTERN_IDS,
+  glovesPattern: EW_PATTERN_IDS,
+  beltPattern: EW_PATTERN_IDS,
 };
-const EW_APPEARANCE_COLORS = { skin: '#b98362', hairColor: '#27201c', eyeColor: '#4a6b8a', lipColor: '#9c5a5c', topColor: '#8fa3a8', bottomColor: '#5e6f80', outerColor: '#2a2f38', feetColor: '#2b241f', glovesColor: '#3a2a22', beltColor: '#4a3220' };
-const EW_APPEARANCE_DEFAULTS = { hair: 'hair003', outfit: 'tee', bottoms: 'trousers', outer: 'none', feet: 'sneakers', gloves: 'none', belt: 'none', beard: 'none', topFabric: 'cotton', bottomFabric: 'denim', outerFabric: 'canvas', feetFabric: 'leather', glovesFabric: 'leather', beltFabric: 'leather' };
-// the fabric + tint keys of every layer (the builder's rows, the renderer's paint, the asset warm-up)
+const EW_APPEARANCE_COLORS = { skin: '#b98362', hairColor: '#27201c', eyeColor: '#4a6b8a', lipColor: '#9c5a5c', topColor: '#8fa3a8', bottomColor: '#5e6f80', outerColor: '#2a2f38', feetColor: '#2b241f', glovesColor: '#3a2a22', beltColor: '#4a3220',
+  // rev 8: the print's colour (colour 2) per layer
+  topColor2: '#f0ece2', bottomColor2: '#f0ece2', outerColor2: '#c9a227', feetColor2: '#f0ece2', glovesColor2: '#f0ece2', beltColor2: '#f0cf7e' };
+const EW_APPEARANCE_DEFAULTS = { hair: 'hair003', outfit: 'tee', bottoms: 'trousers', outer: 'none', feet: 'sneakers', gloves: 'none', belt: 'none', beard: 'none', topFabric: 'cotton', bottomFabric: 'denim', outerFabric: 'canvas', feetFabric: 'leather', glovesFabric: 'leather', beltFabric: 'leather',
+  topPattern: 'solid', bottomPattern: 'solid', outerPattern: 'solid', feetPattern: 'solid', glovesPattern: 'solid', beltPattern: 'solid' };
+// the fabric + tint (+ rev 8: pattern + colour 2) keys of every layer (the builder's rows, the renderer's paint, the asset warm-up)
 const EW_APPEARANCE_LAYERS = [
-  { id: 'top',    fabric: 'topFabric',    color: 'topColor' },
-  { id: 'bottom', fabric: 'bottomFabric', color: 'bottomColor' },
-  { id: 'outer',  fabric: 'outerFabric',  color: 'outerColor' },
-  { id: 'feet',   fabric: 'feetFabric',   color: 'feetColor' },
-  { id: 'gloves', fabric: 'glovesFabric', color: 'glovesColor' },
-  { id: 'belt',   fabric: 'beltFabric',   color: 'beltColor' },
+  { id: 'top',    fabric: 'topFabric',    color: 'topColor',    pattern: 'topPattern',    color2: 'topColor2' },
+  { id: 'bottom', fabric: 'bottomFabric', color: 'bottomColor', pattern: 'bottomPattern', color2: 'bottomColor2' },
+  { id: 'outer',  fabric: 'outerFabric',  color: 'outerColor',  pattern: 'outerPattern',  color2: 'outerColor2' },
+  { id: 'feet',   fabric: 'feetFabric',   color: 'feetColor',   pattern: 'feetPattern',   color2: 'feetColor2' },
+  { id: 'gloves', fabric: 'glovesFabric', color: 'glovesColor', pattern: 'glovesPattern', color2: 'glovesColor2' },
+  { id: 'belt',   fabric: 'beltFabric',   color: 'beltColor',   pattern: 'beltPattern',   color2: 'beltColor2' },
 ];
 // v1 (2026-09-10 procedural shells) → v2 ids
 const _EW_APPEARANCE_LEGACY_HAIR = { crop: 'hair003', crest: 'hair000', bald: 'bald' };
@@ -1986,6 +2016,11 @@ function randomCharacterAppearance(rng) {
   out.glovesColor = hex(r() * 360, 0.1 + r() * 0.4, 0.15 + r() * 0.4);
   out.beltColor = hex(20 + r() * 30, 0.3 + r() * 0.4, 0.15 + r() * 0.25);
   for (const key of Object.keys(EW_APPEARANCE_ENUMS)) out[key] = pick(EW_APPEARANCE_ENUMS[key]);
+  // rev 8: a print on a layer now and then, in a second colour that reads against the first
+  for (const L of EW_APPEARANCE_LAYERS) {
+    out[L.pattern] = r() < 0.3 ? pick(EW_PATTERN_IDS.filter(p => p !== 'solid')) : 'solid';
+    out[L.color2] = hex(r() * 360, 0.1 + r() * 0.5, r() < 0.5 ? 0.82 + r() * 0.12 : 0.12 + r() * 0.2);
+  }
   if (r() < 0.6) out.beard = 'none';
   if (r() < 0.5) out.outer = 'none';
   if (r() < 0.7) out.gloves = 'none';
@@ -2045,6 +2080,7 @@ if (typeof window !== 'undefined') {
   window.EW_GLOVE_STYLES = EW_GLOVE_STYLES;
   window.EW_BELT_STYLES = EW_BELT_STYLES;
   window.EW_APPEARANCE_LAYERS = EW_APPEARANCE_LAYERS;
+  window.EW_PATTERNS = EW_PATTERNS;
   window.getHairStyleUrl = getHairStyleUrl;
   window.getFabricTextureUrl = getFabricTextureUrl;
   window.getCharacterAppearanceModel = getCharacterAppearanceModel;

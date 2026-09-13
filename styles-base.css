@@ -4015,6 +4015,7 @@ body.diorama-3d .tile-underpass.jump::before {
     display: flex; align-items: center; justify-content: center; image-rendering: pixelated;
 }
 .door-card-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.door-card-photo img.door-photo-look { image-rendering: auto; filter: saturate(.92) contrast(1.04); }   /* the mirror's bust (rev 8) is a photo, not a sprite */
 .door-card-photo .pending { font-size: 1.9cqw; letter-spacing: 0.2em; color: #b6ad98; text-align: center; line-height: 1.5; }
 .door-card-fields { position: absolute; left: 32%; top: 15.5%; right: 12.5%; display: grid; grid-template-columns: 1fr 1.25fr; gap: 1.5cqw 2cqw; }
 .door-card-field label { display: block; font-size: 1.7cqw; letter-spacing: 0.24em; color: #6b6252; margin-bottom: 0.3cqw; }
@@ -4961,5 +4962,30 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-creator-views { border-top: 1px solid #4b3f2a; padding-top: 10px; margin-top: 12px; }
 /* rev 7 (2026-09-12): the LAYERS rows (outer · feet · gloves · belt) show their fabric grid compact */
 .pb-cc-tiles.pb-cc-compact { grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 5px; }
+/* THE PRINT (rev 8): pattern swatches drawn live in the layer's two colours; the solid tile is colour 1 itself */
+.pb-cc-tiles.pb-cc-prints { grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 5px; margin: 6px 0 8px; }
+/* ── THE MIRROR (rev 8, 2026-09-13): Occam's Barbershop's character creator — a full-screen sheet over the building:
+   the stage on the left (the shared EWCharViewer), the creator controls on the right, the card's photo in the foot ── */
+#creatorOverlay { position: relative; }
+.pb-officer { position: fixed; inset: 0; z-index: 9991; display: grid; grid-template-rows: auto 1fr auto; background: radial-gradient(120% 90% at 30% 40%, #1b1712 0%, #0b0a08 70%); color: #eee1be; font-family: 'DotGothic16', monospace; }
+.pb-officer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 18px; border-bottom: 1px solid #4b3f2a; background: rgba(20, 17, 12, .85); }
+.pb-officer-head b { color: #f0cc83; letter-spacing: .14em; font-size: 14px; }
+.pb-officer-head span { color: #c6b995; font-size: 11px; letter-spacing: .1em; }
+.pb-officer-body { display: grid; grid-template-columns: minmax(320px, 46%) 1fr; min-height: 0; }
+.pb-officer-stage { position: relative; min-height: 0; border-right: 1px solid #4b3f2a; background: radial-gradient(60% 55% at 50% 62%, rgba(240, 204, 131, .10), transparent 70%); }
+.pb-officer-stage .pb-hero3d { position: absolute; inset: 0; }
+.pb-officer-stage .pb-hero3d-fallback { display: none; }
+.pb-officer-stage .pb-hero3d-hint { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); font-size: 10px; letter-spacing: .12em; color: #a89a78; pointer-events: none; }
+.pb-officer-controls { min-height: 0; overflow-y: auto; }
+.pb-officer-controls .pb-creator { padding: 10px 18px 30px; }
+.pb-officer-foot { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 10px 18px; border-top: 1px solid #4b3f2a; background: rgba(20, 17, 12, .9); }
+.pb-officer-foot .pb-officer-photo { width: 56px; height: 70px; border: 2px solid #7c7462; background: #2a2620; object-fit: cover; image-rendering: auto; }
+.pb-officer-foot .pb-officer-photo.pending { display: flex; align-items: center; justify-content: center; font-size: 8px; letter-spacing: .1em; color: #b6ad98; text-align: center; }
+.pb-officer-foot .pb-officer-status { flex: 1 1 200px; font-size: 11px; color: #c6b995; letter-spacing: .06em; }
+.pb-officer-foot .ms-tty-btn { min-height: 36px; }
+@media (max-width: 940px) { .pb-officer-body { grid-template-columns: 1fr; grid-template-rows: 42vh 1fr; } .pb-officer-stage { border-right: 0; border-bottom: 1px solid #4b3f2a; } }
+.pb-pattern-tile { min-height: 44px; font-size: 9px; padding: 3px; background-size: cover; background-position: center; image-rendering: auto; }
+.pb-pattern-tile.has-thumb span, .pb-pattern-tile.plain span { background: rgba(14, 12, 9, .72); border-radius: 6px; padding: 2px 4px; }
+.pb-pattern-tile.plain { color: #eee1be; }
 .pb-cc-compact .pb-cc-tile { min-height: 38px; font-size: 9px; padding: 4px 3px; }
 @media (max-width: 1180px) { .pb-creator-grid { grid-template-columns: 1fr; } }

@@ -189,7 +189,7 @@
         let _hqLastRoom = 'central_egress';  // the room to rebuild on return (where _hqLastDoor is)
         /* screens that are pure DOM modals over whatever page is showing —
            the building waits underneath; their unmount resumes it */
-        const _HQ_MODAL = { _mountReactProfile: '_unmountReactProfile', _mountLeaderboard: '_unmountLeaderboard' };
+        const _HQ_MODAL = { _mountReactProfile: '_unmountReactProfile', _mountLeaderboard: '_unmountLeaderboard', _mountReactCreator: '_unmountReactCreator' };
         /* dev: ?codered=<mapId> forces the day's Code Red onto that site (HQ
            plan 3.3) — no mastery needed; data.js hqCodeRed reads the force */
         try {
@@ -341,7 +341,7 @@
         };
         const _HQ_FN_LABELS = {
             _goToShop: 'SHOP', _goToTeamBuilder: 'PARTY BUILDER', _goToCodex: 'CODEX',
-            _mountReactProfile: 'PROFILE · ID CARD', _goToCampaign: 'CHALLENGE', _goToMysteryDungeon: 'MYSTERY DUNGEON',
+            _mountReactProfile: 'PROFILE · ID CARD', _mountReactCreator: 'CHARACTER CREATOR', _goToCampaign: 'CHALLENGE', _goToMysteryDungeon: 'MYSTERY DUNGEON',
             _goToMapEditor: 'MAP EDITOR', _mountLeaderboard: 'LEADERBOARD', _mountCommunityMaps: 'COMMUNITY MAPS',
             _ewReplayLastMatch: 'REPLAY', _goToQuickPlay: 'QUICK PLAY', _goToFriendlyMatch: 'FRIENDLY MATCH',
         };
@@ -377,6 +377,11 @@
             const pref = (typeof window.hqAvatarPref === 'function') ? window.hqAvatarPref(profile) : { mode: 'player' };
             const mode = (ov === 'vessel') ? 'vessel' : pref.mode;
             if (mode === 'agent') return { race: 'men in black', gender: 'male' };
+            /* YOUR OWN LOOK (rev 8): the mirror's creator look on the human base — the walker carries the appearance */
+            if (mode === 'look' && typeof window.hqLook === 'function') {
+                const lk = window.hqLook(profile);
+                if (lk && typeof getCharacterAppearanceModel === 'function' && getCharacterAppearanceModel('homosapien', lk.gender, lk.appearance)) return { race: 'homosapien', gender: lk.gender, appearance: lk.appearance };
+            }
             if (mode === 'race' && typeof getRace3DModel === 'function') {
                 if (getRace3DModel(pref.race, pref.gender)) return { race: pref.race, gender: pref.gender };
                 const alt = pref.gender === 'male' ? 'female' : 'male';
@@ -1074,8 +1079,10 @@
             const playerOk = (typeof getCastModel === 'function') && !!getCastModel('player');
             let best = null, bestN = 0;
             try { for (const [race, rs] of Object.entries(profile.raceStats || {})) { const n = (rs && rs.played) || 0; if (n > bestN && (has3d(race, 'male') || has3d(race, 'female'))) { best = race; bestN = n; } } } catch (e) {}
+            const look = (typeof window.hqLook === 'function') ? window.hqLook(profile) : null;
             html += '<div class="hq-chips"><span>THE STANDING ORDERS</span>'
                 + btn('player', 'THE RECRUIT', pref.mode === 'player', playerOk, playerOk ? 'The Player model — the default since orientation' : 'The recruit’s file has not loaded')
+                + btn('look', 'YOUR OWN LOOK', pref.mode === 'look', !!look, look ? 'The look on file — the mirror is where you change it' : 'No look on file yet — the MIRROR is the character creator')
                 + btn('vessel', 'MOST-PLAYED VESSEL' + (best ? ' · ' + rl(best, has3d(best, 'male') ? 'male' : 'female') : ''), pref.mode === 'vessel', !!best, best ? 'Whoever you have crossed with most; it changes as you do' : 'No crossings on file with a rigged vessel yet')
                 + btn('agent', 'A D.O.O.R. AGENT', pref.mode === 'agent', true, 'Black suit, black tie, no comment')
                 + '</div>';
@@ -1091,10 +1098,15 @@
                 });
             });
             html += `<div class="hq-chips"><span>DECLASSIFIED VESSELS · ${chips.length} WITH A RIGGED FILE</span>${chips.length ? chips.join('') : '<i class="hq-chip dim">NONE ON FILE — THE QUARTERMASTER DECLASSIFIES</i>'}</div>`;
-            html += '<div class="hq-panel-actions"><button class="hq-btn" data-fn="_mountReactProfile">THE MIRROR ▸ YOUR CARD</button><button class="hq-btn" data-close="1">NOTED</button></div>';
-            html += '<p class="hq-panel-note">The chair changes what you walk the building as; nothing else — no stats, no roster, no rank. The card’s photo follows a vessel or an agent. Two explanations for how you look: he only does the shorter one.</p>';
+            html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="_mountReactCreator">THE MIRROR ▸ CHARACTER CREATOR</button><button class="hq-btn" data-fn="_mountReactProfile">YOUR CARD</button><button class="hq-btn" data-close="1">NOTED</button></div>';
+            html += '<p class="hq-panel-note">The chair changes what you walk the building as; nothing else — no stats, no roster, no rank. The card’s photo follows your own look, a vessel or an agent. Two explanations for how you look: he only does the shorter one.</p>';
             return html;
         }
+        /* rev 8: the mirror (party-builder.js _mountReactCreator) filed a new look — the walker wears it at once */
+        window._hqRefreshAvatar = function () {
+            try { if (state.gameState === GS.HQ && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.setAvatar) ThreeRenderer.hq.setAvatar(_hqAvatar(_hqProfile())); } catch (e) { console.warn('[HQ] avatar refresh failed', e); }
+            if (_hqPanelTarget) { try { _hqOpenPanel(_hqPanelTarget); } catch (e) {} }
+        };
         window._hqPickAvatar = function (spec) {
             if (_hqSuspended || state.gameState !== GS.HQ) return false;
             if (typeof window.hqSetAvatar !== 'function') return false;

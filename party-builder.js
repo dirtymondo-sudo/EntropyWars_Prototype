@@ -863,6 +863,135 @@ function PortraitSprite({ race, gender, cls, glow, style: extraStyle }) {
     ...extraStyle,
   }});
 }
+
+/* ── THE CREATOR CONTROLS (rev 8, 2026-09-13) ──────────────────────────
+   ONE component for both homes of the character creator: the forge's GEAR
+   panel (a party slot's look) and THE MIRROR in Occam's Barbershop (the
+   officer's own look, OfficerCreator below). Sections BODY · FACE · SKIN ·
+   HAIR · CLOTHES · LAYERS; every control writes ONE sanitized appearance
+   through `onChange(changes, gender?)`. The swatch thumbnails (fabric tiles,
+   the two-colour prints) are the stage's own painter (EWCharViewer
+   .fabricThumb / .patternThumb) and live here. `footer` = the home's own
+   action row (the forge's RANDOMIZE / RESET / USE ORIGINAL MODEL). */
+function CreatorControls({ appearance, gender, disabled, onChange, footer }) {
+  const changeAppearance = (changes, g) => onChange(changes, g);
+  const [pbFabricThumbs, setPbFabricThumbs] = React.useState({});
+  const [pbPatternThumbs, setPbPatternThumbs] = React.useState({});
+  const pbPatternPending = React.useRef({});
+  const requestPatternThumb = (tk, fabric, pat, c1, c2) => {
+    if (pbPatternPending.current[tk] || !window.EWCharViewer || typeof window.EWCharViewer.patternThumb !== 'function') return;
+    pbPatternPending.current[tk] = true;
+    window.EWCharViewer.patternThumb(fabric, pat, c1, c2, url => { if (url) setPbPatternThumbs(prev => prev[tk] ? prev : { ...prev, [tk]: url }); });
+  };
+  React.useEffect(() => {
+    if (!window.EWCharViewer || typeof window.EWCharViewer.fabricThumb !== 'function') return;
+    let live = true;
+    Object.keys(window.EW_FABRICS || {}).forEach(key => {
+      if (!window.EW_FABRICS[key].file) return;
+      window.EWCharViewer.fabricThumb(key, url => { if (live && url) setPbFabricThumbs(prev => prev[key] ? prev : { ...prev, [key]: url }); });
+    });
+    return () => { live = false; };
+  }, []);
+  if (!appearance) return null;
+  const ccLimits = window.EW_APPEARANCE_LIMITS || {}, ccEnums = window.EW_APPEARANCE_ENUMS || {};
+  const ccHair = window.EW_HAIR_STYLES || [], ccFabrics = window.EW_FABRICS || {};
+  const ccPatterns = window.EW_PATTERNS || [{ id: 'solid', label: 'Solid' }], ccLayers = window.EW_APPEARANCE_LAYERS || [];
+  const ccSlider = (key, label, pct) => {
+    const limits = ccLimits[key]; if (!limits || !appearance) return null;
+    const v = appearance[key];
+    const shown = pct ? Math.round(v * 100) + '%' : (limits[0] === 0 ? Math.round(v * 100) : (v > 0 ? '+' : '') + Math.round(v * 100));
+    return h('label', { key, className: 'pb-creator-slider' },
+      h('span', null, label, h('output', null, shown)),
+      h('input', { type: 'range', min: limits[0], max: limits[1], step: 0.01, value: v, 'aria-label': label, onChange: e => changeAppearance({ [key]: Number(e.target.value) }) }));
+  };
+  const ccColorRow = (key, label, swatches) => h('div', { key, className: 'pb-creator-colorrow' },
+    h('span', { className: 'pb-creator-colorlabel' }, label),
+    h('div', { className: 'pb-creator-swatches' }, swatches.map(color =>
+      h('button', { key: color, className: 'pb-creator-swatch', style: { background: color }, 'aria-label': label + ' ' + color, 'aria-pressed': appearance[key] === color, onClick: () => changeAppearance({ [key]: color }) })),
+      h('label', { className: 'pb-creator-custom', title: 'Custom ' + label.toLowerCase() }, h('input', { type: 'color', value: appearance[key], 'aria-label': 'Custom ' + label, onChange: e => changeAppearance({ [key]: e.target.value }) }), h('i', null, '+'))));
+  const ccChoice = (key, options) => h('div', { className: 'pb-creator-options', role: 'group' }, options.map(([id, label]) =>
+    h('button', { key: id, className: 'ms-tty-btn' + (appearance[key] === id ? ' primary' : ''), 'aria-pressed': appearance[key] === id, onClick: () => changeAppearance({ [key]: id }) }, label)));
+  // a wardrobe LAYER row: the style buttons, then (while something is worn) its fabric tiles + the print + the colours
+  const ccLayer = (label, key, catalogue, fabricKey, colorKey) => {
+    const list = (window[catalogue] || [{ id: 'none', label: 'None' }]).map(o => [o.id, o.label]);
+    const worn = appearance[key] !== 'none';
+    return h(React.Fragment, { key },
+      h('div', { className: 'pb-creator-colorlabel' }, label),
+      ccChoice(key, list),
+      worn ? ccFabricTiles(fabricKey, label, true) : null,
+      worn ? ccPrint(fabricKey, colorKey, label) : null);
+  };
+  /* THE PRINT (rev 8, 2026-09-13): a layer's pattern tiles (each a live swatch drawn by the rig's own painter —
+     EWCharViewer.patternThumb — in the layer's current two colours over its fabric) and its two colour rows:
+     COLOUR 1 = the ground / the tint, COLOUR 2 = the print (only while a print is on). The pattern key and the
+     colour-2 key follow sprites.js EW_APPEARANCE_LAYERS (`topPattern` / `topColor2` …). */
+  const ccPrint = (fabricKey, colorKey, label) => {
+    const L = ccLayers.find(l => l.fabric === fabricKey) || {};
+    const patKey = L.pattern || fabricKey.replace(/Fabric$/, 'Pattern'), c2Key = L.color2 || colorKey + '2';
+    const pat = appearance[patKey] || 'solid', printed = pat !== 'solid';
+    return h(React.Fragment, null,
+      h('div', { className: 'pb-cc-tiles pb-cc-prints', role: 'group', 'aria-label': label + ' print' },
+        ccPatterns.map(p => {
+          const on = pat === p.id, tk = p.id === 'solid' ? null : [appearance[fabricKey], p.id, appearance[colorKey], appearance[c2Key]].join('|');
+          const thumb = tk ? pbPatternThumbs[tk] : null;
+          if (tk && !thumb) requestPatternThumb(tk, appearance[fabricKey], p.id, appearance[colorKey], appearance[c2Key]);
+          return h('button', { key: p.id, className: 'pb-cc-tile pb-pattern-tile' + (thumb ? ' has-thumb' : '') + (p.id === 'solid' ? ' plain' : ''), 'aria-pressed': on, title: p.label,
+            style: thumb ? { backgroundImage: 'url(' + thumb + ')' } : (p.id === 'solid' ? { background: appearance[colorKey] } : undefined), onClick: () => changeAppearance({ [patKey]: p.id }) },
+            h('span', null, p.label));
+        })),
+      ccColorRow(colorKey, label + (printed ? ' colour 1' : ' tint'), clothSwatches),
+      printed ? ccColorRow(c2Key, label + ' colour 2', clothSwatches) : null);
+  };
+  const ccFabricTiles = (key, label, compact) => h('div', { className: 'pb-cc-tiles pb-cc-fabrics' + (compact ? ' pb-cc-compact' : ''), role: 'group', 'aria-label': (label || (key === 'topFabric' ? 'Top' : 'Trouser')) + ' fabric' },
+    (ccEnums[key] || []).map(id => {
+      const def = ccFabrics[id] || { label: id }, thumb = def.file ? pbFabricThumbs[id] : null;
+      return h('button', { key: id, className: 'pb-cc-tile pb-fabric-tile' + (thumb ? ' has-thumb' : '') + (def.file ? '' : ' plain'), 'aria-pressed': appearance[key] === id, title: def.label,
+        style: thumb ? { backgroundImage: 'url(' + thumb + ')' } : undefined, onClick: () => changeAppearance({ [key]: id }) },
+        h('span', null, def.label));
+    }));
+  const skinSwatches = ['#f4d7bf', '#e8c4a2', '#dfb18c', '#c9946b', '#b98362', '#a06a48', '#916044', '#7a4e36', '#66422e', '#4d3226', '#3c291f'];
+  const hairSwatches = ['#0f0d0c', '#27201c', '#3b2a1f', '#5a3b25', '#7a4a2a', '#a0662e', '#c98a4a', '#e2c184', '#f1e2b3', '#8b1e1e', '#b5b5b5', '#f2f2f2', '#3b5bdb', '#b03aa0', '#2e8b57'];
+  const eyeSwatches = ['#2d2a26', '#4a3222', '#6b4b2a', '#3d5a3a', '#4a6b8a', '#6a8fb5', '#7a8c6a', '#9a9a9a', '#b8860b', '#8b1e1e'];
+  const lipSwatches = ['#b98a7a', '#9c5a5c', '#a0413f', '#7a2e33', '#c26a8a', '#3a2a2a'];
+  const clothSwatches = ['#f0ece2', '#8fa3a8', '#5e6f80', '#344a50', '#2a2f38', '#141518', '#7a1f1f', '#c0392b', '#b8741a', '#c9a227', '#2e7d32', '#1f5f8b', '#5b3a8a', '#ad4c86'];
+  return h('fieldset', { className: 'pb-creator-controls', disabled },
+              h('legend', null, 'BODY'),
+              h('div', { className: 'pb-creator-options', 'aria-label': 'Base model' }, ['male', 'female'].map(g =>
+                h('button', { key: g, className: 'ms-tty-btn' + (gender === g ? ' primary' : ''), 'aria-pressed': gender === g, onClick: () => changeAppearance({}, g) }, g.toUpperCase()))),
+              h('div', { className: 'pb-creator-grid' }, ccSlider('height', 'Height', true), ccSlider('width', 'Build', true), ccSlider('chest', 'Chest'), ccSlider('waist', 'Waist'), ccSlider('hips', 'Hips')),
+              h('h3', null, 'FACE'),
+              h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'), ccSlider('eyeSize', 'Eye size'), ccSlider('brows', 'Brow weight')),
+              ccColorRow('eyeColor', 'Eyes', eyeSwatches),
+              ccColorRow('lipColor', 'Lips', lipSwatches),
+              h('div', { className: 'pb-creator-colorlabel' }, 'Facial hair'),
+              ccChoice('beard', [['none', 'Clean'], ['stubble', 'Stubble'], ['goatee', 'Goatee'], ['beard', 'Beard']]),
+              h('h3', null, 'SKIN'),
+              ccColorRow('skin', 'Skin tone', skinSwatches),
+              h('h3', null, 'HAIR'),
+              h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'Hair style' },
+                [{ id: 'bald', label: 'Bald' }].concat(ccHair).map(style =>
+                  h('button', { key: style.id, className: 'pb-cc-tile pb-hair-tile' + (style.short ? ' short' : ''), 'aria-pressed': appearance.hair === style.id, onClick: () => changeAppearance({ hair: style.id }) },
+                    h('i', { className: 'pb-hair-glyph' }), h('span', null, style.label)))),
+              ccColorRow('hairColor', 'Hair colour', hairSwatches),
+              h('h3', null, 'CLOTHES'),
+              h('div', { className: 'pb-creator-colorlabel' }, 'Top'),
+              ccChoice('outfit', (window.EW_OUTFIT_STYLES || [{ id: 'tee', label: 'T-shirt' }, { id: 'tank', label: 'Tank top' }, { id: 'suit', label: 'Long sleeve' }]).map(o => [o.id, o.label])),
+              ccFabricTiles('topFabric', 'Top'),
+              ccPrint('topFabric', 'topColor', 'Top'),
+              h('div', { className: 'pb-creator-colorlabel' }, 'Bottoms'),
+              ccChoice('bottoms', (window.EW_BOTTOM_STYLES || [{ id: 'trousers', label: 'Trousers' }, { id: 'shorts', label: 'Shorts' }]).map(o => [o.id, o.label])),
+              ccFabricTiles('bottomFabric', 'Bottoms'),
+              ccPrint('bottomFabric', 'bottomColor', 'Bottom'),
+              // THE LAYERS (rev 7, 2026-09-12): each layer takes a fabric + a tint of its own once it is worn
+              h('h3', null, 'LAYERS'),
+              ccLayer('Outer layer', 'outer', 'EW_OUTER_STYLES', 'outerFabric', 'outerColor'),
+              ccLayer('Feet', 'feet', 'EW_FEET_STYLES', 'feetFabric', 'feetColor'),
+              ccLayer('Gloves', 'gloves', 'EW_GLOVE_STYLES', 'glovesFabric', 'glovesColor'),
+              ccLayer('Belt', 'belt', 'EW_BELT_STYLES', 'beltFabric', 'beltColor'),
+              h('p', { className: 'pb-creator-note' }, 'Clothing and hair are cosmetic. Colour 1 tints the fabric; a print adds colour 2 over it; plain = no weave. A dress or a gown wears the top\u2019s fabric down to its hem. Save your team to keep this look.'),
+    footer || null);
+}
+
 /* ── LIVE 3D HERO — the character-creator stage ─────────────────────
    Mounts the shared EWCharViewer (three-renderer.js) into a host div:
    the vessel's rigged GLB with its retargeted idle, drag to orbit,
@@ -1935,18 +2064,6 @@ function PartyBuilder(props) {
   /* the four tabs on the glass (PB_TABS); ROSTER first, as the references open */
   const [pbTab, setPbTab] = React.useState('roster');
   const [creatorOpen, setCreatorOpen] = React.useState(false);
-  // fabric swatch thumbnails — the stage's own normalised fabric tiles (EWCharViewer.fabricThumb),
-  // requested once the creator opens; a tile shows its label until its thumb lands
-  const [pbFabricThumbs, setPbFabricThumbs] = React.useState({});
-  React.useEffect(() => {
-    if (!creatorOpen || !window.EWCharViewer || typeof window.EWCharViewer.fabricThumb !== 'function') return;
-    let live = true;
-    Object.keys(window.EW_FABRICS || {}).forEach(key => {
-      if (!window.EW_FABRICS[key].file || pbFabricThumbs[key]) return;
-      window.EWCharViewer.fabricThumb(key, url => { if (live && url) setPbFabricThumbs(prev => prev[key] ? prev : { ...prev, [key]: url }); });
-    });
-    return () => { live = false; };
-  }, [creatorOpen]);
   const setTab = (id) => { if (!PB_TABS.some(t => t.id === id) || id === pbTab) return; setPbTab(id); sfx('uiCursorMove'); };
   const cycleTab = (d) => { const i = Math.max(0, PB_TABS.findIndex(t => t.id === pbTab)); setTab(PB_TABS[(i + d + PB_TABS.length) % PB_TABS.length].id); };
   React.useEffect(() => { window._pbSetTab = setTab; return () => { if (window._pbSetTab === setTab) delete window._pbSetTab; }; });
@@ -3183,45 +3300,7 @@ function PartyBuilder(props) {
     if (st.builderConfirmedSlots?.[player]) st.builderConfirmedSlots[player][slot] = false;
     refresh();
   };
-  const ccLimits = window.EW_APPEARANCE_LIMITS || {}, ccEnums = window.EW_APPEARANCE_ENUMS || {};
-  const ccHair = window.EW_HAIR_STYLES || [], ccFabrics = window.EW_FABRICS || {};
-  const ccSlider = (key, label, pct) => {
-    const limits = ccLimits[key]; if (!limits || !appearance) return null;
-    const v = appearance[key];
-    const shown = pct ? Math.round(v * 100) + '%' : (limits[0] === 0 ? Math.round(v * 100) : (v > 0 ? '+' : '') + Math.round(v * 100));
-    return h('label', { key, className: 'pb-creator-slider' },
-      h('span', null, label, h('output', null, shown)),
-      h('input', { type: 'range', min: limits[0], max: limits[1], step: 0.01, value: v, 'aria-label': label, onChange: e => changeAppearance({ [key]: Number(e.target.value) }) }));
-  };
-  const ccColorRow = (key, label, swatches) => h('div', { key, className: 'pb-creator-colorrow' },
-    h('span', { className: 'pb-creator-colorlabel' }, label),
-    h('div', { className: 'pb-creator-swatches' }, swatches.map(color =>
-      h('button', { key: color, className: 'pb-creator-swatch', style: { background: color }, 'aria-label': label + ' ' + color, 'aria-pressed': appearance[key] === color, onClick: () => changeAppearance({ [key]: color }) })),
-      h('label', { className: 'pb-creator-custom', title: 'Custom ' + label.toLowerCase() }, h('input', { type: 'color', value: appearance[key], 'aria-label': 'Custom ' + label, onChange: e => changeAppearance({ [key]: e.target.value }) }), h('i', null, '+'))));
-  const ccChoice = (key, options) => h('div', { className: 'pb-creator-options', role: 'group' }, options.map(([id, label]) =>
-    h('button', { key: id, className: 'ms-tty-btn' + (appearance[key] === id ? ' primary' : ''), 'aria-pressed': appearance[key] === id, onClick: () => changeAppearance({ [key]: id }) }, label)));
-  // a wardrobe LAYER row: the style buttons, then (while something is worn) its fabric tiles + tint swatches
-  const ccLayer = (label, key, catalogue, fabricKey, colorKey) => {
-    const list = (window[catalogue] || [{ id: 'none', label: 'None' }]).map(o => [o.id, o.label]);
-    const worn = appearance[key] !== 'none';
-    return h(React.Fragment, { key },
-      h('div', { className: 'pb-creator-colorlabel' }, label),
-      ccChoice(key, list),
-      worn ? ccFabricTiles(fabricKey, label, true) : null,
-      worn ? ccColorRow(colorKey, label + ' tint', clothSwatches) : null);
-  };
-  const ccFabricTiles = (key, label, compact) => h('div', { className: 'pb-cc-tiles pb-cc-fabrics' + (compact ? ' pb-cc-compact' : ''), role: 'group', 'aria-label': (label || (key === 'topFabric' ? 'Top' : 'Trouser')) + ' fabric' },
-    (ccEnums[key] || []).map(id => {
-      const def = ccFabrics[id] || { label: id }, thumb = def.file ? pbFabricThumbs[id] : null;
-      return h('button', { key: id, className: 'pb-cc-tile pb-fabric-tile' + (thumb ? ' has-thumb' : '') + (def.file ? '' : ' plain'), 'aria-pressed': appearance[key] === id, title: def.label,
-        style: thumb ? { backgroundImage: 'url(' + thumb + ')' } : undefined, onClick: () => changeAppearance({ [key]: id }) },
-        h('span', null, def.label));
-    }));
-  const skinSwatches = ['#f4d7bf', '#e8c4a2', '#dfb18c', '#c9946b', '#b98362', '#a06a48', '#916044', '#7a4e36', '#66422e', '#4d3226', '#3c291f'];
-  const hairSwatches = ['#0f0d0c', '#27201c', '#3b2a1f', '#5a3b25', '#7a4a2a', '#a0662e', '#c98a4a', '#e2c184', '#f1e2b3', '#8b1e1e', '#b5b5b5', '#f2f2f2', '#3b5bdb', '#b03aa0', '#2e8b57'];
-  const eyeSwatches = ['#2d2a26', '#4a3222', '#6b4b2a', '#3d5a3a', '#4a6b8a', '#6a8fb5', '#7a8c6a', '#9a9a9a', '#b8860b', '#8b1e1e'];
-  const lipSwatches = ['#b98a7a', '#9c5a5c', '#a0413f', '#7a2e33', '#c26a8a', '#3a2a2a'];
-  const clothSwatches = ['#f0ece2', '#8fa3a8', '#5e6f80', '#344a50', '#2a2f38', '#141518', '#7a1f1f', '#c0392b', '#b8741a', '#c9a227', '#2e7d32', '#1f5f8b', '#5b3a8a', '#ad4c86'];
+  const officerLook = (typeof window.hqLook === 'function' && window.ProfileSystem) ? window.hqLook(window.ProfileSystem.getActiveProfile()) : null;   // rev 8: the card's look, one click onto a slot
   const viewerLoads = !!(window.EWCharViewer && window.EWCharViewer.supports && window.EWCharViewer.supports('homosapien', identity.gender || 'male'));
   const creatorPanel = h(React.Fragment, null,
     h('div', { className: 'pb-zone-head' }, h('b', null, 'Character creator'),
@@ -3237,41 +3316,7 @@ function PartyBuilder(props) {
                 h('button', { className: 'ms-tty-btn', disabled: isWaitingOnline, onClick: () => changeAppearance(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}) }, '⚄ RANDOM')))
           : h(React.Fragment, null,
             !viewerLoads ? h('p', { className: 'pb-creator-note' }, 'The 3D stage is unavailable here — changes still save with the team.') : null,
-            h('fieldset', { className: 'pb-creator-controls', disabled: isWaitingOnline },
-              h('legend', null, 'BODY'),
-              h('div', { className: 'pb-creator-options', 'aria-label': 'Base model' }, ['male', 'female'].map(g =>
-                h('button', { key: g, className: 'ms-tty-btn' + (identity.gender === g ? ' primary' : ''), 'aria-pressed': identity.gender === g, onClick: () => changeAppearance({}, g) }, g.toUpperCase()))),
-              h('div', { className: 'pb-creator-grid' }, ccSlider('height', 'Height', true), ccSlider('width', 'Build', true), ccSlider('chest', 'Chest'), ccSlider('waist', 'Waist'), ccSlider('hips', 'Hips')),
-              h('h3', null, 'FACE'),
-              h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'), ccSlider('eyeSize', 'Eye size'), ccSlider('brows', 'Brow weight')),
-              ccColorRow('eyeColor', 'Eyes', eyeSwatches),
-              ccColorRow('lipColor', 'Lips', lipSwatches),
-              h('div', { className: 'pb-creator-colorlabel' }, 'Facial hair'),
-              ccChoice('beard', [['none', 'Clean'], ['stubble', 'Stubble'], ['goatee', 'Goatee'], ['beard', 'Beard']]),
-              h('h3', null, 'SKIN'),
-              ccColorRow('skin', 'Skin tone', skinSwatches),
-              h('h3', null, 'HAIR'),
-              h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'Hair style' },
-                [{ id: 'bald', label: 'Bald' }].concat(ccHair).map(style =>
-                  h('button', { key: style.id, className: 'pb-cc-tile pb-hair-tile' + (style.short ? ' short' : ''), 'aria-pressed': appearance.hair === style.id, onClick: () => changeAppearance({ hair: style.id }) },
-                    h('i', { className: 'pb-hair-glyph' }), h('span', null, style.label)))),
-              ccColorRow('hairColor', 'Hair colour', hairSwatches),
-              h('h3', null, 'CLOTHES'),
-              h('div', { className: 'pb-creator-colorlabel' }, 'Top'),
-              ccChoice('outfit', (window.EW_OUTFIT_STYLES || [{ id: 'tee', label: 'T-shirt' }, { id: 'tank', label: 'Tank top' }, { id: 'suit', label: 'Long sleeve' }]).map(o => [o.id, o.label])),
-              ccFabricTiles('topFabric', 'Top'),
-              ccColorRow('topColor', 'Top tint', clothSwatches),
-              h('div', { className: 'pb-creator-colorlabel' }, 'Bottoms'),
-              ccChoice('bottoms', (window.EW_BOTTOM_STYLES || [{ id: 'trousers', label: 'Trousers' }, { id: 'shorts', label: 'Shorts' }]).map(o => [o.id, o.label])),
-              ccFabricTiles('bottomFabric', 'Bottoms'),
-              ccColorRow('bottomColor', 'Bottom tint', clothSwatches),
-              // THE LAYERS (rev 7, 2026-09-12): each layer takes a fabric + a tint of its own once it is worn
-              h('h3', null, 'LAYERS'),
-              ccLayer('Outer layer', 'outer', 'EW_OUTER_STYLES', 'outerFabric', 'outerColor'),
-              ccLayer('Feet', 'feet', 'EW_FEET_STYLES', 'feetFabric', 'feetColor'),
-              ccLayer('Gloves', 'gloves', 'EW_GLOVE_STYLES', 'glovesFabric', 'glovesColor'),
-              ccLayer('Belt', 'belt', 'EW_BELT_STYLES', 'beltFabric', 'beltColor'),
-              h('p', { className: 'pb-creator-note' }, 'Clothing and hair are cosmetic. Tints multiply the fabric; plain = no weave. A dress or a gown wears the top\u2019s fabric down to its hem. Save your team to keep this look.'),
+            h(CreatorControls, { appearance, gender: identity.gender || 'male', disabled: isWaitingOnline, onChange: changeAppearance, footer:
               h('div', { className: 'pb-creator-options' },
                 h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}) }, '⚄ RANDOMIZE'),
                 h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(window.normalizeCharacterAppearance({})) }, 'RESET'),
@@ -3281,7 +3326,8 @@ function PartyBuilder(props) {
                   delete st.partyMeta[player][slot].appearance;
                   if (st.builderConfirmedSlots?.[player]) st.builderConfirmedSlots[player][slot] = false;
                   refresh();
-                } }, 'USE ORIGINAL MODEL'))),
+                } }, 'USE ORIGINAL MODEL'),
+                officerLook ? h('button', { className: 'ms-tty-btn', title: 'The look on your card (Occam\u2019s mirror) on this slot', onClick: () => changeAppearance(officerLook.appearance, officerLook.gender) }, 'USE YOUR OWN LOOK') : null) }),
             h('div', { className: 'pb-creator-options pb-creator-views' },
               h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.resetView() }, 'FULL BODY'),
               h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.viewHead() }, 'FACE CLOSE-UP'),
@@ -3531,6 +3577,102 @@ window._unmountReactTeamBuilder = function() {
   _pbStandaloneMode = false;
   if (_tbRoot) { _tbRoot.unmount(); _tbRoot = null; }
   if (window.EWCharViewer) window.EWCharViewer.unmount();
+};
+
+/* ── THE MIRROR (rev 8, 2026-09-13): Occam's Barbershop's character creator ──
+   The officer's OWN LOOK: a human base dressed by CreatorControls on the
+   shared stage, filed on the active profile as door.hq.look (data.js
+   hqSetLook) with THE PHOTO — a shoulders-up bust the stage renders
+   (EWCharViewer.snapshot) — for the ID card (profile.js doorCardPortrait);
+   SAVE also sits you in the chair as it (hqSetAvatar 'look') and the walker
+   changes at once (map.js _hqRefreshAvatar). Mounted by map.js from the
+   mirror counter through _HQ_MODAL (the building waits underneath; CLOSE
+   resumes it). */
+function OfficerCreator() {
+  const PS = window.ProfileSystem;
+  const idx = PS && typeof PS.getActiveProfileIndex === 'function' ? PS.getActiveProfileIndex() : null;
+  const profile = (idx !== null && idx !== undefined && PS) ? PS.loadProfile(idx) : null;
+  const onFile = (profile && typeof window.hqLook === 'function') ? window.hqLook(profile) : null;
+  const [gender, setGender] = React.useState(onFile ? onFile.gender : 'male');
+  const [appearance, setAppearance] = React.useState(() => onFile ? onFile.appearance : (window.normalizeCharacterAppearance ? window.normalizeCharacterAppearance({}) : null));
+  const [photo, setPhoto] = React.useState(onFile ? onFile.portrait : null);
+  const [status, setStatus] = React.useState(onFile ? 'A look is on file. Change it here; SAVE files it and takes the photo.' : 'No look on file yet. Build one — SAVE files it on your card and takes the photo.');
+  const [dirty, setDirty] = React.useState(false);
+  const change = (changes, g) => {
+    setAppearance(window.normalizeCharacterAppearance ? window.normalizeCharacterAppearance({ ...(appearance || {}), ...(changes || {}) }) : { ...(appearance || {}), ...(changes || {}) });
+    if (g) setGender(g);
+    setDirty(true);
+  };
+  const takePhoto = () => {
+    const url = window.EWCharViewer && typeof window.EWCharViewer.snapshot === 'function' ? window.EWCharViewer.snapshot({ w: 256, h: 320 }) : null;
+    if (url) { setPhoto(url); setStatus('Photo taken.'); } else setStatus('The stage has not finished loading — the photo will be taken when you SAVE.');
+    return url;
+  };
+  const save = () => {
+    if (!profile || typeof window.hqSetLook !== 'function') { setStatus('No card on file — sign in at Reception first.'); return; }
+    const url = (window.EWCharViewer && typeof window.EWCharViewer.snapshot === 'function' ? window.EWCharViewer.snapshot({ w: 256, h: 320 }) : null) || photo || null;
+    window.hqSetLook(profile, { gender, appearance, portrait: url });
+    if (typeof window.hqSetAvatar === 'function') window.hqSetAvatar(profile, 'look');
+    PS.saveProfile(idx, profile);
+    setPhoto(url); setDirty(false);
+    setStatus(url ? 'Filed. The card wears the photo; you walk the building as this look.' : 'Filed without a photo (the stage was not ready) — press TAKE PHOTO once it shows.');
+    try { if (typeof playDoorSfx === 'function') playDoorSfx('stamp', { volume: 0.5 }); } catch (e) {}
+    if (typeof window._hqRefreshAvatar === 'function') window._hqRefreshAvatar();
+    if (typeof window._refreshReactProfile === 'function') window._refreshReactProfile();
+  };
+  const clear = () => {
+    if (!profile || typeof window.hqSetLook !== 'function') return;
+    window.hqSetLook(profile, null);
+    PS.saveProfile(idx, profile);
+    setPhoto(null); setDirty(false);
+    setStatus('Cleared. The card goes back to your vessel’s portrait; the chair to the recruit.');
+    if (typeof window._hqRefreshAvatar === 'function') window._hqRefreshAvatar();
+  };
+  const close = () => { if (typeof window._unmountReactCreator === 'function') window._unmountReactCreator(); };
+  React.useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); close(); } };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+  const viewerLoads = !!(window.EWCharViewer && window.EWCharViewer.supports && window.EWCharViewer.supports('homosapien', gender));
+  return h('div', { className: 'pb-officer', role: 'dialog', 'aria-label': 'Character creator' },
+    h('div', { className: 'pb-officer-head' },
+      h('div', null, h('b', null, 'THE MIRROR'), h('span', null, ' · OCCAM’S BARBERSHOP · YOUR OWN LOOK · ROOM 1287')),
+      h('div', { className: 'pb-creator-options', style: { margin: 0 } },
+        h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.resetView() }, 'FULL BODY'),
+        h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.viewHead() }, 'FACE CLOSE-UP'),
+        h('button', { className: 'ms-tty-btn', onClick: () => { window.EWCharViewer?.resetView(); window.EWCharViewer?.play('walk', { full: true, name: 'Walk' }); } }, 'WALK'),
+        h('button', { className: 'ms-tty-btn', onClick: close }, dirty ? 'CLOSE · UNSAVED' : 'CLOSE'))),
+    h('div', { className: 'pb-officer-body' },
+      h('div', { className: 'pb-officer-stage' },
+        h(HeroViewer3D, { race: 'homosapien', gender, cls: 'Freelancer', faction: 'human', focus: 0.5, appearance }),
+        !viewerLoads ? h('p', { className: 'pb-creator-note', style: { position: 'absolute', left: 16, top: 16 } }, 'The 3D stage is unavailable here — the look still files.') : null),
+      h('div', { className: 'pb-officer-controls' },
+        h('div', { className: 'pb-creator' },
+          h(CreatorControls, { appearance, gender, disabled: !profile, onChange: change, footer:
+            h('div', { className: 'pb-creator-options' },
+              h('button', { className: 'ms-tty-btn', onClick: () => change(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}) }, '⚄ RANDOMIZE'),
+              h('button', { className: 'ms-tty-btn', onClick: () => change(window.normalizeCharacterAppearance ? window.normalizeCharacterAppearance({}) : {}) }, 'RESET')) })))),
+    h('div', { className: 'pb-officer-foot' },
+      photo ? h('img', { className: 'pb-officer-photo', src: photo, alt: 'Your card photo', draggable: false }) : h('div', { className: 'pb-officer-photo pending' }, 'PHOTO PENDING'),
+      h('div', { className: 'pb-officer-status' }, status),
+      h('button', { className: 'ms-tty-btn', disabled: !profile, onClick: takePhoto }, '📷 TAKE PHOTO'),
+      onFile ? h('button', { className: 'ms-tty-btn', disabled: !profile, onClick: clear }, 'CLEAR LOOK') : null,
+      h('button', { className: 'ms-tty-btn primary', disabled: !profile, onClick: save }, 'SAVE LOOK · FILE ON CARD')));
+}
+if (typeof window !== 'undefined') window._ewCreatorParts = { CreatorControls, OfficerCreator, HeroViewer3D };   // the tests render these headlessly
+let _creatorRoot = null;
+window._mountReactCreator = function () {
+  let c = document.getElementById('creatorOverlay');
+  if (!c) { c = document.createElement('div'); c.id = 'creatorOverlay'; document.body.appendChild(c); }
+  if (!_creatorRoot) _creatorRoot = ReactDOM.createRoot(c);
+  _creatorRoot.render(h(OfficerCreator));
+};
+window._unmountReactCreator = function () {
+  if (_creatorRoot) { _creatorRoot.unmount(); _creatorRoot = null; }
+  if (window.EWCharViewer) window.EWCharViewer.unmount();
+  const el = document.getElementById('creatorOverlay');
+  if (el) el.innerHTML = '';
 };
 
 })();

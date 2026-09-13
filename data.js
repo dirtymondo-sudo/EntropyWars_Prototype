@@ -19289,8 +19289,10 @@ const DOOR_HQ = {
            your most-played vessel, a D.O.O.R. agent, or any declassified
            vessel with a rigged file (hqAvatarPref / hqSetAvatar → door.hq
            .avatar; map.js _hqAvatar reads it; the renderer swaps you in
-           place, hq.setAvatar). THE MIRROR is the ID card — the photo on
-           it follows the chair (profile.js doorCardPortrait). William of
+           place, hq.setAvatar). THE MIRROR is the CHARACTER CREATOR (rev 8,
+           2026-09-13 — hqLook / hqSetLook → door.hq.look; the chair's
+           'look' mode walks it; the card's photo is the bust the mirror
+           took, profile.js doorCardPortrait). William of
            Ockham, b. c. 1287: the simplest cut. The pole has not turned
            since. ── */
         barbershop: {
@@ -19316,9 +19318,11 @@ const DOOR_HQ = {
                 /* THE CHAIR → who you walk the building as (the HQ avatar) */
                 { id: 'chair', x: -1.6, z: -1.55, face: 0, plateY: 1.9, radius: 1.7, verb: 'SIT',
                   label: 'THE CHAIR', sub: 'CHANGE AVATAR', action: { overlay: 'barber' } },
-                /* THE MIRROR → the ID card (the photo follows the chair) */
+                /* THE MIRROR → THE CHARACTER CREATOR (rev 8, 2026-09-13): your own look on a human base, filed on the
+                   card (hqSetLook); the mirror photographs the bust for the ID card, the chair's 'look' mode walks it */
                 { id: 'mirror', x: 1.6, z: -2.55, face: 0, plateY: 2.45, radius: 1.5, verb: 'LOOK',
-                  label: 'MIRROR', sub: 'VIEW PROFILE', action: { fn: '_mountReactProfile' } },
+                  label: 'MIRROR', sub: 'CHARACTER CREATOR', action: { fn: '_mountReactCreator' },
+                  desc: 'Your own face, hair and clothes on file. The mirror takes the photo for your card; sit in the chair to walk the building as it.' },
             ],
             props: [
                 /* ── the north wall: two mirrors, the shelves under them, the two chairs ── */
@@ -20688,11 +20692,44 @@ function hqPunchIn(profile, opts) {
    checks the model and the declassification, this only checks the roster).
    The ID card's photo follows a 'race' / 'agent' pick (profile.js
    doorCardPortrait). hqAvatarLabel(pref) is the plate's wording. ── */
-const HQ_AVATAR_MODES = ['player', 'vessel', 'agent', 'race'];
+const HQ_AVATAR_MODES = ['player', 'vessel', 'agent', 'race', 'look'];
+/* THE MIRROR IS THE CHARACTER CREATOR (rev 8, 2026-09-13): the officer's OWN
+   LOOK — a creator appearance (sprites.js normalizeCharacterAppearance) on a
+   human base, filed on the profile as door.hq.look = { gender, appearance,
+   portrait (a JPEG data URL bust the mirror photographed, for the ID card),
+   at }. hqLook(profile) reads it (null when none / unreadable); hqSetLook
+   files it (null clears) and counts a cut. The chair's fifth mode, 'look',
+   walks the building as it (map.js _hqAvatar → { race: 'homosapien', gender,
+   appearance }) and is only on offer while a look is on file. */
+function hqLook(profile) {
+    let rec = null;
+    try { rec = profile && profile.door && profile.door.hq && profile.door.hq.look; } catch (e) {}
+    if (!rec || typeof rec !== 'object' || !rec.appearance || typeof rec.appearance !== 'object') return null;
+    const appearance = (typeof normalizeCharacterAppearance === 'function') ? normalizeCharacterAppearance(rec.appearance) : rec.appearance;
+    if (!appearance) return null;
+    return { gender: rec.gender === 'female' ? 'female' : 'male', appearance, portrait: (typeof rec.portrait === 'string' && /^data:image\//.test(rec.portrait)) ? rec.portrait : null, at: rec.at || 0 };
+}
+function hqSetLook(profile, look) {
+    if (!profile) return null;
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
+    const before = JSON.stringify(hqLook(profile) || null);
+    if (!look) {
+        delete profile.door.hq.look;
+        if (profile.door.hq.avatar && profile.door.hq.avatar.mode === 'look') profile.door.hq.avatar = { mode: 'player' };   // nothing to walk as any more
+    } else {
+        const appearance = (typeof normalizeCharacterAppearance === 'function') ? normalizeCharacterAppearance(look.appearance || {}) : (look.appearance || {});
+        profile.door.hq.look = { gender: look.gender === 'female' ? 'female' : 'male', appearance, portrait: (typeof look.portrait === 'string' && /^data:image\//.test(look.portrait)) ? look.portrait : null, at: Date.now() };
+    }
+    const after = hqLook(profile);
+    if (JSON.stringify(after || null) !== before) profile.door.hq.cuts = (profile.door.hq.cuts | 0) + 1;
+    return after;
+}
 function hqAvatarPref(profile) {
     let rec = null;
     try { rec = profile && profile.door && profile.door.hq && profile.door.hq.avatar; } catch (e) {}
     if (!rec || typeof rec !== 'object' || HQ_AVATAR_MODES.indexOf(rec.mode) < 0) return { mode: 'player' };
+    if (rec.mode === 'look') return hqLook(profile) ? { mode: 'look' } : { mode: 'player' };
     if (rec.mode === 'race') {
         if (!rec.race || (typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES.indexOf(rec.race) < 0)) return { mode: 'player' };
         return { mode: 'race', race: rec.race, gender: rec.gender === 'female' ? 'female' : 'male' };
@@ -20706,6 +20743,7 @@ function hqSetAvatar(profile, choice) {
     const c = (typeof choice === 'string') ? { mode: choice } : (choice || {});
     let pref = { mode: 'player' };
     if (c.mode === 'race' && c.race && (typeof AVAILABLE_RACES === 'undefined' || AVAILABLE_RACES.indexOf(c.race) >= 0)) pref = { mode: 'race', race: c.race, gender: c.gender === 'female' ? 'female' : 'male' };
+    else if (c.mode === 'look') pref = hqLook(profile) ? { mode: 'look' } : { mode: 'player' };   // only with a look on file
     else if (HQ_AVATAR_MODES.indexOf(c.mode) >= 0 && c.mode !== 'race') pref = { mode: c.mode };
     const before = JSON.stringify(hqAvatarPref(profile));
     profile.door.hq.avatar = pref;
@@ -20717,6 +20755,7 @@ function hqAvatarLabel(pref) {
     switch (pref.mode) {
         case 'vessel': return 'YOUR MOST-PLAYED VESSEL';
         case 'agent':  return 'A D.O.O.R. AGENT';
+        case 'look':   return 'YOUR OWN LOOK';
         case 'race':   return String((typeof getRaceLabel === 'function') ? getRaceLabel(pref.race, pref.gender) : pref.race).toUpperCase();
     }
     return 'THE RECRUIT';
@@ -21535,6 +21574,8 @@ if (typeof window !== 'undefined') {
     window.hqAvatarPref = hqAvatarPref;
     window.hqSetAvatar = hqSetAvatar;
     window.hqAvatarLabel = hqAvatarLabel;
+    window.hqLook = hqLook;
+    window.hqSetLook = hqSetLook;
     window.hqYesterday = hqYesterday;
     window.hqCodeRedPool = hqCodeRedPool;
     window.DOOR_CAST = DOOR_CAST;

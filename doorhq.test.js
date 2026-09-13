@@ -2102,7 +2102,7 @@ test('Room 1287 is a box room off the ground ring at 105°: the way in, the way 
     /* the two counters: THE CHAIR (the avatar) and THE MIRROR (the card) */
     const ch = BARBER.counters.find(c => c.id === 'chair'), mi = BARBER.counters.find(c => c.id === 'mirror');
     assert.ok(ch && ch.action.overlay === 'barber' && ch.radius > 0 && ch.verb, 'the chair is a counter with its own overlay');
-    assert.ok(mi && mi.action.fn === '_mountReactProfile' && mi.radius > 0 && mi.verb, 'the mirror is the card');
+    assert.ok(mi && mi.action.fn === '_mountReactCreator' && mi.radius > 0 && mi.verb, 'the mirror is the character creator (rev 8)');
     assert.ok(BARBER.props.some(p => p.key === 'barber_chair' && Math.hypot(p.x - ch.x, p.z - ch.z) < 0.05), 'the counter stands on a chair');
     assert.ok(BARBER.props.some(p => p.key === 'barber_mirror' && p.wall === 'n' && Math.abs(p.x - mi.x) < 0.3), 'a mirror hangs where its counter stands');
     for (const c of BARBER.props.filter(p => p.key === 'barber_chair')) assert.ok((c.face || 0) === 0 && BARBER.props.some(m => m.key === 'barber_mirror' && Math.abs(m.x - c.x) < 0.05), 'a chair faces its mirror (face 0 = north)');
@@ -2140,6 +2140,25 @@ test('the chair (Room 1287): hqAvatarPref / hqSetAvatar / hqAvatarLabel — four
     assert.strictEqual(D.hqAvatarLabel(null), 'THE RECRUIT');
     assert.strictEqual(D.hqSetAvatar(null, 'agent'), null);
     assert.strictEqual(p.door.hq.cuts, 5);
+});
+
+test('the mirror (Room 1287, rev 8): hqLook / hqSetLook file the officer’s own look, the chair’s fifth mode walks it only while one is on file, clearing it drops the mode', () => {
+    const p = { username: 'probe', door: { hq: {} } };
+    assert.strictEqual(D.hqLook(p), null, 'nothing on file');
+    assert.strictEqual(D.hqLook(null), null);
+    assert.strictEqual(JSON.stringify(D.hqSetAvatar(p, 'look')), JSON.stringify({ mode: 'player' }), 'no look → the chair refuses the mode');
+    const look = D.hqSetLook(p, { gender: 'female', appearance: { outfit: 'dress', topPattern: 'polka', topColor2: '#ff0000', hair: 'hair001' }, portrait: 'data:image/jpeg;base64,AAAA' });
+    assert.ok(look && look.gender === 'female' && look.appearance && look.portrait === 'data:image/jpeg;base64,AAAA', 'filed with the photo');
+    if (typeof D.normalizeCharacterAppearance === 'function') assert.strictEqual(look.appearance.outfit, 'dress', 'the appearance is normalised');
+    assert.strictEqual(p.door.hq.cuts, 1, 'a look on file is a cut');
+    assert.strictEqual(JSON.stringify(D.hqSetAvatar(p, 'look')), JSON.stringify({ mode: 'look' }), 'with a look on file the chair takes the mode');
+    assert.strictEqual(D.hqAvatarLabel(D.hqAvatarPref(p)), 'YOUR OWN LOOK');
+    assert.strictEqual(D.hqSetLook(p, { gender: 'other', appearance: {}, portrait: 'not a data url' }).gender, 'male', 'gender is male or female; a bad portrait is dropped');
+    assert.strictEqual(D.hqLook(p).portrait, null);
+    assert.strictEqual(D.hqSetLook(p, null), null, 'cleared');
+    assert.strictEqual(D.hqLook(p), null);
+    assert.strictEqual(JSON.stringify(D.hqAvatarPref(p)), JSON.stringify({ mode: 'player' }), 'the chair falls back to the recruit');
+    assert.strictEqual(D.hqSetLook(null, {}), null);
 });
 
 test('source scan: the renderer builds the chair, the mirror and the pole and swaps the avatar in place; map.js reads the chair, files the cut and re-reads the panel; the card follows', () => {

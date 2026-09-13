@@ -1061,6 +1061,50 @@ Kill-switches (console): `window.EW_DISABLE_3D_UNITS = true` (all 3D),
   To persist new files, hand them to the user (SendUserFile) to upload via GitHub
   manually. Don't waste time retrying pushes.
 
+## CHARACTER CREATOR rev 8 — the outer layer fixed, THE PRINTS, THE MIRROR (2026-09-13, local delivery)
+The 2nd layer (`CC_OUTER`: jacket · blazer · vest · coat) verified on BOTH
+bases with `creator-render.js` (baseline → fix, every view): sleeved
+layers' ease TAPERS to the wrist (`layerEase` / `sleeveEase` /
+`part.armFrac` — the cuffs belled), NO collar cap (`neck.top` 0.848 put
+the cut on the neck-base wall → a sawtooth; the 0.852 ridge is the only
+collar line), the lapel is a cosine fold (`lapelRaise`, lit), the lathe
+(`buildLathe`) measures the RELAXED skin R (it read P and ledged out of
+the coat / the trousers), the coat tail hangs from 6 mm above the hem with
+its own `swing`, the dress skirt likewise, the arm capsule's cap BEHIND
+the shoulder joint is 0.45 × the deltoid's radius blended over 3 cm
+(`armAt().proj` — the full sphere ate every strap; a step made bites),
+the vest wears the tank's panel heights, and every rim strip is THE FOLD
+(extruded toward the skin AND under the cloth, its normal leaning toward
+the cloth's, gain 0.86 — the strips used to poke past the shoulder as
+teeth and outline every opening in black). Probe any layer's cuts with
+`window.EW_CC_DEBUG_CUTS = (garments, part) => …`. **THE PRINTS**:
+sprites.js `EW_PATTERNS` (12 ids, `solid` first) + `<layer>Pattern` /
+`<layer>Color2` on every `EW_APPEARANCE_LAYERS` row; three-renderer.js
+`_ccPatternMask(id, u, v)` (pure, tiling) → `_ccPatternBytes` →
+`_ccPatternTexture` (an instance-owned canvas = the fabric tile × colour
+1 → colour 2; the printed layer's vertex tint is WHITE); the builder's
+`ccPrint` rows (live swatches via `EWCharViewer.patternThumb`, COLOUR 1 /
+COLOUR 2); creator-render.js prints through the same painter. Adding a
+pattern = one `EW_PATTERNS` row + one `case` in `_ccPatternMask`.
+**THE MIRROR** in Occam's Barbershop IS the character creator: the
+counter's `fn: '_mountReactCreator'` (party-builder.js `OfficerCreator`
+over the shared `CreatorControls` component — the forge's GEAR panel
+uses the same one; `_HQ_MODAL` in map.js) files the officer's own look on
+the profile (data.js `hqLook` / `hqSetLook` → `door.hq.look = { gender,
+appearance, portrait, at }`), takes THE PHOTO (`EWCharViewer.snapshot` —
+a 256 × 320 bust JPEG data URL; profile.js `doorCardPortrait` shows it on
+the ID card, `.door-photo-look`) and sits you in the chair as it: the
+fifth avatar mode `'look'` (only while a look is on file) → map.js
+`_hqAvatar` → `{ race: 'homosapien', gender, appearance }` → the walker
+is the creator rig (`_hqSpawnCharacter` passes `spec.appearance` into
+`unit.appearance`); `window._hqRefreshAvatar()` swaps it at once. The
+forge's creator has USE YOUR OWN LOOK. `npm test`: character-creator
+.test.js (+ a headless React render of both screens — needs `npm i
+--no-save three@0.128.0 react@18 react-dom@18` in ONE install),
+doorhq.test.js, party-builder.test.js. Verified in the bind pose only —
+photograph a posed jacket over a tee next (`playtest_creator.js
+--layers`). Full log: PARTY_BUILDER_PLAN.md §9 (rev 8 entry).
+
 ## CHARACTER CREATOR rev 7 — the wardrobe: LAYERS, straps that hold, skirts (2026-09-12, local delivery)
 Every garment is a LAYER shell (`CC_LAYER_NAMES` = body · top · bottom ·
 face · outer · feet · gloves · belt · skirt · buckle; each a SkinnedMesh

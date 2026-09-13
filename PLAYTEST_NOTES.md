@@ -10373,3 +10373,14 @@ scene()` for the scene — `scene` is closure-local).
   (both hulls are `!HQ`; the room keeps its quay, masts and deck props),
   online (nothing new is relayed — the speed reads `state.round`).
 
+
+**rev 8 (2026-09-13) — the prints + the cut probe:** `creator-render.js` draws a PRINT the way the
+runtime does (`'{"topPattern":"stripes","topColor":"#1f5f8b","topColor2":"#f0ece2"}'` — the same
+`_ccPatternBytes` painter, colour 1 → colour 2 over the fabric tile, the vertex tint white). To
+LOOK AT A CUT rather than a render, set `c.EW_CC_DEBUG_CUTS = (garments, part) => …` in the
+sandbox before `_createAppearanceRig` (the runtime calls it once per rebuild with every layer's
+`cuts` and the part — `part.shoulder`, `part.armR`, `part.limbs`): evaluating the vest's cuts along
+|x| at t 0.78–0.84 is how the shoulder-joint sphere that ate every strap was found in one probe,
+after three render passes had only shown the symptom. Verified headlessly on both bases (bind
+pose): every outer layer, the tank / atank / racer / bikini straps, the coat tail, the dress, the
+prints. Still unseen: a POSED jacket over a tee (`playtest_creator.js <tag> --layers`).

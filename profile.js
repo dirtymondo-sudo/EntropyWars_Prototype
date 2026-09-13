@@ -1789,6 +1789,10 @@ function doorCardPortrait(profile) {
        a vessel or an agent chosen there IS the photo; the recruit and the
        most-played vessel keep the rule below (data.js hqAvatarPref) */
     const pref = (typeof window.hqAvatarPref === 'function') ? window.hqAvatarPref(profile) : null;
+    /* YOUR OWN LOOK (rev 8, 2026-09-13): the bust the mirror photographed (data.js hqLook → door.hq.look.portrait)
+       is the photo whenever a look is on file — the card shows YOU; the chair's other picks only change the walker */
+    const look = (typeof window.hqLook === 'function') ? window.hqLook(profile) : null;
+    if (look && look.portrait && (!pref || pref.mode === 'look' || pref.mode === 'player' || pref.mode === 'vessel')) return { race: 'your own look', url: look.portrait, look: true };
     if (pref && (pref.mode === 'race' || pref.mode === 'agent')) {
       const r = pref.mode === 'agent' ? 'men in black' : pref.race;
       const set = RACE_PORTRAITS[r];
@@ -1861,7 +1865,7 @@ function DoorIdCard({ profile, name, desk, flagged, flipped, onFlip, style }) {
         h('div', { className: 'door-card-crest' }, crest ? h('img', { src: crest, alt: '', draggable: false }) : null),
         h('div', { className: 'door-card-photo' },
           portrait && portrait.url
-            ? h('img', { src: portrait.url, alt: '', draggable: false, title: portrait.race })
+            ? h('img', { src: portrait.url, alt: '', draggable: false, title: portrait.race, className: portrait.look ? 'door-photo-look' : undefined })
             : h('div', { className: 'pending' }, (D && D.INTAKE.photoPending) || 'PHOTO PENDING')
         ),
         h('div', { className: 'door-card-fields' },
