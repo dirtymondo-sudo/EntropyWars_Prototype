@@ -4856,3 +4856,17 @@ tape → lesson → back at the console.
 beat IN the room (the coach as a cast member is A15 — the voice stays
 SYSTEM until the user writes it); Directive 1 / the lamination at the end
 of TAPE 3 (plan 4.3's last clause); 4.1 the case-file screen.
+
+### 2026-09-14 — the map-builder buildings in the landscape; the foliage everywhere
+The user: use building_1..8 more in the urban maps' landscapes; the
+Cyberpunk horizon's buildings read wrong; the Haunted House's background
+trees were the weird ones; Bohemian Grove's walkable room stood the old
+3D trees. Shipped (three-renderer.js only, + tests / docs): `_nrSpriteBuilding`
+/ `_nrSpriteBlocks` (the board's building prism, stackable) in the
+Cyberpunk / Strip / Downtown settings and on every `city` world rim;
+`_WD_RIM.trees` → `_nrTree` (the foliage OBJs); `_hqBuildSiteBoard`'s board
+trees → `_nrTree` on a bare kit (they were a trunk + a sphere — THE cause of
+the grove's old trees in the room); the grove's redwood ring → tall
+`_nrTree`s; `K._wdFog` + `_nrInjectWorld` so late fills join the haze;
+`_hqTickWorld` polls `_nrPollPending` unconditionally. Unseen live: the
+prisms' scale, the trim landing, the rim tree load on the Haunted House.

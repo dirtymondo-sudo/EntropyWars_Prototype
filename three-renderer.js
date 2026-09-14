@@ -24446,6 +24446,7 @@ const ThreeRenderer = (function () {
             model.scale.setScalar(s);
             model.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
             model.rotation.y = K.rng() * Math.PI * 2;
+            _nrInjectWorld(K, model);   // a world-rim tree (K._wdFog) joins the haze + the dissolve
             g.remove(proc); _disposeR(proc); g.add(model); _objectsDirty = true;
         };
         var src = _loadFoliageModel(name);
@@ -24587,6 +24588,125 @@ const ThreeRenderer = (function () {
         g.position.set(x, fy, z); g.rotation.y = ry;
         if (K.occ) K.addW(K.side(x, z), g); else K.add(g);
         return g;
+    }
+    /* ── THE MAP-BUILDER BUILDINGS IN THE LANDSCAPE (2026-09-14) ─────────
+       The editor's building_1..8 sprites standing in a setting or on the
+       world's rim as the SAME four-faced prism the board builds for a placed
+       building (_buildBuildingPrism): every face wears the sprite between its
+       alpha trim (ui.js _alphaScanSprite — async, so the prism is rebuilt
+       through _nrPending kind 'spr' when the scan lands), a dark core + a
+       brick roof at the sprite's own roof line behind them, stackable into a
+       tower (every storey block wears the whole sprite — never RepeatWrapping,
+       the sprites are NPOT). o: w (tiles, the footprint side, 2), h (tiles
+       per storey; else the sprite's own aspect), stack (storeys, 1), tex /
+       color (the core sheet — the transparent corners show it), roofTex /
+       roofColor, lift, ry, y (tiles over the floor) or yAbs (world y), wall
+       (false = a plain add under occ), cast, roofKit (an antenna + a beacon
+       on a tower; default on from 3 storeys). Returns the group; g.userData.H
+       is the built height. A world-rim prism (K._wdFog) joins the haze. */
+    var _NR_BUILDING_KEYS = ['building_1', 'building_2', 'building_3', 'building_4', 'building_5', 'building_6', 'building_7', 'building_8'];
+    function _nrInjectWorld(K, obj) {
+        if (!K || !K._wdFog || !obj || typeof _wdInject !== 'function') return;
+        obj.traverse(function (o) {
+            if (!o.isMesh || !o.material) return;
+            var ms = Array.isArray(o.material) ? o.material : [o.material];
+            for (var i = 0; i < ms.length; i++) { var mm = ms[i]; if (mm && mm.color && !mm._ew_wdInjected && mm.blending !== THREE.AdditiveBlending && !mm.isSpriteMaterial) _wdInject(mm, K._wdFog); }
+        });
+    }
+    function _nrSpriteBuilding(K, key, x, z, o) {
+        o = o || {};
+        var oSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[key] : null;
+        if (!oSpr || !oSpr.url) return null;
+        if (!oSpr._trim && !oSpr._trimScanning && typeof window !== 'undefined' && typeof window._alphaScanSprite === 'function') { try { window._alphaScanSprite(oSpr); } catch (e) {} }
+        var ts = K.ts, w = (o.w || 2) * ts, stack = Math.max(1, (o.stack | 0) || 1), lift = o.lift;
+        var g = new THREE.Group(); g.name = 'nr_building:' + key;
+        var build = function () {
+            for (var ci = g.children.length - 1; ci >= 0; ci--) { var ch = g.children[ci]; g.remove(ch); _disposeR(ch); }
+            var tex = getObjectTexture(key), trim = oSpr._trim;
+            var sprW = oSpr.width || 128, sprH = oSpr.height || 128;
+            var tl = trim ? trim.left : 0, tr = trim ? trim.right : sprW - 1, tt = trim ? trim.top : 0, tb = trim ? trim.bottom : sprH - 1;
+            var tw = tr - tl + 1, th = tb - tt + 1, core = Math.max(1, Math.min(tw, oSpr._coreWidth || tw));
+            /* a storey: the sprite's own aspect on the footprint (the board's prisms
+               come out ~2 wide × ~1.7 tall), clamped so a tall sign never towers */
+            var h = o.h ? o.h * ts : Math.max(1.0 * ts, Math.min(3.2 * ts, w * (th / core) * 0.85));
+            var H = h * stack;
+            /* the roof line: the sprite's top profile (its 75th percentile), like the board */
+            var roofDrop = 0;
+            if (oSpr._topProfile && oSpr._topProfile.length >= 2) { var srt = oSpr._topProfile.slice().sort(function (a, b) { return a - b; }); roofDrop = Math.min(0.5, (srt[Math.min(srt.length - 1, Math.floor(srt.length * 0.75))] / th)); }
+            var roofY = H - h * roofDrop, inset = 0.03 * ts;
+            var coreMat = o.tex ? K.mat(o.tex, o.color == null ? 0x8a8a90 : o.color, { lift: lift }) : _hzLit(null, o.color == null ? 0x14131a : o.color);
+            var box = K.box(w - inset * 2, roofY, w - inset * 2, coreMat, 0.5); box.position.y = roofY / 2; K.lit(box, !!o.cast); g.add(box);
+            var roof = K.plane(w, w, K.mat(o.roofTex || 'bricks_3', o.roofColor == null ? 0xffffff : o.roofColor, { lift: lift })); roof.rotation.x = -Math.PI / 2; roof.position.y = roofY + 0.5; K.lit(roof, false); g.add(roof);
+            if (tex) {
+                var cl = tl + Math.round((tw - core) / 2), uL = cl / sprW, uR = (cl + core) / sprW;
+                var vB = Math.max(0, 1 - (tb + 1) / sprH), vT = Math.min(1, 1 - tt / sprH);
+                var dirs = [[0, 0, 1, 0.55], [Math.PI, 0, -1, 0.43], [-Math.PI / 2, 1, 0, 0.48], [Math.PI / 2, -1, 0, 0.48]];   // the board's per-face shade
+                dirs.forEach(function (d) {
+                    var b = d[3], fm = _hzLit(tex, new THREE.Color(b, b, b).getHex(), { side: THREE.DoubleSide, transparent: true });
+                    fm.alphaTest = 0.1; fm.emissive = fm.color.clone().multiplyScalar(lift != null ? lift : 0.22); fm.emissiveMap = tex; fm._ew_hzNear = true; fm.needsUpdate = true;
+                    for (var st = 0; st < stack; st++) {
+                        var fg = new THREE.PlaneGeometry(w, h), uv = fg.getAttribute('uv');
+                        uv.setXY(0, uL, vT); uv.setXY(1, uR, vT); uv.setXY(2, uL, vB); uv.setXY(3, uR, vB); uv.needsUpdate = true;
+                        var f = new THREE.Mesh(fg, fm); f.position.set(d[1] * (w / 2 + 1.5), st * h + h / 2, d[2] * (w / 2 + 1.5)); f.rotation.y = d[0]; K.lit(f, !!o.cast); g.add(f);
+                    }
+                });
+            }
+            if (o.roofKit === true || (o.roofKit !== false && stack >= 3)) {   // a tower's mast + its beacon
+                var ah = ts * (0.6 + K.rng() * 0.9), ant = K.cyl(0.02 * ts, 0.03 * ts, ah, 5, _hzLit(null, 0x2a2d33)); ant.position.set(w * 0.22, roofY + ah / 2, -w * 0.18); g.add(ant);
+                var bl = K.lamp(ant.position.x, roofY + ah, ant.position.z, o.beacon || 0xff3030, 0.3 * ts, 0.8); g.add(bl);
+            }
+            g.userData.H = H; g.userData.roofY = roofY;
+            _nrInjectWorld(K, g);
+        };
+        build();
+        if (!oSpr._trim) _nrPending.push({ g: g, spr: oSpr, fill: build });
+        g.position.set(x, o.yAbs != null ? o.yAbs : K.fy + (o.y || 0) * ts, z); g.rotation.y = o.ry || 0;
+        if (o.wall !== false && K.occ) K.addW(K.side(x, z), g); else K.add(g);
+        return g;
+    }
+    /* a street of the map-builder buildings along the board sides at distance
+       d (tiles): the _nrBlocks walk (lot widths minW..maxW, alleys, the gates
+       at the lanes under `gates`, `only` sides), every lot a _nrSpriteBuilding
+       squared up on the board, `stack: [min, max]` storeys, `keys` (default
+       building_1..8), `neon` / `signs` / `neonP` a lit sign on the face that
+       looks at the board (as _nrBlocks), `tex` / `color` the core sheet. */
+    function _nrSpriteBlocks(K, o) {
+        var ts = K.ts, fy = K.fy, rng = K.rng, d0 = o.d * ts, keys = o.keys || _NR_BUILDING_KEYS;
+        var stack = o.stack || [1, 1], neon = o.neon || null, signs = o.signs || [], si = 0;
+        var sides = [['n', K.BX0 - d0, K.BZ0 - d0, K.BX1 + d0, K.BZ0 - d0, 0, -1], ['s', K.BX1 + d0, K.BZ1 + d0, K.BX0 - d0, K.BZ1 + d0, 0, 1], ['w', K.BX0 - d0, K.BZ1 + d0, K.BX0 - d0, K.BZ0 - d0, -1, 0], ['e', K.BX1 + d0, K.BZ0 - d0, K.BX1 + d0, K.BZ1 + d0, 1, 0]];
+        sides.forEach(function (S) {
+            if (o.only && o.only.indexOf(S[0]) < 0) return;
+            var side = S[0], ax = S[1], az = S[2], bx = S[3], bz = S[4], nx = S[5], nz = S[6];
+            var len = Math.hypot(bx - ax, bz - az), horiz = nz !== 0, u = 0;
+            while (u < len - 0.8 * ts) {
+                var wT = (o.minW || 2.0) + rng() * ((o.maxW || 3.0) - (o.minW || 2.0)), w = wT * ts;
+                if (u + w > len) { w = len - u; wT = w / ts; }
+                var alley = ts * (0.3 + rng() * 0.4);
+                var cu = u + w / 2, px = ax + (bx - ax) * (cu / len), pz = az + (bz - az) * (cu / len);
+                var lane = horiz && o.gates && K.inLane(px, pz, (o.laneHalf || 1.6) * ts);
+                if (!lane && wT >= 1.2) {
+                    var n = stack[0] + Math.floor(rng() * (stack[1] - stack[0] + 1));
+                    var cx = px + nx * w / 2, cz = pz + nz * w / 2;
+                    var b = _nrSpriteBuilding(K, keys[(rng() * keys.length) | 0], cx, cz, { w: wT, stack: n, tex: o.tex, color: o.color, roofTex: o.roofTex, roofColor: o.roofColor, lift: o.lift, ry: Math.atan2(-nx, -nz), cast: true, beacon: o.beacon });
+                    if (b && neon && rng() < (o.neonP == null ? 0.7 : o.neonP)) {
+                        var col = neon[(rng() * neon.length) | 0], H = b.userData.H || ts * 2, vert = H > 3 * ts && rng() < 0.45;
+                        var txt = signs.length ? signs[si % signs.length] : null;
+                        var sw = vert ? Math.min(H * 0.6, 3.2 * ts) : Math.min(w * 0.8, 2.6 * ts), sh = vert ? 0.5 * ts : 0.6 * ts, smat;
+                        if (txt) {
+                            var tt = _hzTextTex('neon_' + txt + col, [txt], { w: 512, h: 128, color: '#' + ('000000' + col.toString(16)).slice(-6), pad: 0.1, weight: 'bold', font: '"Arial Black", Impact, sans-serif' });
+                            smat = new THREE.MeshBasicMaterial({ map: tt, transparent: true, depthWrite: false, fog: false, color: 0xffffff, side: THREE.DoubleSide });
+                        } else smat = K.glow(col, 0.75);
+                        var sp = new THREE.Mesh(new THREE.PlaneGeometry(sw, sh), smat); sp.name = 'neon:' + (txt || 'bar');
+                        var sy = fy + ts * (0.9 + rng() * Math.max(0.3, (H / ts - 1.6)));
+                        sp.position.set(px - nx * 2.2, sy, pz - nz * 2.2); sp.rotation.y = Math.atan2(-nx, -nz); if (vert) sp.rotation.z = -Math.PI / 2;
+                        K.addW(side, sp); _hzPulse(smat, null, 0.25, 0, 1.4 + rng() * 3);
+                        K.addW(side, K.lamp(sp.position.x, sp.position.y, sp.position.z, col, Math.max(sw, sh) * 0.9, 0.35));
+                    }
+                    si++;
+                }
+                u += w + alley;
+            }
+        });
     }
     /* a colonnade: columns (the greek column GLB, or a fluted cylinder) with an
        entablature over them along one board side at distance d */
@@ -24821,7 +24941,8 @@ const ThreeRenderer = (function () {
             var w = r[2] - r[0], d = r[3] - r[1]; if (w <= 0 || d <= 0) return; var m = K.box(w, 0.12 * ts, d, curb); m.position.set(r[0] + w / 2, K.fy + 0.06 * ts - 0.6, r[1] + d / 2); K.add(K.lit(m));
         });
         _nrRoadLines(K, { color: 0xf2d24a, ring: 1.0 });
-        _nrBlocks(K, { d: 3.1, depth: 3.0, minW: 2.0, maxW: 3.8, minH: 5, maxH: 13, tex: 'urban_wall', color: 0x8c88a4, roofTex: 'concrete_floor', winStyle: 'neon', neon: [0xff3ad8, 0x35e0ff, 0xffd34a, 0x9dff5f], neonP: 0.75, gates: true, signs: ['ENTROPY', 'ノイズ', 'SYNTH', 'NOODLE', 'CLINIC', '24H', 'VOID', 'ARCADE', '夢', 'HOTEL'] });
+        /* the blocks are the map-builder's buildings (building_1..8) stacked into towers (2026-09-14; the neon boxes are gone) */
+        _nrSpriteBlocks(K, { d: 3.1, minW: 2.0, maxW: 3.2, stack: [2, 5], color: 0x1a1626, roofTex: 'concrete_floor', roofColor: 0x6a6d72, neon: [0xff3ad8, 0x35e0ff, 0xffd34a, 0x9dff5f], neonP: 0.75, gates: true, signs: ['ENTROPY', 'ノイズ', 'SYNTH', 'NOODLE', 'CLINIC', '24H', 'VOID', 'ARCADE', '夢', 'HOTEL'] });
         _nrProp(K, _hzHoloboard, K.BX0 - 1.6 * ts, K.BZ0 - 1.6 * ts, {}); _nrProp(K, _hzHoloboard, K.BX1 + 1.6 * ts, K.BZ1 + 1.6 * ts, {});
         _nrLamps(K, { d: 1.2, spacing: 3.2, color: 0xcfe8ff, aura: 0x7ac8ff });
         _nrRectRing(K, 1.4 * ts, 2.6 * ts, function (x, z) { if (K.rng() < 0.5) return; var s = K.lamp(x, K.fy + 0.3 * ts, z, 0xbfe4ff, 1.4 * ts, 0.18); K.add(s); _hzPulse(s.material, s, 0.1, 0.25, 0.3 + K.rng() * 0.4); }, { skipLanes: true, corners: true });   // steam
@@ -25071,11 +25192,12 @@ const ThreeRenderer = (function () {
     _NR_BUILDERS.bohemian_grove = function (group, ctx) {
         var K = _nrKit(group, ctx, { w: 5.0, occ: true }), ts = K.ts, rng = K.rng;
         _nrApron(K, { tex: 'grass_2', color: 0x6a9458, deep: true, skirt: 'dirt', skirtColor: 0x8a7458 });
-        var bark = K.mat('wood', 0x6a4a30), canopy = K.mat('leaves', 0x2a6a30);
-        /* the redwoods stand 3+ tiles out with modest crowns: from the gameplay
-           camera a crown must never hang over the far rows (occ:true fades any
-           trunk or crown that does cross a sight line) */
-        _nrRectRing(K, 3.2 * ts, 1.6 * ts, function (x, z) { if (rng() < 0.2) return; var h = ts * (7 + rng() * 5), r = ts * (0.24 + rng() * 0.18); var t = K.cyl(r * 0.7, r, h, 8, bark); t.position.set(x + (rng() - 0.5) * ts * 0.6, K.fy + h / 2 - 0.2 * ts, z + (rng() - 0.5) * ts * 0.6); K.add(K.lit(t, true)); var cg = new THREE.SphereGeometry(ts * (0.9 + rng() * 0.5), 8, 6); _nrUV(cg, 3, 2); var c = new THREE.Mesh(cg, canopy); c.scale.y = 0.55; c.position.set(t.position.x, K.fy + h - 0.3 * ts, t.position.z); K.add(K.lit(c, true)); }, { skipLanes: true, corners: true });
+        var bark = K.mat('wood', 0x6a4a30);
+        /* the redwoods: the board's own foliage models (Tree_1 / Tree_9 — the
+           trunk + sphere stand-ins are gone, 2026-09-14), 3.8 tiles out and
+           tall; occ:true fades any crown that crosses a sight line from the
+           gameplay camera, the walkable room stands under them */
+        _nrRectRing(K, 3.8 * ts, 1.7 * ts, function (x, z, side) { if (rng() < 0.2) return; var t = _nrTree(K, rng() < 0.5 ? 'tree' : 'tree_4', { h: 4.2 + rng() * 2.0 }); t.position.set(x + (rng() - 0.5) * ts * 0.6, K.fy - 0.08 * ts, z + (rng() - 0.5) * ts * 0.6); K.addW(side, t); }, { skipLanes: true, corners: true });
         _nrTrees(K, { d: 3.6, spacing: 1.6, kinds: ['tree_3', 'tree_2'], p: 0.6, h: 2.6 });
         var owl = new THREE.Group(), stone = K.mat('rocks_1', 0x8a8478);
         var ob = K.cyl(0.9 * ts, 1.1 * ts, 3.2 * ts, 10, stone); ob.position.y = 1.6 * ts; owl.add(K.lit(ob, true));
@@ -25289,7 +25411,7 @@ const ThreeRenderer = (function () {
         var curb = K.mat('concrete_floor', 0x8a8a94);
         [[K.X0, K.BZ0 - 1.6 * ts, K.BX0 - 1.6 * ts, K.BZ1 + 1.6 * ts], [K.BX1 + 1.6 * ts, K.BZ0 - 1.6 * ts, K.X1, K.BZ1 + 1.6 * ts]].forEach(function (r) { var w = r[2] - r[0], d = r[3] - r[1]; if (w <= 0 || d <= 0) return; var m = K.box(w, 0.12 * ts, d, curb); m.position.set(r[0] + w / 2, fy + 0.06 * ts - 0.6, r[1] + d / 2); K.add(K.lit(m)); });
         _nrRoadLines(K, { color: 0xf2d24a });
-        _nrBlocks(K, { d: 3.0, depth: 2.6, minW: 2.4, maxW: 4.0, minH: 3, maxH: 9, tex: 'urban_wall', color: 0x8a7a98, roofTex: 'concrete_floor', winStyle: 'neon', neon: [0xff3ad8, 0x35e0ff, 0xffd34a, 0xff6040], neonP: 0.9, gates: true, only: ['w', 'e'], signs: ['CASINO', 'LUXOR', 'WEDDINGS', '24H', 'BUFFET', 'SLOTS', 'LOANS', 'ELVIS', 'SHOWGIRLS', 'VACANCY'] });
+        _nrSpriteBlocks(K, { d: 3.0, minW: 2.2, maxW: 3.4, stack: [1, 3], color: 0x241a2c, roofTex: 'concrete_floor', roofColor: 0x6a6d72, neon: [0xff3ad8, 0x35e0ff, 0xffd34a, 0xff6040], neonP: 0.9, gates: true, only: ['w', 'e'], signs: ['CASINO', 'LUXOR', 'WEDDINGS', '24H', 'BUFFET', 'SLOTS', 'LOANS', 'ELVIS', 'SHOWGIRLS', 'VACANCY'] });   // the map-builder's buildings (2026-09-14)
         _nrLamps(K, { d: 1.3, spacing: 3.0, color: 0xfff0c0, aura: 0xffb060, only: ['n', 's'] });
         _nrTrees(K, { d: 1.6, spacing: 2.4, kinds: ['tree_3'], p: 0.7, h: 2.6, only: ['n', 's'] });
         [[K.BX0 - 1.4 * ts, K.BZ0 - 2.6 * ts], [K.BX1 + 1.4 * ts, K.BZ1 + 2.6 * ts]].forEach(function (p) { _nrPool(K, p[0], p[1], 0.9 * ts, 'water', { jet: 0x8ad8ff, rimTex: 'marble_light', rimColor: 0xf0e8d8 }); K.add(K.lamp(p[0], fy + 0.9 * ts, p[1], 0x8ad8ff, 1.6 * ts, 0.4)); });
@@ -25318,7 +25440,7 @@ const ThreeRenderer = (function () {
         var K = _nrKit(group, ctx, { w: 3.6, occ: true }), ts = K.ts, fy = K.fy, rng = K.rng, HQ = !!K.hq;
         _nrApron(K, { tex: 'concrete_floor', color: 0xb0aeaa, deep: true, skirt: 'urban_wall', skirtColor: 0x9a9aa0 });
         _nrRoadLines(K, { color: 0xf0f0e8 });
-        _nrBlocks(K, { d: 2.6, depth: 2.8, minW: 2.6, maxW: 4.2, minH: 5, maxH: 12, tex: 'concrete_floor', color: 0xc8c6c0, roofTex: 'concrete_floor', winStyle: 'warm', gates: true });
+        _nrSpriteBlocks(K, { d: 2.6, minW: 2.4, maxW: 3.4, stack: [2, 5], tex: 'concrete_floor', color: 0x9a9894, roofTex: 'concrete_floor', roofColor: 0x8a8d92, gates: true, beacon: 0xff3030 });   // the map-builder's buildings (2026-09-14)
         _nrMounds(K, { tex: 'rubble_3', color: 0xa09a94, d: 1.2, spacing: 2.6, r: 0.9, flat: 0.3, p: 0.4, only: ['w', 'e'] });
         [[K.BX0 - 1.2 * ts, K.CZ - 2.4 * ts, 0.4], [K.BX1 + 1.2 * ts, K.CZ + 2.6 * ts, -0.3]].forEach(function (p) { var d = _hzPropGLB('dumpster', 1.0 * ts); d.position.set(p[0], fy, p[1]); d.rotation.y = p[2]; K.add(d); });
         _nrProp(K, _hzSecurityCam, K.BX1 + 2.0 * ts, K.BZ0 - 2.0 * ts, { s: 0.8 });
@@ -26891,12 +27013,14 @@ const ThreeRenderer = (function () {
             });
         },
         dunes: function (K, s, c) { _WD_RIM.hills(K, Object.assign({ tex: 'desert', flat: 0.2, r: 4.5, n: 20, ranks: 3 }, s), c); },
-        /* a tree line (the procedural trees — far and fogged, the OBJ swap is not worth its load) */
+        /* a tree line — the board's own foliage models (_nrTree; the procedural
+           stand-in swaps out as each OBJ lands and joins the haze through
+           K._wdFog, 2026-09-14). `h` = tiles tall (else 1.5 × the old `s`). */
         trees: function (K, s, c) {
-            var ts = K.ts, rng = K.rng, kinds = s.kinds || ['tree', 'tree_2', 'tree_3'];
+            var ts = K.ts, rng = K.rng, kinds = s.kinds || ['tree', 'tree_2', 'tree_3'], h = s.h || (s.s || 1.6) * 1.5;
             for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 14) * (1 + k * 0.16), Math.round((s.n || 44) * (1 + k * 0.2)), function (x, z) {
                 if (rng() > (s.p == null ? 0.85 : s.p)) return;
-                var t = _nrTreeProc(K, kinds[(rng() * kinds.length) | 0], { s: (s.s || 1.6) * (0.8 + rng() * 0.6) });
+                var t = _nrTree(K, kinds[(rng() * kinds.length) | 0], { h: h });
                 t.position.set(x, c.y - 0.05 * ts, z); t.rotation.y = rng() * 6; K.add(t);
             });
         },
@@ -26910,13 +27034,21 @@ const ThreeRenderer = (function () {
                 if (h) h.position.y = c.y - 0.02 * K.ts;
             });
         },
-        /* a skyline: towers with window lights */
+        /* a skyline: the map-builder's buildings (building_1..8, _nrSpriteBuilding)
+           stacked to `h` tiles, with window lights; `proc: true` = the old plain
+           boxes; `keys` = another building set (2026-09-14) */
         city: function (K, s, c) {
-            var ts = K.ts, rng = K.rng, mat = K.mat(s.tex || 'urban_wall', s.color != null ? s.color : 0xffffff, { lift: 0.3 }), pal = s.lights || [0x35e0ff, 0xff2f8a, 0xffd36a];
+            var ts = K.ts, rng = K.rng, pal = s.lights || [0x35e0ff, 0xff2f8a, 0xffd36a], keys = s.keys || _NR_BUILDING_KEYS;
+            var spr = s.proc !== true && typeof OBJECT_SPRITES !== 'undefined' && !!OBJECT_SPRITES[keys[0]];
+            var mat = spr ? null : K.mat(s.tex || 'urban_wall', s.color != null ? s.color : 0xffffff, { lift: 0.3 });
             for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 18) * (1 + k * 0.35), Math.round((s.n || 18) * (1 + k * 0.3)), function (x, z) {
                 if (rng() > (s.p == null ? 0.75 : s.p)) return;
                 var w = ts * (2 + rng() * 2.5), d = ts * (2 + rng() * 2.5), h = ts * (s.h || 9) * (0.4 + rng() * 1.1);
-                var m = K.box(w, h, d, mat, 0.5); m.position.set(x, c.y + h / 2 - ts * 0.1, z); m.rotation.y = rng() * 6; K.add(K.lit(m));
+                if (spr) {
+                    var wT = 2 + rng() * 1.6, n = Math.max(1, Math.round(h / (wT * 0.85 * ts)));
+                    var b = _nrSpriteBuilding(K, keys[(rng() * keys.length) | 0], x, z, { w: wT, stack: n, tex: s.tex, color: s.color, roofTex: s.roofTex, roofColor: s.roofColor, lift: 0.3, yAbs: c.y - ts * 0.1, ry: ((rng() * 4) | 0) * Math.PI / 2 + (rng() - 0.5) * 0.35, wall: false, roofKit: s.lights !== false && n >= 3, beacon: pal[0] });
+                    w = d = wT * ts; if (b && b.userData.H) h = b.userData.H;
+                } else { var m = K.box(w, h, d, mat, 0.5); m.position.set(x, c.y + h / 2 - ts * 0.1, z); m.rotation.y = rng() * 6; K.add(K.lit(m)); }
                 var nl = s.lights === false ? 0 : 2 + (rng() * 3 | 0);
                 for (var l = 0; l < nl; l++) {
                     var sp = _hzGlowSprite(ts * (0.6 + rng() * 0.8), pal[(rng() * pal.length) | 0], 0.45, 0.15, 0.05, 0.4 + rng());
@@ -27123,6 +27255,7 @@ const ThreeRenderer = (function () {
             }
             var c = { y: sea ? ly + 2 : groundY, shore: shore, R: R, sea: sea, moat: moat };
             K._wdMinD = sea ? 0 : shore / ts + 2;      // a rim never stands in the lake
+            K._wdFog = { r0: fogR0, r1: fogR1 };        // for the pieces that land LATER (foliage swaps, trimmed prisms): _nrInjectWorld
             var lowPerf = (typeof window !== 'undefined' && window.EW_PERF_LOW);
             var rims = row.rim ? (Array.isArray(row.rim) ? row.rim : [row.rim]) : [];
             if (!lowPerf) rims.forEach(function (spec) {
@@ -27603,6 +27736,11 @@ const ThreeRenderer = (function () {
         for (var pi = _nrPending.length - 1; pi >= 0; pi--) {
             var pe = _nrPending[pi];
             if (!pe.g.parent) { _nrPending.splice(pi, 1); continue; }
+            if (pe.spr) {   // a map-builder building waiting on its sprite's alpha trim (_nrSpriteBuilding)
+                if (pe.spr._trim) { _nrPending.splice(pi, 1); try { pe.fill(); } catch (e) { console.error('[scenery] building trim failed', e); } }
+                else if (!pe.spr._trimScanning) _nrPending.splice(pi, 1);   // the scan failed: the untrimmed prism stands
+                continue;
+            }
             var ce = _foliageModelCache[pe.name];
             if (ce && ce.failed) { _nrPending.splice(pi, 1); continue; }
             var src = _loadFoliageModel(pe.name);
@@ -36760,17 +36898,17 @@ const ThreeRenderer = (function () {
                 _hq.blockers.push({ obj: mb, y: floorM, top: null, rad: (m.foot || 1) * C / 2, rect: { hw: (m.foot || 1) * C / 2, hd: (m.foot || 1) * C / 2 }, site: true });
             }
         });
-        /* ── objects: trees and props by kind (the foliage kit is a battle
-           loader; here a tree is a trunk + crown so the cell reads) ── */
+        /* ── objects: the board's trees — the SAME foliage models the board and
+           the setting wear (_nrTree on a bare kit; the trunk + sphere stand-in
+           swaps out as the OBJ lands, polled by _hqTickWorld — 2026-09-14) ── */
+        var treeKit = null;
         info.objs.forEach(function (o) {
             if (!/^tree/.test(o.kind)) return;
             var oc = info.cells[o.y] && info.cells[o.y][o.x], fy = oc ? Math.max(0, oc.lvl) * C : 0;
-            var bark = siteMat('wood', null, { sh: 6 }), crown = siteMat('leaves', null, { sh: 4 });
-            var trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * U, 0.16 * U, 1.5 * U, 7), bark);
-            trunk.position.set(cellX(o.x) * U, (fy + 0.75) * U, cellX(o.y) * U); G.add(trunk);
-            var cr = new THREE.Mesh(new THREE.SphereGeometry(0.72 * U, 8, 6), crown); cr.scale.y = 0.8;
-            cr.position.set(cellX(o.x) * U, (fy + 1.9) * U, cellX(o.y) * U); G.add(cr);
-            var tb = new THREE.Object3D(); tb.position.copy(trunk.position); tb.position.y = 0; G.add(tb);
+            if (!treeKit) treeKit = _nrKit(G, { ts: CM, bw: N, bh: N, rng: _mulberry32((0x7e11 + N * 7 + info.objs.length) >>> 0), hq: { w: 0, gap: 0, B: 1, tints: null } }, {});   // B > 0 keeps the kit off the battle's heights; the trees are placed by hand
+            var t = _nrTree(treeKit, o.kind, { h: 1.9 });
+            t.position.set(cellX(o.x) * U, fy * U, cellX(o.y) * U); G.add(t);
+            var tb = new THREE.Object3D(); tb.position.set(t.position.x, 0, t.position.z); G.add(tb);
             _hq.blockers.push({ obj: tb, y: fy, top: null, rad: 0.3, site: true });
         });
         /* ── the nexus zone: the 2×2 ring on the floor at the board centre ── */
@@ -39271,8 +39409,9 @@ const ThreeRenderer = (function () {
            reads shared time / drift uniforms that only the battle loop
            advances — drive them here for the moat's liquid */
         if (H.moatTick) _hqTickMoat(dt);
-        /* a setting's trees land as their OBJs arrive (HQ plan 7.2 stage 5) */
-        if (H.setting) _nrPollPending();
+        /* a setting's trees land as their OBJs arrive (HQ plan 7.2 stage 5) —
+           and the site board's own trees (2026-09-14), setting or not */
+        _nrPollPending();
         /* room-fx glow pulses (the training pit's lamps and strips) — the
            battle _hzGlowPulse list is not ticked under the HQ loop */
         for (var fp = 0; fp < H.fxPulse.length; fp++) {

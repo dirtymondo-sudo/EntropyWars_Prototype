@@ -534,6 +534,36 @@ any board with `NODE_USE_ENV_PROXY=1 node playtest_maps.js <map…>` (repo
 tooling; see PLAYTEST_NOTES "MAP SETTINGS"). Kill-switch:
 `window.EW_NO_FACILITY_SCENERY`.
 
+## THE MAP-BUILDER BUILDINGS IN THE LANDSCAPE + THE FOLIAGE EVERYWHERE — 2026-09-14
+The editor's **building_1..8** sprites stand in the urban landscapes as
+prisms: three-renderer.js **`_nrSpriteBuilding(K, key, x, z, o)`** (right
+after `_nrHouse`) = the board's own `_buildBuildingPrism` look — four faces
+wearing the sprite between its alpha trim (ui.js `_alphaScanSprite`, async:
+the prism is rebuilt through `_nrPending` kind `spr` when the scan lands), a
+dark core, a brick roof at the sprite's roof line, **`stack`** storeys for a
+tower (whole-sprite storey blocks — never RepeatWrapping, the sprites are
+NPOT), `roofKit` mast + beacon from 3 storeys; **`_nrSpriteBlocks(K, o)`**
+walks the `_nrBlocks` street (lots, alleys, gates, `only`, the neon signs)
+with those prisms. Readers: `_NR_BUILDERS.cyberpunk` / `.strip` / `.downtown`
+(the procedural `_nrBlocks` neon boxes are gone there — `_nrBlocks` itself
+stays for anyone else) and the world rim's **`city`** kind (`_WD_RIM.city`:
+every `city` rim row — Cyberpunk, the Stadium, the Strip, Downtown — is the
+map-builder buildings stacked to `h`; `proc: true` on the row = the old
+boxes; `keys` = another set). **THE FOLIAGE EVERYWHERE**: `_WD_RIM.trees`
+plants `_nrTree` (the foliage OBJs — Tree_* / DeadTree_*; `h` tiles, else
+1.5 × the old `s`) instead of `_nrTreeProc` — the Haunted House's rim was
+the procedural trunk + sphere; the HQ site board's own trees
+(`_hqBuildSiteBoard`) are `_nrTree` on a bare `_nrKit` instead of a trunk +
+sphere; Bohemian Grove's redwoods are tall `_nrTree`s. Late fills join the
+world haze through **`K._wdFog`** (set in `_worldBuild`) → `_nrInjectWorld`
+(the foliage swap and the trim rebuild both call it — a material made after
+`_worldBuild`'s traversal is otherwise unfogged and undissolved). The HQ
+loop polls `_nrPollPending` UNCONDITIONALLY now (the board's trees swap
+without a setting). `npm test` runs `landscape-buildings.test.js`. Unseen
+live (RULE #1c): the prisms' scale against the board's own buildings, the
+trim landing (a flash from untrimmed to trimmed), the rim tree count on
+the Haunted House (48 + 58 OBJ clones).
+
 ## THE CROSSING (opening cinematic) — added 2026-09-06
 The match intro (battle.js `playOpeningCinematic` + three-renderer.js
 `introCineStart/_introBuildDoor/_introUpdateDoors`) no longer marches teams up

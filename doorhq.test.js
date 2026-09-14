@@ -1704,7 +1704,12 @@ test('source scan: the renderer builds the site board and walks it; map.js walks
     assert.match(tr, /function _hqSettingFreeSpot\(x, z\)/, 'natives and props stand clear of the setting');
     assert.match(tr, /var nsp = _hqSettingFreeSpot\(spot\.x, spot\.z\);/, 'the natives are nudged');
     assert.match(tr, /var fsp = _hqSettingFreeSpot\(p\.x \|\| 0, p\.z \|\| 0\);/, 'the floor props are nudged');
-    assert.match(tr, /if \(H\.setting\) _nrPollPending\(\);/, 'the setting\'s trees land under the HQ loop');
+    assert.match(tr, /function _hqTickWorld\(dt, now\) \{[\s\S]*?\n\s*_nrPollPending\(\);/, 'the setting\'s trees AND the site board\'s trees land under the HQ loop (2026-09-14: the poll is unconditional)');
+    assert.doesNotMatch(tr, /if \(H\.setting\) _nrPollPending\(\);/, 'the poll is no longer gated on a setting (the board\'s own trees are foliage swaps too)');
+    /* the site board's trees are the foliage models, never a trunk + sphere (2026-09-14) */
+    const sb = tr.slice(tr.indexOf('function _hqBuildSiteBoard('), tr.indexOf('function _hqBuildSiteBoard(') + 40000);
+    assert.match(sb, /var t = _nrTree\(treeKit, o\.kind, \{ h: 1\.9 \}\);/, 'the site board plants _nrTree (the foliage OBJ) per board tree');
+    assert.doesNotMatch(sb, /new THREE\.SphereGeometry\(0\.72 \* U, 8, 6\), crown\)/, 'the trunk + crown stand-in is gone');
     assert.match(tr, /site: true, setting: true \}\);/, 'every piece is a blocker');
     assert.match(tr, /window\.EW_HQ_NO_SETTING/, 'the kill-switch');
     assert.match(mp, /if \(sr && _hqRoomExists\(sr\)\) return \{ room: sr, at: 'egress' \};/, 'a threshold with a room walks you in');
