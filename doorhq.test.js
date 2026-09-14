@@ -180,10 +180,13 @@ test('doorSiteState honours clearance gates, sector locks and mastery', () => {
     const records = ROOM.doors.find(d => d.id === 'records');
     const quarantined = ROOM.doors.find(d => d.action && d.action.sector === 'quarantined');
     const celestial = ROOM.doors.find(d => d.action && d.action.sector === 'celestial');
-    assert.strictEqual(D.doorSiteState(elevator, null), 'clearance');
-    /* since plan 3.2 the elevator also asks for Keys (requiresKeys) — rank alone stays red */
-    assert.strictEqual(D.doorSiteState(elevator, { door: { clearance: 4 } }), 'clearance');
-    assert.strictEqual(D.doorSiteState(elevator, { door: { clearance: 4, hq: { keys: elevator.requiresKeys } } }), 'open');
+    /* Phase 8 (2026-09-14): the mezzanine door opens into THE CAR for everyone; the KEYHOLDER + 12 Keys gate
+       rides the PH BUTTON (DOOR_HQ.elevator.stops → hqElevatorStops) — rank alone stays red there */
+    assert.strictEqual(D.doorSiteState(elevator, null), 'open');
+    const ph = D.hqElevatorStops(null).find(r => r.id === 'PH');
+    assert.ok(ph && ph.locked && ph.st === 'clearance', 'PH is red with no card');
+    assert.ok(D.hqElevatorStops({ door: { clearance: 4 } }).find(r => r.id === 'PH').locked, 'PH: rank without Keys stays red');
+    assert.ok(!D.hqElevatorStops({ door: { clearance: 4, hq: { keys: 12 } } }).find(r => r.id === 'PH').locked, 'PH: rank and Keys open it');
     assert.strictEqual(D.doorSiteState(records, null), 'open');
     assert.strictEqual(D.doorSiteState(quarantined, { door: { clearance: 6 } }), 'sealed');
     assert.strictEqual(D.doorSiteState(celestial, null), 'unstable');
@@ -491,7 +494,7 @@ test('box-room props resolve (kit or procedural), sit inside the walls, wall pro
         for (const a of room.agents || []) if (!(typeof a.x === 'number' && typeof a.z === 'number')) problems.push(k + ': agent needs x/z');
         /* an OUTDOOR room (plan 7.2 stage 3) has no ceiling to hang a fluorescent from: its lights are masts */
         if (S.open) assert.ok(Array.isArray(S.lights) && S.lights.length >= 4 && !room.props.some(p => p.ceil), k + ': an outdoor room is lit by masts, nothing hangs from a ceiling');
-        else assert.ok(room.props.some(p => p.key === 'fluorescent' && (p.ceil || HQ.catalogue.fluorescent.ceil)), k + ': lit by a fluorescent');
+        else assert.ok(room.props.some(p => (p.key === 'fluorescent' && (p.ceil || HQ.catalogue.fluorescent.ceil)) || /^(flicker_tube|bare_bulb|wall_torch|candle_ring|floating_orb)$/.test(p.key)), k + ': lit by a fluorescent (or, since Phase 8, a tube that flickers, a bulb, a torch, the candles, the object)');
     }
     assert.deepStrictEqual(problems, []);
     /* the closet reference (janitor_closet_v1): cot, sink, mop bucket, breaker panel, rug, drain, CRT, phone, desk, locker, chair */
@@ -519,8 +522,10 @@ test('the training room is a box room off the egress: the pit, the console, the 
     assert.ok(!eg.alt && !eg.alt2, 'the egress panel shortcuts moved into the facility');
     const out = TR.doors.find(d => d.id === 'egress');
     assert.ok(out && out.wall === 'n' && out.x === 0 && out.action.room === 'central_egress' && out.action.at === 'training', 'the way out is centred on the north wall (the barrier gap) and lands at the egress door');
-    const ch = TR.doors.find(d => d.id === 'challenge');
-    assert.ok(ch && ch.wall === 's' && ch.x === 0 && ch.action.fn === '_goToCampaign', 'the Challenge range is the south door, on the other barrier gap');
+    /* Phase 8 (2026-09-14): ONE HOME PER FUNCTION — Challenge mode is Medical's desk; the south door is the service stair down to B */
+    const ch = TR.doors.find(d => d.id === 'stairs');
+    assert.ok(ch && ch.wall === 's' && ch.x === 0 && ch.action.room === 'services' && ch.action.at === 'stairs', 'the service stair is the south door, on the other barrier gap');
+    assert.ok(!TR.doors.some(d => d.action && d.action.fn === '_goToCampaign'), 'Challenge mode has one home (Medical)');
     const cd = TR.doors.find(d => d.id === 'condemned');
     assert.ok(cd && cd.action.fn === '_goToMysteryDungeon', 'the condemned crossing is the Mystery Dungeon');
     for (const d of TR.doors) assert.ok(!(HQ.catalogue[d.leaf] && HQ.catalogue[d.leaf].rank), 'rank leaf on ' + d.id);
@@ -923,8 +928,8 @@ test('hqKeys sums the hourglass counter over its buckets plus Department-issued 
 });
 
 test('requiresKeys doors read CLEARANCE until rank AND Keys are met (plan 3.2)', () => {
-    const gated = ROOM.doors.filter(d => d.requiresKeys);
-    assert.ok(gated.length >= 2, 'at least two restricted doors ask for Keys');
+    const gated = ROOM.doors.filter(d => d.requiresKeys).concat(HQ.elevator.stops.filter(st => st.requiresKeys).map(st => ({ id: 'stop_' + st.id, minClearance: st.minClearance, requiresKeys: st.requiresKeys, action: { room: st.room, at: st.at } })));
+    assert.ok(gated.length >= 2, 'at least two restricted doors ask for Keys (the PH stop counts — Phase 8 moved the elevator gate onto the button)');
     for (const d of gated) {
         assert.ok(d.minClearance, d.id + ': Keys ride on top of a rank gate');
         const rankOnly = { door: { clearance: d.minClearance } };
@@ -1814,12 +1819,14 @@ test('Room 86 is a box room off the ground ring at 75°: the way in, the way out
     assert.strictEqual(has('wall_clock'), 2, 'two clocks that disagree');
     assert.ok(has('cafeteria_chair') + has('molded_chair') >= 10, 'chairs round both tables');
     assert.deepStrictEqual(boxPropProblems('cafeteria', CAFE), []);
-    /* the counters: the notice board → the leaderboard, the till → the Quartermaster */
+    /* the counters (Phase 8, ONE HOME PER FUNCTION): the notice board is a panel (Form 365 + the notices), the till is a prop — the leaderboard is the hall's board, the shop is the Quartermaster's door */
     const notice = CAFE.counters.find(c => c.id === 'notice'), till = CAFE.counters.find(c => c.id === 'till');
-    assert.ok(notice && notice.action.fn === '_mountLeaderboard' && notice.verb && notice.radius > 0, 'the notice board reads the leaderboard');
-    assert.ok(till && till.action.fn === '_goToShop' && till.verb && till.radius > 0, 'the till is the shop');
+    assert.ok(notice && !notice.action.fn && !notice.action.overlay && notice.desc && notice.verb && notice.radius > 0, 'the notice board is a panel of its own');
+    assert.ok(!till && !CAFE.counters.some(c => c.action && c.action.fn === '_goToShop'), 'the till is a prop; the shop has one home');
     assert.ok(CAFE.props.some(p => p.key === 'notice_board' && p.wall === 's' && Math.abs(p.x - notice.x) < 0.5), 'the board hangs where its counter stands');
-    assert.ok(CAFE.props.some(p => p.key === 'cash_register' && Math.hypot(p.x - till.x, p.z - till.z) < till.radius), 'the register is within reach of the till');
+    assert.ok(CAFE.props.some(p => p.key === 'cash_register'), 'the register is still on the line');
+    const kd = CAFE.doors.find(d => d.id === 'kitchen');
+    assert.ok(kd && kd.wall === 'n' && kd.action.room === 'kitchen' && kd.action.at === 'service' && HQ.rooms.kitchen.doors.some(d => d.id === 'service' && d.action.room === 'cafeteria' && d.action.at === 'kitchen'), 'the service stair down to Room 350 and back');
     /* the people: the roster on break, the operatives on shift, one cashier */
     assert.ok(CAFE.npcSpots.length >= 3 && CAFE.onlineSpots.length >= 2 && CAFE.agents.length >= 1, 'spots for the roster, the online shift and the cashier');
     assert.ok(CAFE.lines.length >= 3, 'overheard lines');
@@ -1874,7 +1881,7 @@ test('room variants (plan 5.1): after hours Room 86 is the MÖBIUS STRIP CLUB �
         assert.ok(r.props.filter(p => p.key === 'cafeteria_chair').length >= 6, 'chairs round it');
         assert.ok(r.props.some(p => p.key === 'vending_machine') && r.props.some(p => p.key === 'notice_board') && r.props.filter(p => p.key === 'fluorescent').length === CAFE.props.filter(p => p.key === 'fluorescent').length, 'what was not dropped still stands');
         assert.deepStrictEqual(boxPropProblems('cafeteria/after_hours', r), []);
-        assert.ok(r.counters.some(c => c.id === 'bar' && c.action.fn === '_goToShop') && r.counters.some(c => c.id === 'notice'), 'the bar is the shop; the board stays');
+        assert.ok(r.counters.some(c => c.id === 'bar' && !c.action.fn && c.desc) && r.counters.some(c => c.id === 'notice'), 'the bar is a menu (the shop has one home); the board stays');
         assert.ok(r.agents.length >= 1 && r.lines.length >= 3 && r.npcSpots.length >= 3 && r.onlineSpots.length >= 2, 'a bartender, the lines, the spots');
         const row = D.hqRoomRegister().find(x => x.no === '86');
         assert.strictEqual(row.label, 'MÖBIUS STRIP CLUB', 'the directory insists it was always so');
@@ -2723,12 +2730,13 @@ const PH = HQ.rooms.executive, CO = HQ.rooms.corner, PL = HQ.rooms.pool;
 test('the elevator rides to THE PENTHOUSE: the egress door lands in the lobby, the lobby’s car lands at the elevator, the floor panel, the two doors off it', () => {
     assert.ok(PH && PH.kind === 'box' && PH.roomNo == null, 'rooms.executive is a box room and wears no number (it is a floor)');
     const el = ROOM.doors.find(d => d.id === 'elevator');
-    assert.ok(el && el.deg === 0 && el.level === 1 && el.proc === 'elevator' && el.action.room === 'executive' && el.action.at === 'elevator', 'the mezzanine elevator walks into the lobby at its car');
-    assert.ok(el.minClearance === 4 && el.requiresKeys === 12, 'the gate is the elevator door’s (KEYHOLDER + 12 Keys), unchanged');
-    assert.strictEqual(D.doorSiteState(el, null), 'clearance');
-    assert.strictEqual(D.doorSiteState(el, { door: { clearance: 4, hq: { keys: 12 } } }), 'open');
+    /* Phase 8 (2026-09-14): the mezzanine door opens into THE CAR (rooms.car); its PH button wears the old gate */
+    assert.ok(el && el.deg === 0 && el.level === 1 && el.proc === 'elevator' && el.action.room === 'car' && el.action.at === 'panel', 'the mezzanine elevator walks into the car at its panel');
+    assert.ok(!el.minClearance && !el.requiresKeys, 'the door itself is not gated any more');
+    const phStop = HQ.elevator.stops.find(st => st.id === 'PH');
+    assert.ok(phStop && phStop.minClearance === 4 && phStop.requiresKeys === 12 && phStop.room === 'executive' && phStop.at === 'elevator', 'the gate is the PH stop’s (KEYHOLDER + 12 Keys), unchanged in kind');
     const car = PH.doors.find(d => d.id === 'elevator');
-    assert.ok(car && car.wall === 's' && car.proc === 'elevator' && !car.leaf && car.action.room === 'central_egress' && car.action.at === 'elevator', 'the way down is the car, landing at the mezzanine elevator');
+    assert.ok(car && car.wall === 's' && car.proc === 'elevator' && !car.leaf && car.action.room === 'car' && car.action.at === 'panel', 'the way down is the car, landing at its panele elevator');
     assert.ok(!car.minClearance && !car.requiresKeys, 'the way down is never gated');
     /* the two rooms off the lobby, and the ways back */
     const dc = PH.doors.find(d => d.id === 'corner'), dp = PH.doors.find(d => d.id === 'pool');
@@ -2763,10 +2771,10 @@ test('Room 4C is THE CORNER OFFICE off the lobby: the in-tray moved up, the plaq
     assert.ok(CO && CO.kind === 'box' && CO.roomNo === '4C', 'rooms.corner kind box, Room 4C');
     assert.strictEqual(D.hqRoomNo('corner'), '4C');
     assert.ok(!CO.shell.open && CO.shell.pipes === false && CO.shell.h >= 3.0, 'an indoor office under a ceiling');
-    const tray = CO.counters.find(c => c.id === 'intray'), pq = CO.counters.find(c => c.id === 'plaques'), vw = CO.counters.find(c => c.id === 'view');
-    assert.ok(tray && tray.action.overlay === 'intray' && tray.verb && tray.desc, 'THE IN-TRAY is the closet’s counter (the same case file)');
-    assert.strictEqual(tray.action.overlay, OFFICE.counters.find(c => c.id === 'intray').action.overlay, 'the same overlay as Room 101');
-    assert.ok(pq && pq.action.fn === '_mountReactTrophies' && pq.verb && pq.desc, 'THE PLAQUES open the profile on its Achievements tab');
+    /* Phase 8 (2026-09-14), ONE HOME PER FUNCTION: the in-tray counter is Room 101's only (the desk stays); THE PLAQUES are a panel (the cabinet is Room 111's) */
+    const tray = { x: 0.4 }, pq = CO.counters.find(c => c.id === 'plaques'), vw = CO.counters.find(c => c.id === 'view');
+    assert.ok(!CO.counters.some(c => c.id === 'intray') && OFFICE.counters.some(c => c.id === 'intray' && c.action.overlay === 'intray'), 'the in-tray has one home: Room 101');
+    assert.ok(pq && !pq.action.fn && !pq.action.overlay && pq.verb && pq.desc, 'THE PLAQUES are a panel of their own (the achievements open in Room 111)');
     assert.ok(vw && !vw.action.fn && !vw.action.overlay && !vw.action.room && vw.desc, 'THE WINDOW has a panel and no action');
     assert.ok(CO.props.some(p => p.key === 'exec_desk' && p.wall === 'n' && Math.abs(p.x - tray.x) < 0.3), 'the desk under the in-tray counter');
     assert.ok(CO.props.some(p => p.key === 'exec_chair' && Math.abs(p.x - tray.x) < 0.3 && p.z < -1.8), 'the chair behind the desk');
@@ -2809,11 +2817,12 @@ test('Room 8 is THE INFINITY POOL off the lobby: an open room under Heaven’s s
     assert.ok(PL.props.filter(p => p.key === 'pool_lounger').length >= 4, 'loungers');
     assert.ok(PL.props.filter(p => p.key === 'pool_umbrella').length >= 2, 'umbrellas');
     assert.ok(PL.props.some(p => p.key === 'palm_tree'), 'the palms');
-    const edge = PL.counters.find(c => c.id === 'edge'), rk = PL.counters.find(c => c.id === 'ranking');
+    const edge = PL.counters.find(c => c.id === 'edge');
     assert.ok(edge && !edge.action.fn && !edge.action.overlay && !edge.action.room && edge.desc && edge.verb, 'THE EDGE has a panel and no action');
     assert.ok(Math.hypot(edge.x - pool.x, edge.z - pool.z) < pc.rect.hd + edge.radius + 0.2, 'the edge counter stands at the pool');
-    assert.ok(rk && rk.action.fn === '_mountLeaderboard' && rk.verb && rk.desc, 'THE RANKING reads the leaderboard');
-    assert.ok(PL.props.some(p => p.key === 'notice_board' && p.wall === 's' && Math.abs(p.x - rk.x) < 0.5), 'the board stands where its counter does');
+    /* Phase 8 (ONE HOME PER FUNCTION): the ranking counter is gone — the leaderboard is the hall's board; the notice board stays a prop */
+    assert.ok(!PL.counters.some(c => c.id === 'ranking') && !PL.counters.some(c => c.action && c.action.fn === '_mountLeaderboard'), 'the leaderboard has one home');
+    assert.ok(PL.props.some(p => p.key === 'notice_board' && p.wall === 's'), 'the board still stands by the towels');
     /* the people: the top of the board on a lounger, the lifeguard, the online shift on the loungers */
     assert.ok(PL.agents.some(a => a.pose === 'hqSit' && PL.props.some(p => p.key === 'pool_lounger' && Math.hypot(p.x - a.x, p.z - a.z) < 0.05)), 'the top of the board sits on a lounger');
     assert.ok(PL.onlineSpots.length >= 3 && PL.onlineSpots.every(sp => PL.props.some(p => p.key === 'pool_lounger' && Math.hypot(p.x - sp.x, p.z - sp.z) < 0.05)), 'every online silhouette takes a lounger');
@@ -2831,13 +2840,14 @@ test('Room 8 is THE INFINITY POOL off the lobby: an open room under Heaven’s s
 test('the Executive floor — the source sites: the three panels, the eight procs, the rect blocker, the fn labels', () => {
     const mp = fs.readFileSync(path.join(__dirname, 'map.js'), 'utf8');
     const tr = fs.readFileSync(path.join(__dirname, 'three-renderer.js'), 'utf8');
-    assert.match(mp, /if \(c\.id === 'floorpanel'\) \{[\s\S]{0,1200}?data-room="central_egress" data-at="elevator"/, 'the floor panel’s M button is the way down');
+    assert.match(mp, /if \(c\.id === 'panel' \|\| c\.id === 'floorpanel'\) return _hqFloorPanelHtml\(c, html\);/, 'the floor panel is the car’s ride (Phase 8)');
+    assert.match(mp, /function _hqFloorPanelHtml\(c, html\) \{[\s\S]{0,1600}?window\.hqElevatorStops\(profile, from\)/, 'the panel reads the stops');
     assert.match(mp, /if \(c\.id === 'view'\) \{[\s\S]{0,1600}?window\.hqSiteMastery/, 'the window looks out on the bays’ mastery');
-    assert.match(mp, /if \(c\.id === 'edge'\) \{[\s\S]{0,2000}?data-fn="_mountLeaderboard"/, 'the edge panel reaches the leaderboard');
+    assert.doesNotMatch(mp, /if \(c\.id === 'edge'\) \{[\s\S]{0,2000}?data-fn="_mountLeaderboard"/, 'the edge panel no longer launches the leaderboard (one home: the hall’s board)');
     assert.match(mp, /_mountReactTrophies: 'ACHIEVEMENTS'/, 'the plaques’ fn is labelled');
     assert.match(mp, /_mountReactTrophies: '_unmountReactProfile'/, 'the plaques are a modal over the paused building');
     for (const k of ['floor_panel', 'exec_desk', 'exec_chair', 'wall_plaques', 'false_window', 'infinity_pool', 'pool_lounger', 'pool_umbrella']) assert.match(tr, new RegExp('^\\s+' + k + ': function \\(U\\) \\{', 'm'), 'the ' + k + ' proc');
     assert.match(tr, /wall_plaques: function \(U\) \{[\s\S]{0,900}?window\.hqTrophyCount/, 'the plaques read the achievements ledger');
-    assert.strictEqual((tr.match(/rect: cat\.rect \|\| undefined/g) || []).length, 2, 'both prop blocker sites pass the catalogue rect');
+    assert.strictEqual((tr.match(/rect: \(p\.rect === false\) \? undefined : \(cat\.rect \|\| undefined\)/g) || []).length, 2, 'both prop blocker sites pass the catalogue rect (a placement may refuse it: rect: false)');
     assert.match(tr, /if \(b\.rect\) return Math\.abs\(x - bx\) < b\.rect\.hw \+ pad/, 'the walker honours a rect blocker');
 });

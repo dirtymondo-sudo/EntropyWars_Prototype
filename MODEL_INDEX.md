@@ -169,6 +169,32 @@ watches). Three kit props ALSO stand on battle boards through
 `palm_tree` (Atlantis) — battle and site room alike, never doubled as
 room props.
 
+## 6b. THE EXPLORATION FLOORS (Phase 8, 2026-09-14) — what stands on the new floors
+Everything on G · B · B2 · 3 is the D.O.O.R. kit (§6) or a `DOOR_HQ.catalogue`
+PROC (44 new builders in three-renderer.js `Object.assign(_hqProcBuilders,
+{…})`: car_panel · shaft_window · concrete_pillar · parking_bay ·
+parked_car · garage_ramp · roller_shutter · kitchen_range · range_hood ·
+pot_rack · meat_hook · washer · dryer · laundry_cart · flicker_tube ·
+bare_bulb · boiler · cell_bars · wall_chains · stocks · wall_torch ·
+candle_ring · ritual_circle · stone_altar · floor_stain · floating_orb ·
+chalkboard · lectern · riser_1/2/3 · school_desk · toilet_stall · urinal ·
+sink_row · hand_dryer · locker_bench · shower_stall · lap_pool ·
+lifeguard_chair · garden_ring · fountain · park_bench · garden_tree) — a
+user GLB replaces any of them by giving its catalogue row a `file`
+(§9, the same-thing rule). Two families are RE-HOMED, not new:
+- **THE SEDAN** (the honda civic race GLB, `Assets/Sprites/Races/
+  hondacivic/…1990s_sedan…`, rigged race model used static): the main
+  menu's parked car (`_menuBuildSedan`) AND the garage's five `parked_car`
+  procs (`getRace3DModel('honda civic', 'male')`, fit 1.42 m, five tints).
+- **THE FOLIAGE OBJs** (Tree_1 / Tree_3 / Tree_6 via `_nrTree`): the
+  garden's six `garden_tree` procs, on a bare `_nrKit` like the site
+  boards' trees.
+Wish-list for these floors (plan §8.5): a hooded robe, a second car, a
+washer / dryer, a range, a toilet + stall, a sink row, a crystal orb, a
+pool ladder + starting block, a lifeguard chair, a park bench, a fountain,
+iron bars, a bracketed torch; hedge / raised-floor / gym-rubber / wet-
+concrete / frost textures.
+
 ## 7. Rigged models
 
 95 race rigs in sprites.js `RACE_MODELS_3D` (per race and gender; the

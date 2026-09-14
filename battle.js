@@ -15798,6 +15798,7 @@
 
             let yaw = 0, pitch = PITCH_DEFAULT, zoomMult = 1.0;
             let locked = false;
+            let _strikeLockReleasedAt = 0;   /* Phase 8 (2026-09-14): when WE let the lock go (mode end, pause) — a loss outside that window is the player's ESC, which the browser eats */
             let heldDirs = {};                 // kb w/a/s/d currently held
             let runHeld = false;               // shift
             let padVec = null;                 // left stick {x, y}
@@ -15984,6 +15985,7 @@
                 }
                 if (releaseLock && locked) {
                     locked = false;
+                    _strikeLockReleasedAt = performance.now();
                     if (document.pointerLockElement === _canvas()) {
                         try { document.exitPointerLock(); } catch (e) {}
                     }
@@ -16165,10 +16167,20 @@
                    the cursor warps it causes) was the HQ camera's 180° snap
                    while walking (2026-09-05). */
                 const el = document.pointerLockElement;
+                const wasLocked = locked;
                 locked = !!el && el === _canvas() && _enabled();
                 if (!locked) _clearInput(false);
                 else if (!_inputAllowed()) _clearInput(true);
                 _refreshHud(true);
+                /* THE PAUSE (Phase 8, 2026-09-14): while the pointer is locked the browser
+                   consumes ESC to release it and the page never sees the key — so the
+                   pause menu could not be opened from the aim without a click the
+                   frozen cursor could not make. A lock we did not release ourselves
+                   (no mode end, no pause, within 1.5 s) is that ESC: open the pause menu. */
+                if (wasLocked && !locked && _enabled() && _owns() && performance.now() - _strikeLockReleasedAt > 1500
+                    && state.phase === 'battle' && !state.winner && !state.uiDialog && typeof window.togglePauseMenu === 'function') {
+                    setTimeout(() => { try { if (state.phase === 'battle' && !state.winner && !state.uiDialog) window.togglePauseMenu(); } catch (e) {} }, 0);
+                }
             });
 
             /* While locked, the OS cursor is frozen — swallow the raw pointer
@@ -16943,7 +16955,7 @@
 
                 /* release OUR stale pointer lock when the mode ends (`locked`
                    is only ever true for a lock this mode took — never the HQ's) */
-                if (locked && !_enabled()) { try { document.exitPointerLock(); } catch (e) {} }
+                if (locked && !_enabled()) { _strikeLockReleasedAt = performance.now(); try { document.exitPointerLock(); } catch (e) {} }
 
                 const u = _localUnit();
                 const uid = u ? u.id : null;

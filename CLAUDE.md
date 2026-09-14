@@ -2484,6 +2484,52 @@ axes — place the prop at `face` 0 / 180) and both prop-blocker sites in
 #2). doorhq.test.js guards the ride, both rooms, the sky diff, the rect and
 the source sites. Still open in 7.4: the Fourier Foyer only.
 
+## THE EXPLORATION FLOORS (HQ plan Phase 8 stage 1) — shipped 2026-09-14, local delivery
+The elevator is a ROOM: `DOOR_HQ.rooms.car` has no doors — its FLOOR
+PANEL (counter `panel` → map.js `_hqFloorPanelHtml`, shared with the
+penthouse's `floorpanel`) rides to `DOOR_HQ.elevator.stops` (PH · 3 · M ·
+G · B; read through `hqElevatorStops(profile, fromRoom)` — PH wears the
+old KEYHOLDER + 12 Keys gate, the mezzanine door is ungated; `window.
+_hqCarFrom` = the floor the car was boarded from). Every lobby's
+`elevator` door (`proc: 'elevator'`) leads back to `car@panel`. Three
+floors + an undercroft on no button (24 rooms, the block after
+`training` in data.js; plan §8.2 has the table): **G** THE GARAGE (P1,
+THE RAMP landmark, the booth panel) + the dock; **B** SERVICES (the
+lobby), the kitchen (350, a saloon door UP into the Cafeterium), the cold
+room (−18), the laundry (60), Service Corridors A and B, the boiler room
+(451), the room at the end, the server room (127, a stair UP into IT);
+**B2** the dungeon (24601), the ritual room (333), the sacrifice room
+(322, THE ALTAR panel = Form 322), Room X (the `floating_orb`, THE
+OBJECT panel); **3** THE ANNEX, the lecture hall (314, THE BOARD panel =
+TYPE_CHART), the cubicle floor (9-5, the online shift's `onlineSpots`),
+the bathroom (WC), the crawlspace, the locker room (26), the natatorium
+(50M), the garden (1618, open under Olympus's sky by hand, the L5 gate →
+Room X). Un-numbered rooms are lobbies / corridors (the register skips
+them). **SECRET DOORS**: `door.secret: true` = no leaf / lamp / plate; the
+renderer hangs a wall slab on a hinge in the shell's tinted wall
+(`_hqBuildDoors` `wallMatS`); `hqSecretDoors()` lists the five. **ONE
+HOME PER FUNCTION** (plan C-27): every `fn` / overlay has ONE counter or
+door in the building (the ID card = Reception's window; the leaderboard
+= the hall's board; the shop = the Quartermaster; Challenge = Medical's
+desk; achievements = Room 111; the case file = Room 101) — a duplicate is
+a by-id PANEL or a prop, never a second launch; hq-floors.test.js fails
+on a second home, and no panel carries a YOUR CARD button. **Renderer
+rules that came with it** (three-renderer.js): a catalogue proc may carry
+`light: { color, intensity, dist, y }` (a PointLight the placer adds,
+`HQ_PROP_LIGHT_MAX` 10 per room); a builder that moves pushes a ticker
+(`_hq.tickers`, run by `_hqTickWorld`); a shell may say `strips: false`
+and `mood.ambient` (a dim room lit by its own props); a placement's
+`rect: false` refuses the catalogue rect. The 44 Phase 8 procs live in
+`Object.assign(_hqProcBuilders, {…})` before `_hqProcProp`; `parked_car`
+is the Sedan (`getRace3DModel('honda civic')`, MODEL_INDEX). **THE PAUSE**
+(C-28): P = ESC in the building and the pause menu in a battle (ui.js);
+an UNREQUESTED pointer-lock loss is the ESC the browser ate —
+`_hqOnLockChange` (`_hqHadLock`, outside `_hqLockStaleAt`'s window) opens
+the settings, Strike Mode's `pointerlockchange` (`_strikeLockReleasedAt`)
+opens the pause menu. `npm test` runs `hq-floors.test.js`. Unseen live
+(RULE #1c): all of it — plan §9 2026-09-14 rev 3 lists what to eyeball
+first.
+
 ## THE SOCKET PICKER'S TABS + FILTERS (the Freelancer pool window) — 2026-09-14, local delivery
 The ＋ RACE SOCKET / ＋ JOB SOCKET window (party-builder.js, the node
 picker after the RACE ABILITIES strip) wears five category TABS (ALL ·

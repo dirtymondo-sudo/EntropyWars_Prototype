@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 35 (2026-09-14 rev 2 — 5.4 STAGE 1 + 7.4 ROOMS 4C + 8 SHIPPED: the ELEVATOR rides — KEYHOLDER rank + 12 Keys at the mezzanine door, unchanged — to THE PENTHOUSE, the executive lobby (no number; a floor): THE FLOOR PANEL by the car (sixteen buttons, two lit — M is the way down, PH is where you stand, there is no 13), the assistant, the guard, and two doors off it — Room 4C · THE CORNER OFFICE (your office once the ladder passed L3: THE IN-TRAY is the closet’s case file moved up, THE PLAQUES are the achievements engraved on the wall, THE WINDOW that should not exist looks out on the seven bays with the count on file for each; the closet and its rank door stay yours) and Room 8 · THE INFINITY POOL (an OPEN room under Heaven’s own sky behind a knee-high parapet, the cloud plain running out past it over the void, the raised basin with a weir the water goes over, loungers, umbrellas, palms, THE EDGE, THE RANKING → the leaderboard, the online shift on the loungers); §9 2026-09-14 rev 2; rev 34 2026-09-14 — 7.4 ROOM 1 SHIPPED: RECEPTION is a walkable intake office behind the window door at 120° — THE INTAKE WINDOW (the profile: the ID card, the callsign, the desk, the stamps), THE LAMINATOR (the intake sheet the card was printed from, data.js `hqIntakeCard`: employee number, clearance, rank, issue date, the photo on file, visits, reissues, the LOST CARD FEE never collected), NOW SERVING (the sign in red digits — the first half of your employee number — and the dispenser under it: your ticket is the second half, the office is working through the gap); the clerk, the guard, the new hire on number four; §9 2026-09-14; rev 33 2026-09-13 rev 3 — 7.4 ROOMS 1111 + 5150 SHIPPED: MEDICAL is a walkable ward behind the hospital door at 210° — THE SERVICES DESK (Challenge mode), THE CHART at the foot of the bed (your record off the career stats: crossings, released, EXITED, the CONDITION line — INTAKE / FIT FOR DUTY / UNDER OBSERVATION / ADMINISTRATIVE LEAVE, data.js `hqMedicalRecord`), two cots, the nurse, the orderly, a patient; and the cell door at the back of the ward into Room 5150 · THE PADDED ROOM — one cell, three walls of tufted vinyl (`wall_padding` proc), a cot, a drain, THE HOLD (a panel that repeats the condition; leave is served here when the story serves it); §9 2026-09-13 rev 3; rev 32 2026-09-13 rev 2 — 7.4 ROOMS 42 + 1337 SHIPPED: RECORDS is a walkable room behind its wired double door at 240° — the stacks, THE READING DESK (the Codex), THE CARD CATALOGUE (the unfiled sites: community maps, a modal over the paused building), the service stair up to Room 360's projector (the door's old REPLAY alt, now a door you walk through); IT is a box room off the mezzanine at 120°, inside Arcane Engineering's stretch — the user's Hacker Room as a door, not a map: THE LIBRARY (the Spell Library, whose Back now comes home to the building), THE BENCH (the balance lab), THE RACKS (the AI training lab), three `server_rack`s, the keypad inside by the way out (the hollow-core leaf is L2's, so the fourth door that wasn't there yesterday is the holographic one); §9 2026-09-13 rev 2; rev 31 2026-09-13 — 7.6 WAVE 1 SHIPPED, all six: Room 13 · THE HAUNTED HOUSE (Terrestrial — the mansion's ground floor cut open across the board with the graveyard on both sides; the gothic point of entry: ghost, werewolf, vampire, ghoul), Room 33 · THE LODGE (Terrestrial, indoors — the temple: the sanctum behind thin damask walls, the pillars, the altar, the Tomb sunk in the floor; politician, general, marksman), Room 0 · THE SINGULARITY (CELESTIAL, not Quarantined — like E4, the sealed bay is unplayable; two spiral arms of shards over nothing; watcher, cosmic wraith), Room 6 · SATURN (Celestial — the hexagon plateau in the storm, oil lakes, the cubes; grey, black goo), Room 21 · THE STRIP (Urban — the boulevard at night, the chapel, the marquees, the Luxor; conspiracy theorist, honda civic), Room 1954 · DOWNTOWN (Urban, daylight — the intersection, the rubble, the collapsed tower; superhero, antihero, zombie, king kong). Each = full 16×16 + Δ + site file + threshold + bay + a walkable room with its setting + server MAP_POOL rows (now parity-checked); `env.ambience` names a still map's bed; §9 2026-09-13 wave 1; rev 30 2026-09-13 — 7.4 ROOMS 111 + 1984 SHIPPED: THE TROPHY CASE is a box room off the MEZZANINE at 290°, over EMPLOYEE OF THE MONTH — two lit glass cabinets (`trophy_case` proc: plaques gold for the engraved ones, `hqTrophyCount` reads the achievements ledger), THE CABINET counter opens the profile ON its Achievements tab (`_mountReactTrophies`); THE INTERROGATION ROOM is a box room off the ground ring at 255°, between RECORDS and BAY 1 — a steel table (`steel_table` proc), two folding chairs, one lamp, the round observation window as the one-way mirror, and THE TABLE counter opens the CPU TRAINING TRANSCRIPT (map.js `_hqTranscriptHtml`: the imitation ledger — matches watched, decisions scored, agreement, every weight moved off default, the last report) — the one function that had no physical home; §9 2026-09-13; rev 29 2026-09-12 — MOVING MAPS: three sites whose world streams past the board, faster every round — Room 1717 · QUEEN ANNE'S REVENGE (Hollow; the 7.7 Pirate Bay number, the ship itself instead of a cove), Room 426 · THE DERELICT (Celestial, new), Room E4 · THE LOOKING-GLASS (7.6 #6, shipped to DIPLOMATIC because Bay 6 is sealed until a chapter); `env.motion` on the meta row → three-renderer.js MOTION (streaming far roster, a sliding sea, a storm that builds, the sun / moon swelling on a close pass), each Δ with its own bed; Heaven drifts; §9 2026-09-12; rev 28 (2026-09-11 rev 5 — 7.4 ROOM 360 SHIPPED: THE OBSERVATORIUM is a box room off the MEZZANINE at 240°, directly above Records (a holographic door between Bay 3 and Bay 6): a planetarium — the PROJECTOR in the middle is the tape library's projection (Replay moved up from Records' door panel; Records' alt now leads upstairs), the PROJECTED SKY on the ceiling is every threshold in the building as a star in its lamp's colour (seven constellations, one per bay, Bay 1 at twelve — data.js `hqStarChart`, ONE layout read by three-renderer.js `star_dome`, the wall `star_chart` and the panel), and THE STAR CHART counter opens the star-map (map.js `_hqStarmapHtml`): point at a star and its threshold's OWN door panel opens from here (`_hqOpenThreshold` — CROSS ▸ Δ / DEEP / WALK IN, ◂ THE CHART back), a fast route to any site, nothing about match setup bypassed; a box shell can now be painted down (`wallColor` / `dadoColor` / `ceilColor` / `ceilTile`); rev 27 2026-09-11 rev 4 — 7.4 ROOM 1287 SHIPPED: OCCAM'S BARBERSHOP is a box room off the ground ring at 105° (a glass door between the Quartermaster and Reception, the pole in the hall), and THE CHAIR answers D13 — sit and walk the building as the recruit, your most-played vessel, a D.O.O.R. agent or any declassified rigged vessel (data.js `hqAvatarPref` / `hqSetAvatar` → `door.hq.avatar`, map.js `_hqAvatar` reads it, three-renderer.js `hq.setAvatar` swaps the model in place), the mirror is the ID card and the card's photo follows the chair; rev 3 2026-09-11 — 7.9 + 7.4 ROOM 247 SHIPPED, logged from the code (the 00:39 upload carried no entry): THE CLOCK ROOM at 225° with the world clocks that disagree, the punch clock (the login streak, `hqPunchIn` from the front door) and FORM 365 — Daily Office Operations Requirements, three lines a day seeded like the Code Red (`hqDailyOps`), judged at the match commit (`hqDailyOpsJudge`), 💰 120 a line + 💰 150 the sheet, the count on the strip; rev 26 2026-09-11 rev 2 — 7.4 ROOM 86 SHIPPED + 5.1's FIRST VARIANT: THE CAFETERIUM is a box room off the ground ring at 75° (the serving line, the hot side that was the hall's break nook, two long tables, the notice board → the leaderboard, the till → the Quartermaster, the roster on break, the other operatives on shift from the lobby's online count), and after hours the same door reads MÖBIUS STRIP CLUB (`rooms.cafeteria.variants.after_hours`: the bar is one lathe with one side, pink light, a bartender — `hqRollRoomVariants` per visit, `?hqvariant=after_hours`); rev 25 2026-09-08 rev 5 — 5.4a stage 2 SHIPPED: THE CONTAINMENT RING is ONE CORRIDOR PER FLOOR — the bays of a floor are segments of a single hallway framed just outside the egress drum (ground ring r 21.5–25.5 behind Bays 1 and 4, mezzanine ring r 24.5–28.5 behind Bays 2 · 5 · 7 · 3 · 6), every egress bay door is the ring's inner-wall door at the same angle, the thresholds spread along the outer wall either side of it, no rebuild between bays, the caps wear the fire door to each other across the service side; data.js `bayShell.corridor`, `hqRingLayout` / `hqRingRoom` / `hqBayEntry` / `hqBayNo` / `hqRingSectorAt` / `hqRingSpot`, `hqBayId(sector)` → the floor's ring; the renderer learns only `shell.full`; map.js lands through `hqBayEntry`; the cast's bay spots carry over; kill-switch `corridor.on: false`; rev 24 2026-09-08 rev 4 — 7.2 stage 6 SHIPPED: THE REST OF THE REGISTER — every launch map is a walkable room: Rooms 14179 · SHASTA, 56 · STONEHENGE, 444 · GIZA, 777 · HEAVEN, 2047 · CYBERPUNK CITY, 11 · BABEL, 12 · OLYMPUS, 4 · MARS, 51 · AREA 51, 512 · SKINWALKER RANCH, 180 · HOLLOW EARTH, 420 · FAIRY FOREST, 1969 · MOON, 888 · VATICAN CITY, 23 · BOHEMIAN GROVE, 9600 · GÖBEKLI TEPE, 1225 · NORTH POLE and 2D · FLAT LANDS are outdoor rooms behind their bay thresholds, each with its map's setting inside it at 1:1 and its sky overhead (Flat Lands opts out of its fourteen-tile setting), four consoles off the west wall, Babel's terraces as stands, the Moon under a 3 m berm; data-only — `siteRooms.built` / `near` / `shells` / `flavour`, no renderer change; doorhq.test.js now insists every site in the register has a room; rev 23 2026-09-08 rev 3 — 7.2 stage 5 SHIPPED: THE SETTING IN THE ROOM — every walkable site room now runs its map's own MAP SETTINGS near builder inside it at 1:1 (D.U.M.B.'s server racks and blast door, CERN's beamline and terminals, the Backrooms' partitions and stalk fluorescents, Nuketown's picket fence, houses, road and buses, the Stadium's tiers and floodlights, Camelot's curtain wall with its towers and drawbridge, Atlantis' colonnade and kelp, Hell's spires and braziers, Technoticlan's temple tiers and torches, Agartha's crystal spires, Antarctica's ice ridges and igloo) — the room grows to the setting's apron (`siteRooms.near[key].w` tiles, + the moat's gap), the kit's enclosure primitives are no-ops in the room (the shell is those), every piece is culled clear of the way in and the console and becomes a blocker, natives and props are nudged off the houses and the stands, and four consoles moved to the north wall (`shells[id].console`); `hqSiteRoom` `near`, three-renderer.js `_hqBuildSetting` / `_hqSettingFreeSpot`, `_nrKit` `ctx.hq`; rev 22 2026-09-08 rev 2 — 7.2 stage 4 SHIPPED: the MOAT rooms — Rooms i · CAMELOT, H-20 · ATLANTIS, 666 · HELL, 2012 · TECHNOTICLAN, 88 · AGARTHA and 90S · ANTARCTICA are outdoor sites whose walkway is a QUAY: the ring between the island and the quay is the map's own liquid one level down in the battle's animated fluid sheet, board-edge canals open into it, a causeway either way (the south one is the way in), deep water and lava never entered; `shells[id].moat`, `hqSiteRoom` → `shell.moat`, three-renderer.js `_hqSiteOnCauseway` / `_hqTickMoat`, and a site room's floor is now a FRAME so every board pit finally shows; rev 21 2026-09-08 — 7.2 stage 3 SHIPPED: the first OUTDOOR rooms — Room 1945 · NUKETOWN and Room 50 · FOOTBALL STADIUM are walkable sites with no ceiling, the map's own sky on the battle's firmament dome, its far roster drifting round the room, lamp masts on the walkway corners, a fence / the bowl's wall for a perimeter and the ground running out past it; `shells[id].open`, `shell.sky`, three-renderer.js `_hqBuildSky` / `_hqTickSky`, `_hqTex` reads terrain keys; rev 20 2026-09-07 rev 5 — 7.2 stage 2 SHIPPED: Rooms 999 · CERN and 90 · BACKROOMS are walkable sites, each in its own LIGHT (`siteRooms.shell.mood`: lamps, strips, sign palettes, `signLines`; the Backrooms under a low yellow ceiling with no conduits, the almond water tinted); rev 19 2026-09-07 rev 4 — 7.2 stage 1 SHIPPED: the first WALKABLE SITE — Room 555 · D.U.M.B. is a room behind its bay threshold, its own Δ board in the middle at 1:1 (steps climbed, blocks solid, the cell walls, the specimen tubes, the nexus ring), the CROSSING console files the crossing, the natives loiter on the walkway; `hqSiteRoom` / `hqSiteBoardInfo`, the renderer's `_hqBuildSiteBoard` + the board layer in `_hqSurface`; rev 18 2026-09-07 rev 3 — 7.5 SHIPPED + THE CONTAINMENT RING (new 5.4a) stage 1: Bay 7 · URBAN on the mezzanine, the rebalance (C-22 + C-23 DECIDED), and every bay's end caps wear fire doors into the next bay on its floor — 1 ⇄ 4 downstairs, 2 → 5 → 7 → 3 → 6 → 2 upstairs; rev 17 2026-09-07 rev 2 — 7.1 SHIPPED, the numbers are on the doors: `roomNo` on every threshold and numbered room, `hqRoomNo` / `hqRoomRegister`, the plate · the panels · the SITE FILE header · the result stamp · the loading card · the directory's register; the elevator skips 13; rev 16 2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
+### The walkable facility that replaces the Play menu · rev 36 (2026-09-14 rev 3 — PHASE 8 STAGE 1 SHIPPED: THE EXPLORATION FLOORS — the elevator is THE CAR (a room; its FLOOR PANEL rides to B · G · M · 3 · PH, the PH button wearing the old KEYHOLDER + 12 Keys gate, `DOOR_HQ.elevator.stops`), three new floors and an undercroft on no button: G · THE GARAGE (Room P1 and THE RAMP, the first landmark — daylight behind a barrier arm you cannot pass; the loading dock beside it up into the laundry), B · SERVICES (the kitchen 350 under the Cafeterium with a stair up into it, the cold room −18 whose back panel is a SECRET DOOR, the laundry 60, Service Corridor A, the boiler room 451, Service Corridor B — thirty metres of dark with one red EXIT sign at the end — the room at the end, the server room 127 under IT with a stair up), B2 · THE UNDERCROFT (the dungeon 24601, the ritual room 333, the sacrifice room 322 with FORM 322 the waiver, Room X and the object that floats) and 3 · THE ANNEX (the lecture hall 314 with the type wheel on the board, the cubicle floor 9-5 where the online shift sits, the bathroom WC whose third stall is a secret door into a crawlspace with a ladder down to Room 322, the locker room 26, the natatorium 50M, the garden 1618 — open air under Olympus's sky, a fountain, a hedge ring, and the gate at the back an L5 opens into Room X); five secret doors, nine loops, forty-four new procs; ONE HOME PER FUNCTION (C-27: the ID card at Reception only, the leaderboard at the hall's board only, the shop at the Quartermaster only, Challenge at Medical only, the achievements at Room 111 only, the case file at Room 101 only — the duplicate counters are panels or props now); THE PAUSE (C-28: P = ESC, and a pointer-lock loss the game did not ask for IS the ESC the browser ate — in the building and in Strike Mode); §9 2026-09-14 rev 3; rev 35 2026-09-14 rev 2 — 5.4 STAGE 1 + 7.4 ROOMS 4C + 8 SHIPPED: the ELEVATOR rides — KEYHOLDER rank + 12 Keys at the mezzanine door, unchanged — to THE PENTHOUSE, the executive lobby (no number; a floor): THE FLOOR PANEL by the car (sixteen buttons, two lit — M is the way down, PH is where you stand, there is no 13), the assistant, the guard, and two doors off it — Room 4C · THE CORNER OFFICE (your office once the ladder passed L3: THE IN-TRAY is the closet’s case file moved up, THE PLAQUES are the achievements engraved on the wall, THE WINDOW that should not exist looks out on the seven bays with the count on file for each; the closet and its rank door stay yours) and Room 8 · THE INFINITY POOL (an OPEN room under Heaven’s own sky behind a knee-high parapet, the cloud plain running out past it over the void, the raised basin with a weir the water goes over, loungers, umbrellas, palms, THE EDGE, THE RANKING → the leaderboard, the online shift on the loungers); §9 2026-09-14 rev 2; rev 34 2026-09-14 — 7.4 ROOM 1 SHIPPED: RECEPTION is a walkable intake office behind the window door at 120° — THE INTAKE WINDOW (the profile: the ID card, the callsign, the desk, the stamps), THE LAMINATOR (the intake sheet the card was printed from, data.js `hqIntakeCard`: employee number, clearance, rank, issue date, the photo on file, visits, reissues, the LOST CARD FEE never collected), NOW SERVING (the sign in red digits — the first half of your employee number — and the dispenser under it: your ticket is the second half, the office is working through the gap); the clerk, the guard, the new hire on number four; §9 2026-09-14; rev 33 2026-09-13 rev 3 — 7.4 ROOMS 1111 + 5150 SHIPPED: MEDICAL is a walkable ward behind the hospital door at 210° — THE SERVICES DESK (Challenge mode), THE CHART at the foot of the bed (your record off the career stats: crossings, released, EXITED, the CONDITION line — INTAKE / FIT FOR DUTY / UNDER OBSERVATION / ADMINISTRATIVE LEAVE, data.js `hqMedicalRecord`), two cots, the nurse, the orderly, a patient; and the cell door at the back of the ward into Room 5150 · THE PADDED ROOM — one cell, three walls of tufted vinyl (`wall_padding` proc), a cot, a drain, THE HOLD (a panel that repeats the condition; leave is served here when the story serves it); §9 2026-09-13 rev 3; rev 32 2026-09-13 rev 2 — 7.4 ROOMS 42 + 1337 SHIPPED: RECORDS is a walkable room behind its wired double door at 240° — the stacks, THE READING DESK (the Codex), THE CARD CATALOGUE (the unfiled sites: community maps, a modal over the paused building), the service stair up to Room 360's projector (the door's old REPLAY alt, now a door you walk through); IT is a box room off the mezzanine at 120°, inside Arcane Engineering's stretch — the user's Hacker Room as a door, not a map: THE LIBRARY (the Spell Library, whose Back now comes home to the building), THE BENCH (the balance lab), THE RACKS (the AI training lab), three `server_rack`s, the keypad inside by the way out (the hollow-core leaf is L2's, so the fourth door that wasn't there yesterday is the holographic one); §9 2026-09-13 rev 2; rev 31 2026-09-13 — 7.6 WAVE 1 SHIPPED, all six: Room 13 · THE HAUNTED HOUSE (Terrestrial — the mansion's ground floor cut open across the board with the graveyard on both sides; the gothic point of entry: ghost, werewolf, vampire, ghoul), Room 33 · THE LODGE (Terrestrial, indoors — the temple: the sanctum behind thin damask walls, the pillars, the altar, the Tomb sunk in the floor; politician, general, marksman), Room 0 · THE SINGULARITY (CELESTIAL, not Quarantined — like E4, the sealed bay is unplayable; two spiral arms of shards over nothing; watcher, cosmic wraith), Room 6 · SATURN (Celestial — the hexagon plateau in the storm, oil lakes, the cubes; grey, black goo), Room 21 · THE STRIP (Urban — the boulevard at night, the chapel, the marquees, the Luxor; conspiracy theorist, honda civic), Room 1954 · DOWNTOWN (Urban, daylight — the intersection, the rubble, the collapsed tower; superhero, antihero, zombie, king kong). Each = full 16×16 + Δ + site file + threshold + bay + a walkable room with its setting + server MAP_POOL rows (now parity-checked); `env.ambience` names a still map's bed; §9 2026-09-13 wave 1; rev 30 2026-09-13 — 7.4 ROOMS 111 + 1984 SHIPPED: THE TROPHY CASE is a box room off the MEZZANINE at 290°, over EMPLOYEE OF THE MONTH — two lit glass cabinets (`trophy_case` proc: plaques gold for the engraved ones, `hqTrophyCount` reads the achievements ledger), THE CABINET counter opens the profile ON its Achievements tab (`_mountReactTrophies`); THE INTERROGATION ROOM is a box room off the ground ring at 255°, between RECORDS and BAY 1 — a steel table (`steel_table` proc), two folding chairs, one lamp, the round observation window as the one-way mirror, and THE TABLE counter opens the CPU TRAINING TRANSCRIPT (map.js `_hqTranscriptHtml`: the imitation ledger — matches watched, decisions scored, agreement, every weight moved off default, the last report) — the one function that had no physical home; §9 2026-09-13; rev 29 2026-09-12 — MOVING MAPS: three sites whose world streams past the board, faster every round — Room 1717 · QUEEN ANNE'S REVENGE (Hollow; the 7.7 Pirate Bay number, the ship itself instead of a cove), Room 426 · THE DERELICT (Celestial, new), Room E4 · THE LOOKING-GLASS (7.6 #6, shipped to DIPLOMATIC because Bay 6 is sealed until a chapter); `env.motion` on the meta row → three-renderer.js MOTION (streaming far roster, a sliding sea, a storm that builds, the sun / moon swelling on a close pass), each Δ with its own bed; Heaven drifts; §9 2026-09-12; rev 28 (2026-09-11 rev 5 — 7.4 ROOM 360 SHIPPED: THE OBSERVATORIUM is a box room off the MEZZANINE at 240°, directly above Records (a holographic door between Bay 3 and Bay 6): a planetarium — the PROJECTOR in the middle is the tape library's projection (Replay moved up from Records' door panel; Records' alt now leads upstairs), the PROJECTED SKY on the ceiling is every threshold in the building as a star in its lamp's colour (seven constellations, one per bay, Bay 1 at twelve — data.js `hqStarChart`, ONE layout read by three-renderer.js `star_dome`, the wall `star_chart` and the panel), and THE STAR CHART counter opens the star-map (map.js `_hqStarmapHtml`): point at a star and its threshold's OWN door panel opens from here (`_hqOpenThreshold` — CROSS ▸ Δ / DEEP / WALK IN, ◂ THE CHART back), a fast route to any site, nothing about match setup bypassed; a box shell can now be painted down (`wallColor` / `dadoColor` / `ceilColor` / `ceilTile`); rev 27 2026-09-11 rev 4 — 7.4 ROOM 1287 SHIPPED: OCCAM'S BARBERSHOP is a box room off the ground ring at 105° (a glass door between the Quartermaster and Reception, the pole in the hall), and THE CHAIR answers D13 — sit and walk the building as the recruit, your most-played vessel, a D.O.O.R. agent or any declassified rigged vessel (data.js `hqAvatarPref` / `hqSetAvatar` → `door.hq.avatar`, map.js `_hqAvatar` reads it, three-renderer.js `hq.setAvatar` swaps the model in place), the mirror is the ID card and the card's photo follows the chair; rev 3 2026-09-11 — 7.9 + 7.4 ROOM 247 SHIPPED, logged from the code (the 00:39 upload carried no entry): THE CLOCK ROOM at 225° with the world clocks that disagree, the punch clock (the login streak, `hqPunchIn` from the front door) and FORM 365 — Daily Office Operations Requirements, three lines a day seeded like the Code Red (`hqDailyOps`), judged at the match commit (`hqDailyOpsJudge`), 💰 120 a line + 💰 150 the sheet, the count on the strip; rev 26 2026-09-11 rev 2 — 7.4 ROOM 86 SHIPPED + 5.1's FIRST VARIANT: THE CAFETERIUM is a box room off the ground ring at 75° (the serving line, the hot side that was the hall's break nook, two long tables, the notice board → the leaderboard, the till → the Quartermaster, the roster on break, the other operatives on shift from the lobby's online count), and after hours the same door reads MÖBIUS STRIP CLUB (`rooms.cafeteria.variants.after_hours`: the bar is one lathe with one side, pink light, a bartender — `hqRollRoomVariants` per visit, `?hqvariant=after_hours`); rev 25 2026-09-08 rev 5 — 5.4a stage 2 SHIPPED: THE CONTAINMENT RING is ONE CORRIDOR PER FLOOR — the bays of a floor are segments of a single hallway framed just outside the egress drum (ground ring r 21.5–25.5 behind Bays 1 and 4, mezzanine ring r 24.5–28.5 behind Bays 2 · 5 · 7 · 3 · 6), every egress bay door is the ring's inner-wall door at the same angle, the thresholds spread along the outer wall either side of it, no rebuild between bays, the caps wear the fire door to each other across the service side; data.js `bayShell.corridor`, `hqRingLayout` / `hqRingRoom` / `hqBayEntry` / `hqBayNo` / `hqRingSectorAt` / `hqRingSpot`, `hqBayId(sector)` → the floor's ring; the renderer learns only `shell.full`; map.js lands through `hqBayEntry`; the cast's bay spots carry over; kill-switch `corridor.on: false`; rev 24 2026-09-08 rev 4 — 7.2 stage 6 SHIPPED: THE REST OF THE REGISTER — every launch map is a walkable room: Rooms 14179 · SHASTA, 56 · STONEHENGE, 444 · GIZA, 777 · HEAVEN, 2047 · CYBERPUNK CITY, 11 · BABEL, 12 · OLYMPUS, 4 · MARS, 51 · AREA 51, 512 · SKINWALKER RANCH, 180 · HOLLOW EARTH, 420 · FAIRY FOREST, 1969 · MOON, 888 · VATICAN CITY, 23 · BOHEMIAN GROVE, 9600 · GÖBEKLI TEPE, 1225 · NORTH POLE and 2D · FLAT LANDS are outdoor rooms behind their bay thresholds, each with its map's setting inside it at 1:1 and its sky overhead (Flat Lands opts out of its fourteen-tile setting), four consoles off the west wall, Babel's terraces as stands, the Moon under a 3 m berm; data-only — `siteRooms.built` / `near` / `shells` / `flavour`, no renderer change; doorhq.test.js now insists every site in the register has a room; rev 23 2026-09-08 rev 3 — 7.2 stage 5 SHIPPED: THE SETTING IN THE ROOM — every walkable site room now runs its map's own MAP SETTINGS near builder inside it at 1:1 (D.U.M.B.'s server racks and blast door, CERN's beamline and terminals, the Backrooms' partitions and stalk fluorescents, Nuketown's picket fence, houses, road and buses, the Stadium's tiers and floodlights, Camelot's curtain wall with its towers and drawbridge, Atlantis' colonnade and kelp, Hell's spires and braziers, Technoticlan's temple tiers and torches, Agartha's crystal spires, Antarctica's ice ridges and igloo) — the room grows to the setting's apron (`siteRooms.near[key].w` tiles, + the moat's gap), the kit's enclosure primitives are no-ops in the room (the shell is those), every piece is culled clear of the way in and the console and becomes a blocker, natives and props are nudged off the houses and the stands, and four consoles moved to the north wall (`shells[id].console`); `hqSiteRoom` `near`, three-renderer.js `_hqBuildSetting` / `_hqSettingFreeSpot`, `_nrKit` `ctx.hq`; rev 22 2026-09-08 rev 2 — 7.2 stage 4 SHIPPED: the MOAT rooms — Rooms i · CAMELOT, H-20 · ATLANTIS, 666 · HELL, 2012 · TECHNOTICLAN, 88 · AGARTHA and 90S · ANTARCTICA are outdoor sites whose walkway is a QUAY: the ring between the island and the quay is the map's own liquid one level down in the battle's animated fluid sheet, board-edge canals open into it, a causeway either way (the south one is the way in), deep water and lava never entered; `shells[id].moat`, `hqSiteRoom` → `shell.moat`, three-renderer.js `_hqSiteOnCauseway` / `_hqTickMoat`, and a site room's floor is now a FRAME so every board pit finally shows; rev 21 2026-09-08 — 7.2 stage 3 SHIPPED: the first OUTDOOR rooms — Room 1945 · NUKETOWN and Room 50 · FOOTBALL STADIUM are walkable sites with no ceiling, the map's own sky on the battle's firmament dome, its far roster drifting round the room, lamp masts on the walkway corners, a fence / the bowl's wall for a perimeter and the ground running out past it; `shells[id].open`, `shell.sky`, three-renderer.js `_hqBuildSky` / `_hqTickSky`, `_hqTex` reads terrain keys; rev 20 2026-09-07 rev 5 — 7.2 stage 2 SHIPPED: Rooms 999 · CERN and 90 · BACKROOMS are walkable sites, each in its own LIGHT (`siteRooms.shell.mood`: lamps, strips, sign palettes, `signLines`; the Backrooms under a low yellow ceiling with no conduits, the almond water tinted); rev 19 2026-09-07 rev 4 — 7.2 stage 1 SHIPPED: the first WALKABLE SITE — Room 555 · D.U.M.B. is a room behind its bay threshold, its own Δ board in the middle at 1:1 (steps climbed, blocks solid, the cell walls, the specimen tubes, the nexus ring), the CROSSING console files the crossing, the natives loiter on the walkway; `hqSiteRoom` / `hqSiteBoardInfo`, the renderer's `_hqBuildSiteBoard` + the board layer in `_hqSurface`; rev 18 2026-09-07 rev 3 — 7.5 SHIPPED + THE CONTAINMENT RING (new 5.4a) stage 1: Bay 7 · URBAN on the mezzanine, the rebalance (C-22 + C-23 DECIDED), and every bay's end caps wear fire doors into the next bay on its floor — 1 ⇄ 4 downstairs, 2 → 5 → 7 → 3 → 6 → 2 upstairs; rev 17 2026-09-07 rev 2 — 7.1 SHIPPED, the numbers are on the doors: `roomNo` on every threshold and numbered room, `hqRoomNo` / `hqRoomRegister`, the plate · the panels · the SITE FILE header · the result stamp · the loading card · the directory's register; the elevator skips 13; rev 16 2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -1132,6 +1132,172 @@ Two things 86 still wants from the user: the serving counter itself
 the cafeteria clatter bed on §5.6's audio list.
 
 ---
+
+### Phase 8 — THE EXPLORATION FLOORS: more floors, hallways, secret passages, landmarks (planned + stage 1 shipped 2026-09-14)
+The user's brief (2026-09-14): "More floors, hallways, elevators, secret
+passages, shortcuts, maze like, dungeon like. Rooms leading to other rooms.
+Random rooms for exploration" — fifteen named rooms (a classroom / lecture
+hall, a small metal room with a floating orb, a bathroom, a cubicle room, a
+server room, a kitchen, a circular garden, a locker room, a swimming pool, a
+parking garage, weird isolated creepy hallways and rooms, a ritual room, a
+sacrifice room, a laundry room, a dungeon) — "each place should feel like
+its own vibe … they don't all need a purpose or menu option", built from
+the 3D assets we have; and the Disney-park LANDMARK idea: "down most paths
+you see the big castle … go down this other path and some other landmark
+is revealed … encourage exploration with the architecture and layout" —
+more floors than the two of the rotunda, or "riding the elevator lets you
+see out the window and you see more unexplored rooms".
+
+**8.1 The rules this phase adds.**
+- **ONE HOME PER FUNCTION (C-27, decided by the user's "too many rooms or
+  interactive objects that do the same thing").** Every launch (`fn`) and
+  every overlay has exactly ONE counter or door in the building. The
+  duplicates became PANELS (a by-id panel that says what it is and where
+  the home is) or PROPS (the till). Home table: the ID card = Reception's
+  INTAKE WINDOW; the achievements = Room 111's CABINET; the leaderboard =
+  the hall's EMPLOYEE OF THE MONTH; the shop = the Quartermaster's door;
+  Challenge mode = Medical's SERVICES DESK; the case file = Room 101's
+  IN-TRAY; the Codex = Records; the character creator = the barbershop
+  mirror; Replay = Room 360's projector; community maps = Records' card
+  catalogue; Code Red = the Clock Room's board (the strip pill is UI, not a
+  place). hq-floors.test.js fails on a second home. The panels' YOUR CARD
+  shortcut buttons went with it (only Reception's own SIGN IN AT THE WINDOW
+  stays, because it points home).
+- **THE LANDMARK RULE.** A big room shows you something lit at its far end
+  that you cannot walk straight to. Shipped: THE RAMP in the garage
+  (daylight at the top, a barrier arm across the foot, LOT FULL); the one
+  red EXIT sign at the end of Service Corridor B's thirty metres of dark
+  (the room behind it is three metres square and its far wall is not a
+  wall); the fountain in the garden with the iron GATE behind it (an L5
+  opens it — and it opens onto Room X in the undercroft); the shaft window
+  in the car (lit landings and DARK ones stream past — B2 is a landing the
+  panel does not list). The rooms are still one scene each (a door is a
+  rebuild), so a landmark must live INSIDE the room that shows it; the
+  cross-room vista (a glass wall onto the next room) is the unbuilt half
+  of the idea — see 8.4.
+- **SECRET DOORS.** A door with `secret: true` (data.js) is a wall panel
+  on a hinge: the renderer hangs no leaf, no lamp, no plate; the frame and
+  the slab wear the shell's wall (tinted like it); the prompt reads
+  A DRAUGHT and the panel swings when you stand at it. `hqSecretDoors()`
+  lists them. Five shipped: the cold room's back panel ⇄ Service
+  Corridor B, the wall the chair faces in the room at the end → the
+  dungeon, the bathroom's third stall ⇄ the crawlspace.
+- **THE ELEVATOR IS A ROOM.** `rooms.car` has no doors: its FLOOR PANEL
+  (counter `panel`, map.js `_hqFloorPanelHtml`) is the ride, reading
+  `DOOR_HQ.elevator.stops` through `hqElevatorStops(profile, fromRoom)` —
+  a button per stop, YOU ARE HERE on the floor the car was boarded from
+  (map.js `window._hqCarFrom`), a red chip where a stop is gated (PH wears
+  the mezzanine door's old KEYHOLDER + 12 Keys; the door itself is open to
+  everyone now), the other eleven buttons dim. Every lobby's `elevator`
+  door (`proc: 'elevator'`) leads back into the car at `panel`. B2 is on
+  no button on purpose.
+- **PROC LIGHTS + TICKERS + DIM ROOMS.** A catalogue proc may carry
+  `light: { color, intensity, dist, y }` (a point light the placer adds,
+  capped at `HQ_PROP_LIGHT_MAX` = 10 per room) — the torches, the bulbs,
+  the boiler, the candles, the orb, the fountain; a builder that moves
+  pushes a ticker (`_hq.tickers`, run by `_hqTickWorld`) — the orb bobs
+  and turns, the torches gutter, the tubes flicker, the shaft streams. A
+  shell may say `strips: false` (no fluorescent strip) and `mood.ambient`
+  (0.3–0.8 dims the hemisphere / key fill) — the undercroft, the cold
+  room, the corridors, the boiler room, the crawlspace are lit by their
+  own props only.
+- **THE PAUSE (C-28, the user's "how am I supposed to press the pause
+  button").** With the pointer locked (the building's mouse-look, Strike
+  Mode's aim) the browser consumes ESC to release the cursor and the page
+  never sees the key; the strip's buttons cannot be clicked with a frozen
+  cursor. Fixed twice over: **P** is ESC (the building: the settings; a
+  battle: the pause menu, and it closes it again — ui.js), and **a
+  pointer-lock loss the game did not ask for IS the ESC the browser ate**
+  (three-renderer.js `_hqOnLockChange`: a loss outside the 2.5 s leave
+  window while not paused → `onEscape`; battle.js Strike Mode: a loss
+  outside its own 1.5 s release stamp → `togglePauseMenu`). An alt-tab
+  lands there too, which is a pause as well.
+
+**8.2 The floors as shipped (stage 1).** `DOOR_HQ.rooms` (data.js, the
+block after the Training Room). Numbers are Claude's (REC — the user
+rules; every `why` is on the room). Un-numbered rooms are lobbies and
+corridors (the register skips them, like the penthouse).
+| Floor | Room | № | What is in it | Doors |
+|---|---|---|---|---|
+| — | THE CAR (`car`) | — | the buttons (`car_panel`), the shaft window (`shaft_window`, a ticker), a handrail, a camera | none: the panel is the ride |
+| G | THE GARAGE (`garage`) | P1 | 30 × 20 m, eight pillars, five Sedans (the honda civic GLB — MODEL_INDEX), painted bays, oil, THE RAMP + the booth (a panel: LOT FULL) | elevator; the dock (n) |
+| G | THE LOADING DOCK (`dock`) | — | roller shutters, shelving, a cart, the manifest nobody ticked | the garage (s); the laundry (n) |
+| B | B · SERVICES (`services`) | — | the lobby: the porter, the notice board, a cooler, a vending machine | elevator; the stair up to Room 64 (w); the corridor (w); the kitchen (n); the laundry (e) |
+| B | THE KITCHEN (`kitchen`) | 350 | two ranges under hoods, two prep tables, the sink, the fridges, a pot rack, the cook and the dishwasher | the lobby (s); the cold room (e); the service stair up to Room 86 (n) |
+| B | THE COLD ROOM (`coldroom`) | −18 | three carcasses on hooks, frost, one bulb, the temperature log | the kitchen (w); **secret** → Corridor B (e) |
+| B | THE LAUNDRY (`laundry`) | 60 | three washers, three dryers, the folding table, two carts, the laundress | the lobby (w); the dock (e) |
+| B | SERVICE CORRIDOR A (`corridor_a`) | — | 22 m, three tubes that flicker, a fallen sign, a dead camera | the lobby (s); the boiler (e); Corridor B (n) |
+| B | THE BOILER ROOM (`boiler`) | 451 | two boilers with fireboxes, gauges, a stopped clock, the stoker | Corridor A (w) |
+| B | SERVICE CORRIDOR B (`corridor_b`) | — | 30 m, two lights, a chair facing the wall, a crooked picture, the EXIT sign at the end | Corridor A (s); the server room (e); **secret** → the cold room (w); the room at the end (n) |
+| B | THE ROOM AT THE END (`deadend`) | — | a chair, a bulb, NOTHING TO SEE on a clipboard | Corridor B (s); **secret** → the dungeon (n) |
+| B | THE SERVER ROOM (`server`) | 127 | eight racks in two rows, the cold aisle, the night sysadmin | the stair up to IT (e); Corridor B (w) |
+| B2 | THE DUNGEON (`dungeon`) | 24601 | three cells behind bars, chains, the stocks, four torches, the turnkey, the keys on the floor | the room at the end (s); the ritual room (e); Room X (n, a portcullis) |
+| B2 | THE RITUAL ROOM (`ritual`) | 333 | the sigil on the floor, thirteen candles, the altar, the celebrant, three chairs | the dungeon (w); the sacrifice room (n, the hell arch) |
+| B2 | THE SACRIFICE ROOM (`sacrifice`) | 322 | the altar and the drain, chains, a hook, THE ALTAR panel = FORM 322 (the waiver, your callsign already on it; SIGN is disabled: the pen has never worked) | the ritual room (s); a ladder up (n) |
+| B2 | ROOM X (`orb`) | X | the object (`floating_orb`: it floats, turns, lights the room blue), a rail, the terminal; THE OBJECT panel (readings that never repeat) | the dungeon (s); the garden gate (e, L5) |
+| 3 | 3 · THE ANNEX (`annex`) | — | the lobby: five doors, the floor warden | elevator; the garden (n); the lecture hall + the cubicles (e); the bathroom + the locker room (w) |
+| 3 | THE LECTURE HALL (`classroom`) | 314 | the chalkboard with THE TYPE WHEEL on it (TYPE_CHART at build), the lectern, three tiers the walker climbs (`riser_1..3`), nine desks, the instructor; THE BOARD panel = the lesson | the annex (w) |
+| 3 | THE CUBICLE FLOOR (`cubicles`) | 9-5 | six round cubicles, the shift at them (six `onlineSpots`), the supervisor on the phone | the annex (w) |
+| 3 | THE BATHROOM (`bathroom`) | WC | three stalls, two urinals, three basins under a mirror, a tube that flickers | the annex (e); **secret** → the crawlspace (the third stall) |
+| 3 | THE CRAWLSPACE (`crawlspace`) | — | low, pipes, a bulb, a map the crawlspace is not on | **secret** → the bathroom (n); the ladder down to Room 322 (s) |
+| 3 | THE LOCKER ROOM (`locker`) | 26 | sixteen lockers, two benches, two showers, the rota | the annex (e); the pool (w) |
+| 3 | THE NATATORIUM (`natatorium`) | 50M | six lanes with ropes and starting blocks (`lap_pool`), the lifeguard chair, clerestory windows, the OTHER lifeguard | the locker room (e); the garden (w) |
+| 3 | THE GARDEN (`garden`) | 1618 | OPEN under Olympus's sky (by hand), a hedge ring with four gaps, the gravel ring, the fountain, six foliage trees, benches, lamps, the groundskeeper | the annex (s); the pool (e); THE GATE (n, L5 → Room X) |
+
+**8.3 The loops (the maze).** Room 64 ⇄ B (the training room's south door
+is the service stair now — Challenge mode lives at Medical); Room 86 ⇄
+Room 350 (the kitchen's saloon door is the stair up to the serving line);
+G ⇄ the dock ⇄ Room 60 (round the car); Room 1337 ⇄ Room 127 ⇄ Corridor B
+(the mezzanine to B without the hall); the cold room ⇄ Corridor B (a
+secret); the room at the end → the dungeon (a secret); Room 322 ⇄ the
+crawlspace ⇄ the bathroom (three floors by ladder); the pool ⇄ the garden
+⇄ the annex; the garden gate ⇄ Room X (L5). Every door's landing is
+checked by the test.
+
+**8.4 Not built (stage 2, for the user to rank).**
+- **A third ring on the rotunda.** The rotunda builder knows two levels
+  (floor + `mezz`); a gallery at level 2 with its own stairs and doors is
+  a renderer change (`_hqWallR` / stairs / `HQ_LEVELS`), not data. Worth
+  it once the annex has more than five doors.
+- **The cross-room vista** (the second half of the landmark idea): a
+  door-shaped GLASS WALL that shows a painted card of the room beyond (a
+  rendered screenshot of it, `false_window`-style) — cheap and honest:
+  the rooms stay one scene each. First candidates: the annex lobby's
+  north wall onto the garden; Corridor B onto the server room's racks;
+  the dungeon's portcullis onto Room X's glow.
+- **The window in the car**: the shaft texture is painted; a live view of
+  the floors (the lobbies' plates streaming past) would want the same
+  painted-card trick.
+- **Variants** (5.1) for the new rooms: after hours the cubicle floor is
+  empty and one monitor is on; the pool at night; the garden in rain.
+- **Cast**: nobody from the cast sheet stands on the new floors yet (the
+  agents are anonymous D.O.O.R. agents; their lines are Claude's drafts —
+  A15: the user rewrites).
+- **Sounds**: the boiler's hum, the dryers, the pool's echo, the garden's
+  birds (`env.ambience` beds exist for maps; rooms have none yet).
+
+**8.5 Assets that would help (the user asked).** Everything shipped is
+procedural or the kit; these would replace a proc by giving its catalogue
+row a `file` (the register's rule) — in the order they pay off:
+1. **A hooded robe** (rigged, or a static one on a hanger) — the ritual
+   room has a rail and no robes; the celebrant is in a suit.
+2. **A car** other than the Sedan — the garage parks five of the same
+   civic.
+3. **A washing machine / dryer** pair, a **kitchen range**, a **toilet +
+   stall**, a **sink** row — the Meshy office kit has none of these; the
+   procs are boxes with the right silhouette.
+4. **A floating crystal / orb** with a bake — the object is an emissive
+   sphere.
+5. **A pool ladder + starting block**, a **lifeguard chair**, a **park
+   bench**, a **fountain** (the fountain is a lathe).
+6. **Iron bars / a cell gate** (the `cell_bars` proc is cylinders), **a
+   torch with a bracket** (the battle's torch model could be re-homed —
+   `_makeTorchModel` — if the user prefers it to the proc's cone).
+7. **Textures**: a hedge / topiary tile (the ring uses `leaves_2`), a
+   locker-room tile in a colour that is not white, a raised-floor tile
+   for the server room, a rubber gym floor, wet concrete for the garage,
+   frost / ice for the cold room's walls (it uses `ice_1` on the floor and
+   tinted aluminium on the walls).
 
 ## 5. Assets
 
@@ -4948,6 +5114,106 @@ register lists one row, kind `room`).
   three-renderer.js, map.js → R2; index.html
   (`?v=20260914-hq-room1-01-cors`) → Render; doorhq.test.js, this file,
   DOOR_MASTER.md, CLAUDE.md → the repo.
+
+### 2026-09-14 (rev 3) — PHASE 8 STAGE 1 SHIPPED: THE EXPLORATION FLOORS — the car, three floors, the undercroft, five secret doors, one home per function, the pause (data.js, three-renderer.js, map.js, battle.js, ui.js, index.html; doorhq.test.js, door-kit-batch.test.js, hq-floors.test.js)
+The user's brief, in one session: too many places open the same screen
+("how many different places bring up the profile card? Totally
+unnecessary"), the pause button cannot be pressed while the mouse aims,
+and the building should grow — floors, hallways, elevators, secret
+passages, shortcuts, a maze, fifteen named rooms, each its own vibe, and
+landmarks that pull you down a path. The audit first: the ID card opened
+from FIVE places (Reception's window, and YOUR CARD buttons on the
+promotion panel, the barber's, the in-tray's and the corner office's
+window); the achievements from two (Room 111, 4C's plaques); the
+leaderboard from three (the hall's board, Room 86's notice board, the
+pool's ranking); the shop from two (the Quartermaster, Room 86's till);
+Challenge from two (Medical's desk, the Training Room's south door); the
+case file from two (101 and 4C). Phase 8 (§4) is the plan; this is stage 1.
+- **ONE HOME PER FUNCTION (C-27).** data.js: Room 86's `notice` is a
+  panel (`action: {}` — Form 365's lines + three notices) and its `till`
+  is gone (the register stays a prop); the after-hours `notice` / `bar`
+  are panels (the bar is a menu); 4C's `intray` counter is gone (the desk
+  stays) and its `plaques` are a panel (the count + "the cabinet is Room
+  111"); Room 8's `ranking` is gone (the board stays a prop); the
+  Training Room's `challenge` door is `stairs` (down to B). map.js: the
+  four YOUR CARD buttons and the edge panel's leaderboard button are
+  gone. hq-floors.test.js counts homes.
+- **THE PAUSE (C-28).** three-renderer.js: `p` in `_hqKeyName` → the
+  same as ESC (`onEscape`); `_hqOnLockChange` watches for a LOSS of the
+  lock (`_hqHadLock`) that the walker did not request (outside
+  `_hqLockStaleAt`'s 2.5 s, not paused — `setPaused(true)` releases the
+  lock itself before the event) and calls `onEscape` on the next tick.
+  battle.js (Strike Mode): `_strikeLockReleasedAt` stamps the mode's own
+  releases (`_clearInput(true)`, the mode-end release); the
+  `pointerlockchange` handler opens the pause menu on a loss outside
+  that 1.5 s. ui.js: `P` toggles the pause menu in a battle (never in an
+  input; closes it too). index.html hints: "ESC / P settings".
+- **THE CAR.** The mezzanine `elevator` door → `{ room: 'car', at:
+  'panel' }`, ungated; `DOOR_HQ.elevator.stops` (PH · 3 · M · G · B, PH
+  with the old `minClearance: 4, requiresKeys: 12`); data.js
+  `hqElevatorStops(profile, fromRoom)` judges each stop through
+  `doorSiteState` on a synthesized door; map.js `_hqFloorPanelHtml`
+  draws it for the car's `panel` AND the penthouse's `floorpanel`;
+  `_hqGoRoom` stamps `window._hqCarFrom` on the way in. The penthouse's
+  car door leads into the car too.
+- **THE ROOMS** (§8.2's table; data.js, the block after the Training
+  Room, ~1,500 lines) with their doors, props, agents, spots and lines
+  (Claude's drafts, A15). The Cafeterium grew a `kitchen` door on its
+  north wall at 4.6 (the rail, the clock, the vent and the boxes moved
+  for it); IT grew a `server` door on its south wall at 0.3 (the sign
+  and the bin moved). Every new door wears a plain leaf — the six rank
+  leaves are exclusive (doorhq.test.js), so the service doors are the
+  closet, the white / beige / birch / coffee / orange wood leaves.
+- **THE PROCS** (three-renderer.js, `Object.assign(_hqProcBuilders,
+  {…})` before `_hqProcProp`, 44 builders): `car_panel`, `shaft_window`
+  (a canvas of landings, scrolled by a ticker), `concrete_pillar`,
+  `parking_bay`, `parked_car` (the Sedan — `getRace3DModel('honda
+  civic')`, five tints), `garage_ramp` (the slab, the daylight plane,
+  the arm, LOT FULL), `roller_shutter`, `kitchen_range`, `range_hood`,
+  `pot_rack`, `meat_hook`, `washer` / `dryer` (one builder), `laundry_
+  cart`, `flicker_tube` (a ticker on a seeded pattern), `bare_bulb`,
+  `boiler`, `cell_bars`, `wall_chains`, `stocks`, `wall_torch` (a cone
+  flame that gutters), `candle_ring` (thirteen), `ritual_circle` (a
+  canvas sigil), `stone_altar`, `floor_stain`, `floating_orb` (bobs,
+  turns, breathes), `chalkboard` (the type wheel written from
+  TYPE_CHART), `lectern`, `riser_1/2/3` (0.3 m steps the walker climbs),
+  `school_desk`, `toilet_stall`, `urinal`, `sink_row`, `hand_dryer`,
+  `locker_bench`, `shower_stall`, `lap_pool` (six lanes, ropes, blocks),
+  `lifeguard_chair`, `garden_ring` (the hedge registers its own
+  blockers — place it at 0,0), `fountain`, `park_bench`, `garden_tree`
+  (`_nrTree` on a bare `_nrKit`, the site boards' recipe; a proc trunk
+  if it throws). New placer rules: catalogue `light` → a PointLight on
+  the prop (`HQ_PROP_LIGHT_MAX` 10); a placement's `rect: false` refuses
+  the catalogue rect (a bench turned 90°); `_hq.tickers` run in
+  `_hqTickWorld`; `mood.ambient` scales the box fill; `shell.strips:
+  false` drops the fluorescent strip.
+- **SECRET DOORS** (`_hqBuildDoors`): `door.secret` → no leaf / lamp /
+  plate / surround, the jambs + lintel + a swinging slab in `wallMatS`
+  (the shell's wall, `wallColor`-tinted) and `dadoMatS`, the cap / sill
+  / frames hidden, the leaf group flush with the wall face. door-kit-
+  batch.test.js's surround regex learnt the `secret ? null :`.
+- **Tests.** doorhq.test.js: the elevator gate reads the PH stop; a
+  torch / bulb / tube / candle / orb room counts as lit; the training
+  stair; the Keys test includes the stops; Room 86, the variant, the
+  executive floor, 4C, Room 8 and the source sites updated. New
+  `hq-floors.test.js` (10 tests): the rooms and numbers, every landing,
+  the car and the stops, the secret doors, the loops, ONE HOME PER
+  FUNCTION, the procs / lights / rects / the sedan / no utility box,
+  the secret door's renderer, the pause in all four files, the by-id
+  panels. `npm test`: 1030 pass, 0 fail, 4 skips.
+- **Unseen live (RULE #1c):** everything — the car's panel at 1.1 m, the
+  shaft texture's scroll speed, the ramp's daylight plane against the
+  sodium light, the Sedan's fit at 1.42 m in five tints, the orb's glow
+  against a metal room, the hedge's blockers (walk the ring), the risers
+  as steps (HQ_STEP_TOL 0.62 — three 0.3 m steps), the secret slab's
+  seam, the torches' cone flames, the chalkboard's text at 1024 px, the
+  garden's foliage OBJs landing, the P key against any hud hotkey, the
+  lock-loss pause on Firefox (its ESC handling differs from Chrome's).
+- **Delivery:** `ENTROPY_WARS_HQ_FLOORS.zip` — data.js, three-renderer.js,
+  map.js, battle.js, ui.js → R2; index.html
+  (`?v=20260914-hq-floors-01-cors`) → Render; doorhq.test.js,
+  door-kit-batch.test.js, hq-floors.test.js, this file, CLAUDE.md,
+  MODEL_INDEX.md → the repo.
 
 ### 2026-09-14 (rev 2) — 5.4 STAGE 1 + 7.4 ROOMS 4C + 8 SHIPPED: THE PENTHOUSE — the elevator rides (data.js, three-renderer.js, map.js, index.html; doorhq.test.js)
 The last two 7.4 rows waited on 5.4's elevator; the elevator door on the

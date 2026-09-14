@@ -109,7 +109,7 @@ test('THE SURROUND: the shaped leaves carry a shape, the renderer cuts the plate
     assert.equal(CAT.leaf_hell_arch.shape, 'arch'); assert.ok(CAT.leaf_hell_arch.arch > 0.25 && CAT.leaf_hell_arch.arch < 0.42);
     for (const [k, c] of Object.entries(CAT)) if (c.leaf && c.shape) assert.ok(['circle', 'arch'].includes(c.shape), k + ': shape circle | arch');
     const doors = TR.slice(TR.indexOf('function _hqBuildDoors(room)'), TR.indexOf('function _hqBuildCounters(room)'));
-    assert.match(doors, /var surround = _hqDoorSurround\(ow, oh, leafCat, wallMat\)/, 'every door gets the surround');
+    assert.match(doors, /var surround = secret \? null : _hqDoorSurround\(ow, oh, leafCat, wallMat\)/, 'every door gets the surround (a secret door is a wall: none)');
     assert.match(doors, /var targetH = \(leafCat\.frame \? oh \+ 0\.03 : oh - 0\.015\) \* U/, 'the leaf fills the opening');
     assert.doesNotMatch(doors, /oh - 0\.08/, 'the 8 cm of black over the leaf is gone');
     /* run the builder under a THREE double: the hole is a circle / an arch / the inset rectangle */

@@ -10881,6 +10881,16 @@
             }
 
             // Menus own Tab while open; leave native focus navigation intact.
+            /* P = pause (Phase 8, 2026-09-14): Strike Mode locks the pointer to aim and the
+               browser eats ESC to release it — the page never sees that key. P is the
+               keyboard's way to the pause menu from the aim (and closes it again). */
+            if ((e.key === 'p' || e.key === 'P') && !e.ctrlKey && !e.metaKey && !e.altKey && !state.uiDialog
+                && state.phase === 'battle' && !state.winner
+                && !(e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable))) {
+                e.preventDefault();
+                togglePauseMenu();
+                return;
+            }
             if (_gamePaused || state.uiDialog) return;
 
             if (e.key === 'Tab' && state.phase === 'battle' && state.actionMode === 'spell' && state._spellCycleTargets?.length > 1) {
