@@ -41246,7 +41246,7 @@
             get doRecall() { return doRecall; },
             get getNexusAtUnit() { return getNexusAtUnit; },
             /* 🚪 THE DOOR (DOOR_RACE_DESIGN, 2026-09-14) — ai.js reads these through GAME */
-            DOOR_RULES, doorAt, doorById, doorTwin, doorTeamPairs, doorTileFree, doorsBeside, doorBlocksMove, _doorOriginForSpell,
+            get DOOR_RULES() { return DOOR_RULES; }, doorAt, doorById, doorTwin, doorTeamPairs, doorTileFree, doorsBeside, doorBlocksMove, _doorOriginForSpell,
             get isInNexusZone() { return isInNexusZone; },
             get isInSpawnZone() { return isInSpawnZone; },
 

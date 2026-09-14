@@ -187,7 +187,7 @@ test('source guards: every engine site the door touches', () => {
     assert.ok((battle.match(/state\.doors = \[\];/g) || []).length >= 4 && (map.match(/state\.doors = \[\];/g) || []).length === 2, 'the reset blocks');
     assert.ok(/doors: \[\],/.test(stateSrc) && /doors: state\.doors,/.test(stateSrc) && /key \+= '\|d' \+ d\.x/.test(stateSrc), 'state init + snapshot + vision cache key');
     assert.ok(/_tcSpell\.kind === 'door'/.test(online) && /pickX: _tcDoorPick/.test(online) && /data\.pickX != null && data\.pickY != null/.test(online), 'online: the guest\'s tile pick');
-    assert.ok(/DOOR_RULES, doorAt, doorById, doorTwin, doorTeamPairs, doorTileFree/.test(battle), 'GAME exposes the door reads');
+    assert.ok(/get DOOR_RULES\(\) \{ return DOOR_RULES; \}, doorAt, doorById, doorTwin, doorTeamPairs, doorTileFree/.test(battle), 'GAME exposes the door reads (DOOR_RULES through a getter — the const is declared after the GAME literal, a bare read is a TDZ throw that killed the whole boot on 2026-09-14)');
     for (const k of KINDS) {
         assert.ok(new RegExp("^        if \\(.*kind === '" + k + "'.*\\) \\{", 'm').test(ai), 'ai.js scoreSpell/findSpellTarget dispatch ' + k);
         assert.ok(new RegExp("k === '" + k + "'").test(hud), 'hud.js part ' + k);
