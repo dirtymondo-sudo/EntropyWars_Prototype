@@ -2624,6 +2624,16 @@ const RACE_PROFILES = {
         faction: 'time',
         types: ['human', 'divine']
     },
+    /* THE DOOR AGENT (2026-09-14, DOOR_RACE_DESIGN.md): the Department's own
+       officers as a race — a control skirmisher built on DOORS (a placeable
+       pair of tiles: a private teleporter that toggles into a wall). The
+       jobs are the officer's training; the race is the doors. Types human +
+       anomaly (people who work at right angles), faction TIME (D5). */
+    'door agent': {
+        label: 'DOOR Agent',
+        faction: 'time',
+        types: ['human', 'anomaly']
+    },
     'wizard': {
         label: 'Wizard',
         labelMale: 'Wizard',
@@ -2782,6 +2792,14 @@ const RACE_PROFILES = {
                                  basicAttackRangeBonus)
      healMult: 1.2               heals this unit CASTS are scaled
      speedTiePriority: true      buildBlitzTurnOrder: first among equal SPD
+   DOOR_RACE_DESIGN §3 (2026-09-14, Keyholder):
+     doorHits: 4                 doors this unit OWNS take this many hits
+                                 (doorMaxHits, battle.js)
+     doorFreeToggle: true        once per turn, open / shut a friendly door the
+                                 unit stands on or beside for free (the
+                                 DOOR HUD verb, ui.js / battle.js doorToggleFree)
+     doorImmune: true            never damaged / pushed / EXITED by a friendly
+                                 door (doorSlam / doorExit skip the unit)
    `flying` has no flag — being a SKY_RACE (canFly/isUnitAirborne, map.js) IS
    the hook; the registry entry exists so flight shows up, and counts, as a
    passive.
@@ -2879,6 +2897,12 @@ const PASSIVE_DEFS = {
         targetableWithin: 3,
         desc: 'Never a clear photo: enemies can only see or target him from within 3 tiles (a Marked cryptid is exposed). Allies always see him.',
     },
+    /* 🗝️ Keyholder (DOOR_RACE_DESIGN §3, 2026-09-14): a key to every room. */
+    keyholder: {
+        id: 'keyholder', icon: '🗝️', name: 'Keyholder',
+        doorHits: 4, doorFreeToggle: true, doorImmune: true,
+        desc: 'A key to every room: once a turn the agent may open or shut a friendly door they stand on or beside for free; doors they own take 4 hits to break; a friendly door never harms, moves or EXITs them.',
+    },
     shank: {
         id: 'shank', icon: '🔪', name: 'Shank',
         oppAttackChance: 1.0, oppAttackMult: 1.5,
@@ -2960,6 +2984,7 @@ const RACE_PASSIVES = {
     // the nun (devout) joined with their races in Phase 6 (2026-09-08).
     'gangster':      ['shank'],
     'nun':           ['devout'],
+    'door agent':    ['keyholder'],           // DOOR_RACE_DESIGN §3 (2026-09-14)
     'werewolf':      ['lycanthropy', 'bloodcraze'],
     'skeleton':      ['boneDeep'],
     'zombie':        ['returnOfTheDead'],
@@ -3013,7 +3038,7 @@ function unitPassiveBlocksStatus(unit, statusId) {
     return null;
 }
 
-const AVAILABLE_RACES = ['homosapien', 'pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun'];
+const AVAILABLE_RACES = ['homosapien', 'pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent'];
 
 const RACE_DEFAULT_JOBS = {
     // NOTE (2026-07-18): 'Warrior' and 'Tank' are now SEPARATE jobs (the old
@@ -3064,6 +3089,7 @@ const RACE_DEFAULT_JOBS = {
     'priest': 'White Mage',
     'gangster': 'Gunslinger',   // CHAMP REWORK Phase 6 (plan §6.19)
     'nun': 'White Mage',        // CHAMP REWORK Phase 6 (plan §6.20)
+    'door agent': 'Agent',      // DOOR_RACE_DESIGN §1 (2026-09-14) — the Closer's kit
     'wizard': 'Black Mage',
     'fortune teller': 'Harbinger',
     'zombie': 'Raider',
@@ -3169,6 +3195,7 @@ const RACE_CLASS = {
     'priest': 'healer',
     'gangster': 'bruiser',
     'nun': 'healer',
+    'door agent': 'assassin',
     'wizard': 'caster',
     'fortune teller': 'support',
     'cyborg': 'bruiser',
@@ -3368,6 +3395,8 @@ const RACE_BASE_STATS = {
     // CHAMP REWORK Phase 6 (2026-09-08, plan §6.19 / §6.20 / §7.1): the two new champs.
     'gangster':           { hp: 540, mp: 100, atk:  78, def:  44, mdef:  44, int:  10, awr: 56, spd: 64 },
     'nun':                { hp: 460, mp: 250, atk:   8, def:  26, mdef:  58, int:  90, awr: 70, spd: 30 },
+    // DOOR_RACE_DESIGN §1 (2026-09-14): the DOOR agent — weak stats, strong geometry; high AWR (they check their corners). Retuned from the design's 560/170/62/46/55/50/84/50 (budget 302) into the 249–275 band.
+    'door agent':         { hp: 520, mp: 170, atk:  48, def:  40, mdef:  50, int:  40, awr: 84, spd: 46 },
     'wizard':             { hp: 415, mp: 255, atk:   8, def:  17, mdef:  98, int:  90, awr: 42, spd: 31 },
     'fortune teller':     { hp: 545, mp: 210, atk:   8, def:  25, mdef:  82, int:  90, awr: 98, spd: 33 },
     'nephilim':           { hp: 680, mp:  90, atk:  68, def:  73, mdef:  36, int:  27, awr: 28, spd: 41 },
@@ -3443,6 +3472,7 @@ const RACE_PHYSIQUE = {
     'priest':              { h: 1.75, w: 74 },
     'gangster':            { h: 1.82, w: 88 },   // Phase 6 — the enforcer
     'nun':                 { h: 1.65, w: 58 },   // Phase 6 — the sister
+    'door agent':          { h: 1.78, w: 76 },   // 2026-09-14 — the officer
     'wizard':              { h: 1.70, w: 68 },
     'fortune teller':      { h: 1.65, w: 60 },
     'giant':               { h: 7.50, w: 3800 },
@@ -6805,6 +6835,46 @@ const RACE_ABILITIES = {
           teamStatusEffects: [{ id: 'extendedClips', duration: 3 }],
           desc: 'Everybody reload. Allies within 3 tiles pack Extended Clips for 3 rounds: +1 basic-attack range and +1 ATK stage.' },
     ],
+    /* DOOR_RACE_DESIGN.md §4 (2026-09-14): the DOOR AGENT — a control
+       skirmisher built on DOORS. Knock Knock ⇄ Breaking and Entering →
+       Special Delivery ⇄ Slam → EXIT → The Long Way Round★ ⇄ Trapdoor★.
+       The door object + every `door*` kind live in battle.js ("THE DOOR"
+       block); `doorRange` is the reach to the friendly door the spell
+       reads, `range` the reach FROM ITS TWIN. */
+    'door agent': [
+        { id: 'raceKnockKnock', spellType: 'anomaly', element: 'psychic', name: 'Knock Knock',
+          type: 'utility', cost: 20, range: 4, apCost: 1,   // range 4 = the toggle's reach; placement is within 3 (battle.js DOOR_RULES.pairRange)
+          kind: 'door', doorToggleRange: 4,
+          desc: 'Knock twice. Somewhere, a door answers. Pick two empty tiles within 3 (not next to each other) and a pair of OPEN doors stands on them: whoever ends a move on one steps out of the other. Cast on a friendly door instead to open or shut it (0 MP, range 4). A shut door is a wall. 3 hits break a door and its twin.' },
+        { id: 'raceBreakingEntering', spellType: 'anomaly', element: 'psychic', name: 'Breaking and Entering',
+          type: 'damage', cost: 25, dmg: 85, range: 4, apCost: 1,
+          kind: 'doorBreach', damageType: 'physical', rearAttack: true,
+          desc: 'Nobody said the door had to be yours. Come through a door the enemy did not know was there: teleport beside an enemy within 4 tiles you can see and hit them for WEAK physical damage — always a rear attack.' },
+        { id: 'raceSpecialDelivery', spellType: 'anomaly', element: 'psychic', name: 'Special Delivery',
+          type: 'damage', cost: 30, dmg: 105, range: 3, apCost: 1, doorRange: 2,
+          kind: 'doorDelivery', damageType: 'physical', rearAttack: true,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'Signature required. Pick a friendly OPEN door within 2 tiles, then an enemy within 3 tiles of its twin (line of sight from the twin). The package flies out of the twin: MEDIUM physical damage, always a rear attack, and the target is Staggered.' },
+        { id: 'raceSlam', spellType: 'anomaly', element: 'psychic', name: 'Slam',
+          type: 'damage', cost: 30, dmg: 70, range: 4, apCost: 1,
+          kind: 'doorSlam', damageType: 'physical', pushDistance: 1,
+          desc: 'When one door closes. Shut a friendly door within 4 tiles — its twin SLAMS: every enemy standing on or beside the twin takes WEAK physical damage and is pushed 1 tile away; allies there are only pushed. Both doors end shut.' },
+        { id: 'raceExit', spellType: 'anomaly', element: 'psychic', name: 'EXIT',
+          type: 'debuff', cost: 45, range: 1, apCost: 2, tier: 'II',
+          kind: 'doorExit',
+          statusEffects: [{ id: 'exited', duration: 1 }],
+          desc: 'Extradimensional Incident Transfer. Sign here. An enemy standing on or beside one of your OPEN doors is EXITED: off the board until the start of its next activation (untargetable, cannot act, holds no zone, drops any Key), then comes back out of the twin door, Staggered. Never on bosses or the Cube.' },
+        { id: 'raceLongWayRound', spellType: 'anomaly', element: 'psychic', name: 'The Long Way Round',
+          type: 'buff', cost: 55, range: 0, apCost: 2, tier: 'III',
+          kind: 'buff',
+          statusEffects: [{ id: 'castFromDoors', duration: 2 }],
+          desc: 'Every corner in every room is a door. For 2 rounds the agent may attack or cast from any friendly OPEN door they stand on or beside as if they stood at its twin — range, line of sight and origin are the twin\'s, and every such hit is a rear attack.' },
+        { id: 'raceTrapdoor', spellType: 'anomaly', element: 'psychic', name: 'Trapdoor',
+          type: 'damage', cost: 55, dmg: 170, range: 4, apCost: 2, tier: 'III',
+          kind: 'doorTrap', damageType: 'physical',
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'Do not stand in corners. HEAVY physical damage to an enemy within 4 tiles you can see; the floor gives way and they drop out of your door farthest from them (or land beside the agent if no door stands), Staggered.' },
+    ],
     /* CHAMP_REWORK_PLAN §6.20 Phase 6 (2026-09-08): the NUN — the sister of
        mercy, her own race now (was the priest's female form). Purify ⇄ Smite
        → Blessing → Prayer → Hallelujah★. Purify is the new `cleanseArea`
@@ -8462,6 +8532,13 @@ for (const [oldId, survivorId] of [
 const SIM_DEFAULTS = {
 
     damage:       { simTargeting: 'unit',  simPhase: 'standard', simFallback: 'redirect' },
+    // DOOR_RACE_DESIGN kinds (2026-09-14): doors are placed / read by tile, the strikes by unit
+    door:         { simTargeting: 'tile',  simPhase: 'standard', simFallback: null },
+    doorBreach:   { simTargeting: 'unit',  simPhase: 'standard', simFallback: 'redirect' },
+    doorDelivery: { simTargeting: 'unit',  simPhase: 'standard', simFallback: 'redirect' },
+    doorSlam:     { simTargeting: 'tile',  simPhase: 'standard', simFallback: null },
+    doorExit:     { simTargeting: 'unit',  simPhase: 'standard', simFallback: null },
+    doorTrap:     { simTargeting: 'unit',  simPhase: 'standard', simFallback: 'redirect' },
     multiHit:     { simTargeting: 'unit',  simPhase: 'standard', simFallback: 'redirect' },
     ricochet:     { simTargeting: 'unit',  simPhase: 'standard', simFallback: 'redirect' },
     lifeDrain:    { simTargeting: 'unit',  simPhase: 'standard', simFallback: 'redirect' },
@@ -8595,7 +8672,9 @@ const _MF_BUFF    = { protect:20, invulnerable:15, invisible:12, untargetable:12
                       remoteView:3, warCry:7,
                       // CHAMP REWORK Phase 4 buffs
                       stoneform:14, blessed:9, monster:10, extendedClips:8, incendiary:6,
-                      sparkling:6, levitating:5, shadowRealm:10, mechaForm:6, carForm:3 };
+                      sparkling:6, levitating:5, shadowRealm:10, mechaForm:6, carForm:3,
+                      // DOOR_RACE_DESIGN (2026-09-14)
+                      castFromDoors:9, exited:10 };
 
 function _mfSumArr(a){ return Array.isArray(a) ? a.reduce((x, y) => x + (+y || 0), 0) : 0; }
 
@@ -9523,6 +9602,46 @@ const STATUS_DEFS = {
         iconSrc: createStatusIconDataUri('🪆', '#3a2210', '#ffe8d0', '#d49050'),
         onRemove(unit) { delete unit._voodooAllyId; }
     },
+    /* 🚪 EXITED (DOOR_RACE_DESIGN §4 r3, 2026-09-14): off the board for a
+       round — untargetable, cannot move or act, holds no zone. The realm
+       flag makes everyone else's damage / heals / statuses no-op; battle.js
+       `_doorExitReturn` brings the unit back out of the twin door at its
+       next activation, Staggered (`_exitDoorId` = the door it went in). */
+    exited: {
+        icon: '🚪',
+        glyph: '🚪',
+        short: 'EXIT',
+        label: 'EXITED',
+        colorText: 'EXITED through a door',
+        kind: 'marker',
+        category: 'status',
+        stack: 'max',
+        realm: true,
+        blockMove: true,
+        blockAction: true,
+        dispelProof: true,
+        iconSrc: createStatusIconDataUri('🚪', '#141018', '#f0e8d8', '#b89860'),
+        onRemove(unit) {
+            if (typeof window !== 'undefined' && typeof window._doorExitReturn === 'function') window._doorExitReturn(unit);
+            delete unit._exitDoorId; delete unit._exited;
+        }
+    },
+    /* 🚪 The Long Way Round (DOOR_RACE_DESIGN §4 r4★): while it lasts the
+       agent attacks and casts FROM the twin of any friendly open door they
+       stand on or beside — range, line of sight and origin are the twin's,
+       every hit a rear attack (battle.js doorCastOrigins / _doorFromTwin). */
+    castFromDoors: {
+        icon: '🚪',
+        glyph: '🚪',
+        short: 'LWR',
+        label: 'The Long Way Round',
+        colorText: 'casting through the doors',
+        kind: 'buff',
+        category: 'status',
+        stack: 'max',
+        castFromDoors: true,
+        iconSrc: createStatusIconDataUri('🚪', '#1a2030', '#f0f0ff', '#70a0e0')
+    },
     /* 🌑 In the Shadow Realm: a PAIR marker (caster + target, each carrying
        the other's id in _realmPartnerId). To everyone else the pair is
        invisible and untargetable; damage, heals and statuses from anyone
@@ -10261,6 +10380,8 @@ const STATUS_LIBRARY_DESCS = {
     soulBound: 'Bound soul to soul with another: when either takes damage the other takes 30% of it (45% while the binder\'s M.ATK is raised). Devour Soul hits Soul-Bound targets harder.',
     voodoo:    'A doll of this enemy is tied to an ally: whenever that ally takes damage, this enemy takes half of it. Bad Trip hits Voodoo targets harder.',
     shadowRealm: 'Dragged into the Shadow Realm with one other: invisible and untargetable to everyone else, immune to everything not from each other, and nobody else can heal either of them.',
+    exited: 'EXITED through a door: off the board until the start of its next activation — untargetable, cannot act, holds no zone, carries no Key. Comes back out of the twin door, Staggered.',
+    castFromDoors: 'The Long Way Round: attacks and spells launch from the TWIN of any friendly open door the agent stands on or beside — range and line of sight from the twin, every hit a rear attack. 2 rounds.',
     tethered:  'Roped: cannot move on its own. Whenever the roper moves, the unit is dragged into the tile they left — 20 damage per tile dragged. High Noon hits Roped targets harder.',
     incendiary: 'Incendiary rounds loaded: every landed basic attack sets the target on fire (Burn, 2 rounds).',
     sparkling: '+1 SPD stage, and the unit sheds glitter motes on the tiles it leaves — an enemy stepping on one is Blinded for a round.',
@@ -10450,6 +10571,7 @@ const ACCT_STARTER_UNITS = [
                     // actually listed here despite the old comment — fixed 2026-07-19)
   'nun',            // White Mage (3D — female only; her own race since the
                     // CHAMP REWORK Phase 6, 2026-09-08 — same model as above)
+  'door agent',     // Agent (3D — the Player / Agent Belle cast models; DOOR_RACE_DESIGN, 2026-09-14)
   // 2026-07-19 batch (sprites.js RACE_MODELS_3D):
   'yeti',           // bruiser (3D — frost cryptid, male only)
   'skeleton',       // undead (3D — male only)
@@ -10611,7 +10733,7 @@ const ACH_CATALOG = [
   // Champion-mastery meta (§4.1): a champ is Mastered at kills ≥ ACH_MASTERY.kills
   // + wins ≥ ACH_MASTERY.wins + deathless ≥ ACH_MASTERY.deathless. This line
   // counts mastered champs (evaluated at match commit, stored high-water).
-  { id: 'champsMastered',  metric: 'champsMastered',  cat: 'modes',       icon: '👑', name: 'Heat Death',        desc: 'Fully master champions (100 kills · 100 wins · 10 deathless each)', tiers: [1, 5, 10, 25, 50, 98], hw: true },   // top tier = the roster size (98 since Phase 6 added gangster + nun)
+  { id: 'champsMastered',  metric: 'champsMastered',  cat: 'modes',       icon: '👑', name: 'Heat Death',        desc: 'Fully master champions (100 kills · 100 wins · 10 deathless each)', tiers: [1, 5, 10, 25, 50, 99], hw: true },   // top tier = the roster size (99 since the DOOR agent, 2026-09-14)
 ];
 
 // What a champ must reach on each mastery ladder to count as Mastered
@@ -14963,7 +15085,7 @@ const EW_RACE_BIOMES = {
     'shaman': ['forest', 'ancient'], 'mad scientist': ['underground_base'], 'cowboy': ['ranch'],
     'men in black': ['clandestine', 'underground_base'], 'telepath': ['underground_base', 'astral'],
     'marksman': ['clandestine', 'urban'], 'priest': ['holy_city'], 'wizard': ['arthurian', 'gothic'],
-    'gangster': ['urban', 'neon_city'], 'nun': ['holy_city'],
+    'gangster': ['urban', 'neon_city'], 'nun': ['holy_city'], 'door agent': ['clandestine', 'underground_base'],
     'fortune teller': ['desert', 'astral'], 'barbarella': ['space'],
     'black goo': ['space', 'underground_base'], 'golem': ['ancient'],
     'honda civic': ['urban', 'neon_city'], 'ice queen': ['polar'], 'juggernaut': ['underground_base'],
@@ -15407,6 +15529,7 @@ const RACE_TREE = {
     'priest':        ['raceDivineLight', 'protect1', 'raceSmite', 'exorcism'],
     'gangster':      ['raceStompOut', ['raceDriveBy', 'raceHitALick'], 'raceChoppa', 'raceExtendedClips'],   // §6.19 (Phase 6)
     'nun':           [['racePurify', 'raceSmite'], 'raceBlessing', 'racePrayer', 'raceHallelujah'],           // §6.20 (Phase 6)
+    'door agent':    [['raceKnockKnock', 'raceBreakingEntering'], ['raceSpecialDelivery', 'raceSlam'], 'raceExit', ['raceLongWayRound', 'raceTrapdoor']],   // DOOR_RACE_DESIGN §4 (2026-09-14)
     'fortune teller': ['raceTarotDraw', 'raceSpiritChannel', 'raceCurseOfMisfortune', 'raceCrystalBall'],
     'martian':       ['raceHeatRay', 'sharedLowGravity', 'sharedShrinkRay', 'raceWarOfTheWorlds'],
     'nordic':        ['raceAuroraRay', 'racePleiadianShield', 'raceStasisBeam', 'raceNordicAccord'],
@@ -16267,6 +16390,8 @@ const CAMPAIGN_RACE_PRICES = {
   // CHAMP REWORK Phase 6 (2026-09-08)
   'gangster': 200,
   'nun': 250,
+  // DOOR_RACE_DESIGN (2026-09-14)
+  'door agent': 300,
 };
 
 const CAMPAIGN_REGION_THEMES = {
@@ -17150,6 +17275,7 @@ const DOOR_TEXT = {
         'cowboy':               { status: 'DOMESTIC',          note: 'never misses twice' },
         'gangster':             { status: 'DOMESTIC',          note: 'known to the desk; the desk is known to him' },
         'nun':                  { status: 'DIPLOMATIC',        note: 'the only diplomat who has never lied on the form' },
+        'door agent':           { status: 'DOMESTIC',          note: 'staff — the form is filed by the officer who filed the form' },
         'quarterback':          { status: 'DOMESTIC',          note: 'went back to the huddle' },
         'general':              { status: 'DOMESTIC',          note: 'asked to see the org chart' },
         'antihero':             { status: 'DOMESTIC',          note: 'declined to align with any desk' },
@@ -17164,7 +17290,7 @@ const DOOR_TEXT = {
         'homosapien': 'Nuketown', 'pirate': 'The Flying Dutchman', 'swordfighter': 'Camelot', 'knight': 'Camelot',
         'shaman': 'Mount Shasta', 'mad scientist': 'D.U.M.B.', 'cowboy': 'Area 51', 'men in black': 'Area 51',
         'telepath': 'D.U.M.B.', 'marksman': 'The Lodge', 'priest': 'Vatican City', 'wizard': 'Stonehenge',
-        'gangster': 'Cyberpunk City', 'nun': 'Vatican City',
+        'gangster': 'Cyberpunk City', 'nun': 'Vatican City', 'door agent': 'D.U.M.B.',
         'fortune teller': 'Bohemian Grove', 'giant': 'Göbekli Tepe', 'fairy': 'Fairy Forest', 'martian': 'Mars',
         'nordic': 'Antarctica', 'grey': 'Saturn', 'bigfoot': 'Mount Shasta', 'shadow entity': 'Backrooms',
         'reptilian': 'Hollow Earth', 'ai': 'Cyberpunk City', 'robot': 'Technoticlan', 'android': 'Cyberpunk City',
@@ -17933,7 +18059,7 @@ const TUTORIAL_MECHANICS = {
     height:  { label: 'high ground', lessons: ['high_ground'],
                pins: [{ name: 'HIGH_GROUND_RANGE_BONUS', file: 'battle.js', value: 1 }, { name: 'HIGH_GROUND_DEF_BONUS', file: 'battle.js', value: 5 }, { name: 'DOWNHILL_DAMAGE_BONUS', file: 'battle.js', value: 0.1 }],
                watch: [] },
-    fog:     { label: 'fog + awareness', lessons: ['fog'], pins: [], watch: [{ file: 'map.js', fn: 'computeVisibleTiles', hash: '7d2fa9517e' }] },
+    fog:     { label: 'fog + awareness', lessons: ['fog'], pins: [], watch: [{ file: 'map.js', fn: 'computeVisibleTiles', hash: 'c98a65b968' }] },
     facing:  { label: 'facing arcs', lessons: ['facing'],
                pins: [{ name: 'FACING_BACK_DMG_MULT', file: 'battle.js', value: 1.25 }, { name: 'FACING_SIDE_DMG_MULT', file: 'battle.js', value: 1.10 }],
                watch: [{ file: 'battle.js', fn: 'getAttackArc', hash: '11db93a9af' }, { file: 'battle.js', fn: 'getFacingDamageMult', hash: '54478fcae2' }] },
@@ -23047,6 +23173,11 @@ const DOOR_ROSTER_LINES = {
     'nun': [
         '“That succubus needs to put some god damn clothes on! Oh, heavens. Forgive me Father.”',
         '“This one time at church camp… nevermind.”',
+    ],
+    /* the DOOR agent (2026-09-14) — the lines are the user's to write (A15);
+       this one placeholder keeps the roster panel from an empty list */
+    'door agent': [
+        '“Knock twice.”',
     ],
     'men in black': [
         '“This place is completely unprofessional.”',

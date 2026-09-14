@@ -2489,3 +2489,41 @@ arrow GLB comes in tip-backward** like the guns — `_WPN_MODELS.arrow`
 wears `tweak: { ry: Math.PI }` (the bow's loose and the volley's plunge
 both take the same instance, so one flip fixes both). Unseen live (RULE
 #1c): the flipped arrow's head at the string and in the dirt.
+
+## THE DOOR AGENT — the race built on doors (DOOR_RACE_DESIGN.md, Stage 1 shipped 2026-09-14, local delivery)
+Race key **`'door agent'`** (label DOOR Agent; human + anomaly; TIME; Agent
+job; a starter; the Player / Agent Belle cast GLBs via `RACE_MODELS_3D['door
+agent']`, registered AFTER `DOOR_CAST_MODELS` in sprites.js because the cast
+library is built later than the race table). **THE DOOR** = battle.js "THE
+DOOR" block (right before `_structureAt`): `state.doors` = `[{ id, pairId, x,
+y, z, open, hp, maxHp, owner, ownerId, spellName, fixed, placedRound }]` (ids
+only, RULE #2; synced — state literal, net snapshot, the six reset blocks and
+the fog cache key all carry it). Read it ONLY through `doorAt / doorTwin /
+doorsBeside / doorTeamPairs / doorTileFree / placeDoorPair / setDoorOpen /
+breakDoorPair / damageDoorAt / doorStepThrough` (on `window` and on `GAME`).
+Rules: OPEN = passable, whoever ENDS a move on it steps out of its twin
+(`finishMoveAt` → `doorStepThrough`, before the arrival hooks), the owning
+team sees the twin's 3×3 (map.js `computeVisibleTiles`); SHUT = a wall for
+everyone (`doorBlocksMove` at the four occupancy gates, `doorBlocksSightBetween`
+in `isRangeBlockedByTerrain`); `DOOR_RULES.hits` 3 (Keyholder `doorHits` 4)
+and the pair breaks together; 1 pair per agent, 2 per team, the oldest
+folds. `deployPair` (Grave Passage / Tunnel Network) places FIXED doors now.
+Kinds: `door` (Knock Knock — two TILE clicks via `state._spellPick1 { tile:
+true }`, NOT the unit two-click gate; online.js's wrapper picks locally and
+sends `pickX / pickY`; a click on a friendly door toggles it — Keyholder's
+`doorFreeToggle` makes that free once a turn, `_doorFreeAction` skips the
+AP spend), `doorBreach`, `doorDelivery` + `doorExit` (their reach is a
+DOOR's — `_doorOriginForSpell` replaces the range + LOS gate; meta
+`doorOrigin: true`), `doorSlam`, `doorTrap`; The Long Way Round = `buff` +
+status `castFromDoors` → `doorCastOriginFor` lets doAttack / doSpell launch
+from a twin door when the direct cast fails. **The rear-attack rider**:
+`state._doorRearCast` (armed in doSpell by `spell.rearAttack` or a door
+origin, disarmed in finishAction) makes `applyDamageToUnit` price the hit
+as a back attack. EXITED = status `exited` (realm-shielded from everyone,
+no move / act; `onRemove` → `window._doorExitReturn` out of the twin,
+Staggered) — the body STAYS on its tile under the status. Renderer:
+`_buildDoor3D` in `rebuildDeployables`, hashed into `_computeDeployableSerial`.
+`npm test` runs `door-race.test.js`. Adding a door-reading rule = the block;
+never re-derive "is there a door here" from `state.doors` at a call site.
+Unseen live (RULE #1c): the leaf swing, the pips, the step-through beat,
+the guest's tile pick, every AI placement.

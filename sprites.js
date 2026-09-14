@@ -38,6 +38,7 @@ const RACE_PATH_RULES = {
   'priest':     { folder: 'Homosapien', capGender: true },
   'gangster':   { folder: 'gangster',   capGender: false },  // 2026-09-10 — his OWN art landed (Races/gangster/: gangster_male.png + the rigged GLB)
   'nun':        { folder: 'Homosapien', capGender: true },   // Phase 6 — the whitemage female assets, her own race now
+  'door agent': { folder: 'Homosapien', capGender: true },   // DOOR_RACE_DESIGN (2026-09-14) — the agent sheet in 2D; the cast GLBs in 3D
   'wizard':     { folder: 'Homosapien', capGender: true },
   'fortune teller': { folder: 'Homosapien', capGender: true },
   'demon':      { folder: 'Demon',      capGender: true },
@@ -82,6 +83,7 @@ const RACE_SPRITE_GENDERS = {
   'priest': 'both',
   'gangster': 'male',
   'nun': 'female',
+  'door agent': 'both',
   'wizard': 'both',
   'fortune teller': 'both',
   'nordic': 'both',
@@ -312,6 +314,7 @@ function getR2RaceSpriteUrl(race, gender, cls) {
     'marksman': 'sniper',
     'priest': 'whitemage',
     'nun': 'whitemage',         // Phase 6 — the whitemage female sheet is hers
+    'door agent': 'agent',      // DOOR_RACE_DESIGN (2026-09-14) — the Agent job sheet
     'wizard': 'blackmage',
     'fortune teller': 'harbinger',
   };
@@ -2278,6 +2281,13 @@ if (typeof window !== 'undefined') {
   window.DOOR_CAST_MODELS = DOOR_CAST_MODELS;
   window.getCastModel = getCastModel;
 }
+// THE DOOR AGENT race (DOOR_RACE_DESIGN.md, 2026-09-14) walks the board as the
+// cast: the recruit (male) and Agent Belle (female). Registered HERE — after
+// the cast library — because RACE_MODELS_3D is built before _CAST_POSES exists.
+RACE_MODELS_3D['door agent'] = {
+  male:   Object.assign({}, DOOR_CAST_MODELS.player, { basicAttackKind: 'punch' }),
+  female: Object.assign({}, DOOR_CAST_MODELS.belle,  { basicAttackKind: 'punch' }),
+};
 
 // ───────────────────────────────────────────────────────────────────────────
 // HUD portraits — close-up 128×128 face art shown in the HUD panels, the
@@ -2367,6 +2377,7 @@ const RACE_SPRITES = {
   'priest': `${_S}/homosapien.png`,
   'gangster': `${_S}/Races/gangster/gangster_male.png`,
   'nun': `${_S}/homosapien.png`,
+  'door agent': `${_S}/homosapien.png`,
   'wizard': `${_S}/homosapien.png`,
   'fortune teller': `${_S}/homosapien.png`,
   'martian': `${_S}/martian.png`,

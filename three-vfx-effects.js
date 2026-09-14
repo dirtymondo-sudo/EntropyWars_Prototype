@@ -23290,6 +23290,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['raceBlessing']         = Object.assign({}, SPELL_MAP['protect1']);              /* nun — the blessing */
     SPELL_MAP['racePrayer']           = Object.assign({}, SPELL_MAP['protect1']);              /* nun — the barrier */
     SPELL_MAP['raceHallelujah']       = Object.assign({}, SPELL_MAP['raceYoHo']);              /* nun — the team heal */
+    /* THE DOOR AGENT (DOOR_RACE_DESIGN.md, 2026-09-14) — family aliases until
+       the doors get their own recipes: the kick-in line borrows the stomp and
+       the grab, the deliveries borrow the Drive-By round, EXIT the agent's
+       vanish, The Long Way Round the protect aura. */
+    SPELL_MAP['raceBreakingEntering'] = { impact: 'raceStompOut_impact' };                     /* door agent — the kick-in */
+    SPELL_MAP['raceSpecialDelivery']  = { impact: 'raceDriveBy_impact', muzzle: 'raceDriveBy_muzzle' };   /* door agent — the package */
+    SPELL_MAP['raceSlam']             = { impact: 'raceStompOut_impact' };                     /* door agent — the twin slams */
+    SPELL_MAP['raceExit']             = Object.assign({}, SPELL_MAP['raceAgentVanish']);       /* door agent — filed out */
+    SPELL_MAP['raceLongWayRound']     = Object.assign({}, SPELL_MAP['protect1']);              /* door agent — the network lights up */
+    SPELL_MAP['raceTrapdoor']         = { impact: 'raceHitALick_impact' };                     /* door agent — the floor gives way */
 
     /* ═════════ END VFX PASS-3 COVERAGE SECTION ═════════ */
 

@@ -3013,6 +3013,66 @@
             return s;
         }
 
+        /* ═══ THE DOOR AGENT (DOOR_RACE_DESIGN.md §7, 2026-09-14) ═══════════
+           door (Knock Knock): a pair when the agent has none — B toward the
+           enemy line (findSpellTarget stashes A on unit._aiDoorA), or a
+           toggle: SHUT a friendly open door an enemy stands beside. */
+        if (kind === 'door') {
+            if (!target) return 0;
+            const doorOn = (typeof g.doorAt === 'function') ? g.doorAt(target.x, target.y) : null;
+            if (doorOn) {
+                if (doorOn.owner !== unit.player || doorOn.fixed) return 0;
+                const enemiesBeside = v.visibleEnemies.filter(e => Math.max(Math.abs(e.x - doorOn.x), Math.abs(e.y - doorOn.y)) <= 1).length;
+                const alliesBeside = v.allies.filter(a => Math.max(Math.abs(a.x - doorOn.x), Math.abs(a.y - doorOn.y)) <= 1).length;
+                if (doorOn.open) return enemiesBeside > 0 && alliesBeside === 0 ? 40 + enemiesBeside * 30 : 0;
+                return enemiesBeside === 0 && alliesBeside > 0 ? 30 : 0;   // reopen the road for a teammate
+            }
+            if (!unit._aiDoorA) return 0;
+            const mine = (typeof g.doorTeamPairs === 'function') ? g.doorTeamPairs(unit.player).filter(d => d.ownerId === unit.id).length : 0;
+            if (mine > 0) return 0;
+            const round = g.state.round || 0;
+            if (v.visibleEnemies.length === 0 && round <= 2) return 0;
+            let s = 65;
+            if (v.enemyTower && v.enemyTower.hp > 0) s += 30;
+            const nearestE = v.visibleEnemies.length ? Math.min(...v.visibleEnemies.map(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y))) : 9;
+            s += Math.max(0, 6 - nearestE) * 8;
+            return s;
+        }
+        /* doorBreach (Breaking and Entering) / doorTrap (Trapdoor): a
+           single-target hit that is always a rear one (+30 %), Trapdoor also
+           hands the body to the team. doorDelivery: the same through a door. */
+        if (kind === 'doorBreach' || kind === 'doorTrap' || kind === 'doorDelivery') {
+            if (!target) return 0;
+            const est = estDamage(g, unit, target, spell) * 1.3;
+            let s = Math.min(est, effHp(target)) + (kind === 'doorTrap' ? 40 : 20);
+            if (est >= effHp(target)) s += killValue(g, unit, target, v);
+            s += getTargetPriority(target, unit, v) * 0.5;
+            return s;
+        }
+        /* doorSlam: the friendly door whose twin has the most enemies on or
+           beside it — damage + a shove each; the two walls left behind are
+           worth a little on their own. */
+        if (kind === 'doorSlam') {
+            if (!target) return 0;
+            const door = (typeof g.doorAt === 'function') ? g.doorAt(target.x, target.y) : null;
+            const twin = (door && typeof g.doorTwin === 'function') ? g.doorTwin(door) : null;
+            if (!door || !twin || door.owner !== unit.player || door.fixed) return 0;
+            const hit = v.visibleEnemies.filter(e => Math.max(Math.abs(e.x - twin.x), Math.abs(e.y - twin.y)) <= 1);
+            if (!hit.length) return 0;
+            let s = 10;
+            for (const e of hit) { const est = estDamage(g, unit, e, spell); s += Math.min(est, effHp(e)) + 25; if (est >= effHp(e)) s += killValue(g, unit, e, v) * 0.8; }
+            return s;
+        }
+        /* doorExit: the enemy at a friendly open door — worth its threat for
+           a round, more when it carries a Key or holds a zone. */
+        if (kind === 'doorExit') {
+            if (!target) return 0;
+            let s = 60 + unitThreatOutput(g, target, v) * 0.5;
+            if ((target.hourglasses || 0) > 0) s += 80;
+            if (typeof g.getNexusAtUnit === 'function' && g.getNexusAtUnit(target)) s += 40;
+            return s;
+        }
+
         /* CHAMP_REWORK_PLAN Phase 6 (2026-09-08): the `steal` kind (Hit
            a Lick) — the plunder's scoring plus the hit itself. */
         if (kind === 'steal') {
@@ -4461,6 +4521,80 @@
                 }
             }
             return bestTile;
+        }
+
+        /* ═══ THE DOOR AGENT (DOOR_RACE_DESIGN.md §7, 2026-09-14) ═══════════ */
+        if (kind === 'door') {
+            /* a toggle first: a friendly OPEN door with an enemy beside it and
+               no ally → shut it; else place a pair: A beside the agent, B up
+               to 3 tiles out toward the nearest enemy (or the Cube) */
+            const doors = (g.state.doors || []).filter(d => d.owner === unit.player && d.hp > 0 && !d.fixed);
+            const tr = spell.doorToggleRange || 4;
+            for (const d of doors) {
+                if (Math.abs(d.x - unit.x) + Math.abs(d.y - unit.y) > tr) continue;
+                const eb = v.visibleEnemies.some(e => Math.max(Math.abs(e.x - d.x), Math.abs(e.y - d.y)) <= 1);
+                const ab = v.allies.some(a => Math.max(Math.abs(a.x - d.x), Math.abs(a.y - d.y)) <= 1);
+                if (d.open && eb && !ab) { delete unit._aiDoorA; return { x: d.x, y: d.y }; }
+            }
+            if (doors.some(d => d.ownerId === unit.id)) return null;
+            const free = (typeof g.doorTileFree === 'function') ? g.doorTileFree : null;
+            if (!free) return null;
+            const goal = v.visibleEnemies.length
+                ? v.visibleEnemies.reduce((b, e) => (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y)) < (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)) ? e : b)
+                : (v.enemyTower && v.enemyTower.hp > 0 ? v.enemyTower : null);
+            if (!goal) return null;
+            const R = (typeof g.DOOR_RULES !== 'undefined' && g.DOOR_RULES) ? g.DOOR_RULES.pairRange : 3;
+            let A = null, aBest = 1e9;
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                if (!dx && !dy) continue;
+                const ax = unit.x + dx, ay = unit.y + dy;
+                if (!free(ax, ay)) continue;
+                const far = -(Math.abs(ax - goal.x) + Math.abs(ay - goal.y));   // A stays on OUR side
+                if (far < aBest) { aBest = far; A = { x: ax, y: ay }; }
+            }
+            if (!A) return null;
+            let B = null, bBest = 1e9;
+            for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+                if (Math.abs(dx) + Math.abs(dy) > R) continue;
+                const bx = unit.x + dx, by = unit.y + dy;
+                if (Math.max(Math.abs(bx - A.x), Math.abs(by - A.y)) < 2) continue;
+                if (!free(bx, by)) continue;
+                const dg = Math.abs(bx - goal.x) + Math.abs(by - goal.y);
+                if (dg < 2) continue;   // not under their feet
+                if (dg < bBest) { bBest = dg; B = { x: bx, y: by }; }
+            }
+            if (!B) return null;
+            unit._aiDoorA = { x: A.x, y: A.y };
+            return B;
+        }
+        if (kind === 'doorBreach' || kind === 'doorTrap') {
+            const inReach = v.visibleEnemies.filter(e => {
+                const d = _dist(g, unit.x, unit.y, unit.z, e);
+                return d >= 1 && d <= (_effRange(unit, spell) || 4) && !isProtected(g, e)
+                    && !g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y);
+            });
+            inReach.sort((a, b) => getTargetPriority(b, unit, v) - getTargetPriority(a, unit, v));
+            return inReach[0] || null;
+        }
+        if (kind === 'doorDelivery' || kind === 'doorExit') {
+            const origin = (typeof g._doorOriginForSpell === 'function') ? g._doorOriginForSpell : null;
+            if (!origin) return null;
+            const ok = v.visibleEnemies.filter(e => !isProtected(g, e) && !!origin(unit, spell, e.x, e.y));
+            ok.sort((a, b) => getTargetPriority(b, unit, v) - getTargetPriority(a, unit, v));
+            return ok[0] || null;
+        }
+        if (kind === 'doorSlam') {
+            const doors = (g.state.doors || []).filter(d => d.owner === unit.player && d.hp > 0 && !d.fixed
+                && Math.abs(d.x - unit.x) + Math.abs(d.y - unit.y) <= (_effRange(unit, spell) || 4));
+            let best = null, bestN = 0;
+            for (const d of doors) {
+                const tw = (typeof g.doorTwin === 'function') ? g.doorTwin(d) : null;
+                if (!tw) continue;
+                const n = v.visibleEnemies.filter(e => Math.max(Math.abs(e.x - tw.x), Math.abs(e.y - tw.y)) <= 1).length
+                    - v.allies.filter(a => a.id !== unit.id && Math.max(Math.abs(a.x - tw.x), Math.abs(a.y - tw.y)) <= 1).length * 0.5;
+                if (n > bestN) { bestN = n; best = { x: d.x, y: d.y }; }
+            }
+            return best;
         }
 
         /* Phase 6: `steal` — an enemy in reach, Key carriers first. */

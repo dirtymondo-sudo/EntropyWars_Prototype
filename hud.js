@@ -4938,6 +4938,13 @@ function spellTagline(sp) {
   else if (k === 'cleanse') parts.push('Cleanse');
   else if (k === 'cleanseArea') parts.push('Purify ' + (2 * (sp.aoeRadius || 1) + 1) + '×' + (2 * (sp.aoeRadius || 1) + 1) + ' · allies lose debuffs · enemies lose buffs');
   else if (k === 'steal') parts.push('Rob · ' + (sp.stealKeys != null ? sp.stealKeys : 1) + ' Key + ' + (sp.stealItems != null ? sp.stealItems : 1) + ' item');
+  // DOOR_RACE_DESIGN (2026-09-14): the door kinds
+  else if (k === 'door') parts.push('Place 2 doors within 3 · or toggle one (0 MP)');
+  else if (k === 'doorBreach') parts.push('Teleport beside · rear hit');
+  else if (k === 'doorDelivery') parts.push('Out of a door within ' + (sp.doorRange != null ? sp.doorRange : 2) + ' · rear hit · ' + (sp.range || 3) + ' from its twin');
+  else if (k === 'doorSlam') parts.push('Shut a door · twin slams 3×3 · push ' + (sp.pushDistance || 1));
+  else if (k === 'doorExit') parts.push('Off the board 1 round · back out of the twin');
+  else if (k === 'doorTrap') parts.push('Drop out of your farthest door');
   else if (k === 'tackle') parts.push('Charge · carries ' + (sp.pushDistance || 1) + ' tiles');
   else if (k === 'transform') parts.push('Self · transform');
   else parts.push('Single target');
@@ -4988,6 +4995,11 @@ function spellTargetMode(sp) {
   if (k === 'pulseLattice') return 'Self · AOE';
   if (k === 'tuneFrequency') return 'Self Target';
   if (k === 'dash' && sp.afterShot) return 'Dash · then Shoot';
+  if (k === 'door') return 'Two Tiles · Door';
+  if (k === 'doorSlam') return 'Your Door';
+  if (k === 'doorDelivery') return 'Through a Door';
+  if (k === 'doorExit') return 'Enemy at a Door';
+  if (k === 'doorBreach' || k === 'doorTrap') return 'Single Target';
   if (['dash', 'leapStrike'].includes(k)) return 'Dash Line';
   if (['teleport', 'swap', 'pull', 'displacement'].includes(k)) return k === 'swap' ? 'Swap' : 'Reposition';
   if (['scan', 'remoteView'].includes(k)) return 'Vision';

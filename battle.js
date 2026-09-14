@@ -776,6 +776,19 @@
                and acts in processTurretVolleys like the raised zombie. */
             summonUnit:   { minRange: 1, offensive: false, tileTargeted: true, noStrikeLeap: true },
             deployPair:   { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
+            // DOOR_RACE_DESIGN.md (2026-09-14) — the DOOR agent's kinds. `door` =
+            // Knock Knock (two TILE clicks place a pair; one click on a friendly
+            // door toggles it — the pick rides state._spellPick1 with tile: true,
+            // never the unit two-click gate). doorDelivery / doorExit measure
+            // reach from a DOOR, not the caster (doSpell's _doorOriginForSpell
+            // replaces the range + LOS gate for them). doorSlam targets a
+            // friendly door TILE (fogExempt — you know where your doors are).
+            door:         { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
+            doorBreach:   { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true },
+            doorDelivery: { minRange: 0, offensive: true,  breaksStealth: true, noStrikeLeap: true, doorOrigin: true },
+            doorSlam:     { minRange: 0, offensive: false, tileTargeted: true, fogExempt: true, noStrikeLeap: true },
+            doorExit:     { minRange: 0, offensive: true,  breaksStealth: true, noStrikeLeap: true, doorOrigin: true },
+            doorTrap:     { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true },
             deployTurret: { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
             buildBridge:  { minRange: 0, offensive: false, tileTargeted: true },
             terrainCreate:{ minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
@@ -4964,6 +4977,9 @@
                 // Prism mirror damage (Machine Elves lattice) — one hit per blast
                 if (typeof damageMirrorAt === 'function') damageMirrorAt(tile.x, tile.y, unit);
 
+                // 🚪 A door in the blast takes one hit (its twin goes with it at 0).
+                damageDoorAt(tile.x, tile.y, unit, { label: `${spell.name}: ` });
+
                 // Deployed object damage
                 if (state._deployedObjects) {
                     const _aoeDObj = state._deployedObjects.find(o => o.x === tile.x && o.y === tile.y && o.hp > 0 && !o._detonated);
@@ -5214,6 +5230,7 @@
                         damageBuildingAt(cx, cy, 1, unit);
                     }
                 }
+                damageDoorAt(cx, cy, unit, { label: `${spell.name}: ` });   // 🚪 one hit per door on the lane
                 if (state._deployedObjects) {
                     const _lnDObj = state._deployedObjects.find(o => o.x === cx && o.y === cy && o.hp > 0 && !o._detonated);
                     if (_lnDObj) {
@@ -5519,6 +5536,7 @@
             zoneHeal: 1, scan: 1, remoteView: 1, utility: 1, escape: 1, teleport: 1,
             warpRune: 1, swap: 1, placeMirror: 1, tuneFrequency: 1, deployObject: 1,
             deployPair: 1, deployTurret: 1, buildBridge: 1, buildStructure: 1,
+            door: 1, doorSlam: 1,
             placeBlock: 1, terrainCreate: 1, placeTrap: 1, summonWeather: 1,
         };
         function _spellGlowTiles(unit, spell, tx, ty) {
@@ -8512,6 +8530,8 @@
             return unitHasStatus(unit, 'shadowRealm') ? unit._realmPartnerId : null;
         }
         function isUnitRealmShieldedFrom(unit, actor) {
+            /* 🚪 EXITED (DOOR_RACE_DESIGN r3): off the board — nobody reaches it. */
+            if (unit && unitHasStatus(unit, 'exited')) return true;
             const pid = unitShadowRealmPartnerId(unit);
             if (!pid) return false;
             if (!actor) return true;
@@ -17245,6 +17265,8 @@
                    them their own cat so the exec switch politely refuses. */
                 else if (kind === 'rallyPull' || kind === 'raiseDead' || kind === 'summonUnit'
                     || kind === 'possess' || kind === 'link' || kind === 'transfer' || kind === 'shadowRealm' || kind === 'cannibalize'
+                    || kind === 'door' || kind === 'doorBreach' || kind === 'doorDelivery' || kind === 'doorSlam'
+                    || kind === 'doorExit' || kind === 'doorTrap'
                     || kind === 'steal') cat = kind;
                 else if (kind === 'cleanse' || kind === 'cleanseArea') cat = 'cleanse';
                 else if (kind === 'encore') cat = 'encore';
@@ -22744,6 +22766,18 @@
             const sourceUnit = opts.sourceUnit || null;
             const damageType = opts.damageType || 'physical';
 
+            /* 🚪 THE REAR ATTACK RIDER (DOOR_RACE_DESIGN §4): a door spell —
+               or ANY cast launched from a twin door under The Long Way Round —
+               "came through a door they did not know was there": the hit is
+               priced as a back attack (FACING_BACK_DMG_MULT), whatever the
+               victim faces. doSpell arms state._doorRearCast for the caster
+               and finishAction disarms it. */
+            if (sourceUnit && state._doorRearCast && state._doorRearCast.unitId === sourceUnit.id
+                && damageType !== 'dot' && finalDamage > 0 && isEnemyUnit(sourceUnit, target)) {
+                finalDamage = Math.round(finalDamage * getFacingDamageMult('back'));
+                if (!_skipVisuals()) showFloatingTextForUnit(target, '🚪 REAR', 'debuff', { durationMs: 800 });
+            }
+
             /* ═══ OFFENSIVE MULTIPLIER PIPELINE (2026-07-16 rework) ═══════════
                Every multiplicative bonus (STAB × matchup, high ground, range,
                status combo, elemental combo/resonance) ACCUMULATES into one
@@ -24806,6 +24840,7 @@
                                 if (dObj.x === nx && dObj.y === ny && dObj.hp > 0 && (dObj.isDecoy || dObj.blocksMovement)) { _deployBlocks = true; break; }
                             }
                         }
+                        if (!_pathPhasing && !_deployBlocks && doorBlocksMove(nx, ny)) _deployBlocks = true;   // 🚪 a SHUT door is a wall
                         if (_deployBlocks) continue;
 
                         /* Climbing costs movement — mirrors getMoveTiles:
@@ -25063,6 +25098,11 @@
             }
             // 🪢 Roped victims are dragged into the tile this unit just left.
             _tetherFollow(unit, _originX, _originY, _fromZ);
+
+            // 🚪 A unit that ENDS a move on an open door steps out of its twin
+            // (DOOR_RACE_DESIGN §2) — before the arrival hooks (Keys, Nexus)
+            // run in completeMoveAlongPath, so they read the far side.
+            if (!opts.noDoor && typeof doorStepThrough === 'function') doorStepThrough(unit);
 
             checkOpportunityAttack(unit, _originX, _originY);
 
@@ -25688,6 +25728,8 @@
             state._deployedObjects = [];
             state._delayedSpells = [];
             state._gatePairs = [];
+            state.doors = [];
+            state._doorRearCast = null;
             state._flairRevealTiles = {
                 1: null,
                 2: null
@@ -26119,6 +26161,16 @@
                 case 'summonUnit':    return nm + ': select an empty tile beside you to call it to.';
                 case 'cannibalize':   return nm + ': select a fallen unit\'s remains within reach to feed on.';
                 case 'possess':       return nm + ': select an enemy to take control of.';
+                case 'door': {
+                    const _dp = state._spellPick1;
+                    if (_dp && _dp.tile && _dp.spellId === spell.id) return nm + ': first door at <strong>' + coordLabel(_dp.x, _dp.y) + '</strong> — now pick the SECOND tile (within 3, not beside the first).';
+                    return nm + ': pick an empty tile within 3 for the first door, or click one of your doors to open / shut it.';
+                }
+                case 'doorBreach':    return nm + ': select an enemy you can see — you come through beside them and strike from behind.';
+                case 'doorDelivery':  return nm + ': select an enemy within 3 tiles of the twin of an open door beside you (2 tiles).';
+                case 'doorSlam':      return nm + ': select one of your doors — it shuts, and its twin slams everyone on or beside it.';
+                case 'doorExit':      return nm + ': select an enemy standing on or beside one of your open doors.';
+                case 'doorTrap':      return nm + ': select an enemy you can see — the floor gives way under them.';
                 case 'shadowRealm':   return nm + ': select an enemy to drag into the Shadow Realm with you.';
                 case 'link':
                 case 'transfer': {
@@ -33824,6 +33876,8 @@
             state._deployedObjects = [];
             state._delayedSpells = [];
             state._gatePairs = [];
+            state.doors = [];
+            state._doorRearCast = null;
             state._flairRevealTiles = {
                 1: null,
                 2: null
@@ -34405,6 +34459,8 @@
             state._deployedObjects = [];
             state._delayedSpells = [];
             state._gatePairs = [];
+            state.doors = [];
+            state._doorRearCast = null;
             state._flairRevealTiles = {
                 1: null,
                 2: null
@@ -34637,6 +34693,8 @@
             state._deployedObjects = [];
             state._delayedSpells = [];
             state._gatePairs = [];
+            state.doors = [];
+            state._doorRearCast = null;
             state._flairRevealTiles = {
                 1: null,
                 2: null
@@ -41187,6 +41245,8 @@
             get channelNexus() { return channelNexus; },
             get doRecall() { return doRecall; },
             get getNexusAtUnit() { return getNexusAtUnit; },
+            /* 🚪 THE DOOR (DOOR_RACE_DESIGN, 2026-09-14) — ai.js reads these through GAME */
+            DOOR_RULES, doorAt, doorById, doorTwin, doorTeamPairs, doorTileFree, doorsBeside, doorBlocksMove, _doorOriginForSpell,
             get isInNexusZone() { return isInNexusZone; },
             get isInSpawnZone() { return isInSpawnZone; },
 
@@ -45988,9 +46048,259 @@
         }
         window.resolveUnitInColumn = resolveUnitInColumn;
 
+        /* ═══════════════════════════════════════════════════════════════════
+           THE DOOR (DOOR_RACE_DESIGN.md §2, 2026-09-14) — the ONE object every
+           DOOR-agent ability reads. `state.doors` = [{ id, pairId, x, y, z,
+           open, hp, maxHp, owner (player), ownerId (unit id), spellName,
+           fixed, placedRound }] — ids only, never object refs (RULE #2); the
+           list syncs to the guest like state.mirrors. Rules:
+             OPEN  — passable by anyone. Whoever ENDS a move on it steps out
+                     of its twin (doorStepThrough, from finishMoveAt). The
+                     owning team sees the twin's 3×3 (map.js computeVisibleTiles).
+             SHUT  — a wall for everyone: movement (doorBlocksMove — the four
+                     occupancy gates), sight + projectiles (doorBlocksSightBetween
+                     — map.js isRangeBlockedByTerrain).
+             HITS  — DOOR_RULES.hits basic attacks / damage spells break a door
+                     AND its twin (damageDoorAt → breakDoorPair). Keyholder
+                     (`doorHits`) gives the owner's doors 4.
+             CAP   — 1 pair per agent, 2 per team; a new pair replaces the
+                     oldest (placeDoorPair). Doors never expire.
+           Grave Passage / Tunnel Network (`deployPair`) place the same object
+           with `fixed: true` (no toggle, no Slam) — they were inert before.
+           The Long Way Round: doorCastOrigins / doorCastOriginFor hand doAttack
+           and doSpell a twin door as the ORIGIN of a cast (range + LOS from the
+           twin; the rear-attack rider in applyDamageToUnit prices it).
+           ═══════════════════════════════════════════════════════════════════ */
+        const DOOR_RULES = { hits: 3, pairRange: 3, toggleRange: 4, perAgent: 1, perTeam: 2, revealRadius: 1, minGap: 2 };
+        function _doors() { if (!Array.isArray(state.doors)) state.doors = []; return state.doors; }
+        function doorAt(x, y) { return _doors().find(d => d.x === x && d.y === y && d.hp > 0) || null; }
+        function doorById(id) { return _doors().find(d => d.id === id && d.hp > 0) || null; }
+        function doorTwin(door) { return door ? (_doors().find(d => d.pairId === door.pairId && d.id !== door.id && d.hp > 0) || null) : null; }
+        function doorBlocksMove(x, y) { const d = doorAt(x, y); return !!(d && !d.open); }
+        function doorBlocksSightBetween(x1, y1, x2, y2) {
+            const list = _doors();
+            if (!list.length) return false;
+            const shut = list.filter(d => !d.open);
+            if (!shut.length) return false;
+            const pts = getLinePoints(x1, y1, x2, y2);
+            for (let i = 1; i < pts.length - 1; i++) {
+                if (shut.some(d => d.x === pts[i].x && d.y === pts[i].y)) return true;
+            }
+            return false;
+        }
+        function doorMaxHits(unit) {
+            const v = (unit && typeof unitPassiveValue === 'function') ? unitPassiveValue(unit, 'doorHits') : null;
+            return v || DOOR_RULES.hits;
+        }
+        function doorIsFriendly(door, unit) { return !!(door && unit && door.owner === unit.player); }
+        function _doorCheb(a, x, y) { return Math.max(Math.abs(a.x - x), Math.abs(a.y - y)); }
+        /* the friendly doors the unit stands ON or BESIDE (Chebyshev ≤ 1) */
+        function doorsBeside(unit, opts = {}) {
+            if (!unit) return [];
+            return _doors().filter(d => _doorCheb(d, unit.x, unit.y) <= 1
+                && (opts.any || d.owner === unit.player) && (!opts.open || d.open));
+        }
+        /* one door per pair, oldest first */
+        function doorTeamPairs(player) {
+            const seen = new Set();
+            return _doors().filter(d => d.owner === player && !seen.has(d.pairId) && seen.add(d.pairId))
+                .sort((a, b) => (a.placedRound || 0) - (b.placedRound || 0));
+        }
+        function doorTileFree(x, y) {
+            if (!isInside(x, y)) return false;
+            if (unitAt(x, y)) return false;
+            if (doorAt(x, y)) return false;
+            if (typeof isTowerTile === 'function' && isTowerTile(x, y)) return false;
+            if (typeof isObjectiveTile === 'function' && isObjectiveTile(x, y)) return false;
+            if (typeof getTerrainRule === 'function' && getTerrainRule(getTerrainAt(x, y)).passable === false) return false;
+            if (typeof canOccupy === 'function' && !canOccupy(x, y)) return false;   // objects, turrets, deployed walls
+            return true;
+        }
+        function _doorTouched() {
+            state._doorSerial = (state._doorSerial | 0) + 1;
+            if (typeof invalidateVisionCache === 'function') invalidateVisionCache();
+            if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+            markDirty('board', 'hud');
+        }
+        function placeDoorPair(unit, ax, ay, bx, by, opts = {}) {
+            const perAgent = opts.perAgent || DOOR_RULES.perAgent;
+            const mine = doorTeamPairs(unit.player).filter(d => d.ownerId === unit.id);
+            while (mine.length >= perAgent) breakDoorPair(mine.shift(), { quiet: true, reason: 'replaced' });
+            const team = doorTeamPairs(unit.player);
+            while (team.length >= DOOR_RULES.perTeam) breakDoorPair(team.shift(), { quiet: true, reason: 'replaced' });
+            const pairId = `door_${state.round || 0}_${unit.id}_${randInt(99999)}`;
+            const hp = doorMaxHits(unit);
+            const mk = (x, y, tag) => ({
+                id: `${pairId}_${tag}`, pairId, x, y,
+                z: (typeof getHeightAt === 'function') ? getHeightAt(x, y) : 0,
+                open: true, hp, maxHp: hp, owner: unit.player, ownerId: unit.id,
+                spellName: opts.spellName || 'Door', fixed: !!opts.fixed, placedRound: state.round || 0,
+            });
+            const a = mk(ax, ay, 'a'), b = mk(bx, by, 'b');
+            _doors().push(a, b);   // read AFTER the cap loops — breakDoorPair reassigns state.doors
+            if (!opts.quiet && !_skipVisuals()) {
+                showFloatingTextAtTile(ax, ay, '🚪 A', 'buff');
+                showFloatingTextAtTile(bx, by, '🚪 B', 'buff');
+            }
+            _doorTouched();
+            return [a, b];
+        }
+        function setDoorOpen(door, open, opts = {}) {
+            if (!door || door.hp <= 0 || door.open === !!open) return false;
+            door.open = !!open;
+            if (!opts.quiet && !_skipVisuals()) {
+                showFloatingTextAtTile(door.x, door.y, open ? '🚪 OPEN' : '🚪 SHUT', open ? 'buff' : 'debuff');
+                if (typeof playDoorSfx === 'function') playDoorSfx(open ? 'doorBuzz' : 'stamp'); else playSfx('uiConfirm');
+            }
+            _doorTouched();
+            return true;
+        }
+        function breakDoorPair(door, opts = {}) {
+            if (!door) return;
+            const both = _doors().filter(d => d.pairId === door.pairId);
+            for (const d of both) d.hp = 0;
+            state.doors = _doors().filter(d => d.pairId !== door.pairId);
+            if (opts.reason === 'replaced') {
+                addLog(`The old doors at ${both.map(d => coordLabel(d.x, d.y)).join(' / ')} fold away.`);
+            } else if (!opts.quiet) {
+                if (!_skipVisuals()) for (const d of both) showFloatingTextAtTile(d.x, d.y, '🚪 BROKEN', 'damage');
+                addLog(`${opts.label || ''}The door at ${coordLabel(door.x, door.y)} breaks — and its twin with it.`);
+                playSfx('uiConfirm');
+            }
+            _doorTouched();
+        }
+        /* one hit on the door at (x, y) — enemies' doors only, unless opts.friendly */
+        function damageDoorAt(x, y, byUnit, opts = {}) {
+            const door = doorAt(x, y);
+            if (!door) return false;
+            if (byUnit && door.owner === byUnit.player && !opts.friendly) return false;
+            door.hp -= (opts.hits || 1);
+            if (door.hp > 0) {
+                if (!_skipVisuals()) showFloatingTextAtTile(x, y, `🚪 ${door.hp}/${door.maxHp}`, 'damage');
+                addLog(`${opts.label || ''}The door at ${coordLabel(x, y)} takes a hit (${door.hp} left).`);
+                _doorTouched();
+            } else breakDoorPair(door, { label: opts.label });
+            return true;
+        }
+        /* whoever ENDS a move on an open door steps out of its twin */
+        function doorStepThrough(unit) {
+            if (!unit || unit.dead) return false;
+            const door = doorAt(unit.x, unit.y);
+            if (!door || !door.open) return false;
+            const twin = doorTwin(door);
+            if (!twin || !twin.open) return false;
+            if (unitAt(twin.x, twin.y)) { addLog(`🚪 ${unitDisplayName(unit)} waits in the doorway — the far side is occupied.`, unit.player); return false; }
+            if (typeof canOccupy === 'function' && !canOccupy(twin.x, twin.y)) return false;
+            const fx = unit.x, fy = unit.y;
+            unit.x = twin.x; unit.y = twin.y;
+            if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(twin.x, twin.y, unit.z);
+            unit._doorSteppedRound = state.round || 0;
+            playSfx('teleport');
+            if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz');
+            if (!_skipVisuals()) _vfxTeleport(fx, fy, twin.x, twin.y);
+            addLog(`🚪 ${unitDisplayName(unit)} steps through the door at ${coordLabel(fx, fy)} and out at ${coordLabel(twin.x, twin.y)}.`);
+            _doorTouched();
+            return true;
+        }
+        /* The Long Way Round: the twin of every friendly open door the unit
+           stands on or beside, as a cast ORIGIN */
+        function doorCastOrigins(unit) {
+            if (!unit || !unitHasStatus(unit, 'castFromDoors')) return [];
+            const out = [];
+            for (const d of doorsBeside(unit, { open: true })) {
+                const tw = doorTwin(d);
+                if (tw && tw.open) out.push({ x: tw.x, y: tw.y, z: tw.z || 0, doorId: d.id, twinId: tw.id });
+            }
+            return out;
+        }
+        /* the first twin origin that reaches (tx, ty) within `range` with line of sight, else null */
+        function doorCastOriginFor(unit, tx, ty, range, opts = {}) {
+            for (const o of doorCastOrigins(unit)) {
+                const dd = opts.dist ? opts.dist(o) : (Math.abs(o.x - tx) + Math.abs(o.y - ty));
+                if (dd < (opts.minRange != null ? opts.minRange : 1) || dd > range) continue;
+                if (!opts.noLos && isRangeBlockedByTerrain(o.x, o.y, tx, ty, o.z)) continue;
+                return o;
+            }
+            return null;
+        }
+        /* The door a door-origin SPELL launches from — replaces doSpell's own
+           range + LOS gate for doorDelivery (a friendly open door within
+           spell.doorRange of the caster whose twin reaches the target within
+           spell.range) and doorExit (any friendly open door the target stands
+           on or beside). Any other spell under The Long Way Round gets a twin
+           origin only when the direct cast is out of reach. */
+        function _doorOriginForSpell(unit, spell, x, y) {
+            if (!unit || !spell) return null;
+            if (spell.kind === 'doorDelivery') {
+                const dr = spell.doorRange != null ? spell.doorRange : 2;
+                for (const d of _doors()) {
+                    if (d.owner !== unit.player || !d.open) continue;
+                    if (Math.abs(d.x - unit.x) + Math.abs(d.y - unit.y) > dr) continue;
+                    const tw = doorTwin(d);
+                    if (!tw || !tw.open) continue;
+                    const dd = Math.abs(tw.x - x) + Math.abs(tw.y - y);
+                    if (dd < 1 || dd > (spell.range || 3)) continue;
+                    if (isRangeBlockedByTerrain(tw.x, tw.y, x, y, tw.z || 0)) continue;
+                    return { x: tw.x, y: tw.y, z: tw.z || 0, doorId: d.id, twinId: tw.id };
+                }
+                return null;
+            }
+            if (spell.kind === 'doorExit') {
+                for (const d of _doors()) {
+                    if (d.owner !== unit.player || !d.open) continue;
+                    if (_doorCheb(d, x, y) > (spell.range != null ? spell.range : 1)) continue;
+                    const tw = doorTwin(d);
+                    if (!tw) continue;
+                    return { x: d.x, y: d.y, z: d.z || 0, doorId: d.id, twinId: tw.id };
+                }
+                return null;
+            }
+            return null;
+        }
+        if (typeof window !== 'undefined') {
+            window.DOOR_RULES = DOOR_RULES;
+            window.doorAt = doorAt; window.doorById = doorById; window.doorTwin = doorTwin;
+            window.doorBlocksMove = doorBlocksMove; window.doorBlocksSightBetween = doorBlocksSightBetween;
+            window.doorsBeside = doorsBeside; window.doorTeamPairs = doorTeamPairs; window.doorTileFree = doorTileFree;
+            window.placeDoorPair = placeDoorPair; window.setDoorOpen = setDoorOpen; window.breakDoorPair = breakDoorPair;
+            window.damageDoorAt = damageDoorAt; window.doorStepThrough = doorStepThrough;
+            window.doorCastOrigins = doorCastOrigins; window.doorCastOriginFor = doorCastOriginFor;
+            window._doorOriginForSpell = _doorOriginForSpell; window.doorMaxHits = doorMaxHits;
+            /* EXITED comes home: STATUS_DEFS.exited.onRemove → out of the twin
+               door (or where it stood if the twin is gone), Staggered. */
+            window._doorExitReturn = function(unit) {
+                if (!unit || unit.dead) return;
+                const door = unit._exitDoorId ? doorById(unit._exitDoorId) : null;
+                const tw = door ? doorTwin(door) : null;
+                let land = null;
+                if (tw) {
+                    if (typeof canOccupy === 'function' && canOccupy(tw.x, tw.y) && !unitAt(tw.x, tw.y)) land = { x: tw.x, y: tw.y };
+                    else {
+                        for (let dy = -1; dy <= 1 && !land; dy++) for (let dx = -1; dx <= 1 && !land; dx++) {
+                            const lx = tw.x + dx, ly = tw.y + dy;
+                            if ((dx || dy) && isInside(lx, ly) && !unitAt(lx, ly) && !doorAt(lx, ly)
+                                && typeof canOccupy === 'function' && canOccupy(lx, ly)) land = { x: lx, y: ly };
+                        }
+                    }
+                }
+                const fx = unit.x, fy = unit.y;
+                if (land) {
+                    unit.x = land.x; unit.y = land.y;
+                    if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(land.x, land.y, unit.z);
+                    if (!_skipVisuals()) _vfxTeleport(fx, fy, land.x, land.y);
+                }
+                delete unit._exited;
+                addLog(`🚪 ${unitDisplayName(unit)} comes back through the door at ${coordLabel(unit.x, unit.y)}, reeling.`);
+                applyStatusPayload(unit, { id: 'stagger', duration: 1 }, 'EXIT: ');
+                _doorTouched();
+            };
+        }
+
         function _structureAt(x, y, unit) {
             const tw = (typeof towerAt === 'function') ? towerAt(x, y) : null;
             if (tw && tw.hp > 0 && (!unit || tw.owner !== unit.player)) return tw;
+            /* 🚪 an enemy door is a structure you can shoot */
+            if (doorAt(x, y) && (!unit || doorAt(x, y).owner !== unit.player)) return true;
             if (state.mirrors && state.mirrors.some(m => m.x === x && m.y === y && m.hp > 0 && (!unit || m.owner !== unit.player))) return true;
             if (state.turrets && state.turrets.some(t => t.x === x && t.y === y && t.hp > 0 && (!unit || t.owner !== unit.player))) return true;
             if (state._deployedObjects && state._deployedObjects.some(o => o.x === x && o.y === y && o.hp > 0
@@ -46068,8 +46378,18 @@
             }
 
             if (d < 1 && d !== 0 || d > getEffectiveRange(unit)) {
-                addLog('Target tile is out of range.');
-                return 0;
+                /* 🚪 The Long Way Round: out of the unit's own reach — try the
+                   twin of a friendly open door beside it as the origin. */
+                let _dOrg = null;
+                if (unitHasStatus(unit, 'castFromDoors') && _clickedTarget) {
+                    const _tzO = _clickedTarget.z ?? 0;
+                    _dOrg = doorCastOriginFor(unit, x, y, getEffectiveRange(unit), { dist: o => combatDist(o.x, o.y, o.z || 0, x, y, _tzO) });
+                }
+                if (!_dOrg) { addLog('Target tile is out of range.'); return 0; }
+                d = combatDist(_dOrg.x, _dOrg.y, _dOrg.z || 0, x, y, _clickedTarget.z ?? 0);
+                unit._doorAttackOrigin = { x: _dOrg.x, y: _dOrg.y };
+            } else {
+                delete unit._doorAttackOrigin;
             }
             if (d === 0) {
 
@@ -46083,9 +46403,15 @@
                     return 0;
                 }
             }
+            /* 🚪 The Long Way Round: the attack may launch from a twin door —
+               the reach and the sight are the twin's; the hit is a rear one. */
+            let _doorOrg = null;
             if (isRangeBlockedByTerrain(unit.x, unit.y, x, y, unit.z)) {
-                addLog('Terrain blocks the attack path.');
-                return 0;
+                if (unitHasStatus(unit, 'castFromDoors') && _clickedTarget) {
+                    const _tzO = _clickedTarget.z ?? 0;
+                    _doorOrg = doorCastOriginFor(unit, x, y, getEffectiveRange(unit), { dist: o => combatDist(o.x, o.y, o.z || 0, x, y, _tzO) });
+                }
+                if (!_doorOrg) { addLog('Terrain blocks the attack path.'); return 0; }
             }
 
             const _isSkyTelescopeTarget = unitHasTelescope(unit) && getSectionForUnit(unit) === 'earth' && true &&
@@ -46308,6 +46634,23 @@
                 }
             }
 
+            /* 🚪 Shooting a door: one hit; at 0 the door AND its twin break. */
+            if ((!target || target.id === unit.id) && doorAt(x, y) && doorAt(x, y).owner !== unit.player) {
+                pushUndoSnapshot(true);
+                setUnitFacing(unit, x - unit.x, y - unit.y);
+                if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
+                else animateStrikeLeap(unit, x, y);
+                damageDoorAt(x, y, unit, { label: `${unitDisplayName(unit)}: ` });
+                spendAllAP(unit);   // attacking ends the turn
+                state.actionMode = null;
+                state._actionExecuting = false;
+                state.actionMenuView = 'root';
+                state.selectedTool = null;
+                state.pendingTarget = null;
+                endUnitIfDone(unit);
+                renderAfterCombat();
+                return 1;
+            }
             if ((!target || target.id === unit.id) && state._deployedObjects) {
                 const dObjIdx = state._deployedObjects.findIndex(o => {
                     if (o.x !== x || o.y !== y || o.hp <= 0) return false;
@@ -46457,7 +46800,13 @@
             // arc of the DEFENDER this attack lands in. Back attacks cannot
             // be dodged (and later: cannot be countered).
             setUnitFacing(unit, target.x - unit.x, target.y - unit.y);
-            const _atkArc = getAttackArc(unit, target);
+            /* 🚪 an attack launched from a twin door is always a rear attack */
+            const _atkArc = (_doorOrg || unit._doorAttackOrigin) ? 'back' : getAttackArc(unit, target);
+            if (_doorOrg || unit._doorAttackOrigin) {
+                const _dOr = _doorOrg || unit._doorAttackOrigin;
+                addLog(`🚪 ${unitDisplayName(unit)} strikes out of the door at ${coordLabel(_dOr.x, _dOr.y)} — from behind!`);
+                delete unit._doorAttackOrigin;
+            }
             const _facingMult = getFacingDamageMult(_atkArc);
 
             // 🌫️ Blind: a blinded attacker swings wide half the time — even
@@ -50122,7 +50471,31 @@
                the player-facing combat log every few rounds. Rejection
                feedback is for the local human's own clicks only. */
             const _silentReject = state.controllers?.[unit.player] === CTRL.AI;
-            if (!isTeleportPhase2 && !isLineDirection && !isSkyThrowPhase2) {
+            /* 🚪 DOOR ORIGINS (DOOR_RACE_DESIGN): doorDelivery / doorExit read
+               their reach from a DOOR (_doorOriginForSpell is the whole gate);
+               any other cast under The Long Way Round may launch from a twin
+               door when the direct cast is out of reach or sight. The origin
+               arms the rear-attack rider below. */
+            let _doorOrg = null;
+            if (_kindMeta(spell).doorOrigin) {
+                _doorOrg = _doorOriginForSpell(unit, spell, x, y);
+                if (!_doorOrg) {
+                    if (!_silentReject) {
+                        addLog(spell.kind === 'doorExit' ? 'EXIT: the target must stand on or beside one of your open doors.'
+                            : `${spell.name}: no open door beside you delivers there.`);
+                        playErrorSfx();
+                    }
+                    return 0;
+                }
+            }
+            if (!_doorOrg && !isTeleportPhase2 && !isLineDirection && !isSkyThrowPhase2 && unitHasStatus(unit, 'castFromDoors')
+                && !_kindMeta(spell).selfCast && spell.kind !== 'teleport' && spell.kind !== 'door' && spell.kind !== 'doorSlam') {
+                const _effR = getEffectiveSpellRange(unit, spell);
+                const _direct = dEff >= minRange && dEff <= _effR
+                    && !(spell.kind !== 'delayed' && !spell.ignoresLineOfSight && _rawDxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, x, y, unit.z ?? 0));
+                if (!_direct) _doorOrg = doorCastOriginFor(unit, x, y, _effR, { minRange, noLos: spell.kind === 'delayed' || !!spell.ignoresLineOfSight });
+            }
+            if (!_doorOrg && !isTeleportPhase2 && !isLineDirection && !isSkyThrowPhase2) {
                 const effSpellRange = getEffectiveSpellRange(unit, spell);
                 const gateD = _isSkyGrabCast ? _rawDxy : dEff;
                 if (gateD < minRange || gateD > effSpellRange) {
@@ -50354,6 +50727,11 @@
 
             pushUndoSnapshot(true);
 
+            /* 🚪 the rear-attack rider: a door spell that says so, or any cast
+               launched out of a twin door under The Long Way Round */
+            state._doorRearCast = (spell.rearAttack || _doorOrg) ? { unitId: unit.id, spellId: spell.id, x: _doorOrg ? _doorOrg.x : null, y: _doorOrg ? _doorOrg.y : null } : null;
+            if (_doorOrg && !_kindMeta(spell).doorOrigin) addLog(`🚪 ${unitDisplayName(unit)} casts ${spell.name} out of the door at ${coordLabel(_doorOrg.x, _doorOrg.y)}.`);
+
             // Choice lock commits here — every validation gate has passed, so
             // this cast WILL happen and it becomes the unit's bound spell.
             if (_brandAccName && !unit._brandLockSpellId) {
@@ -50426,6 +50804,9 @@
                (spendAllAP in finishAction). Empty-tile placements stay pure
                setup: 1 AP, no slot, turn alive. */
             let _placementStruck = false;
+            /* 🚪 Keyholder: a toggle of a friendly door beside the agent, once a
+               turn, is a FREE action (no AP; the door branch sets it). */
+            let _doorFreeAction = false;
 
             // Press Turn: arm a collector so press is resolved from EVERY enemy
             // the spell actually damages (AoE worst-case — one resist or dodge
@@ -50488,7 +50869,8 @@
                 // (deployable activated instantly on an enemy) is attack-grade:
                 // it ends the turn too.
                 if (spellEndsTurn(spell) || _placementStruck) spendAllAP(unit);
-                else spendAP(unit, spellApCost);
+                else if (!_doorFreeAction) spendAP(unit, spellApCost);   // 🚪 Keyholder's free toggle costs no AP
+                state._doorRearCast = null;
                 const _spellPressRes = _consumePressCollector(unit, spellApCost);
                 _showPressFeedback(unit, _spellPressRes);
                 /* ── Recoil / HP cost ──────────────────────────────────────
@@ -52971,28 +53353,268 @@
             }
 
             else if (spell.kind === 'deployPair') {
+                /* Grave Passage / Tunnel Network (2026-09-14): a FIXED door
+                   pair — the caster's own tile and the target — on the DOOR
+                   object (state.doors; `_gatePairs` was never consumed). No
+                   toggle, no Slam; whoever ends a move on one steps out of
+                   the other. */
+                if (!doorTileFree(x, y) || doorAt(unit.x, unit.y)) {
+                    addLog(`${spell.name}: that tile is taken.`);
+                    playErrorSfx();
+                    return 0;
+                }
                 playSfx('uiConfirm');
                 _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
-                if (!state._gatePairs) state._gatePairs = [];
-
-                const maxPairs = spell.maxActivePerCaster || 1;
-                const existing = state._gatePairs.filter(g => g.ownerId === unit.id);
-                while (existing.length >= maxPairs) {
-                    const old = existing.shift();
-                    state._gatePairs = state._gatePairs.filter(g => g !== old);
-                }
-                state._gatePairs.push({
-                    x1: unit.x, y1: unit.y,
-                    x2: x, y2: y,
-                    ownerId: unit.id,
-                    ownerPlayer: unit.player,
-                    usesLeft: 4,
-                    spellName: spell.name
-                });
+                placeDoorPair(unit, unit.x, unit.y, x, y, { spellName: spell.name, fixed: true, perAgent: spell.maxActivePerCaster || 1 });
                 addLog(`${unitDisplayName(unit)} creates ${spell.name} gates between ${coordLabel(unit.x, unit.y)} and ${coordLabel(x, y)}.`);
                 scheduleBoardRender();
                 completionDelay = actionMs(400);
+            }
+
+            /* ═══ THE DOOR AGENT (DOOR_RACE_DESIGN.md §4, 2026-09-14) ═══════ */
+            else if (spell.kind === 'door') {
+                /* KNOCK KNOCK: two tile clicks place a pair of OPEN doors; one
+                   click on a friendly door toggles it (0 MP; Keyholder makes it
+                   a free action once a turn when the agent stands beside it). */
+                const _dTarget = doorAt(x, y);
+                const _dPick = (state._spellPick1 && state._spellPick1.tile && state._spellPick1.spellId === spell.id) ? state._spellPick1 : null;
+                const _dMan = (ax, ay) => Math.abs(unit.x - ax) + Math.abs(unit.y - ay);
+                if (_dTarget && !_dPick) {
+                    if (_dTarget.owner !== unit.player) { if (!_silentReject) { addLog('That is not your door.'); playErrorSfx(); } return 0; }
+                    if (_dTarget.fixed) { if (!_silentReject) { addLog('That gate has no leaf to shut.'); playErrorSfx(); } return 0; }
+                    if (_dMan(x, y) > (spell.doorToggleRange || DOOR_RULES.toggleRange)) { if (!_silentReject) { addLog('That door is too far to reach.'); playErrorSfx(); } return 0; }
+                    const _free = !!(typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'doorFreeToggle'))
+                        && doorsBeside(unit).some(d => d.id === _dTarget.id) && unit._doorFreeRound !== (state.round || 0);
+                    _spellFocusCamera(unit, x, y);
+                    setDoorOpen(_dTarget, !_dTarget.open);
+                    addLog(`🚪 ${unitDisplayName(unit)} ${_dTarget.open ? 'opens' : 'shuts'} the door at ${coordLabel(x, y)}${_free ? ' — Keyholder, free' : ''}.`);
+                    if (_free) { unit._doorFreeRound = state.round || 0; _doorFreeAction = true; }
+                    completionDelay = actionMs(350);
+                } else {
+                    /* AI casters carry their first tile on the unit (ai.js
+                       findSpellTarget) — one doSpell call places the pair. */
+                    let _pickA = _dPick;
+                    if (!_pickA && _silentReject && unit._aiDoorA && doorTileFree(unit._aiDoorA.x, unit._aiDoorA.y)) _pickA = { x: unit._aiDoorA.x, y: unit._aiDoorA.y };
+                    if (!_pickA) {
+                        if (!doorTileFree(x, y) || _dMan(x, y) > DOOR_RULES.pairRange) {
+                            if (!_silentReject) { addLog('Knock Knock: pick an EMPTY tile within 3 for the first door.'); playErrorSfx(); }
+                            return 0;
+                        }
+                        state._spellPick1 = { tile: true, id: null, spellId: spell.id, x, y };
+                        if (!_skipVisuals()) showFloatingTextAtTile(x, y, '① DOOR', 'buff');
+                        playSfx('uiConfirm');
+                        markDirty('hud', 'board');
+                        return 0;   // nothing spent — the second tile completes the pair
+                    }
+                    delete unit._aiDoorA;
+                    if (_pickA.x === x && _pickA.y === y) { clearSpellPick(); playSfx('uiBack'); return 0; }
+                    if (!doorTileFree(x, y) || _dMan(x, y) > DOOR_RULES.pairRange) {
+                        if (!_silentReject) { addLog('Knock Knock: the second door needs an EMPTY tile within 3.'); playErrorSfx(); }
+                        return 0;
+                    }
+                    if (Math.max(Math.abs(_pickA.x - x), Math.abs(_pickA.y - y)) < DOOR_RULES.minGap) {
+                        if (!_silentReject) { addLog('Knock Knock: the two doors need a corridor between them — not side by side.'); playErrorSfx(); }
+                        return 0;
+                    }
+                    clearSpellPick();
+                    playSfx('uiConfirm');
+                    _spellFocusCamera(unit, x, y);
+                    unit.mp -= effectiveSpellCost;
+                    placeDoorPair(unit, _pickA.x, _pickA.y, x, y, { spellName: spell.name });
+                    if (typeof playDoorSfx === 'function') playDoorSfx('doorbell');
+                    addLog(`🚪 ${unitDisplayName(unit)} knocks twice — doors open at ${coordLabel(_pickA.x, _pickA.y)} and ${coordLabel(x, y)}.`);
+                    completionDelay = actionMs(500);
+                }
+            }
+
+            else if (spell.kind === 'doorBreach') {
+                /* BREAKING AND ENTERING: come through beside the enemy and
+                   strike from behind (the rear rider is armed by spell.rearAttack). */
+                const target = (unitAt(x, y, z) || unitAt(x, y));
+                if (!target || target.dead || isAllyUnit(target, unit)) { if (!_silentReject) { addLog('Choose an enemy to break in on.'); playErrorSfx(); } return 0; }
+                const f = getUnitFacing(target);
+                const _cands = [];
+                for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                    if (!dx && !dy) continue;
+                    const lx = target.x + dx, ly = target.y + dy;
+                    if (lx === unit.x && ly === unit.y) { _cands.push({ x: lx, y: ly, w: 5 }); continue; }
+                    if (!isInside(lx, ly) || unitAt(lx, ly) || doorBlocksMove(lx, ly)) continue;
+                    if (typeof canOccupy === 'function' && !canOccupy(lx, ly)) continue;
+                    _cands.push({ x: lx, y: ly, w: (dx === -f.dx && dy === -f.dy ? 0 : 1) + (Math.abs(lx - unit.x) + Math.abs(ly - unit.y)) * 0.01 });
+                }
+                _cands.sort((a, b) => a.w - b.w);
+                const land = _cands[0];
+                if (!land) { if (!_silentReject) { addLog('No room beside that enemy to come through.'); playErrorSfx(); } return 0; }
+                panelFocusTarget = target;
+                focusUnitPanel(target.id);
+                playSfx('teleport');
+                unit.mp -= effectiveSpellCost;
+                const fx = unit.x, fy = unit.y;
+                if (land.x !== unit.x || land.y !== unit.y) {
+                    unit.x = land.x; unit.y = land.y;
+                    if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(land.x, land.y, unit.z);
+                    if (!_skipVisuals()) _vfxTeleport(fx, fy, land.x, land.y);
+                }
+                setUnitFacing(unit, target.x - unit.x, target.y - unit.y);
+                _spellFocusCamera(unit, target.x, target.y, { spellName: spell.name, spellId: spell.id });
+                const _beDelay = _skipVisuals() ? 0 : actionMs(260);
+                window.setTimeout(() => {
+                    if (target.dead) return;
+                    triggerAttackAnim(unit, target.x, target.y);
+                    const VFX = window.ThreeVFXEffects;
+                    if (VFX && VFX.hasMapping(spell.id, 'impact') && state.phase === 'battle' && !_skipVisuals()) VFX.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
+                    applyDamageToUnit(target, (spell.dmg || 0) + spellPower, `${spell.name}: `, { sourceUnit: unit, allowMarkBonus: true, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType });
+                    if (spell.statusEffects) applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
+                    addLog(`🚪 ${unitDisplayName(unit)} comes through a door nobody saw and hits ${unitDisplayName(target)} from behind.`);
+                }, _beDelay);
+                completionDelay = _beDelay + actionMs(500);
+            }
+
+            else if (spell.kind === 'doorDelivery') {
+                /* SPECIAL DELIVERY: the package flies out of the twin (the
+                   door-origin gate above found it: _doorOrg). */
+                const target = (unitAt(x, y, z) || unitAt(x, y));
+                if (!target || target.dead || isAllyUnit(target, unit)) { if (!_silentReject) { addLog('Choose an enemy to deliver to.'); playErrorSfx(); } return 0; }
+                panelFocusTarget = target;
+                focusUnitPanel(target.id);
+                playSfx(spellLaunchSfx(spell));
+                _spellFocusCamera(unit, x, y, { spellName: spell.name, spellId: spell.id });
+                unit.mp -= effectiveSpellCost;
+                const _dvFrom = _doorOrg || { x: unit.x, y: unit.y };
+                triggerAttackAnim(unit, _dvFrom.x, _dvFrom.y, 'ranged');
+                if (!_skipVisuals()) showFloatingTextAtTile(_dvFrom.x, _dvFrom.y, '🚪 📦', 'buff');
+                const _dvTravel = _skipVisuals() ? 0 : actionMs(420);
+                if (typeof playProjectile === 'function' && !_skipVisuals()) {
+                    try { playProjectile(_dvFrom.x, _dvFrom.y, target.x, target.y, 'damage', _dvTravel, spell.spellType, spell.projectileOverride || null); } catch (e) {}
+                }
+                window.setTimeout(() => {
+                    if (target.dead) return;
+                    const VFX = window.ThreeVFXEffects;
+                    if (VFX && VFX.hasMapping(spell.id, 'impact') && state.phase === 'battle' && !_skipVisuals()) VFX.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: _dvFrom.x, fromY: _dvFrom.y });
+                    applyDamageToUnit(target, (spell.dmg || 0) + spellPower, `${spell.name}: `, { sourceUnit: unit, allowMarkBonus: true, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType });
+                    if (spell.statusEffects) applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
+                    addLog(`🚪 Signature required: ${unitDisplayName(target)} takes the package out of the door at ${coordLabel(_dvFrom.x, _dvFrom.y)} — from behind.`);
+                }, _dvTravel);
+                completionDelay = _dvTravel + actionMs(500);
+            }
+
+            else if (spell.kind === 'doorSlam') {
+                /* SLAM: shut a friendly door; its twin slams — enemies on or
+                   beside the twin take the hit and a radial push, allies are
+                   pushed only, the Keyholder (doorImmune) is left alone. */
+                const door = doorAt(x, y);
+                if (!door || door.owner !== unit.player) { if (!_silentReject) { addLog('Slam: pick one of your doors.'); playErrorSfx(); } return 0; }
+                if (door.fixed) { if (!_silentReject) { addLog('That gate has no leaf to slam.'); playErrorSfx(); } return 0; }
+                const twin = doorTwin(door);
+                if (!twin) { if (!_silentReject) { addLog('Slam: that door has no twin left.'); playErrorSfx(); } return 0; }
+                playSfx('uiConfirm');
+                _spellFocusCamera(unit, twin.x, twin.y, { spellName: spell.name, spellId: spell.id });
+                unit.mp -= effectiveSpellCost;
+                setDoorOpen(door, false, { quiet: true });
+                setDoorOpen(twin, false, { quiet: true });
+                if (typeof playDoorSfx === 'function') playDoorSfx('stamp');
+                if (!_skipVisuals()) { showFloatingTextAtTile(door.x, door.y, '🚪 SHUT', 'debuff'); showFloatingTextAtTile(twin.x, twin.y, '🚪 SLAM!', 'damage'); }
+                if (typeof shakeBoard === 'function' && !_skipVisuals()) shakeBoard(6, 260);
+                const VFX = window.ThreeVFXEffects;
+                if (VFX && VFX.hasMapping(spell.id, 'impact') && state.phase === 'battle' && !_skipVisuals()) VFX.fire('impact', spell.id, { tx: twin.x, ty: twin.y, fromX: door.x, fromY: door.y });
+                const _slamDir = { dx: Math.sign(twin.x - door.x) || 1, dy: Math.sign(twin.y - door.y) };
+                const victims = state.units.filter(u => !u.dead && u.id !== unit.id && _doorCheb(u, twin.x, twin.y) <= 1
+                    && !(typeof unitPassiveValue === 'function' && unitPassiveValue(u, 'doorImmune') && u.player === unit.player));
+                let _slamMax = 0, _hit = 0;
+                for (const v of victims) {
+                    const enemy = isEnemyUnit(v, unit);
+                    let pdx = Math.sign(v.x - twin.x), pdy = Math.sign(v.y - twin.y);
+                    if (!pdx && !pdy) { pdx = _slamDir.dx; pdy = _slamDir.dy; }
+                    const dist = getUnitPushDistance(v, spell.pushDistance || 1);
+                    const slide = dist > 0 ? resolveForcedSlide(v, pdx, pdy, dist, { byUnit: unit, label: `${spell.name}: `, perStepMs: 110 }) : null;
+                    if (slide && slide.animMs > _slamMax) _slamMax = slide.animMs;
+                    if (enemy) {
+                        _hit++;
+                        applyDamageToUnit(v, (spell.dmg || 0) + spellPower, `${spell.name}: `, { sourceUnit: unit, allowMarkBonus: true, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType });
+                        if (spell.statusEffects) applyStatusEffects(v, spell.statusEffects, `${spell.name}: `, unit);
+                    }
+                }
+                addLog(`🚪 ${unitDisplayName(unit)} shuts the door at ${coordLabel(door.x, door.y)} — the twin at ${coordLabel(twin.x, twin.y)} slams ${_hit ? _hit + (_hit === 1 ? ' enemy' : ' enemies') : 'on nobody'}.`);
+                completionDelay = Math.max(actionMs(600), _slamMax + actionMs(300));
+            }
+
+            else if (spell.kind === 'doorExit') {
+                /* EXIT: off the board until the start of its next activation
+                   (the `exited` status — realm-shielded, no move, no act), Keys
+                   dropped where it stood; STATUS_DEFS.exited.onRemove brings it
+                   back out of the twin (window._doorExitReturn), Staggered. */
+                const target = (unitAt(x, y, z) || unitAt(x, y));
+                if (!target || target.dead || isAllyUnit(target, unit)) { if (!_silentReject) { addLog('EXIT: choose an enemy.'); playErrorSfx(); } return 0; }
+                if (target._isBoss || target.isBoss || target._isCube) { if (!_silentReject) { addLog('EXIT: that one does not fit through a door.'); playErrorSfx(); } return 0; }
+                if (unitHasStatus(target, 'exited')) { if (!_silentReject) { addLog('EXIT: already filed.'); playErrorSfx(); } return 0; }
+                panelFocusTarget = target;
+                focusUnitPanel(target.id);
+                playSfx('teleport');
+                _spellFocusCamera(unit, x, y, { spellName: spell.name, spellId: spell.id });
+                unit.mp -= effectiveSpellCost;
+                const _exDur = (spell.statusEffects && spell.statusEffects[0] && spell.statusEffects[0].duration) || 1;
+                const ok = applyStatusPayload(target, { id: 'exited', duration: _exDur }, `${spell.name}: `, unit);
+                if (!ok) { addLog(`${unitDisplayName(target)} shrugs off the EXIT.`); }
+                else {
+                    target._exitDoorId = _doorOrg ? _doorOrg.doorId : null;
+                    target._exited = true;
+                    if ((target.hourglasses || 0) > 0 && typeof dropHourglassesFromUnit === 'function') dropHourglassesFromUnit(target);
+                    if (typeof playDoorSfx === 'function') playDoorSfx('stamp');
+                    if (!_skipVisuals()) { _vfxTeleport(target.x, target.y, _doorOrg ? _doorOrg.x : target.x, _doorOrg ? _doorOrg.y : target.y); showFloatingTextForUnit(target, '🚪 EXITED', 'debuff'); }
+                    addLog(`🚪 Extradimensional Incident Transfer: ${unitDisplayName(unit)} files ${unitDisplayName(target)} out through the door at ${coordLabel(_doorOrg ? _doorOrg.x : x, _doorOrg ? _doorOrg.y : y)}. Sign here.`);
+                }
+                completionDelay = actionMs(700);
+            }
+
+            else if (spell.kind === 'doorTrap') {
+                /* TRAPDOOR: the hit, then the floor gives way — the victim
+                   drops out of the friendly door FARTHEST from it (a free tile
+                   there), else beside the agent. */
+                const target = (unitAt(x, y, z) || unitAt(x, y));
+                if (!target || target.dead || isAllyUnit(target, unit)) { if (!_silentReject) { addLog('Trapdoor: choose an enemy.'); playErrorSfx(); } return 0; }
+                panelFocusTarget = target;
+                focusUnitPanel(target.id);
+                playSfx(spellLaunchSfx(spell));
+                _spellFocusCamera(unit, x, y, { spellName: spell.name, spellId: spell.id });
+                unit.mp -= effectiveSpellCost;
+                triggerAttackAnim(unit, target.x, target.y);
+                const VFX = window.ThreeVFXEffects;
+                if (VFX && VFX.hasMapping(spell.id, 'impact') && state.phase === 'battle' && !_skipVisuals()) VFX.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
+                applyDamageToUnit(target, (spell.dmg || 0) + spellPower, `${spell.name}: `, { sourceUnit: unit, allowMarkBonus: true, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType });
+                if (spell.statusEffects) applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
+                if (!target.dead && !(target._isBoss && target._bossSize === 2)) {
+                    const _freeNear = (cx, cy) => {
+                        const out = [];
+                        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                            const lx = cx + dx, ly = cy + dy;
+                            if (!isInside(lx, ly) || unitAt(lx, ly) || doorAt(lx, ly)) continue;
+                            if (typeof canOccupy === 'function' && !canOccupy(lx, ly)) continue;
+                            out.push({ x: lx, y: ly });
+                        }
+                        return out;
+                    };
+                    const mine = _doors().filter(d => d.owner === unit.player).sort((a, b) => _doorCheb(b, target.x, target.y) - _doorCheb(a, target.x, target.y));
+                    let land = null, via = null;
+                    for (const d of mine) { const c = _freeNear(d.x, d.y); if (c.length) { land = c[0]; via = d; break; } }
+                    if (!land) { const c = _freeNear(unit.x, unit.y); if (c.length) land = c[0]; }
+                    if (land) {
+                        const fx = target.x, fy = target.y;
+                        const _tdDelay = _skipVisuals() ? 0 : actionMs(420);
+                        window.setTimeout(() => {
+                            if (target.dead) return;
+                            target.x = land.x; target.y = land.y;
+                            if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(land.x, land.y, target.z);
+                            setUnitFacing(target, land.x - (via ? via.x : unit.x) || 1, land.y - (via ? via.y : unit.y));
+                            playSfx('teleport');
+                            if (!_skipVisuals()) _vfxTeleport(fx, fy, land.x, land.y);
+                            addLog(`🚪 The floor gives way — ${unitDisplayName(target)} drops out ${via ? 'of the door at ' + coordLabel(via.x, via.y) : 'beside ' + unitDisplayName(unit)}.`);
+                            _doorTouched();
+                        }, _tdDelay);
+                        completionDelay = _tdDelay + actionMs(500);
+                    }
+                }
+                if (!completionDelay) completionDelay = actionMs(650);
             }
 
             else if (spell.kind === 'aoeShield') {
@@ -56250,6 +56872,7 @@
                                     if (obj.x === nx && obj.y === ny && obj.hp > 0 && (obj.isDecoy || obj.blocksMovement)) { _decoyBlocks = true; break; }
                                 }
                             }
+                            if (!_phasing && !_decoyBlocks && doorBlocksMove(nx, ny)) _decoyBlocks = true;   // 🚪 a SHUT door is a wall
                             if (_decoyBlocks) { continue; }
 
                             let _siegeBlocks = false;

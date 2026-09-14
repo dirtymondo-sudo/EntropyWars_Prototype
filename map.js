@@ -4423,6 +4423,7 @@
 
             if (objectBlocksLanding(x, y)) return false;
             if (isTowerTile(x, y)) return false;
+            if (typeof doorBlocksMove === 'function' && doorBlocksMove(x, y)) return false;   // 🚪 a SHUT door is a wall
 
             if (state._deployedObjects) {
                 for (const obj of state._deployedObjects) {
@@ -5798,6 +5799,7 @@
             if (objectBlocksLanding(x, y)) return false;
 
             if (isTowerTile(x, y)) return false;
+            if (typeof doorBlocksMove === 'function' && doorBlocksMove(x, y)) return false;   // 🚪 a SHUT door is a wall
 
             if (state._deployedObjects) {
                 for (const obj of state._deployedObjects) {
@@ -7392,6 +7394,20 @@
                     }
                 }
             }
+            /* 🚪 You can see through a door: every OPEN door the team owns
+               shows its twin's tile and the 8 around it (DOOR_RACE_DESIGN §2).
+               The guest reads the synced door list — nothing to relay (RULE #2). */
+            if (state.doors && state.doors.length) {
+                const _dr = (typeof DOOR_RULES !== 'undefined' && DOOR_RULES.revealRadius != null) ? DOOR_RULES.revealRadius : 1;
+                for (const d of state.doors) {
+                    if (d.owner !== player || !d.open || d.hp <= 0) continue;
+                    const tw = state.doors.find(o => o.pairId === d.pairId && o.id !== d.id && o.hp > 0);
+                    if (!tw || !tw.open) continue;
+                    for (let dy = -_dr; dy <= _dr; dy++) for (let dx = -_dr; dx <= _dr; dx++) {
+                        if (isInside(tw.x + dx, tw.y + dy)) visible.add(posKey(tw.x + dx, tw.y + dy));
+                    }
+                }
+            }
 
             if (state.towers) {
                 const tower = state.towers[player];
@@ -8241,6 +8257,11 @@
                 const _pbSz = (sourceZ != null) ? sourceZ : _inferStandingZ(x1, y1);
                 return verticalSightBlocked(x1, y1, _pbSz, x2, y2, _pbTz);
             }
+
+            /* 🚪 A SHUT door (DOOR_RACE_DESIGN §2) blocks sight and shot for
+               everyone — checked before the column ray so it holds on every
+               board (the door is a body, not terrain). */
+            if (typeof doorBlocksSightBetween === 'function' && doorBlocksSightBetween(x1, y1, x2, y2)) return true;
 
             if (state.boardColumns?.length > 0) {
 
@@ -10998,6 +11019,7 @@
             state.wards = [];
             state.pings = [];
             state._deployedObjects = [];
+            state.doors = [];
             state.towers = {};
             state.nexusPoints = {};
             state.flags = {};
@@ -12524,6 +12546,7 @@
             state.plantedSeeds = [];
             state.plantedTrees = [];
             state._deployedObjects = [];
+            state.doors = [];
             state._delayedSpells = [];
             state.activeWeather = [];
             state.skyEvent = null;

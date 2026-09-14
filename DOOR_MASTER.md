@@ -2206,3 +2206,13 @@ The Long Way Round★ ⇄ Trapdoor★, and the engine map (the existing
 `deployPair` gates are never consumed — Grave Passage / Tunnel Network are
 inert today; the door object replaces them). Six decisions (D1–D6) await
 the user. Nothing in data.js yet.
+
+### 2026-09-14 — THE DOOR AGENT race, Stage 1 (local delivery)
+The race is real: `'door agent'` in every table on both sides, the door
+object (`state.doors`, battle.js "THE DOOR" block), Keyholder, the seven
+abilities on the homosapien-shaped tree and all six new kinds, AI, HUD,
+online (the guest's tile pick rides `pickX / pickY`), the renderer's door
+mesh, `door-race.test.js`. Stats retuned into the grade band. Decisions
+D1–D6 taken at the recommended column (the Janitor's key not built). The
+roster lines are one placeholder — user-authored (A15). Full log:
+`DOOR_RACE_DESIGN.md` §9.

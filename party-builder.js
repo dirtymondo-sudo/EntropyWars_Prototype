@@ -629,6 +629,7 @@ const CODEX_LORE = {
   'shaman': 'Human practitioner of ethnobotanical combat medicine and spirit-realm interfacing. Employs plant-derived compounds and ritualistic invocations to achieve measurable healing and psychoactive battlefield effects. Field reports document instances of consciousness transference and spirit-animal manifestation. Operates outside all recognized medical frameworks. Effectiveness: confirmed.',
   'mad scientist': 'Human subject exhibiting genius-level intellect combined with complete disregard for ethical research protocols. Deploys improvised electromagnetic devices, unstable chemical compounds, and clone technology of alarming sophistication. Laboratory conditions consistently violate 200+ safety regulations. Products are devastatingly effective despite — or because of — their instability.',
   'gangster': 'Human street enforcer operating outside every sanctioned combat doctrine. Small-arms proficiency is exceptional; discipline is not. Subjects answer any approach within arm\'s reach with immediate, disproportionate violence (see incident log: "shanked"). Vehicle-borne engagements documented at speeds the Department\'s insurance does not cover. Do not let them near your pockets.',
+  'door agent': 'Department personnel. Field officers of D.O.O.R. trained to treat a wall as a scheduling problem. Subjects place paired doorways on any floor — one in, the twin out — and use them as roads, walls and firing angles in the same engagement; whatever goes into one door comes out of the other. Documented incidents: a package delivered from behind, a door slammed on a room it was not in, a hostile filed out of the building for one round and returned at the wrong address. Stats are unremarkable. Geometry is not. Knock twice.',
   'nun': 'Human clergy of the [REDACTED] order. No offensive capability of note; restorative output exceeds every field medic on file by a wide margin. Subjects refuse the term "healer" and correct it to "sister." Documented cleansing of hostile enchantments, blessings that hold under fire, and a choir that can be heard through the wall. Do not swear in the interview.',
   'cowboy': 'Human firearms specialist operating under frontier combat doctrine. Exhibits supernatural quickdraw reflexes (est. 0.12s reaction time) and preternatural accuracy at range. Cultural affectations include anachronistic headwear and a peculiar code of honor involving fair duels. Do not underestimate. They never miss twice.',
   'men in black': 'Human operatives of [REDACTED] agency. Equipped with alien-derived technology and neurological suppression devices. Subjects display complete operational security — personal histories cannot be verified through any database. Suspected involvement in 847 documented anomalous event coverups. If approached, deny all knowledge of this dossier.',
@@ -1277,7 +1278,7 @@ const PB_SOCKET_FILTER_EMPTY = { cat: 'all', dmg: null, type: null, shape: null,
 // The kinds whose cast is the caster's own tile (battle.js SPELL_KIND_META
 // selfCast) — a range-0 row says the same thing.
 const _PB_SELF_KINDS = ['barrage', 'rallyPull', 'healAll', 'manaRestoreAll', 'warCry', 'scan', 'encore', 'selfHeal', 'escape', 'transform', 'summonWeather', 'trickRoom', 'guard', 'tuneFrequency', 'pulseLattice'];
-const _PB_MULTI_KINDS = ['multiHit', 'ricochet', 'splitBeam', 'healAll', 'manaRestoreAll', 'warCry', 'rallyPull', 'cleanseArea', 'aoeShield', 'zoneHeal', 'zoneDebuff'];
+const _PB_MULTI_KINDS = ['multiHit', 'ricochet', 'splitBeam', 'healAll', 'manaRestoreAll', 'warCry', 'rallyPull', 'cleanseArea', 'aoeShield', 'zoneHeal', 'zoneDebuff', 'doorSlam'];
 const _PB_LINE_KINDS = ['line', 'linePush', 'dash', 'tackle', 'leapStrike'];
 function pbSpellDmgKind(sp) {
   if (!sp) return null;
@@ -2032,6 +2033,9 @@ const RACE_TRAITS = {
   ],
   'nun': [
     { icon: '🙏', name: 'Devout', desc: 'Heals she casts restore 20% more.' },                                        // CODED (PASSIVE_DEFS)
+  ],
+  'door agent': [
+    { icon: '🗝️', name: 'Keyholder', desc: 'Once a turn, open or shut a friendly door beside you for free; your doors take 4 hits; friendly doors never harm you.' },   // CODED (PASSIVE_DEFS)
   ],
   'cowboy': [
     { icon: '🤠', name: 'Quickdraw', desc: 'Wins every speed tie — always acts first among equals.' },                // CODED (PASSIVE_DEFS)

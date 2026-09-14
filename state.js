@@ -4210,6 +4210,7 @@
             roamingNexus: null,
             bombs: [],
             mirrors: [],
+            doors: [],              // 🚪 DOOR_RACE_DESIGN (2026-09-14) — battle.js THE DOOR block
             _mirrorFreq: { 1: 0, 2: 0 },
             _trickRoomRounds: 0,
             _trickRoomOrderRound: null,
@@ -4675,6 +4676,9 @@
             if (state.wards) {
                 for (const w of state.wards) key += '|w' + w.x + ',' + w.y + ':' + w.owner;
             }
+            if (state.doors) {   // 🚪 an open door shows its twin's 3×3 — a toggle / break must miss the cache
+                for (const d of state.doors) key += '|d' + d.x + ',' + d.y + ':' + d.owner + (d.open ? 'o' : 's') + (d.hp > 0 ? '' : 'x');
+            }
             if (key === _fogVisCacheKey && _fogVisCacheResult) return _fogVisCacheResult;
             _fogVisCacheResult = computeVisibleTiles(player);
             _fogVisCacheKey = key;
@@ -4906,6 +4910,7 @@
                     hiddenItems: state.hiddenItems,
                     bombs: state.bombs,
                     mirrors: state.mirrors,
+                    doors: state.doors,
                     _mirrorFreq: state._mirrorFreq,
                     plantedSeeds: state.plantedSeeds,
                     warpRunes: state.warpRunes,

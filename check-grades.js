@@ -108,6 +108,7 @@ const PASSIVE_VALUE = {                    // live PASSIVE_DEFS ids (plan §2.3)
     shank: 8, pureNegativity: 12, serrated: 12, longshot: 40, pointBlank: 8,
     oozing: 8, powerCore: -6 /* a tax with a rebate */, madGenius: 6, rayGun: 8,
     devout: 8, quickdraw: 4, fairyDustTrail: 4,
+    keyholder: 8,                            // DOOR_RACE_DESIGN §3 (2026-09-14)
 };
 const PLANNED_PASSIVE_ALLOWANCE = {        // CHAMP_REWORK_PLAN §5.2 — remove rows as they ship
     // Empty since Phase 6 (2026-09-08): every §5.2 passive is live on its
@@ -214,6 +215,8 @@ const CONSTRAINTS = [
         r => S[r].hp >= 540 && S[r].def >= 72 && Cm(S[r].mdef) && B(S[r].spd) && kitRange(r) === 1],
     ['gangster', 'mid HP (540–620) · mid DEF+M.DEF (B) · high ATK (A+) · little M.ATK (F) · good SPD (A)',
         r => S[r].hp >= 540 && S[r].hp <= 620 && B(S[r].def) && B(S[r].mdef) && Ap(S[r].atk) && F(S[r].int) && A(S[r].spd)],
+    ['door agent', 'low-mid HP (480–560) · low DEF (C) · mid M.DEF (B) · mid ATK (B) · low M.ATK (C) · mid SPD (B) · top AWR (S) — weak stats, strong geometry',
+        r => S[r].hp >= 480 && S[r].hp <= 560 && C(S[r].def) && B(S[r].mdef) && B(S[r].atk) && C(S[r].int) && B(S[r].spd) && S[r].awr >= 80],
     ['nun', 'low HP (<540) · low DEF (C) · decent M.DEF (B+) · terrible ATK (F) · high M.ATK (A+) · low SPD (C)',
         r => S[r].hp < 540 && C(S[r].def) && Bp(S[r].mdef) && F(S[r].atk) && Ap(S[r].int) && C(S[r].spd)],
     ['fairy', 'low-mid HP (430–540) · good SPD (A) · low DEF (C) · good M.DEF (A) · low ATK (F) · good M.ATK (A)',

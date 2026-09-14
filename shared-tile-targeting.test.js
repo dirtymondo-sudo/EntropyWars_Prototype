@@ -110,7 +110,7 @@ test('source: a basic attack on a structure (Cube / turret / mirror / object / s
         "            if (!target || isAllyUnit(target, unit)) {\n                addLog('Choose an enemy on an attack-highlighted tile.');");
     const snaps = (structs.match(/pushUndoSnapshot\(true\);/g) || []).length;
     const faces = (structs.match(/setUnitFacing\(unit, x - unit\.x, y - unit\.y\);/g) || []).length;
-    assert.equal(snaps, 7);
+    assert.equal(snaps, 8);   // 7 + the door (DOOR_RACE_DESIGN, 2026-09-14)
     assert.equal(faces, snaps, 'every structure branch turns the attacker toward the tile');
 });
 

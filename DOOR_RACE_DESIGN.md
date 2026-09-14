@@ -1,8 +1,10 @@
 # THE DOOR AGENT — a race built on doors (design, 2026-09-14)
 
-Status: DESIGN ONLY. Nothing here is in data.js yet. The user asked for a
-moveset first; the engine notes at the end say what is already built and what
-is new. Cast dialogue and flavour lines stay user-authored (DOOR_MASTER A15).
+Status: **STAGE 1 SHIPPED 2026-09-14 (local delivery)** — the race, the door
+object and all seven abilities are in the engine (see §9 at the end for what
+landed, the decisions taken and what is still unseen). Cast dialogue and
+flavour lines stay user-authored (DOOR_MASTER A15) — `DOOR_ROSTER_LINES['door
+agent']` holds one placeholder line for the user to replace.
 
 ---
 
@@ -277,3 +279,66 @@ score / target + hud.js part + ui.js `_SLB_KINDS`, per the wave rules):
   cap (four agents = eight doors; too much board).
 - **D5** Faction TIME (recommended) or SPACE.
 - **D6** The Janitor's enemy-door key: a hidden unlock, or cut.
+
+---
+
+## 9. Build log
+
+### 2026-09-14 — Stage 1 (local delivery, `ENTROPY_WARS_DOOR_RACE.zip`)
+**Shipped.** Race key `'door agent'` (label DOOR Agent, types human +
+anomaly, faction TIME, default job Agent, class assassin, a starter on both
+sides, price 300, home site D.U.M.B., the Player / Agent Belle cast GLBs as
+its 3D models, the Agent job sheet in 2D). **Stats retuned** from §1's
+560/170/62/46/55/50/84/50 (which priced at 302 against the roster's 249–275
+band) to **520 / 170 / 48 / 40 / 50 / 40 / 84 / 46** — "weak stats, strong
+geometry", check-grades.js holds the row. Passive **Keyholder** (`doorHits`
+4 · `doorFreeToggle` · `doorImmune`). Statuses `exited` (realm-shielded,
+no move / act; `onRemove` → `window._doorExitReturn` = out of the twin,
+Staggered) and `castFromDoors`.
+
+**THE DOOR** = battle.js "THE DOOR" block (right before `_structureAt`):
+`state.doors` (synced; the reset blocks, the state literal, the net
+snapshot and the fog cache key all know it), `DOOR_RULES` {hits 3,
+pairRange 3, toggleRange 4, perAgent 1, perTeam 2, revealRadius 1, minGap 2},
+`doorAt / doorTwin / doorsBeside / doorTeamPairs / doorTileFree /
+placeDoorPair / setDoorOpen / breakDoorPair / damageDoorAt /
+doorStepThrough / doorCastOrigins / doorCastOriginFor /
+_doorOriginForSpell` (also on `window` and on `GAME` for ai.js). A SHUT
+door blocks movement at all four occupancy gates and sight in
+`isRangeBlockedByTerrain`; an OPEN door shows its twin's 3×3 to the owning
+team (`computeVisibleTiles`); `finishMoveAt` steps whoever ends a move on
+an open door out of its twin; an enemy door is a structure `doAttack`
+hits (one hit; the AoE and line sweeps hit doors too); at 0 the pair
+breaks. `deployPair` (Grave Passage / Tunnel Network) now places a FIXED
+door pair — those two spells work for the first time.
+
+**The kinds** (`SPELL_KIND_META` + `doSpell` branches + AI scorer / picker
++ HUD parts + library kinds + SIM_DEFAULTS + VFX family aliases):
+`door` (Knock Knock — two TILE clicks through `state._spellPick1
+{ tile: true }`, online the guest picks locally and the second tile rides
+`pickX / pickY`; a click on a friendly door toggles it, 0 MP, and
+Keyholder makes that a FREE action once a turn beside the door),
+`doorBreach`, `doorDelivery`, `doorSlam`, `doorExit`, `doorTrap`; The
+Long Way Round is a plain `buff` whose status lets `doAttack` / `doSpell`
+take a twin door as the cast ORIGIN when the direct cast is out of reach
+or sight. **The rear-attack rider**: `state._doorRearCast` is armed at
+the cast (a `rearAttack` row, or any door-origin cast) and
+`applyDamageToUnit` prices the hit as a back attack; a door-origin basic
+attack forces `_atkArc = 'back'`.
+
+**Decisions taken (the recommended column of §8):** D1 anyone may walk
+through an open door · D2 Slam pushes allies, damages enemies only · D3
+EXIT returns out of the twin · D4 two pairs per team · D5 faction TIME ·
+D6 the Janitor's enemy-door key is NOT built.
+
+**Not in this stage / unseen (RULE #1c):** the EXITED body stays on its
+tile under the status (untargetable, cannot act) rather than leaving the
+board — it still occupies the tile and counts for zone presence; a
+door-origin cast's projectile / VFX still launches from the caster's
+model, only the reach, sight and rear pricing are the twin's; Special
+Delivery auto-picks the door (no second click); the door mesh is
+procedural (jambs, lintel, a hinged leaf, team seal, hit pips) — no
+catalogue leaf yet; no HUD verb for the free toggle (it is the Knock
+Knock row); nothing was played in a browser. `npm test` runs
+`door-race.test.js` (the tables, the tree, the door object in a vm
+sandbox, source guards on every engine site).

@@ -545,7 +545,7 @@
                engine's pick branch here so the guest gets the prompt and the
                drum flips to the second team; only the second click travels,
                carrying the first pick's id as partnerId for the host. */
-            var _tcSpell = null, _tcPick = null;
+            var _tcSpell = null, _tcPick = null, _tcDoorPick = null;
             try {
                 _tcSpell = ((unit.spells || []).find(function(s) { return s && s.name === state.selectedTool; })
                     || (unit._raceAbilities || []).find(function(s) { return s && s.name === state.selectedTool; })) || null;
@@ -554,11 +554,23 @@
                     var _tcClicked = (typeof unitAt === 'function') ? (unitAt(x, y, z) || unitAt(x, y)) : null;
                     if (!_tcPick || (_tcClicked && _tcClicked.id === _tcPick.id)) return _origDoSpell(unit, x, y, z);
                 }
+                /* 🚪 Knock Knock (DOOR_RACE_DESIGN, 2026-09-14): the door kind's
+                   TILE pick is local UI like a two-click's first pick — a click
+                   that is not a toggle (no door there) and has no pick yet runs
+                   the engine's pick branch here; the second tile travels with
+                   pickX / pickY and the host seats it as state._spellPick1. */
+                if (_tcSpell && _tcSpell.kind === 'door') {
+                    var _dpk = (state._spellPick1 && state._spellPick1.tile && state._spellPick1.spellId === _tcSpell.id) ? state._spellPick1 : null;
+                    var _dOn = (typeof doorAt === 'function') ? doorAt(x, y) : null;
+                    if (!_dpk && !_dOn) return _origDoSpell(unit, x, y, z);
+                    if (_dpk) _tcDoorPick = { x: _dpk.x, y: _dpk.y };
+                }
             } catch (e) { _tcPick = null; }
             _guestActionFeedback('spell', unit, x, y);
             _emit('game-action', { type: 'engine', fn: 'doSpell', unitId: unit.id, x: x, y: y, z: z, tool: state.selectedTool,
-                partnerId: _tcPick ? _tcPick.id : null });
-            if (_tcPick) state._spellPick1 = null;
+                partnerId: _tcPick ? _tcPick.id : null,
+                pickX: _tcDoorPick ? _tcDoorPick.x : null, pickY: _tcDoorPick ? _tcDoorPick.y : null });
+            if (_tcPick || _tcDoorPick) state._spellPick1 = null;
             return 1200;
         };
 
@@ -1693,6 +1705,11 @@
                                         || (engUnit._raceAbilities || []).find(function(s) { return s && s.name === data.tool; })) || null;
                                     var _tcPk = state.units.find(function(u) { return u.id === data.partnerId && !u.dead; });
                                     state._spellPick1 = (_tcSp && _tcPk) ? { id: _tcPk.id, spellId: _tcSp.id, x: _tcPk.x, y: _tcPk.y } : null;
+                                } else if (data.pickX != null && data.pickY != null) {
+                                    /* 🚪 Knock Knock's first TILE (the guest picked it locally) */
+                                    var _dSp = ((engUnit.spells || []).find(function(s) { return s && s.name === data.tool; })
+                                        || (engUnit._raceAbilities || []).find(function(s) { return s && s.name === data.tool; })) || null;
+                                    state._spellPick1 = _dSp ? { tile: true, id: null, spellId: _dSp.id, x: data.pickX | 0, y: data.pickY | 0 } : null;
                                 } else {
                                     state._spellPick1 = null;
                                 }

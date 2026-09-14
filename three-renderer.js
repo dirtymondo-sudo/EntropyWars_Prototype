@@ -6789,6 +6789,14 @@ const ThreeRenderer = (function () {
             h = _hashInt(h, (state._mirrorFreq && state._mirrorFreq[1]) | 0);
             h = _hashInt(h, (state._mirrorFreq && state._mirrorFreq[2]) | 0);
         }
+        /* 🚪 THE DOOR (DOOR_RACE_DESIGN, 2026-09-14): open / shut / hp redraw it */
+        if (state.doors) {
+            for (var ddi = 0; ddi < state.doors.length; ddi++) {
+                var dd = state.doors[ddi];
+                h = _hashInt(h, 31); h = _hashInt(h, dd.x); h = _hashInt(h, dd.y);
+                h = _hashVal(h, dd.owner); h = _hashInt(h, dd.open ? 1 : 0); h = _hashInt(h, dd.hp | 0); h = _hashInt(h, dd.fixed ? 1 : 0);
+            }
+        }
         if (state.wards) {
             for (var wi = 0; wi < state.wards.length; wi++) {
                 var w = state.wards[wi];
@@ -7559,6 +7567,53 @@ const ThreeRenderer = (function () {
         portal.position.y = ts * 0.37; g.add(portal);
         return _deployFinish(g, x, y, 1.25);
     }
+    /* 🚪 THE DOOR AGENT's door (DOOR_RACE_DESIGN.md §2): a frame of two jambs
+       and a lintel in dark wood, the LEAF hinged on the left jamb — swung
+       ~100° open (you can walk through, see through) or shut flat in the
+       frame (a wall). A team-coloured seal glows over the lintel and a hit
+       counter of pips shows the hits left. Faces +z like every D.O.O.R. leaf;
+       _deployFinish's per-tile yaw is skipped so the leaf reads as a door. */
+    function _buildDoor3D(d) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var woodMat = _deployMat('wood.png', 0x5a3e2a);
+        var leafMat = _deployMat('wood.png', d.open ? 0x8a6a48 : 0x6e4e34);
+        var sealMat = _deployGlowMat(d.owner === 1 ? 0x4488ff : 0xff4444, 0.75);
+        var W = ts * 0.62, H = ts * 0.9, T = ts * 0.06;
+        for (var j = -1; j <= 1; j += 2) {
+            var jamb = new THREE.Mesh(new THREE.BoxGeometry(T, H, T * 1.4), woodMat);
+            jamb.position.set(j * (W / 2 + T / 2), H / 2, 0); g.add(jamb);
+        }
+        var lintel = new THREE.Mesh(new THREE.BoxGeometry(W + T * 2, T * 1.3, T * 1.4), woodMat);
+        lintel.position.y = H + T * 0.65; g.add(lintel);
+        var seal = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.06, 14), sealMat);
+        seal.position.set(0, H + T * 2.2, T); g.add(seal);
+        /* the leaf, hinged on the left jamb */
+        var hinge = new THREE.Group();
+        hinge.position.set(-W / 2, 0, 0);
+        var leaf = new THREE.Mesh(new THREE.BoxGeometry(W, H - T * 0.2, T * 0.7), leafMat);
+        leaf.position.set(W / 2, (H - T * 0.2) / 2, 0);
+        hinge.add(leaf);
+        var knob = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.018, 8, 6), _deployMat('gold.png', 0xd8b458));
+        knob.position.set(W * 0.86, H * 0.48, T * 0.6); hinge.add(knob);
+        hinge.rotation.y = d.open ? -1.75 : 0;
+        g.add(hinge);
+        /* the hits left, as pips on the lintel */
+        var pips = Math.max(0, Math.min(6, d.hp | 0));
+        for (var p = 0; p < pips; p++) {
+            var pip = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.025, ts * 0.025, T * 0.4), sealMat);
+            pip.position.set((p - (pips - 1) / 2) * ts * 0.045, H + T * 0.65, T * 0.9); g.add(pip);
+        }
+        if (!d.open) {
+            /* the wall it is: a faint slab over the whole opening so a shut
+               door reads solid from every angle */
+            var slab = new THREE.Mesh(new THREE.PlaneGeometry(W, H), _deployGlowMat(d.owner === 1 ? 0x2a3a66 : 0x662a2a, 0.35));
+            slab.position.set(0, H / 2, -T * 0.6); slab.material.side = THREE.DoubleSide; g.add(slab);
+        }
+        var out = _deployFinish(g, d.x, d.y, 1.2);
+        out.rotation.y = 0;
+        return out;
+    }
     function _buildTunnelMound3D(x, y, ownerPlayer) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
@@ -7958,9 +8013,30 @@ const ThreeRenderer = (function () {
             }
         }
 
+        /* ── 🚪 THE DOORS (DOOR_RACE_DESIGN.md §2, 2026-09-14): every door in
+           state.doors — the DOOR agent's leaf on a frame (open = swung wide,
+           shut = a wall), the fixed gates (Grave Passage / Tunnel Network)
+           keep their old props. Rendered for both players (a door is a
+           structure, visible like a turret). */
+        if (state.doors) {
+            for (var ddi = 0; ddi < state.doors.length; ddi++) {
+                var dd = state.doors[ddi];
+                if (!dd || dd.hp <= 0) continue;
+                var dm = dd.fixed
+                    ? (/tunnel/i.test(dd.spellName || '') ? _buildTunnelMound3D(dd.x, dd.y, dd.owner) : _buildGraveGate3D(dd.x, dd.y, dd.owner))
+                    : _buildDoor3D(dd);
+                dm._ew_deployable = true;
+                dm._ew_depX = dd.x; dm._ew_depY = dd.y;
+                var ddKey = 'dep_' + (idx++);
+                objectGroup.add(dm);
+                deployableMeshes.set(ddKey, dm);
+            }
+        }
+
         /* ── Teleport gate pairs (Grave Passage / Tunnel Network) — a prop on
            BOTH endpoints. Announced in the log when cast, so they render for
-           both players. */
+           both players. (Legacy: since 2026-09-14 deployPair places doors
+           above; this stays for any old snapshot that still carries pairs.) */
         if (state._gatePairs) {
             for (var gpi = 0; gpi < state._gatePairs.length; gpi++) {
                 var gp = state._gatePairs[gpi];
