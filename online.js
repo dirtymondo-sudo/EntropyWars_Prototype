@@ -2188,13 +2188,43 @@
         animateStrikeLeap = function(unit, tx, ty, opts) {
             var _netOnline = window._NET && window._NET.online;
             if ((_netOnline && _isHost() || _ewRecOn()) && unit) {
+                /* 2026-09-14 THE LEAP: the strike's shape rides along —
+                   stopShort / hold / the on-arrival clip flag — primitives
+                   only (the callback is rebuilt from `clip` on the guest). */
+                var _lo = opts || {};
                 _emit('relay', {
                     type: 'strike-leap',
                     unitId: unit.id,
-                    tx: tx, ty: ty
+                    tx: tx, ty: ty,
+                    opts: {
+                        leapMs: _lo.leapMs || 0, holdMs: _lo.holdMs || 0, returnMs: _lo.returnMs || 0,
+                        arcScale: (_lo.arcScale != null) ? _lo.arcScale : null,
+                        stopShort: _lo.stopShort || 0,
+                        targetId: (_lo.targetId != null) ? _lo.targetId : null,
+                        clip: !!_lo.clip
+                    }
                 });
             }
             return _origAnimateStrikeLeap(unit, tx, ty, opts);
+        };
+
+        /* BASIC ATTACK DELIVERY (2026-09-14): the bullet / orb / arrow /
+           thrown prop of a basic attack (battle.js playBasicAttackShot) —
+           host-only otherwise (playProjectile is never relayed). Delivery
+           fields are primitives. */
+        const _origPlayBasicAttackShot = playBasicAttackShot;
+        playBasicAttackShot = function(unit, target, delivery, flyMs) {
+            var _netOnline = window._NET && window._NET.online;
+            if ((_netOnline && _isHost() || _ewRecOn()) && unit && target) {
+                var dv = delivery || (typeof basicAttackDelivery === 'function' ? basicAttackDelivery(unit) : null);
+                _emit('relay', {
+                    type: 'basic-shot',
+                    unitId: unit.id, targetId: target.id,
+                    kind: dv ? dv.kind : null, bolt: dv ? dv.bolt : null, proj: dv ? dv.proj : null,
+                    flyMs: flyMs || 0
+                });
+            }
+            return _origPlayBasicAttackShot(unit, target, delivery, flyMs);
         };
 
         /* 🎱 Knockback / shove / drag animations (2026-07-26 bounce pass).
@@ -4012,12 +4042,42 @@
                                 _showLeap = _lfog ? (_lfog(leapUnit.x, leapUnit.y) || _lfog(data.tx, data.ty)) : true;
                             }
                             if (_showLeap) {
-
-                                if (window.ThreeAnim && window.ThreeAnim.isActive()) {
-                                    window.ThreeAnim.strikeLeap(leapUnit, data.tx, data.ty);
-                                } else if (typeof window.animateStrikeLeap === 'function') {
-                                    window.animateStrikeLeap(leapUnit, data.tx, data.ty);
+                                /* window.animateStrikeLeap is the UNWRAPPED
+                                   battle.js fn (it builds the on-arrival clip
+                                   from opts.clip and routes to ThreeAnim) */
+                                var _lopts = null;
+                                if (data.opts) {
+                                    _lopts = {};
+                                    if (data.opts.leapMs > 0) _lopts.leapMs = data.opts.leapMs;
+                                    if (data.opts.holdMs > 0) _lopts.holdMs = data.opts.holdMs;
+                                    if (data.opts.returnMs > 0) _lopts.returnMs = data.opts.returnMs;
+                                    if (data.opts.arcScale != null) _lopts.arcScale = data.opts.arcScale;
+                                    if (data.opts.stopShort > 0) _lopts.stopShort = data.opts.stopShort;
+                                    if (data.opts.targetId != null) _lopts.targetId = data.opts.targetId;
+                                    if (data.opts.clip) _lopts.clip = true;
                                 }
+                                if (typeof window.animateStrikeLeap === 'function') {
+                                    window.animateStrikeLeap(leapUnit, data.tx, data.ty, _lopts);
+                                } else if (window.ThreeAnim && window.ThreeAnim.isActive()) {
+                                    window.ThreeAnim.strikeLeap(leapUnit, data.tx, data.ty, _lopts);
+                                }
+                            }
+                        }
+                    }
+
+                    if (data.type === 'basic-shot' && _ewMirrorView()) {
+                        var _bsU = st && st.units ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
+                        var _bsT = st && st.units ? st.units.find(function(u) { return u.id === data.targetId; }) : null;
+                        if (_bsU && _bsT && typeof window.playBasicAttackShot === 'function') {
+                            var _bsShow = true;
+                            if (st.fogOfWar) {
+                                var _bfog = typeof window._isTileVisibleToViewer === 'function' ? window._isTileVisibleToViewer : null;
+                                _bsShow = _bfog ? (_bfog(_bsU.x, _bsU.y) || _bfog(_bsT.x, _bsT.y)) : true;
+                            }
+                            if (_bsShow) {
+                                window.playBasicAttackShot(_bsU, _bsT,
+                                    { mode: 'shot', kind: data.kind, bolt: data.bolt || null, proj: data.proj || null },
+                                    data.flyMs || 0);
                             }
                         }
                     }

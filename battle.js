@@ -2218,7 +2218,7 @@
                     }
                     unit._trackTilesMoved = (unit._trackTilesMoved || 0) + 1;
                     addLog(`${unitDisplayName(unit)} charges to ${coordLabel(landTile.x, landTile.y)}.`);
-                    animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, 200);
+                    animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, 200, { leap: true });
                 }
                 }
 
@@ -2384,7 +2384,10 @@
                 unit.y = landTile.y;
                 if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(landTile.x, landTile.y, unit.z);
                 unit._trackTilesMoved = (unit._trackTilesMoved || 0) + dist;
-                animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, chargeMs);
+                // THE LEAP (2026-09-14): the charge runs the lane and VAULTS
+                // the last stretch — onto the ledge when the victim stands
+                // higher, off the edge when lower, a leaping strike on the flat.
+                animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, chargeMs, { leap: true });
                 addLog(`${unitDisplayName(unit)} charges from ${coordLabel(fromX, fromY)} to ${coordLabel(landTile.x, landTile.y)}!`);
                 scheduleBoardRender();
             };
@@ -8892,13 +8895,9 @@
            def's basicAttackKind flavour, an explicit override ('chop'). */
         function _attackAnimKindFor(unit, tx, ty, kindOverride) {
             if (kindOverride) return kindOverride;
-            const dx = tx - unit.x, dy = ty - unit.y;
-            let _atkKind = (Math.max(Math.abs(dx), Math.abs(dy)) > 1) ? 'ranged' : 'melee';
-            if (typeof getRace3DModel === 'function') {
-                const _def3d = getRace3DModel(unit.race, unit.gender);
-                if (_def3d && _def3d.basicAttackKind) _atkKind = _def3d.basicAttackKind;
-            }
-            return _atkKind;
+            // 2026-09-14: ONE kind for the clip AND the delivery (a Gunslinger
+            // minotaur draws, a Black Mage priest zaps, a brawler lunges).
+            return basicAttackKindOf(unit);
         }
         /* THE STRIKE FRAME (2026-09-09): ms into the unit's attack clip on
            which the blow lands (sprites.js UAL_SLOTS strikeAt, resolved by
@@ -8954,6 +8953,121 @@
             if (!unit) return false;
             if (!(window.ThreeAnim && window.ThreeAnim.isActive())) return false;
             return !!(typeof getRace3DModel === 'function' && getRace3DModel(unit.race, unit.gender));
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // BASIC ATTACK DELIVERY (2026-09-14) — the fist sprite is retired.
+        // A basic attack is delivered ONE of two ways, decided by the unit's
+        // attack KIND (never by the distance alone):
+        //   'shot' — a gun person / a magic person / an archer / a thrower
+        //            fires a real projectile: the spinning bullet round + a
+        //            muzzle-flash bolt, a typed energy ORB, a steel-spark
+        //            arrow bolt, or the race's own thrown prop (football).
+        //   'leap' — everyone else LUNGES: the strike leap arcs the body to
+        //            the victim (elevation-aware — up onto the ledge, off the
+        //            edge) and the attack clip swings ON ARRIVAL beside it,
+        //            at ANY reach (a high-ground strike two tiles down leaps
+        //            down and swipes; it used to lob proj_human.png).
+        // The kind: the gun / psychic JOB KITS first (a Gunslinger of any
+        // race shoots — that IS the job), then the 3D def's authored
+        // basicAttackKind, then the mage jobs, then the sprite-only race
+        // table below, then reach (> 1 = a shot, else melee).
+        // ═══════════════════════════════════════════════════════════════════
+        const BASIC_ATTACK_JOB_KINDS = {
+            'Gunslinger': 'ranged', 'Sniper': 'ranged', 'Agent': 'ranged', 'Psychic': 'magic'
+        };
+        const BASIC_ATTACK_MAGE_JOBS = { 'Black Mage': 'magic', 'White Mage': 'magic' };
+        /* races whose 3D def carries no basicAttackKind (or that have no 3D
+           model at all): the weapon the character plainly holds */
+        const BASIC_ATTACK_RACE_KINDS = {
+            'cowboy': 'ranged', 'marksman': 'ranged', 'general': 'ranged', 'men in black': 'ranged',
+            'gangster': 'ranged', 'martian': 'ranged', 'mad scientist': 'ranged',
+            'ai': 'ranged', 'android': 'ranged', 'droid': 'ranged',
+            'ice queen': 'magic', 'seraphim': 'magic', 'watcher': 'magic', 'occulus': 'magic',
+            'shadow entity': 'magic', 'siren': 'magic', 'chosen one': 'magic', 'symbiote': 'magic',
+            'voidweaver': 'throw',
+            'demon prince': 'claw', 'skinwalker': 'claw',
+            'cyclops': 'punch', 'juggernaut': 'punch', 'super sentai': 'punch', 'antihero': 'punch',
+            'bigfoot': 'punch', 'giant': 'punch', 'werewolf': 'claw', 'catgirl': 'claw', 'ki fighter': 'punch'
+        };
+        const BASIC_ATTACK_SHOT_KINDS = { magic: 1, ranged: 1, arrow: 1, throw: 1 };
+        /* the ORB a magic person shoots, by the unit's first damage type */
+        const BASIC_ATTACK_ORB_BOLTS = {
+            divine: '_bolt_divine', unholy: '_bolt_unholy', tech: '_bolt_tech',
+            alien: '_bolt_alien', anomaly: '_bolt_psi', human: '_bolt_ki'
+        };
+        function basicAttackKindOf(unit) {
+            if (!unit) return 'melee';
+            const _job = BASIC_ATTACK_JOB_KINDS[unit.cls];
+            if (_job) return _job;
+            if (typeof getRace3DModel === 'function') {
+                const _def = getRace3DModel(unit.race, unit.gender);
+                if (_def && _def.basicAttackKind) return _def.basicAttackKind;
+            }
+            const _mage = BASIC_ATTACK_MAGE_JOBS[unit.cls];
+            if (_mage) return _mage;
+            const _race = BASIC_ATTACK_RACE_KINDS[unit.race];
+            if (_race) return _race;
+            const _reach = (typeof getEffectiveRange === 'function') ? getEffectiveRange(unit) : (unit.range || 1);
+            return _reach > 1 ? 'ranged' : 'melee';
+        }
+        function basicAttackDelivery(unit) {
+            const kind = basicAttackKindOf(unit);
+            if (!BASIC_ATTACK_SHOT_KINDS[kind]) return { mode: 'leap', kind, bolt: null, proj: null };
+            const _raceProj = (typeof _getProjectileOverride === 'function') ? _getProjectileOverride(unit, null) : null;
+            let bolt = null, proj = null;
+            if (kind === 'ranged') { bolt = '_bolt_bullet'; proj = 'proj-bullet'; }
+            else if (kind === 'arrow') { bolt = '_bolt_arrow'; }
+            else if (kind === 'throw') { bolt = _raceProj ? null : '_bolt_rock'; proj = _raceProj || null; }
+            else {
+                const _t = (unit.types && unit.types[0]) || (typeof unitPrimaryType === 'function' ? unitPrimaryType(unit) : null);
+                bolt = BASIC_ATTACK_ORB_BOLTS[_t] || '_bolt_ki';
+            }
+            if (_raceProj && kind !== 'throw') { proj = _raceProj; bolt = null; }   // the quarterback's football, the spider — the prop IS the shot
+            return { mode: 'shot', kind, bolt, proj };
+        }
+        /* The shot itself: the bolt (muzzle flash / orb / arrow spark +
+           trail + burst) and, for a gun, the spinning round on top of it.
+           Wrapped by online.js (relay 'basic-shot') — the guest replays it
+           fog-gated, so pass PRIMITIVES only. */
+        function playBasicAttackShot(unit, target, delivery, flyMs) {
+            if (!unit || !target || state.phase !== 'battle' || _skipVisuals()) return;
+            const dv = delivery || basicAttackDelivery(unit);
+            const ms = Math.max(120, Number(flyMs) || 320);
+            if (dv.bolt && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.fireBoltDirect === 'function'
+                && window.ThreeAnim && window.ThreeAnim.isActive()) {
+                try {
+                    window.ThreeVFXEffects.fireBoltDirect(dv.bolt, {
+                        fromX: unit.x, fromY: unit.y, toX: target.x, toY: target.y,
+                        fromZ: unit.z, toZ: target.z, flyMs: ms,
+                        headGlow: dv.proj ? false : null
+                    });
+                } catch (e) { console.warn('[basic-shot] bolt failed:', e); }
+            }
+            if (dv.proj) playProjectileToUnit(unit, target, 'attack', ms, null, dv.proj);
+            else if (!dv.bolt) playProjectileToUnit(unit, target, 'attack', ms, null, _getProjectileOverride(unit, null));
+        }
+        window.playBasicAttackShot = playBasicAttackShot;
+        window.basicAttackDelivery = basicAttackDelivery;
+        window.basicAttackKindOf = basicAttackKindOf;
+        /* The melee strike: EVERY attacker leaps (a rigged model lunges and
+           holds beside the victim while its clip swings — `clip` — a sprite
+           jumps onto the tile as always). Shared by doAttack, counters,
+           echoes, follow-ups and the Chivalry guardian. Returns the ms until
+           the leap ARRIVES (the clip starts then). */
+        function _meleeStrikeAnim(unit, tx, ty, opts) {
+            opts = opts || {};
+            const clip = opts.clip != null ? !!opts.clip : _unitAttacksWithClip(unit);
+            const dTiles = Math.max(Math.abs(tx - unit.x), Math.abs(ty - unit.y));
+            const leapMs = opts.leapMs || (260 + 110 * Math.max(0, dTiles - 1));
+            const lead = clip ? Math.max(0, opts.strikeLeadMs || 0) : 0;
+            animateStrikeLeap(unit, tx, ty, {
+                leapMs, holdMs: clip ? Math.max(220, lead + 260) : 70, returnMs: clip ? 260 : 220,
+                stopShort: clip ? (dTiles <= 1 ? 0.45 : 0.9) : 0,
+                targetId: opts.targetId != null ? opts.targetId : null,
+                clip
+            });
+            return leapMs;
         }
 
         function triggerCastAnim(unit, spell) {
@@ -44482,7 +44596,8 @@
 
             if (window.ThreeAnim && window.ThreeAnim.isActive()) {
                 window.ThreeAnim.displace(unit, fromX, fromY, toX, toY, durationMs,
-                    { delayMs: (opts && opts.delayMs) || 0 });
+                    { delayMs: (opts && opts.delayMs) || 0,
+                      leap: (opts && opts.leap !== undefined) ? opts.leap : undefined });
                 return;
             }
             if (!boardEl || _skipVisuals()) return;
@@ -44798,6 +44913,14 @@
         }
 
         function animateStrikeLeap(unit, tx, ty, opts) {
+            // 2026-09-14: `clip: true` = the rigged attack clip swings when
+            // the leap ARRIVES beside the victim (relayable as a flag — the
+            // guest builds the same callback from it).
+            if (opts && opts.clip && !opts.onImpact && !_skipVisuals()) {
+                opts = Object.assign({}, opts, {
+                    onImpact: () => { if (unit && !unit.dead) triggerAttackAnim(unit, tx, ty); }
+                });
+            }
 
             if (window.ThreeAnim && window.ThreeAnim.isActive()) {
                 window.ThreeAnim.strikeLeap(unit, tx, ty, opts);
@@ -45070,14 +45193,11 @@
             window.setTimeout(() => {
                 if (state.winner || guardian.dead || guardian._dying) return;
                 playSfx('basicAttack');
-                if (_isMelee) {
-                    if (_unitAttacksWithClip(guardian)) triggerAttackAnim(guardian, mover.x, mover.y);
-                    else animateStrikeLeap(guardian, mover.x, mover.y);
+                if (_isMelee || basicAttackDelivery(guardian).mode === 'leap') {
+                    _meleeStrikeAnim(guardian, mover.x, mover.y, { targetId: mover.id });
                 } else {
                     triggerAttackAnim(guardian, mover.x, mover.y);
-                    if (typeof playProjectileToUnit === 'function') {
-                        playProjectileToUnit(guardian, mover, 'attack', _impactDelay, null, _getProjectileOverride(guardian, null));
-                    }
+                    playBasicAttackShot(guardian, mover, null, _impactDelay);
                 }
                 window.setTimeout(() => {
                     if (state.winner || mover.dead || mover._dying) return;
@@ -46381,12 +46501,20 @@
                lobbing a projectile across the battlefield. */
             const _clashLeap = d > 1 && (unit.range || 1) <= 1
                 && typeof _isClashMode === 'function' && _isClashMode();
-            const _isMeleeStrike = d <= 1 || _clashLeap;
+            // BASIC ATTACK DELIVERY (2026-09-14): the KIND decides — a gun /
+            // magic / bow / throw person shoots at any reach, everyone else
+            // leaps at any reach (the fist sprite is retired).
+            const _delivery = basicAttackDelivery(unit);
+            const _isMeleeStrike = _delivery.mode === 'leap' || _clashLeap;
+            const _clipStrike = _isMeleeStrike && _unitAttacksWithClip(unit);
+            const _meleeLead = _clipStrike ? _attackStrikeLeadMs(unit, target.x, target.y) : 0;
+            const _leapTiles = Math.max(Math.abs(target.x - unit.x), Math.abs(target.y - unit.y));
+            const _leapMs = 260 + 110 * Math.max(0, _leapTiles - 1);
             const lungeLeadMs = _isMeleeStrike ? 0 : actionMs(150);
             let impactDelay;
             if (_isMeleeStrike) {
-
-                impactDelay = projectileDelay + actionMs(260);
+                // the leap arrives, THEN the clip swings its strike lead
+                impactDelay = projectileDelay + actionMs(_leapMs) + _meleeLead;
             } else {
                 impactDelay = Math.max(projectileDelay + lungeLeadMs + actionMs(180), (cam?.sourceHold ?? actionMs(1150)) + lungeLeadMs + (cam?.travelMs ?? actionMs(480)) + actionMs(80));
             }
@@ -46402,21 +46530,17 @@
 
             if (_isMeleeStrike) {
 
-                // THE STRIKE FRAME (2026-09-09): the clip starts early enough
-                // that its blow lands on impactDelay (the damage, the flash,
-                // the tile's white-hot frame) — a 0.6 s sword wind-up used to
-                // START at the source hold and connect after the numbers.
-                const _clipStrike = (_unitAttacksWithClip(unit) && !_clashLeap);
-                const _meleeLead = _clipStrike ? _attackStrikeLeadMs(unit, target.x, target.y) : 0;
+                // THE STRIKE FRAME (2026-09-09) + THE LEAP (2026-09-14): the
+                // body leaps to the victim (up the ledge / off the edge /
+                // across the gap) and lands beside it; a rigged model's clip
+                // starts on arrival so its blow lands on impactDelay (the
+                // damage, the flash, the tile's white-hot frame); a sprite
+                // jumps onto the tile as always.
                 window.setTimeout(() => {
-                    // 2026-07-11d: rigged models play their basic-attack clip
-                    // in place (punch/slash/claw/zap per basicAttackKind);
-                    // the strike leap survives only for sprite units — except
-                    // the Clash gap-closer, where everyone leaps (in-place
-                    // clips read as air-swings from 7 tiles away).
-                    if (_clipStrike) triggerAttackAnim(unit, target.x, target.y);
-                    else animateStrikeLeap(unit, target.x, target.y);
-                }, _meleeLead > 0 ? Math.max(0, impactDelay - _meleeLead) : projectileDelay);
+                    _meleeStrikeAnim(unit, target.x, target.y, {
+                        clip: _clipStrike, strikeLeadMs: _meleeLead, leapMs: _leapMs, targetId: target.id
+                    });
+                }, Math.max(0, impactDelay - _meleeLead - actionMs(_leapMs)));
                 window.setTimeout(() => { playSfx('basicAttack'); }, projectileDelay);
             } else {
 
@@ -46433,9 +46557,8 @@
 
                 window.setTimeout(() => {
                     playSfx('basicAttack');
-
-                    const _atkProjOverride = _getProjectileOverride(unit, null);
-                    playProjectileToUnit(unit, target, 'attack', cam?.travelMs ?? actionMs(480), null, _atkProjOverride);
+                    // the bullet / orb / arrow / thrown prop (relayed)
+                    playBasicAttackShot(unit, target, _delivery, cam?.travelMs ?? actionMs(480));
                 }, projectileDelay + lungeLeadMs);
             }
 
@@ -46562,8 +46685,8 @@
                         const _echoDmg = Math.max(12, Math.floor(damage * 0.5));
                         window.setTimeout(() => {
                             if (state.winner || _echoTarget.dead || _echoTarget._dying || unit.dead) return;
-                            if (_isMeleeStrike && !_unitAttacksWithClip(unit)) animateStrikeLeap(unit, _echoTarget.x, _echoTarget.y);
-                            else triggerAttackAnim(unit, _echoTarget.x, _echoTarget.y);
+                            if (_isMeleeStrike) _meleeStrikeAnim(unit, _echoTarget.x, _echoTarget.y, { targetId: _echoTarget.id });
+                            else { triggerAttackAnim(unit, _echoTarget.x, _echoTarget.y); playBasicAttackShot(unit, _echoTarget, _delivery, actionMs(320)); }
                             playSfx('basicAttack');
                             showFloatingTextForUnit(unit, 'ECHO!', 'counter', { durationMs: 900 });
                             applyDamageToUnit(_echoTarget, _echoDmg, `${unitDisplayName(unit)}'s Echo Band strikes again: `, {
@@ -46626,8 +46749,9 @@
                         // Rigged models throw the riposte swing (castMelee) —
                         // counters are d===1 melee (or the Clash gap-closer,
                         // where the riposte leaps back across the field).
-                        if (_clashLeap) animateStrikeLeap(_counterTarget, _counterAttacker.x, _counterAttacker.y);
-                        else triggerAttackAnim(_counterTarget, _counterAttacker.x, _counterAttacker.y);
+                        // 2026-09-14: the riposte lunges too (a shooter's counter stays the in-place draw)
+                        if (_clashLeap || basicAttackDelivery(_counterTarget).mode === 'leap') _meleeStrikeAnim(_counterTarget, _counterAttacker.x, _counterAttacker.y, { targetId: _counterAttacker.id });
+                        else { triggerAttackAnim(_counterTarget, _counterAttacker.x, _counterAttacker.y); playBasicAttackShot(_counterTarget, _counterAttacker, null, actionMs(300)); }
                         applyDamageToUnit(_counterAttacker, counterDmg, `${unitDisplayName(_counterTarget)} counter-attacks: `, {
                             sourceUnit: _counterTarget,
                             ignoreArmor: false,
@@ -46665,7 +46789,8 @@
                             scheduleBoardRender();
                             window.setTimeout(() => {
                                 if (state.winner || _fuTarget.dead || _fuTarget._dying || _fuAlly.dead) return;
-                                animateStrikeLeap(_fuAlly, _fuTarget.x, _fuTarget.y);
+                                if (basicAttackDelivery(_fuAlly).mode === 'leap') _meleeStrikeAnim(_fuAlly, _fuTarget.x, _fuTarget.y, { targetId: _fuTarget.id });
+                                else { triggerAttackAnim(_fuAlly, _fuTarget.x, _fuTarget.y); playBasicAttackShot(_fuAlly, _fuTarget, null, actionMs(300)); }
                                 playSfx('basicAttack');
                                 const _fuDmg = Math.max(24, Math.floor(pwrAtk(_fuAlly) * 0.4) + randInt(24));
                                 _fuAlly._matchFollowUps = (_fuAlly._matchFollowUps || 0) + 1;

@@ -11240,8 +11240,13 @@ const ThreeRenderer = (function () {
             else if (_rtMode && _rtUnits.has(uid)) want = _rtUnits.get(uid).want || 'idle'; // Strike real-time driver owns it
             else if (_jumpTweens.has(uid)) want = 'jump';   // falls back walk→idle
             else if (_dodgeTweens.has(uid)) want = 'dodge'; // evade roll (lib) → idle
-            else if (_walkTweens.has(uid) || _displaceTweens.has(uid)
-                     || _strikeTweens.has(uid))
+            // THE LEAP (2026-09-14): a charge vaulting a ledge / a strike leap
+            // in flight plays the jump clip; the strike's hold beside the
+            // victim idles until the attack one-shot (above) takes over.
+            else if (_displaceTweens.has(uid) && _displaceTweens.get(uid)._air) want = 'jump';
+            else if (_strikeTweens.has(uid) && _strikeTweens.get(uid)._phase !== 1) want = 'jump';
+            else if (_strikeTweens.has(uid)) want = 'idle';
+            else if (_walkTweens.has(uid) || _displaceTweens.has(uid))
                 // Multi-tile dashes sprint with the real run clip when the
                 // animation library provides one (falls back to the boosted
                 // walk timescale the Meshy clip sets keep using).
@@ -17387,8 +17392,26 @@ const ThreeRenderer = (function () {
     }
 
     function startDisplaceTween(unit, fromX, fromY, toX, toY, durationMs, opts) {
+        /* THE LEAP (2026-09-14): the engine has ALREADY moved the unit to the
+           landing tile when this is called (charge, hop, knockback), so
+           `unit.z` is the DESTINATION level — the origin used to borrow it
+           and a charge up a cliff started its slide already at the top. The
+           origin's level is the walkable surface nearest the unit's level
+           on the FROM tile (a ground unit; a flyer keeps its hover); the
+           destination's is the unit's own z once it stands there. */
+        var _dpMoved = (unit.x === toX && unit.y === toY);
+        var _dpAir = (typeof isUnitAirborne === 'function') && isUnitAirborne(unit);
         var fromZ = unit.z || 0;
-        var toZ = (typeof getHeightAt === 'function') ? getHeightAt(toX, toY) : 0;
+        if (opts && opts.fromZ != null) fromZ = opts.fromZ;
+        else if (_dpMoved && !_dpAir) {
+            var _dpG = window.GAME;
+            if (_dpG && typeof _dpG.nearestWalkableZ === 'function') {
+                try { fromZ = _dpG.nearestWalkableZ(fromX, fromY, unit.z || 0); } catch (e) {}
+            } else if (typeof getHeightAt === 'function') fromZ = getHeightAt(fromX, fromY);
+            if (fromZ == null || fromZ === undefined) fromZ = unit.z || 0;
+        }
+        var toZ = (_dpMoved && unit.z != null) ? unit.z
+            : ((typeof getHeightAt === 'function') ? getHeightAt(toX, toY) : 0);
         // Scale the slide with travel distance so multi-tile dashes / knockbacks
         // read as a real glide instead of snapping. The caller's duration acts as
         // a per-move floor (short 1-tile shoves stay punchy).
@@ -17424,6 +17447,42 @@ const ThreeRenderer = (function () {
         // stay readable — at the old 110 the action was over before it read.
         var _dpScaled = Math.max(_dpDist, 1) * 150;
         var _dpDur = Math.max(durationMs || 0, _dpScaled, 200);
+
+        /* THE LEAP (2026-09-14): a charge / dash / hop that changes LEVEL no
+           longer rides the floor up the cliff face — the body runs the flat
+           part of the line and then VAULTS the last stretch on a real arc
+           (clearing the ledge on a climb, springing off the edge on a drop).
+           `opts.leap: true` (the charge-to-target spells) forces the vault
+           even on flat ground so a Brave Charge reads as a leaping strike;
+           `opts.leap: false` keeps the pure glide (knockbacks, tethers —
+           those are shoves, not jumps). Default = leap only when the
+           surface height differs by ≥ half a level. Polyline slides get a
+           per-segment hop wherever consecutive waypoints step a level
+           (`hops`) — the dash line over a step, a pool-ball rebound onto a
+           ledge. The clip picker plays `jump` while `_air` is set. */
+        var _dpLeap = null, _dpHops = false;
+        var _dpWantLeap = (opts && opts.leap === true);
+        var _dpNoLeap = (opts && opts.leap === false);
+        if (!_dpNoLeap && !_dpPts) {
+            var _dpFromSY = _tileSurfaceY(fromX, fromY, fromZ);
+            var _dpToSY = _tileSurfaceY(toX, toY, toZ);
+            var _dpRise = _dpToSY - _dpFromSY;
+            var _dpLevel = ts * ELEV_STEP_RATIO;
+            if (_dpWantLeap || Math.abs(_dpRise) >= _dpLevel * 0.5) {
+                var _dpEuclid = Math.sqrt((toX - fromX) * (toX - fromX) + (toY - fromY) * (toY - fromY)) || 1;
+                /* the vault covers the last ~1.4 tiles of the line (all of a
+                   short hop); the run before it stays on the ground */
+                var _dpVault = Math.min(1, 1.4 / _dpEuclid);
+                var _dpPeak = Math.max(ts * 0.45, Math.abs(_dpRise) * 0.35 + ts * 0.3);
+                /* the apex must clear the HIGHER surface by a third of a tile */
+                _dpPeak = Math.max(_dpPeak, Math.max(_dpRise, 0) / 2 + ts * 0.34);
+                _dpLeap = { at: 1 - _dpVault, peak: _dpPeak, fromSY: _dpFromSY, toSY: _dpToSY };
+            }
+        } else if (!_dpNoLeap && _dpPts) {
+            for (var _hi = 1; _hi < _dpPts.length; _hi++) {
+                if (Math.abs((_dpPts[_hi].z || 0) - (_dpPts[_hi - 1].z || 0)) >= 1) { _dpHops = true; break; }
+            }
+        }
         _displaceTweens.set(unit.id, {
             fromX: fromX, fromY: fromY, fromZ: fromZ,
             toX: toX, toY: toY, toZ: toZ,
@@ -17433,7 +17492,8 @@ const ThreeRenderer = (function () {
             /* optional hold at the FROM tile before the slide begins — lets a
                rope/tether visibly bite before the yank starts */
             delayMs: (opts && opts.delayMs) || 0,
-            sprint: _dpDist >= 2
+            sprint: _dpDist >= 2,
+            leap: _dpLeap, hops: _dpHops, _air: false
         });
 
         var entry = _getUnitEntry(unit.id);
@@ -17479,12 +17539,37 @@ const ThreeRenderer = (function () {
                 wx = _plX * ts + ts / 2;
                 wy = _plZ * ts * ELEV_STEP_RATIO;
                 wz = _plY * ts + ts / 2;
+                tw._air = false;
+                if (tw.hops) {
+                    /* a level step between two waypoints = a hop over it */
+                    var _hopDz = Math.abs((_plB.z || 0) - (_plA.z || 0));
+                    if (_hopDz >= 1 && t < 1) {
+                        var _hopPeak = ts * 0.3 + _hopDz * ts * ELEV_STEP_RATIO * 0.45;
+                        wy += _hopPeak * 4 * _plF * (1 - _plF);
+                        tw._air = _plF < 0.96;
+                    }
+                }
             } else {
                 var fromSY = _tileSurfaceY(tw.fromX, tw.fromY, tw.fromZ);
                 var toSY = _tileSurfaceY(tw.toX, tw.toY, tw.toZ);
                 wx = (tw.fromX + (tw.toX - tw.fromX) * ease) * ts + ts / 2;
-                wy = fromSY + (toSY - fromSY) * ease;
                 wz = (tw.fromY + (tw.toY - tw.fromY) * ease) * ts + ts / 2;
+                if (tw.leap) {
+                    /* THE LEAP: flat run on the FROM surface, then the vault —
+                       a parabola from the from-surface to the to-surface whose
+                       apex clears the higher of the two */
+                    var _lpAt = tw.leap.at;
+                    if (ease <= _lpAt) {
+                        wy = fromSY;
+                        tw._air = false;
+                    } else {
+                        var _lpU = (ease - _lpAt) / Math.max(1e-6, 1 - _lpAt);
+                        wy = fromSY + (toSY - fromSY) * _lpU + tw.leap.peak * 4 * _lpU * (1 - _lpU);
+                        tw._air = _lpU < 0.97 && t < 1;
+                    }
+                } else {
+                    wy = fromSY + (toSY - fromSY) * ease;
+                }
             }
             var ue = _getUnitEntry(uid);
             if (ue && ue.group) {
@@ -17517,9 +17602,12 @@ const ThreeRenderer = (function () {
                 }
                 // Dash arrival kicks up a dust skid (fog-safe: only when the
                 // unit is actually visible to the viewer).
-                if (tw.sprint && ue && ue.group && ue.group.visible) {
-                    _spawnGroundPuff(tw.toX, tw.toY, 6, { vxy: 130 });
+                if ((tw.sprint || tw.leap || tw.hops) && ue && ue.group && ue.group.visible) {
+                    _spawnGroundPuff(tw.toX, tw.toY, tw.leap ? 8 : 6, { vxy: tw.leap ? 150 : 130 });
                 }
+                // A vault lands with the jump tween's touchdown squash.
+                if ((tw.leap || tw.hops) && ue && ue.model) ue._ew_landAt = _animNow();
+                tw._air = false;
                 toRemove.push(uid);
             }
         }
@@ -17651,16 +17739,40 @@ const ThreeRenderer = (function () {
         var dist = Math.abs(tx - fromX) + Math.abs(ty - fromY);
         var arcPeak = Math.max(ts * 0.45, ts * arcScale * dist);
         var fromSY = unitSurfaceY(unit);
+        /* THE LEAP (2026-09-14): the landing reads the VICTIM's surface
+           (a flyer's hover, a roof) when the caller names it, else the tile;
+           the arc clears whichever end stands higher, so a strike two levels
+           up springs onto the ledge and one two levels down drops off it. */
         var toSY = _tileSurfaceY(tx, ty);
+        var _slTarget = (opts.targetId != null) ? _findUnit(opts.targetId) : null;
+        if (_slTarget && !_slTarget.dead) { try { toSY = unitSurfaceY(_slTarget); } catch (e) {} }
+        var _slRise = toSY - fromSY;
+        arcPeak = Math.max(arcPeak, Math.abs(_slRise) * 0.35 + ts * 0.3, Math.max(_slRise, 0) / 2 + ts * 0.34);
+        /* stopShort (tiles): a rigged model lunges TOWARD the victim and
+           holds beside it — never onto its tile (the two bodies would share
+           one column). A sprite keeps the classic jump onto the tile (0). */
+        var landX = tx, landY = ty;
+        var stopShort = opts.stopShort > 0 ? opts.stopShort : 0;
+        if (stopShort > 0) {
+            var _slDx = tx - fromX, _slDy = ty - fromY;
+            var _slLen = Math.sqrt(_slDx * _slDx + _slDy * _slDy);
+            if (_slLen > 1e-6) {
+                var _slBack = Math.min(stopShort, Math.max(0, _slLen - 0.1));
+                landX = tx - (_slDx / _slLen) * _slBack;
+                landY = ty - (_slDy / _slLen) * _slBack;
+            }
+        }
         _strikeTweens.set(unit.id, {
             fromX: fromX, fromY: fromY, fromSY: fromSY,
-            toX: tx, toY: ty, toSY: toSY,
+            toX: landX, toY: landY, toSY: toSY,
+            tileX: tx, tileY: ty,
             startTime: _animNow(),
             leapMs: leapMs, holdMs: holdMs, returnMs: returnMs,
             totalMs: leapMs + holdMs + returnMs,
             arcPeak: arcPeak,
             impactFired: false,
-            onImpact: onImpact
+            onImpact: onImpact,
+            _phase: 0
         });
         var entry = _getUnitEntry(unit.id);
         if (entry && entry.group) entry.group.visible = true;
@@ -17687,6 +17799,7 @@ const ThreeRenderer = (function () {
                 phaseT = (elapsed - tw.leapMs - tw.holdMs) / tw.returnMs;
             }
 
+            tw._phase = phase;
             var ease = _easeInOut(phase === 0 ? phaseT : phase === 2 ? phaseT : 1);
             var posT, arcT;
             if (phase === 0) { posT = ease; arcT = ease; }
@@ -17718,18 +17831,29 @@ const ThreeRenderer = (function () {
                         spriteMesh.scale.set(squash2, stretch2, 1);
                     }
                 }
+                // Rigged models get the jump tween's gentle squash & stretch
+                // in flight (the jump clip sells the rest); upright on hold.
+                if (ue.model) {
+                    if (phase === 1) ue.model.scale.set(1, 1, 1);
+                    else {
+                        var _mSt = 1 + 0.06 * Math.sin(phaseT * Math.PI);
+                        var _mSq = 1 - 0.04 * Math.sin(phaseT * Math.PI);
+                        ue.model.scale.set(_mSq, _mSt, _mSq);
+                    }
+                }
             }
 
             if (phase >= 1 && !tw.impactFired) {
                 tw.impactFired = true;
                 if (ue && ue.group && ue.group.visible) {
-                    _spawnGroundPuff(tw.toX, tw.toY, 6, { vxy: 150 });
+                    _spawnGroundPuff(Math.round(tw.toX), Math.round(tw.toY), 6, { vxy: 150 });
                 }
                 if (tw.onImpact) try { tw.onImpact(); } catch(e) { console.warn('[ThreeRenderer] strikeLeap onImpact error:', e); }
             }
 
             if (t >= 1) {
                 if (ue && ue.sprite) ue.sprite.scale.set(1, 1, 1);
+                if (ue && ue.model) { ue.model.scale.set(1, 1, 1); ue._ew_landAt = _animNow(); }
 
                 var unit = _findUnit(uid);
                 if (unit && ue && ue.group) {

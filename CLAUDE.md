@@ -2226,6 +2226,60 @@ here, so it serves the repo scripts, node_modules copies of three /
 React / socket.io / MeshLine and GENERATED stand-in textures coloured by
 file name; the real sheets are unseen — eyeball live first.
 
+## BASIC ATTACK DELIVERY + THE LEAP (charges and strikes respect elevation) — 2026-09-14, local delivery
+The fist sprite (`_PROJ_SPRITES['attack']` = proj_human.png) is RETIRED for
+basic attacks. battle.js (the block right after `_unitAttacksWithClip`):
+**`basicAttackKindOf(unit)`** = ONE kind for the clip AND the delivery —
+the gun / psychic JOB KITS first (`BASIC_ATTACK_JOB_KINDS`: Gunslinger ·
+Sniper · Agent → `ranged`, Psychic → `magic` — a Gunslinger of any race
+shoots, that IS the job), then the 3D def's authored `basicAttackKind`,
+then the mage jobs (`BASIC_ATTACK_MAGE_JOBS`), then
+**`BASIC_ATTACK_RACE_KINDS`** (the sprite-only / kind-less races: cowboy ·
+marksman · general · men in black · gangster · martian · mad scientist ·
+ai · android · droid = `ranged`; ice queen · seraphim · watcher · occulus ·
+shadow entity · siren · chosen one · symbiote = `magic`; voidweaver =
+`throw`; the brutes = `punch` / `claw`), then reach (> 1 = `ranged`).
+`_attackAnimKindFor` reads it (no more reach-by-distance clip choice).
+**`basicAttackDelivery(unit)`** → `{ mode: 'shot' | 'leap', kind, bolt,
+proj }`: `magic` / `ranged` / `arrow` / `throw` SHOOT (a gun = the
+`_bolt_bullet` muzzle flash + the spinning `proj-bullet` round; magic = a
+typed ORB, `BASIC_ATTACK_ORB_BOLTS` by `unit.types[0]` — divine / unholy /
+tech / alien / psi / ki; a bow = `_bolt_arrow`; a thrower = the race's
+`projectileClass` prop, the football / the spider); EVERYONE ELSE LEAPS
+at ANY reach (a high-ground brawler striking two tiles down leaps down
+and swipes — it used to lob the fist). **`playBasicAttackShot(unit,
+target, delivery, flyMs)`** fires the shot (wrapped in online.js → relay
+`basic-shot`, the guest replays it fog-gated on either end — playProjectile
+itself was never relayed). **`_meleeStrikeAnim(unit, tx, ty, { clip,
+strikeLeadMs, leapMs, targetId })`** is the ONE melee strike (doAttack,
+the Echo Band re-strike, the counter, the follow-up, the Chivalry
+guardian): a rigged model LUNGES `stopShort` of the victim (0.45 tile
+adjacent, 0.9 = the adjacent tile from farther) and HOLDS beside it while
+its attack clip swings (`animateStrikeLeap`'s `clip: true` builds the
+on-arrival `triggerAttackAnim`; the hold = the strike lead + 260 ms; the
+in-place clip is gone), a sprite jumps onto the tile as always. doAttack's
+`impactDelay = projectileDelay + actionMs(_leapMs) + _meleeLead` (leap 260
+ms + 110 per tile beyond the first). The `strike-leap` relay carries the
+opts (primitives; the guest calls the UNWRAPPED `window.animateStrikeLeap`
+so the clip flag rebuilds its callback). **THE LEAP (three-renderer.js)**:
+`startDisplaceTween` vaults when the from / to surface differs by ≥ half
+a level, or on `opts.leap: true` (the charge-to-target spells —
+`_runChargeToTargetSpell` and the `_runPostEffects` hop pass it through
+`animateDisplacement`), never on `opts.leap: false` (a knockback stays a
+shove): the body runs the flat part on the FROM surface and vaults the
+last ~1.4 tiles on a parabola whose apex clears the higher surface
+(`tw.leap`); a polyline slide HOPS every segment that steps a level
+(`tw.hops`); `tw._air` = the clip picker plays `jump`; the landing arms
+the jump tween's squash + a puff. `startStrikeLeapTween` takes `stopShort`
+/ `targetId` (the landing height is the VICTIM's surface — a flyer, a
+roof), the arc clears the higher end, `tw._phase` (0 leap / 1 hold / 2
+return — the picker plays `jump` in flight and `idle` under the one-shot
+on the hold), rigged models get the jump squash & stretch. `npm test` runs
+`basic-attack-delivery.test.js` (the classifier + the shot helper in a vm
+sandbox, source guards on every site + the relay). UNSEEN LIVE (RULE
+#1c): the vault's height against a 3-level cliff, the hold's timing
+against long swing clips, the orb colours per type, the guest's leap.
+
 ## THE DIRECTOR'S PASS — the spell camera (2026-09-13, local delivery)
 Three things in battle.js's SPELL CINEMATICS block + playDetonationCinematic.
 **THE BOARD-AWARE RIG (the beam edge bug)**: a beam ending at the rim put
