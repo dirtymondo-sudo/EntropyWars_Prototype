@@ -28703,6 +28703,144 @@
         }
 
         // ───────────────────────────────────────────────────────────────────
+        // Move-then-inspect (2026-09-14): tile-menu parity for the SCAN. An
+        // Inspect target past the unit's reach FROM WHERE IT STANDS isn't
+        // unusable this turn — one walk step can bring the tile into reach
+        // with the AP for the scan still in hand. Mirrors the attack helpers
+        // above (ONE step, jump/takeoff tiles skipped, the scan's own reach +
+        // LOS rule = getInspectTiles from the probe tile, restore in finally).
+        function _inspectMoveBudget(unit) {
+            if (!unit) return 0;
+            if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return 0;
+            if (typeof canUnitAct === 'function' && !canUnitAct(unit)) return 0;
+            if (typeof getEffectiveInspect !== 'function' || getEffectiveInspect(unit) <= 0) return 0;
+            if (typeof canUnitMove !== 'function' || !canUnitMove(unit)) return 0;
+            const movesLeft = UNIT_MAX_MOVES - (unit.movesThisTurn || 0);
+            if (movesLeft <= 0) return 0;
+            // The second move of a turn drains ALL AP (finishMoveAt).
+            if ((unit.movesThisTurn || 0) >= 1) return 0;
+            const apSteps = (unit.ap || 0) - AP_COST_ACTION;
+            return Math.max(0, Math.min(movesLeft, apSteps, 1));
+        }
+
+        // Best one-step tile from which the unit can inspect (tx,ty); null if
+        // none. Prefers the tile FARTHEST from the target that still reaches
+        // it (safety), matching findAttackApproachTile.
+        function findInspectApproachTile(unit, tx, ty) {
+            if (!unit) return null;
+            const steps = _inspectMoveBudget(unit);
+            if (steps <= 0) return null;
+            const reach = getEffectiveInspect(unit);
+            const sx = unit.x, sy = unit.y, sz = unit.z;
+            let best = null, bestScore = -1;
+            try {
+                for (const t of getMoveTiles(unit)) {
+                    if (t._jump || t._takeoff) continue;
+                    if (unitAt(t.x, t.y, t.z)) continue;
+                    const d = Math.max(Math.abs(t.x - tx), Math.abs(t.y - ty));
+                    if (d > reach) continue;
+                    unit.x = t.x; unit.y = t.y; unit.z = t.z ?? sz;
+                    if (isRangeBlockedByTerrain(t.x, t.y, tx, ty, unit.z)) { unit.x = sx; unit.y = sy; unit.z = sz; continue; }
+                    const score = Math.abs(t.x - tx) + Math.abs(t.y - ty);
+                    if (score > bestScore) { best = { x: t.x, y: t.y, z: t.z ?? sz, moveCost: 1 }; bestScore = score; }
+                    unit.x = sx; unit.y = sy; unit.z = sz;
+                }
+            } finally {
+                unit.x = sx; unit.y = sy; unit.z = sz;
+            }
+            return best;
+        }
+
+        // Walk `unit` to `approach` (one step) then inspect (tx,ty). Same
+        // animated step chain as _moveThenAttack; doInspect is the relayed
+        // engine wrapper online, so the guest's plan emits and the host scans.
+        function _moveThenInspect(unit, approach, tx, ty) {
+            _clearSpellApproachPreview();
+            state._tileActionTarget = null;
+            state._actionExecuting = true;
+            if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+            clearAoePreview();
+            clearHoveredTarget();
+            clearSpellRangePreview();
+            clearAttackRangePreview();
+            scheduleBoardRender();
+
+            const _bail = () => {
+                if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(unit, 'Blocked!', 'status', { color: '#ff4444' });
+                state._actionExecuting = false;
+                state.actionMode = null;
+                state.selectedTool = null;
+                state.pendingTarget = null;
+                markDirty('board', 'hud', 'selectedUnit');
+                renderIfDirty();
+            };
+            const _scan = () => {
+                state.selectedTool = null;
+                state.actionMode = 'inspect';
+                state._actionExecuting = true;
+                let result;
+                try {
+                    result = doInspect(unit, tx, ty);
+                } catch (e) {
+                    console.error('[_moveThenInspect] inspect threw:', e);
+                    state._actionExecuting = false;
+                    state.actionMode = null;
+                    scheduleBoardRender();
+                    return;
+                }
+                if (result === 0 || result === false || result === undefined) {
+                    // doInspect refuses with a bare return (no code) — never
+                    // leave the executing latch armed on a refusal.
+                    state._actionExecuting = false;
+                    if (result === undefined) state.actionMode = null;
+                    scheduleBoardRender();
+                    markDirty('board', 'hud', 'selectedUnit');
+                    renderIfDirty();
+                } else {
+                    clearTimeout(state._actionExecutingWatchdog);
+                    state._actionExecutingWatchdog = setTimeout(() => {
+                        if (state._actionExecuting) {
+                            state._actionExecuting = false;
+                            if (state.phase === 'battle' && !state.winner) {
+                                markDirty('board', 'hud', 'selectedUnit');
+                                renderIfDirty();
+                            }
+                        }
+                    }, 8000);
+                }
+            };
+            const r = doMove(unit, approach.x, approach.y, approach.z);
+            if (r === false) { _bail(); return; }
+            setTimeout(_scan, typeof r === 'number' ? r : 450);
+        }
+
+        // Called from clickTile in inspect mode when the player clicks a tile
+        // past the scan's reach: step into reach and scan, or return false.
+        function _tryMoveThenInspect(actingUnit, x, y) {
+            if (!actingUnit || state.actionMode !== 'inspect') return false;
+            if ((actingUnit.ap || 0) < AP_COST_ACTION) return false;
+            const approach = findInspectApproachTile(actingUnit, x, y);
+            if (!approach) return false;
+            _moveThenInspect(actingUnit, approach, x, y);
+            return true;
+        }
+
+        // Hover preview for the move-then-inspect (the approach arrow + ghost).
+        function _inspectApproachHoverPreview(unit, x, y) {
+            if (!unit || state.actionMode !== 'inspect') { _clearSpellApproachPreview(); return false; }
+            const k = 'insp|' + x + ',' + y;
+            if (state._spellApproachKey === k) return !!state._spellApproachTile;
+            state._spellApproachKey = k;
+            state._spellApproachTile = null;
+            const approach = findInspectApproachTile(unit, x, y);
+            if (!approach) { _clearSpellApproachPreview(); state._spellApproachKey = k; return false; }
+            state._spellApproachTile = approach;
+            _drawSpellApproachPreview(unit, approach, x, y);
+            scheduleBoardRender();
+            return true;
+        }
+
+        // ───────────────────────────────────────────────────────────────────
         // Move-towards: clicking an OUT-OF-RANGE tile while Move is selected
         // walks the unit ONE move action toward that tile — the movement
         // analogue of _tryMoveThenAttack. Each move is a deliberate action
@@ -43264,6 +43402,15 @@
                 }
             }
 
+            if (state.actionMode === 'inspect' && !_stHoverGrab) {
+                const unit = getSelectedUnit();
+                if (unit) {
+                    const _inReach = getInspectTiles(unit).some(t => t.x === x && t.y === y);
+                    if (!_inReach) { _inspectApproachHoverPreview(unit, x, y); return false; }
+                    if (String(state._spellApproachKey || '').startsWith('insp|')) _clearSpellApproachPreview();
+                }
+            }
+
             if (state.actionMode === 'spell' && state.actionMenuView === 'spells' && !_stHoverGrab) {
                 const unit = getSelectedUnit();
                 if (unit) {
@@ -44007,7 +44154,13 @@
                 const _bTool = state._buildTool || 'dig';
                 return _execAction(() => doBuildAction(actingUnit, x, y, _bTool));
             }
-            if (state.actionMode === 'inspect') return _execAction(() => doInspect(actingUnit, x, y));
+            if (state.actionMode === 'inspect') {
+                // Past the scan's reach → step into reach, then scan (the
+                // tile-menu "Inspect ↳ MOVE" row's board-click twin).
+                const _inReach = getInspectTiles(actingUnit).some(t => t.x === x && t.y === y);
+                if (!_inReach && _tryMoveThenInspect(actingUnit, x, y)) return;
+                return _execAction(() => doInspect(actingUnit, x, y));
+            }
             if (state.actionMode === 'ping') return _execAction(() => doPing(actingUnit, x, y));
             if (state.actionMode === 'trade') return _execAction(() => doTrade(actingUnit, x, y, state._clickedZ));
             if (state.actionMode === 'item') return _execAction(() => doItem(actingUnit, x, y, state._clickedZ));

@@ -7258,6 +7258,7 @@ function _hrlgTileBlades(actingUnit, st) {
 
   const blades = ordered.map((a, i) => {
     const isObjAtk = !!(objCard && a.id === _objAtkId);
+    const isApproach = !!a.moveTile && a.id !== 'moveTowards';
     return {
       id: 'ta:' + a.id + ':' + i,
       icon: a.icon,
@@ -7270,20 +7271,31 @@ function _hrlgTileBlades(actingUnit, st) {
       meta: (isObjAtk && objInfo.hpLabel) ? { text: objInfo.hpLabel, color: objInfo.enemy ? '#ee6655' : '#7fd67f' } : null,
       mp: a.mpCost || null,
       cost: a.available && a.apCost ? a.apCost : null,
+      // A move-then-act row (structure attack / inspect out of reach from
+      // here) wears the same "↳ MOVE" note as the enemy menu's plans.
+      note: (isApproach && a.available) ? '↳ ' + (a.moveTile._jump ? 'JUMP' : 'MOVE') : null,
       sub: !a.available ? (a.reason || 'Unavailable') : null,
       fire: () => {
         hideSpellTooltip();
         if (a.id === 'moveTowards') _clearMoveArrowPreview();
+        if (isApproach && typeof _clearSpellApproachPreview === 'function') _clearSpellApproachPreview();
         if (a.available && a.handler) a.handler();
       },
       hoverIn: (e) => {
         if (a.spell) showSpellTooltip(a.spell, e);
         else if (isObjAtk) showSpellTooltip(objCard, e);
         if (a.id === 'moveTowards' && a.available) _showTileMoveTowardsPreview(actingUnit, a);
+        // Approach arrow + ghost on the step tile, the target tile marked —
+        // the engine's own move-then-act preview (battle.js).
+        if (isApproach && a.available && typeof _drawSpellApproachPreview === 'function') {
+          try { _drawSpellApproachPreview(actingUnit, a.moveTile, tx, ty); } catch (e) { /* cosmetic */ }
+          if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+        }
       },
       hoverOut: () => {
         hideSpellTooltip();
         if (a.id === 'moveTowards') _clearMoveArrowPreview();
+        if (isApproach && typeof _clearSpellApproachPreview === 'function') _clearSpellApproachPreview();
       },
     };
   });
@@ -7663,15 +7675,31 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
   if (typeof doInspect === 'function' && unitAP >= 1) {
     const inspectReach = typeof getEffectiveInspect === 'function' ? getEffectiveInspect(actingUnit) : 0;
     if (inspectReach > 0) {
-      const inInspect = dist <= inspectReach;
+      // Reach is Chebyshev (doInspect: max(|dx|,|dy|)) with the scan's own
+      // LOS rule — the row used to read the 3D combat distance and grey a
+      // diagonal the engine accepts. Out of reach → one walk step that
+      // brings the tile into reach, then the scan (findInspectApproachTile /
+      // _moveThenInspect, battle.js).
+      const _inspDist = Math.max(Math.abs(actingUnit.x - tx), Math.abs(actingUnit.y - ty));
+      const _inspLos = typeof isRangeBlockedByTerrain === 'function'
+        && isRangeBlockedByTerrain(actingUnit.x, actingUnit.y, tx, ty, actingUnit.z);
+      const inInspect = _inspDist <= inspectReach && !_inspLos;
+      const _inspMt = (!inInspect && typeof findInspectApproachTile === 'function' && typeof _moveThenInspect === 'function')
+        ? findInspectApproachTile(actingUnit, tx, ty) : null;
+      const _inspOk = inInspect || !!_inspMt;
       actions.push({
         id: 'inspect', label: 'Inspect', icon: '🔍', category: 'actions',
-        apCost: 1, available: inInspect,
-        reason: inInspect ? '' : 'Out of range',
+        apCost: 1, available: _inspOk,
+        reason: _inspOk ? '' : (_inspLos && _inspDist <= inspectReach ? 'No LOS' : 'Out of range'),
+        moveTile: inInspect ? null : _inspMt,
         handler: inInspect ? () => {
           state._tileActionTarget = null;
           if (typeof setActionMode === 'function') setActionMode('inspect');
           doInspect(actingUnit, tx, ty);
+        } : _inspMt ? () => {
+          state._tileActionTarget = null;
+          if (typeof hideSpellTooltip === 'function') hideSpellTooltip();
+          _moveThenInspect(actingUnit, _inspMt, tx, ty);
         } : null,
       });
     }
@@ -7690,47 +7718,61 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
     const _fogSees = !state.fogOfWar || !!state.autoPlayers?.[actingUnit.player]
       || typeof isInVision !== 'function' || isInVision(actingUnit, tx, ty);
     const _atkReason = (ok) => ok ? '' : (!_fogSees ? 'Hidden in fog' : losBlocked ? 'No LOS' : 'Out of range');
+    // Move + attack (2026-09-14): a structure out of reach from HERE is still
+    // attackable this turn when one walk step brings it into range with the
+    // AP for the swing in hand — the enemy-unit menu has offered that since
+    // day one; the Cube / turret / object / seed / tree rows greyed out.
+    // findAttackApproachTile validates (tx,ty) against _getAttackValidTargets
+    // from the probe tile, so the row promises exactly what the walk lands.
+    const _canActNow = typeof canUnitAct !== 'function' || canUnitAct(actingUnit);
+    const _atkApproach = (canNow) => {
+      if (canNow || !_fogSees || !_canActNow) return null;
+      if (typeof findAttackApproachTile !== 'function' || typeof _moveThenAttack !== 'function') return null;
+      return findAttackApproachTile(actingUnit, tx, ty) || null;
+    };
+    // One-click structure attack row: in range → fire; else a walk step
+    // that brings it into range → move then fire (moveTile drives the
+    // "↳ MOVE" note + the hover arrow in _hrlgTileBlades).
+    const _objAtkRow = (id, label, canNow, icon, reasonNow) => {
+      const mt = _atkApproach(canNow);
+      const ok = canNow || !!mt;
+      return {
+        id, label, icon: icon || '⚔', category: 'attack',
+        apCost: 1, available: ok, reason: ok ? '' : (reasonNow || _atkReason(false)),
+        moveTile: canNow ? null : mt,
+        handler: canNow ? () => _fireObjectAttack(actingUnit, tx, ty, _tileZ)
+          : mt ? () => {
+            state._tileActionTarget = null;
+            if (typeof hideSpellTooltip === 'function') hideSpellTooltip();
+            _moveThenAttack(actingUnit, mt, tx, ty, _tileZ);
+          } : null,
+      };
+    };
 
     // Enemy base tower / Cube — one-click Attack, exactly like an enemy unit.
     const tower = (state.towers && typeof enemyOf === 'function') ? state.towers[enemyOf(actingUnit.player)] : null;
     if (tower && tower.hp > 0 && tower.x === tx && tower.y === ty) {
       const canAtk = inRangeUnit && !losBlocked && _fogSees;
-      actions.push({
-        id: 'attack:tower', label: 'Attack Cube', icon: '⚔', category: 'attack',
-        apCost: 1, available: canAtk, reason: _atkReason(canAtk),
-        handler: canAtk ? () => _fireObjectAttack(actingUnit, tx, ty, _tileZ) : null,
-      });
+      actions.push(_objAtkRow('attack:tower', 'Attack Cube', canAtk));
     }
 
     const turret = (state.turrets || []).find(t => t.x === tx && t.y === ty && t.owner !== actingUnit.player && t.hp > 0);
     if (turret) {
       const canAtk = inRange && !losBlocked && _fogSees;
-      actions.push({
-        id: 'attack:turret', label: 'Attack ' + _turretDisplayName(turret), icon: '⚔', category: 'attack',
-        apCost: 1, available: canAtk, reason: _atkReason(canAtk),
-        handler: canAtk ? () => _fireObjectAttack(actingUnit, tx, ty, _tileZ) : null,
-      });
+      actions.push(_objAtkRow('attack:turret', 'Attack ' + _turretDisplayName(turret), canAtk));
     }
 
     const deploy = (state._deployedObjects || []).find(o => o.x === tx && o.y === ty && o.hp > 0 && (o.ownerPlayer !== actingUnit.player || (o.detonateOnAttack && o.blastRadius > 0)));
     if (deploy) {
       const canAtk = inRange && !losBlocked && _fogSees;
-      actions.push({
-        id: 'attack:deploy', label: 'Attack ' + (deploy.spellName || 'Object'), icon: '⚔', category: 'attack',
-        apCost: 1, available: canAtk, reason: _atkReason(canAtk),
-        handler: canAtk ? () => _fireObjectAttack(actingUnit, tx, ty, _tileZ) : null,
-      });
+      actions.push(_objAtkRow('attack:deploy', 'Attack ' + (deploy.spellName || 'Object'), canAtk));
     }
 
     const seed = (state.plantedSeeds || []).find(s => s.x === tx && s.y === ty && s.owner !== actingUnit.player);
     if (seed) {
       const seedName = seed.type === 'heal' ? 'Healing Seed' : seed.type === 'poison' ? 'Poison Seed' : 'Leech Seed';
       const canAtk = inRange && !losBlocked && _fogSees;
-      actions.push({
-        id: 'attack:seed', label: 'Attack ' + seedName, icon: '⚔', category: 'attack',
-        apCost: 1, available: canAtk, reason: _atkReason(canAtk),
-        handler: canAtk ? () => _fireObjectAttack(actingUnit, tx, ty, _tileZ) : null,
-      });
+      actions.push(_objAtkRow('attack:seed', 'Attack ' + seedName, canAtk));
     }
 
     // 🪓 Chop a tree: any unit can fell a tree with a basic attack (banks
@@ -7740,11 +7782,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
       && !(typeof G.unitAt === 'function' && G.unitAt(tx, ty));
     if (hasTree) {
       const canChop = inRangeUnit && !losBlocked;
-      actions.push({
-        id: 'attack:tree', label: 'Chop Tree', icon: '🪓', category: 'attack',
-        apCost: 1, available: canChop, reason: canChop ? '' : (losBlocked ? 'No LOS' : 'Out of range'),
-        handler: canChop ? () => _fireObjectAttack(actingUnit, tx, ty, _tileZ) : null,
-      });
+      actions.push(_objAtkRow('attack:tree', 'Chop Tree', canChop, '🪓', losBlocked ? 'No LOS' : 'Out of range'));
     }
 
     // 🔨 Smash terrain moved OFF the menus: an exposed raised column is now

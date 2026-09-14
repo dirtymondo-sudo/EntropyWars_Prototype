@@ -2541,3 +2541,28 @@ same leaf through the weapon cache as `door:<key>`; `_sigDoorPortal3D` /
 `raceSlam` · `raceExit` / `:out` · `raceLongWayRound` · `raceTrapdoor` /
 `:out`. `npm test` runs `door-vfx.test.js`. A new door ability = a
 recipe in that section + a `_doorGeom` fire at its branch.
+
+## MOVE + ACT ON THE TILE MENU (Cube attacks, Inspect) — 2026-09-14, local delivery
+The tile quick menu (hud.js `_computeTileActions` → `_hrlgTileBlades`) now
+offers the one-step "walk into reach, then act" plan the enemy-unit menu
+always had: every STRUCTURE attack row (Cube / turret / deployed object /
+seed / tree) goes through **`_objAtkRow`** — in range → `_fireObjectAttack`,
+else battle.js `findAttackApproachTile` (validated against
+`_getAttackValidTargets` from the probe tile, so the Cube's 3D reach + LOS
++ fog rules hold) → `_moveThenAttack`; the INSPECT row measures the scan's
+OWN reach (Chebyshev + LOS — it used to read the 3D combat distance and grey
+a diagonal the engine accepts), else **`findInspectApproachTile`** →
+**`_moveThenInspect`** (battle.js, right after `_tryMoveThenAttack`: ONE
+walk step, jump/takeoff tiles skipped, no plan once the unit has moved,
+`_inspectMoveBudget`; `_tryMoveThenInspect` is the board-click twin in
+clickTile's inspect branch, `_inspectApproachHoverPreview` the hover
+arrow). A plan row wears `moveTile` → the `↳ MOVE` / `↳ JUMP` note and the
+engine's approach preview on hover (`_drawSpellApproachPreview` /
+`_clearSpellApproachPreview`). The root ATTACK blade already lit for a
+reachable Cube (`attackHasReachableTarget`), and Attack mode's board click
+already walked to it (`_tryMoveThenAttack`) — only the tile menu was behind.
+Online (RULE #2): `_moveThenAttack` / `_moveThenInspect` call the WRAPPED
+`doMove` / `doAttack` / `doInspect`, so a guest's plan emits each verb and
+the host resolves; nothing new is relayed. `npm test` runs
+`move-then-act-menu.test.js`. Unseen live (RULE #1c): the ↳ MOVE note on the
+object-led menu, the ghost + arrow on hover, the scan landing after the walk.
