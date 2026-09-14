@@ -67,7 +67,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.7-2026-09-12-utility-decisions'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.8-2026-09-14-endgame-nexus'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -681,8 +681,14 @@
         // Kills are uncapped points in TDM/FFA/arena composite scoring.
         try {
             const mode = (typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null);
-            if (mode && (mode.id === 'tdm' || mode.id === 'ffa' || mode.id === 'arena')) val += 60;
+            if (mode && (mode.id === 'tdm' || mode.id === 'simul' || mode.id === 'ffa' || mode.id === 'arena')) val += 60;
         } catch (e) {}
+        // Score pressure adds value to a kill, never to ordinary chip damage.
+        // This is a bounded heuristic, not a promise of a hit or terminal win.
+        const ws = v?.winState;
+        if (ws?.scorePolicy === 'seek_score') val += 40 * ws.roundUrgency;
+        else if (ws?.scorePolicy === 'break_tie') val += 20 * ws.roundUrgency;
+        else if (ws?.scorePolicy === 'sudden_death') val += 120;
         val += wght(g, 'killBonusScore_v1', 99);
         return val;
     }
@@ -1028,6 +1034,10 @@
         // Fragile units fear crowded pockets more.
         const hpFrac = unit.hp / (unit.maxHp || 1);
         if (hpFrac < 0.4) cost += t.totalDmg * 0.3;
+        // A donated kill can erase the deadline lead. Charge exposure in all
+        // consumers (joint search, safety moves and final ranking), using only
+        // the visible-enemy threat estimate already supplied by vision.
+        if (v.winState?.scorePolicy === 'protect_lead') cost *= 1 + 0.25 * v.winState.roundUrgency;
         cost += aiHazardPenaltyAt(unit, x, y) * 2;
         return cost;
     }
@@ -1115,6 +1125,16 @@
             : roundsRemaining <= 1 ? 3 : round / roundLimit >= 0.9 ? 2
             : round / roundLimit >= 0.75 ? 1 : 0;
 
+        // TDM and Simul expire on matchKills, not alive counts, damage or
+        // matchScores. FFA and Arena have different resolution contracts.
+        const teamKillMode = !isFFA && (mode?.id === 'tdm' || mode?.id === 'simul');
+        const myScore = teamKillMode ? (g.state.matchKills?.[player] || 0) : null;
+        const enemyScore = teamKillMode ? (g.state.matchKills?.[enemy] || 0) : null;
+        const scoreLead = teamKillMode ? myScore - enemyScore : null;
+        const scorePolicy = !teamKillMode ? 'normal' : g.state.suddenDeathActive ? 'sudden_death'
+            : roundUrgency === 0 ? 'normal' : scoreLead > 0 ? 'protect_lead'
+            : scoreLead < 0 ? 'seek_score' : 'break_tie';
+
         let phase = 'even';
         if (myHG >= hgTarget - 1) phase = 'hg_winning';
         else if (enemyHG >= hgTarget - 1) phase = 'hg_losing';
@@ -1132,6 +1152,7 @@
             myAlive, enemyAlive,
             enemyDeadCount, enemyMinRespawn, enemyImminentRespawns,
             roundLimit, roundsRemaining, roundUrgency, phase,
+            myScore, enemyScore, scoreLead, scorePolicy,
         };
     }
 
@@ -3464,7 +3485,7 @@
             }
         }
 
-        if (modeId === 'tdm' || modeId === 'ffa') {
+        if (modeId === 'tdm' || modeId === 'simul' || modeId === 'ffa') {
             if (v.closestEnemy) {
                 let bestTarget = v.closestEnemy;
                 let bestPriority = getTargetPriority(v.closestEnemy, unit, v);
@@ -3680,6 +3701,16 @@
             y: Math.floor(g.bh() / 2),
             score: 30, reason: 'explore',
         });
+
+        // Apply the mode policy after generic intents too: otherwise the
+        // 160-point approach_enemy silently overrides the TDM hunt policy.
+        for (const goal of goals) {
+            if (!['tdm_hunt', 'tdm_advance', 'approach_enemy', 'advance_to_mid', 'explore'].includes(goal.reason)) continue;
+            if (ws.scorePolicy === 'protect_lead') goal.score *= 0.4;
+            else if (ws.scorePolicy === 'seek_score') goal.score += 40 * ws.roundUrgency;
+            else if (ws.scorePolicy === 'break_tie') goal.score += 20 * ws.roundUrgency;
+            else if (ws.scorePolicy === 'sudden_death') goal.score += 60;
+        }
 
         // Hard difficulty's objective persona.
         const _om = _aiDiff().objectiveMult;
@@ -3994,8 +4025,10 @@
 
     /* Arena spawn nexuses carry a `tiles` footprint instead of a square
        rect — mirror ui.js nexusZoneContains. */
-    function _aiNexContains(nex, x, y) {
+    function _aiNexContains(nex, x, y, z) {
         if (!nex) return false;
+        if (typeof window.nexusZoneContains === 'function') return window.nexusZoneContains(nex, x, y, z);
+        if (nex.z != null && z != null && Math.abs(z - nex.z) > 1) return false;
         if (Array.isArray(nex.tiles)) return nex.tiles.some(t => t.x === x && t.y === y);
         return x >= nex.zoneX && x < nex.zoneX + nex.zoneSize &&
                y >= nex.zoneY && y < nex.zoneY + nex.zoneSize;
@@ -4005,7 +4038,14 @@
         const g = G();
         if (_failedNexus) return;
         if ((unit.ap || 0) < (typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1)) return;
-        if (!g.state.nexusPoints) return;
+        if (!g.state.nexusPoints && !g.state.roamingNexus) return;
+        const nexusPoints = g.state.nexusPoints || {};
+        // Match channelNexus: roaming zones take precedence, and membership
+        // includes authored footprints and storeys, not distance to a centre.
+        const atUnit = typeof g.getNexusAtUnit === 'function' ? g.getNexusAtUnit(unit)
+            : [ ['roaming', g.state.roamingNexus], ...Object.entries(nexusPoints) ]
+                .filter(([k, n]) => _aiNexContains(n, unit.x, unit.y, unit.z))
+                .map(([section, nexus]) => ({section, nexus}))[0];
 
         const _isAirborne = typeof g.isUnitAirborne === 'function' && g.isUnitAirborne(unit);
         if (_isAirborne) {
@@ -4018,8 +4058,8 @@
                 return AI_TUNE.landToChannelBonus;
             };
             let landScore = 0;
-            for (const nexKey of Object.keys(g.state.nexusPoints)) {
-                landScore = Math.max(landScore, _checkNexusLand(g.state.nexusPoints[nexKey]));
+            for (const nexKey of Object.keys(nexusPoints)) {
+                landScore = Math.max(landScore, _checkNexusLand(nexusPoints[nexKey]));
             }
             if (g.state.roamingNexus) landScore = Math.max(landScore, _checkNexusLand(g.state.roamingNexus));
             if (landScore > 0 && typeof g.canChangeAltitude === 'function') {
@@ -4029,18 +4069,11 @@
             return;
         }
 
-        let nexKey = null, nex = null;
-        for (const k of Object.keys(g.state.nexusPoints)) {
-            const n = g.state.nexusPoints[k];
-            if (!n || !n.zoneSize) continue;
-            const distX = Math.abs(unit.x - (n.zoneX + Math.floor(n.zoneSize / 2)));
-            const distY = Math.abs(unit.y - (n.zoneY + Math.floor(n.zoneSize / 2)));
-            if (distX + distY <= n.zoneSize + 3) { nexKey = k; nex = n; break; }
-        }
+        let nexKey = atUnit?.section, nex = atUnit?.nexus;
         if (!nexKey) {
             let bestDist = Infinity;
-            for (const k of Object.keys(g.state.nexusPoints)) {
-                const n = g.state.nexusPoints[k];
+            for (const k of Object.keys(nexusPoints)) {
+                const n = nexusPoints[k];
                 if (!n || !n.zoneSize) continue;
                 const cx = n.zoneX + Math.floor(n.zoneSize / 2);
                 const cy = n.zoneY + Math.floor(n.zoneSize / 2);
@@ -4054,14 +4087,23 @@
         const towerPushActive = (ws.phase === 'tower_push' || ws.phase === 'numbers_advantage' ||
             ws.enemyDeadCount >= 1 || ws.roundUrgency >= 2);
         const nexusPenalty = towerPushActive && nexKey === 'earth' ? 0.5 : 1.0;
-        const ownedCount = Object.values(g.state.nexusPoints).filter(n => n?.owner === unit.player).length;
+        const ownedCount = Object.values(nexusPoints).filter(n => n?.owner === unit.player).length;
 
-        const inZone = _aiNexContains(nex, unit.x, unit.y);
+        const inZone = !!atUnit;
         const zoneCenterX = nex.zoneX + Math.floor(nex.zoneSize / 2);
         const zoneCenterY = nex.zoneY + Math.floor(nex.zoneSize / 2);
         const distToCenter = Math.abs(unit.x - zoneCenterX) + Math.abs(unit.y - zoneCenterY);
 
         if (inZone && nex.owner !== unit.player) {
+            if (nexKey === 'roaming') {
+                let score = 190;
+                const myProg = unit.player === 1 ? Math.max(0, nex.progress) : Math.max(0, -nex.progress);
+                const threshold = typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined' ? NEXUS_CAPTURE_THRESHOLD : 4;
+                if (myProg >= threshold - 2) score += 70;
+                if (v.closestEnemyDist <= 2) score -= 40;
+                if (score > 0) out.push({ type: 'nexus_channel', score });
+                return;
+            }
             let score = wght(g, 'nexusCapBonus_v1', 39) * 5;
             const mpMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
             if (mpMode && (mpMode.id === 'domination' || mpMode.id === 'arena')) score += 90;
@@ -4071,13 +4113,13 @@
                    the road back to respawning; the enemy's last zone → we
                    lock THEM out; their spawn nexus → both at once. */
                 const _enemyP = unit.player === 1 ? 2 : 1;
-                const _enemyOwned = Object.values(g.state.nexusPoints).filter(n => n && n.owner === _enemyP).length;
+                const _enemyOwned = Object.values(nexusPoints).filter(n => n && n.owner === _enemyP).length;
                 if (ownedCount === 0) score += 200;
                 if (_enemyOwned === 1 && nex.owner === _enemyP) score += 130;
                 if (nex.isSpawn && nex.owner === _enemyP) score += 60;
             }
             const myProg = unit.player === 1 ? Math.max(0, nex.progress) : Math.max(0, -nex.progress);
-            const threshold = typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined' ? NEXUS_CAPTURE_THRESHOLD : 6;
+            const threshold = typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined' ? NEXUS_CAPTURE_THRESHOLD : 4;
             if (myProg >= threshold - 2) score += 60;
             if (myProg >= threshold - 1) score += 50;
             if (v.closestEnemyDist <= 2) score -= 40;
@@ -4107,19 +4149,6 @@
             if (score > 0 && bt) out.push({ type: 'move', x: bt.x, y: bt.y, z: bt.z, score });
         }
 
-        if (g.state.roamingNexus) {
-            const rn = g.state.roamingNexus;
-            const inRoamingZone = unit.x >= rn.zoneX && unit.x < rn.zoneX + rn.zoneSize &&
-                                  unit.y >= rn.zoneY && unit.y < rn.zoneY + rn.zoneSize;
-            if (inRoamingZone && rn.owner !== unit.player) {
-                let score = 190;
-                const myProg = unit.player === 1 ? Math.max(0, rn.progress) : Math.max(0, -rn.progress);
-                const threshold = typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined' ? NEXUS_CAPTURE_THRESHOLD : 6;
-                if (myProg >= threshold - 2) score += 70;
-                if (v.closestEnemyDist <= 2) score -= 40;
-                if (score > 0) out.push({ type: 'nexus_channel', score });
-            }
-        }
     }
 
     function scoreRecall(unit, v, out) {
@@ -5804,6 +5833,13 @@
         _outputCache = new Map();
         try {
             const vision = buildVision(unit);
+            // Simul used to bypass final danger/ranking entirely, so a lead
+            // policy in rankCandidates never reached its actual planner.
+            const mode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
+            if (mode?.isSimul) {
+                const ranked = rankCandidates(unit, vision);
+                return ranked.best ? [ranked.best, ...ranked.candidates.filter(c => c !== ranked.best)] : ranked.candidates;
+            }
             const cands = gatherCandidates(unit, vision) || [];
             return cands.slice().sort((a, b) => (b.score || 0) - (a.score || 0));
         } catch (e) {

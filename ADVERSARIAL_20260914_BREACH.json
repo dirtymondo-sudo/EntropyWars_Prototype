@@ -1,0 +1,78 @@
+{
+  "baseline": "58483d42e0693e9c2aca6dd385792e7f9effb475",
+  "observations": [
+    {
+      "name": "clear",
+      "wallColumns": [],
+      "hard": false,
+      "occupied": false,
+      "aiSeesTarget": true,
+      "engineHitsTarget": true,
+      "engineBores": 0,
+      "limitation": "Controlled successful/failed breach callbacks; not full terrain destruction or damage resolution."
+    },
+    {
+      "name": "one breakable wall",
+      "wallColumns": [
+        1
+      ],
+      "hard": false,
+      "occupied": false,
+      "aiSeesTarget": false,
+      "engineHitsTarget": true,
+      "engineBores": 1,
+      "limitation": "Controlled successful/failed breach callbacks; not full terrain destruction or damage resolution."
+    },
+    {
+      "name": "two breakable walls",
+      "wallColumns": [
+        1,
+        2
+      ],
+      "hard": false,
+      "occupied": false,
+      "aiSeesTarget": false,
+      "engineHitsTarget": true,
+      "engineBores": 2,
+      "limitation": "Controlled successful/failed breach callbacks; not full terrain destruction or damage resolution."
+    },
+    {
+      "name": "bore budget exhausted",
+      "wallColumns": [
+        1,
+        2,
+        3
+      ],
+      "hard": false,
+      "occupied": false,
+      "aiSeesTarget": false,
+      "engineHitsTarget": false,
+      "engineBores": 2,
+      "limitation": "Controlled successful/failed breach callbacks; not full terrain destruction or damage resolution."
+    },
+    {
+      "name": "hard wall",
+      "wallColumns": [
+        1
+      ],
+      "hard": true,
+      "occupied": false,
+      "aiSeesTarget": false,
+      "engineHitsTarget": false,
+      "engineBores": 0,
+      "limitation": "Controlled successful/failed breach callbacks; not full terrain destruction or damage resolution."
+    },
+    {
+      "name": "occupied blocker",
+      "wallColumns": [
+        1
+      ],
+      "hard": false,
+      "occupied": true,
+      "aiSeesTarget": false,
+      "engineHitsTarget": false,
+      "engineBores": 0,
+      "limitation": "Controlled successful/failed breach callbacks; not full terrain destruction or damage resolution."
+    }
+  ]
+}
