@@ -2328,3 +2328,26 @@ relayed). RULE #2: online.js wraps `window.playDetonationCinematic` (relay
 PLAYTEST_NOTES "THE SPELL CAMERA PROBE") casts any spell between two
 teleported units offline and samples the rig; `FREEZE_AT` photographs a
 beat. Unseen live: the jet under the level lens, the eyelids' paper feel.
+
+## THE VIEW SIZE THE BATTLE OWNS (nameplates / Cube bar / nexus bars offset) — 2026-09-14, local delivery
+The shared renderer is sized by THREE owners: the battle (`renderFrame`'s
+resize block → `renderer` + `ThreeCamera.resize` + `ThreePost.resize` +
+`css2dRenderer.setSize`), the main-menu scene (`_menuEnter` → the canvas to
+`#menuStage`) and the HQ (`_hqEnter` / `_hqFrame` → `.hq-stage`). The
+battle's block used to key on the CANVAS BUFFER alone, so when a host had
+already sized the canvas to `.map-center`'s exact pixels (the menu scene
+on a full-window layout) the battle never re-applied its size: the camera
+kept init's 960×540 aspect and the CSS2D renderer kept init's 960×540
+half-sizes — every nameplate, Cube bar and nexus bar landed at 0.6× toward
+the top-left (Play → VS CPU; a site room's BATTLE marker was fine because
+`_hqEnter` had sized the CSS2D layer to the full window). Now three-
+renderer.js keeps **`_viewW / _viewH`** = the size the BATTLE last applied,
+the block re-applies when `.map-center` differs from THAT (or the buffer
+drifted — `Math.floor(w × pr)`, what setSize writes, so a fractional
+product no longer resizes every frame), and `activate()` resets it so the
+first battle frame always re-applies. init sets the overlay's `cssText`
+BEFORE `setSize` (the assignment wiped the px size). RULE: anything that
+sizes the shared renderer for another host never touches the battle's
+record — the battle re-derives it on activate. Measured headlessly with a
+scratch probe (CSS2D transform ≡ the plate's projected position on both
+launch paths at 1600×1000); the look live is unseen (RULE #1c).

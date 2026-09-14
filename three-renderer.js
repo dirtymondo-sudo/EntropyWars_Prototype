@@ -1838,6 +1838,17 @@ const ThreeRenderer = (function () {
     var _hoveredUnitId = null;
     var _hoverGlowMesh = null;
     var _parentEl = null;
+    /* THE VIEW SIZE THE BATTLE LAST APPLIED (2026-09-14). The shared renderer
+       is also sized by the main-menu scene (#menuStage) and the HQ (.hq-stage),
+       which set the CANVAS to their host but never the battle camera's aspect
+       or the CSS2D renderer's half-sizes. The per-frame resize used to key on
+       the canvas buffer alone, so when a host happened to match .map-center
+       pixel for pixel the battle never re-applied its size: the camera kept
+       its aspect and the CSS2D layer kept init's 960×540 fallback — every
+       nameplate, Cube bar and nexus bar landed at 0.6× toward the top-left
+       (Play → VS CPU with the menu scene live). Key on THIS instead; activate()
+       resets it so the first battle frame always re-applies. */
+    var _viewW = -1, _viewH = -1;
 
     function getTexture(url, onLoad) {
         if (!url) return null;
@@ -28231,11 +28242,13 @@ const ThreeRenderer = (function () {
         }, false);
 
         css2dRenderer = new THREE.CSS2DRenderer();
-        css2dRenderer.setSize(w, h);
         css2dRenderer.domElement.id = 'css2dOverlay';
         css2dRenderer.domElement.style.cssText =
             'position:absolute;top:0;left:0;width:100%;height:100%;' +
             'pointer-events:none;z-index:7;display:none;overflow:hidden;';
+        /* AFTER the cssText — assigning it wiped the px width / height setSize
+           writes, so the overlay box and the renderer's half-sizes disagreed */
+        css2dRenderer.setSize(w, h);
         _parentEl.appendChild(css2dRenderer.domElement);
 
         scene = new THREE.Scene();
@@ -28285,6 +28298,10 @@ const ThreeRenderer = (function () {
         if (!canvas || !renderer) return;
         if (_menuLive) _menuLeave();             // the main menu scene hands the canvas back first
         active = true;
+        /* the menu scene / HQ may have sized the shared renderer to THEIR host:
+           forget the battle's record so the first frame re-applies camera
+           aspect + post + CSS2D sizes to .map-center (see _viewW) */
+        _viewW = -1; _viewH = -1;
         canvas.style.display = 'block';
         if (css2dRenderer) css2dRenderer.domElement.style.display = '';
         _ensureFloatOverlay();
@@ -30376,7 +30393,14 @@ const ThreeRenderer = (function () {
 
         if (_parentEl) {
             var w = _parentEl.clientWidth, h = _parentEl.clientHeight;
-            if (w > 0 && h > 0 && (canvas.width !== w * renderer.getPixelRatio() || canvas.height !== h * renderer.getPixelRatio())) {
+            var _pr = renderer.getPixelRatio();
+            /* Re-apply when the BATTLE's own record disagrees (a host scene sized
+               the canvas meanwhile — see _viewW), or when the drawing buffer
+               drifted (a pixel-ratio change; floor() = what setSize writes, so a
+               fractional w × pr no longer re-sizes every frame). */
+            if (w > 0 && h > 0 && (w !== _viewW || h !== _viewH
+                || canvas.width !== Math.floor(w * _pr) || canvas.height !== Math.floor(h * _pr))) {
+                _viewW = w; _viewH = h;
                 renderer.setSize(w, h); ThreeCamera.resize(w, h);
                 if (ThreePost && ThreePost.resize) ThreePost.resize(w, h);
                 if (css2dRenderer) css2dRenderer.setSize(w, h);
