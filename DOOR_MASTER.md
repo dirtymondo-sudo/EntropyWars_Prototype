@@ -2194,3 +2194,15 @@ data.js, three-renderer.js, map.js → R2; index.html
 (`20260914-hq-room1-01-cors`) → Render; doorhq.test.js, docs → the repo.
 Full log: DOOR_HQ_BUILD_PLAN.md §9 (2026-09-14). Not playtested.
 
+
+### 2026-09-14 — THE DOOR AGENT race (design only)
+The user asked for a door-focused moveset for a playable DOOR race (the
+Player, Belle, Knox, Glass, Dorian, the Janitor as agents; jobs free).
+`DOOR_RACE_DESIGN.md` is the sheet: one door object (paired, OPEN = a hole
+anyone may step through to the twin, SHUT = a wall, 3 hits breaks the pair,
+1 pair per agent / 2 per team), the passive KEYHOLDER (free toggle), the
+tree Knock Knock ⇄ Breaking and Entering · Special Delivery ⇄ Slam · EXIT ·
+The Long Way Round★ ⇄ Trapdoor★, and the engine map (the existing
+`deployPair` gates are never consumed — Grave Passage / Tunnel Network are
+inert today; the door object replaces them). Six decisions (D1–D6) await
+the user. Nothing in data.js yet.
