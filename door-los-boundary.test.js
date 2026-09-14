@@ -44,9 +44,9 @@ test('second-interior door remains blocking',()=>{
     assert.equal(r.aiSeesTarget,false);assert.equal(r.engineHitsTarget,false);
     assert.equal(r.after.doors[0].hp,2);
 });
-test('final door hit removes both leaves before the engine continues (forecast residual)',()=>{
+test('final door hit removes both leaves before the engine continues and forecast agrees',()=>{
     const h=setup();const d=h.door(1,1);const twin=h.door(3,3);twin.pairId=d.pairId;
-    const r=h.run();assert.equal(r.aiSeesTarget,false);
+    const r=h.run();assert.equal(r.aiSeesTarget,true);
     assert.equal(r.engineHitsTarget,true);assert.equal(r.engineBores,0);
     assert.equal(r.after.doors.length,0);
 });

@@ -174,7 +174,7 @@ test('source guards: every engine site the door touches', () => {
     for (const k of KINDS) assert.ok(battle.includes("else if (spell.kind === '" + k + "') {"), 'doSpell branch ' + k);
     assert.ok(/doorBlocksMove\(nx, ny\)\) _deployBlocks = true/.test(battle) && /doorBlocksMove\(nx, ny\)\) _decoyBlocks = true/.test(battle), 'both path gates');
     assert.ok((map.match(/doorBlocksMove\(x, y\)\) return false/g) || []).length === 2, 'canOccupy + canOccupy3D');
-    assert.ok(/doorBlocksSightBetween\(x1, y1, x2, y2\)\) return true;/.test(map), 'isRangeBlockedByTerrain');
+    assert.ok(/doorBlocksSightBetween\(x1, y1, x2, y2, board\.doors \|\| \[\]\)\) return true;/.test(map), 'isRangeBlockedByTerrain');
     assert.ok(/for \(const d of state\.doors\) \{\s*if \(d\.owner !== player \|\| !d\.open/.test(map), 'computeVisibleTiles: the twin\'s 3×3');
     assert.ok(/doorStepThrough\(unit\);/.test(battle) && /_tetherFollow\(unit, _originX, _originY, _fromZ\);\s*\/\/ 🚪/.test(battle), 'finishMoveAt step-through');
     assert.ok(/if \(unit && unitHasStatus\(unit, 'exited'\)\) return true;/.test(battle), 'EXITED is realm-shielded from everyone');

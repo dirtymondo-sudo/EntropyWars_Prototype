@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const data = require('./load-data').loadGameData();
 const read = f => fs.readFileSync(path.join(__dirname, f), 'utf8');
 const battle = fs.readFileSync(process.env.EW_BATTLE_TEST_SOURCE || path.join(__dirname, 'battle.js'), 'utf8');
-const map = fs.readFileSync(process.env.EW_MAP_TEST_SOURCE || path.join(__dirname, 'map.js'), 'utf8'), ai = read('ai.js');
+const map = fs.readFileSync(process.env.EW_MAP_TEST_SOURCE || path.join(__dirname, 'map.js'), 'utf8'), ai = fs.readFileSync(process.env.EW_AI_TEST_SOURCE || path.join(__dirname, 'ai.js'), 'utf8');
 function fn(src, name) {
     const start = src.indexOf('        function ' + name + '(');
     if (start < 0) throw Error('Missing function: ' + name);
@@ -22,11 +22,11 @@ const mapNames = ['getLinePoints', 'isRangeBlockedByTerrain', 'verticalSightBloc
     '_inferStandingZ', '_hasBlockAt', '_towerBodyBlocksCell', '_isRayBlocked3D',
     'getColumn', 'getBlockAt', 'setBlockAt', 'removeBlockAt', '_syncColumnToLegacy',
     'getTerrainAt', 'setTerrainAt', 'getTerrainAt3D', 'getBaseHeightAt', 'getFloorBelowZ',
-    'getTerrainRule', 'getObjectAt', 'setObjectAt', 'getObjectRule', 'isTerrainPassable'];
+    'buildingAnchorAt', 'getTerrainRule', 'getObjectAt', 'setObjectAt', 'getObjectRule', 'isTerrainPassable'];
 const battleNames = ['getTerrainMaterial', 'getTerrainHardness', 'spellBreachPower',
     '_breachWindowCheck', '_breachWallAt', '_tileHasTree', '_fellTreeAt', '_removePlantedTreeAt',
     '_doors', 'doorAt', 'doorBlocksSightBetween', 'damageDoorAt', 'breakDoorPair',
-    '_lineLosBlocked', 'getLineSpellLaneOffsets'];
+    '_lineLosBlocked', 'getLineSpellLaneOffsets', 'getLineForecast'];
 const prefix = fn(battle, '_applyLineDamage').split('            /* Phase 5 wave C')[0]
     + 'return {cells:_lineCells,hits:hitTargets.map(t=>t.id),bores:_bores};}';
 const LIMITS = 'Actual map LOS, columns, hardness, breach/tree removal and door damage; controlled board. '
@@ -51,10 +51,13 @@ function setup(options = {}) {
         'playSfx','_doorTouched','trackTilesChanged']) c[name] = () => {};
     vm.createContext(c);
     vm.runInContext(mapNames.map(n=>fn(map,n)).join('\n')+'\n'+battleNames.map(n=>fn(battle,n)).join('\n')+'\n'+prefix,c);
-    const g = {state,bw:c.bw,bh:c.bh,isTerrainPassable:c.isTerrainPassable,isRangeBlockedByTerrain:c.isRangeBlockedByTerrain};
+    const g = {getLineForecast:c.getLineForecast,state,bw:c.bw,bh:c.bh,isTerrainPassable:c.isTerrainPassable,isRangeBlockedByTerrain:c.isRangeBlockedByTerrain};
     c.window.GAME=g;
     const end = ai.lastIndexOf('})();');
-    vm.runInContext(ai.slice(0,end)+'window.footprint=_lineFootprintAI;'+ai.slice(end),c);
+    const scoring = options.scoring ? `scoreOffensiveHit = (g,u,e) => ({val:e.value || 100});
+        isProtected = (g,e) => !!e.protected; getTargetPriority = () => 0;
+        window.scoreSpell=scoreSpell; window.findSpellTarget=findSpellTarget;` : '';
+    vm.runInContext(ai.slice(0,end)+scoring+'window.footprint=_lineFootprintAI;'+ai.slice(end),c);
     const spell = {...data.SPELL_BY_ID.racePlasmaCannon,...options.spell};
     function tile(step, terrain, height = 0) {
         const x=unit.x+step*dx,y=unit.y+step*dy;
@@ -96,5 +99,5 @@ function observations() {
     ];
     return cases.map(([name,options,prepare])=>{const h=setup(options);prepare(h);const r=h.run();return {name,...r};});
 }
-if (require.main===module) console.log(JSON.stringify({baseline:'ed196c9e9ae1f47be0d870befd373f045adc4585',limitations:LIMITS,observations:observations()},null,2));
+if (require.main===module) console.log(JSON.stringify({baseline:'d34afac086cacd043d6a39f8d35937020ebef4d9',limitations:LIMITS,observations:observations()},null,2));
 module.exports={setup,observations,LIMITS};

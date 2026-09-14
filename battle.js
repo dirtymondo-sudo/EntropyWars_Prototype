@@ -4424,12 +4424,12 @@
            (or the surface terrain when the obstacle carries no window
            blocks) against `power`. Returns false, or the list of blocks
            that would break. */
-        function _breachWindowCheck(x, y, bodyZ, power) {
-            const colH = getBaseHeightAt(x, y);
+        function _breachWindowCheck(x, y, bodyZ, power, board = state) {
+            const colH = getBaseHeightAt(x, y, board);
             const zTop = Math.min(colH, bodyZ + 2);
             const blocks = [];
             for (let z = bodyZ + 1; z <= zTop; z++) {
-                const b = (typeof getBlockAt === 'function') ? getBlockAt(x, y, z) : null;
+                const b = (typeof getBlockAt === 'function') ? getBlockAt(x, y, z, board) : null;
                 if (!b) continue;
                 if (getTerrainHardness(b.terrain) > power) return false;
                 blocks.push({ z, terrain: b.terrain });
@@ -4439,7 +4439,7 @@
                 // genuinely impassable SOLID surface (cave_wall, cliff, a tree
                 // object's tile…) can be smashed into rubble; open ground and
                 // liquids are never "breached".
-                const t = getTerrainAt(x, y);
+                const t = getTerrainAt(x, y, board);
                 const rule = (typeof getTerrainRule === 'function') ? getTerrainRule(t) : null;
                 if (!rule || rule.passable !== false) return false;
                 if (t === 'water' || t === 'deep_water' || t === 'lava' || t === 'chasm' || t === 'void') return false;
@@ -5170,6 +5170,117 @@
             return isRangeBlockedByTerrain(unit.x, unit.y, cx, cy, unit.z ?? null, undefined, undefined, obstruction);
         }
         window._lineLosBlocked = _lineLosBlocked;
+
+        // Read-only beam forecast. Copy only touched rows/columns; no live-state
+        // swap, renderer, RNG, rewards or combat callbacks run during scoring.
+        // Complex collapse/explosion/flood aftermath ends the proven prefix.
+        function getLineForecast(unit, spell, dx, dy) {
+            const board = { ...state, units: (state.units || []).map(u =>
+                u === unit || (unit.id != null && u.id === unit.id) ? unit : u),
+                doors: (state.doors || []).map(d => ({ ...d })) };
+            const copied = new Set();
+            const row = (name, y) => {
+                if (!copied.has(name)) { board[name] = (board[name] || []).slice(); copied.add(name); }
+                const key = name + ':' + y;
+                if (!copied.has(key)) { board[name][y] = (board[name][y] || []).slice(); copied.add(key); }
+                return board[name][y];
+            };
+            const column = (x, y) => {
+                const key = 'column:' + x + ',' + y;
+                if (!copied.has(key)) {
+                    row('boardColumns', y)[x] = getColumn(x, y, board).map(b => ({ ...b }));
+                    copied.add(key);
+                }
+                return board.boardColumns[y][x];
+            };
+            const sync = (x, y) => {
+                const col = getColumn(x, y, board), top = col[col.length - 1];
+                row('boardTerrain', y)[x] = top?.terrain || 'grass';
+                row('boardHeights', y)[x] = top?.z ?? 0;
+            };
+            const paint = (x, y, terrain) => {
+                if (getColumn(x, y, board).length) {
+                    const col = column(x, y);
+                    const b = col.slice().reverse().find(b => !b.terrain || !b.terrain.startsWith('void'));
+                    if (b) { b.terrain = terrain; sync(x, y); return; }
+                }
+                row('boardTerrain', y)[x] = terrain;
+            };
+            const occupied = (x, y) => board.units.some(u => !u.dead && u.x === x && u.y === y);
+            const tiles = [], spine = [], seen = new Set();
+            const power = spellBreachPower(spell);
+            const maxBores = (typeof BREACH_CONFIG !== 'undefined' && BREACH_CONFIG.beamMaxBores) || 2;
+            const bodyZ = unit.z ?? getBaseHeightAt(unit.x, unit.y, board);
+            let bores = 0, uncertain = false;
+            const add = (x, y) => {
+                const key = x + ',' + y;
+                if (!seen.has(key)) { seen.add(key); tiles.push({ x, y }); }
+            };
+            for (let i = 1; i <= (spell.range || 4); i++) {
+                const x = unit.x + dx * i, y = unit.y + dy * i;
+                if (!isInside(x, y)) break;
+                let stopped = false;
+                while (true) {
+                    const obstruction = {};
+                    const blocked = !spell.ignoresLineOfSight && isRangeBlockedByTerrain(
+                        unit.x, unit.y, x, y, unit.z ?? null, undefined, undefined, obstruction, board);
+                    const impassable = !isTerrainPassable(x, y, board) && !spell.destroysObstacles;
+                    if (!blocked && !impassable) break;
+                    const bx = blocked ? obstruction.x : x, by = blocked ? obstruction.y : y;
+                    if (bx == null || by == null || bores >= maxBores || power <= 0 || occupied(bx, by)) { stopped = true; break; }
+                    const terrain = getTerrainAt(bx, by, board), obj = getObjectAt(bx, by, board);
+                    const tree = ['tree', 'forest', 'forest_2'].includes(terrain) || (obj && /^tree/.test(obj));
+                    if (tree) {
+                        if (power < getTerrainHardness('tree')) { stopped = true; break; }
+                        if (obj && /^tree/.test(obj)) row('boardObjects', by)[bx] = null;
+                        if (['tree', 'forest', 'forest_2'].includes(terrain)) paint(bx, by, 'grass');
+                    } else {
+                        const check = _breachWindowCheck(bx, by, bodyZ, power, board);
+                        if (!check) { stopped = true; break; }
+                        if (check.flat) paint(bx, by, 'rubble_1');
+                        else {
+                            const removed = new Set(check.blocks.map(b => b.z));
+                            const col = column(bx, by);
+                            row('boardColumns', by)[bx] = col.filter(b => !removed.has(b.z));
+                            const floor = getBlockAt(bx, by, bodyZ, board);
+                            if (floor && getTerrainRule(floor.terrain).passable === false) floor.terrain = 'rubble_1';
+                            sync(bx, by);
+                        }
+                        // Flooding can move/kill units through hazards. Do not
+                        // promise continuation across unmodelled aftermath.
+                        if (board.boardColumns?.length && [[1,0],[-1,0],[0,1],[0,-1]].some(([ox,oy]) =>
+                            ['water','deep_water'].includes(getTerrainAt(bx+ox,by+oy,board)) &&
+                            getBaseHeightAt(bx+ox,by+oy,board) > getBaseHeightAt(bx,by,board))) {
+                            bores++; uncertain = true; stopped = true; break;
+                        }
+                    }
+                    bores++;
+                }
+                if (stopped) break;
+                add(x, y); spine.push({ x, y });
+                // getBuildingAt lazily initializes live state; use only pure reads.
+                const anchor = typeof buildingAnchorAt === 'function' ? buildingAnchorAt(x, y) : null;
+                const building = anchor && (state.buildings || []).find(b => b.x === anchor.x && b.y === anchor.y && b.hp > 0);
+                const explosive = (state._deployedObjects || []).find(o => o.x === x && o.y === y && o.hp > 0 && !o._detonated &&
+                    (o.detonateOnAttack || o.detonateOnFire) && o.blastRadius > 0);
+                if ((building && building.hp <= 1) || explosive) { uncertain = true; break; }
+                const door = board.doors.find(d => d.x === x && d.y === y && d.hp > 0);
+                if (door && door.owner !== unit.player) {
+                    door.hp--;
+                    if (door.hp <= 0) board.doors = board.doors.filter(d => d.pairId !== door.pairId);
+                }
+                if (spell.leaveTerrain && getTerrainAt(x, y, board) !== spell.leaveTerrain) paint(x, y, spell.leaveTerrain);
+            }
+            // Engine applies side lanes after the whole spine, on its final board.
+            // Unknown aftermath cannot establish those later side-lane cells.
+            if (!uncertain) for (const [ox, oy] of getLineSpellLaneOffsets(spell, dx, dy)) for (const c of spine) {
+                const x = c.x + ox, y = c.y + oy;
+                if (!isInside(x, y) || !isTerrainPassable(x, y, board) || seen.has(x + ',' + y)) continue;
+                add(x, y);
+                if (spell.leaveTerrain && getTerrainAt(x, y, board) !== spell.leaveTerrain) paint(x, y, spell.leaveTerrain);
+            }
+            return { tiles, spine, bores, uncertain };
+        }
 
         function _applyLineDamage(unit, spell, dx, dy, baseDmg, spellPower) {
             // Beams are capped at the spell's range (3-5 tiles) — they no longer
@@ -41337,10 +41448,10 @@
             TargetQuery,
             canAffordSpell, getSpellApCost, getSpellCooldownRemaining,
             getCritChance, getEvasionChance,
-            getMoveTiles, getAttackTiles, getInspectTiles, getSpellRangeTiles,
+            getMoveTiles, getAttackTiles, getInspectTiles, getInspectFootprint, getKeysToWin, getSpellRangeTiles,
             getJumpTiles, canJump, getUnitJumpStat, getUnitJumpClimb, getUnitJumpReach,
             getJumpBlockedTiles, findRouteTo,
-            isRangeBlockedByTerrain, getLinePoints,
+            isRangeBlockedByTerrain, getLinePoints, getLineForecast, getCubeAttackForecast, getTeamWipeoutCount,
             unitHasStatus, unitHasFlair, unitHasWard,
             isUnitConcealedFrom, isUnitSeenByAnyEnemy, isUnitSeenByTeam, checkStealthReveals,
             unitHasTelescope, getTelescopeSkyTargets,
@@ -46252,8 +46363,7 @@
         function doorById(id) { return _doors().find(d => d.id === id && d.hp > 0) || null; }
         function doorTwin(door) { return door ? (_doors().find(d => d.pairId === door.pairId && d.id !== door.id && d.hp > 0) || null) : null; }
         function doorBlocksMove(x, y) { const d = doorAt(x, y); return !!(d && !d.open); }
-        function doorBlocksSightBetween(x1, y1, x2, y2) {
-            const list = _doors();
+        function doorBlocksSightBetween(x1, y1, x2, y2, list = state.doors || []) {
             if (!list.length) return false;
             const shut = list.filter(d => !d.open);
             if (!shut.length) return false;
@@ -46500,6 +46610,47 @@
             return null;
         }
 
+        // Shared exact Cube arithmetic. Call with a specified variance for a
+        // forecast; only doAttack draws RNG. A private unit absorbs stat caches.
+        function getCubeAttackDamage(unit, tw, variance = 0) {
+            unit = { ...unit, status: { ...(unit.status || {}) } };
+            let damage = Math.max(24, Math.floor(pwrAtk(unit) * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + variance);
+            if (typeof offenseScale === 'function') {
+                const lvl = getUnitLevel(unit);
+                damage = Math.round(damage * offenseScale(lvl, lvl));
+            } else if (typeof levelScale === 'function') {
+                damage = Math.round(damage * levelScale(getUnitLevel(unit)));
+            }
+            damage = Math.max(1, damage - (tw.def || 0));
+            const _nxSiege = (typeof getCubeDamageMult === 'function') ? getCubeDamageMult(unit.player) : 1;
+            if (_nxSiege > 1) damage = Math.round(damage * _nxSiege);
+            return { damage, siege: _nxSiege };
+        }
+
+        // Conservative direct Cube attack contract. Reject occupied columns
+        // and use surface-height range; remote-door/telescope interception and
+        // the raised-terrain face-range exception are not promised here.
+        function getCubeAttackForecast(unit, tw) {
+            if (!unit || !tw || tw.hp <= 0 || tw.owner === unit.player || !canUnitAct(unit) || (unit.ap || 0) < AP_COST_ACTION) return null;
+            if (Object.keys(unit.status || {}).some(k => Number(unit.status[k] || 0) > 0 && STATUS_DEFS[k]?.blockAction)) return null;
+            if ((state.units || []).some(u => !u.dead && u.player !== unit.player && u.x === tw.x && u.y === tw.y)) return null;
+            const probe = { ...unit, status: { ...(unit.status || {}) } };
+            const z = typeof getHeightAt === 'function' ? getHeightAt(tw.x, tw.y) : 0;
+            const d = combatDist(probe.x, probe.y, probe.z ?? 0, tw.x, tw.y, z);
+            if (d < 1 || d > getEffectiveRange(probe)) return null;
+            if (isRangeBlockedByTerrain(probe.x, probe.y, tw.x, tw.y, probe.z)) return null;
+            if (state.fogOfWar && !state.autoPlayers?.[probe.player] && !isInVision(probe, tw.x, tw.y)) return null;
+            const min = getCubeAttackDamage(probe, tw, -SPELL_DMG_VARIANCE).damage;
+            const typical = getCubeAttackDamage(probe, tw, 0).damage;
+            const max = getCubeAttackDamage(probe, tw, SPELL_DMG_VARIANCE).damage;
+            const mode = getActiveMultiplayerMode();
+            const ongoing = !state.winner && !state._spellLabMode && !window._tutActive &&
+                state.towers?.[1]?.hp > 0 && state.towers?.[2]?.hp > 0 &&
+                getTeamWipeoutCount(1) > 0 && getTeamWipeoutCount(2) > 0;
+            return { min, typical, max, lethal: tw.hp <= min,
+                wins: !!(ongoing && mode?.id === 'arena' && mode.winConditions?.includes('tower_destroyed') && tw.hp <= min) };
+        }
+
         function doAttack(unit, x, y, z) {
             /* SIMUL plan phase: queue the order instead of executing. */
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()
@@ -46678,25 +46829,8 @@
                 setUnitFacing(unit, x - unit.x, y - unit.y);   // square up on the structure (Cube / turret / object / tree / column) like on a unit
                 if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
                 else animateStrikeLeap(unit, x, y);
-                let damage = Math.max(24, Math.floor(pwrAtk(unit) * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
-
-                // Level 100: towers live in the same magnitude space as unit HP
-                // (map.js scales TOWER_MAX_HP/TOWER_DEF by the match level), so
-                // the attack roll scales by the attacker's level to match.
-                // Towers carry no level, so they resolve at the attacker's own
-                // magnitude and gap 1 — and they take the same EW_COMBAT_PACE
-                // as units, or they'd have become disproportionately tanky.
-                if (typeof offenseScale === 'function') {
-                    const _twLvl = getUnitLevel(unit);
-                    damage = Math.round(damage * offenseScale(_twLvl, _twLvl));
-                } else if (typeof levelScale === 'function') {
-                    damage = Math.round(damage * levelScale(getUnitLevel(unit)));
-                }
-                damage = Math.max(1, damage - (tw.def || 0));
-                /* NEXUS REWORK (2026-09-12): every non-home zone the team
-                   holds is a siege engine — ×1.5 with one, ×2 with both. */
-                const _nxSiege = (typeof getCubeDamageMult === 'function') ? getCubeDamageMult(unit.player) : 1;
-                if (_nxSiege > 1) damage = Math.round(damage * _nxSiege);
+                const _cubeHit = getCubeAttackDamage(unit, tw, randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
+                const damage = _cubeHit.damage, _nxSiege = _cubeHit.siege;
                 if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('cube', { uid: unit.id, player: unit.player, damage });
 
                 spendAllAP(unit);   // attacking ends the turn
@@ -47416,6 +47550,30 @@
             return totalDelay;
         }
 
+        // Shared scan footprint: centre first, then stable Manhattan-distance order.
+        // Inspect collects Keys in this footprint, rather than by walking onto them.
+        function getInspectFootprint(unit, x, y) {
+            const tileCount = getInspectTileCount(unit);
+            const candidates = [];
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    const tx = x + dx,
+                        ty = y + dy;
+                    if (tx < 0 || tx >= bw() || ty < 0 || ty >= bh()) continue;
+                    const dist = Math.abs(dx) + Math.abs(dy);
+                    candidates.push({
+                        x: tx,
+                        y: ty,
+                        dist
+                    });
+                }
+            }
+
+            candidates.sort((a, b) => a.dist - b.dist);
+            return candidates.slice(0, tileCount);
+
+        }
+
         function doInspect(unit, x, y) {
             /* SIMUL: inspect executes instantly — not plannable yet. */
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()
@@ -47447,24 +47605,7 @@
 
             pushUndoSnapshot(true);
 
-            const tileCount = getInspectTileCount(unit);
-            const candidates = [];
-            for (let dy = -1; dy <= 1; dy++) {
-                for (let dx = -1; dx <= 1; dx++) {
-                    const tx = x + dx,
-                        ty = y + dy;
-                    if (tx < 0 || tx >= bw() || ty < 0 || ty >= bh()) continue;
-                    const dist = Math.abs(dx) + Math.abs(dy);
-                    candidates.push({
-                        x: tx,
-                        y: ty,
-                        dist
-                    });
-                }
-            }
-
-            candidates.sort((a, b) => a.dist - b.dist);
-            const toReveal = candidates.slice(0, tileCount);
+            const toReveal = getInspectFootprint(unit, x, y);
 
             let totalHourglasses = 0;
             let lootedNow = 0;
@@ -56246,6 +56387,13 @@
             return completionDelay;
         }
 
+        // A controlled body keeps its home-team survival credit. Promised
+        // reserves still count even though they are unavailable for switching.
+        function getTeamWipeoutCount(player) {
+            return state.units.filter(u => unitHomePlayer(u) === player && !u.dead && !u._dying).length
+                + (_benchOn() ? _gauntletReservesAlive(player) : 0);
+        }
+
         function checkWinConditionOnly() {
 
             /* Mystery Dungeon resolves its own outcome (_mdCheckWin) — killing
@@ -56266,9 +56414,11 @@
 
             if ((wcs.includes('wipeout') || wcs.includes('most_kills'))
                 && !(typeof window._isStrikeRT === 'function' && window._isStrikeRT())) {
-                const p1Alive = state.units.filter(u => u.player === 1 && !u.dead && !u._dying).length + (_benchOn() ? _gauntletReservesAlive(1) : 0);
-                const p2Alive = state.units.filter(u => u.player === 2 && !u.dead && !u._dying).length + (_benchOn() ? _gauntletReservesAlive(2) : 0);
-                if (p1Alive === 0 || p2Alive === 0) return true;
+                const p1Alive = getTeamWipeoutCount(1);
+                const p2Alive = getTeamWipeoutCount(2);
+                if (_isFFA()) {
+                    if (state.units.filter(u => !u.dead && !u._dying).length <= 1) return true;
+                } else if ((p1Alive === 0 && p2Alive > 0) || (p2Alive === 0 && p1Alive > 0)) return true;
             }
 
             if (state.matchClock && !state.suddenDeathActive) {
@@ -56322,8 +56472,8 @@
                 } else {
                     // 🎭 A possessed body still counts for its HOME team (wave B):
                     // stealing a side's last unit must not wipe that side out.
-                    const p1Alive = state.units.filter(u => unitHomePlayer(u) === 1 && !u.dead && !u._dying).length + (_benchOn() ? _gauntletReservesAlive(1) : 0);
-                    const p2Alive = state.units.filter(u => unitHomePlayer(u) === 2 && !u.dead && !u._dying).length + (_benchOn() ? _gauntletReservesAlive(2) : 0);
+                    const p1Alive = getTeamWipeoutCount(1);
+                    const p2Alive = getTeamWipeoutCount(2);
                     if (p1Alive === 0 && p2Alive > 0) { state.winner = 2; state._winCondition = 'wipeout'; }
                     else if (p2Alive === 0 && p1Alive > 0) { state.winner = 1; state._winCondition = 'wipeout'; }
                 }

@@ -4511,12 +4511,12 @@
             return { x: +parts[0], y: +parts[1], z: +parts[2] };
         }
 
-        function getColumn(x, y) {
-            return state.boardColumns?.[y]?.[x] || [];
+        function getColumn(x, y, board = state) {
+            return board.boardColumns?.[y]?.[x] || [];
         }
 
-        function getBlockAt(x, y, z) {
-            const col = getColumn(x, y);
+        function getBlockAt(x, y, z, board = state) {
+            const col = getColumn(x, y, board);
             return col.find(b => b.z === z) || null;
         }
 
@@ -4589,9 +4589,9 @@
             return surfaces.sort((a, b) => a - b);
         }
 
-        function getTerrainAt3D(x, y, z) {
-            if (z === undefined || z === null) return getTerrainAt(x, y);
-            const block = getBlockAt(x, y, z);
+        function getTerrainAt3D(x, y, z, board = state) {
+            if (z === undefined || z === null) return getTerrainAt(x, y, board);
+            const block = getBlockAt(x, y, z, board);
             return block ? block.terrain : 'grass';
         }
 
@@ -5061,8 +5061,8 @@
             return d;
         }
 
-        function getTerrainAt(x, y) {
-            return state.boardTerrain?.[y]?.[x] || 'grass';
+        function getTerrainAt(x, y, board = state) {
+            return board.boardTerrain?.[y]?.[x] || 'grass';
         }
 
         /* Repaint ONE block of the column, never the whole stack. Tiles are
@@ -5130,8 +5130,8 @@
             return h;
         }
 
-        function getBaseHeightAt(x, y) {
-            return state.boardHeights?.[y]?.[x] ?? 0;
+        function getBaseHeightAt(x, y, board = state) {
+            return board.boardHeights?.[y]?.[x] ?? 0;
         }
 
         /* ── 🪜 STAIRS COUNT AS HALF A LEVEL (2026-07-17) ────────────────
@@ -5350,8 +5350,8 @@
             return getHeightAt(unit.x, unit.y) + getStairLiftAt(unit.x, unit.y);
         }
 
-        function getObjectAt(x, y) {
-            const c = state.boardObjects?.[y]?.[x];
+        function getObjectAt(x, y, board = state) {
+            const c = board.boardObjects?.[y]?.[x];
             if (!c) return null;
             if (Array.isArray(c)) return c.length > 0 ? (c[0].key||null) : null;
             return c;
@@ -5665,16 +5665,16 @@
            you are standing on (and everything buried under it) is never an
            occluder, so ordinary cliffs, hills and solid columns behave exactly
            as before. Cell c occupies world [c-1, c]; eyes sit at z + 1.8. */
-        function verticalSightBlocked(x1, y1, z1, x2, y2, z2) {
+        function verticalSightBlocked(x1, y1, z1, x2, y2, z2, board = state) {
             if (z1 == null || z2 == null) return false;
-            if (!state.boardColumns?.length) return false;
+            if (!board.boardColumns?.length) return false;
             const EYE = 1.8;
             const e1 = z1 + EYE, e2 = z2 + EYE;
             const lo = Math.min(e1, e2), hi = Math.max(e1, e2);
             if (hi - lo < 0.5) return false;      // same level — nothing vertical between them
             const scan = (cx, cy, ownZ) => {
                 if (!isInside(cx, cy)) return false;
-                for (const b of getColumn(cx, cy)) {
+                for (const b of getColumn(cx, cy, board)) {
                     if (b.terrain && b.terrain.indexOf('void') === 0) continue;
                     if (b.z <= ownZ) continue;    // own floor / buried strata
                     if (b.z > lo && (b.z - 1) < hi) return true;
@@ -5974,10 +5974,10 @@
             return TERRAIN_RULES[terrain] || TERRAIN_RULES.grass;
         }
 
-        function isTerrainPassable(x, y) {
-            const groundPassable = getTerrainRule(getTerrainAt(x, y)).passable !== false;
+        function isTerrainPassable(x, y, board = state) {
+            const groundPassable = getTerrainRule(getTerrainAt(x, y, board)).passable !== false;
 
-            const obj = getObjectAt(x, y);
+            const obj = getObjectAt(x, y, board);
             if (obj) {
                 const rule = getObjectRule(obj);
 
@@ -6045,24 +6045,24 @@
         /* Highest solid block index at or below z — the surface a body at z
            rests on. Counts a roofWalkable building's roof (getHeightAt does
            too) and falls back to the world floor. */
-        function getFloorBelowZ(x, y, z) {
+        function getFloorBelowZ(x, y, z, board = state) {
             if (!isInside(x, y)) return 0;
             /* Hot path (isUnitAirborne runs per unit per frame in places) — walk
                the column in place instead of allocating a filtered copy. */
-            const col = getColumn(x, y);
+            const col = getColumn(x, y, board);
             let best = -1;
             for (let i = 0; i < col.length; i++) {
                 const b = col[i];
                 if (b.terrain && b.terrain.indexOf('void') === 0) continue;
                 if (b.z <= z && b.z > best) best = b.z;
             }
-            const obj = (typeof getObjectAt === 'function') ? getObjectAt(x, y) : null;
+            const obj = (typeof getObjectAt === 'function') ? getObjectAt(x, y, board) : null;
             if (obj) {
                 const rule = getObjectRule(obj);
                 if (rule && rule.roofWalkable) {
                     const oSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[obj] : null;
                     if (oSpr && oSpr._gameHeight > 0) {
-                        const roofZ = (state.boardHeights?.[y]?.[x] ?? 0) + oSpr._gameHeight;
+                        const roofZ = (board.boardHeights?.[y]?.[x] ?? 0) + oSpr._gameHeight;
                         if (roofZ <= z && roofZ > best) best = roofZ;
                     }
                 }
@@ -8433,8 +8433,9 @@
             return points;
         }
 
-        function isRangeBlockedByTerrain(x1, y1, x2, y2, sourceZ, targetZ, forVision, obstruction) {
-            // Optional per-query evidence for destructive beams; never stored in state.
+        function isRangeBlockedByTerrain(x1, y1, x2, y2, sourceZ, targetZ, forVision, obstruction, board = state) {
+            // Optional board is a read-only hypothetical view; ordinary callers use live state.
+            // Obstruction evidence belongs to this query and is never persisted.
             if (obstruction) { delete obstruction.x; delete obstruction.y; }
             /* Clash: line-of-sight is waived along with range — the stage is
                flat and every combatant can always be reached. */
@@ -8448,43 +8449,43 @@
             // right next to it is allowed.
             const d = Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2));
 
-            const _srcUnit = state.units?.find(u => !u.dead && u.x === x1 && u.y === y1 && u.wallVision);
+            const _srcUnit = board.units?.find(u => !u.dead && u.x === x1 && u.y === y1 && u.wallVision);
             if (_srcUnit) return false;
 
             /* Point-blank: an authored solid edge wall blocks — and so does a
                roof/floor slab lying between the two eye lines (you cannot shoot
                a unit standing on the roof over your head through the roof). */
             if (d <= 1) {
-                if (state.edgeWalls && wallBlocksAdjacentSight(x1, y1, sourceZ, x2, y2, targetZ)) return true;
-                const _pbTz = (targetZ != null) ? targetZ : _inferStandingZ(x2, y2);
-                const _pbSz = (sourceZ != null) ? sourceZ : _inferStandingZ(x1, y1);
-                return verticalSightBlocked(x1, y1, _pbSz, x2, y2, _pbTz);
+                if (board.edgeWalls && wallBlocksAdjacentSight(x1, y1, sourceZ, x2, y2, targetZ)) return true;
+                const _pbTz = (targetZ != null) ? targetZ : _inferStandingZ(x2, y2, board);
+                const _pbSz = (sourceZ != null) ? sourceZ : _inferStandingZ(x1, y1, board);
+                return verticalSightBlocked(x1, y1, _pbSz, x2, y2, _pbTz, board);
             }
 
             /* 🚪 A SHUT door (DOOR_RACE_DESIGN §2) blocks sight and shot for
                everyone — checked before the column ray so it holds on every
                board (the door is a body, not terrain). */
-            if (typeof doorBlocksSightBetween === 'function' && doorBlocksSightBetween(x1, y1, x2, y2)) return true;
+            if (typeof doorBlocksSightBetween === 'function' && doorBlocksSightBetween(x1, y1, x2, y2, board.doors || [])) return true;
 
-            if (state.boardColumns?.length > 0) {
+            if (board.boardColumns?.length > 0) {
 
-                const sz = (sourceZ != null) ? sourceZ : _inferStandingZ(x1, y1);
-                const tz = (targetZ != null) ? targetZ : _inferStandingZ(x2, y2);
-                return _isRayBlocked3D(x1, y1, sz, x2, y2, tz, forVision, obstruction);
+                const sz = (sourceZ != null) ? sourceZ : _inferStandingZ(x1, y1, board);
+                const tz = (targetZ != null) ? targetZ : _inferStandingZ(x2, y2, board);
+                return _isRayBlocked3D(x1, y1, sz, x2, y2, tz, forVision, obstruction, board);
             }
 
             const points = getLinePoints(x1, y1, x2, y2);
             if (points.length <= 1) return false;
             const interior = points.slice(0, -1);
             return interior.some(p => {
-                if (getTerrainRule(getTerrainAt(p.x, p.y)).blocksRanged) {
+                if (getTerrainRule(getTerrainAt(p.x, p.y, board)).blocksRanged) {
                     if (obstruction) { obstruction.x = p.x; obstruction.y = p.y; }
                     return true;
                 }
                 /* ⬡ The Cube is a solid body — it blocks sight like a wall. */
                 if (!(p.x === x1 && p.y === y1) && isTowerTile(p.x, p.y)) return true;
                 /* Check object blocksRanged (trees etc.) */
-                const obj = getObjectAt(p.x, p.y);
+                const obj = getObjectAt(p.x, p.y, board);
                 if (obj) {
                     const oRule = getObjectRule(obj);
                     if (oRule && oRule.blocksRanged) {
@@ -8505,27 +8506,27 @@
             });
         }
 
-        function _inferStandingZ(x, y) {
+        function _inferStandingZ(x, y, board = state) {
 
-            const u = state.units?.find(u => !u.dead && u.x === x && u.y === y);
+            const u = board.units?.find(u => !u.dead && u.x === x && u.y === y);
             if (u && u.z != null) return u.z;
 
-            if (state.towers) {
-                for (const tw of Object.values(state.towers)) {
+            if (board.towers) {
+                for (const tw of Object.values(board.towers)) {
                     if (tw && tw.x === x && tw.y === y) {
-                        const col = getColumn(x, y);
+                        const col = getColumn(x, y, board);
                         return col.length ? col[col.length - 1].z : 0;
                     }
                 }
             }
 
-            const col = getColumn(x, y);
+            const col = getColumn(x, y, board);
             return col.length ? col[col.length - 1].z : 0;
         }
 
-        function _hasBlockAt(ix, iy, iz) {
+        function _hasBlockAt(ix, iy, iz, board = state) {
             if (ix < 0 || iy < 0 || iy >= bh() || ix >= bw()) return false;
-            const col = state.boardColumns?.[iy]?.[ix];
+            const col = board.boardColumns?.[iy]?.[ix];
             if (!col || !col.length) return false;
 
             /* Authored 'void' blocks are AIR (the gap fill between voxels on
@@ -8556,17 +8557,17 @@
         /* ⬡ Does the Cube's body fill voxel (ix, iy, iz)? The Cube floats a
            tile above its standing surface, so it occupies the two cells
            above the column top — a ray through them is blocked. */
-        function _towerBodyBlocksCell(ix, iy, iz) {
-            if (!state.towers) return false;
-            const tw = state.towers[1] && state.towers[1].x === ix && state.towers[1].y === iy ? state.towers[1]
-                : state.towers[2] && state.towers[2].x === ix && state.towers[2].y === iy ? state.towers[2] : null;
+        function _towerBodyBlocksCell(ix, iy, iz, board = state) {
+            if (!board.towers) return false;
+            const tw = board.towers[1] && board.towers[1].x === ix && board.towers[1].y === iy ? board.towers[1]
+                : board.towers[2] && board.towers[2].x === ix && board.towers[2].y === iy ? board.towers[2] : null;
             if (!tw || tw.hp <= 0) return false;
-            const col = state.boardColumns?.[iy]?.[ix];
-            const base = (col && col.length) ? col[col.length - 1].z : (state.boardHeights?.[iy]?.[ix] ?? 0);
+            const col = board.boardColumns?.[iy]?.[ix];
+            const base = (col && col.length) ? col[col.length - 1].z : (board.boardHeights?.[iy]?.[ix] ?? 0);
             return iz >= base + 1 && iz <= base + 2;
         }
 
-        function _isRayBlocked3D(x1, y1, z1, x2, y2, z2, forVision, obstruction) {
+        function _isRayBlocked3D(x1, y1, z1, x2, y2, z2, forVision, obstruction, board = state) {
 
             /* Sight ray runs eye-to-eye. A unit standing on block index z has its
                feet at world z+1 and its 1-tile-tall sprite's head at z+2, so the
@@ -8627,7 +8628,7 @@
                 /* Authored edge walls: crossing a tile boundary through a solid
                    wall panel blocks the ray at the height it crosses. A corner
                    crossing (both axes tie) uses the 2-of-4 corner-post rule. */
-                if (state.edgeWalls && (_steppedX || _steppedY)) {
+                if (board.edgeWalls && (_steppedX || _steppedY)) {
                     const _zc = oz + tMin * dz;   // ray height at the crossing
                     if (_steppedX && _steppedY) {
                         if (_ewCornerSightBlocked(_px, _py, stepX, stepY, _zc)) return true;
@@ -8649,7 +8650,7 @@
                 if (ix === x1 && iy === y1) { if (iz <= z1 + 1) continue; }
                 else if (ix === x2 && iy === y2) { if (iz <= z2 + 1) continue; }
 
-                if (_hasBlockAt(ix, iy, iz)) {
+                if (_hasBlockAt(ix, iy, iz, board)) {
                     if (obstruction) { obstruction.x = ix; obstruction.y = iy; }
                     return true;
                 }
@@ -8658,7 +8659,7 @@
                    sight (and shots) through the two cells above its surface —
                    the same band a standing unit's body fills. Never occludes
                    itself (endpoint columns are excluded above). */
-                if (_towerBodyBlocksCell(ix, iy, iz)) return true;
+                if (_towerBodyBlocksCell(ix, iy, iz, board)) return true;
 
                 if (iz >= 0 && ix >= 0 && iy >= 0 && ix < bw() && iy < bh()) {
                     /* Sight-blocking TERRAIN (walls, thickets…) occludes the two
@@ -8667,16 +8668,16 @@
                        column TOP terrain and blocked the ray at any z, so a flyer
                        could not see over a wall and the open span under a bridge
                        inherited the deck's occlusion. */
-                    const _srfZ = getFloorBelowZ(ix, iy, iz);
+                    const _srfZ = getFloorBelowZ(ix, iy, iz, board);
                     if (iz >= _srfZ + 1 && iz <= _srfZ + 2) {
-                        const _srfTerr = getTerrainAt3D(ix, iy, _srfZ);
+                        const _srfTerr = getTerrainAt3D(ix, iy, _srfZ, board);
                         if (getTerrainRule(_srfTerr).blocksRanged) {
                             if (obstruction) { obstruction.x = ix; obstruction.y = iy; }
                             return true;
                         }
                     }
                     /* Check object blocksRanged with game height */
-                    const obj = getObjectAt(ix, iy);
+                    const obj = getObjectAt(ix, iy, board);
                     if (obj) {
                         const oRule = getObjectRule(obj);
                         if (oRule && oRule.blocksRanged) {
@@ -8698,7 +8699,7 @@
                                from most directions and the whole building disappears
                                while you stand right in front of it. */
                             if (!sameBuildingTile(ix, iy, x2, y2)) {
-                                const objBaseZ = _inferStandingZ(ix, iy);
+                                const objBaseZ = _inferStandingZ(ix, iy, board);
                                 const oSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[obj] : null;
                                 const bldgH = (oSpr && oSpr._gameHeight > 0) ? oSpr._gameHeight : 2;
                                 const objTopZ = objBaseZ + bldgH;

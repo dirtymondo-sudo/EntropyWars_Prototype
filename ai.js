@@ -67,7 +67,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.8-2026-09-14-endgame-nexus'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.11-2026-09-14-arena-cube-priority'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -270,9 +270,11 @@
         }
         return tiles;
     }
+    // Use the engine read-only forecast when available. Legacy harness fallback:
     // Match battle.js lane offsets and non-boring footprint: the spine
     // determines reach; side cells need passability, not their own LOS ray.
     function _lineFootprintAI(g, from, spell, dx, dy) {
+        if (typeof g.getLineForecast === 'function') return g.getLineForecast(from, spell, dx, dy).tiles;
         const spine = _lineRayTilesAI(g, from, spell, dx, dy);
         const tiles = spine.slice();
         const seen = new Set(tiles.map(t => `${t.x},${t.y}`));
@@ -1081,16 +1083,23 @@
         const isFFA = g._isFFA();
         const enemy = isFFA ? null : g.enemyOf(player);
 
-        const myHG = isFFA
+        const myHG = typeof g.getKeysToWin === 'function'
+            ? (g.state.hourglasses || []).filter(h => h.carriedBy != null && (isFFA
+                ? h.carriedBy === unit.id : g.state.units.find(u => u.id === h.carriedBy)?.player === player)).length
+            : isFFA
             ? (unit.hourglasses || 0)
             : g.state.units.filter(u => u.player === player && !u.dead)
                 .reduce((s, u) => s + (u.hourglasses || 0), 0);
-        const enemyHG = isFFA
+        const enemyHG = typeof g.getKeysToWin === 'function'
+            ? (g.state.hourglasses || []).filter(h => h.carriedBy != null && (isFFA
+                ? h.carriedBy !== unit.id : g.state.units.find(u => u.id === h.carriedBy)?.player === enemy)).length
+            : isFFA
             ? g.state.units.filter(u => u.id !== unit.id && !u.dead)
                 .reduce((s, u) => s + (u.hourglasses || 0), 0)
             : g.state.units.filter(u => u.player === enemy && !u.dead)
                 .reduce((s, u) => s + (u.hourglasses || 0), 0);
-        const hgTarget = g.state.hourglassTarget || 5;
+        // Match the engine's current registry and mode threshold, not stale spawn metadata.
+        const hgTarget = typeof g.getKeysToWin === 'function' ? g.getKeysToWin() : (g.state.hourglassTarget || 5);
 
         const ownTowerPct = ownTower && ownTower.maxHp > 0 ? ownTower.hp / ownTower.maxHp : 1;
         const enemyTowerPct = enemyTower && enemyTower.maxHp > 0 ? enemyTower.hp / enemyTower.maxHp : 1;
@@ -1136,8 +1145,8 @@
             : scoreLead < 0 ? 'seek_score' : 'break_tie';
 
         let phase = 'even';
-        if (myHG >= hgTarget - 1) phase = 'hg_winning';
-        else if (enemyHG >= hgTarget - 1) phase = 'hg_losing';
+        if (hgTarget > 0 && myHG >= hgTarget - 1) phase = 'hg_winning';
+        else if (hgTarget > 0 && enemyHG >= hgTarget - 1) phase = 'hg_losing';
         else if (ownTowerPct < 0.3) phase = 'tower_defend';
         else if (enemyTowerPct < 0.5) phase = 'tower_push';
         else if (enemyDeadCount >= 2) phase = 'tower_push';
@@ -1302,12 +1311,26 @@
             unit._aiStallCount = 0;
         }
 
+        g.focusUnitPanel(unit.id);
+        if (g.state.autoPlayers?.[unit.player]) g.scheduleBoardRender();
+        if (!g.state.cameraDisabled && !g.devAutoSim && g._shouldCameraFollowUnit(unit)) {
+            g.focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], {
+                holdMs: 99999, persist: true, transitionMs: 500,
+                _fogAllowed: true
+            });
+        }
+
+        const vision = buildVision(unit);
+        const _ranked = rankCandidates(unit, vision);
+        const candidates = _ranked.candidates;
+        let best = _ranked.best;
+
         // Gauntlet: a badly-hurt unit retreats to the bench, sending in a
         // fresh reserve (which then acts with the leftover AP).
         // Reserves matches (battle.js _benchOn) share the retreat; there the
         // per-round cap (_switchesLeft) and a reserve promised to a dead seat
         // (the free list) gate it too.
-        if (unit._aiLoopCount === 1 && typeof window._benchOn === 'function' && window._benchOn()) {
+        if (!best?._objectiveWin && unit._aiLoopCount === 1 && typeof window._benchOn === 'function' && window._benchOn()) {
             const mpm = typeof window.getActiveMultiplayerMode === 'function' ? window.getActiveMultiplayerMode() : null;
             const _resv = typeof window._isReservesMatch === 'function' && window._isReservesMatch();
             const switchCost = (_resv && typeof RESERVE_RULES !== 'undefined' && RESERVE_RULES.switchApCost) || (mpm && mpm.switchApCost) || 2;
@@ -1325,19 +1348,6 @@
             }
         }
 
-        g.focusUnitPanel(unit.id);
-        if (g.state.autoPlayers?.[unit.player]) g.scheduleBoardRender();
-        if (!g.state.cameraDisabled && !g.devAutoSim && g._shouldCameraFollowUnit(unit)) {
-            g.focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], {
-                holdMs: 99999, persist: true, transitionMs: 500,
-                _fogAllowed: true
-            });
-        }
-
-        const vision = buildVision(unit);
-        const _ranked = rankCandidates(unit, vision);
-        const candidates = _ranked.candidates;
-        let best = _ranked.best;
 
         if (window.EW_AI_DEBUG) {
             console.log(`[AI] ${g.unitDisplayName(unit)} candidates:`,
@@ -1351,7 +1361,7 @@
         // candidates — mistakes look like impatience, not dice.
         const _diffPick = _aiDiff();
         if (_diffPick.pickTopN > 1 && best && best.score > 0) {
-            const pool = candidates.slice(0, _diffPick.pickTopN).filter(c => c.score > 0);
+            const pool = candidates.slice(0, _diffPick.pickTopN).filter(c => c.score > 0 && (!best._objectiveWin || c._objectiveWin));
             if (pool.length > 1) {
                 const t = Math.max(1, _diffPick.softmaxT);
                 const w = pool.map(c => Math.exp((c.score - pool[0].score) / t));
@@ -1438,6 +1448,8 @@
 
         // ── per-candidate adjustments ──
         for (const c of candidates) {
+            // A projected objective win ends the match before future exposure.
+            if (c._objectiveWin) continue;
             // Repeat dampening: damage spells may repeat within an
             // activation (press refunds make double-casts legal); utility
             // kinds clamp hard so the AI doesn't loop self-buffs.
@@ -1478,13 +1490,13 @@
             c.score -= c._dangerCost;
         }
 
-        candidates.sort((a, b) => b.score - a.score);
+        candidates.sort((a, b) => Number(!!b._objectiveWin) - Number(!!a._objectiveWin) || b.score - a.score);
         let best = candidates[0];
 
         // FE rule: kills trump accumulated niceness. If a confirmed kill is
         // anywhere near the best candidate's score, take the kill — removed
         // units stop doing damage; "nice position" doesn't.
-        if (best && best.score > 0) {
+        if (best && best.score > 0 && !best._objectiveWin) {
             for (const c of candidates.slice(0, 12)) {
                 if (c.score <= 0) break;
                 let sp = null, tg = null;
@@ -1692,12 +1704,14 @@
         const tower = v.enemyTower;
         if (!tower || tower.hp <= 0) return;
 
-        const tDist = Math.abs(unit.x - tower.x) + Math.abs(unit.y - tower.y);
-        const effRange = v.effRange;
-        if (tDist < 1 || tDist > effRange) return;
-        if (g.isRangeBlockedByTerrain(unit.x, unit.y, tower.x, tower.y)) return;
-
-        const estDmg = Math.max(24, Math.floor(_pwrAtk(unit) * 0.65) + (g.getEffectiveAttackBonus(unit) || 0) + (g.getHourglassPower(unit) || 0));
+        const forecast = typeof g.getCubeAttackForecast === 'function' ? g.getCubeAttackForecast(unit, tower) : null;
+        if (typeof g.getCubeAttackForecast === 'function' && !forecast) return;
+        if (!forecast) {
+            const tDist = Math.abs(unit.x - tower.x) + Math.abs(unit.y - tower.y);
+            if (tDist < 1 || tDist > v.effRange) return;
+            if (g.isRangeBlockedByTerrain(unit.x, unit.y, tower.x, tower.y, unit.z)) return;
+        }
+        const estDmg = forecast ? forecast.typical : Math.max(24, Math.floor(_pwrAtk(unit) * 0.65) + (g.getEffectiveAttackBonus(unit) || 0) + (g.getHourglassPower(unit) || 0));
 
         // Tower damage IS win-condition currency: the base bonus makes chip
         // damage on the objective competitive with chip damage on units.
@@ -1724,7 +1738,7 @@
         if (ws.phase === 'numbers_advantage') score += 180;
         score += ws.roundUrgency * 100;
 
-        out.push({ type: 'attack_tower', towerX: tower.x, towerY: tower.y, score });
+        out.push({ type: 'attack_tower', towerX: tower.x, towerY: tower.y, score, _objectiveWin: !!forecast?.wins });
     }
 
     function scoreItems(unit, v, out) {
@@ -3948,13 +3962,38 @@
 
     function scoreInspect(unit, v, out) {
         const g = G();
-        if ((unit.ap || 0) < g.AP_COST_ACTION) return;
+        if ((unit.ap || 0) < g.AP_COST_ACTION || (typeof g.canUnitAct === 'function' && !g.canUnitAct(unit))) return;
 
         const unrevHG = (g.state.hourglasses || []).filter(h =>
             h.carriedBy === null && !h.visibleTo[unit.player]).length;
 
         const allTiles = g.getInspectTiles(unit);
         if (allTiles.length === 0) return;
+
+        // Score the actual collection footprint, including already-scanned
+        // tiles with a newly dropped Key. Only revealed loose Keys enter it.
+        if (typeof g.getInspectFootprint === 'function' && typeof g.getKeysToWin === 'function') {
+            const mode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
+            const keys = (g.state.hourglasses || []).filter(h => h.carriedBy === null && h.visibleTo?.[unit.player]);
+            const need = g.getKeysToWin(mode);
+            const held = p => (g.state.hourglasses || []).filter(h => h.carriedBy != null &&
+                g.state.units.find(u => u.id === h.carriedBy)?.player === p).length;
+            const mine = held(unit.player), theirs = held(g.enemyOf(unit.player));
+            const keyMode = mode?.id === 'arena' && mode.winConditions?.includes('hourglasses_collected') &&
+                !g.state.winner && !g.state._spellLabMode && !window._tutActive &&
+                (!g.state.towers || Object.values(g.state.towers).every(t => !t || t.hp > 0)) &&
+                (typeof g.getTeamWipeoutCount !== 'function' || (g.getTeamWipeoutCount(1) > 0 && g.getTeamWipeoutCount(2) > 0));
+            for (const t of allTiles) {
+                const footprint = g.getInspectFootprint(unit, t.x, t.y);
+                const count = keys.filter(h => footprint.some(p => p.x === h.x && p.y === h.y)).length;
+                if (!count) continue;
+                // This is a known-Key outcome, not an oracle for hidden traps.
+                const winning = keyMode && (g.state.suddenDeathActive || (need > 0 && mine + count >= need && theirs < need));
+                const denial = keyMode && need > 0 && theirs >= need - 1;
+                out.push({ type: 'inspect', x: t.x, y: t.y,
+                    score: count * 180 + (denial ? 160 : 0), _objectiveWin: !!winning, _keyPickup: count });
+            }
+        }
 
         const unscanned = allTiles.filter(t =>
             !g.state.scannedByPlayer[unit.player].has(g.scanKey(t.x, t.y)));

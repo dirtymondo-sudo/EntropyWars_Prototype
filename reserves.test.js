@@ -48,8 +48,13 @@ test('battle.js: the shared gate — every bench site reads _benchOn, the rules 
         'the flag syncs to the guest; never gate on CONFIG here');
     assert.ok(/function doSwitch\(unit, incomingId\) \{\s*if \(!_benchOn\(\)\) return false;/.test(battle));
     assert.ok(/state\.bench = \{ 1: \[\], 2: \[\] \};\s*if \(!_benchOn\(\)\) return;/.test(battle), 'the partition');
-    assert.strictEqual((battle.match(/\(_benchOn\(\) \? _gauntletReservesAlive\(/g) || []).length, 4, 'wipeout counts the bench in both modes');
+    assert.strictEqual((battle.match(/\(_benchOn\(\) \? _gauntletReservesAlive\(/g) || []).length, 1, 'shared wipeout reader counts the bench in both modes');
     assert.ok(!/\(_isGauntlet\(\) \? _gauntletReservesAlive\(/.test(battle));
+    for (const name of ['checkWinConditionOnly', 'checkWin']) {
+        const start = battle.indexOf('        function ' + name + '(');
+        const body = battle.slice(start, battle.indexOf('\n        }', start));
+        assert.ok(body.includes('getTeamWipeoutCount(1)') && body.includes('getTeamWipeoutCount(2)'), name + ' uses the shared home-team/reserve count');
+    }
     for (const w of ['_benchOn', '_isReservesMatch', '_switchesLeft', '_reserveQueueSeat', '_reserveSeatPick', '_reserveTakeSeat']) {
         assert.ok(battle.includes('window.' + w + ' = ' + w + ';'), w + ' is on window');
     }
