@@ -579,12 +579,14 @@ function classifySpellAnimKind(spell) {
   // Seed/planting spells (Healing Seed, Poison Seed, Leech Seed…) kneel and
   // plant — the animation library's Farm_PlantSeed via the castPlant slot.
   if (/seed|sapling|sprout|plant(?!ation)/.test(text)) return 'plant';
+  // Bow shots draw and loose (MAL Archery_Shot_1) whatever the damage type.
+  // (the skeleton's MARROWstorm is not an arrow — 2026-09-13.) Judged BEFORE
+  // the throw rule: Bomb Arrow is an arrow with a charge lashed to it, not a
+  // lob — 2026-09-14.
+  if (/(^|[^m])arrow|\bbow\b|archer/.test(text)) return 'arrow';
   // Lobbed-object actions (footballs, grenades, bombs) read as a throw no
   // matter the damage type — the QB "just throws".
   if (/football|grenade|bomb(?!ard)|throw|toss|hurl|lob|spike/.test(text)) return 'throw';
-  // Bow shots draw and loose (MAL Archery_Shot_1) whatever the damage type.
-  // (the skeleton's MARROWstorm is not an arrow — 2026-09-13)
-  if (/(^|[^m])arrow|\bbow\b|archer/.test(text)) return 'arrow';
   // Kicks (Spartan_Kick) — check before the melee bucket.
   if (/\bkick\b/.test(text)) return 'kick';
   // Punches (UAL1 Punch_Cross) — jabs/hooks/uppercuts/fists read as a strike

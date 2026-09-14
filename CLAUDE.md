@@ -2467,3 +2467,25 @@ CSS: styles-base.css `.pb-socket-tabs` / `.pb-socket-filters` /
 nothing on `state` (RULE #2). party-builder.test.js evaluates the
 classifiers on the real race + job pools. Unseen live (RULE #1c): the
 sticky tab strip over a long scroll, the row wrapping at narrow widths.
+
+## THE BOW ON EVERY ARROW (2026-09-14, local delivery)
+Every arrow attack draws the bow (three-vfx-effects.js `_sigBowShot3D`)
+and plays the archery clip (sprites.js `castArrow`): **`_SIG_BOW_FOR`**
+now names all seven arrow spells (Bomb / Fire / Poison / Splitting /
+Piercing / Green Arrow / Arrow Volley — never `knifeThrow`, which only
+shares `_bolt_arrow`), read through **`_sigBowShotFor(spellId, params)`**
+(`params.bow` = the basic attack's flag). Three paths reach it: the bolt
+intent (`_fireBoltMapped`, as before), the BEAM intent (`_fireBeamMapped`
+— Piercing Arrow looses down the lane to its last tile; guarded with
+`typeof` because mapped-effect-lifetime.test.js sandboxes that function
+without the helper) and **`fireBoltDirect`** (battle.js
+`playBasicAttackShot` passes `bow: true` for an arrow-kind attacker —
+Robin Hood's quick shot; the flag rides the delivery, so the `basic-shot`
+relay needs nothing new). Arrow Volley got a `_BOLT_WIRING` row so the
+aoe's travel projectile fires the first shaft (bow + tracer) before the
+`raceArrowRain` geometry rains. sprites.js `classifySpellAnimKind` judges
+the ARROW rule BEFORE the throw rule (Bomb Arrow read as a lob). **The
+arrow GLB comes in tip-backward** like the guns — `_WPN_MODELS.arrow`
+wears `tweak: { ry: Math.PI }` (the bow's loose and the volley's plunge
+both take the same instance, so one flip fixes both). Unseen live (RULE
+#1c): the flipped arrow's head at the string and in the dirt.

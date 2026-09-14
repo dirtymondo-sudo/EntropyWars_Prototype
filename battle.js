@@ -9040,7 +9040,8 @@
                     window.ThreeVFXEffects.fireBoltDirect(dv.bolt, {
                         fromX: unit.x, fromY: unit.y, toX: target.x, toY: target.y,
                         fromZ: unit.z, toZ: target.z, flyMs: ms,
-                        headGlow: dv.proj ? false : null
+                        headGlow: dv.proj ? false : null,
+                        bow: dv.kind === 'arrow' || undefined   // 2026-09-14: the archer draws the bow on a quick shot
                     });
                 } catch (e) { console.warn('[basic-shot] bolt failed:', e); }
             }

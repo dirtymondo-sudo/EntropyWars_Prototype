@@ -2149,6 +2149,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceFireArrow:        '_bolt_fire',
         racePoisonArrow:      '_bolt_poison',
         raceBombArrow:        '_bolt_arrow',
+        raceArrowRain:        '_bolt_arrow',   /* Arrow Volley: the first shaft flies to the centre tile (bow + tracer), then the rain (geometry) */
         raceBoo:              '_bolt_psi',
         raceSleepParalysis:   '_bolt_curse',
         raceBoneToss:         '_bolt_bone',
@@ -4527,6 +4528,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (spellId === 'swordBeam') {
             try { _sigSwordWave3D(fromX, fromY, hitTiles); } catch (e) {}
         }
+        /* an arrow fired as a LINE (Piercing Arrow): the bow stands at the
+           caster and looses down the lane to its last tile (2026-09-14) */
+        if (typeof _sigBowShotFor === 'function' && _sigBowShotFor(spellId, params) && !params.hideGunRig) {
+            try {
+                var _bowEnd = hitTiles[hitTiles.length - 1];
+                _sigBowShot3D(fromX, fromY, _bowEnd.x, _bowEnd.y, {
+                    flyMs: Math.max(150, Math.min(420, 90 + hitTiles.length * 55)),
+                });
+            } catch (e) {}
+        }
 
         /* Sonic Boomerang owns its ENTIRE travel: sound crescents race out
            to the end of the line and come back (battle.js lands the second
@@ -4734,7 +4745,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_SIG_GUN_FOR[spellId] && !params.hideGunRig) {
             try { _gunMuzzlePx = _sigGunRig3D(_SIG_GUN_FOR[spellId], fromTx, fromTy, toTx, toTy, { flyMs: params.flyMs }) || 0; } catch (e) {}
         }
-        if (_SIG_BOW_FOR[spellId] && !params.hideGunRig) {
+        if (_sigBowShotFor(spellId, params) && !params.hideGunRig) {
             try { _sigBowShot3D(fromTx, fromTy, toTx, toTy, { flyMs: params.flyMs }); } catch (e) {}
         }
 
@@ -4844,6 +4855,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ts = (_cfg().tileSize || 128);
         var fromTx = params.fromX, fromTy = params.fromY;
         var toTx = params.toX, toTy = params.toY;
+        /* an arrow-kind BASIC attack (battle.js playBasicAttackShot, `bow:
+           true`) draws the same bow the arrow spells do — 2026-09-14 */
+        if (params.bow && !params.hideGunRig) {
+            try { _sigBowShot3D(fromTx, fromTy, toTx, toTy, { flyMs: params.flyMs }); } catch (e) {}
+        }
 
         var from = tilePx(fromTx, fromTy);
         var to = tilePx(toTx, toTy);
@@ -10183,7 +10199,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         plasma:      { file: 'Meshy_AI_plasma_gun_0713030043_texture.glb',        axis: 'z',
                        tweak: { ry: Math.PI } },
         football:    { file: 'Meshy_AI_american_football_0713030210_texture.glb', axis: 'z' },
-        arrow:       { file: 'Meshy_AI_arrow_0713025846_texture.glb',             axis: 'z' },
+        /* 2026-09-14: the arrow export comes in tip-BACKWARD like the guns
+           (it flew fletching-first and stood point-up in the volley) — the
+           baked ry flip puts the head on +Z, where the bow looses it */
+        arrow:       { file: 'Meshy_AI_arrow_0713025846_texture.glb',             axis: 'z',
+                       tweak: { ry: Math.PI } },
         cauldron:    { file: 'Meshy_AI_black_cauldron_0713025916_texture.glb',    axis: 'y' },
         crystalBall: { file: 'Meshy_AI_crystal_ball_0713025648_texture.glb',      axis: 'y' },
         /* the jet export comes in nose-BACKWARD like the guns (flew tail-
@@ -12451,7 +12471,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceFireArrow: 1,
         racePoisonArrow: 1,
         raceBombArrow: 1,
+        /* 2026-09-14: EVERY arrow draws the bow — the Green Arrow (a bolt),
+           Piercing Arrow (rides the beam intent, _fireBeamMapped) and Arrow
+           Volley (the aoe's travel bolt to the centre tile, then the rain).
+           knifeThrow shares _bolt_arrow but is not an arrow. */
+        sentaiGreenArrow: 1,
+        racePiercingArrow: 1,
+        raceArrowRain: 1,
     };
+    /* the basic attack's read (battle.js playBasicAttackShot passes
+       `bow: true` for an arrow-kind attacker — Robin Hood's quick shot) */
+    function _sigBowShotFor(spellId, params) {
+        return !!((params && params.bow) || (spellId && _SIG_BOW_FOR[spellId]));
+    }
 
     /* world-space vector → the coordinate frame _spawn() expects */
     function _sigWorldToSpawn(v) {
