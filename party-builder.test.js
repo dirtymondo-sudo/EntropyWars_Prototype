@@ -376,3 +376,18 @@ test('one head row (the tabs inside it) and one bottom bar (the foot merged into
     assert.ok(!PB.includes("className: 'pb-circuit-head'") && !PB.includes('HOVER PREVIEWS ·'), 'the circuit sub-head (hover hints) is cut');
     for (const sel of ['.pb-party-left {', '.pb-party-right {', '.pb-zone-panel {', '.pb-tools {', '.pb-seal {', '.pb-head .pb-tabbar {', '.pb-ident {']) assert.ok(CSS.includes(sel), `${sel} rule missing`);
 });
+
+/* ── THE ROSTER SIZE + THE DEPLOY PICK (2026-09-14) ─────────────────────
+   A saved team holds up to RESERVE_RULES.roster vessels (＋ / − SLOT in
+   the archive); loading a bigger sheet into a smaller mode opens the
+   picker instead of truncating. */
+test('party-builder: the archive grows a sheet to the reserve roster and the pre-match LOAD picks who crosses', () => {
+    const PB = fs.readFileSync(path.join(__dirname, 'party-builder.js'), 'utf8');
+    assert.ok(PB.includes('const tbSetTeamSize = '), 'tbSetTeamSize missing');
+    assert.ok(PB.includes("window.RESERVE_RULES?.roster || 8"), 'the slot cap must read RESERVE_RULES.roster');
+    assert.ok(PB.includes("'＋ SLOT'") && PB.includes("'− SLOT'"), 'the ＋ / − SLOT buttons are missing');
+    assert.ok(PB.includes('preset.slots.length > sizeNow') && PB.includes('setTeamPick({ preset'), 'an oversized preset must open the deploy pick');
+    assert.ok(PB.includes('const deployTeamPick = ') && PB.includes("{ picked: true }"), 'DEPLOY must reload through loadTeamPreset with picked');
+    assert.ok(/const anyWindow = !!\([^)]*teamPick/.test(PB), 'the picker must count as a window (ESC closes it)');
+    assert.ok(PB.includes('teamWindow, pickWindow,'), 'the picker window is not mounted');
+});

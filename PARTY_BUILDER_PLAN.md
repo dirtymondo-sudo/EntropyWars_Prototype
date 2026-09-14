@@ -561,3 +561,17 @@ material · vertical stripes distorted · more prints (horizontal pinstripe, hea
 - Open: hoods (a proper draped hood needs its own lathe off the shoulders), stripes still bend where the torso's
   centred axis tilts (the pelvis sits behind the chest), the ✕ REMOVE row for a second SKIRT hides the bottoms'
   skirt (one lathe), no photo on the locker chips yet (a bust snapshot per save is the next step).
+
+### 2026-09-14 — THE ROSTER SIZE + THE DEPLOY PICK (local delivery)
+The archive was still a 4-slot sheet: `tbNewTeam` pinned `CONFIG.teamSize`
+to 4 and nothing in the forge could grow it. Now the standalone bottom bar
+carries **＋ SLOT / − SLOT** (`tbSetTeamSize`, capped at
+`RESERVE_RULES.roster` = 8, floor 1; a new slot takes the mode's default
+build + name + an empty loadout, a trimmed slot is dropped along with its
+FILED stamp). And the pre-match **↑ LOAD** no longer truncates: a preset
+with more vessels than the mode fields opens **CHOOSE YOUR n**
+(`teamPick` → `pickWindow`; toggles, the first n pre-chosen, DEPLOY when
+exactly n stand) and reloads through `loadTeamPreset(…, { picked: true })`
+with only the chosen slots — the LOAD list marks such presets "8 ON FILE
+— PICK 4". A reserves match (teamSize 8) loads the whole sheet as before.
+party-builder.test.js guards the control, the cap and the picker.

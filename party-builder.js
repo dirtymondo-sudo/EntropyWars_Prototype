@@ -2219,6 +2219,10 @@ function PartyBuilder(props) {
   const [jobFilter, setJobFilter] = React.useState(null);
   const [rosterSearch, setRosterSearch] = React.useState('');
   const [showTeamModal, setShowTeamModal] = React.useState(false);
+  /* THE DEPLOY PICK (2026-09-14): a saved team may carry up to
+     RESERVE_RULES.roster (8) vessels; loading one into a mode that fields
+     fewer opens a window to choose which ones cross. { preset, chosen: [i…] } */
+  const [teamPick, setTeamPick] = React.useState(null);
   const [teamSaveName, setTeamSaveName] = React.useState('');
   const [_, forceUpdate] = React.useState(0);
   const refresh = () => forceUpdate(n => n + 1);
@@ -2363,11 +2367,18 @@ function PartyBuilder(props) {
     setShowTeamModal(false);
     setTeamSaveName('');
   };
-  const loadTeamPreset = (preset) => {
+  const loadTeamPreset = (preset, opts) => {
     if (!preset?.slots) return;
     // Read the size FRESH — the standalone archive resizes CONFIG.teamSize
     // to the preset before calling this, after this render captured it.
     const sizeNow = window.CONFIG?.teamSize || teamSize;
+    // More vessels on file than the mode fields → the player picks which
+    // cross (never a silent truncation to the first N).
+    if (!standalone && !opts?.picked && preset.slots.length > sizeNow) {
+      setTeamPick({ preset, chosen: preset.slots.map((_, i) => i).slice(0, sizeNow) });
+      sfx('uiCursorMove');
+      return;
+    }
     for (let i = 0; i < Math.min(preset.slots.length, sizeNow); i++) {
       const s = preset.slots[i];
       if (!st.partyBuilds[player]) st.partyBuilds[player] = [];
@@ -2399,7 +2410,24 @@ function PartyBuilder(props) {
     if (st.builderConfirmedSlots) st.builderConfirmedSlots[player] = {};
     sfx('uiButtonConfirm');
     setShowTeamModal(false);
+    setTeamPick(null);
     refresh();
+  };
+  // The picker's DEPLOY: the chosen vessels, in the order they stand on the sheet.
+  const deployTeamPick = () => {
+    if (!teamPick) return;
+    const sizeNow = window.CONFIG?.teamSize || teamSize;
+    const chosen = teamPick.chosen.slice().sort((a, b) => a - b);
+    if (chosen.length !== sizeNow) { sfx('uiError'); return; }
+    loadTeamPreset({ ...teamPick.preset, slots: chosen.map(i => teamPick.preset.slots[i]) }, { picked: true });
+  };
+  const toggleTeamPick = (i) => {
+    if (!teamPick) return;
+    const sizeNow = window.CONFIG?.teamSize || teamSize;
+    const has = teamPick.chosen.includes(i);
+    if (!has && teamPick.chosen.length >= sizeNow) { sfx('uiError'); return; }
+    setTeamPick({ ...teamPick, chosen: has ? teamPick.chosen.filter(x => x !== i) : teamPick.chosen.concat(i) });
+    sfx('uiCursorMove');
   };
   const deleteTeamPreset = (presetId) => {
     const p = window.ProfileSystem?.getActiveProfile?.();
@@ -2448,6 +2476,37 @@ function PartyBuilder(props) {
       createdAt: now, lastUsed: now,
     });
     window.ProfileSystem.saveProfile(idx, p);
+    sfx('uiButtonConfirm');
+    refresh();
+  };
+  /* THE ROSTER SIZE (2026-09-14): the archive keeps up to RESERVE_RULES.roster
+     (8) vessels on a sheet — ＋ / − SLOT grow or trim the party in place
+     (a new slot takes the mode's default build; a trimmed one is dropped). */
+  const tbRosterMax = () => Math.max(4, window.RESERVE_RULES?.roster || 8);
+  const tbSetTeamSize = (n) => {
+    const size = Math.max(1, Math.min(tbRosterMax(), n | 0));
+    const cur = window.CONFIG?.teamSize || teamSize;
+    if (size === cur) { sfx('uiError'); return; }
+    if (window.CONFIG) window.CONFIG.teamSize = size;
+    if (!st.partyBuilds[player]) st.partyBuilds[player] = [];
+    if (!st.partyMeta[player]) st.partyMeta[player] = [];
+    if (!st.partyNames) st.partyNames = {};
+    if (!st.partyNames[player]) st.partyNames[player] = [];
+    if (!st.loadouts[player]) st.loadouts[player] = [];
+    for (let i = st.partyBuilds[player].length; i < size; i++) {
+      const cls = window.DEFAULT_BUILDS?.[player]?.[i] || st.partyBuilds[player][i % Math.max(1, st.partyBuilds[player].length)] || 'Warrior';
+      st.partyBuilds[player][i] = cls;
+      st.partyMeta[player][i] = {};
+      st.partyNames[player][i] = typeof window.getDefaultUnitName === 'function' ? window.getDefaultUnitName(cls) : cls;
+      st.loadouts[player][i] = typeof window.emptyLoadout === 'function' ? window.emptyLoadout() : {};
+    }
+    st.partyBuilds[player].length = size;
+    st.partyMeta[player].length = size;
+    st.partyNames[player].length = size;
+    st.loadouts[player].length = size;
+    if (st.builderConfirmedSlots?.[player]) Object.keys(st.builderConfirmedSlots[player]).forEach(k => { if (+k >= size) delete st.builderConfirmedSlots[player][k]; });
+    if (slot >= size) selectSlot(size - 1);
+    st.teamLockedIn = false;
     sfx('uiButtonConfirm');
     refresh();
   };
@@ -2965,7 +3024,7 @@ function PartyBuilder(props) {
      when a tab changes. ══ */
   const raceLabelTxt = _grl(unitRace, identity.gender) || unitRace;
   const officer = pbOfficer();
-  const anyWindow = !!(equipPicker || showTeamModal || pbMenu || notesOpen || (flSocketPick && unitTree && unitTree.isFreelancer));
+  const anyWindow = !!(equipPicker || showTeamModal || teamPick || pbMenu || notesOpen || (flSocketPick && unitTree && unitTree.isFreelancer));
   // the wall's hover → the stage (Stage 4); cleared on leave, on a pick and off the ROSTER tab
   const rosterHoverIn = (entry) => {
     if (rosterHoverTimer.current) clearTimeout(rosterHoverTimer.current);
@@ -2983,7 +3042,7 @@ function PartyBuilder(props) {
   const stageCls = stageEntry ? stageEntry.cls : clsName;
   const stageFaction = stageEntry ? (stageEntry.faction || unitFaction) : unitFaction;
   const stageLabel = stageEntry ? (stageEntry.label || _grl(stageEntry.race, stageEntry.gender)) : raceLabelTxt;
-  const closeWindows = () => { setEquipPicker(null); setShowTeamModal(false); setFlSocketPick(null); setPbMenu(null); setNotesOpen(false); hideSpellTip(); };
+  const closeWindows = () => { setEquipPicker(null); setShowTeamModal(false); setTeamPick(null); setFlSocketPick(null); setPbMenu(null); setNotesOpen(false); hideSpellTip(); };
   const selectPlayer = (p) => { if (p === player) return; st.builderSelectedPlayer = p; st.builderSelectedSlot = 0; setSlot(0); sfx('uiCursorMove'); refresh(); };
   const backOut = () => {
     if (standalone) {
@@ -3506,6 +3565,8 @@ function PartyBuilder(props) {
         h('button', { className: 'ms-tty-btn sm', onClick: doRandomize, title: 'Randomize this vessel' }, '🎲 ONE'),
         h('button', { className: 'ms-tty-btn sm', onClick: doRandomizeAll, title: 'Randomize the whole party' }, '🎲 ALL'),
         h('button', { className: 'ms-tty-btn sm', onClick: doDefaults, title: 'Reset every slot to defaults' }, 'RESET'),
+        standalone ? h('button', { className: 'ms-tty-btn sm', disabled: teamSize <= 1, onClick: () => tbSetTeamSize(teamSize - 1), title: 'Drop the last slot' }, '− SLOT') : null,
+        standalone ? h('button', { className: 'ms-tty-btn sm teal', disabled: teamSize >= tbRosterMax(), onClick: () => tbSetTeamSize(teamSize + 1), title: 'Add a vessel (up to ' + tbRosterMax() + ' on a sheet)' }, '＋ SLOT') : null,
         !standalone ? h('button', { className: 'ms-tty-btn sm gold', onClick: () => { setTeamSaveName(''); setShowTeamModal('save'); }, title: 'Archive this party as a saved team' }, '★ SAVE') : null,
         !standalone ? h('button', { className: 'ms-tty-btn sm teal', onClick: () => setShowTeamModal('load'), title: 'Load a saved team from your archive' }, '↑ LOAD', getTeamPresets().length ? ' · ' + getTeamPresets().length : '') : null),
       standalone
@@ -3687,8 +3748,32 @@ function PartyBuilder(props) {
                   const rl = typeof _grl==='function' ? _grl(s.race,s.gender) : s.race;
                   return h('span', { key:si, style:{ fontSize:9, color:EW.inkMute, background:'rgba(255,255,255,0.04)', padding:'1px 6px', borderRadius:999, border:`1px solid rgba(255,255,255,0.06)` }}, rl);
                 })),
-              h('div', { style:{ fontSize:8, color:EW.inkDim }}, preset.gameMode?.toUpperCase() || '', ' · ', new Date(preset.createdAt).toLocaleDateString())),
+              h('div', { style:{ fontSize:8, color:EW.inkDim }}, preset.gameMode?.toUpperCase() || '', ' · ', new Date(preset.createdAt).toLocaleDateString(),
+                (preset.slots||[]).length > teamSize ? h('span', { style:{ color:EW.warn, marginLeft:6 }}, '· ', (preset.slots||[]).length, ' ON FILE — PICK ', teamSize) : null)),
             h('button', { className:'pb-team-act danger', onClick:e=>{e.stopPropagation();deleteTeamPreset(preset.id);} }, 'DEL')))));
+
+  /* THE DEPLOY PICK window: the sheet's vessels as toggles, DEPLOY when
+     exactly the mode's count is chosen. */
+  const pickWindow = teamPick && (() => {
+    const need = window.CONFIG?.teamSize || teamSize;
+    const chosen = teamPick.chosen;
+    return h(PbWindow, { title: 'CHOOSE YOUR ' + need, sub: (teamPick.preset.name || 'TEAM').toUpperCase() + ' · ' + chosen.length + ' / ' + need + ' CROSSING', onClose: () => setTeamPick(null), width: 460 },
+      h('div', { style:{ display:'flex', flexDirection:'column', gap:4 }},
+        h('div', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.1em' }}, 'This sheet holds ', teamPick.preset.slots.length, ' vessels; this match fields ', need, '. Pick who crosses — the rest stay on file.'),
+        ...teamPick.preset.slots.map((s, i) => {
+          const on = chosen.includes(i);
+          const rl = typeof _grl === 'function' ? (_grl(s.race, s.gender) || s.race) : s.race;
+          return h('div', { key:i, className:'pbx-pick-row', onClick:()=>toggleTeamPick(i), style:{ borderRadius:'var(--pb-r-sm)', cursor:'pointer', opacity: on ? 1 : 0.55, border: on ? '1px solid rgba(242,196,104,0.7)' : undefined } },
+            h('div', { className:'pb-team-mini', style:{ width:36, height:36 } }, h(PortraitSprite, { race:s.race, gender:s.gender||'male', cls:s.cls })),
+            h('div', { style:{ flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:2 }},
+              h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:13, letterSpacing:'0.1em', color:EW.ink }}, s.unitName || s.cls),
+              h('div', { style:{ fontSize:9, color:EW.inkMute }}, rl, ' · ', getJobDisplay(s.cls))),
+            h('span', { style:{ fontSize:10, letterSpacing:'0.12em', color: on ? EW.warn : EW.inkDim }}, on ? '✓ CROSSING' : 'ON FILE'));
+        }),
+        h('div', { style:{ display:'flex', gap:6, justifyContent:'flex-end', marginTop:6 }},
+          h('button', { className:'ms-tty-btn sm', onClick:()=>setTeamPick(null) }, 'CANCEL'),
+          h('button', { className:'ms-tty-btn sm gold', disabled: chosen.length !== need, onClick: deployTeamPick }, 'DEPLOY ', chosen.length, ' / ', need))));
+  })();
 
   // Stage 5: the notes' full text — every passive + every terrain row, unclamped
   const notesWindow = notesOpen && h(PbWindow, { title: 'THE NOTES', sub: raceLabelTxt.toUpperCase() + ' · PASSIVES & TERRAIN', onClose: () => setNotesOpen(false), width: 460 },
@@ -3787,7 +3872,7 @@ function PartyBuilder(props) {
         h('div', { className: 'ms-crt-screen' },
           h('div', { className: 'ms-tty pb-tty' }, head, body),
           locker,
-          teamWindow,
+          teamWindow, pickWindow,
           notesWindow,
           pickerWindow),
         h('div', { className: 'ms-crt-scan' }),
