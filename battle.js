@@ -46248,7 +46248,9 @@
             const shut = list.filter(d => !d.open);
             if (!shut.length) return false;
             const pts = getLinePoints(x1, y1, x2, y2);
-            for (let i = 1; i < pts.length - 1; i++) {
+            // getLinePoints excludes the source and includes the target.
+            // The first returned tile is already interior; only skip the endpoint.
+            for (let i = 0; i < pts.length - 1; i++) {
                 if (shut.some(d => d.x === pts[i].x && d.y === pts[i].y)) return true;
             }
             return false;

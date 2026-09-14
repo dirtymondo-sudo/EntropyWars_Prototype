@@ -83,11 +83,10 @@ function makeDoorCtx() {
         console,
         isInside: (x, y) => x >= 0 && y >= 0 && x < 8 && y < 8,
         unitAt: (x, y) => units.find(u => !u.dead && u.x === x && u.y === y) || null,
-        getLinePoints: (x1, y1, x2, y2) => {   // a plain DDA is enough for the interior test
-            const pts = []; const n = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1));
-            for (let i = 0; i <= n; i++) pts.push({ x: Math.round(x1 + (x2 - x1) * i / n), y: Math.round(y1 + (y2 - y1) * i / n) });
-            return pts;
-        },
+        // Production points exclude the source; a source-inclusive mock hid
+        // the first-interior-door sight leak.
+        getLinePoints: vm.runInNewContext(between(map, '        function getLinePoints(',
+            '        function isRangeBlockedByTerrain(') + 'getLinePoints'),
         unitPassiveValue: (u, k) => (u && u.race === 'door agent') ? ({ doorHits: 4, doorFreeToggle: true, doorImmune: true })[k] : undefined,
         unitHasStatus: (u, id) => !!(u && u._st && u._st[id]),
         isRangeBlockedByTerrain: () => false,
