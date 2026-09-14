@@ -1138,6 +1138,32 @@
             html += '<p class="hq-panel-note">The chart hangs at the foot of the bed. It is never asked whether it is right; it is asked whether you are fit for duty, and it always answers.</p>';
             return html;
         }
+        /* RECEPTION (Room 1, plan 7.4, 2026-09-14): THE LAMINATOR — the intake
+           sheet the ID card was printed from (data.js hqIntakeCard). Read-only;
+           the callsign and the desk are edited on the card itself (the window). */
+        function _hqIntakeHtml() {
+            const profile = _hqProfile();
+            const ic = (typeof window.hqIntakeCard === 'function') ? window.hqIntakeCard(profile) : null;
+            let html = '<div class="hq-panel-hd"><b>THE LAMINATOR</b><span>RECEPTION · YOUR INTAKE SHEET · ROOM 1</span></div>';
+            if (!profile || !ic || !ic.onFile) return html + '<p class="hq-panel-desc">Nothing in the tray. Sign in at the window first — the sheet is printed from the card.</p><div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="_mountReactProfile">SIGN IN AT THE WINDOW ▸ PROFILE · ID CARD</button><button class="hq-btn" data-close="1">NOTED</button></div>';
+            const deskChip = ic.desk ? `<i class="hq-lamp-chip st-open" style="border-color:${_hqEsc(ic.desk.color)};color:${_hqEsc(ic.desk.color)}">${_hqEsc(ic.desk.label)}</i>` : '<i class="hq-lamp-chip st-off">NONE</i>';
+            html += '<div class="hq-rows">';
+            html += `<div class="hq-row hq-row-tray"><b>STATUS</b><span>${_hqEsc(ic.note)}</span><i class="hq-lamp-chip st-${_hqEsc(ic.tone)}">${_hqEsc(ic.status)}</i></div>`;
+            html += `<div class="hq-row hq-row-tray"><b>EMPLOYEE No.</b><span>DERIVED AT INTAKE · NEVER REISSUED</span><i class="hq-lamp-chip st-open">${_hqEsc(ic.empNo)}</i></div>`;
+            html += `<div class="hq-row hq-row-tray"><b>CALLSIGN</b><span>EDITED ON THE CARD, AT THE WINDOW</span><i class="hq-lamp-chip st-${ic.callsign ? 'open' : 'off'}">${_hqEsc(ic.callsign || '—')}</i></div>`;
+            html += `<div class="hq-row hq-row-tray"><b>DESK</b><span>THE ONE OPTIONAL INTAKE QUESTION · THE CARD’S STRIPE</span>${deskChip}</div>`;
+            html += `<div class="hq-row hq-row-tray"><b>CLEARANCE</b><span>STORY PROGRESS — NOT THE RANK</span><i class="hq-lamp-chip st-open">L${ic.clearance.level} · ${_hqEsc(ic.clearance.title)}</i></div>`;
+            if (ic.rank) html += `<div class="hq-row hq-row-tray"><b>RANK</b><span>THE LADDER, OFF THE RATING</span><i class="hq-lamp-chip st-open">${_hqEsc(ic.rank)}</i></div>`;
+            html += `<div class="hq-row hq-row-tray"><b>ISSUED</b><span>THE DAY THE FILE WAS OPENED</span><i class="hq-lamp-chip st-${ic.issued ? 'open' : 'off'}">${_hqEsc(ic.issued || 'UNDATED')}</i></div>`;
+            html += `<div class="hq-row hq-row-tray"><b>PHOTO ON FILE</b><span>THE CHAIR AND THE MIRROR, ROOM 1287, DECIDE IT</span><i class="hq-lamp-chip st-open">${_hqEsc(ic.photo)}</i></div>`;
+            html += `<div class="hq-row hq-row-tray"><b>VISITS · DAYS</b><span>THE SIGN-IN SHEET · THE PUNCH CLOCK, ROOM 247</span><i class="hq-lamp-chip st-${(ic.visits || ic.days) ? 'open' : 'off'}">${ic.visits} · ${ic.days}</i></div>`;
+            html += `<div class="hq-row hq-row-tray"><b>REISSUES</b><span>EVERY CHANGE OF FACE AT THE CHAIR</span><i class="hq-lamp-chip st-${ic.reissues ? 'unstable' : 'off'}">${ic.reissues}</i></div>`;
+            html += `<div class="hq-row hq-row-tray"><b>LOST CARD FEE</b><span>💰 ${ic.fee} · COLLECTED TO DATE: ${ic.feeCharged}</span><i class="hq-lamp-chip st-off">NEVER</i></div>`;
+            html += '</div>';
+            html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="_mountReactProfile">SIGN IN AT THE WINDOW ▸ PROFILE · ID CARD</button><button class="hq-btn" data-close="1">NOTED</button></div>';
+            html += '<p class="hq-panel-note">The laminator is warm. It has been warm since 1987. Nobody has seen it laminate anything, and every card in the building is laminated.</p>';
+            return html;
+        }
         /* OCCAM'S BARBERSHOP (Room 1287, plan 7.4, 2026-09-11): THE CHAIR —
            who you walk the building as. The pick is saved on the profile
            (data.js hqSetAvatar → door.hq.avatar), read by _hqAvatar, and the
@@ -1566,6 +1592,7 @@
             if (act.overlay === 'starmap') return _hqStarmapHtml();
             if (act.overlay === 'transcript') return _hqTranscriptHtml();
             if (act.overlay === 'chart') return _hqChartHtml();
+            if (act.overlay === 'intake') return _hqIntakeHtml();
             if (act.overlay === 'training') return _hqTrainingHtml();
             if (act.overlay === 'crossing') return _hqCrossingHtml(t);
             let html = `<div class="hq-panel-hd"><b>${_hqEsc(c.label)}</b><span>${_hqEsc(c.sub || '')}</span></div>`;
@@ -1577,6 +1604,17 @@
                 html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'A round window that is a mirror from this side.') + '</p>';
                 html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">LOOK AWAY</button></div>';
                 html += '<p class="hq-panel-note">Internal Affairs sits on the other side. Whether anyone is there today is not a question this office answers.</p>';
+                return html;
+            }
+            /* NOW SERVING (Room 1): the dispenser — your number, the number being served, the gap */
+            if (c.id === 'ticket') {
+                const ic = (typeof window.hqIntakeCard === 'function') ? window.hqIntakeCard(_hqProfile()) : null;
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'The dispenser under the sign.') + '</p>';
+                if (ic) html += `<div class="hq-rows"><div class="hq-row hq-row-tray"><b>NOW SERVING</b><span>THE SIGN OVER THE DESK</span><i class="hq-lamp-chip st-codered">${_hqEsc(ic.serving)}</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>YOUR NUMBER</b><span>${ic.onFile ? 'THE SECOND HALF OF ' + _hqEsc(ic.empNo) : 'NO CARD — SIGN IN AT THE WINDOW'}</span><i class="hq-lamp-chip st-${ic.onFile ? 'open' : 'off'}">${_hqEsc(ic.ticket)}</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>AHEAD OF YOU</b><span>${ic.queue ? 'THE OFFICE IS WORKING THROUGH IT' : 'YOU ARE BEING SERVED. NOBODY HAS SAID SO.'}</span><i class="hq-lamp-chip st-${ic.queue ? 'unstable' : 'stabilized'}">${ic.queue}</i></div></div>`;
+                html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="_mountReactProfile">SIGN IN AT THE WINDOW ▸ PROFILE · ID CARD</button><button class="hq-btn" data-close="1">WAIT</button></div>';
+                html += '<p class="hq-panel-note">Numbers are called in order. The order is on a form. The form is being laminated.</p>';
                 return html;
             }
             /* THE HOLD (Room 5150): a panel and the condition line off the chart; nothing else */

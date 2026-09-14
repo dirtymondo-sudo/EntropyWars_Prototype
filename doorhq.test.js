@@ -2640,3 +2640,79 @@ test('Rooms 1111 + 5150 — the source sites: the chart overlay, the hold panel,
     assert.match(tr, /^\s+wall_padding: function \(U\) \{/m, 'the wall_padding proc');
     assert.match(dj, /window\.hqMedicalRecord = hqMedicalRecord;/, 'hqMedicalRecord is on window for map.js');
 });
+
+/* ── ROOM 1 · RECEPTION (HQ plan 7.4, 2026-09-14) — the intake office behind the window door at 120° ── */
+const RCP = HQ.rooms.reception;
+
+test('Room 1 is a box room off the ground ring at 120° (between the Barbershop and Your Office): the way in, the way out, the number, the window, the laminator, the dispenser', () => {
+    assert.ok(RCP && RCP.kind === 'box' && RCP.roomNo === '1', 'rooms.reception kind box, Room 1');
+    assert.strictEqual(D.hqRoomNo('reception'), '1');
+    assert.ok(!RCP.shell.open && RCP.shell.pipes === false && RCP.shell.h >= 3.0, 'an indoor office under a ceiling, no conduits');
+    const eg = ROOM.doors.find(d => d.id === 'reception');
+    assert.ok(eg && eg.deg === 120 && (eg.level || 0) === 0 && eg.action.room === 'reception' && eg.action.at === 'egress', 'the hall door at 120° walks into the office at its way out');
+    assert.strictEqual(D.hqDoorNo(eg), '1', 'the plate over the hall door reads 1');
+    assert.ok(eg.roomNo == null, 'the hall door does not duplicate the room’s number');
+    assert.ok(!eg.alt && !eg.action.fn, 'no screen left on the door (the profile is the window inside)');
+    const out = RCP.doors.find(d => d.id === 'egress');
+    assert.ok(out && out.wall === 'w' && out.action.room === 'central_egress' && out.action.at === 'reception' && out.leaf === eg.leaf && !!out.wide === !!eg.wide, 'the way out is the same window door and lands at the hall door');
+    assert.strictEqual(RCP.doors.length, 1, 'one door');
+    assert.ok(!D.DOOR_TEXT.CLEARANCE.some(r => r.door === eg.leaf), 'not a rank leaf');
+    assert.strictEqual(D.doorSiteState(eg, null), 'open');
+    /* the hall's intake wedge stays where it was (it is the window from the hall side) */
+    assert.ok(ROOM.props.some(p => p.key === 'reception_wedge' && (p.level || 0) === 0 && Math.abs(p.deg - 128) < 1), 'the hall keeps the intake wedge at 128°');
+    /* the window: the profile; the laminator: the sheet; the dispenser: a panel */
+    const wn = RCP.counters.find(c => c.id === 'window'), lm = RCP.counters.find(c => c.id === 'laminator'), tk = RCP.counters.find(c => c.id === 'ticket');
+    assert.ok(wn && wn.action.fn === '_mountReactProfile' && wn.verb && wn.desc, 'THE INTAKE WINDOW opens the profile (the ID card)');
+    assert.ok(lm && lm.action.overlay === 'intake' && lm.verb && lm.desc, 'THE LAMINATOR opens the intake sheet');
+    assert.ok(tk && !tk.action.fn && !tk.action.overlay && !tk.action.room && tk.desc, 'NOW SERVING has a panel and no action');
+    assert.ok(RCP.props.some(p => p.key === 'tanker_desk' && p.wall === 'n' && Math.abs(p.x - wn.x) < 0.3), 'a desk under the window counter');
+    assert.ok(RCP.props.some(p => p.key === 'tanker_desk' && p.wall === 'n' && Math.abs(p.x - lm.x) < 0.3), 'a desk under the laminator counter');
+    assert.ok(RCP.props.some(p => p.key === 'laminator' && Math.abs(p.x - lm.x) < 0.3 && p.y > 0.5), 'the laminator sits on its desk');
+    assert.ok(RCP.props.some(p => p.key === 'now_serving' && p.wall === 'n' && Math.abs(p.x - tk.x) < 0.3), 'the NOW SERVING sign hangs over the dispenser counter');
+    for (const k of ['now_serving', 'laminator']) assert.ok(HQ.catalogue[k] && HQ.catalogue[k].proc === k, k + ' is a proc');
+    assert.ok(HQ.catalogue.now_serving.wall && !HQ.catalogue.now_serving.block, 'now_serving is a wall proc');
+    assert.ok(!HQ.catalogue.laminator.wall && !HQ.catalogue.laminator.block && HQ.catalogue.laminator.foot === 0, 'the laminator is a tabletop proc: no collision');
+    const has = key => RCP.props.filter(p => p.key === key).length;
+    for (const key of ['tanker_desk', 'crt_terminal', 'computer_chair_blue', 'folding_chair', 'filing_cabinet', 'notice_board', 'wall_clock', 'water_cooler', 'exit_sign', 'nameplate', 'fluorescent', 'railing_1m', 'coffee_table', 'security_camera']) assert.ok(has(key) >= 1, 'the build sheet: ' + key);
+    assert.ok(has('folding_chair') >= 4 && RCP.props.every(p => p.key !== 'folding_chair' || p.z > RCP.shell.d / 2 - 1.0), 'a waiting room: four chairs along the south wall');
+    assert.ok(has('railing_1m') >= 3, 'the queue lane');
+    assert.ok(!RCP.props.some(p => p.wall === 'w' && p.key !== 'exit_sign' && Math.abs(p.z - out.z) < 1.25), 'no wall prop stands in the doorway (the exit sign hangs over it)');
+    assert.ok(RCP.agents.some(a => a.pose === 'hqSit' && RCP.props.some(p => /^(office_chair|computer_chair_)/.test(p.key) && Math.hypot(p.x - a.x, p.z - a.z) < 0.05)), 'the clerk sits on the desk chair');
+    assert.ok(RCP.agents.some(a => a.pose === 'hqSit' && RCP.props.some(p => p.key === 'folding_chair' && Math.hypot(p.x - a.x, p.z - a.z) < 0.05)), 'the new hire sits on a folding chair');
+    assert.ok(RCP.lines.length >= 3 && RCP.spawn, 'overheard lines and a spawn');
+    assert.deepStrictEqual(boxPropProblems('reception', RCP), []);
+    const rows = D.hqRoomRegister().filter(r => r.no === '1');
+    assert.strictEqual(rows.length, 1); assert.strictEqual(rows[0].kind, 'room'); assert.strictEqual(rows[0].id, 'reception');
+});
+
+test('Room 1 — the intake sheet: hqIntakeCard off the profile, the two halves of the employee number, the fee never collected', () => {
+    assert.strictEqual(typeof D.hqIntakeCard, 'function');
+    const blank = D.hqIntakeCard(null);
+    assert.ok(blank && blank.onFile === false && blank.status === 'NO FILE' && blank.tone === 'off', 'no profile = no file');
+    assert.match(blank.empNo, /^\d{3}-\d{3}$/, 'a formatted employee number even with no profile');
+    assert.strictEqual(blank.serving.length, 3); assert.strictEqual(blank.ticket.length, 3);
+    const fresh = D.hqIntakeCard({ username: 'PROBE', createdAt: '2026-09-14T10:00:00.000Z', elo: 1000, door: { desk: 'time', hq: { visits: 3, cuts: 2 } }, career: { matchesPlayed: 0 } });
+    assert.strictEqual(fresh.status, 'NEW ISSUE'); assert.strictEqual(fresh.callsign, 'PROBE'); assert.strictEqual(fresh.issued, '2026-09-14');
+    assert.strictEqual(fresh.empNo, D.doorEmployeeNo({ username: 'PROBE', createdAt: '2026-09-14T10:00:00.000Z' }), 'the same number the card prints');
+    assert.strictEqual(fresh.serving + fresh.ticket, fresh.empNo.replace('-', ''), 'the sign and the ticket are the two halves of the employee number');
+    assert.ok(fresh.desk && fresh.desk.key === 'time' && fresh.desk.label === 'TIME' && /^#/.test(fresh.desk.color), 'the desk stripe off DOOR_TEXT.DESKS');
+    assert.strictEqual(fresh.clearance.level, 1); assert.strictEqual(fresh.visits, 3); assert.strictEqual(fresh.reissues, 2);
+    assert.strictEqual(fresh.fee, D.HQ_LOST_CARD_FEE); assert.strictEqual(fresh.feeCharged, 0, 'the lost card fee has never been collected');
+    const onFile = D.hqIntakeCard({ username: 'X', createdAt: 'not a date', career: { matchesPlayed: 4, wins: 2 } });
+    assert.strictEqual(onFile.status, 'ON FILE'); assert.strictEqual(onFile.issued, ''); assert.strictEqual(onFile.desk, null, 'no desk = the one optional question unanswered');
+    assert.ok(onFile.queue >= 0 && Number.isFinite(onFile.queue), 'the gap is a number');
+});
+
+test('Room 1 — the source sites: the intake overlay, the dispenser panel, the two procs, the helper on window', () => {
+    const mp = fs.readFileSync(path.join(__dirname, 'map.js'), 'utf8');
+    const tr = fs.readFileSync(path.join(__dirname, 'three-renderer.js'), 'utf8');
+    const dj = fs.readFileSync(path.join(__dirname, 'data.js'), 'utf8');
+    assert.match(mp, /if \(act\.overlay === 'intake'\) return _hqIntakeHtml\(\);/, 'the laminator’s overlay is dispatched');
+    assert.match(mp, /function _hqIntakeHtml\(\) \{[\s\S]{0,400}?window\.hqIntakeCard/, 'the intake sheet reads hqIntakeCard');
+    assert.match(mp, /if \(c\.id === 'ticket'\) \{[\s\S]{0,300}?window\.hqIntakeCard/, 'the dispenser panel reads the same sheet');
+    assert.match(mp, /_mountReactProfile: 'PROFILE · ID CARD'/, 'the window’s fn is labelled');
+    assert.match(mp, /_mountReactProfile: '_unmountReactProfile'/, 'the profile is a modal over the paused building');
+    for (const k of ['now_serving', 'laminator']) assert.match(tr, new RegExp('^\\s+' + k + ': function \\(U\\) \\{', 'm'), 'the ' + k + ' proc');
+    assert.match(tr, /now_serving: function \(U\) \{[\s\S]{0,600}?window\.hqIntakeCard/, 'the sign reads the officer’s number');
+    assert.match(dj, /window\.hqIntakeCard = hqIntakeCard;/, 'hqIntakeCard is on window for map.js');
+});

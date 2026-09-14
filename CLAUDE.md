@@ -2392,3 +2392,28 @@ targets; if one lands wrong, that field is the edit. `npm test` runs
 `door-kit-batch.test.js`. UNSEEN LIVE (RULE #1c): every new leaf's face
 and swing, the camera's authored facing (a photo camera would want a desk,
 not a wall), the chairs' scale, the asteroids' size against the planets.
+
+## ROOM 1 (Reception as a room, HQ plan 7.4) — added 2026-09-14
+`DOOR_HQ.rooms.reception` (data.js) is RECEPTION, a `kind: 'box'` room
+behind the ground ring's window door at 120° (`central_egress.doors` id
+`reception` — it was a door straight to `_mountReactProfile`; the number
+`1` now sits on the ROOM, `hqDoorNo` reads it through). Counters:
+`window` (THE INTAKE WINDOW) → `_mountReactProfile` (the ID card — the
+callsign and the desk are still edited there); `laminator` (THE
+LAMINATOR) → `overlay: 'intake'` → map.js `_hqIntakeHtml`, which reads
+**`hqIntakeCard(profile)`** (data.js, on `window`, beside
+`hqMedicalRecord`) = `{ onFile, status, tone, note, empNo, callsign, desk,
+clearance, rank, issued, photo, visits, days, reissues, fee, feeCharged,
+serving, ticket, queue }` — the ONE read for the sheet, the dispenser
+panel and the sign; `ticket` (NOW SERVING) has `action: {}` —
+`_hqCounterPanelHtml` renders its panel by id (the sign = the first half
+of the employee number, the ticket = the second, AHEAD OF YOU = the gap).
+Procs in `_hqProcBuilders` (three-renderer.js): `now_serving` (wall,
+front +z, `glow`; the digits are a `_hzTextTex` plane keyed by the ACTIVE
+profile's number at build, `000` without one) and `laminator` (a
+tabletop proc — place it with `y` = the desk top, `foot` 0). The hall's
+intake wedge at 128° is untouched (the window from the hall side).
+Viewer-local (RULE #2). doorhq.test.js guards the room, the helper and
+the source sites. `HQ_LOST_CARD_FEE` (86) is never charged — a number the
+sheet prints, not an economy hook.
+

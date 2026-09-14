@@ -18181,6 +18181,8 @@ const DOOR_HQ = {
         server_rack:       { proc: 'server_rack',    h: 2.1,     foot: 0, wall: true, mount: 0,    depth: 0.8,  block: true, glow: { y: 1.2, size: 1.1, color: 0x8fe0c8 } },   // a 42U rack, the LEDs on
         keypad:            { proc: 'keypad',         h: 0.16,    foot: 0, wall: true, mount: 1.3,  depth: 0.04 },   // the door's keypad; the code is on a sticky note
         wall_padding:      { proc: 'wall_padding',   h: 2.4,     foot: 0, wall: true, mount: 0.1,  depth: 0.14 },   // Room 5150: a wall of tufted vinyl cushions (plan 7.4, 2026-09-13 rev 3)
+        now_serving:       { proc: 'now_serving',    h: 0.42,    foot: 0, wall: true, mount: 2.15, depth: 0.12, glow: { y: 0.21, size: 1.3, color: 0xe83a2a } },   // Room 1: the NOW SERVING sign — red digits, and the ticket dispenser under it (plan 7.4, 2026-09-14)
+        laminator:         { proc: 'laminator',      h: 0.24,    foot: 0 },   // Room 1: the laminator on the intake desk, a card half out of it (tabletop: y = the desk top)
         /* ══ THE 2026-09-10 BATCH (30 Meshy GLBs, R2 Assets/door/models/) ══
            The user's cafeteria / office / mission kit. Four of them RETIRE a
            procedural prop (plan 2.7 said "replace any of them by giving the
@@ -19825,7 +19827,12 @@ const DOOR_HQ = {
                    vending machine moved from 105° to 98° to make the doorway. */
                 { id: 'barbershop',     deg: 105, level: 0, leaf: 'leaf_birch_glass',                     label: 'OCCAM’S BARBERSHOP',      sub: 'CHANGE AVATAR', action: { room: 'barbershop', at: 'egress' },
                   desc: 'Room 1287. Change your appearance: sit, and walk out as the recruit, your most-played vessel, an agent in black, or anything the Department has declassified. The mirror is Reception’s — the photo on your card follows the chair. Two explanations for how you look; he only does the shorter one.' },
-                { id: 'reception',      deg: 120, level: 0, leaf: 'leaf_window_large',                     label: 'RECEPTION',               sub: 'VIEW PROFILE',            action: { fn: '_mountReactProfile' }, roomNo: '1', why: 'one foot in the door; forms start at 1', desc: 'Employee ID cards, laminator, LOST CARD FEE. Your profile lives here.' },
+                /* ROOM 1 · RECEPTION (plan 7.4, 2026-09-14): the door is now the way
+                   INTO the intake office — the window (your ID card / profile), the
+                   laminator (the intake sheet), the ticket dispenser. The number
+                   moved onto the room (hqDoorNo reads it through). */
+                { id: 'reception',      deg: 120, level: 0, leaf: 'leaf_window_large',                     label: 'RECEPTION',               sub: 'ID CARD · SIGN IN',       action: { room: 'reception', at: 'egress' },
+                  desc: 'Room 1. Intake. Employee ID cards, the laminator, LOST CARD FEE. Take a number; the number is being served in an order the office does not explain.' },
                 { id: 'office',         deg: 150, level: 0, leaf: 'leaf_closet_warped',             label: 'YOUR OFFICE',             sub: 'STORY · CASE FILE',          action: { room: 'office', at: 'egress' }, desc: 'A converted janitor’s closet. Cot, mop bucket, CRT, phone, drain. The in-tray is where the story arrives.', rankDoor: true },
                 { id: 'training',       deg: 180, level: 0, leaf: 'leaf_exit',                      label: 'TRAINING ROOM',           sub: 'PRACTICE · GAUNTLET · DUNGEON',   action: { room: 'training', at: 'egress' }, desc: 'Room 64. The only authorized square room in the building — an 8×8 grid, deemed totally safe, notoriously leaky. ORTHOGONAL GEOMETRY EXPOSURE AREA · MAX OCCUPANCY 45 MINUTES.' },
                 /* ROOM 1111 · MEDICAL (plan 7.4, 2026-09-13 rev 3): the door is now the
@@ -20682,6 +20689,126 @@ const DOOR_HQ = {
            the cell door, a patient sits on the far cot. Lines are Claude's
            stage dressing (the room's overheard pool), not cast lines (A15).
            Viewer-local, nothing relayed (RULE #2). ── */
+        /* ── ROOM 1 · RECEPTION (HQ plan 7.4, 2026-09-14) — the intake office
+           behind the ground ring's window door at 120° (between the Barbershop
+           at 105° and Your Office at 150°). It was a door straight to the
+           profile; now it is the room the profile lives in. THE INTAKE WINDOW
+           (counter → _mountReactProfile) is the ID card — the callsign, the
+           desk stripe, the photo, the stamps on the back; THE LAMINATOR
+           (counter → overlay 'intake', map.js _hqIntakeHtml) reads the INTAKE
+           SHEET — data.js hqIntakeCard(profile): the employee number, the
+           callsign, the desk, the clearance, the rank, the issue date, the
+           photo on file, the visits, the reissues, the LOST CARD FEE that has
+           never been charged; NOW SERVING (counter `ticket`, action: {}) is
+           the dispenser under the sign — the number being served is the first
+           half of your employee number, yours is the second half, and the
+           office does not explain the gap. The hall's intake wedge at 128°
+           stays where it is (it is the window from the hall side; Rhonda's
+           misfiled paperwork lives there). Viewer-local, nothing relayed
+           (RULE #2). "One foot in the door" — forms start at 1. ── */
+        reception: {
+            label: 'RECEPTION',
+            sub: 'ID CARD · SIGN IN',
+            roomNo: '1', why: 'one foot in the door; forms start at 1',
+            kind: 'box',
+            shell: {
+                w: 8, d: 6, h: 3.2,
+                wallH: 3.2, dadoH: 1.1,
+                floor: 'terrazzo', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
+                floorColor: 0xd6d3c8, wallColor: 0xe6e1d2, dadoColor: 0x6a3d36,   // painted down: the hall's oxblood dado on the intake side, the plaster gone cream
+                pipes: false,                       // an acoustic ceiling; the forms are dusty enough
+                light: { x: 0, z: 0 },
+                mood: { light: 0xf3ecd8 },          // warm fluorescents, one of them buzzing
+                plate: { x: -1.5, z: -2.95, y: 2.75 },
+            },
+            doors: [
+                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_window_large',
+                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
+                  action: { room: 'central_egress', at: 'reception' },
+                  desc: 'The way back to the hall. New hires are asked to leave the way they came in; the office has never explained where else they would leave.' },
+            ],
+            counters: [
+                /* THE INTAKE WINDOW → the profile: the ID card, the callsign, the desk, the stamps */
+                { id: 'window', x: -1.6, z: -2.05, face: 180, plateY: 1.85, radius: 1.9, verb: 'SIGN IN',
+                  label: 'THE INTAKE WINDOW', sub: 'ID CARD · PROFILE', action: { fn: '_mountReactProfile' },
+                  desc: 'The window. Your employee ID card — the callsign, the desk, the photo, the stamps on the back. The clerk slides it under the glass; the glass was removed in 1987.' },
+                /* THE LAMINATOR → the intake sheet: everything the card was printed from */
+                { id: 'laminator', x: 1.6, z: -2.05, face: 180, plateY: 1.85, radius: 1.9, verb: 'READ',
+                  label: 'THE LAMINATOR', sub: 'YOUR INTAKE SHEET', action: { overlay: 'intake' },
+                  desc: 'The intake sheet the card was printed from: employee number, clearance, the desk you chose, the photo on file, and the LOST CARD FEE the office has never once collected.' },
+                /* NOW SERVING → the dispenser: a number, and a panel */
+                { id: 'ticket', x: 0, z: -2.35, face: 180, plateY: 1.75, radius: 1.5, verb: 'TAKE A NUMBER',
+                  label: 'NOW SERVING', sub: 'TAKE A NUMBER', action: {},
+                  desc: 'The dispenser under the sign. The sign is the first half of your employee number; the ticket is the second. The office is working through the gap.' },
+            ],
+            props: [
+                /* ── the north wall: THE INTAKE WINDOW, NOW SERVING, THE LAMINATOR — two desks, the sign between ── */
+                { key: 'security_camera', wall: 'n', x: -3.5, mount: 2.55 },
+                { key: 'tanker_desk',    wall: 'n', x: -1.6 },
+                { key: 'crt_terminal',   x: -2.0,  z: -2.55, y: 0.76, face: 180 },
+                { key: 'clipboard_flat', x: -1.35, z: -2.4,  y: 0.76, face: 175 },
+                { key: 'pen',            x: -1.1,  z: -2.3,  y: 0.76, face: 250 },
+                { key: 'rotary_phone',   x: -0.95, z: -2.6,  y: 0.76, face: 200 },
+                { key: 'coffee_mug',     x: -2.3,  z: -2.35, y: 0.76, face: 140 },
+                { key: 'computer_chair_blue', x: -1.6, z: -1.95, face: 0 },          // the clerk's, facing the window (the 2026-09-13 chair)
+                { key: 'now_serving',    wall: 'n', x: 0 },                           // the sign, red digits; the dispenser hangs under it
+                { key: 'tanker_desk',    wall: 'n', x: 1.6 },
+                { key: 'laminator',      x: 1.6,   z: -2.6,  y: 0.76, face: 180 },   // THE LAMINATOR, a card half out of it
+                { key: 'manila_folders', x: 2.25,  z: -2.5,  y: 0.76, face: 10 },
+                { key: 'papers_a',       x: 0.95,  z: -2.55, y: 0.76, face: 25 },
+                { key: 'desk_lamp',      x: 2.2,   z: -2.75, y: 0.76, face: 210 },
+                { key: 'wall_clock',     wall: 'n', x: 3.2, mount: 2.5 },
+                /* ── the east wall: the files, the notice board, the cooler ── */
+                { key: 'filing_cabinet', wall: 'e', z: -2.3 },
+                { key: 'filing_cabinet', wall: 'e', z: -1.65 },
+                { key: 'cardboard_box',  x: 3.5,   z: -1.0, face: 15 },               // FORMS, MISC — the box has been there longer than the cabinets
+                { key: 'notice_board',   wall: 'e', z: 0.4 },
+                { key: 'vent_grille',    wall: 'e', z: 1.6, mount: 2.35 },
+                { key: 'water_cooler',   wall: 'e', z: 2.4 },
+                /* ── the south wall: the waiting room — four folding chairs, the low table, the plant ── */
+                { key: 'folding_chair',  x: -2.4, z: 2.55, face: 0 },
+                { key: 'folding_chair',  x: -1.6, z: 2.55, face: 0 },
+                { key: 'folding_chair',  x: -0.8, z: 2.55, face: 0 },
+                { key: 'folding_chair',  x: 0.0,  z: 2.55, face: 0 },
+                { key: 'papers_a',       x: -0.8, z: 2.55, y: 0.42, face: 15 },      // a magazine, older than the chair
+                { key: 'coffee_table',   x: 1.6,  z: 2.3 },
+                { key: 'manila_folders', x: 1.6,  z: 2.3,  y: 0.46, face: 340 },     // the forms you take a number for
+                { key: 'potted_plant',   x: 3.4,  z: 2.5,  face: 200 },
+                { key: 'trash_bin',      x: -3.3, z: 2.5,  face: 250 },
+                { key: 'breaker_panel',  wall: 's', x: 3.0 },
+                /* ── the west wall: the way in, the plate, the hooks, the mat ── */
+                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.75 },
+                { key: 'nameplate',      wall: 'w', z: -1.6, mount: 1.55 },
+                { key: 'hook_rail',      wall: 'w', z: 2.0 },
+                { key: 'rug_office',     x: -2.3,  z: 0.0 },
+                { key: 'wet_floor_sign', x: 2.8,   z: 0.9,  face: 140 },
+                /* ── the floor: the queue lane, the ceiling ── */
+                { key: 'railing_1m',     x: -0.5,  z: -0.9, face: 0 },
+                { key: 'railing_1m',     x: 0.5,   z: -0.9, face: 0 },
+                { key: 'railing_1m',     x: 1.5,   z: -0.9, face: 0 },
+                { key: 'fluorescent',    x: -2.0, z: 0, ceil: true, face: 0 },
+                { key: 'fluorescent',    x: 2.0,  z: 0, ceil: true, face: 0 },
+            ],
+            agents: [
+                { x: -1.6, z: -1.95, face: 0, pose: 'hqSit', gender: 'female', label: 'THE INTAKE CLERK', reach: 1.9,
+                  line: '“Callsign, desk, and a photo you can live with. The photo is the only one of the three you cannot change here.”' },
+                { x: -2.9, z: -2.0, face: 120, pose: 'hqArms', gender: 'male', label: 'THE GUARD', reach: 1.6,
+                  line: '“Numbers are called in order. The order is on a form. The form is being laminated.”' },
+                { x: 0.0, z: 2.55, face: 0, pose: 'hqSit', gender: 'male', label: 'THE NEW HIRE', reach: 1.6,
+                  line: '“I have number four. They are serving number four. They have been serving number four since I got here.”' },
+            ],
+            npcSpots: [
+                { x: -2.4, z: 2.55, face: 0 },      // waiting, on the first chair
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Lost card?” “Lost card fee.” “How much?” “It has never come up.”',
+                '“Now serving four hundred and twelve.” “I have nine.” “Then you are early.”',
+                '“The laminator is warm.” “It is always warm.” “What is it laminating?” “The form about the laminator.”',
+                '“One foot in the door.” “And the other?” “Forms start at 1. The other foot is Form 2.”',
+            ],
+            spawn: { x: -2.6, z: 0, face: 90 },
+        },
         medical: {
             label: 'MEDICAL',
             sub: 'CHALLENGE MODE',
@@ -22465,6 +22592,55 @@ function hqMedicalRecord(profile) {
     else if (out.matches > 0) { out.condition = 'FIT FOR DUTY'; out.tone = 'stabilized'; out.note = 'Processed and released. The desk will file the next attempt when there is one.'; }
     return out;
 }
+/* ROOM 1 · RECEPTION (HQ plan 7.4, 2026-09-14): THE INTAKE SHEET — the one
+   read for the laminator's panel and the NOW SERVING dispenser. Everything
+   the ID card is printed from, off the profile: the employee number
+   (doorEmployeeNo), the callsign, the desk stripe (DOOR_TEXT.DESKS), the
+   clearance (doorClearance), the rank (profile.js getRankInfo when it is
+   loaded), the issue date, the photo on file (the barbershop's pick / the
+   mirror's look), the visits, the punch clock's days, the reissues (every
+   change of face at the chair), and the LOST CARD FEE — a number the office
+   has never once collected. `serving` / `ticket` are the two halves of the
+   employee number: the sign shows the first, your ticket is the second. */
+const HQ_LOST_CARD_FEE = 86;
+function hqIntakeCard(profile) {
+    const p = profile || null;
+    const empNo = (typeof doorEmployeeNo === 'function') ? doorEmployeeNo(p) : '000-000';
+    const cl = (typeof doorClearance === 'function') ? doorClearance(p) : { level: 1, title: 'PROBATIONARY' };
+    const deskKey = (p && p.door && p.door.desk) || null;
+    const deskRow = (deskKey && DOOR_TEXT.DESKS && DOOR_TEXT.DESKS[deskKey]) || null;
+    const hq = (p && p.door && p.door.hq && typeof p.door.hq === 'object') ? p.door.hq : {};
+    const c = (p && p.career) || {};
+    const n = v => (typeof v === 'number' && isFinite(v)) ? v : 0;
+    let rank = '';
+    try { if (p && typeof getRankInfo === 'function') { const r = getRankInfo(typeof p.elo === 'number' ? p.elo : 1000); rank = String((r && (r.name || r.title || r.label)) || '').toUpperCase(); } } catch (e) {}
+    let issued = '';
+    try { if (p && p.createdAt) { const d = new Date(p.createdAt); if (!isNaN(d.getTime())) issued = d.toISOString().slice(0, 10); } } catch (e) {}
+    let days = 0;
+    try { const pc = (p && typeof hqPunchClock === 'function') ? hqPunchClock(p) : null; if (pc) days = n(pc.days); } catch (e) {}
+    let photo = 'PHOTO PENDING', look = null, pref = null;
+    try { look = (p && typeof hqLook === 'function') ? hqLook(p) : null; pref = (p && typeof hqAvatarPref === 'function') ? hqAvatarPref(p) : null; } catch (e) {}
+    if (look && look.portrait) photo = 'YOUR OWN LOOK · THE MIRROR, ROOM 1287';
+    else if (pref && typeof hqAvatarLabel === 'function') photo = String(hqAvatarLabel(pref) || 'THE RECRUIT').toUpperCase();
+    const digits = String(empNo).replace(/\D/g, '').padEnd(6, '0');
+    const matches = n(c.matchesPlayed);
+    const out = {
+        onFile: !!p,
+        empNo: empNo, callsign: (p && p.username) || '', rank: rank, issued: issued,
+        desk: deskRow ? { key: deskKey, label: deskRow.label, color: deskRow.color, ink: deskRow.ink } : null,
+        clearance: { level: cl.level | 0, title: cl.title || '' },
+        photo: photo, visits: n(hq.visits), days: days, reissues: n(hq.cuts) + (look && look.portrait ? 1 : 0),
+        matches: matches, fee: HQ_LOST_CARD_FEE, feeCharged: 0,
+        serving: digits.slice(0, 3), ticket: digits.slice(3, 6),
+        status: !p ? 'NO FILE' : (matches > 0 ? 'ON FILE' : 'NEW ISSUE'),
+        tone: !p ? 'off' : (matches > 0 ? 'stabilized' : 'open'),
+    };
+    out.queue = Math.abs(parseInt(out.ticket, 10) - parseInt(out.serving, 10)) || 0;
+    out.note = !p ? 'No sheet on file. Sign in at the window first.'
+        : (matches > 0 ? 'Card issued and laminated. Every crossing since is a stamp on the back.'
+                       : 'Card issued. Not yet laminated — the laminator is warm, the office is working through the queue.');
+    return out;
+}
 function hqTrophyCount(profile) {
     const cat = (typeof ACH_CATALOG !== 'undefined' && Array.isArray(ACH_CATALOG)) ? ACH_CATALOG : [];
     const out = { done: 0, total: 0, champs: 0, feats: 0, lines: [] };
@@ -23412,6 +23588,8 @@ if (typeof window !== 'undefined') {
     window.hqPunchClock = hqPunchClock;
     window.hqTrophyCount = hqTrophyCount;
     window.hqMedicalRecord = hqMedicalRecord;
+    window.hqIntakeCard = hqIntakeCard;
+    window.HQ_LOST_CARD_FEE = HQ_LOST_CARD_FEE;
     window.hqPunchIn = hqPunchIn;
     window.hqCanonToday = hqCanonToday;
     window.hqAvatarPref = hqAvatarPref;

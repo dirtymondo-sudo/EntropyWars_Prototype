@@ -37764,6 +37764,48 @@ const ThreeRenderer = (function () {
             }
             return g;
         },
+        /* ROOM 1 · RECEPTION (plan 7.4, 2026-09-14). Two procs. NOW SERVING is a
+           wall sign (front +z): a black housing, the legend, three red digits
+           on a lit plane — the first half of the officer's employee number
+           (data.js hqIntakeCard; '000' with no profile), and the ticket
+           dispenser bolted under it with one tongue of paper out. */
+        now_serving: function (U) {
+            var g = new THREE.Group();
+            var W = 0.9, H = 0.42, D = 0.12;
+            var serving = '000';
+            try { if (typeof window.hqIntakeCard === 'function' && window.ProfileSystem) { var ic = window.hqIntakeCard(window.ProfileSystem.getActiveProfile()); if (ic && ic.serving) serving = ic.serving; } } catch (e) {}
+            var housing = _hqBox(W, H, D, _hqMat(null, 1, 1, { color: 0x1d1d22, shininess: 50, specular: 0x555555 })); housing.position.set(0, (H / 2) * U, (D / 2) * U); g.add(housing);
+            var bezel = _hqBox(W - 0.06, H - 0.06, 0.01, _hqMat(null, 1, 1, { color: 0x2c2c33, shininess: 30 })); bezel.position.set(0, (H / 2) * U, (D + 0.004) * U); g.add(bezel);
+            var tex = (typeof _hzTextTex === 'function') ? _hzTextTex('hq_serving_' + serving, ['NOW SERVING', serving], { w: 256, h: 128, bg: '#0a0a0c', color: '#ff3b2a', pad: 0.12 }) : null;
+            var face = new THREE.Mesh(new THREE.PlaneGeometry((W - 0.12) * U, (H - 0.12) * U), tex ? new THREE.MeshBasicMaterial({ map: tex }) : _hqBasic(0xff3b2a));
+            face.position.set(0, (H / 2) * U, (D + 0.012) * U); g.add(face);
+            var lamp = new THREE.Mesh(new THREE.SphereGeometry(0.014 * U, 8, 6), _hqBasic(0x3aff5a)); lamp.position.set((W / 2 - 0.05) * U, (H - 0.05) * U, (D + 0.01) * U); g.add(lamp);
+            /* the dispenser: a small steel box under the sign, the paper tongue out of its slot */
+            var steel = _hqMat(null, 1, 1, { color: 0x8a8e96, shininess: 60, specular: 0x777777 });
+            var box = _hqBox(0.22, 0.16, 0.14, steel); box.position.set(0, -0.14 * U, 0.07 * U); g.add(box);
+            var slot = _hqBox(0.12, 0.012, 0.02, _hqBasic(0x111114)); slot.position.set(0, -0.19 * U, 0.145 * U); g.add(slot);
+            var tongue = _hqBox(0.1, 0.05, 0.003, _hqMat(null, 1, 1, { color: 0xe9dfc6, shininess: 2 })); tongue.position.set(0, -0.215 * U, 0.17 * U); tongue.rotation.x = 0.35; g.add(tongue);
+            var sticker = _hqBox(0.16, 0.05, 0.003, _hqBasic(0xd9b45a)); sticker.position.set(0, -0.1 * U, 0.142 * U); g.add(sticker);   // TAKE A NUMBER
+            return g;
+        },
+        /* THE LAMINATOR: a tabletop machine (y = the desk top) — a beige body,
+           the feed tray, the rollers' slot, a card half out of the front, and
+           the READY lamp that is always on. Front = +z. */
+        laminator: function (U) {
+            var g = new THREE.Group();
+            var W = 0.4, H = 0.14, D = 0.26;
+            var beige = _hqMat(null, 1, 1, { color: 0xd8d0bc, shininess: 22 });
+            var dark = _hqMat(null, 1, 1, { color: 0x2a2a2e, shininess: 40 });
+            var body = _hqBox(W, H, D, beige); body.position.set(0, (H / 2) * U, 0); g.add(body);
+            var lid = _hqBox(W - 0.04, 0.02, D - 0.06, _hqMat(null, 1, 1, { color: 0xc8bfa8, shininess: 30 })); lid.position.set(0, (H + 0.01) * U, -0.01 * U); g.add(lid);
+            var tray = _hqBox(W - 0.08, 0.008, 0.12, dark); tray.position.set(0, 0.075 * U, -(D / 2 + 0.05) * U); tray.rotation.x = -0.12; g.add(tray);   // the feed tray, behind
+            var slot = _hqBox(W - 0.1, 0.014, 0.01, _hqBasic(0x0e0e10)); slot.position.set(0, 0.07 * U, (D / 2 + 0.002) * U); g.add(slot);
+            var card = _hqBox(0.086, 0.004, 0.11, _hqMat(null, 1, 1, { color: 0xf1ead6, shininess: 55, specular: 0x999999 })); card.position.set(0.02 * U, 0.072 * U, (D / 2 + 0.05) * U); g.add(card);   // half out, still warm
+            var stripe = _hqBox(0.086, 0.005, 0.02, _hqBasic(0x5a8898)); stripe.position.set(0.02 * U, 0.073 * U, (D / 2 + 0.08) * U); g.add(stripe);   // the desk stripe (SPACE, on the sample card)
+            var lamp = new THREE.Mesh(new THREE.SphereGeometry(0.01 * U, 8, 6), _hqBasic(0x3aff5a)); lamp.position.set((W / 2 - 0.05) * U, 0.11 * U, (D / 2 + 0.004) * U); g.add(lamp);   // READY
+            var dial = new THREE.Mesh(new THREE.CylinderGeometry(0.018 * U, 0.018 * U, 0.012 * U, 14), dark); dial.rotation.x = Math.PI / 2; dial.position.set((W / 2 - 0.11) * U, 0.11 * U, (D / 2 + 0.004) * U); g.add(dial);
+            return g;
+        },
         notice_board: function (U) {
             var g = new THREE.Group();
             var W = 1.6, H = 1.15, D = 0.06;

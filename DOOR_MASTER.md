@@ -2179,3 +2179,18 @@ Files: data.js, ui.js, battle.js, state.js, hud.js, map.js, styles-base.css,
 styles-cinematic.css → R2; index.html (`20260913-tutorial-01-cors`) → Render;
 tutorial.test.js, check-tutorial-drift.js, docs → the repo. Full log:
 DOOR_HQ_BUILD_PLAN.md §9 (2026-09-13 rev 4). Not playtested.
+
+### 2026-09-14 — 7.4 ROOM 1: RECEPTION is a room
+The window door at 120° walks into the intake office instead of opening
+the profile. THE INTAKE WINDOW is the profile (the ID card, unchanged);
+THE LAMINATOR reads the intake sheet the card was printed from (data.js
+`hqIntakeCard`: employee number, callsign, desk, clearance, rank, issue
+date, the photo on file, visits, reissues, and the LOST CARD FEE — 💰 86,
+collected to date: never); NOW SERVING is a red-digit sign showing the
+first half of your employee number, the dispenser under it hands you the
+second, and the office is working through the gap. The clerk, the guard,
+the new hire on number four. The hall's intake wedge stays. Files:
+data.js, three-renderer.js, map.js → R2; index.html
+(`20260914-hq-room1-01-cors`) → Render; doorhq.test.js, docs → the repo.
+Full log: DOOR_HQ_BUILD_PLAN.md §9 (2026-09-14). Not playtested.
+
