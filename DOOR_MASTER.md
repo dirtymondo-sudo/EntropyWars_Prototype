@@ -2216,3 +2216,19 @@ mesh, `door-race.test.js`. Stats retuned into the grade band. Decisions
 D1–D6 taken at the recommended column (the Janitor's key not built). The
 roster lines are one placeholder — user-authored (A15). Full log:
 `DOOR_RACE_DESIGN.md` §9.
+
+### 2026-09-14 (rev 2) — THE PENTHOUSE: the elevator rides (5.4 stage 1, Rooms 4C + 8)
+The mezzanine elevator (KEYHOLDER + 12 Keys, unchanged) lands in
+`rooms.executive`, THE PENTHOUSE — an executive lobby with THE FLOOR
+PANEL (sixteen buttons, M and PH lit, no 13; M is the way down) and two
+doors: Room 4C · THE CORNER OFFICE (A5's "your office → Executive at
+L4+": the closet's in-tray moved up, the achievements as wall plaques,
+THE WINDOW that should not exist looking out on the seven bays; the
+closet and its rank door stay yours) and Room 8 · THE INFINITY POOL (an
+open room under Heaven's sky behind a parapet, the basin with a weir over
+the void, loungers, THE EDGE, THE RANKING → the leaderboard, the online
+shift on break). Not a third rotunda — the rings of A5 stay a floor plan,
+not a build. Delivery `ENTROPY_WARS_HQ_EXECUTIVE_FLOOR.zip`: data.js,
+three-renderer.js, map.js → R2; index.html
+(`?v=20260914-hq-executive-01-cors`) → Render; doorhq.test.js, docs → the
+repo. Full log: DOOR_HQ_BUILD_PLAN.md §9 (2026-09-14 rev 2). Not playtested.

@@ -2447,6 +2447,43 @@ the source sites. `HQ_LOST_CARD_FEE` (86) is never charged — a number the
 sheet prints, not an economy hook.
 
 
+## THE PENTHOUSE + ROOMS 4C + 8 (the elevator rides, HQ plan 5.4 stage 1 / 7.4) — added 2026-09-14
+`DOOR_HQ.rooms.executive` (data.js) is THE PENTHOUSE, a `kind: 'box'` lobby
+behind the mezzanine ELEVATOR at 0° (`central_egress.doors` id `elevator`,
+`proc: 'elevator'`, KEYHOLDER + 12 Keys — the gate is that door's, the lobby
+wears NO `roomNo`: it is a floor and the register skips it). The way down
+is the car on the lobby's south wall (a box-room door with `proc:
+'elevator'` and no leaf; never gated) → `{ room: 'central_egress', at:
+'elevator' }`. Counter `floorpanel` has `action: {}` — `_hqCounterPanelHtml`
+renders its panel by id (the elevator door's `floors` as chips, M and PH
+lit, `M ▸ DOWN` = a `data-room` button). Two doors off it: **`rooms.corner`
+= ROOM 4C · THE CORNER OFFICE** (east wall, `leaf_glass_exec`): counters
+`intray` → `overlay: 'intray'` (the SAME case-file sheet as Room 101 —
+the closet stays yours and keeps the rank door; 4C's door is never
+`rankDoor`), `plaques` → `_mountReactTrophies`, `view` (`action: {}`) →
+the by-id panel: one row per bay, `hqSiteMastery` summed over its
+thresholds. **`rooms.pool` = ROOM 8 · THE INFINITY POOL** (north wall,
+`leaf_glass`): the FIRST hand-authored OPEN room — `shell.open: true`,
+`edge: 'low'` (the parapet), `shell.sky` = a hand copy of the
+`prebuilt_heaven` env row (doorhq.test.js diffs tint / fog / scenery
+against `EW_MAP_META` — edit both or the test fails), `apron: 'cloud_2'`,
+terrain-sheet keys for floor / wall (`_hqTex` falls through to
+`TERRAIN_SPRITES`), `shell.lights` = the point lights (an open room has no
+fluorescents). Counters `edge` (`action: {}` → the by-id panel: the punch
+clock as ON BREAK, the engraved count, the leaderboard button) and
+`ranking` → `_mountLeaderboard`; `onlineSpots` on the loungers (Room 86's
+rule). Procs in `_hqProcBuilders` (three-renderer.js, after `telescope`):
+`floor_panel` (wall), `exec_desk` (wall, `block`, top 0.76 — desk props at
+`y: 0.76`), `exec_chair` (floor, `block`), `wall_plaques` (wall; gold per
+`hqTrophyCount` at build), `false_window` (wall, `glow`), `infinity_pool`,
+`pool_lounger` (seat 0.42, `hqSit` at its x/z), `pool_umbrella`. **RECT
+BLOCKERS**: a catalogue row may carry `rect: { hw, hd }` (metres, ROOM
+axes — place the prop at `face` 0 / 180) and both prop-blocker sites in
+`_hqPlaceProps` pass it through (`_hqBlkContains` already honoured
+`b.rect`); the pool is the first. All three rooms are viewer-local (RULE
+#2). doorhq.test.js guards the ride, both rooms, the sky diff, the rect and
+the source sites. Still open in 7.4: the Fourier Foyer only.
+
 ## THE SOCKET PICKER'S TABS + FILTERS (the Freelancer pool window) — 2026-09-14, local delivery
 The ＋ RACE SOCKET / ＋ JOB SOCKET window (party-builder.js, the node
 picker after the RACE ABILITIES strip) wears five category TABS (ALL ·

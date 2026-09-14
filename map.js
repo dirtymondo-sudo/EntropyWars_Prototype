@@ -1626,6 +1626,54 @@
                 html += '<p class="hq-panel-note">Leave is served here when it is served. The door is not locked. Nobody comments on why that is the part that worries people.</p>';
                 return html;
             }
+            /* THE FLOOR PANEL (THE PENTHOUSE, plan 5.4 stage 1): sixteen buttons, two of them work — M is the way down, PH is where you stand */
+            if (c.id === 'floorpanel') {
+                const el = (DOOR_HQ.rooms.central_egress.doors || []).find(d => d.id === 'elevator') || {};
+                const floors = Array.isArray(el.floors) ? el.floors : ['M', 'PH'];
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'The panel by the car.') + '</p>';
+                html += '<div class="hq-chips"><span>FLOOR PANEL</span>' + floors.map(f => `<i class="hq-chip${(f === 'M' || f === 'PH') ? '' : ' dim'}">${_hqEsc(f)}</i>`).join('') + '</div>';
+                html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-room="central_egress" data-at="elevator">M ▸ DOWN · THE MAIN HALL</button><button class="hq-btn" data-close="1">PH ▸ YOU ARE HERE</button></div>';
+                html += '<p class="hq-panel-note">There is no 13. Room 13 is filed in Bay 1, not on a floor. The other fourteen buttons light when pressed; the car stays where it is.</p>';
+                return html;
+            }
+            /* THE WINDOW (Room 4C): a corner office in a round building — the view is the seven bays, with the count on file for each */
+            if (c.id === 'view') {
+                const profile = _hqProfile();
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'A window in a wall the building does not have.') + '</p>';
+                const secs = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.sectors) || {};
+                const keys = Object.keys(secs).filter(k => secs[k] && Array.isArray(secs[k].maps));
+                keys.sort((a, b) => (((typeof window.hqBayNo === 'function') ? window.hqBayNo(a) : 99) || 99) - (((typeof window.hqBayNo === 'function') ? window.hqBayNo(b) : 99) || 99));
+                if (keys.length) {
+                    html += '<div class="hq-rows">';
+                    keys.forEach(k => {
+                        const sec = secs[k];
+                        let done = 0, total = 0;
+                        sec.maps.forEach(id => { const sm = (typeof window.hqSiteMastery === 'function') ? window.hqSiteMastery(id, profile) : null; if (sm) { done += sm.done; total += sm.total; } });
+                        const bayNo = (typeof window.hqBayNo === 'function') ? window.hqBayNo(k) : '';
+                        const st = total && done >= total ? 'stabilized' : (done ? 'unstable' : 'off');
+                        html += `<div class="hq-row hq-row-tray"><b>BAY ${_hqEsc(bayNo)} · ${_hqEsc(String(sec.label || k).toUpperCase())}</b><span>${sec.maps.length} THRESHOLD${sec.maps.length === 1 ? '' : 'S'} · ${_hqEsc(sec.sub || '')}</span><i class="hq-lamp-chip st-${st}">${done} / ${total}</i></div>`;
+                    });
+                    html += '</div>';
+                }
+                html += '<div class="hq-panel-actions"><button class="hq-btn" data-fn="_mountReactProfile">THE CARD ▸ PROFILE</button><button class="hq-btn hq-btn-primary" data-close="1">LOOK AWAY</button></div>';
+                html += '<p class="hq-panel-note">Two outside walls. The building is round. The window was here when the office was; the office has stopped asking.</p>';
+                return html;
+            }
+            /* THE EDGE (Room 8): the view over the void, and who is on break — the top of the board */
+            if (c.id === 'edge') {
+                const profile = _hqProfile();
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'The far side of the pool is a weir.') + '</p>';
+                const pc = (typeof window.hqPunchClock === 'function') ? window.hqPunchClock(profile) : null;
+                const tc = (typeof window.hqTrophyCount === 'function') ? window.hqTrophyCount(profile) : null;
+                html += '<div class="hq-rows">'
+                    + `<div class="hq-row hq-row-tray"><b>THE EDGE</b><span>THE WATER GOES OVER IT. THE VOID HAS NOT SAID WHERE.</span><i class="hq-lamp-chip st-off">∞</i></div>`
+                    + (pc ? `<div class="hq-row hq-row-tray"><b>ON BREAK</b><span>${pc.lapsed ? 'THE PUNCH CLOCK LAPSED — THE BREAK IS OVER' : 'DAY ' + (pc.streak || 0) + ' OF THE STREAK · BEST ' + (pc.best || 0)}</span><i class="hq-lamp-chip st-${pc.lapsed ? 'unstable' : 'stabilized'}">${pc.streak || 0}</i></div>` : '')
+                    + (tc ? `<div class="hq-row hq-row-tray"><b>ON THE BOARD</b><span>${tc.done} OF ${tc.total} ENGRAVED — THE TOP OF IT TAKES ITS BREAK HERE</span><i class="hq-lamp-chip st-${tc.done ? 'stabilized' : 'off'}">${tc.done}</i></div>` : '')
+                    + '</div>';
+                html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="_mountLeaderboard">THE RANKING ▸ LEADERBOARD</button><button class="hq-btn" data-close="1">STEP BACK</button></div>';
+                html += '<p class="hq-panel-note">Nobody swims. The lifeguard is certified for the pool and not for the edge.</p>';
+                return html;
+            }
             /* THE CABINET (Room 111): the count on the way in */
             if (c.id === 'cabinet') {
                 const tc = (typeof window.hqTrophyCount === 'function') ? window.hqTrophyCount(_hqProfile()) : null;

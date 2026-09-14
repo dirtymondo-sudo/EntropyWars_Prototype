@@ -38304,6 +38304,192 @@ const ThreeRenderer = (function () {
             var ring = new THREE.Mesh(new THREE.TorusGeometry(0.08 * U, 0.01 * U, 6, 20), chrome); ring.rotation.x = Math.PI / 2; ring.position.y = 0.1 * U; tilt.add(ring);
             return g;
         },
+        /* ── THE EXECUTIVE FLOOR (HQ plan 5.4 stage 1 + 7.4 Rooms 4C + 8,
+           2026-09-14) — eight procs. Wall procs face +z (the room), floor
+           procs stand on y = 0; a user GLB replaces any of them by giving
+           the catalogue entry a `file`. ── */
+        /* THE FLOOR PANEL (the lobby): a brass plate of sixteen buttons in
+           two columns, the legend beside each; M and PH lit amber (the two
+           that work), the rest dark. There is no 13. */
+        floor_panel: function (U) {
+            var g = new THREE.Group();
+            var W = 0.34, H = 0.9, D = 0.05;
+            var brass = _hqMat(null, 1, 1, { color: 0xb08d4a, shininess: 110, specular: 0xffe7b0 });
+            var plate = _hqBox(W, H, D, brass); plate.position.set(0, (H / 2) * U, (D / 2) * U); g.add(plate);
+            var bezel = _hqBox(W - 0.03, H - 0.03, 0.006, _hqMat(null, 1, 1, { color: 0x2a2320, shininess: 40 })); bezel.position.set(0, (H / 2) * U, (D + 0.003) * U); g.add(bezel);
+            var floors = ['B', 'G', 'M', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '14', 'PH'];
+            var lit = { M: true, PH: true };
+            var dark = _hqMat(null, 1, 1, { color: 0x3a3430, shininess: 60, specular: 0x777777 });
+            var on = _hqBasic(0xffb020);
+            var ring = _hqMat(null, 1, 1, { color: 0xd8c08a, shininess: 120, specular: 0xfff0c0 });
+            for (var i = 0; i < floors.length; i++) {
+                var col = Math.floor(i / 8), row = i % 8;                 // two columns of eight, B at the bottom
+                var x = (-0.075 + col * 0.15), y = 0.1 + row * 0.1;
+                var rim = new THREE.Mesh(new THREE.CylinderGeometry(0.03 * U, 0.03 * U, 0.012 * U, 14), ring); rim.rotation.x = Math.PI / 2; rim.position.set(x * U, y * U, (D + 0.008) * U); g.add(rim);
+                var btn = new THREE.Mesh(new THREE.CylinderGeometry(0.022 * U, 0.022 * U, 0.02 * U, 14), lit[floors[i]] ? on : dark); btn.rotation.x = Math.PI / 2; btn.position.set(x * U, y * U, (D + 0.016) * U); g.add(btn);
+                var tex = (typeof _hzTextTex === 'function') ? _hzTextTex('hq_fp_' + floors[i], [floors[i]], { w: 64, h: 64, bg: '#2a2320', color: lit[floors[i]] ? '#ffd27a' : '#c9b98a', pad: 0.18 }) : null;
+                if (tex) { var lb = new THREE.Mesh(new THREE.PlaneGeometry(0.05 * U, 0.05 * U), new THREE.MeshBasicMaterial({ map: tex })); lb.position.set((x + (col ? 0.055 : -0.055)) * U, y * U, (D + 0.007) * U); g.add(lb); }
+            }
+            var top = (typeof _hzTextTex === 'function') ? _hzTextTex('hq_fp_head', ['EXECUTIVE', 'FLOORS'], { w: 128, h: 64, bg: '#2a2320', color: '#e8d8a8', pad: 0.12 }) : null;
+            if (top) { var hd = new THREE.Mesh(new THREE.PlaneGeometry(0.24 * U, 0.08 * U), new THREE.MeshBasicMaterial({ map: top })); hd.position.set(0, (H - 0.07) * U, (D + 0.007) * U); g.add(hd); }
+            return g;
+        },
+        /* THE EXECUTIVE DESK (4C): a walnut slab on two pedestals with a
+           modesty panel, a leather inlay on the top (top at 0.76 — desk
+           props sit at y: 0.76), a brass rail at the back edge. Wall proc
+           (front +z), depth 1.05. */
+        exec_desk: function (U) {
+            var g = new THREE.Group();
+            var W = 2.4, D = 1.05, TOP = 0.76, T = 0.05;
+            var walnut = _hqMat('wood', 3, 1.5, { color: 0x5a3a26, shininess: 45, specular: 0x554433 });
+            var leather = _hqMat('leather', 4, 2, { color: 0x3a2a22, shininess: 30, specular: 0x333333 });
+            var brass = _hqMat(null, 1, 1, { color: 0xb08d4a, shininess: 110, specular: 0xffe7b0 });
+            var top = _hqBox(W, T, D, walnut); top.position.set(0, (TOP - T / 2) * U, (D / 2) * U); g.add(top);
+            var inlay = _hqBox(W - 0.5, 0.006, D - 0.4, leather); inlay.position.set(0, (TOP + 0.003) * U, (D / 2 + 0.05) * U); g.add(inlay);
+            [-1, 1].forEach(function (s) { var ped = _hqBox(0.55, TOP - T, 0.9, walnut); ped.position.set(s * (W / 2 - 0.3) * U, ((TOP - T) / 2) * U, (D / 2) * U); g.add(ped);
+                for (var k = 0; k < 3; k++) { var dr = _hqBox(0.42, 0.16, 0.01, walnut); dr.position.set(s * (W / 2 - 0.3) * U, (0.14 + k * 0.22) * U, (D - 0.04) * U); g.add(dr);
+                    var pull = _hqBox(0.08, 0.02, 0.015, brass); pull.position.set(s * (W / 2 - 0.3) * U, (0.14 + k * 0.22) * U, (D - 0.03) * U); g.add(pull); } });
+            var modesty = _hqBox(W - 1.1, TOP - 0.25, 0.03, walnut); modesty.position.set(0, ((TOP - 0.25) / 2 + 0.2) * U, 0.35 * U); g.add(modesty);
+            var rail = new THREE.Mesh(new THREE.CylinderGeometry(0.012 * U, 0.012 * U, (W - 0.2) * U, 8), brass); rail.rotation.z = Math.PI / 2; rail.position.set(0, (TOP + 0.05) * U, 0.05 * U); g.add(rail);
+            [-1, 1].forEach(function (s) { var post = new THREE.Mesh(new THREE.CylinderGeometry(0.01 * U, 0.01 * U, 0.05 * U, 8), brass); post.position.set(s * (W / 2 - 0.12) * U, (TOP + 0.025) * U, 0.05 * U); g.add(post); });
+            return g;
+        },
+        /* THE EXECUTIVE CHAIR (4C): a high leather back on a five-star
+           chrome base; the seat at 0.48. Floor proc (front +z: the seat
+           faces +z, so `face: 180` puts its back to the north wall). */
+        exec_chair: function (U) {
+            var g = new THREE.Group();
+            var leather = _hqMat('leather', 2, 2, { color: 0x2c2018, shininess: 40, specular: 0x444444 });
+            var chrome = _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 90, specular: 0xaaaaaa });
+            var hub = new THREE.Mesh(new THREE.CylinderGeometry(0.03 * U, 0.04 * U, 0.42 * U, 10), chrome); hub.position.y = 0.24 * U; g.add(hub);
+            for (var i = 0; i < 5; i++) { var a = i * Math.PI * 2 / 5; var leg = _hqBox(0.32, 0.03, 0.04, chrome); leg.position.set(Math.cos(a) * 0.16 * U, 0.03 * U, Math.sin(a) * 0.16 * U); leg.rotation.y = -a; g.add(leg);
+                var cast = new THREE.Mesh(new THREE.SphereGeometry(0.025 * U, 8, 6), _hqBasic(0x222226)); cast.position.set(Math.cos(a) * 0.3 * U, 0.025 * U, Math.sin(a) * 0.3 * U); g.add(cast); }
+            var seat = _hqBox(0.56, 0.1, 0.54, leather); seat.position.set(0, 0.5 * U, 0.02 * U); g.add(seat);
+            var back = _hqBox(0.54, 0.72, 0.1, leather); back.position.set(0, 0.9 * U, -0.24 * U); back.rotation.x = -0.1; g.add(back);
+            var head = _hqBox(0.44, 0.14, 0.11, leather); head.position.set(0, 1.18 * U, -0.27 * U); g.add(head);
+            [-1, 1].forEach(function (s) { var arm = _hqBox(0.06, 0.05, 0.4, leather); arm.position.set(s * 0.29 * U, 0.7 * U, 0.0); g.add(arm);
+                var post = _hqBox(0.04, 0.16, 0.04, chrome); post.position.set(s * 0.29 * U, 0.6 * U, 0.14 * U); g.add(post); });
+            return g;
+        },
+        /* THE PLAQUES (4C): the achievements as wall plaques — four rows of
+           three walnut shields with a brass plate, the engraved ones gold
+           (the same read as Room 111's cabinet: hqTrophyCount at build).
+           Wall proc, 1.3 × 1.2, front +z. */
+        wall_plaques: function (U) {
+            var g = new THREE.Group();
+            var W = 1.3, H = 1.2;
+            var walnut = _hqMat('wood', 1, 1, { color: 0x5a3a26, shininess: 45, specular: 0x554433 });
+            var gold = _hqMat(null, 1, 1, { color: 0xd9b45a, shininess: 120, specular: 0xfff0c0, emissive: 0x3a2a08 });
+            var brass = _hqMat(null, 1, 1, { color: 0x8a7a58, shininess: 40, specular: 0x665533 });
+            var engraved = 0, total = 12;
+            try {
+                var prof = (typeof window !== 'undefined' && window.ProfileSystem && window.ProfileSystem.getActiveProfile) ? window.ProfileSystem.getActiveProfile() : null;
+                var tc = (typeof window !== 'undefined' && typeof window.hqTrophyCount === 'function') ? window.hqTrophyCount(prof) : null;
+                engraved = tc ? Math.min(total, tc.lines.length) : 0;
+            } catch (e) { engraved = 0; }
+            var n = 0;
+            for (var r = 0; r < 4; r++) for (var c = 0; c < 3; c++) {
+                var isGold = n < engraved; n++;
+                var x = (-0.42 + c * 0.42), y = (H - 0.15 - r * 0.3);
+                var shield = _hqBox(0.34, 0.24, 0.025, walnut); shield.position.set(x * U, y * U, 0.0125 * U); g.add(shield);
+                var plate = _hqBox(0.22, 0.1, 0.008, isGold ? gold : brass); plate.position.set(x * U, y * U, 0.03 * U); g.add(plate);
+                var name = _hqBox(0.16, 0.014, 0.003, isGold ? _hqBasic(0x5a4210) : _hqBasic(0x4a4030)); name.position.set(x * U, (y + 0.02) * U, 0.036 * U); g.add(name);
+                var line = _hqBox(0.12, 0.01, 0.003, isGold ? _hqBasic(0x5a4210) : _hqBasic(0x4a4030)); line.position.set(x * U, (y - 0.015) * U, 0.036 * U); g.add(line);
+            }
+            return g;
+        },
+        /* THE WINDOW THAT SHOULD NOT EXIST (4C): a walnut frame, a lit pane
+           (a pale sky with a horizon line — the building is round; this is
+           the view anyway) and venetian blinds half drawn. Wall proc,
+           1.2 × 1.6, front +z. */
+        false_window: function (U) {
+            var g = new THREE.Group();
+            var W = 1.2, H = 1.6, D = 0.08;
+            var walnut = _hqMat('wood', 2, 2, { color: 0x5a3a26, shininess: 45, specular: 0x554433 });
+            var frameMat = walnut;
+            [[0, H - 0.04, W, 0.08], [0, 0.04, W, 0.08], [-(W / 2 - 0.04), H / 2, 0.08, H], [(W / 2 - 0.04), H / 2, 0.08, H], [0, H / 2, 0.04, H]].forEach(function (f) {
+                var b = _hqBox(f[2], f[3], D, frameMat); b.position.set(f[0] * U, f[1] * U, (D / 2) * U); g.add(b);
+            });
+            var tex = (typeof _hzTextTex === 'function') ? _hzTextTex('hq_false_window', [' '], { w: 64, h: 128, bg: '#cfe0f2', color: '#cfe0f2', pad: 0 }) : null;
+            var pane = new THREE.Mesh(new THREE.PlaneGeometry((W - 0.12) * U, (H - 0.12) * U), tex ? new THREE.MeshBasicMaterial({ map: tex }) : _hqBasic(0xcfe0f2));
+            pane.position.set(0, (H / 2) * U, 0.02 * U); g.add(pane);
+            var horizon = _hqBox(W - 0.12, 0.42, 0.002, _hqBasic(0xb9c9a8)); horizon.position.set(0, 0.27 * U, 0.024 * U); g.add(horizon);   // a plain, the far side of nothing
+            var sun = new THREE.Mesh(new THREE.CircleGeometry(0.08 * U, 18), _hqBasic(0xfff4d0)); sun.position.set(0.3 * U, (H - 0.45) * U, 0.025 * U); g.add(sun);
+            var slat = _hqMat(null, 1, 1, { color: 0xe8e2d2, shininess: 20 });
+            for (var i = 0; i < 9; i++) { var s = _hqBox(W - 0.14, 0.03, 0.02, slat); s.position.set(0, (H - 0.12 - i * 0.065) * U, 0.05 * U); s.rotation.x = 0.55; g.add(s); }
+            var cord = _hqBox(0.006, 0.7, 0.006, _hqBasic(0xd8d0c0)); cord.position.set((W / 2 - 0.1) * U, (H - 0.45) * U, 0.06 * U); g.add(cord);
+            return g;
+        },
+        /* THE INFINITY POOL (Room 8): a raised basin 6 × 3.6 on the floor —
+           marble coping on three sides, a WEIR on the far side (−z) that the
+           water reaches over, the basin lined in pool tile, the water a
+           translucent Phong sheet a hand under the coping, a lit rim line.
+           Floor proc; the catalogue's `rect` blocker is its footprint. */
+        infinity_pool: function (U) {
+            var g = new THREE.Group();
+            var W = 6.0, D = 3.6, H = 0.48, C = 0.28, WATER = H - 0.1;
+            var marble = _hqMat('marble_light', 6, 1, { shininess: 60, specular: 0x666666, color: 0xf0ede4 });
+            var tile = _hqMat('tilefloor_2', 6, 3.6, { shininess: 30, specular: 0x334455, color: 0x9fd0e6 });
+            var water = new THREE.MeshPhongMaterial({ color: 0x3fa7d6, transparent: true, opacity: 0.78, shininess: 140, specular: 0xffffff, side: THREE.DoubleSide, depthWrite: false });
+            /* the basin: the tile floor of it and its four inner walls, on a marble plinth */
+            var plinth = _hqBox(W, 0.06, D, marble); plinth.position.set(0, 0.03 * U, 0); g.add(plinth);
+            var bed = new THREE.Mesh(new THREE.PlaneGeometry((W - 2 * C) * U, (D - 2 * C) * U), tile); bed.rotation.x = -Math.PI / 2; bed.position.set(0, 0.07 * U, 0); g.add(bed);
+            /* coping: the near side and the two ends full height; the far side (the weir) a hand lower so the water goes over */
+            var cS = _hqBox(W, H, C, marble); cS.position.set(0, (H / 2) * U, ((D - C) / 2) * U); g.add(cS);
+            [-1, 1].forEach(function (s) { var cE = _hqBox(C, H, D, marble); cE.position.set(s * ((W - C) / 2) * U, (H / 2) * U, 0); g.add(cE); });
+            var weir = _hqBox(W - 2 * C, WATER - 0.02, C, marble); weir.position.set(0, ((WATER - 0.02) / 2) * U, -((D - C) / 2) * U); g.add(weir);
+            /* the inner tile walls */
+            var wallN = _hqBox(W - 2 * C, H - 0.06, 0.02, tile); wallN.position.set(0, ((H - 0.06) / 2 + 0.06) * U, ((D - C) / 2 - C / 2 - 0.01) * U); g.add(wallN);
+            [-1, 1].forEach(function (s) { var wE = _hqBox(0.02, H - 0.06, D - 2 * C, tile); wE.position.set(s * ((W - C) / 2 - C / 2 - 0.01) * U, ((H - 0.06) / 2 + 0.06) * U, 0); g.add(wE); });
+            /* the water: the sheet, and the fall over the weir */
+            var sheet = new THREE.Mesh(new THREE.PlaneGeometry((W - 2 * C) * U, (D - C) * U), water); sheet.rotation.x = -Math.PI / 2; sheet.position.set(0, WATER * U, (C / 2) * U); sheet.renderOrder = 2; g.add(sheet);
+            var fall = new THREE.Mesh(new THREE.PlaneGeometry((W - 2 * C) * U, (WATER + 0.5) * U), water); fall.position.set(0, ((WATER - 0.5) / 2) * U, -(D / 2 + 0.01) * U); fall.renderOrder = 2; g.add(fall);
+            var glint = new THREE.Mesh(new THREE.PlaneGeometry((W - 2 * C - 0.1) * U, 0.02 * U), _hqBasic(0xe8f6ff, { transparent: true, opacity: 0.8 })); glint.rotation.x = -Math.PI / 2; glint.position.set(0, (WATER + 0.004) * U, -((D - C) / 2 - 0.02) * U); g.add(glint);
+            /* two lamps in the coping on the near side */
+            var lamp = _hqBasic(0xd8f0ff);
+            [-1, 1].forEach(function (s) { var l = new THREE.Mesh(new THREE.SphereGeometry(0.03 * U, 8, 6), lamp); l.position.set(s * 1.8 * U, (H + 0.01) * U, ((D - C) / 2) * U); g.add(l); });
+            /* the ladder, on the near side */
+            var chrome = _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 90, specular: 0xaaaaaa });
+            [-1, 1].forEach(function (s) { var rail = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 0.9 * U, 8), chrome); rail.position.set((2.4 + s * 0.2) * U, (H + 0.1) * U, ((D - C) / 2 - 0.2) * U); g.add(rail); });
+            var bar = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 0.4 * U, 8), chrome); bar.rotation.z = Math.PI / 2; bar.position.set(2.4 * U, (H + 0.55) * U, ((D - C) / 2 - 0.2) * U); g.add(bar);
+            return g;
+        },
+        /* THE LOUNGER (Room 8): a slatted deck chair with a raised back on
+           a tube frame, a towel over the foot. Floor proc, seat at 0.42
+           (hqSit at its own x / z); the head is −z, so `face: 0` lies with
+           its feet to +z. */
+        pool_lounger: function (U) {
+            var g = new THREE.Group();
+            var slat = _hqMat('wood', 2, 1, { color: 0xcaa06a, shininess: 30 });
+            var tube = _hqMat(null, 1, 1, { color: 0xd8dde2, shininess: 80, specular: 0xaaaaaa });
+            var L = 1.9, Wd = 0.68, SEAT = 0.42;
+            [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (c) { var leg = new THREE.Mesh(new THREE.CylinderGeometry(0.018 * U, 0.018 * U, SEAT * U, 8), tube); leg.position.set(c[0] * (Wd / 2 - 0.04) * U, (SEAT / 2) * U, c[1] * (L / 2 - 0.18) * U); g.add(leg); });
+            [-1, 1].forEach(function (s) { var side = new THREE.Mesh(new THREE.CylinderGeometry(0.018 * U, 0.018 * U, L * U, 8), tube); side.rotation.x = Math.PI / 2; side.position.set(s * (Wd / 2 - 0.04) * U, SEAT * U, 0); g.add(side); });
+            for (var i = 0; i < 8; i++) { var s = _hqBox(Wd - 0.1, 0.02, 0.12, slat); s.position.set(0, (SEAT + 0.012) * U, (-L / 2 + 0.55 + i * 0.16) * U); g.add(s); }
+            var back = new THREE.Group(); back.position.set(0, SEAT * U, (-L / 2 + 0.5) * U); back.rotation.x = -0.95; g.add(back);
+            for (var j = 0; j < 4; j++) { var b = _hqBox(Wd - 0.1, 0.02, 0.12, slat); b.position.set(0, 0, (-0.1 - j * 0.16) * U); back.add(b); }
+            [-1, 1].forEach(function (s) { var r = new THREE.Mesh(new THREE.CylinderGeometry(0.016 * U, 0.016 * U, 0.72 * U, 8), tube); r.rotation.x = Math.PI / 2; r.position.set(s * (Wd / 2 - 0.04) * U, 0, -0.36 * U); back.add(r); });
+            var towel = _hqBox(Wd - 0.2, 0.03, 0.34, _hqMat(null, 1, 1, { color: 0xe8e0c8, shininess: 2 })); towel.position.set(0, (SEAT + 0.035) * U, (L / 2 - 0.35) * U); g.add(towel);
+            var stripe = _hqBox(Wd - 0.2, 0.032, 0.05, _hqBasic(0x4b7fa8)); stripe.position.set(0, (SEAT + 0.036) * U, (L / 2 - 0.42) * U); g.add(stripe);
+            return g;
+        },
+        /* THE UMBRELLA (Room 8): a pole, a base, a canopy of eight cream
+           and blue panels tilted to the sun. Floor proc, 2.4 m. */
+        pool_umbrella: function (U) {
+            var g = new THREE.Group();
+            var tube = _hqMat(null, 1, 1, { color: 0xd8dde2, shininess: 80, specular: 0xaaaaaa });
+            var base = new THREE.Mesh(new THREE.CylinderGeometry(0.22 * U, 0.25 * U, 0.06 * U, 18), _hqMat(null, 1, 1, { color: 0x3a3a40, shininess: 20 })); base.position.y = 0.03 * U; g.add(base);
+            var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 2.2 * U, 8), tube); pole.position.y = 1.1 * U; g.add(pole);
+            var canopy = new THREE.Group(); canopy.position.y = 2.2 * U; canopy.rotation.z = 0.12; g.add(canopy);
+            var cream = _hqMat(null, 1, 1, { color: 0xf0e6cc, shininess: 6, side: THREE.DoubleSide }), blue = _hqMat(null, 1, 1, { color: 0x4b7fa8, shininess: 6, side: THREE.DoubleSide });
+            for (var i = 0; i < 8; i++) {
+                var panel = new THREE.Mesh(new THREE.ConeGeometry(1.1 * U, 0.3 * U, 8, 1, true, i * Math.PI / 4, Math.PI / 4), (i % 2) ? blue : cream);
+                panel.position.y = 0.05 * U; canopy.add(panel);
+            }
+            var tip = new THREE.Mesh(new THREE.SphereGeometry(0.035 * U, 8, 6), tube); tip.position.y = 0.24 * U; canopy.add(tip);
+            for (var k = 0; k < 8; k++) { var a = k * Math.PI / 4 + Math.PI / 8; var rib = new THREE.Mesh(new THREE.CylinderGeometry(0.008 * U, 0.008 * U, 1.1 * U, 6), tube); rib.position.set(Math.cos(a) * 0.55 * U, -0.1 * U, Math.sin(a) * 0.55 * U); rib.rotation.z = Math.PI / 2 - 0.27; rib.rotation.y = -a; canopy.add(rib); }
+            return g;
+        },
     };
     /* a round soft star sprite for the projected sky (Room 360), drawn once */
     function _hqStarTex() {
@@ -38821,7 +39007,7 @@ const ThreeRenderer = (function () {
                 if (cat.glow) { var pgl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4); pgl.position.y = cat.glow.y * U; grp.add(pgl); }
                 G.add(grp);
                 _hq.props.push({ key: p.key, grp: grp });
-                if (cat.foot > 0 && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0, top: y + (cat.h || 1) });
+                if (cat.foot > 0 && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0, top: y + (cat.h || 1), rect: cat.rect || undefined });   // `rect` (2026-09-14): a rectangular footprint in room axes
                 return;
             }
             place(0.66);
@@ -38831,7 +39017,7 @@ const ThreeRenderer = (function () {
                low enough, and its side is solid in the air (no more jumping
                into a cabinet and walking out through the wall of props) */
             var blk = null;
-            if (cat.foot > 0 && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { blk = { obj: grp, rad: cat.foot, y: y0, top: y + (cat.h || 1) }; _hq.blockers.push(blk); }
+            if (cat.foot > 0 && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { blk = { obj: grp, rad: cat.foot, y: y0, top: y + (cat.h || 1), rect: cat.rect || undefined }; _hq.blockers.push(blk); }
             var inst = _miscModelInstance(_hqModelUrl(cat), true, target, {
                 fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick,
                 onDone: function (g, s, bb) {

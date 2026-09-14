@@ -2716,3 +2716,128 @@ test('Room 1 — the source sites: the intake overlay, the dispenser panel, the 
     assert.match(tr, /now_serving: function \(U\) \{[\s\S]{0,600}?window\.hqIntakeCard/, 'the sign reads the officer’s number');
     assert.match(dj, /window\.hqIntakeCard = hqIntakeCard;/, 'hqIntakeCard is on window for map.js');
 });
+
+/* ── THE EXECUTIVE FLOOR (HQ plan 5.4 stage 1 + 7.4 ROOMS 4C + 8, 2026-09-14) — the elevator rides to THE PENTHOUSE ── */
+const PH = HQ.rooms.executive, CO = HQ.rooms.corner, PL = HQ.rooms.pool;
+
+test('the elevator rides to THE PENTHOUSE: the egress door lands in the lobby, the lobby’s car lands at the elevator, the floor panel, the two doors off it', () => {
+    assert.ok(PH && PH.kind === 'box' && PH.roomNo == null, 'rooms.executive is a box room and wears no number (it is a floor)');
+    const el = ROOM.doors.find(d => d.id === 'elevator');
+    assert.ok(el && el.deg === 0 && el.level === 1 && el.proc === 'elevator' && el.action.room === 'executive' && el.action.at === 'elevator', 'the mezzanine elevator walks into the lobby at its car');
+    assert.ok(el.minClearance === 4 && el.requiresKeys === 12, 'the gate is the elevator door’s (KEYHOLDER + 12 Keys), unchanged');
+    assert.strictEqual(D.doorSiteState(el, null), 'clearance');
+    assert.strictEqual(D.doorSiteState(el, { door: { clearance: 4, hq: { keys: 12 } } }), 'open');
+    const car = PH.doors.find(d => d.id === 'elevator');
+    assert.ok(car && car.wall === 's' && car.proc === 'elevator' && !car.leaf && car.action.room === 'central_egress' && car.action.at === 'elevator', 'the way down is the car, landing at the mezzanine elevator');
+    assert.ok(!car.minClearance && !car.requiresKeys, 'the way down is never gated');
+    /* the two rooms off the lobby, and the ways back */
+    const dc = PH.doors.find(d => d.id === 'corner'), dp = PH.doors.find(d => d.id === 'pool');
+    assert.ok(dc && dc.wall === 'e' && dc.action.room === 'corner' && dc.action.at === 'lobby' && dc.leaf === 'leaf_glass_exec', 'the corner office is on the east wall behind the executive glass (§5.6)');
+    assert.ok(dp && dp.wall === 'n' && dp.action.room === 'pool' && dp.action.at === 'lobby', 'the pool is on the north wall');
+    assert.strictEqual(D.hqDoorNo(dc), '4C', 'the corner office door reads 4C');
+    assert.strictEqual(D.hqDoorNo(dp), '8', 'the pool door reads 8');
+    assert.strictEqual(D.hqDoorNo(car), '', 'the car reads no number');
+    for (const [room, back] of [[CO, 'corner'], [PL, 'pool']]) {
+        const out = room.doors.find(d => d.id === 'lobby');
+        const fwd = PH.doors.find(d => d.id === back);
+        assert.ok(out && out.action.room === 'executive' && out.action.at === back && out.leaf === fwd.leaf, back + ': the way back is the same leaf and lands at the lobby door');
+        assert.strictEqual(room.doors.length, 1, back + ': one door');
+    }
+    /* THE FLOOR PANEL: a counter with no action, its proc on the wall beside the car, two buttons lit in the proc */
+    const fp = PH.counters.find(c => c.id === 'floorpanel');
+    assert.ok(fp && !fp.action.fn && !fp.action.overlay && !fp.action.room && fp.desc && fp.verb, 'the floor panel is a panel, not an action');
+    assert.ok(PH.props.some(p => p.key === 'floor_panel' && p.wall === 's' && Math.abs(p.x - fp.x) < 0.3), 'the panel hangs where its counter stands');
+    assert.ok(Array.isArray(el.floors) && el.floors.includes('M') && el.floors.includes('PH') && !el.floors.includes('13'), 'the car stops at M and PH; there is no 13');
+    for (const k of ['floor_panel', 'exec_desk', 'exec_chair', 'wall_plaques', 'false_window', 'infinity_pool', 'pool_lounger', 'pool_umbrella']) assert.ok(HQ.catalogue[k] && HQ.catalogue[k].proc === k, k + ' is a proc');
+    const has = key => PH.props.filter(p => p.key === key).length;
+    for (const key of ['floor_panel', 'exit_sign', 'tanker_desk', 'crt_terminal', 'computer_chair_grey', 'teal_chair', 'coffee_table', 'water_cooler', 'globe_lamp', 'filing_cabinet', 'rug_office', 'fluorescent', 'security_camera', 'nameplate']) assert.ok(has(key) >= 1, 'the lobby’s build sheet: ' + key);
+    assert.ok(PH.agents.some(a => a.pose === 'hqSit' && PH.props.some(p => /^computer_chair_/.test(p.key) && Math.hypot(p.x - a.x, p.z - a.z) < 0.05)), 'the assistant sits on the desk chair');
+    assert.ok(!PH.props.some(p => p.wall === 's' && p.key !== 'exit_sign' && Math.abs(p.x - car.x) < 1.25), 'no wall prop stands in the car’s doorway');
+    assert.ok(!PH.props.some(p => p.wall === 'e' && Math.abs(p.z - dc.z) < 1.25) && !PH.props.some(p => p.wall === 'n' && Math.abs(p.x - dp.x) < 1.25), 'nothing hangs in the two doorways');
+    assert.ok(PH.lines.length >= 3 && PH.spawn && PH.spawn.z > 0, 'overheard lines; you step out of the car on the south side');
+    assert.deepStrictEqual(boxPropProblems('executive', PH), []);
+    assert.ok(!D.hqRoomRegister().some(r => r.room === 'executive' && r.kind === 'room'), 'the lobby is not in the register (no number)');
+});
+
+test('Room 4C is THE CORNER OFFICE off the lobby: the in-tray moved up, the plaques, the window that should not exist', () => {
+    assert.ok(CO && CO.kind === 'box' && CO.roomNo === '4C', 'rooms.corner kind box, Room 4C');
+    assert.strictEqual(D.hqRoomNo('corner'), '4C');
+    assert.ok(!CO.shell.open && CO.shell.pipes === false && CO.shell.h >= 3.0, 'an indoor office under a ceiling');
+    const tray = CO.counters.find(c => c.id === 'intray'), pq = CO.counters.find(c => c.id === 'plaques'), vw = CO.counters.find(c => c.id === 'view');
+    assert.ok(tray && tray.action.overlay === 'intray' && tray.verb && tray.desc, 'THE IN-TRAY is the closet’s counter (the same case file)');
+    assert.strictEqual(tray.action.overlay, OFFICE.counters.find(c => c.id === 'intray').action.overlay, 'the same overlay as Room 101');
+    assert.ok(pq && pq.action.fn === '_mountReactTrophies' && pq.verb && pq.desc, 'THE PLAQUES open the profile on its Achievements tab');
+    assert.ok(vw && !vw.action.fn && !vw.action.overlay && !vw.action.room && vw.desc, 'THE WINDOW has a panel and no action');
+    assert.ok(CO.props.some(p => p.key === 'exec_desk' && p.wall === 'n' && Math.abs(p.x - tray.x) < 0.3), 'the desk under the in-tray counter');
+    assert.ok(CO.props.some(p => p.key === 'exec_chair' && Math.abs(p.x - tray.x) < 0.3 && p.z < -1.8), 'the chair behind the desk');
+    assert.ok(CO.props.filter(p => p.key === 'wall_plaques' && p.wall === 's').length === 2, 'two plaque boards on the south wall');
+    assert.ok(CO.props.some(p => p.key === 'wall_plaques' && Math.abs(p.x - pq.x) < 1.2), 'the plaques counter stands at the boards');
+    assert.ok(CO.props.filter(p => p.key === 'false_window').length === 2 && CO.props.some(p => p.key === 'false_window' && p.wall === 'e' && Math.abs(p.z - vw.z) < 0.3) && CO.props.some(p => p.key === 'false_window' && p.wall === 'n'), 'two windows — a corner has two outside walls; the counter stands at the east one');
+    assert.ok(CO.props.every(p => p.y == null || p.y < 0.5 || Math.abs(p.y - 0.76) < 0.01), 'desk props sit at the executive desk’s top (0.76)');
+    assert.ok(HQ.catalogue.exec_desk.wall && HQ.catalogue.exec_desk.block && HQ.catalogue.exec_desk.depth > 0.9, 'the desk is a wall proc the walker cannot enter');
+    assert.ok(HQ.catalogue.exec_chair.block && HQ.catalogue.exec_chair.foot > 0.3, 'the chair blocks');
+    for (const k of ['wall_plaques', 'false_window']) assert.ok(HQ.catalogue[k].wall && !HQ.catalogue[k].block && HQ.catalogue[k].mount > 0, k + ' is a wall proc');
+    const has = key => CO.props.filter(p => p.key === key).length;
+    for (const key of ['crt_terminal', 'rotary_phone', 'desk_lamp', 'papers_a', 'filing_cabinet', 'potted_plant', 'globe_lamp', 'mini_fridge', 'rug_office', 'teal_chair', 'nameplate', 'exit_sign', 'wall_clock', 'fluorescent']) assert.ok(has(key) >= 1, 'the build sheet: ' + key);
+    const out = CO.doors.find(d => d.id === 'lobby');
+    assert.ok(!CO.props.some(p => p.wall === 'w' && p.key !== 'exit_sign' && Math.abs(p.z - out.z) < 1.25), 'no wall prop stands in the doorway');
+    assert.ok(!out.rankDoor && !D.DOOR_TEXT.CLEARANCE.some(r => r.door === out.leaf), 'the corner office door is not the rank door (the closet keeps that)');
+    assert.ok(OFFICE.doors.find(d => d.id === 'egress').rankDoor, 'Room 101 still wears the rank door');
+    assert.ok(CO.lines.length >= 3 && CO.spawn, 'overheard lines and a spawn');
+    assert.deepStrictEqual(boxPropProblems('corner', CO), []);
+    const rows = D.hqRoomRegister().filter(r => r.no === '4C');
+    assert.strictEqual(rows.length, 1); assert.strictEqual(rows[0].kind, 'room'); assert.strictEqual(rows[0].id, 'corner');
+});
+
+test('Room 8 is THE INFINITY POOL off the lobby: an open room under Heaven’s sky, the parapet, the basin, the loungers, the ranking, the online shift on break', () => {
+    assert.ok(PL && PL.kind === 'box' && PL.roomNo === '8', 'rooms.pool kind box, Room 8');
+    assert.strictEqual(D.hqRoomNo('pool'), '8');
+    const S = PL.shell;
+    assert.ok(S.open === true && S.edge === 'low' && S.pipes === false, 'an OUTDOOR room behind a knee-high parapet');
+    assert.ok(S.sky && S.sky.scenery === 'divine' && S.sky.night === 0 && S.sky.fog && S.sky.fog.color != null && S.sky.tint != null, 'Heaven’s sky: the divine roster, daylight, the fog and the tint');
+    const heaven = D.EW_MAP_META.find(m => m.id === 'prebuilt_heaven');
+    assert.ok(heaven && heaven.env && S.sky.tint === heaven.env.tint && S.sky.fog.color === heaven.env.fog.color && S.sky.scenery === heaven.env.scenery, 'the sky is Heaven’s own env row (tint, fog, roster)');
+    assert.ok(S.apron === 'cloud_2' && S.skirt === 'cloud_2', 'the cloud plain runs out past the parapet');
+    const sheet = fs.readFileSync(path.join(__dirname, 'sprites.js'), 'utf8');   // the renderer's _hqTex falls through to TERRAIN_SPRITES (sprites.js) for a terrain key
+    for (const k of [S.floor, S.wall, S.apron]) assert.ok(HQ.textures[k] || new RegExp('^\\s+' + k + ':\\s+\\[', 'm').test(sheet), 'the shell reads a terrain sheet key: ' + k);
+    assert.ok(Array.isArray(S.lights) && S.lights.length >= 4, 'the point lights over the corners (an open room has no fluorescents)');
+    const pool = PL.props.find(p => p.key === 'infinity_pool');
+    assert.ok(pool && pool.z < -1.5 && (pool.face || 0) % 180 === 0, 'the basin stands against the north parapet, on the room’s axes (the rect blocker)');
+    const pc = HQ.catalogue.infinity_pool;
+    assert.ok(pc.block && pc.rect && pc.rect.hw >= 3 && pc.rect.hd >= 1.8 && pc.foot >= pc.rect.hd, 'the pool is a RECT blocker at least its own size');
+    assert.ok(Math.abs(pool.z) + pc.rect.hd < S.d / 2, 'the basin is inside the parapet');
+    assert.ok(PL.props.filter(p => p.key === 'pool_lounger').length >= 4, 'loungers');
+    assert.ok(PL.props.filter(p => p.key === 'pool_umbrella').length >= 2, 'umbrellas');
+    assert.ok(PL.props.some(p => p.key === 'palm_tree'), 'the palms');
+    const edge = PL.counters.find(c => c.id === 'edge'), rk = PL.counters.find(c => c.id === 'ranking');
+    assert.ok(edge && !edge.action.fn && !edge.action.overlay && !edge.action.room && edge.desc && edge.verb, 'THE EDGE has a panel and no action');
+    assert.ok(Math.hypot(edge.x - pool.x, edge.z - pool.z) < pc.rect.hd + edge.radius + 0.2, 'the edge counter stands at the pool');
+    assert.ok(rk && rk.action.fn === '_mountLeaderboard' && rk.verb && rk.desc, 'THE RANKING reads the leaderboard');
+    assert.ok(PL.props.some(p => p.key === 'notice_board' && p.wall === 's' && Math.abs(p.x - rk.x) < 0.5), 'the board stands where its counter does');
+    /* the people: the top of the board on a lounger, the lifeguard, the online shift on the loungers */
+    assert.ok(PL.agents.some(a => a.pose === 'hqSit' && PL.props.some(p => p.key === 'pool_lounger' && Math.hypot(p.x - a.x, p.z - a.z) < 0.05)), 'the top of the board sits on a lounger');
+    assert.ok(PL.onlineSpots.length >= 3 && PL.onlineSpots.every(sp => PL.props.some(p => p.key === 'pool_lounger' && Math.hypot(p.x - sp.x, p.z - sp.z) < 0.05)), 'every online silhouette takes a lounger');
+    assert.ok(PL.npcSpots.length >= 1 && PL.lines.length >= 3 && PL.spawn, 'a native on break, overheard lines, a spawn');
+    const out = PL.doors.find(d => d.id === 'lobby');
+    assert.ok(out && out.wall === 's' && !PL.props.some(p => p.wall === 's' && Math.abs(p.x - out.x) < 1.25), 'the way in on the south side, nothing on the wall there');
+    /* nobody stands in the water */
+    for (const sp of PL.agents.concat(PL.npcSpots, PL.onlineSpots)) assert.ok(!(Math.abs(sp.x - pool.x) < pc.rect.hw && Math.abs(sp.z - pool.z) < pc.rect.hd), 'a person stands in the pool @' + sp.x + ',' + sp.z);
+    for (const p of PL.props) if (p.key !== 'infinity_pool' && p.wall == null) assert.ok(!(Math.abs(p.x - pool.x) < pc.rect.hw && Math.abs(p.z - pool.z) < pc.rect.hd), p.key + ' stands in the pool');
+    assert.deepStrictEqual(boxPropProblems('pool', PL), []);
+    const rows = D.hqRoomRegister().filter(r => r.no === '8');
+    assert.strictEqual(rows.length, 1); assert.strictEqual(rows[0].kind, 'room'); assert.strictEqual(rows[0].id, 'pool');
+});
+
+test('the Executive floor — the source sites: the three panels, the eight procs, the rect blocker, the fn labels', () => {
+    const mp = fs.readFileSync(path.join(__dirname, 'map.js'), 'utf8');
+    const tr = fs.readFileSync(path.join(__dirname, 'three-renderer.js'), 'utf8');
+    assert.match(mp, /if \(c\.id === 'floorpanel'\) \{[\s\S]{0,1200}?data-room="central_egress" data-at="elevator"/, 'the floor panel’s M button is the way down');
+    assert.match(mp, /if \(c\.id === 'view'\) \{[\s\S]{0,1600}?window\.hqSiteMastery/, 'the window looks out on the bays’ mastery');
+    assert.match(mp, /if \(c\.id === 'edge'\) \{[\s\S]{0,2000}?data-fn="_mountLeaderboard"/, 'the edge panel reaches the leaderboard');
+    assert.match(mp, /_mountReactTrophies: 'ACHIEVEMENTS'/, 'the plaques’ fn is labelled');
+    assert.match(mp, /_mountReactTrophies: '_unmountReactProfile'/, 'the plaques are a modal over the paused building');
+    for (const k of ['floor_panel', 'exec_desk', 'exec_chair', 'wall_plaques', 'false_window', 'infinity_pool', 'pool_lounger', 'pool_umbrella']) assert.match(tr, new RegExp('^\\s+' + k + ': function \\(U\\) \\{', 'm'), 'the ' + k + ' proc');
+    assert.match(tr, /wall_plaques: function \(U\) \{[\s\S]{0,900}?window\.hqTrophyCount/, 'the plaques read the achievements ledger');
+    assert.strictEqual((tr.match(/rect: cat\.rect \|\| undefined/g) || []).length, 2, 'both prop blocker sites pass the catalogue rect');
+    assert.match(tr, /if \(b\.rect\) return Math\.abs\(x - bx\) < b\.rect\.hw \+ pad/, 'the walker honours a rect blocker');
+});
