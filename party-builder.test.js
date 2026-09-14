@@ -391,3 +391,48 @@ test('party-builder: the archive grows a sheet to the reserve roster and the pre
     assert.ok(/const anyWindow = !!\([^)]*teamPick/.test(PB), 'the picker must count as a window (ESC closes it)');
     assert.ok(PB.includes('teamWindow, pickWindow,'), 'the picker window is not mounted');
 });
+
+test('THE SOCKET PICKER (2026-09-14): five category tabs + the filter row on the Freelancer pool; the classifiers hold on the real race pool', () => {
+    const m = PB.match(/const PB_SOCKET_TABS = \[([\s\S]*?)\];/);
+    assert.ok(m, 'PB_SOCKET_TABS missing');
+    const ids = [...m[1].matchAll(/id:\s*'([a-z]+)'/g)].map(x => x[1]);
+    assert.deepStrictEqual(ids, ['all', 'damage', 'utility', 'buff', 'debuff', 'heal']);
+    const win = PB.slice(PB.indexOf("title = kind === 'race' ? '＋ RACE SOCKET'"), PB.indexOf("return h(PbWindow, { title, sub, onClose: close, zone: true }, rows);"));
+    assert.ok(win.length > 0, 'socket window not found');
+    for (const needle of ['pb-socket-tabs', 'pb-socket-filters', "'DMG'", "'TYPE'", "'SHAPE'", "'TIER'", 'pb-pill-input', 'pbSocketFilterMatch(sp, F)', 'pb-socket-empty', 'PB_SOCKET_FILTER_EMPTY'])
+        assert.ok(win.includes(needle), 'socket window lacks ' + needle);
+    assert.ok(!/h\('select'/.test(win), 'no native <select> in the picker (C-9)');
+    assert.ok(/React\.useEffect\(\(\) => \{ setFlSocketFilt\(PB_SOCKET_FILTER_EMPTY\); \}, \[flSocketPick\]\)/.test(PB), 'a fresh socket must open with no filters');
+    for (const cls of ['.pb-socket-tabs', '.pb-socket-tabs .pb-tab em', '.pb-socket-filters', '.pb-socket-empty'])
+        assert.ok(CSS.includes(cls + ' {'), 'CSS rule missing: ' + cls);
+
+    // the classifiers, evaluated against the real data
+    const { loadGameData } = require('./load-data');
+    const D = loadGameData();
+    // pbAoeLabel through the socket helpers — one contiguous block
+    const block = PB.slice(PB.indexOf('function pbAoeLabel(sp) {'), PB.indexOf('// Derive readable effect/mechanic tags'));
+    const vm = require('node:vm');
+    const ctx = { window: { _flTierOf: D._flTierOf }, classifySpellLocal: (sp) => D.classifySpell ? D.classifySpell(sp) : 'damage' };
+    vm.createContext(ctx);
+    vm.runInContext(block + '\nthis.pbSpellShape = pbSpellShape; this.pbSpellDmgKind = pbSpellDmgKind; this.pbSocketFilterMatch = pbSocketFilterMatch;', ctx);
+    const pool = D.flSocketPool('homosapien', 'P1').concat(D.flSocketPool('homosapien', 'S1'));
+    assert.ok(pool.length > 100, 'the pool is the race + job abilities');
+    const shapes = { single: 0, multi: 0, aoe: 0, line: 0, self: 0 };
+    for (const sp of pool) {
+        const sh = ctx.pbSpellShape(sp);
+        assert.ok(sh in shapes, sp.id + ' has no shape: ' + sh);
+        shapes[sh]++;
+        const dk = ctx.pbSpellDmgKind(sp);
+        assert.ok(dk === null || dk === 'physical' || dk === 'magic', sp.id + ' dmg kind ' + dk);
+        if (sp.damageType === 'physical' && sp.dmg) assert.strictEqual(dk, 'physical', sp.id + ' is physical');
+        assert.ok(ctx.pbSocketFilterMatch(sp, { cat: 'all' }), 'ALL keeps ' + sp.id);
+        assert.ok(ctx.pbSocketFilterMatch(sp, { q: (sp.name || '').slice(0, 4).toLowerCase() }), 'the search finds ' + sp.id + ' by its own name');
+    }
+    for (const k of Object.keys(shapes)) assert.ok(shapes[k] > 0, 'no spell classified as ' + k);
+    const phys = pool.filter(sp => ctx.pbSocketFilterMatch(sp, { dmg: 'physical' }));
+    const magic = pool.filter(sp => ctx.pbSocketFilterMatch(sp, { dmg: 'magic' }));
+    assert.ok(phys.length > 0 && magic.length > 0, 'both damage kinds present');
+    for (const sp of phys) assert.notStrictEqual(sp.damageType, 'magic', sp.id + ' leaked into PHYS');
+    const tech = pool.filter(sp => ctx.pbSocketFilterMatch(sp, { type: 'tech' }));
+    assert.ok(tech.length > 0 && tech.every(sp => sp.spellType === 'tech'), 'the type disc reads spellType');
+});

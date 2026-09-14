@@ -2446,3 +2446,24 @@ Viewer-local (RULE #2). doorhq.test.js guards the room, the helper and
 the source sites. `HQ_LOST_CARD_FEE` (86) is never charged — a number the
 sheet prints, not an economy hook.
 
+
+## THE SOCKET PICKER'S TABS + FILTERS (the Freelancer pool window) — 2026-09-14, local delivery
+The ＋ RACE SOCKET / ＋ JOB SOCKET window (party-builder.js, the node
+picker after the RACE ABILITIES strip) wears five category TABS (ALL ·
+DAMAGE · UTILITY · BUFF · DEBUFF · HEAL — `PB_SOCKET_TABS`, coloured by
+`PB_CAT` through `--pb-fc`, each with a count judged inside the other
+filters) and a FILTER ROW: DMG PHYS / MAGIC (`pbSpellDmgKind` — the
+`ew-dmgicon` rule, damage-dealers only, `damageType`), the six TYPE discs
+(`sp.spellType`, greyed when the pool has none), SHAPE single / multi /
+aoe / line / self (`pbSpellShape` — ONE shape per row derived from the
+kind + `lineWidth` / `pbAoeLabel` / `hitDamages` / `range 0`;
+`_PB_SELF_KINDS` mirrors battle.js SPELL_KIND_META `selfCast`), the
+socket's TIERS (only when it spans more than one, `pbTreeTierOf` = the
+tree ring) and a search (name / desc / school). State `flSocketFilt`
+(`PB_SOCKET_FILTER_EMPTY`; reset whenever `flSocketPick` changes), the
+match is `pbSocketFilterMatch(sp, f)`; the sub-line reads shown / pool.
+CSS: styles-base.css `.pb-socket-tabs` / `.pb-socket-filters` /
+`.pb-socket-empty` right after `.pb-window-body`. Viewer-local UI,
+nothing on `state` (RULE #2). party-builder.test.js evaluates the
+classifiers on the real race + job pools. Unseen live (RULE #1c): the
+sticky tab strip over a long scroll, the row wrapping at narrow widths.

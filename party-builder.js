@@ -1249,6 +1249,76 @@ function pbAoeLabel(sp) {
   return null;
 }
 
+// ── THE SOCKET PICKER'S TABS + FILTERS (2026-09-14) ─────────────────
+// The Freelancer's race pool is ~400 rows in one window. The picker
+// wears the five category TABS (the same buckets the blade colours by —
+// classifySpellLocal) and a filter row: PHYS / MAGIC (the damage kind the
+// ew-dmgicon shows, damage-dealers only), the six TYPE discs
+// (sp.spellType — the type wheel's read), the cast SHAPE (self / single /
+// multi / aoe / line — derived from the row's kind + fields, one shape
+// per spell), the socket's TIERS (only when it spans more than one) and
+// a search. Everything is derived from the row; nothing is stored on it.
+const PB_SOCKET_TABS = [
+  { id: 'all',     label: 'ALL' },
+  { id: 'damage',  label: 'DAMAGE' },
+  { id: 'utility', label: 'UTILITY' },
+  { id: 'buff',    label: 'BUFF' },
+  { id: 'debuff',  label: 'DEBUFF' },
+  { id: 'heal',    label: 'HEAL' },
+];
+const PB_SOCKET_SHAPES = [
+  { id: 'single', label: 'SINGLE', title: 'One target' },
+  { id: 'multi',  label: 'MULTI',  title: 'Several targets — multi-hit, ricochet, every ally / enemy' },
+  { id: 'aoe',    label: 'AOE',    title: 'An area — a radius, a blast, a cross, a zone' },
+  { id: 'line',   label: 'LINE',   title: 'A line / beam / dash down a lane' },
+  { id: 'self',   label: 'SELF',   title: 'Cast on yourself' },
+];
+const PB_SOCKET_FILTER_EMPTY = { cat: 'all', dmg: null, type: null, shape: null, tier: null, q: '' };
+// The kinds whose cast is the caster's own tile (battle.js SPELL_KIND_META
+// selfCast) — a range-0 row says the same thing.
+const _PB_SELF_KINDS = ['barrage', 'rallyPull', 'healAll', 'manaRestoreAll', 'warCry', 'scan', 'encore', 'selfHeal', 'escape', 'transform', 'summonWeather', 'trickRoom', 'guard', 'tuneFrequency', 'pulseLattice'];
+const _PB_MULTI_KINDS = ['multiHit', 'ricochet', 'splitBeam', 'healAll', 'manaRestoreAll', 'warCry', 'rallyPull', 'cleanseArea', 'aoeShield', 'zoneHeal', 'zoneDebuff'];
+const _PB_LINE_KINDS = ['line', 'linePush', 'dash', 'tackle', 'leapStrike'];
+function pbSpellDmgKind(sp) {
+  if (!sp) return null;
+  const dealsDmg = (typeof hudSpellShowsDamage === 'function')
+    ? hudSpellShowsDamage(sp)
+    : !!(sp.dmg || (sp.hitDamages && sp.hitDamages.length) || sp.dotDamage || sp.turretDmg || sp.blastDmg);
+  if (!dealsDmg) return null;
+  return sp.damageType === 'physical' ? 'physical' : 'magic';
+}
+function pbSpellShape(sp) {
+  if (!sp) return 'single';
+  const k = sp.kind || '';
+  if (sp.lineWidth || _PB_LINE_KINDS.includes(k)) return 'line';
+  if (k !== 'line' && pbAoeLabel(sp)) return 'aoe';
+  if (_PB_MULTI_KINDS.includes(k) || (sp.hitDamages && sp.hitDamages.length > 1) || (sp.hits > 1) || sp.bounceRadius || sp.bounces) return 'multi';
+  if (sp.range === 0 || sp.selfOnly || sp.selfTarget || _PB_SELF_KINDS.includes(k)) return 'self';
+  return 'single';
+}
+// The tier a socket judges by is the TREE RING (data.js _flTierOf); the
+// row's own `tier` is the fallback for a spell off every tree.
+function pbTreeTierOf(sp) {
+  if (typeof window._flTierOf === 'function') return window._flTierOf(sp);
+  return sp && sp.tier === 'III' ? 'III' : sp && sp.tier === 'II' ? 'II' : 'I';
+}
+function pbSocketFilterMatch(sp, f) {
+  if (!f) return true;
+  if (f.cat && f.cat !== 'all' && classifySpellLocal(sp) !== f.cat) return false;
+  if (f.dmg && pbSpellDmgKind(sp) !== f.dmg) return false;
+  if (f.type && (sp.spellType || '').toLowerCase() !== f.type) return false;
+  if (f.shape && pbSpellShape(sp) !== f.shape) return false;
+  if (f.tier && pbTreeTierOf(sp) !== f.tier) return false;
+  if (f.q) {
+    const q = f.q.trim().toLowerCase();
+    if (q && !((sp.name || '').toLowerCase().includes(q) || (sp.desc || '').toLowerCase().includes(q) || (sp.school || '').toLowerCase().includes(q))) return false;
+  }
+  return true;
+}
+function pbSocketFilterActive(f) {
+  return !!(f && ((f.cat && f.cat !== 'all') || f.dmg || f.type || f.shape || f.tier || (f.q && f.q.trim())));
+}
+
 // Derive readable effect/mechanic tags from a spell's status effects + special fields.
 function pbSpellEffects(sp) {
   const out = [];
@@ -2736,6 +2806,9 @@ function PartyBuilder(props) {
   const [treeShake, setTreeShake] = React.useState(null);
   // Freelancer wildcard sockets: which socket's picker is open (node key or null).
   const [flSocketPick, setFlSocketPick] = React.useState(null);
+  const [flSocketFilt, setFlSocketFilt] = React.useState(PB_SOCKET_FILTER_EMPTY);
+  // a fresh socket opens on ALL with no filters
+  React.useEffect(() => { setFlSocketFilt(PB_SOCKET_FILTER_EMPTY); }, [flSocketPick]);
   // Twin nodes (CHAMP_REWORK_PLAN §4) are THE FORK since 2026-09-13 — both
   // options stand on the tier, so there is no picker window; the selection
   // / hover carry WHICH option (an alternate id, or null = the worn face).
@@ -2984,8 +3057,7 @@ function PartyBuilder(props) {
         || typeof window.flWildcardPool !== 'function') return [];
     const tiers = (unitTree.sockets && unitTree.sockets[flSocketPick]) || [];
     // the tier a socket judges by is the TREE RING (data.js _flTierOf)
-    const tierOf = (sp) => (typeof window._flTierOf === 'function') ? window._flTierOf(sp)
-      : (sp.tier === 'III' ? 'III' : sp.tier === 'II' ? 'II' : 'I');
+    const tierOf = pbTreeTierOf;
     const pool = (typeof window.flSocketPool === 'function')
       ? window.flSocketPool(unitRace, flSocketPick) : window.flWildcardPool(unitRace);
     return pool
@@ -3368,7 +3440,50 @@ function PartyBuilder(props) {
         const kind = flSocketKind(unitTree, flSocketPick);
         title = kind === 'race' ? '＋ RACE SOCKET' : '＋ JOB SOCKET';
         sub = 'TIER ' + (((unitTree.sockets||{})[flSocketPick]||[]).join(' / ')) + (kind === 'race' ? ' · ANY RACE' : ' · ANY JOB');
-        rows = flSocketPool.map(sp => {
+        const F = flSocketFilt;
+        const setF = (patch) => setFlSocketFilt(prev => ({ ...prev, ...patch }));
+        // the tabs count within the OTHER filters, so a tab never lies
+        const sansCat = { ...F, cat: 'all' };
+        const tabCount = {};
+        for (const sp of flSocketPool) { if (!pbSocketFilterMatch(sp, sansCat)) continue; const c = classifySpellLocal(sp); tabCount[c] = (tabCount[c] || 0) + 1; tabCount.all = (tabCount.all || 0) + 1; }
+        const socketTiers = ((unitTree.sockets||{})[flSocketPick]||[]);
+        const poolTypes = new Set(flSocketPool.map(sp => (sp.spellType || '').toLowerCase()));
+        const shown = flSocketPool.filter(sp => pbSocketFilterMatch(sp, F));
+        const filtOn = pbSocketFilterActive(F);
+        const tabs = h('div', { className: 'pb-socket-tabs' },
+          ...PB_SOCKET_TABS.map(t => {
+            const n = tabCount[t.id] || 0;
+            const cc = PB_CAT[t.id];
+            return h('button', { key: t.id, className: 'pb-tab' + (F.cat === t.id ? ' on' : '') + (n ? '' : ' none'),
+              style: cc ? { '--pb-fc': cc.color } : undefined,
+              onClick: () => { setF({ cat: t.id }); sfx('uiCursorMove'); }, title: t.label + ' · ' + n },
+              cc ? h('i', null, cc.icon) : null, t.label, h('em', null, n));
+          }));
+        const filters = h('div', { className: 'pb-wall-filters pb-socket-filters' },
+          h('span', { className: 'pb-wall-flabel' }, 'DMG'),
+          ...[['physical', 'PHYS', '#ff9a4a', 'Physical damage — scales with ATK, blocked by DEF'], ['magic', 'MAGIC', '#c58cff', 'Magic damage — scales with M ATK, blocked by M DEF']].map(([id, label, c, title]) =>
+            h('button', { key: id, className: 'pb-faction-ring' + (F.dmg === id ? ' on' : ''), style: { '--fc': c },
+              onClick: () => setF({ dmg: F.dmg === id ? null : id }), title }, label)),
+          h('span', { className: 'pb-wall-fsep' }),
+          h('span', { className: 'pb-wall-flabel' }, 'TYPE'),
+          ...['human','alien','divine','unholy','tech','anomaly'].map(t => {
+            const on = F.type === t, c = getTypeColor(t), has = poolTypes.has(t);
+            return h('button', { key: t, className: 'pb-type-disc' + (on ? ' on' : '') + (has ? '' : ' none'), style: { '--tc': c }, disabled: !has,
+              onClick: () => setF({ type: on ? null : t }), title: t.toUpperCase() + (has ? '' : ' — none in this pool') }, PB_TYPE_GLYPH[t] || t.slice(0, 2).toUpperCase());
+          }),
+          h('span', { className: 'pb-wall-fsep' }),
+          h('span', { className: 'pb-wall-flabel' }, 'SHAPE'),
+          ...PB_SOCKET_SHAPES.map(sh => h('button', { key: sh.id, className: 'pb-pill-btn' + (F.shape === sh.id ? ' on' : ''),
+            onClick: () => setF({ shape: F.shape === sh.id ? null : sh.id }), title: sh.title }, sh.label)),
+          socketTiers.length > 1 ? h('span', { className: 'pb-wall-fsep' }) : null,
+          socketTiers.length > 1 ? h('span', { className: 'pb-wall-flabel' }, 'TIER') : null,
+          ...(socketTiers.length > 1 ? socketTiers : []).map(t => h('button', { key: t, className: 'pb-pill-btn' + (F.tier === t ? ' on' : ''),
+            onClick: () => setF({ tier: F.tier === t ? null : t }), title: 'Tier ' + t }, t)),
+          h('span', { style: { flex: 1 } }),
+          h('input', { className: 'pb-pill-input', placeholder: 'SEARCH…', value: F.q, onChange: e => setF({ q: e.target.value }), 'aria-label': 'Search the pool' }),
+          filtOn ? h('button', { className: 'pb-pill-btn danger', onClick: () => setFlSocketFilt(PB_SOCKET_FILTER_EMPTY), title: 'Clear every filter' }, '✕ CLEAR') : null);
+        sub += ' · ' + shown.length + ' / ' + flSocketPool.length;
+        rows = [tabs, filters, ...shown.map(sp => {
           const already = (customSpells || []).includes(sp.id);
           const cantEquip = already || (customSpells || []).length >= slotCap
             || (typeof window.isTreeLoadoutLegal === 'function'
@@ -3376,7 +3491,8 @@ function PartyBuilder(props) {
           return h(SpellBlade, { key: sp.id, sp, pool:true, equipped: already, dim: cantEquip && !already,
             onClick: () => flEquipWildcard(sp.id),
             onHoverIn: e=>showSpellTip(sp, e), onHoverOut: hideSpellTip });
-        });
+        })];
+        if (!shown.length) rows.push(h('div', { key: 'none', className: 'pb-socket-empty' }, 'NOTHING IN THIS POOL FITS THOSE FILTERS'));
       }
       return h(PbWindow, { title, sub, onClose: close, zone: true }, rows);
     })());
