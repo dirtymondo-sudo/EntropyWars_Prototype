@@ -18232,6 +18232,23 @@ const DOOR_HQ = {
         mars_rover:        { file: 'Meshy_AI_mars_rover_realistic_0910054045_texture.glb',          span: 2.40, foot: 1.10 },
         lunar_lander:      { file: 'Meshy_AI_lunar_lander_realis_0910054105_texture.glb',           h: 3.20, foot: 1.50 },
         palm_tree:         { file: 'Meshy_AI_palm_tree_0910054114_texture.glb',                     h: 3.20, foot: 0.35 },
+        /* ── THE 2026-09-13 BATCH (R2 Assets/door/models/, uploaded with the
+           eight doors above): two computer chairs (16 MB each — the same
+           model, blue / grey), a camera (`security_camera`: hung high on a
+           wall, the lens toward the room), the street utility box (the
+           URBAN boards: cyberpunk · the Strip · Downtown · Nuketown · the
+           Stadium, through _hzDoorKitGLB — never a room prop) and two
+           asteroids (the CELESTIAL far rosters `space` + `wreckage`
+           through _hzAsteroidFar, GLB-first over the procedural rock; the
+           site rooms' skies draw the same roster). Sizes are targets: none
+           of the four GLBs is in the repo, so the renderer's bbox fit is
+           the only scale — if one lands wrong, its `h` / `span` is the edit. */
+        computer_chair_blue:{ file: 'computer_chair_blue.glb',                                    h: 0.98, foot: 0.32 },
+        computer_chair_grey:{ file: 'computer_chair_grey.glb',                                    h: 0.98, foot: 0.32 },
+        security_camera:   { file: 'camera_01_cc0_clip_ready_v1.glb',                             span: 0.34, foot: 0, wall: true, mount: 2.55 },
+        utility_box:       { file: 'utility_box_01_cc0_clip_ready_v1.glb',                        h: 1.35, foot: 0.45 },
+        asteroid_a:        { file: 'asteroid_1.glb',                                              span: 4.0, foot: 0 },
+        asteroid_b:        { file: 'asteroid_2.glb',                                              span: 4.0, foot: 0 },
         /* ── door leaves (`leaf` marks them; the frame is procedural and is
            CUT TO THE LEAF — HQ plan D8). Every field below was measured
            offline from the GLB (2026-09-04, scratch glbinfo over /doors):
@@ -18271,10 +18288,10 @@ const DOOR_HQ = {
         leaf_suburban:       { file: 'Meshy_AI_a_suburban_door_0903105847_texture.glb',              leaf: true, aspect: 0.433, open: 'swing', hinge: 'right' },
         leaf_suburban_house: { file: 'Meshy_AI_a_suburban_house_door_0903105838_texture.glb',        leaf: true, aspect: 0.453, open: 'swing', hinge: 'right', frame: true },
         leaf_wired_double:   { file: 'Meshy_AI_institutional_wired_double_door_0903105727_texture.glb', leaf: true, aspect: 0.908, wide: true, frame: true },
-        leaf_vault:          { file: 'Meshy_AI_a_bank_vault_door_0903105653_texture.glb',            leaf: true, aspect: 1.000, wide: true, frame: true },
-        leaf_portcullis:     { file: 'Meshy_AI_a_portcullis_0903105915_texture.glb',                 leaf: true, aspect: 0.846, wide: true, frame: true },
+        leaf_vault:          { file: 'Meshy_AI_a_bank_vault_door_0903105653_texture.glb',            leaf: true, aspect: 1.000, wide: true, frame: true, shape: 'circle', hole: 0.64 },   // a round door proud of a dark square plate: the wall closes over the plate, the disc comes through
+        leaf_portcullis:     { file: 'Meshy_AI_a_portcullis_0903105915_texture.glb',                 leaf: true, aspect: 0.846, wide: true, frame: true, shape: 'arch', arch: 0.42 },   // a semicircular arch (the cap is 42 % of the height)
         leaf_revolving:      { file: 'Meshy_AI_a_revolving_door_0903105938_texture.glb',             leaf: true, aspect: 1.143, wide: true, frame: true },
-        leaf_bulkhead:       { file: 'Meshy_AI_submarine_bulkhead_0903105925_texture.glb',           leaf: true, aspect: 1.000, wide: true, frame: true },
+        leaf_bulkhead:       { file: 'Meshy_AI_submarine_bulkhead_0903105925_texture.glb',           leaf: true, aspect: 1.000, wide: true, frame: true, shape: 'circle', hole: 0.96 },   // a pure disc: the corners of the opening are wall, not the black beyond
         leaf_frame_only:     { file: 'Meshy_AI_a_door_frame_0903105906_texture.glb',                 leaf: true, aspect: 0.637, frame: true },
         leaf_frosted:        { file: 'Meshy_AI_frosted_executive_glass_door_0903105709_texture.glb', leaf: true, aspect: 0.785, wide: true },
         /* the 2026-09-04 batch: single leaves, no frame, hinge side read from the handle */
@@ -18284,13 +18301,39 @@ const DOOR_HQ = {
         leaf_bathroom:       { file: 'Meshy_AI_bathroom_door_0904015603_texture.glb',                leaf: true, aspect: 0.387, open: 'swing', hinge: 'right' },
         leaf_stall:          { file: 'Meshy_AI_bathroom_stall_door_0904015614_texture.glb',          leaf: true, aspect: 0.588, open: 'swing', hinge: 'left' },
         leaf_cell:           { file: 'Meshy_AI_cell_door_with_a_slot_0904015439_texture.glb',        leaf: true, aspect: 0.709, open: 'swing', hinge: 'left' },
-        leaf_hell_arch:      { file: 'Meshy_AI_doorway_to_hell_0904015414_texture.glb',              leaf: true, aspect: 0.734, frame: true },
+        leaf_hell_arch:      { file: 'Meshy_AI_doorway_to_hell_0904015414_texture.glb',              leaf: true, aspect: 0.734, frame: true, shape: 'arch', arch: 0.34 },   // a flattened arch; the doorway itself stays open onto the dark
         leaf_glass:          { file: 'Meshy_AI_glass_door_0904015552_texture.glb',                   leaf: true, aspect: 0.439, open: 'swing', hinge: 'right' },
         leaf_glass_exec:     { file: 'Meshy_AI_glass_executive_door_0904015541_texture.glb',         leaf: true, aspect: 0.487, open: 'swing', hinge: 'left' },
         leaf_holographic:    { file: 'Meshy_AI_holographic_door_0904015510_texture.glb',             leaf: true, aspect: 0.609, open: 'slide', hinge: 'left' },
         leaf_hospital:       { file: 'Meshy_AI_hospital_room_door_wi_0904014956_texture.glb',        leaf: true, aspect: 0.498, open: 'swing', hinge: 'right' },
         leaf_hotel:          { file: 'Meshy_AI_hotel_room_door_with__0904014945_texture.glb',        leaf: true, aspect: 0.508, open: 'swing', hinge: 'right' },
         leaf_motel:          { file: 'Meshy_AI_motel_room_door_with__0904014925_texture.glb',        leaf: true, aspect: 0.533, open: 'swing', hinge: 'right' },
+        /* ══ THE 2026-09-13 DOOR BATCH — eight AUTHORED doors (not Meshy: real
+           scales, several meshes, big textures; the filenames carry spaces
+           and _hqModelUrl encodes them). Measured offline from the GLBs in
+           /doors (scratch glbsil + the node transforms — the hinge side is
+           read from where the hinge / handle nodes sit):
+           - the three painted doors (BEIGE · WHITE · Coffee) are ONE model
+             with three finishes: authored edge-on (width along Z → `yaw`
+             90), the hinge plate ("VISAGRA") at +Z → RIGHT after the turn,
+             the handle plate on the −X face → it faces the walker.
+           - Wooden Door.glb (11 MB, 10 k tris): a leaf inside its own frame
+             ("Marco de puerta"), edge-on, the handles at +Z → hinge LEFT.
+           - BIRCH / ORANGE DOOR WITH GLASS: one model, two finishes, the
+             handle on the −Z face → `yaw` 180 to face the walker, which puts
+             the handle right → hinge LEFT.
+           - DOOR WITH LARGE / MEDIUM WINDOW and ENTRANCE DOOR: 4.03 × 8.07
+             (twice life size — the renderer fits height anyway), the
+             handle at +X → hinge LEFT. */
+        leaf_beige_wood:     { file: 'BEIGE WOODEN DOOR.glb',                                     leaf: true, aspect: 0.500, open: 'swing', hinge: 'right', yaw: 90 },
+        leaf_white_wood:     { file: 'WHITE WOODEN DOOR.glb',                                     leaf: true, aspect: 0.500, open: 'swing', hinge: 'right', yaw: 90 },
+        leaf_coffee:         { file: 'Coffee door.glb',                                           leaf: true, aspect: 0.500, open: 'swing', hinge: 'right', yaw: 90 },
+        leaf_wooden:         { file: 'Wooden Door.glb',                                           leaf: true, aspect: 0.526, open: 'swing', hinge: 'left',  yaw: 90, frame: true },
+        leaf_birch_glass:    { file: 'BIRCH DOOR WITH GLASS IN THE MIDDLE.glb',                   leaf: true, aspect: 0.525, open: 'swing', hinge: 'left',  yaw: 180 },
+        leaf_orange_glass:   { file: 'ORANGE DOOR WITH GLASS IN THE MIDDLE.glb',                  leaf: true, aspect: 0.525, open: 'swing', hinge: 'left',  yaw: 180 },
+        leaf_window_large:   { file: 'DOOR WITH LARGE WINDOW.glb',                                leaf: true, aspect: 0.500, open: 'swing', hinge: 'left' },
+        leaf_window_medium:  { file: 'DOOR WITH MEDIUM WINDOW.glb',                               leaf: true, aspect: 0.500, open: 'swing', hinge: 'left' },
+        leaf_entrance:       { file: 'ENTRANCE DOOR.glb',                                         leaf: true, aspect: 0.500, open: 'swing', hinge: 'left' },
     },
 
     /* The seven containment bays (DOOR_MASTER A10; the seventh, URBAN, plan 7.5). Every launch map belongs
@@ -18423,12 +18466,12 @@ const DOOR_HQ = {
        lists every numbered place in the building, sorted for a directory. */
     thresholds: {
         prebuilt_nuketown:      { roomNo: '1945', leaf: 'leaf_motel',          why: 'the test', note: 'the motel off the highway; it opens onto the street' },
-        prebuilt_area51:        { roomNo: '51', leaf: 'leaf_closet',         why: 'itself · EST. 1947', note: 'the hangar man-door; the keypad is a rival account' },
+        prebuilt_area51:        { roomNo: '51', leaf: 'leaf_window_medium',         why: 'itself · EST. 1947', note: 'the hangar man-door; the keypad is a rival account' },
         prebuilt_skinwalker:    { roomNo: '512', leaf: 'leaf_stable',         why: 'the ranch is 512 acres', note: 'the stable door, rehung indoors; the top half stays shut' },
         prebuilt_bohemian_grove:{ roomNo: '23', leaf: 'leaf_saloon',         why: 'the 23 enigma', note: 'the lodge saloon door; do not knock in rhythm' },
         prebuilt_dumb:          { roomNo: '555', leaf: 'leaf_bulkhead',       wide: true, why: 'five sides above ground; the sixth is down', note: 'blast door, deep underground military base issue' },
         prebuilt_cern:          { roomNo: '999', leaf: 'leaf_bulkhead',       wide: true, why: '666, upside down', note: 'the collider blast door; hum audible' },
-        prebuilt_vatican:       { roomNo: '888', leaf: 'leaf_closet_alt',     why: 'immunity claimed, three times', note: 'the archive service door; painted white by decree' },
+        prebuilt_vatican:       { roomNo: '888', leaf: 'leaf_white_wood',     why: 'immunity claimed, three times', note: 'the archive service door; painted white by decree' },
         prebuilt_stadium:       { roomNo: '50', leaf: 'leaf_wired_double',   wide: true, why: 'the 50-yard line', note: 'a turnstile that was a double door yesterday' },
         prebuilt_stonehenge:    { roomNo: '56', leaf: 'leaf_frame_only',     why: 'the 56 Aubrey holes', note: 'a frame with nothing in it; the stones are on the other side' },
         prebuilt_giza:          { roomNo: '444', leaf: 'leaf_vault',          wide: true, why: 'four faces, three times', note: 'the sealed tomb door, opened by treaty' },
@@ -18437,11 +18480,11 @@ const DOOR_HQ = {
         prebuilt_camelot:       { roomNo: 'i', leaf: 'leaf_portcullis',     wide: true, why: 'the imaginary kingdom (√−1)', note: 'the portcullis; HINGE technology, no privileged side' },
         prebuilt_technoticlan:  { roomNo: '2012', leaf: 'leaf_portcullis',     wide: true, why: 'the calendar', note: 'the temple gate, iron over obsidian' },
         prebuilt_atlantis:      { roomNo: 'H-20', leaf: 'leaf_bulkhead',       wide: true, why: 'the formula, as filed', note: 'the wet submarine bulkhead; it drips on this side too' },
-        prebuilt_shasta:        { roomNo: '14179', leaf: 'leaf_closet',         why: 'the summit, in feet', note: 'a cabin door with a mountain behind it' },
+        prebuilt_shasta:        { roomNo: '14179', leaf: 'leaf_coffee',         why: 'the summit, in feet', note: 'a cabin door with a mountain behind it' },
         prebuilt_hollow_earth:  { roomNo: '180', leaf: 'leaf_frame_only',     why: 'the floor on the far side is the ceiling', note: 'a frame; the floor on the far side is the ceiling' },
         prebuilt_agartha:       { roomNo: '88', leaf: 'leaf_vault',          wide: true, why: '∞ stacked on ∞ — the world inside the world', note: 'the inner gate; polished by a very long queue' },
         prebuilt_antarctica:    { roomNo: '90S', leaf: 'leaf_bulkhead',       wide: true, why: '90° south', note: 'the ice-wall hatch; cold to the touch on both faces' },
-        prebuilt_northpole:     { roomNo: '1225', leaf: 'leaf_closet_alt',     why: 'December 25', note: 'a workshop door; sleigh bells removed by Records' },
+        prebuilt_northpole:     { roomNo: '1225', leaf: 'leaf_beige_wood',     why: 'December 25', note: 'a workshop door; sleigh bells removed by Records' },
         prebuilt_mars:          { roomNo: '4', leaf: 'leaf_bulkhead',       wide: true, why: 'the fourth planet', note: 'the airlock; red dust in the seal' },
         prebuilt_moon:          { roomNo: '1969', leaf: 'leaf_frame_only',     why: 'the footage', note: 'a door standing without a wall; footprints lead to it' },
         prebuilt_cyberpunk:     { roomNo: '2047', leaf: 'leaf_holographic',    why: 'the year on the lease', note: 'the tenement door; the hologram was added by tenants' },
@@ -18456,12 +18499,12 @@ const DOOR_HQ = {
         prebuilt_derelict:      { roomNo: '426', leaf: 'leaf_bulkhead',       wide: true, why: 'LV-426; the signal was a warning', note: 'an airlock hatch onto a ship that is mostly not there; it cycles anyway' },
         prebuilt_lookingglass:  { roomNo: 'E4', leaf: 'leaf_frame_only',     why: 'the first move; the board is 64, the room is one square', note: 'a mirror frame with no glass in it; the board is on the far side, and it is moving' },
         /* 7.6 WAVE 1 (2026-09-13): Room 13 — the plate says 13, the door says 237 (the user's Hotel folds in) */
-        prebuilt_haunted:       { roomNo: '13', leaf: 'leaf_hotel',          why: 'the floor hotels leave out', note: 'a hotel room door; the plate says 13, the door says 237' },
+        prebuilt_haunted:       { roomNo: '13', leaf: 'leaf_wooden',          why: 'the floor hotels leave out', note: 'a hotel room door; the plate says 13, the door says 237' },
         prebuilt_lodge:         { roomNo: '33', leaf: 'leaf_vault',          wide: true, why: 'the 33rd degree; Skull & Bones (322) is its basement', note: 'the lodge vault; the combination is a handshake' },
         prebuilt_singularity:   { roomNo: '0', leaf: 'leaf_frame_only',     why: 'a point of zero volume; the user\'s Void (0) and Singularity (1) as one', note: 'a frame; there is no other side' },
         prebuilt_saturn:        { roomNo: '6', leaf: 'leaf_bulkhead',       wide: true, why: 'the sixth planet', note: 'the Mars airlock\'s twin; frost on the other side' },
         prebuilt_strip:         { roomNo: '21', leaf: 'leaf_motel',          why: 'blackjack', note: 'a motel door with a DO NOT DISTURB sign that is a lie' },
-        prebuilt_downtown:      { roomNo: '1954', leaf: 'leaf_glass',          why: 'REC — the first kaiju film', note: 'a lobby door; the glass is taped, the lobby is not there' },
+        prebuilt_downtown:      { roomNo: '1954', leaf: 'leaf_entrance',          why: 'REC — the first kaiju film', note: 'a lobby door; the glass is taped, the lobby is not there' },
     },
     /* The two FACILITY boards (HQ plan 7.0 rule 3) are not sites: no bay,
        no threshold. They wear the room they are projected in — the Training
@@ -19780,9 +19823,9 @@ const DOOR_HQ = {
                    r 21; 2.9 and 2.5 needed, 2 m of pier is the rule). A glass
                    shop door; the pole hangs in the hall beside it (111°). The
                    vending machine moved from 105° to 98° to make the doorway. */
-                { id: 'barbershop',     deg: 105, level: 0, leaf: 'leaf_glass',                     label: 'OCCAM’S BARBERSHOP',      sub: 'CHANGE AVATAR', action: { room: 'barbershop', at: 'egress' },
+                { id: 'barbershop',     deg: 105, level: 0, leaf: 'leaf_birch_glass',                     label: 'OCCAM’S BARBERSHOP',      sub: 'CHANGE AVATAR', action: { room: 'barbershop', at: 'egress' },
                   desc: 'Room 1287. Change your appearance: sit, and walk out as the recruit, your most-played vessel, an agent in black, or anything the Department has declassified. The mirror is Reception’s — the photo on your card follows the chair. Two explanations for how you look; he only does the shorter one.' },
-                { id: 'reception',      deg: 120, level: 0, leaf: 'leaf_glass',                     label: 'RECEPTION',               sub: 'VIEW PROFILE',            action: { fn: '_mountReactProfile' }, roomNo: '1', why: 'one foot in the door; forms start at 1', desc: 'Employee ID cards, laminator, LOST CARD FEE. Your profile lives here.' },
+                { id: 'reception',      deg: 120, level: 0, leaf: 'leaf_window_large',                     label: 'RECEPTION',               sub: 'VIEW PROFILE',            action: { fn: '_mountReactProfile' }, roomNo: '1', why: 'one foot in the door; forms start at 1', desc: 'Employee ID cards, laminator, LOST CARD FEE. Your profile lives here.' },
                 { id: 'office',         deg: 150, level: 0, leaf: 'leaf_closet_warped',             label: 'YOUR OFFICE',             sub: 'STORY · CASE FILE',          action: { room: 'office', at: 'egress' }, desc: 'A converted janitor’s closet. Cot, mop bucket, CRT, phone, drain. The in-tray is where the story arrives.', rankDoor: true },
                 { id: 'training',       deg: 180, level: 0, leaf: 'leaf_exit',                      label: 'TRAINING ROOM',           sub: 'PRACTICE · GAUNTLET · DUNGEON',   action: { room: 'training', at: 'egress' }, desc: 'Room 64. The only authorized square room in the building — an 8×8 grid, deemed totally safe, notoriously leaky. ORTHOGONAL GEOMETRY EXPOSURE AREA · MAX OCCUPANCY 45 MINUTES.' },
                 /* ROOM 1111 · MEDICAL (plan 7.4, 2026-09-13 rev 3): the door is now the
@@ -19819,7 +19862,7 @@ const DOOR_HQ = {
                 { id: 'it',             deg: 120, level: 1, leaf: 'leaf_holographic',              label: 'IT',                      sub: 'SPELL LIBRARY · BALANCE LAB', action: { room: 'it', at: 'egress' },
                   desc: 'Room 1337. The fourth door. It was not there yesterday and Facilities has no ticket for it. The Spell Library, the balance lab and the racks the CPU trains on; the code is on a sticky note on the keypad, on the inside.' },
                 { id: 'bay_diplomatic', deg: 150, level: 1, leaf: 'leaf_revolving',    wide: true,  label: 'BAY 5 · DIPLOMATIC',      sub: 'BATTLE MAPS',            action: { sector: 'diplomatic' } },
-                { id: 'bay_urban',      deg: 180, level: 1, leaf: 'leaf_glass',                     label: 'BAY 7 · URBAN',           sub: 'BATTLE MAPS',            action: { sector: 'urban' } },
+                { id: 'bay_urban',      deg: 180, level: 1, leaf: 'leaf_orange_glass',                     label: 'BAY 7 · URBAN',           sub: 'BATTLE MAPS',            action: { sector: 'urban' } },
                 { id: 'bay_hollow',     deg: 210, level: 1, leaf: 'leaf_wired_double', wide: true,  label: 'BAY 3 · HOLLOW',          sub: 'BATTLE MAPS',            action: { sector: 'hollow' } },
                 /* ROOM 360 (2026-09-11, plan 7.4): THE OBSERVATORIUM on the
                    mezzanine at 240°, directly above Records — between Bay 3
@@ -19909,10 +19952,10 @@ const DOOR_HQ = {
                 { key: 'curved_couch', deg: 60,  r: 15.6, level: 0 },
                 { key: 'office_plant', deg: 52,  r: 16.2, level: 0 },
                 { key: 'conference_table', deg: 110, r: 15.2, level: 0, rot: 90 },
-                { key: 'office_chair', deg: 106, r: 14.0, level: 0, rot: 180 },
-                { key: 'office_chair', deg: 114, r: 14.0, level: 0, rot: 180 },
-                { key: 'office_chair', deg: 106, r: 16.4, level: 0, rot: 0 },
-                { key: 'office_chair', deg: 114, r: 16.4, level: 0, rot: 0 },
+                { key: 'computer_chair_blue', deg: 106, r: 14.0, level: 0, rot: 180 },   // the 2026-09-13 chairs at the conference table
+                { key: 'computer_chair_grey', deg: 114, r: 14.0, level: 0, rot: 180 },
+                { key: 'computer_chair_grey', deg: 106, r: 16.4, level: 0, rot: 0 },
+                { key: 'computer_chair_blue', deg: 114, r: 16.4, level: 0, rot: 0 },
                 /* globe lamps on the inner band */
                 { key: 'globe_lamp',   deg: 200, r: 9.9, level: 0 },
                 { key: 'globe_lamp',   deg: 160, r: 9.9, level: 0 },
@@ -19944,8 +19987,8 @@ const DOOR_HQ = {
                    a 1 m collision disc: ground floor only, never the slab. */
                 { key: 'round_cubicle',  deg: 325, r: 15.4, level: 0, rot: 20 },
                 { key: 'round_cubicle',  deg: 337, r: 16.2, level: 0, rot: -15 },
-                { key: 'office_chair',   deg: 322, r: 14.3, level: 0, rot: 40 },
-                { key: 'office_chair',   deg: 340, r: 17.6, level: 0, rot: 200 },
+                { key: 'computer_chair_blue', deg: 322, r: 14.3, level: 0, rot: 40 },   // the cubicles' chairs (2026-09-13)
+                { key: 'computer_chair_grey', deg: 340, r: 17.6, level: 0, rot: 200 },
                 /* the building's muzak, on top of the lockers */
                 { key: 'retro_speakers', deg: 135.5, r: 20.35, level: 0, y: 1.85 },
                 /* three empty round frames on the lower wall. Records has the
@@ -19959,6 +20002,9 @@ const DOOR_HQ = {
                 { key: 'fire_extinguisher', deg: 262, level: 0, wall: true },       // moved from 258°: Room 1984's door
                 { key: 'wall_clock',     deg: 165, level: 0, wall: true },
                 { key: 'wall_clock',     deg: 345, level: 0, wall: true },
+                /* the cameras (2026-09-13): over Reception's counter and over the vault — the building watches the till */
+                { key: 'security_camera', deg: 135, level: 0, wall: true, mount: 3.3 },
+                { key: 'security_camera', deg: 84,  level: 0, wall: true, mount: 3.3 },
                 { key: 'exit_sign',      deg: 180, level: 0, r: 20.42, mount: 2.62 },
                 { key: 'wet_floor_sign', deg: 156, r: 18.4, level: 0, rot: -30 },
                 { key: 'mop_bucket',     deg: 143, r: 19.4, level: 0 },
@@ -20379,7 +20425,7 @@ const DOOR_HQ = {
                 { key: 'rotary_phone',   x: -0.95, z: -2.4, y: 0.76, face: 160 },
                 { key: 'papers_a',       x: -1.5, z: -2.15, y: 0.76, face: 15 },
                 { key: 'stapler',        x: -1.05, z: -2.05, y: 0.76, face: 40 },
-                { key: 'office_chair',   x: -1.6, z: -2.95, face: 180 },
+                { key: 'computer_chair_blue', x: -1.6, z: -2.95, face: 180 },        // the 2026-09-13 chair
                 { key: 'filing_cabinet', wall: 'n', x: 1.3 },
                 { key: 'filing_cabinet', wall: 'n', x: 2.0 },
                 { key: 'cardboard_boxes', x: 3.6, z: -2.9, face: 25 },
@@ -20458,7 +20504,7 @@ const DOOR_HQ = {
                 plate: { x: 0, z: -2.75, y: 2.8 },
             },
             doors: [
-                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_glass',
+                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_birch_glass',
                   label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
                   action: { room: 'central_egress', at: 'barbershop' },
                   desc: 'The way back to the hall. The lettering on the glass reads OCCAM’S from the hall and, from in here, whatever you walked in as.' },
@@ -20702,7 +20748,7 @@ const DOOR_HQ = {
                 { key: 'rotary_phone',   x: -0.85, z: 2.3,  y: 0.76, face: 20 },
                 { key: 'pen',            x: -1.55, z: 2.25, y: 0.76, face: 70 },
                 { key: 'manila_folders', x: -2.1,  z: 2.35, y: 0.76, face: 355 },
-                { key: 'office_chair',   x: -1.5,  z: 2.35, face: 180 },              // the nurse's, facing the desk
+                { key: 'computer_chair_grey', x: -1.5,  z: 2.35, face: 180 },        // the nurse's, facing the desk (the 2026-09-13 chair)
                 { key: 'notice_board',   wall: 's', x: 1.6 },
                 { key: 'wall_clock',     wall: 's', x: 3.2, mount: 2.5 },
                 { key: 'fire_extinguisher', wall: 's', x: 3.0 },
@@ -20857,6 +20903,7 @@ const DOOR_HQ = {
                 { key: 'observation_window', wall: 'n', x: 0, mount: 1.45 },
                 { key: 'vent_grille',    wall: 'n', x: -2.7, mount: 2.5 },
                 { key: 'wall_clock',     wall: 'n', x: 2.5, mount: 2.4 },
+                { key: 'security_camera', wall: 'e', z: -2.6, mount: 2.55 },            // the camera (2026-09-13): it records the table
                 /* ── the east wall: the tape, the file, the rail ── */
                 { key: 'metal_shelving', wall: 'e', z: -1.7 },
                 { key: 'tube_tv',        x: 3.15, z: -1.7, y: 1.22, face: 270 },   // the recording, on the middle shelf
@@ -20968,7 +21015,7 @@ const DOOR_HQ = {
                 { key: 'clipboard_flat', x: 0.95, z: 2.85, y: 0.76, face: 10 },
                 { key: 'rotary_phone',   x: 2.1,  z: 2.8,  y: 0.76, face: 20 },
                 { key: 'pen',            x: 1.45, z: 2.75, y: 0.76, face: 70 },
-                { key: 'office_chair',   x: 1.5,  z: 2.35, face: 180 },              // the archivist's, facing the desk
+                { key: 'computer_chair_grey', x: 1.5,  z: 2.35, face: 180 },         // the archivist's, facing the desk (the 2026-09-13 chair)
                 { key: 'wall_clock',     wall: 's', x: -1.3, mount: 2.55 },
                 { key: 'picture_round_b', wall: 's', x: -3.0 },
                 { key: 'papers_a',       x: -1.3, z: 3.1, face: 0 },                  // the returns pile, on the floor
@@ -21070,13 +21117,14 @@ const DOOR_HQ = {
                 { key: 'papers_b',       x: 3.5,  z: -1.45, y: 0.76, face: 260 },
                 { key: 'coffee_mug',     x: 3.35, z: -0.35, y: 0.76, face: 0 },
                 { key: 'pen',            x: 3.7,  z: -0.4,  y: 0.76, face: 100 },
-                { key: 'office_chair',   x: 2.85, z: -0.9,  face: 90 },              // the sysadmin's, facing the desk
+                { key: 'computer_chair_grey', x: 2.85, z: -0.9,  face: 90 },         // the sysadmin's, facing the desk (the 2026-09-13 chair)
                 { key: 'tanker_desk',    wall: 'e', z: 1.4 },
                 { key: 'tube_tv',        x: 3.55, z: 1.4,   y: 0.76, face: 270 },   // the bench's dashboard
                 { key: 'retro_speakers', x: 3.6,  z: 1.95,  y: 0.76, face: 270 },
                 { key: 'desk_fan',       x: 3.6,  z: 0.85,  y: 0.76, face: 250 },
                 { key: 'solo_cup',       x: 3.3,  z: 1.05,  y: 0.76, face: 0 },
-                { key: 'office_chair',   x: 2.85, z: 1.4,   face: 90 },
+                { key: 'computer_chair_blue', x: 2.85, z: 1.4,   face: 90 },
+                { key: 'security_camera', wall: 'n', x: -0.2, mount: 2.6 },              // the racks are watched (2026-09-13)
                 /* ── the south wall: the shelf of spares, the cooler, the bin ── */
                 { key: 'metal_shelving', wall: 's', x: -2.4 },
                 { key: 'cardboard_box',  x: -2.4, z: 2.75, y: 0.9, face: 20 },       // on the shelf

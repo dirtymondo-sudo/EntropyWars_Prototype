@@ -10472,3 +10472,19 @@ under the edge — the beam edge bug read −5 tiles there before the fix.
   DETONATE=1: tilt 90, lift 3.2 tiles, horizon mid-frame in
   `flyby_frozen250.png`). The jet itself and the bomb follow's glide are
   UNSEEN here (GLB 404 / rAF-paced) — eyeball live.
+
+## THE DOOR-KIT BATCH — measuring a leaf's silhouette (2026-09-14)
+The frame is cut to the LEAF's shape now (CLAUDE.md "THE DOOR-KIT BATCH +
+THE SURROUND"). Before giving a new leaf a `shape` / `hole` / `arch`, look
+at it: a 60-line Node script parses the GLB (JSON chunk + BIN, POSITION
+accessors, node transforms), projects every triangle onto the leaf's
+front plane and rasterises 48×48 coverage — print it as ASCII (`#` /
+`.`), read the row widths bottom→top and the four 15 % corners. A second
+pass keeps the max front-depth per cell (0–9) — that is how the vault
+turned out to be a ROUND door proud of a thin dark SQUARE plate (depth 2
+everywhere, 7–9 on the disc): the plate is what read as "black space", so
+its `hole` (0.64) is the disc, not the bbox. Hinge side = where the hinge
+/ handle NODES sit (`VISAGRA`, `Picaporte`, `HANDLE`, `SHEET METAL`), then
+apply the `yaw`: rotation.y +90° maps local +Z → world +X (right). Session
+scratch: glbsil.js / depth.js / handle.js (not repo tooling — rewrite in
+ten minutes from this note).

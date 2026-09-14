@@ -1945,7 +1945,7 @@ test('Room 247 is a box room off the ground ring at 225°: the way in, the way o
     assert.ok(!ROOM.props.some(p => (p.level || 0) === 0 && p.r > 18.5 && Math.abs(p.deg - eg.deg) < 5), 'nothing stands in front of it');
     /* the build sheet */
     const has = key => CLOCK.props.filter(p => p.key === key).length;
-    for (const key of ['world_clocks', 'punch_clock', 'form_sheet', 'notice_board', 'tanker_desk', 'crt_terminal', 'rotary_phone', 'office_chair', 'filing_cabinet',
+    for (const key of ['world_clocks', 'punch_clock', 'form_sheet', 'notice_board', 'tanker_desk', 'crt_terminal', 'rotary_phone', 'computer_chair_blue', 'filing_cabinet',
                        'folding_chair', 'water_cooler', 'exit_sign', 'breaker_panel', 'fire_extinguisher', 'fluorescent', 'wall_clock']) {
         assert.ok(has(key) >= 1, 'Room 247 has its ' + key);
     }
@@ -1961,7 +1961,7 @@ test('Room 247 is a box room off the ground ring at 225°: the way in, the way o
     assert.ok(CLOCK.props.some(p => p.key === 'punch_clock' && p.wall === 'e' && Math.abs(p.z - pu.z) < 0.3), 'the clock hangs where its counter stands');
     assert.ok(CLOCK.props.some(p => p.key === 'notice_board' && p.wall === 's' && Math.abs(p.x - cr.x) < 0.3), 'the board hangs where its counter stands');
     /* the timekeeper sits at the desk; the roster and the shift have spots */
-    assert.ok(CLOCK.agents.length >= 1 && CLOCK.agents[0].pose === 'hqSit' && CLOCK.props.some(p => p.key === 'office_chair' && Math.hypot(p.x - CLOCK.agents[0].x, p.z - CLOCK.agents[0].z) < 0.05), 'the timekeeper sits on the desk chair');
+    assert.ok(CLOCK.agents.length >= 1 && CLOCK.agents[0].pose === 'hqSit' && CLOCK.props.some(p => /^(office_chair|computer_chair_)/.test(p.key) && Math.hypot(p.x - CLOCK.agents[0].x, p.z - CLOCK.agents[0].z) < 0.05), 'the timekeeper sits on the desk chair');
     assert.ok(CLOCK.npcSpots.length >= 2 && CLOCK.onlineSpots.length >= 1 && CLOCK.lines.length >= 3, 'spots and lines');
     /* the three procs */
     for (const [k, h] of [['world_clocks', 0.5], ['punch_clock', 0.4], ['form_sheet', 0.9]]) {
@@ -2488,13 +2488,13 @@ test('Room 42 is a box room behind the wired double door at 240° (Records was a
     assert.ok(!RECS.props.some(p => p.wall === 'n' && p.key !== 'exit_sign' && Math.abs(p.x - st.x) < 1.35), 'nothing on the north wall stands in the stair’s doorway');
     /* the kit */
     const has = key => RECS.props.filter(p => p.key === key).length;
-    for (const key of ['metal_shelving', 'card_catalogue', 'filing_cabinet', 'tanker_desk', 'crt_terminal', 'desk_lamp', 'manila_folders', 'office_chair', 'wall_clock', 'exit_sign', 'fluorescent', 'rug_office', 'globe_lamp', 'breaker_panel']) assert.ok(has(key) >= 1, 'Room 42 has its ' + key);
+    for (const key of ['metal_shelving', 'card_catalogue', 'filing_cabinet', 'tanker_desk', 'crt_terminal', 'desk_lamp', 'manila_folders', 'computer_chair_grey', 'wall_clock', 'exit_sign', 'fluorescent', 'rug_office', 'globe_lamp', 'breaker_panel']) assert.ok(has(key) >= 1, 'Room 42 has its ' + key);
     assert.ok(has('metal_shelving') >= 5, 'the stacks: five shelves at least along the north wall');
     assert.strictEqual(has('card_catalogue'), 1);
     assert.ok(RECS.props.some(p => p.key === 'card_catalogue' && p.wall === 'e' && Math.abs(p.z - un.z) < 0.3), 'the catalogue hangs where its counter stands');
     assert.ok(RECS.props.some(p => p.key === 'tanker_desk' && p.wall === 's' && Math.abs(p.x - cx.x) < 0.3), 'the desk stands where its counter stands');
     assert.ok(HQ.catalogue.card_catalogue && HQ.catalogue.card_catalogue.proc === 'card_catalogue' && HQ.catalogue.card_catalogue.wall && HQ.catalogue.card_catalogue.block, 'card_catalogue is a solid wall proc');
-    assert.ok(RECS.agents.some(a => a.pose === 'hqSit' && RECS.props.some(p => p.key === 'office_chair' && Math.hypot(p.x - a.x, p.z - a.z) < 0.05)), 'the archivist sits on the desk chair');
+    assert.ok(RECS.agents.some(a => a.pose === 'hqSit' && RECS.props.some(p => /^(office_chair|computer_chair_)/.test(p.key) && Math.hypot(p.x - a.x, p.z - a.z) < 0.05)), 'the archivist sits on the desk chair');
     assert.deepStrictEqual(boxPropProblems('records', RECS), []);
     const rows = D.hqRoomRegister().filter(r => r.no === '42');
     assert.strictEqual(rows.length, 1); assert.strictEqual(rows[0].kind, 'room'); assert.strictEqual(rows[0].id, 'records');
@@ -2529,7 +2529,7 @@ test('Room 1337 is a box room off the mezzanine at 120° (inside Arcane Engineer
     assert.ok(rk && rk.action.fn === '_launchAITraining' && rk.verb && rk.desc, 'THE RACKS run the AI training lab');
     assert.ok(lib.face === 270 && bn.face === 270 && rk.face === 180, 'the desks front west off the east wall, the racks front south off the north wall');
     const has = key => ITR.props.filter(p => p.key === key).length;
-    for (const key of ['server_rack', 'keypad', 'tanker_desk', 'crt_terminal', 'tube_tv', 'office_chair', 'breaker_panel', 'vent_grille', 'wall_clock', 'exit_sign', 'fluorescent', 'pipe_run', 'metal_shelving', 'water_cooler', 'fire_extinguisher']) assert.ok(has(key) >= 1, 'Room 1337 has its ' + key);
+    for (const key of ['server_rack', 'keypad', 'tanker_desk', 'crt_terminal', 'tube_tv', 'computer_chair_grey', 'breaker_panel', 'vent_grille', 'wall_clock', 'exit_sign', 'fluorescent', 'pipe_run', 'metal_shelving', 'water_cooler', 'fire_extinguisher']) assert.ok(has(key) >= 1, 'Room 1337 has its ' + key);
     assert.ok(has('server_rack') >= 3, 'three racks at least'); assert.strictEqual(has('tanker_desk'), 2, 'two desks'); assert.strictEqual(has('keypad'), 1);
     assert.ok(ITR.props.every(p => p.key !== 'server_rack' || p.wall === 'n'), 'the racks stand along the north wall');
     assert.ok(ITR.props.some(p => p.key === 'server_rack' && Math.abs(p.x - rk.x) < 0.3), 'the racks counter stands at a rack');
@@ -2537,7 +2537,7 @@ test('Room 1337 is a box room off the mezzanine at 120° (inside Arcane Engineer
     assert.ok(ITR.props.some(p => p.key === 'tanker_desk' && p.wall === 'e' && Math.abs(p.z - lib.z) < 0.3) && ITR.props.some(p => p.key === 'tanker_desk' && p.wall === 'e' && Math.abs(p.z - bn.z) < 0.3), 'a desk under each console');
     for (const k of ['server_rack', 'keypad', 'card_catalogue']) assert.ok(HQ.catalogue[k] && HQ.catalogue[k].proc === k && HQ.catalogue[k].wall, k + ' is a wall proc');
     assert.ok(HQ.catalogue.server_rack.block && HQ.catalogue.server_rack.glow, 'the racks are solid and lit');
-    assert.ok(ITR.agents.some(a => a.pose === 'hqSit' && ITR.props.some(p => p.key === 'office_chair' && Math.hypot(p.x - a.x, p.z - a.z) < 0.05)), 'the sysadmin sits on the library’s chair');
+    assert.ok(ITR.agents.some(a => a.pose === 'hqSit' && ITR.props.some(p => /^(office_chair|computer_chair_)/.test(p.key) && Math.hypot(p.x - a.x, p.z - a.z) < 0.05)), 'the sysadmin sits on the library’s chair');
     assert.deepStrictEqual(boxPropProblems('it', ITR), []);
     const rows = D.hqRoomRegister().filter(r => r.no === '1337');
     assert.strictEqual(rows.length, 1); assert.strictEqual(rows[0].kind, 'room'); assert.strictEqual(rows[0].id, 'it');
@@ -2584,9 +2584,9 @@ test('Room 1111 is a box room off the ground ring at 210° (between the Training
     assert.ok(MED.props.some(p => p.key === 'tanker_desk' && p.wall === 's' && Math.abs(p.x - dk.x) < 0.3), 'a desk under the desk counter');
     assert.ok(MED.props.some(p => p.key === 'clipboard' && p.wall === 'e' && Math.abs(p.z - ch.z) < 0.3), 'the chart is a clipboard on the east wall at the counter');
     const has = key => MED.props.filter(p => p.key === key).length;
-    for (const key of ['cot', 'sink', 'wall_shelf', 'clipboard', 'tanker_desk', 'crt_terminal', 'office_chair', 'folding_chair', 'metal_shelving', 'filing_cabinet', 'notice_board', 'wall_clock', 'water_cooler', 'exit_sign', 'fluorescent', 'fire_extinguisher', 'breaker_panel', 'floor_drain']) assert.ok(has(key) >= 1, 'Room 1111 has its ' + key);
+    for (const key of ['cot', 'sink', 'wall_shelf', 'clipboard', 'tanker_desk', 'crt_terminal', 'computer_chair_grey', 'folding_chair', 'metal_shelving', 'filing_cabinet', 'notice_board', 'wall_clock', 'water_cooler', 'exit_sign', 'fluorescent', 'fire_extinguisher', 'breaker_panel', 'floor_drain']) assert.ok(has(key) >= 1, 'Room 1111 has its ' + key);
     assert.ok(has('cot') >= 2, 'a ward: two cots at least'); assert.ok(MED.props.every(p => p.key !== 'cot' || p.x > MED.shell.w / 2 - 1.0), 'the cots stand along the east wall');
-    assert.ok(MED.agents.some(a => a.pose === 'hqSit' && MED.props.some(p => p.key === 'office_chair' && Math.hypot(p.x - a.x, p.z - a.z) < 0.05)), 'the nurse sits on the desk chair');
+    assert.ok(MED.agents.some(a => a.pose === 'hqSit' && MED.props.some(p => /^(office_chair|computer_chair_)/.test(p.key) && Math.hypot(p.x - a.x, p.z - a.z) < 0.05)), 'the nurse sits on the desk chair');
     assert.ok(MED.agents.some(a => a.pose === 'hqSit' && MED.props.some(p => p.key === 'cot' && Math.hypot(p.x - a.x, p.z - a.z) < 0.05)), 'the patient sits on a cot');
     assert.deepStrictEqual(boxPropProblems('medical', MED), []);
     const rows = D.hqRoomRegister().filter(r => r.no === '1111');

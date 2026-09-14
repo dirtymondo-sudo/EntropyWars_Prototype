@@ -22030,16 +22030,22 @@ const ThreeRenderer = (function () {
     // room registers a blocker for it BEFORE the GLB has loaded
     // (_hqBuildSetting: an empty box is otherwise skipped). `fallback` is
     // the procedural builder used when the catalogue / loader is missing.
+    // 2026-09-13: `unlit` = the horizon look (_hzMiscUnlitPick — the
+    // asteroids in the far rosters), `lift` = the self-lit Lambert, `low:
+    // 'skip'` = the fallback under EW_PERF_LOW (scenery only), `fit`
+    // overrides the catalogue's span / height rule.
     function _hzDoorKitGLB(key, o) {
         o = o || {};
         var ts = CONFIG.tileSize || BASE_TILE, mPerTs = 1.75;
         var cat = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.catalogue) ? DOOR_HQ.catalogue[key] : null;
-        if (!cat || !cat.file || typeof _hqModelUrl !== 'function' || typeof THREE.GLTFLoader !== 'function') {
+        var skip = typeof window !== 'undefined' && window.EW_PERF_LOW && o.low === 'skip';
+        if (!cat || !cat.file || typeof _hqModelUrl !== 'function' || typeof THREE.GLTFLoader !== 'function' || skip) {
             return o.fallback ? o.fallback(o.rng || Math.random) : new THREE.Group();
         }
-        var fitSpan = (cat.span != null && cat.h == null);
+        var fitSpan = o.fit ? (o.fit === 'span') : (cat.span != null && cat.h == null);
         var metres = (o.metres != null) ? o.metres : (fitSpan ? cat.span : cat.h);
-        var g = _miscModelInstance(_hqModelUrl(cat), true, metres / mPerTs * ts, { fit: fitSpan ? 'span' : 'height', matPick: _hzPropLitPick });
+        var pick = o.unlit ? _hzMiscUnlitPick : (o.lift ? _hzPropLitLiftPick(o.lift) : _hzPropLitPick);
+        var g = _miscModelInstance(_hqModelUrl(cat), true, metres / mPerTs * ts, { fit: fitSpan ? 'span' : 'height', matPick: pick });
         g._ew_footM = (o.foot != null) ? o.foot : (cat.foot || 0);
         g._ew_kit = key;
         return g;
@@ -23432,8 +23438,15 @@ const ThreeRenderer = (function () {
         var H = ts * 2.9;
         _hzAt(g, _hzCyl(ts * 0.07, ts * 0.09, H, 6, ts, steel()), 0, H / 2, 0);
         _hzAt(g, _hzCyl(ts * 0.05, ts * 0.05, ts * 0.55, 5, ts, steel()), 0, H + ts * 0.05, -ts * 0.2, 0, 0, 1.2);
-        var cam = _hzBox(ts * 0.3, ts * 0.26, ts * 0.6, ts, steel());
-        _hzAt(g, cam, 0, H, -ts * 0.45, 0, 0, -0.25);
+        /* 2026-09-13: the head is the user's camera GLB (catalogue
+           `security_camera`) when the kit is there — the procedural box head
+           is its fallback; the red lens blinks on either */
+        var head = _hzDoorKitGLB('security_camera', { metres: 0.55, fit: 'span', fallback: function () {
+            var cam = _hzBox(ts * 0.3, ts * 0.26, ts * 0.6, ts, steel()); cam.rotation.z = -0.25; return cam;
+        } });
+        head.position.set(0, H, -ts * 0.45);
+        if (head._ew_kit) { head.position.y -= ts * 0.1; head.rotation.x = -0.3; }   // the GLB sits on the bracket, tilted down at the street
+        g.add(head);
         var lensMat = _hzGlowMat(0xff3030, 0.8);
         var lens = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.05, 6, 5), lensMat);
         _hzAt(g, lens, 0, H - ts * 0.06, -ts * 0.76);
@@ -25042,6 +25055,7 @@ const ThreeRenderer = (function () {
         var cab = K.box(0.9 * ts, 0.8 * ts, 0.9 * ts, K.mat('metal', 0x8a9098)); cab.position.set(mast.position.x, K.fy + 9.1 * ts, mast.position.z); K.add(cab);
         K.add(K.lamp(mast.position.x, K.fy + 9.6 * ts, mast.position.z, 0xff3030, 0.9 * ts, 0.7));
         [[K.BX0 - 1.5 * ts, K.BZ1 + 2.3 * ts], [K.BX1 + 1.7 * ts, K.BZ0 - 2.4 * ts]].forEach(function (p) { var bus = K.box(1.0 * ts, 0.9 * ts, 2.6 * ts, K.mat('metal_2', 0xd8b04a)); bus.position.set(p[0], K.fy + 0.55 * ts, p[1]); bus.rotation.y = 0.25; K.add(K.lit(bus, true)); });
+        _nrProp(K, function (rng) { return _hzDoorKitGLB('utility_box', { metres: 1.35, foot: 0.45, rng: rng }); }, K.CX + 1.9 * ts, K.BZ0 - 2.2 * ts, { ry: 0 });   // the street's utility box by the north road (the user's GLB, 2026-09-13)
     };
     /* HEAVEN — the gate plaza on the cloud sea: the Gates at both ends,
        a columned promenade, pillars of light, cloud banks. */
@@ -25082,6 +25096,8 @@ const ThreeRenderer = (function () {
         _nrLamps(K, { d: 1.2, spacing: 3.2, color: 0xcfe8ff, aura: 0x7ac8ff });
         _nrRectRing(K, 1.4 * ts, 2.6 * ts, function (x, z) { if (K.rng() < 0.5) return; var s = K.lamp(x, K.fy + 0.3 * ts, z, 0xbfe4ff, 1.4 * ts, 0.18); K.add(s); _hzPulse(s.material, s, 0.1, 0.25, 0.3 + K.rng() * 0.4); }, { skipLanes: true, corners: true });   // steam
         [[K.BX0 - 1.2 * ts, K.CZ - 2.2 * ts, 0.4], [K.BX1 + 1.2 * ts, K.CZ + 2.4 * ts, -0.3]].forEach(function (p) { var d = _hzPropGLB('dumpster', 1.0 * ts); d.position.set(p[0], K.fy, p[1]); d.rotation.y = p[2]; K.add(d); });
+        /* the street's utility boxes (the user's GLB, 2026-09-13) on the curb across from the dumpsters */
+        [[K.BX1 + 1.3 * ts, K.CZ - 2.6 * ts], [K.BX0 - 1.3 * ts, K.CZ + 2.8 * ts]].forEach(function (p) { _nrProp(K, function (rng) { return _hzDoorKitGLB('utility_box', { metres: 1.35, foot: 0.45, rng: rng }); }, p[0], p[1], {}); });
         var wet = new THREE.Mesh(new THREE.PlaneGeometry(K.X1 - K.X0, K.Z1 - K.Z0), new THREE.MeshBasicMaterial({ color: 0xff6ad8, transparent: true, opacity: 0.05, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
         wet.rotation.x = -Math.PI / 2; wet.position.set(K.CX, K.fy + 1.2, K.CZ); K.add(wet); _hzPulse(wet.material, null, 0.03, 0, 0.8);
     };
@@ -25114,6 +25130,8 @@ const ThreeRenderer = (function () {
         var post = K.mat('metal', 0xf2d24a);
         [[K.CX, K.BZ0 - 1.4 * ts], [K.CX, K.BZ1 + 1.4 * ts]].forEach(function (p) { var up = K.cyl(0.06 * ts, 0.08 * ts, 1.6 * ts, 6, post); up.position.set(p[0], K.fy + 0.8 * ts, p[1]); K.add(up); var bar = K.box(2.4 * ts, 0.08 * ts, 0.08 * ts, post); bar.position.set(p[0], K.fy + 1.6 * ts, p[1]); K.add(bar); [-1.2, 1.2].forEach(function (o) { var u = K.cyl(0.05 * ts, 0.05 * ts, 2.4 * ts, 6, post); u.position.set(p[0] + o * ts, K.fy + 2.8 * ts, p[1]); K.add(u); }); });
         _nrProp(K, _hzJumbotron, K.CX, K.BZ0 - 4.0 * ts, { ry: 0, s: 0.85 });
+        /* the utility boxes (the user's GLB, 2026-09-13): the jumbotron's feed at the north end, the floodlights' at the south */
+        _nrProp(K, function (rng) { return _hzDoorKitGLB('utility_box', { metres: 1.35, foot: 0.45, rng: rng }); }, K.CX - 2.4 * ts, K.BZ0 - 2.6 * ts, {}); _nrProp(K, function (rng) { return _hzDoorKitGLB('utility_box', { metres: 1.35, foot: 0.45, rng: rng }); }, K.CX + 2.4 * ts, K.BZ1 + 2.6 * ts, {});
         [[K.BX0 - 3.6 * ts, K.BZ0 - 3.6 * ts], [K.BX1 + 3.6 * ts, K.BZ0 - 3.6 * ts], [K.BX0 - 3.6 * ts, K.BZ1 + 3.6 * ts], [K.BX1 + 3.6 * ts, K.BZ1 + 3.6 * ts]].forEach(function (p) { _nrTower(K, p[0], p[1], { h: 6.5 }); });
         var wall = K.mat('concrete_floor', 0x8a8e96);
         [['n', K.CX, K.BZ0 - 4.4 * ts, K.X1 - K.X0, 0.4 * ts], ['s', K.CX, K.BZ1 + 4.4 * ts, K.X1 - K.X0, 0.4 * ts]].forEach(function (w) { var b = K.box(w[3], 1.4 * ts, w[4], wall); b.position.set(w[1], K.fy + 0.7 * ts, w[2]); K.addW(w[0], K.lit(b, true)); });
@@ -25550,6 +25568,8 @@ const ThreeRenderer = (function () {
         _nrLamps(K, { d: 1.3, spacing: 3.0, color: 0xfff0c0, aura: 0xffb060, only: ['n', 's'] });
         _nrTrees(K, { d: 1.6, spacing: 2.4, kinds: ['tree_3'], p: 0.7, h: 2.6, only: ['n', 's'] });
         [[K.BX0 - 1.4 * ts, K.BZ0 - 2.6 * ts], [K.BX1 + 1.4 * ts, K.BZ1 + 2.6 * ts]].forEach(function (p) { _nrPool(K, p[0], p[1], 0.9 * ts, 'water', { jet: 0x8ad8ff, rimTex: 'marble_light', rimColor: 0xf0e8d8 }); K.add(K.lamp(p[0], fy + 0.9 * ts, p[1], 0x8ad8ff, 1.6 * ts, 0.4)); });
+        /* the utility boxes on the curbs (the user's GLB, 2026-09-13): the casinos' power */
+        [[K.BX0 - 1.4 * ts, K.CZ - 1.2 * ts], [K.BX1 + 1.4 * ts, K.CZ + 1.2 * ts]].forEach(function (p) { _nrProp(K, function (rng) { return _hzDoorKitGLB('utility_box', { metres: 1.35, foot: 0.45, rng: rng }); }, p[0], p[1], {}); });
         /* the chapel: a white house with a steeple, on the north-east corner */
         var cx = K.BX1 + 2.6 * ts, cz = K.BZ0 - 2.6 * ts;
         _nrHouse(K, cx, cz, { w: 2.4, d: 2.0, h: 1.4, tex: 'marble_light', color: 0xf8f4ec, roofTex: 'wood', roofColor: 0x4a3a58, ry: Math.PI, window: 0xffd0f0, chimney: false });
@@ -25579,6 +25599,8 @@ const ThreeRenderer = (function () {
         _nrMounds(K, { tex: 'rubble_3', color: 0xa09a94, d: 1.2, spacing: 2.6, r: 0.9, flat: 0.3, p: 0.4, only: ['w', 'e'] });
         [[K.BX0 - 1.2 * ts, K.CZ - 2.4 * ts, 0.4], [K.BX1 + 1.2 * ts, K.CZ + 2.6 * ts, -0.3]].forEach(function (p) { var d = _hzPropGLB('dumpster', 1.0 * ts); d.position.set(p[0], fy, p[1]); d.rotation.y = p[2]; K.add(d); });
         _nrProp(K, _hzSecurityCam, K.BX1 + 2.0 * ts, K.BZ0 - 2.0 * ts, { s: 0.8 });
+        /* the utility boxes (the user's GLB, 2026-09-13): the block's power, on the curbs beside the dumpsters */
+        [[K.BX0 - 1.3 * ts, K.CZ + 1.0 * ts], [K.BX1 + 1.3 * ts, K.CZ - 1.4 * ts]].forEach(function (p) { _nrProp(K, function (rng) { return _hzDoorKitGLB('utility_box', { metres: 1.35, foot: 0.45, rng: rng }); }, p[0], p[1], {}); });
         var steel = K.mat('gunmetal', 0x5a5a60);
         [[K.CX - 1.8 * ts, K.Z0 + 0.8 * ts], [K.CX + 1.8 * ts, K.Z0 + 0.8 * ts], [K.CX - 1.8 * ts, K.Z1 - 0.8 * ts], [K.CX + 1.8 * ts, K.Z1 - 0.8 * ts]].forEach(function (p) {
             var pole = K.cyl(0.05 * ts, 0.06 * ts, 2.2 * ts, 6, steel); pole.position.set(p[0], fy + 1.1 * ts, p[1]); K.add(pole);
@@ -26437,6 +26459,17 @@ const ThreeRenderer = (function () {
         if (rng() < 0.25) { var ice = _hzGlowSprite(r * 1.6, 0x9fd8ff, 0.12, 0.05, 0.03, 0.4); g.add(ice); }
         return g;
     }
+    /* 2026-09-13: the user's two asteroid GLBs (D.O.O.R. kit, catalogue
+       `asteroid_a` / `asteroid_b`) tumble through the `space` and `wreckage`
+       rosters — Mars, the Moon, Saturn, the Singularity, the Spaceship and
+       the celestial site rooms' skies. Unlit like every horizon model, the
+       procedural rock is the fallback (loader missing, EW_PERF_LOW). */
+    function _hzAsteroidFar(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, key = rng() < 0.5 ? 'asteroid_a' : 'asteroid_b';
+        var g = _hzDoorKitGLB(key, { metres: (2.5 + rng() * 9) * 1.75, fit: 'span', unlit: true, low: 'skip', rng: rng, fallback: _hzAsteroid });
+        if (g._ew_kit === key && rng() < 0.25) { var ice = _hzGlowSprite(ts * 6, 0x9fd8ff, 0.10, 0.05, 0.03, 0.4); ice.position.y = ts * 2.5; g.add(ice); }
+        return g;
+    }
     /* a piece of the ship: a torn plate with girders and a live spark, or a
        length of fuselage with a lit porthole */
     function _hzHullChunk(rng) {
@@ -26624,9 +26657,10 @@ const ThreeRenderer = (function () {
                 [0.30, _hzMonolith, false, -0.50, 0.55], [0.50, _hzGateway, false, -0.40, 0.55],
                 [0.68, _hzFloatingIsland, false, -0.55, 0.60], [0.84, _hzAstralOrbs, true, -0.50, 0.72],
                 [1.00, _hzSacredRings, true, -0.50, 0.70]],
-            space: [
-                [0.22, _hzModelPlanet, false, -0.60, 0.78], [0.36, _hzAstralOrbs, true, -0.60, 0.76],
-                [0.48, _hzCrystalShards, true, -0.60, 0.70], [0.58, _hzModelStar, false, -0.55, 0.80],
+            space: [   // 2026-09-13: the asteroids are the user's GLBs (_hzAsteroidFar)
+                [0.17, _hzModelPlanet, false, -0.60, 0.78], [0.31, _hzAsteroidFar, true, -0.60, 0.75],
+                [0.42, _hzAstralOrbs, true, -0.60, 0.76],
+                [0.52, _hzCrystalShards, true, -0.60, 0.70], [0.60, _hzModelStar, false, -0.55, 0.80],
                 [0.66, _hzModelSolarSystem, false, -0.40, 0.70], [0.74, _hzFloatingIsland, false, -0.58, 0.66],
                 [0.82, _hzModelEyeball, true, -0.50, 0.70], [0.88, _hzSaucer, false, -0.45, 0.68],
                 [0.94, _hzModelCraft, false, -0.35, 0.70], [1.00, _hzSacredRings, true, -0.60, 0.72]],
@@ -26646,7 +26680,7 @@ const ThreeRenderer = (function () {
                 [0.84, _hzLenticular, false, 0.14, 0.45], [0.92, _hzAstralOrbs, true, 0.12, 0.5],
                 [1.00, _hzSacredRings, true, 0.14, 0.6]],
             wreckage: [   // 2026-09-12: the torn plate (in _hzHullChunk), the pod, the astronaut and the docking ring are the user's GLBs
-                [0.30, _hzAsteroid, true, -0.60, 0.75], [0.46, _hzHullChunk, true, -0.55, 0.70],
+                [0.30, _hzAsteroidFar, true, -0.60, 0.75], [0.46, _hzHullChunk, true, -0.55, 0.70],
                 [0.54, _hzGirderKnot, true, -0.50, 0.65], [0.61, _hzEscapePodFar, true, -0.55, 0.70],
                 [0.67, _hzAstronautFar, true, -0.50, 0.68], [0.72, _hzDockRingFar, true, -0.55, 0.72],
                 [0.79, _hzModelPlanet, false, -0.60, 0.78],
@@ -38246,6 +38280,38 @@ const ThreeRenderer = (function () {
     }
 
     /* ── doors: frame panel + recess + lamp + leaf + nameplate ─────────── */
+    /* the wall plate behind a leaf, cut to the leaf's shape (see THE
+       SURROUND in _hqBuildDoors). ow / oh in metres; `cat` = the leaf's
+       catalogue entry (null = a procedural leaf → no plate). Returns a
+       Mesh facing +Z (the walker), its bottom edge on the sill. */
+    function _hqDoorSurround(ow, oh, cat, mat) {
+        if (!cat || typeof THREE.Shape !== 'function') return null;
+        var U = _hqUnits(), W = ow + 0.04, H = oh + 0.02;
+        var outer = new THREE.Shape();
+        outer.moveTo(-W / 2 * U, 0); outer.lineTo(W / 2 * U, 0); outer.lineTo(W / 2 * U, H * U); outer.lineTo(-W / 2 * U, H * U); outer.closePath();
+        var hole = new THREE.Path();
+        var hw = ow * 0.485;   // the rectangular hole is 97 % of the opening: a 1.5 % stop each side
+        if (cat.shape === 'circle') {
+            var d = Math.min(ow, oh) * (cat.hole || 0.96);
+            hole.absarc(0, oh / 2 * U, d / 2 * U, 0, Math.PI * 2, false);
+        } else if (cat.shape === 'arch') {
+            var k = Math.max(0.1, Math.min(0.5, cat.arch || 0.4)), yS = oh * (1 - k) * U, ry = oh * k * 0.985 * U;
+            hole.moveTo(-hw * U, 0); hole.lineTo(hw * U, 0); hole.lineTo(hw * U, yS);
+            hole.absellipse(0, yS, hw * U, ry, 0, Math.PI, false);
+            hole.lineTo(-hw * U, 0);
+        } else {
+            hole.moveTo(-hw * U, 0); hole.lineTo(hw * U, 0); hole.lineTo(hw * U, oh * 0.985 * U); hole.lineTo(-hw * U, oh * 0.985 * U); hole.closePath();
+        }
+        outer.holes.push(hole);
+        var geo = new THREE.ShapeGeometry(outer, 24);
+        /* ShapeGeometry's UVs are the plane coordinates: map them over the plate like a box face (the jambs' density) */
+        var uv = geo.getAttribute('uv'), pos = geo.getAttribute('position');
+        for (var i = 0; i < uv.count; i++) uv.setXY(i, (pos.getX(i) / U + W / 2) / W, pos.getY(i) / U / H);
+        uv.needsUpdate = true;
+        var m = new THREE.Mesh(geo, mat);
+        m.name = 'hq-door-surround';
+        return m;
+    }
     function _hqBuildDoors(room) {
         var U = _hqUnits(), S = room.shell, G = _hq.doorGroup;
         var wallMat = _hqMat(S.wall || 'stone', 1.2, 1.4);
@@ -38295,6 +38361,19 @@ const ThreeRenderer = (function () {
             var jR = _hqBox(jw, ph, pd, wallMat); jR.position.set((ow / 2 + jw / 2) * U, ph / 2 * U, 0);
             var lin = _hqBox(ow + 0.02, ph - oh, pd, wallMat); lin.position.set(0, (oh + (ph - oh) / 2) * U, 0);
             var back = _hqBox(ow + 0.04, oh + 0.02, 0.12, backMat); back.position.set(0, (oh / 2) * U, (-pd / 2 + 0.06 + 0.05) * U);
+            /* THE SURROUND (2026-09-13): the frame fits the LEAF's shape, not
+               its bounding box. A wall-textured plate stands in the recess
+               just in front of the black beyond, cut to the leaf's silhouette
+               (catalogue `shape`: a `circle` of `hole` × the opening for the
+               vault / the bulkhead, an `arch` whose cap is `arch` × the
+               height for the portcullis / the hell door, else the opening
+               rectangle inset a hair) — so the corners beside a round hatch
+               and the shoulders beside an arch are wall, and any sliver
+               between a leaf and its jambs reads as the frame's stop instead
+               of a black gap. The leaf hangs IN FRONT of it (its dark backing
+               plate, where it has one, behind it). */
+            var surround = _hqDoorSurround(ow, oh, leafCat, wallMat);
+            if (surround) { surround.position.set(0, 0, (-pd / 2 + 0.18) * U); grp.add(surround); }
             var dL = _hqBox(jw + 0.02, S.dadoH, 0.03, dadoMat); dL.position.set(jL.position.x, (S.dadoH / 2 + 0.04) * U, (pd / 2 + 0.015) * U);
             var dR = _hqBox(jw + 0.02, S.dadoH, 0.03, dadoMat); dR.position.set(jR.position.x, (S.dadoH / 2 + 0.04) * U, (pd / 2 + 0.015) * U);
             var cap = _hqBox(pw + 0.06, 0.12, pd + 0.06, capMat); cap.position.set(0, (ph + 0.06) * U, 0);
@@ -38358,7 +38437,12 @@ const ThreeRenderer = (function () {
                        stretch is a few percent; a leaf without a measured
                        aspect is still clamped to the opening). `yaw` turns a
                        model authored edge-on before measuring its width. */
-                    var targetH = (oh - 0.08) * U, targetW = (ow - 0.05) * U;
+                    /* 2026-09-13: edge to edge — a leaf that carries its own
+                       frame overlaps the jambs / lintel by a few cm (they are
+                       solid boxes, the overlap is inside them); a bare leaf
+                       stops a hair short of the reveal. The 8 cm of black over
+                       every leaf is gone. */
+                    var targetH = (leafCat.frame ? oh + 0.03 : oh - 0.015) * U, targetW = (leafCat.frame ? ow + 0.05 : ow - 0.01) * U;
                     var yawDeg = cat.yaw || 0;
                     var slideMotion = (motion && motion.mode === 'slide') ? motion : null;
                     var lg = _miscModelInstance(_hqModelUrl(cat), true, targetH, {

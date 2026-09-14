@@ -86,6 +86,38 @@ Staunton chess set (`_hzChessPiece` lathes on the rim, `_hzChessMon`
 monuments on the board, `_hzChessPieceFar`), the card soldiers
 (`_hzTextTex` billboards), a cryo tube, a sea serpent.
 
+## 3b. THE DOOR-KIT BATCH (Assets/door/models/, 2026-09-13)
+
+Fifteen files the user uploaded to the D.O.O.R. kit folder: eight
+AUTHORED doors (not Meshy — real scales, several meshes, big textures,
+filenames with spaces; `_hqModelUrl` encodes them) and seven props. All
+of them are `DOOR_HQ.catalogue` entries (data.js); the props reach the
+boards through `_hzDoorKitGLB`, which since this batch takes `unlit` /
+`lift` / `low: 'skip'` / `fit` like `_hzMiscKit`. Columns as in §3.
+
+| key | file | facing / notes | S | R | H | stands as |
+| --- | --- | --- | --- | --- | --- | --- |
+| `leaf_beige_wood` | BEIGE WOODEN DOOR.glb | edge-on (`yaw` 90), hinge right | | | North Pole threshold (1225) | |
+| `leaf_white_wood` | WHITE WOODEN DOOR.glb | same model, white | | | Vatican threshold (888 — "painted white by decree") | |
+| `leaf_coffee` | Coffee door.glb | same model, coffee | | | Shasta threshold (14179, the cabin) | |
+| `leaf_wooden` | Wooden Door.glb | 11 MB; its own frame; edge-on, hinge left | | | the Haunted House threshold (13) | |
+| `leaf_birch_glass` | BIRCH DOOR WITH GLASS IN THE MIDDLE.glb | faces −Z (`yaw` 180), hinge left | | | Occam's Barbershop (105°) + its way out | |
+| `leaf_orange_glass` | ORANGE DOOR WITH GLASS IN THE MIDDLE.glb | same model, orange | | | Bay 7 · URBAN (180°, mezzanine) + the ring's copies | |
+| `leaf_window_large` | DOOR WITH LARGE WINDOW.glb | 2× life size (fitted), hinge left | | | Reception (120°) | |
+| `leaf_window_medium` | DOOR WITH MEDIUM WINDOW.glb | same, medium light | | | Area 51 threshold (51, the hangar man-door) | |
+| `leaf_entrance` | ENTRANCE DOOR.glb | hinge left | | | Downtown threshold (1954, the lobby) | |
+| `computer_chair_blue` / `computer_chair_grey` | computer_chair_blue.glb / computer_chair_grey.glb | 16 MB each | | | the hall (the conference table ×4, the cubicles ×2), IT ×2, Records, the Clock Room, Medical | |
+| `security_camera` | camera_01_cc0_clip_ready_v1.glb | wall prop, `mount` 2.55 | Downtown (`_hzSecurityCam`'s head, GLB-first over the box head; the `securitycam` monument too) | | the hall (over Reception, over the vault), IT, the Interrogation Room | |
+| `utility_box` | utility_box_01_cc0_clip_ready_v1.glb | 1.35 m, foot 0.45 | Cyberpunk ×2 · the Strip ×2 · Downtown ×2 · Nuketown · the Stadium ×2 (`_nrProp` + `_hzDoorKitGLB`; the site rooms inherit them) | | | |
+| `asteroid_a` / `asteroid_b` | asteroid_1.glb / asteroid_2.glb | unlit, tumbling | | **space** (Mars, the Moon, Saturn, the Singularity) + **wreckage** (the Spaceship) via `_hzAsteroidFar` — `_hzAsteroid` (the procedural rock) is the fallback | the celestial site rooms' skies (same roster) | |
+
+The frame fits the leaf since this batch: a leaf may carry `shape:
+'circle'` (+ `hole`, the disc's share of the opening — the vault 0.64,
+the bulkhead 0.96) or `shape: 'arch'` (+ `arch`, the cap's share of the
+height — the portcullis 0.42, the hell door 0.34); three-renderer.js
+`_hqDoorSurround` cuts a wall-textured plate to it behind the leaf
+(rect leaves get the opening inset 1.5 % — a stop, not a black gap).
+
 ## 4. The older `Assets/misc/` models (`_MISC_GLB` + the OBJ landmarks)
 
 | key | file | kind | stands as |
@@ -117,7 +149,8 @@ master sword ALSO stand on boards from the same files (`_hzSleigh`,
 
 116 Meshy GLBs (desk kit, furniture, wall pieces, the vehicles, the
 plants, the held items), 18 procedural entries (`proc:` builders in
-`_hqProcBuilders`), 32 door leaves. Since 2026-09-12 an entry may carry
+`_hqProcBuilders`), 41 door leaves (32 Meshy + the nine authored doors
+of §3b), and the seven authored props of §3b. Since 2026-09-12 an entry may carry
 `base: 'misc'` to read a shared misc-bucket file (the two pocket
 watches). Three kit props ALSO stand on battle boards through
 `_hzDoorKitGLB`: `mars_rover` (Mars), `lunar_lander` (the Moon),
@@ -171,3 +204,6 @@ the register.
 | the moon | `moon` | the sky, the Meteor rock |
 | the mushroom | `mushroom` | the board monument, the wonder roster (+ caterpillar) |
 | the D.O.O.R. leaf of a site | `DOOR_HQ.thresholds[map].leaf` | the building's door, the crossing cinematic, the lone doors in every roster, the main menu |
+| a security camera | `security_camera` | the hall / IT / the Interrogation Room walls, Downtown's pole camera + the `securitycam` monument |
+| a street utility box | `utility_box` | every URBAN setting (Cyberpunk, the Strip, Downtown, Nuketown, the Stadium) |
+| an asteroid | `asteroid_a` / `asteroid_b` | the `space` + `wreckage` rosters (`_hzAsteroidFar`) |

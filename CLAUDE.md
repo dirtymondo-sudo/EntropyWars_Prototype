@@ -2351,3 +2351,44 @@ sizes the shared renderer for another host never touches the battle's
 record — the battle re-derives it on activate. Measured headlessly with a
 scratch probe (CSS2D transform ≡ the plate's projected position on both
 launch paths at 1600×1000); the look live is unseen (RULE #1c).
+
+## THE DOOR-KIT BATCH + THE SURROUND (the frame fits the leaf) — 2026-09-14, local delivery
+Fifteen files the user uploaded to R2 `Assets/door/models/` (MODEL_INDEX
+§3b): eight AUTHORED doors (not Meshy — real scales, several meshes,
+filenames WITH SPACES: `_hqModelUrl` encodes them) and seven props. **The
+leaves** (data.js catalogue `leaf_beige_wood` / `_white_wood` / `_coffee`
+— one model, three finishes, edge-on `yaw: 90`, hinge right; `leaf_wooden`
+— 11 MB, its own frame, hinge left; `leaf_birch_glass` / `_orange_glass` —
+`yaw: 180`, hinge left; `leaf_window_large` / `_window_medium` /
+`leaf_entrance` — 2× life size, fitted) hang on nine doors: the Haunted
+House, Shasta, the Vatican, the North Pole, Area 51 and Downtown
+thresholds, the Barbershop (+ its way out), Reception, Bay 7. The hinge
+sides were read off the GLBs' hinge / handle NODES (scratch tooling;
+`node --check` only — the swing is unseen, RULE #1c). **THE SURROUND**:
+three-renderer.js `_hqDoorSurround(ow, oh, cat, mat)` (right before
+`_hqBuildDoors`) stands a wall-textured plate in the recess in front of
+the black beyond, CUT TO THE LEAF'S SHAPE — catalogue `shape: 'circle'` +
+`hole` (the disc's share of the opening: `leaf_vault` 0.64 — a round door
+proud of a dark square plate, the plate now hides behind the wall;
+`leaf_bulkhead` 0.96), `shape: 'arch'` + `arch` (the cap's share of the
+height: `leaf_portcullis` 0.42, `leaf_hell_arch` 0.34), else the opening
+inset 1.5 % (a stop, never a black sliver). The leaf fit is edge to edge
+now (`frame: true` leaves overlap the jambs by a few cm; a bare leaf stops
+1 cm short; the 8 cm of black over every leaf is gone). Measure a new
+leaf's silhouette before giving it a shape (PLAYTEST_NOTES has the
+scratch rasteriser recipe under "THE DOOR-KIT BATCH"). **The props**:
+`computer_chair_blue` / `_grey` (16 MB each — the hall's conference table
++ cubicles, IT, Records, the Clock Room, Medical), `security_camera`
+(wall, `mount` 2.55: the hall over Reception + the vault, IT, the
+Interrogation Room; Downtown's `_hzSecurityCam` head is GLB-first over
+the box), `utility_box` (URBAN settings through `_nrProp` +
+`_hzDoorKitGLB`: Cyberpunk, the Strip, Downtown, Nuketown, the Stadium —
+the site rooms inherit them, `foot` 0.45 blocks the walker),
+`asteroid_a` / `asteroid_b` (`_hzAsteroidFar` in the `space` + `wreckage`
+rosters, GLB-first over `_hzAsteroid`; the celestial site rooms' skies
+too). `_hzDoorKitGLB` grew `unlit` / `lift` / `low: 'skip'` / `fit`.
+None of the seven prop GLBs is in the repo — their `h` / `span` are
+targets; if one lands wrong, that field is the edit. `npm test` runs
+`door-kit-batch.test.js`. UNSEEN LIVE (RULE #1c): every new leaf's face
+and swing, the camera's authored facing (a photo camera would want a desk,
+not a wall), the chairs' scale, the asteroids' size against the planets.
