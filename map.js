@@ -1666,6 +1666,45 @@
                 html += '<p class="hq-panel-note">The dock beside the ramp is a step up into the laundry. The car is the other way out. The ramp is neither.</p>';
                 return html;
             }
+            /* H-WING (HQ plan 5.5, 2026-09-14 rev 4): THE FLOOR PLAN by the stair — an H, every door on it, the dot moved */
+            if (c.id === 'wingplan') {
+                const HW = DOOR_HQ.hwing || {};
+                const rooms = (HW.rooms || []).map(id => DOOR_HQ.rooms[id]).filter(Boolean);
+                const doorsN = rooms.reduce((n, r) => n + (r.doors || []).length, 0);
+                const here = _hqCurRoom || 'hwing_lobby';
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'The floor plan.') + '</p>';
+                html += '<pre class="hq-plan-h" style="margin:6px 0 10px;font:12px/1.35 ui-monospace,monospace;opacity:.85;white-space:pre">'
+                    + '  W                 E\n'
+                    + '  ║      EXIT       ║\n'
+                    + '  ║                 ║\n'
+                    + '  ║═══ HOME ═══ ════║\n'
+                    + '  ║   POOL  BREAK   ║\n'
+                    + '  ║                 ║\n'
+                    + '  ▼ LOBBY    THE END ▼\n'
+                    + '</pre>';
+                html += '<div class="hq-rows">'
+                    + `<div class="hq-row hq-row-tray"><b>THE LEGS</b><span>${_hqEsc(String(HW.legM || 48))} M EACH · STRAIGHT · ${_hqEsc(String(doorsN))} DOORS ON THE PLAN</span><i class="hq-lamp-chip st-unstable">RIGHT ANGLES</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>THE OFFICES</b><span>EIGHT DOORS · ONE OFFICE</span><i class="hq-lamp-chip st-codered">1</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>YOU ARE HERE</b><span>${_hqEsc(((DOOR_HQ.rooms[here] || {}).label || here).toUpperCase())}</span><i class="hq-lamp-chip st-${(HW.rooms || []).includes(here) ? 'stabilized' : 'off'}">${(HW.rooms || []).includes(here) ? '●' : '—'}</i></div>`
+                    + '</div>';
+                html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">NOTED</button></div>';
+                html += '<p class="hq-panel-note">The wing is not on the building directory and wears no number; the plates on its doors are blank. The dot has been moved. The EXIT at the end of the west leg is the one door to Room 90 that does not go through Bay 6.</p>';
+                return html;
+            }
+            /* HOME (H-Wing): THE PHONE — ringing; the answer is the user's (MASTER A14 Q5), so the button waits */
+            if (c.id === 'phone') {
+                const ic = (typeof window.hqIntakeCard === 'function') ? window.hqIntakeCard(_hqProfile()) : null;
+                const rings = 3 + (Math.floor(Date.now() / 4000) % 9);
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'The phone.') + '</p>';
+                html += '<div class="hq-rows">'
+                    + `<div class="hq-row hq-row-tray"><b>RINGING</b><span>SINCE YOU CAME IN · SINCE BEFORE THAT</span><i class="hq-lamp-chip st-codered">${rings}</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>THE NUMBER</b><span>THE DIAL HAS NO NUMBERS ON IT</span><i class="hq-lamp-chip st-off">—</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>FOR</b><span>${ic && ic.onFile ? _hqEsc(String(ic.callsign || 'YOU').toUpperCase()) : 'YOU'}</span><i class="hq-lamp-chip st-unstable">HOLD</i></div>`
+                    + '</div>';
+                html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">LET IT RING</button><button class="hq-btn" disabled title="Not yet. What is on the line is not written (DOOR_MASTER A14 Q5).">ANSWER</button></div>';
+                html += '<p class="hq-panel-note">The stairs end at the ceiling. The kitchen door opens onto the front door. The phone does not stop. Nothing in this house is on file yet.</p>';
+                return html;
+            }
             /* THE BOARD (Room 314): the type wheel — TYPE_CHART, the same read as the damage roll */
             if (c.id === 'board') {
                 html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'The board.') + '</p>';

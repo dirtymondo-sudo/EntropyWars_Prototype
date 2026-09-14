@@ -37427,6 +37427,17 @@ const ThreeRenderer = (function () {
         var half = S.w / 2, dry = N * C / 2 + (S.moat ? S.moat.gap : 0);
         /* kept clear: the way in (the south lane at the wall) and the console */
         var zones = [{ x0: -2.2, x1: 2.2, z0: half - 2.8, z1: half + 1 }];   // the leaf's 3.3 m panel + a shoulder; Camelot's gate towers stand at ±2.5
+        /* a second door on the room (H-WING, 2026-09-14 rev 4: the Backrooms'
+           back door — DOOR_HQ.siteRooms.backDoors): its own lane is kept clear
+           like the way in, on whichever wall it hangs */
+        (room.doors || []).forEach(function (d) {
+            if (!d || d.id === 'egress' || !d.wall) return;
+            var dx = d.x || 0, dz = d.z || 0;
+            if (d.wall === 's') zones.push({ x0: dx - 2.2, x1: dx + 2.2, z0: half - 2.8, z1: half + 1 });
+            else if (d.wall === 'n') zones.push({ x0: dx - 2.2, x1: dx + 2.2, z0: -half - 1, z1: -(half - 2.8) });
+            else if (d.wall === 'e') zones.push({ x0: half - 2.8, x1: half + 1, z0: dz - 2.2, z1: dz + 2.2 });
+            else if (d.wall === 'w') zones.push({ x0: -half - 1, x1: -(half - 2.8), z0: dz - 2.2, z1: dz + 2.2 });
+        });
         (room.counters || []).forEach(function (c) {
             if (!c || c.action == null || c.action.overlay !== 'crossing') return;
             /* the console stands 1.1 m off its wall with the desk behind it: a
@@ -39110,6 +39121,68 @@ const ThreeRenderer = (function () {
             }
             return g;
         },
+        /* ── H-WING (HQ plan 5.5, 2026-09-14 rev 4): the only place in the
+           building made of right angles — two procs the round kit refuses ── */
+        /* THE SQUARE CUBICLE: three fabric partitions in a U (2.0 m wide, 1.8 m
+           deep, 1.6 m high), a laminate desk across the back, a beige CRT, a
+           chair block. Front is +z (the seat side). The round cubicle is the
+           building's; this one is the wing's. */
+        square_cubicle: function (U) {
+            var g = new THREE.Group();
+            var fabric = _hqMat('carpet_4', 2, 1, { color: 0x9a9c8e, shininess: 2 });
+            var frame = _hqMat(null, 1, 1, { color: 0x5a5c58, shininess: 30 });
+            var lam = _hqMat(null, 1, 1, { color: 0xd8cfb0, shininess: 24 });
+            /* the partitions: back, left, right — each a panel in a thin frame */
+            var back = _hqBox(2.0, 1.6, 0.05, fabric); back.position.set(0, 0.8 * U, -0.9 * U); g.add(back);
+            var bt = _hqBox(2.02, 0.04, 0.07, frame); bt.position.set(0, 1.6 * U, -0.9 * U); g.add(bt);
+            [-1.0, 1.0].forEach(function (x) {
+                var side = _hqBox(0.05, 1.6, 1.8, fabric); side.position.set(x * U, 0.8 * U, 0); g.add(side);
+                var st = _hqBox(0.07, 0.04, 1.82, frame); st.position.set(x * U, 1.6 * U, 0); g.add(st);
+                var post = _hqBox(0.06, 1.62, 0.06, frame); post.position.set(x * U, 0.81 * U, 0.9 * U); g.add(post);
+            });
+            /* the desk: a slab across the back on two pedestals */
+            var top = _hqBox(1.9, 0.04, 0.7, lam); top.position.set(0, 0.74 * U, -0.55 * U); g.add(top);
+            [-0.7, 0.7].forEach(function (x) { var ped = _hqBox(0.45, 0.72, 0.6, _hqMat(null, 1, 1, { color: 0x7a7266, shininess: 10 })); ped.position.set(x * U, 0.36 * U, -0.55 * U); g.add(ped); });
+            /* the CRT: a beige box with a dark screen, a keyboard, the phone */
+            var crt = _hqBox(0.42, 0.38, 0.4, _hqMat(null, 1, 1, { color: 0xd6cdb2, shininess: 18 })); crt.position.set(0.2 * U, 0.95 * U, -0.62 * U); g.add(crt);
+            var scr = _hqBox(0.32, 0.26, 0.01, new THREE.MeshPhongMaterial({ color: 0x14201a, emissive: 0x1e3a2c, emissiveIntensity: 0.6, shininess: 120 })); scr.position.set(0.2 * U, 0.98 * U, -0.415 * U); g.add(scr);
+            var kb = _hqBox(0.42, 0.03, 0.15, _hqMat(null, 1, 1, { color: 0xc8c0a8, shininess: 12 })); kb.position.set(0.2 * U, 0.775 * U, -0.32 * U); g.add(kb);
+            var ph = _hqBox(0.2, 0.06, 0.16, _hqMat(null, 1, 1, { color: 0xe8e2d0, shininess: 20 })); ph.position.set(-0.6 * U, 0.79 * U, -0.6 * U); g.add(ph);
+            /* the chair: a seat and a back on a stem */
+            var seatM = _hqMat(null, 1, 1, { color: 0x3c4a58, shininess: 16 });
+            var seat = _hqBox(0.46, 0.06, 0.46, seatM); seat.position.set(0, 0.46 * U, 0.1 * U); g.add(seat);
+            var cb = _hqBox(0.44, 0.44, 0.06, seatM); cb.position.set(0, 0.71 * U, 0.32 * U); g.add(cb);
+            var stem = new THREE.Mesh(new THREE.CylinderGeometry(0.03 * U, 0.03 * U, 0.44 * U, 8), frame); stem.position.set(0, 0.22 * U, 0.1 * U); g.add(stem);
+            var base = new THREE.Mesh(new THREE.CylinderGeometry(0.26 * U, 0.26 * U, 0.03 * U, 12), frame); base.position.set(0, 0.015 * U, 0.1 * U); g.add(base);
+            /* a pinned sheet on the back partition (the only thing on it) */
+            var sheet = _hqBox(0.21, 0.28, 0.005, _hqMat(null, 1, 1, { color: 0xf4f1e6, shininess: 2 })); sheet.position.set(-0.55 * U, 1.15 * U, -0.87 * U); g.add(sheet);
+            return g;
+        },
+        /* THE STAIRS THAT END AT THE CEILING (HOME): a domestic flight — two
+           stringers, eight carpeted treads, a newel and a handrail — rising
+           2.4 m in 2.8 m and stopping at the ceiling. Nothing is up there.
+           Front is +z (the foot of the stairs); it climbs toward −z. */
+        house_stairs: function (U) {
+            var g = new THREE.Group();
+            var wood = _hqMat('wood', 2, 1, { color: 0x8a6a48, shininess: 22 });
+            var carpetM = _hqMat('carpet_2', 1, 1, { color: 0x8a5a58, shininess: 2 });
+            var n = 8, rise = 0.3, run = 0.35;
+            for (var i = 0; i < n; i++) {
+                var t = _hqBox(1.0, 0.04, run, carpetM); t.position.set(0, (rise * (i + 1)) * U, (1.4 - run * (i + 0.5)) * U); g.add(t);
+                var r = _hqBox(1.0, rise, 0.03, wood); r.position.set(0, (rise * i + rise / 2) * U, (1.4 - run * i) * U); g.add(r);
+            }
+            /* the stringers: two slabs under the treads, cut as one box each turned to the pitch */
+            var len = Math.sqrt(Math.pow(rise * n, 2) + Math.pow(run * n, 2)), pitch = Math.atan2(rise * n, run * n);
+            [-0.5, 0.5].forEach(function (x) {
+                var st = _hqBox(0.05, 0.22, len, wood); st.position.set(x * U, (rise * n / 2 - 0.08) * U, 0); st.rotation.x = pitch; g.add(st);
+            });
+            /* the newel and the rail on the open side (+x) */
+            var newel = _hqBox(0.09, 1.0, 0.09, wood); newel.position.set(0.52 * U, 0.5 * U, 1.42 * U); g.add(newel);
+            var cap = new THREE.Mesh(new THREE.SphereGeometry(0.07 * U, 10, 8), wood); cap.position.set(0.52 * U, 1.03 * U, 1.42 * U); g.add(cap);
+            var rail = _hqBox(0.05, 0.05, len, wood); rail.position.set(0.52 * U, (rise * n / 2 + 0.85) * U, 0); rail.rotation.x = pitch; g.add(rail);
+            for (var k = 1; k < n; k += 2) { var b = new THREE.Mesh(new THREE.CylinderGeometry(0.014 * U, 0.014 * U, 0.85 * U, 6), wood); b.position.set(0.52 * U, (rise * k + 0.42) * U, (1.4 - run * (k - 0.5)) * U); g.add(b); }
+            return g;
+        },
     });
     function _hqProcProp(name) {
         var b = _hqProcBuilders[name];
@@ -40305,6 +40378,7 @@ const ThreeRenderer = (function () {
        stale window after a leave, and never while _hq exists. */
     var _hqLockStaleAt = 0;
     var _hqHadLock = false;   // Phase 8: the lock was ours last time we looked
+    var _hqRebuildAt = 0;     // 2026-09-14 rev 4: the last room-to-room rebuild (a door) — a lock loss inside its window is the swap's, never an ESC
     function _hqOnLockChange() {
         try {
             if (typeof document === 'undefined' || !canvas) return;
@@ -40315,6 +40389,11 @@ const ThreeRenderer = (function () {
                    consumed it: treat it as ESC (the settings). A blur / alt-tab
                    lands here too, which is a pause as well. */
                 var esc = _hqHadLock && !!_hq && !_hq.paused && (performance.now() - _hqLockStaleAt > 2500);
+                /* the swap between two rooms (2026-09-14 rev 4): the shared canvas is
+                   re-parented / the old scene torn down and the browser may release
+                   the lock on its own — that is the door, not the walker's ESC.
+                   The walk re-grabs the lock on its next gesture as always. */
+                if (esc && performance.now() - _hqRebuildAt < 2500) esc = false;
                 _hqHadLock = false;
                 if (esc) setTimeout(function () { try { if (_hq && !_hq.paused && _hq.opts.onEscape) _hq.opts.onEscape(); } catch (e) {} }, 0);
                 return;
@@ -40751,7 +40830,10 @@ const ThreeRenderer = (function () {
         if (!initialized) init();
         if (!renderer || !canvas) return false;
         if (_menuLive) _menuLeave();             // the main menu scene hands the canvas back first
-        if (_hq) { _hqKeepLock = true; try { _hqLeave(); } finally { _hqKeepLock = false; } }
+        /* room-to-room (a door): the lock is kept through the rebuild, but the
+           browser may still drop it (a lock loss during the swap is never the
+           walker's ESC — see _hqOnLockChange, 2026-09-14 rev 4) */
+        if (_hq) { _hqRebuildAt = performance.now(); _hqKeepLock = true; try { _hqLeave(); } finally { _hqKeepLock = false; } }
         if (active) { console.warn('[HQ] refusing to open over a live battle'); return false; }
         var room = D.rooms[opts.room || 'central_egress'];
         if (!room) return false;
@@ -40838,10 +40920,15 @@ const ThreeRenderer = (function () {
         var host = opts.host;
         var w = host.clientWidth || 960, h = host.clientHeight || 540;
         _hq.camera = new THREE.PerspectiveCamera(52, w / h, 4, 20000);
-        /* re-parent the shared canvas + CSS2D overlay into the HQ page */
-        host.appendChild(canvas);
+        /* re-parent the shared canvas + CSS2D overlay into the HQ page — ONLY
+           when they are not there already (2026-09-14 rev 4): appendChild on
+           an element that is already the host's child REMOVES and re-inserts
+           it, and a pointer-locked element removed from the document loses
+           its lock; with THE PAUSE rule (C-28) that loss read as the ESC the
+           browser ate, so every door opened the settings. */
+        if (canvas.parentNode !== host) host.appendChild(canvas);
         canvas.style.display = 'block';
-        if (css2dRenderer) { host.appendChild(css2dRenderer.domElement); css2dRenderer.domElement.style.display = ''; css2dRenderer.setSize(w, h); }
+        if (css2dRenderer) { if (css2dRenderer.domElement.parentNode !== host) host.appendChild(css2dRenderer.domElement); css2dRenderer.domElement.style.display = ''; css2dRenderer.setSize(w, h); }
         renderer.setSize(w, h);
         if (ThreePost && ThreePost.resize) ThreePost.resize(w, h);
         _hq.w = w; _hq.h = h;

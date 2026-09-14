@@ -18397,6 +18397,9 @@ const DOOR_HQ = {
         fountain:        { proc: 'fountain',        h: 2.0,  foot: 1.6, block: true, glow: { y: 1.4, size: 2.0, color: 0xbfe9ff }, light: { color: 0xcfefff, intensity: 0.6, dist: 9, y: 1.5 } },
         park_bench:      { proc: 'park_bench',      h: 0.85, foot: 0.8, rect: { hw: 0.8, hd: 0.3 }, block: true },
         garden_tree:     { proc: 'garden_tree',     h: 4.5,  foot: 0.35, block: true },                                     // a foliage OBJ (_nrTree on a bare kit, like the site boards' trees)
+        /* H-WING (HQ plan 5.5, 2026-09-14 rev 4): the wing's right angles */
+        square_cubicle:  { proc: 'square_cubicle',  h: 1.6,  foot: 1.0,  rect: { hw: 1.0, hd: 0.9 }, block: true },       // three partitions in a U, the desk across the back, a beige CRT; front (+z) is the seat side
+        house_stairs:    { proc: 'house_stairs',    h: 2.4,  foot: 0.6,  rect: { hw: 0.55, hd: 1.4 }, block: true },      // HOME: a domestic flight that ends at the ceiling; foot at +z, climbs toward -z
         /* ══ THE 2026-09-10 BATCH (30 Meshy GLBs, R2 Assets/door/models/) ══
            The user's cafeteria / office / mission kit. Four of them RETIRE a
            procedural prop (plan 2.7 said "replace any of them by giving the
@@ -18743,6 +18746,37 @@ const DOOR_HQ = {
             { id: 'B',  label: 'SERVICES',      sub: 'THE SERVICE FLOOR', room: 'services', at: 'elevator' },
         ],
     },
+    /* ── H-WING (HQ plan 5.5, shipped stage 1 2026-09-14 rev 4) ───────────
+       The forbidden straight corridor beneath the facility (MASTER A0 #4 /
+       #8): beige carpet, drywall, fluorescent light, cubicles, right angles,
+       many doors. A WING, not a room — it wears no number and the register
+       skips it (7.0 rule 2); its rooms wear none either (the plates in the
+       wing are blank). Built OPEN for now (the user's rule 2026-09-14: the
+       building is built as end-game, everything unlocked; the gates come
+       later — put `minClearance` on the two entrances below and the cell
+       door at the end when the chapter says so). Two ways in: THE STAIR
+       from the garage (P2, the level the ramp does not go to) and the
+       second wall of THE ROOM AT THE END that is not a wall (a secret door
+       into the east leg's far end). The car never stops here (H is on no
+       button; the lobby's elevator door still calls it). The shape is an H:
+       two 48 m legs joined by THE CROSSBAR. THE OFFICE is ONE room behind
+       every office door in both legs, and its way out lands you at the
+       FIRST office door of the west leg whichever door you came in by; the
+       east leg's far end opens onto the west leg's start (the corridor
+       repeats — A0 #8's fractal). HOME is the childhood-home threshold
+       (scaffolding, A14 Q5 undecided: the hallway only, the phone ringing,
+       the stairs end at the ceiling, the kitchen door opens onto the front
+       door — nothing inside is canon until the user writes it). The EXIT at
+       the end of the west leg is the Backrooms crossing (C-12) — it walks
+       into Room 90's site room, whose back door comes back here. The wing's
+       plain door is `leaf_coffee` (never `leaf_hollow_core`: that is the L2 rank
+       leaf, exclusive); HOME's front door is `leaf_suburban_house`. */
+    hwing: {
+        rooms: ['hwing_lobby', 'hwing_w', 'hwing_bar', 'hwing_e', 'hwing_office', 'hwing_pool', 'hwing_break', 'hwing_home'],
+        entries: [{ room: 'garage', door: 'p2' }, { room: 'deadend', door: 'hwing' }],
+        crossing: 'prebuilt_backrooms',
+        legM: 48, barM: 12,
+    },
     facility: {
         prebuilt_training: { room: 'training' },
         prebuilt_holosim:  { roomNo: '404', label: 'HOLO SIM', sub: 'ARCANE ENGINEERING · ROOM NOT FOUND', why: 'the Simulation is a projection, not a room' },
@@ -18780,6 +18814,19 @@ const DOOR_HQ = {
        own firmament dome, `mood.night` picks day or night, and the four
        `lights` become lamp MASTS on the walkway corners. */
     siteRooms: {
+        /* BACK DOORS (H-WING, 2026-09-14 rev 4): a second door on a site room,
+           appended by hqSiteRoom after the way in. The Backrooms is what lies
+           beyond the H-Wing door (MASTER C-12): its room gets an EXIT on the
+           south wall beside the way in that opens into the wing's west leg —
+           a way back that does not go through the sealed Quarantined bay.
+           The renderer keeps the door's lane clear of the setting
+           (_hqBuildSetting zones). One row per map id, the box-room door shape. */
+        backDoors: {
+            prebuilt_backrooms: { id: 'hwing', wall: 's', x: 6.0, leaf: 'leaf_exit',
+                label: 'H-WING', sub: 'EXIT · THIS ONE IS',
+                action: { room: 'hwing_w', at: 'exit' },
+                desc: 'An EXIT door. In here they are lies; this one opens onto a beige corridor with right angles, which is worse, and is the way you came in.' },
+        },
         built: ['prebuilt_dumb', 'prebuilt_cern', 'prebuilt_backrooms', 'prebuilt_nuketown', 'prebuilt_stadium',
                 'prebuilt_camelot', 'prebuilt_atlantis', 'prebuilt_hell', 'prebuilt_technoticlan', 'prebuilt_agartha', 'prebuilt_antarctica',
                 /* stage 6 (2026-09-08 rev 4): the rest of the register — every launch map is a room */
@@ -22106,7 +22153,7 @@ const DOOR_HQ = {
         garage: {
             label: 'THE GARAGE',
             sub: 'PARKING · LEVEL P1',
-            roomNo: 'P1', why: 'the first parking level; there is no P2 on the panel and the ramp does not go there either',
+            roomNo: 'P1', why: 'the first parking level; there is no P2 on the panel and the ramp does not go there either — the stair by the west wall does (H-Wing)',
             kind: 'box',
             shell: {
                 w: 30, d: 20, h: 2.8,
@@ -22127,6 +22174,11 @@ const DOOR_HQ = {
                   label: 'THE LOADING DOCK', sub: 'DELIVERIES · UP TO THE LAUNDRY',
                   action: { room: 'dock', at: 'garage' },
                   desc: 'Deliveries. The dock is a step up into the service side of B; the laundry is through the far side of it.' },
+                /* H-WING (2026-09-14 rev 4): the stair down to the level the ramp does not go to — OPEN for now; the gate goes here (minClearance) when the chapter says so */
+                { id: 'p2', wall: 'w', z: 6.5, leaf: 'leaf_coffee',
+                  label: 'THE STAIR', sub: 'DOWN · P2',
+                  action: { room: 'hwing_lobby', at: 'stair' },
+                  desc: 'A plain door by the west wall with a stair behind it going down. The panel in the car has no P2. The ramp has no P2. The stair has.' },
             ],
             counters: [
                 { id: 'booth', x: 3.2, z: -6.6, face: 180, plateY: 1.9, radius: 2.0, verb: 'ASK',
@@ -22173,6 +22225,7 @@ const DOOR_HQ = {
                 { key: 'pipe_run',       x: 6,  z: 1.5,  face: 90 },
                 { key: 'exit_sign',      wall: 'e', z: 7.0, mount: 2.55 },
                 { key: 'nameplate',      wall: 'e', z: 4.7, mount: 1.55 },
+                { key: 'nameplate',      wall: 'w', z: 4.9, mount: 1.55 },                // by the stair down: the plate is blank, like every plate below it
                 { key: 'security_camera', wall: 's', x: -13, mount: 2.5 },
                 /* ── the ceiling: six strips ── */
                 { key: 'fluorescent',    x: -10, z: -5, ceil: true, face: 90 }, { key: 'fluorescent', x: 0, z: -5, ceil: true, face: 90 }, { key: 'fluorescent', x: 10, z: -5, ceil: true, face: 90 },
@@ -22725,6 +22778,11 @@ const DOOR_HQ = {
                   label: 'A DRAUGHT', sub: 'FROM UNDER THE WALL',
                   action: { room: 'dungeon', at: 'secret' },
                   desc: 'The wall the chair faces. It is not a wall.' },
+                /* H-WING (2026-09-14 rev 4): the second wall that is not a wall — warm air, the hum, into the east leg's far end */
+                { id: 'hwing', wall: 'w', z: 0, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'WARM, FROM THE WALL',
+                  action: { room: 'hwing_e', at: 'deadend' },
+                  desc: 'The other wall. Warm, and humming, and not a wall either. Beige carpet on the far side of it.' },
             ],
             counters: [],
             props: [
@@ -23564,6 +23622,503 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: 9.4, face: 0 },
         },
+        /* ══════════════════════════════════════════════════════════════════
+           H-WING (HQ plan 5.5, stage 1 — 2026-09-14 rev 4). See DOOR_HQ.hwing
+           for the shape and the rules. Every room here is the one look:
+           beige carpet, drywall, ceiling tile, fluorescents, right angles,
+           blank plates, no number. The legs run north (-z); the crossbar
+           runs east–west; the lobby is at the south end of the west leg.
+           ══════════════════════════════════════════════════════════════════ */
+        /* ── THE LOBBY — the foot of the stair from P1; the car's door that
+           the car never arrives at; the corridor straight on ── */
+        hwing_lobby: {
+            label: 'H-WING',
+            sub: 'SUBLEVEL · NOT ON THE PLAN',
+            kind: 'box',
+            shell: {
+                w: 8, d: 6, h: 2.7,
+                wallH: 2.7, dadoH: 0.85,
+                floor: 'carpet_4', wall: 'drywall', dado: 'drywall_2', trim: 'drywall_3', ceiling: 'ceiling',
+                floorColor: 0xc9b47c, wallColor: 0xe8dfc6, dadoColor: 0xd9cda8, ceilColor: 0xf0ece2,
+                pipes: false,
+                lights: [{ x: -2, z: 0 }, { x: 2, z: 0 }],
+                mood: { light: 0xfff2c4, ambient: 0.95 },
+                plate: { x: 0, z: -2.75, y: 2.3 },
+            },
+            doors: [
+                { id: 'stair', wall: 's', x: 0, leaf: 'leaf_coffee',
+                  label: 'THE STAIR', sub: 'UP TO P1 · THE GARAGE',
+                  action: { room: 'garage', at: 'p2' },
+                  desc: 'The stair up. It comes out by the west wall of the garage, where a stair should not be.' },
+                { id: 'elevator', wall: 'e', z: 0, leaf: null, proc: 'elevator',
+                  label: 'ELEVATOR', sub: 'THE CAR · H IS ON NO BUTTON',
+                  action: { room: 'car', at: 'panel' },
+                  desc: 'The car comes when it is called from here. It does not stop here from anywhere else; there is no H on the panel. Nobody has asked why the door exists.' },
+                { id: 'corridor', wall: 'n', x: 0, leaf: 'leaf_coffee',
+                  label: 'H-WING', sub: 'THE CORRIDOR · STRAIGHT ON',
+                  action: { room: 'hwing_w', at: 'lobby' },
+                  desc: 'A hollow-core door onto a corridor that goes straight. Straight is the problem.' },
+            ],
+            counters: [
+                { id: 'wingplan', x: -3.35, z: 0, face: 90, plateY: 1.7, radius: 1.8, verb: 'READ',
+                  label: 'THE FLOOR PLAN', sub: 'YOU ARE HERE · IT IS AN H', action: {},
+                  desc: 'The floor plan by the stair: an H, two long legs and a bar, every door drawn. The YOU ARE HERE dot has been rubbed off and put back somewhere else.' },
+            ],
+            props: [
+                { key: 'notice_board',   wall: 'w', z: 0, mount: 1.2 },                   // THE FLOOR PLAN (the counter stands at it)
+                { key: 'water_cooler',   wall: 'w', z: 2.2 },
+                { key: 'potted_plant',   x: 3.4, z: -2.4 },
+                { key: 'potted_plant',   x: -3.4, z: -2.4 },
+                { key: 'nameplate',      wall: 'n', x: 1.6, mount: 1.55 },                // blank; every plate down here is
+                { key: 'wall_clock',     wall: 'e', z: -2.0, mount: 2.05 },
+                { key: 'fire_extinguisher', wall: 'e', z: 2.2 },
+                { key: 'exit_sign',      wall: 's', x: 0, mount: 2.45 },                  // over the stair: the honest one
+                { key: 'paper_sheet',    x: 2.2, z: 1.4, y: 0.01, face: 40 },
+                { key: 'fluorescent',    x: -2, z: 0, ceil: true, face: 90 },
+                { key: 'fluorescent',    x: 2,  z: 0, ceil: true, face: 90 },
+                { key: 'security_camera', wall: 'n', x: -2.6, mount: 2.5 },
+            ],
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [
+                '“What is this level?” “Sub-basement.” “Below the undercroft?” “Below is not the word. Under.”',
+                '“The carpet is beige.” “Yes.” “The walls are straight.” “Yes.” “Who authorised the corners?” “Nobody. That is what the corners are.”',
+            ],
+            spawn: { x: 0, z: 2.2, face: 0 },
+        },
+        /* ── THE WEST LEG — 48 m of corridor, straight, doors both sides, the
+           EXIT at the end (the Backrooms crossing, C-12) ── */
+        hwing_w: {
+            label: 'H-WING · WEST',
+            sub: 'THE CORRIDOR',
+            kind: 'box',
+            shell: {
+                w: 3, d: 48, h: 2.7,
+                wallH: 2.7, dadoH: 0.85,
+                floor: 'carpet_4', wall: 'drywall', dado: 'drywall_2', trim: 'drywall_3', ceiling: 'ceiling',
+                floorColor: 0xc9b47c, wallColor: 0xe8dfc6, dadoColor: 0xd9cda8, ceilColor: 0xf0ece2,
+                pipes: false,
+                lights: [{ x: 0, z: -21 }, { x: 0, z: -15 }, { x: 0, z: -9 }, { x: 0, z: -3 }, { x: 0, z: 3 }, { x: 0, z: 9 }, { x: 0, z: 15 }, { x: 0, z: 21 }],
+                mood: { light: 0xfff2c4, ambient: 0.95 },
+                plate: { x: 0, z: -23.75, y: 2.3 },
+            },
+            doors: [
+                { id: 'lobby', wall: 's', x: 0, leaf: 'leaf_coffee',
+                  label: 'H-WING · LOBBY', sub: 'BACK TO THE STAIR',
+                  action: { room: 'hwing_lobby', at: 'corridor' },
+                  desc: 'The lobby, the stair, the way up.' },
+                { id: 'office_1', wall: 'w', z: 16, leaf: 'leaf_coffee',
+                  label: 'AN OFFICE', sub: 'THE PLATE IS BLANK',
+                  action: { room: 'hwing_office', at: 'corridor' },
+                  desc: 'An office door. The plate beside it is blank. Behind it is the office.' },
+                { id: 'office_2', wall: 'e', z: 8, leaf: 'leaf_coffee',
+                  label: 'AN OFFICE', sub: 'THE PLATE IS BLANK',
+                  action: { room: 'hwing_office', at: 'corridor' },
+                  desc: 'An office door. The plate beside it is blank. Behind it is the office.' },
+                { id: 'bar', wall: 'e', z: 0, leaf: 'leaf_coffee',
+                  label: 'THE CROSSBAR', sub: 'THE BAR OF THE H',
+                  action: { room: 'hwing_bar', at: 'west' },
+                  desc: 'The bar of the H: a short hall across to the other leg, with HOME on it.' },
+                { id: 'office_3', wall: 'w', z: -4, leaf: 'leaf_coffee',
+                  label: 'AN OFFICE', sub: 'THE PLATE IS BLANK',
+                  action: { room: 'hwing_office', at: 'corridor' },
+                  desc: 'An office door. The plate beside it is blank. Behind it is the office.' },
+                { id: 'office_4', wall: 'e', z: -14, leaf: 'leaf_coffee',
+                  label: 'AN OFFICE', sub: 'THE PLATE IS BLANK',
+                  action: { room: 'hwing_office', at: 'corridor' },
+                  desc: 'An office door. The plate beside it is blank. Behind it is the office.' },
+                { id: 'exit', wall: 'n', x: 0, leaf: 'leaf_exit',
+                  label: 'EXIT', sub: 'ROOM 90 · THE BACKROOMS',
+                  action: { room: 'site_prebuilt_backrooms', at: 'hwing' },
+                  desc: 'The EXIT at the end of the corridor. Continuity ruled the place behind it non-canon; the corridor did not get the memo. It is the Backrooms crossing — the one door to Room 90 that does not go through Bay 6.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'fluorescent',    x: 0, z: -21, ceil: true, face: 0 },
+                { key: 'flicker_tube',   x: 0, z: -15, ceil: true, face: 0 },
+                { key: 'fluorescent',    x: 0, z: -9,  ceil: true, face: 0 },
+                { key: 'fluorescent',    x: 0, z: -3,  ceil: true, face: 0 },
+                { key: 'fluorescent',    x: 0, z: 3,   ceil: true, face: 0 },
+                { key: 'flicker_tube',   x: 0, z: 9,   ceil: true, face: 0 },
+                { key: 'fluorescent',    x: 0, z: 15,  ceil: true, face: 0 },
+                { key: 'fluorescent',    x: 0, z: 21,  ceil: true, face: 0 },
+                { key: 'nameplate',      wall: 'w', z: 17.6, mount: 1.55 },
+                { key: 'nameplate',      wall: 'e', z: 9.6, mount: 1.55 },
+                { key: 'nameplate',      wall: 'w', z: -2.4, mount: 1.55 },
+                { key: 'nameplate',      wall: 'e', z: -12.4, mount: 1.55 },
+                { key: 'exit_sign',      wall: 'n', x: 0, mount: 2.45 },
+                { key: 'wall_clock',     wall: 'w', z: -10, mount: 2.05 },
+                { key: 'wall_clock',     wall: 'e', z: 12,  mount: 2.05 },                 // the two agree, which is worse
+                { key: 'water_cooler',   wall: 'w', z: 4.0 },
+                { key: 'fire_extinguisher', wall: 'e', z: -6.0 },
+                { key: 'potted_plant',   x: 1.1, z: 22.6 },
+                { key: 'paper_sheet',    x: 0.4, z: -8, y: 0.01, face: 75 },
+                { key: 'floor_stain',    x: -0.3, z: 6 },                                  // the carpet is damp here; it is always damp here
+                { key: 'vent_grille',    wall: 'w', z: 20, mount: 2.2 },
+                { key: 'picture_round_a', wall: 'e', z: -20, mount: 1.7 },                  // level. Everything down here is level
+                { key: 'security_camera', wall: 'n', x: 1.0, mount: 2.5 },
+            ],
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [
+                '“How long is it?” “Forty-eight metres.” “Every time?” “Every time it has been measured.”',
+                '“The hum.” “The lights.” “It is not the lights.” “Then it is not the lights.”',
+                '“Which office is mine?” “That one.” “They are all that one.”',
+            ],
+            spawn: { x: 0, z: 22.4, face: 0 },
+        },
+        /* ── THE CROSSBAR — the bar of the H: the two legs, HOME, the typing
+           pool, the break room ── */
+        hwing_bar: {
+            label: 'H-WING · THE CROSSBAR',
+            sub: 'THE BAR OF THE H',
+            kind: 'box',
+            shell: {
+                w: 12, d: 3, h: 2.7,
+                wallH: 2.7, dadoH: 0.85,
+                floor: 'carpet_4', wall: 'drywall', dado: 'drywall_2', trim: 'drywall_3', ceiling: 'ceiling',
+                floorColor: 0xc9b47c, wallColor: 0xe8dfc6, dadoColor: 0xd9cda8, ceilColor: 0xf0ece2,
+                pipes: false,
+                lights: [{ x: -3, z: 0 }, { x: 3, z: 0 }],
+                mood: { light: 0xfff2c4, ambient: 0.95 },
+                plate: { x: -4.5, z: -1.25, y: 2.3 },
+            },
+            doors: [
+                { id: 'west', wall: 'w', z: 0, leaf: 'leaf_coffee',
+                  label: 'H-WING · WEST', sub: 'THE LEG WITH THE EXIT',
+                  action: { room: 'hwing_w', at: 'bar' },
+                  desc: 'The west leg: the lobby at one end, the EXIT at the other.' },
+                { id: 'east', wall: 'e', z: 0, leaf: 'leaf_coffee',
+                  label: 'H-WING · EAST', sub: 'THE OTHER LEG',
+                  action: { room: 'hwing_e', at: 'bar' },
+                  desc: 'The east leg. It looks like the west leg. It is not the west leg, on paper.' },
+                { id: 'home', wall: 'n', x: 0, leaf: 'leaf_suburban_house',
+                  label: 'HOME', sub: 'NO NUMBER · NO PLATE',
+                  action: { room: 'hwing_home', at: 'hall' },
+                  desc: 'A front door. A house’s front door, in a corridor under a building, with a coat rail beside it and a mat in front of it. You know the door.' },
+                { id: 'pool', wall: 's', x: -3.4, leaf: 'leaf_glass',
+                  label: 'THE TYPING POOL', sub: 'THE SHIFT · ALSO HERE',
+                  action: { room: 'hwing_pool', at: 'bar' },
+                  desc: 'A glass door onto cubicles. Square ones. The shift is at them, and is also upstairs at the round ones.' },
+                { id: 'break', wall: 's', x: 3.4, leaf: 'leaf_coffee',
+                  label: 'THE BREAK ROOM', sub: 'THE MACHINE · EXACT CHANGE',
+                  action: { room: 'hwing_break', at: 'bar' },
+                  desc: 'The break room. The machine takes exact change and gives back the same coins.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'fluorescent',    x: -3, z: 0, ceil: true, face: 90 },
+                { key: 'fluorescent',    x: 3,  z: 0, ceil: true, face: 90 },
+                { key: 'hook_rail',      wall: 'n', x: 2.6, mount: 1.6 },                 // beside HOME: a coat rail with one coat's worth of hooks
+                { key: 'rug_round',      x: 0, z: 0.35 },                                   // the mat
+                { key: 'wall_clock',     wall: 'n', x: -2.8, mount: 2.05 },
+                { key: 'nameplate',      wall: 's', x: -1.7, mount: 1.55 },
+                { key: 'nameplate',      wall: 's', x: 5.1, mount: 1.55 },
+                { key: 'potted_plant',   x: -5.4, z: -1.0 },
+                { key: 'paper_sheet',    x: 4.6, z: -0.8, y: 0.01, face: 200 },
+            ],
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [
+                '“Whose house?” “Yours.” “I never lived under an office.” “No. The office is under it.”',
+            ],
+            spawn: { x: -4.6, z: 0, face: 90 },
+        },
+        /* ── THE EAST LEG — the mirror of the west: the same doors, the same
+           office; the far end opens onto the west leg's start (the corridor
+           repeats), the near end is the room at the end's other wall ── */
+        hwing_e: {
+            label: 'H-WING · EAST',
+            sub: 'THE CORRIDOR',
+            kind: 'box',
+            shell: {
+                w: 3, d: 48, h: 2.7,
+                wallH: 2.7, dadoH: 0.85,
+                floor: 'carpet_4', wall: 'drywall', dado: 'drywall_2', trim: 'drywall_3', ceiling: 'ceiling',
+                floorColor: 0xc9b47c, wallColor: 0xe8dfc6, dadoColor: 0xd9cda8, ceilColor: 0xf0ece2,
+                pipes: false,
+                lights: [{ x: 0, z: -21 }, { x: 0, z: -15 }, { x: 0, z: -9 }, { x: 0, z: -3 }, { x: 0, z: 3 }, { x: 0, z: 9 }, { x: 0, z: 15 }, { x: 0, z: 21 }],
+                mood: { light: 0xfff2c4, ambient: 0.95 },
+                plate: { x: 0, z: -23.75, y: 2.3 },
+            },
+            doors: [
+                { id: 'deadend', wall: 's', x: 0, leaf: 'leaf_cell',
+                  label: 'THE ROOM AT THE END', sub: 'SERVICES · THE OTHER WALL',
+                  action: { room: 'deadend', at: 'hwing' },
+                  desc: 'A cell door at the south end of the leg. From the other side it is a wall in a three-metre room on the service floor. From this side it is a door.' },
+                { id: 'office_5', wall: 'e', z: 14, leaf: 'leaf_coffee',
+                  label: 'AN OFFICE', sub: 'THE PLATE IS BLANK',
+                  action: { room: 'hwing_office', at: 'corridor' },
+                  desc: 'An office door. The plate beside it is blank. Behind it is the office.' },
+                { id: 'office_6', wall: 'w', z: -8, leaf: 'leaf_coffee',
+                  label: 'AN OFFICE', sub: 'THE PLATE IS BLANK',
+                  action: { room: 'hwing_office', at: 'corridor' },
+                  desc: 'An office door. The plate beside it is blank. Behind it is the office.' },
+                { id: 'bar', wall: 'w', z: 0, leaf: 'leaf_coffee',
+                  label: 'THE CROSSBAR', sub: 'THE BAR OF THE H',
+                  action: { room: 'hwing_bar', at: 'east' },
+                  desc: 'The bar of the H: across to the west leg, with HOME on it.' },
+                { id: 'office_7', wall: 'e', z: -18, leaf: 'leaf_coffee',
+                  label: 'AN OFFICE', sub: 'THE PLATE IS BLANK',
+                  action: { room: 'hwing_office', at: 'corridor' },
+                  desc: 'An office door. The plate beside it is blank. Behind it is the office.' },
+                { id: 'office_8', wall: 'w', z: 20, leaf: 'leaf_coffee',
+                  label: 'AN OFFICE', sub: 'THE PLATE IS BLANK',
+                  action: { room: 'hwing_office', at: 'corridor' },
+                  desc: 'An office door. The plate beside it is blank. Behind it is the office.' },
+                { id: 'loop', wall: 'n', x: 0, leaf: 'leaf_coffee',
+                  label: 'H-WING', sub: 'THE CORRIDOR · STRAIGHT ON',
+                  action: { room: 'hwing_w', at: 'lobby' },
+                  desc: 'The corridor continues past the end of the leg. It continues as the corridor you started in, from the lobby door, with the lobby behind you. This has been measured too.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'fluorescent',    x: 0, z: -21, ceil: true, face: 0 },
+                { key: 'fluorescent',    x: 0, z: -15, ceil: true, face: 0 },
+                { key: 'flicker_tube',   x: 0, z: -9,  ceil: true, face: 0 },
+                { key: 'fluorescent',    x: 0, z: -3,  ceil: true, face: 0 },
+                { key: 'fluorescent',    x: 0, z: 3,   ceil: true, face: 0 },
+                { key: 'fluorescent',    x: 0, z: 9,   ceil: true, face: 0 },
+                { key: 'flicker_tube',   x: 0, z: 15,  ceil: true, face: 0 },
+                { key: 'fluorescent',    x: 0, z: 21,  ceil: true, face: 0 },
+                { key: 'nameplate',      wall: 'e', z: 15.6, mount: 1.55 },
+                { key: 'nameplate',      wall: 'w', z: -6.4, mount: 1.55 },
+                { key: 'nameplate',      wall: 'e', z: -16.4, mount: 1.55 },
+                { key: 'nameplate',      wall: 'w', z: 21.6, mount: 1.55 },
+                { key: 'exit_sign',      wall: 'n', x: 0, mount: 2.45 },                  // over a door that is not an exit; the sign is a lie here too
+                { key: 'wall_clock',     wall: 'e', z: -12, mount: 2.05 },
+                { key: 'wall_clock',     wall: 'w', z: 10,  mount: 2.05 },
+                { key: 'water_cooler',   wall: 'e', z: 6.0 },
+                { key: 'fire_extinguisher', wall: 'w', z: -14.0 },
+                { key: 'folding_chair',  x: -0.8, z: -20.5, face: 270 },                   // facing the wall. It is the same chair
+                { key: 'paper_sheet',    x: -0.4, z: 4, y: 0.01, face: 300 },
+                { key: 'floor_stain',    x: 0.3, z: -6 },
+                { key: 'vent_grille',    wall: 'e', z: -20, mount: 2.2 },
+                { key: 'picture_round_a', wall: 'w', z: 20 - 40, mount: 1.7 },              // z -20: the same picture, the other wall
+                { key: 'security_camera', wall: 's', x: -1.0, mount: 2.5 },
+            ],
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [
+                '“Is this the east leg or the west?” “Look at the plate.” “The plate is blank.” “Then it is the east.”',
+                '“The chair again.” “A chair.” “The same chair.” “A chair like it.”',
+            ],
+            spawn: { x: 0, z: -22.4, face: 180 },
+        },
+        /* ── THE OFFICE — one room behind eight doors; its way out is the
+           first door of the west leg, whichever door you came in by ── */
+        hwing_office: {
+            label: 'AN OFFICE',
+            sub: 'H-WING · THE PLATE IS BLANK',
+            kind: 'box',
+            shell: {
+                w: 5, d: 4.5, h: 2.7,
+                wallH: 2.7, dadoH: 0.85,
+                floor: 'carpet_4', wall: 'drywall', dado: 'drywall_2', trim: 'drywall_3', ceiling: 'ceiling',
+                floorColor: 0xc9b47c, wallColor: 0xe8dfc6, dadoColor: 0xd9cda8, ceilColor: 0xf0ece2,
+                pipes: false,
+                light: { x: 0, z: -0.3 },
+                mood: { light: 0xfff2c4, ambient: 0.95 },
+                plate: { x: 0, z: -2.0, y: 2.3 },
+            },
+            doors: [
+                { id: 'corridor', wall: 's', x: 0, leaf: 'leaf_coffee',
+                  label: 'H-WING', sub: 'THE CORRIDOR · WHERE YOU CAME IN',
+                  action: { room: 'hwing_w', at: 'office_1' },
+                  desc: 'The way out. It opens onto the first office door of the west leg, whichever door you came in by. Records has a form for that. It is in this office.' },
+            ],
+            props: [
+                { key: 'tanker_desk',    wall: 'n', x: 0 },
+                { key: 'office_chair',   x: 0, z: -1.0, face: 0 },
+                { key: 'crt_terminal',   x: 0.3, z: -1.85, y: 0.76, face: 180 },
+                { key: 'papers_a',       x: -0.5, z: -1.8, y: 0.76, face: 15 },
+                { key: 'desk_lamp',      x: 0.95, z: -1.9, y: 0.76 },
+                { key: 'rotary_phone',   x: -1.0, z: -1.95, y: 0.76, face: 170 },
+                { key: 'filing_cabinet', wall: 'w', z: -0.8 },
+                { key: 'filing_cabinet', wall: 'w', z: 0.3 },
+                { key: 'potted_plant',   x: 2.0, z: -1.8 },
+                { key: 'picture_round_c', wall: 'e', z: -0.5, mount: 1.7 },
+                { key: 'wall_clock',     wall: 'e', z: 1.0, mount: 2.05 },
+                { key: 'nameplate',      wall: 's', x: 1.6, mount: 1.55 },
+                { key: 'rug_office',     x: 0, z: 0.4 },
+                { key: 'fluorescent',    x: 0, z: -0.3, ceil: true, face: 0 },
+                { key: 'trash_bin',      x: -1.9, z: -0.9, face: 90 },
+                { key: 'cardboard_box',  x: 1.9, z: 1.4, face: 20 },
+            ],
+            counters: [],
+            agents: [
+                { x: -1.5, z: 0.9, face: 60, pose: 'hqArms', gender: 'female', label: 'THE CLERK', reach: 2.2,
+                  line: '“Which office is this?” “This one.” “I meant the number.” “So did I.”' },
+            ],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [
+                '“Whose desk?” “Whoever sits at it.” “Nobody is sitting at it.” “Then it is nobody’s, for now.”',
+            ],
+            spawn: { x: 0, z: 1.4, face: 0 },
+        },
+        /* ── THE TYPING POOL — six square cubicles, the shift at them (the
+           same shift that is upstairs at the round ones, 9-5) ── */
+        hwing_pool: {
+            label: 'THE TYPING POOL',
+            sub: 'H-WING · THE SHIFT',
+            kind: 'box',
+            shell: {
+                w: 12, d: 9, h: 2.7,
+                wallH: 2.7, dadoH: 0.85,
+                floor: 'carpet_4', wall: 'drywall', dado: 'drywall_2', trim: 'drywall_3', ceiling: 'ceiling',
+                floorColor: 0xc9b47c, wallColor: 0xe8dfc6, dadoColor: 0xd9cda8, ceilColor: 0xf0ece2,
+                pipes: false,
+                lights: [{ x: -4, z: 0.4 }, { x: 0, z: 0.4 }, { x: 4, z: 0.4 }],
+                mood: { light: 0xfff2c4, ambient: 0.95 },
+                plate: { x: 0, z: -4.25, y: 2.3 },
+            },
+            doors: [
+                { id: 'bar', wall: 'n', x: 0, leaf: 'leaf_glass',
+                  label: 'THE CROSSBAR', sub: 'BACK TO H',
+                  action: { room: 'hwing_bar', at: 'pool' },
+                  desc: 'The glass door back to the bar of the H.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'square_cubicle', x: -4, z: -1.6, face: 0 },   { key: 'square_cubicle', x: 0, z: -1.6, face: 0 },   { key: 'square_cubicle', x: 4, z: -1.6, face: 0 },
+                { key: 'square_cubicle', x: -4, z: 2.4, face: 180 },  { key: 'square_cubicle', x: 0, z: 2.4, face: 180 },  { key: 'square_cubicle', x: 4, z: 2.4, face: 180 },
+                { key: 'flicker_tube',   x: -4, z: 0.4, ceil: true, face: 90 },
+                { key: 'fluorescent',    x: 0,  z: 0.4, ceil: true, face: 90 },
+                { key: 'flicker_tube',   x: 4,  z: 0.4, ceil: true, face: 90 },
+                { key: 'wall_clock',     wall: 'e', z: 0, mount: 2.05 },
+                { key: 'water_cooler',   wall: 'w', z: 2.0 },
+                { key: 'filing_cabinet', wall: 'w', z: -2.0 },
+                { key: 'notice_board',   wall: 's', x: -4, mount: 1.2 },
+                { key: 'exit_sign',      wall: 's', x: 4.5, mount: 2.45 },                 // over a wall with no door in it
+                { key: 'potted_plant',   x: 5.5, z: -3.9 },
+                { key: 'paper_sheet',    x: -2.1, z: 0.3, y: 0.01, face: 15 },
+                { key: 'paper_sheet',    x: 2.6, z: 0.5, y: 0.01, face: 250 },
+            ],
+            agents: [
+                { x: 5.2, z: 3.9, face: 300, pose: 'hqPhone', gender: 'male', label: 'THE SUPERVISOR', reach: 2.4,
+                  line: '“Yes. The same shift. Yes, upstairs as well. No, they have not noticed. No, I have not told them.”' },
+            ],
+            npcSpots: [],
+            onlineSpots: [
+                { x: -4, z: -1.4, face: 0 },   { x: 0, z: -1.4, face: 0 },   { x: 4, z: -1.4, face: 0 },
+                { x: -4, z: 2.2, face: 180 },  { x: 0, z: 2.2, face: 180 },  { x: 4, z: 2.2, face: 180 },
+            ],
+            lines: [
+                '“What are they typing?” “Crossings.” “The same crossings as upstairs?” “The same shift.”',
+                '“The cubicles are square.” “Yes.” “Ours are round.” “Yours are upstairs.”',
+            ],
+            spawn: { x: 0, z: -3.2, face: 180 },
+        },
+        /* ── THE BREAK ROOM — the machine, the microwave, the table, the
+           clock on the wrong wall ── */
+        hwing_break: {
+            label: 'THE BREAK ROOM',
+            sub: 'H-WING · EXACT CHANGE',
+            kind: 'box',
+            shell: {
+                w: 6, d: 5, h: 2.7,
+                wallH: 2.7, dadoH: 0.85,
+                floor: 'carpet_4', wall: 'drywall', dado: 'drywall_2', trim: 'drywall_3', ceiling: 'ceiling',
+                floorColor: 0xc9b47c, wallColor: 0xe8dfc6, dadoColor: 0xd9cda8, ceilColor: 0xf0ece2,
+                pipes: false,
+                light: { x: 0, z: 0 },
+                mood: { light: 0xfff2c4, ambient: 0.95 },
+                plate: { x: 0, z: -2.25, y: 2.3 },
+            },
+            doors: [
+                { id: 'bar', wall: 'n', x: 0, leaf: 'leaf_coffee',
+                  label: 'THE CROSSBAR', sub: 'BACK TO H',
+                  action: { room: 'hwing_bar', at: 'break' },
+                  desc: 'Back to the bar of the H.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'vending_machine', wall: 'w', z: 0.6 },
+                { key: 'mini_fridge',    x: -2.4, z: 2.0, face: 90 },
+                { key: 'coffee_table',   x: 0.6, z: 0.4 },
+                { key: 'molded_chair',   x: -0.4, z: 0.4, face: 90 },
+                { key: 'molded_chair',   x: 1.6, z: 0.4, face: 270 },
+                { key: 'molded_chair',   x: 0.6, z: 1.5, face: 0 },
+                { key: 'steel_table',    x: 2.2, z: -1.6, face: 270 },
+                { key: 'microwave',      x: 2.2, z: -2.0, y: 0.76, face: 270 },
+                { key: 'coffee_maker',   x: 2.2, z: -1.2, y: 0.76, face: 270 },
+                { key: 'retro_radio',    x: 2.2, z: -0.6, y: 0.76, face: 270 },
+                { key: 'notice_board',   wall: 'n', x: 1.8, mount: 1.2 },
+                { key: 'wall_clock',     wall: 's', x: 0, mount: 2.05 },
+                { key: 'trash_bin',      x: 2.6, z: 2.0, face: 180 },
+                { key: 'fluorescent',    x: 0, z: 0, ceil: true, face: 0 },
+                { key: 'solo_cup',       x: 0.5, z: 0.3, y: 0.46, face: 10 },
+                { key: 'coffee_mug',     x: 0.9, z: 0.6, y: 0.46, face: 120 },
+            ],
+            agents: [],
+            npcSpots: [{ x: -1.4, z: -1.4, face: 135 }],
+            onlineSpots: [],
+            lines: [
+                '“The machine took my coins.” “And?” “Gave them back.” “Then it works.”',
+                '“Whose mug?” “It says WORLD’S BEST.” “Best what?” “It stops there.”',
+            ],
+            spawn: { x: 0, z: -1.4, face: 180 },
+        },
+        /* ── HOME — the childhood-home threshold (SCAFFOLDING, MASTER A0 /
+           A14 Q5: the hallway only; nothing in it is canon until the user
+           writes it). The stairs end at the ceiling; the kitchen door opens
+           onto the front door; the phone is ringing. ── */
+        hwing_home: {
+            label: 'HOME',
+            sub: 'NO NUMBER · NO PLATE',
+            kind: 'box',
+            shell: {
+                w: 4, d: 7, h: 2.7,
+                wallH: 2.7, dadoH: 0.9,
+                floor: 'carpet_2', wall: 'drywall_2', dado: 'drywall_3', trim: 'drywall_4', ceiling: 'ceiling',
+                floorColor: 0x8a6a62, wallColor: 0xd9c9a6, dadoColor: 0xc2b08e, ceilColor: 0xf2eee4,
+                pipes: false,
+                strips: false,
+                light: { x: -0.4, z: 0.4 },
+                mood: { light: 0xffd6a0, ambient: 0.7 },
+                plate: { x: 0, z: -3.25, y: 2.3 },
+            },
+            doors: [
+                { id: 'hall', wall: 's', x: 0, leaf: 'leaf_suburban_house',
+                  label: 'THE FRONT DOOR', sub: 'BACK TO H',
+                  action: { room: 'hwing_bar', at: 'home' },
+                  desc: 'The front door, from inside. Outside is a corridor under a building, which is not what is outside a front door.' },
+                { id: 'kitchen', wall: 'n', x: 0, leaf: 'leaf_white_wood',
+                  label: 'THE KITCHEN', sub: 'THE DOOR AT THE END OF THE HALL',
+                  action: { room: 'hwing_home', at: 'hall' },
+                  desc: 'The kitchen door. It opens onto the hall, from the front door, with the front door behind you. The stairs end at the ceiling. The phone is ringing.' },
+            ],
+            counters: [
+                { id: 'phone', x: -1.2, z: -0.5, face: 90, plateY: 1.3, radius: 1.8, verb: 'ANSWER',
+                  label: 'THE PHONE', sub: 'IT IS RINGING', action: {},
+                  desc: 'The phone on the hall table. It is ringing. It was ringing when you came in.' },
+            ],
+            props: [
+                { key: 'house_stairs',   x: 1.35, z: -0.6, face: 0 },                     // against the east wall, up to the ceiling; nothing is up there
+                { key: 'hook_rail',      wall: 'w', z: 2.2, mount: 1.6 },
+                { key: 'picture_round_a', wall: 'w', z: 0.2, mount: 1.6 },
+                { key: 'picture_round_b', wall: 'w', z: -1.2, mount: 1.6 },
+                { key: 'picture_round_c', wall: 'w', z: -2.4, mount: 1.6 },
+                { key: 'coffee_table',   x: -1.2, z: -0.4 },                               // the hall table
+                { key: 'rotary_phone',   x: -1.2, z: -0.5, y: 0.46, face: 90 },
+                { key: 'table_lamp',     x: -1.2, z: 0.15, y: 0.46 },
+                { key: 'house_key',      x: -1.0, z: -0.9, y: 0.46, face: 30 },
+                { key: 'rug_round',      x: 0, z: 1.8 },
+                { key: 'potted_plant',   x: -1.6, z: 2.6 },
+                { key: 'wall_clock',     wall: 'e', z: 2.2, mount: 2.0 },                  // stopped
+                { key: 'bare_bulb',      x: -0.4, z: 0.4, ceil: true },                          // a bulb in the hall; the shade is gone
+            ],
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [],
+            spawn: { x: 0, z: 2.6, face: 0 },
+        },
     },
 };
 
@@ -24129,6 +24684,9 @@ function hqSiteRoom(mapId) {
         action: { room: hqBayId(sector), at: 'site_' + id }, note: T.note || '',
         desc: 'The same door from the other side. ' + (T.note ? T.note.charAt(0).toUpperCase() + T.note.slice(1) + '. ' : '') + 'The bay is behind it; the paperwork is in front of you.',
     }];
+    /* a BACK DOOR (H-WING, 2026-09-14 rev 4): the site's second way out, from the sheet */
+    const BD = (SR.backDoors || {})[id];
+    if (BD && BD.id && BD.wall && BD.action) doors.push(Object.assign({}, BD));
     /* the CROSSING console's wall: the west wall at the tanker desk by
        default (the Training Room's RANGE console pattern); a shell whose
        setting fills a wall names another with `console: { wall, at }` —
@@ -24365,6 +24923,10 @@ function hqElevatorStops(profile, fromRoom) {
 }
 /* every door in the building that is NOT on a plate (`secret: true`) — the
    register's blind spots, listed for the tests and the dev panel */
+/* H-WING (2026-09-14 rev 4): the wing's rooms in walking order, and its two
+   entrances — the register skips all of it (no numbers; a wing, not a room) */
+function hqHWingRooms() { return ((DOOR_HQ.hwing && DOOR_HQ.hwing.rooms) || []).slice(); }
+function hqHWingEntries() { return ((DOOR_HQ.hwing && DOOR_HQ.hwing.entries) || []).map(e => Object.assign({}, e)); }
 function hqSecretDoors() {
     const out = [];
     for (const rid in DOOR_HQ.rooms) (DOOR_HQ.rooms[rid].doors || []).forEach(d => { if (d.secret) out.push({ room: rid, id: d.id, to: d.action && d.action.room }); });
@@ -25671,6 +26233,8 @@ if (typeof window !== 'undefined') {
     window.hqRoomRegister = hqRoomRegister;
     window.hqElevatorStops = hqElevatorStops;
     window.hqSecretDoors = hqSecretDoors;
+    window.hqHWingRooms = hqHWingRooms;
+    window.hqHWingEntries = hqHWingEntries;
     window.hqStarChart = hqStarChart;
     window.doorSiteState = doorSiteState;
     window.hqKeys = hqKeys;

@@ -2232,3 +2232,23 @@ not a build. Delivery `ENTROPY_WARS_HQ_EXECUTIVE_FLOOR.zip`: data.js,
 three-renderer.js, map.js → R2; index.html
 (`?v=20260914-hq-executive-01-cors`) → Render; doorhq.test.js, docs → the
 repo. Full log: DOOR_HQ_BUILD_PLAN.md §9 (2026-09-14 rev 2). Not playtested.
+
+### 2026-09-14 (rev 4) — H-WING, stage 1 (HQ plan 5.5) + the door that opened the settings
+The forbidden straight corridor (A0 #4 / #8, A6, C-12) is walkable and
+OPEN — the user's rule this session: the building is built as end-game
+with everything unlocked; sections get locked down later. `DOOR_HQ.hwing`
+(data.js): an H of two 48 m legs and a bar beneath the facility — THE
+STAIR down from the garage's west wall (P2), the lobby with the floor
+plan, the west leg with the EXIT at its end that IS the Backrooms crossing
+(it walks into Room 90's site room; the room's new back door returns —
+Bay 6 stays sealed), the crossbar with HOME (the childhood-home threshold
+as SCAFFOLDING only: a hallway, stairs that end at the ceiling, a phone
+that rings and cannot yet be answered — A14 Q5 still the user's), the
+typing pool of square cubicles with the online shift at them, the break
+room, the east leg whose far end opens onto the west leg's start and
+whose near end is the room at the end's second wall that is not a wall,
+and ONE office behind all eight office doors. No numbers, no plates with
+words on them, no gates. Canon untouched; lines are Claude's drafts (A15).
+Also fixed: every door in the building opened the settings since
+yesterday's C-28 (the re-appended canvas dropped the pointer lock and the
+loss read as ESC) — see HQ plan §9 2026-09-14 rev 4.

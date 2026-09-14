@@ -78,9 +78,9 @@ test('THE CAR: the mezzanine elevator opens into it for everyone, every lobby’
     assert.ok(!D.hqElevatorStops({ door: { clearance: 4, hq: { keys: 12 } } }).find(r => r.id === 'PH').locked, 'a KEYHOLDER with twelve Keys rides to PH');
 });
 
-test('the secret doors: five panels on no plate, each pointing at a real door on the far side, none in the hall', () => {
+test('the secret doors: six panels on no plate, each pointing at a real door on the far side, none in the hall', () => {
     const secrets = D.hqSecretDoors();
-    assert.strictEqual(secrets.length, 5, 'five secret doors');
+    assert.strictEqual(secrets.length, 6, 'six secret doors (H-Wing added the room at the end’s other wall, 2026-09-14 rev 4)');
     for (const s of secrets) {
         const d = HQ.rooms[s.room].doors.find(x => x.id === s.id);
         assert.ok(d.secret === true && d.leaf == null && !d.proc && d.action.room && d.action.at, s.room + '/' + s.id + ': secret, no leaf, a landing');
@@ -88,9 +88,9 @@ test('the secret doors: five panels on no plate, each pointing at a real door on
         assert.ok(/DRAUGHT/.test(d.label), 'a secret door reads as a draught on the prompt');
     }
     assert.ok(!HQ.rooms.central_egress.doors.some(d => d.secret), 'nothing secret in the hall');
-    /* the loops the secret doors close: the cold room ⇄ corridor B, the end of corridor B → the dungeon, the bathroom stall ⇄ the crawlspace */
+    /* the loops the secret doors close: the cold room ⇄ corridor B, the end of corridor B → the dungeon AND → H-Wing's east leg, the bathroom stall ⇄ the crawlspace */
     const pairs = secrets.map(s => s.room + '→' + s.to).sort().join(' ');
-    assert.strictEqual(pairs, 'bathroom→crawlspace coldroom→corridor_b corridor_b→coldroom crawlspace→bathroom deadend→dungeon');
+    assert.strictEqual(pairs, 'bathroom→crawlspace coldroom→corridor_b corridor_b→coldroom crawlspace→bathroom deadend→dungeon deadend→hwing_e');
 });
 
 test('the shortcuts and the loops: the training stair, the kitchen stair, the dock, the server stair, the ladder, the garden gate', () => {

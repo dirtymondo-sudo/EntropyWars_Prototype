@@ -2530,6 +2530,40 @@ opens the pause menu. `npm test` runs `hq-floors.test.js`. Unseen live
 (RULE #1c): all of it — plan §9 2026-09-14 rev 3 lists what to eyeball
 first.
 
+## H-WING (HQ plan 5.5 stage 1) + THE DOOR THAT OPENED THE SETTINGS — 2026-09-14 rev 4, local delivery
+**The bug**: after C-28 (the eaten-ESC rule) EVERY door in the building
+opened the settings. `_hqEnter` re-appended the shared canvas into the host
+on every room entry; appendChild on an element already in the host
+REMOVES and re-inserts it, a pointer-locked element removed from the
+document loses its lock, and `_hqOnLockChange` read that as the walker's
+ESC. Now the canvas / CSS2D layer are appended ONLY when their parent is
+not the host, and the room-to-room swap stamps `_hqRebuildAt` (a loss
+inside 2.5 s of it is never an ESC). RULE: never re-parent the shared
+canvas while it may be pointer-locked; test `parentNode !== host` first.
+**H-WING** (data.js `DOOR_HQ.hwing` + eight `rooms.hwing_*`, built OPEN —
+the user's rule: build as end-game, lock later; the gates go on
+`garage/p2`, `deadend/hwing` and the site back door as `minClearance`):
+an H of two 48 m legs + a bar under the facility. Ways in: THE STAIR from
+the garage's west wall (P2) and the room at the end's SECOND secret wall
+(six secret doors now — hq-floors.test.js). The west leg's EXIT walks
+into `site_prebuilt_backrooms@hwing` — **`DOOR_HQ.siteRooms.backDoors
+[mapId]`** is a second door row `hqSiteRoom` appends after the way in
+(three-renderer.js `_hqBuildSetting` keeps every room door's lane clear
+of the setting now, not only the way in); a `room` door is never gated by
+a sector lock, so Bay 6 stays sealed (C-12). THE FRACTAL: `hwing_office`
+is ONE room behind all eight office doors and its way out lands at
+`hwing_w@office_1`; the east leg's far end opens onto `hwing_w@lobby`;
+HOME's kitchen door opens onto its own front door. HOME is SCAFFOLDING
+(A14 Q5): the hallway only, `house_stairs` to the ceiling, counter `phone`
+(map.js by-id panel, ANSWER disabled). Procs: `square_cubicle`,
+`house_stairs` (Phase 8 block). Panels: `wingplan`, `phone`. No room in
+the wing wears a number (the register skips it; `hqHWingRooms()` /
+`hqHWingEntries()`). The wing's plain leaf is **`leaf_coffee`** — never
+`leaf_hollow_core` (the L2 rank leaf; doorhq.test.js refuses it). The
+car has no H stop (the lobby's elevator door still calls it). `npm test`
+runs `hwing.test.js`. Unseen live (RULE #1c): all of it — plan §9
+2026-09-14 rev 4 lists what to eyeball first.
+
 ## THE SOCKET PICKER'S TABS + FILTERS (the Freelancer pool window) — 2026-09-14, local delivery
 The ＋ RACE SOCKET / ＋ JOB SOCKET window (party-builder.js, the node
 picker after the RACE ABILITIES strip) wears five category TABS (ALL ·
