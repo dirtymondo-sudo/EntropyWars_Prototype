@@ -10367,6 +10367,33 @@ const NEXUS_HOSTILE_DMG_PCT = 0.25;    // enemies in a zone you own: 25% max HP 
 const NEXUS_CUBE_DMG_PER_ZONE = 0.5;   // Cube damage ×(1 + 0.5 per non-home zone held) → ×1.5 / ×2
 const NEXUS_CUBE_DMG_MAX_MULT = 2.0;
 
+/* ── RESERVES (the bench in the respawn modes, 2026-09-14) ──────────────
+   Match-select CONFIG → RESERVES: Off / Bench. A reserves match fields a
+   roster of `roster` per side; `deploy` stand on the board, the rest wait
+   on the bench (state.bench — the Gauntlet plumbing in battle.js). Three
+   rules, all read through battle.js `_benchOn()` / `doSwitch` /
+   `_reserveQueueSeat` / map.js `processRespawns`:
+   1. THE BENCH IS A ROTATION, NOT A HOSPITAL — a switched-out unit keeps
+      its HP / MP / lingering statuses (stat stages + shield reset, as in
+      Gauntlet); nothing on the bench heals.
+   2. DEATH OWES THE LADDER, THE LADDER FOLLOWS THE SEAT — a fallen unit
+      still waits its 2 / 3 / 5 / 8 rounds (and the Nexus spawn lockout);
+      when the clock runs out a reserve may TAKE THE SEAT instead (the
+      player chooses at the death, the AI takes a reserve above
+      `seatMinHpPct`); the fallen unit then revives ON THE BENCH. One body
+      returns per death, on the ladder's clock, at a zone the team holds.
+   3. SWITCHING COSTS THE TURN, NOT A SPAWN — `switchApCost` AP, the
+      incoming unit acts with the leftover AP, and at most
+      `switchesPerRound` voluntary switches per team per round. */
+const RESERVE_RULES = {
+    roster: 8,            // units per side in a reserves match (the archive's cap)
+    deploy: 4,            // on the board at once
+    switchApCost: 2,      // ⇄ SWITCH — same as Gauntlet
+    switchesPerRound: 1,  // voluntary switches per team per round (Gauntlet stays uncapped)
+    seatMinHpPct: 0.6,    // the AI sends a reserve into a dead seat only above this HP
+};
+if (typeof window !== 'undefined') window.RESERVE_RULES = RESERVE_RULES;
+
 // ── ARENA COMPOSITE SCORING — single source of truth ──────────────────
 // Read by the timer-expiry resolver + victory screen (battle.js) and the
 // live scoreboard (hud.js). Tower damage is CAPPED so chip-poking the Cube
@@ -17871,7 +17898,7 @@ const TUTORIAL_MECHANICS = {
     entropy: { label: 'the entropy gauge + strike', lessons: ['the_press'],
                pins: [{ name: 'ENTROPY_GAUGE_MAX', file: 'battle.js', value: 100 }, { name: 'ENTROPY_STRIKE_AP_COST', file: 'battle.js', value: 1 }],
                watch: [{ file: 'battle.js', fn: 'canUseEntropyStrike', hash: 'b27f726ec3' }, { file: 'battle.js', fn: 'getEntropyStrikeTargets', hash: 'b9fe29157b' }] },
-    arena:   { label: 'the arena win conditions', lessons: ['three_ways'], pins: [], watch: [{ file: 'battle.js', fn: 'checkWinConditionOnly', hash: 'a7640bb597' }, { file: 'battle.js', fn: 'getArenaKeyRules', hash: 'ce10b994ec' }] },
+    arena:   { label: 'the arena win conditions', lessons: ['three_ways'], pins: [], watch: [{ file: 'battle.js', fn: 'checkWinConditionOnly', hash: '79361e60b7' }, { file: 'battle.js', fn: 'getArenaKeyRules', hash: 'ce10b994ec' }] },
     keys:    { label: 'keys (hourglasses)', lessons: ['three_ways'], pins: [], watch: [{ file: 'battle.js', fn: 'getKeysToWin', hash: 'aca1e13cb1' }], modePins: { keySpawnCount: 5, keysToWin: 3 } },
     nexus:   { label: 'the nexus zones', lessons: ['three_ways'],
                pins: [{ name: 'NEXUS_CAPTURE_THRESHOLD', file: 'data.js', value: 4 }, { name: 'NEXUS_HOLD_HEAL_PCT', file: 'data.js', value: 0.15 }, { name: 'NEXUS_HOSTILE_DMG_PCT', file: 'data.js', value: 0.25 }, { name: 'NEXUS_CHANNEL_COST_AP', file: 'data.js', value: 1 }],

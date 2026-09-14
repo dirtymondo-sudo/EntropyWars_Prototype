@@ -1828,7 +1828,7 @@ function PartyRoster({ st }) {
     .filter(u => u && !u._mdNpc && home(u) === viewer)
     .sort((a, b) => _ppSlot(a) - _ppSlot(b));
 
-  const isGaunt = typeof _isGauntlet === 'function' && _isGauntlet();
+  const isGaunt = typeof _benchOn === 'function' && _benchOn();
   const reserves = isGaunt && typeof _gauntletReserves === 'function' ? (_gauntletReserves(viewer) || []) : [];
   if (!party.length && !reserves.length) return null;
 
@@ -1865,10 +1865,13 @@ function PartyRoster({ st }) {
       reserves.length === 0 && h('span', { className: 'ew-party-reserves-none' }, '—'),
       reserves.map(r => {
         const hpPct = r.maxHp > 0 ? (r.hp / r.maxHp) * 100 : 0;
+        const seatOf = r._seatFor ? (st.units || []).find(u => u.id === r._seatFor) : null;
         return h('div', {
-          key: r.id, className: 'ew-party-reserve',
-          title: (typeof unitDisplayName === 'function' ? unitDisplayName(r) : r.name) + ' · ' + Math.round(hpPct) + '% HP',
+          key: r.id, className: 'ew-party-reserve' + (r._seatFor ? ' seated' : ''),
+          title: (typeof unitDisplayName === 'function' ? unitDisplayName(r) : r.name) + ' · ' + Math.round(hpPct) + '% HP'
+            + (seatOf ? ' · takes ' + (typeof unitDisplayName === 'function' ? unitDisplayName(seatOf) : seatOf.name) + "'s seat" : ''),
         },
+          r._seatFor && h('span', { className: 'ew-party-reserve-seat' }, '🪑'),
           h(UnitSprite, { unit: r, size: 20 }),
           h('div', { className: 'ew-party-reserve-bar' },
             h('div', { style: { width: hpPct + '%', height: '100%', background: HP_ALLY_FILL, boxShadow: HP_ALLY_GLOW, borderRadius: 2 }}),
@@ -1899,9 +1902,18 @@ function GauntletReplaceModal({ st }) {
   if (!pending) return null;
   const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
   if (pending.player !== viewer) return null;
-  const reserves = typeof _gauntletReserves === 'function' ? _gauntletReserves(pending.player) : [];
+  const seat = !!pending.seat;   // reserves match: the seat rule (battle.js _reserveQueueSeat)
+  const reserves = typeof _gauntletReserves === 'function' ? _gauntletReserves(pending.player, { free: seat }) : [];
   if (reserves.length === 0) return null;
   const fc = EW.time;
+  const fallen = seat && pending.fallenId ? (st.units || []).find(u => u.id === pending.fallenId) : null;
+  const fallenName = fallen ? (typeof unitDisplayName === 'function' ? unitDisplayName(fallen) : (fallen.name || fallen.cls)) : 'the fallen';
+  const rounds = pending.rounds || (fallen && fallen._respawnIn) || 0;
+  const pick = (r) => {
+    if (seat) { if (typeof _reserveSeatPick === 'function') _reserveSeatPick(pending.player, r ? r.id : null, pending, true); }
+    else if (r && typeof _gauntletDeployReserve === 'function') _gauntletDeployReserve(pending.player, r.id, pending, true);
+  };
+  const rowStyle = { padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' };
 
   return h('div', { style: {
     position: 'absolute', inset: 0, zIndex: 80, pointerEvents: 'auto',
@@ -1915,25 +1927,37 @@ function GauntletReplaceModal({ st }) {
       }},
         h('div', { style: {
           fontFamily: '"Cormorant SC", serif', fontSize: 16, color: EW.ink, letterSpacing: '0.04em',
-        }}, '⚔️ Unit Down — Send In a Reserve'),
+        }}, seat ? ('🪑 ' + fallenName + ' is down — who takes the seat?') : '⚔️ Unit Down — Send In a Reserve'),
         h('div', { style: {
           fontFamily: '"IBM Plex Mono", monospace', fontSize: 8, color: EW.inkMute,
           letterSpacing: '0.1em', marginTop: 3,
-        }}, 'No respawns. Choose who enters the fray.'),
+        }}, seat
+          ? ('The seat opens in ' + rounds + ' round' + (rounds === 1 ? '' : 's') + ' either way. A reserve keeps its own HP; WAIT brings ' + fallenName + ' back at full.')
+          : 'No respawns. Choose who enters the fray.'),
       ),
       h('div', { style: { padding: '6px 0', maxHeight: 320, overflowY: 'auto' }},
+        seat && h('div', {
+          key: '__wait', className: 'rhud-row', style: rowStyle,
+          onClick: () => pick(null),
+        },
+          h('span', { style: { width: 30, textAlign: 'center', fontSize: 18 } }, '⏳'),
+          h('div', { style: { flex: 1, minWidth: 0 }},
+            h('div', { style: { fontFamily: '"Cormorant SC", serif', fontSize: 14, color: EW.ink } }, 'WAIT FOR ' + fallenName.toUpperCase()),
+            h('div', { style: { fontFamily: '"IBM Plex Mono", monospace', fontSize: 8, color: EW.inkMute, letterSpacing: '0.06em', marginTop: 2 } },
+              'RESPAWNS AT FULL HP · KEEPS THE BENCH FREE'),
+          ),
+        ),
         reserves.map(r => {
           const hpPct = r.maxHp > 0 ? Math.round((r.hp / r.maxHp) * 100) : 0;
           const statusKeys = (typeof getActiveStatusKeys === 'function')
             ? getActiveStatusKeys(r).filter(k => typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[k]?.category === 'status')
             : [];
+          const mu = seat ? _hrlgReserveMatchup(r, st) : null;
           return h('div', {
             key: r.id,
             className: 'rhud-row',
-            style: { padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' },
-            onClick: () => {
-              if (typeof _gauntletDeployReserve === 'function') _gauntletDeployReserve(pending.player, r.id, pending, true);
-            },
+            style: rowStyle,
+            onClick: () => pick(r),
           },
             h(UnitSprite, { unit: r, size: 30 }),
             h('div', { style: { flex: 1, minWidth: 0 }},
@@ -1945,6 +1969,10 @@ function GauntletReplaceModal({ st }) {
                 fontFamily: '"IBM Plex Mono", monospace', fontSize: 8,
                 color: EW.inkMute, letterSpacing: '0.06em', marginTop: 2,
               }}, (r.cls || '').toUpperCase() + (statusKeys.length ? ' · ' + statusKeys.map(k => STATUS_DEFS[k]?.short || k).join(' ') : '')),
+              mu && h('div', { style: {
+                fontFamily: '"IBM Plex Mono", monospace', fontSize: 8,
+                color: mu.color, letterSpacing: '0.06em', marginTop: 2,
+              }}, mu.text),
             ),
             h('span', { style: {
               fontFamily: '"IBM Plex Mono", monospace', fontSize: 11,
@@ -2420,7 +2448,7 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
   if (b.count) right.push(h('span', { key: 'ct', className: 'hrlg-cfree' }, b.count));
   if (b.meta) right.push(h('span', { key: 'mt', className: 'hrlg-meta', title: b.meta.title || undefined, style: b.meta.color ? { color: b.meta.color } : undefined }, b.meta.text));
   if (!dead && !b.sub && b.hint) right.push(h('span', { key: 'hn', className: 'hrlg-cfree' }, b.hint));
-  if (!dead && b.note) right.push(h('span', { key: 'nt', className: 'hrlg-note' }, b.note));
+  if (!dead && b.note) right.push(h('span', { key: 'nt', className: 'hrlg-note', style: b.noteColor ? { color: b.noteColor } : undefined }, b.note));
   if (b.sub && !b.subBelow) right.push(h('span', { key: 'sb', className: 'hrlg-tag' }, b.sub));
   // ⤵ DROP chip (Mystery Dungeon item rows): its own click target — the row
   // click still USES the item; stopPropagation keeps the two apart.
@@ -3745,25 +3773,66 @@ function _hrlgEntropyBlades(unit, st) {
   return { title: { icon: '⚛', text: 'Choose the apocalypse', count: nTargets + ' in sight' }, blades };
 }
 
+function _hrlgSwitchCost() {
+  if (typeof _isReservesMatch === 'function' && _isReservesMatch() && typeof RESERVE_RULES !== 'undefined') {
+    return RESERVE_RULES.switchApCost || 2;
+  }
+  return (typeof getActiveMultiplayerMode === 'function' && getActiveMultiplayerMode()?.switchApCost) || 2;
+}
+
+/* THE COUNTER-PICK CHIP (2026-09-14): a reserve's type matchup against the
+   enemies the VIEWER can see (screen-true — _isUnitVisibleToViewer, never a
+   flat radius). ▲ = enemies this reserve hits for WEAK, ▼ = enemies that hit
+   this reserve for WEAK; the same TYPE_CHART read as the damage roll
+   (getTypeDamageMultiplier with no spell type = the unit's own types). */
+function _hrlgReserveMatchup(r, st) {
+  if (typeof getTypeDamageMultiplier !== 'function') return null;
+  const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : (r.player || 1);
+  const home = (u) => (typeof unitHomePlayer === 'function') ? unitHomePlayer(u) : u.player;
+  let up = 0, dn = 0, seen = 0;
+  for (const e of (st.units || [])) {
+    if (!e || e.dead || e._dying || home(e) === home(r)) continue;
+    if (typeof _isUnitVisibleToViewer === 'function' && !_isUnitVisibleToViewer(e, viewer)) continue;
+    seen++;
+    let hit = 1, take = 1;
+    try { hit = getTypeDamageMultiplier(r, e); take = getTypeDamageMultiplier(e, r); } catch (_e) { hit = 1; take = 1; }
+    if (hit > 1) up++;
+    if (take > 1) dn++;
+  }
+  if (!seen) return { text: 'NO ENEMY IN SIGHT', color: '#7a7490', up, dn, seen };
+  const parts = [];
+  if (up) parts.push('▲' + up + ' WEAK');
+  if (dn) parts.push('▼' + dn + ' EXPOSED');
+  const color = up && !dn ? '#7dff9a' : (dn && !up ? '#ff7a7a' : '#f0e6c8');
+  return { text: parts.length ? parts.join(' · ') : 'NEUTRAL', color, up, dn, seen };
+}
+
 function _hrlgSwitchBlades(unit, st) {
   const reserves = typeof _gauntletReserves === 'function' ? _gauntletReserves(unit.player) : [];
-  const switchCost = (typeof getActiveMultiplayerMode === 'function' && getActiveMultiplayerMode()?.switchApCost) || 2;
+  const switchCost = _hrlgSwitchCost();
   const canPay = (unit.ap || 0) >= switchCost;
+  const left = typeof _switchesLeft === 'function' ? _switchesLeft(unit.player) : Infinity;
   const blades = reserves.map(r => {
     const hpPct = r.maxHp > 0 ? Math.round((r.hp / r.maxHp) * 100) : 0;
+    const seated = !!r._seatFor;
+    const ok = canPay && left > 0 && !seated;
+    const mu = _hrlgReserveMatchup(r, st);
     return {
       id: 'sw:' + r.id,
       icon: '⇄',
       label: typeof unitDisplayName === 'function' ? unitDisplayName(r) : (r.name || r.cls),
-      available: canPay,
+      available: ok,
       cost: switchCost,
       meta: { text: hpPct + '%', color: HP_ALLY },
-      sub: canPay ? null : 'No AP',
-      fire: () => { if (canPay && typeof doSwitch === 'function') doSwitch(unit, r.id); },
+      sub: seated ? 'Taking a seat' : (!canPay ? 'No AP' : (left <= 0 ? 'Used this round' : null)),
+      note: ok && mu ? mu.text : null,
+      noteColor: ok && mu ? mu.color : undefined,
+      fire: () => { if (ok && typeof doSwitch === 'function') doSwitch(unit, r.id); },
     };
   });
   if (!blades.length) blades.push({ id: 'none', icon: '⇄', label: 'No reserves left', available: false });
-  return { title: { icon: '🔄', text: 'Switch', count: reserves.length + '' }, blades };
+  const count = Number.isFinite(left) ? reserves.length + ' · ' + left + ' left' : reserves.length + '';
+  return { title: { icon: '🔄', text: 'Switch', count }, blades };
 }
 
 function _hrlgPingBlades() {
@@ -4415,16 +4484,18 @@ function ActionMenu({ st, hidden }) {
     ? [attackAction, abilAction, comboAction, itemsAction, guardAction]
     : [moveAction, attackAction, abilAction, comboAction, itemsAction, guardAction];
 
-  // ⇄ SWITCH — gauntlet modes only: swap in a benched reserve.
-  if (typeof _isGauntlet === 'function' && _isGauntlet()) {
-    const _swReserves = typeof _gauntletReserves === 'function' ? _gauntletReserves(unit.player) : [];
-    const _swCost = (typeof getActiveMultiplayerMode === 'function' && getActiveMultiplayerMode()?.switchApCost) || 2;
-    const _swOk = _swReserves.length > 0 && (unit.ap || 0) >= _swCost;
+  // ⇄ SWITCH — Gauntlet + reserves matches (battle.js _benchOn): swap in a
+  // benched reserve. A reserves match caps voluntary switches per round.
+  if (typeof _benchOn === 'function' && _benchOn()) {
+    const _swReserves = typeof _gauntletReserves === 'function' ? _gauntletReserves(unit.player, { free: true }) : [];
+    const _swCost = _hrlgSwitchCost();
+    const _swLeft = typeof _switchesLeft === 'function' ? _switchesLeft(unit.player) : Infinity;
+    const _swOk = _swReserves.length > 0 && (unit.ap || 0) >= _swCost && _swLeft > 0;
     actions.push({
       id: 'switch', label: 'Switch', icon: '⇄', cost: _swCost,
       available: _swOk,
       selected: menuView === 'switch',
-      sub: _swOk ? null : (_swReserves.length === 0 ? 'No reserves' : 'No AP'),
+      sub: _swOk ? null : (_swReserves.length === 0 ? 'No reserves' : (_swLeft <= 0 ? 'Used this round' : 'No AP')),
     });
   }
 
@@ -10033,6 +10104,8 @@ function _injectHudHideStyles() {
       border: 1px solid #3a3548; border-radius: 8px; background: rgba(0,0,0,0.3);
     }
     .ew-party-reserve-bar { width: 22px; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.12); overflow: hidden; }
+    .ew-party-reserve.seated { opacity: 0.72; }
+    .ew-party-reserve-seat { position: absolute; top: -5px; right: -4px; font-size: 9px; line-height: 1; }
     /* THE TUTORIAL (ui.js): the coach's pointer on a blade (b.tut) and the LATER rows */
     .hrlg-blade.tut .hrlg-body { outline: 2px solid #ffcd6b; outline-offset: 1px; box-shadow: 0 0 14px rgba(255,205,107,0.55); animation: hrlgTutGlow 1.1s ease-in-out infinite; }
     @keyframes hrlgTutGlow { 0%, 100% { outline-color: #ffcd6b; } 50% { outline-color: rgba(255,205,107,0.25); } }

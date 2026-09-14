@@ -369,6 +369,19 @@ function MatchSelect(props) {
     try { localStorage.setItem('ew_training_match', on ? '1' : '0'); } catch (_e) {}
     playUi();
   }
+  /* RESERVES (2026-09-14): a bench for the respawn modes — roster
+     RESERVE_RULES.roster, RESERVE_RULES.deploy on the board, ⇄ SWITCH for AP
+     (capped per round), a reserve may TAKE A DEAD SEAT on the ladder's
+     clock (map.js _msConfirm → state.reserves; battle.js _isReservesMatch).
+     Sticky (localStorage). Never offered for Clash / FFA / no-respawn modes. */
+  const [reserves, setReserves] = useState(() => {
+    try { return localStorage.getItem('ew_reserves') === '1'; } catch (_e) { return false; }
+  });
+  function pickReserves(on) {
+    setReserves(on);
+    try { localStorage.setItem('ew_reserves', on ? '1' : '0'); } catch (_e) {}
+    playUi();
+  }
   // CONFIRM = the form goes through: a FILED stamp thunks onto the button,
   // then the existing launch path runs. filedRef blocks a double-click
   // during the 420 ms beat; both reset after launch.
@@ -464,13 +477,18 @@ function MatchSelect(props) {
   _msOnline = false;
   _msSelectedRounds = rounds;
   _msTraining = training;
+  const RR = (typeof RESERVE_RULES !== 'undefined' && RESERVE_RULES) || { roster: 8, deploy: 4, switchApCost: 2, switchesPerRound: 1 };
+  const reservesOk = !!(mpMode && mpMode.respawns && !mpMode.isFFA && !mpMode.isClash);
+  const reservesOn = reservesOk && reserves;
+  _msReserves = reservesOn;
 
   const mp = mapList[mapIdx] || { name: '—', size: '8×8', w: 8, h: 8, team: 4 };
   const caseNo = siteCaseNo(mp);
   const sf = siteFileFor(mp);
   const boardSizeLabel = mp.size || (mp.w + '×' + mp.h);
   const maxT = maxTeamForMap(mapIdx);
-  const teamDisplay = isFFA ? '' + teamSize : teamSize + 'v' + teamSize;
+  const deployT = reservesOn ? Math.max(1, Math.min(RR.deploy, teamSize || RR.deploy)) : teamSize;
+  const teamDisplay = isFFA ? '' + teamSize : (reservesOn ? deployT + 'v' + deployT + ' +' + (RR.roster - deployT) + ' BENCH' : teamSize + 'v' + teamSize);
   const winLabel = mpMode.isClash ? 'Wipeout' :
     mpMode.hasTowers ? 'Tower/Elim' :
     mpMode.scoringType === 'kills' ? 'Most Kills' : 'Composite';
@@ -560,10 +578,18 @@ function MatchSelect(props) {
   );
 
   /* ── the config form (both variants) ── */
-  const teamField = h(Field, { label: isFFA ? 'PLAYERS' : 'TEAM SIZE', hint: mpMode.isClash ? 'CLASH · 4v4' : ('MAX ' + maxT) },
+  const teamField = h(Field, { label: isFFA ? 'PLAYERS' : 'TEAM SIZE', hint: mpMode.isClash ? 'CLASH · 4v4' : (reservesOn ? ('ON THE FIELD · MAX ' + RR.deploy) : ('MAX ' + maxT)) },
     h('div', { className: 'ms-tty-chips' },
-      ...(() => { const opts = []; for (let t = 1; t <= maxT; t++) opts.push(h(Chip, { key: t, on: teamSize === t, onClick: () => { setTeamSize(t); playUi(); } }, isFFA ? t + ' Players' : t + 'v' + t)); return opts; })()
+      ...(() => { const opts = []; for (let t = 1; t <= maxT; t++) opts.push(h(Chip, { key: t, on: teamSize === t, disabled: reservesOn && t > RR.deploy, title: reservesOn && t > RR.deploy ? 'Reserves: ' + RR.deploy + ' on the field, the rest on the bench' : undefined, onClick: () => { setTeamSize(t); playUi(); } }, isFFA ? t + ' Players' : t + 'v' + t)); return opts; })()
     )
+  );
+  const reservesField = reservesOk && h(Field, { label: 'RESERVES', hint: 'ROSTER ' + RR.roster },
+    h(Seg, { value: reservesOn ? 'bench' : 'off', onChange: (v) => pickReserves(v === 'bench'), options: [
+      { id: 'off', label: 'Off' }, { id: 'bench', label: '⇄ Bench' },
+    ] }),
+    h('div', { className: 'ms-tty-tempo' + (reservesOn ? ' on' : '') }, reservesOn
+      ? ('Roster of ' + RR.roster + ', ' + RR.deploy + ' on the field. SWITCH a reserve in for ' + RR.switchApCost + ' AP (' + RR.switchesPerRound + ' per team per round; it acts with the leftover AP, keeps its own HP). A fallen unit still owes the respawn ladder — a reserve may take its seat when the clock runs out.')
+      : 'Everyone you bring stands on the field. Fallen units respawn on the ladder.')
   );
   const roundsField = h(Field, { label: 'ROUNDS', hint: mpMode.roundLimit ? 'MODE DEFAULT ' + mpMode.roundLimit : null },
     h(Stepper, { value: rounds, min: 3, max: 100, unit: 'R', onChange: setRounds })
@@ -580,7 +606,7 @@ function MatchSelect(props) {
   const assignBlock = h('div', { className: 'ms-tty-assign' },
     h('div', { className: 'ms-tty-kicker' }, h('b', null, DOOR ? 'FIELD ASSIGNMENT' : 'SELECTED'), caseNo && h('span', null, 'CASE ' + caseNo)),
     h('h2', null, mp.name, h('span', null, boardSizeLabel)),
-    h('div', { className: 'ms-tty-line' }, gm.label.toUpperCase() + ' · ' + teamDisplay + ' · ' + rounds + 'R' + (training ? ' · ⚡ TRAINING' : '')),
+    h('div', { className: 'ms-tty-line' }, gm.label.toUpperCase() + ' · ' + teamDisplay + ' · ' + rounds + 'R' + (training ? ' · ⚡ TRAINING' : '') + (reservesOn ? ' · ⇄ RESERVES' : '')),
     sf && h('div', { className: 'ms-tty-line' }, 'SITE STATUS  ', h('span', { style: { color: STAMP_INK[sf.tone] || undefined } }, sf.status)),
     pre && h('div', { className: 'ms-tty-dispatch' }, 'DISPATCHED FROM ' + (pre.doorLabel || 'HEADQUARTERS') + ' · '
       + (mp.isDelta ? '4v4 Δ BOARD' : 'DEEP CROSSING') + ' · '
@@ -611,7 +637,7 @@ function MatchSelect(props) {
               ...siteModes.map(m => h(ModeRow, { key: m.id, m: m, selected: m.id === gm.id, onClick: () => selectMode(m) }))
             )
           ),
-          teamField, roundsField, winField, tempoField, assignBlock
+          teamField, reservesField, roundsField, winField, tempoField, assignBlock
         )
       )
     );
@@ -650,7 +676,7 @@ function MatchSelect(props) {
         h('div', { className: 'ms-tty-form' },
           teamField,
           h(Field, { label: 'BOARD SIZE' }, h('div', { className: 'ms-tty-ro' }, h('span', null, boardSizeLabel), h('em', null, 'FROM SITE'))),
-          roundsField, winField, tempoField, assignBlock
+          reservesField, roundsField, winField, tempoField, assignBlock
         )
       )
     );

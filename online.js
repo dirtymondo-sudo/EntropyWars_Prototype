@@ -684,6 +684,50 @@
             };
         }
 
+        /* ⇄ THE BENCH (2026-09-14): Gauntlet's switch and the reserves
+           match's seat pick were host-only — a guest clicking SWITCH ran
+           doSwitch locally and the next state-sync rolled it back. Three
+           wrappers, one `bench` game-action (not `engine`: a seat pick or a
+           Gauntlet deploy names a DEAD seat during anyone's turn, so the
+           engine case's "living unit of the active player" gate would drop
+           it). The host validates the seat by the SENDER, never the payload. */
+        const _origDoSwitch = (typeof doSwitch === 'function') ? doSwitch : null;
+        if (_origDoSwitch) {
+            doSwitch = function(unit, incomingId) {
+                if (!_isOnline() || state._remoteAction) return _origDoSwitch(unit, incomingId);
+                if (_isHost()) return _hostRunAndSync(_origDoSwitch, [unit, incomingId]);
+                if (!_guestOwnsAction(unit)) return false;
+                playSfx('uiConfirm');
+                _emit('game-action', { type: 'bench', fn: 'doSwitch', unitId: unit.id, incomingId: incomingId || null });
+                return true;
+            };
+            window.doSwitch = doSwitch;
+        }
+        const _origBenchDeploy = (typeof _gauntletDeployReserve === 'function') ? _gauntletDeployReserve : null;
+        if (_origBenchDeploy) {
+            _gauntletDeployReserve = function(player, unitId, slot, resume) {
+                if (!_isOnline() || state._remoteAction) return _origBenchDeploy(player, unitId, slot, resume);
+                if (_isHost()) return _hostRunAndSync(_origBenchDeploy, [player, unitId, slot, resume]);
+                if (player !== _myPlayer() || _recoveryBlocked()) return false;
+                playSfx('uiConfirm');
+                _emit('game-action', { type: 'bench', fn: 'deploy', unitId: unitId || null });
+                return true;
+            };
+            window._gauntletDeployReserve = _gauntletDeployReserve;
+        }
+        const _origSeatPick = (typeof _reserveSeatPick === 'function') ? _reserveSeatPick : null;
+        if (_origSeatPick) {
+            _reserveSeatPick = function(player, reserveId, slot, resume) {
+                if (!_isOnline() || state._remoteAction) return _origSeatPick(player, reserveId, slot, resume);
+                if (_isHost()) return _hostRunAndSync(_origSeatPick, [player, reserveId, slot, resume]);
+                if (player !== _myPlayer() || _recoveryBlocked()) return false;
+                playSfx('uiConfirm');
+                _emit('game-action', { type: 'bench', fn: 'seat', unitId: reserveId || null });
+                return true;
+            };
+            window._reserveSeatPick = _reserveSeatPick;
+        }
+
         /* Guard (More-menu stance, ui.js doGuard) mutates AP + status +
            the Overwatch arm — a guest running it locally desyncs on the
            next state-sync (the classic "my Guard did nothing" rollback).
@@ -1576,6 +1620,28 @@
                     case 'useRosterItem':
                         useRosterItemButton(data.unitId, data.itemKey);
                         break;
+                    case 'bench': {
+                        /* ⇄ THE BENCH: the sender's seat is authoritative. A
+                           switch needs the sender's living, active unit; a
+                           deploy / seat pick needs the pending replacement
+                           to be the sender's (battle.js _gauntletPendingReplace). */
+                        if (state.phase !== 'battle' || state.winner) break;
+                        if (data.fn === 'doSwitch') {
+                            var swUnit = state.units.find(function(u) { return u.id === data.unitId && !u.dead; });
+                            if (!swUnit || swUnit.player !== remoteP) break;
+                            if (state.activePlayer !== remoteP || state._blitzActiveUnitId !== swUnit.id) break;
+                            if (typeof doSwitch === 'function') doSwitch(swUnit, data.incomingId || null);
+                        } else {
+                            var pend = state._gauntletPendingReplace;
+                            if (!pend || pend.player !== remoteP) break;
+                            if (data.fn === 'seat' && pend.seat) {
+                                if (typeof _reserveSeatPick === 'function') _reserveSeatPick(remoteP, data.unitId || null, pend, true);
+                            } else if (data.fn === 'deploy' && !pend.seat) {
+                                if (typeof _gauntletDeployReserve === 'function') _gauntletDeployReserve(remoteP, data.unitId || null, pend, true);
+                            }
+                        }
+                        break;
+                    }
                     case 'forfeit':
                         /* Ownership: a remote client can only forfeit ITSELF —
                            the sender's player number is authoritative, never

@@ -2129,6 +2129,7 @@
             window._msCpuOnly = true;
             state.isRankedMatch = false;
             state.trainingMatch = false;
+            state.reserves = false;
             state._customRoundLimit = 0;
             state._mdRun = null;
             state._mdPhase = 'floor';
@@ -3605,6 +3606,7 @@
         let _msOnline = false;
         let _msSelectedRounds = 0;
         let _msTraining = false;   // CPU TEMPO → ⚡ TRAINING (instant CPU turns), mirrored by match-select.js
+        let _msReserves = false;   // RESERVES → a bench of RESERVE_RULES (roster 8, deploy 4), mirrored by match-select.js
 
         function _msMaxTeamForMap(mapIdx) {
             const mp = MS_MAP_LIST[mapIdx];
@@ -3967,10 +3969,21 @@
                board, the other 4 wait on the bench. CONFIG.teamSize drives the party
                builder + roster sizing; CONFIG.gauntletDeploy gates how many actually
                spawn onto the board (handled in makeUnitsFromBuilds). */
-            if (gm.id === 'gauntlet') {
+            /* RESERVES (2026-09-14): the same bench for the respawn modes —
+               match-select CONFIG → RESERVES. Roster RESERVE_RULES.roster,
+               RESERVE_RULES.deploy on the board (the chosen team size caps
+               it lower); state.reserves is the engine's flag (battle.js
+               _isReservesMatch). Never in Clash / FFA / a no-respawn mode. */
+            const _RR = (typeof RESERVE_RULES !== 'undefined' && RESERVE_RULES) || { roster: 8, deploy: 4 };
+            const _reservesLaunch = !!_msReserves && gm.id !== 'gauntlet'
+                && !!(mpMode && mpMode.respawns && !mpMode.isFFA && !mpMode.isClash);
+            state.reserves = _reservesLaunch;
+            if (gm.id === 'gauntlet' || _reservesLaunch) {
                 const mode = GAME_MODES[launchModeId];
-                const ROSTER = (mpMode && mpMode.rosterSize) || 8;
-                const DEPLOY = (mpMode && mpMode.deploySize) || 4;
+                const ROSTER = _reservesLaunch ? (_RR.roster || 8) : ((mpMode && mpMode.rosterSize) || 8);
+                const DEPLOY = _reservesLaunch
+                    ? Math.max(1, Math.min(_RR.deploy || 4, CONFIG.teamSize || 4))
+                    : ((mpMode && mpMode.deploySize) || 4);
                 CONFIG.teamSize = ROSTER;
                 CONFIG.gauntletDeploy = DEPLOY;
 
@@ -4065,6 +4078,7 @@
 
             state.isRankedMatch = false;
             state.trainingMatch = false;
+            state.reserves = false;
 
             // Leaving for any non-sim mode clears the sim-mode flags so a
             // stale training/balance/strength session can't keep recording.
@@ -8773,7 +8787,7 @@
             const w = bw(), h = bh();
             // Gauntlet keeps an 8-unit roster but only deploys 4 — size the spawn
             // zone to the deploy count, not the full roster.
-            const teamSize = (typeof _isGauntlet === 'function' && _isGauntlet())
+            const teamSize = (typeof _benchOn === 'function' && _benchOn())
                 ? (CONFIG.gauntletDeploy || 4)
                 : (CONFIG.teamSize || 4);
             const sp1 = (typeof SPAWNS !== 'undefined' && Array.isArray(SPAWNS[1])) ? SPAWNS[1] : [];
@@ -9268,6 +9282,12 @@
                        not rounds — it logs its own countdown. */
                     addLog(`💀 ${unitDisplayName(unit)} is down!`);
                     shakeBoard('normal');
+                } else if (typeof _isReservesMatch === 'function' && _isReservesMatch()) {
+                    /* RESERVES rule 2: the ladder still runs; a reserve may take
+                       the seat when it opens (battle.js _reserveQueueSeat). */
+                    const freeLeft = typeof _gauntletReserves === 'function' ? _gauntletReserves(unit.player, { free: true }).length : 0;
+                    addLog(`${unitDisplayName(unit)} is defeated. Respawns in ${unit._respawnIn} round${unit._respawnIn > 1 ? 's' : ''}${freeLeft > 0 ? ' — a reserve may take the seat.' : '.'}`);
+                    shakeBoard('normal');
                 } else {
                     addLog(`${unitDisplayName(unit)} is defeated. Respawns in ${unit._respawnIn} round${unit._respawnIn > 1 ? 's' : ''}.`);
                     shakeBoard('normal');
@@ -9282,6 +9302,8 @@
 
                 if (_gauntlet && typeof _gauntletQueueReplacement === 'function') {
                     _gauntletQueueReplacement(unit);
+                } else if (typeof _reserveQueueSeat === 'function') {
+                    _reserveQueueSeat(unit);   // no-op outside a reserves match
                 }
 
                 checkWin();
@@ -9555,6 +9577,16 @@
                     addLog(`🔄 ${unitDisplayName(unit)} has respawned at spawn zone! (${unit.hp}/${unit.maxHp} HP) 🛡️ Spawn Guard: half damage for 1 round.`);
 
                     if (window.RenderBus) window.RenderBus.emit('unit:spawned', { unit });
+                }
+            }
+            /* RESERVES rule 2 (2026-09-14): a seat promised to a reserve is
+               handed over now that the fallen unit has come back on the
+               clock — the reserve stands where it respawned, the fallen
+               unit revives on the bench (battle.js _reserveTakeSeat). Read
+               off a copy: the swap edits state.units. */
+            if (typeof _reserveTakeSeat === 'function') {
+                for (const unit of state.units.slice()) {
+                    if (unit._justRespawned && unit._seatFillId && !unit.dead) _reserveTakeSeat(unit);
                 }
             }
         }
@@ -16591,6 +16623,7 @@
             state.squadLeaderMode = false;
             state.isRankedMatch = false;
             state.trainingMatch = false;
+            state.reserves = false;
 
             if (typeof MULTIPLAYER_MODES !== 'undefined') {
                 state.activeMultiplayerMode = 'arena';

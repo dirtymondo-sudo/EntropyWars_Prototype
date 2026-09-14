@@ -9949,6 +9949,7 @@
                 state.squadLeaderMode = false;
                 state.isRankedMatch = false;
                 state.trainingMatch = false;
+                state.reserves = false;
                 state.isCampaign = false;
                 state._customRoundLimit = 0;
 
@@ -12602,7 +12603,7 @@
                 state.controllers[2] = CTRL.AI;
                 state.autoPlayers = {};
                 state.devAutoSim = false; state.devSimSpeed = 1;
-                state.squadLeaderMode = false; state.isRankedMatch = false; state.trainingMatch = false;
+                state.squadLeaderMode = false; state.isRankedMatch = false; state.trainingMatch = false; state.reserves = false;
                 state.isCampaign = false; state.campaignLevelId = null;
                 state._customRoundLimit = L.rounds || 30;
                 state.fogOfWar = !!L.fog;

@@ -25348,7 +25348,7 @@
            real match start (not in menu/diorama previews, which want all units). */
         function _gauntletPartitionBench() {
             state.bench = { 1: [], 2: [] };
-            if (!_isGauntlet()) return;
+            if (!_benchOn()) return;
             const deploy = _gauntletDeploy();
             const keep = [];
             for (const u of state.units) {
@@ -27395,16 +27395,48 @@
             return (typeof getActiveMultiplayerMode === 'function')
                 && getActiveMultiplayerMode()?.id === 'gauntlet';
         }
+        /* ── RESERVES (2026-09-14): the bench in the RESPAWN modes ──────────
+           state.reserves (match-select CONFIG → RESERVES, map.js _msConfirm)
+           turns the Gauntlet plumbing on for Arena / TDM / the rest: a roster
+           of RESERVE_RULES.roster, RESERVE_RULES.deploy on the board, the rest
+           in state.bench. Every bench site reads _benchOn() (Gauntlet OR a
+           reserves match); the reserves-only rules (the per-round switch cap,
+           the seat rule on death) read _isReservesMatch(). */
+        function _reserveRules() {
+            return (typeof RESERVE_RULES !== 'undefined' && RESERVE_RULES)
+                || { roster: 8, deploy: 4, switchApCost: 2, switchesPerRound: 1, seatMinHpPct: 0.6 };
+        }
+        function _isReservesMatch() {
+            /* state.reserves SYNCS to the online guest; CONFIG.gauntletDeploy
+               does not — never gate on it here (the partition reads it). */
+            return !!state.reserves && !_isGauntlet();
+        }
+        function _benchOn() {
+            return _isGauntlet() || _isReservesMatch();
+        }
+        function _switchesLeft(player) {
+            if (!_isReservesMatch()) return Infinity;
+            const cap = _reserveRules().switchesPerRound || 0;
+            if (cap <= 0) return Infinity;
+            const used = (state._switchesThisRound && state._switchesThisRound[player]) || 0;
+            return Math.max(0, cap - used);
+        }
         function _gauntletDeploy() {
             return (CONFIG && CONFIG.gauntletDeploy) || 4;
         }
         function _gauntletSwitchCost() {
+            if (_isReservesMatch()) return _reserveRules().switchApCost || 2;
             const m = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
             return (m && m.switchApCost) || 2;
         }
-        function _gauntletReserves(player) {
+        /* The living bench. `opts.free` leaves out a reserve already promised
+           to a dead seat (`_seatFor`, the reserves-match seat rule) — the
+           switch verb and the AI's retreat read the free list; the alive
+           count for wipeout reads everyone. */
+        function _gauntletReserves(player, opts) {
             if (!state.bench || !state.bench[player]) return [];
-            return state.bench[player].filter(u => u && !u.dead);
+            const free = !!(opts && opts.free);
+            return state.bench[player].filter(u => u && !u.dead && !(free && u._seatFor));
         }
         function _gauntletReservesAlive(player) {
             return _gauntletReserves(player).length;
@@ -27478,14 +27510,21 @@
         /* Voluntary switch: bench the active unit, deploy a chosen reserve, which
            then acts with the leftover AP. */
         function doSwitch(unit, incomingId) {
-            if (!_isGauntlet()) return false;
+            if (!_benchOn()) return false;
             if (!unit || unit.dead || unit._dying) return false;
             const COST = _gauntletSwitchCost();
             if ((unit.ap || 0) < COST) {
                 addLog(`${unitDisplayName(unit)} needs ${COST} AP to switch out.`);
                 return false;
             }
-            const bench = _gauntletReserves(unit.player);
+            /* Reserves rule 3: at most RESERVE_RULES.switchesPerRound voluntary
+               switches per team per round — a full-team rotation is a
+               commitment, not a free re-roll every activation. */
+            if (_switchesLeft(unit.player) <= 0) {
+                addLog(`⇄ Player ${unit.player} has already switched this round.`);
+                return false;
+            }
+            const bench = _gauntletReserves(unit.player, { free: true });
             if (bench.length === 0) { addLog('No reserves available to switch in.'); return false; }
             const incoming = incomingId ? bench.find(u => u.id === incomingId) : bench[0];
             if (!incoming) { addLog('That reserve is unavailable.'); return false; }
@@ -27520,6 +27559,10 @@
             state.selectedTool = null;
             state.pendingTarget = null;
 
+            if (_isReservesMatch()) {
+                if (!state._switchesThisRound) state._switchesThisRound = { 1: 0, 2: 0 };
+                state._switchesThisRound[unit.player] = (state._switchesThisRound[unit.player] || 0) + 1;
+            }
             addLog(`🔄 ${unitDisplayName(unit)} switches out — ${unitDisplayName(incoming)} enters the fray!`);
             if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
             scheduleBoardRender();
@@ -27532,12 +27575,19 @@
         /* Called when a deployed unit dies in Gauntlet. If the team still has a
            reserve, bring one in. Human players pick (a modal pauses the engine);
            AI auto-picks the healthiest reserve immediately. */
+        /* A human seat is LOCAL or REMOTE (the online guest picks on its own
+           screen — the modal reads the synced _gauntletPendingReplace and the
+           pick rides the `bench` game-action, online.js). */
+        function _benchSeatIsHuman(player) {
+            const c = state.controllers?.[player];
+            return (c === CTRL.LOCAL || c === CTRL.REMOTE) && !state.autoPlayers?.[player];
+        }
         function _gauntletQueueReplacement(fallen) {
             if (!_isGauntlet() || !fallen) return;
             const player = fallen.player;
             if (_gauntletReservesAlive(player) === 0) return;
             const slot = { player, x: fallen.x, y: fallen.y, z: fallen.z };
-            const isHuman = state.controllers?.[player] === CTRL.LOCAL && !state.autoPlayers?.[player];
+            const isHuman = _benchSeatIsHuman(player);
             if (isHuman) {
                 if (!state._gauntletReplaceQueue) state._gauntletReplaceQueue = [];
                 state._gauntletReplaceQueue.push(slot);
@@ -27554,7 +27604,7 @@
             const q = state._gauntletReplaceQueue || [];
             while (q.length) {
                 const slot = q[0];
-                if (_gauntletReservesAlive(slot.player) === 0) { q.shift(); continue; }
+                if (_gauntletReserves(slot.player, { free: !!slot.seat }).length === 0) { q.shift(); continue; }
                 state._gauntletPendingReplace = slot;
                 scheduleBoardRender();
                 if (typeof renderBattleSelectionUI === 'function') renderBattleSelectionUI({ includeBoard: false });
@@ -27628,8 +27678,109 @@
             }
         }
 
+        /* ── THE SEAT RULE (reserves match, 2026-09-14) ─────────────────────
+           A deployed unit dies in a respawn mode: it owes the ladder as ever
+           (map.js defeatUnit sets _respawnIn). The team may promise a reserve
+           the SEAT: the human picks at the death (the same modal as Gauntlet,
+           `seat: true` — WAIT keeps the fallen unit), the AI takes its
+           healthiest free reserve above RESERVE_RULES.seatMinHpPct. Nothing
+           moves until processRespawns revives the fallen unit on the clock at
+           a zone the team holds (the spawn lockout applies); then
+           _reserveTakeSeat swaps: the reserve stands where the fallen unit
+           respawned (its own HP, Spawn Guard) and the fallen unit revives ON
+           THE BENCH — one body per death, on the ladder's clock. */
+        function _reserveQueueSeat(fallen) {
+            if (!_isReservesMatch() || !fallen) return;
+            const player = fallen.player;
+            if (_gauntletReserves(player, { free: true }).length === 0) return;
+            const slot = { player, x: fallen.x, y: fallen.y, z: fallen.z, seat: true,
+                           fallenId: fallen.id, rounds: fallen._respawnIn || 0 };
+            if (_benchSeatIsHuman(player)) {
+                if (!state._gauntletReplaceQueue) state._gauntletReplaceQueue = [];
+                state._gauntletReplaceQueue.push(slot);
+                if (!state._gauntletPendingReplace) _gauntletNextHumanReplace();
+            } else {
+                const minPct = _reserveRules().seatMinHpPct || 0;
+                const pick = _gauntletReserves(player, { free: true }).slice()
+                    .sort((a, b) => (b.hp / Math.max(1, b.maxHp)) - (a.hp / Math.max(1, a.maxHp)))[0];
+                if (pick && (pick.hp / Math.max(1, pick.maxHp)) >= minPct) _reserveSeatPick(player, pick.id, slot, false);
+            }
+        }
+
+        /* The pick: `reserveId` promises that reserve the fallen unit's seat,
+           null = WAIT for the fallen unit. `resume` = a human pick that
+           un-pauses the engine (the Gauntlet deploy's contract). */
+        function _reserveSeatPick(player, reserveId, slot, resume) {
+            slot = slot || state._gauntletPendingReplace || null;
+            const fallen = slot && slot.fallenId ? state.units.find(u => u.id === slot.fallenId) : null;
+            const reserve = reserveId ? _gauntletReserves(player, { free: true }).find(u => u.id === reserveId) : null;
+            if (fallen) {
+                if (fallen._seatFillId) {
+                    const prev = (state.bench[player] || []).find(u => u.id === fallen._seatFillId);
+                    if (prev) prev._seatFor = null;
+                }
+                fallen._seatFillId = reserve ? reserve.id : null;
+            }
+            if (reserve && fallen) {
+                reserve._seatFor = fallen.id;
+                addLog(`🪑 ${unitDisplayName(reserve)} will take ${unitDisplayName(fallen)}'s seat when it opens.`);
+            } else if (fallen) {
+                addLog(`⏳ ${unitDisplayName(fallen)} keeps the seat — respawns in ${fallen._respawnIn || 0} round${(fallen._respawnIn || 0) === 1 ? '' : 's'}.`);
+            }
+            if (resume === true) {
+                if (state._gauntletReplaceQueue && state._gauntletReplaceQueue.length) state._gauntletReplaceQueue.shift();
+                state._gauntletPendingReplace = null;
+                _gauntletNextHumanReplace();
+                scheduleBoardRender();
+                if (typeof renderBattleSelectionUI === 'function') renderBattleSelectionUI({ includeBoard: true });
+                if (!state._gauntletPendingReplace) _gauntletResumeAfterReplace();
+            } else {
+                scheduleBoardRender();
+                if (typeof renderBattleSelectionUI === 'function') renderBattleSelectionUI({ includeBoard: false });
+            }
+            return true;
+        }
+
+        /* Called by map.js processRespawns AFTER a unit with a promised seat
+           has respawned on the board (placed, alive, full HP). */
+        function _reserveTakeSeat(fallen) {
+            if (!_isReservesMatch() || !fallen || fallen.dead || !fallen._seatFillId) return false;
+            const player = fallen.player;
+            const reserve = (state.bench && state.bench[player] || []).find(u => u.id === fallen._seatFillId && !u.dead);
+            fallen._seatFillId = null;
+            if (!reserve) return false;
+            const x = fallen.x, y = fallen.y, z = fallen.z;
+            state.bench[player] = state.bench[player].filter(u => u.id !== reserve.id);
+            state.units = state.units.filter(u => u.id !== fallen.id);
+            fallen._benched = true;
+            fallen.ap = 0;
+            fallen._justRespawned = false;
+            fallen._showRespawnBanner = false;
+            state.bench[player].push(fallen);
+
+            reserve._benched = false;
+            reserve._seatFor = null;
+            reserve.x = x; reserve.y = y; reserve.z = z;
+            reserve.ap = 0;
+            if (!reserve.status) reserve.status = {};
+            reserve.status.spawnGuard = 1;
+            reserve._justRespawned = true;
+            reserve._showRespawnBanner = true;
+            _gauntletResetTurnFlags(reserve);
+            state.units.push(reserve);
+            addLog(`🪑 ${unitDisplayName(reserve)} takes ${unitDisplayName(fallen)}'s seat (${reserve.hp}/${reserve.maxHp} HP) — ${unitDisplayName(fallen)} recovers on the bench.`);
+            if (window.RenderBus) window.RenderBus.emit('unit:spawned', { unit: reserve });
+            return true;
+        }
+
         window.doSwitch = doSwitch;
         window._isGauntlet = _isGauntlet;
+        window._benchOn = _benchOn;
+        window._isReservesMatch = _isReservesMatch;
+        window._switchesLeft = _switchesLeft;
+        window._reserveQueueSeat = _reserveQueueSeat;
+        window._reserveSeatPick = _reserveSeatPick;
+        window._reserveTakeSeat = _reserveTakeSeat;
         window._gauntletReserves = _gauntletReserves;
         window._gauntletDeployReserve = _gauntletDeployReserve;
 
@@ -33687,9 +33838,13 @@
             if (!state.bench) state.bench = { 1: [], 2: [] };
             state._gauntletPendingReplace = null;
             state._gauntletReplaceQueue = [];
+            state._switchesThisRound = { 1: 0, 2: 0 };
+            for (const u of state.units) { u._seatFillId = null; u._seatFor = null; }
             for (const player of [1, 2]) {
                 for (const u of (state.bench[player] || [])) {
                     u._benched = true;
+                    u._seatFor = null;
+                    u._seatFillId = null;
                     u.ap = 0;
                     u.movesThisTurn = 0;
                     u._turnKills = 0;
@@ -37609,6 +37764,7 @@
                     spawnWeather();
 
                     _reBeginGroup('🔄 Respawns');
+                    state._switchesThisRound = { 1: 0, 2: 0 };   // reserves rule 3: the cap is per round
                     processRespawns();
 
                     const _smMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
@@ -55121,8 +55277,8 @@
 
             if ((wcs.includes('wipeout') || wcs.includes('most_kills'))
                 && !(typeof window._isStrikeRT === 'function' && window._isStrikeRT())) {
-                const p1Alive = state.units.filter(u => u.player === 1 && !u.dead && !u._dying).length + (_isGauntlet() ? _gauntletReservesAlive(1) : 0);
-                const p2Alive = state.units.filter(u => u.player === 2 && !u.dead && !u._dying).length + (_isGauntlet() ? _gauntletReservesAlive(2) : 0);
+                const p1Alive = state.units.filter(u => u.player === 1 && !u.dead && !u._dying).length + (_benchOn() ? _gauntletReservesAlive(1) : 0);
+                const p2Alive = state.units.filter(u => u.player === 2 && !u.dead && !u._dying).length + (_benchOn() ? _gauntletReservesAlive(2) : 0);
                 if (p1Alive === 0 || p2Alive === 0) return true;
             }
 
@@ -55177,8 +55333,8 @@
                 } else {
                     // 🎭 A possessed body still counts for its HOME team (wave B):
                     // stealing a side's last unit must not wipe that side out.
-                    const p1Alive = state.units.filter(u => unitHomePlayer(u) === 1 && !u.dead && !u._dying).length + (_isGauntlet() ? _gauntletReservesAlive(1) : 0);
-                    const p2Alive = state.units.filter(u => unitHomePlayer(u) === 2 && !u.dead && !u._dying).length + (_isGauntlet() ? _gauntletReservesAlive(2) : 0);
+                    const p1Alive = state.units.filter(u => unitHomePlayer(u) === 1 && !u.dead && !u._dying).length + (_benchOn() ? _gauntletReservesAlive(1) : 0);
+                    const p2Alive = state.units.filter(u => unitHomePlayer(u) === 2 && !u.dead && !u._dying).length + (_benchOn() ? _gauntletReservesAlive(2) : 0);
                     if (p1Alive === 0 && p2Alive > 0) { state.winner = 2; state._winCondition = 'wipeout'; }
                     else if (p2Alive === 0 && p1Alive > 0) { state.winner = 1; state._winCondition = 'wipeout'; }
                 }

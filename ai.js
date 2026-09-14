@@ -1283,12 +1283,17 @@
 
         // Gauntlet: a badly-hurt unit retreats to the bench, sending in a
         // fresh reserve (which then acts with the leftover AP).
-        if (unit._aiLoopCount === 1 && typeof window._isGauntlet === 'function' && window._isGauntlet()) {
+        // Reserves matches (battle.js _benchOn) share the retreat; there the
+        // per-round cap (_switchesLeft) and a reserve promised to a dead seat
+        // (the free list) gate it too.
+        if (unit._aiLoopCount === 1 && typeof window._benchOn === 'function' && window._benchOn()) {
             const mpm = typeof window.getActiveMultiplayerMode === 'function' ? window.getActiveMultiplayerMode() : null;
-            const switchCost = (mpm && mpm.switchApCost) || 2;
-            const reserves = typeof window._gauntletReserves === 'function' ? window._gauntletReserves(unit.player) : [];
+            const _resv = typeof window._isReservesMatch === 'function' && window._isReservesMatch();
+            const switchCost = (_resv && typeof RESERVE_RULES !== 'undefined' && RESERVE_RULES.switchApCost) || (mpm && mpm.switchApCost) || 2;
+            const reserves = typeof window._gauntletReserves === 'function' ? window._gauntletReserves(unit.player, { free: true }) : [];
+            const capLeft = typeof window._switchesLeft === 'function' ? window._switchesLeft(unit.player) : Infinity;
             const hpPct = unit.maxHp > 0 ? unit.hp / unit.maxHp : 1;
-            if ((unit.ap || 0) >= switchCost && hpPct < 0.30 && reserves.length) {
+            if ((unit.ap || 0) >= switchCost && hpPct < 0.30 && reserves.length && capLeft > 0) {
                 const healthy = reserves.slice().sort((a, b) => (b.hp / b.maxHp) - (a.hp / a.maxHp))[0];
                 if (healthy && (healthy.hp / healthy.maxHp) >= 0.70
                     && typeof window.doSwitch === 'function' && window.doSwitch(unit, healthy.id)) {

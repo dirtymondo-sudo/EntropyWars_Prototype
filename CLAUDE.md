@@ -357,6 +357,57 @@ WALKS AS row. Cosmetic and viewer-local — nothing on `state`, nothing
 relayed (RULE #2). This answers HQ plan D13. doorhq.test.js guards the
 room, the helpers and the source sites.
 
+## ⇄ RESERVES — the bench in the respawn modes (2026-09-14, local delivery)
+Match-select CONFIG → **RESERVES: Off / ⇄ Bench** (match-select.js, sticky
+localStorage `ew_reserves`, offered only when the mode has `respawns` and is
+not Clash / FFA; mirrored into map.js `_msReserves` → `_msConfirm` sets
+`state.reserves` and sizes the party like Gauntlet: `CONFIG.teamSize` =
+`RESERVE_RULES.roster` (8 — the Team Archive's cap), `CONFIG.gauntletDeploy`
+= `RESERVE_RULES.deploy` (4, the chosen team size caps it lower), SPAWNS
+sliced to the deploy). Constants: data.js `RESERVE_RULES` (on `window`).
+The Gauntlet plumbing (battle.js `state.bench`, `doSwitch`,
+`_gauntletPartitionBench`, the replacement modal) is shared through ONE gate,
+**`_benchOn()`** (= Gauntlet OR `_isReservesMatch()` = `state.reserves`, which
+SYNCS — never gate on CONFIG there); every site that read `_isGauntlet` for
+the bench reads it now (partition, wipeout counts, spawn zones, the SWITCH
+blade, the party dock strip, the AI retreat). The reserves-only rules read
+`_isReservesMatch()`: **(1) the bench is a rotation, not a hospital** — a
+switch keeps HP / MP / lingering statuses (stat stages + shield reset, as in
+Gauntlet), nothing heals on the bench; **(2) death owes the ladder, the
+ladder follows the seat** — map.js `defeatUnit` keeps `_respawnIn` and calls
+`_reserveQueueSeat(fallen)`: the human picks at the death (the Gauntlet modal
+with `seat: true`, `fallenId`, `rounds`; WAIT keeps the fallen unit; hud.js
+`GauntletReplaceModal` → `_reserveSeatPick(player, reserveId|null, slot,
+resume)`), the AI takes its healthiest free reserve above `seatMinHpPct`;
+the promise is `fallen._seatFillId` / `reserve._seatFor` (a promised reserve
+leaves the FREE list — `_gauntletReserves(player, { free: true })`, the
+switch verb's read); NOTHING moves until `processRespawns` revives the
+fallen unit on the clock at a zone the team holds (the Nexus spawn lockout
+applies), then its tail calls `_reserveTakeSeat(unit)` — the reserve stands
+where the fallen unit respawned (its own HP, Spawn Guard) and the fallen
+unit revives ON THE BENCH: one body per death, on the ladder's clock; **(3)
+switching costs the turn, not a spawn** — `switchApCost` 2, the incoming
+unit acts with the leftover AP, and `_switchesLeft(player)` caps voluntary
+switches at `switchesPerRound` (1) per team per round (`state.
+_switchesThisRound`, reset at the round transition + match start; Gauntlet
+stays uncapped). **THE COUNTER-PICK CHIP**: hud.js `_hrlgReserveMatchup(r,
+st)` = ▲ enemies the reserve hits WEAK / ▼ enemies that hit it WEAK, the
+same `getTypeDamageMultiplier` read as the damage roll, gated by
+`_isUnitVisibleToViewer` (screen-true, RULE #2); it rides the switch blade's
+`note` (`noteColor`) and the seat modal's rows. **ONLINE (RULE #2)**:
+`doSwitch`, `_gauntletDeployReserve` and `_reserveSeatPick` are wrapped in
+online.js (the `bench` game-action — not `engine`: a seat pick names a DEAD
+seat during anyone's turn); the host validates by the SENDER (`remoteP`
+owns the switching unit AND it is the active unit; the pending replacement
+is the sender's). A human seat is LOCAL **or REMOTE** (`_benchSeatIsHuman`)
+so the host waits for the guest's pick; the guest's modal reads the synced
+`_gauntletPendingReplace`. This also fixes Gauntlet's switch, which was
+host-only. NOT BUILT: the online LOBBY has no RESERVES toggle (its friendly
+config carries mode / map / teamSize / rounds only) — a reserves match is a
+VS-CPU launch today; the engine + relay are ready for it. `npm test` runs
+`reserves.test.js`. Unseen live (RULE #1c): the seat modal over a paused
+enemy turn, the chip's colours on the blade, the dock's 🪑 tag.
+
 ## THE TUTORIAL — ORIENTATION, DAY 1 (HQ plan 4.3) — shipped 2026-09-13
 Main menu → **Tutorial** (`_goToTutorial`, index.html `.mm-btn-tutorial`)
 → `#tutorialPage` THE SHELF (map.js `_renderTutorialPage`): the ORIENTATION
