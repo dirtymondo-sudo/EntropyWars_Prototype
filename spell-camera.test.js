@@ -81,6 +81,16 @@ test('the sniper POV is owned and released everywhere', () => {
     assert.match(kit, /cineBulletCam\(caster, target/, 'the bullet is the hero part');
 });
 
+test('the scope (2026-09-14): wide start, distance-fitted end, the head as the aim', () => {
+    const p = fnBody(BT, 'cineSniperPov');
+    assert.match(p, /const aimPx = tPx \+ hT \* 0\.72;/, 'the aim is the target\'s head, not its chest');
+    assert.match(p, /fromFov: wide, ease: 'inout'/, 'the lens opens wide and narrows');
+    assert.match(p, /const endFov = Math\.min\(wide - 8, Math\.max\(opts\.fov \?\? 18, fit\)\);/, 'the end FOV is fitted to the range; opts.fov is the floor');
+    assert.match(p, /closeMs: opts\.closeMs \?\? zoomMs/, 'the lids close over the zoom window');
+    const TCam = fs.readFileSync(path.join(__dirname, 'three-camera.js'), 'utf8');
+    assert.match(TCam, /const f = Math\.max\(10, Math\.min\(90, Number\(deg\) \|\| FOV\)\);/, 'setFOV floor is 10 so the scope can narrow');
+});
+
 test('the eyelids: primitive + CSS', () => {
     assert.ok(BT.includes('function cineEyelids('), 'cineEyelids');
     assert.ok(BT.includes('function cineEyelidsBlink('), 'cineEyelidsBlink');

@@ -20445,19 +20445,24 @@
            keeps its stock shot) without the 3D rig.
            ═══════════════════════════════════════════════════════════════════ */
         let _cineFovRaf = null;
-        function _cineFovTween(toFov, ms, sequenceId) {
+        /* opts.fromFov = snap the lens THERE first (the base for the release
+           is still the renderer's own FOV, captured before the snap);
+           opts.ease = 'inout' for a zoom that is felt as a zoom. */
+        function _cineFovTween(toFov, ms, sequenceId, opts = {}) {
             const TC = (typeof ThreeCamera !== 'undefined') ? ThreeCamera : null;
             if (!TC || !TC.setFOV || !TC.getFOV) return;
             if (_cineFovRaf) { cancelAnimationFrame(_cineFovRaf); _cineFovRaf = null; }
             if (_cineFovBase == null) _cineFovBase = TC.getFOV();
+            if (opts.fromFov != null) { try { TC.setFOV(opts.fromFov); } catch (err) {} }
             const from = TC.getFOV();
             const dur = Math.max(60, Number(ms) || 500);
             const t0 = performance.now();
+            const inout = opts.ease === 'inout';
             const step = () => {
                 _cineFovRaf = null;
                 if (!_cineBeatOk(sequenceId)) return;
                 const k = Math.min(1, (performance.now() - t0) / dur);
-                const e = 1 - Math.pow(1 - k, 3);
+                const e = inout ? (k * k * (3 - 2 * k)) : (1 - Math.pow(1 - k, 3));
                 try { TC.setFOV(from + (toFov - from) * e); } catch (err) {}
                 if (k < 1) _cineFovRaf = requestAnimationFrame(step);
             };
@@ -20479,26 +20484,47 @@
                 tPx = tz > 0 ? window._getElevationPx(tz) : 0;
             }
             /* The eye at ~92 % of the shooter's rendered height. */
-            let h = ts * 0.95;
+            let h = ts * 0.95, hT = ts * 0.95;
             try {
                 if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getUnitVisualHeight) {
                     h = ThreeRenderer.getUnitVisualHeight(c.id) || h;
+                    hT = (target.id != null && ThreeRenderer.getUnitVisualHeight(target.id)) || hT;
                 }
             } catch (e) {}
             const eyePx = h * 0.92 + Math.max(0, (unitElevationZ(c) || 0)
                 - ((typeof window._camGroundPx === 'function') ? window._camGroundPx(c.x, c.y) : 0));
             if (!_cineTpsAnchor(c, c, { liftPx: eyePx })) return false;
-            /* Aim at the target's chest, slope followed (HIGHER tilt = up). */
-            const slopeDeg = Math.atan2((tPx + ts * 0.45) - (cPx + eyePx), len * ts) * (180 / Math.PI);
+            /* THE AIM (2026-09-14): at the target's HEAD, not its chest — the
+               squint's slit is the middle of the frame, and a chest-centred
+               aim put the face under the top lid (the "kneecap" look). The
+               eyes sit a little above the aim so the whole body hangs in
+               the slit with the face in its upper half. HIGHER tilt = up. */
+            const squint = Math.max(0.08, Math.min(0.5, opts.squint ?? 0.24));
+            const aimPx = tPx + hT * 0.72;
+            const slopeDeg = Math.atan2(aimPx - (cPx + eyePx), len * ts) * (180 / Math.PI);
             const tilt = Math.max(CINE_TILT_GUARD_MIN, Math.min(CINE_TILT_GUARD_MAX, 90 + slopeDeg));
             camera._fpEye = true;
             camera._cineFpOwned = true;
             window._ewFpHideUid = c.id;
             _cineHardCut({ x: c.x, y: c.y, zoom: 1, tilt, yaw: yawFwd, elevZ: cPx + eyePx });
             _acChromeFlash('cut');
-            if (opts.fov != null) _cineFovTween(opts.fov, opts.zoomMs ?? 700, opts.sequenceId);
+            /* THE SCOPE (2026-09-14): the lens opens WIDE (the naked eye down
+               the range, wider than the board's own 45°) and narrows, in step
+               with the lids, to the FOV that fits the target's whole body in
+               ~72 % of the SLIT at its actual distance — so a shot at two
+               tiles zooms a little and a shot at nine tiles zooms a lot, and
+               the face is in frame either way. `opts.fov` is the per-spell
+               FLOOR (the tightest a scope goes); the end is always at least
+               a few degrees tighter than the start so the zoom reads. */
+            const zoomMs = opts.zoomMs ?? 700;
+            const wide = opts.wideFov ?? 62;
+            const distPx = Math.hypot(len * ts, aimPx - (cPx + eyePx));
+            const slit = Math.max(0.2, 1 - 2 * squint);
+            const fit = 2 * Math.atan((hT * 1.15) / (0.72 * slit) / (2 * Math.max(ts * 0.8, distPx))) * (180 / Math.PI);
+            const endFov = Math.min(wide - 8, Math.max(opts.fov ?? 18, fit));
+            _cineFovTween(endFov, zoomMs, opts.sequenceId, { fromFov: wide, ease: 'inout' });
             if (opts.eyelids !== false) {
-                cineEyelids(opts.ms ?? 1200, { amt: opts.squint ?? 0.3, closeMs: opts.closeMs ?? 460 });
+                cineEyelids(opts.ms ?? 1200, { amt: squint, closeMs: opts.closeMs ?? zoomMs });
             }
             return true;
         }
@@ -21413,12 +21439,16 @@
                No 3D rig → the POV declines and the old scope grade plays. */
             _sniperKit(ctx, o = {}) {
                 const { caster, target, timings, sequenceId } = ctx;
-                const povAt = Math.max(0, timings.sourceHold - actionMs(o.leadMs ?? 900));
+                const povAt = Math.max(0, timings.sourceHold - actionMs(o.leadMs ?? 1100));
                 const povMs = Math.max(actionMs(300), timings.sourceHold - povAt);
                 _cineAt(povAt, sequenceId, () => {
+                    /* o.fov = the scope's FLOOR; the real end FOV is fitted to
+                       the range inside cineSniperPov (2026-09-14). The lids
+                       close over the same window the lens narrows. */
+                    const zoomMs = Math.round(povMs * 0.85);
                     const ok = cineSniperPov(caster, target, {
-                        sequenceId, fov: o.fov ?? 22, zoomMs: Math.round(povMs * 0.8),
-                        ms: povMs + actionMs(400), squint: o.squint ?? 0.3
+                        sequenceId, fov: o.fov ?? 18, zoomMs, closeMs: zoomMs,
+                        ms: povMs + actionMs(400), squint: o.squint ?? 0.24
                     });
                     if (!ok) cineGrade('scope', povMs + 200);
                 });
@@ -21443,14 +21473,14 @@
                 return true;
             },
             /* ── #47 Take Aim — the rule becomes legible (slow-mo bullet). */
-            headshot(ctx)      { return CINE_SEQUENCES._sniperKit(ctx, { slow: true, fov: 18, leadMs: 1000 }); },
-            precisionShot(ctx) { return CINE_SEQUENCES._sniperKit(ctx, { fov: 24 }); },
-            deadEye(ctx)       { return CINE_SEQUENCES._sniperKit(ctx, { fov: 20, freezeMs: 140, squint: 0.34 }); },
-            kneecapShot(ctx)   { return CINE_SEQUENCES._sniperKit(ctx, { fov: 26, bulletTilt: 80 }); },
+            headshot(ctx)      { return CINE_SEQUENCES._sniperKit(ctx, { slow: true, fov: 14, leadMs: 1200 }); },
+            precisionShot(ctx) { return CINE_SEQUENCES._sniperKit(ctx, { fov: 18 }); },
+            deadEye(ctx)       { return CINE_SEQUENCES._sniperKit(ctx, { fov: 16, freezeMs: 140, squint: 0.28 }); },
+            kneecapShot(ctx)   { return CINE_SEQUENCES._sniperKit(ctx, { fov: 20, bulletTilt: 80 }); },
 
             /* ── #48 Railgun — the pierce mechanic is unmissable because the
                camera pierced too: the squint, the slug, the headlight stare. */
-            railgun(ctx)       { return CINE_SEQUENCES._sniperKit(ctx, { fov: 24, endCap: true, bulletTilt: 87 }); },
+            railgun(ctx)       { return CINE_SEQUENCES._sniperKit(ctx, { fov: 18, endCap: true, bulletTilt: 87 }); },
 
             /* ── #49 Polymorph — the OTS lingers on the frog. */
             racePolymorph(ctx) {

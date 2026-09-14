@@ -46,7 +46,10 @@ const ThreeCamera = (function () {
        for the pulled-back tactical preset, a tighter one for the close view.
        Clamped to a sane game range; no-ops when unchanged. */
     function setFOV(deg) {
-        const f = Math.max(25, Math.min(90, Number(deg) || FOV));
+        /* Floor 10 (was 25): the sniper POV's scope zoom (battle.js
+           cineSniperPov) narrows the lens by DISTANCE and needs the room;
+           the view presets never ask under 28. */
+        const f = Math.max(10, Math.min(90, Number(deg) || FOV));
         if (threeCamera && Math.abs(threeCamera.fov - f) > 0.01) {
             threeCamera.fov = f;
             threeCamera.updateProjectionMatrix();
