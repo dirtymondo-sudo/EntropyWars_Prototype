@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const data = require('./load-data').loadGameData();
 const read = f => fs.readFileSync(path.join(__dirname, f), 'utf8');
 const battle = fs.readFileSync(process.env.EW_BATTLE_TEST_SOURCE || path.join(__dirname, 'battle.js'), 'utf8');
-const map = read('map.js'), ai = read('ai.js');
+const map = fs.readFileSync(process.env.EW_MAP_TEST_SOURCE || path.join(__dirname, 'map.js'), 'utf8'), ai = read('ai.js');
 function fn(src, name) {
     const start = src.indexOf('        function ' + name + '(');
     if (start < 0) throw Error('Missing function: ' + name);
@@ -96,5 +96,5 @@ function observations() {
     ];
     return cases.map(([name,options,prepare])=>{const h=setup(options);prepare(h);const r=h.run();return {name,...r};});
 }
-if (require.main===module) console.log(JSON.stringify({baseline:'2a7a96340afede504f727b111425024532408eae',limitations:LIMITS,observations:observations()},null,2));
+if (require.main===module) console.log(JSON.stringify({baseline:'ed196c9e9ae1f47be0d870befd373f045adc4585',limitations:LIMITS,observations:observations()},null,2));
 module.exports={setup,observations,LIMITS};

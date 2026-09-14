@@ -5162,12 +5162,12 @@
         // BEHIND a tall pillar is not. Every line walk (damage, highlights,
         // range footprint, VFX route, AI ray scoring) must consult this or
         // the previews promise hits the engine no longer delivers.
-        function _lineLosBlocked(unit, spell, cx, cy) {
+        function _lineLosBlocked(unit, spell, cx, cy, obstruction) {
             if (spell && spell.ignoresLineOfSight === true) return false;
             if (typeof isRangeBlockedByTerrain !== 'function') return false;
             // sourceZ null → isRangeBlockedByTerrain infers the caster's true
             // standing height (unit z / column top) itself.
-            return isRangeBlockedByTerrain(unit.x, unit.y, cx, cy, unit.z ?? null);
+            return isRangeBlockedByTerrain(unit.x, unit.y, cx, cy, unit.z ?? null, undefined, undefined, obstruction);
         }
         window._lineLosBlocked = _lineLosBlocked;
 
@@ -5191,30 +5191,40 @@
                 if (!isInside(cx, cy)) break;
                 // Impassable terrain OR a wall/pillar tall enough to break the
                 // caster's sight line stops the beam (both can be bored through).
-                if ((!isTerrainPassable(cx, cy) && !spell.destroysObstacles)
-                    || _lineLosBlocked(unit, spell, cx, cy)) {
+                // LOS may name an earlier column, not the destination tile.
+                // Bore only that proven obstacle, then re-run the real ray: a
+                // surviving lintel, door, edge wall or Cube still stops the cast.
+                let _stopped = false;
+                while (true) {
+                    const _obstruction = {};
+                    const _losBlocked = _lineLosBlocked(unit, spell, cx, cy, _obstruction);
+                    const _terrainBlocked = !isTerrainPassable(cx, cy) && !spell.destroysObstacles;
+                    if (!_losBlocked && !_terrainBlocked) break;
+                    const bx = _losBlocked ? _obstruction.x : cx;
+                    const by = _losBlocked ? _obstruction.y : cy;
                     let _bored = false;
-                    if (_bores < _boreMax && _borePow > 0 && !unitAt(cx, cy)) {
-                        if (typeof _tileHasTree === 'function' && _tileHasTree(cx, cy)) {
-                            if (_borePow >= getTerrainHardness('tree') && _fellTreeAt(cx, cy, unit, { credit: false })) {
-                                spawnMaterialDrops(cx, cy, [{ terrain: 'tree' }], { log: false });
-                                addLog(`💥 ${spell.name} blasts the tree at ${coordLabel(cx, cy)} to splinters and carries on!`);
-                                showFloatingTextAtTile(cx, cy, '💥 BREACH!', 'damage', { durationMs: 900 });
+                    if (bx != null && by != null && _bores < _boreMax && _borePow > 0 && !unitAt(bx, by)) {
+                        if (typeof _tileHasTree === 'function' && _tileHasTree(bx, by)) {
+                            if (_borePow >= getTerrainHardness('tree') && _fellTreeAt(bx, by, unit, { credit: false })) {
+                                spawnMaterialDrops(bx, by, [{ terrain: 'tree' }], { log: false });
+                                addLog(`💥 ${spell.name} blasts the tree at ${coordLabel(bx, by)} to splinters and carries on!`);
+                                showFloatingTextAtTile(bx, by, '💥 BREACH!', 'damage', { durationMs: 900 });
                                 _bored = true;
                             }
                         } else {
-                            const _bChk = _breachWindowCheck(cx, cy, _boreZ, _borePow);
-                            if (_bChk && _breachWallAt(cx, cy, _boreZ, _bChk, { byUnit: unit }).length) {
-                                addLog(`💥 ${spell.name} bores a hole clean through the wall at ${coordLabel(cx, cy)}!`);
-                                showFloatingTextAtTile(cx, cy, '💥 BREACH!', 'damage', { durationMs: 900 });
+                            const _bChk = _breachWindowCheck(bx, by, _boreZ, _borePow);
+                            if (_bChk && _breachWallAt(bx, by, _boreZ, _bChk, { byUnit: unit }).length) {
+                                addLog(`💥 ${spell.name} bores a hole clean through the wall at ${coordLabel(bx, by)}!`);
+                                showFloatingTextAtTile(bx, by, '💥 BREACH!', 'damage', { durationMs: 900 });
                                 if (typeof shakeBoard === 'function') shakeBoard('normal');
                                 _bored = true;
                             }
                         }
                         if (_bored) _bores++;
                     }
-                    if (!_bored) break;
+                    if (!_bored) { _stopped = true; break; }
                 }
+                if (_stopped) break;
                 _lineCells.push({ x: cx, y: cy });
                 const hit = unitAt(cx, cy);
                 if (hit && hit.player !== unit.player && !hit.dead) {
