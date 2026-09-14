@@ -733,9 +733,9 @@ function buildDefaultCustomSpells(race, cls, secJob) {
      default below. */
   if (typeof window.classHasSpellTree === 'function' && window.classHasSpellTree(cls)
       && typeof window.treeLegalSubset === 'function') {
-    /* Freelancer default: its two fixed openers + race r1–r2 (the capstone
-       needs a P3 socket fill, so it drops out via connectivity — sockets
-       are the player's call). */
+    /* Freelancer default: race r1–r2 only — both job pillars are sockets
+       (any race ability on P, any job ability on S), and sockets are the
+       player's call. FL_FIXED is empty since 2026-09-14. */
     const p = (cls === 'Freelancer')
       ? Object.values(window.FL_FIXED || {})
       : ((typeof window.getClassTreeSpells === 'function' && window.getClassTreeSpells(cls)) || []);
@@ -813,9 +813,12 @@ function legalCustomSpellIds(race, cls, secJob) {
     // time, which treeLegalSubset enforces.
     for (const pair of Object.values(tree.alts || {})) for (const id of pair) if (id && !sealed.has(id)) ok.add(id);
     /* Freelancer: any wildcard-pool spell may legally sit in a socket —
-       connectivity is enforced separately by treeLegalSubset. */
+       any JOB ability (S1–S4) or any RACE ability (P1–P4); connectivity is
+       enforced separately by treeLegalSubset. */
     if (cls === 'Freelancer' && typeof window.flWildcardPool === 'function') {
       for (const sp of window.flWildcardPool(race)) if (sp.id && clashSpellOk(sp)) ok.add(sp.id);
+      if (typeof window.flRacePool === 'function')
+        for (const sp of window.flRacePool(race)) if (sp.id && clashSpellOk(sp)) ok.add(sp.id);
     }
     return ok;
   }
@@ -1685,7 +1688,7 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
     const willDrop = dropKeys.has(key);
     let glyph = catGlyph, name = sp ? sp.name : '';
     if (st8 === 'root') { glyph = '⚔'; name = 'Basic Attack'; }
-    else if (st8 === 'socket') { glyph = '＋'; name = 'Wildcard ' + (tree.sockets[key] || []).join('·'); }
+    else if (st8 === 'socket') { glyph = '＋'; name = (flSocketKind(tree, key) === 'race' ? 'Any race ' : 'Any job ') + (tree.sockets[key] || []).join('·'); }
     else if (st8 === 'empty') { glyph = ''; name = key[0] === 'S' ? 'No subclass' : '—'; }
     else if (st8 === 'sealed') { glyph = '🔒'; }
     const clickable = (st8 === 'equipped' || st8 === 'reachable' || st8 === 'far' || st8 === 'root');
@@ -1733,11 +1736,11 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
   // the root hub sits at the centre lane's disc, exactly under R1.
   return h('div', { className: 'pb-circuit' },
     h('div', { className: 'pb-lanes' },
-      lane('P', pillarHead('P', getJobDisplay(clsName).toUpperCase(), EW.space)),
+      lane('P', pillarHead('P', isFL ? 'ANY RACE' : getJobDisplay(clsName).toUpperCase(), EW.space)),
       lane('R', pillarHead('R', (raceLabel || '').toUpperCase(), fc)),
       lane('S', isFL
         // Freelancer has no subclass — the right pillar IS the wildcard rack.
-        ? pillarHead('S', 'WILDCARDS', EW.time)
+        ? pillarHead('S', 'ANY JOB', EW.time)
         : pillarHead('S', secJob ? getJobDisplay(secJob).toUpperCase() : '＋ SUBCLASS',
             secJob ? EW.ink : EW.inkMute, onOpenSubjob, secJob ? 'CHANGE' : 'SELECT'))),
     h('div', { className: 'pb-bus' },
@@ -1768,7 +1771,14 @@ function pbTechInfo(tree, sealed, equipped, key, slotCap, altId) {
   const otherAlt = twin ? (twin.find(a => a !== id) || null) : null;
   return { key, st8, id, sp, ring, path, newIds, overCap, twin, alt, otherAlt, drop,
     dropCount: drop ? drop.size - 1 : 0,
-    pillar: treePillarOf(key), tiers: (st8 === 'socket' && tree.sockets) ? (tree.sockets[key] || []) : null };
+    pillar: treePillarOf(key), tiers: (st8 === 'socket' && tree.sockets) ? (tree.sockets[key] || []) : null,
+    socketKind: st8 === 'socket' ? flSocketKind(tree, key) : null };
+}
+/* Which pool a Freelancer socket draws from: 'race' (P1–P4) or 'job' (S1–S4). */
+function flSocketKind(tree, key) {
+  const p = tree && tree.socketPool && tree.socketPool[key];
+  if (p) return p;
+  return key && key[0] === 'P' ? 'race' : 'job';
 }
 function TechniquePanel({ info, clsName, secJob, raceLabel, fc, onVerb, onPreview, previewLabel, previewOff, previewing, used, slotCap }) {
   if (!info) {
@@ -1789,9 +1799,9 @@ function TechniquePanel({ info, clsName, secJob, raceLabel, fc, onVerb, onPrevie
   const kicker = st8 === 'root' ? 'ROOT · ALWAYS EQUIPPED'
     : ['RING ' + ring, sp && sp.tier ? 'TIER ' + sp.tier : null, cat ? spellCategoryLabel(cat).toUpperCase() : null,
        info.twin ? 'ONE OF TWO' : null, st8 === 'equipped' ? 'EQUIPPED' : st8 === 'swap' ? 'NOT WORN' : null].filter(Boolean).join(' · ');
-  const name = st8 === 'root' ? 'Basic Attack' : st8 === 'socket' ? 'Wildcard Socket' : st8 === 'empty' ? 'Empty Node' : (sp ? sp.name : '—');
+  const name = st8 === 'root' ? 'Basic Attack' : st8 === 'socket' ? (info.socketKind === 'race' ? 'Race Socket' : 'Job Socket') : st8 === 'empty' ? 'Empty Node' : (sp ? sp.name : '—');
   const desc = st8 === 'root' ? 'The vessel\'s plain strike — melee or ranged by reach. Every loadout carries it; the circuit grows from here.'
-    : st8 === 'socket' ? 'An open socket on the Freelancer\'s rack: borrow any job\'s technique of tier ' + (info.tiers || []).join(' / ') + '.'
+    : st8 === 'socket' ? 'An open socket on the Freelancer\'s rack: borrow any ' + (info.socketKind === 'race' ? 'race' : 'job') + '\'s technique of tier ' + (info.tiers || []).join(' / ') + '.'
     : st8 === 'empty' ? (info.pillar === 'S' ? 'No subclass chosen — pick one on the pillar head to light this node.' : 'Nothing is authored on this node yet.')
     : (sp ? (sp.desc || spellCategoryLabel(cat)) : '');
   // chips
@@ -2914,8 +2924,12 @@ function PartyBuilder(props) {
     if (!flSocketPick || !unitTree || !unitTree.isFreelancer
         || typeof window.flWildcardPool !== 'function') return [];
     const tiers = (unitTree.sockets && unitTree.sockets[flSocketPick]) || [];
-    const tierOf = (sp) => sp.tier === 'III' ? 'III' : sp.tier === 'II' ? 'II' : 'I';
-    return window.flWildcardPool(unitRace)
+    // the tier a socket judges by is the TREE RING (data.js _flTierOf)
+    const tierOf = (sp) => (typeof window._flTierOf === 'function') ? window._flTierOf(sp)
+      : (sp.tier === 'III' ? 'III' : sp.tier === 'II' ? 'II' : 'I');
+    const pool = (typeof window.flSocketPool === 'function')
+      ? window.flSocketPool(unitRace, flSocketPick) : window.flWildcardPool(unitRace);
+    return pool
       .filter(sp => tiers.includes(tierOf(sp)) && clashSpellOk(sp))
       .sort((a, b) => (tierOf(a) === tierOf(b) ? 0 : tierOf(a) < tierOf(b) ? -1 : 1)
         || pbCatRank(a) - pbCatRank(b) || (a.name || '').localeCompare(b.name || ''));
@@ -3292,8 +3306,9 @@ function PartyBuilder(props) {
       const close = () => { setFlSocketPick(null); hideSpellTip(); };
       let title, sub, rows;
       {
-        title = '＋ WILDCARD SOCKET';
-        sub = 'TIER ' + (((unitTree.sockets||{})[flSocketPick]||[]).join(' / ')) + ' · ANY JOB';
+        const kind = flSocketKind(unitTree, flSocketPick);
+        title = kind === 'race' ? '＋ RACE SOCKET' : '＋ JOB SOCKET';
+        sub = 'TIER ' + (((unitTree.sockets||{})[flSocketPick]||[]).join(' / ')) + (kind === 'race' ? ' · ANY RACE' : ' · ANY JOB');
         rows = flSocketPool.map(sp => {
           const already = (customSpells || []).includes(sp.id);
           const cantEquip = already || (customSpells || []).length >= slotCap

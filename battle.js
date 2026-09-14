@@ -40226,7 +40226,7 @@
                     }
                 }
                 if (typeof FL_FIXED !== 'undefined') {
-                    defs.freelancer = { fixed: FL_FIXED, socketTiers: (typeof FL_SOCKET_TIERS !== 'undefined') ? FL_SOCKET_TIERS : null };
+                    defs.freelancer = { fixed: FL_FIXED, socketTiers: (typeof FL_SOCKET_TIERS !== 'undefined') ? FL_SOCKET_TIERS : null, socketPool: (typeof FL_SOCKET_POOL !== 'undefined') ? FL_SOCKET_POOL : null };
                 }
             } catch (e) {}
             return defs;

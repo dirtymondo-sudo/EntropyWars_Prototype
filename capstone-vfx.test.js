@@ -81,7 +81,7 @@ test('data.js names the capstones: ring 3 of every pillar, cached, cleared on a 
         for (const id of (Array.isArray(last) ? last : [last])) assert.ok(caps.has(id), id + ' should be a capstone');
     }
     for (const tree of Object.values(g.CLASS_TREE)) assert.ok(caps.has(tree[tree.length - 1]));
-    assert.ok(caps.has('reallyGoodPunch'), 'the Freelancer order ends on its capstone');
+    assert.ok(caps.has('reallyGoodPunch'), 'the homosapien twin capstone (the old Freelancer capstone)');
     assert.ok(!caps.has('raceRiptide'), 'a ring-1 spell is not a capstone');
     assert.ok(caps.has('sharedNuke'), 'Nuke sits on no lower ring');
     assert.ok(/_capstoneIdSet = null;\s*\/\/ a re-positioned tree/.test(fs.readFileSync(path.join(__dirname, 'data.js'), 'utf8')));

@@ -2393,6 +2393,35 @@ targets; if one lands wrong, that field is the edit. `npm test` runs
 and swing, the camera's authored facing (a photo camera would want a desk,
 not a wall), the chairs' scale, the asteroids' size against the planets.
 
+## THE FREELANCER = TWO SOCKET RACKS + THE HOMOSAPIEN TWINS — 2026-09-14, local delivery
+The Freelancer's three fixed spells (`improvise` · `jackOfAll` (Pep Talk)
+· `reallyGoodPunch`) are HOMOSAPIEN RACE ABILITIES now (data.js
+`RACE_ABILITIES.homosapien`, same ids — saves keep working; they left
+SPELL_LIBRARY and carry no `school` / `classRestriction`), twinned onto
+the race tree: `RACE_TREE.homosapien` = `[[raceElbowGrease, improvise],
+[raceAdrenalineRush, jackOfAll], raceUnderdogSpirit, [raceIndomitableWill,
+reallyGoodPunch]]`. `CLASS_SPELL_LEARN_ORDER` has NO Freelancer row any
+more; `FL_FIXED` is `{}` (still exported). The Freelancer's tree (data.js
+FREELANCER block, `buildFreelancerTree`) is the race pillar + TWO socket
+racks, ring-tier-capped (r1/r2 tier I, r3 tier II, r4★ tier III):
+**P1–P4 = ANY RACE ability** (`flRacePool(race)` = every other race's
+tree, both twin alternates, minus the unit's own pillar and anything a
+job tree owns; a `jobRequirement` row stays with its job) and **S1–S4 =
+ANY JOB ability** (`flWildcardPool(race)`, unchanged). `FL_SOCKET_POOL`
+names the pool per key, `flSocketPool(race, key)` is the picker's read,
+`tree.socketPool` rides the built tree. **A socket judges a spell by its
+TREE RING** (`_flTierOf` → `treeRingOfSpell(id)`, cached beside the
+capstone set and dropped by `applyTreeRingCosts`) — most race abilities
+carry no `tier` field. The pools are disjoint (no id lives on both a job
+and a race tree), so placement is by pool + tier. party-builder.js:
+`flSocketKind(tree, key)`, the pillar heads read ANY RACE / ANY JOB, the
+socket chip / panel / window say Race Socket / Job Socket, the picker
+reads `window.flSocketPool` and `window._flTierOf`. Two capstones still
+never fit (4 + 4 > 7). `npm test` (content-schema.test.js "Freelancer
+wildcard-socket tree") guards the move, both pools, placement, legality,
+the random walks and the repair. Unseen live (RULE #1c): the race pool is
+~400 rows in one window — a filter row may be wanted.
+
 ## ROOM 1 (Reception as a room, HQ plan 7.4) — added 2026-09-14
 `DOOR_HQ.rooms.reception` (data.js) is RECEPTION, a `kind: 'box'` room
 behind the ground ring's window door at 120° (`central_egress.doors` id

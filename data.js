@@ -4086,7 +4086,7 @@ const JOB_PASSIVES = {
     Harvester:   { id: 'greenThumb',     name: 'Green Thumb',     desc: 'Trees grown from this unit\'s seeds buff its ATK & spell power (+7 each, up to 6 living trees) and fuel Trunk Throw (+30 damage each). Life Sap heals 20% more. Enemies can chop or burn the forest to shut it down.' },
     Engineer:    { id: 'tinker',         name: 'Tinker',          desc: 'Turrets have +1 range and Repair heals 20% more.' },
     Harbinger:   { id: 'crescendo',      name: 'Crescendo',       desc: "This unit's buffs last +1 turn. Lullaby has +1 range." },
-    Freelancer:  { id: 'adaptable',      name: 'Adaptable',       desc: 'No school restrictions — can learn and equip spells from ANY job pool. A blank slate that borrows every playstyle.' },
+    Freelancer:  { id: 'adaptable',      name: 'Adaptable',       desc: 'No school restrictions — can learn and equip abilities from ANY race and ANY job. A blank slate that borrows every playstyle.' },
     Raider:      { id: 'bruteForce',     name: 'Brute Force',     desc: 'Basic attacks deal +20% damage. Gains +8 DEF while below 50% HP.' },
     Swordmaster: { id: 'riposte',        name: 'Riposte',         desc: '35% chance to counterattack when struck in melee, and counters swing at full sword strength (60% ATK instead of 40%).' },
 };
@@ -5028,61 +5028,6 @@ const SPELL_LIBRARY = [
             duration: 1
         }],
         desc: 'Empowers the caster. Applies Invisible. Cooldown: 2 rounds.'
-    },
-
-    {
-        id: 'jackOfAll',
-        spellType: 'human',
-        name: 'Pep Talk',
-        type: 'buff',
-        cost: 25,
-        equipCost: 15,
-        apCost: 1,
-        range: 0,
-        kind: 'buff',
-        tier: 'I',
-        school: 'Freelancer',
-        classRestriction: 'Freelancer',
-        jobPreference: ['Freelancer'],
-        statusEffects: [{
-            id: 'jackOfAll',
-            duration: 3
-        }],
-        desc: 'Psyches the caster up: raises ATK, DEF, M.ATK and M.DEF by 1 stage each, plus MOV and RNG by 1, for 3 turns.'
-    },
-    {
-        id: 'improvise',
-        spellType: 'human',
-        name: 'Improvise',
-        type: 'damage',
-        cost: 20,
-        equipCost: 10,
-        dmg: 80,
-        range: 2,
-        kind: 'damage',
-        damageType: 'physical',
-        tier: 'I',
-        school: 'Freelancer',
-        classRestriction: 'Freelancer',
-        jobPreference: ['Freelancer'],
-        desc: 'Deals WEAK physical damage to a Single Enemy.'
-    },
-    {
-        id: 'reallyGoodPunch',
-        spellType: 'human',
-        name: 'A Really Good Punch',
-        type: 'damage',
-        cost: 15,
-        equipCost: 10,
-        dmg: 180,
-        range: 1,
-        kind: 'damage',
-        damageType: 'physical',
-        tier: 'III',
-        school: 'Freelancer',
-        classRestriction: 'Freelancer',
-        jobPreference: ['Freelancer'],
-        desc: 'Deals HEAVY physical damage to a Single Enemy.'
     },
 
     {
@@ -6511,7 +6456,24 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 40, apCost: 2, range: 0, tier: 'III',
           kind: 'buff', cooldownRounds: 3,
           statusEffects: [{ id: 'indomitable', duration: 3 }],
-          desc: 'Empowers the caster. For 3 rounds, the first blow that would kill you leaves you at 1 HP instead. Humanity\'s only superpower: refusing to die.' }
+          desc: 'Empowers the caster. For 3 rounds, the first blow that would kill you leaves you at 1 HP instead. Humanity\'s only superpower: refusing to die.' },
+        /* 2026-09-14: the Freelancer's three fixed spells MOVED here (the
+           same ids — saves keep working). They are homosapien abilities now,
+           twinned onto the race tree (RACE_TREE.homosapien); the Freelancer
+           job's primary branch became four race-ability sockets instead. */
+        { id: 'improvise', spellType: 'human', name: 'Improvise',
+          type: 'damage', cost: 20, equipCost: 10, dmg: 80, range: 2,
+          kind: 'damage', damageType: 'physical', tier: 'I',
+          desc: 'Deals WEAK physical damage to a Single Enemy.' },
+        { id: 'jackOfAll', spellType: 'human', name: 'Pep Talk',
+          type: 'buff', cost: 25, equipCost: 15, apCost: 1, range: 0,
+          kind: 'buff', tier: 'I',
+          statusEffects: [{ id: 'jackOfAll', duration: 3 }],
+          desc: 'Psyches the caster up: raises ATK, DEF, M.ATK and M.DEF by 1 stage each, plus MOV and RNG by 1, for 3 turns.' },
+        { id: 'reallyGoodPunch', spellType: 'human', name: 'A Really Good Punch',
+          type: 'damage', cost: 15, equipCost: 10, dmg: 180, range: 1,
+          kind: 'damage', damageType: 'physical', tier: 'III',
+          desc: 'Deals HEAVY physical damage to a Single Enemy.' }
     ],
     'pirate': [
         { id: 'raceCannonball', spellType: 'tech', element: 'fire', name: 'Cannonball',
@@ -15348,7 +15310,7 @@ function getRaceXpYield(race) {
 /* Spell-tree redesign (SPELL_TREE_REDESIGN doc §3/§5): each job's learn
    order IS its tree branch in ring order r1→r2→r3→r4★ (opener → tool →
    payoff → capstone). CLASS_TREE below is derived from this table.
-   Freelancer is unchanged — its wildcard-socket tree is a separate pass. */
+   Freelancer has no row — its tree is all sockets (the FREELANCER block). */
 const CLASS_SPELL_LEARN_ORDER = {
 
     'Gunslinger':  ['doubleShot', 'ricochet1', 'crossfire', 'deadEye'],
@@ -15364,7 +15326,9 @@ const CLASS_SPELL_LEARN_ORDER = {
        lab at ring 2 / 50 MP with a 57% pick-winrate — promoted to ring 3
        (75 MP, tier II); Encore drops to ring 2 (50 MP, tier I). */
     'Harbinger':   ['discordance', 'encore', 'lullaby', 'requiem'],
-    'Freelancer':  ['improvise', 'jackOfAll', 'reallyGoodPunch'],
+    /* Freelancer has NO learn order since 2026-09-14: its three spells are
+       homosapien race abilities now and its whole primary branch is sockets
+       (see the FREELANCER block). */
     'Raider':      ['haymaker', 'ironGrip', 'skullCrack', 'rampage'],
     'Sniper':      ['kneecapShot', 'camouflage', 'precisionShot', 'headshot'],
     'Swordmaster': ['crossSlash', 'swordBeam', 'bladeWaltz', 'dragonSlash'],
@@ -15417,7 +15381,7 @@ const RACE_TREE = {
        authored final-4s — no race falls back to "first 4 abilities" anymore.
        Phase 2 twins (2026-09-07) are the CHAMP_REWORK_PLAN §6 pairs whose
        two spells both exist today; a pair with a NEW spell lands with it. */
-    'homosapien':    ['raceElbowGrease', 'raceAdrenalineRush', 'raceUnderdogSpirit', 'raceIndomitableWill'],
+    'homosapien':    [['raceElbowGrease', 'improvise'], ['raceAdrenalineRush', 'jackOfAll'], 'raceUnderdogSpirit', ['raceIndomitableWill', 'reallyGoodPunch']],   // 2026-09-14: the Freelancer's spells merged in as twins
     'knight':        ['raceChivalry', 'raceShieldWall', 'raceOathOfValor', 'raceCrusade'],
     'cowboy':        ['raceLasso', ['raceFanTheHammer', 'raceDynamite'], ['raceQuickDraw', 'raceWhistle'], 'raceHighNoon'],   // §6.15 (wave C)
     'marksman':      ['raceSuppressiveFire', ['sharedSmokeScreen', 'raceIncendiaryRounds'], 'raceRangefinder', 'raceFireForEffect'],   // §6.11
@@ -15545,8 +15509,8 @@ function snapCostToLadder(cost) {
 
 /* spellId → ring index (0–3) across every job learn order + curated race
    tree. The LAST entry of a pillar is its capstone (ring 3) — that's what
-   prices Freelancer's 3-spell order improvise/jackOfAll/reallyGoodPunch as
-   25/50/100, matching its P1/P2/P4 fixed nodes. A shared spell that sits
+   prices the Freelancer's old improvise/jackOfAll/reallyGoodPunch as the
+   homosapien twins they became (25/50/100). A shared spell that sits
    on different rings in different trees takes its LOWEST ring — the
    cheapest node it occupies must stay affordable at that position. */
 function buildTreeRingIndex() {
@@ -15576,12 +15540,21 @@ function buildTreeRingIndex() {
    capstone bloom). Cached; applyTreeRingCosts drops the cache when custom
    content re-positions a tree. */
 let _capstoneIdSet = null;
+let _treeRingCache = null;   // id → ring (0–3); dropped with the capstone set
 function capstoneSpellIds() {
     if (!_capstoneIdSet) {
         const rings = buildTreeRingIndex();
+        _treeRingCache = rings;
         _capstoneIdSet = new Set(Object.keys(rings).filter(id => rings[id] === 3));
     }
     return _capstoneIdSet;
+}
+/* The ring (0–3) a spell sits on across every tree, or null off-tree. */
+function treeRingOfSpell(id) {
+    if (!id) return null;
+    if (!_treeRingCache) capstoneSpellIds();
+    const r = _treeRingCache[id];
+    return r == null ? null : r;
 }
 function isCapstoneSpellId(id) {
     return !!id && capstoneSpellIds().has(id);
@@ -15606,6 +15579,7 @@ function getTreeRingCost(id, rings) {
 function applyTreeRingCosts(skipIds, snapOffTree) {
     const rings = buildTreeRingIndex();
     _capstoneIdSet = null;   // a re-positioned tree may move a capstone
+    _treeRingCache = null;
     const seen = new Set();
     const all = [];
     for (const sp of SPELL_LIBRARY) if (!seen.has(sp)) { seen.add(sp); all.push(sp); }
@@ -15633,8 +15607,8 @@ function applyTreeRingCosts(skipIds, snapOffTree) {
 
 function classHasSpellTree(cls) {
     /* Freelancer joined the tree in Phase B (wildcard sockets, see the
-       FREELANCER block below) — it has no CLASS_TREE row because its
-       primary branch is part-fixed, part-socket. */
+       FREELANCER block below) — it has no CLASS_TREE row because BOTH its
+       job pillars are sockets (race abilities on P, job abilities on S). */
     if (cls === 'Freelancer') return true;
     return !!(cls && CLASS_TREE[cls]);
 }
@@ -15771,37 +15745,83 @@ function buildUnitSpellTree(race, cls, secJob, equippedIds) {
 
 /* ═══════════ FREELANCER — the wildcard-socket tree (Phase B) ═══════════
    Doc §6: the identity IS borrowing, so no new spells were authored.
-   Race pillar as normal. Primary pillar: improvise → jackOfAll →
-   [socket, tier I/II] → reallyGoodPunch★. Secondary pillar: FOUR wildcard
-   sockets, ring-tier-capped — S1/S2 any tier I, S3 any tier II, S4 any
-   tier III capstone. A socket accepts any job-tree spell of an allowed
-   tier; equipping is still just customSpells ids (no save-format change) —
+   Race pillar as normal. 2026-09-14 (the user's call): the three fixed
+   spells (improvise / jackOfAll / reallyGoodPunch) MOVED to the homosapien
+   race tree, and BOTH job pillars are wildcard sockets now, ring-tier-
+   capped (r1/r2 any tier I, r3 any tier II, r4★ any tier III capstone):
+     PRIMARY   P1–P4 = ANY RACE ability (the union of every race tree,
+               minus this unit's own race pillar — that pillar is already
+               on the tree);
+     SECONDARY S1–S4 = ANY JOB ability (the union of every job tree, as
+               before).
+   Equipping is still just customSpells ids (no save-format change) —
    buildFreelancerTree() finds a socket placement of the equipped wildcards
-   that keeps the tree root-connected (backtracking over ≤6×5, trivial). */
-const FL_FIXED = { P1: 'improvise', P2: 'jackOfAll', P4: 'reallyGoodPunch' };
-const FL_SOCKET_TIERS = { P3: ['I', 'II'], S1: ['I'], S2: ['I'], S3: ['II'], S4: ['III'] };
+   that keeps the tree root-connected (backtracking over ≤7×8, trivial).
+   FL_FIXED stays exported (empty) for readers that print the layout. */
+const FL_FIXED = {};
+const FL_SOCKET_TIERS = {
+    P1: ['I'], P2: ['I'], P3: ['II'], P4: ['III'],
+    S1: ['I'], S2: ['I'], S3: ['II'], S4: ['III'],
+};
+/* Which pool each socket draws from. */
+const FL_SOCKET_POOL = { P1: 'race', P2: 'race', P3: 'race', P4: 'race', S1: 'job', S2: 'job', S3: 'job', S4: 'job' };
 
+/* A socket judges a spell by its TREE RING (r1/r2 → I, r3 → II, r4★ → III)
+   — most race abilities carry no `tier` field, and a job spell's tier is
+   its ring anyway. Off-tree ids fall back to the authored tier. */
 function _flTierOf(sp) {
-    return sp && sp.tier === 'III' ? 'III' : sp && sp.tier === 'II' ? 'II' : 'I';
+    if (!sp) return 'I';
+    const r = treeRingOfSpell(sp.id);
+    if (r != null) return r >= 3 ? 'III' : r === 2 ? 'II' : 'I';
+    return sp.tier === 'III' ? 'III' : sp.tier === 'II' ? 'II' : 'I';
 }
 
-/* Every spell a Freelancer socket may hold: the union of all job trees
-   (Freelancer's own three fixed spells aren't in CLASS_TREE), minus ids on
-   this race's own tree (the no-duplicate rule). */
+/* Every spell a Freelancer JOB socket (S1–S4) may hold: the union of all
+   job trees, minus ids on this race's own tree (the no-duplicate rule). */
 function flWildcardPool(race) {
     const raceIds = new Set(getRaceTreeAllIds(race, 'Freelancer') || []);
-    const fixed = new Set(Object.values(FL_FIXED));
     const out = [];
     const seen = new Set();
     for (const ids of Object.values(CLASS_TREE)) {
         for (const id of ids) {
             const sp = SPELL_BY_ID[id];
-            if (!sp || seen.has(id) || raceIds.has(id) || fixed.has(id)) continue;
+            if (!sp || seen.has(id) || raceIds.has(id)) continue;
             seen.add(id);
             out.push(sp);
         }
     }
     return out;
+}
+
+/* Every spell a Freelancer RACE socket (P1–P4) may hold: the union of every
+   race tree (both alternates of every twin), minus this unit's own race
+   pillar (already on the tree) and minus anything a job tree owns. A race
+   ability that demands a job (jobRequirement) stays with that job. */
+function flRacePool(race) {
+    const own = new Set(getRaceTreeAllIds(race, 'Freelancer') || []);
+    const races = (typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES.length)
+        ? AVAILABLE_RACES : Object.keys(RACE_TREE);
+    const out = [];
+    const seen = new Set();
+    for (const r of races) {
+        if (r === race) continue;
+        for (const id of getRaceTreeAllIds(r, 'Freelancer') || []) {
+            const sp = SPELL_BY_ID[id];
+            if (!sp || seen.has(id) || own.has(id) || _JOB_TREE_IDS.has(id)) continue;
+            if (sp.jobRequirement && sp.jobRequirement !== 'Freelancer') continue;
+            seen.add(id);
+            out.push(sp);
+        }
+    }
+    return out;
+}
+
+/* The pool one socket draws from (the builder's picker reads this). */
+function flSocketPool(race, key) {
+    const kind = FL_SOCKET_POOL[key];
+    if (kind === 'race') return flRacePool(race);
+    if (kind === 'job') return flWildcardPool(race);
+    return [];
 }
 
 function buildFreelancerTree(race, equippedIds) {
@@ -15822,19 +15842,23 @@ function buildFreelancerTree(race, equippedIds) {
     }
     for (const k of Object.keys(FL_SOCKET_TIERS)) nodes[k] = null;
 
-    const poolIds = new Set(flWildcardPool(race).map(s => s.id));
+    // which pool each equipped wildcard belongs to (the pools are disjoint:
+    // no id lives in both a job tree and a race tree)
+    const poolOf = {};
+    for (const sp of flWildcardPool(race)) poolOf[sp.id] = 'job';
+    for (const sp of flRacePool(race)) poolOf[sp.id] = 'race';
     const equipped = (equippedIds || []).filter(Boolean);
     const wild = [], unplaced = [];
     for (const id of equipped) {
         if (seen.has(id)) continue;                       // race / fixed node
         if (raceAll.has(id)) { unplaced.push(id); continue; }   // the OTHER alternate of an equipped twin
-        (poolIds.has(id) ? wild : unplaced).push(id);
+        (poolOf[id] ? wild : unplaced).push(id);
     }
 
     const mkTree = (placement) => {
         const n2 = { ...nodes };
         for (const [k, id] of Object.entries(placement)) n2[k] = id;
-        return { nodes: n2, edges, isFreelancer: true, sockets: FL_SOCKET_TIERS, alts: rr.alts };
+        return { nodes: n2, edges, isFreelancer: true, sockets: FL_SOCKET_TIERS, socketPool: FL_SOCKET_POOL, alts: rr.alts };
     };
     let firstComplete = null;
     const placed = {};
@@ -15846,8 +15870,9 @@ function buildFreelancerTree(race, equippedIds) {
             return equipped.every(id => connected.has(id)) ? t : null;
         }
         const tier = _flTierOf(SPELL_BY_ID[wild[i]]);
+        const pool = poolOf[wild[i]];
         for (const k of Object.keys(FL_SOCKET_TIERS)) {
-            if (placed[k] != null || !FL_SOCKET_TIERS[k].includes(tier)) continue;
+            if (placed[k] != null || FL_SOCKET_POOL[k] !== pool || !FL_SOCKET_TIERS[k].includes(tier)) continue;
             placed[k] = wild[i];
             const r = search(i + 1);
             if (r) return r;
@@ -16014,7 +16039,6 @@ function buildTreeLegalLoadout(race, cls, secJob, budget, rng) {
            race/fixed node adjacent to the connected set, or fills an
            adjacent empty socket with a random pool spell of a fitting tier.
            Every push is legality-checked (socket placement can shuffle). */
-        const pool = flWildcardPool(race);
         const attemptFL = () => {
             const picks = [];
             for (let guard = 0; picks.length < cap && guard < cap * 4; guard++) {
@@ -16034,7 +16058,7 @@ function buildTreeLegalLoadout(race, cls, secJob, budget, rng) {
                     } else if (id) {
                         if (!picks.includes(id) && !sealed.has(id)) opts.push(id);
                     } else if (FL_SOCKET_TIERS[key]) {
-                        const cands = pool.filter(sp => FL_SOCKET_TIERS[key].includes(_flTierOf(sp))
+                        const cands = flSocketPool(race, key).filter(sp => FL_SOCKET_TIERS[key].includes(_flTierOf(sp))
                             && !picks.includes(sp.id));
                         if (cands.length) opts.push(cands[Math.floor(rand() * cands.length)].id);
                     }
@@ -16377,7 +16401,7 @@ Object.assign(window, {
   getTreeEdges, buildUnitSpellTree, isTreeLoadoutLegal, treeLegalSubset,
   buildTreeLegalLoadout, treeSealedIds, treeReachableKeys,
   /* Freelancer wildcard sockets (Phase B) */
-  FL_FIXED, FL_SOCKET_TIERS, flWildcardPool, buildFreelancerTree,
+  FL_FIXED, FL_SOCKET_TIERS, FL_SOCKET_POOL, flWildcardPool, flRacePool, flSocketPool, buildFreelancerTree, _flTierOf, treeRingOfSpell,
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════

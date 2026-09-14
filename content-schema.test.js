@@ -311,24 +311,55 @@ test('tree legality: adjacency, connectivity, capstone geometry, random walks', 
 
 test('Freelancer wildcard-socket tree: pool, placement, legality, random walks', () => {
     const fl = (ids) => D.isTreeLoadoutLegal('homosapien', 'Freelancer', '', ids);
+    const T = (sp) => D._flTierOf(sp);
+    // 2026-09-14: the old fixed spells are homosapien RACE abilities now
+    assert.ok(!Object.keys(D.FL_FIXED).length, 'no fixed Freelancer nodes any more');
+    for (const id of ['improvise', 'jackOfAll', 'reallyGoodPunch']) {
+        assert.ok(D.RACE_ABILITIES.homosapien.some(sp => sp.id === id), id + ' is a homosapien ability');
+        assert.ok(!D.SPELL_LIBRARY.some(sp => sp.id === id), id + ' left the job library');
+        assert.ok(D.getRaceTreeAllIds('homosapien', 'Freelancer').includes(id), id + ' sits on the homosapien tree');
+    }
+    assert.strictEqual(D.RACE_TREE.homosapien.filter(Array.isArray).length, 3, 'three homosapien twin nodes');
+    assert.ok(fl(['improvise', 'jackOfAll', 'raceUnderdogSpirit', 'reallyGoodPunch']), 'the old Freelancer chain is a homosapien race pillar');
+    assert.ok(!fl(['improvise', 'raceElbowGrease']), 'both alternates of a homosapien twin illegal');
+    // the JOB pool (S1–S4)
     const pool = D.flWildcardPool('homosapien');
-    assert.ok(pool.length >= 40, 'wildcard pool spans the job trees');
+    assert.ok(pool.length >= 40, 'job pool spans the job trees');
     assert.ok(pool.every(sp => !['improvise', 'jackOfAll', 'reallyGoodPunch'].includes(sp.id)),
-        'Freelancer fixed spells are not in the pool');
-    const t1 = pool.filter(sp => !sp.tier || sp.tier === 'I').map(sp => sp.id);
-    const t2 = pool.find(sp => sp.tier === 'II').id;
-    const t3 = pool.find(sp => sp.tier === 'III').id;
+        'the homosapien twins are not in the job pool');
+    const t1 = pool.filter(sp => T(sp) === 'I').map(sp => sp.id);
+    const t2 = pool.find(sp => T(sp) === 'II').id;
+    const t3 = pool.find(sp => T(sp) === 'III').id;
     assert.ok(fl([]), 'empty legal');
-    assert.ok(fl(['improvise', 'jackOfAll']), 'fixed chain legal');
-    assert.ok(!fl(['improvise', 'jackOfAll', 'reallyGoodPunch']),
-        'capstone without a P3 socket fill is illegal');
-    assert.ok(fl(['improvise', 'jackOfAll', t2, 'reallyGoodPunch']),
-        'capstone with a tier-II P3 fill legal');
-    assert.ok(fl([t1[0]]), 'a tier-I wildcard sits at S1 (root-adjacent)');
-    assert.ok(!fl([t3]), 'tier-III wildcard without S1–S3 support illegal');
-    assert.ok(fl([t1[0], t1[1], t2, t3]), 'full wildcard pillar to the S4 capstone legal');
-    assert.ok(!fl([t1[0], t1[1], t1[2], t1[3] || 'fire1']),
-        'a fourth tier-I wildcard has no socket (S1, S2, P3 max — and P3 needs P2)');
+    assert.ok(fl([t1[0]]), 'a tier-I job wildcard sits at S1 (root-adjacent)');
+    assert.ok(!fl([t3]), 'tier-III job wildcard without S1–S3 support illegal');
+    assert.ok(fl([t1[0], t1[1], t2, t3]), 'full job pillar to the S4 capstone legal');
+    assert.ok(!fl([t1[0], t1[1], t1[2]]), 'a third tier-I job wildcard has no job socket (S1, S2 only)');
+    // the RACE pool (P1–P4): every other race's tree, never this race's own
+    const rp = D.flRacePool('homosapien');
+    assert.ok(rp.length >= 200, 'race pool spans the race trees');
+    const own = new Set(D.getRaceTreeAllIds('homosapien', 'Freelancer'));
+    assert.ok(rp.every(sp => !own.has(sp.id)), 'own race pillar is not in the race pool');
+    const jobIds = new Set(Object.values(D.CLASS_TREE).flat());
+    assert.ok(rp.every(sp => !jobIds.has(sp.id)), 'no job-tree id in the race pool');
+    assert.ok(D.flRacePool('knight').some(sp => sp.id === 'reallyGoodPunch'), 'a knight Freelancer may borrow the homosapien capstone');
+    assert.ok(!D.flRacePool('knight').some(sp => sp.id === 'raceChivalry'), 'a knight never borrows its own pillar');
+    assert.strictEqual(D.flSocketPool('homosapien', 'P1').length, rp.length, 'P sockets draw the race pool');
+    assert.strictEqual(D.flSocketPool('homosapien', 'S1').length, pool.length, 'S sockets draw the job pool');
+    const r1 = rp.filter(sp => T(sp) === 'I').map(sp => sp.id);
+    const r2 = rp.find(sp => T(sp) === 'II').id;
+    const r3 = rp.find(sp => T(sp) === 'III').id;
+    assert.ok(fl([r1[0]]), 'a tier-I race wildcard sits at P1');
+    assert.ok(!fl([r2]), 'a tier-II race wildcard needs P1–P2');
+    assert.ok(!fl([r3]), 'a tier-III race wildcard needs P1–P3');
+    assert.ok(fl([r1[0], r1[1], r2, r3]), 'full race pillar to the P4 capstone legal');
+    assert.ok(!fl([r1[0], r1[1], r1[2]]), 'a third tier-I race wildcard has no race socket');
+    assert.ok(!fl([r1[0], t1[0], r1[1], t1[1], r1[2]]), 'race ids never spill into job sockets');
+    assert.ok(fl([r1[0], r1[1], r2, r3, t1[0], t1[1], t2]), 'a race capstone beside three job wildcards fills the 7 slots');
+    assert.ok(!fl([r1[0], r1[1], r2, r3, t1[0], t1[1], t2, t3]), 'two capstones never fit (4 + 4 > 7)');
+    const tree = D.buildFreelancerTree('homosapien', [r1[0], t1[0]]);
+    assert.strictEqual(tree.nodes.P1, r1[0]); assert.strictEqual(tree.nodes.S1, t1[0]);
+    assert.strictEqual(tree.socketPool.P1, 'race'); assert.strictEqual(tree.socketPool.S1, 'job');
     for (let i = 0; i < 20; i++) {
         const walk = D.buildTreeLegalLoadout('homosapien', 'Freelancer', '');
         assert.ok(fl(walk), `Freelancer random walk illegal: ${walk.join(',')}`);
@@ -336,8 +367,8 @@ test('Freelancer wildcard-socket tree: pool, placement, legality, random walks',
     }
     // repair: off-pool / disconnected ids drop, earlier picks win
     assert.strictEqual(
-        JSON.stringify(D.treeLegalSubset('homosapien', 'Freelancer', '', ['improvise', 'noSuchSpell', 'reallyGoodPunch', 'jackOfAll', t2])),
-        JSON.stringify(['improvise', 'jackOfAll', t2]));
+        JSON.stringify(D.treeLegalSubset('homosapien', 'Freelancer', '', [r1[0], 'noSuchSpell', r3, r1[1], r2])),
+        JSON.stringify([r1[0], r1[1], r2]));
 });
 
 /* ── Elemental affinity system (2026-09-01, ELEMENTAL_TYPES_PLAN.md) ────── */
