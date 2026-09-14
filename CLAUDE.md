@@ -2527,3 +2527,17 @@ Staggered) — the body STAYS on its tile under the status. Renderer:
 never re-derive "is there a door here" from `state.doors` at a call site.
 Unseen live (RULE #1c): the leaf swing, the pips, the step-through beat,
 the guest's tile pick, every AI placement.
+**REV 2 (2026-09-14, same day) — THE DOOR IN THE FRAME**: the board door is
+the map's own CATALOGUE leaf (`_doorLeafFor` = the crossing's threshold
+leaf, else `leaf_hollow_core`) on a DOOR-issue frame, hinged per the
+catalogue, facing its twin — NEVER a procedural plank (the user's rule:
+the kit has thirty doors). Every ability fires a door recipe from
+three-vfx-effects.js "THE DOOR AGENT'S DOORS" (`_sigDoorRig3D` wears the
+same leaf through the weapon cache as `door:<key>`; `_sigDoorPortal3D` /
+`Knock3D` / `Slam3D` / `Delivery3D` / `Network3D`) through battle.js
+`window._doorGeom(id, x, y, extra)` → `VFX.fireGeometry` (relayed;
+`extra` primitives only — `doors` rides as "x,y;x,y"). Ids:
+`raceKnockKnock` · `raceBreakingEntering:door` · `raceSpecialDelivery` ·
+`raceSlam` · `raceExit` / `:out` · `raceLongWayRound` · `raceTrapdoor` /
+`:out`. `npm test` runs `door-vfx.test.js`. A new door ability = a
+recipe in that section + a `_doorGeom` fire at its branch.

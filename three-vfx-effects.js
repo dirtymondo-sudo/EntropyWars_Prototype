@@ -23290,10 +23290,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['raceBlessing']         = Object.assign({}, SPELL_MAP['protect1']);              /* nun — the blessing */
     SPELL_MAP['racePrayer']           = Object.assign({}, SPELL_MAP['protect1']);              /* nun — the barrier */
     SPELL_MAP['raceHallelujah']       = Object.assign({}, SPELL_MAP['raceYoHo']);              /* nun — the team heal */
-    /* THE DOOR AGENT (DOOR_RACE_DESIGN.md, 2026-09-14) — family aliases until
-       the doors get their own recipes: the kick-in line borrows the stomp and
-       the grab, the deliveries borrow the Drive-By round, EXIT the agent's
-       vanish, The Long Way Round the protect aura. */
+    /* THE DOOR AGENT (DOOR_RACE_DESIGN.md, 2026-09-14) — the HIT of each
+       spell (the dust of the kick-in, the round of the delivery, the vanish,
+       the buff aura); THE DOOR itself is the _spell3DGeometry recipe of the
+       same id (THE DOOR AGENT'S DOORS section, rev 2) — battle.js fires it
+       through VFX.fireGeometry beside these. */
     SPELL_MAP['raceBreakingEntering'] = { impact: 'raceStompOut_impact' };                     /* door agent — the kick-in */
     SPELL_MAP['raceSpecialDelivery']  = { impact: 'raceDriveBy_impact', muzzle: 'raceDriveBy_muzzle' };   /* door agent — the package */
     SPELL_MAP['raceSlam']             = { impact: 'raceStompOut_impact' };                     /* door agent — the twin slams */
@@ -24054,6 +24055,349 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         'raceCrusade':              function (tx, ty, r) { _sigCrusade3D(tx, ty, r); },
     });
 
+    /* ════════════════════════════════════════════════════════════════════
+       THE DOOR AGENT'S DOORS (DOOR_RACE_DESIGN.md, 2026-09-14 rev 2)
+       ════════════════════════════════════════════════════════════════════
+       Every ability of the race puts A DOOR in the frame — and the door is
+       a REAL one: the map's own catalogue leaf (ThreeRenderer.doorLeaf —
+       the same GLB the board's persistent door and the crossing cinematic
+       wear; the plain hollow-core door when the map has none), loaded
+       through the weapon-model cache as `door:<leafKey>` (axis 'y', the
+       catalogue yaw baked as the tweak) and fitted into a DOOR-issue frame
+       at tile scale by _sigDoorRig3D. Never a procedural leaf: while the
+       GLB streams in the rig shows light in the opening and nothing else.
+         _sigDoorPortal3D  a door MATERIALISES on a tile (rises, opens with
+                           light, holds, slams, optional STAMP, fades) —
+                           Breaking and Entering (the way in, at the landing
+                           tile), EXIT (in front of the victim; the stamp),
+                           EXIT:out / Trapdoor:out (the way back out),
+                           Trapdoor (laid FLAT under the victim, swings DOWN)
+         _sigDoorKnock3D   light through a STANDING door + the knock ripples
+                           — Knock Knock (placement / toggle), and the flare
+                           the deliveries and the network use
+         _sigDoorSlam3D    the ghost leaf swinging shut over the standing
+                           door + the shock — Slam (both ends)
+         _sigDoorDelivery3D the parcel out of the twin door — Special Delivery
+         _sigDoorNetwork3D four doors circling the agent, opening in turn,
+                           every friendly door flaring — The Long Way Round
+       All registered in _spell3DGeometry; battle.js fires them through
+       VFX.fireGeometry (relayed by online.js `vfx3d-x`, the trailing bag
+       primitives-only — `doors` rides as "x,y;x,y"). */
+    var _DOOR_FX = { frame: 0x2f6b66, sill: 0x9a9690, light: 0xfff0cc, stamp: 0xff3a3a, teal: 0x5ce0d0 };
+    function _doorFxLeafKey() {
+        var leaf = null;
+        try { if (typeof window !== 'undefined' && window.ThreeRenderer && typeof window.ThreeRenderer.doorLeaf === 'function') leaf = window.ThreeRenderer.doorLeaf(); } catch (e) { leaf = null; }
+        var D = (typeof DOOR_HQ !== 'undefined') ? DOOR_HQ : null;
+        if ((!leaf || !leaf.cat || !leaf.cat.file) && D && D.catalogue && D.catalogue.leaf_hollow_core) leaf = { key: 'leaf_hollow_core', cat: D.catalogue.leaf_hollow_core };
+        if (!leaf || !leaf.cat || !leaf.cat.file || !D || !D.assets || !D.assets.models) return null;
+        var key = 'door:' + leaf.key;
+        if (!_WPN_MODELS[key]) {
+            var base = (leaf.cat.base === 'misc') ? 'https://cdn.entropywars.net/Assets/misc/' : D.assets.models;
+            _WPN_MODELS[key] = { url: base + encodeURIComponent(leaf.cat.file), axis: 'y',
+                                 tweak: leaf.cat.yaw ? { ry: leaf.cat.yaw * Math.PI / 180 } : null, door: leaf.cat };
+        }
+        return key;
+    }
+    function _doorFxWarm() { var k = _doorFxLeafKey(); if (k) _wpnLoad(k); }
+    /* the yaw of a +z front standing at (ax, ay) that looks at (bx, by) */
+    function _doorYaw(ax, ay, bx, by) {
+        if (bx == null || by == null || ax == null || ay == null) return 0;
+        var dx = bx - ax, dz = by - ay;
+        if (!dx && !dz) return 0;
+        return Math.atan2(dx, dz);
+    }
+    /* The rig: frame + sill + the catalogue leaf on its hinge + the light
+       kit (veil in the opening, halo behind, wedge on the floor in front).
+       o: { yaw, scale, lay (flat on the floor — the face UP), down (the
+       leaf swings into the floor), noWedge }. Returns { group, setOpen(k),
+       setLight(a), setFade(f), setRise(k), ow, oh, ts, ready }. */
+    function _sigDoorRig3D(tx, ty, o) {
+        o = o || {};
+        var wp = _worldPos(tx, ty), ts = wp.ts, S = o.scale || 1;
+        var key = _doorFxLeafKey(), def = key ? _WPN_MODELS[key] : null, cat = def ? def.door : null;
+        var oh = ts * 1.18 * S;
+        var ow = (cat && cat.aspect > 0) ? cat.aspect * oh : ts * 0.56 * S;
+        ow = Math.max(ts * 0.44 * S, Math.min((cat && cat.wide ? 0.98 : 0.78) * ts * S, ow));
+        var jw = 0.06 * ts * S, lh = 0.08 * ts * S, pd = 0.09 * ts * S;
+        var g = new THREE.Group();
+        g.position.set(wp.x, wp.y + (o.lay ? 3 : 0), wp.z);
+        g.rotation.y = o.yaw || 0;
+        var inner = new THREE.Group(); g.add(inner);
+        if (o.lay) inner.rotation.x = -Math.PI / 2;      // local +z (the face) → up, the top of the door → world −z
+        var mats = [], fades = [];
+        function _reg(m) { m.transparent = true; m._ew_op = (m.opacity != null) ? m.opacity : 1; mats.push(m); return m; }
+        var frameMat = _reg(new THREE.MeshLambertMaterial({ color: _DOOR_FX.frame, emissive: new THREE.Color(_DOOR_FX.frame), emissiveIntensity: 0.25 }));
+        var sillMat = _reg(new THREE.MeshLambertMaterial({ color: _DOOR_FX.sill }));
+        function _box(w, h, d, mat) { return new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); }
+        var jL = _box(jw, oh + lh, pd, frameMat); jL.position.set(-(ow / 2 + jw / 2), (oh + lh) / 2, 0); inner.add(jL);
+        var jR = _box(jw, oh + lh, pd, frameMat); jR.position.set((ow / 2 + jw / 2), (oh + lh) / 2, 0); inner.add(jR);
+        var lin = _box(ow + jw * 2, lh, pd, frameMat); lin.position.set(0, oh + lh / 2, 0); inner.add(lin);
+        var sill = _box(ow + jw * 2 + 0.03 * ts * S, 0.025 * ts * S, pd + 0.03 * ts * S, sillMat); sill.position.set(0, 0.0125 * ts * S, 0); inner.add(sill);
+        /* the leaf */
+        var dir = (cat && cat.hinge === 'right') ? 1 : -1;
+        var slide = !!(cat && cat.open === 'slide');
+        var pivot = new THREE.Group(); pivot.position.x = dir * (ow / 2 - 0.015 * ts * S); inner.add(pivot);
+        var leafRoot = new THREE.Group(); leafRoot.position.x = -pivot.position.x; pivot.add(leafRoot);
+        var inst = key ? _wpnInstance(key, oh - 0.02 * ts * S) : null;
+        var ready = false;
+        if (inst) {
+            var e = _wpnCache[key];
+            var s = inst.len / ((e && e.size && e.size.y) || 1);
+            var yawDeg = (cat && cat.yaw) || 0, sideways = (Math.abs(yawDeg) % 180) === 90;
+            var w = e && e.size ? (sideways ? e.size.z : e.size.x) * s : 0;
+            var targetW = ow * 0.97;
+            if (w > 0) inst.group.scale.x = (cat && cat.aspect) ? (targetW / w) : Math.min(1, targetW / w);
+            inst.group.scale.z = Math.min(1, inst.group.scale.x);
+            inst.group.position.y = oh / 2;
+            inst.group.traverse(function (n) { if (n.isMesh) n.castShadow = true; });
+            leafRoot.add(inst.group);
+            fades.push(inst.setFade);
+            ready = true;
+        } else if (key) { _wpnLoad(key); }
+        /* the light kit */
+        var veilMat = _reg(_sigMat(_DOOR_FX.light));
+        var veil = new THREE.Mesh(new THREE.PlaneGeometry(ow, oh), veilMat); veil.position.set(0, oh / 2, 0.012 * ts); veil.renderOrder = 150; inner.add(veil);
+        var haloMat = _reg(new THREE.SpriteMaterial({ map: _sigGlowTex(), color: new THREE.Color(_DOOR_FX.light), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+        var halo = new THREE.Sprite(haloMat); halo.scale.set(oh * 1.7, oh * 1.7, 1); halo.position.set(0, oh * 0.5, -0.05 * ts); inner.add(halo);
+        var wedgeMat = null;
+        if (!o.lay && !o.noWedge) {
+            wedgeMat = _reg(_sigMat(_DOOR_FX.light));
+            var wedge = new THREE.Mesh(new THREE.PlaneGeometry(ow * 1.5, 1.4 * ts * S), wedgeMat);
+            wedge.rotation.x = -Math.PI / 2; wedge.position.set(0, 2, 0.7 * ts * S); wedge.renderOrder = 149; inner.add(wedge);
+        }
+        var light = 0, fade = 1;
+        function _apply() {
+            for (var i = 0; i < mats.length; i++) mats[i].opacity = mats[i]._ew_op * fade;
+            veilMat.opacity = 0.55 * light * fade;
+            haloMat.opacity = 0.75 * light * fade;
+            if (wedgeMat) wedgeMat.opacity = 0.22 * light * fade;
+            for (var j = 0; j < fades.length; j++) fades[j](fade);
+        }
+        _apply();
+        return {
+            group: g, inner: inner, ow: ow, oh: oh, ts: ts, ready: ready, dir: dir,
+            setOpen: function (k) {
+                k = _sigClamp01(k);
+                if (slide) { pivot.position.x = dir * (ow / 2 - 0.015 * ts * S) + dir * (ow - 0.03 * ts * S) * k; }
+                else pivot.rotation.y = (o.down ? -dir : dir) * 1.5 * k;
+            },
+            setLight: function (a) { light = _sigClamp01(a); _apply(); },
+            setFade: function (f) { fade = _sigClamp01(f); _apply(); },
+            setRise: function (k) { k = _sigClamp01(k); inner.scale.y = Math.max(0.02, k); },
+        };
+    }
+    /* A door materialises: rises, opens with the light, holds, slams shut,
+       (stamps), fades. o: { yaw, lay, down, out, stamp, riseMs, openMs,
+       holdMs, shutMs, scale } — `out` = the way back out (the light pours
+       forward, no stamp), `stamp` = the EXIT stamp on the shut leaf. */
+    function _sigDoorPortal3D(tx, ty, o) {
+        o = o || {};
+        if (_catOff('spells')) return null;
+        var rig = _sigDoorRig3D(tx, ty, { yaw: o.yaw, lay: o.lay, down: o.down, scale: o.scale });
+        var riseMs = o.riseMs != null ? o.riseMs : 180, openMs = o.openMs != null ? o.openMs : 160;
+        var holdMs = o.holdMs != null ? o.holdMs : 380, shutMs = o.shutMs != null ? o.shutMs : 120;
+        var stampMs = o.stamp ? 260 : 0, fadeMs = o.fadeMs != null ? o.fadeMs : 260;
+        var total = riseMs + openMs + holdMs + shutMs + stampMs + fadeMs;
+        var ts = rig.ts;
+        /* the sigil it stands up out of */
+        try { _sigMagicCircle3D(tx, ty, { color: _DOOR_FX.teal, color2: _DOOR_FX.light, radiusPx: ts * 0.75, growMs: 140, holdMs: total - 400, fadeMs: 260, opacity: 0.45, spin: 0.002, height: 2 }); } catch (e) {}
+        var stamp = null, stampMat = null, flashMat = null;
+        if (o.stamp) {
+            stampMat = _sigMat(_DOOR_FX.stamp, { map: _sigRingTex() });
+            stamp = new THREE.Mesh(new THREE.PlaneGeometry(rig.ow * 0.7, rig.ow * 0.7), stampMat);
+            stamp.position.set(0, rig.oh * 0.55, 0.06 * ts); stamp.renderOrder = 152; rig.inner.add(stamp);
+            var stampCore = new THREE.Mesh(new THREE.CircleGeometry(rig.ow * 0.16, 18), stampMat);
+            stampCore.position.set(0, rig.oh * 0.55, 0.062 * ts); rig.inner.add(stampCore);
+        }
+        flashMat = _sigMat(0xffffff);
+        var flash = new THREE.Mesh(new THREE.PlaneGeometry(rig.ow, rig.oh), flashMat);
+        flash.position.set(0, rig.oh / 2, 0.02 * ts); flash.renderOrder = 151; rig.inner.add(flash);
+        var slammed = false, shakeKind = o.big ? 'heavy' : 'normal';
+        rig.setRise(0.02); rig.setOpen(0); rig.setLight(0);
+        return _sigRunOwned(rig.group, total, function (el) {
+            var t = el;
+            if (t < riseMs) { rig.setRise(_sigEaseOutBack(t / riseMs)); rig.setLight(0.25 * t / riseMs); rig.setFade(Math.min(1, t / (riseMs * 0.5))); return; }
+            rig.setRise(1); t -= riseMs;
+            if (t < openMs) { var k = _sigEaseOutCubic(t / openMs); rig.setOpen(k); rig.setLight(0.25 + 0.75 * k); return; }
+            rig.setOpen(1); t -= openMs;
+            if (t < holdMs) { rig.setLight(1 - 0.12 * Math.sin(t * 0.02)); return; }
+            t -= holdMs;
+            if (t < shutMs) { var q = _sigEaseInCubic(t / shutMs); rig.setOpen(1 - q); rig.setLight(1 - q); return; }
+            rig.setOpen(0); rig.setLight(0); t -= shutMs;
+            if (!slammed) {
+                slammed = true;
+                try { _sigShockRing3D(tx, ty, { color: _DOOR_FX.light, r0: ts * 0.15, r1: ts * 1.1, ms: 320, height: 4 }); } catch (e) {}
+                if (typeof window !== 'undefined' && typeof window.shakeBoard === 'function') _shake(shakeKind);
+            }
+            if (stampMs && t < stampMs) {
+                var sp = t / stampMs;
+                stampMat.opacity = sp < 0.25 ? sp / 0.25 : 1;
+                var sc = sp < 0.25 ? 1.6 - 0.6 * (sp / 0.25) : 1;
+                stamp.scale.set(sc, sc, 1);
+                flashMat.opacity = sp < 0.2 ? 0.5 * (1 - sp / 0.2) : 0;
+                return;
+            }
+            if (stampMs) t -= stampMs;
+            var f = 1 - _sigClamp01(t / fadeMs);
+            flashMat.opacity = f < 0.9 ? 0 : (f - 0.9) * 5;
+            if (stampMat) stampMat.opacity = f;
+            rig.setFade(f);
+        });
+    }
+    /* light through a STANDING door + the knock. o: { place (the sigil of a
+       fresh pair), open (the toggle went open), twinX / twinY (the face),
+       flare (just the light — the deliveries, the network) }. */
+    function _sigDoorKnock3D(tx, ty, o) {
+        o = o || {};
+        if (_catOff('spells')) return null;
+        var yaw = (o.twinX != null) ? _doorYaw(tx, ty, o.twinX, o.twinY) : 0;
+        var wp = _worldPos(tx, ty), ts = wp.ts;
+        var g = new THREE.Group(); g.position.set(wp.x, wp.y, wp.z); g.rotation.y = yaw;
+        var oh = ts * 1.18, ow = ts * 0.6;
+        var veilMat = _sigMat(_DOOR_FX.light);
+        var veil = new THREE.Mesh(new THREE.PlaneGeometry(ow, oh), veilMat); veil.position.set(0, oh / 2, 0); veil.renderOrder = 150; g.add(veil);
+        var haloMat = new THREE.SpriteMaterial({ map: _sigGlowTex(), color: new THREE.Color(o.open === false ? _DOOR_FX.stamp : _DOOR_FX.light), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+        var halo = new THREE.Sprite(haloMat); halo.scale.set(oh * 1.6, oh * 1.6, 1); halo.position.set(0, oh * 0.5, 0); g.add(halo);
+        var wedgeMat = _sigMat(_DOOR_FX.light);
+        var wedge = new THREE.Mesh(new THREE.PlaneGeometry(ow * 1.5, 1.4 * ts), wedgeMat);
+        wedge.rotation.x = -Math.PI / 2; wedge.position.set(0, 2, 0.7 * ts); wedge.renderOrder = 149; g.add(wedge);
+        var total = o.flare ? 520 : 760, knocks = o.flare ? 0 : 2, knocked = 0;
+        if (o.place) { try { _sigMagicCircle3D(tx, ty, { color: _DOOR_FX.teal, color2: _DOOR_FX.light, radiusPx: ts * 0.8, growMs: 160, holdMs: 420, fadeMs: 260, opacity: 0.5, spin: 0.002, height: 2 }); } catch (e) {} }
+        var shut = o.open === false;
+        return _sigRunOwned(g, total, function (el) {
+            var p = el / total;
+            var a = shut ? 0.35 * (1 - p) : (p < 0.18 ? p / 0.18 : 1 - (p - 0.18) / 0.82);
+            veilMat.opacity = 0.6 * a; haloMat.opacity = 0.8 * a; wedgeMat.opacity = shut ? 0 : 0.25 * a;
+            if (knocked < knocks && el > 60 + knocked * 150) {
+                knocked++;
+                try { _sigShockRing3D(tx, ty, { color: shut ? _DOOR_FX.stamp : _DOOR_FX.teal, r0: ts * 0.1, r1: ts * 0.7, ms: 300, height: 4 }); } catch (e) {}
+                if (shut && knocked === 1 && typeof window !== 'undefined' && typeof window.shakeBoard === 'function') _shake('normal');
+            }
+        });
+    }
+    /* the ghost leaf slamming shut over the standing door + the shock.
+       o: { yaw (toward the twin), big } */
+    function _sigDoorSlam3D(tx, ty, o) {
+        o = o || {};
+        if (_catOff('spells')) return null;
+        var wp = _worldPos(tx, ty), ts = wp.ts;
+        var key = _doorFxLeafKey(), cat = key ? _WPN_MODELS[key].door : null;
+        var oh = ts * 1.18, ow = Math.max(ts * 0.44, Math.min(ts * 0.78, (cat && cat.aspect > 0) ? cat.aspect * oh : ts * 0.56));
+        var dir = (cat && cat.hinge === 'right') ? 1 : -1;
+        var g = new THREE.Group(); g.position.set(wp.x, wp.y, wp.z); g.rotation.y = o.yaw || 0;
+        var lm = _sigMat(_DOOR_FX.light);
+        var frame = new THREE.Group(); g.add(frame);
+        function _bar(w, h, x, y) { var m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), lm); m.position.set(x, y, 0.01 * ts); m.renderOrder = 151; frame.add(m); }
+        _bar(0.05 * ts, oh, -(ow / 2 + 0.025 * ts), oh / 2); _bar(0.05 * ts, oh, (ow / 2 + 0.025 * ts), oh / 2); _bar(ow + 0.1 * ts, 0.06 * ts, 0, oh + 0.03 * ts);
+        var pivot = new THREE.Group(); pivot.position.x = dir * (ow / 2); g.add(pivot);
+        var leafMat = _sigMat(_DOOR_FX.light);
+        var leaf = new THREE.Mesh(new THREE.PlaneGeometry(ow, oh), leafMat); leaf.position.set(-dir * ow / 2, oh / 2, 0); leaf.renderOrder = 152; pivot.add(leaf);
+        var flashMat = _sigMat(0xffffff);
+        var flash = new THREE.Mesh(new THREE.PlaneGeometry(ow * 1.1, oh * 1.05), flashMat); flash.position.set(0, oh / 2, 0.02 * ts); flash.renderOrder = 153; g.add(flash);
+        var swingMs = o.big ? 140 : 170, total = swingMs + 420, slammed = false;
+        return _sigRunOwned(g, total, function (el) {
+            if (el < swingMs) {
+                var q = _sigEaseInCubic(el / swingMs);
+                pivot.rotation.y = dir * 1.5 * (1 - q);
+                leafMat.opacity = 0.35 + 0.35 * q; lm.opacity = 0.5;
+                return;
+            }
+            pivot.rotation.y = 0;
+            var t = (el - swingMs) / (total - swingMs);
+            if (!slammed) {
+                slammed = true;
+                try { _sigShockRing3D(tx, ty, { color: o.big ? _DOOR_FX.stamp : _DOOR_FX.light, r0: ts * 0.2, r1: ts * (o.big ? 1.9 : 1.1), ms: o.big ? 420 : 320, height: 4 }); } catch (e) {}
+                if (o.big) { try { _sigShockRing3D(tx, ty, { color: _DOOR_FX.light, r0: ts * 0.1, r1: ts * 1.3, ms: 300, height: 10 }); } catch (e) {} }
+                if (typeof window !== 'undefined' && typeof window.shakeBoard === 'function') _shake(o.big ? 'heavy' : 'normal');
+            }
+            flashMat.opacity = t < 0.25 ? (o.big ? 0.9 : 0.5) * (1 - t / 0.25) : 0;
+            leafMat.opacity = 0.7 * (1 - t); lm.opacity = 0.5 * (1 - t);
+        });
+    }
+    /* the parcel out of the twin door: the doorway flares, a taped box
+       tumbles the arc twin → target in the delivery's travel time */
+    function _sigDoorDelivery3D(fromX, fromY, tx, ty, o) {
+        o = o || {};
+        if (_catOff('spells')) return null;
+        if (fromX == null || fromY == null) { fromX = tx; fromY = ty; }
+        try { _sigDoorKnock3D(fromX, fromY, { flare: true, twinX: tx, twinY: ty }); } catch (e) {}
+        var a = _worldPos(fromX, fromY), b = _worldPos(tx, ty), ts = a.ts;
+        var g = new THREE.Group();
+        var boxMat = new THREE.MeshLambertMaterial({ color: 0xc9a06a, transparent: true });
+        var tapeMat = new THREE.MeshLambertMaterial({ color: 0x6b4a2a, transparent: true });
+        var sz = ts * 0.24;
+        var parcel = new THREE.Group();
+        parcel.add(new THREE.Mesh(new THREE.BoxGeometry(sz, sz * 0.8, sz), boxMat));
+        var t1 = new THREE.Mesh(new THREE.BoxGeometry(sz * 1.02, sz * 0.82, sz * 0.22), tapeMat); parcel.add(t1);
+        var t2 = new THREE.Mesh(new THREE.BoxGeometry(sz * 0.22, sz * 0.82, sz * 1.02), tapeMat); parcel.add(t2);
+        g.add(parcel);
+        var trailMat = new THREE.SpriteMaterial({ map: _sigGlowTex(), color: new THREE.Color(_DOOR_FX.light), transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false });
+        var trail = new THREE.Sprite(trailMat); trail.scale.set(ts * 0.6, ts * 0.6, 1); parcel.add(trail);
+        var flyMs = o.ms || 420, total = flyMs + 160;
+        var dist = Math.hypot(b.x - a.x, b.z - a.z), apex = Math.max(ts * 0.6, dist * 0.35);
+        return _sigRunOwned(g, total, function (el) {
+            var p = _sigClamp01(el / flyMs);
+            parcel.position.set(a.x + (b.x - a.x) * p, a.y + ts * 0.7 + (b.y - a.y) * p + apex * 4 * p * (1 - p), a.z + (b.z - a.z) * p);
+            parcel.rotation.x = p * 7; parcel.rotation.y = p * 4;
+            var f = el < flyMs ? 1 : 1 - (el - flyMs) / 160;
+            boxMat.opacity = f; tapeMat.opacity = f; trailMat.opacity = 0.6 * f;
+            if (el >= flyMs && !g._ew_hit) {
+                g._ew_hit = true;
+                try { _sigShockRing3D(tx, ty, { color: _DOOR_FX.light, r0: ts * 0.1, r1: ts * 0.9, ms: 300, height: 4 }); } catch (e) {}
+            }
+        });
+    }
+    /* THE LONG WAY ROUND: four doors circle the agent, opening one after
+       the other; every friendly door on the board flares. doorsStr =
+       "x,y;x,y" (relay-safe). */
+    function _sigDoorNetwork3D(cx, cy, doorsStr) {
+        if (_catOff('spells')) return null;
+        var wp = _worldPos(cx, cy), ts = wp.ts, N = 4, R = ts * 0.95;
+        var ring = new THREE.Group(); ring.position.set(wp.x, wp.y, wp.z);
+        var rigs = [];
+        for (var i = 0; i < N; i++) {
+            var ang = i * Math.PI * 2 / N;
+            var rig = _sigDoorRig3D(cx, cy, { yaw: ang, scale: 0.55, noWedge: true });
+            rig.group.position.set(Math.sin(ang) * R, 0, Math.cos(ang) * R);
+            rig.setRise(0.02); rig.setOpen(0); rig.setLight(0); rig.setFade(0);
+            ring.add(rig.group);
+            rigs.push(rig);
+        }
+        try { _sigMagicCircle3D(cx, cy, { color: _DOOR_FX.teal, color2: _DOOR_FX.light, radiusPx: R * 1.35, growMs: 200, holdMs: 1200, fadeMs: 300, opacity: 0.55, spin: 0.0025, height: 3 }); } catch (e) {}
+        if (doorsStr && typeof doorsStr === 'string') {
+            doorsStr.split(';').forEach(function (s, k) {
+                var p = s.split(','); var x = +p[0], y = +p[1];
+                if (isFinite(x) && isFinite(y)) _fxDelay(function () { try { _sigDoorKnock3D(x, y, { flare: true }); } catch (e) {} }, 300 + k * 140);
+            });
+        }
+        var total = 1700, stag = 110, riseMs = 220, openMs = 180;
+        return _sigRunOwned(ring, total, function (el) {
+            ring.rotation.y = el * 0.0009;
+            for (var i = 0; i < N; i++) {
+                var t = el - i * stag, rig = rigs[i];
+                if (t < 0) continue;
+                if (t < riseMs) { rig.setFade(Math.min(1, t / 80)); rig.setRise(_sigEaseOutBack(t / riseMs)); continue; }
+                rig.setRise(1); t -= riseMs;
+                if (t < openMs) { var k = _sigEaseOutCubic(t / openMs); rig.setOpen(k); rig.setLight(k); continue; }
+                rig.setOpen(1); t -= openMs;
+                var left = total - i * stag - riseMs - openMs, u = t / left;
+                rig.setLight(0.7 + 0.3 * Math.sin(el * 0.012 + i));
+                if (u > 0.78) { var f = 1 - (u - 0.78) / 0.22; rig.setFade(f); rig.setOpen(f); }
+            }
+        });
+    }
+    Object.assign(_spell3DGeometry, {
+        'raceKnockKnock':            function (tx, ty, r, x) { x = x || {}; _sigDoorKnock3D(tx, ty, { place: !x.toggle, open: x.open !== false, twinX: x.twinX, twinY: x.twinY }); },
+        'raceBreakingEntering:door': function (tx, ty, r, x) { x = x || {}; _sigDoorPortal3D(tx, ty, { yaw: _doorYaw(tx, ty, x.fromX, x.fromY), riseMs: 110, openMs: 110, holdMs: 400, shutMs: 110 }); },
+        'raceSpecialDelivery':       function (tx, ty, r, x) { x = x || {}; _sigDoorDelivery3D(x.fromX, x.fromY, tx, ty, { ms: x.ms }); },
+        'raceSlam':                  function (tx, ty, r, x) { x = x || {}; _sigDoorSlam3D(tx, ty, { yaw: _doorYaw(tx, ty, x.fromX, x.fromY), big: !!x.big }); },
+        'raceExit':                  function (tx, ty, r, x) { x = x || {}; _sigDoorPortal3D(tx, ty, { yaw: _doorYaw(tx, ty, x.fromX, x.fromY), riseMs: 160, openMs: 150, holdMs: 260, shutMs: 120, stamp: true, big: true }); },
+        'raceExit:out':              function (tx, ty, r, x) { x = x || {}; _sigDoorPortal3D(tx, ty, { yaw: _doorYaw(tx, ty, x.fromX, x.fromY), riseMs: 140, openMs: 140, holdMs: 320, shutMs: 140, out: true }); },
+        'raceLongWayRound':          function (tx, ty, r, x) { x = x || {}; _sigDoorNetwork3D(tx, ty, x.doors); },
+        'raceTrapdoor':              function (tx, ty, r, x) { x = x || {}; _sigDoorPortal3D(tx, ty, { lay: true, down: true, riseMs: 200, openMs: 180, holdMs: 300, shutMs: 110, big: true }); },
+        'raceTrapdoor:out':          function (tx, ty, r, x) { x = x || {}; _sigDoorPortal3D(tx, ty, { yaw: _doorYaw(tx, ty, x.fromX, x.fromY), riseMs: 140, openMs: 140, holdMs: 320, shutMs: 140, out: true }); },
+    });
+
     /* ── THE BEAM DEFS: Tsunami + the capstone breaths ───────────────────
        Tsunami stops being Water Pulse: its own beam def with `beamTsunami`
        (the wall), its own wash tile. Dragon Breath (r1) keeps the PLAIN
@@ -24483,6 +24827,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         fireBoltDirect: fireBoltDirect,
         fireGeometry: fireGeometry,
         hasMapping: hasMapping,
+        /* the DOOR agent's leaf (rev 2): warm the catalogue GLB the door
+           recipes wear — the renderer calls it when a board door is built */
+        warmDoor: _doorFxWarm,
 
         /* Action tile glow for non-spell hits (attacks, items, detonations).
            Relayed host→guest by online.js's sibling wrapper (_VFXX_ANCHORS). */

@@ -7567,51 +7567,118 @@ const ThreeRenderer = (function () {
         portal.position.y = ts * 0.37; g.add(portal);
         return _deployFinish(g, x, y, 1.25);
     }
-    /* 🚪 THE DOOR AGENT's door (DOOR_RACE_DESIGN.md §2): a frame of two jambs
-       and a lintel in dark wood, the LEAF hinged on the left jamb — swung
-       ~100° open (you can walk through, see through) or shut flat in the
-       frame (a wall). A team-coloured seal glows over the lintel and a hit
-       counter of pips shows the hits left. Faces +z like every D.O.O.R. leaf;
-       _deployFinish's per-tile yaw is skipped so the leaf reads as a door. */
+    /* 🚪 THE DOOR AGENT's door (DOOR_RACE_DESIGN.md §2). 2026-09-14 rev 2:
+       the leaf is a REAL catalogue door — the map's own threshold leaf
+       (`_doorLeafFor`, the same GLB the crossing cinematic swung open; the
+       plain hollow-core door when the map has none) fitted into a DOOR-issue
+       frame (the crossing's teal metal + stone sill at tile scale), hinged on
+       the catalogue's own side, swung ~85° open or shut flat; a slide leaf
+       pockets into its jamb; a frame-only leaf (the hell arch, the bare
+       frame) wears a dark team-tinted pane when shut. The procedural jamb +
+       plank leaf is GONE (the user's rule: never a procedural door when the
+       kit has thirty). The door FACES ITS TWIN (local +z toward it — the
+       opening is the corridor's mouth); a team seal glows over the lintel
+       and pips count the hits left. `_hqPropMatPick`'s Lambert conversions
+       are shared (`_ew_shared`) so _disposeR leaves them alone on rebuild. */
+    function _doorLeafFor() {
+        var leaf = null;
+        try { leaf = _introLeafFor((typeof activeGameMode !== 'undefined') ? activeGameMode : null); } catch (e) { leaf = null; }
+        if (!leaf || !leaf.cat || !leaf.cat.file) {
+            var D = (typeof DOOR_HQ !== 'undefined') ? DOOR_HQ : null;
+            leaf = (D && D.catalogue && D.catalogue.leaf_hollow_core) ? { key: 'leaf_hollow_core', cat: D.catalogue.leaf_hollow_core } : null;
+        }
+        return leaf;
+    }
+    var DOOR3D_OPEN_ANGLE = 1.5;
     function _buildDoor3D(d) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
-        var woodMat = _deployMat('wood.png', 0x5a3e2a);
-        var leafMat = _deployMat('wood.png', d.open ? 0x8a6a48 : 0x6e4e34);
-        var sealMat = _deployGlowMat(d.owner === 1 ? 0x4488ff : 0xff4444, 0.75);
-        var W = ts * 0.62, H = ts * 0.9, T = ts * 0.06;
-        for (var j = -1; j <= 1; j += 2) {
-            var jamb = new THREE.Mesh(new THREE.BoxGeometry(T, H, T * 1.4), woodMat);
-            jamb.position.set(j * (W / 2 + T / 2), H / 2, 0); g.add(jamb);
+        var hqOk = (typeof DOOR_HQ !== 'undefined');
+        var leaf = _doorLeafFor();
+        var cat = leaf ? leaf.cat : null;
+        var mode = _introMotionFor(leaf);
+        if (mode === 'lift' || mode === 'spin') mode = 'none';
+        var wide = !!(cat && cat.wide);
+        var oh = ts * 1.18;                                             // 2.06 m at 1.75 m per tile — a real door on a real tile
+        var ow = (cat && cat.aspect > 0) ? cat.aspect * oh : ts * 0.56;
+        ow = Math.max(ts * 0.44, Math.min(wide ? ts * 0.98 : ts * 0.78, ow));
+        var jw = 0.06 * ts, lh = 0.08 * ts, pd = 0.09 * ts;
+        var frameMat = hqOk ? _hqMat('teal', 0.6, 2.2, { color: 0xc9d3d1, shininess: 30, specular: 0x555555 }) : _hzLit(null, 0x2f6b66);
+        var sillMat  = hqOk ? _hqMat('stone', 1.5, 1.5, { color: 0xd8d4cc }) : _hzLit(null, 0x8a8a88);
+        var teamCol = d.owner === 1 ? 0x4488ff : 0xff4444;
+        var sealMat = _deployGlowMat(teamCol, 0.75);
+        function _box(w, h, dp, mat) { var m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dp), mat); m.castShadow = true; m.receiveShadow = true; return m; }
+        var jL = _box(jw, oh + lh, pd, frameMat); jL.position.set(-(ow / 2 + jw / 2), (oh + lh) / 2, 0); g.add(jL);
+        var jR = _box(jw, oh + lh, pd, frameMat); jR.position.set((ow / 2 + jw / 2), (oh + lh) / 2, 0); g.add(jR);
+        var lin = _box(ow + jw * 2, lh, pd, frameMat); lin.position.set(0, oh + lh / 2, 0); g.add(lin);
+        var sill = _box(ow + jw * 2 + 0.03 * ts, 0.025 * ts, pd + 0.03 * ts, sillMat); sill.position.set(0, 0.0125 * ts, 0); g.add(sill);
+        var seal = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.05, 14), sealMat);
+        seal.position.set(0, oh + lh + ts * 0.07, pd * 0.55); g.add(seal);
+        var sealB = seal.clone(); sealB.rotation.y = Math.PI; sealB.position.z = -pd * 0.55; g.add(sealB);
+        /* the leaf: the catalogue GLB in its own motion rig */
+        var dir = (cat && cat.hinge === 'right') ? 1 : -1;
+        var leafRoot = new THREE.Group();
+        var pivot = null, carrier = null;
+        if (mode === 'swing') {
+            pivot = new THREE.Group();
+            pivot.position.x = dir * (ow / 2 - 0.015 * ts);
+            leafRoot.position.x = -pivot.position.x;
+            pivot.add(leafRoot); g.add(pivot);
+            /* open TOWARD the twin (+z), the leaf lying against the jamb's far face */
+            pivot.rotation.y = d.open ? dir * DOOR3D_OPEN_ANGLE : 0;
+        } else if (mode === 'slide') {
+            carrier = new THREE.Group();
+            carrier.position.x = d.open ? dir * (ow - 0.03 * ts) : 0;
+            carrier.add(leafRoot); g.add(carrier);
+        } else {
+            g.add(leafRoot);
         }
-        var lintel = new THREE.Mesh(new THREE.BoxGeometry(W + T * 2, T * 1.3, T * 1.4), woodMat);
-        lintel.position.y = H + T * 0.65; g.add(lintel);
-        var seal = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.06, 14), sealMat);
-        seal.position.set(0, H + T * 2.2, T); g.add(seal);
-        /* the leaf, hinged on the left jamb */
-        var hinge = new THREE.Group();
-        hinge.position.set(-W / 2, 0, 0);
-        var leaf = new THREE.Mesh(new THREE.BoxGeometry(W, H - T * 0.2, T * 0.7), leafMat);
-        leaf.position.set(W / 2, (H - T * 0.2) / 2, 0);
-        hinge.add(leaf);
-        var knob = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.018, 8, 6), _deployMat('gold.png', 0xd8b458));
-        knob.position.set(W * 0.86, H * 0.48, T * 0.6); hinge.add(knob);
-        hinge.rotation.y = d.open ? -1.75 : 0;
-        g.add(hinge);
-        /* the hits left, as pips on the lintel */
+        if (cat && cat.file && typeof _hqModelUrl === 'function' && typeof THREE.GLTFLoader === 'function') {
+            var targetH = (mode === 'none') ? (oh + lh) : (oh - 0.02 * ts);
+            var targetW = (mode === 'none') ? (ow + jw * 2) : ow * 0.97;
+            var yawDeg = cat.yaw || 0;
+            var lg = _miscModelInstance(_hqModelUrl(cat), true, targetH, {
+                fit: 'height', matPick: _hqPropMatPick,
+                onDone: function (grp, s, bb) {
+                    var m = grp.children[0];
+                    if (m && yawDeg) m.rotation.y = yawDeg * Math.PI / 180;
+                    var sideways = (Math.abs(yawDeg) % 180) === 90;
+                    var w = (sideways ? (bb.max.z - bb.min.z) : (bb.max.x - bb.min.x)) * s;
+                    if (w > 0) grp.scale.x = cat.aspect ? (targetW / w) : Math.min(1, targetW / w);
+                    grp.scale.z = Math.min(1, grp.scale.x);
+                    grp.traverse(function (n) { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
+                    if (mode === 'none') { jL.visible = false; jR.visible = false; lin.visible = false; }
+                    _objectsDirty = true;
+                }
+            });
+            /* the authored front faces the twin (+z), where the walker comes from */
+            lg.rotation.y = (typeof window !== 'undefined' && window.EW_HQ_FLIP_LEAVES) ? Math.PI : 0;
+            leafRoot.add(lg);
+        }
+        /* the light in the opening while it stands open (the other side is
+           lit — the twin's room), a dark team-tinted pane when a frame-only
+           leaf is shut (the hell arch has no leaf to close) */
+        if (d.open) {
+            var veilMat = _deployGlowMat(0xfff0cc, 0.16);
+            var veil = new THREE.Mesh(new THREE.PlaneGeometry(ow, oh), veilMat);
+            veil.position.set(0, oh / 2, -0.02 * ts); g.add(veil);
+        } else if (mode === 'none') {
+            var paneMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(d.owner === 1 ? 0x1c2846 : 0x461c1c), transparent: true, opacity: 0.92, side: THREE.DoubleSide });
+            var pane = new THREE.Mesh(new THREE.PlaneGeometry(ow, oh), paneMat);
+            pane.position.set(0, oh / 2, 0); g.add(pane);
+        }
+        /* the hits left, as pips on the lintel (both faces) */
         var pips = Math.max(0, Math.min(6, d.hp | 0));
         for (var p = 0; p < pips; p++) {
-            var pip = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.025, ts * 0.025, T * 0.4), sealMat);
-            pip.position.set((p - (pips - 1) / 2) * ts * 0.045, H + T * 0.65, T * 0.9); g.add(pip);
+            var pip = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.022, ts * 0.022, pd * 1.3), sealMat);
+            pip.position.set((p - (pips - 1) / 2) * ts * 0.04, oh + lh / 2, 0); g.add(pip);
         }
-        if (!d.open) {
-            /* the wall it is: a faint slab over the whole opening so a shut
-               door reads solid from every angle */
-            var slab = new THREE.Mesh(new THREE.PlaneGeometry(W, H), _deployGlowMat(d.owner === 1 ? 0x2a3a66 : 0x662a2a, 0.35));
-            slab.position.set(0, H / 2, -T * 0.6); slab.material.side = THREE.DoubleSide; g.add(slab);
-        }
-        var out = _deployFinish(g, d.x, d.y, 1.2);
-        out.rotation.y = 0;
+        /* face the twin: local +z toward it (tile x → world x, tile y → world z) */
+        var tw = null;
+        if (state.doors) for (var i = 0; i < state.doors.length; i++) { var o = state.doors[i]; if (o && o.pairId === d.pairId && o.id !== d.id) { tw = o; break; } }
+        var out = _deployFinish(g, d.x, d.y, 1);
+        out.rotation.y = tw ? Math.atan2(tw.x - d.x, tw.y - d.y) : 0;
+        try { if (typeof window !== 'undefined' && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.warmDoor === 'function') window.ThreeVFXEffects.warmDoor(); } catch (e) {}
         return out;
     }
     function _buildTunnelMound3D(x, y, ownerPlayer) {
@@ -40717,6 +40784,9 @@ const ThreeRenderer = (function () {
         introCineStart, introCineFadeDoors, introCineEnd, introCineWarm,
         introCineFadeStairs: introCineFadeDoors,   // 2026-08 name, kept for any caller still holding it
         introCineSetFocus: function (uids) { _introOccUids = uids || []; },
+        /* the DOOR agent's leaf (DOOR_RACE_DESIGN rev 2): the map's own catalogue
+           door — the VFX file's apparitions wear the same one as the board door */
+        doorLeaf: function () { return _doorLeafFor(); },
 
         startProjectileTween,
 

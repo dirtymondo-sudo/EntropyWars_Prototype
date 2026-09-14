@@ -46262,6 +46262,18 @@
             window.doorAt = doorAt; window.doorById = doorById; window.doorTwin = doorTwin;
             window.doorBlocksMove = doorBlocksMove; window.doorBlocksSightBetween = doorBlocksSightBetween;
             window.doorsBeside = doorsBeside; window.doorTeamPairs = doorTeamPairs; window.doorTileFree = doorTileFree;
+            /* THE DOOR IN THE FRAME (rev 2, 2026-09-14): every door ability
+               puts a real catalogue door in its animation — the
+               _spell3DGeometry recipes in three-vfx-effects.js ("THE DOOR
+               AGENT'S DOORS"), fired here through VFX.fireGeometry (relayed
+               online by the vfx3d-x wrapper; `extra` = primitives only —
+               a tile list rides as "x,y;x,y"). Returns true when it ran. */
+            window._doorGeom = function(id, x, y, extra) {
+                if (_skipVisuals() || state.phase !== 'battle') return false;
+                const VFX = window.ThreeVFXEffects;
+                if (!VFX || typeof VFX.fireGeometry !== 'function') return false;
+                try { return !!VFX.fireGeometry(id, x, y, 0, extra || {}); } catch (e) { return false; }
+            };
             window.placeDoorPair = placeDoorPair; window.setDoorOpen = setDoorOpen; window.breakDoorPair = breakDoorPair;
             window.damageDoorAt = damageDoorAt; window.doorStepThrough = doorStepThrough;
             window.doorCastOrigins = doorCastOrigins; window.doorCastOriginFor = doorCastOriginFor;
@@ -46289,6 +46301,8 @@
                     if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(land.x, land.y, unit.z);
                     if (!_skipVisuals()) _vfxTeleport(fx, fy, land.x, land.y);
                 }
+                /* the way back out: a door opens on the landing tile and shuts behind them */
+                window._doorGeom('raceExit:out', unit.x, unit.y, { fromX: tw ? tw.x : fx, fromY: tw ? tw.y : fy });
                 delete unit._exited;
                 addLog(`🚪 ${unitDisplayName(unit)} comes back through the door at ${coordLabel(unit.x, unit.y)}, reeling.`);
                 applyStatusPayload(unit, { id: 'stagger', duration: 1 }, 'EXIT: ');
@@ -51082,6 +51096,11 @@
                 });
                 if (!_buffResult) return 0;
                 panelFocusTarget = _buffResult.target;
+                /* THE LONG WAY ROUND (door agent): four doors circle the agent
+                   and every friendly open door on the board flares */
+                if (spell.statusEffects && spell.statusEffects.some(se => se && se.id === 'castFromDoors')) {
+                    window._doorGeom('raceLongWayRound', unit.x, unit.y, { doors: _doors().filter(d => d.owner === unit.player && d.open && d.hp > 0).map(d => d.x + ',' + d.y).join(';') });
+                }
                 // The buff lands when the gift ARRIVES (support cinematic beat
                 // 2), same as heal. Applying it at frame one fired the gold
                 // climbing rings on the recipient while the camera was still
@@ -53388,6 +53407,7 @@
                         && doorsBeside(unit).some(d => d.id === _dTarget.id) && unit._doorFreeRound !== (state.round || 0);
                     _spellFocusCamera(unit, x, y);
                     setDoorOpen(_dTarget, !_dTarget.open);
+                    { const _tw = doorTwin(_dTarget); window._doorGeom('raceKnockKnock', x, y, { toggle: true, open: !!_dTarget.open, twinX: _tw ? _tw.x : x, twinY: _tw ? _tw.y : y }); }
                     addLog(`🚪 ${unitDisplayName(unit)} ${_dTarget.open ? 'opens' : 'shuts'} the door at ${coordLabel(x, y)}${_free ? ' — Keyholder, free' : ''}.`);
                     if (_free) { unit._doorFreeRound = state.round || 0; _doorFreeAction = true; }
                     completionDelay = actionMs(350);
@@ -53422,6 +53442,8 @@
                     _spellFocusCamera(unit, x, y);
                     unit.mp -= effectiveSpellCost;
                     placeDoorPair(unit, _pickA.x, _pickA.y, x, y, { spellName: spell.name });
+                    window._doorGeom('raceKnockKnock', _pickA.x, _pickA.y, { twinX: x, twinY: y });
+                    window._doorGeom('raceKnockKnock', x, y, { twinX: _pickA.x, twinY: _pickA.y });
                     if (typeof playDoorSfx === 'function') playDoorSfx('doorbell');
                     addLog(`🚪 ${unitDisplayName(unit)} knocks twice — doors open at ${coordLabel(_pickA.x, _pickA.y)} and ${coordLabel(x, y)}.`);
                     completionDelay = actionMs(500);
@@ -53451,6 +53473,8 @@
                 playSfx('teleport');
                 unit.mp -= effectiveSpellCost;
                 const fx = unit.x, fy = unit.y;
+                /* the door nobody saw: it stands up on the landing tile, facing the victim, and the agent comes through it */
+                window._doorGeom('raceBreakingEntering:door', land.x, land.y, { fromX: target.x, fromY: target.y });
                 if (land.x !== unit.x || land.y !== unit.y) {
                     unit.x = land.x; unit.y = land.y;
                     if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(land.x, land.y, unit.z);
@@ -53485,7 +53509,9 @@
                 triggerAttackAnim(unit, _dvFrom.x, _dvFrom.y, 'ranged');
                 if (!_skipVisuals()) showFloatingTextAtTile(_dvFrom.x, _dvFrom.y, '🚪 📦', 'buff');
                 const _dvTravel = _skipVisuals() ? 0 : actionMs(420);
-                if (typeof playProjectile === 'function' && !_skipVisuals()) {
+                /* the parcel tumbles out of the twin door (the door recipe); the plain projectile only when the VFX layer is off */
+                if (!window._doorGeom('raceSpecialDelivery', target.x, target.y, { fromX: _dvFrom.x, fromY: _dvFrom.y, ms: _dvTravel })
+                    && typeof playProjectile === 'function' && !_skipVisuals()) {
                     try { playProjectile(_dvFrom.x, _dvFrom.y, target.x, target.y, 'damage', _dvTravel, spell.spellType, spell.projectileOverride || null); } catch (e) {}
                 }
                 window.setTimeout(() => {
@@ -53518,6 +53544,9 @@
                 if (typeof shakeBoard === 'function' && !_skipVisuals()) shakeBoard(6, 260);
                 const VFX = window.ThreeVFXEffects;
                 if (VFX && VFX.hasMapping(spell.id, 'impact') && state.phase === 'battle' && !_skipVisuals()) VFX.fire('impact', spell.id, { tx: twin.x, ty: twin.y, fromX: door.x, fromY: door.y });
+                /* both leaves swing shut: the near one quietly, the twin SLAMS */
+                window._doorGeom('raceSlam', door.x, door.y, { fromX: twin.x, fromY: twin.y });
+                window._doorGeom('raceSlam', twin.x, twin.y, { fromX: door.x, fromY: door.y, big: true });
                 const _slamDir = { dx: Math.sign(twin.x - door.x) || 1, dy: Math.sign(twin.y - door.y) };
                 const victims = state.units.filter(u => !u.dead && u.id !== unit.id && _doorCheb(u, twin.x, twin.y) <= 1
                     && !(typeof unitPassiveValue === 'function' && unitPassiveValue(u, 'doorImmune') && u.player === unit.player));
@@ -53561,6 +53590,8 @@
                     target._exited = true;
                     if ((target.hourglasses || 0) > 0 && typeof dropHourglassesFromUnit === 'function') dropHourglassesFromUnit(target);
                     if (typeof playDoorSfx === 'function') playDoorSfx('stamp');
+                    /* the door stands up in front of the victim, takes them, shuts, and the EXIT stamp lands on the leaf */
+                    window._doorGeom('raceExit', target.x, target.y, { fromX: unit.x, fromY: unit.y });
                     if (!_skipVisuals()) { _vfxTeleport(target.x, target.y, _doorOrg ? _doorOrg.x : target.x, _doorOrg ? _doorOrg.y : target.y); showFloatingTextForUnit(target, '🚪 EXITED', 'debuff'); }
                     addLog(`🚪 Extradimensional Incident Transfer: ${unitDisplayName(unit)} files ${unitDisplayName(target)} out through the door at ${coordLabel(_doorOrg ? _doorOrg.x : x, _doorOrg ? _doorOrg.y : y)}. Sign here.`);
                 }
@@ -53581,6 +53612,8 @@
                 triggerAttackAnim(unit, target.x, target.y);
                 const VFX = window.ThreeVFXEffects;
                 if (VFX && VFX.hasMapping(spell.id, 'impact') && state.phase === 'battle' && !_skipVisuals()) VFX.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
+                /* the trapdoor: a door lies flat under the victim and swings DOWN (the drop below lands on its open beat) */
+                window._doorGeom('raceTrapdoor', target.x, target.y, { fromX: unit.x, fromY: unit.y });
                 applyDamageToUnit(target, (spell.dmg || 0) + spellPower, `${spell.name}: `, { sourceUnit: unit, allowMarkBonus: true, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType });
                 if (spell.statusEffects) applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
                 if (!target.dead && !(target._isBoss && target._bossSize === 2)) {
@@ -53607,6 +53640,7 @@
                             if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(land.x, land.y, target.z);
                             setUnitFacing(target, land.x - (via ? via.x : unit.x) || 1, land.y - (via ? via.y : unit.y));
                             playSfx('teleport');
+                            window._doorGeom('raceTrapdoor:out', land.x, land.y, { fromX: via ? via.x : unit.x, fromY: via ? via.y : unit.y });
                             if (!_skipVisuals()) _vfxTeleport(fx, fy, land.x, land.y);
                             addLog(`🚪 The floor gives way — ${unitDisplayName(target)} drops out ${via ? 'of the door at ' + coordLabel(via.x, via.y) : 'beside ' + unitDisplayName(unit)}.`);
                             _doorTouched();

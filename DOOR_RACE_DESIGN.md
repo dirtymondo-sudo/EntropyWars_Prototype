@@ -342,3 +342,66 @@ catalogue leaf yet; no HUD verb for the free toggle (it is the Knock
 Knock row); nothing was played in a browser. `npm test` runs
 `door-race.test.js` (the tables, the tree, the door object in a vm
 sandbox, source guards on every engine site).
+
+### 2026-09-14 — rev 2: THE DOOR IN THE FRAME (local delivery, `ENTROPY_WARS_DOOR_RACE_REV2.zip`)
+The user: "why a procedurally generated door when there are numerous
+higher-quality door models in the game? Every single door ability needs
+to use a door in the spell animation." Both fixed.
+
+**The board door is a catalogue leaf.** three-renderer.js `_buildDoor3D`
+no longer builds jambs + a plank: `_doorLeafFor()` = the map's own
+threshold leaf (`_introLeafFor(activeGameMode)` — the GLB the crossing
+cinematic swung open; `leaf_hollow_core` when the map has none) is fitted
+by `_miscModelInstance` + `_hqPropMatPick` (shared Lambert, safe under
+`_disposeR`) into a DOOR-issue frame at tile scale (the crossing's teal
+metal + stone sill; opening 1.18 tiles ≈ 2.06 m, width from the
+catalogue `aspect`), hinged on the catalogue's side (`hinge`), swung
+`DOOR3D_OPEN_ANGLE` (1.5 rad) toward +z when OPEN or shut flat; a
+`slide` leaf pockets into its jamb; a frame-only leaf (the hell arch, the
+bare frame) wears a dark team-tinted pane when shut. The door FACES ITS
+TWIN (`rotation.y = atan2(tw.x − d.x, tw.y − d.y)` — the opening is the
+corridor's mouth); the team seal (both faces), the light in an open
+opening and the hit pips stay. `ThreeRenderer.doorLeaf()` exposes the
+leaf so the VFX wears the same one.
+
+**Every ability puts a door in the frame** — three-vfx-effects.js "THE
+DOOR AGENT'S DOORS" (right after the capstone registry): the leaf loads
+through the weapon-model cache as `door:<leafKey>` (`_doorFxLeafKey`
+registers `_WPN_MODELS[key]` with the catalogue URL, axis `y`, the
+catalogue `yaw` as the tweak; `warmDoor` on the API — the renderer calls
+it whenever a board door is built), `_sigDoorRig3D(tx, ty, { yaw, scale,
+lay, down, noWedge })` = frame + sill + the leaf on its hinge + the light
+kit (veil / halo / floor wedge) with `setOpen / setLight / setFade /
+setRise`; while the GLB streams the rig shows light and no leaf — never a
+procedural one. Recipes (all `_sigRunOwned`, all in `_spell3DGeometry`,
+fired by battle.js `window._doorGeom(id, x, y, extra)` → `VFX.fireGeometry`
+— relayed by online.js `vfx3d-x`, `extra` primitives only):
+- `raceKnockKnock` — `_sigDoorKnock3D`: the placed pair (both tiles: the
+  sigil, the light through the new door, two knock ripples) and the
+  toggle (`toggle` / `open`: a flare when it opens, a red thud when it
+  shuts); the door in the frame is the persistent one.
+- `raceBreakingEntering:door` — `_sigDoorPortal3D` on the LANDING tile
+  facing the victim: the door stands up, flings open, the agent lands in
+  the doorway, it slams behind them and fades.
+- `raceSpecialDelivery` — `_sigDoorDelivery3D`: the twin doorway flares
+  and a taped PARCEL tumbles the arc twin → target in the travel time
+  (`ms`); `playProjectile` only when the recipe did not run.
+- `raceSlam` — `_sigDoorSlam3D` at BOTH ends: a ghost leaf of light swings
+  shut over the standing door (the persistent leaf is already shut), the
+  flash, the shock ring(s), the shake (`big` at the twin).
+- `raceExit` — the portal in front of the victim, facing the caster:
+  opens, takes them, slams, and the red EXIT STAMP lands on the leaf.
+  `raceExit:out` — the way back: a door opens on the landing tile and
+  shuts behind them (`_doorExitReturn`).
+- `raceLongWayRound` — `_sigDoorNetwork3D`: four half-size doors circle
+  the agent and open in turn; every friendly open door (`doors:
+  "x,y;x,y"`) flares.
+- `raceTrapdoor` — the portal LAID FLAT under the victim (`lay`: face up)
+  whose leaf swings DOWN into the floor (`down`) on the drop's beat;
+  `raceTrapdoor:out` at the far door as they drop out of it.
+The impact / teleport / aura aliases in `SPELL_MAP` stay for the HIT.
+`npm test` runs `door-vfx.test.js` (the leaf on the board, every recipe,
+every fire site). Unseen live (RULE #1c): the leaf's fit in the frame
+per catalogue aspect, the hinge side against the swing, the trapdoor's
+flat lie on a raised tile, the parcel's arc, the stamp's size.
+

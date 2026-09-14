@@ -86,6 +86,18 @@ Staunton chess set (`_hzChessPiece` lathes on the rim, `_hzChessMon`
 monuments on the board, `_hzChessPieceFar`), the card soldiers
 (`_hzTextTex` billboards), a cryo tube, a sea serpent.
 
+## 3a. THE DOOR AGENT'S DOORS ON THE BOARD (2026-09-14 rev 2)
+
+Every `leaf_*` in `DOOR_HQ.catalogue` (§6 and §3b) can now stand ON A
+BATTLE TILE: the DOOR agent's persistent door (three-renderer.js
+`_buildDoor3D` → `_doorLeafFor()` = the map's own threshold leaf, else
+`leaf_hollow_core`, via `_miscModelInstance` + `_hqPropMatPick`) and the
+race's seven spell recipes (three-vfx-effects.js "THE DOOR AGENT'S DOORS",
+the same file loaded through `_wpnLoad` as `door:<leafKey>`, axis `y`,
+the catalogue `yaw` baked as the tweak). No new file: the leaf a map's
+threshold names in `DOOR_HQ.thresholds[mapId].leaf` is the leaf its
+battles wear — change the threshold, the agent's doors follow.
+
 ## 3b. THE DOOR-KIT BATCH (Assets/door/models/, 2026-09-13)
 
 Fifteen files the user uploaded to the D.O.O.R. kit folder: eight
