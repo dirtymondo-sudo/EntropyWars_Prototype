@@ -18841,6 +18841,17 @@ const DOOR_HQ = {
                 label: 'H-WING', sub: 'EXIT · THIS ONE IS',
                 action: { room: 'hwing_w', at: 'exit' },
                 desc: 'An EXIT door. In here they are lies; this one opens onto a beige corridor with right angles, which is worse, and is the way you came in.' },
+            /* THE HAUNTED HOUSE COMPLEX (plan 9.2 stage 1, 2026-09-15): the
+               board room is the ground floor cut open; THE FRONT DOOR on its
+               north wall (west of the console, clear of the signboard at x 5
+               and the lamp mast in the corner) walks into the house's own
+               rooms — the hall, upstairs, the attic, the cellar. */
+            prebuilt_haunted: [
+                { id: 'house', wall: 'n', x: -7.5, leaf: 'leaf_wooden',
+                  label: 'THE HAUNTED HOUSE', sub: 'THE FRONT DOOR · INTO THE HOUSE',
+                  action: { room: 'site_prebuilt_haunted_hall', at: 'front' },
+                  desc: 'The front door of the house. The plate says 13; the door says 237; the hall says come in. The house is bigger inside than the board allows, which Continuity has a form for.' },
+            ],
         },
         built: ['prebuilt_dumb', 'prebuilt_cern', 'prebuilt_backrooms', 'prebuilt_nuketown', 'prebuilt_stadium',
                 'prebuilt_camelot', 'prebuilt_atlantis', 'prebuilt_hell', 'prebuilt_technoticlan', 'prebuilt_agartha', 'prebuilt_antarctica',
@@ -23842,6 +23853,254 @@ const DOOR_HQ = {
             spawn: { x: 0, z: 9.4, face: 0 },
         },
         /* ══════════════════════════════════════════════════════════════════
+           THE HAUNTED HOUSE COMPLEX (HQ plan 9.2 stage 1 — 2026-09-15).
+           The FIRST complex: a site that is several rooms. Room 13's
+           generated board room stays the board room (the crossing console,
+           the battle marker, the way back to the bay); THE FRONT DOOR on
+           its north wall (siteRooms.backDoors.prebuilt_haunted) walks into
+           these four hand-authored box rooms, the house's own interiors.
+           Every one wears `site` + `part` and NO `roomNo` — hqRoomNo reads
+           the threshold's 13 through `site`, the register lists the house
+           once, and 9.4 knows the rooms are WILD (hqRoomSite non-null).
+           The two-floor room (a `gallery` over the hall) is stage 2
+           renderer work; upstairs is a box room of its own for now.
+           THE PARK RULE (9.8): every room has a rail (the banister runs,
+           `railing_1m`) and every big room a stepped ramp (`riser_*` tiers
+           — a sloped ramp waits on the 9.8 registry).
+           ══════════════════════════════════════════════════════════════════ */
+        /* ── THE FRONT HALL — the staircase up, the cellar door, the hearth ── */
+        site_prebuilt_haunted_hall: {
+            label: 'THE HAUNTED HOUSE · THE HALL',
+            sub: 'THE FRONT HALL · THE STAIRS UP · THE CELLAR',
+            kind: 'box', site: 'prebuilt_haunted', part: 'hall',
+            shell: {
+                w: 14, d: 12, h: 4.0,
+                wallH: 4.0, dadoH: 1.0,
+                floor: 'wood_planks', wall: 'drywall_2', dado: 'wood', trim: 'dark_woods', ceiling: 'ceiling',
+                floorColor: 0x6a4a34, wallColor: 0x7a5c62, dadoColor: 0x5a3c2c, ceilColor: 0x9a8c80,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xffb060, ambient: 0.55 },
+                plate: { x: -4.5, z: -5.75, y: 2.3 },
+            },
+            doors: [
+                { id: 'front', wall: 's', x: 0, leaf: 'leaf_wooden',
+                  label: 'THE FRONT DOOR', sub: 'OUT TO THE GRAVEYARD · THE BOARD',
+                  action: { room: 'site_prebuilt_haunted', at: 'house' },
+                  desc: 'The front door from inside. The plate on the other side says 13; this side says 237. Outside is the graveyard — both of them — and the crossing console.' },
+                { id: 'stairs', wall: 'n', x: 4.5, leaf: null,
+                  label: 'THE STAIRCASE', sub: 'UP TO THE LANDING',
+                  action: { room: 'site_prebuilt_haunted_upstairs', at: 'stairs' },
+                  desc: 'The staircase. It creaks on the seventh step whether or not anyone is on it. The landing is up there, and the four bedrooms, and the hatch.' },
+                { id: 'cellar', wall: 'w', z: 2.0, leaf: 'leaf_coffee',
+                  label: 'THE CELLAR DOOR', sub: 'DOWN TO THE FURNACE',
+                  action: { room: 'site_prebuilt_haunted_cellar', at: 'stairs' },
+                  desc: 'A plank door under the stairs, painted shut and open anyway. The furnace is lit. Nobody lights it.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'house_stairs',   x: 2.4, z: -4.6, face: 90, rect: false },        // the flight up along the north wall, the top by the landing doorway
+                { key: 'railing_1m',     x: 0.4, z: -3.3, face: 0 },                       // THE BANISTER (the park rule's rail): three metres, open side
+                { key: 'railing_1m',     x: 1.4, z: -3.3, face: 0 },
+                { key: 'railing_1m',     x: 2.4, z: -3.3, face: 0 },
+                { key: 'riser_1',        x: -2.5, z: -4.9, face: 0 },                      // THE DAIS under the north window (the park rule's ramp, stepped)
+                { key: 'wall_torch',     wall: 'w', z: -3.0, mount: 1.7 },
+                { key: 'wall_torch',     wall: 'e', z: -3.0, mount: 1.7 },
+                { key: 'wall_torch',     wall: 's', x: 3.2, mount: 1.7 },
+                { key: 'candle_ring',    x: -0.2, z: 0.6, y: 0.46 },                       // on the hall table
+                { key: 'coffee_table',   x: -0.2, z: 0.6 },                                // the hall table
+                { key: 'rug_round',      x: 0, z: 2.8 },
+                { key: 'rug_round',      x: -3.6, z: -1.6 },
+                { key: 'curved_couch',   x: 4.6, z: 2.8, face: 300 },
+                { key: 'table_lamp',     x: -6.4, z: -0.6, y: 0.0 },                       // on the floor; the bill is unpaid and it is on
+                { key: 'picture_round_a', wall: 'e', z: 1.4, mount: 1.9 },
+                { key: 'picture_round_a', wall: 'e', z: 3.6, mount: 1.9 },
+                { key: 'picture_round_a', wall: 'w', z: -0.8, mount: 1.9 },
+                { key: 'wall_clock',     wall: 'n', x: -6.2, mount: 2.4 },                 // stopped at the hour the house keeps
+                { key: 'wall_shelf',     wall: 'e', z: -1.2, mount: 1.5 },
+                { key: 'paper_sheet',    x: 4.4, z: 1.8, y: 0.01, face: 20 },              // Continuity's form for the second floor
+                { key: 'floor_stain',    x: 5.6, z: -1.2 },
+                { key: 'cardboard_box',  x: 6.2, z: 4.6, face: 30 },
+                { key: 'umbrella_stand', x: 1.6, z: 5.2 },
+            ],
+            agents: [],
+            npcSpots: [{ x: -4.2, z: -2.2, face: 120, race: 'ghoul' }],
+            onlineSpots: [],
+            lines: [
+                '“The seventh step creaks.” “Nobody is on it.” “The seventh step creaks.”',
+                '“Who pays the lights?” “The house.” “With what?” “The house.”',
+                '“Continuity says one floor.” “The stairs say otherwise.” “The stairs are not on file.”',
+            ],
+            spawn: { x: 0, z: 3.6, face: 0 },
+        },
+        /* ── UPSTAIRS — the landing and the four bedrooms as one room; the
+           gallery over the hall (a two-floor room) is stage 2 ── */
+        site_prebuilt_haunted_upstairs: {
+            label: 'THE HAUNTED HOUSE · UPSTAIRS',
+            sub: 'THE LANDING · FOUR BEDROOMS · THE HATCH',
+            kind: 'box', site: 'prebuilt_haunted', part: 'upstairs',
+            shell: {
+                w: 15, d: 8, h: 3.0,
+                wallH: 3.0, dadoH: 0.9,
+                floor: 'wood', wall: 'drywall_2', dado: 'wood', trim: 'dark_woods', ceiling: 'ceiling',
+                floorColor: 0x74563e, wallColor: 0x6e6270, dadoColor: 0x5a3c2c, ceilColor: 0x8c8078,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xffc890, ambient: 0.5 },
+                plate: { x: 4.5, z: -3.75, y: 2.2 },
+            },
+            doors: [
+                { id: 'stairs', wall: 's', x: 4.5, leaf: null,
+                  label: 'THE STAIRCASE', sub: 'DOWN TO THE HALL',
+                  action: { room: 'site_prebuilt_haunted_hall', at: 'stairs' },
+                  desc: 'The head of the stairs. Down is the hall, the front door, the graveyard.' },
+                { id: 'attic', wall: 'n', x: -4.0, leaf: null,
+                  label: 'THE HATCH', sub: 'UP TO THE ATTIC',
+                  action: { room: 'site_prebuilt_haunted_attic', at: 'hatch' },
+                  desc: 'A pull-down ladder to a hatch in the ceiling. The ladder is down. It is always down when you look.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'house_stairs',   x: -2.4, z: -2.6, face: 0 },                      // the pull-down ladder, up toward the hatch
+                { key: 'railing_1m',     x: -1.5, z: 0.8, face: 0 },                       // THE LANDING RAIL (the gallery-to-be's edge; the park rule's rail)
+                { key: 'railing_1m',     x: -0.5, z: 0.8, face: 0 },
+                { key: 'railing_1m',     x: 0.5, z: 0.8, face: 0 },
+                { key: 'railing_1m',     x: 1.5, z: 0.8, face: 0 },
+                { key: 'riser_1',        x: 3.0, z: -3.1, face: 0 },                       // the raised end of the landing (the park rule's ramp, one step)
+                { key: 'cot',            x: -5.8, z: 2.4, face: 90 },                      // the four beds, made
+                { key: 'cot',            x: -5.8, z: -1.6, face: 90 },
+                { key: 'cot',            x: 6.2, z: 2.4, face: 270 },
+                { key: 'cot',            x: 6.2, z: -1.2, face: 270 },
+                { key: 'office_locker',  wall: 'e', z: 0.4 },                              // THE WARDROBE (the 9.3 `way: wardrobe` seam to Camelot stands here)
+                { key: 'rug_round',      x: 0, z: 2.6 },
+                { key: 'table_lamp',     x: -4.2, z: 3.3, y: 0.0 },
+                { key: 'candle_ring',    x: 0, z: -1.4, y: 0.46 },
+                { key: 'coffee_table',   x: 0, z: -1.4 },
+                { key: 'wall_torch',     wall: 's', x: -3.0, mount: 1.6 },
+                { key: 'wall_torch',     wall: 'n', x: 1.0, mount: 1.6 },
+                { key: 'picture_round_a', wall: 'w', z: 0.4, mount: 1.8 },
+                { key: 'picture_round_a', wall: 'n', x: -1.0, mount: 1.9 },
+                { key: 'wall_shelf',     wall: 'w', z: -3.0, mount: 1.5 },
+                { key: 'paper_sheet',    x: 3.2, z: 1.6, y: 0.01, face: 300 },
+                { key: 'floor_stain',    x: -3.2, z: 0.2 },                                // under the wardrobe's doors: snow, melted
+                { key: 'vent_grille',    wall: 's', x: -6.4, mount: 2.5 },
+            ],
+            agents: [],
+            npcSpots: [{ x: 4.4, z: -1.2, face: 200, race: 'ghost' }],
+            onlineSpots: [],
+            lines: [
+                '“Four bedrooms.” “Four beds.” “Who sleeps here?” “Four.”',
+                '“The wardrobe is cold.” “It is a wardrobe.” “There is snow on the floor.” “Then it is a cold wardrobe.”',
+                '“Room 237.” “There is no 237.” “Then whose door is that?”',
+            ],
+            spawn: { x: 4.5, z: 1.6, face: 0 },
+        },
+        /* ── THE ATTIC — low, one bulb, the trunk; a `hard` tape later (9.1) ── */
+        site_prebuilt_haunted_attic: {
+            label: 'THE HAUNTED HOUSE · THE ATTIC',
+            sub: 'THE HATCH · ONE BULB · THE TRUNK',
+            kind: 'box', site: 'prebuilt_haunted', part: 'attic',
+            shell: {
+                w: 8, d: 6, h: 2.4,
+                wallH: 2.4, dadoH: 0.6,
+                floor: 'wood', wall: 'wood_planks', dado: 'wood_planks', trim: 'dark_woods', ceiling: 'wood_planks',
+                floorColor: 0x5e4630, wallColor: 0x6a5238, dadoColor: 0x5a4430, ceilColor: 0x4e3a28,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xffd9a0, ambient: 0.4 },
+                plate: { x: 0, z: -2.75, y: 2.0 },
+            },
+            doors: [
+                { id: 'hatch', wall: 's', x: 0, leaf: null,
+                  label: 'THE HATCH', sub: 'DOWN THE LADDER',
+                  action: { room: 'site_prebuilt_haunted_upstairs', at: 'attic' },
+                  desc: 'The hatch, from above. The ladder goes down to the landing. Mind the bulb.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'bare_bulb',      x: 0, z: -0.4, ceil: true },
+                { key: 'cardboard_boxes', x: -2.6, z: -1.8, face: 20 },                    // THE TRUNK (the tape lies in it — 9.1)
+                { key: 'cardboard_box',  x: 2.6, z: -2.0, face: 40 },
+                { key: 'cardboard_box',  x: 2.2, z: 1.6, face: 70 },
+                { key: 'cot',            x: -2.4, z: 1.4, face: 0 },                       // a mattress nobody moved up here
+                { key: 'railing_1m',     x: 3.2, z: -0.4, face: 90 },                      // a banister sawn off and stored (the park rule's rail, honest)
+                { key: 'wall_shelf',     wall: 'n', x: 1.6, mount: 1.4 },
+                { key: 'picture_round_a', wall: 'w', z: -1.6, mount: 1.3 },                // facing the wall
+                { key: 'paper_sheet',    x: 0.8, z: -1.8, y: 0.01, face: 10 },
+                { key: 'floor_stain',    x: 0.6, z: 1.2 },
+                { key: 'vent_grille',    wall: 'e', z: 1.8, mount: 1.9 },
+                { key: 'rug_round',      x: 0.4, z: 0.4 },
+            ],
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [
+                '“One bulb.” “It is enough.” “For what?” “For the bulb.”',
+                '“The trunk is locked.” “From which side?”',
+            ],
+            spawn: { x: 0, z: 0.6, face: 0 },
+        },
+        /* ── THE CELLAR — the furnace, the racks, the well (the 9.3 link to the
+           woods / Hollow Earth stands at the well), the coal chute ── */
+        site_prebuilt_haunted_cellar: {
+            label: 'THE HAUNTED HOUSE · THE CELLAR',
+            sub: 'THE FURNACE · THE RACKS · THE WELL',
+            kind: 'box', site: 'prebuilt_haunted', part: 'cellar',
+            shell: {
+                w: 12, d: 10, h: 2.7,
+                wallH: 2.7, dadoH: 0.9,
+                floor: 'cobblestone_2', wall: 'bricks_2', dado: 'bricks_2', trim: 'wood', ceiling: 'wood_planks',
+                floorColor: 0x5a5650, wallColor: 0x6a5a52, dadoColor: 0x5a4a44, ceilColor: 0x4a3a2c,
+                pipes: true,
+                strips: false,
+                lights: [],
+                mood: { light: 0xffb070, ambient: 0.45 },
+                plate: { x: -3.0, z: -4.75, y: 2.1 },
+            },
+            doors: [
+                { id: 'stairs', wall: 'n', x: -3.0, leaf: 'leaf_coffee',
+                  label: 'THE CELLAR STAIRS', sub: 'UP TO THE HALL',
+                  action: { room: 'site_prebuilt_haunted_hall', at: 'cellar' },
+                  desc: 'The cellar stairs, up to the plank door under the staircase. The hall is lit. So is the furnace, which is the problem.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'boiler',         x: 3.6, z: -3.0, face: 0 },                       // THE FURNACE: lit, unlit by anyone
+                { key: 'fountain',       x: -2.6, z: 1.6, face: 0 },                       // THE WELL (a stone head; the 9.3 `way: well` seam stands here)
+                { key: 'railing_1m',     x: -3.6, z: -0.4, face: 0 },                      // the guard round the well (the park rule's rail)
+                { key: 'railing_1m',     x: -2.6, z: -0.4, face: 0 },
+                { key: 'railing_1m',     x: -1.6, z: -0.4, face: 0 },
+                { key: 'riser_1',        x: 0, z: 3.5, face: 0 },                          // THE COAL CHUTE: two tiers up to the south wall (the park rule's ramp, stepped)
+                { key: 'riser_2',        x: 0, z: 4.25, face: 0 },
+                { key: 'metal_shelving', wall: 'e', z: 0.6 },                              // THE RACKS: the wine, the years
+                { key: 'metal_shelving', wall: 'e', z: 2.4 },
+                { key: 'metal_shelving', wall: 'w', z: -2.8 },
+                { key: 'cot',            x: 4.6, z: 0.6, face: 270 },                      // a box the length of a person, on trestles
+                { key: 'bare_bulb',      x: -3.0, z: -2.0, ceil: true },
+                { key: 'bare_bulb',      x: 2.6, z: 1.8, ceil: true },
+                { key: 'wall_chains',    wall: 'w', z: 1.6, mount: 1.2 },
+                { key: 'cardboard_box',  x: 1.8, z: -4.2, face: 30 },
+                { key: 'cardboard_boxes', x: -4.8, z: 3.6, face: 340 },
+                { key: 'floor_drain',    x: -0.4, z: -1.6 },
+                { key: 'floor_stain',    x: 0.6, z: -0.6 },
+                { key: 'breaker_panel',  wall: 'n', x: 2.0, mount: 1.3 },                  // every breaker off; the lights stay on
+                { key: 'wall_shelf',     wall: 'n', x: -0.8, mount: 1.5 },
+                { key: 'paper_sheet',    x: 2.4, z: 2.6, y: 0.01, face: 200 },
+            ],
+            agents: [],
+            npcSpots: [{ x: 4.4, z: -2.0, face: 300, race: 'vampire' }],
+            onlineSpots: [],
+            lines: [
+                '“Who lit the furnace?” “It was lit when the house was built.” “Who built the house?” “The furnace.”',
+                '“The well goes down.” “Wells do.” “This one goes down further than the house is tall.” “Wells do.”',
+                '“That is a coffin.” “It is a box.” “On trestles.” “It is a box on trestles.”',
+            ],
+            spawn: { x: -3.0, z: -2.4, face: 0 },
+        },
+        /* ══════════════════════════════════════════════════════════════════
            H-WING (HQ plan 5.5, stage 1 — 2026-09-14 rev 4). See DOOR_HQ.hwing
            for the shape and the rules. Every room here is the one look:
            beige carpet, drywall, ceiling tile, fluorescents, right angles,
@@ -25030,7 +25289,8 @@ function hqSiteRoom(mapId) {
 function hqLinkRoom(end) {
     if (!end) return null;
     if (end.room) return DOOR_HQ.rooms[end.room] ? end.room : null;
-    if (!end.site || end.part) return null; // parts must name their built room explicitly
+    if (!end.site) return null;
+    if (end.part) { const pid = hqComplexRoomId(end.site, end.part); return (DOOR_HQ.rooms[pid] && DOOR_HQ.rooms[pid].part === end.part) ? pid : null; }   // 9.2: a part resolves only to a room that is authored (never manufactured)
     const id = hqSiteId(end.site);
     return ((DOOR_HQ.siteRooms || {}).built || []).includes(id) && hqSectorOfMap(id) ? hqSiteRoomId(id) : null;
 }
@@ -25081,7 +25341,43 @@ function hqWorldGraph() {
     }));
     return { nodes: nodes, edges: edges };
 }
+/* ── THE COMPLEXES (HQ plan 9.2 stage 1, 2026-09-15) ─────────────────────
+   A site that is several rooms. The GENERATED room (hqSiteRoom) stays the
+   board room; a COMPLEX is hand-authored box rooms in DOOR_HQ.rooms with
+   ids `site_<mapId>_<part>` wearing `site: mapId` + `part: '<name>'` and
+   NO roomNo (hqRoomNo reads the threshold's number through `site`; the
+   register lists the site once). They join the board room through door
+   rows in siteRooms.backDoors[mapId] (an array). Reads:
+     hqComplexRoomId(mapId, part) → 'site_prebuilt_haunted_hall'
+     hqRoomSite(roomId)           → the site a room belongs to (board room
+                                     or part), else null — 9.4's WILD test:
+                                     a room with a site is wild, the
+                                     facility is safe by construction
+     hqRoomPart(roomId)           → 'hall' | null
+     hqSiteComplex(mapId)         → [board room, ...parts] (parts in sheet order)
+     hqComplexRooms()             → every part room id in the building
+     hqRefreshComplexLinks()      → re-appends the world-graph doors
+                                     (hqLinkDoors) on every part room, never
+                                     accumulating: the same append step the
+                                     generated rooms take */
+function hqComplexRoomId(mapId, part) { return hqSiteRoomId(hqSiteId(mapId)) + '_' + String(part || '').replace(/[^a-z0-9_]/g, ''); }
+function hqRoomSite(roomId) { const r = (DOOR_HQ.rooms || {})[roomId]; return (r && r.site) ? (hqSiteId(r.site) || null) : null; }
+function hqRoomPart(roomId) { const r = (DOOR_HQ.rooms || {})[roomId]; return (r && r.site && r.part) ? String(r.part) : null; }
+function hqComplexRooms() { const R = DOOR_HQ.rooms || {}; return Object.keys(R).filter(k => R[k] && R[k].kind === 'box' && R[k].site && R[k].part); }
+function hqSiteComplex(mapId) {
+    const id = hqSiteId(mapId); if (!id) return [];
+    const board = hqSiteRoomId(id);
+    const parts = hqComplexRooms().filter(k => hqRoomSite(k) === id);
+    return ((DOOR_HQ.rooms || {})[board] ? [board] : []).concat(parts);
+}
+function hqRefreshComplexLinks() {
+    hqComplexRooms().forEach(id => {
+        const r = DOOR_HQ.rooms[id];
+        r.doors = (r.doors || []).filter(d => !d.link).concat(hqLinkDoors(id));
+    });
+}
 ((DOOR_HQ.siteRooms || {}).built || []).forEach(id => { const r = hqSiteRoom(id); if (r) DOOR_HQ.rooms[hqSiteRoomId(id)] = r; });
+hqRefreshComplexLinks();
 /* ── THE ROOM REGISTER (HQ plan 7.1, 2026-09-07) ───────────────────────
    Every site and every numbered HQ room wears ONE number (7.0 rule 1). The
    number lives with the thing it names — `roomNo` on the threshold (site),
@@ -26665,6 +26961,15 @@ if (typeof window !== 'undefined') {
     window.hqSecretDoors = hqSecretDoors;
     window.hqHWingRooms = hqHWingRooms;
     window.hqHWingEntries = hqHWingEntries;
+    window.hqComplexRoomId = hqComplexRoomId;
+    window.hqRoomSite = hqRoomSite;
+    window.hqRoomPart = hqRoomPart;
+    window.hqComplexRooms = hqComplexRooms;
+    window.hqSiteComplex = hqSiteComplex;
+    window.hqRefreshComplexLinks = hqRefreshComplexLinks;
+    window.hqLinkRoom = hqLinkRoom;
+    window.hqLinkDoors = hqLinkDoors;
+    window.hqWorldGraph = hqWorldGraph;
     window.hqStarChart = hqStarChart;
     window.doorSiteState = doorSiteState;
     window.hqKeys = hqKeys;

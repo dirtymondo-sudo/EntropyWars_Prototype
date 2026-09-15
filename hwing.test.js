@@ -99,8 +99,8 @@ test('the crossing: the EXIT at the end of the west leg walks into Room 90’s s
     assert.strictEqual(site.doors.length, 2, 'the way in and the back door');
     assert.ok(Math.abs(back.x) + 1.25 < site.shell.w / 2 && Math.abs(back.x) > 1.25 + 1.65, 'the back door fits the wall clear of the way in');
     assert.ok(HQ.sectors.quarantined.locked === true, 'Bay 6 stays sealed — H-Wing is the other way to Room 90 (C-12)');
-    /* only the Backrooms has a back door; a back door is a full box-room door row */
-    for (const [id, bd] of Object.entries(HQ.siteRooms.backDoors)) { assert.ok(HQ.siteRooms.built.includes(id), id + ' is built'); assert.ok(bd.id && bd.wall && bd.action && bd.action.room && bd.action.at, id + ': a door row'); }
+    /* a back door is a full box-room door row; since 9.2 (2026-09-15) a map may carry an ARRAY of them (the Haunted House complex) — one row stays legal */
+    for (const [id, bd] of Object.entries(HQ.siteRooms.backDoors)) { assert.ok(HQ.siteRooms.built.includes(id), id + ' is built'); for (const d of (Array.isArray(bd) ? bd : [bd])) assert.ok(d.id && d.wall && d.action && d.action.room && d.action.at, id + ': a door row'); }
     assert.match(TR, /a second door on the room \(H-WING, 2026-09-14 rev 4/, 'the setting keeps the back door’s lane clear');
     assert.match(TR, /if \(!d \|\| d\.id === 'egress' \|\| !d\.wall\) return;/);
 });

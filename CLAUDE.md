@@ -2878,6 +2878,41 @@ Shared `getCubeAttackDamage` preserves actual Cube damage order and RNG executio
 
 FINAL delivery: `ENTROPY_WARS_PHASE6_BEAM_ARENA_OBJECTIVES.zip`, containing all beam, Key, Cube and wipeout changes. R2: ai.js/battle.js/map.js/data.js; Render: index.html (`20260914-ai-beam-arena-objectives-01-cors`); remaining files: repository. Sync runtime/entry files too. AI stamp `v4.11-2026-09-14-arena-cube-priority`. This supersedes interim package scopes in earlier entries. No commit, push or deployment. Next: carrier denial, move-then-inspect, residual scenarios/timing and authorized observations; Phase 6 remains open.
 
+## THE COMPLEXES — THE HAUNTED HOUSE (HQ plan 9.2 stage 1) — 2026-09-15, local delivery
+A site that is SEVERAL ROOMS. The generated room (`hqSiteRoom`) stays the
+BOARD ROOM (console, battle marker, the way back to the bay); a COMPLEX is
+hand-authored box rooms in `DOOR_HQ.rooms` with ids `site_<mapId>_<part>`
+wearing `site: mapId` + `part: '<name>'` and NO `roomNo` (`hqRoomNo` reads
+the threshold's number through `site`; the register lists the site once;
+the renderer plate does the same), joined to the board room by rows in
+**`siteRooms.backDoors[mapId]`, now an ARRAY** (one row stays legal — the
+Backrooms keeps its single H-Wing row). The first: Room 13 —
+`site_prebuilt_haunted_hall` / `_upstairs` / `_attic` / `_cellar` (data.js,
+the block right before H-WING) behind THE FRONT DOOR on the board room's
+north wall at x −7.5 (west of the console at 0, clear of the signboard at
+x 5 and the corner mast). Reads (data.js, before the built-rooms loop; on
+`window`): `hqComplexRoomId(mapId, part)`, **`hqRoomSite(roomId)`** (= 9.4's
+WILD test — a room with a site is wild, the facility is safe by
+construction: never a flag on a facility room), `hqRoomPart`,
+`hqSiteComplex(mapId)` (board room + parts in sheet order),
+`hqComplexRooms()`, `hqRefreshComplexLinks()` (the parts take
+`hqLinkDoors` once at load, never accumulating). A `links` end may name
+`{ site, part, wall, x|z }` — `hqLinkRoom` resolves it ONLY to an authored
+room (never manufactured). RULES: a part's doors stay inside the site (a
+site ⇄ site seam is a `links` row, never a door row); a part never wears
+`fx: 'site'` (no board, no setting); the house lights itself (`strips:
+false`, `lights: []`, torches / candles / bulbs, ≤ `HQ_PROP_LIGHT_MAX`);
+**THE PARK RULE**: a `railing_1m` run in every room and `riser_*` tiers in
+every big one (a sloped ramp waits on 9.8's registry). The gallery (a
+two-floor room, `shell.gallery`) is stage 2 renderer work — upstairs is
+its own box room today. The wardrobe upstairs and the well in the cellar
+stand as props where 9.3's `way` seams will hang. `npm test` runs
+`hq-complex.test.js` (the sheet, the front door's lane, every door a pair
++ the complex connected, the production landing clear of every blocker,
+the park rule, the link hooks, the source sites). Unseen live (RULE #1c):
+the wallpaper tints, the `leaf: null` stair openings, the banister's
+facing, the boiler's glow in a 2.7 m cellar.
+
 ## THE LOBBY THEME + THE TITLE THEME'S LIMITS + concrete_floor rev (2026-09-15, local delivery)
 audio.js `doorLobby` = R2 `music/door_lobby.mp3` (the user's HQ track, MASTER
 B4; `_R2_MUSIC` / `_LOCAL_MUSIC` / `AUDIO_BASE_VOLUMES`, pause-menu name in

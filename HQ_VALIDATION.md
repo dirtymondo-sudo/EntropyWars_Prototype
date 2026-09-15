@@ -1,4 +1,39 @@
-# HQ World pilot — validation
+# HQ World — validation
+
+## 2026-09-15 — Phase 9.2 stage 1: THE HAUNTED HOUSE COMPLEX
+
+Baseline: repository main `a8fb08f` (carries the 9.3 pilot below).
+Status: implemented locally; no commit, push or deployment.
+
+Implemented: four hand-authored box rooms (`site_prebuilt_haunted_hall`,
+`_upstairs`, `_attic`, `_cellar`) behind a front door on the Haunted
+House board room's north wall (`siteRooms.backDoors.prebuilt_haunted`,
+an array); `hqComplexRoomId` / `hqRoomSite` / `hqRoomPart` /
+`hqSiteComplex` / `hqComplexRooms` / `hqRefreshComplexLinks`;
+`hqLinkRoom` resolves `{ site, part }` only to an authored room. No
+renderer, map.js, economy, battle-state or relay change; the two-floor
+gallery is not built (upstairs is a separate box room).
+
+Checks run: `hq-complex.test.js` — 7 tests, all pass (the sheet; the
+front door's lane against the console, the built-in signboard and the
+corner mast using the production `_hqBoxWall` + `_hqGoTo` landing; every
+door a reversible pair and the complex connected from the board room;
+every landing, spawn and native clear of catalogue rects and feet; the
+park rule; a probe link on a part appearing once across repeated
+refreshes and leaving nothing behind; source sites). hwing.test.js's
+back-door loop updated for the array shape. Full `npm test`: 1,292
+tests, 1,288 passed, 0 failed, 4 skipped (the same four).
+
+Limits: no browser run, GLB traversal or live walk (RULE #1c). The
+`leaf: null` stair openings, the terrain-sheet wall tints, the boiler's
+light in a low cellar and the ladder against the hatch are unseen. The
+blocker check in the test reads catalogue rects on face 0 / 180 and
+foot discs elsewhere, as the renderer does; it does not run the
+renderer's actual placement or the setting builder (a part has none).
+
+---
+
+# HQ World pilot — validation (2026-09-14 / 15)
 
 Baseline: `12f972aa9e733273aeaffcd2ce538ba117895a38` (repository main when work began).
 Status: implemented locally; no commit, push or deployment.
