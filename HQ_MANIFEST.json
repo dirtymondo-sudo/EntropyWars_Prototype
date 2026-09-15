@@ -1,0 +1,25 @@
+{
+  "baseline": "12f972aa9e733273aeaffcd2ce538ba117895a38",
+  "sha256": {
+    "data.js": "8a2e5fe58817785e23e52b33baf43a7f454a73c4684f1895404d1d12e58f08fc",
+    "index.html": "4749baed39fcf5c4963ebe0c9947de221efe8bf8f97fb532205ed00cc56d27f7",
+    "CLAUDE.md": "f45cb4030f25abc016a6a889182c04bbb582d9cb67c98c31ba66d3a3fdf36d85",
+    "DOOR_HQ_BUILD_PLAN.md": "c8a636ddac3629d02481e6e55e2868ed982e3abac0b04cffeede6d2a2751482e",
+    "DOOR_MASTER.md": "22f839151c2bfd26b3013b6d72a00e9eeb19ba07cbc288fd7e29bd1c02b47061",
+    "hq-world.test.js": "7d1a39da4da7423418209b8a2610e1eab216e578ea23056fbf7d7ac2a1dbe6f8",
+    "HQ_VALIDATION.md": "cc4718267f8684278d0bc9498dbd2a181e04b090c3f59ee2c5b968f06031c56c",
+    "HQ_FOCUSED.txt": "8c02d059c8a815e47e77a69f502864e3596e1f9fe37d81b9518626ac16c5aa97",
+    "HQ_FULL.txt": "dee18ce0eb880569e108d2750787a5799aa19bb6e9378db9ec9b5116f0a81d96",
+    "HQ_SYNTAX.txt": "3878bcc4358b9115f9bfd21f775eadd1fc4746ffcdc64a3ca12d8eeab1b1d198",
+    "UPLOAD_README.txt": "741666a61ea36bc28f86358c99b309ef1054bcc1108dd2015b389dad6a212ebb"
+  },
+  "baseline_sha256": {
+    "CLAUDE.md": "d94185095ce739c10bb1d7d892b00b4f3657409bb80a3d22438aab213d558bcf",
+    "DOOR_HQ_BUILD_PLAN.md": "fad7ea685162624bee28a486939803dacf27b6412f6312f0b8b27b4c64dd94eb",
+    "DOOR_MASTER.md": "e0e17e71e65e93102bf81e8cc51262994c759ad7849a84aa18a221fe65803936",
+    "data.js": "ced1f9a348c4246462334d129b52482067aed390abe5f76bd81c2ff5a1a32571",
+    "index.html": "7c2543bb2ea99baff155239574cbeb1c92fe865d9f6fa937051ca89622d4f3b6",
+    "map.js": "973497760f1fa823ead14eed9a95f79ce75be04cb2680aa7f5f6f49484550afc",
+    "three-renderer.js": "4b8b9c326690d6f5e361e2495b26daec0c2294199fe8ca25c63272183124fcfe"
+  }
+}

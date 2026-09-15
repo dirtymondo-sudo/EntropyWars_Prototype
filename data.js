@@ -18818,6 +18818,16 @@ const DOOR_HQ = {
        stars / nebula / fog / far roster `scenery`) drawn on the battle's
        own firmament dome, `mood.night` picks day or night, and the four
        `lights` become lamp MASTS on the walkway corners. */
+    /* Phase 9.3 pilot: ordinary, reversible doors between existing board
+       rooms. Move the Derelict ends to its airlock when that room exists. */
+    links: [
+        { id: 'moon_derelict', route: 'lunar', leaf: 'leaf_bulkhead',
+          a: { site: 'prebuilt_moon', wall: 'n', x: -5 },
+          b: { site: 'prebuilt_derelict', wall: 'n', x: -6 } },
+        { id: 'derelict_saturn', route: 'lunar', leaf: 'leaf_bulkhead',
+          a: { site: 'prebuilt_derelict', wall: 'n', x: -1 },
+          b: { site: 'prebuilt_saturn', wall: 'n', x: -5 } },
+    ],
     siteRooms: {
         /* BACK DOORS (H-WING, 2026-09-14 rev 4): a second door on a site room,
            appended by hqSiteRoom after the way in. The Backrooms is what lies
@@ -24895,7 +24905,10 @@ function hqSiteRoom(mapId) {
     }];
     /* a BACK DOOR (H-WING, 2026-09-14 rev 4): the site's second way out, from the sheet */
     const BD = (SR.backDoors || {})[id];
-    if (BD && BD.id && BD.wall && BD.action) doors.push(Object.assign({}, BD));
+    (Array.isArray(BD) ? BD : BD ? [BD] : []).forEach(d => {
+        if (d && d.id && d.wall && d.action) doors.push(Object.assign({}, d, { action: Object.assign({}, d.action) }));
+    });
+    doors.push(...hqLinkDoors(hqSiteRoomId(id)));
     /* the CROSSING console's wall: the west wall at the tanker desk by
        default (the Training Room's RANGE console pattern); a shell whose
        setting fills a wall names another with `console: { wall, at }` —
@@ -25011,6 +25024,62 @@ function hqSiteRoom(mapId) {
         lines: FL.lines || ['The board is the board. The room is a formality.'],
         spawn: { x: 0, z: half - 1.6, face: 0 },
     };
+}
+/* Resolve explicit room endpoints or generated board rooms without
+   manufacturing a destination for an unbuilt complex part. */
+function hqLinkRoom(end) {
+    if (!end) return null;
+    if (end.room) return DOOR_HQ.rooms[end.room] ? end.room : null;
+    if (!end.site || end.part) return null; // parts must name their built room explicitly
+    const id = hqSiteId(end.site);
+    return ((DOOR_HQ.siteRooms || {}).built || []).includes(id) && hqSectorOfMap(id) ? hqSiteRoomId(id) : null;
+}
+function hqLinkDoors(roomId) {
+    const doors = [];
+    (DOOR_HQ.links || []).forEach(link => {
+        if (!link || !/^[a-z0-9_]+$/.test(link.id || '')) return;
+        const a = hqLinkRoom(link.a), b = hqLinkRoom(link.b);
+        const cat = DOOR_HQ.catalogue[link.leaf];
+        // Fail closed for unbuilt endpoints and unsupported entryway kinds.
+        if (!a || !b || a === b || !cat || !cat.leaf || link.way) return;
+        if (![link.a, link.b].every(e => ['n', 's', 'e', 'w'].includes(e.wall) &&
+            Number.isFinite(e[(e.wall === 'n' || e.wall === 's') ? 'x' : 'z']))) return;
+        const end = roomId === a ? link.a : roomId === b ? link.b : null;
+        if (!end || !['n', 's', 'e', 'w'].includes(end.wall)) return;
+        const alongKey = (end.wall === 'n' || end.wall === 's') ? 'x' : 'z';
+        if (!Number.isFinite(end[alongKey])) return;
+        const other = roomId === a ? link.b : link.a, to = roomId === a ? b : a;
+        const site = other.site || (DOOR_HQ.rooms[to] || {}).site;
+        const meta = (typeof EW_MAP_META !== 'undefined' ? EW_MAP_META : []).find(m => m.id === hqSiteId(site));
+        const d = { id: 'link_' + link.id, link: link.id, wall: end.wall,
+            leaf: link.leaf, wide: !!cat.wide,
+            label: ((meta && meta.label) || (DOOR_HQ.rooms[to] || {}).label || to).toUpperCase(),
+            sub: 'WALK THROUGH', action: { room: to, at: 'link_' + link.id } };
+        d[alongKey] = end[alongKey];
+        // Link gates are independent of the destination's sector gate.
+        if (link.gate) {
+            if (link.gate.minClearance != null) d.minClearance = link.gate.minClearance;
+            if (link.gate.requiresKeys != null) d.requiresKeys = link.gate.requiresKeys;
+        }
+        doors.push(d);
+    });
+    return doors;
+}
+function hqWorldGraph() {
+    const rooms = DOOR_HQ.rooms || {};
+    const nodes = Object.keys(rooms).map(id => ({ id: id, label: rooms[id].label, site: rooms[id].site || null }));
+    const edges = [];
+    Object.keys(rooms).forEach(id => (rooms[id].doors || []).forEach(d => {
+        const act = d.action || {};
+        let to = act.room, at = act.at || null;
+        if (act.sector) { to = hqBayId(act.sector); at = act.at || hqBayEntry(act.sector); }
+        if (act.mission && ((DOOR_HQ.siteRooms || {}).built || []).includes(hqSiteId(act.mission))) {
+            to = hqSiteRoomId(act.mission); at = 'egress';
+        }
+        if (to) edges.push({ from: id, door: d.id, to: to, at: at, link: d.link || null,
+            minClearance: d.minClearance || 0, requiresKeys: d.requiresKeys || 0 });
+    }));
+    return { nodes: nodes, edges: edges };
 }
 ((DOOR_HQ.siteRooms || {}).built || []).forEach(id => { const r = hqSiteRoom(id); if (r) DOOR_HQ.rooms[hqSiteRoomId(id)] = r; });
 /* ── THE ROOM REGISTER (HQ plan 7.1, 2026-09-07) ───────────────────────

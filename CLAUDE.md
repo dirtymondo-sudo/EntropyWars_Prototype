@@ -134,7 +134,7 @@ That's why online kept drifting behind VS-CPU. So, for EVERY change:
   and the reference-art protocol (`docs/door-hq/ref/` in the repo —
   Claude can view images committed there; production backgrounds go to R2
   `Assets/door/hq/`). Append to its §9 build log when you touch the HQ.
-- **PHASE 9 · THE WORLD (planned 2026-09-15, nothing shipped)** — the
+- **PHASE 9 · THE WORLD (9.3 Lunar pilot implemented locally; not uploaded)** — the
   user's brief for finds + a hundred TAPES, sites as whole BUILDINGS
   (complexes), the WORLD GRAPH of site ⇄ site doors (+ suites / a third
   ring for the crowded hall), the roaming ENCOUNTER that makes the room
@@ -146,6 +146,15 @@ That's why online kept drifting behind VS-CPU. So, for EVERY change:
   §4 Phase 9 (data shapes, stages, tests) and DOOR_MASTER Part C rows
   25–31 (the user's decisions) before building any of it; the REC order
   is 9.3 → 9.2 → 9.1 → 9.5 → 9.4.
+- **Phase 9.3 local pilot (2026-09-14 local / 2026-09-15 UTC):**
+  `DOOR_HQ.links` generates Moon ⇄ Derelict ⇄ Saturn ordinary door pairs
+  through `hqLinkDoors` in `hqSiteRoom`. `backDoors` accepts one row or
+  an array, copying actions. The spaceship ends are in its existing board
+  room until an airlock exists. North/south endpoints use x; east/west
+  use z. `hqWorldGraph()` reports registered rooms and directed door
+  actions; it is not yet a directory UI or complete lift/overlay graph.
+  See the Phase 9 implementation review before continuing; old cost/count
+  claims are superseded. No new plot text, economy or online battle state.
 - The HQ SHIPPED 2026-09-03 (three-renderer.js `ThreeRenderer.hq`, data.js
   `DOOR_HQ`, map.js `_hqEnter`) and since Phase 1.3 the main menu's **Play
   enters it** (`_goToPlayHub`); every screen's Back / the result overlay
