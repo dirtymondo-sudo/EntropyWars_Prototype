@@ -38410,6 +38410,39 @@ const ThreeRenderer = (function () {
             }
             return g;
         },
+        /* THE MOTTO PLAQUE (the Bureau of Continuity, HQ plan 4.4,
+           2026-09-15): the reality barometer — a walnut board with a brass
+           plate engraved with the CURRENT form of the motto (data.js
+           hqMottoBarometer, read at build — the room is rebuilt on every
+           entry, so the plaque re-reads the band each time you walk in)
+           and the department's line under it; the texture is cached per
+           form (`hq_motto_plaque_<idx>`). Wall proc, 1.5 × 0.6, front +z. */
+        motto_plaque: function (U) {
+            var g = new THREE.Group();
+            var W = 1.5, H = 0.6, D = 0.05;
+            var walnut = _hqMat('wood', 2, 1, { color: 0x4e3320, shininess: 45, specular: 0x554433 });
+            var brass = _hqMat(null, 1, 1, { color: 0xc9a44a, shininess: 120, specular: 0xfff0c0, emissive: 0x2a1e06 });
+            var board = _hqBox(W, H, D, walnut); board.position.set(0, (H / 2) * U, (D / 2) * U); g.add(board);
+            var bar = null, idx = 1;
+            try {
+                var prof = (typeof window !== 'undefined' && window.ProfileSystem && window.ProfileSystem.getActiveProfile) ? window.ProfileSystem.getActiveProfile() : null;
+                bar = (typeof window !== 'undefined' && typeof window.hqMottoBarometer === 'function') ? window.hqMottoBarometer(prof, { force: window.EW_HQ_MOTTO }) : null;
+                if (bar) idx = bar.idx | 0;
+            } catch (e) { bar = null; }
+            var text = bar ? bar.form : 'DON’T. OPEN. OBSERVE. REPORT.';
+            var tex = (typeof _hzTextTex === 'function') ? _hzTextTex('hq_motto_plaque_' + idx, ['DEPARTMENT OF ORTHOGONAL REALITIES', text, 'THE OFFICIAL MOTTO · IT HAS ALWAYS READ THIS'], { w: 1024, h: 384, bg: '#b8933f', color: '#2c1d08', border: '#7a5a1c', pad: 0.12, sizes: [40, 110, 30], font: 'Georgia, "Times New Roman", serif' }) : null;
+            var plate = new THREE.Mesh(new THREE.PlaneGeometry((W - 0.16) * U, (H - 0.16) * U), tex ? new THREE.MeshLambertMaterial({ map: tex, emissive: 0x3a2a08, emissiveIntensity: 0.25 }) : brass);
+            plate.position.set(0, (H / 2) * U, (D + 0.004) * U); g.add(plate);
+            var screw = _hqMat(null, 1, 1, { color: 0x8a7a58, shininess: 60 });
+            [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (c) {
+                var s = new THREE.Mesh(new THREE.CylinderGeometry(0.012 * U, 0.012 * U, 0.01 * U, 10), screw);
+                s.rotation.x = Math.PI / 2; s.position.set(c[0] * (W / 2 - 0.11) * U, (H / 2 + c[1] * (H / 2 - 0.11)) * U, (D + 0.008) * U); g.add(s);
+            });
+            /* the little lamp over it — the Bureau keeps the plaque lit; the reading is a matter of record */
+            var hood = _hqBox(0.5, 0.05, 0.12, _hqMat(null, 1, 1, { color: 0x2a2a30, shininess: 60 })); hood.position.set(0, (H + 0.08) * U, 0.08 * U); g.add(hood);
+            var glow = new THREE.Mesh(new THREE.PlaneGeometry(0.44 * U, 0.02 * U), _hqBasic(0xfff1c8)); glow.position.set(0, (H + 0.055) * U, 0.08 * U); glow.rotation.x = Math.PI / 2; g.add(glow);
+            return g;
+        },
         /* THE WINDOW THAT SHOULD NOT EXIST (4C): a walnut frame, a lit pane
            (a pale sky with a horizon line — the building is round; this is
            the view anyway) and venetian blinds half drawn. Wall proc,

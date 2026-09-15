@@ -328,6 +328,9 @@
                     /* THE PUNCH CLOCK (Room 247, plan 7.9): the front door
                        punches you in once a day — the login streak */
                     try { if (typeof window.hqPunchIn === 'function') { const pr = window.hqPunchIn(p); if (pr && pr.punched) window._hqLastPunch = pr; } } catch (e) {}
+                    /* THE MOTTO PLAQUE (the Bureau, plan 4.4): file today's reading of the barometer — a
+                       wording it did not read last time goes on the officer's REMEMBERED list (A7) */
+                    try { if (typeof window.hqMottoObserve === 'function') { const mr = window.hqMottoObserve(p, { force: _hqMottoForce() }); if (mr && mr.changed) window._hqLastMottoChange = mr; } } catch (e) {}
                 }
                 PS.saveProfile(idx, p);
             } catch (e) {}
@@ -520,6 +523,8 @@
             if (load) { load.style.display = ''; load.classList.remove('done'); load.classList.toggle('walk', walking); }
             const note = _hqEl('hqLoadNote');
             if (note) note.textContent = walking ? ('admitting you to ' + String(roomDef.label || roomId).toLowerCase() + '…') : (returning ? 're-admitting… your corners are where you left them' : 'verifying your corners…');
+            /* the motto on the loading card (plan 4.4): the barometer's current form — a poster, not the plaque */
+            try { const mo = _hqEl('hqLoadMotto'); if (mo) { const bar = (typeof window.hqMottoBarometer === 'function') ? window.hqMottoBarometer(profile, { force: _hqMottoForce() }) : null; mo.textContent = bar ? bar.form : ''; mo.style.display = bar ? '' : 'none'; } } catch (e) {}
             const debug = /[?&]hqdebug\b/.test(location.search) || !!window.EW_HQ_DEBUG;
             const dbg = _hqEl('hqDebug');
             if (dbg) dbg.style.display = debug ? '' : 'none';
@@ -661,6 +666,35 @@
         /* dev / story hook: promote (or demote) the active profile and let the
            building react on the next entry (re-enters the egress when it is
            open). window._doorPromote(3) → KNOCKER. */
+        /* THE MOTTO (the Bureau of Continuity, plan 4.4): the dev override —
+           `?motto=0|1|2` or `window.EW_HQ_MOTTO` — read by every barometer
+           site (the plaque proc reads window.EW_HQ_MOTTO itself) */
+        function _hqMottoForce() {
+            try {
+                if (window.EW_HQ_MOTTO != null && window.EW_HQ_MOTTO !== '') return window.EW_HQ_MOTTO;
+                const q = /[?&]motto=([^&]+)/.exec(location.search);
+                return q ? decodeURIComponent(q[1]) : null;
+            } catch (e) { return null; }
+        }
+        try { const _mq = _hqMottoForce(); if (_mq != null && window.EW_HQ_MOTTO == null) window.EW_HQ_MOTTO = _mq; } catch (e) {}
+        /* story hook: set the motto's form on the active profile (0 early ·
+           1 middle · 2 crisis · null = follow the band) and let the building
+           re-read the plaque on the next entry. window._doorSetMotto(2). */
+        window._doorSetMotto = function (form) {
+            try {
+                const PS = window.ProfileSystem;
+                const idx = PS.getActiveProfileIndex();
+                const p = PS.loadProfile(idx);
+                if (!p) return false;
+                if (!p.door || typeof p.door !== 'object') p.door = {};
+                const n = (form == null || form === '') ? null : Math.max(0, Math.min((window.HQ_MOTTO_FORMS || []).length - 1, form | 0));
+                if (n == null) delete p.door.mottoForm; else p.door.mottoForm = n;
+                PS.saveProfile(idx, p);
+                console.log('[DOOR] motto form ' + (n == null ? 'follows the band' : 'set to ' + n + ' · ' + window.HQ_MOTTO_FORMS[n]));
+                if (state.gameState === GS.HQ && !_hqSuspended) { window._hqLeave(); window._hqEnter({ room: _hqCurRoom || 'central_egress', quiet: true, from: 'return' }); }
+                return n;
+            } catch (e) { console.warn('[DOOR] set motto failed', e); return false; }
+        };
         window._doorPromote = function (level) {
             try {
                 const PS = window.ProfileSystem;
@@ -1468,6 +1502,15 @@
                 else html += '<p class="hq-panel-note">CROSS ▸ Δ = Arena, 4v4 on the site’s 8×8 board, the CPU fielding the entities on file for it. DEEP = the full map. Each ☐ is a win condition still to be filed for the threshold; all three turn it green.</p>';
             } else {
                 if (d.desc) html += `<p class="hq-panel-desc">${_hqEsc(d.desc)}</p>`;
+                /* THE BUREAU OF CONTINUITY (plan 4.4, 2026-09-15): the canon notices are ON THE DOOR — the motto's current
+                   form and the latest notices read from the hall at any rank; the room behind it is GATEKEEPER's */
+                if (d.id === 'continuity' && typeof window.hqMottoBarometer === 'function') {
+                    const bar = window.hqMottoBarometer(profile, { force: _hqMottoForce() });
+                    const list = (typeof window.hqCanonNotices === 'function') ? window.hqCanonNotices(profile, { force: _hqMottoForce() }) : [];
+                    html += `<div class="hq-rows"><div class="hq-row hq-row-tray"><b>THE MOTTO</b><span>${bar.changed ? 'REVISED SINCE YOUR LAST VISIT · IT HAS ALWAYS READ THIS' : 'THE PLAQUE INSIDE · ' + _hqEsc(bar.band) + ' FORM'}</span><i class="hq-lamp-chip st-${_hqEsc(bar.tone)}">${_hqEsc(bar.form)}</i></div>`;
+                    list.filter(n => n.stamp === 'RETCON').concat(list.filter(n => n.stamp !== 'RETCON')).slice(0, 3).forEach(n => { html += `<div class="hq-row hq-row-tray"><b>${_hqEsc(n.title)}</b><span>${_hqEsc(n.body)}</span><i class="hq-lamp-chip st-${n.stamp === 'RETCON' ? 'codered' : 'open'}">${_hqEsc(n.stamp)}</i></div>`; });
+                    html += '</div>';
+                }
                 /* the elevator's floor panel (HQ plan 7.1): one line, and there is no 13 */
                 if (Array.isArray(d.floors) && d.floors.length) html += `<p class="hq-panel-note">FLOOR PANEL · ${d.floors.map(f => _hqEsc(f)).join(' · ')}. There is no 13. Room 13 is filed in Bay 1, not on a floor.</p>`;
                 const locked = st === 'clearance';
@@ -1670,6 +1713,36 @@
                     + `<div class="hq-row hq-row-tray"><b>THE MOTTO</b><span>AS TAUGHT AT ORIENTATION · TODAY IS ${_hqEsc(ci.canon)}</span><i class="hq-lamp-chip st-open">${_hqEsc(ci.motto)}</i></div></div>`;
                 html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">' + (ci && ci.onFile ? 'PROCEED' : 'WAIT') + '</button></div>';
                 html += '<p class="hq-panel-note">' + _hqEsc(ci ? ci.note : 'Four corners, ninety degrees. Proceed.') + '</p>';
+                return html;
+            }
+            /* THE MOTTO PLAQUE (the Bureau of Continuity, plan 4.4, 2026-09-15): the reality barometer — data.js hqMottoBarometer is the one read */
+            if (c.id === 'plaque') {
+                const bar = (typeof window.hqMottoBarometer === 'function') ? window.hqMottoBarometer(_hqProfile(), { force: _hqMottoForce() }) : null;
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'The official motto, engraved in brass.') + '</p>';
+                if (bar) {
+                    html += `<div class="hq-site"><span class="hq-row-stamp tone-${bar.changed ? 'deny' : 'admit'}">${bar.changed ? 'REVISED' : 'ON RECORD'}</span><span class="hq-site-kv"><b>THE PLAQUE READS</b> ${_hqEsc(bar.form)}</span><span class="hq-site-kv"><b>THE BAND</b> ${_hqEsc(bar.band)} · ACT ${_hqEsc(bar.act)} · CLEARANCE L${bar.level} · ${_hqEsc(bar.title)}${bar.source === 'story' ? ' · SET BY THE BUREAU' : bar.source === 'forced' ? ' · DEV OVERRIDE' : ''}</span></div>`;
+                    html += `<div class="hq-chips"><span>THE THREE FORMS · ONE IS CURRENT · THE OTHERS NEVER WERE</span>${bar.forms.map((f, i) => `<i class="hq-chip ${i === bar.idx ? '' : 'dim'}">${_hqEsc(f)}</i>`).join('')}</div>`;
+                    html += '<div class="hq-rows">'
+                        + `<div class="hq-row hq-row-tray"><b>READING</b><span>${bar.changed ? 'IT READ ' + _hqEsc(bar.previous) + ' WHEN YOU WERE LAST HERE' : (bar.since ? 'ON RECORD SINCE ' + _hqEsc(bar.since) : 'FIRST READING')}</span><i class="hq-lamp-chip st-${_hqEsc(bar.tone)}">${_hqEsc(bar.reading)}</i></div>`
+                        + `<div class="hq-row hq-row-tray"><b>AS TAUGHT AT ORIENTATION</b><span>${bar.drift ? 'THE PLAQUE DISAGREES WITH THE FORM. THE FORM IS IN ERROR.' : 'THE PLAQUE AGREES WITH THE FORM. FOR NOW.'}</span><i class="hq-lamp-chip st-${bar.drift ? 'unstable' : 'stabilized'}">${_hqEsc(bar.taught)}</i></div>`;
+                    bar.remembered.forEach(r => { html += `<div class="hq-row hq-row-tray"><b>YOU REMEMBER</b><span>UNTIL ${_hqEsc(r.until || '—')} · NOBODY ELSE DOES</span><i class="hq-lamp-chip st-off">${_hqEsc(r.text)}</i></div>`; });
+                    html += '</div>';
+                }
+                html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">' + (bar && bar.changed ? 'IT HAS ALWAYS READ THIS' : 'NOTED') + '</button></div>';
+                html += '<p class="hq-panel-note">' + _hqEsc(bar ? bar.note : 'The plaque has always read this.') + '</p>';
+                return html;
+            }
+            /* CANON NOTICES (the Bureau): every retcon the building has made — data.js hqCanonNotices, generated, never stored */
+            if (c.id === 'notices') {
+                const list = (typeof window.hqCanonNotices === 'function') ? window.hqCanonNotices(_hqProfile(), { force: _hqMottoForce() }) : [];
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'The board.') + '</p>';
+                if (list.length) {
+                    html += '<div class="hq-rows">';
+                    list.forEach(n => { html += `<div class="hq-row hq-row-tray"><b>${_hqEsc(n.title)}</b><span>${_hqEsc(n.body)}</span><i class="hq-lamp-chip st-${n.stamp === 'RETCON' ? 'codered' : n.stamp === 'NOTICE' ? 'unstable' : 'open'}">${_hqEsc(n.stamp)}</i></div>`; });
+                    html += '</div>';
+                    html += `<p class="hq-panel-note">${list.length} NOTICE${list.length === 1 ? '' : 'S'} · DATED ${_hqEsc(list[0].date)} · CANON DATE ${_hqEsc(list[0].canon)} · EACH HAS ALWAYS BEEN POSTED.</p>`;
+                }
+                html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">SO NOTED</button></div>';
                 return html;
             }
             /* THE HOLD (Room 5150): a panel and the condition line off the chart; nothing else */

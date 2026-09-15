@@ -2447,6 +2447,46 @@ the source sites. `HQ_LOST_CARD_FEE` (86) is never charged — a number the
 sheet prints, not an economy hook.
 
 
+## THE BUREAU OF CONTINUITY + THE MOTTO PLAQUE (the reality barometer, HQ plan 4.4) — added 2026-09-15
+`DOOR_HQ.rooms.continuity` (data.js) is THE CANON OFFICE, a `kind: 'box'`
+room behind the mezzanine's house door at 315° (`central_egress.doors`
+id `continuity`, `leaf_suburban_house`; the gate — GATEKEEPER + 24 Keys —
+stays ON THE DOOR, and so does the number `№ — CONTESTED`: the room wears
+no `roomNo`, `hqRoomNo('continuity')` reads the door's through). Two
+by-id panels (`action: {}` → map.js `_hqCounterPanelHtml`): `plaque` (THE
+MOTTO PLAQUE) and `notices` (CANON NOTICES). **THE BAROMETER** (data.js,
+right after `hqCornerInspection`; all on `window`): `HQ_MOTTO_BANDS` maps
+the CHAPTER BAND to a form of `HQ_MOTTO_FORMS` — until the story track
+(4.1) lands the band is the clearance: L1–L2 → 0 DO OBSERVE OTHER
+REALITIES · L3–L4 → 1 DON'T. OPEN. OBSERVE. REPORT. (the one orientation
+taught; `hqCornerInspection` still prints it) · L5–L6 → 2 DO OPEN OUR
+REALITY (MASTER A7). **`hqMottoBarometer(profile, opts)`** is the ONE read
+(`{ idx, form, forms, band, act, tone, level, title, source, taught,
+drift, changed, previous, remembered, reading, note }`); `profile.door.
+mottoForm` (the story hook — map.js `window._doorSetMotto(n)`, null =
+follow the band) beats the band, `opts.force` (dev: `?motto=n` /
+`window.EW_HQ_MOTTO`, read through map.js `_hqMottoForce()`) beats both.
+**`hqMottoObserve(profile)`** is the ONE write — map.js `_hqRecordVisit
+(null)` calls it on every fresh arrival and files today's reading in
+`door.hq.motto = { form, since, remembered: [{ form, until }] }`: a
+wording the plaque no longer reads goes on the REMEMBERED list (one per
+wording, never the current one) — the Mandela effect is the player's
+alone. **`hqCanonNotices(profile)`** = the Bureau's board, GENERATED
+(never stored): the motto (STANDING, or RETCON when it changed since your
+last visit), one CORRECTION per remembered wording, the WORDING notice
+when the story set the form, the ladder, the floors (no 13), Bay 6, the
+front door, H-Wing, today's cleared Code Red, Room 86 after hours.
+Readers: the plaque proc `motto_plaque` (three-renderer.js, after
+`wall_plaques`; reads the barometer AT BUILD — a room is rebuilt per
+entry — texture cached per form as `hq_motto_plaque_<idx>`), the two
+panels, **the Bureau's DOOR panel in the hall** (the motto + the top
+three notices, readable at ANY rank — "canon notices on the Bureau's
+door"), and the LOADING CARD (`#hqLoadMotto`, `.hq-load-motto` — A7:
+posters, plaques, loading screens). Viewer-local, nothing relayed (RULE
+#2). doorhq.test.js guards the room, the helpers and the source sites;
+hq-floors.test.js dropped its "the Bureau's door waits" exception. The
+notices' copy is Claude's DRAFT (A15 — the user rewrites).
+
 ## THE FOURIER FOYER (the front door, HQ plan 7.4's last row) — added 2026-09-15
 `DOOR_HQ.rooms.foyer` (data.js) is THE FOURIER FOYER, a `kind: 'box'`
 vestibule SOUTH of the hall behind the ground ring's revolving door at

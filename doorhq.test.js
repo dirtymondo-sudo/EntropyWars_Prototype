@@ -660,6 +660,103 @@ test('THE FOURIER FOYER: the source sites — the arrival room, the street door�
     assert.match(tr, /hq_door_seal[\s\S]{0,3000}?DEPARTMENT OF ORTHOGONAL REALITIES[\s\S]{0,400}?EVERY CROSSING IS INSPECTED/, 'the seal wears the department and the slogan');
 });
 
+/* ── THE BUREAU OF CONTINUITY + THE MOTTO PLAQUE (HQ plan 4.4, 2026-09-15) ───── */
+test('THE BUREAU OF CONTINUITY: a box room behind the mezzanine door at 315° — the gate stays on the door, the number stays CONTESTED, the plaque, the notices, the clock that is right', () => {
+    const B = HQ.rooms.continuity;
+    assert.ok(B && B.kind === 'box' && B.roomNo == null, 'rooms.continuity is a box room; the number is the DOOR’s (№ — CONTESTED), the room wears none');
+    assert.ok(/CONTESTED/.test(D.hqRoomNo('continuity')), 'hqRoomNo reads the door’s CONTESTED through');
+    const eg = ROOM.doors.find(d => d.id === 'continuity');
+    assert.ok(eg && eg.deg === 315 && eg.level === 1 && eg.leaf === 'leaf_suburban_house' && eg.action.room === 'continuity' && eg.action.at === 'egress', 'the mezzanine door at 315° walks into the Bureau at its way out');
+    assert.ok(eg.minClearance === 5 && eg.requiresKeys === 24, 'GATEKEEPER + 24 Keys — the gate is the door’s, unchanged');
+    assert.strictEqual(D.doorSiteState(eg, null), 'clearance', 'a recruit reads the notices on the door and does not go in');
+    assert.strictEqual(D.doorSiteState(eg, { door: { clearance: 5, hq: { keys: 24 } } }), 'open', 'a GATEKEEPER with the Keys goes in');
+    const out = B.doors.find(d => d.id === 'egress');
+    assert.ok(out && out.wall === 'w' && out.leaf === eg.leaf && !out.minClearance && !out.requiresKeys && out.action.room === 'central_egress' && out.action.at === 'continuity', 'the way out is the same house door, ungated from inside, and lands at the mezzanine door');
+    assert.strictEqual(B.doors.length, 1, 'one door: the Bureau is a dead end, as it should be');
+    const pl = B.counters.find(c => c.id === 'plaque'), no = B.counters.find(c => c.id === 'notices');
+    assert.ok(pl && pl.action && !pl.action.fn && !pl.action.overlay && !pl.action.room && pl.desc && pl.verb, 'THE MOTTO PLAQUE is a by-id panel with a desc');
+    assert.ok(no && no.action && !no.action.fn && !no.action.overlay && !no.action.room && no.desc && no.verb, 'CANON NOTICES is a by-id panel with a desc');
+    const plaque = B.props.find(p => p.key === 'motto_plaque');
+    assert.ok(plaque && plaque.wall === 'n' && Math.abs(plaque.x - pl.x) < 0.3 && Math.abs(pl.z + B.shell.d / 2) < 0.6, 'the plaque counter stands at the plaque on the north wall');
+    assert.strictEqual(B.props.filter(p => p.key === 'notice_board' && p.wall === 'e').length, 2, 'two boards of notices on the east wall, where the NOTICES counter faces');
+    assert.ok(no.face === 270 && Math.abs(no.x - B.shell.w / 2) < 0.8, 'the notices counter faces the east wall');
+    for (const key of ['motto_plaque', 'notice_board', 'filing_cabinet', 'tanker_desk', 'crt_terminal', 'wall_clock', 'computer_chair_grey', 'exit_sign', 'security_camera', 'fluorescent', 'nameplate']) assert.ok(B.props.some(p => p.key === key), 'the Bureau has its ' + key);
+    assert.strictEqual(B.props.filter(p => p.key === 'wall_clock').length, 1, 'ONE clock — the one that is right');
+    const c = HQ.catalogue.motto_plaque;
+    assert.ok(c && c.proc === 'motto_plaque' && c.wall && c.mount >= 1.3 && c.h > 0.4, 'motto_plaque is a wall proc at eye height');
+    assert.deepStrictEqual(boxPropProblems('continuity', B), []);
+    assert.ok(B.spawn && Math.abs(B.spawn.x + B.shell.w / 2) < 1.2 && B.spawn.face === 90, 'you arrive just inside the house door');
+    assert.ok(B.agents.length >= 2 && B.lines.length >= 3, 'the Canon Officer, the clerk, the overheard lines');
+    assert.ok(!D.hqRoomRegister().some(r => r.id === 'continuity' && r.kind === 'room'), 'the register lists the door’s CONTESTED, not a second entry for the room');
+});
+
+test('THE MOTTO PLAQUE: hqMottoBarometer reads the chapter band (the clearance until 4.1), the story hook and the dev override win over it, hqMottoObserve files what you remember', () => {
+    assert.strictEqual(typeof D.hqMottoBarometer, 'function');
+    assert.strictEqual(typeof D.hqMottoObserve, 'function');
+    assert.strictEqual(typeof D.hqCanonNotices, 'function');
+    assert.strictEqual(D.HQ_MOTTO_BANDS.length, 3, 'three bands for three forms');
+    assert.strictEqual(D.HQ_MOTTO_BANDS.map(b => b.levels.join('')).join(','), '12,34,56', 'L1–2 early · L3–4 middle · L5–6 crisis');
+    /* the band */
+    const at = lv => D.hqMottoBarometer({ door: { clearance: lv } });
+    assert.ok(at(1).idx === 0 && at(2).idx === 0 && at(1).band === 'EARLY' && at(1).act === 'I' && at(1).form === D.HQ_MOTTO_FORMS[0], 'a recruit’s plaque reads the early form');
+    assert.ok(at(3).idx === 1 && at(4).idx === 1 && at(3).band === 'MIDDLE' && !at(3).drift, 'KNOCKER / KEYHOLDER: the middle form, the one orientation taught — no drift');
+    assert.ok(at(5).idx === 2 && at(6).idx === 2 && at(5).band === 'CRISIS' && at(5).act === 'III' && at(5).drift, 'GATEKEEPER and up: DO OPEN OUR REALITY');
+    assert.strictEqual(D.hqMottoBarometer(null).idx, 0, 'no profile = L1 = the early form');
+    assert.strictEqual(at(1).taught, D.HQ_MOTTO_FORMS[1], 'what orientation taught is always the middle form (hqCornerInspection agrees)');
+    assert.strictEqual(D.hqCornerInspection(null).motto, at(1).taught);
+    /* the story hook and the dev override */
+    assert.ok(D.hqMottoBarometer({ door: { clearance: 1, mottoForm: 2 } }).idx === 2 && D.hqMottoBarometer({ door: { clearance: 1, mottoForm: 2 } }).source === 'story', 'door.mottoForm sets the form (the story hook)');
+    assert.ok(D.hqMottoBarometer({ door: { clearance: 6, mottoForm: 1 } }, { force: 0 }).idx === 0 && D.hqMottoBarometer(null, { force: '2' }).idx === 2 && D.hqMottoBarometer(null, { force: 'x' }).idx === 0, 'opts.force wins over both and ignores junk');
+    assert.strictEqual(D.hqMottoBarometer(null, { force: 'DO OPEN OUR REALITY' }).idx, 2, 'a form’s own words select it');
+    /* the reading: first visit files it; a promotion changes it and the old one is REMEMBERED */
+    const p = { door: { clearance: 1 } };
+    let r = D.hqMottoObserve(p, { date: '2026-09-15' });
+    assert.ok(!r.changed && p.door.hq.motto.form === 0 && p.door.hq.motto.since === '2026-09-15' && p.door.hq.motto.remembered.length === 0, 'the first reading is filed, nothing remembered');
+    assert.strictEqual(D.hqMottoBarometer(p).reading, 'STEADY');
+    assert.ok(!D.hqMottoObserve(p, { date: '2026-09-16' }).changed, 'the same form the next day: nothing changes');
+    p.door.clearance = 3;
+    assert.strictEqual(D.hqMottoBarometer(p).reading, 'CHANGED', 'before the visit is filed the barometer says the plaque changed since you were last here');
+    assert.strictEqual(D.hqMottoBarometer(p).previous, D.HQ_MOTTO_FORMS[0]);
+    r = D.hqMottoObserve(p, { date: '2026-09-17' });
+    assert.ok(r.changed && r.previous === D.HQ_MOTTO_FORMS[0] && p.door.hq.motto.form === 1 && p.door.hq.motto.since === '2026-09-17', 'the promotion re-reads the plaque');
+    assert.ok(p.door.hq.motto.remembered.length === 1 && p.door.hq.motto.remembered[0].form === 0 && p.door.hq.motto.remembered[0].until === '2026-09-17', 'the old wording is what you remember');
+    const b = D.hqMottoBarometer(p);
+    assert.ok(b.reading === 'REVISED' && b.remembered.length === 1 && b.remembered[0].text === D.HQ_MOTTO_FORMS[0] && !b.changed, 'after filing: REVISED, one wording remembered, nothing pending');
+    p.door.clearance = 5; D.hqMottoObserve(p, { date: '2026-09-18' });
+    p.door.clearance = 1; D.hqMottoObserve(p, { date: '2026-09-19' });
+    assert.ok(p.door.hq.motto.remembered.length === 2 && p.door.hq.motto.form === 0, 'a demotion re-reads too; one memory per wording (the early form is current again, not remembered)');
+    assert.ok(!D.hqMottoObserve(null).changed, 'no profile: nothing to file');
+    /* the notices: generated, never stored; the retcons first when asked; every row dated and stamped */
+    const n0 = D.hqCanonNotices({ door: { clearance: 1 } }, { date: '2026-09-15' });
+    assert.ok(n0.length >= 5 && n0.every(n => n.id && n.title && n.body && n.date === '2026-09-15' && typeof n.canon === 'string' && /^(RETCON|STANDING|NOTICE)$/.test(n.stamp)), 'every notice is dated, stamped and worded');
+    assert.ok(n0[0].id === 'motto' && n0[0].stamp === 'STANDING' && n0[0].body.indexOf(D.HQ_MOTTO_FORMS[0]) >= 0, 'the first notice is the motto, standing, in its current form');
+    assert.ok(n0.some(n => n.id === 'ranks' && /L1 · DOORMAT/.test(n.body)) && n0.some(n => n.id === 'floors' && /thirteenth/.test(n.body)) && n0.some(n => n.id === 'bay6') && n0.some(n => n.id === 'foyer') && n0.some(n => n.id === 'hwing'), 'the ladder, the floors, Bay 6, the front door, H-Wing');
+    const n1 = D.hqCanonNotices(p, { date: '2026-09-19' });
+    assert.strictEqual(n1.filter(n => /^motto_\d$/.test(n.id) && n.stamp === 'RETCON').length, 2, 'one CORRECTION per remembered wording');
+    assert.ok(n1.some(n => n.id === 'motto_src') === false, 'no WORDING notice unless the Bureau set the form');
+    assert.ok(D.hqCanonNotices({ door: { clearance: 1, mottoForm: 1 } }).some(n => n.id === 'motto_src'), 'the story hook posts the WORDING notice');
+    assert.ok(!p.door.hq.notices, 'the notices are never written to the profile');
+});
+
+test('THE BUREAU: the source sites — the plaque proc reads the barometer at build, the panels, the door’s notices, the reading on arrival, the hooks, the loading card', () => {
+    const tr = fs.readFileSync(path.join(__dirname, 'three-renderer.js'), 'utf8');
+    assert.match(tr, /\n\s+motto_plaque: function \(U\) \{[\s\S]{0,900}?hqMottoBarometer\(prof, \{ force: window\.EW_HQ_MOTTO \}\)[\s\S]{0,600}?'hq_motto_plaque_' \+ idx/, 'the plaque proc reads hqMottoBarometer (with the dev override) at build and caches its texture per form');
+    const mp = fs.readFileSync(path.join(__dirname, 'map.js'), 'utf8');
+    assert.match(mp, /if \(c\.id === 'plaque'\) \{[\s\S]{0,300}?hqMottoBarometer\(_hqProfile\(\), \{ force: _hqMottoForce\(\) \}\)/, 'THE MOTTO PLAQUE panel reads the barometer');
+    assert.match(mp, /if \(c\.id === 'notices'\) \{[\s\S]{0,300}?hqCanonNotices\(_hqProfile\(\)/, 'CANON NOTICES reads the notices');
+    assert.match(mp, /if \(d\.id === 'continuity' && typeof window\.hqMottoBarometer === 'function'\) \{[\s\S]{0,400}?hqCanonNotices\(profile/, 'the Bureau’s DOOR panel in the hall carries the motto and the notices (readable at any rank)');
+    assert.match(mp, /hqMottoObserve\(p, \{ force: _hqMottoForce\(\) \}\)/, 'a fresh arrival files today’s reading (_hqRecordVisit)');
+    assert.match(mp, /function _hqMottoForce\(\) \{[\s\S]{0,300}?EW_HQ_MOTTO[\s\S]{0,300}?motto=/, 'the dev override: window.EW_HQ_MOTTO / ?motto=');
+    assert.match(mp, /window\._doorSetMotto = function \(form\) \{[\s\S]{0,600}?p\.door\.mottoForm = n/, 'the story hook _doorSetMotto writes door.mottoForm');
+    assert.match(mp, /_hqEl\('hqLoadMotto'\)[\s\S]{0,300}?hqMottoBarometer/, 'the loading card wears the motto');
+    const ix = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+    assert.match(ix, /<em id="hqLoadMotto" class="hq-load-motto"><\/em>/, 'the load card has the line');
+    const css = fs.readFileSync(path.join(__dirname, 'styles-base.css'), 'utf8');
+    assert.match(css, /\.hq-load-card \.hq-load-motto \{/, 'and its style');
+    const hf = fs.readFileSync(path.join(__dirname, 'hq-floors.test.js'), 'utf8');
+    assert.ok(!/d\.id === 'continuity'/.test(hf), 'hq-floors.test.js no longer excuses the Bureau’s door: the room exists');
+});
+
 /* ── Phase 7.5 (2026-09-07, MASTER C-23 DECIDED): Bay 7 · URBAN and the rebalance ── */
 
 test('seven bays: Bay 7 · URBAN hangs on the mezzanine at 180° and the rebalance moved the right sites', () => {

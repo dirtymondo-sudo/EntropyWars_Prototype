@@ -46,7 +46,7 @@ test('every door in the building lands somewhere that exists: the room, and a do
             const a = d.action || {};
             if (!a.room) continue;
             const to = HQ.rooms[a.room];
-            if (!to) { if (!(rid === 'central_egress' && d.id === 'continuity')) problems.push(rid + '/' + d.id + ' → ' + a.room + ' (no such room)'); continue; }   // the Bureau's door waits on a chapter (plan 5.4)
+            if (!to) { problems.push(rid + '/' + d.id + ' → ' + a.room + ' (no such room)'); continue; }   // the Bureau's room shipped 2026-09-15 (plan 4.4): no exception left
             if (a.at && !(to.doors || []).some(x => x.id === a.at) && !(to.counters || []).some(x => x.id === a.at)) problems.push(rid + '/' + d.id + ' → ' + a.room + '@' + a.at + ' (no such landing)');
         }
     }

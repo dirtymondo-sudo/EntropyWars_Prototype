@@ -18338,6 +18338,7 @@ const DOOR_HQ = {
         exec_desk:         { proc: 'exec_desk',      span: 2.4,  foot: 0.95, wall: true, depth: 1.05, block: true },   // 4C: the executive desk (top at 0.76 — desk props sit at y: 0.76)
         exec_chair:        { proc: 'exec_chair',     h: 1.25,    foot: 0.36, block: true },   // 4C: the high-backed leather chair
         wall_plaques:      { proc: 'wall_plaques',   h: 1.2,     foot: 0, wall: true, mount: 1.3,  depth: 0.05 },   // 4C: the achievements engraved (gold per hqTrophyCount, read at build)
+        motto_plaque:      { proc: 'motto_plaque',   h: 0.6,     foot: 0, wall: true, mount: 1.5,  depth: 0.05 },   // the Bureau: the reality barometer (hqMottoBarometer at build; the room is rebuilt per entry)
         false_window:      { proc: 'false_window',   h: 1.6,     foot: 0, wall: true, mount: 1.0,  depth: 0.08, glow: { y: 0.8, size: 1.8, color: 0xfff3d0 } },   // 4C: the window that should not exist (a lit pane behind blinds)
         infinity_pool:     { proc: 'infinity_pool',  h: 0.48,    foot: 3.0, rect: { hw: 3.1, hd: 1.85 }, block: true },   // Room 8: the raised basin, a RECT blocker (room axes: place it at face 0 / 180)
         pool_lounger:      { proc: 'pool_lounger',   h: 0.8,     foot: 0.5, block: true },   // Room 8: a lounger (a seat for hqSit at its own x/z)
@@ -20174,7 +20175,7 @@ const DOOR_HQ = {
                 /* ROOM 111 · THE TROPHY CASE (plan 7.4, 2026-09-13): the mezzanine over EMPLOYEE OF THE MONTH (288°), between Bay 6 and the Bureau */
                 { id: 'trophycase',     deg: 290, level: 1, leaf: 'leaf_glass_exec',                label: 'THE TROPHY CASE',         sub: 'ACHIEVEMENTS',            action: { room: 'trophycase', at: 'egress' },
                   desc: 'Room 111. The glass cabinet over Employee of the Month: every commendation the Department has engraved for you. Open the cabinet and the whole record comes out. The blank plaques are not a comment.' },
-                { id: 'continuity',     deg: 315, level: 1, leaf: 'leaf_suburban_house',            label: 'BUREAU OF CONTINUITY',    sub: 'STORY CANON · GATEKEEPER RANK',           action: { room: 'continuity' },     minClearance: 5, requiresKeys: 24, roomNo: '№ — CONTESTED', why: 'a joke, and a policy', desc: 'Canon notices. The motto plaque. The only department that suspects the schedule. GATEKEEPER clearance and two dozen Keys.' },
+                { id: 'continuity',     deg: 315, level: 1, leaf: 'leaf_suburban_house',            label: 'BUREAU OF CONTINUITY',    sub: 'STORY CANON · GATEKEEPER RANK',           action: { room: 'continuity', at: 'egress' }, minClearance: 5, requiresKeys: 24, roomNo: '№ — CONTESTED', why: 'a joke, and a policy', desc: 'Canon notices. The motto plaque. The only department that suspects the schedule. GATEKEEPER clearance and two dozen Keys.' },
             ],
             /* walk-up interactions that are not doors */
             counters: [
@@ -20488,6 +20489,101 @@ const DOOR_HQ = {
            (deg cw from north) their front points; `rot` is extra yaw. The
            way out wears the rank leaf like the door in the egress does
            (`rankDoor`) — it is the same door from both sides. */
+        /* ── THE BUREAU OF CONTINUITY (HQ plan 4.4, 2026-09-15): the Canon
+           Office — a box room behind the mezzanine door at 315° (the
+           suburban-house leaf; GATEKEEPER + 24 Keys, the gate is the door's
+           and stays there; the door carries the number "№ — CONTESTED", the
+           room wears none). THE MOTTO PLAQUE on the north wall is the
+           reality barometer (MASTER A7): the `motto_plaque` proc reads
+           hqMottoBarometer at build and the counter's panel says which of
+           the three forms it reads, why, and what you remember it reading;
+           CANON NOTICES on the east wall is every retcon the building has
+           made (hqCanonNotices). The only department that suspects the
+           schedule; the only clock in the building that is right. */
+        continuity: {
+            label: 'BUREAU OF CONTINUITY',
+            sub: 'STORY CANON · THE CANON OFFICE',
+            kind: 'box',
+            shell: {
+                w: 8, d: 5.5, h: 3.2,
+                wallH: 3.2, dadoH: 1.05,
+                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
+                wallColor: 0xcfc6b4,          // a room that has been repainted more than once, to the same colour
+                pipes: false,
+                light: { x: 0, z: 0 },
+                mood: { light: 0xf2ead8 },
+                plate: { x: -2.4, z: -2.5, y: 2.85 },
+            },
+            doors: [
+                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_suburban_house',
+                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MEZZANINE',
+                  action: { room: 'central_egress', at: 'continuity' },
+                  desc: 'The way back to the mezzanine. A house door on an office. It has always been a house door; the file that says otherwise has been corrected.' },
+            ],
+            counters: [
+                /* THE MOTTO PLAQUE → the by-id panel (map.js): the reality barometer — which form the plaque reads today, and what you remember */
+                { id: 'plaque', x: 0, z: -2.35, face: 0, plateY: 2.3, radius: 1.9, verb: 'READ',
+                  label: 'THE MOTTO PLAQUE', sub: 'THE REALITY BAROMETER · READ IT', action: {},
+                  desc: 'The official motto of the Department, engraved in brass. There is one motto. Its wording has never changed. The Bureau keeps the plaque polished and the record of its wording, which also has never changed, in the cabinet.' },
+                /* CANON NOTICES → the by-id panel (map.js): every retcon the building has made, dated, stamped */
+                { id: 'notices', x: 3.4, z: 0, face: 270, plateY: 2.2, radius: 1.9, verb: 'READ',
+                  label: 'CANON NOTICES', sub: 'WHAT HAS ALWAYS BEEN SO · READ THEM', action: {},
+                  desc: 'The board where the Bureau posts what has always been the case. Notices are dated the day they were always true. Take one down and there is another under it, saying the same thing in different words.' },
+            ],
+            props: [
+                /* ── the north wall: the plaque, the plate, the record of its wording ── */
+                { key: 'motto_plaque',   wall: 'n', x: 0 },
+                { key: 'nameplate',      wall: 'n', x: -2.4, mount: 1.55 },
+                { key: 'filing_cabinet', wall: 'n', x: 2.5 },
+                { key: 'filing_cabinet', wall: 'n', x: 3.2 },
+                { key: 'cardboard_boxes', x: -3.2, z: -2.0, face: 20 },              // PREVIOUS WORDINGS — the label has been crossed out
+                { key: 'vent_grille',    wall: 'n', x: -3.4, mount: 2.65 },
+                /* ── the east wall: the notices, two boards deep, under the camera ── */
+                { key: 'notice_board',   wall: 'e', z: -1.1 },
+                { key: 'notice_board',   wall: 'e', z: 1.1 },
+                { key: 'security_camera', wall: 'e', z: 2.4, mount: 2.7 },
+                { key: 'trash_bin',      x: 3.5, z: 2.3, face: 300 },                 // the notices that were taken down, which is none of them
+                /* ── the south wall: the Canon Officer's desk, facing the plaque ── */
+                { key: 'tanker_desk',    wall: 's', x: 0.6 },
+                { key: 'crt_terminal',   x: 1.15, z: 2.3, y: 0.76, face: 0 },
+                { key: 'manila_folders', x: 0.2,  z: 2.35, y: 0.76, face: 10 },
+                { key: 'stapler',        x: -0.25, z: 2.2, y: 0.76, face: 340 },
+                { key: 'rotary_phone',   x: 1.75, z: 2.4, y: 0.76, face: 20 },
+                { key: 'desk_lamp',      x: -0.4, z: 2.45, y: 0.76, face: 30 },
+                { key: 'pen',            x: 0.5,  z: 2.15, y: 0.76, face: 80 },
+                { key: 'computer_chair_grey', x: 0.6, z: 1.55, face: 180 },          // the officer's, at the desk, back to the plaque
+                { key: 'wall_clock',     wall: 's', x: -2.8, mount: 2.4 },            // the one clock in the building that is right; nobody has checked
+                { key: 'picture_round_a', wall: 's', x: 2.9 },
+                { key: 'fire_extinguisher', wall: 's', x: -3.5 },
+                /* ── the west wall: the way out, the lamp, the locker of things that never happened ── */
+                { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.65 },
+                { key: 'office_locker',  wall: 'w', z: -2.0 },
+                { key: 'globe_lamp',     x: -3.4, z: 2.0 },
+                { key: 'potted_plant',   x: -3.45, z: -1.0, face: 40 },
+                { key: 'rug_office',     x: 0, z: 0 },
+                /* ── the ceiling ── */
+                { key: 'fluorescent',    x: -1.9, z: 0, ceil: true, face: 90 },
+                { key: 'fluorescent',    x: 1.9,  z: 0, ceil: true, face: 90 },
+            ],
+            agents: [
+                { x: 0.6, z: 1.55, face: 180, pose: 'hqSit', gender: 'male', label: 'THE CANON OFFICER', reach: 1.9,
+                  line: '“The motto has never changed. I have the memo that says so. I have several, and they do not agree, and that is the point of the memo.”' },
+                { x: 2.6, z: -1.6, face: 0, pose: 'hqReach', gender: 'female', label: 'THE CONTINUITY CLERK', reach: 1.8,
+                  line: '“Retcon is a verb. It is also a noun. It has always been both. Please do not use it as an adjective in this office.”' },
+            ],
+            npcSpots: [
+                { x: 2.7, z: 0.2, face: 90 },     // reading the notices, again
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Which side of the door are you asking from?” “This one.” “Then it has always read that.”',
+                '“I remember it saying DON’T.” “You remember orientation. Orientation was wrong. Orientation has been corrected.” “When?” “Always.”',
+                '“Is that clock right?” “It is the only one.” “How do you know?” “We set the others by it.”',
+                '“There is no thirteenth floor.” “I know.” “Then why did you press it?” “I didn’t. It has always been pressed.”',
+            ],
+            spawn: { x: -3.2, z: 0, face: 90 },     // just inside the house door, facing the plaque's wall
+        },
+
         office: {
             label: 'YOUR OFFICE',
             sub: 'STORY · CASE FILE',
@@ -25461,6 +25557,130 @@ function hqCornerInspection(profile) {
         note: ic.onFile ? 'FOUR CORNERS, NINETY DEGREES. PROCEED.' : 'NO FILE. YOUR CORNERS ARE COUNTED; THEY ARE NOT YET ON FILE. SIGN IN AT RECEPTION.',
     };
 }
+/* ── THE MOTTO PLAQUE · THE REALITY BAROMETER (THE BUREAU OF CONTINUITY,
+   HQ plan 4.4; 2026-09-15) ───────────────────────────────────────────────
+   MASTER A7: there is one official motto and its wording changes with
+   reality — DO OBSERVE OTHER REALITIES (early) · DON’T. OPEN. OBSERVE.
+   REPORT. (the middle form, the one employees insist was taught at
+   orientation) · DO OPEN OUR REALITY (the crisis form). The plaque reads
+   the CHAPTER BAND: until the story track (4.1) lands, the band is the
+   clearance — L1–L2 the early form, L3–L4 the middle, L5–L6 the crisis
+   (`HQ_MOTTO_BANDS`); `profile.door.mottoForm` (0..2, the story hook —
+   map.js `window._doorSetMotto(n)`; null = follow the band) and
+   `opts.force` (dev: `?motto=n` / `window.EW_HQ_MOTTO`) override it.
+   hqMottoBarometer(profile, opts) is the ONE read (the plaque proc at
+   build, the plaque panel, the Bureau's door panel, the loading card);
+   hqMottoObserve(profile) is the ONE write — called from map.js
+   _hqRecordVisit(null) on a fresh arrival, it files today's reading in
+   `door.hq.motto = { form, since, remembered: [{ form, until }] }`: when
+   the plaque reads a form it did not read last time, the old one goes on
+   the REMEMBERED list — the player is the only one who remembers it
+   (A7's Mandela effect; the Bureau insists it always read this way).
+   hqCanonNotices(profile) = the Bureau's board: every retcon the building
+   has made, as dated notices generated from the profile (never stored).
+   All three are viewer-local; nothing relayed (RULE #2). */
+const HQ_MOTTO_BANDS = [
+    { form: 0, levels: [1, 2], label: 'EARLY',  act: 'I',   tone: 'open' },
+    { form: 1, levels: [3, 4], label: 'MIDDLE', act: 'II',  tone: 'stabilized' },
+    { form: 2, levels: [5, 6], label: 'CRISIS', act: 'III', tone: 'codered' },
+];
+function hqMottoFormIndex(v) {
+    if (v == null || v === '') return null;
+    if (typeof v === 'number') return (v >= 0 && v < HQ_MOTTO_FORMS.length) ? (v | 0) : null;
+    const s = String(v).trim().toUpperCase();
+    if (/^[0-2]$/.test(s)) return +s;
+    const i = HQ_MOTTO_FORMS.findIndex(f => f.replace(/[^A-Z]/g, '') === s.replace(/[^A-Z]/g, ''));
+    return i >= 0 ? i : null;
+}
+function hqMottoBarometer(profile, opts) {
+    opts = opts || {};
+    const cl = doorClearance(profile);
+    const band = HQ_MOTTO_BANDS.find(b => b.levels.indexOf(cl.level) >= 0) || HQ_MOTTO_BANDS[0];
+    const story = hqMottoFormIndex(profile && profile.door ? profile.door.mottoForm : null);
+    const forced = hqMottoFormIndex(opts.force);
+    const idx = forced != null ? forced : (story != null ? story : band.form);
+    const shown = HQ_MOTTO_BANDS[idx] || band;
+    let rec = null;
+    try { rec = profile && profile.door && profile.door.hq && profile.door.hq.motto; } catch (e) {}
+    const remembered = (rec && Array.isArray(rec.remembered)) ? rec.remembered.filter(r => r && hqMottoFormIndex(r.form) != null).map(r => ({ form: hqMottoFormIndex(r.form), text: HQ_MOTTO_FORMS[hqMottoFormIndex(r.form)], until: r.until || null })) : [];
+    const last = rec ? hqMottoFormIndex(rec.form) : null;
+    const changed = last != null && last !== idx;
+    return {
+        idx: idx, form: HQ_MOTTO_FORMS[idx], forms: HQ_MOTTO_FORMS.slice(),
+        band: shown.label, act: shown.act, tone: shown.tone,
+        level: cl.level, title: cl.title,
+        source: forced != null ? 'forced' : (story != null ? 'story' : 'band'),
+        taught: HQ_MOTTO_FORMS[1],
+        drift: idx !== 1,                                  // the plaque disagrees with what orientation taught
+        last: last, since: rec ? (rec.since || null) : null,
+        changed: changed, previous: changed ? HQ_MOTTO_FORMS[last] : null,
+        remembered: remembered,
+        reading: changed ? 'CHANGED' : (remembered.length ? 'REVISED' : 'STEADY'),
+        note: changed
+            ? 'THE PLAQUE DOES NOT READ WHAT IT READ WHEN YOU WERE LAST HERE. IT HAS ALWAYS READ THIS. YOU ARE THE ONLY ONE WHO REMEMBERS OTHERWISE.'
+            : (remembered.length ? 'THE PLAQUE HAS ALWAYS READ THIS. YOU REMEMBER ' + remembered.length + ' OTHER WORDING' + (remembered.length === 1 ? '' : 'S') + '. NOBODY ELSE DOES.' : 'THE PLAQUE HAS ALWAYS READ THIS.'),
+    };
+}
+function hqMottoObserve(profile, opts) {
+    opts = opts || {};
+    if (!profile) return { changed: false, form: null, previous: null };
+    const bar = hqMottoBarometer(profile, opts);
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = {};
+    const date = opts.date || hqToday();
+    const rec = (profile.door.hq.motto && typeof profile.door.hq.motto === 'object') ? profile.door.hq.motto : { form: null, since: null, remembered: [] };
+    if (!Array.isArray(rec.remembered)) rec.remembered = [];
+    const last = hqMottoFormIndex(rec.form);
+    let changed = false, previous = null;
+    if (last == null) { rec.form = bar.idx; rec.since = date; }
+    else if (last !== bar.idx) {
+        changed = true; previous = HQ_MOTTO_FORMS[last];
+        rec.remembered = rec.remembered.filter(r => hqMottoFormIndex(r && r.form) !== last);   // one memory per wording
+        rec.remembered.unshift({ form: last, until: date });
+        rec.remembered = rec.remembered.filter(r => hqMottoFormIndex(r && r.form) !== bar.idx).slice(0, HQ_MOTTO_FORMS.length);   // what the plaque reads now is not a memory
+        rec.form = bar.idx; rec.since = date;
+    }
+    profile.door.hq.motto = rec;
+    return { changed: changed, form: HQ_MOTTO_FORMS[bar.idx], idx: bar.idx, previous: previous, since: rec.since };
+}
+function hqCanonNotices(profile, opts) {
+    opts = opts || {};
+    const bar = hqMottoBarometer(profile, opts);
+    const today = opts.date || hqToday();
+    let canon = '';
+    try { canon = String(hqCanonToday(today) || ''); } catch (e) {}
+    const cl = doorClearance(profile);
+    const out = [];
+    const put = (id, stamp, title, body) => out.push({ id: id, date: today, canon: canon, stamp: stamp, title: title, body: body });
+    /* the motto: the standing notice, and one retcon per wording the officer remembers */
+    put('motto', bar.changed ? 'RETCON' : 'STANDING', 'THE MOTTO', 'The official motto of the Department reads ' + bar.form + ' It has always read this. Copies of the orientation form that read otherwise are the orientation form’s error.');
+    bar.remembered.forEach((r, i) => put('motto_' + r.form, 'RETCON', 'CORRECTION ' + (i + 1), 'Reports that the plaque in this office read ' + r.text + ' are in error. No plaque has read this. Employees who remember it should report to Medical, Room 1111, where their corners will be re-verified.'));
+    if (bar.source === 'story') put('motto_src', 'NOTICE', 'WORDING', 'The wording on the plaque is set by the Bureau. The Bureau has not been asked to set it. The plaque is correct.');
+    /* the ladder */
+    put('ranks', 'STANDING', 'THE LADDER', 'There have always been six ranks. Your clearance is L' + cl.level + ' · ' + cl.title + '. It has always been L' + cl.level + '. Officers who recall being promoted are recalling the paperwork, which is not the same thing.');
+    /* the floors */
+    put('floors', 'STANDING', 'THE FLOORS', 'There is no thirteenth floor. There has never been a thirteenth floor. Room 13 is a house in Bay 1 and has four corners like everyone else.');
+    /* the sealed bay (Quarantined until its chapter) */
+    try {
+        const q = DOOR_HQ.sectors && DOOR_HQ.sectors.quarantined;
+        if (q && (q.locked || q.minChapter)) put('bay6', 'STANDING', 'BAY 6', 'Bay 6 has never been open. The thresholds filed to it were filed to it in error, and the error is being maintained until the chapter that corrects it.');
+    } catch (e) {}
+    /* the Code Red: cleared today = it was never there */
+    try {
+        const cr = (typeof hqCodeRed === 'function') ? hqCodeRed(profile) : null;
+        if (cr && cr.cleared) put('codered', 'RETCON', 'CODE RED · ' + String(cr.label || cr.site || '').toUpperCase(), 'The entity reported at this threshold today was never at this threshold. The threshold has always been stabilized. The Hazard Pay was for something else.');
+    } catch (e) {}
+    /* the front door: every officer came in through it */
+    put('foyer', 'STANDING', 'THE FRONT DOOR', 'The building has always had a front door. Officers who remember arriving directly in the main hall arrived through the front door and do not remember it, which is the front door working as designed.');
+    /* H-Wing, which is not on the plan */
+    put('hwing', 'STANDING', 'H-WING', 'There is no H-Wing. The stair in the garage goes to the garage. The wall at the end of Service Corridor B is a wall.');
+    /* after hours: there is no club */
+    try {
+        const caf = DOOR_HQ.rooms && DOOR_HQ.rooms.cafeteria;
+        if (caf && caf.variant === 'after_hours') put('club', 'RETCON', 'ROOM 86', 'Room 86 is the Cafeterium. It is not, and has never been, a club. The bar has one side because that is how bars are made.');
+    } catch (e) {}
+    return out;
+}
 function hqPunchClock(profile, opts) {
     opts = opts || {};
     const date = opts.date || hqToday();
@@ -26393,6 +26613,10 @@ if (typeof window !== 'undefined') {
     window.hqIntakeCard = hqIntakeCard;
     window.hqCornerInspection = hqCornerInspection;
     window.HQ_MOTTO_FORMS = HQ_MOTTO_FORMS;
+    window.HQ_MOTTO_BANDS = HQ_MOTTO_BANDS;
+    window.hqMottoBarometer = hqMottoBarometer;
+    window.hqMottoObserve = hqMottoObserve;
+    window.hqCanonNotices = hqCanonNotices;
     window.HQ_LOST_CARD_FEE = HQ_LOST_CARD_FEE;
     window.hqPunchIn = hqPunchIn;
     window.hqCanonToday = hqCanonToday;

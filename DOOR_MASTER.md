@@ -2253,6 +2253,24 @@ Also fixed: every door in the building opened the settings since
 yesterday's C-28 (the re-appended canvas dropped the pointer lock and the
 loss read as ESC) — see HQ plan §9 2026-09-14 rev 4.
 
+### 2026-09-15 (rev 2) — THE BUREAU OF CONTINUITY + THE MOTTO PLAQUE (HQ plan 4.4)
+The Canon Office is a room (`rooms.continuity`, behind the mezzanine's
+house door at 315°; the GATEKEEPER + 24 Keys gate and the number
+№ — CONTESTED stay on the door). THE MOTTO PLAQUE is A7's reality
+barometer, built: data.js `hqMottoBarometer` reads the chapter band —
+the clearance until the story track (B3 / plan 4.1) lands: L1–L2 DO
+OBSERVE OTHER REALITIES · L3–L4 DON'T. OPEN. OBSERVE. REPORT. (the form
+orientation taught) · L5–L6 DO OPEN OUR REALITY; `door.mottoForm`
+(`_doorSetMotto(n)`) is the story's seam over it. Every fresh arrival
+files the reading (`hqMottoObserve` → `door.hq.motto`): a wording the
+plaque no longer reads is REMEMBERED by the officer alone — A7's Mandela
+effect as a mechanism. CANON NOTICES (`hqCanonNotices`, generated) is
+every retcon the building has made; the top notices and the motto sit
+on the Bureau's door in the hall at any rank, and the motto is on the
+loading card (A7: posters, plaques, loading screens). The notices' copy
+and the two agents' lines are Claude's drafts (A15). Full log:
+DOOR_HQ_BUILD_PLAN.md §9 2026-09-15 rev 2.
+
 ### 2026-09-15 — THE FOURIER FOYER (HQ plan 7.4, the last row)
 The vestibule between the main menu and the hall shipped: `rooms.foyer`
 behind the kit's revolving door at 195° on the ground ring (between the

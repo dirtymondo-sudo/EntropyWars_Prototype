@@ -4206,6 +4206,8 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-load-card b { font-family: 'Cormorant SC', serif; font-size: 26px; letter-spacing: 0.18em; }
 .hq-load-card span { font-size: 10px; letter-spacing: 0.3em; color: #b8a060; }
 .hq-load-card i { font-style: normal; font-size: 10px; color: #7f7a6e; margin-top: 12px; animation: hqBlink 1.4s steps(2) infinite; }
+/* THE MOTTO on the loading card (the Bureau's barometer, HQ plan 4.4 — A7: posters, plaques, loading screens) */
+.hq-load-card .hq-load-motto { display: block; font-style: normal; font-family: 'Cormorant SC', serif; font-size: 13px; letter-spacing: 0.22em; color: #c9a44a; margin-top: 14px; opacity: 0.85; }
 @keyframes hqBlink { 50% { opacity: 0.35; } }
 /* walking room-to-room (2026-09-04): the load screen becomes a door-blink —
    no card, just a quick dip to black while the next room builds */
