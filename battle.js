@@ -36404,6 +36404,14 @@
                ride state-sync, so guests and replays carry the stream. */
             seedEngineRng((Math.random() * 0x100000000) >>> 0);
 
+            /* THE LAST ROSTER (2026-09-15): file the human seat's party for the
+               HQ pause menu — a standard match only (state.js recordLastParty) */
+            try {
+                if (!state.isCampaign && !state._mdRun && !state._spellLabMode && !window._tutActive && typeof window._ewRecordLastParty === 'function') {
+                    window._ewRecordLastParty();
+                }
+            } catch (e) {}
+
             const mpMode = getActiveMultiplayerMode();
             state.matchKills = { 1: 0, 2: 0 };
             state.matchScores = { 1: 0, 2: 0 };

@@ -510,6 +510,7 @@
             _hqHome = true;
             _hqSuspended = false;
             _hqTermDrop();
+            _hqPauseDrop();
             window._hqPreselect = null;
             window._hqCodeRedRun = null;   // back in the building = not in a Code Red crossing (the commit consumed it)
             state.gameState = GS.HQ;
@@ -547,7 +548,7 @@
                 onEnterDoor: _hqWalkThroughDoor,
                 /* ESC: close the panel, else Settings (plan D6 — an overlay,
                    not a place); EXIT on the strip is how you leave */
-                onEscape: () => { if (_hqTerm) { window._hqTerminalClose(); return; } if (_hqPanelTarget) window._hqClosePanel(); else window._hqOpenSettings(); },
+                onEscape: () => { if (_hqTerm) { window._hqTerminalClose(); return; } if (_hqPause) { window._hqClosePause(); return; } if (_hqPanelTarget) window._hqClosePanel(); else window._hqOpenPause(); },
                 /* Q: answer a BELL call from anywhere in the building (plan D2) */
                 onHotkey: (k) => { if (k === 'q') _hqOpenCounter('dispatch'); },
                 onReady: () => {
@@ -713,6 +714,7 @@
         window._hqLeave = function () {
             _hqCancelLoadCard();
             _hqTermDrop();   // a console screen left up goes down with the building
+            _hqPauseDrop();  // and the pause menu (2026-09-15)
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active()) ThreeRenderer.hq.leave(); } catch (e) { console.error('[HQ] leave failed', e); }
             _hqSuspended = false;
             window._hqClosePanel();
@@ -760,6 +762,7 @@
             /* never resume under a match that started from a modal (community
                maps → play): the battle renderer owns the canvas then */
             if (ThreeRenderer.isActive && ThreeRenderer.isActive()) { window._hqLeave(); return false; }
+            _hqPauseDrop();
             _hqSuspended = false;
             const profile = _hqProfile();
             state.gameState = GS.HQ;
@@ -805,14 +808,370 @@
             _showTitlePage(fallbackPage);
             return false;
         };
-        /* ESC / the gear: Settings over the paused building */
-        window._hqOpenSettings = function () {
-            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.hq || !ThreeRenderer.hq.active()) return;
-            if (_hqPanelTarget) window._hqClosePanel();
+        /* ══════════════════════════════════════════════════════════════════
+           THE PAUSE MENU (2026-09-15) — ESC / P in the building.
+           An OVERLAY inside #hqPage (#hqPause, z 35: over the strip, the
+           panel and the terminal, under the loading card), never a title-page
+           swap: the old ESC pushed the whole Settings PAGE over the HQ page
+           and the walker's page faded out under it with the cursor still
+           spoken for — "escape pauses but something has my mouse". Now the
+           building pauses in place (_hqSuspend → hq.setPaused → the pointer
+           lock is released, mouse-look and WASD stop) and a JRPG command
+           column stands over it: RESUME · PARTY · OFFICER · SETTINGS ·
+           DIRECTORY · EXIT. PARTY = THE LAST ROSTER (state.js recordLastParty,
+           filed by battle.js startMatch): each member is built with the real
+           createUnit for the sheet — stats, abilities, passives, gear, items.
+           SETTINGS renders the main menu's settings body (_renderMainMenuSettings)
+           INTO the overlay (window._hqPauseSettingsBody); its rerender hook
+           (_openMainMenuSettings) re-renders in place while we are open.
+           Viewer-local, nothing on `state`, nothing relayed (RULE #2).
+           ══════════════════════════════════════════════════════════════════ */
+        let _hqPause = null;   // { cmd, cursor, member, units } while the menu is up
+        const _HQ_PAUSE_CMDS = [
+            { id: 'resume',    label: 'RESUME',    sub: 'BACK TO THE BUILDING' },
+            { id: 'party',     label: 'PARTY',     sub: 'THE LAST ROSTER' },
+            { id: 'officer',   label: 'OFFICER',   sub: 'YOUR FILE' },
+            { id: 'settings',  label: 'SETTINGS',  sub: 'AUDIO · DISPLAY · CONTROLS' },
+            { id: 'directory', label: 'DIRECTORY', sub: 'EVERY ROOM' },
+            { id: 'exit',      label: 'EXIT',      sub: 'TO THE MAIN MENU' },
+        ];
+        const _HQ_TYPE_COLORS = { human: '#a0a0c3', alien: '#32aa50', divine: '#dcaa1e', unholy: '#9632b4', tech: '#28a0be', anomaly: '#dc3c82' };
+        const _HQ_CAT = { damage: { g: '⚔', c: '#ff6b5a' }, heal: { g: '♥', c: '#58d858' }, buff: { g: '▲', c: '#5cb2ff' }, debuff: { g: '▼', c: '#b98cff' }, utility: { g: '◎', c: '#f0d060' } };
+        window._hqPauseIsOpen = function () { return !!_hqPause; };
+        window._hqOpenPause = function (cmd) {
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.hq || !ThreeRenderer.hq.active()) return false;
+            if (_hqTerm) return false;
+            const el = _hqEl('hqPause');
+            if (!el) return false;
+            if (_hqPanelTarget) window._hqClosePanel({ keepPaused: true });
             _hqSuspend();
-            try { playSfx('uiButtonConfirm'); } catch (e) {}
-            if (typeof window._openMainMenuSettings === 'function') window._openMainMenuSettings();
+            /* the lock goes with the pause (setPaused releases it); belt and braces
+               for a lock that lands late — _hqOnLockChange gives it back too */
+            try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {}
+            const fresh = !_hqPause;
+            if (fresh) _hqPause = { cmd: 'party', cursor: 1, member: null, units: {} };
+            if (cmd) { _hqPause.cmd = cmd; _hqPause.member = null; }
+            _hqPause.cursor = Math.max(0, _HQ_PAUSE_CMDS.findIndex(c => c.id === _hqPause.cmd));
+            el.style.display = '';
+            el.setAttribute('aria-hidden', 'false');
+            requestAnimationFrame(() => { if (_hqPause) el.classList.add('on'); });
+            if (fresh) { document.addEventListener('keydown', _hqPauseKey); try { playSfx('uiButtonConfirm'); } catch (e) {} }
+            _hqPauseRender();
+            return true;
         };
+        /* the gear's old name — ESC used to mean Settings (plan D6); it is the menu now */
+        window._hqOpenSettings = function () { window._hqOpenPause(); };
+        /* take the overlay down without touching the walk (leave / enter / a return from a screen) */
+        function _hqPauseDrop() {
+            if (!_hqPause) return;
+            const el = _hqEl('hqPause');
+            if (el) { el.classList.remove('on'); el.style.display = 'none'; el.setAttribute('aria-hidden', 'true'); }
+            window._hqPauseSettingsBody = null;
+            document.removeEventListener('keydown', _hqPauseKey);
+            _hqPause = null;
+        }
+        window._hqClosePause = function () {
+            if (!_hqPause) return false;
+            _hqPauseDrop();
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+            return window._hqResume();
+        };
+        window._hqTogglePause = function () { return _hqPause ? window._hqClosePause() : window._hqOpenPause(); };
+        function _hqLastParty() { return (typeof window._ewLoadLastParty === 'function') ? window._ewLoadLastParty() : null; }
+        /* a member of the last roster as a REAL unit (createUnit: level, sec job,
+           tree-legal spells, gear bonuses) — cached per open; null when the
+           build fails (the sheet then reads the record's bare ids) */
+        function _hqPauseUnit(i) {
+            const P = _hqPause; if (!P) return null;
+            if (P.units[i] !== undefined) return P.units[i];
+            const rec = _hqLastParty(); const m = rec && rec.members[i];
+            let u = null;
+            if (m && typeof createUnit === 'function') {
+                try {
+                    const lo = (typeof emptyLoadout === 'function') ? emptyLoadout() : { spells: [], items: {}, equipment: {} };
+                    if (m.loadout) {
+                        if (Array.isArray(m.loadout.spells) && m.loadout.spells.length) lo.spells = m.loadout.spells.slice();
+                        Object.assign(lo.items, m.loadout.items || {});
+                        Object.assign(lo.equipment, m.loadout.equipment || {});
+                    }
+                    const meta = Object.assign({}, m.meta || {});
+                    if ((!Array.isArray(meta.customSpells) || !meta.customSpells.length) && lo.spells.some(Boolean)) meta.customSpells = lo.spells.filter(Boolean);
+                    u = createUnit('hq-pause-' + i, rec.seat || 1, 0, 0, { cls: m.cls, job: m.cls }, lo, meta);
+                    if (m.name) u.name = m.name;
+                } catch (e) { console.warn('[HQ] pause: could not build', m && m.cls, e); u = null; }
+            }
+            P.units[i] = u;
+            return u;
+        }
+        function _hqPausePortrait(m, u) {
+            let url = null;
+            try { if (typeof getUnitPortraitUrl === 'function') url = getUnitPortraitUrl(u || { race: m.meta && m.meta.race, gender: m.meta && m.meta.gender }); } catch (e) {}
+            if (url) return { url, kind: 'portrait' };
+            try { if (typeof getR2RaceSpriteUrl === 'function') url = getR2RaceSpriteUrl((m.meta && m.meta.race) || 'homosapien', (m.meta && m.meta.gender) || 'male', m.cls || 'Freelancer'); } catch (e) {}
+            return url ? { url, kind: 'sprite' } : null;
+        }
+        function _hqPauseRaceLabel(m, u) {
+            const race = (u && u.race) || (m.meta && m.meta.race) || '';
+            const g = (u && u.gender) || (m.meta && m.meta.gender) || 'male';
+            try { if (race && typeof getRaceLabel === 'function') return getRaceLabel(race, g); } catch (e) {}
+            return race ? race.replace(/\b\w/g, c => c.toUpperCase()) : 'VESSEL';
+        }
+        function _hqPauseTypeChips(types) {
+            return (types || []).map(t => `<i class="hq-pp-type" style="--tc:${_HQ_TYPE_COLORS[t] || '#aaa'}">${_hqEsc(String(t).toUpperCase())}</i>`).join('');
+        }
+        function _hqPauseBar(label, val, max, color) {
+            const pct = Math.max(0, Math.min(100, max > 0 ? (val / max) * 100 : 0));
+            return `<div class="hq-pp-stat"><b>${_hqEsc(label)}</b><span class="hq-pp-bar"><i style="width:${pct.toFixed(1)}%;background:${color}"></i></span><em>${_hqEsc(String(val))}</em></div>`;
+        }
+        function _hqPauseHeadHtml() {
+            const profile = _hqProfile(), room = _hqRoom();
+            const cl = (typeof window.doorClearance === 'function') ? window.doorClearance(profile) : { level: 1, title: 'DOORMAT' };
+            const gold = (profile && profile.account && profile.account.gold) || 0;
+            const k = (typeof window.hqKeys === 'function') ? window.hqKeys(profile) : null;
+            const mc = (typeof window.hqMasteryCount === 'function') ? window.hqMasteryCount(profile) : null;
+            const pc = (typeof window.hqPunchClock === 'function') ? window.hqPunchClock(profile) : null;
+            let canon = '';
+            try { canon = (typeof window.hqCanonToday === 'function') ? String(window.hqCanonToday() || '') : ''; } catch (e) {}
+            const where = room ? (((room.roomNo != null) ? 'ROOM ' + room.roomNo + ' · ' : '') + (room.label || '')) : '';
+            return `<div class="hq-pause-title"><img src="https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false"><div><b>PAUSED</b><span>D.O.O.R. HEADQUARTERS${where ? ' · ' + _hqEsc(where) : ''}</span></div></div>`
+                + `<div class="hq-pause-vitals">`
+                + `<span><b>${_hqEsc((profile && profile.username) || 'UNFILED')}</b><i>L${cl.level} · ${_hqEsc(cl.title)}</i></span>`
+                + `<span><b>💰 ${gold.toLocaleString()}</b><i>HAZARD PAY</i></span>`
+                + (k ? `<span><b>🗝 ${k.keys}</b><i>KEYS</i></span>` : '')
+                + (mc ? `<span><b>${mc.mastered} / ${mc.total}</b><i>STABILIZED</i></span>` : '')
+                + (pc ? `<span><b>${pc.streak | 0}</b><i>DAY STREAK</i></span>` : '')
+                + (canon ? `<span><b>${_hqEsc(canon)}</b><i>CANON</i></span>` : '')
+                + `</div>`;
+        }
+        function _hqPauseNavHtml() {
+            const P = _hqPause;
+            return _HQ_PAUSE_CMDS.map((c, i) => `<button class="hq-pause-cmd${P.cmd === c.id ? ' sel' : ''}${i === P.cursor ? ' cur' : ''}${c.id === 'exit' ? ' danger' : ''}" data-cmd="${c.id}" role="menuitem"><b>${c.label}</b><span>${c.sub}</span></button>`).join('');
+        }
+        function _hqPausePartyHtml() {
+            const rec = _hqLastParty();
+            if (!rec || !rec.members.length) {
+                return `<div class="hq-panel-hd"><b>THE PARTY</b><span>NO ROSTER ON FILE</span></div>`
+                    + `<p class="hq-panel-desc">The party you take into your next crossing is filed here — whoever walks through a threshold with you, in the order they stood. Cross once and come back.</p>`
+                    + `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-pause-fn="_goToTeamBuilder">FORGE A TEAM ▸</button><button class="hq-btn" data-cmd="directory">THE BAYS ▸ DIRECTORY</button></div>`;
+            }
+            const when = rec.at ? new Date(rec.at) : null;
+            let html = `<div class="hq-panel-hd"><b>THE PARTY</b><span>THE LAST ROSTER · ${rec.members.length} ON THE BOOKS${rec.mode ? ' · ' + _hqEsc(String(rec.mode).toUpperCase()) : ''}${when ? ' · FILED ' + _hqEsc(when.toLocaleDateString()) : ''}</span></div>`;
+            html += '<div class="hq-pp-grid">';
+            rec.members.forEach((m, i) => {
+                const u = _hqPauseUnit(i);
+                const po = _hqPausePortrait(m, u);
+                const lvl = u ? ((typeof getUnitLevel === 'function') ? getUnitLevel(u) : (u.level || 1)) : null;
+                const hp = u ? u.maxHp : null, mp = u ? u.maxMp : null;
+                const sec = (u && u._secondaryJob) || (m.meta && m.meta.secondaryJob) || '';
+                const name = m.name || (u && u.name) || m.cls;
+                html += `<button class="hq-pp-card${_hqPause.member === i ? ' sel' : ''}" data-member="${i}">`
+                    + `<span class="hq-pp-face${po && po.kind === 'sprite' ? ' sprite' : ''}"${po ? ` style="background-image:url('${po.url}')"` : ''}></span>`
+                    + `<span class="hq-pp-id"><b>${_hqEsc(name)}</b><i>${_hqEsc(_hqPauseRaceLabel(m, u))} · ${_hqEsc(m.cls)}${sec ? ' / ' + _hqEsc(sec) : ''}</i>`
+                    + `<em>${lvl != null ? 'Lv ' + lvl : ''}${hp != null ? ` · HP ${hp}` : ''}${mp != null ? ` · MP ${mp}` : ''}</em>`
+                    + `<small>${_hqPauseTypeChips(u ? u.types : [])}</small></span>`
+                    + `<span class="hq-pp-slot">${String(i + 1).padStart(2, '0')}</span>`
+                    + `</button>`;
+            });
+            html += '</div>';
+            html += `<p class="hq-panel-note">Click a member for the sheet — stats, abilities, passives, gear. The roster changes when you cross with a different party (the Party Builder on the main menu; the forge before every crossing).</p>`;
+            return html;
+        }
+        function _hqPauseMemberHtml(i) {
+            const rec = _hqLastParty(); const m = rec && rec.members[i];
+            if (!m) return _hqPausePartyHtml();
+            const u = _hqPauseUnit(i);
+            const po = _hqPausePortrait(m, u);
+            const name = m.name || (u && u.name) || m.cls;
+            const lvl = u ? ((typeof getUnitLevel === 'function') ? getUnitLevel(u) : (u.level || 1)) : null;
+            const sec = (u && u._secondaryJob) || (m.meta && m.meta.secondaryJob) || '';
+            const n = rec.members.length;
+            let html = `<div class="hq-pp-nav"><button class="hq-btn hq-btn-sm" data-cmd="party">◂ PARTY</button><span>${String(i + 1).padStart(2, '0')} / ${String(n).padStart(2, '0')}</span><span class="hq-pp-nav-r"><button class="hq-btn hq-btn-sm" data-member="${(i + n - 1) % n}" title="← previous">◂</button><button class="hq-btn hq-btn-sm" data-member="${(i + 1) % n}" title="→ next">▸</button></span></div>`;
+            html += `<div class="hq-pp-sheet">`;
+            /* left: the face + identity + the stats */
+            html += `<div class="hq-pp-left">`;
+            html += `<div class="hq-pp-face big${po && po.kind === 'sprite' ? ' sprite' : ''}"${po ? ` style="background-image:url('${po.url}')"` : ''}></div>`;
+            html += `<div class="hq-panel-hd"><b>${_hqEsc(name)}</b><span>${_hqEsc(_hqPauseRaceLabel(m, u))} · ${_hqEsc(m.cls)}${sec ? ' / ' + _hqEsc(sec) : ''}${lvl != null ? ' · Lv ' + lvl : ''}</span></div>`;
+            if (u) {
+                html += `<div class="hq-chips">${_hqPauseTypeChips(u.types)}<i class="hq-chip dim">${_hqEsc(String(u.faction || '').toUpperCase())}</i>${u.zodiac ? `<i class="hq-chip dim">${_hqEsc(String(u.zodiac).toUpperCase())}</i>` : ''}</div>`;
+                html += '<div class="hq-pp-stats">';
+                html += _hqPauseBar('HP', u.maxHp | 0, Math.max(320, u.maxHp | 0), '#2ed158');
+                html += _hqPauseBar('MP', u.maxMp | 0, Math.max(200, u.maxMp | 0), '#2f9dff');
+                html += _hqPauseBar('ATK', u.atk | 0, 100, '#ff6b4a');
+                html += _hqPauseBar('DEF', u.def | 0, 100, '#4fa3ff');
+                html += _hqPauseBar('INT', u.intStat | 0, 100, '#c77dff');
+                html += _hqPauseBar('MDEF', u.mdef | 0, 100, '#7fd9dd');
+                html += _hqPauseBar('SPD', u.spd | 0, 100, '#f2c468');
+                html += _hqPauseBar('AWR', u.awr | 0, 100, '#ffd75a');
+                html += `<div class="hq-pp-diamonds"><span><b>${u.move | 0}</b>MOVE</span><span><b>${u.range | 0}</b>RANGE</span><span><b>${u.inspect | 0}</b>INSPECT</span></div>`;
+                html += '</div>';
+            } else {
+                html += `<p class="hq-panel-note">The sheet could not be rebuilt from the record (a retired vessel or job?). The bare loadout is below.</p>`;
+            }
+            html += `</div>`;
+            /* right: abilities · passives · gear · items */
+            html += `<div class="hq-pp-right">`;
+            let spells = u && Array.isArray(u.spells) ? u.spells.filter(Boolean) : [];
+            if (!spells.length) {
+                const ids = (m.meta && Array.isArray(m.meta.customSpells) && m.meta.customSpells.length) ? m.meta.customSpells : ((m.loadout && m.loadout.spells) || []);
+                spells = ids.filter(Boolean).map(id => (typeof getSpellById === 'function') ? getSpellById(id) : null).filter(Boolean);
+            }
+            html += `<div class="hq-pp-sec"><b>ABILITIES</b><span>${spells.length} EQUIPPED</span></div>`;
+            if (!spells.length) html += `<p class="hq-panel-note">No abilities on the record.</p>`;
+            else {
+                html += '<div class="hq-pp-spells">';
+                spells.forEach(sp => {
+                    const cat = _HQ_CAT[sp.type] || _HQ_CAT.utility;
+                    const tc = _HQ_TYPE_COLORS[sp.spellType] || '#aaa';
+                    let desc = sp.desc || '';
+                    if (!desc) { try { desc = (typeof describeSpell === 'function') ? describeSpell(sp) : ''; } catch (e) {} }
+                    const bits = [];
+                    if (sp.cost) bits.push(`${sp.cost} MP`);
+                    if (sp.apCost) bits.push(`${sp.apCost} AP`);
+                    if (sp.range != null) bits.push(`RNG ${sp.range}`);
+                    if (sp.dmg) bits.push(`PWR ${sp.dmg}`);
+                    else if (Array.isArray(sp.hitDamages)) bits.push(`PWR ${sp.hitDamages.reduce((a, b) => a + (b || 0), 0)} × ${sp.hitDamages.length}`);
+                    if (sp.heal) bits.push(`HEAL ${sp.heal}`);
+                    if (sp.aoeRadius) bits.push(`AOE ${sp.aoeRadius}`);
+                    html += `<div class="hq-pp-spell" style="--cc:${cat.c}"><div class="hq-pp-spell-hd"><i class="hq-pp-cat">${cat.g}</i><b>${_hqEsc(sp.name || sp.id)}</b>${sp.spellType ? `<i class="hq-pp-type" style="--tc:${tc}">${_hqEsc(String(sp.spellType).toUpperCase())}</i>` : ''}<span>${_hqEsc(bits.join(' · '))}</span></div>${desc ? `<p>${_hqEsc(desc)}</p>` : ''}</div>`;
+                });
+                html += '</div>';
+            }
+            if (u) {
+                let pas = [];
+                try { pas = (typeof getUnitPassives === 'function') ? getUnitPassives(u) : []; } catch (e) { pas = []; }
+                html += `<div class="hq-pp-sec"><b>PASSIVES</b><span>${pas.length}</span></div>`;
+                html += pas.length ? '<div class="hq-pp-passives">' + pas.map(p => `<div class="hq-pp-passive"><b>${p.icon ? p.icon + ' ' : ''}${_hqEsc(p.name || p.id)}</b><p>${_hqEsc(p.desc || '')}</p></div>`).join('') + '</div>' : `<p class="hq-panel-note">None.</p>`;
+            }
+            const eq = (u && u.equipment) || (m.loadout && m.loadout.equipment) || {};
+            const gear = Object.keys(eq).filter(k => eq[k]).map(k => { const d = (typeof EQUIP_DEFS !== 'undefined') ? EQUIP_DEFS[eq[k]] : null; return { slot: k, label: (d && d.label) || String(eq[k]), desc: (d && d.desc) || '' }; });
+            html += `<div class="hq-pp-sec"><b>GEAR</b><span>${gear.length}</span></div>`;
+            html += gear.length ? '<div class="hq-pp-gear">' + gear.map(g => `<div class="hq-pp-gear-row" title="${_hqEsc(g.desc)}"><i>${_hqEsc(g.slot.replace(/accessory/, 'ACC ').toUpperCase())}</i><b>${_hqEsc(g.label)}</b><span>${_hqEsc(g.desc)}</span></div>`).join('') + '</div>' : `<p class="hq-panel-note">Nothing equipped.</p>`;
+            const items = (u && u.items) || (m.loadout && m.loadout.items) || {};
+            const carried = Object.keys(items).filter(k => items[k] > 0);
+            html += `<div class="hq-pp-sec"><b>ITEMS</b><span>${carried.reduce((a, k) => a + items[k], 0)} CARRIED</span></div>`;
+            html += carried.length ? '<div class="hq-chips">' + carried.map(k => { const r = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[k] : null; const meta = (typeof ITEM_META !== 'undefined') ? ITEM_META[k] : null; return `<i class="hq-chip">${(r && r.icon) || (meta && meta.icon) || ''} ${_hqEsc((r && r.name) || k)} × ${items[k]}</i>`; }).join('') + '</div>' : `<p class="hq-panel-note">Pockets empty.</p>`;
+            html += `</div></div>`;
+            return html;
+        }
+        function _hqPauseOfficerHtml() {
+            const profile = _hqProfile();
+            const cl = (typeof window.doorClearance === 'function') ? window.doorClearance(profile) : { level: 1, title: 'DOORMAT' };
+            const ic = (typeof window.hqIntakeCard === 'function') ? window.hqIntakeCard(profile) : null;
+            const mr = (typeof window.hqMedicalRecord === 'function') ? window.hqMedicalRecord(profile) : null;
+            const pc = (typeof window.hqPunchClock === 'function') ? window.hqPunchClock(profile) : null;
+            const k = (typeof window.hqKeys === 'function') ? window.hqKeys(profile) : null;
+            const mc = (typeof window.hqMasteryCount === 'function') ? window.hqMasteryCount(profile) : null;
+            const sh = (typeof window.hqDailyOps === 'function') ? window.hqDailyOps(profile) : null;
+            let rank = null;
+            try { const cs = loadCareerStats(); rank = getEloRankInfo(cs.elo); rank._elo = cs.elo; } catch (e) {}
+            let walks = '';
+            try { if (typeof window.hqAvatarPref === 'function' && typeof window.hqAvatarLabel === 'function') walks = window.hqAvatarLabel(window.hqAvatarPref(profile)); } catch (e) {}
+            let bar = null;
+            try { bar = (typeof window.hqMottoBarometer === 'function') ? window.hqMottoBarometer(profile, { force: _hqMottoForce() }) : null; } catch (e) {}
+            const row = (label, sub, chip, tone) => `<div class="hq-row hq-row-tray"><b>${label}</b><span>${sub}</span><i class="hq-lamp-chip st-${tone || 'open'}">${chip}</i></div>`;
+            let html = `<div class="hq-panel-hd"><b>${_hqEsc((profile && profile.username) || 'UNFILED')}</b><span>THE OFFICER ON DUTY · CLEARANCE L${cl.level} · ${_hqEsc(cl.title)}</span></div>`;
+            html += '<div class="hq-rows">';
+            if (ic) html += row('EMPLOYEE No.', 'DERIVED AT INTAKE · NEVER REISSUED', _hqEsc(ic.empNo || '—'));
+            if (ic && ic.callsign) html += row('CALLSIGN', 'EDITED ON THE CARD, AT THE WINDOW', _hqEsc(ic.callsign));
+            html += row('CLEARANCE', 'STORY PROGRESS — NOT THE RANK', `L${cl.level} · ${_hqEsc(cl.title)}`);
+            if (rank) html += row('RANK', 'THE LADDER, OFF THE RATING', `${rank.icon || ''} ${_hqEsc(rank.name || '')}${rank._elo != null ? ' · ' + Math.round(rank._elo) : ''}`);
+            if (mr) html += row('CAREER', `${mr.matches | 0} CROSSINGS · ${mr.wins | 0} STABILIZED · ${mr.exits | 0} EXITS`, `${Math.round((mr.rate || 0) * 100)}% WIN`, (mr.rate || 0) >= 0.5 ? 'stabilized' : 'unstable');
+            if (mr) html += row('CONDITION', _hqEsc(mr.note || ''), _hqEsc(mr.condition || ''), mr.tone || 'open');
+            if (pc) html += row('PUNCH CLOCK', `BEST ${pc.best | 0} · ${pc.days | 0} DAYS ON THE BOOKS`, `${pc.streak | 0} DAY STREAK`, pc.today ? 'stabilized' : 'off');
+            if (k) html += row('KEYS', `${k.pickups | 0} RECOVERED${k.issued ? ' + ' + k.issued + ' ISSUED' : ''}`, `${k.keys | 0}`);
+            if (mc) html += row('STABILIZED', 'THRESHOLDS WON BY EVERY WIN CONDITION', `${mc.mastered} / ${mc.total}`, mc.mastered === mc.total ? 'stabilized' : 'open');
+            if (sh) html += row('FORM 365', 'DAILY OFFICE OPERATIONS · ROOM 247', `${sh.done} / ${sh.total}`, sh.allDone ? 'stabilized' : 'unstable');
+            if (walks) html += row('WALKS AS', 'OCCAM’S BARBERSHOP · ROOM 1287', _hqEsc(walks));
+            if (bar) html += row('THE MOTTO', 'THE BUREAU’S PLAQUE', _hqEsc(bar.form), bar.tone || 'open');
+            html += '</div>';
+            html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-pause-fn="_mountReactProfile">OPEN THE ID CARD ▸</button><button class="hq-btn" data-pause-fn="_mountReactTrophies">THE TROPHY CASE ▸</button><button class="hq-btn" data-pause-fn="_mountLeaderboard">THE BOARD ▸</button></div>`;
+            return html;
+        }
+        function _hqPauseRender() {
+            const P = _hqPause; if (!P) return;
+            const head = _hqEl('hqPauseHead'), nav = _hqEl('hqPauseNav'), body = _hqEl('hqPauseBody'), foot = _hqEl('hqPauseFoot');
+            if (head) head.innerHTML = _hqPauseHeadHtml();
+            if (nav) nav.innerHTML = _hqPauseNavHtml();
+            window._hqPauseSettingsBody = null;
+            if (body) {
+                body.scrollTop = 0;
+                body.setAttribute('data-view', P.cmd + (P.member != null ? '-member' : ''));
+                if (P.cmd === 'party') body.innerHTML = (P.member != null) ? _hqPauseMemberHtml(P.member) : _hqPausePartyHtml();
+                else if (P.cmd === 'officer') body.innerHTML = _hqPauseOfficerHtml();
+                else if (P.cmd === 'settings') {
+                    body.innerHTML = `<div class="hq-panel-hd"><b>SETTINGS</b><span>AUDIO · DISPLAY · CONTROLS · THE BUILDING</span></div><div class="mm-settings-body hq-pause-settings" id="hqPauseSettingsBody"></div>`;
+                    window._hqPauseSettingsBody = _hqEl('hqPauseSettingsBody');
+                    try { _renderMainMenuSettings(); } catch (e) { console.warn('[HQ] pause: settings', e); }
+                }
+                else body.innerHTML = '';
+            }
+            if (foot) foot.innerHTML = `<span>↑ ↓ COMMAND</span><span>ENTER SELECT</span><span>← → MEMBER</span><span>BACKSPACE BACK</span><span>ESC / P RESUME</span>`;
+        }
+        function _hqPauseSelect(id) {
+            const P = _hqPause; if (!P) return;
+            if (id === 'resume') { window._hqClosePause(); return; }
+            if (id === 'exit') { _hqPauseDrop(); window._hqExitToMenu(); return; }
+            if (id === 'directory') {
+                /* the directory is a PANEL over the paused walk (ESC closes it and resumes) */
+                _hqPauseDrop();
+                _hqSuspended = false;
+                _hqOpenCounter('directory');
+                return;
+            }
+            P.cmd = id; P.member = null;
+            P.cursor = Math.max(0, _HQ_PAUSE_CMDS.findIndex(c => c.id === id));
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+            _hqPauseRender();
+        }
+        /* a page function from the menu (the ID card, the trophies, the board,
+           the Party Builder): the DOM modals resume the building when they
+           close; a page screen leaves it and comes home through _hqReturnOrMenu */
+        function _hqPauseFn(fn) {
+            _hqPauseDrop();
+            _hqSuspended = false;   // _hqDoAction suspends for a modal / leaves for a page
+            window._hqDoAction({ fn });
+        }
+        function _hqPauseKey(e) {
+            const P = _hqPause; if (!P) return;
+            const t = e.target;
+            const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
+            const k = e.key;
+            if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); if (P.member != null) { P.member = null; _hqPauseRender(); } else window._hqClosePause(); return; }
+            if (typing) return;
+            if (k === 'ArrowUp' || k === 'ArrowDown') {
+                e.preventDefault();
+                P.cursor = (P.cursor + (k === 'ArrowDown' ? 1 : _HQ_PAUSE_CMDS.length - 1)) % _HQ_PAUSE_CMDS.length;
+                const nav = _hqEl('hqPauseNav'); if (nav) nav.innerHTML = _hqPauseNavHtml();
+                try { playSfx('uiCursorMove'); } catch (err) {}
+                return;
+            }
+            if (k === 'Enter') {
+                if (t && t.tagName === 'BUTTON' && t.closest('#hqPauseBody')) return;   // a focused body button keeps its own ENTER
+                e.preventDefault();
+                const c = _HQ_PAUSE_CMDS[P.cursor]; if (c) _hqPauseSelect(c.id);
+                return;
+            }
+            if ((k === 'ArrowLeft' || k === 'ArrowRight') && P.cmd === 'party') {
+                const rec = _hqLastParty(); if (!rec || !rec.members.length) return;
+                e.preventDefault();
+                const n = rec.members.length, d = (k === 'ArrowRight') ? 1 : n - 1;
+                P.member = (P.member == null) ? (k === 'ArrowRight' ? 0 : n - 1) : (P.member + d) % n;
+                _hqPauseRender();
+                return;
+            }
+            if (k === 'Backspace' && P.member != null) { e.preventDefault(); P.member = null; _hqPauseRender(); }
+        }
+        document.addEventListener('click', (e) => {
+            const root = _hqEl('hqPause');
+            if (!_hqPause || !root || !root.contains(e.target)) return;
+            const cmd = e.target.closest('[data-cmd]');
+            if (cmd) { _hqPauseSelect(cmd.getAttribute('data-cmd')); return; }
+            const mem = e.target.closest('[data-member]');
+            if (mem) { _hqPause.member = parseInt(mem.getAttribute('data-member'), 10) || 0; try { playSfx('uiButtonConfirm'); } catch (err) {} _hqPauseRender(); return; }
+            const fn = e.target.closest('[data-pause-fn]');
+            if (fn) { _hqPauseFn(fn.getAttribute('data-pause-fn')); return; }
+            if (e.target.classList.contains('hq-pause-scrim')) window._hqClosePause();
+        });
         /* open a counter's panel without walking to it (Q hotkey, the strip's DIRECTORY button) */
         function _hqOpenCounter(id) {
             const room = _hqRoom();
@@ -2578,6 +2937,8 @@
             }
         }
         window._openMainMenuSettings = function() {
+            /* the settings buttons rerender through this name: inside the HQ pause menu, rerender in place */
+            if (typeof _hqPause !== 'undefined' && _hqPause && _hqPause.cmd === 'settings' && window._hqPauseSettingsBody) { _renderMainMenuSettings(); return; }
             if (!_mmSettingsSession) {
                 _mmSettingsReturnFocus = document.activeElement;
                 _mmSettingsSession = true;
@@ -3662,7 +4023,8 @@
         };
 
         function _renderMainMenuSettings() {
-            const body = document.getElementById('mmSettingsBody');
+            /* THE PAUSE MENU (2026-09-15): the HQ's SETTINGS command renders the same body inside its overlay */
+            const body = window._hqPauseSettingsBody || document.getElementById('mmSettingsBody');
             if (!body) return;
             const focusSnapshot = _mmSettingsSnapshot();
             const musicVol = document.getElementById('musicVolumeSlider')?.value || 68;

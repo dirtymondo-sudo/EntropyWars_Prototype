@@ -36,7 +36,7 @@ function hqHarness() {
         clearTimeout(id) { timers.get(id).canceled = true; },
         _hqEl: id => els[id] || null, _hqRoomExists: () => true,
         _hqProfile: () => null, _hqAvatar: () => ({}), _hqFillStrip: noop,
-        _hqTermDrop: noop, _hqSetPrompt: noop, _hqInteractTarget: noop,
+        _hqTermDrop: noop, _hqPauseDrop: noop, _hqSetPrompt: noop, _hqInteractTarget: noop,
         _hqWalkThroughDoor: noop, _hqOpenCounter: noop, _hqCheckPromotion: noop,
         _hqRecordVisit: noop, playSfx: noop, syncMusicToState: () => Promise.resolve(),
         _hqHome: false, _hqSuspended: false, _hqLastRoom: 'central_egress',

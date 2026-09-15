@@ -1585,6 +1585,59 @@ Guild Hub was the prototype; this plan is the building.
 
 ## 9. Build log (append per session)
 
+### 2026-09-15 (rev 3) — THE PAUSE MENU, THE LAST ROSTER, THE LANDING (map.js, state.js, battle.js, three-renderer.js, index.html, styles-base.css; hq-pause.test.js)
+The user, three things: "Escape pauses the game, but something still has
+control of my mouse and I can't click anything"; "a completely new
+redesigned pause menu — standard AAA JRPG, matching the aesthetic — with my
+current party (whoever I took into battle last), click them for stats and
+spells"; "whenever I walk through doors, the door I came through is
+covering the screen and I have to move forward a little".
+**The mouse.** ESC ran `_hqOpenSettings` → `_openMainMenuSettings` →
+`_showTitlePage('settingsPage')`: the Settings PAGE slid over the HQ PAGE,
+the HQ page went `exit-left` (opacity 0, a fade) under it, and the walk was
+suspended with the pointer lock released — a page swap under a live 3D
+host, with the settings page's focus trap and the walker's late lock
+requests in the mix. Replaced outright: the menu is an OVERLAY inside
+`#hqPage` (`#hqPause`, z 35), the walk pauses in place (`_hqSuspend` →
+`setPaused(true)` → the lock is released; `exitPointerLock` again for a
+late grant; `_hqOnLockChange` already returns a lock that lands while
+paused), the overlay owns the cursor (`cursor: default; pointer-events:
+auto`). No page moves.
+**The menu** (`_hqOpenPause`, `_HQ_PAUSE_CMDS`): a head strip (PAUSED · the
+room · officer + clearance · Hazard Pay · Keys · Stabilized · day streak ·
+the canon date), a command column on the left (RESUME · PARTY · OFFICER ·
+SETTINGS · DIRECTORY · EXIT, the cursor row lit gold, EXIT red at the
+foot), the sheet on the right, a key-hint foot. PARTY is a grid of round
+portrait cards (portrait, else the R2 sprite) → a member's sheet: the face
+large, identity + Lv, the eight stat bars, MOVE / RANGE / INSPECT, type
+chips, ABILITIES (category-coloured rows: MP · AP · RNG · PWR + the desc),
+PASSIVES, GEAR, ITEMS; ◂ ▸ walk the roster. OFFICER is the file with
+buttons into the ID card / the trophies / the board. SETTINGS is the main
+menu's own settings body rendered INTO the overlay (`_renderMainMenuSettings`
+takes `window._hqPauseSettingsBody`; `_openMainMenuSettings` — the buttons'
+rerender hook — re-renders in place while the menu is up). DIRECTORY drops
+the menu for the directory panel; EXIT is the strip's EXIT.
+**The roster.** Nothing recorded "the party you took into battle last", so
+state.js `recordLastParty` / `loadLastParty` (`ew_last_party_v1`) now do,
+called from battle.js `startMatch` for a standard match (the human seat —
+online the local seat). The menu rebuilds each member with the real
+`createUnit` so the sheet shows what the engine would field (level, sec
+job, tree-legal spells, gear bonuses).
+**The landing.** `_hqGoTo` stood the walker 1.6 m in front of the door; the
+third-person boom (3.6 m back) marched in to the first clear point, and
+`_hqCamBlocked` only knew the WALL plane — so the eye stopped in the
+doorway, behind the open leaf. Now `_hqCamInDoorway` blocks a slab 1.5 m
+deep on the room side of every door (opening + swing wide, door height) and
+the landing is 2.4 m in (2.6 on a curved wall): the eye stands in the room
+on arrival and eases back as you walk.
+Tests: `hq-pause.test.js` runs the recorder (seat rule, blank-slot drop,
+online seat) and the doorway blocker (a flat-wall door and a rotunda door,
+both sides, over the door) in vm sandboxes, then guards every site;
+doorhq.test.js's `onEscape` prefix still matches. UNSEEN LIVE (RULE #1c):
+all of it — first eyeball ESC from a pointer-locked walk (the cursor must
+be back at once), the party cards' portraits, the settings body inside the
+sheet, a landing through the foyer's revolving door and a bay's wide door.
+
 ### 2026-09-15 (rev 2) — 4.4 SHIPPED: THE BUREAU OF CONTINUITY and THE MOTTO PLAQUE, the reality barometer (data.js, three-renderer.js, map.js, index.html, styles-base.css; doorhq.test.js, hq-floors.test.js)
 The row the foyer left for "whoever builds the barometer" (its seal
 deliberately does not carry the motto, because a cached decal cannot

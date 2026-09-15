@@ -172,7 +172,7 @@ test('THE PAUSE: P opens the settings in the building and the pause menu in a ba
     assert.match(BT, /if \(wasLocked && !locked && _enabled\(\) && _owns\(\) && performance\.now\(\) - _strikeLockReleasedAt > 1500/, 'Strike Mode: a lock loss it did not cause opens the pause menu');
     assert.strictEqual((BT.match(/_strikeLockReleasedAt = performance\.now\(\);/g) || []).length, 2, 'both of Strike Mode’s own releases are stamped');
     assert.match(UI, /if \(\(e\.key === 'p' \|\| e\.key === 'P'\) && !e\.ctrlKey && !e\.metaKey && !e\.altKey && !state\.uiDialog\s*&& state\.phase === 'battle' && !state\.winner/, 'P = the pause menu in a battle');
-    assert.match(IX, /ESC \/ P settings/, 'the hints say so');
+    assert.match(IX, /ESC \/ P menu/, 'the hints say so (THE PAUSE MENU, 2026-09-15: ESC / P is the menu now)');
 });
 
 test('the panels by id in map.js: the floor panel, the booth, the board, the object, the altar, the notice board, the bar, the plaques', () => {

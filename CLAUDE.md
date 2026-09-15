@@ -2516,6 +2516,60 @@ foyer too. Viewer-local (RULE #2). doorhq.test.js guards the room, the
 helper, the ration (the foyer's two faces of one door) and the source
 sites.
 
+## THE HQ PAUSE MENU + THE LAST ROSTER + THE LANDING — 2026-09-15, local delivery
+**ESC / P in the building = THE PAUSE MENU** (map.js `_hqOpenPause` /
+`_hqClosePause` / `_hqTogglePause`; `_hqOpenSettings` is an alias now): an
+OVERLAY inside `#hqPage` (`#hqPause`, index.html; CSS "THE PAUSE MENU" in
+styles-base.css, z 35 — over the strip / panel / terminal, under the load
+card), never a title-page swap. The old ESC pushed the whole Settings PAGE
+over the HQ page (`_showTitlePage('settingsPage')`) and the walker's page
+faded out under it with the cursor still spoken for — "escape pauses but
+something has my mouse". Now `_hqSuspend()` pauses the walk in place
+(`hq.setPaused(true)` releases the pointer lock; `exitPointerLock` again
+for a late one) and a JRPG command column stands over it: **RESUME · PARTY ·
+OFFICER · SETTINGS · DIRECTORY · EXIT** (`_HQ_PAUSE_CMDS`; ↑↓ ENTER, ←→
+cycle members, BACKSPACE back, ESC / P resume — `_hqPauseKey` on document;
+the walker's own ESC / P handler routes through `onEscape`, which closes
+the menu first). **PARTY = THE LAST ROSTER**: state.js `recordLastParty()`
+(`window._ewRecordLastParty`, localStorage `ew_last_party_v1`, the HUMAN
+seat: the online seat, else the LOCAL controller, else P1) is called by
+battle.js `startMatch` for a standard match only (never campaign / MD /
+spell lab / tutorial) and files `{ seat, mode, members: [{ cls, name, meta:
+{ race, gender, secondaryJob, customSpells, zodiac, appearance }, loadout:
+{ spells, items, equipment } }] }`; `loadLastParty()` (`_ewLoadLastParty`)
+reads it. The menu builds each member with the REAL `createUnit` (level,
+sec job, tree-legal spells, gear bonuses — cached per open in
+`_hqPause.units`) for the cards and the sheet (`_hqPausePartyHtml` /
+`_hqPauseMemberHtml`: portrait or R2 sprite, race label, job, Lv, HP / MP
+/ ATK / DEF / INT / MDEF / SPD / AWR bars, MOVE / RANGE / INSPECT, type
+chips, ABILITIES with `type` category · MP · AP · RNG · PWR · desc,
+PASSIVES via `getUnitPassives`, GEAR via `EQUIP_DEFS`, ITEMS via
+`ITEM_RULES`); a build that throws falls back to the record's bare ids.
+**OFFICER** = the file (`hqIntakeCard` / `hqMedicalRecord` / `hqPunchClock`
+/ `hqKeys` / `hqMasteryCount` / `hqDailyOps` / `hqAvatarLabel` /
+`hqMottoBarometer` / `getEloRankInfo`) + buttons into the ID card, the
+trophies, the board (`_hqPauseFn` → `_hqDoAction({ fn })`; the modals
+resume the building, a page comes home through `_hqReturnOrMenu`).
+**SETTINGS** renders the main menu's settings body INTO the overlay:
+`_renderMainMenuSettings` writes to `window._hqPauseSettingsBody ||
+#mmSettingsBody`, and `_openMainMenuSettings` (the buttons' rerender hook)
+re-renders in place while the menu is on SETTINGS. **DIRECTORY** drops the
+menu and opens the directory panel over the paused walk. `_hqResume`,
+`_hqLeave` and `_hqEnter` all `_hqPauseDrop()` — a screen opened from the
+menu never comes back under a stale overlay. **THE LANDING** (three-
+renderer.js): `_hqGoTo` stands the walker 2.4 m in from a flat wall (was
+1.6) / 2.6 m from a curved one, and **`_hqCamInDoorway`** makes every door
+a camera blocker — a slab 1.5 m deep on the room side of the wall plane,
+the opening + the leaf's swing wide, door height — read first by
+`_hqCamBlocked`; the boom used to stop at the wall plane INSIDE the
+doorway behind the open leaf, so the door you came through filled the
+screen until you stepped forward. Viewer-local, nothing on `state`,
+nothing relayed (RULE #2). `npm test` runs `hq-pause.test.js` (the
+recorder and the doorway blocker in vm sandboxes + source guards).
+UNSEEN LIVE (RULE #1c): the menu's look over the building, the settings
+body's width in the sheet, the portraits' crop, the landing on a wide
+(revolving / hangar) door.
+
 ## THE PENTHOUSE + ROOMS 4C + 8 (the elevator rides, HQ plan 5.4 stage 1 / 7.4) — added 2026-09-14
 `DOOR_HQ.rooms.executive` (data.js) is THE PENTHOUSE, a `kind: 'box'` lobby
 behind the mezzanine ELEVATOR at 0° (`central_egress.doors` id `elevator`,

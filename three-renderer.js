@@ -40273,9 +40273,40 @@ const ThreeRenderer = (function () {
         return _hqAirClearOfBlockers(x, z, y);
     }
     /* highest surface under a free point (camera boom), ignoring the walker's height */
+    /* THE DOORWAY IS A WALL TO THE CAMERA (2026-09-15): a slab 1.5 m deep on
+       the ROOM side of every door's wall plane, the opening's width plus the
+       leaf's swing either side, door height. Without it the boom marched back
+       into the doorway on every landing (the shell test only knows the wall
+       plane) and sat behind the open leaf — "the door I came through covers
+       the screen until I step forward". The walker lands 2.4 m in, so the eye
+       has 0.9 m over the shoulder on arrival and eases back out as they walk. */
+    function _hqCamInDoorway(px, pz, py) {
+        var ds = _hq.doors; if (!ds || !ds.length) return false;
+        var DEPTH = 1.5, BEHIND = 0.6;
+        for (var i = 0; i < ds.length; i++) {
+            var d = ds[i];
+            if (py > d.y0 + 3.0 || py < d.y0 - 0.4) continue;
+            var hw = (d.ow || 1.2) * 0.5 + 0.6;
+            if (d.box) {
+                var dx = px - d.box.wx, dz = pz - d.box.wz;
+                var along = dx * d.box.nx + dz * d.box.nz;            // + = into the room
+                var lat = Math.abs(dz * d.box.nx - dx * d.box.nz);
+                if (along > -BEHIND && along < DEPTH && lat < hw) return true;
+            } else if (d.Rw) {
+                var r = Math.hypot(px, pz);
+                var into = d.inward ? (r - d.Rw) : (d.Rw - r);          // + = the side the walker lands on
+                if (into <= -BEHIND || into >= DEPTH) continue;
+                var dg = _hqNormDeg(Math.atan2(px, -pz) * 180 / Math.PI) - _hqNormDeg(d.door.deg || 0);
+                dg = ((dg + 540) % 360) - 180;
+                if (Math.abs(dg) * Math.PI / 180 * Math.max(1, d.Rw) < hw) return true;
+            }
+        }
+        return false;
+    }
     function _hqCamBlocked(px, pz, py) {
         var S = _hq.room.shell;
         var r = Math.hypot(px, pz);
+        if (_hqCamInDoorway(px, pz, py)) return true;
         if (_hq.room.kind === 'box') {
             var roamC = _hqRoamM(S);
             if (Math.abs(px) > S.w / 2 + roamC - 0.28 || Math.abs(pz) > S.d / 2 + roamC - 0.28) return true;
@@ -41132,14 +41163,19 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < _hq.doors.length; i++) if (_hq.doors[i].door.id === id) { d = _hq.doors[i]; break; }
         var spot = null, face = 0;
         if (d && d.box) {
-            /* a flat wall: 1.6 m in front of the panel, facing it (or away from it) */
-            spot = new THREE.Vector3((d.box.wx + d.box.nx * 1.6) * U, d.y0 * U, (d.box.wz + d.box.nz * 1.6) * U);
+            /* a flat wall: 2.4 m in front of the panel, facing it (or away from it).
+               THE LANDING (2026-09-15): it was 1.6 m — with the boom 3.6 m behind
+               the walker the eye stopped at the wall plane INSIDE the doorway,
+               behind the open leaf, and the door you came through filled the
+               screen until you took a step. The doorway itself is a camera
+               blocker now too (_hqCamInDoorway), so the eye stands in the room. */
+            spot = new THREE.Vector3((d.box.wx + d.box.nx * 2.4) * U, d.y0 * U, (d.box.wz + d.box.nz * 2.4) * U);
             var towardB = _hqHeadingOf(-d.box.nx, -d.box.nz);
             face = faceAway ? towardB + 180 : towardB;
         }
         else if (d) {
             /* an inner-wall door (a bay's way out) is faced by heading toward the arc centre */
-            spot = _hqPolarW(d.door.deg, d.inward ? (d.Rw + 2.2) : (d.Rw - 2.2), d.y0);
+            spot = _hqPolarW(d.door.deg, d.inward ? (d.Rw + 2.6) : (d.Rw - 2.6), d.y0);   // 2.2 → 2.6 (THE LANDING, 2026-09-15)
             var toward = d.inward ? d.door.deg + 180 : d.door.deg;
             face = faceAway ? toward + 180 : toward;
         }

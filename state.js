@@ -3685,6 +3685,62 @@
             };
         }
 
+        /* ══ THE LAST ROSTER (2026-09-15) — the party you took into battle last.
+           battle.js startMatch files the HUMAN seat's party here (standard
+           matches only: never a campaign, a Mystery Dungeon floor, the spell
+           lab or a tutorial lesson); the D.O.O.R. HQ pause menu (map.js
+           _hqOpenPause → PARTY) reads it back and builds each member with
+           createUnit for the sheet. Viewer-local (localStorage), nothing on
+           `state`, nothing relayed (RULE #2). ══ */
+        const LAST_PARTY_KEY = 'ew_last_party_v1';
+        function _lastPartySeat() {
+            try {
+                if (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch() && typeof window.getLocalPlayer === 'function') return window.getLocalPlayer() || 1;
+            } catch (e) {}
+            return [1, 2].find(p => state.controllers && state.controllers[p] === CTRL.LOCAL) || 1;
+        }
+        function recordLastParty(opts) {
+            opts = opts || {};
+            try {
+                const seat = opts.seat || _lastPartySeat();
+                const builds = Array.isArray(state.partyBuilds?.[seat]) ? state.partyBuilds[seat] : [];
+                if (!builds.length) return null;
+                const members = builds.map((cls, i) => {
+                    const meta = (state.partyMeta && state.partyMeta[seat] && state.partyMeta[seat][i]) || {};
+                    const lo = (state.loadouts && state.loadouts[seat] && state.loadouts[seat][i]) || null;
+                    return {
+                        cls: String(cls || 'Freelancer'),
+                        name: (state.partyNames && state.partyNames[seat] && state.partyNames[seat][i]) || '',
+                        meta: {
+                            race: meta.race || '', gender: meta.gender || '', secondaryJob: meta.secondaryJob || '',
+                            customSpells: Array.isArray(meta.customSpells) ? meta.customSpells.filter(Boolean).slice() : null,
+                            zodiac: meta.zodiac || '', appearance: meta.appearance || null,
+                        },
+                        loadout: lo ? {
+                            spells: Array.isArray(lo.spells) ? lo.spells.slice() : [],
+                            items: Object.assign({}, lo.items || {}),
+                            equipment: Object.assign({}, lo.equipment || {}),
+                        } : null,
+                    };
+                });
+                const rec = { v: 1, at: Date.now(), seat, mode: opts.mode || state.gameMode || '', map: opts.map || '', members };
+                try { localStorage.setItem(LAST_PARTY_KEY, JSON.stringify(rec)); } catch (e) {}
+                window._ewLastPartyCache = rec;
+                return rec;
+            } catch (e) { console.warn('[roster] could not file the party', e); return null; }
+        }
+        function loadLastParty() {
+            if (window._ewLastPartyCache) return window._ewLastPartyCache;
+            try {
+                const raw = localStorage.getItem(LAST_PARTY_KEY);
+                const rec = raw ? JSON.parse(raw) : null;
+                if (rec && rec.v === 1 && Array.isArray(rec.members) && rec.members.length) { window._ewLastPartyCache = rec; return rec; }
+            } catch (e) {}
+            return null;
+        }
+        window._ewRecordLastParty = recordLastParty;
+        window._ewLoadLastParty = loadLastParty;
+
         function getItemCapForClass(cls, itemKey) {
             if (itemKey === 'scanner') return cls === 'Agent' ? 2 : 1;
             return ITEM_RULES[itemKey].max;
