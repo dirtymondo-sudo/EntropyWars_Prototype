@@ -90,7 +90,7 @@ test('the front door: the board room\'s back door row is an array, hangs west of
     assert.ok(Array.isArray(BD) && BD.length === 1, 'an ARRAY of back-door rows (one row stays legal — the Backrooms keeps its single row)');
     assert.ok(!Array.isArray(HQ.siteRooms.backDoors.prebuilt_backrooms), 'the legacy single-row shape survives beside it');
     const room = HQ.rooms[BOARD], S = room.shell;
-    assert.deepStrictEqual(room.doors.map(d => d.id).join(','), 'egress,house', 'the way in first, then the front door');
+    assert.deepStrictEqual(room.doors.filter(d => !d.link).map(d => d.id).join(','), 'egress,house', 'the way in first, then the front door (the world-graph links append after — 9.3 rev 7)');
     const house = at(BOARD, 'house');
     assert.ok(house.wall === 'n' && house.x === -7.5 && house.leaf === 'leaf_wooden', 'the north wall, west of the console, the threshold\'s own leaf');
     assert.strictEqual(house.leaf, HQ.thresholds[SITE].leaf, 'the front door wears the site\'s catalogue leaf');

@@ -2930,6 +2930,34 @@ training_floor fallback, ui.js's two dome URLs) because the sheet is
 immutable-cached — bump that query on the next repaint; every loader reads
 `TERRAIN_SPRITES[key][0]` verbatim, so the query is harmless.
 
+## THE ROUTES + THE WORLD TAB (HQ plan 9.3 expansion) — 2026-09-15 rev 7, local delivery
+`DOOR_HQ.links` (data.js) is the WHOLE route table: 32 live links on nine
+lines named in **`DOOR_HQ.routes`** (`lunar` · `deep` · `divine` · `bases`
+· `woods` · `ley` · `highway` · `wonderland` · `seams` — `{ label, sub,
+color, dashed? }`); every built site but the Looking-Glass is a station
+(its 9 m room has no landing off the board — it joins when the room grows
+or 9.5 reaches it). RULES for a new link: an ordinary door end is a board
+room's NORTH wall at x −0.2 / −5 / −10 (≤ 3 link doors per room, lanes ≥
+4.4 m apart, west of the console lane, clear of the corner masts and the
+x 5 signboard — hq-world.test.js's production landing test decides),
+never a rank leaf, always a `why`, a `route` the catalogue names, two-way
+(no one-way route without a verified way back). **`hqLinkLive(link)`** is
+the ONE liveness rule (both ends built + well-formed + catalogued wear →
+`{ a, b, wearA, wearB }`, else held at BOTH ends) shared by `hqLinkDoors`
+and **`hqWorldRoutes(curRoom)`** (a line per route with a live link;
+stations = SITES — a seam off a complex's part is the house's, Room 13 is
+one station on `woods` + `seams`; walked from an end, `lines.length > 1`
+= interchange, `here` = the viewer's room or site; `legs[].fromRoom /
+toRoom` keep the real ends). THE WORLD = the directory's second sheet
+(map.js `_hqWorldHtml`, under the register): a subway-map SVG per line in
+its ink (`.hq-world-*` in styles-base.css, `--hq-line`), a dot per site
+with its number, dashed legs for seams, a ring at an interchange, `.here`
+filled, GO = `data-room="site_<id>" data-at="egress"` (the register's own
+rule; doorhq.test.js counts that literal — 3 now). Older tests that count
+a room's doors must filter `!d.link` (links append after a room's own
+rows). Viewer-local (RULE #2). Still open: the suites, the star chart's
+route lines, the other eight `way` kinds, the airlock / hold ends.
+
 ## THE SEAMS THAT ARE NOT DOORS (HQ plan 9.3 `way`, the first two) — 2026-09-15 rev 6, local delivery
 A `DOOR_HQ.links` row may carry **`way: '<kind>'`** instead of a `leaf`:
 the seam is an ENTRYWAY OBJECT, not a door. **`DOOR_HQ.ways`** (data.js,

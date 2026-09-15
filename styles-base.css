@@ -4166,6 +4166,21 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-chip { font-family: 'IBM Plex Mono', monospace; font-style: normal; font-size: 8px; letter-spacing: 0.16em; padding: 2px 7px; border: 1px solid rgba(127,217,221,0.5); color: #7fd9dd; }
 .hq-chip.dim { border-color: rgba(255,255,255,0.15); color: #7f7a6e; }
 /* THE STAR CHART (Room 360, 2026-09-11): the site star-map panel — hqStarChart's sky as an SVG, every star a button */
+/* THE WORLD (HQ plan 9.3, 2026-09-15 rev 7): the directory's subway map — one
+   line per route in its own ink (--hq-line), a dot per site, a double ring at
+   an interchange, the room you stand in filled, a dashed leg for a seam */
+.hq-world-line { margin: 0 0 12px; padding: 6px 8px 2px; border: 1px solid rgba(255,255,255,0.06); border-left: 3px solid var(--hq-line, #b8a060); background: rgba(255,255,255,0.02); }
+.hq-world-hd { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: 2px; }
+.hq-world-hd b { font-family: 'Cormorant SC', serif; font-size: 14px; letter-spacing: 0.12em; color: var(--hq-line, #b8a060); }
+.hq-world-hd span { font-size: 8px; letter-spacing: 0.2em; color: #7f7a6e; }
+.hq-world-line svg { display: block; width: 100%; height: auto; overflow: visible; }
+.hq-world-leg { fill: none; stroke-width: 3; stroke-linecap: round; opacity: 0.85; }
+.hq-world-leg.hq-world-dashed { stroke-dasharray: 5 4; opacity: 0.7; }
+.hq-world-stop .hq-world-dot { fill: #070a14; stroke: var(--hq-line, #b8a060); stroke-width: 2; }
+.hq-world-stop.here .hq-world-dot { fill: var(--hq-line, #b8a060); }
+.hq-world-stop .hq-world-ring { fill: #070a14; stroke: #f0e6c8; stroke-width: 1.4; }
+.hq-world-stop text { font-family: 'IBM Plex Mono', monospace; font-size: 8px; fill: #9a9484; letter-spacing: 0.06em; pointer-events: none; }
+.hq-world-stop.here text { fill: #f0e6c8; }
 .hq-starmap { width: min(100%, 420px); margin: 0 auto 10px; }
 .hq-starmap svg { display: block; width: 100%; height: auto; overflow: visible; }
 .hq-sky-disc { fill: #070a14; stroke: rgba(184,160,96,0.45); stroke-width: 1; }

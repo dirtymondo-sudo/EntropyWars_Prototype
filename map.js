@@ -1928,7 +1928,57 @@
                 });
                 html += '</div>';
             }
+            html += _hqWorldHtml();
             html += '<p class="hq-panel-note">WALK moves you to the door; GO takes you to the room that holds it. The building stays consistent long enough to be memorised. The numbers are permanent, which is more than can be said for the rooms.</p>';
+            return html;
+        }
+        /* THE WORLD (HQ plan 9.3, 2026-09-15 rev 7): the directory's second
+           sheet — the routes the world is walked along, drawn as a SUBWAY
+           MAP from data.js hqWorldRoutes(): one line per route in its ink,
+           a station per site (the room number under its dot), a leg per
+           live link (a dashed leg is a seam that is not a door), a double
+           ring for an interchange, the room you stand in filled. Under each
+           line its stations as rows with GO (the register's own rule: GO
+           takes you to the site's board room at its way in). A leg's `why`
+           is the row's title. Viewer-local (RULE #2). */
+        function _hqWorldHtml() {
+            const routes = (typeof window.hqWorldRoutes === 'function') ? window.hqWorldRoutes(_hqCurRoom) : [];
+            if (!routes.length) return '';
+            const f1 = v => v.toFixed(1);
+            const nStations = routes.reduce((n, r) => n + r.stations.length, 0);
+            let html = `<div class="hq-chips" style="margin-top:12px"><span>THE WORLD · ${routes.length} LINES · ${nStations} STOPS · A DOOR IN ONE SITE OPENS ON ANOTHER</span></div>`;
+            routes.forEach(r => {
+                const n = r.stations.length, W = 420, PADX = 26, H = 62, cy = 24;
+                const step = n > 1 ? (W - PADX * 2) / (n - 1) : 0;
+                const xAt = i => PADX + step * i;
+                const idx = {}; r.stations.forEach((st, i) => { idx[st.room] = i; });
+                let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${_hqEsc(r.label)}">`;
+                r.legs.forEach(l => {
+                    const i = idx[l.from], j = idx[l.to];
+                    if (i == null || j == null) return;
+                    const x1 = xAt(Math.min(i, j)), x2 = xAt(Math.max(i, j));
+                    const dash = (r.dashed || l.way) ? ' hq-world-dashed' : '';
+                    if (Math.abs(i - j) === 1) svg += `<line class="hq-world-leg${dash}" x1="${f1(x1)}" y1="${cy}" x2="${f1(x2)}" y2="${cy}" style="stroke:${_hqEsc(r.color)}"><title>${_hqEsc(l.why || l.link)}</title></line>`;
+                    else svg += `<path class="hq-world-leg${dash}" d="M ${f1(x1)} ${cy} Q ${f1((x1 + x2) / 2)} ${f1(cy - 20 - (x2 - x1) * 0.08)} ${f1(x2)} ${cy}" style="stroke:${_hqEsc(r.color)}"><title>${_hqEsc(l.why || l.link)}</title></path>`;
+                });
+                r.stations.forEach((st, i) => {
+                    const x = xAt(i), xchg = st.lines.length > 1;
+                    svg += `<g class="hq-world-stop${st.here ? ' here' : ''}${xchg ? ' xchg' : ''}" style="--hq-line:${_hqEsc(r.color)}"><title>ROOM ${_hqEsc(st.no || '—')} · ${_hqEsc(st.label)}${xchg ? ' · INTERCHANGE' : ''}${st.here ? ' · YOU ARE HERE' : ''}</title>`;
+                    if (xchg) svg += `<circle class="hq-world-ring" cx="${f1(x)}" cy="${cy}" r="7.5"/>`;
+                    svg += `<circle class="hq-world-dot" cx="${f1(x)}" cy="${cy}" r="${xchg ? 4.2 : 4.8}"/>`;
+                    svg += `<text x="${f1(x)}" y="${cy + 21}" text-anchor="middle">${_hqEsc(st.no || '')}</text></g>`;
+                });
+                svg += '</svg>';
+                html += `<div class="hq-world-line" style="--hq-line:${_hqEsc(r.color)}"><div class="hq-world-hd"><b>${_hqEsc(r.label)}</b><span>${_hqEsc(r.sub)}</span></div>${svg}<div class="hq-rows">`;
+                r.stations.forEach(st => {
+                    const board = st.site ? ('site_' + st.site) : st.room;
+                    const go = st.here ? '<span>YOU ARE HERE</span>' : (_hqRoomExists(board) ? `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(board)}" data-at="egress">GO</button>` : '');
+                    const other = st.lines.filter(id => id !== r.id).map(id => (DOOR_HQ.routes && DOOR_HQ.routes[id] && DOOR_HQ.routes[id].label) || id.toUpperCase());
+                    html += `<div class="hq-row hq-row-tray"><b>${_hqNoTag(st.no)}${_hqEsc(st.label)}</b><span>${other.length ? 'INTERCHANGE · ' + _hqEsc(other.join(' · ')) : 'STOP'}</span>${go}</div>`;
+                });
+                html += '</div></div>';
+            });
+            html += '<p class="hq-panel-note">A line is walked door to door; the bays are how a crossing is FILED. A dashed leg is a seam that is not a door. The Looking-Glass is on no line yet: its room is nine metres across and a door would land on the board.</p>';
             return html;
         }
         function _hqDispatchHtml() {

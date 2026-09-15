@@ -40,7 +40,7 @@ function propBlocks(room, p, x, z, margin) {
 }
 const audio=fs.readFileSync(__dirname+'/audio.js','utf8'), map=fs.readFileSync(__dirname+'/map.js','utf8');
 test('the Lunar pilot connects Moon, Derelict and Saturn both ways with distinct arrival doors',()=>{
- assert.equal(LUNAR.length,2);
+ assert.equal(LUNAR.length,4,'the pilot\'s two, Mars and the drop (rev 7)');
  for(const link of LUNAR) for(const end of [link.a,link.b]) {
   const rid=D.hqLinkRoom(end), room=HQ.rooms[rid];
   const door=room.doors.find(d=>d.id==='link_'+link.id);
@@ -174,11 +174,11 @@ test('THE SEAMS THAT ARE NOT DOORS: the wardrobe into Camelot and the well into 
 test('world graph reflects real directed doors and repeated reads do not change the rooms',()=>{
  const before=JSON.stringify(HQ.rooms), graph=D.hqWorldGraph();
  assert.equal(graph.nodes.length,Object.keys(HQ.rooms).length);
- const edges=graph.edges.filter(e=>e.link);assert.equal(edges.length,8);
+ const edges=graph.edges.filter(e=>e.link);assert.equal(edges.length,HQ.links.length*2,'every link is live and makes two directed edges');
  for(const e of edges) {assert.ok(HQ.rooms[e.to].doors.some(d=>d.id===e.at));assert.ok(graph.edges.some(r=>r.from===e.to && r.to===e.from && r.door===e.at));}
  const moon=D.hqSiteRoomId('prebuilt_moon'), saturn=D.hqSiteRoomId('prebuilt_saturn');
  const seen=new Set([moon]), todo=[moon];while(todo.length){const at=todo.pop();for(const e of edges.filter(e=>e.from===at))if(!seen.has(e.to)){seen.add(e.to);todo.push(e.to);}}
- assert.ok(seen.has(saturn));assert.equal(seen.size,3);
+ assert.ok(seen.has(saturn));assert.ok(seen.size>=5,'the Moon reaches Saturn and on down the line (rev 7: the lunar route joins the world)');
  const house='site_prebuilt_haunted_upstairs', seen2=new Set([house]), todo2=[house];while(todo2.length){const at=todo2.pop();for(const e of edges.filter(e=>e.from===at))if(!seen2.has(e.to)){seen2.add(e.to);todo2.push(e.to);}}
  assert.ok(seen2.has(D.hqSiteRoomId('prebuilt_camelot')),'the wardrobe is an edge of the world graph');
  assert.ok(graph.edges.some(e=>e.from===D.hqSiteRoomId('prebuilt_hollow_earth') && e.to==='site_prebuilt_haunted_cellar' && e.link==='haunted_hollow'),'and so is the well, both ways');
@@ -213,4 +213,84 @@ test('the way builders run on a stub scene: each returns a group, a way rig whos
  }
  assert.ok(c._hq.tickers.length>=4,'each builder registers its ticker');
  for(const t of c._hq.tickers) t(0.016,1000);
+});
+
+/* ── THE ROUTES (9.3 expansion, 2026-09-15 rev 7) ─────────────────────── */
+const RANK_LEAVES=new Set(D.DOOR_TEXT.CLEARANCE.map(r=>r.door));
+const BOARD=id=>D.hqSiteRoomId(id);
+test('every link on the sheet is LIVE (both ends built, both wear catalogued), no link wears a rank leaf, every route names a DOOR_HQ.routes line',()=>{
+ assert.ok(HQ.links.length>=32);
+ const ids=new Set();
+ for(const l of HQ.links){
+  assert.ok(!ids.has(l.id),'duplicate link '+l.id);ids.add(l.id);
+  assert.ok(D.hqLinkLive(l),'held back: '+l.id);
+  assert.ok(HQ.routes[l.route],l.id+' names no route');
+  for(const leaf of [l.leaf,l.a.leaf,l.b.leaf]) if(leaf) assert.ok(!RANK_LEAVES.has(leaf),l.id+' wears the rank leaf '+leaf);
+  assert.ok(l.why && l.why.length>20,l.id+' explains itself');
+ }
+ for(const [id,r] of Object.entries(HQ.routes)) assert.ok(r.label && r.sub && /^#[0-9a-f]{6}$/i.test(r.color),'route '+id);
+});
+test('every built site but the Looking-Glass is a station on at least one line; a site room carries at most three link doors, each on the north wall clear of the corner masts',()=>{
+ const on=new Set();HQ.links.forEach(l=>[l.a,l.b].forEach(e=>on.add(e.site)));
+ const off=HQ.siteRooms.built.filter(id=>!on.has(id));
+ assert.equal(off.join(','),'prebuilt_lookingglass','the Looking-Glass room is 9 m across: a north door lands on the board (rev 7 note)');
+ for(const id of HQ.siteRooms.built){
+  const room=HQ.rooms[BOARD(id)], links=room.doors.filter(d=>d.link), half=room.shell.w/2;
+  assert.ok(links.length<=3,id+' carries '+links.length+' link doors');
+  for(const d of links){assert.equal(d.wall,'n');assert.ok(d.x>-(half-(room.shell.open?2.6:1.4))&&d.x<0.4,id+'/'+d.id+' at x '+d.x+' (half '+half+')');
+   const cat=HQ.catalogue[d.leaf]; if(cat) assert.equal(!!d.wide,!!cat.wide,d.id+' wide flag');}
+ }
+});
+test('hqWorldRoutes chains every live link into a line: a leg per link, a station per SITE (a part is its house), an end first, interchanges marked, the viewer\'s room filled',()=>{
+ const R=D.hqWorldRoutes('site_prebuilt_haunted_cellar');
+ assert.equal(R.length,Object.keys(HQ.routes).length,'every route has a live link');
+ assert.equal(R.reduce((n,r)=>n+r.legs.length,0),HQ.links.length);
+ const seams=R.find(r=>r.id==='seams'), woods=R.find(r=>r.id==='woods'), deep=R.find(r=>r.id==='deep'), hw=R.find(r=>r.id==='highway');
+ assert.ok(seams.dashed);
+ assert.deepEqual(seams.stations.map(s=>s.no).join(','),'i,13,180','the wardrobe upstairs and the well in the cellar are the HOUSE\'s legs: one station 13, an end first');
+ assert.ok(seams.stations.every(s=>s.room===BOARD(s.site)),'a station is a board room');
+ assert.ok(seams.legs.every(l=>l.way && l.fromRoom.startsWith('site_prebuilt_haunted_') && l.to===BOARD(l.to.replace(/^site_/,''))));
+ const house=woods.stations.find(s=>s.no==='13');
+ assert.ok(house.here && house.lines.length===2 && house.lines.includes('seams'),'the cellar counts as the house; the house is an interchange');
+ assert.equal(D.hqWorldRoutes('foyer').find(r=>r.id==='woods').stations.filter(s=>s.here).length,0);
+ assert.equal(D.hqWorldRoutes(null).flatMap(r=>r.stations).filter(s=>s.here).length,0);
+ const sta=deep.stations.map(s=>s.no);
+ assert.equal(sta[0],'1717','the Dutchman is the end the deep line is walked from');
+ assert.ok(deep.stations.find(s=>s.no==='666').lines.includes('divine'),'Hell is on the deep and the divine lines');
+ assert.equal(hw.stations.length,5);assert.ok(hw.stations.every(s=>s.label && !/PREBUILT/.test(s.label)));
+ for(const r of R){const seen=new Set();for(const s of r.stations){assert.ok(!seen.has(s.room));seen.add(s.room);}
+  for(const l of r.legs){assert.ok(seen.has(l.from)&&seen.has(l.to),r.id+' leg '+l.link+' off its line');}}
+});
+test('the whole world is one piece: from the foyer every board room and every complex part is reached along doors (gates ignored), and every line is reached from the foyer',()=>{
+ const g=D.hqWorldGraph(), adj={};g.edges.forEach(e=>{(adj[e.from]=adj[e.from]||[]).push(e.to);});
+ const seen=new Set(['foyer']),todo=['foyer'];while(todo.length){const at=todo.pop();for(const to of adj[at]||[])if(!seen.has(to)){seen.add(to);todo.push(to);}}
+ for(const id of HQ.siteRooms.built) assert.ok(seen.has(BOARD(id)),id);
+ for(const pid of D.hqComplexRooms()) assert.ok(seen.has(pid),pid);
+ /* along the LINKS alone (no bays): the lunar line reaches the deep line only through the hall — the lines are not one line */
+ const linkAdj={};g.edges.filter(e=>e.link).forEach(e=>{(linkAdj[e.from]=linkAdj[e.from]||[]).push(e.to);});
+ const reach=(from)=>{const s=new Set([from]),t=[from];while(t.length){const a=t.pop();for(const b of linkAdj[a]||[])if(!s.has(b)){s.add(b);t.push(b);}}return s;};
+ assert.ok(reach(BOARD('prebuilt_haunted')).has(BOARD('prebuilt_fairy_forest')),'the woods');
+ assert.ok(reach(BOARD('prebuilt_revenge')).has(BOARD('prebuilt_northpole')),'the deep, end to end');
+ assert.ok(reach(BOARD('prebuilt_mars')).has(BOARD('prebuilt_singularity')),'the lunar route, end to end');
+});
+test('the directory draws THE WORLD: _hqWorldHtml renders every line as a subway map with a leg per link, a stop per station, the viewer filled, GO to every other station; the CSS carries the classes',()=>{
+ const start=map.indexOf('        function _hqWorldHtml()'), end=map.indexOf('\n        }\n',start);
+ assert.ok(start>0&&end>start);
+ const src=map.slice(start,end+11);
+ assert.ok(map.includes("html += _hqWorldHtml();"),'the directory calls it');
+ const ctx={window:{hqWorldRoutes:D.hqWorldRoutes},DOOR_HQ:HQ,_hqCurRoom:'site_prebuilt_moon',
+  _hqEsc:v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
+  _hqNoTag:(no)=>no?'<em class="hq-no">ROOM '+no+'</em>':'',_hqRoomExists:id=>!!HQ.rooms[id]};
+ vm.createContext(ctx);vm.runInContext(src+'\nthis.out=_hqWorldHtml();',ctx);
+ const html=ctx.out;
+ assert.equal((html.match(/<svg /g)||[]).length,Object.keys(HQ.routes).length);
+ assert.equal((html.match(/class="hq-world-leg/g)||[]).length,HQ.links.length);
+ assert.equal((html.match(/class="hq-world-stop here/g)||[]).length,1,'the Moon is filled once');
+ assert.ok(html.includes('YOU ARE HERE'));
+ assert.ok(html.includes('data-room="site_prebuilt_saturn" data-at="egress"'));
+ assert.ok(html.includes('hq-world-dashed'),'the seams are dashed');
+ assert.ok(html.includes('INTERCHANGE'));
+ assert.ok(!/undefined|NaN|\[object/.test(html));
+ const css=fs.readFileSync(__dirname+'/styles-base.css','utf8');
+ for(const c of ['.hq-world-line','.hq-world-leg','.hq-world-dashed','.hq-world-stop.here .hq-world-dot','.hq-world-ring']) assert.ok(css.includes(c),c);
 });

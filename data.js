@@ -18848,13 +18848,155 @@ const DOOR_HQ = {
        head stands by its cave wall — the far side is the ceiling, so a
        well can go UP). Each has a `why` because every door explains
        itself (7.0). Claude's DRAFT notes (A15 — the user rewrites). */
+    /* THE ROUTES (9.3 expansion, 2026-09-15 rev 7): the lines the world is
+       walked along. `route` on a link names one of these; hqWorldRoutes()
+       chains the live links of each into stations for the directory's
+       WORLD tab (map.js _hqWorldHtml) — a route is a line on a subway map,
+       a station a board room, an interchange a room on two lines. `color`
+       is the line's ink on the map; `sub` the plate rule's one line. */
+    routes: {
+        lunar:      { label: 'THE LUNAR ROUTE',  sub: 'THE MOON · THE SPACESHIP · SATURN · THE DROP', color: '#9fd0ff' },
+        deep:       { label: 'THE DEEP',         sub: 'BELOW THE WATERLINE, BELOW THE ICE, BELOW THE MOUNTAIN', color: '#4fc3c8' },
+        divine:     { label: 'THE DIVINE STAIR', sub: 'THE STAIR THAT ONLY GOES UP; THE CRYPT THAT ONLY GOES DOWN', color: '#ffd28a' },
+        bases:      { label: 'THE BASES',        sub: 'FIVE SIDES ABOVE GROUND; THE SIXTH IS DOWN', color: '#b9f27c' },
+        woods:      { label: 'THE WOODS',        sub: 'THE SAME WOODS · FOUR GATES IN ONE FENCE', color: '#7fd98c' },
+        ley:        { label: 'THE LEY LINE',     sub: 'THE LINE THE STONES STAND ON', color: '#e0b06a' },
+        highway:    { label: 'THE HIGHWAY',      sub: 'ONE ROAD, A CENTURY LONG', color: '#ff9e6b' },
+        wonderland: { label: 'THE WONDERLAND',   sub: 'A PLANE ONTO A CARPET', color: '#e39cff' },
+        seams:      { label: 'THE SEAMS',        sub: 'THE DOORS THAT ARE NOT DOORS', color: '#f0e6c8', dashed: true },
+    },
     links: [
+        /* THE LUNAR ROUTE (the pilot's two, plus Mars and the drop) */
         { id: 'moon_derelict', route: 'lunar', leaf: 'leaf_bulkhead',
           a: { site: 'prebuilt_moon', wall: 'n', x: -5 },
-          b: { site: 'prebuilt_derelict', wall: 'n', x: -6 } },
+          b: { site: 'prebuilt_derelict', wall: 'n', x: -6 },
+          why: 'the lander\'s hatch and the docking collar are the same bore; the ship parked here once', note: 'the collar seals', draft: true },
         { id: 'derelict_saturn', route: 'lunar', leaf: 'leaf_bulkhead',
           a: { site: 'prebuilt_derelict', wall: 'n', x: -1 },
-          b: { site: 'prebuilt_saturn', wall: 'n', x: -5 } },
+          b: { site: 'prebuilt_saturn', wall: 'n', x: -5 },
+          why: 'the second collar opens onto the hexagon plateau; the ship swings past Saturn on every orbit', note: 'mind the ring plane', draft: true },
+        { id: 'mars_moon', route: 'lunar', leaf: 'leaf_bulkhead',
+          a: { site: 'prebuilt_mars', wall: 'n', x: -5 },
+          b: { site: 'prebuilt_moon', wall: 'n', x: -10 },
+          why: 'the rover bay\'s hatch; the rover is on the Martian board and the tracks lead here', note: 'the dust is finer on the far side', draft: true },
+        { id: 'saturn_singularity', route: 'lunar', leaf: 'leaf_frame_only',
+          a: { site: 'prebuilt_saturn', wall: 'n', x: -10 },
+          b: { site: 'prebuilt_singularity', wall: 'n', x: -5 },
+          why: 'the plateau ends; so does the arithmetic. A frame with nothing in it, and the Quarantined bay\'s site on the other side', note: 'the drop is the door', draft: true },
+        /* THE DEEP */
+        { id: 'revenge_atlantis', route: 'deep', leaf: 'leaf_bulkhead',
+          a: { site: 'prebuilt_revenge', wall: 'n', x: -5 },
+          b: { site: 'prebuilt_atlantis', wall: 'n', x: -0.2 },
+          why: 'the hatch below the waterline; the Dutchman sails over the drowned city on every pass and something down there keeps the hatch oiled', note: 'wet', draft: true },
+        { id: 'atlantis_hollow', route: 'deep', leaf: 'leaf_bulkhead',
+          a: { site: 'prebuilt_atlantis', wall: 'n', x: -5 },
+          b: { site: 'prebuilt_hollow_earth', wall: 'n', x: -10 },
+          why: 'the flooded adit under the drowned hall runs downhill; the water stops where the inner sun starts', note: 'the water stops', draft: true },
+        { id: 'atlantis_agartha', route: 'deep', leaf: 'leaf_portcullis',
+          a: { site: 'prebuilt_atlantis', wall: 'n', x: -10 },
+          b: { site: 'prebuilt_agartha', wall: 'n', x: -5 },
+          why: 'the drowned stair down from the sunken hall comes up dry in the crystal city; the two builders shared a plan', note: 'the stair is dry at the bottom', draft: true },
+        { id: 'shasta_agartha', route: 'deep', leaf: 'leaf_cell',
+          a: { site: 'prebuilt_shasta', wall: 'n', x: -5 },
+          b: { site: 'prebuilt_agartha', wall: 'n', x: -10 },
+          why: 'the Lemurian tunnel under the mountain; the Lemurians deny it exists and keep it swept', note: 'swept daily', draft: true },
+        { id: 'hollow_hell', route: 'deep', leaf: 'leaf_hell_arch',
+          a: { site: 'prebuilt_hollow_earth', wall: 'n', x: -0.2 },
+          b: { site: 'prebuilt_hell', wall: 'n', x: -5 },
+          why: 'the way down is the way in; below the inner sun the rock is warm and then it is not rock', note: 'the way down is the way in', draft: true },
+        { id: 'antarctica_agartha', route: 'deep', leaf: 'leaf_cell',
+          a: { site: 'prebuilt_antarctica', wall: 'n', x: -10 },
+          b: { site: 'prebuilt_agartha', wall: 'n', x: -0.2 },
+          why: 'the entrance under the ice; the 1947 survey marked it, the map was lost, and the crystal city kept its end of the corridor lit', note: 'the lost map', draft: true },
+        { id: 'antarctica_northpole', route: 'deep', leaf: 'leaf_frame_only',
+          a: { site: 'prebuilt_antarctica', wall: 'n', x: -5 },
+          b: { site: 'prebuilt_northpole', wall: 'n', x: -5 },
+          why: 'the two ends of one hole; the polar entrance is one door with a leaf in both ice walls', note: 'the same hole', draft: true },
+        /* THE DIVINE STAIR */
+        { id: 'heaven_olympus', route: 'divine', leaf: 'leaf_frame_only',
+          a: { site: 'prebuilt_heaven', wall: 'n', x: -5 },
+          b: { site: 'prebuilt_olympus', wall: 'n', x: -5 },
+          why: 'a gate of cloud between the two managements; the stair only goes up, which is a problem for whoever is on top', note: 'a gate of cloud', draft: true },
+        { id: 'vatican_heaven', route: 'divine', leaf: 'leaf_vault',
+          a: { site: 'prebuilt_vatican', wall: 'n', x: -5 },
+          b: { site: 'prebuilt_heaven', wall: 'n', x: -10 },
+          why: 'the archive\'s elevator has one button and it goes up; the archive filed the fact and sealed the file', note: 'one button', draft: true },
+        { id: 'vatican_hell', route: 'divine', leaf: 'leaf_hell_arch',
+          a: { site: 'prebuilt_vatican', wall: 'n', x: -10 },
+          b: { site: 'prebuilt_hell', wall: 'n', x: -10 },
+          why: 'the crypt\'s back wall is warm to the touch; the masons were paid extra and did not stay', note: 'warm to the touch', draft: true },
+        /* THE BASES */
+        { id: 'area51_dumb', route: 'bases', leaf: 'leaf_wired_double',
+          a: { site: 'prebuilt_area51', wall: 'n', x: -5 },
+          b: { site: 'prebuilt_dumb', wall: 'n', x: -5 },
+          why: 'five sides above ground; the sixth is down. The tunnel every base is on; the hangar\'s floor lift comes up in the D.U.M.B.\'s motor pool', note: 'the sixth side', draft: true },
+        { id: 'dumb_cern', route: 'bases', leaf: 'leaf_wired_double',
+          a: { site: 'prebuilt_dumb', wall: 'n', x: -10 },
+          b: { site: 'prebuilt_cern', wall: 'n', x: -5 },
+          why: 'the same tunnel, the Atlantic under it; the ring is where the tunnel stops being straight', note: 'the tunnel turns', draft: true },
+        { id: 'cern_backrooms', route: 'bases', leaf: 'leaf_frosted',
+          a: { site: 'prebuilt_cern', wall: 'n', x: -10 },
+          b: { site: 'prebuilt_backrooms', wall: 'n', x: -5 },
+          why: 'the ring tunnel\'s noclip: an office door in a service bay that no plan shows; behind it the carpet is already humming (the second way into Bay 6\'s site, beside H-Wing)', note: 'not on the plan', draft: true },
+        /* THE WOODS */
+        { id: 'haunted_skinwalker', route: 'woods', leaf: 'leaf_barn',
+          a: { site: 'prebuilt_haunted', wall: 'n', x: -2.5 },
+          b: { site: 'prebuilt_skinwalker', wall: 'n', x: -5 },
+          why: 'the garden gate in the back fence opens on the ranch\'s far pasture; it is the same woods, and the woods do not care whose fence it is', note: 'the same woods', draft: true },
+        { id: 'skinwalker_grove', route: 'woods', leaf: 'leaf_stable',
+          a: { site: 'prebuilt_skinwalker', wall: 'n', x: -10 },
+          b: { site: 'prebuilt_bohemian_grove', wall: 'n', x: -5 },
+          why: 'the gate the ranch hands stopped using; the redwoods start a fence-post past it', note: 'the second gate', draft: true },
+        { id: 'grove_fairy', route: 'woods', leaf: 'leaf_shabby_wood',
+          a: { site: 'prebuilt_bohemian_grove', wall: 'n', x: -10 },
+          b: { site: 'prebuilt_fairy_forest', wall: 'n', x: -5 },
+          why: 'the owl\'s gate at the back of the grove; the members walk through it once a year and come back smaller', note: 'the fourth gate', draft: true },
+        /* THE LEY LINE */
+        { id: 'stonehenge_gobekli', route: 'ley', leaf: 'leaf_frame_only',
+          a: { site: 'prebuilt_stonehenge', wall: 'n', x: -5 },
+          b: { site: 'prebuilt_gobekli', wall: 'n', x: -5 },
+          why: 'the line the stones stand on; a frame at each end and nothing in between but the line', note: 'a frame at each end', draft: true },
+        { id: 'gobekli_giza', route: 'ley', leaf: 'leaf_frame_only',
+          a: { site: 'prebuilt_gobekli', wall: 'n', x: -10 },
+          b: { site: 'prebuilt_giza', wall: 'n', x: -5 },
+          why: 'the line runs south from the first temple to the last pyramid; the surveyors were the same family', note: 'the same family', draft: true },
+        { id: 'giza_babel', route: 'ley', leaf: 'leaf_frame_only',
+          a: { site: 'prebuilt_giza', wall: 'n', x: -10 },
+          b: { site: 'prebuilt_babel', wall: 'n', x: -5 },
+          why: 'the line ends at the tower; the tower was built to stand on it, which is what went wrong', note: 'the line ends here', draft: true },
+        { id: 'babel_technoticlan', route: 'ley', leaf: 'leaf_portcullis',
+          a: { site: 'prebuilt_babel', wall: 'n', x: -10 },
+          b: { site: 'prebuilt_technoticlan', wall: 'n', x: -5 },
+          why: 'the tower\'s other stair comes out in the temple city; the builders kept climbing after the languages went', note: 'the other stair', draft: true },
+        { id: 'camelot_lodge', route: 'ley', leaf: 'leaf_saloon',
+          a: { site: 'prebuilt_camelot', wall: 'n', x: -10 },
+          b: { site: 'prebuilt_lodge', wall: 'n', x: -5 },
+          why: 'the Round Table\'s other room; the Lodge keeps the chairs and denies the table', note: 'the other room', draft: true },
+        /* THE HIGHWAY */
+        { id: 'nuketown_downtown', route: 'highway', leaf: 'leaf_suburban',
+          a: { site: 'prebuilt_nuketown', wall: 'n', x: -5 },
+          b: { site: 'prebuilt_downtown', wall: 'n', x: -5 },
+          why: 'the on-ramp at the end of the cul-de-sac; one road, a century long, and the first exit is the fifties', note: 'the first exit', draft: true },
+        { id: 'downtown_strip', route: 'highway', leaf: 'leaf_hotel',
+          a: { site: 'prebuilt_downtown', wall: 'n', x: -10 },
+          b: { site: 'prebuilt_strip', wall: 'n', x: -5 },
+          why: 'the same road, west; the neon starts where the tower\'s shadow stops', note: 'west', draft: true },
+        { id: 'strip_cyberpunk', route: 'highway', leaf: 'leaf_holographic',
+          a: { site: 'prebuilt_strip', wall: 'n', x: -10 },
+          b: { site: 'prebuilt_cyberpunk', wall: 'n', x: -5 },
+          why: 'the same road, later; the last exit is the city the Strip was practising for', note: 'the last exit', draft: true },
+        { id: 'stadium_downtown', route: 'highway', leaf: 'leaf_glass',
+          a: { site: 'prebuilt_stadium', wall: 'n', x: -5 },
+          b: { site: 'prebuilt_downtown', wall: 'n', x: -0.2 },
+          why: 'the parking structure joins the stadium to the block; on game day the road is the crowd', note: 'the parking structure', draft: true },
+        /* THE WONDERLAND (the Looking-Glass has no free wall for a landing
+           yet — its room is nine metres across and a door would land on the
+           board; it joins the route when its room grows or 9.5 reaches it) */
+        { id: 'flatlands_backrooms', route: 'wonderland', leaf: 'leaf_frosted',
+          a: { site: 'prebuilt_flatlands', wall: 'n', x: -5 },
+          b: { site: 'prebuilt_backrooms', wall: 'n', x: -10 },
+          why: 'a plane onto a carpet; the flat people found a door with no thickness and walked into a room with too much', note: 'no thickness', draft: true },
+        /* THE SEAMS (rev 6) */
         { id: 'haunted_camelot', route: 'seams', way: 'wardrobe',
           a: { site: 'prebuilt_haunted', part: 'upstairs', wall: 'e', z: 0.4 },
           b: { site: 'prebuilt_camelot', wall: 'n', x: -5 },
@@ -25351,16 +25493,26 @@ function hqLinkEndWear(link, end) {
     const cat = DOOR_HQ.catalogue[leaf];
     return (cat && cat.leaf) ? { leaf: leaf, cat: cat } : null;
 }
+/* is a link LIVE — both ends resolve to a built / authored room, both ends
+   are well-formed and both wear something the catalogue lists? The ONE
+   rule hqLinkDoors and hqWorldRoutes share: `{ a, b, wearA, wearB }` (room
+   ids + wear), else null. A held-back link is held at BOTH ends. */
+function hqLinkLive(link) {
+    if (!link || !/^[a-z0-9_]+$/.test(link.id || '')) return null;
+    const a = hqLinkRoom(link.a), b = hqLinkRoom(link.b);
+    // Fail closed for unbuilt endpoints, malformed ends and unsupported wear (either end).
+    if (!a || !b || a === b) return null;
+    if (![link.a, link.b].every(hqLinkEndOk)) return null;
+    const wearA = hqLinkEndWear(link, link.a), wearB = hqLinkEndWear(link, link.b);
+    if (!wearA || !wearB) return null;
+    return { a: a, b: b, wearA: wearA, wearB: wearB };
+}
 function hqLinkDoors(roomId) {
     const doors = [];
     (DOOR_HQ.links || []).forEach(link => {
-        if (!link || !/^[a-z0-9_]+$/.test(link.id || '')) return;
-        const a = hqLinkRoom(link.a), b = hqLinkRoom(link.b);
-        // Fail closed for unbuilt endpoints, malformed ends and unsupported wear (either end).
-        if (!a || !b || a === b) return;
-        if (![link.a, link.b].every(hqLinkEndOk)) return;
-        const wearA = hqLinkEndWear(link, link.a), wearB = hqLinkEndWear(link, link.b);
-        if (!wearA || !wearB) return;
+        const live = hqLinkLive(link);
+        if (!live) return;
+        const a = live.a, b = live.b, wearA = live.wearA, wearB = live.wearB;
         const end = roomId === a ? link.a : roomId === b ? link.b : null;
         if (!end) return;
         const wear = roomId === a ? wearA : wearB;
@@ -25400,6 +25552,57 @@ function hqWorldGraph() {
             minClearance: d.minClearance || 0, requiresKeys: d.requiresKeys || 0 });
     }));
     return { nodes: nodes, edges: edges };
+}
+/* THE ROUTES (9.3 expansion, 2026-09-15 rev 7): the live links of
+   DOOR_HQ.links chained into LINES for the directory's WORLD tab — a
+   subway map. One row per DOOR_HQ.routes key that has a live link (sheet
+   order), each `{ id, label, sub, color, dashed, stations: [{ room, no,
+   label, site, here, lines: [routeIds] }], legs: [{ from, to, link, way,
+   leaf, why, note }] }`. The stations are walked from a line's END (a
+   station on one leg of it) in depth-first order, so a branch (Downtown's
+   parking structure off the highway) lists after the trunk; a station on
+   two lines is an INTERCHANGE (`lines.length > 1`). A station is a SITE:
+   a leg that leaves a complex's part (the wardrobe upstairs) is charged
+   to the site's board room (`fromRoom` / `toRoom` keep the real ends).
+   `here` = the viewer stands in that room or anywhere in that site.
+   Nothing here is manufactured. Viewer-local (RULE #2). */
+function hqWorldRoutes(curRoom) {
+    const R = DOOR_HQ.routes || {};
+    const rooms = DOOR_HQ.rooms || {};
+    const hereSite = curRoom ? hqRoomSite(curRoom) : null;
+    const live = (DOOR_HQ.links || []).map(l => ({ link: l, live: hqLinkLive(l) })).filter(x => x.live);
+    /* a STATION is a site (its board room): a seam that leaves a complex's
+       part (the wardrobe upstairs) is the house's — Room 13 is one station */
+    const stationRoom = (rid) => { const room = rooms[rid] || {}; return (room.part && room.site) ? hqSiteRoomId(room.site) : rid; };
+    const linesOf = {};
+    live.forEach(x => { [x.live.a, x.live.b].forEach(rid => { const sr = stationRoom(rid); (linesOf[sr] = linesOf[sr] || []); if (linesOf[sr].indexOf(x.link.route) < 0) linesOf[sr].push(x.link.route); }); });
+    const station = (rid) => {
+        const room = rooms[rid] || {};
+        const site = room.site || null;
+        const no = hqRoomNoStr(hqRoomNo(rid));
+        const meta = site ? ((typeof EW_MAP_META !== 'undefined' ? EW_MAP_META : []).find(m => m.id === site) || {}) : {};
+        return { room: rid, no: no, label: String(meta.label || room.label || rid).toUpperCase(),
+            site: site, here: !!curRoom && (rid === curRoom || (!!site && site === hereSite)), lines: (linesOf[rid] || []).slice() };
+    };
+    const out = [];
+    Object.keys(R).forEach(id => {
+        const legs = live.filter(x => x.link.route === id).map(x => ({ from: stationRoom(x.live.a), to: stationRoom(x.live.b), fromRoom: x.live.a, toRoom: x.live.b,
+            link: x.link.id, way: x.link.way || x.link.a.way || x.link.b.way || null,
+            leaf: x.link.way ? null : (x.link.leaf || null), why: x.link.why || '', note: x.link.note || '' }));
+        if (!legs.length) return;
+        const adj = {};
+        legs.forEach(l => { (adj[l.from] = adj[l.from] || []).push(l.to); (adj[l.to] = adj[l.to] || []).push(l.from); });
+        const ids = Object.keys(adj);
+        /* start at an END of the line (degree 1) — the first one in leg order — else anywhere */
+        const start = legs.map(l => l.from).concat(legs.map(l => l.to)).find(r => adj[r].length === 1) || ids[0];
+        const seen = {}, order = [];
+        const walk = (r) => { if (seen[r]) return; seen[r] = true; order.push(r); adj[r].forEach(walk); };
+        walk(start);
+        ids.forEach(walk);   // a disconnected piece of the same line still lists
+        out.push({ id: id, label: R[id].label || id.toUpperCase(), sub: R[id].sub || '', color: R[id].color || '#b8a060', dashed: !!R[id].dashed,
+            stations: order.map(station), legs: legs });
+    });
+    return out;
 }
 /* ── THE COMPLEXES (HQ plan 9.2 stage 1, 2026-09-15) ─────────────────────
    A site that is several rooms. The GENERATED room (hqSiteRoom) stays the
@@ -27032,6 +27235,8 @@ if (typeof window !== 'undefined') {
     window.hqLinkEndOk = hqLinkEndOk;
     window.hqLinkEndWear = hqLinkEndWear;
     window.hqWorldGraph = hqWorldGraph;
+    window.hqLinkLive = hqLinkLive;
+    window.hqWorldRoutes = hqWorldRoutes;
     window.hqStarChart = hqStarChart;
     window.doorSiteState = doorSiteState;
     window.hqKeys = hqKeys;

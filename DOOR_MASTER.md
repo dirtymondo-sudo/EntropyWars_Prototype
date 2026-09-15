@@ -2309,6 +2309,21 @@ gun's issue). Story hooks noted, not written: the tapes' `parents` kind
 (A6 — the twelfth cube turns a tape), the roamers' barks, every seam's
 door note — all A15, the user's. Nothing built; no game file touched.
 
+### 2026-09-15 (rev 7) — Phase 9.3 expansion: THE ROUTES and THE WORLD TAB (local, not deployed)
+The world is walked: 32 links on nine lines (THE LUNAR ROUTE · THE DEEP ·
+THE DIVINE STAIR · THE BASES · THE WOODS · THE LEY LINE · THE HIGHWAY ·
+THE WONDERLAND · THE SEAMS), every built site but the Looking-Glass a
+station, every door on a board room's north wall with a `why` (Claude's
+DRAFT, A15 — the user rewrites). The bays stay the CUSTOMS face (a
+crossing is FILED there); the links are how the world is WALKED, and a
+link is never sector-gated (C-12: CERN's noclip is the second way into
+Bay 6's Backrooms beside H-Wing). The directory's second sheet, THE WORLD,
+draws the lines as a subway map with the room numbers for stations and GO
+to any of them. Open: the suites (row 27's crowding move), the star chart's
+route lines, the other eight `way` kinds, the airlock / hold ends. HQ plan
+§9 2026-09-15 rev 7; hq-world.test.js. Complete files delivered for upload;
+nothing committed, pushed or deployed.
+
 ### 2026-09-15 (rev 6) — Phase 9.3: THE SEAMS THAT ARE NOT DOORS, the first two (local, not deployed)
 The wardrobe in the second bedroom of the Haunted House opens on Camelot's
 snow (the user's own — the lion, the witch and the wardrobe); the well in

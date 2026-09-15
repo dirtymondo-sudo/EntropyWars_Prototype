@@ -96,7 +96,7 @@ test('the crossing: the EXIT at the end of the west leg walks into Room 90’s s
     const back = site.doors.find(d => d.id === 'hwing');
     assert.ok(back && back.wall === 's' && back.leaf === 'leaf_exit' && back.action.room === 'hwing_w' && back.action.at === 'exit', 'the site room’s back door (siteRooms.backDoors) returns to the wing');
     assert.strictEqual(site.doors[0].id, 'egress', 'the way in is still first');
-    assert.strictEqual(site.doors.length, 2, 'the way in and the back door');
+    assert.strictEqual(site.doors.filter(d => !d.link).length, 2, 'the way in and the back door (the world-graph links append after — 9.3 rev 7)');
     assert.ok(Math.abs(back.x) + 1.25 < site.shell.w / 2 && Math.abs(back.x) > 1.25 + 1.65, 'the back door fits the wall clear of the way in');
     assert.ok(HQ.sectors.quarantined.locked === true, 'Bay 6 stays sealed — H-Wing is the other way to Room 90 (C-12)');
     /* a back door is a full box-room door row; since 9.2 (2026-09-15) a map may carry an ARRAY of them (the Haunted House complex) — one row stays legal */

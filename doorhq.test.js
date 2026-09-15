@@ -1038,7 +1038,7 @@ test('the corridor: the site rooms, the register, the cast and the panels all fo
     /* the flow layer never hard-codes the landing door any more */
     const src = require('fs').readFileSync(require('path').join(__dirname, 'map.js'), 'utf8');
     assert.ok(src.includes('function _hqBayEntry(sector)'), 'map.js resolves the bay entry through hqBayEntry');
-    assert.strictEqual((src.match(/data-at="egress"/g) || []).length, 2, 'the two remaining literal landings are the site rooms\' own way-in door');
+    assert.strictEqual((src.match(/data-at="egress"/g) || []).length, 3, 'the three remaining literal landings are the site rooms\' own way-in door (the register, its site-room GO, and THE WORLD\'s station GO — 9.3 rev 7)');
     const rsrc = require('fs').readFileSync(require('path').join(__dirname, 'three-renderer.js'), 'utf8');
     assert.ok(/S\.full \? \[\] : \[a0, a1\]/.test(rsrc) && /!S\.full && !_hqWithinArc/.test(rsrc), 'the renderer knows a full ring has no caps');
 });
