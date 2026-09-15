@@ -18411,7 +18411,45 @@ const DOOR_HQ = {
         garden_tree:     { proc: 'garden_tree',     h: 4.5,  foot: 0.35, block: true },                                     // a foliage OBJ (_nrTree on a bare kit, like the site boards' trees)
         /* H-WING (HQ plan 5.5, 2026-09-14 rev 4): the wing's right angles */
         square_cubicle:  { proc: 'square_cubicle',  h: 1.6,  foot: 1.0,  rect: { hw: 1.0, hd: 0.9 }, block: true },       // three partitions in a U, the desk across the back, a beige CRT; front (+z) is the seat side
-        house_stairs:    { proc: 'house_stairs',    h: 2.4,  foot: 0.6,  rect: { hw: 0.55, hd: 1.4 }, block: true },      // HOME: a domestic flight that ends at the ceiling; foot at +z, climbs toward -z
+        house_stairs:    { proc: 'house_stairs',    h: 2.4,  foot: 0.6,  rect: { hw: 0.55, hd: 1.4 }, block: true },
+        /* ══ PHASE 8 STAGE 2 (2026-09-15): the two new floors' procs — a user GLB replaces any of them by giving the entry a `file` (the register's rule). Room axes: place a `rect` prop at face 0 / 180 (a `_x` twin runs along x). ══ */
+        conveyor:        { proc: 'conveyor',        h: 0.9,  foot: 3.0,  rect: { hw: 3.0, hd: 0.5 }, block: true },        // Room 1000: a belt along x, leaves riding it (ticker)
+        conveyor_z:      { proc: 'conveyor_z',      h: 0.9,  foot: 3.0,  rect: { hw: 0.5, hd: 3.0 }, block: true },        // … along z (into the furnace)
+        robot_arm:       { proc: 'robot_arm',       h: 2.6,  foot: 0.7,  block: true },                                    // Room 1000: an arm opening and closing one door for ever (ticker)
+        door_stack:      { proc: 'door_stack',      h: 2.2,  foot: 0.8,  rect: { hw: 0.75, hd: 0.45 }, block: true },       // a pallet of leaves standing on edge
+        door_furnace:    { proc: 'door_furnace',    span: 3.6, foot: 1.6, wall: true, depth: 1.6, block: true, glow: { y: 1.4, size: 3.2, color: 0xff9040 }, light: { color: 0xff8030, intensity: 1.6, dist: 12, y: 1.5 } },   // Room 000: the door-shaped mouth (ticker: leaves feed in and flare)
+        radiation_sign:  { proc: 'radiation_sign',  h: 0.6,  foot: 0,    wall: true, mount: 1.7, depth: 0.04 },              // the trefoil on a yellow plate
+        autopsy_table:   { proc: 'autopsy_table',   h: 0.9,  foot: 1.2,  rect: { hw: 1.2, hd: 0.6 }, block: true },         // Room Y: the slab with the door's parts laid out and tagged
+        door_xray:       { proc: 'door_xray',       h: 1.0,  foot: 0,    wall: true, mount: 1.1, depth: 0.08, glow: { y: 0.5, size: 1.4, color: 0xbfe6ff } },   // the light box
+        planter:         { proc: 'planter',         h: 0.5,  foot: 1.0,  rect: { hw: 1.0, hd: 0.5 }, block: true },         // Room ½: a raised bed
+        door_vine:       { proc: 'door_vine',       h: 1.8,  foot: 0,    wall: true, mount: 0, depth: 0.3 },                  // Room ½: a trellis of vines with tiny doors at the stem ends (ticker; also stands in a planter at y 0.5)
+        grow_lamp:       { proc: 'grow_lamp',       h: 0.5,  foot: 0,    ceil: true, glow: { y: 0.1, size: 1.6, color: 0xd070ff }, light: { color: 0xc060ff, intensity: 0.9, dist: 6, y: 0.1 } },   // Room ½: the purple lamp
+        monitor_stack:   { proc: 'monitor_stack',   h: 2.2,  foot: 0,    wall: true, mount: 0, depth: 0.6, block: true, glow: { y: 1.3, size: 1.8, color: 0x9fc7ff } },   // Room 24/7: nine CRTs in a rack, each on a room (ticker: the feeds swap)
+        lost_shelf:      { proc: 'lost_shelf',      h: 2.0,  foot: 0,    wall: true, mount: 0, depth: 0.5, block: true },    // Room ?: shelves of things left in other realities
+        stair_step:      { proc: 'stair_step',      h: 0.25, foot: 0.6,  rect: { hw: 0.6, hd: 0.15 }, block: true },        // THE STAIRWELL: one step, wide in x, the run along z; stack them by `y`
+        stair_step_x:    { proc: 'stair_step_x',    h: 0.25, foot: 0.6,  rect: { hw: 0.15, hd: 0.6 }, block: true },        // … the run along x
+        stair_landing:   { proc: 'stair_landing',   h: 0.25, foot: 2.4,  rect: { hw: 2.4, hd: 1.5 }, block: true },         // THE STAIRWELL: the top landing (a platform; the door on it carries `y`)
+        stair_landing_sq: { proc: 'stair_landing_sq', h: 0.25, foot: 0.7, rect: { hw: 0.7, hd: 0.7 }, block: true },        // … a half landing between flights
+        track_bed:       { proc: 'track_bed',       h: 0.06, foot: 0 },                                                       // THE TUNNEL: sleepers and rails, the length of the platform (no blocker: nothing is coming)
+        platform_edge:   { proc: 'platform_edge',   h: 0.04, foot: 0 },                                                       // THE TUNNEL: the yellow line and the tactile strip
+        train_car:       { proc: 'train_car',       h: 3.2,  foot: 1.4,  rect: { hw: 1.4, hd: 6.0 }, block: true, glow: { y: 1.6, size: 4.0, color: 0xfff0c0 } },   // THE TUNNEL: the car at the platform, doors open, lit, empty
+        departures_board: { proc: 'departures_board', h: 0.9, foot: 0,   wall: true, mount: 2.4, depth: 0.1, glow: { y: 0.45, size: 1.6, color: 0xffb020 } },   // THE TUNNEL: every route, DELAYED (ticker: the minutes never change)
+        tube_map:        { proc: 'tube_map',        h: 1.4,  foot: 0,    wall: true, mount: 1.1, depth: 0.05 },                // THE TUNNEL: DOOR_HQ.routes as a subway map on the tiles
+        bigtop:          { proc: 'bigtop',          h: 0.6,  foot: 0,    ceil: true },                                          // Room 1893: the striped canvas under the ceiling
+        ferris_wheel:    { proc: 'ferris_wheel',    h: 6.5,  foot: 1.4,  rect: { hw: 3.4, hd: 1.2 }, block: true, glow: { y: 3.6, size: 5.0, color: 0xffd080 }, light: { color: 0xffc060, intensity: 1.1, dist: 14, y: 3.6 } },   // the wheel (ticker: it turns)
+        carousel:        { proc: 'carousel',        h: 3.6,  foot: 2.6,  block: true, glow: { y: 2.2, size: 4.0, color: 0xffe0a0 }, light: { color: 0xffe0a0, intensity: 0.9, dist: 10, y: 2.4 } },   // the horses (ticker: it turns)
+        fortune_tent:    { proc: 'fortune_tent',    h: 3.2,  foot: 1.6,  block: true, glow: { y: 1.2, size: 2.6, color: 0xc070ff }, light: { color: 0xb060ff, intensity: 0.8, dist: 7, y: 1.4 } },   // the lady who knows
+        high_striker:    { proc: 'high_striker',    h: 5.0,  foot: 0.6,  block: true },                                        // the bell nobody has rung
+        ticket_booth:    { proc: 'ticket_booth',    h: 2.6,  foot: 0.9,  rect: { hw: 0.9, hd: 0.7 }, block: true, glow: { y: 2.2, size: 1.8, color: 0xffd0a0 } },   // ADMIT ONE
+        popcorn_cart:    { proc: 'popcorn_cart',    h: 1.7,  foot: 0.5,  block: true, glow: { y: 1.2, size: 1.2, color: 0xfff0c0 } },
+        festoon:         { proc: 'festoon',         h: 0.4,  foot: 0,    ceil: true },                                          // a string of bulbs across the tent
+        eeg_rack:        { proc: 'eeg_rack',        h: 1.4,  foot: 0.35, block: true, glow: { y: 1.0, size: 0.9, color: 0x80ffb0 }, light: { color: 0x60ff90, intensity: 0.5, dist: 4, y: 1.0 } },   // Room REM: the trace beside a cot (ticker)
+        dream_screen:    { proc: 'dream_screen',    h: 1.2,  foot: 0,    wall: true, mount: 1.1, depth: 0.1, glow: { y: 0.6, size: 2.2, color: 0xc0a0ff } },   // Room REM: what the sleepers see (ticker: the drawing drifts)
+        iso_tank:        { proc: 'iso_tank',        h: 1.3,  foot: 1.2,  rect: { hw: 1.2, hd: 0.8 }, block: true, glow: { y: 0.9, size: 2.0, color: 0x60a0ff }, light: { color: 0x4080ff, intensity: 0.7, dist: 5, y: 1.0 } },   // Room 0dB: the pod, lid ajar (ticker: it breathes)
+        evac_button:     { proc: 'evac_button',     h: 0.3,  foot: 0,    wall: true, mount: 1.2, depth: 0.1, glow: { y: 0.15, size: 0.8, color: 0xff3020 }, light: { color: 0xff3020, intensity: 0.5, dist: 3, y: 0.15 } },   // Room 4B: the red button under its cover
+        warning_tape:    { proc: 'warning_tape',    h: 0.01, foot: 0 },                                                       // Room 4B: the striped line on the floor you do not cross
+        lone_gun:        { proc: 'lone_gun',        h: 0.14, foot: 0 },                                                       // Room II: the gun on the table (tabletop: y = the table top)
+        garbage_chute:   { proc: 'garbage_chute',   h: 0.9,  foot: 0,    wall: true, mount: 0.6, depth: 0.2 },                // Room II: the hatch in the wall      // HOME: a domestic flight that ends at the ceiling; foot at +z, climbs toward -z
         /* ══ THE 2026-09-10 BATCH (30 Meshy GLBs, R2 Assets/door/models/) ══
            The user's cafeteria / office / mission kit. Four of them RETIRE a
            procedural prop (plan 2.7 said "replace any of them by giving the
@@ -18752,7 +18790,9 @@ const DOOR_HQ = {
     elevator: {
         stops: [
             { id: 'PH', label: 'THE PENTHOUSE', sub: 'EXECUTIVE FLOOR', room: 'executive', at: 'elevator', minClearance: 4, requiresKeys: 12 },
+            { id: '4',  label: 'THE LABS',      sub: 'THE FOURTH FLOOR · RESEARCH', room: 'labs', at: 'elevator' },     // Phase 8 stage 2 (2026-09-15)
             { id: '3',  label: 'THE ANNEX',     sub: 'THE THIRD FLOOR',  room: 'annex',     at: 'elevator' },
+            { id: '2',  label: 'THE WORKS',     sub: 'THE SECOND FLOOR · MANUFACTURING', room: 'works', at: 'elevator' },   // Phase 8 stage 2 (2026-09-15)
             { id: 'M',  label: 'THE MAIN HALL', sub: 'CENTRAL EGRESS · MEZZANINE', room: 'central_egress', at: 'elevator' },
             { id: 'G',  label: 'THE GARAGE',    sub: 'PARKING · P1',     room: 'garage',    at: 'elevator' },
             { id: 'B',  label: 'SERVICES',      sub: 'THE SERVICE FLOOR', room: 'services', at: 'elevator' },
@@ -20406,7 +20446,7 @@ const DOOR_HQ = {
                   desc: 'The wing. Room 42 keeps the file — dossiers on the reading desk, the unfiled sites in the card catalogue, the service stair up to Room 360. Room 247 keeps the time: three requirements a day, the punch clock, and every clock in the building that disagrees with every other one.' },
                 { id: 'bay_terrestrial',deg: 270, level: 0, leaf: 'leaf_suburban_house',            label: 'BAY 1 · TERRESTRIAL',    sub: 'BATTLE MAPS',            action: { sector: 'terrestrial' } },
                 /* ── mezzanine (support / executive access) ── */
-                { id: 'elevator',       deg: 0,   level: 1, leaf: null, proc: 'elevator',          label: 'ELEVATOR',                sub: 'B · G · M · 3 · PH',             action: { room: 'car', at: 'panel' }, floors: ['B', 'G', 'M', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '14', 'PH'], desc: 'The car. It stops at B, G, M, 3 and PH now; the PH button still wants KEYHOLDER clearance and twelve Keys (DOOR_HQ.elevator.stops).' },
+                { id: 'elevator',       deg: 0,   level: 1, leaf: null, proc: 'elevator',          label: 'ELEVATOR',                sub: 'B · G · M · 2 · 3 · 4 · PH',     action: { room: 'car', at: 'panel' }, floors: ['B', 'G', 'M', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '14', 'PH'], desc: 'The car. It stops at B, G, M, 2, 3, 4 and PH now; the PH button still wants KEYHOLDER clearance and twelve Keys (DOOR_HQ.elevator.stops).' },
                 { id: 'bay_ancient',    deg: 45,  level: 1, leaf: 'leaf_portcullis',   wide: true,  label: 'BAY 2 · ANCIENT',         sub: 'BATTLE MAPS',            action: { sector: 'ancient' } },
                 { id: 'engineering',    deg: 90,  level: 1, leaf: 'leaf_glass_exec',                label: 'ARCANE ENGINEERING',      sub: 'MAP EDITOR',     action: { fn: '_goToMapEditor' },   desc: 'Research offices. The Map Editor, and the fourth door that wasn’t there yesterday — IT, four doors down. The Spell Library moved in with them.' },
                 /* ROOM 1337 · IT (plan 7.4, 2026-09-13): the user's Hacker Room as a
@@ -22852,8 +22892,8 @@ const DOOR_HQ = {
             doors: [],   // the panel IS the door: every floor's lobby lands here, every button leaves
             counters: [
                 { id: 'panel', x: 0.85, z: 0.95, face: 0, plateY: 1.6, radius: 1.6, verb: 'PRESS',
-                  label: 'THE FLOOR PANEL', sub: 'B · G · M · 3 · PH', action: {},
-                  desc: 'Sixteen buttons. Five of them do something now; the other eleven light up when pressed and the car stays where it is. The one for PH wants Keys.' },
+                  label: 'THE FLOOR PANEL', sub: 'B · G · M · 2 · 3 · 4 · PH', action: {},
+                  desc: 'Sixteen buttons. Seven of them do something now; the other nine light up when pressed and the car stays where it is. The one for PH wants Keys.' },
             ],
             props: [
                 { key: 'car_panel',      wall: 's', x: 0.85, mount: 0.9 },
@@ -22897,6 +22937,11 @@ const DOOR_HQ = {
                   label: 'ELEVATOR', sub: 'THE CAR',
                   action: { room: 'car', at: 'panel' },
                   desc: 'The car. It came down here; it will go anywhere on the panel.' },
+                /* Phase 8 stage 2 (2026-09-15): THE TUNNEL's service hatch — a maintenance door down to the platform (it comes out behind the ramp) */
+                { id: 'tunnel', wall: 'e', z: -7.0, leaf: 'leaf_bulkhead', wide: true,
+                  label: 'THE TUNNEL', sub: 'SERVICE HATCH · THE PLATFORM',
+                  action: { room: 'tunnel', at: 'garage' },
+                  desc: 'A maintenance door behind the ramp. Tiles at the bottom of the steps, a draught, a train that is always there.' },
                 { id: 'dock', wall: 'n', x: -11, leaf: 'leaf_wired_double', wide: true,
                   label: 'THE LOADING DOCK', sub: 'DELIVERIES · UP TO THE LAUNDRY',
                   action: { room: 'dock', at: 'garage' },
@@ -23837,7 +23882,7 @@ const DOOR_HQ = {
                 { key: 'keypad',         wall: 'e', z: -1.9 },
             ],
             agents: [],
-            npcSpots: [{ x: -1.9, z: -0.6, face: 90 }],
+            npcSpots: [{ x: -1.9, z: -0.6, face: 90, race: 'watcher', say: ['“I have watched it for a week.” “And?” “It has watched me for a week.”'] }],
             onlineSpots: [],
             lines: [
                 '“What is it?” “X.” “What does X stand for?” “It does not stand. It floats.”',
@@ -24045,7 +24090,7 @@ const DOOR_HQ = {
                 { x: 4.6, z: -3.2, face: 180, pose: 'hqPhone', gender: 'male', label: 'THE SUPERVISOR', reach: 2.4,
                   line: '“Yes. Yes. No. Yes — the desks are full. No, not of people. Of the shift.”' },
             ],
-            npcSpots: [{ x: -1.5, z: 0.05, face: 90 }],
+            npcSpots: [{ x: -1.5, z: 0.05, face: 90, race: 'politician', say: ['“I have a desk here.” “Which one?” “All of them, at some point. That is what a desk is for.”'] }],
             onlineSpots: [
                 { x: -3.2, z: -0.5, face: 0 }, { x: 0.2, z: -0.5, face: 0 }, { x: 3.6, z: -0.5, face: 0 },
                 { x: -3.2, z: 0.6, face: 180 }, { x: 0.2, z: 0.6, face: 180 }, { x: 3.6, z: 0.6, face: 180 },
@@ -24107,7 +24152,8 @@ const DOOR_HQ = {
                 { key: 'flicker_tube',   x: -2.2, z: -1.2, ceil: true, face: 90 },     // over the stalls; it has not decided
             ],
             agents: [],
-            npcSpots: [{ x: -1.2, z: 1.9, face: 180 }],
+            /* ROOM DIALOGUE (Phase 8 stage 2, 2026-09-15): the conspiracy theorist at the sink — `say` is what whoever stands here says about THIS room, before any roster line (draft, A15) */
+            npcSpots: [{ x: -1.2, z: 1.9, face: 180, race: 'conspiracy theorist', say: ['“They really need a filter on this.” “On the tap?” “On the tap. Do you know what is in this water? Do you know what the fluoride is FOR?”', '“I do not drink from the building.” “Where do you drink from?” “I brought my own. From a spring. They know which spring.”', '“Look at the mirror.” “It is a mirror.” “It is a WINDOW. Wave. Somebody in Records just wrote that down.”'] }],
             onlineSpots: [],
             lines: [
                 '“The third stall is out of order.” “The sign is not on it.” “The sign is not the problem.”',
@@ -24357,6 +24403,1287 @@ const DOOR_HQ = {
                 '“The fountain runs.” “Where does the water go?” “Round.”',
             ],
             spawn: { x: 0, z: 9.4, face: 0 },
+        },
+        /* ═══════════════════════════════════════════════════════════════════
+           PHASE 8 STAGE 2 — TWO MORE FLOORS (the user's list, 2026-09-15):
+           2 · THE WORKS (the door factory and what hangs off it: the works
+           floor with its belts and arms, the incinerator, the autopsy room,
+           the door garden, the control room, the lost and found, THE
+           STAIRWELL that loops, THE TUNNEL and, at the end of the line, THE
+           MIDWAY) and 4 · THE LABS (the dream lab and its tank, THE MANDELA
+           ROOM that is a different room every time you enter, the upside-
+           down room, SUPPLY CLOSET 4B behind its blast door and its guards,
+           CLONE DISPOSAL). Rules this stage adds (see the plan §8.6):
+           · a box-room door may carry `y` (metres): it stands at that height
+             (three-renderer.js _hqDoorFloorY) — the stairwell's top landing;
+           · a prop may carry `flip: true`: it hangs from the ceiling upside
+             down, no blocker (the upside-down room);
+           · a spot in `npcSpots` may carry `say` (a line, or a list) — ROOM
+             DIALOGUE: whoever stands there says THAT, in the room's own terms
+             (the conspiracy theorist at the sink), before any roster line;
+             `clone: true` on a spot spawns the walker's OWN vessel;
+           · a variant with `when: { each: true }` is rolled on EVERY entry
+             (hqVariantRollEach), never on the visit roll — the Mandela room;
+           · numbers are Claude's (REC — the user rules; every `why` is on the
+             room); lobbies, the stairwell, the tunnel and the closet wear none.
+           Every line and every `say` is Claude's DRAFT (A15 — the user
+           rewrites). THE PARK RULE: a `railing_1m` run and a `riser_*` in
+           every room. Wiring: map.js _hqCounterPanelHtml (the by-id panels),
+           three-renderer.js Object.assign(_hqProcBuilders, {…}) "STAGE 2".
+           ═══════════════════════════════════════════════════════════════════ */
+        /* ── 2 · THE WORKS — the lobby of the second floor (the panel never
+           listed a 2; it does now). Five doors: the works floor straight
+           ahead (the belts are the landmark, seen through the wide door),
+           the control room and the lost and found either side, the fire
+           stair beside the car. ── */
+        works: {
+            label: '2 · THE WORKS',
+            sub: 'THE SECOND FLOOR · MANUFACTURING',
+            kind: 'box',
+            shell: {
+                w: 10, d: 6, h: 3.2,
+                wallH: 3.2, dadoH: 1.05,
+                floor: 'concrete_floor', wall: 'drywall', dado: 'gunmetal', trim: 'teal', ceiling: 'ceiling',
+                floorColor: 0xa4a29c, wallColor: 0xe0dcd0, dadoColor: 0x6a7076,
+                pipes: true,
+                lights: [{ x: -2.6, z: 0 }, { x: 2.6, z: 0 }],
+                mood: { light: 0xf4f1e8 },
+                plate: { x: 3.4, z: -2.75, y: 2.7 },
+            },
+            doors: [
+                { id: 'elevator', wall: 's', x: 0, leaf: null, proc: 'elevator',
+                  label: 'ELEVATOR', sub: 'THE CAR',
+                  action: { room: 'car', at: 'panel' },
+                  desc: 'The car.' },
+                { id: 'warehouse', wall: 'n', x: 0, leaf: 'leaf_wired_double', wide: true,
+                  label: 'THE DOOR WORKS', sub: 'ROOM 1000 · THE FLOOR',
+                  action: { room: 'warehouse', at: 'works' },
+                  desc: 'Where the doors are made. The belts run all day and the arms never tire; the doors come out the far end already numbered.' },
+                { id: 'control', wall: 'e', z: -1.5, leaf: 'leaf_glass',
+                  label: 'THE CONTROL ROOM', sub: 'ROOM 24/7 · SECURITY',
+                  action: { room: 'control', at: 'works' },
+                  desc: 'A stack of screens looking at the building. One of them is looking at you.' },
+                { id: 'lostfound', wall: 'w', z: -1.5, leaf: 'leaf_coffee',
+                  label: 'LOST AND FOUND', sub: 'ROOM ? · INTERDIMENSIONAL',
+                  action: { room: 'lostfound', at: 'works' },
+                  desc: 'Everything anyone has ever left in another reality, on shelves, waiting to be claimed by someone who remembers it.' },
+                { id: 'stairwell', wall: 'w', z: 1.5, leaf: 'leaf_exit',
+                  label: 'THE STAIRWELL', sub: 'FIRE STAIR · DOWN',
+                  action: { room: 'stairwell', at: 'landing' },
+                  desc: 'The fire stair. It goes down. It keeps going down. Take it far enough and you will see the sign at the top again.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'notice_board',   wall: 's', x: 2.8 },
+                { key: 'water_cooler',   wall: 's', x: -2.8 },
+                { key: 'vending_machine', wall: 's', x: 4.2 },
+                { key: 'teal_chair',     x: 3.9, z: 0.5, face: 270 }, { key: 'teal_chair', x: 3.9, z: 1.2, face: 270 },
+                { key: 'coffee_table',   x: 3.3, z: 0.85 },
+                { key: 'papers_b',       x: 3.3, z: 0.85, y: 0.46, face: -15 },
+                { key: 'cardboard_boxes', x: -4.2, z: -2.2, face: 15 },
+                { key: 'door_stack',     x: 1.9, z: -2.3, face: 180 },                  // a pallet of leaves waiting for the car
+                { key: 'wall_clock',     wall: 'n', x: 3.4, mount: 2.6 },
+                { key: 'exit_sign',      wall: 'w', z: 1.5, mount: 2.6 },
+                { key: 'security_camera', wall: 'n', x: -4.4, mount: 2.6 },
+                { key: 'nameplate',      wall: 'e', z: 0.4, mount: 1.55 },
+                { key: 'fire_extinguisher', wall: 'e', z: 2.5 },
+                { key: 'railing_1m',     x: 0, z: 1.9, face: 0 },                       // THE PARK RULE: the rail
+                { key: 'riser_1',        x: -2.6, z: 2.4, face: 0, rect: false },        // … and the step (a pallet-height platform)
+                { key: 'fluorescent',    x: -2.6, z: 0, ceil: true, face: 90 },
+                { key: 'fluorescent',    x: 2.6, z: 0, ceil: true, face: 90 },
+            ],
+            agents: [
+                { x: 2.4, z: -2.2, face: 180, pose: 'hqArms', gender: 'male', label: 'THE SHOP STEWARD', reach: 2.2,
+                  line: '“Second floor. The panel never had a two.” “It has one now.” “It has had one since you pressed it.”' },
+            ],
+            npcSpots: [{ x: -3.6, z: 0.6, face: 90, race: 'robot', say: ['“I was made here.” “On this floor?” “On that belt. Third arm from the left. It still waves.”'] }],
+            onlineSpots: [{ x: 1.4, z: -1.0, face: 0 }],
+            lines: [
+                '“What do they make up here?” “Doors.” “For where?” “For everywhere. That is the problem with them.”',
+                '“The fire stair is not on the plan.” “The fire stair is on every plan. It is the same stair.”',
+            ],
+            spawn: { x: 0, z: 1.6, face: 0 },
+        },
+        /* ── ROOM 1000 · THE DOOR WORKS — the factory floor: two belts running
+           the length of the room with leaves riding them, three arms opening
+           and closing the same door for ever, the stacks, the foreman. The
+           incinerator is off the east end, the autopsy room off the west,
+           the greenhouse through the far wall. ── */
+        warehouse: {
+            label: 'THE DOOR WORKS',
+            sub: 'MANUFACTURING · THE FLOOR',
+            roomNo: '1000', why: 'a thousand a day, the sign says; the sign has said so since it was painted',
+            kind: 'box',
+            shell: {
+                w: 20, d: 12, h: 6,
+                wallH: 6, dadoH: 1.2,
+                floor: 'concrete_floor', wall: 'concrete', dado: 'gunmetal', trim: 'teal', ceiling: 'metal_3',
+                floorColor: 0x9c9a94, wallColor: 0xb4b2ac, dadoColor: 0x606870, ceilColor: 0x6a7078,
+                pipes: true,
+                lights: [{ x: -6, z: -3 }, { x: 0, z: -3 }, { x: 6, z: -3 }, { x: -6, z: 3 }, { x: 0, z: 3 }, { x: 6, z: 3 }],
+                mood: { light: 0xfff0d8, ambient: 0.8 },
+                plate: { x: 0, z: -5.75, y: 3.2 },
+            },
+            doors: [
+                { id: 'works', wall: 's', x: 0, leaf: 'leaf_wired_double', wide: true,
+                  label: '2 · THE WORKS', sub: 'BACK TO THE FLOOR',
+                  action: { room: 'works', at: 'warehouse' },
+                  desc: 'The way back to the lobby.' },
+                { id: 'incinerator', wall: 'e', z: 3, leaf: 'leaf_bulkhead', wide: true,
+                  label: 'THE INCINERATOR', sub: 'ROOM -1 · CLOSED FOR GOOD',
+                  action: { room: 'incinerator', at: 'works' },
+                  desc: 'Where a door goes when the reality behind it is never to be opened again. The belt runs straight into it.' },
+                { id: 'autopsy', wall: 'w', z: 3, leaf: 'leaf_hospital',
+                  label: 'THE AUTOPSY ROOM', sub: 'ROOM Y · EXAMINATION',
+                  action: { room: 'autopsy', at: 'works' },
+                  desc: 'A door that came back wrong is taken apart on a steel table, one part at a time, to find out which part was the door.' },
+                { id: 'garden', wall: 'n', x: -6, leaf: 'leaf_birch_glass',
+                  label: 'THE DOOR GARDEN', sub: 'ROOM ½ · THE GREENHOUSE',
+                  action: { room: 'doorgarden', at: 'works' },
+                  desc: 'Not every door is built. Some are grown. Under purple light, on stems, very small at first.' },
+            ],
+            counters: [
+                { id: 'line', x: 7.6, z: -4.6, face: 180, plateY: 1.6, radius: 1.8, verb: 'READ',
+                  label: 'THE LINE', sub: 'OUTPUT · THE COUNTER', action: {},
+                  desc: 'The tally board over the foreman’s desk: doors on the register, doors on the belts, doors that went to the furnace. The chalk is fresh; the numbers never move.' },
+            ],
+            props: [
+                /* ── the two belts, the length of the floor, leaves riding them ── */
+                { key: 'conveyor',       x: -2, z: -2.2, face: 0 }, { key: 'conveyor', x: 4.2, z: -2.2, face: 0 },
+                { key: 'conveyor',       x: -2, z: 2.2, face: 0 },  { key: 'conveyor', x: 4.2, z: 2.2, face: 0 },
+                /* ── three arms, the same door, all day ── */
+                { key: 'robot_arm',      x: -5.2, z: 0, face: 0 },
+                { key: 'robot_arm',      x: 1.1, z: 0, face: 180 },
+                { key: 'robot_arm',      x: 7.4, z: 0, face: 0 },
+                /* ── the stacks, the pallets, the boxes of knobs ── */
+                { key: 'door_stack',     x: -8.4, z: -4.6, face: 90 }, { key: 'door_stack', x: -8.4, z: -3.0, face: 90 }, { key: 'door_stack', x: -8.4, z: 4.2, face: 90 },
+                { key: 'cardboard_boxes', x: -7.0, z: 4.8, face: 20 }, { key: 'cardboard_boxes', x: 2.0, z: 5.0, face: -30 },
+                { key: 'cardboard_box',  x: -6.2, z: 5.2, y: 0.9, face: 40 },
+                { key: 'metal_shelving', wall: 's', x: -5.0 }, { key: 'metal_shelving', wall: 's', x: -3.6 }, { key: 'metal_shelving', wall: 's', x: 6.0 },
+                /* ── the foreman's corner: the desk under the tally board ── */
+                { key: 'tanker_desk',    wall: 'n', x: 7.6 },
+                { key: 'office_chair',   x: 7.6, z: -4.6, face: 0 },
+                { key: 'crt_terminal',   x: 8.2, z: -5.3, y: 0.76, face: 180 },
+                { key: 'clipboard_flat', x: 7.0, z: -5.2, y: 0.76, face: 15 },
+                { key: 'desk_lamp',      x: 6.6, z: -5.4, y: 0.76, face: 200 },
+                /* ── the walls ── */
+                { key: 'breaker_panel',  wall: 'e', z: -3.6 },
+                { key: 'pipe_run',       x: 9.0, z: -1.2, face: 0 },
+                { key: 'vent_grille',    wall: 'n', x: 3.0, mount: 5.2 },
+                { key: 'security_camera', wall: 'n', x: -9.4, mount: 5.3 },
+                { key: 'security_camera', wall: 's', x: 9.4, mount: 5.3 },
+                { key: 'fire_extinguisher', wall: 'e', z: 5.0 },
+                { key: 'wet_floor_sign', x: 4.6, z: -0.4, face: 40 },
+                { key: 'exit_sign',      wall: 's', x: 0, mount: 3.2 },
+                { key: 'nameplate',      wall: 'w', z: 5.0, mount: 1.55 },
+                /* ── THE PARK RULE: the loading platform's three tiers (the ramp) and its rail ── */
+                { key: 'riser_1',        x: 4.0, z: 5.0, face: 0 }, { key: 'riser_2', x: 4.0, z: 5.5, face: 0 },
+                { key: 'railing_1m',     x: 3.0, z: 4.5, face: 90 }, { key: 'railing_1m', x: 5.0, z: 4.5, face: 90 },
+                { key: 'railing_1m',     x: -1.0, z: 0, face: 0 }, { key: 'railing_1m', x: -3.0, z: 0, face: 0 },   // the walkway between the belts
+                { key: 'fluorescent',    x: -6, z: -3, ceil: true, face: 90 }, { key: 'fluorescent', x: 0, z: -3, ceil: true, face: 90 }, { key: 'fluorescent', x: 6, z: -3, ceil: true, face: 90 },
+                { key: 'fluorescent',    x: -6, z: 3, ceil: true, face: 90 },  { key: 'fluorescent', x: 0, z: 3, ceil: true, face: 90 },  { key: 'fluorescent', x: 6, z: 3, ceil: true, face: 90 },
+            ],
+            agents: [
+                { x: 6.4, z: -3.6, face: 200, pose: 'hqArms', gender: 'male', label: 'THE FOREMAN', reach: 2.4,
+                  line: '“A thousand a day.” “Where do they go?” “Everywhere. That is what a door is for.” “And the ones that come back?” “West. The table. Then east. The fire.”' },
+                { x: -3.6, z: 4.4, face: 0, pose: 'hqFix', gender: 'female', label: 'THE FITTER', reach: 2.0,
+                  line: '“Hinges left, hinges right. Nobody tells us which side the other reality is on. We guess.”' },
+            ],
+            npcSpots: [
+                { x: -6.4, z: -1.0, face: 90, race: 'android', say: ['“The third arm opens it. The third arm closes it. I have watched it for six hours. It has not once looked inside.”'] },
+                { x: 8.6, z: 2.6, face: 270, say: ['“Every one of these is somewhere else on the other side.” “That is the job.” “I keep thinking one of them is my kitchen.”'] },
+            ],
+            onlineSpots: [{ x: 0.6, z: -4.4, face: 0 }],
+            lines: [
+                '“Which belt is which?” “The north belt is outgoing. The south belt is outgoing.” “Then what is incoming?” “The other side of both.”',
+                '“Do not put your hand in the arm.” “Why not?” “It will fit you with a knob.”',
+            ],
+            spawn: { x: 0, z: 4.6, face: 0 },
+        },
+        /* ── ROOM 000 · THE INCINERATOR — a furnace with a door-shaped mouth,
+           the belt feeding it, the manifest of every reality closed for good
+           (a by-id panel that reads the register's sealed rows). ── */
+        incinerator: {
+            label: 'THE INCINERATOR',
+            sub: 'CLOSED FOR GOOD',
+            roomNo: '-1', why: 'one below nothing: the count that comes back',
+            kind: 'box',
+            shell: {
+                w: 8, d: 8, h: 5,
+                wallH: 5, dadoH: 1.2,
+                floor: 'concrete_floor', wall: 'bricks_1', dado: 'gunmetal', trim: 'gunmetal', ceiling: 'metal_3',
+                floorColor: 0x6e6a64, wallColor: 0x6a5048, dadoColor: 0x4a4e52, ceilColor: 0x3e4246,
+                pipes: true,
+                strips: false,
+                light: { x: 0, z: 1 },
+                mood: { light: 0xffa050, ambient: 0.45 },
+                plate: { x: 0, z: -3.75, y: 3.0 },
+            },
+            doors: [
+                { id: 'works', wall: 'w', z: 0, leaf: 'leaf_bulkhead', wide: true,
+                  label: 'THE DOOR WORKS', sub: 'BACK TO THE FLOOR',
+                  action: { room: 'warehouse', at: 'incinerator' },
+                  desc: 'Back onto the floor, and cooler.' },
+            ],
+            counters: [
+                { id: 'manifest', x: 2.6, z: 2.4, face: 270, plateY: 1.6, radius: 1.8, verb: 'READ',
+                  label: 'THE MANIFEST', sub: 'CLOSED FOR GOOD · THE LIST', action: {},
+                  desc: 'Every reality the department has decided is never to be opened again, in the operator’s hand, and the door that went in for each. The sealed bay is on it. Some of the lines are very old.' },
+            ],
+            props: [
+                { key: 'door_furnace',   wall: 'n', x: 0 },
+                { key: 'conveyor_z',     x: 0, z: -0.4, face: 0 },                          // the belt into the mouth
+                { key: 'railing_1m',     x: -1.6, z: 0.2, face: 90 }, { key: 'railing_1m', x: 1.6, z: 0.2, face: 90 },   // THE PARK RULE: the rail either side of the belt
+                { key: 'riser_1',        x: 2.6, z: 2.4, face: 0, rect: false },                                          // … and the step to the operator's desk
+                { key: 'steel_table',    wall: 'e', z: 2.4, face: 270 },
+                { key: 'crt_terminal',   x: 3.2, z: 2.4, y: 0.76, face: 270 },
+                { key: 'clipboard_flat', x: 3.2, z: 1.7, y: 0.76, face: -20 },
+                { key: 'folding_chair',  x: 2.2, z: 2.4, face: 90 },
+                { key: 'radiation_sign', wall: 'n', x: -2.6, mount: 1.6 }, { key: 'radiation_sign', wall: 'n', x: 2.6, mount: 1.6 },
+                { key: 'breaker_panel',  wall: 's', x: 2.4 },
+                { key: 'pipe_run',       x: -3.2, z: -2.4, face: 90 },
+                { key: 'fire_extinguisher', wall: 's', x: -2.6 }, { key: 'fire_extinguisher', wall: 'w', z: -2.6 },
+                { key: 'floor_stain',    x: 0.6, z: 1.6 },
+                { key: 'floor_drain',    x: -1.2, z: 2.2 },
+                { key: 'cardboard_boxes', x: -3.0, z: 3.0, face: 30 },
+                { key: 'door_stack',     x: -3.0, z: -0.6, face: 90 },                      // the next batch
+                { key: 'vent_grille',    wall: 'e', z: -2.6, mount: 4.2 },
+                { key: 'security_camera', wall: 's', x: -3.4, mount: 4.3 },
+                { key: 'exit_sign',      wall: 'w', z: 0, mount: 3.1 },
+                { key: 'bare_bulb',      x: 0, z: 1.6, ceil: true },
+            ],
+            agents: [
+                { x: 1.6, z: 3.0, face: 315, pose: 'hqLean', gender: 'male', label: 'THE OPERATOR', reach: 2.2,
+                  line: '“It does not burn the wood.” “What does it burn?” “The other side. The wood comes out the same. We use it again.”' },
+            ],
+            npcSpots: [{ x: -2.6, z: 1.4, face: 45, race: 'demon', say: ['“Warm. Finally a room in this building that is warm.” “It is an incinerator.” “Yes. Finally.”'] }],
+            onlineSpots: [],
+            lines: [
+                '“How do you know a reality is closed for good?” “It stops knocking.”',
+                '“Is it hot on the other side of the door?” “There is no other side. That is the point of the room.”',
+            ],
+            spawn: { x: -2.4, z: 0, face: 90 },
+        },
+        /* ── ROOM Y · THE AUTOPSY ROOM — a door on the slab, every part of it
+           laid out and tagged (knob, handle, bell, window, boards, knocker,
+           hinges, letterbox, peephole, chain), the light box with its X-ray,
+           the examiner. ── */
+        autopsy: {
+            label: 'THE AUTOPSY ROOM',
+            sub: 'EXAMINATION · ONE DOOR AT A TIME',
+            roomNo: 'Y', why: 'the Y incision; every door on the slab gets one',
+            kind: 'box',
+            shell: {
+                w: 7, d: 6, h: 3.2,
+                wallH: 3.2, dadoH: 1.4,
+                floor: 'tilefloor_2', wall: 'drywall', dado: 'tilefloor', trim: 'teal', ceiling: 'ceiling',
+                floorColor: 0xc8d0cc, wallColor: 0xe0e6e2, dadoColor: 0xd0dcd8,
+                pipes: false,
+                lights: [{ x: -1.5, z: 0 }, { x: 1.5, z: 0 }],
+                mood: { light: 0xe8f4ff },
+                plate: { x: 0, z: -2.75, y: 2.6 },
+            },
+            doors: [
+                { id: 'works', wall: 'e', z: 0, leaf: 'leaf_hospital',
+                  label: 'THE DOOR WORKS', sub: 'BACK TO THE FLOOR',
+                  action: { room: 'warehouse', at: 'autopsy' },
+                  desc: 'Back onto the floor. Wash your hands; the door will not mind.' },
+            ],
+            counters: [
+                { id: 'parts', x: 0, z: 0.9, face: 0, plateY: 1.5, radius: 2.0, verb: 'READ',
+                  label: 'THE PARTS', sub: 'LAID OUT · TAGGED', action: {},
+                  desc: 'Everything the door was, in the order it came off. The tags are in the examiner’s hand. One part is missing from every door they open, and it is never the same part.' },
+            ],
+            props: [
+                { key: 'autopsy_table',  x: 0, z: 0, face: 0 },
+                { key: 'door_xray',      wall: 'n', x: -1.6, mount: 1.1 },
+                { key: 'sink',           wall: 'n', x: 2.2 },
+                { key: 'metal_shelving', wall: 'w', z: -1.6 }, { key: 'metal_shelving', wall: 'w', z: -0.2 },
+                { key: 'steel_table',    wall: 's', x: -2.0, face: 180 },
+                { key: 'desk_lamp',      x: -2.4, z: 2.5, y: 0.76, face: 30 },
+                { key: 'clipboard_flat', x: -1.6, z: 2.5, y: 0.76, face: -10 },
+                { key: 'pen',            x: -1.2, z: 2.4, y: 0.76, face: 60 },
+                { key: 'folding_chair',  x: -2.0, z: 1.8, face: 180 },
+                { key: 'cardboard_boxes', x: 2.6, z: 2.3, face: 20 },
+                { key: 'floor_drain',    x: 0, z: 1.4 },
+                { key: 'clipboard',      wall: 's', x: 1.6, mount: 1.5, rot: 4 },          // the report; the cause is always "opened"
+                { key: 'security_camera', wall: 'e', z: -2.4, mount: 2.6 },
+                { key: 'vent_grille',    wall: 'w', z: 2.2, mount: 2.6 },
+                { key: 'railing_1m',     x: 1.9, z: -0.2, face: 90 },                        // THE PARK RULE: the gurney rail
+                { key: 'riser_1',        x: 2.2, z: -2.2, face: 0, rect: false },             // … and the step to the light box
+                { key: 'fluorescent',    x: -1.5, z: 0, ceil: true, face: 90 }, { key: 'fluorescent', x: 1.5, z: 0, ceil: true, face: 90 },
+            ],
+            agents: [
+                { x: -1.3, z: -0.9, face: 150, pose: 'hqReach', gender: 'female', label: 'THE EXAMINER', reach: 2.2,
+                  line: '“Knob. Handle. Bell. Knocker. Peephole. Chain. Boards — someone boarded this one from the other side.” “What was it afraid of?” “Us.”' },
+            ],
+            npcSpots: [{ x: 2.2, z: 1.6, face: 270, race: 'ghoul', say: ['“Nothing inside. They are all like this. You open them up and there is nothing inside.” “It is a door.” “That is what they all say.”'] }],
+            onlineSpots: [],
+            lines: [
+                '“Cause?” “Opened.” “They are all opened.” “That is the cause.”',
+                '“Where is the doorbell?” “Bagged. It rang on the way in.”',
+            ],
+            spawn: { x: 2.2, z: 0, face: 270 },
+        },
+        /* ── ROOM ½ · THE DOOR GARDEN — the greenhouse: trellises of vines
+           with tiny doors at the ends of the stems, purple grow lamps, the
+           beds, the gardener who will not say what they are watered with. ── */
+        doorgarden: {
+            label: 'THE DOOR GARDEN',
+            sub: 'THE GREENHOUSE · GROWN, NOT BUILT',
+            roomNo: '½', why: 'a door half grown; the other half is on the other side',
+            kind: 'box',
+            shell: {
+                w: 10, d: 8, h: 5,
+                wallH: 5, dadoH: 0.9,
+                floor: 'dirt', wall: 'drywall', dado: 'bricks_1', trim: 'teal', ceiling: 'ceiling',
+                floorColor: 0x8a7a62, wallColor: 0xd8e6d0, dadoColor: 0x9a8a78, ceilColor: 0xb8c8b8,
+                pipes: true,
+                strips: false,
+                lights: [],
+                mood: { light: 0xe8c8ff, ambient: 0.55 },
+                plate: { x: 0, z: -3.75, y: 2.9 },
+            },
+            doors: [
+                { id: 'works', wall: 's', x: 0, leaf: 'leaf_birch_glass',
+                  label: 'THE DOOR WORKS', sub: 'BACK TO THE FLOOR',
+                  action: { room: 'warehouse', at: 'garden' },
+                  desc: 'Back onto the floor, where the doors are made the other way.' },
+            ],
+            counters: [
+                { id: 'bed', x: 0, z: -1.6, face: 0, plateY: 1.4, radius: 2.0, verb: 'READ',
+                  label: 'THE BEDS', sub: 'THE GROWTH LOG', action: {},
+                  desc: 'The log on the stake: what was planted, when it sprouted, when it first opened. Nobody has written down what is behind one.' },
+            ],
+            props: [
+                { key: 'planter',        x: -3.0, z: -1.6, face: 0 }, { key: 'planter', x: 3.0, z: -1.6, face: 0 },
+                { key: 'planter',        x: -3.0, z: 1.8, face: 0 },  { key: 'planter', x: 3.0, z: 1.8, face: 0 },
+                { key: 'door_vine',      x: -3.0, z: -1.6, y: 0.5, face: 0 }, { key: 'door_vine', x: 3.0, z: -1.6, y: 0.5, face: 0 },
+                { key: 'door_vine',      x: -3.0, z: 1.8, y: 0.5, face: 0 },  { key: 'door_vine', x: 3.0, z: 1.8, y: 0.5, face: 0 },
+                { key: 'door_vine',      wall: 'n', x: 0, mount: 0 },                              // the big one on the trellis
+                { key: 'grow_lamp',      x: -3.0, z: -1.6, ceil: true }, { key: 'grow_lamp', x: 3.0, z: -1.6, ceil: true },
+                { key: 'grow_lamp',      x: -3.0, z: 1.8, ceil: true },  { key: 'grow_lamp', x: 3.0, z: 1.8, ceil: true },
+                { key: 'grow_lamp',      x: 0, z: -3.0, ceil: true },
+                { key: 'garden_tree',    x: 4.2, z: 3.2 }, { key: 'garden_tree', x: -4.2, z: 3.2 },
+                { key: 'park_bench',     x: 0, z: 3.2, face: 0 },
+                { key: 'mop_bucket',     x: 4.2, z: -3.0, face: 20 },
+                { key: 'cardboard_boxes', x: -4.2, z: -3.0, face: -20 },
+                { key: 'clipboard',      wall: 'e', z: -2.4, mount: 1.4, rot: -3 },
+                { key: 'pipe_run',       x: 4.6, z: 0.4, face: 0 },
+                { key: 'wall_shelf',     wall: 'w', z: 0, mount: 1.3 },
+                { key: 'railing_1m',     x: 0, z: 0.1, face: 0 },                                 // THE PARK RULE: the rail between the beds
+                { key: 'riser_1',        x: 0, z: -2.9, face: 0, rect: false },                  // … and the potting step
+                { key: 'security_camera', wall: 's', x: 4.4, mount: 3.4 },
+            ],
+            agents: [
+                { x: -1.6, z: 3.0, face: 20, pose: 'hqFix', gender: 'female', label: 'THE GARDENER', reach: 2.2,
+                  line: '“They open when they are ripe.” “Onto what?” “Onto wherever they were pointing when they sprouted. Do not stand in front of the big one.”' },
+            ],
+            npcSpots: [
+                { x: 1.6, z: 0.9, face: 270, race: 'fairy', say: ['“I planted the one in the corner.” “What is behind it?” “My house. It keeps opening onto my house. Stop looking.”'] },
+                { x: -1.8, z: -0.4, face: 90, race: 'gnome', say: ['“The trick is the soil.” “What is in the soil?” “The last door.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Grown?” “Grown. Built ones need a wall. Grown ones bring their own.”',
+                '“What are they watered with?” “Ask the gardener.” “I asked the gardener.” “Then you know as much as I do.”',
+            ],
+            spawn: { x: 0, z: 2.6, face: 0 },
+        },
+        /* ── ROOM 24/7 · THE CONTROL ROOM — the stack of CRTs looking at the
+           building, the night watch, the feed that is this room. ── */
+        control: {
+            label: 'THE CONTROL ROOM',
+            sub: 'SECURITY · THE FEEDS',
+            roomNo: '24/7', why: 'the shift the screens keep; nobody has ever seen the watch change',
+            kind: 'box',
+            shell: {
+                w: 8, d: 6, h: 3.2,
+                wallH: 3.2, dadoH: 1.05,
+                floor: 'carpet', wall: 'drywall', dado: 'gunmetal', trim: 'gunmetal', ceiling: 'ceiling',
+                floorColor: 0x50545c, wallColor: 0x70767e, dadoColor: 0x484c52, ceilColor: 0x5a5e66,
+                pipes: false,
+                strips: false,
+                light: { x: 0, z: 1 },
+                mood: { light: 0x9fc7ff, ambient: 0.4 },
+                plate: { x: 0, z: -2.75, y: 2.6 },
+            },
+            doors: [
+                { id: 'works', wall: 'w', z: 0, leaf: 'leaf_glass',
+                  label: '2 · THE WORKS', sub: 'BACK TO THE FLOOR',
+                  action: { room: 'works', at: 'control' },
+                  desc: 'The way back to the lobby. The camera over it watches you go.' },
+            ],
+            counters: [
+                { id: 'feeds', x: 0, z: -1.5, face: 0, plateY: 1.6, radius: 2.2, verb: 'WATCH',
+                  label: 'THE FEEDS', sub: 'EVERY ROOM · ONE SCREEN', action: {},
+                  desc: 'One screen per numbered room. Most have signal. Some never have. One of them is this room, and on it there is someone standing where you are standing.' },
+            ],
+            props: [
+                { key: 'monitor_stack',  wall: 'n', x: -2.2 }, { key: 'monitor_stack', wall: 'n', x: 0 }, { key: 'monitor_stack', wall: 'n', x: 2.2 },
+                { key: 'steel_table',    x: -1.0, z: -0.6, face: 0 }, { key: 'steel_table', x: 1.0, z: -0.6, face: 0 },
+                { key: 'crt_terminal',   x: -1.0, z: -0.6, y: 0.76, face: 0 },
+                { key: 'desk_lamp',      x: 1.4, z: -0.7, y: 0.76, face: 220 },
+                { key: 'papers_a',       x: 0.7, z: -0.5, y: 0.76, face: 10 },
+                { key: 'computer_chair_blue', x: -1.0, z: 0.4, face: 0 }, { key: 'computer_chair_grey', x: 1.0, z: 0.4, face: 0 },
+                { key: 'wall_clock',     wall: 'e', z: -1.8, mount: 2.5 }, { key: 'wall_clock', wall: 'w', z: -1.8, mount: 2.5 },
+                { key: 'notice_board',   wall: 'e', z: 0.8 },
+                { key: 'breaker_panel',  wall: 's', x: 2.4 },
+                { key: 'security_camera', wall: 's', x: -2.4, mount: 2.6 },   // watching the watchers
+                { key: 'security_camera', wall: 'w', z: 1.6, mount: 2.6 },
+                { key: 'water_cooler',   wall: 's', x: -1.0 },
+                { key: 'trash_bin',      x: 3.2, z: 2.2, face: 270 },
+                { key: 'cardboard_boxes', x: -3.2, z: 2.3, face: 30 },
+                { key: 'railing_1m',     x: 0, z: 1.6, face: 0 },                             // THE PARK RULE: the rail behind the chairs
+                { key: 'riser_1',        x: 2.6, z: 2.4, face: 0, rect: false },              // … and the step
+                { key: 'vent_grille',    wall: 'e', z: 2.4, mount: 2.6 },
+            ],
+            agents: [
+                { x: -1.0, z: 0.4, face: 0, pose: 'hqSit', gender: 'male', label: 'THE NIGHT WATCH', reach: 2.4,
+                  line: '“Screen nine.” “What is on screen nine?” “You are. Coming in. Wave.” “I already came in.” “Screen nine is a little behind.”' },
+            ],
+            npcSpots: [{ x: 2.6, z: 1.2, face: 300, race: 'watcher', say: ['“Twelve screens. None of them is this room.” “The night watch says one is.” “The night watch has never turned round.”'] }],
+            onlineSpots: [{ x: 1.0, z: 0.4, face: 0 }],
+            lines: [
+                '“Who watches the tapes?” “Records. We send them down.” “And the ones with nothing on them?” “Those are the ones Records asks for.”',
+                '“The camera over the door.” “Yes.” “It is pointed at the screens.” “Yes.”',
+            ],
+            spawn: { x: -2.4, z: 0, face: 90 },
+        },
+        /* ── ROOM ? · LOST AND FOUND (INTERDIMENSIONAL) — the shelves of
+           everything left in another reality, the claims book, the clerk who
+           needs you to describe it before she will look. ── */
+        lostfound: {
+            label: 'LOST AND FOUND',
+            sub: 'INTERDIMENSIONAL · CLAIMS',
+            roomNo: '?', why: 'the file nobody claimed; the number is the question on the form',
+            kind: 'box',
+            shell: {
+                w: 8, d: 6, h: 3.2,
+                wallH: 3.2, dadoH: 1.05,
+                floor: 'terrazzo', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
+                pipes: false,
+                lights: [{ x: -1.8, z: 0 }, { x: 1.8, z: 0 }],
+                mood: { light: 0xf4ecd8 },
+                plate: { x: 0, z: -2.75, y: 2.6 },
+            },
+            doors: [
+                { id: 'works', wall: 'e', z: 0, leaf: 'leaf_coffee',
+                  label: '2 · THE WORKS', sub: 'BACK TO THE FLOOR',
+                  action: { room: 'works', at: 'lostfound' },
+                  desc: 'The way back to the lobby. Check your pockets.' },
+            ],
+            counters: [
+                { id: 'claims', x: -2.2, z: 0.3, face: 90, plateY: 1.5, radius: 1.8, verb: 'READ',
+                  label: 'THE CLAIMS BOOK', sub: 'DESCRIBE IT · WE WILL LOOK', action: {},
+                  desc: 'The book on the counter: every item on the shelves, where it was found, and whether anyone has come for it. One line is yours. You have not lost it yet.' },
+            ],
+            props: [
+                { key: 'lost_shelf',     wall: 'n', x: -2.4 }, { key: 'lost_shelf', wall: 'n', x: 0 }, { key: 'lost_shelf', wall: 'n', x: 2.4 },
+                { key: 'lost_shelf',     wall: 's', x: 2.0 },
+                { key: 'tanker_desk',    wall: 'w', z: 0.3, face: 90 },
+                { key: 'office_chair',   x: -3.2, z: 0.3, face: 90 },
+                { key: 'notebook_paper', x: -2.9, z: 0.0, y: 0.76, face: 5 },
+                { key: 'pen',            x: -2.7, z: 0.5, y: 0.76, face: 70 },
+                { key: 'pocket_watch',   x: -3.1, z: 0.7, y: 0.76, face: 0 },
+                { key: 'house_key',      x: -2.8, z: -0.4, y: 0.76, face: 30 },
+                { key: 'car_key',        x: -3.2, z: -0.5, y: 0.76, face: 110 },
+                { key: 'umbrella_stand', x: -3.4, z: 2.4, face: 0 },
+                { key: 'globe_lamp',     x: -3.4, z: -2.4 },
+                { key: 'cardboard_boxes', x: 3.2, z: -2.3, face: 15 }, { key: 'cardboard_box', x: 2.6, z: -2.6, y: 0.9, face: 40 },
+                { key: 'metal_shelving', wall: 's', x: -1.2 },
+                { key: 'clipboard',      wall: 'w', z: -1.8, mount: 1.5, rot: 2 },
+                { key: 'wall_clock',     wall: 'e', z: -2.2, mount: 2.5 },
+                { key: 'security_camera', wall: 'e', z: 2.4, mount: 2.6 },
+                { key: 'railing_1m',     x: -1.4, z: 1.4, face: 90 },                                 // THE PARK RULE: the queue rail
+                { key: 'riser_1',        x: 2.4, z: 1.6, face: 0, rect: false },                      // … and the step to the top shelf
+                { key: 'fluorescent',    x: -1.8, z: 0, ceil: true, face: 90 }, { key: 'fluorescent', x: 1.8, z: 0, ceil: true, face: 90 },
+            ],
+            agents: [
+                { x: -3.2, z: 0.3, face: 90, pose: 'hqSit', gender: 'female', label: 'THE CLERK', reach: 2.4,
+                  line: '“Describe it.” “I have not lost anything.” “Describe it anyway. They always have.”' },
+            ],
+            npcSpots: [{ x: 1.6, z: -1.2, face: 0, race: 'djinn', say: ['“Three of these were wishes. Somebody left them on a shelf.” “Which three?” “The ones you are not allowed to touch.”'] }],
+            onlineSpots: [],
+            lines: [
+                '“One sock.” “Where?” “The laundry.” “That is this reality.” “Is it?”',
+                '“Somebody left a crown.” “Whose?” “It was on the form as king of somewhere. The somewhere is closed.”',
+            ],
+            spawn: { x: 2.4, z: 0, face: 270 },
+        },
+        /* ── THE STAIRWELL — the fire stair that loops. You come in at THE
+           TOP LANDING (a door six metres up, `y: 6`), walk down three flights
+           of real steps, and the door at the bottom marked DOWN opens onto
+           the top landing again. The tunnel is off the bottom. No number (a
+           stair). ── */
+        stairwell: {
+            label: 'THE STAIRWELL',
+            sub: 'FIRE STAIR · DOWN',
+            kind: 'box',
+            shell: {
+                w: 5, d: 7, h: 8.0,
+                wallH: 8.0, dadoH: 1.0,
+                floor: 'concrete_floor', wall: 'concrete', dado: 'gunmetal', trim: 'gunmetal', ceiling: 'concrete',
+                floorColor: 0x8e8c88, wallColor: 0xb0aea8, dadoColor: 0x5a5e62, ceilColor: 0x7a7874,
+                pipes: true,
+                strips: false,
+                lights: [],
+                mood: { light: 0xffe8c0, ambient: 0.5 },
+                plate: { x: -1.2, z: -3.25, y: 2.4 },
+            },
+            doors: [
+                /* the top landing: six metres up, the way in from the lobby */
+                { id: 'landing', wall: 'n', x: 1.1, y: 6.0, leaf: 'leaf_exit',
+                  label: '2 · THE WORKS', sub: 'THE TOP LANDING',
+                  action: { room: 'works', at: 'stairwell' },
+                  desc: 'The top landing. The sign says 2. It has said 2 at the top of every flight so far.' },
+                /* the bottom: DOWN — and it opens onto the top landing */
+                { id: 'down', wall: 'n', x: -1.2, y: 0, leaf: 'leaf_exit',
+                  label: 'DOWN', sub: 'THE NEXT FLIGHT · B4',
+                  action: { room: 'stairwell', at: 'landing' },
+                  desc: 'The next flight down. Through the door, and down, and the landing at the bottom of that is the one you started on. The sign still says 2.' },
+                { id: 'tunnel', wall: 'w', z: -2.0, leaf: 'leaf_white_wood',
+                  label: 'THE TUNNEL', sub: 'THE PLATFORM · MIND THE GAP',
+                  action: { room: 'tunnel', at: 'stairwell' },
+                  desc: 'A door at the bottom of the stair that is not on the stair’s plan. Tiles, a draught, a train.' },
+            ],
+            counters: [],
+            props: [
+                /* ── THE TOP LANDING (y 6): a platform along the north wall ── */
+                { key: 'stair_landing',  x: 0, z: -2.0, y: 5.75, face: 0 },
+                { key: 'railing_1m',     x: -0.4, z: -0.45, y: 6.0, face: 0 }, { key: 'railing_1m', x: -1.4, z: -0.45, y: 6.0, face: 0 },   // THE PARK RULE: the landing rail (the whole stair is the ramp)
+                /* ── FLIGHT A down the east wall (8 steps, 6.0 → 4.0) ── */
+                { key: 'stair_step', x: 1.9, z: -0.3, y: 5.5 }, { key: 'stair_step', x: 1.9, z: 0.0, y: 5.25 }, { key: 'stair_step', x: 1.9, z: 0.3, y: 5.0 }, { key: 'stair_step', x: 1.9, z: 0.6, y: 4.75 },
+                { key: 'stair_step', x: 1.9, z: 0.9, y: 4.5 },  { key: 'stair_step', x: 1.9, z: 1.2, y: 4.25 },  { key: 'stair_step', x: 1.9, z: 1.5, y: 4.0 }, { key: 'stair_step', x: 1.9, z: 1.8, y: 3.75 },
+                { key: 'stair_landing_sq', x: 1.8, z: 2.8, y: 3.5, face: 0 },
+                /* ── FLIGHT B along the south wall (7 steps, 3.75 → 2.0) ── */
+                { key: 'stair_step_x', x: 0.95, z: 2.9, y: 3.25 }, { key: 'stair_step_x', x: 0.65, z: 2.9, y: 3.0 }, { key: 'stair_step_x', x: 0.35, z: 2.9, y: 2.75 }, { key: 'stair_step_x', x: 0.05, z: 2.9, y: 2.5 },
+                { key: 'stair_step_x', x: -0.25, z: 2.9, y: 2.25 }, { key: 'stair_step_x', x: -0.55, z: 2.9, y: 2.0 }, { key: 'stair_step_x', x: -0.85, z: 2.9, y: 1.75 },
+                { key: 'stair_landing_sq', x: -1.8, z: 2.8, y: 1.5, face: 0 },
+                /* ── FLIGHT C up the west wall to the floor (6 steps, 1.75 → 0) ── */
+                { key: 'stair_step', x: -1.9, z: 1.95, y: 1.25 }, { key: 'stair_step', x: -1.9, z: 1.65, y: 1.0 }, { key: 'stair_step', x: -1.9, z: 1.35, y: 0.75 }, { key: 'stair_step', x: -1.9, z: 1.05, y: 0.5 }, { key: 'stair_step', x: -1.9, z: 0.75, y: 0.25 }, { key: 'stair_step', x: -1.9, z: 0.45, y: 0.0 },
+                /* ── the well: the bulbs at each landing, the signs, the pipes ── */
+                { key: 'bare_bulb',      x: 0, z: 0, ceil: true, y: 7.9 },
+                { key: 'bare_bulb',      x: 1.6, z: 2.6, ceil: true, y: 4.6 },
+                { key: 'bare_bulb',      x: -1.6, z: 2.6, ceil: true, y: 2.4 },
+                { key: 'nameplate',      wall: 'n', x: -1.2, mount: 1.55 },
+                { key: 'nameplate',      wall: 'n', x: 1.1, mount: 7.55 },                      // the sign on the top landing: 2
+                { key: 'exit_sign',      wall: 'n', x: -1.2, mount: 2.6 },
+                { key: 'exit_sign',      wall: 'n', x: 1.1, mount: 7.6 },
+                { key: 'pipe_run',       x: 2.2, z: -2.6, face: 90 },
+                { key: 'fire_extinguisher', wall: 'w', z: -0.4 },
+                { key: 'floor_stain',    x: 0.4, z: 0.6 },
+                { key: 'clipboard',      wall: 'e', z: -1.4, mount: 1.5, rot: 5 },              // the inspection: FLIGHTS 3 · FLOORS ∞
+                { key: 'security_camera', wall: 's', x: -1.8, mount: 7.4 },
+            ],
+            agents: [],
+            npcSpots: [{ x: 0.4, z: -0.2, face: 180, say: ['“I have been going down for an hour.” “It is three flights.” “It is three flights every time.”'] }],
+            onlineSpots: [],
+            lines: [
+                '“Which floor is this?” “Two.” “I came down three flights.” “Two.”',
+                '“Do not count the steps.” “Why?” “You get a different number on the way back up. There is no way back up.”',
+            ],
+            spawn: { x: -0.2, z: 0.4, face: 180 },
+        },
+        /* ── THE TUNNEL — a subway platform under everything: tiles, a train
+           at the platform with its doors open and nobody aboard, the route
+           map that is the building's own world map, the departures board
+           that only ever says DELAYED. The stair at one end, the garage's
+           service hatch off the side, and at the far end THE END OF THE
+           LINE. No number (a tunnel). ── */
+        tunnel: {
+            label: 'THE TUNNEL',
+            sub: 'THE PLATFORM · ALL LINES',
+            kind: 'box',
+            shell: {
+                w: 8, d: 36, h: 4,
+                wallH: 4, dadoH: 1.6,
+                floor: 'tilefloor', wall: 'tilefloor_2', dado: 'tilefloor', trim: 'gunmetal', ceiling: 'concrete',
+                floorColor: 0xa8a49a, wallColor: 0xd8d4c8, dadoColor: 0x8a6a3a, ceilColor: 0x5a5854,
+                pipes: true,
+                strips: false,
+                lights: [],
+                mood: { light: 0xfff0c0, ambient: 0.5 },
+                plate: { x: 0, z: 17.75, y: 2.8 },
+            },
+            doors: [
+                { id: 'stairwell', wall: 's', x: 0, leaf: 'leaf_white_wood',
+                  label: 'THE STAIRWELL', sub: 'THE FIRE STAIR · UP',
+                  action: { room: 'stairwell', at: 'tunnel' },
+                  desc: 'Up the fire stair. Up as far as you like.' },
+                { id: 'carnival', wall: 'n', x: 0, leaf: 'leaf_barn',
+                  label: 'THE END OF THE LINE', sub: 'ROOM 1893 · THE MIDWAY',
+                  action: { room: 'carnival', at: 'tunnel' },
+                  desc: 'The doors at the end of the platform. Music behind them. A smell of sugar and diesel.' },
+                { id: 'garage', wall: 'e', z: 12, leaf: 'leaf_bulkhead', wide: true,
+                  label: 'THE GARAGE', sub: 'ROOM P1 · SERVICE HATCH',
+                  action: { room: 'garage', at: 'tunnel' },
+                  desc: 'A maintenance door up to the garage. It comes out behind the ramp, where the barrier arm cannot see you.' },
+            ],
+            counters: [
+                { id: 'departures', x: 0, z: 2, face: 0, plateY: 2.2, radius: 2.4, verb: 'READ',
+                  label: 'DEPARTURES', sub: 'NEXT TRAIN · THE BOARD', action: {},
+                  desc: 'The board over the platform. Every line the building runs, and the next train on each. The next train is always the same amount of late.' },
+            ],
+            props: [
+                { key: 'track_bed',      x: -2.8, z: 0, face: 0 },
+                { key: 'train_car',      x: -2.8, z: -6, face: 0 },
+                { key: 'platform_edge',  x: -1.2, z: 0, face: 0 },
+                { key: 'departures_board', wall: 'n', x: 0, mount: 2.4 },
+                { key: 'tube_map',       wall: 'e', z: -4, mount: 1.1 }, { key: 'tube_map', wall: 'e', z: 6, mount: 1.1 },
+                { key: 'park_bench',     x: 2.4, z: -10, face: 270 }, { key: 'park_bench', x: 2.4, z: 0, face: 270 }, { key: 'park_bench', x: 2.4, z: 10, face: 270 },
+                { key: 'vending_machine', wall: 'e', z: -12 },
+                { key: 'trash_bin',      x: 3.4, z: -8.4, face: 270 }, { key: 'trash_bin', x: 3.4, z: 8.4, face: 270 },
+                { key: 'wall_clock',     wall: 'e', z: 0, mount: 3.0 },
+                { key: 'wall_clock',     wall: 'e', z: 14, mount: 3.0 },
+                { key: 'notice_board',   wall: 'e', z: -8 },
+                { key: 'wet_floor_sign', x: 1.4, z: -14, face: 30 },
+                { key: 'pipe_run',       x: 3.2, z: -16, face: 0 }, { key: 'pipe_run', x: 3.2, z: 16, face: 0 },
+                { key: 'security_camera', wall: 'e', z: -16.5, mount: 3.4 }, { key: 'security_camera', wall: 'e', z: 16.5, mount: 3.4 },
+                { key: 'exit_sign',      wall: 's', x: 0, mount: 3.2 },
+                { key: 'exit_sign',      wall: 'e', z: 12, mount: 3.2 },
+                { key: 'railing_1m',     x: 1.2, z: -16.6, face: 0 }, { key: 'railing_1m', x: 1.2, z: 16.6, face: 0 },   // THE PARK RULE: the rails at the platform ends
+                { key: 'riser_1',        x: 3.0, z: 4.0, face: 90, rect: false },                                          // … and the step (the platform's raised end)
+                { key: 'flicker_tube',   x: 0.8, z: -12, ceil: true, face: 0 },
+                { key: 'bare_bulb',      x: 0.8, z: -4, ceil: true }, { key: 'bare_bulb', x: 0.8, z: 4, ceil: true },
+                { key: 'flicker_tube',   x: 0.8, z: 12, ceil: true, face: 0 },
+            ],
+            agents: [
+                { x: 1.6, z: -2.4, face: 270, pose: 'hqPhone', gender: 'male', label: 'THE CONDUCTOR', reach: 2.4,
+                  line: '“Yes. Delayed. No, the same amount. Yes, I know it is the same amount. That is the timetable.”' },
+            ],
+            npcSpots: [
+                { x: 2.4, z: 0, face: 270, race: 'zombie', say: ['“Waiting.” “For the train?” “For the train.” “It is at the platform.” “Waiting.”'] },
+                { x: 2.4, z: 10, face: 270, race: 'skeleton', say: ['“I missed the last one.” “When was that?” “It is still here.”'] },
+            ],
+            onlineSpots: [{ x: 2.4, z: -10, face: 270 }],
+            lines: [
+                '“Where does it go?” “All lines.” “Which line is this?” “All of them. Mind the gap.”',
+                '“The train has been at the platform for an hour.” “Doors open.” “Nobody gets on.” “Nobody has to. It is at the platform.”',
+            ],
+            spawn: { x: 0, z: 16, face: 0 },
+        },
+        /* ── ROOM 1893 · THE MIDWAY — the carnival at the end of the line: a
+           wheel that turns, a carousel, the fortune teller's tent, the high
+           striker, the ticket booth, the bleachers (the ramp) and the queue
+           rails (the rail), under a big top. The hall of mirrors on the east
+           wall opens into Room * upstairs — a different room every time. ── */
+        carnival: {
+            label: 'THE MIDWAY',
+            sub: 'THE END OF THE LINE · ADMIT ONE',
+            roomNo: '1893', why: 'the first wheel; it has been turning since',
+            kind: 'box',
+            shell: {
+                w: 22, d: 16, h: 8,
+                wallH: 8, dadoH: 1.4,
+                floor: 'dirt', wall: 'bricks_1', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
+                floorColor: 0xd8c09a, wallColor: 0xa04848, dadoColor: 0xf0e0c0, ceilColor: 0xc03038,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xffd6a0, ambient: 0.55 },
+                plate: { x: 0, z: 7.75, y: 3.0 },
+            },
+            doors: [
+                { id: 'tunnel', wall: 's', x: 0, leaf: 'leaf_barn',
+                  label: 'THE TUNNEL', sub: 'BACK TO THE PLATFORM',
+                  action: { room: 'tunnel', at: 'carnival' },
+                  desc: 'Back to the platform. The train will still be there.' },
+                { id: 'mirrors', wall: 'e', z: 0, leaf: 'leaf_frame_only',
+                  label: 'THE HALL OF MIRRORS', sub: 'ROOM * · IT IS DIFFERENT IN THERE',
+                  action: { room: 'mandela', at: 'mirrors' },
+                  desc: 'The hall of mirrors. It is not a hall and there are no mirrors; it is a room, and it is never the room it was.' },
+            ],
+            counters: [
+                { id: 'booth', x: 5.0, z: 5.6, face: 0, plateY: 1.6, radius: 2.0, verb: 'READ',
+                  label: 'THE TICKET BOOTH', sub: 'ADMIT ONE · THE PRICE', action: {},
+                  desc: 'Tickets. The price is on the card in the window and the card is written in a currency the building does not use. Everyone has been let in anyway.' },
+            ],
+            props: [
+                { key: 'bigtop',         x: 0, z: 0, ceil: true },
+                { key: 'ferris_wheel',   x: -6.0, z: -2.0, face: 0 },
+                { key: 'carousel',       x: 5.0, z: -2.5, face: 0 },
+                { key: 'fortune_tent',   x: -7.0, z: 4.4, face: 0 },
+                { key: 'high_striker',   x: 0, z: -5.6, face: 180 },
+                { key: 'ticket_booth',   x: 5.0, z: 5.6, face: 180 },
+                { key: 'popcorn_cart',   x: 1.6, z: 4.6, face: 150 },
+                { key: 'festoon',        x: 0, z: -3.5, ceil: true, face: 0 }, { key: 'festoon', x: 0, z: 3.5, ceil: true, face: 0 },
+                /* THE PARK RULE: the bleachers (three tiers) and the queue rails */
+                { key: 'riser_1',        x: 8.4, z: 1.0, face: 270 }, { key: 'riser_2', x: 8.9, z: 1.0, face: 270 }, { key: 'riser_3', x: 9.4, z: 1.0, face: 270 },
+                { key: 'railing_1m',     x: -2.0, z: 2.0, face: 90 }, { key: 'railing_1m', x: -2.0, z: 3.0, face: 90 }, { key: 'railing_1m', x: -2.0, z: 4.0, face: 90 },
+                { key: 'railing_1m',     x: 2.0, z: -3.6, face: 0 },  { key: 'railing_1m', x: 3.0, z: -3.6, face: 0 },
+                { key: 'park_bench',     x: -2.6, z: 6.4, face: 0 }, { key: 'park_bench', x: 2.6, z: 6.4, face: 0 },
+                { key: 'trash_bin',      x: -4.2, z: 6.8, face: 0 }, { key: 'trash_bin', x: 7.4, z: 6.8, face: 0 },
+                { key: 'cardboard_boxes', x: -9.8, z: -6.4, face: 30 },
+                { key: 'notice_board',   wall: 's', x: -4.0 },                          // TONIGHT: EVERYTHING
+                { key: 'exit_sign',      wall: 's', x: 0, mount: 3.2 },
+                { key: 'security_camera', wall: 'n', x: -10.4, mount: 7.2 },
+                { key: 'nameplate',      wall: 'e', z: -2.0, mount: 1.55 },
+                { key: 'floor_stain',    x: 3.0, z: 2.6 },
+            ],
+            agents: [
+                { x: -0.4, z: 1.2, face: 180, pose: 'hqArms', gender: 'male', label: 'THE RINGMASTER', reach: 2.6,
+                  line: '“Ladies and gentlemen and operatives! The wheel! The horses! The lady who knows! The bell nobody has rung! And behind the mirrors — well. You will see.”' },
+                { x: 4.0, z: 6.0, face: 200, pose: 'hqTalk', gender: 'female', label: 'THE BARKER', reach: 2.2,
+                  line: '“Step right up. No, further. No — further than that. There. You are in.”' },
+            ],
+            npcSpots: [
+                { x: 1.4, z: -4.4, face: 0, race: 'giant', say: ['“Nobody has rung the bell.” “Have you tried?” “I am the bell.”'] },
+                { x: -7.0, z: 3.2, face: 0, race: 'fortune teller', say: ['“I know what is behind the mirrors.” “What?” “A room. I do not know which. That is what makes me honest.”'] },
+                { x: -3.6, z: -1.2, face: 90, race: 'mermaid', say: ['“The tank act. Two shows a night.” “There is no tank.” “There is a tank. It is on the fourth floor. I get changed here.”'] },
+                { x: 7.0, z: 3.0, face: 270, race: 'catgirl', say: ['“I won this.” “What is it?” “A door. A small one. It has not opened yet.”'] },
+                { x: -4.6, z: 5.6, face: 60, race: 'gnome', say: ['“I run the wheel.” “Who runs the wheel when you are here?” “The wheel.”'] },
+            ],
+            onlineSpots: [{ x: 8.4, z: 2.6, face: 270 }, { x: 8.9, z: -0.6, face: 270 }, { x: 9.4, z: 2.0, face: 270 }],
+            lines: [
+                '“How long has the wheel been turning?” “Since 1893.” “The building is not that old.” “The wheel is not in the building.”',
+                '“Two tickets.” “There is only one of you.” “Not behind the mirrors.”',
+            ],
+            spawn: { x: 0, z: 6.4, face: 0 },
+        },
+        /* ── 4 · THE LABS — the lobby of the fourth floor. Six doors: the
+           dream lab straight ahead, the Mandela room and the upside-down
+           room to the west, Supply Closet 4B and Clone Disposal to the
+           east. The radiation sign is on the wall before you reach 4B. ── */
+        labs: {
+            label: '4 · THE LABS',
+            sub: 'THE FOURTH FLOOR · RESEARCH',
+            kind: 'box',
+            shell: {
+                w: 10, d: 6, h: 3.2,
+                wallH: 3.2, dadoH: 1.05,
+                floor: 'terrazzo', wall: 'drywall', dado: 'teal', trim: 'teal', ceiling: 'ceiling',
+                floorColor: 0xd8dcd8, wallColor: 0xe8ece8, dadoColor: 0x4a8a8a,
+                pipes: false,
+                lights: [{ x: -2.6, z: 0 }, { x: 2.6, z: 0 }],
+                mood: { light: 0xeef6ff },
+                plate: { x: 3.4, z: -2.75, y: 2.7 },
+            },
+            doors: [
+                { id: 'elevator', wall: 's', x: 0, leaf: null, proc: 'elevator',
+                  label: 'ELEVATOR', sub: 'THE CAR',
+                  action: { room: 'car', at: 'panel' },
+                  desc: 'The car.' },
+                { id: 'dreamlab', wall: 'n', x: 0, leaf: 'leaf_hospital',
+                  label: 'THE DREAM LAB', sub: 'ROOM REM · SLEEP STUDY',
+                  action: { room: 'dreamlab', at: 'labs' },
+                  desc: 'Four cots, four subjects, one screen showing what they see. The subjects were chosen for what they do to a dream from the inside.' },
+                { id: 'mandela', wall: 'w', z: -1.5, leaf: 'leaf_orange_glass',
+                  label: 'THE MANDELA ROOM', sub: 'ROOM * · AS YOU REMEMBER IT',
+                  action: { room: 'mandela', at: 'labs' },
+                  desc: 'Whatever you remember this room being, it is not that now. Nobody comments.' },
+                { id: 'upsidedown', wall: 'w', z: 1.5, leaf: 'leaf_beige_wood',
+                  label: 'THE UPSIDE-DOWN ROOM', sub: 'ROOM 9 · MIND YOUR HEAD',
+                  action: { room: 'upsidedown', at: 'labs' },
+                  desc: 'An office. The furniture is on the ceiling. The clock is right, from down there.' },
+                { id: 'closet4b', wall: 'e', z: -1.5, leaf: 'leaf_cell',
+                  label: 'SUPPLY CLOSET 4B', sub: 'CLEARANCE L6 · RESTRICTED',
+                  action: { room: 'closet4b', at: 'labs' },
+                  desc: 'Radiation warnings, two armed guards, a blast door and an evacuation button — in front of a supply closet. This door is open. The one behind it is not.' },
+                { id: 'disposal', wall: 'e', z: 1.5, leaf: 'leaf_cell',
+                  label: 'CLONE DISPOSAL', sub: 'ROOM II · ONE OF YOU',
+                  action: { room: 'disposal', at: 'labs' },
+                  desc: 'A near-empty room, a table, a gun, a chute. The form does not say which of you is the clone.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'notice_board',   wall: 's', x: 2.8 },
+                { key: 'water_cooler',   wall: 's', x: -2.8 },
+                { key: 'vending_machine', wall: 's', x: 4.2 },
+                { key: 'teal_chair',     x: -3.9, z: 0.2, face: 90 }, { key: 'teal_chair', x: -3.9, z: -0.5, face: 90 },
+                { key: 'coffee_table',   x: -3.3, z: -0.15 },
+                { key: 'papers_a',       x: -3.3, z: -0.15, y: 0.46, face: -20 },
+                { key: 'potted_plant',   x: 4.4, z: 2.4, face: 0 },
+                { key: 'potted_plant',   x: -4.4, z: -2.4, face: 0 },
+                { key: 'radiation_sign', wall: 'e', z: -2.6, mount: 1.7 },
+                { key: 'wall_clock',     wall: 'n', x: 3.4, mount: 2.6 },
+                { key: 'picture_round_c', wall: 'n', x: -3.2, mount: 1.7 },
+                { key: 'exit_sign',      wall: 's', x: 0, mount: 2.8 },
+                { key: 'security_camera', wall: 'n', x: -4.4, mount: 2.6 },
+                { key: 'nameplate',      wall: 'e', z: 0, mount: 1.55 },
+                { key: 'fire_extinguisher', wall: 'w', z: 2.7 },
+                { key: 'rug_office',     x: 0, z: 0.4 },
+                { key: 'railing_1m',     x: 1.6, z: 2.0, face: 0 },                       // THE PARK RULE: the rail
+                { key: 'riser_1',        x: -1.6, z: 2.4, face: 0, rect: false },          // … and the step
+                { key: 'fluorescent',    x: -2.6, z: 0, ceil: true, face: 90 },
+                { key: 'fluorescent',    x: 2.6, z: 0, ceil: true, face: 90 },
+            ],
+            agents: [
+                { x: 2.4, z: -2.2, face: 180, pose: 'hqArms', gender: 'female', label: 'THE FLOOR WARDEN', reach: 2.2,
+                  line: '“Fourth floor. Research. Do not sleep in the lab unless you are on the list, do not go into the closet, and do not trust the room on the left to be the room on the left.”' },
+            ],
+            npcSpots: [{ x: -3.9, z: 0.2, face: 90, race: 'mad scientist', say: ['“The upside-down room is my design.” “Why?” “To see what falls.” “What falls?” “Nothing. That is the finding.”'] }],
+            onlineSpots: [{ x: 1.4, z: -1.0, face: 0 }],
+            lines: [
+                '“Where is the lab?” “Which one?” “The dream one.” “Straight ahead. Do not wake anyone. They are working.”',
+                '“Supply closet 4B.” “Yes.” “With guards.” “Yes.” “What is in it?” “Supplies.”',
+            ],
+            spawn: { x: 0, z: 1.6, face: 0 },
+        },
+        /* ── ROOM REM · THE DREAM LAB — four cots with EEG racks, the screen
+           that draws what the sleepers see, the subjects (a succubus, a mad
+           scientist, a dreameater, a voidweaver, a telepath — what each does
+           to a dream from the inside is the study), the tank through the
+           east door. ── */
+        dreamlab: {
+            label: 'THE DREAM LAB',
+            sub: 'SLEEP STUDY · DO NOT WAKE',
+            roomNo: 'REM', why: 'the stage the study wants; the subjects spend the night trying to get there and the machines say they never do',
+            kind: 'box',
+            shell: {
+                w: 10, d: 8, h: 3.2,
+                wallH: 3.2, dadoH: 1.05,
+                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
+                floorColor: 0x4a4260, wallColor: 0x7a6e90, dadoColor: 0x3a3048, ceilColor: 0x50486a,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xc8b4ff, ambient: 0.5 },
+                plate: { x: 0, z: -3.75, y: 2.6 },
+            },
+            doors: [
+                { id: 'labs', wall: 's', x: 0, leaf: 'leaf_hospital',
+                  label: '4 · THE LABS', sub: 'BACK TO THE FLOOR',
+                  action: { room: 'labs', at: 'dreamlab' },
+                  desc: 'The way back to the floor. Quietly.' },
+                { id: 'tank', wall: 'e', z: 0, leaf: 'leaf_cell',
+                  label: 'THE TANK', sub: 'ROOM 0dB · SENSORY DEPRIVATION',
+                  action: { room: 'tank', at: 'dreamlab' },
+                  desc: 'The isolation tank. Salt water at skin temperature, a lid, and nothing at all. An hour in it and the subjects report the building.' },
+            ],
+            counters: [
+                { id: 'log', x: 3.6, z: -3.0, face: 180, plateY: 1.5, radius: 1.8, verb: 'READ',
+                  label: 'THE DREAM LOG', sub: 'LAST NIGHT · THE SUBJECTS', action: {},
+                  desc: 'The night’s log: who was on the cots, what stage they reached, what the screen drew. Your last crossing is in it, dreamt by someone who was not there.' },
+            ],
+            props: [
+                { key: 'cot',            x: -3.6, z: -1.6, face: 90 }, { key: 'cot', x: -3.6, z: 1.4, face: 90 },
+                { key: 'cot',            x: -1.0, z: -1.6, face: 90 }, { key: 'cot', x: -1.0, z: 1.4, face: 90 },
+                { key: 'eeg_rack',       x: -2.4, z: -2.6, face: 0 }, { key: 'eeg_rack', x: -2.4, z: 2.4, face: 180 },
+                { key: 'eeg_rack',       x: 0.2, z: -2.6, face: 0 },  { key: 'eeg_rack', x: 0.2, z: 2.4, face: 180 },
+                { key: 'dream_screen',   wall: 'n', x: 0, mount: 1.1 }, { key: 'dream_screen', wall: 'w', z: 0, mount: 1.1 },
+                { key: 'steel_table',    wall: 'n', x: 3.6, face: 180 },
+                { key: 'crt_terminal',   x: 3.6, z: -3.4, y: 0.76, face: 180 },
+                { key: 'clipboard_flat', x: 2.8, z: -3.3, y: 0.76, face: 12 },
+                { key: 'desk_lamp',      x: 4.3, z: -3.5, y: 0.76, face: 200 },
+                { key: 'office_chair',   x: 3.6, z: -2.4, face: 0 },
+                { key: 'metal_shelving', wall: 'e', z: -2.6 },
+                { key: 'notice_board',   wall: 'e', z: 2.4 },
+                { key: 'water_cooler',   wall: 's', x: 3.6 },
+                { key: 'trash_bin',      x: 4.4, z: 3.4, face: 270 },
+                { key: 'railing_1m',     x: 1.6, z: 0, face: 90 },                              // THE PARK RULE: the rail between the cots and the desk
+                { key: 'riser_1',        x: 3.6, z: 2.6, face: 0, rect: false },                // … and the step
+                { key: 'security_camera', wall: 's', x: -4.4, mount: 2.6 },
+                { key: 'vent_grille',    wall: 'w', z: -3.0, mount: 2.6 },
+                { key: 'bare_bulb',      x: 3.0, z: 0, ceil: true },
+            ],
+            agents: [
+                { x: 3.6, z: -2.4, face: 0, pose: 'hqSit', gender: 'male', label: 'THE SLEEP TECH', reach: 2.4,
+                  line: '“Four on the cots, one in the tank. Do not touch the screen; it is drawing what they see and it does not like being watched back.”' },
+            ],
+            npcSpots: [
+                { x: -3.6, z: -1.6, face: 90, race: 'succubus', say: ['“I am supposed to be asleep.” “You are sitting up.” “I am asleep from the inside. It is a technique.”'] },
+                { x: -1.0, z: -1.6, face: 90, race: 'mad scientist', say: ['“I am the subject AND the study. It saves on forms.” “Is that allowed?” “I signed for both.”'] },
+                { x: -3.6, z: 1.4, face: 90, race: 'dreameater', say: ['“They put me on the cot next to the succubus.” “Why?” “To see who eats what. So far it is a draw.”'] },
+                { x: -1.0, z: 1.4, face: 90, race: 'voidweaver', say: ['“I dreamt the room. The screen drew it. Then I woke up in it.” “This room?” “This one. It was already drawn.”'] },
+                { x: 0.8, z: 3.2, face: 0, race: 'telepath', say: ['“Keep it down.” “I have not said anything.” “You were about to.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“What stage are they in?” “The screen says REM.” “What does the screen show?” “This room, from above. It has for an hour.”',
+                '“Can I sleep here?” “You are not on the list.” “Who is?” “Whoever is already asleep.”',
+            ],
+            spawn: { x: 0, z: 2.6, face: 0 },
+        },
+        /* ── ROOM 0dB · THE TANK — the sensory deprivation tank: one pod,
+           lid ajar, a blue light inside, and nothing else to hear. ── */
+        tank: {
+            label: 'THE TANK',
+            sub: 'SENSORY DEPRIVATION · ONE HOUR',
+            roomNo: '0dB', why: 'the loudest thing in it is you',
+            kind: 'box',
+            shell: {
+                w: 4.4, d: 4.4, h: 2.8,
+                wallH: 2.8, dadoH: 1.2,
+                floor: 'tilefloor_2', wall: 'tilefloor_2', dado: 'tilefloor', trim: 'gunmetal', ceiling: 'ceiling',
+                floorColor: 0x3a4250, wallColor: 0x2c3440, dadoColor: 0x384050, ceilColor: 0x1e242c,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0x304060, ambient: 0.25 },
+                plate: { x: 0, z: -1.95, y: 2.3 },
+            },
+            doors: [
+                { id: 'dreamlab', wall: 'w', z: 0, leaf: 'leaf_cell',
+                  label: 'THE DREAM LAB', sub: 'BACK TO THE COTS',
+                  action: { room: 'dreamlab', at: 'tank' },
+                  desc: 'The way out. It is louder out there.' },
+            ],
+            counters: [
+                { id: 'lid', x: 0.6, z: 0, face: 270, plateY: 1.4, radius: 1.6, verb: 'READ',
+                  label: 'THE LID', sub: 'FLOAT · SIXTY MINUTES', action: {},
+                  desc: 'The tank. Salt water at skin temperature, the lid, the dark. The log on the wall has every session and every one is longer than the last.' },
+            ],
+            props: [
+                { key: 'iso_tank',       x: 0.6, z: 0, face: 270 },
+                { key: 'riser_1',        x: -1.0, z: 0, face: 90, rect: false },                // THE PARK RULE: the step in (… and the rail)
+                { key: 'railing_1m',     x: -0.4, z: -1.2, face: 0 },
+                { key: 'locker_bench',   wall: 's', x: -0.6 },
+                { key: 'sink',           wall: 'n', x: -1.2 },
+                { key: 'floor_drain',    x: -1.2, z: 1.0 },
+                { key: 'clipboard',      wall: 'n', x: 1.0, mount: 1.5, rot: -2 },              // the float log
+                { key: 'toilet_paper',   x: -1.6, z: 1.6, face: 0 },
+                { key: 'bare_bulb',      x: -0.8, z: 0.4, ceil: true },
+            ],
+            agents: [],
+            npcSpots: [{ x: -1.2, z: -1.2, face: 135, say: ['“An hour in there and you hear the building.” “What does it say?” “Which floor.”'] }],
+            onlineSpots: [],
+            lines: [
+                '“Zero decibels.” “Then what is that?” “Your heart. It is not on the log.”',
+            ],
+            spawn: { x: -1.4, z: 0.6, face: 90 },
+        },
+        /* ── ROOM * · THE MANDELA ROOM — a different room every time you
+           enter (variants with `when: { each: true }`: rolled on every entry,
+           never twice the same in a row — hqVariantRollEach). The sheet is a
+           waiting room; it has also been a library, a nursery and an office,
+           and the plate on the door outside insists it was always whichever
+           it is now. Two doors: the labs, and the hall of mirrors down on the
+           midway. THE FRAME on the wall is the one thing that stays, and it
+           tells you what you remember. ── */
+        mandela: {
+            label: 'THE MANDELA ROOM',
+            sub: 'THE WAITING ROOM · AS YOU REMEMBER IT',
+            roomNo: '*', why: 'the footnote; the number is whatever it was when you last looked',
+            kind: 'box',
+            shell: {
+                w: 7, d: 6, h: 3.2,
+                wallH: 3.2, dadoH: 1.05,
+                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
+                floorColor: 0x9aa8b8, wallColor: 0xe8e4d8, dadoColor: 0x6a4a44,
+                pipes: false,
+                lights: [{ x: 0, z: 0 }],
+                mood: { light: 0xf4f0e6 },
+                plate: { x: 0, z: -2.75, y: 2.6 },
+            },
+            doors: [
+                { id: 'labs', wall: 's', x: 0, leaf: 'leaf_orange_glass',
+                  label: '4 · THE LABS', sub: 'BACK TO THE FLOOR',
+                  action: { room: 'labs', at: 'mandela' },
+                  desc: 'The way back to the floor. The room will be something else when you come back.' },
+                { id: 'mirrors', wall: 'n', x: 0, leaf: 'leaf_frame_only',
+                  label: 'THE HALL OF MIRRORS', sub: 'DOWN TO THE MIDWAY',
+                  action: { room: 'carnival', at: 'mirrors' },
+                  desc: 'The way the carnival came in. Music on the far side, three floors down and no stairs between.' },
+            ],
+            counters: [
+                { id: 'frame', x: 2.6, z: -1.2, face: 270, plateY: 1.6, radius: 1.8, verb: 'READ',
+                  label: 'THE FRAME', sub: 'WHAT YOU REMEMBER', action: {},
+                  desc: 'The one thing in the room that is always here. The picture in it is of the room, as it was when you last came in. Nobody else remembers it that way.' },
+            ],
+            props: [
+                { key: 'teal_chair',     x: -2.2, z: 1.6, face: 0 }, { key: 'teal_chair', x: -1.4, z: 1.6, face: 0 }, { key: 'teal_chair', x: -0.6, z: 1.6, face: 0 },
+                { key: 'coffee_table',   x: -1.4, z: 0.4 },
+                { key: 'papers_b',       x: -1.4, z: 0.4, y: 0.46, face: 25 },
+                { key: 'potted_plant',   x: 2.8, z: 2.2, face: 0 },
+                { key: 'water_cooler',   wall: 'w', z: -1.6 },
+                { key: 'wall_clock',     wall: 'n', x: -2.0, mount: 2.5 },
+                { key: 'picture_round_c', wall: 'e', z: -1.2, mount: 1.6 },                    // THE FRAME
+                { key: 'notice_board',   wall: 's', x: 2.2 },
+                { key: 'rug_office',     x: 0.6, z: 0.2 },
+                { key: 'railing_1m',     x: 1.6, z: 1.8, face: 0 },                             // THE PARK RULE: the rail
+                { key: 'riser_1',        x: 2.4, z: 0.6, face: 0, rect: false },                // … and the step
+                { key: 'fluorescent',    x: 0, z: 0, ceil: true, face: 90 },
+            ],
+            agents: [],
+            npcSpots: [{ x: -1.4, z: 1.6, face: 0, say: ['“I have been waiting an hour.” “For what?” “I do not remember. The room was different when I sat down.”'] }],
+            onlineSpots: [],
+            lines: [
+                '“This was the library.” “It has always been the waiting room.” “There was a globe.” “There has never been a globe.”',
+            ],
+            spawn: { x: 0, z: 1.6, face: 0 },
+            variants: {
+                library: {
+                    when: { each: true },
+                    label: 'THE MANDELA ROOM', sub: 'THE LIBRARY · AS YOU REMEMBER IT',
+                    why: 'the footnote; today it is the library and always has been',
+                    door: { sub: 'ROOM * · THE LIBRARY' },
+                    shell: { floor: 'carpet', floorColor: 0x6a4a3a, wallColor: 0xd8c8a8, dadoColor: 0x4a2e22, mood: { light: 0xffe8c0 } },
+                    drop: ['teal_chair', 'coffee_table', 'papers_b', 'water_cooler', 'notice_board', 'rug_office', 'potted_plant'],
+                    add: [
+                        { key: 'wall_shelf', wall: 'w', z: -1.4, mount: 1.0 }, { key: 'wall_shelf', wall: 'w', z: -1.4, mount: 1.7 }, { key: 'wall_shelf', wall: 'w', z: 0.6, mount: 1.0 }, { key: 'wall_shelf', wall: 'w', z: 0.6, mount: 1.7 },
+                        { key: 'wall_shelf', wall: 's', x: 2.0, mount: 1.0 }, { key: 'wall_shelf', wall: 's', x: 2.0, mount: 1.7 },
+                        { key: 'globe_lamp', x: -2.4, z: 2.2 },
+                        { key: 'office_chair', x: -0.8, z: 0.8, face: 0 }, { key: 'coffee_table', x: -0.8, z: -0.4 },
+                        { key: 'notebook_paper', x: -0.8, z: -0.4, y: 0.46, face: 10 }, { key: 'table_lamp', x: -0.3, z: -0.5, y: 0.46 },
+                        { key: 'rug_round', x: 0.4, z: 0.4 },
+                    ],
+                    lines: ['“This was the waiting room.” “It has always been the library.” “There were chairs.” “There are chairs. Sit.”'],
+                },
+                nursery: {
+                    when: { each: true },
+                    label: 'THE MANDELA ROOM', sub: 'THE NURSERY · AS YOU REMEMBER IT',
+                    why: 'the footnote; today it is the nursery and it has always been the nursery',
+                    door: { sub: 'ROOM * · THE NURSERY' },
+                    shell: { floorColor: 0xf0d8e0, wallColor: 0xfff0f4, dadoColor: 0xe0b0c0, mood: { light: 0xfff0f8 } },
+                    drop: ['teal_chair', 'coffee_table', 'papers_b', 'water_cooler', 'notice_board', 'wall_clock', 'potted_plant'],
+                    add: [
+                        { key: 'cot', x: -1.6, z: -1.2, face: 0 },
+                        { key: 'rug_round', x: 0.4, z: 0.6 },
+                        { key: 'teal_chair', x: 1.6, z: 1.6, face: 300 },
+                        { key: 'globe_lamp', x: -2.6, z: 2.2 },
+                        { key: 'cardboard_box', x: 1.8, z: -2.2, face: 20 },
+                        { key: 'picture_round_c', wall: 'w', z: 0.4, mount: 1.6 },
+                        { key: 'wall_shelf', wall: 's', x: -2.0, mount: 1.5 },
+                    ],
+                    lines: ['“Whose is the cot?” “Yours.” “I am too old for it.” “You were not, when it was here.”'],
+                },
+                office: {
+                    when: { each: true },
+                    label: 'THE MANDELA ROOM', sub: 'THE OFFICE · AS YOU REMEMBER IT',
+                    why: 'the footnote; today it is an office, which it has been since before the building',
+                    door: { sub: 'ROOM * · THE OFFICE' },
+                    shell: { floor: 'terrazzo', floorColor: 0xd8d4c8, wallColor: 0xe0e4e8, dadoColor: 0x506070, mood: { light: 0xeef2ff } },
+                    drop: ['teal_chair', 'coffee_table', 'papers_b', 'rug_office', 'potted_plant'],
+                    add: [
+                        { key: 'tanker_desk', wall: 'w', z: 0.2, face: 90 },
+                        { key: 'office_chair', x: -2.2, z: 0.2, face: 90 },
+                        { key: 'crt_terminal', x: -2.6, z: 0.2, y: 0.76, face: 90 },
+                        { key: 'papers_a', x: -2.5, z: -0.5, y: 0.76, face: 15 },
+                        { key: 'filing_cabinet', wall: 's', x: -2.2 }, { key: 'filing_cabinet', wall: 's', x: -1.5 },
+                        { key: 'office_plant', x: 2.8, z: 2.2 },
+                        { key: 'folding_chair', x: -0.8, z: 0.2, face: 270 },
+                    ],
+                    lines: ['“Whose desk?” “Yours.” “I have never worked here.” “The in-tray says otherwise.”'],
+                },
+            },
+        },
+        /* ── ROOM 9 · THE UPSIDE-DOWN ROOM — an office, with the furniture on
+           the ceiling (`flip: true` on every prop that hangs), the strip light
+           on the floor, and one rail the right way up. ── */
+        upsidedown: {
+            label: 'THE UPSIDE-DOWN ROOM',
+            sub: 'MIND YOUR HEAD',
+            roomNo: '9', why: 'a six, upside down',
+            kind: 'box',
+            shell: {
+                w: 7, d: 6, h: 3.2,
+                wallH: 3.2, dadoH: 2.15,
+                floor: 'ceiling', wall: 'drywall', dado: 'drywall', trim: 'oxblood', ceiling: 'carpet',
+                floorColor: 0xe8e8e0, wallColor: 0xe6e3d8, dadoColor: 0xe6e3d8, ceilColor: 0x8a4a48,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xf4f1e8, ambient: 0.7 },
+                plate: { x: 0, z: -2.75, y: 2.6 },
+            },
+            doors: [
+                { id: 'labs', wall: 'w', z: 0, leaf: 'leaf_beige_wood',
+                  label: '4 · THE LABS', sub: 'BACK TO THE FLOOR',
+                  action: { room: 'labs', at: 'upsidedown' },
+                  desc: 'The way back to the floor. The door is the right way up. It is the only thing that is.' },
+            ],
+            counters: [
+                { id: 'note', x: 0.6, z: 0.4, face: 0, plateY: 0.6, radius: 1.8, verb: 'READ',
+                  label: 'THE NOTE ON THE FLOOR', sub: 'THE FLOOR IS THE CEILING', action: {},
+                  desc: 'A sheet of paper on the floor, weighted with a stapler. It says which way is up. It is upside down.' },
+            ],
+            props: [
+                /* the office, on the ceiling */
+                { key: 'tanker_desk',    x: -1.6, z: -1.6, face: 0, flip: true },
+                { key: 'office_chair',   x: -1.6, z: -0.6, face: 0, flip: true },
+                { key: 'crt_terminal',   x: -1.2, z: -2.0, y: 0.76, face: 0, flip: true },
+                { key: 'filing_cabinet', x: 2.6, z: -2.4, face: 180, flip: true },
+                { key: 'filing_cabinet', x: 1.9, z: -2.4, face: 180, flip: true },
+                { key: 'teal_chair',     x: 2.4, z: 1.6, face: 270, flip: true }, { key: 'teal_chair', x: 2.4, z: 0.8, face: 270, flip: true },
+                { key: 'coffee_table',   x: 1.6, z: 1.2, flip: true },
+                { key: 'potted_plant',   x: -2.8, z: 2.2, flip: true },
+                { key: 'water_cooler',   x: -2.9, z: -2.2, face: 90, flip: true },
+                { key: 'trash_bin',      x: -0.6, z: -2.2, face: 0, flip: true },
+                { key: 'rug_office',     x: 0.4, z: 0, flip: true },
+                { key: 'wall_clock',     wall: 'n', x: 1.0, mount: 0.6, flip: true },
+                { key: 'notice_board',   wall: 'e', z: -1.6, mount: 0.9, flip: true },
+                { key: 'picture_round_c', wall: 's', x: -1.6, mount: 1.0, flip: true },
+                { key: 'nameplate',      wall: 'e', z: 1.6, mount: 1.3, flip: true },
+                /* the floor: the strip light, the note, the one rail */
+                { key: 'fluorescent',    x: 0, z: 0, flip: true, face: 90 },
+                { key: 'paper_sheet',    x: 0.6, z: 0.4, y: 0.005, face: 200 },
+                { key: 'railing_1m',     x: -1.2, z: 1.8, face: 0 },                              // THE PARK RULE: the one thing the right way up
+                { key: 'riser_1',        x: 2.4, z: -0.6, face: 0, rect: false },                 // … and the step
+                { key: 'vent_grille',    wall: 'w', z: 2.0, mount: 0.3 },
+                { key: 'exit_sign',      wall: 'w', z: 0, mount: 0.4, flip: true },
+            ],
+            agents: [],
+            npcSpots: [{ x: 1.0, z: -0.8, face: 180, race: 'ghost', say: ['“I am the right way up.” “You are standing on the ceiling.” “I am standing on the floor. You are the one who came in through the ceiling.”'] }],
+            onlineSpots: [],
+            lines: [
+                '“Where is the light switch?” “On the floor.” “By the door?” “Under it.”',
+                '“Nothing has fallen.” “That is the finding.”',
+            ],
+            spawn: { x: -1.6, z: 0.8, face: 90 },
+        },
+        /* ── ROOM 4B · SUPPLY CLOSET 4B — the vestibule: radiation warnings
+           on every wall, two armed guards, the evacuation button under its
+           cover, and THE BLAST DOOR that wants maximum clearance (L6). Behind
+           it: a supply closet. ── */
+        closet4b: {
+            label: 'SUPPLY CLOSET 4B',
+            sub: 'RESTRICTED · CLEARANCE L6',
+            roomNo: '4B', why: 'a supply closet on the fourth floor, B side; the clearance on it is the only thing in the register that outranks the penthouse',
+            kind: 'box',
+            shell: {
+                w: 6, d: 5, h: 3.2,
+                wallH: 3.2, dadoH: 1.2,
+                floor: 'concrete_floor', wall: 'concrete', dado: 'gunmetal', trim: 'gunmetal', ceiling: 'metal_3',
+                floorColor: 0x9a9a94, wallColor: 0xb8b6b0, dadoColor: 0x5a5e62, ceilColor: 0x6a6e72,
+                pipes: true,
+                light: { x: 0, z: 0 },
+                mood: { light: 0xfff0d8 },
+                plate: { x: 0, z: -2.25, y: 2.6 },
+            },
+            doors: [
+                { id: 'labs', wall: 's', x: 0, leaf: 'leaf_cell',
+                  label: '4 · THE LABS', sub: 'BACK TO THE FLOOR',
+                  action: { room: 'labs', at: 'closet4b' },
+                  desc: 'The way back to the floor. The guards do not watch you leave; they watch the other door.' },
+                { id: 'blast', wall: 'n', x: 0, leaf: 'leaf_vault', wide: true, minClearance: 6,
+                  label: 'THE BLAST DOOR', sub: 'SUPPLY CLOSET 4B · CLEARANCE L6',
+                  action: { room: 'supply', at: 'blast' },
+                  desc: 'The blast door. Forty centimetres of steel, a wheel, a seal, and the highest clearance in the building on the plate. It is a supply closet. Nobody will say why.' },
+            ],
+            counters: [
+                { id: 'evac', x: 2.7, z: 0.6, face: 270, plateY: 1.6, radius: 1.8, verb: 'PRESS',
+                  label: 'EVACUATION', sub: 'THE BUTTON · UNDER THE COVER', action: {},
+                  desc: 'A red button under a hinged cover, wired to a bell that rings in every room. Pressing it clears the building. The building is cleared to the foyer.' },
+            ],
+            props: [
+                { key: 'radiation_sign', wall: 'n', x: -1.8, mount: 1.7 }, { key: 'radiation_sign', wall: 'n', x: 1.8, mount: 1.7 },
+                { key: 'radiation_sign', wall: 'w', z: -1.2, mount: 1.7 }, { key: 'radiation_sign', wall: 'e', z: -1.4, mount: 1.7 },
+                { key: 'evac_button',    wall: 'e', z: 0.6, mount: 1.2 },
+                { key: 'warning_tape',   x: 0, z: -1.2, face: 0 },
+                { key: 'keypad',         wall: 'n', z: 0, x: 1.1, mount: 1.3 },
+                { key: 'breaker_panel',  wall: 'w', z: 1.2 },
+                { key: 'security_camera', wall: 's', x: -2.4, mount: 2.6 }, { key: 'security_camera', wall: 'n', x: -2.4, mount: 2.6 },
+                { key: 'metal_shelving', wall: 'w', z: -0.2 },
+                { key: 'cardboard_boxes', x: -2.2, z: 1.8, face: 30 },                            // the masks
+                { key: 'railing_1m',     x: -0.6, z: 0.6, face: 0 },                              // THE PARK RULE: the queue rail
+                { key: 'riser_1',        x: 2.2, z: 1.9, face: 0, rect: false },                  // … and the step
+                { key: 'fire_extinguisher', wall: 'e', z: 1.9 },
+                { key: 'clipboard',      wall: 's', x: 2.0, mount: 1.5, rot: 3 },                 // the access log; every line is DENIED
+                { key: 'fluorescent',    x: 0, z: 0, ceil: true, face: 90 },
+            ],
+            agents: [
+                { x: -1.1, z: -1.5, face: 180, pose: 'hqArms', gender: 'male', label: 'ARMED GUARD', reach: 2.0,
+                  line: '“Clearance.” “I am L' + '—” “You do not have it.” “What is in there?” “Supplies.”' },
+                { x: 1.1, z: -1.5, face: 180, pose: 'hqArms', gender: 'female', label: 'ARMED GUARD', reach: 2.0,
+                  line: '“Do not press the button.” “What does it do?” “Evacuates the building.” “Why is it here?” “In case of the closet.”' },
+            ],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [
+                '“It is a closet.” “It is a closet with a blast door.” “What is in it?” “Supplies. L6 supplies.”',
+                '“Why the radiation signs?” “Regulation.” “Which regulation?” “The one about closets.”',
+            ],
+            spawn: { x: 0, z: 1.4, face: 0 },
+        },
+        /* ── THE SUPPLY CLOSET (behind the blast door): mops, rolls, one bulb.
+           No number (it is 4B's inside). ── */
+        supply: {
+            label: 'SUPPLY CLOSET 4B',
+            sub: 'INSIDE · SUPPLIES',
+            kind: 'box',
+            shell: {
+                w: 4.0, d: 3.6, h: 2.8,
+                wallH: 2.8, dadoH: 0.9,
+                floor: 'concrete', wall: 'drywall', dado: 'oxblood', trim: 'gunmetal', ceiling: 'ceiling',
+                floorColor: 0x8e8c88, wallColor: 0xe0dcd0, dadoColor: 0x5a4640,
+                pipes: true,
+                strips: false,
+                light: { x: 0, z: 0 },
+                mood: { light: 0xffe8c0, ambient: 0.5 },
+                plate: { x: 0, z: -1.55, y: 2.3 },
+            },
+            doors: [
+                { id: 'blast', wall: 's', x: 0, leaf: 'leaf_vault', wide: true,
+                  label: 'THE BLAST DOOR', sub: 'BACK TO THE FLOOR',
+                  action: { room: 'closet4b', at: 'blast' },
+                  desc: 'Forty centimetres of steel, from the inside. The wheel turns more easily from here.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'metal_shelving', wall: 'n', x: -0.6 }, { key: 'metal_shelving', wall: 'n', x: 0.6 },
+                { key: 'toilet_paper',   x: -0.6, z: -1.2, y: 1.2, face: 0 }, { key: 'toilet_paper', x: 0.2, z: -1.2, y: 1.2, face: 0 }, { key: 'toilet_paper', x: 0.9, z: -1.2, y: 0.6, face: 0 },
+                { key: 'mop_bucket',     x: 1.0, z: 0.8, face: 30 },
+                { key: 'mop',            wall: 'e', z: 0.0 },
+                { key: 'broom',          wall: 'w', z: 0.4 },
+                { key: 'wet_floor_sign', x: -0.9, z: 0.9, face: 60 },
+                { key: 'cardboard_box',  x: -1.0, z: -0.2, face: 20 },
+                { key: 'clipboard',      wall: 'e', z: -0.9, mount: 1.5, rot: 4 },                // INVENTORY: 400 ROLLS · 399
+                { key: 'riser_1',        x: 0.2, z: 0.2, face: 0, rect: false },                  // THE PARK RULE: the step stool (… and the shelf rail)
+                { key: 'railing_1m',     x: 0, z: -0.7, face: 0 },
+                { key: 'bare_bulb',      x: 0, z: 0, ceil: true },
+            ],
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [
+                '“That is it?” “Four hundred rolls.” “The log says three hundred and ninety-nine.” “Yes. That is why the door.”',
+            ],
+            spawn: { x: 0, z: 0.7, face: 0 },
+        },
+        /* ── ROOM II · CLONE DISPOSAL — a near-empty room: a steel table, a
+           lone gun on it, a garbage chute in the wall, two chairs facing each
+           other, and the other one of you already sitting in one of them
+           (`clone: true` — the walker's own vessel). ── */
+        disposal: {
+            label: 'CLONE DISPOSAL',
+            sub: 'ONE OF YOU · THE CHUTE',
+            roomNo: 'II', why: 'the second copy; the form does not say which',
+            kind: 'box',
+            shell: {
+                w: 6, d: 5, h: 3.2,
+                wallH: 3.2, dadoH: 1.0,
+                floor: 'concrete', wall: 'concrete', dado: 'gunmetal', trim: 'gunmetal', ceiling: 'concrete',
+                floorColor: 0x7e7c78, wallColor: 0x9a9894, dadoColor: 0x4e5256, ceilColor: 0x6a6866,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xe8e0c8, ambient: 0.35 },
+                plate: { x: 0, z: -2.25, y: 2.6 },
+            },
+            doors: [
+                { id: 'labs', wall: 'w', z: 0, leaf: 'leaf_cell',
+                  label: '4 · THE LABS', sub: 'BACK TO THE FLOOR',
+                  action: { room: 'labs', at: 'disposal' },
+                  desc: 'The way out. One of you takes it.' },
+            ],
+            counters: [
+                { id: 'chute', x: 0, z: -1.9, face: 0, plateY: 1.5, radius: 2.0, verb: 'READ',
+                  label: 'THE CHUTE', sub: 'DISPOSAL · FORM II', action: {},
+                  desc: 'The hatch in the wall, and the form beside it. The form has two lines for names and both of them are yours. It does not say which line is the clone.' },
+            ],
+            props: [
+                { key: 'steel_table',    x: 0, z: 0.2, face: 0 },
+                { key: 'lone_gun',       x: 0, z: 0.2, y: 0.76, face: 30 },
+                { key: 'garbage_chute',  wall: 'n', x: 0, mount: 0.6 },
+                { key: 'folding_chair',  x: -1.2, z: 0.2, face: 90 },
+                { key: 'folding_chair',  x: 1.2, z: 0.2, face: 270 },
+                { key: 'clipboard',      wall: 'n', x: 1.6, mount: 1.5, rot: -3 },                // the disposal log: your callsign, twice
+                { key: 'floor_drain',    x: 0, z: 1.4 },
+                { key: 'floor_stain',    x: 0.6, z: -1.2 },
+                { key: 'security_camera', wall: 's', x: -2.4, mount: 2.6 },
+                { key: 'railing_1m',     x: 0, z: -1.2, face: 0 },                                // THE PARK RULE: the chute's guard rail
+                { key: 'riser_1',        x: 2.2, z: 1.8, face: 0, rect: false },                  // … and the step
+                { key: 'bare_bulb',      x: 0, z: 0.2, ceil: true },
+            ],
+            agents: [],
+            npcSpots: [{ x: 1.2, z: 0.2, face: 270, clone: true, say: ['“You took your time.” “Who are you?” “That is the form’s question, not mine. Sit down. One of us is going in the chute and I have been here longer.”', '“I remember your first crossing.” “So do I.” “Then which of us was there?”'] }],
+            onlineSpots: [],
+            lines: [
+                '“Whose gun?” “Ours.” “Which of us?” “Whichever picks it up. That is the test, apparently.”',
+                '“The chute goes where?” “Down.” “Down to what?” “The other one of the incinerator.”',
+            ],
+            spawn: { x: -1.9, z: 0.2, face: 90 },
         },
         /* ══════════════════════════════════════════════════════════════════
            THE HAUNTED HOUSE COMPLEX (HQ plan 9.2 stage 1 — 2026-09-15).
@@ -28648,6 +29975,7 @@ function hqVariantRoll(roomId, profile, opts) {
     const day = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
     for (const vid of ids) {
         const w = (base.variants[vid] && base.variants[vid].when) || {};
+        if (w.each) continue;   // Phase 8 stage 2: rolled on EVERY entry by hqVariantRollEach (the Mandela room), never here
         if (w.hours && hqVariantHours(now.getHours(), w.hours)) return vid;
         const p = (typeof w.p === 'number') ? w.p : 0;
         if (p > 0 && (hqHash(roomId + '|' + vid + '|' + seed + '|' + day + '|' + visits) % 10000) / 10000 < p) return vid;
@@ -28699,7 +30027,7 @@ function hqRollRoomVariants(profile, opts) {
     const out = {};
     const force = (opts.force && typeof opts.force === 'object') ? opts.force : null;
     /* the sheet's rooms only — a variant never nests a variant */
-    const ids = Object.keys(DOOR_HQ.rooms).filter(id => hqRoomVariantIds(id).length);
+    const ids = Object.keys(DOOR_HQ.rooms).filter(id => hqRoomVariantIds(id).some(v => { const w = hqRoomBase(id).variants[v] && hqRoomBase(id).variants[v].when; return !(w && w.each); }));   // Phase 8 stage 2: a room whose variants are all per-entry (the Mandela room) is rolled on entry, not per visit
     for (const id of ids) {
         const f = force ? force[id] : (typeof opts.force === 'string' ? opts.force : undefined);
         const vid = hqVariantRoll(id, profile, { force: (f === undefined) ? undefined : (f == null ? '' : f), now: opts.now });
@@ -28707,6 +30035,90 @@ function hqRollRoomVariants(profile, opts) {
         out[id] = vid;
     }
     return out;
+}
+
+/* ── PHASE 8 STAGE 2 (2026-09-15): the reads the new floors' panels share ──
+   hqVariantRollEach(roomId, profile, n, last) — THE MANDELA ROOM: a room
+   whose variants carry `when: { each: true }` is a different room on EVERY
+   entry. `n` is the entry count this visit (map.js keeps it), `last` the
+   id that stood last time (null = the sheet); the pick is seeded by the
+   profile's variantSeed + the day + n, over the sheet AND every `each`
+   variant, and never the same twice in a row. Returns the variant id, or
+   null for the sheet. Nobody comments. */
+function hqVariantRollEach(roomId, profile, n, last) {
+    const base = hqRoomBase(roomId);
+    if (!base || !base.variants) return null;
+    const ids = Object.keys(base.variants).filter(v => base.variants[v] && base.variants[v].when && base.variants[v].when.each);
+    if (!ids.length) return null;
+    const hq = (profile && profile.door && profile.door.hq) || {};
+    const seed = (hq.variantSeed != null) ? hq.variantSeed : 0;
+    const d = new Date();
+    const day = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+    const pool = [null].concat(ids);
+    let pick = pool[hqHash(roomId + '|each|' + seed + '|' + day + '|' + (n | 0)) % pool.length];
+    if (pool.length > 1 && pick === (last == null ? null : last)) pick = pool[(pool.indexOf(pick) + 1) % pool.length];
+    return pick;
+}
+/* the rooms this stage added, by floor (the tests and the directory read it) */
+function hqStage2Rooms() {
+    return {
+        '2': ['works', 'warehouse', 'incinerator', 'autopsy', 'doorgarden', 'control', 'lostfound', 'stairwell', 'tunnel', 'carnival'],
+        '4': ['labs', 'dreamlab', 'tank', 'mandela', 'upsidedown', 'closet4b', 'supply', 'disposal'],
+    };
+}
+/* THE FEEDS (Room 24/7): one row per numbered room in the register — SIGNAL /
+   NO SIGNAL (seeded by the room, never the clock: a dead feed stays dead) /
+   LIVE for the room the viewer stands in */
+function hqSecurityFeeds(curRoom) {
+    const reg = hqRoomRegister();
+    return reg.map(r => {
+        const here = !!curRoom && (r.id === curRoom || r.siteRoom === curRoom || r.room === curRoom);
+        const dead = (hqHash('feed|' + r.id) % 7) === 0;
+        return { no: r.no, label: r.label, id: r.id, kind: r.kind, st: here ? 'live' : (dead ? 'dead' : 'signal') };
+    });
+}
+/* THE CLAIMS BOOK (Room ?): the day's page — items and where they were found
+   (a site off the register), one of them yours */
+const HQ_LOST_ITEMS = ['ONE (1) SOCK', 'A CROWN, DENTED', 'AN UMBRELLA, DRY', 'A SET OF KEYS TO A CAR THAT IS NOT IN THE GARAGE', 'A TEAPOT', 'A FOOTBALL, SIGNED', 'A LEFT GLOVE', 'A RING, WARM', 'A PHOTOGRAPH OF THIS ROOM', 'A DOORKNOB', 'A WATCH, RUNNING BACKWARDS', 'A LIBRARY BOOK, OVERDUE SINCE 1987', 'A SANDWICH', 'A SMALL DOOR'];
+function hqClaimsBook(profile, now) {
+    const d = (now != null) ? new Date(now) : new Date();
+    const day = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+    const sites = hqRoomRegister().filter(r => r.kind === 'site');
+    const rows = [];
+    for (let i = 0; i < 6; i++) {
+        const h = hqHash('claims|' + day + '|' + i);
+        const item = HQ_LOST_ITEMS[h % HQ_LOST_ITEMS.length];
+        const site = sites.length ? sites[(h >> 4) % sites.length] : null;
+        rows.push({ item, where: site ? (site.label + ' · ROOM ' + site.no) : 'UNFILED', claimed: (h % 5) === 0 });
+    }
+    const call = (profile && profile.username) ? String(profile.username).toUpperCase() : 'THE UNDERSIGNED';
+    rows.push({ item: 'ONE (1) SOCK', where: 'THE LAUNDRY · ROOM 60', claimed: false, yours: true, who: call });
+    return rows;
+}
+/* THE PARTS (Room Y): the door on the slab, in the order it came off */
+const HQ_DOOR_PARTS = [
+    { part: 'KNOB', tag: 'brass; turned clockwise once, from the other side' },
+    { part: 'HANDLE', tag: 'lever; warm' },
+    { part: 'DOORBELL', tag: 'rang on the way in; bagged' },
+    { part: 'WINDOW', tag: 'frosted; something was pressed against it' },
+    { part: 'BOARDS', tag: 'four, nailed from the far side' },
+    { part: 'KNOCKER', tag: 'a face; not a known one' },
+    { part: 'HINGES', tag: 'left, then right, then left' },
+    { part: 'LETTERBOX', tag: 'one letter, addressed to the examiner' },
+    { part: 'PEEPHOLE', tag: 'looks in, not out' },
+    { part: 'CHAIN', tag: 'on; the door was opened anyway' },
+    { part: 'THRESHOLD', tag: 'missing' },
+];
+function hqDoorParts() { return HQ_DOOR_PARTS.map(p => Object.assign({}, p)); }
+/* THE LINE (Room 1000): the works' tally off the register */
+function hqWorksTally() {
+    const reg = hqRoomRegister();
+    const sites = reg.filter(r => r.kind === 'site');
+    const built = sites.filter(r => r.siteRoom).length;
+    const T = DOOR_HQ.thresholds || {};
+    let sealed = 0;
+    for (const id in T) { try { if (doorSiteState({ id, action: { mission: id } }, null) === 'sealed') sealed++; } catch (e) {} }
+    return { register: sites.length, rooms: reg.length, built, sealed, today: 1000 };
 }
 
 if (typeof window !== 'undefined') {
@@ -28809,4 +30221,10 @@ if (typeof window !== 'undefined') {
     window.hqVariantRoll = hqVariantRoll;
     window.hqApplyRoomVariant = hqApplyRoomVariant;
     window.hqRollRoomVariants = hqRollRoomVariants;
+    window.hqVariantRollEach = hqVariantRollEach;
+    window.hqStage2Rooms = hqStage2Rooms;
+    window.hqSecurityFeeds = hqSecurityFeeds;
+    window.hqClaimsBook = hqClaimsBook;
+    window.hqDoorParts = hqDoorParts;
+    window.hqWorksTally = hqWorksTally;
 }

@@ -37024,6 +37024,8 @@ const ThreeRenderer = (function () {
     }
     /* a door's sill in a cave room (the cell inside its wall), else the level's floor */
     function _hqDoorFloorY(room, door) {
+        /* Phase 8 stage 2 (2026-09-15): a box door may carry `y` (metres) — it stands at that height (THE STAIRWELL's top landing, a platform of stair_landing blockers under it) */
+        if (door && typeof door.y === 'number' && door.y > 0) return door.y;
         return (room && room.cave && typeof hqCaveDoorY === 'function') ? hqCaveDoorY(room, door) : 0;
     }
     /* the cave's feet at (x, z) in the CURRENT room (null = no cave / not walkable) */
@@ -38933,6 +38935,7 @@ const ThreeRenderer = (function () {
             var steel = _hqMat(null, 1, 1, { color: 0xb9c2c4, shininess: 90, specular: 0x999999 });
             var plate = _hqBox(0.34, 1.1, 0.03, steel); plate.position.set(0, 0.55 * U, 0.015 * U); g.add(plate);
             var lit = { B: 1, G: 1, M: 1, '3': 1, PH: 1 };
+            try { var stops = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.elevator && DOOR_HQ.elevator.stops) || null; if (stops && stops.length) { lit = {}; stops.forEach(function (st) { lit[st.id] = 1; }); } } catch (e) {}   // Phase 8 stage 2: the lit buttons are the stops
             var floors = ['PH', '14', '12', '11', '10', '9', '8', '7', '6', '5', '4', '3', '2', 'M', 'G', 'B'];
             var on = _hqBasic(0xffb020), off = _hqMat(null, 1, 1, { color: 0x2a2d33, shininess: 60 });
             floors.forEach(function (f, i) {
@@ -38961,7 +38964,7 @@ const ThreeRenderer = (function () {
                 x.fillStyle = '#17181c'; x.fillRect(0, 0, 256, 1024);
                 x.fillStyle = '#23252b'; for (var yy = 0; yy < 1024; yy += 64) x.fillRect(0, yy, 256, 2);
                 x.fillStyle = '#2c2e34'; x.fillRect(120, 0, 16, 1024);                       // the guide rail
-                var landings = [['PH', 1], ['14', 0], ['12', 0], ['3', 1], ['M', 1], ['G', 1], ['B', 1], ['B2', 0]];
+                var landings = [['PH', 1], ['14', 0], ['4', 1], ['3', 1], ['2', 1], ['M', 1], ['G', 1], ['B', 1], ['B2', 0]];
                 landings.forEach(function (L, i) {
                     var y0 = 40 + i * 122;
                     x.fillStyle = L[1] ? '#ffe2a0' : '#3a3630'; x.fillRect(20, y0, 90, 58);   // the landing's door
@@ -39663,6 +39666,602 @@ const ThreeRenderer = (function () {
             return g;
         },
     });
+    /* ── PHASE 8 STAGE 2 (2026-09-15): the two new floors' procs — THE WORKS
+       (belts, arms, the furnace, the slab, the vines, the screens, the
+       shelves), THE STAIRWELL's steps, THE TUNNEL, THE MIDWAY, THE LABS.
+       Every one is metres × U, front +z, origin on the floor (a wall proc's
+       origin on the wall plane); a builder that moves pushes a ticker. A user
+       GLB replaces any of them by giving its catalogue row a `file`. ── */
+    /* a small door LEAF (a panel with a knob) the works reuse — w × h metres, standing on its bottom edge at the origin */
+    function _hqMiniDoor(U, w, h, mat, knobSide) {
+        var g = new THREE.Group();
+        var leaf = _hqBox(w, h, 0.045, mat); leaf.position.y = (h / 2) * U; g.add(leaf);
+        var panel = _hqMat(null, 1, 1, { color: 0x3a2a1c, shininess: 20 });
+        [0.28, 0.72].forEach(function (t) { var p = _hqBox(w * 0.62, h * 0.3, 0.012, panel); p.position.set(0, h * t * U, 0.028 * U); g.add(p); });
+        var knob = new THREE.Mesh(new THREE.SphereGeometry(0.03 * U, 10, 8), _hqMat(null, 1, 1, { color: 0xc8a850, shininess: 120, specular: 0xffffff }));
+        knob.position.set((knobSide || 1) * (w / 2 - 0.08) * U, (h * 0.48) * U, 0.05 * U); g.add(knob);
+        return g;
+    }
+    var _hqLeafMats = null;
+    function _hqLeafMat(i) {
+        if (!_hqLeafMats) _hqLeafMats = [0x8a5a34, 0xb08850, 0x6a4a2c, 0xc0b8a8, 0x4a6a8a, 0x8a3a3a].map(function (c) { return _hqMat('wood', 1, 2, { color: c, shininess: 12 }); });
+        return _hqLeafMats[((i | 0) % _hqLeafMats.length + _hqLeafMats.length) % _hqLeafMats.length];
+    }
+    Object.assign(_hqProcBuilders, {
+        /* ROOM 1000: a belt — a frame, rollers, a rubber band whose texture slides, and leaves riding it (ticker) */
+        _conveyor: function (U, L, alongZ) {
+            var g = new THREE.Group();
+            var steel = _hqMat(null, 1, 1, { color: 0x5a6068, shininess: 50 });
+            var rubber = _hqMat(null, 1, 1, { color: 0x1e2024, shininess: 8 });
+            var W = 0.9, H = 0.9;
+            var frame = _hqBox(L, 0.12, W, steel); frame.position.y = (H - 0.06) * U; g.add(frame);
+            var band = _hqBox(L - 0.1, 0.04, W - 0.16, rubber); band.position.y = (H + 0.02) * U; g.add(band);
+            var n = Math.max(2, Math.round(L / 0.5));
+            for (var i = 0; i <= n; i++) { var r = new THREE.Mesh(new THREE.CylinderGeometry(0.05 * U, 0.05 * U, (W - 0.1) * U, 10), steel); r.rotation.z = Math.PI / 2; r.position.set((-L / 2 + 0.1 + (L - 0.2) * i / n) * U, (H - 0.12) * U, 0); g.add(r); }
+            [-1, 1].forEach(function (s) { for (var k = 0; k < 3; k++) { var leg = _hqBox(0.06, H - 0.12, 0.06, steel); leg.position.set((-L / 2 + 0.3 + (L - 0.6) * k / 2) * U, ((H - 0.12) / 2) * U, s * (W / 2 - 0.05) * U); g.add(leg); } });
+            var stripe = _hqBox(L - 0.1, 0.01, 0.05, _hqBasic(0xd9b23a)); stripe.position.set(0, (H + 0.045) * U, (W / 2 - 0.12) * U); g.add(stripe);
+            /* the leaves riding it */
+            var leaves = [], count = Math.max(2, Math.round(L / 1.6));
+            for (var j = 0; j < count; j++) {
+                var d = _hqMiniDoor(U, 0.7, 1.6, _hqLeafMat(j + (_hqProcSeed++)), 1);
+                d.rotation.x = -0.35; d.position.set((-L / 2 + 0.4 + j * (L - 0.8) / Math.max(1, count - 1)) * U, (H + 0.04) * U, -0.1 * U);
+                g.add(d); leaves.push({ g: d, x: d.position.x / U });
+            }
+            if (_hq) _hq.tickers.push(function (dt) {
+                for (var q = 0; q < leaves.length; q++) { var lf = leaves[q]; lf.x += dt * 0.35; if (lf.x > L / 2 - 0.35) lf.x = -L / 2 + 0.35; lf.g.position.x = lf.x * U; }
+            });
+            if (alongZ) g.rotation.y = Math.PI / 2;
+            return g;
+        },
+        conveyor: function (U) { return _hqProcBuilders._conveyor(U, 6.0, false); },
+        conveyor_z: function (U) { return _hqProcBuilders._conveyor(U, 6.0, true); },
+        /* ROOM 1000: the arm — a base, two orange links on a turret, a gripper holding one door; the wrist swings the door open and shut for ever */
+        robot_arm: function (U) {
+            var g = new THREE.Group();
+            var orange = _hqMat(null, 1, 1, { color: 0xe8791a, shininess: 40 });
+            var dark = _hqMat(null, 1, 1, { color: 0x2c2f35, shininess: 60 });
+            var base = new THREE.Mesh(new THREE.CylinderGeometry(0.45 * U, 0.55 * U, 0.3 * U, 16), dark); base.position.y = 0.15 * U; g.add(base);
+            var turret = new THREE.Group(); turret.position.y = 0.3 * U; g.add(turret);
+            var shoulder = new THREE.Mesh(new THREE.CylinderGeometry(0.28 * U, 0.28 * U, 0.4 * U, 14), orange); shoulder.position.y = 0.2 * U; turret.add(shoulder);
+            var upper = _hqBox(0.22, 1.3, 0.22, orange); upper.position.set(0, 0.95 * U, 0); turret.add(upper);
+            var elbow = new THREE.Group(); elbow.position.set(0, 1.6 * U, 0); turret.add(elbow);
+            var fore = _hqBox(0.18, 0.18, 1.1, orange); fore.position.set(0, 0, 0.55 * U); elbow.add(fore);
+            var wrist = new THREE.Group(); wrist.position.set(0, 0, 1.1 * U); elbow.add(wrist);
+            var grip = _hqBox(0.3, 0.12, 0.12, dark); wrist.add(grip);
+            var hinge = new THREE.Group(); hinge.position.set(-0.36 * U, -0.9 * U, 0.06 * U); wrist.add(hinge);   // the door hangs from the gripper by its hinge edge
+            var leaf = _hqMiniDoor(U, 0.72, 1.7, _hqLeafMat(_hqProcSeed++), 1); leaf.position.x = 0.36 * U; hinge.add(leaf);
+            var frame = _hqBox(0.8, 0.06, 0.06, dark); frame.position.set(0, 0.86 * U, 0.06 * U); wrist.add(frame);
+            var lamp = new THREE.Mesh(new THREE.SphereGeometry(0.05 * U, 8, 6), _hqBasic(0x40ff60)); lamp.position.set(0.2 * U, 0.35 * U, 0); turret.add(lamp);
+            elbow.rotation.x = -0.35;
+            var seed = (_hqProcSeed++) * 1.3;
+            if (_hq) _hq.tickers.push(function (dt, now) {
+                var t = now * 0.001 + seed;
+                var open = 0.5 + 0.5 * Math.sin(t * 0.9);                                  // 0 shut … 1 open
+                hinge.rotation.y = -open * 1.4;
+                turret.rotation.y = 0.35 * Math.sin(t * 0.3);
+                elbow.rotation.x = -0.35 + 0.12 * Math.sin(t * 0.6);
+                lamp.material.color.setHex(open > 0.95 || open < 0.05 ? 0xff3030 : 0x40ff60);
+            });
+            return g;
+        },
+        /* a pallet of leaves standing on edge, strapped */
+        door_stack: function (U) {
+            var g = new THREE.Group();
+            var pallet = _hqBox(1.5, 0.12, 0.9, _hqMat('wood', 2, 1, { color: 0xa88a5a })); pallet.position.y = 0.06 * U; g.add(pallet);
+            for (var i = 0; i < 6; i++) { var d = _hqMiniDoor(U, 0.76, 2.0, _hqLeafMat(i + (_hqProcSeed++)), (i % 2) ? -1 : 1); d.position.set((-0.35 + (i % 2) * 0.72) * U, 0.12 * U, (-0.28 + Math.floor(i / 2) * 0.24) * U); g.add(d); }
+            var strap = _hqBox(1.56, 0.03, 0.96, _hqBasic(0x1a1a1e)); strap.position.y = 1.1 * U; g.add(strap);
+            return g;
+        },
+        /* ROOM 000: the furnace — a brick mass with a DOOR-SHAPED mouth, the fire inside, leaves sliding in and flaring (ticker) */
+        door_furnace: function (U) {
+            var g = new THREE.Group();
+            var brick = _hqMat('bricks_1', 2, 1.5, { color: 0x6a4a3a, shininess: 4 });
+            var iron = _hqMat(null, 1, 1, { color: 0x2a2624, shininess: 30 });
+            var W = 3.6, H = 3.6, D = 1.6;
+            var body = _hqBox(W, H, D, brick); body.position.set(0, (H / 2) * U, 0); g.add(body);
+            var lip = _hqBox(W + 0.2, 0.2, D + 0.2, iron); lip.position.set(0, (H + 0.1) * U, 0); g.add(lip);
+            var stack = new THREE.Mesh(new THREE.CylinderGeometry(0.3 * U, 0.34 * U, 1.4 * U, 12), iron); stack.position.set(0.9 * U, (H + 0.9) * U, -0.3 * U); g.add(stack);
+            /* the mouth: a door-shaped hole faked as a black plate with the fire plane behind it */
+            var mw = 1.1, mh = 2.2;
+            var fire = new THREE.Mesh(new THREE.PlaneGeometry(mw * U, mh * U), new THREE.MeshBasicMaterial({ color: 0xff7020 }));
+            fire.position.set(0, (0.15 + mh / 2) * U, (D / 2 - 0.35) * U); g.add(fire);
+            var core = new THREE.Mesh(new THREE.PlaneGeometry(mw * 0.6 * U, mh * 0.6 * U), new THREE.MeshBasicMaterial({ color: 0xfff0a0 }));
+            core.position.set(0, (0.15 + mh / 2) * U, (D / 2 - 0.33) * U); g.add(core);
+            var jamb = _hqMat(null, 1, 1, { color: 0x1a1614, shininess: 10 });
+            [-1, 1].forEach(function (s) { var j = _hqBox(0.14, mh + 0.1, 0.4, jamb); j.position.set(s * (mw / 2 + 0.07) * U, (0.15 + mh / 2) * U, (D / 2 - 0.2) * U); g.add(j); });
+            var head = _hqBox(mw + 0.28, 0.14, 0.4, jamb); head.position.set(0, (0.15 + mh + 0.07) * U, (D / 2 - 0.2) * U); g.add(head);
+            var sill = _hqBox(mw + 0.28, 0.15, 0.6, iron); sill.position.set(0, 0.075 * U, (D / 2 + 0.1) * U); g.add(sill);
+            var glow = _hzGlowSprite(3.0 * U, 0xff9040, 0.5, 0.15, 0.06, 2.0); glow.position.set(0, 1.3 * U, (D / 2 + 0.2) * U); g.add(glow);
+            var lab = _hzTextTex('hq_furnace_sign', ['CLOSED FOR GOOD'], { w: 512, h: 96, color: '#f0d8a0' });
+            if (lab) { var lm = new THREE.Mesh(new THREE.PlaneGeometry(2.4 * U, 0.45 * U), new THREE.MeshBasicMaterial({ map: lab, transparent: true })); lm.position.set(0, (H - 0.5) * U, (D / 2 + 0.01) * U); g.add(lm); }
+            /* the leaf on its way in */
+            var leaf = _hqMiniDoor(U, 0.7, 1.6, _hqLeafMat(_hqProcSeed++), 1); leaf.rotation.x = -0.35; g.add(leaf);
+            var seed = (_hqProcSeed++) * 0.7;
+            if (_hq) _hq.tickers.push(function (dt, now) {
+                var t = now * 0.001 + seed;
+                var f = 0.85 + 0.15 * Math.sin(t * 9.0) + 0.08 * Math.sin(t * 23.0);
+                fire.material.color.setRGB(1.0, 0.44 * f, 0.12 * f); glow.material.opacity = 0.35 + 0.25 * f;
+                var cyc = (t * 0.25) % 1;                                                    // 0 … 1: the leaf slides in from the belt and flares
+                leaf.position.set(0, 0.1 * U, (D / 2 + 1.6 - cyc * 2.2) * U);
+                var s = cyc > 0.7 ? Math.max(0.05, 1 - (cyc - 0.7) / 0.3) : 1; leaf.scale.set(s, s, s);
+                leaf.visible = cyc < 0.98;
+            });
+            return g;
+        },
+        /* the trefoil on a yellow plate */
+        radiation_sign: function (U) {
+            var g = new THREE.Group();
+            var plate = _hqBox(0.6, 0.6, 0.02, _hqBasic(0xf2d21a)); plate.position.y = 0.3 * U; g.add(plate);
+            var ink = _hqBasic(0x111111);
+            var hub = new THREE.Mesh(new THREE.CircleGeometry(0.04 * U, 16), ink); hub.position.set(0, 0.3 * U, 0.012 * U); g.add(hub);
+            for (var i = 0; i < 3; i++) { var b = new THREE.Mesh(new THREE.RingGeometry(0.07 * U, 0.2 * U, 12, 1, 0, Math.PI / 3), ink); b.rotation.z = i * (2 * Math.PI / 3) + Math.PI / 2 - Math.PI / 6; b.position.set(0, 0.3 * U, 0.011 * U); g.add(b); }
+            var tx = _hzTextTex('hq_rad_sign', ['CAUTION · RADIATION', 'AUTHORISED PERSONNEL ONLY'], { w: 512, h: 96, color: '#111111' });
+            if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(0.56 * U, 0.1 * U), new THREE.MeshBasicMaterial({ map: tx, transparent: true })); m.position.set(0, 0.06 * U, 0.012 * U); g.add(m); }
+            return g;
+        },
+        /* ROOM Y: the slab — a steel table, a door's parts laid out on it, each with a paper tag */
+        autopsy_table: function (U) {
+            var g = new THREE.Group();
+            var steel = _hqMat('metal_3', 2, 1, { color: 0xb8c0c4, shininess: 110, specular: 0xffffff });
+            var top = _hqBox(2.4, 0.06, 1.2, steel); top.position.y = 0.87 * U; g.add(top);
+            var lipm = _hqBox(2.44, 0.05, 1.24, steel); lipm.position.y = 0.9 * U; g.add(lipm);
+            [-1, 1].forEach(function (s) { var ped = _hqBox(0.5, 0.84, 0.6, _hqMat(null, 1, 1, { color: 0x8a9298, shininess: 60 })); ped.position.set(s * 0.8 * U, 0.42 * U, 0); g.add(ped); });
+            var drain = new THREE.Mesh(new THREE.CircleGeometry(0.06 * U, 12), _hqBasic(0x222426)); drain.rotation.x = -Math.PI / 2; drain.position.set(0, 0.905 * U, 0.4 * U); g.add(drain);
+            /* the parts: knob, handle, bell, window, boards, knocker, hinges, letterbox, peephole, chain — and the tags */
+            var brass = _hqMat(null, 1, 1, { color: 0xc8a850, shininess: 120, specular: 0xffffff });
+            var wood = _hqMat('wood', 1, 1, { color: 0x8a5a34 });
+            var tagMat = _hqBasic(0xf0e8d0);
+            function tag(x, z) { var t = _hqBox(0.07, 0.001, 0.04, tagMat); t.position.set(x * U, 0.906 * U, (z + 0.09) * U); t.rotation.y = 0.2; g.add(t); }
+            var knob = new THREE.Mesh(new THREE.SphereGeometry(0.04 * U, 10, 8), brass); knob.position.set(-1.0 * U, 0.94 * U, -0.35 * U); g.add(knob); tag(-1.0, -0.35);
+            var handle = _hqBox(0.16, 0.025, 0.025, brass); handle.position.set(-0.7 * U, 0.92 * U, -0.35 * U); g.add(handle); tag(-0.7, -0.35);
+            var bell = new THREE.Mesh(new THREE.CylinderGeometry(0.03 * U, 0.03 * U, 0.02 * U, 10), _hqBasic(0xd0d0d8)); bell.position.set(-0.4 * U, 0.915 * U, -0.35 * U); g.add(bell); tag(-0.4, -0.35);
+            var win = _hqBox(0.28, 0.01, 0.2, new THREE.MeshPhongMaterial({ color: 0xcfe0f2, transparent: true, opacity: 0.6, shininess: 120 })); win.position.set(0.0, 0.91 * U, -0.35 * U); g.add(win); tag(0.0, -0.35);
+            for (var b = 0; b < 4; b++) { var bd = _hqBox(0.5, 0.02, 0.05, wood); bd.position.set(0.55 * U, (0.915 + b * 0.02) * U, (-0.45 + b * 0.07) * U); bd.rotation.y = 0.1 * (b % 2); g.add(bd); } tag(0.55, -0.4);
+            var knocker = new THREE.Mesh(new THREE.TorusGeometry(0.05 * U, 0.012 * U, 8, 16), brass); knocker.rotation.x = Math.PI / 2; knocker.position.set(1.0 * U, 0.915 * U, -0.35 * U); g.add(knocker); tag(1.0, -0.35);
+            [-1.0, -0.75, -0.5].forEach(function (hx) { var hg = _hqBox(0.05, 0.01, 0.12, brass); hg.position.set(hx * U, 0.91 * U, 0.15 * U); g.add(hg); }); tag(-0.75, 0.15);
+            var lb = _hqBox(0.28, 0.01, 0.07, brass); lb.position.set(-0.1 * U, 0.91 * U, 0.15 * U); g.add(lb); tag(-0.1, 0.15);
+            var ph = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 0.06 * U, 10), brass); ph.position.set(0.35 * U, 0.935 * U, 0.15 * U); g.add(ph); tag(0.35, 0.15);
+            for (var c = 0; c < 8; c++) { var ln = new THREE.Mesh(new THREE.TorusGeometry(0.014 * U, 0.004 * U, 6, 10), _hqBasic(0xa0a4a8)); ln.rotation.x = Math.PI / 2 * (c % 2); ln.position.set((0.7 + c * 0.03) * U, 0.915 * U, (0.12 + Math.sin(c) * 0.02) * U); g.add(ln); } tag(0.8, 0.15);
+            return g;
+        },
+        /* the light box: a frosted pane with a door's X-ray on it */
+        door_xray: function (U) {
+            var g = new THREE.Group();
+            var frame = _hqBox(1.3, 1.0, 0.08, _hqMat(null, 1, 1, { color: 0xd8dcdc, shininess: 40 })); frame.position.set(0, 0.5 * U, 0.04 * U); g.add(frame);
+            var tex = null;
+            if (typeof document !== 'undefined') {
+                var c = document.createElement('canvas'); c.width = 512; c.height = 384; var x = c.getContext('2d');
+                x.fillStyle = '#0a1420'; x.fillRect(0, 0, 512, 384);
+                x.strokeStyle = '#9fc7ff'; x.lineWidth = 6; x.strokeRect(150, 30, 212, 330);
+                x.lineWidth = 2; x.strokeRect(175, 60, 162, 120); x.strokeRect(175, 200, 162, 130);
+                x.fillStyle = '#e8f4ff'; x.beginPath(); x.arc(330, 200, 10, 0, Math.PI * 2); x.fill();
+                x.strokeStyle = '#d0e8ff'; x.lineWidth = 3; [90, 200, 310].forEach(function (yy) { x.strokeRect(150, yy, 14, 34); });
+                x.fillStyle = '#ffffff'; x.globalAlpha = 0.08; for (var i = 0; i < 40; i++) x.fillRect(Math.random() * 512, Math.random() * 384, 3, 60);
+                x.globalAlpha = 1; x.fillStyle = '#9fc7ff'; x.font = '18px monospace'; x.fillText('SUBJECT: DOOR · LAT.  FINDING: NOTHING INSIDE', 20, 372);
+                tex = new THREE.CanvasTexture(c);
+            }
+            var pane = new THREE.Mesh(new THREE.PlaneGeometry(1.2 * U, 0.9 * U), tex ? new THREE.MeshBasicMaterial({ map: tex }) : _hqBasic(0x0a1420)); pane.position.set(0, 0.5 * U, 0.085 * U); g.add(pane);
+            return g;
+        },
+        /* ROOM ½: a raised bed */
+        planter: function (U) {
+            var g = new THREE.Group();
+            var box = _hqBox(2.0, 0.5, 1.0, _hqMat('wood', 2, 1, { color: 0x7a5a3a })); box.position.y = 0.25 * U; g.add(box);
+            var soil = _hqBox(1.9, 0.04, 0.9, _hqMat('dirt', 2, 1, { color: 0x4a3a2a })); soil.position.y = 0.5 * U; g.add(soil);
+            return g;
+        },
+        /* ROOM ½: a trellis, vines climbing it, tiny doors at the stem ends (they sway and swing, ticker) */
+        door_vine: function (U) {
+            var g = new THREE.Group();
+            var lath = _hqMat('wood', 1, 1, { color: 0x9a8a6a });
+            var W = 1.6, H = 1.8;
+            for (var i = 0; i < 5; i++) { var v = _hqBox(0.03, H, 0.03, lath); v.position.set((-W / 2 + i * W / 4) * U, (H / 2) * U, 0); g.add(v); }
+            for (var j = 0; j < 5; j++) { var h = _hqBox(W, 0.03, 0.03, lath); h.position.set(0, (0.2 + j * (H - 0.4) / 4) * U, 0.02 * U); g.add(h); }
+            var green = _hqMat(null, 1, 1, { color: 0x3f7a34, shininess: 20 });
+            var doors = [];
+            for (var k = 0; k < 6; k++) {
+                var a = (k / 6) * Math.PI * 2, stem = new THREE.Group();
+                var sx = (-W / 2 + 0.2 + k * (W - 0.4) / 5), sy = 0.3 + ((k * 7) % 5) * 0.28;
+                var st = new THREE.Mesh(new THREE.CylinderGeometry(0.012 * U, 0.02 * U, 0.4 * U, 6), green); st.rotation.x = -0.9 + 0.3 * Math.sin(a); st.position.set(0, 0.15 * U, 0.12 * U); stem.add(st);
+                for (var l = 0; l < 3; l++) { var lf = new THREE.Mesh(new THREE.CircleGeometry(0.05 * U, 8), green); lf.material.side = THREE.DoubleSide; lf.position.set((l - 1) * 0.06 * U, (0.05 + l * 0.08) * U, (0.1 + l * 0.05) * U); lf.rotation.x = -0.8; stem.add(lf); }
+                var tiny = _hqMiniDoor(U, 0.11, 0.2, _hqLeafMat(k), 1); tiny.position.set(0, 0.28 * U, 0.3 * U); stem.add(tiny);
+                stem.position.set(sx * U, sy * U, 0.03 * U); g.add(stem); doors.push({ s: stem, d: tiny, ph: k * 1.7 });
+            }
+            var seed = (_hqProcSeed++) * 0.9;
+            if (_hq) _hq.tickers.push(function (dt, now) {
+                var t = now * 0.001 + seed;
+                for (var q = 0; q < doors.length; q++) { var o = doors[q]; o.s.rotation.z = 0.08 * Math.sin(t * 1.1 + o.ph); o.d.rotation.y = -0.6 * Math.max(0, Math.sin(t * 0.5 + o.ph)); }
+            });
+            return g;
+        },
+        /* ROOM ½: the grow lamp — a hood on a chain, purple underneath */
+        grow_lamp: function (U) {
+            var g = new THREE.Group();
+            var chain = new THREE.Mesh(new THREE.CylinderGeometry(0.01 * U, 0.01 * U, 0.3 * U, 6), _hqBasic(0x444444)); chain.position.y = 0.35 * U; g.add(chain);
+            var hood = new THREE.Mesh(new THREE.CylinderGeometry(0.1 * U, 0.34 * U, 0.2 * U, 16, 1, true), _hqMat(null, 1, 1, { color: 0xd8d8d0, shininess: 60 })); hood.material.side = THREE.DoubleSide; hood.position.y = 0.1 * U; g.add(hood);
+            var bulb = new THREE.Mesh(new THREE.CircleGeometry(0.3 * U, 16), _hqBasic(0xd070ff)); bulb.rotation.x = Math.PI / 2; bulb.position.y = 0.005 * U; g.add(bulb);
+            return g;
+        },
+        /* ROOM 24/7: nine CRTs in a rack, each showing a room off the register (a canvas; the ticker swaps the feeds and rolls the static) */
+        monitor_stack: function (U) {
+            var g = new THREE.Group();
+            var rack = _hqMat(null, 1, 1, { color: 0x2c2f35, shininess: 40 });
+            var W = 2.0, H = 2.2;
+            var shell = _hqBox(W, H, 0.6, rack); shell.position.set(0, (H / 2) * U, 0.3 * U); g.add(shell);
+            var rooms = [];
+            try { if (typeof hqRoomRegister === 'function') rooms = hqRoomRegister().map(function (r) { return (r.no + ' · ' + r.label).slice(0, 22); }); } catch (e) {}
+            if (!rooms.length) rooms = ['NO SIGNAL'];
+            var screens = [];
+            for (var i = 0; i < 9; i++) {
+                var col = i % 3, row = Math.floor(i / 3);
+                var tex = null, cv = null, ctx = null;
+                if (typeof document !== 'undefined') { cv = document.createElement('canvas'); cv.width = 160; cv.height = 120; ctx = cv.getContext('2d'); tex = new THREE.CanvasTexture(cv); tex.minFilter = THREE.LinearFilter; }
+                var m = new THREE.Mesh(new THREE.PlaneGeometry(0.56 * U, 0.42 * U), tex ? new THREE.MeshBasicMaterial({ map: tex }) : _hqBasic(0x1a2a3a));
+                m.position.set((-W / 2 + 0.36 + col * 0.64) * U, (H - 0.4 - row * 0.7) * U, 0.605 * U); g.add(m);
+                screens.push({ cv: cv, ctx: ctx, tex: tex, room: (i * 5 + 3) % rooms.length, next: 4 + i * 1.3, dead: (i === 4) });
+            }
+            function draw(s, t) {
+                if (!s.ctx) return;
+                var x = s.ctx; x.fillStyle = s.dead ? '#0b0e12' : '#12202c'; x.fillRect(0, 0, 160, 120);
+                if (!s.dead) {
+                    x.fillStyle = '#1e3a4c'; x.fillRect(10, 30, 140, 70); x.fillStyle = '#2c5468'; x.fillRect(60, 40, 30, 60);   // a room, a door
+                    x.fillStyle = '#cfe6ff'; x.font = '11px monospace'; x.fillText(rooms[s.room], 6, 14); x.fillText('REC ●', 118, 112);
+                }
+                x.fillStyle = '#ffffff'; x.globalAlpha = s.dead ? 0.25 : 0.06;
+                for (var k = 0; k < 24; k++) x.fillRect(Math.random() * 160, Math.random() * 120, 2 + Math.random() * 30, 1);
+                x.globalAlpha = 1; x.fillStyle = 'rgba(0,0,0,0.18)'; for (var yy = 0; yy < 120; yy += 4) x.fillRect(0, yy, 160, 1);
+                if (s.dead) { x.fillStyle = '#6a7a88'; x.font = 'bold 12px monospace'; x.fillText('NO SIGNAL', 42, 64); }
+                s.tex.needsUpdate = true;
+            }
+            var acc = 0;
+            screens.forEach(function (s) { draw(s, 0); });
+            if (_hq) _hq.tickers.push(function (dt, now) {
+                acc += dt; if (acc < 0.12) return; acc = 0;
+                var t = now * 0.001;
+                for (var q = 0; q < screens.length; q++) { var s = screens[q]; if (!s.dead && t > s.next) { s.room = (s.room + 7) % rooms.length; s.next = t + 6 + (q % 4) * 2.5; } draw(s, t); }
+            });
+            return g;
+        },
+        /* ROOM ?: shelves of things left in other realities — an umbrella, a crown, a fishbowl, a football, a teapot, a sock, a small door */
+        lost_shelf: function (U) {
+            var g = new THREE.Group();
+            var wood = _hqMat('wood', 2, 1, { color: 0x7a5a3a });
+            var W = 2.0, H = 2.0, D = 0.5;
+            [-1, 1].forEach(function (s) { var side = _hqBox(0.04, H, D, wood); side.position.set(s * (W / 2 - 0.02) * U, (H / 2) * U, (D / 2) * U); g.add(side); });
+            var back = _hqBox(W, H, 0.03, wood); back.position.set(0, (H / 2) * U, 0.015 * U); g.add(back);
+            var shelves = [0.45, 1.05, 1.65];
+            shelves.forEach(function (sy) { var sh = _hqBox(W - 0.08, 0.03, D, wood); sh.position.set(0, sy * U, (D / 2) * U); g.add(sh); });
+            var brass = _hqMat(null, 1, 1, { color: 0xc8a850, shininess: 120, specular: 0xffffff });
+            function at(x, sy, z) { return new THREE.Vector3(x * U, (sy + 0.015) * U, (D / 2 + (z || 0)) * U); }
+            /* shelf 1: a crown, a fishbowl, a teapot */
+            var crown = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * U, 0.09 * U, 0.12 * U, 8, 1, true), brass); crown.material.side = THREE.DoubleSide; crown.position.copy(at(-0.7, 0.45)); crown.position.y += 0.06 * U; crown.rotation.z = 0.2; g.add(crown);
+            var bowl = new THREE.Mesh(new THREE.SphereGeometry(0.14 * U, 14, 10), new THREE.MeshPhongMaterial({ color: 0xbfe0ff, transparent: true, opacity: 0.45, shininess: 120 })); bowl.position.copy(at(-0.15, 0.45)); bowl.position.y += 0.14 * U; g.add(bowl);
+            var pot = new THREE.Mesh(new THREE.SphereGeometry(0.11 * U, 12, 10), _hqMat(null, 1, 1, { color: 0xe8e0d0, shininess: 60 })); pot.position.copy(at(0.45, 0.45)); pot.position.y += 0.11 * U; g.add(pot);
+            var spout = new THREE.Mesh(new THREE.CylinderGeometry(0.015 * U, 0.03 * U, 0.16 * U, 8), pot.material); spout.rotation.z = -0.9; spout.position.copy(at(0.58, 0.45)); spout.position.y += 0.16 * U; g.add(spout);
+            /* shelf 2: an umbrella, a football, a sock, a stack of files */
+            var umb = new THREE.Mesh(new THREE.ConeGeometry(0.2 * U, 0.12 * U, 10, 1, true), _hqMat(null, 1, 1, { color: 0x3a3a48 })); umb.material.side = THREE.DoubleSide; umb.position.copy(at(-0.65, 1.05)); umb.position.y += 0.06 * U; g.add(umb);
+            var ball = new THREE.Mesh(new THREE.SphereGeometry(0.1 * U, 12, 10), _hqMat(null, 1, 1, { color: 0x8a5a3a })); ball.scale.set(1.5, 1, 1); ball.position.copy(at(-0.1, 1.05)); ball.position.y += 0.1 * U; g.add(ball);
+            var sock = _hqBox(0.08, 0.05, 0.2, _hqMat(null, 1, 1, { color: 0xd8d0c0 })); sock.position.copy(at(0.35, 1.05)); sock.position.y += 0.025 * U; sock.rotation.y = 0.4; g.add(sock);
+            var files = _hqBox(0.3, 0.18, 0.24, _hqMat(null, 1, 1, { color: 0xc8b890 })); files.position.copy(at(0.72, 1.05)); files.position.y += 0.09 * U; g.add(files);
+            /* shelf 3: a small door, a jar, a ring on a cushion */
+            var small = _hqMiniDoor(U, 0.14, 0.26, _hqLeafMat(_hqProcSeed++), 1); small.position.copy(at(-0.6, 1.65, -0.1)); g.add(small);
+            var jar = new THREE.Mesh(new THREE.CylinderGeometry(0.06 * U, 0.06 * U, 0.16 * U, 12), new THREE.MeshPhongMaterial({ color: 0xa0ffc0, transparent: true, opacity: 0.5, shininess: 100 })); jar.position.copy(at(0.0, 1.65)); jar.position.y += 0.08 * U; g.add(jar);
+            var cushion = _hqBox(0.14, 0.04, 0.14, _hqMat(null, 1, 1, { color: 0x8a2a3a })); cushion.position.copy(at(0.55, 1.65)); cushion.position.y += 0.02 * U; g.add(cushion);
+            var ring = new THREE.Mesh(new THREE.TorusGeometry(0.025 * U, 0.006 * U, 8, 16), brass); ring.rotation.x = Math.PI / 2; ring.position.copy(at(0.55, 1.65)); ring.position.y += 0.05 * U; g.add(ring);
+            /* the tags */
+            var tagMat = _hqBasic(0xf0e8d0);
+            shelves.forEach(function (sy) { for (var i = 0; i < 3; i++) { var tg = _hqBox(0.06, 0.03, 0.001, tagMat); tg.position.set((-0.7 + i * 0.6) * U, (sy - 0.02) * U, (D + 0.002) * U); g.add(tg); } });
+            return g;
+        },
+        /* THE STAIRWELL: a step (wide in x, the run along z) and its twin along x; a landing; a half landing */
+        stair_step: function (U) {
+            var g = new THREE.Group();
+            var tread = _hqBox(1.2, 0.25, 0.3, _hqMat('concrete', 1, 1, { color: 0x9a9894, shininess: 6 })); tread.position.y = 0.125 * U; g.add(tread);
+            var nose = _hqBox(1.2, 0.02, 0.04, _hqBasic(0xd9b23a)); nose.position.set(0, 0.26 * U, -0.13 * U); g.add(nose);
+            return g;
+        },
+        stair_step_x: function (U) { var g = _hqProcBuilders.stair_step(U); g.rotation.y = Math.PI / 2; return g; },
+        stair_landing: function (U) {
+            var g = new THREE.Group();
+            var slab = _hqBox(4.8, 0.25, 2.8, _hqMat('concrete', 2, 1, { color: 0x9a9894, shininess: 6 })); slab.position.y = 0.125 * U; g.add(slab);
+            var edge = _hqBox(4.8, 0.02, 0.04, _hqBasic(0xd9b23a)); edge.position.set(0, 0.26 * U, 1.38 * U); g.add(edge);
+            return g;
+        },
+        stair_landing_sq: function (U) {
+            var g = new THREE.Group();
+            var slab = _hqBox(1.4, 0.25, 1.4, _hqMat('concrete', 1, 1, { color: 0x9a9894, shininess: 6 })); slab.position.y = 0.125 * U; g.add(slab);
+            return g;
+        },
+        /* THE TUNNEL: sleepers and rails the length of the platform; the yellow line; the car at the platform */
+        track_bed: function (U) {
+            var g = new THREE.Group();
+            var L = 34;
+            var ballast = _hqBox(2.4, 0.04, L, _hqMat('concrete', 1, 8, { color: 0x4a4846, shininess: 2 })); ballast.position.y = 0.02 * U; g.add(ballast);
+            var tie = _hqMat('wood', 1, 1, { color: 0x3a2e24 });
+            for (var i = 0; i < L / 0.7; i++) { var t = _hqBox(2.0, 0.05, 0.2, tie); t.position.set(0, 0.045 * U, (-L / 2 + 0.35 + i * 0.7) * U); g.add(t); }
+            var rail = _hqMat(null, 1, 1, { color: 0x8a8e94, shininess: 120, specular: 0xffffff });
+            [-0.72, 0.72].forEach(function (rx) { var r = _hqBox(0.06, 0.08, L, rail); r.position.set(rx * U, 0.1 * U, 0); g.add(r); });
+            return g;
+        },
+        platform_edge: function (U) {
+            var g = new THREE.Group();
+            var L = 34;
+            var line = _hqBox(0.12, 0.005, L, _hqBasic(0xf2d21a)); line.position.set(0, 0.0125 * U, 0); g.add(line);
+            var tact = _hqBox(0.4, 0.01, L, _hqMat('tilefloor', 1, 8, { color: 0xc8b8a0 })); tact.position.set(0.3 * U, 0.005 * U, 0); g.add(tact);
+            return g;
+        },
+        train_car: function (U) {
+            var g = new THREE.Group();
+            var body = _hqMat('aluminium', 4, 1, { color: 0xb8bcc0, shininess: 70 });
+            var W = 2.6, H = 3.0, L = 12;
+            var hull = _hqBox(W, H - 0.5, L, body); hull.position.y = (0.5 + (H - 0.5) / 2) * U; g.add(hull);
+            var roof = new THREE.Mesh(new THREE.CylinderGeometry(W / 2 * U, W / 2 * U, L * U, 12, 1, false, 0, Math.PI), body); roof.rotation.z = Math.PI / 2; roof.rotation.y = Math.PI / 2; roof.scale.y = 0.3; roof.position.y = H * U; g.add(roof);
+            var stripe = _hqBox(W + 0.02, 0.3, L, _hqBasic(0xc03038)); stripe.position.y = 1.6 * U; g.add(stripe);
+            var glass = new THREE.MeshPhongMaterial({ color: 0xfff0c0, emissive: 0xfff0c0, emissiveIntensity: 0.55, shininess: 120 });
+            for (var i = 0; i < 6; i++) { var wz = (-L / 2 + 1.2 + i * 1.9); [-1, 1].forEach(function (s) { var w = _hqBox(0.02, 0.8, 1.1, glass); w.position.set(s * (W / 2 + 0.01) * U, 2.1 * U, wz * U); g.add(w); }); }
+            /* the doors: open, platform side (+x), a lit interior behind them */
+            [-3.5, 3.5].forEach(function (dz) { var op = _hqBox(0.02, 2.0, 1.3, glass); op.position.set((W / 2 + 0.005) * U, 1.5 * U, dz * U); g.add(op);
+                [-1, 1].forEach(function (s) { var leaf = _hqBox(0.03, 2.0, 0.6, body); leaf.position.set((W / 2 + 0.03) * U, 1.5 * U, (dz + s * 0.95) * U); g.add(leaf); }); });
+            for (var b = 0; b < 4; b++) { var bog = new THREE.Mesh(new THREE.CylinderGeometry(0.4 * U, 0.4 * U, 0.2 * U, 12), _hqMat(null, 1, 1, { color: 0x2a2a2e })); bog.rotation.z = Math.PI / 2; bog.position.set(((b % 2) ? 0.72 : -0.72) * U, 0.4 * U, ((b < 2) ? -4 : 4) * U); g.add(bog); }
+            var head = new THREE.Mesh(new THREE.CircleGeometry(0.16 * U, 12), _hqBasic(0xfff8e0)); head.position.set(-0.7 * U, 1.0 * U, (-L / 2 - 0.01) * U); head.rotation.y = Math.PI; g.add(head);
+            var tx = _hzTextTex('hq_train_dest', ['ALL LINES · THE END OF THE LINE'], { w: 512, h: 64, color: '#ffb020', bg: '#1a1a1e' });
+            if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(1.4 * U, 0.18 * U), new THREE.MeshBasicMaterial({ map: tx })); m.position.set((W / 2 + 0.06) * U, 2.75 * U, 0); m.rotation.y = Math.PI / 2; g.add(m); }
+            return g;
+        },
+        /* THE TUNNEL: the departures board — every route, DELAYED (the minutes never change; the ticker only blinks the colon) */
+        departures_board: function (U) {
+            var g = new THREE.Group();
+            var box = _hqBox(3.2, 0.9, 0.1, _hqMat(null, 1, 1, { color: 0x1a1a1e, shininess: 30 })); box.position.set(0, 0.45 * U, 0.05 * U); g.add(box);
+            var routes = [];
+            try { var R = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.routes) || {}; Object.keys(R).forEach(function (k) { routes.push((R[k].label || k).toUpperCase()); }); } catch (e) {}
+            if (!routes.length) routes = ['ALL LINES'];
+            var lines = routes.slice(0, 6).map(function (r, i) { return (r + '                          ').slice(0, 22) + '  ' + (17 + i * 3) + ' MIN   DELAYED'; });
+            var tx = _hzTextTex('hq_departures_' + routes.length, lines, { w: 1024, h: 288, color: '#ffb020', bg: '#0e0e12', font: '"Lucida Console", Menlo, monospace', pad: 0.06 });
+            if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(3.1 * U, 0.82 * U), new THREE.MeshBasicMaterial({ map: tx })); m.position.set(0, 0.45 * U, 0.105 * U); g.add(m); }
+            return g;
+        },
+        /* THE TUNNEL: DOOR_HQ.routes as a subway map on the tiles */
+        tube_map: function (U) {
+            var g = new THREE.Group();
+            var frame = _hqBox(1.3, 1.4, 0.05, _hqMat(null, 1, 1, { color: 0x3b4147, shininess: 40 })); frame.position.set(0, 0.7 * U, 0.025 * U); g.add(frame);
+            var tex = null;
+            if (typeof document !== 'undefined') {
+                var c = document.createElement('canvas'); c.width = 512; c.height = 560; var x = c.getContext('2d');
+                x.fillStyle = '#f4f0e6'; x.fillRect(0, 0, 512, 560);
+                var R = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.routes) || {}; var keys = Object.keys(R);
+                x.font = 'bold 26px "Arial Narrow", Arial, sans-serif'; x.fillStyle = '#111'; x.fillText('ALL LINES', 24, 44);
+                keys.forEach(function (k, i) {
+                    var col = (R[k].color != null) ? R[k].color : 0x333333; var css = '#' + ('000000' + (typeof col === 'number' ? col.toString(16) : String(col).replace('#', ''))).slice(-6);
+                    x.strokeStyle = css; x.lineWidth = 10; x.setLineDash(R[k].dashed ? [14, 10] : []);
+                    x.beginPath(); var y0 = 90 + i * 48; x.moveTo(40, y0); x.lineTo(160 + (i % 3) * 60, y0); x.lineTo(240 + (i % 3) * 60, y0 + 30); x.lineTo(470, y0 + 30); x.stroke();
+                    x.setLineDash([]); x.fillStyle = '#fff'; x.strokeStyle = '#111'; x.lineWidth = 3;
+                    [40, 160 + (i % 3) * 60, 470].forEach(function (sx, j) { x.beginPath(); x.arc(sx, y0 + (j === 2 ? 30 : 0), 7, 0, Math.PI * 2); x.fill(); x.stroke(); });
+                    x.fillStyle = '#111'; x.font = '16px Arial, sans-serif'; x.fillText((R[k].label || k).toUpperCase(), 40, y0 - 12);
+                });
+                x.fillStyle = '#111'; x.font = '14px Arial, sans-serif'; x.fillText('YOU ARE HERE · THE PLATFORM · MIND THE GAP', 24, 540);
+                tex = new THREE.CanvasTexture(c);
+            }
+            var m = new THREE.Mesh(new THREE.PlaneGeometry(1.2 * U, 1.3 * U), tex ? new THREE.MeshBasicMaterial({ map: tex }) : _hqBasic(0xf4f0e6)); m.position.set(0, 0.7 * U, 0.055 * U); g.add(m);
+            return g;
+        },
+        /* ROOM 1893: the big top — a striped canvas cone under the ceiling */
+        bigtop: function (U) {
+            var g = new THREE.Group();
+            var tex = null;
+            if (typeof document !== 'undefined') { var c = document.createElement('canvas'); c.width = 512; c.height = 64; var x = c.getContext('2d'); for (var i = 0; i < 16; i++) { x.fillStyle = (i % 2) ? '#f0e6d0' : '#c8303a'; x.fillRect(i * 32, 0, 32, 64); } tex = new THREE.CanvasTexture(c); tex.wrapS = THREE.RepeatWrapping; tex.repeat.set(6, 1); }
+            var mat = new THREE.MeshLambertMaterial({ map: tex || null, color: tex ? 0xffffff : 0xc8303a, side: THREE.DoubleSide });
+            var cone = new THREE.Mesh(new THREE.ConeGeometry(11.5 * U, 0.6 * U, 24, 1, true), mat); cone.position.y = 0.3 * U; cone.rotation.x = Math.PI; g.add(cone);
+            return g;
+        },
+        /* ROOM 1893: the wheel — a hub on two A-frames, spokes, twelve gondolas, bulbs; it turns (ticker) */
+        ferris_wheel: function (U) {
+            var g = new THREE.Group();
+            var steel = _hqMat(null, 1, 1, { color: 0xd8d8e0, shininess: 60 });
+            var R = 2.8, hubY = 3.5;
+            [-1, 1].forEach(function (s) { [-1, 1].forEach(function (k) { var leg = _hqBox(0.12, hubY / Math.cos(0.35), 0.12, steel); leg.position.set(s * 0.55 * U, (hubY / 2) * U, k * (hubY * Math.tan(0.35) / 2) * U); leg.rotation.x = -k * 0.35; g.add(leg); }); });
+            var axle = new THREE.Mesh(new THREE.CylinderGeometry(0.08 * U, 0.08 * U, 1.3 * U, 10), steel); axle.rotation.z = Math.PI / 2; axle.position.y = hubY * U; g.add(axle);
+            var wheel = new THREE.Group(); wheel.position.y = hubY * U; g.add(wheel);
+            [-1, 1].forEach(function (s) { var rim = new THREE.Mesh(new THREE.TorusGeometry(R * U, 0.04 * U, 8, 48), steel); rim.rotation.y = Math.PI / 2; rim.position.x = s * 0.45 * U; wheel.add(rim); });
+            var gondolas = [];
+            for (var i = 0; i < 12; i++) {
+                var a = (i / 12) * Math.PI * 2;
+                [-1, 1].forEach(function (s) { var sp = _hqBox(0.03, R, 0.03, steel); sp.position.set(s * 0.45 * U, 0, 0); sp.rotation.x = a; sp.position.y = Math.cos(a) * (R / 2) * U; sp.position.z = Math.sin(a) * (R / 2) * U; wheel.add(sp); });
+                var piv = new THREE.Group(); piv.position.set(0, Math.cos(a) * R * U, Math.sin(a) * R * U); wheel.add(piv);
+                var car = _hqBox(0.8, 0.5, 0.5, _hqMat(null, 1, 1, { color: [0xe04848, 0x48a0e0, 0xf0d040, 0x60c060][i % 4], shininess: 40 })); car.position.y = -0.4 * U; piv.add(car);
+                var bulb = new THREE.Mesh(new THREE.SphereGeometry(0.05 * U, 8, 6), _hqBasic(0xfff0a0)); bulb.position.y = 0.05 * U; piv.add(bulb);
+                gondolas.push({ piv: piv, a: a });
+            }
+            var glow = _hzGlowSprite(5.0 * U, 0xffd080, 0.35, 0.05, 0.03, 0.6); glow.position.y = hubY * U; g.add(glow);
+            if (_hq) _hq.tickers.push(function (dt) { wheel.rotation.x += dt * 0.18; for (var q = 0; q < gondolas.length; q++) gondolas[q].piv.rotation.x = -wheel.rotation.x; });
+            return g;
+        },
+        /* ROOM 1893: the carousel — a platform, a canopy, eight horses on poles; it turns and the horses rise (ticker) */
+        carousel: function (U) {
+            var g = new THREE.Group();
+            var R = 2.4;
+            var deck = new THREE.Mesh(new THREE.CylinderGeometry(R * U, R * U, 0.25 * U, 24), _hqMat('wood', 4, 1, { color: 0xb08850 })); deck.position.y = 0.125 * U; g.add(deck);
+            var post = new THREE.Mesh(new THREE.CylinderGeometry(0.2 * U, 0.2 * U, 3.0 * U, 12), _hqMat(null, 1, 1, { color: 0xe8d0a0, shininess: 50 })); post.position.y = 1.5 * U; g.add(post);
+            var canopy = new THREE.Mesh(new THREE.ConeGeometry((R + 0.3) * U, 0.9 * U, 16), _hqMat(null, 1, 1, { color: 0xc8303a, shininess: 20 })); canopy.position.y = 3.3 * U; g.add(canopy);
+            var spin = new THREE.Group(); g.add(spin);
+            var horses = [];
+            for (var i = 0; i < 8; i++) {
+                var a = (i / 8) * Math.PI * 2, piv = new THREE.Group(); piv.position.set(Math.cos(a) * 1.7 * U, 0.25 * U, Math.sin(a) * 1.7 * U); spin.add(piv);
+                var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025 * U, 0.025 * U, 2.6 * U, 8), _hqMat(null, 1, 1, { color: 0xd8b860, shininess: 120 })); pole.position.y = 1.3 * U; piv.add(pole);
+                var h = new THREE.Group(); piv.add(h);
+                var col = [0xf0f0f0, 0x3a2a1c, 0xc06030, 0x8a8a9a][i % 4];
+                var body = _hqBox(0.24, 0.3, 0.8, _hqMat(null, 1, 1, { color: col, shininess: 30 })); body.position.y = 1.0 * U; h.add(body);
+                var neck = _hqBox(0.16, 0.42, 0.16, body.material); neck.position.set(0, 1.25 * U, 0.34 * U); neck.rotation.x = -0.5; h.add(neck);
+                var head = _hqBox(0.14, 0.14, 0.3, body.material); head.position.set(0, 1.45 * U, 0.5 * U); h.add(head);
+                for (var l = 0; l < 4; l++) { var leg = _hqBox(0.06, 0.5, 0.06, body.material); leg.position.set(((l % 2) ? 0.08 : -0.08) * U, 0.62 * U, ((l < 2) ? 0.28 : -0.28) * U); leg.rotation.x = (l < 2) ? -0.5 : 0.4; h.add(leg); }
+                var saddle = _hqBox(0.26, 0.06, 0.3, _hqMat(null, 1, 1, { color: 0xc8303a })); saddle.position.y = 1.16 * U; h.add(saddle);
+                h.rotation.y = -a + Math.PI / 2;
+                horses.push({ h: h, ph: i * 0.8 });
+            }
+            var bulbs = new THREE.Group(); for (var b = 0; b < 16; b++) { var ba = (b / 16) * Math.PI * 2; var bl = new THREE.Mesh(new THREE.SphereGeometry(0.05 * U, 8, 6), _hqBasic((b % 2) ? 0xfff0a0 : 0xffb0c0)); bl.position.set(Math.cos(ba) * (R + 0.25) * U, 2.9 * U, Math.sin(ba) * (R + 0.25) * U); bulbs.add(bl); } g.add(bulbs);
+            if (_hq) _hq.tickers.push(function (dt, now) { spin.rotation.y += dt * 0.25; var t = now * 0.001; for (var q = 0; q < horses.length; q++) horses[q].h.position.y = 0.18 * Math.sin(t * 1.4 + horses[q].ph) * U; });
+            return g;
+        },
+        /* ROOM 1893: the fortune teller's tent — a striped cone on a drum, a beaded door, a lit sign */
+        fortune_tent: function (U) {
+            var g = new THREE.Group();
+            var R = 1.5;
+            var wall = new THREE.Mesh(new THREE.CylinderGeometry(R * U, R * U, 2.0 * U, 16, 1, true, 0.5, Math.PI * 2 - 1.0), _hqMat(null, 1, 1, { color: 0x5a2a6a, shininess: 10 })); wall.material.side = THREE.DoubleSide; wall.position.y = 1.0 * U; wall.rotation.y = -Math.PI / 2; g.add(wall);
+            var cone = new THREE.Mesh(new THREE.ConeGeometry((R + 0.2) * U, 1.2 * U, 16), _hqMat(null, 1, 1, { color: 0x8a3a9a, shininess: 20 })); cone.position.y = 2.6 * U; g.add(cone);
+            var beads = _hqBox(0.9, 1.9, 0.02, new THREE.MeshBasicMaterial({ color: 0xd8a0ff, transparent: true, opacity: 0.35 })); beads.position.set(0, 0.95 * U, R * U); g.add(beads);
+            var ball = new THREE.Mesh(new THREE.SphereGeometry(0.16 * U, 14, 10), new THREE.MeshPhongMaterial({ color: 0xc0a0ff, emissive: 0x8040ff, emissiveIntensity: 0.6, transparent: true, opacity: 0.8, shininess: 160 })); ball.position.set(0, 0.95 * U, 0.2 * U); g.add(ball);
+            var tbl = new THREE.Mesh(new THREE.CylinderGeometry(0.4 * U, 0.3 * U, 0.05 * U, 12), _hqMat('wood', 1, 1, { color: 0x4a2a1c })); tbl.position.set(0, 0.78 * U, 0.2 * U); g.add(tbl);
+            var glow = _hzGlowSprite(2.6 * U, 0xc070ff, 0.35, 0.1, 0.05, 1.2); glow.position.y = 1.2 * U; g.add(glow);
+            var tx = _hzTextTex('hq_fortune_sign', ['THE LADY WHO KNOWS', 'ONE QUESTION · SHE ALREADY HAS THE ANSWER'], { w: 512, h: 128, color: '#ffe0a0', bg: '#2a1030' });
+            if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(1.6 * U, 0.4 * U), new THREE.MeshBasicMaterial({ map: tx })); m.position.set(0, 2.15 * U, (R + 0.02) * U); g.add(m); }
+            return g;
+        },
+        /* ROOM 1893: the high striker — the tower, the bell nobody has rung, the mallet on the pad */
+        high_striker: function (U) {
+            var g = new THREE.Group();
+            var wood = _hqMat('wood', 1, 4, { color: 0xb84040 });
+            var tower = _hqBox(0.4, 4.6, 0.12, wood); tower.position.y = 2.3 * U; g.add(tower);
+            var base = _hqBox(1.2, 0.2, 0.8, wood); base.position.y = 0.1 * U; g.add(base);
+            var pad = new THREE.Mesh(new THREE.CylinderGeometry(0.18 * U, 0.18 * U, 0.1 * U, 12), _hqMat(null, 1, 1, { color: 0x2a2a2e })); pad.position.set(0.35 * U, 0.25 * U, 0.2 * U); g.add(pad);
+            var mallet = _hqBox(0.3, 0.16, 0.16, _hqMat('wood', 1, 1, { color: 0x6a4a2c })); mallet.position.set(-0.4 * U, 0.28 * U, 0.3 * U); mallet.rotation.y = 0.5; g.add(mallet);
+            var handle = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 0.9 * U, 8), mallet.material); handle.rotation.z = 1.2; handle.rotation.y = 0.5; handle.position.set(-0.05 * U, 0.4 * U, 0.3 * U); g.add(handle);
+            var bell = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.16 * U, 0.2 * U, 14), _hqMat(null, 1, 1, { color: 0xc8a850, shininess: 120 })); bell.position.y = 4.75 * U; g.add(bell);
+            var tx = _hzTextTex('hq_striker', ['WEAKLING', 'RECRUIT', 'OPERATIVE', 'KEYHOLDER', 'GATEKEEPER', 'THE DIRECTOR'], { w: 128, h: 512, color: '#ffe8a0', pad: 0.05 });
+            if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(0.34 * U, 3.6 * U), new THREE.MeshBasicMaterial({ map: tx, transparent: true })); m.position.set(0, 2.6 * U, 0.065 * U); g.add(m); }
+            var puck = _hqBox(0.3, 0.08, 0.06, _hqBasic(0xff3030)); puck.position.set(0, 0.6 * U, 0.08 * U); g.add(puck);
+            return g;
+        },
+        /* ROOM 1893: the ticket booth — a kiosk with a window and a lit ADMIT ONE */
+        ticket_booth: function (U) {
+            var g = new THREE.Group();
+            var wood = _hqMat('wood', 2, 2, { color: 0xc8303a });
+            var box = _hqBox(1.8, 2.2, 1.4, wood); box.position.y = 1.1 * U; g.add(box);
+            var roof = _hqBox(2.0, 0.12, 1.6, _hqMat(null, 1, 1, { color: 0xf0e6d0 })); roof.position.y = 2.26 * U; g.add(roof);
+            var win = _hqBox(1.0, 0.7, 0.02, new THREE.MeshPhongMaterial({ color: 0xfff0c0, emissive: 0xfff0c0, emissiveIntensity: 0.4 })); win.position.set(0, 1.35 * U, 0.71 * U); g.add(win);
+            var counter = _hqBox(1.2, 0.05, 0.3, _hqMat(null, 1, 1, { color: 0xf0e6d0 })); counter.position.set(0, 0.98 * U, 0.85 * U); g.add(counter);
+            var tx = _hzTextTex('hq_admit_one', ['TICKETS', 'ADMIT ONE'], { w: 512, h: 160, color: '#fff0c0', bg: '#2a1010' });
+            if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(1.6 * U, 0.5 * U), new THREE.MeshBasicMaterial({ map: tx })); m.position.set(0, 2.55 * U, 0.72 * U); g.add(m); }
+            var glow = _hzGlowSprite(1.8 * U, 0xffd0a0, 0.3, 0.05, 0.02, 0.8); glow.position.set(0, 2.5 * U, 0.8 * U); g.add(glow);
+            return g;
+        },
+        popcorn_cart: function (U) {
+            var g = new THREE.Group();
+            var red = _hqMat(null, 1, 1, { color: 0xc8303a, shininess: 40 });
+            var cart = _hqBox(0.9, 0.7, 0.6, red); cart.position.y = 0.75 * U; g.add(cart);
+            var glass = _hqBox(0.8, 0.6, 0.5, new THREE.MeshPhongMaterial({ color: 0xfff0c0, transparent: true, opacity: 0.5, emissive: 0xfff0c0, emissiveIntensity: 0.3 })); glass.position.y = 1.4 * U; g.add(glass);
+            var lid = _hqBox(0.95, 0.06, 0.65, red); lid.position.y = 1.73 * U; g.add(lid);
+            [-1, 1].forEach(function (s) { var wh = new THREE.Mesh(new THREE.CylinderGeometry(0.2 * U, 0.2 * U, 0.05 * U, 14), _hqBasic(0xd8b860)); wh.rotation.x = Math.PI / 2; wh.position.set(s * 0.4 * U, 0.2 * U, 0.33 * U); g.add(wh); });
+            for (var i = 0; i < 30; i++) { var k = new THREE.Mesh(new THREE.SphereGeometry(0.03 * U, 6, 5), _hqBasic(0xfff4d0)); k.position.set((Math.random() - 0.5) * 0.6 * U, (1.15 + Math.random() * 0.3) * U, (Math.random() - 0.5) * 0.4 * U); g.add(k); }
+            return g;
+        },
+        /* a string of bulbs across the tent */
+        festoon: function (U) {
+            var g = new THREE.Group();
+            var L = 20;
+            var wire = _hqBox(L, 0.01, 0.01, _hqBasic(0x222222)); wire.position.y = 0.3 * U; g.add(wire);
+            for (var i = 0; i < 24; i++) { var b = new THREE.Mesh(new THREE.SphereGeometry(0.06 * U, 8, 6), _hqBasic([0xfff0a0, 0xff8080, 0x80c0ff, 0xa0ffa0][i % 4])); b.position.set((-L / 2 + 0.4 + i * (L - 0.8) / 23) * U, (0.3 - 0.12 * Math.sin(i / 23 * Math.PI)) * U, 0); g.add(b); }
+            return g;
+        },
+        /* ROOM REM: the EEG rack — a trolley with a screen drawing a trace (ticker) */
+        eeg_rack: function (U) {
+            var g = new THREE.Group();
+            var steel = _hqMat(null, 1, 1, { color: 0xd0d4d8, shininess: 60 });
+            var post = _hqBox(0.06, 1.2, 0.06, steel); post.position.y = 0.6 * U; g.add(post);
+            var foot = _hqBox(0.6, 0.05, 0.5, steel); foot.position.y = 0.025 * U; g.add(foot);
+            var box = _hqBox(0.5, 0.4, 0.3, _hqMat(null, 1, 1, { color: 0xe8e8e0, shininess: 30 })); box.position.set(0, 1.15 * U, 0.1 * U); g.add(box);
+            var cv = null, tex = null, ctx = null;
+            if (typeof document !== 'undefined') { cv = document.createElement('canvas'); cv.width = 128; cv.height = 96; ctx = cv.getContext('2d'); tex = new THREE.CanvasTexture(cv); }
+            var scr = new THREE.Mesh(new THREE.PlaneGeometry(0.4 * U, 0.28 * U), tex ? new THREE.MeshBasicMaterial({ map: tex }) : _hqBasic(0x103020)); scr.position.set(0, 1.17 * U, 0.26 * U); g.add(scr);
+            var seed = (_hqProcSeed++) * 1.1, acc = 0;
+            if (_hq) _hq.tickers.push(function (dt, now) {
+                acc += dt; if (acc < 0.1 || !ctx) return; acc = 0;
+                var t = now * 0.001 + seed;
+                ctx.fillStyle = '#062010'; ctx.fillRect(0, 0, 128, 96); ctx.strokeStyle = '#60ff90'; ctx.lineWidth = 2; ctx.beginPath();
+                for (var x = 0; x < 128; x++) { var y = 48 + 12 * Math.sin((x + t * 40) * 0.2) + 6 * Math.sin((x + t * 90) * 0.7) + (Math.random() - 0.5) * 4; if (!x) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+                ctx.stroke(); ctx.fillStyle = '#60ff90'; ctx.font = '10px monospace'; ctx.fillText('REM · ' + Math.floor(52 + 6 * Math.sin(t)) + ' bpm', 4, 12); tex.needsUpdate = true;
+            });
+            return g;
+        },
+        /* ROOM REM: the screen that draws what the sleepers see — a slow drifting drawing of a room with a door (ticker) */
+        dream_screen: function (U) {
+            var g = new THREE.Group();
+            var frame = _hqBox(2.0, 1.2, 0.1, _hqMat(null, 1, 1, { color: 0x2c2f35, shininess: 40 })); frame.position.set(0, 0.6 * U, 0.05 * U); g.add(frame);
+            var cv = null, tex = null, ctx = null;
+            if (typeof document !== 'undefined') { cv = document.createElement('canvas'); cv.width = 256; cv.height = 160; ctx = cv.getContext('2d'); tex = new THREE.CanvasTexture(cv); tex.minFilter = THREE.LinearFilter; }
+            var scr = new THREE.Mesh(new THREE.PlaneGeometry(1.9 * U, 1.1 * U), tex ? new THREE.MeshBasicMaterial({ map: tex }) : _hqBasic(0x201838)); scr.position.set(0, 0.6 * U, 0.105 * U); g.add(scr);
+            var seed = (_hqProcSeed++) * 0.6, acc = 0;
+            function draw(t) {
+                if (!ctx) return;
+                ctx.fillStyle = '#1a1030'; ctx.fillRect(0, 0, 256, 160);
+                var dx = 8 * Math.sin(t * 0.3), dy = 5 * Math.cos(t * 0.23);
+                ctx.strokeStyle = '#c0a0ff'; ctx.lineWidth = 2; ctx.strokeRect(30 + dx, 20 + dy, 196, 120);            // the room
+                ctx.strokeRect(110 + dx * 1.3, 60 + dy, 36, 80);                                                       // the door
+                ctx.fillStyle = '#e0c0ff'; ctx.beginPath(); ctx.arc(140 + dx * 1.3, 100 + dy, 3, 0, Math.PI * 2); ctx.fill();   // the knob
+                ctx.fillStyle = 'rgba(255,255,255,0.06)'; for (var k = 0; k < 20; k++) ctx.fillRect(Math.random() * 256, Math.random() * 160, 40, 1);
+                ctx.fillStyle = '#c0a0ff'; ctx.font = '11px monospace'; ctx.fillText('SUBJECT 3 · REM · THIS ROOM, FROM ABOVE', 8, 152);
+                tex.needsUpdate = true;
+            }
+            draw(seed);
+            if (_hq) _hq.tickers.push(function (dt, now) { acc += dt; if (acc < 0.15) return; acc = 0; draw(now * 0.001 + seed); });
+            return g;
+        },
+        /* ROOM 0dB: the tank — a pod with its lid ajar and a blue light inside; the lid breathes (ticker) */
+        iso_tank: function (U) {
+            var g = new THREE.Group();
+            var shell = _hqMat(null, 1, 1, { color: 0xe8e8f0, shininess: 90, specular: 0xffffff });
+            var body = _hqBox(2.4, 0.9, 1.6, shell); body.position.y = 0.45 * U; g.add(body);
+            var inner = _hqBox(2.1, 0.02, 1.3, new THREE.MeshBasicMaterial({ color: 0x60a0ff })); inner.position.y = 0.905 * U; g.add(inner);
+            var water = _hqBox(2.1, 0.01, 1.3, new THREE.MeshPhongMaterial({ color: 0x3060c0, transparent: true, opacity: 0.6, shininess: 160 })); water.position.y = 0.92 * U; g.add(water);
+            var hinge = new THREE.Group(); hinge.position.set(0, 0.9 * U, -0.8 * U); g.add(hinge);
+            var lid = _hqBox(2.4, 0.1, 1.6, shell); lid.position.set(0, 0.05 * U, 0.8 * U); hinge.add(lid);
+            hinge.rotation.x = -0.35;
+            var glow = _hzGlowSprite(2.0 * U, 0x60a0ff, 0.35, 0.1, 0.04, 0.5); glow.position.y = 1.0 * U; g.add(glow);
+            var seed = (_hqProcSeed++) * 0.5;
+            if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.001 + seed; hinge.rotation.x = -0.35 - 0.05 * Math.sin(t * 0.4); glow.material.opacity = 0.25 + 0.12 * Math.sin(t * 0.4); });
+            return g;
+        },
+        /* ROOM 4B: the red button under a hinged cover, a label, a lamp */
+        evac_button: function (U) {
+            var g = new THREE.Group();
+            var plate = _hqBox(0.3, 0.3, 0.03, _hqBasic(0xf2d21a)); plate.position.set(0, 0.15 * U, 0.015 * U); g.add(plate);
+            var btn = new THREE.Mesh(new THREE.CylinderGeometry(0.07 * U, 0.08 * U, 0.05 * U, 14), new THREE.MeshPhongMaterial({ color: 0xff2020, emissive: 0xa00000, emissiveIntensity: 0.5, shininess: 80 })); btn.rotation.x = Math.PI / 2; btn.position.set(0, 0.15 * U, 0.055 * U); g.add(btn);
+            var cover = _hqBox(0.22, 0.22, 0.02, new THREE.MeshPhongMaterial({ color: 0xc0e0ff, transparent: true, opacity: 0.35, shininess: 120 })); cover.position.set(0, 0.11 * U, 0.06 * U); cover.rotation.x = -0.9; g.add(cover);
+            var tx = _hzTextTex('hq_evac_label', ['EVACUATE'], { w: 256, h: 48, color: '#111111' });
+            if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(0.26 * U, 0.05 * U), new THREE.MeshBasicMaterial({ map: tx, transparent: true })); m.position.set(0, 0.025 * U, 0.032 * U); g.add(m); }
+            return g;
+        },
+        warning_tape: function (U) {
+            var g = new THREE.Group();
+            var tex = null;
+            if (typeof document !== 'undefined') { var c = document.createElement('canvas'); c.width = 256; c.height = 32; var x = c.getContext('2d'); x.fillStyle = '#f2d21a'; x.fillRect(0, 0, 256, 32); x.fillStyle = '#111'; for (var i = 0; i < 8; i++) { x.beginPath(); x.moveTo(i * 32, 0); x.lineTo(i * 32 + 16, 0); x.lineTo(i * 32 + 48, 32); x.lineTo(i * 32 + 32, 32); x.closePath(); x.fill(); } tex = new THREE.CanvasTexture(c); tex.wrapS = THREE.RepeatWrapping; tex.repeat.set(8, 1); }
+            var strip = new THREE.Mesh(new THREE.PlaneGeometry(4.0 * U, 0.16 * U), tex ? new THREE.MeshBasicMaterial({ map: tex }) : _hqBasic(0xf2d21a)); strip.rotation.x = -Math.PI / 2; strip.position.y = 0.006 * U; g.add(strip);
+            return g;
+        },
+        /* ROOM II: the gun on the table — a pistol silhouette, lying on its side */
+        lone_gun: function (U) {
+            var g = new THREE.Group();
+            var gm = _hqMat(null, 1, 1, { color: 0x2a2c30, shininess: 80, specular: 0x888888 });
+            var slide = _hqBox(0.2, 0.035, 0.03, gm); slide.position.set(0.02 * U, 0.06 * U, 0); g.add(slide);
+            var frame = _hqBox(0.14, 0.03, 0.028, gm); frame.position.set(0.0, 0.03 * U, 0); g.add(frame);
+            var grip = _hqBox(0.035, 0.09, 0.028, _hqMat('wood', 1, 1, { color: 0x5a3a24 })); grip.position.set(-0.06 * U, 0.02 * U, 0); grip.rotation.z = 0.25; g.add(grip);
+            var guard = new THREE.Mesh(new THREE.TorusGeometry(0.02 * U, 0.004 * U, 6, 12), gm); guard.position.set(-0.02 * U, 0.015 * U, 0); g.add(guard);
+            g.rotation.x = Math.PI / 2; g.rotation.z = 0.3;
+            var pivot = new THREE.Group(); g.position.y = 0.014 * U; pivot.add(g);
+            var tag = _hqBox(0.07, 0.001, 0.04, _hqBasic(0xf0e8d0)); tag.position.set(0.16 * U, 0.001 * U, 0.06 * U); tag.rotation.y = 0.3; pivot.add(tag);
+            return pivot;
+        },
+        /* ROOM II: the garbage chute — a steel hatch with a pull handle and a stencil */
+        garbage_chute: function (U) {
+            var g = new THREE.Group();
+            var steel = _hqMat('metal_3', 1, 1, { color: 0x8a9298, shininess: 70 });
+            var frame = _hqBox(0.8, 0.9, 0.2, steel); frame.position.set(0, 0.45 * U, 0.1 * U); g.add(frame);
+            var hatch = _hqBox(0.62, 0.66, 0.04, _hqMat(null, 1, 1, { color: 0x6a7278, shininess: 60 })); hatch.position.set(0, 0.42 * U, 0.22 * U); hatch.rotation.x = 0.25; g.add(hatch);
+            var handle = _hqBox(0.3, 0.03, 0.03, steel); handle.position.set(0, 0.2 * U, 0.3 * U); g.add(handle);
+            var dark = _hqBox(0.6, 0.1, 0.02, _hqBasic(0x0a0a0c)); dark.position.set(0, 0.8 * U, 0.21 * U); g.add(dark);
+            var tx = _hzTextTex('hq_chute', ['DISPOSAL', 'FORM II · ONE OF YOU'], { w: 512, h: 128, color: '#f2d21a' });
+            if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(0.7 * U, 0.17 * U), new THREE.MeshBasicMaterial({ map: tx, transparent: true })); m.position.set(0, 0.08 * U, 0.205 * U); g.add(m); }
+            return g;
+        },
+    });
     function _hqProcProp(name) {
         var b = _hqProcBuilders[name];
         if (!b) return null;
@@ -40253,7 +40852,15 @@ const ThreeRenderer = (function () {
             var r = onWall ? (inward ? Rw + 0.35 : Rw - 0.35) : (p.r || 0);
             var mount = (p.mount != null) ? p.mount : (cat.mount || 0);
             var onCeil = !!(cat.ceil || p.ceil);
-            var y = onCeil ? (y0 + ((p.y != null) ? p.y : _hqCeilY(room, level))) : (y0 + (p.y || 0) + mount);
+            /* THE UPSIDE-DOWN ROOM (Phase 8 stage 2, 2026-09-15): `flip: true` hangs a
+               floor / wall prop from the ceiling upside down (a ceiling prop stands
+               on the floor upside down) — rotation.z = π in its own frame, no
+               blocker, a wall prop's `mount` measured down from the ceiling */
+            var flip = !!p.flip;
+            var ceilY = _hqCeilY(room, level);
+            if (flip) { onCeil = !onCeil; }
+            var y = onCeil ? (y0 + ((p.y != null) ? p.y : ceilY)) : (y0 + (p.y || 0) + mount);
+            if (flip) y = (cat.ceil || p.ceil) ? (y0 + (cat.h || 0.1)) : (y0 + ceilY - mount - (p.y || 0));
             var fitSpan = (cat.span != null && cat.h == null) || (p.span != null);
             var target = ((fitSpan ? (p.span || cat.span) : (p.h || cat.h)) || 1) * U;
             if (p.ring && cat.wedge && !isBox) { _hqPlaceWedgeRing(p, cat, r, y0, y, target); return; }
@@ -40267,12 +40874,14 @@ const ThreeRenderer = (function () {
             }
             if (isBox) grp.rotation.y = (box ? box.yaw : _hqHeadingYaw(p.face || 0)) - _hqRad(p.rot || 0);
             else grp.rotation.y = _hqFaceCentreYaw(p.deg) + (inward ? Math.PI : 0) - _hqRad(p.rot || 0);
+            if (flip) grp.rotation.z = Math.PI;
             if (cat.proc) {
                 /* procedural: built in metres, no async fit */
                 var pg = _hqProcProp(cat.proc);
                 if (!pg) return;
                 place(onWall ? (cat.depth || 0.1) : 0);
-                if (onCeil) grp.position.y = y * U - (cat.h || 0.1) * U;
+                if (onCeil && !flip) grp.position.y = y * U - (cat.h || 0.1) * U;
+                if (flip) grp.position.y = y * U;
                 grp.add(pg);
                 if (cat.glow) { var pgl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4); pgl.position.y = cat.glow.y * U; grp.add(pgl); }
                 /* Phase 8 (2026-09-14): a proc may carry a POINT LIGHT (catalogue `light`: colour / intensity / dist / y) — the torches, the bulbs, the orb; capped at HQ_PROP_LIGHT_MAX per room */
@@ -40282,7 +40891,8 @@ const ThreeRenderer = (function () {
                 }
                 G.add(grp);
                 _hq.props.push({ key: p.key, grp: grp });
-                if (cat.foot > 0 && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0, top: y + (cat.h || 1), rect: (p.rect === false) ? undefined : (cat.rect || undefined) });   // `rect` (2026-09-14): a rectangular footprint in room axes
+                /* the blocker's base is the prop's own `y` (Phase 8 stage 2: a stair step stacked by `y` is a column from its base, so the floor under a raised landing stays a floor) */
+                if (!flip && cat.foot > 0 && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0 + (p.y || 0), top: y + (cat.h || 1), rect: (p.rect === false) ? undefined : (cat.rect || undefined) });   // `rect` (2026-09-14): a rectangular footprint in room axes
                 return;
             }
             place(0.66);
@@ -40292,7 +40902,7 @@ const ThreeRenderer = (function () {
                low enough, and its side is solid in the air (no more jumping
                into a cabinet and walking out through the wall of props) */
             var blk = null;
-            if (cat.foot > 0 && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { blk = { obj: grp, rad: cat.foot, y: y0, top: y + (cat.h || 1), rect: (p.rect === false) ? undefined : (cat.rect || undefined) }; _hq.blockers.push(blk); }
+            if (!flip && cat.foot > 0 && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { blk = { obj: grp, rad: cat.foot, y: y0 + (p.y || 0), top: y + (cat.h || 1), rect: (p.rect === false) ? undefined : (cat.rect || undefined) }; _hq.blockers.push(blk); }
             var inst = _miscModelInstance(_hqModelUrl(cat), true, target, {
                 fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick,
                 onDone: function (g, s, bb) {
@@ -40314,7 +40924,8 @@ const ThreeRenderer = (function () {
                         place(depth);
                     }
                     /* ceiling-hung: the loader sits models on y = 0, so drop by the model's height */
-                    if (onCeil) grp.position.y = y * U - (bb.max.y - bb.min.y) * s - 0.01 * U;
+                    if (onCeil && !flip) grp.position.y = y * U - (bb.max.y - bb.min.y) * s - 0.01 * U;
+                    if (flip) grp.position.y = y * U - ((cat.ceil || p.ceil) ? 0 : 0.01 * U);
                     /* the real top: the fitted height (a laid rug is thin-axis up, and has no disc anyway) */
                     if (blk && !cat.lay) blk.top = y + (bb.max.y - bb.min.y) * s / U;
                     if (_hq) _hq.dirty = true;
@@ -40972,13 +41583,24 @@ const ThreeRenderer = (function () {
                spawns that entity when it has a rigged model — declassified or
                not, it lives here; the rest of the spots take the roster draw */
             var free = [];
+            /* ROOM DIALOGUE (Phase 8 stage 2, 2026-09-15): a spot's `say` (a line or a
+               list) is what whoever stands there says about THIS room — it rides the
+               character as its `line`, read before any roster line (map.js
+               _hqNpcPanelHtml). `clone: true` spawns the walker's OWN vessel (Room II). */
+            var sayOf = function (spot) { var s = spot && spot.say; if (!s) return null; if (Array.isArray(s)) return s.length ? s[Math.floor(Math.random() * s.length)] : null; return String(s); };
             spots.forEach(function (spot, si) {
                 var rh = spot.race;
+                if (spot.clone && av.race) {
+                    var csp = _hqSettingFreeSpot(spot.x, spot.z);
+                    _hqSpawnCharacter({ id: 'hq-clone-' + si, kind: 'npc', race: av.race, gender: av.gender || 'male', appearance: av.appearance || undefined, deg: spot.deg, r: spot.r, x: csp.x, z: csp.z, level: spot.level || 0, face: spot.face || 0,
+                                        line: sayOf(spot), label: 'THE OTHER ONE', sub: 'YOU · ALREADY HERE' });
+                    return;
+                }
                 if (rh && typeof getRace3DModel === 'function' && (getRace3DModel(rh, 'male') || getRace3DModel(rh, 'female'))) {
                     var hm = !!getRace3DModel(rh, 'male'), hf = !!getRace3DModel(rh, 'female');
                     var hg = (hm && hf) ? (Math.random() < 0.5 ? 'male' : 'female') : (hm ? 'male' : 'female');
                     var nsp = _hqSettingFreeSpot(spot.x, spot.z);   // off the setting's houses / stands (stage 5)
-                    _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: rh, gender: hg, deg: spot.deg, r: spot.r, x: nsp.x, z: nsp.z, level: spot.level || 0, face: spot.face || 0 });
+                    _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: rh, gender: hg, deg: spot.deg, r: spot.r, x: nsp.x, z: nsp.z, level: spot.level || 0, face: spot.face || 0, line: sayOf(spot) });
                     var oi = owned.indexOf(rh); if (oi >= 0) owned.splice(oi, 1);
                 } else free.push(spot);
             });
@@ -40991,7 +41613,7 @@ const ThreeRenderer = (function () {
                 var hasM = !!getRace3DModel(rk2, 'male'), hasF = !!getRace3DModel(rk2, 'female');
                 var g = (hasM && hasF) ? (Math.random() < 0.5 ? 'male' : 'female') : (hasM ? 'male' : 'female');
                 var ksp = _hqSettingFreeSpot(spots[k].x, spots[k].z);
-                _hqSpawnCharacter({ id: 'hq-npc-' + k, kind: 'npc', race: rk2, gender: g, deg: spots[k].deg, r: spots[k].r, x: ksp.x, z: ksp.z, level: spots[k].level || 0, face: spots[k].face || 0 });
+                _hqSpawnCharacter({ id: 'hq-npc-' + k, kind: 'npc', race: rk2, gender: g, deg: spots[k].deg, r: spots[k].r, x: ksp.x, z: ksp.z, level: spots[k].level || 0, face: spots[k].face || 0, line: sayOf(spots[k]) });
             }
         } catch (e) { console.warn('[HQ] roster NPCs skipped', e); }
         /* THE OTHER OPERATIVES ON SHIFT (Room 86, 2026-09-11; plan §8's open
@@ -41121,7 +41743,7 @@ const ThreeRenderer = (function () {
             var hits = _hqBlockersUnder(x, z);
             for (var bi = 0; bi < hits.length; bi++) {
                 var b = hits[bi], top = _hqBlkTop(b);
-                if (b.y != null && b.y > y + 1.2) continue;      // furniture on the level above (under the slab)
+                if (b.y != null && b.y > y + 1.2 && (curY == null || b.y > curY + 1.2)) continue;      // furniture on the level above (under the slab) — or a raised landing you are not on (Phase 8 stage 2: the stairwell)
                 if (top <= y + 0.02) continue;                    // buried under this floor
                 if (curY != null && top - curY <= (b.step || HQ_STEP_TOL)) {   // a site board's step climbs one level (plan 7.2)
                     /* a step / the thing you stand on: it is the floor only

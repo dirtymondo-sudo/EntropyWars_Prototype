@@ -376,6 +376,8 @@
             return _hqRoomExists(_HQ_FOYER);
         }
         function _hqArrivalRoom() { return _hqFoyerOn() ? _HQ_FOYER : 'central_egress'; }
+        /* THE MANDELA ROOM (Phase 8 stage 2): entries per room this session, and what stood last time */
+        const _hqEachN = {}, _hqEachLast = {};
         /* a forced room variant for a dev run: '<id>' stands it, 'none' / '' stands the sheet, undefined = roll */
         function _hqVariantForce() {
             let f = null;
@@ -523,6 +525,27 @@
             if (!returning && !walking && typeof window.hqRollRoomVariants === 'function') {
                 try { window.hqRollRoomVariants(_hqProfile(), { force: _hqVariantForce() }); } catch (e) { console.warn('[HQ] variant roll failed', e); }
             }
+            /* THE MANDELA ROOM (Phase 8 stage 2, 2026-09-15): a room whose variants say
+               `when: { each: true }` is a DIFFERENT ROOM ON EVERY ENTRY — rolled here,
+               on every entry (a walk in, a return), never twice the same in a row
+               (data.js hqVariantRollEach); the frame on its wall remembers the last
+               one for you alone (window._hqMandelaLast). `?hqvariant=` forces it too. */
+            try {
+                if (typeof window.hqVariantRollEach === 'function' && typeof window.hqRoomBase === 'function' && typeof window.hqApplyRoomVariant === 'function') {
+                    const baseR = window.hqRoomBase(roomId);
+                    const each = !!(baseR && baseR.variants && Object.keys(baseR.variants).some(v => baseR.variants[v] && baseR.variants[v].when && baseR.variants[v].when.each));
+                    if (each) {
+                        _hqEachN[roomId] = (_hqEachN[roomId] || 0) + 1;
+                        const last = (_hqEachLast[roomId] === undefined) ? null : _hqEachLast[roomId];
+                        let vid = window.hqVariantRollEach(roomId, _hqProfile(), _hqEachN[roomId], last);
+                        const forced = _hqVariantForce();
+                        if (forced !== undefined) vid = (forced && baseR.variants[forced]) ? forced : null;
+                        window.hqApplyRoomVariant(roomId, vid);
+                        _hqEachLast[roomId] = vid;
+                        window._hqMandelaLast = { room: roomId, last, now: vid, n: _hqEachN[roomId] };
+                    }
+                }
+            } catch (e) { console.warn('[HQ] per-entry variant roll failed', e); }
             const roomDef = DOOR_HQ.rooms[roomId];
             try { playSfx('uiButtonConfirm'); } catch (e) {}
             /* the strike plate buzzes on the way IN from Play; a return from a
@@ -2612,6 +2635,169 @@
                 const sh = (typeof window.hqDailyOps === 'function') ? window.hqDailyOps(_hqProfile()) : null;
                 if (sh) html += `<p class="hq-panel-desc">Pinned under the photographs: today's FORM 365 — <b>${sh.done} / ${sh.total}</b> lines filed${sh.allDone ? ', the sheet is complete' : ''}. The sheet itself hangs in the Clock Room.</p><div class="hq-panel-actions"><button class="hq-btn" onclick="window._hqOpenForm365()">FORM 365 ▸ THE SHEET</button></div>`;
             }
+            /* ── PHASE 8 STAGE 2 (2026-09-15): the two new floors' by-id panels — every one a
+               panel that says what it is (ONE HOME PER FUNCTION, C-27: none of them launches
+               a screen); the copy is Claude's draft (A15) ── */
+            /* THE LINE (Room 1000): the works' tally off the register */
+            if (c.id === 'line') {
+                const t = (typeof window.hqWorksTally === 'function') ? window.hqWorksTally() : null;
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p>';
+                if (t) html += '<div class="hq-rows">'
+                    + `<div class="hq-row hq-row-tray"><b>TODAY</b><span>DOORS OFF THE BELTS · THE SIGN SAYS SO</span><i class="hq-lamp-chip st-stabilized">${t.today}</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>ON THE REGISTER</b><span>SITES WITH A DOOR IN THE BUILDING</span><i class="hq-lamp-chip st-open">${t.register}</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>WALKABLE</b><span>SITES YOU CAN STAND IN</span><i class="hq-lamp-chip st-open">${t.built}</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>TO THE FURNACE</b><span>SEALED · CLOSED FOR GOOD</span><i class="hq-lamp-chip st-codered">${t.sealed}</i></div>`
+                    + '</div>';
+                html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">NOTED</button></div>';
+                html += '<p class="hq-panel-note">The chalk is fresh every morning. The numbers are the same every morning.</p>';
+                return html;
+            }
+            /* THE MANIFEST (Room 000): every reality closed for good — the sealed rows of the register */
+            if (c.id === 'manifest') {
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p>';
+                let rows = [];
+                try {
+                    const reg = (typeof window.hqRoomRegister === 'function') ? window.hqRoomRegister() : [];
+                    rows = reg.filter(r => r.kind === 'site').map(r => { let st = 'open'; try { st = window.doorSiteState({ id: r.mapId, action: { mission: r.mapId } }, _hqProfile()); } catch (e) {} return { r, st }; }).filter(x => x.st === 'sealed');
+                } catch (e) { rows = []; }
+                html += '<div class="hq-rows">';
+                if (!rows.length) html += '<div class="hq-row hq-row-tray"><b>THE MANIFEST</b><span>NOTHING ON IT TODAY · THE FURNACE IS LIT ANYWAY</span><i class="hq-lamp-chip st-open">0</i></div>';
+                rows.forEach(x => { html += `<div class="hq-row hq-row-tray"><b>ROOM ${_hqEsc(x.r.no)} · ${_hqEsc(x.r.label)}</b><span>THE DOOR WENT IN · THE WOOD CAME OUT THE SAME</span><i class="hq-lamp-chip st-codered">CLOSED</i></div>`; });
+                html += `<div class="hq-row hq-row-tray"><b>LINE 1</b><span>IN THE OLDEST HAND · THE SITE IS NOT ON THE REGISTER ANY MORE</span><i class="hq-lamp-chip st-sealed">1987</i></div>`;
+                html += '</div><div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">NOTED</button></div>';
+                html += '<p class="hq-panel-note">A reality is closed for good when it stops knocking. The operator listens for a week first.</p>';
+                return html;
+            }
+            /* THE PARTS (Room Y): the door on the slab, in the order it came off */
+            if (c.id === 'parts') {
+                const parts = (typeof window.hqDoorParts === 'function') ? window.hqDoorParts() : [];
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p><div class="hq-rows">';
+                parts.forEach((p, i) => { const missing = /missing/i.test(p.tag); html += `<div class="hq-row hq-row-tray"><b>${i + 1} · ${_hqEsc(p.part)}</b><span>${_hqEsc(p.tag.toUpperCase())}</span><i class="hq-lamp-chip ${missing ? 'st-codered' : 'st-stabilized'}">${missing ? 'GONE' : 'TAGGED'}</i></div>`; });
+                html += '</div><div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">NOTED</button></div>';
+                html += '<p class="hq-panel-note">CAUSE: OPENED. They are all opened. That is the cause.</p>';
+                return html;
+            }
+            /* THE BEDS (Room ½): the growth log */
+            if (c.id === 'bed') {
+                const t = (typeof window.hqWorksTally === 'function') ? window.hqWorksTally() : null;
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p><div class="hq-rows">'
+                    + '<div class="hq-row hq-row-tray"><b>BED 1</b><span>PLANTED 1987 · SPROUTED 1987 · FIRST OPENED: NOT RECORDED</span><i class="hq-lamp-chip st-stabilized">GROWN</i></div>'
+                    + '<div class="hq-row hq-row-tray"><b>BED 2</b><span>PLANTED TUESDAY · SPROUTED WEDNESDAY · OPENS ONTO THE FAIRY’S HOUSE</span><i class="hq-lamp-chip st-unstable">RIPE</i></div>'
+                    + '<div class="hq-row hq-row-tray"><b>BED 3</b><span>PLANTED TODAY · THE SOIL IS THE LAST DOOR</span><i class="hq-lamp-chip st-open">SEED</i></div>'
+                    + `<div class="hq-row hq-row-tray"><b>THE TRELLIS</b><span>THE BIG ONE · DO NOT STAND IN FRONT OF IT</span><i class="hq-lamp-chip st-codered">${t ? t.register : '?'}</i></div>`
+                    + '</div><div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">NOTED</button></div>';
+                html += '<p class="hq-panel-note">Nobody has written down what is behind one. The gardener says that is the point of growing them.</p>';
+                return html;
+            }
+            /* THE FEEDS (Room 24/7): one screen per numbered room; this room is LIVE */
+            if (c.id === 'feeds') {
+                const feeds = (typeof window.hqSecurityFeeds === 'function') ? window.hqSecurityFeeds(_hqCurRoom) : [];
+                const live = feeds.filter(f => f.st === 'live').length, dead = feeds.filter(f => f.st === 'dead').length;
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + ` <b>${feeds.length}</b> feeds, <b>${dead}</b> with no signal, <b>${live}</b> live.</p>`;
+                html += '<div class="hq-rows hq-rows-scroll">';
+                feeds.forEach(f => { const cls = f.st === 'live' ? 'st-codered' : (f.st === 'dead' ? 'st-sealed' : 'st-stabilized'); const word = f.st === 'live' ? 'LIVE · YOU' : (f.st === 'dead' ? 'NO SIGNAL' : 'SIGNAL'); html += `<div class="hq-row hq-row-tray"><b>ROOM ${_hqEsc(f.no)}</b><span>${_hqEsc(f.label)}</span><i class="hq-lamp-chip ${cls}">${word}</i></div>`; });
+                html += '</div><div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">STOP WATCHING</button></div>';
+                html += '<p class="hq-panel-note">The camera over the door is pointed at the screens. The night watch has never turned round.</p>';
+                return html;
+            }
+            /* THE CLAIMS BOOK (Room ?): the day's page, one line yours */
+            if (c.id === 'claims') {
+                const rows = (typeof window.hqClaimsBook === 'function') ? window.hqClaimsBook(_hqProfile()) : [];
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p><div class="hq-rows">';
+                rows.forEach(r => { html += `<div class="hq-row hq-row-tray${r.yours ? ' hq-row-you' : ''}"><b>${_hqEsc(r.item)}</b><span>FOUND: ${_hqEsc(r.where)}${r.yours ? ' · LOST BY: ' + _hqEsc(r.who) : ''}</span><i class="hq-lamp-chip ${r.yours ? 'st-codered' : (r.claimed ? 'st-stabilized' : 'st-open')}">${r.yours ? 'NOT YET' : (r.claimed ? 'CLAIMED' : 'UNCLAIMED')}</i></div>`; });
+                html += '</div><div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">DESCRIBE NOTHING</button></div>';
+                html += '<p class="hq-panel-note">The sock is yours. You have not lost it yet. The clerk has it on the shelf anyway.</p>';
+                return html;
+            }
+            /* DEPARTURES (the tunnel): every route, the next train, DELAYED */
+            if (c.id === 'departures') {
+                const R = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.routes) || {};
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p><div class="hq-rows">';
+                Object.keys(R).forEach((k, i) => { html += `<div class="hq-row hq-row-tray"><b>${_hqEsc((R[k].label || k).toUpperCase())}</b><span>${_hqEsc((R[k].sub || '').toUpperCase())}</span><i class="hq-lamp-chip st-unstable">${17 + i * 3} MIN · DELAYED</i></div>`; });
+                html += '<div class="hq-row hq-row-tray"><b>THE END OF THE LINE</b><span>THE MIDWAY · THROUGH THE DOORS AT THE END OF THE PLATFORM</span><i class="hq-lamp-chip st-stabilized">WALK</i></div>';
+                html += '</div><div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">MIND THE GAP</button></div>';
+                html += '<p class="hq-panel-note">The train at the platform is on none of the lines. Its doors are open. Nobody has to get on.</p>';
+                return html;
+            }
+            /* THE TICKET BOOTH (Room 1893): ADMIT ONE */
+            if (c.id === 'booth') {
+                const pc = (typeof window.hqPunchClock === 'function') ? window.hqPunchClock(_hqProfile()) : null;
+                const visits = (_hqProfile() && _hqProfile().door && _hqProfile().door.hq && _hqProfile().door.hq.visits) || 0;
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p><div class="hq-rows">'
+                    + `<div class="hq-row hq-row-tray"><b>ADMIT ONE</b><span>THE PRICE · ONE VISIT · YOU HAVE PAID ${visits}</span><i class="hq-lamp-chip st-stabilized">PAID</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>THE WHEEL</b><span>TURNING SINCE 1893 · NO QUEUE</span><i class="hq-lamp-chip st-open">OPEN</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>THE BELL</b><span>NOBODY HAS RUNG IT · THE STRONGMAN IS THE BELL</span><i class="hq-lamp-chip st-unstable">${pc && pc.streak ? pc.streak + ' DAYS' : 'UNRUNG'}</i></div>`
+                    + '<div class="hq-row hq-row-tray"><b>THE HALL OF MIRRORS</b><span>ROOM * · IT IS DIFFERENT IN THERE</span><i class="hq-lamp-chip st-codered">DIFFERENT</i></div>'
+                    + '</div><div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">STEP RIGHT UP</button></div>';
+                html += '<p class="hq-panel-note">The card in the window is written in a currency the building does not use. Everyone has been let in anyway.</p>';
+                return html;
+            }
+            /* THE DREAM LOG (Room REM): the last roster, dreamt */
+            if (c.id === 'log') {
+                let party = null; try { party = (typeof window._ewLoadLastParty === 'function') ? window._ewLoadLastParty() : null; } catch (e) { party = null; }
+                const stages = ['N1 · DRIFTING', 'N2 · UNDER', 'N3 · DEEP', 'REM · THIS ROOM, FROM ABOVE'];
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p><div class="hq-rows">';
+                const members = (party && Array.isArray(party.members)) ? party.members : [];
+                if (!members.length) html += '<div class="hq-row hq-row-tray"><b>NO SUBJECTS ON FILE</b><span>NOBODY HAS CROSSED YET · THE COTS DREAM OF THE BUILDING</span><i class="hq-lamp-chip st-open">—</i></div>';
+                members.slice(0, 8).forEach((m, i) => { const nm = (m.name || (m.meta && m.meta.race) || m.cls || 'SUBJECT').toString().toUpperCase(); html += `<div class="hq-row hq-row-tray"><b>SUBJECT ${i + 1} · ${_hqEsc(nm)}</b><span>${_hqEsc((m.meta && m.meta.race ? m.meta.race + ' · ' : '') + (m.cls || ''))}</span><i class="hq-lamp-chip ${i % 4 === 3 ? 'st-codered' : 'st-stabilized'}">${_hqEsc(stages[i % 4])}</i></div>`; });
+                html += `<div class="hq-row hq-row-tray"><b>THE SCREEN</b><span>DREW ${party && party.mode ? _hqEsc(String(party.mode).toUpperCase()) : 'THIS ROOM'} · FROM ABOVE · FOR AN HOUR</span><i class="hq-lamp-chip st-unstable">DRAWN</i></div>`;
+                html += '</div><div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">DO NOT WAKE THEM</button></div>';
+                html += '<p class="hq-panel-note">Your last crossing is in the log, dreamt by someone who was not there. The details are right.</p>';
+                return html;
+            }
+            /* THE LID (Room 0dB): FLOAT / NOT TODAY */
+            if (c.id === 'lid') {
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p><div class="hq-rows">'
+                    + '<div class="hq-row hq-row-tray"><b>SESSION 1</b><span>60 MINUTES · HEARD THE PIPES</span><i class="hq-lamp-chip st-stabilized">LOGGED</i></div>'
+                    + '<div class="hq-row hq-row-tray"><b>SESSION 2</b><span>74 MINUTES · HEARD THE FLOORS</span><i class="hq-lamp-chip st-stabilized">LOGGED</i></div>'
+                    + '<div class="hq-row hq-row-tray"><b>SESSION 3</b><span>ONGOING · HEARD WHICH FLOOR</span><i class="hq-lamp-chip st-codered">IN THE TANK</i></div>'
+                    + '</div><div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">NOT TODAY</button><button class="hq-btn" disabled title="The lid will not close with the room watching. Session 3 is still in there.">FLOAT · 60 MIN</button></div>';
+                html += '<p class="hq-panel-note">Zero decibels. Then what is that? Your heart. It is not on the log.</p>';
+                return html;
+            }
+            /* THE FRAME (Room *): what you remember — the last room this room was */
+            if (c.id === 'frame') {
+                const M = window._hqMandelaLast || null;
+                const base = (typeof window.hqRoomBase === 'function') ? window.hqRoomBase(_hqCurRoom) : null;
+                const name = v => { if (!v) return (base && base.sub) ? String(base.sub).split('·')[0].trim() : 'THE WAITING ROOM'; const vd = base && base.variants && base.variants[v]; return vd && vd.sub ? String(vd.sub).split('·')[0].trim() : String(v).toUpperCase(); };
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p><div class="hq-rows">'
+                    + `<div class="hq-row hq-row-tray"><b>NOW</b><span>WHAT THE ROOM IS · WHAT IT HAS ALWAYS BEEN</span><i class="hq-lamp-chip st-stabilized">${_hqEsc(name(M ? M.now : null))}</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>YOU REMEMBER</b><span>WHAT IT WAS WHEN YOU LAST CAME IN · NOBODY ELSE DOES</span><i class="hq-lamp-chip ${M && M.last !== undefined && M.n > 1 ? 'st-codered' : 'st-open'}">${M && M.n > 1 ? _hqEsc(name(M.last)) : 'NOTHING YET'}</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>TIMES IN</b><span>THIS VISIT</span><i class="hq-lamp-chip st-open">${M ? M.n : 0}</i></div>`
+                    + '</div><div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">I REMEMBER</button></div>';
+                html += '<p class="hq-panel-note">Leave and come back. It will be something else, and the plate on the door will say it always was.</p>';
+                return html;
+            }
+            /* THE NOTE ON THE FLOOR (Room 9) */
+            if (c.id === 'note') {
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p><div class="hq-rows">'
+                    + '<div class="hq-row hq-row-tray"><b>THE NOTE</b><span>THE FLOOR IS THE CEILING. DO NOT LOOK UP. — MANAGEMENT</span><i class="hq-lamp-chip st-unstable">ᗡ∩</i></div>'
+                    + '<div class="hq-row hq-row-tray"><b>THE FINDING</b><span>NOTHING HAS FALLEN</span><i class="hq-lamp-chip st-stabilized">HELD</i></div>'
+                    + '</div><div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">MIND YOUR HEAD</button></div>';
+                html += '<p class="hq-panel-note">The rail is the only thing in the room the right way up. It was put in for you.</p>';
+                return html;
+            }
+            /* EVACUATION (Room 4B): the button — it clears the building to the foyer */
+            if (c.id === 'evac') {
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p><div class="hq-rows">'
+                    + '<div class="hq-row hq-row-tray"><b>THE BUTTON</b><span>RED · UNDER A HINGED COVER · WIRED TO EVERY BELL</span><i class="hq-lamp-chip st-codered">ARMED</i></div>'
+                    + '<div class="hq-row hq-row-tray"><b>THE CLOSET</b><span>BEHIND THE BLAST DOOR · CLEARANCE L6 · SUPPLIES</span><i class="hq-lamp-chip st-clearance">L6</i></div>'
+                    + '</div><div class="hq-panel-actions"><button class="hq-btn" data-close="1">LEAVE IT</button>' + (_hqRoomExists('foyer') ? '<button class="hq-btn hq-btn-primary" data-room="foyer" data-at="street" data-evac="1">EVACUATE ▸ THE FOYER</button>' : '') + '</div>';
+                html += '<p class="hq-panel-note">In case of the closet. The guards will not say what the closet is in case of.</p>';
+                return html;
+            }
+            /* THE CHUTE (Room II): FORM II — two lines for names, both yours */
+            if (c.id === 'chute') {
+                const ic = (typeof window.hqIntakeCard === 'function') ? window.hqIntakeCard(_hqProfile()) : null;
+                const who = (ic && ic.onFile && ic.callsign) ? String(ic.callsign).toUpperCase() : 'THE UNDERSIGNED';
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || '') + '</p><div class="hq-rows">'
+                    + `<div class="hq-row hq-row-tray"><b>LINE 1</b><span>THE ORIGINAL</span><i class="hq-lamp-chip st-open">${_hqEsc(who)}</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>LINE 2</b><span>THE COPY</span><i class="hq-lamp-chip st-open">${_hqEsc(who)}</i></div>`
+                    + '<div class="hq-row hq-row-tray"><b>THE GUN</b><span>ONE · ON THE TABLE · WHICHEVER PICKS IT UP</span><i class="hq-lamp-chip st-codered">LOADED</i></div>'
+                    + '</div><div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">NEITHER</button><button class="hq-btn" disabled title="The form does not say which line is the clone. Nobody has ever filled in the box.">DISPOSE</button></div>';
+                html += '<p class="hq-panel-note">The other one of you has been here longer and says so. The chute goes down to the other one of the incinerator.</p>';
+                return html;
+            }
             /* Rooms 42 + 1337 (2026-09-13): a counter with a `desc` and no panel of its own states it */
             if (c.desc && !/hq-panel-desc/.test(html)) html += `<p class="hq-panel-desc">${_hqEsc(c.desc)}</p>`;
             if (act.fn) html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="${_hqEsc(act.fn)}">${_hqEsc(c.verb ? (String(c.verb).toUpperCase() + ' AT THE ' + String(c.label || 'COUNTER').toUpperCase()) : 'READ THE BOARD')} ▸ ${_hqEsc(_HQ_FN_LABELS[act.fn] || act.fn)}</button></div>`;
@@ -2779,6 +2965,8 @@
             const spine = e.target.closest('[data-tape]');
             if (spine) { _hqTapeSel = spine.getAttribute('data-tape'); body.innerHTML = _hqTapesHtml() + '<p class="hq-panel-foot">ESC · CLOSE</p>'; try { playSfx('uiButtonConfirm'); } catch (err) {} return; }
             /* THE STAR CHART (Room 360): a star opens its threshold's door panel; ◂ THE CHART comes back */
+            /* EVACUATION (Room 4B, Phase 8 stage 2): the button rings every bell on the way to the foyer */
+            if (e.target.closest('[data-evac]')) { try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 1 }); } catch (err) {} try { playSfx('codeRedSiren'); } catch (err) {} }
             const star = e.target.closest('[data-star]');
             if (star) { window._hqOpenThreshold(star.getAttribute('data-star'), { star: true }); return; }
             if (e.target.closest('[data-starmap]')) { window._hqOpenStarmap(); return; }

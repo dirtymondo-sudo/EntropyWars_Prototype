@@ -3190,6 +3190,72 @@ other eight kinds in the plan's table (mirror · pool · painting ·
 fireplace · phonebox · screen · train · closet) are not built. Viewer-local
 (RULE #2). Unseen live (RULE #1c): the objects themselves.
 
+## PHASE 8 STAGE 2 — TWO MORE FLOORS: 2 · THE WORKS + 4 · THE LABS (HQ plan §8.6) — 2026-09-15 rev 14, local delivery
+Eighteen hand-authored box rooms in `DOOR_HQ.rooms` (data.js, the block
+right before THE HAUNTED HOUSE COMPLEX), two new stops on the car
+(`DOOR_HQ.elevator.stops`: `4` above 3, `2` between 3 and M — seven; the
+car panel proc lights whatever the stops list). `hqStage2Rooms()` lists
+them by floor. **2 · THE WORKS** (`works`): Room 1000 `warehouse` (belts
+`conveyor` / `conveyor_z` with leaves riding them, `robot_arm`s opening and
+shutting one door for ever, `door_stack`s), Room −1 `incinerator`
+(`door_furnace`; THE MANIFEST panel = the register's SEALED sites), Room Y
+`autopsy` (`autopsy_table` — the parts tagged; `hqDoorParts`), Room ½
+`doorgarden` (`planter` + `door_vine` + `grow_lamp`), Room 24/7 `control`
+(`monitor_stack` ×3; THE FEEDS panel = `hqSecurityFeeds(curRoom)` — one
+row per numbered room, LIVE for yours), Room ? `lostfound` (`lost_shelf`;
+THE CLAIMS BOOK = `hqClaimsBook(profile)`), `stairwell`, `tunnel`
+(`track_bed` / `platform_edge` / `train_car` / `tube_map` (= `DOOR_HQ.
+routes`) / `departures_board`), Room 1893 `carnival` (`bigtop`,
+`ferris_wheel`, `carousel`, `fortune_tent`, `high_striker`, `ticket_booth`,
+`popcorn_cart`, `festoon`). **4 · THE LABS** (`labs`): Room REM `dreamlab`
+(`eeg_rack`, `dream_screen`; THE DREAM LOG = the last roster via
+`_ewLoadLastParty`), Room 0dB `tank` (`iso_tank`), Room * `mandela`, Room
+9 `upsidedown`, Room 4B `closet4b` (+ `supply` behind the blast door),
+Room II `disposal` (`lone_gun`, `garbage_chute`). **RULES THAT CAME WITH
+IT**: (1) **a box door may carry `y`** (metres) — it stands at that height
+(three-renderer.js `_hqDoorFloorY`; the build, `_hqGoTo`'s landing spot
+and the doorway camera blocker read it) — put a platform of blockers
+under it (THE STAIRWELL: `stair_landing` at y 5.75, the `landing` door at
+y 6; the walker descends three flights of `stair_step` / `stair_step_x`
+blockers stacked by `y`, 0.25 m a tread, and DOWN at the bottom lands on
+`stairwell@landing` — THE LOOP). For that: a blocker's base is the prop's
+own `y` (`y: y0 + (p.y || 0)` at both `_hqPlaceProps` sites) and the step
+rule skips a raised blocker only when it is above the floor AND above the
+walker (`b.y > y + 1.2 && b.y > curY + 1.2`) — never "fix" that back.
+(2) **`flip: true`** on a prop hangs it from the ceiling upside down (a
+ceiling prop stands on the floor upside down): `rotation.z = π`, a wall
+prop's `mount` measured down from the ceiling, NO blocker (Room 9). (3)
+**ROOM DIALOGUE = `say` on an `npcSpots` row** (a line or a list): whoever
+stands there — a race-hinted native or the roster draw — says THAT before
+any roster line (three-renderer.js `sayOf` → `_hqSpawnCharacter` `line`;
+map.js `_hqNpcPanelHtml` reads `t.line` first). The bathroom's spot is
+the conspiracy theorist at the sink now; Room X has a watcher, the
+cubicle floor a politician. **`clone: true`** on a spot spawns the
+walker's OWN vessel (Room II: THE OTHER ONE). Every `say` is Claude's
+DRAFT (A15). (4) **a variant with `when: { each: true }`** is rolled on
+EVERY entry — data.js `hqVariantRollEach(roomId, profile, n, last)` (the
+sheet + every `each` variant, seeded by variantSeed + day + n, never
+twice the same in a row), applied by map.js `_hqEnter` on every entry
+(`_hqEachN` / `_hqEachLast`, `window._hqMandelaLast` = what you
+remember — THE FRAME panel); the visit roll (`hqVariantRoll` /
+`hqRollRoomVariants`) skips `each` variants and rooms that have only
+them. (5) **Supply Closet 4B's gate is on THE BLAST DOOR** (`leaf_vault`,
+`minClearance: 6`), never on the vestibule; EVACUATION is a panel whose
+button is a room move to the foyer (`data-room="foyer" data-at="street"
+data-evac`) — never a second home for `_hqExitToMenu` (C-27). (6) THE
+PARK RULE in every room (a `railing_1m` + a `riser_*` or the stair's own
+treads — the test insists). Fourteen by-id panels (`line`, `manifest`,
+`parts`, `bed`, `feeds`, `claims`, `departures`, `booth`, `log`, `lid`,
+`frame`, `note`, `evac`, `chute`) in map.js `_hqCounterPanelHtml`; 37
+procs in `Object.assign(_hqProcBuilders, {…})` "PHASE 8 STAGE 2" (with
+`_hqMiniDoor`, the small leaf they share); the garage grew a `tunnel`
+door (e, z −7). Numbers are REC (the user rules). No rank leaf on any of
+it (doorhq.test.js). `npm test` runs `hq-stage2.test.js`. NOT BUILT:
+tapes for the new rooms (the sheet is fixed at 100), a train that arrives
+(the `train` way), cast on the new floors, sounds. UNSEEN LIVE (RULE
+#1c): all of it — the treads under the walker and the boom on the
+landing first, the belts' pace, the flipped office, the Mandela swap.
+
 ## THE DOOR GUN — THE PORTABLE THRESHOLD (HQ plan 9.5 stage 1) — 2026-09-15 rev 13, local delivery
 Two freestanding DOOR-issue doors the walker PLACES. **F** draws / holsters
 (**Q** holsters a drawn one before it rings the bell; RIGHT CLICK too); a

@@ -2492,3 +2492,18 @@ the `facility` kind the building's, `evidence` the footage). Part C row
 26 (cubes) is NOT decided by this: no cube is placed; potions / items /
 cubes are reserved kinds the collector refuses. Nothing on `state`,
 nothing relayed. Unseen live.
+
+### 2026-09-15 — PHASE 8 STAGE 2: TWO MORE FLOORS (HQ plan §8.6, rev 14; local delivery)
+The user's list, built: 2 · THE WORKS (Room 1000 the door works — belts,
+arms, stacks; Room −1 the incinerator whose manifest is the register's
+sealed sites; Room Y the autopsy room with the parts tagged; Room ½ the
+door garden; Room 24/7 the control room whose feeds are the register;
+Room ? the lost and found; THE STAIRWELL that loops; THE TUNNEL; Room 1893
+THE MIDWAY) and 4 · THE LABS (Room REM the dream lab; Room 0dB the tank;
+Room * THE MANDELA ROOM — a different room every entry; Room 9 the
+upside-down room; Room 4B with its L6 blast door and guards; Room II
+clone disposal with the other one of you). ROOM DIALOGUE: `say` on a
+spot — the conspiracy theorist at the bathroom sink. Every number is a
+REC; every line a draft (A15). The register grew thirteen numbered rooms
+(the lobbies, the stair, the tunnel and the closet wear none — rule 2).
+Nothing on `state`, nothing relayed. Unseen live. Next: 9.4.

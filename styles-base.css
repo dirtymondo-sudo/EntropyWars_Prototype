@@ -4116,6 +4116,9 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-panel-line { font-family: 'Cormorant SC', serif; font-size: 18px; line-height: 1.45; color: #ece7d8; margin: 4px 0 14px; }
 .hq-panel-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 .hq-rows { display: flex; flex-direction: column; gap: 4px; margin: 6px 0 10px; }
+/* PHASE 8 STAGE 2 (2026-09-15): THE FEEDS scroll (one row per numbered room); the claims book highlights your line */
+.hq-rows.hq-rows-scroll { max-height: 42vh; overflow-y: auto; padding-right: 4px; }
+.hq-row.hq-row-you { outline: 1px solid rgba(255, 200, 80, 0.6); outline-offset: -1px; }
 .hq-row { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 10px; padding: 6px 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); }
 .hq-row b { font-family: 'Cormorant SC', serif; font-size: 14px; letter-spacing: 0.1em; }
 .hq-row span { font-size: 8px; letter-spacing: 0.2em; color: #b8a060; }

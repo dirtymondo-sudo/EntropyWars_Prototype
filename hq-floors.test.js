@@ -60,7 +60,7 @@ test('THE CAR: the mezzanine elevator opens into it for everyone, every lobby’
     const eg = HQ.rooms.central_egress.doors.find(d => d.id === 'elevator');
     assert.ok(eg && eg.action.room === 'car' && eg.action.at === 'panel' && !eg.minClearance && !eg.requiresKeys && Array.isArray(eg.floors) && !eg.floors.includes('13'), 'the hall door: into the car, ungated, the sixteen buttons without 13');
     const stops = HQ.elevator.stops;
-    assert.deepStrictEqual(stops.map(s => s.id).join(','), 'PH,3,M,G,B', 'five stops, top to bottom');
+    assert.deepStrictEqual(stops.map(s => s.id).join(','), 'PH,4,3,2,M,G,B', 'seven stops, top to bottom (2 · THE WORKS and 4 · THE LABS since Phase 8 stage 2, 2026-09-15)');
     for (const st of stops) {
         const room = HQ.rooms[st.room];
         assert.ok(room, st.id + ' → ' + st.room);
@@ -74,7 +74,7 @@ test('THE CAR: the mezzanine elevator opens into it for everyone, every lobby’
     const rows = D.hqElevatorStops(null, 'garage');
     assert.ok(rows.find(r => r.id === 'PH').locked && rows.find(r => r.id === 'PH').gate.includes('12 KEYS'), 'PH locked without a card, the gate named');
     assert.ok(rows.find(r => r.id === 'G').here && !rows.find(r => r.id === 'B').here, 'the floor the car was boarded from is marked');
-    assert.ok(rows.every(r => r.id === 'PH' || !r.locked), 'the other four are open to a recruit');
+    assert.ok(rows.every(r => r.id === 'PH' || !r.locked), 'the other six are open to a recruit');
     assert.ok(!D.hqElevatorStops({ door: { clearance: 4, hq: { keys: 12 } } }).find(r => r.id === 'PH').locked, 'a KEYHOLDER with twelve Keys rides to PH');
 });
 
