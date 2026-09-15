@@ -18389,6 +18389,9 @@ const DOOR_HQ = {
         riser_1:         { proc: 'riser_1',         h: 0.3,  foot: 3.0, rect: { hw: 4.2, hd: 0.7 }, block: true },           // the lecture hall's tiers: three steps the walker climbs (≤ HQ_STEP_TOL each)
         riser_2:         { proc: 'riser_2',         h: 0.6,  foot: 3.0, rect: { hw: 4.2, hd: 0.7 }, block: true },
         riser_3:         { proc: 'riser_3',         h: 0.9,  foot: 3.0, rect: { hw: 4.2, hd: 0.7 }, block: true },
+        /* THE CAVE (HQ plan 9.3 stage 2, 2026-09-15 rev 11): a torch on a stake driven into the cave floor (a rock room has no box wall to bracket one on — the rock border stands in front of it), and a crystal growing out of the floor, lit from inside (the adit's light) */
+        cave_torch:      { proc: 'cave_torch',      h: 1.7,  foot: 0.12, block: true, glow: { y: 1.62, size: 1.5, color: 0xffa040 }, light: { color: 0xff9a40, intensity: 0.85, dist: 9, y: 1.62 } },
+        crystal_cluster: { proc: 'crystal_cluster', h: 1.4,  foot: 0.55, block: true, glow: { y: 0.8, size: 2.6, color: 0x9fe8c8 }, light: { color: 0x9ff0d0, intensity: 0.9, dist: 9, y: 0.9 } },
         school_desk:     { proc: 'school_desk',     h: 0.75, foot: 0.45, block: true },
         toilet_stall:    { proc: 'toilet_stall',    h: 2.0,  foot: 0.6, wall: true, mount: 0, depth: 1.5, rect: { hw: 0.5, hd: 0.75 }, block: true },   // on a n / s wall (the rect is room-axis)
         urinal:          { proc: 'urinal',          h: 0.7,  foot: 0, wall: true, mount: 0.55, depth: 0.35 },
@@ -19005,38 +19008,41 @@ const DOOR_HQ = {
           note: 'push through the coats', draft: true },
         /* THE WELLS (9.3, 2026-09-15 rev 10): every well in the world drops
            into ONE cave — the well room (site_prebuilt_hollow_earth_shaft)
-           has one head per row, standing free on its floor, and climbing OUT
-           of the wrong one is how you learn the map. An end may override the
+           has one head per row, standing free on its TIERS (rev 11: the
+           cellar's and the garden's on the north shelf, the wishing well and
+           the ranch's on the floor, the castle's and the cistern on the crag
+           — hqCaveDoorY stands each head at its tier), and climbing OUT of
+           the wrong one is how you learn the map. An end may override the
            kind's plate line and its verb (`sub` / `verb`): down there you
            CLIMB UP. The cellar's well (rev 6) is the same row, re-pointed. */
         { id: 'well_cellar', route: 'undercroft', way: 'well',
           a: { site: 'prebuilt_haunted', part: 'cellar', wall: 'free', x: -2.6, z: 1.6, face: 90 },
-          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: 0, z: -3, face: 180, sub: 'THE CELLAR WELL · CLIMB UP', verb: 'CLIMB UP' },
+          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: -7.875, z: -6.125, face: 180, sub: 'THE CELLAR WELL · CLIMB UP', verb: 'CLIMB UP' },
           why: 'the well in the cellar goes down further than the house is tall; the bucket comes up dry and warm',
           note: 'the rope holds', draft: true },
         { id: 'well_garden', route: 'undercroft', way: 'well',
           a: { room: 'garden', wall: 'free', x: -6.0, z: 2.0, face: 90 },
-          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: -5, z: -3, face: 180, sub: 'THE GARDEN WELL · CLIMB UP', verb: 'CLIMB UP' },
+          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: -2.625, z: -6.125, face: 180, sub: 'THE GARDEN WELL · CLIMB UP', verb: 'CLIMB UP' },
           why: 'the well on the gravel ring is older than the building and the building was laid out round it; the gardener draws from it and will not say for what',
           note: 'the only way down that is not the elevator', draft: true },
         { id: 'well_camelot', route: 'undercroft', way: 'well',
           a: { site: 'prebuilt_camelot', wall: 'n', x: -0.2 },
-          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: 5, z: -3, face: 180, sub: 'THE CASTLE WELL · CLIMB UP', verb: 'CLIMB UP' },
+          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: 7.875, z: -7.875, face: 180, sub: 'THE CASTLE WELL · CLIMB UP', verb: 'CLIMB UP' },
           why: 'the castle well in the courtyard; a siege needs water and this one never ran dry, which the besiegers should have found suspicious',
           note: 'it never ran dry', draft: true },
         { id: 'well_skinwalker', route: 'undercroft', way: 'well',
           a: { site: 'prebuilt_skinwalker', wall: 'n', x: -0.2 },
-          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: -5, z: 3, face: 0, sub: 'THE RANCH WELL · CLIMB UP', verb: 'CLIMB UP' },
+          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: 7.875, z: 6.125, face: 270, sub: 'THE RANCH WELL · CLIMB UP', verb: 'CLIMB UP' },
           why: 'the well in the yard, boarded over in 1994 by men who did not come back for their tools; the boards are the way',
           note: 'the boards lift', draft: true },
         { id: 'well_nuketown', route: 'undercroft', way: 'well',
           a: { site: 'prebuilt_nuketown', wall: 'n', x: -10 },
-          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: 0, z: 3, face: 0, sub: 'THE WISHING WELL · CLIMB UP', verb: 'CLIMB UP' },
+          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: -6.125, z: 4.375, face: 90, sub: 'THE WISHING WELL · CLIMB UP', verb: 'CLIMB UP' },
           why: 'the wishing well on the lawn came with the house and the house came with the test; the coins in it are all from the same year',
           note: 'make a wish', draft: true },
         { id: 'well_gobekli', route: 'undercroft', way: 'well',
           a: { site: 'prebuilt_gobekli', wall: 'n', x: -0.2 },
-          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: 5, z: 3, face: 0, sub: 'THE CISTERN · CLIMB UP', verb: 'CLIMB UP' },
+          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: 9.625, z: -6.125, face: 270, sub: 'THE CISTERN · CLIMB UP', verb: 'CLIMB UP' },
           why: 'the cistern cut into the bedrock under the first temple; the oldest well there is, and the shaft is dressed stone all the way down',
           note: 'the oldest of them', draft: true },
         /* THE FOUR EXITS: the cave has several ways out, and each one is a
@@ -19058,7 +19064,7 @@ const DOOR_HQ = {
           why: 'the adit the crystal city cut toward the cave and stopped one metre short of; something opened the last metre from this side',
           note: 'one metre, from this side', draft: true },
         { id: 'cave_hollow', route: 'undercroft', leaf: 'leaf_frame_only',
-          a: { site: 'prebuilt_hollow_earth', part: 'mouth', wall: 'w', z: 0 },
+          a: { site: 'prebuilt_hollow_earth', part: 'mouth', wall: 'e', z: -5.25 },
           b: { site: 'prebuilt_hollow_earth', wall: 'n', x: -5 },
           why: 'the cave mouth: the complex\'s own way in and out, opening on the inner sun with the whole country under it',
           note: 'the inner sun', draft: true },
@@ -24593,236 +24599,360 @@ const DOOR_HQ = {
             spawn: { x: -3.0, z: -2.4, face: 0 },
         },
         /* ══════════════════════════════════════════════════════════════════
-           THE CAVE (HQ plan 9.3 — the wells and the cave, 2026-09-15 rev 10).
-           The SECOND complex, and the first one that is not a building: every
-           well in the world drops into ONE cave, and the cave has several ways
-           out. It is HOLLOW EARTH's complex (the one site whose whole premise
-           is the inside of the earth), so every room here wears
-           `site: 'prebuilt_hollow_earth'` + `part` and NO roomNo — hqRoomNo
-           reads the threshold's 180 through `site`, the register lists the
-           site once, and 9.4 knows the rooms are WILD (hqRoomSite non-null).
-           The shape: the WELL ROOM (one head per well, each a free-standing
-           `way: 'well'` end — climbing out of the wrong one is how you learn
-           the map) → THE GALLERY (the crossroads) → four EXIT chambers, each
-           a DOOR_HQ.links row into a site already on the map (Hell, D.U.M.B.,
-           Agartha and Hollow Earth's own board room), and THE OUBLIETTE, the
-           dead end off the gallery whose back wall is Room 24601's.
-           THE PARK RULE (9.8): a rail in every room, a stepped ramp in every
-           big one. Stage 2 wants a ROCK shell (`kind: 'cave'`) and the stream
-           as a waded sheet; these are box rooms in the terrain sheet's own
-           cave keys until then.
+           THE CAVE (HQ plan 9.3 stage 2 — THE DUNGEON, 2026-09-15 rev 11;
+           stage 1 was 2026-09-15 rev 10). The SECOND complex, and the first
+           one that is not a building: every well in the world drops into ONE
+           cave, and the cave has several ways out. It is HOLLOW EARTH's
+           complex, so every room here wears `site: 'prebuilt_hollow_earth'` +
+           `part` and NO roomNo — hqRoomNo reads the threshold's 180 through
+           `site`, the register lists the site once, and 9.4 knows the rooms
+           are WILD (hqRoomSite non-null).
+           REV 11 — THE DUNGEON: every chamber is a CAVE GRID (`cave.rows`,
+           see hqCaveCompile below the rooms): rock, floor at LEVELS (one
+           level = 0.875 m, the walker climbs one per step), RAMPS (a cell
+           rising one level: a-f north, g-l south, m-r east, s-x west, the
+           letter = the base level), LEDGES two levels up that need their
+           ramp, BRIDGES (`=` planks over deep water, `B` a high rope bridge
+           over the pool, `H` obsidian over lava), WATER (`~` waded, `W` deep
+           = never, `P` a pool on the terrace, its spill a waterfall), LAVA
+           (`L` / `Y`, never) and the box walls behind a rock border that
+           opens only at the door LANES (three cells wide, the sill cell at
+           the wall). Doors stand at the level of their lane (a door on a
+           ledge = a door you have to climb to), free-standing WELLS on the
+           tiers. hq-cave.test.js walks every grid with the walker's own step
+           rule (hqCaveReach): every door reaches every other, or the test
+           fails — the dungeon is always solvable, never trivially (the
+           cavern's routes: the terrace ramps, the hall's stair, the ford,
+           the plank bridge, the long ramp, the causeway). THE PARK RULE: a
+           railing_1m run on every ledge edge and a real ramp cell in every
+           chamber (a slope, not the lecture hall's risers — 9.8 gets its
+           `_hq.ramps` from the grid's slope cells).
+           The shape: THE WELL ROOM (three tiers round the sump, one well
+           head per tier pair — climbing out of the wrong one is how you
+           learn the map) → THE CAVERN (52 × 42 m: the terrace, the pool and
+           its fall, the stream that splits the floor, the river and its
+           bridge, the west shelf, the high tier with LEVEL −6's door, the
+           hot shelf with the lava lake and its causeway to THE FISSURE's
+           door, the long ramp up the east wall) → the four EXIT chambers
+           (each a DOOR_HQ.links row into a site already on the map: Hell,
+           D.U.M.B., Agartha, Hollow Earth's board room) and THE OUBLIETTE
+           (the dead end, sunken cells, the back wall that is Room 24601's).
            ══════════════════════════════════════════════════════════════════ */
         /* ── THE WELL ROOM — the bottom of every well in the world ── */
         site_prebuilt_hollow_earth_shaft: {
             label: 'THE CAVE · THE WELL ROOM',
-            sub: 'THE BOTTOM OF EVERY WELL · THE GALLERY',
+            sub: 'THE BOTTOM OF EVERY WELL · THREE TIERS · THE GALLERY',
             kind: 'box', site: 'prebuilt_hollow_earth', part: 'shaft',
             shell: {
-                w: 16, d: 12, h: 4.2,
-                wallH: 4.2, dadoH: 1.1,
+                w: 24.5, d: 21, h: 8.0,
+                wallH: 8.0, dadoH: 1.1,
                 floor: 'cave_floor', wall: 'cave_wall', dado: 'rocks_dark_fantasy', trim: 'rock_wall_1', ceiling: 'cave_wall',
-                floorColor: 0x6a6258, wallColor: 0x6e675e, dadoColor: 0x5a544c, ceilColor: 0x4a443e,
+                floorColor: 0x6a6258, wallColor: 0x6e675e, dadoColor: 0x5a544c, ceilColor: 0x3e3934,
                 pipes: false,
                 strips: false,
                 lights: [],
                 mood: { light: 0xffc890, ambient: 0.4 },
-                plate: { x: 0, z: -5.75, y: 2.6 },
+                plate: { x: 0, z: -9.5, y: 4.2 },
+            },
+            /* the grid (14 × 12 cells): the NORTH SHELF (lvl 2, the cellar
+               and garden wells, its ramp at the west end), the FLOOR with
+               the sump (waded round its deep heart; the nuketown and ranch
+               wells), the SOUTH-EAST CRAG (lvl 4, the castle well and the
+               cistern; the four-cell ramp up its west face), the gallery on
+               the east wall at the floor */
+            cave: {
+                rows: [
+                //  01234567890123
+                    '##############',
+                    '#2222222##444#',
+                    '#2222222##444#',
+                    '#22222222#d44#',
+                    '#2b2222#..c...',
+                    '#.a.....~~b...',
+                    '#.......~~a...',
+                    '#......~~W~..#',
+                    '#......~WW~..#',
+                    '#.......~~...#',
+                    '#....#.......#',
+                    '##############',
+                ],
+                ledge: 'rocks_2',
             },
             doors: [
-                { id: 'gallery', wall: 'w', z: 0, leaf: null,
-                  label: 'THE GALLERY', sub: 'ON INTO THE CAVE',
+                { id: 'gallery', wall: 'e', z: -0.875, leaf: null,
+                  label: 'THE CAVERN', sub: 'ON INTO THE CAVE',
                   action: { room: 'site_prebuilt_hollow_earth_gallery', at: 'shaft' },
                   desc: 'The way on. The floor tilts down and the sound of the wells goes with you further than it should.' },
             ],
             counters: [],
             props: [
-                { key: 'railing_1m',     x: -1.0, z: -5.2, face: 0 },                      // THE RIM (the park rule's rail): the drawn-water ledge
-                { key: 'railing_1m',     x: 0.0, z: -5.2, face: 0 },
-                { key: 'railing_1m',     x: 1.0, z: -5.2, face: 0 },
-                { key: 'riser_1',        x: 0, z: 4.6, face: 0 },                          // THE SCREE (the park rule's ramp, stepped): the bank at the south end
-                { key: 'riser_2',        x: 0, z: 5.3, face: 0 },
-                { key: 'wall_torch',     wall: 'n', x: -4.0, mount: 1.8 },
-                { key: 'wall_torch',     wall: 'n', x: 4.0, mount: 1.8 },
-                { key: 'wall_torch',     wall: 's', x: -4.0, mount: 1.8 },
-                { key: 'wall_torch',     wall: 's', x: 4.0, mount: 1.8 },
-                { key: 'wall_torch',     wall: 'e', z: 0, mount: 1.8 },
-                { key: 'concrete_pillar',     x: -7.0, z: -5.0 },                               // the columns the water left (a cave pillar, not the garage's)
-                { key: 'concrete_pillar',     x: 7.0, z: 4.8 },
-                { key: 'metal_shelving', wall: 'e', z: -3.6 },                             // somebody keeps rope down here, and rope keeps
-                { key: 'cardboard_boxes', x: 7.0, z: -4.8, face: 25 },
-                { key: 'floor_drain',    x: 6.6, z: 0.8 },
-                { key: 'floor_stain',    x: -2.0, z: -1.4 },
-                { key: 'floor_stain',    x: 3.0, z: 1.2 },
-                { key: 'paper_sheet',    x: -6.6, z: 3.4, y: 0.01, face: 130 },            // a form, wet through: WELL — WHICH
+                { key: 'railing_1m',     x: -4.375, z: -3.65, face: 0 },                   // THE SHELF'S RIM (the park rule's rail): the drawn-water ledge over the floor
+                { key: 'railing_1m',     x: -3.375, z: -3.65, face: 0 },
+                { key: 'railing_1m',     x: -2.375, z: -3.65, face: 0 },
+                { key: 'railing_1m',     x: 5.6, z: -4.375, face: 90 },                    // the crag's rail over the ramp
+                { key: 'railing_1m',     x: 5.6, z: -5.375, face: 90 },
+                { key: 'cave_torch',     x: -9.625, z: -7.875 },                            // the torches: one per tier, and the floor's two
+                { key: 'cave_torch',     x: 9.625, z: -7.875 },
+                { key: 'cave_torch',     x: -9.625, z: 6.125 },
+                { key: 'cave_torch',     x: 9.625, z: 6.125 },
+                { key: 'candle_ring',    x: -0.875, z: 7.875, y: 0.0 },                     // somebody's, by the sump, and recent
+                { key: 'concrete_pillar', x: 2.625, z: 7.875 },                             // the column the water left
+                { key: 'metal_shelving', x: -9.8, z: -1.6, face: 90 },                      // somebody keeps rope down here, and rope keeps
+                { key: 'cardboard_boxes', x: 4.375, z: 7.875, face: 25 },
+                { key: 'floor_stain',    x: -3.5, z: 2.625 },
+                { key: 'paper_sheet',    x: -7.0, z: 0.875, y: 0.01, face: 130 },           // a form, wet through: WELL — WHICH
             ],
             agents: [],
-            npcSpots: [{ x: -7.0, z: 2.2, face: 90, race: 'reptilian' }],
+            npcSpots: [{ x: -9.625, z: 2.625, face: 90, race: 'reptilian' }],
             onlineSpots: [],
             lines: [
                 '“Which one did you come down?” “That one.” “That one is the ranch. You came down the garden.” “How do you know?” “Your shoes.”',
                 '“Six wells.” “Six?” “Six that are dug. There are others.”',
                 '“Does anything come UP?” “Buckets.” “Anything else?” “Buckets, mostly.”',
+                '“The castle’s comes out on top.” “Of course it does.”',
             ],
-            spawn: { x: -5.6, z: 0, face: 90 },
+            spawn: { x: 7.875, z: 2.625, face: 270 },
         },
-        /* ── THE GALLERY — the crossroads: the well room, the four ways out,
-             the portcullis into the oubliette ── */
+        /* ── THE CAVERN — the big one: the terrace, the pool and the fall,
+             the stream, the river, the shelves, the tier, the lava lake ── */
         site_prebuilt_hollow_earth_gallery: {
-            label: 'THE CAVE · THE GALLERY',
-            sub: 'THE CROSSROADS · FOUR WAYS OUT',
+            label: 'THE CAVE · THE CAVERN',
+            sub: 'THE CROSSROADS · SIX WAYS OUT · THREE TIERS',
             kind: 'box', site: 'prebuilt_hollow_earth', part: 'gallery',
             shell: {
-                w: 24, d: 10, h: 4.5,
-                wallH: 4.5, dadoH: 1.1,
+                w: 52.5, d: 42, h: 11.0,
+                wallH: 11.0, dadoH: 1.1,
                 floor: 'cave_floor', wall: 'cave_wall', dado: 'rocks_dark_fantasy', trim: 'rock_wall_2', ceiling: 'cave_wall',
-                floorColor: 0x6a6258, wallColor: 0x6e675e, dadoColor: 0x585048, ceilColor: 0x453f3a,
+                floorColor: 0x6a6258, wallColor: 0x6e675e, dadoColor: 0x585048, ceilColor: 0x35302c,
                 pipes: false,
                 strips: false,
                 lights: [],
-                mood: { light: 0xffc078, ambient: 0.38 },
-                plate: { x: -2.0, z: -4.75, y: 2.8 },
+                mood: { light: 0xffc078, ambient: 0.34 },
+                plate: { x: 0, z: -19.0, y: 6.5 },
+            },
+            /* the grid (30 × 24 cells, 52.5 × 42 m). North is the top row.
+               SW: the floor, the shaft's door on the west wall and the
+               portcullis on the south; the ramps `a b` up to THE TERRACE
+               (lvl 2); the stream `P` off the pool cuts the terrace and
+               falls (`~`) to split the floor — the ford at the fall's foot
+               is the one dry-shod crossing to the SE floor and the adit.
+               NW: `c d` up to THE WEST SHELF (lvl 4), `e f` up to THE HIGH
+               TIER (lvl 6) and LEVEL −6's bulkhead. The rope bridge `B`
+               (lvl 4) over the pool joins the shelf to the spur of THE HOT
+               SHELF, the lava lake `Y` in it, the obsidian bridge `H` and
+               the causeway `O` to THE FISSURE's arch. NE: THE HALL under the
+               shelf, the river `W` (deep) along its south edge with a ford
+               `~` into the SE floor, the stair `s t` up to the terrace's
+               east end, and THE LONG RAMP `a b c d` up the east wall to the
+               shelf. E: the river's south leg, the plank bridge `=` to the
+               east bank and THE MOUTH's door. */
+            cave: {
+                rows: [
+                //  0         1         2
+                //  012345678901234567890123456789
+                    '#####666################444###',
+                    '#####666####44444#######444###',
+                    '###66666666#44444YYYY##O44O###',
+                    '###66666666#444HHHHHHHOOOOO###',
+                    '###6f666666#44YYYYYYYYYYYYO###',
+                    '####e#######44YYYYYYOOOOOOO###',
+                    '##44444444###4YYYYOO444444444#',
+                    '##444444BBBBB44...#.........4#',
+                    '##444444PPPPP44...#.........d#',
+                    '##4d4444PPPPP44.............c#',
+                    '##2c22222222P2ts............b#',
+                    '##2222222222P2WWWWWW~WWWWW#.a#',
+                    '#22222222222PWWWWWW~WWWWWW#..#',
+                    '#2222222222.P.............W..#',
+                    '##222222222.P.............W..#',
+                    '###b#####.#.~.............W..#',
+                    '...a......#.~.....K.......W..#',
+                    '..........#..W....KK......W...',
+                    '..........##.W......K.....W...',
+                    '#..........#.W............=...',
+                    '#....##....#.W............W..#',
+                    '#...####..##.W...........#W#.#',
+                    '#...#.....#..W........#..#####',
+                    '#...##################...#####',
+                ],
+                ledge: 'rocks_2',
             },
             doors: [
-                { id: 'shaft', wall: 'w', z: 0, leaf: null,
+                { id: 'shaft', wall: 'w', z: 9.625, leaf: null,
                   label: 'THE WELL ROOM', sub: 'BACK TO THE WELLS',
                   action: { room: 'site_prebuilt_hollow_earth_shaft', at: 'gallery' },
                   desc: 'Back the way the rope let you down. The wells are that way, all six of them, and one of them is yours.' },
-                { id: 'vent', wall: 'n', x: 5, leaf: 'leaf_hell_arch',
+                { id: 'vent', wall: 'n', x: 18.375, leaf: 'leaf_hell_arch',
                   label: 'THE FISSURE', sub: 'THE HOT SIDE · ROOM 666',
                   action: { room: 'site_prebuilt_hollow_earth_vent', at: 'gallery' },
-                  desc: 'The gallery is warm at this end and the warmth has a door in it.' },
-                { id: 'blast', wall: 'n', x: 10, leaf: 'leaf_bulkhead', wide: true,
+                  desc: 'Up on the hot shelf, across the lava by the causeway: the warmth has a door in it.' },
+                { id: 'blast', wall: 'n', x: -14.875, leaf: 'leaf_bulkhead', wide: true,
                   label: 'LEVEL −6', sub: 'THE BASE’S SIXTH SIDE · ROOM 555',
                   action: { room: 'site_prebuilt_hollow_earth_blast', at: 'gallery' },
-                  desc: 'The rock is cut square here, which rock does not do. Somebody finished the cut with a door.' },
-                { id: 'adit', wall: 's', x: 6, leaf: 'leaf_frame_only',
+                  desc: 'On the high tier, the top of the cavern: the rock is cut square here, which rock does not do. Somebody finished the cut with a door.' },
+                { id: 'adit', wall: 's', x: 14.875, leaf: 'leaf_frame_only',
                   label: 'THE CRYSTAL ADIT', sub: 'THE WARM LIGHT · ROOM 88',
                   action: { room: 'site_prebuilt_hollow_earth_adit', at: 'gallery' },
-                  desc: 'A worked adit, squared and swept, with a light at the far end that is not a torch.' },
-                { id: 'mouth', wall: 'e', z: 0, leaf: null,
+                  desc: 'Across the stream, on the far floor: a worked adit, squared and swept, with a light at the far end that is not a torch.' },
+                { id: 'mouth', wall: 'e', z: 11.375, leaf: null,
                   label: 'THE CAVE MOUTH', sub: 'OUT · ROOM 180',
                   action: { room: 'site_prebuilt_hollow_earth_mouth', at: 'gallery' },
-                  desc: 'Daylight, of a kind: the inner sun, which never sets and never quite rises either.' },
-                { id: 'oubliette', wall: 's', x: -6, leaf: 'leaf_portcullis', wide: true,
+                  desc: 'Over the plank bridge, on the east bank where the river goes under the wall: daylight, of a kind — the inner sun, which never sets and never quite rises either.' },
+                { id: 'oubliette', wall: 's', x: -21.875, leaf: 'leaf_portcullis', wide: true,
                   label: 'THE OUBLIETTE', sub: 'THE DEAD END · HOLDING',
                   action: { room: 'site_prebuilt_hollow_earth_oubliette', at: 'gallery' },
-                  desc: 'A portcullis in a cave. Somebody carried it down here, hung it, and went back up.' },
+                  desc: 'A portcullis in a cave, in the corner past the shaft. Somebody carried it down here, hung it, and went back up.' },
             ],
             counters: [],
             props: [
-                { key: 'notice_board',   wall: 'n', x: -5.0, mount: 1.3 },                 // THE CROSSROADS SIGN, and nobody trusts it
-                { key: 'railing_1m',     x: -2.0, z: 3.9, face: 0 },                       // THE STREAM'S BANK (the park rule's rail)
-                { key: 'railing_1m',     x: -1.0, z: 3.9, face: 0 },
-                { key: 'railing_1m',     x: 0.0, z: 3.9, face: 0 },
-                { key: 'railing_1m',     x: 1.0, z: 3.9, face: 0 },
-                { key: 'riser_1',        x: 0, z: -3.5, face: 0 },                         // THE SCREE RAMP up the north side (the park rule)
-                { key: 'riser_2',        x: 0, z: -4.25, face: 0 },
-                { key: 'wall_torch',     wall: 'n', x: -10.0, mount: 1.8 },
-                { key: 'wall_torch',     wall: 'n', x: 0.0, mount: 1.8 },
-                { key: 'wall_torch',     wall: 's', x: -10.0, mount: 1.8 },
-                { key: 'wall_torch',     wall: 's', x: 0.0, mount: 1.8 },
-                { key: 'wall_torch',     wall: 'e', z: -3.4, mount: 1.8 },
-                { key: 'wall_torch',     wall: 'w', z: 3.4, mount: 1.8 },
-                { key: 'exit_sign',      wall: 'e', z: 3.2 },                              // an EXIT sign in a cave: Facilities hung it, Facilities will not say when
-                { key: 'concrete_pillar',     x: -11.0, z: -3.8 },
-                { key: 'concrete_pillar',     x: 11.0, z: 3.8 },
-                { key: 'concrete_pillar',     x: -11.2, z: 3.6 },
-                { key: 'metal_shelving', wall: 'n', x: -8.0 },
-                { key: 'cardboard_boxes', x: -10.4, z: 1.6, face: 340 },
-                { key: 'floor_drain',    x: 2.4, z: 4.2 },                                 // where the stream goes; it does not come back
-                { key: 'floor_stain',    x: -3.6, z: 1.2 },
-                { key: 'paper_sheet',    x: 8.6, z: -3.6, y: 0.01, face: 40 },
+                { key: 'railing_1m',     x: -20.125, z: 4.2, face: 0 },                    // THE TERRACE'S RIM (the park rule's rail): the grind over the floor
+                { key: 'railing_1m',     x: -19.125, z: 4.2, face: 0 },
+                { key: 'railing_1m',     x: -18.125, z: 4.2, face: 0 },
+                { key: 'railing_1m',     x: -17.125, z: 4.2, face: 0 },
+                { key: 'railing_1m',     x: -16.125, z: 4.2, face: 0 },
+                { key: 'railing_1m',     x: -20.125, z: -8.6, face: 0 },                   // the west shelf's rim
+                { key: 'railing_1m',     x: -19.125, z: -8.6, face: 0 },
+                { key: 'railing_1m',     x: -18.125, z: -8.6, face: 0 },
+                { key: 'railing_1m',     x: 11.5, z: -8.95, face: 0 },                     // the hot shelf's rim over the hall
+                { key: 'railing_1m',     x: 12.5, z: -8.95, face: 0 },
+                { key: 'railing_1m',     x: 13.5, z: -8.95, face: 0 },
+                { key: 'cave_torch',     x: -16.625, z: 11.375 },                           // the floor's torches: by the shaft, by the portcullis, by the adit
+                { key: 'cave_torch',     x: -11.375, z: 14.875 },
+                { key: 'cave_torch',     x: 9.625, z: 14.875 },
+                { key: 'cave_torch',     x: 4.375, z: -6.125 },                             // the hall
+                { key: 'cave_torch',     x: 21.875, z: 6.125 },                             // the east bank, by the mouth
+                { key: 'cave_torch',     x: -16.625, z: 0.875 },                            // the terrace
+                { key: 'cave_torch',     x: -16.625, z: -7.875 },                           // the west shelf
+                { key: 'cave_torch',     x: -11.375, z: -16.625 },                          // the high tier
+                { key: 'crystal_cluster', x: 6.125, z: 9.625 },                             // THE CRYSTALS on the SE floor: the adit's light, leaking
+                { key: 'concrete_pillar', x: -0.875, z: 11.375 },                           // the columns the water left
+                { key: 'concrete_pillar', x: 11.375, z: -6.125 },
+                { key: 'cardboard_boxes', x: -21.875, z: 14.875, face: 340 },               // Facilities' rope, by the way in
+                { key: 'paper_sheet',    x: -13.125, z: 9.625, y: 0.01, face: 40 },
+                { key: 'floor_stain',    x: -4.375, z: 14.875 },
+                { key: 'floor_stain',    x: 16.625, z: 4.375 },
             ],
             agents: [],
-            npcSpots: [{ x: -3.2, z: -3.9, face: 160, race: 'ghoul' }, { x: 8.4, z: 3.6, face: 300, race: 'gnome' }],
+            npcSpots: [{ x: 2.625, z: 14.875, face: 300, race: 'ghoul' }, { x: -11.375, z: 0.875, face: 160, race: 'gnome' }],
             onlineSpots: [],
             lines: [
-                '“The sign says four ways out.” “There are five.” “Where is the fifth?” “Behind the portcullis, and it is not out.”',
-                '“Who cut the square one?” “The same people who deny the square one.”',
-                '“Follow the stream.” “Where does it go?” “Down.” “And then?” “Down.”',
+                '“The sign says four ways out.” “There are six doors.” “Four ways OUT. The other two are in.”',
+                '“Who cut the square one?” “The same people who deny the square one.” “It is on the top tier.” “They like a view.”',
+                '“Follow the stream.” “Where does it go?” “Down.” “And then?” “Down.” “And the river?” “Under the wall, and then we do not follow it.”',
+                '“The bridge holds.” “Which bridge?” “The high one.” “And the planks?” “The planks are Facilities’. Ask Facilities.”',
             ],
-            spawn: { x: -9.6, z: 0, face: 90 },
+            spawn: { x: -18.375, z: 9.625, face: 90 },
         },
-        /* ── THE FISSURE — the hot way out: Room 666 ── */
+        /* ── THE FISSURE — the hot way out: the lava channel, two causeways, Room 666 ── */
         site_prebuilt_hollow_earth_vent: {
             label: 'THE CAVE · THE FISSURE',
             sub: 'THE HOT SIDE · THE WAY TO ROOM 666',
             kind: 'box', site: 'prebuilt_hollow_earth', part: 'vent',
             shell: {
-                w: 8, d: 7, h: 3.6,
-                wallH: 3.6, dadoH: 1.0,
+                w: 17.5, d: 15.75, h: 7.0,
+                wallH: 7.0, dadoH: 1.0,
                 floor: 'obsidian', wall: 'cave_wall', dado: 'obsidian', trim: 'rock_wall_2', ceiling: 'cave_wall',
-                floorColor: 0x7a5a52, wallColor: 0x7a5c50, dadoColor: 0x5e423c, ceilColor: 0x4a3630,
+                floorColor: 0x7a5a52, wallColor: 0x7a5c50, dadoColor: 0x5e423c, ceilColor: 0x3a2a26,
                 pipes: false,
                 strips: false,
                 lights: [],
-                mood: { light: 0xff7a40, ambient: 0.42 },
-                plate: { x: -2.4, z: -3.25, y: 2.4 },
+                mood: { light: 0xff7a40, ambient: 0.4 },
+                plate: { x: -4.0, z: -6.8, y: 3.6 },
+            },
+            /* the grid (10 × 9): the lava channel `L` across the middle, two
+               obsidian causeways `=` over it (the near one, the far one), the
+               arch on the north wall, the gallery's arch on the south */
+            cave: {
+                rows: [
+                //  0123456789
+                    '####..####',
+                    '####..####',
+                    '#@@.....@#',
+                    '#LL=LL=LL#',
+                    '#LL=LL=LL#',
+                    '#LL=LL=LL#',
+                    '#@@...@@1#',
+                    '#..@....a#',
+                    '####..####',
+                ],
+                legend: { '=': { lvl: 0, bridge: 'obsidian', under: 'L' } },
+                floor: 'obsidian', ledge: 'obsidian',
             },
             doors: [
                 { id: 'gallery', wall: 's', x: 0, leaf: 'leaf_hell_arch',
-                  label: 'THE GALLERY', sub: 'BACK TO THE CROSSROADS',
+                  label: 'THE CAVERN', sub: 'BACK TO THE CROSSROADS',
                   action: { room: 'site_prebuilt_hollow_earth_gallery', at: 'vent' },
-                  desc: 'Back into the cool of the gallery, which is what the gallery is for.' },
+                  desc: 'Back onto the hot shelf, and down the long ramp into the cool of the cavern, which is what the cavern is for.' },
             ],
             counters: [],
             props: [
-                { key: 'railing_1m',     x: -2.8, z: -1.0, face: 90 },                     // the rail at the lip (the park rule)
-                { key: 'railing_1m',     x: -2.8, z: 0.0, face: 90 },
-                { key: 'railing_1m',     x: -2.8, z: 1.0, face: 90 },
-                { key: 'riser_1',        x: 0, z: 2.9, face: 0 },                          // the step down to the arch (the park rule's ramp)
-                { key: 'wall_torch',     wall: 'e', z: 0, mount: 1.8 },
-                { key: 'wall_torch',     wall: 'w', z: -2.2, mount: 1.8 },
-                { key: 'candle_ring',    x: 3.0, z: 2.4, y: 0.0 },                         // somebody's, and recent
-                { key: 'concrete_pillar',     x: 3.2, z: -2.6 },
-                { key: 'floor_stain',    x: 0.0, z: -2.2 },
-                { key: 'floor_stain',    x: 1.4, z: 0.6 },
+                { key: 'railing_1m',     x: -7.0, z: 2.7, face: 0 },                       // the rail at the lip (the park rule)
+                { key: 'railing_1m',     x: -6.0, z: 2.7, face: 0 },
+                { key: 'railing_1m',     x: -5.0, z: 2.7, face: 0 },
+                { key: 'cave_torch',     x: -7.0, z: -3.5 },
+                { key: 'cave_torch',     x: 5.25, z: -3.5 },
+                { key: 'cave_torch',     x: -7.0, z: 3.5 },
+                { key: 'candle_ring',    x: 3.5, z: 5.25, y: 0.0 },                         // somebody's, and recent
+                { key: 'floor_stain',    x: 0.0, z: -3.5 },
+                { key: 'floor_stain',    x: 1.75, z: 5.25 },
             ],
             agents: [],
             npcSpots: [],
             onlineSpots: [],
             lines: [
                 '“The draught goes down.” “Draughts go up.” “Tell it that.”',
-                '“Is that rock?” “It was.”',
+                '“Is that rock?” “It was.” “And the bridge?” “Also was.”',
             ],
-            spawn: { x: 0, z: 1.1, face: 0 },
+            spawn: { x: -5.25, z: 5.25, face: 0 },
         },
-        /* ── LEVEL −6 — the base's sixth side: Room 555 ── */
+        /* ── LEVEL −6 — the base's sixth side: the cut, the platform, Room 555 ── */
         site_prebuilt_hollow_earth_blast: {
             label: 'THE CAVE · LEVEL −6',
             sub: 'THE BASE’S SIXTH SIDE · THE WAY TO ROOM 555',
             kind: 'box', site: 'prebuilt_hollow_earth', part: 'blast',
             shell: {
-                w: 8, d: 7, h: 3.2,
-                wallH: 3.2, dadoH: 1.0,
+                w: 14, d: 14, h: 4.5,
+                wallH: 4.5, dadoH: 1.0,
                 floor: 'concrete_floor', wall: 'cave_wall', dado: 'gunmetal', trim: 'gunmetal_2', ceiling: 'cave_wall',
-                floorColor: 0x8a8a8c, wallColor: 0x6e675e, dadoColor: 0x6a7076, ceilColor: 0x45403a,
+                floorColor: 0x8a8a8c, wallColor: 0x6e675e, dadoColor: 0x6a7076, ceilColor: 0x3e3a34,
                 pipes: true,
                 strips: false,
                 lights: [],
                 mood: { light: 0xbfe0ff, ambient: 0.4 },
-                plate: { x: -2.4, z: -3.25, y: 2.4 },
+                plate: { x: -4.2, z: -6.3, y: 3.0 },
+            },
+            /* the grid (8 × 8): the cut — a concrete floor between the two
+               doors, a poured platform one level up either side (the keypad's
+               side, the camera's side) and a ramp cell onto the west one */
+            cave: {
+                rows: [
+                //  01234567
+                    '###..###',
+                    '###..###',
+                    '#11...1#',
+                    '#11...1#',
+                    '#a....1#',
+                    '#......#',
+                    '#......#',
+                    '###..###',
+                ],
+                floor: 'concrete_floor', ledge: 'concrete_floor', rock: 'cave_wall',
             },
             doors: [
                 { id: 'gallery', wall: 's', x: 0, leaf: 'leaf_bulkhead', wide: true,
-                  label: 'THE GALLERY', sub: 'BACK TO THE CROSSROADS',
+                  label: 'THE CAVERN', sub: 'BACK TO THE CROSSROADS',
                   action: { room: 'site_prebuilt_hollow_earth_gallery', at: 'blast' },
-                  desc: 'Back out through the cut, into rock that was never squared.' },
+                  desc: 'Back out through the cut onto the high tier, into rock that was never squared.' },
             ],
             counters: [],
             props: [
-                { key: 'railing_1m',     x: 2.8, z: -1.0, face: 270 },                     // the handrail on the cut side (the park rule)
-                { key: 'railing_1m',     x: 2.8, z: 0.0, face: 270 },
-                { key: 'railing_1m',     x: 2.8, z: 1.0, face: 270 },
-                { key: 'riser_1',        x: 0, z: 2.9, face: 0 },                          // the concrete step at the door (the park rule's ramp)
-                { key: 'keypad',         wall: 'n', x: 1.6, mount: 1.3 },                  // dead; the light on it is not
-                { key: 'security_camera', wall: 'e', z: -2.6 },                            // a dead camera, dusted by nobody
-                { key: 'bare_bulb',      x: -1.6, z: -1.6, ceil: true },
-                { key: 'bare_bulb',      x: 1.6, z: 1.4, ceil: true },
-                { key: 'breaker_panel',  wall: 'w', z: -1.6, mount: 1.3 },
-                { key: 'cardboard_boxes', x: 3.2, z: -2.4, face: 15 },
-                { key: 'floor_stain',    x: -0.8, z: -2.0 },
-                { key: 'clipboard',      wall: 'w', z: 0.8, mount: 1.45 },                 // a sign-in sheet; the last date is the base's first
+                { key: 'railing_1m',     x: -5.25, z: -1.0, face: 0 },                     // the handrail on the platform's edge (the park rule)
+                { key: 'railing_1m',     x: -4.25, z: -1.0, face: 0 },
+                { key: 'bare_bulb',      x: -3.5, z: 0.0, ceil: true },
+                { key: 'bare_bulb',      x: 1.75, z: -1.75, ceil: true },
+                { key: 'cardboard_boxes', x: 2.625, z: 2.625, face: 15 },
+                { key: 'floor_stain',    x: -1.75, z: 1.75 },
+                { key: 'paper_sheet',    x: -5.25, z: -1.75, y: 0.01, face: 200 },       // a sign-in sheet on the platform; the last date is the base's first
             ],
             agents: [],
             npcSpots: [],
@@ -24831,116 +24961,180 @@ const DOOR_HQ = {
                 '“Five sides above ground.” “And this one.” “This one is not a side. It is a back.”',
                 '“The camera is dead.” “Then why is the light on?”',
             ],
-            spawn: { x: 0, z: 1.1, face: 0 },
+            spawn: { x: -1.75, z: 4.375, face: 0 },
         },
-        /* ── THE CRYSTAL ADIT — the warm light: Room 88 ── */
+        /* ── THE CRYSTAL ADIT — the warm light: the crystal floor, the stream and its plank, Room 88 ── */
         site_prebuilt_hollow_earth_adit: {
             label: 'THE CAVE · THE CRYSTAL ADIT',
             sub: 'THE WARM LIGHT · THE WAY TO ROOM 88',
             kind: 'box', site: 'prebuilt_hollow_earth', part: 'adit',
             shell: {
-                w: 8, d: 7, h: 3.4,
-                wallH: 3.4, dadoH: 1.0,
+                w: 17.5, d: 17.5, h: 6.0,
+                wallH: 6.0, dadoH: 1.0,
                 floor: 'crystal', wall: 'cave_wall', dado: 'crystal', trim: 'rock_wall_1', ceiling: 'cave_wall',
-                floorColor: 0xbfe8c8, wallColor: 0x74786e, dadoColor: 0x9ac8b0, ceilColor: 0x4e524a,
+                floorColor: 0xbfe8c8, wallColor: 0x74786e, dadoColor: 0x9ac8b0, ceilColor: 0x3e423c,
                 pipes: false,
                 strips: false,
                 lights: [],
                 mood: { light: 0xcfe8b0, ambient: 0.45 },
-                plate: { x: 2.4, z: -3.25, y: 2.4 },
+                plate: { x: 4.0, z: -7.7, y: 3.2 },
+            },
+            /* the grid (10 × 10): a stream across the adit (waded at its
+               edges, deep in the middle, a plank `=` over the deep part), the
+               crystal `K` growing out of the floor either side */
+            cave: {
+                rows: [
+                //  0123456789
+                    '####..####',
+                    '#KK.....K#',
+                    '#K...K...#',
+                    '#.~~~~~~.#',
+                    '#.~WWW=W~#',
+                    '#.~~~~=~.#',
+                    '#...K..m1#',
+                    '#K..KK..K#',
+                    '#........#',
+                    '####..####',
+                ],
+                floor: 'crystal', ledge: 'crystal',
             },
             doors: [
                 { id: 'gallery', wall: 'n', x: 0, leaf: 'leaf_frame_only',
-                  label: 'THE GALLERY', sub: 'BACK TO THE CROSSROADS',
+                  label: 'THE CAVERN', sub: 'BACK TO THE CROSSROADS',
                   action: { room: 'site_prebuilt_hollow_earth_gallery', at: 'adit' },
                   desc: 'Back into the dark, which after this takes a minute.' },
             ],
             counters: [],
             props: [
-                { key: 'railing_1m',     x: -2.8, z: -0.5, face: 90 },                     // the adit's rail (the park rule)
-                { key: 'railing_1m',     x: -2.8, z: 0.5, face: 90 },
-                { key: 'riser_1',        x: 0, z: 2.9, face: 0 },                          // the scree, cut into steps by somebody patient (the park rule)
-                { key: 'globe_lamp',     x: 3.2, z: -2.2 },                                // not a lamp: the wall does that here
-                { key: 'globe_lamp',     x: 3.2, z: 2.2 },
-                { key: 'candle_ring',    x: -3.0, z: 2.4, y: 0.0 },
-                { key: 'concrete_pillar',     x: -3.4, z: -2.4 },
-                { key: 'floor_stain',    x: 0.6, z: -1.6 },
-                { key: 'paper_sheet',    x: 1.6, z: 1.8, y: 0.01, face: 210 },
+                { key: 'railing_1m',     x: 1.75, z: -4.3, face: 0 },                      // the plank's landing rail (the park rule)
+                { key: 'railing_1m',     x: 2.75, z: -4.3, face: 0 },
+                { key: 'crystal_cluster', x: -7.0, z: -7.0 },                               // THE CRYSTALS: not lamps — the wall does that here
+                { key: 'crystal_cluster', x: 5.25, z: -7.0 },
+                { key: 'crystal_cluster', x: -7.0, z: -5.25 },
+                { key: 'crystal_cluster', x: -1.75, z: 1.75 },
+                { key: 'crystal_cluster', x: 5.25, z: 3.5 },
+                { key: 'crystal_cluster', x: -7.0, z: 3.5 },
+                { key: 'cave_torch',     x: 5.25, z: 5.25 },
+                { key: 'cave_torch',     x: -7.0, z: 5.25 },
+                { key: 'candle_ring',    x: -5.25, z: 1.75, y: 0.0 },
+                { key: 'floor_stain',    x: 1.75, z: 5.25 },
+                { key: 'paper_sheet',    x: 3.5, z: 5.25, y: 0.01, face: 210 },
             ],
             agents: [],
-            npcSpots: [{ x: 2.6, z: 0.4, face: 250, race: 'gnome' }],
+            npcSpots: [{ x: 1.75, z: 1.75, face: 250, race: 'gnome' }],
             onlineSpots: [],
             lines: [
                 '“They cut toward us and stopped a metre short.” “Who opened the metre?” “Not them.”',
                 '“Is the light warm?” “The light is warm.” “Lights are not warm.” “This one is warm.”',
+                '“Mind the plank.” “Why?” “It is the only one.”',
             ],
-            spawn: { x: 0, z: -1.1, face: 180 },
+            spawn: { x: -5.25, z: -5.25, face: 180 },
         },
-        /* ── THE CAVE MOUTH — the complex's own way out: Room 180 ── */
+        /* ── THE CAVE MOUTH — the complex's own way out: the floor, the pool, the ramp up to the lip and the light, Room 180 ── */
         site_prebuilt_hollow_earth_mouth: {
             label: 'THE CAVE · THE MOUTH',
             sub: 'OUT UNDER THE INNER SUN · ROOM 180',
             kind: 'box', site: 'prebuilt_hollow_earth', part: 'mouth',
             shell: {
-                w: 10, d: 8, h: 4.0,
-                wallH: 4.0, dadoH: 1.0,
+                w: 21, d: 17.5, h: 7.0,
+                wallH: 7.0, dadoH: 1.0,
                 floor: 'dirt_3', wall: 'cave_wall', dado: 'rocks_dark_fantasy', trim: 'rock_wall_1', ceiling: 'cave_wall',
-                floorColor: 0x8a7a5e, wallColor: 0x756e62, dadoColor: 0x5e564c, ceilColor: 0x4a443c,
+                floorColor: 0x8a7a5e, wallColor: 0x756e62, dadoColor: 0x5e564c, ceilColor: 0x3e3830,
                 pipes: false,
                 strips: false,
                 lights: [],
                 mood: { light: 0xffe0a0, ambient: 0.5 },
-                plate: { x: 0, z: -3.75, y: 2.6 },
+                plate: { x: -4.0, z: -7.7, y: 3.6 },
+            },
+            /* the grid (12 × 10): the gallery's opening on the west wall at
+               the floor, a pool in the floor's middle, THE LIP two levels up
+               in the north-east (the ramp `a b` up to it) and the way out on
+               the east wall up there — you climb to the light */
+            cave: {
+                rows: [
+                //  012345678901
+                    '############',
+                    '#.....#22222',
+                    '#......22222',
+                    '......#b2222',
+                    '.......a...#',
+                    '...........#',
+                    '#....~~....#',
+                    '#...~~~~...#',
+                    '#....~~....#',
+                    '############',
+                ],
+                floor: 'dirt_3', ledge: 'rocks_2',
             },
             doors: [
-                { id: 'gallery', wall: 'e', z: 0, leaf: null,
-                  label: 'THE GALLERY', sub: 'BACK INTO THE CAVE',
+                { id: 'gallery', wall: 'w', z: -1.75, leaf: null,
+                  label: 'THE CAVERN', sub: 'BACK INTO THE CAVE',
                   action: { room: 'site_prebuilt_hollow_earth_gallery', at: 'mouth' },
                   desc: 'Back in. The cave is colder than the country and the country is warmer than it has any right to be.' },
             ],
             counters: [],
             props: [
-                { key: 'railing_1m',     x: -1.0, z: 3.4, face: 0 },                       // the lip above the slope out (the park rule)
-                { key: 'railing_1m',     x: 0.0, z: 3.4, face: 0 },
-                { key: 'railing_1m',     x: 1.0, z: 3.4, face: 0 },
-                { key: 'riser_1',        x: 0, z: -3.2, face: 0 },                         // the cut steps at the mouth (the park rule's ramp)
-                { key: 'wall_torch',     wall: 'n', x: -2.6, mount: 1.8 },
-                { key: 'wall_torch',     wall: 's', x: -2.6, mount: 1.8 },
-                { key: 'concrete_pillar',     x: -4.0, z: -3.0 },
-                { key: 'concrete_pillar',     x: 4.0, z: -3.2 },
-                { key: 'cardboard_boxes', x: 4.0, z: 3.0, face: 300 },
-                { key: 'floor_stain',    x: -1.4, z: -1.2 },
+                { key: 'railing_1m',     x: 3.5, z: -2.8, face: 0 },                       // the lip's rail over the floor (the park rule)
+                { key: 'railing_1m',     x: 4.5, z: -2.8, face: 0 },
+                { key: 'railing_1m',     x: 5.5, z: -2.8, face: 0 },
+                { key: 'cave_torch',     x: -7.0, z: -5.25 },
+                { key: 'cave_torch',     x: 5.25, z: 0.0 },
+                { key: 'cave_torch',     x: -5.25, z: 5.25 },
+                { key: 'candle_ring',    x: 3.5, z: -5.25, y: 0.0 },                        // on the lip, by the light
+                { key: 'concrete_pillar', x: -7.0, z: 1.75 },
+                { key: 'cardboard_boxes', x: 7.0, z: 5.25, face: 300 },
+                { key: 'floor_stain',    x: -1.75, z: -1.75 },
             ],
             agents: [],
-            npcSpots: [{ x: -3.6, z: 2.6, face: 60, race: 'reptilian' }],
+            npcSpots: [{ x: 5.25, z: 3.5, face: 300, race: 'reptilian' }],
             onlineSpots: [],
             lines: [
                 '“Which way is up?” “Yes.”',
                 '“The sun does not move.” “Neither do we, much.”',
+                '“The way out is up the ramp.” “Everything is up a ramp.”',
             ],
-            spawn: { x: 2.6, z: 0, face: 270 },
+            spawn: { x: -5.25, z: 1.75, face: 90 },
         },
-        /* ── THE OUBLIETTE — the dead end: the cells, the tapes' best hiding
-             place (9.1), 9.4's first authored roamer, and the back wall that
-             is Room 24601's ── */
+        /* ── THE OUBLIETTE — the dead end: the sunken cells, the tapes' best
+             hiding place (9.1), 9.4's first authored roamer, and the back
+             wall that is Room 24601's ── */
         site_prebuilt_hollow_earth_oubliette: {
             label: 'THE CAVE · THE OUBLIETTE',
             sub: 'THE DEAD END · THE CELLS',
             kind: 'box', site: 'prebuilt_hollow_earth', part: 'oubliette',
             shell: {
-                w: 10, d: 8, h: 3.4,
-                wallH: 3.4, dadoH: 1.1,
+                w: 17.5, d: 14, h: 4.5,
+                wallH: 4.5, dadoH: 1.1,
                 floor: 'dungeon_2', wall: 'cave_wall', dado: 'dungeon_3', trim: 'dungeon_4', ceiling: 'cave_wall',
-                floorColor: 0x7a746e, wallColor: 0x6a635a, dadoColor: 0x5a544e, ceilColor: 0x453f3a,
+                floorColor: 0x7a746e, wallColor: 0x6a635a, dadoColor: 0x5a544e, ceilColor: 0x3e3934,
                 pipes: false,
                 strips: false,
                 lights: [],
                 mood: { light: 0xffa050, ambient: 0.35 },
-                plate: { x: 0, z: -3.75, y: 2.5 },
+                plate: { x: 0, z: -6.4, y: 3.0 },
+            },
+            /* the grid (10 × 8): the walk down the middle from the portcullis,
+               the CELLS sunk one level into the floor either side (`_`:
+               you step down into one and up out of it — a cell without a
+               door is still a cell), the draught along the back wall */
+            cave: {
+                rows: [
+                //  0123456789
+                    '####..####',
+                    '#__......#',
+                    '#_>..#.__#',
+                    '#....#.__#',
+                    '#__..#...#',
+                    '#__......#',
+                    '#........#',
+                    '#####...##',
+                ],
+                legend: { '_': { lvl: -1, key: 'dungeon_3' }, '>': { lvl: -1, slope: 'e', key: 'dungeon_3' } },
+                floor: 'dungeon_2',
             },
             doors: [
                 { id: 'gallery', wall: 'n', x: 0, leaf: 'leaf_portcullis', wide: true,
-                  label: 'THE GALLERY', sub: 'BACK TO THE CROSSROADS',
+                  label: 'THE CAVERN', sub: 'BACK TO THE CROSSROADS',
                   action: { room: 'site_prebuilt_hollow_earth_gallery', at: 'oubliette' },
                   desc: 'The portcullis, from the wrong side, which is the side it was hung for.' },
                 { id: 'dungeon', wall: 's', x: 3.0, leaf: null, secret: true,
@@ -24950,20 +25144,19 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'cell_bars',      wall: 'w', z: -1.2 },
-                { key: 'cell_bars',      wall: 'w', z: 1.2 },
-                { key: 'wall_chains',    wall: 'e', z: -1.4 },
-                { key: 'wall_chains',    wall: 'e', z: 1.4 },
-                { key: 'stocks',         x: -2.6, z: 2.4, face: 20 },                      // THE RACK, near enough
-                { key: 'cot',            x: -3.4, z: -2.4, face: 90 },
-                { key: 'cardboard_boxes', x: 3.6, z: -2.8, face: 340 },                    // THE CRATES: the best hiding place in the world (9.1)
-                { key: 'railing_1m',     x: 0.0, z: -2.9, face: 0 },                       // a rail, bolted to nothing (the park rule)
-                { key: 'railing_1m',     x: 1.0, z: -2.9, face: 0 },
-                { key: 'wall_torch',     wall: 'n', x: -3.4, mount: 1.7 },
-                { key: 'wall_torch',     wall: 's', x: -3.4, mount: 1.7 },
-                { key: 'key',            x: 1.4, z: -1.2, y: 0.0, face: 40 },              // a ring of keys, on the floor, as upstairs
-                { key: 'floor_drain',    x: -0.6, z: 0.8 },
-                { key: 'floor_stain',    x: 0.4, z: 1.6 },
+                { key: 'railing_1m',     x: -4.2, z: -5.25, face: 90 },                    // the rail along the west cells' edge (the park rule)
+                { key: 'railing_1m',     x: -4.2, z: -4.25, face: 90 },
+                { key: 'railing_1m',     x: -4.2, z: 0.0, face: 90 },
+                { key: 'railing_1m',     x: -4.2, z: 1.0, face: 90 },
+                { key: 'stocks',         x: 0.0, z: 1.75, face: 20 },                       // THE RACK, near enough
+                { key: 'cot',            x: -7.0, z: -5.25, face: 90 },                     // in the first cell, on trestles
+                { key: 'cardboard_boxes', x: -7.0, z: 1.75, face: 340 },                    // THE CRATES in the third cell: the best hiding place in the world (9.1)
+                { key: 'cave_torch',     x: -3.5, z: -5.25 },
+                { key: 'cave_torch',     x: 5.25, z: 3.5 },
+                { key: 'candle_ring',    x: -3.5, z: 0.0, y: 0.0 },
+                { key: 'key',            x: 1.75, z: -1.75, y: 0.0, face: 40 },             // a ring of keys, on the floor, as upstairs
+                { key: 'floor_drain',    x: -1.75, z: 3.5 },
+                { key: 'floor_stain',    x: -0.875, z: -3.5 },
             ],
             agents: [],
             npcSpots: [],
@@ -24971,8 +25164,9 @@ const DOOR_HQ = {
             lines: [
                 '“Oubliette.” “From the French.” “For?” “Forget.”',
                 '“Whose cells are these?” “Ours.” “Ours as in the Department’s?” “Ours as in they were here first.”',
+                '“No doors on the cells.” “No. A step.” “A step is not a door.” “Down here it is.”',
             ],
-            spawn: { x: 0, z: -1.6, face: 180 },
+            spawn: { x: -1.75, z: -1.75, face: 180 },
         },
         /* ══════════════════════════════════════════════════════════════════
            H-WING (HQ plan 5.5, stage 1 — 2026-09-14 rev 4). See DOOR_HQ.hwing
@@ -26346,6 +26540,182 @@ function hqRefreshComplexLinks() {
 }
 ((DOOR_HQ.siteRooms || {}).built || []).forEach(id => { const r = hqSiteRoom(id); if (r) DOOR_HQ.rooms[hqSiteRoomId(id)] = r; });
 hqRefreshComplexLinks();
+/* ── THE CAVE GRID (HQ plan 9.3 stage 2 — 2026-09-15 rev 11) ──────────────
+   A box room may carry `cave`: a hand-authored ASCII GRID that IS the room's
+   floor — rock, floor at several LEVELS, ramps, bridges, water and lava —
+   the Pokémon Victory-Road dungeon in 3D. One cell is HQ_CAVE_CELL metres
+   (a battle tile); one LEVEL is HQ_CAVE_LEVEL metres (half a tile): the
+   walker climbs ONE level per step (a ramp cell or a single stair rise), so
+   a ledge two levels up is a wall until you find its ramp (three-renderer.js
+   _hqSurface reads `_hq.site.L`), and never walks off more than HQ_DROP_MAX.
+   Shape: `cave = { rows: [...strings], legend: { ch: cell }, floor, rock,
+   ledge, tint }`. STANDARD CHARS (a room's legend overrides / extends):
+     '#' rock (a wall to the ceiling)      '.' floor at level 0
+     '0'-'9' floor at that level           '~' water (bed −1: waded)
+     'W' deep water (bed −2: never)        'L' lava (bed −1: never)
+     ' ' padding = rock
+   A LEGEND CELL: { lvl, key?, slope?: 'n'|'s'|'e'|'w' (a ramp rising ONE
+   level toward that side), fluid?: <key> (a pool whose BED is lvl — its
+   bank is lvl + 1), bridge?: <deck key> + under?: '~'|'W'|'L' (a deck at
+   lvl over that liquid, no column), glow?: colour, walk?: false }.
+   Readers: hqCaveInfo(roomId) (compiled once), hqCaveCellAt / hqCaveTopAt
+   (metres, room frame — the walker's feet, null = not walkable),
+   hqCaveDoorY (a door's sill = the cell inside its wall), hqCaveReach (the
+   walker's own step rule as a BFS — the tests prove every door reaches
+   every other). The renderer builds it with _hqBuildCave. */
+const HQ_CAVE_CELL = 1.75;
+const HQ_CAVE_LEVEL = 0.875;
+const HQ_CAVE_WADE = 0.25;      // the feet this far under a waded sheet (the walker's HQ_WADE_M rule at this level height)
+const HQ_CAVE_STEP = HQ_CAVE_LEVEL + 0.06;
+const HQ_CAVE_DROP = 1.6;       // = the walker's HQ_DROP_MAX
+const HQ_CAVE_STD = (function () {
+    const S = {
+        '#': { rock: true }, ' ': { rock: true }, '.': { lvl: 0 },
+        '0': { lvl: 0 }, '1': { lvl: 1 }, '2': { lvl: 2 }, '3': { lvl: 3 }, '4': { lvl: 4 }, '5': { lvl: 5 }, '6': { lvl: 6 }, '7': { lvl: 7 }, '8': { lvl: 8 }, '9': { lvl: 9 },
+        '~': { lvl: -1, fluid: 'water' }, 'W': { lvl: -2, fluid: 'deep_water' }, 'L': { lvl: -1, fluid: 'lava' },
+        /* the pool on a terrace (its bank is lvl 2), the lava lake in a shelf (bank lvl 4) */
+        'P': { lvl: 1, fluid: 'water' }, 'Y': { lvl: 3, fluid: 'lava' },
+        /* the bridges: planks at the floor over deep water, the rope bridge (lvl 4) over the pool, obsidian (lvl 4) over the lava lake */
+        '=': { lvl: 0, bridge: 'wood_planks', under: 'W' }, 'B': { lvl: 4, bridge: 'wood_planks', under: 'P' }, 'H': { lvl: 4, bridge: 'obsidian', under: 'Y' },
+        /* the sheets a cell may wear: obsidian at the floor / on the shelf, crystal growing out of the floor (lit) */
+        '@': { lvl: 0, key: 'obsidian' }, 'O': { lvl: 4, key: 'obsidian' }, 'K': { lvl: 0, key: 'crystal', glow: 0x9fe8c8 },
+    };
+    /* THE RAMPS: a cell rising ONE level toward a side — the letter is the
+       base level: a–f rise NORTH from 0–5, g–l SOUTH, m–r EAST, s–x WEST */
+    'abcdef'.split('').forEach((ch, i) => { S[ch] = { lvl: i, slope: 'n' }; });
+    'ghijkl'.split('').forEach((ch, i) => { S[ch] = { lvl: i, slope: 's' }; });
+    'mnopqr'.split('').forEach((ch, i) => { S[ch] = { lvl: i, slope: 'e' }; });
+    'stuvwx'.split('').forEach((ch, i) => { S[ch] = { lvl: i, slope: 'w' }; });
+    return S;
+})();
+function hqCaveCompile(cave, shellH) {
+    const rows = cave.rows || [];
+    const H = rows.length, W = rows.reduce((m, r) => Math.max(m, r.length), 0);
+    const C = cave.cell || HQ_CAVE_CELL, L = cave.level || HQ_CAVE_LEVEL;
+    const legend = Object.assign({}, HQ_CAVE_STD, cave.legend || {});
+    const floorKey = cave.floor || 'cave_floor', rockKey = cave.rock || 'cave_wall', ledgeKey = cave.ledge || floorKey;
+    const rockH = shellH || 8;
+    const haz = (typeof HQ_SITE_HAZARDS !== 'undefined') ? HQ_SITE_HAZARDS : ['deep_water', 'lava'];
+    const cells = [];
+    for (let y = 0; y < H; y++) {
+        const row = [];
+        for (let x = 0; x < W; x++) {
+            const ch = rows[y][x] || ' ';
+            const d = legend[ch] || legend['#'];
+            const c = { ch: ch, x: x, y: y, lvl: d.lvl | 0, key: d.key || null, walk: d.walk !== false, fluid: null, rock: !!d.rock, slope: d.slope || null, bridge: d.bridge || null, under: null, glow: d.glow || null, tint: d.tint || cave.tint || null, top: 0, sheet: null };
+            if (c.rock) { c.walk = false; c.key = c.key || rockKey; c.top = rockH; c.lvl = 0; }
+            else if (d.fluid) {
+                c.fluid = d.fluid; c.key = c.key || d.fluid;
+                c.top = c.lvl * L;                          // the bed
+                c.sheet = (c.lvl + 1) * L - 0.3;            // the surface, 0.3 m under the bank
+                if (haz.indexOf(c.fluid) >= 0 || (-c.lvl) > 1 && d.walk !== true) c.walk = false;
+            }
+            else if (c.bridge) { c.key = c.key || c.bridge; c.top = c.lvl * L; c.under = legend[d.under || '~'] ? Object.assign({}, legend[d.under || '~']) : { lvl: -1, fluid: 'water' }; c.under.key = c.under.fluid || c.under.key || 'water'; c.under.top = (c.under.lvl | 0) * L; c.under.sheet = ((c.under.lvl | 0) + 1) * L - 0.3; }
+            else { c.key = c.key || (c.lvl > 0 ? ledgeKey : floorKey); c.top = c.lvl * L + (c.slope ? L / 2 : 0); }
+            row.push(c);
+        }
+        cells.push(row);
+    }
+    return { w: W, h: H, cell: C, L: L, rockH: rockH, halfW: W * C / 2, halfD: H * C / 2, cells: cells, floor: floorKey, rock: rockKey };
+}
+function hqCaveInfo(roomId) {
+    const r = (DOOR_HQ.rooms || {})[roomId]; if (!r || !r.cave) return null;
+    if (!r._caveInfo) r._caveInfo = hqCaveCompile(r.cave, (r.shell && r.shell.h) || 8);
+    return r._caveInfo;
+}
+function hqCaveCellAt(info, x, z) {
+    if (!info) return null;
+    const cx = Math.floor((x + info.halfW) / info.cell), cy = Math.floor((z + info.halfD) / info.cell);
+    if (cx < 0 || cy < 0 || cx >= info.w || cy >= info.h) return null;
+    return info.cells[cy][cx];
+}
+/* the walker's FEET on a cell at (x, z) — a ramp interpolates along its
+   rise, a waded pool stands HQ_CAVE_WADE under its sheet, a bridge is its
+   deck, rock and a hazard are null */
+function hqCaveFeet(info, c, x, z) {
+    if (!c || !c.walk) return null;
+    const L = info.L;
+    if (c.fluid) return Math.max(c.top, c.sheet - HQ_CAVE_WADE);
+    if (c.slope) {
+        const u = (x + info.halfW) / info.cell - c.x, v = (z + info.halfD) / info.cell - c.y;
+        const t = c.slope === 'n' ? 1 - v : c.slope === 's' ? v : c.slope === 'e' ? u : 1 - u;
+        return (c.lvl + Math.max(0, Math.min(1, t))) * L;
+    }
+    return c.top;
+}
+function hqCaveTopAt(info, x, z) { const c = hqCaveCellAt(info, x, z); return c ? hqCaveFeet(info, c, x, z) : null; }
+/* a door's SILL: the walker's feet on the cell just inside its wall (a free
+   seam: at its own spot); 0 when the room has no grid or the lane is rock */
+function hqCaveDoorY(room, door) {
+    const info = room && room.cave ? (room._caveInfo || (room._caveInfo = hqCaveCompile(room.cave, (room.shell && room.shell.h) || 8))) : null;
+    if (!info || !door) return 0;
+    const S = room.shell || {}; let px, pz;
+    if (door.wall === 'free') { px = door.x || 0; pz = door.z || 0; }
+    else if (door.wall === 'n') { px = door.x || 0; pz = -S.d / 2 + 0.9; }
+    else if (door.wall === 's') { px = door.x || 0; pz = S.d / 2 - 0.9; }
+    else if (door.wall === 'e') { px = S.w / 2 - 0.9; pz = door.z || 0; }
+    else if (door.wall === 'w') { px = -S.w / 2 + 0.9; pz = door.z || 0; }
+    else return 0;
+    const y = hqCaveTopAt(info, px, pz);
+    return (y == null) ? 0 : Math.round(y * 1000) / 1000;
+}
+/* the height of a cell at the middle of one of its edges (what a walker
+   crossing that edge stands on) — the step rule's read for the solver */
+function hqCaveEdgeH(info, c, side) {
+    if (!c || !c.walk) return null;
+    const L = info.L;
+    if (c.fluid) return Math.max(c.top, c.sheet - HQ_CAVE_WADE);
+    if (c.slope) {
+        const hi = (c.slope === side) ? 1 : (c.slope === { n: 's', s: 'n', e: 'w', w: 'e' }[side]) ? 0 : 0.5;
+        return (c.lvl + hi) * L;
+    }
+    return c.top;
+}
+/* THE SOLVER: every cell the walker reaches from (cx, cy) under its own
+   step rule (climb ≤ one level + 0.06, drop ≤ HQ_CAVE_DROP), 4-connected,
+   crossing each shared edge at that edge's own heights. Returns a
+   Set of 'x,y'. */
+function hqCaveReach(info, cx, cy) {
+    const seen = new Set(), q = [];
+    const start = info.cells[cy] && info.cells[cy][cx];
+    if (!start || !start.walk) return seen;
+    seen.add(cx + ',' + cy); q.push([cx, cy]);
+    const N = [[0, -1, 'n', 's'], [0, 1, 's', 'n'], [1, 0, 'e', 'w'], [-1, 0, 'w', 'e']];
+    while (q.length) {
+        const p = q.shift(), a = info.cells[p[1]][p[0]];
+        for (const n of N) {
+            const nx = p[0] + n[0], ny = p[1] + n[1];
+            if (nx < 0 || ny < 0 || nx >= info.w || ny >= info.h) continue;
+            const k = nx + ',' + ny; if (seen.has(k)) continue;
+            const b = info.cells[ny][nx]; if (!b.walk) continue;
+            const ha = hqCaveEdgeH(info, a, n[2]), hb = hqCaveEdgeH(info, b, n[3]);
+            if (ha == null || hb == null) continue;
+            if (hb - ha > HQ_CAVE_STEP || ha - hb > HQ_CAVE_DROP) continue;
+            seen.add(k); q.push([nx, ny]);
+        }
+    }
+    return seen;
+}
+/* the cell a door's landing falls in (the walker stands 2.4 m inside the wall) */
+function hqCaveDoorCell(room, door) {
+    const info = hqCaveInfo(room.id) || (room.cave ? hqCaveCompile(room.cave, room.shell.h) : null); if (!info) return null;
+    const S = room.shell; let px, pz;
+    if (door.wall === 'free') { const f = (door.face || 0) * Math.PI / 180; px = (door.x || 0) + Math.sin(f) * 2.4; pz = (door.z || 0) - Math.cos(f) * 2.4; }
+    else if (door.wall === 'n') { px = door.x || 0; pz = -S.d / 2 + 2.4; }
+    else if (door.wall === 's') { px = door.x || 0; pz = S.d / 2 - 2.4; }
+    else if (door.wall === 'e') { px = S.w / 2 - 2.4; pz = door.z || 0; }
+    else { px = -S.w / 2 + 2.4; pz = door.z || 0; }
+    return hqCaveCellAt(info, px, pz);
+}
+function hqCaveRooms() { const R = DOOR_HQ.rooms || {}; return Object.keys(R).filter(k => R[k] && R[k].cave); }
+/* the shell FITS the grid: w / d are the grid's, never hand-typed */
+function hqCaveFitRooms() {
+    hqCaveRooms().forEach(id => {
+        const r = DOOR_HQ.rooms[id], info = hqCaveInfo(id);
+        r.shell.w = Math.round(info.w * info.cell * 100) / 100; r.shell.d = Math.round(info.h * info.cell * 100) / 100;
+    });
+}
+hqCaveFitRooms();
 /* ── THE ROOM REGISTER (HQ plan 7.1, 2026-09-07) ───────────────────────
    Every site and every numbered HQ room wears ONE number (7.0 rule 1). The
    number lives with the thing it names — `roomNo` on the threshold (site),
@@ -27935,6 +28305,10 @@ if (typeof window !== 'undefined') {
     window.hqComplexRooms = hqComplexRooms;
     window.hqSiteComplex = hqSiteComplex;
     window.hqRefreshComplexLinks = hqRefreshComplexLinks;
+    window.HQ_CAVE_CELL = HQ_CAVE_CELL; window.HQ_CAVE_LEVEL = HQ_CAVE_LEVEL; window.HQ_CAVE_STD = HQ_CAVE_STD;
+    window.hqCaveCompile = hqCaveCompile; window.hqCaveInfo = hqCaveInfo; window.hqCaveCellAt = hqCaveCellAt; window.hqCaveFeet = hqCaveFeet;
+    window.hqCaveTopAt = hqCaveTopAt; window.hqCaveDoorY = hqCaveDoorY; window.hqCaveEdgeH = hqCaveEdgeH; window.hqCaveReach = hqCaveReach;
+    window.hqCaveDoorCell = hqCaveDoorCell; window.hqCaveRooms = hqCaveRooms;
     window.hqLinkRoom = hqLinkRoom;
     window.hqLinkDoors = hqLinkDoors;
     window.hqLinkEndOk = hqLinkEndOk;

@@ -10488,3 +10488,29 @@ its `hole` (0.64) is the disc, not the bbox. Hinge side = where the hinge
 apply the `yaw`: rotation.y +90° maps local +Z → world +X (right). Session
 scratch: glbsil.js / depth.js / handle.js (not repo tooling — rewrite in
 ten minutes from this note).
+
+## THE DUNGEON — the cave grids (HQ plan 9.3 stage 2) — 2026-09-15 rev 11, local delivery
+Not playtested (RULE #1c). What was run: `node --check` on data.js /
+three-renderer.js, `npm test`, and a SCRATCH smoke build of
+`_hqBuildCave` on every chamber with the real three r128 (`npm i
+--no-save three@0.128.0`; the renderer's helpers extracted into a vm with
+stubbed textures) — every chamber builds (the cavern: 343 meshes + 562
+instances, 12 ramps, 26 rope-rail segments, water + deep water + lava
+ticked), a ramp's midpoint interpolates (4.41 → 5.21 m across the `f`
+cell), a ledge stands at 5.25, water wades at −0.55, a door's sill is
+its lane's level. **Eyeball first, live:** walk THE CAVERN from the
+well room's door — up the terrace ramps (`a b` at the west end), along
+the terrace rail, down the hall's stair, across the ford under the
+fall, over the planks to the mouth; climb the long ramp up the east
+wall onto the hot shelf and the causeway to the fissure's arch; the
+rope bridge over the pool to the west shelf and `e f` up to LEVEL −6.
+Things to look at: the wedge shading (Phong, smooth normals — a hard
+crease may want flat normals), the rock border's jitter against the
+box walls (it stands 0.4 units low so it meets the floor), a door frame
+standing on a 5.25 m tier (its jambs are the wall's texture; the rock
+beside it is the border cell), the falls (the fluid sheet stood
+vertical — if it reads flat, a scrolling streak texture is the
+upgrade), the lava light (one point light per lake, at the lake's
+centroid), the well heads on the crag (3.5 m up). Dev: every helper is
+on `window` (`hqCaveInfo('site_prebuilt_hollow_earth_gallery')`,
+`hqCaveReach`); `ThreeRenderer.hq` → `_hq.site.cave`.

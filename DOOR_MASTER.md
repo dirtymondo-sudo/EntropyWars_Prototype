@@ -2435,3 +2435,18 @@ natatorium built from the user's water polo repository. HQ plan 9.3
 gained THE WELLS AND THE CAVE, 7.3 / 7.4 / 7.7 the three places, 9.9
 the water polo port, 9.7 rows 33–36. Part C rows 33–36 added. Nothing
 built, nothing decided.
+
+### 2026-09-15 — THE DUNGEON (HQ plan 9.3 stage 2, rev 11; local delivery)
+The user's brief: the cave was doors beside each other in an open box;
+it should be the Pokémon Victory Road — branching routes, several
+entrances and exits, bridges, waterfalls, ledges you find the ramp for,
+running water and lava, big enough to get lost in, with the door gun
+and the skateboard in mind. Built: every cave chamber is a CAVE GRID
+(`cave.rows`, half-tile levels, ramps, bridges, water, lava; the rules
+in CLAUDE.md "THE DUNGEON"); THE CAVERN is 52 × 42 m on three tiers with
+the six doors scattered on the tiers (LEVEL −6 on the top, the fissure
+across the lava lake, the mouth over the plank bridge, the adit past the
+ford); the well heads stand on three tiers of the well room. The
+dungeon is solved by a test (every door reaches every other under the
+walker's step rule). Nothing decided that Part C did not already hold;
+row 33's "which exits beyond the four" stays the user's. Unseen live.

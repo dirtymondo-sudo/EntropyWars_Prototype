@@ -498,7 +498,7 @@ test('box-room props resolve (kit or procedural), sit inside the walls, wall pro
         for (const a of room.agents || []) if (!(typeof a.x === 'number' && typeof a.z === 'number')) problems.push(k + ': agent needs x/z');
         /* an OUTDOOR room (plan 7.2 stage 3) has no ceiling to hang a fluorescent from: its lights are masts */
         if (S.open) assert.ok(Array.isArray(S.lights) && S.lights.length >= 4 && !room.props.some(p => p.ceil), k + ': an outdoor room is lit by masts, nothing hangs from a ceiling');
-        else assert.ok(room.props.some(p => (p.key === 'fluorescent' && (p.ceil || HQ.catalogue.fluorescent.ceil)) || /^(flicker_tube|bare_bulb|wall_torch|candle_ring|floating_orb)$/.test(p.key)), k + ': lit by a fluorescent (or, since Phase 8, a tube that flickers, a bulb, a torch, the candles, the object)');
+        else assert.ok(room.props.some(p => (p.key === 'fluorescent' && (p.ceil || HQ.catalogue.fluorescent.ceil)) || /^(flicker_tube|bare_bulb|wall_torch|candle_ring|floating_orb|cave_torch|crystal_cluster)$/.test(p.key)), k + ': lit by a fluorescent (or, since Phase 8, a tube that flickers, a bulb, a torch, the candles, the object; since the cave, a stake torch or a crystal)');
     }
     assert.deepStrictEqual(problems, []);
     /* the closet reference (janitor_closet_v1): cot, sink, mop bucket, breaker panel, rug, drain, CRT, phone, desk, locker, chair */
@@ -2628,7 +2628,9 @@ test('the walkable site: a liquid cell is waded at HQ_WADE_M, a dry pit is still
     assert.ok(m, 'HQ_WADE_M is declared');
     const wade = parseFloat(m[1]);
     assert.ok(wade > 0.3 && wade < 1.2, 'the feet stand under the sheet (−0.3 m) but the body stays out of the water: ' + wade);
-    assert.match(tr, /if \(sc\.top < 0\) y = sc\.fluid \? Math\.max\(sc\.top, -HQ_WADE_M\) : sc\.top;/, '_hqSurface wades a fluid cell and drops into a dry one');
+    /* THE CAVE (rev 11): the wade rule moved into _hqSiteFloorY, the ONE feet read for a site cell and a cave cell; _hqSurface reads it */
+    assert.match(tr, /if \(sc\.top < 0\) return sc\.fluid \? Math\.max\(sc\.top, -HQ_WADE_M\) : sc\.top;/, '_hqSiteFloorY wades a fluid cell and drops into a dry one');
+    assert.match(tr, /if \(sc\) \{ if \(!sc\.walk\) return null; y = _hqSiteFloorY\(sc, x, z\); \}/, '_hqSurface reads the cell’s feet through _hqSiteFloorY');
     assert.match(tr, /cell: \{ top: -mDepth, walk: !!M\.walk, fluid: true, key: M\.key, moat: true \}/, 'the moat cell is a fluid cell (so it is waded too)');
 });
 

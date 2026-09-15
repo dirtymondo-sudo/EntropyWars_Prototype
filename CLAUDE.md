@@ -2958,6 +2958,77 @@ a room's doors must filter `!d.link` (links append after a room's own
 rows). Viewer-local (RULE #2). Still open: the suites, the star chart's
 route lines, the other eight `way` kinds, the airlock / hold ends.
 
+## THE DUNGEON — the cave is a CAVE GRID (HQ plan 9.3 stage 2) — 2026-09-15 rev 11, local delivery
+The seven cave chambers (`site_prebuilt_hollow_earth_*`, data.js, the
+block before H-WING) are Pokémon Victory-Road dungeons in 3D now: a
+`kind: 'box'` room may carry **`cave: { rows, legend?, floor, ledge,
+rock, tint }`** — a hand-authored ASCII GRID that IS its floor. One cell
+= `HQ_CAVE_CELL` 1.75 m (a battle tile); one LEVEL = `HQ_CAVE_LEVEL`
+0.875 m (half a tile). **`HQ_CAVE_STD`** is the legend every room
+shares: `#` rock (to the ceiling; the box walls stand behind it), `.` /
+`0`–`9` floor at that level, `~` water (bed −1, WADED), `W` deep water
+(never), `L` lava (never), `P` a pool whose bed is lvl 1 (a terrace
+pool; its spill into `~` is a WATERFALL), `Y` the lava lake in a lvl-4
+shelf, `=` planks at the floor over `W`, `B` the rope bridge (lvl 4)
+over `P`, `H` obsidian (lvl 4) over `Y`, `@` obsidian floor, `O` obsidian
+at lvl 4, `K` crystal (lit), and THE RAMPS — a cell rising ONE level
+toward a side, the letter its base level: `a`–`f` north (0–5), `g`–`l`
+south, `m`–`r` east, `s`–`x` west (**never reuse a lowercase letter in
+a room legend** — `o` was the obsidian floor and became the lvl-2 east
+ramp). A room's `legend` extends it (`{ lvl, key?, slope?, fluid?,
+bridge? + under?, glow?, walk? }`). RULES: a ledge two levels up is a
+WALL until its ramp (the walker climbs one level per step —
+three-renderer.js `_hqSurface` reads `_hq.site.L`), never walks off
+more than HQ_DROP_MAX, wades a `~` / `P` at HQ_CAVE_WADE under the
+sheet, never enters `W` / `L` / `Y` or rock; a door LANE is three cells
+wide at the wall, level with its sill — **a door stands at its lane's
+level** (`hqCaveDoorY` → the renderer's `_hqDoorFloorY`: LEVEL −6 is on
+the high tier, the fissure on the hot shelf, the mouth's exit on the
+lip), free-standing WELLS on their tiers; the shell's `w` / `d` are
+FITTED to the grid (`hqCaveFitRooms()` after the links refresh — never
+hand-type them); `wallH` = `h`. Reads (data.js, on `window`):
+`hqCaveCompile(cave, h)` → `{ w, h, cell, L, rockH, halfW, halfD,
+cells[y][x]: { ch, lvl, key, walk, fluid, rock, slope, bridge, under,
+glow, top, sheet } }`, `hqCaveInfo(roomId)` (cached), `hqCaveCellAt /
+hqCaveTopAt / hqCaveFeet` (metres, room frame — the walker's feet),
+`hqCaveDoorY(room, door)`, `hqCaveEdgeH`, **`hqCaveReach(info, cx, cy)`
+= the walker's own step rule as a BFS** (hq-cave.test.js proves every
+door reaches every other in every chamber — THE DUNGEON IS ALWAYS
+SOLVABLE; author a grid, run the test, never guess), `hqCaveDoorCell`,
+`hqCaveRooms`. Renderer (three-renderer.js, before `_hqBuildSiteBoard`):
+**`_hqBuildCave(room)`** (called from `_hqEnter` on `room.cave`; sets
+`_hq.site = { cave: true, info, NX, NY, L, … }` — `_hqSiteCellAt` is
+oblong-aware now) draws instanced tops / ledges per level / the
+jittered rock border, ramp WEDGES (`_hqCaveWedge`), bridge decks with
+rope rails (`_hq.rails`), fluid pits with the battle's animated sheet
+per key (`_hq.moatTick.keys` — `_hqTickMoat` ticks water AND lava),
+WATERFALLS where a sheet meets a lower one, one point light per lava
+lake, crystal glows, stalactites; **`_hqSiteFloorY(sc, x, z)`** is the
+ONE feet read (a ramp interpolates, a pool wades, a bridge is its deck;
+a site board keeps its old blockers) used by `_hqSurface`, `_hqAirOK`,
+the jump landing and `_hqCamBlocked` (the boom never enters rock);
+doors / ways take `y0 = _hqDoorFloorY`, counters / floor props / natives
+/ the walker stand on their cell (`_hqCaveTop`); the box shell draws NO
+floor plane under a grid. New procs `cave_torch` (a stake in the floor)
+and `crystal_cluster` (both catalogued with a `light`; doorhq.test.js
+lists them as room lights). THE PARK RULE in a cave = a `railing_1m` run
++ a SLOPE CELL (not a riser; `_hq.ramps` is filled from them for 9.8).
+THE CAVERN (52 × 42 m, 30 × 24 cells, h 11) has the routes: the
+terrace's ramps, the hall's stair, the ford under the fall, the plank
+bridge, the long ramp up the east wall, the causeway across the lava
+lake, the rope bridge over the pool. `npm test` runs `hq-cave.test.js`
+(the sheet, the wells on three tiers, the lanes, the rock border open
+only at lanes, the solver from every door, props / spawn / natives on
+walkable cells, the wedge, the renderer sites). Adding a chamber = a
+`cave.rows` grid + doors on lanes + `railing_1m` + a ramp letter; adding
+a legend kind = `HQ_CAVE_STD` + a branch in `hqCaveCompile` /
+`hqCaveFeet` + its look in `_hqBuildCave`. NOT BUILT: a ROCK ceiling
+mesh (the box ceiling + stalactites stand in), a stream that flows (the
+sheets drift in place), the door gun's surface set off the grid. UNSEEN
+LIVE (RULE #1c): every chamber — the wedges' shading, the rock's
+jitter against the box walls, the falls, the lava light, the rope
+rails, a door frame standing on a 5.25 m tier, the wells on the crag.
+
 ## THE WELLS AND THE CAVE (HQ plan 9.3) — 2026-09-15 rev 10, local delivery
 Every well in the world drops into ONE cave. The CAVE is the SECOND
 complex and it is HOLLOW EARTH's (`site: 'prebuilt_hollow_earth'` +

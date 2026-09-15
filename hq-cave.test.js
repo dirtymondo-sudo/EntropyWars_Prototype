@@ -1,4 +1,7 @@
-// hq-cave.test.js — THE WELLS AND THE CAVE (HQ plan 9.3, 2026-09-15 rev 10).
+// hq-cave.test.js — THE WELLS AND THE CAVE (HQ plan 9.3, 2026-09-15 rev 10)
+// + THE DUNGEON (stage 2, rev 11: every chamber a CAVE GRID — rock, floor at
+// levels, ramps, bridges, water, lava — solved with the walker's own step
+// rule, every door at its lane's level, the wells on their tiers).
 //
 // Every well in the world drops into ONE cave: the SECOND complex
 // (site_prebuilt_hollow_earth_*, Hollow Earth's, wild by construction) —
@@ -44,10 +47,12 @@ function landing(room, door) {
         HQ_WALLS: { n: { nx: 0, nz: 1, yaw: 0 }, s: { nx: 0, nz: -1, yaw: Math.PI }, e: { nx: -1, nz: 0, yaw: -Math.PI / 2 }, w: { nx: 1, nz: 0, yaw: Math.PI / 2 } },
         THREE: { Vector3: class { constructor(x, y, z) { Object.assign(this, { x, y, z }); } } } };
     vm.createContext(c); vm.runInContext(extract('_hqBoxWall') + '\n' + extract('_hqGoTo'), c);
-    c._hq.doors.push({ door, box: c._hqBoxWall(room, door.wall, door), y0: 0 });
+    c._hq.doors.push({ door, box: c._hqBoxWall(room, door.wall, door), y0: sill(room, door) });
     assert.equal(c._hqGoTo(door.id, true), true, room.label + '/' + door.id + ' lands');
     return c._hq;
 }
+/* a door's SILL in a cave room: the production read (data.js hqCaveDoorY — the renderer's _hqDoorFloorY) */
+function sill(room, door) { return room.cave ? D.hqCaveDoorY(room, door) : 0; }
 function propBlocks(room, p, x, z, margin) {
     const S = room.shell, cat = HQ.catalogue[p.key] || {};
     if (p.ceil || cat.ceil || (p.y || 0) > 0.5) return false;
@@ -187,7 +192,8 @@ test('the production renderer lands every door and every well head inside its ch
             const fx = Math.sin(h.cam.yaw), fz = -Math.cos(h.cam.yaw);
             const dot = fx * inward[0] + fz * inward[1];
             assert.ok(dot < -0.99 || dot > 0.99, id + '/' + door.id + ': faces along the doorway’s normal');
-            assert.equal(p.air, false); assert.equal(p.y, 0);
+            assert.equal(p.air, false);
+            assert.equal(p.y, sill(room, door), id + '/' + door.id + ': lands at the door’s own sill (a door on a ledge lands on the ledge)');
             for (const q of [...room.props, ...room.npcSpots]) assert.ok(!propBlocks(room, q, p.x, p.z, 0.35), id + '/' + door.id + ': ' + (q.key || q.race) + ' blocks the landing');
             for (const other of room.doors) if (other.id !== door.id && other.wall === door.wall && door.wall !== 'free') {
                 const k = (door.wall === 'n' || door.wall === 's') ? 'x' : 'z';
@@ -202,15 +208,142 @@ test('the production renderer lands every door and every well head inside its ch
     }
 });
 
-test('THE PARK RULE and the cave’s own light: a rail in every chamber, a ramp in every big one, no facility strips, torches and bulbs under the prop-light cap', () => {
+test('THE PARK RULE and the cave’s own light: a rail in every chamber, a real ramp in every one, no facility strips, torches and crystals under the prop-light cap', () => {
     for (const id of PART_IDS) {
         const room = HQ.rooms[id], S = room.shell;
         assert.ok(room.props.some(p => p.key === 'railing_1m'), id + ': a rail to grind');
-        if (S.w >= 12) assert.ok(room.props.some(p => /^riser_[123]$/.test(p.key)), id + ': a big chamber has a stepped ramp');
+        /* the ramp is a SLOPE CELL of the grid now (rev 11 — 9.8's `_hq.ramps` reads them), not the lecture hall's risers */
+        const info = D.hqCaveInfo(id);
+        assert.ok(info && info.cells.some(r => r.some(c => c.slope)), id + ': a real ramp (a slope cell) to ride');
         assert.ok(S.strips === false && Array.isArray(S.lights) && S.lights.length === 0 && S.mood, id + ': no facility strips — the cave lights itself');
-        const lit = room.props.filter(p => (HQ.catalogue[p.key] || {}).light).length;
-        assert.ok(lit >= 1 && lit <= 10, id + ': ' + lit + ' prop lights (HQ_PROP_LIGHT_MAX is 10)');
+        const lava = D.hqCaveInfo(id).cells.some(r => r.some(c => c.fluid === 'lava' || (c.under && c.under.fluid === 'lava'))) ? 1 : 0;   // _hqBuildCave: one point light per lava lake
+        const lit = room.props.filter(p => (HQ.catalogue[p.key] || {}).light).length + lava;
+        assert.ok(lit >= 1 && lit <= 10, id + ': ' + lit + ' point lights (HQ_PROP_LIGHT_MAX is 10, the lava’s counted)');
     }
+});
+
+/* ── THE DUNGEON (stage 2, rev 11) ─────────────────────────────────────── */
+const CELL = D.HQ_CAVE_CELL, LEVEL = D.HQ_CAVE_LEVEL;
+/* the cell a door's landing (2.4 m inside the wall) falls in, and the walker's feet there */
+function landingCell(room, door) {
+    const info = D.hqCaveInfo(room.id), S = room.shell;
+    let px, pz;
+    if (door.wall === 'free') { const f = (door.face || 0) * Math.PI / 180; px = door.x + Math.sin(f) * 2.4; pz = door.z - Math.cos(f) * 2.4; }
+    else if (door.wall === 'n') { px = door.x || 0; pz = -S.d / 2 + 2.4; }
+    else if (door.wall === 's') { px = door.x || 0; pz = S.d / 2 - 2.4; }
+    else if (door.wall === 'e') { px = S.w / 2 - 2.4; pz = door.z || 0; }
+    else { px = -S.w / 2 + 2.4; pz = door.z || 0; }
+    const c = D.hqCaveCellAt(info, px, pz);
+    return { c, feet: c ? D.hqCaveFeet(info, c, px, pz) : null, px, pz };
+}
+
+test('THE DUNGEON: every chamber is a cave grid the shell fits, one level is half a tile, the standard legend has the ramps and the bridges', () => {
+    assert.strictEqual(CELL, 1.75); assert.strictEqual(LEVEL, 0.875);
+    const STD = D.HQ_CAVE_STD;
+    for (const [ch, want] of [['a', { lvl: 0, slope: 'n' }], ['f', { lvl: 5, slope: 'n' }], ['g', { lvl: 0, slope: 's' }], ['m', { lvl: 0, slope: 'e' }], ['s', { lvl: 0, slope: 'w' }], ['x', { lvl: 5, slope: 'w' }]])
+        assert.deepStrictEqual({ lvl: STD[ch].lvl, slope: STD[ch].slope }, want, 'ramp ' + ch);
+    assert.ok(STD['='].bridge && STD.B.bridge && STD.H.bridge && STD.P.fluid === 'water' && STD.Y.fluid === 'lava' && STD.W.fluid === 'deep_water' && STD.L.fluid === 'lava' && STD['#'].rock, 'the bridges, the pool, the lake, the deeps, the rock');
+    assert.deepStrictEqual(D.hqCaveRooms().sort().join(','), PART_IDS.slice().sort().join(','), 'every cave chamber is a cave grid, and only they');
+    for (const id of PART_IDS) {
+        const room = HQ.rooms[id], info = D.hqCaveInfo(id), S = room.shell;
+        assert.ok(info && info.w >= 8 && info.h >= 8, id + ': a grid at least 8 × 8');
+        assert.ok(room.cave.rows.every(r => r.length === info.w), id + ': every row the same width');
+        assert.strictEqual(S.w, Math.round(info.w * CELL * 100) / 100, id + ': the shell is as wide as the grid');
+        assert.strictEqual(S.d, Math.round(info.h * CELL * 100) / 100, id + ': the shell is as deep as the grid');
+        assert.strictEqual(S.wallH, S.h, id + ': wallH is the ceiling (a ledge is never a mezzanine)');
+        assert.strictEqual(info.rockH, S.h, id + ': the rock reaches the ceiling');
+        /* the rock border: every perimeter cell is rock unless a door's lane opens it */
+        const lanes = room.doors.filter(d => d.wall !== 'free');
+        for (let y = 0; y < info.h; y++) for (let x = 0; x < info.w; x++) {
+            if (x > 0 && y > 0 && x < info.w - 1 && y < info.h - 1) continue;
+            const c = info.cells[y][x]; if (c.rock) continue;
+            const cx = (x + 0.5) * CELL - info.halfW, cz = (y + 0.5) * CELL - info.halfD;
+            const lane = lanes.some(d => (d.wall === 'n' && y === 0 && Math.abs(cx - d.x) <= CELL * 1.6) || (d.wall === 's' && y === info.h - 1 && Math.abs(cx - d.x) <= CELL * 1.6) || (d.wall === 'w' && x === 0 && Math.abs(cz - d.z) <= CELL * 1.6) || (d.wall === 'e' && x === info.w - 1 && Math.abs(cz - d.z) <= CELL * 1.6));
+            assert.ok(lane, id + ': the border cell ' + x + ',' + y + ' (' + c.ch + ') is open but no door’s lane reaches it');
+        }
+        /* every cell the legend does not know is a bug, not rock */
+        for (const row of room.cave.rows) for (const ch of row) assert.ok(D.HQ_CAVE_STD[ch] || (room.cave.legend || {})[ch], id + ': the legend has no ' + JSON.stringify(ch));
+        /* every sheet a cell wears exists */
+        const keys = new Set(); info.cells.forEach(r => r.forEach(c => { keys.add(c.key); if (c.under) keys.add(c.under.key); }));
+        for (const k of keys) assert.ok(HQ.textures[k] || TERRAIN_RULES[k], id + ': cell sheet ' + k);
+    }
+});
+
+test('THE DUNGEON is solvable and never trivial: from every door every other door is reached under the walker’s own step rule, every lane is level with its sill, and a ledge door is a door you climb to', () => {
+    let ledgeDoors = 0, ramps = 0, bridges = 0, waters = 0, lavas = 0;
+    for (const id of PART_IDS) {
+        const room = Object.assign({ id }, HQ.rooms[id]), info = D.hqCaveInfo(id);
+        const cells = room.doors.map(d => Object.assign({ d, y: sill(room, d) }, landingCell(room, d)));
+        for (const x of cells) {
+            assert.ok(x.c && x.c.walk && !x.c.fluid && !x.c.slope && !x.c.rock, id + '/' + x.d.id + ': the landing is a dry, level cell');
+            assert.ok(Math.abs(x.feet - x.y) < 0.02, id + '/' + x.d.id + ': the landing (' + x.feet + ') is level with the sill (' + x.y + ')');
+            /* the three cells of the lane at the wall are the sill's level too */
+            if (x.d.wall !== 'free') {
+                const along = (x.d.wall === 'n' || x.d.wall === 's') ? x.d.x : x.d.z;
+                for (let k = -1; k <= 1; k++) {
+                    const ax = along + k * CELL * 0.9;
+                    const p = x.d.wall === 'n' ? [ax, -room.shell.d / 2 + 0.3] : x.d.wall === 's' ? [ax, room.shell.d / 2 - 0.3] : x.d.wall === 'e' ? [room.shell.w / 2 - 0.3, ax] : [-room.shell.w / 2 + 0.3, ax];
+                    const lc = D.hqCaveCellAt(info, p[0], p[1]);
+                    assert.ok(lc && lc.walk && !lc.fluid && !lc.slope, id + '/' + x.d.id + ': the lane cell at the wall (' + k + ') is dry floor');
+                    assert.ok(Math.abs(D.hqCaveFeet(info, lc, p[0], p[1]) - x.y) < 0.02, id + '/' + x.d.id + ': the lane cell at the wall (' + k + ') is at the sill’s level');
+                }
+            }
+            if (x.y > 0.5) ledgeDoors++;
+        }
+        const from = cells[0];
+        const reach = D.hqCaveReach(info, from.c.x, from.c.y);
+        for (const x of cells) assert.ok(reach.has(x.c.x + ',' + x.c.y), id + ': ' + x.d.id + ' cannot be reached from ' + from.d.id + ' (the dungeon must be solvable)');
+        /* the spawn and every native stand on a walkable cell */
+        const sp = D.hqCaveCellAt(info, room.spawn.x, room.spawn.z);
+        assert.ok(sp && sp.walk && !sp.fluid && reach.has(sp.x + ',' + sp.y), id + ': the spawn stands on a reachable dry cell');
+        for (const n of room.npcSpots) { const nc = D.hqCaveCellAt(info, n.x, n.z); assert.ok(nc && nc.walk && !nc.fluid && !nc.slope && reach.has(nc.x + ',' + nc.y), id + ': the ' + n.race + ' stands on a reachable dry cell'); }
+        /* a floor prop stands on a walkable cell (a rail on a ledge, a torch on the terrace — never in rock, never in the lava) */
+        for (const p of room.props) {
+            if (typeof p.wall === 'string' || p.ceil || (HQ.catalogue[p.key] || {}).ceil) continue;
+            const pc = D.hqCaveCellAt(info, p.x, p.z);
+            assert.ok(pc && !pc.rock && pc.walk, id + ': ' + p.key + ' at ' + p.x + ',' + p.z + ' stands in rock or a hazard');
+        }
+        info.cells.forEach(r => r.forEach(c => { if (c.slope) ramps++; if (c.bridge) bridges++; if (c.fluid === 'water' || c.fluid === 'deep_water') waters++; if (c.fluid === 'lava' || (c.under && c.under.fluid === 'lava')) lavas++; }));
+    }
+    assert.ok(ledgeDoors >= 3, 'doors on ledges: LEVEL −6 and the fissure off the cavern, the mouth’s lip — ' + ledgeDoors);
+    assert.ok(ramps >= 12 && bridges >= 8 && waters >= 40 && lavas >= 30, 'ramps ' + ramps + ', bridges ' + bridges + ', water ' + waters + ', lava ' + lavas + ' — the dungeon has its terrain');
+    /* THE CAVERN has its routes: the terrace's ramps, the hall's stair, the ford, the plank bridge, the long ramp, the causeway */
+    const cav = D.hqCaveInfo(BOARD + '_gallery');
+    const chars = cav.cells.map(r => r.map(c => c.ch).join('')).join('\n');
+    assert.ok(/B{4,}/.test(chars) && /H{5,}/.test(chars) && /P/.test(chars) && /Y/.test(chars) && /=/.test(chars) && /~/.test(chars) && /W/.test(chars) && /6/.test(chars) && /4/.test(chars) && /2/.test(chars), 'the cavern wears the rope bridge, the obsidian bridge, the pool, the lava lake, the planks, the ford, the deeps and three tiers');
+    /* THE WELLS stand on three tiers */
+    const shaft = HQ.rooms[SHAFT], sills = shaft.doors.filter(d => d.way === 'well').map(d => sill(shaft, d));
+    assert.deepStrictEqual(Array.from(new Set(sills)).sort((a, b) => a - b).join(','), '0,1.75,3.5', 'the well heads stand at the floor, the shelf and the crag');
+});
+
+test('THE DUNGEON’s renderer: the cave builder, the walker’s feet, the doors at their sills, the props and natives on their cells, the fluids ticked per key', () => {
+    const tr = renderer;
+    assert.ok(/function _hqBuildCave\(room\)/.test(tr) && /if \(room\.cave\) \{ try \{ _hqBuildCave\(room\); \}/.test(tr), 'a box room with `cave` builds its grid');
+    assert.ok(/function _hqSiteFloorY\(sc, x, z\)/.test(tr) && /hqCaveFeet\(st\.info, sc, x, z\)/.test(tr), 'the ONE feet read: a ramp interpolates, a pool wades, a ledge stands');
+    assert.ok(/var siteL = _hq\.site \? \(_hq\.site\.L \|\| _hq\.site\.C\) : 0;/.test(tr), 'the step rule climbs one LEVEL (a cave’s half tile), not one tile');
+    assert.ok(/var y0 = level \? S\.wallH : _hqDoorFloorY\(room, door\);/.test(tr), 'a door stands at its lane’s level');
+    assert.ok(/y0 \+= pcy;/.test(tr) && /y \+= chy;/.test(tr) && /grp\.position\.y \+= ccy \* U;/.test(tr), 'props, natives and counters stand on their cells');
+    assert.ok(/if \(room\.cave\) \{ \/\* THE CAVE \(rev 11\)/.test(tr), 'no floor plane under a cave grid');
+    assert.ok(/\(mt\.keys \|\| \[mt\.key\]\)\.forEach/.test(tr), 'water and lava are ticked in one room');
+    assert.ok(/if \(sc\.rock\) return py < sc\.top;/.test(tr), 'the boom never enters the rock');
+    assert.ok(/cave_torch: function \(U\)/.test(tr) && /crystal_cluster: function \(U\)/.test(tr), 'the stake torch and the crystal are procs');
+    for (const k of ['cave_torch', 'crystal_cluster']) assert.ok(HQ.catalogue[k] && HQ.catalogue[k].proc === k && HQ.catalogue[k].light && HQ.catalogue[k].glow, k + ' is catalogued with a light');
+    /* the wedge: a ramp cell's prism rises toward its side */
+    const c = { THREE: require('./load-data').makeSandbox().THREE || null };
+    const src = tr.slice(tr.indexOf('    function _hqCaveWedge('), tr.indexOf('    function _hqBuildCave('));
+    const vm2 = require('node:vm');
+    const ctx = { THREE: { BufferGeometry: class { setAttribute(n, a) { this[n] = a; } computeVertexNormals() { this.normals = true; } }, Float32BufferAttribute: class { constructor(a, n) { this.array = a; this.itemSize = n; } } } };
+    vm2.createContext(ctx); vm2.runInContext(src + '\nthis.w = _hqCaveWedge;', ctx);
+    const g = ctx.w(1.75, 0, 0.875, 'n', 1);
+    const pos = g.position.array, ys = [];
+    for (let i = 1; i < pos.length; i += 3) ys.push(pos[i]);
+    assert.strictEqual(pos.length / 3, 6 + 4 * 6, '5 faces, 30 vertices');
+    assert.ok(Math.max(...ys) === 0.875 && Math.min(...ys) === 0 && g.normals, 'the top rises to one level; normals computed');
+    /* the north face is high, the south face is at the base */
+    const zs = []; for (let i = 2; i < pos.length; i += 3) zs.push(pos[i]);
+    let northMax = 0, southMax = 0;
+    for (let i = 0; i < ys.length; i++) { if (zs[i] < 0) northMax = Math.max(northMax, ys[i]); else southMax = Math.max(southMax, ys[i]); }
+    assert.ok(northMax === 0.875 && southMax === 0, 'rising north: the north edge is up, the south edge is down');
 });
 
 test('THE FOURTH CELL NOBODY COUNTS: the oubliette and Room 24601 share a secret wall — eight secret doors, a pair, on no plate, and the dungeon’s cells moved off the panel', () => {

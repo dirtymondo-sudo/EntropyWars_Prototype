@@ -36584,7 +36584,8 @@ const ThreeRenderer = (function () {
            in a moat room, round the moat — plan 7.2 stage 4) so the board's
            own cells and its pits show; every other box gets one plane */
         var siteHole = (room.fx === 'site' && S.grid) ? (S.grid.cells * S.grid.cell / 2 + (S.moat ? S.moat.gap : 0)) : 0;
-        if (siteHole > 0 && siteHole < Math.min(W, Dp) / 2) {
+        if (room.cave) { /* THE CAVE (rev 11): the grid IS the floor — cells, ledges, pits and the rock border draw it (_hqBuildCave); no plane under them */ }
+        else if (siteHole > 0 && siteHole < Math.min(W, Dp) / 2) {
             var TRf = TR || 1.6;
             [[0, -(Dp / 2 + siteHole) / 2, W, Dp / 2 - siteHole], [0, (Dp / 2 + siteHole) / 2, W, Dp / 2 - siteHole],
              [-(W / 2 + siteHole) / 2, 0, W / 2 - siteHole, 2 * siteHole], [(W / 2 + siteHole) / 2, 0, W / 2 - siteHole, 2 * siteHole]].forEach(function (b) {
@@ -36969,8 +36970,10 @@ const ThreeRenderer = (function () {
        board y south, so the P1 spawn row is the south edge by the way in). */
     function _hqSiteCellAt(x, z) {
         var st = _hq && _hq.site; if (!st) return null;
-        var cx = Math.floor((x + st.half) / st.C), cy = Math.floor((z + st.half) / st.C);
-        if (cx >= 0 && cy >= 0 && cx < st.N && cy < st.N) return st.cells[cy][cx];
+        /* a CAVE grid (rev 11) may be oblong: NX × NY about (halfX, halfZ); a site board is N × N about half */
+        var hx = (st.halfX != null) ? st.halfX : st.half, hz = (st.halfZ != null) ? st.halfZ : st.half;
+        var cx = Math.floor((x + hx) / st.C), cy = Math.floor((z + hz) / st.C);
+        if (cx >= 0 && cy >= 0 && cx < (st.NX || st.N) && cy < (st.NY || st.N)) return st.cells[cy][cx];
         /* THE MOAT (plan 7.2 stage 4): the ring between the island and the
            quay is one more cell of the site — a pit of the map's liquid,
            waded or never entered like any board lake; a causeway across it
@@ -36994,6 +36997,244 @@ const ThreeRenderer = (function () {
             if (s === 'w' && x < -h && Math.abs(z) < hw) return true;
         }
         return false;
+    }
+    /* ── THE CAVE (HQ plan 9.3 stage 2 — THE DUNGEON, 2026-09-15 rev 11) ───
+       A box room with `cave` (data.js: an ASCII grid compiled by
+       hqCaveCompile — rock, floor at LEVELS of HQ_CAVE_LEVEL = 0.875 m,
+       ramps, bridges, water, lava) draws its grid here and hands the walker
+       the same board layer a site room gets (`_hq.site`, `cave: true`):
+       _hqSurface reads every cell's FEET through _hqSiteFloorY (a ramp
+       interpolates, a pool wades, a bridge is its deck) and the step rule
+       climbs ONE level (`_hq.site.L`) per move — a ledge two levels up is a
+       wall until its ramp; a drop is HQ_DROP_MAX as everywhere. Doors,
+       counters, props and natives stand at the grid's height under them
+       (_hqDoorFloorY / _hqCaveTop). Drawn: cell tops (instanced per sheet),
+       ledges (instanced per level, the sheet tiled down the faces), the ROCK
+       border to the ceiling (instanced, jittered so it reads as crag; the
+       box walls stand behind it), ramp WEDGES, bridge DECKS with their rope
+       rails (no column — the water runs under), fluid PITS (bed, bank walls,
+       the battle's animated sheet — lava self-lit, one point light per
+       lake), WATERFALLS where a sheet meets a lower one, crystal glows,
+       stalactites. Never the training grid, letters or signs: a cave has
+       no lines on its floor. */
+    function _hqCaveInfo(room) {
+        if (!room || !room.cave || typeof hqCaveCompile !== 'function') return null;
+        if (!room._caveInfo) room._caveInfo = hqCaveCompile(room.cave, (room.shell && room.shell.h) || 8);
+        return room._caveInfo;
+    }
+    /* a door's sill in a cave room (the cell inside its wall), else the level's floor */
+    function _hqDoorFloorY(room, door) {
+        return (room && room.cave && typeof hqCaveDoorY === 'function') ? hqCaveDoorY(room, door) : 0;
+    }
+    /* the cave's feet at (x, z) in the CURRENT room (null = no cave / not walkable) */
+    function _hqCaveTop(x, z) {
+        var st = _hq && _hq.site; if (!st || !st.cave || typeof hqCaveTopAt !== 'function') return null;
+        return hqCaveTopAt(st.info, x, z);
+    }
+    /* the walker's FEET on a board cell (site or cave) — the ONE read */
+    function _hqSiteFloorY(sc, x, z) {
+        var st = _hq && _hq.site; if (!st || !sc) return 0;
+        if (st.cave) { var f = (typeof hqCaveFeet === 'function') ? hqCaveFeet(st.info, sc, x, z) : sc.top; return (f == null) ? 0 : f; }
+        if (sc.top < 0) return sc.fluid ? Math.max(sc.top, -HQ_WADE_M) : sc.top;
+        return 0;
+    }
+    /* a ramp cell's WEDGE: a prism on the cell, flat bottom at 0, the top
+       face rising from y0 at one side to y1 at the `dir` side (metres, local
+       frame centred on the cell, +z = south) */
+    function _hqCaveWedge(CM, y0, y1, dir, U) {
+        var h = CM / 2, a = y0 * U, b = y1 * U;
+        /* corner heights: nw, ne, se, sw (looking down, +x east, +z south) */
+        var hs = dir === 'n' ? [b, b, a, a] : dir === 's' ? [a, a, b, b] : dir === 'e' ? [a, b, b, a] : [b, a, a, b];
+        var P = [[-h, 0, -h], [h, 0, -h], [h, 0, h], [-h, 0, h]];
+        var T = [[-h, hs[0], -h], [h, hs[1], -h], [h, hs[2], h], [-h, hs[3], h]];
+        var pos = [], uv = [];
+        var tri = function (p, q, r, uvs) { pos.push(p[0], p[1], p[2], q[0], q[1], q[2], r[0], r[1], r[2]); uv.push(uvs[0][0], uvs[0][1], uvs[1][0], uvs[1][1], uvs[2][0], uvs[2][1]); };
+        /* top (two triangles, ccw seen from above) */
+        tri(T[0], T[3], T[2], [[0, 1], [0, 0], [1, 0]]); tri(T[0], T[2], T[1], [[0, 1], [1, 0], [1, 1]]);
+        /* sides: n (P0 P1 T1 T0), e (P1 P2 T2 T1), s (P2 P3 T3 T2), w (P3 P0 T0 T3) — outward */
+        var side = function (p0, p1, t1, t0) {
+            var hM = Math.max(t0[1], t1[1]) / Math.max(1, CM);
+            tri(p0, t0, t1, [[0, 0], [0, hM], [1, hM]]); tri(p0, t1, p1, [[0, 0], [1, hM], [1, 0]]);
+        };
+        side(P[1], P[0], T[0], T[1]); side(P[2], P[1], T[1], T[2]); side(P[3], P[2], T[2], T[3]); side(P[0], P[3], T[3], T[0]);
+        var g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+        g.computeVertexNormals();
+        return g;
+    }
+    function _hqBuildCave(room) {
+        var U = _hqUnits(), S = room.shell, G = _hq.shellGroup;
+        var info = _hqCaveInfo(room); if (!info) { console.warn('[HQ] cave grid failed to compile', room.label); return; }
+        var C = info.cell, L = info.L, CM = C * U, W = info.w, Hh = info.h;
+        var halfX = info.halfW, halfZ = info.halfD, rockH = S.h;
+        _hq.site = { cave: true, info: info, N: Math.max(W, Hh), NX: W, NY: Hh, C: C, L: L, half: halfX, halfX: halfX, halfZ: halfZ, cells: info.cells };
+        _hq.rails = _hq.rails || []; _hq.ramps = _hq.ramps || [];
+        var cellX = function (ix) { return (ix + 0.5) * C - halfX; };
+        var cellZ = function (iy) { return (iy + 0.5) * C - halfZ; };
+        var rng = _mulberry32((0xca7e + W * 31 + Hh * 7) >>> 0);
+        var pulse = function (mat, opAmp, spd) { _hq.fxPulse.push({ mat: mat, baseOp: mat.opacity, opAmp: opAmp, spd: spd, phase: rng() * Math.PI * 2 }); return mat; };
+        var matCache = {};
+        var caveMat = function (key, tint, o) {
+            var k = key + '|' + (tint || '') + '|' + ((o && o.sh) || '') + '|' + ((o && o.lift) || '');
+            if (matCache[k]) return matCache[k];
+            var tex = _hzTex(key) || _hzTex(info.floor) || _hzTex('cave_floor');
+            var m = new THREE.MeshPhongMaterial({ map: tex || null, color: 0xffffff, shininess: (o && o.sh != null) ? o.sh : 6, specular: 0x161616 });
+            if (tint) m.color.multiply(new THREE.Color(tint));
+            /* a self-lit lift: the faces read under torchlight, the rock keeps its dark */
+            m.emissive = m.color.clone().multiplyScalar((o && o.lift != null) ? o.lift : 0.1); if (tex) m.emissiveMap = tex;
+            matCache[k] = m;
+            return m;
+        };
+        var at = function (ix, iy) { return (iy >= 0 && iy < Hh && ix >= 0 && ix < W) ? info.cells[iy][ix] : null; };
+        var dummy = new THREE.Object3D();
+        var inst = function (geo, mat, list, place) {
+            if (!list.length) return null;
+            var im = new THREE.InstancedMesh(geo, mat, list.length);
+            list.forEach(function (it, i) { place(it, dummy); dummy.updateMatrix(); im.setMatrixAt(i, dummy.matrix); });
+            im.instanceMatrix.needsUpdate = true; im.renderOrder = 1; G.add(im); return im;
+        };
+        /* ── the cells, sorted ── */
+        var tops = {}, ledges = {}, rocks = [], slopes = [], bridges = [], fluids = [], glows = [];
+        for (var y = 0; y < Hh; y++) for (var x = 0; x < W; x++) {
+            var c = info.cells[y][x];
+            if (c.rock) {
+                /* an interior rock cell (rock on every side) is never seen: skip it */
+                var n4 = [at(x, y - 1), at(x, y + 1), at(x - 1, y), at(x + 1, y)];
+                if (n4.every(function (nc) { return !nc || nc.rock; })) continue;
+                rocks.push({ x: x, y: y, c: c });
+            }
+            else if (c.fluid) fluids.push({ x: x, y: y, c: c, top: c.top, sheet: c.sheet, key: c.fluid, bank: (c.lvl + 1) * L });
+            else if (c.bridge) { bridges.push({ x: x, y: y, c: c }); if (c.under) fluids.push({ x: x, y: y, c: c.under, top: c.under.top, sheet: c.under.sheet, key: c.under.key, bank: c.lvl * L, underDeck: true }); }
+            else if (c.slope) slopes.push({ x: x, y: y, c: c });
+            else {
+                var gk = c.key + '|' + (c.tint || '');
+                if (c.lvl > 0) { var lk = gk + '|' + c.lvl; (ledges[lk] = ledges[lk] || { key: c.key, tint: c.tint, lvl: c.lvl, list: [] }).list.push({ x: x, y: y }); }
+                else if (c.lvl < 0) { var pk = gk + '|' + c.lvl; (ledges[pk] = ledges[pk] || { key: c.key, tint: c.tint, lvl: c.lvl, list: [] }).list.push({ x: x, y: y }); }
+                else (tops[gk] = tops[gk] || { key: c.key, tint: c.tint, list: [] }).list.push({ x: x, y: y });
+            }
+            if (c.glow) glows.push({ x: x, y: y, c: c });
+        }
+        /* level-0 tops: one instanced plane per sheet */
+        Object.keys(tops).forEach(function (k) {
+            var g = tops[k], geo = new THREE.PlaneGeometry(CM, CM);
+            inst(geo, caveMat(g.key, g.tint), g.list, function (t, d) { d.position.set(cellX(t.x) * U, 0.6, cellZ(t.y) * U); d.rotation.set(-Math.PI / 2, 0, 0); d.scale.set(1, 1, 1); });
+        });
+        /* ledges: one instanced box per (sheet, level), the sheet tiled down the faces; a sunken cell (a dry pit) is a floor below with bed walls */
+        Object.keys(ledges).forEach(function (k) {
+            var g = ledges[k];
+            if (g.lvl > 0) {
+                var hM = g.lvl * L, geo = new THREE.BoxGeometry(CM * 0.998, hM * U, CM * 0.998);
+                _hzBoxUV(geo, CM, hM * U, CM, CM); geo.translate(0, hM * U / 2, 0);
+                inst(geo, caveMat(g.key, g.tint, { sh: 4 }), g.list, function (t, d) { d.position.set(cellX(t.x) * U, 0.3, cellZ(t.y) * U); d.rotation.set(0, 0, 0); d.scale.set(1, 1, 1); });
+            } else {
+                var dM = -g.lvl * L;
+                var fgeo = new THREE.PlaneGeometry(CM, CM);
+                inst(fgeo, caveMat(g.key, g.tint), g.list, function (t, d) { d.position.set(cellX(t.x) * U, -dM * U + 0.6, cellZ(t.y) * U); d.rotation.set(-Math.PI / 2, 0, 0); d.scale.set(1, 1, 1); });
+                var wgeo = new THREE.BoxGeometry(CM, dM * U, CM); wgeo.translate(0, -dM * U / 2, 0);
+                var wm = caveMat(g.key, g.tint, { sh: 4 }); wm = wm.clone(); wm.side = THREE.BackSide;
+                inst(wgeo, wm, g.list, function (t, d) { d.position.set(cellX(t.x) * U, -0.2, cellZ(t.y) * U); d.rotation.set(0, 0, 0); d.scale.set(1, 1, 1); });
+            }
+        });
+        /* THE ROCK: to the ceiling, jittered — a crag, not a tile */
+        if (rocks.length) {
+            var rgeo = new THREE.BoxGeometry(CM, rockH * U, CM); _hzBoxUV(rgeo, CM, rockH * U, CM, CM * 1.6); rgeo.translate(0, rockH * U / 2, 0);
+            inst(rgeo, caveMat(info.rock, S.wallColor != null ? S.wallColor : null, { sh: 3, lift: 0.06 }), rocks, function (t, d) {
+                var j = rng();
+                d.position.set(cellX(t.x) * U, -0.4, cellZ(t.y) * U); d.rotation.set(0, (j - 0.5) * 0.22, 0);
+                d.scale.set(1.0 + rng() * 0.18, 1, 1.0 + rng() * 0.18);
+            });
+        }
+        /* THE RAMPS: a wedge per slope cell (the walker climbs it as a slope — _hqSiteFloorY interpolates) */
+        slopes.forEach(function (s) {
+            var y0 = s.c.lvl * L, y1 = (s.c.lvl + 1) * L;
+            var wg = _hqCaveWedge(CM, y0, y1, s.c.slope, U);
+            var m = new THREE.Mesh(wg, caveMat(s.c.key || info.floor, s.c.tint, { sh: 5 }));
+            m.position.set(cellX(s.x) * U, 0.3, cellZ(s.y) * U); m.renderOrder = 1; G.add(m);
+            _hq.ramps.push({ x: cellX(s.x), z: cellZ(s.y), dir: s.c.slope, y0: y0, y1: y1, w: C });
+        });
+        /* THE BRIDGES: a deck at its level, no column; rope rails along its run (a rail to grind) */
+        var ropeMat = new THREE.MeshPhongMaterial({ color: 0x5a4a34, shininess: 6 });
+        bridges.forEach(function (b) {
+            var deckY = b.c.lvl * L, deckMat = caveMat(b.c.bridge || 'wood_planks', b.c.tint, { sh: 10 });
+            var ew = (function (nc) { return nc && (nc.bridge || (!nc.rock && !nc.fluid)); })(at(b.x + 1, b.y)) || (function (nc) { return nc && (nc.bridge || (!nc.rock && !nc.fluid)); })(at(b.x - 1, b.y));
+            var ns = (function (nc) { return nc && (nc.bridge || (!nc.rock && !nc.fluid)); })(at(b.x, b.y + 1)) || (function (nc) { return nc && (nc.bridge || (!nc.rock && !nc.fluid)); })(at(b.x, b.y - 1));
+            var runEW = ew && !ns ? true : (!ew && ns) ? false : (at(b.x + 1, b.y) && at(b.x + 1, b.y).bridge) || (at(b.x - 1, b.y) && at(b.x - 1, b.y).bridge);
+            var deck = _hqBox(C * 1.0, 0.22, C * 1.0, deckMat); deck.position.set(cellX(b.x) * U, (deckY - 0.11) * U + 0.3, cellZ(b.y) * U); G.add(deck);
+            /* the rails: along the run's two edges, posts at the cell's corners, a rope between */
+            [-1, 1].forEach(function (sg) {
+                var px = runEW ? 0 : sg * (C / 2 - 0.08), pz = runEW ? sg * (C / 2 - 0.08) : 0;
+                var rail = _hqBox(runEW ? C : 0.05, 0.05, runEW ? 0.05 : C, ropeMat); rail.position.set((cellX(b.x) + px) * U, (deckY + 0.95) * U, (cellZ(b.y) + pz) * U); G.add(rail);
+                var post = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * U, 0.05 * U, 1.0 * U, 6), ropeMat);
+                post.position.set((cellX(b.x) + px + (runEW ? -C / 2 + 0.1 : 0)) * U, (deckY + 0.5) * U, (cellZ(b.y) + pz + (runEW ? 0 : -C / 2 + 0.1)) * U); G.add(post);
+                _hq.rails.push({ x0: cellX(b.x) + px - (runEW ? C / 2 : 0), z0: cellZ(b.y) + pz - (runEW ? 0 : C / 2), x1: cellX(b.x) + px + (runEW ? C / 2 : 0), z1: cellZ(b.y) + pz + (runEW ? 0 : C / 2), y: deckY + 0.95 });
+            });
+        });
+        /* THE FLUIDS: the bed, the bank walls, the sheet (the battle's animated water / lava, per key), the falls */
+        var fluidMats = {}, fluidKeys = [];
+        var fluidMatFor = function (key) {
+            if (fluidMats[key]) return fluidMats[key];
+            var fm = null;
+            try { fm = _buildFluidTopMat(key); } catch (e) { fm = null; }
+            if (fm) { if (key === 'lava' && fm.emissive) fm.emissiveIntensity = 0.9; fluidKeys.push(key); }
+            else {
+                var fc = (key === 'lava') ? 0xff6a2a : 0x4a9ad0;
+                fm = new THREE.MeshBasicMaterial({ color: fc, transparent: true, opacity: (key === 'lava') ? 0.85 : 0.55, depthWrite: false, fog: false });
+                pulse(fm, 0.08, 0.9);
+            }
+            fluidMats[key] = fm; return fm;
+        };
+        var bedMat = caveMat('rocks_dark_fantasy', null, { sh: 3 }); bedMat = bedMat.clone(); bedMat.side = THREE.BackSide;
+        var isLavaK = function (k) { return k === 'lava'; };
+        var fluidAt = function (ix, iy) { var nc = at(ix, iy); if (!nc) return null; if (nc.fluid) return { top: nc.top, sheet: nc.sheet, key: nc.fluid }; if (nc.bridge && nc.under) return { top: nc.under.top, sheet: nc.under.sheet, key: nc.under.key }; return null; };
+        var lavaCx = 0, lavaCz = 0, lavaN = 0, lavaY = 0;
+        fluids.forEach(function (f) {
+            var depth = f.bank - f.top, cxM = cellX(f.x), czM = cellZ(f.y);
+            /* the bed + the bank walls: a box seen from inside, bed to bank */
+            var pit = new THREE.Mesh(new THREE.BoxGeometry(CM, Math.max(0.05, depth) * U, CM), bedMat);
+            pit.position.set(cxM * U, (f.top + depth / 2) * U - 0.2, czM * U); G.add(pit);
+            var sheet = new THREE.Mesh(new THREE.PlaneGeometry(CM, CM), fluidMatFor(f.key));
+            _hzTileUV(sheet.geometry, CM, CM, CM);
+            sheet.rotation.x = -Math.PI / 2; sheet.position.set(cxM * U, f.sheet * U, czM * U); sheet.renderOrder = 2; G.add(sheet);
+            if (isLavaK(f.key)) {
+                var lg = _hzGlowSprite(1.5 * CM, 0xff7a30, 0.32, 0, 0, 0); lg.position.set(cxM * U, (f.sheet + 0.2) * U, czM * U); G.add(lg); pulse(lg.material, 0.14, 0.7 + rng() * 0.5);
+                lavaCx += cxM; lavaCz += czM; lavaN++; lavaY = f.sheet;
+            }
+            /* THE FALL: this sheet pours onto a lower sheet of the same liquid next door */
+            [[0, -1], [0, 1], [-1, 0], [1, 0]].forEach(function (nb) {
+                var o = fluidAt(f.x + nb[0], f.y + nb[1]); if (!o || o.key !== f.key) return;
+                if (o.sheet >= f.sheet - 0.3) return;
+                var h = f.sheet - o.sheet + 0.08;
+                var fall = new THREE.Mesh(new THREE.PlaneGeometry(CM * 0.96, h * U), fluidMatFor(f.key));
+                _hzTileUV(fall.geometry, CM, h * U, CM); fall.material = fall.material; 
+                var fx = cxM + nb[0] * (C / 2 - 0.02), fz = czM + nb[1] * (C / 2 - 0.02);
+                fall.position.set(fx * U, (o.sheet + h / 2) * U, fz * U);
+                fall.rotation.y = nb[0] ? (nb[0] > 0 ? -Math.PI / 2 : Math.PI / 2) : (nb[1] > 0 ? 0 : Math.PI);
+                fall.material.side = THREE.DoubleSide; fall.renderOrder = 2; G.add(fall);
+                /* the plunge: a pale sheet of spray at the foot, breathing */
+                var foam = _hzGlowSprite(0.9 * CM, isLavaK(f.key) ? 0xffb060 : 0xdff4ff, 0.3, 0, 0, 0);
+                foam.position.set((cxM + nb[0] * C * 0.8) * U, (o.sheet + 0.25) * U, (czM + nb[1] * C * 0.8) * U); G.add(foam); pulse(foam.material, 0.16, 1.3 + rng());
+            });
+        });
+        if (fluidKeys.length) _hq.moatTick = { key: fluidKeys[0], keys: fluidKeys, tile: CM };
+        if (lavaN && _hq.propLights < HQ_PROP_LIGHT_MAX) {
+            var ll = new THREE.PointLight(0xff6a2a, 1.1, 22 * U, 2); ll.position.set((lavaCx / lavaN) * U, (lavaY + 1.6) * U, (lavaCz / lavaN) * U); G.add(ll); _hq.propLights++;
+        }
+        /* the crystal (a lit cell): a glow over it */
+        glows.forEach(function (g) {
+            var gl = _hzGlowSprite(1.2 * CM, g.c.glow, 0.22, 0, 0, 0); gl.position.set(cellX(g.x) * U, (g.c.top + 0.45) * U, cellZ(g.y) * U); G.add(gl); pulse(gl.material, 0.1, 0.6 + rng() * 0.6);
+        });
+        /* THE STALACTITES: over the open cells, seeded, never over a door lane's sill row */
+        var open = [];
+        for (var sy = 1; sy < Hh - 1; sy++) for (var sx = 1; sx < W - 1; sx++) { var oc = info.cells[sy][sx]; if (!oc.rock) open.push([sx, sy]); }
+        var nSt = Math.min(90, Math.floor(open.length / 7)), stMat = caveMat(info.rock, S.wallColor != null ? S.wallColor : null, { sh: 3, lift: 0.05 });
+        for (var si = 0; si < nSt && open.length; si++) {
+            var pick = open[Math.floor(rng() * open.length)];
+            var len = 0.7 + rng() * 2.2, rad = 0.12 + rng() * 0.3;
+            var cone = new THREE.Mesh(new THREE.ConeGeometry(rad * U, len * U, 7), stMat);
+            cone.rotation.x = Math.PI; cone.position.set((cellX(pick[0]) + (rng() - 0.5) * C) * U, (rockH - len / 2 - 0.02) * U, (cellZ(pick[1]) + (rng() - 0.5) * C) * U);
+            G.add(cone);
+        }
     }
     function _hqBuildSiteBoard(room) {
         var U = _hqUnits(), S = room.shell, G = _hq.shellGroup;
@@ -39320,6 +39561,42 @@ const ThreeRenderer = (function () {
             return g;
         },
     });
+    /* THE CAVE (HQ plan 9.3 stage 2, 2026-09-15 rev 11): a torch on a stake
+       in the cave floor (the rock border stands in front of every box wall,
+       so a bracket torch has nothing to hang on), and a crystal growing out
+       of the floor, lit from inside — the catalogue's `light` carries each
+       one's point light, the builders the flame / the pulse */
+    Object.assign(_hqProcBuilders, {
+        cave_torch: function (U) {
+            var g = new THREE.Group();
+            var stake = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.05 * U, 1.5 * U, 7), _hqMat('wood', 1, 1, { color: 0x5e4630 })); stake.position.y = 0.75 * U; g.add(stake);
+            var iron = _hqMat(null, 1, 1, { color: 0x3a3632, shininess: 30 });
+            var cup = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * U, 0.06 * U, 0.16 * U, 8, 1, true), iron); cup.position.y = 1.52 * U; cup.material.side = THREE.DoubleSide; g.add(cup);
+            var flame = new THREE.Mesh(new THREE.ConeGeometry(0.08 * U, 0.26 * U, 8), _hqBasic(0xffa040)); flame.position.y = 1.72 * U; g.add(flame);
+            var core = new THREE.Mesh(new THREE.ConeGeometry(0.04 * U, 0.14 * U, 8), _hqBasic(0xfff0b0)); core.position.y = 1.68 * U; g.add(core);
+            var glow = _hzGlowSprite(1.4 * U, 0xffa040, 0.45, 0, 0, 0); glow.position.y = 1.7 * U; g.add(glow);
+            var seed = (_hqProcSeed++) * 2.7;
+            if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.001 + seed; var f = 0.8 + 0.2 * Math.sin(t * 12.0) + 0.1 * Math.sin(t * 31.0); flame.scale.set(f, 0.85 + 0.3 * Math.sin(t * 16.0), f); glow.material.opacity = 0.3 + 0.2 * f; });
+            return g;
+        },
+        crystal_cluster: function (U) {
+            var g = new THREE.Group();
+            var cm = new THREE.MeshPhongMaterial({ color: 0x9fe8c8, emissive: 0x3fb08a, emissiveIntensity: 0.55, shininess: 90, specular: 0xffffff, transparent: true, opacity: 0.88 });
+            var n = 5, mats = [];
+            for (var i = 0; i < n; i++) {
+                var a = (i / n) * Math.PI * 2 + 0.4, r = (i === 0) ? 0 : 0.22 + (i % 2) * 0.1;
+                var h = (i === 0) ? 1.35 : 0.55 + ((i * 3) % 4) * 0.18;
+                var c = new THREE.Mesh(new THREE.ConeGeometry((0.06 + (i % 3) * 0.03) * U, h * U, 6), cm);
+                c.position.set(Math.cos(a) * r * U, (h / 2) * U, Math.sin(a) * r * U);
+                c.rotation.set((i === 0) ? 0 : (0.25 + (i % 2) * 0.2) * Math.cos(a), 0, (i === 0) ? 0 : -(0.25 + (i % 2) * 0.2) * Math.sin(a));
+                g.add(c);
+            }
+            var glow = _hzGlowSprite(2.2 * U, 0x9fe8c8, 0.28, 0, 0, 0); glow.position.y = 0.7 * U; g.add(glow);
+            var seed = (_hqProcSeed++) * 1.9;
+            if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.001 + seed; cm.emissiveIntensity = 0.45 + 0.18 * Math.sin(t * 1.7) + 0.06 * Math.sin(t * 5.3); glow.material.opacity = 0.22 + 0.1 * Math.sin(t * 1.7); });
+            return g;
+        },
+    });
     function _hqProcProp(name) {
         var b = _hqProcBuilders[name];
         if (!b) return null;
@@ -39595,7 +39872,7 @@ const ThreeRenderer = (function () {
             var level = door.level || 0;
             var inward = door.side === 'in';       // hangs on a bay's inner wall, faces away from the arc centre
             var Rw = _hqWallR(room, level, door.side);
-            var y0 = level ? S.wallH : 0;
+            var y0 = level ? S.wallH : _hqDoorFloorY(room, door);   // THE CAVE (rev 11): a door stands at its lane's level — a door on a ledge is a door you climb to
             /* a SEAM THAT IS NOT A DOOR (plan 9.3 `way`): the entryway object instead of the frame + leaf */
             if (door.way) { try { _hqBuildWay(room, door, level, y0, Rw, inward); } catch (e) { console.warn('[HQ] way failed', door.id, e); } return; }
             /* the office door is the rank (HQ plan 3.4 / MASTER C-1): a
@@ -39809,6 +40086,7 @@ const ThreeRenderer = (function () {
                 /* a box room's counter sits at (x, z) and faces `face` (a plate, no kiosk) */
                 grp.position.set((c.x || 0) * U, y0 * U, (c.z || 0) * U);
                 grp.rotation.y = _hqHeadingYaw(c.face || 0);
+                var ccy = _hqCaveTop(c.x || 0, c.z || 0); if (ccy != null) grp.position.y += ccy * U;   // a cave counter stands on its cell (rev 11)
                 plateY = (c.plateY != null) ? c.plateY : 1.55;
                 /* THE BATTLE MARKER (2026-09-12): a site room's beacon at the
                    board centre — it stands on the centre cell's own top */
@@ -39898,6 +40176,8 @@ const ThreeRenderer = (function () {
             /* a site room's setting (stage 5): a floor prop stands clear of its houses / stands */
             if (isBox && _hq.setting && !p.wall && !p.ceil && !cat.ceil && !(p.y > 0.5)) { var fsp = _hqSettingFreeSpot(p.x || 0, p.z || 0); if (fsp.x !== (p.x || 0) || fsp.z !== (p.z || 0)) p = Object.assign({}, p, { x: fsp.x, z: fsp.z }); }
             var level = p.level || 0, y0 = level ? S.wallH : 0;
+            /* THE CAVE (rev 11): a floor prop stands on its cell — a torch on the terrace, a cot in a sunken cell */
+            if (isBox && _hq.site && _hq.site.cave && typeof p.wall !== 'string' && !(cat.ceil || p.ceil)) { var pcy = _hqCaveTop(p.x || 0, p.z || 0); if (pcy != null) y0 += pcy; }
             var inward = p.side === 'in';            // a bay's inner wall: the prop faces outward
             var Rw = _hqWallR(room, level, p.side);
             /* a box room's wall prop names its wall (`wall: 'n'|'e'|'s'|'w'`);
@@ -40058,6 +40338,7 @@ const ThreeRenderer = (function () {
         entry.group.name = 'hq_' + spec.id;
         _attachUnitModel(entry, unit, def, BASE_TILE);
         var y = (spec.level ? S.wallH : 0) + (spec.y || 0);
+        if (spec.y == null && spec.x != null && _hq.site && _hq.site.cave) { var chy = _hqCaveTop(spec.x, spec.z || 0); if (chy != null) y += chy; }   // THE CAVE (rev 11): a native / the walker stands on its cell
         /* box rooms place by (x, z) metres; polar rooms by (deg, r) */
         var p = (spec.x != null && spec.deg == null) ? new THREE.Vector3(spec.x * _hqUnits(), y * _hqUnits(), (spec.z || 0) * _hqUnits()) : _hqPolarW(spec.deg, spec.r, y);
         entry.group.position.copy(p);
@@ -40259,7 +40540,7 @@ const ThreeRenderer = (function () {
                    cell) under a sheet at −0.3 m, so the walker vanished
                    under the water ("my character falls below the floor").
                    A dry pit (a trench) is still a drop to its floor. */
-                if (sc) { if (!sc.walk) return null; if (sc.top < 0) y = sc.fluid ? Math.max(sc.top, -HQ_WADE_M) : sc.top; }
+                if (sc) { if (!sc.walk) return null; y = _hqSiteFloorY(sc, x, z); }   // THE CAVE (rev 11): every cell's own feet — a ramp slopes, a ledge stands; a site board keeps its blockers
             }
         } else if (room.kind === 'bay') {
             /* a corridor: between the two wall arcs, short of the end caps (a full ring has none) */
@@ -40324,9 +40605,10 @@ const ThreeRenderer = (function () {
            the 4.2 m mezzanine stays railed from every edge) */
         if (curY != null) {
             /* on a site board a step is one Δ level (the jump-1 rule); a pit is a drop the walker takes */
-            var floorTol = (_hq.site && (_hqSiteCellAt(x, z) || curY < -0.5)) ? Math.max(HQ_STEP_TOL, _hq.site.C + 0.06) : HQ_STEP_TOL;   // out of a pit — or the moat — onto the walkway is one level too
+            var siteL = _hq.site ? (_hq.site.L || _hq.site.C) : 0;   // one Δ level (a site board: the tile; a cave: HQ_CAVE_LEVEL, half of it)
+            var floorTol = (_hq.site && (_hqSiteCellAt(x, z) || curY < -0.5)) ? Math.max(HQ_STEP_TOL, siteL + 0.06) : HQ_STEP_TOL;   // out of a pit — or the moat — onto the walkway is one level too
             if (y - curY > floorTol) return null;
-            if (curY - y > Math.max(HQ_DROP_MAX, _hq.site ? _hq.site.C + 0.1 : 0)) return null;
+            if (curY - y > Math.max(HQ_DROP_MAX, _hq.site ? siteL + 0.1 : 0)) return null;
         }
         if (!ignoreBlockers) {
             /* furniture: a footprint's TOP is a floor when you stand on it or
@@ -40404,7 +40686,7 @@ const ThreeRenderer = (function () {
             var roamA = _hqRoamM(S);
             if (Math.abs(x) > S.w / 2 + roamA - HQ_BODY_R - 0.08 || Math.abs(z) > S.d / 2 + roamA - HQ_BODY_R - 0.08) return false;
             /* the site board (plan 7.2): lava / deep water is never overflown; a pit's floor stays under the feet */
-            if (_hq.site) { var sc = _hqSiteCellAt(x, z); if (sc) { if (!sc.walk) return false; if (sc.top < 0 && y < sc.top - 0.05) return false; } }
+            if (_hq.site) { var sc = _hqSiteCellAt(x, z); if (sc) { if (!sc.walk) return false; if (_hq.site.cave ? (y < _hqSiteFloorY(sc, x, z) - 0.05) : (sc.top < 0 && y < sc.top - 0.05)) return false; } }   // a cave's ledge is solid in the air (rev 11)
         } else if (room.kind === 'bay') {
             var deg = _hqNormDeg(Math.atan2(x, -z) * 180 / Math.PI);
             var capPad = ((0.15 + HQ_BODY_R) / Math.max(1, r)) * 180 / Math.PI;
@@ -40463,6 +40745,14 @@ const ThreeRenderer = (function () {
             if (_hq.site) {
                 /* the site board (plan 7.2): the boom stays out of raised cells and off a pit's floor */
                 var sc = _hqSiteCellAt(px, pz);
+                if (_hq.site.cave) {
+                    /* THE CAVE (rev 11): the boom never enters rock, never a ledge, stays over a sheet */
+                    if (!sc) return py < 0.22;
+                    if (sc.rock) return py < sc.top;
+                    if (sc.fluid) return py < sc.sheet + 0.22;
+                    var cf = _hqSiteFloorY(sc, px, pz);
+                    return py < cf + 0.24;
+                }
                 if (sc && sc.top > 0 && py < sc.top + 0.24) return true;
                 return py < ((sc && sc.top < 0) ? (sc.fluid ? -0.3 : sc.top) : 0) + 0.22;   // over a lake (or the moat) the boom stays above the sheet
             }
@@ -40776,7 +41066,7 @@ const ThreeRenderer = (function () {
             var ny = pl.y + pl.vy * dt;
             if (pl.vy < 0) {
                 var land = _hqSurface(pl.x, pl.z, null, true);
-                if (land === null || land > pl.y + 0.01) land = (_hq.site && _hqSiteCellAt(pl.x, pl.z) && _hqSiteCellAt(pl.x, pl.z).top < 0) ? _hqSiteCellAt(pl.x, pl.z).top : 0;   // over a band edge: the ground breaks the fall (a site pit: its floor)
+                if (land === null || land > pl.y + 0.01) { var lc = _hq.site ? _hqSiteCellAt(pl.x, pl.z) : null; land = (_hq.site && _hq.site.cave) ? (lc ? _hqSiteFloorY(lc, pl.x, pl.z) : 0) : ((lc && lc.top < 0) ? lc.top : 0); }   // over a band edge: the ground breaks the fall (a site pit: its floor; a cave cell: its feet)
                 /* a furniture top under the feet is a floor too (2026-09-05) */
                 var bf = _hqBlockerFloor(pl.x, pl.z, pl.y);
                 if (bf !== null && bf > land) land = bf;
@@ -40981,10 +41271,12 @@ const ThreeRenderer = (function () {
         _fluidTimeUniform.value = t;
         _fluidTileUniform.value = mt.tile;
         if (_fluidFlowUniform.value) _fluidFlowUniform.value.set(0, 0);   // the building's water holds still (MOVING MAPS)
-        var drift = _FLUID_DRIFT_3D[mt.key];
-        var o1 = _fluidTextures[mt.key + '_off1'], o2 = _fluidTextures[mt.key + '_off2'];
-        if (drift && o1) { o1.x = (drift.l1dx * t) % 1.0; o1.y = (drift.l1dy * t) % 1.0; }
-        if (drift && o2) { o2.x = (drift.l2dx * t) % 1.0; o2.y = (drift.l2dy * t) % 1.0; }
+        (mt.keys || [mt.key]).forEach(function (key) {   // THE CAVE (rev 11): water AND lava in one room
+            var drift = _FLUID_DRIFT_3D[key];
+            var o1 = _fluidTextures[key + '_off1'], o2 = _fluidTextures[key + '_off2'];
+            if (drift && o1) { o1.x = (drift.l1dx * t) % 1.0; o1.y = (drift.l1dy * t) % 1.0; }
+            if (drift && o2) { o2.x = (drift.l2dx * t) % 1.0; o2.y = (drift.l2dy * t) % 1.0; }
+        });
     }
     function _hqTickWorld(dt, now) {
         var H = _hq;
@@ -41246,6 +41538,8 @@ const ThreeRenderer = (function () {
         if (room.fx === 'training') { try { _hqBuildTrainingPit(room); } catch (e) { console.error('[HQ] training pit failed', e); } }
         /* a walkable site (HQ plan 7.2): the Δ board in the middle of the room */
         if (room.fx === 'site') { try { _hqBuildSiteBoard(room); } catch (e) { console.error('[HQ] site board failed', e); } }
+        /* THE CAVE (HQ plan 9.3 stage 2, rev 11): a box room whose floor is a hand-authored grid — ledges, ramps, bridges, water, lava */
+        if (room.cave) { try { _hqBuildCave(room); } catch (e) { console.error('[HQ] cave failed', e); } }
         /* the setting in the room (HQ plan 7.2 stage 5): the map's near builder, at 1:1 */
         if (room.fx === 'site' && S.near) { try { _hqBuildSetting(room); } catch (e) { console.error('[HQ] setting failed', e); } }
         /* an outdoor room (HQ plan 7.2 stage 3): the map's sky and far roster */
