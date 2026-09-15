@@ -18311,6 +18311,13 @@ const DOOR_HQ = {
            the site rooms through the settings (MODEL_INDEX.md). */
         pocket_watch_hung: { file: 'Meshy_AI_a_pocket_watch_hanging_0912231556_texture.glb',          base: 'misc', h: 0.62, foot: 0, wall: true, mount: 2.1 },
         pocket_watch:      { file: 'Meshy_AI_a_pocket_watch_0912231541_texture.glb',                  base: 'misc', span: 0.16, foot: 0 },
+        /* THE FLYING DUTCHMAN COMPLEX (9.2 stage 3, 2026-09-15 rev 19): the ship's
+           own kit below decks — the same GLBs the board and the quay wear
+           (_hzMiscKit cannon / chest / anchor / lantern; the same-thing rule) */
+        ship_cannon:       { file: 'Meshy_AI_iron_canon_0912231022_texture.glb',                     base: 'misc', span: 2.2, foot: 0.9, block: true },          // muzzle −X at face 0: face 0 = run out to port (the west wall), 180 = to starboard
+        sea_chest:         { file: 'Meshy_AI_pirate_treasure_chest_0912231220_texture.glb',         base: 'misc', h: 0.7, foot: 0.5, block: true },             // lock +Z
+        ship_anchor:       { file: 'Meshy_AI_ship_anchor_0912231033_texture.glb',                   base: 'misc', h: 1.9, foot: 0.5, block: true },             // the spare, stowed on its flukes
+        ship_lantern:      { file: 'Meshy_AI_a_hanging_lantern_0912231043_texture.glb',             base: 'misc', h: 0.5, foot: 0, ceil: true, glow: { y: -0.25, size: 1.4, color: 0xffb060 }, light: { color: 0xffa860, intensity: 0.75, dist: 7, y: -0.3 } },   // hangs from the beams; the deck's yard lanterns, below
         exit_sign:         { file: 'Meshy_AI_an_exit_sign_0903110032_texture.glb',                    span: 0.55, foot: 0, wall: true, mount: 2.75, glow: { y: 0.1, size: 0.6, color: 0x5cff7a } },
         fluorescent:       { file: 'Meshy_AI_a_fluorescent_fixture_0903105329_texture.glb',           span: 1.25, foot: 0, ceil: true },
         breaker_panel:     { file: 'Meshy_AI_a_breaker_panel_0903105436_texture.glb',                 h: 0.80, foot: 0, wall: true, mount: 1.25 },
@@ -18989,7 +18996,7 @@ const DOOR_HQ = {
           why: 'the plateau ends; so does the arithmetic. A frame with nothing in it, and the Quarantined bay\'s site on the other side', note: 'the drop is the door', draft: true },
         /* THE DEEP */
         { id: 'revenge_atlantis', route: 'deep', leaf: 'leaf_bulkhead',
-          a: { site: 'prebuilt_revenge', wall: 'n', x: -5 },
+          a: { site: 'prebuilt_revenge', part: 'hold', wall: 'w', z: 0, sub: 'THE HATCH BELOW THE WATERLINE · TO ATLANTIS' },   // 9.2 stage 3: the hatch is the hold's, not the deck's
           b: { site: 'prebuilt_atlantis', wall: 'n', x: -0.2 },
           why: 'the hatch below the waterline; the Dutchman sails over the drowned city on every pass and something down there keeps the hatch oiled', note: 'wet', draft: true },
         { id: 'atlantis_hollow', route: 'deep', leaf: 'leaf_bulkhead',
@@ -19198,6 +19205,18 @@ const DOOR_HQ = {
                   label: 'THE AIRLOCK', sub: 'THE INNER HATCH · INTO THE SHIP',
                   action: { room: 'site_prebuilt_derelict_airlock', at: 'deck' },
                   desc: 'The airlock off the dorsal deck. It cycles whether or not there is air; the collars to the Moon and to Saturn are on the other side of it, and so is the rest of the ship — the half that is here.' },
+            ],
+            /* THE FLYING DUTCHMAN COMPLEX (plan 9.2 stage 3, 2026-09-15 rev 19): the
+               board room is THE MAIN DECK on its quay; THE COMPANIONWAY on its
+               north wall (the lane the Atlantis hatch hung on until the hold
+               existed) goes below decks — the gun deck, the captain's cabin,
+               the hold. The DEEP route's hatch to Atlantis is in the hold now
+               (DOOR_HQ.links revenge_atlantis), below the waterline. */
+            prebuilt_revenge: [
+                { id: 'companionway', wall: 'n', x: -5, leaf: 'leaf_shabby_wood',
+                  label: 'THE FLYING DUTCHMAN', sub: 'THE COMPANIONWAY · BELOW DECKS',
+                  action: { room: 'site_prebuilt_revenge_gundeck', at: 'deck' },
+                  desc: 'The companionway down from the main deck. Below is the gun deck, aft of that the captain\'s cabin, below that the hold, and below the hold the sea — which on this ship is a door.' },
             ],
             prebuilt_haunted: [
                 { id: 'house', wall: 'n', x: -7.5, leaf: 'leaf_wooden',
@@ -26760,6 +26779,201 @@ const DOOR_HQ = {
             spawn: { x: -2.0, z: 1.6, face: 0 },
         },
         /* ══════════════════════════════════════════════════════════════════
+           THE FLYING DUTCHMAN COMPLEX (HQ plan 9.2 stage 3 — 2026-09-15 rev 19).
+           The FOURTH complex, the other half of the user's brief (Phase 9
+           (2): "the Spaceship and the Flying Dutchman with several decks").
+           Room 1717's generated board room stays THE MAIN DECK on its quay
+           (the console, the battle marker, the way back to Bay 3); THE
+           COMPANIONWAY on its north wall (siteRooms.backDoors.prebuilt_revenge)
+           goes below decks — the gun deck, the captain's cabin aft, the hold
+           under it. Every one wears `site` + `part` and NO `roomNo` (hqRoomNo
+           reads the threshold's 1717 through `site`; the register lists the
+           ship once; 9.4 knows the decks are WILD). THE DEEP's hatch to
+           Atlantis (DOOR_HQ.links revenge_atlantis) moved off the deck into
+           THE HOLD, below the waterline — the same rule as the spaceship's
+           collars (rev 18): a link end on a complex PART. The ship's own
+           kit stands below decks through the misc bucket (ship_cannon /
+           sea_chest / ship_anchor / ship_lantern — the same GLBs the board
+           and the quay wear; the same-thing rule). The ship lights itself
+           (`strips: false`, `lights: []` — lanterns, candles, one torch).
+           THE PARK RULE (9.8): a `railing_1m` run in every deck, `riser_*`
+           tiers in the big ones. Ship frame: the bow is EAST (+x, the
+           board's +X), so aft is west; port is north, starboard south.
+           Lines are Claude's DRAFT (A15 — the user rewrites).
+           ══════════════════════════════════════════════════════════════════ */
+        /* ── THE GUN DECK — four guns run out, the companionway up, the cabin aft, the hatch down ── */
+        site_prebuilt_revenge_gundeck: {
+            label: 'THE FLYING DUTCHMAN · THE GUN DECK',
+            sub: 'THE GUNS · THE CABIN AFT · THE HATCH DOWN',
+            kind: 'box', site: 'prebuilt_revenge', part: 'gundeck',
+            shell: {
+                w: 16, d: 10, h: 2.7,
+                wallH: 2.7, dadoH: 1.0,
+                floor: 'wood_planks', wall: 'wood', dado: 'wood', trim: 'wood', ceiling: 'wood_planks',
+                floorColor: 0x9a7048, wallColor: 0x6e4e34, dadoColor: 0x5a3e2a, ceilColor: 0x4a3222,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xffd0a0, ambient: 0.42 },
+                plate: { x: 2.6, z: 4.75, y: 2.2 },
+            },
+            doors: [
+                { id: 'deck', wall: 's', x: 0, leaf: 'leaf_shabby_wood',
+                  label: 'THE MAIN DECK', sub: 'UP THE COMPANIONWAY · TO THE BOARD',
+                  action: { room: 'site_prebuilt_revenge', at: 'companionway' },
+                  desc: 'The companionway up to the main deck — the board, the console, the crossing, the sea going past. The steps are wet on the way up and dry on the way down.' },
+                { id: 'cabin', wall: 'w', z: -3.5, leaf: 'leaf_shabby_wood',
+                  label: 'THE CAPTAIN’S CABIN', sub: 'AFT · THE GREAT CABIN',
+                  action: { room: 'site_prebuilt_revenge_cabin', at: 'gundeck' },
+                  desc: 'The door aft to the great cabin. It is kept locked. It is open.' },
+                { id: 'hold', wall: 'e', z: 3.5, leaf: 'leaf_shabby_wood',
+                  label: 'THE HOLD', sub: 'DOWN THE LADDER · BELOW THE WATERLINE',
+                  action: { room: 'site_prebuilt_revenge_hold', at: 'gundeck' },
+                  desc: 'The hatch and the ladder down into the hold. Records says the hold is flooding on a schedule; the schedule is on the form.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'ship_cannon',       x: -6.6, z: -1.2, face: 0 },                      // THE GUNS: two to port, two to starboard, run out
+                { key: 'ship_cannon',       x: -6.6, z: 2.0, face: 0 },
+                { key: 'ship_cannon',       x: 6.6, z: -2.0, face: 180 },
+                { key: 'ship_cannon',       x: 6.6, z: 0.6, face: 180 },
+                { key: 'riser_2',           x: 0, z: -4.25, face: 0 },                        // THE MAGAZINE STEP along the north side (the park rule's ramp, stepped)
+                { key: 'railing_1m',        x: -1.0, z: -3.35, face: 0 },                     // its rail (the park rule's rail)
+                { key: 'railing_1m',        x: 0, z: -3.35, face: 0 },
+                { key: 'railing_1m',        x: 1.0, z: -3.35, face: 0 },
+                { key: 'sea_chest',         x: 2.6, z: 2.6, face: 200 },                      // the shot locker
+                { key: 'cardboard_boxes',   x: -3.4, z: 3.4, face: 20 },                      // powder, in the wrong place
+                { key: 'cardboard_box',     x: 4.2, z: -1.4, face: 60 },
+                { key: 'wall_chains',       wall: 'n', x: 5.0, mount: 1.2 },                  // the breeching tackle
+                { key: 'hook_rail_long',    wall: 'n', x: -4.6, mount: 1.8 },                 // the rammers, the sponges, the worms
+                { key: 'wall_torch',        wall: 's', x: 4.8, mount: 1.6 },                  // the slow match in its tub is a torch on the wall here
+                { key: 'ship_lantern',      x: -4, z: 0, ceil: true },
+                { key: 'ship_lantern',      x: 0, z: 0.6, ceil: true },
+                { key: 'ship_lantern',      x: 4, z: 0, ceil: true },
+                { key: 'floor_stain',       x: -2.2, z: -0.8 },
+                { key: 'paper_sheet',       x: 1.6, z: 1.2, y: 0.01, face: 300 },             // the gunnery table, unsigned
+            ],
+            agents: [],
+            npcSpots: [{ x: -2.4, z: 1.4, face: 270, race: 'pirate' }, { x: 3.2, z: -2.2, face: 110, race: 'skeleton' }],
+            onlineSpots: [],
+            lines: [
+                '“Four guns.” “Eight, on the rail.” “Four down here.” “Four you can see.”',
+                '“Who runs them out?” “The crew.” “There is no crew.” “Then who runs them out?”',
+                '“The match is lit.” “It is always lit.” “Since when?” “1717.”',
+            ],
+            spawn: { x: 0, z: 2.6, face: 0 },
+        },
+        /* ── THE CAPTAIN’S CABIN — the stern windows, the table, the log open at tomorrow ── */
+        site_prebuilt_revenge_cabin: {
+            label: 'THE FLYING DUTCHMAN · THE CAPTAIN’S CABIN',
+            sub: 'THE STERN WINDOWS · THE TABLE · THE LOG',
+            kind: 'box', site: 'prebuilt_revenge', part: 'cabin',
+            shell: {
+                w: 10, d: 8, h: 2.8,
+                wallH: 2.8, dadoH: 1.0,
+                floor: 'wood_planks', wall: 'wood', dado: 'wood', trim: 'gold', ceiling: 'wood_planks',
+                floorColor: 0xa87a50, wallColor: 0x7a5838, dadoColor: 0x62442c, ceilColor: 0x54382a,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xffd8b0, ambient: 0.45 },
+                plate: { x: 1.4, z: 3.75, y: 2.15 },
+            },
+            doors: [
+                { id: 'gundeck', wall: 'e', z: -1.5, leaf: 'leaf_shabby_wood',
+                  label: 'THE GUN DECK', sub: 'FORWARD · TO THE GUNS',
+                  action: { room: 'site_prebuilt_revenge_gundeck', at: 'cabin' },
+                  desc: 'The cabin door, forward onto the gun deck. The great cabin is the end of the ship; behind the stern windows is the wake, and under the wake is the city.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'false_window',      wall: 'w', z: 0, mount: 0.9 },                    // THE STERN WINDOWS: the wake, lit from below (h 1.6 under a 2.8 m beam)
+                { key: 'riser_1',           x: -4.25, z: 0, face: 90 },                       // the stern gallery step under the windows (the park rule's ramp, one step)
+                { key: 'round_desk',        x: 0.6, z: 0.2 },                                 // THE CAPTAIN’S TABLE
+                { key: 'candle_ring',       x: 0.6, z: 0.2, y: 0.76 },                        // on the table
+                { key: 'paper_sheet',       x: 1.2, z: 0.7, y: 0.76, face: 20 },               // THE LOG, open at tomorrow
+                { key: 'pen',               x: 0.1, z: -0.3, y: 0.76, face: 60 },
+                { key: 'folding_chair',     x: 0.6, z: 1.7, face: 0 },                        // the captain’s chair; warm, like the other one
+                { key: 'railing_1m',        x: -1.5, z: -3.35, face: 0 },                     // the rail before the bunk (the park rule's rail)
+                { key: 'railing_1m',        x: -0.5, z: -3.35, face: 0 },
+                { key: 'cot',               x: 2.6, z: -3.0, face: 0 },                       // the bunk, made
+                { key: 'sea_chest',         x: -3.0, z: 3.0, face: 0 },                       // the sea chest, locked, not yours
+                { key: 'wall_shelf',        wall: 'n', x: -2.0, mount: 1.5 },                 // the charts, all of one sea
+                { key: 'wall_shelf',        wall: 's', x: 2.4, mount: 1.5 },
+                { key: 'picture_round_b',   wall: 'n', x: 2.0, mount: 1.8 },                  // a portrait; the frame is older than the face
+                { key: 'rug_round',         x: 0.6, z: 0.2 },
+                { key: 'table_lamp',        x: 3.8, z: 2.8, y: 0.0 },                         // on the deck, unbroken, lit
+                { key: 'ship_lantern',      x: -2.4, z: 0, ceil: true },
+                { key: 'retro_radio',       x: 3.6, z: -3.4, y: 0.0, face: 320 },             // it should not be here; it plays the sea
+            ],
+            agents: [],
+            npcSpots: [{ x: -2.6, z: -1.8, face: 60, race: 'ghost' }],
+            onlineSpots: [],
+            lines: [
+                '“The log is open.” “At tomorrow.” “Who wrote tomorrow?” “The hand is steady.”',
+                '“The captain?” “Not seen.” “Since?” “The log says tomorrow.”',
+                '“There is a city under the wake.” “There is always a city under the wake.” “Lit?” “Tonight.”',
+            ],
+            spawn: { x: 2.6, z: 0.6, face: 270 },
+        },
+        /* ── THE HOLD — the ballast, the flooding on a schedule, the hatch below the waterline ── */
+        site_prebuilt_revenge_hold: {
+            label: 'THE FLYING DUTCHMAN · THE HOLD',
+            sub: 'THE BALLAST · THE BILGE · THE HATCH BELOW THE WATERLINE',
+            kind: 'box', site: 'prebuilt_revenge', part: 'hold',
+            shell: {
+                w: 14, d: 10, h: 3.0,
+                wallH: 3.0, dadoH: 1.2,
+                floor: 'wood_planks', wall: 'wood', dado: 'wood', trim: 'wood', ceiling: 'wood_planks',
+                floorColor: 0x5e4a38, wallColor: 0x4e3a2a, dadoColor: 0x3a2c22, ceilColor: 0x3a2a1e,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xa0c8e0, ambient: 0.36 },
+                plate: { x: 4.6, z: 4.75, y: 2.3 },
+            },
+            doors: [
+                { id: 'gundeck', wall: 'e', z: 0, leaf: 'leaf_shabby_wood',
+                  label: 'THE GUN DECK', sub: 'UP THE LADDER · TO THE GUNS',
+                  action: { room: 'site_prebuilt_revenge_gundeck', at: 'hold' },
+                  desc: 'The ladder up to the gun deck. Up is the way you came; the other way out of the hold is below the waterline, and it is oiled.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'riser_2',           x: 0, z: -4.25, face: 0 },                        // THE BALLAST TIERS along the north side (the park rule's ramp, stepped)
+                { key: 'railing_1m',        x: -1.0, z: -3.35, face: 0 },                     // the rail on them (the park rule's rail)
+                { key: 'railing_1m',        x: 0, z: -3.35, face: 0 },
+                { key: 'railing_1m',        x: 1.0, z: -3.35, face: 0 },
+                { key: 'ship_anchor',       x: 5.4, z: -3.6, face: 20 },                      // the spare anchor, stowed on its flukes
+                { key: 'sea_chest',         x: -3.6, z: 3.4, face: 340 },                     // the treasure, which is not on the manifest
+                { key: 'sea_chest',         x: 3.8, z: 3.6, face: 30 },
+                { key: 'cardboard_boxes',   x: 5.6, z: 2.4, face: 10 },                       // the cargo, lashed
+                { key: 'cardboard_boxes',   x: -5.6, z: -2.8, face: 200 },
+                { key: 'cardboard_box',     x: -1.4, z: 2.8, face: 80 },
+                { key: 'floor_drain',       x: -0.6, z: 0.4 },                                // THE BILGE: it drains, then it fills
+                { key: 'floor_drain',       x: 2.4, z: -1.2 },
+                { key: 'floor_stain',       x: -1.8, z: -1.0 },
+                { key: 'floor_stain',       x: 1.6, z: 1.6 },
+                { key: 'floor_stain',       x: -4.0, z: 1.2 },
+                { key: 'wet_floor_sign',    x: 1.8, z: 3.0, face: 200 },                      // Records’ contribution
+                { key: 'mop_bucket',        x: 3.0, z: 2.2 },                                 // nobody’s
+                { key: 'wall_chains',       wall: 's', x: -4.0, mount: 1.2 },
+                { key: 'hook_rail',         wall: 'n', x: 4.4, mount: 1.75 },
+                { key: 'ship_lantern',      x: -3.5, z: 0, ceil: true },
+                { key: 'ship_lantern',      x: 3.5, z: 0, ceil: true },
+                { key: 'paper_sheet',       x: -2.2, z: -2.6, y: 0.01, face: 140 },           // the schedule, wet
+            ],
+            agents: [],
+            npcSpots: [{ x: 3.2, z: -2.4, face: 250, race: 'mermaid' }, { x: -4.6, z: 1.4, face: 40, race: 'siren' }],
+            onlineSpots: [],
+            lines: [
+                '“The hold is flooding.” “On a schedule.” “Whose?” “Records has a copy. It is wet.”',
+                '“That hatch is below the waterline.” “Yes.” “It is open.” “It is oiled.”',
+                '“Something keeps it oiled.” “Something down there.” “Atlantis?” “Something down there.”',
+            ],
+            spawn: { x: 4.6, z: 0, face: 270 },
+        },
+        /* ══════════════════════════════════════════════════════════════════
            H-WING (HQ plan 5.5, stage 1 — 2026-09-14 rev 4). See DOOR_HQ.hwing
            for the shape and the rules. Every room here is the one look:
            beige carpet, drywall, ceiling tile, fluorescents, right angles,
@@ -28422,14 +28636,14 @@ const HQ_TAPE_SHEET = {
     site_prebuilt_derelict_airlock:  [['THE COLLAR', 'The port collar cycling. Moon dust on the deck side, then none, then a bootprint.', 'evidence']],
     site_prebuilt_derelict_hold:     [['THE POD', 'The cryo pod’s window. Frost, a face, your mother’s eyes opening at 0:07.', 'parents']],
     site_prebuilt_derelict_bridge:   [['THE COURSE', 'The nav screen. A course laid in by hand to a star with no catalogue number. The hand is steady.', 'facility']],
-    /* the exploration floors (Phase 8): never the hall, the foyer, a lobby or a corridor — the finds are the reward for going somewhere */
+    site_prebuilt_revenge_gundeck:   [['THE GUNS', 'Four guns run out through the ports. Nobody at them. The match cords are lit.', 'evidence']],
+    site_prebuilt_revenge_cabin:     [['THE STERN WINDOWS', 'The sea through the stern windows. A lit city under it, and a woman on a balcony, waving up at the glass.', 'parents']],
+    site_prebuilt_revenge_hold:      [['THE BILGE', 'Water rising in the hold, then falling, then rising. It has a rhythm. The rhythm is breathing.', 'evidence']],
+    /* the exploration floors (Phase 8): never the hall, the foyer, a lobby or a corridor — the finds are the reward for going somewhere. A floor room's tape is a BONUS: the laundry, the locker room and the lecture hall gave theirs to the spaceship (rev 18); the boiler room, the server room and the ritual room to the Dutchman (rev 19) — the hundred stays a hundred */
     garage:    [['THE RAMP', 'A sedan coming down the ramp with its lights on. Nobody driving.', 'facility']],
     kitchen:   [['THE ORDER', 'A ticket on the rail. It orders for two, under your surname, every day at noon.', 'parents']],
     coldroom:  [['−18', 'Frost on the shelves. Breath in the corner of the frame.', 'evidence']],
-    boiler:    [['ROOM 451', 'The gauge climbs past the red. The needle bends round the dial.', 'facility']],
-    server:    [['RACK 127', 'A rack of blinking lights. They blink your employee number in binary.', 'facility']],
     dungeon:   [['24601', 'A cell door shutting. The camera is inside.', 'evidence']],
-    ritual:    [['THE CIRCLE', 'Chalk on the floor. The chalk is being redrawn between frames.', 'evidence']],
     sacrifice: [['FORM 322', 'A form on the altar. Field 1: NAME. It has been filled in for you.', 'facility']],
     orb:       [['THE OBJECT', 'The orb from every side at once. It turns to keep the same face to the lens.', 'evidence']],
     garden:    [['1618', 'A tree in the garden. Two names carved in it. One is yours, the other is not yet.', 'parents']],

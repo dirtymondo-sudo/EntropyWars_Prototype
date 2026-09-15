@@ -52,12 +52,12 @@ V = a spell (`_WPN_MODELS`), H = the headquarters (`DOOR_HQ.catalogue`).
 
 | key | file | facing | S | R | M | V | H | stands as |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `cannon` | Meshy_AI_iron_canon_0912231022_texture.glb | muzzle −X | Dutchman ×8 (the rail guns, `yaw π/2` then turned outboard) | | | **Cannonball** (`_sigCannonShot3D`, `tweak ry π`) | | the same gun on the deck and in the pirate's hand |
+| `cannon` | Meshy_AI_iron_canon_0912231022_texture.glb | muzzle −X | Dutchman ×8 (the rail guns, `yaw π/2` then turned outboard); THE GUN DECK ×4 (`DOOR_HQ.catalogue.ship_cannon`, rev 19) | | | **Cannonball** (`_sigCannonShot3D`, `tweak ry π`) | | the same gun on the deck and in the pirate's hand |
 | `wheel` | Meshy_AI_a_ship_s_wheel_0912230950_texture.glb | face +Z | Dutchman (the helm on the quarterdeck, turned to +X) | | | | | |
-| `anchor` | Meshy_AI_ship_anchor_0912231033_texture.glb | face +Z | Dutchman (catted on the starboard bow) | | | | | |
-| `lantern` | Meshy_AI_a_hanging_lantern_0912231043_texture.glb | hangs | Dutchman (a lantern at each end of every lower yard, `hang`, warm halo under it; in the site room too) | | | | | |
+| `anchor` | Meshy_AI_ship_anchor_0912231033_texture.glb | face +Z | Dutchman (catted on the starboard bow); THE HOLD (`ship_anchor`, rev 19) | | | | | |
+| `lantern` | Meshy_AI_a_hanging_lantern_0912231043_texture.glb | hangs | Dutchman (a lantern at each end of every lower yard, `hang`, warm halo under it; in the site room too); below decks from the beams (`ship_lantern`, ceil + light, rev 19) | | | | | |
 | `rowboat` | Meshy_AI_a_rowboat_0912231059_texture.glb | bow −X | Dutchman (the ship's boat towed astern on the sea, `yaw π`, bobs, a tow line) | | | | | |
-| `chest` | Meshy_AI_pirate_treasure_chest_0912231220_texture.glb | lock +Z | Dutchman (open on the deck at the starboard-bow corner; room too) | | | | | |
+| `chest` | Meshy_AI_pirate_treasure_chest_0912231220_texture.glb | lock +Z | Dutchman (open on the deck at the starboard-bow corner; room too); the gun deck, the cabin, the hold (`sea_chest`, rev 19) | | | | | |
 | `tentacle` / `tentacle2` | Meshy_AI_a_kraken_tentacle_0912231121_texture.glb / Meshy_AI_a_kraken_tentacle_2_0912231110_texture.glb | rises | Dutchman (two arms out of the sea off the port quarter, `sink`, on the swell) | **sea** (`_hzKrakenFar`) | | | | |
 | `wreck` | Meshy_AI_a_ghost_ship_wreck_0912231131_texture.glb | bow −X | | **sea** (`_hzGhostShip` is GLB-first; `_hzGhostShipProc` fallback) | | | | |
 | `shark` | Meshy_AI_shark_0912231236_texture.glb | nose +Z | | **sea** (`_hzSharkFar`, half under) | | | | |
@@ -169,6 +169,8 @@ watches). Three kit props ALSO stand on battle boards through
 `palm_tree` (Atlantis) — battle and site room alike, never doubled as
 room props.
 
+**THE FLYING DUTCHMAN COMPLEX (9.2 stage 3, 2026-09-15 rev 19)** — four catalogue rows read the SHARED misc bucket (`base: 'misc'`, the same files `_MISC_GLB` names): `ship_cannon` (the gun deck's four guns, muzzle −X at face 0), `sea_chest` (the shot locker, the captain's chest, the hold's two), `ship_anchor` (the spare in the hold), `ship_lantern` (`ceil` + a warm `light`, hung from the beams on every deck). Nothing new on R2.
+
 ## 6b. THE EXPLORATION FLOORS (Phase 8, 2026-09-14) — what stands on the new floors
 Everything on G · B · B2 · 3 is the D.O.O.R. kit (§6) or a `DOOR_HQ.catalogue`
 PROC (44 new builders in three-renderer.js `Object.assign(_hqProcBuilders,
@@ -232,7 +234,8 @@ the register.
 | --- | --- | --- |
 | the alien saucer in flight / abducting | Triangle UFO (`ufo`) | orbs / space rosters, the UFO spells |
 | the saucer on the ground | `saucer_lg` | Area 51 |
-| a cannon | `cannon` | the Dutchman's rails, the Cannonball spell |
+| a cannon | `cannon` | the Dutchman's rails, the Cannonball spell, THE GUN DECK below decks (`ship_cannon`) |
+| a sea chest / an anchor / a hanging lantern | `chest` / `anchor` / `lantern` | the Dutchman's deck and quay; below decks as `sea_chest` / `ship_anchor` / `ship_lantern` (rev 19) |
 | the master sword | Meshy_AI_master_sword | Excalibur's rock (Camelot), every sword effect |
 | the sleigh | Meshy_AI_Golden_Red_Sleigh | the North Pole board, the sleigh spell |
 | a vault / blast door | `vault` | D.U.M.B. chokes, the `blastdoor` monument (D.U.M.B., CERN) |

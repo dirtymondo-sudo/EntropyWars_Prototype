@@ -277,7 +277,8 @@ test('the whole world is one piece: from the foyer every board room and every co
  const linkAdj={};g.edges.filter(e=>e.link).forEach(e=>{(linkAdj[e.from]=linkAdj[e.from]||[]).push(e.to);});
  const reach=(from)=>{const s=new Set([from]),t=[from];while(t.length){const a=t.pop();for(const b of linkAdj[a]||[])if(!s.has(b)){s.add(b);t.push(b);}}return s;};
  assert.ok(reach(BOARD('prebuilt_haunted')).has(BOARD('prebuilt_fairy_forest')),'the woods');
- assert.ok(reach(BOARD('prebuilt_revenge')).has(BOARD('prebuilt_northpole')),'the deep, end to end');
+ assert.ok(reach('site_prebuilt_revenge_hold').has(BOARD('prebuilt_northpole')),'the deep, end to end (rev 19: the line ends at the hatch in the Dutchman\'s HOLD — the deck reaches it by an ordinary door, not a link)');
+ assert.ok(!reach(BOARD('prebuilt_revenge')).has(BOARD('prebuilt_atlantis')),'no link leaves the main deck any more');
  assert.ok(reach(BOARD('prebuilt_mars')).has(BOARD('prebuilt_singularity')),'the lunar route, end to end');
 });
 test('the directory draws THE WORLD: _hqWorldHtml renders every line as a subway map with a leg per link, a stop per station, the viewer filled, GO to every other station; the CSS carries the classes',()=>{

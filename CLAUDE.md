@@ -2935,6 +2935,27 @@ Fixed (`:` is legal; achievements.test.js guards it) — **ship data.js to
 Render as well as R2 for this one**. A sudden-death Key win files THE
 KEYS through `state._winCause` (battle.js; reset beside `_winCondition`).
 
+## THE FLYING DUTCHMAN COMPLEX (HQ plan 9.2 stage 3) — 2026-09-15 rev 19, local delivery
+Room 1717 is the FOURTH complex: `site_prebuilt_revenge_gundeck` / `_cabin` /
+`_hold` (data.js, right after the spaceship's bridge; `site` + `part`, no
+`roomNo`) behind THE COMPANIONWAY on the main deck's north wall at x −5
+(`siteRooms.backDoors.prebuilt_revenge`, `leaf_shabby_wood` = the site's
+own single leaf). Ship frame: bow EAST (+x), aft west, port north,
+starboard south — the cabin's stern windows are a `false_window` on the
+WEST wall. **THE DEEP's hatch lives in the hold**: `links.revenge_atlantis
+.a` is `{ site, part: 'hold', wall: 'w', z: 0, sub }` — a link end on a
+complex PART is the rule for every "below decks" seam (the spaceship's
+collars were the first); no link door stands on the main deck, the site
+stays one station. **The ship's kit below decks = four `base: 'misc'`
+catalogue rows** (`ship_cannon` span 2.2 / foot 0.9 / block — muzzle −X at
+face 0, so face 0 runs out to port and 180 to starboard; `sea_chest`;
+`ship_anchor`; `ship_lantern` = `ceil` + `light`, in doorhq.test.js's
+room-light regex) reading the files `_MISC_GLB` names — never a second
+file for the same thing (MODEL_INDEX §9). Tapes: one per deck (the boiler
+/ server / ritual rooms gave theirs up; the hundred stays a hundred).
+`npm test` runs `hq-dutchman.test.js`. Unseen live (RULE #1c): the guns'
+facing, the lanterns under a 2.7 m beam, the stern window's glow.
+
 ## THE LOBBY THEME + THE TITLE THEME'S LIMITS + concrete_floor rev (2026-09-15, local delivery)
 audio.js `doorLobby` = R2 `music/door_lobby.mp3` (the user's HQ track, MASTER
 B4; `_R2_MUSIC` / `_LOCAL_MUSIC` / `AUDIO_BASE_VOLUMES`, pause-menu name in
