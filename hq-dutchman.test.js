@@ -153,11 +153,13 @@ test('the production renderer lands every door inside its deck, clear of every b
         for (const door of room.doors) {
             const h = landing(room, door), p = h.player;
             assert.ok(Math.abs(p.x) < S.w / 2 - 0.4 && Math.abs(p.z) < S.d / 2 - 0.4, id + '/' + door.id + ': inside the walls');
-            const inward = { n: [0, 1], s: [0, -1], e: [-1, 0], w: [1, 0] }[door.wall];
+            /* rev 22: the bilge (the plunge pool's far end) stands FREE in the hold's floor — its inward is the heading its opening faces */
+            const inward = door.wall === 'free' ? [Math.sin(door.face * Math.PI / 180), -Math.cos(door.face * Math.PI / 180)] : { n: [0, 1], s: [0, -1], e: [-1, 0], w: [1, 0] }[door.wall];
             const fx = Math.sin(h.cam.yaw), fz = -Math.cos(h.cam.yaw);
             assert.ok(Math.abs(fx * inward[0] + fz * inward[1]) > 0.99, id + '/' + door.id + ': faces along the doorway’s normal');
             assert.equal(p.air, false); assert.equal(p.y, 0);
             for (const q of [...room.props, ...room.npcSpots]) assert.ok(!propBlocks(room, q, p.x, p.z, 0.35), id + '/' + door.id + ': ' + (q.key || q.race) + ' blocks the landing');
+            if (door.wall === 'free') continue;
             for (const other of room.doors) if (other.id !== door.id && other.wall === door.wall) {
                 const k = (door.wall === 'n' || door.wall === 's') ? 'x' : 'z';
                 assert.ok(Math.abs(other[k] - door[k]) > 2.6, id + ': ' + door.id + ' and ' + other.id + ' overlap');

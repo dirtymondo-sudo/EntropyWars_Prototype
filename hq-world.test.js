@@ -60,8 +60,15 @@ test('production renderer lands each link inside the dry walkway facing away fro
   const h=landing(room,door), p=h.player, half=room.shell.w/2;
   assert.ok(Math.abs(p.x)<half-0.4 && Math.abs(p.z)<half-0.4);
   assert.ok(Math.abs(p.z)>room.shell.grid.cells*room.shell.grid.cell/2+0.4,'off the battle board');
-  assert.ok(Math.cos(h.cam.yaw)<-0.99,'north doorway faces south into the room');
-  if(door.way) assert.ok(door.wall==='n' && door.x<=-0.2,'a seam on a site room stands on the north wall, in a lane west of the console (rev 10: the four well heads took the free lanes)');
+  if(door.wall==='free'){
+   /* rev 22: a FREE seam on a site room (the Looking-Glass's mirror — its room is too small for a north lane) stands on the walkway strip and lands the walker facing the way its opening faces, away from it */
+   const fr=door.face*Math.PI/180;
+   assert.ok(Math.abs(door.z)>room.shell.grid.cells*room.shell.grid.cell/2+0.4,'the object itself stands off the board');
+   assert.ok(Math.sin(h.cam.yaw)*Math.sin(fr)+Math.cos(h.cam.yaw)*(-Math.cos(fr))>0.99,'lands facing away from the object');
+  } else {
+   assert.ok(Math.cos(h.cam.yaw)<-0.99,'north doorway faces south into the room');
+   if(door.way) assert.ok(door.wall==='n' && door.x<=-0.2,'a seam on a site room stands on the north wall, in a lane west of the console (rev 10: the four well heads took the free lanes)');
+  }
   assert.equal(p.air,false);assert.equal(p.y,0);
   for(const q of [...room.props,...room.agents,...room.npcSpots]) {
    const cat=HQ.catalogue[q.key]||{};
@@ -70,11 +77,11 @@ test('production renderer lands each link inside the dry walkway facing away fro
    const z=q.wall==='n'?-half:q.wall==='s'?half:(q.z||0);
    assert.ok(Math.hypot(p.x-x,p.z-z)>(cat.foot||0.5)+0.4,(q.key||'person')+' blocks landing');
   }
-  for(const other of room.doors) if(other.id!==door.id && other.wall===door.wall)
+  for(const other of room.doors) if(other.id!==door.id && other.wall===door.wall && door.wall!=='free')
    assert.ok(Math.abs(other.x-door.x)>4.4,'door lanes overlap');
   // _hqBuildSiteBoard also places a 4.8 m signboard at x=5 on
   // outdoor north edges; it is not listed in room.props.
-  assert.ok(door.x + 2.2 < 5 - 2.4, 'door approach overlaps the built-in signboard');
+  if(door.wall!=='free') assert.ok(door.x + 2.2 < 5 - 2.4, 'door approach overlaps the built-in signboard');
   for(const mast of room.shell.lights||[])
    assert.ok(Math.hypot(p.x-mast.x,p.z-mast.z)>0.5,'lamp mast blocks landing');
  }
@@ -108,9 +115,9 @@ test('links are fresh copies and their own clearance/Key requirements use existi
 test('an entryway kind the catalogue does not list is held back at BOTH ends; a listed one builds; a per-end leaf makes a plain door back',()=>{
  const saved=HQ.links;
  try {
-  HQ.links=[{...saved[0],way:'mirror'}];
+  HQ.links=[{...saved[0],way:'phonebox'}];   // rev 22: the mirror is catalogued now — the phone box is the kind that waits on A14
   assert.equal(D.hqLinkDoors(D.hqLinkRoom(saved[0].a)).length,0);assert.equal(D.hqLinkDoors(D.hqLinkRoom(saved[0].b)).length,0);
-  HQ.links=[{...saved[0],a:{...saved[0].a,way:'mirror'}}];
+  HQ.links=[{...saved[0],a:{...saved[0].a,way:'phonebox'}}];
   assert.equal(D.hqLinkDoors(D.hqLinkRoom(saved[0].b)).length,0,'one unknown end holds the whole link back — never half a seam');
   HQ.links=[{...saved[0],way:'wardrobe'}];
   const a=D.hqLinkDoors(D.hqLinkRoom(saved[0].a))[0], b=D.hqLinkDoors(D.hqLinkRoom(saved[0].b))[0];
@@ -124,7 +131,7 @@ test('an entryway kind the catalogue does not list is held back at BOTH ends; a 
  } finally{HQ.links=saved;}
 });
 test('THE SEAMS THAT ARE NOT DOORS: the wardrobe into Camelot and the well into Hollow Earth are catalogued, paired, plated, voiced and built',()=>{
- assert.deepEqual(SEAMS.map(l=>l.id).sort().join(','),'haunted_camelot,tunnel_cyberpunk,well_camelot,well_cellar,well_garden,well_gobekli,well_nuketown,well_skinwalker','the wardrobe, the six wells (rev 10: every well drops into the cave) and the train (2026-09-15: the tunnel\u2019s platform to Cyberpunk\u2019s subway)');
+ assert.deepEqual(SEAMS.map(l=>l.id).sort().join(','),'bureau_vatican,haunted_camelot,lodge_olympus,mirror_lookingglass,natatorium_dutchman,northpole_haunted,nuketown_haunted,observatorium_singularity,tunnel_cyberpunk,well_camelot,well_cellar,well_garden,well_gobekli,well_nuketown,well_skinwalker','the wardrobe, the six wells (rev 10: every well drops into the cave), the train (the tunnel\u2019s platform to Cyberpunk\u2019s subway) and the second batch (rev 22: the mirror, the plunge pool, two paintings, the hearth, the screen, the closet)');
  for(const k of Object.keys(HQ.ways)) {
   const w=HQ.ways[k];
   assert.ok(w.verb && w.sub && w.sfx && w.w>0 && w.h>0, k+': verb · sub · sfx · w · h');
@@ -146,7 +153,7 @@ test('THE SEAMS THAT ARE NOT DOORS: the wardrobe into Camelot and the well into 
    const dest=HQ.rooms[door.action.room], back=dest.doors.find(d=>d.id===door.action.at);
    assert.ok(back && back.action.room===rid && back.action.at===door.id && back.way===door.way,'the same object at the far end');
    assert.equal(D.hqDoorNo(door),D.hqRoomNo(door.action.room),'the plate reads the far site\'s number');
-   assert.equal(D.doorSiteState(door,{}),'open');
+   assert.equal(D.doorSiteState(door,{}),link.gate?'clearance':'open','rev 22: the Bureau\u2019s painting carries the Bureau\u2019s own gate — the Vatican is no way round the Gatekeeper\u2019s door');
    assert.equal(room.doors.filter(d=>d.id===door.id).length,1);
   }
  }
@@ -176,6 +183,57 @@ test('THE SEAMS THAT ARE NOT DOORS: the wardrobe into Camelot and the well into 
  assert.ok(/t\.door\.way\) \? \(\(t\.door\.verb\) \|\| _hqWayCat\(t\.door\.way\)\.verb\)/.test(map),'the prompt reads the end\'s verb, else the way\'s');
  assert.ok(/from\.door\.way\) \? _hqWayCat\(from\.door\.way\)\.sfx/.test(map),'the room change voices the way');
  assert.ok(/\.hq-plate-way/.test(fs.readFileSync(__dirname+'/styles-base.css','utf8')));
+});
+test('THE SECOND BATCH (rev 22): the mirror, the plunge pool, the two paintings, the hearth, the screen and the closet stand where the sheet says, the props they displaced moved, and the production renderer lands every new end clear of the room',()=>{
+ const ENDS=[
+  ['mirror_lookingglass','a','barbershop','e',0.6,'hook_rail_long'],
+  ['natatorium_dutchman','a','natatorium','free',null,'floor_drain'],
+  ['natatorium_dutchman','b','site_prebuilt_revenge_hold','free',null,null],
+  ['bureau_vatican','a','continuity','n',-1.7,'nameplate'],
+  ['northpole_haunted','b','site_prebuilt_haunted_hall','e',0.1,null],
+  ['observatorium_singularity','a','observatorium','w',3.4,'hook_rail'],
+  ['nuketown_haunted','b','site_prebuilt_haunted_upstairs','w',0.4,'picture_round_a'],
+ ];
+ for(const [id,side,rid,wall,along,moved] of ENDS){
+  const link=HQ.links.find(l=>l.id===id), end=link[side];
+  assert.equal(D.hqLinkRoom(end),rid,id+'/'+side+' resolves to '+rid);
+  const room=HQ.rooms[rid], door=room.doors.find(d=>d.link===id);
+  assert.ok(door && door.way===link.way,rid+' wears the '+link.way);
+  assert.equal(door.wall,wall);
+  if(wall!=='free') assert.equal(door[(wall==='n'||wall==='s')?'x':'z'],along);
+  /* the landing: 2.4 m in, inside the walls, on nothing, and — for a wall end — facing along the wall's inward normal */
+  const h=landing(room,door), p=h.player, S=room.shell;
+  assert.ok(Math.abs(p.x)<S.w/2-0.4 && Math.abs(p.z)<S.d/2-0.4,rid+'/'+door.id+': inside the walls');
+  const inward=wall==='free'?[Math.sin(door.face*Math.PI/180),-Math.cos(door.face*Math.PI/180)]:{n:[0,1],s:[0,-1],e:[-1,0],w:[1,0]}[wall];
+  assert.ok(Math.sin(h.cam.yaw)*inward[0]+(-Math.cos(h.cam.yaw))*inward[1]>0.99,rid+'/'+door.id+': lands facing away from the object');
+  assert.equal(p.air,false);
+  for(const q of [...(room.props||[]),...(room.npcSpots||[]),...(room.agents||[])]) assert.ok(!propBlocks(room,q,p.x,p.z,0.35),rid+'/'+door.id+': '+(q.key||q.race||'person')+' blocks the landing');
+  for(const c of room.counters||[]) if(c.x!=null) assert.ok(Math.hypot(p.x-c.x,p.z-c.z)>0.9,rid+'/'+door.id+': the counter '+c.id+' stands on the landing');
+  /* the displaced prop is still in the room, off that wall spot */
+  if(moved){
+   const still=(room.props||[]).filter(q=>q.key===moved);
+   assert.ok(still.length>0,rid+': '+moved+' moved, never deleted');
+   for(const q of still) assert.ok(!(q.wall===wall && Math.abs((q[(wall==='n'||wall==='s')?'x':'z']||0)-(along||0))<1.0),rid+': '+moved+' still hangs where the '+link.way+' is');
+  }
+  /* a wall end's object fits the wall it hangs on, clear of the room's own doors */
+  if(wall!=='free'){
+   const half=(wall==='n'||wall==='s')?S.w/2:S.d/2;
+   assert.ok(half-Math.abs(along)>=HQ.ways[link.way].w/2+0.3,rid+'/'+door.id+': the '+link.way+' fits the wall');
+   for(const o of room.doors) if(o.id!==door.id && o.wall===wall) assert.ok(Math.abs((o[(wall==='n'||wall==='s')?'x':'z']||0)-along)>2.2,rid+': '+door.id+' crowds '+o.id);
+  }
+ }
+ /* the pool's two ends stand FREE and off every rect blocker (the lap pool's, the bilge's stains carry none) */
+ const nat=HQ.rooms.natatorium, plunge=nat.doors.find(d=>d.link==='natatorium_dutchman');
+ assert.ok(!propBlocks(nat,nat.props.find(q=>q.key==='lap_pool'),plunge.x,plunge.z,0.9),'the plunge pool is sunk beside the lap pool, not in it');
+ /* the Looking-Glass's mirror stands on the walkway strip, off the board, and the site is a station now */
+ const lg=HQ.rooms[D.hqSiteRoomId('prebuilt_lookingglass')], mir=lg.doors.find(d=>d.link==='mirror_lookingglass');
+ assert.ok(mir && mir.wall==='free' && Math.abs(mir.z)>lg.shell.grid.cells*lg.shell.grid.cell/2+0.4 && Math.abs(mir.z)<lg.shell.d/2-0.6,'the mirror stands on the north strip of the Looking-Glass');
+ assert.ok(D.hqWorldRoutes('foyer').some(r=>r.stations.some(s=>s.site==='prebuilt_lookingglass')),'E4 is a station');
+ /* the Bureau's gate rides the painting at BOTH ends */
+ for(const rid of ['continuity',D.hqSiteRoomId('prebuilt_vatican')]){const d=HQ.rooms[rid].doors.find(x=>x.link==='bureau_vatican');assert.equal(d.minClearance,5);assert.equal(d.requiresKeys,24);assert.equal(D.doorSiteState(d,{}),'clearance');}
+ assert.equal(D.hqDoorNo(HQ.rooms[D.hqSiteRoomId('prebuilt_vatican')].doors.find(x=>x.link==='bureau_vatican')),'№ — CONTESTED','the painting’s plate reads the Bureau’s number (hqDoorNo reads a room numbered on its own door)');
+ /* the phone box is the kind that waits (A14) — not catalogued, not built */
+ assert.ok(!HQ.ways.phonebox && !/^        phonebox: function/m.test(renderer),'phonebox waits on the story');
 });
 test('world graph reflects real directed doors and repeated reads do not change the rooms',()=>{
  const before=JSON.stringify(HQ.rooms), graph=D.hqWorldGraph();
@@ -239,11 +297,12 @@ test('every link on the sheet is LIVE (both ends built, both wear catalogued), n
 test('every built site but the Looking-Glass is a station on at least one line; a site room carries at most three link doors, each on the north wall clear of the corner masts',()=>{
  const on=new Set();HQ.links.forEach(l=>[l.a,l.b].forEach(e=>on.add(e.site)));
  const off=HQ.siteRooms.built.filter(id=>!on.has(id));
- assert.equal(off.join(','),'prebuilt_lookingglass','the Looking-Glass room is 9 m across: a north door lands on the board (rev 7 note)');
+ assert.equal(off.join(','),'','every built site is a station (rev 22: the Looking-Glass joined through the barbershop\u2019s mirror, a FREE end on its walkway strip — its 18 m room has no north lane)');
  for(const id of HQ.siteRooms.built){
   const room=HQ.rooms[BOARD(id)], links=room.doors.filter(d=>d.link), half=room.shell.w/2;
   assert.ok(links.length<=4,id+' carries '+links.length+' link doors');
-  for(const d of links){assert.equal(d.wall,'n');assert.ok(d.x>-(half-(room.shell.open?2.6:1.4))&&d.x<0.4,id+'/'+d.id+' at x '+d.x+' (half '+half+')');
+  for(const d of links){if(d.wall==='free'){assert.ok(d.way,id+'/'+d.id+': only a `way` may stand free on a site room');continue;}
+   assert.equal(d.wall,'n');assert.ok(d.x>-(half-(room.shell.open?2.6:1.4))&&d.x<0.4,id+'/'+d.id+' at x '+d.x+' (half '+half+')');
    for(const o of links) if(o!==d) assert.ok(Math.abs(o.x-d.x)>=4.4,id+': '+d.id+' and '+o.id+' share a lane');
    const cat=HQ.catalogue[d.leaf]; if(cat) assert.equal(!!d.wide,!!cat.wide,d.id+' wide flag');}
  }
@@ -254,9 +313,11 @@ test('hqWorldRoutes chains every live link into a line: a leg per link, a statio
  assert.equal(R.reduce((n,r)=>n+r.legs.length,0),HQ.links.length);
  const seams=R.find(r=>r.id==='seams'), woods=R.find(r=>r.id==='woods'), deep=R.find(r=>r.id==='deep'), hw=R.find(r=>r.id==='highway');
  assert.ok(seams.dashed);
- assert.deepEqual(seams.stations.map(s=>s.no).join(','),'13,i','the wardrobe upstairs is the HOUSE\'s leg (the wells moved to THE UNDERCROFT, rev 10)');
- assert.ok(seams.stations.every(s=>s.room===BOARD(s.site)),'a station is a board room');
- assert.ok(seams.legs.every(l=>l.way && l.fromRoom.startsWith('site_prebuilt_haunted_') && l.to===BOARD(l.to.replace(/^site_/,''))));
+ const seamNos=new Set(seams.stations.map(s=>s.no));
+ for(const no of ['13','i','1287','E4','50M','1717','33','12','\u2116 \u2014 CONTESTED','888','360','0','1225','1945']) assert.ok(seamNos.has(no),'THE SEAMS line calls at '+no+' (rev 22: the second batch; the wardrobe upstairs is the HOUSE\'s leg, the wells moved to THE UNDERCROFT in rev 10)');
+ assert.equal(seams.stations.length,14);
+ assert.ok(seams.stations.every(s=>s.site?s.room===BOARD(s.site):HQ.rooms[s.room]&&!HQ.rooms[s.room].site),'a station is a board room, or (rev 22) a facility room the seam leaves from');
+ assert.ok(seams.legs.every(l=>l.way));
  const house=woods.stations.find(s=>s.no==='13');
  assert.ok(house.here && house.lines.length===3 && house.lines.includes('seams') && house.lines.includes('undercroft'),'the cellar counts as the house; the house is an interchange (the woods, the wardrobe, the well)');
  assert.equal(D.hqWorldRoutes('foyer').find(r=>r.id==='woods').stations.filter(s=>s.here).length,0);

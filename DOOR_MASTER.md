@@ -2524,6 +2524,19 @@ marker; the officer sheet and every red CLEARANCE lamp state the next rung.
 Row 31's door gun is STANDARD ISSUE for the test (`HQ_PORTAL_RULES.free`),
 the user's call; the Quartermaster's signature returns with `free: false`.
 
+### 2026-09-15 rev 22 — 9.3 THE SEAMS, THE SECOND BATCH (local)
+Six more entryways that are not doors, all on THE SEAMS line: the MIRROR
+in Occam's Barbershop that shows the Looking-Glass's marble (and stands
+free on its strip at the far end — the last site joins the world), the
+PLUNGE POOL at the natatorium's deep end that surfaces in the Dutchman's
+bilge, the PAINTING in the Lodge that is Olympus, the PAINTING in the
+Bureau that is the Vatican's square (the Bureau's own gate hangs on it),
+the HEARTH in the house's hall whose fire goes green for the North Pole,
+the SCREEN in Room 360 with Room 0's shape in the static, the CLOSET
+upstairs that is also Nuketown's. `phonebox` waits on A14 Q5. Every plate
+line is Claude's draft (A15). HQ plan §4 9.3 (the `way` table), §9
+2026-09-15 rev 22.
+
 ### 2026-09-15 rev 17 — 9.4 THE ENCOUNTER: the click (local)
 The user corrected the controls: with the door gun HOLSTERED a left click
 is the attack (at a native in reach + sight in a wild room, the fight);

@@ -18963,6 +18963,19 @@ const DOOR_HQ = {
         well:     { verb: 'CLIMB DOWN', sub: 'THE WELL · DOWN THE ROPE', sfx: 'wayWell', w: 1.4, h: 1.0 },
         /* THE TRAIN (2026-09-15): a platform; the train arrives, the doors open, the next station is another map. The opening is ONE car door. */
         train:    { verb: 'BOARD', sub: 'THE TRAIN · DOORS OPEN', sfx: 'wayTrain', w: 1.4, h: 2.1 },
+        /* THE SECOND BATCH (2026-09-15 rev 22): the other entryways the plan's
+           table names. Each is one object at BOTH ends of its seam (7.0): a
+           full-length mirror that reflects the wrong room; a tiled plunge
+           pool you dive into and surface from elsewhere; a framed picture
+           you step INTO; a hearth you walk into (Floo-style); a CRT you
+           crawl through; a closet with no back. `phonebox` waits on A14
+           (the story rules the phone at HOME). */
+        mirror:    { verb: 'STEP THROUGH', sub: 'THE MIRROR · THE WRONG REFLECTION', sfx: 'wayMirror', w: 0.9, h: 2.0 },
+        pool:      { verb: 'DIVE', sub: 'THE POOL · SURFACE ELSEWHERE', sfx: 'waySplash', w: 1.6, h: 0.6 },
+        painting:  { verb: 'STEP IN', sub: 'THE PAINTING · INTO THE FRAME', sfx: 'wayCanvas', w: 1.3, h: 1.7 },
+        fireplace: { verb: 'STEP INTO THE FIRE', sub: 'THE HEARTH · GREEN FLAME', sfx: 'wayFloo', w: 1.4, h: 1.5 },
+        screen:    { verb: 'CRAWL THROUGH', sub: 'THE SCREEN · SIGNAL LOST', sfx: 'wayStatic', w: 1.3, h: 1.4 },
+        closet:    { verb: 'STEP IN', sub: 'THE CLOSET · NO BACK WALL', sfx: 'wayCreak', w: 1.0, h: 2.1 },
     },
     /* Phase 9.3 pilot: ordinary, reversible doors between existing board
        rooms. Move the Derelict ends to its airlock when that room exists.
@@ -19183,6 +19196,50 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_cyberpunk', wall: 'n', x: -10, sub: 'THE SUBWAY · ALL LINES' },
           why: 'the train at the platform has been there for an hour with its doors open; it goes to every line, and the first stop is under an intersection that is always raining',
           note: 'mind the gap', draft: true },
+        /* THE SEAMS, THE SECOND BATCH (2026-09-15 rev 22): six more kinds,
+           seven rows, all on THE SEAMS line. A site room's end stands on its
+           north wall in a free lane (the rev 10 rule) or, where the room is
+           too small for a lane (the Looking-Glass — a north door's landing
+           sits on the board), FREE on the walkway strip; a facility room's
+           end stands on whichever wall had the room for it (the prop it
+           displaced moved, never deleted). The Bureau's painting carries the
+           Bureau's OWN gate, so the Vatican is no way round the Gatekeeper's
+           door. Every line is Claude's DRAFT (A15 — the user rewrites). */
+        { id: 'mirror_lookingglass', route: 'seams', way: 'mirror',
+          a: { room: 'barbershop', wall: 'e', z: 0.6 },
+          b: { site: 'prebuilt_lookingglass', wall: 'free', x: -7.2, z: -8.0, face: 90, sub: 'THE MIRROR · BACK TO THE BARBERSHOP' },
+          why: 'the full-length mirror by the sink shows a marble floor and a sky with no ceiling; the barber says not to look at it while he is cutting and will not say why',
+          note: 'it does not reflect the room', draft: true },
+        { id: 'natatorium_dutchman', route: 'seams', way: 'pool',
+          a: { room: 'natatorium', wall: 'free', x: -7.6, z: 3.4, face: 0, sub: 'THE PLUNGE POOL · SURFACE IN THE HOLD' },
+          b: { site: 'prebuilt_revenge', part: 'hold', wall: 'free', x: -3.2, z: -0.4, face: 90, sub: 'THE BILGE · SURFACE IN THE NATATORIUM' },
+          why: 'the plunge pool at the deep end is deeper than the building; the lifeguard logs what comes up in it, and last week it was a lantern, lit',
+          note: 'hold your breath', draft: true },
+        { id: 'lodge_olympus', route: 'seams', way: 'painting',
+          a: { site: 'prebuilt_lodge', wall: 'n', x: -0.2 },
+          b: { site: 'prebuilt_olympus', wall: 'n', x: -0.2 },
+          why: 'the painting over the mantel in the sanctum is of a mountain with a city on it; the city has lights on at night, which the painting should not know',
+          note: 'the frame is warm', draft: true },
+        { id: 'bureau_vatican', route: 'seams', way: 'painting', gate: { minClearance: 5, requiresKeys: 24 },
+          a: { room: 'continuity', wall: 'n', x: -1.7 },
+          b: { site: 'prebuilt_vatican', wall: 'n', x: -0.2 },
+          why: 'the Bureau keeps one painting for reference: a colonnade and a square, in case the record and the square ever disagree; the square is on the other side of it',
+          note: 'the Bureau\'s own gate hangs on it', draft: true },
+        { id: 'northpole_haunted', route: 'seams', way: 'fireplace',
+          a: { site: 'prebuilt_northpole', wall: 'n', x: -10 },
+          b: { site: 'prebuilt_haunted', part: 'hall', wall: 'e', z: 0.1 },
+          why: 'the chimney at the Pole comes out in a house that is not on the route; the fire in the hall burns green when it is coming and the soot on the hearth is from a colder place',
+          note: 'the flame goes green', draft: true },
+        { id: 'observatorium_singularity', route: 'seams', way: 'screen',
+          a: { room: 'observatorium', wall: 'w', z: 3.4 },
+          b: { site: 'prebuilt_singularity', wall: 'n', x: -0.2 },
+          why: 'the projection screen shows the feed from Room 0 when the projector is off; the static has a shape in it and the shape has a way in',
+          note: 'signal lost', draft: true },
+        { id: 'nuketown_haunted', route: 'seams', way: 'closet',
+          a: { site: 'prebuilt_nuketown', wall: 'n', x: -0.2 },
+          b: { site: 'prebuilt_haunted', part: 'upstairs', wall: 'w', z: 0.4 },
+          why: 'two suburban houses share one closet; the coats in it belong to neither family and the back wall is another bedroom in another decade',
+          note: 'no back wall', draft: true },
         /* THE FOUR EXITS: the cave has several ways out, and each one is a
            door into a site that is already on the map. Every one is two-way
            — the same object at both ends (7.0), never a one-way drop. */
@@ -20957,7 +21014,7 @@ const DOOR_HQ = {
             props: [
                 /* ── the north wall: the plaque, the plate, the record of its wording ── */
                 { key: 'motto_plaque',   wall: 'n', x: 0 },
-                { key: 'nameplate',      wall: 'n', x: -2.4, mount: 1.55 },
+                { key: 'nameplate',      wall: 'n', x: -3.0, mount: 1.55 },   // rev 22: moved west — THE PAINTING (the seam to the Vatican, the Bureau's own gate on it) hangs at x −1.7
                 { key: 'filing_cabinet', wall: 'n', x: 2.5 },
                 { key: 'filing_cabinet', wall: 'n', x: 3.2 },
                 { key: 'cardboard_boxes', x: -3.2, z: -2.0, face: 20 },              // PREVIOUS WORDINGS — the label has been crossed out
@@ -21459,8 +21516,8 @@ const DOOR_HQ = {
                 { key: 'vent_grille',    wall: 'n', x: 3.3, mount: 2.6 },
                 /* ── the east wall: the sink, the towels, a clock that is early ── */
                 { key: 'sink',           wall: 'e', z: -1.4 },
-                { key: 'hook_rail_long', wall: 'e', z: 0.6 },
                 { key: 'wall_clock',     wall: 'e', z: 2.0, mount: 2.5 },
+                { key: 'hook_rail_long', wall: 's', x: -1.7, mount: 1.9 },   // rev 22: the towels moved over the waiting chairs — the full-length MIRROR (the seam to the Looking-Glass) took the east wall at z 0.6
                 { key: 'trash_bin',      x: 3.6, z: -0.2, face: 270 },
                 /* ── the south wall: the bench, the magazines, the radio ── */
                 { key: 'folding_chair',  x: -2.6, z: 2.55, face: 0 },
@@ -22830,8 +22887,8 @@ const DOOR_HQ = {
                 { key: 'globe_lamp',     x: -5.5, z: 5.5 },
                 /* ── the west wall: the way out, the coats, a frame ── */
                 { key: 'exit_sign',      wall: 'w', z: 0, mount: 2.75 },
-                { key: 'hook_rail',      wall: 'w', z: 2.4 },
-                { key: 'picture_round_c', wall: 'w', z: -3.0 },
+                { key: 'hook_rail',      wall: 'w', z: -2.4 },              // rev 22: the coats moved south → north; the projection SCREEN (the seam to the Singularity) hangs on the west wall at z 3.4
+                { key: 'picture_round_c', wall: 'n', x: -5.6 },
                 { key: 'globe_lamp',     x: -5.5, z: -5.5 },
                 /* ── the ceiling: ONE fixture, over the way in, at the shell's strip (blue) — the sky has the rest ── */
                 { key: 'fluorescent',    x: -5.4, z: 0, ceil: true, face: 90 },
@@ -24430,7 +24487,7 @@ const DOOR_HQ = {
                 { key: 'notice_board',   wall: 's', x: 6.5 },                               // THE RULES: no running, no diving, no crossing
                 { key: 'clipboard',      wall: 'e', z: -3.2, mount: 1.45, rot: 5 },
                 { key: 'false_window',   wall: 'n', x: -5.5, mount: 3.1 }, { key: 'false_window', wall: 'n', x: 0, mount: 3.1 }, { key: 'false_window', wall: 'n', x: 5.5, mount: 3.1 },
-                { key: 'floor_drain',    x: -7.4, z: -3.6 }, { key: 'floor_drain', x: 7.4, z: -3.6 }, { key: 'floor_drain', x: -7.4, z: 3.6 }, { key: 'floor_drain', x: 7.4, z: 3.6 },
+                { key: 'floor_drain',    x: -7.4, z: -3.6 }, { key: 'floor_drain', x: 7.4, z: -3.6 }, { key: 'floor_drain', x: -8.3, z: 5.2 }, { key: 'floor_drain', x: 7.4, z: 3.6 },   // rev 22: the south-west drain moved — THE PLUNGE POOL (the seam to the Dutchman's hold) is sunk at (−7.6, 3.4)
                 { key: 'vent_grille',    wall: 'n', x: 8.0, mount: 4.4 },
                 { key: 'vent_grille',    wall: 's', x: -8.0, mount: 4.4 },
                 { key: 'fire_extinguisher', wall: 'e', z: 3.6 },
@@ -25947,7 +26004,7 @@ const DOOR_HQ = {
                 { key: 'coffee_table',   x: 0, z: -1.4 },
                 { key: 'wall_torch',     wall: 's', x: -3.0, mount: 1.6 },
                 { key: 'wall_torch',     wall: 'n', x: 1.0, mount: 1.6 },
-                { key: 'picture_round_a', wall: 'w', z: 0.4, mount: 1.8 },
+                { key: 'picture_round_a', wall: 'n', x: -6.5, mount: 1.8 },   // rev 22: moved off the west wall — THE CLOSET (the seam to Nuketown) stands there at z 0.4
                 { key: 'picture_round_a', wall: 'n', x: -1.0, mount: 1.9 },
                 { key: 'wall_shelf',     wall: 'w', z: -3.0, mount: 1.5 },
                 { key: 'paper_sheet',    x: 3.2, z: 1.6, y: 0.01, face: 300 },
@@ -29197,6 +29254,18 @@ function hqDoorNo(entry) {
     if (entry.site) return hqRoomNo(entry.site);   // a site room's console wears the site's number (plan 7.2)
     if (act.room && DOOR_HQ.rooms[act.room] && DOOR_HQ.rooms[act.room].roomNo != null) return hqRoomNoStr(DOOR_HQ.rooms[act.room].roomNo);
     if (act.room && DOOR_HQ.rooms[act.room] && DOOR_HQ.rooms[act.room].site) return hqRoomNo(DOOR_HQ.rooms[act.room].site);
+    /* rev 22: a room numbered on its own DOOR (the Bureau's № — CONTESTED
+       hangs on the executive suite's door) — a seam into it (the Vatican's
+       painting) reads that number through. Only an entry that CARRIES a
+       number counts; never hqRoomNo here (a door into a numberless room
+       would chase its own tail through the rooms' doors). */
+    if (act.room && DOOR_HQ.rooms[act.room]) {
+        const rooms = DOOR_HQ.rooms;
+        for (const rid in rooms) {
+            const hit = ((rooms[rid] || {}).doors || []).find(e => e && e.id === act.room && e.roomNo != null);
+            if (hit) return hqRoomNoStr(hit.roomNo);
+        }
+    }
     return '';
 }
 function hqRoomNoCompare(a, b) {

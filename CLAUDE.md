@@ -3540,6 +3540,30 @@ the `spawnSide` mirror, the dissolve, a cleared-room rule. UNSEEN LIVE
 (RULE #1c): the one-shot on the Player cast rig, the strike timing, the
 builder-less first frame, the ward landing.
 
+## THE SEAMS, THE SECOND BATCH (HQ plan 9.3 `way` ×6) — 2026-09-15 rev 22, local delivery
+Six more `DOOR_HQ.ways` kinds (data.js) with builders in three-renderer.js
+`_hqWayBuilders` and sounds in audio.js: `mirror` (`wayMirror`) · `pool`
+(`waySplash`) · `painting` (`wayCanvas`) · `fireplace` (`wayFloo`) ·
+`screen` (`wayStatic`) · `closet` (reuses `wayCreak`). Seven `links` rows
+on `seams`: `mirror_lookingglass` (the Barbershop's east wall ⇄ **a FREE
+end on the Looking-Glass's north strip** — its 18 m room has no north lane,
+so it is the first free `way` on a site room; hq-world.test.js's landing
+and lane rules skip `wall: 'free'` there, and every built site is a
+station now), `natatorium_dutchman` (both ends free: the plunge pool beside
+the lap pool ⇄ the bilge in the hold), `lodge_olympus`, `bureau_vatican`
+(**the link carries `gate: { minClearance: 5, requiresKeys: 24 }` — the
+Bureau's own — so the Vatican is no way round the Gatekeeper's door**),
+`northpole_haunted` (the hall's EAST wall — the north wall is the gallery's
+slab), `observatorium_singularity`, `nuketown_haunted`. RULES that came
+with it: a prop the seam displaces MOVES (never deleted — the test checks);
+a builder may use only the stub scene's geometry kinds (Box · Cylinder ·
+Ring · Circle · Plane · Torus · Sphere) and its tick must move a
+position / rotation / scale (the stub's JSON diff ignores materials);
+`hqDoorNo` reads a room numbered on its own DOOR (the Bureau) by scanning
+for an entry that carries a `roomNo` — never through `hqRoomNo` (it
+recursed). NOT BUILT: `phonebox` (A14), `tent`, Room 8's weir ⇄ Atlantis
+(no fourth north lane). Unseen live (RULE #1c): every object.
+
 ## THE VEHICLE BATCH + THE TRAIN WAY (HQ plan 9.3 `train`) — 2026-09-15 rev 21, local delivery
 Nine Meshy vehicles on R2 `Assets/misc/` (MODEL_INDEX §3c). Renderer:
 `_MISC_GLB` rows `suv · cadillac · copcar · cybercar · firetruck ·

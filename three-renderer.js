@@ -40758,6 +40758,215 @@ const ThreeRenderer = (function () {
             for (var bx = -9; bx <= (ctx.free ? 15.4 : 3); bx += 1.5) blockers.push({ x: bx, z: zc, r: D / 2, top: 3.2 });
             return { g: g, motion: motion, ow: W, oh: H, plateY: H + 1.2, blockers: blockers };
         },
+        /* ── THE SECOND BATCH (2026-09-15 rev 22): six more entryways ──────
+           Same contract as the three above: the door's local frame (+Z into
+           the room, the origin on the wall plane at the floor — a FREE end
+           at the object's own spot), { g, motion, ow, oh, plateY }, the way
+           rig's tick(k) as the walker comes up, a ticker for the idle life.
+           Only the geometry kinds the stub scene knows (hq-world.test.js
+           runs every builder headlessly): Box · Cylinder · Ring · Circle ·
+           Plane · Torus · Sphere. */
+        /* THE MIRROR: a full-length gilt frame standing against the wall (or
+           on its own two feet, free on the Looking-Glass's marble strip), the
+           glass showing the WRONG room — a checkerboard floor under a sky —
+           with a ripple that spreads from the centre as you come up. */
+        mirror: function (U, ctx) {
+            var g = new THREE.Group();
+            var W = 0.9, H = 2.0, T = 0.07, D = 0.06, y0 = ctx.free ? 0.12 : 0.05;
+            var gold = _hqMat(null, 1, 1, { color: 0xc9a850, shininess: 90, specular: 0x886622 });
+            var dark = _hqMat('dark_woods', 1, 2, { color: 0x3a2a1c, shininess: 10 });
+            var back = _hqBox(W + 2 * T, H + 2 * T, 0.03, dark); back.position.set(0, (y0 + H / 2 + T) * U, 0.015 * U); g.add(back);
+            /* the frame: four gilt rails with a bead at each corner */
+            var top = _hqBox(W + 2 * T, T, D, gold); top.position.set(0, (y0 + H + T * 1.5) * U, (D / 2) * U); g.add(top);
+            var bot = _hqBox(W + 2 * T, T, D, gold); bot.position.set(0, (y0 + T / 2) * U, (D / 2) * U); g.add(bot);
+            var sL = _hqBox(T, H + 2 * T, D, gold); sL.position.set(-(W / 2 + T / 2) * U, (y0 + H / 2 + T) * U, (D / 2) * U); g.add(sL);
+            var sR = _hqBox(T, H + 2 * T, D, gold); sR.position.set((W / 2 + T / 2) * U, (y0 + H / 2 + T) * U, (D / 2) * U); g.add(sR);
+            [[-1, 0], [1, 0], [-1, 1], [1, 1]].forEach(function (c) {
+                var bead = new THREE.Mesh(new THREE.SphereGeometry(0.05 * U, 10, 8), gold);
+                bead.position.set(c[0] * (W / 2 + T / 2) * U, (y0 + T + c[1] * H) * U, (D + 0.02) * U); g.add(bead);
+            });
+            if (ctx.free) [-1, 1].forEach(function (sg) { var foot = _hqBox(0.12, 0.12, 0.5, dark); foot.position.set(sg * (W / 2) * U, 0.06 * U, 0.05 * U); g.add(foot); });
+            /* the glass: the wrong room — a marble floor rising to a horizon
+               under a sky, and a cold glow in the middle of it */
+            var sky = new THREE.Mesh(new THREE.PlaneGeometry(W * U, (H * 0.55) * U), _hqBasic(0xbfd6f4)); sky.position.set(0, (y0 + T + H * 0.725) * U, 0.035 * U); g.add(sky);
+            var floor = new THREE.Mesh(new THREE.PlaneGeometry(W * U, (H * 0.45) * U), _hqMat('checkerboard', 1, 1, { color: 0xe8e2d4, shininess: 40, specular: 0x666666 })); floor.position.set(0, (y0 + T + H * 0.225) * U, 0.035 * U); g.add(floor);
+            var glow = _hzGlowSprite(1.1 * U, 0xd8ecff, 0.18, 0.0, 0.0, 0.0); glow.position.set(0, (y0 + T + H * 0.55) * U, 0.12 * U); g.add(glow);
+            var ripple = new THREE.Mesh(new THREE.TorusGeometry(0.2 * U, 0.008 * U, 6, 28), _hqBasic(0xffffff, { transparent: true, opacity: 0.0, depthWrite: false }));
+            ripple.position.set(0, (y0 + T + H * 0.5) * U, 0.045 * U); ripple.scale.setScalar(0.01); g.add(ripple);
+            var motion = { mode: 'way', ow: W, tick: function (k) {
+                ripple.scale.setScalar(0.01 + 2.2 * k); ripple.material.opacity = 0.55 * (1 - k) * (k > 0.02 ? 1 : 0);
+                glow.material.opacity = 0.18 + 0.55 * k;
+            } };
+            if (_hq) _hq.tickers.push(function (dt, now) { glow.scale.setScalar((1.1 + 0.06 * Math.sin(now * 0.002)) * U); });
+            return { g: g, motion: motion, ow: W, oh: H, plateY: y0 + H + 0.5 };
+        },
+        /* THE POOL: a square tiled plunge pool sunk in the floor (a tiled
+           rim, the water a hand's breadth under it, a cold light in the deep
+           end that is deeper than the room), a chrome ladder on the near
+           side. You DIVE (the press-in) and surface at the other end. A wall
+           end sits the basin just off the wall; a free end centres it. */
+        pool: function (U, ctx) {
+            var g = new THREE.Group();
+            var W = 1.6, RIM = 0.16, RH = 0.12, zc = ctx.free ? 0 : W / 2 + 0.25;
+            var tile = _hqMat('tilefloor', 2, 2, { color: 0xd8e4e8, shininess: 60, specular: 0x777777 });
+            var chrome = _hqMat(null, 1, 1, { color: 0xd0d6da, shininess: 120, specular: 0xaaaaaa });
+            /* the rim: four coping stones round the opening */
+            var rN = _hqBox(W + 2 * RIM, RH, RIM, tile); rN.position.set(0, (RH / 2) * U, (zc - W / 2 - RIM / 2) * U); g.add(rN);
+            var rS = _hqBox(W + 2 * RIM, RH, RIM, tile); rS.position.set(0, (RH / 2) * U, (zc + W / 2 + RIM / 2) * U); g.add(rS);
+            var rW = _hqBox(RIM, RH, W, tile); rW.position.set(-(W / 2 + RIM / 2) * U, (RH / 2) * U, zc * U); g.add(rW);
+            var rE = _hqBox(RIM, RH, W, tile); rE.position.set((W / 2 + RIM / 2) * U, (RH / 2) * U, zc * U); g.add(rE);
+            /* the basin's inner walls, tiled, a hand's breadth down; the deep
+               end's light beneath the sheet */
+            var inner = new THREE.Mesh(new THREE.CylinderGeometry((W / 2) * 1.02 * U, (W / 2) * 1.02 * U, 0.5 * U, 4, 1, true), tile);
+            inner.material.side = THREE.BackSide; inner.rotation.y = Math.PI / 4; inner.position.set(0, -0.15 * U, zc * U); g.add(inner);
+            var deep = new THREE.Mesh(new THREE.PlaneGeometry(W * U, W * U), _hqBasic(0x0a2a44)); deep.rotation.x = -Math.PI / 2; deep.position.set(0, -0.36 * U, zc * U); g.add(deep);
+            var light = new THREE.Mesh(new THREE.CircleGeometry((W * 0.3) * U, 20), _hqBasic(0x7fe8ff, { transparent: true, opacity: 0.25, depthWrite: false })); light.rotation.x = -Math.PI / 2; light.position.set(0, -0.35 * U, zc * U); light.renderOrder = 2; g.add(light);
+            var water = new THREE.Mesh(new THREE.PlaneGeometry(W * U, W * U), _hqBasic(0x3fb0d8, { transparent: true, opacity: 0.62, depthWrite: false }));
+            water.rotation.x = -Math.PI / 2; water.position.set(0, 0.04 * U, zc * U); water.renderOrder = 3; g.add(water);
+            var glow = _hzGlowSprite(1.6 * U, 0x9ff0ff, 0.15, 0.0, 0.0, 0.0); glow.position.set(0, 0.25 * U, zc * U); g.add(glow);
+            var ripple = new THREE.Mesh(new THREE.TorusGeometry(0.25 * U, 0.01 * U, 6, 28), _hqBasic(0xffffff, { transparent: true, opacity: 0.0, depthWrite: false }));
+            ripple.rotation.x = Math.PI / 2; ripple.position.set(0, 0.05 * U, zc * U); ripple.scale.setScalar(0.01); ripple.renderOrder = 4; g.add(ripple);
+            /* the ladder on the walker's side (+Z): two rails over the rim, three rungs */
+            var zl = (zc + W / 2 + RIM) * U;
+            [-0.22, 0.22].forEach(function (x) {
+                var rail = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 1.0 * U, 8), chrome); rail.position.set(x * U, 0.35 * U, zl); g.add(rail);
+                var hoop = new THREE.Mesh(new THREE.TorusGeometry(0.12 * U, 0.02 * U, 6, 12, Math.PI), chrome); hoop.rotation.y = Math.PI / 2; hoop.position.set(x * U, 0.85 * U, (zl / U - 0.12) * U); g.add(hoop);
+            });
+            for (var r = 0; r < 3; r++) { var rung = new THREE.Mesh(new THREE.CylinderGeometry(0.015 * U, 0.015 * U, 0.44 * U, 6), chrome); rung.rotation.z = Math.PI / 2; rung.position.set(0, (0.1 + r * 0.28) * U, zl); g.add(rung); }
+            var motion = { mode: 'way', ow: W, tick: function (k) {
+                ripple.scale.setScalar(0.01 + 2.6 * k); ripple.material.opacity = 0.5 * (1 - k) * (k > 0.02 ? 1 : 0);
+                light.material.opacity = 0.25 + 0.55 * k; glow.material.opacity = 0.15 + 0.45 * k;
+            } };
+            if (_hq) _hq.tickers.push(function (dt, now) { water.position.y = (0.04 + 0.006 * Math.sin(now * 0.0025)) * U; glow.scale.setScalar((1.6 + 0.1 * Math.sin(now * 0.0017)) * U); });
+            return { g: g, motion: motion, ow: W, oh: 0.6, plateY: 1.7 };
+        },
+        /* THE PAINTING: a deep gilt frame at eye height with a mountain in it
+           — sky, the peak, a city on the shoulder whose lights are on — and
+           the canvas BULGES toward you as you come up, the frame's light
+           spilling out. You STEP IN. */
+        painting: function (U, ctx) {
+            var g = new THREE.Group();
+            var W = 1.3, H = 1.7, T = 0.09, D = 0.1, y0 = 0.85;
+            var gold = _hqMat(null, 1, 1, { color: 0xc9a850, shininess: 90, specular: 0x886622 });
+            var top = _hqBox(W + 2 * T, T, D, gold); top.position.set(0, (y0 + H + T / 2) * U, (D / 2) * U); g.add(top);
+            var bot = _hqBox(W + 2 * T, T, D, gold); bot.position.set(0, (y0 - T / 2) * U, (D / 2) * U); g.add(bot);
+            var sL = _hqBox(T, H, D, gold); sL.position.set(-(W / 2 + T / 2) * U, (y0 + H / 2) * U, (D / 2) * U); g.add(sL);
+            var sR = _hqBox(T, H, D, gold); sR.position.set((W / 2 + T / 2) * U, (y0 + H / 2) * U, (D / 2) * U); g.add(sR);
+            /* the canvas: a group that eases toward the walker */
+            var cv = new THREE.Group(); cv.position.set(0, 0, 0.03 * U); g.add(cv);
+            var sky = new THREE.Mesh(new THREE.PlaneGeometry(W * U, H * U), _hqBasic(0x86b4e6)); sky.position.set(0, (y0 + H / 2) * U, 0); cv.add(sky);
+            var ground = new THREE.Mesh(new THREE.PlaneGeometry(W * U, (H * 0.28) * U), _hqMat('grass_2', 1, 1, { color: 0x6f9a5a, shininess: 2 })); ground.position.set(0, (y0 + H * 0.14) * U, 0.004 * U); cv.add(ground);
+            var peak = new THREE.Mesh(new THREE.CylinderGeometry(0.001 * U, (W * 0.36) * U, (H * 0.62) * U, 4), _hqMat('mountain', 1, 1, { color: 0x8a8ea0, shininess: 4 }));
+            peak.rotation.y = Math.PI / 4; peak.scale.z = 0.12; peak.position.set(0.05 * U, (y0 + H * 0.28 + H * 0.31) * U, 0.01 * U); cv.add(peak);
+            var snow = new THREE.Mesh(new THREE.CylinderGeometry(0.001 * U, (W * 0.11) * U, (H * 0.19) * U, 4), _hqBasic(0xf4f6fa)); snow.rotation.y = Math.PI / 4; snow.scale.z = 0.12; snow.position.set(0.05 * U, (y0 + H * 0.28 + H * 0.525) * U, 0.014 * U); cv.add(snow);
+            var city = _hzGlowSprite(0.42 * U, 0xffe4a0, 0.5, 0.0, 0.0, 0.0); city.position.set(0.18 * U, (y0 + H * 0.48) * U, 0.03 * U); cv.add(city);
+            var spill = _hzGlowSprite(1.7 * U, 0xffe8b8, 0.0, 0.0, 0.0, 0.0); spill.position.set(0, (y0 + H / 2) * U, 0.2 * U); g.add(spill);
+            /* the brass plate under the frame */
+            var plaque = _hqBox(0.4, 0.08, 0.02, gold); plaque.position.set(0, (y0 - T - 0.09) * U, 0.03 * U); g.add(plaque);
+            var motion = { mode: 'way', ow: W, tick: function (k) {
+                cv.position.z = (0.03 + 0.14 * k) * U; cv.scale.setScalar(1 + 0.05 * k);
+                spill.material.opacity = 0.7 * k; city.material.opacity = 0.5 + 0.5 * k;
+            } };
+            if (_hq) _hq.tickers.push(function (dt, now) { city.material.opacity = 0.42 + 0.1 * Math.sin(now * 0.003) + 0.5 * Math.max(0, cv.position.z / U - 0.03) / 0.14; });
+            return { g: g, motion: motion, ow: W, oh: H, plateY: y0 + H + 0.45 };
+        },
+        /* THE FIREPLACE: a stone chimney breast proud of the wall, a mantel,
+           the firebox black inside, andirons and logs, and the fire — orange
+           at rest, GREEN as you come up (the flame goes green when the way
+           is open). You step into the fire. */
+        fireplace: function (U, ctx) {
+            var g = new THREE.Group();
+            var W = 1.4, H = 1.5, BW = 2.4, BH = 3.0, BD = 0.55;
+            var stone = _hqMat('stone', 2, 2, { color: 0x8a8480, shininess: 4 });
+            var soot = _hqMat('stone', 1, 1, { color: 0x1a1816, shininess: 2 });
+            var iron = _hqMat(null, 1, 1, { color: 0x24242a, shininess: 30 });
+            var wood = _hqMat('dark_woods', 1, 1, { color: 0x5a3e2a, shininess: 6 });
+            /* the breast: two piers, the lintel, the hood above, the mantel shelf and the hearthstone */
+            var pW = (BW - W) / 2;
+            var pL = _hqBox(pW, H, BD, stone); pL.position.set(-(W / 2 + pW / 2) * U, (H / 2) * U, (BD / 2) * U); g.add(pL);
+            var pR = _hqBox(pW, H, BD, stone); pR.position.set((W / 2 + pW / 2) * U, (H / 2) * U, (BD / 2) * U); g.add(pR);
+            var hood = _hqBox(BW, BH - H, BD, stone); hood.position.set(0, (H + (BH - H) / 2) * U, (BD / 2) * U); g.add(hood);
+            var mantel = _hqBox(BW + 0.2, 0.1, BD + 0.16, wood); mantel.position.set(0, (H + 0.15) * U, ((BD + 0.16) / 2) * U); g.add(mantel);
+            var hearth = _hqBox(BW + 0.2, 0.05, 0.7, stone); hearth.position.set(0, 0.025 * U, (BD + 0.35) * U); g.add(hearth);
+            /* the firebox: a black back, black cheeks, the grate */
+            var backP = new THREE.Mesh(new THREE.PlaneGeometry(W * U, H * U), soot); backP.position.set(0, (H / 2) * U, 0.02 * U); g.add(backP);
+            var cL = _hqBox(0.02, H, BD, soot); cL.position.set(-(W / 2 - 0.01) * U, (H / 2) * U, (BD / 2) * U); g.add(cL);
+            var cR = _hqBox(0.02, H, BD, soot); cR.position.set((W / 2 - 0.01) * U, (H / 2) * U, (BD / 2) * U); g.add(cR);
+            [-0.35, 0.35].forEach(function (x) { var dog = _hqBox(0.05, 0.3, 0.4, iron); dog.position.set(x * U, 0.15 * U, 0.3 * U); g.add(dog); });
+            for (var i = 0; i < 3; i++) { var log = new THREE.Mesh(new THREE.CylinderGeometry(0.07 * U, 0.07 * U, 0.7 * U, 8), wood); log.rotation.z = Math.PI / 2; log.rotation.y = (i - 1) * 0.25; log.position.set(0, (0.1 + i * 0.1) * U, (0.28 + (i % 2) * 0.1) * U); g.add(log); }
+            /* the fire: three orange tongues at rest, three green ones that rise as the way opens */
+            var orange = [], green = [];
+            [[-0.2, 0.55], [0.05, 0.75], [0.22, 0.5]].forEach(function (f, i) {
+                var o = _hzGlowSprite(f[1] * U, 0xffa040, 0.55, 0.0, 0.0, 0.0); o.position.set(f[0] * U, (0.25 + f[1] * 0.35) * U, 0.3 * U); g.add(o); orange.push(o);
+                var gr = _hzGlowSprite(f[1] * 1.3 * U, 0x5cff9a, 0.0, 0.0, 0.0, 0.0); gr.position.set(f[0] * U, (0.3 + f[1] * 0.45) * U, 0.32 * U); gr.scale.setScalar(0.3 * U); g.add(gr); green.push(gr);
+            });
+            var ember = new THREE.Mesh(new THREE.CircleGeometry(0.3 * U, 14), _hqBasic(0xff6a20, { transparent: true, opacity: 0.6, depthWrite: false })); ember.rotation.x = -Math.PI / 2; ember.position.set(0, 0.06 * U, 0.3 * U); ember.renderOrder = 2; g.add(ember);
+            var motion = { mode: 'way', ow: W, tick: function (k) {
+                orange.forEach(function (o) { o.material.opacity = 0.55 * (1 - k); });
+                green.forEach(function (gr, i) { gr.material.opacity = 0.8 * k; gr.scale.setScalar((0.3 + 1.1 * k) * U * (1 + i * 0.1)); });
+                ember.material.opacity = 0.6 - 0.4 * k;
+            } };
+            var flick = 0;
+            if (_hq) _hq.tickers.push(function (dt, now) { flick = 0.9 + 0.12 * Math.sin(now * 0.021) + 0.06 * Math.sin(now * 0.037); orange.forEach(function (o, i) { o.scale.setScalar((0.5 + i * 0.12) * flick * U); }); });
+            return { g: g, motion: motion, ow: W, oh: H, plateY: BH + 0.3 };
+        },
+        /* THE SCREEN: a pull-down projection screen off its housing, the
+           sheet full of static, and a black shape in the static that opens
+           as you come up — a hole with a rim of signal round it. You crawl
+           through (the sheet hangs to knee height). */
+        screen: function (U, ctx) {
+            var g = new THREE.Group();
+            var W = 1.3, H = 1.4, SW = 1.8, SH = 1.55, yTop = 2.35, D = 0.05;
+            var metal = _hqMat('gunmetal', 1, 1, { color: 0x3a3c40, shininess: 40 });
+            var housing = new THREE.Mesh(new THREE.CylinderGeometry(0.06 * U, 0.06 * U, (SW + 0.1) * U, 12), metal); housing.rotation.z = Math.PI / 2; housing.position.set(0, (yTop + 0.06) * U, 0.08 * U); g.add(housing);
+            [-1, 1].forEach(function (sg) { var cap = _hqBox(0.04, 0.16, 0.16, metal); cap.position.set(sg * (SW / 2 + 0.07) * U, (yTop + 0.06) * U, 0.08 * U); g.add(cap); });
+            /* the sheet: white cloth, the static laid over it, the black border at the foot */
+            var sheet = new THREE.Group(); sheet.position.set(0, yTop * U, 0.08 * U); g.add(sheet);
+            var cloth = new THREE.Mesh(new THREE.PlaneGeometry(SW * U, SH * U), _hqMat(null, 1, 1, { color: 0xf0f0ec, shininess: 2 })); cloth.position.set(0, -(SH / 2) * U, 0); sheet.add(cloth);
+            var stat = new THREE.Mesh(new THREE.PlaneGeometry((SW - 0.1) * U, (SH - 0.14) * U), _hqMat('noise', 3, 3, { color: 0xc8ccd4, emissive: 0x505868, emissiveIntensity: 0.8, shininess: 2 })); stat.position.set(0, -(SH / 2 - 0.02) * U, D * 0.2 * U); sheet.add(stat);
+            var bar = _hqBox(SW, 0.04, 0.03, metal); bar.position.set(0, -(SH + 0.02) * U, 0); sheet.add(bar);
+            /* the shape: a black hole in the static with a rim of signal; it grows as the way opens */
+            var hole = new THREE.Mesh(new THREE.CircleGeometry((W / 2) * U, 24), _hqBasic(0x020206)); hole.position.set(0, -(SH / 2 + 0.05) * U, D * 0.4 * U); hole.scale.setScalar(0.12); sheet.add(hole);
+            var rim = new THREE.Mesh(new THREE.TorusGeometry((W / 2) * U, 0.012 * U, 6, 32), _hqBasic(0x9fd8ff, { transparent: true, opacity: 0.3, depthWrite: false })); rim.position.set(0, -(SH / 2 + 0.05) * U, D * 0.5 * U); rim.scale.setScalar(0.12); sheet.add(rim);
+            var glow = _hzGlowSprite(1.4 * U, 0xbfe4ff, 0.12, 0.0, 0.0, 0.0); glow.position.set(0, (yTop - SH / 2) * U, 0.3 * U); g.add(glow);
+            var motion = { mode: 'way', ow: W, tick: function (k) {
+                hole.scale.setScalar(0.12 + 0.88 * k); rim.scale.setScalar(0.12 + 0.9 * k); rim.material.opacity = 0.3 + 0.6 * k; glow.material.opacity = 0.12 + 0.5 * k;
+            } };
+            if (_hq) _hq.tickers.push(function (dt, now) { stat.material.emissiveIntensity = 0.6 + 0.3 * Math.abs(Math.sin(now * 0.05)); sheet.rotation.x = 0.012 * Math.sin(now * 0.0016); });
+            /* the opening is the hole: its centre hangs at yTop − SH/2 − 0.05 ≈ 1.53 m, so oh reads from the floor to its top */
+            return { g: g, motion: motion, ow: W, oh: H, plateY: yTop + 0.55 };
+        },
+        /* THE CLOSET: a narrow door in its own frame, a single leaf on the
+           hinge that swings out toward you, a rail of coats inside, and no
+           back — the warm light of another bedroom in another decade where
+           the wall should be. Kin to the wardrobe, thinner, on the wall. */
+        closet: function (U, ctx) {
+            var g = new THREE.Group();
+            var W = 1.0, H = 2.1, D = 0.7, T = 0.05;
+            var paint = _hqMat('drywall', 1, 2, { color: 0xe8e2d4, shininess: 12 });
+            var wood = _hqMat('wood', 1, 2, { color: 0xcfc4b0, shininess: 18 });
+            var brass = _hqMat(null, 1, 1, { color: 0xc9a850, shininess: 80, specular: 0x886622 });
+            var sL = _hqBox(T, H, D, paint); sL.position.set(-(W / 2 + T / 2) * U, (H / 2) * U, (D / 2) * U); g.add(sL);
+            var sR = _hqBox(T, H, D, paint); sR.position.set((W / 2 + T / 2) * U, (H / 2) * U, (D / 2) * U); g.add(sR);
+            var top = _hqBox(W + 2 * T, T, D, paint); top.position.set(0, (H + T / 2) * U, (D / 2) * U); g.add(top);
+            var sill = _hqBox(W + 2 * T, 0.03, D, wood); sill.position.set(0, 0.015 * U, (D / 2) * U); g.add(sill);
+            var shelf = _hqBox(W, 0.03, D - 0.1, wood); shelf.position.set(0, (H - 0.35) * U, (D / 2) * U); g.add(shelf);
+            /* no back wall: the other room's light where the panel should be */
+            var warm = new THREE.Mesh(new THREE.PlaneGeometry((W - 0.02) * U, (H - 0.04) * U), _hqBasic(0xffd9a0, { transparent: true, opacity: 0.4, depthWrite: false })); warm.position.set(0, (H / 2) * U, 0.02 * U); g.add(warm);
+            var glow = _hzGlowSprite(1.4 * U, 0xffe0b0, 0.2, 0.0, 0.0, 0.0); glow.position.set(0, (H * 0.55) * U, 0.15 * U); g.add(glow);
+            var rail = new THREE.Mesh(new THREE.CylinderGeometry(0.012 * U, 0.012 * U, (W - 0.06) * U, 8), brass); rail.rotation.z = Math.PI / 2; rail.position.set(0, (H - 0.5) * U, (D * 0.45) * U); g.add(rail);
+            [0x6a5a4a, 0x3a4a6a, 0x8a3a3a].forEach(function (c, i) {
+                var coat = _hqBox(0.22, 0.9, 0.06, _hqMat('oxblood', 1, 2, { color: c, shininess: 4 })); coat.position.set((-0.28 + i * 0.28) * U, (H - 0.5 - 0.47) * U, (D * 0.45) * U); coat.rotation.y = (i % 2 ? 0.1 : -0.08); g.add(coat);
+            });
+            /* the leaf on its hinge (the left jamb), swinging out toward the walker */
+            var piv = new THREE.Group(); piv.position.set(-(W / 2) * U, 0, (D - 0.02) * U); g.add(piv);
+            var leaf = _hqBox(W - 0.02, H - 0.05, 0.04, wood); leaf.position.set((W / 2) * U, (0.03 + (H - 0.05) / 2) * U, 0); piv.add(leaf);
+            var panel = _hqBox(W - 0.24, H - 0.4, 0.012, paint); panel.position.set((W / 2) * U, (H / 2) * U, 0.026 * U); piv.add(panel);
+            var knob = new THREE.Mesh(new THREE.SphereGeometry(0.03 * U, 10, 8), brass); knob.position.set((W - 0.1) * U, 1.02 * U, 0.04 * U); piv.add(knob);
+            var motion = { mode: 'way', ow: W, tick: function (k) { piv.rotation.y = -1.9 * k; glow.material.opacity = 0.2 + 0.6 * k; warm.material.opacity = 0.4 + 0.45 * k; } };
+            if (_hq) _hq.tickers.push(function (dt, now) { glow.scale.setScalar((1.4 + 0.05 * Math.sin(now * 0.0021)) * U); });
+            return { g: g, motion: motion, ow: W, oh: H, plateY: H + 0.4 };
+        },
     };
     function _hqBuildWay(room, door, level, y0, Rw, inward) {
         var U = _hqUnits(), S = room.shell, G = _hq.doorGroup;

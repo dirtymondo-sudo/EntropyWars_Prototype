@@ -678,7 +678,9 @@ test('THE BUREAU OF CONTINUITY: a box room behind the mezzanine door at 315° �
     assert.strictEqual(D.doorSiteState(eg, { door: { clearance: 5, hq: { keys: 24 } } }), 'open', 'a GATEKEEPER with the Keys goes in');
     const out = B.doors.find(d => d.id === 'egress');
     assert.ok(out && out.wall === 'w' && out.leaf === eg.leaf && !out.minClearance && !out.requiresKeys && out.action.room === 'execwing' && out.action.at === 'continuity', 'the way out is the same house door, ungated from inside, and lands at the suite’s door');
-    assert.strictEqual(B.doors.length, 1, 'one door: the Bureau is a dead end, as it should be');
+    assert.strictEqual(B.doors.filter(d => !d.link).length, 1, 'one door: the Bureau is a dead end, as it should be (rev 22: the painting to the Vatican is a links row wearing the Bureau\u2019s own gate)');
+    const pt = B.doors.find(d => d.link === 'bureau_vatican');
+    assert.ok(pt && pt.way === 'painting' && pt.minClearance === 5 && pt.requiresKeys === 24, 'the painting carries the Gatekeeper gate — no way round the door');
     const pl = B.counters.find(c => c.id === 'plaque'), no = B.counters.find(c => c.id === 'notices');
     assert.ok(pl && pl.action && !pl.action.fn && !pl.action.overlay && !pl.action.room && pl.desc && pl.verb, 'THE MOTTO PLAQUE is a by-id panel with a desc');
     assert.ok(no && no.action && !no.action.fn && !no.action.overlay && !no.action.room && no.desc && no.verb, 'CANON NOTICES is a by-id panel with a desc');

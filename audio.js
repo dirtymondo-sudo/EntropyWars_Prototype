@@ -1050,6 +1050,7 @@
             /* THE SEAMS THAT ARE NOT DOORS (HQ plan 9.3, 2026-09-15): quiet —
                the buzz was muted for being loud; these stay under it */
             wayCreak: 0.28, wayWell: 0.3, wayTrain: 0.32,
+            wayMirror: 0.3, waySplash: 0.32, wayCanvas: 0.28, wayFloo: 0.32, wayStatic: 0.26,   // the second batch (rev 22)
         };
         let _doorNoiseBuf = null;
         function _doorCtx() {
@@ -1161,6 +1162,76 @@
                 _doorOsc(ctx, _doorEnv(ctx, out, td, vol * 0.4, 0.003, 0.03, 0.14), 'sine', 120, td, 0.18, { f1: 60, slide: 0.12 });
                 _doorNoiseSrc(ctx, _doorEnv(ctx, out, td, vol * 0.18, 0.002, 0.04, 0.12), td, 0.18, { type: 'lowpass', f0: 900 });
                 return td - t + 0.4;
+            },
+            /* THE MIRROR (a `way` seam, rev 22): a glass note that swells
+               the wrong way round — a shimmer of two close sines rising, a
+               breath of high air, then the surface gives with a soft chime. */
+            wayMirror(ctx, t, out, vol) {
+                _doorOsc(ctx, _doorEnv(ctx, out, t, vol * 0.3, 0.35, 0.3, 0.4), 'sine', 1180, t, 1.1, { f1: 1560, slide: 1.0 });
+                _doorOsc(ctx, _doorEnv(ctx, out, t, vol * 0.22, 0.35, 0.3, 0.4), 'sine', 1187, t, 1.1, { f1: 1572, slide: 1.0 });
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t + 0.1, vol * 0.14, 0.4, 0.3, 0.4), t + 0.1, 1.2, { type: 'highpass', f0: 5200, f1: 7800, slide: 1.0 });
+                const tc = t + 0.95;
+                _doorOsc(ctx, _doorEnv(ctx, out, tc, vol * 0.4, 0.003, 0.05, 0.9), 'sine', 2093, tc, 1.0);
+                _doorOsc(ctx, _doorEnv(ctx, out, tc + 0.03, vol * 0.25, 0.003, 0.05, 0.8), 'sine', 3136, tc + 0.03, 0.9);
+                return tc - t + 1.1;
+            },
+            /* THE POOL (a `way` seam, rev 22): the plunge — a low plop, the
+               splash's wash falling away, then the bubbles rising in a run of
+               small blips, and the surface closing over. */
+            waySplash(ctx, t, out, vol) {
+                _doorOsc(ctx, _doorEnv(ctx, out, t, vol * 0.5, 0.004, 0.04, 0.22), 'sine', 260, t, 0.3, { f1: 70, slide: 0.2 });
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t + 0.01, vol * 0.45, 0.01, 0.12, 0.5), t + 0.01, 0.75, { type: 'bandpass', f0: 2600, f1: 700, slide: 0.7, q: 0.7 });
+                for (let i = 0; i < 7; i++) {
+                    const tb = t + 0.3 + i * 0.09 + (i % 3) * 0.02;
+                    _doorOsc(ctx, _doorEnv(ctx, out, tb, vol * 0.16, 0.003, 0.02, 0.08), 'sine', 700 + i * 140, tb, 0.1, { f1: 1200 + i * 160, slide: 0.08 });
+                }
+                const ts = t + 0.95;
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, ts, vol * 0.2, 0.08, 0.2, 0.5), ts, 0.8, { type: 'lowpass', f0: 1400, f1: 300, slide: 0.7, q: 0.6 });
+                return ts - t + 0.9;
+            },
+            /* THE PAINTING (a `way` seam, rev 22): the canvas stretching — a
+               rising creak in the linen, the stretcher bar's tick, then the
+               surface gives with a soft, dry pop and a wash of air behind it. */
+            wayCanvas(ctx, t, out, vol) {
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.3, 0.1, 0.4, 0.2), t, 0.7, { type: 'bandpass', f0: 380, f1: 1500, slide: 0.65, q: 2.5 });
+                _doorOsc(ctx, _doorEnv(ctx, out, t + 0.5, vol * 0.25, 0.002, 0.02, 0.08), 'square', 900, t + 0.5, 0.06);
+                const tp = t + 0.7;
+                _doorOsc(ctx, _doorEnv(ctx, out, tp, vol * 0.45, 0.003, 0.03, 0.18), 'sine', 320, tp, 0.22, { f1: 110, slide: 0.15 });
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, tp, vol * 0.2, 0.002, 0.03, 0.12), tp, 0.18, { type: 'highpass', f0: 2400 });
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, tp + 0.1, vol * 0.18, 0.3, 0.5, 0.7), tp + 0.1, 1.5, { type: 'lowpass', f0: 600, f1: 250, slide: 1.3, q: 0.5 });
+                return tp - t + 1.6;
+            },
+            /* THE FIREPLACE (a `way` seam, rev 22): the Floo — the fire's
+               crackle, a whoosh that rises as the flame goes green, a low
+               rumble under it, and the roar swallowing you. */
+            wayFloo(ctx, t, out, vol) {
+                for (let i = 0; i < 8; i++) {
+                    const tc = t + i * 0.07 + (i % 2) * 0.03;
+                    _doorOsc(ctx, _doorEnv(ctx, out, tc, vol * 0.18, 0.001, 0.008, 0.03), 'square', 1800 + (i * 373) % 900, tc, 0.03);
+                }
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t + 0.2, vol * 0.42, 0.35, 0.4, 0.5), t + 0.2, 1.3, { type: 'bandpass', f0: 300, f1: 1900, slide: 0.9, q: 0.8 });
+                _doorOsc(ctx, _doorEnv(ctx, out, t + 0.2, vol * 0.3, 0.3, 0.5, 0.5), 'sine', 55, t + 0.2, 1.3, { f1: 90, slide: 0.9 });
+                const tr = t + 1.1;
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, tr, vol * 0.35, 0.05, 0.3, 0.6), tr, 1.0, { type: 'lowpass', f0: 2400, f1: 400, slide: 0.9, q: 0.7 });
+                return tr - t + 1.0;
+            },
+            /* THE SCREEN (a `way` seam, rev 22): the set's hum, a burst of
+               static with the frame buzz under it, the sync tearing as the
+               shape opens, then the signal cutting out — silence with a tick. */
+            wayStatic(ctx, t, out, vol) {
+                _doorOsc(ctx, _doorEnv(ctx, out, t, vol * 0.12, 0.05, 0.9, 0.1), 'sawtooth', 60, t, 1.05);
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.4, 0.02, 0.8, 0.15), t, 1.0, { type: 'highpass', f0: 2500 });
+                const lfo = ctx.createOscillator(); const lg = ctx.createGain();
+                lfo.type = 'square'; lfo.frequency.value = 15.7; lg.gain.value = 0.35;
+                const tremolo = ctx.createGain(); tremolo.gain.value = 0.65; lfo.connect(lg).connect(tremolo.gain);
+                const g = _doorEnv(ctx, tremolo, t, vol * 0.3, 0.02, 0.8, 0.15); tremolo.connect(out);
+                _doorNoiseSrc(ctx, g, t, 1.0, { type: 'bandpass', f0: 900, f1: 3200, slide: 0.9, q: 0.5 });
+                lfo.start(t); lfo.stop(t + 1.05);
+                const tt = t + 0.6;
+                _doorOsc(ctx, _doorEnv(ctx, out, tt, vol * 0.25, 0.01, 0.2, 0.15), 'sawtooth', 2400, tt, 0.4, { f1: 300, slide: 0.35 });
+                const tx = t + 1.05;
+                _doorOsc(ctx, _doorEnv(ctx, out, tx, vol * 0.3, 0.001, 0.01, 0.05), 'square', 4200, tx, 0.03);
+                return tx - t + 0.3;
             },
             /* Rubber stamp: a low wooden thump + a short, bright slap of ink. */
             stamp(ctx, t, out, vol) {
