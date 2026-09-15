@@ -4128,6 +4128,13 @@ body.diorama-3d .tile-underpass.jump::before {
 /* FORM 365 (Room 247, plan 7.9): the day's three lines on the strip — click for the sheet */
 .hq-strip-stat.hq-strip-form { color: #d9c27a; cursor: pointer; border: 1px solid rgba(217,194,122,0.35); padding: 3px 8px; }
 .hq-strip-stat.hq-strip-form.done { color: #8fd3a0; border-color: rgba(143,211,160,0.45); }
+.hq-strip-stat.hq-strip-tapes { color: #ff9ae4; cursor: pointer; border: 1px solid rgba(255,90,214,0.35); padding: 3px 8px; }
+.hq-strip-stat.hq-strip-tapes.done { color: #8fd3a0; border-color: rgba(143,211,160,0.45); }
+/* THE FINDS (HQ plan 9.1, 2026-09-15): the pickup toast over the prompt */
+.hq-toast { position: absolute; left: 50%; bottom: 136px; transform: translateX(-50%) translateY(8px); display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 20px; background: rgba(8,8,12,0.9); border: 1px solid rgba(255,90,214,0.55); box-shadow: 0 0 0 1px #000, 0 0 24px rgba(255,90,214,0.25); font-family: 'IBM Plex Mono', monospace; color: #ece7d8; z-index: 21; opacity: 0; transition: opacity 0.25s ease, transform 0.25s ease; pointer-events: none; text-align: center; white-space: nowrap; }
+.hq-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.hq-toast b { font-family: 'Cormorant SC', serif; font-size: 18px; letter-spacing: 0.14em; color: #ffd6f3; }
+.hq-toast span { font-size: 9px; letter-spacing: 0.22em; color: #b8a060; }
 /* the CODE RED pill on the strip (HQ plan 3.3): strobes with the door lamps; click = the brief */
 .hq-strip-alert { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.22em; color: #ffd2d2; background: rgba(120,10,10,0.75); border: 1px solid #ff4a4a; padding: 4px 9px; cursor: pointer; animation: hqStrobe 0.52s steps(2) infinite; }
 .hq-strip-alert b { color: #fff; font-weight: 600; }
@@ -4169,6 +4176,36 @@ body.diorama-3d .tile-underpass.jump::before {
 /* THE WORLD (HQ plan 9.3, 2026-09-15 rev 7): the directory's subway map — one
    line per route in its own ink (--hq-line), a dot per site, a double ring at
    an interchange, the room you stand in filled, a dashed leg for a seam */
+/* THE SHELF (Room 360, HQ plan 9.1): the set, the spines */
+.hq-tape-crt { margin: 4px 0 10px; padding: 10px 12px 8px; background: #16161a; border: 1px solid rgba(184,160,96,0.35); border-radius: 6px; box-shadow: inset 0 0 0 1px #000; }
+.hq-tape-screen { position: relative; aspect-ratio: 4 / 3; max-height: 240px; margin: 0 auto; background: #050507; border: 1px solid #2a2a30; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.hq-tape-screen::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0 1px, transparent 1px 3px); }
+.hq-tape-clip { max-width: 100%; max-height: 240px; display: block; object-fit: contain; }
+.hq-tape-static { width: 100%; height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 0 20px; background: repeating-linear-gradient(0deg, #1b1b1f 0 2px, #101013 2px 4px), #101013; animation: hqStatic 0.12s steps(2) infinite; }
+.hq-tape-static.dim { animation: none; background: #0a0a0d; }
+.hq-tape-static i { font-style: normal; font-size: 9px; letter-spacing: 0.3em; color: #7fd9dd; }
+.hq-tape-static b { font-family: 'Cormorant SC', serif; font-size: 18px; letter-spacing: 0.14em; color: #ece7d8; }
+.hq-tape-static span { font-size: 8px; letter-spacing: 0.22em; color: #b8a060; }
+@keyframes hqStatic { 0% { background-position: 0 0; } 100% { background-position: 0 2px; } }
+.hq-tape-osd { position: absolute; left: 12px; right: 12px; top: 8px; display: flex; justify-content: space-between; font-size: 10px; letter-spacing: 0.2em; color: #e8e2cc; text-shadow: 0 0 6px #000, 1px 1px 0 #000; }
+.hq-tape-osd b { color: #fff; font-weight: 600; } .hq-tape-osd i { font-style: normal; color: #ffd25a; }
+.hq-tape-track { position: absolute; left: 0; right: 0; bottom: 14px; height: 6px; background: repeating-linear-gradient(90deg, rgba(255,255,255,0.35) 0 9px, transparent 9px 14px); opacity: 0.35; animation: hqTrack 0.9s linear infinite; }
+@keyframes hqTrack { from { transform: translateX(0); } to { transform: translateX(-14px); } }
+.hq-tape-card { margin: 0 0 10px; padding: 8px 10px; border-left: 3px solid #ff5ad6; background: rgba(255,255,255,0.03); }
+.hq-tape-card b { display: block; font-family: 'Cormorant SC', serif; font-size: 15px; letter-spacing: 0.1em; color: #ece7d8; }
+.hq-tape-card span { display: block; font-size: 8px; letter-spacing: 0.24em; color: #b8a060; margin-top: 2px; }
+.hq-tape-caption { margin: 6px 0 0; font-size: 11px; line-height: 1.5; color: #cfcabc; font-style: italic; }
+.hq-tapes { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; margin: 0 0 10px; }
+.hq-tape-spine { position: relative; height: 44px; padding: 3px 2px 2px; border: 1px solid #2a2a30; background: #121216; color: #6a6a72; font-family: 'IBM Plex Mono', monospace; font-size: 8px; cursor: pointer; overflow: hidden; text-align: left; border-radius: 2px; transition: border-color 0.12s; }
+.hq-tape-spine i { font-style: normal; display: block; letter-spacing: 0.1em; }
+.hq-tape-spine b { display: block; font-size: 6px; line-height: 1.15; letter-spacing: 0.04em; color: #e8e2cc; margin-top: 2px; white-space: normal; max-height: 22px; overflow: hidden; }
+.hq-tape-spine.dim { opacity: 0.55; border-style: dashed; }
+.hq-tape-spine.hint { color: #c9b070; border-color: rgba(217,180,90,0.5); }
+.hq-tape-spine.found { background: #1c1e2a; color: #ece7d8; border-color: #3a3c4a; }
+.hq-tape-spine.found::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: #ff5ad6; }
+.hq-tape-spine.found.k-parents::before { background: #ffd25a; } .hq-tape-spine.found.k-facility::before { background: #7fd9dd; }
+.hq-tape-spine.sel, .hq-tape-spine:hover { border-color: #ffd25a; }
+.hq-chip.k-evidence { color: #ff9ae4; } .hq-chip.k-parents { color: #ffd25a; } .hq-chip.k-facility { color: #7fd9dd; }
 .hq-world-line { margin: 0 0 12px; padding: 6px 8px 2px; border: 1px solid rgba(255,255,255,0.06); border-left: 3px solid var(--hq-line, #b8a060); background: rgba(255,255,255,0.02); }
 .hq-world-hd { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: 2px; }
 .hq-world-hd b { font-family: 'Cormorant SC', serif; font-size: 14px; letter-spacing: 0.12em; color: var(--hq-line, #b8a060); }

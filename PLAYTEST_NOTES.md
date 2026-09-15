@@ -10514,3 +10514,32 @@ upgrade), the lava light (one point light per lake, at the lake's
 centroid), the well heads on the crag (3.5 m up). Dev: every helper is
 on `window` (`hqCaveInfo('site_prebuilt_hollow_earth_gallery')`,
 `hqCaveReach`); `ThreeRenderer.hq` → `_hq.site.cave`.
+
+## THE FINDS + THE TAPES (HQ plan 9.1 stage 1) — 2026-09-15 rev 12, local delivery
+Not playtested (RULE #1c). What was run: `node --check` on every edited
+file, `npm test` (1324 / 1320 pass / 4 pre-existing skips), and a
+scratch build of the three procs (`find_tape`, `find_pay`, `tape_shelf`)
++ `_hqFindSparkle` on real three r128 where the sandbox allowed it (see
+the §9 entry). What to walk first: **Room 360** — the shelf on the east
+wall by the astronomer's desk (E = BROWSE; the CRT reads STANDBY, every
+spine dim); then **any site room** — a magenta sparkle in the far
+corner of the walkway (E = TAKE: the chime, the stamp, the toast, the
+pill on the strip ticks to 1 / 100, the object bursts and is gone) and a
+gold one somewhere else on the walkway on a third of the days (the
+envelope: +30 on the wallet); look at the board — the second cassette
+stands on a wall cell (Camelot: cell 7,1 at 3.5 m — the prompt must NOT
+offer it from below; a climbed +1 cell offers it); then **the shelf
+again** — the spine you found is labelled and banded, its sibling on the
+board reads LAST SEEN · the site; click the found one: the set plays
+STATIC (no clip on file yet) with the OSD and the tracking bar. Then a
+cave chamber (the find stands on its cell — if it floats or sinks, the
+cell read is wrong: `hqCaveTopAt`), the cold room (the tape in the NE
+corner, the envelope on the shelving at 1.2 m), and the garden (deep
+rate: +45). Dev: `EW_HQ_FINDS_ALL = true` before entering a room builds
+every row taken or not; `EW_HQ_NO_FINDS` none; `ThreeRenderer.hq.finds()`
+lists what stands; `hqFindsInRoom('site_prebuilt_camelot', profile)`;
+`DOOR_HQ.finds.filter(f => f.hard)` = the 29 wall finds. A find that
+stands inside a setting's piece = `_hqSettingFreeSpot` did not move it
+(it only moves walkway rows: `!f.cell && f.y == null`). The toast sits
+136 px up, over the prompt; if the prompt and the toast overlap on a
+short window, `.hq-toast { bottom }` is the edit.

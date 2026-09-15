@@ -38861,6 +38861,72 @@ const ThreeRenderer = (function () {
        (placed by _hqPlaceProps — the builder never adds one). ══ */
     var _hqProcSeed = 0;
     Object.assign(_hqProcBuilders, {
+        /* ── THE FINDS (HQ plan 9.1, 2026-09-15 rev 12): the objects the walker takes, and THE SHELF they play at ── */
+        /* a VHS cassette standing on its long edge, leaning back a little: black shell, spool windows, a paper label with a magenta band */
+        find_tape: function (U) {
+            var g = new THREE.Group();
+            var W = 0.187, H = 0.103, D = 0.025;
+            var shell = _hqMat(null, 1, 1, { color: 0x141418, shininess: 55, specular: 0x3a3a44 });
+            var body = _hqBox(W, H, D, shell); g.add(body);
+            var win = _hqBasic(0x07070a);
+            [-0.048, 0.048].forEach(function (wx) { var w = new THREE.Mesh(new THREE.CircleGeometry(0.016 * U, 14), win); w.position.set(wx * U, 0.012 * U, (D / 2 + 0.0008) * U); g.add(w); });
+            var labTex = _hzTextTex('hq_find_tape_label', ['D.O.O.R.', 'EVIDENCE · DO NOT REWIND'], { w: 256, h: 96, bg: '#e8e2cc', color: '#1a1a1e', pad: 0.12 });
+            var lab = new THREE.Mesh(new THREE.PlaneGeometry(0.15 * U, 0.038 * U), labTex ? new THREE.MeshBasicMaterial({ map: labTex }) : _hqBasic(0xe8e2cc));
+            lab.position.set(0, -0.026 * U, (D / 2 + 0.001) * U); g.add(lab);
+            var band = _hqBox(0.15, 0.006, 0.0005, _hqBasic(0xd63aa8)); band.position.set(0, -0.004 * U, (D / 2 + 0.0012) * U); g.add(band);
+            g.rotation.x = -0.22;
+            var pivot = new THREE.Group(); g.position.y = (H / 2 + 0.004) * U; pivot.add(g);
+            return pivot;
+        },
+        /* a manila envelope lying at a slant: the flap, the red string clasp, a stamp in the corner */
+        find_pay: function (U) {
+            var g = new THREE.Group();
+            var W = 0.24, D = 0.16;
+            var paper = _hqMat(null, 1, 1, { color: 0xd8b978, shininess: 3 });
+            var env = _hqBox(W, 0.006, D, paper); env.position.y = 0.003 * U; g.add(env);
+            var flap = _hqBox(W * 0.9, 0.002, D * 0.32, _hqMat(null, 1, 1, { color: 0xc9a86a, shininess: 3 })); flap.position.set(0, 0.0075 * U, -D * 0.28 * U); g.add(flap);
+            var clasp = new THREE.Mesh(new THREE.CylinderGeometry(0.011 * U, 0.011 * U, 0.003 * U, 12), _hqBasic(0xb8322e)); clasp.position.set(0, 0.0095 * U, -0.01 * U); g.add(clasp);
+            var string = new THREE.Mesh(new THREE.TorusGeometry(0.013 * U, 0.0012 * U, 6, 18), _hqBasic(0x7a1c1a)); string.rotation.x = Math.PI / 2; string.position.set(0, 0.0105 * U, -0.01 * U); g.add(string);
+            var stamp = _hqBox(0.03, 0.001, 0.024, _hqBasic(0x3a4a80)); stamp.position.set(0.09 * U, 0.008 * U, 0.05 * U); g.add(stamp);
+            g.rotation.y = 0.35;
+            return g;
+        },
+        /* the tape library's shelving: five shelves of cassette spines in the dark colours cassettes come in, labels on a few */
+        tape_shelf: function (U) {
+            var g = new THREE.Group();
+            var W = 1.4, H = 1.9, D = 0.32, shelves = 5;
+            var steel = _hqMat(null, 1, 1, { color: 0x3c4046, shininess: 30, specular: 0x444444 });
+            [-1, 1].forEach(function (sx) { var up = _hqBox(0.04, H, D, steel); up.position.set(sx * (W / 2 - 0.02) * U, (H / 2) * U, 0); g.add(up); });
+            var back = _hqBox(W, H, 0.01, _hqMat(null, 1, 1, { color: 0x2a2d33, shininess: 6 })); back.position.set(0, (H / 2) * U, -(D / 2 - 0.005) * U); g.add(back);
+            var sw = 0.025, sh = 0.103, sd = 0.187, gapMin = 0.003;
+            var spineGeo = new THREE.BoxGeometry(sw * U, sh * U, sd * U);
+            var labGeo = new THREE.BoxGeometry(sw * 0.7 * U, sh * 0.5 * U, 0.002 * U);
+            var perShelf = Math.floor((W - 0.16) / (sw + gapMin)) - 3, total = perShelf * shelves;
+            var spines = new THREE.InstancedMesh(spineGeo, _hqMat(null, 1, 1, { color: 0xffffff, shininess: 40, specular: 0x333333 }), total);
+            var labels = new THREE.InstancedMesh(labGeo, _hqBasic(0xe8e2cc), total);
+            var m4 = new THREE.Matrix4(), col = new THREE.Color(), palette = [0x101014, 0x16161c, 0x1c1e2a, 0x24262e, 0x2a2434, 0x1a2430, 0x30323a];
+            var n = 0, nl = 0, seed = 7;
+            function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+            for (var s = 0; s < shelves; s++) {
+                var sy = 0.06 + s * ((H - 0.12) / shelves);
+                var shelf = _hqBox(W - 0.08, 0.02, D - 0.04, steel); shelf.position.set(0, (sy - 0.01) * U, 0); g.add(shelf);
+                var x = -(W / 2) + 0.07;
+                for (var i = 0; i < perShelf; i++) {
+                    if (rnd() < 0.14) { x += sw * 1.5; continue; }          // a gap: a tape somebody has out
+                    var lean = (rnd() < 0.08) ? 0.16 : 0;
+                    m4.makeRotationZ(lean); m4.setPosition((x + sw / 2) * U, (sy + sh / 2) * U, (D / 2 - sd / 2 - 0.02) * U);
+                    spines.setMatrixAt(n, m4); col.setHex(palette[Math.floor(rnd() * palette.length)]); spines.setColorAt(n, col); n++;
+                    if (rnd() < 0.55) { m4.makeRotationZ(lean); m4.setPosition((x + sw / 2) * U, (sy + sh * 0.55) * U, (D / 2 - 0.02 + 0.001) * U); labels.setMatrixAt(nl, m4); nl++; }
+                    x += sw + gapMin;
+                    if (x > W / 2 - 0.09) break;
+                }
+            }
+            spines.count = n; labels.count = nl; spines.instanceMatrix.needsUpdate = true; if (spines.instanceColor) spines.instanceColor.needsUpdate = true; labels.instanceMatrix.needsUpdate = true;
+            g.add(spines); g.add(labels);
+            var card = new THREE.Mesh(new THREE.PlaneGeometry(0.42 * U, 0.09 * U), (function () { var t = _hzTextTex('hq_tape_shelf_card', ['THE TAPES · 100 ON THE REGISTER', 'RETURN TO RECORDS. THEY ASKED.'], { w: 512, h: 112, bg: '#e8e2cc', color: '#1a1a1e', pad: 0.12 }); return t ? new THREE.MeshBasicMaterial({ map: t }) : _hqBasic(0xe8e2cc); })());
+            card.position.set(0, (H + 0.02) * U, (D / 2 - 0.16) * U); g.add(card);
+            return g;
+        },
         /* THE CAR: sixteen buttons in two columns; the five that work are lit */
         car_panel: function (U) {
             var g = new THREE.Group();
@@ -40359,6 +40425,114 @@ const ThreeRenderer = (function () {
         if (spec.kind !== 'player') _hq.blockers.push({ obj: entry.group, rad: spec.rad || 0.42, y: y, top: y + 2.6, npc: true });
         return ch;
     }
+    /* ══ THE FINDS (HQ plan 9.1 stage 1, 2026-09-15 rev 12) ══
+       Glowing objects the walker TAKES — data.js DOOR_HQ.finds, read through
+       hqFindsInRoom (the taken ones are simply not built; a room is rebuilt
+       per entry). Each is its kind's proc (find_tape / find_pay, below) under
+       a SPARKLE (an additive ring + six orbiting motes on a ticker + a small
+       point light in the kind's colour — magenta for a tape, gold for pay)
+       so it reads from across a dark room. `_hq.finds` = { id, kind, find,
+       grp, x, y, z, label, sub }; _hqFindTarget offers the nearest within
+       HQ_FIND_REACH as kind 'find'; hq.takeFind(id) drops it in place with a
+       burst (no rebuild). A board find stands on its CELL's top (a wall cell
+       two levels up is `hard` — the door gun's), a cave find on its cell, a
+       pinned `y` on its shelf; a walkway find is nudged off a setting's
+       pieces like any floor prop. Dev: window.EW_HQ_FINDS_ALL builds every
+       row of the room, taken or not. */
+    var HQ_FIND_REACH = 1.6, HQ_FIND_LIGHT_MAX = 4;
+    var HQ_FIND_COLORS = { tape: 0xff5ad6, pay: 0xffd25a, potion: 0xff5a5a, item: 0xffffff, cube: 0x7fd9dd };
+    function _hqFindSparkle(color, U, seed) {
+        var g = new THREE.Group();
+        var ring = _hzGlowSprite(0.9 * U, color, 0.42, 0.14, 0.12, 0.9); ring.position.y = 0.16 * U; g.add(ring);
+        var core = _hzGlowSprite(0.32 * U, 0xffffff, 0.55, 0.2, 0.1, 1.4); core.position.y = 0.16 * U; g.add(core);
+        var motes = [];
+        for (var i = 0; i < 6; i++) {
+            var m = _hzGlowSprite(0.11 * U, i % 2 ? 0xffffff : color, 0.85, 0, 0, 0);
+            m.userData.ph = seed + i * (Math.PI * 2 / 6); m.userData.r = 0.28 + 0.1 * (i % 3); m.userData.h = 0.1 + 0.16 * ((i * 7) % 5) / 4;
+            motes.push(m); g.add(m);
+        }
+        g.userData.motes = motes;
+        return g;
+    }
+    function _hqPlaceFinds(room) {
+        if (typeof window !== 'undefined' && window.EW_HQ_NO_FINDS) return;
+        var D = _hqData(), U = _hqUnits(), G = _hq.propGroup, roomId = _hq.opts.room || 'central_egress';
+        if (!D || !D.finds) return;
+        var rows = (typeof window !== 'undefined' && window.EW_HQ_FINDS_ALL) ? D.finds.filter(function (f) { return f.room === roomId; })
+                 : ((typeof hqFindsInRoom === 'function') ? hqFindsInRoom(roomId, _hq.profile) : []);
+        _hq.findLights = 0;
+        rows.forEach(function (f) {
+            var cat = D.catalogue[f.kind === 'tape' ? 'find_tape' : 'find_pay'];
+            var pg = cat && cat.proc ? _hqProcProp(cat.proc) : null;
+            if (!pg) return;
+            var x = f.x || 0, z = f.z || 0;
+            /* a walkway find stands clear of the setting's pieces like a floor prop; a board / cave / shelf find keeps its spot */
+            if (!f.cell && f.y == null && _hq.setting) { var fs = _hqSettingFreeSpot(x, z); x = fs.x; z = fs.z; }
+            var y = 0;
+            if (f.y != null) y = f.y;
+            else if (_hq.site && _hq.site.cave) { var ct = _hqCaveTop(x, z); if (ct != null) y = ct; }
+            else if (_hq.site) { var sc = _hqSiteCellAt(x, z); if (sc) y = (sc.top > 0) ? sc.top : _hqSiteFloorY(sc, x, z); }
+            var color = HQ_FIND_COLORS[f.kind] || 0xffffff;
+            var seed = (typeof hqHash === 'function') ? (hqHash(f.id) % 628) / 100 : 0;
+            var grp = new THREE.Group();
+            grp.position.set(x * U, y * U, z * U);
+            grp.rotation.y = seed;
+            grp.add(pg);
+            var sp = _hqFindSparkle(color, U, seed); grp.add(sp);
+            if (_hq.findLights < HQ_FIND_LIGHT_MAX) { var pl = new THREE.PointLight(color, 0.55, 4.5 * U, 2); pl.position.y = 0.3 * U; grp.add(pl); _hq.findLights++; }
+            G.add(grp);
+            var rec = { id: f.id, kind: f.kind, find: f, grp: grp, obj: pg, sparkle: sp, x: x, y: y, z: z, seed: seed,
+                        label: f.kind === 'tape' ? 'A VHS CASSETTE' : 'AN ENVELOPE',
+                        sub: f.kind === 'tape' ? 'UNLABELLED · SOMEBODY LEFT IT HERE' : 'HAZARD PAY · UNMARKED · NOBODY IS WATCHING' };
+            _hq.finds.push(rec);
+            _hq.tickers.push(function (dt, now) {
+                if (rec.dead) return;
+                var t = now * 0.001 + rec.seed;
+                pg.position.y = (0.05 + 0.03 * Math.sin(t * 2.1)) * U;
+                pg.rotation.y = t * 0.8;
+                var motes = sp.userData.motes;
+                for (var i = 0; i < motes.length; i++) {
+                    var m = motes[i], ud = m.userData, a = ud.ph + t * (1.1 + 0.15 * i);
+                    m.position.set(Math.cos(a) * ud.r * U, (ud.h + 0.07 * Math.sin(t * 1.7 + ud.ph)) * U, Math.sin(a) * ud.r * U);
+                    m.material.opacity = 0.55 + 0.4 * Math.sin(t * 3.0 + ud.ph);
+                }
+            });
+        });
+    }
+    /* TAKE: the burst (the motes fly up and fade over 0.7 s), then the object is gone — no rebuild */
+    function _hqTakeFind(id) {
+        if (!_hq) return false;
+        var i = -1;
+        for (var k = 0; k < _hq.finds.length; k++) if (_hq.finds[k].id === id) { i = k; break; }
+        if (i < 0) return false;
+        var rec = _hq.finds[i], U = _hqUnits(), G = _hq.propGroup;
+        _hq.finds.splice(i, 1);
+        rec.dead = true;
+        try { G.remove(rec.grp); _disposeR(rec.grp); } catch (e) {}
+        try {
+            var color = HQ_FIND_COLORS[rec.kind] || 0xffffff;
+            var burst = new THREE.Group(); burst.position.set(rec.x * U, rec.y * U, rec.z * U);
+            var bits = [];
+            for (var b = 0; b < 12; b++) {
+                var m = _hzGlowSprite(0.13 * U, b % 3 ? color : 0xffffff, 0.9, 0, 0, 0);
+                var a = b * Math.PI * 2 / 12 + rec.seed;
+                m.userData.v = { x: Math.cos(a) * (0.5 + 0.3 * (b % 2)), y: 1.4 + 0.5 * ((b * 5) % 3), z: Math.sin(a) * (0.5 + 0.3 * (b % 2)) };
+                m.position.y = 0.15 * U; bits.push(m); burst.add(m);
+            }
+            var flash = _hzGlowSprite(1.6 * U, color, 0.7, 0, 0, 0); flash.position.y = 0.2 * U; burst.add(flash);
+            G.add(burst);
+            var t0 = performance.now(), dur = 700;
+            _hq.tickers.push(function (dt, now) {
+                if (!burst.parent) return;
+                var k = Math.min(1, (now - t0) / dur), e = 1 - k;
+                for (var j = 0; j < bits.length; j++) { var v = bits[j].userData.v; bits[j].position.set(v.x * k * U, (0.15 + v.y * k - 1.2 * k * k) * U, v.z * k * U); bits[j].material.opacity = 0.9 * e; }
+                flash.material.opacity = 0.7 * e * e; flash.scale.setScalar((1.6 + 1.2 * k) * U);
+                if (k >= 1) { try { G.remove(burst); _disposeR(burst); } catch (err) {} }
+            });
+        } catch (e) {}
+        _hq.dirty = true;
+        return true;
+    }
     /* The story cast (data.js DOOR_CAST → sprites.js DOOR_CAST_MODELS,
        2026-09-06): named people at their posts — Rhonda seated behind the
        reception counter, the Janitor at his bucket, Otto kneeling at a door,
@@ -40816,6 +40990,13 @@ const ThreeRenderer = (function () {
             var dist = Math.hypot(ch.x - pl.x, ch.z - pl.z);
             if (dist > (ch.reach || 1.75)) return;
             if (dist < bestD) { bestD = dist; best = { kind: ch.kind, id: ch.id, label: ch.label, sub: ch.sub || (ch.kind === 'agent' ? 'D.O.O.R. PERSONNEL' : 'ON BREAK'), line: ch.line, race: ch.race, gender: ch.gender, cast: ch.cast, doing: ch.doing }; }
+        });
+        /* THE FINDS (9.1): within reach on the floor, a shelf or a climbed cell — never a wall two levels up (that is the door gun's) */
+        _hq.finds.forEach(function (f) {
+            if (f.dead) return;
+            var dist = Math.hypot(f.x - pl.x, f.z - pl.z);
+            if (dist > HQ_FIND_REACH || Math.abs(f.y - pl.y) > 1.8) return;
+            if (dist < bestD) { bestD = dist; best = { kind: 'find', id: f.id, label: f.label, sub: f.sub, find: f.find }; }
         });
         return best;
     }
@@ -41443,6 +41624,7 @@ const ThreeRenderer = (function () {
             scene: new THREE.Scene(), camera: null, cube: null,
             shellGroup: new THREE.Group(), doorGroup: new THREE.Group(), propGroup: new THREE.Group(), charGroup: new THREE.Group(),
             doors: [], counters: [], chars: [], blockers: [], landings: [], player: null, fxPulse: [], site: null, sky: null, setting: null,
+            finds: [], findLights: 0,   /* THE FINDS (9.1, 2026-09-15): the takeable objects standing in the room (_hqPlaceFinds) and the count of their point lights */
             tickers: [], propLights: 0,   /* Phase 8 (2026-09-14): per-frame callbacks registered by procs (the orb, the torches, the shaft); the count of catalogue `light`s placed */
             props: [], focus: null,   /* props: { key, grp } per placed catalogue prop (the terminal's camera finds the CRT by key); focus: the screen push (_hqFocusScreen) */
             keys: {}, drag: null, lastDragAt: 0, fp: false, paused: false, ready: false, t0: performance.now(), lastMs: 0, lastDebug: 0,
@@ -41549,6 +41731,7 @@ const ThreeRenderer = (function () {
         try { _hqBuildDoors(room); } catch (e) { console.error('[HQ] doors failed', e); }
         try { _hqBuildCounters(room); } catch (e) { console.error('[HQ] counters failed', e); }
         try { _hqPlaceProps(room); } catch (e) { console.error('[HQ] props failed', e); }
+        try { _hqPlaceFinds(room); } catch (e) { console.error('[HQ] finds failed', e); }
         try { _hqSpawnPopulation(room, opts); } catch (e) { console.error('[HQ] population failed', e); }
         /* face the camera the way the spawn faces */
         var sp = room.spawn || { face: 0 };
@@ -41696,6 +41879,9 @@ const ThreeRenderer = (function () {
         refreshLamps: _hqRefreshLamps,
         goTo: _hqGoTo,
         target: function () { return _hq ? _hqFindTarget() : null; },
+        /* THE FINDS (9.1, 2026-09-15): drop a taken find in place with its burst (map.js _hqTakeFind, after the profile is saved) */
+        takeFind: _hqTakeFind,
+        finds: function () { return _hq ? _hq.finds.map(function (f) { return { id: f.id, kind: f.kind, x: f.x, y: f.y, z: f.z }; }) : []; },
         pos: function () { if (!_hq || !_hq.player) return null; var p = _hq.player; return { x: p.x, z: p.z, y: p.y, deg: _hqNormDeg(Math.atan2(p.x, -p.z) * 180 / Math.PI), r: Math.hypot(p.x, p.z) }; },
         stateLabel: function (st) { return HQ_LAMP_LABEL[st] || st; },
         /* dev / playtest helpers (2026-09-06): put the walker (or the

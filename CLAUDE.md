@@ -2958,6 +2958,58 @@ a room's doors must filter `!d.link` (links append after a room's own
 rows). Viewer-local (RULE #2). Still open: the suites, the star chart's
 route lines, the other eight `way` kinds, the airlock / hold ends.
 
+## THE FINDS + THE TAPES (HQ plan 9.1 stage 1) — 2026-09-15 rev 12, local delivery
+Glowing objects the walker TAKES, and THE HUNDRED TAPES. **Data (data.js,
+the block after `hqCaveFitRooms()`)**: `HQ_TAPE_SHEET` → **`DOOR_TAPES`**
+(T001…T100 — two per built site in `siteRooms.built` order, one per
+complex part, one per exploration-floor room; NEVER the hall, the foyer, a
+lobby or a corridor; `where` = the room, `site` for the hint rule, `clip:
+null` until the user's file is on R2 `Assets/door/tapes/` — `hqTapeClipUrl`
+never invents a path; titles + captions are Claude's DRAFT, `draft: true`,
+A15). **`DOOR_HQ.finds` is GENERATED** by `hqBuildFinds()` — never
+hand-edit a row: per tape room a `tape:Tnnn` row + ONE `pay:<room>` row
+(`daily: true`; `HQ_FIND_RULES.pay` 30 on a board room's walkway,
+`payDeep` 45 elsewhere). Spots: `hqFindSpot(roomId, salt, avoid)` = the
+free 0.5 m grid point FARTHEST from the way in (`hqFindFree`: inside the
+walls, off every floor prop's footprint, native / agent / counter reach /
+door landing / spawn / mast, a walkable cell the first door reaches in a
+cave, off the board + moat on a board room; `HQ_FIND_RELAX` loosens twice
+for a small room); a site's SECOND tape is ON THE BOARD
+(`hqFindBoardSpot`: a wall cell two levels up → **`hard: true`** — the
+walker never reaches it, 9.5's door gun will; else a climbed cell; `cell`
++ `y` = the cell top); **`DOOR_HQ.findSpots[roomId] = { tape, tape2,
+pay }`** pins a spot by hand (the cold room; a `y` = a shelf). RESERVED
+kinds `potion` / `item` / `cube` are refused by the collector until an
+inventory owner exists — never fake a reward. **Rules**: `hqFindsInRoom
+(roomId, profile, now)` (the taken and the dark dailies removed;
+`hqFindLiveToday` = `hqHash(date|id) % dailyMod === 0`),
+**`hqCollectFind(profile, id, now)`** writes the claim AND the pay into
+the profile OBJECT handed in (`door.hq.finds = { taken: { id: true |
+date }, tapes, pay }`, `account.gold += amount`) and returns the beat —
+THE CALLER SAVES ONCE (map.js `_hqTakeFind`: load → collect →
+`saveProfile` → `_refreshWallets`; never `creditLocalGold` inside the
+take — one transaction), `hqTapeCount`, `hqTapeShelf` (found / `hint` =
+another tape of the same SITE is on file / room / clip). **Renderer
+(three-renderer.js)**: procs `find_tape` / `find_pay` / `tape_shelf`;
+`_hqPlaceFinds(room)` after the props → each row under `_hqFindSparkle`
+(ring + core + six motes on a ticker + a point light, `HQ_FIND_LIGHT_MAX`
+4), a walkway row nudged by `_hqSettingFreeSpot`, a board row on its cell
+top, a cave row on `_hqCaveTop`; `_hq.finds`; `_hqFindTarget` offers kind
+**`find`** within `HQ_FIND_REACH` 1.6 m and |Δy| ≤ 1.8; `hq.takeFind(id)`
+drops it with a burst, no rebuild; `hq.finds()` lists them. Dev
+`EW_HQ_FINDS_ALL` / `EW_HQ_NO_FINDS`. **Flow (map.js)**: `_hqInteractTarget`
+→ `window._hqTakeFind(t)` (no panel), the prompt verb TAKE, `_hqToast`
+(`#hqToast`, index.html / styles-base.css), the strip pill `#hqTapes`
+(`_hqOpenTapes`), the OFFICER sheet's THE TAPES row. **THE SHELF** = Room
+360's counter `shelf` (east wall; the south `metal_shelving` became the
+`tape_shelf` prop) → `overlay: 'tapes'` → `_hqTapesHtml` (the CRT set: a
+found tape's clip as `<img>` / `<video loop muted>`, a blank cassette =
+STATIC, the 10 × 10 spines, `[data-tape]` re-renders the panel in place,
+`_hqTapeSel`). ONE home (hq-floors.test.js). Viewer-local (RULE #2).
+`npm test` runs `hq-finds.test.js`. Adding a tape = a `HQ_TAPE_SHEET` row
+(the count must stay 100 — the test insists); adding a find kind = the
+collector's branch + a proc + `HQ_FIND_COLORS`. Unseen live (RULE #1c).
+
 ## THE DUNGEON — the cave is a CAVE GRID (HQ plan 9.3 stage 2) — 2026-09-15 rev 11, local delivery
 The seven cave chambers (`site_prebuilt_hollow_earth_*`, data.js, the
 block before H-WING) are Pokémon Victory-Road dungeons in 3D now: a

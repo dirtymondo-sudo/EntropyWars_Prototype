@@ -464,6 +464,13 @@
                         fp.title = 'Daily Office Operations Requirements — ' + sh.rows.map(r => (r.done ? '☑ ' : '☐ ') + r.label).join(' · ') + '. Click for the sheet; it hangs in the Clock Room (Room 247).';
                     } else { fp.style.display = 'none'; fp.innerHTML = ''; }
                 }
+                /* THE TAPES (plan 9.1): the hundred, mirrored on the strip; click = the shelf */
+                const tp = _hqEl('hqTapes');
+                if (tp) {
+                    const tc = (typeof window.hqTapeCount === 'function') ? window.hqTapeCount(profile) : null;
+                    if (tc) { tp.style.display = ''; tp.classList.toggle('done', tc.found >= tc.total); tp.innerHTML = `TAPES <b>${tc.found}</b> / ${tc.total}`; tp.title = 'THE TAPES — a hundred cassettes hidden about the world. Found ones play on the shelf in Room 360. Click for the shelf.'; }
+                    else { tp.style.display = 'none'; tp.innerHTML = ''; }
+                }
                 /* the day's Code Red (plan 3.3): strobes until cleared */
                 const cp = _hqEl('hqCodeRed');
                 if (cp) {
@@ -1062,6 +1069,7 @@
             const k = (typeof window.hqKeys === 'function') ? window.hqKeys(profile) : null;
             const mc = (typeof window.hqMasteryCount === 'function') ? window.hqMasteryCount(profile) : null;
             const sh = (typeof window.hqDailyOps === 'function') ? window.hqDailyOps(profile) : null;
+            const tc = (typeof window.hqTapeCount === 'function') ? window.hqTapeCount(profile) : null;
             let rank = null;
             try { const cs = loadCareerStats(); rank = getEloRankInfo(cs.elo); rank._elo = cs.elo; } catch (e) {}
             let walks = '';
@@ -1080,6 +1088,7 @@
             if (pc) html += row('PUNCH CLOCK', `BEST ${pc.best | 0} · ${pc.days | 0} DAYS ON THE BOOKS`, `${pc.streak | 0} DAY STREAK`, pc.today ? 'stabilized' : 'off');
             if (k) html += row('KEYS', `${k.pickups | 0} RECOVERED${k.issued ? ' + ' + k.issued + ' ISSUED' : ''}`, `${k.keys | 0}`);
             if (mc) html += row('STABILIZED', 'THRESHOLDS WON BY EVERY WIN CONDITION', `${mc.mastered} / ${mc.total}`, mc.mastered === mc.total ? 'stabilized' : 'open');
+            if (tc) html += row('THE TAPES', `THE HUNDRED · THE SHELF IN ROOM 360${tc.pay ? ' · ' + tc.pay + ' HAZARD PAY IN ENVELOPES' : ''}`, `${tc.found} / ${tc.total}`, tc.found >= tc.total ? 'stabilized' : 'open');
             if (sh) html += row('FORM 365', 'DAILY OFFICE OPERATIONS · ROOM 247', `${sh.done} / ${sh.total}`, sh.allDone ? 'stabilized' : 'unstable');
             if (walks) html += row('WALKS AS', 'OCCAM’S BARBERSHOP · ROOM 1287', _hqEsc(walks));
             if (bar) html += row('THE MOTTO', 'THE BUREAU’S PLAQUE', _hqEsc(bar.form), bar.tone || 'open');
@@ -1395,7 +1404,7 @@
                — CLIMB IN, CLIMB DOWN — unless the END names its own (the well
                room's heads read CLIMB UP: the same rope, the other way) */
             const wayVerb = (t.kind === 'door' && t.door && t.door.way) ? ((t.door.verb) || _hqWayCat(t.door.way).verb) : null;
-            const verb = wayVerb || (t.kind === 'door' ? ((t.door && t.door.action && t.door.action.mission && !_hqRoomExists(_hqSiteRoomId(t.door.action.mission))) ? 'OPEN' : 'ENTER') : (t.kind === 'counter' ? ((t.counter && t.counter.verb) || 'USE') : 'TALK'));
+            const verb = wayVerb || (t.kind === 'find' ? 'TAKE' : t.kind === 'door' ? ((t.door && t.door.action && t.door.action.mission && !_hqRoomExists(_hqSiteRoomId(t.door.action.mission))) ? 'OPEN' : 'ENTER') : (t.kind === 'counter' ? ((t.counter && t.counter.verb) || 'USE') : 'TALK'));
             const pNo = _hqNo(t.door || t.counter);
             el.innerHTML = `<b>▸ ${pNo ? 'ROOM ' + _hqEsc(pNo) + ' · ' : ''}${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span><i>[E] ${verb}</i>`;
             el.style.display = '';
@@ -1660,6 +1669,98 @@
             if (_hqSuspended || state.gameState !== GS.HQ) return;
             if (_hqPanelTarget) window._hqClosePanel();
             _hqOpenPanel({ kind: 'counter', id: 'form365', label: 'FORM 365', sub: 'DAILY OFFICE OPERATIONS REQUIREMENTS', counter: { id: 'form365', action: { overlay: 'form365' } } });
+        };
+        /* ══ THE FINDS + THE SHELF (HQ plan 9.1 stage 1 — 2026-09-15 rev 12) ══
+           E on a glowing object → _hqTakeFind: ONE profile transaction (load →
+           data.js hqCollectFind writes the claim AND the pay into the same
+           object → save), the beat (a tape: the stamp + the level-up chime and
+           a strip toast "TAPE n / 100 · title"; pay: the confirm chime and the
+           wallet), the renderer drops the object in place (hq.takeFind). THE
+           SHELF in Room 360 (counter `shelf` → overlay 'tapes') is the hundred
+           as cassette spines; a found one plays its clip in a CRT frame here
+           in the panel (an <img> / <video>, never a VideoTexture); a blank
+           cassette (no clip on R2 yet) plays static. Viewer-local (RULE #2). */
+        let _hqTapeSel = null;
+        function _hqToast(html, ms) {
+            const el = _hqEl('hqToast'); if (!el) return;
+            el.innerHTML = html; el.style.display = ''; el.classList.remove('show');
+            void el.offsetWidth; el.classList.add('show');
+            clearTimeout(_hqToast._t);
+            _hqToast._t = setTimeout(() => { el.classList.remove('show'); setTimeout(() => { if (!el.classList.contains('show')) el.style.display = 'none'; }, 400); }, ms || 3200);
+        }
+        window._hqTakeFind = function (t) {
+            if (!t || t.kind !== 'find' || !t.id) return false;
+            if (_hqSuspended || state.gameState !== GS.HQ) return false;
+            let beat = null;
+            try {
+                const PS = window.ProfileSystem;
+                const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
+                if (idx === null || idx === undefined) { _hqToast('<b>NO CARD ON FILE</b><span>SIGN IN AT RECEPTION — THE BUILDING FILES FINDS TO A NAME</span>'); return false; }
+                const p = PS.loadProfile(idx);
+                if (!p || typeof window.hqCollectFind !== 'function') return false;
+                beat = window.hqCollectFind(p, t.id);
+                if (!beat || !beat.ok) {
+                    if (beat && beat.reason === 'unsupported') _hqToast('<b>NOT YET</b><span>THE QUARTERMASTER HAS NOT SIGNED FOR THIS KIND OF THING</span>');
+                    return false;
+                }
+                PS.saveProfile(idx, p);
+                try { if (typeof window._refreshWallets === 'function') window._refreshWallets(); } catch (e) {}
+            } catch (e) { console.warn('[HQ] take find', e); return false; }
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq) ThreeRenderer.hq.takeFind(t.id); } catch (e) {}
+            if (beat.kind === 'tape') {
+                try { playSfx('levelUp'); } catch (e) {}
+                try { if (typeof playDoorSfx === 'function') playDoorSfx('doorStamp', { volume: 0.6 }); } catch (e) {}
+                _hqToast(`<b>TAPE ${beat.count} / ${beat.total}</b><span>${_hqEsc(beat.title)} · FILED · IT PLAYS ON THE SHELF IN ROOM 360</span>`, 4200);
+            } else {
+                try { playSfx('uiButtonConfirm'); } catch (e) {}
+                _hqToast(`<b>+${beat.amount} HAZARD PAY</b><span>AN UNMARKED ENVELOPE · ${(beat.gold || 0).toLocaleString()} ON THE BOOKS · NOBODY SAW</span>`, 2800);
+            }
+            _hqFillStrip(_hqProfile());
+            try { _hqSetPrompt(ThreeRenderer.hq.target()); } catch (e) {}
+            return true;
+        };
+        function _hqTapesHtml() {
+            const profile = _hqProfile();
+            const sh = (typeof window.hqTapeShelf === 'function') ? window.hqTapeShelf(profile) : null;
+            let html = `<div class="hq-panel-hd">${_hqNoTag('360', '360° — the whole sky from one chair')}<b>THE SHELF</b><span>THE TAPES · ${sh ? sh.found + ' / ' + sh.total : '— / 100'} ON FILE · CLICK A SPINE</span></div>`;
+            if (!sh) return html + '<p class="hq-panel-desc">The shelf is empty. Records has been informed.</p><div class="hq-panel-actions"><button class="hq-btn" data-close="1">NOTED</button></div>';
+            const sel = sh.rows.find(r => r.id === _hqTapeSel) || null;
+            /* the set: a found tape plays; a blank one (no clip on R2 yet) is static; an unfound one is not in the machine */
+            html += '<div class="hq-tape-crt"><div class="hq-tape-screen">';
+            if (sel && sel.found) {
+                const clip = sel.clip;
+                if (clip && /\.(gif|png|jpe?g|webp)(\?|$)/i.test(clip)) html += `<img class="hq-tape-clip" src="${_hqEsc(clip)}" alt="">`;
+                else if (clip) html += `<video class="hq-tape-clip" src="${_hqEsc(clip)}" autoplay loop muted playsinline></video>`;
+                else html += '<div class="hq-tape-static"><i>BLANK</i><b>NO CLIP ON FILE</b><span>THE CASSETTE PLAYS STATIC · THE FOOTAGE HAS NOT BEEN SENT UP</span></div>';
+                html += `<div class="hq-tape-osd"><b>▶ PLAY</b><span>${_hqEsc(sel.id)}</span><i>SP 0:00:08</i></div><div class="hq-tape-track"></div>`;
+            } else if (sel) {
+                html += `<div class="hq-tape-static dim"><i>NO TAPE</i><b>${_hqEsc(sel.id)} · NOT ON FILE</b><span>${sel.hint ? 'LAST SEEN · ' + _hqEsc(sel.roomLabel) + (sel.roomNo ? ' · ROOM ' + _hqEsc(sel.roomNo) : '') : 'WHEREABOUTS UNKNOWN · FIND ANOTHER FROM THE SAME PLACE'}</span></div><div class="hq-tape-osd"><b>■ STOP</b><span>${_hqEsc(sel.id)}</span><i>—</i></div>`;
+            } else {
+                html += '<div class="hq-tape-static dim"><i>STANDBY</i><b>INSERT A CASSETTE</b><span>PICK A SPINE BELOW · FOUND ONES ARE LABELLED</span></div><div class="hq-tape-osd"><b>■ STOP</b><span>—</span><i>—</i></div>';
+            }
+            html += '</div></div>';
+            if (sel) {
+                html += `<div class="hq-tape-card"><b>${_hqEsc(sel.id)} · ${sel.found ? _hqEsc(sel.title) : '—'}</b>`
+                      + `<span>${sel.found ? (sel.roomLabel ? _hqEsc(sel.roomLabel) + (sel.roomNo ? ' · ROOM ' + _hqEsc(sel.roomNo) : '') : '') + ' · ' + _hqEsc(String(sel.kind).toUpperCase()) : (sel.hint ? 'LAST SEEN · ' + _hqEsc(sel.roomLabel) : 'NOT ON FILE')}${sel.hard ? ' · OUT OF REACH ON FOOT' : ''}</span>`
+                      + (sel.found ? `<p class="hq-tape-caption">${_hqEsc(sel.caption)}</p>` : '') + '</div>';
+            }
+            /* the spines: ten by ten */
+            html += '<div class="hq-tapes">';
+            sh.rows.forEach(r => {
+                const cls = 'hq-tape-spine' + (r.found ? ' found k-' + _hqEsc(r.kind) : (r.hint ? ' hint' : ' dim')) + (r.id === _hqTapeSel ? ' sel' : '');
+                const tip = r.found ? `${r.id} · ${r.title} · ${r.roomLabel}` : (r.hint ? `${r.id} · last seen: ${r.roomLabel}` : `${r.id} · not on file`);
+                html += `<button class="${cls}" data-tape="${_hqEsc(r.id)}" title="${_hqEsc(tip)}"><i>${String(r.no).padStart(3, '0')}</i>${r.found ? `<b>${_hqEsc(r.title)}</b>` : ''}</button>`;
+            });
+            html += '</div>';
+            html += `<div class="hq-chips"><span>THE KEY · ${sh.found} FOUND · ${sh.rows.filter(r => r.hint).length} PLACED · ${sh.total - sh.found} MISSING</span><i class="hq-chip k-evidence">■ EVIDENCE</i><i class="hq-chip k-parents">■ THE PARENTS</i><i class="hq-chip k-facility">■ THE FACILITY</i><i class="hq-chip dim">▢ LAST SEEN = A ROOM YOU HAVE FOUND ANOTHER FROM</i></div>`;
+            html += '<div class="hq-panel-actions"><button class="hq-btn" data-close="1">EJECT</button></div>';
+            html += '<p class="hq-panel-note">A hundred cassettes, two to a site and one to every room worth going into — none in the hall, the foyer or a corridor. A cassette on a wall two levels up waits for a door you can place. Records wants them back. Records can wait.</p>';
+            return html;
+        }
+        window._hqOpenTapes = function () {
+            if (_hqSuspended || state.gameState !== GS.HQ) return;
+            if (_hqPanelTarget) window._hqClosePanel();
+            _hqOpenPanel({ kind: 'counter', id: 'shelf', label: 'THE SHELF', sub: 'THE TAPES · 100 ON THE REGISTER', counter: { id: 'shelf', action: { overlay: 'tapes' } } });
         };
         /* ══ THE STAR CHART (Room 360, HQ plan 7.4 — 2026-09-11) ══
            The site star-map: hqStarChart's one layout (data.js — the same
@@ -2092,6 +2193,7 @@
             if (act.overlay === 'punch') return _hqPunchHtml();
             if (act.overlay === 'barber') return _hqBarberHtml();
             if (act.overlay === 'starmap') return _hqStarmapHtml();
+            if (act.overlay === 'tapes') return _hqTapesHtml();
             if (act.overlay === 'transcript') return _hqTranscriptHtml();
             if (act.overlay === 'chart') return _hqChartHtml();
             if (act.overlay === 'intake') return _hqIntakeHtml();
@@ -2418,6 +2520,8 @@
         /* E: direct doors go through, a console lights its screen (THE
            TERMINAL), everything else opens its panel */
         function _hqInteractTarget(t) {
+            /* THE FINDS (9.1): E on a glowing object takes it — no panel, the walk never pauses */
+            if (t && t.kind === 'find') { window._hqTakeFind(t); return; }
             if (t && t.kind === 'door' && t.door) {
                 const act = _hqDoorDirectAction(t);
                 if (act) { window._hqDoAction(act, t); return; }
@@ -2517,6 +2621,9 @@
             /* THE CHAIR (Room 1287): a pick swaps the avatar in place */
             const avBtn = e.target.closest('[data-avatar]');
             if (avBtn && !avBtn.disabled) { window._hqPickAvatar(avBtn.getAttribute('data-avatar')); return; }
+            /* THE SHELF (Room 360, 9.1): a spine puts that cassette in the set — the panel re-renders in place */
+            const spine = e.target.closest('[data-tape]');
+            if (spine) { _hqTapeSel = spine.getAttribute('data-tape'); body.innerHTML = _hqTapesHtml() + '<p class="hq-panel-foot">ESC · CLOSE</p>'; try { playSfx('uiButtonConfirm'); } catch (err) {} return; }
             /* THE STAR CHART (Room 360): a star opens its threshold's door panel; ◂ THE CHART comes back */
             const star = e.target.closest('[data-star]');
             if (star) { window._hqOpenThreshold(star.getAttribute('data-star'), { star: true }); return; }

@@ -2450,3 +2450,22 @@ ford); the well heads stand on three tiers of the well room. The
 dungeon is solved by a test (every door reaches every other under the
 walker's step rule). Nothing decided that Part C did not already hold;
 row 33's "which exits beyond the four" stays the user's. Unseen live.
+
+### 2026-09-15 — THE FINDS + THE TAPES (HQ plan 9.1 stage 1, rev 12; local delivery)
+The reviewed order's next row after the cave: the hidden objects. Built:
+a hundred VHS TAPES on the register (`DOOR_TAPES`, T001–T100 — two to
+every site, one on the walkway and one on the board (on a WALL cell
+where the board has one: out of reach on foot until the door gun), one
+to every chamber of the two complexes, one to every room of the
+exploration floors worth going into; never the hall, the foyer, a lobby
+or a corridor) and a daily envelope of Hazard Pay in every one of those
+rooms (live on a third of the days). E takes; the tape is filed to the
+officer's card in one save; THE SHELF in Room 360 plays a found tape's
+clip in a CRT (a blank cassette plays static — the clips are the
+user's, B-list: R2 `Assets/door/tapes/Tnnn.gif|webm|mp4`). The tapes'
+TITLES and CAPTIONS are Claude's placeholders (A15 — every row `draft:
+true`; the user rewrites them; the `parents` kind is the parents' thread,
+the `facility` kind the building's, `evidence` the footage). Part C row
+26 (cubes) is NOT decided by this: no cube is placed; potions / items /
+cubes are reserved kinds the collector refuses. Nothing on `state`,
+nothing relayed. Unseen live.

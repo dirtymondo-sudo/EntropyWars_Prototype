@@ -18392,6 +18392,10 @@ const DOOR_HQ = {
         /* THE CAVE (HQ plan 9.3 stage 2, 2026-09-15 rev 11): a torch on a stake driven into the cave floor (a rock room has no box wall to bracket one on — the rock border stands in front of it), and a crystal growing out of the floor, lit from inside (the adit's light) */
         cave_torch:      { proc: 'cave_torch',      h: 1.7,  foot: 0.12, block: true, glow: { y: 1.62, size: 1.5, color: 0xffa040 }, light: { color: 0xff9a40, intensity: 0.85, dist: 9, y: 1.62 } },
         crystal_cluster: { proc: 'crystal_cluster', h: 1.4,  foot: 0.55, block: true, glow: { y: 0.8, size: 2.6, color: 0x9fe8c8 }, light: { color: 0x9ff0d0, intensity: 0.9, dist: 9, y: 0.9 } },
+        /* THE FINDS (HQ plan 9.1, 2026-09-15 rev 12): the objects the walker TAKES — placed by _hqPlaceFinds from DOOR_HQ.finds, never as room props (no foot: nothing blocks) — and THE SHELF in Room 360 the tapes play at */
+        find_tape:       { proc: 'find_tape',       h: 0.22, foot: 0, glow: { y: 0.12, size: 1.1, color: 0xff5ad6 } },
+        find_pay:        { proc: 'find_pay',        h: 0.14, foot: 0, glow: { y: 0.08, size: 1.0, color: 0xffd25a } },
+        tape_shelf:      { proc: 'tape_shelf',      h: 1.9,  foot: 0.35, wall: true, mount: 0, depth: 0.36, block: true },
         school_desk:     { proc: 'school_desk',     h: 0.75, foot: 0.45, block: true },
         toilet_stall:    { proc: 'toilet_stall',    h: 2.0,  foot: 0.6, wall: true, mount: 0, depth: 1.5, rect: { hw: 0.5, hd: 0.75 }, block: true },   // on a n / s wall (the rect is room-axis)
         urinal:          { proc: 'urinal',          h: 0.7,  foot: 0, wall: true, mount: 0.55, depth: 0.35 },
@@ -22629,6 +22633,10 @@ const DOOR_HQ = {
                 /* THE PROJECTOR → the tape library's projection (Replay) */
                 { id: 'projector', x: 0, z: 0, face: 180, plateY: 2.3, radius: 2.1, verb: 'USE',
                   label: 'THE PROJECTOR', sub: 'REPLAY LAST BATTLE', action: { fn: '_ewReplayLastMatch' } },
+                /* THE SHELF (9.1, 2026-09-15): the hundred tapes, the found ones playable in the panel's CRT (map.js _hqTapesHtml) */
+                { id: 'shelf', x: 5.7, z: -3.6, face: 270, plateY: 2.2, radius: 2.0, verb: 'BROWSE',
+                  label: 'THE SHELF', sub: 'THE TAPES · 100 ON THE REGISTER', action: { overlay: 'tapes' },
+                  desc: 'A hundred cassettes on the register, most of them missing. Found ones play on the set. Records asked for them back; the Observatorium has not answered.' },
             ],
             props: [
                 /* ── the middle: the projector under the projected sky, three seats round it ── */
@@ -22650,7 +22658,7 @@ const DOOR_HQ = {
                 { key: 'coffee_mug',     x: 5.75, z: 1.1,  y: 0.76, face: 20 },
                 { key: 'desk_lamp',      x: 5.75, z: -0.05, y: 0.76, face: 250 },
                 { key: 'office_chair',   x: 6.0,  z: 0.6,  face: 270 },
-                { key: 'metal_shelving', wall: 'e', z: -3.6 },
+                { key: 'tape_shelf',     wall: 'e', z: -3.6 },   // THE SHELF (9.1): the tape library, the cassettes' spines
                 { key: 'metal_shelving', wall: 'e', z: 3.8 },
                 { key: 'filing_cabinet', wall: 'e', z: -2.1 },
                 { key: 'tube_tv',        x: 6.15, z: -2.1, y: 1.33, face: 270 },   // the viewing set, on the cabinet
@@ -26716,6 +26724,318 @@ function hqCaveFitRooms() {
     });
 }
 hqCaveFitRooms();
+/* ── THE FINDS + THE TAPES (HQ plan 9.1 stage 1 — 2026-09-15 rev 12) ─────
+   Glowing objects hidden about the world and THE HUNDRED TAPES. Two kinds
+   ship: a TAPE (a VHS cassette — one of DOOR_TAPES, taken ONCE EVER) and a
+   PAY cache (a manila envelope of Hazard Pay — `daily`: live on a third of
+   the days, taken once per day; the building restocks). `potion` / `item` /
+   `cube` are RESERVED kinds: hqCollectFind refuses them until an inventory
+   owner exists (the review's "find ownership" row) — nothing fakes a reward.
+   Every row is GENERATED at load by hqBuildFinds from the rooms as they
+   stand (a tape's room from HQ_TAPE_SHEET, its spot from hqFindSpot — the
+   far corner of the room, clear of every blocker, landing and counter; a
+   site room's second tape ON THE BOARD, on a wall cell when the board has
+   one — `hard: true`, the walker cannot climb two levels: 9.5 reaches it).
+   DOOR_HQ.findSpots[roomId] = { tape: {x, z}, tape2: {x, z, cell}, pay:
+   {x, z} } hand-pins a spot when the generator's is wrong. The record is
+   profile.door.hq.finds = { taken: { [id]: true | 'YYYY-MM-DD' }, tapes:
+   [ids], pay: n }. Viewer-local; nothing on `state`, nothing relayed.
+   The tapes' TITLES and CAPTIONS are Claude's DRAFT (A15, `draft: true`) —
+   the user rewrites them; a tape's `clip` is null until its file is on R2
+   (`Assets/door/tapes/<id>.gif|webm|mp4`) — a blank cassette plays static,
+   never a made-up URL. */
+const HQ_FIND_RULES = {
+    radius: 1.6,          // the walker's TAKE reach (m)
+    pay: 30,              // a walkway cache
+    payDeep: 45,          // a cache off the board rooms (the complexes, the floors)
+    dailyMod: 3,          // a pay cache is live on the days hqHash(date|id) % dailyMod === 0
+    tapes: 100,
+    clipBase: 'Assets/door/tapes/',
+    minWall: 1.0, awayDoor: 2.3, awayCounter: 0.5, awayProp: 0.9, awayNpc: 1.1, awayLight: 1.2, awaySpawn: 2.0, apart: 2.5,
+};
+const HQ_TAPE_KINDS = ['evidence', 'parents', 'facility'];
+/* the sheet: per SITE two tapes (one in plain sight, one on the board), per
+   complex part one, per exploration-floor room one — [room | site, title,
+   caption, kind]. A site key (no `site_` prefix) = its generated board room. */
+const HQ_TAPE_SHEET = {
+    prebuilt_dumb:        [['THE LIFT LOG', 'Sub-level 7 does not exist. The lift stops there anyway.', 'facility'], ['THE BLAST DOOR, 03:14', 'Nine seconds of a door opening from the other side. Nobody comes through.', 'evidence']],
+    prebuilt_cern:        [['BEAM DUMP', 'The ring hums at a pitch the tape cannot hold. Watch the coffee.', 'evidence'], ['A BADGE ON THE FLOOR', 'Your mother’s badge. The photo has been cut out.', 'parents']],
+    prebuilt_backrooms:   [['HUM, LEVEL 0', 'Forty seconds of carpet. Something in the wallpaper blinks.', 'evidence'], ['THE EXIT SIGN', 'It points the wrong way every time the tape loops.', 'facility']],
+    prebuilt_nuketown:    [['THE MANNEQUINS, 05:29', 'They face the blast. On the second pass they face the camera.', 'evidence'], ['TEST CARD', 'A family at a kitchen table. One chair is empty. It is your chair.', 'parents']],
+    prebuilt_stadium:     [['THE CROWD NOISE', 'Eighty thousand voices. The seats are empty.', 'evidence'], ['HALF-TIME', 'A man in a coat walks the pitch alone. He knows where the camera is.', 'parents']],
+    prebuilt_camelot:     [['THE ROUND TABLE', 'Twelve chairs. Thirteen shadows.', 'evidence'], ['SNOW ON THE BATTLEMENTS', 'It falls upward for two seconds. Records logged it as tracking error.', 'facility']],
+    prebuilt_atlantis:    [['SONAR, 0400', 'Something answers the ping. It answers in a voice.', 'evidence'], ['THE PEARL DIVER', 'A woman surfacing with something in her hand. She is not wearing a suit.', 'parents']],
+    prebuilt_hell:        [['THE FISSURE', 'Heat shimmer over the causeway. The shimmer has a face.', 'evidence'], ['FORM 666', 'A clearance form filled in by hand. The hand is not anyone in the building.', 'facility']],
+    prebuilt_technoticlan: [['THE UPLINK', 'A screen of static that resolves into a floor plan of this building.', 'facility'], ['MOTHER', 'Nine frames of a woman at a console. The console is the one in Room 1337.', 'parents']],
+    prebuilt_agartha:     [['THE ADIT', 'A lamp moving through the crystal. Nobody carries it.', 'evidence'], ['THE GREAT DOOR', 'An hour of a closed door, cut to eight seconds. It breathes.', 'evidence']],
+    prebuilt_antarctica:  [['THE ICE CORE', 'Something frozen in the core. It is looking at the drill.', 'evidence'], ['THE EXPEDITION', 'Two parkas at a ridge. The taller one waves at the camera by name.', 'parents']],
+    prebuilt_shasta:      [['THE LENTICULAR', 'A cloud that holds still while the sky moves. Then it does not.', 'evidence'], ['THE TUNNEL MOUTH', 'A hand-drawn map of the mountain’s inside, pinned to a tree. Your father’s handwriting.', 'parents']],
+    prebuilt_stonehenge:  [['SOLSTICE', 'The stones throw two shadows. The sun is on the wrong side for one of them.', 'evidence'], ['THE WHEEL', 'The stones turn. The camera does not. Records is unhappy about this tape.', 'facility']],
+    prebuilt_giza:        [['THE SHAFT', 'A robot camera reaching a door with two copper handles. Then the feed cuts.', 'evidence'], ['THE SURVEY, 1987', 'Two surveyors at the base. The empty frame in the hall had their photo.', 'parents']],
+    prebuilt_heaven:      [['THE GATE', 'Clouds part on a corridor. The corridor is the one outside.', 'facility'], ['CHOIR', 'Eight seconds of singing with no source. The mic was off.', 'evidence']],
+    prebuilt_cyberpunk:   [['BILLBOARD', 'An advert for the Department. We have never advertised.', 'facility'], ['THE NOODLE STAND', 'Two people eating under neon. The receipt on the table has your employee number.', 'parents']],
+    prebuilt_babel:       [['THE CLIMB', 'A stairwell that keeps going. The floor numbers repeat 13.', 'evidence'], ['ONE VOICE', 'Everyone on the tower says the same word. It is not a word.', 'evidence']],
+    prebuilt_olympus:     [['THE FORGE', 'Sparks falling up. A hammer with no hand.', 'evidence'], ['NECTAR', 'A cup on a plinth, filling itself. Somebody drinks it off-camera.', 'evidence']],
+    prebuilt_mars:        [['ROVER FEED 07', 'The rover turns to look at something behind it. The something waves.', 'evidence'], ['THE CRATER', 'A boot print beside the rover’s tracks. The rover has no boots.', 'evidence']],
+    prebuilt_area51:      [['HANGAR 18', 'A craft on jacks. The jacks are made of the same thing as the craft.', 'evidence'], ['THE BADGE PHOTO', 'A man in a lab coat at the gate. He is holding a copy of this tape.', 'parents']],
+    prebuilt_skinwalker:  [['THE MESA', 'A shape on the mesa at dusk. It gets closer on every loop.', 'evidence'], ['THE RANCH HOUSE', 'A woman on the porch, looking into the yard. The yard looks back.', 'parents']],
+    prebuilt_hollow_earth: [['THE INNER SUN', 'A light under the ground. It has a horizon.', 'evidence'], ['THE WELL', 'A bucket coming up the rope. Something has written on the bucket.', 'evidence']],
+    prebuilt_fairy_forest: [['THE RING', 'Toadstools in a circle. On the second pass, the circle is one wider.', 'evidence'], ['THE LANTERN', 'A lantern moving between trees at ankle height. It stops when watched.', 'evidence']],
+    prebuilt_moon:        [['THE LANDER', 'A footprint beside the lander that was not there in the previous frame.', 'evidence'], ['EARTHRISE', 'The Earth rises. It is the wrong colour.', 'evidence']],
+    prebuilt_vatican:     [['THE ARCHIVE', 'A reading room with one lamp lit. The book is open to a floor plan of the Bureau.', 'facility'], ['THE CONFESSIONAL', 'A voice through the screen. It says your callsign.', 'parents']],
+    prebuilt_bohemian_grove: [['THE OWL', 'A statue of an owl. The owl blinks once, at 0:06.', 'evidence'], ['THE CREMATION OF CARE', 'Men in robes at a fire. One of them is on the Bureau’s wall.', 'facility']],
+    prebuilt_gobekli:     [['THE PILLARS', 'Carvings of animals. On the loop, one animal has moved.', 'evidence'], ['THE DIG', 'A trench and a trowel. The hand holding the trowel wears your mother’s ring.', 'parents']],
+    prebuilt_northpole:   [['THE WORKSHOP', 'Benches, tools, no one. A bell rings on the ceiling.', 'evidence'], ['THE LIST', 'A scroll unrolling. Your name is on it. Twice.', 'facility']],
+    prebuilt_flatlands:   [['THE EDGE', 'A camera on a tripod at the edge. There is an edge.', 'evidence'], ['THE FOURTH CORNER', 'Somebody counting corners in a field. They count five.', 'facility']],
+    prebuilt_revenge:     [['THE HELM', 'The wheel turns itself into the storm. The compass points down.', 'evidence'], ['THE CAPTAIN’S TABLE', 'A log open on the table. The last entry is dated tomorrow.', 'evidence']],
+    prebuilt_derelict:    [['THE BRIDGE', 'A dead console lights up when the camera enters. It shows a door.', 'evidence'], ['CRYO', 'A dark bay of pods. One is warm.', 'evidence']],
+    prebuilt_lookingglass: [['THE TEA PARTY', 'A table set for four. The cups fill in the wrong order.', 'evidence'], ['THE MIRROR', 'A mirror that shows the corridor behind the camera. There is no corridor.', 'facility']],
+    prebuilt_haunted:     [['THE STAIRCASE', 'A figure on the landing for one frame. The frame is at 0:03 every loop.', 'evidence'], ['THE NURSERY', 'A cot, a mobile turning. A voice singing your name.', 'parents']],
+    prebuilt_lodge:       [['THE EYE', 'A painting on the wall. Its eye is a camera. Its camera is this tape.', 'facility'], ['THE MINUTES', 'A meeting in the lodge. The minutes list the Department as an item.', 'facility']],
+    prebuilt_singularity: [['THE DROP', 'Eight seconds of falling. The camera never lands.', 'evidence'], ['THE WATCHER', 'A face made of the wrong number of angles. It is polite.', 'evidence']],
+    prebuilt_saturn:      [['THE RINGS', 'Ice grains in the ring, one of them square.', 'evidence'], ['THE HEXAGON', 'The pole’s storm from above. It is a door seen edge-on.', 'evidence']],
+    prebuilt_strip:       [['THE LUXOR BEAM', 'The beam at night. Something climbs it.', 'evidence'], ['THE CHAPEL', 'Two people at an altar, out of focus. The register says your surname.', 'parents']],
+    prebuilt_downtown:    [['THE ALLEY CAMERA', 'A security feed. A door in the alley wall opens onto this building’s foyer.', 'facility'], ['RUSH HOUR', 'A crowd at a crossing. Everyone stops. Everyone looks up.', 'evidence']],
+    /* the complexes (9.2 / 9.3): one per part */
+    site_prebuilt_haunted_hall:     [['THE FRONT DOOR, INSIDE', 'The hall from the stairs. The door opens for someone who is not there.', 'evidence']],
+    site_prebuilt_haunted_upstairs: [['THE WARDROBE', 'A coat hanging in the wardrobe. It is your father’s coat. The label says CAMELOT.', 'parents']],
+    site_prebuilt_haunted_attic:    [['THE TRUNK', 'A trunk of photographs. Every face has been replaced with yours.', 'parents']],
+    site_prebuilt_haunted_cellar:   [['THE WELL, FROM BELOW', 'The camera lowered on the rope. Something at the bottom takes it.', 'evidence']],
+    site_prebuilt_hollow_earth_shaft:     [['SIX ROPES', 'Six wells, six ropes. One rope is climbing.', 'evidence']],
+    site_prebuilt_hollow_earth_gallery:   [['THE FALL', 'The waterfall at the ford. The water falls upward at 0:05.', 'evidence']],
+    site_prebuilt_hollow_earth_vent:      [['THE HEAT', 'Lava through a fissure. A hand-print cooling on the obsidian.', 'evidence']],
+    site_prebuilt_hollow_earth_blast:     [['LEVEL −6', 'A stencil on the door: LEVEL −6. The building has no level −6.', 'facility']],
+    site_prebuilt_hollow_earth_adit:      [['THE CRYSTAL', 'A crystal that shows a room. The room is this one, with you in it.', 'evidence']],
+    site_prebuilt_hollow_earth_mouth:     [['THE LIP', 'The mouth of the cave from the lip. Two figures walking out, holding hands.', 'parents']],
+    site_prebuilt_hollow_earth_oubliette: [['THE FOURTH CELL', 'A cell with a wall that is a door. A tally on the wall. It is still being kept.', 'facility']],
+    /* the exploration floors (Phase 8): never the hall, the foyer, a lobby or a corridor — the finds are the reward for going somewhere */
+    garage:    [['THE RAMP', 'A sedan coming down the ramp with its lights on. Nobody driving.', 'facility']],
+    kitchen:   [['THE ORDER', 'A ticket on the rail. It orders for two, under your surname, every day at noon.', 'parents']],
+    coldroom:  [['−18', 'Frost on the shelves. Breath in the corner of the frame.', 'evidence']],
+    laundry:   [['THE WASHER', 'A lab coat in the drum. The badge in its pocket has your face at forty.', 'parents']],
+    boiler:    [['ROOM 451', 'The gauge climbs past the red. The needle bends round the dial.', 'facility']],
+    server:    [['RACK 127', 'A rack of blinking lights. They blink your employee number in binary.', 'facility']],
+    dungeon:   [['24601', 'A cell door shutting. The camera is inside.', 'evidence']],
+    ritual:    [['THE CIRCLE', 'Chalk on the floor. The chalk is being redrawn between frames.', 'evidence']],
+    sacrifice: [['FORM 322', 'A form on the altar. Field 1: NAME. It has been filled in for you.', 'facility']],
+    orb:       [['THE OBJECT', 'The orb from every side at once. It turns to keep the same face to the lens.', 'evidence']],
+    classroom: [['THE LESSON', 'The type chart on the board, with a seventh type chalked in. Then rubbed out.', 'facility']],
+    locker:    [['LOCKER 26', 'A locker opening. Inside, a smaller locker.', 'facility']],
+    garden:    [['1618', 'A tree in the garden. Two names carved in it. One is yours, the other is not yet.', 'parents']],
+};
+/* the room a sheet key names: a site key → its generated board room */
+function hqTapeRoomId(key) { return DOOR_HQ.rooms[key] ? key : (DOOR_HQ.rooms['site_' + key] ? 'site_' + key : null); }
+/* DOOR_TAPES: T001… in sheet order — the built sites first (in siteRooms.built order), then the parts, then the floors */
+const DOOR_TAPES = (function () {
+    const out = [];
+    const built = ((DOOR_HQ.siteRooms || {}).built || []);
+    const keys = built.filter(k => HQ_TAPE_SHEET[k]).concat(Object.keys(HQ_TAPE_SHEET).filter(k => built.indexOf(k) < 0));
+    keys.forEach(k => {
+        const roomId = hqTapeRoomId(k);
+        (HQ_TAPE_SHEET[k] || []).forEach((row, i) => {
+            const n = out.length + 1;
+            out.push({ id: 'T' + String(n).padStart(3, '0'), no: n, where: roomId, site: k.indexOf('prebuilt_') === 0 ? k : (DOOR_HQ.rooms[roomId] && DOOR_HQ.rooms[roomId].site) || null,
+                       title: row[0], caption: row[1], kind: HQ_TAPE_KINDS.indexOf(row[2]) >= 0 ? row[2] : 'evidence', slot: i, clip: null, draft: true });
+        });
+    });
+    return out;
+})();
+function hqTapeById(id) { return DOOR_TAPES.find(t => t.id === id) || null; }
+/* a tape's clip URL — null until the file is on R2 (never a made-up path) */
+function hqTapeClipUrl(tape) {
+    if (!tape || !tape.clip) return null;
+    const base = (DOOR_HQ.assets && DOOR_HQ.assets.base) || 'https://cdn.entropywars.net/';
+    return /^https?:\/\//.test(tape.clip) ? tape.clip : (base + HQ_FIND_RULES.clipBase + tape.clip);
+}
+/* ── the spot finder ── a point in a room is FREE when it stands inside the
+   walls, clear of every floor prop's footprint (the flavour-prop rule), every
+   native and agent, every counter's reach, every door's LANDING (2.4 m in),
+   the spawn, a mast, and — in a cave — on a walkable cell the first door
+   reaches. A site room's walkway spot also stays off the board + the moat. */
+function hqFindDoorLanding(room, d) {
+    const S = room.shell || {};
+    if (d.wall === 'free') { const f = (d.face || 0) * Math.PI / 180; return { x: (d.x || 0) + Math.sin(f) * 2.4, z: (d.z || 0) - Math.cos(f) * 2.4 }; }
+    if (d.wall === 'n') return { x: d.x || 0, z: -S.d / 2 + 2.4 };
+    if (d.wall === 's') return { x: d.x || 0, z: S.d / 2 - 2.4 };
+    if (d.wall === 'e') return { x: S.w / 2 - 2.4, z: d.z || 0 };
+    return { x: -S.w / 2 + 2.4, z: d.z || 0 };
+}
+function hqFindPropBlocks(room, p, x, z, margin) {
+    const S = room.shell || {}, cat = (DOOR_HQ.catalogue || {})[p.key] || {};
+    if (p.ceil || cat.ceil || (p.y || 0) > 0.5) return false;
+    const px = p.wall === 'w' ? -S.w / 2 : p.wall === 'e' ? S.w / 2 : (p.x || 0);
+    const pz = p.wall === 'n' ? -S.d / 2 : p.wall === 's' ? S.d / 2 : (p.z || 0);
+    const rect = (p.rect === false) ? null : (p.rect || cat.rect);
+    if (rect && !p.wall) return Math.abs(x - px) <= rect.hw + margin && Math.abs(z - pz) <= rect.hd + margin;
+    const foot = (p.foot != null) ? p.foot : (cat.foot || 0);
+    if (!(foot > 0) && !cat.block) return false;
+    return Math.hypot(x - px, z - pz) <= Math.max(foot, 0.3) + margin;
+}
+function hqFindRoomInfo(roomId) {
+    const room = DOOR_HQ.rooms[roomId]; if (!room || room.kind !== 'box') return null;
+    const S = room.shell || {};
+    const info = { room, S, doors: room.doors || [], landings: (room.doors || []).map(d => hqFindDoorLanding(room, d)), cave: room.cave ? hqCaveInfo(roomId) : null, board: null, reach: null };
+    if (info.cave && info.doors.length) {
+        const c0 = hqCaveDoorCell(room, info.doors[0]);
+        if (c0) info.reach = hqCaveReach(info.cave, c0.x, c0.y);
+    }
+    if (room.fx === 'site' && room.site) {
+        const b = hqSiteBoardInfo(room.site);
+        if (b) { const cell = 128 / DOOR_HQ.units; info.board = { info: b, cell, half: b.w * cell / 2, gap: S.moat ? (S.moat.gap || 0) : 0 }; }
+    }
+    return info;
+}
+function hqFindFree(ri, x, z, opts) {
+    opts = opts || {};
+    const R = opts.rules || HQ_FIND_RULES, S = ri.S, room = ri.room;
+    if (Math.abs(x) > S.w / 2 - R.minWall || Math.abs(z) > S.d / 2 - R.minWall) return false;
+    if (ri.cave) {
+        const c = hqCaveCellAt(ri.cave, x, z);
+        if (!c || !c.walk || c.fluid || c.rock || c.slope) return false;
+        if (ri.reach && !ri.reach.has(c.x + ',' + c.y)) return false;
+    }
+    if (ri.board && !opts.onBoard) { const lim = ri.board.half + ri.board.gap + 0.9; if (Math.abs(x) < lim && Math.abs(z) < lim) return false; }
+    for (const p of room.props || []) if (hqFindPropBlocks(room, p, x, z, R.awayProp)) return false;
+    for (const q of (room.npcSpots || []).concat(room.agents || [], room.onlineSpots || [])) if (q && q.x != null && Math.hypot(x - q.x, z - q.z) < R.awayNpc) return false;
+    for (const c of room.counters || []) if (Math.hypot(x - c.x, z - c.z) < (c.radius || 2) + R.awayCounter) return false;
+    for (const L of ri.landings) if (Math.hypot(x - L.x, z - L.z) < R.awayDoor) return false;
+    for (const d of ri.doors) if (d.wall === 'free' && Math.hypot(x - (d.x || 0), z - (d.z || 0)) < R.awayDoor) return false;
+    if (S.open) for (const m of S.lights || []) if (Math.hypot(x - m.x, z - m.z) < R.awayLight) return false;
+    if (room.spawn && Math.hypot(x - room.spawn.x, z - room.spawn.z) < R.awaySpawn) return false;
+    for (const a of opts.avoid || []) if (Math.hypot(x - a.x, z - a.z) < R.apart) return false;
+    return true;
+}
+/* the hidden spot: the free grid point FARTHEST from the way in (the first
+   door's landing, else the spawn), the tie broken by a hash of the room —
+   a corner, never the middle of the floor */
+/* a small room (the cold room is 4 × 4) has no point that keeps every
+   distance — the rules RELAX in three steps before the room goes without */
+const HQ_FIND_RELAX = [null, { minWall: 0.8, awayDoor: 1.7, awaySpawn: 1.3, awayProp: 0.7, awayNpc: 0.9, apart: 1.8 }, { minWall: 0.7, awayDoor: 1.3, awaySpawn: 1.0, awayProp: 0.55, awayNpc: 0.8, apart: 1.4, awayCounter: 0.2 }];
+function hqFindSpot(roomId, salt, avoid) {
+    const ri = hqFindRoomInfo(roomId); if (!ri) return null;
+    const S = ri.S, from = ri.landings[0] || ri.room.spawn || { x: 0, z: 0 };
+    const step = 0.5;
+    for (let pass = 0; pass < HQ_FIND_RELAX.length; pass++) {
+        const rules = HQ_FIND_RELAX[pass] ? Object.assign({}, HQ_FIND_RULES, HQ_FIND_RELAX[pass]) : HQ_FIND_RULES;
+        let best = null, bestS = -1;
+        for (let x = -S.w / 2 + 0.5; x <= S.w / 2 - 0.5 + 1e-6; x += step) {
+            for (let z = -S.d / 2 + 0.5; z <= S.d / 2 - 0.5 + 1e-6; z += step) {
+                const px = Math.round(x * 100) / 100, pz = Math.round(z * 100) / 100;
+                if (!hqFindFree(ri, px, pz, { avoid, rules })) continue;
+                const sc = Math.hypot(px - from.x, pz - from.z) + (hqHash(roomId + '|' + salt + '|' + px + ',' + pz) % 1000) / 1000;
+                if (sc > bestS) { bestS = sc; best = { x: px, z: pz, relax: pass }; }
+            }
+        }
+        if (best) return best;
+    }
+    return null;
+}
+/* the board spot of a site room: a WALL cell (two levels up — `hard`, the
+   door gun's), else the highest climbed cell, else a plain cell far from
+   the way in; never a fluid, a monument's footprint or the battle marker */
+function hqFindBoardSpot(roomId) {
+    const ri = hqFindRoomInfo(roomId); if (!ri || !ri.board) return null;
+    const B = ri.board, b = B.info, C = B.cell, half = B.half;
+    const monAt = (x, y) => b.mons.some(m => x >= m.x && x < m.x + m.foot && y >= m.y && y < m.y + m.foot);
+    const objAt = (x, y) => b.objs.some(o => o.x === x && o.y === y) || (b.nexus && b.nexus.x === x && b.nexus.y === y);
+    let best = null, bestS = -1;
+    for (let y = 0; y < b.h; y++) for (let x = 0; x < b.w; x++) {
+        const c = b.cells[y][x];
+        if (!c.walk || c.fluid || c.lvl < 0 || monAt(x, y) || objAt(x, y)) continue;
+        const px = Math.round(((x + 0.5) * C - half) * 100) / 100, pz = Math.round(((y + 0.5) * C - half) * 100) / 100;
+        if (Math.hypot(px, pz) < 3.0) continue;                       // the battle marker
+        const sc = Math.min(c.lvl, 2) * 100 + Math.hypot(px, pz - half) + (hqHash(roomId + '|board|' + x + ',' + y) % 1000) / 1000;
+        if (sc > bestS) { bestS = sc; best = { x: px, z: pz, cell: [x, y], lvl: c.lvl, y: Math.round(c.lvl * C * 100) / 100, hard: c.lvl >= 2 }; }
+    }
+    return best;
+}
+function hqBuildFinds() {
+    const rows = [], R = HQ_FIND_RULES, pins = DOOR_HQ.findSpots || {};
+    const byRoom = {};
+    DOOR_TAPES.forEach(t => { (byRoom[t.where] = byRoom[t.where] || []).push(t); });
+    Object.keys(byRoom).forEach(roomId => {
+        const room = DOOR_HQ.rooms[roomId]; if (!room) return;
+        const pin = pins[roomId] || {};
+        const placed = [];
+        byRoom[roomId].forEach((t, i) => {
+            const onBoard = room.fx === 'site' && i === 1;
+            let sp = onBoard ? (pin.tape2 || hqFindBoardSpot(roomId)) : (pin.tape || hqFindSpot(roomId, 'tape' + i, placed));
+            if (!sp) return;
+            placed.push(sp);
+            rows.push(Object.assign({ id: 'tape:' + t.id, room: roomId, kind: 'tape', tape: t.id, x: sp.x, z: sp.z, relax: sp.relax || 0, why: onBoard ? (sp.hard ? 'on a wall of the board — the door gun reaches it' : 'on the board, up a level') : 'in the far corner, in plain sight of anyone who looks' },
+                sp.y != null ? { y: sp.y } : {}, sp.cell ? { cell: sp.cell } : {}, sp.hard ? { hard: true } : {}));
+        });
+        const ps = pin.pay || hqFindSpot(roomId, 'pay', placed);
+        if (ps) rows.push(Object.assign({ id: 'pay:' + roomId, room: roomId, kind: 'pay', amount: room.fx === 'site' ? R.pay : R.payDeep, daily: true, x: ps.x, z: ps.z, relax: ps.relax || 0 }, ps.y != null ? { y: ps.y } : {}, { why: 'a manila envelope of Hazard Pay — the building restocks it on a third of the days' }));
+    });
+    return rows;
+}
+/* hand-pinned spots (the generator's fallback): the cold room is 4 × 4 with hooks over the floor — the tape stands in the NE corner, the envelope lies on the shelving */
+DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 1.7, y: 1.2 } } };
+DOOR_HQ.finds = hqBuildFinds();
+function hqFindById(id) { return (DOOR_HQ.finds || []).find(f => f.id === id) || null; }
+/* the record on the profile (never written by a reader) */
+function hqFindsRecord(profile) {
+    try { const r = profile && profile.door && profile.door.hq && profile.door.hq.finds; if (r && typeof r === 'object') return { taken: r.taken || {}, tapes: r.tapes || [], pay: r.pay | 0 }; } catch (e) {}
+    return { taken: {}, tapes: [], pay: 0 };
+}
+/* a daily cache is live on the days hqHash(date|id) % dailyMod === 0 */
+function hqFindLiveToday(row, date) { return !row.daily || (hqHash((date || hqToday()) + '|' + row.id) % HQ_FIND_RULES.dailyMod) === 0; }
+function hqFindTaken(row, rec, date) {
+    const t = rec.taken[row.id];
+    if (!t) return false;
+    return row.daily ? (t === (date || hqToday())) : true;
+}
+/* the finds standing in a room right now: the rows minus the taken, minus the dailies not live today */
+function hqFindsInRoom(roomId, profile, now) {
+    const date = hqToday(now ? new Date(now) : undefined), rec = hqFindsRecord(profile);
+    return (DOOR_HQ.finds || []).filter(f => f.room === roomId && hqFindLiveToday(f, date) && !hqFindTaken(f, rec, date));
+}
+/* TAKE: writes the record on the profile object handed in (the caller saves
+   it — ONE save for the claim and the reward, never creditLocalGold's second
+   load) and returns the beat: { ok, kind, amount?, gold?, tape?, count, total,
+   title, label } — or { ok: false, reason }. Reserved kinds are refused. */
+function hqCollectFind(profile, id, now) {
+    const row = hqFindById(id);
+    if (!row) return { ok: false, reason: 'unknown' };
+    if (!profile) return { ok: false, reason: 'noprofile' };
+    if (row.kind !== 'tape' && row.kind !== 'pay') return { ok: false, reason: 'unsupported', kind: row.kind };
+    const date = hqToday(now ? new Date(now) : undefined), rec = hqFindsRecord(profile);
+    if (!hqFindLiveToday(row, date)) return { ok: false, reason: 'notlive' };
+    if (hqFindTaken(row, rec, date)) return { ok: false, reason: 'taken' };
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = {};
+    const R = profile.door.hq.finds = { taken: Object.assign({}, rec.taken), tapes: rec.tapes.slice(), pay: rec.pay | 0 };
+    R.taken[row.id] = row.daily ? date : true;
+    if (row.kind === 'tape') {
+        const t = hqTapeById(row.tape);
+        if (R.tapes.indexOf(row.tape) < 0) R.tapes.push(row.tape);
+        return { ok: true, kind: 'tape', tape: row.tape, title: t ? t.title : row.tape, count: R.tapes.length, total: HQ_FIND_RULES.tapes, label: 'TAPE ' + R.tapes.length + ' / ' + HQ_FIND_RULES.tapes + ' · ' + (t ? t.title : row.tape) };
+    }
+    const amount = Math.max(0, row.amount | 0);
+    if (!profile.account || typeof profile.account !== 'object') profile.account = { gold: 0, unlockedUnits: [], freeTokens: 0 };
+    profile.account.gold = (profile.account.gold | 0) + amount;
+    R.pay += amount;
+    return { ok: true, kind: 'pay', amount, gold: profile.account.gold, count: R.pay, total: null, label: '+' + amount + ' HAZARD PAY' };
+}
+function hqTapeCount(profile) { const rec = hqFindsRecord(profile); return { found: rec.tapes.length, total: HQ_FIND_RULES.tapes, pay: rec.pay | 0 }; }
+/* THE SHELF: the hundred with found / where / hint — an unfound spine reads
+   its ROOM once another tape of the same site (or the same room) is on file */
+function hqTapeShelf(profile) {
+    const rec = hqFindsRecord(profile), found = {};
+    rec.tapes.forEach(id => { found[id] = true; });
+    const groupOf = t => t.site || t.where;
+    const hinted = {};
+    DOOR_TAPES.forEach(t => { if (found[t.id]) hinted[groupOf(t)] = true; });
+    const rows = DOOR_TAPES.map(t => {
+        const room = DOOR_HQ.rooms[t.where] || {};
+        const no = (typeof hqRoomNo === 'function') ? hqRoomNo(t.where) : '';
+        const f = hqFindById('tape:' + t.id);
+        return { id: t.id, no: t.no, title: t.title, caption: t.caption, kind: t.kind, where: t.where, roomLabel: room.label || t.where, roomNo: no, part: room.part || null,
+                 found: !!found[t.id], hint: !found[t.id] && !!hinted[groupOf(t)], hard: !!(f && f.hard), clip: hqTapeClipUrl(t), draft: !!t.draft };
+    });
+    return { found: rec.tapes.length, total: HQ_FIND_RULES.tapes, rows };
+}
 /* ── THE ROOM REGISTER (HQ plan 7.1, 2026-09-07) ───────────────────────
    Every site and every numbered HQ room wears ONE number (7.0 rule 1). The
    number lives with the thing it names — `roomNo` on the threshold (site),
@@ -28308,6 +28628,9 @@ if (typeof window !== 'undefined') {
     window.HQ_CAVE_CELL = HQ_CAVE_CELL; window.HQ_CAVE_LEVEL = HQ_CAVE_LEVEL; window.HQ_CAVE_STD = HQ_CAVE_STD;
     window.hqCaveCompile = hqCaveCompile; window.hqCaveInfo = hqCaveInfo; window.hqCaveCellAt = hqCaveCellAt; window.hqCaveFeet = hqCaveFeet;
     window.hqCaveTopAt = hqCaveTopAt; window.hqCaveDoorY = hqCaveDoorY; window.hqCaveEdgeH = hqCaveEdgeH; window.hqCaveReach = hqCaveReach;
+    /* THE FINDS + THE TAPES (HQ plan 9.1, 2026-09-15 rev 12) */
+    window.DOOR_TAPES = DOOR_TAPES; window.HQ_FIND_RULES = HQ_FIND_RULES; window.hqFindsInRoom = hqFindsInRoom; window.hqCollectFind = hqCollectFind;
+    window.hqTapeShelf = hqTapeShelf; window.hqTapeCount = hqTapeCount; window.hqFindById = hqFindById; window.hqTapeById = hqTapeById; window.hqTapeClipUrl = hqTapeClipUrl; window.hqFindsRecord = hqFindsRecord;
     window.hqCaveDoorCell = hqCaveDoorCell; window.hqCaveRooms = hqCaveRooms;
     window.hqLinkRoom = hqLinkRoom;
     window.hqLinkDoors = hqLinkDoors;
