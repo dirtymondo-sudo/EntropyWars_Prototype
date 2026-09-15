@@ -3340,25 +3340,32 @@ Unseen live (RULE #1c): the checklist's grid on the CRT at narrow widths,
 the promotion notice firing on the first arrival for a profile that
 already has stabilized sites.
 
-## THE ENCOUNTER — PLAYER-INITIATED (HQ plan 9.4 stage 1) — 2026-09-15 rev 16, local delivery
+## THE ENCOUNTER — PLAYER-INITIATED (HQ plan 9.4 stage 1) — 2026-09-15 rev 16 / rev 17 THE CLICK, local delivery
 **Never random (the user's rule).** In a WILD room (data.js
 `hqEncounterRoomOk(roomId)` = `hqRoomSite` non-null — a site's board room
 or a complex part; the facility is safe by construction) the officer
-DRAWS THE DOOR GUN (F) and presses **1** (the walker's basic-attack clip:
-the def's `basicAttackKind` → `_attackChainFor`) or **2 · 3 · 4** (the
-`magic` / `aoe` / `ultimate` cast chains) — three-renderer.js
-`_hqStrikeKey(k)` plays the one-shot on the walker's rig (`pl.strike`,
-LoopOnce; the walker squares up on the camera's aim) and, ARMED (the gun
-drawn — `HQ_ENCOUNTER_RULES.gun`), takes `_hqEncounterAim()` = the
-nearest `hqEncounterCharOk` character (a native / roster draw; never the
-cast, an agent, the online shift, the clone) within `reach` 3.4 m, in the
-55° aim `cone`, with `_hqLosClear` line of sight (blockers except people,
-rock / raised cells, doorway walls); `opts.onStrike` fires at once (the
-toast), `opts.onEncounter` on the clip's STRIKE FRAME (`_slotStrikeMs`,
-else 380 ms) — guarded by `_hq === H` so a room change under the swing
-never lands. Holstered, the keys are a flourish. The digit keys are named
-on their OWN line before the pinned key line (hq-floors.test.js). API:
-`hq.strike(k)`, `hq.encounterAim()`. map.js `_hqEncounterFire(ev)` →
+**LEFT-CLICKS with the door gun HOLSTERED** (rev 17, the user's
+correction: "when you are not wielding the gun, clicking should do the
+attack; press F and wield the gun, then clicking places a door" — the
+1 · 2 · 3 · 4 keys are GONE, there is one gesture, the walker's
+basic-attack clip: the def's `basicAttackKind` → `_attackChainFor`) —
+three-renderer.js `_hqStrikeClick()` plays the one-shot on the walker's
+rig (`pl.strike`, LoopOnce; the walker squares up on the camera's aim)
+and takes `_hqEncounterAim()` = the nearest `hqEncounterCharOk` character
+(a native / roster draw; never the cast, an agent, the online shift, the
+clone) within `reach` 3.4 m, in the 55° aim `cone`, with `_hqLosClear`
+line of sight (blockers except people, rock / raised cells, doorway
+walls); `opts.onStrike` fires at once (the toast), `opts.onEncounter` on
+the clip's STRIKE FRAME (`_slotStrikeMs`, else 380 ms) — guarded by `_hq
+=== H` so a room change under the swing never lands. THE CLICK RULE in
+`H.onMouseDown`: the door gun DRAWN reads the click first (LEFT places,
+RIGHT holsters — never an attack); holstered, a LEFT click with the
+pointer LOCKED strikes at once, the first (unlocked) click only grabs the
+pointer, and with the lock refused a left click that did not drag strikes
+on mouseup (`H.drag.strike`). `HQ_ENCOUNTER_RULES` = `{ reach, cone, dy,
+cooldownMs, trigger: 'click', gesture: 'attack', labels }` — no `gun`, no
+`keys`; `hqEncounterGesture('click')` → `'attack'`. API: `hq.strike()`,
+`hq.encounterAim()`. map.js `_hqEncounterFire(ev)` →
 data.js **`hqEncounterLaunch(roomId, ch, cfgRaw, { gesture })`** (pure:
 the site, `delta: true`, the STICKY CONFIG `hqEncounterConfig` off
 localStorage `ew_hq_encounter_cfg` — written by `_msConfirm` for every
@@ -3376,8 +3383,8 @@ the Code Red block) consumes it win or lose → `hqEncounterRecord(p, ev)`
 → `door.hq.encounters = { count, wins, losses, last }` (`hqEncounterLog`
 reads; the OFFICER sheet's ENCOUNTERS row) and `window._hqEncounterResult`
 → `_hqReturnOrMenu`: a LOSS re-enters at `medical` (the ward, Part C row
-30), a win at the console; a toast either way. The prompt reads `[1]
-ATTACK · [2–4] CAST · ENGAGE` while drawn + aimed. Off: localStorage
+30), a win at the console; a toast either way. The prompt reads `[CLICK]
+ATTACK · ENGAGE` while holstered + aimed. Off: localStorage
 `ew_hq_encounter = 'off'` / `window.EW_HQ_NO_ENCOUNTER`. VS-CPU only
 (RULE #2 — `isOnlineMatch` refuses). `npm test` runs
 `hq-encounter.test.js`. NOT BUILT: the walker's eye as the first battle

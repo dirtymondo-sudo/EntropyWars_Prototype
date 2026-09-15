@@ -41953,18 +41953,20 @@ const ThreeRenderer = (function () {
         return best;
     }
 
-    /* ══ THE ENCOUNTER (HQ plan 9.4 stage 1, 2026-09-15 rev 16) ══
-       Never random — the officer starts it. A number key throws the walker's
-       own ATTACK clip (1: the def's basicAttackKind chain) or a CAST clip
-       (2 magic · 3 area · 4 the capstone charge) as a one-shot; the walker
-       squares up on the camera's aim first. With THE DOOR GUN DRAWN, the
-       native in reach, in the aim cone and in line of sight at the key press
-       is the target: opts.onStrike fires at once (the beat, the prompt),
+    /* ══ THE ENCOUNTER (HQ plan 9.4 stage 1, 2026-09-15 rev 16; rev 17 = the click) ══
+       Never random — the officer starts it. With THE DOOR GUN HOLSTERED,
+       LEFT CLICK (the pointer locked — the first click only grabs the
+       pointer; with the lock refused, a click that does not drag) throws
+       the walker's own ATTACK clip (the def's basicAttackKind chain) as a
+       one-shot; the walker squares up on the camera's aim first. The native
+       in reach, in the aim cone and in line of sight at the click is the
+       target: opts.onStrike fires at once (the beat, the prompt),
        opts.onEncounter fires when the clip's strike frame lands (sprites.js
-       strikeAt, else 380 ms) — map.js files the crossing. Holstered, the
-       gesture is a flourish and nothing more (the user's rule). */
+       strikeAt, else 380 ms) — map.js files the crossing. With the gun DRAWN
+       a click places a threshold (9.5) and never attacks; there are no
+       number keys (the user's correction, rev 17). */
     var HQ_STRIKE_FALLBACK_MS = 380, HQ_STRIKE_MAX_MS = 1500;
-    function _hqEncounterRules() { return (typeof HQ_ENCOUNTER_RULES !== 'undefined' && HQ_ENCOUNTER_RULES) || { reach: 3.4, cone: 55, dy: 1.8, gun: true, cooldownMs: 1400, keys: { '1': 'attack', '2': 'magic', '3': 'aoe', '4': 'ultimate' } };
+    function _hqEncounterRules() { return (typeof HQ_ENCOUNTER_RULES !== 'undefined' && HQ_ENCOUNTER_RULES) || { reach: 3.4, cone: 55, dy: 1.8, cooldownMs: 1400, trigger: 'click', gesture: 'attack' };
     }
     /* a straight line at chest height from the walker to a native: blocked by furniture / a setting piece (never a person), a rock cell, a raised board cell, a doorway's wall */
     function _hqLosClear(ax, az, ay, bx, bz, by) {
@@ -42026,21 +42028,23 @@ const ThreeRenderer = (function () {
         pl.strike = { name: name, until: performance.now() + ms, fresh: true };
         return (st > 0 && st < ms) ? st : Math.min(HQ_STRIKE_FALLBACK_MS, ms * 0.6);
     }
-    function _hqStrikeKey(k) {
+    /* the click (the gun holstered): the swing, and the encounter if a native is under the aim */
+    function _hqStrikeClick() {
         var H = _hq, pl = H && H.player; if (!pl || H.paused) return false;
         var R = _hqEncounterRules();
-        var gesture = (typeof hqEncounterGesture === 'function') ? hqEncounterGesture(k) : (R.keys || {})[k];
+        var drawn = !!(H.portal && H.portal.drawn);
+        if (drawn) return false;   // drawn, the click is the door gun's (9.5)
+        var gesture = (typeof hqEncounterGesture === 'function') ? hqEncounterGesture('click') : (R.gesture || 'attack');
         if (!gesture) return false;
         var now = performance.now();
         if (H.strikeAt && now - H.strikeAt < (R.cooldownMs || 1400)) return false;
         H.strikeAt = now;
         /* square up on the aim: the walker's facing convention is atan2(mx, mz) of the flat camera forward */
         pl.targetYaw = Math.atan2(Math.sin(H.cam.yaw), -Math.cos(H.cam.yaw));
-        var drawn = !!(H.portal && H.portal.drawn);
-        var armed = drawn || R.gun === false;
-        var target = armed ? _hqEncounterAim() : null;
+        var armed = true;   // holstered IS armed: the hands are free
+        var target = _hqEncounterAim();
         var landMs = _hqStrikeClip(pl, gesture);
-        if (H.opts.onStrike) { try { H.opts.onStrike({ gesture: gesture, key: k, drawn: drawn, armed: armed, target: target, landMs: landMs }); } catch (e) { console.warn('[HQ] onStrike failed', e); } }
+        if (H.opts.onStrike) { try { H.opts.onStrike({ gesture: gesture, trigger: 'click', drawn: drawn, armed: armed, target: target, landMs: landMs }); } catch (e) { console.warn('[HQ] onStrike failed', e); } }
         if (!target) return true;
         var room = H.opts.room, tid = target.id;
         setTimeout(function () {
@@ -42062,7 +42066,6 @@ const ThreeRenderer = (function () {
         if (k === 'arrowright') return 'd';
         if (k === 'shift') return 'shift';
         if (k === ' ' || k === 'spacebar') return 'space';
-        if (k === '1' || k === '2' || k === '3' || k === '4') return k;   // THE ENCOUNTER (9.4): the gestures — 1 attack · 2 cast · 3 area · 4 capstone
         if (k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'e' || k === 'v' || k === 'f' || k === 'q' || k === 'p') return k;   // F = the door gun (9.5)
         if (k === 'enter') return 'e';
         if (k === 'escape' || k === 'esc') return 'esc';
@@ -42095,8 +42098,6 @@ const ThreeRenderer = (function () {
             /* THE DOOR GUN (HQ plan 9.5): F draws / holsters; Q holsters a drawn one (else the bell) */
             if (k === 'f') { e.preventDefault(); _hqPortalDraw(!(H.portal && H.portal.drawn)); return; }
             if (k === 'q' && H.portal && H.portal.drawn) { e.preventDefault(); _hqPortalDraw(false); return; }
-            /* THE ENCOUNTER (HQ plan 9.4): 1–4 throw the officer's attack / cast animation — with the door gun DRAWN at a native in reach, that is the fight */
-            if (k === '1' || k === '2' || k === '3' || k === '4') { e.preventDefault(); _hqStrikeKey(k); return; }
             /* Q = answer a BELL call from anywhere in the building (HQ plan D2) */
             if (k === 'q') { e.preventDefault(); if (H.opts.onHotkey) H.opts.onHotkey('q'); return; }
             H.keys[k] = true;
@@ -42112,12 +42113,16 @@ const ThreeRenderer = (function () {
                 if (e.button === 2) _hqPortalDraw(false); else if (e.button === 0) _hqPortalPlaceAim();
                 e.preventDefault(); return;
             }
+            /* THE ENCOUNTER (HQ plan 9.4 rev 17): holstered, LEFT CLICK with the
+               pointer already locked is the officer's ATTACK — at a native in
+               reach, that is the fight. The first click only grabs the pointer. */
+            if (e.button === 0 && document.pointerLockElement === canvas) { _hqStrikeClick(); e.preventDefault(); return; }
             /* both views aim with the mouse (2026-09-04): the first click
                captures the pointer — a real third-person camera, not
                click-drag orbit. Drag stays as the fallback while the lock
                is refused or released (ESC gives the cursor back). */
             _hqTryLock();
-            H.drag = { x: e.clientX, y: e.clientY, moved: false };
+            H.drag = { x: e.clientX, y: e.clientY, moved: false, strike: e.button === 0 };
             H.lastDragAt = performance.now();
             e.preventDefault();
         };
@@ -42151,7 +42156,12 @@ const ThreeRenderer = (function () {
                 H.lastDragAt = performance.now();
             }
         };
-        H.onMouseUp = function () { if (_hq) H.drag = null; };
+        H.onMouseUp = function () {
+            if (!_hq) return;
+            var d = H.drag; H.drag = null;
+            /* the lock refused (a preview, a denied request): a LEFT CLICK that did not drag is still the attack */
+            if (d && d.strike && !d.moved && !H.paused && document.pointerLockElement !== canvas && !(H.portal && H.portal.drawn)) _hqStrikeClick();
+        };
         H.onWheel = function (e) {
             if (!_hq || H.paused || H.fp) return;
             H.cam.dist = Math.max(1.5, Math.min(7.5, H.cam.dist + Math.sign(e.deltaY) * 0.35));
@@ -42962,7 +42972,7 @@ const ThreeRenderer = (function () {
         portalHop: _hqPortalHop,
         portalRemove: _hqPortalRemove,
         /* THE ENCOUNTER (HQ plan 9.4, 2026-09-15 rev 16): throw a gesture by key ('1'..'4'), the native the gesture would land on */
-        strike: _hqStrikeKey,
+        strike: _hqStrikeClick,
         encounterAim: function () { return _hq ? _hqEncounterAim() : null; },
         portalDoors: function () { if (!_hq || !_hq.portal) return []; var o = []; for (var s in _hq.portal.placed) { var r = _hq.portal.placed[s]; o.push({ slot: s, x: r.door.x, y: r.y0, z: r.door.z, face: r.door.face, leaf: r.leaf }); } return o; },
         finds: function () { return _hq ? _hq.finds.map(function (f) { return { id: f.id, kind: f.kind, x: f.x, y: f.y, z: f.z }; }) : []; },

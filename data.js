@@ -28528,11 +28528,13 @@ const HQ_ENCOUNTER_RULES = {
     reach: 3.4,          // metres from the walker to the native
     cone: 55,            // degrees either side of the aim (the camera's yaw)
     dy: 1.8,             // metres of height difference allowed
-    gun: true,           // the door gun must be DRAWN (the user's call: "not when they are not holding their door gun")
-    cooldownMs: 1400,    // between two throws
+    cooldownMs: 1400,    // between two swings
     gm: 'arena', teamSize: 4,   // the fallback config when nothing sticky is on file
-    keys: { '1': 'attack', '2': 'magic', '3': 'aoe', '4': 'ultimate' },   // the gesture per key → a chain kind
-    labels: { attack: 'ATTACK', magic: 'CAST', aoe: 'AREA CAST', ultimate: 'CAPSTONE' },
+    /* rev 17 (the user's correction): the strike is LEFT CLICK with the door gun HOLSTERED
+       — drawn, a click places a threshold (9.5) and never attacks. No number keys. */
+    trigger: 'click',
+    gesture: 'attack',   // the one gesture: the walker's basic-attack chain
+    labels: { attack: 'ATTACK' },
 };
 /* a wild room: a site's board room or one of its complex parts — hqRoomSite is the ONE test */
 function hqEncounterRoomOk(roomId) { return !!hqRoomSite(roomId); }
@@ -28544,8 +28546,8 @@ function hqEncounterCharOk(ch) {
     if (/^hq-(clone|online|agent)-/.test(String(ch.id || ''))) return false;
     return (typeof AVAILABLE_RACES === 'undefined') || AVAILABLE_RACES.indexOf(ch.race) >= 0;
 }
-/* the gesture a key throws: 'attack' | 'magic' | 'aoe' | 'ultimate' | null */
-function hqEncounterGesture(key) { return HQ_ENCOUNTER_RULES.keys[String(key || '')] || null; }
+/* the gesture a trigger throws: the click (the default) → 'attack'; anything else null (the number keys are gone, rev 17) */
+function hqEncounterGesture(trigger) { return (trigger == null || String(trigger) === HQ_ENCOUNTER_RULES.trigger) ? HQ_ENCOUNTER_RULES.gesture : null; }
 /* the sticky config: what the terminal last filed (map.js writes it as JSON in localStorage `ew_hq_encounter_cfg`), sanitised; else the rules' fallback */
 function hqEncounterConfig(raw) {
     let o = null;

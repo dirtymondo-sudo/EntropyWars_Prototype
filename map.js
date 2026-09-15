@@ -1455,12 +1455,12 @@
         function _hqSetPrompt(t) {
             const el = _hqEl('hqPrompt');
             if (!el) return;
-            /* THE ENCOUNTER (9.4): the gun drawn and a native in reach + sight — the prompt names the gesture keys, never E */
+            /* THE ENCOUNTER (9.4 rev 17): the gun HOLSTERED and a native in reach + sight — the prompt names the click; drawn, the click is the door gun's */
             if (!_hqPanelTarget && (!t || t.kind === 'npc') && _hqEncounterEnabled() && _hqEncounterRoomOkNow()) {
                 let aim = null;
-                try { if (ThreeRenderer.hq.portalDrawn()) aim = ThreeRenderer.hq.encounterAim(); } catch (e) { aim = null; }
+                try { if (!ThreeRenderer.hq.portalDrawn()) aim = ThreeRenderer.hq.encounterAim(); } catch (e) { aim = null; }
                 if (aim && (!t || t.id === aim.id)) {
-                    el.innerHTML = `<b>▸ ${_hqEsc(aim.label || aim.race || 'THE NATIVE')}</b><span>${_hqEsc(aim.sub || 'A NATIVE · THE ROOM IS THE BOARD')}</span><i>[1] ATTACK · [2–4] CAST · ENGAGE${t ? ' · [E] TALK' : ''}</i>`;
+                    el.innerHTML = `<b>▸ ${_hqEsc(aim.label || aim.race || 'THE NATIVE')}</b><span>${_hqEsc(aim.sub || 'A NATIVE · THE ROOM IS THE BOARD')}</span><i>[CLICK] ATTACK · ENGAGE${t ? ' · [E] TALK' : ''}</i>`;
                     el.style.display = '';
                     return;
                 }
@@ -1840,10 +1840,12 @@
            THE ENCOUNTER (HQ plan 9.4 stage 1, 2026-09-15 rev 16) — the room
            becomes the board, and ONLY when the officer starts it (the user's
            rule: no random encounters). The renderer throws the walker's
-           attack / cast clip on 1–4 (onStrike, at once) and, with THE DOOR
-           GUN DRAWN and a native in reach / in the cone / in sight, reports
-           the landing (onEncounter, on the strike frame). Here: the guards
-           (a wild room — data.js hqEncounterRoomOk; the gun; the switch),
+           attack clip on LEFT CLICK with the door gun HOLSTERED (onStrike, at
+           once — drawn, the click places a threshold, 9.5; rev 17, the user's
+           correction: no number keys) and, with a native in reach / in the
+           cone / in sight, reports the landing (onEncounter, on the strike
+           frame). Here: the guards (a wild room — data.js hqEncounterRoomOk;
+           the gun holstered; the switch),
            the launch (data.js hqEncounterLaunch: the site's Δ, the sticky
            config the terminal last filed, the CPU pool led by the native's
            race) and the builder-less start — THE LAST ROSTER (state.js
@@ -1884,8 +1886,7 @@
             if (!_hqEncounterEnabled() || !_hqEncounterRoomOkNow()) return false;
             if (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return false;   // RULE #2: never from an online seat
             let drawn = false; try { drawn = ThreeRenderer.hq.portalDrawn(); } catch (e) { drawn = false; }
-            const R = (typeof HQ_ENCOUNTER_RULES !== 'undefined') ? HQ_ENCOUNTER_RULES : { gun: true };
-            if (R.gun !== false && !drawn) return false;
+            if (drawn) return false;   // the gun drawn: a click is a threshold, never a fight (rev 17)
             const L = (typeof window.hqEncounterLaunch === 'function') ? window.hqEncounterLaunch(_hqCurRoom, ev.target, _hqEncounterCfgRaw(), { gesture: ev.gesture }) : null;
             if (!L) return false;
             return _hqEncounterStart(L, ev);

@@ -27,15 +27,14 @@ const IX = fs.readFileSync(__dirname + '/index.html', 'utf8');
 const profile = (o) => Object.assign({ username: 'TEST', account: { gold: 0, unlockedUnits: [] }, door: { clearance: 1, hq: {} } }, o || {});
 const native = (o) => Object.assign({ kind: 'npc', id: 'hq-native-0', race: 'grey', gender: 'male', x: 1.5, z: -2, y: 0, label: 'Grey' }, o || {});
 
-test('THE RULES: a reach you can throw across, a cone, the gun REQUIRED (the user: not without the door gun), four gestures on 1–4, Arena · 4 as the fallback', () => {
+test('THE RULES: a reach you can throw across, a cone, the CLICK with the gun HOLSTERED (rev 17 — no number keys, the gun drawn places doors), Arena · 4 as the fallback', () => {
     assert.ok(R.reach >= 2 && R.reach <= 6, 'arm\'s reach plus a step, never across the room');
     assert.ok(R.cone >= 30 && R.cone <= 90);
-    assert.equal(R.gun, true);
+    assert.equal(R.gun, undefined, 'no gun gate any more: holstered = the attack, drawn = the door gun');
+    assert.equal(R.trigger, 'click'); assert.equal(R.gesture, 'attack');
+    assert.equal(R.keys, undefined, 'the 1–4 keys are gone (the user)');
     assert.ok(R.cooldownMs >= 600);
-    assert.equal(Object.keys(R.keys).join(''), '1234');
-    assert.equal(R.keys['1'], 'attack');
-    ['magic', 'aoe', 'ultimate'].forEach(k => assert.ok(Object.values(R.keys).includes(k), k + ' is a cast chain the renderer knows'));
-    Object.values(R.keys).forEach(k => assert.ok(R.labels[k], 'a label for ' + k));
+    assert.ok(R.labels.attack, 'a label for the attack');
     assert.equal(R.gm, 'arena'); assert.equal(R.teamSize, 4);
 });
 
@@ -63,10 +62,10 @@ test('WHO: a native (a roster vessel standing in the room) — never the cast, a
     assert.equal(ok(null), false);
 });
 
-test('THE GESTURES: 1 = the attack, 2–4 = the casts, anything else nothing', () => {
+test('THE GESTURE: the click = the attack, the old number keys nothing', () => {
     const gs = g('hqEncounterGesture');
-    assert.equal(gs('1'), 'attack'); assert.equal(gs('2'), 'magic'); assert.equal(gs('3'), 'aoe'); assert.equal(gs('4'), 'ultimate');
-    assert.equal(gs('5'), null); assert.equal(gs('e'), null); assert.equal(gs(''), null); assert.equal(gs(null), null);
+    assert.equal(gs('click'), 'attack'); assert.equal(gs(), 'attack'); assert.equal(gs(null), 'attack');
+    ['1', '2', '3', '4', 'e', ''].forEach(k => assert.equal(gs(k), null, k));
 });
 
 test('THE STICKY CONFIG: JSON or an object, sanitised — a bad mode / Clash / Gauntlet fall back to Arena, the team size clamps 1..8, rounds ≥ 0', () => {
@@ -111,26 +110,30 @@ test('THE RECORD: door.hq.encounters — count / wins / losses / last, on the pr
     assert.equal(p2.door.hq.encounters.wins, 1, 'a bare profile grows the record');
 });
 
-test('SOURCE · the renderer: the keys are named before the pinned line, 1–4 throw, the aim + line of sight, the one-shot on the walker, the strike frame, the API', () => {
-    assert.ok(TR.includes("if (k === '1' || k === '2' || k === '3' || k === '4') return k;"), 'the gesture keys are named');
-    assert.ok(TR.indexOf("if (k === '1' || k === '2' || k === '3' || k === '4') return k;") < TR.indexOf("|| k === 'q' || k === 'p') return k;"), 'before the pinned line (hq-floors.test.js)');
-    assert.ok(TR.includes("if (k === '1' || k === '2' || k === '3' || k === '4') { e.preventDefault(); _hqStrikeKey(k); return; }"));
-    ['function _hqStrikeKey(k)', 'function _hqEncounterAim()', 'function _hqLosClear(', 'function _hqStrikeClip(pl, gesture)'].forEach(f => assert.ok(TR.includes(f), f));
-    assert.ok(TR.includes("var drawn = !!(H.portal && H.portal.drawn);") && TR.includes("var armed = drawn || R.gun === false;"), 'armed = the gun drawn');
-    assert.ok(TR.includes("var target = armed ? _hqEncounterAim() : null;"), 'no aim without the gun');
+test('SOURCE · the renderer: no number keys, LEFT CLICK holstered = the attack (locked at once; unlocked, a click that did not drag), drawn = the door gun, the aim + line of sight, the one-shot on the walker, the strike frame, the API', () => {
+    assert.ok(!TR.includes("if (k === '1' || k === '2' || k === '3' || k === '4')"), 'the 1–4 keys are gone (the user)');
+    assert.ok(!TR.includes('_hqStrikeKey'), 'no key strike');
+    ['function _hqStrikeClick()', 'function _hqEncounterAim()', 'function _hqLosClear(', 'function _hqStrikeClip(pl, gesture)'].forEach(f => assert.ok(TR.includes(f), f));
+    assert.ok(TR.includes("if (drawn) return false;   // drawn, the click is the door gun's (9.5)"), 'drawn never attacks');
+    assert.ok(TR.includes("if (e.button === 0 && document.pointerLockElement === canvas) { _hqStrikeClick(); e.preventDefault(); return; }"), 'the locked click strikes');
+    assert.ok(TR.indexOf("if (H.portal && H.portal.drawn) {\n                _hqTryLock();") < TR.indexOf("if (e.button === 0 && document.pointerLockElement === canvas) { _hqStrikeClick();"), 'the door gun reads the click first');
+    assert.ok(TR.includes("H.drag = { x: e.clientX, y: e.clientY, moved: false, strike: e.button === 0 };"), 'the unlocked click remembers the button');
+    assert.ok(TR.includes("if (d && d.strike && !d.moved && !H.paused && document.pointerLockElement !== canvas && !(H.portal && H.portal.drawn)) _hqStrikeClick();"), 'a click that did not drag with the lock refused');
+    assert.ok(TR.includes("var target = _hqEncounterAim();"), 'the aim at every holstered click');
     assert.ok(TR.includes("_attackChainFor(bk)") && TR.includes("chain = _castChainFor(gesture);"), 'the one chain tables (never inline)');
     assert.ok(TR.includes("var st = _slotStrikeMs(e._ew_def || pl.def, name, act);"), 'the encounter lands on the strike frame');
     assert.ok(TR.includes("if (bl.npc || bl.portal) continue;"), 'a person never blocks the line');
     assert.ok(TR.includes("if (ch.strike) { if (performance.now() < ch.strike.until && ch.jumpT < 0) want = ch.strike.name; else ch.strike = null; }"), 'the clip owns the rig');
     assert.ok(TR.includes("if (_hq !== H || H.paused) return;   // the room changed"), 'a swing that outlives the room never lands');
-    assert.ok(TR.includes("        strike: _hqStrikeKey,") && TR.includes("encounterAim: function () { return _hq ? _hqEncounterAim() : null; },"), 'the API');
+    assert.ok(TR.includes("        strike: _hqStrikeClick,") && TR.includes("encounterAim: function () { return _hq ? _hqEncounterAim() : null; },"), 'the API');
     assert.ok(TR.includes("if (H.opts.onEncounter) { try { H.opts.onEncounter({ gesture: gesture, target: target, room: room, x: pl.x, z: pl.z, y: pl.y, yaw: H.cam.yaw, pitch: H.cam.pitch }); }"), 'the eye rides the event (9.4 seam 2, later)');
 });
 
 test('SOURCE · map.js: the enter opts, the guards (wild room · the gun · the switch · never online), the launch, THE LAST ROSTER inside _msConfirm, the sticky config, the ward on a loss, the prompt, the officer row', () => {
     assert.ok(MP.includes("onStrike: (typeof _hqStrikeEvent === 'function') ? _hqStrikeEvent : null,") && MP.includes("onEncounter: (typeof _hqEncounterFire === 'function') ? _hqEncounterFire : null,"), 'guarded with typeof (scene-lifecycle.test.js evals _hqEnter alone)');
     assert.ok(MP.includes("if (!_hqEncounterEnabled() || !_hqEncounterRoomOkNow()) return false;"), 'the switch + the wild room');
-    assert.ok(MP.includes("if (R.gun !== false && !drawn) return false;"), 'the gun');
+    assert.ok(MP.includes("if (drawn) return false;   // the gun drawn: a click is a threshold, never a fight (rev 17)"), 'the gun drawn never fights');
+    assert.ok(MP.includes("try { if (!ThreeRenderer.hq.portalDrawn()) aim = ThreeRenderer.hq.encounterAim(); } catch (e) { aim = null; }"), 'the prompt aims holstered');
     assert.ok(MP.includes("if (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return false;   // RULE #2"), 'never from an online seat');
     assert.ok(MP.includes("window.hqEncounterLaunch(_hqCurRoom, ev.target, _hqEncounterCfgRaw(), { gesture: ev.gesture })"));
     assert.ok(MP.includes("window._hqEncounterParty = party;") && MP.includes("const _encParty = window._hqEncounterParty || null;"), 'the roster hands through _msConfirm');
@@ -139,7 +142,7 @@ test('SOURCE · map.js: the enter opts, the guards (wild room · the gun · the 
     assert.ok(MP.includes("if (!party) {") && MP.includes("return window._hqLaunchMission(L.site, { delta: true, doorId: L.doorId, doorLabel: 'THE ENCOUNTER', counterId: L.counterId, variant: 'site', roster: L.roster });"), 'no roster → the terminal, once');
     assert.ok(MP.includes("_hqEncounterRememberCfg(gm.id, _msSelectedTeamSize, _msSelectedRounds)"), 'a filed crossing is the next encounter\'s config');
     assert.ok(MP.includes("if (encRes && !encRes.won && enabled && _hqHome && DOOR_HQ.rooms && DOOR_HQ.rooms.medical) { _hqLastRoom = 'medical'; _hqLastDoor = null; }"), 'a loss is the ward');
-    assert.ok(MP.includes("[1] ATTACK · [2–4] CAST · ENGAGE"), 'the prompt');
+    assert.ok(MP.includes("[CLICK] ATTACK · ENGAGE"), 'the prompt');
     assert.ok(MP.includes("window.hqEncounterLog(profile)"), 'the officer sheet');
     assert.ok(MP.includes("window._hqEncounterRun = { site: L.site,") && MP.includes("noIntro: true"), 'the run marker with the per-launch intro flag');
 });
@@ -153,5 +156,6 @@ test('SOURCE · battle.js: the intro cinematic is off PER LAUNCH (never the glob
 });
 
 test('SOURCE · index.html: the hint under the door gun\'s', () => {
-    assert.ok(IX.includes('1 attack · 2–4 cast = ENGAGE a native'));
+    assert.ok(IX.includes('<span>CLICK attack = ENGAGE a native</span>'), 'always shown — the attack needs no gun');
+    assert.ok(!IX.includes('2–4 cast'), 'the number keys are gone');
 });

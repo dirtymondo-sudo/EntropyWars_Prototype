@@ -2524,6 +2524,12 @@ marker; the officer sheet and every red CLEARANCE lamp state the next rung.
 Row 31's door gun is STANDARD ISSUE for the test (`HQ_PORTAL_RULES.free`),
 the user's call; the Quartermaster's signature returns with `free: false`.
 
+### 2026-09-15 rev 17 — 9.4 THE ENCOUNTER: the click (local)
+The user corrected the controls: with the door gun HOLSTERED a left click
+is the attack (at a native in reach + sight in a wild room, the fight);
+press F, wield the gun, and the click places a door instead. The 1–4 keys
+are gone. HQ plan §4 9.4, Part C row 35, §9 2026-09-15 rev 17.
+
 ### 2026-09-15 rev 16 — 9.4 THE ENCOUNTER stage 1, player-initiated (local)
 The user ruled: no random encounters. A fight starts only when the officer,
 door gun drawn, throws their attack (1) or a spell animation (2–4) at a
