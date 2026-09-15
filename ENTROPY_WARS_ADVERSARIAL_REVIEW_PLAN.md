@@ -12,6 +12,16 @@ Stop the incremental VFX helper cleanup batches here. Continue **Phase 6 — Are
 
 LIFE-06/VFX-03 remain partially validated with residual callback ownership deferred to the backlog. A current source count finds 24 direct timer sites from Merkaba onward; this is an inspection inventory, not 24 confirmed bugs or spells. Earlier direct timers also include infrastructure, cleanup and cache work. VFX-04 endpoint/list visibility remains open and deferred; it is not an exit gate for starting Phase 6. Preserve all completed fixes and their evidence. Do not resume spell-helper batches unless requested or a concrete blocker is found during the next phase.
 
+### Latest review — 2026-09-14: Key theft prevents correct carrier drops
+
+Baseline: connected main 409f498881686581f5016f4452609ca42fc9850f. Comparison with d93efc550cc70c90ef815de4d276c96dabf4a636 contains only the preceding review log and action diagnostic; runtime remains unchanged.
+
+**Key theft registry finding — P2 extension, reproduced and not fixed.** _stealFromUnit changes unit counters but leaves state.hourglasses[].carriedBy with the victim (battle.js:6734–6739). dropHourglassesFromUnit returns immediately when that victim's counter reaches zero (map.js:8996), before consulting the registry. After full theft, calling the drop routine for both thief and victim releases no Key: the thief owns no registry entries and the victim is skipped. After partial theft, the victim instead drops every original registry Key, including the allegedly stolen one. This is a downstream consequence of the existing registry divergence, not a separate root cause. Plunder has its own counter-only transfer at battle.js:54695–54697; that branch was inspected but is not executed by this diagnostic.
+
+Validation: eight controlled cases across both seats: four theft/drop cases and four no-theft drop controls. Unchanged production _stealFromUnit and dropHourglassesFromUnit execute in a Node VM; presentation is stubbed. Full theft leaves one registry Key attached to the victim after both drop calls; partial theft releases both at the victim. Controls release the correct count. The diagnostic deliberately asserts defective behavior. It does not execute the full death pipeline, winner resolution, AI selection, browser or online play, and does not establish an entire match becoming unwinnable.
+
+Evidence: check-key-theft-drop.cjs and key-theft-drop-results.txt. Run beside battle.js and map.js, or in review-evidence beneath them. Repair should transfer actual registry entries and reconcile counters through both theft paths, then verify pickup/drop and team buff bookkeeping without assuming a buff transfer rule. This remains prerequisite engine work for reliable carrier-steal AI valuation. No runtime changes; Phase 6 remains open.
+
 ### Latest review — 2026-09-14: attack and movement continuation ownership
 
 Baseline: connected main d93efc550cc70c90ef815de4d276c96dabf4a636. GitHub comparison against the previously verified b097ae7823e948c536233c8733cfc2dbf14a93a1 shows only the prior review document and inspect diagnostic added; runtime is unchanged. Prior AI-06h is now recorded in main, not fixed.
