@@ -36721,6 +36721,91 @@ const ThreeRenderer = (function () {
         _hq.roomPlate = el;
     }
 
+    /* ── THE GALLERY's geometry (HQ plan 9.2 stage 2, 2026-09-15 rev 20) ──
+       The slab (the floor sheet on top, the ceiling sheet underneath, a
+       trim fascia on the open edge), the closed-string flight (one solid
+       tread box per riser, a nosing strip), the rails (posts + a top and a
+       mid rail on the slab's open edge; a sloped rail up the flight's open
+       side from the first tread above a step) and the park rule's registers
+       (_hq.rails for every run, _hq.ramps for the flight's pitch). Every
+       piece is a box placed through the frame's own (s, t) → world map, so
+       one builder serves all four walls. */
+    function _hqBuildGallery(room) {
+        var F = _hq.gallery; if (!F) return;
+        var U = _hqUnits(), S = room.shell, G = _hq.shellGroup;
+        var texFloor = S.floor || 'terrazzo', texCeil = S.ceiling || 'concrete';
+        var flC = (S.floorColor != null) ? S.floorColor : 0xffffff;
+        var trimC = (S.dadoColor != null) ? S.dadoColor : 0x3a2a1c;
+        var deckMat = _hqMat(texFloor, Math.max(1, F.len / 1.6), Math.max(1, F.w / 1.6), { color: flC, shininess: 14 });
+        var underMat = _hqMat(texCeil, Math.max(1, F.len / 1.6), Math.max(1, F.w / 1.6), { color: (S.ceilColor != null) ? S.ceilColor : 0xffffff, shininess: 4 });
+        var fasciaMat = _hqMat(S.trim || 'teal', 4, 0.3, { color: trimC, shininess: 20 });
+        var treadMat = _hqMat(texFloor, 1, 1, { color: flC, shininess: 12 });
+        var railMat = _hqMat(null, 1, 1, { color: trimC, shininess: 40, specular: 0x555555 });
+        var rails = _hq.rails = _hq.rails || [], ramps = _hq.ramps = _hq.ramps || [];
+        /* a box in the LOCAL frame: centred at (s, t, y), sLen along the wall, tLen into the room */
+        var mk = function (s, t, y, sLen, tLen, hh, mat) {
+            var m = _hqBox(F.ew ? tLen : sLen, hh, F.ew ? sLen : tLen, mat);
+            var wp = F.world(s, t); m.position.set(wp.x * U, y * U, wp.z * U); G.add(m); return m;
+        };
+        var post = function (s, t, y0, hh, sz) { return mk(s, t, y0 + hh / 2, sz, sz, hh, railMat); };
+        var railH = HQ_GALLERY_RAIL_H;
+        /* THE SLAB */
+        var sLen = F.s1 - F.s0;
+        if (sLen > 0.3) {
+            var sl = (F.s0 + F.s1) / 2;
+            mk(sl, F.w / 2, F.h - F.thick / 2, sLen, F.w, F.thick, deckMat);
+            var under = new THREE.Mesh(new THREE.PlaneGeometry((F.ew ? F.w : sLen) * U, (F.ew ? sLen : F.w) * U), underMat);
+            under.rotation.x = Math.PI / 2; var uw = F.world(sl, F.w / 2); under.position.set(uw.x * U, (F.h - F.thick - 0.004) * U, uw.z * U); G.add(under);
+            mk(sl, F.w + 0.015, F.h - F.thick / 2 - 0.03, sLen, 0.05, F.thick + 0.1, fasciaMat);   // the fascia on the open edge
+            if (F.rail) {
+                var tr = F.w - 0.08;
+                var nP = Math.max(2, Math.ceil(sLen / 0.95) + 1);
+                for (var i = 0; i < nP; i++) post(F.s0 + 0.06 + (sLen - 0.12) * i / (nP - 1), tr, F.h, railH, 0.05);
+                mk(sl, tr, F.h + railH, sLen, 0.07, 0.07, railMat);        // the top rail
+                mk(sl, tr, F.h + railH * 0.55, sLen, 0.035, 0.035, railMat); // the mid rail
+                /* the newels at both ends */
+                post(F.s0 + 0.06, tr, F.h, railH + 0.12, 0.1); post(F.s1 - 0.06, tr, F.h, railH + 0.12, 0.1);
+                var e0 = F.world(F.s0, tr), e1 = F.world(F.s1, tr);
+                rails.push({ x0: e0.x, z0: e0.z, x1: e1.x, z1: e1.z, y: F.h + railH, gallery: true });
+            }
+        }
+        /* THE FLIGHT: a closed string — every tread a solid box from the floor to its top */
+        var st = F.stair;
+        if (st) {
+            var firstRailed = -1, railPts = [];
+            for (var k = 0; k < st.n; k++) {
+                var along = (k + 0.5) * st.run;
+                var sk = st.dir > 0 ? st.s0 + along : st.s1 - along;
+                var top = Math.min(F.h, (k + 1) * st.rise);
+                mk(sk, F.w / 2, top / 2, st.run + 0.01, F.w, top, treadMat);
+                mk(sk - st.dir * st.run / 2, F.w / 2, top - 0.012, 0.035, F.w, 0.024, fasciaMat);   // the nosing on the tread's low edge
+                if (F.rail && top > HQ_STEP_TOL) {
+                    if (firstRailed < 0) firstRailed = k;
+                    var pw = F.world(sk, F.w - 0.08);
+                    post(sk, F.w - 0.08, top, railH, 0.05);
+                    railPts.push({ x: pw.x, y: top + railH, z: pw.z });
+                }
+            }
+            /* the sloped rail: one bar from the first railed post's top to the last's */
+            if (railPts.length >= 2) {
+                var a = railPts[0], b = railPts[railPts.length - 1];
+                var dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z, L = Math.hypot(dx, dy, dz);
+                var bar = _hqBox(L + 0.1, 0.07, 0.07, railMat);
+                bar.position.set((a.x + b.x) / 2 * U, (a.y + b.y) / 2 * U, (a.z + b.z) / 2 * U);
+                bar.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), new THREE.Vector3(dx, dy, dz).normalize());
+                G.add(bar);
+                var bar2 = bar.clone(); bar2.position.y -= railH * 0.45 * U; bar2.scale.set(1, 0.5, 0.5); G.add(bar2);
+                rails.push({ x0: a.x, z0: a.z, x1: b.x, z1: b.z, y: (a.y + b.y) / 2, y0: a.y, y1: b.y, gallery: true, slope: true });
+                /* the newel at the foot of the railed run */
+                var fw = F.world(st.dir > 0 ? st.s0 + firstRailed * st.run + 0.05 : st.s1 - firstRailed * st.run - 0.05, F.w - 0.08);
+                var np = _hqBox(0.1, railH + 0.12, 0.1, railMat); np.position.set(fw.x * U, ((firstRailed * st.rise) + (railH + 0.12) / 2) * U, fw.z * U); G.add(np);
+            }
+            var cm = F.world((st.s0 + st.s1) / 2, F.w / 2);
+            var riseTo = F.side === 'n' || F.side === 's' ? (st.dir > 0 ? 'e' : 'w') : (st.dir > 0 ? 's' : 'n');
+            ramps.push({ x: cm.x, z: cm.z, dir: riseTo, y0: 0, y1: F.h, w: F.w, len: st.len, stair: true, gallery: true });
+        }
+    }
+
     /* ── THE TRAINING ROOM PIT (HQ plan 6.1a, 2026-09-04) ─────────────────
        Built into a box room whose layout carries `fx: 'training'`
        (DOOR_HQ.rooms.training): the 8×8 grid the prebuilt_training BOARD
@@ -37025,7 +37110,10 @@ const ThreeRenderer = (function () {
     /* a door's sill in a cave room (the cell inside its wall), else the level's floor */
     function _hqDoorFloorY(room, door) {
         /* Phase 8 stage 2 (2026-09-15): a box door may carry `y` (metres) — it stands at that height (THE STAIRWELL's top landing, a platform of stair_landing blockers under it) */
-        if (door && typeof door.y === 'number' && door.y > 0) return door.y;
+        if (door && typeof door.y === 'number') return Math.max(0, door.y);   // an explicit 0 puts a door on the floor under a gallery
+        /* THE GALLERY (9.2 stage 2): a door on the gallery's wall stands on the slab */
+        var gal = room && room.shell && room.shell.gallery;
+        if (gal && door && door.wall === gal.side && !door.level && door.wall !== 'free') return Math.max(1.6, gal.h || 2.9);
         return (room && room.cave && typeof hqCaveDoorY === 'function') ? hqCaveDoorY(room, door) : 0;
     }
     /* the cave's feet at (x, z) in the CURRENT room (null = no cave / not walkable) */
@@ -41887,6 +41975,115 @@ const ThreeRenderer = (function () {
        for everything walled or fenced */
     function _hqRoamM(S) { return (S && S.edge === 'open' && S.roam > 0) ? S.roam : 0; }
     var HQ_WADE_M = 0.55;   // THE WADE: how far under a liquid cell's sheet (at −0.3 m) the walker's feet stand — thigh-deep, always visible
+    /* ══ THE GALLERY (HQ plan 9.2 stage 2, 2026-09-15 rev 20) — two floors in ONE box room ══
+       `shell.gallery = { h, side: 'n'|'s'|'e'|'w', w, stairAt: 'start'|'end'|null, rail }`
+       (data.js) is a SLAB along one wall at height h, w metres deep, with a
+       straight closed-string flight at one end of the strip rising from the
+       floor to the slab (the flight's LOW end is at the wall's corner, its
+       foot open at the side), railed along the open edge. The walker reads it
+       as a LAYER of _hqSurface (order: the flight → the slab → the floor
+       UNDER it — the rotunda's own rule); a door on the gallery's wall stands
+       on the slab (_hqDoorFloorY); the boom treats the slab and the flight as
+       solid (_hqCamBlocked); a jump lands on either (_hqBlockerFloor);
+       `stairAt: null` = no stair — the door gun is the way up (9.5's first
+       "seen but out of reach" ledge). `rail: false` draws no rail, but the
+       edge is still a balcony (the step rule refuses a 2.9 m drop).
+       The frame: s runs ALONG the wall from its start corner (0 → len, west
+       to east on an n / s wall, north to south on an e / w wall), t runs INTO
+       the room from the wall (0 → w). Props stand on the slab with `y: h`,
+       wall props hang on it with `mount` measured from the floor as always. */
+    var HQ_GALLERY_THICK = 0.22, HQ_GALLERY_RAIL_BAND = 0.15, HQ_GALLERY_RISE = 0.25, HQ_GALLERY_RUN = 0.28, HQ_GALLERY_RAIL_H = 1.0;
+    function _hqGalleryFrame(room) {
+        var S = room && room.shell, g = S && S.gallery; if (!g || room.kind !== 'box') return null;
+        var side = (g.side === 's' || g.side === 'e' || g.side === 'w') ? g.side : 'n';
+        var ew = side === 'e' || side === 'w';
+        var len = ew ? S.d : S.w;
+        var h = Math.max(1.6, g.h || 2.9), w = Math.max(1.2, g.w || 3);
+        var n = Math.max(2, Math.ceil(h / (g.rise || HQ_GALLERY_RISE) - 0.0001));
+        var rise = h / n, run = g.run || HQ_GALLERY_RUN, runLen = n * run;
+        var stair = null, s0 = 0, s1 = len;
+        if (g.stairAt !== null && g.stairAt !== false) {
+            var atEnd = g.stairAt === 'end';
+            stair = atEnd ? { s0: len - runLen, s1: len, dir: -1, n: n, rise: rise, run: run, len: runLen }
+                          : { s0: 0, s1: runLen, dir: 1, n: n, rise: rise, run: run, len: runLen };
+            if (atEnd) s1 = len - runLen; else s0 = runLen;
+        }
+        var F = { side: side, ew: ew, len: len, h: h, w: w, thick: HQ_GALLERY_THICK, s0: s0, s1: s1, stair: stair, rail: g.rail !== false };
+        F.local = function (x, z) {
+            if (side === 'n') return { s: x + S.w / 2, t: z + S.d / 2 };
+            if (side === 's') return { s: x + S.w / 2, t: S.d / 2 - z };
+            if (side === 'e') return { s: z + S.d / 2, t: S.w / 2 - x };
+            return { s: z + S.d / 2, t: x + S.w / 2 };
+        };
+        F.world = function (s, t) {
+            if (side === 'n') return { x: s - S.w / 2, z: t - S.d / 2 };
+            if (side === 's') return { x: s - S.w / 2, z: S.d / 2 - t };
+            if (side === 'e') return { x: S.w / 2 - t, z: s - S.d / 2 };
+            return { x: t - S.w / 2, z: s - S.d / 2 };
+        };
+        return F;
+    }
+    /* the tread top under local s on the flight, or null when s is off it */
+    function _hqGalleryTread(F, s) {
+        var st = F.stair; if (!st || s < st.s0 - 0.02 || s > st.s1 + 0.02) return null;
+        var along = st.dir > 0 ? (s - st.s0) : (st.s1 - s);
+        var k = Math.max(0, Math.min(st.n - 1, Math.floor(along / st.run)));
+        return Math.min(F.h, (k + 1) * st.rise);
+    }
+    /* THE LAYER: the walker's surface on the gallery at (x, z) coming from
+       curY — a number (a tread / the slab), null (a wall: the flight's mass
+       from below, the railing from above), or undefined (not the gallery's:
+       off the strip, or the floor UNDER the slab). A free query (curY null)
+       is the floor's; the slab and the treads answer _hqGalleryFloor. */
+    function _hqGalleryAt(x, z, curY) {
+        var F = _hq && _hq.gallery; if (!F) return undefined;
+        var p = F.local(x, z), s = p.s, t = p.t;
+        if (t < -0.02 || t > F.w + 0.02) return undefined;
+        var tread = _hqGalleryTread(F, s);
+        if (tread !== null) {
+            if (curY == null) return undefined;
+            if (F.rail && t > F.w - HQ_GALLERY_RAIL_BAND - HQ_BODY_R && tread > HQ_STEP_TOL) return null;   // the flight's rail: solid once the tread is above a step (the foot of the stairs is open at the side)
+            if (tread - curY > HQ_STEP_TOL) return null;    // a closed string: the mass under the treads is a wall
+            if (curY - tread > HQ_DROP_MAX) return null;
+            return tread;
+        }
+        if (s < F.s0 - 0.02 || s > F.s1 + 0.02) return undefined;
+        if (curY == null || curY < F.h - HQ_STEP_TOL - 0.05) return undefined;   // under the slab: the floor
+        if (F.rail && t > F.w - HQ_GALLERY_RAIL_BAND - HQ_BODY_R) return null;   // the railing
+        return F.h;
+    }
+    /* a jump landing / the portal aim: the slab's top or the tread under (x, z) at or below the feet */
+    function _hqGalleryFloor(x, z, feetY) {
+        var F = _hq && _hq.gallery; if (!F) return null;
+        var p = F.local(x, z), s = p.s, t = p.t;
+        if (t < 0 || t > F.w) return null;
+        var tread = _hqGalleryTread(F, s);
+        if (tread !== null) return (feetY >= tread - 0.05) ? tread : null;
+        if (s < F.s0 || s > F.s1) return null;
+        return (feetY >= F.h - 0.05) ? F.h : null;
+    }
+    /* the airborne body: never inside the slab or the flight's mass; the railing needs the feet above it */
+    function _hqGalleryAir(x, z, y) {
+        var F = _hq && _hq.gallery; if (!F) return true;
+        var p = F.local(x, z), s = p.s, t = p.t;
+        if (t < 0 || t > F.w) return true;
+        var tread = _hqGalleryTread(F, s);
+        if (tread !== null) return y >= tread - 0.05;
+        if (s < F.s0 || s > F.s1) return true;
+        if (y > F.h - F.thick - 0.1 && y < F.h - 0.05) return false;
+        if (F.rail && y >= F.h - 0.05 && t > F.w - HQ_GALLERY_RAIL_BAND - HQ_BODY_R && y <= F.h + 1.15) return false;
+        return true;
+    }
+    /* the camera boom: the slab's volume and the flight's mass are solid */
+    function _hqGalleryCam(px, pz, py) {
+        var F = _hq && _hq.gallery; if (!F) return false;
+        var p = F.local(px, pz), s = p.s, t = p.t;
+        if (t < -0.1 || t > F.w + 0.1) return false;
+        var tread = _hqGalleryTread(F, s);
+        if (tread !== null) return py < tread + 0.22;
+        if (s < F.s0 || s > F.s1) return false;
+        return py > F.h - F.thick - 0.1 && py < F.h + 0.22;
+    }
     function _hqSurface(x, z, curY, ignoreBlockers) {
         var room = _hq.room, S = room.shell;
         var r = Math.hypot(x, z);
@@ -41912,6 +42109,8 @@ const ThreeRenderer = (function () {
                    A dry pit (a trench) is still a drop to its floor. */
                 if (sc) { if (!sc.walk) return null; y = _hqSiteFloorY(sc, x, z); }   // THE CAVE (rev 11): every cell's own feet — a ramp slopes, a ledge stands; a site board keeps its blockers
             }
+            /* THE GALLERY (9.2 stage 2): the flight, the slab, or the floor under it */
+            if (_hq.gallery) { var gy = _hqGalleryAt(x, z, curY); if (gy === null) return null; if (gy !== undefined) y = gy; }
         } else if (room.kind === 'bay') {
             /* a corridor: between the two wall arcs, short of the end caps (a full ring has none) */
             var capPad = ((0.15 + HQ_BODY_R) / Math.max(1, r)) * 180 / Math.PI;
@@ -42034,7 +42233,7 @@ const ThreeRenderer = (function () {
     /* the highest furniture top under (x, z) at or below the feet — the
        landing surface when it beats the floor (null = nothing under you) */
     function _hqBlockerFloor(x, z, feetY) {
-        var best = null;
+        var best = _hqGalleryFloor(x, z, feetY);   // THE GALLERY (9.2 stage 2): the slab / a tread under the feet is a landing too
         for (var i = 0; i < _hq.blockers.length; i++) {
             var b = _hq.blockers[i], top = _hqBlkTop(b);
             if (b.y != null && b.y > feetY + 1.2) continue;
@@ -42057,6 +42256,7 @@ const ThreeRenderer = (function () {
             if (Math.abs(x) > S.w / 2 + roamA - HQ_BODY_R - 0.08 || Math.abs(z) > S.d / 2 + roamA - HQ_BODY_R - 0.08) return false;
             /* the site board (plan 7.2): lava / deep water is never overflown; a pit's floor stays under the feet */
             if (_hq.site) { var sc = _hqSiteCellAt(x, z); if (sc) { if (!sc.walk) return false; if (_hq.site.cave ? (y < _hqSiteFloorY(sc, x, z) - 0.05) : (sc.top < 0 && y < sc.top - 0.05)) return false; } }   // a cave's ledge is solid in the air (rev 11)
+            if (_hq.gallery && !_hqGalleryAir(x, z, y)) return false;   // THE GALLERY (9.2 stage 2): the slab, the flight's mass and the railing are solid in the air
         } else if (room.kind === 'bay') {
             var deg = _hqNormDeg(Math.atan2(x, -z) * 180 / Math.PI);
             var capPad = ((0.15 + HQ_BODY_R) / Math.max(1, r)) * 180 / Math.PI;
@@ -42113,6 +42313,7 @@ const ThreeRenderer = (function () {
             var roamC = _hqRoamM(S);
             if (Math.abs(px) > S.w / 2 + roamC - 0.28 || Math.abs(pz) > S.d / 2 + roamC - 0.28) return true;
             if (!S.open && py > S.h - 0.3) return true;   // an outdoor room has no ceiling
+            if (_hq.gallery && _hqGalleryCam(px, pz, py)) return true;   // THE GALLERY (9.2 stage 2): the boom never enters the slab or the flight
             if (_hq.site) {
                 /* the site board (plan 7.2): the boom stays out of raised cells and off a pit's floor */
                 var sc = _hqSiteCellAt(px, pz);
@@ -42165,7 +42366,8 @@ const ThreeRenderer = (function () {
                 if (dF < bestD) { bestD = dF; best = { kind: 'door', id: d.door.id, label: d.door.label, sub: d.door.sub, state: d.state, door: d.door, rec: d }; }
                 return;
             }
-            if (d.level !== lvl) return;
+            if (d.box) { if (Math.abs(pl.y - d.y0) > 1.2) return; }   // a box door is found by HEIGHT (THE GALLERY's door, the stairwell's landing — 2026-09-15 rev 20), never by the rotunda's level
+            else if (d.level !== lvl) return;
             if (d.box) {
                 /* a flat wall: within 2.6 m in front of the panel, inside its width */
                 var ox = pl.x - d.box.wx, oz = pl.z - d.box.wz;
@@ -42960,6 +43162,7 @@ const ThreeRenderer = (function () {
             scene: new THREE.Scene(), camera: null, cube: null,
             shellGroup: new THREE.Group(), doorGroup: new THREE.Group(), propGroup: new THREE.Group(), charGroup: new THREE.Group(),
             doors: [], counters: [], chars: [], blockers: [], landings: [], player: null, fxPulse: [], site: null, sky: null, setting: null,
+            gallery: null,   /* THE GALLERY (9.2 stage 2, 2026-09-15 rev 20): the box room's two-floor frame (_hqGalleryFrame), read by _hqSurface / _hqAirOK / _hqCamBlocked / _hqBlockerFloor */
             finds: [], findLights: 0,   /* THE FINDS (9.1, 2026-09-15): the takeable objects standing in the room (_hqPlaceFinds) and the count of their point lights */
             portal: { drawn: false, ghost: null, aim: null, placed: {}, lastKey: '', hold: null, cross: null, issued: !!(opts.portal && opts.portal.issued) },   /* THE DOOR GUN (9.5, rev 13; rev 2 2026-09-15: `hold` = the mouth you came out of, `cross` = the entry's speed): the drawn state, the ghost, the last aim, the placed door records by slot */
             tickers: [], propLights: 0,   /* Phase 8 (2026-09-14): per-frame callbacks registered by procs (the orb, the torches, the shaft); the count of catalogue `light`s placed */
@@ -43052,7 +43255,9 @@ const ThreeRenderer = (function () {
         if (ThreePost && ThreePost.resize) ThreePost.resize(w, h);
         _hq.w = w; _hq.h = h;
         /* build */
+        _hq.gallery = _hqGalleryFrame(room);   /* THE GALLERY (9.2 stage 2): the frame before anything reads a surface */
         try { if (room.kind === 'box') _hqBuildBoxShell(room); else if (room.kind === 'bay') _hqBuildBayShell(room); else _hqBuildShell(room); } catch (e) { console.error('[HQ] shell build failed', e); }
+        if (_hq.gallery) { try { _hqBuildGallery(room); } catch (e) { console.error('[HQ] gallery failed', e); } }
         /* room-specific geometry: the Training Room's pit (HQ plan 6.1a) */
         if (room.fx === 'training') { try { _hqBuildTrainingPit(room); } catch (e) { console.error('[HQ] training pit failed', e); } }
         /* a walkable site (HQ plan 7.2): the Δ board in the middle of the room */

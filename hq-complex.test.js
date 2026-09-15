@@ -41,8 +41,9 @@ function landing(room, door) {
         _hqHeadingYaw: n => (180 - n) * Math.PI / 180,
         HQ_WALLS: { n: { nx: 0, nz: 1, yaw: 0 }, s: { nx: 0, nz: -1, yaw: Math.PI }, e: { nx: -1, nz: 0, yaw: -Math.PI / 2 }, w: { nx: 1, nz: 0, yaw: Math.PI / 2 } },
         THREE: { Vector3: class { constructor(x, y, z) { Object.assign(this, { x, y, z }); } } } };
-    vm.createContext(c); vm.runInContext(extract('_hqBoxWall') + '\n' + extract('_hqGoTo'), c);
-    c._hq.doors.push({ door, box: c._hqBoxWall(room, door.wall, door), y0: 0 });
+    vm.createContext(c); vm.runInContext(extract('_hqBoxWall') + '\n' + extract('_hqGoTo') + '\n' + extract('_hqDoorFloorY'), c);
+    /* THE GALLERY (9.2 stage 2): a door on the gallery's wall stands on the slab — the production height read */
+    c._hq.doors.push({ door, box: c._hqBoxWall(room, door.wall, door), y0: c._hqDoorFloorY(room, door) });
     assert.equal(c._hqGoTo(door.id, true), true, room.label + '/' + door.id + ' lands');
     return c._hq;
 }
@@ -153,8 +154,18 @@ test('the production renderer lands every door of the house inside its room, cle
             const inward = door.wall === 'free' ? [Math.sin(door.face * Math.PI / 180), -Math.cos(door.face * Math.PI / 180)] : { n: [0, 1], s: [0, -1], e: [-1, 0], w: [1, 0] }[door.wall];
             const fx = Math.sin(h.cam.yaw), fz = -Math.cos(h.cam.yaw);   // the walker's forward
             assert.ok(fx * inward[0] + fz * inward[1] < -0.99 || fx * inward[0] + fz * inward[1] > 0.99, id + '/' + door.id + ': faces along the doorway\'s normal');
-            assert.equal(p.air, false); assert.equal(p.y, 0);
-            for (const q of [...room.props, ...room.npcSpots]) assert.ok(!propBlocks(room, q, p.x, p.z, 0.35), id + '/' + door.id + ': ' + (q.key || q.race) + ' blocks the landing');
+            assert.equal(p.air, false);
+            const gal = S.gallery;
+            if (gal && door.wall === gal.side) {
+                /* THE GALLERY (9.2 stage 2): the landing is ON THE SLAB — at its height, 2.4 m in (inside the slab's depth), clear of the flight */
+                assert.equal(p.y, gal.h, id + '/' + door.id + ': lands at the gallery\'s height');
+                assert.ok(2.4 < gal.w - 0.3, id + '/' + door.id + ': the slab is deep enough for the landing');
+                const along = (gal.side === 'n' || gal.side === 's') ? door.x + S.w / 2 : door.z + S.d / 2, len = (gal.side === 'n' || gal.side === 's') ? S.w : S.d;
+                const run = Math.ceil(gal.h / 0.25) * 0.28;
+                if (gal.stairAt === 'end') assert.ok(along < len - run - 0.8, id + '/' + door.id + ': clear of the flight at the end');
+                else if (gal.stairAt) assert.ok(along > run + 0.8, id + '/' + door.id + ': clear of the flight at the start');
+            } else assert.equal(p.y, 0);
+            for (const q of [...room.props, ...room.npcSpots]) if (!(gal && (q.y || 0) >= gal.h - 0.01) === !(gal && p.y >= gal.h - 0.01)) assert.ok(!propBlocks(room, Object.assign({}, q, { y: 0 }), p.x, p.z, 0.35), id + '/' + door.id + ': ' + (q.key || q.race) + ' blocks the landing');
             for (const other of room.doors) if (other.id !== door.id && other.wall === door.wall) {
                 const k = (door.wall === 'n' || door.wall === 's') ? 'x' : 'z';
                 assert.ok(Math.abs(other[k] - door[k]) > 2.6, id + ': ' + door.id + ' and ' + other.id + ' overlap on the ' + door.wall + ' wall');
@@ -172,8 +183,10 @@ test('the production renderer lands every door of the house inside its room, cle
 test('THE PARK RULE (9.8): a rail in every room of the house, a stepped ramp in every big one; the house is lit by its own torches, candles and bulbs', () => {
     for (const id of PART_IDS) {
         const room = HQ.rooms[id], S = room.shell;
-        assert.ok(room.props.some(p => p.key === 'railing_1m'), id + ': a rail to grind');
-        if (S.w >= 12) assert.ok(room.props.some(p => /^riser_[123]$/.test(p.key)), id + ': a big room has a ramp (stepped, riser tiers — a slope waits on the 9.8 registry)');
+        /* THE GALLERY (9.2 stage 2): its banister is a rail, its flight is the ramp (the renderer registers both in _hq.rails / _hq.ramps) */
+        const gal = S.gallery;
+        assert.ok(room.props.some(p => p.key === 'railing_1m') || (gal && gal.rail !== false), id + ': a rail to grind');
+        if (S.w >= 12) assert.ok(room.props.some(p => /^riser_[123]$/.test(p.key)) || (gal && gal.stairAt), id + ': a big room has a ramp (stepped, riser tiers — a slope waits on the 9.8 registry)');
         assert.ok(S.strips === false && S.mood && S.mood.ambient < 1 && Array.isArray(S.lights) && S.lights.length === 0, id + ': no facility strips or fluorescents — the house lights itself');
         assert.ok(room.props.some(p => /^(wall_torch|candle_ring|bare_bulb)$/.test(p.key)), id + ': a torch, the candles or a bulb');
         const lit = room.props.filter(p => (HQ.catalogue[p.key] || {}).light).length;

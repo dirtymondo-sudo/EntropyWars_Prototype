@@ -25782,8 +25782,14 @@ const DOOR_HQ = {
            Every one wears `site` + `part` and NO `roomNo` — hqRoomNo reads
            the threshold's 13 through `site`, the register lists the house
            once, and 9.4 knows the rooms are WILD (hqRoomSite non-null).
-           The two-floor room (a `gallery` over the hall) is stage 2
-           renderer work; upstairs is a box room of its own for now.
+           THE HALL IS THE TWO-FLOOR ROOM (9.2 stage 2, 2026-09-15 rev 20):
+           `shell.gallery` hangs THE LANDING along its north wall at 2.9 m
+           with the flight up in the east corner (the renderer builds the
+           slab, the stairs and the banister — no stair / rail props); the
+           staircase door stands ON the landing (a door on the gallery's
+           wall stands on the slab — three-renderer.js _hqDoorFloorY) and
+           leads into UPSTAIRS, which stays a box room of its own (the four
+           bedrooms).
            THE PARK RULE (9.8): every room has a rail (the banister runs,
            `railing_1m`) and every big room a stepped ramp (`riser_*` tiers
            — a sloped ramp waits on the 9.8 registry).
@@ -25794,8 +25800,8 @@ const DOOR_HQ = {
             sub: 'THE FRONT HALL · THE STAIRS UP · THE CELLAR',
             kind: 'box', site: 'prebuilt_haunted', part: 'hall',
             shell: {
-                w: 14, d: 12, h: 4.0,
-                wallH: 4.0, dadoH: 1.0,
+                w: 14, d: 12, h: 5.8,
+                wallH: 5.8, dadoH: 1.0,
                 floor: 'wood_planks', wall: 'drywall_2', dado: 'wood', trim: 'dark_woods', ceiling: 'ceiling',
                 floorColor: 0x6a4a34, wallColor: 0x7a5c62, dadoColor: 0x5a3c2c, ceilColor: 0x9a8c80,
                 pipes: false,
@@ -25803,16 +25809,21 @@ const DOOR_HQ = {
                 lights: [],
                 mood: { light: 0xffb060, ambient: 0.55 },
                 plate: { x: -4.5, z: -5.75, y: 2.3 },
+                /* THE LANDING (9.2 stage 2): a 3 m gallery along the north
+                   wall at 2.9 m, the flight rising out of the east corner
+                   (its foot open at the side — the park rule's ramp is the
+                   stairs' own pitch), the banister along the open edge */
+                gallery: { h: 2.9, side: 'n', w: 3.0, stairAt: 'end', rail: true },
             },
             doors: [
                 { id: 'front', wall: 's', x: 0, leaf: 'leaf_wooden',
                   label: 'THE FRONT DOOR', sub: 'OUT TO THE GRAVEYARD · THE BOARD',
                   action: { room: 'site_prebuilt_haunted', at: 'house' },
                   desc: 'The front door from inside. The plate on the other side says 13; this side says 237. Outside is the graveyard — both of them — and the crossing console.' },
-                { id: 'stairs', wall: 'n', x: 4.5, leaf: null,
-                  label: 'THE STAIRCASE', sub: 'UP TO THE LANDING',
+                { id: 'stairs', wall: 'n', x: 1.0, leaf: null,
+                  label: 'THE LANDING', sub: 'UP THE STAIRS · THE BEDROOMS',
                   action: { room: 'site_prebuilt_haunted_upstairs', at: 'stairs' },
-                  desc: 'The staircase. It creaks on the seventh step whether or not anyone is on it. The landing is up there, and the four bedrooms, and the hatch.' },
+                  desc: 'The doorway at the head of the stairs, on the landing. The seventh step creaks whether or not anyone is on it. Through here are the four bedrooms, and the hatch.' },
                 { id: 'cellar', wall: 'w', z: 2.0, leaf: 'leaf_coffee',
                   label: 'THE CELLAR DOOR', sub: 'DOWN TO THE FURNACE',
                   action: { room: 'site_prebuilt_haunted_cellar', at: 'stairs' },
@@ -25820,14 +25831,19 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'house_stairs',   x: 2.4, z: -4.6, face: 90, rect: false },        // the flight up along the north wall, the top by the landing doorway
-                { key: 'railing_1m',     x: 0.4, z: -3.3, face: 0 },                       // THE BANISTER (the park rule's rail): three metres, open side
-                { key: 'railing_1m',     x: 1.4, z: -3.3, face: 0 },
-                { key: 'railing_1m',     x: 2.4, z: -3.3, face: 0 },
-                { key: 'riser_1',        x: -2.5, z: -4.9, face: 0 },                      // THE DAIS under the north window (the park rule's ramp, stepped)
+                /* the stairs and the banister are the gallery's own (shell.gallery) — no house_stairs / railing_1m props in the hall */
+                { key: 'riser_1',        x: -2.5, z: -4.9, face: 0 },                      // THE DAIS under the landing (the park rule, stepped)
                 { key: 'wall_torch',     wall: 'w', z: -3.0, mount: 1.7 },
                 { key: 'wall_torch',     wall: 'e', z: -3.0, mount: 1.7 },
                 { key: 'wall_torch',     wall: 's', x: 3.2, mount: 1.7 },
+                /* ON THE LANDING (y = the gallery's h): a torch and pictures on the north wall above the slab, a lamp and the paperwork on it */
+                { key: 'wall_torch',     wall: 'n', x: -3.5, mount: 4.4 },
+                { key: 'wall_torch',     wall: 'n', x: 3.0, mount: 4.4 },
+                { key: 'picture_round_a', wall: 'n', x: -1.6, mount: 4.5 },
+                { key: 'picture_round_a', wall: 'n', x: -5.4, mount: 4.5 },
+                { key: 'table_lamp',     x: -6.2, z: -5.4, y: 2.9 },                       // on the landing's far end; on, unpaid
+                { key: 'paper_sheet',    x: -2.6, z: -4.0, y: 2.91, face: 70 },            // Continuity's form for the second floor, blown upstairs
+                { key: 'cardboard_box',  x: -5.4, z: -4.2, y: 2.9, face: 15 },
                 { key: 'candle_ring',    x: -0.2, z: 0.6, y: 0.46 },                       // on the hall table
                 { key: 'coffee_table',   x: -0.2, z: 0.6 },                                // the hall table
                 { key: 'rug_round',      x: 0, z: 2.8 },
@@ -25837,9 +25853,8 @@ const DOOR_HQ = {
                 { key: 'picture_round_a', wall: 'e', z: 1.4, mount: 1.9 },
                 { key: 'picture_round_a', wall: 'e', z: 3.6, mount: 1.9 },
                 { key: 'picture_round_a', wall: 'w', z: -0.8, mount: 1.9 },
-                { key: 'wall_clock',     wall: 'n', x: -6.2, mount: 2.4 },                 // stopped at the hour the house keeps
+                { key: 'wall_clock',     wall: 'n', x: -6.2, mount: 2.1 },                 // stopped at the hour the house keeps (under the landing)
                 { key: 'wall_shelf',     wall: 'e', z: -1.2, mount: 1.5 },
-                { key: 'paper_sheet',    x: 4.4, z: 1.8, y: 0.01, face: 20 },              // Continuity's form for the second floor
                 { key: 'floor_stain',    x: 5.6, z: -1.2 },
                 { key: 'cardboard_box',  x: 6.2, z: 4.6, face: 30 },
                 { key: 'umbrella_stand', x: 1.6, z: 5.2 },
@@ -25854,8 +25869,8 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: 3.6, face: 0 },
         },
-        /* ── UPSTAIRS — the landing and the four bedrooms as one room; the
-           gallery over the hall (a two-floor room) is stage 2 ── */
+        /* ── UPSTAIRS — the four bedrooms as one room, through the doorway on
+           the hall's landing (the gallery IS the hall's, 9.2 stage 2) ── */
         site_prebuilt_haunted_upstairs: {
             label: 'THE HAUNTED HOUSE · UPSTAIRS',
             sub: 'THE LANDING · FOUR BEDROOMS · THE HATCH',

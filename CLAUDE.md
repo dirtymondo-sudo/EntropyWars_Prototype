@@ -2878,6 +2878,48 @@ Shared `getCubeAttackDamage` preserves actual Cube damage order and RNG executio
 
 FINAL delivery: `ENTROPY_WARS_PHASE6_BEAM_ARENA_OBJECTIVES.zip`, containing all beam, Key, Cube and wipeout changes. R2: ai.js/battle.js/map.js/data.js; Render: index.html (`20260914-ai-beam-arena-objectives-01-cors`); remaining files: repository. Sync runtime/entry files too. AI stamp `v4.11-2026-09-14-arena-cube-priority`. This supersedes interim package scopes in earlier entries. No commit, push or deployment. Next: carrier denial, move-then-inspect, residual scenarios/timing and authorized observations; Phase 6 remains open.
 
+## THE GALLERY — two floors in ONE box room (HQ plan 9.2 stage 2) — 2026-09-15 rev 20, local delivery
+`shell.gallery = { h, side: 'n'|'s'|'e'|'w', w, stairAt: 'start'|'end'|null,
+rail }` on a box room (data.js) = a SLAB along one wall at height h, w
+deep, a straight closed-string flight at the named end of the strip (its
+LOW end at the wall's corner, its foot open at the side; twelve risers over
+3.36 m for 2.9 m — `rise` / `run` override) and a banister on the open
+edge. three-renderer.js (the block right before `_hqSurface`):
+`_hqGalleryFrame(room)` → `_hq.gallery` (set in `_hqEnter` BEFORE the
+shell build; s ALONG the wall from its start corner, t INTO the room,
+`local` / `world`), **`_hqGalleryAt(x, z, curY)` = THE LAYER** `_hqSurface`'s
+box branch reads after the site cell — a number (a tread / the slab), `null`
+(a wall: the flight's mass from below, the rail band = 0.15 m + HQ_BODY_R
+from the slab or a tread above a step), `undefined` (not the gallery's: off
+the strip, or the FLOOR UNDER THE SLAB — a free query, curY null, is always
+the floor's); `_hqGalleryFloor` seeds `_hqBlockerFloor` (a jump lands on
+the slab / a tread; the portal aim lifts to them); `_hqGalleryAir`
+(`_hqAirOK`) and `_hqGalleryCam` (`_hqCamBlocked`) make the slab's volume
+and the flight solid; `_hqBuildGallery` draws it (deck in the floor sheet,
+underside in the ceiling sheet, trim fascia, solid tread boxes + nosings,
+posts + top + mid rail, the sloped rail up the flight, newels) and registers
+`_hq.rails` (two runs) + `_hq.ramps` (the flight) for 9.8. **A door on the
+gallery's wall STANDS ON THE SLAB** (`_hqDoorFloorY` → `gallery.h`; an
+explicit `y: 0` puts it under; a numeric `y` wins) and `_hqGoTo` lands 2.4 m
+in at that height. **THE FIX**: `_hqFindTarget` found a box door by the
+rotunda's LEVEL, so a box door at a height (this doorway, the stairwell's
+`landing` at y 6) was never offered — a box door is found by HEIGHT now
+(|Δy| ≤ 1.2). Props stand on the slab with `y: h`, wall props above it with
+`mount` from the floor. `stairAt: null` = the door gun's ledge; `rail: false`
+draws nothing but the edge stays a balcony. THE FIRST: the Haunted House's
+HALL (`site_prebuilt_haunted_hall`, h 5.8): THE LANDING along the north
+wall at 2.9 m, the flight out of the east corner, the `stairs` door (→
+upstairs, still its own box room) at x 1.0 ON the landing, the
+`house_stairs` / banister props retired. Adding a gallery = one `shell.
+gallery` row + doors on its wall + `y: h` props; hq-complex.test.js's
+landing harness reads `_hqDoorFloorY` and its park rule accepts the
+gallery's banister / flight. `npm test` runs `hq-gallery.test.js` (THE
+CLIMB: a walker climbs the flight and crosses the slab to the door by the
+step rule alone). NOT BUILT: 8.4's third ring on the rotunda, natives on
+the slab, a gallery on a site / cave room. Unseen live (RULE #1c): the
+deck / underside / tread sheets, the sloped rail, the first step onto the
+foot from the side, the boom on the landing, the plate at 2.9 m.
+
 ## THE COMPLEXES — THE HAUNTED HOUSE (HQ plan 9.2 stage 1) — 2026-09-15, local delivery
 A site that is SEVERAL ROOMS. The generated room (`hqSiteRoom`) stays the
 BOARD ROOM (console, battle marker, the way back to the bay); a COMPLEX is
