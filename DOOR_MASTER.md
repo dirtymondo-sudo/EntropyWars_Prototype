@@ -927,6 +927,24 @@ yes/no; **USER** are the user's own calls from the brief.
 
 # PART D — BUILD LOG (anti-"start over" memory — append on every DOOR session)
 
+### 2026-09-15 — Skateboard direction, steering and camera correction (local, not uploaded)
+
+The first push now converts camera forward `(sin(yaw), -cos(yaw))` to the
+rider's +Z-front heading. A/D carve left/right in the direction of travel.
+Carves and rail bends turn the camera by the opposite yaw delta, preserving
+manual mouse-look offset and leaving airborne trick spins independent of the
+camera. Heading wrap uses the shortest angle. Grinds update the visible rider
+position and facing before returning from the movement tick.
+
+Changed runtime files: `three-renderer.js` (R2), `index.html` (Render), shared
+cache token `20260915-skate-controls-02-cors`. No battle state or relay change;
+skateboarding remains local HQ movement for each player. Regression checks in
+`hq-skate.test.js` cover six view angles, both steering directions, camera
+tracking, manual look offset, angle wrap, airborne spins and curved-rail pose.
+The quarter-pipe fixture now uses camera yaw PI for +Z, matching the camera.
+No browser playtest was run; visual feel remains to be checked in game.
+
+
 ### 2026-09-02 — step 1 (visual layer) implemented
 Seal exports on R2 `Assets/door/` (user-made, 4 PNGs): `DOOR_Colored_Logo_
 ForBlackBG.png` (white text — dark bg ONLY), `DOOR_Colored_Logo.png` (black

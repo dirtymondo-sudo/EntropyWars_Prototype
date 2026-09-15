@@ -3572,6 +3572,16 @@ the `spawnSide` mirror, the dissolve, a cleared-room rule. UNSEEN LIVE
 (RULE #1c): the one-shot on the Player cast rig, the strike timing, the
 builder-less first frame, the ward landing.
 
+## SKATEBOARD CONTROL CORRECTION — 2026-09-15, local delivery
+First-push camera yaw must be converted to +Z-front rider yaw with
+`atan2(sin(cam.yaw), -cos(cam.yaw))`. A/D subtract the right-minus-left
+input from rider yaw. `_hqRideTurn` applies the inverse shortest heading delta
+to camera yaw, keeping mouse-look offset through carves and rail bends.
+Airborne stance/spin does not steer the camera. The grind branch updates the
+rider group position and yaw before returning. Regression checks live in
+`hq-skate.test.js`; cache token `20260915-skate-controls-02-cors`.
+Local changes only; no browser playtest or upload.
+
 ## SKATEBOARDING — THE RIDER (HQ plan 9.8 stage 1) — 2026-09-15 rev 23, local delivery
 A walker MODE, never a game mode: nothing on `state`, nothing relayed
 (RULE #2; hq-skate.test.js reads the block for `state.` and online.js for

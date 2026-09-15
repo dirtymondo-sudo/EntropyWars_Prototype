@@ -1,21 +1,16 @@
-ENTROPY WARS — HQ WORLD PILOT
-Complete files, flat archive. Local validation only; not deployed.
+SKATEBOARD CONTROLS FIX — 2026-09-15
 
-R2: data.js
-Render: index.html
-Repository only: CLAUDE.md, DOOR_HQ_BUILD_PLAN.md, DOOR_MASTER.md,
-hq-world.test.js, HQ_VALIDATION.md, HQ_FOCUSED.txt, HQ_FULL.txt,
-HQ_SYNTAX.txt, UPLOAD_README.txt, HQ_MANIFEST.json
-Also sync data.js and index.html to the repository.
+Complete replacement files, based on current GitHub main.
 
-Baseline main: 12f972aa9e733273aeaffcd2ce538ba117895a38
-Shared cache token: 20260915-hq-world-pilot-01-cors
-No new assets or runtime modules. map.js and three-renderer.js unchanged.
+R2: three-renderer.js
+Render: index.html (redeploy so the updated shared cache token is served)
+Repository only: hq-skate.test.js, CLAUDE.md, DOOR_MASTER.md,
+DOOR_HQ_BUILD_PLAN.md, VALIDATION.txt, this readme.
 
-After upload, walk into Moon (1969), the spaceship (426), or Saturn (6)
-from its usual bay. New bulkhead doors on the north side connect the three
-sites. Both directions work in headless checks; browser traversal remains
-unverified. Existing bay exits and crossing consoles are retained.
+Fixes W pushing opposite the camera, reversed A/D steering, and camera
+tracking during turns. Mouse-look offset remains under player control;
+airborne tricks do not spin the camera. Grinds now update visible rider
+position and facing. Cache token: 20260915-skate-controls-02-cors.
 
-Full suite: 1281 passed, 0 failed, 4 skipped. Syntax: 149/149.
-Plan corrections and stage status are in the HQ plan's Phase 9 review.
+No deployment or browser playtest performed. Upload the complete renderer
+and redeploy index.html together, then sync the changed files to the repo.

@@ -43426,6 +43426,14 @@ const ThreeRenderer = (function () {
         if (R.trick) { if (R.queue.length < 3) R.queue.push(id); return; }
         R.trick = { id: id, t: 0, ms: T.ms || 400, dir: 1 };
     }
+    /* Follow a carve/rail bend while preserving the player's mouse-look offset.
+       Camera yaw increases to the right; the +Z-front rider yaw increases left.
+       Airborne trick rotations never change the travel heading or the camera. */
+    function _hqRideTurn(R, heading) {
+        var delta = Math.atan2(Math.sin(heading - R.hd), Math.cos(heading - R.hd));
+        _hq.cam.yaw -= delta;
+        R.hd = heading;
+    }
     /* THE RIDE, per frame — in place of _hqTickWalker's movement */
     function _hqTickRide(dt) {
         var H = _hq, pl = H.player, R = H.ride, k = H.keys, S = _hqSkateRules();
@@ -43464,8 +43472,10 @@ const ThreeRenderer = (function () {
             }
             var p = _hqRailAt(g.rail, g.s);
             pl.x = p.x; pl.z = p.z; pl.y = p.y + 0.02; pl.visY = pl.y;
-            R.hd = Math.atan2(g.dir * p.tx, g.dir * p.tz);
-            pl.targetYaw = R.hd;
+            _hqRideTurn(R, Math.atan2(g.dir * p.tx, g.dir * p.tz));
+            pl.yaw = pl.targetYaw = R.hd + R.stance;
+            var grindU = _hqUnits();
+            pl.entry.group.position.set(pl.x * grindU, pl.visY * grindU, pl.z * grindU);
             R.sfxT -= dt; if (R.sfxT <= 0) { R.sfxT = 0.22; _hqRideEmit({ kind: 'grind', tick: true }); }
             return;
         }
@@ -43474,14 +43484,14 @@ const ThreeRenderer = (function () {
         if (!pl.air) {
             /* ── ON THE GROUND ── */
             if (!noCtl && (k.w || k.up)) {
-                if (R.v < 0.3) R.hd = H.cam.yaw;   // the first push goes where you look
+                if (R.v < 0.3) R.hd = Math.atan2(Math.sin(H.cam.yaw), -Math.cos(H.cam.yaw));   // camera -Z forward → rider +Z forward
                 R.pushT -= dt;
                 if (R.pushT <= 0) { R.v = Math.min(S.maxV, R.v + S.pushV); R.pushT = S.pushEvery; R.pushAnim = 0.32; _hqRideEmit({ kind: 'push', v: R.v }); }
             } else R.pushT = Math.min(R.pushT, 0.08);
             if (!noCtl && (k.s || k.down)) R.v *= Math.pow(S.brake, dt * 60);
             R.v *= Math.pow(S.friction, dt * 60);
             if (R.v < 0.05) R.v = 0;
-            R.hd += turnIn * S.turn * Math.min(1, R.v / 3) * dt;
+            _hqRideTurn(R, R.hd - turnIn * S.turn * Math.min(1, R.v / 3) * dt);
             leanT = -turnIn * 0.32 * Math.min(1, R.v / 4);
             /* THE OLLIE */
             if (!noCtl && k.space && !pl._jumpLatch) { pl.air = true; pl.vy = S.ollieV; pl.jumpT = 0; R.airT = 0; R.airY0 = pl.y; R.rise = 0; R.jumpFromWalkOff = false; _hqRideEmit({ kind: 'ollie', v: R.v }); }

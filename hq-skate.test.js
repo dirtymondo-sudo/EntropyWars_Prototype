@@ -34,7 +34,7 @@ function extract(name) {
 }
 function block() { const a = TR.indexOf('/* ══ SKATEBOARDING — THE RIDER'), b = TR.indexOf('/* ── per-frame ───', a); assert.ok(a > 0 && b > a); return TR.slice(a, b); }
 const RIDE_FNS = ['_hqSkateRules', '_hqSkateOff', '_hqRailLen', '_hqRailAt', '_hqRailNearest', '_hqRailSnap', '_hqRampLocal', '_hqRampUnder', '_hqRampProfile', '_hqRampSurfaceAt', '_hqRegisterPropPark',
-    '_hqRideNew', '_hqRideArm', '_hqRideEmit', '_hqRideToggle', '_hqRideKeyEdge', '_hqRideComboAdd', '_hqRideComboBank', '_hqRideBail', '_hqRideStartTrick', '_hqTickRide', '_hqRideSetY', '_hqRideGravity'];
+    '_hqRideTurn', '_hqRideNew', '_hqRideArm', '_hqRideEmit', '_hqRideToggle', '_hqRideKeyEdge', '_hqRideComboAdd', '_hqRideComboBank', '_hqRideBail', '_hqRideStartTrick', '_hqTickRide', '_hqRideSetY', '_hqRideGravity'];
 function consts() {
     const out = [];
     for (const n of ['HQ_BODY_R', 'HQ_STEP_TOL', 'HQ_DROP_MAX', 'HQ_FALL_MIN', 'HQ_GRAV', 'HQ_JUMP_V']) { const m = TR.match(new RegExp('    var ' + n + ' = ([0-9.]+);')); assert.ok(m, n); out.push('var ' + n + ' = ' + m[1] + ';'); }
@@ -163,7 +163,7 @@ test('THE RIDE: a push rolls where the camera looks, friction slows it, S brakes
     const v1 = c.R().v; c.step({}, 1 / 60, 60); assert.ok(c.R().v < v1 && c.R().v > v1 * 0.3, 'friction, gently');
     const v2 = c.R().v; c.step({ s: true }, 1 / 60, 30); assert.ok(c.R().v < v2 * 0.2, 'the brake');
     c.step({ w: true }, 1 / 60, 90); assert.ok(c.R().v > 5, 'up to speed');
-    const hd0 = c.R().hd; c.step({ a: true }, 1 / 60, 20); assert.ok(c.R().hd < hd0, 'A carves left');
+    const hd0 = c.R().hd; c.step({ a: true }, 1 / 60, 20); assert.ok(c.R().hd > hd0, 'A carves left');
     assert.ok(c.R().v <= R.maxV + 1e-9, 'capped');
     /* THE OLLIE + THE KICKFLIP */
     c.step({ space: true }, 1 / 60, 1);
@@ -232,7 +232,7 @@ test('THE QUARTER PIPE: ridden at speed the rider climbs the curve and LAUNCHES 
     const qp = { x: 0, z: 6, yaw: Math.PI, hw: 2.1, hd: 1.3, y0: 0, y1: 2.2, prof: 'qp', prop: 'quarter_pipe' };   // the foot at z 4.7, the coping at z 7.3
     const c = sandbox({ ramps: [qp], wallAt: 12 });
     c.pl.z = -9;
-    c._hqRideToggle(true); c._hq.cam.yaw = 0;   // looking +z, the foot of the pipe 13.7 m ahead
+    c._hqRideToggle(true); c._hq.cam.yaw = Math.PI;   // looking +z, the foot of the pipe 13.7 m ahead
     c.step({ w: true }, 1 / 60, 130); assert.ok(c.R().v > 7, 'fast: ' + c.R().v);
     let n = 0, maxY = 0, launched = null;
     while (n++ < 400) { c.step({}, 1 / 60, 1); maxY = Math.max(maxY, c.pl.y); if (!launched) launched = c.events().find(e => e.kind === 'launch'); if (launched && !c.pl.air) break; }
@@ -302,4 +302,49 @@ test('THE SOURCE SITES: the renderer (the keys, the hand-off, the pose, the API,
     const MI = fs.readFileSync(__dirname + '/MODEL_INDEX.md', 'utf8');
     assert.ok(/Meshy_AI_a_skateboard_0915212313_texture\.glb/.test(MI), 'MODEL_INDEX names the deck');
     assert.ok(/9\.8/.test(fs.readFileSync(__dirname + '/DOOR_HQ_BUILD_PLAN.md', 'utf8').slice(-400000)), 'the plan');
+});
+
+
+test('W follows the camera at cardinal and diagonal headings; A/D steer screen-left/right and the camera follows', () => {
+    for (const yaw of [0, Math.PI / 4, Math.PI / 2, Math.PI, -Math.PI / 2, -2.4]) {
+        for (const key of ['a', 'd']) {
+            const c = sandbox(); c._hqRideToggle(true); c._hq.cam.yaw = yaw;
+            c.step({ w: true }, 1 / 60, 20);
+            const fx = Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = Math.sin(yaw);
+            assert.ok(c.pl.x * fx + c.pl.z * fz > 0.4, 'W moves into the view at ' + yaw);
+            assert.ok(Math.abs(c.pl.x * rx + c.pl.z * rz) < 1e-8, 'no sideways drift');
+            const oldX = c.pl.x, oldZ = c.pl.z;
+            c.step({ [key]: true }, 1 / 60, 12);
+            const side = (c.pl.x - oldX) * rx + (c.pl.z - oldZ) * rz;
+            assert.ok(key === 'a' ? side < 0 : side > 0, key + ' turns the correct way');
+            assert.ok(Math.abs(Math.sin(c.R().hd) - Math.sin(c._hq.cam.yaw)) < 1e-8);
+            assert.ok(Math.abs(Math.cos(c.R().hd) + Math.cos(c._hq.cam.yaw)) < 1e-8);
+        }
+    }
+});
+
+test('camera preserves manual look offset, takes the short turn across a rail heading wrap, and ignores tricks', () => {
+    const c = sandbox(); c._hqRideToggle(true);
+    c.R().hd = Math.PI - 0.02; c._hq.cam.yaw = 0.42;
+    c._hqRideTurn(c.R(), -Math.PI + 0.02);
+    assert.ok(Math.abs(c._hq.cam.yaw - 0.38) < 1e-8, 'short turn preserves the 0.4 look offset');
+    c.R().v = 4; c.pl.air = true; c.pl.y = c.pl.visY = 3; c.pl.vy = 3;
+    const yaw = c._hq.cam.yaw;
+    c.step({ a: true }, 1 / 60, 10);
+    assert.equal(c._hq.cam.yaw, yaw, 'spin does not rotate the camera');
+});
+
+test('grinding updates the visible rider position and facing on curved rails', () => {
+    const c = sandbox(); c._hqRideToggle(true);
+    const rail = { arc: true, r: 5, a0: 0, a1: 90, y: 1 };
+    const start = c._hqRailAt(rail, 1);
+    c.R().hd = Math.atan2(start.tx, start.tz); c.R().v = 4;
+    c.R().grind = { rail, s: 1, dir: 1, t: 0, pts: 0, drift: 0 };
+    let position;
+    c.pl.entry.group.position.set = (x, y, z) => { position = { x, y, z }; };
+    c.step({}, 1 / 60, 1);
+    assert.ok(position, 'the rendered position was updated');
+    assert.equal(position.x, c.pl.x * 73); assert.equal(position.z, c.pl.z * 73);
+    assert.equal(position.y, c.pl.visY * 73);
+    assert.equal(c.pl.yaw, c.R().hd + c.R().stance);
 });

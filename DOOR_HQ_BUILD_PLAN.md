@@ -2551,6 +2551,24 @@ Guild Hub was the prototype; this plan is the building.
 
 ## 9. Build log (append per session)
 
+### 2026-09-15 — Skateboard direction, steering and camera correction (local, not uploaded)
+
+The first push now converts camera forward `(sin(yaw), -cos(yaw))` to the
+rider's +Z-front heading. A/D carve left/right in the direction of travel.
+Carves and rail bends turn the camera by the opposite yaw delta, preserving
+manual mouse-look offset and leaving airborne trick spins independent of the
+camera. Heading wrap uses the shortest angle. Grinds update the visible rider
+position and facing before returning from the movement tick.
+
+Changed runtime files: `three-renderer.js` (R2), `index.html` (Render), shared
+cache token `20260915-skate-controls-02-cors`. No battle state or relay change;
+skateboarding remains local HQ movement for each player. Regression checks in
+`hq-skate.test.js` cover six view angles, both steering directions, camera
+tracking, manual look offset, angle wrap, airborne spins and curved-rail pose.
+The quarter-pipe fixture now uses camera yaw PI for +Z, matching the camera.
+No browser playtest was run; visual feel remains to be checked in game.
+
+
 ### 2026-09-15 (rev 23) — 9.8 SKATEBOARDING STAGE 1 SHIPS: the rider, the grinds, the ramps, the tricks, the line (three-renderer.js, data.js, map.js, audio.js, styles-base.css, index.html; hq-skate.test.js, hq-finds.test.js, MODEL_INDEX.md; local, not uploaded)
 Baseline: the rev 22 tree as synced to the repo, plus the user's skateboard
 GLB (`Meshy_AI_a_skateboard_0915212313_texture.glb`, the repo root and R2
