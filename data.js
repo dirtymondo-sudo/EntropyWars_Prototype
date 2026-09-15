@@ -27036,6 +27036,134 @@ function hqTapeShelf(profile) {
     });
     return { found: rec.tapes.length, total: HQ_FIND_RULES.tapes, rows };
 }
+/* ── THE DOOR GUN — THE PORTABLE THRESHOLD (HQ plan 9.5, 2026-09-15 rev 13) ──
+   Two freestanding DOOR-issue leaves the officer PLACES on any walkable
+   surface they can see (the renderer's `_hqPortalAim`: a ray from the eye
+   against the room's own surface set — never a wall, never a fluid cell,
+   never inside a blocker); walk into A, step out of B. Portal's rule: the
+   pair is always the LAST TWO placed — an empty slot fills first, then the
+   older of the two moves (`hqPortalNextSlot`). The pair is ONE profile
+   record, `door.hq.portal = { issued, a: { room, x, y, z, face, leaf, at },
+   b: {…}, last }`, rebuilt by the renderer from the record on every room
+   entry (the record is the only truth — the escape rope survives a walk,
+   a screen, a match); a FRESH arrival from Play clears it (`hqPortalClear`,
+   map.js `_hqRecordVisit(null)`) — the rope is for one visit. ISSUE (Part
+   C row 31, REC): the Quartermaster issues it at KEYHOLDER (L2 — the door
+   rank by name) for `HQ_PORTAL_RULES.cost` Keys, spent from the officer's
+   issued count (`door.hq.keys`, the same ledger a Department grant adds
+   to); the dev override (`?portal` / `window.EW_HQ_PORTAL`, map.js
+   `_hqPortalForce`) hands it over unasked. Viewer-local, nothing on
+   `state`, nothing relayed (RULE #2); the Door Agent's Knock Knock is the
+   same object in a battle and stays the race's. The leaf a placed door
+   wears: a SITE room's own threshold leaf (the map's catalogue door),
+   `leaf_coffee` everywhere else — never a rank leaf (`hqPortalLeaf`). */
+const HQ_PORTAL_RULES = {
+    cost: 24,          // Keys the Quartermaster asks for the issue
+    rank: 2,           // KEYHOLDER — the door rank by name
+    reach: 14,         // metres the aim ray travels before it gives up
+    minGap: 1.6,       // metres between the two placed doors
+    minFromWalker: 1.2,// metres from the officer's own feet (a door under you is a door you are standing in)
+    footprint: 0.62,   // half the frame's width the surface must carry either side of the hit
+    leaf: 'leaf_coffee',
+    slots: ['a', 'b'],
+    labels: { a: 'THRESHOLD A', b: 'THRESHOLD B' },
+};
+function hqPortalRecord(profile) {
+    const r = (profile && profile.door && profile.door.hq && profile.door.hq.portal) || {};
+    const ok = s => (s && typeof s === 'object' && typeof s.room === 'string' && isFinite(s.x) && isFinite(s.z) && isFinite(s.y)) ? s : null;
+    return { issued: !!r.issued, a: ok(r.a), b: ok(r.b), last: (r.last === 'a' || r.last === 'b') ? r.last : null };
+}
+/* the slot the next placement fills: an empty one first (A, then B), else the OLDER of the two (Portal's rule) */
+function hqPortalNextSlot(rec) {
+    rec = rec || {};
+    if (!rec.a) return 'a';
+    if (!rec.b) return 'b';
+    return rec.last === 'a' ? 'b' : 'a';
+}
+function hqPortalTwin(slot) { return slot === 'a' ? 'b' : 'a'; }
+/* the leaf a door placed in `roomId` wears: the site's own threshold leaf, else the issue's plain coffee door; never a rank leaf */
+function hqPortalLeaf(roomId) {
+    const cat = (DOOR_HQ && DOOR_HQ.catalogue) || {};
+    const fallback = HQ_PORTAL_RULES.leaf;
+    try {
+        const room = DOOR_HQ.rooms[roomId];
+        const site = room && room.site ? hqSiteId(room.site) : null;
+        const th = site ? ((DOOR_HQ.thresholds || {})[site] || (DOOR_HQ.thresholds || {})[site + '_delta']) : null;
+        const key = th && th.leaf;
+        if (key && cat[key] && cat[key].file && !cat[key].rank && cat[key].open === 'swing') return key;
+    } catch (e) {}
+    return (cat[fallback] && cat[fallback].file) ? fallback : null;
+}
+/* the facility is SAFE by construction: a room with no site is never wild (9.4's rule, shared) — the escape rope's far end */
+function hqPortalSafeRoom(roomId) { return !hqRoomSite(roomId); }
+/* the ONE read for the pill, the panel, the renderer: who holds it, what stands where, which slot goes next */
+function hqPortalStatus(profile, opts) {
+    opts = opts || {};
+    const rec = hqPortalRecord(profile);
+    const level = (typeof doorClearance === 'function' && profile) ? (doorClearance(profile).level | 0) : 1;
+    const keys = (typeof hqKeys === 'function') ? (hqKeys(profile).keys | 0) : 0;
+    const forced = !!opts.force;
+    const issued = forced || rec.issued;
+    let reason = null;
+    if (!issued) {
+        if (level < HQ_PORTAL_RULES.rank) reason = 'rank';
+        else if (keys < HQ_PORTAL_RULES.cost) reason = 'keys';
+    }
+    const placed = (rec.a ? 1 : 0) + (rec.b ? 1 : 0);
+    return { issued, forced, level, rank: HQ_PORTAL_RULES.rank, keys, cost: HQ_PORTAL_RULES.cost, canIssue: !issued && !reason, reason,
+             a: rec.a, b: rec.b, last: rec.last, placed, next: hqPortalNextSlot(rec), paired: placed === 2 };
+}
+/* the Quartermaster's signature: KEYHOLDER + the Keys, once — writes into the profile object handed in; the caller saves */
+function hqPortalIssue(profile) {
+    if (!profile) return { ok: false, reason: 'noprofile' };
+    const st = hqPortalStatus(profile);
+    if (st.issued && !st.forced) return { ok: false, reason: 'issued' };
+    if (st.reason) return { ok: false, reason: st.reason, level: st.level, keys: st.keys };
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = {};
+    const P = profile.door.hq.portal = Object.assign({}, profile.door.hq.portal || {});
+    P.issued = true; P.issuedAt = Date.now();
+    profile.door.hq.keys = ((profile.door.hq.keys | 0) - HQ_PORTAL_RULES.cost);
+    return { ok: true, cost: HQ_PORTAL_RULES.cost, keys: hqKeys(profile).keys };
+}
+/* file a placement: `spec` = { room, x, y, z, face } in the room's metres frame (the renderer's aim); returns the slot it took and the twin */
+function hqPortalPlace(profile, spec, opts) {
+    opts = opts || {};
+    if (!profile) return { ok: false, reason: 'noprofile' };
+    const st = hqPortalStatus(profile, { force: opts.force });
+    if (!st.issued) return { ok: false, reason: st.reason || 'unissued' };
+    if (!spec || typeof spec.room !== 'string' || !DOOR_HQ.rooms[spec.room]) return { ok: false, reason: 'room' };
+    if (![spec.x, spec.y, spec.z].every(v => typeof v === 'number' && isFinite(v))) return { ok: false, reason: 'spec' };
+    const rec = hqPortalRecord(profile);
+    const slot = hqPortalNextSlot(rec);
+    const twin = rec[hqPortalTwin(slot)];
+    if (twin && twin.room === spec.room && Math.hypot(twin.x - spec.x, twin.z - spec.z) < HQ_PORTAL_RULES.minGap) return { ok: false, reason: 'twin' };
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = {};
+    const P = profile.door.hq.portal = Object.assign({}, profile.door.hq.portal || {});
+    if (st.forced && !P.issued) P.issued = true;   // the dev override files the issue it implies, so the record reads whole
+    const row = { room: spec.room, x: Math.round(spec.x * 100) / 100, y: Math.round(spec.y * 100) / 100, z: Math.round(spec.z * 100) / 100,
+                  face: Math.round(((spec.face || 0) % 360 + 360) % 360), leaf: hqPortalLeaf(spec.room), at: Date.now() };
+    P[slot] = row; P.last = slot;
+    return { ok: true, slot, spec: row, twin: twin || null, paired: !!twin, moved: !!rec[slot] };
+}
+/* a fresh arrival from Play: the rope is for one visit (the issue stays) */
+function hqPortalClear(profile) {
+    try {
+        const P = profile && profile.door && profile.door.hq && profile.door.hq.portal;
+        if (!P) return false;
+        const had = !!(P.a || P.b);
+        delete P.a; delete P.b; delete P.last;
+        return had;
+    } catch (e) { return false; }
+}
+/* the doors standing in `roomId` (the renderer rebuilds these on entry) */
+function hqPortalDoorsIn(profile, roomId) {
+    const rec = hqPortalRecord(profile), out = [];
+    HQ_PORTAL_RULES.slots.forEach(s => { if (rec[s] && rec[s].room === roomId) out.push({ slot: s, spec: rec[s] }); });
+    return out;
+}
+
 /* ── THE ROOM REGISTER (HQ plan 7.1, 2026-09-07) ───────────────────────
    Every site and every numbered HQ room wears ONE number (7.0 rule 1). The
    number lives with the thing it names — `roomNo` on the threshold (site),
@@ -28632,6 +28760,9 @@ if (typeof window !== 'undefined') {
     window.DOOR_TAPES = DOOR_TAPES; window.HQ_FIND_RULES = HQ_FIND_RULES; window.hqFindsInRoom = hqFindsInRoom; window.hqCollectFind = hqCollectFind;
     window.hqTapeShelf = hqTapeShelf; window.hqTapeCount = hqTapeCount; window.hqFindById = hqFindById; window.hqTapeById = hqTapeById; window.hqTapeClipUrl = hqTapeClipUrl; window.hqFindsRecord = hqFindsRecord;
     window.hqCaveDoorCell = hqCaveDoorCell; window.hqCaveRooms = hqCaveRooms;
+    /* THE DOOR GUN (HQ plan 9.5, 2026-09-15 rev 13) */
+    window.HQ_PORTAL_RULES = HQ_PORTAL_RULES; window.hqPortalRecord = hqPortalRecord; window.hqPortalStatus = hqPortalStatus; window.hqPortalIssue = hqPortalIssue;
+    window.hqPortalPlace = hqPortalPlace; window.hqPortalClear = hqPortalClear; window.hqPortalLeaf = hqPortalLeaf; window.hqPortalNextSlot = hqPortalNextSlot; window.hqPortalTwin = hqPortalTwin; window.hqPortalSafeRoom = hqPortalSafeRoom; window.hqPortalDoorsIn = hqPortalDoorsIn;
     window.hqLinkRoom = hqLinkRoom;
     window.hqLinkDoors = hqLinkDoors;
     window.hqLinkEndOk = hqLinkEndOk;

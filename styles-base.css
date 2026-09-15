@@ -4130,6 +4130,13 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-strip-stat.hq-strip-form.done { color: #8fd3a0; border-color: rgba(143,211,160,0.45); }
 .hq-strip-stat.hq-strip-tapes { color: #ff9ae4; cursor: pointer; border: 1px solid rgba(255,90,214,0.35); padding: 3px 8px; }
 .hq-strip-stat.hq-strip-tapes.done { color: #8fd3a0; border-color: rgba(143,211,160,0.45); }
+/* THE DOOR GUN (HQ plan 9.5, 2026-09-15 rev 13): the portable threshold's pill — cyan A, amber B, lit while drawn */
+.hq-strip-stat.hq-strip-portal { color: #9fe8ff; cursor: pointer; border: 1px solid rgba(127,217,255,0.35); padding: 3px 8px; }
+.hq-strip-stat.hq-strip-portal.paired { color: #ffd39a; border-color: rgba(255,184,107,0.45); }
+.hq-strip-stat.hq-strip-portal.drawn { color: #7dffb0; border-color: rgba(125,255,176,0.6); box-shadow: 0 0 10px rgba(125,255,176,0.25) inset; }
+.hq-hints .hq-hint-portal { display: none; }
+.hq-hints.portal .hq-hint-portal { display: inline; color: #7dffb0; }
+.hq-plate.hq-plate-portal b { color: #9fe8ff; }
 /* THE FINDS (HQ plan 9.1, 2026-09-15): the pickup toast over the prompt */
 .hq-toast { position: absolute; left: 50%; bottom: 136px; transform: translateX(-50%) translateY(8px); display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 20px; background: rgba(8,8,12,0.9); border: 1px solid rgba(255,90,214,0.55); box-shadow: 0 0 0 1px #000, 0 0 24px rgba(255,90,214,0.25); font-family: 'IBM Plex Mono', monospace; color: #ece7d8; z-index: 21; opacity: 0; transition: opacity 0.25s ease, transform 0.25s ease; pointer-events: none; text-align: center; white-space: nowrap; }
 .hq-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }

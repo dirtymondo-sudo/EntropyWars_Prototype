@@ -10515,6 +10515,48 @@ centroid), the well heads on the crag (3.5 m up). Dev: every helper is
 on `window` (`hqCaveInfo('site_prebuilt_hollow_earth_gallery')`,
 `hqCaveReach`); `ThreeRenderer.hq` → `_hq.site.cave`.
 
+## THE DOOR GUN — THE PORTABLE THRESHOLD (HQ plan 9.5 stage 1) — 2026-09-15 rev 13, local delivery
+**What it is:** two freestanding DOOR-issue doors the walker places. F draws
+(a ghost frame follows the aim; Q / right click holsters), LEFT CLICK places
+THRESHOLD A, the next click B, the third moves A (Portal's rule — the pair is
+the last two). Walk into one, step out of the other. The pair is
+`door.hq.portal` on the profile, rebuilt on every room entry, cleared on the
+next arrival from Play. Issue: the QUARTERMASTER door panel in the hall (the
+90° vault door) → SIGN FOR IT (KEYHOLDER + 24 Keys). Dev: `index.html?hq&portal`
+(or `window.EW_HQ_PORTAL = true` before entering) skips the issue.
+**Walk first (RULE #1c — none of this has been seen):**
+1. `?hq&portal`, F in the hall: the ghost should stand on the terrazzo where
+   you look, GREEN, an arrow at its foot pointing at you; aim at the wall →
+   it vanishes (no surface); aim at the reception desk's top → green ON the
+   counter; aim at your own feet → RED (TOO CLOSE); aim beside a room door →
+   RED (A DOOR IS THERE).
+2. Click twice, ten metres apart. Two frames in teal with the seal on the
+   plate, THRESHOLD A (cyan strips) and B (amber). Walk into A from its
+   front: the leaf swings as you approach, the press-in fires, you stand 2.4
+   m in front of B facing away with a flash. Walk into B → back at A.
+   Walk round BEHIND a door: it should be a wall (three discs on the leaf
+   line); the leaf must not swing from behind.
+3. A third click: A MOVES (the toast says MOVED); the old A is gone with its
+   blockers.
+4. Cross-room: place A in the foyer, walk into Room 13's site room, place B
+   on the walkway, walk into B → the ordinary door-blink → you stand in the
+   foyer in front of A. Walk into A → back in the site room at B.
+5. A site board: aim at a +1 climbed cell (green), a +2 wall cell (green —
+   the `hard` tapes' shelf; then walk through and stand on it), the moat
+   (RED · NOT ON WATER), a lava cell (RED), the battle marker's cell (should
+   be `room` or `door` refused — if it is green, that is a finding).
+6. The cave (Hollow Earth's chambers): a ledge two levels up should be
+   green; rock should end the ray; a pool should be red.
+7. EXIT to the menu and Play again: the pill reads ⌂ THRESHOLD ·· — the
+   pair is gone, the issue stays.
+**Readouts:** `ThreeRenderer.hq.portalAim()` → `{ ok, reason, x, y, z, face,
+dist }` (drawn or not); `ThreeRenderer.hq.portalDoors()`; `window.hqPortalStatus
+(ProfileSystem.getActiveProfile(), { force: true })`.
+**Known limits (stage 1):** one-sided doors; no declared roofs / galleries
+yet; the placed door's plate can hide under a low ceiling (it is clamped to
+`S.h − 0.12`); in third person the ray starts at the boom camera, so a floor
+right under the walker reads TOO CLOSE by design.
+
 ## THE FINDS + THE TAPES (HQ plan 9.1 stage 1) — 2026-09-15 rev 12, local delivery
 Not playtested (RULE #1c). What was run: `node --check` on every edited
 file, `npm test` (1324 / 1320 pass / 4 pre-existing skips), and a

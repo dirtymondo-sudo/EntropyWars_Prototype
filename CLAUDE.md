@@ -3189,3 +3189,51 @@ checks both ends, the plates, the sounds and the production landings. The
 other eight kinds in the plan's table (mirror · pool · painting ·
 fireplace · phonebox · screen · train · closet) are not built. Viewer-local
 (RULE #2). Unseen live (RULE #1c): the objects themselves.
+
+## THE DOOR GUN — THE PORTABLE THRESHOLD (HQ plan 9.5 stage 1) — 2026-09-15 rev 13, local delivery
+Two freestanding DOOR-issue doors the walker PLACES. **F** draws / holsters
+(**Q** holsters a drawn one before it rings the bell; RIGHT CLICK too); a
+GHOST frame follows the aim — three-renderer.js **`_hqPortalAim`**: the
+camera's own ray marched against the room's WALKABLE SURFACE SET
+(`_hqPortalSurf` = `_hqSurface(x, z, null, true)` lifted to
+`_hqBlockerFloor`; the ray ends at a wall / rock / off the room and at a
+blocker's side via `_hqAirClearOfBlockers`), green legal / red refused
+(`fluid` · `near` 1.2 m · `twin` 1.6 m · `door` a room door's lane · `room`
+the frame's footprint). **LEFT CLICK** places: `_hqPortalPlaceAim` →
+`opts.onPortalPlace(spec)` (map.js `_hqPortalPlaced` — ONE profile
+transaction: load → data.js **`hqPortalPlace`** → save) → the slot →
+**`_hqPortalBuild(slot, spec)`**: the DOOR frame + seal + THRESHOLD A / B
++ the catalogue leaf on a swing pivot, pushed into `_hq.doors` as a FREE
+box-wall record (`_hqBoxWall(room, 'free', …)`, `door.portal`, `verb:
+'STEP THROUGH'`, `action: { portal }`) so the scan / swing / press-in /
+`_hqGoTo` / `_hqCamInDoorway` read it unchanged; three discs on the leaf
+line (`blocker.portal = slot`) make the shut door a wall from behind.
+PORTAL'S RULE (data.js `hqPortalNextSlot`): an empty slot first (A, then
+B), else the OLDER moves. ONE record, `door.hq.portal = { issued, a, b,
+last }` — **`hqPortalStatus(profile, { force })`** is the ONE read;
+`hqPortalRecord` / `hqPortalIssue` (KEYHOLDER + `HQ_PORTAL_RULES.cost` 24
+Keys spent from the issued ledger `door.hq.keys`) / `hqPortalClear` (a
+fresh arrival from Play, map.js `_hqRecordVisit(null)` — the rope is for
+one visit) / `hqPortalLeaf(roomId)` (a site room's own threshold leaf when
+it swings, else `leaf_coffee`, NEVER a rank leaf) / `hqPortalDoorsIn` /
+`hqPortalSafeRoom` (= not `hqRoomSite`). The renderer rebuilds the pair's
+doors in the current room on every entry (`_hqBuildPortals(room, opts)`,
+`opts.portal` from map.js `_hqPortalOpts` — a fresh arrival hands none).
+Walking into one (E or the press-in; `_hqInteractTarget` /
+`_hqWalkThroughDoor` read `t.door.portal` FIRST) → map.js
+`window._hqPortalStep(slot)`: the twin in this room → `hq.portalHop`
+(`_hqGoTo('portal:<slot>', true)` + the latch, no rebuild); another room
+→ `_hqGoRoom(twin.room, 'portal:<slot>')`. ISSUE = the QUARTERMASTER door
+panel's row (`[data-portal-issue]` → `window._hqPortalIssue`, then
+`hq.portalIssued(true)` — no rebuild); dev `?portal` / `EW_HQ_PORTAL`
+(`_hqPortalForce`). Strip pill `#hqPortal` (click = draw), OFFICER sheet
+row, `.hq-hints.portal`. API: `hq.portalDraw / portalDrawn /
+portalIssued / portalAim / portalPlace / portalHop / portalRemove /
+portalDoors`. Viewer-local, nothing on `state`, nothing relayed (RULE #2);
+the Door Agent's Knock Knock stays the race's own object on the board.
+`npm test` runs `hq-portal.test.js`. RULES: the walker's key line is
+pinned by hq-floors.test.js (`… || k === 'q' || k === 'p') return k;` —
+add a key BEFORE q); anything new `_hqEnter` (map.js) references must be
+guarded with `typeof` — scene-lifecycle.test.js evals it alone. Unseen
+live (RULE #1c): the ghost, the frame's scale, the swing, the hop's flash,
+the cross-room landing.

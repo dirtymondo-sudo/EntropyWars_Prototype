@@ -325,6 +325,8 @@
                 if (doorId) { p.door.hq.lastDoor = doorId; p.door.hq.lastRoom = _hqCurRoom; }
                 else {
                     p.door.hq.visits = (p.door.hq.visits || 0) + 1;
+                    /* THE DOOR GUN (plan 9.5): the rope is for one visit — a fresh arrival clears the placed pair (the issue stays) */
+                    try { if (typeof window.hqPortalClear === 'function') window.hqPortalClear(p); } catch (e) {}
                     /* THE PUNCH CLOCK (Room 247, plan 7.9): the front door
                        punches you in once a day — the login streak */
                     try { if (typeof window.hqPunchIn === 'function') { const pr = window.hqPunchIn(p); if (pr && pr.punched) window._hqLastPunch = pr; } } catch (e) {}
@@ -471,6 +473,19 @@
                     if (tc) { tp.style.display = ''; tp.classList.toggle('done', tc.found >= tc.total); tp.innerHTML = `TAPES <b>${tc.found}</b> / ${tc.total}`; tp.title = 'THE TAPES — a hundred cassettes hidden about the world. Found ones play on the shelf in Room 360. Click for the shelf.'; }
                     else { tp.style.display = 'none'; tp.innerHTML = ''; }
                 }
+                /* THE DOOR GUN (plan 9.5): the issue and the pair on the strip; click = draw / holster */
+                const pp = _hqEl('hqPortal');
+                if (pp) {
+                    const ps = _hqPortalStatus(profile);
+                    if (ps && ps.issued) {
+                        const drawn = (() => { try { return ThreeRenderer.hq.portalDrawn(); } catch (e) { return false; } })();
+                        pp.style.display = '';
+                        pp.classList.toggle('drawn', drawn);
+                        pp.classList.toggle('paired', !!ps.paired);
+                        pp.innerHTML = `⌂ THRESHOLD <b>${ps.a ? 'A' : '·'}${ps.b ? 'B' : '·'}</b>${drawn ? ' · DRAWN' : ''}`;
+                        pp.title = 'THE PORTABLE THRESHOLD — F draws it, click places a door (the pair is the last two placed), Q holsters. Walk into one, step out of the other. ' + (ps.a ? 'A in ' + ((DOOR_HQ.rooms[ps.a.room] || {}).label || ps.a.room) + '. ' : '') + (ps.b ? 'B in ' + ((DOOR_HQ.rooms[ps.b.room] || {}).label || ps.b.room) + '. ' : '') + 'Cleared on the next arrival from Play.';
+                    } else { pp.style.display = 'none'; pp.innerHTML = ''; }
+                }
                 /* the day's Code Red (plan 3.3): strobes until cleared */
                 const cp = _hqEl('hqCodeRed');
                 if (cp) {
@@ -553,6 +568,11 @@
                 onPrompt: _hqSetPrompt,
                 onInteract: _hqInteractTarget,
                 onEnterDoor: _hqWalkThroughDoor,
+                /* THE DOOR GUN (HQ plan 9.5): the pair on file (cleared on a fresh arrival — the rope is for one visit),
+                   the filer a LEFT CLICK calls (→ the slot), and the beats (drawn / holstered / refused) */
+                portal: (typeof _hqPortalOpts === 'function') ? _hqPortalOpts(opts, profile) : null,
+                onPortalPlace: (typeof _hqPortalPlaced === 'function') ? _hqPortalPlaced : null,
+                onPortal: (typeof _hqPortalEvent === 'function') ? _hqPortalEvent : null,
                 /* ESC: close the panel, else Settings (plan D6 — an overlay,
                    not a place); EXIT on the strip is how you leave */
                 onEscape: () => { if (_hqTerm) { window._hqTerminalClose(); return; } if (_hqPause) { window._hqClosePause(); return; } if (_hqPanelTarget) window._hqClosePanel(); else window._hqOpenPause(); },
@@ -1088,6 +1108,7 @@
             if (pc) html += row('PUNCH CLOCK', `BEST ${pc.best | 0} · ${pc.days | 0} DAYS ON THE BOOKS`, `${pc.streak | 0} DAY STREAK`, pc.today ? 'stabilized' : 'off');
             if (k) html += row('KEYS', `${k.pickups | 0} RECOVERED${k.issued ? ' + ' + k.issued + ' ISSUED' : ''}`, `${k.keys | 0}`);
             if (mc) html += row('STABILIZED', 'THRESHOLDS WON BY EVERY WIN CONDITION', `${mc.mastered} / ${mc.total}`, mc.mastered === mc.total ? 'stabilized' : 'open');
+            { const ps = _hqPortalStatus(profile); if (ps && ps.issued) html += row('THE THRESHOLD', 'PORTABLE · DOOR ISSUE · F DRAWS · CLICK PLACES · Q HOLSTERS', `${ps.a ? 'A' : '·'} ${ps.b ? 'B' : '·'}`, ps.paired ? 'stabilized' : 'open'); }
             if (tc) html += row('THE TAPES', `THE HUNDRED · THE SHELF IN ROOM 360${tc.pay ? ' · ' + tc.pay + ' HAZARD PAY IN ENVELOPES' : ''}`, `${tc.found} / ${tc.total}`, tc.found >= tc.total ? 'stabilized' : 'open');
             if (sh) html += row('FORM 365', 'DAILY OFFICE OPERATIONS · ROOM 247', `${sh.done} / ${sh.total}`, sh.allDone ? 'stabilized' : 'unstable');
             if (walks) html += row('WALKS AS', 'OCCAM’S BARBERSHOP · ROOM 1287', _hqEsc(walks));
@@ -1404,7 +1425,7 @@
                — CLIMB IN, CLIMB DOWN — unless the END names its own (the well
                room's heads read CLIMB UP: the same rope, the other way) */
             const wayVerb = (t.kind === 'door' && t.door && t.door.way) ? ((t.door.verb) || _hqWayCat(t.door.way).verb) : null;
-            const verb = wayVerb || (t.kind === 'find' ? 'TAKE' : t.kind === 'door' ? ((t.door && t.door.action && t.door.action.mission && !_hqRoomExists(_hqSiteRoomId(t.door.action.mission))) ? 'OPEN' : 'ENTER') : (t.kind === 'counter' ? ((t.counter && t.counter.verb) || 'USE') : 'TALK'));
+            const verb = wayVerb || ((t.kind === 'door' && t.door && t.door.portal) ? 'STEP THROUGH' : t.kind === 'find' ? 'TAKE' : t.kind === 'door' ? ((t.door && t.door.action && t.door.action.mission && !_hqRoomExists(_hqSiteRoomId(t.door.action.mission))) ? 'OPEN' : 'ENTER') : (t.kind === 'counter' ? ((t.counter && t.counter.verb) || 'USE') : 'TALK'));
             const pNo = _hqNo(t.door || t.counter);
             el.innerHTML = `<b>▸ ${pNo ? 'ROOM ' + _hqEsc(pNo) + ' · ' : ''}${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span><i>[E] ${verb}</i>`;
             el.style.display = '';
@@ -1688,6 +1709,125 @@
             clearTimeout(_hqToast._t);
             _hqToast._t = setTimeout(() => { el.classList.remove('show'); setTimeout(() => { if (!el.classList.contains('show')) el.style.display = 'none'; }, 400); }, ms || 3200);
         }
+        /* ══ THE DOOR GUN — THE PORTABLE THRESHOLD (HQ plan 9.5, 2026-09-15 rev 13) ══
+           Two doors the officer places (renderer `_hqPortalAim` / `_hqPortalBuild`);
+           the PAIR is one profile record (data.js `hqPortalRecord`), filed here in
+           ONE transaction per placement (load → `hqPortalPlace` → save) and handed
+           to the renderer on every room entry. F draws, LEFT CLICK places, Q /
+           right click holsters; walk into one → out of the other: the twin in
+           this room = `hq.portalHop` (no rebuild), another room = the ordinary
+           room change landing at `portal:<slot>`. ISSUE = the Quartermaster's
+           door panel (KEYHOLDER + 24 Keys, Part C row 31 REC); `?portal` /
+           `window.EW_HQ_PORTAL` force it for dev. Viewer-local (RULE #2). */
+        function _hqPortalForce() { try { return /[?&]portal\b/.test(location.search) || !!window.EW_HQ_PORTAL; } catch (e) { return false; } }
+        function _hqPortalStatus(profile) { try { return (typeof window.hqPortalStatus === 'function') ? window.hqPortalStatus(profile || _hqProfile(), { force: _hqPortalForce() }) : null; } catch (e) { return null; } }
+        function _hqPortalOpts(opts, profile) {
+            const st = _hqPortalStatus(profile);
+            if (!st) return null;
+            /* a FRESH arrival from Play clears the pair (_hqRecordVisit(null) files it); do not rebuild a stale one on the way in */
+            const fresh = opts && opts.from === 'play';
+            return { issued: !!st.issued, a: fresh ? null : st.a, b: fresh ? null : st.b, next: st.next };
+        }
+        /* the filer (renderer onPortalPlace): one profile transaction, returns { slot, spec } or null */
+        function _hqPortalPlaced(spec) {
+            try {
+                const PS = window.ProfileSystem;
+                const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
+                if (idx === null || idx === undefined) { _hqToast('<b>NO CARD ON FILE</b><span>SIGN IN AT RECEPTION — THE ISSUE IS TO A NAME</span>'); return null; }
+                const p = PS.loadProfile(idx);
+                if (!p || typeof window.hqPortalPlace !== 'function') return null;
+                const r = window.hqPortalPlace(p, spec, { force: _hqPortalForce() });
+                if (!r || !r.ok) { _hqPortalRefused(r ? r.reason : 'none'); return null; }
+                PS.saveProfile(idx, p);
+                const L = (window.HQ_PORTAL_RULES && window.HQ_PORTAL_RULES.labels) || {};
+                const here = r.twin && r.twin.room === spec.room;
+                _hqToast(`<b>${_hqEsc(L[r.slot] || ('THRESHOLD ' + r.slot.toUpperCase()))} · ${r.moved ? 'MOVED' : 'PLACED'}</b><span>${r.paired ? (here ? 'THE PAIR STANDS · WALK INTO ONE, STEP OUT OF THE OTHER' : 'ITS TWIN WAITS IN ' + _hqEsc(String((DOOR_HQ.rooms[r.twin.room] || {}).label || r.twin.room).toUpperCase())) : 'PLACE THE OTHER · THE PAIR IS THE LAST TWO'}</span>`, 3200);
+                _hqFillStrip(p);
+                return { slot: r.slot, spec: r.spec };
+            } catch (e) { console.warn('[HQ] portal place', e); return null; }
+        }
+        const _HQ_PORTAL_REFUSALS = {
+            fluid: ['NOT ON WATER', 'A THRESHOLD NEEDS A FLOOR · NEVER A LIQUID CELL'],
+            near: ['TOO CLOSE', 'STEP BACK · A DOOR UNDER YOUR FEET IS A DOOR YOU ARE STANDING IN'],
+            twin: ['TOO CLOSE TO ITS TWIN', 'THE TWO NEED A METRE AND A HALF BETWEEN THEM'],
+            door: ['A DOOR IS THERE', 'THE BUILDING\'S OWN DOOR KEEPS ITS LANE'],
+            room: ['NO ROOM FOR THE FRAME', 'THE SURFACE MUST CARRY THE WHOLE FRAME · AIM AT A FLAT SPOT'],
+            wall: ['NOT A SURFACE', 'A THRESHOLD STANDS ON A FLOOR YOU CAN SEE · NEVER IN A WALL'],
+            none: ['NOTHING THERE', 'AIM AT A FLOOR, A LEDGE, A ROOF, A TOP YOU CAN SEE'],
+            unissued: ['NOT ISSUED', 'THE QUARTERMASTER SIGNS FOR THE PORTABLE THRESHOLD · KEYHOLDER + 24 KEYS'],
+        };
+        function _hqPortalRefused(reason) {
+            const r = _HQ_PORTAL_REFUSALS[reason] || _HQ_PORTAL_REFUSALS.none;
+            const now = performance.now();
+            if (_hqPortalRefused._at && now - _hqPortalRefused._at < 900) return;
+            _hqPortalRefused._at = now;
+            try { playSfx('uiError'); } catch (e) {}
+            _hqToast(`<b>${r[0]}</b><span>${r[1]}</span>`, 1800);
+        }
+        function _hqPortalEvent(ev) {
+            if (!ev) return;
+            if (ev.kind === 'draw') {
+                _hqFillStrip(_hqProfile());
+                const h = _hqEl('hqHints'); if (h) h.classList.toggle('portal', !!ev.on);
+                try { playSfx(ev.on ? 'uiButtonConfirm' : 'uiCursorMove'); } catch (e) {}
+                if (ev.on) _hqToast('<b>THE PORTABLE THRESHOLD</b><span>AIM AT A FLOOR YOU CAN SEE · CLICK PLACES · Q HOLSTERS</span>', 2200);
+            }
+            else if (ev.kind === 'refused') _hqPortalRefused(ev.reason);
+            else if (ev.kind === 'unissued') _hqPortalRefused('unissued');
+        }
+        /* the strip pill / the panel button: draw or holster */
+        window._hqPortalDraw = function (on) {
+            if (_hqSuspended || state.gameState !== GS.HQ) return false;
+            try {
+                const hq = ThreeRenderer.hq;
+                return hq.portalDraw(on == null ? !hq.portalDrawn() : !!on);
+            } catch (e) { return false; }
+        };
+        /* walking into a placed door (renderer onEnterDoor / E): out of its twin */
+        window._hqPortalStep = function (slot) {
+            if (_hqSuspended || state.gameState !== GS.HQ) return false;
+            const st = _hqPortalStatus();
+            if (!st) return false;
+            const twinSlot = slot === 'a' ? 'b' : 'a';
+            const twin = st[twinSlot];
+            if (!twin) { _hqToast('<b>NO TWIN</b><span>THE OTHER THRESHOLD IS NOT PLACED · THIS ONE OPENS ONTO NOTHING</span>', 2200); try { playSfx('uiError'); } catch (e) {} return false; }
+            try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.5 }); } catch (e) {}
+            if (twin.room === _hqCurRoom) {
+                let ok = false;
+                try { ok = ThreeRenderer.hq.portalHop(twinSlot); } catch (e) { ok = false; }
+                if (!ok) return false;
+                try { playSfx('teleport'); } catch (e) {}
+                _hqSetPrompt(null);
+                return true;
+            }
+            if (!_hqRoomExists(twin.room)) { _hqToast('<b>THE TWIN\'S ROOM IS GONE</b><span>THE RECORD NAMES A ROOM THE BUILDING NO LONGER HAS</span>', 2400); return false; }
+            return window._hqGoRoom(twin.room, 'portal:' + twinSlot);
+        };
+        /* the Quartermaster's signature (the door panel's button) */
+        window._hqPortalIssue = function () {
+            try {
+                const PS = window.ProfileSystem;
+                const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
+                if (idx === null || idx === undefined) { _hqToast('<b>NO CARD ON FILE</b><span>SIGN IN AT RECEPTION FIRST</span>'); return false; }
+                const p = PS.loadProfile(idx);
+                if (!p || typeof window.hqPortalIssue !== 'function') return false;
+                const r = window.hqPortalIssue(p);
+                if (!r || !r.ok) {
+                    const why = r && r.reason === 'rank' ? 'KEYHOLDER (L2) SIGNS FOR IT · YOU ARE L' + (r.level | 0) : r && r.reason === 'keys' ? `${(window.HQ_PORTAL_RULES || {}).cost || 24} KEYS · YOU HOLD ${r.keys | 0}` : r && r.reason === 'issued' ? 'ALREADY ON YOUR MANIFEST' : 'NOT TODAY';
+                    _hqToast(`<b>NOT ISSUED</b><span>${_hqEsc(why)}</span>`, 2600);
+                    try { playSfx('uiError'); } catch (e) {}
+                    return false;
+                }
+                PS.saveProfile(idx, p);
+                try { playSfx('levelUp'); } catch (e) {}
+                try { if (typeof playDoorSfx === 'function') playDoorSfx('doorStamp', { volume: 0.6 }); } catch (e) {}
+                _hqToast(`<b>PORTABLE THRESHOLD · ISSUED</b><span>−${r.cost} KEYS · PRESS F TO DRAW IT · CLICK TO PLACE A DOOR</span>`, 4200);
+                _hqFillStrip(p);
+                /* the walker learns it without a rebuild: the renderer's own flag */
+                try { if (ThreeRenderer.hq && ThreeRenderer.hq.active()) ThreeRenderer.hq.portalIssued(true); } catch (e) {}
+                return true;
+            } catch (e) { console.warn('[HQ] portal issue', e); return false; }
+        };
         window._hqTakeFind = function (t) {
             if (!t || t.kind !== 'find' || !t.id) return false;
             if (_hqSuspended || state.gameState !== GS.HQ) return false;
@@ -1993,6 +2133,17 @@
                 html += '</div>';
                 if (locked) html += `<p class="hq-panel-note">${_hqGateText(d, cl, profile)}</p>`;
                 else if (d.requiresKeys) html += `<p class="hq-panel-note">KEYS ${d.requiresKeys} on file · you hold ${(typeof window.hqKeys === 'function') ? window.hqKeys(profile).keys : 0}. Admitted.</p>`;
+                /* THE DOOR GUN (plan 9.5, Part C row 31): the Quartermaster issues THE PORTABLE THRESHOLD */
+                if (d.id === 'quartermaster') {
+                    const ps = _hqPortalStatus(profile);
+                    if (ps) {
+                        html += `<div class="hq-rows"><div class="hq-row hq-row-portal"><b>⌂ THE PORTABLE THRESHOLD</b><span>DOOR ISSUE · TWO DOORS YOU PLACE · KEYHOLDER + ${ps.cost} KEYS · YOU HOLD ${ps.keys}</span>`
+                            + (ps.issued ? '<i class="hq-lamp-chip st-stabilized">ON YOUR MANIFEST</i>' : `<i class="hq-lamp-chip st-${ps.canIssue ? 'open' : 'clearance'}">${ps.canIssue ? 'AVAILABLE' : (ps.reason === 'rank' ? 'KEYHOLDER ONLY' : 'KEYS SHORT')}</i>`)
+                            + (ps.issued ? '' : `<div class="hq-row-btns"><button class="hq-btn hq-btn-sm hq-btn-primary" ${ps.canIssue ? '' : 'disabled'} data-portal-issue="1">SIGN FOR IT ▸ −${ps.cost} KEYS</button></div>`)
+                            + '</div></div>';
+                        html += `<p class="hq-panel-note">${ps.issued ? 'F draws it. Aim at a floor you can see; click places a door, the second click its twin, the third moves the first. Walk into one, step out of the other. Q holsters. The pair is cleared on your next arrival from Play.' : 'Two freestanding thresholds on a strap. Reach a ledge you can see but not climb; or leave one by the front door and go looking for trouble.'}</p>`;
+                    }
+                }
                 if (d.rankDoor) html += '<p class="hq-panel-note">Your office door is your rank. A promotion replaces it (DOORMAT → DOORSTOP → KNOCKER → KEYHOLDER → GATEKEEPER → THE DOORMAN).</p>';
                 if (act.room && !locked && !_hqRoomExists(act.room)) html += `<p class="hq-panel-note">The interior behind this door (${_hqEsc(act.room)}) arrives in a later phase.</p>`;
             }
@@ -2522,6 +2673,8 @@
         function _hqInteractTarget(t) {
             /* THE FINDS (9.1): E on a glowing object takes it — no panel, the walk never pauses */
             if (t && t.kind === 'find') { window._hqTakeFind(t); return; }
+            /* THE DOOR GUN (9.5): a placed threshold — through it, out of its twin */
+            if (t && t.kind === 'door' && t.door && t.door.portal) { window._hqPortalStep(t.door.portal); return; }
             if (t && t.kind === 'door' && t.door) {
                 const act = _hqDoorDirectAction(t);
                 if (act) { window._hqDoAction(act, t); return; }
@@ -2536,6 +2689,7 @@
            you cannot walk through a door that stayed shut anyway */
         function _hqWalkThroughDoor(t) {
             if (!t || t.kind !== 'door' || !t.door) return;
+            if (t.door.portal) { window._hqPortalStep(t.door.portal); return; }   // THE DOOR GUN (9.5)
             const act = _hqDoorDirectAction(t);
             if (act) window._hqDoAction(act, t);
         }
@@ -2645,6 +2799,8 @@
             }
             const fnBtn = e.target.closest('[data-fn]');
             if (fnBtn && !fnBtn.disabled) { window._hqDoAction({ fn: fnBtn.getAttribute('data-fn') }); return; }
+            /* THE DOOR GUN (9.5): the Quartermaster's signature */
+            if (e.target.closest('[data-portal-issue]')) { window._hqClosePanel(); window._hqPortalIssue(); return; }
             const roomBtn = e.target.closest('[data-room]');
             if (roomBtn && !roomBtn.disabled) { window._hqDoAction({ room: roomBtn.getAttribute('data-room'), at: roomBtn.getAttribute('data-at') || null }); return; }
             const cross = e.target.closest('[data-cross],[data-deep],[data-codered]');

@@ -40533,6 +40533,336 @@ const ThreeRenderer = (function () {
         _hq.dirty = true;
         return true;
     }
+    /* ══════════════════════════════════════════════════════════════════
+     *  THE DOOR GUN — THE PORTABLE THRESHOLD (HQ plan 9.5, 2026-09-15 rev 13)
+     *
+     *  Two freestanding DOOR-issue doors the officer PLACES. F draws it
+     *  (Q / right click holsters): a GHOST frame follows the aim — the
+     *  camera's own ray marched against the room's WALKABLE SURFACE SET
+     *  (`_hqPortalAim`: `_hqSurface` with blockers off for the floor / a
+     *  cell's feet / a pit's bed, `_hqBlockerFloor` for a furniture top or
+     *  a raised site cell, `_hqAirClearOfBlockers` for the side of one —
+     *  the ray stops at a wall, at rock, at a cabinet; a fluid cell is a
+     *  hit that is REFUSED). Green = legal, red = refused with a reason
+     *  (fluid / near / twin / door / room / none). LEFT CLICK places it:
+     *  map.js files the placement on the profile (data.js `hqPortalPlace`
+     *  — Portal's rule, the pair is the last two) and hands back the slot;
+     *  the door is built IN PLACE (`_hqPortalBuild`): the DOOR frame in the
+     *  headquarters' teal + stone, the seal plate, the slot letter, the
+     *  map's own catalogue leaf on a swing pivot — a `_hq.doors` record
+     *  wearing a FREE box wall (`_hqBoxWall(room, 'free', …)`), so the
+     *  scan, the press-in (`_hqTickAutoEnter`), the swing (`_hqTickDoors`),
+     *  the landing (`_hqGoTo`) and the doorway blocker (`_hqCamInDoorway`)
+     *  all read it unchanged. Three discs along the leaf line make the
+     *  shut door a wall from behind (one-sided, like Portal's). Walking
+     *  into A → map.js `_hqPortalStep`: the twin in this room → `portalHop`
+     *  (the walker stands 2.4 m in front of it, facing away, a flash);
+     *  another room → the ordinary room change landing at `portal:<slot>`.
+     *  The record is rebuilt on every entry (`_hqBuildPortals`). Nothing
+     *  on `state`, nothing relayed (RULE #2).
+     * ══════════════════════════════════════════════════════════════════ */
+    var HQ_PORTAL_REACH = 14, HQ_PORTAL_STEP = 0.12, HQ_PORTAL_GAP = 1.6, HQ_PORTAL_NEAR = 1.2, HQ_PORTAL_FOOT = 0.62;
+    var HQ_PORTAL_COLORS = { ok: 0x7dffb0, bad: 0xff5a5a, a: 0x7fd9ff, b: 0xffb86b };
+    function _hqPortalRules() {
+        var R = (typeof window !== 'undefined' && window.HQ_PORTAL_RULES) || {};
+        return { reach: R.reach || HQ_PORTAL_REACH, gap: R.minGap || HQ_PORTAL_GAP, near: R.minFromWalker || HQ_PORTAL_NEAR, foot: R.footprint || HQ_PORTAL_FOOT };
+    }
+    /* the walkable surface under (x, z) for a ray point at height ry:
+       the floor / the cell's feet / a pit's bed (blockers off), lifted to
+       the highest furniture top at or below the ray. null = no surface
+       (a wall, rock, outside the room, a stair mass). */
+    function _hqPortalSurf(x, z, ry) {
+        var base = _hqSurface(x, z, null, true);
+        if (base === null) return null;
+        var bf = _hqBlockerFloor(x, z, ry);
+        return (bf !== null && bf > base) ? bf : base;
+    }
+    /* THE AIM: the eye's ray against the surface set → { ok, reason, x, y, z, face, dist } */
+    function _hqPortalAim() {
+        var H = _hq; if (!H || !H.player || !H.camera) return null;
+        var U = _hqUnits(), pl = H.player, R = _hqPortalRules();
+        var eye = H.camera.position.clone().multiplyScalar(1 / U);
+        var dir = new THREE.Vector3(); H.camera.getWorldDirection(dir);
+        var hit = null, reason = 'none';
+        for (var t = 0.3; t <= R.reach; t += HQ_PORTAL_STEP) {
+            var px = eye.x + dir.x * t, py = eye.y + dir.y * t, pz = eye.z + dir.z * t;
+            var surf = _hqPortalSurf(px, pz, py);
+            if (surf === null) { reason = 'wall'; break; }                       // into a wall / rock / off the room: the ray ends
+            if (py <= surf + 0.03) { hit = { x: px, y: surf, z: pz, dist: t }; break; }
+            if (!_hqAirClearOfBlockers(px, pz, py)) { reason = 'wall'; break; }   // the side of a cabinet / a raised cell
+        }
+        var out = { ok: false, reason: reason, x: 0, y: 0, z: 0, face: 0, dist: 0 };
+        if (!hit) return out;
+        out.x = hit.x; out.y = hit.y; out.z = hit.z; out.dist = hit.dist;
+        out.face = _hqHeadingOf(pl.x - hit.x, pl.z - hit.z);   // the opening faces the officer
+        /* the refusals, worst first */
+        var sc = H.site ? _hqSiteCellAt(hit.x, hit.z) : null;
+        if (sc && sc.fluid) { out.reason = 'fluid'; return out; }
+        if (Math.hypot(hit.x - pl.x, hit.z - pl.z) < R.near) { out.reason = 'near'; return out; }
+        for (var i = 0; i < H.doors.length; i++) {
+            var d = H.doors[i];
+            if (d.door && d.door.portal) {
+                if (Math.hypot(d.box.wx - hit.x, d.box.wz - hit.z) < R.gap) { out.reason = 'twin'; return out; }
+                continue;
+            }
+            var dx = d.box ? d.box.wx : (d.Rw ? Math.sin(_hqRad(d.door.deg || 0)) * d.Rw : 1e9), dz = d.box ? d.box.wz : (d.Rw ? -Math.cos(_hqRad(d.door.deg || 0)) * d.Rw : 1e9);
+            if (Math.hypot(dx - hit.x, dz - hit.z) < 1.7 && Math.abs((d.y0 || 0) - hit.y) < 1.5) { out.reason = 'door'; return out; }   // a room door's own lane
+        }
+        /* the frame's footprint: the surface either side of the hit, and a step in front, at the same height */
+        var fr = _hqRad(out.face), lx = Math.cos(fr), lz = Math.sin(fr), nx = Math.sin(fr), nz = -Math.cos(fr);
+        var pts = [[R.foot, 0], [-R.foot, 0], [0, 0.45], [R.foot * 0.6, 0.45], [-R.foot * 0.6, 0.45]];
+        for (var k = 0; k < pts.length; k++) {
+            var qx = hit.x + lx * pts[k][0] + nx * pts[k][1], qz = hit.z + lz * pts[k][0] + nz * pts[k][1];
+            var qs = _hqPortalSurf(qx, qz, hit.y + 0.5);
+            if (qs === null || Math.abs(qs - hit.y) > 0.14) { out.reason = 'room'; return out; }
+            var qc = H.site ? _hqSiteCellAt(qx, qz) : null;
+            if (qc && qc.fluid) { out.reason = 'fluid'; return out; }
+        }
+        out.ok = true; out.reason = null;
+        return out;
+    }
+    /* the GHOST: two jambs, a lintel and a floor ring in the verdict's colour, additive, never a blocker */
+    function _hqPortalGhost() {
+        var H = _hq; if (!H) return null;
+        if (H.portal.ghost) return H.portal.ghost;
+        var U = _hqUnits();
+        var g = new THREE.Group(); g.name = 'hq-portal-ghost'; g.visible = false;
+        var mat = new THREE.MeshBasicMaterial({ color: HQ_PORTAL_COLORS.ok, transparent: true, opacity: 0.42, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
+        var ow = 1.1, oh = 2.25, jw = 0.16;
+        var jL = new THREE.Mesh(new THREE.BoxGeometry(jw * U, (oh + 0.2) * U, 0.12 * U), mat); jL.position.set(-(ow / 2 + jw / 2) * U, (oh + 0.2) / 2 * U, 0);
+        var jR = jL.clone(); jR.position.x = -jL.position.x;
+        var lin = new THREE.Mesh(new THREE.BoxGeometry((ow + jw * 2) * U, 0.2 * U, 0.12 * U), mat); lin.position.set(0, (oh + 0.1) * U, 0);
+        var ring = new THREE.Mesh(new THREE.RingGeometry(0.62 * U, 0.78 * U, 40), mat); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02 * U;
+        var arrow = new THREE.Mesh(new THREE.ConeGeometry(0.12 * U, 0.3 * U, 3), mat); arrow.rotation.x = Math.PI / 2; arrow.position.set(0, 0.03 * U, 0.55 * U);   // points at the officer: the side you walk in from
+        g.add(jL, jR, lin, ring, arrow);
+        g.userData.mat = mat;
+        H.propGroup.add(g);
+        H.portal.ghost = g;
+        return g;
+    }
+    function _hqPortalTickAim() {
+        var H = _hq; if (!H || !H.portal || !H.portal.drawn) return;
+        var aim = _hqPortalAim();
+        H.portal.aim = aim;
+        var g = _hqPortalGhost(); if (!g) return;
+        var U = _hqUnits();
+        if (!aim || !aim.dist) { g.visible = false; }   // no surface under the ray at all: nothing to show
+        else {
+            g.visible = true;
+            g.position.set(aim.x * U, aim.y * U, aim.z * U);
+            g.rotation.y = _hqBoxWall(H.room, 'free', { x: aim.x, z: aim.z, face: aim.face }).yaw;
+            g.userData.mat.color.setHex(aim.ok ? HQ_PORTAL_COLORS.ok : HQ_PORTAL_COLORS.bad);
+            g.userData.mat.opacity = 0.34 + 0.1 * Math.sin(performance.now() * 0.006);
+        }
+        var key = aim ? ((aim.ok ? 'ok' : (aim.reason || 'none'))) : 'none';
+        if (key !== H.portal.lastKey) { H.portal.lastKey = key; if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'aim', ok: !!(aim && aim.ok), reason: aim ? aim.reason : 'none' }); } catch (e) {} } }
+    }
+    function _hqPortalDraw(on) {
+        var H = _hq; if (!H || !H.portal) return false;
+        if (on && !H.portal.issued) { if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'unissued' }); } catch (e) {} } return false; }
+        on = !!on;
+        if (H.portal.drawn === on) return on;
+        H.portal.drawn = on;
+        H.portal.lastKey = '';
+        if (!on && H.portal.ghost) H.portal.ghost.visible = false;
+        if (on) _hqTryLock();
+        if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'draw', on: on }); } catch (e) {} }
+        H.dirty = true;
+        return on;
+    }
+    /* LEFT CLICK while drawn: file the aim (map.js decides the slot from the profile record) and build the door in place */
+    function _hqPortalPlaceAim() {
+        var H = _hq; if (!H || !H.portal || !H.portal.drawn) return false;
+        var aim = H.portal.aim || _hqPortalAim();
+        if (!aim || !aim.ok) { if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'refused', reason: aim ? aim.reason : 'none' }); } catch (e) {} } return false; }
+        var spec = { room: H.opts.room || 'central_egress', x: aim.x, y: aim.y, z: aim.z, face: aim.face };
+        var filed = null;
+        if (H.opts.onPortalPlace) { try { filed = H.opts.onPortalPlace(spec); } catch (e) { console.warn('[HQ] portal place failed', e); filed = null; } }
+        else filed = { slot: H.portal.placed.a ? 'b' : 'a', spec: spec };   // no filer (a probe): A then B
+        if (!filed || !filed.slot) return false;
+        var row = filed.spec || spec;
+        row.leaf = row.leaf || _hqPortalLeafKey(H.room);
+        _hqPortalBuild(filed.slot, row, { fresh: true });
+        try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.45 }); } catch (e) {}
+        H.portal.lastKey = '';
+        return true;
+    }
+    function _hqPortalLeafKey(room) {
+        var D = _hqData(), roomId = (_hq && _hq.opts.room) || 'central_egress';
+        try { if (typeof window !== 'undefined' && typeof window.hqPortalLeaf === 'function') { var k = window.hqPortalLeaf(roomId); if (k && D.catalogue[k]) return k; } } catch (e) {}
+        return (D && D.catalogue.leaf_coffee) ? 'leaf_coffee' : null;
+    }
+    function _hqPortalRemove(slot) {
+        var H = _hq; if (!H || !H.portal) return false;
+        var rec = H.portal.placed[slot]; if (!rec) return false;
+        delete H.portal.placed[slot];
+        var di = H.doors.indexOf(rec); if (di >= 0) H.doors.splice(di, 1);
+        H.blockers = H.blockers.filter(function (b) { return b.portal !== slot; });
+        try { H.doorGroup.remove(rec.group); _disposeR(rec.group); } catch (e) {}
+        if (H.targetKey === 'door:' + rec.door.id) H.targetKey = '';
+        H.dirty = true;
+        return true;
+    }
+    /* the placed door: the DOOR frame + seal + the catalogue leaf, a free box-wall door record */
+    function _hqPortalBuild(slot, spec, opts) {
+        var H = _hq; if (!H || !H.portal) return null;
+        opts = opts || {};
+        _hqPortalRemove(slot);
+        var U = _hqUnits(), room = H.room, S = room.shell, D = _hqData();
+        var box = _hqBoxWall(room, 'free', { x: spec.x, z: spec.z, face: spec.face });
+        var y0 = spec.y || 0;
+        var leafKey = (spec.leaf && D.catalogue[spec.leaf] && D.catalogue[spec.leaf].file) ? spec.leaf : _hqPortalLeafKey(room);
+        var cat = leafKey ? D.catalogue[leafKey] : null;
+        var wide = false, oh = 2.25, ow = 1.1;
+        if (cat && cat.aspect > 0) ow = Math.round(Math.max(0.95, Math.min(1.6, cat.aspect * oh)) * 100) / 100;
+        var jw = 0.16, lh = 0.22, pd = 0.2;
+        var frameMat = _hqMat('teal', 0.6, 2.2, { color: 0xc9d3d1, shininess: 30, specular: 0x555555 });
+        var sillMat = _hqMat('stone', 1.5, 1.5, { color: 0xd8d4cc });
+        var plateMat = _hqBasic(0x101114);
+        var slotMat = new THREE.MeshBasicMaterial({ color: HQ_PORTAL_COLORS[slot] || 0xffffff, transparent: true, opacity: 0.85, fog: false });
+        var grp = new THREE.Group(); grp.name = 'hq-portal-' + slot;
+        grp.position.set(box.wx * U, y0 * U, box.wz * U); grp.rotation.y = box.yaw;
+        var jL = _hqBox(jw, oh + lh, pd, frameMat); jL.position.set(-(ow / 2 + jw / 2) * U, (oh + lh) / 2 * U, 0);
+        var jR = _hqBox(jw, oh + lh, pd, frameMat); jR.position.set((ow / 2 + jw / 2) * U, (oh + lh) / 2 * U, 0);
+        var lin = _hqBox(ow + jw * 2, lh, pd, frameMat); lin.position.set(0, (oh + lh / 2) * U, 0);
+        var cap = _hqBox(ow + jw * 2 + 0.08, 0.06, pd + 0.08, sillMat); cap.position.set(0, (oh + lh + 0.03) * U, 0);
+        var sill = _hqBox(ow + jw * 2 + 0.3, 0.05, pd + 0.5, sillMat); sill.position.set(0, 0.025 * U, 0);
+        var plateW = Math.max(ow, 0.7);
+        var plate = _hqBox(plateW * 0.62, plateW * 0.62, 0.03, plateMat); plate.position.set(0, (oh + lh + 0.08 + plateW * 0.31) * U, 0);
+        grp.add(jL, jR, lin, cap, sill, plate);
+        /* the seal (the crossing's own texture, loaded once) on BOTH faces */
+        try {
+            var sealUrl = (typeof DOOR_TEXT !== 'undefined' && DOOR_TEXT.LOGO) ? DOOR_TEXT.LOGO.onDark : null;
+            if (sealUrl && typeof textureLoader !== 'undefined') {
+                if (!_introSealTex) { _introSealTex = textureLoader.load(sealUrl, function () { if (_hq) _hq.dirty = true; }); _introSealTex.minFilter = THREE.LinearMipmapLinearFilter; _introSealTex.magFilter = THREE.LinearFilter; }
+                var sealMat = new THREE.MeshBasicMaterial({ map: _introSealTex, transparent: true, depthWrite: false, fog: false, side: THREE.DoubleSide });
+                var seal = new THREE.Mesh(new THREE.PlaneGeometry(plateW * 0.54 * U, plateW * 0.54 * U), sealMat);
+                seal.position.set(0, plate.position.y, 0.02 * U); grp.add(seal);
+            }
+        } catch (e) {}
+        /* the slot letter on the lintel, both faces */
+        try {
+            var tex = _hzTextTex('hq_portal_' + slot, ['THRESHOLD ' + slot.toUpperCase()], { w: 512, h: 96, color: '#f2efe6', pad: 0.16, weight: 'bold', font: '"Courier New", Courier, monospace' });
+            if (tex) {
+                var tm = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, fog: false, side: THREE.DoubleSide });
+                var tp = new THREE.Mesh(new THREE.PlaneGeometry((ow + jw * 2) * 0.92 * U, lh * 0.7 * U), tm);
+                tp.position.set(0, (oh + lh / 2) * U, (pd / 2 + 0.005) * U); grp.add(tp);
+                var tp2 = tp.clone(); tp2.position.z = -tp.position.z; tp2.rotation.y = Math.PI; grp.add(tp2);
+            }
+        } catch (e) {}
+        /* the slot lamp: a strip on each jamb in the slot's colour, and a glow at the sill */
+        var lampL = new THREE.Mesh(new THREE.BoxGeometry(0.03 * U, (oh * 0.8) * U, 0.03 * U), slotMat); lampL.position.set(-(ow / 2 + 0.02) * U, (oh / 2) * U, (pd / 2 + 0.01) * U);
+        var lampR = lampL.clone(); lampR.position.x = -lampL.position.x;
+        var glow = _hzGlowSprite(1.4 * U, HQ_PORTAL_COLORS[slot] || 0xffffff, 0.35, 0.12, 0.1, 1.4); glow.position.set(0, 0.25 * U, 0.35 * U);
+        grp.add(lampL, lampR, glow);
+        /* the leaf: the catalogue GLB on a swing pivot, opening TOWARD the officer (+Z) like every room door */
+        var leafGroup = new THREE.Group(); leafGroup.position.set(0, 0, 0);
+        var motion = null;
+        if (cat && cat.file) {
+            var hingeRight = cat.hinge === 'right';
+            motion = { mode: 'swing', pivot: new THREE.Group(), dir: hingeRight ? 1 : -1, angle: 1.45, ow: ow };
+            motion.pivot.position.x = motion.dir * (ow / 2 - 0.02) * U;
+            leafGroup.add(motion.pivot);
+            var targetH = (cat.frame ? oh + 0.03 : oh - 0.015) * U, targetW = (cat.frame ? ow + 0.05 : ow - 0.01) * U;
+            var yawDeg = cat.yaw || 0;
+            var lg = _miscModelInstance(_hqModelUrl(cat), true, targetH, {
+                fit: 'height', matPick: _hqPropMatPick,
+                onDone: function (g, s, bb) {
+                    var m = g.children[0];
+                    if (m && yawDeg) m.rotation.y = yawDeg * Math.PI / 180;
+                    var sideways = (Math.abs(yawDeg) % 180) === 90;
+                    var w = (sideways ? (bb.max.z - bb.min.z) : (bb.max.x - bb.min.x)) * s;
+                    if (w > 0) g.scale.x = cat.aspect ? (targetW / w) : Math.min(1, targetW / w);
+                    g.scale.z = Math.min(1, g.scale.x);
+                    if (_hq) _hq.dirty = true;
+                }
+            });
+            lg.position.x = -motion.pivot.position.x;
+            motion.pivot.add(lg);
+        } else {
+            /* no catalogue (a probe): a plain panel */
+            motion = { mode: 'swing', pivot: new THREE.Group(), dir: -1, angle: 1.45, ow: ow };
+            motion.pivot.position.x = -(ow / 2 - 0.02) * U;
+            var panel = _hqBox(ow - 0.02, oh - 0.02, 0.06, _hqMat(null, 1, 1, { color: 0x6b4a2e }));
+            panel.position.set((ow / 2 - 0.02) * U, (oh / 2) * U, 0);
+            motion.pivot.add(panel); leafGroup.add(motion.pivot);
+        }
+        grp.add(leafGroup);
+        /* the plate (CSS2D) */
+        var el = document.createElement('div');
+        el.className = 'hq-plate hq-plate-portal';
+        var chip = document.createElement('i');
+        var label = ((typeof window !== 'undefined' && window.HQ_PORTAL_RULES && window.HQ_PORTAL_RULES.labels) || {})[slot] || ('THRESHOLD ' + slot.toUpperCase());
+        el.innerHTML = '<b>' + label + '</b><span>PORTABLE · DOOR ISSUE</span>';
+        el.appendChild(chip);
+        var plateObj = new THREE.CSS2DObject(el);
+        plateObj.position.set(0, Math.min(oh + lh + 0.9, (room.kind === 'box' && S.h) ? S.h - 0.12 : oh + lh + 0.9) * U, 0.3 * U);
+        grp.add(plateObj);
+        H.doorGroup.add(grp);
+        var door = { id: 'portal:' + slot, label: label, sub: 'PORTABLE · DOOR ISSUE', wall: 'free', x: spec.x, z: spec.z, face: spec.face, portal: slot, verb: 'STEP THROUGH', action: { portal: slot }, leaf: leafKey };
+        var level = (S && S.wallH && y0 > S.wallH * 0.6) ? 1 : 0;
+        var rec = { door: door, group: grp, lens: null, glow: glow, plate: plateObj, plateEl: el, plateChip: chip, state: 'open', level: level, Rw: 0, y0: y0, wide: wide, ow: ow, oh: oh, inward: false, box: box, leaf: leafKey, motion: motion, openT: 0, portal: slot };
+        H.doors.push(rec);
+        H.portal.placed[slot] = rec;
+        try { _hqLampApply(rec, 'open'); } catch (e) {}
+        /* the shut door is a wall from behind: three discs along the leaf line (the press-in fires in front of them) */
+        var fr = _hqRad(spec.face || 0), lx = Math.cos(fr), lz = Math.sin(fr);
+        [-0.4, 0, 0.4].forEach(function (o) {
+            var d = new THREE.Object3D(); d.position.set((spec.x + lx * o) * U, y0 * U, (spec.z + lz * o) * U);
+            H.blockers.push({ obj: d, rad: 0.24, y: y0, top: y0 + oh, portal: slot });
+        });
+        if (opts.fresh) {
+            /* the placing beat: a ring of motes up the jambs */
+            try {
+                var burst = new THREE.Group(); burst.position.copy(grp.position);
+                var bits = [];
+                for (var b = 0; b < 10; b++) {
+                    var m = _hzGlowSprite(0.14 * U, b % 2 ? (HQ_PORTAL_COLORS[slot] || 0xffffff) : 0xffffff, 0.9, 0, 0, 0);
+                    var a = b * Math.PI * 2 / 10;
+                    m.userData.v = { x: Math.cos(a) * 0.7, y: 0.4 + (b % 3) * 0.8, z: Math.sin(a) * 0.7 };
+                    bits.push(m); burst.add(m);
+                }
+                H.propGroup.add(burst);
+                var t0 = performance.now();
+                H.tickers.push(function (dt, now) {
+                    if (!burst.parent) return;
+                    var k = Math.min(1, (now - t0) / 600), e = 1 - k;
+                    for (var j = 0; j < bits.length; j++) { var v = bits[j].userData.v; bits[j].position.set(v.x * (1 - k * 0.6) * U, (v.y + 1.6 * k) * U, v.z * (1 - k * 0.6) * U); bits[j].material.opacity = 0.9 * e; }
+                    if (k >= 1) { try { H.propGroup.remove(burst); _disposeR(burst); } catch (err) {} }
+                });
+            } catch (e) {}
+        }
+        H.dirty = true;
+        return rec;
+    }
+    /* on every room entry: the pair's doors standing in THIS room, from the record map.js hands in */
+    function _hqBuildPortals(room, opts) {
+        var H = _hq; if (!H || !H.portal) return;
+        var P = opts.portal; if (!P) return;
+        var roomId = opts.room || 'central_egress';
+        ['a', 'b'].forEach(function (s) {
+            var spec = P[s];
+            if (spec && spec.room === roomId) { try { _hqPortalBuild(s, spec); } catch (e) { console.warn('[HQ] portal', s, 'failed', e); } }
+        });
+    }
+    /* the twin is in THIS room: stand 2.4 m in front of it, facing away, with a flash — no rebuild */
+    function _hqPortalHop(slot) {
+        var H = _hq; if (!H || !H.portal || !H.portal.placed[slot]) return false;
+        var ok = _hqGoTo('portal:' + slot, true);
+        if (!ok) return false;
+        H.enterDoorLatch = 'portal:' + slot;
+        H.targetKey = '';
+        try {
+            var U = _hqUnits(), rec = H.portal.placed[slot];
+            var flash = _hzGlowSprite(3.2 * U, HQ_PORTAL_COLORS[slot] || 0xffffff, 0.8, 0, 0, 0);
+            flash.position.set(rec.group.position.x, rec.group.position.y + 1.2 * U, rec.group.position.z);
+            H.propGroup.add(flash);
+            var t0 = performance.now();
+            H.tickers.push(function (dt, now) { if (!flash.parent) return; var k = Math.min(1, (now - t0) / 420); flash.material.opacity = 0.8 * (1 - k); flash.scale.setScalar((3.2 + 2.5 * k) * U); if (k >= 1) { try { H.propGroup.remove(flash); _disposeR(flash); } catch (e) {} } });
+        } catch (e) {}
+        H.dirty = true;
+        return true;
+    }
     /* The story cast (data.js DOOR_CAST → sprites.js DOOR_CAST_MODELS,
        2026-09-06): named people at their posts — Rhonda seated behind the
        reception counter, the Janitor at his bucket, Otto kneeling at a door,
@@ -41010,7 +41340,7 @@ const ThreeRenderer = (function () {
         if (k === 'arrowright') return 'd';
         if (k === 'shift') return 'shift';
         if (k === ' ' || k === 'spacebar') return 'space';
-        if (k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'e' || k === 'v' || k === 'q' || k === 'p') return k;
+        if (k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'e' || k === 'v' || k === 'f' || k === 'q' || k === 'p') return k;   // F = the door gun (9.5)
         if (k === 'enter') return 'e';
         if (k === 'escape' || k === 'esc') return 'esc';
         return null;
@@ -41039,6 +41369,9 @@ const ThreeRenderer = (function () {
             }
             if (k === 'e') { e.preventDefault(); _hqInteract(); return; }
             if (k === 'v') { e.preventDefault(); _hqToggleView(); return; }
+            /* THE DOOR GUN (HQ plan 9.5): F draws / holsters; Q holsters a drawn one (else the bell) */
+            if (k === 'f') { e.preventDefault(); _hqPortalDraw(!(H.portal && H.portal.drawn)); return; }
+            if (k === 'q' && H.portal && H.portal.drawn) { e.preventDefault(); _hqPortalDraw(false); return; }
             /* Q = answer a BELL call from anywhere in the building (HQ plan D2) */
             if (k === 'q') { e.preventDefault(); if (H.opts.onHotkey) H.opts.onHotkey('q'); return; }
             H.keys[k] = true;
@@ -41048,6 +41381,12 @@ const ThreeRenderer = (function () {
         H.onBlur = function () { if (_hq) { H.keys = {}; H.drag = null; } };
         H.onMouseDown = function (e) {
             if (!_hq || H.paused) return;
+            /* THE DOOR GUN (HQ plan 9.5): drawn, LEFT CLICK places the ghost, RIGHT CLICK holsters */
+            if (H.portal && H.portal.drawn) {
+                _hqTryLock();
+                if (e.button === 2) _hqPortalDraw(false); else if (e.button === 0) _hqPortalPlaceAim();
+                e.preventDefault(); return;
+            }
             /* both views aim with the mouse (2026-09-04): the first click
                captures the pointer — a real third-person camera, not
                click-drag orbit. Drag stays as the fallback while the lock
@@ -41510,6 +41849,7 @@ const ThreeRenderer = (function () {
         }
         _hqTickDoors(dt, key);
         _hqTickAutoEnter(t);
+        _hqPortalTickAim();   // THE DOOR GUN (9.5): the ghost follows the aim while it is drawn
         if (H.opts.onDebug && now - H.lastDebug > 250) {
             H.lastDebug = now;
             var pl = H.player;
@@ -41625,6 +41965,7 @@ const ThreeRenderer = (function () {
             shellGroup: new THREE.Group(), doorGroup: new THREE.Group(), propGroup: new THREE.Group(), charGroup: new THREE.Group(),
             doors: [], counters: [], chars: [], blockers: [], landings: [], player: null, fxPulse: [], site: null, sky: null, setting: null,
             finds: [], findLights: 0,   /* THE FINDS (9.1, 2026-09-15): the takeable objects standing in the room (_hqPlaceFinds) and the count of their point lights */
+            portal: { drawn: false, ghost: null, aim: null, placed: {}, lastKey: '', issued: !!(opts.portal && opts.portal.issued) },   /* THE DOOR GUN (9.5, rev 13): the drawn state, the ghost, the last aim, the placed door records by slot */
             tickers: [], propLights: 0,   /* Phase 8 (2026-09-14): per-frame callbacks registered by procs (the orb, the torches, the shaft); the count of catalogue `light`s placed */
             props: [], focus: null,   /* props: { key, grp } per placed catalogue prop (the terminal's camera finds the CRT by key); focus: the screen push (_hqFocusScreen) */
             keys: {}, drag: null, lastDragAt: 0, fp: false, paused: false, ready: false, t0: performance.now(), lastMs: 0, lastDebug: 0,
@@ -41732,6 +42073,8 @@ const ThreeRenderer = (function () {
         try { _hqBuildCounters(room); } catch (e) { console.error('[HQ] counters failed', e); }
         try { _hqPlaceProps(room); } catch (e) { console.error('[HQ] props failed', e); }
         try { _hqPlaceFinds(room); } catch (e) { console.error('[HQ] finds failed', e); }
+        /* THE DOOR GUN (HQ plan 9.5): the pair's doors standing in this room, from the profile record */
+        try { _hqBuildPortals(room, opts); } catch (e) { console.error('[HQ] portals failed', e); }
         try { _hqSpawnPopulation(room, opts); } catch (e) { console.error('[HQ] population failed', e); }
         /* face the camera the way the spawn faces */
         var sp = room.spawn || { face: 0 };
@@ -41881,6 +42224,15 @@ const ThreeRenderer = (function () {
         target: function () { return _hq ? _hqFindTarget() : null; },
         /* THE FINDS (9.1, 2026-09-15): drop a taken find in place with its burst (map.js _hqTakeFind, after the profile is saved) */
         takeFind: _hqTakeFind,
+        /* THE DOOR GUN (HQ plan 9.5, 2026-09-15 rev 13): draw / holster, the aim readout, place the aim (a probe), the hop to a twin in this room, drop a slot */
+        portalDraw: _hqPortalDraw,
+        portalIssued: function (on) { if (_hq && _hq.portal) { _hq.portal.issued = !!on; if (!on) _hqPortalDraw(false); } return !!(_hq && _hq.portal && _hq.portal.issued); },
+        portalDrawn: function () { return !!(_hq && _hq.portal && _hq.portal.drawn); },
+        portalAim: function () { return (_hq && _hq.portal) ? (_hq.portal.drawn ? _hq.portal.aim : _hqPortalAim()) : null; },
+        portalPlace: _hqPortalPlaceAim,
+        portalHop: _hqPortalHop,
+        portalRemove: _hqPortalRemove,
+        portalDoors: function () { if (!_hq || !_hq.portal) return []; var o = []; for (var s in _hq.portal.placed) { var r = _hq.portal.placed[s]; o.push({ slot: s, x: r.door.x, y: r.y0, z: r.door.z, face: r.door.face, leaf: r.leaf }); } return o; },
         finds: function () { return _hq ? _hq.finds.map(function (f) { return { id: f.id, kind: f.kind, x: f.x, y: f.y, z: f.z }; }) : []; },
         pos: function () { if (!_hq || !_hq.player) return null; var p = _hq.player; return { x: p.x, z: p.z, y: p.y, deg: _hqNormDeg(Math.atan2(p.x, -p.z) * 180 / Math.PI), r: Math.hypot(p.x, p.z) }; },
         stateLabel: function (st) { return HQ_LAMP_LABEL[st] || st; },
