@@ -50,7 +50,9 @@ test('the Lunar pilot connects Moon, Derelict and Saturn both ways with distinct
   assert.ok(back);assert.equal(back.action.room,rid);assert.equal(back.action.at,door.id);
   assert.equal(back.leaf,door.leaf);assert.equal(D.doorSiteState(door,{}),'open');
   assert.equal(D.hqDoorNo(door),D.hqRoomNo(door.action.room));
-  assert.ok(room.doors.some(d=>d.id==='egress'));assert.ok(room.counters.some(c=>c.id==='battle'));
+  /* a link end may be a complex's PART (9.2 stage 2: the Spaceship's collars are the airlock's) — the board room of its site keeps the egress and the marker */
+  const boardRoom=room.fx==='site'?room:HQ.rooms[D.hqSiteRoomId(D.hqRoomSite(rid))];
+  assert.ok(boardRoom.doors.some(d=>d.id==='egress'));assert.ok(boardRoom.counters.some(c=>c.id==='battle'));
  }
 });
 test('production renderer lands each link inside the dry walkway facing away from its doorway',()=>{
@@ -114,7 +116,7 @@ test('an entryway kind the catalogue does not list is held back at BOTH ends; a 
   const a=D.hqLinkDoors(D.hqLinkRoom(saved[0].a))[0], b=D.hqLinkDoors(D.hqLinkRoom(saved[0].b))[0];
   assert.ok(a && b && a.way==='wardrobe' && b.way==='wardrobe' && a.leaf===null && b.leaf===null);
   assert.equal(a.sub,HQ.ways.wardrobe.sub);
-  HQ.links=[{...saved[0],way:'wardrobe',b:{...saved[0].b,leaf:'leaf_bulkhead'}}];
+  HQ.links=[{...saved[0],way:'wardrobe',b:{...saved[0].b,leaf:'leaf_bulkhead',sub:undefined}}];   // the collar end's own plate line stripped: this probes the kind's default
   const a2=D.hqLinkDoors(D.hqLinkRoom(saved[0].a))[0], b2=D.hqLinkDoors(D.hqLinkRoom(saved[0].b))[0];
   assert.equal(a2.way,'wardrobe');assert.equal(b2.way,undefined);assert.equal(b2.leaf,'leaf_bulkhead');assert.equal(b2.sub,'WALK THROUGH');
   HQ.links=[{...saved[0],a:{site:'prebuilt_moon',wall:'free',x:0,z:0}}];

@@ -278,6 +278,23 @@ test('mergeProgressBlobs: sanitizes hostile/garbage input', () => {
     assert.deepStrictEqual(norm(merge(null, undefined)), { v: 2, counters: {}, champs: {}, records: {}, unlocked: {} });
 });
 
+test('mergeProgressBlobs keeps the D.O.O.R. site flags (site:<mapId>:<cond>) — the sync used to drop every key with a colon and un-tick the stabilization checklist (2026-09-15)', () => {
+    const merge = data.mergeProgressBlobs;
+    const local = { v: 2, counters: {}, champs: {}, records: {}, unlocked: { 'site:prebuilt_moon:hourglasses_collected': 1000, 'site:prebuilt_moon:wipeout': 900, 'kills.0': 500 } };
+    const server = { v: 2, counters: {}, champs: {}, records: {}, unlocked: { 'site:prebuilt_moon:tower_destroyed': 800 } };
+    const m = merge(local, server);
+    assert.strictEqual(m.unlocked['site:prebuilt_moon:hourglasses_collected'], 1000, 'the Keys flag survives');
+    assert.strictEqual(m.unlocked['site:prebuilt_moon:wipeout'], 900);
+    assert.strictEqual(m.unlocked['site:prebuilt_moon:tower_destroyed'], 800, 'the server\'s flag joins');
+    assert.strictEqual(m.unlocked['kills.0'], 500);
+    /* and the site the flags name reads as stabilized through the same read the building uses */
+    const sm = data.hqSiteMastery('prebuilt_moon_delta', { progress: m });
+    assert.ok(sm.mastered && sm.done === 3, 'hqSiteMastery reads the merged flags (Δ id resolves to the site)');
+    /* still no prototype keys, still no garbage */
+    const evil = merge({ unlocked: { ['__proto__']: 1, 'site:x:y': 5, 'a:b:c:d:e:f': 5, 'bad key!': 5 } }, null);
+    assert.deepStrictEqual(Object.keys(evil.unlocked).sort(), ['a:b:c:d:e:f', 'site:x:y']);
+});
+
 test('achUnlockKeyReward mirrors the client payout rules (§4.7)', () => {
     const R = data.ACH_TIER_REWARDS;
     const reward = data.achUnlockKeyReward;

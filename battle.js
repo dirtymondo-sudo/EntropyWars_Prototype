@@ -11736,7 +11736,9 @@
                 try {
                     if (won && kind === 'match' && typeof DOOR_HQ !== 'undefined' && state._winCondition) {
                         const _site = (typeof hqSiteId === 'function') ? hqSiteId(activeGameMode) : String(activeGameMode || '').replace(/_delta$/, '');
-                        const _cond = state._winCondition;
+                        /* a sudden-death win files the condition that scored it (`_winCause`, set beside the
+                           'sudden_death' label by the Key pickup) — the label itself is no checklist row */
+                        const _cond = (state._winCondition === 'sudden_death' && state._winCause) ? state._winCause : state._winCondition;
                         if (_site && DOOR_HQ.masteryConditions.indexOf(_cond) >= 0 && (typeof hqSectorOfMap !== 'function' || hqSectorOfMap(_site))) {
                             const _key = 'site:' + _site + ':' + _cond;
                             if (!prog.unlocked[_key]) {
@@ -25855,7 +25857,7 @@
             state.boardTerrain = [];
             state.placed = false;
             state._winLogged = false;
-            state._winCondition = null;
+            state._winCondition = null; state._winCause = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -33859,7 +33861,7 @@
             hideResultOverlay();
             state.winner = null;
             state._winLogged = false;
-            state._winCondition = null;
+            state._winCondition = null; state._winCause = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -34027,7 +34029,7 @@
                 state.matchNumber += 1;
                 state.winner = null;
                 state._winLogged = false;
-                state._winCondition = null;
+                state._winCondition = null; state._winCause = null;
                 state._endingReason = null;
                 state._stalemateRounds = 0;
                 state._lastActivityTotal = 0;
@@ -34181,7 +34183,7 @@
             }
             state.aiThinking = false;
             state._winLogged = false;
-            state._winCondition = null;
+            state._winCondition = null; state._winCause = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -34609,7 +34611,7 @@
             state.selectedTool = null;
             state.winner = null;
             state._winLogged = false;
-            state._winCondition = null;
+            state._winCondition = null; state._winCause = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -34644,7 +34646,7 @@
             state.pendingTarget = null;
             state.winner = null;
             state._winLogged = false;
-            state._winCondition = null;
+            state._winCondition = null; state._winCause = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -34766,7 +34768,7 @@
             }
             state.aiThinking = false;
             state._winLogged = false;
-            state._winCondition = null;
+            state._winCondition = null; state._winCause = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -34991,7 +34993,7 @@
                 2: null
             };
             state._winLogged = false;
-            state._winCondition = null;
+            state._winCondition = null; state._winCause = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -47677,6 +47679,9 @@
                 if (_sdMode && _sdMode.id === 'arena') {
                     state.winner = unit.player;
                     state._winCondition = 'sudden_death';
+                    /* THE STABILIZATION CHECKLIST (2026-09-15): the Key that wins sudden death IS a Keys win —
+                       the site flag writer (commitAchProgress) credits the CAUSE, the label stays SUDDEN DEATH. */
+                    state._winCause = 'hourglasses_collected';
                     setTimeout(() => checkWin(), 0);
                 }
             }

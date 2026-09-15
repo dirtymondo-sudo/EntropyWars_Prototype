@@ -10799,7 +10799,11 @@ const ACH_MERGE_CAPS = { counters: 256, champs: 256, unlocked: 12000, value: 1e9
 function mergeProgressBlobs(a, b) {
   const METRIC_RE = /^[A-Za-z0-9_]{1,48}$/;                 // counter metric names
   const RACE_RE = /^[a-z0-9][a-z0-9 '&_-]{0,47}$/i;         // race keys (no '.', it delimits unlock keys)
-  const KEY_RE = /^[A-Za-z0-9_][A-Za-z0-9_. '&-]{0,95}$/;   // unlock keys
+  /* unlock keys. ':' is legal: the D.O.O.R. site flags are `site:<mapId>:<cond>`
+     (battle.js commitAchProgress) — the merge used to DROP them, so the server
+     sync two seconds after every match commit un-ticked the stabilization
+     checklist (2026-09-15, "I won by the Keys and the checklist did not update"). */
+  const KEY_RE = /^[A-Za-z0-9_][A-Za-z0-9_.:' &-]{0,95}$/;
   // Bracket-assigning these on a plain object mutates its prototype instead
   // of adding an own property — never let them through as keys.
   const badKey = k => k === '__proto__' || k === 'constructor' || k === 'prototype';
@@ -18969,10 +18973,10 @@ const DOOR_HQ = {
         /* THE LUNAR ROUTE (the pilot's two, plus Mars and the drop) */
         { id: 'moon_derelict', route: 'lunar', leaf: 'leaf_bulkhead',
           a: { site: 'prebuilt_moon', wall: 'n', x: -5 },
-          b: { site: 'prebuilt_derelict', wall: 'n', x: -6 },
+          b: { site: 'prebuilt_derelict', part: 'airlock', wall: 'w', z: 2.5, sub: 'THE PORT COLLAR · TO THE MOON' },   // 9.2 stage 2: the collar is the airlock's, not the deck's
           why: 'the lander\'s hatch and the docking collar are the same bore; the ship parked here once', note: 'the collar seals', draft: true },
         { id: 'derelict_saturn', route: 'lunar', leaf: 'leaf_bulkhead',
-          a: { site: 'prebuilt_derelict', wall: 'n', x: -1 },
+          a: { site: 'prebuilt_derelict', part: 'airlock', wall: 'e', z: 2.5, sub: 'THE STARBOARD COLLAR · TO SATURN' },   // 9.2 stage 2: the airlock's second collar
           b: { site: 'prebuilt_saturn', wall: 'n', x: -5 },
           why: 'the second collar opens onto the hexagon plateau; the ship swings past Saturn on every orbit', note: 'mind the ring plane', draft: true },
         { id: 'mars_moon', route: 'lunar', leaf: 'leaf_bulkhead',
@@ -19183,6 +19187,18 @@ const DOOR_HQ = {
                north wall (west of the console, clear of the signboard at x 5
                and the lamp mast in the corner) walks into the house's own
                rooms — the hall, upstairs, the attic, the cellar. */
+            /* THE SPACESHIP COMPLEX (plan 9.2 stage 2, 2026-09-15 rev 18): the
+               board room is the DORSAL DECK; THE AIRLOCK on its north wall
+               (the lane the Moon collar hung on until the airlock existed)
+               cycles into the ship's own compartments — the airlock, the
+               cargo hold, the bridge. The Lunar route's collars hang in the
+               airlock now (DOOR_HQ.links moon_derelict / derelict_saturn). */
+            prebuilt_derelict: [
+                { id: 'airlock', wall: 'n', x: -6, leaf: 'leaf_bulkhead', wide: true,
+                  label: 'THE AIRLOCK', sub: 'THE INNER HATCH · INTO THE SHIP',
+                  action: { room: 'site_prebuilt_derelict_airlock', at: 'deck' },
+                  desc: 'The airlock off the dorsal deck. It cycles whether or not there is air; the collars to the Moon and to Saturn are on the other side of it, and so is the rest of the ship — the half that is here.' },
+            ],
             prebuilt_haunted: [
                 { id: 'house', wall: 'n', x: -7.5, leaf: 'leaf_wooden',
                   label: 'THE HAUNTED HOUSE', sub: 'THE FRONT DOOR · INTO THE HOUSE',
@@ -26556,6 +26572,194 @@ const DOOR_HQ = {
             spawn: { x: -1.75, z: -1.75, face: 180 },
         },
         /* ══════════════════════════════════════════════════════════════════
+           THE SPACESHIP COMPLEX (HQ plan 9.2 stage 2 — 2026-09-15 rev 18).
+           The THIRD complex, and the user's own brief (Phase 9 (2): "the
+           Spaceship and the Flying Dutchman with several decks"). Room 426's
+           generated board room stays the DORSAL DECK (the console, the
+           battle marker, the way back to Bay 5); THE AIRLOCK on its north
+           wall (siteRooms.backDoors.prebuilt_derelict) cycles into the
+           ship's own compartments — the airlock, the cargo hold, the
+           bridge. Every one wears `site` + `part` and NO `roomNo` (hqRoomNo
+           reads the threshold's 426 through `site`; the register lists the
+           ship once; 9.4 knows the rooms are WILD). THE LUNAR ROUTE's two
+           spaceship ends (DOOR_HQ.links moon_derelict / derelict_saturn)
+           moved off the deck into the airlock, as 9.3 stage 1 promised
+           ("the spaceship's ends move to its airlock only after that room is
+           built") — the docking collars are the airlock's port and
+           starboard hatches, and the deck's north wall carries one door.
+           The ship lights itself (`strips: false`, `lights: []` — bare
+           bulbs, the cryo pod's glow, the bridge's screens). THE PARK RULE
+           (9.8): a `railing_1m` run in every compartment, `riser_*` tiers in
+           the big ones. Lines are Claude's DRAFT (A15 — the user rewrites).
+           ══════════════════════════════════════════════════════════════════ */
+        /* ── THE AIRLOCK — the collars port and starboard, the deck aft, the hold forward ── */
+        site_prebuilt_derelict_airlock: {
+            label: 'THE SPACESHIP · THE AIRLOCK',
+            sub: 'THE DOCKING COLLARS · THE DECK · THE HOLD',
+            kind: 'box', site: 'prebuilt_derelict', part: 'airlock',
+            shell: {
+                w: 8, d: 10, h: 3.2,
+                wallH: 3.2, dadoH: 1.0,
+                floor: 'aluminium', wall: 'gunmetal', dado: 'gunmetal', trim: 'metal', ceiling: 'gunmetal',
+                floorColor: 0x8e98a2, wallColor: 0x6a727c, dadoColor: 0x4e565e, ceilColor: 0x5a626a,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xb8d8ff, ambient: 0.5 },
+                plate: { x: 2.6, z: 4.75, y: 2.3 },
+            },
+            doors: [
+                { id: 'deck', wall: 's', x: 0, leaf: 'leaf_bulkhead', wide: true,
+                  label: 'THE DORSAL DECK', sub: 'AFT · OUT ONTO THE BOARD',
+                  action: { room: 'site_prebuilt_derelict', at: 'airlock' },
+                  desc: 'The inner hatch. Aft is the dorsal deck — the board, the console, the crossing. The hatch cycles whether or not there is air on either side.' },
+                { id: 'hold', wall: 'n', x: 0, leaf: 'leaf_bulkhead', wide: true,
+                  label: 'THE CARGO HOLD', sub: 'FORWARD · INTO THE SHIP',
+                  action: { room: 'site_prebuilt_derelict_hold', at: 'airlock' },
+                  desc: 'The forward hatch. The hold is behind it, and the bridge behind that, and behind the bridge the half of the ship that is not there.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'locker',            wall: 'w', z: -2.6 },
+                { key: 'locker',            wall: 'e', z: -2.6 },
+                { key: 'railing_1m',        x: 2.4, z: -0.5, face: 90 },                    // the grab rail by the starboard collar (the park rule's rail)
+                { key: 'railing_1m',        x: 2.4, z: 0.5, face: 90 },
+                { key: 'warning_tape',      x: 0, z: 3.6 },                                 // the cycle line on the deck side
+                { key: 'warning_tape',      x: 0, z: -3.6 },
+                { key: 'radiation_sign',    wall: 'n', x: 2.6, mount: 1.7 },
+                { key: 'keypad',            wall: 's', x: 1.6, mount: 1.3 },
+                { key: 'fire_extinguisher', wall: 'w', z: 3.6, mount: 0.95 },
+                { key: 'vent_grille',       wall: 'e', z: -3.8, mount: 2.35 },
+                { key: 'hook_rail',         wall: 'e', z: 3.2, mount: 1.75 },               // the suits hung, the helmets gone
+                { key: 'bare_bulb',         x: 0, z: 0, ceil: true },
+                { key: 'bare_bulb',         x: 0, z: -3.2, ceil: true },
+                { key: 'floor_stain',       x: -1.6, z: -1.2 },
+            ],
+            agents: [],
+            npcSpots: [{ x: -2.2, z: 0.8, face: 90, race: 'grey' }],
+            onlineSpots: [],
+            lines: [
+                '“Port collar.” “The Moon.” “Starboard collar.” “Saturn.” “Which one is the way out?” “Aft.”',
+                '“Pressure?” “Nominal.” “Nominal on which side?” “Yes.”',
+                '“The suits are hung up.” “The helmets are not.” “Where are the helmets?” “Wherever the heads went.”',
+            ],
+            spawn: { x: 0, z: 2.4, face: 0 },
+        },
+        /* ── THE CARGO HOLD — two decks tall, the crates, the cryo pod that is still running ── */
+        site_prebuilt_derelict_hold: {
+            label: 'THE SPACESHIP · THE CARGO HOLD',
+            sub: 'THE CRATES · THE CRYO POD · THE LADDER TO THE BRIDGE',
+            kind: 'box', site: 'prebuilt_derelict', part: 'hold',
+            shell: {
+                w: 16, d: 12, h: 5.0,
+                wallH: 5.0, dadoH: 1.2,
+                floor: 'aluminium', wall: 'gunmetal', dado: 'gunmetal', trim: 'metal', ceiling: 'gunmetal',
+                floorColor: 0x7e8892, wallColor: 0x5e666e, dadoColor: 0x464e56, ceilColor: 0x3e464e,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0x9fd8ff, ambient: 0.42 },
+                plate: { x: 4.5, z: 5.75, y: 2.4 },
+            },
+            doors: [
+                { id: 'airlock', wall: 's', x: 0, leaf: 'leaf_bulkhead', wide: true,
+                  label: 'THE AIRLOCK', sub: 'AFT · TO THE COLLARS AND THE DECK',
+                  action: { room: 'site_prebuilt_derelict_airlock', at: 'hold' },
+                  desc: 'The hatch back to the airlock, the collars and the deck. It is the only hatch in the hold that has ever been logged as shut.' },
+                { id: 'bridge', wall: 'n', x: -3.6, leaf: 'leaf_bulkhead', wide: true,
+                  label: 'THE BRIDGE', sub: 'FORWARD · UP THE LADDER',
+                  action: { room: 'site_prebuilt_derelict_bridge', at: 'hold' },
+                  desc: 'The ladder up to the bridge, through a hatch stencilled CREW ONLY. The crew are not on file.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'riser_2',           x: -3.0, z: -4.9, face: 0 },                     // THE LOADING TIERS under the bridge hatch (the park rule's ramp, stepped)
+                { key: 'railing_1m',        x: 1.2, z: -3.9, face: 0 },                      // the tier's rail (the park rule's rail)
+                { key: 'railing_1m',        x: 2.2, z: -3.9, face: 0 },
+                { key: 'railing_1m',        x: 3.2, z: -3.9, face: 0 },
+                { key: 'cardboard_boxes',   x: 6.6, z: 4.6, face: 12 },                      // the freight, strapped
+                { key: 'cardboard_boxes',   x: 6.6, z: -4.6, face: 350 },
+                { key: 'cardboard_boxes',   x: -6.6, z: -4.4, face: 20 },
+                { key: 'cardboard_box',     x: 5.4, z: 4.2, face: 40 },
+                { key: 'cardboard_box',     x: -6.2, z: 4.8, face: 70 },
+                { key: 'metal_shelving',    wall: 'e', z: 0 },
+                { key: 'metal_shelving',    wall: 'w', z: 2.6 },
+                { key: 'iso_tank',          x: 4.0, z: -0.6, face: 90 },                     // THE CRYO POD: still running, still occupied, not on the manifest
+                { key: 'warning_tape',      x: 0, z: 4.4 },
+                { key: 'floor_drain',       x: -2.0, z: 1.2 },
+                { key: 'hook_rail_long',    wall: 'w', z: -2.6, mount: 1.8 },
+                { key: 'radiation_sign',    wall: 's', x: 3.4, mount: 1.7 },
+                { key: 'breaker_panel',     wall: 'e', z: 4.2, mount: 1.25 },
+                { key: 'vent_grille',       wall: 'n', x: 3.0, mount: 2.35 },
+                { key: 'bare_bulb',         x: -5, z: 0, ceil: true },
+                { key: 'bare_bulb',         x: 0, z: 0, ceil: true },
+                { key: 'bare_bulb',         x: 5, z: 2.4, ceil: true },
+                { key: 'floor_stain',       x: 1.6, z: -1.8 },
+                { key: 'paper_sheet',       x: -3.6, z: 3.0, y: 0.01, face: 300 },            // the manifest, one line short
+            ],
+            agents: [],
+            npcSpots: [{ x: 2.4, z: 3.0, face: 270, race: 'symbiote' }, { x: -5.4, z: 2.0, face: 60, race: 'black goo' }],
+            onlineSpots: [],
+            lines: [
+                '“The manifest says forty crates.” “There are forty crates.” “The manifest says forty-one.” “There are forty crates.”',
+                '“The pod is running.” “On what?” “On the reactor.” “The reactor is dead.” “The pod is running.”',
+                '“Something walks the deck.” “Something walks the hold.” “Same something?” “Same footing.”',
+            ],
+            spawn: { x: 0, z: 3.2, face: 0 },
+        },
+        /* ── THE BRIDGE — the viewport, the screens, the chair that is warm ── */
+        site_prebuilt_derelict_bridge: {
+            label: 'THE SPACESHIP · THE BRIDGE',
+            sub: 'THE VIEWPORT · THE SCREENS · THE CHAIR',
+            kind: 'box', site: 'prebuilt_derelict', part: 'bridge',
+            shell: {
+                w: 12, d: 8, h: 3.4,
+                wallH: 3.4, dadoH: 1.0,
+                floor: 'aluminium', wall: 'gunmetal', dado: 'gunmetal', trim: 'metal', ceiling: 'gunmetal',
+                floorColor: 0x8e98a2, wallColor: 0x525a64, dadoColor: 0x3e4650, ceilColor: 0x2e363e,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0x9fd8ff, ambient: 0.4 },
+                plate: { x: -1.0, z: 3.75, y: 2.3 },
+            },
+            doors: [
+                { id: 'hold', wall: 's', x: -3.6, leaf: 'leaf_bulkhead', wide: true,
+                  label: 'THE CARGO HOLD', sub: 'AFT · DOWN THE LADDER',
+                  action: { room: 'site_prebuilt_derelict_hold', at: 'bridge' },
+                  desc: 'The ladder down to the hold. Down is the way you came; every other way off the bridge is the viewport, and the viewport is the sun.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'riser_1',           x: 0, z: -2.9, face: 0 },                        // THE COMMAND DAIS (the park rule's ramp, one step)
+                { key: 'railing_1m',        x: -1.0, z: 2.6, face: 0 },                      // the rail behind the seats (the park rule's rail)
+                { key: 'railing_1m',        x: 0, z: 2.6, face: 0 },
+                { key: 'railing_1m',        x: 1.0, z: 2.6, face: 0 },
+                { key: 'false_window',      wall: 'n', x: 0, mount: 1.0 },                   // THE VIEWPORT: the sun, closer every crossing
+                { key: 'monitor_stack',     wall: 'n', x: -3.6 },
+                { key: 'monitor_stack',     wall: 'n', x: 3.6 },
+                { key: 'tanker_desk',       wall: 'e', z: 0 },
+                { key: 'crt_terminal',      x: 5.3, z: -0.35, y: 0.76, face: 270 },          // the nav console (desk top at 0.76)
+                { key: 'papers_a',          x: 5.4, z: 0.4, y: 0.76, face: 250 },
+                { key: 'computer_chair_grey', x: 4.3, z: 0.2, face: 90 },                    // THE CHAIR: warm
+                { key: 'keypad',            wall: 's', x: 2.0, mount: 1.3 },
+                { key: 'security_camera',   wall: 'w', z: 2.2, mount: 2.55 },
+                { key: 'exit_sign',         wall: 's', x: -0.6, mount: 2.75 },
+                { key: 'bare_bulb',         x: 0, z: 0.6, ceil: true },
+                { key: 'bare_bulb',         x: -4, z: 1.2, ceil: true },
+                { key: 'coffee_mug',        x: 4.8, z: -1.0, y: 0.76 },                      // still warm; nobody's
+            ],
+            agents: [],
+            npcSpots: [{ x: -3.4, z: -0.8, face: 120, race: 'ai' }],
+            onlineSpots: [],
+            lines: [
+                '“Who is flying it?” “Nobody.” “Then who set the course?” “Somebody.”',
+                '“The sun is bigger.” “Every crossing.” “How many crossings are left?” “Records has the number.” “And?” “It is going down.”',
+                '“The chair is warm.” “Then sit somewhere else.”',
+            ],
+            spawn: { x: -2.0, z: 1.6, face: 0 },
+        },
+        /* ══════════════════════════════════════════════════════════════════
            H-WING (HQ plan 5.5, stage 1 — 2026-09-14 rev 4). See DOOR_HQ.hwing
            for the shape and the rules. Every room here is the one look:
            beige carpet, drywall, ceiling tile, fluorescents, right angles,
@@ -28215,19 +28419,19 @@ const HQ_TAPE_SHEET = {
     site_prebuilt_hollow_earth_adit:      [['THE CRYSTAL', 'A crystal that shows a room. The room is this one, with you in it.', 'evidence']],
     site_prebuilt_hollow_earth_mouth:     [['THE LIP', 'The mouth of the cave from the lip. Two figures walking out, holding hands.', 'parents']],
     site_prebuilt_hollow_earth_oubliette: [['THE FOURTH CELL', 'A cell with a wall that is a door. A tally on the wall. It is still being kept.', 'facility']],
+    site_prebuilt_derelict_airlock:  [['THE COLLAR', 'The port collar cycling. Moon dust on the deck side, then none, then a bootprint.', 'evidence']],
+    site_prebuilt_derelict_hold:     [['THE POD', 'The cryo pod’s window. Frost, a face, your mother’s eyes opening at 0:07.', 'parents']],
+    site_prebuilt_derelict_bridge:   [['THE COURSE', 'The nav screen. A course laid in by hand to a star with no catalogue number. The hand is steady.', 'facility']],
     /* the exploration floors (Phase 8): never the hall, the foyer, a lobby or a corridor — the finds are the reward for going somewhere */
     garage:    [['THE RAMP', 'A sedan coming down the ramp with its lights on. Nobody driving.', 'facility']],
     kitchen:   [['THE ORDER', 'A ticket on the rail. It orders for two, under your surname, every day at noon.', 'parents']],
     coldroom:  [['−18', 'Frost on the shelves. Breath in the corner of the frame.', 'evidence']],
-    laundry:   [['THE WASHER', 'A lab coat in the drum. The badge in its pocket has your face at forty.', 'parents']],
     boiler:    [['ROOM 451', 'The gauge climbs past the red. The needle bends round the dial.', 'facility']],
     server:    [['RACK 127', 'A rack of blinking lights. They blink your employee number in binary.', 'facility']],
     dungeon:   [['24601', 'A cell door shutting. The camera is inside.', 'evidence']],
     ritual:    [['THE CIRCLE', 'Chalk on the floor. The chalk is being redrawn between frames.', 'evidence']],
     sacrifice: [['FORM 322', 'A form on the altar. Field 1: NAME. It has been filled in for you.', 'facility']],
     orb:       [['THE OBJECT', 'The orb from every side at once. It turns to keep the same face to the lens.', 'evidence']],
-    classroom: [['THE LESSON', 'The type chart on the board, with a seventh type chalked in. Then rubbed out.', 'facility']],
-    locker:    [['LOCKER 26', 'A locker opening. Inside, a smaller locker.', 'facility']],
     garden:    [['1618', 'A tree in the garden. Two names carved in it. One is yours, the other is not yet.', 'parents']],
 };
 /* the room a sheet key names: a site key → its generated board room */

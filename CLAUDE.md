@@ -2913,6 +2913,28 @@ the park rule, the link hooks, the source sites). Unseen live (RULE #1c):
 the wallpaper tints, the `leaf: null` stair openings, the banister's
 facing, the boiler's glow in a 2.7 m cellar.
 
+## THE SPACESHIP COMPLEX (HQ plan 9.2 stage 2) + THE CHECKLIST SYNC BUG — 2026-09-15 rev 18, local delivery
+Room 426 is the THIRD complex: `site_prebuilt_derelict_airlock` / `_hold` /
+`_bridge` (data.js, the block right before H-WING; `site` + `part`, no
+`roomNo`) behind THE AIRLOCK on the deck's north wall at x −6
+(`siteRooms.backDoors.prebuilt_derelict`). **THE LUNAR ROUTE'S COLLARS
+LIVE IN THE AIRLOCK**: `links.moon_derelict.b` / `derelict_saturn.a` are
+`{ site, part: 'airlock', wall: 'w' | 'e', z, sub }` — a link end on a
+COMPLEX PART is the rule for every future "below decks" seam (the
+Dutchman ⇄ Atlantis next); the site stays ONE station on the line
+(`hqWorldRoutes` reads stations as sites). `leaf_bulkhead` is a WIDE
+leaf: every bulkhead door row says `wide: true` and stands ≥ 1.65 m from
+a wall's end (doorhq.test.js). A compartment tape is the 9.1 rule (one
+per part); the hundred is fixed, so a new part's tape comes off a floor
+room's row in `HQ_TAPE_SHEET`. `npm test` runs `hq-spaceship.test.js`.
+**THE CHECKLIST SYNC BUG**: data.js `mergeProgressBlobs`'s `KEY_RE`
+refused `:`, so the progress sync (client AND server — server.js runs the
+same function off data.js) dropped every `site:<map>:<cond>` flag two
+seconds after the commit and the stabilization checklist un-ticked.
+Fixed (`:` is legal; achievements.test.js guards it) — **ship data.js to
+Render as well as R2 for this one**. A sudden-death Key win files THE
+KEYS through `state._winCause` (battle.js; reset beside `_winCondition`).
+
 ## THE LOBBY THEME + THE TITLE THEME'S LIMITS + concrete_floor rev (2026-09-15, local delivery)
 audio.js `doorLobby` = R2 `music/door_lobby.mp3` (the user's HQ track, MASTER
 B4; `_R2_MUSIC` / `_LOCAL_MUSIC` / `AUDIO_BASE_VOLUMES`, pause-menu name in
