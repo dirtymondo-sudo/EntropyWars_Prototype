@@ -488,6 +488,18 @@
                         pp.title = 'THE PORTABLE THRESHOLD — F draws it, click places a door (the pair is the last two placed), Q holsters. Walk into one, step out of the other. ' + (ps.a ? 'A in ' + ((DOOR_HQ.rooms[ps.a.room] || {}).label || ps.a.room) + '. ' : '') + (ps.b ? 'B in ' + ((DOOR_HQ.rooms[ps.b.room] || {}).label || ps.b.room) + '. ' : '') + 'Cleared on the next arrival from Play.';
                     } else { pp.style.display = 'none'; pp.innerHTML = ''; }
                 }
+                /* SKATEBOARDING (plan 9.8): the board on the strip — the issue and the best line; click = B */
+                const skp = _hqEl('hqSkate');
+                if (skp) {
+                    const st = _hqSkateStatus(profile);
+                    if (st && st.issued) {
+                        const riding = (() => { try { return ThreeRenderer.hq.skating(); } catch (e) { return false; } })();
+                        skp.style.display = '';
+                        skp.classList.toggle('riding', riding);
+                        skp.innerHTML = `🛹 <b>${riding ? 'RIDING' : 'BOARD'}</b>${st.best ? ' · BEST ' + (st.best.score | 0).toLocaleString() : ''}`;
+                        skp.title = 'SKATEBOARDING — B drops the deck. W push · S brake · A / D carve · SPACE ollie · land on a rail to grind · in the air ← → ↑ ↓ W A D are tricks, SHIFT the grab. ' + (st.best ? 'Best line: ' + st.best.text + ' = ' + st.best.score + '. ' : '') + (st.lines ? st.lines + ' lines landed, ' + st.bails + ' bails.' : 'Nothing landed yet.');
+                    } else { skp.style.display = 'none'; skp.innerHTML = ''; }
+                }
                 /* the day's Code Red (plan 3.3): strobes until cleared */
                 const cp = _hqEl('hqCodeRed');
                 if (cp) {
@@ -601,6 +613,9 @@
                 /* THE ENCOUNTER (HQ plan 9.4): a thrown gesture (the beat) and the one that LANDS on a native with the gun drawn (the crossing) */
                 onStrike: (typeof _hqStrikeEvent === 'function') ? _hqStrikeEvent : null,
                 onEncounter: (typeof _hqEncounterFire === 'function') ? _hqEncounterFire : null,
+                /* SKATEBOARDING (HQ plan 9.8): the issue (standard issue while HQ_SKATE_RULES.free) and the ride's beats (the trick line, the sounds, the banked line) */
+                skate: (typeof _hqSkateOpts === 'function') ? _hqSkateOpts(profile) : null,
+                onSkate: (typeof _hqSkateEvent === 'function') ? _hqSkateEvent : null,
                 /* ESC: close the panel, else Settings (plan D6 — an overlay,
                    not a place); EXIT on the strip is how you leave */
                 onEscape: () => { if (_hqTerm) { window._hqTerminalClose(); return; } if (_hqPause) { window._hqClosePause(); return; } if (_hqPanelTarget) window._hqClosePanel(); else window._hqOpenPause(); },
@@ -1146,6 +1161,7 @@
             if (mc) html += row('STABILIZED', 'THRESHOLDS WON BY EVERY WIN CONDITION', `${mc.mastered} / ${mc.total}`, mc.mastered === mc.total ? 'stabilized' : 'open');
             { const el = (typeof window.hqEncounterLog === 'function') ? window.hqEncounterLog(profile) : null; if (el && el.count) html += row('ENCOUNTERS', `${el.wins} HELD · ${el.losses} EXITED${el.last ? ' · LAST ' + _hqEsc(String(el.last.race || '').toUpperCase()) + (el.last.won ? ' (HELD)' : ' (EXITED)') : ''}`, String(el.count), el.last && el.last.won ? 'stabilized' : 'open'); }
             { const ps = _hqPortalStatus(profile); if (ps && ps.issued) html += row('THE THRESHOLD', 'PORTABLE · DOOR ISSUE · F DRAWS · L-CLICK = A · R-CLICK = B · Q HOLSTERS', `${ps.a ? 'A' : '·'} ${ps.b ? 'B' : '·'}`, ps.paired ? 'stabilized' : 'open'); }
+            { const st = _hqSkateStatus(profile); if (st && st.issued) html += row('THE BOARD', st.best ? `BEST LINE · ${_hqEsc(st.best.text)} · ${st.lines | 0} LANDED · ${st.bails | 0} BAILS` : `B DROPS IT · NOTHING LANDED YET · ${_hqEsc(st.label)}`, st.best ? (st.best.score | 0).toLocaleString() : '—', st.best ? 'stabilized' : 'open'); }   // SKATEBOARDING (9.8)
             if (tc) html += row('THE TAPES', `THE HUNDRED · THE SHELF IN ROOM 360${tc.pay ? ' · ' + tc.pay + ' HAZARD PAY IN ENVELOPES' : ''}`, `${tc.found} / ${tc.total}`, tc.found >= tc.total ? 'stabilized' : 'open');
             if (sh) html += row('FORM 365', 'DAILY OFFICE OPERATIONS · ROOM 247', `${sh.done} / ${sh.total}`, sh.allDone ? 'stabilized' : 'unstable');
             if (walks) html += row('WALKS AS', 'OCCAM’S BARBERSHOP · ROOM 1287', _hqEsc(walks));
@@ -1841,6 +1857,88 @@
             else if (ev.kind === 'refused') _hqPortalRefused(ev.reason);
             else if (ev.kind === 'unissued') _hqPortalRefused('unissued');
         }
+        /* ═══════════════════════════════════════════════════════════════
+           SKATEBOARDING (HQ plan 9.8 stage 1, 2026-09-15) — a walker MODE.
+           The renderer rides (three-renderer.js "SKATEBOARDING — THE RIDER");
+           this side is the ISSUE (data.js hqSkateStatus: standard issue while
+           HQ_SKATE_RULES.free, else the deck found in Room 26), THE TRICK LINE
+           (#hqTrick: the combo as it grows, LANDED with the score, BAIL), the
+           sounds (audio.js skate* recipes) and THE BOOKS — a banked line goes
+           on the profile in ONE transaction (hqSkateBank: the best line with
+           its words, the total, the count; a bail counts). The strip's pill
+           (#hqSkate) reads the status and the best; click = B. Viewer-local,
+           nothing on `state`, nothing relayed (RULE #2). Dev: `?skate` /
+           window.EW_HQ_SKATE = issued; window.EW_HQ_NO_SKATE = off.
+           ═══════════════════════════════════════════════════════════════ */
+        function _hqSkateForce() { try { return /[?&]skate\b/.test(location.search) || !!window.EW_HQ_SKATE; } catch (e) { return false; } }
+        function _hqSkateStatus(profile) { try { return (typeof window.hqSkateStatus === 'function') ? window.hqSkateStatus(profile || _hqProfile(), { force: _hqSkateForce() }) : null; } catch (e) { return null; } }
+        function _hqSkateOpts(profile) { const st = _hqSkateStatus(profile); return { issued: !!(st && st.issued) }; }
+        function _hqSkateFile(ev) {
+            try {
+                const PS = window.ProfileSystem;
+                if (!PS || typeof PS.getActiveProfileIndex !== 'function' || typeof window.hqSkateBank !== 'function') return null;
+                const idx = PS.getActiveProfileIndex(); if (idx === null || idx === undefined) return null;
+                const p = PS.loadProfile(idx); if (!p) return null;
+                const sk = window.hqSkateBank(p, ev);
+                PS.saveProfile(idx, p);
+                return sk;
+            } catch (e) { return null; }
+        }
+        let _hqTrickT = null;
+        function _hqTrickLine(html, cls, ms) {
+            const el = _hqEl('hqTrick'); if (!el) return;
+            clearTimeout(_hqTrickT);
+            if (!html) { el.classList.remove('show'); setTimeout(() => { if (!el.classList.contains('show')) el.style.display = 'none'; }, 300); return; }
+            el.className = 'hq-trick ' + (cls || ''); el.innerHTML = html; el.style.display = '';
+            void el.offsetWidth; el.classList.add('show');
+            if (ms) _hqTrickT = setTimeout(() => _hqTrickLine(null), ms);
+        }
+        function _hqSkateSfx(key, vol) { try { if (typeof playDoorSfx === 'function') playDoorSfx(key, { volume: vol == null ? 0.6 : vol }); } catch (e) {} }
+        function _hqSkateEvent(ev) {
+            if (!ev) return;
+            const h = _hqEl('hqHints');
+            switch (ev.kind) {
+                case 'on':
+                    if (h) h.classList.add('skate');
+                    _hqSkateSfx('skatePush', 0.5);
+                    _hqToast('<b>ON THE BOARD</b><span>W PUSH · S BRAKE · A / D CARVE · SPACE OLLIE · LAND ON A RAIL TO GRIND · IN THE AIR ← → ↑ ↓ W A D = TRICKS · SHIFT GRAB · B OFF</span>', 3600);
+                    _hqFillStrip(_hqProfile());
+                    break;
+                case 'off':
+                    if (h) h.classList.remove('skate');
+                    _hqTrickLine(null);
+                    _hqFillStrip(_hqProfile());
+                    break;
+                case 'refused':
+                    _hqToast(ev.reason === 'off' ? '<b>NO SKATING</b><span>EW_HQ_NO_SKATE IS SET</span>' : '<b>NO BOARD</b><span>THERE IS ONE LEANING ON A LOCKER IN ROOM 26 · THE ANNEX</span>', 2600);
+                    break;
+                case 'push': _hqSkateSfx('skatePush', 0.45); break;
+                case 'ollie': _hqSkateSfx('skateOllie', 0.6); break;
+                case 'launch': _hqSkateSfx('skateOllie', 0.35); break;
+                case 'hop': break;
+                case 'grindstart': _hqSkateSfx('skateGrind', 0.5); break;
+                case 'grind': _hqSkateSfx('skateGrind', 0.22); break;
+                case 'trick': try { playSfx('uiCursorMove'); } catch (e) {} break;
+                case 'combo': _hqTrickLine(`<span>${_hqEsc(ev.text)}</span><b>${(ev.score | 0).toLocaleString()}</b><i>× ${ev.mult}</i>`, 'live'); break;
+                case 'land': _hqSkateSfx('skateLand', 0.5); break;
+                case 'bank': {
+                    _hqSkateSfx('skateBank', 0.55);
+                    const sk = _hqSkateFile({ score: ev.score, text: ev.text });
+                    const best = sk && sk.best && sk.best.score === ev.score && sk.best.text === ev.text;
+                    _hqTrickLine(`<span>${_hqEsc(ev.text)}</span><b>${(ev.score | 0).toLocaleString()}</b><i>${best ? 'NEW BEST LINE' : 'LANDED'}</i>`, 'bank', 2600);
+                    _hqFillStrip(_hqProfile());
+                    break;
+                }
+                case 'bail': {
+                    _hqSkateSfx('skateBail', 0.6);
+                    _hqSkateFile({ bail: true });
+                    _hqTrickLine(`<span>BAIL</span><b>${ev.lost ? '−' + (ev.lost | 0).toLocaleString() : ''}</b><i>${ev.why === 'wall' ? 'THE WALL' : ev.why === 'balance' ? 'OFF THE RAIL' : ev.why === 'offaxis' ? 'LANDED SIDEWAYS' : ev.why === 'drop' ? 'TOO FAR DOWN' : 'STILL TURNING'}</i>`, 'bail', 1800);
+                    break;
+                }
+            }
+        }
+        /* the pill's click = B */
+        window._hqSkateToggle = function (on) { try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.skate) return ThreeRenderer.hq.skate(on); } catch (e) {} return false; };
         /* ══════════════════════════════════════════════════════════════════
            THE ENCOUNTER (HQ plan 9.4 stage 1, 2026-09-15 rev 16) — the room
            becomes the board, and ONLY when the officer starts it (the user's
@@ -2033,7 +2131,12 @@
                 try { if (typeof window._refreshWallets === 'function') window._refreshWallets(); } catch (e) {}
             } catch (e) { console.warn('[HQ] take find', e); return false; }
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq) ThreeRenderer.hq.takeFind(t.id); } catch (e) {}
-            if (beat.kind === 'tape') {
+            if (beat.kind === 'deck') {   // SKATEBOARDING (9.8): the board is yours
+                try { playSfx('levelUp'); } catch (e) {}
+                try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.skateIssued) ThreeRenderer.hq.skateIssued(true); } catch (e) {}   // the issue lands at once, not on the next room
+                _hqToast('<b>A SKATEBOARD</b><span>YOURS · PRESS B TO DROP IT · THE RAILS AND THE RAMPS ARE THE POINT</span>', 4200);
+                try { _hqFillStrip(_hqProfile()); } catch (e) {}
+            } else if (beat.kind === 'tape') {
                 try { playSfx('levelUp'); } catch (e) {}
                 try { if (typeof playDoorSfx === 'function') playDoorSfx('doorStamp', { volume: 0.6 }); } catch (e) {}
                 _hqToast(`<b>TAPE ${beat.count} / ${beat.total}</b><span>${_hqEsc(beat.title)} · FILED · IT PLAYS ON THE SHELF IN ROOM 360</span>`, 4200);

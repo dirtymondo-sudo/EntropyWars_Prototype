@@ -18336,7 +18336,7 @@ const DOOR_HQ = {
         fluorescent:       { file: 'Meshy_AI_a_fluorescent_fixture_0903105329_texture.glb',           span: 1.25, foot: 0, ceil: true },
         breaker_panel:     { file: 'Meshy_AI_a_breaker_panel_0903105436_texture.glb',                 h: 0.80, foot: 0, wall: true, mount: 1.25 },
         pipe_run:          { file: 'Meshy_AI_office_pipe_run_0903105348_texture.glb',                 span: 1.0, foot: 0 },
-        railing_1m:        { file: 'Meshy_AI_one_meter_of_railing_0903105339_texture.glb',            span: 1.0, foot: 0 },
+        railing_1m:        { file: 'Meshy_AI_one_meter_of_railing_0903105339_texture.glb',            span: 1.0, foot: 0, rail: { h: 0.98 } },   // SKATEBOARDING (9.8): a `rail` — the placer registers a grind run along its span at its top
         nameplate:         { file: 'Meshy_AI_a_blank_office_nameplate_0903110218_texture.glb',        span: 0.40, foot: 0, wall: true, mount: 1.55 },
         observation_window:{ file: 'Meshy_AI_a_round_observation_window_0903105519_texture.glb',      span: 1.8, foot: 0, wall: true, mount: 1.6 },
         /* ── the janitor's closet kit (Phase 2.7) ── */
@@ -18463,15 +18463,20 @@ const DOOR_HQ = {
         /* 3 · the annex */
         chalkboard:      { proc: 'chalkboard',      h: 1.3,  foot: 0, wall: true, mount: 0.95, depth: 0.05 },
         lectern:         { proc: 'lectern',         h: 1.15, foot: 0.35, block: true },
-        riser_1:         { proc: 'riser_1',         h: 0.3,  foot: 3.0, rect: { hw: 4.2, hd: 0.7 }, block: true },           // the lecture hall's tiers: three steps the walker climbs (≤ HQ_STEP_TOL each)
-        riser_2:         { proc: 'riser_2',         h: 0.6,  foot: 3.0, rect: { hw: 4.2, hd: 0.7 }, block: true },
-        riser_3:         { proc: 'riser_3',         h: 0.9,  foot: 3.0, rect: { hw: 4.2, hd: 0.7 }, block: true },
+        riser_1:         { proc: 'riser_1',         h: 0.3,  foot: 3.0, rect: { hw: 4.2, hd: 0.7 }, block: true, ramp: { w: 8.4, len: 1.4, h: 0.3 } },   // SKATEBOARDING (9.8): `ramp` = a rise the rider hops off at speed           // the lecture hall's tiers: three steps the walker climbs (≤ HQ_STEP_TOL each)
+        riser_2:         { proc: 'riser_2',         h: 0.6,  foot: 3.0, rect: { hw: 4.2, hd: 0.7 }, block: true, ramp: { w: 8.4, len: 1.4, h: 0.6 } },
+        riser_3:         { proc: 'riser_3',         h: 0.9,  foot: 3.0, rect: { hw: 4.2, hd: 0.7 }, block: true, ramp: { w: 8.4, len: 1.4, h: 0.9 } },
+        /* SKATEBOARDING (HQ plan 9.8, 2026-09-15): THE QUARTER PIPE — a curved face the rider climbs and launches off (the walker reads its
+           surface through three-renderer.js _hqRampSurfaceAt; `prof: 'qp'` = a quarter circle, vertical at the coping). `face` = the heading
+           the approach opens to; the mesh is built to these numbers, so the surface and the look agree. No blocker: the curve IS the floor. */
+        quarter_pipe:    { proc: 'quarter_pipe',    h: 2.2,  foot: 0, ramp: { w: 4.2, len: 2.6, h: 2.2, prof: 'qp' } },
         /* THE CAVE (HQ plan 9.3 stage 2, 2026-09-15 rev 11): a torch on a stake driven into the cave floor (a rock room has no box wall to bracket one on — the rock border stands in front of it), and a crystal growing out of the floor, lit from inside (the adit's light) */
         cave_torch:      { proc: 'cave_torch',      h: 1.9,  foot: 0.12, block: true, glow: { y: 1.25, size: 1.2, color: 0xffa040 }, light: { color: 0xff9a40, intensity: 0.85, dist: 9, y: 1.1 } },   /* the board's floor torch at the board's size — 2026-09-15 */
         crystal_cluster: { proc: 'crystal_cluster', h: 1.4,  foot: 0.55, block: true, glow: { y: 0.8, size: 2.6, color: 0x9fe8c8 }, light: { color: 0x9ff0d0, intensity: 0.9, dist: 9, y: 0.9 } },
         /* THE FINDS (HQ plan 9.1, 2026-09-15 rev 12): the objects the walker TAKES — placed by _hqPlaceFinds from DOOR_HQ.finds, never as room props (no foot: nothing blocks) — and THE SHELF in Room 360 the tapes play at */
         find_tape:       { proc: 'find_tape',       h: 0.22, foot: 0, glow: { y: 0.12, size: 1.1, color: 0xff5ad6 } },
         find_pay:        { proc: 'find_pay',        h: 0.14, foot: 0, glow: { y: 0.08, size: 1.0, color: 0xffd25a } },
+        find_deck:       { proc: 'find_deck',       h: 0.8,  foot: 0, glow: { y: 0.4, size: 1.2, color: 0x7dffb0 } },   // SKATEBOARDING (9.8): the board in the locker room (only while HQ_SKATE_RULES.free is off)
         tape_shelf:      { proc: 'tape_shelf',      h: 1.9,  foot: 0.35, wall: true, mount: 0, depth: 0.36, block: true },
         school_desk:     { proc: 'school_desk',     h: 0.75, foot: 0.45, block: true },
         toilet_stall:    { proc: 'toilet_stall',    h: 2.0,  foot: 0.6, wall: true, mount: 0, depth: 1.5, rect: { hw: 0.5, hd: 0.75 }, block: true },   // on a n / s wall (the rect is room-axis)
@@ -23144,6 +23149,9 @@ const DOOR_HQ = {
                 { key: 'folding_chair',  x: 3.2, z: -8.3, face: 180 },
                 { key: 'railing_1m',     x: 2.2, z: -7.1, face: 90 },
                 { key: 'railing_1m',     x: 4.2, z: -7.1, face: 90 },
+                /* SKATEBOARDING (9.8, 2026-09-15): THE HALF-PIPE — two quarter pipes facing each other down the east side (THE PARK RULE's first ramps that launch) */
+                { key: 'quarter_pipe',   x: 9.5,  z: 8.6,  face: 0 },
+                { key: 'quarter_pipe',   x: 12.6, z: -8.7, face: 180 },
                 { key: 'breaker_panel',  wall: 'n', x: 1.0 },
                 { key: 'exit_sign',      wall: 'n', x: 8.5, mount: 2.55 },              // over the ramp: the way out that is not
                 { key: 'security_camera', wall: 'n', x: 12.5, mount: 2.5 },
@@ -28897,10 +28905,12 @@ function hqBuildFinds() {
         const ps = pin.pay || hqFindSpot(roomId, 'pay', placed);
         if (ps) rows.push(Object.assign({ id: 'pay:' + roomId, room: roomId, kind: 'pay', amount: room.fx === 'site' ? R.pay : R.payDeep, daily: true, x: ps.x, z: ps.z, relax: ps.relax || 0 }, ps.y != null ? { y: ps.y } : {}, { why: 'a manila envelope of Hazard Pay — the building restocks it on a third of the days' }));
     });
+    /* SKATEBOARDING (9.8): THE DECK leans on a locker in Room 26 — one row, never daily, shown only while the issue is not free (hqFindsInRoom); the locker room has no tape, so it is its own stop */
+    if (DOOR_HQ.rooms.locker) { const dpin = pins.locker || {}, ds = dpin.deck || hqFindSpot('locker', 'deck', []); if (ds) rows.push({ id: 'deck:locker', room: 'locker', kind: 'deck', x: ds.x, z: ds.z, relax: ds.relax || 0, why: 'a skateboard leaning on a locker; the letter on the locker is yours' }); }
     return rows;
 }
 /* hand-pinned spots (the generator's fallback): the cold room is 4 × 4 with hooks over the floor — the tape stands in the NE corner, the envelope lies on the shelving */
-DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 1.7, y: 1.2 } } };
+DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 1.7, y: 1.2 } } };   // the deck (SKATEBOARDING 9.8) takes the generator's far corner of Room 26
 DOOR_HQ.finds = hqBuildFinds();
 function hqFindById(id) { return (DOOR_HQ.finds || []).find(f => f.id === id) || null; }
 /* the record on the profile (never written by a reader) */
@@ -28918,7 +28928,7 @@ function hqFindTaken(row, rec, date) {
 /* the finds standing in a room right now: the rows minus the taken, minus the dailies not live today */
 function hqFindsInRoom(roomId, profile, now) {
     const date = hqToday(now ? new Date(now) : undefined), rec = hqFindsRecord(profile);
-    return (DOOR_HQ.finds || []).filter(f => f.room === roomId && hqFindLiveToday(f, date) && !hqFindTaken(f, rec, date));
+    return (DOOR_HQ.finds || []).filter(f => f.room === roomId && hqFindLiveToday(f, date) && !hqFindTaken(f, rec, date) && !(f.kind === 'deck' && hqSkateIssueFree()));   // the deck stands only while the issue is not free (9.8)
 }
 /* TAKE: writes the record on the profile object handed in (the caller saves
    it — ONE save for the claim and the reward, never creditLocalGold's second
@@ -28928,7 +28938,7 @@ function hqCollectFind(profile, id, now) {
     const row = hqFindById(id);
     if (!row) return { ok: false, reason: 'unknown' };
     if (!profile) return { ok: false, reason: 'noprofile' };
-    if (row.kind !== 'tape' && row.kind !== 'pay') return { ok: false, reason: 'unsupported', kind: row.kind };
+    if (row.kind !== 'tape' && row.kind !== 'pay' && row.kind !== 'deck') return { ok: false, reason: 'unsupported', kind: row.kind };
     const date = hqToday(now ? new Date(now) : undefined), rec = hqFindsRecord(profile);
     if (!hqFindLiveToday(row, date)) return { ok: false, reason: 'notlive' };
     if (hqFindTaken(row, rec, date)) return { ok: false, reason: 'taken' };
@@ -28936,6 +28946,10 @@ function hqCollectFind(profile, id, now) {
     if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = {};
     const R = profile.door.hq.finds = { taken: Object.assign({}, rec.taken), tapes: rec.tapes.slice(), pay: rec.pay | 0 };
     R.taken[row.id] = row.daily ? date : true;
+    if (row.kind === 'deck') {   // SKATEBOARDING (9.8): the board is yours — hqSkateStatus reads it
+        const sk = hqSkateRecord(profile, true); sk.deck = true; sk.since = sk.since || date;
+        return { ok: true, kind: 'deck', count: 1, total: 1, label: 'A SKATEBOARD · PRESS B' };
+    }
     if (row.kind === 'tape') {
         const t = hqTapeById(row.tape);
         if (R.tapes.indexOf(row.tape) < 0) R.tapes.push(row.tape);
@@ -29131,6 +29145,89 @@ function hqEncounterRecord(profile, ev) {
 function hqEncounterLog(profile) {
     const E = profile && profile.door && profile.door.hq && profile.door.hq.encounters;
     return { count: (E && E.count) | 0, wins: (E && E.wins) | 0, losses: (E && E.losses) | 0, last: (E && E.last) || null };
+}
+/* ══ SKATEBOARDING — THE RIDER'S TABLE (HQ plan 9.8 stage 1, 2026-09-15) ══
+   A walker MODE (three-renderer.js "SKATEBOARDING — THE RIDER"): nothing on
+   `state`, nothing relayed (RULE #2). This is the ONE table the rider reads
+   (through `_hqSkateRules`; the renderer's HQ_SKATE_DEFAULT is the fallback
+   when data.js is absent — keep the two in step, hq-skate.test.js diffs the
+   keys). Tune the feel here, never in the renderer. `free: true` = STANDARD
+   ISSUE for the test (the user's rule, the door gun's precedent): every
+   officer holds a board from intake; `free: false` puts THE DECK back in
+   Room 26 as a find (kind `deck`, leaning on a locker — hqCollectFind files
+   it as `door.hq.skate.deck`). The record: `door.hq.skate = { deck, since,
+   best: { score, text, date }, total, lines, bails }` — hqSkateStatus is
+   the ONE read (the pill, the OFFICER sheet, the renderer's issue),
+   hqSkateBank the ONE write (map.js, one transaction per banked line). */
+const HQ_SKATE_RULES = {
+    free: true,          // standard issue — every officer holds a board (false = the find in Room 26)
+    key: 'b',            // the walker's key: drop the deck / pick it up
+    maxV: 12.5,          // m/s — the cap on the roll (a run is ~4.6)
+    pushV: 3.0,          // m/s a push adds
+    pushEvery: 0.42,     // s between pushes (W held)
+    friction: 0.99,      // per 60 Hz frame, applied time-based (a long coast — the pushes settle near the cap)
+    brake: 0.9,          // S, per 60 Hz frame
+    turn: 2.4,           // rad/s of carve at speed (scales up to 3 m/s)
+    ollieV: 7.25,        // the walker's own jump (HQ_JUMP_V)
+    bailV: 4.2,          // a wall faster than this is a bail
+    bailDrop: 2.4,       // a walk-off fall taller than this is a bail (HQ_DROP_MAX × 1.5)
+    bailMs: 900,         // the tumble
+    deckBackMs: 2000,    // the deck skids away and is back under your feet
+    grindSnap: 0.6,      // m off a rail's line an ollie may come down and still lock
+    grindDy: 0.5,        // m under the rail's top the feet may be (coming down onto it)
+    grindMinV: 1.4,      // m/s — slower than this the grind ends
+    grindFriction: 0.996,// the rail is slick
+    grindBalance: 0.6,   // the drift that throws you (A / D counter it)
+    grindDrift: 0.45,    // how hard the rail tries
+    rampLaunchMin: 1.3,  // m/s up — a rise slower than this is just a step
+    rampLaunchMax: 9.5,  // m/s up — the cap off any lip
+    qpTop: 0.9,          // the quarter pipe's launch point (0 = the foot, 1 = the vertical)
+    qpLaunch: 1.0,       // the share of the roll that goes UP off the coping
+    bigAirS: 1.0,        // s of air that counts as BIG AIR on the line (a plain ollie is 0.8 s — only a launch earns it)
+    tricks: {            // pts · ms (the rotation's length) · the line's word
+        kickflip:  { pts: 100, ms: 430, label: 'KICKFLIP',   key: 'LEFT' },
+        heelflip:  { pts: 100, ms: 430, label: 'HEELFLIP',   key: 'RIGHT' },
+        frontflip: { pts: 300, ms: 640, label: 'FRONT FLIP', key: 'UP' },
+        backflip:  { pts: 300, ms: 640, label: 'BACKFLIP',   key: 'DOWN' },
+        roll:      { pts: 250, ms: 560, label: 'CORKSCREW',  key: 'W' },
+        spin:      { pts: 120, ms: 340, label: '180',        key: 'A / D' },
+        grab:      { pts: 80,  ms: 250, label: 'INDY GRAB',  key: 'SHIFT (held)' },
+        grind:     { pts: 60,  perSec: 45, label: 'GRIND' },
+        air:       { pts: 40,  label: 'BIG AIR' },
+    },
+    labels: { on: 'ON THE BOARD', off: 'ON FOOT', bail: 'BAIL', bank: 'LANDED' },
+    controls: ['W push', 'S brake', 'A / D carve', 'SPACE ollie', 'land on a rail = grind (A / D balance)', 'in the air: ← kickflip · → heelflip · ↑ front flip · ↓ backflip · W corkscrew · A / D 180 · SHIFT grab', 'B off'],
+};
+function hqSkateIssueFree() { return !!HQ_SKATE_RULES.free; }
+/* the record on the profile; `make` creates it (a writer), else a read-only shape */
+function hqSkateRecord(profile, make) {
+    const empty = { deck: false, since: null, best: null, total: 0, lines: 0, bails: 0 };
+    if (!profile) return empty;
+    if (!make) { const r = profile.door && profile.door.hq && profile.door.hq.skate; return (r && typeof r === 'object') ? Object.assign({}, empty, r) : empty; }
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
+    if (!profile.door.hq.skate || typeof profile.door.hq.skate !== 'object') profile.door.hq.skate = Object.assign({}, empty);
+    return profile.door.hq.skate;
+}
+/* the ONE read: { issued, free, deck, key, best, total, lines, bails, label } */
+function hqSkateStatus(profile, opts) {
+    opts = opts || {};
+    const rec = hqSkateRecord(profile);
+    const issued = !!(opts.force || HQ_SKATE_RULES.free || rec.deck);
+    return { issued, free: hqSkateIssueFree(), deck: !!rec.deck, key: HQ_SKATE_RULES.key.toUpperCase(), best: rec.best || null, total: rec.total | 0, lines: rec.lines | 0, bails: rec.bails | 0,
+             label: issued ? (HQ_SKATE_RULES.free ? 'STANDARD ISSUE' : 'YOURS · ROOM 26') : 'NOT ISSUED · THE LOCKER ROOM' };
+}
+/* a landed line's score: pts × the number of tricks on it (the combo's rule, the renderer's and this one) */
+function hqSkateScore(tricks, pts) { const n = Array.isArray(tricks) ? tricks.length : (tricks | 0); return Math.max(0, Math.round((+pts || 0) * Math.max(1, n))); }
+/* the ONE write (map.js, one transaction): a banked line — the best is kept with its words and its day; a bail counts too */
+function hqSkateBank(profile, ev) {
+    if (!profile || !ev) return null;
+    const sk = hqSkateRecord(profile, true);
+    if (ev.bail) { sk.bails = (sk.bails | 0) + 1; return sk; }
+    const score = Math.max(0, ev.score | 0);
+    sk.total = (sk.total | 0) + score; sk.lines = (sk.lines | 0) + 1;
+    if (!sk.best || score > (sk.best.score | 0)) sk.best = { score, text: String(ev.text || '').slice(0, 160), date: ev.date || hqToday() };
+    return sk;
 }
 /* the ONE read for the pill, the panel, the renderer: who holds it, what stands where, which slot goes next */
 function hqPortalStatus(profile, opts) {
@@ -30907,6 +31004,8 @@ if (typeof window !== 'undefined') {
     /* THE ENCOUNTER (HQ plan 9.4 stage 1, 2026-09-15 rev 16) */
     window.HQ_ENCOUNTER_RULES = HQ_ENCOUNTER_RULES; window.hqEncounterRoomOk = hqEncounterRoomOk; window.hqEncounterCharOk = hqEncounterCharOk; window.hqEncounterGesture = hqEncounterGesture;
     window.hqEncounterConfig = hqEncounterConfig; window.hqEncounterLaunch = hqEncounterLaunch; window.hqEncounterRecord = hqEncounterRecord; window.hqEncounterLog = hqEncounterLog;
+    /* SKATEBOARDING (HQ plan 9.8 stage 1, 2026-09-15) */
+    window.HQ_SKATE_RULES = HQ_SKATE_RULES; window.hqSkateStatus = hqSkateStatus; window.hqSkateRecord = hqSkateRecord; window.hqSkateBank = hqSkateBank; window.hqSkateScore = hqSkateScore; window.hqSkateIssueFree = hqSkateIssueFree;
     window.hqLinkRoom = hqLinkRoom;
     window.hqLinkDoors = hqLinkDoors;
     window.hqLinkEndOk = hqLinkEndOk;

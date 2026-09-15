@@ -1051,6 +1051,8 @@
                the buzz was muted for being loud; these stay under it */
             wayCreak: 0.28, wayWell: 0.3, wayTrain: 0.32,
             wayMirror: 0.3, waySplash: 0.32, wayCanvas: 0.28, wayFloo: 0.32, wayStatic: 0.26,   // the second batch (rev 22)
+            /* SKATEBOARDING (HQ plan 9.8, 2026-09-15): the deck's own kit — quiet, the ride plays them thirty times a minute */
+            skatePush: 0.3, skateOllie: 0.4, skateLand: 0.36, skateGrind: 0.3, skateBail: 0.45, skateBank: 0.4,
         };
         let _doorNoiseBuf = null;
         function _doorCtx() {
@@ -1113,6 +1115,60 @@
             /* THE WARDROBE (a `way` seam): a slow wooden creak — a sawtooth
                sliding up with a wobble, a rub of noise, then the coats' soft
                brush and a breath of cold wind at the back. */
+            /* ── SKATEBOARDING (HQ plan 9.8, 2026-09-15): the deck's kit ──
+               THE PUSH: a foot on concrete and the urethane rolling off it (a
+               low noise whoosh, band-passed, rising). THE OLLIE: the tail's
+               POP (a click over a short thump). THE LANDING: four wheels
+               down at once (a thump, a rattle). THE GRIND: the trucks on
+               steel — a short metallic buzz, called every 0.22 s while the
+               rail lasts. THE BAIL: a scrape and the body hitting the floor.
+               THE BANK: the line lands — a two-note lift. */
+            skatePush(ctx, t, out, vol) {
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.7, 0.03, 0.12, 0.3), t, 0.5, { type: 'bandpass', f0: 380, f1: 900, slide: 0.4, q: 1.1 });
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t + 0.05, vol * 0.25, 0.1, 0.3, 0.5), t + 0.05, 0.9, { type: 'lowpass', f0: 700, f1: 420, slide: 0.8, q: 0.6 });
+                return 1.0;
+            },
+            skateOllie(ctx, t, out, vol) {
+                const g = _doorEnv(ctx, out, t, vol, 0.004, 0.02, 0.08);
+                const o = ctx.createOscillator(); o.type = 'square'; o.frequency.setValueAtTime(1600, t); o.frequency.exponentialRampToValueAtTime(400, t + 0.05);
+                const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 900;
+                o.connect(hp).connect(g); o.start(t); o.stop(t + 0.1);
+                const th = _doorEnv(ctx, out, t + 0.01, vol * 0.7, 0.005, 0.04, 0.16);
+                const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.setValueAtTime(160, t + 0.01); o2.frequency.exponentialRampToValueAtTime(60, t + 0.18);
+                o2.connect(th); o2.start(t + 0.01); o2.stop(t + 0.22);
+                return 0.3;
+            },
+            skateLand(ctx, t, out, vol) {
+                const th = _doorEnv(ctx, out, t, vol, 0.004, 0.05, 0.2);
+                const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(48, t + 0.22);
+                o.connect(th); o.start(t); o.stop(t + 0.26);
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.5, 0.004, 0.03, 0.12), t, 0.2, { type: 'bandpass', f0: 1800, f1: 700, slide: 0.15, q: 0.8 });
+                return 0.35;
+            },
+            skateGrind(ctx, t, out, vol) {
+                const dur = 0.26;
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.8, 0.02, dur - 0.06, 0.08), t, dur + 0.1, { type: 'bandpass', f0: 2600, f1: 3400, slide: dur, q: 4 });
+                const g = _doorEnv(ctx, out, t, vol * 0.25, 0.02, dur - 0.06, 0.06);
+                const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(1240, t); o.frequency.linearRampToValueAtTime(1180, t + dur);
+                const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2400; bp.Q.value = 6;
+                o.connect(bp).connect(g); o.start(t); o.stop(t + dur);
+                return dur + 0.1;
+            },
+            skateBail(ctx, t, out, vol) {
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.7, 0.01, 0.18, 0.25), t, 0.5, { type: 'bandpass', f0: 1400, f1: 500, slide: 0.4, q: 0.9 });
+                const th = _doorEnv(ctx, out, t + 0.16, vol, 0.005, 0.06, 0.3);
+                const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(110, t + 0.16); o.frequency.exponentialRampToValueAtTime(40, t + 0.5);
+                o.connect(th); o.start(t + 0.16); o.stop(t + 0.55);
+                return 0.7;
+            },
+            skateBank(ctx, t, out, vol) {
+                [[0, 660], [0.09, 990]].forEach(n => {
+                    const g = _doorEnv(ctx, out, t + n[0], vol * 0.5, 0.01, 0.08, 0.25);
+                    const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = n[1];
+                    o.connect(g); o.start(t + n[0]); o.stop(t + n[0] + 0.4);
+                });
+                return 0.5;
+            },
             wayCreak(ctx, t, out, vol) {
                 const dur = 0.7;
                 const g = _doorEnv(ctx, out, t, vol * 0.6, 0.05, dur - 0.2, 0.18);

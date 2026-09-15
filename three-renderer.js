@@ -22057,6 +22057,7 @@ const ThreeRenderer = (function () {
         spaceship: 'Meshy_AI_spaceship_0727195825_texture.glb',
         clock:     'Meshy_AI_analog_clock_realist_0727195259_texture.glb',
         gclock:    'Meshy_AI_grandfather_clock_re_0727195306_texture.glb',
+        skateboard: 'Meshy_AI_a_skateboard_0915212313_texture.glb',   // SKATEBOARDING (HQ plan 9.8, 2026-09-15): the deck under the rider — 1.0 long along X, 0.29 wide, 0.17 tall (the wheels down); MODEL_INDEX §3d
         // 2026-07-28 on-board prop batch — grid-snapped monuments (see _MON_GRID)
         dumpster:  'Meshy_AI_dumpster_0727195512_texture.glb',
         greekcol:  'Meshy_AI_greek_column_0727195651_texture.glb',
@@ -36599,7 +36600,9 @@ const ThreeRenderer = (function () {
                 if (end > start) segsArc.push([start, end]);
             }
         }
+        _hq.rails = _hq.rails || [];
         segsArc.forEach(function (sg) {
+            _hq.rails.push({ arc: true, r: railR, a0: sg[0], a1: sg[1], y: WH + railH, mezz: true });   // SKATEBOARDING (9.8): the round railings ARE the point
             G.add(_hqRailArc(railR, sg[0], sg[1], WH + railH, 0.03, railMat));
             G.add(_hqRailArc(railR, sg[0], sg[1], WH + railH * 0.55, 0.018, railMat));
         });
@@ -39097,6 +39100,17 @@ const ThreeRenderer = (function () {
             return pivot;
         },
         /* a manila envelope lying at a slant: the flap, the red string clasp, a stamp in the corner */
+        /* SKATEBOARDING (9.8): the deck as a find — the stand-in board leaning on its tail (the GLB rides under the rider only) */
+        find_deck: function (U) {
+            var g = new THREE.Group();
+            var wood = _hqMat(null, 1, 1, { color: 0x6b4a2a, shininess: 30 }), rub = _hqMat(null, 1, 1, { color: 0x1a1a1a, shininess: 10 });
+            var top = _hqBox(0.2, 0.025, 0.8, wood); top.rotation.x = -1.2; top.position.set(0, 0.4 * U, 0.1 * U); g.add(top);
+            [[-0.07, -0.26], [0.07, -0.26], [-0.07, 0.26], [0.07, 0.26]].forEach(function (w) {
+                var wh = new THREE.Mesh(new THREE.CylinderGeometry(0.03 * U, 0.03 * U, 0.03 * U, 10), rub); wh.rotation.z = Math.PI / 2;
+                wh.position.set(w[0] * U, (0.4 + w[1] * Math.sin(1.2) - 0.06 * Math.cos(1.2)) * U, (0.1 + w[1] * Math.cos(1.2) + 0.06 * Math.sin(1.2)) * U); top.parent && g.add(wh);
+            });
+            return g;
+        },
         find_pay: function (U) {
             var g = new THREE.Group();
             var W = 0.24, D = 0.16;
@@ -39253,6 +39267,37 @@ const ThreeRenderer = (function () {
             arm.rotation.z = Math.PI / 2; arm.position.set(0, 0.95 * U, (L / 2 + 0.3) * U); g.add(arm);
             var sign = _hzTextTex('hq_ramp_sign', ['LOT FULL', 'NO EXIT THIS LEVEL'], { w: 256, h: 128, bg: '#2a2a2e', color: '#ffb020', border: '#ffb020' });
             if (sign) { var sm = new THREE.Mesh(new THREE.PlaneGeometry(1.4 * U, 0.7 * U), new THREE.MeshBasicMaterial({ map: sign })); sm.position.set((W / 2 + 0.3) * U, 1.45 * U, (L / 2 + 0.3) * U); g.add(sm); }
+            return g;
+        },
+        /* SKATEBOARDING (HQ plan 9.8, 2026-09-15): THE QUARTER PIPE — a curved
+           face the rider climbs (the walker reads it as a surface through
+           _hqRampSurfaceAt: catalogue `ramp: { w, len, h, prof: 'qp' }`), a
+           coping bar along the top, a short deck behind it, plywood sides. The
+           approach is local +Z (face = the heading it opens to); built to the
+           catalogue's w × len × h so the surface and the mesh agree. */
+        quarter_pipe: function (U) {
+            var g = new THREE.Group();
+            var W = 4.2, D = 2.6, Hh = 2.2, N = 14;
+            var ply = _hqMat('wood', 2, 1, { color: 0xc9b08a, shininess: 8 }), dark = _hqMat(null, 1, 1, { color: 0x3a3430, shininess: 6 }), steel = _hqMat(null, 1, 1, { color: 0x9aa2aa, shininess: 60, specular: 0x888888 });
+            var geo = new THREE.BufferGeometry(), pos = [], uv = [], idx = [];
+            for (var i = 0; i <= N; i++) {
+                var t = i / N, y = Hh * (1 - Math.sqrt(Math.max(0, 1 - t * t))), z = D / 2 - t * D;
+                pos.push(-W / 2 * U, y * U, z * U, W / 2 * U, y * U, z * U); uv.push(0, t * 3, 2, t * 3);
+                if (i < N) { var b = i * 2; idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2); }
+            }
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
+            var face = new THREE.Mesh(geo, ply); face.material.side = THREE.DoubleSide; g.add(face);
+            /* the sides: a fan of the same profile, closed */
+            [-1, 1].forEach(function (sd) {
+                var sh = new THREE.Shape(); sh.moveTo(D / 2 * U, 0);
+                for (var j = 0; j <= N; j++) { var tj = j / N; sh.lineTo((D / 2 - tj * D) * U, Hh * (1 - Math.sqrt(Math.max(0, 1 - tj * tj))) * U); }
+                sh.lineTo(-(D / 2 + 0.4) * U, Hh * U); sh.lineTo(-(D / 2 + 0.4) * U, 0); sh.closePath();
+                var sm = new THREE.Mesh(new THREE.ShapeGeometry(sh), dark); sm.material.side = THREE.DoubleSide;
+                sm.rotation.y = -Math.PI / 2; sm.position.x = sd * (W / 2) * U; g.add(sm);
+            });
+            var deck = _hqBox(W, 0.08, 0.4, ply); deck.position.set(0, (Hh - 0.04) * U, -(D / 2 + 0.2) * U); g.add(deck);
+            var back = _hqBox(W, Hh, 0.06, dark); back.position.set(0, Hh / 2 * U, -(D / 2 + 0.43) * U); g.add(back);
+            var cop = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.035 * U, W * U, 10), steel); cop.rotation.z = Math.PI / 2; cop.position.set(0, (Hh + 0.02) * U, -(D / 2 - 0.02) * U); g.add(cop);
             return g;
         },
         roller_shutter: function (U) {
@@ -41414,11 +41459,13 @@ const ThreeRenderer = (function () {
                 }
                 G.add(grp);
                 _hq.props.push({ key: p.key, grp: grp });
+                _hqRegisterPropPark(p, cat, grp, y, U);   // SKATEBOARDING (9.8): a catalogue `rail` / `ramp`
                 /* the blocker's base is the prop's own `y` (Phase 8 stage 2: a stair step stacked by `y` is a column from its base, so the floor under a raised landing stays a floor) */
                 if (!flip && cat.foot > 0 && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0 + (p.y || 0), top: y + (cat.h || 1), rect: (p.rect === false) ? undefined : (cat.rect || undefined) });   // `rect` (2026-09-14): a rectangular footprint in room axes
                 return;
             }
             place(0.66);
+            _hqRegisterPropPark(p, cat, grp, y, U);   // SKATEBOARDING (9.8): a catalogue `rail` (railing_1m) / `ramp`
             /* the collision disc carries the prop's TOP (2026-09-05): the
                catalogue height now, the measured skinned height once the GLB
                is in — a jump lands on it, a walker steps onto it if it is
@@ -41574,7 +41621,7 @@ const ThreeRenderer = (function () {
        pieces like any floor prop. Dev: window.EW_HQ_FINDS_ALL builds every
        row of the room, taken or not. */
     var HQ_FIND_REACH = 1.6, HQ_FIND_LIGHT_MAX = 4;
-    var HQ_FIND_COLORS = { tape: 0xff5ad6, pay: 0xffd25a, potion: 0xff5a5a, item: 0xffffff, cube: 0x7fd9dd };
+    var HQ_FIND_COLORS = { tape: 0xff5ad6, pay: 0xffd25a, deck: 0x7dffb0, potion: 0xff5a5a, item: 0xffffff, cube: 0x7fd9dd };   // deck: SKATEBOARDING (9.8)
     function _hqFindSparkle(color, U, seed) {
         var g = new THREE.Group();
         var ring = _hzGlowSprite(0.9 * U, color, 0.42, 0.14, 0.12, 0.9); ring.position.y = 0.16 * U; g.add(ring);
@@ -41596,7 +41643,7 @@ const ThreeRenderer = (function () {
                  : ((typeof hqFindsInRoom === 'function') ? hqFindsInRoom(roomId, _hq.profile) : []);
         _hq.findLights = 0;
         rows.forEach(function (f) {
-            var cat = D.catalogue[f.kind === 'tape' ? 'find_tape' : 'find_pay'];
+            var cat = D.catalogue[f.kind === 'tape' ? 'find_tape' : f.kind === 'deck' ? 'find_deck' : 'find_pay'];   // SKATEBOARDING (9.8): the deck in the locker room when the issue is not free
             var pg = cat && cat.proc ? _hqProcProp(cat.proc) : null;
             if (!pg) return;
             var x = f.x || 0, z = f.z || 0;
@@ -41616,8 +41663,8 @@ const ThreeRenderer = (function () {
             if (_hq.findLights < HQ_FIND_LIGHT_MAX) { var pl = new THREE.PointLight(color, 0.55, 4.5 * U, 2); pl.position.y = 0.3 * U; grp.add(pl); _hq.findLights++; }
             G.add(grp);
             var rec = { id: f.id, kind: f.kind, find: f, grp: grp, obj: pg, sparkle: sp, x: x, y: y, z: z, seed: seed,
-                        label: f.kind === 'tape' ? 'A VHS CASSETTE' : 'AN ENVELOPE',
-                        sub: f.kind === 'tape' ? 'UNLABELLED · SOMEBODY LEFT IT HERE' : 'HAZARD PAY · UNMARKED · NOBODY IS WATCHING' };
+                        label: f.kind === 'tape' ? 'A VHS CASSETTE' : f.kind === 'deck' ? 'A SKATEBOARD' : 'AN ENVELOPE',
+                        sub: f.kind === 'tape' ? 'UNLABELLED · SOMEBODY LEFT IT HERE' : f.kind === 'deck' ? 'LEANING ON A LOCKER · NOBODY HAS CLAIMED IT' : 'HAZARD PAY · UNMARKED · NOBODY IS WATCHING' };
             _hq.finds.push(rec);
             _hq.tickers.push(function (dt, now) {
                 if (rec.dead) return;
@@ -42546,6 +42593,7 @@ const ThreeRenderer = (function () {
             }
             /* THE GALLERY (9.2 stage 2): the flight, the slab, or the floor under it */
             if (_hq.gallery) { var gy = _hqGalleryAt(x, z, curY); if (gy === null) return null; if (gy !== undefined) y = gy; }
+            if (_hq.ramps && _hq.ramps.length) { var rpy = _hqRampSurfaceAt(x, z); if (rpy !== undefined && rpy > y) y = rpy; }   // SKATEBOARDING (9.8): a quarter pipe is a SURFACE (the curve), read like the gallery's slab
         } else if (room.kind === 'bay') {
             /* a corridor: between the two wall arcs, short of the end caps (a full ring has none) */
             var capPad = ((0.15 + HQ_BODY_R) / Math.max(1, r)) * 180 / Math.PI;
@@ -42692,6 +42740,7 @@ const ThreeRenderer = (function () {
             /* the site board (plan 7.2): lava / deep water is never overflown; a pit's floor stays under the feet */
             if (_hq.site) { var sc = _hqSiteCellAt(x, z); if (sc) { if (!sc.walk) return false; if (_hq.site.cave ? (y < _hqSiteFloorY(sc, x, z) - 0.05) : (sc.top < 0 && y < sc.top - 0.05)) return false; } }   // a cave's ledge is solid in the air (rev 11)
             if (_hq.gallery && !_hqGalleryAir(x, z, y)) return false;   // THE GALLERY (9.2 stage 2): the slab, the flight's mass and the railing are solid in the air
+            if (_hq.ramps && _hq.ramps.length) { var rpa = _hqRampSurfaceAt(x, z); if (rpa !== undefined && y < rpa - 0.05) return false; }   // SKATEBOARDING (9.8): the quarter pipe's mass
         } else if (room.kind === 'bay') {
             var deg = _hqNormDeg(Math.atan2(x, -z) * 180 / Math.PI);
             var capPad = ((0.15 + HQ_BODY_R) / Math.max(1, r)) * 180 / Math.PI;
@@ -42949,13 +42998,14 @@ const ThreeRenderer = (function () {
     /* ── input ─────────────────────────────────────────────────────────── */
     function _hqKeyName(e) {
         var k = (e.key || '').toLowerCase();
-        if (k === 'arrowup') return 'w';
-        if (k === 'arrowdown') return 's';
-        if (k === 'arrowleft') return 'a';
-        if (k === 'arrowright') return 'd';
+        /* SKATEBOARDING (9.8): the arrows are their OWN keys — the walker still reads them as WASD (k.up = k.w…), the rider reads them as the tricks */
+        if (k === 'arrowup') return 'up';
+        if (k === 'arrowdown') return 'down';
+        if (k === 'arrowleft') return 'left';
+        if (k === 'arrowright') return 'right';
         if (k === 'shift') return 'shift';
         if (k === ' ' || k === 'spacebar') return 'space';
-        if (k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'e' || k === 'v' || k === 'f' || k === 'q' || k === 'p') return k;   // F = the door gun (9.5)
+        if (k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'e' || k === 'b' || k === 'v' || k === 'f' || k === 'q' || k === 'p') return k;   // F = the door gun (9.5); B = the skateboard (9.8)
         if (k === 'enter') return 'e';
         if (k === 'escape' || k === 'esc') return 'esc';
         return null;
@@ -42978,12 +43028,14 @@ const ThreeRenderer = (function () {
             /* a gameplay key is a user gesture: grab the pointer so the mouse
                aims edge-free with no click (hover-look covers it until then).
                Throttled — a denied request should not spam the console. */
-            if ((k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'space') && document.pointerLockElement !== canvas) {
+            if ((k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'up' || k === 'down' || k === 'left' || k === 'right' || k === 'space') && document.pointerLockElement !== canvas) {
                 var nowL = performance.now();
                 if (!H._lockTryAt || nowL - H._lockTryAt > 1500) { H._lockTryAt = nowL; _hqTryLock(); }
             }
             if (k === 'e') { e.preventDefault(); _hqInteract(); return; }
             if (k === 'v') { e.preventDefault(); _hqToggleView(); return; }
+            /* SKATEBOARDING (HQ plan 9.8): B drops the deck / picks it up */
+            if (k === 'b') { e.preventDefault(); _hqRideToggle(); return; }
             /* THE DOOR GUN (HQ plan 9.5): F draws / holsters; Q holsters a drawn one (else the bell) */
             if (k === 'f') { e.preventDefault(); _hqPortalDraw(!(H.portal && H.portal.drawn)); return; }
             if (k === 'q' && H.portal && H.portal.drawn) { e.preventDefault(); _hqPortalDraw(false); return; }
@@ -43160,12 +43212,499 @@ const ThreeRenderer = (function () {
         if (_hq.opts.onView) _hq.opts.onView(_hq.fp);
     }
 
+    /* ══ SKATEBOARDING — THE RIDER (HQ plan 9.8 stage 1, 2026-09-15) ══
+       A walker MODE, never a game mode (nothing on `state`, nothing relayed —
+       RULE #2). B drops the deck (data.js HQ_SKATE_RULES is the table; the
+       issue is `opts.skate.issued` from map.js, standard issue while
+       `free: true`). On the board the walker is a RIDER (`_hq.ride`):
+         · MOMENTUM — `v` along a heading `hd`; W pushes on a cadence, S
+           brakes, A / D carve (the turn scales with speed), friction is
+           time-based (≈ 0.99 at 60 Hz), the mouse still owns the camera.
+         · THE OLLIE — SPACE, the walker's own jump arc with the deck.
+         · GRINDS — an ollie that comes down within `grindSnap` of a RAIL in
+           `_hq.rails` (the mezzanine's arcs, the gallery's banister, the
+           cave's rope bridges, every `railing_1m` — a catalogue `rail`, the
+           prop placer registers it) LOCKS to it: the rider slides the
+           rail's polyline / arc at speed, A / D balance against a drift,
+           the end of the run or SPACE hops off, sparks under the trucks.
+         · RAMPS — `_hq.ramps`: a QUARTER PIPE (catalogue `ramp` with
+           `prof: 'qp'` — a real curved SURFACE the walker reads through
+           `_hqRampSurfaceAt`, a launch off its coping) and the flat
+           registers (the cave's wedges, the gallery flight, the risers): a
+           rise taken at speed becomes a hop when the ground runs out.
+         · TRICKS in the air — ← KICKFLIP · → HEELFLIP · ↑ FRONT FLIP ·
+           ↓ BACKFLIP · W CORKSCREW (a barrel roll) · A / D a 180 spin each
+           (they stack: 360, 540…) · SHIFT held = the GRAB. Every trick is
+           a rotation on the rider's own model / the deck (no new clip:
+           the library's `jump` plus a spin on the bone-less root); a trick
+           still turning when the ground comes up is a BAIL, and so is a
+           wall at speed, a spin that lands off-axis or a rail lost.
+         · THE COMBO — grinds and airs chained without a clean landing;
+           `pts × the number of tricks`, BANKED on the landing (map.js
+           writes the best line on the profile; the strip's pill and the
+           OFFICER sheet read it). Bail = the line is lost, the deck skids
+           away and is back under your feet in two seconds.
+       Rails: `{ x0, z0, x1, z1, y, y0?, y1? }` straight or `{ arc: true,
+       r, a0, a1 (deg, a0 < a1), y }`; ramps: `{ x, z, dir, y0, y1, w, len? }`
+       (axis-aligned, `dir` = the side it rises toward) or `{ x, z, yaw, hw,
+       hd, y0, y1, prof? }` (a prop's, in room axes). The registries live per
+       visit; `_hqRideMem` carries the board through a door. Kill-switch
+       `window.EW_HQ_NO_SKATE`; dev `window.EW_HQ_SKATE` = issued. */
+    var HQ_SKATE_DEFAULT = {
+        maxV: 12.5, pushV: 3.0, pushEvery: 0.42, friction: 0.99, brake: 0.9, turn: 2.4,
+        ollieV: 7.25, bailV: 4.2, bailDrop: 2.4, bailMs: 900, deckBackMs: 2000,
+        grindSnap: 0.6, grindDy: 0.5, grindMinV: 1.4, grindFriction: 0.996, grindBalance: 0.6, grindDrift: 0.45,
+        rampLaunchMin: 1.3, rampLaunchMax: 9.5, qpTop: 0.9, qpLaunch: 1.0, bigAirS: 1.0,
+        tricks: {
+            kickflip:  { pts: 100, ms: 430, label: 'KICKFLIP' },
+            heelflip:  { pts: 100, ms: 430, label: 'HEELFLIP' },
+            frontflip: { pts: 300, ms: 640, label: 'FRONT FLIP' },
+            backflip:  { pts: 300, ms: 640, label: 'BACKFLIP' },
+            roll:      { pts: 250, ms: 560, label: 'CORKSCREW' },
+            spin:      { pts: 120, ms: 340, label: '180' },
+            grab:      { pts: 80,  ms: 250, label: 'INDY GRAB' },
+            grind:     { pts: 60,  perSec: 45, label: 'GRIND' },
+            air:       { pts: 40,  label: 'BIG AIR' },
+        },
+    };
+    var _hqRideMem = { on: false };   // the board through a door
+    function _hqSkateRules() {
+        var R = (typeof HQ_SKATE_RULES !== 'undefined') ? HQ_SKATE_RULES : ((typeof window !== 'undefined' && window.HQ_SKATE_RULES) || null);
+        if (!R) return HQ_SKATE_DEFAULT;
+        var o = Object.assign({}, HQ_SKATE_DEFAULT, R);
+        o.tricks = Object.assign({}, HQ_SKATE_DEFAULT.tricks, R.tricks || {});
+        return o;
+    }
+    function _hqSkateOff() { return typeof window !== 'undefined' && !!window.EW_HQ_NO_SKATE; }
+    /* ── the rails: one geometry read for a straight run and an arc ── */
+    function _hqRailLen(r) { return r.arc ? _hqRad(Math.abs(r.a1 - r.a0)) * r.r : Math.hypot(r.x1 - r.x0, r.z1 - r.z0); }
+    /* the point + unit tangent `s` metres along the run (an arc runs a0 → a1) */
+    function _hqRailAt(r, s) {
+        if (r.arc) {
+            var sg = (r.a1 >= r.a0) ? 1 : -1, a = _hqRad(r.a0 + sg * (s / Math.max(0.001, r.r)) * 180 / Math.PI);
+            return { x: Math.sin(a) * r.r, z: -Math.cos(a) * r.r, y: r.y, tx: sg * Math.cos(a), tz: sg * Math.sin(a) };
+        }
+        var L = _hqRailLen(r) || 0.001, tx = (r.x1 - r.x0) / L, tz = (r.z1 - r.z0) / L, k = s / L;
+        var y = (r.y0 != null && r.y1 != null) ? r.y0 + (r.y1 - r.y0) * k : r.y;
+        return { x: r.x0 + tx * s, z: r.z0 + tz * s, y: y, tx: tx, tz: tz };
+    }
+    /* the nearest point of the run to (x, z): { s, d } — s clamped to the run, d horizontal (m) */
+    function _hqRailNearest(r, x, z) {
+        var s;
+        if (r.arc) {
+            var lo = Math.min(r.a0, r.a1), hi = Math.max(r.a0, r.a1), deg = _hqNormDeg(Math.atan2(x, -z) * 180 / Math.PI), best = null;
+            [deg - 360, deg, deg + 360].forEach(function (d) {
+                var c = Math.max(lo, Math.min(hi, d)), off = Math.abs(c - d);
+                if (best === null || off < best.off) best = { d: c, off: off };
+            });
+            s = _hqRad(Math.abs(best.d - r.a0)) * r.r;
+        } else {
+            var L = _hqRailLen(r) || 0.001, tx = (r.x1 - r.x0) / L, tz = (r.z1 - r.z0) / L;
+            s = Math.max(0, Math.min(L, (x - r.x0) * tx + (z - r.z0) * tz));
+        }
+        var p = _hqRailAt(r, s);
+        return { s: s, d: Math.hypot(p.x - x, p.z - z), y: p.y };
+    }
+    /* the rail an airborne rider coming down at (x, z, feetY) may lock to */
+    function _hqRailSnap(x, z, y, S) {
+        var rails = (_hq && _hq.rails) || [], best = null;
+        for (var i = 0; i < rails.length; i++) {
+            var n = _hqRailNearest(rails[i], x, z);
+            if (n.d > S.grindSnap) continue;
+            if (y > n.y + 0.14 || y < n.y - S.grindDy) continue;   // the feet at the rail's height, or just under it (coming down onto it)
+            if (!best || n.d < best.d) best = { rail: rails[i], s: n.s, d: n.d, y: n.y };
+        }
+        return best;
+    }
+    /* ── the ramps ── */
+    /* local coords on a ramp: { u (across, m), t (0 at the low end → 1 at the high end) } or null */
+    function _hqRampLocal(rp, x, z) {
+        if (rp.yaw != null) {
+            var dx = x - rp.x, dz = z - rp.z, c = Math.cos(rp.yaw), s = Math.sin(rp.yaw);
+            var lx = dx * c - dz * s, lz = dx * s + dz * c;   // world → the prop's frame (rotation.y = yaw undone)
+            if (Math.abs(lx) > rp.hw || Math.abs(lz) > rp.hd) return null;
+            return { u: lx, t: (rp.hd - lz) / (2 * rp.hd) };   // the low end at local +Z, the coping at −Z
+        }
+        var w = rp.w || 1.75, len = rp.len || w, along = (rp.dir === 'n' || rp.dir === 's') ? 'z' : 'x';
+        var ha = len / 2, hc = w / 2, ax = (along === 'z') ? z - rp.z : x - rp.x, cx = (along === 'z') ? x - rp.x : z - rp.z;
+        if (Math.abs(ax) > ha || Math.abs(cx) > hc) return null;
+        var t = (rp.dir === 'n' || rp.dir === 'w') ? (ha - ax) / (2 * ha) : (ax + ha) / (2 * ha);
+        return { u: cx, t: t };
+    }
+    function _hqRampUnder(x, z) {
+        var ramps = (_hq && _hq.ramps) || [];
+        for (var i = 0; i < ramps.length; i++) { var l = _hqRampLocal(ramps[i], x, z); if (l) return { ramp: ramps[i], t: l.t, u: l.u }; }
+        return null;
+    }
+    /* a profiled ramp's height profile: a quarter pipe is a quarter circle (vertical at t = 1), else a straight pitch */
+    function _hqRampProfile(rp, t) {
+        t = Math.max(0, Math.min(1, t));
+        if (rp.prof === 'qp') return 1 - Math.sqrt(Math.max(0, 1 - t * t));
+        return t;
+    }
+    /* THE SURFACE LAYER: the height of a profiled ramp under (x, z) — undefined off every ramp (a flat register has its own surface: a tread, a wedge cell) */
+    function _hqRampSurfaceAt(x, z) {
+        var ramps = (_hq && _hq.ramps) || [];
+        for (var i = 0; i < ramps.length; i++) {
+            var rp = ramps[i]; if (!rp.prof) continue;
+            var l = _hqRampLocal(rp, x, z); if (!l) continue;
+            return rp.y0 + (rp.y1 - rp.y0) * _hqRampProfile(rp, l.t);
+        }
+        return undefined;
+    }
+    /* the prop placer's registers: a catalogue `rail` (a run along the prop's local X at its top) and `ramp` (its footprint in the prop's frame) */
+    function _hqRegisterPropPark(p, cat, grp, y, U) {
+        if (!_hq) return;
+        _hq.rails = _hq.rails || []; _hq.ramps = _hq.ramps || [];
+        var yaw = grp.rotation.y, px = grp.position.x / U, pz = grp.position.z / U;
+        if (cat.rail) {
+            var len = p.span || cat.span || 1, tx = Math.cos(yaw), tz = -Math.sin(yaw), h = (cat.rail.h != null) ? cat.rail.h : 1.0;
+            _hq.rails.push({ x0: px - tx * len / 2, z0: pz - tz * len / 2, x1: px + tx * len / 2, z1: pz + tz * len / 2, y: y + h, prop: p.key });
+        }
+        if (cat.ramp) {
+            var rp = cat.ramp;
+            _hq.ramps.push({ x: px, z: pz, yaw: yaw, hw: (rp.w || 1) / 2, hd: (rp.len || 1) / 2, y0: y, y1: y + (rp.h || 0), prof: rp.prof || null, prop: p.key });
+        }
+    }
+    /* ── the ride record ── */
+    function _hqRideNew() {
+        return { on: false, issued: false, v: 0, hd: 0, stance: 0, pushT: 0, pushAnim: 0, grind: null, bal: 0, trick: null, queue: [], spinAcc: 0, grab: false, grabT: 0,
+                 combo: null, bailT: 0, deckAway: 0, rise: 0, lastY: null, onRamp: null, airT: 0, airY0: 0, lean: 0, flip: 0, roll: 0, deckRoll: 0, deckSpin: 0, deck: null, deckProc: null, spark: null, keyLatch: {}, sfxT: 0 };
+    }
+    function _hqRideArm(opts) {
+        var H = _hq; if (!H) return;
+        H.ride = _hqRideNew();
+        H.ride.issued = !_hqSkateOff() && !!((opts && opts.skate && opts.skate.issued) || (typeof window !== 'undefined' && window.EW_HQ_SKATE));
+        if (_hqRideMem.on && H.ride.issued) _hqRideToggle(true, true);
+    }
+    function _hqRideEmit(ev) { var H = _hq; if (!H || !H.opts.onSkate) return; try { H.opts.onSkate(ev); } catch (e) {} }
+    /* B: on / off. Off while airborne drops you as the walker (the arc continues). */
+    function _hqRideToggle(on, quiet) {
+        var H = _hq; if (!H || !H.player || !H.ride) return false;
+        var R = H.ride;
+        if (on == null) on = !R.on;
+        if (on && (!R.issued || _hqSkateOff())) { if (!quiet) _hqRideEmit({ kind: 'refused', reason: R.issued ? 'off' : 'noissue' }); return false; }
+        if (on === R.on) return R.on;
+        var pl = H.player;
+        if (on) {
+            R.on = true; R.v = 0; R.hd = pl.yaw; R.stance = 0; R.grind = null; R.trick = null; R.queue = []; R.spinAcc = 0; R.combo = null; R.bailT = 0; R.deckAway = 0; R.rise = 0; R.lastY = null; R.flip = R.roll = R.deckRoll = R.deckSpin = 0;
+            _hqRideMem.on = true;
+            if (!quiet) _hqRideEmit({ kind: 'on' });
+        } else {
+            if (R.grind) { R.grind = null; pl.air = true; pl.vy = 1.2; pl.jumpT = -1; }
+            R.on = false; R.v = 0; R.combo = null; R.trick = null; R.queue = []; R.spinAcc = 0; R.stance = 0; R.flip = R.roll = R.deckRoll = R.deckSpin = 0; R.bailT = 0;
+            pl.targetYaw = pl.yaw;
+            _hqRideMem.on = false;
+            if (!quiet) _hqRideEmit({ kind: 'off' });
+        }
+        if (_hq) _hq.dirty = true;
+        return R.on;
+    }
+    function _hqRideKeyEdge(R, k, key) { var down = !!k[key], was = !!R.keyLatch[key]; R.keyLatch[key] = down; return down && !was; }
+    /* the combo: add a line, tell the strip */
+    function _hqRideComboAdd(R, label, pts) {
+        if (!R.combo) R.combo = { tricks: [], pts: 0 };
+        R.combo.tricks.push(label); R.combo.pts += pts;
+        _hqRideEmit({ kind: 'combo', text: R.combo.tricks.join(' + '), pts: Math.round(R.combo.pts), mult: R.combo.tricks.length, score: Math.round(R.combo.pts * R.combo.tricks.length) });
+    }
+    function _hqRideComboBank(R) {
+        if (!R.combo || !R.combo.tricks.length) { R.combo = null; return; }
+        var score = Math.round(R.combo.pts * R.combo.tricks.length), text = R.combo.tricks.join(' + ');
+        R.combo = null;
+        _hqRideEmit({ kind: 'bank', score: score, text: text, count: text.split(' + ').length });
+    }
+    function _hqRideBail(R, pl, why) {
+        var S = _hqSkateRules();
+        var lost = R.combo ? Math.round(R.combo.pts * R.combo.tricks.length) : 0;
+        R.combo = null; R.trick = null; R.queue = []; R.spinAcc = 0; R.grab = false;
+        if (R.grind) { R.grind = null; pl.air = true; pl.vy = 0.8; pl.jumpT = -1; }
+        R.v = 0; R.bailT = S.bailMs / 1000; R.deckAway = S.deckBackMs / 1000; R.bailSpin = 0;
+        _hqRideEmit({ kind: 'bail', why: why, lost: lost });
+    }
+    function _hqRideStartTrick(R, id) {
+        var S = _hqSkateRules(), T = S.tricks[id]; if (!T) return;
+        if (R.trick) { if (R.queue.length < 3) R.queue.push(id); return; }
+        R.trick = { id: id, t: 0, ms: T.ms || 400, dir: 1 };
+    }
+    /* THE RIDE, per frame — in place of _hqTickWalker's movement */
+    function _hqTickRide(dt) {
+        var H = _hq, pl = H.player, R = H.ride, k = H.keys, S = _hqSkateRules();
+        var TR = S.tricks;
+        if (H.paused) { pl.moving = false; return; }
+        pl.moving = R.v > 0.25; pl.running = R.v > 6; pl.targetYaw = R.hd;
+        /* THE BAIL: no control; the body tumbles once and stands up; the deck comes back */
+        if (R.bailT > 0) {
+            R.bailT = Math.max(0, R.bailT - dt);
+            if (pl.air) _hqRideGravity(pl, R, dt, S, true);
+            pl.moving = false;
+        }
+        if (R.deckAway > 0) R.deckAway = Math.max(0, R.deckAway - dt);
+        var noCtl = R.bailT > 0;
+        /* ── THE GRIND ── */
+        if (R.grind) {
+            var g = R.grind, L = _hqRailLen(g.rail);
+            g.t += dt; g.pts += (TR.grind.perSec || 0) * dt;
+            R.v *= Math.pow(S.grindFriction, dt * 60);
+            g.s += g.dir * R.v * dt;
+            g.drift += (Math.random() - 0.5) * 3.0 * dt; g.drift = Math.max(-S.grindDrift, Math.min(S.grindDrift, g.drift));
+            R.bal += g.drift * dt + ((k.d ? 1 : 0) - (k.a ? 1 : 0)) * 1.4 * dt;
+            R.lean += ((R.bal * 0.9) - R.lean) * Math.min(1, dt * 10);
+            var edge = _hqRideKeyEdge(R, k, 'space');
+            if (Math.abs(R.bal) > S.grindBalance) { R.bal = 0; _hqRideBail(R, pl, 'balance'); return; }
+            if (g.s < 0 || g.s > L || R.v < S.grindMinV * 0.5 || edge) {
+                /* the end of the run, too slow, or an ollie off */
+                var pts = Math.round(g.pts);
+                if (R.combo && R.combo.tricks.length) { R.combo.pts += g.pts - (TR.grind.pts || 0); _hqRideEmit({ kind: 'combo', text: R.combo.tricks.join(' + '), pts: Math.round(R.combo.pts), mult: R.combo.tricks.length, score: Math.round(R.combo.pts * R.combo.tricks.length) }); }
+                g.s = Math.max(0, Math.min(L, g.s));
+                var pe = _hqRailAt(g.rail, g.s); pl.x = pe.x; pl.z = pe.z; pl.y = pe.y + 0.02;
+                R.grind = null; R.bal = 0;
+                pl.air = true; pl.vy = edge ? S.ollieV * 0.85 : 2.3; pl.jumpT = 0; R.airT = 0; R.airY0 = pl.y; R.jumpFromWalkOff = false;
+                _hqRideEmit({ kind: edge ? 'ollie' : 'hop', pts: pts });
+                return;
+            }
+            var p = _hqRailAt(g.rail, g.s);
+            pl.x = p.x; pl.z = p.z; pl.y = p.y + 0.02; pl.visY = pl.y;
+            R.hd = Math.atan2(g.dir * p.tx, g.dir * p.tz);
+            pl.targetYaw = R.hd;
+            R.sfxT -= dt; if (R.sfxT <= 0) { R.sfxT = 0.22; _hqRideEmit({ kind: 'grind', tick: true }); }
+            return;
+        }
+        var turnIn = noCtl ? 0 : ((k.d ? 1 : 0) - (k.a ? 1 : 0));
+        var leanT = 0;
+        if (!pl.air) {
+            /* ── ON THE GROUND ── */
+            if (!noCtl && (k.w || k.up)) {
+                if (R.v < 0.3) R.hd = H.cam.yaw;   // the first push goes where you look
+                R.pushT -= dt;
+                if (R.pushT <= 0) { R.v = Math.min(S.maxV, R.v + S.pushV); R.pushT = S.pushEvery; R.pushAnim = 0.32; _hqRideEmit({ kind: 'push', v: R.v }); }
+            } else R.pushT = Math.min(R.pushT, 0.08);
+            if (!noCtl && (k.s || k.down)) R.v *= Math.pow(S.brake, dt * 60);
+            R.v *= Math.pow(S.friction, dt * 60);
+            if (R.v < 0.05) R.v = 0;
+            R.hd += turnIn * S.turn * Math.min(1, R.v / 3) * dt;
+            leanT = -turnIn * 0.32 * Math.min(1, R.v / 4);
+            /* THE OLLIE */
+            if (!noCtl && k.space && !pl._jumpLatch) { pl.air = true; pl.vy = S.ollieV; pl.jumpT = 0; R.airT = 0; R.airY0 = pl.y; R.rise = 0; R.jumpFromWalkOff = false; _hqRideEmit({ kind: 'ollie', v: R.v }); }
+            pl._jumpLatch = !!k.space;
+            R.keyLatch.left = !!k.left; R.keyLatch.right = !!k.right; R.keyLatch.up = !!k.up; R.keyLatch.down = !!k.down; R.keyLatch.a = !!k.a; R.keyLatch.d = !!k.d; R.keyLatch.w = !!k.w;
+        } else {
+            /* ── IN THE AIR: the tricks ── */
+            R.airT += dt;
+            if (!noCtl) {
+                if (_hqRideKeyEdge(R, k, 'left')) _hqRideStartTrick(R, 'kickflip');
+                if (_hqRideKeyEdge(R, k, 'right')) _hqRideStartTrick(R, 'heelflip');
+                if (_hqRideKeyEdge(R, k, 'up')) _hqRideStartTrick(R, 'frontflip');
+                if (_hqRideKeyEdge(R, k, 'down')) _hqRideStartTrick(R, 'backflip');
+                if (_hqRideKeyEdge(R, k, 'w')) _hqRideStartTrick(R, 'roll');
+                if (_hqRideKeyEdge(R, k, 'a')) { _hqRideStartTrick(R, 'spin'); R.spinDir = 1; }
+                if (_hqRideKeyEdge(R, k, 'd')) { _hqRideStartTrick(R, 'spin'); R.spinDir = -1; }
+                if (k.shift) { if (!R.grab) { R.grab = true; R.grabT = 0; } R.grabT += dt; if (R.grabT >= (TR.grab.ms || 250) / 1000 && !R.grabDone) { R.grabDone = true; _hqRideComboAdd(R, TR.grab.label, TR.grab.pts); } }
+                else R.grab = false;
+            }
+            pl._jumpLatch = !!k.space;
+            leanT = 0;
+        }
+        /* the active trick turns; done → the line; the queue follows */
+        if (R.trick) {
+            var tk = R.trick, T = TR[tk.id];
+            tk.t += dt * 1000;
+            var f = Math.min(1, tk.t / tk.ms), ang = Math.PI * 2 * f;
+            if (tk.id === 'kickflip') R.deckRoll = ang; else if (tk.id === 'heelflip') R.deckRoll = -ang;
+            else if (tk.id === 'frontflip') R.flip = ang; else if (tk.id === 'backflip') R.flip = -ang;
+            else if (tk.id === 'roll') R.roll = ang;
+            else if (tk.id === 'spin') { R.spinAcc = (tk.base != null ? tk.base : (tk.base = R.spinAcc)) + (R.spinDir || 1) * Math.PI * f; }
+            if (f >= 1) {
+                var label = T.label;
+                if (tk.id === 'spin') { var halfTurns = Math.round(Math.abs(R.spinAcc) / Math.PI); label = (halfTurns * 180) + ''; if (R.combo && R.combo.tricks.length && /^\d+$/.test(R.combo.tricks[R.combo.tricks.length - 1])) { R.combo.pts += T.pts; R.combo.tricks[R.combo.tricks.length - 1] = label; _hqRideEmit({ kind: 'combo', text: R.combo.tricks.join(' + '), pts: Math.round(R.combo.pts), mult: R.combo.tricks.length, score: Math.round(R.combo.pts * R.combo.tricks.length) }); label = null; } }
+                if (tk.id === 'kickflip' || tk.id === 'heelflip') R.deckRoll = 0;
+                if (tk.id === 'frontflip' || tk.id === 'backflip') R.flip = 0;
+                if (tk.id === 'roll') R.roll = 0;
+                if (label) _hqRideComboAdd(R, label, T.pts);
+                R.trick = null;
+                if (R.queue.length) { var nid = R.queue.shift(); R.trick = { id: nid, t: 0, ms: (TR[nid] && TR[nid].ms) || 400 }; }
+                _hqRideEmit({ kind: 'trick', id: tk.id });
+            }
+        }
+        R.lean += (leanT - R.lean) * Math.min(1, dt * 8);
+        /* ── the move ── */
+        var mx = Math.sin(R.hd) * R.v, mz = Math.cos(R.hd) * R.v;
+        var nx = pl.x + mx * dt, nz = pl.z + mz * dt;
+        if (pl.air) {
+            var okx = _hqAirOK(nx, pl.z, pl.y), okz = _hqAirOK(pl.x, nz, pl.y), ax0 = pl.x, az0 = pl.z;
+            if (okx) pl.x = nx; if (okz) pl.z = nz;
+            var wantA = R.v * dt, movedA = (pl.x - ax0) * Math.sin(R.hd) + (pl.z - az0) * Math.cos(R.hd);
+            if (wantA > 0.002 && movedA < wantA * 0.3) { if (R.v > S.bailV && !noCtl) { _hqRideBail(R, pl, 'wall'); return; } R.v *= 0.5; }   // a wall in the air: the same rule
+            else if (wantA > 0.002 && movedA < wantA * 0.9) R.v *= Math.max(0.5, movedA / wantA);
+            _hqRideGravity(pl, R, dt, S, false);
+        } else if (R.v > 0) {
+            var under = _hqRampUnder(nx, nz), prof = under && under.ramp.prof;
+            var ox = pl.x, oz = pl.z;
+            /* a profiled ramp: its own surface, no step rule (the curve is steep near the coping) */
+            var skipB = _hqSurface(pl.x, pl.z, pl.y, false) === null;
+            var y1 = _hqSurface(nx + Math.sign(mx) * HQ_BODY_R * 0.6, pl.z, prof ? null : pl.y, skipB);
+            if (y1 !== null && prof) y1 = Math.max(y1, _hqRampSurfaceAt(nx, pl.z) || y1);
+            if (y1 !== null) { pl.x = nx; _hqRideSetY(pl, R, y1, S); }
+            var y2 = _hqSurface(pl.x, nz + Math.sign(mz) * HQ_BODY_R * 0.6, prof ? null : pl.y, skipB);
+            if (y2 !== null && prof) y2 = Math.max(y2, _hqRampSurfaceAt(pl.x, nz) || y2);
+            if (y2 !== null) { pl.z = nz; _hqRideSetY(pl, R, y2, S); }
+            if (y1 === null && y2 === null) {
+                var y3 = _hqSurface(nx, nz, prof ? null : pl.y, skipB);
+                if (y3 !== null) { pl.x = nx; pl.z = nz; _hqRideSetY(pl, R, y3, S); }
+            }
+            /* THE WALL: measured as progress ALONG THE HEADING (the axis slide
+               lets a rider rolling straight at a wall "succeed" on the other
+               axis every frame). Head-on = a stop, or a bail at speed; a
+               glancing wall scrubs speed. A door's lane is never a bail (the
+               press-in takes it). */
+            var wantM = R.v * dt, movedM = (pl.x - ox) * Math.sin(R.hd) + (pl.z - oz) * Math.cos(R.hd);
+            if (wantM > 0.002 && movedM < wantM * 0.3) {
+                var t = _hqFindTarget();
+                if (t && t.kind === 'door') { R.v = Math.min(R.v, 0.4); }
+                else if (R.v > S.bailV && !noCtl) { _hqRideBail(R, pl, 'wall'); return; }
+                else R.v = 0;
+            } else if (wantM > 0.002 && movedM < wantM * 0.9) R.v *= Math.max(0.5, movedM / wantM);
+            /* THE RISE: the ground climbed in the last ~0.3 s; when it runs out at speed, a hop (the stairs, the risers, the cave's wedges) */
+            if (R.lastY != null && !pl.air) { var dyR = pl.y - R.lastY; R.rise = R.rise * Math.exp(-dt / 0.3) + Math.max(0, dyR); }
+            R.lastY = pl.y;
+            var onNow = under ? under.ramp : null;
+            if (!pl.air && prof && under.t >= S.qpTop && R.v > 2.5) {
+                /* THE COPING: off the quarter pipe — the speed goes UP, the rider comes back down onto the curve */
+                pl.air = true; pl.vy = Math.min(S.rampLaunchMax, R.v * S.qpLaunch); R.v *= 0.3; pl.jumpT = 0; R.airT = 0; R.airY0 = pl.y; R.rise = 0; R.jumpFromWalkOff = false;
+                _hqRideEmit({ kind: 'launch', v: pl.vy });
+            } else if (!pl.air && R.onRamp && !onNow && R.rise > 0.25 && R.v > 3) {
+                var vy = Math.min(S.rampLaunchMax, R.rise / 0.3 * 0.8);
+                if (vy >= S.rampLaunchMin) { pl.air = true; pl.vy = vy; pl.jumpT = 0; R.airT = 0; R.airY0 = pl.y; R.rise = 0; R.jumpFromWalkOff = false; _hqRideEmit({ kind: 'launch', v: vy }); }
+            }
+            R.onRamp = onNow;
+        } else { R.lastY = pl.y; R.onRamp = null; }
+        if (R.pushAnim > 0) R.pushAnim -= dt;
+        pl.visY += (pl.y - pl.visY) * Math.min(1, dt * (pl.air ? 60 : 16));
+        if (Math.abs(pl.y - pl.visY) < 0.004) pl.visY = pl.y;
+        pl.yaw = R.hd + R.stance;   // the rider faces along the roll (fakie after an odd 180)
+        pl.targetYaw = pl.yaw;
+        var U = _hqUnits();
+        pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
+    }
+    /* a step down at speed: a drop is air (the walker's rule); a climb is taken */
+    function _hqRideSetY(pl, R, y, S) {
+        if (pl.y - y > HQ_FALL_MIN) { pl.air = true; pl.vy = 0; pl.jumpT = -1; R.airT = 0; R.airY0 = pl.y; R.jumpFromWalkOff = true; }
+        else pl.y = y;
+    }
+    /* gravity + the landing: a rail under the feet locks (the grind), the ground banks or bails */
+    function _hqRideGravity(pl, R, dt, S, bailing) {
+        var TR = S.tricks;
+        pl.vy -= HQ_GRAV * dt;
+        var ny = pl.y + pl.vy * dt;
+        if (pl.vy < 0) {
+            if (!bailing) {
+                var snap = _hqRailSnap(pl.x, pl.z, ny, S);
+                if (snap && R.v >= S.grindMinV * 0.6) {
+                    /* THE LOCK */
+                    var p = _hqRailAt(snap.rail, snap.s);
+                    var along = Math.sin(R.hd) * p.tx + Math.cos(R.hd) * p.tz;
+                    var dir = (along >= 0) ? 1 : -1;
+                    R.v = Math.max(S.grindMinV, Math.abs(along) * R.v + 0.6 * R.v * (1 - Math.abs(along)));
+                    R.grind = { rail: snap.rail, s: snap.s, dir: dir, t: 0, drift: 0, pts: TR.grind.pts || 0 };
+                    R.bal = 0; R.trick = null; R.queue = []; R.flip = R.roll = R.deckRoll = 0;
+                    R.stance = 0; R.spinAcc = 0;
+                    pl.air = false; pl.vy = 0; pl.jumpT = -1; pl.x = p.x; pl.z = p.z; pl.y = p.y + 0.02;
+                    var gl = snap.rail.gallery ? 'BANISTER GRIND' : snap.rail.arc ? 'RING GRIND' : snap.rail.bridge ? 'ROPE GRIND' : '50-50 GRIND';
+                    _hqRideComboAdd(R, gl, TR.grind.pts || 0);
+                    _hqRideEmit({ kind: 'grindstart', rail: gl, rope: !!snap.rail.bridge });
+                    if (pl.entry) pl.entry._ew_hqLandAt = performance.now();
+                    return;
+                }
+            }
+            var land = _hqSurface(pl.x, pl.z, null, true);
+            if (land === null || land > pl.y + 0.01) { var lc = _hq.site ? _hqSiteCellAt(pl.x, pl.z) : null; land = (_hq.site && _hq.site.cave) ? (lc ? _hqSiteFloorY(lc, pl.x, pl.z) : 0) : ((lc && lc.top < 0) ? lc.top : 0); }
+            var bf = _hqBlockerFloor(pl.x, pl.z, pl.y);
+            if (bf !== null && bf > land) land = bf;
+            if (ny <= land) {
+                ny = land; pl.air = false; pl.vy = 0; pl.jumpT = -1; R.lastY = ny; R.onRamp = null;
+                if (pl.entry) pl.entry._ew_hqLandAt = performance.now();
+                if (!bailing) {
+                    var fell = R.airY0 - ny;
+                    var offAxis = Math.abs(((R.spinAcc % Math.PI) + Math.PI) % Math.PI); offAxis = Math.min(offAxis, Math.PI - offAxis);
+                    if (R.trick) { pl.y = ny; _hqRideBail(R, pl, 'unfinished'); return; }
+                    if (offAxis > 0.55) { pl.y = ny; _hqRideBail(R, pl, 'offaxis'); return; }
+                    if (fell > S.bailDrop && R.airT > 0 && R.jumpFromWalkOff) { pl.y = ny; _hqRideBail(R, pl, 'drop'); return; }
+                    /* clean: the stance turns with the spin (fakie after a 180), a big air counts, the line banks */
+                    var half = Math.round(R.spinAcc / Math.PI);
+                    R.stance = ((R.stance + half * Math.PI) % (Math.PI * 2));
+                    R.spinAcc = 0; R.flip = R.roll = R.deckRoll = 0; R.grab = false; R.grabDone = false;
+                    if (R.airT >= S.bigAirS && R.combo) { R.combo.pts += TR.air.pts; }
+                    _hqRideEmit({ kind: 'land', airT: R.airT, v: R.v });
+                    _hqRideComboBank(R);
+                    R.airT = 0;
+                }
+            }
+        }
+        pl.y = ny;
+    }
+    /* THE DECK under the feet: the user's skateboard GLB (R2 Assets/misc/, MODEL_INDEX §3d — its length runs along X, pre-turned to the rider's +Z) over a stand-in built at once */
+    function _hqRideDeckBuild(R, e) {
+        var U = _hqUnits(), g = new THREE.Group(); g.name = 'hq_deck';
+        var proc = new THREE.Group();
+        var wood = _hqMat(null, 1, 1, { color: 0x6b4a2a, shininess: 30 }), rub = _hqMat(null, 1, 1, { color: 0x1a1a1a, shininess: 10 });
+        var top = _hqBox(0.2, 0.025, 0.8, wood); top.position.y = 0.1 * U; proc.add(top);
+        [[-0.07, -0.26], [0.07, -0.26], [-0.07, 0.26], [0.07, 0.26]].forEach(function (w) {
+            var wh = new THREE.Mesh(new THREE.CylinderGeometry(0.03 * U, 0.03 * U, 0.03 * U, 10), rub); wh.rotation.z = Math.PI / 2; wh.position.set(w[0] * U, 0.03 * U, w[1] * U); proc.add(wh);
+        });
+        g.add(proc); R.deckProc = proc;
+        var url = (typeof _MISC_GLB !== 'undefined' && _MISC_GLB.skateboard) ? _R2_MISC + _MISC_GLB.skateboard : null;
+        if (url && typeof THREE.GLTFLoader === 'function' && !(typeof window !== 'undefined' && window.EW_PERF_LOW)) {
+            var piv = new THREE.Group(); piv.rotation.y = Math.PI / 2;   // the GLB's length runs along X; the rider's forward is +Z
+            piv.add(_miscModelInstance(url, true, 0.84 * U, { fit: 'span', matPick: _hqPropMatPick, onDone: function () { proc.visible = false; if (_hq) _hq.dirty = true; } }));
+            g.add(piv);
+        }
+        var spark = _hzGlowSprite(0.55 * U, 0xffc65a, 0.9, 0.2, 0.1, 1.0); spark.position.y = 0.05 * U; spark.visible = false; g.add(spark); R.spark = spark;
+        g.rotation.order = 'YXZ';
+        e.group.add(g); R.deck = g;
+        return g;
+    }
+    /* the rider's pose, after _hqTickChars has set the walker's yaw: the deck under the feet, the lean, the flips / rolls / spins about the body's centre, the tumble */
+    function _hqRidePose(ch, e, dt) {
+        var H = _hq, R = H.ride; if (!R) return;
+        var U = _hqUnits();
+        if (!R.deck) _hqRideDeckBuild(R, e);
+        var on = R.on;
+        R.deck.visible = on && R.deckAway <= 0;
+        if (!e.model) return;
+        if (e.model.rotation.order !== 'YXZ') e.model.rotation.order = 'YXZ';
+        if (e.model._ew_hqBaseY == null) e.model._ew_hqBaseY = e.model.position.y;
+        if (!on) {
+            if (e.model._ew_rideWas) { e.model.rotation.z = 0; e.model.position.y = e.model._ew_hqBaseY; e.model.position.x = 0; e.model.position.z = 0; e.model.scale.y = 1; e.model._ew_rideWas = false; }
+            return;
+        }
+        e.model._ew_rideWas = true;
+        var yaw = ch.yaw + R.spinAcc;
+        var tumble = 0;
+        if (R.bailT > 0) { var S = _hqSkateRules(), bk = 1 - R.bailT / (S.bailMs / 1000); tumble = (bk < 0.6) ? Math.PI * 2 * (bk / 0.6) : 0; }
+        var flip = R.flip + tumble, roll = R.roll;
+        var deckH = (R.deckAway > 0) ? 0 : 0.1;
+        /* the body: yaw first, then pitch about its own lateral axis, then roll about its forward — about a pivot at its centre */
+        e.model.rotation.set(flip + (R.pushAnim > 0 ? 0.12 : 0.06 * Math.min(1, R.v / 6)), yaw, roll + R.lean);
+        var piv = ch.heightM * 0.52;
+        var pv = new THREE.Vector3(0, piv * U, 0).applyEuler(e.model.rotation);
+        e.model.position.set(-pv.x, e.model._ew_hqBaseY + deckH * U + piv * U - pv.y, -pv.z);
+        e.model.scale.y = R.grab ? 0.84 : 1;
+        /* the deck: rides the same spin / flip / roll, plus its own kickflip roll; a grind's sparks */
+        var D = R.deck;
+        D.rotation.set(flip, yaw, roll + R.deckRoll);
+        var dv = new THREE.Vector3(0, piv * U, 0).applyEuler(D.rotation);
+        D.position.set(-dv.x, piv * U - dv.y, -dv.z);
+        if (R.spark) { R.spark.visible = !!R.grind; if (R.grind) { R.spark.scale.setScalar((0.35 + Math.random() * 0.5) * U); R.spark.material.opacity = 0.5 + Math.random() * 0.5; } }
+        /* the ollie: the deck rises with the feet — nothing to add, it is the group's child */
+    }
+
     /* ── per-frame ─────────────────────────────────────────────────────── */
     function _hqTickWalker(dt) {
         var H = _hq, pl = H.player; if (!pl) return;
         var k = H.keys;
-        var ix = H.paused ? 0 : ((k.d ? 1 : 0) - (k.a ? 1 : 0));
-        var iy = H.paused ? 0 : ((k.s ? 1 : 0) - (k.w ? 1 : 0));
+        /* SKATEBOARDING (HQ plan 9.8): on the board the frame is the rider's */
+        if (H.ride && H.ride.on) { _hqTickRide(dt); return; }
+        var ix = H.paused ? 0 : (((k.d || k.right) ? 1 : 0) - ((k.a || k.left) ? 1 : 0));
+        var iy = H.paused ? 0 : (((k.s || k.down) ? 1 : 0) - ((k.w || k.up) ? 1 : 0));
         var moving = !!(ix || iy);
         var running = !!k.shift && moving;
         var mx = 0, mz = 0;
@@ -43269,6 +43808,7 @@ const ThreeRenderer = (function () {
             if (ch.pose && ch.kind !== 'player' && e.actions && e.actions[ch.pose]) want = ch.pose;
             if (ch.kind === 'player') {
                 want = (ch.jumpT >= 0) ? 'jump' : (ch.moving ? (ch.running ? 'run' : 'walk') : 'idle');
+                if (H.ride && H.ride.on) want = (ch.jumpT >= 0) ? 'jump' : ((H.ride.pushAnim > 0) ? 'run' : 'idle');   // SKATEBOARDING (9.8): the push is a stride, the air is the jump clip, the rest is the stance
                 /* THE ENCOUNTER (9.4): a thrown attack / cast clip owns the rig until its end */
                 if (ch.strike) { if (performance.now() < ch.strike.until && ch.jumpT < 0) want = ch.strike.name; else ch.strike = null; }
                 var lean = e.model._ew_lean || 0;
@@ -43279,6 +43819,7 @@ const ThreeRenderer = (function () {
                     var ts0 = e.actions.walk._ew_ts0 || 1;
                     e.actions.walk.timeScale = ts0 * (ch.running ? 1.6 : 0.92);
                 }
+                if (H.ride) _hqRidePose(ch, e, dt);   // SKATEBOARDING (9.8): the deck, the lean, the flips / rolls / spins, the tumble
                 if (e._ew_hqLandAt) {
                     var lb = (performance.now() - e._ew_hqLandAt) / 200;
                     if (lb >= 1) { e._ew_hqLandAt = 0; e.model.scale.set(1, 1, 1); }
@@ -43598,6 +44139,7 @@ const ThreeRenderer = (function () {
             shellGroup: new THREE.Group(), doorGroup: new THREE.Group(), propGroup: new THREE.Group(), charGroup: new THREE.Group(),
             doors: [], counters: [], chars: [], blockers: [], landings: [], player: null, fxPulse: [], site: null, sky: null, setting: null,
             gallery: null,   /* THE GALLERY (9.2 stage 2, 2026-09-15 rev 20): the box room's two-floor frame (_hqGalleryFrame), read by _hqSurface / _hqAirOK / _hqCamBlocked / _hqBlockerFloor */
+            rails: [], ramps: [], ride: null,   /* SKATEBOARDING (9.8, 2026-09-15): THE PARK RULE's registers (every builder pushes its rails / ramps) and the rider (_hqRideArm) */
             finds: [], findLights: 0,   /* THE FINDS (9.1, 2026-09-15): the takeable objects standing in the room (_hqPlaceFinds) and the count of their point lights */
             portal: { drawn: false, ghost: null, aim: null, placed: {}, lastKey: '', hold: null, cross: null, issued: !!(opts.portal && opts.portal.issued) },   /* THE DOOR GUN (9.5, rev 13; rev 2 2026-09-15: `hold` = the mouth you came out of, `cross` = the entry's speed): the drawn state, the ghost, the last aim, the placed door records by slot */
             tickers: [], propLights: 0,   /* Phase 8 (2026-09-14): per-frame callbacks registered by procs (the orb, the torches, the shaft); the count of catalogue `light`s placed */
@@ -43712,6 +44254,8 @@ const ThreeRenderer = (function () {
         /* THE DOOR GUN (HQ plan 9.5): the pair's doors standing in this room, from the profile record */
         try { _hqBuildPortals(room, opts); } catch (e) { console.error('[HQ] portals failed', e); }
         try { _hqSpawnPopulation(room, opts); } catch (e) { console.error('[HQ] population failed', e); }
+        /* SKATEBOARDING (9.8): the rider's record — and the board through a door */
+        try { _hqRideArm(opts); } catch (e) { console.error('[HQ] ride failed', e); }
         /* face the camera the way the spawn faces */
         var sp = room.spawn || { face: 0 };
         _hq.cam.yaw = _hqRad(sp.face || 0);
@@ -43819,6 +44363,7 @@ const ThreeRenderer = (function () {
         pl.x = spot.x / U; pl.z = spot.z / U; pl.y = spot.y / U; pl.visY = pl.y;
         pl.air = false; pl.vy = 0; pl.jumpT = -1;
         pl.yaw = pl.targetYaw = _hqHeadingYaw(face);
+        if (_hq.ride && _hq.ride.on) { _hq.ride.hd = pl.yaw; _hq.ride.stance = 0; _hq.ride.v = Math.min(_hq.ride.v, 2.5); _hq.ride.grind = null; }   // SKATEBOARDING (9.8): through a door on the board, rolling
         _hq.cam.yaw = _hqRad(face); _hq.cam.init = false;
         return true;
     }
@@ -43882,6 +44427,13 @@ const ThreeRenderer = (function () {
         /* THE ENCOUNTER (HQ plan 9.4, 2026-09-15 rev 16): throw a gesture by key ('1'..'4'), the native the gesture would land on */
         strike: _hqStrikeClick,
         encounterAim: function () { return _hq ? _hqEncounterAim() : null; },
+        /* SKATEBOARDING (HQ plan 9.8, 2026-09-15): B in code — on / off / toggle, the state, THE PARK RULE's registers */
+        skate: function (on) { return _hqRideToggle(on); },
+        skating: function () { return !!(_hq && _hq.ride && _hq.ride.on); },
+        skateIssued: function (on) { if (_hq && _hq.ride) { _hq.ride.issued = !!on && !_hqSkateOff(); if (!on) _hqRideToggle(false, true); } return !!(_hq && _hq.ride && _hq.ride.issued); },
+        ride: function () { if (!_hq || !_hq.ride) return null; var R = _hq.ride; return { on: R.on, issued: R.issued, v: R.v, hd: R.hd, air: !!(_hq.player && _hq.player.air), grind: R.grind ? { s: R.grind.s, dir: R.grind.dir, t: R.grind.t } : null, trick: R.trick ? R.trick.id : null, combo: R.combo ? { text: R.combo.tricks.join(' + '), pts: R.combo.pts, mult: R.combo.tricks.length } : null, bail: R.bailT > 0 }; },
+        rails: function () { return _hq ? (_hq.rails || []).slice() : []; },
+        ramps: function () { return _hq ? (_hq.ramps || []).slice() : []; },
         portalDoors: function () { if (!_hq || !_hq.portal) return []; var o = []; for (var s in _hq.portal.placed) { var r = _hq.portal.placed[s]; o.push({ slot: s, x: r.px, y: r.py, z: r.pz, face: r.door.face, surf: r.portalSurf, leaf: r.leaf }); } return o; },
         finds: function () { return _hq ? _hq.finds.map(function (f) { return { id: f.id, kind: f.kind, x: f.x, y: f.y, z: f.z }; }) : []; },
         pos: function () { if (!_hq || !_hq.player) return null; var p = _hq.player; return { x: p.x, z: p.z, y: p.y, deg: _hqNormDeg(Math.atan2(p.x, -p.z) * 180 / Math.PI), r: Math.hypot(p.x, p.z) }; },

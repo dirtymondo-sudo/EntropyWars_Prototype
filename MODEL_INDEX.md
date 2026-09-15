@@ -157,6 +157,24 @@ Columns as in §3.
 | `subway_front` | Meshy_AI_a_subway_train_front_0915195457_texture.glb | nose +Z (target; the way rig turns it −X, the doorway at x 0 is the rear door) | — | THE TRAIN (`_hqWayBuilders.train`): the tunnel's track, Cyberpunk's north wall | the `train` way's lead car |
 | `subway_cart` | Meshy_AI_a_subway_train_cart_0915195417_texture.glb | nose +Z (target) | — | THE TRAIN: the trailing cart (the tunnel's track only — a street platform stands the front car alone) | |
 
+## 3d. THE SKATEBOARD (Assets/misc/, 2026-09-15 — SKATEBOARDING, HQ plan 9.8)
+
+One Meshy GLB the user uploaded to the shared misc bucket and the repo root:
+THE DECK under the rider. Measured off the JSON chunk: one mesh, no
+skeleton, 1.0 long along X, 0.29 wide (Z), 0.17 tall (Y) with the wheels
+down — a unit-length board. It is loaded ONCE per visit as a child of the
+walker's own group (three-renderer.js `_hqRideDeckBuild`: `_miscModelInstance`
+fitted by SPAN to 0.84 m, pre-turned π/2 so its length runs along the
+rider's +Z, over a procedural stand-in that hides when the file lands),
+rolled on a kickflip, spun with the body on a 180, flipped with it on a
+front flip. It is never a room prop and never on a board; the deck FIND in
+Room 26 (`find_deck`, shown only while `HQ_SKATE_RULES.free` is off) is the
+stand-in leaning on its tail. Columns as in §3.
+
+| key | file | facing | S | H | stands as |
+| --- | --- | --- | --- | --- | --- |
+| `skateboard` | Meshy_AI_a_skateboard_0915212313_texture.glb | length along X (measured); the rider's frame turns it to +Z | — | under the walker's feet while riding (B) | THE DECK |
+
 ## 4. The older `Assets/misc/` models (`_MISC_GLB` + the OBJ landmarks)
 
 | key | file | kind | stands as |

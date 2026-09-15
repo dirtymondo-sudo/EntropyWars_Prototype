@@ -4139,6 +4139,22 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-strip-stat.hq-strip-portal.drawn { color: #7dffb0; border-color: rgba(125,255,176,0.6); box-shadow: 0 0 10px rgba(125,255,176,0.25) inset; }
 .hq-hints .hq-hint-portal { display: none; }
 .hq-hints.portal .hq-hint-portal { display: inline; color: #7dffb0; }
+/* SKATEBOARDING (HQ plan 9.8, 2026-09-15): the pill (green, lit while riding), the rider's hint line, THE TRICK LINE */
+.hq-strip-stat.hq-strip-skate { color: #9ff0b8; cursor: pointer; border: 1px solid rgba(125,255,176,0.35); padding: 3px 8px; }
+.hq-strip-stat.hq-strip-skate.riding { color: #7dffb0; border-color: rgba(125,255,176,0.7); box-shadow: 0 0 10px rgba(125,255,176,0.3) inset; }
+.hq-hints .hq-hint-skate { display: none; }
+.hq-hints.skate .hq-hint-skate { display: inline; color: #7dffb0; }
+.hq-hints.skate span:nth-child(1), .hq-hints.skate span:nth-child(2), .hq-hints.skate span:nth-child(3) { display: none; }
+.hq-trick { position: absolute; left: 50%; top: 92px; transform: translateX(-50%) translateY(-8px) scale(0.96); display: flex; align-items: baseline; gap: 14px; padding: 8px 22px; background: rgba(8,8,12,0.78); border: 1px solid rgba(125,255,176,0.45); box-shadow: 0 0 0 1px #000, 0 0 28px rgba(125,255,176,0.18); font-family: 'Cormorant SC', serif; color: #ece7d8; z-index: 21; opacity: 0; transition: opacity 0.16s ease, transform 0.16s ease; pointer-events: none; white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis; }
+.hq-trick.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+.hq-trick span { font-size: 20px; letter-spacing: 0.16em; color: #d9f5e2; }
+.hq-trick b { font-size: 30px; letter-spacing: 0.08em; color: #7dffb0; font-weight: 600; text-shadow: 0 0 14px rgba(125,255,176,0.55); }
+.hq-trick i { font-family: 'IBM Plex Mono', monospace; font-style: normal; font-size: 10px; letter-spacing: 0.26em; color: #b8a060; }
+.hq-trick.bank { border-color: rgba(255,214,90,0.6); box-shadow: 0 0 0 1px #000, 0 0 34px rgba(255,214,90,0.25); }
+.hq-trick.bank b { color: #ffd65a; text-shadow: 0 0 16px rgba(255,214,90,0.6); }
+.hq-trick.bail { border-color: rgba(255,90,90,0.6); box-shadow: 0 0 0 1px #000, 0 0 30px rgba(255,90,90,0.25); }
+.hq-trick.bail span, .hq-trick.bail b { color: #ff7a7a; text-shadow: 0 0 14px rgba(255,90,90,0.5); }
+@media (max-width: 720px) { .hq-trick span { font-size: 15px; } .hq-trick b { font-size: 22px; } }
 .hq-plate.hq-plate-portal b { color: #9fe8ff; }
 /* THE DOOR GUN rev 2 (2026-09-15): the pair is ALWAYS two colours — A cyan, B amber (the frame, the lamps and the aperture wear the same two in 3D) */
 .hq-plate.hq-plate-portal-a b { color: #7fd0ff; }

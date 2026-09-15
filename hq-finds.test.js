@@ -81,7 +81,8 @@ test('every tape has a find, every tape room a daily pay cache, and no other kin
         assert.ok(pays[0].daily === true && pays[0].amount > 0 && pays[0].id === 'pay:' + rid, rid + ': daily, paid, id');
         assert.equal(pays[0].amount, HQ.rooms[rid].fx === 'site' ? R.pay : R.payDeep, rid + ': the walkway rate on a board room, the deep rate elsewhere');
     }
-    assert.deepEqual([...new Set(FINDS.map(f => f.kind))].sort(), ['pay', 'tape'], 'only the two shipped kinds are placed (potion / item / cube are reserved)');
+    assert.deepEqual([...new Set(FINDS.map(f => f.kind))].sort(), ['deck', 'pay', 'tape'], 'only the three shipped kinds are placed (potion / item / cube are reserved; deck = SKATEBOARDING 9.8, one row in Room 26)');
+    assert.equal(FINDS.filter(f => f.kind === 'deck').length, 1, 'one deck, in the locker room'); assert.equal(FINDS.find(f => f.kind === 'deck').room, 'locker');
     assert.equal(new Set(FINDS.map(f => f.id)).size, FINDS.length, 'unique find ids');
     for (const f of FINDS) assert.ok(f.why, f.id + ': a why');
 });

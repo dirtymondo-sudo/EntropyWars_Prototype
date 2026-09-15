@@ -3572,6 +3572,58 @@ the `spawnSide` mirror, the dissolve, a cleared-room rule. UNSEEN LIVE
 (RULE #1c): the one-shot on the Player cast rig, the strike timing, the
 builder-less first frame, the ward landing.
 
+## SKATEBOARDING — THE RIDER (HQ plan 9.8 stage 1) — 2026-09-15 rev 23, local delivery
+A walker MODE, never a game mode: nothing on `state`, nothing relayed
+(RULE #2; hq-skate.test.js reads the block for `state.` and online.js for
+the word). **B** drops the deck / picks it up (three-renderer.js
+`_hqRideToggle`; the arrows are their OWN keys now — `up / down / left /
+right` — the walker reads them as WASD, the rider as tricks; B sits before
+V in `_hqKeyName`'s line so the door gun's and P's pins hold). The block
+"SKATEBOARDING — THE RIDER" (before the per-frame section) owns `_hq.ride`:
+`_hqTickRide` takes the frame from `_hqTickWalker` while `ride.on` —
+momentum (`v` along `hd`; W pushes on a cadence, S brakes, A / D carve,
+time-based friction), THE OLLIE (SPACE = HQ_JUMP_V), GRINDS (an ollie
+coming down within `grindSnap` of a rail in **`_hq.rails`** locks —
+`_hqRailAt` / `_hqRailNearest` are ONE geometry for a straight run
+`{ x0, z0, x1, z1, y }` and an arc `{ arc: true, r, a0, a1, y }`; A / D
+balance; the end hops off), RAMPS (**`_hq.ramps`**: a `prof: 'qp'` row
+is a SURFACE — `_hqRampSurfaceAt` is a layer of `_hqSurface` after the
+gallery's and a mass in `_hqAirOK`; the coping launches; a flat register
+turns a rise taken at speed into a hop), TRICKS (← kickflip · → heelflip
+· ↑ front flip · ↓ backflip · W corkscrew · A / D a 180 each, an odd
+count lands FAKIE · SHIFT the grab — rotations on the rider's model
+(order YXZ about its centre, `_hqRidePose`) and the deck, no new clip),
+THE COMBO (pts × tricks, live on `#hqTrick`, BANKED on a clean landing;
+a trick still turning / a spin off-axis / a head-on wall at speed
+(progress along the heading — the axis slide cannot see a wall) / a rail
+lost = BAIL, the line lost). **THE REGISTERS (THE PARK RULE)**: `_hq.rails`
+/ `_hq.ramps` start empty in `_hqEnter`'s literal and every builder
+pushes — the mezzanine's rail arcs (`_hqBuildShell`), the gallery, the
+cave, and `_hqRegisterPropPark` at BOTH prop-placer sites for a catalogue
+`rail: { h }` (`railing_1m`) / `ramp: { w, len, h, prof? }` (`riser_*`,
+`quarter_pipe` — a new proc; two face each other in Room P1). **THE
+TABLE** is data.js `HQ_SKATE_RULES` (`_hqSkateRules` merges it over the
+renderer's `HQ_SKATE_DEFAULT` — keep the keys in step, the test diffs
+them); `free: true` = STANDARD ISSUE (the user's rule, the door gun's
+precedent) — `free: false` puts THE DECK in Room 26 as a find of kind
+`deck` (`hqBuildFinds`, `find_deck`, `hqCollectFind` → `door.hq.skate.
+deck`). `hqSkateStatus(profile, { force })` is the ONE read (map.js
+`_hqSkateOpts` → `opts.skate.issued`; the strip pill `#hqSkate`, click =
+B; the OFFICER sheet's THE BOARD row); `hqSkateBank(profile, ev)` the ONE
+write (map.js `_hqSkateFile`, one transaction per banked line / bail:
+`door.hq.skate = { deck, since, best: { score, text, date }, total,
+lines, bails }`). Beats reach map.js through `opts.onSkate` (`_hqSkateEvent`:
+the trick line, six audio.js recipes `skate*`, the books). THE DECK is
+the user's GLB (`_MISC_GLB.skateboard`, MODEL_INDEX §3d; `_hqRideDeckBuild`
+fits it by span to 0.84 m, pre-turned π/2 to the rider's +Z, over a
+stand-in). `_hqRideMem` carries the board through a door (`_hqRideArm`
+after the population; `_hqGoTo` keeps it rolling at ≤ 2.5 m/s). Dev:
+`?skate` / `EW_HQ_SKATE` = issued, `EW_HQ_NO_SKATE` = off; API
+`hq.skate / skating / skateIssued / ride / rails / ramps`. `npm test` runs
+`hq-skate.test.js` (the ride itself in a vm sandbox). UNSEEN LIVE (RULE
+#1c): everything — the deck under the feet, the flips' pivot, the grind
+height on the mezzanine arc, the quarter pipe, the trick line, the sounds.
+
 ## THE SEAMS, THE SECOND BATCH (HQ plan 9.3 `way` ×6) — 2026-09-15 rev 22, local delivery
 Six more `DOOR_HQ.ways` kinds (data.js) with builders in three-renderer.js
 `_hqWayBuilders` and sounds in audio.js: `mirror` (`wayMirror`) · `pool`
