@@ -3572,6 +3572,37 @@ the `spawnSide` mirror, the dissolve, a cleared-room rule. UNSEEN LIVE
 (RULE #1c): the one-shot on the Player cast rig, the strike timing, the
 builder-less first frame, the ward landing.
 
+## SKATEBOARDING rev 2 — THE RIDE STANCE, FAKIE, THE KICK, HOLD TO JUMP — 2026-09-15, local delivery
+The user's brief: Idle_10 on the deck with the feet on the board, the
+occasional run/kick, skate backwards with S, jump higher the longer SPACE is
+held. **THE RIDE CLIP**: sprites.js `HQ_RIDE_CLIP` (= the library's Idle_10,
+lib 2); three-renderer.js `_hqSpawnCharacter` bakes it onto the WALKER's rig
+only as slot `hqRide` (a clone of the def — never the shared table; a def
+without the library keeps its idle, `_playUnitModelAnim` falls `hqRide` →
+idle); the clip picker plays `hqRide` on the deck, `run` for the stride.
+**THE STANCE**: `_hqRidePose` turns the body `stanceYaw` (HQ_SKATE_RULES,
+−π/2 = regular, chest to the right of travel; +π/2 = goofy) INSIDE the
+travel frame — `e.model.quaternion = Euler(flip, yaw, roll + lean) ·
+RotY(poseYaw)` — so Idle_10's feet-apart stance lies ALONG the deck and a
+front flip still turns about the travel's lateral axis; `R.poseYaw` eases to
+0 for the push / the kick / the bail (squared up for the stride). **FAKIE**:
+S rolling forward is the brake; from a stop S is the fakie push (`R.v`
+NEGATIVE along `hd`, `reversePushV` per cadence, capped `reverseMaxV`; W
+while backwards brakes first); every speed read in the tick is `Math.abs`
+now (the wall rule's progress carries the roll's sign, the grind lock's
+direction folds it in, the door hand-off caps both ways). **THE KICK**:
+coasting ≥ `kickMinV` the rider throws in a stride every `kickEvery` [lo,
+hi] s (`pushAnim`, +0.25 m/s, beat `kick` → map.js plays `skatePush` low).
+**HOLD TO JUMP**: the press pops `ollieTapV` (4.6 → ≈ 0.6 m); SPACE held
+keeps lifting `ollieHoldAcc` (13 m/s²) for up to `ollieHoldS` (0.42 s) —
+`R.holdOn` / `R.holdT`, cleared by the release, the cap, a grind hop-off;
+a full hold ≈ 1.65 m (the old fixed ollie was 1.46). `ollieV` now only
+sizes the grind's hop-off. hq-skate.test.js rev 2 (four tests) proves the
+tap < half < full apexes, the fakie roll + the wall behind, the kick
+cadence, the stance sites. UNSEEN LIVE (RULE #1c): Idle_10 turned sideways
+on the deck (if the feet hang off, `stanceYaw`'s sign is the edit), the
+squat during the hold (`scale.y` 0.94), the stride's ease.
+
 ## SKATEBOARD CONTROL CORRECTION — 2026-09-15, local delivery
 First-push camera yaw must be converted to +Z-front rider yaw with
 `atan2(sin(cam.yaw), -cos(cam.yaw))`. A/D subtract the right-minus-left

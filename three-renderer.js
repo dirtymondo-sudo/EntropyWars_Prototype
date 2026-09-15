@@ -11180,6 +11180,7 @@ const ThreeRenderer = (function () {
             || ((name === 'walk') ? acts.idle : null)
             || ((name === 'run') ? (acts.walk || acts.idle) : null)     // library-only slot
             || ((name === 'dodge') ? acts.idle : null)                  // library-only slot
+            || ((name === 'hqRide') ? acts.idle : null)                 // SKATEBOARDING rev 2: the ride stance, else the idle
             || ((name === 'jump') ? (acts.walk || acts.idle) : null);
         if (!next) return false;
         var prev = entry._ew_curAnim ? acts[entry._ew_curAnim] : null;
@@ -41571,6 +41572,16 @@ const ThreeRenderer = (function () {
         }
         if (!def) { race = 'men in black'; def = getRace3DModel(race, gender) || getRace3DModel(race, 'male'); if (def && !getRace3DModel(race, gender)) gender = 'male'; }
         if (!def) return null;
+        /* SKATEBOARDING rev 2 (2026-09-15): the walker's rig bakes THE RIDE
+           clip (sprites.js HQ_RIDE_CLIP = the library's Idle_10, the
+           brawler's loose stance — sideways on the deck it reads as a
+           skater's) beside its own slots; a def without the library keeps
+           its idle. A clone — the shared def is never written. */
+        if (spec.kind === 'player' && def.libClips && typeof HQ_RIDE_CLIP !== 'undefined' && !def.libClips.hqRide) {
+            var rlc = Object.assign({}, def.libClips), rlt = Object.assign({}, def.libTimeScales);
+            rlc.hqRide = { clip: HQ_RIDE_CLIP.clip, lib: HQ_RIDE_CLIP.lib || 0 }; if (HQ_RIDE_CLIP.ts) rlt.hqRide = HQ_RIDE_CLIP.ts;
+            def = Object.assign({}, def, { libClips: rlc, libTimeScales: rlt });
+        }
         var unit;
         try {
             var job = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race]) || 'Freelancer';
@@ -43252,7 +43263,8 @@ const ThreeRenderer = (function () {
        `window.EW_HQ_NO_SKATE`; dev `window.EW_HQ_SKATE` = issued. */
     var HQ_SKATE_DEFAULT = {
         maxV: 12.5, pushV: 3.0, pushEvery: 0.42, friction: 0.99, brake: 0.9, turn: 2.4,
-        ollieV: 7.25, bailV: 4.2, bailDrop: 2.4, bailMs: 900, deckBackMs: 2000,
+        reverseMaxV: 5.0, reversePushV: 1.8, kickEvery: [3.5, 7], kickMinV: 2.5,
+        ollieV: 7.25, ollieTapV: 4.6, ollieHoldS: 0.42, ollieHoldAcc: 13, stanceYaw: -Math.PI / 2, bailV: 4.2, bailDrop: 2.4, bailMs: 900, deckBackMs: 2000,
         grindSnap: 0.6, grindDy: 0.5, grindMinV: 1.4, grindFriction: 0.996, grindBalance: 0.6, grindDrift: 0.45,
         rampLaunchMin: 1.3, rampLaunchMax: 9.5, qpTop: 0.9, qpLaunch: 1.0, bigAirS: 1.0,
         tricks: {
@@ -43369,7 +43381,8 @@ const ThreeRenderer = (function () {
     /* ── the ride record ── */
     function _hqRideNew() {
         return { on: false, issued: false, v: 0, hd: 0, stance: 0, pushT: 0, pushAnim: 0, grind: null, bal: 0, trick: null, queue: [], spinAcc: 0, grab: false, grabT: 0,
-                 combo: null, bailT: 0, deckAway: 0, rise: 0, lastY: null, onRamp: null, airT: 0, airY0: 0, lean: 0, flip: 0, roll: 0, deckRoll: 0, deckSpin: 0, deck: null, deckProc: null, spark: null, keyLatch: {}, sfxT: 0 };
+                 combo: null, bailT: 0, deckAway: 0, rise: 0, lastY: null, onRamp: null, airT: 0, airY0: 0, lean: 0, flip: 0, roll: 0, deckRoll: 0, deckSpin: 0, deck: null, deckProc: null, spark: null, keyLatch: {}, sfxT: 0,
+                 poseYaw: 0, kickT: 0, holdT: 0, holdOn: false };
     }
     function _hqRideArm(opts) {
         var H = _hq; if (!H) return;
@@ -43439,7 +43452,7 @@ const ThreeRenderer = (function () {
         var H = _hq, pl = H.player, R = H.ride, k = H.keys, S = _hqSkateRules();
         var TR = S.tricks;
         if (H.paused) { pl.moving = false; return; }
-        pl.moving = R.v > 0.25; pl.running = R.v > 6; pl.targetYaw = R.hd;
+        pl.moving = Math.abs(R.v) > 0.25; pl.running = Math.abs(R.v) > 6; pl.targetYaw = R.hd;
         /* THE BAIL: no control; the body tumbles once and stands up; the deck comes back */
         if (R.bailT > 0) {
             R.bailT = Math.max(0, R.bailT - dt);
@@ -43466,7 +43479,7 @@ const ThreeRenderer = (function () {
                 g.s = Math.max(0, Math.min(L, g.s));
                 var pe = _hqRailAt(g.rail, g.s); pl.x = pe.x; pl.z = pe.z; pl.y = pe.y + 0.02;
                 R.grind = null; R.bal = 0;
-                pl.air = true; pl.vy = edge ? S.ollieV * 0.85 : 2.3; pl.jumpT = 0; R.airT = 0; R.airY0 = pl.y; R.jumpFromWalkOff = false;
+                pl.air = true; pl.vy = edge ? S.ollieV * 0.85 : 2.3; pl.jumpT = 0; R.airT = 0; R.airY0 = pl.y; R.jumpFromWalkOff = false; R.holdOn = false;
                 _hqRideEmit({ kind: edge ? 'ollie' : 'hop', pts: pts });
                 return;
             }
@@ -43483,23 +43496,53 @@ const ThreeRenderer = (function () {
         var leanT = 0;
         if (!pl.air) {
             /* ── ON THE GROUND ── */
-            if (!noCtl && (k.w || k.up)) {
-                if (R.v < 0.3) R.hd = Math.atan2(Math.sin(H.cam.yaw), -Math.cos(H.cam.yaw));   // camera -Z forward → rider +Z forward
-                R.pushT -= dt;
-                if (R.pushT <= 0) { R.v = Math.min(S.maxV, R.v + S.pushV); R.pushT = S.pushEvery; R.pushAnim = 0.32; _hqRideEmit({ kind: 'push', v: R.v }); }
+            var fwdKey = !noCtl && (k.w || k.up), backKey = !noCtl && (k.s || k.down);
+            if (fwdKey) {
+                if (Math.abs(R.v) < 0.3) R.hd = Math.atan2(Math.sin(H.cam.yaw), -Math.cos(H.cam.yaw));   // camera -Z forward → rider +Z forward
+                if (R.v < 0) R.v *= Math.pow(S.brake, dt * 60);   // W while rolling backwards = the brake first
+                else {
+                    R.pushT -= dt;
+                    if (R.pushT <= 0) { R.v = Math.min(S.maxV, R.v + S.pushV); R.pushT = S.pushEvery; R.pushAnim = 0.32; R.kickT = 0; _hqRideEmit({ kind: 'push', v: R.v }); }
+                }
+            } else if (backKey) {
+                /* S: THE BRAKE while rolling forward; stopped, it is the FAKIE
+                   PUSH — the same cadence, a gentler kick, the roll goes
+                   backwards along the heading (capped at reverseMaxV) and the
+                   rider stays facing forward: skating backwards (rev 2) */
+                if (Math.abs(R.v) < 0.3) R.hd = Math.atan2(Math.sin(H.cam.yaw), -Math.cos(H.cam.yaw));
+                if (R.v > 0.05) R.v *= Math.pow(S.brake, dt * 60);
+                else {
+                    if (R.v > 0) R.v = 0;
+                    R.pushT -= dt;
+                    if (R.pushT <= 0) { R.v = Math.max(-S.reverseMaxV, R.v - S.reversePushV); R.pushT = S.pushEvery; R.pushAnim = 0.32; R.kickT = 0; _hqRideEmit({ kind: 'push', v: R.v, fakie: true }); }
+                }
             } else R.pushT = Math.min(R.pushT, 0.08);
-            if (!noCtl && (k.s || k.down)) R.v *= Math.pow(S.brake, dt * 60);
             R.v *= Math.pow(S.friction, dt * 60);
-            if (R.v < 0.05) R.v = 0;
-            _hqRideTurn(R, R.hd - turnIn * S.turn * Math.min(1, R.v / 3) * dt);
-            leanT = -turnIn * 0.32 * Math.min(1, R.v / 4);
-            /* THE OLLIE */
-            if (!noCtl && k.space && !pl._jumpLatch) { pl.air = true; pl.vy = S.ollieV; pl.jumpT = 0; R.airT = 0; R.airY0 = pl.y; R.rise = 0; R.jumpFromWalkOff = false; _hqRideEmit({ kind: 'ollie', v: R.v }); }
+            if (Math.abs(R.v) < 0.05) R.v = 0;
+            /* THE OCCASIONAL KICK (rev 2): coasting at speed the rider throws in
+               a stride now and then — the foot goes down for a beat, a whisper
+               of speed; the cadence is random inside kickEvery */
+            if (!noCtl && !pl.air && Math.abs(R.v) >= S.kickMinV && R.pushAnim <= 0) {
+                R.kickT -= dt;
+                if (R.kickT <= 0) { R.kickT = S.kickEvery[0] + Math.random() * (S.kickEvery[1] - S.kickEvery[0]); R.pushAnim = 0.28; R.v += Math.sign(R.v) * 0.25; _hqRideEmit({ kind: 'kick', v: R.v }); }
+            } else if (Math.abs(R.v) < S.kickMinV) R.kickT = S.kickEvery[0];
+            _hqRideTurn(R, R.hd - turnIn * S.turn * Math.min(1, Math.abs(R.v) / 3) * dt);
+            leanT = -turnIn * 0.32 * Math.min(1, Math.abs(R.v) / 4);
+            /* THE OLLIE (rev 2 — HOLD TO JUMP): the press pops the tap height
+               (ollieTapV) at once; SPACE held keeps LIFTING for ollieHoldS
+               seconds (ollieHoldAcc against gravity), so a tap is a hop and a
+               hold clears the box — the boost is in the air branch */
+            if (!noCtl && k.space && !pl._jumpLatch) { pl.air = true; pl.vy = S.ollieTapV; pl.jumpT = 0; R.airT = 0; R.airY0 = pl.y; R.rise = 0; R.jumpFromWalkOff = false; R.holdT = 0; R.holdOn = true; _hqRideEmit({ kind: 'ollie', v: R.v }); }
             pl._jumpLatch = !!k.space;
             R.keyLatch.left = !!k.left; R.keyLatch.right = !!k.right; R.keyLatch.up = !!k.up; R.keyLatch.down = !!k.down; R.keyLatch.a = !!k.a; R.keyLatch.d = !!k.d; R.keyLatch.w = !!k.w;
         } else {
             /* ── IN THE AIR: the tricks ── */
             R.airT += dt;
+            /* THE HOLD: SPACE still down lifts until ollieHoldS or the release; a launch / a walk-off never boosts */
+            if (R.holdOn) {
+                if (k.space && !noCtl && R.holdT < S.ollieHoldS && pl.vy > 0) { pl.vy += S.ollieHoldAcc * dt; R.holdT += dt; }
+                else R.holdOn = false;
+            }
             if (!noCtl) {
                 if (_hqRideKeyEdge(R, k, 'left')) _hqRideStartTrick(R, 'kickflip');
                 if (_hqRideKeyEdge(R, k, 'right')) _hqRideStartTrick(R, 'heelflip');
@@ -43542,11 +43585,11 @@ const ThreeRenderer = (function () {
         if (pl.air) {
             var okx = _hqAirOK(nx, pl.z, pl.y), okz = _hqAirOK(pl.x, nz, pl.y), ax0 = pl.x, az0 = pl.z;
             if (okx) pl.x = nx; if (okz) pl.z = nz;
-            var wantA = R.v * dt, movedA = (pl.x - ax0) * Math.sin(R.hd) + (pl.z - az0) * Math.cos(R.hd);
-            if (wantA > 0.002 && movedA < wantA * 0.3) { if (R.v > S.bailV && !noCtl) { _hqRideBail(R, pl, 'wall'); return; } R.v *= 0.5; }   // a wall in the air: the same rule
+            var sgA = R.v < 0 ? -1 : 1, wantA = Math.abs(R.v) * dt, movedA = sgA * ((pl.x - ax0) * Math.sin(R.hd) + (pl.z - az0) * Math.cos(R.hd));
+            if (wantA > 0.002 && movedA < wantA * 0.3) { if (Math.abs(R.v) > S.bailV && !noCtl) { _hqRideBail(R, pl, 'wall'); return; } R.v *= 0.5; }   // a wall in the air: the same rule
             else if (wantA > 0.002 && movedA < wantA * 0.9) R.v *= Math.max(0.5, movedA / wantA);
             _hqRideGravity(pl, R, dt, S, false);
-        } else if (R.v > 0) {
+        } else if (R.v !== 0) {
             var under = _hqRampUnder(nx, nz), prof = under && under.ramp.prof;
             var ox = pl.x, oz = pl.z;
             /* a profiled ramp: its own surface, no step rule (the curve is steep near the coping) */
@@ -43566,22 +43609,22 @@ const ThreeRenderer = (function () {
                axis every frame). Head-on = a stop, or a bail at speed; a
                glancing wall scrubs speed. A door's lane is never a bail (the
                press-in takes it). */
-            var wantM = R.v * dt, movedM = (pl.x - ox) * Math.sin(R.hd) + (pl.z - oz) * Math.cos(R.hd);
+            var sgM = R.v < 0 ? -1 : 1, wantM = Math.abs(R.v) * dt, movedM = sgM * ((pl.x - ox) * Math.sin(R.hd) + (pl.z - oz) * Math.cos(R.hd));
             if (wantM > 0.002 && movedM < wantM * 0.3) {
                 var t = _hqFindTarget();
-                if (t && t.kind === 'door') { R.v = Math.min(R.v, 0.4); }
-                else if (R.v > S.bailV && !noCtl) { _hqRideBail(R, pl, 'wall'); return; }
+                if (t && t.kind === 'door') { R.v = sgM * Math.min(Math.abs(R.v), 0.4); }
+                else if (Math.abs(R.v) > S.bailV && !noCtl) { _hqRideBail(R, pl, 'wall'); return; }
                 else R.v = 0;
             } else if (wantM > 0.002 && movedM < wantM * 0.9) R.v *= Math.max(0.5, movedM / wantM);
             /* THE RISE: the ground climbed in the last ~0.3 s; when it runs out at speed, a hop (the stairs, the risers, the cave's wedges) */
             if (R.lastY != null && !pl.air) { var dyR = pl.y - R.lastY; R.rise = R.rise * Math.exp(-dt / 0.3) + Math.max(0, dyR); }
             R.lastY = pl.y;
             var onNow = under ? under.ramp : null;
-            if (!pl.air && prof && under.t >= S.qpTop && R.v > 2.5) {
+            if (!pl.air && prof && under.t >= S.qpTop && Math.abs(R.v) > 2.5) {
                 /* THE COPING: off the quarter pipe — the speed goes UP, the rider comes back down onto the curve */
-                pl.air = true; pl.vy = Math.min(S.rampLaunchMax, R.v * S.qpLaunch); R.v *= 0.3; pl.jumpT = 0; R.airT = 0; R.airY0 = pl.y; R.rise = 0; R.jumpFromWalkOff = false;
+                pl.air = true; pl.vy = Math.min(S.rampLaunchMax, Math.abs(R.v) * S.qpLaunch); R.v *= 0.3; pl.jumpT = 0; R.airT = 0; R.airY0 = pl.y; R.rise = 0; R.jumpFromWalkOff = false;
                 _hqRideEmit({ kind: 'launch', v: pl.vy });
-            } else if (!pl.air && R.onRamp && !onNow && R.rise > 0.25 && R.v > 3) {
+            } else if (!pl.air && R.onRamp && !onNow && R.rise > 0.25 && Math.abs(R.v) > 3) {
                 var vy = Math.min(S.rampLaunchMax, R.rise / 0.3 * 0.8);
                 if (vy >= S.rampLaunchMin) { pl.air = true; pl.vy = vy; pl.jumpT = 0; R.airT = 0; R.airY0 = pl.y; R.rise = 0; R.jumpFromWalkOff = false; _hqRideEmit({ kind: 'launch', v: vy }); }
             }
@@ -43608,12 +43651,12 @@ const ThreeRenderer = (function () {
         if (pl.vy < 0) {
             if (!bailing) {
                 var snap = _hqRailSnap(pl.x, pl.z, ny, S);
-                if (snap && R.v >= S.grindMinV * 0.6) {
+                if (snap && Math.abs(R.v) >= S.grindMinV * 0.6) {
                     /* THE LOCK */
                     var p = _hqRailAt(snap.rail, snap.s);
-                    var along = Math.sin(R.hd) * p.tx + Math.cos(R.hd) * p.tz;
-                    var dir = (along >= 0) ? 1 : -1;
-                    R.v = Math.max(S.grindMinV, Math.abs(along) * R.v + 0.6 * R.v * (1 - Math.abs(along)));
+                    var along = (Math.sin(R.hd) * p.tx + Math.cos(R.hd) * p.tz) * (R.v < 0 ? -1 : 1);
+                    var dir = (along >= 0) ? 1 : -1, av = Math.abs(R.v);
+                    R.v = Math.max(S.grindMinV, Math.abs(along) * av + 0.6 * av * (1 - Math.abs(along)));
                     R.grind = { rail: snap.rail, s: snap.s, dir: dir, t: 0, drift: 0, pts: TR.grind.pts || 0 };
                     R.bal = 0; R.trick = null; R.queue = []; R.flip = R.roll = R.deckRoll = 0;
                     R.stance = 0; R.spinAcc = 0;
@@ -43692,12 +43735,24 @@ const ThreeRenderer = (function () {
         if (R.bailT > 0) { var S = _hqSkateRules(), bk = 1 - R.bailT / (S.bailMs / 1000); tumble = (bk < 0.6) ? Math.PI * 2 * (bk / 0.6) : 0; }
         var flip = R.flip + tumble, roll = R.roll;
         var deckH = (R.deckAway > 0) ? 0 : 0.1;
+        /* THE STANCE (rev 2): on the deck the body stands SIDEWAYS to the roll
+           (stanceYaw — regular, the chest to the right of travel; the feet of
+           the Idle_10 stance then lie ALONG the deck), squared up to the roll
+           for the push stride / the kick, on the ground and in the air alike;
+           eased so the turn reads as a step. Composed INSIDE the travel frame
+           (a quaternion: travel yaw · flip · roll, THEN the stance) so a front
+           flip still turns about the travel's lateral axis. */
+        var S2 = _hqSkateRules();
+        var poseT = (R.pushAnim > 0 || R.bailT > 0 || R.deckAway > 0) ? 0 : (S2.stanceYaw != null ? S2.stanceYaw : -Math.PI / 2);
+        R.poseYaw += (poseT - R.poseYaw) * Math.min(1, dt * 9);
         /* the body: yaw first, then pitch about its own lateral axis, then roll about its forward — about a pivot at its centre */
-        e.model.rotation.set(flip + (R.pushAnim > 0 ? 0.12 : 0.06 * Math.min(1, R.v / 6)), yaw, roll + R.lean);
+        var eul = new THREE.Euler(flip + (R.pushAnim > 0 ? 0.12 : 0.06 * Math.min(1, Math.abs(R.v) / 6)), yaw, roll + R.lean, 'YXZ');
+        var qStance = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), R.poseYaw);
+        e.model.quaternion.setFromEuler(eul).multiply(qStance);
         var piv = ch.heightM * 0.52;
-        var pv = new THREE.Vector3(0, piv * U, 0).applyEuler(e.model.rotation);
+        var pv = new THREE.Vector3(0, piv * U, 0).applyQuaternion(e.model.quaternion);
         e.model.position.set(-pv.x, e.model._ew_hqBaseY + deckH * U + piv * U - pv.y, -pv.z);
-        e.model.scale.y = R.grab ? 0.84 : 1;
+        e.model.scale.y = R.grab ? 0.84 : (R.holdOn ? 0.94 : 1);
         /* the deck: rides the same spin / flip / roll, plus its own kickflip roll; a grind's sparks */
         var D = R.deck;
         D.rotation.set(flip, yaw, roll + R.deckRoll);
@@ -43818,7 +43873,7 @@ const ThreeRenderer = (function () {
             if (ch.pose && ch.kind !== 'player' && e.actions && e.actions[ch.pose]) want = ch.pose;
             if (ch.kind === 'player') {
                 want = (ch.jumpT >= 0) ? 'jump' : (ch.moving ? (ch.running ? 'run' : 'walk') : 'idle');
-                if (H.ride && H.ride.on) want = (ch.jumpT >= 0) ? 'jump' : ((H.ride.pushAnim > 0) ? 'run' : 'idle');   // SKATEBOARDING (9.8): the push is a stride, the air is the jump clip, the rest is the stance
+                if (H.ride && H.ride.on) want = (ch.jumpT >= 0) ? 'jump' : ((H.ride.pushAnim > 0) ? 'run' : ((e.actions && e.actions.hqRide) ? 'hqRide' : 'idle'));   // SKATEBOARDING (9.8): the push / the kick is a stride, the air is the jump clip, the rest is THE RIDE stance (rev 2: Idle_10, sideways on the deck)
                 /* THE ENCOUNTER (9.4): a thrown attack / cast clip owns the rig until its end */
                 if (ch.strike) { if (performance.now() < ch.strike.until && ch.jumpT < 0) want = ch.strike.name; else ch.strike = null; }
                 var lean = e.model._ew_lean || 0;
@@ -44373,7 +44428,7 @@ const ThreeRenderer = (function () {
         pl.x = spot.x / U; pl.z = spot.z / U; pl.y = spot.y / U; pl.visY = pl.y;
         pl.air = false; pl.vy = 0; pl.jumpT = -1;
         pl.yaw = pl.targetYaw = _hqHeadingYaw(face);
-        if (_hq.ride && _hq.ride.on) { _hq.ride.hd = pl.yaw; _hq.ride.stance = 0; _hq.ride.v = Math.min(_hq.ride.v, 2.5); _hq.ride.grind = null; }   // SKATEBOARDING (9.8): through a door on the board, rolling
+        if (_hq.ride && _hq.ride.on) { _hq.ride.hd = pl.yaw; _hq.ride.stance = 0; _hq.ride.v = Math.max(-2.5, Math.min(_hq.ride.v, 2.5)); _hq.ride.grind = null; }   // SKATEBOARDING (9.8): through a door on the board, rolling
         _hq.cam.yaw = _hqRad(face); _hq.cam.init = false;
         return true;
     }

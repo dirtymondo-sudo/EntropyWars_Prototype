@@ -2230,6 +2230,13 @@ const _CAST_POSES = {
   hqStaff:   { clip: 'Sword_Idle',             lib: 0, ts: 1.0 },
   hqLean:    { clip: 'Idle_Rail_Loop',         lib: 1, ts: 1.0 },
 };
+// SKATEBOARDING rev 2 (2026-09-15): THE RIDE clip — the library's Idle_10 (the
+// brawler's loose, feet-apart stance) is what the HQ walker plays on the deck,
+// turned sideways so the stance lies along the board (three-renderer.js
+// _hqRidePose, stanceYaw). Baked onto the walker's rig at spawn as slot
+// `hqRide` (_hqSpawnCharacter); never a per-race export.
+const HQ_RIDE_CLIP = { clip: 'Idle_10', lib: 2, ts: 1.0 };
+if (typeof window !== 'undefined') window.HQ_RIDE_CLIP = HQ_RIDE_CLIP;
 // A cast member: the shared library + every building pose + a per-character
 // flavour. `female` picks the female idle/walk (the roster's gendered
 // defaults only sweep RACE_MODELS_3D). `file` overrides the model filename

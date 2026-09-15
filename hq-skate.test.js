@@ -167,7 +167,7 @@ test('THE RIDE: a push rolls where the camera looks, friction slows it, S brakes
     assert.ok(c.R().v <= R.maxV + 1e-9, 'capped');
     /* THE OLLIE + THE KICKFLIP */
     c.step({ space: true }, 1 / 60, 1);
-    assert.ok(c.pl.air && c.pl.vy > R.ollieV - 0.5 && c.pl.vy <= R.ollieV, 'airborne at the walker\'s jump speed (one frame of gravity in): ' + c.pl.vy);
+    assert.ok(c.pl.air && c.pl.vy > R.ollieTapV - 0.5 && c.pl.vy <= R.ollieTapV, 'airborne at the TAP speed (one frame of gravity in): ' + c.pl.vy);
     assert.ok(c.events().some(e => e.kind === 'ollie'));
     c.step({ left: true }, 1 / 60, 1); assert.equal(c.R().trick.id, 'kickflip');
     let n = 0; while (c.pl.air && n++ < 300) c.step({}, 1 / 60, 1);
@@ -270,9 +270,9 @@ test('THE SOURCE SITES: the renderer (the keys, the hand-off, the pose, the API,
     assert.ok(/\(k\.d \|\| k\.right\) \? 1 : 0\) - \(\(k\.a \|\| k\.left\) \? 1 : 0\)/.test(TR) && /\(k\.w \|\| k\.up\) \? 1 : 0/.test(TR), 'the walker reads the arrows as WASD');
     assert.ok(/if \(H\.ride && H\.ride\.on\) \{ _hqTickRide\(dt\); return; \}/.test(TR), 'the hand-off at the top of the walker\'s tick');
     assert.ok(/if \(H\.ride\) _hqRidePose\(ch, e, dt\);/.test(TR), 'the pose after the walker\'s own');
-    assert.ok(/if \(H\.ride && H\.ride\.on\) want = \(ch\.jumpT >= 0\) \? 'jump' : \(\(H\.ride\.pushAnim > 0\) \? 'run' : 'idle'\);/.test(TR), 'the clip: jump in the air, a stride on the push');
+    assert.ok(/if \(H\.ride && H\.ride\.on\) want = \(ch\.jumpT >= 0\) \? 'jump' : \(\(H\.ride\.pushAnim > 0\) \? 'run' : \(\(e\.actions && e\.actions\.hqRide\) \? 'hqRide' : 'idle'\)\);/.test(TR), 'the clip: jump in the air, a stride on the push, THE RIDE stance on the deck');
     assert.ok(/try \{ _hqRideArm\(opts\); \}/.test(TR) && TR.lastIndexOf('_hqRideArm(opts)') > TR.indexOf('_hqSpawnPopulation(room, opts); } catch'), 'armed after the population');
-    assert.ok(/if \(_hq\.ride && _hq\.ride\.on\) \{ _hq\.ride\.hd = pl\.yaw; _hq\.ride\.stance = 0; _hq\.ride\.v = Math\.min\(_hq\.ride\.v, 2\.5\); _hq\.ride\.grind = null; \}/.test(TR), 'through a door on the board');
+    assert.ok(/if \(_hq\.ride && _hq\.ride\.on\) \{ _hq\.ride\.hd = pl\.yaw; _hq\.ride\.stance = 0; _hq\.ride\.v = Math\.max\(-2\.5, Math\.min\(_hq\.ride\.v, 2\.5\)\); _hq\.ride\.grind = null; \}/.test(TR), 'through a door on the board');
     for (const k of ['skate: function (on)', 'skating: function ()', 'skateIssued: function (on)', 'ride: function ()', 'rails: function ()', 'ramps: function ()']) assert.ok(TR.indexOf(k) > 0, 'API ' + k);
     assert.ok(/skateboard: 'Meshy_AI_a_skateboard_0915212313_texture\.glb'/.test(TR), 'the deck GLB in _MISC_GLB');
     assert.ok(fs.existsSync(__dirname + '/Meshy_AI_a_skateboard_0915212313_texture.glb'), 'the user\'s file in the repo');
@@ -347,4 +347,59 @@ test('grinding updates the visible rider position and facing on curved rails', (
     assert.equal(position.x, c.pl.x * 73); assert.equal(position.z, c.pl.z * 73);
     assert.equal(position.y, c.pl.visY * 73);
     assert.equal(c.pl.yaw, c.R().hd + c.R().stance);
+});
+
+/* ── rev 2 (2026-09-15): the ride stance, skating backwards, the occasional kick, hold to jump ── */
+test('REV 2 — HOLD TO JUMP: a tap is a hop, a hold clears more (the boost stops at ollieHoldS or the release); a launch never boosts', () => {
+    function apex(holdFrames) {
+        const c = sandbox(); c._hqRideToggle(true); c._hq.cam.yaw = 0;
+        c.step({ w: true }, 1 / 60, 40);
+        let top = 0, n = 0;
+        c.step({ space: true }, 1 / 60, 1);
+        assert.ok(c.pl.air && c.R().holdOn, 'airborne on the press');
+        for (let i = 1; i < holdFrames && c.pl.air; i++) { c.step({ space: true }, 1 / 60, 1); top = Math.max(top, c.pl.y); }
+        while (c.pl.air && n++ < 400) { c.step({}, 1 / 60, 1); top = Math.max(top, c.pl.y); }
+        assert.ok(!c.pl.air, 'landed'); assert.ok(!c.events().some(e => e.kind === 'bail'), 'clean');
+        return top;
+    }
+    const tap = apex(1), half = apex(12), full = apex(40);
+    assert.ok(tap > 0.45 && tap < 0.75, 'a tap is a hop: ' + tap);
+    assert.ok(half > tap + 0.2 && full > half + 0.2, 'the longer the hold the higher: ' + tap + ' < ' + half + ' < ' + full);
+    assert.ok(full > 1.4 && full < 2.0, 'a full hold clears a box: ' + full);
+    const c = sandbox(); c._hqRideToggle(true); c.step({ w: true }, 1 / 60, 40);
+    c.step({ space: true }, 1 / 60, 90); assert.ok(!c.R().holdOn || c.pl.vy <= 0, 'the boost ends by ollieHoldS');
+});
+test('REV 2 — SKATING BACKWARDS: S rolling forward is the brake; S from a stop pushes FAKIE (the roll goes backwards along the heading, capped, the rider still faces the heading); W while backwards brakes first; a wall backwards at speed is judged by the magnitude', () => {
+    const c = sandbox(); c._hqRideToggle(true); c._hq.cam.yaw = Math.PI / 2;   // looking +x
+    c.step({ s: true }, 1 / 60, 120);
+    assert.ok(c.R().v < -1 && c.R().v >= -R.reverseMaxV - 1e-9, 'a fakie roll, capped: ' + c.R().v);
+    assert.ok(c.pl.x < -1, 'went −x (backwards along the heading): ' + c.pl.x);
+    assert.ok(Math.abs(c.pl.yaw - Math.PI / 2) < 1e-6, 'the rider still faces +x');
+    assert.ok(c.events().some(e => e.kind === 'push' && e.fakie), 'the fakie push beat');
+    const vb = c.R().v; c.step({ w: true }, 1 / 60, 20); assert.ok(c.R().v > vb && c.R().v <= 0.5, 'W brakes the backwards roll first: ' + c.R().v);
+    c.step({ w: true }, 1 / 60, 60); assert.ok(c.R().v > 3, 'then pushes forward');
+    const c2 = sandbox({ wallAt: 6 }); c2._hqRideToggle(true); c2._hq.cam.yaw = Math.PI / 2;
+    c2.step({ s: true }, 1 / 60, 400);
+    assert.ok(c2.events().some(e => e.kind === 'bail' && e.why === 'wall'), 'the wall behind at speed: a bail');
+});
+test('REV 2 — THE OCCASIONAL KICK: coasting at speed the rider throws in a stride inside kickEvery; never while slow', () => {
+    const c = sandbox(); c._hqRideToggle(true);
+    c.step({ w: true }, 1 / 60, 120);
+    c._events.length = 0;
+    c.step({}, 1 / 60, Math.ceil(R.kickEvery[1] * 60) + 5);
+    assert.ok(c.events().some(e => e.kind === 'kick'), 'a kick on the coast');
+    const c3 = sandbox(); c3._hqRideToggle(true); c3._events.length = 0; c3.step({}, 1 / 60, 600);
+    assert.ok(!c3.events().some(e => e.kind === 'kick'), 'no kick standing still');
+});
+test('REV 2 — THE STANCE + THE CLIP: the ride clip is HQ_RIDE_CLIP (Idle_10) baked onto the walker\'s rig as hqRide, the pose turns the body stanceYaw inside the travel frame (a quaternion), squared up for the stride; the table carries the rev 2 keys', () => {
+    const SP = fs.readFileSync(__dirname + '/sprites.js', 'utf8');
+    assert.ok(/const HQ_RIDE_CLIP = \{ clip: 'Idle_10', lib: 2, ts: 1\.0 \};/.test(SP), 'the ride clip');
+    assert.ok(/rlc\.hqRide = \{ clip: HQ_RIDE_CLIP\.clip, lib: HQ_RIDE_CLIP\.lib \|\| 0 \};/.test(TR) && /spec\.kind === 'player' && def\.libClips && typeof HQ_RIDE_CLIP !== 'undefined'/.test(TR), 'baked onto the walker only, a clone');
+    assert.ok(/\(name === 'hqRide'\) \? acts\.idle : null/.test(TR), 'hqRide falls back to the idle');
+    const pose = extract('_hqRidePose');
+    assert.ok(/e\.model\.quaternion\.setFromEuler\(eul\)\.multiply\(qStance\)/.test(pose) && /setFromAxisAngle\(new THREE\.Vector3\(0, 1, 0\), R\.poseYaw\)/.test(pose), 'the stance inside the travel frame');
+    assert.ok(/var poseT = \(R\.pushAnim > 0 \|\| R\.bailT > 0 \|\| R\.deckAway > 0\) \? 0 : /.test(pose), 'squared up for the stride');
+    const def = vm.runInContext(TR.slice(TR.indexOf('    var HQ_SKATE_DEFAULT = {'), TR.indexOf('\n    };', TR.indexOf('    var HQ_SKATE_DEFAULT = {')) + 7) + '; HQ_SKATE_DEFAULT', vm.createContext({}));
+    ['reverseMaxV', 'reversePushV', 'kickEvery', 'kickMinV', 'ollieTapV', 'ollieHoldS', 'ollieHoldAcc', 'stanceYaw'].forEach(k => assert.ok(k in R && k in def, 'the key on both sides: ' + k));
+    assert.ok(Math.abs(R.stanceYaw) === Math.PI / 2, 'sideways');
 });

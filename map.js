@@ -497,7 +497,7 @@
                         skp.style.display = '';
                         skp.classList.toggle('riding', riding);
                         skp.innerHTML = `🛹 <b>${riding ? 'RIDING' : 'BOARD'}</b>${st.best ? ' · BEST ' + (st.best.score | 0).toLocaleString() : ''}`;
-                        skp.title = 'SKATEBOARDING — B drops the deck. W push · S brake · A / D carve · SPACE ollie · land on a rail to grind · in the air ← → ↑ ↓ W A D are tricks, SHIFT the grab. ' + (st.best ? 'Best line: ' + st.best.text + ' = ' + st.best.score + '. ' : '') + (st.lines ? st.lines + ' lines landed, ' + st.bails + ' bails.' : 'Nothing landed yet.');
+                        skp.title = 'SKATEBOARDING — B drops the deck. W push · S brake (from a stop: skate backwards) · A / D carve · SPACE ollie (tap = a hop, hold = the height) · land on a rail to grind · in the air ← → ↑ ↓ W A D are tricks, SHIFT the grab. ' + (st.best ? 'Best line: ' + st.best.text + ' = ' + st.best.score + '. ' : '') + (st.lines ? st.lines + ' lines landed, ' + st.bails + ' bails.' : 'Nothing landed yet.');
                     } else { skp.style.display = 'none'; skp.innerHTML = ''; }
                 }
                 /* the day's Code Red (plan 3.3): strobes until cleared */
@@ -1912,7 +1912,8 @@
                 case 'refused':
                     _hqToast(ev.reason === 'off' ? '<b>NO SKATING</b><span>EW_HQ_NO_SKATE IS SET</span>' : '<b>NO BOARD</b><span>THERE IS ONE LEANING ON A LOCKER IN ROOM 26 · THE ANNEX</span>', 2600);
                     break;
-                case 'push': _hqSkateSfx('skatePush', 0.45); break;
+                case 'push': _hqSkateSfx('skatePush', ev.fakie ? 0.35 : 0.45); break;
+                case 'kick': _hqSkateSfx('skatePush', 0.28); break;   // rev 2: the occasional stride on the coast
                 case 'ollie': _hqSkateSfx('skateOllie', 0.6); break;
                 case 'launch': _hqSkateSfx('skateOllie', 0.35); break;
                 case 'hop': break;

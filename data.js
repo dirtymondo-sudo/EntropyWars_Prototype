@@ -29166,9 +29166,17 @@ const HQ_SKATE_RULES = {
     pushV: 3.0,          // m/s a push adds
     pushEvery: 0.42,     // s between pushes (W held)
     friction: 0.99,      // per 60 Hz frame, applied time-based (a long coast — the pushes settle near the cap)
-    brake: 0.9,          // S, per 60 Hz frame
+    brake: 0.9,          // S, per 60 Hz frame (rolling forward)
+    reverseMaxV: 5.0,    // m/s — S from a stop is the FAKIE push: the roll goes backwards, capped here (rev 2)
+    reversePushV: 1.8,   // m/s a fakie push adds
+    kickEvery: [3.5, 7], // s — coasting at speed the rider throws in a stride now and then (rev 2)
+    kickMinV: 2.5,       // m/s — slower than this no kick
     turn: 2.4,           // rad/s of carve at speed (scales up to 3 m/s)
-    ollieV: 7.25,        // the walker's own jump (HQ_JUMP_V)
+    ollieV: 7.25,        // the grind's hop-off (× 0.85) — the walker's own jump (HQ_JUMP_V)
+    ollieTapV: 4.6,      // m/s up on the press — a TAP is a hop (≈ 0.6 m) (rev 2: hold to jump)
+    ollieHoldS: 0.42,    // s SPACE held keeps lifting…
+    ollieHoldAcc: 13,    // …at this m/s² against gravity: a full hold clears ≈ 1.65 m
+    stanceYaw: -Math.PI / 2,   // the body's turn on the deck (regular: chest to the right of travel; +π/2 = goofy)
     bailV: 4.2,          // a wall faster than this is a bail
     bailDrop: 2.4,       // a walk-off fall taller than this is a bail (HQ_DROP_MAX × 1.5)
     bailMs: 900,         // the tumble
@@ -29196,7 +29204,7 @@ const HQ_SKATE_RULES = {
         air:       { pts: 40,  label: 'BIG AIR' },
     },
     labels: { on: 'ON THE BOARD', off: 'ON FOOT', bail: 'BAIL', bank: 'LANDED' },
-    controls: ['W push', 'S brake', 'A / D carve', 'SPACE ollie', 'land on a rail = grind (A / D balance)', 'in the air: ← kickflip · → heelflip · ↑ front flip · ↓ backflip · W corkscrew · A / D 180 · SHIFT grab', 'B off'],
+    controls: ['W push', 'S brake · from a stop skate backwards', 'A / D carve', 'SPACE ollie (tap = a hop · hold = the height)', 'land on a rail = grind (A / D balance)', 'in the air: ← kickflip · → heelflip · ↑ front flip · ↓ backflip · W corkscrew · A / D 180 · SHIFT grab', 'B off'],
 };
 function hqSkateIssueFree() { return !!HQ_SKATE_RULES.free; }
 /* the record on the profile; `make` creates it (a writer), else a read-only shape */
