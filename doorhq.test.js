@@ -443,8 +443,12 @@ test('box-room doors hang on a named wall with a panel that fits, one action eac
         for (const d of room.doors) {
             if (ids.has(d.id)) problems.push(k + ': duplicate door id ' + d.id);
             ids.add(d.id);
-            if (!WALLS.includes(d.wall)) { problems.push(k + ': door ' + d.id + ' names no wall'); continue; }
-            const a = alongOf(S, d.wall, d);
+            /* a FREE-STANDING seam (HQ plan 9.3 `way`, 2026-09-15): the well in the cellar's floor — x / z inside the room, a heading */
+            if (d.wall === 'free') {
+                if (!d.way) problems.push(k + ': door ' + d.id + ' stands free but is no way');
+                if (!(Math.abs(d.x || 0) + 1.0 < S.w / 2 && Math.abs(d.z || 0) + 1.0 < S.d / 2) || !Number.isFinite(d.face)) problems.push(k + ': free seam ' + d.id + ' stands in a wall or faces nowhere');
+            } else if (!WALLS.includes(d.wall)) { problems.push(k + ': door ' + d.id + ' names no wall'); continue; }
+            const a = d.wall === 'free' ? { v: 0, half: 99 } : alongOf(S, d.wall, d);
             const wide = !!d.wide || (d.rankDoor && D.DOOR_TEXT.CLEARANCE.some(r => HQ.catalogue[r.door] && HQ.catalogue[r.door].wide));
             const halfPanel = (wide ? 3.3 : 2.5) / 2;
             if (typeof a.v !== 'number' || Math.abs(a.v) + halfPanel > a.half) problems.push(k + ': door ' + d.id + ' panel runs off the wall');

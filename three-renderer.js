@@ -36187,6 +36187,15 @@ const ThreeRenderer = (function () {
     function _hqBoxWall(room, wall, spec) {
         var S = room.shell, W = HQ_WALLS[wall] || HQ_WALLS.n;
         spec = spec || {};
+        /* a FREE-STANDING seam (HQ plan 9.3 `way`, 2026-09-15): the well in
+           the cellar's floor — `wall: 'free'` + x / z + `face` (the heading
+           its opening faces). The same record a wall door gets, so the scan,
+           the press-in, the landing and the doorway blocker read it unchanged:
+           the "wall plane" is the object's own, its inward normal the heading. */
+        if (wall === 'free') {
+            var fr = (spec.face || 0) * Math.PI / 180, fnx = Math.sin(fr), fnz = -Math.cos(fr);
+            return { wall: 'free', wx: spec.x || 0, wz: spec.z || 0, nx: fnx, nz: fnz, yaw: Math.atan2(fnx, fnz), along: 0, free: true };
+        }
         var along = (wall === 'e' || wall === 'w') ? (spec.z || 0) : (spec.x || 0);
         var wx, wz;
         if (wall === 's') { wx = along; wz = S.d / 2; }
@@ -36302,7 +36311,7 @@ const ThreeRenderer = (function () {
     function _hqLampApply(l, st) {
         var c = HQ_LAMP[st] || HQ_LAMP.off;
         l.state = st;
-        l.lens.material.color.setHex(c.lens);
+        if (l.lens) l.lens.material.color.setHex(c.lens);
         if (l.glow) {
             l.glow.visible = !!c.glow;
             if (c.glow) l.glow.material.color.setHex(c.glow);
@@ -39437,6 +39446,144 @@ const ThreeRenderer = (function () {
         m.name = 'hq-door-surround';
         return m;
     }
+    /* ── THE SEAMS THAT ARE NOT DOORS (HQ plan 9.3 `way`, 2026-09-15) ───
+       A link row with `way: '<kind>'` hangs an ENTRYWAY instead of a leaf:
+       _hqWayBuilders[kind](U, ctx) builds the object in the door's local
+       frame (+Z into the room, the origin on the wall plane — or, for a
+       `wall: 'free'` end, at the object's own spot) and returns { g,
+       motion, ow, oh, plateY }. `motion` is the door rig's (`mode: 'way'`
+       + `tick(k)`, k 0..1 — _hqTickDoors drives it when the walker stands
+       at it, and the press-in (_hqTickAutoEnter) fires at 0.55 like any
+       swinging leaf: the wardrobe's doors open as you come up and you walk
+       into the coats; the well's bucket goes down and you follow it). The
+       plate hangs on the object; the prompt reads DOOR_HQ.ways[kind].verb
+       (map.js _hqSetPrompt); the room change plays the kind's `sfx`.
+       Adding a kind = a builder here + a DOOR_HQ.ways row (hq-world.test.js
+       diffs the two). */
+    var _hqWayBuilders = {
+        /* THE WARDROBE: a tall dark-wood cabinet against the wall, both
+           doors on hinges, a rail of coats, and — behind the coats, where
+           the back panel should be — a cold blue-white light with a lamp
+           post's warm point in it, and snow on the floor before it. */
+        wardrobe: function (U, ctx) {
+            var g = new THREE.Group();
+            var W = 1.5, H = 2.3, D = 0.62, T = 0.045;
+            var wood = _hqMat('dark_woods', 1, 2, { color: 0x6a4a34, shininess: 22, specular: 0x332211 });
+            var woodIn = _hqMat('wood', 1, 2, { color: 0x4a3324, shininess: 6 });
+            var brass = _hqMat(null, 1, 1, { color: 0xc9a850, shininess: 80, specular: 0x886622 });
+            /* the carcass: back, sides, top, bottom, a plinth and a cornice */
+            var back = _hqBox(W, H, T, woodIn); back.position.set(0, (H / 2) * U, (T / 2 + 0.01) * U); g.add(back);
+            var sL = _hqBox(T, H, D, wood); sL.position.set(-(W / 2 - T / 2) * U, (H / 2) * U, (D / 2) * U); g.add(sL);
+            var sR = _hqBox(T, H, D, wood); sR.position.set((W / 2 - T / 2) * U, (H / 2) * U, (D / 2) * U); g.add(sR);
+            var top = _hqBox(W, T, D, wood); top.position.set(0, (H - T / 2) * U, (D / 2) * U); g.add(top);
+            var bot = _hqBox(W, 0.12, D, wood); bot.position.set(0, 0.06 * U, (D / 2) * U); g.add(bot);
+            var plinth = _hqBox(W + 0.08, 0.1, D + 0.05, wood); plinth.position.set(0, 0.05 * U, (D / 2 + 0.02) * U); g.add(plinth);
+            var cornice = _hqBox(W + 0.12, 0.09, D + 0.08, wood); cornice.position.set(0, (H + 0.045) * U, (D / 2 + 0.03) * U); g.add(cornice);
+            /* the light at the back: the back panel glows cold, a lamp post
+               stands in it with a warm point, snow lies before the doors */
+            var cold = new THREE.Mesh(new THREE.PlaneGeometry((W - 2 * T - 0.02) * U, (H - 0.2) * U), _hqBasic(0xbfd8ff, { transparent: true, opacity: 0.35, depthWrite: false }));
+            cold.position.set(0, (H / 2 - 0.02) * U, (T + 0.015) * U); g.add(cold);
+            var glow = _hzGlowSprite(1.6 * U, 0xcfe4ff, 0.25, 0.0, 0.0, 0.0); glow.position.set(0, (H * 0.55) * U, (T + 0.12) * U); g.add(glow);
+            var post = _hqBox(0.05, 1.5, 0.05, _hqMat(null, 1, 1, { color: 0x1c1c22, shininess: 30 })); post.position.set(0.32 * U, 0.85 * U, (T + 0.08) * U); g.add(post);
+            var lamp = new THREE.Mesh(new THREE.BoxGeometry(0.12 * U, 0.16 * U, 0.12 * U), _hqBasic(0xfff1c8)); lamp.position.set(0.32 * U, 1.66 * U, (T + 0.08) * U); g.add(lamp);
+            var lampGlow = _hzGlowSprite(0.6 * U, 0xffe0a0, 0.55, 0.0, 0.0, 0.0); lampGlow.position.copy(lamp.position); g.add(lampGlow);
+            var snow = new THREE.Mesh(new THREE.CircleGeometry(0.55 * U, 22), _hqBasic(0xeef4ff, { transparent: true, opacity: 0.55, depthWrite: false }));
+            snow.rotation.x = -Math.PI / 2; snow.position.set(0, 0.012 * U, (D + 0.35) * U); snow.scale.x = 1.35; snow.renderOrder = 2; g.add(snow);
+            /* the rail and the coats (a row of flat backs, six colours) */
+            var rail = new THREE.Mesh(new THREE.CylinderGeometry(0.014 * U, 0.014 * U, (W - 2 * T - 0.04) * U, 8), brass);
+            rail.rotation.z = Math.PI / 2; rail.position.set(0, (H - 0.32) * U, (D * 0.5) * U); g.add(rail);
+            var cols = [0x3b2f2a, 0x555a44, 0x2a2e40, 0x6a3a2a, 0x3a3a3a, 0x50403a];
+            for (var i = 0; i < 6; i++) {
+                var coat = _hqBox(0.2, 0.95, 0.07, _hqMat('oxblood', 1, 2, { color: cols[i], shininess: 4 }));
+                coat.position.set((-0.55 + i * 0.22) * U, (H - 0.32 - 0.5) * U, (D * 0.5) * U); coat.rotation.y = (i % 2 ? 0.12 : -0.1); g.add(coat);
+                var hook = new THREE.Mesh(new THREE.TorusGeometry(0.03 * U, 0.006 * U, 6, 10), brass); hook.position.set(coat.position.x, (H - 0.32) * U, (D * 0.5) * U); g.add(hook);
+            }
+            /* the two doors on their hinges, opening toward the walker */
+            var lw = W / 2 - 0.02, lh = H - 0.16;
+            var pivL = new THREE.Group(); pivL.position.set(-(W / 2 - T) * U, 0, (D - 0.02) * U); g.add(pivL);
+            var pivR = new THREE.Group(); pivR.position.set((W / 2 - T) * U, 0, (D - 0.02) * U); g.add(pivR);
+            var leafL = _hqBox(lw, lh, 0.04, wood); leafL.position.set((lw / 2) * U, (0.08 + lh / 2) * U, 0); pivL.add(leafL);
+            var leafR = _hqBox(lw, lh, 0.04, wood); leafR.position.set(-(lw / 2) * U, (0.08 + lh / 2) * U, 0); pivR.add(leafR);
+            [[pivL, lw - 0.1], [pivR, -(lw - 0.1)]].forEach(function (e) {
+                var knob = new THREE.Mesh(new THREE.SphereGeometry(0.03 * U, 10, 8), brass); knob.position.set(e[1] * U, 1.05 * U, 0.04 * U); e[0].add(knob);
+                var panel = _hqBox(Math.abs(lw) - 0.16, lh - 0.3, 0.012, woodIn); panel.position.set((e[1] > 0 ? 1 : -1) * (lw / 2) * U, (0.08 + lh / 2) * U, 0.026 * U); e[0].add(panel);
+            });
+            var motion = { mode: 'way', ow: W, tick: function (k) {
+                pivL.rotation.y = -1.75 * k; pivR.rotation.y = 1.75 * k;
+                glow.material.opacity = 0.25 + 0.6 * k; cold.material.opacity = 0.35 + 0.4 * k; lampGlow.material.opacity = 0.55 + 0.4 * k;
+            } };
+            if (_hq) _hq.tickers.push(function (dt, now) { lampGlow.scale.setScalar((0.6 + 0.05 * Math.sin(now * 0.004)) * U); });
+            return { g: g, motion: motion, ow: W, oh: H, plateY: H + 0.4 };
+        },
+        /* THE WELL: a stone head with a wooden frame and a windlass, the
+           bucket on its rope, a cold crystal light in the shaft (Hollow
+           Earth's) that rises as the bucket goes down. A free-standing end
+           (the cellar) centres the ring on its own spot; a wall end (Hollow
+           Earth's cave wall) stands it just off the wall. */
+        well: function (U, ctx) {
+            var g = new THREE.Group();
+            var R = 0.72, RI = 0.56, HH = 0.85, zc = ctx.free ? 0 : 0.85;
+            var stone = _hqMat('stone', 2, 1, { color: 0x8c877c, shininess: 4 });
+            var stoneIn = _hqMat('stone', 2, 1, { color: 0x3a3634, shininess: 2 });
+            var wood = _hqMat('dark_woods', 1, 2, { color: 0x6a4a34, shininess: 12 });
+            var ring = new THREE.Mesh(new THREE.CylinderGeometry(R * U, (R + 0.04) * U, HH * U, 28, 1, true), stone); ring.position.set(0, (HH / 2) * U, zc * U); g.add(ring);
+            var inner = new THREE.Mesh(new THREE.CylinderGeometry(RI * U, RI * U, (HH + 0.6) * U, 24, 1, true), stoneIn); inner.material.side = THREE.BackSide; inner.position.set(0, (HH / 2 - 0.3) * U, zc * U); g.add(inner);
+            var lip = new THREE.Mesh(new THREE.RingGeometry(RI * U, (R + 0.02) * U, 28), stone); lip.rotation.x = -Math.PI / 2; lip.position.set(0, (HH + 0.001) * U, zc * U); g.add(lip);
+            var shaft = new THREE.Mesh(new THREE.CircleGeometry((RI - 0.01) * U, 24), _hqBasic(0x061a1c)); shaft.rotation.x = -Math.PI / 2; shaft.position.set(0, (HH - 0.55) * U, zc * U); g.add(shaft);
+            var light = new THREE.Mesh(new THREE.CircleGeometry((RI - 0.02) * U, 24), _hqBasic(0x6af0d0, { transparent: true, opacity: 0.18, depthWrite: false })); light.rotation.x = -Math.PI / 2; light.position.set(0, (HH - 0.54) * U, zc * U); light.renderOrder = 2; g.add(light);
+            var glow = _hzGlowSprite(1.3 * U, 0x9affe4, 0.2, 0.0, 0.0, 0.0); glow.position.set(0, (HH + 0.1) * U, zc * U); g.add(glow);
+            /* the frame: two uprights beside the ring (the walker steps between them), the beam, the windlass */
+            [-1, 1].forEach(function (sg) {
+                var up = _hqBox(0.09, 1.95, 0.09, wood); up.position.set(sg * (R + 0.02) * U, 0.975 * U, zc * U); g.add(up);
+                var brace = _hqBox(0.06, 0.5, 0.06, wood); brace.position.set(sg * (R - 0.12) * U, 1.05 * U, zc * U); brace.rotation.z = sg * 0.5; g.add(brace);
+            });
+            var beam = _hqBox(2 * R + 0.3, 0.1, 0.12, wood); beam.position.set(0, 1.95 * U, zc * U); g.add(beam);
+            var drum = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * U, 0.09 * U, (2 * R - 0.2) * U, 12), wood); drum.rotation.z = Math.PI / 2; drum.position.set(0, 1.72 * U, zc * U); g.add(drum);
+            var crank = _hqBox(0.04, 0.3, 0.04, _hqMat(null, 1, 1, { color: 0x2a2a2e, shininess: 40 })); crank.position.set((R - 0.05) * U, 1.6 * U, zc * U); g.add(crank);
+            var rope = new THREE.Mesh(new THREE.CylinderGeometry(0.012 * U, 0.012 * U, 1 * U, 6), _hqMat(null, 1, 1, { color: 0xb8a070, shininess: 2 })); g.add(rope);
+            var bucket = new THREE.Mesh(new THREE.CylinderGeometry(0.14 * U, 0.11 * U, 0.24 * U, 12, 1, true), _hqMat('dark_woods', 1, 1, { color: 0x7a5a3a, shininess: 10 })); bucket.material.side = THREE.DoubleSide; g.add(bucket);
+            var hoop = new THREE.Mesh(new THREE.TorusGeometry(0.14 * U, 0.008 * U, 6, 16), _hqMat(null, 1, 1, { color: 0x2a2a2e, shininess: 40 })); hoop.rotation.x = Math.PI / 2; g.add(hoop);
+            var place = function (k) {
+                var by = 1.25 - 1.15 * k;                    // the bucket: hanging at the lip → down the shaft
+                bucket.position.set(0, by * U, zc * U); hoop.position.set(0, (by + 0.12) * U, zc * U);
+                var top = 1.72, len = top - (by + 0.12);
+                rope.scale.y = Math.max(0.05, len); rope.position.set(0, ((top + by + 0.12) / 2) * U, zc * U);
+                light.material.opacity = 0.18 + 0.55 * k; glow.material.opacity = 0.2 + 0.5 * k;
+            };
+            place(0);
+            var motion = { mode: 'way', ow: 2 * R, tick: place };
+            if (_hq) _hq.tickers.push(function (dt, now) { glow.scale.setScalar((1.3 + 0.08 * Math.sin(now * 0.003)) * U); });
+            return { g: g, motion: motion, ow: 2 * R + 0.1, oh: 1.0, plateY: 2.35 };
+        },
+    };
+    function _hqBuildWay(room, door, level, y0, Rw, inward) {
+        var U = _hqUnits(), S = room.shell, G = _hq.doorGroup;
+        var kind = door.way, b = _hqWayBuilders[kind];
+        var W = ((_hqData() || {}).ways || {})[kind] || {};
+        if (!b) { console.warn('[HQ] no builder for way', kind, door.id); return; }
+        var box = (room.kind === 'box' || door.wall === 'free') ? _hqBoxWall(room, door.wall, door) : ((room.kind === 'bay' && door.cap) ? _hqCapWall(room, door) : null);
+        var grp = new THREE.Group();
+        if (box) { grp.position.set(box.wx * U, y0 * U, box.wz * U); grp.rotation.y = box.yaw; }
+        else { grp.position.copy(_hqPolarW(door.deg, Rw, y0)); grp.rotation.y = _hqFaceCentreYaw(door.deg) + (inward ? Math.PI : 0); }
+        var built = b(U, { room: room, door: door, free: !!(box && box.free), cat: W });
+        grp.add(built.g);
+        var ow = built.ow || W.w || 1.2, oh = built.oh || W.h || 2.2;
+        var el = document.createElement('div');
+        el.className = 'hq-plate hq-plate-way';
+        var chip = document.createElement('i');
+        var doorNo = _hqPlateNo(door);
+        el.innerHTML = (doorNo ? '<em>ROOM ' + doorNo + '</em>' : '') + '<b>' + (door.label || door.id) + '</b><span>' + (door.sub || '') + '</span>';
+        el.appendChild(chip);
+        var plate = new THREE.CSS2DObject(el);
+        var plateY = built.plateY || (oh + 0.4);
+        if (room.kind === 'box') plateY = Math.min(plateY, S.h - 0.12);
+        plate.position.set(0, plateY * U, 0.3 * U);
+        grp.add(plate);
+        G.add(grp);
+        var rec = { door: door, group: grp, lens: null, glow: null, plate: plate, plateEl: el, plateChip: chip, state: 'open', level: level, Rw: Rw, y0: y0, wide: !!door.wide, ow: ow, oh: oh, inward: inward, box: box, leaf: null, way: kind, motion: built.motion || null, openT: 0 };
+        _hq.doors.push(rec);
+        _hqLampApply(rec, _hqDoorState(door));
+    }
     function _hqBuildDoors(room) {
         var U = _hqUnits(), S = room.shell, G = _hq.doorGroup;
         var wallMat = _hqMat(S.wall || 'stone', 1.2, 1.4);
@@ -39449,6 +39596,8 @@ const ThreeRenderer = (function () {
             var inward = door.side === 'in';       // hangs on a bay's inner wall, faces away from the arc centre
             var Rw = _hqWallR(room, level, door.side);
             var y0 = level ? S.wallH : 0;
+            /* a SEAM THAT IS NOT A DOOR (plan 9.3 `way`): the entryway object instead of the frame + leaf */
+            if (door.way) { try { _hqBuildWay(room, door, level, y0, Rw, inward); } catch (e) { console.warn('[HQ] way failed', door.id, e); } return; }
             /* the office door is the rank (HQ plan 3.4 / MASTER C-1): a
                `rankDoor` wears the clearance ladder's leaf (GATEKEEPER's
                frosted pair is the one wide rung) */
@@ -40945,12 +41094,13 @@ const ThreeRenderer = (function () {
             if (!mo) continue;
             var want = (targetKey === 'door:' + d.door.id && !HQ_DOOR_LOCKED[d.state]) ? 1 : 0;
             if (d.openT === want && d.openApplied === want) continue;
-            var speed = (mo.mode === 'swing') ? 1.9 : 2.4;
+            var speed = (mo.mode === 'swing') ? 1.9 : (mo.mode === 'way') ? 1.5 : 2.4;
             d.openT = want ? Math.min(1, d.openT + dt * speed) : Math.max(0, d.openT - dt * speed);
             var k = d.openT < 0.5 ? 2 * d.openT * d.openT : 1 - Math.pow(-2 * d.openT + 2, 2) / 2;   // ease in-out
             if (mo.mode === 'swing') mo.pivot.rotation.y = mo.dir * mo.angle * k;
             else if (mo.mode === 'slide') mo.carrier.position.x = mo.dir * mo.travel * k;
             else if (mo.mode === 'elevator') for (var j = 0; j < mo.parts.length; j++) mo.parts[j].m.position.x = mo.parts[j].x0 + mo.parts[j].dir * mo.travel * k;
+            else if (mo.mode === 'way' && mo.tick) { try { mo.tick(k); } catch (e) {} }
             d.openApplied = (d.openT === want) ? want : -1;
         }
     }

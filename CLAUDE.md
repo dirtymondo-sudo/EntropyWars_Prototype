@@ -2929,3 +2929,36 @@ menu key is `titleTheme` only while `gameState === GS.TITLE`;
 training_floor fallback, ui.js's two dome URLs) because the sheet is
 immutable-cached — bump that query on the next repaint; every loader reads
 `TERRAIN_SPRITES[key][0]` verbatim, so the query is harmless.
+
+## THE SEAMS THAT ARE NOT DOORS (HQ plan 9.3 `way`, the first two) — 2026-09-15 rev 6, local delivery
+A `DOOR_HQ.links` row may carry **`way: '<kind>'`** instead of a `leaf`:
+the seam is an ENTRYWAY OBJECT, not a door. **`DOOR_HQ.ways`** (data.js,
+before `links`) is the catalogue AND the gate — `{ verb, sub, sfx, w, h }`
+per kind; `hqLinkDoors` holds back a `way` it does not list, and one
+unsupported end holds the WHOLE link back (never half a seam). Shipped:
+`wardrobe` (upstairs in the Haunted House, east wall z 0.4 ⇄ Camelot's
+north wall x −5 — the user's Narnia) and `well` (FREE in the cellar's floor
+at (−2.6, 1.6) facing east ⇄ Hollow Earth's north wall x −5). A link end is
+a wall end (`wall` n/s/e/w + x|z) or **free** (`wall: 'free', x, z, face`
+= the heading its opening faces); an end may override the wear with its
+own `leaf` (a plain door back) or `way`. Reads: `hqLinkEndOk`,
+`hqLinkEndWear` (on `window`). The generated door row wears `way`, `leaf:
+null`, the kind's `sub`, the link's `why` / `note`. **Renderer**
+(three-renderer.js): `_hqBoxWall(room, 'free', spec)` returns the same
+{ wx, wz, nx, nz, yaw } record off the object's own plane, so the scan,
+the press-in, `_hqGoTo` (lands 2.4 m in front, facing AWAY — you climb
+OUT of the wardrobe) and `_hqCamInDoorway` need nothing; `_hqWayBuilders
+[kind](U, { free, cat, door, room })` → `{ g, motion, ow, oh, plateY }`
+in the door's local frame (+Z into the room), `_hqBuildWay` places it and
+pushes a door record (`way`, no lamp — `_hqLampApply` guards `lens`) with
+`motion = { mode: 'way', tick(k) }`, driven by `_hqTickDoors` when the
+walker stands at it; the press-in fires at 0.55 like a swinging leaf.
+map.js: the prompt reads `DOOR_HQ.ways[kind].verb` (`_hqWayCat`), the room
+change plays the kind's `sfx`. audio.js: `wayCreak` / `wayWell` recipes
+(quiet; the buzz stays muted). **Adding a kind = a `DOOR_HQ.ways` row + a
+builder in `_hqWayBuilders` + a link row** — hq-world.test.js diffs the
+catalogue against the builders, runs every builder on a stub scene, and
+checks both ends, the plates, the sounds and the production landings. The
+other eight kinds in the plan's table (mirror · pool · painting ·
+fireplace · phonebox · screen · train · closet) are not built. Viewer-local
+(RULE #2). Unseen live (RULE #1c): the objects themselves.

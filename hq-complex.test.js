@@ -73,7 +73,8 @@ test('the sheet: the Haunted House is a complex of the board room and four parts
         assert.strictEqual(D.hqRoomSite(id), SITE, id + ': hqRoomSite');
         assert.strictEqual(D.hqRoomPart(id), p, id + ': hqRoomPart');
         assert.ok(/THE HAUNTED HOUSE/.test(r.label) && r.sub, id + ': ROOM № · name · function on the plate');
-        for (const d of r.doors) assert.strictEqual(D.hqDoorNo(d), '13', id + '/' + d.id + ': every plate in the house reads 13');
+        for (const d of r.doors) if (!d.link) assert.strictEqual(D.hqDoorNo(d), '13', id + '/' + d.id + ': every plate in the house reads 13');
+        for (const d of r.doors) if (d.link) assert.notStrictEqual(D.hqDoorNo(d), '13', id + '/' + d.id + ': a seam\'s plate reads the FAR site\'s number');
     }
     assert.strictEqual(D.hqRoomSite(BOARD), SITE, 'the board room is the site too');
     assert.strictEqual(D.hqRoomPart(BOARD), null, 'the board room is no part');
@@ -118,12 +119,20 @@ test('every door in the house is reversible, every landing is a real door, the c
         for (const d of HQ.rooms[id].doors) {
             const a = d.action || {};
             assert.ok(a.room && HQ.rooms[a.room], id + '/' + d.id + ' leads to a room');
+            if (d.link) {
+                /* a SEAM (9.3 `way`): a pair with the far site's own room, never walked here (the far site's doors are its own business) */
+                assert.ok(HQ.links.some(l => l.id === d.link), id + '/' + d.id + ' leaves the site only through a DOOR_HQ.links row');
+                const far = at(a.room, a.at);
+                assert.ok(far && far.action.room === id && far.action.at === d.id && far.way === d.way, id + '/' + d.id + ' ⇄ ' + a.room + ' is a seam with the same object at both ends');
+                continue;
+            }
             if (HQ.rooms[a.room].kind === 'bay') { assert.strictEqual(id, BOARD, 'only the board room walks back to the bay (the ring comes back through its mission door)'); continue; }
             const back = at(a.room, a.at);
             assert.ok(back, id + '/' + d.id + ' lands on a door (' + a.room + '@' + a.at + ')');
             assert.ok(back.action.room === id && back.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + '/' + back.id + ' is a pair');
             assert.strictEqual(back.leaf, d.leaf, 'the same leaf (or the same opening) on both sides of ' + d.id);
-            if (id !== BOARD) assert.ok(ROOMS.includes(a.room), id + '/' + d.id + ' stays inside the site (a link to another site is a `links` row, never a door row)');
+            if (id !== BOARD && !d.link) assert.ok(ROOMS.includes(a.room), id + '/' + d.id + ' stays inside the site (a link to another site is a `links` row, never a door row)');
+            if (d.link) assert.ok(HQ.links.some(l => l.id === d.link), id + '/' + d.id + ' leaves the site only through a DOOR_HQ.links row');
             if (!seen.has(a.room)) { seen.add(a.room); queue.push(a.room); }
         }
     }
@@ -140,7 +149,7 @@ test('the production renderer lands every door of the house inside its room, cle
         for (const door of room.doors) {
             const h = landing(room, door), p = h.player;
             assert.ok(Math.abs(p.x) < S.w / 2 - 0.4 && Math.abs(p.z) < S.d / 2 - 0.4, id + '/' + door.id + ': inside the walls');
-            const inward = { n: [0, 1], s: [0, -1], e: [-1, 0], w: [1, 0] }[door.wall];
+            const inward = door.wall === 'free' ? [Math.sin(door.face * Math.PI / 180), -Math.cos(door.face * Math.PI / 180)] : { n: [0, 1], s: [0, -1], e: [-1, 0], w: [1, 0] }[door.wall];
             const fx = Math.sin(h.cam.yaw), fz = -Math.cos(h.cam.yaw);   // the walker's forward
             assert.ok(fx * inward[0] + fz * inward[1] < -0.99 || fx * inward[0] + fz * inward[1] > 0.99, id + '/' + door.id + ': faces along the doorway\'s normal');
             assert.equal(p.air, false); assert.equal(p.y, 0);
@@ -170,9 +179,9 @@ test('THE PARK RULE (9.8): a rail in every room of the house, a stepped ramp in 
         assert.ok(lit >= 1 && lit <= 10, id + ': ' + lit + ' prop lights (HQ_PROP_LIGHT_MAX is 10)');
         for (const n of ['floor', 'wall', 'dado', 'trim', 'ceiling']) assert.ok(HQ.textures[S[n]] || TERRAIN_RULES[S[n]], id + ': texture ' + S[n] + ' (the kit or the terrain sheet)');
     }
-    /* the seams the plan hangs on these rooms stand as props today: the wardrobe upstairs (→ Camelot, 9.3 `way`), the well in the cellar (→ Hollow Earth) */
-    assert.ok(HQ.rooms[BOARD + '_upstairs'].props.some(p => p.key === 'office_locker' && p.wall === 'e'), 'THE WARDROBE stands upstairs');
-    assert.ok(HQ.rooms[BOARD + '_cellar'].props.some(p => p.key === 'fountain'), 'THE WELL stands in the cellar');
+    /* the seams the plan hangs on these rooms are SEAMS now (9.3 `way`, 2026-09-15 rev 6): the wardrobe upstairs (→ Camelot), the well in the cellar (→ Hollow Earth) — hq-world.test.js guards them */
+    assert.ok(HQ.rooms[BOARD + '_upstairs'].doors.some(d => d.way === 'wardrobe' && d.wall === 'e'), 'THE WARDROBE stands upstairs');
+    assert.ok(HQ.rooms[BOARD + '_cellar'].doors.some(d => d.way === 'well' && d.wall === 'free'), 'THE WELL stands in the cellar');
     assert.ok(HQ.rooms[BOARD + '_cellar'].props.some(p => p.key === 'boiler'), 'THE FURNACE is lit');
 });
 

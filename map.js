@@ -1391,11 +1391,15 @@
             const el = _hqEl('hqPrompt');
             if (!el) return;
             if (!t || _hqPanelTarget) { el.style.display = 'none'; el.innerHTML = ''; return; }
-            const verb = t.kind === 'door' ? ((t.door && t.door.action && t.door.action.mission && !_hqRoomExists(_hqSiteRoomId(t.door.action.mission))) ? 'OPEN' : 'ENTER') : (t.kind === 'counter' ? ((t.counter && t.counter.verb) || 'USE') : 'TALK');
+            /* a SEAM THAT IS NOT A DOOR (HQ plan 9.3 `way`): the kind's own verb — CLIMB IN, CLIMB DOWN */
+            const wayVerb = (t.kind === 'door' && t.door && t.door.way) ? _hqWayCat(t.door.way).verb : null;
+            const verb = wayVerb || (t.kind === 'door' ? ((t.door && t.door.action && t.door.action.mission && !_hqRoomExists(_hqSiteRoomId(t.door.action.mission))) ? 'OPEN' : 'ENTER') : (t.kind === 'counter' ? ((t.counter && t.counter.verb) || 'USE') : 'TALK'));
             const pNo = _hqNo(t.door || t.counter);
             el.innerHTML = `<b>▸ ${pNo ? 'ROOM ' + _hqEsc(pNo) + ' · ' : ''}${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span><i>[E] ${verb}</i>`;
             el.style.display = '';
         }
+        /* DOOR_HQ.ways[kind] (the seams that are not doors): verb / sub / sfx, never undefined */
+        function _hqWayCat(kind) { try { return (DOOR_HQ.ways && DOOR_HQ.ways[kind]) || {}; } catch (e) { return {}; } }
         function _hqStateChip(st) {
             const label = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq) ? ThreeRenderer.hq.stateLabel(st) : st;
             return `<i class="hq-lamp-chip st-${_hqEsc(st)}">${_hqEsc(label)}</i>`;
@@ -2430,6 +2434,9 @@
                 const from = t || _hqPanelTarget;
                 if (from && from.kind === 'door') _hqRecordVisit(from.id);
                 const at = act.at || (act.sector ? _hqBayEntry(act.sector) : null);
+                /* a `way` seam voices its own kind (the creak, the rope) instead of the strike plate */
+                const waySfx = (from && from.kind === 'door' && from.door && from.door.way) ? _hqWayCat(from.door.way).sfx : null;
+                if (waySfx) { try { if (typeof playDoorSfx === 'function') playDoorSfx(waySfx, { volume: 0.9 }); } catch (e) {} }
                 window._hqGoRoom(roomId, at);
                 return;
             }

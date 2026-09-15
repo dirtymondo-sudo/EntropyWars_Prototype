@@ -18818,8 +18818,36 @@ const DOOR_HQ = {
        stars / nebula / fog / far roster `scenery`) drawn on the battle's
        own firmament dome, `mood.night` picks day or night, and the four
        `lights` become lamp MASTS on the walkway corners. */
+    /* THE SEAMS THAT ARE NOT DOORS (HQ plan 9.3, 2026-09-15 rev 6): a link
+       row may carry `way: '<kind>'` instead of a `leaf` — the renderer
+       builds the ENTRYWAY from three-renderer.js _hqWayBuilders[kind] (an
+       object with an opening the walker steps into; the trigger is the
+       door's own press-in, the plate hangs on the object) and the prompt
+       reads the kind's VERB. This catalogue is the gate: hqLinkDoors holds
+       back a `way` it does not list (the test diffs it against the
+       renderer's builders). `w` / `h` = the opening the walker aims at
+       (the scan's width, the doorway blocker), `sub` = the plate's second
+       line (the function, 2026-09-12's plate rule), `sfx` = the DOOR
+       sound kit key that replaces the strike plate's buzz (audio.js). An
+       end may stand FREE of the walls (`wall: 'free', x, z, face` — the
+       heading its opening faces; the well in the cellar's floor) or on a
+       wall like any door (`wall: 'e', z`). A `way` seam lands the walker
+       facing AWAY from the object (_hqGoTo, the same rule as a door): you
+       climb OUT of the wardrobe into the snow; you do not stand in it. */
+    ways: {
+        wardrobe: { verb: 'CLIMB IN', sub: 'THE WARDROBE · THROUGH THE COATS', sfx: 'wayCreak', w: 1.5, h: 2.3 },
+        well:     { verb: 'CLIMB DOWN', sub: 'THE WELL · DOWN THE ROPE', sfx: 'wayWell', w: 1.4, h: 1.0 },
+    },
     /* Phase 9.3 pilot: ordinary, reversible doors between existing board
-       rooms. Move the Derelict ends to its airlock when that room exists. */
+       rooms. Move the Derelict ends to its airlock when that room exists.
+       The `way` rows (rev 6): the wardrobe upstairs in the Haunted House
+       opens on Camelot's snow (the user's own — the lion, the witch and the
+       wardrobe); the well in its cellar goes down further than the house
+       is tall, to Hollow Earth. Both ends wear the same object (the far
+       wardrobe stands against Camelot's curtain wall; Hollow Earth's well
+       head stands by its cave wall — the far side is the ceiling, so a
+       well can go UP). Each has a `why` because every door explains
+       itself (7.0). Claude's DRAFT notes (A15 — the user rewrites). */
     links: [
         { id: 'moon_derelict', route: 'lunar', leaf: 'leaf_bulkhead',
           a: { site: 'prebuilt_moon', wall: 'n', x: -5 },
@@ -18827,6 +18855,16 @@ const DOOR_HQ = {
         { id: 'derelict_saturn', route: 'lunar', leaf: 'leaf_bulkhead',
           a: { site: 'prebuilt_derelict', wall: 'n', x: -1 },
           b: { site: 'prebuilt_saturn', wall: 'n', x: -5 } },
+        { id: 'haunted_camelot', route: 'seams', way: 'wardrobe',
+          a: { site: 'prebuilt_haunted', part: 'upstairs', wall: 'e', z: 0.4 },
+          b: { site: 'prebuilt_camelot', wall: 'n', x: -5 },
+          why: 'the wardrobe in the second bedroom is colder than the room; there is snow on the floor in front of it and a lamp post\'s light at the back',
+          note: 'push through the coats', draft: true },
+        { id: 'haunted_hollow', route: 'seams', way: 'well',
+          a: { site: 'prebuilt_haunted', part: 'cellar', wall: 'free', x: -2.6, z: 1.6, face: 90 },
+          b: { site: 'prebuilt_hollow_earth', wall: 'n', x: -5 },
+          why: 'the well in the cellar goes down further than the house is tall; the bucket comes up dry and warm',
+          note: 'the rope holds', draft: true },
     ],
     siteRooms: {
         /* BACK DOORS (H-WING, 2026-09-14 rev 4): a second door on a site room,
@@ -23973,7 +24011,7 @@ const DOOR_HQ = {
                 { key: 'cot',            x: -5.8, z: -1.6, face: 90 },
                 { key: 'cot',            x: 6.2, z: 2.4, face: 270 },
                 { key: 'cot',            x: 6.2, z: -1.2, face: 270 },
-                { key: 'office_locker',  wall: 'e', z: 0.4 },                              // THE WARDROBE (the 9.3 `way: wardrobe` seam to Camelot stands here)
+                /* THE WARDROBE stands on the east wall at z 0.4 — it is the 9.3 `way: wardrobe` seam to Camelot (DOOR_HQ.links haunted_camelot), built by the renderer as a door */
                 { key: 'rug_round',      x: 0, z: 2.6 },
                 { key: 'table_lamp',     x: -4.2, z: 3.3, y: 0.0 },
                 { key: 'candle_ring',    x: 0, z: -1.4, y: 0.46 },
@@ -24069,7 +24107,7 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 { key: 'boiler',         x: 3.6, z: -3.0, face: 0 },                       // THE FURNACE: lit, unlit by anyone
-                { key: 'fountain',       x: -2.6, z: 1.6, face: 0 },                       // THE WELL (a stone head; the 9.3 `way: well` seam stands here)
+                /* THE WELL stands free in the floor at (-2.6, 1.6), its opening facing east — it is the 9.3 `way: well` seam to Hollow Earth (DOOR_HQ.links haunted_hollow), built by the renderer as a door */
                 { key: 'railing_1m',     x: -3.6, z: -0.4, face: 0 },                      // the guard round the well (the park rule's rail)
                 { key: 'railing_1m',     x: -2.6, z: -0.4, face: 0 },
                 { key: 'railing_1m',     x: -1.6, z: -0.4, face: 0 },
@@ -25294,28 +25332,50 @@ function hqLinkRoom(end) {
     const id = hqSiteId(end.site);
     return ((DOOR_HQ.siteRooms || {}).built || []).includes(id) && hqSectorOfMap(id) ? hqSiteRoomId(id) : null;
 }
+/* one end of a link: a wall door (`wall` n/s/e/w + the along coordinate) or
+   a FREE-STANDING seam (`wall: 'free'`, x, z, face) — null = malformed */
+function hqLinkEndOk(e) {
+    if (!e) return false;
+    if (e.wall === 'free') return Number.isFinite(e.x) && Number.isFinite(e.z) && Number.isFinite(e.face);
+    return ['n', 's', 'e', 'w'].includes(e.wall) && Number.isFinite(e[(e.wall === 'n' || e.wall === 's') ? 'x' : 'z']);
+}
+/* what one end of a link WEARS: { leaf } (a catalogue door) or { way }
+   (an entryway from DOOR_HQ.ways). The row's `leaf` / `way` is both ends;
+   an end may override with its own `leaf` (a plain door back) or `way`.
+   null = the end is unsupported (an unknown leaf / an unlisted way) and
+   the whole link is held back — never half a seam. */
+function hqLinkEndWear(link, end) {
+    const way = (end && end.way) || ((end && end.leaf) ? null : link.way) || null;
+    if (way) return (DOOR_HQ.ways || {})[way] ? { way: way, cat: DOOR_HQ.ways[way] } : null;
+    const leaf = (end && end.leaf) || link.leaf;
+    const cat = DOOR_HQ.catalogue[leaf];
+    return (cat && cat.leaf) ? { leaf: leaf, cat: cat } : null;
+}
 function hqLinkDoors(roomId) {
     const doors = [];
     (DOOR_HQ.links || []).forEach(link => {
         if (!link || !/^[a-z0-9_]+$/.test(link.id || '')) return;
         const a = hqLinkRoom(link.a), b = hqLinkRoom(link.b);
-        const cat = DOOR_HQ.catalogue[link.leaf];
-        // Fail closed for unbuilt endpoints and unsupported entryway kinds.
-        if (!a || !b || a === b || !cat || !cat.leaf || link.way) return;
-        if (![link.a, link.b].every(e => ['n', 's', 'e', 'w'].includes(e.wall) &&
-            Number.isFinite(e[(e.wall === 'n' || e.wall === 's') ? 'x' : 'z']))) return;
+        // Fail closed for unbuilt endpoints, malformed ends and unsupported wear (either end).
+        if (!a || !b || a === b) return;
+        if (![link.a, link.b].every(hqLinkEndOk)) return;
+        const wearA = hqLinkEndWear(link, link.a), wearB = hqLinkEndWear(link, link.b);
+        if (!wearA || !wearB) return;
         const end = roomId === a ? link.a : roomId === b ? link.b : null;
-        if (!end || !['n', 's', 'e', 'w'].includes(end.wall)) return;
-        const alongKey = (end.wall === 'n' || end.wall === 's') ? 'x' : 'z';
-        if (!Number.isFinite(end[alongKey])) return;
+        if (!end) return;
+        const wear = roomId === a ? wearA : wearB;
         const other = roomId === a ? link.b : link.a, to = roomId === a ? b : a;
         const site = other.site || (DOOR_HQ.rooms[to] || {}).site;
         const meta = (typeof EW_MAP_META !== 'undefined' ? EW_MAP_META : []).find(m => m.id === hqSiteId(site));
         const d = { id: 'link_' + link.id, link: link.id, wall: end.wall,
-            leaf: link.leaf, wide: !!cat.wide,
+            leaf: wear.leaf || null, wide: !!wear.cat.wide,
             label: ((meta && meta.label) || (DOOR_HQ.rooms[to] || {}).label || to).toUpperCase(),
-            sub: 'WALK THROUGH', action: { room: to, at: 'link_' + link.id } };
-        d[alongKey] = end[alongKey];
+            sub: wear.way ? (wear.cat.sub || 'STEP THROUGH') : 'WALK THROUGH', action: { room: to, at: 'link_' + link.id } };
+        if (wear.way) d.way = wear.way;
+        if (link.why) d.why = link.why;
+        if (link.note) d.note = link.note;
+        if (end.wall === 'free') { d.x = end.x; d.z = end.z; d.face = end.face; }
+        else d[(end.wall === 'n' || end.wall === 's') ? 'x' : 'z'] = end[(end.wall === 'n' || end.wall === 's') ? 'x' : 'z'];
         // Link gates are independent of the destination's sector gate.
         if (link.gate) {
             if (link.gate.minClearance != null) d.minClearance = link.gate.minClearance;
@@ -26969,6 +27029,8 @@ if (typeof window !== 'undefined') {
     window.hqRefreshComplexLinks = hqRefreshComplexLinks;
     window.hqLinkRoom = hqLinkRoom;
     window.hqLinkDoors = hqLinkDoors;
+    window.hqLinkEndOk = hqLinkEndOk;
+    window.hqLinkEndWear = hqLinkEndWear;
     window.hqWorldGraph = hqWorldGraph;
     window.hqStarChart = hqStarChart;
     window.doorSiteState = doorSiteState;

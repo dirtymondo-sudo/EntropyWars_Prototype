@@ -1047,6 +1047,9 @@
             stamp: 0.85, denied: 0.42, laminate: 0.5, crtOn: 0.45, vhsEject: 0.55,
             dotMatrix: 0.32, fax: 0.3, paChime: 0.5, doorBuzz: 0.4, identSting: 0.55,
             doorbell: 0.5,
+            /* THE SEAMS THAT ARE NOT DOORS (HQ plan 9.3, 2026-09-15): quiet —
+               the buzz was muted for being loud; these stay under it */
+            wayCreak: 0.28, wayWell: 0.3,
         };
         let _doorNoiseBuf = null;
         function _doorCtx() {
@@ -1106,6 +1109,42 @@
 
         /* Each recipe: (ctx, t, out, vol) → seconds of audio it scheduled. */
         const _DOOR_SFX_RECIPES = {
+            /* THE WARDROBE (a `way` seam): a slow wooden creak — a sawtooth
+               sliding up with a wobble, a rub of noise, then the coats' soft
+               brush and a breath of cold wind at the back. */
+            wayCreak(ctx, t, out, vol) {
+                const dur = 0.7;
+                const g = _doorEnv(ctx, out, t, vol * 0.6, 0.05, dur - 0.2, 0.18);
+                const lfo = ctx.createOscillator(); const lg = ctx.createGain();
+                lfo.type = 'sine'; lfo.frequency.value = 9; lg.gain.value = 18;
+                const o = ctx.createOscillator(); o.type = 'sawtooth';
+                o.frequency.setValueAtTime(140, t); o.frequency.linearRampToValueAtTime(260, t + dur);
+                lfo.connect(lg).connect(o.frequency); lfo.start(t); lfo.stop(t + dur);
+                const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.Q.value = 3;
+                o.connect(lp).connect(g); o.start(t); o.stop(t + dur);
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.22, 0.05, dur - 0.2, 0.2), t, dur, { type: 'bandpass', f0: 600, f1: 1400, slide: dur, q: 1.2 });
+                const tb = t + dur - 0.05;
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, tb, vol * 0.3, 0.08, 0.25, 0.35), tb, 0.7, { type: 'bandpass', f0: 2200, f1: 900, slide: 0.6, q: 0.7 });
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, tb + 0.2, vol * 0.18, 0.4, 0.5, 0.6), tb + 0.2, 1.5, { type: 'lowpass', f0: 500, f1: 260, slide: 1.4, q: 0.5 });
+                return dur + 1.7;
+            },
+            /* THE WELL (a `way` seam): the windlass' ratchet, the rope
+               paying out, a fall of air down the shaft, and the far, wet,
+               hollow note where it ends. */
+            wayWell(ctx, t, out, vol) {
+                for (let i = 0; i < 6; i++) {
+                    const tc = t + i * 0.09;
+                    _doorOsc(ctx, _doorEnv(ctx, out, tc, vol * 0.3, 0.002, 0.01, 0.05), 'square', 620 - i * 30, tc, 0.05);
+                }
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.25, 0.05, 0.5, 0.2), t, 0.8, { type: 'bandpass', f0: 1200, f1: 700, slide: 0.7, q: 1.5 });
+                const tf = t + 0.55;
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, tf, vol * 0.4, 0.1, 0.6, 0.4), tf, 1.2, { type: 'lowpass', f0: 1800, f1: 220, slide: 1.1, q: 0.8 });
+                const tp = tf + 1.05;
+                _doorOsc(ctx, _doorEnv(ctx, out, tp, vol * 0.5, 0.004, 0.06, 0.9), 'sine', 220, tp, 1.0, { f1: 96, slide: 0.35 });
+                _doorOsc(ctx, _doorEnv(ctx, out, tp, vol * 0.2, 0.004, 0.04, 0.7), 'sine', 440, tp, 0.8, { f1: 200, slide: 0.3 });
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, tp, vol * 0.2, 0.002, 0.03, 0.25), tp, 0.3, { type: 'highpass', f0: 1800 });
+                return tp - t + 1.2;
+            },
             /* Rubber stamp: a low wooden thump + a short, bright slap of ink. */
             stamp(ctx, t, out, vol) {
                 _doorOsc(ctx, _doorEnv(ctx, out, t, vol, 0.003, 0.02, 0.16), 'sine', 190, t, 0.2, { f1: 48, slide: 0.12 });

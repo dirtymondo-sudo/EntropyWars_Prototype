@@ -4096,6 +4096,7 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-no i { font-family: 'IBM Plex Mono', monospace; font-style: italic; font-size: 8px; letter-spacing: 0.06em; color: #8f8a7a; margin-left: 8px; }
 .hq-row b .hq-no { display: inline; font-size: 9px; margin-right: 6px; }
 .hq-plate-counter { border-color: rgba(127,217,221,0.4); }
+.hq-plate-way { border-color: rgba(207,228,255,0.45); }   /* a seam that is not a door (HQ plan 9.3 `way`) */
 .hq-lamp-chip { font-family: 'IBM Plex Mono', monospace; font-style: normal; font-size: 8px; letter-spacing: 0.2em; padding: 2px 6px; margin-top: 3px; border: 1px solid currentColor; color: #8a8a8a; }
 .hq-lamp-chip.st-open, .hq-lamp-chip.st-stabilized { color: #39ff6a; }
 .hq-lamp-chip.st-unstable { color: #ffb020; }
