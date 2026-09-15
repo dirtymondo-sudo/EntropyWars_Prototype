@@ -11756,6 +11756,27 @@
                    consumed win or lose; a loss leaves the door strobing and
                    the building re-arms it on the next RESPOND. Viewer-local,
                    never on state (RULE #2). */
+                /* THE ENCOUNTER (HQ plan 9.4, 2026-09-15): a fight the officer started in a wild room
+                   (map.js _hqEncounterStart sets window._hqEncounterRun) is recorded win or lose
+                   (data.js hqEncounterRecord → door.hq.encounters) and the result left for the
+                   building's return (window._hqEncounterResult: a loss lands in the ward). The
+                   marker is consumed here; a cancelled match never reaches this commit and the
+                   next _hqEnter / launch overwrites it. Viewer-local, never on state (RULE #2). */
+                try {
+                    const erun = window._hqEncounterRun;
+                    window._hqEncounterRun = null;
+                    if (erun && kind === 'match' && typeof hqEncounterRecord === 'function') {
+                        const PS = window.ProfileSystem;
+                        const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
+                        const p = (idx !== null && idx !== undefined && typeof PS.loadProfile === 'function') ? PS.loadProfile(idx) : null;
+                        if (p) {
+                            hqEncounterRecord(p, { site: erun.site, room: erun.room, race: erun.race, won, date: erun.date || ((typeof hqToday === 'function') ? hqToday() : null) });
+                            PS.saveProfile(idx, p);
+                        }
+                        window._hqEncounterResult = { won, site: erun.site, room: erun.room, race: erun.race, label: erun.label || erun.race };
+                        addLog(won ? `🚪 The encounter is over — ${erun.label || erun.race} is off the room.` : `🚪 EXITED — the ward. ${erun.label || erun.race} held the room.`);
+                    }
+                } catch (e) { console.warn('[HQ] encounter record failed', e); }
                 try {
                     const run = window._hqCodeRedRun;
                     window._hqCodeRedRun = null;
@@ -35243,7 +35264,7 @@
             // stand-in. Capped inside the renderer (7 s); never rejects.
             if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer
                 && typeof ThreeRenderer.introCineWarm === 'function'
-                && !window.EW_DISABLE_INTRO_CINE && !state.devAutoSim) {
+                && !window.EW_DISABLE_INTRO_CINE && !(window._hqEncounterRun && window._hqEncounterRun.noIntro) && !state.devAutoSim) {
                 try {
                     warmers.push(ThreeRenderer.introCineWarm(
                         (typeof activeGameMode !== 'undefined') ? activeGameMode : null));
@@ -35633,6 +35654,7 @@
 
         function _introCineEligible() {
             if (window.EW_DISABLE_INTRO_CINE) return false;
+            if (window._hqEncounterRun && window._hqEncounterRun.noIntro) return false;   // THE ENCOUNTER (HQ plan 9.4): the teams are already here — per launch, never the global switch
             if (_skipVisuals() || state.cameraDisabled) return false;
             if (typeof _isDungeonMode === 'function' && _isDungeonMode()) return false;
             if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.introCineStart) return false;

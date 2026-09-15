@@ -596,6 +596,9 @@
                 portal: (typeof _hqPortalOpts === 'function') ? _hqPortalOpts(opts, profile) : null,
                 onPortalPlace: (typeof _hqPortalPlaced === 'function') ? _hqPortalPlaced : null,
                 onPortal: (typeof _hqPortalEvent === 'function') ? _hqPortalEvent : null,
+                /* THE ENCOUNTER (HQ plan 9.4): a thrown gesture (the beat) and the one that LANDS on a native with the gun drawn (the crossing) */
+                onStrike: (typeof _hqStrikeEvent === 'function') ? _hqStrikeEvent : null,
+                onEncounter: (typeof _hqEncounterFire === 'function') ? _hqEncounterFire : null,
                 /* ESC: close the panel, else Settings (plan D6 — an overlay,
                    not a place); EXIT on the strip is how you leave */
                 onEscape: () => { if (_hqTerm) { window._hqTerminalClose(); return; } if (_hqPause) { window._hqClosePause(); return; } if (_hqPanelTarget) window._hqClosePanel(); else window._hqOpenPause(); },
@@ -845,10 +848,17 @@
                 return false;
             }
             window._tutReturnPage = null;
+            /* THE ENCOUNTER (9.4): a loss is the ward — you come to in Medical's cot (Part C row 30: the ward and nothing else) */
+            const encRes = window._hqEncounterResult || null;
+            window._hqEncounterResult = null;
+            if (encRes && !encRes.won && enabled && _hqHome && DOOR_HQ.rooms && DOOR_HQ.rooms.medical) { _hqLastRoom = 'medical'; _hqLastDoor = null; }
             if (enabled && _hqHome) {
                 if (alive && _hqSuspended && window._hqResume()) return true;
                 if (alive) window._hqLeave();
-                if (window._hqEnter({ room: _hqLastRoom, at: _hqLastDoor, quiet: true, from: 'return' })) return true;
+                if (window._hqEnter({ room: _hqLastRoom, at: _hqLastDoor, quiet: true, from: 'return' })) {
+                    if (encRes) setTimeout(() => { try { _hqToast(encRes.won ? `<b>THRESHOLD HELD</b><span>${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} · THE ROOM IS YOURS</span>` : `<b>EXITED</b><span>YOU CAME TO IN THE WARD · ${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} HAD THE ROOM</span>`, 3600); } catch (e) {} }, 1400);
+                    return true;
+                }
             } else if (alive) {
                 window._hqLeave();
             }
@@ -1132,6 +1142,7 @@
             if (pc) html += row('PUNCH CLOCK', `BEST ${pc.best | 0} · ${pc.days | 0} DAYS ON THE BOOKS`, `${pc.streak | 0} DAY STREAK`, pc.today ? 'stabilized' : 'off');
             if (k) html += row('KEYS', `${k.pickups | 0} RECOVERED${k.issued ? ' + ' + k.issued + ' ISSUED' : ''}`, `${k.keys | 0}`);
             if (mc) html += row('STABILIZED', 'THRESHOLDS WON BY EVERY WIN CONDITION', `${mc.mastered} / ${mc.total}`, mc.mastered === mc.total ? 'stabilized' : 'open');
+            { const el = (typeof window.hqEncounterLog === 'function') ? window.hqEncounterLog(profile) : null; if (el && el.count) html += row('ENCOUNTERS', `${el.wins} HELD · ${el.losses} EXITED${el.last ? ' · LAST ' + _hqEsc(String(el.last.race || '').toUpperCase()) + (el.last.won ? ' (HELD)' : ' (EXITED)') : ''}`, String(el.count), el.last && el.last.won ? 'stabilized' : 'open'); }
             { const ps = _hqPortalStatus(profile); if (ps && ps.issued) html += row('THE THRESHOLD', 'PORTABLE · DOOR ISSUE · F DRAWS · CLICK PLACES · Q HOLSTERS', `${ps.a ? 'A' : '·'} ${ps.b ? 'B' : '·'}`, ps.paired ? 'stabilized' : 'open'); }
             if (tc) html += row('THE TAPES', `THE HUNDRED · THE SHELF IN ROOM 360${tc.pay ? ' · ' + tc.pay + ' HAZARD PAY IN ENVELOPES' : ''}`, `${tc.found} / ${tc.total}`, tc.found >= tc.total ? 'stabilized' : 'open');
             if (sh) html += row('FORM 365', 'DAILY OFFICE OPERATIONS · ROOM 247', `${sh.done} / ${sh.total}`, sh.allDone ? 'stabilized' : 'unstable');
@@ -1444,6 +1455,16 @@
         function _hqSetPrompt(t) {
             const el = _hqEl('hqPrompt');
             if (!el) return;
+            /* THE ENCOUNTER (9.4): the gun drawn and a native in reach + sight — the prompt names the gesture keys, never E */
+            if (!_hqPanelTarget && (!t || t.kind === 'npc') && _hqEncounterEnabled() && _hqEncounterRoomOkNow()) {
+                let aim = null;
+                try { if (ThreeRenderer.hq.portalDrawn()) aim = ThreeRenderer.hq.encounterAim(); } catch (e) { aim = null; }
+                if (aim && (!t || t.id === aim.id)) {
+                    el.innerHTML = `<b>▸ ${_hqEsc(aim.label || aim.race || 'THE NATIVE')}</b><span>${_hqEsc(aim.sub || 'A NATIVE · THE ROOM IS THE BOARD')}</span><i>[1] ATTACK · [2–4] CAST · ENGAGE${t ? ' · [E] TALK' : ''}</i>`;
+                    el.style.display = '';
+                    return;
+                }
+            }
             if (!t || _hqPanelTarget) { el.style.display = 'none'; el.innerHTML = ''; return; }
             /* a SEAM THAT IS NOT A DOOR (HQ plan 9.3 `way`): the kind's own verb
                — CLIMB IN, CLIMB DOWN — unless the END names its own (the well
@@ -1814,6 +1835,120 @@
             }
             else if (ev.kind === 'refused') _hqPortalRefused(ev.reason);
             else if (ev.kind === 'unissued') _hqPortalRefused('unissued');
+        }
+        /* ══════════════════════════════════════════════════════════════════
+           THE ENCOUNTER (HQ plan 9.4 stage 1, 2026-09-15 rev 16) — the room
+           becomes the board, and ONLY when the officer starts it (the user's
+           rule: no random encounters). The renderer throws the walker's
+           attack / cast clip on 1–4 (onStrike, at once) and, with THE DOOR
+           GUN DRAWN and a native in reach / in the cone / in sight, reports
+           the landing (onEncounter, on the strike frame). Here: the guards
+           (a wild room — data.js hqEncounterRoomOk; the gun; the switch),
+           the launch (data.js hqEncounterLaunch: the site's Δ, the sticky
+           config the terminal last filed, the CPU pool led by the native's
+           race) and the builder-less start — THE LAST ROSTER (state.js
+           loadLastParty) seats P1 inside _msConfirm (window._hqEncounterParty)
+           so every config rule there still runs; no roster on file → the
+           terminal opens as today, once. battle.js skips the intro cinematic
+           for the run (window._hqEncounterRun), records the result on the
+           commit (data.js hqEncounterRecord) and leaves window
+           ._hqEncounterResult for _hqReturnOrMenu: a loss lands in Medical's
+           cot (Part C row 30). VS-CPU only (RULE #2). Off: localStorage
+           `ew_hq_encounter = 'off'` / window.EW_HQ_NO_ENCOUNTER.
+           ══════════════════════════════════════════════════════════════════ */
+        const HQ_ENCOUNTER_CFG_KEY = 'ew_hq_encounter_cfg';
+        function _hqEncounterEnabled() {
+            if (typeof window !== 'undefined' && window.EW_HQ_NO_ENCOUNTER) return false;
+            try { if (localStorage.getItem('ew_hq_encounter') === 'off') return false; } catch (e) {}
+            return true;
+        }
+        function _hqEncounterCfgRaw() { try { return localStorage.getItem(HQ_ENCOUNTER_CFG_KEY); } catch (e) { return null; } }
+        /* the terminal filed a crossing: remember its config for the next encounter (mode · team size · rounds) */
+        function _hqEncounterRememberCfg(gmId, teamSize, rounds) {
+            try { localStorage.setItem(HQ_ENCOUNTER_CFG_KEY, JSON.stringify({ gm: gmId, teamSize: teamSize | 0, rounds: rounds | 0 })); } catch (e) {}
+        }
+        function _hqGestureLabel(g) { try { return (HQ_ENCOUNTER_RULES.labels || {})[g] || String(g || '').toUpperCase(); } catch (e) { return String(g || '').toUpperCase(); } }
+        /* the beat: a thrown gesture — armed and aimed it says who; armed and unaimed it says nothing (a flourish) */
+        function _hqStrikeEvent(ev) {
+            if (!ev) return;
+            try { playSfx(ev.gesture === 'attack' ? 'uiButtonConfirm' : 'uiCursorMove'); } catch (e) {}
+            if (!ev.armed || !ev.target) return;
+            if (!_hqEncounterEnabled() || !_hqEncounterRoomOkNow()) return;
+            _hqToast(`<b>${_hqGestureLabel(ev.gesture)} · ${_hqEsc(ev.target.label || ev.target.race || 'THE NATIVE')}</b><span>ENGAGING · THE ROOM IS THE BOARD</span>`, 1600);
+        }
+        function _hqEncounterRoomOkNow() { try { return (typeof window.hqEncounterRoomOk === 'function') ? window.hqEncounterRoomOk(_hqCurRoom) : false; } catch (e) { return false; } }
+        /* the landing: file the crossing */
+        function _hqEncounterFire(ev) {
+            if (!ev || !ev.target) return false;
+            if (_hqSuspended || state.gameState !== GS.HQ || _hqTerm || _hqPause || _hqPanelTarget) return false;
+            if (!_hqEncounterEnabled() || !_hqEncounterRoomOkNow()) return false;
+            if (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return false;   // RULE #2: never from an online seat
+            let drawn = false; try { drawn = ThreeRenderer.hq.portalDrawn(); } catch (e) { drawn = false; }
+            const R = (typeof HQ_ENCOUNTER_RULES !== 'undefined') ? HQ_ENCOUNTER_RULES : { gun: true };
+            if (R.gun !== false && !drawn) return false;
+            const L = (typeof window.hqEncounterLaunch === 'function') ? window.hqEncounterLaunch(_hqCurRoom, ev.target, _hqEncounterCfgRaw(), { gesture: ev.gesture }) : null;
+            if (!L) return false;
+            return _hqEncounterStart(L, ev);
+        }
+        window._hqEncounterFire = _hqEncounterFire;
+        /* THE LAST ROSTER → the human seat's party (the builder is skipped): sized to the team, padded with the mode's defaults */
+        function _hqApplyLastParty(party, seat, n) {
+            const members = (party && Array.isArray(party.members)) ? party.members.slice(0, n) : [];
+            if (!members.length) return false;
+            const builds = [], names = [], metas = [], los = [];
+            members.forEach(m => {
+                builds.push(String(m.cls || 'Freelancer'));
+                names.push(m.name || getDefaultUnitName(String(m.cls || 'Freelancer')));
+                const meta = Object.assign({}, m.meta || {});
+                if (meta.customSpells && !Array.isArray(meta.customSpells)) delete meta.customSpells;
+                metas.push(meta);
+                const lo = emptyLoadout();
+                if (m.loadout) {
+                    if (Array.isArray(m.loadout.spells)) lo.spells = m.loadout.spells.slice();
+                    if (m.loadout.items) Object.assign(lo.items, m.loadout.items);
+                    if (m.loadout.equipment) Object.assign(lo.equipment || (lo.equipment = {}), m.loadout.equipment);
+                }
+                los.push(lo);
+            });
+            while (builds.length < n) {
+                const cls = (DEFAULT_BUILDS[seat] && DEFAULT_BUILDS[seat][builds.length]) || 'Warrior';
+                builds.push(cls); names.push(getDefaultUnitName(cls)); metas.push({}); los.push(emptyLoadout());
+            }
+            state.partyBuilds[seat] = builds; state.partyNames[seat] = names; state.loadouts[seat] = los;
+            if (!state.partyMeta) state.partyMeta = {};
+            state.partyMeta[seat] = metas;
+            return true;
+        }
+        function _hqEncounterStart(L, ev) {
+            const party = _hqLastParty();
+            _hqLastDoor = L.doorId || 'crossing'; _hqLastRoom = _hqCurRoom; _hqRecordVisit(_hqLastDoor);
+            window._hqEncounterRun = { site: L.site, room: L.room || _hqCurRoom, race: L.encounter.race, label: L.encounter.label, gesture: L.encounter.gesture,
+                                       date: (typeof hqToday === 'function') ? hqToday() : null, at: Date.now(), noIntro: true,
+                                       eye: ev ? { x: ev.x, z: ev.z, y: ev.y, yaw: ev.yaw, pitch: ev.pitch } : null };
+            window._hqEncounterResult = null;
+            try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.6 }); } catch (e) {}
+            /* no roster on file: the terminal as today — the site's own console screen, the native's race leading the pool */
+            if (!party) {
+                _hqToast('<b>NO ROSTER ON FILE</b><span>FILE ONE CROSSING AT THE CONSOLE · THE NEXT ENCOUNTER STARTS ON ITS OWN</span>', 3200);
+                return window._hqLaunchMission(L.site, { delta: true, doorId: L.doorId, doorLabel: 'THE ENCOUNTER', counterId: L.counterId, variant: 'site', roster: L.roster });
+            }
+            if (typeof MS_MAP_LIST === 'undefined' || !MS_MAP_LIST.length) return false;
+            const launchId = L.site + '_delta';
+            let idx = MS_MAP_LIST.findIndex(m => m.modeId === launchId);
+            if (idx < 0) idx = MS_MAP_LIST.findIndex(m => m.modeId === L.site);
+            if (idx < 0) { console.warn('[HQ] no launch entry for the encounter', L.site); return false; }
+            let gi = MS_GAME_MODES.findIndex(g => g.id === L.gm && !g.locked);
+            if (gi < 0) gi = 0;
+            window._hqPreselect = { mapId: L.site, launchId: MS_MAP_LIST[idx].modeId, delta: true, teamSize: L.teamSize, gm: L.gm, roster: L.roster,
+                                    doorId: L.doorId, doorLabel: 'THE ENCOUNTER', codeRed: false, locked: true, presets: null, encounter: L.encounter };
+            window._msCpuOnly = true;
+            _msSelectedMap = idx; _msSelectedGM = gi; _msSelectedTeamSize = L.teamSize; _msSelectedRounds = L.rounds | 0;
+            window._hqEncounterParty = party;
+            _hqClosePanel({ keepPaused: true });
+            window._hqLeave();
+            try { window._msConfirm(); }
+            catch (e) { console.error('[HQ] the encounter failed to start', e); window._hqEncounterParty = null; window._hqEncounterRun = null; return false; }
+            return true;
         }
         /* the strip pill / the panel button: draw or holster */
         window._hqPortalDraw = function (on) {
@@ -5300,6 +5435,24 @@
             if (mpMode && mpMode.isFFA) {
                 state.autoPlayers = state.autoPlayers || {};
                 state.autoPlayers[2] = true;
+            }
+
+            /* THE ENCOUNTER (HQ plan 9.4): a crossing filed from the building remembers its config for the next
+               encounter (the sticky one); an encounter itself seats THE LAST ROSTER and skips the builder */
+            if (_pre && typeof _hqEncounterRememberCfg === 'function' && !_pre.encounter) _hqEncounterRememberCfg(gm.id, _msSelectedTeamSize, _msSelectedRounds);
+            const _encParty = window._hqEncounterParty || null;
+            window._hqEncounterParty = null;
+            if (_encParty && typeof _hqApplyLastParty === 'function' && _hqApplyLastParty(_encParty, 1, CONFIG.teamSize)) {
+                if (typeof optimizeRandomizeParty === 'function') optimizeRandomizeParty(2);
+                if (startOverlay) { startOverlay.classList.add('hidden'); startOverlay.style.display = 'none'; startOverlay.style.pointerEvents = 'none'; startOverlay.setAttribute('aria-hidden', 'true'); }
+                state.teamLockedIn = true;
+                let okStart = false;
+                try { okStart = applyPartyBuild(false) !== false; if (okStart) startMatch(); } catch (e) { console.error('[HQ] the encounter could not start', e); okStart = false; }
+                if (!okStart) { window._hqEncounterRun = null; dismissTitleScreen(); }
+                render();
+                state.audioUnlocked = true;
+                syncMusicToState().catch(() => {});
+                return;
             }
 
             window.requestAnimationFrame(() => {

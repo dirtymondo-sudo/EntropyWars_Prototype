@@ -28507,6 +28507,91 @@ function hqPortalLeaf(roomId) {
 }
 /* the facility is SAFE by construction: a room with no site is never wild (9.4's rule, shared) — the escape rope's far end */
 function hqPortalSafeRoom(roomId) { return !hqRoomSite(roomId); }
+/* ══ THE ENCOUNTER (HQ plan 9.4 stage 1, 2026-09-15 rev 16) ══
+   The room becomes the board — but NEVER at random (the user's rule, 2026-09-15):
+   the officer starts every fight. With THE DOOR GUN DRAWN (9.5 — the gun IS
+   the field kit; holstered, the natives are people you talk to), the officer
+   throws their basic ATTACK animation (1) or one of their SPELL animations
+   (2 · 3 · 4 — the cast chains: magic / area / the capstone charge) at a
+   native within HQ_ENCOUNTER_RULES.reach, in the aim cone and in line of
+   sight; the clip lands and the crossing files itself with no terminal: the
+   sticky config (the last one the terminal filed, else Arena · 4), THE LAST
+   ROSTER (state.js loadLastParty — none on file → the terminal opens as
+   today, once), the CPU pool led by the native's race. Only a WILD room
+   (hqRoomSite non-null — a site's board room or a complex part); the
+   facility is safe by construction. VS-CPU only (RULE #2: the building is
+   viewer-local; an online seat never encounters). A loss lands you in
+   Medical's cot (Part C row 30: the ward and nothing else). The record is
+   `door.hq.encounters = { count, wins, losses, last: { site, room, race,
+   date, won } }` — hqEncounterRecord is the ONE write. */
+const HQ_ENCOUNTER_RULES = {
+    reach: 3.4,          // metres from the walker to the native
+    cone: 55,            // degrees either side of the aim (the camera's yaw)
+    dy: 1.8,             // metres of height difference allowed
+    gun: true,           // the door gun must be DRAWN (the user's call: "not when they are not holding their door gun")
+    cooldownMs: 1400,    // between two throws
+    gm: 'arena', teamSize: 4,   // the fallback config when nothing sticky is on file
+    keys: { '1': 'attack', '2': 'magic', '3': 'aoe', '4': 'ultimate' },   // the gesture per key → a chain kind
+    labels: { attack: 'ATTACK', magic: 'CAST', aoe: 'AREA CAST', ultimate: 'CAPSTONE' },
+};
+/* a wild room: a site's board room or one of its complex parts — hqRoomSite is the ONE test */
+function hqEncounterRoomOk(roomId) { return !!hqRoomSite(roomId); }
+/* a character the officer may engage: a NATIVE (a roster vessel standing in a wild room) — never the cast, an agent, the online shift, the officer's own clone */
+function hqEncounterCharOk(ch) {
+    if (!ch || ch.kind !== 'npc' || !ch.race) return false;
+    if (ch.cast || ch.agent) return false;
+    if (ch.race === 'men in black') return false;
+    if (/^hq-(clone|online|agent)-/.test(String(ch.id || ''))) return false;
+    return (typeof AVAILABLE_RACES === 'undefined') || AVAILABLE_RACES.indexOf(ch.race) >= 0;
+}
+/* the gesture a key throws: 'attack' | 'magic' | 'aoe' | 'ultimate' | null */
+function hqEncounterGesture(key) { return HQ_ENCOUNTER_RULES.keys[String(key || '')] || null; }
+/* the sticky config: what the terminal last filed (map.js writes it as JSON in localStorage `ew_hq_encounter_cfg`), sanitised; else the rules' fallback */
+function hqEncounterConfig(raw) {
+    let o = null;
+    try { o = (typeof raw === 'string') ? JSON.parse(raw) : (raw && typeof raw === 'object' ? raw : null); } catch (e) { o = null; }
+    const MM = (typeof MULTIPLAYER_MODES !== 'undefined') ? MULTIPLAYER_MODES : {};
+    const known = (id) => MM[id] || (!Object.keys(MM).length && /^(arena|tdm|simul)$/.test(id));   // headless (no state.js): the field modes
+    let gm = (o && typeof o.gm === 'string' && known(o.gm)) ? o.gm : HQ_ENCOUNTER_RULES.gm;
+    /* Clash plays its own stage and Gauntlet needs the full board — a Δ encounter is a field fight: Arena / TDM / Simul */
+    if (gm === 'clash' || gm === 'gauntlet') gm = HQ_ENCOUNTER_RULES.gm;
+    let teamSize = (o && Number.isFinite(+o.teamSize)) ? Math.max(1, Math.min(8, Math.floor(+o.teamSize))) : HQ_ENCOUNTER_RULES.teamSize;
+    const rounds = (o && Number.isFinite(+o.rounds) && +o.rounds > 0) ? Math.floor(+o.rounds) : 0;
+    return { gm, teamSize, rounds };
+}
+/* the launch: everything map.js hands _hqLaunchMission / the builder-less start — pure, so the test can read it */
+function hqEncounterLaunch(roomId, ch, cfg, opts) {
+    opts = opts || {};
+    const site = hqRoomSite(roomId);
+    if (!site || !hqEncounterCharOk(ch)) return null;
+    const c = hqEncounterConfig(cfg);
+    const n = c.teamSize;
+    const pool = (typeof hqMissionPool === 'function') ? hqMissionPool(site, n) : [];
+    const roster = [ch.race].concat(pool.filter(r => r !== ch.race)).slice(0, Math.max(n, 1));
+    return {
+        site, delta: true, gm: c.gm, teamSize: n, rounds: c.rounds, roster,
+        doorId: 'crossing', counterId: 'crossing',
+        encounter: { race: ch.race, gender: ch.gender || 'male', id: ch.id || null, room: roomId, x: +(ch.x || 0), z: +(ch.z || 0), gesture: opts.gesture || 'attack', label: ch.label || ch.race },
+    };
+}
+/* the record: door.hq.encounters — the ONE write (the caller saves) */
+function hqEncounterRecord(profile, ev) {
+    if (!profile || !ev) return null;
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
+    const H = profile.door.hq;
+    if (!H.encounters || typeof H.encounters !== 'object') H.encounters = { count: 0, wins: 0, losses: 0, last: null };
+    const E = H.encounters;
+    E.count = (E.count | 0) + 1;
+    if (ev.won) E.wins = (E.wins | 0) + 1; else E.losses = (E.losses | 0) + 1;
+    E.last = { site: ev.site || null, room: ev.room || null, race: ev.race || null, date: ev.date || hqToday(), won: !!ev.won };
+    return E;
+}
+/* the read: { count, wins, losses, last } — never null */
+function hqEncounterLog(profile) {
+    const E = profile && profile.door && profile.door.hq && profile.door.hq.encounters;
+    return { count: (E && E.count) | 0, wins: (E && E.wins) | 0, losses: (E && E.losses) | 0, last: (E && E.last) || null };
+}
 /* the ONE read for the pill, the panel, the renderer: who holds it, what stands where, which slot goes next */
 function hqPortalStatus(profile, opts) {
     opts = opts || {};
@@ -30260,6 +30345,9 @@ if (typeof window !== 'undefined') {
     /* THE DOOR GUN (HQ plan 9.5, 2026-09-15 rev 13) */
     window.HQ_PORTAL_RULES = HQ_PORTAL_RULES; window.hqPortalRecord = hqPortalRecord; window.hqPortalStatus = hqPortalStatus; window.hqPortalIssue = hqPortalIssue;
     window.hqPortalPlace = hqPortalPlace; window.hqPortalClear = hqPortalClear; window.hqPortalLeaf = hqPortalLeaf; window.hqPortalNextSlot = hqPortalNextSlot; window.hqPortalTwin = hqPortalTwin; window.hqPortalSafeRoom = hqPortalSafeRoom; window.hqPortalDoorsIn = hqPortalDoorsIn;
+    /* THE ENCOUNTER (HQ plan 9.4 stage 1, 2026-09-15 rev 16) */
+    window.HQ_ENCOUNTER_RULES = HQ_ENCOUNTER_RULES; window.hqEncounterRoomOk = hqEncounterRoomOk; window.hqEncounterCharOk = hqEncounterCharOk; window.hqEncounterGesture = hqEncounterGesture;
+    window.hqEncounterConfig = hqEncounterConfig; window.hqEncounterLaunch = hqEncounterLaunch; window.hqEncounterRecord = hqEncounterRecord; window.hqEncounterLog = hqEncounterLog;
     window.hqLinkRoom = hqLinkRoom;
     window.hqLinkDoors = hqLinkDoors;
     window.hqLinkEndOk = hqLinkEndOk;

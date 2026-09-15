@@ -41953,6 +41953,106 @@ const ThreeRenderer = (function () {
         return best;
     }
 
+    /* ══ THE ENCOUNTER (HQ plan 9.4 stage 1, 2026-09-15 rev 16) ══
+       Never random — the officer starts it. A number key throws the walker's
+       own ATTACK clip (1: the def's basicAttackKind chain) or a CAST clip
+       (2 magic · 3 area · 4 the capstone charge) as a one-shot; the walker
+       squares up on the camera's aim first. With THE DOOR GUN DRAWN, the
+       native in reach, in the aim cone and in line of sight at the key press
+       is the target: opts.onStrike fires at once (the beat, the prompt),
+       opts.onEncounter fires when the clip's strike frame lands (sprites.js
+       strikeAt, else 380 ms) — map.js files the crossing. Holstered, the
+       gesture is a flourish and nothing more (the user's rule). */
+    var HQ_STRIKE_FALLBACK_MS = 380, HQ_STRIKE_MAX_MS = 1500;
+    function _hqEncounterRules() { return (typeof HQ_ENCOUNTER_RULES !== 'undefined' && HQ_ENCOUNTER_RULES) || { reach: 3.4, cone: 55, dy: 1.8, gun: true, cooldownMs: 1400, keys: { '1': 'attack', '2': 'magic', '3': 'aoe', '4': 'ultimate' } };
+    }
+    /* a straight line at chest height from the walker to a native: blocked by furniture / a setting piece (never a person), a rock cell, a raised board cell, a doorway's wall */
+    function _hqLosClear(ax, az, ay, bx, bz, by) {
+        var dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz);
+        if (L < 0.01) return true;
+        var n = Math.max(2, Math.ceil(L / 0.35));
+        for (var i = 1; i < n; i++) {
+            var t = i / n, x = ax + dx * t, z = az + dz * t, y = ay + (by - ay) * t;
+            if (L * (1 - t) < 0.45) break;   // the last half metre is the target's own body
+            for (var b = 0; b < _hq.blockers.length; b++) {
+                var bl = _hq.blockers[b];
+                if (bl.npc || bl.portal) continue;
+                if (!_hqBlkContains(bl, x, z, 0)) continue;
+                if (bl.y != null && bl.y > y) continue;
+                if (y < _hqBlkTop(bl) - 0.05) return false;
+            }
+            if (_hq.site) {
+                var sc = _hqSiteCellAt(x, z);
+                if (sc && sc.rock) return false;
+                if (sc && !sc.fluid && sc.top != null && sc.top > y) return false;
+            }
+            if (_hq.room.kind === 'box' && _hqCamInDoorway(x, z, y)) return false;
+        }
+        return true;
+    }
+    /* the native the gesture would land on: nearest in reach, within the aim cone, with line of sight — or null */
+    function _hqEncounterAim() {
+        var H = _hq, pl = H && H.player; if (!pl) return null;
+        var R = _hqEncounterRules();
+        var okFn = (typeof hqEncounterCharOk === 'function') ? hqEncounterCharOk : function (ch) { return ch && ch.kind === 'npc' && !!ch.race && !ch.cast; };
+        var fx = Math.sin(H.cam.yaw), fz = -Math.cos(H.cam.yaw);
+        var cosCone = Math.cos((R.cone || 55) * Math.PI / 180);
+        var best = null, bestD = 1e9;
+        for (var i = 0; i < H.chars.length; i++) {
+            var ch = H.chars[i];
+            if (ch === pl || !okFn(ch)) continue;
+            var dx = ch.x - pl.x, dz = ch.z - pl.z, d = Math.hypot(dx, dz);
+            if (d > (R.reach || 3.4) || Math.abs(ch.y - pl.y) > (R.dy || 1.8)) continue;
+            if (d > 0.3 && (dx * fx + dz * fz) / d < cosCone) continue;
+            if (!_hqLosClear(pl.x, pl.z, pl.y + 1.3, ch.x, ch.z, ch.y + 1.1)) continue;
+            if (d < bestD) { bestD = d; best = ch; }
+        }
+        if (!best) return null;
+        return { kind: 'npc', id: best.id, label: best.label, sub: best.sub || null, race: best.race, gender: best.gender, x: best.x, z: best.z, y: best.y, dist: bestD };
+    }
+    /* the one-shot on the walker's rig: the first slot the rig carries; returns the strike-frame ms (a chain with no clip still "lands" at the fallback) */
+    function _hqStrikeClip(pl, gesture) {
+        var e = pl.entry; if (!e) return HQ_STRIKE_FALLBACK_MS;
+        var chain;
+        if (gesture === 'attack') { var bk = (e._ew_def && e._ew_def.basicAttackKind) || (pl.def && pl.def.basicAttackKind) || 'melee'; chain = _attackChainFor(bk); }
+        else chain = _castChainFor(gesture);
+        var name = null;
+        if (e.actions) for (var i = 0; i < chain.length; i++) if (e.actions[chain[i]]) { name = chain[i]; break; }
+        if (!name) return HQ_STRIKE_FALLBACK_MS;
+        var act = e.actions[name], clip = act.getClip();
+        var ts = Math.abs(act.timeScale) || 1;
+        var ms = Math.min((clip && clip.duration ? (clip.duration / ts) * 1000 : 800), HQ_STRIKE_MAX_MS);
+        var st = _slotStrikeMs(e._ew_def || pl.def, name, act);
+        pl.strike = { name: name, until: performance.now() + ms, fresh: true };
+        return (st > 0 && st < ms) ? st : Math.min(HQ_STRIKE_FALLBACK_MS, ms * 0.6);
+    }
+    function _hqStrikeKey(k) {
+        var H = _hq, pl = H && H.player; if (!pl || H.paused) return false;
+        var R = _hqEncounterRules();
+        var gesture = (typeof hqEncounterGesture === 'function') ? hqEncounterGesture(k) : (R.keys || {})[k];
+        if (!gesture) return false;
+        var now = performance.now();
+        if (H.strikeAt && now - H.strikeAt < (R.cooldownMs || 1400)) return false;
+        H.strikeAt = now;
+        /* square up on the aim: the walker's facing convention is atan2(mx, mz) of the flat camera forward */
+        pl.targetYaw = Math.atan2(Math.sin(H.cam.yaw), -Math.cos(H.cam.yaw));
+        var drawn = !!(H.portal && H.portal.drawn);
+        var armed = drawn || R.gun === false;
+        var target = armed ? _hqEncounterAim() : null;
+        var landMs = _hqStrikeClip(pl, gesture);
+        if (H.opts.onStrike) { try { H.opts.onStrike({ gesture: gesture, key: k, drawn: drawn, armed: armed, target: target, landMs: landMs }); } catch (e) { console.warn('[HQ] onStrike failed', e); } }
+        if (!target) return true;
+        var room = H.opts.room, tid = target.id;
+        setTimeout(function () {
+            if (_hq !== H || H.paused) return;   // the room changed / the walk paused under the swing — nothing lands
+            var still = null;
+            for (var i = 0; i < H.chars.length; i++) if (H.chars[i].id === tid) { still = H.chars[i]; break; }
+            if (!still) return;
+            if (H.opts.onEncounter) { try { H.opts.onEncounter({ gesture: gesture, target: target, room: room, x: pl.x, z: pl.z, y: pl.y, yaw: H.cam.yaw, pitch: H.cam.pitch }); } catch (e) { console.warn('[HQ] onEncounter failed', e); } }
+        }, landMs);
+        return true;
+    }
+
     /* ── input ─────────────────────────────────────────────────────────── */
     function _hqKeyName(e) {
         var k = (e.key || '').toLowerCase();
@@ -41962,6 +42062,7 @@ const ThreeRenderer = (function () {
         if (k === 'arrowright') return 'd';
         if (k === 'shift') return 'shift';
         if (k === ' ' || k === 'spacebar') return 'space';
+        if (k === '1' || k === '2' || k === '3' || k === '4') return k;   // THE ENCOUNTER (9.4): the gestures — 1 attack · 2 cast · 3 area · 4 capstone
         if (k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'e' || k === 'v' || k === 'f' || k === 'q' || k === 'p') return k;   // F = the door gun (9.5)
         if (k === 'enter') return 'e';
         if (k === 'escape' || k === 'esc') return 'esc';
@@ -41994,6 +42095,8 @@ const ThreeRenderer = (function () {
             /* THE DOOR GUN (HQ plan 9.5): F draws / holsters; Q holsters a drawn one (else the bell) */
             if (k === 'f') { e.preventDefault(); _hqPortalDraw(!(H.portal && H.portal.drawn)); return; }
             if (k === 'q' && H.portal && H.portal.drawn) { e.preventDefault(); _hqPortalDraw(false); return; }
+            /* THE ENCOUNTER (HQ plan 9.4): 1–4 throw the officer's attack / cast animation — with the door gun DRAWN at a native in reach, that is the fight */
+            if (k === '1' || k === '2' || k === '3' || k === '4') { e.preventDefault(); _hqStrikeKey(k); return; }
             /* Q = answer a BELL call from anywhere in the building (HQ plan D2) */
             if (k === 'q') { e.preventDefault(); if (H.opts.onHotkey) H.opts.onHotkey('q'); return; }
             H.keys[k] = true;
@@ -42265,6 +42368,8 @@ const ThreeRenderer = (function () {
             if (ch.pose && ch.kind !== 'player' && e.actions && e.actions[ch.pose]) want = ch.pose;
             if (ch.kind === 'player') {
                 want = (ch.jumpT >= 0) ? 'jump' : (ch.moving ? (ch.running ? 'run' : 'walk') : 'idle');
+                /* THE ENCOUNTER (9.4): a thrown attack / cast clip owns the rig until its end */
+                if (ch.strike) { if (performance.now() < ch.strike.until && ch.jumpT < 0) want = ch.strike.name; else ch.strike = null; }
                 var lean = e.model._ew_lean || 0;
                 var leanT = ch.moving ? (ch.running ? 0.16 : 0.07) : 0;
                 lean += (leanT - lean) * Math.min(1, dt * 10);
@@ -42280,8 +42385,10 @@ const ThreeRenderer = (function () {
                 }
             }
             if (!e.mixer) continue;
-            if (want !== e._ew_curAnim) {
-                _playUnitModelAnim(e, want);
+            var strikeFresh = !!(ch.kind === 'player' && ch.strike && ch.strike.fresh && want === ch.strike.name);
+            if (want !== e._ew_curAnim || strikeFresh) {
+                _playUnitModelAnim(e, want, strikeFresh);
+                if (strikeFresh && e.actions && e.actions[want]) { ch.strike.fresh = false; var sa = e.actions[want]; sa.setLoop(THREE.LoopOnce, 1); sa.clampWhenFinished = true; }
                 /* the HQ jump is ONE physics arc (2026-09-05): play the clip
                    once, sized to the airtime, and hold the last frame until
                    landing — at the default LoopRepeat the short clip fired
@@ -42854,6 +42961,9 @@ const ThreeRenderer = (function () {
         portalPlace: _hqPortalPlaceAim,
         portalHop: _hqPortalHop,
         portalRemove: _hqPortalRemove,
+        /* THE ENCOUNTER (HQ plan 9.4, 2026-09-15 rev 16): throw a gesture by key ('1'..'4'), the native the gesture would land on */
+        strike: _hqStrikeKey,
+        encounterAim: function () { return _hq ? _hqEncounterAim() : null; },
         portalDoors: function () { if (!_hq || !_hq.portal) return []; var o = []; for (var s in _hq.portal.placed) { var r = _hq.portal.placed[s]; o.push({ slot: s, x: r.door.x, y: r.y0, z: r.door.z, face: r.door.face, leaf: r.leaf }); } return o; },
         finds: function () { return _hq ? _hq.finds.map(function (f) { return { id: f.id, kind: f.kind, x: f.x, y: f.y, z: f.z }; }) : []; },
         pos: function () { if (!_hq || !_hq.player) return null; var p = _hq.player; return { x: p.x, z: p.z, y: p.y, deg: _hqNormDeg(Math.atan2(p.x, -p.z) * 180 / Math.PI), r: Math.hypot(p.x, p.z) }; },

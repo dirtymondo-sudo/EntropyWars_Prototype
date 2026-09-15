@@ -3339,3 +3339,49 @@ the old `rank: 2` was DOORSTOP). `npm test` runs `rank-ladder.test.js`.
 Unseen live (RULE #1c): the checklist's grid on the CRT at narrow widths,
 the promotion notice firing on the first arrival for a profile that
 already has stabilized sites.
+
+## THE ENCOUNTER — PLAYER-INITIATED (HQ plan 9.4 stage 1) — 2026-09-15 rev 16, local delivery
+**Never random (the user's rule).** In a WILD room (data.js
+`hqEncounterRoomOk(roomId)` = `hqRoomSite` non-null — a site's board room
+or a complex part; the facility is safe by construction) the officer
+DRAWS THE DOOR GUN (F) and presses **1** (the walker's basic-attack clip:
+the def's `basicAttackKind` → `_attackChainFor`) or **2 · 3 · 4** (the
+`magic` / `aoe` / `ultimate` cast chains) — three-renderer.js
+`_hqStrikeKey(k)` plays the one-shot on the walker's rig (`pl.strike`,
+LoopOnce; the walker squares up on the camera's aim) and, ARMED (the gun
+drawn — `HQ_ENCOUNTER_RULES.gun`), takes `_hqEncounterAim()` = the
+nearest `hqEncounterCharOk` character (a native / roster draw; never the
+cast, an agent, the online shift, the clone) within `reach` 3.4 m, in the
+55° aim `cone`, with `_hqLosClear` line of sight (blockers except people,
+rock / raised cells, doorway walls); `opts.onStrike` fires at once (the
+toast), `opts.onEncounter` on the clip's STRIKE FRAME (`_slotStrikeMs`,
+else 380 ms) — guarded by `_hq === H` so a room change under the swing
+never lands. Holstered, the keys are a flourish. The digit keys are named
+on their OWN line before the pinned key line (hq-floors.test.js). API:
+`hq.strike(k)`, `hq.encounterAim()`. map.js `_hqEncounterFire(ev)` →
+data.js **`hqEncounterLaunch(roomId, ch, cfgRaw, { gesture })`** (pure:
+the site, `delta: true`, the STICKY CONFIG `hqEncounterConfig` off
+localStorage `ew_hq_encounter_cfg` — written by `_msConfirm` for every
+crossing filed from the building, Clash / Gauntlet fall back to Arena ·
+4 — the roster = the native's race first + `hqMissionPool`, `doorId:
+'crossing'`) → `_hqEncounterStart`: THE LAST ROSTER (`_hqLastParty`)
+rides `window._hqEncounterParty` into **`_msConfirm`**, which runs every
+config rule as today and then seats it (`_hqApplyLastParty`), randomises
+the CPU, `applyPartyBuild(false)` + `startMatch()` — NO party builder;
+no roster on file → `_hqLaunchMission(...)` (the terminal, once).
+`window._hqEncounterRun = { site, room, race, label, gesture, date, eye,
+noIntro: true }`: battle.js `_introCineEligible` + the leaf warm-up skip
+the intro PER LAUNCH (never `EW_DISABLE_INTRO_CINE`); the commit (before
+the Code Red block) consumes it win or lose → `hqEncounterRecord(p, ev)`
+→ `door.hq.encounters = { count, wins, losses, last }` (`hqEncounterLog`
+reads; the OFFICER sheet's ENCOUNTERS row) and `window._hqEncounterResult`
+→ `_hqReturnOrMenu`: a LOSS re-enters at `medical` (the ward, Part C row
+30), a win at the console; a toast either way. The prompt reads `[1]
+ATTACK · [2–4] CAST · ENGAGE` while drawn + aimed. Off: localStorage
+`ew_hq_encounter = 'off'` / `window.EW_HQ_NO_ENCOUNTER`. VS-CPU only
+(RULE #2 — `isOnlineMatch` refuses). `npm test` runs
+`hq-encounter.test.js`. NOT BUILT: the walker's eye as the first battle
+frame (the event carries it; three-camera.js has no initial-pose API),
+the `spawnSide` mirror, the dissolve, a cleared-room rule. UNSEEN LIVE
+(RULE #1c): the one-shot on the Player cast rig, the strike timing, the
+builder-less first frame, the ward landing.

@@ -2523,3 +2523,11 @@ variant), the hall's threshold panel, the crossing console and the battle
 marker; the officer sheet and every red CLEARANCE lamp state the next rung.
 Row 31's door gun is STANDARD ISSUE for the test (`HQ_PORTAL_RULES.free`),
 the user's call; the Quartermaster's signature returns with `free: false`.
+
+### 2026-09-15 rev 16 — 9.4 THE ENCOUNTER stage 1, player-initiated (local)
+The user ruled: no random encounters. A fight starts only when the officer,
+door gun drawn, throws their attack (1) or a spell animation (2–4) at a
+native within reach and sight in a wild room; the room's site becomes the
+board with the sticky config and THE LAST ROSTER, no terminal, no intro.
+A loss is the ward (row 30); the record is `door.hq.encounters`. HQ plan
+§4 9.4 (the rule + what shipped), Part C row 35, §9 2026-09-15 rev 16.
