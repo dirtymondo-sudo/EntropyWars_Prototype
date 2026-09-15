@@ -2975,7 +2975,7 @@ const TERRAIN_SPRITES = {
     gunmetal:         [`${_T}/gunmetal.png`],
     gunmetal_2:       [`${_T}/gunmetal_2.png`],
     copper:           [`${_T}/copper.png`],
-    concrete_floor:   [`${_T}/concrete_floor.png`],
+    concrete_floor:   [`${_T}/concrete_floor.png?v=20260915`],   // repainted 2026-09-15 — the ?v busts the immutable edge cache (bump it again on the next repaint)
     checkerboard_2:   [`${_T}/checkerboard_2.png`],
     checkerboard_3:   [`${_T}/checkerboard_3.png`],
     drywall_5:        [`${_T}/drywall_5.png`],
@@ -2993,7 +2993,7 @@ const TERRAIN_SPRITES = {
     // D.O.O.R. facility floors (2026-09-04) — embedded, see HOLO_TILE_URI above
     holo:             [HOLO_TILE_URI],
     holo_red:         [HOLO_RED_TILE_URI],
-    training_floor:   [TRAINING_SLAB_URI || `${_T}/concrete_floor.png`],   // canvas-drawn plaster slab (TRAINING_SLAB_URI above)
+    training_floor:   [TRAINING_SLAB_URI || `${_T}/concrete_floor.png?v=20260915`],   // canvas-drawn plaster slab (TRAINING_SLAB_URI above)
 };
 
 const TERRAIN_SIDE_SPRITES = {

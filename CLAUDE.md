@@ -2762,3 +2762,20 @@ Shared `getCubeAttackDamage` preserves actual Cube damage order and RNG executio
 26 new tests pass (nine fail prior AI/early-win source, 17 controls pass); all 26 pass with the original pre-extraction Cube attack body too. Full suite: 1,247 total, 1,243 passed, zero failures, four skips. This task adds 118 checks across all three batches. Syntax: 146/146. Re-read the unchanged three_ways tutorial and updated its early-win hash and added watches for the extracted wipeout/Cube helpers in data.js. Stats/range/LOS/rewards/rendering/timers are controlled in Cube tests; no browser/live guest/full-match or full-candidate timing acceptance.
 
 FINAL delivery: `ENTROPY_WARS_PHASE6_BEAM_ARENA_OBJECTIVES.zip`, containing all beam, Key, Cube and wipeout changes. R2: ai.js/battle.js/map.js/data.js; Render: index.html (`20260914-ai-beam-arena-objectives-01-cors`); remaining files: repository. Sync runtime/entry files too. AI stamp `v4.11-2026-09-14-arena-cube-priority`. This supersedes interim package scopes in earlier entries. No commit, push or deployment. Next: carrier denial, move-then-inspect, residual scenarios/timing and authorized observations; Phase 6 remains open.
+
+## THE LOBBY THEME + THE TITLE THEME'S LIMITS + concrete_floor rev (2026-09-15, local delivery)
+audio.js `doorLobby` = R2 `music/door_lobby.mp3` (the user's HQ track, MASTER
+B4; `_R2_MUSIC` / `_LOCAL_MUSIC` / `AUDIO_BASE_VOLUMES`, pause-menu name in
+ui.js `_TRACK_DISPLAY_NAMES`). map.js `syncMusicToState`: in the building
+(`GS.HQ`) it plays `doorLobby` while `_hqCurRoom` is in
+`_HQ_LOBBY_MUSIC_ROOMS` (foyer · central_egress · ring_g · ring_m — the
+arrival and the main circular hall) and `mainTheme` in every other room
+(`_hqEnter` re-syncs on every room entry, walks included). The `doorMuzak`
+slot is retired. **ff7 (`titleTheme`) is the TITLE SCREEN's alone**: the
+menu key is `titleTheme` only while `gameState === GS.TITLE`;
+`enterGameFromTitle` and the campaign map play `mainTheme`.
+**concrete_floor.png was repainted in place**: the sprite URL carries
+`?v=20260915` (sprites.js `TERRAIN_SPRITES.concrete_floor` + the
+training_floor fallback, ui.js's two dome URLs) because the sheet is
+immutable-cached — bump that query on the next repaint; every loader reads
+`TERRAIN_SPRITES[key][0]` verbatim, so the query is harmless.

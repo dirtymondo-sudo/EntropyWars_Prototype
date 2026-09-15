@@ -103,7 +103,9 @@
             state.audioUnlocked = true;
             playSfx('uiButtonConfirm');
 
-            playMusic('titleTheme').catch(err => {
+            /* the title theme (ff7) belongs to the title screen only — the
+               menu plays the main theme (user call, 2026-09-15) */
+            playMusic('mainTheme').catch(err => {
             });
 
             state.gameState = GS.MAIN_MENU;
@@ -2742,7 +2744,7 @@
                 state.gameState = GS.CAMPAIGN_MAP;
                 renderCampaignMap();
                 _showTitlePage('campaignMapPage');
-                if (typeof playMusic === 'function') playMusic('titleTheme');
+                if (typeof playMusic === 'function') playMusic('mainTheme');
             }
         };
 
@@ -4510,6 +4512,9 @@
             return await playMusic(nextKey);
         }
 
+        /* the rooms that play door_lobby.mp3 (the foyer = the arrival, the
+           main hall, the two containment rings round it) */
+        const _HQ_LOBBY_MUSIC_ROOMS = new Set(['foyer', 'central_egress', 'ring_g', 'ring_m']);
         async function syncMusicToState() {
             if (state.devAutoSim) return false;
             if (!state.audioUnlocked || state.winner) return false;
@@ -4518,13 +4523,18 @@
                 return await playMusic(battleKey);
             }
 
-            /* D.O.O.R. HQ: the `doorMuzak` slot (a user-made track, MASTER B4)
-               once it exists in audioTracks; the menu theme until then. */
+            /* D.O.O.R. HQ (2026-09-15): the user's door_lobby.mp3 is the
+               building's theme — it plays on the way in from Play (the foyer)
+               and in the main hall + the containment rings; every other room
+               (offices, bays' site rooms, the floors) plays the main theme.
+               _hqEnter calls this on every room entry, walks included. */
             if (state.gameState === GS.HQ) {
-                const hqKey = (typeof audioTracks !== 'undefined' && audioTracks && audioTracks.doorMuzak) ? 'doorMuzak' : 'mainTheme';
+                const hqKey = (typeof audioTracks !== 'undefined' && audioTracks && audioTracks.doorLobby && _HQ_LOBBY_MUSIC_ROOMS.has(_hqCurRoom)) ? 'doorLobby' : 'mainTheme';
                 return await playMusic(hqKey);
             }
-            const key = state.titleScreenVisible ? 'titleTheme' : 'mainTheme';
+            /* ff7 is the TITLE SCREEN's alone (user call, 2026-09-15): every
+               menu / hub page after it plays the main theme */
+            const key = (state.titleScreenVisible && state.gameState === GS.TITLE) ? 'titleTheme' : 'mainTheme';
             return await playMusic(key);
         }
 

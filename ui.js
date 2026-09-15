@@ -1926,7 +1926,7 @@
           ring.style.borderRadius = '50%';
 
           ring.style.transform = `translateZ(${Math.round(z)}px)`;
-          const domeTexUrl = 'https://cdn.entropywars.net/Assets/Sprites/terrain/concrete_floor.png';
+          const domeTexUrl = 'https://cdn.entropywars.net/Assets/Sprites/terrain/concrete_floor.png?v=20260915';
           ring.style.backgroundImage = `url("${domeTexUrl}")`;
           ring.style.backgroundSize = `${ringD}px ${ringD}px`;
           ring.style.imageRendering = 'pixelated';
@@ -1948,7 +1948,7 @@
         cap.style.top = (radius - capR) + 'px';
         cap.style.borderRadius = '50%';
         cap.style.background = '';
-        const domeTexUrl2 = 'https://cdn.entropywars.net/Assets/Sprites/terrain/concrete_floor.png';
+        const domeTexUrl2 = 'https://cdn.entropywars.net/Assets/Sprites/terrain/concrete_floor.png?v=20260915';
         cap.style.backgroundImage = `url("${domeTexUrl2}")`;
         cap.style.backgroundSize = `${capR * 2}px ${capR * 2}px`;
         cap.style.imageRendering = 'pixelated';
@@ -6753,6 +6753,7 @@
         const _TRACK_DISPLAY_NAMES = {
             titleTheme: 'FF7 Theme',
             mainTheme: 'Main Theme',
+            doorLobby: 'DOOR Lobby',
             battleTheme: 'Battle Theme',
             battleThemeAlt1: 'Beetle',
             battleThemeAlt2: 'Ladybug',

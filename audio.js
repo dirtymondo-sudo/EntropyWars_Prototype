@@ -2,6 +2,7 @@
         const _R2_MUSIC = {
             titleTheme:      `${_R2_BASE}/music/ff7.ogg`,
             mainTheme:       `${_R2_BASE}/music/maintheme_v2.mp3`,
+            doorLobby:       `${_R2_BASE}/music/door_lobby.mp3`,   // D.O.O.R. HQ: the main hall (user track, 2026-09-15)
             battleTheme:     `${_R2_BASE}/music/battlemusic.mp3`,
             battleThemeAlt1: `${_R2_BASE}/music/battle_music_beetle.mp3`,
             battleThemeAlt2: `${_R2_BASE}/music/Ladybug.mp3`,
@@ -37,6 +38,7 @@
         const _LOCAL_MUSIC = {
             titleTheme: './assets/music/ff7.ogg',
             mainTheme: './assets/music/maintheme_v2.mp3',
+            doorLobby: './assets/music/door_lobby.mp3',
             battleTheme: './assets/music/battlemusic.mp3',
             battleThemeAlt1: './assets/music/battle_music_beetle.mp3',
             battleThemeAlt2: './assets/music/Ladybug.mp3',
@@ -94,6 +96,7 @@
         const AUDIO_BASE_VOLUMES = {
             titleTheme: 0.55,
             mainTheme: 0.42,
+            doorLobby: 0.42,
             battleTheme: 0.46,
             battleThemeAlt1: 0.46,
             battleThemeAlt2: 0.46,
@@ -1360,9 +1363,10 @@
            mains hum with its second harmonic, and a faint ballast hiss. It
            rides the Ambience slider like the battle beds (state.ambienceVolume
            → applyAmbienceVolumeMix → _doorRoomToneApplyVol), needs the same
-           audio unlock, and fades in/out over ~1.2 s. The `doorMuzak` MUSIC
-           slot stays empty on purpose (map.js syncMusicToState plays it only
-           once audioTracks.doorMuzak exists — a user-made track, MASTER B4).
+           audio unlock, and fades in/out over ~1.2 s. The MUSIC over it is the
+           `doorLobby` track (door_lobby.mp3, the user's hall theme, MASTER B4)
+           in the foyer / the main hall / the containment rings — map.js
+           syncMusicToState; the other rooms play the main theme.
            UPGRADE PATH: add `doorRoomTone` to _R2_AMBIENCE + the base-volume
            table and play that bed instead of this synth.
            Kill-switch: window.EW_DISABLE_AMBIENCE. */
