@@ -12,6 +12,16 @@ Stop the incremental VFX helper cleanup batches here. Continue **Phase 6 — Are
 
 LIFE-06/VFX-03 remain partially validated with residual callback ownership deferred to the backlog. A current source count finds 24 direct timer sites from Merkaba onward; this is an inspection inventory, not 24 confirmed bugs or spells. Earlier direct timers also include infrastructure, cleanup and cache work. VFX-04 endpoint/list visibility remains open and deferred; it is not an exit gate for starting Phase 6. Preserve all completed fixes and their evidence. Do not resume spell-helper batches unless requested or a concrete blocker is found during the next phase.
 
+### Latest review — 2026-09-14: attack and movement continuation ownership
+
+Baseline: connected main d93efc550cc70c90ef815de4d276c96dabf4a636. GitHub comparison against the previously verified b097ae7823e948c536233c8733cfc2dbf14a93a1 shows only the prior review document and inspect diagnostic added; runtime is unchanged. Prior AI-06h is now recorded in main, not fixed.
+
+**AI-06h extension — P2: stale attack/movement callbacks overwrite newer action state (reproduced, not fixed).** _moveThenAttack's delayed _strike writes actionMode, selectedTool and the executing latch before calling doAttack. Even a refused attack (return 0) overwrites a replacement actor's spell menu and clears its executing latch. Its eight-second watchdog also has no action owner: after the old attack completes, the timer can clear a newer action's latch. _moveTowards has the same unowned completion write, and its two-leg continuation dispatches another doMove with the obsolete actor after roster replacement. These are related instances of the existing continuation-ownership finding, not independent new root causes.
+
+Validation: ten diagnostic cases confirmed across both seats (eight adverse cases and two unchanged-board refusal controls). Production _moveThenAttack and _moveTowards bodies execute unchanged; movement, attack return values, rendering and timer delivery are controlled. The diagnostic asserts defective behavior, not safety. It establishes stale dispatch/UI mutation, not actual stale damage, physical movement, browser exit/restart reachability or guest acceptance. Existing move-then-act-menu tests: nine pass, zero failures. No runtime edits or full gameplay suite; documentation and diagnostic only.
+
+Evidence: check-action-continuations.cjs, action-continuation-results.txt, action-existing-tests.txt. Run the diagnostic beside battle.js or under its review-evidence directory. Remedy should bind every delayed leg, strike/scan, refusal, completion and watchdog to its originating match and activation/action; validate actor identity and ownership before shared state writes. A phase-only guard is insufficient when a newer action is in the same battle. Continue carrier denial and remaining scenario/timing review after resolving this ownership family and the existing Key theft registry finding. Phase 6 remains open.
+
 ### Latest review — 2026-09-14: stale move-then-inspect continuation
 
 Main is now b097ae7823e948c536233c8733cfc2dbf14a93a1. Local battle.js, ai.js, map.js and CLAUDE.md match its Git blob hashes. Prior combined beam/Arena fixes are in repository main; deployment is unverified.
