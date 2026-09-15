@@ -28648,10 +28648,15 @@ function hqTapeShelf(profile) {
     return { found: rec.tapes.length, total: HQ_FIND_RULES.tapes, rows };
 }
 /* ── THE DOOR GUN — THE PORTABLE THRESHOLD (HQ plan 9.5, 2026-09-15 rev 13) ──
-   Two freestanding DOOR-issue leaves the officer PLACES on any walkable
-   surface they can see (the renderer's `_hqPortalAim`: a ray from the eye
-   against the room's own surface set — never a wall, never a fluid cell,
-   never inside a blocker); walk into A, step out of B. Portal's rule: the
+   Two freestanding DOOR-issue leaves the officer PLACES on ANY SURFACE they
+   can see — a floor, a WALL, a CEILING (rev 2, 2026-09-15, the user's brief:
+   the renderer's `_hqPortalAim` marches the eye's ray against all three and
+   the door lies FLAT in the surface's own plane; never a fluid cell, never
+   inside a blocker). LEFT CLICK files THRESHOLD A, RIGHT CLICK files
+   THRESHOLD B — two buttons, and the pair is always two colours (A cyan, B
+   amber). Walk into one, come out of the other along ITS normal: a floor
+   hatch with its twin on the ceiling right above it is a fall that never
+   lands (the renderer's `_hqTickPortalCross` / `_hqPortalHop`). Portal's rule: the
    pair is always the LAST TWO placed — an empty slot fills first, then the
    older of the two moves (`hqPortalNextSlot`). The pair is ONE profile
    record, `door.hq.portal = { issued, a: { room, x, y, z, face, leaf, at },
@@ -28682,9 +28687,20 @@ const HQ_PORTAL_RULES = {
     leaf: 'leaf_coffee',
     slots: ['a', 'b'],
     labels: { a: 'THRESHOLD A', b: 'THRESHOLD B' },
+    /* rev 2 (2026-09-15, the user's brief): the gun takes ANY surface and the
+       door lies FLAT on it — a floor hatch under a ceiling hatch is a fall that
+       never lands. The pair is ALWAYS two colours; these are the words for
+       them (the renderer's HQ_PORTAL_COLORS paints the frame, the lamps and
+       the aperture). LEFT CLICK places A, RIGHT CLICK places B. */
+    surfaces: ['floor', 'wall', 'ceiling'],
+    colors: { a: '#49b0ff', b: '#ff8a2b' },
+    colorNames: { a: 'CYAN', b: 'AMBER' },
+    buttons: { a: 'LEFT CLICK', b: 'RIGHT CLICK' },
 };
 function hqPortalRecord(profile) {
     const r = (profile && profile.door && profile.door.hq && profile.door.hq.portal) || {};
+    /* `surf` (rev 2, 2026-09-15) = the surface the door lies on: 'floor' | 'wall' | 'ceiling'.
+       A row filed before rev 2 has none and reads as a floor door (the old placement was a floor hit). */
     const ok = s => (s && typeof s === 'object' && typeof s.room === 'string' && isFinite(s.x) && isFinite(s.z) && isFinite(s.y)) ? s : null;
     return { issued: !!r.issued, a: ok(r.a), b: ok(r.b), last: (r.last === 'a' || r.last === 'b') ? r.last : null };
 }
@@ -28837,15 +28853,22 @@ function hqPortalPlace(profile, spec, opts) {
     if (!spec || typeof spec.room !== 'string' || !DOOR_HQ.rooms[spec.room]) return { ok: false, reason: 'room' };
     if (![spec.x, spec.y, spec.z].every(v => typeof v === 'number' && isFinite(v))) return { ok: false, reason: 'spec' };
     const rec = hqPortalRecord(profile);
-    const slot = hqPortalNextSlot(rec);
+    /* TWO BUTTONS (rev 2, the user's brief): the caller names the slot — LEFT
+       CLICK files A, RIGHT CLICK files B. No slot = the old Portal order (an
+       empty one first, then the older of the two moves). */
+    const asked = (spec.slot === 'a' || spec.slot === 'b') ? spec.slot : ((opts.slot === 'a' || opts.slot === 'b') ? opts.slot : null);
+    const slot = asked || hqPortalNextSlot(rec);
     const twin = rec[hqPortalTwin(slot)];
-    if (twin && twin.room === spec.room && Math.hypot(twin.x - spec.x, twin.z - spec.z) < HQ_PORTAL_RULES.minGap) return { ok: false, reason: 'twin' };
+    /* the gap is 3D now: a threshold on the floor with its twin on the ceiling
+       right above it is a COLUMN, not a clash — that fall is the point */
+    if (twin && twin.room === spec.room && Math.hypot(twin.x - spec.x, (twin.y || 0) - spec.y, twin.z - spec.z) < HQ_PORTAL_RULES.minGap) return { ok: false, reason: 'twin' };
     if (!profile.door || typeof profile.door !== 'object') profile.door = {};
     if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = {};
     const P = profile.door.hq.portal = Object.assign({}, profile.door.hq.portal || {});
     if (st.forced && !P.issued) P.issued = true;   // the dev override files the issue it implies, so the record reads whole
     const row = { room: spec.room, x: Math.round(spec.x * 100) / 100, y: Math.round(spec.y * 100) / 100, z: Math.round(spec.z * 100) / 100,
-                  face: Math.round(((spec.face || 0) % 360 + 360) % 360), leaf: hqPortalLeaf(spec.room), at: Date.now() };
+                  face: Math.round(((spec.face || 0) % 360 + 360) % 360), surf: HQ_PORTAL_RULES.surfaces.indexOf(spec.surf) >= 0 ? spec.surf : 'floor',
+                  leaf: hqPortalLeaf(spec.room), at: Date.now() };
     P[slot] = row; P.last = slot;
     return { ok: true, slot, spec: row, twin: twin || null, paired: !!twin, moved: !!rec[slot] };
 }

@@ -592,10 +592,12 @@
                 onInteract: _hqInteractTarget,
                 onEnterDoor: _hqWalkThroughDoor,
                 /* THE DOOR GUN (HQ plan 9.5): the pair on file (cleared on a fresh arrival — the rope is for one visit),
-                   the filer a LEFT CLICK calls (→ the slot), and the beats (drawn / holstered / refused) */
+                   the filer a click calls (LEFT = A, RIGHT = B → the slot), the beats (drawn / holstered / refused),
+                   and the TOUCH crossing a flat threshold reports (rev 2: a floor / ceiling hatch is fallen through) */
                 portal: (typeof _hqPortalOpts === 'function') ? _hqPortalOpts(opts, profile) : null,
                 onPortalPlace: (typeof _hqPortalPlaced === 'function') ? _hqPortalPlaced : null,
                 onPortal: (typeof _hqPortalEvent === 'function') ? _hqPortalEvent : null,
+                onPortalCross: function (slot) { try { return window._hqPortalStep(slot); } catch (e) { return false; } },
                 /* THE ENCOUNTER (HQ plan 9.4): a thrown gesture (the beat) and the one that LANDS on a native with the gun drawn (the crossing) */
                 onStrike: (typeof _hqStrikeEvent === 'function') ? _hqStrikeEvent : null,
                 onEncounter: (typeof _hqEncounterFire === 'function') ? _hqEncounterFire : null,
@@ -1143,7 +1145,7 @@
             if (k) html += row('KEYS', `${k.pickups | 0} RECOVERED${k.issued ? ' + ' + k.issued + ' ISSUED' : ''}`, `${k.keys | 0}`);
             if (mc) html += row('STABILIZED', 'THRESHOLDS WON BY EVERY WIN CONDITION', `${mc.mastered} / ${mc.total}`, mc.mastered === mc.total ? 'stabilized' : 'open');
             { const el = (typeof window.hqEncounterLog === 'function') ? window.hqEncounterLog(profile) : null; if (el && el.count) html += row('ENCOUNTERS', `${el.wins} HELD · ${el.losses} EXITED${el.last ? ' · LAST ' + _hqEsc(String(el.last.race || '').toUpperCase()) + (el.last.won ? ' (HELD)' : ' (EXITED)') : ''}`, String(el.count), el.last && el.last.won ? 'stabilized' : 'open'); }
-            { const ps = _hqPortalStatus(profile); if (ps && ps.issued) html += row('THE THRESHOLD', 'PORTABLE · DOOR ISSUE · F DRAWS · CLICK PLACES · Q HOLSTERS', `${ps.a ? 'A' : '·'} ${ps.b ? 'B' : '·'}`, ps.paired ? 'stabilized' : 'open'); }
+            { const ps = _hqPortalStatus(profile); if (ps && ps.issued) html += row('THE THRESHOLD', 'PORTABLE · DOOR ISSUE · F DRAWS · L-CLICK = A · R-CLICK = B · Q HOLSTERS', `${ps.a ? 'A' : '·'} ${ps.b ? 'B' : '·'}`, ps.paired ? 'stabilized' : 'open'); }
             if (tc) html += row('THE TAPES', `THE HUNDRED · THE SHELF IN ROOM 360${tc.pay ? ' · ' + tc.pay + ' HAZARD PAY IN ENVELOPES' : ''}`, `${tc.found} / ${tc.total}`, tc.found >= tc.total ? 'stabilized' : 'open');
             if (sh) html += row('FORM 365', 'DAILY OFFICE OPERATIONS · ROOM 247', `${sh.done} / ${sh.total}`, sh.allDone ? 'stabilized' : 'unstable');
             if (walks) html += row('WALKS AS', 'OCCAM’S BARBERSHOP · ROOM 1287', _hqEsc(walks));
@@ -1800,9 +1802,12 @@
                 const r = window.hqPortalPlace(p, spec, { force: _hqPortalForce() });
                 if (!r || !r.ok) { _hqPortalRefused(r ? r.reason : 'none'); return null; }
                 PS.saveProfile(idx, p);
-                const L = (window.HQ_PORTAL_RULES && window.HQ_PORTAL_RULES.labels) || {};
+                const RL = window.HQ_PORTAL_RULES || {};
+                const L = RL.labels || {}, CN = RL.colorNames || {};
                 const here = r.twin && r.twin.room === spec.room;
-                _hqToast(`<b>${_hqEsc(L[r.slot] || ('THRESHOLD ' + r.slot.toUpperCase()))} · ${r.moved ? 'MOVED' : 'PLACED'}</b><span>${r.paired ? (here ? 'THE PAIR STANDS · WALK INTO ONE, STEP OUT OF THE OTHER' : 'ITS TWIN WAITS IN ' + _hqEsc(String((DOOR_HQ.rooms[r.twin.room] || {}).label || r.twin.room).toUpperCase())) : 'PLACE THE OTHER · THE PAIR IS THE LAST TWO'}</span>`, 3200);
+                const surfWord = (r.spec && r.spec.surf === 'ceiling') ? 'ON THE CEILING' : (r.spec && r.spec.surf === 'wall') ? 'ON THE WALL' : 'ON THE FLOOR';
+                const other = r.slot === 'a' ? 'b' : 'a';
+                _hqToast(`<b>${_hqEsc(L[r.slot] || ('THRESHOLD ' + r.slot.toUpperCase()))} · ${_hqEsc(CN[r.slot] || '')} · ${r.moved ? 'MOVED' : 'PLACED'} ${surfWord}</b><span>${r.paired ? (here ? 'THE PAIR STANDS · WALK INTO ONE, COME OUT OF THE OTHER' : 'ITS TWIN WAITS IN ' + _hqEsc(String((DOOR_HQ.rooms[r.twin.room] || {}).label || r.twin.room).toUpperCase())) : (other === 'b' ? 'RIGHT CLICK PLACES THRESHOLD B' : 'LEFT CLICK PLACES THRESHOLD A')}</span>`, 3200);
                 _hqFillStrip(p);
                 return { slot: r.slot, spec: r.spec };
             } catch (e) { console.warn('[HQ] portal place', e); return null; }
@@ -1810,11 +1815,11 @@
         const _HQ_PORTAL_REFUSALS = {
             fluid: ['NOT ON WATER', 'A THRESHOLD NEEDS A FLOOR · NEVER A LIQUID CELL'],
             near: ['TOO CLOSE', 'STEP BACK · A DOOR UNDER YOUR FEET IS A DOOR YOU ARE STANDING IN'],
-            twin: ['TOO CLOSE TO ITS TWIN', 'THE TWO NEED A METRE AND A HALF BETWEEN THEM'],
             door: ['A DOOR IS THERE', 'THE BUILDING\'S OWN DOOR KEEPS ITS LANE'],
             room: ['NO ROOM FOR THE FRAME', 'THE SURFACE MUST CARRY THE WHOLE FRAME · AIM AT A FLAT SPOT'],
-            wall: ['NOT A SURFACE', 'A THRESHOLD STANDS ON A FLOOR YOU CAN SEE · NEVER IN A WALL'],
-            none: ['NOTHING THERE', 'AIM AT A FLOOR, A LEDGE, A ROOF, A TOP YOU CAN SEE'],
+            twin: ['TOO CLOSE TO ITS TWIN', 'THE TWO NEED A METRE AND A HALF BETWEEN THEM'],
+            wall: ['NOT A SURFACE', 'NOTHING FLAT UNDER THE AIM · TRY A WALL, A FLOOR, A CEILING'],
+            none: ['NOTHING THERE', 'AIM AT A FLOOR, A WALL, A CEILING, A LEDGE YOU CAN SEE'],
             unissued: ['NOT ISSUED', 'THE QUARTERMASTER SIGNS FOR THE PORTABLE THRESHOLD · KEYHOLDER + 24 KEYS'],
         };
         function _hqPortalRefused(reason) {
@@ -1831,7 +1836,7 @@
                 _hqFillStrip(_hqProfile());
                 const h = _hqEl('hqHints'); if (h) h.classList.toggle('portal', !!ev.on);
                 try { playSfx(ev.on ? 'uiButtonConfirm' : 'uiCursorMove'); } catch (e) {}
-                if (ev.on) _hqToast('<b>THE PORTABLE THRESHOLD</b><span>AIM AT A FLOOR YOU CAN SEE · CLICK PLACES · Q HOLSTERS</span>', 2200);
+                if (ev.on) _hqToast('<b>THE PORTABLE THRESHOLD</b><span>ANY SURFACE — FLOOR · WALL · CEILING · L-CLICK = A (CYAN) · R-CLICK = B (AMBER) · Q HOLSTERS</span>', 2800);
             }
             else if (ev.kind === 'refused') _hqPortalRefused(ev.reason);
             else if (ev.kind === 'unissued') _hqPortalRefused('unissued');
@@ -1967,12 +1972,17 @@
             const twinSlot = slot === 'a' ? 'b' : 'a';
             const twin = st[twinSlot];
             if (!twin) { _hqToast('<b>NO TWIN</b><span>THE OTHER THRESHOLD IS NOT PLACED · THIS ONE OPENS ONTO NOTHING</span>', 2200); try { playSfx('uiError'); } catch (e) {} return false; }
-            try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.5 }); } catch (e) {}
+            /* THE FALL (rev 2): a floor hatch under a ceiling hatch crosses ~30
+               times a second — the beat is throttled so the loop sings once,
+               not thirty times. The crossing itself is never throttled. */
+            const nowX = performance.now();
+            const voiced = !window._hqPortalStep._at || nowX - window._hqPortalStep._at > 260;
+            if (voiced) { window._hqPortalStep._at = nowX; try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.5 }); } catch (e) {} }
             if (twin.room === _hqCurRoom) {
                 let ok = false;
                 try { ok = ThreeRenderer.hq.portalHop(twinSlot); } catch (e) { ok = false; }
                 if (!ok) return false;
-                try { playSfx('teleport'); } catch (e) {}
+                if (voiced) { try { playSfx('teleport'); } catch (e) {} }
                 _hqSetPrompt(null);
                 return true;
             }
@@ -1997,7 +2007,7 @@
                 PS.saveProfile(idx, p);
                 try { playSfx('levelUp'); } catch (e) {}
                 try { if (typeof playDoorSfx === 'function') playDoorSfx('doorStamp', { volume: 0.6 }); } catch (e) {}
-                _hqToast(`<b>PORTABLE THRESHOLD · ISSUED</b><span>−${r.cost} KEYS · PRESS F TO DRAW IT · CLICK TO PLACE A DOOR</span>`, 4200);
+                _hqToast(`<b>PORTABLE THRESHOLD · ISSUED</b><span>−${r.cost} KEYS · F DRAWS IT · LEFT CLICK = THRESHOLD A · RIGHT CLICK = THRESHOLD B</span>`, 4200);
                 _hqFillStrip(p);
                 /* the walker learns it without a rebuild: the renderer's own flag */
                 try { if (ThreeRenderer.hq && ThreeRenderer.hq.active()) ThreeRenderer.hq.portalIssued(true); } catch (e) {}

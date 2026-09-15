@@ -137,7 +137,7 @@ test('THE CLEAR: a fresh arrival drops the pair and keeps the issue; the safe-ro
 });
 
 test('THE RENDERER: the aim against the surface set, the ghost, the placed door as a free box-wall record, the blockers, the hop, the rebuild on entry, the API and the keys', () => {
-    assert.ok(/function _hqPortalAim\(\)/.test(TR) && /_hqSurface\(x, z, null, true\)/.test(TR.slice(TR.indexOf('function _hqPortalSurf'))), 'the aim reads the walkable surface set');
+    assert.ok(/function _hqPortalAim\(slot\)/.test(TR) && /_hqSurface\(x, z, null, true\)/.test(TR.slice(TR.indexOf('function _hqPortalSurf'))), 'the aim reads the walkable surface set, for a named slot');
     const aim = TR.slice(TR.indexOf('function _hqPortalAim'), TR.indexOf('function _hqPortalGhost'));
     assert.ok(/getWorldDirection/.test(aim) && /_hqAirClearOfBlockers/.test(aim) && /_hqBlockerFloor/.test(TR.slice(TR.indexOf('function _hqPortalSurf'), TR.indexOf('function _hqPortalAim'))), 'the eye\'s ray, stopped by a blocker\'s side, landing on a top');
     ['fluid', 'near', 'twin', 'door', 'room'].forEach(r => assert.ok(aim.indexOf("out.reason = '" + r + "'") >= 0, 'refusal ' + r));
@@ -148,15 +148,16 @@ test('THE RENDERER: the aim against the surface set, the ghost, the placed door 
     assert.ok(/H\.doors\.push\(rec\)/.test(build) && /H\.portal\.placed\[slot\] = rec/.test(build));
     assert.ok(/mode: 'swing'/.test(build) && /_miscModelInstance\(_hqModelUrl\(cat\)/.test(build), 'the catalogue leaf on a swing pivot');
     assert.ok(/H\.blockers\.push\(\{ obj: d, rad: 0\.24, y: y0, top: y0 \+ oh, portal: slot \}\)/.test(build), 'the shut door is a wall from behind');
+    assert.ok(/if \(!flat\) \{\s*\n\s*var fr = _hqRad\(spec\.face \|\| 0\)/.test(build), 'a FLAT threshold lays no blockers — you walk onto a hatch');
     assert.ok(/H\.blockers = H\.blockers\.filter\(function \(b\) \{ return b\.portal !== slot; \}\)/.test(TR), 'a dropped slot takes its blockers with it');
-    assert.ok(/function _hqPortalHop\(slot\)/.test(TR) && /_hqGoTo\('portal:' \+ slot, true\)/.test(TR) && /H\.enterDoorLatch = 'portal:' \+ slot/.test(TR), 'the hop lands in front of the twin facing away, latched');
+    assert.ok(/function _hqPortalHop\(slot, opts\)/.test(TR) && /_hqGoTo\('portal:' \+ slot, true\)/.test(TR) && /H\.enterDoorLatch = 'portal:' \+ slot/.test(TR), 'the hop lands out of the twin (a wall door in front of it, facing away), latched');
     assert.ok(/try \{ _hqBuildPortals\(room, opts\); \}/.test(TR), 'rebuilt on every entry');
     assert.ok(/_hqPortalTickAim\(\);/.test(TR.slice(TR.indexOf('function _hqTickWorld'))), 'the ghost follows the aim each frame');
-    assert.ok(/portal: \{ drawn: false, ghost: null, aim: null, placed: \{\}, lastKey: '', issued:/.test(TR), 'the record on _hq');
+    assert.ok(/portal: \{ drawn: false, ghost: null, aim: null, placed: \{\}, lastKey: '', hold: null, cross: null, issued:/.test(TR), 'the record on _hq (the held mouth and the entry speed ride it)');
     ['portalDraw: _hqPortalDraw', 'portalIssued:', 'portalDrawn:', 'portalAim:', 'portalPlace: _hqPortalPlaceAim', 'portalHop: _hqPortalHop', 'portalRemove: _hqPortalRemove', 'portalDoors:'].forEach(k => assert.ok(TR.indexOf(k) >= 0, 'API ' + k));
     assert.ok(/k === 'f'\) \{ e\.preventDefault\(\); _hqPortalDraw\(!\(H\.portal && H\.portal\.drawn\)\)/.test(TR), 'F draws / holsters');
     assert.ok(/k === 'q' && H\.portal && H\.portal\.drawn\) \{ e\.preventDefault\(\); _hqPortalDraw\(false\)/.test(TR), 'Q holsters a drawn one before the bell');
-    assert.ok(/if \(e\.button === 2\) _hqPortalDraw\(false\); else if \(e\.button === 0\) _hqPortalPlaceAim\(\);/.test(TR), 'left click places, right click holsters');
+    assert.ok(/if \(e\.button === 0\) _hqPortalPlaceAim\('a'\); else if \(e\.button === 2\) _hqPortalPlaceAim\('b'\);/.test(TR), 'TWO BUTTONS: left click places A, right click places B');
     assert.ok(/k === 'v' \|\| k === 'f' \|\| k === 'q'/.test(TR), 'F is a walker key');
 });
 
@@ -181,4 +182,79 @@ test('MAP.JS: the filer is one transaction, the step goes out of the twin (a hop
     assert.ok(/row\('THE THRESHOLD'/.test(MP), 'the officer sheet');
     assert.ok(/id="hqPortal" class="hq-strip-stat hq-strip-portal"/.test(IX) && /hq-hint-portal/.test(IX), 'index.html: the pill and the hint');
     assert.ok(/\.hq-strip-stat\.hq-strip-portal\.drawn/.test(CSS) && /\.hq-hints\.portal \.hq-hint-portal/.test(CSS), 'the CSS');
+});
+
+test('ANY SURFACE (rev 2): the rules name the three surfaces, two buttons and two colours; a row keeps its surface and an unstated one reads as a floor', () => {
+    assert.equal(R.surfaces.join(','), 'floor,wall,ceiling');
+    assert.ok(R.colors && R.colors.a && R.colors.b && R.colors.a !== R.colors.b, 'the pair is ALWAYS two colours');
+    assert.ok(R.colorNames.a && R.colorNames.b && R.colorNames.a !== R.colorNames.b);
+    assert.equal(R.buttons.a, 'LEFT CLICK'); assert.equal(R.buttons.b, 'RIGHT CLICK');
+    const place = g('hqPortalPlace'), p = profile();
+    const c = place(p, { room: 'foyer', x: 0, y: 2.7, z: 0, face: 0, surf: 'ceiling' });
+    assert.equal(c.ok, true); assert.equal(c.spec.surf, 'ceiling');
+    const w = place(p, { room: 'central_egress', x: 4, y: 1.4, z: 4, face: 90, surf: 'wall' });
+    assert.equal(w.spec.surf, 'wall');
+    const plain = place(p, { room: 'foyer', x: 9, y: 0, z: 9, face: 0 });
+    assert.equal(plain.spec.surf, 'floor', 'no surface stated: the old placement was a floor hit');
+    assert.equal(place(p, { room: 'foyer', x: 9, y: 0, z: 9, surf: 'sideways' }, { slot: 'a' }).spec.surf, 'floor', 'an unknown surface is a floor');
+    const rec = g('hqPortalRecord')(p);
+    assert.ok(rec.a && rec.b, 'both rows survive the round trip');
+});
+
+test('TWO BUTTONS + THE COLUMN: the caller names the slot, and a floor hatch under a ceiling hatch is legal (the gap is 3D)', () => {
+    const place = g('hqPortalPlace'), status = g('hqPortalStatus');
+    const p = profile();
+    /* the right button files B first — the old order would have filed A */
+    const b = place(p, { room: 'foyer', x: 0, y: 0, z: 0, face: 0, surf: 'floor', slot: 'b' });
+    assert.equal(b.ok, true); assert.equal(b.slot, 'b');
+    assert.equal(status(p).a, null); assert.ok(status(p).b);
+    /* the same column, on the ceiling 2.7 m up: a fall that never lands, never a 'twin' refusal */
+    const a = place(p, { room: 'foyer', x: 0, y: 2.7, z: 0, face: 0, surf: 'ceiling' }, { slot: 'a' });
+    assert.equal(a.ok, true); assert.equal(a.slot, 'a');
+    assert.equal(a.spec.x, 0); assert.equal(a.spec.y, 2.7);
+    /* the same column, the same surface height: still too close */
+    assert.equal(place(p, { room: 'foyer', x: 0.4, y: 2.9, z: 0.4, surf: 'ceiling' }, { slot: 'b' }).reason, 'twin');
+    /* a named slot MOVES its own row rather than taking the other's turn */
+    const a2 = place(p, { room: 'foyer', x: 6, y: 0, z: 6, surf: 'floor', slot: 'a' });
+    assert.equal(a2.slot, 'a'); assert.equal(a2.moved, true);
+    assert.equal(status(p).b.y, 0, 'B is untouched');
+});
+
+test('THE RENDERER rev 2: the ceiling and the wall are surfaces, the frame is laid on the normal, a flat threshold is crossed by touch and left along the twin\'s own normal', () => {
+    assert.ok(/function _hqPortalCeil\(\)/.test(TR) && /room\.kind === 'box'\) return S\.open \? null :/.test(TR), 'the room\'s own ceiling plane (an open room has none)');
+    assert.ok(/function _hqPortalSolidAt\(x, z, y\)/.test(TR) && /function _hqPortalWallHit\(prev, cur, dir, t\)/.test(TR), 'the wall hit is bisected against the solidness test');
+    const wall = TR.slice(TR.indexOf('function _hqPortalWallHit'), TR.indexOf('function _hqPortalBasis'));
+    assert.ok(/_hqPortalSolidAt\(lo\.x \+ e, lo\.z, lo\.y\)/.test(wall) && /_hqPortalSolidAt\(lo\.x, lo\.z \+ e, lo\.y\)/.test(wall), 'the normal comes off the gradient in x and z');
+    const basis = TR.slice(TR.indexOf('function _hqPortalBasis'), TR.indexOf('function _hqPortalAim'));
+    assert.ok(/surf === 'ceiling'\) \{ Z = new THREE\.Vector3\(0, -1, 0\)/.test(basis) && /surf === 'floor'\) \{ Z = new THREE\.Vector3\(0, 1, 0\)/.test(basis) && /makeBasis\(X, Y, Z\)/.test(basis), 'local +Z is the surface normal — flat on the floor, flat on the ceiling, in the wall');
+    const aim = TR.slice(TR.indexOf('function _hqPortalAim'), TR.indexOf('function _hqPortalFits'));
+    assert.ok(/surf: 'ceiling'/.test(aim) && /surf: 'floor'/.test(aim) && /_hqPortalWallHit\(prev/.test(aim), 'all three kinds come out of the march');
+    assert.ok(/hit\.surf !== 'ceiling' && Math\.hypot\(hit\.x - pl\.x, hit\.z - pl\.z\) < R\.near/.test(aim), 'a ceiling overhead is never refused for being close — that is the trick');
+    assert.ok(/Math\.hypot\(d\.px - hit\.x, \(d\.py \|\| 0\) - hit\.y, d\.pz - hit\.z\)/.test(aim), 'the twin gap is 3D');
+    assert.ok(/if \(slot && d\.door\.portal === slot\) continue;/.test(aim), 'a threshold never blocks its own move');
+    const build = TR.slice(TR.indexOf('function _hqPortalBuild'), TR.indexOf('function _hqBuildPortals'));
+    assert.ok(/var flat = surf !== 'wall';/.test(build) && /grp\.quaternion\.copy\(B\.q\)/.test(build), 'the frame wears the surface basis');
+    assert.ok(/portalSurf: surf, px: spec\.x, py: hitY, pz: spec\.z/.test(build), 'the record carries its surface and its own point');
+    assert.ok(/blending: THREE\.AdditiveBlending[^)]*\}\);\s*\n\s*var pane/.test(build) || /var pane = new THREE\.Mesh\(new THREE\.PlaneGeometry\(ow \* U, oh \* U\), apMat\)/.test(build), 'the aperture is the slot\'s colour');
+    assert.ok(/hq-plate-portal-' \+ slot/.test(build), 'the plate wears its slot');
+    /* the crossing */
+    assert.ok(/function _hqPortalInMouth\(rec, pl\)/.test(TR) && /function _hqTickPortalCross\(dt\)/.test(TR), 'the touch crossing');
+    const mouth = TR.slice(TR.indexOf('function _hqPortalInMouth'), TR.indexOf('function _hqTickPortalCross'));
+    assert.ok(/rec\.portalSurf === 'wall'\) return false/.test(mouth), 'a wall door is walked into, never touched through');
+    assert.ok(/pl\.y <= rec\.py \+ 0\.4/.test(mouth) && /var head = pl\.y \+ \(pl\.heightM \|\| 1\.75\)/.test(mouth), 'the feet for a floor hatch, the head for a ceiling one');
+    const cross = TR.slice(TR.indexOf('function _hqTickPortalCross'), TR.indexOf('function _hqPortalHop'));
+    assert.ok(/H\.portal\.hold = \{ slot: s, at: performance\.now\(\) \}/.test(cross) && /H\.opts\.onPortalCross/.test(cross), 'the mouth is held and the crossing reported');
+    const hop = TR.slice(TR.indexOf('function _hqPortalHop'), TR.indexOf('/* The story cast'));
+    assert.ok(/surf === 'ceiling'/.test(hop) && /pl\.vy = -Math\.max\(2, Math\.min\(18, speed\)\)/.test(hop), 'out of a ceiling hatch you keep falling');
+    assert.ok(/if \(speed > 4\) \{ pl\.y = rec\.py \+ 0\.06; pl\.air = true/.test(hop), 'out of a floor hatch you are thrown up when you came in fast');
+    assert.ok(/H\.portal\.hold = \{ slot: slot, at: performance\.now\(\) \}/.test(hop), 'the mouth you came out of does not swallow you again');
+    /* the sites that had to learn about a flat door */
+    assert.ok(/var want = \(d\.portalSurf && d\.portalSurf !== 'wall'\) \? 1 :/.test(TR), 'a flat threshold stands open');
+    assert.ok(/if \(rec\.portalSurf && rec\.portalSurf !== 'wall'\) \{ H\.enterDoorLatch = null; return; \}/.test(TR), 'the press-in leaves a flat threshold alone');
+    assert.ok(/if \(d\.portalSurf && d\.portalSurf !== 'wall'\) continue;/.test(TR), 'the boom\'s doorway slab is a wall door\'s alone');
+    assert.ok(/_hqTickPortalCross\(dt\);/.test(TR.slice(TR.indexOf('function _hqFrame'))), 'the crossing is ticked with the walker');
+    assert.ok(/if \(_hq\.portal\) _hq\.portal\.hold = \{ slot: d\.portal, at: performance\.now\(\) \};/.test(TR), 'a room change through the pair lands held');
+    assert.ok(/onPortalCross: function \(slot\)/.test(MP), 'map.js takes the crossing');
+    assert.ok(/L-CLICK ▸ A · R-CLICK ▸ B/.test(IX), 'index.html: the two buttons in the hint');
+    assert.ok(/\.hq-plate\.hq-plate-portal-a b/.test(CSS) && /\.hq-plate\.hq-plate-portal-b b/.test(CSS), 'the CSS: two colours');
 });

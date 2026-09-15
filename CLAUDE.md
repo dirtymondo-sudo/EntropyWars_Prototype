@@ -3326,6 +3326,68 @@ guarded with `typeof` — scene-lifecycle.test.js evals it alone. Unseen
 live (RULE #1c): the ghost, the frame's scale, the swing, the hop's flash,
 the cross-room landing.
 
+## THE DOOR GUN rev 2 — ANY SURFACE, TWO BUTTONS, TWO COLOURS (2026-09-15, local delivery)
+The user's brief: "it should place a door on whatever surface you aim it
+at — walls and ceilings — FLAT on the surface, so I can fall down two
+portals forever; two buttons for Door A and Door B; always two different
+colours." All of it, in the same three files. **THE AIM** takes THREE
+surface kinds now (three-renderer.js `_hqPortalAim(slot)`): the room's own
+CEILING plane (`_hqPortalCeil` — a box room's `shell.h`, a bay's `wallH`;
+an OPEN room and the hall's dome have none), the walkable FLOOR set
+(`_hqPortalSurf`, unchanged) and the WALL — the first point the ray cannot
+occupy (`_hqPortalSolidAt` = no surface / inside the ground / a blocker's
+side), bisected by **`_hqPortalWallHit`**, whose normal comes off the
+SOLIDNESS GRADIENT either side in x and z (falling back to the ray's own
+heading). Refusals unchanged but for two: a CEILING is never refused for
+being close (that is the trick), and the twin gap is **3D** — a floor
+hatch under a ceiling hatch is a COLUMN, not a clash. `_hqPortalFits`
+carries the footprint rule per kind (a floor level either side; solid
+behind and clear in front at every corner of a wall / ceiling opening).
+**THE DOOR LIES FLAT ON THE SURFACE**: `_hqPortalBasis(face, surf)` =
+local +Z = the surface normal, local +Y = the door's own up (world up on a
+wall, the officer's heading laid flat otherwise) → a quaternion off
+`makeBasis` (verified headlessly against real three: right-handed in every
+case, and the WALL case reproduces the old `rotation.y` with zero pitch,
+so a wall door is the standing door it always was, dropped to the floor
+when the aim is low). The opening's CENTRE lands on the aim, 4.5 cm clear
+of the surface. A flat door keeps its leaf standing open (`_hqTickDoors`),
+wears no sill / cap / seal plate, and lays **NO blockers** — you walk onto
+a hatch; a wall door keeps its three discs. The record carries
+`portalSurf` / `px,py,pz` / the normal. **THE CROSSING**: a wall door is
+still walked into (the press-in / E — it is skipped by `_hqTickAutoEnter`,
+`_hqCamInDoorway` and the box branch of `_hqFindTarget` for a flat one). A
+FLAT door is crossed by TOUCH — **`_hqTickPortalCross`** (run from
+`_hqFrame` right after the walker's tick) reads the FEET against a floor
+hatch and the HEAD against a ceiling one (`_hqPortalInMouth`), remembers
+the entry speed and reports it (`opts.onPortalCross` → map.js
+`_hqPortalStep`). **`_hqPortalHop(slot, opts)`** leaves along the twin's
+OWN normal: out of a ceiling hatch you come out below it still falling
+(the entry's speed, ≥ 2 and ≤ 18 m/s — the clamp is the terminal velocity
+that keeps a 60 fps step inside the 1.6 m mouth band), out of a floor
+hatch you are thrown UP when you came in fast and stand on it when you did
+not, out of a wall door you step clear as before. The mouth you came out
+of is **HELD** (`H.portal.hold`) until the body leaves it, so the pair
+never re-fires on itself. Simulated headlessly with the shipped numbers
+(scratch harness, not a playtest): floor at 0 + ceiling at 2.7 m = a fall
+that never lands, terminal in ~1 s. map.js throttles the crossing's SFX to
+one every 260 ms (the loop crosses ~30×/s — the beat sang thirty times).
+**TWO BUTTONS**: LEFT CLICK places THRESHOLD A, RIGHT CLICK places
+THRESHOLD B (right-click no longer holsters — F and Q do). The slot is
+explicit end to end: `_hqPortalPlaceAim(slot)` → `spec.slot` → data.js
+`hqPortalPlace` (`spec.slot` / `opts.slot`, else the old Portal order), so
+a named slot MOVES ITS OWN ROW and never blocks itself in the aim.
+**TWO COLOURS, ALWAYS**: `HQ_PORTAL_COLORS.a` cyan `#49b0ff` / `.b` amber
+`#ff8a2b` paint the frame's tint, both jamb lamps, the mouth glow and THE
+APERTURE (a new additive pane + rim filling the opening — the read that
+says A from B across a room); `HQ_PORTAL_RULES.colors` / `colorNames` /
+`buttons` / `surfaces` are the words for them, and the CSS plate wears
+`.hq-plate-portal-a` / `-b`. A row filed before rev 2 has no `surf` and
+reads as a floor door. `npm test` runs `hq-portal.test.js` (11 tests).
+UNSEEN LIVE (RULE #1c): all of it — the ghost on a wall and a ceiling, the
+aperture's brightness, the hatch's leaf standing open in the floor, the
+fall's speed in a tall room (a cave chamber, the hall), a wall door's drop
+to the floor, and the two colours against each room's own light.
+
 ## THE PROMOTION LADDER + THE STABILIZATION CHECKLIST + the door gun standard issue — 2026-09-15 rev 15, local delivery
 **Why nobody ranked up**: `door.clearance` was only ever written by the dev
 hook `window._doorPromote(n)` (the story track that was to promote never

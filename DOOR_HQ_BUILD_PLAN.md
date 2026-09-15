@@ -7653,3 +7653,49 @@ rotunda — one floor, one lobby, two rooms; the rings stay open.
   three-renderer.js, map.js → R2; index.html
   (`?v=20260914-hq-executive-01-cors`) → Render; doorhq.test.js, this
   file, DOOR_MASTER.md, CLAUDE.md → the repo.
+
+### 2026-09-15 rev 19 — 9.5 REV 2: THE DOOR GUN TAKES ANY SURFACE
+The user's brief, in full: the gun places a door on whatever surface it is
+aimed at (floor · WALL · CEILING), the door lies FLAT in that surface's
+own plane, two buttons place the two thresholds separately, and the pair
+is always two colours.
+- **The aim** (three-renderer.js `_hqPortalAim(slot)`): three surface
+  kinds off one ray march — the room's ceiling plane (`_hqPortalCeil`: a
+  box room's `shell.h`, a bay's `wallH`; an open room / the dome have
+  none), the walkable floor set (`_hqPortalSurf`), and the WALL, bisected
+  by `_hqPortalWallHit` with the normal read off the solidness gradient
+  (`_hqPortalSolidAt`) either side in x and z. `_hqPortalFits` carries the
+  footprint rule per kind. A ceiling is never refused for being overhead,
+  and the twin gap is 3D — floor under ceiling is a COLUMN, the point of
+  the whole thing.
+- **Flat on the surface**: `_hqPortalBasis(face, surf)` (local +Z = the
+  surface normal, local +Y = the door's up) → the frame's quaternion. The
+  WALL case reproduces the old `rotation.y` exactly (verified headlessly
+  against real three), so a standing door is unchanged; a flat door drops
+  its sill / cap / seal, keeps its leaf standing open and lays NO
+  blockers.
+- **The crossing**: `_hqTickPortalCross` (feet for a floor hatch, head for
+  a ceiling one) → `opts.onPortalCross` → map.js `_hqPortalStep`;
+  `_hqPortalHop(slot, opts)` leaves along the twin's own normal carrying
+  the entry speed (clamped 2–18 m/s), and the mouth you came out of is
+  HELD until you leave it. Headless simulation with the shipped numbers:
+  a floor hatch at 0 under a ceiling hatch at 2.7 m is a fall that never
+  lands, terminal in ~1 s, ~30 crossings/s — so map.js throttles the
+  crossing's SFX to one per 260 ms.
+- **Two buttons / two colours**: LEFT CLICK = A, RIGHT CLICK = B (F / Q
+  holster); the slot rides `spec.slot` into data.js `hqPortalPlace`, so a
+  named slot moves its own row and never blocks itself.
+  `HQ_PORTAL_COLORS` (A cyan, B amber) paints the frame tint, both jamb
+  lamps, the mouth glow and the new APERTURE pane; `HQ_PORTAL_RULES`
+  gained `surfaces` / `colors` / `colorNames` / `buttons`, the plate wears
+  `.hq-plate-portal-a` / `-b`.
+- **Tests**: `hq-portal.test.js` 11 tests (3 new). Full suite 1367 pass /
+  0 fail / 4 skips.
+- **Delivery:** `ENTROPY_WARS_DOOR_GUN_SURFACES.zip` — three-renderer.js,
+  data.js, map.js, styles-base.css → R2; index.html
+  (`?v=20260915-doorgun-surfaces-01-cors`) → Render; hq-portal.test.js,
+  this file, CLAUDE.md → the repo.
+- **Unseen live (RULE #1c):** all of it — the ghost on a wall and a
+  ceiling, the aperture's brightness, the open leaf lying in the floor,
+  the fall's speed in a tall room, a wall door's drop to the floor, and
+  the two colours against each room's own light.
