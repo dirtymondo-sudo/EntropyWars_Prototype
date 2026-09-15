@@ -2507,3 +2507,19 @@ spot — the conspiracy theorist at the bathroom sink. Every number is a
 REC; every line a draft (A15). The register grew thirteen numbered rooms
 (the lobbies, the stair, the tunnel and the closet wear none — rule 2).
 Nothing on `state`, nothing relayed. Unseen live. Next: 9.4.
+
+### 2026-09-15 rev 15 — THE PROMOTION LADDER, THE STABILIZATION CHECKLIST, the door gun standard issue (local)
+The user: "I have plenty of keys but I am stuck at doormat" — nothing in the
+game ever wrote `door.clearance` (the story track never landed), so the
+rank doors, the penthouse and the Bureau were unreachable. A4's ladder is
+FIELD WORK now: data.js `HQ_PROMOTION` (L2 DOORSTOP 1 stabilized · L3
+KNOCKER 3 + 12 Keys · L4 KEYHOLDER 6 + 24 · L5 GATEKEEPER 12 + 48 · L6 THE
+DOORMAN 20 + 96 — every number a REC, tune the table); `doorClearance` reads
+the HIGHER of the story number and `hqFieldClearance`, so `_doorPromote`
+still works and the building's ceremony (3.4) fires by itself. THE
+STABILIZATION CHECKLIST (`hqSiteChecklist`): per win condition, the tick,
+what it is and which modes file it — on the match-select SITE FILE (every
+variant), the hall's threshold panel, the crossing console and the battle
+marker; the officer sheet and every red CLEARANCE lamp state the next rung.
+Row 31's door gun is STANDARD ISSUE for the test (`HQ_PORTAL_RULES.free`),
+the user's call; the Quartermaster's signature returns with `free: false`.

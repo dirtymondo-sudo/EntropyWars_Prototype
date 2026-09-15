@@ -1124,7 +1124,8 @@
             html += '<div class="hq-rows">';
             if (ic) html += row('EMPLOYEE No.', 'DERIVED AT INTAKE · NEVER REISSUED', _hqEsc(ic.empNo || '—'));
             if (ic && ic.callsign) html += row('CALLSIGN', 'EDITED ON THE CARD, AT THE WINDOW', _hqEsc(ic.callsign));
-            html += row('CLEARANCE', 'STORY PROGRESS — NOT THE RANK', `L${cl.level} · ${_hqEsc(cl.title)}`);
+            { const rp = (typeof window.hqRankProgress === 'function') ? window.hqRankProgress(profile) : null;
+              html += row('CLEARANCE', rp && rp.next ? `NEXT · L${rp.next.level} ${_hqEsc(rp.next.title)} AT ${rp.next.stabilized} STABILIZED${rp.next.keys ? ' + ' + rp.next.keys + ' KEYS' : ''}${rp.met ? ' · MET — ACKNOWLEDGED ON ARRIVAL' : ''}` : 'THE TOP OF THE LADDER', `L${cl.level} · ${_hqEsc(cl.title)}`, rp && rp.met ? 'stabilized' : 'open'); }
             if (rank) html += row('RANK', 'THE LADDER, OFF THE RATING', `${rank.icon || ''} ${_hqEsc(rank.name || '')}${rank._elo != null ? ' · ' + Math.round(rank._elo) : ''}`);
             if (mr) html += row('CAREER', `${mr.matches | 0} CROSSINGS · ${mr.wins | 0} STABILIZED · ${mr.exits | 0} EXITS`, `${Math.round((mr.rate || 0) * 100)}% WIN`, (mr.rate || 0) >= 0.5 ? 'stabilized' : 'unstable');
             if (mr) html += row('CONDITION', _hqEsc(mr.note || ''), _hqEsc(mr.condition || ''), mr.tone || 'open');
@@ -1469,6 +1470,22 @@
             if (!sm) return '';
             const labels = DOOR_HQ.masteryLabels || {};
             return DOOR_HQ.masteryConditions.map(c => `<i class="hq-check ${sm.have[c] ? 'ok' : 'no'}" title="${_hqEsc(c)}">${sm.have[c] ? '☑' : '☐'} ${_hqEsc(labels[c] || c)}</i>`).join('');
+        }
+        /* THE STABILIZATION CHECKLIST (2026-09-15 rev 15): one row per win condition — the tick, what it is,
+           which modes file it. data.js hqSiteChecklist is the one read; the threshold panel, the crossing
+           console and the battle marker all render this. */
+        function _hqChecklistHtml(id, profile) {
+            const ck = (typeof window.hqSiteChecklist === 'function') ? window.hqSiteChecklist(id, profile) : null;
+            if (!ck) return '';
+            let html = `<div class="hq-pp-sec"><b>TO STABILIZE THIS THRESHOLD</b><span>${ck.done} / ${ck.total} ON FILE</span></div><div class="hq-rows hq-checklist">`;
+            ck.rows.forEach(r => {
+                html += `<div class="hq-row hq-row-tray ${r.done ? 'done' : ''}"><b>${r.done ? '☑' : '☐'} ${_hqEsc(r.name)}</b><span>${_hqEsc(r.how)} <em>${_hqEsc(r.modes.join(' · ').toUpperCase())}</em></span><i class="hq-lamp-chip st-${r.done ? 'stabilized' : 'unstable'}">${r.done ? 'FILED' : 'OPEN'}</i></div>`;
+            });
+            html += '</div>';
+            html += `<p class="hq-panel-note">${_hqEsc(ck.note)}</p>`;
+            const rp = (typeof window.hqRankProgress === 'function') ? window.hqRankProgress(profile) : null;
+            if (rp && rp.next) html += `<p class="hq-panel-note">YOUR CLEARANCE · L${rp.level} ${_hqEsc(rp.title)} · ${rp.stabilized} / ${rp.total} STABILIZED · ${rp.keys} KEYS. Next: L${rp.next.level} ${_hqEsc(rp.next.title)} at ${rp.next.stabilized} stabilized${rp.next.keys ? ' + ' + rp.next.keys + ' Keys' : ''}.</p>`;
+            return html;
         }
         /* The Code Red brief (HQ plan 3.3): who was reported where, what it
            pays, RESPOND (the crossing with the entity pinned). Shared by the
@@ -2043,8 +2060,7 @@
             if (meta && meta.desc) html += `<p class="hq-panel-note">FIELD: ${_hqEsc(meta.desc)}</p>`;
             if (d.note) html += `<p class="hq-panel-note">THE DOOR: ${_hqEsc(d.note)}</p>`;
             html += `<div class="hq-chips"><span>ENTITIES ON FILE</span>${nat ? pool.slice(0, nat).map(r => `<i class="hq-chip">${_hqEsc(String(r).toUpperCase())}</i>`).join('') : '<i class="hq-chip dim">NONE — THE BAY FIELDS ITS NEIGHBOURS</i>'}</div>`;
-            const checks = _hqChecksHtml(sm);
-            if (checks) html += `<div class="hq-chips"><span>ON FILE FOR THIS THRESHOLD${sm ? ` · ${sm.done}/${sm.total}` : ''}</span>${checks}</div>`;
+            html += _hqChecklistHtml(id, profile) || (_hqChecksHtml(sm) ? `<div class="hq-chips"><span>ON FILE FOR THIS THRESHOLD${sm ? ` · ${sm.done}/${sm.total}` : ''}</span>${_hqChecksHtml(sm)}</div>` : '');
             const siteRoom = _hqSiteRoomId(id);
             const walkIn = (siteRoom && _hqRoomExists(siteRoom) && siteRoom !== _hqCurRoom && t.door && t.door.action && t.door.action.mission) ? `<button class="hq-btn" ${canCross ? '' : 'disabled'} data-room="${_hqEsc(siteRoom)}" data-at="egress" title="The site is a room: walk the board, cross from the console inside">WALK IN ▸ ROOM ${_hqEsc(_hqSiteNo(id) || '')}</button>` : '';
             html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" ${canCross ? '' : 'disabled'} data-cross="${_hqEsc(id)}" title="Arena · 4v4 on the 8×8 Δ board · CPU fields the site's natives">CROSS ▸ Δ BOARD · 4v4</button><button class="hq-btn" ${canCross ? '' : 'disabled'} data-deep="${_hqEsc(id)}" title="Arena on the full map at its own team size">DEEP CROSSING ▸ FULL SITE${meta && meta.teamSize ? ` · ${meta.teamSize}v${meta.teamSize}` : ''}</button>${walkIn}</div>`;
@@ -2085,7 +2101,14 @@
         function _hqGateText(d, cl, profile) {
             const k = (typeof window.hqKeys === 'function') ? window.hqKeys(profile) : { keys: 0 };
             const parts = [];
-            if (d.minClearance && cl.level < d.minClearance) parts.push(`CLEARANCE L${d.minClearance} required. Your card reads L${cl.level} · ${_hqEsc(cl.title)}.`);
+            if (d.minClearance && cl.level < d.minClearance) {
+                parts.push(`CLEARANCE L${d.minClearance} required. Your card reads L${cl.level} · ${_hqEsc(cl.title)}.`);
+                try {
+                    const need = (window.HQ_PROMOTION || []).find(r => r.level === d.minClearance);
+                    const rp = (typeof window.hqRankProgress === 'function') ? window.hqRankProgress(profile) : null;
+                    if (need && rp) parts.push(`L${d.minClearance} is ${need.stabilized} stabilized threshold${need.stabilized === 1 ? '' : 's'}${need.keys ? ' + ' + need.keys + ' Keys' : ''}; you have ${rp.stabilized} stabilized and ${rp.keys} Keys. A threshold is stabilized when its crossing is won every way on its checklist.`);
+                } catch (e) {}
+            }
             if (d.requiresKeys) parts.push(`${d.requiresKeys} KEYS required · you hold ${k.keys}${k.keys < d.requiresKeys ? ` (${d.requiresKeys - k.keys} short)` : ''}. Keys are the hourglasses you secure in the field; every one you have ever picked up counts.`);
             return parts.join(' ');
         }

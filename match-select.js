@@ -226,14 +226,34 @@ function Stepper({ value, min, max, unit, onChange }) {
 }
 
 /* the mastery checklist on file for a site (HQ plan 3.1) */
-function SiteChecks({ siteId }) {
-  const sm = (typeof window.hqSiteMastery === 'function') ? window.hqSiteMastery(siteId, activeProfile()) : null;
+function SiteChecks({ siteId, multiplayerModes }) {
+  /* THE STABILIZATION CHECKLIST (2026-09-15 rev 15): data.js hqSiteChecklist — the tick, the how, the modes
+     that file it, then the officer's next rung; shown on EVERY variant (the user's ask: the whole
+     "what all needs to be done" on the match-select screen). Falls back to the old chips. */
   const HQ = (typeof window !== 'undefined' && window.DOOR_HQ) || null;
-  if (!sm || !HQ || !Array.isArray(HQ.masteryConditions)) return null;
-  const labels = HQ.masteryLabels || {};
-  return h('div', { className: 'ms-tty-chips' },
-    h('span', null, 'ON FILE FOR THIS THRESHOLD · ' + sm.done + '/' + sm.total),
-    ...HQ.masteryConditions.map(c => h('i', { key: c, className: 'hq-check ' + (sm.have[c] ? 'ok' : 'no'), title: c }, (sm.have[c] ? '☑ ' : '☐ ') + (labels[c] || c)))
+  if (!HQ || !Array.isArray(HQ.masteryConditions)) return null;
+  const profile = activeProfile();
+  const ck = (typeof window.hqSiteChecklist === 'function') ? window.hqSiteChecklist(siteId, profile, { modes: multiplayerModes }) : null;
+  if (!ck) {
+    const sm = (typeof window.hqSiteMastery === 'function') ? window.hqSiteMastery(siteId, profile) : null;
+    if (!sm) return null;
+    const labels = HQ.masteryLabels || {};
+    return h('div', { className: 'ms-tty-chips' },
+      h('span', null, 'ON FILE FOR THIS THRESHOLD · ' + sm.done + '/' + sm.total),
+      ...HQ.masteryConditions.map(c => h('i', { key: c, className: 'hq-check ' + (sm.have[c] ? 'ok' : 'no'), title: c }, (sm.have[c] ? '☑ ' : '☐ ') + (labels[c] || c)))
+    );
+  }
+  const rp = (typeof window.hqRankProgress === 'function') ? window.hqRankProgress(profile) : null;
+  return h('div', { className: 'ms-tty-checks' },
+    h('div', { className: 'door-file-h' }, 'TO STABILIZE THIS THRESHOLD · ' + ck.done + '/' + ck.total + ' ON FILE'),
+    ...ck.rows.map(r => h('div', { key: r.cond, className: 'ms-tty-check' + (r.done ? ' ok' : '') },
+      h('i', { className: 'hq-check ' + (r.done ? 'ok' : 'no') }, r.done ? '☑' : '☐'),
+      h('b', null, r.name),
+      h('span', null, r.how, ' ', h('em', null, r.modes.join(' · ').toUpperCase())),
+      h('u', null, r.done ? 'FILED' : 'OPEN')
+    )),
+    h('p', { className: 'ms-tty-note' }, ck.note),
+    rp && rp.next && h('p', { className: 'ms-tty-note' }, 'YOUR CLEARANCE · L' + rp.level + ' ' + rp.title + ' · ' + rp.stabilized + '/' + rp.total + ' STABILIZED · ' + rp.keys + ' KEYS. NEXT: L' + rp.next.level + ' ' + rp.next.title + ' AT ' + rp.next.stabilized + ' STABILIZED' + (rp.next.keys ? ' + ' + rp.next.keys + ' KEYS' : '') + '.')
   );
 }
 
@@ -298,7 +318,7 @@ function SiteFile({ mp, variant, pre, gameModes, multiplayerModes, gmId }) {
       h('span', null, nativesLabel),
       ...(natives.length ? natives.map((r, i) => h('i', { key: r + i, className: 'hq-chip' }, String(r).toUpperCase())) : [h('i', { key: 'none', className: 'hq-chip dim' }, 'NONE — FREE DRAW')])
     ),
-    variant === 'site' && h(SiteChecks, { siteId: siteId }),
+    h(SiteChecks, { siteId: siteId, multiplayerModes: multiplayerModes }),
     crossings.length > 0 && h('div', null,
       h('div', { className: 'door-file-h' }, (variant === 'site' ? '2.  ' : '2.  ') + (L.crossings || 'KNOWN CROSSINGS'), h('b', null, crossings.length + ' ON FILE · point of entry')),
       h('div', { style: { display: 'flex', flexWrap: 'wrap' } },

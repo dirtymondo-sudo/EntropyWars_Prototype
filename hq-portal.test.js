@@ -26,8 +26,9 @@ const IX = fs.readFileSync(__dirname + '/index.html', 'utf8');
 const CSS = fs.readFileSync(__dirname + '/styles-base.css', 'utf8');
 const profile = (o) => Object.assign({ username: 'TEST', account: { gold: 0, unlockedUnits: [], freeTokens: 0 }, door: { clearance: 2, hq: { keys: 30 } } }, o || {});
 
-test('THE RULES: a cost in Keys, the door rank (KEYHOLDER = L2), a reach, the two gaps, the plain leaf, two slots', () => {
-    assert.equal(R.cost, 24); assert.equal(R.rank, 2);
+test('THE RULES: STANDARD ISSUE for the test (free, no cost, no rank), a reach, the two gaps, the plain leaf, two slots', () => {
+    assert.equal(R.free, true, 'the user\'s call 2026-09-15: every officer holds it');
+    assert.equal(R.cost, 0); assert.equal(R.rank, 1);
     assert.ok(R.reach >= 8 && R.reach <= 30, 'a reach you can see across a room');
     assert.ok(R.minGap >= 1.2 && R.minFromWalker >= 1 && R.footprint >= 0.5);
     assert.equal(R.leaf, 'leaf_coffee'); assert.ok(HQ.catalogue.leaf_coffee && HQ.catalogue.leaf_coffee.file);
@@ -48,30 +49,39 @@ test('THE RECORD: empty by default, a malformed row is refused, Portal\'s order 
     assert.equal(g('hqPortalTwin')('a'), 'b'); assert.equal(g('hqPortalTwin')('b'), 'a');
 });
 
-test('THE ISSUE: KEYHOLDER + the Keys, spent from the issued ledger, once; the status reads it back; the dev force hands it over without a signature', () => {
+test('THE ISSUE: standard issue — every officer holds it (free), so the signature path is idle; the rank / Keys refusals come back when `free` is off', () => {
     const status = g('hqPortalStatus'), issue = g('hqPortalIssue');
-    const low = profile({ door: { clearance: 1, hq: { keys: 99 } } });
-    assert.equal(status(low).canIssue, false); assert.equal(status(low).reason, 'rank');
-    assert.equal(issue(low).reason, 'rank');
-    const poor = profile({ door: { clearance: 3, hq: { keys: 5 } } });
-    assert.equal(status(poor).reason, 'keys'); assert.equal(issue(poor).ok, false);
+    const low = profile({ door: { clearance: 1, hq: { keys: 0 } } });
+    assert.equal(status(low).issued, true, 'a DOORMAT with no Keys holds it');
+    assert.equal(status(low).free, true); assert.equal(status(low).canIssue, false);
+    assert.equal(issue(low).reason, 'issued', 'nothing to sign for');
     const p = profile();
-    const s0 = status(p);
-    assert.equal(s0.issued, false); assert.equal(s0.canIssue, true); assert.equal(s0.keys, 30); assert.equal(s0.next, 'a');
-    const r = issue(p);
-    assert.equal(r.ok, true); assert.equal(r.cost, 24); assert.equal(r.keys, 6);
-    assert.equal(D.hqKeys(p).keys, 6, 'spent from the issued ledger (door.hq.keys), the recovered count untouched');
-    assert.equal(p.door.hq.portal.issued, true);
-    assert.equal(issue(p).reason, 'issued', 'once');
-    assert.equal(status(p).issued, true);
-    const forced = status(profile({ door: { clearance: 1, hq: {} } }), { force: true });
-    assert.equal(forced.issued, true); assert.equal(forced.forced, true);
+    assert.equal(status(p).issued, true); assert.equal(status(p).keys, 30, 'no Keys spent'); assert.equal(status(p).next, 'a');
+    /* the signature path, with the switch off */
+    const R2 = D.HQ_PORTAL_RULES; const save = { free: R2.free, cost: R2.cost, rank: R2.rank };
+    try {
+        R2.free = false; R2.cost = 24; R2.rank = 2;
+        const l2 = profile({ door: { clearance: 1, hq: { keys: 99 } } });
+        assert.equal(status(l2).canIssue, false); assert.equal(status(l2).reason, 'rank'); assert.equal(issue(l2).reason, 'rank');
+        const poor = profile({ door: { clearance: 3, hq: { keys: 5 } } });
+        assert.equal(status(poor).reason, 'keys'); assert.equal(issue(poor).ok, false);
+        const q = profile();
+        assert.equal(status(q).issued, false); assert.equal(status(q).canIssue, true);
+        const r = issue(q);
+        assert.equal(r.ok, true); assert.equal(r.cost, 24); assert.equal(r.keys, 6);
+        assert.equal(D.hqKeys(q).keys, 6, 'spent from the issued ledger (door.hq.keys), the recovered count untouched');
+        assert.equal(q.door.hq.portal.issued, true);
+        assert.equal(issue(q).reason, 'issued', 'once');
+        const forced = status(profile({ door: { clearance: 1, hq: {} } }), { force: true });
+        assert.equal(forced.issued, true); assert.equal(forced.forced, true);
+    } finally { Object.assign(R2, save); }
 });
 
 test('A PLACEMENT: needs the issue, a real room, finite numbers, a gap from its twin; A, then B, then A moves; the twin rides back; the leaf is the room\'s', () => {
     const place = g('hqPortalPlace'), status = g('hqPortalStatus');
     const p = profile();
-    assert.equal(place(p, { room: 'foyer', x: 0, y: 0, z: 0, face: 0 }).reason, 'unissued');
+    { const R2 = D.HQ_PORTAL_RULES, was = R2.free; R2.free = false;
+      try { assert.equal(place(p, { room: 'foyer', x: 0, y: 0, z: 0, face: 0 }).reason, 'unissued', 'with the switch off, an unsigned officer places nothing'); } finally { R2.free = was; } }
     g('hqPortalIssue')(p);
     assert.equal(place(p, { room: 'no_such_room', x: 0, y: 0, z: 0 }).reason, 'room');
     assert.equal(place(p, { room: 'foyer', x: NaN, y: 0, z: 0 }).reason, 'spec');

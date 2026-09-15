@@ -4530,6 +4530,18 @@ body.diorama-3d .tile-underpass.jump::before {
 .ms-tty-field > label { font-size: 9px; letter-spacing: 0.26em; text-transform: uppercase; color: var(--ph-dim); }
 .ms-tty-field > label i { font-style: normal; color: var(--ph-faint); margin-left: 8px; letter-spacing: 0.12em; }
 .ms-tty-field .ms-tty-chips { gap: 5px; }
+/* THE STABILIZATION CHECKLIST (2026-09-15 rev 15): one row per win condition on the SITE FILE */
+.ms-tty-checks { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; margin: 4px 0; }
+.ms-tty-check { display: grid; grid-template-columns: 14px 78px 1fr auto; gap: 6px; align-items: baseline; padding: 4px 6px; border: 1px solid rgba(120, 200, 140, 0.18); border-radius: 4px; background: rgba(40, 60, 44, 0.18); }
+.ms-tty-check.ok { border-color: rgba(57, 255, 106, 0.35); }
+.ms-tty-check .hq-check { font-size: 11px; }
+.ms-tty-check b { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.16em; }
+.ms-tty-check span { font-size: 10px; line-height: 1.35; opacity: 0.85; }
+.ms-tty-check span em { font-style: normal; font-family: 'IBM Plex Mono', monospace; font-size: 8px; letter-spacing: 0.14em; opacity: 0.8; }
+.ms-tty-check u { text-decoration: none; font-family: 'IBM Plex Mono', monospace; font-size: 8px; letter-spacing: 0.18em; color: #c9a24a; }
+.ms-tty-check.ok u { color: #39ff6a; }
+.hq-checklist .hq-row.done b { color: #39ff6a; }
+.hq-checklist .hq-row span em { font-style: normal; font-family: 'IBM Plex Mono', monospace; font-size: 8px; letter-spacing: 0.14em; opacity: 0.8; }
 .ms-tty-ro { padding: 8px 11px; border: 1px solid var(--ph-line); background: rgba(0,0,0,0.3); display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--ph); }
 .ms-tty-ro em { font-style: normal; font-size: 8px; letter-spacing: 0.18em; color: var(--ph-faint); }
 .ms-tty-step { display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--ph-line); background: rgba(0,0,0,0.3); padding: 4px 6px; }

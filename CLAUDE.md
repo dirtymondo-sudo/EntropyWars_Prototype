@@ -3303,3 +3303,39 @@ add a key BEFORE q); anything new `_hqEnter` (map.js) references must be
 guarded with `typeof` — scene-lifecycle.test.js evals it alone. Unseen
 live (RULE #1c): the ghost, the frame's scale, the swing, the hop's flash,
 the cross-room landing.
+
+## THE PROMOTION LADDER + THE STABILIZATION CHECKLIST + the door gun standard issue — 2026-09-15 rev 15, local delivery
+**Why nobody ranked up**: `door.clearance` was only ever written by the dev
+hook `window._doorPromote(n)` (the story track that was to promote never
+landed), so every officer stayed L1 DOORMAT and every `minClearance` gate
+(the rank leaves, the penthouse, the Bureau, the garden, 4B) was dead.
+Clearance is FIELD WORK now: data.js **`HQ_PROMOTION`** (right before
+`doorClearance`) = per rung `{ level, stabilized, keys }` (L2 1 site · L3
+3 + 12 Keys · L4 6 + 24 · L5 12 + 48 · L6 20 + 96 — tune the table, nothing
+else); **`hqFieldClearance(profile)`** = the highest rung met by
+`hqMasteryCount(profile).mastered` + `hqKeys(profile).keys`;
+**`doorClearance`** reads the HIGHER of the story number and the field
+rung (a chapter can promote early, the field never demotes; the building's
+ceremony `_hqCheckPromotion` fires on its own when it climbs);
+**`hqRankProgress(profile)`** = the ONE "how do I rank up" read (`level,
+title, stabilized, total, keys, next { level, title, stabilized, keys },
+missing [{ what, need, have, short }], met, rows, note`). **THE
+STABILIZATION CHECKLIST**: **`hqSiteChecklist(mapId, profile, { modes })`**
+(data.js, after `hqSiteMastery`; `HQ_MASTERY_HOW` = the copy) = per
+`masteryConditions` row `{ cond, label, name, done, how, modes }` — the
+modes come from `MULTIPLAYER_MODES.winConditions` (Wipeout: Arena · TDM ·
+Simul · Clash · Gauntlet; the Cube and the Keys: Arena only; the dungeon
+never), the Keys row states `keysToWin` of `keySpawnCount`; a Δ id resolves
+to its site. Readers: match-select.js `SiteChecks` (`.ms-tty-checks`, on
+EVERY variant now, the officer's next rung under it), map.js
+`_hqChecklistHtml(id, profile)` inside `_hqThresholdPanelHtml` — so the
+hall's threshold door, the CROSSING console and the BATTLE marker all show
+it — the pause menu's OFFICER row (the next rung) and `_hqGateText` (a red
+lamp says what L-n costs and what you have). **THE DOOR GUN IS STANDARD
+ISSUE** (the user's call, for the test): `HQ_PORTAL_RULES.free: true` (cost
+0, rank 1) → `hqPortalStatus(...).issued` for everyone; `free: false, cost:
+24, rank: 4` brings the Quartermaster's signature back (KEYHOLDER is L4 —
+the old `rank: 2` was DOORSTOP). `npm test` runs `rank-ladder.test.js`.
+Unseen live (RULE #1c): the checklist's grid on the CRT at narrow widths,
+the promotion notice firing on the first arrival for a profile that
+already has stabilized sites.

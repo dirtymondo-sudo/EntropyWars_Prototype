@@ -17561,9 +17561,58 @@ function doorEmployeeNo(profile) {
 }
 /* Story clearance from the profile's door field (L1 until the story track
    lands). Returns {level, title}. */
+/* ── THE PROMOTION LADDER (2026-09-15 rev 15) ───────────────────────────
+   The story track (4.1) was to promote the officer and never landed, so
+   everyone stayed L1 DOORMAT for ever. Clearance is FIELD WORK now: each
+   rung asks for a number of STABILIZED thresholds (a site won by every
+   DOOR_HQ.masteryConditions win condition — hqMasteryCount) and a number
+   of Keys (hqKeys, recovered + issued). `door.clearance` (the story's
+   number, `window._doorPromote`) still counts — the card reads the HIGHER
+   of the two, so a chapter can promote early and the field can never
+   demote. Tune the numbers here; hqRankProgress is the one read for
+   every "how do I rank up" line. The building's ceremony
+   (map.js _hqCheckPromotion) fires on its own when the level climbs. */
+const HQ_PROMOTION = [
+    { level: 1, stabilized: 0,  keys: 0 },
+    { level: 2, stabilized: 1,  keys: 0 },
+    { level: 3, stabilized: 3,  keys: 12 },
+    { level: 4, stabilized: 6,  keys: 24 },
+    { level: 5, stabilized: 12, keys: 48 },
+    { level: 6, stabilized: 20, keys: 96 },
+];
+function hqFieldClearance(profile) {
+    if (!profile) return 1;
+    let stab = 0, keys = 0;
+    try { if (typeof hqMasteryCount === 'function' && typeof DOOR_HQ !== 'undefined') stab = hqMasteryCount(profile).mastered | 0; } catch (e) {}
+    try { if (typeof hqKeys === 'function' && typeof DOOR_HQ !== 'undefined') keys = hqKeys(profile).keys | 0; } catch (e) {}
+    let lv = 1;
+    for (const r of HQ_PROMOTION) if (stab >= r.stabilized && keys >= r.keys) lv = Math.max(lv, r.level);
+    return Math.min(lv, DOOR_TEXT.CLEARANCE.length);
+}
 function doorClearance(profile) {
-    const lv = Math.max(1, Math.min(DOOR_TEXT.CLEARANCE.length, (profile && profile.door && profile.door.clearance) | 0 || 1));
+    const story = (profile && profile.door && profile.door.clearance) | 0 || 1;
+    const lv = Math.max(1, Math.min(DOOR_TEXT.CLEARANCE.length, Math.max(story, hqFieldClearance(profile))));
     return DOOR_TEXT.CLEARANCE[lv - 1];
+}
+/* the ONE read for "how do I rank up": the current rung, the next one and what it still asks for */
+function hqRankProgress(profile) {
+    const cl = doorClearance(profile);
+    let stab = 0, total = 0, keys = 0;
+    try { const mc = hqMasteryCount(profile); stab = mc.mastered | 0; total = mc.total | 0; } catch (e) {}
+    try { keys = hqKeys(profile).keys | 0; } catch (e) {}
+    const nextRow = HQ_PROMOTION.find(r => r.level === cl.level + 1) || null;
+    const nextCl = nextRow ? DOOR_TEXT.CLEARANCE[nextRow.level - 1] : null;
+    const missing = [];
+    if (nextRow) {
+        if (stab < nextRow.stabilized) missing.push({ what: 'stabilized', need: nextRow.stabilized, have: stab, short: nextRow.stabilized - stab });
+        if (keys < nextRow.keys) missing.push({ what: 'keys', need: nextRow.keys, have: keys, short: nextRow.keys - keys });
+    }
+    const rows = HQ_PROMOTION.map(r => ({ level: r.level, title: DOOR_TEXT.CLEARANCE[r.level - 1].title, stabilized: r.stabilized, keys: r.keys,
+                                          met: stab >= r.stabilized && keys >= r.keys, current: r.level === cl.level }));
+    const note = !nextRow ? 'THE DOORMAN. There is no door above this one.'
+        : (!missing.length ? 'The next rung is met — the building acknowledges it on your next arrival.'
+        : 'Stabilize a threshold = win its crossing every way on the checklist (' + (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.masteryConditions ? DOOR_HQ.masteryConditions.map(c => (DOOR_HQ.masteryLabels || {})[c] || c).join(' · ') : 'WIPEOUT · CUBE · KEYS') + '). Keys are the hourglasses you secure in the field.');
+    return { level: cl.level, title: cl.title, door: cl.door, stabilized: stab, total, keys, next: nextCl ? { level: nextCl.level, title: nextCl.title, stabilized: nextRow.stabilized, keys: nextRow.keys } : null, missing, met: !!nextRow && !missing.length, rows, note };
 }
 /* Canon date for stamps/cards — every battle happens somewhen between
    12500 BC and 3333 AD (battle.js _lsRandomYear uses the same window). */
@@ -17583,6 +17632,9 @@ if (typeof window !== 'undefined') {
     window.doorCaseNo = doorCaseNo;
     window.doorEmployeeNo = doorEmployeeNo;
     window.doorClearance = doorClearance;
+    window.HQ_PROMOTION = HQ_PROMOTION;
+    window.hqFieldClearance = hqFieldClearance;
+    window.hqRankProgress = hqRankProgress;
     window.doorCanonDate = doorCanonDate;
 }
 
@@ -27039,6 +27091,34 @@ function hqSiteMastery(mapId, profile) {
     const missing = conds.filter(c => !have[c]);
     return { site, have, done: conds.length - missing.length, total: conds.length, missing, mastered: missing.length === 0 };
 }
+/* THE STABILIZATION CHECKLIST (2026-09-15 rev 15): hqSiteMastery with the HOW — per win condition, what
+   it is, which game modes can file it (state.js MULTIPLAYER_MODES.winConditions) and whether the Δ board
+   counts (it does — a win on the 8×8 counts for the site). The ONE read behind match-select's SITE FILE,
+   the hall's threshold panel, the console and the battle marker. `rows[].done` is the tick. */
+const HQ_MASTERY_HOW = {
+    wipeout:               { name: 'WIPEOUT',        how: 'Defeat every enemy unit on the board.' },
+    tower_destroyed:       { name: 'THE CUBE',       how: 'Destroy the enemy team’s Cube (Arena’s objective — siege it, hold the Nexus zones for ×1.5).' },
+    hourglasses_collected: { name: 'THE KEYS',       how: 'Carry {keys} of the {pool} Keys scattered on the board at once (Arena — INSPECT a Key tile to secure it).' },
+};
+function hqSiteChecklist(mapId, profile, opts) {
+    opts = opts || {};
+    const sm = hqSiteMastery(mapId, profile);
+    const M = opts.modes || ((typeof MULTIPLAYER_MODES !== 'undefined') ? MULTIPLAYER_MODES : ((typeof window !== 'undefined' && window.MULTIPLAYER_MODES) || null));
+    const labels = DOOR_HQ.masteryLabels || {};
+    let keysToWin = 3, pool = 5;
+    try { if (M && M.arena) { keysToWin = M.arena.keysToWin || keysToWin; pool = M.arena.keySpawnCount || pool; } } catch (e) {}
+    const rows = DOOR_HQ.masteryConditions.map(c => {
+        const h = HQ_MASTERY_HOW[c] || { name: labels[c] || c, how: '' };
+        let modes = [];
+        try { if (M) for (const k in M) { const m = M[k]; if (m && Array.isArray(m.winConditions) && m.winConditions.indexOf(c) >= 0 && k !== 'dungeon') modes.push(m.label || k); } } catch (e) {}
+        if (!modes.length) modes = (c === 'wipeout') ? ['Arena', 'Team Deathmatch', 'Simul', 'Clash', 'Gauntlet'] : ['Arena'];
+        return { cond: c, label: labels[c] || c, name: h.name, done: !!sm.have[c],
+                 how: String(h.how).replace('{keys}', keysToWin).replace('{pool}', pool), modes };
+    });
+    const note = sm.mastered ? 'STABILIZED — every win condition is on file for this threshold.'
+        : 'A crossing is filed as a WIN under the condition that ended it. The Δ board and the full site both count; a match that ends on the round cap (composite score) or a loss files nothing. Every mode here is VS CPU or online.';
+    return { site: sm.site, done: sm.done, total: sm.total, mastered: sm.mastered, missing: sm.missing, rows, note };
+}
 function hqMapMastered(mapId, profile) {
     if (!profile) return false;
     return hqSiteMastery(mapId, profile).mastered;
@@ -28385,8 +28465,12 @@ function hqTapeShelf(profile) {
    wears: a SITE room's own threshold leaf (the map's catalogue door),
    `leaf_coffee` everywhere else — never a rank leaf (`hqPortalLeaf`). */
 const HQ_PORTAL_RULES = {
-    cost: 24,          // Keys the Quartermaster asks for the issue
-    rank: 2,           // KEYHOLDER — the door rank by name
+    /* 2026-09-15 rev 15 (the user's call): STANDARD ISSUE for the test — every officer holds it from intake,
+       no rank, no Keys. `free: true` is the switch; put `cost: 24, rank: 4, free: false` back to make the
+       Quartermaster sign for it again (KEYHOLDER is L4 on the ladder — the old `rank: 2` was DOORSTOP). */
+    free: true,        // standard issue — hqPortalStatus reports it issued for everyone
+    cost: 0,           // Keys the Quartermaster asks for the issue (0 while free)
+    rank: 1,           // the clearance the issue asks for (L1 = DOORMAT while free)
     reach: 14,         // metres the aim ray travels before it gives up
     minGap: 1.6,       // metres between the two placed doors
     minFromWalker: 1.2,// metres from the officer's own feet (a door under you is a door you are standing in)
@@ -28430,14 +28514,14 @@ function hqPortalStatus(profile, opts) {
     const level = (typeof doorClearance === 'function' && profile) ? (doorClearance(profile).level | 0) : 1;
     const keys = (typeof hqKeys === 'function') ? (hqKeys(profile).keys | 0) : 0;
     const forced = !!opts.force;
-    const issued = forced || rec.issued;
+    const issued = forced || rec.issued || !!HQ_PORTAL_RULES.free;
     let reason = null;
     if (!issued) {
         if (level < HQ_PORTAL_RULES.rank) reason = 'rank';
         else if (keys < HQ_PORTAL_RULES.cost) reason = 'keys';
     }
     const placed = (rec.a ? 1 : 0) + (rec.b ? 1 : 0);
-    return { issued, forced, level, rank: HQ_PORTAL_RULES.rank, keys, cost: HQ_PORTAL_RULES.cost, canIssue: !issued && !reason, reason,
+    return { issued, forced, free: !!HQ_PORTAL_RULES.free, level, rank: HQ_PORTAL_RULES.rank, keys, cost: HQ_PORTAL_RULES.cost, canIssue: !issued && !reason, reason,
              a: rec.a, b: rec.b, last: rec.last, placed, next: hqPortalNextSlot(rec), paired: placed === 2 };
 }
 /* the Quartermaster's signature: KEYHOLDER + the Keys, once — writes into the profile object handed in; the caller saves */
@@ -30132,6 +30216,7 @@ if (typeof window !== 'undefined') {
     window.hqSiteId = hqSiteId;
     window.hqSiteMastery = hqSiteMastery;
     window.hqMapMastered = hqMapMastered;
+    window.hqSiteChecklist = hqSiteChecklist; window.HQ_MASTERY_HOW = HQ_MASTERY_HOW;
     window.hqMasteryCount = hqMasteryCount;
     window.hqMissionPool = hqMissionPool;
     window.hqBayId = hqBayId;
