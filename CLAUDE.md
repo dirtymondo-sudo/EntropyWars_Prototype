@@ -2878,6 +2878,38 @@ Shared `getCubeAttackDamage` preserves actual Cube damage order and RNG executio
 
 FINAL delivery: `ENTROPY_WARS_PHASE6_BEAM_ARENA_OBJECTIVES.zip`, containing all beam, Key, Cube and wipeout changes. R2: ai.js/battle.js/map.js/data.js; Render: index.html (`20260914-ai-beam-arena-objectives-01-cors`); remaining files: repository. Sync runtime/entry files too. AI stamp `v4.11-2026-09-14-arena-cube-priority`. This supersedes interim package scopes in earlier entries. No commit, push or deployment. Next: carrier denial, move-then-inspect, residual scenarios/timing and authorized observations; Phase 6 remains open.
 
+## THE VANISHING DEPLOYABLES + THE SAME TORCH EVERYWHERE — 2026-09-15, local delivery
+**The bug**: wards, mirrors, doors, seeds, bombs, decoys and gates blinked
+out after placement and came back only when the NEXT deployable changed.
+three-renderer.js `rebuildObjects` stripped EVERY child of `objectGroup` but
+the turrets (`_ew_turretId`) and the deco group — the deployables too —
+while `deployableMeshes` kept the disposed handles and
+`_lastDeployableSerial` never changed, so `rebuildDeployables` never ran.
+Any object rebuild did it; the usual trigger was a TEXTURE landing and
+flipping `_objectsDirty` (the ward torch's own bark sheet, `_getTorchWoodTex`,
+on the first ward of the match). RULES now: (1) `rebuildObjects` skips
+anything in `deployableMeshes` or wearing `_ew_deployable` — a deployable is
+removed ONLY by `rebuildDeployables`, exactly as a turret is only by
+`rebuildTurrets`; (2) `_computeDeployableSerial` folds `_terrainVersion /
+_heightVersion / _voxelVersion` (a dig / raise under a prop re-seats it —
+the object pass used to do that by accident); (3) your OWN wards, doors,
+gate pairs and `_deployedObjects` (decoys, walls, totems) wear
+`_ew_depOwner`, so `_applyFogVisibility` never tile-gates them (mirrors and
+bombs already did). **THE SAME TORCH EVERYWHERE** (the user's rule): the
+HQ's `wall_torch` / `cave_torch` procs are `_makeTorchModel` now — the
+ward's / the map editor's / the Dutchman rail's wood-and-rope torch — built
+in metres (`_makeTorchModel({ ts: HQ_TILE_M * U, scale, noTint })`; `opts.ts`
+and `opts.noTint` are new, `HQ_TILE_M` = 1.75) and fluttered by
+**`_torchFlicker(entry, nowSec, isNight, baseInt)`**, the ONE flicker
+(`_updateTorchFlames` runs it over `_torchFlames`; an HQ proc runs it from a
+room ticker; the point light stays the catalogue's). The wall torch leans
+0.42 rad off an iron bracket like a ward hung on a cube face (data.js rows:
+`h` 1.1 / 1.9, the glow + light `y` retuned; the gun deck's torch hangs at
+mount 1.4 under its 2.7 m beam). Never draw a cone-flame torch again — a
+new torch anywhere = `_makeTorchModel` + `_torchFlicker`. `npm test` runs
+`deployables-persist.test.js`. Unseen live (RULE #1c): the torch's scale
+against the HQ walls, the bracket, the lean.
+
 ## THE GALLERY — two floors in ONE box room (HQ plan 9.2 stage 2) — 2026-09-15 rev 20, local delivery
 `shell.gallery = { h, side: 'n'|'s'|'e'|'w', w, stairAt: 'start'|'end'|null,
 rail }` on a box room (data.js) = a SLAB along one wall at height h, w

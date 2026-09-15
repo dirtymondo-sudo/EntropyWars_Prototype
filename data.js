@@ -18450,7 +18450,7 @@ const DOOR_HQ = {
         cell_bars:       { proc: 'cell_bars',       h: 2.4,  foot: 0, wall: true, mount: 0, depth: 0.12 },                   // a barred cell front on the wall; the cell behind it is painted dark
         wall_chains:     { proc: 'wall_chains',     h: 1.4,  foot: 0, wall: true, mount: 1.2, depth: 0.08 },
         stocks:          { proc: 'stocks',          h: 1.1,  foot: 0.5, block: true },
-        wall_torch:      { proc: 'wall_torch',      h: 0.6,  foot: 0, wall: true, mount: 1.6, depth: 0.2, glow: { y: 0.55, size: 1.4, color: 0xffa040 }, light: { color: 0xff9a40, intensity: 0.8, dist: 8, y: 0.55 } },
+        wall_torch:      { proc: 'wall_torch',      h: 1.1,  foot: 0, wall: true, mount: 1.6, depth: 0.2, glow: { y: 0.7, size: 1.0, color: 0xffa040 }, light: { color: 0xff9a40, intensity: 0.8, dist: 8, y: 0.66 } },   /* the game's own torch (ward / editor) on a bracket, leaning into the room — 2026-09-15 */
         candle_ring:     { proc: 'candle_ring',     h: 0.3,  foot: 0, glow: { y: 0.3, size: 1.2, color: 0xffb060 }, light: { color: 0xffb060, intensity: 0.7, dist: 6, y: 0.45 } },
         ritual_circle:   { proc: 'ritual_circle',   h: 0.01, foot: 0 },                                                       // the sigil on the floor (a canvas decal, faintly lit)
         /* THE FOURIER FOYER (2026-09-15): the seal inlaid in the terrazzo (a canvas decal — the rings, the D.O.O.R. wordmark, the Customs & Admissions slogan round the rim), the mat inside the front door, the umbrella stand beside it */
@@ -18467,7 +18467,7 @@ const DOOR_HQ = {
         riser_2:         { proc: 'riser_2',         h: 0.6,  foot: 3.0, rect: { hw: 4.2, hd: 0.7 }, block: true },
         riser_3:         { proc: 'riser_3',         h: 0.9,  foot: 3.0, rect: { hw: 4.2, hd: 0.7 }, block: true },
         /* THE CAVE (HQ plan 9.3 stage 2, 2026-09-15 rev 11): a torch on a stake driven into the cave floor (a rock room has no box wall to bracket one on — the rock border stands in front of it), and a crystal growing out of the floor, lit from inside (the adit's light) */
-        cave_torch:      { proc: 'cave_torch',      h: 1.7,  foot: 0.12, block: true, glow: { y: 1.62, size: 1.5, color: 0xffa040 }, light: { color: 0xff9a40, intensity: 0.85, dist: 9, y: 1.62 } },
+        cave_torch:      { proc: 'cave_torch',      h: 1.9,  foot: 0.12, block: true, glow: { y: 1.25, size: 1.2, color: 0xffa040 }, light: { color: 0xff9a40, intensity: 0.85, dist: 9, y: 1.1 } },   /* the board's floor torch at the board's size — 2026-09-15 */
         crystal_cluster: { proc: 'crystal_cluster', h: 1.4,  foot: 0.55, block: true, glow: { y: 0.8, size: 2.6, color: 0x9fe8c8 }, light: { color: 0x9ff0d0, intensity: 0.9, dist: 9, y: 0.9 } },
         /* THE FINDS (HQ plan 9.1, 2026-09-15 rev 12): the objects the walker TAKES — placed by _hqPlaceFinds from DOOR_HQ.finds, never as room props (no foot: nothing blocks) — and THE SHELF in Room 360 the tapes play at */
         find_tape:       { proc: 'find_tape',       h: 0.22, foot: 0, glow: { y: 0.12, size: 1.1, color: 0xff5ad6 } },
@@ -26950,7 +26950,7 @@ const DOOR_HQ = {
                 { key: 'cardboard_box',     x: 4.2, z: -1.4, face: 60 },
                 { key: 'wall_chains',       wall: 'n', x: 5.0, mount: 1.2 },                  // the breeching tackle
                 { key: 'hook_rail_long',    wall: 'n', x: -4.6, mount: 1.8 },                 // the rammers, the sponges, the worms
-                { key: 'wall_torch',        wall: 's', x: 4.8, mount: 1.6 },                  // the slow match in its tub is a torch on the wall here
+                { key: 'wall_torch',        wall: 's', x: 4.8, mount: 1.4 },                  // the slow match in its tub is a torch on the wall here (hung low under the 2.7 m beam — the torch is the game's own now, 2026-09-15)
                 { key: 'ship_lantern',      x: -4, z: 0, ceil: true },
                 { key: 'ship_lantern',      x: 0, z: 0.6, ceil: true },
                 { key: 'ship_lantern',      x: 4, z: 0, ceil: true },

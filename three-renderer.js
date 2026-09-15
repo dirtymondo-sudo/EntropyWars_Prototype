@@ -5457,12 +5457,15 @@ const ThreeRenderer = (function () {
        point light at flameY. */
     function _makeTorchModel(opts) {
         opts = opts || {};
-        var ts = CONFIG.tileSize || BASE_TILE;
+        /* opts.ts = the tile the model is sized against (the HQ hands it a
+           tile in metres × units, so its torches are THIS torch — 2026-09-15) */
+        var ts = opts.ts || CONFIG.tileSize || BASE_TILE;
         var s = opts.scale || 1;
         var g = new THREE.Group();
 
         var stickH = ts * 0.55 * s, stickR = ts * 0.05 * s;
-        var woodMat = _evTintMat(new THREE.MeshLambertMaterial({ map: _getTorchWoodTex() }), 'wood');
+        var woodMat = new THREE.MeshLambertMaterial({ map: _getTorchWoodTex() });
+        if (!opts.noTint) woodMat = _evTintMat(woodMat, 'wood');
         var stick = new THREE.Mesh(new THREE.CylinderGeometry(stickR * 0.82, stickR, stickH, 7), woodMat);
         stick.position.y = stickH / 2;
         g.add(stick);
@@ -5760,23 +5763,31 @@ const ThreeRenderer = (function () {
             var e = _torchFlames[i];
             if (!e.root.parent) continue;   /* torn down by a rebuild — drop */
             alive.push(e);
-            var f = 1.0
-                + 0.08 * Math.sin(now * 6.3 + e.seed * 1.7)
-                + 0.05 * Math.sin(now * 13.1 + e.seed * 3.2)
-                + 0.03 * Math.sin(now * 2.1 + e.seed * 5.0);
-            if (e.flame) {
-                e.flame.scale.set(0.92 + 0.10 * f, f, 0.92 + 0.10 * f);
-                /* small sideways shiver so the tongue licks around */
-                e.flame.rotation.y = 0.25 * Math.sin(now * 3.7 + e.seed);
-            }
-            if (e.mat) e.mat.opacity = Math.min(1, 0.82 * f + (isNight ? 0.12 : 0));
-            if (e.light) {
-                e.light.intensity = baseInt * f;
-                e.light.color.set(isNight ? TORCH_LIGHT_COLOR_NIGHT : TORCH_LIGHT_COLOR_DAY);
-            }
+            _torchFlicker(e, now, isNight, baseInt);
         }
         _torchFlames = alive;
         _mdTorchPoolSync(now, baseInt, isNight);
+    }
+    /* ONE flicker for every torch in the game (2026-09-15): the battle frame
+       runs it over _torchFlames, the HQ's torch procs run it from their own
+       room tickers — same flutter, same lick, same breath of light. `now` in
+       seconds. */
+    function _torchFlicker(e, now, isNight, baseInt) {
+        var f = 1.0
+            + 0.08 * Math.sin(now * 6.3 + e.seed * 1.7)
+            + 0.05 * Math.sin(now * 13.1 + e.seed * 3.2)
+            + 0.03 * Math.sin(now * 2.1 + e.seed * 5.0);
+        if (e.flame) {
+            e.flame.scale.set(0.92 + 0.10 * f, f, 0.92 + 0.10 * f);
+            /* small sideways shiver so the tongue licks around */
+            e.flame.rotation.y = 0.25 * Math.sin(now * 3.7 + e.seed);
+        }
+        if (e.mat) e.mat.opacity = Math.min(1, 0.82 * f + (isNight ? 0.12 : 0));
+        if (e.light) {
+            e.light.intensity = (baseInt == null ? TORCH_LIGHT_INT_DAY : baseInt) * f;
+            e.light.color.set(isNight ? TORCH_LIGHT_COLOR_NIGHT : TORCH_LIGHT_COLOR_DAY);
+        }
+        return f;
     }
 
     /* ═══════════════ ANIME POWER AURA (Flow State / Last Stand) ═══════════════
@@ -6618,7 +6629,18 @@ const ThreeRenderer = (function () {
 
     function rebuildObjects() {
         if (!objectGroup) return;
-        var rem = []; for (var i = 0; i < objectGroup.children.length; i++) { var ch = objectGroup.children[i]; if (!ch._ew_turretId && ch !== _terrainDecoGroup) rem.push(ch); }
+        /* THE VANISHING DEPLOYABLES (2026-09-15): this pass used to strip EVERY
+           child of objectGroup but the turrets — the wards, mirrors, doors,
+           seeds, bombs, decoys and gates too — while deployableMeshes kept
+           their (disposed) handles and _lastDeployableSerial stayed put, so
+           nothing rebuilt them until the NEXT deployable changed. Any object
+           rebuild (a chopped tree, the Cube, and — the usual trigger — a
+           texture landing and flipping _objectsDirty, the torch's own bark
+           sheet included) made a freshly placed ward blink out. A deployable
+           is rebuildDeployables' to remove, exactly like a turret is
+           rebuildTurrets'. */
+        var keepDep = new Set(); deployableMeshes.forEach(function (m) { keepDep.add(m); });
+        var rem = []; for (var i = 0; i < objectGroup.children.length; i++) { var ch = objectGroup.children[i]; if (!ch._ew_turretId && ch !== _terrainDecoGroup && !ch._ew_deployable && !keepDep.has(ch)) rem.push(ch); }
         for (var j = 0; j < rem.length; j++) { objectGroup.remove(rem[j]); _disposeR(rem[j]); }
         objectMeshes.clear(); _initBuildingKeys(); _kickBuildingAlphaScans();
         /* Explicitly remove tower cube CSS2D plates (health bars) from scene */
@@ -6767,6 +6789,8 @@ const ThreeRenderer = (function () {
 
     function _computeDeployableSerial() {
         var h = 23;
+        /* the props sit on tileTopY at build — a dig / raise / voxel edit under one must re-seat it (2026-09-15) */
+        h = _hashInt(h, state._terrainVersion | 0); h = _hashInt(h, state._heightVersion | 0); h = _hashInt(h, state._voxelVersion | 0);
         if (state.plantedSeeds) {
             for (var i = 0; i < state.plantedSeeds.length; i++) {
                 var s = state.plantedSeeds[i];
@@ -7874,6 +7898,7 @@ const ThreeRenderer = (function () {
                 if (m) {
                     var key = 'dep_' + (idx++);
                     m._ew_depX = w.x; m._ew_depY = w.y;
+                    m._ew_depOwner = w.owner;   /* your own ward never fog-blinks (2026-09-15) */
                     objectGroup.add(m);
                     deployableMeshes.set(key, m);
                 }
@@ -8025,6 +8050,7 @@ const ThreeRenderer = (function () {
                         mesh._ew_billboard = true;
                         mesh._ew_deployable = true;
                         mesh._ew_depX = dx; mesh._ew_depY = dy;
+                        mesh._ew_depOwner = dObj.ownerPlayer;
                         objectGroup.add(mesh);
                         deployableMeshes.set(dKey, mesh);
 
@@ -8052,6 +8078,7 @@ const ThreeRenderer = (function () {
                     var d3g = _d3fn(dx, dy, dObj.ownerPlayer);
                     d3g._ew_deployable = true;
                     d3g._ew_depX = dx; d3g._ew_depY = dy;
+                    d3g._ew_depOwner = dObj.ownerPlayer;
                     objectGroup.add(d3g);
                     deployableMeshes.set(dKey, d3g);
                     continue;
@@ -8075,6 +8102,7 @@ const ThreeRenderer = (function () {
                 markerMesh._ew_billboard = true;
                 markerMesh._ew_deployable = true;
                 markerMesh._ew_depX = dx; markerMesh._ew_depY = dy;
+                markerMesh._ew_depOwner = dObj.ownerPlayer;
                 objectGroup.add(markerMesh);
                 deployableMeshes.set(dKey, markerMesh);
             }
@@ -8094,6 +8122,7 @@ const ThreeRenderer = (function () {
                     : _buildDoor3D(dd);
                 dm._ew_deployable = true;
                 dm._ew_depX = dd.x; dm._ew_depY = dd.y;
+                dm._ew_depOwner = dd.owner;
                 var ddKey = 'dep_' + (idx++);
                 objectGroup.add(dm);
                 deployableMeshes.set(ddKey, dm);
@@ -8113,6 +8142,7 @@ const ThreeRenderer = (function () {
                     var gm = gpBuild(ends[ge][0], ends[ge][1], gp.ownerPlayer);
                     gm._ew_deployable = true;
                     gm._ew_depX = ends[ge][0]; gm._ew_depY = ends[ge][1];
+                    gm._ew_depOwner = gp.ownerPlayer;
                     var gpKey = 'dep_' + (idx++);
                     objectGroup.add(gm);
                     deployableMeshes.set(gpKey, gm);
@@ -36147,6 +36177,7 @@ const ThreeRenderer = (function () {
     var _hqGlyphTex = null;
     var _hqSealTex = null;
     var HQ_BODY_R = 0.34;                // walker body radius (m)
+    var HQ_TILE_M = 1.75;                // a battle tile in metres — the size the board's props (the torch) are built against in the building (2026-09-15)
     var HQ_EDGE_KERB_H = 0.05;           // an 'open' site room's paving edge (m) — flush, walked over (2026-09-11, THE EDGE)
     var HQ_EDGE_LOW_H = 0.95;            // a 'low' site room's field wall (m) — a wall to the walker
     var HQ_PROP_LIGHT_MAX = 10;         // Phase 8: catalogue `light` point lights per room (a Phong shader recompiles per count; ten is plenty for a torch room)
@@ -39368,18 +39399,24 @@ const ThreeRenderer = (function () {
             [-0.3, 0, 0.3].forEach(function (x) { var h = new THREE.Mesh(new THREE.CylinderGeometry((x === 0 ? 0.09 : 0.05) * U, (x === 0 ? 0.09 : 0.05) * U, 0.12 * U, 12), hole); h.rotation.x = Math.PI / 2; h.position.set(x * U, 0.93 * U, 0); g.add(h); });
             return g;
         },
-        /* a torch in a bracket: the flame is an emissive cone + a pulsing glow (the point light is the catalogue's) */
+        /* THE SAME TORCH EVERYWHERE (2026-09-15, the user's rule): a torch in
+           the building is the game's own wood-and-rope torch — _makeTorchModel,
+           the ward / the map editor's torch / the Dutchman's rail — built in
+           metres (ts = a battle tile, 1.75 m × U) and fluttered by the one
+           _torchFlicker from a room ticker. The point light is the
+           catalogue's. A wall torch hangs Minecraft-style off an iron
+           bracket, leaning into the room like a ward hung on a cube face. */
         wall_torch: function (U) {
             var g = new THREE.Group();
             var iron = _hqMat(null, 1, 1, { color: 0x3a3632, shininess: 30 });
-            var br = _hqBox(0.06, 0.25, 0.06, iron); br.position.set(0, 0.1 * U, 0.05 * U); g.add(br);
-            var arm = _hqBox(0.06, 0.06, 0.18, iron); arm.position.set(0, 0.2 * U, 0.12 * U); g.add(arm);
-            var stick = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.03 * U, 0.4 * U, 8), _hqMat('wood', 1, 1, { color: 0x6a4a30 })); stick.position.set(0, 0.32 * U, 0.2 * U); g.add(stick);
-            var flame = new THREE.Mesh(new THREE.ConeGeometry(0.06 * U, 0.18 * U, 8), _hqBasic(0xffa040)); flame.position.set(0, 0.6 * U, 0.2 * U); g.add(flame);
-            var core = new THREE.Mesh(new THREE.ConeGeometry(0.03 * U, 0.1 * U, 8), _hqBasic(0xfff0b0)); core.position.set(0, 0.57 * U, 0.2 * U); g.add(core);
-            var glow = _hzGlowSprite(1.2 * U, 0xffa040, 0.45, 0, 0, 0); glow.position.set(0, 0.6 * U, 0.22 * U); g.add(glow);
-            var seed = (_hqProcSeed++) * 2.3;
-            if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.001 + seed; var f = 0.8 + 0.2 * Math.sin(t * 13.0) + 0.1 * Math.sin(t * 29.0); flame.scale.set(f, 0.85 + 0.3 * Math.sin(t * 17.0), f); glow.material.opacity = 0.3 + 0.2 * f; });
+            var br = _hqBox(0.06, 0.22, 0.05, iron); br.position.set(0, 0.11 * U, 0.03 * U); g.add(br);
+            var ring = new THREE.Mesh(new THREE.TorusGeometry(0.075 * U, 0.014 * U, 6, 14), iron); ring.rotation.x = Math.PI / 2; ring.position.set(0, 0.2 * U, 0.12 * U); g.add(ring);
+            var parts = _makeTorchModel({ ts: HQ_TILE_M * U, scale: 0.6, noTint: true });
+            parts.model.position.set(0, 0.02 * U, 0.1 * U);
+            parts.model.rotation.x = 0.42;   /* the ward's lean off its wall */
+            g.add(parts.model);
+            var entry = { root: g, flame: parts.flame, mat: parts.flameMat, light: null, seed: ((_hqProcSeed++) * 23) % 100 };
+            if (_hq) _hq.tickers.push(function (dt, now) { _torchFlicker(entry, now * 0.001, false); });
             return g;
         },
         candle_ring: function (U) {
@@ -39821,16 +39858,13 @@ const ThreeRenderer = (function () {
        of the floor, lit from inside — the catalogue's `light` carries each
        one's point light, the builders the flame / the pulse */
     Object.assign(_hqProcBuilders, {
+        /* the stake torch is the board's floor torch at the board's own size (THE SAME TORCH EVERYWHERE, 2026-09-15) */
         cave_torch: function (U) {
             var g = new THREE.Group();
-            var stake = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.05 * U, 1.5 * U, 7), _hqMat('wood', 1, 1, { color: 0x5e4630 })); stake.position.y = 0.75 * U; g.add(stake);
-            var iron = _hqMat(null, 1, 1, { color: 0x3a3632, shininess: 30 });
-            var cup = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * U, 0.06 * U, 0.16 * U, 8, 1, true), iron); cup.position.y = 1.52 * U; cup.material.side = THREE.DoubleSide; g.add(cup);
-            var flame = new THREE.Mesh(new THREE.ConeGeometry(0.08 * U, 0.26 * U, 8), _hqBasic(0xffa040)); flame.position.y = 1.72 * U; g.add(flame);
-            var core = new THREE.Mesh(new THREE.ConeGeometry(0.04 * U, 0.14 * U, 8), _hqBasic(0xfff0b0)); core.position.y = 1.68 * U; g.add(core);
-            var glow = _hzGlowSprite(1.4 * U, 0xffa040, 0.45, 0, 0, 0); glow.position.y = 1.7 * U; g.add(glow);
-            var seed = (_hqProcSeed++) * 2.7;
-            if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.001 + seed; var f = 0.8 + 0.2 * Math.sin(t * 12.0) + 0.1 * Math.sin(t * 31.0); flame.scale.set(f, 0.85 + 0.3 * Math.sin(t * 16.0), f); glow.material.opacity = 0.3 + 0.2 * f; });
+            var parts = _makeTorchModel({ ts: HQ_TILE_M * U, scale: 1.0, noTint: true });
+            g.add(parts.model);
+            var entry = { root: g, flame: parts.flame, mat: parts.flameMat, light: null, seed: ((_hqProcSeed++) * 27) % 100 };
+            if (_hq) _hq.tickers.push(function (dt, now) { _torchFlicker(entry, now * 0.001, false); });
             return g;
         },
         crystal_cluster: function (U) {
@@ -40450,8 +40484,17 @@ const ThreeRenderer = (function () {
     function _hqProcProp(name) {
         var b = _hqProcBuilders[name];
         if (!b) return null;
-        try { var g = b(_hqUnits()); g.traverse(function (n) { if (n.isMesh) n._ew_pixelate = true; }); return g; }
-        catch (e) { console.warn('[HQ] proc prop failed', name, e); return null; }
+        /* a proc built from the board's kit (the torch's _hzGlowCore halo,
+           2026-09-15) registers its breathing in the battle's _hzGlowPulse,
+           which the HQ loop never ticks — adopt those entries into the room's
+           own fxPulse list, the way the setting builders do */
+        var pulse0 = (typeof _hzGlowPulse !== 'undefined') ? _hzGlowPulse.length : -1;
+        try {
+            var g = b(_hqUnits()); g.traverse(function (n) { if (n.isMesh) n._ew_pixelate = true; });
+            if (pulse0 >= 0 && _hzGlowPulse.length > pulse0) { var adopted = _hzGlowPulse.splice(pulse0); if (_hq && _hq.fxPulse) adopted.forEach(function (p) { if (p && p.mat) _hq.fxPulse.push(p); }); }
+            return g;
+        }
+        catch (e) { if (pulse0 >= 0 && _hzGlowPulse.length > pulse0) _hzGlowPulse.splice(pulse0); console.warn('[HQ] proc prop failed', name, e); return null; }
     }
 
     /* ── stairs: curved flights hugging the lower wall (InstancedMesh steps) ── */
