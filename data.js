@@ -18375,6 +18375,10 @@ const DOOR_HQ = {
         wall_torch:      { proc: 'wall_torch',      h: 0.6,  foot: 0, wall: true, mount: 1.6, depth: 0.2, glow: { y: 0.55, size: 1.4, color: 0xffa040 }, light: { color: 0xff9a40, intensity: 0.8, dist: 8, y: 0.55 } },
         candle_ring:     { proc: 'candle_ring',     h: 0.3,  foot: 0, glow: { y: 0.3, size: 1.2, color: 0xffb060 }, light: { color: 0xffb060, intensity: 0.7, dist: 6, y: 0.45 } },
         ritual_circle:   { proc: 'ritual_circle',   h: 0.01, foot: 0 },                                                       // the sigil on the floor (a canvas decal, faintly lit)
+        /* THE FOURIER FOYER (2026-09-15): the seal inlaid in the terrazzo (a canvas decal — the rings, the D.O.O.R. wordmark, the Customs & Admissions slogan round the rim), the mat inside the front door, the umbrella stand beside it */
+        door_seal:       { proc: 'door_seal',       h: 0.01, foot: 0 },
+        doormat:         { proc: 'doormat',         h: 0.02, foot: 0 },
+        umbrella_stand:  { proc: 'umbrella_stand',  h: 0.78, foot: 0.24, block: true },
         stone_altar:     { proc: 'stone_altar',     h: 0.95, foot: 1.0, rect: { hw: 1.05, hd: 0.5 }, block: true },
         floor_stain:     { proc: 'floor_stain',     h: 0.01, foot: 0 },
         floating_orb:    { proc: 'floating_orb',    h: 1.9,  foot: 0.7, block: true, glow: { y: 1.35, size: 3.0, color: 0x9fe8ff }, light: { color: 0x8fdcff, intensity: 1.3, dist: 12, y: 1.35 } },   // Room X: the object (ticker: it bobs and turns)
@@ -20112,6 +20116,15 @@ const DOOR_HQ = {
                   desc: 'Room 1. Intake. Employee ID cards, the laminator, LOST CARD FEE. Take a number; the number is being served in an order the office does not explain.' },
                 { id: 'office',         deg: 150, level: 0, leaf: 'leaf_closet_warped',             label: 'YOUR OFFICE',             sub: 'STORY · CASE FILE',          action: { room: 'office', at: 'egress' }, desc: 'A converted janitor’s closet. Cot, mop bucket, CRT, phone, drain. The in-tray is where the story arrives.', rankDoor: true },
                 { id: 'training',       deg: 180, level: 0, leaf: 'leaf_exit',                      label: 'TRAINING ROOM',           sub: 'PRACTICE · GAUNTLET · DUNGEON',   action: { room: 'training', at: 'egress' }, desc: 'Room 64. The only authorized square room in the building — an 8×8 grid, deemed totally safe, notoriously leaky. ORTHOGONAL GEOMETRY EXPOSURE AREA · MAX OCCUPANCY 45 MINUTES.' },
+                /* THE FOURIER FOYER (2026-09-15, plan 7.4's last row): the front door.
+                   The only free stretch of the lower wall — 15° from the Training Room
+                   and 15° from Medical (5.5 m of wall each way, 2.9 needed — the same
+                   pier Room 86 sits on). Behind you as you arrive at the spawn: the
+                   hall's south side is the street side. The kit's revolving door
+                   (§5.6), the same door from the foyer's side; a fresh arrival from
+                   Play stands in the foyer and walks IN through it (map.js
+                   _hqArrivalRoom — `?nofoyer` / ew_hq_foyer='off' lands in the hall). */
+                { id: 'foyer',          deg: 195, level: 0, leaf: 'leaf_revolving',   wide: true,  label: 'THE FOURIER FOYER',       sub: 'THE FRONT DOOR · EXIT',   action: { room: 'foyer', at: 'egress' }, desc: 'The vestibule. The revolving door, the seal in the terrazzo, the inspection desk that verifies your corners. The street is on the other side of it; the street is the main menu.' },
                 /* ROOM 1111 · MEDICAL (plan 7.4, 2026-09-13 rev 3): the door is now the
                    way INTO the ward — the services desk (Challenge mode), the chart
                    (your record), the cell door into Room 5150. The number moved onto
@@ -20260,7 +20273,7 @@ const DOOR_HQ = {
                    bin stood in for the Cafeterium at 98–107° until Room 86 was
                    built. They moved in (rooms.cafeteria, the hot side). What stays
                    is the vending machine, which has always been there. */
-                { key: 'water_cooler',   deg: 196, level: 0, wall: true },
+                { key: 'water_cooler',   deg: 204, level: 0, wall: true },   // moved from 196° for the foyer door (2026-09-15)
                 /* the two palms the terrazzo lobby has always deserved (2026-09-10) */
                 { key: 'palm_tree',      deg: 68,  r: 17.2, level: 0 },
                 { key: 'palm_tree',      deg: 292, r: 17.4, level: 0, rot: 40 },
@@ -20277,7 +20290,7 @@ const DOOR_HQ = {
                 { key: 'retro_speakers', deg: 135.5, r: 20.35, level: 0, y: 1.85 },
                 /* three empty round frames on the lower wall. Records has the
                    photographs. Records is not releasing the photographs. */
-                { key: 'picture_round_a', deg: 188, level: 0, wall: true },
+                { key: 'picture_round_a', deg: 186, level: 0, wall: true },   // moved from 188° for the foyer door (2026-09-15)
                 { key: 'picture_round_b', deg: 216, level: 0, wall: true },   // 2° west for the Clock Room's door (2026-09-11)
                 { key: 'picture_round_c', deg: 247, level: 0, wall: true },         // moved from 250°: Room 1984's door
                 { key: 'potted_plant',   deg: 84,  r: 19.2, level: 0 },   // 2026-09-11: was 76° — Room 86's door is there now
@@ -20364,6 +20377,106 @@ const DOOR_HQ = {
                 '“If it’s round it’s ours. If it’s square, fill out Form 90.”',
             ],
             spawn: { deg: 180, r: 15.4, level: 0, face: 0 },
+        },
+
+        /* ── THE FOURIER FOYER (HQ plan 7.4, the last row; 2026-09-15) ──
+           The vestibule between the main menu and the hall: a box room
+           SOUTH of the egress behind the revolving door at 195°. The way
+           in from the street is the 2× entrance door on the south wall
+           (its action is the strip's EXIT — the street IS the main menu);
+           the way into the building is the revolving door on the north
+           wall. The seal is inlaid in the terrazzo (`door_seal`, a canvas
+           decal like the ritual circle) with the Customs & Admissions
+           slogan round its rim (MASTER A7); the CORNER INSPECTION desk on
+           the east wall is the loading card's "verifying your corners…"
+           as a place (counter `inspection`, a by-id panel — map.js reads
+           data.js hqCornerInspection). No number: it is a foyer (7.0 rule
+           2). A fresh arrival from Play spawns here, just inside the front
+           door, and walks in; every return (a screen, a match) lands where
+           you left. Viewer-local (RULE #2). */
+        foyer: {
+            label: 'THE FOURIER FOYER',
+            sub: 'THE FRONT DOOR',
+            kind: 'box',
+            shell: {
+                w: 10, d: 6, h: 4.0,
+                wallH: 4.0, dadoH: 1.05,
+                floor: 'terrazzo', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',   // the hall's own finishes: the front of the same building
+                pipes: false,
+                light: { x: 0, z: 0 },
+                mood: { light: 0xf6efdf },              // the brass-and-glass warmth of a lobby that is cleaned nightly
+                plate: { x: 2.2, z: -2.95, y: 3.4 },
+            },
+            doors: [
+                /* the revolving door: the same leaf the hall wears at 195°, from this side */
+                { id: 'egress', wall: 'n', x: 0, leaf: 'leaf_revolving', wide: true,
+                  label: 'CENTRAL EGRESS', sub: 'INTO THE MAIN HALL',
+                  action: { room: 'central_egress', at: 'foyer' },
+                  desc: 'The revolving door. It turns one way. Which way has not been decided, but it is the same way for everyone, and the hall is on the other side of it.' },
+                /* the front door: the street side is the main menu (the strip's EXIT, as a door) */
+                { id: 'street', wall: 's', x: 0, leaf: 'leaf_entrance',
+                  label: 'THE FRONT DOOR', sub: 'LEAVE THE BUILDING · MAIN MENU',
+                  action: { fn: '_hqExitToMenu' },
+                  desc: 'The front door. Outside is the street, and the street is the main menu; the building will be here when you come back, and so will your corners.' },
+            ],
+            counters: [
+                /* CORNER INSPECTION → the by-id panel (map.js): your corners, counted and verified */
+                { id: 'inspection', x: 3.3, z: 0, face: 270, plateY: 1.85, radius: 1.9, verb: 'PRESENT',
+                  label: 'CORNER INSPECTION', sub: 'YOUR CORNERS · VERIFIED', action: {},
+                  desc: 'The inspection desk. Every entity entering the building has its corners counted and its angles verified against the standard. The standard is ninety. It has always been ninety.' },
+            ],
+            props: [
+                /* ── the floor: the seal, the mat, the lane to the revolving door ── */
+                { key: 'door_seal',      x: 0, z: 0 },
+                { key: 'doormat',        x: 0, z: 2.35 },
+                { key: 'railing_1m',     x: -1.25, z: -2.1, face: 0 },
+                { key: 'railing_1m',     x: 1.25,  z: -2.1, face: 0 },
+                { key: 'railing_1m',     x: -1.25, z: -1.3, face: 0 },
+                { key: 'railing_1m',     x: 1.25,  z: -1.3, face: 0 },
+                /* ── the east wall: CORNER INSPECTION — the desk, the screen, the log ── */
+                { key: 'tanker_desk',    wall: 'e', z: 0 },
+                { key: 'crt_terminal',   x: 4.55, z: -0.45, y: 0.76, face: 270 },
+                { key: 'clipboard_flat', x: 4.6,  z: 0.35,  y: 0.76, face: 260 },    // THE CORNER LOG: four, ninety, four, ninety
+                { key: 'pen',            x: 4.45, z: 0.6,   y: 0.76, face: 300 },
+                { key: 'desk_lamp',      x: 4.55, z: -0.95, y: 0.76, face: 250 },
+                { key: 'coffee_mug',     x: 4.3,  z: 0.9,   y: 0.76, face: 140 },
+                { key: 'computer_chair_grey', x: 4.05, z: 0, face: 90 },              // the inspector's, facing the desk
+                { key: 'wall_clock',     wall: 'e', z: -2.2, mount: 2.6 },
+                { key: 'security_camera', wall: 'e', z: 2.2, mount: 3.3 },
+                /* ── the south wall: the front door, the mat, the stand, the sign over it ── */
+                { key: 'exit_sign',      wall: 's', x: 0, mount: 3.0 },
+                { key: 'umbrella_stand', x: 1.5,  z: 2.55, face: 0 },
+                { key: 'trash_bin',      x: -4.5, z: 2.5,  face: 250 },
+                { key: 'wet_floor_sign', x: -2.6, z: 1.7,  face: 140 },
+                { key: 'potted_plant',   x: 4.5,  z: 2.5,  face: 200 },
+                /* ── the west wall: the bench, the hooks, the notices ── */
+                { key: 'park_bench',     x: -4.4, z: -0.6, face: 90, rect: false },   // the visitors' bench, facing the seal
+                { key: 'hook_rail',      wall: 'w', z: 1.6 },
+                { key: 'notice_board',   wall: 'w', z: -2.2 },
+                { key: 'potted_plant',   x: -4.5, z: -2.5, face: 30 },
+                /* ── the north wall: the plate, the camera over the revolving door ── */
+                { key: 'nameplate',      wall: 'n', x: 2.4, mount: 1.6 },
+                { key: 'security_camera', wall: 'n', x: -3.6, mount: 3.3 },
+                { key: 'fluorescent',    x: -2.5, z: 0, ceil: true, face: 0 },
+                { key: 'fluorescent',    x: 2.5,  z: 0, ceil: true, face: 0 },
+            ],
+            agents: [
+                { x: 4.05, z: 0, face: 90, pose: 'hqSit', gender: 'male', label: 'THE INSPECTOR', reach: 1.9,
+                  line: '“Four corners. Ninety degrees. Proceed. — No, I don’t need to look. Everyone who has ever stood there has had four.”' },
+                { x: -1.7, z: 2.3, face: 0, pose: 'hqArms', gender: 'female', label: 'THE DOORMAN', reach: 1.7,
+                  line: '“The door turns one way. If you come out where you went in, you went round twice. It happens more than you would think.”' },
+            ],
+            npcSpots: [
+                { x: -4.4, z: -0.6, face: 90 },   // on the bench, waiting to be inspected
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Is this the front?” “It is a front.”',
+                '“Wipe your feet.” “On what?” “On the mat.” “Which side is the mat?” “The inside.” “Of what?”',
+                '“The seal says EVERY ENTITY IS FILED.” “It does.” “Where?” “Under the seal.”',
+                '“You went round twice.” “How can you tell?” “You came in facing the street.”',
+            ],
+            spawn: { x: 0, z: 1.9, face: 0 },     // just inside the front door, facing the revolving door and the hall
         },
 
         /* ── YOUR OFFICE: the janitor's closet (HQ plan 2.7, ref
@@ -25320,6 +25433,34 @@ function hqTrophyCount(profile) {
     return out;
 }
 
+/* ── CORNER INSPECTION (THE FOURIER FOYER, HQ plan 7.4; 2026-09-15) ────
+   The loading card says "verifying your corners…" — this is the desk that
+   does it, as a place. ONE read for the foyer's panel (map.js
+   _hqCounterPanelHtml 'inspection'): the count is always four, the angle
+   is always ninety, the verdict is PASS for anyone with a card and PENDING
+   for a visitor with no file. `motto` is the form orientation taught
+   (MASTER A7's middle form — the plaque that reads the chapter band is
+   4.4's, the Bureau's); `punched` says whether today's visit is the one
+   the punch clock (Room 247) took. Nothing is written. */
+const HQ_MOTTO_FORMS = ['DO OBSERVE OTHER REALITIES.', 'DON’T. OPEN. OBSERVE. REPORT.', 'DO OPEN OUR REALITY.'];
+function hqCornerInspection(profile) {
+    const ic = hqIntakeCard(profile);
+    let punch = null;
+    try { punch = (profile && typeof hqPunchClock === 'function') ? hqPunchClock(profile) : null; } catch (e) {}
+    const today = hqToday();
+    let canon = '';
+    try { canon = String(hqCanonToday(today) || ''); } catch (e) {}
+    const punched = !!(punch && punch.last === today);
+    return {
+        onFile: ic.onFile, empNo: ic.empNo, callsign: ic.callsign,
+        corners: 4, angle: 90,
+        verdict: ic.onFile ? 'PASS' : 'PENDING', tone: ic.onFile ? 'stabilized' : 'unstable',
+        visits: ic.visits, days: ic.days, streak: punch ? (punch.streak | 0) : 0, punched: punched,
+        date: today, canon: canon,
+        motto: HQ_MOTTO_FORMS[1], mottoForms: HQ_MOTTO_FORMS.slice(),
+        note: ic.onFile ? 'FOUR CORNERS, NINETY DEGREES. PROCEED.' : 'NO FILE. YOUR CORNERS ARE COUNTED; THEY ARE NOT YET ON FILE. SIGN IN AT RECEPTION.',
+    };
+}
 function hqPunchClock(profile, opts) {
     opts = opts || {};
     const date = opts.date || hqToday();
@@ -26250,6 +26391,8 @@ if (typeof window !== 'undefined') {
     window.hqTrophyCount = hqTrophyCount;
     window.hqMedicalRecord = hqMedicalRecord;
     window.hqIntakeCard = hqIntakeCard;
+    window.hqCornerInspection = hqCornerInspection;
+    window.HQ_MOTTO_FORMS = HQ_MOTTO_FORMS;
     window.HQ_LOST_CARD_FEE = HQ_LOST_CARD_FEE;
     window.hqPunchIn = hqPunchIn;
     window.hqCanonToday = hqCanonToday;

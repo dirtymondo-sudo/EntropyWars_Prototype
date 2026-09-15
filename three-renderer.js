@@ -39183,6 +39183,100 @@ const ThreeRenderer = (function () {
             for (var k = 1; k < n; k += 2) { var b = new THREE.Mesh(new THREE.CylinderGeometry(0.014 * U, 0.014 * U, 0.85 * U, 6), wood); b.position.set(0.52 * U, (rise * k + 0.42) * U, (1.4 - run * (k - 0.5)) * U); g.add(b); }
             return g;
         },
+        /* ── THE FOURIER FOYER (HQ plan 7.4, 2026-09-15) ─────────────────────
+           door_seal: the seal inlaid in the terrazzo — a 3.6 m canvas decal
+           like the ritual circle: a navy disc, a brass double ring, the
+           Customs & Admissions slogan and the department's name round the
+           rim, and in the middle the doctrine as a device — a door standing
+           in a square standing in a circle (corners make doors). Cached by
+           key; the text is fixed at build (the motto that changes with the
+           chapter is the Bureau's plaque, 4.4). */
+        door_seal: function (U) {
+            var g = new THREE.Group();
+            if (typeof document === 'undefined') return g;
+            var key = 'hq_door_seal';
+            var tex = _hzFacTexCache[key];
+            if (!tex) {
+                var c = document.createElement('canvas'); c.width = c.height = 1024;
+                var x = c.getContext('2d'), cx = 512, cy = 512;
+                var BRASS = '#c9a44a', TEAL = '#2f8f8a', NAVY = '#1b2a3a';
+                x.fillStyle = NAVY; x.beginPath(); x.arc(cx, cy, 500, 0, Math.PI * 2); x.fill();
+                x.strokeStyle = BRASS; x.lineWidth = 14; x.beginPath(); x.arc(cx, cy, 486, 0, Math.PI * 2); x.stroke();
+                x.lineWidth = 4;  x.beginPath(); x.arc(cx, cy, 462, 0, Math.PI * 2); x.stroke();
+                x.lineWidth = 4;  x.beginPath(); x.arc(cx, cy, 372, 0, Math.PI * 2); x.stroke();
+                x.strokeStyle = TEAL; x.lineWidth = 10; x.beginPath(); x.arc(cx, cy, 352, 0, Math.PI * 2); x.stroke();
+                /* the rim text, one glyph at a time round the ring */
+                var ring = function (text, r, a0, a1, font, color) {
+                    x.save(); x.fillStyle = color; x.font = font; x.textAlign = 'center'; x.textBaseline = 'middle';
+                    var n = text.length;
+                    for (var i = 0; i < n; i++) {
+                        var a = a0 + (a1 - a0) * (i + 0.5) / n;
+                        x.save(); x.translate(cx + Math.cos(a) * r, cy + Math.sin(a) * r); x.rotate(a + Math.PI / 2); x.fillText(text[i], 0, 0); x.restore();
+                    }
+                    x.restore();
+                };
+                ring('DEPARTMENT OF ORTHOGONAL REALITIES', 418, -Math.PI * 0.94, -Math.PI * 0.06, 'bold 40px serif', BRASS);
+                ring('EVERY CROSSING IS INSPECTED  ·  EVERY ENTITY IS FILED', 418, Math.PI * 0.06, Math.PI * 0.94, 'bold 30px serif', BRASS);
+                x.fillStyle = BRASS; x.font = 'bold 44px serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+                x.fillText('✦', cx + 418, cy); x.fillText('✦', cx - 418, cy);
+                /* the device: a circle, a square, a door */
+                x.strokeStyle = BRASS; x.lineWidth = 6; x.beginPath(); x.arc(cx, cy, 250, 0, Math.PI * 2); x.stroke();
+                x.lineWidth = 8; x.strokeRect(cx - 176, cy - 176, 352, 352);
+                x.fillStyle = TEAL; x.fillRect(cx - 62, cy - 150, 124, 250);
+                x.strokeStyle = BRASS; x.lineWidth = 6; x.strokeRect(cx - 62, cy - 150, 124, 250);
+                x.fillStyle = BRASS; x.beginPath(); x.arc(cx + 38, cy - 10, 9, 0, Math.PI * 2); x.fill();
+                x.fillStyle = BRASS; x.font = 'bold 58px serif'; x.fillText('D.O.O.R.', cx, cy + 148);
+                x.font = 'bold 22px serif'; x.fillText('CANON REALITY  ·  CUSTOMS & ADMISSIONS', cx, cy + 205);
+                tex = new THREE.CanvasTexture(c); tex.minFilter = THREE.LinearFilter; tex.anisotropy = 4; _hzFacTexCache[key] = tex;
+            }
+            var m = new THREE.Mesh(new THREE.PlaneGeometry(3.6 * U, 3.6 * U), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.96, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }));
+            m.rotation.x = -Math.PI / 2; m.position.y = 0.005 * U; g.add(m);
+            return g;
+        },
+        /* doormat: coir, a dark border, WIPE YOUR CORNERS woven in — flat on the terrazzo inside the front door */
+        doormat: function (U) {
+            var g = new THREE.Group();
+            if (typeof document === 'undefined') return g;
+            var key = 'hq_doormat';
+            var tex = _hzFacTexCache[key];
+            if (!tex) {
+                var c = document.createElement('canvas'); c.width = 512; c.height = 320;
+                var x = c.getContext('2d');
+                x.fillStyle = '#4a3a24'; x.fillRect(0, 0, 512, 320);
+                x.fillStyle = '#8a6d3b'; x.fillRect(22, 22, 468, 276);
+                x.strokeStyle = 'rgba(0,0,0,0.18)'; x.lineWidth = 2;
+                for (var i = 26; i < 490; i += 6) { x.beginPath(); x.moveTo(i, 24); x.lineTo(i, 296); x.stroke(); }
+                x.fillStyle = '#2c2216'; x.font = 'bold 54px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+                x.fillText('WIPE YOUR', 256, 128); x.fillText('CORNERS', 256, 196);
+                tex = new THREE.CanvasTexture(c); tex.minFilter = THREE.LinearFilter; _hzFacTexCache[key] = tex;
+            }
+            var m = new THREE.Mesh(new THREE.BoxGeometry(1.2 * U, 0.02 * U, 0.75 * U), [
+                _hqMat(null, 1, 1, { color: 0x4a3a24 }), _hqMat(null, 1, 1, { color: 0x4a3a24 }),
+                new THREE.MeshLambertMaterial({ map: tex }), _hqMat(null, 1, 1, { color: 0x3a2c1a }),
+                _hqMat(null, 1, 1, { color: 0x4a3a24 }), _hqMat(null, 1, 1, { color: 0x4a3a24 }) ]);
+            m.position.y = 0.01 * U; g.add(m);
+            return g;
+        },
+        /* umbrella_stand: a brass tube on a foot with three umbrellas leaning in it (one is not an umbrella; nobody has asked) */
+        umbrella_stand: function (U) {
+            var g = new THREE.Group();
+            var brass = _hqMat(null, 1, 1, { color: 0xb08d3c, shininess: 90, specular: 0xfff0c0 });
+            var tube = new THREE.Mesh(new THREE.CylinderGeometry(0.12 * U, 0.12 * U, 0.62 * U, 14, 1, true), brass); tube.material.side = THREE.DoubleSide; tube.position.y = 0.34 * U; g.add(tube);
+            var foot = new THREE.Mesh(new THREE.CylinderGeometry(0.16 * U, 0.17 * U, 0.04 * U, 14), brass); foot.position.y = 0.02 * U; g.add(foot);
+            var rim = new THREE.Mesh(new THREE.TorusGeometry(0.12 * U, 0.012 * U, 6, 20), brass); rim.rotation.x = Math.PI / 2; rim.position.y = 0.65 * U; g.add(rim);
+            var cols = [0x1a1a22, 0x3a1e1e, 0x1e2a3a];
+            for (var i = 0; i < 3; i++) {
+                var a = i * 2.1 + 0.4, tilt = 0.12 + i * 0.03;
+                var um = new THREE.Group();
+                var shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.01 * U, 0.01 * U, 0.9 * U, 6), _hqMat(null, 1, 1, { color: 0x222222 })); shaft.position.y = 0.45 * U; um.add(shaft);
+                var body = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.045 * U, 0.55 * U, 8), _hqMat(null, 1, 1, { color: cols[i], shininess: 20 })); body.position.y = 0.36 * U; um.add(body);
+                var handle = new THREE.Mesh(new THREE.TorusGeometry(0.04 * U, 0.011 * U, 6, 12, Math.PI), _hqMat(null, 1, 1, { color: 0x5a3a1a })); handle.position.y = 0.9 * U; handle.rotation.z = Math.PI; um.add(handle);
+                um.position.set(Math.cos(a) * 0.06 * U, 0.06 * U, Math.sin(a) * 0.06 * U);
+                um.rotation.z = Math.cos(a) * tilt; um.rotation.x = -Math.sin(a) * tilt;
+                g.add(um);
+            }
+            return g;
+        },
     });
     function _hqProcProp(name) {
         var b = _hqProcBuilders[name];

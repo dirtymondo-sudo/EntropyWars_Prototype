@@ -595,9 +595,69 @@ test("every door's wide flag agrees with its leaf (the renderer lets the leaf de
         if (c && !!c.wide !== !!th.wide) problems.push('threshold ' + id + ': wide ' + !!th.wide + ' but leaf ' + th.leaf + ' is ' + (c.wide ? 'wide' : 'single'));
     }
     assert.deepStrictEqual(problems, []);
-    /* the static one-mesh doubles / hatches are used sparingly: the revolving door at most once */
-    const revolving = ALL_DOORS.filter(d => d.leaf === 'leaf_revolving' && !/^egress_/.test(d.id)).length + Object.values(HQ.thresholds).filter(t => t.leaf === 'leaf_revolving').length;
+    /* the static one-mesh doubles / hatches are used sparingly: the revolving door at most once — plus THE FOURIER
+       FOYER's front door (2026-09-15, plan 7.4 / §5.6 named the revolving door for the foyer): the hall's door at
+       195° and the foyer's way in are the same door from its two sides */
+    const isFoyerDoor = d => d.id === 'foyer' || (d.action && d.action.at === 'foyer');
+    const revolving = ALL_DOORS.filter(d => d.leaf === 'leaf_revolving' && !/^egress_/.test(d.id) && !isFoyerDoor(d)).length + Object.values(HQ.thresholds).filter(t => t.leaf === 'leaf_revolving').length;
     assert.ok(revolving <= 2, 'the revolving door is the one sparing use (bay + its way out; the ring\'s egress_* copy is the same door), got ' + revolving);
+    assert.strictEqual(ALL_DOORS.filter(d => d.leaf === 'leaf_revolving' && isFoyerDoor(d)).length, 2, 'the foyer wears it twice: the hall side and the foyer side of one door');
+});
+
+/* ── THE FOURIER FOYER (HQ plan 7.4's last row, 2026-09-15) ───────────────── */
+test('THE FOURIER FOYER: a box room behind the revolving door at 195° — the way in, the way out, the street, the seal, the desk, no number', () => {
+    const F = HQ.rooms.foyer;
+    assert.ok(F && F.kind === 'box' && F.roomNo == null, 'rooms.foyer is a box room with no number (a foyer, 7.0 rule 2)');
+    assert.ok(!D.hqRoomRegister().some(r => r.id === 'foyer' || r.room === 'foyer'), 'the register skips it');
+    const eg = ROOM.doors.find(d => d.id === 'foyer');
+    assert.ok(eg && eg.deg === 195 && (eg.level || 0) === 0 && eg.leaf === 'leaf_revolving' && eg.wide === true && eg.action.room === 'foyer' && eg.action.at === 'egress', 'the hall door at 195° on the lower wall is the revolving door and walks into the foyer at its way in');
+    assert.ok(!eg.rankDoor && !eg.minClearance && !eg.requiresKeys && D.doorSiteState(eg, null) === 'open', 'never gated: the front door is open to a recruit');
+    /* between the Training Room (180°) and Medical (210°): a pier to each */
+    const tr = ROOM.doors.find(d => d.id === 'training'), md = ROOM.doors.find(d => d.id === 'medical');
+    const wOf = d => (d.wide ? 3.3 : 2.5) / 2, R = ROOM.shell.radius;
+    assert.ok((eg.deg - tr.deg) * Math.PI / 180 * R - wOf(eg) - wOf(tr) >= 2.0, 'a pier to the Training Room');
+    assert.ok((md.deg - eg.deg) * Math.PI / 180 * R - wOf(eg) - wOf(md) >= 2.0, 'a pier to Medical');
+    /* the wall props that hung on its panel moved off it (the cooler at 196°, the picture at 188°) */
+    const half = 3.3 / 2 / R * 180 / Math.PI + 1.5;
+    for (const p of ROOM.props.filter(p => p.wall && !(p.level || 0))) assert.ok(Math.abs(p.deg - eg.deg) > half, p.key + ' at ' + p.deg + '° hangs on the foyer door');
+    const way = F.doors.find(d => d.id === 'egress');
+    assert.ok(way && way.wall === 'n' && way.x === 0 && way.leaf === eg.leaf && !!way.wide === !!eg.wide && way.action.room === 'central_egress' && way.action.at === 'foyer', 'the way out is the same revolving door and lands at the hall door');
+    const street = F.doors.find(d => d.id === 'street');
+    assert.ok(street && street.wall === 's' && street.action.fn === '_hqExitToMenu' && street.leaf === 'leaf_entrance' && HQ.catalogue[street.leaf], 'the front door on the south wall is the strip’s EXIT as a door (the street is the main menu)');
+    assert.ok(!D.DOOR_TEXT.CLEARANCE.some(r => r.door === eg.leaf || r.door === street.leaf), 'neither leaf is a rank leaf');
+    const insp = F.counters.find(c => c.id === 'inspection');
+    assert.ok(insp && insp.action && !insp.action.fn && !insp.action.overlay && !insp.action.room && insp.desc, 'CORNER INSPECTION is a by-id panel with a desc');
+    for (const key of ['door_seal', 'doormat', 'umbrella_stand', 'tanker_desk', 'crt_terminal', 'park_bench', 'hook_rail', 'notice_board', 'exit_sign', 'security_camera', 'railing_1m', 'fluorescent']) assert.ok(F.props.some(p => p.key === key), 'the foyer has its ' + key);
+    for (const key of ['door_seal', 'doormat', 'umbrella_stand']) { const c = HQ.catalogue[key]; assert.ok(c && c.proc === key, key + ' is a catalogue proc'); }
+    const seal = F.props.find(p => p.key === 'door_seal');
+    assert.ok(seal && seal.x === 0 && seal.z === 0, 'the seal is inlaid in the middle of the terrazzo');
+    /* every free prop, agent and spot stands inside the room */
+    const hw = F.shell.w / 2, hd = F.shell.d / 2;
+    for (const p of F.props.filter(p => !p.wall && !p.ceil)) assert.ok(Math.abs(p.x) <= hw - 0.3 && Math.abs(p.z) <= hd - 0.3, p.key + ' is in a wall');
+    for (const a of F.agents.concat(F.npcSpots)) assert.ok(Math.abs(a.x) <= hw - 0.4 && Math.abs(a.z) <= hd - 0.3, (a.label || 'a spot') + ' is in a wall');
+    assert.ok(F.spawn && F.spawn.face === 0 && F.spawn.z > 0 && Math.abs(F.spawn.x) < 0.5, 'a fresh arrival stands just inside the front door facing the revolving door');
+    assert.ok(F.agents.length >= 2 && F.lines.length >= 3, 'the inspector, the doorman, the overheard lines');
+    /* hqCornerInspection: the one read for the panel */
+    assert.strictEqual(typeof D.hqCornerInspection, 'function');
+    const none = D.hqCornerInspection(null);
+    assert.ok(none.corners === 4 && none.angle === 90 && none.verdict === 'PENDING' && !none.onFile && none.motto === D.HQ_MOTTO_FORMS[1], 'a visitor with no file: four, ninety, PENDING, the orientation motto');
+    const some = D.hqCornerInspection({ username: 'CALLSIGN', career: { matchesPlayed: 3 }, door: { hq: { visits: 5 } } });
+    assert.ok(some.onFile && some.verdict === 'PASS' && some.visits === 5 && some.callsign === 'CALLSIGN' && typeof some.canon === 'string', 'a recruit with a card: PASS, the visit count, the canon date');
+    assert.strictEqual(D.HQ_MOTTO_FORMS.length, 3, 'the three forms of the motto (MASTER A7)');
+});
+
+test('THE FOURIER FOYER: the source sites — the arrival room, the street door’s label, the panel, the doorbell, the procs', () => {
+    const mp = fs.readFileSync(path.join(__dirname, 'map.js'), 'utf8');
+    assert.match(mp, /const _HQ_FOYER = 'foyer';/, 'the foyer id');
+    assert.match(mp, /function _hqFoyerOn\(\) \{[\s\S]{0,400}?nofoyer[\s\S]{0,200}?ew_hq_foyer/, 'the kill-switches: ?nofoyer and ew_hq_foyer');
+    assert.match(mp, /function _hqArrivalRoom\(\) \{ return _hqFoyerOn\(\) \? _HQ_FOYER : 'central_egress'; \}/, 'the arrival room');
+    assert.match(mp, /opts\.from === 'play' \? _hqArrivalRoom\(\) : 'central_egress'/, 'a fresh arrival from Play lands in the foyer; a dev entry still lands in the hall');
+    assert.match(mp, /if \(!walking && \(roomId === 'central_egress' \|\| roomId === _HQ_FOYER\)\) \{/, 'the Code Red doorbell rings on the way in through the foyer too');
+    assert.match(mp, /_hqExitToMenu: 'MAIN MENU/, 'the street door’s fn has a label');
+    assert.match(mp, /if \(c\.id === 'inspection'\) \{[\s\S]{0,300}?hqCornerInspection/, 'the by-id panel reads hqCornerInspection');
+    const tr = fs.readFileSync(path.join(__dirname, 'three-renderer.js'), 'utf8');
+    for (const proc of ['door_seal', 'doormat', 'umbrella_stand']) assert.match(tr, new RegExp('\\n\\s+' + proc + ': function \\(U\\) \\{'), proc + ' is a proc builder');
+    assert.match(tr, /hq_door_seal[\s\S]{0,3000}?DEPARTMENT OF ORTHOGONAL REALITIES[\s\S]{0,400}?EVERY CROSSING IS INSPECTED/, 'the seal wears the department and the slogan');
 });
 
 /* ── Phase 7.5 (2026-09-07, MASTER C-23 DECIDED): Bay 7 · URBAN and the rebalance ── */

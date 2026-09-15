@@ -2252,3 +2252,18 @@ words on them, no gates. Canon untouched; lines are Claude's drafts (A15).
 Also fixed: every door in the building opened the settings since
 yesterday's C-28 (the re-appended canvas dropped the pointer lock and the
 loss read as ESC) — see HQ plan §9 2026-09-14 rev 4.
+
+### 2026-09-15 — THE FOURIER FOYER (HQ plan 7.4, the last row)
+The vestibule between the main menu and the hall shipped: `rooms.foyer`
+behind the kit's revolving door at 195° on the ground ring (between the
+Training Room and Medical). THE FRONT DOOR on its south wall is the
+strip's EXIT as a door — the street is the main menu. THE SEAL is inlaid
+in the terrazzo (A7: the department's name and EVERY CROSSING IS
+INSPECTED · EVERY ENTITY IS FILED round the rim; a door in a square in a
+circle — corners make doors — in the middle; the motto is NOT on it, the
+reality barometer stays the Bureau's plaque). CORNER INSPECTION is the
+loading card's "verifying your corners…" as a desk: four, ninety, PASS.
+A fresh arrival from Play now stands inside the front door and walks in
+(`?nofoyer` restores the hall). `HQ_MOTTO_FORMS` (data.js) carries A7's
+three forms. No number (a foyer). Lines are Claude's drafts (A15). Full
+log: DOOR_HQ_BUILD_PLAN.md §9 2026-09-15.

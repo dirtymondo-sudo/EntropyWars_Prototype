@@ -346,12 +346,29 @@
             _ewReplayLastMatch: 'REPLAY', _goToQuickPlay: 'QUICK PLAY', _goToFriendlyMatch: 'FRIENDLY MATCH',
             /* ROOM 1337 · IT (2026-09-13): the dev surfaces' physical home */
             _goToSpellLibrary: 'SPELL LIBRARY', _launchBalanceSim: 'BALANCE LAB', _launchAITraining: 'AI TRAINING LAB',
+            /* THE FOURIER FOYER (2026-09-15): the front door's street side is the main menu (the strip's EXIT, as a door) */
+            _hqExitToMenu: 'MAIN MENU · LEAVE THE BUILDING',
         };
         function _hqEl(id) { return document.getElementById(id); }
         function _hqProfile() { try { return (window.ProfileSystem && window.ProfileSystem.getActiveProfile()) || null; } catch (e) { return null; } }
         function _hqEsc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
         function _hqRoom() { return (typeof DOOR_HQ !== 'undefined') ? (DOOR_HQ.rooms[_hqCurRoom] || DOOR_HQ.rooms.central_egress) : null; }
         function _hqRoomExists(id) { return !!(typeof DOOR_HQ !== 'undefined' && id && DOOR_HQ.rooms[id]); }
+        /* THE FOURIER FOYER (HQ plan 7.4, 2026-09-15): a fresh arrival from Play
+           stands in the vestibule and walks in through the revolving door —
+           the loading card's "verifying your corners…" as a place. Off with
+           `?nofoyer`, localStorage ew_hq_foyer='off' or window.EW_HQ_NO_FOYER
+           (Play lands in the hall as before). Returns and walks are unaffected. */
+        const _HQ_FOYER = 'foyer';
+        function _hqFoyerOn() {
+            try {
+                if (window.EW_HQ_NO_FOYER) return false;
+                if (/[?&]nofoyer\b/.test(location.search)) return false;
+                if (localStorage.getItem('ew_hq_foyer') === 'off') return false;
+            } catch (e) {}
+            return _hqRoomExists(_HQ_FOYER);
+        }
+        function _hqArrivalRoom() { return _hqFoyerOn() ? _HQ_FOYER : 'central_egress'; }
         /* a forced room variant for a dev run: '<id>' stands it, 'none' / '' stands the sheet, undefined = roll */
         function _hqVariantForce() {
             let f = null;
@@ -468,7 +485,7 @@
             const walking = opts.from === 'walk';
             /* which room: an explicit ask, else the room the player left from
                (a return), else the egress (Play always starts on the floor) */
-            let roomId = opts.room || (returning ? _hqLastRoom : 'central_egress');
+            let roomId = opts.room || (returning ? _hqLastRoom : (opts.from === 'play' ? _hqArrivalRoom() : 'central_egress'));
             if (!_hqRoomExists(roomId)) roomId = 'central_egress';
             _hqCurRoom = roomId;
             /* ROOM VARIANTS (HQ plan 5.1, 2026-09-11): a fresh arrival rolls the
@@ -567,7 +584,7 @@
             /* Code Red (plan 3.3): the doorbell rings once per Code Red per
                session on the way into the egress — from Play or back from a
                screen / match, never when walking room to room */
-            if (!walking && roomId === 'central_egress') {
+            if (!walking && (roomId === 'central_egress' || roomId === _HQ_FOYER)) {
                 try {
                     const cr = (typeof window.hqCodeRed === 'function') ? window.hqCodeRed(profile) : null;
                     const key = cr && !cr.cleared ? (cr.date + '|' + cr.site) : null;
@@ -1638,6 +1655,19 @@
                     + `<div class="hq-row hq-row-tray"><b>AHEAD OF YOU</b><span>${ic.queue ? 'THE OFFICE IS WORKING THROUGH IT' : 'YOU ARE BEING SERVED. NOBODY HAS SAID SO.'}</span><i class="hq-lamp-chip st-${ic.queue ? 'unstable' : 'stabilized'}">${ic.queue}</i></div></div>`;
                 html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="_mountReactProfile">SIGN IN AT THE WINDOW ▸ PROFILE · ID CARD</button><button class="hq-btn" data-close="1">WAIT</button></div>';
                 html += '<p class="hq-panel-note">Numbers are called in order. The order is on a form. The form is being laminated.</p>';
+                return html;
+            }
+            /* CORNER INSPECTION (THE FOURIER FOYER, 2026-09-15): the loading card's line as a desk — data.js hqCornerInspection is the one read */
+            if (c.id === 'inspection') {
+                const ci = (typeof window.hqCornerInspection === 'function') ? window.hqCornerInspection(_hqProfile()) : null;
+                html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'The inspection desk.') + '</p>';
+                if (ci) html += `<div class="hq-rows"><div class="hq-row hq-row-tray"><b>CORNERS</b><span>COUNTED AT THE DOOR</span><i class="hq-lamp-chip st-stabilized">${ci.corners}</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>ANGLE</b><span>VERIFIED AGAINST THE STANDARD</span><i class="hq-lamp-chip st-stabilized">${ci.angle}°</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>FILE</b><span>${ci.onFile ? _hqEsc(ci.empNo) + (ci.callsign ? ' · ' + _hqEsc(ci.callsign) : '') : 'NO CARD ON FILE'}</span><i class="hq-lamp-chip st-${_hqEsc(ci.tone)}">${_hqEsc(ci.verdict)}</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>VISIT</b><span>${ci.punched ? 'THE CLOCK PUNCHED YOU IN TODAY · STREAK ' + ci.streak : 'ON FILE · ' + ci.days + ' DAY' + (ci.days === 1 ? '' : 'S')}</span><i class="hq-lamp-chip st-open">${ci.visits}</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>THE MOTTO</b><span>AS TAUGHT AT ORIENTATION · TODAY IS ${_hqEsc(ci.canon)}</span><i class="hq-lamp-chip st-open">${_hqEsc(ci.motto)}</i></div></div>`;
+                html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">' + (ci && ci.onFile ? 'PROCEED' : 'WAIT') + '</button></div>';
+                html += '<p class="hq-panel-note">' + _hqEsc(ci ? ci.note : 'Four corners, ninety degrees. Proceed.') + '</p>';
                 return html;
             }
             /* THE HOLD (Room 5150): a panel and the condition line off the chart; nothing else */

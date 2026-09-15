@@ -2447,6 +2447,35 @@ the source sites. `HQ_LOST_CARD_FEE` (86) is never charged — a number the
 sheet prints, not an economy hook.
 
 
+## THE FOURIER FOYER (the front door, HQ plan 7.4's last row) — added 2026-09-15
+`DOOR_HQ.rooms.foyer` (data.js) is THE FOURIER FOYER, a `kind: 'box'`
+vestibule SOUTH of the hall behind the ground ring's revolving door at
+195° (`central_egress.doors` id `foyer`, `leaf_revolving`, wide — the
+one free stretch of the lower wall, between the Training Room and
+Medical; the cooler moved 196° → 204°, the round picture 188° → 186°).
+No `roomNo` (a foyer; the register skips it). Doors: `egress` (north,
+the same revolving leaf) → `central_egress@foyer`; `street` (south,
+`leaf_entrance`) → `fn: '_hqExitToMenu'` — the strip's EXIT as a door,
+the street IS the main menu (labelled in map.js `_HQ_FN_LABELS`; one
+home). Counter `inspection` (CORNER INSPECTION, `action: {}`) → the by-id
+panel in `_hqCounterPanelHtml`, which reads **`hqCornerInspection
+(profile)`** (data.js, on `window`, beside `hqIntakeCard`) = `{ onFile,
+empNo, callsign, corners: 4, angle: 90, verdict, tone, visits, days,
+streak, punched, date, canon, motto, mottoForms, note }`; `HQ_MOTTO_FORMS`
+= MASTER A7's three forms (the seal does NOT carry the motto — the
+barometer is the Bureau's plaque, 4.4). Procs in `_hqProcBuilders`
+(three-renderer.js, the Phase 8 block): `door_seal` (a 3.6 m canvas
+decal, cached — the department's name + the Customs & Admissions slogan
+round the rim, a door in a square in a circle), `doormat`,
+`umbrella_stand` (block). **THE ARRIVAL**: map.js `_hqEnter({ from:
+'play' })` lands in `_hqArrivalRoom()` = the foyer (spawn just inside the
+front door, facing the revolving door) unless `?nofoyer` / localStorage
+`ew_hq_foyer='off'` / `window.EW_HQ_NO_FOYER`; returns, walks, `opts.room`
+and the dev entries land as before; the Code Red doorbell rings in the
+foyer too. Viewer-local (RULE #2). doorhq.test.js guards the room, the
+helper, the ration (the foyer's two faces of one door) and the source
+sites.
+
 ## THE PENTHOUSE + ROOMS 4C + 8 (the elevator rides, HQ plan 5.4 stage 1 / 7.4) — added 2026-09-14
 `DOOR_HQ.rooms.executive` (data.js) is THE PENTHOUSE, a `kind: 'box'` lobby
 behind the mezzanine ELEVATOR at 0° (`central_egress.doors` id `elevator`,
