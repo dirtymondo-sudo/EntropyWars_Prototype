@@ -6730,12 +6730,7 @@
             const out = { keys: 0, items: [] };
             if (!thief || !victim) return out;
             const label = opts.verb || 'steals';
-            let wantKeys = opts.keys != null ? opts.keys : 1;
-            while (wantKeys > 0 && (victim.hourglasses || 0) > 0) {
-                victim.hourglasses--;
-                thief.hourglasses = (thief.hourglasses || 0) + 1;
-                out.keys++; wantKeys--;
-            }
+            out.keys = moveHourglassesBetweenUnits(victim, thief, opts.keys != null ? opts.keys : 1);
             if (out.keys) {
                 addLog(`${unitDisplayName(thief)} — ${label}: ${out.keys} Key${out.keys === 1 ? '' : 's'} taken from ${unitDisplayName(victim)}!`);
                 showFloatingTextForUnit(thief, `+${out.keys} KEY`, 'pickup', { durationMs: 1200 });
@@ -25328,10 +25323,14 @@
         }
 
         function moveHourglassesBetweenUnits(fromUnit, toUnit, amount = 1) {
-            if (!fromUnit || !toUnit || amount <= 0 || (fromUnit.hourglasses || 0) <= 0) return 0;
+            if (!fromUnit || !toUnit || fromUnit.id === toUnit.id || !Number.isFinite(amount) || amount <= 0) return 0;
+            // Registry ownership is authoritative; counters are only a cached display.
             const carried = state.hourglasses.filter(h => h.carriedBy === fromUnit.id);
-            if (!carried.length) return 0;
-            const moveCount = Math.max(0, Math.min(amount, carried.length));
+            const received = state.hourglasses.filter(h => h.carriedBy === toUnit.id).length;
+            const moveCount = Math.min(Math.floor(amount), carried.length);
+            fromUnit.hourglasses = carried.length;
+            toUnit.hourglasses = received;
+            if (!moveCount) return 0;
             for (let i = 0; i < moveCount; i++) {
                 carried[i].carriedBy = toUnit.id;
             }
@@ -54692,9 +54691,7 @@
                     }
 
                     let stolen = false;
-                    if ((target.hourglasses || 0) > 0) {
-                        target.hourglasses--;
-                        unit.hourglasses = (unit.hourglasses || 0) + 1;
+                    if (moveHourglassesBetweenUnits(target, unit, 1) > 0) {
                         addLog(`${unitDisplayName(unit)} plunders a Key from ${unitDisplayName(target)}!`);
                         showFloatingTextForUnit(unit, '+1 KEY', 'pickup', { durationMs: 1200 });
                         showFloatingTextForUnit(target, '-1 KEY', 'damage', { durationMs: 1000 });

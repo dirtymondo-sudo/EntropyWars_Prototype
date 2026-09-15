@@ -8993,7 +8993,7 @@
         }
 
         function dropHourglassesFromUnit(unit) {
-            if (!unit || unit.hourglasses <= 0) return;
+            if (!unit) return;
             const carried = state.hourglasses.filter(h => h.carriedBy === unit.id);
             for (const h of carried) {
                 h.carriedBy = null;
@@ -9002,7 +9002,7 @@
                 h.visibleTo[1] = true;
                 h.visibleTo[2] = true;
             }
-            addLog(`${unitDisplayName(unit)} drops ${carried.length} Key${carried.length === 1 ? '' : 's'} at ${coordLabel(unit.x, unit.y)}.`, unit.player);
+            if (carried.length) addLog(`${unitDisplayName(unit)} drops ${carried.length} Key${carried.length === 1 ? '' : 's'} at ${coordLabel(unit.x, unit.y)}.`, unit.player);
 
             const lostBuff = unit.hourglassBuff || 0;
             unit.hourglassBuff = 0;

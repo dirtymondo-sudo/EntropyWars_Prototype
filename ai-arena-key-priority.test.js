@@ -107,3 +107,22 @@ test('automatic reserve retreat yields to a projected Key win',()=>{
  vm.runInNewContext('(function(){'+block+'})()',ctx);assert.equal(switched,0);
  ctx.best={type:'attack'};vm.runInNewContext('(function(){'+block+'})()',ctx);assert.equal(switched,1);
 });
+
+for (const player of [1, 2]) test(`seat ${player}: stolen Key can be dropped, rescanned and counted toward victory`, () => {
+ const h = setup(player);
+ h.held(h.ally, 2); h.held(h.enemy, 1); h.key(7,5); h.key(7,6);
+ h.enemy.hourglasses = 1; h.enemy.hourglassBuff = 1;
+ h.state.hourglassBuffs[h.enemy.player] = 1;
+ vm.runInContext(fn(battle, 'moveHourglassesBetweenUnits') + '\n' + fn(battle, '_stealFromUnit') + '\n' + fn(read('map.js'), 'dropHourglassesFromUnit'), h.c);
+ assert.equal(h.c._stealFromUnit(h.unit, h.enemy, {keys:1, items:0}).keys, 1);
+ assert.equal(h.state.hourglasses.filter(k => k.carriedBy === h.unit.id).length, 1);
+ h.c.dropHourglassesFromUnit(h.unit);
+ assert.equal(h.state.hourglassBuffs[player], 0);
+ assert.equal(h.unit.hourglasses, 0);
+ h.c.doInspect(h.unit, h.unit.x, h.unit.y);
+ assert.equal(h.unit.hourglasses, 1);
+ assert.equal(h.unit.hourglassBuff, 1);
+ assert.equal(h.state.hourglassBuffs[player], 1);
+ assert.equal(h.state.winner, player);
+ assert.equal(h.state._winCondition, 'hourglasses_collected');
+});

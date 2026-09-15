@@ -12,6 +12,38 @@ Stop the incremental VFX helper cleanup batches here. Continue **Phase 6 — Are
 
 LIFE-06/VFX-03 remain partially validated with residual callback ownership deferred to the backlog. A current source count finds 24 direct timer sites from Merkaba onward; this is an inspection inventory, not 24 confirmed bugs or spells. Earlier direct timers also include infrastructure, cleanup and cache work. VFX-04 endpoint/list visibility remains open and deferred; it is not an exit gate for starting Phase 6. Preserve all completed fixes and their evidence. Do not resume spell-helper batches unless requested or a concrete blocker is found during the next phase.
 
+### Latest implementation — 2026-09-14: authoritative Key theft and drop ownership
+
+Baseline: repository main `74cb16a7c2ff2a2993f79809516128ccd0b2d574`. Before editing, battle.js, map.js, index.html, CLAUDE.md and AGENTS.md matched the pinned Git blob hashes. Working copy: `review-20260914-key-ownership`.
+
+**Key theft registry finding — fixed locally, not deployed.** Both `_stealFromUnit` and the Plunder/racePlunder utility branch now use the existing `moveHourglassesBetweenUnits` transaction. It moves actual registry entries and uses the existing trade rule for unit charge and cross-team charge totals. No new buff rule was invented. Registry counts reconcile both unit counters; zero/overstated cached counters cannot suppress or invent a transfer. Self-transfer and nonfinite amounts are refused, and fractional amounts are rounded down. Plunder still prefers one Key to an item; the steal kind can take both according to its options. Damage still runs before Plunder theft, so Keys already dropped by lethal damage cannot also be stolen.
+
+`dropHourglassesFromUnit` now consults registry ownership even if the unit counter is zero, clears its charge ledger, and avoids a misleading zero-Key log. This prevents future counter/registry divergence at these boundaries; it cannot infer the intended owner of historically corrupted saves.
+
+**Validation:** 18 focused ownership tests pass; the unmodified baseline fails 16 with assertion mismatches and passes two controls. Two additional production Inspect/winner regressions steal, drop and rescan a Key for both seats and confirm Arena victory and restored charge. Full package-equivalent command (`node --test *.test.js`; npm is unavailable): **1,267 tests, 1,263 passed, zero failed, four existing skips**. Syntax: **147/147 files clean**. Presentation and selected engine dependencies are controlled in these fixtures; the lethal-damage ordering case doubles damage with an immediate production drop. This is not a full death-pipeline, browser, full-match AI, or live host/guest acceptance run.
+
+Online source review: the existing host-authoritative spell path remains; registry/unit/team charge fields continue through ordinary state snapshots, outside guest-local UI preservation. No serialized fields or relay types were added. Actual guest reception remains untested.
+
+**Delivery:** `ENTROPY_WARS_KEY_OWNERSHIP_FIX.zip`, complete flat files. R2: battle.js, map.js. Render: index.html (shared token `20260914-key-ownership-01-cors`). Repository only: the two changed test files, review tracker, validation evidence and upload notes. Sync runtime files to the repository too. No commit, push or deployment.
+
+**Next exact task:** fix AI-06h action continuation ownership across `_moveThenInspect`, `_moveThenAttack` and `_moveTowards`, including delayed legs, completion and watchdog writes; reproduce stale-match and same-battle replacement-action cases before changing code. Then continue carrier takedown/steal/control-denial valuation and Phase 6 scenario/timing acceptance. VFX helper cleanup remains deferred.
+
+### Current phase position — 2026-09-14
+
+| Phase | Position and remaining gate |
+| --- | --- |
+| 0 — Reconnaissance | Complete. |
+| 1 — Loading/lifecycle | Partial fixes validated; readiness, remaining callback ownership and live transition/recovery acceptance remain. |
+| 2 — Performance | Source findings and capture protocol prepared; measurements and optimization acceptance remain. |
+| 3 — Pause/input | Multiple input/focus fixes validated; shared presentation and device/browser acceptance remain. |
+| 4 — Camera | Source review complete enough to identify fixes; framing/beat implementation and visual acceptance remain. |
+| 5 — VFX | Many lifetime fixes validated; residual lifetime and visibility work deferred by user direction. |
+| 6 — Arena/TDM AI | Active. Navigation, routing, beams and immediate Key/Cube objectives have validated fixes. This batch fixes theft ownership; AI-06h, carrier denial, residual scenario cases, timing and authorized observation remain. |
+| 7 — Maps/assets | Source inventory and brief prepared; pilot and visual acceptance remain. |
+| 8 — Integrated review | Backlog prepared; whole-player-journey and final acceptance remain. |
+
+Earlier entries below are historical snapshots; this entry supersedes their Key-theft "not fixed" status. Phase 6 is not complete.
+
 ### Latest review — 2026-09-14: Key theft prevents correct carrier drops
 
 Baseline: connected main 409f498881686581f5016f4452609ca42fc9850f. Comparison with d93efc550cc70c90ef815de4d276c96dabf4a636 contains only the preceding review log and action diagnostic; runtime remains unchanged.
