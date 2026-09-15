@@ -22070,7 +22070,22 @@ const ThreeRenderer = (function () {
         anchor:        'Meshy_AI_ship_anchor_0912231033_texture.glb',
         teacups:       'Meshy_AI_stacked_teacups_0912231425_texture.glb',
         teapot:        'Meshy_AI_teapot_0912231417_texture.glb',
-        trilithon:     'Meshy_AI_trilithon_0912231457_texture.glb'
+        trilithon:     'Meshy_AI_trilithon_0912231457_texture.glb',
+        /* 2026-09-15 THE VEHICLE BATCH (nine Meshy vehicles the user uploaded
+           to Assets/misc/ — MODEL_INDEX.md §3c). Placed ONLY through
+           _hzVehicle (the kit below): the length, the facing turn and the
+           collision foot of each live in _VEHICLE_KIT, one row per file. The
+           facings are UNMEASURED targets (the CDN is unreachable from the
+           sandbox) — a nose that lands sideways is a one-field edit there. */
+        suv:           'Meshy_AI_a_black_SUV_0915195508_texture.glb',
+        cadillac:      'Meshy_AI_a_black_cadillac_0915195323_texture.glb',
+        copcar:        'Meshy_AI_a_cop_car_0915195443_texture.glb',
+        cybercar:      'Meshy_AI_a_cyberpunk_car_0915195427_texture.glb',
+        firetruck:     'Meshy_AI_a_fire_truck_0915195407_texture.glb',
+        schoolbus:     'Meshy_AI_a_school_bus_0915195620_texture.glb',
+        subway_cart:   'Meshy_AI_a_subway_train_cart_0915195417_texture.glb',
+        subway_front:  'Meshy_AI_a_subway_train_front_0915195457_texture.glb',
+        ambulance:     'Meshy_AI_an_ambulance_0915195334_texture.glb'
     };
 
     // keep the GLB's own baked texture, just unlit — the misc-model default
@@ -22162,6 +22177,71 @@ const ThreeRenderer = (function () {
             }
         });
         g._ew_footM = o.foot || 0; g._ew_kit = key;
+        return g;
+    }
+    // ── THE VEHICLE KIT (2026-09-15) — the nine vehicles as one call ─────
+    // `_hzVehicle(kind, o)` places a vehicle from _MISC_GLB the way
+    // _hzMiscKit places any prop, with the vehicle's OWN facts read from
+    // _VEHICLE_KIT: `m` = its length in metres (fitted along the model's
+    // longest horizontal axis — `fit: 'span'`), `yaw` = the pre-turn that
+    // puts the NOSE at +Z (so a caller's rotation.y means what it means for
+    // every procedural builder: 0 = nose north on the board's frame), `foot`
+    // = the collision disc the walkable site room reads before the GLB
+    // lands, `w` / `h` = the procedural stand-in's box (the fallback when
+    // the loader is missing or EW_PERF_LOW skips the download — scenery
+    // only; a vehicle is never on-board cover), `lift` = the self-lit
+    // Lambert (a black SUV under a night sky is a black hole otherwise).
+    // The facings are TARGETS (unseen — RULE #1c): if a nose lands
+    // backward, `yaw: Math.PI`; sideways, ±Math.PI / 2 — one field.
+    var _VEHICLE_KIT = {
+        suv:          { m: 4.9, yaw: 0, foot: 1.2, w: 2.0, h: 1.8, color: 0x141416, lift: 0.22 },
+        cadillac:     { m: 5.6, yaw: 0, foot: 1.3, w: 2.0, h: 1.4, color: 0x101012, lift: 0.22 },
+        copcar:       { m: 5.0, yaw: 0, foot: 1.2, w: 1.9, h: 1.5, color: 0xe8e8ec, lift: 0.16, beacon: true },
+        cybercar:     { m: 4.6, yaw: 0, foot: 1.1, w: 2.0, h: 1.2, color: 0x2a1a3a, lift: 0.3 },
+        firetruck:    { m: 9.0, yaw: 0, foot: 2.2, w: 2.5, h: 3.4, color: 0xc81e1e, lift: 0.16, beacon: true },
+        schoolbus:    { m: 10.5, yaw: 0, foot: 2.5, w: 2.5, h: 3.0, color: 0xf2b820, lift: 0.14 },
+        ambulance:    { m: 6.2, yaw: 0, foot: 1.5, w: 2.3, h: 2.6, color: 0xf4f4f0, lift: 0.16, beacon: true },
+        subway_front: { m: 12.0, yaw: 0, foot: 3.0, w: 2.6, h: 3.2, color: 0xb8bcc0, lift: 0.2 },
+        subway_cart:  { m: 12.0, yaw: 0, foot: 3.0, w: 2.6, h: 3.2, color: 0xb8bcc0, lift: 0.2 }
+    };
+    /* the stand-in: a lit box on four dark wheels, nose +Z, in the kit's colour */
+    function _hzVehicleProc(kind) {
+        var V = _VEHICLE_KIT[kind] || _VEHICLE_KIT.suv, ts = CONFIG.tileSize || BASE_TILE, k = ts / 1.75;
+        var g = new THREE.Group();
+        var body = new THREE.Mesh(new THREE.BoxGeometry(V.w * k, V.h * 0.62 * k, V.m * k), _hzLit(null, V.color));
+        body.position.y = (0.35 + V.h * 0.31) * k; g.add(body);
+        var cab = new THREE.Mesh(new THREE.BoxGeometry(V.w * 0.92 * k, V.h * 0.36 * k, V.m * 0.55 * k), _hzLit(null, 0x30343a));
+        cab.position.set(0, (0.35 + V.h * 0.62 + V.h * 0.18) * k, -V.m * 0.05 * k); g.add(cab);
+        var wheel = new THREE.CylinderGeometry(0.34 * k, 0.34 * k, 0.24 * k, 10), rub = _hzLit(null, 0x141414);
+        [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (q) {
+            var w = new THREE.Mesh(wheel, rub); w.rotation.z = Math.PI / 2;
+            w.position.set(q[0] * (V.w / 2) * k, 0.34 * k, q[1] * V.m * 0.32 * k); g.add(w);
+        });
+        if (V.beacon) { var b = new THREE.Mesh(new THREE.BoxGeometry(V.w * 0.7 * k, 0.16 * k, 0.3 * k), new THREE.MeshBasicMaterial({ color: 0xff3030 })); b.position.set(0, (0.35 + V.h) * k + 0.08 * k, 0); g.add(b); }
+        return g;
+    }
+    // `o`: rng, yaw (an extra turn ON TOP of the kit's — the caller's
+    // rotation.y is the usual way), lift, cast, low ('skip' = scenery),
+    // foot override, metres override, beacon: false (no light — the site
+    // room), fallback override.
+    function _hzVehicle(kind, o) {
+        o = o || {};
+        var V = _VEHICLE_KIT[kind]; if (!V) return new THREE.Group();
+        var g = _hzMiscKit(kind, {
+            metres: (o.metres != null) ? o.metres : V.m, fit: 'span', yaw: (V.yaw || 0) + (o.yaw || 0),
+            lift: (o.lift != null) ? o.lift : V.lift, cast: o.cast !== false, foot: (o.foot != null) ? o.foot : V.foot,
+            rng: o.rng, low: o.low, repeat: o.repeat,
+            fallback: o.fallback || function () { return _hzVehicleProc(kind); },
+            onDone: o.onDone
+        });
+        g._ew_footM = (o.foot != null) ? o.foot : V.foot; g._ew_vehicle = kind;
+        /* the emergency beacon: a slow red-blue pulse over the roof, on the board only (a room hangs its own lights) */
+        if (V.beacon && o.beacon !== false && typeof _hzGlowSprite === 'function') {
+            var ts = CONFIG.tileSize || BASE_TILE, k = ts / 1.75;
+            var red = _hzGlowSprite(0.9 * k, 0xff3040, 0.55, 0.0, 0.0, 0.0), blue = _hzGlowSprite(0.9 * k, 0x3060ff, 0.55, 0.0, 0.0, 0.0);
+            red.position.set(-0.35 * k, (V.h + 0.25) * k, 0); blue.position.set(0.35 * k, (V.h + 0.25) * k, 0); g.add(red, blue);
+            if (typeof _hzPulse === 'function') { _hzPulse(red.material, red, 0.45, 0.1, 1.6); _hzPulse(blue.material, blue, 0.45, 0.1, 1.6); }
+        }
         return g;
     }
     // ── The D.O.O.R. kit on the board (2026-09-11) ─────────────────────────
@@ -25197,7 +25277,9 @@ const ThreeRenderer = (function () {
         var mast = K.cyl(0.08 * ts, 0.14 * ts, 9 * ts, 6, K.mat('metal', 0x7a7f88)); mast.position.set(K.BX1 + 7 * ts, K.fy + 4.5 * ts, K.BZ0 - 6 * ts); K.add(mast);
         var cab = K.box(0.9 * ts, 0.8 * ts, 0.9 * ts, K.mat('metal', 0x8a9098)); cab.position.set(mast.position.x, K.fy + 9.1 * ts, mast.position.z); K.add(cab);
         K.add(K.lamp(mast.position.x, K.fy + 9.6 * ts, mast.position.z, 0xff3030, 0.9 * ts, 0.7));
-        [[K.BX0 - 1.5 * ts, K.BZ1 + 2.3 * ts], [K.BX1 + 1.7 * ts, K.BZ0 - 2.4 * ts]].forEach(function (p) { var bus = K.box(1.0 * ts, 0.9 * ts, 2.6 * ts, K.mat('metal_2', 0xd8b04a)); bus.position.set(p[0], K.fy + 0.55 * ts, p[1]); bus.rotation.y = 0.25; K.add(K.lit(bus, true)); });
+        /* THE VEHICLE BATCH (2026-09-15): the test town's school bus parked on the south verge and the black Cadillac in the driveway of the east house (the boxes that stood in for the bus are gone) */
+        _nrProp(K, function (rng) { return _hzVehicle('schoolbus', { rng: rng }); }, K.BX0 - 1.6 * ts, K.BZ1 + 2.6 * ts, { ry: Math.PI / 2 + 0.12 });
+        _nrProp(K, function (rng) { return _hzVehicle('cadillac', { rng: rng }); }, K.BX1 + 1.9 * ts, K.BZ0 - 2.5 * ts, { ry: -0.25 });
         _nrProp(K, function (rng) { return _hzDoorKitGLB('utility_box', { metres: 1.35, foot: 0.45, rng: rng }); }, K.CX + 1.9 * ts, K.BZ0 - 2.2 * ts, { ry: 0 });   // the street's utility box by the north road (the user's GLB, 2026-09-13)
     };
     /* HEAVEN — the gate plaza on the cloud sea: the Gates at both ends,
@@ -25241,6 +25323,10 @@ const ThreeRenderer = (function () {
         [[K.BX0 - 1.2 * ts, K.CZ - 2.2 * ts, 0.4], [K.BX1 + 1.2 * ts, K.CZ + 2.4 * ts, -0.3]].forEach(function (p) { var d = _hzPropGLB('dumpster', 1.0 * ts); d.position.set(p[0], K.fy, p[1]); d.rotation.y = p[2]; K.add(d); });
         /* the street's utility boxes (the user's GLB, 2026-09-13) on the curb across from the dumpsters */
         [[K.BX1 + 1.3 * ts, K.CZ - 2.6 * ts], [K.BX0 - 1.3 * ts, K.CZ + 2.8 * ts]].forEach(function (p) { _nrProp(K, function (rng) { return _hzDoorKitGLB('utility_box', { metres: 1.35, foot: 0.45, rng: rng }); }, p[0], p[1], {}); });
+        /* THE VEHICLE BATCH (2026-09-15): two cyberpunk cars kerbside on the west and east streets (nose along the street), the cop car pulled across the north road */
+        _nrProp(K, function (rng) { return _hzVehicle('cybercar', { rng: rng }); }, K.BX0 - 1.35 * ts, K.CZ - 0.4 * ts, { ry: 0 });
+        _nrProp(K, function (rng) { return _hzVehicle('cybercar', { rng: rng }); }, K.BX1 + 1.35 * ts, K.CZ + 0.6 * ts, { ry: Math.PI });
+        _nrProp(K, function (rng) { return _hzVehicle('copcar', { rng: rng }); }, K.CX - 1.6 * ts, K.BZ0 - 1.3 * ts, { ry: Math.PI / 2 + 0.3 });
         var wet = new THREE.Mesh(new THREE.PlaneGeometry(K.X1 - K.X0, K.Z1 - K.Z0), new THREE.MeshBasicMaterial({ color: 0xff6ad8, transparent: true, opacity: 0.05, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
         wet.rotation.x = -Math.PI / 2; wet.position.set(K.CX, K.fy + 1.2, K.CZ); K.add(wet); _hzPulse(wet.material, null, 0.03, 0, 0.8);
     };
@@ -25278,6 +25364,9 @@ const ThreeRenderer = (function () {
         [[K.BX0 - 3.6 * ts, K.BZ0 - 3.6 * ts], [K.BX1 + 3.6 * ts, K.BZ0 - 3.6 * ts], [K.BX0 - 3.6 * ts, K.BZ1 + 3.6 * ts], [K.BX1 + 3.6 * ts, K.BZ1 + 3.6 * ts]].forEach(function (p) { _nrTower(K, p[0], p[1], { h: 6.5 }); });
         var wall = K.mat('concrete_floor', 0x8a8e96);
         [['n', K.CX, K.BZ0 - 4.4 * ts, K.X1 - K.X0, 0.4 * ts], ['s', K.CX, K.BZ1 + 4.4 * ts, K.X1 - K.X0, 0.4 * ts]].forEach(function (w) { var b = K.box(w[3], 1.4 * ts, w[4], wall); b.position.set(w[1], K.fy + 0.7 * ts, w[2]); K.addW(w[0], K.lit(b, true)); });
+        /* THE VEHICLE BATCH (2026-09-15): the team bus parked along the south wall, the ambulance waiting at the south end zone beside the utility box */
+        _nrProp(K, function (rng) { return _hzVehicle('schoolbus', { rng: rng }); }, K.BX1 + 2.2 * ts, K.BZ1 + 3.5 * ts, { ry: Math.PI / 2, wall: false });
+        _nrProp(K, function (rng) { return _hzVehicle('ambulance', { rng: rng }); }, K.CX - 3.4 * ts, K.BZ1 + 3.2 * ts, { ry: Math.PI * 0.85, wall: false });
     };
     /* ATLANTIS — the sunken plaza: the city's water all around, half-drowned
        colonnades on the banks, the crystal spire, kelp and bubbles. */
@@ -25713,6 +25802,9 @@ const ThreeRenderer = (function () {
         [[K.BX0 - 1.4 * ts, K.BZ0 - 2.6 * ts], [K.BX1 + 1.4 * ts, K.BZ1 + 2.6 * ts]].forEach(function (p) { _nrPool(K, p[0], p[1], 0.9 * ts, 'water', { jet: 0x8ad8ff, rimTex: 'marble_light', rimColor: 0xf0e8d8 }); K.add(K.lamp(p[0], fy + 0.9 * ts, p[1], 0x8ad8ff, 1.6 * ts, 0.4)); });
         /* the utility boxes on the curbs (the user's GLB, 2026-09-13): the casinos' power */
         [[K.BX0 - 1.4 * ts, K.CZ - 1.2 * ts], [K.BX1 + 1.4 * ts, K.CZ + 1.2 * ts]].forEach(function (p) { _nrProp(K, function (rng) { return _hzDoorKitGLB('utility_box', { metres: 1.35, foot: 0.45, rng: rng }); }, p[0], p[1], {}); });
+        /* THE VEHICLE BATCH (2026-09-15): the black Cadillac cruising the north road, the cop car parked at the chapel's kerb */
+        _nrProp(K, function (rng) { return _hzVehicle('cadillac', { rng: rng }); }, K.CX - 2.2 * ts, K.BZ0 - 2.3 * ts, { ry: Math.PI / 2 });
+        _nrProp(K, function (rng) { return _hzVehicle('copcar', { rng: rng }); }, K.BX1 + 1.4 * ts, K.BZ0 - 1.0 * ts, { ry: 0.15 });
         /* the chapel: a white house with a steeple, on the north-east corner */
         var cx = K.BX1 + 2.6 * ts, cz = K.BZ0 - 2.6 * ts;
         _nrHouse(K, cx, cz, { w: 2.4, d: 2.0, h: 1.4, tex: 'marble_light', color: 0xf8f4ec, roofTex: 'wood', roofColor: 0x4a3a58, ry: Math.PI, window: 0xffd0f0, chimney: false });
@@ -25744,6 +25836,11 @@ const ThreeRenderer = (function () {
         _nrProp(K, _hzSecurityCam, K.BX1 + 2.0 * ts, K.BZ0 - 2.0 * ts, { s: 0.8 });
         /* the utility boxes (the user's GLB, 2026-09-13): the block's power, on the curbs beside the dumpsters */
         [[K.BX0 - 1.3 * ts, K.CZ + 1.0 * ts], [K.BX1 + 1.3 * ts, K.CZ - 1.4 * ts]].forEach(function (p) { _nrProp(K, function (rng) { return _hzDoorKitGLB('utility_box', { metres: 1.35, foot: 0.45, rng: rng }); }, p[0], p[1], {}); });
+        /* THE VEHICLE BATCH (2026-09-15): THE EVACUATION — the fire truck across the north road, the ambulance and the cop car at the south barriers, the black SUV nobody claims on the east kerb */
+        _nrProp(K, function (rng) { return _hzVehicle('firetruck', { rng: rng }); }, K.CX + 2.6 * ts, K.BZ0 - 2.3 * ts, { ry: Math.PI / 2 + 0.2 });
+        _nrProp(K, function (rng) { return _hzVehicle('ambulance', { rng: rng }); }, K.CX - 2.4 * ts, K.BZ1 + 2.4 * ts, { ry: -Math.PI / 2 - 0.15 });
+        _nrProp(K, function (rng) { return _hzVehicle('copcar', { rng: rng }); }, K.CX + 2.6 * ts, K.BZ1 + 2.2 * ts, { ry: Math.PI * 0.4 });
+        _nrProp(K, function (rng) { return _hzVehicle('suv', { rng: rng }); }, K.BX1 + 1.4 * ts, K.CZ + 0.8 * ts, { ry: Math.PI });
         var steel = K.mat('gunmetal', 0x5a5a60);
         [[K.CX - 1.8 * ts, K.Z0 + 0.8 * ts], [K.CX + 1.8 * ts, K.Z0 + 0.8 * ts], [K.CX - 1.8 * ts, K.Z1 - 0.8 * ts], [K.CX + 1.8 * ts, K.Z1 - 0.8 * ts]].forEach(function (p) {
             var pole = K.cyl(0.05 * ts, 0.06 * ts, 2.2 * ts, 6, steel); pole.position.set(p[0], fy + 1.1 * ts, p[1]); K.add(pole);
@@ -40585,6 +40682,82 @@ const ThreeRenderer = (function () {
             if (_hq) _hq.tickers.push(function (dt, now) { glow.scale.setScalar((1.3 + 0.08 * Math.sin(now * 0.003)) * U); });
             return { g: g, motion: motion, ow: 2 * R + 0.1, oh: 1.0, plateY: 2.35 };
         },
+        /* THE TRAIN (HQ plan 9.3 `train`, 2026-09-15): a platform edge with
+           the yellow line, and THE TRAIN — the user's subway front car + a
+           trailing cart (_MISC_GLB subway_front / subway_cart through the
+           vehicle kit; a lit procedural car when the loader is missing) —
+           standing along the wall (local X) with ONE doorway at x 0 facing
+           the walker (+Z). It ARRIVES: on the room's first frames the train
+           rolls in from local −X (the tunnel's south end) and brakes to its
+           mark (a ticker, ~3.2 s), headlight first. The way rig's tick =
+           the doors sliding open + the interior lighting up; the press-in
+           at 0.55 is the step aboard. A FREE end (the tunnel room's track)
+           stands the body BEHIND its own plane (z −2.4..0, the doors at the
+           plane); a WALL end (a street's subway) stands it half inside the
+           wall — the wall is the tunnel — so the doors are 0.9 m proud of
+           it and the landing (2.4 m in) is clear. `blockers` = discs down
+           the body's length, placed by _hqBuildWay in the room's frame. */
+        train: function (U, ctx) {
+            var g = new THREE.Group();
+            var W = 1.4, H = 2.1, D = 2.4, CL = 12, zBack = ctx.free ? -D : -(D - 0.9);
+            var steel = _hqMat('aluminium', 4, 1, { color: 0xb8bcc0, shininess: 70 });
+            var dark = _hqMat('gunmetal', 1, 1, { color: 0x2a2a2e, shininess: 30 });
+            var conc = _hqMat('concrete', 2, 1, { color: 0x8a8884, shininess: 2 });
+            /* the platform lip and the yellow line along the whole train, in front of the plane (a wall end); a free end already stands on its track bed */
+            if (!ctx.free) {
+                var lip = _hqBox(2 * CL + 2, 0.06, 0.5, conc); lip.position.set(0, 0.03 * U, 0.25 * U); g.add(lip);
+                var line = _hqBox(2 * CL + 2, 0.005, 0.12, _hqBasic(0xf2d21a)); line.position.set(0, 0.065 * U, 0.15 * U); g.add(line);
+            }
+            /* THE TRAIN: a group that rolls in along X; the cars inside it */
+            var tr = new THREE.Group(); g.add(tr);
+            var zc = zBack + D / 2;
+            function procCar(front) {
+                var c = new THREE.Group();
+                var hull = _hqBox(CL, 2.5, D - 0.2, steel); hull.position.set(0, 1.75 * U, 0); c.add(hull);
+                var stripe = _hqBox(CL, 0.3, D - 0.18, _hqBasic(0xc03038)); stripe.position.set(0, 1.6 * U, 0); c.add(stripe);
+                var glass = _hqBasic(0xfff0c0, { transparent: true, opacity: 0.85 });
+                for (var i = 0; i < 6; i++) { var w = _hqBox(1.1, 0.8, 0.02, glass); w.position.set((-CL / 2 + 1.2 + i * 1.9) * U, 2.1 * U, (D / 2 - 0.09) * U); c.add(w); }
+                for (var b = 0; b < 4; b++) { var bog = new THREE.Mesh(new THREE.CylinderGeometry(0.4 * U, 0.4 * U, 0.2 * U, 12), dark); bog.rotation.x = Math.PI / 2; bog.position.set(((b < 2) ? -4 : 4) * U, 0.4 * U, ((b % 2) ? 0.72 : -0.72) * U); c.add(bog); }
+                if (front) { var head = new THREE.Mesh(new THREE.CircleGeometry(0.16 * U, 12), _hqBasic(0xfff8e0)); head.position.set(-(CL / 2 + 0.01) * U, 1.0 * U, 0); head.rotation.y = -Math.PI / 2; c.add(head); }
+                return c;
+            }
+            /* the front car's nose leads (−X); its doorway is at x 0 (the car's
+               rear door), so the car is centred 3 m down the platform and the
+               cart trails at +X. A WALL end stands the front car ALONE — the
+               rest of the train is in the tunnel — so the body (x −9..3) never
+               crosses the next lane's door (Cyberpunk's Strip door at x −5 is
+               5 m from this lane; a full train would have run through it). */
+            var cars = ctx.free ? [[-3.0, 'subway_front', true], [9.4, 'subway_cart', false]] : [[-3.0, 'subway_front', true]];
+            cars.forEach(function (row) {
+                var car = (typeof _hzVehicle === 'function') ? _hzVehicle(row[1], { yaw: -Math.PI / 2, beacon: false, lift: 0.2, fallback: function () { return procCar(row[2]); } }) : procCar(row[2]);
+                car.position.set(row[0] * U, 0, zc * U); tr.add(car);
+            });
+            /* the doorway at x 0: a lit opening in the flank, two leaves that slide apart */
+            var glow = new THREE.Mesh(new THREE.PlaneGeometry(W * U, H * U), _hqBasic(0xfff0c0, { transparent: true, opacity: 0.35, depthWrite: false }));
+            glow.position.set(0, (H / 2) * U, (zBack + D - 0.02) * U); g.add(glow);
+            var mouth = _hzGlowSprite(1.8 * U, 0xffe8b0, 0.2, 0.0, 0.0, 0.0); mouth.position.set(0, (H * 0.55) * U, (zBack + D + 0.3) * U); g.add(mouth);
+            var leafL = _hqBox(W / 2 + 0.02, H, 0.05, steel), leafR = _hqBox(W / 2 + 0.02, H, 0.05, steel);
+            var zl = (zBack + D + 0.03) * U;
+            leafL.position.set(-(W / 4) * U, (H / 2) * U, zl); leafR.position.set((W / 4) * U, (H / 2) * U, zl); g.add(leafL, leafR);
+            var head = new THREE.Mesh(new THREE.CircleGeometry(0.22 * U, 12), _hqBasic(0xfff8e0)); head.position.set(-(3.0 + CL / 2 + 0.06) * U, 1.0 * U, zc * U); head.rotation.y = -Math.PI / 2; tr.add(head);
+            var beam = _hzGlowSprite(2.4 * U, 0xfff4d0, 0.45, 0.0, 0.0, 0.0); beam.position.set(-(3.0 + CL / 2 + 0.4) * U, 1.0 * U, zc * U); tr.add(beam);
+            var motion = { mode: 'way', ow: W, tick: function (k) {
+                leafL.position.x = (-(W / 4) - 0.72 * k) * U; leafR.position.x = ((W / 4) + 0.72 * k) * U;
+                glow.material.opacity = 0.35 + 0.5 * k; mouth.material.opacity = 0.2 + 0.5 * k;
+            } };
+            /* THE ARRIVAL: from 26 m up the line (local +X — the tunnel's north end, the street's east), nose first, braking to the mark; the headlight's beam dies at the stop */
+            var t0 = null, off = 26;
+            tr.position.x = off * U; g._ew_arrive = function (now) {
+                if (t0 == null) t0 = now;
+                var p = Math.min(1, (now - t0) / 3200), e = 1 - Math.pow(1 - p, 3);
+                tr.position.x = off * (1 - e) * U; beam.material.opacity = 0.45 * (1 - e) + 0.08;
+                return p >= 1;
+            };
+            if (_hq) _hq.tickers.push(function (dt, now) { g._ew_arrive(now); });
+            var blockers = [];
+            for (var bx = -9; bx <= (ctx.free ? 15.4 : 3); bx += 1.5) blockers.push({ x: bx, z: zc, r: D / 2, top: 3.2 });
+            return { g: g, motion: motion, ow: W, oh: H, plateY: H + 1.2, blockers: blockers };
+        },
     };
     function _hqBuildWay(room, door, level, y0, Rw, inward) {
         var U = _hqUnits(), S = room.shell, G = _hq.doorGroup;
@@ -40610,6 +40783,16 @@ const ThreeRenderer = (function () {
         plate.position.set(0, plateY * U, 0.3 * U);
         grp.add(plate);
         G.add(grp);
+        /* a way that has a BODY (the train) hands back discs in its own frame
+           (x along the wall, z into the room, metres); they stand in the
+           room's frame like any prop's blocker — the walker cannot walk
+           through a subway car sideways */
+        (built.blockers || []).forEach(function (bl) {
+            var cy = Math.cos(grp.rotation.y), sy = Math.sin(grp.rotation.y);
+            var bwx = grp.position.x / U + bl.x * cy + bl.z * sy, bwz = grp.position.z / U - bl.x * sy + bl.z * cy;
+            var ob = new THREE.Group(); ob.position.set(bwx * U, y0 * U, bwz * U);
+            _hq.blockers.push({ obj: ob, y: y0, top: bl.top || null, rad: bl.r || 0.5, way: kind });
+        });
         var rec = { door: door, group: grp, lens: null, glow: null, plate: plate, plateEl: el, plateChip: chip, state: 'open', level: level, Rw: Rw, y0: y0, wide: !!door.wide, ow: ow, oh: oh, inward: inward, box: box, leaf: null, way: kind, motion: built.motion || null, openT: 0 };
         _hq.doors.push(rec);
         _hqLampApply(rec, _hqDoorState(door));

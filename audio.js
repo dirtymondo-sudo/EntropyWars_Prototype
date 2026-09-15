@@ -1049,7 +1049,7 @@
             doorbell: 0.5,
             /* THE SEAMS THAT ARE NOT DOORS (HQ plan 9.3, 2026-09-15): quiet —
                the buzz was muted for being loud; these stay under it */
-            wayCreak: 0.28, wayWell: 0.3,
+            wayCreak: 0.28, wayWell: 0.3, wayTrain: 0.32,
         };
         let _doorNoiseBuf = null;
         function _doorCtx() {
@@ -1144,6 +1144,23 @@
                 _doorOsc(ctx, _doorEnv(ctx, out, tp, vol * 0.2, 0.004, 0.04, 0.7), 'sine', 440, tp, 0.8, { f1: 200, slide: 0.3 });
                 _doorNoiseSrc(ctx, _doorEnv(ctx, out, tp, vol * 0.2, 0.002, 0.03, 0.25), tp, 0.3, { type: 'highpass', f0: 1800 });
                 return tp - t + 1.2;
+            },
+            /* THE TRAIN (a `way` seam, 2026-09-15): the brakes' long squeal
+               falling as the train stops, the air-brake hiss, the two-note
+               door chime, then the doors' rubber thud. Quiet, like the rest. */
+            wayTrain(ctx, t, out, vol) {
+                const sq = 0.9;
+                _doorOsc(ctx, _doorEnv(ctx, out, t, vol * 0.22, 0.08, sq - 0.3, 0.25), 'sawtooth', 2600, t, sq, { f1: 1500, slide: sq });
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t + 0.2, vol * 0.3, 0.05, 0.5, 0.35), t + 0.2, 1.1, { type: 'bandpass', f0: 4200, f1: 1800, slide: 1.0, q: 0.6 });
+                const th = t + sq + 0.05;
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, th, vol * 0.4, 0.01, 0.35, 0.3), th, 0.7, { type: 'highpass', f0: 3000 });
+                const tc = th + 0.45;
+                _doorOsc(ctx, _doorEnv(ctx, out, tc, vol * 0.35, 0.004, 0.12, 0.3), 'sine', 880, tc, 0.4);
+                _doorOsc(ctx, _doorEnv(ctx, out, tc + 0.22, vol * 0.35, 0.004, 0.14, 0.35), 'sine', 660, tc + 0.22, 0.45);
+                const td = tc + 0.75;
+                _doorOsc(ctx, _doorEnv(ctx, out, td, vol * 0.4, 0.003, 0.03, 0.14), 'sine', 120, td, 0.18, { f1: 60, slide: 0.12 });
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, td, vol * 0.18, 0.002, 0.04, 0.12), td, 0.18, { type: 'lowpass', f0: 900 });
+                return td - t + 0.4;
             },
             /* Rubber stamp: a low wooden thump + a short, bright slap of ink. */
             stamp(ctx, t, out, vol) {

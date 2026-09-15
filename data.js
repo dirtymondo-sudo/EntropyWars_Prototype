@@ -18318,6 +18318,20 @@ const DOOR_HQ = {
         sea_chest:         { file: 'Meshy_AI_pirate_treasure_chest_0912231220_texture.glb',         base: 'misc', h: 0.7, foot: 0.5, block: true },             // lock +Z
         ship_anchor:       { file: 'Meshy_AI_ship_anchor_0912231033_texture.glb',                   base: 'misc', h: 1.9, foot: 0.5, block: true },             // the spare, stowed on its flukes
         ship_lantern:      { file: 'Meshy_AI_a_hanging_lantern_0912231043_texture.glb',             base: 'misc', h: 0.5, foot: 0, ceil: true, glow: { y: -0.25, size: 1.4, color: 0xffb060 }, light: { color: 0xffa860, intensity: 0.75, dist: 7, y: -0.3 } },   // hangs from the beams; the deck's yard lanterns, below
+        /* 2026-09-15 THE VEHICLE BATCH (nine Meshy vehicles in the misc bucket —
+           MODEL_INDEX §3c): the ones that fit under a 2.8 m garage ceiling park
+           in Room P1 (`vehicle: true` = the booth counts it as a car). `span` =
+           the length (fitted along the longest axis); `rect` = the footprint at
+           face 0 / 180 (nose along z); the yaw the model needs to put its nose
+           at +Z is a TARGET (unseen) — the renderer's _VEHICLE_KIT owns it for
+           the boards, `yaw` here (degrees) is the room's copy of the same fact. */
+        car_suv:           { file: 'Meshy_AI_a_black_SUV_0915195508_texture.glb',       base: 'misc', span: 4.9, foot: 1.2, rect: { hw: 1.0, hd: 2.45 }, block: true, vehicle: true },
+        car_cadillac:      { file: 'Meshy_AI_a_black_cadillac_0915195323_texture.glb',  base: 'misc', span: 5.6, foot: 1.3, rect: { hw: 1.0, hd: 2.8 },  block: true, vehicle: true },
+        car_cop:           { file: 'Meshy_AI_a_cop_car_0915195443_texture.glb',         base: 'misc', span: 5.0, foot: 1.2, rect: { hw: 0.95, hd: 2.5 }, block: true, vehicle: true, glow: { y: 1.6, size: 1.2, color: 0xff3040 } },
+        car_cyber:         { file: 'Meshy_AI_a_cyberpunk_car_0915195427_texture.glb',   base: 'misc', span: 4.6, foot: 1.1, rect: { hw: 1.0, hd: 2.3 },  block: true, vehicle: true, glow: { y: 0.4, size: 2.0, color: 0xff3ad8 } },
+        car_ambulance:     { file: 'Meshy_AI_an_ambulance_0915195334_texture.glb',      base: 'misc', span: 6.2, foot: 1.5, rect: { hw: 1.15, hd: 3.1 }, block: true, vehicle: true, glow: { y: 2.5, size: 1.2, color: 0xff3040 } },
+        fire_truck:        { file: 'Meshy_AI_a_fire_truck_0915195407_texture.glb',      base: 'misc', span: 9.0, foot: 2.2, rect: { hw: 1.25, hd: 4.5 }, block: true, vehicle: true },   // 3.4 m tall — the works' warehouse, never P1's 2.8 m
+        school_bus:        { file: 'Meshy_AI_a_school_bus_0915195620_texture.glb',      base: 'misc', span: 10.5, foot: 2.5, rect: { hw: 1.25, hd: 5.25 }, block: true, vehicle: true },
         exit_sign:         { file: 'Meshy_AI_an_exit_sign_0903110032_texture.glb',                    span: 0.55, foot: 0, wall: true, mount: 2.75, glow: { y: 0.1, size: 0.6, color: 0x5cff7a } },
         fluorescent:       { file: 'Meshy_AI_a_fluorescent_fixture_0903105329_texture.glb',           span: 1.25, foot: 0, ceil: true },
         breaker_panel:     { file: 'Meshy_AI_a_breaker_panel_0903105436_texture.glb',                 h: 0.80, foot: 0, wall: true, mount: 1.25 },
@@ -18947,6 +18961,8 @@ const DOOR_HQ = {
     ways: {
         wardrobe: { verb: 'CLIMB IN', sub: 'THE WARDROBE · THROUGH THE COATS', sfx: 'wayCreak', w: 1.5, h: 2.3 },
         well:     { verb: 'CLIMB DOWN', sub: 'THE WELL · DOWN THE ROPE', sfx: 'wayWell', w: 1.4, h: 1.0 },
+        /* THE TRAIN (2026-09-15): a platform; the train arrives, the doors open, the next station is another map. The opening is ONE car door. */
+        train:    { verb: 'BOARD', sub: 'THE TRAIN · DOORS OPEN', sfx: 'wayTrain', w: 1.4, h: 2.1 },
     },
     /* Phase 9.3 pilot: ordinary, reversible doors between existing board
        rooms. Move the Derelict ends to its airlock when that room exists.
@@ -18975,6 +18991,7 @@ const DOOR_HQ = {
         wonderland: { label: 'THE WONDERLAND',   sub: 'A PLANE ONTO A CARPET', color: '#e39cff' },
         seams:      { label: 'THE SEAMS',        sub: 'THE DOORS THAT ARE NOT DOORS', color: '#f0e6c8', dashed: true },
         undercroft: { label: 'THE UNDERCROFT',   sub: 'EVERY WELL COMES OUT IN THE SAME CAVE', color: '#c8a2e0', dashed: true },
+        subway:     { label: 'THE SUBWAY',       sub: 'ALL LINES · THE TUNNEL IS ONE TUNNEL', color: '#f2d21a' },
     },
     links: [
         /* THE LUNAR ROUTE (the pilot's two, plus Mars and the drop) */
@@ -19152,6 +19169,20 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: 9.625, z: -6.125, face: 270, sub: 'THE CISTERN · CLIMB UP', verb: 'CLIMB UP' },
           why: 'the cistern cut into the bedrock under the first temple; the oldest well there is, and the shaft is dressed stone all the way down',
           note: 'the oldest of them', draft: true },
+        /* THE SUBWAY (9.3 `train`, 2026-09-15): the building's own platform
+           (Room 2's tunnel — a facility room seaming into a wild one, the
+           garden-well precedent) and the subway under Cyberpunk's
+           intersection. THE TRAIN stands at both ends: on the tunnel's track
+           bed (a FREE end — the doors face the platform, east) and along
+           Cyberpunk's north wall, half inside it (the wall is the tunnel). It
+           is the user's subway front + cart (the vehicle batch). Downtown's
+           and CERN's platforms wait on a free lane (their north walls are
+           full — rev 10's lane rule); the tunnel is one tunnel. */
+        { id: 'tunnel_cyberpunk', route: 'subway', way: 'train',
+          a: { room: 'tunnel', wall: 'free', x: -1.5, z: 6, face: 90, sub: 'ALL LINES · MIND THE GAP' },
+          b: { site: 'prebuilt_cyberpunk', wall: 'n', x: -10, sub: 'THE SUBWAY · ALL LINES' },
+          why: 'the train at the platform has been there for an hour with its doors open; it goes to every line, and the first stop is under an intersection that is always raining',
+          note: 'mind the gap', draft: true },
         /* THE FOUR EXITS: the cave has several ways out, and each one is a
            door into a site that is already on the map. Every one is two-way
            — the same object at both ends (7.0), never a one-way drop. */
@@ -23060,14 +23091,15 @@ const DOOR_HQ = {
                 { key: 'exit_sign',      wall: 'n', x: 8.5, mount: 2.55 },              // over the ramp: the way out that is not
                 { key: 'security_camera', wall: 'n', x: 12.5, mount: 2.5 },
                 /* ── the bays: five cars, eight painted bays ── */
-                { key: 'parking_bay',    x: -12, z: 8.2, face: 0 }, { key: 'parked_car', x: -12, z: 8.2, face: 0 },
+                /* THE VEHICLE BATCH (2026-09-15): five cars — the building's Sedan, the agents' black SUV, the executive's Cadillac, the cop car nobody signed for, Medical's ambulance (the ceiling is 2.8 m: the fire truck and the bus park elsewhere) */
+                { key: 'parking_bay',    x: -12, z: 8.2, face: 0 }, { key: 'parked_car',    x: -12, z: 8.2, face: 0 },
                 { key: 'parking_bay',    x: -9,  z: 8.2, face: 0 },
-                { key: 'parking_bay',    x: -6,  z: 8.2, face: 0 }, { key: 'parked_car', x: -6, z: 8.2, face: 180 },
+                { key: 'parking_bay',    x: -6,  z: 8.2, face: 0 }, { key: 'car_suv',       x: -6, z: 8.2, face: 180 },
                 { key: 'parking_bay',    x: -3,  z: 8.2, face: 0 },
-                { key: 'parking_bay',    x: 0,   z: 8.2, face: 0 }, { key: 'parked_car', x: 0, z: 8.2, face: 0 },
+                { key: 'parking_bay',    x: 0,   z: 8.2, face: 0 }, { key: 'car_cadillac',  x: 0, z: 8.2, face: 0 },
                 { key: 'parking_bay',    x: 3,   z: 8.2, face: 0 },
-                { key: 'parking_bay',    x: 6,   z: 8.2, face: 0 }, { key: 'parked_car', x: 6, z: 8.2, face: 0 },
-                { key: 'parking_bay',    x: -4,  z: -8.2, face: 180 }, { key: 'parked_car', x: -4, z: -8.2, face: 180 },
+                { key: 'parking_bay',    x: 6,   z: 8.2, face: 0 }, { key: 'car_cop',       x: 6, z: 8.2, face: 0 },
+                { key: 'parking_bay',    x: -4,  z: -8.2, face: 180 }, { key: 'car_ambulance', x: -4, z: -8.2, face: 180 },
                 { key: 'parking_bay',    x: -7,  z: -8.2, face: 180 },
                 { key: 'floor_stain',    x: -9,  z: 8.0 },                               // the one that leaks
                 { key: 'floor_stain',    x: 3,   z: 1.0 },
@@ -25114,7 +25146,7 @@ const DOOR_HQ = {
             ],
             props: [
                 { key: 'track_bed',      x: -2.8, z: 0, face: 0 },
-                { key: 'train_car',      x: -2.8, z: -6, face: 0 },
+                /* the train_car prop is retired (2026-09-15): THE TRAIN is the `train` way on the track (links.tunnel_cyberpunk) — it arrives */
                 { key: 'platform_edge',  x: -1.2, z: 0, face: 0 },
                 { key: 'departures_board', wall: 'n', x: 0, mount: 2.4 },
                 { key: 'tube_map',       wall: 'e', z: -4, mount: 1.1 }, { key: 'tube_map', wall: 'e', z: 6, mount: 1.1 },

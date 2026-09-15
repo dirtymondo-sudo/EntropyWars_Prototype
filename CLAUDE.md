@@ -3539,3 +3539,35 @@ frame (the event carries it; three-camera.js has no initial-pose API),
 the `spawnSide` mirror, the dissolve, a cleared-room rule. UNSEEN LIVE
 (RULE #1c): the one-shot on the Player cast rig, the strike timing, the
 builder-less first frame, the ward landing.
+
+## THE VEHICLE BATCH + THE TRAIN WAY (HQ plan 9.3 `train`) — 2026-09-15 rev 21, local delivery
+Nine Meshy vehicles on R2 `Assets/misc/` (MODEL_INDEX §3c). Renderer:
+`_MISC_GLB` rows `suv · cadillac · copcar · cybercar · firetruck ·
+schoolbus · ambulance · subway_front · subway_cart`; **`_VEHICLE_KIT`**
+(after `_hzMiscKit`) = per vehicle `m` (length, fitted `span`), `yaw`
+(the pre-turn that puts the NOSE at +Z — a TARGET, unmeasured: a nose
+that lands backward is `yaw: Math.PI` on that row, sideways ±π/2),
+`foot`, the stand-in box, `lift`, `beacon`; **`_hzVehicle(kind, o)`** is
+the ONE placer (`_hzVehicleProc` fallback = a lit box on wheels, so
+EW_PERF_LOW still shows a car; the beacon pulse on the board only).
+Placed with `_nrProp` in the URBAN settings (Nuketown's yellow boxes are
+gone; Cyberpunk, the Stadium, the Strip, Downtown's EVACUATION) — the
+site rooms inherit them. Room P1 parks five cars: the Sedan +
+`DOOR_HQ.catalogue` rows `car_suv / car_cadillac / car_cop /
+car_ambulance` (`base: 'misc'`, **`vehicle: true`** — map.js's booth
+counts that flag); `car_cyber` / `fire_truck` / `school_bus` are
+catalogued, unparked. **THE TRAIN** is the THIRD `way` kind:
+`DOOR_HQ.ways.train`, `routes.subway`, link `tunnel_cyberpunk` — Room 2's
+tunnel (a FREE end on the track bed, doors facing the platform; the
+`train_car` prop is retired, never re-add it) ⇄ Cyberpunk's north wall x
+−10 (the body half inside the wall — the wall is the tunnel).
+`_hqWayBuilders.train` = the subway front (nose −X, doorway at x 0) + the
+cart (the FREE end only — a wall end stands the front car alone so the
+body never crosses the next lane's door) through `_hzVehicle`, THE
+ARRIVAL ticker (26 m in over 3.2 s, nose first), the door leaves on the
+way tick; **a way builder may return `blockers`**
+(discs in its own frame — `_hqBuildWay` places them in the room's).
+audio.js `wayTrain`. Downtown's / CERN's platforms wait on a free north
+lane. `npm test`: misc-models.test.js (the vehicle block), hq-world,
+hq-stage2. Unseen live (RULE #1c): every facing, the beacons, the
+arrival, the half-buried body.

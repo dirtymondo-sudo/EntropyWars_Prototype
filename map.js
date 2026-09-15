@@ -2622,7 +2622,7 @@
             /* THE BOOTH (Room P1): the attendant's ledger */
             if (c.id === 'booth') {
                 const ic = (typeof window.hqIntakeCard === 'function') ? window.hqIntakeCard(_hqProfile()) : null;
-                const cars = ((_hqRoom() || {}).props || []).filter(p => p.key === 'parked_car').length;
+                const cars = ((_hqRoom() || {}).props || []).filter(p => p.key === 'parked_car' || ((DOOR_HQ.catalogue[p.key] || {}).vehicle)).length;   // the Sedan + the vehicle batch (catalogue `vehicle: true`)
                 html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'The booth.') + '</p>';
                 html += '<div class="hq-rows">'
                     + `<div class="hq-row hq-row-tray"><b>THE LOT</b><span>${cars} CAR${cars === 1 ? '' : 'S'} ON THE LEVEL · EIGHT BAYS</span><i class="hq-lamp-chip st-codered">FULL</i></div>`

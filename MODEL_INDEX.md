@@ -130,6 +130,33 @@ height — the portcullis 0.42, the hell door 0.34); three-renderer.js
 `_hqDoorSurround` cuts a wall-textured plate to it behind the leaf
 (rect leaves get the opening inset 1.5 % — a stop, not a black gap).
 
+## 3c. THE VEHICLE BATCH (Assets/misc/, 2026-09-15)
+
+Nine Meshy vehicles the user uploaded to the shared misc bucket. Every
+one reaches a board through ONE call, three-renderer.js `_hzVehicle(kind,
+o)` — the kit table `_VEHICLE_KIT` holds each one's length in metres
+(`m`, fitted along the model's longest axis), the pre-turn that puts its
+NOSE at +Z (`yaw` — UNMEASURED: the CDN is unreachable from the sandbox;
+a nose that lands backward is `yaw: Math.PI` there, sideways ±π/2 — one
+field), the collision foot the walkable site room reads, and the
+procedural stand-in's box (`_hzVehicleProc`, the EW_PERF_LOW / no-loader
+fallback). The emergency vehicles wear a red-blue beacon pulse on the
+board. The ones that fit under a 2.8 m ceiling are also `DOOR_HQ.catalogue`
+rows (`base: 'misc'`, `vehicle: true` — the booth in Room P1 counts them).
+Columns as in §3.
+
+| key | file | facing | S | H | stands as |
+| --- | --- | --- | --- | --- | --- |
+| `suv` | Meshy_AI_a_black_SUV_0915195508_texture.glb | nose +Z (target) | Downtown (the east kerb) | P1 (`car_suv`, the agents') | the black SUV nobody claims |
+| `cadillac` | Meshy_AI_a_black_cadillac_0915195323_texture.glb | nose +Z (target) | Nuketown (the east house's drive), the Strip (cruising the north road) | P1 (`car_cadillac`, the executive's) | |
+| `copcar` | Meshy_AI_a_cop_car_0915195443_texture.glb | nose +Z (target) | Cyberpunk (across the north road), the Strip (the chapel's kerb), Downtown (the south barriers) | P1 (`car_cop`) | beacon |
+| `cybercar` | Meshy_AI_a_cyberpunk_car_0915195427_texture.glb | nose +Z (target) | Cyberpunk ×2 (kerbside, west + east) | (`car_cyber`, catalogued — no room parks it yet) | |
+| `firetruck` | Meshy_AI_a_fire_truck_0915195407_texture.glb | nose +Z (target) | Downtown (across the north road — THE EVACUATION) | (`fire_truck`, 3.4 m — waits on a room with the headroom) | beacon |
+| `schoolbus` | Meshy_AI_a_school_bus_0915195620_texture.glb | nose +Z (target) | Nuketown (the south verge — the two yellow boxes are gone), the Stadium (the team bus, south wall) | (`school_bus`, catalogued) | |
+| `ambulance` | Meshy_AI_an_ambulance_0915195334_texture.glb | nose +Z (target) | the Stadium (the south end zone), Downtown (the south barriers) | P1 (`car_ambulance`, Medical's) | beacon |
+| `subway_front` | Meshy_AI_a_subway_train_front_0915195457_texture.glb | nose +Z (target; the way rig turns it −X, the doorway at x 0 is the rear door) | — | THE TRAIN (`_hqWayBuilders.train`): the tunnel's track, Cyberpunk's north wall | the `train` way's lead car |
+| `subway_cart` | Meshy_AI_a_subway_train_cart_0915195417_texture.glb | nose +Z (target) | — | THE TRAIN: the trailing cart (the tunnel's track only — a street platform stands the front car alone) | |
+
 ## 4. The older `Assets/misc/` models (`_MISC_GLB` + the OBJ landmarks)
 
 | key | file | kind | stands as |
@@ -248,3 +275,5 @@ the register.
 | a security camera | `security_camera` | the hall / IT / the Interrogation Room walls, Downtown's pole camera + the `securitycam` monument |
 | a street utility box | `utility_box` | every URBAN setting (Cyberpunk, the Strip, Downtown, Nuketown, the Stadium) |
 | an asteroid | `asteroid_a` / `asteroid_b` | the `space` + `wreckage` rosters (`_hzAsteroidFar`) |
+| a car / a truck / a bus | `_VEHICLE_KIT` (§3c: `suv` · `cadillac` · `copcar` · `cybercar` · `firetruck` · `schoolbus` · `ambulance`) | the URBAN settings through `_hzVehicle`, Room P1 through the catalogue's `car_*` rows — never a procedural box where the kit has the vehicle |
+| the subway train | `subway_front` + `subway_cart` | ONLY the `train` way rig (`_hqWayBuilders.train`) — the tunnel's `train_car` proc is retired; never a second train as a prop |

@@ -124,7 +124,7 @@ test('an entryway kind the catalogue does not list is held back at BOTH ends; a 
  } finally{HQ.links=saved;}
 });
 test('THE SEAMS THAT ARE NOT DOORS: the wardrobe into Camelot and the well into Hollow Earth are catalogued, paired, plated, voiced and built',()=>{
- assert.deepEqual(SEAMS.map(l=>l.id).sort().join(','),'haunted_camelot,well_camelot,well_cellar,well_garden,well_gobekli,well_nuketown,well_skinwalker','the wardrobe and the six wells (rev 10: every well drops into the cave)');
+ assert.deepEqual(SEAMS.map(l=>l.id).sort().join(','),'haunted_camelot,tunnel_cyberpunk,well_camelot,well_cellar,well_garden,well_gobekli,well_nuketown,well_skinwalker','the wardrobe, the six wells (rev 10: every well drops into the cave) and the train (2026-09-15: the tunnel\u2019s platform to Cyberpunk\u2019s subway)');
  for(const k of Object.keys(HQ.ways)) {
   const w=HQ.ways[k];
   assert.ok(w.verb && w.sub && w.sfx && w.w>0 && w.h>0, k+': verb · sub · sfx · w · h');
