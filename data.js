@@ -18864,6 +18864,7 @@ const DOOR_HQ = {
         highway:    { label: 'THE HIGHWAY',      sub: 'ONE ROAD, A CENTURY LONG', color: '#ff9e6b' },
         wonderland: { label: 'THE WONDERLAND',   sub: 'A PLANE ONTO A CARPET', color: '#e39cff' },
         seams:      { label: 'THE SEAMS',        sub: 'THE DOORS THAT ARE NOT DOORS', color: '#f0e6c8', dashed: true },
+        undercroft: { label: 'THE UNDERCROFT',   sub: 'EVERY WELL COMES OUT IN THE SAME CAVE', color: '#c8a2e0', dashed: true },
     },
     links: [
         /* THE LUNAR ROUTE (the pilot's two, plus Mars and the drop) */
@@ -19002,11 +19003,65 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_camelot', wall: 'n', x: -5 },
           why: 'the wardrobe in the second bedroom is colder than the room; there is snow on the floor in front of it and a lamp post\'s light at the back',
           note: 'push through the coats', draft: true },
-        { id: 'haunted_hollow', route: 'seams', way: 'well',
+        /* THE WELLS (9.3, 2026-09-15 rev 10): every well in the world drops
+           into ONE cave — the well room (site_prebuilt_hollow_earth_shaft)
+           has one head per row, standing free on its floor, and climbing OUT
+           of the wrong one is how you learn the map. An end may override the
+           kind's plate line and its verb (`sub` / `verb`): down there you
+           CLIMB UP. The cellar's well (rev 6) is the same row, re-pointed. */
+        { id: 'well_cellar', route: 'undercroft', way: 'well',
           a: { site: 'prebuilt_haunted', part: 'cellar', wall: 'free', x: -2.6, z: 1.6, face: 90 },
-          b: { site: 'prebuilt_hollow_earth', wall: 'n', x: -5 },
+          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: 0, z: -3, face: 180, sub: 'THE CELLAR WELL · CLIMB UP', verb: 'CLIMB UP' },
           why: 'the well in the cellar goes down further than the house is tall; the bucket comes up dry and warm',
           note: 'the rope holds', draft: true },
+        { id: 'well_garden', route: 'undercroft', way: 'well',
+          a: { room: 'garden', wall: 'free', x: -6.0, z: 2.0, face: 90 },
+          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: -5, z: -3, face: 180, sub: 'THE GARDEN WELL · CLIMB UP', verb: 'CLIMB UP' },
+          why: 'the well on the gravel ring is older than the building and the building was laid out round it; the gardener draws from it and will not say for what',
+          note: 'the only way down that is not the elevator', draft: true },
+        { id: 'well_camelot', route: 'undercroft', way: 'well',
+          a: { site: 'prebuilt_camelot', wall: 'n', x: -0.2 },
+          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: 5, z: -3, face: 180, sub: 'THE CASTLE WELL · CLIMB UP', verb: 'CLIMB UP' },
+          why: 'the castle well in the courtyard; a siege needs water and this one never ran dry, which the besiegers should have found suspicious',
+          note: 'it never ran dry', draft: true },
+        { id: 'well_skinwalker', route: 'undercroft', way: 'well',
+          a: { site: 'prebuilt_skinwalker', wall: 'n', x: -0.2 },
+          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: -5, z: 3, face: 0, sub: 'THE RANCH WELL · CLIMB UP', verb: 'CLIMB UP' },
+          why: 'the well in the yard, boarded over in 1994 by men who did not come back for their tools; the boards are the way',
+          note: 'the boards lift', draft: true },
+        { id: 'well_nuketown', route: 'undercroft', way: 'well',
+          a: { site: 'prebuilt_nuketown', wall: 'n', x: -10 },
+          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: 0, z: 3, face: 0, sub: 'THE WISHING WELL · CLIMB UP', verb: 'CLIMB UP' },
+          why: 'the wishing well on the lawn came with the house and the house came with the test; the coins in it are all from the same year',
+          note: 'make a wish', draft: true },
+        { id: 'well_gobekli', route: 'undercroft', way: 'well',
+          a: { site: 'prebuilt_gobekli', wall: 'n', x: -0.2 },
+          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: 5, z: 3, face: 0, sub: 'THE CISTERN · CLIMB UP', verb: 'CLIMB UP' },
+          why: 'the cistern cut into the bedrock under the first temple; the oldest well there is, and the shaft is dressed stone all the way down',
+          note: 'the oldest of them', draft: true },
+        /* THE FOUR EXITS: the cave has several ways out, and each one is a
+           door into a site that is already on the map. Every one is two-way
+           — the same object at both ends (7.0), never a one-way drop. */
+        { id: 'cave_hell', route: 'undercroft', leaf: 'leaf_hell_arch',
+          a: { site: 'prebuilt_hollow_earth', part: 'vent', wall: 'n', x: 0 },
+          b: { site: 'prebuilt_hell', wall: 'n', x: -0.2 },
+          why: 'the fissure at the end of the hot gallery; the rock stops being rock and the draught goes the wrong way',
+          note: 'the draught goes down', draft: true },
+        { id: 'cave_dumb', route: 'undercroft', leaf: 'leaf_bulkhead',
+          a: { site: 'prebuilt_hollow_earth', part: 'blast', wall: 'n', x: 0 },
+          b: { site: 'prebuilt_dumb', wall: 'n', x: -0.2 },
+          why: 'the base has five sides above ground and the sixth is here: rock cut square, a blast door in it, and a camera that has not been dusted since it stopped working',
+          note: 'LEVEL −6', draft: true },
+        { id: 'cave_agartha', route: 'undercroft', leaf: 'leaf_frame_only',
+          a: { site: 'prebuilt_hollow_earth', part: 'adit', wall: 's', x: 0 },
+          b: { site: 'prebuilt_agartha', wall: 'n', x: -14.5 },
+          why: 'the adit the crystal city cut toward the cave and stopped one metre short of; something opened the last metre from this side',
+          note: 'one metre, from this side', draft: true },
+        { id: 'cave_hollow', route: 'undercroft', leaf: 'leaf_frame_only',
+          a: { site: 'prebuilt_hollow_earth', part: 'mouth', wall: 'w', z: 0 },
+          b: { site: 'prebuilt_hollow_earth', wall: 'n', x: -5 },
+          why: 'the cave mouth: the complex\'s own way in and out, opening on the inner sun with the whole country under it',
+          note: 'the inner sun', draft: true },
     ],
     siteRooms: {
         /* BACK DOORS (H-WING, 2026-09-14 rev 4): a second door on a site room,
@@ -23559,13 +23614,22 @@ const DOOR_HQ = {
                   label: 'ROOM X', sub: 'THE OBJECT · CONTAINMENT',
                   action: { room: 'orb', at: 'dungeon' },
                   desc: 'The portcullis. Blue light through it that does not flicker like the torches.' },
+                /* THE FOURTH CELL NOBODY COUNTS (HQ plan 9.3, 2026-09-15 rev 10):
+                   the wall past the third cell is the oubliette's, and the
+                   oubliette is in a cave under a well the building does not
+                   own. The seventh secret door; on no plate, like the rest. */
+                { id: 'oubliette', wall: 'w', z: 2.7, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'THE WALL MOVES',
+                  action: { room: 'site_prebuilt_hollow_earth_oubliette', at: 'dungeon' },
+                  desc: 'Past the third cell the wall is colder and the draught comes the wrong way along it. Behind it: cells older than the Department, and a cave, and six wells.' },
             ],
             counters: [],
             props: [
-                /* ── the west wall: three cells behind bars ── */
-                { key: 'cell_bars',      wall: 'w', z: -2.6 }, { key: 'cell_bars', wall: 'w', z: 0.0 }, { key: 'cell_bars', wall: 'w', z: 2.6 },
-                { key: 'wall_torch',     wall: 'w', z: -1.3, mount: 1.7 },
-                { key: 'wall_torch',     wall: 'w', z: 1.3, mount: 1.7 },
+                /* ── the west wall: three cells behind bars (the fourth is the
+                     secret door at z 3.4, and it is not a cell) ── */
+                { key: 'cell_bars',      wall: 'w', z: -3.2 }, { key: 'cell_bars', wall: 'w', z: -1.0 }, { key: 'cell_bars', wall: 'w', z: 1.2 },
+                { key: 'wall_torch',     wall: 'w', z: -2.1, mount: 1.7 },
+                { key: 'wall_torch',     wall: 'w', z: 0.1, mount: 1.7 },
                 /* ── the east wall: the chains, the torch, the roll ── */
                 { key: 'wall_chains',    wall: 'e', z: -2.6 }, { key: 'wall_chains', wall: 'e', z: 2.4 },
                 { key: 'wall_torch',     wall: 'e', z: -1.6, mount: 1.7 },
@@ -23576,7 +23640,7 @@ const DOOR_HQ = {
                 { key: 'key',            x: 2.9, z: 2.9, y: 0.0, face: 20 },              // the ring, on the floor; nobody picks it up
                 { key: 'floor_drain',    x: -0.6, z: 0.9 },
                 { key: 'floor_stain',    x: 0.8, z: 1.6 },
-                { key: 'cot',            x: -3.3, z: 0.0, face: 90 },                     // inside the middle cell, behind the bars
+                { key: 'cot',            x: -3.3, z: -1.0, face: 90 },                    // inside the middle cell, behind the bars
                 { key: 'wall_torch',     wall: 'n', x: -2.4, mount: 1.7 },
                 { key: 'wall_torch',     wall: 'n', x: 2.4, mount: 1.7 },
                 { key: 'cardboard_boxes', x: 3.6, z: -3.2, face: -20 },                    // the building's files: even the dungeon is an office
@@ -23585,7 +23649,7 @@ const DOOR_HQ = {
                 { x: 2.2, z: -3.0, face: 180, pose: 'hqArms', gender: 'male', label: 'THE TURNKEY', reach: 2.4,
                   line: '“Vacant.” “All three?” “All three. The keys are on the floor. They have been on the floor since I started.”' },
             ],
-            npcSpots: [{ x: -2.2, z: 2.6, face: 270 }],
+            npcSpots: [{ x: -2.4, z: -2.9, face: 90 }],
             onlineSpots: [],
             lines: [
                 '“Who was in 24601?” “Nobody, for a long time.” “Then why the torches?” “The torches are for whoever is next.”',
@@ -24527,6 +24591,388 @@ const DOOR_HQ = {
                 '“That is a coffin.” “It is a box.” “On trestles.” “It is a box on trestles.”',
             ],
             spawn: { x: -3.0, z: -2.4, face: 0 },
+        },
+        /* ══════════════════════════════════════════════════════════════════
+           THE CAVE (HQ plan 9.3 — the wells and the cave, 2026-09-15 rev 10).
+           The SECOND complex, and the first one that is not a building: every
+           well in the world drops into ONE cave, and the cave has several ways
+           out. It is HOLLOW EARTH's complex (the one site whose whole premise
+           is the inside of the earth), so every room here wears
+           `site: 'prebuilt_hollow_earth'` + `part` and NO roomNo — hqRoomNo
+           reads the threshold's 180 through `site`, the register lists the
+           site once, and 9.4 knows the rooms are WILD (hqRoomSite non-null).
+           The shape: the WELL ROOM (one head per well, each a free-standing
+           `way: 'well'` end — climbing out of the wrong one is how you learn
+           the map) → THE GALLERY (the crossroads) → four EXIT chambers, each
+           a DOOR_HQ.links row into a site already on the map (Hell, D.U.M.B.,
+           Agartha and Hollow Earth's own board room), and THE OUBLIETTE, the
+           dead end off the gallery whose back wall is Room 24601's.
+           THE PARK RULE (9.8): a rail in every room, a stepped ramp in every
+           big one. Stage 2 wants a ROCK shell (`kind: 'cave'`) and the stream
+           as a waded sheet; these are box rooms in the terrain sheet's own
+           cave keys until then.
+           ══════════════════════════════════════════════════════════════════ */
+        /* ── THE WELL ROOM — the bottom of every well in the world ── */
+        site_prebuilt_hollow_earth_shaft: {
+            label: 'THE CAVE · THE WELL ROOM',
+            sub: 'THE BOTTOM OF EVERY WELL · THE GALLERY',
+            kind: 'box', site: 'prebuilt_hollow_earth', part: 'shaft',
+            shell: {
+                w: 16, d: 12, h: 4.2,
+                wallH: 4.2, dadoH: 1.1,
+                floor: 'cave_floor', wall: 'cave_wall', dado: 'rocks_dark_fantasy', trim: 'rock_wall_1', ceiling: 'cave_wall',
+                floorColor: 0x6a6258, wallColor: 0x6e675e, dadoColor: 0x5a544c, ceilColor: 0x4a443e,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xffc890, ambient: 0.4 },
+                plate: { x: 0, z: -5.75, y: 2.6 },
+            },
+            doors: [
+                { id: 'gallery', wall: 'w', z: 0, leaf: null,
+                  label: 'THE GALLERY', sub: 'ON INTO THE CAVE',
+                  action: { room: 'site_prebuilt_hollow_earth_gallery', at: 'shaft' },
+                  desc: 'The way on. The floor tilts down and the sound of the wells goes with you further than it should.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'railing_1m',     x: -1.0, z: -5.2, face: 0 },                      // THE RIM (the park rule's rail): the drawn-water ledge
+                { key: 'railing_1m',     x: 0.0, z: -5.2, face: 0 },
+                { key: 'railing_1m',     x: 1.0, z: -5.2, face: 0 },
+                { key: 'riser_1',        x: 0, z: 4.6, face: 0 },                          // THE SCREE (the park rule's ramp, stepped): the bank at the south end
+                { key: 'riser_2',        x: 0, z: 5.3, face: 0 },
+                { key: 'wall_torch',     wall: 'n', x: -4.0, mount: 1.8 },
+                { key: 'wall_torch',     wall: 'n', x: 4.0, mount: 1.8 },
+                { key: 'wall_torch',     wall: 's', x: -4.0, mount: 1.8 },
+                { key: 'wall_torch',     wall: 's', x: 4.0, mount: 1.8 },
+                { key: 'wall_torch',     wall: 'e', z: 0, mount: 1.8 },
+                { key: 'concrete_pillar',     x: -7.0, z: -5.0 },                               // the columns the water left (a cave pillar, not the garage's)
+                { key: 'concrete_pillar',     x: 7.0, z: 4.8 },
+                { key: 'metal_shelving', wall: 'e', z: -3.6 },                             // somebody keeps rope down here, and rope keeps
+                { key: 'cardboard_boxes', x: 7.0, z: -4.8, face: 25 },
+                { key: 'floor_drain',    x: 6.6, z: 0.8 },
+                { key: 'floor_stain',    x: -2.0, z: -1.4 },
+                { key: 'floor_stain',    x: 3.0, z: 1.2 },
+                { key: 'paper_sheet',    x: -6.6, z: 3.4, y: 0.01, face: 130 },            // a form, wet through: WELL — WHICH
+            ],
+            agents: [],
+            npcSpots: [{ x: -7.0, z: 2.2, face: 90, race: 'reptilian' }],
+            onlineSpots: [],
+            lines: [
+                '“Which one did you come down?” “That one.” “That one is the ranch. You came down the garden.” “How do you know?” “Your shoes.”',
+                '“Six wells.” “Six?” “Six that are dug. There are others.”',
+                '“Does anything come UP?” “Buckets.” “Anything else?” “Buckets, mostly.”',
+            ],
+            spawn: { x: -5.6, z: 0, face: 90 },
+        },
+        /* ── THE GALLERY — the crossroads: the well room, the four ways out,
+             the portcullis into the oubliette ── */
+        site_prebuilt_hollow_earth_gallery: {
+            label: 'THE CAVE · THE GALLERY',
+            sub: 'THE CROSSROADS · FOUR WAYS OUT',
+            kind: 'box', site: 'prebuilt_hollow_earth', part: 'gallery',
+            shell: {
+                w: 24, d: 10, h: 4.5,
+                wallH: 4.5, dadoH: 1.1,
+                floor: 'cave_floor', wall: 'cave_wall', dado: 'rocks_dark_fantasy', trim: 'rock_wall_2', ceiling: 'cave_wall',
+                floorColor: 0x6a6258, wallColor: 0x6e675e, dadoColor: 0x585048, ceilColor: 0x453f3a,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xffc078, ambient: 0.38 },
+                plate: { x: -2.0, z: -4.75, y: 2.8 },
+            },
+            doors: [
+                { id: 'shaft', wall: 'w', z: 0, leaf: null,
+                  label: 'THE WELL ROOM', sub: 'BACK TO THE WELLS',
+                  action: { room: 'site_prebuilt_hollow_earth_shaft', at: 'gallery' },
+                  desc: 'Back the way the rope let you down. The wells are that way, all six of them, and one of them is yours.' },
+                { id: 'vent', wall: 'n', x: 5, leaf: 'leaf_hell_arch',
+                  label: 'THE FISSURE', sub: 'THE HOT SIDE · ROOM 666',
+                  action: { room: 'site_prebuilt_hollow_earth_vent', at: 'gallery' },
+                  desc: 'The gallery is warm at this end and the warmth has a door in it.' },
+                { id: 'blast', wall: 'n', x: 10, leaf: 'leaf_bulkhead', wide: true,
+                  label: 'LEVEL −6', sub: 'THE BASE’S SIXTH SIDE · ROOM 555',
+                  action: { room: 'site_prebuilt_hollow_earth_blast', at: 'gallery' },
+                  desc: 'The rock is cut square here, which rock does not do. Somebody finished the cut with a door.' },
+                { id: 'adit', wall: 's', x: 6, leaf: 'leaf_frame_only',
+                  label: 'THE CRYSTAL ADIT', sub: 'THE WARM LIGHT · ROOM 88',
+                  action: { room: 'site_prebuilt_hollow_earth_adit', at: 'gallery' },
+                  desc: 'A worked adit, squared and swept, with a light at the far end that is not a torch.' },
+                { id: 'mouth', wall: 'e', z: 0, leaf: null,
+                  label: 'THE CAVE MOUTH', sub: 'OUT · ROOM 180',
+                  action: { room: 'site_prebuilt_hollow_earth_mouth', at: 'gallery' },
+                  desc: 'Daylight, of a kind: the inner sun, which never sets and never quite rises either.' },
+                { id: 'oubliette', wall: 's', x: -6, leaf: 'leaf_portcullis', wide: true,
+                  label: 'THE OUBLIETTE', sub: 'THE DEAD END · HOLDING',
+                  action: { room: 'site_prebuilt_hollow_earth_oubliette', at: 'gallery' },
+                  desc: 'A portcullis in a cave. Somebody carried it down here, hung it, and went back up.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'notice_board',   wall: 'n', x: -5.0, mount: 1.3 },                 // THE CROSSROADS SIGN, and nobody trusts it
+                { key: 'railing_1m',     x: -2.0, z: 3.9, face: 0 },                       // THE STREAM'S BANK (the park rule's rail)
+                { key: 'railing_1m',     x: -1.0, z: 3.9, face: 0 },
+                { key: 'railing_1m',     x: 0.0, z: 3.9, face: 0 },
+                { key: 'railing_1m',     x: 1.0, z: 3.9, face: 0 },
+                { key: 'riser_1',        x: 0, z: -3.5, face: 0 },                         // THE SCREE RAMP up the north side (the park rule)
+                { key: 'riser_2',        x: 0, z: -4.25, face: 0 },
+                { key: 'wall_torch',     wall: 'n', x: -10.0, mount: 1.8 },
+                { key: 'wall_torch',     wall: 'n', x: 0.0, mount: 1.8 },
+                { key: 'wall_torch',     wall: 's', x: -10.0, mount: 1.8 },
+                { key: 'wall_torch',     wall: 's', x: 0.0, mount: 1.8 },
+                { key: 'wall_torch',     wall: 'e', z: -3.4, mount: 1.8 },
+                { key: 'wall_torch',     wall: 'w', z: 3.4, mount: 1.8 },
+                { key: 'exit_sign',      wall: 'e', z: 3.2 },                              // an EXIT sign in a cave: Facilities hung it, Facilities will not say when
+                { key: 'concrete_pillar',     x: -11.0, z: -3.8 },
+                { key: 'concrete_pillar',     x: 11.0, z: 3.8 },
+                { key: 'concrete_pillar',     x: -11.2, z: 3.6 },
+                { key: 'metal_shelving', wall: 'n', x: -8.0 },
+                { key: 'cardboard_boxes', x: -10.4, z: 1.6, face: 340 },
+                { key: 'floor_drain',    x: 2.4, z: 4.2 },                                 // where the stream goes; it does not come back
+                { key: 'floor_stain',    x: -3.6, z: 1.2 },
+                { key: 'paper_sheet',    x: 8.6, z: -3.6, y: 0.01, face: 40 },
+            ],
+            agents: [],
+            npcSpots: [{ x: -3.2, z: -3.9, face: 160, race: 'ghoul' }, { x: 8.4, z: 3.6, face: 300, race: 'gnome' }],
+            onlineSpots: [],
+            lines: [
+                '“The sign says four ways out.” “There are five.” “Where is the fifth?” “Behind the portcullis, and it is not out.”',
+                '“Who cut the square one?” “The same people who deny the square one.”',
+                '“Follow the stream.” “Where does it go?” “Down.” “And then?” “Down.”',
+            ],
+            spawn: { x: -9.6, z: 0, face: 90 },
+        },
+        /* ── THE FISSURE — the hot way out: Room 666 ── */
+        site_prebuilt_hollow_earth_vent: {
+            label: 'THE CAVE · THE FISSURE',
+            sub: 'THE HOT SIDE · THE WAY TO ROOM 666',
+            kind: 'box', site: 'prebuilt_hollow_earth', part: 'vent',
+            shell: {
+                w: 8, d: 7, h: 3.6,
+                wallH: 3.6, dadoH: 1.0,
+                floor: 'obsidian', wall: 'cave_wall', dado: 'obsidian', trim: 'rock_wall_2', ceiling: 'cave_wall',
+                floorColor: 0x7a5a52, wallColor: 0x7a5c50, dadoColor: 0x5e423c, ceilColor: 0x4a3630,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xff7a40, ambient: 0.42 },
+                plate: { x: -2.4, z: -3.25, y: 2.4 },
+            },
+            doors: [
+                { id: 'gallery', wall: 's', x: 0, leaf: 'leaf_hell_arch',
+                  label: 'THE GALLERY', sub: 'BACK TO THE CROSSROADS',
+                  action: { room: 'site_prebuilt_hollow_earth_gallery', at: 'vent' },
+                  desc: 'Back into the cool of the gallery, which is what the gallery is for.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'railing_1m',     x: -2.8, z: -1.0, face: 90 },                     // the rail at the lip (the park rule)
+                { key: 'railing_1m',     x: -2.8, z: 0.0, face: 90 },
+                { key: 'railing_1m',     x: -2.8, z: 1.0, face: 90 },
+                { key: 'riser_1',        x: 0, z: 2.9, face: 0 },                          // the step down to the arch (the park rule's ramp)
+                { key: 'wall_torch',     wall: 'e', z: 0, mount: 1.8 },
+                { key: 'wall_torch',     wall: 'w', z: -2.2, mount: 1.8 },
+                { key: 'candle_ring',    x: 3.0, z: 2.4, y: 0.0 },                         // somebody's, and recent
+                { key: 'concrete_pillar',     x: 3.2, z: -2.6 },
+                { key: 'floor_stain',    x: 0.0, z: -2.2 },
+                { key: 'floor_stain',    x: 1.4, z: 0.6 },
+            ],
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [
+                '“The draught goes down.” “Draughts go up.” “Tell it that.”',
+                '“Is that rock?” “It was.”',
+            ],
+            spawn: { x: 0, z: 1.1, face: 0 },
+        },
+        /* ── LEVEL −6 — the base's sixth side: Room 555 ── */
+        site_prebuilt_hollow_earth_blast: {
+            label: 'THE CAVE · LEVEL −6',
+            sub: 'THE BASE’S SIXTH SIDE · THE WAY TO ROOM 555',
+            kind: 'box', site: 'prebuilt_hollow_earth', part: 'blast',
+            shell: {
+                w: 8, d: 7, h: 3.2,
+                wallH: 3.2, dadoH: 1.0,
+                floor: 'concrete_floor', wall: 'cave_wall', dado: 'gunmetal', trim: 'gunmetal_2', ceiling: 'cave_wall',
+                floorColor: 0x8a8a8c, wallColor: 0x6e675e, dadoColor: 0x6a7076, ceilColor: 0x45403a,
+                pipes: true,
+                strips: false,
+                lights: [],
+                mood: { light: 0xbfe0ff, ambient: 0.4 },
+                plate: { x: -2.4, z: -3.25, y: 2.4 },
+            },
+            doors: [
+                { id: 'gallery', wall: 's', x: 0, leaf: 'leaf_bulkhead', wide: true,
+                  label: 'THE GALLERY', sub: 'BACK TO THE CROSSROADS',
+                  action: { room: 'site_prebuilt_hollow_earth_gallery', at: 'blast' },
+                  desc: 'Back out through the cut, into rock that was never squared.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'railing_1m',     x: 2.8, z: -1.0, face: 270 },                     // the handrail on the cut side (the park rule)
+                { key: 'railing_1m',     x: 2.8, z: 0.0, face: 270 },
+                { key: 'railing_1m',     x: 2.8, z: 1.0, face: 270 },
+                { key: 'riser_1',        x: 0, z: 2.9, face: 0 },                          // the concrete step at the door (the park rule's ramp)
+                { key: 'keypad',         wall: 'n', x: 1.6, mount: 1.3 },                  // dead; the light on it is not
+                { key: 'security_camera', wall: 'e', z: -2.6 },                            // a dead camera, dusted by nobody
+                { key: 'bare_bulb',      x: -1.6, z: -1.6, ceil: true },
+                { key: 'bare_bulb',      x: 1.6, z: 1.4, ceil: true },
+                { key: 'breaker_panel',  wall: 'w', z: -1.6, mount: 1.3 },
+                { key: 'cardboard_boxes', x: 3.2, z: -2.4, face: 15 },
+                { key: 'floor_stain',    x: -0.8, z: -2.0 },
+                { key: 'clipboard',      wall: 'w', z: 0.8, mount: 1.45 },                 // a sign-in sheet; the last date is the base's first
+            ],
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [
+                '“Five sides above ground.” “And this one.” “This one is not a side. It is a back.”',
+                '“The camera is dead.” “Then why is the light on?”',
+            ],
+            spawn: { x: 0, z: 1.1, face: 0 },
+        },
+        /* ── THE CRYSTAL ADIT — the warm light: Room 88 ── */
+        site_prebuilt_hollow_earth_adit: {
+            label: 'THE CAVE · THE CRYSTAL ADIT',
+            sub: 'THE WARM LIGHT · THE WAY TO ROOM 88',
+            kind: 'box', site: 'prebuilt_hollow_earth', part: 'adit',
+            shell: {
+                w: 8, d: 7, h: 3.4,
+                wallH: 3.4, dadoH: 1.0,
+                floor: 'crystal', wall: 'cave_wall', dado: 'crystal', trim: 'rock_wall_1', ceiling: 'cave_wall',
+                floorColor: 0xbfe8c8, wallColor: 0x74786e, dadoColor: 0x9ac8b0, ceilColor: 0x4e524a,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xcfe8b0, ambient: 0.45 },
+                plate: { x: 2.4, z: -3.25, y: 2.4 },
+            },
+            doors: [
+                { id: 'gallery', wall: 'n', x: 0, leaf: 'leaf_frame_only',
+                  label: 'THE GALLERY', sub: 'BACK TO THE CROSSROADS',
+                  action: { room: 'site_prebuilt_hollow_earth_gallery', at: 'adit' },
+                  desc: 'Back into the dark, which after this takes a minute.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'railing_1m',     x: -2.8, z: -0.5, face: 90 },                     // the adit's rail (the park rule)
+                { key: 'railing_1m',     x: -2.8, z: 0.5, face: 90 },
+                { key: 'riser_1',        x: 0, z: 2.9, face: 0 },                          // the scree, cut into steps by somebody patient (the park rule)
+                { key: 'globe_lamp',     x: 3.2, z: -2.2 },                                // not a lamp: the wall does that here
+                { key: 'globe_lamp',     x: 3.2, z: 2.2 },
+                { key: 'candle_ring',    x: -3.0, z: 2.4, y: 0.0 },
+                { key: 'concrete_pillar',     x: -3.4, z: -2.4 },
+                { key: 'floor_stain',    x: 0.6, z: -1.6 },
+                { key: 'paper_sheet',    x: 1.6, z: 1.8, y: 0.01, face: 210 },
+            ],
+            agents: [],
+            npcSpots: [{ x: 2.6, z: 0.4, face: 250, race: 'gnome' }],
+            onlineSpots: [],
+            lines: [
+                '“They cut toward us and stopped a metre short.” “Who opened the metre?” “Not them.”',
+                '“Is the light warm?” “The light is warm.” “Lights are not warm.” “This one is warm.”',
+            ],
+            spawn: { x: 0, z: -1.1, face: 180 },
+        },
+        /* ── THE CAVE MOUTH — the complex's own way out: Room 180 ── */
+        site_prebuilt_hollow_earth_mouth: {
+            label: 'THE CAVE · THE MOUTH',
+            sub: 'OUT UNDER THE INNER SUN · ROOM 180',
+            kind: 'box', site: 'prebuilt_hollow_earth', part: 'mouth',
+            shell: {
+                w: 10, d: 8, h: 4.0,
+                wallH: 4.0, dadoH: 1.0,
+                floor: 'dirt_3', wall: 'cave_wall', dado: 'rocks_dark_fantasy', trim: 'rock_wall_1', ceiling: 'cave_wall',
+                floorColor: 0x8a7a5e, wallColor: 0x756e62, dadoColor: 0x5e564c, ceilColor: 0x4a443c,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xffe0a0, ambient: 0.5 },
+                plate: { x: 0, z: -3.75, y: 2.6 },
+            },
+            doors: [
+                { id: 'gallery', wall: 'e', z: 0, leaf: null,
+                  label: 'THE GALLERY', sub: 'BACK INTO THE CAVE',
+                  action: { room: 'site_prebuilt_hollow_earth_gallery', at: 'mouth' },
+                  desc: 'Back in. The cave is colder than the country and the country is warmer than it has any right to be.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'railing_1m',     x: -1.0, z: 3.4, face: 0 },                       // the lip above the slope out (the park rule)
+                { key: 'railing_1m',     x: 0.0, z: 3.4, face: 0 },
+                { key: 'railing_1m',     x: 1.0, z: 3.4, face: 0 },
+                { key: 'riser_1',        x: 0, z: -3.2, face: 0 },                         // the cut steps at the mouth (the park rule's ramp)
+                { key: 'wall_torch',     wall: 'n', x: -2.6, mount: 1.8 },
+                { key: 'wall_torch',     wall: 's', x: -2.6, mount: 1.8 },
+                { key: 'concrete_pillar',     x: -4.0, z: -3.0 },
+                { key: 'concrete_pillar',     x: 4.0, z: -3.2 },
+                { key: 'cardboard_boxes', x: 4.0, z: 3.0, face: 300 },
+                { key: 'floor_stain',    x: -1.4, z: -1.2 },
+            ],
+            agents: [],
+            npcSpots: [{ x: -3.6, z: 2.6, face: 60, race: 'reptilian' }],
+            onlineSpots: [],
+            lines: [
+                '“Which way is up?” “Yes.”',
+                '“The sun does not move.” “Neither do we, much.”',
+            ],
+            spawn: { x: 2.6, z: 0, face: 270 },
+        },
+        /* ── THE OUBLIETTE — the dead end: the cells, the tapes' best hiding
+             place (9.1), 9.4's first authored roamer, and the back wall that
+             is Room 24601's ── */
+        site_prebuilt_hollow_earth_oubliette: {
+            label: 'THE CAVE · THE OUBLIETTE',
+            sub: 'THE DEAD END · THE CELLS',
+            kind: 'box', site: 'prebuilt_hollow_earth', part: 'oubliette',
+            shell: {
+                w: 10, d: 8, h: 3.4,
+                wallH: 3.4, dadoH: 1.1,
+                floor: 'dungeon_2', wall: 'cave_wall', dado: 'dungeon_3', trim: 'dungeon_4', ceiling: 'cave_wall',
+                floorColor: 0x7a746e, wallColor: 0x6a635a, dadoColor: 0x5a544e, ceilColor: 0x453f3a,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xffa050, ambient: 0.35 },
+                plate: { x: 0, z: -3.75, y: 2.5 },
+            },
+            doors: [
+                { id: 'gallery', wall: 'n', x: 0, leaf: 'leaf_portcullis', wide: true,
+                  label: 'THE GALLERY', sub: 'BACK TO THE CROSSROADS',
+                  action: { room: 'site_prebuilt_hollow_earth_gallery', at: 'oubliette' },
+                  desc: 'The portcullis, from the wrong side, which is the side it was hung for.' },
+                { id: 'dungeon', wall: 's', x: 3.0, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'THE WALL MOVES',
+                  action: { room: 'dungeon', at: 'oubliette' },
+                  desc: 'A draught along the back wall, and the back wall moves. On the other side the building keeps a cell it says is vacant.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'cell_bars',      wall: 'w', z: -1.2 },
+                { key: 'cell_bars',      wall: 'w', z: 1.2 },
+                { key: 'wall_chains',    wall: 'e', z: -1.4 },
+                { key: 'wall_chains',    wall: 'e', z: 1.4 },
+                { key: 'stocks',         x: -2.6, z: 2.4, face: 20 },                      // THE RACK, near enough
+                { key: 'cot',            x: -3.4, z: -2.4, face: 90 },
+                { key: 'cardboard_boxes', x: 3.6, z: -2.8, face: 340 },                    // THE CRATES: the best hiding place in the world (9.1)
+                { key: 'railing_1m',     x: 0.0, z: -2.9, face: 0 },                       // a rail, bolted to nothing (the park rule)
+                { key: 'railing_1m',     x: 1.0, z: -2.9, face: 0 },
+                { key: 'wall_torch',     wall: 'n', x: -3.4, mount: 1.7 },
+                { key: 'wall_torch',     wall: 's', x: -3.4, mount: 1.7 },
+                { key: 'key',            x: 1.4, z: -1.2, y: 0.0, face: 40 },              // a ring of keys, on the floor, as upstairs
+                { key: 'floor_drain',    x: -0.6, z: 0.8 },
+                { key: 'floor_stain',    x: 0.4, z: 1.6 },
+            ],
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [
+                '“Oubliette.” “From the French.” “For?” “Forget.”',
+                '“Whose cells are these?” “Ours.” “Ours as in the Department’s?” “Ours as in they were here first.”',
+            ],
+            spawn: { x: 0, z: -1.6, face: 180 },
         },
         /* ══════════════════════════════════════════════════════════════════
            H-WING (HQ plan 5.5, stage 1 — 2026-09-14 rev 4). See DOOR_HQ.hwing
@@ -25770,8 +26216,11 @@ function hqLinkDoors(roomId) {
         const d = { id: 'link_' + link.id, link: link.id, wall: end.wall,
             leaf: wear.leaf || null, wide: !!wear.cat.wide,
             label: ((meta && meta.label) || (DOOR_HQ.rooms[to] || {}).label || to).toUpperCase(),
-            sub: wear.way ? (wear.cat.sub || 'STEP THROUGH') : 'WALK THROUGH', action: { room: to, at: 'link_' + link.id } };
+            /* an end may override the kind's plate line and the prompt's verb
+               (the well room's heads: THE GARDEN WELL · CLIMB UP) */
+            sub: end.sub || (wear.way ? (wear.cat.sub || 'STEP THROUGH') : 'WALK THROUGH'), action: { room: to, at: 'link_' + link.id } };
         if (wear.way) d.way = wear.way;
+        if (end.verb) d.verb = String(end.verb);
         if (link.why) d.why = link.why;
         if (link.note) d.note = link.note;
         if (end.wall === 'free') { d.x = end.x; d.z = end.z; d.face = end.face; }
@@ -25882,7 +26331,15 @@ function hqSiteComplex(mapId) {
     return ((DOOR_HQ.rooms || {})[board] ? [board] : []).concat(parts);
 }
 function hqRefreshComplexLinks() {
-    hqComplexRooms().forEach(id => {
+    /* every room that is NOT generated by hqSiteRoom and stands at one end of a
+       link: the complex parts, and any hand-authored room a link names outright
+       (the garden's well — 9.3 rev 10). Never accumulating: the link doors are
+       dropped and re-appended, exactly as the generated board rooms take theirs. */
+    const ids = hqComplexRooms();
+    (DOOR_HQ.links || []).forEach(l => [l.a, l.b].forEach(e => {
+        if (e && e.room && DOOR_HQ.rooms[e.room] && ids.indexOf(e.room) < 0) ids.push(e.room);
+    }));
+    ids.forEach(id => {
         const r = DOOR_HQ.rooms[id];
         r.doors = (r.doors || []).filter(d => !d.link).concat(hqLinkDoors(id));
     });

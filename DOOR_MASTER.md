@@ -2265,6 +2265,30 @@ Also fixed: every door in the building opened the settings since
 yesterday's C-28 (the re-appended canvas dropped the pointer lock and the
 loss read as ESC) — see HQ plan §9 2026-09-14 rev 4.
 
+### 2026-09-15 (rev 10) — THE WELLS AND THE CAVE (HQ plan 9.3, local, not deployed)
+Every well in the world comes out in the same place. The CAVE is Hollow
+Earth's complex (Room 180 — the one site whose premise is the inside of
+the earth), seven chambers and no numbers of its own: THE WELL ROOM at
+the bottom of six wells (the garden's, the Haunted House cellar's, the
+castle's, the ranch's, the suburban wishing well's and the cistern under
+Göbekli Tepe — climbing out of the wrong one is how you learn the map),
+THE GALLERY where they meet, and four ways out that are already on the
+map — the fissure into Hell (666), the base's sixth side into D.U.M.B.
+(555), the crystal adit into Agartha (88, cut toward the cave and stopped
+a metre short, and something opened the last metre from this side) and
+the mouth onto Hollow Earth itself (180). Behind the portcullis is THE
+OUBLIETTE, the dead end, whose back wall is the fourth cell of Room 24601
+— the Department's dungeon shares a wall with a cave under a well the
+Department does not own, and nobody has filed that.
+The garden's well is the facility's only way down that is not the
+elevator or a secret door: a safe room seaming into a wild one, the
+H-Wing → Backrooms precedent (C-12), ungated. The new dashed route THE
+UNDERCROFT carries the wells and the exits in the directory's WORLD tab.
+Every line down there is Claude's draft (A15); nothing is decided that
+Part C row 33 still owes — the REC was taken as written (the cave a
+complex, the six wells, the four exits, the oubliette's roamer waiting on
+9.4). See HQ plan §9 2026-09-15 rev 10.
+
 ### 2026-09-15 (rev 9) — THE SUITES (HQ plan 9.3 / C-27, local, not deployed)
 The crowding move, data only but for one line of map.js. A department now
 has ONE door on the hall and its rooms hang off a lobby behind it: THE

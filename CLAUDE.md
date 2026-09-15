@@ -2958,6 +2958,47 @@ a room's doors must filter `!d.link` (links append after a room's own
 rows). Viewer-local (RULE #2). Still open: the suites, the star chart's
 route lines, the other eight `way` kinds, the airlock / hold ends.
 
+## THE WELLS AND THE CAVE (HQ plan 9.3) — 2026-09-15 rev 10, local delivery
+Every well in the world drops into ONE cave. The CAVE is the SECOND
+complex and it is HOLLOW EARTH's (`site: 'prebuilt_hollow_earth'` +
+`part`, no `roomNo` — `hqRoomNo` reads the threshold's 180 through
+`site`, the register lists the site once, `hqRoomSite` marks it WILD):
+seven hand-authored box rooms in `DOOR_HQ.rooms` (data.js, the block
+right before H-WING) — `site_prebuilt_hollow_earth_shaft` (THE WELL
+ROOM: one free-standing `way: 'well'` head per well, the gallery west),
+`_gallery` (the crossroads, six doors), `_vent` ⇄ Room 666 HELL,
+`_blast` ⇄ Room 555 D.U.M.B., `_adit` ⇄ Room 88 AGARTHA, `_mouth` ⇄
+Hollow Earth's own BOARD ROOM (the complex's way in / out) and
+`_oubliette` (the dead end behind the portcullis; its back wall is the
+FOURTH CELL of Room 24601 — a `secret: true` pair, eight secret doors
+now, and the dungeon's three `cell_bars` moved to z −3.2 / −1.0 / 1.2 to
+free the panel at z 2.7). **THE SIX WELLS** are `links` rows on the new
+dashed route **`routes.undercroft`**: the GARDEN (1618 — a facility room
+seaming into a wild one, the H-Wing → Backrooms precedent, never gated),
+the Haunted House's CELLAR (rev 6's `haunted_hollow` RE-POINTED and
+renamed `well_cellar` — one row edit, never a duplicate), CAMELOT,
+SKINWALKER RANCH, NUKETOWN and GÖBEKLI TEPE (the four on their board
+rooms' free north lanes). Two engine additions carried it: a link END may
+name its own **`sub`** and **`verb`** (`hqLinkDoors`; the heads read THE
+GARDEN WELL · CLIMB UP — map.js's prompt reads `t.door.verb` before the
+kind's), and **`hqRefreshComplexLinks` also refreshes any hand-authored
+room a link names by `end.room`** (that is how the garden grows its well
+door; it still never accumulates). LANE RULES (they moved): a site room
+may carry **four** link doors when the lanes are ≥ 4.4 m apart and inside
+the wall (Agartha's fourth is x −14.5), and a `way` on a site room hangs
+in ANY free lane west of centre. A cave chamber is lit by its own torches
+/ bulbs / crystals (`strips: false`, `lights: []`, ≤ `HQ_PROP_LIGHT_MAX`),
+wears the terrain sheet's `cave_wall` / `cave_floor` and keeps THE PARK
+RULE (a `railing_1m` run in every chamber, `riser_*` tiers in the big
+ones). NEVER place `asteroid_*` or `utility_box` as a room prop (they are
+board / horizon pieces — door-kit-batch.test.js fails); the cave's rocks
+are `concrete_pillar`. `npm test` runs **`hq-cave.test.js`**. NOT BUILT:
+the stage-2 ROCK shell (`kind: 'cave'`) and the stream as a waded sheet
+(the shaft's ankle-deep water is a line of copy today), the oubliette's
+roamer (9.4) and its tapes (9.1). Unseen live (RULE #1c): all seven
+chambers — six well heads in one room, the cave sheets on a box shell,
+the portcullis / hell arch as interior doors, the fourth cell's slab.
+
 ## THE SUITES (HQ plan 9.3 "the crowding" / C-27) — 2026-09-15 rev 9, local delivery
 A DEPARTMENT gets ONE hall door onto its own LOBBY; its rooms hang off
 that. Three new hand-authored box rooms in `DOOR_HQ.rooms` (data.js, the

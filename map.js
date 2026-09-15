@@ -1391,8 +1391,10 @@
             const el = _hqEl('hqPrompt');
             if (!el) return;
             if (!t || _hqPanelTarget) { el.style.display = 'none'; el.innerHTML = ''; return; }
-            /* a SEAM THAT IS NOT A DOOR (HQ plan 9.3 `way`): the kind's own verb — CLIMB IN, CLIMB DOWN */
-            const wayVerb = (t.kind === 'door' && t.door && t.door.way) ? _hqWayCat(t.door.way).verb : null;
+            /* a SEAM THAT IS NOT A DOOR (HQ plan 9.3 `way`): the kind's own verb
+               — CLIMB IN, CLIMB DOWN — unless the END names its own (the well
+               room's heads read CLIMB UP: the same rope, the other way) */
+            const wayVerb = (t.kind === 'door' && t.door && t.door.way) ? ((t.door.verb) || _hqWayCat(t.door.way).verb) : null;
             const verb = wayVerb || (t.kind === 'door' ? ((t.door && t.door.action && t.door.action.mission && !_hqRoomExists(_hqSiteRoomId(t.door.action.mission))) ? 'OPEN' : 'ENTER') : (t.kind === 'counter' ? ((t.counter && t.counter.verb) || 'USE') : 'TALK'));
             const pNo = _hqNo(t.door || t.counter);
             el.innerHTML = `<b>▸ ${pNo ? 'ROOM ' + _hqEsc(pNo) + ' · ' : ''}${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span><i>[E] ${verb}</i>`;

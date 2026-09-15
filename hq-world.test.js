@@ -27,6 +27,7 @@ function landing(room, door) {
 }
 const TR=vm.runInContext('TERRAIN_RULES',D);
 const LUNAR=HQ.links.filter(l=>l.route==='lunar'), SEAMS=HQ.links.filter(l=>l.way);
+const WELLS=SEAMS.filter(l=>l.way==='well');
 /* a prop's footprint on the floor (the hq-complex.test.js rule): the catalogue rect (room axes) or the foot disc */
 function propBlocks(room, p, x, z, margin) {
  const S=room.shell, cat=HQ.catalogue[p.key]||{};
@@ -58,7 +59,7 @@ test('production renderer lands each link inside the dry walkway facing away fro
   assert.ok(Math.abs(p.x)<half-0.4 && Math.abs(p.z)<half-0.4);
   assert.ok(Math.abs(p.z)>room.shell.grid.cells*room.shell.grid.cell/2+0.4,'off the battle board');
   assert.ok(Math.cos(h.cam.yaw)<-0.99,'north doorway faces south into the room');
-  if(door.way) assert.ok(door.wall==='n' && door.x<=-4,'a far-end seam stands on the north wall, west of the console lane');
+  if(door.way) assert.ok(door.wall==='n' && door.x<=-0.2,'a seam on a site room stands on the north wall, in a lane west of the console (rev 10: the four well heads took the free lanes)');
   assert.equal(p.air,false);assert.equal(p.y,0);
   for(const q of [...room.props,...room.agents,...room.npcSpots]) {
    const cat=HQ.catalogue[q.key]||{};
@@ -121,7 +122,7 @@ test('an entryway kind the catalogue does not list is held back at BOTH ends; a 
  } finally{HQ.links=saved;}
 });
 test('THE SEAMS THAT ARE NOT DOORS: the wardrobe into Camelot and the well into Hollow Earth are catalogued, paired, plated, voiced and built',()=>{
- assert.deepEqual(SEAMS.map(l=>l.id).sort().join(','),'haunted_camelot,haunted_hollow');
+ assert.deepEqual(SEAMS.map(l=>l.id).sort().join(','),'haunted_camelot,well_camelot,well_cellar,well_garden,well_gobekli,well_nuketown,well_skinwalker','the wardrobe and the six wells (rev 10: every well drops into the cave)');
  for(const k of Object.keys(HQ.ways)) {
   const w=HQ.ways[k];
   assert.ok(w.verb && w.sub && w.sfx && w.w>0 && w.h>0, k+': verb · sub · sfx · w · h');
@@ -137,7 +138,9 @@ test('THE SEAMS THAT ARE NOT DOORS: the wardrobe into Camelot and the well into 
   for(const end of [link.a,link.b]) {
    const rid=D.hqLinkRoom(end), room=HQ.rooms[rid], door=room.doors.find(d=>d.id==='link_'+link.id);
    assert.ok(door && door.way===link.way && door.leaf===null,rid+' wears the '+link.way);
-   assert.equal(door.sub,HQ.ways[link.way].sub);assert.equal(door.why,link.why);
+   assert.equal(door.sub,end.sub||HQ.ways[link.way].sub,'the kind\u2019s plate line, unless the end names its own (the well room\u2019s heads)');
+   if(end.verb) assert.equal(door.verb,end.verb,'an end may name its own verb (CLIMB UP)');
+   assert.equal(door.why,link.why);
    const dest=HQ.rooms[door.action.room], back=dest.doors.find(d=>d.id===door.action.at);
    assert.ok(back && back.action.room===rid && back.action.at===door.id && back.way===door.way,'the same object at the far end');
    assert.equal(D.hqDoorNo(door),D.hqRoomNo(door.action.room),'the plate reads the far site\'s number');
@@ -147,12 +150,13 @@ test('THE SEAMS THAT ARE NOT DOORS: the wardrobe into Camelot and the well into 
  }
  /* the house's ends: the wardrobe on the east wall upstairs where the locker stood, the well free in the cellar's floor where the fountain stood */
  const up=HQ.rooms.site_prebuilt_haunted_upstairs, cel=HQ.rooms.site_prebuilt_haunted_cellar;
- const ward=up.doors.find(d=>d.link==='haunted_camelot'), well=cel.doors.find(d=>d.link==='haunted_hollow');
+ const ward=up.doors.find(d=>d.link==='haunted_camelot'), well=cel.doors.find(d=>d.link==='well_cellar');
  assert.ok(ward.wall==='e' && ward.z===0.4);assert.ok(!up.props.some(p=>p.key==='office_locker'),'the locker gave its place to the wardrobe');
  assert.ok(well.wall==='free' && well.x===-2.6 && well.z===1.6 && well.face===90);assert.ok(!cel.props.some(p=>p.key==='fountain'),'the fountain gave its place to the well');
  assert.ok(cel.props.filter(p=>p.key==='railing_1m').length>=3,'the guard rail round the well stays (the park rule)');
- /* the far ends: Camelot's curtain wall and Hollow Earth's cave wall are walled rooms */
- for(const id of ['prebuilt_camelot','prebuilt_hollow_earth']) assert.equal(HQ.siteRooms.shells[id].edge,'walls',id+' has a wall to stand the object against');
+ /* the far ends: Camelot's curtain wall is a walled room; the cellar's well comes out in the cave's well room (rev 10), not against Hollow Earth's wall */
+ assert.equal(HQ.siteRooms.shells.prebuilt_camelot.edge,'walls','Camelot has a wall to stand the wardrobe against');
+ assert.equal(well.action.room,'site_prebuilt_hollow_earth_shaft','the well in the cellar drops into THE WELL ROOM');
  /* the production landing on the free-standing well: 2.4 m east of the ring, facing east (away from it), inside the cellar, on nothing */
  const h=landing(cel,well), p=h.player;
  assert.ok(Math.abs(p.x-(-0.2))<1e-9 && Math.abs(p.z-1.6)<1e-9,'the landing is 2.4 m in front of the opening');
@@ -167,7 +171,7 @@ test('THE SEAMS THAT ARE NOT DOORS: the wardrobe into Camelot and the well into 
  assert.ok(/if \(door\.way\) \{ try \{ _hqBuildWay\(room, door, level, y0, Rw, inward\);/.test(renderer),'_hqBuildDoors hands a way to _hqBuildWay');
  assert.ok(/mo\.mode === 'way' && mo\.tick/.test(renderer),'_hqTickDoors drives the way rig');
  assert.ok(/if \(l\.lens\) l\.lens\.material/.test(renderer),'a seam has no lamp');
- assert.ok(/t\.door\.way\) \? _hqWayCat\(t\.door\.way\)\.verb/.test(map),'the prompt reads the way\'s verb');
+ assert.ok(/t\.door\.way\) \? \(\(t\.door\.verb\) \|\| _hqWayCat\(t\.door\.way\)\.verb\)/.test(map),'the prompt reads the end\'s verb, else the way\'s');
  assert.ok(/from\.door\.way\) \? _hqWayCat\(from\.door\.way\)\.sfx/.test(map),'the room change voices the way');
  assert.ok(/\.hq-plate-way/.test(fs.readFileSync(__dirname+'/styles-base.css','utf8')));
 });
@@ -181,7 +185,7 @@ test('world graph reflects real directed doors and repeated reads do not change 
  assert.ok(seen.has(saturn));assert.ok(seen.size>=5,'the Moon reaches Saturn and on down the line (rev 7: the lunar route joins the world)');
  const house='site_prebuilt_haunted_upstairs', seen2=new Set([house]), todo2=[house];while(todo2.length){const at=todo2.pop();for(const e of edges.filter(e=>e.from===at))if(!seen2.has(e.to)){seen2.add(e.to);todo2.push(e.to);}}
  assert.ok(seen2.has(D.hqSiteRoomId('prebuilt_camelot')),'the wardrobe is an edge of the world graph');
- assert.ok(graph.edges.some(e=>e.from===D.hqSiteRoomId('prebuilt_hollow_earth') && e.to==='site_prebuilt_haunted_cellar' && e.link==='haunted_hollow'),'and so is the well, both ways');
+ assert.ok(graph.edges.some(e=>e.from==='site_prebuilt_hollow_earth_shaft' && e.to==='site_prebuilt_haunted_cellar' && e.link==='well_cellar'),'and so is the well, both ways (rev 10: into the cave\u2019s well room)');
  assert.deepEqual(plain(D.hqWorldGraph()),plain(graph));assert.equal(JSON.stringify(HQ.rooms),before);
 });
 test('the way builders run on a stub scene: each returns a group, a way rig whose tick moves it, and an opening the catalogue agrees with',()=>{
@@ -236,8 +240,9 @@ test('every built site but the Looking-Glass is a station on at least one line; 
  assert.equal(off.join(','),'prebuilt_lookingglass','the Looking-Glass room is 9 m across: a north door lands on the board (rev 7 note)');
  for(const id of HQ.siteRooms.built){
   const room=HQ.rooms[BOARD(id)], links=room.doors.filter(d=>d.link), half=room.shell.w/2;
-  assert.ok(links.length<=3,id+' carries '+links.length+' link doors');
+  assert.ok(links.length<=4,id+' carries '+links.length+' link doors');
   for(const d of links){assert.equal(d.wall,'n');assert.ok(d.x>-(half-(room.shell.open?2.6:1.4))&&d.x<0.4,id+'/'+d.id+' at x '+d.x+' (half '+half+')');
+   for(const o of links) if(o!==d) assert.ok(Math.abs(o.x-d.x)>=4.4,id+': '+d.id+' and '+o.id+' share a lane');
    const cat=HQ.catalogue[d.leaf]; if(cat) assert.equal(!!d.wide,!!cat.wide,d.id+' wide flag');}
  }
 });
@@ -247,11 +252,11 @@ test('hqWorldRoutes chains every live link into a line: a leg per link, a statio
  assert.equal(R.reduce((n,r)=>n+r.legs.length,0),HQ.links.length);
  const seams=R.find(r=>r.id==='seams'), woods=R.find(r=>r.id==='woods'), deep=R.find(r=>r.id==='deep'), hw=R.find(r=>r.id==='highway');
  assert.ok(seams.dashed);
- assert.deepEqual(seams.stations.map(s=>s.no).join(','),'i,13,180','the wardrobe upstairs and the well in the cellar are the HOUSE\'s legs: one station 13, an end first');
+ assert.deepEqual(seams.stations.map(s=>s.no).join(','),'13,i','the wardrobe upstairs is the HOUSE\'s leg (the wells moved to THE UNDERCROFT, rev 10)');
  assert.ok(seams.stations.every(s=>s.room===BOARD(s.site)),'a station is a board room');
  assert.ok(seams.legs.every(l=>l.way && l.fromRoom.startsWith('site_prebuilt_haunted_') && l.to===BOARD(l.to.replace(/^site_/,''))));
  const house=woods.stations.find(s=>s.no==='13');
- assert.ok(house.here && house.lines.length===2 && house.lines.includes('seams'),'the cellar counts as the house; the house is an interchange');
+ assert.ok(house.here && house.lines.length===3 && house.lines.includes('seams') && house.lines.includes('undercroft'),'the cellar counts as the house; the house is an interchange (the woods, the wardrobe, the well)');
  assert.equal(D.hqWorldRoutes('foyer').find(r=>r.id==='woods').stations.filter(s=>s.here).length,0);
  assert.equal(D.hqWorldRoutes(null).flatMap(r=>r.stations).filter(s=>s.here).length,0);
  const sta=deep.stations.map(s=>s.no);

@@ -62,7 +62,8 @@ function propBlocks(room, p, x, z, margin) {
 test('the sheet: the Haunted House is a complex of the board room and four parts, each wearing site + part and no number; the register lists the house once', () => {
     assert.deepStrictEqual(D.hqSiteComplex(SITE).join(','), [BOARD].concat(PART_IDS).join(','), 'hqSiteComplex = the board room, then the parts in sheet order');
     assert.deepStrictEqual(D.hqSiteComplex(SITE + '_delta').join(','), [BOARD].concat(PART_IDS).join(','), 'a Δ id resolves to the site');
-    assert.deepStrictEqual(D.hqComplexRooms().join(','), PART_IDS.join(','), 'the parts are the only complex rooms in the building today');
+    assert.deepStrictEqual(D.hqComplexRooms().filter(id => D.hqRoomSite(id) === SITE).join(','), PART_IDS.join(','), 'the house\u2019s parts');
+    assert.ok(D.hqComplexRooms().some(id => D.hqRoomSite(id) === 'prebuilt_hollow_earth'), 'the cave is the second complex (hq-cave.test.js guards it)');
     for (const p of PARTS) {
         const id = D.hqComplexRoomId(SITE, p), r = HQ.rooms[id];
         assert.strictEqual(id, BOARD + '_' + p, 'hqComplexRoomId');
