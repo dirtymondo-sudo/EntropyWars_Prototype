@@ -2958,6 +2958,41 @@ a room's doors must filter `!d.link` (links append after a room's own
 rows). Viewer-local (RULE #2). Still open: the suites, the star chart's
 route lines, the other eight `way` kinds, the airlock / hold ends.
 
+## THE SUITES (HQ plan 9.3 "the crowding" / C-27) — 2026-09-15 rev 9, local delivery
+A DEPARTMENT gets ONE hall door onto its own LOBBY; its rooms hang off
+that. Three new hand-authored box rooms in `DOOR_HQ.rooms` (data.js, the
+block right after `padded`), each wearing **NO `roomNo`** (a lobby — the
+foyer and the penthouse are the precedent, so `hqRoomRegister` skips it):
+**`medwing`** · THE MEDICAL WING behind the ground ring's hospital door at
+**210°** (`ward` → Room 1111, `interrogation` → Room 1984; Room 5150 stays
+behind the WARD's own cell door), **`recwing`** · THE RECORDS WING behind
+the wired double door at **240°** (`records` → Room 42, `clockroom` → Room
+247) and **`execwing`** · THE EXECUTIVE SUITE behind the mezzanine's house
+door at **315°** (`trophycase` → Room 111, `continuity` → the Bureau).
+The ground ring is 13 → **11** doors (225° and 255° are free wall), the
+mezzanine 11 → **10** (290° free). **THE RULE a suite keeps**: every moved
+room's own `egress` id, leaf, `wide`, counters, cast and NUMBER are
+untouched — only the FAR END of its way out moved (`central_egress@<id>`
+→ the wing), and the three hall doors keep their ids (`medical` /
+`records`, plus the new `executive`) so a remembered landing still
+resolves. **THE BUREAU'S GATE AND ITS `№ — CONTESTED` STAY ON THE
+BUREAU'S OWN DOOR** (GATEKEEPER + 24 Keys), which now hangs on the
+suite's north wall: the suite is ungated, so a recruit walks it, reads
+the notices and does not go in; `hqRoomNo('continuity')` still finds the
+number (the helper scans every room's doors). A lobby LAUNCHES NOTHING
+(C-27) — doors, a bench and a rail; THE PARK RULE is met with a
+`railing_1m` run in each (the ramp waits on 9.8). The one non-data
+change: map.js's door panel reads `d.id === 'continuity' || d.id ===
+'executive'`, so the canon notices are still readable from the hall at
+any rank (rev 2's promise). `npm test` runs **`hq-suites.test.js`** (the
+lobbies + the register, one hall door per department + the freed angles +
+the door counts, full reversibility, the gate + the number, C-27, and the
+PRODUCTION landing on all nine lobby doors). Adding a suite = a lobby
+room + re-point the rooms' `egress` far ends + a row in the test's
+`SUITES` table. Unseen live (RULE #1c): all three lobbies, the two house
+doors in the executive suite, the landing through a WIDE door in a small
+box room.
+
 ## THE SEAMS THAT ARE NOT DOORS (HQ plan 9.3 `way`, the first two) — 2026-09-15 rev 6, local delivery
 A `DOOR_HQ.links` row may carry **`way: '<kind>'`** instead of a `leaf`:
 the seam is an ENTRYWAY OBJECT, not a door. **`DOOR_HQ.ways`** (data.js,

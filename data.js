@@ -20331,19 +20331,14 @@ const DOOR_HQ = {
                    way INTO the ward — the services desk (Challenge mode), the chart
                    (your record), the cell door into Room 5150. The number moved onto
                    the room (hqDoorNo reads it through). */
-                { id: 'medical',        deg: 210, level: 0, leaf: 'leaf_hospital',                  label: 'MEDICAL',                 sub: 'CHALLENGE MODE',           action: { room: 'medical', at: 'egress' },
-                  desc: 'Room 1111. Where EXITED operatives are processed. The services desk files your retries, the chart at the foot of the bed is your record, and the door at the back of the ward is Room 5150. Nobody comments on the door at the back of the ward.' },
-                { id: 'clockroom',      deg: 225, level: 0, leaf: 'leaf_frosted',        wide: true,  label: 'THE CLOCK ROOM',          sub: 'DAILY TASKS · LOGIN STREAK', action: { room: 'clockroom', at: 'egress' },
-                  desc: 'Daily Office Operations Requirements. Three lines a day, the punch clock, and every clock in the room — none of them agree, all of them are right somewhere.' },
-                /* ROOM 42 · RECORDS (plan 7.4, 2026-09-13): the door is now the way
-                   INTO the room — the reading desk (the Codex), the card catalogue
-                   (the unfiled sites), the service stair up to the tape library.
-                   The number moved onto the room (hqDoorNo reads it through). */
-                { id: 'records',        deg: 240, level: 0, leaf: 'leaf_wired_double', wide: true,  label: 'RECORDS',                 sub: 'CODEX · COMMUNITY MAPS', action: { room: 'records', at: 'egress' },
-                  desc: 'Room 42. “We only keep the file.” Entity dossiers on the reading desk, the unfiled sites in the card catalogue, and the service stair up to the tape library — Room 360, directly overhead.' },
-                /* ROOM 1984 · THE INTERROGATION ROOM (plan 7.4, 2026-09-13): between RECORDS and BAY 1 — Internal Affairs keeps its room next to the file */
-                { id: 'interrogation',  deg: 255, level: 0, leaf: 'leaf_cell',                      label: 'THE INTERROGATION ROOM',  sub: 'CPU TRAINING TRANSCRIPT', action: { room: 'interrogation', at: 'egress' },
-                  desc: 'Room 1984. One table, two chairs, one lamp, one round window that is a mirror from this side. What the CPU learned from watching you play — every disagreement on file, every weight it moved. Internal Affairs sits behind the glass. Nobody comments.' },
+                { id: 'medical',        deg: 210, level: 0, leaf: 'leaf_hospital',                  label: 'THE MEDICAL WING',        sub: 'WARD · INTERROGATION',     action: { room: 'medwing', at: 'egress' },
+                  desc: 'The wing, not the ward. One hospital door onto a corridor with three off it: Room 1111 (the ward, the services desk, the chart), Room 5150 at the back of it, and Room 1984 at the far end — Internal Affairs was moved in with Medical during a reorganisation nobody can produce the memo for.' },
+                /* THE RECORDS WING (plan 9.3 / C-27, 2026-09-15): the wired double
+                   door is now the way into the WING — Room 42 off its north wall,
+                   Room 247 off its east. The Clock Room's own door left the ring at
+                   225°; the number stays on each room (hqDoorNo reads it through). */
+                { id: 'records',        deg: 240, level: 0, leaf: 'leaf_wired_double', wide: true,  label: 'THE RECORDS WING',        sub: 'CODEX · DAILY TASKS', action: { room: 'recwing', at: 'egress' },
+                  desc: 'The wing. Room 42 keeps the file — dossiers on the reading desk, the unfiled sites in the card catalogue, the service stair up to Room 360. Room 247 keeps the time: three requirements a day, the punch clock, and every clock in the building that disagrees with every other one.' },
                 { id: 'bay_terrestrial',deg: 270, level: 0, leaf: 'leaf_suburban_house',            label: 'BAY 1 · TERRESTRIAL',    sub: 'BATTLE MAPS',            action: { sector: 'terrestrial' } },
                 /* ── mezzanine (support / executive access) ── */
                 { id: 'elevator',       deg: 0,   level: 1, leaf: null, proc: 'elevator',          label: 'ELEVATOR',                sub: 'B · G · M · 3 · PH',             action: { room: 'car', at: 'panel' }, floors: ['B', 'G', 'M', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '14', 'PH'], desc: 'The car. It stops at B, G, M, 3 and PH now; the PH button still wants KEYHOLDER clearance and twelve Keys (DOOR_HQ.elevator.stops).' },
@@ -20373,10 +20368,15 @@ const DOOR_HQ = {
                 { id: 'observatorium',  deg: 240, level: 1, leaf: 'leaf_holographic',              label: 'THE OBSERVATORIUM',       sub: 'MAP SELECT · REPLAY',        action: { room: 'observatorium', at: 'egress' },
                   desc: 'Room 360. The whole sky from one chair: every threshold in the building is a star on the ceiling — point at one on the chart and its door opens from here. The tape library came upstairs with the projector. The dome is painted; the telescope is pointed at the paint.' },
                 { id: 'bay_quarantined',deg: 270, level: 1, leaf: 'leaf_cell',                      label: 'BAY 6 · QUARANTINED',     sub: 'BATTLE MAPS',            action: { sector: 'quarantined' } },
-                /* ROOM 111 · THE TROPHY CASE (plan 7.4, 2026-09-13): the mezzanine over EMPLOYEE OF THE MONTH (288°), between Bay 6 and the Bureau */
-                { id: 'trophycase',     deg: 290, level: 1, leaf: 'leaf_glass_exec',                label: 'THE TROPHY CASE',         sub: 'ACHIEVEMENTS',            action: { room: 'trophycase', at: 'egress' },
-                  desc: 'Room 111. The glass cabinet over Employee of the Month: every commendation the Department has engraved for you. Open the cabinet and the whole record comes out. The blank plaques are not a comment.' },
-                { id: 'continuity',     deg: 315, level: 1, leaf: 'leaf_suburban_house',            label: 'BUREAU OF CONTINUITY',    sub: 'STORY CANON · GATEKEEPER RANK',           action: { room: 'continuity', at: 'egress' }, minClearance: 5, requiresKeys: 24, roomNo: '№ — CONTESTED', why: 'a joke, and a policy', desc: 'Canon notices. The motto plaque. The only department that suspects the schedule. GATEKEEPER clearance and two dozen Keys.' },
+                /* THE EXECUTIVE SUITE (plan 9.3 / C-27, 2026-09-15): ONE house door
+                   on the mezzanine for both executive rooms — Room 111 off the
+                   suite's west wall, the Bureau off its north. The GATE AND THE
+                   NUMBER stay on the Bureau's OWN door (now the suite's), so a
+                   recruit walks the suite and reads the notices and still does not
+                   go in; the canon notices are on this door too (map.js). The
+                   Trophy Case's own door left the ring at 290°. */
+                { id: 'executive',      deg: 315, level: 1, leaf: 'leaf_suburban_house',            label: 'THE EXECUTIVE SUITE',     sub: 'ACHIEVEMENTS · STORY CANON',              action: { room: 'execwing', at: 'egress' },
+                  desc: 'The suite. The glass case on one side is every commendation the Department has engraved for you; the house door on the other is the Bureau of Continuity, which is the only department that suspects the schedule. The notices on this door are readable by anyone. The Bureau is not.' },
             ],
             /* walk-up interactions that are not doors */
             counters: [
@@ -20717,8 +20717,8 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_suburban_house',
-                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MEZZANINE',
-                  action: { room: 'central_egress', at: 'continuity' },
+                  label: 'THE EXECUTIVE SUITE', sub: 'BACK TO THE SUITE',
+                  action: { room: 'execwing', at: 'continuity' },
                   desc: 'The way back to the mezzanine. A house door on an office. It has always been a house door; the file that says otherwise has been corrected.' },
             ],
             counters: [
@@ -21102,8 +21102,8 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_frosted', wide: true,
-                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
-                  action: { room: 'central_egress', at: 'clockroom' },
+                  label: 'THE RECORDS WING', sub: 'BACK TO THE WING',
+                  action: { room: 'recwing', at: 'clockroom' },
                   desc: 'The way back to the hall. The frosted glass says CLOCK ROOM backwards from this side, which is the right way round for the clocks.' },
             ],
             counters: [
@@ -21311,8 +21311,8 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_glass_exec',
-                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MEZZANINE',
-                  action: { room: 'central_egress', at: 'trophycase' },
+                  label: 'THE EXECUTIVE SUITE', sub: 'BACK TO THE SUITE',
+                  action: { room: 'execwing', at: 'trophycase' },
                   desc: 'The way back to the mezzanine. The board below is Employee of the Month; this room is everyone else.' },
             ],
             counters: [
@@ -21521,8 +21521,8 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_hospital',
-                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
-                  action: { room: 'central_egress', at: 'medical' },
+                  label: 'THE MEDICAL WING', sub: 'BACK TO THE WING',
+                  action: { room: 'medwing', at: 'ward' },
                   desc: 'The way back to the hall. Discharged operatives sign the clipboard on the way out; the clipboard is the chart.' },
                 /* THE CELL DOOR → Room 5150, the Padded Room */
                 { id: 'padded', wall: 'n', x: 2.6, leaf: 'leaf_cell',
@@ -21663,6 +21663,254 @@ const DOOR_HQ = {
                 '“Three soft walls.” “And the fourth?” “The fourth is the door.”',
             ],
             spawn: { x: 0, z: 1.0, face: 0 },
+        },
+        /* ══ THE SUITES (HQ plan 9.3 "the crowding" / C-27, 2026-09-15) ═══════
+           The ground ring wore thirteen doors and the mezzanine eleven. A
+           DEPARTMENT now gets ONE hall door onto its own LOBBY, and its rooms
+           hang off that: −2 on the ground ring (the Clock Room at 225° and the
+           Interrogation Room at 255° left it) and −1 upstairs (the Trophy Case
+           at 290° left it). Nothing is lost — one more door to walk for four
+           rooms; the Annex is the precedent.
+           RULES a suite keeps: every room's own `at` id, leaf, wide, gate and
+           number are untouched — only the far end of its way out moved, from
+           `central_egress` to the wing. A lobby wears NO number (7.0 rule 2,
+           like the foyer and the penthouse), so `hqRoomRegister` skips it and
+           `hqRoomNo` still reads each room's own. A lobby launches NOTHING
+           (C-27: one home per function) — it is doors, a bench and a rail.
+           THE PARK RULE (9.8) is met in the stage-1 reading: a `railing_1m`
+           run in every one; a sloped ramp waits on the ride's registry. ══ */
+        medwing: {
+            label: 'THE MEDICAL WING',
+            sub: 'WARD · PADDED ROOM · INTERROGATION',
+            kind: 'box',
+            shell: {
+                w: 9, d: 5.2, h: 3.4,
+                wallH: 3.4, dadoH: 1.1,
+                floor: 'terrazzo', wall: 'drywall', dado: 'teal', trim: 'teal', ceiling: 'ceiling',
+                floorColor: 0xd9dad2, wallColor: 0xdde6dc, dadoColor: 0x7fa89a,   // the ward's own green, carried out into the corridor
+                pipes: false,
+                lights: [{ x: -2.6, z: 0 }, { x: 2.6, z: 0 }],
+                mood: { light: 0xeef4ee },          // cold white, and it never goes off
+                plate: { x: 0, z: -2.45, y: 2.9 },
+            },
+            doors: [
+                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_hospital',
+                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
+                  action: { room: 'central_egress', at: 'medical' },
+                  desc: 'The way back to the hall, through the same hospital door. The wing is quieter than the hall and everyone says so on the way out.' },
+                /* ROOM 1111 · the ward (the services desk, the chart, Room 5150 behind it) */
+                { id: 'ward', wall: 'n', x: -2.2, leaf: 'leaf_hospital',
+                  label: 'MEDICAL', sub: 'CHALLENGE MODE',
+                  action: { room: 'medical', at: 'egress' },
+                  desc: 'Room 1111. Where EXITED operatives are processed. The services desk files your retries, the chart at the foot of the bed is your record, and the door at the back of the ward is Room 5150. Nobody comments on the door at the back of the ward.' },
+                /* ROOM 1984 · Internal Affairs, at the far end of the corridor */
+                { id: 'interrogation', wall: 'e', z: 0, leaf: 'leaf_cell',
+                  label: 'THE INTERROGATION ROOM', sub: 'CPU TRAINING TRANSCRIPT',
+                  action: { room: 'interrogation', at: 'egress' },
+                  desc: 'Room 1984. One table, two chairs, one lamp, one round window that is a mirror from this side. What the CPU learned from watching you play — every disagreement on file, every weight it moved. Internal Affairs sits behind the glass. Nobody comments.' },
+            ],
+            counters: [],
+            props: [
+                /* the north wall: the board, the vent, the way into the ward */
+                { key: 'notice_board',      wall: 'n', x: 1.2 },
+                { key: 'picture_round_b',   wall: 'n', x: 3.2 },
+                { key: 'vent_grille',       wall: 'n', x: -4.0, mount: 2.9 },
+                /* the south wall: the clock nobody checks, the cooler, the coats */
+                { key: 'wall_clock',        wall: 's', x: 0,    mount: 2.5 },
+                { key: 'water_cooler',      wall: 's', x: 2.2 },
+                { key: 'hook_rail',         wall: 's', x: -3.0 },
+                { key: 'fire_extinguisher', wall: 's', x: -4.0 },
+                { key: 'security_camera',   wall: 's', x: 3.8,  mount: 2.55 },
+                /* the two ends */
+                { key: 'exit_sign',         wall: 'w', z: 1.3,  mount: 2.75 },
+                { key: 'nameplate',         wall: 'e', z: 1.3 },
+                { key: 'clipboard',         wall: 'e', z: -1.3, rot: -4 },
+                /* the floor: the waiting bench, the queue rail (THE PARK RULE) */
+                { key: 'rug_office',        x: 0,    z: 0 },
+                { key: 'park_bench',        x: -1.0, z: 1.7, face: 0 },
+                { key: 'park_bench',        x: 1.4,  z: 1.7, face: 0 },
+                { key: 'potted_plant',      x: -4.0, z: 1.9 },
+                { key: 'trash_bin',         x: 3.9,  z: 1.9 },
+                { key: 'railing_1m',        x: -0.6, z: -1.1, face: 0 },
+                { key: 'railing_1m',        x: 0.4,  z: -1.1, face: 0 },
+                { key: 'railing_1m',        x: 1.4,  z: -1.1, face: 0 },
+                { key: 'fluorescent',       x: -2.6, z: 0, ceil: true, face: 0 },
+                { key: 'fluorescent',       x: 2.6,  z: 0, ceil: true, face: 0 },
+            ],
+            agents: [
+                { x: -3.0, z: -1.6, face: 60, pose: 'hqArms', gender: 'female', label: 'THE WING SISTER', reach: 1.9,
+                  line: '“Ward on your left, Internal Affairs at the end. If you are going to the end, go on your own feet.”' },
+                { x: 2.6, z: -1.5, face: 200, pose: 'hqTalk', gender: 'male', label: 'THE ESCORT', reach: 1.8,
+                  line: '“I walk people down the corridor. That is the whole job. Nobody has ever asked me to walk them back.”' },
+            ],
+            npcSpots: [
+                { x: 0.2, z: 1.2, face: 180 },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Two doors and one corridor.” “Three doors.” “The third one is in the ward.” “The third one is still a door.”',
+                '“Why is Internal Affairs in Medical?” “Reorganisation.” “Whose?” “That is the sort of question they have a room for.”',
+                '“Does the bench get used?” “Every day.” “By whom?” “People waiting to be told which door.”',
+            ],
+            spawn: { x: -3.2, z: 0, face: 90 },
+        },
+        recwing: {
+            label: 'THE RECORDS WING',
+            sub: 'THE FILE · THE TIME',
+            kind: 'box',
+            shell: {
+                w: 9, d: 5.2, h: 3.4,
+                wallH: 3.4, dadoH: 1.1,
+                floor: 'concrete', wall: 'drywall', dado: 'wood', trim: 'teal', ceiling: 'ceiling',
+                floorColor: 0x8d8f86, wallColor: 0xc9c2ae, dadoColor: 0x6b4a2e,   // manila over green linoleum: Room 42's palette, out in the corridor
+                pipes: false,
+                lights: [{ x: -2.6, z: 0 }, { x: 2.6, z: 0 }],
+                mood: { light: 0xe9dcc0 },          // warm, and it flickers when the stacks are opened
+                plate: { x: 0, z: -2.45, y: 2.9 },
+            },
+            doors: [
+                { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_wired_double', wide: true,
+                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
+                  action: { room: 'central_egress', at: 'records' },
+                  desc: 'The way back to the hall, through the same wired double door. Sign whatever you are carrying back in first.' },
+                /* ROOM 42 · the file */
+                { id: 'records', wall: 'n', x: -2.2, leaf: 'leaf_wired_double', wide: true,
+                  label: 'RECORDS', sub: 'CODEX · COMMUNITY MAPS',
+                  action: { room: 'records', at: 'egress' },
+                  desc: 'Room 42. “We only keep the file.” Entity dossiers on the reading desk, the unfiled sites in the card catalogue, and the service stair up to the tape library — Room 360, directly overhead.' },
+                /* ROOM 247 · the time */
+                { id: 'clockroom', wall: 'e', z: 0, leaf: 'leaf_frosted', wide: true,
+                  label: 'THE CLOCK ROOM', sub: 'DAILY TASKS · LOGIN STREAK',
+                  action: { room: 'clockroom', at: 'egress' },
+                  desc: 'Room 247. Daily Office Operations Requirements — three lines a day, the punch clock, and every clock in the room. None of them agree. All of them are right somewhere.' },
+            ],
+            counters: [],
+            props: [
+                /* the north wall: the board, the vent, the way into the stacks */
+                { key: 'notice_board',    wall: 'n', x: 1.2 },
+                { key: 'picture_round_c', wall: 'n', x: 2.6 },
+                { key: 'vent_grille',     wall: 'n', x: 3.8, mount: 2.9 },
+                /* the south wall: the overflow — what the stacks could not take */
+                { key: 'metal_shelving',  wall: 's', x: -3.2 },
+                { key: 'filing_cabinet',  wall: 's', x: -1.6 },
+                { key: 'filing_cabinet',  wall: 's', x: -0.4 },
+                { key: 'hook_rail',       wall: 's', x: 1.2 },
+                { key: 'wall_clock',      wall: 's', x: 2.6, mount: 2.5 },       // set to the Clock Room's time; the Clock Room disputes it
+                { key: 'security_camera', wall: 's', x: 4.0, mount: 2.55 },
+                /* the two ends */
+                { key: 'exit_sign',       wall: 'w', z: 1.3,  mount: 2.75 },
+                { key: 'nameplate',       wall: 'e', z: 1.3 },
+                { key: 'clipboard',       wall: 'e', z: -1.3, rot: 3 },
+                /* the floor: the trolley's worth of boxes, two chairs, the rail (THE PARK RULE) */
+                { key: 'rug_office',      x: 0,    z: 0 },
+                { key: 'cardboard_boxes', x: -3.6, z: 1.6 },
+                { key: 'cardboard_box',   x: -2.9, z: 1.9, face: 20 },
+                { key: 'molded_chair',    x: -0.8, z: 1.8, face: 0 },
+                { key: 'molded_chair',    x: 0.4,  z: 1.8, face: 0 },
+                { key: 'potted_plant',    x: 4.0,  z: -1.9 },
+                { key: 'trash_bin',       x: 3.9,  z: 1.9 },
+                { key: 'railing_1m',      x: -0.6, z: -1.1, face: 0 },
+                { key: 'railing_1m',      x: 0.4,  z: -1.1, face: 0 },
+                { key: 'railing_1m',      x: 1.4,  z: -1.1, face: 0 },
+                { key: 'fluorescent',     x: -2.6, z: 0, ceil: true, face: 0 },
+                { key: 'fluorescent',     x: 2.6,  z: 0, ceil: true, face: 0 },
+            ],
+            agents: [
+                { x: -3.2, z: -1.5, face: 70, pose: 'hqTalk', gender: 'male', label: 'THE WING ARCHIVIST', reach: 1.9,
+                  line: '“The file is that way and the time is that way. They were put in one wing so they would stop contradicting each other. It has not worked.”' },
+                { x: 2.4, z: -1.6, face: 200, pose: 'hqArms', gender: 'female', label: 'THE RUNNER', reach: 1.8,
+                  line: '“I carry forms from the time to the file. By the time they arrive they are historical.”' },
+            ],
+            npcSpots: [
+                { x: -0.8, z: 1.3, face: 180 },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Which door first?” “Punch in, then read.” “Why?” “Because reading takes all day and the clock does not care.”',
+                '“Why are the boxes in the corridor?” “The stacks are full.” “Of what?” “Of boxes.”',
+                '“That clock is two minutes fast.” “Against what?” “Exactly.”',
+            ],
+            spawn: { x: -3.2, z: 0, face: 90 },
+        },
+        execwing: {
+            label: 'THE EXECUTIVE SUITE',
+            sub: 'TROPHY CASE · BUREAU OF CONTINUITY',
+            kind: 'box',
+            shell: {
+                w: 8, d: 5, h: 3.2,
+                wallH: 3.2, dadoH: 1.05,
+                floor: 'carpet', wall: 'drywall', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
+                floorColor: 0x6a3a34, wallColor: 0xd8d2c2,   // the executive carpet; the walls light, because the case is the light
+                pipes: false,
+                lights: [{ x: -2.2, z: 0 }, { x: 2.2, z: 0 }],
+                mood: { light: 0xfff0d6 },
+                plate: { x: 0, z: -2.35, y: 2.75 },
+            },
+            doors: [
+                { id: 'egress', wall: 's', x: 0, leaf: 'leaf_suburban_house',
+                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MEZZANINE',
+                  action: { room: 'central_egress', at: 'executive' },
+                  desc: 'The way back to the mezzanine. A house door on an office suite. It has always been a house door; the file that says otherwise has been corrected.' },
+                /* ROOM 111 · the case */
+                { id: 'trophycase', wall: 'w', z: 0, leaf: 'leaf_glass_exec',
+                  label: 'THE TROPHY CASE', sub: 'ACHIEVEMENTS',
+                  action: { room: 'trophycase', at: 'egress' },
+                  desc: 'Room 111. The glass cabinet over Employee of the Month: every commendation the Department has engraved for you. Open the cabinet and the whole record comes out. The blank plaques are not a comment.' },
+                /* THE BUREAU · the gate and the number are THIS door's, exactly as
+                   they were the mezzanine's (plan 4.4) — a recruit walks the suite,
+                   reads the notices and does not go in. The second house door in
+                   one room is the joke the Bureau has already corrected once. */
+                { id: 'continuity', wall: 'n', x: 1.4, leaf: 'leaf_suburban_house',
+                  label: 'BUREAU OF CONTINUITY', sub: 'STORY CANON · GATEKEEPER RANK',
+                  action: { room: 'continuity', at: 'egress' },
+                  minClearance: 5, requiresKeys: 24, roomNo: '№ — CONTESTED', why: 'a joke, and a policy',
+                  desc: 'Canon notices. The motto plaque. The only department that suspects the schedule. GATEKEEPER clearance and two dozen Keys.' },
+            ],
+            counters: [],
+            props: [
+                /* the north wall: the frame that is not a window, the plate by the Bureau's door */
+                { key: 'picture_round_a', wall: 'n', x: -2.4 },
+                { key: 'nameplate',       wall: 'n', x: 2.8 },
+                { key: 'vent_grille',     wall: 'n', x: -3.4, mount: 2.8 },
+                /* the south wall: the way out, the clock, the coats */
+                { key: 'wall_clock',      wall: 's', x: 2.4, mount: 2.5 },
+                { key: 'hook_rail',       wall: 's', x: -2.4 },
+                { key: 'security_camera', wall: 's', x: 3.4, mount: 2.55 },
+                /* the two ends */
+                { key: 'nameplate',       wall: 'w', z: 1.3 },
+                { key: 'exit_sign',       wall: 'w', z: -1.4, mount: 2.75 },
+                { key: 'notice_board',    wall: 'e', z: 1.2 },
+                { key: 'filing_cabinet',  wall: 'e', z: -1.4 },
+                /* the floor: the waiting-for-the-suite furniture, off the door lane
+                   (the way out is the SOUTH wall at x 0 — nothing stands in it),
+                   and the rail (THE PARK RULE) */
+                { key: 'rug_office',      x: 2.7,  z: 1.3 },
+                { key: 'curved_couch',    x: 2.7,  z: 1.8, face: 180 },
+                { key: 'coffee_table',    x: 2.7,  z: 1.0, face: 0 },
+                { key: 'globe_lamp',      x: -3.3, z: 1.6 },
+                { key: 'potted_plant',    x: -3.3, z: -1.6 },
+                { key: 'trash_bin',       x: 3.6,  z: -1.9 },
+                { key: 'railing_1m',      x: -1.2, z: -1.6, face: 0 },
+                { key: 'railing_1m',      x: -0.2, z: -1.6, face: 0 },
+                { key: 'fluorescent',     x: -2.2, z: 0, ceil: true, face: 0 },
+                { key: 'fluorescent',     x: 2.2,  z: 0, ceil: true, face: 0 },
+            ],
+            agents: [
+                { x: -2.6, z: -1.2, face: 120, pose: 'hqTalk', gender: 'female', label: 'THE FLOOR ASSISTANT', reach: 1.9,
+                  line: '“The case is open to everyone. The house door is not. I am told this is not a hierarchy, it is a filing decision.”' },
+                { x: 2.4, z: -1.0, face: 220, pose: 'hqArms', gender: 'male', label: 'THE DUTY OFFICER', reach: 1.8,
+                  line: '“You can stand here as long as you like. People do. They read the door and then they read it again.”' },
+            ],
+            npcSpots: [
+                { x: -0.6, z: 1.1, face: 0 },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Two house doors in one suite?” “There is one house door.” “There are two.” “There is one. The other has been corrected.”',
+                '“What is in the Bureau?” “Notices.” “About what?” “About what was in the Bureau.”',
+                '“Whose plaques are the blank ones?” “Nobody’s yet.” “That is worse.”',
+            ],
+            spawn: { x: 0, z: 1.8, face: 0 },
         },
         /* ── THE EXECUTIVE FLOOR (HQ plan 5.4 stage 1 + 7.4 ROOMS 4C + 8,
            2026-09-14) — the elevator on the mezzanine at 0° (KEYHOLDER
@@ -21982,8 +22230,8 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_cell',
-                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
-                  action: { room: 'central_egress', at: 'interrogation' },
+                  label: 'THE MEDICAL WING', sub: 'BACK TO THE WING',
+                  action: { room: 'medwing', at: 'interrogation' },
                   desc: 'The way back to the hall. It locks from the outside; it has never been locked.' },
             ],
             counters: [
@@ -22078,8 +22326,8 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'egress', wall: 'w', z: 0, leaf: 'leaf_wired_double', wide: true,
-                  label: 'CENTRAL EGRESS', sub: 'BACK TO THE MAIN HALL',
-                  action: { room: 'central_egress', at: 'records' },
+                  label: 'THE RECORDS WING', sub: 'BACK TO THE WING',
+                  action: { room: 'recwing', at: 'records' },
                   desc: 'The way back to the hall. Sign the file back in on your way out.' },
                 /* THE SERVICE STAIR → the tape library: Room 360's projector, directly overhead */
                 { id: 'tapes', wall: 'n', x: 3.4, leaf: 'leaf_exit',

@@ -669,13 +669,15 @@ test('THE BUREAU OF CONTINUITY: a box room behind the mezzanine door at 315° �
     const B = HQ.rooms.continuity;
     assert.ok(B && B.kind === 'box' && B.roomNo == null, 'rooms.continuity is a box room; the number is the DOOR’s (№ — CONTESTED), the room wears none');
     assert.ok(/CONTESTED/.test(D.hqRoomNo('continuity')), 'hqRoomNo reads the door’s CONTESTED through');
-    const eg = ROOM.doors.find(d => d.id === 'continuity');
-    assert.ok(eg && eg.deg === 315 && eg.level === 1 && eg.leaf === 'leaf_suburban_house' && eg.action.room === 'continuity' && eg.action.at === 'egress', 'the mezzanine door at 315° walks into the Bureau at its way out');
+    const eg = HQ.rooms.execwing.doors.find(d => d.id === 'continuity');   // THE SUITES (2026-09-15): the Bureau's door hangs in the executive suite now
+    assert.ok(eg && eg.wall === 'n' && eg.leaf === 'leaf_suburban_house' && eg.action.room === 'continuity' && eg.action.at === 'egress', 'the suite’s house door walks into the Bureau at its way out');
+    const suite = ROOM.doors.find(d => d.id === 'executive');
+    assert.ok(suite && suite.deg === 315 && suite.level === 1 && suite.leaf === 'leaf_suburban_house' && suite.action.room === 'execwing' && suite.action.at === 'egress' && !suite.minClearance && !suite.requiresKeys, 'the mezzanine door at 315° is the SUITE’s, ungated');
     assert.ok(eg.minClearance === 5 && eg.requiresKeys === 24, 'GATEKEEPER + 24 Keys — the gate is the door’s, unchanged');
     assert.strictEqual(D.doorSiteState(eg, null), 'clearance', 'a recruit reads the notices on the door and does not go in');
     assert.strictEqual(D.doorSiteState(eg, { door: { clearance: 5, hq: { keys: 24 } } }), 'open', 'a GATEKEEPER with the Keys goes in');
     const out = B.doors.find(d => d.id === 'egress');
-    assert.ok(out && out.wall === 'w' && out.leaf === eg.leaf && !out.minClearance && !out.requiresKeys && out.action.room === 'central_egress' && out.action.at === 'continuity', 'the way out is the same house door, ungated from inside, and lands at the mezzanine door');
+    assert.ok(out && out.wall === 'w' && out.leaf === eg.leaf && !out.minClearance && !out.requiresKeys && out.action.room === 'execwing' && out.action.at === 'continuity', 'the way out is the same house door, ungated from inside, and lands at the suite’s door');
     assert.strictEqual(B.doors.length, 1, 'one door: the Bureau is a dead end, as it should be');
     const pl = B.counters.find(c => c.id === 'plaque'), no = B.counters.find(c => c.id === 'notices');
     assert.ok(pl && pl.action && !pl.action.fn && !pl.action.overlay && !pl.action.room && pl.desc && pl.verb, 'THE MOTTO PLAQUE is a by-id panel with a desc');
@@ -748,7 +750,7 @@ test('THE BUREAU: the source sites — the plaque proc reads the barometer at bu
     const mp = fs.readFileSync(path.join(__dirname, 'map.js'), 'utf8');
     assert.match(mp, /if \(c\.id === 'plaque'\) \{[\s\S]{0,300}?hqMottoBarometer\(_hqProfile\(\), \{ force: _hqMottoForce\(\) \}\)/, 'THE MOTTO PLAQUE panel reads the barometer');
     assert.match(mp, /if \(c\.id === 'notices'\) \{[\s\S]{0,300}?hqCanonNotices\(_hqProfile\(\)/, 'CANON NOTICES reads the notices');
-    assert.match(mp, /if \(d\.id === 'continuity' && typeof window\.hqMottoBarometer === 'function'\) \{[\s\S]{0,400}?hqCanonNotices\(profile/, 'the Bureau’s DOOR panel in the hall carries the motto and the notices (readable at any rank)');
+    assert.match(mp, /if \(\(d\.id === 'continuity' \|\| d\.id === 'executive'\) && typeof window\.hqMottoBarometer === 'function'\) \{[\s\S]{0,400}?hqCanonNotices\(profile/, 'the Bureau’s DOOR panel carries the motto and the notices, and so does the suite’s door in the hall (readable at any rank)');
     assert.match(mp, /hqMottoObserve\(p, \{ force: _hqMottoForce\(\) \}\)/, 'a fresh arrival files today’s reading (_hqRecordVisit)');
     assert.match(mp, /function _hqMottoForce\(\) \{[\s\S]{0,300}?EW_HQ_MOTTO[\s\S]{0,300}?motto=/, 'the dev override: window.EW_HQ_MOTTO / ?motto=');
     assert.match(mp, /window\._doorSetMotto = function \(form\) \{[\s\S]{0,600}?p\.door\.mottoForm = n/, 'the story hook _doorSetMotto writes door.mottoForm');
@@ -1089,7 +1091,7 @@ test('hqKeys sums the hourglass counter over its buckets plus Department-issued 
 });
 
 test('requiresKeys doors read CLEARANCE until rank AND Keys are met (plan 3.2)', () => {
-    const gated = ROOM.doors.filter(d => d.requiresKeys).concat(HQ.elevator.stops.filter(st => st.requiresKeys).map(st => ({ id: 'stop_' + st.id, minClearance: st.minClearance, requiresKeys: st.requiresKeys, action: { room: st.room, at: st.at } })));
+    const gated = ALL_DOORS.filter(d => d.requiresKeys).concat(HQ.elevator.stops.filter(st => st.requiresKeys).map(st => ({ id: 'stop_' + st.id, minClearance: st.minClearance, requiresKeys: st.requiresKeys, action: { room: st.room, at: st.at } })));
     assert.ok(gated.length >= 2, 'at least two restricted doors ask for Keys (the PH stop counts — Phase 8 moved the elevator gate onto the button)');
     for (const d of gated) {
         assert.ok(d.minClearance, d.id + ': Keys ride on top of a rank gate');
@@ -1104,7 +1106,7 @@ test('requiresKeys doors read CLEARANCE until rank AND Keys are met (plan 3.2)',
     }
     /* thresholds and bays never ask for Keys — mastery is their gate */
     for (const [, room] of BAYS) for (const d of room.doors) assert.ok(!d.requiresKeys, d.id + ' must not require Keys');
-    assert.strictEqual(D.hqKeysShort(ROOM.doors.find(d => d.id === 'records'), null), 0);
+    assert.strictEqual(D.hqKeysShort(HQ.rooms.recwing.doors.find(d => d.id === 'records'), null), 0);
 });
 
 test('hqCodeRed: quiet until a threshold is stabilized, then one deterministic pick per day', () => {
@@ -1439,7 +1441,8 @@ test('one number, one place: the register is unique, every entry resolves, and i
     const E = ROOM.doors;
     assert.strictEqual(D.hqDoorNo(E.find(d => d.id === 'training')), '64');
     assert.strictEqual(D.hqDoorNo(E.find(d => d.id === 'office')), '101');
-    assert.strictEqual(D.hqDoorNo(E.find(d => d.id === 'records')), '42');
+    assert.strictEqual(D.hqDoorNo(HQ.rooms.recwing.doors.find(d => d.id === 'records')), '42', 'THE SUITES (2026-09-15): Room 42’s plate hangs in the Records Wing now');
+    assert.strictEqual(D.hqDoorNo(E.find(d => d.id === 'records')), '', 'the hall door is the WING’s — a wing wears no number');
     assert.strictEqual(D.hqDoorNo(E.find(d => d.id === 'bay_ancient')), '', 'bays wear bay numbers, not room numbers');
     for (const d of E.filter(d => d.action && d.action.sector)) assert.ok(d.roomNo == null, d.id + ': bay doors carry no roomNo');
     for (const d of E.filter(d => d.action && d.action.room)) assert.ok(d.roomNo == null || !HQ.rooms[d.action.room] || HQ.rooms[d.action.room].roomNo == null, d.id + ': a door into a numbered room does not carry its own number');
@@ -2097,20 +2100,20 @@ test('Room 247 is a box room off the ground ring at 225°: the way in, the way o
     assert.ok(CLOCK && CLOCK.kind === 'box' && CLOCK.roomNo === '247', 'rooms.clockroom kind box, Room 247');
     assert.strictEqual(D.hqRoomNo('clockroom'), '247');
     assert.ok(!CLOCK.shell.open && CLOCK.shell.pipes === false && CLOCK.shell.h >= 3.2, 'an indoor room under a ceiling');
-    const eg = ROOM.doors.find(d => d.id === 'clockroom');
-    assert.ok(eg && eg.deg === 225 && (eg.level || 0) === 0 && eg.action.room === 'clockroom' && eg.action.at === 'egress', 'the egress door at 225° walks into the room at its way out');
+    const eg = HQ.rooms.recwing.doors.find(d => d.id === 'clockroom');   // THE SUITES (2026-09-15): 225° left the ring; the wing holds the door
+    assert.ok(eg && eg.wall === 'e' && eg.action.room === 'clockroom' && eg.action.at === 'egress', 'the wing’s east door walks into the room at its way out');
+    assert.ok(!ROOM.doors.some(d => d.id === 'clockroom'), 'the ground ring no longer wears a Clock Room door');
     assert.strictEqual(D.hqDoorNo(eg), '247', 'the plate over the hall door reads 247');
     const out = CLOCK.doors.find(d => d.id === 'egress');
-    assert.ok(out && out.wall === 'w' && out.action.room === 'central_egress' && out.action.at === 'clockroom' && out.leaf === eg.leaf && !!out.wide === !!eg.wide, 'the way out is the same frosted door and lands at the hall door');
+    assert.ok(out && out.wall === 'w' && out.action.room === 'recwing' && out.action.at === 'clockroom' && out.leaf === eg.leaf && !!out.wide === !!eg.wide, 'the way out is the same frosted door and lands at the wing’s door');
     assert.ok(!D.DOOR_TEXT.CLEARANCE.some(r => r.door === eg.leaf), 'not a rank leaf');
     assert.strictEqual(D.doorSiteState(eg, null), 'open');
-    /* between MEDICAL (210°) and RECORDS (240°), a pier to each */
+    /* THE SUITES: the ring keeps MEDICAL (210°) and the RECORDS WING (240°) with the
+       free stretch at 225° between them — the stretch the Clock Room's door used to fill */
     const med = ROOM.doors.find(d => d.id === 'medical'), rec = ROOM.doors.find(d => d.id === 'records');
     const wOf = d => (d.wide ? 3.3 : 2.5) / 2;
-    assert.ok((eg.deg - med.deg) * Math.PI / 180 * ROOM.shell.radius - wOf(eg) - wOf(med) >= 2.0, 'a pier to Medical');
-    assert.ok((rec.deg - eg.deg) * Math.PI / 180 * ROOM.shell.radius - wOf(eg) - wOf(rec) >= 2.0, 'a pier to Records');
-    assert.ok(!ROOM.props.some(p => (p.level || 0) === 0 && p.wall && Math.abs(p.deg - eg.deg) < 5), 'no wall prop stands in the new doorway (the cabinets and the picture moved)');
-    assert.ok(!ROOM.props.some(p => (p.level || 0) === 0 && p.r > 18.5 && Math.abs(p.deg - eg.deg) < 5), 'nothing stands in front of it');
+    assert.ok((rec.deg - med.deg) * Math.PI / 180 * ROOM.shell.radius - wOf(med) - wOf(rec) >= 8.0, 'the 225° slot is free wall now, a long pier between the two wings');
+    assert.ok(!ROOM.doors.some(d => (d.level || 0) === 0 && Math.abs(d.deg - 225) < 5), 'nothing in the hall stands at 225° any more');
     /* the build sheet */
     const has = key => CLOCK.props.filter(p => p.key === key).length;
     for (const key of ['world_clocks', 'punch_clock', 'form_sheet', 'notice_board', 'tanker_desk', 'crt_terminal', 'rotary_phone', 'computer_chair_blue', 'filing_cabinet',
@@ -2509,23 +2512,24 @@ test('Room 111 is a box room off the mezzanine at 290° (over Employee of the Mo
     assert.ok(TROPHY && TROPHY.kind === 'box' && TROPHY.roomNo === '111', 'rooms.trophycase kind box, Room 111');
     assert.strictEqual(D.hqRoomNo('trophycase'), '111');
     assert.ok(!TROPHY.shell.open && TROPHY.shell.pipes === false && TROPHY.shell.h >= 3.0, 'an indoor room, no conduits');
-    const eg = ROOM.doors.find(d => d.id === 'trophycase');
-    assert.ok(eg && eg.deg === 290 && eg.level === 1 && eg.action.room === 'trophycase' && eg.action.at === 'egress', 'the mezzanine door at 290° walks into the room at its way out');
+    const eg = HQ.rooms.execwing.doors.find(d => d.id === 'trophycase');   // THE SUITES (2026-09-15): 290° left the mezzanine; the suite holds the door
+    assert.ok(eg && eg.wall === 'w' && eg.action.room === 'trophycase' && eg.action.at === 'egress', 'the suite’s west door walks into the room at its way out');
+    assert.ok(!ROOM.doors.some(d => d.id === 'trophycase'), 'the mezzanine no longer wears a Trophy Case door');
     assert.strictEqual(D.hqDoorNo(eg), '111', 'the plate over the mezzanine door reads 111');
     assert.ok(eg.roomNo == null, 'the hall door does not duplicate the room’s number (hqDoorNo derives it)');
     const board = ROOM.counters.find(c => c.id === 'board');
-    assert.ok(board && Math.abs(board.deg - eg.deg) <= 5 && (board.level || 0) === 0, 'directly over EMPLOYEE OF THE MONTH');
+    assert.ok(board && (board.level || 0) === 0, 'EMPLOYEE OF THE MONTH is still on the ground ring');
+    assert.ok(!ROOM.doors.some(d => (d.level || 0) === 1 && Math.abs(d.deg - 290) < 5), 'nothing on the mezzanine stands at 290° any more (the suite took the room)');
     const out = TROPHY.doors.find(d => d.id === 'egress');
-    assert.ok(out && out.wall === 'w' && out.action.room === 'central_egress' && out.action.at === 'trophycase' && out.leaf === eg.leaf && !!out.wide === !!eg.wide, 'the way out is the same glass door and lands at the mezzanine door');
+    assert.ok(out && out.wall === 'w' && out.action.room === 'execwing' && out.action.at === 'trophycase' && out.leaf === eg.leaf && !!out.wide === !!eg.wide, 'the way out is the same glass door and lands at the suite’s door');
     assert.ok(!D.DOOR_TEXT.CLEARANCE.some(r => r.door === eg.leaf), 'not a rank leaf');
     assert.strictEqual(D.doorSiteState(eg, null), 'open');
-    /* between Bay 6 (270°) and the Bureau (315°) on the upper drum, a pier to each */
-    const b6 = ROOM.doors.find(d => d.id === 'bay_quarantined'), bc = ROOM.doors.find(d => d.id === 'continuity');
+    /* THE SUITES: 290° left the mezzanine — Bay 6 (270°) to the EXECUTIVE SUITE (315°) is one pier */
+    const b6 = ROOM.doors.find(d => d.id === 'bay_quarantined'), bc = ROOM.doors.find(d => d.id === 'executive');
     const wOf = d => (d.wide ? 3.3 : 2.5) / 2, Rm = ROOM.shell.mezz.outer;
-    assert.ok((eg.deg - b6.deg) * Math.PI / 180 * Rm - wOf(eg) - wOf(b6) >= 2.0, 'a pier to Bay 6');
-    assert.ok((bc.deg - eg.deg) * Math.PI / 180 * Rm - wOf(eg) - wOf(bc) >= 2.0, 'a pier to the Bureau');
-    assert.ok(!ROOM.props.some(p => (p.level || 0) === 1 && p.wall && Math.abs(p.deg - eg.deg) < 5), 'no wall prop stands in the new doorway (the frame moved)');
-    assert.ok(!ROOM.props.some(p => (p.level || 0) === 1 && p.r != null && p.r > 21.5 && Math.abs(p.deg - eg.deg) < 5), 'nothing stands in front of it');
+    assert.ok((bc.deg - b6.deg) * Math.PI / 180 * Rm - wOf(bc) - wOf(b6) >= 12.0, 'a long pier between Bay 6 and the suite');
+    assert.ok(!ROOM.props.some(p => (p.level || 0) === 1 && p.wall && Math.abs(p.deg - bc.deg) < 5), 'no wall prop stands in the suite’s doorway');
+    assert.ok(!ROOM.props.some(p => (p.level || 0) === 1 && p.r != null && p.r > 21.5 && Math.abs(p.deg - bc.deg) < 5), 'nothing stands in front of it');
     assert.ok(ROOM.props.some(p => p.key === 'picture_round_c' && (p.level || 0) === 1 && p.wall), 'the mezzanine keeps its frame');
     /* the cabinet: the profile on its Achievements tab */
     const cab = TROPHY.counters.find(c => c.id === 'cabinet');
@@ -2561,22 +2565,21 @@ test('the cabinet (Room 111): hqTrophyCount reads the achievements ledger — ca
 test('Room 1984 is a box room off the ground ring at 255° (between Records and Bay 1): the way in, the way out, the number, the table, the glass', () => {
     assert.ok(INTERR && INTERR.kind === 'box' && INTERR.roomNo === '1984', 'rooms.interrogation kind box, Room 1984');
     assert.strictEqual(D.hqRoomNo('interrogation'), '1984');
-    const eg = ROOM.doors.find(d => d.id === 'interrogation');
-    assert.ok(eg && eg.deg === 255 && (eg.level || 0) === 0 && eg.action.room === 'interrogation' && eg.action.at === 'egress', 'the hall door at 255° walks into the room at its way out');
+    const eg = HQ.rooms.medwing.doors.find(d => d.id === 'interrogation');   // THE SUITES (2026-09-15): 255° left the ring; the wing holds the door
+    assert.ok(eg && eg.wall === 'e' && eg.action.room === 'interrogation' && eg.action.at === 'egress', 'the wing’s east door walks into the room at its way out');
+    assert.ok(!ROOM.doors.some(d => d.id === 'interrogation'), 'the ground ring no longer wears an Interrogation Room door');
     assert.strictEqual(D.hqDoorNo(eg), '1984', 'the plate over the hall door reads 1984');
     assert.ok(eg.roomNo == null, 'the hall door does not duplicate the room’s number');
     const out = INTERR.doors.find(d => d.id === 'egress');
-    assert.ok(out && out.wall === 'w' && out.action.room === 'central_egress' && out.action.at === 'interrogation' && out.leaf === eg.leaf && !!out.wide === !!eg.wide, 'the way out is the same cell door and lands at the hall door');
+    assert.ok(out && out.wall === 'w' && out.action.room === 'medwing' && out.action.at === 'interrogation' && out.leaf === eg.leaf && !!out.wide === !!eg.wide, 'the way out is the same cell door and lands at the wing’s door');
     assert.ok(!D.DOOR_TEXT.CLEARANCE.some(r => r.door === eg.leaf), 'not a rank leaf');
     assert.strictEqual(D.doorSiteState(eg, null), 'open');
-    /* between RECORDS (240°) and BAY 1 (270°), a pier to each */
+    /* THE SUITES: 255° left the ring — RECORDS WING (240°) to BAY 1 (270°) is one long pier */
     const rec = ROOM.doors.find(d => d.id === 'records'), b1 = ROOM.doors.find(d => d.id === 'bay_terrestrial');
     const wOf = d => ((d.wide || (d.leaf && HQ.catalogue[d.leaf] && HQ.catalogue[d.leaf].wide)) ? 3.3 : 2.5) / 2;
-    assert.ok((eg.deg - rec.deg) * Math.PI / 180 * ROOM.shell.radius - wOf(eg) - wOf(rec) >= 2.0, 'a pier to Records');
-    assert.ok((b1.deg - eg.deg) * Math.PI / 180 * ROOM.shell.radius - wOf(eg) - wOf(b1) >= 2.0, 'a pier to Bay 1');
-    assert.ok(!ROOM.props.some(p => !(p.level || 0) && p.wall && Math.abs(p.deg - eg.deg) < 5), 'no wall prop stands in the new doorway (the frame and the extinguisher moved)');
-    assert.ok(!ROOM.props.some(p => !(p.level || 0) && p.r != null && p.r > 18.5 && Math.abs(p.deg - eg.deg) < 6), 'nothing stands in front of it (the boxes moved)');
-    assert.ok(ROOM.props.some(p => p.key === 'fire_extinguisher' && !(p.level || 0) && p.wall && p.deg > 255 && p.deg < 270), 'the hall keeps the extinguisher beside it');
+    assert.ok((b1.deg - rec.deg) * Math.PI / 180 * ROOM.shell.radius - wOf(rec) - wOf(b1) >= 8.0, 'a long pier between the wing and Bay 1');
+    assert.ok(!ROOM.doors.some(d => !(d.level || 0) && Math.abs(d.deg - 255) < 5), 'nothing in the hall stands at 255° any more');
+    assert.ok(ROOM.props.some(p => p.key === 'fire_extinguisher' && !(p.level || 0) && p.wall && p.deg > 255 && p.deg < 270), 'the hall keeps the extinguisher on that stretch');
     /* the table: the transcript; the glass: a panel and nothing else */
     const tb = INTERR.counters.find(c => c.id === 'table'), gl = INTERR.counters.find(c => c.id === 'glass');
     assert.ok(tb && tb.action.overlay === 'transcript' && tb.verb, 'THE TABLE opens the transcript');
@@ -2636,13 +2639,13 @@ const ITR = HQ.rooms.it;
 test('Room 42 is a box room behind the wired double door at 240° (Records was a door; now the room holds the file): the way in, the way out, the desk, the catalogue, the stair up', () => {
     assert.ok(RECS && RECS.kind === 'box' && RECS.roomNo === '42', 'rooms.records kind box, Room 42');
     assert.strictEqual(D.hqRoomNo('records'), '42');
-    const eg = ROOM.doors.find(d => d.id === 'records');
-    assert.ok(eg && eg.deg === 240 && (eg.level || 0) === 0 && eg.action.room === 'records' && eg.action.at === 'egress', 'the hall door at 240° walks into the room at its way out');
+    const eg = HQ.rooms.recwing.doors.find(d => d.id === 'records');   // THE SUITES (2026-09-15): 240° is the WING's door now
+    assert.ok(eg && eg.wall === 'n' && eg.action.room === 'records' && eg.action.at === 'egress', 'the wing’s north door walks into the room at its way out');
     assert.ok(!eg.action.fn && !eg.alt && !eg.alt2, 'the door is a door now, not a screen with shortcuts');
-    assert.strictEqual(D.hqDoorNo(eg), '42', 'the plate over the hall door still reads 42');
+    assert.strictEqual(D.hqDoorNo(eg), '42', 'the plate over the wing’s door still reads 42');
     assert.ok(eg.roomNo == null, 'the number lives on the room, not the door');
     const out = RECS.doors.find(d => d.id === 'egress');
-    assert.ok(out && out.wall === 'w' && out.action.room === 'central_egress' && out.action.at === 'records' && out.leaf === eg.leaf && !!out.wide === !!eg.wide, 'the way out is the same wired double door (wide) and lands at the hall door');
+    assert.ok(out && out.wall === 'w' && out.action.room === 'recwing' && out.action.at === 'records' && out.leaf === eg.leaf && !!out.wide === !!eg.wide, 'the way out is the same wired double door (wide) and lands at the wing’s door');
     assert.ok(!D.DOOR_TEXT.CLEARANCE.some(r => r.door === eg.leaf), 'not a rank leaf');
     assert.strictEqual(D.doorSiteState(eg, null), 'open');
     /* the functions the door used to hold, one counter each; the tape library's way up is a door */
@@ -2666,8 +2669,8 @@ test('Room 42 is a box room behind the wired double door at 240° (Records was a
     assert.deepStrictEqual(boxPropProblems('records', RECS), []);
     const rows = D.hqRoomRegister().filter(r => r.no === '42');
     assert.strictEqual(rows.length, 1); assert.strictEqual(rows[0].kind, 'room'); assert.strictEqual(rows[0].id, 'records');
-    /* Records' door in the hall still sits directly under the Observatorium's */
-    assert.strictEqual(ROOM.doors.find(d => d.id === 'observatorium').deg, eg.deg);
+    /* the RECORDS WING's door in the hall still sits directly under the Observatorium's */
+    assert.strictEqual(ROOM.doors.find(d => d.id === 'observatorium').deg, ROOM.doors.find(d => d.id === 'records').deg);
 });
 
 test('Room 1337 is a box room off the mezzanine at 120° (inside Arcane Engineering, between the research offices and Bay 5): the way in, the way out, the number, the three consoles, the racks', () => {
@@ -2731,13 +2734,13 @@ test('Room 1111 is a box room off the ground ring at 210° (between the Training
     assert.ok(MED && MED.kind === 'box' && MED.roomNo === '1111', 'rooms.medical kind box, Room 1111');
     assert.strictEqual(D.hqRoomNo('medical'), '1111');
     assert.ok(!MED.shell.open && MED.shell.pipes === false && MED.shell.h >= 3.0, 'an indoor ward under a ceiling, no conduits');
-    const eg = ROOM.doors.find(d => d.id === 'medical');
-    assert.ok(eg && eg.deg === 210 && (eg.level || 0) === 0 && eg.action.room === 'medical' && eg.action.at === 'egress', 'the hall door at 210° walks into the ward at its way out');
-    assert.strictEqual(D.hqDoorNo(eg), '1111', 'the plate over the hall door reads 1111');
-    assert.ok(eg.roomNo == null, 'the hall door does not duplicate the room’s number');
+    const eg = HQ.rooms.medwing.doors.find(d => d.id === 'ward');   // THE SUITES (2026-09-15): 210° is the WING's door; the ward is off its corridor
+    assert.ok(eg && eg.wall === 'n' && eg.action.room === 'medical' && eg.action.at === 'egress', 'the wing’s north door walks into the ward at its way out');
+    assert.strictEqual(D.hqDoorNo(eg), '1111', 'the plate over the wing’s door reads 1111');
+    assert.ok(eg.roomNo == null, 'the door does not duplicate the room’s number');
     assert.ok(!eg.alt && !eg.action.fn, 'no screen alt left on the door (Challenge mode is the desk inside)');
     const out = MED.doors.find(d => d.id === 'egress');
-    assert.ok(out && out.wall === 'w' && out.action.room === 'central_egress' && out.action.at === 'medical' && out.leaf === eg.leaf && !!out.wide === !!eg.wide, 'the way out is the same hospital door and lands at the hall door');
+    assert.ok(out && out.wall === 'w' && out.action.room === 'medwing' && out.action.at === 'ward' && out.leaf === eg.leaf && !!out.wide === !!eg.wide, 'the way out is the same hospital door and lands at the wing’s door');
     assert.ok(!D.DOOR_TEXT.CLEARANCE.some(r => r.door === eg.leaf), 'not a rank leaf');
     assert.strictEqual(D.doorSiteState(eg, null), 'open');
     /* the cell door on the north wall → Room 5150, and back */

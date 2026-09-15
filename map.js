@@ -1866,8 +1866,10 @@
             } else {
                 if (d.desc) html += `<p class="hq-panel-desc">${_hqEsc(d.desc)}</p>`;
                 /* THE BUREAU OF CONTINUITY (plan 4.4, 2026-09-15): the canon notices are ON THE DOOR — the motto's current
-                   form and the latest notices read from the hall at any rank; the room behind it is GATEKEEPER's */
-                if (d.id === 'continuity' && typeof window.hqMottoBarometer === 'function') {
+                   form and the latest notices read at any rank; the room behind it is GATEKEEPER's. Since THE SUITES
+                   (plan 9.3, 2026-09-15) the Bureau's door hangs in the executive suite, so the suite's own door in the
+                   hall carries the same notices — the rev-2 promise was that they are readable from the mezzanine. */
+                if ((d.id === 'continuity' || d.id === 'executive') && typeof window.hqMottoBarometer === 'function') {
                     const bar = window.hqMottoBarometer(profile, { force: _hqMottoForce() });
                     const list = (typeof window.hqCanonNotices === 'function') ? window.hqCanonNotices(profile, { force: _hqMottoForce() }) : [];
                     html += `<div class="hq-rows"><div class="hq-row hq-row-tray"><b>THE MOTTO</b><span>${bar.changed ? 'REVISED SINCE YOUR LAST VISIT · IT HAS ALWAYS READ THIS' : 'THE PLAQUE INSIDE · ' + _hqEsc(bar.band) + ' FORM'}</span><i class="hq-lamp-chip st-${_hqEsc(bar.tone)}">${_hqEsc(bar.form)}</i></div>`;
