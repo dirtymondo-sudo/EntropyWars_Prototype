@@ -4866,9 +4866,10 @@
                                 <span class="pm-vol-val">${ambVol}%</span>
                             </div>
                         </div>
+                        ${typeof window._buildNowPlayingHTML === 'function' ? window._buildNowPlayingHTML('window._openMainMenuSettings();') : ''}
                         <div class="pm-set-row" style="margin-top:10px">
-                            <button class="pm-set-btn" onclick="document.getElementById('skipTrackBtn')?.click()">Skip Track</button>
                             <button class="pm-set-btn" onclick="window.AudioMixer&&window.AudioMixer.open()" title="Dev tool: per-song / per-cue master levels, with export">🎚 Mixer (dev)</button>
+                            <button class="pm-set-btn" onclick="window.AudioMixer&&window.AudioMixer.open('tags')" title="Dev tool: tag every song (lobby / battle / horror / upbeat…) so each place draws the right pool">🏷 Song Tags (dev)</button>
                         </div>
                     </div>
                     <div class="pm-set-group">
@@ -5760,6 +5761,10 @@
             }
         };
 
+        /* THE PLAYLIST (2026-09-16): the battle's song is a draw from the
+           `battle` pool (audio.js MusicTags — the map's moods, read off
+           state.mapEnv, are asked for first). The name is kept for the
+           match-start warm-up and the old callers. */
         function chooseBattleTrackKey(excludeKeys = []) {
             const exclude = excludeKeys.filter(Boolean);
             const choice = drawFromBattleShuffleBag(exclude[0] || state.lastBattleTrackKey);
@@ -5768,39 +5773,106 @@
             return choice;
         }
 
+        /* ⏭ — works EVERYWHERE now (the fix for "there's no way to change the
+           song"): the next song of whatever pool the place is playing from —
+           the battle's, the hall's, the rooms', the menu's. */
         async function skipBattleTrack() {
-            /* Works in battle AND in the map editor (pause-menu ⏭/⏮). */
-            if ((state.phase !== 'battle' && state.phase !== 'editor') || state.winner || !state.audioUnlocked) return false;
+            if (state.winner || !state.audioUnlocked) return false;
             playSfx('uiButtonConfirm');
+            if (typeof skipTrack === 'function') return await skipTrack();
             const nextKey = chooseBattleTrackKey([state.currentMusic, state.currentBattleTrackKey]);
             return await playMusic(nextKey);
         }
 
-        /* the rooms that play door_lobby.mp3 (the foyer = the arrival, the
-           main hall, the two containment rings round it) */
+        /* the rooms that ask for the `lobby` pool (the foyer = the arrival, the
+           main hall, the two containment rings round it); every other facility
+           room asks for `hq`; a WILD room (a site's board room, a complex part,
+           the cave — hqRoomSite non-null) asks for `exploration` + the site's
+           moods. Tag the songs in Settings → Audio → 🎚 Mixer → 🏷 TAGS. */
         const _HQ_LOBBY_MUSIC_ROOMS = new Set(['foyer', 'central_egress', 'ring_g', 'ring_m']);
+        function _musicMoodsForSite(mapId) {
+            if (!mapId) return null;
+            const out = [];
+            try {
+                const row = (typeof EW_MAP_META !== 'undefined' && Array.isArray(EW_MAP_META)) ? EW_MAP_META.find(r => r.id === mapId) : null;
+                if (row && row.env && Array.isArray(row.env.music)) out.push(...row.env.music);
+                const near = row && (row.near || (row.env && row.env.near));
+                const table = (typeof MusicTags !== 'undefined' && MusicTags.siteMoods) || {};
+                if (near && table[near]) out.push(...table[near]);
+            } catch (e) {}
+            return out.length ? out : null;
+        }
+        /* the CONTEXT the game is in — ONE resolver, shared by the sync and the readouts */
+        function musicContextForState() {
+            if (state.phase === 'battle') return { ctx: 'battle' };
+            if (state.gameState === GS.HQ) {
+                if (_HQ_LOBBY_MUSIC_ROOMS.has(_hqCurRoom)) return { ctx: 'lobby', moods: null };
+                const site = (typeof hqRoomSite === 'function') ? hqRoomSite(_hqCurRoom) : null;
+                if (site) return { ctx: 'exploration', moods: _musicMoodsForSite(site) };
+                return { ctx: 'hq', moods: null };
+            }
+            /* ff7 is the TITLE SCREEN's alone (user call, 2026-09-15): every
+               menu / hub page after it draws from the `menu` pool */
+            if (state.titleScreenVisible && state.gameState === GS.TITLE) return { ctx: 'title', moods: null };
+            return { ctx: 'menu', moods: null };
+        }
+        window.musicContextForState = musicContextForState;
         async function syncMusicToState() {
             if (state.devAutoSim) return false;
             if (!state.audioUnlocked || state.winner) return false;
-            if (state.phase === 'battle') {
+            const c = musicContextForState();
+            if (typeof playContextMusic !== 'function') {
+                const key = c.ctx === 'battle' ? (state.currentBattleTrackKey || chooseBattleTrackKey()) : c.ctx === 'title' ? 'titleTheme' : 'mainTheme';
+                return await playMusic(key);
+            }
+            if (c.ctx === 'battle') {
+                /* the match picked (and pre-warmed) its song at startMatch; the
+                   context is stamped so the end-of-song advance and ⏭ draw
+                   from the battle pool with the map's moods */
                 const battleKey = state.currentBattleTrackKey || chooseBattleTrackKey();
+                if (typeof setMusicContext === 'function') setMusicContext('battle');
                 return await playMusic(battleKey);
             }
-
-            /* D.O.O.R. HQ (2026-09-15): the user's door_lobby.mp3 is the
-               building's theme — it plays on the way in from Play (the foyer)
-               and in the main hall + the containment rings; every other room
-               (offices, bays' site rooms, the floors) plays the main theme.
-               _hqEnter calls this on every room entry, walks included. */
-            if (state.gameState === GS.HQ) {
-                const hqKey = (typeof audioTracks !== 'undefined' && audioTracks && audioTracks.doorLobby && _HQ_LOBBY_MUSIC_ROOMS.has(_hqCurRoom)) ? 'doorLobby' : 'mainTheme';
-                return await playMusic(hqKey);
-            }
-            /* ff7 is the TITLE SCREEN's alone (user call, 2026-09-15): every
-               menu / hub page after it plays the main theme */
-            const key = (state.titleScreenVisible && state.gameState === GS.TITLE) ? 'titleTheme' : 'mainTheme';
-            return await playMusic(key);
+            return await playContextMusic(c.ctx, { moods: c.moods });
         }
+
+        /* NOW PLAYING — the Settings → Audio row (main menu AND the HQ pause
+           menu's SETTINGS sheet render this body): the song, the pool it came
+           from, ⏮ ⏭, and a picker of every song (the current pool first) — the
+           one place a player can change the song outside a battle. */
+        window._buildNowPlayingHTML = function(refreshJs) {
+            const r = refreshJs || '';
+            const cur = state.currentMusic || '';
+            const name = (typeof _getTrackDisplayName === 'function') ? _getTrackDisplayName(cur) : (cur || '—');
+            const ctx = (typeof MusicTags !== 'undefined' && MusicTags.current) ? MusicTags.current() : { id: null, pool: [] };
+            const ctxRow = ctx.id && typeof MUSIC_CONTEXTS !== 'undefined' && MUSIC_CONTEXTS[ctx.id] ? MUSIC_CONTEXTS[ctx.id] : null;
+            const pool = ctx.pool || [];
+            const all = (typeof audioTracks !== 'undefined') ? Object.keys(audioTracks).filter(k => k !== 'victory' && k !== 'defeat') : [];
+            const label = k => (typeof _getTrackDisplayName === 'function') ? _getTrackDisplayName(k) : k;
+            const opt = k => `<option value="${k}"${k === cur ? ' selected' : ''}>${escapeHtml(label(k))}</option>`;
+            const rest = all.filter(k => !pool.includes(k));
+            const options = (pool.length ? `<optgroup label="${escapeHtml((ctxRow ? ctxRow.label : (ctx.id || 'pool')).toString())} · ${pool.length}">${pool.map(opt).join('')}</optgroup>` : '')
+                + (rest.length ? `<optgroup label="Every other song">${rest.map(opt).join('')}</optgroup>` : '');
+            return `
+                        <div class="pm-set-row" style="margin-top:10px;align-items:center;flex-wrap:wrap;gap:6px">
+                            <span class="pm-vol-label" style="min-width:0">♪ ${escapeHtml(name)}${ctxRow ? ` <span style="opacity:0.6;font-size:11px">· ${escapeHtml(ctxRow.label)} · ${pool.length} song${pool.length === 1 ? '' : 's'}</span>` : ''}</span>
+                            <button class="pm-set-btn" onclick="window._musicPrev&&window._musicPrev();setTimeout(()=>{${r}},300)" title="Restart / previous">⏮</button>
+                            <button class="pm-set-btn" onclick="window.skipTrack&&window.skipTrack();setTimeout(()=>{${r}},300)" title="Next song from this pool">⏭ Next</button>
+                            <select class="pm-set-btn" style="max-width:220px" onchange="window._playTrackNow(this.value);setTimeout(()=>{${r}},300)" title="Play a specific song now">${options}</select>
+                        </div>`;
+        };
+        window._playTrackNow = function(key) {
+            if (typeof audioTracks === 'undefined' || !audioTracks[key]) return;
+            state.audioUnlocked = true;
+            if (typeof MusicTags !== 'undefined' && MusicTags.has(key, 'battle')) { state.currentBattleTrackKey = key; state.lastBattleTrackKey = key; }
+            if (typeof playMusic === 'function') playMusic(key);
+        };
+        window._musicPrev = function() {
+            const key = state.currentMusic;
+            if (!key || typeof audioTracks === 'undefined' || !audioTracks[key]) return;
+            if (audioTracks[key].currentTime > 3) audioTracks[key].currentTime = 0;
+            else if (typeof skipTrack === 'function') skipTrack();
+        };
 
         function posKey(x, y) {
             return `${x},${y}`;

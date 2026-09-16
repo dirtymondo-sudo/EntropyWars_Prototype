@@ -3,6 +3,8 @@
             titleTheme:      `${_R2_BASE}/music/ff7.ogg`,
             mainTheme:       `${_R2_BASE}/music/maintheme_v2.mp3`,
             doorLobby:       `${_R2_BASE}/music/door_lobby.mp3`,   // D.O.O.R. HQ: the main hall (user track, 2026-09-15)
+            doorLobby2:      `${_R2_BASE}/music/door%20hq%202.mp3`,  // D.O.O.R. HQ rotation (user track, 2026-09-16)
+            doorLobby3:      `${_R2_BASE}/music/door%20hq%203.mp3`,  // D.O.O.R. HQ rotation (user track, 2026-09-16)
             battleTheme:     `${_R2_BASE}/music/battlemusic.mp3`,
             battleThemeAlt1: `${_R2_BASE}/music/battle_music_beetle.mp3`,
             battleThemeAlt2: `${_R2_BASE}/music/Ladybug.mp3`,
@@ -39,6 +41,8 @@
             titleTheme: './assets/music/ff7.ogg',
             mainTheme: './assets/music/maintheme_v2.mp3',
             doorLobby: './assets/music/door_lobby.mp3',
+            doorLobby2: './assets/music/door hq 2.mp3',
+            doorLobby3: './assets/music/door hq 3.mp3',
             battleTheme: './assets/music/battlemusic.mp3',
             battleThemeAlt1: './assets/music/battle_music_beetle.mp3',
             battleThemeAlt2: './assets/music/Ladybug.mp3',
@@ -97,6 +101,8 @@
             titleTheme: 0.55,
             mainTheme: 0.42,
             doorLobby: 0.42,
+            doorLobby2: 0.42,
+            doorLobby3: 0.42,
             battleTheme: 0.46,
             battleThemeAlt1: 0.46,
             battleThemeAlt2: 0.46,
@@ -400,7 +406,339 @@
         const sfxLastPlayedAt = {};
         const sfxReusableKeys = new Set(['healRegen', 'manaRegen']);
         const sfxReusableAudio = new Map();
-        const battleMusicKeys = ['battleTheme', 'battleThemeAlt1', 'battleThemeAlt2', 'battleThemeAlt3', 'battleThemeAlt4', 'battleThemeAlt5', 'battleThemeAlt6', 'battleThemeAlt7', 'battleThemeAlt8', 'battleThemeAlt9', 'battleThemeAlt10', 'battleThemeAlt11', 'battleThemeAlt12', 'battleThemeAlt13', 'battleThemeAlt14', 'battleThemeAlt15', 'battleThemeAlt16', 'battleThemeAlt17', 'battleThemeAlt18', 'battleThemeAlt19', 'battleThemeAlt20', 'battleThemeAlt21', 'battleThemeAlt22', 'battleThemeAlt23', 'battleThemeAlt24', 'battleThemeAlt25', 'battleThemeAlt26', 'battleThemeAlt27', 'battleThemeAlt28', 'mainTheme'];
+
+        /* ═══════════════════════════════════════════════════════════════════
+           THE PLAYLIST — SONGS WEAR TAGS, PLACES ASK FOR TAGS (2026-09-16)
+           The old rule was three hard-wired songs (ff7 on the title, the main
+           theme everywhere else, door_lobby in the hall) and one battle list.
+           Now every song carries a SET of tags (as many as fit it) in FIVE
+           dimensions — the way a AAA music pipeline (Wwise / FMOD "music
+           switch containers" driven by game states) tags its cues — and every
+           PLACE the game can be in is a CONTEXT that asks for tags:
+             · ROLE     where the song may play (title · menu · lobby · hq ·
+                        exploration · battle · boss · victory · defeat)
+             · MOOD     the feeling (calm · tense · dark · horror · upbeat ·
+                        epic · melancholy · playful · mysterious · sacred)
+             · ENERGY   the intensity tier (low · mid · high)
+             · STYLE    the palette (orchestral · electronic · retro · rock ·
+                        ambient · jazz · hiphop · vocal)
+             · SETTING  the world it fits (urban · space · sea · nature ·
+                        sacred · cyber · fantasy · facility · horror_house)
+           A CONTEXT = { any: [role tags — one is enough], prefer: [mood tags a
+           place asks for], not: [tags that disqualify], fallback: ctx }. The
+           pool is every song with one of `any` and none of `not`; when the
+           place hands MOODS (a map's `env.music`, a site's row in
+           MUSIC_SITE_MOODS) the songs that also wear one of them are taken
+           FIRST and the rest only when fewer than MUSIC_MOOD_MIN answer. An
+           empty pool falls back down the chain (…→ menu → mainTheme). Each
+           pool has its own SHUFFLE BAG (every song once before any repeats,
+           never the same song twice in a row), a pool of ONE song loops.
+           Precedence for a song's tags: LOCAL dev override (localStorage
+           `ew_music_tags`, what the 🏷 TAGS tab writes) → MUSIC_TAGS_SHIPPED
+           (what every player gets — paste the tab's EXPORT over it). ONE
+           read: MusicTags.get(key). Viewer-local, nothing on state, nothing
+           relayed (RULE #2). Stingers (victory / defeat) are not pools.
+           ═══════════════════════════════════════════════════════════════════ */
+        const MUSIC_TAG_GROUPS = {
+            role:    { label: 'ROLE',    color: 'rgba(124,77,255,0.55)',  tags: ['title', 'menu', 'lobby', 'hq', 'exploration', 'battle', 'boss', 'victory', 'defeat'] },
+            mood:    { label: 'MOOD',    color: 'rgba(255,120,80,0.5)',   tags: ['calm', 'tense', 'dark', 'horror', 'upbeat', 'epic', 'melancholy', 'playful', 'mysterious', 'sacred'] },
+            energy:  { label: 'ENERGY',  color: 'rgba(80,200,120,0.5)',   tags: ['low', 'mid', 'high'] },
+            style:   { label: 'STYLE',   color: 'rgba(80,160,255,0.5)',   tags: ['orchestral', 'electronic', 'retro', 'rock', 'ambient', 'jazz', 'hiphop', 'vocal'] },
+            setting: { label: 'SETTING', color: 'rgba(230,190,60,0.5)',   tags: ['urban', 'space', 'sea', 'nature', 'sacred_site', 'cyber', 'fantasy', 'facility', 'horror_house'] },
+        };
+        const MUSIC_TAG_ALL = Object.values(MUSIC_TAG_GROUPS).reduce((a, g) => a.concat(g.tags), []);
+        /* THE SHIPPED TAGGING — the ROLE tags are the old behaviour verbatim
+           (every battle alt = battle; the main theme = menu + battle; ff7 =
+           title; the three door_hq tracks = lobby + hq). The MOOD / STYLE tags
+           on the battle alts are Claude's guesses off the titles — retag them
+           in the 🏷 TAGS tab and paste the export here. */
+        const MUSIC_TAGS_SHIPPED = {
+            titleTheme:       ['title', 'calm', 'low', 'orchestral'],
+            mainTheme:        ['menu', 'battle', 'mid', 'electronic'],
+            doorLobby:        ['lobby', 'hq', 'calm', 'low', 'ambient', 'facility'],
+            doorLobby2:       ['lobby', 'hq', 'calm', 'low', 'ambient', 'facility'],
+            doorLobby3:       ['lobby', 'hq', 'calm', 'low', 'ambient', 'facility'],
+            battleTheme:      ['battle', 'epic', 'high', 'orchestral'],
+            battleThemeAlt1:  ['battle', 'mid', 'electronic'],
+            battleThemeAlt2:  ['battle', 'mid', 'electronic'],
+            battleThemeAlt3:  ['battle', 'mid', 'electronic'],
+            battleThemeAlt4:  ['battle', 'exploration', 'mysterious', 'mid'],
+            battleThemeAlt5:  ['battle', 'exploration', 'calm', 'melancholy', 'low', 'retro'],
+            battleThemeAlt6:  ['battle', 'exploration', 'playful', 'calm', 'low', 'retro'],
+            battleThemeAlt7:  ['battle', 'exploration', 'upbeat', 'mid', 'retro'],
+            battleThemeAlt8:  ['battle', 'upbeat', 'high', 'electronic', 'urban'],
+            battleThemeAlt9:  ['battle', 'sacred', 'epic', 'mid', 'sacred_site'],
+            battleThemeAlt10: ['battle', 'epic', 'high'],
+            battleThemeAlt11: ['battle', 'dark', 'tense', 'mid', 'electronic', 'retro'],
+            battleThemeAlt12: ['battle', 'horror', 'dark', 'mid', 'horror_house'],
+            battleThemeAlt13: ['battle', 'mysterious', 'mid'],
+            battleThemeAlt14: ['battle', 'high', 'rock'],
+            battleThemeAlt15: ['battle', 'playful', 'mid'],
+            battleThemeAlt16: ['battle', 'melancholy', 'low'],
+            battleThemeAlt17: ['battle', 'playful', 'mid'],
+            battleThemeAlt18: ['battle', 'melancholy', 'mid'],
+            battleThemeAlt19: ['battle', 'playful', 'mid'],
+            battleThemeAlt20: ['battle', 'tense', 'mid'],
+            battleThemeAlt21: ['battle', 'mysterious', 'mid'],
+            battleThemeAlt22: ['battle', 'upbeat', 'high', 'rock'],
+            battleThemeAlt23: ['battle', 'playful', 'mid'],
+            battleThemeAlt24: ['battle', 'tense', 'mysterious', 'mid'],
+            battleThemeAlt25: ['battle', 'playful', 'mid'],
+            battleThemeAlt26: ['battle', 'high', 'rock'],
+            battleThemeAlt27: ['battle', 'upbeat', 'high'],
+            battleThemeAlt28: ['battle', 'mid'],
+            victory:          ['victory'],
+            defeat:           ['defeat'],
+        };
+        /* THE CONTEXTS — where the game is. `any` = role tags (one is enough),
+           `not` = disqualifiers, `fallback` = the next pool when this one is
+           empty. map.js syncMusicToState resolves the place to one of these. */
+        const MUSIC_CONTEXTS = {
+            title:       { label: 'TITLE SCREEN',        sub: 'the first screen, before Enter',                    any: ['title'],                 fallback: 'menu' },
+            menu:        { label: 'MENUS',               sub: 'the main menu, the hub pages, the forge, the shop', any: ['menu'],                  fallback: 'lobby' },
+            lobby:       { label: 'HQ · THE HALL',       sub: 'the foyer, the main hall, the containment rings',   any: ['lobby'],                 fallback: 'hq' },
+            hq:          { label: 'HQ · THE ROOMS',      sub: 'offices, wings, the floors, the elevator',          any: ['hq'],                    fallback: 'lobby' },
+            exploration: { label: 'HQ · THE WILD ROOMS', sub: 'a site room, a complex part, the cave — the map\'s moods apply', any: ['exploration'], fallback: 'hq' },
+            battle:      { label: 'BATTLE',              sub: 'every match — the map\'s moods apply',              any: ['battle'],                fallback: 'menu' },
+            boss:        { label: 'BOSS',                sub: 'reserved: a Code Red / capstone fight',             any: ['boss'],                  fallback: 'battle' },
+        };
+        const MUSIC_MOOD_MIN = 2;   // a mood-matched pool this small is topped up with the rest of the role pool
+        /* THE SITE MOODS — a map's flavour, keyed by its setting's `near` key
+           (the one id that reaches both the battle (state.mapEnv.near) and the
+           site room). A map may also carry `env.music: ['tag', …]` on its
+           EW_MAP_META row; both are read. Only mood / setting tags belong here. */
+        const MUSIC_SITE_MOODS = {
+            haunted: ['horror', 'dark', 'horror_house'],
+            hell: ['dark', 'horror', 'tense'],
+            lodge: ['mysterious', 'dark'],
+            revenge: ['dark', 'sea', 'tense'],
+            bermuda: ['sea', 'mysterious'],
+            atlantis: ['sea', 'mysterious'],
+            derelict: ['space', 'tense', 'dark'],
+            mars: ['space'], moon: ['space'], saturn: ['space'], singularity: ['space', 'mysterious'],
+            heaven: ['sacred', 'calm', 'sacred_site'], vatican: ['sacred', 'sacred_site'], olympus: ['sacred', 'epic', 'sacred_site'],
+            cyberpunk: ['cyber', 'electronic', 'urban'], strip: ['urban', 'upbeat'], downtown: ['urban'], stadium: ['urban', 'upbeat'], nuketown: ['urban', 'tense'],
+            camelot: ['fantasy', 'epic'], agartha: ['fantasy', 'mysterious'], hollow_earth: ['fantasy', 'mysterious'],
+            dumb: ['facility', 'tense'], cern: ['facility', 'electronic'], backrooms: ['horror', 'mysterious', 'facility'],
+            lookingglass: ['playful', 'mysterious'],
+        };
+        const MUSIC_TAGS_LS = 'ew_music_tags';
+        let _musicTagsLocal = null;        // { key: [tags] } — lazy-loaded from localStorage
+        const _musicBags = {};             // pool id → the shuffle bag
+        const _musicCtx = { id: null, moods: null };   // the CURRENT context (module-local — never on state)
+        function _musicNormTags(list) {
+            const out = [];
+            (Array.isArray(list) ? list : []).forEach(t => { t = String(t).trim().toLowerCase(); if (MUSIC_TAG_ALL.includes(t) && !out.includes(t)) out.push(t); });
+            return out;
+        }
+        function _musicTagsLoadLocal() {
+            if (_musicTagsLocal) return _musicTagsLocal;
+            _musicTagsLocal = {};
+            try {
+                const raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(MUSIC_TAGS_LS) : null;
+                if (raw) {
+                    const o = JSON.parse(raw);
+                    if (o && typeof o === 'object') Object.entries(o).forEach(([k, v]) => { if (_R2_MUSIC[k] && Array.isArray(v)) _musicTagsLocal[k] = _musicNormTags(v); });
+                }
+            } catch (e) {}
+            return _musicTagsLocal;
+        }
+        function _musicTagsSaveLocal() {
+            try {
+                const o = _musicTagsLoadLocal();
+                if (typeof localStorage === 'undefined') return;
+                if (Object.keys(o).length) localStorage.setItem(MUSIC_TAGS_LS, JSON.stringify(o));
+                else localStorage.removeItem(MUSIC_TAGS_LS);
+            } catch (e) {}
+        }
+        function _musicTagsOf(key) {
+            const loc = _musicTagsLoadLocal();
+            if (Object.prototype.hasOwnProperty.call(loc, key)) return loc[key];
+            return _musicNormTags(MUSIC_TAGS_SHIPPED[key]);
+        }
+        function _musicPoolId(ctx, moods) {
+            const m = _musicNormTags(moods);
+            return m.length ? ctx + '|' + m.slice().sort().join(',') : ctx;
+        }
+        /* the pool: the songs a context's role tags admit, mood-matched first */
+        function _musicPool(ctx, moods, _depth) {
+            const c = MUSIC_CONTEXTS[ctx];
+            if (!c) return [];
+            const keys = Object.keys(_R2_MUSIC).filter(k => k !== 'victory' && k !== 'defeat' && audioTracks[k]);
+            let pool = keys.filter(k => {
+                const tags = _musicTagsOf(k);
+                return c.any.some(t => tags.includes(t)) && !(c.not || []).some(t => tags.includes(t));
+            });
+            const m = _musicNormTags(moods);
+            if (m.length && pool.length) {
+                const matched = pool.filter(k => { const tags = _musicTagsOf(k); return m.some(t => tags.includes(t)); });
+                if (matched.length >= MUSIC_MOOD_MIN) pool = matched;
+                else if (matched.length) pool = matched.concat(pool.filter(k => !matched.includes(k)));
+            }
+            if (!pool.length && c.fallback && (_depth || 0) < 8) return _musicPool(c.fallback, moods, (_depth || 0) + 1);
+            if (!pool.length && audioTracks.mainTheme) return ['mainTheme'];
+            return pool;
+        }
+        function _musicBagReset(ctx) {
+            Object.keys(_musicBags).forEach(id => { if (id === ctx || id.startsWith(ctx + '|')) delete _musicBags[id]; });
+        }
+        /* one draw from the pool's shuffle bag: every song once before a repeat, never the excluded (playing) one twice in a row */
+        function _musicDraw(ctx, moods, exclude) {
+            const pool = _musicPool(ctx, moods);
+            if (!pool.length) return null;
+            if (pool.length === 1) return pool[0];
+            const id = _musicPoolId(ctx, moods);
+            let bag = _musicBags[id];
+            const same = bag && bag.pool && bag.pool.join(',') === pool.join(',');
+            if (!bag || !same || !bag.left.length) {
+                const left = pool.slice();
+                for (let i = left.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [left[i], left[j]] = [left[j], left[i]]; }
+                bag = _musicBags[id] = { pool: pool.slice(), left };
+            }
+            const ex = (exclude || []).filter(Boolean);
+            if (bag.left.length > 1 && ex.includes(bag.left[0])) {
+                let swapIdx = bag.left.findIndex(k => !ex.includes(k));
+                if (swapIdx < 0) swapIdx = 1 + Math.floor(Math.random() * (bag.left.length - 1));
+                [bag.left[0], bag.left[swapIdx]] = [bag.left[swapIdx], bag.left[0]];
+            } else if (bag.left.length === 1 && ex.includes(bag.left[0]) && pool.length > 1) {
+                /* the last song in the bag is the one playing: refill and take another */
+                bag.left = pool.filter(k => !ex.includes(k));
+                for (let i = bag.left.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [bag.left[i], bag.left[j]] = [bag.left[j], bag.left[i]]; }
+            }
+            return bag.left.shift();
+        }
+        /* a song loops only when its context's pool is that one song (or the player pinned 🔁 in the pause menu) */
+        function _musicApplyLoop(trackKey) {
+            const t = audioTracks[trackKey];
+            if (!t) return;
+            if (t._pinnedLoop) { t.loop = true; return; }
+            const pool = _musicCtx.id ? _musicPool(_musicCtx.id, _musicCtx.moods) : [];
+            t.loop = pool.length <= 1 || !pool.includes(trackKey);
+        }
+        function _musicBattleMoods() {
+            const out = [];
+            try {
+                const env = state.mapEnv;
+                if (env && Array.isArray(env.music)) out.push(...env.music);
+                if (env && typeof env.near === 'string' && MUSIC_SITE_MOODS[env.near]) out.push(...MUSIC_SITE_MOODS[env.near]);
+            } catch (e) {}
+            return out.length ? out : null;
+        }
+        /* THE ONE ENTRY for a place: keep the song when it still fits the pool and
+           is playing, else draw. Returns the playMusic promise. */
+        async function playContextMusic(ctx, opts = {}) {
+            if (!MUSIC_CONTEXTS[ctx]) ctx = 'menu';
+            const moods = opts.moods === undefined ? (ctx === 'battle' ? _musicBattleMoods() : null) : opts.moods;
+            const changed = _musicCtx.id !== ctx || _musicPoolId(ctx, moods) !== _musicPoolId(_musicCtx.id, _musicCtx.moods);
+            _musicCtx.id = ctx;
+            _musicCtx.moods = moods;
+            const pool = _musicPool(ctx, moods);
+            const cur = state.currentMusic;
+            const curTrack = cur ? audioTracks[cur] : null;
+            if (cur && curTrack && pool.includes(cur) && !curTrack.paused && !opts.force) {
+                _musicApplyLoop(cur);
+                return playMusic(cur);
+            }
+            if (cur && curTrack && pool.includes(cur) && !changed && !opts.force) return playMusic(cur);
+            const next = _musicDraw(ctx, moods, [cur]);
+            if (!next) return false;
+            if (ctx === 'battle') { state.currentBattleTrackKey = next; state.lastBattleTrackKey = next; }
+            return playMusic(next);
+        }
+        /* ⏭ anywhere: the next song of the CURRENT context (the fix for "no way to change the song") */
+        async function skipTrack() {
+            if (state.winner || !state.audioUnlocked) return false;
+            const ctx = _musicCtx.id || 'menu';
+            const next = _musicDraw(ctx, _musicCtx.moods, [state.currentMusic, state.currentBattleTrackKey]);
+            if (!next) return false;
+            if (ctx === 'battle') { state.currentBattleTrackKey = next; state.lastBattleTrackKey = next; }
+            return playMusic(next);
+        }
+        const MusicTags = {
+            groups: MUSIC_TAG_GROUPS,
+            all: MUSIC_TAG_ALL,
+            contexts: MUSIC_CONTEXTS,
+            siteMoods: MUSIC_SITE_MOODS,
+            get(key) { return _musicTagsOf(key).slice(); },
+            has(key, tag) { return _musicTagsOf(key).includes(tag); },
+            shipped(key) { return _musicNormTags(MUSIC_TAGS_SHIPPED[key]); },
+            isLocal(key) { return Object.prototype.hasOwnProperty.call(_musicTagsLoadLocal(), key); },
+            groupOf(tag) { return Object.keys(MUSIC_TAG_GROUPS).find(g => MUSIC_TAG_GROUPS[g].tags.includes(tag)) || null; },
+            /* set the whole tag set of a song (any number of tags, any mix of groups) */
+            set(key, tags) {
+                if (!_R2_MUSIC[key]) return false;
+                _musicTagsLoadLocal()[key] = _musicNormTags(tags);
+                _musicTagsSaveLocal();
+                Object.keys(_musicBags).forEach(id => delete _musicBags[id]);
+                if (state.currentMusic) _musicApplyLoop(state.currentMusic);
+                return true;
+            },
+            toggle(key, tag) {
+                if (!MUSIC_TAG_ALL.includes(tag)) return false;
+                const cur = _musicTagsOf(key).slice();
+                const i = cur.indexOf(tag);
+                if (i >= 0) cur.splice(i, 1); else cur.push(tag);
+                return MusicTags.set(key, cur);
+            },
+            reset(key) {
+                const o = _musicTagsLoadLocal();
+                if (key) delete o[key]; else Object.keys(o).forEach(k => delete o[k]);
+                _musicTagsSaveLocal();
+                Object.keys(_musicBags).forEach(id => delete _musicBags[id]);
+                if (state.currentMusic) _musicApplyLoop(state.currentMusic);
+            },
+            /* the songs a context admits (mood-matched first), and the current context */
+            pool(ctx, moods) { return _musicPool(ctx, moods); },
+            draw(ctx, moods, exclude) { return _musicDraw(ctx, moods, exclude); },
+            current() { return { id: _musicCtx.id, moods: _musicCtx.moods ? _musicCtx.moods.slice() : null, pool: _musicCtx.id ? _musicPool(_musicCtx.id, _musicCtx.moods) : [] }; },
+            /* every song whose tags differ from the shipped table */
+            overrides() {
+                const out = {};
+                Object.keys(_R2_MUSIC).forEach(k => {
+                    const a = _musicTagsOf(k).slice().sort().join(','), b = _musicNormTags(MUSIC_TAGS_SHIPPED[k]).slice().sort().join(',');
+                    if (a !== b) out[k] = _musicTagsOf(k).slice();
+                });
+                return out;
+            },
+            exportJson() { return JSON.stringify(MusicTags.overrides(), null, 2); },
+            /* the full table with the local tagging folded in — paste over MUSIC_TAGS_SHIPPED */
+            exportJs() {
+                const lines = ['{'];
+                Object.keys(_R2_MUSIC).forEach(k => { lines.push(`    ${k}: ${JSON.stringify(_musicTagsOf(k)).replace(/","/g, '", "')},`); });
+                lines.push('}');
+                return lines.join('\n');
+            },
+            importJson(text) {
+                let o;
+                try { o = typeof text === 'string' ? JSON.parse(text) : text; } catch (e) { return { ok: false, error: 'not JSON', count: 0 }; }
+                if (!o || typeof o !== 'object') return { ok: false, error: 'not an object', count: 0 };
+                const src = (o.tags && typeof o.tags === 'object' && !Array.isArray(o.tags)) ? o.tags : o;
+                let n = 0;
+                const loc = _musicTagsLoadLocal();
+                Object.entries(src).forEach(([k, v]) => { if (_R2_MUSIC[k] && Array.isArray(v)) { loc[k] = _musicNormTags(v); n++; } });
+                _musicTagsSaveLocal();
+                Object.keys(_musicBags).forEach(id => delete _musicBags[id]);
+                return { ok: true, count: n };
+            },
+            _lsKey: MUSIC_TAGS_LS,
+        };
+        window.MusicTags = MusicTags;
+        window.MUSIC_TAGS_SHIPPED = MUSIC_TAGS_SHIPPED;
+        /* stamp the context without changing the song (a battle keeps the song
+           it pre-warmed at startMatch; the advance / ⏭ then draw from its pool) */
+        function setMusicContext(ctx, moods) {
+            if (!MUSIC_CONTEXTS[ctx]) return false;
+            _musicCtx.id = ctx;
+            _musicCtx.moods = moods === undefined ? (ctx === 'battle' ? _musicBattleMoods() : null) : moods;
+            if (state.currentMusic) _musicApplyLoop(state.currentMusic);
+            return true;
+        }
+        window.setMusicContext = setMusicContext;
+        window.playContextMusic = playContextMusic;
+        window.skipTrack = skipTrack;
+        window.musicContext = () => MusicTags.current();
+        /* the legacy name the warm-up / old callers read: every battle-tagged song */
+        function battleMusicKeysNow() { return _musicPool('battle', null); }
 
         const MUSIC_CROSSFADE_MS = 1800;
         const BATTLE_CROSSFADE_MS = 8000;
@@ -488,6 +826,7 @@
             if (channel === 'sfx') return Object.keys(sfxLibrary);
             if (channel === 'ambience') return Object.keys(_R2_AMBIENCE);
             if (channel === 'door') return Object.keys(_DOOR_SFX_GAIN);
+            if (channel === 'tags') return Object.keys(_R2_MUSIC).filter(k => k !== 'victory' && k !== 'defeat');
             return [];
         }
         function _mixApplyLive(channel) {
@@ -535,7 +874,8 @@
                 });
                 return out;
             },
-            exportJson() { return JSON.stringify(AudioMixer.overrides(), null, 2); },
+            /* the levels AND the tagging (a `tags` member: every song whose tags differ from MUSIC_TAGS_SHIPPED) */
+            exportJson() { const o = AudioMixer.overrides(); const t = MusicTags.overrides(); if (Object.keys(t).length) o.tags = t; return JSON.stringify(o, null, 2); },
             /* the four tables with the mix folded in — paste over the literals in audio.js */
             exportJs() {
                 const stamp = new Date().toISOString().slice(0, 10);
@@ -547,7 +887,9 @@
                     lines.push('};');
                 });
                 lines.push('/* — or paste this over AUDIO_MIX_SHIPPED in audio.js: */');
-                lines.push('const AUDIO_MIX_SHIPPED = ' + AudioMixer.exportJson() + ';');
+                lines.push('const AUDIO_MIX_SHIPPED = ' + JSON.stringify(AudioMixer.overrides(), null, 2) + ';');
+                lines.push('/* THE TAGGING — paste over MUSIC_TAGS_SHIPPED in audio.js: */');
+                lines.push('const MUSIC_TAGS_SHIPPED = ' + MusicTags.exportJs() + ';');
                 return lines.join('\n');
             },
             /* JSON in (the override object, or a full { music, sfx, ambience, door } table set) */
@@ -556,6 +898,7 @@
                 try { o = typeof text === 'string' ? JSON.parse(text) : text; } catch (e) { return { ok: false, error: 'not JSON' }; }
                 if (!o || typeof o !== 'object') return { ok: false, error: 'not an object' };
                 let n = 0;
+                if (o.tags && typeof o.tags === 'object') n += MusicTags.importJson(o.tags).count;
                 const loc = _mixLoadLocal();
                 AUDIO_MIX_CHANNELS.forEach(ch => {
                     if (!o[ch] || typeof o[ch] !== 'object') return;
@@ -576,7 +919,7 @@
                     state.audioUnlocked = true;
                     if (channel === 'music') {
                         if (!audioTracks[key]) return false;
-                        if (key.startsWith('battleTheme')) { state.currentBattleTrackKey = key; state.lastBattleTrackKey = key; }
+                        if (MusicTags.has(key, 'battle')) { state.currentBattleTrackKey = key; state.lastBattleTrackKey = key; }
                         playMusic(key);
                         return true;
                     }
@@ -608,13 +951,64 @@
         window.AudioMixer = AudioMixer;
         window.AUDIO_MIX_SHIPPED = AUDIO_MIX_SHIPPED;
 
+        /* ── THE TAGS TAB + THE CONTEXTS TAB of the mixer panel ── */
+        function _mixRenderTagsTab(list, ch, q) {
+            if (ch === 'tags') {
+                const keys = _mixKeys('tags').filter(k => !q || k.toLowerCase().includes(q) || _mixName('music', k).toLowerCase().includes(q) || _musicTagsOf(k).some(t => t.includes(q)));
+                list.innerHTML = keys.map(k => {
+                    const tags = _musicTagsOf(k);
+                    const loc = MusicTags.isLocal(k);
+                    const chips = Object.entries(MUSIC_TAG_GROUPS).map(([gid, g], gi) =>
+                        (gi ? '<span class="amx-chip sep">·</span>' : '') +
+                        g.tags.map(t => `<button class="amx-chip${tags.includes(t) ? ' on' : ''}" style="--amx-tg:${g.color}" data-tag-key="${_mixEsc(k)}" data-tag="${t}" title="${g.label}">${t}</button>`).join('')
+                    ).join('');
+                    return `<div class="amx-trow${loc ? ' local' : ''}${state.currentMusic === k ? ' now' : ''}" data-key="${_mixEsc(k)}">
+                        <button class="amx-play" data-play="${_mixEsc(k)}" title="Audition">▶</button>
+                        <div class="amx-name" title="${_mixEsc(k)}">${_mixEsc(_mixName('music', k))}<small>${_mixEsc(k)} · ${tags.length} tag${tags.length === 1 ? '' : 's'}</small></div>
+                        <div class="amx-chips">${chips}</div>
+                        <button class="amx-reset" data-tag-reset="${_mixEsc(k)}" title="Back to the shipped tags" ${loc ? '' : 'disabled'}>↺</button>
+                    </div>`;
+                }).join('') || '<div style="padding:20px;opacity:0.6">nothing matches</div>';
+                const n = Object.keys(MusicTags.overrides()).length;
+                _mixStatus(`${n} song${n === 1 ? '' : 's'} tagged differently from MUSIC_TAGS_SHIPPED (saved in this browser). Gold = tagged here. Blue = playing now. EXPORT JSON to ship the tagging.`);
+            } else {
+                const cur = MusicTags.current();
+                list.innerHTML = Object.entries(MUSIC_CONTEXTS).map(([id, c]) => {
+                    const pool = _musicPool(id, null);
+                    const own = pool.filter(k => c.any.some(t => _musicTagsOf(k).includes(t)));
+                    const fell = !own.length;
+                    const here = cur.id === id;
+                    const rule = `any of [${c.any.join(', ')}]${c.not ? ' · not [' + c.not.join(', ') + ']' : ''}${c.fallback ? ' · else → ' + c.fallback : ''}`;
+                    const names = pool.map(k => `<span${state.currentMusic === k ? ' style="color:#9df"' : ''}>${_mixEsc(_mixName('music', k))}</span>`).join(', ');
+                    return `<div class="amx-ctx${fell ? ' empty' : ''}">
+                        <div class="amx-ctx-head">
+                            <button class="amx-play" data-ctx-play="${id}" title="Play a draw from this pool">▶</button>
+                            <div class="amx-ctx-name">${_mixEsc(c.label)}${here ? ' <span style="color:#9df;font-weight:400">· NOW</span>' : ''}<small>${_mixEsc(c.sub || '')}</small></div>
+                            <span class="amx-tbl">${pool.length} song${pool.length === 1 ? '' : 's'}${pool.length === 1 ? ' · loops' : ''}</span>
+                        </div>
+                        <div class="amx-ctx-rule">${_mixEsc(rule)}</div>
+                        <div class="amx-ctx-pool">${fell ? '<i>no song wears this role — falls back to:</i> ' : ''}${names || '<i>nothing</i>'}</div>
+                    </div>`;
+                }).join('') + `<div class="amx-ctx"><div class="amx-ctx-name">SITE MOODS<small>a map's flavour by its setting key (MUSIC_SITE_MOODS, or env.music on its meta row) — a battle / wild room asks for these on top of its role</small></div>
+                    <div class="amx-ctx-pool">${Object.entries(MUSIC_SITE_MOODS).map(([k, v]) => `<b>${k}</b> <i>${v.join(' ')}</i>`).join(' &nbsp;·&nbsp; ')}</div></div>`;
+                _mixStatus(cur.id ? `now: ${cur.id}${cur.moods ? ' + moods [' + cur.moods.join(', ') + ']' : ''} → ${cur.pool.length} song${cur.pool.length === 1 ? '' : 's'}` : 'no context yet — music starts with the first screen.');
+            }
+            const hint = document.getElementById('amxHint');
+            if (hint) hint.textContent = _MIX_CH_HINT[ch] || '';
+            document.querySelectorAll('#audioMixer .amx-tab').forEach(t => t.classList.toggle('on', t.dataset.ch === ch));
+        }
+
+
         /* ── THE PANEL — a fixed overlay above everything (the pause menu, the HQ pause, the CRT) ── */
-        const _MIX_CH_LABEL = { music: 'MUSIC', sfx: 'SFX', ambience: 'AMBIENCE', door: 'DOOR KIT' };
+        const _MIX_CH_LABEL = { music: 'MUSIC', sfx: 'SFX', ambience: 'AMBIENCE', door: 'DOOR KIT', tags: '🏷 TAGS', contexts: '⌖ CONTEXTS' };
+        const _MIX_TABS = AUDIO_MIX_CHANNELS.concat(['tags', 'contexts']);
         const _MIX_CH_HINT = {
             music: 'Songs. ▶ plays the song through the normal music path (it becomes the current track). The level is the song\'s share of full scale before the Music slider.',
             sfx: 'One-shot cues (the R2 files). ▶ fires the cue once at its level. Before the SFX slider.',
             ambience: 'The looping beds. ▶ fades the bed in for twelve seconds (■ stops it). Before the Ambience slider.',
             door: 'The D.O.O.R. synth kit — the office, the seams, the skateboard. Before the SFX slider. Muted placeholders (the buzz, the ring) stay silent.',
+            tags: 'Tag every song (a song takes as many tags as fit it). ROLE tags say WHERE it may play; MOOD / ENERGY / STYLE / SETTING tags let a place ask for a flavour. Gold = tagged here. EXPORT JSON → paste over MUSIC_TAGS_SHIPPED to ship the tagging.',
+            contexts: 'Where the game is → which tags it asks for → the songs that answer. ▶ plays a draw from that pool. A pool of one song loops; a pool of many shuffles without repeating until every song has played. An empty pool falls back down the list.',
         };
         let _mixUi = { ch: 'music', q: '' };
         function _mixCss() {
@@ -656,6 +1050,23 @@
 #audioMixer .amx-io{display:none;padding:8px 14px;border-top:1px solid rgba(255,255,255,0.10)}
 #audioMixer .amx-io.on{display:block}
 #audioMixer .amx-io textarea{width:100%;height:120px;box-sizing:border-box;font:11px ui-monospace,monospace;background:rgba(0,0,0,0.4);color:#dfe;border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:6px}
+#audioMixer .amx-trow{display:grid;grid-template-columns:28px minmax(120px,0.9fr) 3fr 26px;gap:8px;align-items:start;padding:6px 6px;border-radius:6px;border-bottom:1px solid rgba(255,255,255,0.05)}
+#audioMixer .amx-trow:hover{background:rgba(255,255,255,0.04)}
+#audioMixer .amx-trow.local .amx-name{color:#ffd76a}
+#audioMixer .amx-trow.now .amx-name{color:#9df}
+#audioMixer .amx-chips{display:flex;flex-wrap:wrap;gap:4px}
+#audioMixer .amx-chip{padding:2px 8px;border-radius:999px;border:1px solid rgba(255,255,255,0.16);background:rgba(255,255,255,0.04);color:#bdb8d8;font:inherit;font-size:11px;letter-spacing:0.04em;cursor:pointer;line-height:1.4}
+#audioMixer .amx-chip:hover{border-color:rgba(160,150,255,0.6)}
+#audioMixer .amx-chip.on{background:var(--amx-tg,rgba(124,77,255,0.45));color:#fff;border-color:transparent}
+#audioMixer .amx-chip.sep{opacity:0.35;border:none;background:none;padding:2px 2px;cursor:default}
+#audioMixer .amx-ctx{padding:8px 6px;border-bottom:1px solid rgba(255,255,255,0.06)}
+#audioMixer .amx-ctx-head{display:flex;gap:8px;align-items:center}
+#audioMixer .amx-ctx-name{font-weight:700;letter-spacing:0.08em;font-size:12.5px;flex:1}
+#audioMixer .amx-ctx-name small{display:block;font-weight:400;letter-spacing:0;opacity:0.6;font-size:11px}
+#audioMixer .amx-ctx-rule{font-size:10.5px;opacity:0.7;font-family:ui-monospace,monospace;margin:3px 0 4px}
+#audioMixer .amx-ctx-pool{font-size:11.5px;opacity:0.9;line-height:1.5}
+#audioMixer .amx-ctx-pool i{opacity:0.55}
+#audioMixer .amx-ctx.empty .amx-ctx-pool{color:#ff9a8a}
 `;
             document.head.appendChild(st);
         }
@@ -674,6 +1085,7 @@
             if (!list) return;
             const ch = _mixUi.ch;
             const q = (_mixUi.q || '').toLowerCase();
+            if (ch === 'tags' || ch === 'contexts') { _mixRenderTagsTab(list, ch, q); return; }
             const keys = _mixKeys(ch).filter(k => !q || k.toLowerCase().includes(q) || _mixName(ch, k).toLowerCase().includes(q));
             list.innerHTML = keys.map(k => {
                 const v = AudioMixer.get(ch, k);
@@ -719,7 +1131,7 @@
         AudioMixer.open = function(channel) {
             if (typeof document === 'undefined') return;
             _mixCss();
-            if (channel && AUDIO_MIX_CHANNELS.includes(channel)) _mixUi.ch = channel;
+            if (channel && _MIX_TABS.includes(channel)) _mixUi.ch = channel;
             let root = document.getElementById('audioMixer');
             if (!root) {
                 root = document.createElement('div');
@@ -729,7 +1141,7 @@
                         <span class="amx-title">🎚 Audio Mixer</span>
                         <span class="amx-sub">per-song / per-cue master levels · dev tool · levels sit BEFORE the Music / SFX / Ambience sliders</span>
                     </div>
-                    <div class="amx-tabs">${AUDIO_MIX_CHANNELS.map(c => `<button class="amx-tab" data-ch="${c}">${_MIX_CH_LABEL[c]}<b>${_mixKeys(c).length}</b></button>`).join('')}</div>
+                    <div class="amx-tabs">${_MIX_TABS.map(c => `<button class="amx-tab" data-ch="${c}">${_MIX_CH_LABEL[c]}<b>${c === 'contexts' ? Object.keys(MUSIC_CONTEXTS).length : _mixKeys(c).length}</b></button>`).join('')}</div>
                     <div class="amx-tools">
                         <input id="amxSearch" type="search" placeholder="filter by name or key…" value="${_mixEsc(_mixUi.q)}">
                         <button class="amx-btn" id="amxStopAmb" title="Stop the auditioned bed">■ STOP</button>
@@ -757,13 +1169,17 @@
                     if (!t) { if (ev.target === root) AudioMixer.close(); return; }
                     if (t.dataset.ch) { _mixUi.ch = t.dataset.ch; _mixRenderList(); return; }
                     if (t.dataset.play) { AudioMixer.audition(_mixUi.ch, t.dataset.play); _mixStatus('▶ ' + _mixName(_mixUi.ch, t.dataset.play) + ' @ ' + Math.round(AudioMixer.get(_mixUi.ch, t.dataset.play) * 100) + '%'); return; }
+                    if (t.dataset.tagKey) { MusicTags.toggle(t.dataset.tagKey, t.dataset.tag); _mixRenderList(); return; }
+                    if (t.dataset.tagReset) { MusicTags.reset(t.dataset.tagReset); _mixRenderList(); return; }
+                    if (t.dataset.ctxPlay) { const k = _musicDraw(t.dataset.ctxPlay, null, [state.currentMusic]); if (k) { state.audioUnlocked = true; _musicCtx.id = t.dataset.ctxPlay; _musicCtx.moods = null; playMusic(k); _mixStatus('▶ ' + _mixName('music', k) + ' — a draw from ' + t.dataset.ctxPlay); } else _mixStatus('that pool is empty'); return; }
                     if (t.dataset.reset) { AudioMixer.reset(_mixUi.ch, t.dataset.reset); _mixRenderList(); return; }
+                    if (_mixUi.ch === 'tags' && t.id === 'amxResetCh') { MusicTags.reset(); _mixRenderList(); return; }
                     switch (t.id) {
                         case 'amxClose': AudioMixer.close(); break;
                         case 'amxStopAmb': AudioMixer.stopAudition(); _mixStatus('bed stopped.'); break;
                         case 'amxResetCh': AudioMixer.reset(_mixUi.ch); _mixRenderList(); break;
-                        case 'amxResetAll': if (window.confirm('Clear every level set in this browser? (The shipped mix stays.)')) { AudioMixer.reset(); _mixRenderList(); } break;
-                        case 'amxExportJson': _mixCopy(AudioMixer.exportJson(), 'JSON (paste over AUDIO_MIX_SHIPPED)'); break;
+                        case 'amxResetAll': if (window.confirm('Clear every level AND every tag set in this browser? (The shipped mix + tagging stay.)')) { AudioMixer.reset(); MusicTags.reset(); _mixRenderList(); } break;
+                        case 'amxExportJson': _mixCopy(AudioMixer.exportJson(), 'JSON (levels → AUDIO_MIX_SHIPPED · tags → MUSIC_TAGS_SHIPPED)'); break;
                         case 'amxExportJs': _mixCopy(AudioMixer.exportJs(), 'the JS tables'); break;
                         case 'amxDownload': _mixDownload(); break;
                         case 'amxImport': { const io = document.getElementById('amxIo'); io.classList.toggle('on'); document.getElementById('amxIoText').focus(); break; }
@@ -843,32 +1259,14 @@
             track.preload = 'auto';
             track.volume = getMusicBaseVolume(key);
         });
-        if (audioTracks.mainTheme) audioTracks.mainTheme.loop = true;
-        if (audioTracks.titleTheme) audioTracks.titleTheme.loop = true;
+        /* THE PLAYLIST (2026-09-16): no song loops on its own any more — a pool of
+           one song loops, a pool of many advances (`_musicApplyLoop`). The legacy
+           battle shuffle names are kept as thin wrappers over the battle pool. */
+        Object.keys(audioTracks).forEach(key => { if (audioTracks[key]) audioTracks[key].loop = false; });
 
-        battleMusicKeys.forEach(key => {
-            if (audioTracks[key]) audioTracks[key].loop = false;
-        });
-
-        let battleShuffleBag = [];
-
-        function refillBattleShuffleBag() {
-            battleShuffleBag = battleMusicKeys.slice();
-
-            for (let i = battleShuffleBag.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [battleShuffleBag[i], battleShuffleBag[j]] = [battleShuffleBag[j], battleShuffleBag[i]];
-            }
-        }
-
+        function refillBattleShuffleBag() { _musicBagReset('battle'); }
         function drawFromBattleShuffleBag(excludeKey) {
-            if (battleShuffleBag.length === 0) refillBattleShuffleBag();
-
-            if (battleShuffleBag.length > 1 && battleShuffleBag[0] === excludeKey) {
-                const swapIdx = 1 + Math.floor(Math.random() * (battleShuffleBag.length - 1));
-                [battleShuffleBag[0], battleShuffleBag[swapIdx]] = [battleShuffleBag[swapIdx], battleShuffleBag[0]];
-            }
-            return battleShuffleBag.shift();
+            return _musicDraw('battle', _musicBattleMoods(), [excludeKey]);
         }
 
         /* Match-start audio preload (ROADMAP §3.2): force-buffer the battle
@@ -905,30 +1303,45 @@
         const BATTLE_CROSSFADE_LEAD_SEC = 9;
         const _battleCrossfadeTriggered = new Set();
 
-        function advanceBattleTrack(endingKey) {
-            if (state.phase !== 'battle' || state.winner) return;
+        /* THE ADVANCE (2026-09-16): when the playing song runs out it is the
+           CURRENT CONTEXT's pool that answers — in a battle the next battle
+           song (crossfaded 9 s before the end, as before), in the building the
+           next facility song, on the menu the next menu song. A pool of one
+           song loops instead (`_musicApplyLoop`), and a song the player
+           pinned with the pause menu's 🔁 is never advanced. */
+        function advanceBattleTrack(endingKey) { return advanceTrack(endingKey); }
+        function advanceTrack(endingKey) {
+            if (state.winner) return;
+            if (state.currentMusic !== endingKey) return;
+            const t = audioTracks[endingKey];
+            if (t && t.loop) return;
             if (_battleCrossfadeTriggered.has(endingKey)) return;
+            const ctx = _musicCtx.id;
+            if (!ctx) return;
+            const pool = _musicPool(ctx, _musicCtx.moods);
+            if (pool.length <= 1) return;
             _battleCrossfadeTriggered.add(endingKey);
-            const nextKey = drawFromBattleShuffleBag(endingKey);
-            state.currentBattleTrackKey = nextKey;
-            state.lastBattleTrackKey = nextKey;
+            const nextKey = _musicDraw(ctx, _musicCtx.moods, [endingKey]);
+            if (!nextKey) return;
+            if (ctx === 'battle') { state.currentBattleTrackKey = nextKey; state.lastBattleTrackKey = nextKey; }
             playMusic(nextKey);
         }
 
-        battleMusicKeys.forEach(key => {
-            if (!audioTracks[key]) return;
+        Object.keys(audioTracks).forEach(key => {
+            if (!audioTracks[key] || key === 'victory' || key === 'defeat') return;
 
             audioTracks[key].addEventListener('timeupdate', () => {
                 const t = audioTracks[key];
                 if (!t.duration || !Number.isFinite(t.duration)) return;
+                if (_musicCtx.id !== 'battle') return;   // only the battle crossfades early; the rest advance on 'ended'
                 const remaining = t.duration - t.currentTime;
                 if (remaining <= BATTLE_CROSSFADE_LEAD_SEC && remaining > 0) {
-                    advanceBattleTrack(key);
+                    advanceTrack(key);
                 }
             });
 
             audioTracks[key].addEventListener('ended', () => {
-                advanceBattleTrack(key);
+                advanceTrack(key);
             });
 
             audioTracks[key].addEventListener('play', () => {
@@ -1079,6 +1492,7 @@
             const nextTrack = audioTracks[trackKey];
             if (!nextTrack) return false;
             stopStingers();
+            _musicApplyLoop(trackKey);
             const nextBaseVolume = getMusicBaseVolume(trackKey);
 
             if (state.currentMusic === trackKey && !nextTrack.paused) {
@@ -1111,8 +1525,8 @@
 
             if (hasPreviousPlaying) {
 
-                const _isBattleKey = k => k && k.startsWith('battleTheme');
-                const crossMs = (_isBattleKey(previousKey) && _isBattleKey(trackKey))
+                const _isBattleKey = k => k && MusicTags.has(k, 'battle');
+                const crossMs = (_musicCtx.id === 'battle' && _isBattleKey(previousKey) && _isBattleKey(trackKey))
                     ? BATTLE_CROSSFADE_MS : MUSIC_CROSSFADE_MS;
 
                 nextTrack.volume = 0;

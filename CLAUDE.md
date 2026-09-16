@@ -4044,3 +4044,53 @@ crossfade's feel, the swing landing on a tier, the lead's nameplate. Next in
 §8: items 5–6 (Delivery 3 — THE GUN READS: the ghost's refusal reason, the A/B
 shape cue, the hatch-loop cap + the F-hold escape).
 
+
+## THE PLAYLIST — songs wear TAGS, places ask for tags (2026-09-16, local delivery)
+audio.js "THE PLAYLIST" block (right before `MUSIC_CROSSFADE_MS`). Two new
+facility songs: `doorLobby2` / `doorLobby3` = R2 `music/door hq 2.mp3` /
+`door hq 3.mp3` (the spaces are `%20` in `_R2_MUSIC`; display names in ui.js
+`_TRACK_DISPLAY_NAMES`). **The model**: every song carries a SET of tags in
+five dimensions (`MUSIC_TAG_GROUPS`: role · mood · energy · style · setting —
+a song takes as many as fit); `MUSIC_TAGS_SHIPPED` is the tagging every
+player gets (the role tags ARE the old wiring: ff7 = title, the main theme =
+menu + battle, the door tracks = lobby + hq, the alts = battle; the mood /
+style tags on the alts are Claude's guesses off the titles — retag in the
+panel). A PLACE is a `MUSIC_CONTEXTS` row `{ any: [role tags], not,
+fallback }` — title · menu · lobby · hq · exploration · battle · boss; a
+map's MOODS (`MUSIC_SITE_MOODS[near key]`, or `env.music: [...]` on its
+EW_MAP_META row) are asked for first (`MUSIC_MOOD_MIN` 2 matches or the
+pool is topped up); an empty pool falls down `fallback` and ends at the
+main theme. ONE read per song `MusicTags.get(key)` (LOCAL override in
+localStorage `ew_music_tags` → shipped); ONE pool read
+`MusicTags.pool(ctx, moods)`; per-pool SHUFFLE BAGS (`_musicDraw`: every
+song once before a repeat, never the same song twice running); a pool of
+ONE song loops, a pool of many advances on `ended` (the battle crossfades
+9 s early as before) — no track has `loop = true` on its own any more
+(`_musicApplyLoop`; the pause menu's 🔁 pins `_pinnedLoop`). Entry points:
+`playContextMusic(ctx, { moods })` (keeps a playing song that still fits the
+new pool — a walk from the hall into an office keeps the track),
+`setMusicContext('battle')` (the match keeps the song it pre-warmed at
+startMatch), **`skipTrack()` = ⏭ ANYWHERE** (the fix for "no way to change
+the song" — map.js `skipBattleTrack` delegates; it was gated to battle /
+editor). map.js **`musicContextForState()`** is the ONE resolver
+(`syncMusicToState` calls it): battle → `battle`; HQ lobby rooms
+(`_HQ_LOBBY_MUSIC_ROOMS`) → `lobby`; a WILD room (`hqRoomSite`) →
+`exploration` + the site's moods (`_musicMoodsForSite`); other rooms → `hq`;
+title → `title`; else `menu`. The legacy names (`battleMusicKeys` is GONE;
+`refillBattleShuffleBag` / `drawFromBattleShuffleBag` / `chooseBattleTrackKey`)
+are wrappers over the battle pool. **THE DEV TOOL**: the mixer panel has two
+more tabs — 🏷 TAGS (a chip per tag per song, click toggles, gold = tagged
+here, ▶ auditions) and ⌖ CONTEXTS (each place → its rule → the resolved pool,
+▶ plays a draw; the site-mood table) — `AudioMixer.open('tags')` from
+Settings → Audio → 🏷 Song Tags and the pause menu's Music tab. EXPORT JSON
+carries `tags` (paste over `MUSIC_TAGS_SHIPPED`); EXPORT JS TABLES prints
+the table; IMPORT takes either. **Settings → Audio wears NOW PLAYING**
+(map.js `_buildNowPlayingHTML`: the song, its pool, ⏮ ⏭, a picker of every
+song with the current pool first; the HQ pause menu's SETTINGS renders the
+same body). Viewer-local, nothing on `state`, nothing relayed (RULE #2).
+Adding a song = `_R2_MUSIC` + `_LOCAL_MUSIC` + `AUDIO_BASE_VOLUMES` + a
+`MUSIC_TAGS_SHIPPED` row + a display name; adding a tag = its group's list;
+adding a place = a `MUSIC_CONTEXTS` row + a branch in
+`musicContextForState`. `npm test` runs `music-tags.test.js`. UNSEEN LIVE
+(RULE #1c): the chips' wrap in the panel, the picker in the settings row,
+the crossfade when a walk changes pools.

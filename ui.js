@@ -6754,6 +6754,8 @@
             titleTheme: 'FF7 Theme',
             mainTheme: 'Main Theme',
             doorLobby: 'DOOR Lobby',
+            doorLobby2: 'DOOR HQ 2',
+            doorLobby3: 'DOOR HQ 3',
             battleTheme: 'Battle Theme',
             battleThemeAlt1: 'Beetle',
             battleThemeAlt2: 'Ladybug',
@@ -7220,6 +7222,7 @@
                     </div>
                     <div class="pm-set-row" style="margin-top:6px">
                         <button class="pm-set-btn" onclick="window.AudioMixer&&window.AudioMixer.open()" title="Dev tool: per-song / per-cue master levels, with export">🎚 Mixer (dev)</button>
+                        <button class="pm-set-btn" onclick="window.AudioMixer&&window.AudioMixer.open('tags')" title="Dev tool: tag every song so each place draws the right pool">🏷 Song Tags (dev)</button>
                     </div>
                 </div>
 
@@ -7232,8 +7235,19 @@
            instead of shuffling with ⏮/⏭ until it comes up. */
         function _buildPauseTrackList(currentKey) {
             if (typeof audioTracks === 'undefined') return '';
-            const keys = Object.keys(audioTracks).filter(k => k !== 'victory' && k !== 'defeat');
+            let keys = Object.keys(audioTracks).filter(k => k !== 'victory' && k !== 'defeat');
             if (!keys.length) return '';
+            /* THE PLAYLIST (2026-09-16): the songs of the place's own pool first */
+            let poolNote = '';
+            try {
+                const cur = (typeof MusicTags !== 'undefined' && MusicTags.current) ? MusicTags.current() : null;
+                if (cur && cur.pool && cur.pool.length) {
+                    const pool = cur.pool;
+                    keys = pool.concat(keys.filter(k => !pool.includes(k)));
+                    const c = (typeof MUSIC_CONTEXTS !== 'undefined') ? MUSIC_CONTEXTS[cur.id] : null;
+                    poolNote = ` · ${c ? c.label : cur.id}: ${pool.length} song${pool.length === 1 ? '' : 's'} in this pool`;
+                }
+            } catch (e) {}
             let rows = '';
             for (const k of keys) {
                 const active = k === currentKey;
@@ -7246,7 +7260,7 @@
             }
             return `
             <div class="pm-track-list-wrap" style="margin-top:10px">
-                <div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(180,160,255,0.85);margin:0 0 4px 2px">Song Select</div>
+                <div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(180,160,255,0.85);margin:0 0 4px 2px">Song Select${escapeHtml(poolNote)}</div>
                 <div class="pm-track-list" style="max-height:180px;overflow-y:auto;border:1px solid rgba(255,255,255,0.10);border-radius:8px;padding:4px;background:rgba(0,0,0,0.25)">
                     ${rows}
                 </div>
@@ -7257,7 +7271,7 @@
             if (typeof audioTracks === 'undefined' || !audioTracks[key]) return;
             state.audioUnlocked = true;
             /* Keep the battle shuffle continuing FROM the chosen song. */
-            if (key.startsWith('battleTheme')) {
+            if (typeof MusicTags !== 'undefined' ? MusicTags.has(key, 'battle') : key.startsWith('battleTheme')) {
                 state.currentBattleTrackKey = key;
                 state.lastBattleTrackKey = key;
             }
@@ -7294,6 +7308,8 @@
             const key = state.currentMusic;
             if (!key || !audioTracks[key]) return;
             audioTracks[key].loop = !audioTracks[key].loop;
+            /* a pinned loop survives the playlist's own loop rule (audio.js _musicApplyLoop) */
+            audioTracks[key]._pinnedLoop = audioTracks[key].loop;
             _renderPauseMenu();
         };
         let _preMuteMusicVol = 0.68;
