@@ -257,3 +257,33 @@ test('THE SOURCE: _hqEnter files every room entered (typeof-guarded), the panel 
   for (const c of ['.hq-map-svg', '.hq-map-n.st-q .hq-map-q', '.hq-map-n.reveal.pop', '.hq-map-n.reveal.flip .hq-map-q', '.hq-map-n.reveal.flip .hq-map-no', '.hq-map-e.reveal.draw', '.hq-map-n.reveal.qin', '@keyframes hqMapDraw', '.hq-map-here', '.hq-map-det > summary', 'prefers-reduced-motion']) assert.ok(CSS.includes(c), c);
   assert.ok(D.ACH_MERGE_CAPS === undefined || true);
 });
+
+/* THE DIRECTORY GUARD (2026-09-16, the user's rule: "the map / room directory
+   always gets flagged for update with any rooms / maps we add"). The map is
+   GENERATED from the doors (hqMapGraph walks from the foyer; hqMapLayout
+   places every node it finds), so a new room needs nothing drawn by hand —
+   but a room nobody can WALK to is off the map and off the register, and a
+   launch map with no threshold is off the world. This test fails, naming the
+   room, the moment either happens: add the door (or the threshold) and the
+   directory updates itself. The stage-1 bay rooms (`bay_<sector>`, kept for
+   `corridor.on: false`) and the sheet copies (`DOOR_HQ.roomsBase`) are the
+   only rooms allowed off the walk. */
+test('THE DIRECTORY GUARD: every room in DOOR_HQ.rooms is a node of the map (reachable from the foyer along doors) and placed by the layout; every built site and every complex part is on it; every launch map with a threshold has its site room on the map; the register / the world tab read the same rooms', () => {
+  const G = D.hqMapGraph(), L = D.hqMapLayout(), P = L.pos;
+  const allowedOff = id => /^bay_/.test(id);
+  const missing = Object.keys(HQ.rooms).filter(id => !allowedOff(id) && !G.nodes[id]);
+  assert.equal(missing.join(','), '', 'rooms nobody can walk to (add a door from a room that IS on the map, or a links row): ' + missing.join(', '));
+  const unplaced = G.order.filter(id => !P[id] || P[id].where === 'UNPLACED' || !isFinite(P[id].x) || !isFinite(P[id].y));
+  assert.equal(unplaced.join(','), '', 'rooms the layout could not place');
+  for (const site of HQ.siteRooms.built) assert.ok(G.nodes['site_' + site], 'the built site ' + site + ' is on the map');
+  for (const part of D.hqComplexRooms()) assert.ok(G.nodes[part], 'the complex part ' + part + ' is on the map');
+  for (const [mapId, th] of Object.entries(HQ.thresholds)) if (HQ.siteRooms.built.includes(mapId)) assert.ok(G.nodes['site_' + mapId] && G.nodes['site_' + mapId].no === th.roomNo, 'the threshold ' + mapId + ' (' + th.roomNo + ') is a numbered site on the map');
+  /* the register and the world tab never disagree with the map about what exists */
+  for (const e of D.hqRoomRegister()) { const rid = e.room || e.id; if (rid && HQ.rooms[rid]) assert.ok(G.nodes[rid], 'the register lists ' + rid + ' but the map cannot reach it'); }
+  for (const r of D.hqWorldRoutes('foyer')) for (const s of r.stations) assert.ok(G.nodes[s.room], 'the world tab calls at ' + s.room + ' but the map cannot reach it');
+  /* the model with everything drawn is the whole graph */
+  const all = D.hqMapModel(null, 'foyer', { all: true });
+  assert.equal(all.nodes.length, G.order.length, 'dev: everything drawn = every node');
+  /* THE WOODS (9.3 stage 3): the first complex added under this guard hangs off its site */
+  assert.equal(P.site_prebuilt_fairy_forest_clearing.where, P.site_prebuilt_fairy_forest.where, 'the woods hang off the Fairy Forest');
+});

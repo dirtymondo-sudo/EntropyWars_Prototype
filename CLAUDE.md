@@ -4615,3 +4615,69 @@ panel headless, THE REVEAL through a fake DOM). UNSEEN LIVE (RULE #1c):
 the whole look — the ring circles' weight, the label sizes at the fit
 zoom, the flip's timing, the zoom-out's ease, the pan under the panel's
 scroll (the stage is `touch-action: none`; the card scrolls).
+
+## THE WOODS — the forest on the cave grid (HQ plan 9.3 stage 3) — 2026-09-16, local delivery
+The SEVENTH complex, the FAIRY FOREST's (`site: 'prebuilt_fairy_forest'` +
+`part`, no `roomNo`; data.js, the block right before H-WING): seven OPEN
+box rooms on the CAVE GRID (rev 11's dungeon rules) under ONE sky
+(`hqWoodsShell(o)` — defined right before `DOOR_HQ`; `HQ_WOODS_LANDMARKS`
+= the two weenies). **THE TREE CELL**: `HQ_CAVE_STD` `T` (a broadleaf) /
+`D` (a dead tree) / `R` (a redwood, `tall`) — `{ lvl, tree: <foliage kind> }`
+— a wall to the walker (`walk: false`, never a hazard; `hqCaveFeet` null),
+the floor at its level drawn under it, ROCK to the field's raster wearing
+the `forest` sheet (`hqFieldRasterCave` reads `src.tree`), planted by
+three-renderer.js `_hqBuildCave` with `_nrTree` on a bare kit (the near
+kit's foliage OBJ; the HQ loop's `_nrPollPending` swaps the proc stand-in);
+a room's legend may raise one onto a tier (`Q` / `Z` on the trail). An
+open cave room hangs NO stalactites (`nSt = S.open ? 0 : …`), no masts and
+no strips — its torches light it (doorhq.test.js's mast rule exempts a
+`cave` room). THE ROOMS: `site_prebuilt_fairy_forest_clearing` (THE
+CLEARING — the crossroads: seven doors, the knoll, the stream, the old
+tree), `_trail` (THE MOUNTAIN TRAIL: two tiers, Shasta's door on the top
+one — a door you climb to), `_redwoods` (→ the Grove), `_pasture` (the
+fence: the ranch's gate on the w wall, the house's garden gate on the n),
+`_stair` (THE STAIRCASE: four wooden risers `E G I J` = lvl 1–4 in
+`wood_planks`, a landing, an EXIT door that opens on the building's
+`stairwell`), `_deadmans` (DEAD MAN'S CAVE: a crag, a storm drain, the
+`graffiti_wall` proc — a canvas panel standing against a rock face, `face`
+= the way the paint looks — and a `leaf_cell` grate onto the `tunnel`,
+THE SUBWAY's fourth station) and `_ritual` (standing stones `S` = a lvl-4
+unwalkable block, the circle, `leaf_hell_arch` onto Room 333). The way in =
+`siteRooms.backDoors.prebuilt_fairy_forest` (n x −10, `leaf: null`). THE
+LINKS: rev 7's three fence gates RE-POINTED and renamed (`woods_haunted` /
+`woods_skinwalker` / `woods_grove`), plus `woods_shasta`, `woods_stair`,
+`woods_sewer` (route `subway`), `woods_ritual` (facility ends `{ room }`,
+the garden-well precedent, never gated) and `fairy_camelot` (a `pool` seam,
+BOTH ends free on the north strips at `face: 90` — Camelot's north wall
+has no lane left; hq-world's free-end landing rule passes only for face 0
+/ 90 as written). **THE WEENIES**: `shell.sky.landmarks = [{ kind, id, deg,
+dist, s, y }]` → three-renderer.js `_hqBuildLandmarks` (before the roster,
+so a `scenery: 'none'` sky can wear one) → `_hqLandmarkBuilders.peak`
+(Shasta: cones + a snow cap + `_hzLenticular`) / `.castle` (Camelot: the
+curtain wall, four towers, the keep, lit windows); deg 0 = north,
+clockwise (the star chart's rule), `dist` = the share of the sky disc,
+never a floater. Adding a landmark kind = one builder. TAPES: seven
+re-homed (the garden's `1618` → the clearing; Shasta / the ranch / the
+forest / the grove / Babel / Downtown gave their SECOND tape — a built
+site keeps ≥ 1, hq-finds.test.js says 1–2 now, a one-tape site has no
+board find). `npm test` runs `hq-woods.test.js` (the sheet, the tree cell,
+the dungeon rules incl. NO ISOLATED WALKABLE CELL, the pairs, the eight
+links, the production landings, the park rule, the weenies, the tapes,
+the field windows). Unseen live (RULE #1c): the trees' scale against the
+walker, the wedge ramps as trails, the wooden risers, the two landmarks'
+size over the treeline (`HQ_WOODS_LANDMARKS[i].s` / `dist` are the edits),
+the graffiti's read, the pool seams on the strips.
+
+## THE DIRECTORY GUARD — every room and map is on the map, or the test says so (2026-09-16)
+The user's rule: "the map / room directory always gets flagged for update
+with any rooms / maps we add". The directory (THE MAP, the register, the
+world tab) is GENERATED from the doors — nothing is drawn by hand — so the
+guard is a TEST: hq-map.test.js **THE DIRECTORY GUARD** fails, naming the
+room, when any `DOOR_HQ.rooms` entry is not reachable from the foyer along
+doors (`hqMapGraph`), when the layout cannot place a node, when a built
+site / complex part / numbered threshold is off the map, or when the
+register / world tab name a room the map cannot reach. Only `bay_*`
+(stage-1 rooms) may be off the walk. ADDING A ROOM = give it a door from a
+room that is on the map (or a `links` row) and run `npm test`; ADDING A
+SITE = the 7.10 checklist (the threshold puts it on the map). No manual
+directory edit exists to forget.

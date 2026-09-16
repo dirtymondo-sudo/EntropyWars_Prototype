@@ -243,7 +243,7 @@ test('THE DUNGEON: every chamber is a cave grid the shell fits, one level is hal
     for (const [ch, want] of [['a', { lvl: 0, slope: 'n' }], ['f', { lvl: 5, slope: 'n' }], ['g', { lvl: 0, slope: 's' }], ['m', { lvl: 0, slope: 'e' }], ['s', { lvl: 0, slope: 'w' }], ['x', { lvl: 5, slope: 'w' }]])
         assert.deepStrictEqual({ lvl: STD[ch].lvl, slope: STD[ch].slope }, want, 'ramp ' + ch);
     assert.ok(STD['='].bridge && STD.B.bridge && STD.H.bridge && STD.P.fluid === 'water' && STD.Y.fluid === 'lava' && STD.W.fluid === 'deep_water' && STD.L.fluid === 'lava' && STD['#'].rock, 'the bridges, the pool, the lake, the deeps, the rock');
-    assert.deepStrictEqual(D.hqCaveRooms().sort().join(','), PART_IDS.slice().sort().join(','), 'every cave chamber is a cave grid, and only they');
+    assert.deepStrictEqual(D.hqCaveRooms().filter(id => id.indexOf(BOARD + '_') === 0).sort().join(','), PART_IDS.slice().sort().join(','), 'every cave chamber is a cave grid, and only they (THE WOODS, 9.3 stage 3, is the other grid complex — hq-woods.test.js)');
     for (const id of PART_IDS) {
         const room = HQ.rooms[id], info = D.hqCaveInfo(id), S = room.shell;
         assert.ok(info && info.w >= 8 && info.h >= 8, id + ': a grid at least 8 × 8');

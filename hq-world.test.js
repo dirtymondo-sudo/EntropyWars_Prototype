@@ -131,7 +131,7 @@ test('an entryway kind the catalogue does not list is held back at BOTH ends; a 
  } finally{HQ.links=saved;}
 });
 test('THE SEAMS THAT ARE NOT DOORS: the wardrobe into Camelot and the well into Hollow Earth are catalogued, paired, plated, voiced and built',()=>{
- assert.deepEqual(SEAMS.map(l=>l.id).sort().join(','),'bureau_vatican,haunted_camelot,lodge_olympus,mirror_lookingglass,natatorium_dutchman,northpole_haunted,nuketown_haunted,observatorium_singularity,subway_downtown,tunnel_cyberpunk,weir_bermuda,well_camelot,well_cellar,well_garden,well_gobekli,well_nuketown,well_skinwalker','the wardrobe, the six wells (rev 10: every well drops into the cave), the train (the tunnel\u2019s platform to Cyberpunk\u2019s subway; 9.2 stage 4: Downtown\u2019s platform one stop back) and the second batch (rev 22: the mirror, the plunge pool, two paintings, the hearth, the screen, the closet)');
+ assert.deepEqual(SEAMS.map(l=>l.id).sort().join(','),'bureau_vatican,fairy_camelot,haunted_camelot,lodge_olympus,mirror_lookingglass,natatorium_dutchman,northpole_haunted,nuketown_haunted,observatorium_singularity,subway_downtown,tunnel_cyberpunk,weir_bermuda,well_camelot,well_cellar,well_garden,well_gobekli,well_nuketown,well_skinwalker','the wardrobe, the six wells (rev 10: every well drops into the cave), the train (the tunnel\u2019s platform to Cyberpunk\u2019s subway; 9.2 stage 4: Downtown\u2019s platform one stop back) and the second batch (rev 22: the mirror, the plunge pool, two paintings, the hearth, the screen, the closet)');
  for(const k of Object.keys(HQ.ways)) {
   const w=HQ.ways[k];
   assert.ok(w.verb && w.sub && w.sfx && w.w>0 && w.h>0, k+': verb · sub · sfx · w · h');

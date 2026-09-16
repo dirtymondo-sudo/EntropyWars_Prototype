@@ -74,9 +74,10 @@ test('THE HUNDRED: exactly 100 tapes, T001…T100 in order, every one in a real 
     assert.equal(D.hqTapeLegacyId('T005'), TAPES[4].id, 'a legacy positional id resolves to the tape at that position today');
     assert.equal(D.hqFindLegacyId('tape:T100'), 'tape:' + TAPES[99].id); assert.equal(D.hqFindLegacyId('pay:garage'), 'pay:garage');
     /* two per built site (in its board room), one per complex part */
-    for (const site of HQ.siteRooms.built) assert.equal(TAPES.filter(t => t.where === 'site_' + site).length, 2, site + ': two tapes in its board room');
+    /* THE WOODS (9.3 stage 3, 2026-09-16): a built site keeps at least one tape in its board room — six gave their second to the woods' parts (the hundred stays a hundred) */
+    for (const site of HQ.siteRooms.built) { const n = TAPES.filter(t => t.where === 'site_' + site).length; assert.ok(n >= 1 && n <= 2, site + ': one or two tapes in its board room (' + n + ')'); }
     for (const part of D.hqComplexRooms()) assert.equal(TAPES.filter(t => t.where === part).length, 1, part + ': one tape');
-    assert.equal(TAPES.filter(t => t.site).length, HQ.siteRooms.built.length * 2 + D.hqComplexRooms().length, 'every site / part tape knows its site');
+    assert.equal(TAPES.filter(t => t.site).length, TAPES.filter(t => /^prebuilt_|^site_prebuilt_/.test(t.where) || /^site_/.test(t.where)).length, 'every site / part tape knows its site');
 });
 
 test('every tape has a find, every tape room a daily pay cache, and no other kinds are placed', () => {
@@ -140,7 +141,7 @@ test('a cave find stands on a walkable cell the first door reaches; a site board
             for (const m of b.mons) assert.ok(!(cx >= m.x && cx < m.x + m.foot && cy >= m.y && cy < m.y + m.foot), f.id + ': on a monument');
         }
     }
-    assert.equal(boards, HQ.siteRooms.built.length, 'one board find per site');
+    assert.equal(boards, HQ.siteRooms.built.filter(site => TAPES.filter(t => t.where === 'site_' + site).length === 2).length, 'one board find per site that kept its second tape (THE WOODS took six)');
     assert.ok(caves >= 7 && hard >= 5, 'the cave and the walls are used (caves ' + caves + ', hard ' + hard + ')');
 });
 

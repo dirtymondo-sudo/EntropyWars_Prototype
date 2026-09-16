@@ -18414,6 +18414,36 @@ if (typeof window !== 'undefined') {
    Validated headlessly by door-hq.test.js (load-data.js).
    ═══════════════════════════════════════════════════════════════════════ */
 const DOOR_HQ_ASSETS = 'https://cdn.entropywars.net/Assets/door/';
+/* ── THE WOODS' SHELL (HQ plan 9.3 stage 3, 2026-09-16) ─────────────────
+   Every woods room is an OPEN box room (no ceiling, no walls: the tree border
+   of its cave grid is the wall) under ONE sky — the Fairy Forest's dusk with
+   THE WEENIES on the horizon: `landmarks` = Shasta's cone to the north-north-
+   west, Camelot's keep to the south-south-east (three-renderer.js
+   _hqBuildLandmarks reads them; deg 0 at north, clockwise — the star chart's
+   rule; dist = the share of the sky's disc; s = a size multiplier). One
+   function so the seven rooms cannot drift apart; `o` overrides a field. */
+const HQ_WOODS_LANDMARKS = [
+    { kind: 'peak', id: 'prebuilt_shasta', deg: 340, dist: 0.92, s: 1.0, label: 'MOUNT SHASTA' },
+    { kind: 'castle', id: 'prebuilt_camelot', deg: 150, dist: 0.88, s: 1.0, label: 'CAMELOT' },
+];
+function hqWoodsShell(o) {
+    o = o || {};
+    const sky = { night: 1, tint: 0x12241a, tintAmt: 0.5, stars: 0.9, nebula: 0.35, fog: { color: 0x1c3324, amount: 0.62, top: 0.08, band: 0.55 }, scenery: 'dark', density: 0.4,
+                  landmarks: HQ_WOODS_LANDMARKS.map(l => Object.assign({}, l)) };
+    const S = {
+        w: 0, d: 0, h: 9.0, wallH: 9.0, dadoH: 1.0,
+        open: true, edge: 'open',
+        floor: 'grass_2', wall: 'leaves_3', dado: 'dark_wood', trim: 'wood', ceiling: 'leaves_3',
+        apron: 'grass_2', skirt: 'dirt_2', apronColor: 0x5e7a48,
+        floorColor: 0x6f8a52, wallColor: 0x2c3d24, dadoColor: 0x3d3126,
+        pipes: false, strips: false, lights: [],
+        mood: { light: 0xa8c8ff, ambient: 0.42 },
+        sky: sky,
+        plate: { x: 0, z: -9.8, y: 4.4 },
+    };
+    Object.keys(o).forEach(k => { S[k] = o[k]; });
+    return S;
+}
 const DOOR_HQ = {
     units: 73,
     assets: { models: DOOR_HQ_ASSETS + 'models/', textures: DOOR_HQ_ASSETS + 'textures/' },
@@ -18675,6 +18705,8 @@ const DOOR_HQ = {
         wall_torch:      { proc: 'wall_torch',      h: 1.1,  foot: 0, wall: true, mount: 1.6, depth: 0.2, glow: { y: 0.7, size: 1.0, color: 0xffa040 }, light: { color: 0xff9a40, intensity: 0.8, dist: 8, y: 0.66 } },   /* the game's own torch (ward / editor) on a bracket, leaning into the room — 2026-09-15 */
         candle_ring:     { proc: 'candle_ring',     h: 0.3,  foot: 0, glow: { y: 0.3, size: 1.2, color: 0xffb060 }, light: { color: 0xffb060, intensity: 0.7, dist: 6, y: 0.45 } },
         ritual_circle:   { proc: 'ritual_circle',   h: 0.01, foot: 0 },                                                       // the sigil on the floor (a canvas decal, faintly lit)
+        /* THE WOODS (9.3 stage 3, 2026-09-16): a spray-painted panel that stands against a rock face (Dead Man's Cave) — a proc, `face` = the way the paint looks; nothing to bump into */
+        graffiti_wall:  { proc: 'graffiti_wall', h: 1.6, foot: 0 },
         /* THE FOURIER FOYER (2026-09-15): the seal inlaid in the terrazzo (a canvas decal — the rings, the D.O.O.R. wordmark, the Customs & Admissions slogan round the rim), the mat inside the front door, the umbrella stand beside it */
         door_seal:       { proc: 'door_seal',       h: 0.01, foot: 0 },
         doormat:         { proc: 'doormat',         h: 0.02, foot: 0 },
@@ -19230,7 +19262,7 @@ const DOOR_HQ = {
         deep:       { label: 'THE DEEP',         sub: 'BELOW THE WATERLINE, BELOW THE ICE, BELOW THE MOUNTAIN', color: '#4fc3c8' },
         divine:     { label: 'THE DIVINE STAIR', sub: 'THE STAIR THAT ONLY GOES UP; THE CRYPT THAT ONLY GOES DOWN', color: '#ffd28a' },
         bases:      { label: 'THE BASES',        sub: 'FIVE SIDES ABOVE GROUND; THE SIXTH IS DOWN', color: '#b9f27c' },
-        woods:      { label: 'THE WOODS',        sub: 'THE SAME WOODS · FOUR GATES IN ONE FENCE', color: '#7fd98c' },
+        woods:      { label: 'THE WOODS',        sub: 'THE SAME WOODS · EVERY PATH COMES OUT IN THE CLEARING', color: '#7fd98c' },
         ley:        { label: 'THE LEY LINE',     sub: 'THE LINE THE STONES STAND ON', color: '#e0b06a' },
         highway:    { label: 'THE HIGHWAY',      sub: 'ONE ROAD, A CENTURY LONG', color: '#ff9e6b' },
         wonderland: { label: 'THE WONDERLAND',   sub: 'A PLANE ONTO A CARPET', color: '#e39cff' },
@@ -19311,19 +19343,51 @@ const DOOR_HQ = {
           a: { site: 'prebuilt_cern', wall: 'n', x: -10 },
           b: { site: 'prebuilt_backrooms', wall: 'n', x: -5 },
           why: 'the ring tunnel\'s noclip: an office door in a service bay that no plan shows; behind it the carpet is already humming (the second way into Bay 6\'s site, beside H-Wing)', note: 'not on the plan', draft: true },
-        /* THE WOODS */
-        { id: 'haunted_skinwalker', route: 'woods', leaf: 'leaf_barn',
+        /* THE WOODS (HQ plan 9.3 stage 3, 2026-09-16): the three fence gates of
+           rev 7 (haunted_skinwalker / skinwalker_grove / grove_fairy) RE-POINTED
+           — every gate opens on THE WOODS now, the Fairy Forest's complex (the
+           cellar-well precedent: one row edit each, renamed): the house's garden
+           gate and the ranch's gate both hang in THE BACK PASTURE's fence, the
+           grove's owl gate stands at the end of THE REDWOOD TRAIL, the
+           mountain's door tops THE MOUNTAIN TRAIL; the forest itself is the
+           complex's board room (its back door is the path in), and the forest
+           leads to CAMELOT by the spring (a `pool` seam, both ends free — the
+           castle's north wall has no lane left). Two paths leave the wild for
+           the building (the garden-well precedent, never gated): THE STAIRCASE's
+           door opens on THE STAIRWELL, THE RITUAL GROUND's circle on Room 333;
+           DEAD MAN'S CAVE's grate is THE SUBWAY's fourth station. */
+        { id: 'woods_haunted', route: 'woods', leaf: 'leaf_barn',
           a: { site: 'prebuilt_haunted', wall: 'n', x: -2.5 },
-          b: { site: 'prebuilt_skinwalker', wall: 'n', x: -5 },
-          why: 'the garden gate in the back fence opens on the ranch\'s far pasture; it is the same woods, and the woods do not care whose fence it is', note: 'the same woods', draft: true },
-        { id: 'skinwalker_grove', route: 'woods', leaf: 'leaf_stable',
+          b: { site: 'prebuilt_fairy_forest', part: 'pasture', wall: 'n', x: -0.875, sub: 'THE GARDEN GATE · TO THE HOUSE' },
+          why: 'the garden gate in the back fence opens on the woods behind the house; it is the same woods, and the woods do not care whose fence it is', note: 'the same woods', draft: true },
+        { id: 'woods_skinwalker', route: 'woods', leaf: 'leaf_stable',
           a: { site: 'prebuilt_skinwalker', wall: 'n', x: -10 },
-          b: { site: 'prebuilt_bohemian_grove', wall: 'n', x: -5 },
-          why: 'the gate the ranch hands stopped using; the redwoods start a fence-post past it', note: 'the second gate', draft: true },
-        { id: 'grove_fairy', route: 'woods', leaf: 'leaf_shabby_wood',
+          b: { site: 'prebuilt_fairy_forest', part: 'pasture', wall: 'w', z: -0.875, sub: 'THE RANCH GATE · TO THE RANCH' },
+          why: 'the gate the ranch hands stopped using; the back pasture is the woods\' now, and the fence is the ranch\'s, and the two gates in it are not the ranch\'s at all', note: 'the second gate', draft: true },
+        { id: 'woods_grove', route: 'woods', leaf: 'leaf_shabby_wood',
           a: { site: 'prebuilt_bohemian_grove', wall: 'n', x: -10 },
-          b: { site: 'prebuilt_fairy_forest', wall: 'n', x: -5 },
-          why: 'the owl\'s gate at the back of the grove; the members walk through it once a year and come back smaller', note: 'the fourth gate', draft: true },
+          b: { site: 'prebuilt_fairy_forest', part: 'redwoods', wall: 'e', z: -0.875, sub: 'THE OWL’S GATE · TO THE GROVE' },
+          why: 'the owl\'s gate at the back of the grove opens on the redwood trail; the members walk it once a year and come back smaller', note: 'the fourth gate', draft: true },
+        { id: 'woods_shasta', route: 'woods', leaf: 'leaf_frame_only',
+          a: { site: 'prebuilt_fairy_forest', part: 'trail', wall: 'n', x: -0.875, sub: 'THE MOUNTAIN · THE LAST SWITCHBACK' },
+          b: { site: 'prebuilt_shasta', wall: 'n', x: -10 },
+          why: 'the trail up out of the woods tops out at a frame in the snow line; the mountain was over the trees the whole way up, and now it is under your feet', note: 'the white thing over the trees', draft: true },
+        { id: 'woods_stair', route: 'woods', leaf: 'leaf_exit',
+          a: { site: 'prebuilt_fairy_forest', part: 'stair', wall: 'n', x: -0.875, sub: 'THE DOOR AT THE TOP · INTO THE BUILDING' },
+          b: { room: 'stairwell', wall: 'e', z: -2, sub: 'THE STAIRCASE IN THE WOODS · OUT' },
+          why: 'four wooden risers in a clearing, a landing, an EXIT door with nothing behind it; the door opens on the building\'s own stairwell, which has no window for it to open through', note: 'nobody built it', draft: true },
+        { id: 'woods_sewer', route: 'subway', leaf: 'leaf_cell',
+          a: { site: 'prebuilt_fairy_forest', part: 'deadmans', wall: 'e', z: -0.875, sub: 'THE GRATE · INTO THE TUNNEL' },
+          b: { room: 'tunnel', wall: 'e', z: -6, sub: 'THE STORM DRAIN · INTO THE WOODS' },
+          why: 'the storm drain in the crag runs the wrong way: the water comes out of the platform wall and into the woods, and the grate between them was welded shut, and then it was not', note: 'the fourth station', draft: true },
+        { id: 'woods_ritual', route: 'woods', leaf: 'leaf_hell_arch',
+          a: { site: 'prebuilt_fairy_forest', part: 'ritual', wall: 'n', x: -0.875, sub: 'THE CIRCLE · ROOM 333' },
+          b: { room: 'ritual', wall: 'e', z: 0, sub: 'THE CIRCLE · THE RITUAL GROUND' },
+          why: 'the chalk circle in Room 333 and the circle between the stones are one circle drawn from two sides; step over the line indoors and you are outdoors, downwind of the candles', note: 'one circle, two sides', draft: true },
+        { id: 'fairy_camelot', route: 'woods', way: 'pool',
+          a: { site: 'prebuilt_fairy_forest', wall: 'free', x: 10, z: -11.5, face: 90, sub: 'THE SPRING · SURFACE IN THE MOAT' },
+          b: { site: 'prebuilt_camelot', wall: 'free', x: 10, z: -13.5, face: 90, sub: 'THE MOAT · SURFACE IN THE SPRING' },
+          why: 'the spring in the fairy forest and the castle moat share their water; dive in the woods and surface under the battlements, which the besiegers should have found suspicious', note: 'the same water', draft: true },
         /* THE LEY LINE */
         { id: 'stonehenge_gobekli', route: 'ley', leaf: 'leaf_frame_only',
           a: { site: 'prebuilt_stonehenge', wall: 'n', x: -5 },
@@ -19526,6 +19590,13 @@ const DOOR_HQ = {
            The renderer keeps the door's lane clear of the setting
            (_hqBuildSetting zones). One row per map id, the box-room door shape. */
         backDoors: {
+            /* THE WOODS (9.3 stage 3, 2026-09-16): the forest is the board room
+               of the woods complex; THE PATH on its north wall's west lane (the
+               owl's gate moved to the redwood trail) walks into THE CLEARING */
+            prebuilt_fairy_forest: { id: 'woods', wall: 'n', x: -10, leaf: null,
+                label: 'THE WOODS', sub: 'THE PATH · INTO THE WOODS',
+                action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'forest' },
+                desc: 'A path between two trees that lean in to hear you go. The woods are bigger than the board allows, which Continuity has a form for, and the mountain is over them.' },
             prebuilt_backrooms: { id: 'hwing', wall: 's', x: 6.0, leaf: 'leaf_exit',
                 label: 'H-WING', sub: 'EXIT · THIS ONE IS',
                 action: { room: 'hwing_w', at: 'exit' },
@@ -27914,6 +27985,510 @@ const DOOR_HQ = {
             },
         },
         /* ══════════════════════════════════════════════════════════════════
+           THE WOODS (HQ plan 9.3 stage 3 — 2026-09-16). The SEVENTH complex
+           and the second one that is not a building: a forest on the CAVE
+           GRID (rev 11's dungeon rules, one new cell kind — `T` / `D` / `R`,
+           a TREE: the floor at its level with a tree on it, a wall to the
+           walker, rock to the field's raster) under an OPEN sky. It is the
+           FAIRY FOREST's complex, so every room wears `site:
+           'prebuilt_fairy_forest'` + `part` and NO roomNo (hqRoomNo reads
+           420 through `site`, the register lists the forest once, 9.4 knows
+           the rooms are WILD). THE CLEARING is the crossroads (the user's
+           brief: "a big forest area with different paths to these places"):
+           the path in from the Fairy Forest's board room (its back door —
+           the forest leads to CAMELOT through the spring, a `pool` seam),
+           THE MOUNTAIN TRAIL up its switchbacks to SHASTA, THE REDWOOD TRAIL
+           to BOHEMIAN GROVE, THE BACK PASTURE with two gates in one fence
+           (SKINWALKER RANCH, THE HAUNTED HOUSE's garden gate), THE STAIRCASE
+           (the lone flight in the woods that climbs to a door that opens on
+           the building's own stairwell), DEAD MAN'S CAVE (a storm drain in
+           a crag, graffiti on the rock, the grate opens on THE TUNNEL — the
+           subway line's fourth station) and THE RITUAL GROUND (the stones,
+           the fire, the circle that is Room 333's circle). THE WEENIES: the
+           sky of every woods room hangs two LANDMARKS on the horizon over
+           the treeline — Shasta's snow cone to the north-north-west, the
+           castle's keep to the south-south-east (`shell.sky.landmarks`,
+           three-renderer.js _hqBuildLandmarks) — Disney's rule: something
+           tall in the distance draws the eye down the path.
+           hq-woods.test.js walks every grid with the walker's own step rule
+           (every door reaches every other), lands every door with the
+           production renderer, and keeps THE PARK RULE (a rail and a real
+           ramp cell in every room). A tree cell is `T` (a broadleaf), `D` (a
+           dead tree), `R` (a redwood); a room's legend raises one onto a
+           tier (`Q` / `Z` here). Every native is a race hint (9.4 fights it
+           where it stands); every line is Claude's DRAFT (A15).
+           ══════════════════════════════════════════════════════════════════ */
+        /* ── THE CLEARING — the crossroads of the woods: the old tree, the knoll, the stream and its plank, seven ways out ── */
+        site_prebuilt_fairy_forest_clearing: {
+            label: 'THE WOODS · THE CLEARING',
+            sub: 'THE CROSSROADS · SEVEN PATHS · THE OLD TREE',
+            kind: 'box', site: 'prebuilt_fairy_forest', part: 'clearing',
+            shell: hqWoodsShell({ plate: { x: 0, z: -18.6, y: 4.2 } }),
+            /* the grid (28 × 22 cells, 49 × 38.5 m). North is the top row.
+               The path in from the forest is the south lane; THE KNOLL (lvl
+               2) in the north-west with a ramp on each side (`g h` from the
+               trail's landing, `b a` from the floor); THE STREAM out of the
+               north-east, the deep pool `W` under the plank `=`, the ford
+               everywhere (it is waded), off into the trees at the south-
+               west; THE OLD TREE (the redwoods `R`) at the centre with the
+               names carved in it; the crag `##` under the staircase's lane.
+               Ways: N the trail (x −7.875) and the staircase (x 9.625), E
+               the redwoods (z −7.875) and Dead Man's Cave (z 9.625), W the
+               pasture (z −4.375) and the ritual ground (z 9.625), S the
+               forest. */
+            cave: {
+                rows: [
+                //  0         1         2
+                //  0123456789012345678901234567
+                    'TTTTTTTT...TTTTTTT...TTTTTTT',
+                    'T.T.....g...T.TT##.......T.T',
+                    'T....T..h.....T##..T...~~..T',
+                    'T...222222..T.......T.~~..TT',
+                    'T..T222222...........~~..T.T',
+                    'T....222222..T......~~......',
+                    'T.....2222.......T..~~......',
+                    '...T....b....T......~~....T.',
+                    '........a...T.......~=~T...T',
+                    '..T...........R.....~W~....T',
+                    'T.T....D.....RRRT...~~..T..T',
+                    'T.....T......RRRR...~~.....T',
+                    'T.........T...RR...~~..T...T',
+                    'TT..T...........T.~~......TT',
+                    'T......~~~~~~~~~~~~~.....T.T',
+                    '.....~~...T........~~.......',
+                    '....~~..........T...~~......',
+                    '..~~....T....T.......~~T....',
+                    'T~..T.......T.........~~...T',
+                    'T~.....TT..........T...~~.TT',
+                    'TT.T..T.....T.....T....T~..T',
+                    'TTTTTTTTTTTT...TTTTTTTTTTTTT',
+                ],
+                floor: 'grass_2', ledge: 'grass_rocky', rock: 'rock_wall_1',
+            },
+            doors: [
+                { id: 'forest', wall: 's', x: -0.875, leaf: null,
+                  label: 'THE FAIRY FOREST', sub: 'THE PATH BACK · ROOM 420',
+                  action: { room: 'site_prebuilt_fairy_forest', at: 'woods' },
+                  desc: 'The path back between two trees that lean in to hear you go. The forest proper is that way, and the crossing console, and the door that objected.' },
+                { id: 'trail', wall: 'n', x: -7.875, leaf: null,
+                  label: 'THE MOUNTAIN TRAIL', sub: 'UP · TOWARD THE MOUNTAIN',
+                  action: { room: 'site_prebuilt_fairy_forest_trail', at: 'clearing' },
+                  desc: 'The trail climbs. The mountain is the white thing over the trees to the north-west, and it has been there the whole time.' },
+                { id: 'stair', wall: 'n', x: 9.625, leaf: null,
+                  label: 'THE STAIRCASE', sub: 'A FLIGHT OF STAIRS · IN THE WOODS',
+                  action: { room: 'site_prebuilt_fairy_forest_stair', at: 'clearing' },
+                  desc: 'Past the crag, a clearing with a staircase in it. Nobody built it there. It is in good repair.' },
+                { id: 'redwoods', wall: 'e', z: -7.875, leaf: null,
+                  label: 'THE REDWOOD TRAIL', sub: 'EAST · TOWARD THE GROVE',
+                  action: { room: 'site_prebuilt_fairy_forest_redwoods', at: 'clearing' },
+                  desc: 'The trees get taller as you go. By the creek they are older than the Department, and they know it.' },
+                { id: 'deadmans', wall: 'e', z: 9.625, leaf: null,
+                  label: 'DEAD MAN’S CAVE', sub: 'THE CRAG · THE STORM DRAIN',
+                  action: { room: 'site_prebuilt_fairy_forest_deadmans', at: 'clearing' },
+                  desc: 'A crag with a mouth in it and paint on the rock. Water comes out of it that did not go in.' },
+                { id: 'pasture', wall: 'w', z: -4.375, leaf: null,
+                  label: 'THE BACK PASTURE', sub: 'WEST · THE FENCE LINE',
+                  action: { room: 'site_prebuilt_fairy_forest_pasture', at: 'clearing' },
+                  desc: 'The trees thin into grass and a fence, and the fence has two gates, and neither of them is the Department’s.' },
+                { id: 'ritual', wall: 'w', z: 9.625, leaf: null,
+                  label: 'THE RITUAL GROUND', sub: 'THE STONES · THE FIRE',
+                  action: { room: 'site_prebuilt_fairy_forest_ritual', at: 'clearing' },
+                  desc: 'Candle smoke on the wind, from the west. The stones are older than the candles and the candles are recent.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'railing_1m',     x: -16.625, z: -13.7, face: 0 },                   // THE KNOLL'S RIM (the park rule's rail): the drop to the trail landing
+                { key: 'railing_1m',     x: -14.875, z: -13.7, face: 0 },
+                { key: 'railing_1m',     x: -13.125, z: -13.7, face: 0 },
+                { key: 'railing_1m',     x: -11.375, z: -13.7, face: 0 },
+                { key: 'cave_torch',     x: -2.625, z: 16.625 },                            // the torches at the paths: the way in, the trail, the stair, the crag, the pasture
+                { key: 'cave_torch',     x: -6.125, z: -16.625 },
+                { key: 'cave_torch',     x: 11.375, z: -16.625 },
+                { key: 'cave_torch',     x: 21.875, z: 6.125 },
+                { key: 'cave_torch',     x: -21.875, z: -0.875 },
+                { key: 'candle_ring',    x: 4.375, z: 4.375, y: 0.0 },                      // at the old tree's foot: somebody's, and this week's
+                { key: 'cardboard_boxes', x: -21.875, z: 12.25, face: 20 },                 // Facilities' rope, at the ritual path
+                { key: 'paper_sheet',    x: -4.375, z: 14.875, y: 0.01, face: 60 },         // a form pinned under a stone: WOODS — WHICH
+                { key: 'floor_stain',    x: 2.625, z: -4.375 },
+                { key: 'lesson_sign',    x: 14.875, z: -2.625, face: 270 },                 // a signpost at the stream: seven arms, six of them right
+            ],
+            agents: [],
+            npcSpots: [{ x: -3.5, z: 3.5, face: 60, race: 'fairy' }, { x: 12.25, z: 12.25, face: 300, race: 'bigfoot' }],
+            onlineSpots: [],
+            lines: [
+                '“Which way is the ranch?” “Left at the tree.” “Which tree?” “The tree.”',
+                '“The names on the trunk.” “Two of them.” “One is mine.” “The other one is not yet.”',
+                '“You can see the mountain from here.” “You can see the mountain from everywhere. That is what it is for.”',
+                '“Seven paths.” “Six, and the one you came in by.” “That is seven.” “That is the one you leave by.”',
+            ],
+            spawn: { x: -0.875, z: 14.0, face: 0 },
+        },
+        /* ── THE MOUNTAIN TRAIL — the switchbacks up to Shasta: two tiers, a stream at the foot, the door at the top ── */
+        site_prebuilt_fairy_forest_trail: {
+            label: 'THE WOODS · THE MOUNTAIN TRAIL',
+            sub: 'THE SWITCHBACKS · TWO TIERS · THE WAY TO ROOM 14179',
+            kind: 'box', site: 'prebuilt_fairy_forest', part: 'trail',
+            shell: hqWoodsShell({ plate: { x: 0, z: -15.0, y: 7.0 }, floorColor: 0x7a8c5a }),
+            /* the grid (14 × 18): the floor with the stream at the foot, the
+               ramp `a b` up the east side onto THE TERRACE (lvl 2), the ramp
+               `c d` up the west side onto THE TOP TIER (lvl 4) and the
+               mountain's door in the north wall up there — a door you climb
+               to. `Q` / `Z` are trees standing on the tiers. */
+            cave: {
+                rows: [
+                //  01234567890123
+                    'TTTTT444TTTTTT',
+                    'T#444444444T#T',
+                    'T44444444444#T',
+                    'T4444QQ4444#TT',
+                    'T#d444444444TT',
+                    'TTc22222222T#T',
+                    'T222222ZZ222TT',
+                    'T2222Z22222b2T',
+                    'T..........aTT',
+                    'T.T....T..T..T',
+                    'T........TT..T',
+                    'T..T.........T',
+                    'TT.....~~....T',
+                    'T.T...~~..T..T',
+                    'T....~~......T',
+                    'T.T..~....T.TT',
+                    'T......T.....T',
+                    'TTTTT...TTTTTT',
+                ],
+                legend: { 'Q': { lvl: 4, tree: 'tree_2' }, 'Z': { lvl: 2, tree: 'tree' } },
+                floor: 'grass_2', ledge: 'grass_rocky', rock: 'rock_wall_1',
+            },
+            doors: [
+                { id: 'clearing', wall: 's', x: -0.875, leaf: null,
+                  label: 'THE CLEARING', sub: 'BACK DOWN TO THE CROSSROADS',
+                  action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'trail' },
+                  desc: 'Back down. The clearing is where every path in the woods ends up, including the ones that do not.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'railing_1m',     x: -4.375, z: -7.3, face: 0 },                     // THE TOP TIER'S RIM (the park rule's rail) over the terrace
+                { key: 'railing_1m',     x: -2.625, z: -7.3, face: 0 },
+                { key: 'railing_1m',     x: -0.875, z: -7.3, face: 0 },
+                { key: 'railing_1m',     x: -0.875, z: -2.15, face: 0 },                    // the terrace's rim over the floor
+                { key: 'railing_1m',     x: 0.875, z: -2.15, face: 0 },
+                { key: 'railing_1m',     x: 2.625, z: -2.15, face: 0 },
+                { key: 'cave_torch',     x: -9.625, z: 12.25 },                             // the trail's torches: the foot, the terrace, the top
+                { key: 'cave_torch',     x: 8.75, z: 5.25 },
+                { key: 'cave_torch',     x: -7.875, z: -4.375 },
+                { key: 'cave_torch',     x: 7.875, z: -12.25 },
+                { key: 'paper_sheet',    x: 4.375, z: -13.125, y: 0.01, face: 200 },        // a hand-drawn map of the mountain's inside, weighted with a stone
+                { key: 'floor_stain',    x: -2.625, z: 7.0 },
+                { key: 'cardboard_box',  x: -7.875, z: -0.875, face: 30 },                  // a cache of rope on the terrace: the switchbacks are the long way and Facilities knows a short one
+            ],
+            agents: [],
+            npcSpots: [{ x: 2.625, z: -12.25, face: 200, race: 'nordic' }, { x: -7.875, z: 9.625, face: 40, race: 'yeti' }],
+            onlineSpots: [],
+            lines: [
+                '“How far is the mountain?” “Two tiers.” “That is not a distance.” “It is here.”',
+                '“The snow does not melt.” “It is not snow.” “Then what is on the mountain?” “The mountain.”',
+                '“There is a door at the top.” “There is always a door at the top.”',
+            ],
+            spawn: { x: -2.625, z: 12.25, face: 0 },
+        },
+        /* ── THE REDWOOD TRAIL — the old trees, the creek and its plank, the owl's gate at the far end ── */
+        site_prebuilt_fairy_forest_redwoods: {
+            label: 'THE WOODS · THE REDWOOD TRAIL',
+            sub: 'THE OLD TREES · THE CREEK · THE WAY TO ROOM 23',
+            kind: 'box', site: 'prebuilt_fairy_forest', part: 'redwoods',
+            shell: hqWoodsShell({ plate: { x: 0, z: -9.8, y: 5.0 }, floorColor: 0x5e6e46, mood: { light: 0x9fb8d8, ambient: 0.36 } }),
+            /* the grid (16 × 12): the redwoods `R` in ranks, the creek `~`
+               across the trail with the plank `=` over its deep bit, a
+               hummock (lvl 1, the ramp `a`) on the north side, the grove's
+               gate on the east wall */
+            cave: {
+                rows: [
+                //  0123456789012345
+                    'TTRTTTTRTTTTRTTT',
+                    'TR....R...R..RTT',
+                    'T..R.....R.1...T',
+                    'TR..R.~~...a.R.T',
+                    '......~~....R...',
+                    '..R...==........',
+                    '....R.~~..R.....',
+                    'TR....~~.....R.T',
+                    'T...R.~~..R....T',
+                    'TR....~~....R..T',
+                    'T..R.D~~D......T',
+                    'TTRTTTTTTTTRTTTT',
+                ],
+                floor: 'grass_2', ledge: 'grass_rocky', rock: 'rock_wall_1',
+            },
+            doors: [
+                { id: 'clearing', wall: 'w', z: -0.875, leaf: null,
+                  label: 'THE CLEARING', sub: 'BACK TO THE CROSSROADS',
+                  action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'redwoods' },
+                  desc: 'Back west, where the trees are young enough to be trees.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'railing_1m',     x: -0.875, z: -2.5, face: 0 },                     // the plank's landing rails (the park rule)
+                { key: 'railing_1m',     x: -0.875, z: 2.5, face: 0 },
+                { key: 'cave_torch',     x: -10.5, z: 4.375 },                              // the lantern trail: three stakes, one of them moving when not watched
+                { key: 'cave_torch',     x: 3.5, z: -7.0 },
+                { key: 'cave_torch',     x: 10.5, z: 4.375 },
+                { key: 'candle_ring',    x: 8.75, z: -5.25, y: 0.0 },
+                { key: 'paper_sheet',    x: -5.25, z: 7.0, y: 0.01, face: 110 },
+                { key: 'floor_stain',    x: 5.25, z: 0.875 },
+            ],
+            agents: [],
+            npcSpots: [{ x: 5.25, z: -7.0, face: 200, race: 'fairy' }, { x: -8.75, z: 5.25, face: 60, race: 'gnome' }],
+            onlineSpots: [],
+            lines: [
+                '“How old is that one?” “Older than the Bureau.” “How do you know?” “It said so.”',
+                '“Mind the plank.” “Why?” “It is not always there.”',
+                '“The lantern.” “What lantern?” “Exactly.”',
+            ],
+            spawn: { x: -9.625, z: 0.875, face: 90 },
+        },
+        /* ── THE BACK PASTURE — the fence line with two gates in it: the ranch's and the house's ── */
+        site_prebuilt_fairy_forest_pasture: {
+            label: 'THE WOODS · THE BACK PASTURE',
+            sub: 'THE FENCE LINE · TWO GATES · ROOMS 512 AND 13',
+            kind: 'box', site: 'prebuilt_fairy_forest', part: 'pasture',
+            shell: hqWoodsShell({ plate: { x: 0, z: -9.8, y: 4.4 }, floorColor: 0x8a9a5e, mood: { light: 0xc8b0e8, ambient: 0.4 } }),
+            /* the grid (16 × 12): open grass, the knoll (lvl 1, the ramp `m`
+               up its west side — the crop circle is on top), the creek off
+               the woods in the south-east; the ranch's gate on the west wall,
+               the house's garden gate on the north wall (the fence line),
+               the clearing on the east */
+            cave: {
+                rows: [
+                //  0123456789012345
+                    'TTTTTT...TTTTTTT',
+                    'T..............T',
+                    'T.T.......TT...T',
+                    'T....1111......T',
+                    '....m1111.......',
+                    '.....1111.......',
+                    '................',
+                    'T..T.......~~..T',
+                    'T.........~~...T',
+                    'T..D.....~~..T.T',
+                    'T........~~....T',
+                    'TTTTTTTTTTTTTTTT',
+                ],
+                floor: 'grass_2', ledge: 'grass_rocky', rock: 'rock_wall_1',
+            },
+            doors: [
+                { id: 'clearing', wall: 'e', z: -0.875, leaf: null,
+                  label: 'THE CLEARING', sub: 'BACK INTO THE TREES',
+                  action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'pasture' },
+                  desc: 'Back into the trees. The pasture stops where they start; it has been asked to.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'railing_1m',     x: -11.375, z: -9.3, face: 0 },                    // THE FENCE (the park rule's rail): the line the two gates hang in
+                { key: 'railing_1m',     x: -9.625, z: -9.3, face: 0 },
+                { key: 'railing_1m',     x: -7.875, z: -9.3, face: 0 },
+                { key: 'railing_1m',     x: 2.625, z: -9.3, face: 0 },
+                { key: 'railing_1m',     x: 4.375, z: -9.3, face: 0 },
+                { key: 'railing_1m',     x: 6.125, z: -9.3, face: 0 },
+                { key: 'ritual_circle',  x: -2.625, z: -3.5, y: 0.0 },                      // THE CROP CIRCLE on the knoll: the ranch's, and this season's
+                { key: 'cave_torch',     x: -12.25, z: 5.25 },
+                { key: 'cave_torch',     x: 12.25, z: -7.0 },
+                { key: 'cave_torch',     x: 12.25, z: 7.0 },
+                { key: 'cardboard_boxes', x: -12.25, z: -5.25, face: 340 },                 // the ranch hands' tools, left in 1994
+                { key: 'floor_stain',    x: 7.0, z: 0.875 },
+                { key: 'paper_sheet',    x: -5.25, z: 5.25, y: 0.01, face: 20 },
+            ],
+            agents: [],
+            npcSpots: [{ x: 7.0, z: 5.25, face: 300, race: 'skinwalker' }, { x: -3.5, z: -3.5, face: 180, race: 'scarecrow' }],
+            onlineSpots: [],
+            lines: [
+                '“Whose fence is it?” “The ranch’s.” “And the gate?” “The house’s.” “And the pasture?” “The woods’.”',
+                '“Something on the mesa.” “There is no mesa here.” “Then what is it on?”',
+                '“The circle is fresh.” “They always are.”',
+            ],
+            spawn: { x: 0.875, z: 3.5, face: 270 },
+        },
+        /* ── THE STAIRCASE — the lone flight in the woods: four wooden risers to a landing and a door with nothing behind it, which opens ── */
+        site_prebuilt_fairy_forest_stair: {
+            label: 'THE WOODS · THE STAIRCASE',
+            sub: 'A FLIGHT OF STAIRS · A LANDING · A DOOR',
+            kind: 'box', site: 'prebuilt_fairy_forest', part: 'stair',
+            shell: hqWoodsShell({ plate: { x: 0, z: -9.8, y: 5.6 }, floorColor: 0x66784a, mood: { light: 0xb0c4ff, ambient: 0.34 } }),
+            /* the grid (12 × 12): the flight `E G I J` (four wooden risers,
+               one level each — the walker climbs one per step) up to THE
+               LANDING (`J`, lvl 4, 3 × 3) against the north wall where the
+               door stands; a dead tree, a mound (lvl 1, the ramp `a`) */
+            cave: {
+                rows: [
+                //  012345678901
+                    'TTTTJJJTTTTT',
+                    'T.T.JJJ..T.T',
+                    'T...JJJ....T',
+                    'T..T.J...T.T',
+                    'T....I.....T',
+                    'T.T..G..T..T',
+                    'T....E.....T',
+                    'T..T....T..T',
+                    'T.....D1...T',
+                    'TT.T...a.T.T',
+                    'T..........T',
+                    'TTTT...TTTTT',
+                ],
+                legend: { 'E': { lvl: 1, key: 'wood_planks' }, 'G': { lvl: 2, key: 'wood_planks' }, 'I': { lvl: 3, key: 'wood_planks' }, 'J': { lvl: 4, key: 'wood_planks' } },
+                floor: 'grass_2', ledge: 'grass_rocky', rock: 'rock_wall_1',
+            },
+            doors: [
+                { id: 'clearing', wall: 's', x: -0.875, leaf: null,
+                  label: 'THE CLEARING', sub: 'BACK TO THE CROSSROADS',
+                  action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'stair' },
+                  desc: 'Back past the crag. The stairs stay where they are, which is the most that can be said for them.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'railing_1m',     x: -2.625, z: -6.125, face: 90 },                  // THE LANDING'S BANISTERS (the park rule's rail): 3.5 m up
+                { key: 'railing_1m',     x: 0.875, z: -6.125, face: 90 },
+                { key: 'railing_1m',     x: -2.625, z: -7.875, face: 90 },
+                { key: 'railing_1m',     x: 0.875, z: -7.875, face: 90 },
+                { key: 'cave_torch',     x: -7.875, z: 7.0 },
+                { key: 'cave_torch',     x: 7.0, z: 7.0 },
+                { key: 'cave_torch',     x: -5.25, z: -5.25 },
+                { key: 'lesson_sign',    x: 3.5, z: -1.75, face: 270, lesson: 'stair' },     // the plate at the foot: DO NOT USE THE STAIRS. USE THE STAIRS.
+                { key: 'paper_sheet',    x: -3.5, z: 3.5, y: 0.01, face: 250 },
+                { key: 'floor_stain',    x: 2.625, z: 2.625 },
+            ],
+            agents: [],
+            npcSpots: [{ x: 3.5, z: -5.25, face: 250, race: 'mothman' }],
+            onlineSpots: [],
+            lines: [
+                '“Who built the stairs?” “Nobody.” “Who maintains them?” “Also nobody. Look at the varnish.”',
+                '“Do not go up.” “Why not?” “The door at the top opens.” “Onto what?” “Onto the building. That is the problem.”',
+                '“Four steps.” “Four big ones.”',
+            ],
+            spawn: { x: -4.375, z: 7.0, face: 0 },
+        },
+        /* ── DEAD MAN'S CAVE — the crag with a storm drain in it: the channel, the paint on the rock, the grate onto THE TUNNEL ── */
+        site_prebuilt_fairy_forest_deadmans: {
+            label: 'THE WOODS · DEAD MAN’S CAVE',
+            sub: 'THE CRAG · THE STORM DRAIN · THE WAY TO THE TUNNEL',
+            kind: 'box', site: 'prebuilt_fairy_forest', part: 'deadmans',
+            shell: hqWoodsShell({ plate: { x: -4.0, z: -9.8, y: 5.0 }, floorColor: 0x6a6a5e, wallColor: 0x5e5a56, mood: { light: 0x9fc0a8, ambient: 0.36 } }),
+            /* the grid (14 × 12): the woods on the west, THE CRAG (rock to
+               the sky) on the east with a three-cell mouth, the channel `~`
+               running out of it into the trees, oil `@` on the concrete, a
+               heap (lvl 1, the ramp `a`) by the grate; the grate is the
+               link door on the east wall — the far side is Room 2's
+               platform */
+            cave: {
+                rows: [
+                //  01234567890123
+                    'TTTTTT########',
+                    'T.T..#......@#',
+                    'T...T#.@..#..#',
+                    'T....#.....#.#',
+                    '.....#..~~~...',
+                    '......~~~.....',
+                    '......~~~~....',
+                    'T....#...~~..#',
+                    'T.T..#.@..~.1#',
+                    'T....#...@~.a#',
+                    'T..T.#......@#',
+                    'TTTTTT########',
+                ],
+                floor: 'concrete_floor', ledge: 'concrete_floor', rock: 'rock_wall_2',
+            },
+            doors: [
+                { id: 'clearing', wall: 'w', z: -0.875, leaf: null,
+                  label: 'THE CLEARING', sub: 'BACK OUT · INTO THE TREES',
+                  action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'deadmans' },
+                  desc: 'Back out of the mouth into the trees, where the paint stops and the water keeps going.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'railing_1m',     x: 3.5, z: -1.9, face: 0 },                        // the channel's handrail (the park rule)
+                { key: 'railing_1m',     x: 5.25, z: -1.9, face: 0 },
+                { key: 'graffiti_wall',  x: -1.62, z: -6.125, face: 90 },                   // THE PAINT: on the crag's west face, on the inside rock, by the grate
+                { key: 'graffiti_wall',  x: 5.17, z: -6.125, face: 270 },
+                { key: 'graffiti_wall',  x: 10.42, z: 5.25, face: 270 },
+                { key: 'graffiti_wall',  x: -1.62, z: 4.375, face: 90 },
+                { key: 'cave_torch',     x: -9.625, z: -7.0 },
+                { key: 'cave_torch',     x: -9.625, z: 7.0 },
+                { key: 'flicker_tube',   x: 5.25, z: -7.0, y: 3.2, face: 0 },               // a tube on a bracket in the crag: the Works' power, nobody's bill
+                { key: 'cardboard_boxes', x: 9.625, z: -8.75, face: 15 },
+                { key: 'floor_stain',    x: 0.875, z: 5.25 },
+                { key: 'paper_sheet',    x: 7.0, z: 7.0, y: 0.01, face: 140 },              // a tag on a form: the Department's motto, crossed out, corrected
+            ],
+            agents: [],
+            npcSpots: [{ x: 3.5, z: 5.25, face: 320, race: 'ghoul' }, { x: -7.0, z: 3.5, face: 90, race: 'gangster' }],
+            onlineSpots: [],
+            lines: [
+                '“Who is the dead man?” “Read the wall.” “The wall says everybody.” “Then everybody.”',
+                '“The water comes OUT.” “Drains do that.” “Into the woods?” “Into somewhere.”',
+                '“That is the subway.” “That is a grate.” “Behind the grate.” “Behind the grate is the subway.”',
+            ],
+            spawn: { x: -7.875, z: 2.625, face: 90 },
+        },
+        /* ── THE RITUAL GROUND — the stones, the fire, the circle that is Room 333's circle ── */
+        site_prebuilt_fairy_forest_ritual: {
+            label: 'THE WOODS · THE RITUAL GROUND',
+            sub: 'THE STONES · THE FIRE · THE WAY TO ROOM 333',
+            kind: 'box', site: 'prebuilt_fairy_forest', part: 'ritual',
+            shell: hqWoodsShell({ plate: { x: 0, z: -9.8, y: 4.6 }, floorColor: 0x5a6a44, mood: { light: 0xff9a50, ambient: 0.3 } }),
+            /* the grid (12 × 12): a ring of eight STANDING STONES (`S`, a
+               3.5 m block the walker never climbs) round the circle and the
+               altar, a mound (lvl 1, the ramp `a`) in the south-west; the
+               circle's door on the north wall opens on Room 333 — the same
+               chalk, the same candles, indoors */
+            cave: {
+                rows: [
+                //  012345678901
+                    'TTTT...TTTTT',
+                    'T.T........T',
+                    'T.....S....T',
+                    'T..S.....S.T',
+                    'T...........',
+                    'TS.......S..',
+                    'T...........',
+                    'T..........T',
+                    'T.1S.....S.T',
+                    'T.a...S....T',
+                    'T.T......T.T',
+                    'TTTTTTTTTTTT',
+                ],
+                legend: { 'S': { lvl: 4, key: 'rocks_dark_fantasy', walk: false } },
+                floor: 'grass_2', ledge: 'grass_rocky', rock: 'rock_wall_1',
+            },
+            doors: [
+                { id: 'clearing', wall: 'e', z: -0.875, leaf: null,
+                  label: 'THE CLEARING', sub: 'BACK TO THE CROSSROADS',
+                  action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'ritual' },
+                  desc: 'Back east, downwind of the candles.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'railing_1m',     x: -6.125, z: 3.9, face: 0 },                      // the mound's rail (the park rule)
+                { key: 'railing_1m',     x: -4.375, z: 3.9, face: 0 },
+                { key: 'ritual_circle',  x: 0.0, z: 0.0, y: 0.0 },                          // THE CIRCLE: the same chalk as Room 333's, drawn from the other side
+                { key: 'candle_ring',    x: 0.0, z: 0.0, y: 0.0 },
+                { key: 'stone_altar',    x: 0.0, z: -2.625, face: 0 },
+                { key: 'cave_torch',     x: -7.875, z: -7.0 },
+                { key: 'cave_torch',     x: 7.0, z: -7.0 },
+                { key: 'cave_torch',     x: 7.0, z: 7.0 },
+                { key: 'cave_torch',     x: -7.875, z: 7.0 },
+                { key: 'folding_chair',  x: -3.5, z: 2.625, face: 40 },                     // the members' chairs: the fire is formal
+                { key: 'folding_chair',  x: 3.5, z: 2.625, face: 320 },
+                { key: 'paper_sheet',    x: 2.625, z: -4.375, y: 0.01, face: 190 },         // the minutes, weighted with a stone
+                { key: 'floor_stain',    x: -1.75, z: 1.75 },
+            ],
+            agents: [],
+            npcSpots: [{ x: 2.625, z: 3.5, face: 0, race: 'necromancer' }, { x: -2.625, z: -4.375, face: 160, race: 'goatman' }],
+            onlineSpots: [],
+            lines: [
+                '“Whose circle is it?” “Ours.” “It is the same circle as the one downstairs.” “It is the same circle.”',
+                '“The stones face in.” “Stones do not face.” “These do.”',
+                '“Is the fire lit?” “The fire is always lit.” “Who lights it?” “The next one.”',
+            ],
+            spawn: { x: -2.625, z: 5.25, face: 0 },
+        },
+        /* ══════════════════════════════════════════════════════════════════
            H-WING (HQ plan 5.5, stage 1 — 2026-09-14 rev 4). See DOOR_HQ.hwing
            for the shape and the rules. Every room here is the one look:
            beige carpet, drywall, ceiling tile, fluorescents, right angles,
@@ -29768,6 +30343,14 @@ const HQ_CAVE_STD = (function () {
         '=': { lvl: 0, bridge: 'wood_planks', under: 'W' }, 'B': { lvl: 4, bridge: 'wood_planks', under: 'P' }, 'H': { lvl: 4, bridge: 'obsidian', under: 'Y' },
         /* the sheets a cell may wear: obsidian at the floor / on the shelf, crystal growing out of the floor (lit) */
         '@': { lvl: 0, key: 'obsidian' }, 'O': { lvl: 4, key: 'obsidian' }, 'K': { lvl: 0, key: 'crystal', glow: 0x9fe8c8 },
+        /* THE WOODS (HQ plan 9.3 stage 3, 2026-09-16): a TREE cell — the floor
+           at its level with a tree standing on it; a wall to the walker (never
+           walked, never a hazard), a tree to the eye (three-renderer.js
+           _hqBuildCave plants the foliage model), ROCK to the field's raster
+           (a wall of forest round a fight). `tree` names the foliage kind:
+           T = a broadleaf, D = a dead tree, R = a redwood (tall). A room's
+           legend may raise one (`{ lvl: 2, tree: 'tree' }`). */
+        'T': { lvl: 0, tree: 'tree' }, 'D': { lvl: 0, tree: 'tree_5' }, 'R': { lvl: 0, tree: 'tree_4', tall: true },
     };
     /* THE RAMPS: a cell rising ONE level toward a side — the letter is the
        base level: a–f rise NORTH from 0–5, g–l SOUTH, m–r EAST, s–x WEST */
@@ -29791,8 +30374,9 @@ function hqCaveCompile(cave, shellH) {
         for (let x = 0; x < W; x++) {
             const ch = rows[y][x] || ' ';
             const d = legend[ch] || legend['#'];
-            const c = { ch: ch, x: x, y: y, lvl: d.lvl | 0, key: d.key || null, walk: d.walk !== false, fluid: null, rock: !!d.rock, slope: d.slope || null, bridge: d.bridge || null, under: null, glow: d.glow || null, tint: d.tint || cave.tint || null, top: 0, sheet: null };
+            const c = { ch: ch, x: x, y: y, lvl: d.lvl | 0, key: d.key || null, walk: d.walk !== false, fluid: null, rock: !!d.rock, slope: d.slope || null, bridge: d.bridge || null, under: null, glow: d.glow || null, tint: d.tint || cave.tint || null, top: 0, sheet: null, tree: d.tree || null, tall: !!d.tall };
             if (c.rock) { c.walk = false; c.key = c.key || rockKey; c.top = rockH; c.lvl = 0; }
+            else if (c.tree) { c.walk = false; c.key = c.key || (c.lvl > 0 ? ledgeKey : floorKey); c.top = c.lvl * L; }   // THE WOODS: the floor under a tree draws at its level; the cell is never walked
             else if (d.fluid) {
                 c.fluid = d.fluid; c.key = c.key || d.fluid;
                 c.top = c.lvl * L;                          // the bed
@@ -29950,21 +30534,21 @@ const HQ_TAPE_SHEET = {
     prebuilt_technoticlan: [['THE UPLINK', 'A screen of static that resolves into a floor plan of this building.', 'facility'], ['MOTHER', 'Nine frames of a woman at a console. The console is the one in Room 1337.', 'parents']],
     prebuilt_agartha:     [['THE ADIT', 'A lamp moving through the crystal. Nobody carries it.', 'evidence'], ['THE GREAT DOOR', 'An hour of a closed door, cut to eight seconds. It breathes.', 'evidence']],
     prebuilt_antarctica:  [['THE ICE CORE', 'Something frozen in the core. It is looking at the drill.', 'evidence'], ['THE EXPEDITION', 'Two parkas at a ridge. The taller one waves at the camera by name.', 'parents']],
-    prebuilt_shasta:      [['THE LENTICULAR', 'A cloud that holds still while the sky moves. Then it does not.', 'evidence'], ['THE TUNNEL MOUTH', 'A hand-drawn map of the mountain’s inside, pinned to a tree. Your father’s handwriting.', 'parents']],
+    prebuilt_shasta:      [['THE LENTICULAR', 'A cloud that holds still while the sky moves. Then it does not.', 'evidence']],
     prebuilt_stonehenge:  [['SOLSTICE', 'The stones throw two shadows. The sun is on the wrong side for one of them.', 'evidence'], ['THE WHEEL', 'The stones turn. The camera does not. Records is unhappy about this tape.', 'facility']],
     prebuilt_giza:        [['THE SHAFT', 'A robot camera reaching a door with two copper handles. Then the feed cuts.', 'evidence'], ['THE SURVEY, 1987', 'Two surveyors at the base. The empty frame in the hall had their photo.', 'parents']],
     prebuilt_heaven:      [['THE GATE', 'Clouds part on a corridor. The corridor is the one outside.', 'facility'], ['CHOIR', 'Eight seconds of singing with no source. The mic was off.', 'evidence']],
     prebuilt_cyberpunk:   [['BILLBOARD', 'An advert for the Department. We have never advertised.', 'facility'], ['THE NOODLE STAND', 'Two people eating under neon. The receipt on the table has your employee number.', 'parents']],
-    prebuilt_babel:       [['THE CLIMB', 'A stairwell that keeps going. The floor numbers repeat 13.', 'evidence'], ['ONE VOICE', 'Everyone on the tower says the same word. It is not a word.', 'evidence']],
+    prebuilt_babel:       [['ONE VOICE', 'Everyone on the tower says the same word. It is not a word.', 'evidence']],
     prebuilt_olympus:     [['THE FORGE', 'Sparks falling up. A hammer with no hand.', 'evidence'], ['NECTAR', 'A cup on a plinth, filling itself. Somebody drinks it off-camera.', 'evidence']],
     prebuilt_mars:        [['ROVER FEED 07', 'The rover turns to look at something behind it. The something waves.', 'evidence'], ['THE CRATER', 'A boot print beside the rover’s tracks. The rover has no boots.', 'evidence']],
     prebuilt_area51:      [['HANGAR 18', 'A craft on jacks. The jacks are made of the same thing as the craft.', 'evidence'], ['THE BADGE PHOTO', 'A man in a lab coat at the gate. He is holding a copy of this tape.', 'parents']],
-    prebuilt_skinwalker:  [['THE MESA', 'A shape on the mesa at dusk. It gets closer on every loop.', 'evidence'], ['THE RANCH HOUSE', 'A woman on the porch, looking into the yard. The yard looks back.', 'parents']],
+    prebuilt_skinwalker:  [['THE RANCH HOUSE', 'A woman on the porch, looking into the yard. The yard looks back.', 'parents']],
     prebuilt_hollow_earth: [['THE INNER SUN', 'A light under the ground. It has a horizon.', 'evidence'], ['THE WELL', 'A bucket coming up the rope. Something has written on the bucket.', 'evidence']],
-    prebuilt_fairy_forest: [['THE RING', 'Toadstools in a circle. On the second pass, the circle is one wider.', 'evidence'], ['THE LANTERN', 'A lantern moving between trees at ankle height. It stops when watched.', 'evidence']],
+    prebuilt_fairy_forest: [['THE RING', 'Toadstools in a circle. On the second pass, the circle is one wider.', 'evidence']],
     prebuilt_moon:        [['THE LANDER', 'A footprint beside the lander that was not there in the previous frame.', 'evidence'], ['EARTHRISE', 'The Earth rises. It is the wrong colour.', 'evidence']],
     prebuilt_vatican:     [['THE ARCHIVE', 'A reading room with one lamp lit. The book is open to a floor plan of the Bureau.', 'facility'], ['THE CONFESSIONAL', 'A voice through the screen. It says your callsign.', 'parents']],
-    prebuilt_bohemian_grove: [['THE OWL', 'A statue of an owl. The owl blinks once, at 0:06.', 'evidence'], ['THE CREMATION OF CARE', 'Men in robes at a fire. One of them is on the Bureau’s wall.', 'facility']],
+    prebuilt_bohemian_grove: [['THE OWL', 'A statue of an owl. The owl blinks once, at 0:06.', 'evidence']],
     prebuilt_gobekli:     [['THE PILLARS', 'Carvings of animals. On the loop, one animal has moved.', 'evidence'], ['THE DIG', 'A trench and a trowel. The hand holding the trowel wears your mother’s ring.', 'parents']],
     prebuilt_northpole:   [['THE WORKSHOP', 'Benches, tools, no one. A bell rings on the ceiling.', 'evidence'], ['THE LIST', 'A scroll unrolling. Your name is on it. Twice.', 'facility']],
     prebuilt_flatlands:   [['THE EDGE', 'A camera on a tripod at the edge. There is an edge.', 'evidence'], ['THE FOURTH CORNER', 'Somebody counting corners in a field. They count five.', 'facility']],
@@ -29976,7 +30560,7 @@ const HQ_TAPE_SHEET = {
     prebuilt_singularity: [['THE DROP', 'Eight seconds of falling. The camera never lands.', 'evidence'], ['THE WATCHER', 'A face made of the wrong number of angles. It is polite.', 'evidence']],
     prebuilt_saturn:      [['THE RINGS', 'Ice grains in the ring, one of them square.', 'evidence'], ['THE HEXAGON', 'The pole’s storm from above. It is a door seen edge-on.', 'evidence']],
     prebuilt_strip:       [['THE LUXOR BEAM', 'The beam at night. Something climbs it.', 'evidence'], ['THE CHAPEL', 'Two people at an altar, out of focus. The register says your surname.', 'parents']],
-    prebuilt_downtown:    [['THE ALLEY CAMERA', 'A security feed. A door in the alley wall opens onto this building’s foyer.', 'facility'], ['RUSH HOUR', 'A crowd at a crossing. Everyone stops. Everyone looks up.', 'evidence']],
+    prebuilt_downtown:    [['RUSH HOUR', 'A crowd at a crossing. Everyone stops. Everyone looks up.', 'evidence']],
     /* the complexes (9.2 / 9.3): one per part */
     site_prebuilt_haunted_hall:     [['THE FRONT DOOR, INSIDE', 'The hall from the stairs. The door opens for someone who is not there.', 'evidence']],
     site_prebuilt_haunted_upstairs: [['THE WARDROBE', 'A coat hanging in the wardrobe. It is your father’s coat. The label says CAMELOT.', 'parents']],
@@ -30002,7 +30586,14 @@ const HQ_TAPE_SHEET = {
     /* the exploration floors (Phase 8): never the hall, the foyer, a lobby or a corridor — the finds are the reward for going somewhere. A floor room's tape is a BONUS: the laundry, the locker room and the lecture hall gave theirs to the spaceship (rev 18); the boiler room, the server room and the ritual room to the Dutchman (rev 19); the garage, the kitchen, the cold room and the dungeon to THE URBAN BLOCK (9.2 stage 4, 2026-09-16) — the hundred stays a hundred */
     /* 7.7 WAVE 2 (2026-09-16): Room 345's two tapes came off the sacrifice room and Room X (the hundred stays a hundred) */
     prebuilt_bermuda:     [['FLIGHT 19, 14:10', 'Five aircraft in formation over a flat sea. The lead turns. The others turn with it. The sea does not.', 'evidence'], ['THE BUOY', 'A lantern buoy at the right angle. The tape is level; the horizon behind it is not.', 'facility']],
-    garden:    [['1618', 'A tree in the garden. Two names carved in it. One is yours, the other is not yet.', 'parents']],
+    /* THE WOODS (9.3 stage 3, 2026-09-16): seven tapes re-homed — the garden's tree (the names are carved in THE OLD TREE now), and six sites' second tapes (Shasta's map on the tree, the ranch's mesa, the forest's lantern, the grove's fire, Babel's climb, Downtown's alley camera) — the hundred stays a hundred; a built site keeps at least one */
+    site_prebuilt_fairy_forest_clearing: [['1618', 'A tree in the clearing. Two names carved in it. One is yours, the other is not yet.', 'parents']],
+    site_prebuilt_fairy_forest_trail:    [['THE TUNNEL MOUTH', 'A hand-drawn map of the mountain’s inside, pinned to a tree on the trail. Your father’s handwriting.', 'parents']],
+    site_prebuilt_fairy_forest_redwoods: [['THE LANTERN', 'A lantern moving between the redwoods at ankle height. It stops when watched.', 'evidence']],
+    site_prebuilt_fairy_forest_pasture:  [['THE MESA', 'A shape on the mesa at dusk, over the pasture fence. It gets closer on every loop.', 'evidence']],
+    site_prebuilt_fairy_forest_stair:    [['THE CLIMB', 'A staircase in the woods that keeps going. The landing is the fourth step every time.', 'evidence']],
+    site_prebuilt_fairy_forest_deadmans: [['THE ALLEY CAMERA', 'A security feed of a storm drain. A door in the drain wall opens onto this building’s platform.', 'facility']],
+    site_prebuilt_fairy_forest_ritual:   [['THE CREMATION OF CARE', 'Men in robes at a fire between the stones. One of them is on the Bureau’s wall.', 'facility']],
 };
 /* the room a sheet key names: a site key → its generated board room */
 function hqTapeRoomId(key) { return DOOR_HQ.rooms[key] ? key : (DOOR_HQ.rooms['site_' + key] ? 'site_' + key : null); }
@@ -31297,8 +31888,10 @@ function hqFieldRasterCave(roomId, info, ox, oz) {
             const gx = ox + x, gy = oz + y;
             const src = (gx >= 0 && gy >= 0 && gx < info.w && gy < info.h) ? info.cells[gy][gx] : null;
             let cell;
-            if (!src || src.rock) {
-                cell = { x, y, gx, gy, in: false, rock: true, hazard: false, tile: null, key: known(info.rock) ? info.rock : 'cave_wall', fluid: null, under: null, src: src || null };
+            if (!src || src.rock || src.tree) {
+                /* THE WOODS: a tree cell is a rock column to the fight, wearing the forest sheet — a wall of trees round the clearing */
+                const rk = (src && src.tree) ? (known('forest') ? 'forest' : (known(info.rock) ? info.rock : 'cave_wall')) : (known(info.rock) ? info.rock : 'cave_wall');
+                cell = { x, y, gx, gy, in: false, rock: true, hazard: false, tile: null, key: rk, fluid: null, under: null, src: src || null };
             } else {
                 const tile = hqFieldCellTile(info, src);
                 const hazard = !!(src.fluid && !src.walk);

@@ -149,8 +149,8 @@ test('THE SUBWAY’s third station: Downtown’s platform stands its train FREE 
     assert.strictEqual(cy.doors.filter(d => d.link).length, 3, 'Cyberpunk carries three link doors now — the lane rule’s ration');
     for (const o of cy.doors) if (o !== st && o.wall === 'n') assert.ok(Math.abs(o.x - st.x) >= 4.4, 'the stair shares a lane with ' + o.id);
     const sub = D.hqWorldRoutes('foyer').find(r => r.id === 'subway');
-    assert.strictEqual(sub.stations.map(s => s.room).join(' — '), 'tunnel — site_prebuilt_cyberpunk — site_prebuilt_downtown', 'the line is walked from the tunnel: one stop back is Downtown');
-    assert.strictEqual(sub.legs.length, 2);
+    assert.strictEqual(sub.stations.map(s => s.room).join(' — '), 'site_prebuilt_fairy_forest — tunnel — site_prebuilt_cyberpunk — site_prebuilt_downtown', 'the line is walked from its end — THE WOODS\' storm drain (9.3 stage 3) — through the tunnel; the last stop is Downtown');
+    assert.strictEqual(sub.legs.length, 3);   // THE WOODS (9.3 stage 3): the storm drain is the third leg
     const here = D.hqWorldRoutes('site_prebuilt_downtown_subway').find(r => r.id === 'subway').stations.find(s => s.room === 'site_prebuilt_downtown');
     assert.ok(here && here.here, 'standing on the platform counts as standing in Downtown');
     assert.ok(D.hqWorldRoutes('foyer').find(r => r.id === 'highway').stations.some(s => s.site === 'prebuilt_downtown'), 'Downtown is an interchange: the highway and the subway');

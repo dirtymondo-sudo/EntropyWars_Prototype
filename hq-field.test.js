@@ -161,7 +161,7 @@ test('THE WINDOW\'S CHOICE from every door landing of every chamber: both feet i
             const t = cellCentre(inf, tc.x, tc.y);
             const W = win(id, w, t); n++;
             assert.ok(W && W.board && W.board.cave, id + ' ' + d.id + ': a window');
-            assert.equal(W.room, id); assert.equal(W.site, 'prebuilt_hollow_earth');
+            assert.equal(W.room, id); assert.equal(W.site, D.hqRoomSite(id), 'the window names its room\'s site (the cave is Hollow Earth\'s, THE WOODS the Fairy Forest\'s)');
             assert.equal(W.id, 'field:' + id + ':' + W.ox + ',' + W.oz);
             const cw = W.cells.walker, ct = W.cells.target;
             [cw, ct].forEach(c => assert.ok(c.x >= 0 && c.y >= 0 && c.x < S && c.y < S, 'inside the window'));

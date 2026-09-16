@@ -1069,6 +1069,11 @@ exactly this; the building gives it a wall.
    missing row fails `npm test`.
 6. `npm test`; index.html bump; deliver data.js + three-renderer.js (+
    server.js for ranked) per RULE #1.
+7. THE DIRECTORY (2026-09-16, the user's rule): nothing to draw — the map,
+   the register and the world tab are generated from the doors and the
+   threshold — but hq-map.test.js THE DIRECTORY GUARD fails, naming the
+   room, if the new site room / any new room is not reachable from the
+   foyer along doors or a `links` row. A room you add must be walked to.
 
 #### 7.11 ⚙ ✅ (2026-09-10, §9) THE PROP KIT — thirty models, and Room 86's furniture arrives early
 The user uploaded thirty Meshy GLBs to R2 `Assets/door/models/` on
@@ -2575,6 +2580,35 @@ Guild Hub was the prototype; this plan is the building.
 - Hazard Pay wallet on the strip vs only at the Quartermaster. Rec: strip.
 
 ## 9. Build log (append per session)
+
+### 2026-09-16 — 9.3 STAGE 3: THE WOODS (the forest on the cave grid) + THE DIRECTORY GUARD (local delivery, not uploaded)
+The user's brief: "The Woods needs to be like the cave — a big forest area with different paths to the fairy
+forest (→ Camelot), Bohemian Grove, a random staircase, Dead Man's Cave (a sewer with graffiti onto the
+tunnel / subway), a cult ritual spot, Skinwalker Ranch, Mount Shasta; Shasta and Camelot as WEENIES on the
+horizon; and the map / room directory must always be flagged for update when rooms are added." Shipped:
+- **THE WOODS**, the Fairy Forest's complex (seven `site_prebuilt_fairy_forest_*` parts on the cave grid, OPEN
+  under one sky — `hqWoodsShell`): THE CLEARING (the crossroads, seven doors), THE MOUNTAIN TRAIL (two tiers,
+  the mountain's door up top), THE REDWOOD TRAIL, THE BACK PASTURE (the ranch's gate + the house's garden gate
+  in one fence), THE STAIRCASE (four wooden risers to a landing and an EXIT door onto THE STAIRWELL),
+  DEAD MAN'S CAVE (a crag, the storm drain, `graffiti_wall`, a barred grate onto THE TUNNEL — the subway's
+  fourth station) and THE RITUAL GROUND (eight standing stones, the circle that is Room 333's).
+- **THE TREE CELL** (`T` / `D` / `R` in HQ_CAVE_STD; a legend may raise one): a wall to the walker, the floor
+  under it, rock (in the `forest` sheet) to the field's raster; planted by `_hqBuildCave` with the near kit's
+  foliage. No stalactites under an open sky.
+- **THE LINKS**: rev 7's three fence gates re-pointed onto the parts (`woods_haunted` / `woods_skinwalker` /
+  `woods_grove`), `woods_shasta`, `woods_stair` (→ stairwell), `woods_sewer` (→ tunnel, route SUBWAY),
+  `woods_ritual` (→ Room 333), `fairy_camelot` (a `pool` seam, both ends free on the north strips).
+- **THE WEENIES**: `shell.sky.landmarks` → `_hqBuildLandmarks` / `_hqLandmarkBuilders.peak` (Shasta, NNW) and
+  `.castle` (Camelot, SSE) — fixed on the horizon over the treeline, never drifting.
+- **THE DIRECTORY GUARD** (hq-map.test.js): every room reachable and placed, every site / part / threshold on
+  the map, the register and the world tab in agreement — or the test names the room. 7.10 grew row 7.
+- Tapes: seven re-homed (the garden's `1618` and six sites' second tapes); a built site keeps ≥ 1.
+Tests: `hq-woods.test.js` (9), the guard, eight pins updated (hq-cave / hq-finds / hq-field / hq-world /
+hq-stage2 / hq-urban / doorhq). NOT BUILT: a `hard` board tape for the six one-tape sites, a variant beat for
+the woods (D7), natives on the tiers, the Grove's owl as a third weenie (the user's call — see the chat's
+weenie list), the tape titles' rewrite (A15). UNSEEN LIVE (RULE #1c): all of it — the trees' scale and count
+(~150 clones in the clearing), the wedge ramps as trails, the wooden risers, the two landmarks' size and haze,
+the graffiti, the pool seams, the tunnel's grate against the platform's furniture.
 
 ### 2026-09-16 — PHASE 9 QUALITY REVIEW: the brief reconciled against rev 63 (PHASE9_QUALITY_PLAN.md; docs only, nothing uploaded)
 The user's Phase 9 quality brief (2026-09-15, written against rev 60) was read against the

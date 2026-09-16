@@ -37936,10 +37936,11 @@ const ThreeRenderer = (function () {
             im.instanceMatrix.needsUpdate = true; im.renderOrder = 1; G.add(im); return im;
         };
         /* ── the cells, sorted ── */
-        var tops = {}, ledges = {}, rocks = [], slopes = [], bridges = [], fluids = [], glows = [];
+        var tops = {}, ledges = {}, rocks = [], slopes = [], bridges = [], fluids = [], glows = [], trees = [];
         for (var y = 0; y < Hh; y++) for (var x = 0; x < W; x++) {
             var c = info.cells[y][x];
             if (!c.rock && inHole(x, y)) continue;   // the field's column stands for it
+            if (c.tree) trees.push({ x: x, y: y, c: c });   // THE WOODS: the floor under it draws below (a top or a ledge), the tree stands on that
             if (c.rock) {
                 /* an interior rock cell (rock on every side) is never seen: skip it */
                 var n4 = [at(x, y - 1), at(x, y + 1), at(x - 1, y), at(x + 1, y)];
@@ -38066,10 +38067,29 @@ const ThreeRenderer = (function () {
         glows.forEach(function (g) {
             var gl = _hzGlowSprite(1.2 * CM, g.c.glow, 0.22, 0, 0, 0); gl.position.set(cellX(g.x) * U, (g.c.top + 0.45) * U, cellZ(g.y) * U); G.add(gl); pulse(gl.material, 0.1, 0.6 + rng() * 0.6);
         });
-        /* THE STALACTITES: over the open cells, seeded, never over a door lane's sill row */
+        /* THE WOODS (HQ plan 9.3 stage 3, 2026-09-16): a TREE cell wears the near kit's
+           foliage model (_nrTree — the same OBJ the map settings and the world rim
+           plant; the proc trunk + sphere stands in until the file lands, and the HQ
+           loop's _nrPollPending swaps it), seeded per cell, on the cell's own top.
+           Never a blocker: the cell is a wall to the walker already (hqCaveFeet null). */
+        if (trees.length && typeof _nrTree === 'function') {
+            var TK = { ts: CM, rng: rng, _wdFog: null };
+            trees.forEach(function (t) {
+                var kind = t.c.tree, tall = !!t.c.tall;
+                var h = tall ? 5.2 : (kind === 'tree_5' || kind === 'tree_6') ? 2.3 : 2.6;
+                var tg = null;
+                try { tg = _nrTree(TK, kind, { h: h }); } catch (e) { tg = null; }
+                if (!tg) return;
+                tg.position.set((cellX(t.x) + (rng() - 0.5) * C * 0.35) * U, t.c.top * U + 0.3, (cellZ(t.y) + (rng() - 0.5) * C * 0.35) * U);
+                tg.rotation.y = rng() * Math.PI * 2;
+                tg._ew_hqTree = true;
+                G.add(tg);
+            });
+        }
+        /* THE STALACTITES: over the open cells, seeded, never over a door lane's sill row — and never under an open sky (THE WOODS has no ceiling to hang them from) */
         var open = [];
         for (var sy = 1; sy < Hh - 1; sy++) for (var sx = 1; sx < W - 1; sx++) { var oc = info.cells[sy][sx]; if (!oc.rock && !inHole(sx, sy)) open.push([sx, sy]); }
-        var nSt = Math.min(90, Math.floor(open.length / 7)), stMat = caveMat(info.rock, S.wallColor != null ? S.wallColor : null, { sh: 3, lift: 0.05 });
+        var nSt = S.open ? 0 : Math.min(90, Math.floor(open.length / 7)), stMat = caveMat(info.rock, S.wallColor != null ? S.wallColor : null, { sh: 3, lift: 0.05 });
         for (var si = 0; si < nSt && open.length; si++) {
             var pick = open[Math.floor(rng() * open.length)];
             var len = 0.7 + rng() * 2.2, rad = 0.12 + rng() * 0.3;
@@ -38718,6 +38738,74 @@ const ThreeRenderer = (function () {
        loop (_hq.sky.floaters), plus the Department's lone doors and a few
        haloes like every outdoor battle roster. Nothing here is the battle
        horizon: that group, its key cache and its floaters are untouched. */
+    /* ── THE WEENIES — landmarks on an outdoor room's horizon (HQ plan 9.3 stage 3, 2026-09-16) ──
+       A row on `shell.sky.landmarks`: { kind, deg, dist, s, y }. `deg` = the bearing (0 = north,
+       clockwise — the star chart's rule), `dist` = the share of the sky disc (0.6–1.0), `s` = a
+       size multiplier, `y` = the base in shares of the disc (default just under the horizon so the
+       foot hides in the haze). Every kind builds in metres (U px per metre) and faces the room.
+       `peak` = a snow-capped cone with a shoulder and a lenticular cloud over it (Shasta);
+       `castle` = a curtain wall, four corner towers and the keep with its lit windows (Camelot).
+       Adding a kind = one builder here; the woods' rooms name theirs in data.js HQ_WOODS_LANDMARKS. */
+    var _hqLandmarkBuilders = {
+        peak: function (U, o, rng) {
+            var g = new THREE.Group(), s = o.s || 1;
+            var h = 46 * s, r = 40 * s;
+            var rock = _hqMat('mountain', 6, 4, { color: 0x8892a6, shininess: 2, specular: 0x080808 });
+            var snow = _hqMat('marble_light', 4, 3, { color: 0xf2f6ff, shininess: 4 });
+            var cone = new THREE.Mesh(new THREE.ConeGeometry(r * U, h * U, 11), rock); cone.position.y = h * U / 2; g.add(cone);
+            var sh = new THREE.Mesh(new THREE.ConeGeometry(r * 0.72 * U, h * 0.58 * U, 9), rock); sh.position.set(r * 0.55 * U, h * 0.29 * U, r * 0.2 * U); g.add(sh);
+            var sh2 = new THREE.Mesh(new THREE.ConeGeometry(r * 0.5 * U, h * 0.42 * U, 8), rock); sh2.position.set(-r * 0.62 * U, h * 0.21 * U, -r * 0.1 * U); g.add(sh2);
+            var cap = new THREE.Mesh(new THREE.ConeGeometry(r * 0.43 * U + 0.4 * U, h * 0.43 * U, 11), snow); cap.position.y = (h - h * 0.43 / 2) * U + 0.3 * U; g.add(cap);
+            /* the lenticular over the summit — the mountain's own cloud (the far roster's builder, hung still) */
+            try { var len = _hzLenticular(rng || Math.random); if (len) { len.position.set(0, (h + 9 * s) * U, 0); len.scale.multiplyScalar(0.9); g.add(len); } } catch (e) {}
+            return g;
+        },
+        castle: function (U, o, rng) {
+            var g = new THREE.Group(), s = o.s || 1;
+            var wall = _hqMat('castle_wall', 8, 2, { color: 0x9aa0ac, shininess: 3 });
+            var keepM = _hqMat('bricks_2', 6, 6, { color: 0x8c909c, shininess: 3 });
+            var roof = _hqMat(null, 1, 1, { color: 0x2c3c58, shininess: 8 });
+            var W = 44 * s, Hw = 12 * s, T = 2.4 * s;
+            [[0, -W / 2], [0, W / 2]].forEach(function (p) { var b = _hqBox(W, Hw, T, wall); b.position.set(p[0] * U, Hw / 2 * U, p[1] * U); g.add(b); });
+            [[-W / 2, 0], [W / 2, 0]].forEach(function (p) { var b = _hqBox(T, Hw, W, wall); b.position.set(p[0] * U, Hw / 2 * U, p[1] * U); g.add(b); });
+            var tower = function (x, z, rr, hh) {
+                var t = new THREE.Mesh(new THREE.CylinderGeometry(rr * U, rr * 1.08 * U, hh * U, 12), wall); t.position.set(x * U, hh / 2 * U, z * U); g.add(t);
+                var c = new THREE.Mesh(new THREE.ConeGeometry(rr * 1.18 * U, rr * 1.6 * U, 12), roof); c.position.set(x * U, (hh + rr * 0.8) * U, z * U); g.add(c);
+            };
+            [[-W / 2, -W / 2], [W / 2, -W / 2], [-W / 2, W / 2], [W / 2, W / 2]].forEach(function (p) { tower(p[0], p[1], 5 * s, 20 * s); });
+            var keep = _hqBox(20 * s, 24 * s, 20 * s, keepM); keep.position.y = 12 * s * U; g.add(keep);
+            tower(0, 0, 5.5 * s, 36 * s);
+            /* the banner on the great tower, and the lit windows */
+            var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.15 * s * U, 0.15 * s * U, 8 * s * U, 6), roof); pole.position.y = (36 + 5.5 * 0.8 + 4) * s * U; g.add(pole);
+            var flag = _hqBox(4 * s, 2.2 * s, 0.1 * s, _hqMat(null, 1, 1, { color: 0xb8322e, shininess: 4 })); flag.position.set(2 * s * U, (36 + 5.5 * 0.8 + 6.5) * s * U, 0); g.add(flag);
+            for (var i = 0; i < 6; i++) {
+                var wx = (-6 + (i % 3) * 6) * s, wy = (8 + Math.floor(i / 3) * 8) * s;
+                var gl = _hzGlowSprite(2.2 * s * U, 0xffb060, 0.55, 0.1, 0.05, 0.8 + i * 0.13); gl.position.set(wx * U, wy * U, (10 * s + 0.6) * U); g.add(gl);
+            }
+            return g;
+        },
+    };
+    function _hqBuildLandmarks(H, list, discR) {
+        var U = _hqUnits(), group = new THREE.Group(); group.name = 'hqLandmarks'; group.renderOrder = -41;
+        var seed = 0x3aa7; list.forEach(function (l) { seed = (seed * 31 + String(l.kind + l.deg).length) >>> 0; });
+        var rng = _mulberry32(seed);
+        var pulse0 = _hzGlowPulse.length;
+        list.forEach(function (l) {
+            var build = _hqLandmarkBuilders[l.kind]; if (!build) return;
+            var m = null; try { m = build(U, l, rng); } catch (e) { console.warn('[HQ] landmark failed', l.kind, e); }
+            if (!m) return;
+            var a = (l.deg || 0) * Math.PI / 180, rad = discR * ((l.dist != null) ? l.dist : 0.9);
+            var x = Math.sin(a) * rad, z = -Math.cos(a) * rad, y = ((l.y != null) ? l.y : -0.03) * discR;
+            m.position.set(x, y, z);
+            m.rotation.y = Math.atan2(-x, -z);   // face the room
+            m._ew_landmark = l.kind; m._ew_landmarkId = l.id || null;
+            _stampHorizonHaze(m, rad, y, discR);
+            group.add(m);
+        });
+        H.scene.add(group);
+        H.sky.landmarks = group;
+        _hzGlowPulse.splice(pulse0).forEach(function (p) { if (p && p.mat) H.fxPulse.push(p); });
+    }
     function _hqBuildSky(room, Hx) {
         /* Hx: the record to build into (the main menu scene, 2026-09-08); default the live visit */
         var S = room.shell, sky = S.sky, H = Hx || _hq;
@@ -38730,6 +38818,11 @@ const ThreeRenderer = (function () {
         H.scene.add(dome);
         H.sky = { dome: dome, tint: new THREE.Color((sky.tint != null) ? sky.tint : 0x000000), fogC: new THREE.Color((sky.fog && sky.fog.color != null) ? sky.fog.color : 0x000000), floaters: [], group: null, night: (typeof sky.night === 'number') ? sky.night : (sky.night ? 1 : 0) };
         var theme = sky.scenery || 'cosmic';
+        /* THE WEENIES (HQ plan 9.3 stage 3, 2026-09-16): `sky.landmarks` — fixed bodies on the
+           horizon (a mountain, a castle) that never drift: something tall in the distance to
+           walk toward (Disney's rule). Built before the roster so a `scenery: 'none'` sky can
+           still wear one. */
+        if (Array.isArray(sky.landmarks) && sky.landmarks.length) { try { _hqBuildLandmarks(H, sky.landmarks, 6000); } catch (e) { console.warn('[HQ] landmarks failed', e); } }
         if (theme === 'none') return;
         var roster = _hzThemeRoster(theme) || _hzCosmicRoster();
         var dens = (sky.density != null) ? sky.density : 1;
@@ -40344,6 +40437,38 @@ const ThreeRenderer = (function () {
             }
             var m = new THREE.Mesh(new THREE.PlaneGeometry(4.2 * U, 4.2 * U), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.9, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }));
             m.rotation.x = -Math.PI / 2; m.position.y = 0.005 * U; g.add(m);
+            return g;
+        },
+        /* THE WOODS (9.3 stage 3, 2026-09-16): a spray-painted panel standing against a rock face — the tags are
+           drawn per panel (seeded by the placement's x / z), the paint faces local +z (the placer's `face`) */
+        graffiti_wall: function (U, p) {
+            var g = new THREE.Group();
+            if (typeof document === 'undefined') return g;
+            var seed = Math.round(((p && p.x) || 0) * 7 + ((p && p.z) || 0) * 13) & 0xffff, key = 'hq_graffiti_' + seed;
+            var tex = _hzFacTexCache[key];
+            if (!tex) {
+                var rng = _mulberry32((0x9a11 + seed) >>> 0);
+                var c = document.createElement('canvas'); c.width = 512; c.height = 320;
+                var x = c.getContext('2d');
+                var TAGS = ['DEAD MAN', 'THE DOOR IS A LIE', 'D.O.O.R. WAS HERE', 'NO EXIT', 'RM 13', 'DON\'T OPEN', 'OBSERVE', 'WHO LIT IT', '1618', 'KNOCK TWICE', 'THE WOODS ↑', 'EVERYBODY'];
+                var COLS = ['#ff4fa3', '#41e0ff', '#ffe14d', '#7dff5a', '#ff8a2b', '#d9d9ff', '#ff3b3b'];
+                var n = 3 + Math.floor(rng() * 3);
+                for (var i = 0; i < n; i++) {
+                    var t = TAGS[Math.floor(rng() * TAGS.length)], col = COLS[Math.floor(rng() * COLS.length)];
+                    x.save(); x.translate(60 + rng() * 380, 60 + rng() * 220); x.rotate((rng() - 0.5) * 0.5);
+                    x.font = 'bold ' + (34 + Math.floor(rng() * 40)) + 'px sans-serif'; x.textAlign = 'center';
+                    x.lineWidth = 10; x.strokeStyle = 'rgba(0,0,0,0.75)'; x.strokeText(t, 0, 0);
+                    x.fillStyle = col; x.fillText(t, 0, 0);
+                    x.restore();
+                    /* a drip or two */
+                    x.fillStyle = col; for (var d = 0; d < 3; d++) { var dx = 40 + rng() * 430, dy = 40 + rng() * 240; x.fillRect(dx, dy, 3, 8 + rng() * 40); }
+                }
+                /* an arrow and a crossed-out motto */
+                x.strokeStyle = COLS[Math.floor(rng() * COLS.length)]; x.lineWidth = 6; x.beginPath(); x.moveTo(60, 280); x.lineTo(200, 280); x.lineTo(180, 262); x.moveTo(200, 280); x.lineTo(180, 298); x.stroke();
+                tex = new THREE.CanvasTexture(c); tex.minFilter = THREE.LinearFilter; _hzFacTexCache[key] = tex;
+            }
+            var m = new THREE.Mesh(new THREE.PlaneGeometry(2.2 * U, 1.4 * U), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.94, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, side: THREE.DoubleSide }));
+            m.position.set(0, 1.05 * U, 0.03 * U); g.add(m);
             return g;
         },
         stone_altar: function (U) {
