@@ -5377,6 +5377,30 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-map-bar > i { display: flex; gap: 4px; font-style: normal; }
 .hq-map-stage { position: relative; background: #070a14; border: 1px solid rgba(184,160,96,0.4); box-shadow: inset 0 0 0 1px #000, inset 0 0 60px rgba(0,0,0,0.6); overflow: hidden; }
 .hq-map-svg { display: block; width: 100%; height: min(46vh, 380px); cursor: grab; touch-action: none; user-select: none; }
+/* THE MAP IS FULL SCREEN (2026-09-16, the user's rule: "it needs to take up the
+   entire screen, not a little panel"): map.js _hqOpenPanel puts .hq-panel-map on
+   #hqPanel for the directory only. The card becomes the whole frame, the body a
+   grid — the header across the top, the stage (the SVG fills it) on the left,
+   the side column (the picked node's card, the register, the lines) on the
+   right, ESC · CLOSE across the foot. Narrow screens stack the column under. */
+.hq-panel.hq-panel-map { background: #070a14; }
+.hq-panel.hq-panel-map .hq-panel-card { width: 100vw; height: 100vh; height: 100dvh; max-height: none; padding: 14px 18px 10px; display: flex; flex-direction: column; overflow: hidden; border: none; box-shadow: none; animation: none; }
+.hq-panel.hq-panel-map .hq-panel-x { top: 12px; right: 14px; z-index: 2; }
+.hq-panel.hq-panel-map #hqPanelBody { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) clamp(280px, 26vw, 380px); grid-template-rows: auto minmax(0, 1fr) auto; column-gap: 18px; }
+.hq-panel.hq-panel-map .hq-panel-hd { grid-column: 1 / -1; grid-row: 1; padding-bottom: 8px; margin-bottom: 8px; }
+.hq-panel.hq-panel-map .hq-map { grid-column: 1; grid-row: 2; display: flex; flex-direction: column; min-height: 0; margin: 0; }
+.hq-panel.hq-panel-map .hq-map-stage { flex: 1; min-height: 0; }
+.hq-panel.hq-panel-map .hq-map-svg { height: 100%; }
+.hq-panel.hq-panel-map .hq-map-legend { margin: 6px 0 0; }
+.hq-map-side { display: block; }
+.hq-panel.hq-panel-map .hq-map-side { grid-column: 2; grid-row: 2; min-height: 0; overflow-y: auto; padding-right: 4px; }
+.hq-panel.hq-panel-map .hq-map-side .hq-rows.hq-rows-scroll { max-height: none; }
+.hq-panel.hq-panel-map .hq-panel-foot { grid-column: 1 / -1; grid-row: 3; margin: 8px 0 0; }
+@media (max-width: 860px) {
+  .hq-panel.hq-panel-map #hqPanelBody { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) minmax(0, 34vh) auto; }
+  .hq-panel.hq-panel-map .hq-map-side { grid-column: 1; grid-row: 3; margin-top: 8px; }
+  .hq-panel.hq-panel-map .hq-panel-foot { grid-row: 4; }
+}
 .hq-map-svg:active { cursor: grabbing; }
 .hq-map-grid { fill: rgba(184,160,96,0.16); }
 .hq-map-bg { pointer-events: none; }

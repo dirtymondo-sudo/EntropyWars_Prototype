@@ -2766,7 +2766,6 @@
             let html = `<div class="hq-map"><div class="hq-map-bar"><span>${M.seen} OF ${M.total} PLACES CHARTED · ${M.q} IN QUESTION${charted ? ' · ' + charted.seen + ' OF ' + charted.total + ' SEAMS WALKED' : ''}</span><i><button class="hq-btn hq-btn-sm" data-mapzoom="in" title="zoom in">+</button><button class="hq-btn hq-btn-sm" data-mapzoom="out" title="zoom out">−</button><button class="hq-btn hq-btn-sm" data-mapfit="1" title="fit the charted map">FIT</button></i></div>`;
             html += `<div class="hq-map-stage">${_hqMapSvg(M)}</div>`;
             html += '<div class="hq-map-legend"><i class="lg-room">●</i> ROOM <i class="lg-site">◆</i> SITE <i class="lg-part">•</i> PART OF A SITE <i class="lg-q">?</i> UNCHARTED <i class="lg-lift">┃</i> THE ELEVATOR <i class="lg-seam">╌</i> A SEAM · DRAG TO PAN · WHEEL TO ZOOM · CLICK A NODE</div>';
-            html += _hqMapCardHtml(M);
             return html + '</div>';
         }
         /* after the panel's innerHTML lands: the reveal, the zoom, the handlers */
@@ -2874,6 +2873,9 @@
             let html = `<div class="hq-panel-hd"><b>THE MAP</b><span>BUILDING DIRECTORY · ${_hqEsc(room.label || 'CENTRAL EGRESS')} · YOU ARE HERE · LAYOUT SUBJECT TO REVISION</span></div>`;
             const mapHtml = _hqMapHtml();
             html += mapHtml;
+            /* THE SIDE COLUMN (full screen): the picked node's card, then the
+               register and the lines under it — the stage keeps the whole frame */
+            if (mapHtml) html += '<aside class="hq-map-side">' + _hqMapCardHtml(_hqMap.model);
             const seen = (typeof window.hqRoomsSeenRecord === 'function') ? window.hqRoomsSeenRecord(profile) : {};
             const known = id => !!(id && (seen[id] || id === _hqCurRoom || window.EW_HQ_MAP_ALL));
             if (!mapHtml) {
@@ -2913,6 +2915,7 @@
             html += _hqWorldHtml();
             html += '</details>';
             html += '<p class="hq-panel-note">The map draws what you have walked: a room you have stood in wears its number, a door you have seen leads to a question mark, and the rest is off the sheet until you get there. WALK moves you to the door; GO takes you to the room. The building stays consistent long enough to be memorised. The numbers are permanent, which is more than can be said for the rooms.</p>';
+            if (mapHtml) html += '</aside>';
             return html;
         }
         /* THE WORLD (HQ plan 9.3, 2026-09-15 rev 7): the directory's second
@@ -3598,6 +3601,10 @@
             else if (t.kind === 'notice') html = _hqNoticePanelHtml(t);
             else html = _hqNpcPanelHtml(t);
             body.innerHTML = html + '<p class="hq-panel-foot">ESC · CLOSE</p>';
+            /* THE MAP is a FULL-SCREEN sheet (the user's rule, 2026-09-16): the
+               stage fills the screen, the card + the register ride a side column
+               (styles-base.css .hq-panel-map); every other target keeps the card */
+            panel.classList.toggle('hq-panel-map', _hqPanelIsMap(t));
             if (typeof _hqMapAfterRender === 'function') _hqMapAfterRender(body);   // THE MAP: the reveal + the handlers
             panel.style.display = '';
             _hqSetPrompt(null);
@@ -3607,9 +3614,13 @@
         /* o.keepPaused (2026-09-08): close on the way to a screen / a launch
            without the unpause — unpausing re-grabs the pointer, and that grab
            landed on the next screen (the dead cursor on match-select) */
+        function _hqPanelIsMap(t) {
+            const a = t && t.counter && t.counter.action;
+            return !!(a && a.overlay === 'directory');
+        }
         window._hqClosePanel = function (o) {
             const panel = _hqEl('hqPanel');
-            if (panel) panel.style.display = 'none';
+            if (panel) { panel.style.display = 'none'; panel.classList.remove('hq-panel-map'); }
             _hqPanelTarget = null;
             if (o && o.keepPaused) return;
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active()) { ThreeRenderer.hq.setPaused(false); _hqSetPrompt(ThreeRenderer.hq.target()); } } catch (e) {}
