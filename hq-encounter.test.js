@@ -126,7 +126,7 @@ test('SOURCE · the renderer: no number keys, LEFT CLICK holstered = the attack 
     assert.ok(TR.includes("if (ch.strike) { if (performance.now() < ch.strike.until && ch.jumpT < 0) want = ch.strike.name; else ch.strike = null; }"), 'the clip owns the rig');
     assert.ok(TR.includes("if (_hq !== H || H.paused) return;   // the room changed"), 'a swing that outlives the room never lands');
     assert.ok(TR.includes("        strike: _hqStrikeClick,") && TR.includes("encounterAim: function () { return _hq ? _hqEncounterAim() : null; },"), 'the API');
-    assert.ok(TR.includes("if (H.opts.onEncounter) { try { H.opts.onEncounter({ gesture: gesture, target: target, room: room, x: pl.x, z: pl.z, y: pl.y, yaw: H.cam.yaw, pitch: H.cam.pitch }); }"), 'the eye rides the event (9.4 seam 2, later)');
+    assert.ok(TR.includes("if (H.opts.onEncounter) { try { H.opts.onEncounter({ gesture: gesture, target: target, room: room, x: pl.x, z: pl.z, y: pl.y, yaw: H.cam.yaw, pitch: H.cam.pitch, eye: _hqEncounterEye(), board: _hqEncounterBoard() }); }"), 'the eye + the board ride the event (9.4 seam 2)');
 });
 
 test('SOURCE · map.js: the enter opts, the guards (wild room · the gun · the switch · never online), the launch, THE LAST ROSTER inside _msConfirm, the sticky config, the ward on a loss, the prompt, the officer row', () => {
@@ -151,11 +151,146 @@ test('SOURCE · battle.js: the intro cinematic is off PER LAUNCH (never the glob
     assert.ok(BT.includes("if (window._hqEncounterRun && window._hqEncounterRun.noIntro) return false;"), '_introCineEligible');
     assert.ok(BT.includes("!(window._hqEncounterRun && window._hqEncounterRun.noIntro) && !state.devAutoSim"), 'the leaf warm-up too');
     assert.ok(!BT.includes("window.EW_DISABLE_INTRO_CINE = true;   // encounter"), 'never the global switch');
-    assert.ok(BT.includes("const erun = window._hqEncounterRun;") && BT.includes("hqEncounterRecord(p, { site: erun.site, room: erun.room, race: erun.race, won,"), 'the record on the commit');
+    assert.ok(BT.includes("const erun = window._hqEncounterRun;") && BT.includes("hqEncounterRecord(p, { site: erun.site, room: erun.room, race: erun.race, id: erun.id || null, won,"), 'the record on the commit, the native\'s id with it');
     assert.ok(BT.includes("window._hqEncounterResult = { won, site: erun.site, room: erun.room, race: erun.race, label: erun.label || erun.race };"));
 });
 
 test('SOURCE · index.html: the hint under the door gun\'s', () => {
     assert.ok(IX.includes('<span>CLICK attack = ENGAGE a native</span>'), 'always shown — the attack needs no gun');
     assert.ok(!IX.includes('2–4 cast'), 'the number keys are gone');
+});
+
+/* ══ STAGE 2 (2026-09-15): THE EYE · THE CLEARED ROOM · THE GUARDED ENVELOPE · THE WARD'S CHART ══ */
+const CAM = fs.readFileSync(__dirname + '/three-camera.js', 'utf8');
+const ST = fs.readFileSync(__dirname + '/state.js', 'utf8');
+
+test('THE EYE (seam 2): the walker\'s camera in room metres + the board under the room → a pose in TILES; null without a board; the gaze normalised; the eye clamped near the rim', () => {
+    const eye = g('hqEncounterEye');
+    const board = { N: 8, C: 1.75, half: 7 };
+    const P = eye({ eye: { x: -7, y: 1.9, z: 7, dx: 0, dy: -0.6, dz: 0.8, ground: 0, px: -6, pz: 6, py: 0 }, board });
+    assert.ok(P);
+    assert.equal(P.tx, 0); assert.equal(P.tz, 8, 'the south-west corner of the board is tile (0, 8)');
+    assert.ok(Math.abs(P.up - 1.9 / 1.75) < 1e-9, 'tiles above the ground under the eye');
+    assert.ok(Math.abs(Math.hypot(P.dx, P.dy, P.dz) - 1) < 1e-9, 'a unit gaze');
+    assert.equal(P.look, 3);
+    assert.equal(JSON.stringify(P), JSON.stringify(JSON.parse(JSON.stringify(P))), 'serialisable (it rides the run marker)');
+    /* the eye over a raised cell: the ground read is the column's; over a wall the walker's feet stand in */
+    assert.ok(Math.abs(eye({ eye: { x: 0, y: 3.5, z: 0, dx: 1, dy: 0, dz: 0, ground: 1.75 }, board }).up - 1) < 1e-9);
+    assert.ok(Math.abs(eye({ eye: { x: 0, y: 3.5, z: 0, dx: 1, dy: 0, dz: 0, ground: null, py: 1.75 }, board }).up - 1) < 1e-9, 'no ground under the eye → the walker\'s');
+    assert.equal(eye({ eye: { x: 0, y: 1, z: 0, dx: 0, dy: 0, dz: 1 }, board: null }), null, 'a cave / a complex part: no board, no seed');
+    assert.equal(eye(null), null); assert.equal(eye({ eye: null, board }), null);
+    assert.equal(eye({ eye: { x: 0, y: 1, z: 0, dx: 0, dy: 0, dz: 0, ground: 0 }, board }).dz, 1, 'a zero gaze looks north-down');
+    const far = eye({ eye: { x: 40, y: 1, z: -40, dx: 0, dy: 0, dz: 1, ground: 0 }, board });
+    assert.equal(far.tx, 10); assert.equal(far.tz, -2, 'clamped two tiles past the rim');
+    assert.ok(eye({ eye: { x: 0, y: 0.1, z: 0, dx: 0, dy: 0, dz: 1, ground: 0.5 }, board }).up >= 0.15, 'never under the ground');
+});
+
+test('THE EYE · ThreeCamera.seedPose: the first sync starts at the seed (never the ideal), eases home over the window, and a snapImmediate inside the window does not cut it', () => {
+    let nowMs = 1000;
+    const camObj = { position: { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; } }, up: { set() {} }, look: null, aspect: 1, fov: 45, lookAt(x, y, z) { this.look = [x, y, z]; }, updateProjectionMatrix() {} };
+    const ctx = vm.createContext({ window: {}, performance: { now: () => nowMs }, console, Math, Number, isFinite,
+        THREE: { PerspectiveCamera: function () { return camObj; }, Vector2: function () {}, Vector3: function () {}, Raycaster: function () {}, Plane: function () {} } });
+    vm.runInContext(CAM + '\nthis.ThreeCamera = ThreeCamera;', ctx);
+    const C = ctx.ThreeCamera;
+    C.create(960, 540);
+    const cam = { x: 3, y: 3, zoom: 1, tilt: 50, yaw: 0 };
+    /* the reference: where a fresh camera SNAPS for this frame */
+    C.sync(cam); const home = [camObj.position.x, camObj.position.y, camObj.position.z];
+    /* the seed: the eye at tile (2, 6), one tile up, looking north */
+    C.snapImmediate();
+    assert.equal(C.seedPose({ tx: 2, tz: 6, up: 1, dx: 0, dy: -0.3, dz: -1 }, 1.4), true);
+    assert.equal(C.seedState().pending, true);
+    nowMs += 16; C.sync(cam);
+    assert.equal(C.seedState().pending, false); assert.equal(C.seedState().easing, true);
+    assert.ok(Math.abs(camObj.position.x - 2 * 128) < 1e-6 && Math.abs(camObj.position.z - 6 * 128) < 1e-6 && Math.abs(camObj.position.y - 128) < 1e-6, 'the first frame IS the seed: ' + JSON.stringify(camObj.position));
+    assert.ok(camObj.look[2] < camObj.position.z, 'looking north (−z)');
+    /* a match start snaps the camera home — inside the window it is ignored, the ease goes on */
+    C.snapImmediate();
+    nowMs += 16; C.sync(cam);
+    const d0 = Math.hypot(camObj.position.x - home[0], camObj.position.y - home[1], camObj.position.z - home[2]);
+    assert.ok(d0 > 100, 'still far from home one frame in (no cut): ' + d0);
+    let prev = d0;
+    for (let i = 0; i < 100; i++) { nowMs += 16; C.sync(cam); const d = Math.hypot(camObj.position.x - home[0], camObj.position.y - home[1], camObj.position.z - home[2]); assert.ok(d <= prev + 1e-6, 'monotone toward home'); prev = d; }
+    assert.ok(prev < 12, 'home (within a tenth of a tile) after ~1.6 s: ' + prev);
+    assert.equal(C.seedState().easing, false);
+    /* after the window a snap cuts as always */
+    C.seedPose({ tx: 0, tz: 0, up: 1, dx: 0, dy: 0, dz: 1 }, 1); nowMs += 16; C.sync(cam);
+    assert.ok(Math.abs(camObj.position.x) < 1e-6, 'a second seed lands');
+    nowMs += 5000; C.snapImmediate(); C.sync(cam);
+    assert.ok(Math.abs(camObj.position.x - home[0]) < 1e-6, 'past the window a snap is a snap');
+    assert.equal(C.seedPose(null), false); assert.equal(C.seedPose({ tx: NaN }), false, 'a bad seed is refused');
+});
+
+test('THE CLEARED ROOM: a WIN files the native\'s spawn id under the room for TODAY; a loss files nothing; ids accumulate; yesterday\'s clearing lapses', () => {
+    const rec = g('hqEncounterRecord'), cleared = g('hqEncounterCleared');
+    const p = profile();
+    assert.equal(cleared(p, 'site_prebuilt_dumb'), null);
+    rec(p, { site: 'prebuilt_dumb', room: 'site_prebuilt_dumb', race: 'grey', id: 'hq-native-0', won: false, date: g('hqToday')() });
+    assert.equal(cleared(p, 'site_prebuilt_dumb'), null, 'a loss clears nothing');
+    rec(p, { site: 'prebuilt_dumb', room: 'site_prebuilt_dumb', race: 'grey', id: 'hq-native-0', won: true, date: g('hqToday')() });
+    assert.deepEqual(J(cleared(p, 'site_prebuilt_dumb')), { date: g('hqToday')(), ids: ['hq-native-0'] });
+    rec(p, { site: 'prebuilt_dumb', room: 'site_prebuilt_dumb', race: 'grey', id: 'hq-npc-1', won: true, date: g('hqToday')() });
+    rec(p, { site: 'prebuilt_dumb', room: 'site_prebuilt_dumb', race: 'grey', id: 'hq-npc-1', won: true, date: g('hqToday')() });
+    assert.equal(cleared(p, 'site_prebuilt_dumb').ids.join(','), 'hq-native-0,hq-npc-1', 'ids accumulate, never twice');
+    assert.equal(cleared(p, 'site_prebuilt_hell'), null, 'another room is untouched');
+    /* yesterday's clearing has lapsed — the room repopulates */
+    p.door.hq.cleared.site_prebuilt_dumb.date = '2020-01-01';
+    assert.equal(cleared(p, 'site_prebuilt_dumb'), null);
+    /* a new day's win starts a fresh list */
+    rec(p, { room: 'site_prebuilt_dumb', id: 'hq-native-2', won: true, date: g('hqToday')() });
+    assert.equal(cleared(p, 'site_prebuilt_dumb').ids.join(','), 'hq-native-2');
+    assert.equal(cleared(null, 'x'), null); assert.equal(cleared(p, null), null);
+});
+
+test('THE GUARDED ENVELOPE: in a wild room with natives of its own the pay stands only once the room is cleared today; a roster-only room, a facility room and every tape are never guarded', () => {
+    const guarded = g('hqRoomGuarded');
+    const wild = Object.keys(HQ.rooms).filter(id => guarded(id));
+    assert.ok(wild.length >= 10, 'the sites with natives: ' + wild.length);
+    wild.forEach(id => assert.ok(g('hqRoomSite')(id), id + ' is wild'));
+    ['central_egress', 'foyer', 'cafeteria', 'garage', 'locker', 'coldroom', 'hwing_w'].forEach(id => assert.equal(guarded(id), false, id + ' is never guarded'));
+    HQ.finds.forEach(f => {
+        if (f.kind !== 'pay') assert.equal(f.guard, undefined, f.id + ': only the envelope is guarded');
+        else assert.equal(!!f.guard, guarded(f.room), f.id);
+    });
+    const pay = HQ.finds.find(f => f.guard);
+    assert.ok(pay, 'at least one guarded envelope');
+    /* a day the envelope is live */
+    let now = Date.UTC(2026, 9, 1);
+    for (let i = 0; i < 40 && !g('hqFindLiveToday')(pay, g('hqToday')(new Date(now))); i++) now += 86400000;
+    assert.ok(g('hqFindLiveToday')(pay, g('hqToday')(new Date(now))), 'a live day found');
+    const p = profile();
+    assert.ok(D.hqFindsInRoom(pay.room, p, now).every(f => f.id !== pay.id), 'the natives sit on it');
+    g('hqEncounterRecord')(p, { room: pay.room, id: 'hq-native-0', won: true, date: g('hqToday')(new Date(now)) });
+    assert.ok(D.hqFindsInRoom(pay.room, p, now).some(f => f.id === pay.id), 'cleared today — it glows');
+    assert.ok(D.hqFindsInRoom(pay.room, p, now + 86400000 * 3).every(f => f.id !== pay.id), 'tomorrow the room is theirs again');
+    const beat = D.hqCollectFind(p, pay.id, now);
+    assert.equal(beat.ok, true, 'and it is taken like any envelope');
+});
+
+test('THE WARD\'S CHART: exited from a wild room TODAY → RECOVERING (the cot is made up); a win, or yesterday\'s exit, leaves the chart as it was', () => {
+    const med = g('hqMedicalRecord'), rec = g('hqEncounterRecord'), today = g('hqToday')();
+    const p = profile({ career: { matchesPlayed: 4, wins: 3, losses: 1 } });
+    assert.equal(med(p).condition, 'FIT FOR DUTY');
+    rec(p, { site: 'prebuilt_hell', room: 'site_prebuilt_hell', race: 'demon', won: false, date: today });
+    const m = med(p);
+    assert.equal(m.condition, 'RECOVERING'); assert.equal(m.tone, 'unstable');
+    assert.ok(/HELL/.test(m.note) && /DEMON/.test(m.note), m.note);
+    assert.equal(m.exited.race, 'demon');
+    rec(p, { site: 'prebuilt_hell', room: 'site_prebuilt_hell', race: 'demon', won: true, date: today });
+    assert.equal(med(p).condition, 'FIT FOR DUTY', 'the last one held');
+    rec(p, { site: 'prebuilt_hell', room: 'site_prebuilt_hell', race: 'demon', won: false, date: '2020-01-01' });
+    assert.equal(med(p).condition, 'FIT FOR DUTY', 'an old exit is history');
+    p.door.leave = true; rec(p, { won: false, date: today });
+    assert.equal(med(p).condition, 'ADMINISTRATIVE LEAVE', 'leave outranks the cot');
+});
+
+test('SOURCE · stage 2: the camera seed (both sync branches, the snap guard, the API), the battle\'s first frame + no VS card for an encounter, the renderer\'s eye / board / the cleared natives, map.js\'s run marker', () => {
+    ['function seedPose(seed, easeS)', 'function _consumeSeed(nowS)', 'function seedState()', "if (_seedUntil > performance.now() / 1000) return;   // the encounter's seed is easing — never cut it",
+     'const seededFp = _seed ? _consumeSeed(nowFp) : false;', 'const seeded = _seed ? _consumeSeed(now) : false;', '} else if (!seeded) {', 'const st = (now < _seedUntil) ? _seedSt : (_smoothOverride > 0 ? SMOOTH_TIME_FAST : SMOOTH_TIME);', '        seedPose,\n        seedState,'].forEach(f => assert.ok(CAM.includes(f), f));
+    assert.ok(BT.includes("if (window._hqEncounterRun && window._hqEncounterRun.noIntro) {\n                const eye = window._hqEncounterRun.eye;") && BT.includes("ThreeCamera.seedPose(eye, 1.4)") && BT.includes("if (onDone) onDone();\n                return;\n            }\n\n            /* The cinematic intro replaces the flat VS card"), 'the seed, then no card — before the intro gate');
+    ['function _hqEncounterEye()', 'function _hqEncounterBoard()', "var st = _hq && _hq.site; if (!st || st.cave) return null;", "if (gone.indexOf('hq-native-' + si) >= 0) return;   // beaten today — the room is yours", "if (gone.indexOf('hq-npc-' + k) >= 0) continue;", "hqEncounterCleared(prof, opts.room)"].forEach(f => assert.ok(TR.includes(f), f));
+    assert.ok(MP.includes("eye = (ev && typeof window.hqEncounterEye === 'function') ? window.hqEncounterEye(ev) : null;") && MP.includes("id: L.encounter.id || null,") && MP.includes("eye: eye, walker: ev ?"), 'the run marker');
+    /* the ONE reason spawnSide is NOT mirrored: the spawn zones and the nexus points are keyed by seat + row, never by SPAWNS — a lane swap would seat P1 on P2's spawn nexus */
+    assert.ok(MP.includes("state.spawnZones[1].push({ x: col, y: p1Row });"), 'the zone rows are the seat\'s (map.js) — the mirror waits on the zone system');
+    for (const fn of ['hqEncounterCleared', 'hqRoomGuarded', 'hqEncounterEye']) assert.equal(typeof D[fn], 'function', fn + ' on window');
 });

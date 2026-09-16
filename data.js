@@ -28903,7 +28903,10 @@ function hqBuildFinds() {
                 sp.y != null ? { y: sp.y } : {}, sp.cell ? { cell: sp.cell } : {}, sp.hard ? { hard: true } : {}));
         });
         const ps = pin.pay || hqFindSpot(roomId, 'pay', placed);
-        if (ps) rows.push(Object.assign({ id: 'pay:' + roomId, room: roomId, kind: 'pay', amount: room.fx === 'site' ? R.pay : R.payDeep, daily: true, x: ps.x, z: ps.z, relax: ps.relax || 0 }, ps.y != null ? { y: ps.y } : {}, { why: 'a manila envelope of Hazard Pay — the building restocks it on a third of the days' }));
+        /* THE GUARDED ENVELOPE (9.4 stage 2): in a room with natives of its own the pay stands only once the room is CLEARED today (hqFindsInRoom) */
+        const guarded = hqRoomGuarded(roomId);
+        if (ps) rows.push(Object.assign({ id: 'pay:' + roomId, room: roomId, kind: 'pay', amount: room.fx === 'site' ? R.pay : R.payDeep, daily: true, x: ps.x, z: ps.z, relax: ps.relax || 0 }, ps.y != null ? { y: ps.y } : {}, guarded ? { guard: true } : {},
+            { why: guarded ? 'a manila envelope of Hazard Pay the natives sit on — clear the room (9.4) and it glows' : 'a manila envelope of Hazard Pay — the building restocks it on a third of the days' }));
     });
     /* SKATEBOARDING (9.8): THE DECK leans on a locker in Room 26 — one row, never daily, shown only while the issue is not free (hqFindsInRoom); the locker room has no tape, so it is its own stop */
     if (DOOR_HQ.rooms.locker) { const dpin = pins.locker || {}, ds = dpin.deck || hqFindSpot('locker', 'deck', []); if (ds) rows.push({ id: 'deck:locker', room: 'locker', kind: 'deck', x: ds.x, z: ds.z, relax: ds.relax || 0, why: 'a skateboard leaning on a locker; the letter on the locker is yours' }); }
@@ -28928,7 +28931,9 @@ function hqFindTaken(row, rec, date) {
 /* the finds standing in a room right now: the rows minus the taken, minus the dailies not live today */
 function hqFindsInRoom(roomId, profile, now) {
     const date = hqToday(now ? new Date(now) : undefined), rec = hqFindsRecord(profile);
-    return (DOOR_HQ.finds || []).filter(f => f.room === roomId && hqFindLiveToday(f, date) && !hqFindTaken(f, rec, date) && !(f.kind === 'deck' && hqSkateIssueFree()));   // the deck stands only while the issue is not free (9.8)
+    const cleared = (typeof hqEncounterCleared === 'function') ? !!hqEncounterCleared(profile, roomId, now) : false;
+    return (DOOR_HQ.finds || []).filter(f => f.room === roomId && hqFindLiveToday(f, date) && !hqFindTaken(f, rec, date) && !(f.kind === 'deck' && hqSkateIssueFree())   // the deck stands only while the issue is not free (9.8)
+        && !(f.guard && !cleared));   // a guarded find waits for the room to be cleared today (9.4 stage 2)
 }
 /* TAKE: writes the record on the profile object handed in (the caller saves
    it — ONE save for the claim and the reward, never creditLocalGold's second
@@ -29128,7 +29133,11 @@ function hqEncounterLaunch(roomId, ch, cfg, opts) {
         encounter: { race: ch.race, gender: ch.gender || 'male', id: ch.id || null, room: roomId, x: +(ch.x || 0), z: +(ch.z || 0), gesture: opts.gesture || 'attack', label: ch.label || ch.race },
     };
 }
-/* the record: door.hq.encounters — the ONE write (the caller saves) */
+/* the record: door.hq.encounters — the ONE write (the caller saves). STAGE 2
+   (2026-09-15): a WIN also files THE CLEARED ROOM — `door.hq.cleared[roomId] =
+   { date, ids }` (the natives beaten there TODAY, by their spawn id): the
+   renderer leaves them out of the room until tomorrow (the daily rule) and a
+   guarded find (hqRoomGuarded) glows once the room is cleared. */
 function hqEncounterRecord(profile, ev) {
     if (!profile || !ev) return null;
     if (!profile.door || typeof profile.door !== 'object') profile.door = {};
@@ -29138,13 +29147,61 @@ function hqEncounterRecord(profile, ev) {
     const E = H.encounters;
     E.count = (E.count | 0) + 1;
     if (ev.won) E.wins = (E.wins | 0) + 1; else E.losses = (E.losses | 0) + 1;
-    E.last = { site: ev.site || null, room: ev.room || null, race: ev.race || null, date: ev.date || hqToday(), won: !!ev.won };
+    const date = ev.date || hqToday();
+    E.last = { site: ev.site || null, room: ev.room || null, race: ev.race || null, date, won: !!ev.won };
+    if (ev.won && ev.room) {
+        if (!H.cleared || typeof H.cleared !== 'object') H.cleared = {};
+        let c = H.cleared[ev.room];
+        if (!c || typeof c !== 'object' || c.date !== date) c = H.cleared[ev.room] = { date, ids: [] };
+        if (!Array.isArray(c.ids)) c.ids = [];
+        if (ev.id && c.ids.indexOf(ev.id) < 0) c.ids.push(String(ev.id));
+    }
     return E;
 }
 /* the read: { count, wins, losses, last } — never null */
 function hqEncounterLog(profile) {
     const E = profile && profile.door && profile.door.hq && profile.door.hq.encounters;
     return { count: (E && E.count) | 0, wins: (E && E.wins) | 0, losses: (E && E.losses) | 0, last: (E && E.last) || null };
+}
+/* THE CLEARED ROOM: { date, ids } when the officer won in this room TODAY, else null (yesterday's clearing has lapsed — the room repopulates) */
+function hqEncounterCleared(profile, roomId, now) {
+    const C = profile && profile.door && profile.door.hq && profile.door.hq.cleared;
+    const c = C && roomId && C[roomId];
+    if (!c || typeof c !== 'object') return null;
+    const date = hqToday(now ? new Date(now) : undefined);
+    if (c.date !== date) return null;
+    return { date: c.date, ids: Array.isArray(c.ids) ? c.ids.slice() : [] };
+}
+/* a room whose natives GUARD its finds: a wild room with a race-hinted spot (the
+   site's own natives; a roster draw is a passer-by, never a guard) */
+function hqRoomGuarded(roomId) {
+    if (!hqRoomSite(roomId)) return false;
+    const r = DOOR_HQ.rooms[roomId];
+    return !!(r && Array.isArray(r.npcSpots) && r.npcSpots.some(sp => sp && sp.race && !sp.clone));
+}
+/* THE EYE (9.4 seam 2): the walker's camera as the renderer reported it at the
+   strike (metres, the room frame — position, gaze, the ground under the eye)
+   and the board under the room (N cells of C metres about the origin) → the
+   pose ThreeCamera.seedPose starts the first battle frame from, in TILES:
+   { tx, tz } the eye over the board, `up` tiles above the ground of that
+   column, the gaze as a unit vector, `look` tiles ahead. Null when the room
+   has no board (a complex part, a cave): the battle opens on its own frame. */
+function hqEncounterEye(ev) {
+    const e = ev && ev.eye, b = ev && ev.board;
+    if (!e || !b || !(b.C > 0) || !(b.N > 0)) return null;
+    const half = (b.half != null) ? +b.half : b.N * b.C / 2;
+    const tx = (+e.x + half) / b.C, tz = (+e.z + half) / b.C;
+    const g = (e.ground != null && isFinite(+e.ground)) ? +e.ground : (+e.py || 0);
+    const up = Math.max(0.15, (+e.y - g) / b.C);
+    let dx = +e.dx, dy = +e.dy, dz = +e.dz;
+    const L = Math.hypot(dx, dy, dz);
+    if (!(L > 1e-6)) { dx = 0; dy = -0.5; dz = 1; } else { dx /= L; dy /= L; dz /= L; }
+    const out = { tx, tz, up, dx, dy, dz, look: 3 };
+    for (const k in out) if (!isFinite(out[k])) return null;
+    /* far outside the board (a complex part's doorway on the apron): clamp the eye to two tiles past the rim — the ground read clamps there anyway */
+    out.tx = Math.max(-2, Math.min(b.N + 2, out.tx));
+    out.tz = Math.max(-2, Math.min(b.N + 2, out.tz));
+    return out;
 }
 /* ══ SKATEBOARDING — THE RIDER'S TABLE (HQ plan 9.8 stage 1, 2026-09-15) ══
    A walker MODE (three-renderer.js "SKATEBOARDING — THE RIDER"): nothing on
@@ -29759,7 +29816,12 @@ function hqMedicalRecord(profile) {
     };
     try { const pc = (typeof hqPunchClock === 'function') ? hqPunchClock(profile) : null; if (pc) out.days = n(pc.days); } catch (e) {}
     out.rate = out.matches ? Math.round(100 * out.wins / out.matches) : 0;
+    /* THE ENCOUNTER (9.4 stage 2): exited from a wild room TODAY — you came to in the cot; the chart says so until tomorrow */
+    let exited = null;
+    try { const el = (typeof hqEncounterLog === 'function') ? hqEncounterLog(profile) : null; if (el && el.last && !el.last.won && el.last.date === hqToday()) exited = el.last; } catch (e) { exited = null; }
+    out.exited = exited;
     if (out.leave) { out.condition = 'ADMINISTRATIVE LEAVE'; out.tone = 'codered'; out.note = 'Leave is served in Room 5150. The chart does not say for how long; the chart is not asked.'; }
+    else if (exited) { out.condition = 'RECOVERING'; out.tone = 'unstable'; out.note = 'Brought in from ' + String(exited.site || 'the field').replace(/^prebuilt_/, '').replace(/_/g, ' ').toUpperCase() + ' today. ' + String(exited.race || 'the native').toUpperCase() + ' had the room. Observation until the morning; the cot is made up.'; }
     else if (out.matches > 0 && out.exits > out.wins) { out.condition = 'UNDER OBSERVATION'; out.tone = 'unstable'; out.note = 'More exits than wins on file. The ward keeps a bed made up. Nobody comments on which one.'; }
     else if (out.matches > 0) { out.condition = 'FIT FOR DUTY'; out.tone = 'stabilized'; out.note = 'Processed and released. The desk will file the next attempt when there is one.'; }
     return out;
@@ -31012,6 +31074,7 @@ if (typeof window !== 'undefined') {
     /* THE ENCOUNTER (HQ plan 9.4 stage 1, 2026-09-15 rev 16) */
     window.HQ_ENCOUNTER_RULES = HQ_ENCOUNTER_RULES; window.hqEncounterRoomOk = hqEncounterRoomOk; window.hqEncounterCharOk = hqEncounterCharOk; window.hqEncounterGesture = hqEncounterGesture;
     window.hqEncounterConfig = hqEncounterConfig; window.hqEncounterLaunch = hqEncounterLaunch; window.hqEncounterRecord = hqEncounterRecord; window.hqEncounterLog = hqEncounterLog;
+    window.hqEncounterCleared = hqEncounterCleared; window.hqRoomGuarded = hqRoomGuarded; window.hqEncounterEye = hqEncounterEye;
     /* SKATEBOARDING (HQ plan 9.8 stage 1, 2026-09-15) */
     window.HQ_SKATE_RULES = HQ_SKATE_RULES; window.hqSkateStatus = hqSkateStatus; window.hqSkateRecord = hqSkateRecord; window.hqSkateBank = hqSkateBank; window.hqSkateScore = hqSkateScore; window.hqSkateIssueFree = hqSkateIssueFree;
     window.hqLinkRoom = hqLinkRoom;

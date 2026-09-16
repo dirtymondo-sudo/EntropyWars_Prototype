@@ -2027,9 +2027,13 @@
         function _hqEncounterStart(L, ev) {
             const party = _hqLastParty();
             _hqLastDoor = L.doorId || 'crossing'; _hqLastRoom = _hqCurRoom; _hqRecordVisit(_hqLastDoor);
-            window._hqEncounterRun = { site: L.site, room: L.room || _hqCurRoom, race: L.encounter.race, label: L.encounter.label, gesture: L.encounter.gesture,
+            /* the run marker: the intro off PER LAUNCH, the native's spawn id (THE CLEARED ROOM on a win), and THE EYE
+               (stage 2) — the walker's camera in board tiles, the first battle frame (battle.js → ThreeCamera.seedPose) */
+            let eye = null;
+            try { eye = (ev && typeof window.hqEncounterEye === 'function') ? window.hqEncounterEye(ev) : null; } catch (e) { eye = null; }
+            window._hqEncounterRun = { site: L.site, room: L.room || _hqCurRoom, race: L.encounter.race, label: L.encounter.label, gesture: L.encounter.gesture, id: L.encounter.id || null,
                                        date: (typeof hqToday === 'function') ? hqToday() : null, at: Date.now(), noIntro: true,
-                                       eye: ev ? { x: ev.x, z: ev.z, y: ev.y, yaw: ev.yaw, pitch: ev.pitch } : null };
+                                       eye: eye, walker: ev ? { x: ev.x, z: ev.z, y: ev.y, yaw: ev.yaw, pitch: ev.pitch } : null };
             window._hqEncounterResult = null;
             try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.6 }); } catch (e) {}
             /* no roster on file: the terminal as today — the site's own console screen, the native's race leading the pool */

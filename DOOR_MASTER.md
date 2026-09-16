@@ -2555,6 +2555,16 @@ upstairs that is also Nuketown's. `phonebox` waits on A14 Q5. Every plate
 line is Claude's draft (A15). HQ plan §4 9.3 (the `way` table), §9
 2026-09-15 rev 22.
 
+### 2026-09-15 rev 24 — 9.4 THE ENCOUNTER stage 2: the eye, the cleared room, the guarded envelope (local)
+The seam: an encounter's first battle frame is the walker's own camera
+(three-camera.js `seedPose`, the one new entry point; no VS card, no
+cinematic, an eased move onto the match's frame). A native you beat is
+gone from the room until tomorrow (`door.hq.cleared`) and the Hazard Pay
+envelope it sat on glows; the ward's chart reads RECOVERING the day you
+were exited. The `spawnSide` mirror is not built — the spawn zones are
+keyed by seat, a lane swap would put you on their nexus. HQ plan §4 9.4,
+§9 2026-09-15 rev 24.
+
 ### 2026-09-15 rev 17 — 9.4 THE ENCOUNTER: the click (local)
 The user corrected the controls: with the door gun HOLSTERED a left click
 is the attack (at a native in reach + sight in a wild room, the fight);

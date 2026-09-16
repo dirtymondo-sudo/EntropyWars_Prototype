@@ -23,6 +23,15 @@ const ThreeCamera = (function () {
     let _initialized = false;
     let _lastSyncTime = 0;
     let _smoothOverride = 0;
+    /* THE ENCOUNTER (HQ plan 9.4 seam 2, 2026-09-15): the first battle frame is
+       the WALKER's own eye. seedPose(seed, easeS) parks a pending pose — the
+       eye in TILE units ({ tx, tz, up = tiles above the ground under it, dx /
+       dy / dz = the gaze, look = tiles ahead }); the next sync() starts the
+       smoothed state THERE instead of snapping to the ideal frame and eases
+       toward it over ~easeS (a slow damp), so the cut from the building to the
+       board is one continuous move. snapImmediate() is IGNORED while the seed
+       eases (a match start snaps the camera home; the seed must survive it). */
+    let _seed = null, _seedUntil = 0, _seedSt = 0;
     /* Focal height latched while the user hand-pans the board — see sync(). */
     let _panFocalY = null;
 
@@ -62,6 +71,7 @@ const ThreeCamera = (function () {
     }
 
     function snapImmediate() {
+        if (_seedUntil > performance.now() / 1000) return;   // the encounter's seed is easing — never cut it
         _initialized = false;
     }
 
@@ -237,11 +247,12 @@ const ThreeCamera = (function () {
             /* ── NaN firewall (see the main branch below) ── */
             if (!isFinite(targetPosX + targetPosY + targetPosZ + targetLookX + targetLookY + targetLookZ)) return;
             if (_initialized && !isFinite(_smoothPosX + _smoothPosY + _smoothPosZ + _smoothLookX + _smoothLookY + _smoothLookZ)) _initialized = false;
+            const seededFp = _seed ? _consumeSeed(nowFp) : false;   // the seeded frame renders the seed itself
             if (!_initialized) {
                 _smoothPosX = targetPosX; _smoothPosY = targetPosY; _smoothPosZ = targetPosZ;
                 _smoothLookX = targetLookX; _smoothLookY = targetLookY; _smoothLookZ = targetLookZ;
                 _initialized = true;
-            } else {
+            } else if (!seededFp) {
                 const stFp = 0.028;   // tight — mouse aim must feel 1:1
                 _smoothPosX  = _damp(_smoothPosX,  targetPosX,  stFp, dtFp);
                 _smoothPosY  = _damp(_smoothPosY,  targetPosY,  stFp, dtFp);
@@ -461,6 +472,7 @@ const ThreeCamera = (function () {
            the branch below re-snaps it to the (verified finite) target. */
         if (!isFinite(targetPosX + targetPosY + targetPosZ + targetLookX + targetLookY + targetLookZ)) return;
         if (_initialized && !isFinite(_smoothPosX + _smoothPosY + _smoothPosZ + _smoothLookX + _smoothLookY + _smoothLookZ)) _initialized = false;
+        const seeded = _seed ? _consumeSeed(now) : false;   // the seeded frame renders the seed itself
 
         if (!_initialized) {
 
@@ -471,8 +483,8 @@ const ThreeCamera = (function () {
             _smoothLookY = targetLookY;
             _smoothLookZ = targetLookZ;
             _initialized = true;
-        } else {
-            const st = _smoothOverride > 0 ? SMOOTH_TIME_FAST : SMOOTH_TIME;
+        } else if (!seeded) {
+            const st = (now < _seedUntil) ? _seedSt : (_smoothOverride > 0 ? SMOOTH_TIME_FAST : SMOOTH_TIME);
             if (_smoothOverride > 0) _smoothOverride--;
 
             _smoothPosX  = _damp(_smoothPosX,  targetPosX, st, dt);
@@ -713,6 +725,32 @@ const ThreeCamera = (function () {
 
     function getCamera() { return threeCamera; }
 
+    /* THE ENCOUNTER (9.4 seam 2): park the walker's eye as the next frame's start — see the note by _seed */
+    function seedPose(seed, easeS) {
+        if (!seed || !isFinite(seed.tx + seed.tz + seed.up + seed.dx + seed.dy + seed.dz)) { _seed = null; return false; }
+        _seed = { tx: +seed.tx, tz: +seed.tz, up: +seed.up, dx: +seed.dx, dy: +seed.dy, dz: +seed.dz, look: (isFinite(seed.look) && seed.look > 0) ? +seed.look : 3 };
+        const ease = (isFinite(easeS) && easeS > 0) ? +easeS : 1.2;
+        _seedSt = ease / 3;   // a damp settles ~95 % in three time constants
+        _seedUntil = performance.now() / 1000 + ease;
+        return true;
+    }
+    function _consumeSeed(nowS) {
+        const S = _seed; _seed = null;
+        const ts = tileSize;
+        const ex = S.tx * ts, ez = S.tz * ts;
+        const ey = _groundYWorld(ex, ez) + S.up * ts;
+        const L = S.look * ts;
+        const lx = ex + S.dx * L, ly = ey + S.dy * L, lz = ez + S.dz * L;
+        if (!isFinite(ex + ey + ez + lx + ly + lz)) { _seedUntil = 0; return false; }
+        _smoothPosX = ex; _smoothPosY = ey; _smoothPosZ = ez;
+        _smoothLookX = lx; _smoothLookY = ly; _smoothLookZ = lz;
+        _initialized = true;
+        if (nowS > _seedUntil) _seedUntil = nowS + _seedSt * 3;   // seeded long before the first sync: the ease starts now
+        return true;
+    }
+    /* the seed's state for probes: { pending, easing, until } */
+    function seedState() { const n = performance.now() / 1000; return { pending: !!_seed, easing: n < _seedUntil, until: _seedUntil }; }
+
     /* The camera's live (smoothed) look-at point in world space — what the
        player is actually focused on. ThreePost projects this to screen space
        to place the tilt-shift DoF's sharp band. */
@@ -738,6 +776,8 @@ const ThreeCamera = (function () {
         getFocalWorld,
         markUserInput,
         snapImmediate,
+        seedPose,
+        seedState,
         FOV,
         NEAR,
         FAR

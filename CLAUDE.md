@@ -3572,6 +3572,38 @@ the `spawnSide` mirror, the dissolve, a cleared-room rule. UNSEEN LIVE
 (RULE #1c): the one-shot on the Player cast rig, the strike timing, the
 builder-less first frame, the ward landing.
 
+## THE ENCOUNTER stage 2 — THE EYE, THE CLEARED ROOM, THE GUARDED ENVELOPE (HQ plan 9.4) — 2026-09-15 rev 24, local delivery
+**THE EYE (seam 2)**: three-camera.js **`ThreeCamera.seedPose(seed, easeS)`**
+(+ `seedState()`) is the ONE initial-pose entry point: `seed = { tx, tz, up,
+dx, dy, dz, look }` in TILES (`up` above the ground under the eye's column,
+read through `_groundYWorld`); the next `sync()` — both branches — starts the
+smoothed state THERE, renders that frame as the seed, then damps home with
+time constant easeS / 3; `snapImmediate()` is IGNORED while the seed eases
+(a match start snaps the camera; the seed survives it). The renderer's
+`onEncounter` payload carries `eye` (`_hqEncounterEye`: the HQ camera's
+position + gaze in room metres, the ground under it) and `board`
+(`_hqEncounterBoard`: `{ N, C, half }`, null in a cave / a complex part);
+data.js **`hqEncounterEye(ev)`** (pure) → the seed; map.js files it on
+`window._hqEncounterRun.eye` (`walker` = the raw pose); battle.js
+`showVSSplash` seeds it and returns — an encounter has NO VS card and no
+cinematic. **THE CLEARED ROOM**: `hqEncounterRecord` writes a WIN to
+`door.hq.cleared[roomId] = { date, ids }` (the native's spawn id rides the
+run marker as `id` → the commit); **`hqEncounterCleared(profile, roomId,
+now)`** = today's clearing or null; `_hqSpawnPopulation` leaves those ids out
+(`hq-native-<spot>` / `hq-npc-<draw>`) until tomorrow. **THE GUARDED
+ENVELOPE**: **`hqRoomGuarded(roomId)`** = a wild room with a race-hinted
+`npcSpots` row → `hqBuildFinds` marks its pay row `guard: true`;
+`hqFindsInRoom` hides a guarded row until the room is cleared today (51
+rooms; one line to strike). **THE WARD**: `hqMedicalRecord` → CONDITION
+`RECOVERING` (+ `exited`) the day you were exited from a wild room; leave
+outranks it. **NOT BUILT, with the reason**: the `spawnSide` mirror — the
+spawn zones (map.js `state.spawnZones[1]` = P1's ROW) and the Arena's
+`spawn1` / `spawn2` nexus points are keyed by seat + row, never by `SPAWNS`;
+a lane swap seats P1 on P2's spawn nexus. Never swap `SPAWNS` alone. Seam
+(3) the dissolve is open. `npm test` runs hq-encounter.test.js (17).
+Unseen live (RULE #1c): the eased move from the boom to the frame, the
+emptier walkway, the envelope after a win.
+
 ## SKATEBOARDING rev 2 — THE RIDE STANCE, FAKIE, THE KICK, HOLD TO JUMP — 2026-09-15, local delivery
 The user's brief: Idle_10 on the deck with the feet on the board, the
 occasional run/kick, skate backwards with S, jump higher the longer SPACE is

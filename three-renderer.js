@@ -42413,8 +42413,13 @@ const ThreeRenderer = (function () {
                character as its `line`, read before any roster line (map.js
                _hqNpcPanelHtml). `clone: true` spawns the walker's OWN vessel (Room II). */
             var sayOf = function (spot) { var s = spot && spot.say; if (!s) return null; if (Array.isArray(s)) return s.length ? s[Math.floor(Math.random() * s.length)] : null; return String(s); };
+            /* THE CLEARED ROOM (9.4 stage 2, 2026-09-15): a native the officer beat TODAY is gone
+               until tomorrow (data.js hqEncounterCleared — the record the commit wrote) */
+            var gone = [];
+            try { var cl = (prof && typeof hqEncounterCleared === 'function') ? hqEncounterCleared(prof, opts.room) : null; if (cl && cl.ids) gone = cl.ids; } catch (e) { gone = []; }
             spots.forEach(function (spot, si) {
                 var rh = spot.race;
+                if (gone.indexOf('hq-native-' + si) >= 0) return;   // beaten today — the room is yours
                 if (spot.clone && av.race) {
                     var csp = _hqSettingFreeSpot(spot.x, spot.z);
                     _hqSpawnCharacter({ id: 'hq-clone-' + si, kind: 'npc', race: av.race, gender: av.gender || 'male', appearance: av.appearance || undefined, deg: spot.deg, r: spot.r, x: csp.x, z: csp.z, level: spot.level || 0, face: spot.face || 0,
@@ -42433,6 +42438,7 @@ const ThreeRenderer = (function () {
             var n = Math.min(spots.length, owned.length, 3);
             for (var k = 0; k < n; k++) {
                 var rk2 = owned[k];
+                if (gone.indexOf('hq-npc-' + k) >= 0) continue;   // a roster draw beaten today (9.4 stage 2)
                 /* either gender when both are rigged, so the Nun and the Witch
                    (their own names, their own lines) turn up on break too */
                 var hasM = !!getRace3DModel(rk2, 'male'), hasF = !!getRace3DModel(rk2, 'female');
@@ -42961,6 +42967,25 @@ const ThreeRenderer = (function () {
         if (!best) return null;
         return { kind: 'npc', id: best.id, label: best.label, sub: best.sub || null, race: best.race, gender: best.gender, x: best.x, z: best.z, y: best.y, dist: bestD };
     }
+    /* THE EYE (9.4 seam 2): the camera as it stands when the swing lands — position
+       + gaze in METRES in the room frame, and the ground under the eye's column
+       (the walker's own feet when the eye hangs over a wall / off the room), so
+       data.js hqEncounterEye can turn it into board tiles for ThreeCamera.seedPose */
+    function _hqEncounterEye() {
+        var H = _hq; if (!H || !H.player || !H.camera) return null;
+        var U = _hqUnits(), pl = H.player;
+        var eye = H.camera.position.clone().multiplyScalar(1 / U);
+        var dir = new THREE.Vector3(); H.camera.getWorldDirection(dir);
+        var g = null;
+        try { g = _hqSurface(eye.x, eye.z, null, true); } catch (e) { g = null; }
+        if (g === null || g === undefined || !isFinite(g)) g = pl.y;
+        return { x: eye.x, y: eye.y, z: eye.z, dx: dir.x, dy: dir.y, dz: dir.z, ground: g, px: pl.x, pz: pl.z, py: pl.y };
+    }
+    /* the board under the room (a site's board room): N cells of C metres about the room's origin — null in a cave / a complex part (no board to land on) */
+    function _hqEncounterBoard() {
+        var st = _hq && _hq.site; if (!st || st.cave) return null;
+        return { N: st.N, C: st.C, half: st.half };
+    }
     /* the one-shot on the walker's rig: the first slot the rig carries; returns the strike-frame ms (a chain with no clip still "lands" at the fallback) */
     function _hqStrikeClip(pl, gesture) {
         var e = pl.entry; if (!e) return HQ_STRIKE_FALLBACK_MS;
@@ -43001,7 +43026,7 @@ const ThreeRenderer = (function () {
             var still = null;
             for (var i = 0; i < H.chars.length; i++) if (H.chars[i].id === tid) { still = H.chars[i]; break; }
             if (!still) return;
-            if (H.opts.onEncounter) { try { H.opts.onEncounter({ gesture: gesture, target: target, room: room, x: pl.x, z: pl.z, y: pl.y, yaw: H.cam.yaw, pitch: H.cam.pitch }); } catch (e) { console.warn('[HQ] onEncounter failed', e); } }
+            if (H.opts.onEncounter) { try { H.opts.onEncounter({ gesture: gesture, target: target, room: room, x: pl.x, z: pl.z, y: pl.y, yaw: H.cam.yaw, pitch: H.cam.pitch, eye: _hqEncounterEye(), board: _hqEncounterBoard() }); } catch (e) { console.warn('[HQ] onEncounter failed', e); } }
         }, landMs);
         return true;
     }

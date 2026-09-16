@@ -11772,7 +11772,7 @@
                         const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
                         const p = (idx !== null && idx !== undefined && typeof PS.loadProfile === 'function') ? PS.loadProfile(idx) : null;
                         if (p) {
-                            hqEncounterRecord(p, { site: erun.site, room: erun.room, race: erun.race, won, date: erun.date || ((typeof hqToday === 'function') ? hqToday() : null) });
+                            hqEncounterRecord(p, { site: erun.site, room: erun.room, race: erun.race, id: erun.id || null, won, date: erun.date || ((typeof hqToday === 'function') ? hqToday() : null) });
                             PS.saveProfile(idx, p);
                         }
                         window._hqEncounterResult = { won, site: erun.site, room: erun.room, race: erun.race, label: erun.label || erun.race };
@@ -36194,6 +36194,20 @@
             const p1Units = (state.units || []).filter(u => u.player === 1);
             const p2Units = (state.units || []).filter(u => u.player === 2);
             if (!p1Units.length || !p2Units.length) { if (onDone) onDone(); return; }
+
+            /* THE ENCOUNTER (HQ plan 9.4 stage 2, 2026-09-15): the teams are
+               already here — no cinematic, no VS card. The first frame is the
+               WALKER's own eye: the run marker carries it in board tiles
+               (map.js ← data.js hqEncounterEye) and ThreeCamera.seedPose
+               starts the smoothed camera THERE, easing to the match's frame
+               over ~1.4 s (the seed survives the start's snap). A room with
+               no board (a cave, a complex part) seeds nothing. */
+            if (window._hqEncounterRun && window._hqEncounterRun.noIntro) {
+                const eye = window._hqEncounterRun.eye;
+                if (eye && typeof ThreeCamera !== 'undefined' && ThreeCamera.seedPose) { try { ThreeCamera.seedPose(eye, 1.4); } catch (e) { console.warn('[HQ] the encounter eye did not seed', e); } }
+                if (onDone) onDone();
+                return;
+            }
 
             /* The cinematic intro replaces the flat VS card whenever the 3D
                battlefield can host it; any failure falls back to the classic
