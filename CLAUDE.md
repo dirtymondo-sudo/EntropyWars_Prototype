@@ -2878,6 +2878,60 @@ Shared `getCubeAttackDamage` preserves actual Cube damage order and RNG executio
 
 FINAL delivery: `ENTROPY_WARS_PHASE6_BEAM_ARENA_OBJECTIVES.zip`, containing all beam, Key, Cube and wipeout changes. R2: ai.js/battle.js/map.js/data.js; Render: index.html (`20260914-ai-beam-arena-objectives-01-cors`); remaining files: repository. Sync runtime/entry files too. AI stamp `v4.11-2026-09-14-arena-cube-priority`. This supersedes interim package scopes in earlier entries. No commit, push or deployment. Next: carrier denial, move-then-inspect, residual scenarios/timing and authorized observations; Phase 6 remains open.
 
+## THE PLANETS + THE ONE TINT + THE STREET (the visual pass) — 2026-09-16, local delivery
+The user: "I don't get the impression I'm on a planet — a little curve to
+the edges; the mounds that are supposed to be craters are upside down;
+Saturn doesn't look like Saturn; the 8×8 surface looks different from the
+landscape; mountain textures are stretched; the urban street sheet has a
+direction." **THE PLANET** (`env.world.kind: 'planet'` on Mars / the Moon /
+Saturn, data.js): THE WORLD's ground IS the near apron — the builder's
+`_nrApron(K, { planet: true, … })` builds NO box, and three-renderer.js
+**`_wdBuildPlanet`** (right before `_wdIslandDisc`; `_wdPlanetProfile` is
+the height + colour function) lays ONE surface from the board's edge to the
+horizon: a flat COLLAR round the board's square (`rb`), the flat ISLAND to
+the apron zone's corners (`ri` = half·√2; never dissolved, the root hangs
+under it, round), then the FAR RING falling on a parabola (`curve` = tiles
+of drop at the horizon radius — the edge of the map curves off like a ball;
+dissolved + hazed like any world). **CRATERS ARE CARVED, NEVER STOOD**: the
+builder registers them (`_nrCrater(K, x, z, rTiles, { depth, rim })` /
+`_nrCraterField(K, { n, r: [min, max] })` → `_nrLastKit.craters`; refused
+on the collar, in a lane, on a `K.keepOut` prop or over another crater;
+`K.inCrater` keeps the mounds / rocks out), the row's `craters: { n, r, d0,
+depth, rim }` scatters the far field, and the mesh carries them (a
+parabolic bowl, a raised rim, the floor in shade). `_WD_RIM.craters` on a
+non-planet is a lathe bowl now (`_wdCraterLathe`) — the torus is gone, and
+so are the `_nrMounds` on the planets. Rim builders read `c.yAt(x, z)` so
+peaks / hills stand ON the curve. **SATURN**: `bands: [[tiles, hex], …]`
+(latitudes are concentric round the pole) and `hex: { w, color, amt }` (the
+storm, at the builder's `hexR` = the island's edge + 3 tiles) are VERTEX
+COLOURS on the deck; the builder stands six wispy storm WALLS on the
+hexagon's edges and THE RINGS (`_hzSaturnRingTex`: C · B · Cassini · A ·
+Encke · F on one canvas, `_hzRadialUV`, a 40–122-tile annulus tilted 0.2
+rad + a dark shade sheet under it — the deck hides the near half, the far
+half arcs low over the horizon; a steeper tilt puts the arc above the
+frame at the game's pitch, measured). **THE ONE TINT** (`K.mat`): the
+board's per-terrain tint (`state.terrainTints` / `HQ.tints`) is applied
+ONLY when a builder passed no colour of its own — every builder that
+passed the Δ's own hex was tinted TWICE (0.78² = 0.61), which is why the
+apron never matched the board; and `_nrApron`'s TOP face is a plain
+Lambert like the tiles (`lift` 0 — the 22% emissive lift stays on skirts
+and walls). The planets' ground is the board's OWN sheet + tint (Mars
+`moon_2` × #c88a5a, the Moon `moon` × #c8ccd8). **THE CONE UVs**:
+`_nrConeUV(geo, r, h, ts, dens)` — u round the base's PERIMETER, v up the
+slant; the old `r / ts` stretched every peak / spire / pyramid (near and
+rim) ~6× sideways. **THE STREET**: sprites.js `urban_street` → the concrete
+sheet, darkened by **`TERRAIN_BASE_TINT`** (`_evBaseTint`, multiplied BEFORE
+any map tint in `_evTintMat`, `K.mat` and `_hqMat`) — direction-free
+asphalt for every street; the old `urban_street.png` stays in the bucket
+unreferenced; `road` is untouched (a dirt road on the fantasy maps).
+world-ground.test.js knows the kind and guards the planets. Screenshotted
+offline with `CLEAN=1 POSES=wide,far,horizon,vfar node playtest_world.js
+prebuilt_mars prebuilt_moon prebuilt_saturn` (stand-in textures: the
+curve, the bowls, the hexagon and the rings are verified; the SHEETS are
+not — RULE #1c). Unseen live: the real regolith sheets in the bowls, the
+concrete-as-asphalt tone (`TERRAIN_BASE_TINT.urban_street` is the edit),
+the ring's brightness against the real sky.
+
 ## THE VANISHING DEPLOYABLES + THE SAME TORCH EVERYWHERE — 2026-09-15, local delivery
 **The bug**: wards, mirrors, doors, seeds, bombs, decoys and gates blinked
 out after placement and came back only when the NEXT deployable changed.

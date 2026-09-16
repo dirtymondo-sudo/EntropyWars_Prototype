@@ -438,7 +438,7 @@ window.EW_TERRAIN_COLORS = window.EW_TERRAIN_COLORS || {
     cave_floor:'rgba(80,70,60,0.46)', cave_wall:'rgba(60,50,45,0.56)', cave_entrance:'rgba(70,60,50,0.5)',
     // ── Built / urban ──
     bricks_1:'rgba(150,100,70,0.46)', bricks_2:'rgba(140,90,65,0.46)', castle_wall:'rgba(130,95,75,0.55)', wood_planks:'rgba(160,120,70,0.45)',
-    wood:'rgba(140,100,60,0.42)', urban_wall:'rgba(100,95,100,0.5)', urban_street:'rgba(130,125,120,0.42)',
+    wood:'rgba(140,100,60,0.42)', urban_wall:'rgba(100,95,100,0.5)', urban_street:'rgba(58,58,64,0.5)',
     marble:'rgba(226,222,214,0.46)', marble_2:'rgba(210,206,198,0.46)', marble_light:'rgba(236,234,228,0.46)', cobblestone:'rgba(120,116,110,0.46)',
     cobblestone_2:'rgba(112,108,102,0.46)', checkerboard:'rgba(180,180,186,0.42)', wallpaper:'rgba(172,150,172,0.42)',
     carpet:'rgba(150,60,60,0.46)', carpet_2:'rgba(60,90,150,0.46)', carpet_3:'rgba(60,140,90,0.46)',
@@ -14017,7 +14017,8 @@ const EW_MAP_META = [
     { id: 'prebuilt_mars', label: 'Mars', w: 20, h: 20, teamSize: 6, tier: 2, base: 'moon_2',
       biomes: ['space', 'desert'], deltaPad: 'moon_2', near: 'mars',
       desc: '20×20 prebuilt, 6v6 — red regolith: mesa cover, twin dead rovers & crater dust bowls',
-      env: { world: { kind: 'plain', rim: [{ kind: 'craters', tex: 'mars', color: 0xc07a58, d: 15, n: 9 }, { kind: 'peaks', tex: 'mars_2', color: 0xa86048, d: 30, n: 14, h: 7, ranks: 1 }] },
+      env: { world: { kind: 'planet', ground: 'moon_2', groundColor: 0xc88a5a, curve: 7, swell: 0.12, craters: { n: 18, r: [1.4, 5.5], d0: 12, depth: 0.26, rim: 0.09 },
+                      rim: [{ kind: 'craters', tex: 'moon_2', color: 0xc88a5a, d: 22, n: 8, hills: { r: 5, flat: 0.18 } }, { kind: 'peaks', tex: 'mars_2', color: 0xa86048, d: 30, n: 14, h: 7, ranks: 1 }], rootTex: 'mars_2', rootColor: 0xa86048 },   // THE PLANET (2026-09-16): the ground is one curved regolith with the craters carved in
              tint: 0x8a3a1a, tintAmt: 0.45, stars: 0.8, nebula: 0.4, fog: { color: 0xc88a5a, amount: 0.6, top: 0.07, band: 0.55 }, scenery: 'space' } },
     { id: 'prebuilt_area51', label: 'Area 51', w: 20, h: 20, teamSize: 6, tier: 2, base: 'wasteland',
       biomes: ['clandestine', 'space', 'desert'], deltaPad: 'dirt_4', near: 'area51',
@@ -14048,7 +14049,8 @@ const EW_MAP_META = [
     { id: 'prebuilt_moon', label: 'Moon', w: 16, h: 16, teamSize: 6, tier: 2, base: 'moon',
       biomes: ['space'], deltaPad: 'moon', near: 'moon',
       desc: '16×16 prebuilt, 6v6 — the sparse low-grav arena: crater bowls, regolith ridges, two landing sites & one black monolith',
-      env: { world: { kind: 'plain', rim: [{ kind: 'craters', tex: 'moon', d: 15, n: 10 }], r: 64, fogTop: 0.06 },
+      env: { world: { kind: 'planet', ground: 'moon', groundColor: 0xc8ccd8, curve: 10, swell: 0.1, craters: { n: 24, r: [1.2, 6.5], d0: 10, depth: 0.32, rim: 0.1 },
+                      rim: [{ kind: 'craters', tex: 'moon', color: 0xc8ccd8, d: 24, n: 8, hills: { r: 5, flat: 0.16 } }], r: 64, fogTop: 0.06, rootTex: 'moon_3', rootColor: 0x989cb0 },   // THE PLANET (2026-09-16)
              tint: 0x05060d, tintAmt: 0.55, stars: 1.8, nebula: 0.25, fog: { color: 0x0a0c14, amount: 0.15, top: 0.02, band: 0.3 }, scenery: 'space', density: 0.5 } },
     // ── Tier 3 — flavor & deep cuts ──
     { id: 'prebuilt_technoticlan', label: 'Technoticlan', w: 24, h: 24, teamSize: 8, tier: 3, base: 'cobblestone',
@@ -14150,7 +14152,8 @@ const EW_MAP_META = [
     { id: 'prebuilt_saturn', label: 'Saturn', w: 16, h: 16, teamSize: 6, tier: 2, base: 'cloud_thick',
       biomes: ['space', 'divine'], deltaPad: 'mars_2', near: 'saturn',
       desc: '16×16 prebuilt, 6v6 — the north-pole hexagon storm: an ochre plateau one step up, hydrocarbon lakes sunk into it, the storm wall round the rim (slow), gaps into nothing at the corners, the Saturnian cubes as cover',
-      env: { world: { kind: 'void', root: false },
+      env: { world: { kind: 'planet', ground: 'cloud_thick', groundColor: 0xc8a870, curve: 6, swell: 0.3, root: false,
+                      bands: [[0, 0xe8d4ac], [13, 0xb89468], [19, 0xf4e0b8], [26, 0xa88458], [33, 0xe0c89c], [41, 0xb08c5c], [49, 0xd8bc8c]], hex: { w: 2.2, color: 0x5a4838, amt: 0.7 } },   // THE PLANET (2026-09-16): the cloud deck banded round the pole, the hexagon painted in
              tint: 0x8a6a30, tintAmt: 0.45, stars: 1.2, nebula: 0.5, fog: { color: 0xc0a060, amount: 0.55, top: 0.05, band: 0.45 }, scenery: 'space', density: 0.8 } },
     { id: 'prebuilt_strip', label: 'The Strip', w: 16, h: 16, teamSize: 6, tier: 2, base: 'concrete_floor',
       biomes: ['urban', 'neon_city'], deltaPad: 'urban_street', near: 'strip',

@@ -218,6 +218,38 @@ playtested (RULE #1c) — eyeball on a real GPU first.
 - Cold cache: the procedural panel shows until the GLB lands; a visit to the
   building or the loading-screen warmer makes it hot.
 
+## 🪐 THE PLANETS — Mars / the Moon / Saturn as places (2026-09-16, LATEST) — three-renderer.js, data.js, sprites.js
+The user's visual pass: no planet feel, upside-down craters, Saturn not
+Saturn, the 8×8 board a different sheet from its landscape, stretched
+mountain textures, the directional street sheet. See CLAUDE.md "THE
+PLANETS + THE ONE TINT + THE STREET" for the contract.
+- **Verified offline** (`CLEAN=1 POSES=wide,far,horizon,vfar STABS=1 node
+  playtest_world.js prebuilt_mars prebuilt_moon prebuilt_saturn`, stand-in
+  textures): the Moon's horizon curves off against black space; the
+  craters are shaded bowls near and far; Mars is one continuous regolith
+  with the mesas and the peak rim standing on the curve; Saturn is a
+  banded cloud deck with the hexagon's dark band + six storm walls and the
+  ring arc low across the sky.
+- **The ring that was not there**: a ring plane through the board centre
+  tilted 34° puts its whole far half at ~34° elevation — above the frame
+  at every game pitch (the old Saturn ring was never in shot either). The
+  way to find such a thing: `PROBE_EVAL` that monkey-patches
+  `ThreeRenderer.hq.dev.renderer().render` to grab the PERSPECTIVE camera
+  (the last render call is the post pass's ortho camera), then
+  `localToWorld(...).project(cam)`; or an `EXPERIMENTS` entry that paints
+  the mesh solid red. Tilt 0.2 rad lands the arc just over the horizon.
+- **The double tint**: `K.mat(tex, colour)` multiplied the Δ's
+  `state.terrainTints[tex]` on top of a colour that already WAS that
+  tint. Builders pass the tint's hex as their colour everywhere, so every
+  near piece was 0.61× the board. Now an explicit colour is the whole
+  tint. Expect every setting to read a notch lighter / less saturated —
+  the same notch the board always was.
+- **Unseen live (RULE #1c)**: the real `moon` / `moon_2` sheets inside the
+  bowls (the stand-in is flat noise), the concrete sheet as asphalt on
+  Cyberpunk / the Strip / Downtown / Nuketown (`TERRAIN_BASE_TINT`
+  `urban_street` = #4e4e56 is the one knob), the ring's brightness against
+  the real butterscotch sky, the storm walls' `storm` sheet.
+
 ## 🌍 THE WORLD — the landscape to the horizon, and entropy taking it apart (2026-09-13, LATEST) — three-renderer.js, data.js, state.js, map.js, ui.js, index.html
 The user's three asks in one pass: (1) the flat square landscape hanging
 in the sky at far zoom, (2) a "realistic" version of each map (endless

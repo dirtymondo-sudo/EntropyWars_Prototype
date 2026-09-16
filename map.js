@@ -5308,7 +5308,7 @@
                 wood_planks:'rgba(160,120,70,0.4)', wood:'rgba(140,100,60,0.35)',
                 rubble_1:'rgba(120,110,95,0.35)', rubble_2:'rgba(115,105,90,0.35)',
                 rock_wall_1:'rgba(90,85,80,0.5)', rock_wall_2:'rgba(85,80,75,0.5)',
-                urban_wall:'rgba(100,95,100,0.5)', urban_street:'rgba(130,125,120,0.35)',
+                urban_wall:'rgba(100,95,100,0.5)', urban_street:'rgba(58,58,64,0.5)',
                 wasteland:'rgba(140,120,80,0.35)', cave_entrance:'rgba(70,60,50,0.45)',
                 barrier_passage:'rgba(140,140,200,0.2)', cloud:'rgba(200,210,230,0.3)',
                 purple_grass:'rgba(120,60,140,0.4)', purple_bog:'rgba(100,50,120,0.45)',

@@ -297,12 +297,28 @@ const ThreeRenderer = (function () {
        DISABLED: the Entropy Vale colour tint has been removed, so terrain/props
        keep their original untinted textures. The natural rolling-heightfield
        landform (see _naturalTerrainActive) is unaffected. */
+    /* THE BASE TINT (2026-09-16): sprites.js TERRAIN_BASE_TINT names the keys
+       whose sheet is BORROWED from another key and darkened — `urban_street` is
+       the concrete sheet tinted to asphalt (the old street sprite had lane
+       markings running one way, so a street laid across it read as chaos).
+       Part of the sheet's identity, so it multiplies BEFORE any map tint and
+       whether or not a builder passed its own colour (K.mat, _hqMat). */
+    var _baseTintCache = {};
+    function _evBaseTint(mat, key) {
+        var T = (typeof TERRAIN_BASE_TINT !== 'undefined') ? TERRAIN_BASE_TINT : null;
+        var hex = T && key ? T[key] : null;
+        if (!hex || !mat || !mat.color) return mat;
+        if (!_baseTintCache[hex]) _baseTintCache[hex] = new THREE.Color(hex);
+        mat.color.multiply(_baseTintCache[hex]);
+        return mat;
+    }
     function _evTintMat(mat, key) {
         /* Map-editor per-terrain tint: the editor stores a {terrainKey: '#hex'}
            map on state.terrainTints (and only the custom editor map ever sets it,
            so normal maps are untouched). Multiply the chosen colour onto the
            material — this tints the sprite while preserving its detail, exactly
            like the old Entropy-Vale palette did. */
+        _evBaseTint(mat, key);
         try {
             var tints = (typeof state !== 'undefined' && state) ? state.terrainTints : null;
             if (tints && key && tints[key] && mat && mat.color) {
@@ -24546,8 +24562,18 @@ const ThreeRenderer = (function () {
         /* Lambert wearing a terrain sprite, tinted like the board's own tiles */
         K.mat = function (texKey, color, opts) {
             var tex = texKey ? _hzTex(texKey) : null, m = _hzLit(tex, color, opts);
-            if (texKey && HQ) { var ht = HQ.tints && HQ.tints[texKey]; if (ht) m.color.multiply(new THREE.Color(ht)); }
-            else if (texKey) _evTintMat(m, texKey);
+            /* THE ONE TINT (2026-09-16): the board's per-terrain tint
+               (state.terrainTints / HQ.tints) is applied ONLY when the builder
+               passed no colour of its own — every builder that passed the
+               same hex as the Δ's tint used to be tinted TWICE (0.78² = 0.61:
+               the apron round the Moon board came out a darker, bluer sheet
+               than the board it continues), which is why the 8×8 board never
+               matched its own landscape. A builder's explicit colour is the
+               whole tint now; white / none = "as the board". */
+            var explicit = color != null && color !== 0xffffff;
+            if (texKey) _evBaseTint(m, texKey);
+            if (texKey && HQ) { var ht = HQ.tints && HQ.tints[texKey]; if (ht && !explicit) m.color.multiply(new THREE.Color(ht)); }
+            else if (texKey && !explicit) _evTintMat(m, texKey);
             /* a small self-lit lift (22% of the base) so vertical faces on a dusk
                map read as stone/brick instead of black — the board's own tiles
                carry baked shading, plain Lambert on a low sun does not */
@@ -24570,9 +24596,57 @@ const ThreeRenderer = (function () {
         K.face = function (x, z) { return Math.atan2(K.CX - x, K.CZ - z); };
         /* is (x,z) inside the lane that runs out of a spawn row (the gates) */
         K.inLane = function (x, z, half) { half = half == null ? 1.6 * ts : half; return Math.abs(x - K.CX) < half; };
+        /* is (x,z) inside a registered crater bowl (+ pad) — the mounds / rocks stay out of them (THE PLANET, 2026-09-16) */
+        K.inCrater = function (x, z, pad) { var cs = (!HQ && _nrLastKit) ? _nrLastKit.craters : null; if (!cs) return false; for (var i = 0; i < cs.length; i++) { var c = cs[i]; if (Math.hypot(x - c.x, z - c.z) < c.r * 1.3 + (pad || 0)) return true; } return false; };
+        K.keepOut = [];   // [x, z, radius] the builder's fixed props — the crater fields go round them
         /* a light with a soft halo */
         K.lamp = function (x, y, z, color, size, op) { var s = _hzGlowSprite(size || 0.7 * ts, color, op || 0.6, 0.2, 0.08, 0.5 + K.rng() * 0.8); s.position.set(x, y, z); return s; };
         return K;
+    }
+    /* THE CRATERS (2026-09-16) — a planet's near craters are CARVED into THE
+       WORLD's ground (_wdBuildPlanet reads _nrLastKit.craters); never a torus
+       or a squashed sphere (a ring lying on the ground is a MOUND — the
+       "upside-down craters"). r in tiles; `depth` / `rim` as fractions of r.
+       Refused where the bowl would cut the board's flat collar, a spawn lane,
+       one of the builder's props (K.keepOut) or another crater. */
+    function _nrCrater(K, x, z, r, o) {
+        o = o || {};
+        var kit = _nrLastKit; if (K.hq || !kit || !kit.planet || !kit.craters) return null;
+        var ts = K.ts, R = r * ts, d = Math.hypot(x - K.CX, z - K.CZ);
+        var rb = Math.max(K.BX1 - K.CX, K.BZ1 - K.CZ) * Math.SQRT2 + 0.35 * ts;   // the flat collar round the board (_wdPlanetProfile's rb)
+        if (d - R * 1.15 < rb) return null;
+        if (o.lanes !== false && K.inLane(x, z, 1.7 * ts + R)) return null;
+        var ko = K.keepOut || [];
+        for (var i = 0; i < ko.length; i++) if (Math.hypot(x - ko[i][0], z - ko[i][1]) < R * 1.25 + ko[i][2]) return null;
+        for (var j = 0; j < kit.craters.length; j++) { var c = kit.craters[j]; if (Math.hypot(x - c.x, z - c.z) < (R + c.r) * 0.95) return null; }
+        var row = { x: x, z: z, r: R, depth: (o.depth != null ? o.depth : 0.3) * R, rim: (o.rim != null ? o.rim : 0.1) * R };
+        kit.craters.push(row); return row;
+    }
+    /* scatter `n` craters in the apron zone: r in tiles [min, max]; the ring
+       runs from the collar out to the island's edge (d1 tiles from the centre
+       overrides) — the far field past it is the world row's (`craters`) */
+    function _nrCraterField(K, o) {
+        o = o || {};
+        var ts = K.ts, rng = K.rng, out = [], n = o.n || 6;
+        var half = Math.max(K.X1 - K.CX, K.Z1 - K.CZ), rr = o.r || [0.6, 1.4];
+        var d1 = o.d1 != null ? o.d1 * ts : half * Math.SQRT2 - 0.4 * ts, d0 = Math.max(K.BX1 - K.CX, K.BZ1 - K.CZ) * Math.SQRT2 + 0.4 * ts;
+        for (var t = 0; t < n * 14 && out.length < n; t++) {
+            var r = rr[0] + rng() * (rr[1] - rr[0]), lo = d0 + r * ts * 1.2, hi = d1 - r * ts;
+            if (hi <= lo) break;
+            var a = rng() * Math.PI * 2, d = lo + rng() * (hi - lo);
+            var c = _nrCrater(K, K.CX + Math.cos(a) * d, K.CZ + Math.sin(a) * d, r, o); if (c) out.push(c);
+        }
+        return out;
+    }
+    /* cone / pyramid UVs at one texture per `dens` tiles: u runs round the
+       base's PERIMETER (2πr for a round cone, n·2r·sin(π/n) for an n-sided
+       one), v up the slant. The old `r / ts` gave one repeat per 2π tiles
+       sideways and per tile up — every mountain, spire and pyramid wore its
+       sheet stretched six times wider than tall (2026-09-16). */
+    function _nrConeUV(geo, r, h, ts, dens) {
+        var p = geo.parameters || {}, n = p.radialSegments || 8, per = n * 2 * r * Math.sin(Math.PI / n), sl = Math.hypot(r, h);
+        dens = dens || 1;
+        _nrUV(geo, Math.max(1, Math.round(per / ts * dens)), Math.max(1, sl / ts * dens));
     }
     /* Walk the rectangle `d` world units outside the board edge with `spacing`
        between stops; fn(x, z, side, i, t) — t is 0..1 along that side. Corners
@@ -24601,7 +24675,16 @@ const ThreeRenderer = (function () {
         var ts = K.ts, fy = K.fy, G = K.G, top = fy - (o.drop || 0) * ts - 0.6;
         var T = o.deep ? top : (o.thick || 0.2) * ts;
         if (_nrLastKit) { _nrLastKit.apronTop = top; _nrLastKit.tex = o.tex || null; _nrLastKit.color = o.color; _nrLastKit.skirt = o.skirt || null; _nrLastKit.skirtColor = o.skirtColor; }   // THE WORLD reads the apron's sheet + skirt
-        var topMat = K.mat(o.tex, o.color == null ? 0xffffff : o.color);
+        /* THE PLANET (2026-09-16): `planet: true` builds NO box — THE WORLD's
+           ground (`env.world.kind: 'planet'`, _wdBuildPlanet) IS the apron,
+           one surface from the board's edge to the horizon, with the craters
+           the builder registers (_nrCrater) carved into it. */
+        if (o.planet) { if (_nrLastKit) { _nrLastKit.planet = true; _nrLastKit.craters = []; } return []; }
+        /* the TOP face is a plain Lambert like the board's own tiles (no
+           emissive lift — the lift is for vertical faces on a dusk map; on the
+           ground beside the board it was a 22% brighter, flatter sheet and
+           the seam the eye reads as "the 8×8 looks different") */
+        var topMat = K.mat(o.tex, o.color == null ? 0xffffff : o.color, { lift: o.lift != null ? o.lift : 0 });
         var sideMat = o.skirt ? K.mat(o.skirt, o.skirtColor == null ? 0xffffff : o.skirtColor) : topMat;
         var mats = [sideMat, sideMat, topMat, topMat, sideMat, sideMat];
         var rects = [[K.X0, K.Z0, K.X1, K.BZ0 - G], [K.X0, K.BZ1 + G, K.X1, K.Z1], [K.X0, K.BZ0 - G, K.BX0 - G, K.BZ1 + G], [K.BX1 + G, K.BZ0 - G, K.X1, K.BZ1 + G]];
@@ -24878,6 +24961,7 @@ const ThreeRenderer = (function () {
         _nrRectRing(K, (o.d || 2.8) * ts, (o.spacing || 2.2) * ts, function (x, z) {
             if (rng() > (o.p == null ? 0.7 : o.p)) return;
             var r = ts * ((o.r || 1.4) * (0.7 + rng() * 0.7));
+            if (K.inCrater(x, z, r)) return;
             var geo = new THREE.SphereGeometry(r, 12, 8); _nrUV(geo, r / ts * 6, r / ts * 3);
             var m = new THREE.Mesh(geo, mat); m.scale.set(1 + rng() * 0.6, (o.flat || 0.35) * (0.7 + rng() * 0.6), 1 + rng() * 0.6);
             m.position.set(x + (rng() - 0.5) * ts, K.fy - r * 0.15, z + (rng() - 0.5) * ts); m.rotation.y = rng() * 6;
@@ -24891,6 +24975,7 @@ const ThreeRenderer = (function () {
         _nrRectRing(K, (o.d || 1.2) * ts, (o.spacing || 1.6) * ts, function (x, z) {
             if (rng() > (o.p == null ? 0.35 : o.p)) return;
             var r = ts * ((o.r || 0.35) * (0.6 + rng() * 0.9));
+            if (K.inCrater(x, z, r)) return;
             var m = new THREE.Mesh(new THREE.DodecahedronGeometry(r, 0), mat); m.scale.y = 0.6 + rng() * 0.4;
             m.position.set(x + (rng() - 0.5) * ts * 0.8, K.fy + r * 0.3, z + (rng() - 0.5) * ts * 0.8); m.rotation.set(rng(), rng() * 6, rng());
             K.add(K.lit(m, true));
@@ -25190,9 +25275,9 @@ const ThreeRenderer = (function () {
         _nrRectRing(K, dd, (o.spacing || 4) * ts, function (x, z) {
             if (rng() > (o.p == null ? 0.75 : o.p)) return;
             var h = ts * ((o.h || 7) * (0.6 + rng() * 0.8)), r = Math.min(h * (0.7 + rng() * 0.5), dd - 1.5 * ts);   // the foot never reaches the apron's inner half
-            var geo = new THREE.ConeGeometry(r, h, 6 + (rng() * 3 | 0), 1); _nrUV(geo, r / ts, h / ts);
+            var geo = new THREE.ConeGeometry(r, h, 6 + (rng() * 3 | 0), 1); _nrConeUV(geo, r, h, ts, 0.5);
             var m = new THREE.Mesh(geo, rock); m.position.set(x, K.fy + h / 2 - ts * 0.6, z); m.rotation.y = rng() * 6; K.add(K.lit(m, true));
-            if (snow) { var cg = new THREE.ConeGeometry(r * 0.32, h * 0.32, geo.parameters.radialSegments, 1); _nrUV(cg, r / ts * 0.3, h / ts * 0.3); var cap = new THREE.Mesh(cg, snow); cap.position.set(x, K.fy + h - h * 0.16 - ts * 0.6 + 1, z); cap.rotation.y = m.rotation.y; K.add(cap); }
+            if (snow) { var cg = new THREE.ConeGeometry(r * 0.32, h * 0.32, geo.parameters.radialSegments, 1); _nrConeUV(cg, r * 0.32, h * 0.32, ts, 0.5); var cap = new THREE.Mesh(cg, snow); cap.position.set(x, K.fy + h - h * 0.16 - ts * 0.6 + 1, z); cap.rotation.y = m.rotation.y; K.add(cap); }
         }, { skipLanes: !!o.skipLanes, corners: true, only: o.only });
     }
     /* a cave-wall ring: stalagmite cones and rock spires */
@@ -25202,7 +25287,7 @@ const ThreeRenderer = (function () {
         _nrRectRing(K, (o.d || 2.2) * ts, (o.spacing || 1.1) * ts, function (x, z, side) {
             if (rng() > (o.p == null ? 0.85 : o.p)) return;
             var h = ts * ((o.h || 3) * (0.5 + rng() * 1.0)), r = ts * ((o.r || 0.5) * (0.6 + rng() * 0.8));
-            var geo = new THREE.ConeGeometry(r, h, 6, 1); _nrUV(geo, r / ts * 2, h / ts);
+            var geo = new THREE.ConeGeometry(r, h, 6, 1); _nrConeUV(geo, r, h, ts, 0.7);
             var m = new THREE.Mesh(geo, mat); m.position.set(x + (rng() - 0.5) * ts * 0.6, K.fy + h / 2 - ts * 0.3, z + (rng() - 0.5) * ts * 0.6); m.rotation.set((rng() - 0.5) * 0.2, rng() * 6, (rng() - 0.5) * 0.2);
             K.lit(m, true); if (K.occ) K.addW(side, m); else K.add(m);
         }, { skipLanes: o.skipLanes !== false, corners: true, only: o.only });
@@ -25284,7 +25369,7 @@ const ThreeRenderer = (function () {
         _nrMounds(K, { tex: 'desert', d: 3.4, spacing: 2.4, r: 1.8, flat: 0.3, p: 0.75 });
         var pyr = K.mat('desert', 0xd6c39a);
         [[K.BX1 + 9 * ts, K.BZ0 - 8 * ts, 11], [K.BX0 - 10 * ts, K.BZ1 + 9 * ts, 13], [K.BX1 + 12 * ts, K.BZ1 + 11 * ts, 7]].forEach(function (p) {
-            var h = p[2] * ts, r = h * 0.95; var geo = new THREE.ConeGeometry(r, h, 4, 1); _nrUV(geo, r / ts, h / ts);
+            var h = p[2] * ts, r = h * 0.95; var geo = new THREE.ConeGeometry(r, h, 4, 1); _nrConeUV(geo, r, h, ts, 0.5);
             var m = new THREE.Mesh(geo, pyr); m.position.set(p[0], K.fy + h / 2 - ts * 0.4, p[1]); m.rotation.y = Math.PI / 4; K.add(K.lit(m, true));
         });
         [[K.BX0 - 1.6 * ts, K.BZ0 - 1.6 * ts], [K.BX1 + 1.6 * ts, K.BZ0 - 1.6 * ts], [K.BX0 - 1.6 * ts, K.BZ1 + 1.6 * ts], [K.BX1 + 1.6 * ts, K.BZ1 + 1.6 * ts]].forEach(function (p) { var o = _hzPropGLB('obelisk3d', 3.2 * ts); o.position.set(p[0], K.fy, p[1]); K.add(o); });
@@ -25448,11 +25533,18 @@ const ThreeRenderer = (function () {
     /* MARS — the regolith flat: crater rims, mesas, the dead rover, a biodome. */
     _NR_BUILDERS.mars = function (group, ctx) {
         var K = _nrKit(group, ctx, { w: 5.0 }), ts = K.ts, rng = K.rng;
-        _nrApron(K, { tex: 'mars', color: 0xc07a58, deep: true, skirt: 'mars_2', skirtColor: 0xa86048 });
-        _nrMounds(K, { tex: 'mars_2', color: 0xb07050, d: 3.2, spacing: 2.2, r: 1.4, flat: 0.3, p: 0.7 });
+        /* THE PLANET (2026-09-16): the ground is THE WORLD's planet mesh — the
+           board's own sheet in the Δ's own tint (one surface, no seam), the
+           craters CARVED into it (the tori and the mounds — "upside-down
+           craters" — are gone), the horizon falling away; the skirt is what
+           the root wears when the island is adrift */
+        _nrApron(K, { tex: 'moon_2', color: 0xc88a5a, planet: true, skirt: 'mars_2', skirtColor: 0xa86048 });
         var mesa = K.mat('mars_2', 0xa86048);
-        [[K.BX0 - 3.8 * ts, K.BZ0 - 3.2 * ts, 3.2, 2.2, 2.4], [K.BX1 + 3.8 * ts, K.BZ1 + 3.2 * ts, 3.6, 2.4, 2.8], [K.BX1 + 9 * ts, K.BZ0 - 6 * ts, 6, 4, 3.6]].forEach(function (m) { var b = K.box(m[2] * ts, m[4] * ts, m[3] * ts, mesa, 0.5); b.position.set(m[0], K.fy + m[4] * ts / 2 - 0.3 * ts, m[1]); b.rotation.y = 0.3; K.add(K.lit(b, true)); var cap = K.box(m[2] * ts * 1.04, 0.2 * ts, m[3] * ts * 1.04, K.mat('mars', 0xc88a5a)); cap.position.set(m[0], K.fy + m[4] * ts - 0.2 * ts, m[1]); cap.rotation.y = 0.3; K.add(cap); });
-        for (var i = 0; i < 5; i++) { var a = rng() * Math.PI * 2, r = ts * (2.5 + rng() * 3); var cr = new THREE.Mesh(new THREE.TorusGeometry(ts * (0.6 + rng() * 0.6), ts * 0.18, 6, 18), mesa); cr.rotation.x = Math.PI / 2; cr.position.set(K.CX + Math.cos(a) * r, K.fy + 0.02 * ts, K.CZ + Math.sin(a) * r); if (cr.position.x > K.BX0 - 0.8 * ts && cr.position.x < K.BX1 + 0.8 * ts && cr.position.z > K.BZ0 - 0.8 * ts && cr.position.z < K.BZ1 + 0.8 * ts) continue; K.add(K.lit(cr, true)); }
+        var mesas = [[K.BX0 - 3.8 * ts, K.BZ0 - 3.2 * ts, 3.2, 2.2, 2.4], [K.BX1 + 3.8 * ts, K.BZ1 + 3.2 * ts, 3.6, 2.4, 2.8], [K.BX1 + 9 * ts, K.BZ0 - 6 * ts, 6, 4, 3.6]];
+        mesas.forEach(function (m) { K.keepOut.push([m[0], m[1], Math.max(m[2], m[3]) * ts * 0.75]); });
+        K.keepOut.push([K.BX1 + 1.9 * ts, K.BZ0 - 2.4 * ts, 1.8 * ts], [K.BX0 - 2.8 * ts, K.BZ1 + 2.6 * ts, 2.4 * ts]);   // the rover, the biodome
+        _nrCraterField(K, { n: 7, r: [0.7, 1.7], depth: 0.3, rim: 0.1 });
+        mesas.forEach(function (m) { var b = K.box(m[2] * ts, m[4] * ts, m[3] * ts, mesa, 0.5); b.position.set(m[0], K.fy + m[4] * ts / 2 - 0.3 * ts, m[1]); b.rotation.y = 0.3; K.add(K.lit(b, true)); var cap = K.box(m[2] * ts * 1.04, 0.2 * ts, m[3] * ts * 1.04, K.mat('mars', 0xc88a5a)); cap.position.set(m[0], K.fy + m[4] * ts - 0.2 * ts, m[1]); cap.rotation.y = 0.3; K.add(cap); });
         /* the rover is the user's real model (2026-09-11: DOOR_HQ.catalogue
            `mars_rover`, 2.6 m long here); the procedural buggy is its fallback */
         _nrProp(K, function (rng) { return _hzDoorKitGLB('mars_rover', { metres: 2.6, foot: 1.1, rng: rng, fallback: _hzRover }); }, K.BX1 + 1.9 * ts, K.BZ0 - 2.4 * ts, { ry: 0.8 });
@@ -25537,12 +25629,14 @@ const ThreeRenderer = (function () {
        rover tracks, the black monolith, the Earth in the sky (far roster). */
     _NR_BUILDERS.moon = function (group, ctx) {
         var K = _nrKit(group, ctx, { w: 5.0 }), ts = K.ts, rng = K.rng;
-        _nrApron(K, { tex: 'moon', color: 0xc8ccd8, deep: true, skirt: 'moon_3', skirtColor: 0x989cb0 });
-        var reg = K.mat('moon_2', 0xb0b4c4);
-        for (var i = 0; i < 8; i++) { var a = rng() * Math.PI * 2, r = ts * (2.2 + rng() * 3.2); var cr = new THREE.Mesh(new THREE.TorusGeometry(ts * (0.5 + rng() * 0.8), ts * 0.16, 6, 18), reg); cr.rotation.x = Math.PI / 2; cr.position.set(K.CX + Math.cos(a) * r * 1.3, K.fy + 0.02 * ts, K.CZ + Math.sin(a) * r); if (cr.position.x > K.BX0 - 0.9 * ts && cr.position.x < K.BX1 + 0.9 * ts && cr.position.z > K.BZ0 - 0.9 * ts && cr.position.z < K.BZ1 + 0.9 * ts) continue; K.add(K.lit(cr, true)); }
-        _nrMounds(K, { tex: 'moon_3', color: 0xa0a4b8, d: 3.6, spacing: 2.4, r: 1.6, flat: 0.3, p: 0.6 });
-        _nrRocks(K, { tex: 'moon_3', color: 0x9a9eb0, d: 1.0, p: 0.4, r: 0.3 });
+        /* THE PLANET (2026-09-16): the regolith is THE WORLD's planet mesh in
+           the board's own sheet + tint; the craters are CARVED bowls (the tori
+           and the mounds are gone — they read as upside-down craters) */
+        _nrApron(K, { tex: 'moon', color: 0xc8ccd8, planet: true, skirt: 'moon_3', skirtColor: 0x989cb0 });
         var lx = K.BX1 + 2.6 * ts, lz = K.BZ0 - 2.4 * ts;
+        K.keepOut.push([lx, lz, 2.4 * ts], [lx - 1.6 * ts, lz + 0.4 * ts, 0.8 * ts], [K.BX0 - 2.4 * ts, K.BZ1 + 2.2 * ts, 2.0 * ts], [K.BX1 + 4.6 * ts, K.BZ1 + 4.2 * ts, 1.6 * ts]);   // the lander, the flag, the rover, the monolith
+        _nrCraterField(K, { n: 8, r: [0.6, 1.6], depth: 0.34, rim: 0.1 });
+        _nrRocks(K, { tex: 'moon_3', color: 0x9a9eb0, d: 1.0, p: 0.4, r: 0.3 });
         /* the lander is the user's real model (2026-09-11: DOOR_HQ.catalogue
            `lunar_lander`, 3.2 m tall); the foil-and-legs box is its fallback */
         var landerProc = function () {
@@ -25800,20 +25894,43 @@ const ThreeRenderer = (function () {
        the battle only) and the storm's lightning glow. */
     _NR_BUILDERS.saturn = function (group, ctx) {
         var K = _nrKit(group, ctx, { w: 5.0 }), ts = K.ts, fy = K.fy, rng = K.rng, HQ = !!K.hq;
-        _nrApron(K, { tex: 'cloud_thick', color: 0xa88a58, deep: true, skirt: 'cloud_thick', skirtColor: 0x8a7048, dens: 0.5 });
-        _nrMounds(K, { tex: 'cloud_thick', color: 0xc0a068, d: 2.6, spacing: 2.0, r: 1.8, flat: 0.35, p: 0.85, skipLanes: true });
-        _nrMounds(K, { tex: 'storm', color: 0x9a8870, d: 4.4, spacing: 2.4, r: 2.2, flat: 0.3, p: 0.7, skipLanes: false });
+        /* THE PLANET (2026-09-16): the cloud deck is THE WORLD's planet mesh
+           (banded round the pole, the hexagon painted into it, the horizon
+           falling away); the storm's six walls stand on the hexagon's edges;
+           the RING SYSTEM arcs across the sky */
+        _nrApron(K, { tex: 'cloud_thick', color: 0xc8a870, planet: true, skirt: 'cloud_thick', skirtColor: 0x8a7048, dens: 0.5 });
+        var hexR = (K.X1 - K.CX) * Math.SQRT2 + 3.0 * ts;
+        if (!HQ && _nrLastKit) _nrLastKit.hexR = hexR;
+        _nrMounds(K, { tex: 'cloud_thick', color: 0xdcc090, d: 2.4, spacing: 2.4, r: 1.4, flat: 0.26, p: 0.6, skipLanes: true });   // cloud tops breaking the deck
         var cube = K.mat('gunmetal', 0x3a3a44, { lift: 0.35 });
         [[K.BX0 - 2.2 * ts, K.BZ0 - 2.6 * ts, 1.0], [K.BX1 + 2.4 * ts, K.BZ1 + 2.2 * ts, 1.3], [K.BX1 + 3.0 * ts, K.BZ0 - 1.6 * ts, 0.7], [K.BX0 - 3.2 * ts, K.BZ1 + 3.0 * ts, 0.9]].forEach(function (c) {
             var b = K.box(c[2] * ts, c[2] * ts, c[2] * ts, cube, 0.5); b.position.set(c[0], fy + c[2] * ts / 2, c[1]); b.rotation.y = rng() * 0.6; K.add(K.lit(b, true));
         });
         _nrRectRing(K, 3.6 * ts, 3.0 * ts, function (x, z) { if (rng() < 0.4) return; var l = K.lamp(x, fy + 0.6 * ts, z, 0xfff0c0, 1.6 * ts, 0.18); K.add(l); _hzPulse(l.material, l, 0.15, 0.1, 0.15 + rng() * 0.25); }, { skipLanes: true, corners: true });   // the storm's flicker
         if (!HQ) {
-            var rg = new THREE.RingGeometry(34 * ts, 62 * ts, 72, 1); _nrUV(rg, 8, 1);
-            var rm = new THREE.MeshBasicMaterial({ color: 0xd8c8a0, transparent: true, opacity: 0.32, side: THREE.DoubleSide, depthWrite: false, fog: false });
-            var ringPlane = new THREE.Mesh(rg, rm); ringPlane.rotation.x = -Math.PI / 2 + 0.42; ringPlane.rotation.z = 0.3; ringPlane.position.set(K.CX, fy + 14 * ts, K.CZ); K.add(ringPlane);
-            var gap = new THREE.Mesh(new THREE.RingGeometry(46 * ts, 47.5 * ts, 72, 1), new THREE.MeshBasicMaterial({ color: 0x2a2018, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false, fog: false }));
-            gap.rotation.copy(ringPlane.rotation); gap.position.copy(ringPlane.position); gap.position.y += 0.2; K.add(gap);   // the Cassini division
+            /* THE HEXAGON STORM WALL: six walls of cloud on the hexagon's edges
+               (the same hexR the planet mesh paints its dark band at), three
+               wispy sheets each, the outer ones breathing */
+            var wallMat = K.mat('storm', 0xe0d0b0, { transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false, lift: 0.55 });
+            var wallMat2 = K.mat('storm', 0xece0c4, { transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false, lift: 0.6 });
+            var edge = 2 * hexR * Math.tan(Math.PI / 6), wh = 5.5 * ts;
+            for (var k = 0; k < 6; k++) {
+                var ang = k * Math.PI / 3 + Math.PI / 6, nx = Math.cos(ang), nz = Math.sin(ang), cx = K.CX + nx * hexR, cz = K.CZ + nz * hexR;
+                for (var l = 0; l < 3; l++) {
+                    var p = K.plane(edge * (1.03 + l * 0.05), wh * (1 - l * 0.2), l === 0 ? wallMat : wallMat2), off = (l - 1) * 0.9 * ts;
+                    p.position.set(cx + nx * off, fy + wh * (0.5 - l * 0.1) + l * 1.2 * ts, cz + nz * off); p.rotation.y = Math.atan2(nx, nz); p.renderOrder = 2; K.add(p);
+                }
+            }
+            _hzPulse(wallMat2, null, 0.05, 0, 0.35);
+            /* THE RINGS: the whole system (C · B · Cassini · A · Encke · F) on
+               one canvas, a tilted annulus wide enough to arc across the sky
+               and set behind the horizon — the planet's ground hides the half
+               below the deck */
+            var rIn = 40 * ts, rOut = 122 * ts, rg = new THREE.RingGeometry(rIn, rOut, 160, 6); _hzRadialUV(rg, rIn, rOut);
+            var rm = new THREE.MeshBasicMaterial({ map: _hzSaturnRingTex(), color: 0xffffff, transparent: true, opacity: 1, side: THREE.DoubleSide, depthWrite: false, fog: false });
+            var rings = new THREE.Mesh(rg, rm); rings.name = "saturn:rings"; rings.rotation.set(-Math.PI / 2 + 0.2, 0.55, 0, "YXZ"); rings.position.set(K.CX, fy + 1.0 * ts, K.CZ); rings.frustumCulled = false; rings.renderOrder = 1; K.add(rings);
+            var shade = new THREE.Mesh(rg.clone(), new THREE.MeshBasicMaterial({ map: _hzSaturnRingTex(), color: 0x2a1c10, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false, fog: false }));
+            shade.rotation.copy(rings.rotation); shade.position.copy(rings.position); shade.position.y -= 0.4 * ts; shade.frustumCulled = false; K.add(shade);   // the planet's shadow side of the sheet
         }
         _nrSign(K, 'saturn_n', ['SATURN', 'ROOM 6 · THE HEXAGON'], 2.6 * ts, 1.0 * ts, K.CX + 2.6 * ts, fy + 1.2 * ts, K.Z0 + 1.0 * ts, 0, { sizes: [96, 42], bg: '#2a2010', border: '#d8b060', color: '#f8ecc8' });
     };
@@ -27432,11 +27549,12 @@ const ThreeRenderer = (function () {
                     r = Math.min(r, rr - ((K._wdMinD || 0) + 1.5) * ts, rr * 0.16);   // the foot never reaches back over the shore, and never two ring-widths
                     if (r < ts * 0.8) return;
                     var geo = flat ? new THREE.CylinderGeometry(r * flat, r, h, 7, 1) : new THREE.ConeGeometry(r, h, 5 + (rng() * 3 | 0), 1);
-                    _nrUV(geo, r / ts / 2, h / ts / 2);
-                    var m = new THREE.Mesh(geo, rock); m.position.set(x, c.y + h / 2 - ts * 0.25, z); m.rotation.y = rng() * 6; m.scale.x = 1 + rng() * 0.8; K.add(K.lit(m));
+                    _nrConeUV(geo, r, h, ts, 0.5);
+                    var gy = c.yAt ? c.yAt(x, z) : c.y;   // THE PLANET: on the curve
+                    var m = new THREE.Mesh(geo, rock); m.position.set(x, gy + h / 2 - ts * 0.25, z); m.rotation.y = rng() * 6; m.scale.x = 1 + rng() * 0.8; K.add(K.lit(m));
                     if (snow && !flat) {
-                        var cg = new THREE.ConeGeometry(r * 0.30, h * 0.30, geo.parameters.radialSegments, 1); _nrUV(cg, 0.5, 1);
-                        var cap = new THREE.Mesh(cg, snow); cap.position.set(x, c.y + h - h * 0.15 - ts * 0.25 + 1.5, z); cap.rotation.y = m.rotation.y; cap.scale.x = m.scale.x; K.add(cap);
+                        var cg = new THREE.ConeGeometry(r * 0.30, h * 0.30, geo.parameters.radialSegments, 1); _nrConeUV(cg, r * 0.3, h * 0.3, ts, 0.5);
+                        var cap = new THREE.Mesh(cg, snow); cap.position.set(x, gy + h - h * 0.15 - ts * 0.25 + 1.5, z); cap.rotation.y = m.rotation.y; cap.scale.x = m.scale.x; K.add(cap);
                     }
                 });
             }
@@ -27450,7 +27568,7 @@ const ThreeRenderer = (function () {
                 r = Math.min(r, (rr - ((K._wdMinD || 0) + 1) * ts) / 1.9); if (r < ts * 0.6) return;   // a hill never rolls back over the shore
                 var geo = new THREE.SphereGeometry(r, 14, 9); _nrUV(geo, r / ts * 3, r / ts * 1.5);
                 var m = new THREE.Mesh(geo, mat); m.scale.set(1 + rng() * 0.9, (s.flat || 0.3) * (0.7 + rng() * 0.6), 1 + rng() * 0.9);
-                m.position.set(x, c.y - r * 0.1, z); m.rotation.y = rng() * 6; K.add(K.lit(m));
+                m.position.set(x, (c.yAt ? c.yAt(x, z) : c.y) - r * 0.1, z); m.rotation.y = rng() * 6; K.add(K.lit(m));
             });
         },
         dunes: function (K, s, c) { _WD_RIM.hills(K, Object.assign({ tex: 'desert', flat: 0.2, r: 4.5, n: 20, ranks: 3 }, s), c); },
@@ -27505,8 +27623,8 @@ const ThreeRenderer = (function () {
             for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 14) * (1 + k * 0.4), Math.round((s.n || 26) * (1 + k * 0.3)), function (x, z) {
                 if (rng() > (s.p == null ? 0.8 : s.p)) return;
                 var h = ts * (s.h || 8) * (0.4 + rng() * 1.1), r = ts * (s.r || 1.6) * (0.6 + rng() * 0.9);
-                var geo = new THREE.ConeGeometry(r, h, 6, 1); _nrUV(geo, r / ts, h / ts / 2);
-                var m = new THREE.Mesh(geo, mat); m.position.set(x, c.y + h / 2 - ts * 0.3, z); m.rotation.set((rng() - 0.5) * 0.25, rng() * 6, (rng() - 0.5) * 0.25); K.add(K.lit(m));
+                var geo = new THREE.ConeGeometry(r, h, 6, 1); _nrConeUV(geo, r, h, ts, 0.5);
+                var m = new THREE.Mesh(geo, mat); m.position.set(x, (c.yAt ? c.yAt(x, z) : c.y) + h / 2 - ts * 0.3, z); m.rotation.set((rng() - 0.5) * 0.25, rng() * 6, (rng() - 0.5) * 0.25); K.add(K.lit(m));
             });
         },
         /* icebergs and pack ice in the sea */
@@ -27540,22 +27658,37 @@ const ThreeRenderer = (function () {
             _wdRing(K, s.d || 32, s.n || 7, function (x, z) {
                 if (rng() > (s.p == null ? 0.75 : s.p)) return;
                 var h = ts * (s.h || 14) * (0.5 + rng() * 0.9), r = h * 0.95;
-                var geo = new THREE.ConeGeometry(r, h, 4, 1); _nrUV(geo, r / ts / 2, h / ts / 2);
-                var m = new THREE.Mesh(geo, mat); m.position.set(x, c.y + h / 2 - ts * 0.3, z); m.rotation.y = Math.PI / 4 + (rng() - 0.5) * 0.4; K.add(K.lit(m));
+                var geo = new THREE.ConeGeometry(r, h, 4, 1); _nrConeUV(geo, r, h, ts, 0.5);
+                var m = new THREE.Mesh(geo, mat); m.position.set(x, (c.yAt ? c.yAt(x, z) : c.y) + h / 2 - ts * 0.3, z); m.rotation.y = Math.PI / 4 + (rng() - 0.5) * 0.4; K.add(K.lit(m));
             });
         },
-        /* rings and low hills — a dead world's surface */
+        /* craters and low hills — a dead world's surface. THE CRATERS
+           (2026-09-16): on a `planet` world the field is CARVED into the
+           ground itself (_wdBuildPlanet reads the row's `craters`) and this
+           builder adds only the low hills between them; elsewhere a lathe
+           BOWL with a raised rim standing on the ground — never the old
+           torus (a ring lying flat is a mound, the "upside-down crater"). */
         craters: function (K, s, c) {
-            var ts = K.ts, rng = K.rng, mat = K.mat(s.tex || 'moon', s.color != null ? s.color : 0xffffff, { lift: 0.3 });
-            for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 15) * (1 + k * 0.55), Math.round((s.n || 10) * (1 + k * 0.4)), function (x, z) {
-                if (rng() > (s.p == null ? 0.75 : s.p)) return;
-                var r = ts * (s.r || 3) * (0.5 + rng() * 1.2);
-                var geo = new THREE.TorusGeometry(r, r * 0.22, 6, 28); _nrUV(geo, r / ts * 2, 1);
-                var m = new THREE.Mesh(geo, mat); m.rotation.x = -Math.PI / 2; m.position.set(x, c.y - r * 0.08, z); m.scale.y = 1 + rng() * 0.5; K.add(K.lit(m));
-            });
-            _WD_RIM.hills(K, Object.assign({ tex: s.tex || 'moon', color: s.color, flat: 0.28, d: (s.d || 15) * 1.7, n: 10 }, s.hills || {}), c);
+            var ts = K.ts, rng = K.rng;
+            if (!c.planet) {
+                var mat = K.mat(s.tex || 'moon', s.color != null ? s.color : 0xffffff, { lift: 0.3 });
+                for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 15) * (1 + k * 0.55), Math.round((s.n || 10) * (1 + k * 0.4)), function (x, z) {
+                    if (rng() > (s.p == null ? 0.75 : s.p)) return;
+                    var r = ts * (s.r || 3) * (0.5 + rng() * 1.2);
+                    var m = new THREE.Mesh(_wdCraterLathe(r, r * 0.12, ts), mat); m.position.set(x, c.y, z); m.rotation.y = rng() * 6; K.add(K.lit(m));
+                });
+            }
+            _WD_RIM.hills(K, Object.assign({ tex: s.tex || 'moon', color: s.color, flat: 0.22, r: 3.5, d: (s.d || 15) * 1.7, n: 10, p: 0.6 }, s.hills || {}), c);
         }
     };
+    /* a crater standing on flat ground: the ejecta apron rises to a sharp rim,
+       the inner wall drops back to the floor (the ground itself) — read from
+       the board's camera by the shaded inner wall, not a bump */
+    function _wdCraterLathe(r, h, ts) {
+        var pts = [new THREE.Vector2(0.001, 0.01), new THREE.Vector2(r * 0.6, 0.01), new THREE.Vector2(r * 0.84, h * 0.7), new THREE.Vector2(r * 0.97, h), new THREE.Vector2(r * 1.1, h * 0.78), new THREE.Vector2(r * 1.5, h * 0.18), new THREE.Vector2(r * 1.9, 0)];
+        var geo = new THREE.LatheGeometry(pts, 28); geo.computeVertexNormals(); _nrUV(geo, Math.max(1, Math.round(Math.PI * 2 * r / ts / 1.5)), Math.max(1, r / ts / 1.5));
+        return geo;
+    }
     /* THE WALL — a cavern's rock round the whole world, fading up into the haze */
     function _wdBuildWall(K, w, o) {
         var ts = K.ts, r = (w.r || 32) * ts, h = (w.h || 36) * ts;
@@ -27584,9 +27717,11 @@ const ThreeRenderer = (function () {
         /* a moat map's island is its SHEET (the lake bed the apron stands in), so the root spans the sheet and hangs from its underside */
         var padW = kit.moat ? (kit.moatPad || 0) * ts : 0, topY = kit.moat ? (kit.moatY != null ? kit.moatY : 0) - 0.2 * ts : 0.5;
         var hx = (K.X1 - K.CX) * 1.02 + padW, hz = (K.Z1 - K.CZ) * 1.02 + padW;
+        if (o.hx) { hx = o.hx; hz = o.hz || o.hx; }   // THE PLANET: the island is a disc of its own radius
+        var round = !!o.round;
         var depth = (row.rootDepth ? row.rootDepth * ts : Math.max(9 * ts, Math.max(hx, hz) * 0.85)), rings = 7, N = 40;
         var pos = [], uv = [], idx = [];
-        function se(a) { var c = Math.cos(a), s = Math.sin(a); return 1 / Math.pow(Math.pow(Math.abs(c), 4) + Math.pow(Math.abs(s), 4), 0.25); }
+        function se(a) { if (round) return 1; var c = Math.cos(a), s = Math.sin(a); return 1 / Math.pow(Math.pow(Math.abs(c), 4) + Math.pow(Math.abs(s), 4), 0.25); }
         var jit = []; for (var j = 0; j < N; j++) jit.push(0.85 + rng() * 0.3);
         for (var r = 0; r <= rings; r++) {
             var t = r / rings, sc = 1 - t;   // a straight taper — the player's eye only ever sees the upper half
@@ -27634,6 +27769,152 @@ const ThreeRenderer = (function () {
        tiles. `hole` = the footprint grown by 2 % of a tile (a hair past the
        edge tiles so the rim never z-fights). Same UV density as the old
        CircleGeometry (one sheet per 1.5 tiles). */
+    /* THE PLANET (2026-09-16) — Mars / the Moon / Saturn: `env.world.kind:
+       'planet'`. THE WORLD's ground IS the near apron here (the builder's
+       _nrApron says `planet: true` and builds no box): ONE surface from the
+       board's edge to the horizon — flat under the setting (the island), then
+       falling away on a parabola (`curve` = tiles of drop at the horizon
+       radius: the edge of the map curves off like the edge of a ball),
+       CRATERS carved into it (the builder's near field, _nrCrater, + the
+       row's far field `craters: { n, r: [min, max], d0, depth, rim }`), a low
+       regolith swell (`swell` tiles, past the island only), colour BANDS by
+       distance (`bands: [[tiles, hex], …]` — Saturn's latitudes run
+       concentric round the pole) and the HEXAGON (`hex: { w, color, amt }` at
+       the kit's hexR — the storm) as vertex colours. Two meshes off one
+       height function: the ISLAND (the flat collar round the board + the
+       apron zone, never dissolved — it is the apron, the root hangs under
+       it) and the FAR RING (dissolved + hazed like any world ground).
+       `c.yAt(x, z)` hands the rim builders the height, so peaks and hills
+       stand ON the curve. */
+    function _wdPlanetProfile(K, row, kit, R) {
+        var ts = K.ts, rng = _mulberry32(0x5a7 + Math.round(K.CX) * 7 + Math.round(K.CZ) * 11);
+        var half = Math.max(K.X1 - K.CX, K.Z1 - K.CZ);
+        var rb = Math.max(K.BX1 - K.CX, K.BZ1 - K.CZ) * Math.SQRT2 + 0.35 * ts;   // the flat collar: a circle round the board's square (its corners)
+        var ri = half * Math.SQRT2 * 1.02;                                           // the island's edge: past the apron zone's corners
+        var curve = (row.curve != null ? row.curve : 8) * ts, rc = ri;
+        var kc = curve / Math.max(ts, (R - rc) * (R - rc));
+        var craters = (kit.craters || []).slice(), fc = row.craters || null;
+        if (fc) {
+            var rr = fc.r || [2, 6], d0 = Math.max(ri + 0.5 * ts, (fc.d0 || 0) * ts), want = craters.length + (fc.n || 14);
+            for (var t = 0; t < (fc.n || 14) * 24 && craters.length < want; t++) {
+                var r = (rr[0] + rng() * (rr[1] - rr[0])) * ts, lo = d0 + r * 1.1, hi = R - r * 1.4;
+                if (hi <= lo) break;
+                var d = lo + rng() * (hi - lo), a = rng() * Math.PI * 2, x = K.CX + Math.cos(a) * d, z = K.CZ + Math.sin(a) * d, ok = true;
+                for (var j = 0; j < craters.length; j++) { var cj = craters[j]; if (Math.hypot(x - cj.x, z - cj.z) < (r + cj.r) * 0.95) { ok = false; break; } }
+                if (ok) craters.push({ x: x, z: z, r: r, depth: r * (fc.depth != null ? fc.depth : 0.28), rim: r * (fc.rim != null ? fc.rim : 0.09) });
+            }
+        }
+        var swell = (row.swell != null ? row.swell : 0.1) * ts;
+        var hexR = kit.hexR || 0, hex = row.hex || null, hexCol = hex ? new THREE.Color(hex.color != null ? hex.color : 0x6a5848) : null;
+        var bands = null;
+        if (row.bands && row.bands.length) bands = row.bands.map(function (b) { return { d: b[0] * ts, c: new THREE.Color(b[1]) }; });
+        function crater(x, z, out) {   // out = [dy, shade]
+            var dy = 0, sh = 1;
+            for (var i = 0; i < craters.length; i++) {
+                var c = craters[i], dx = x - c.x, dz = z - c.z, u = Math.sqrt(dx * dx + dz * dz) / c.r;
+                if (u > 1.7) continue;
+                var e = u - 1; dy += c.rim * Math.exp(-e * e / 0.045);                   // the raised rim, its ejecta easing off outside
+                if (u < 1) { var b = 1 - u * u; dy -= c.depth * b; sh *= 1 - 0.2 * b; }   // the bowl: a parabola, steepest at the rim; the floor in shade
+                else sh *= 1 + 0.08 * Math.exp(-e * e / 0.03);
+            }
+            out[0] = dy; out[1] = sh; return out;
+        }
+        var tmp = [0, 1];
+        function hexDist(dx, dz) { return Math.max(Math.abs(dx), Math.abs(dx * 0.5 + dz * 0.8660254), Math.abs(dx * 0.5 - dz * 0.8660254)); }
+        function yAt(x, z) {
+            var d = Math.hypot(x - K.CX, z - K.CZ), y = 0;
+            if (d > rc) y -= kc * (d - rc) * (d - rc);
+            if (d > ri) { var f = Math.min(1, (d - ri) / (4 * ts)); f = f * f * (3 - 2 * f); y += f * swell * (Math.sin(x / ts * 0.71 + 1.3) * Math.sin(z / ts * 0.53 + 0.4) + 0.5 * Math.sin((x + z) / ts * 1.7) + 0.35 * Math.sin((x - 2 * z) / ts * 2.9)); }
+            return y + crater(x, z, tmp)[0];
+        }
+        function colorAt(x, z, out) {
+            var d = Math.hypot(x - K.CX, z - K.CZ); out.setRGB(1, 1, 1);
+            if (bands) {
+                var i = 0; while (i + 1 < bands.length && d >= bands[i + 1].d) i++;
+                var c0 = bands[i].c, w = 1.4 * ts;
+                if (i + 1 < bands.length && d > bands[i + 1].d - w) { var k = (d - (bands[i + 1].d - w)) / w; k = k * k * (3 - 2 * k); out.copy(c0).lerp(bands[i + 1].c, k); }
+                else out.copy(c0);
+                out.multiplyScalar(0.97 + 0.06 * Math.sin(d / ts * 1.9 + x / ts * 0.2));   // fine banding
+            }
+            if (hex && hexR) { var hd = hexDist(x - K.CX, z - K.CZ), hw = (hex.w || 2.5) * ts, kk = 1 - Math.min(1, Math.abs(hd - hexR) / hw); kk = kk * kk * (3 - 2 * kk); out.lerp(hexCol, kk * (hex.amt != null ? hex.amt : 0.75)); }
+            crater(x, z, tmp); out.multiplyScalar(tmp[1]);
+            return out;
+        }
+        return { rb: rb, ri: ri, R: R, yAt: yAt, colorAt: colorAt, craters: craters };
+    }
+    function _wdBuildPlanet(K, row, kit, o) {
+        var ts = K.ts, g = K.g, y0 = o.groundY, prof = _wdPlanetProfile(K, row, kit, o.R);
+        var NA = 288, rows = [], r = prof.rb;
+        while (r < prof.ri - 0.01) { rows.push(r); r += 0.35 * ts; }
+        rows.push(prof.ri); var iRi = rows.length - 1; r = prof.ri;
+        while (r < 24 * ts) { r += 0.7 * ts; if (r < prof.R - 0.5 * ts) rows.push(r); }
+        r = rows[rows.length - 1];
+        while (r < prof.R - 0.01) { r = Math.min(prof.R, r + 1.4 * ts); rows.push(r); }
+        var gtex = row.ground || kit.tex || 'moon', gcol = row.groundColor != null ? row.groundColor : (kit.color != null ? kit.color : 0xffffff);
+        var col = new THREE.Color();
+        function mesh(j0, j1, name, inject) {
+            var nr = j1 - j0 + 1, pos = new Float32Array(nr * (NA + 1) * 3), uv = new Float32Array(nr * (NA + 1) * 2), vc = new Float32Array(nr * (NA + 1) * 3), idx = [];
+            for (var j = 0; j < nr; j++) for (var i = 0; i <= NA; i++) {
+                var a = i / NA * Math.PI * 2, rr = rows[j0 + j], x = K.CX + Math.cos(a) * rr, z = K.CZ + Math.sin(a) * rr, k = j * (NA + 1) + i;
+                pos[k * 3] = x; pos[k * 3 + 1] = y0 + prof.yAt(x, z); pos[k * 3 + 2] = z;
+                uv[k * 2] = x / ts; uv[k * 2 + 1] = z / ts;
+                prof.colorAt(x, z, col); vc[k * 3] = col.r; vc[k * 3 + 1] = col.g; vc[k * 3 + 2] = col.b;
+            }
+            for (var jj = 0; jj < nr - 1; jj++) for (var ii = 0; ii < NA; ii++) { var a0 = jj * (NA + 1) + ii, a1 = a0 + 1, b0 = a0 + NA + 1, b1 = b0 + 1; idx.push(a0, a1, b1, a0, b1, b0); }
+            var geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setAttribute('color', new THREE.BufferAttribute(vc, 3));
+            geo.setIndex(idx); geo.computeVertexNormals();
+            if (geo.attributes.normal.getY(0) < 0) { for (var q = 0; q < idx.length; q += 3) { var tq = idx[q + 1]; idx[q + 1] = idx[q + 2]; idx[q + 2] = tq; } geo.setIndex(idx); geo.computeVertexNormals(); }
+            var mat = K.mat(gtex, gcol, { lift: 0 }); mat.vertexColors = true; mat.needsUpdate = true;
+            if (inject) _wdInject(mat, { r0: o.fogR0, r1: o.fogR1 });
+            var m = new THREE.Mesh(geo, mat); m.name = name; m.receiveShadow = true; m.frustumCulled = false; g.add(m); return m;
+        }
+        /* the collar: the flat ring between the board's square and the first circle (a shape with the footprint cut out — THE CRATER FIX's rule: nothing under the tiles) */
+        var shape = new THREE.Shape(); shape.absarc(0, 0, prof.rb + 0.02 * ts, 0, Math.PI * 2, false);
+        var mg = 0.02 * ts, hx0 = K.BX0 - K.CX - mg, hx1 = K.BX1 - K.CX + mg, hy0 = -(K.BZ1 - K.CZ) - mg, hy1 = -(K.BZ0 - K.CZ) + mg;
+        var hole = new THREE.Path(); hole.moveTo(hx0, hy0); hole.lineTo(hx1, hy0); hole.lineTo(hx1, hy1); hole.lineTo(hx0, hy1); hole.closePath(); shape.holes.push(hole);
+        var cgeo = new THREE.ShapeGeometry(shape, 72), cp = cgeo.attributes.position, cuv = cgeo.attributes.uv, cvc = new Float32Array(cp.count * 3);
+        for (var v = 0; v < cp.count; v++) { var wx = K.CX + cp.getX(v), wz = K.CZ - cp.getY(v); cuv.setXY(v, wx / ts, wz / ts); prof.colorAt(wx, wz, col); cvc[v * 3] = col.r; cvc[v * 3 + 1] = col.g; cvc[v * 3 + 2] = col.b; }
+        cgeo.setAttribute('color', new THREE.BufferAttribute(cvc, 3)); cuv.needsUpdate = true;
+        var cmat = K.mat(gtex, gcol, { lift: 0 }); cmat.vertexColors = true; cmat.needsUpdate = true;
+        var collar = new THREE.Mesh(cgeo, cmat); collar.rotation.x = -Math.PI / 2; collar.position.set(K.CX, y0, K.CZ); collar.receiveShadow = true; collar.name = 'world:collar'; g.add(collar);
+        mesh(0, iRi, 'world:island', false);
+        mesh(iRi, rows.length - 1, 'world:planet', true);
+        _wd.hasGround = true;
+        return { yAt: function (x, z) { return y0 + prof.yAt(x, z); }, ri: prof.ri, rb: prof.rb, craters: prof.craters.length };
+    }
+    /* SATURN'S RINGS (2026-09-16): one canvas across the radius — the faint C
+       ring, the bright banded B ring, the Cassini division, the A ring with
+       the Encke gap, the thin F ring — alpha = brightness, so the sky shows
+       through the gaps; cached for the session */
+    var _hzSaturnRingTexCache = null;
+    function _hzSaturnRingTex() {
+        if (_hzSaturnRingTexCache) return _hzSaturnRingTexCache;
+        if (typeof document === 'undefined') return null;
+        var W = 1024, H = 4, cv = document.createElement('canvas'); cv.width = W; cv.height = H; var g = cv.getContext('2d');
+        var img = g.createImageData(W, H), d = img.data, rng = _mulberry32(0x5a70);
+        var grain = []; for (var i = 0; i < W; i++) grain.push(0.82 + rng() * 0.36);
+        for (var x = 0; x < W; x++) {
+            var u = x / W, a;
+            if (u < 0.05) a = 0; else if (u < 0.22) a = 0.16 + 0.12 * (u - 0.05) / 0.17;
+            else if (u < 0.55) a = 0.8 + 0.14 * Math.sin(u * 160) + 0.05 * Math.sin(u * 700);
+            else if (u < 0.60) a = 0.05;
+            else if (u < 0.88) a = 0.56 + 0.1 * Math.sin(u * 95);
+            else if (u < 0.895) a = 0.08;
+            else if (u < 0.95) a = 0.44; else if (u < 0.972) a = 0.04; else if (u < 0.982) a = 0.34; else a = 0;
+            a *= grain[x]; var t = 0.92 + 0.08 * Math.sin(u * 23);
+            for (var y = 0; y < H; y++) { var p = (y * W + x) * 4; d[p] = 238 * t; d[p + 1] = 222 * t; d[p + 2] = 186 * t; d[p + 3] = Math.max(0, Math.min(255, a * 255)); }
+        }
+        g.putImageData(img, 0, 0);
+        var tex = new THREE.CanvasTexture(cv); tex.wrapS = THREE.ClampToEdgeWrapping; tex.wrapT = THREE.RepeatWrapping; tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
+        _hzSaturnRingTexCache = tex; return tex;
+    }
+    /* radial UVs on a RingGeometry: u across the radius (rIn → rOut), v round */
+    function _hzRadialUV(geo, rIn, rOut) {
+        var p = geo.attributes.position, uv = geo.attributes.uv;
+        for (var i = 0; i < p.count; i++) { var x = p.getX(i), y = p.getY(i); uv.setXY(i, (Math.hypot(x, y) - rIn) / (rOut - rIn), Math.atan2(y, x) / (Math.PI * 2) + 0.5); }
+        uv.needsUpdate = true;
+    }
     function _wdIslandDisc(K, R, ts) {
         var shape = new THREE.Shape();
         shape.absarc(0, 0, R, 0, Math.PI * 2, false);
@@ -27667,19 +27948,22 @@ const ThreeRenderer = (function () {
         var apronTop = kit.apronTop != null ? kit.apronTop : kit.fy - 0.6;
         var groundY = apronTop - 2.5;
         var ly = (kit.moatY != null ? kit.moatY : apronTop - ts) - 6;
-        var shore = sea ? R : (moat ? half + moatPad : half);
+        var planet = kind === 'planet' && !!kit.planet, planetInfo = null;
+        if (planet) groundY = apronTop;                    // THE PLANET: the ground IS the apron
+        var shore = sea ? R : (moat ? half + moatPad : (planet ? half * Math.SQRT2 * 1.02 : half));
         var fogR0 = Math.min(R * 0.55, shore + 3 * ts), fogR1 = R;
         _wd.inner = half; _wd.r = R;
         U.uWdC.value.set(K.CX, 0, K.CZ); U.uWdTile.value = ts;
         if (kind !== 'void') {
-            if (moat) {   // the liquid: a full disc a hair under the moat sheet, to the shore or the horizon
+            if (planet) planetInfo = _wdBuildPlanet(K, row, kit, { groundY: groundY, R: R, fogR0: fogR0, fogR1: fogR1 });
+            else if (moat) {   // the liquid: a full disc a hair under the moat sheet, to the shore or the horizon
                 var lm = _wdLiquidMat(K, moat, row);
                 var lr = sea ? R : shore + 1.5 * ts;
                 var ld = new THREE.Mesh(_wdIslandDisc(K, lr, ts), lm);   // the board's footprint cut out (THE CRATER FIX)
                 ld.rotation.x = -Math.PI / 2; ld.position.set(K.CX, ly, K.CZ); ld.receiveShadow = true; ld.name = 'world:liquid';
                 _wdInject(lm, { r0: fogR0, r1: fogR1 }); g.add(ld); _wd.hasGround = true;
             }
-            if (!sea) {   // the land: from the shore to the horizon
+            if (!sea && !planet) {   // the land: from the shore to the horizon
                 var gtex = row.ground || kit.tex || 'grass_2', gcol = row.groundColor != null ? row.groundColor : (kit.color != null ? kit.color : 0xffffff);
                 var gm = K.mat(gtex, gcol, { lift: 0.24 });
                 var geo = moat ? new THREE.RingGeometry(shore, R, 96, 4) : _wdIslandDisc(K, R, ts);   // a dry island: the board's footprint cut out (THE CRATER FIX)
@@ -27694,8 +27978,8 @@ const ThreeRenderer = (function () {
                     _wdInject(bm, { r0: fogR0, r1: fogR1 }); g.add(K.lit(bank));
                 }
             }
-            var c = { y: sea ? ly + 2 : groundY, shore: shore, R: R, sea: sea, moat: moat };
-            K._wdMinD = sea ? 0 : shore / ts + 2;      // a rim never stands in the lake
+            var c = { y: sea ? ly + 2 : groundY, shore: shore, R: R, sea: sea, moat: moat, planet: planet, yAt: planetInfo ? planetInfo.yAt : null };
+            K._wdMinD = sea ? 0 : shore / ts + 2;      // a rim never stands in the lake (nor on the island)
             K._wdFog = { r0: fogR0, r1: fogR1 };        // for the pieces that land LATER (foliage swaps, trimmed prisms): _nrInjectWorld
             var lowPerf = (typeof window !== 'undefined' && window.EW_PERF_LOW);
             var rims = row.rim ? (Array.isArray(row.rim) ? row.rim : [row.rim]) : [];
@@ -27711,7 +27995,7 @@ const ThreeRenderer = (function () {
                 for (var i = 0; i < ms.length; i++) { var mm = ms[i]; if (mm && mm.color && !mm._ew_wdInjected && mm.blending !== THREE.AdditiveBlending && !mm.isSpriteMaterial) _wdInject(mm, { r0: fogR0, r1: fogR1 }); }
             });
         }
-        if (row.root !== false) _wdBuildRoot(K, row, { kit: kit });
+        if (row.root !== false) _wdBuildRoot(K, row, planet ? { kit: kit, hx: shore * 1.01, round: true } : { kit: kit });
         _wd.fogTop = row.fogTop != null ? row.fogTop : 0.14;
         _wd.fogBand = row.fogBand != null ? row.fogBand : null;
         _horizonGroup.add(g); _wd.g = g;
@@ -36247,6 +36531,7 @@ const ThreeRenderer = (function () {
             opacity: (opts.opacity != null) ? opts.opacity : 1,
         });
         if (opts.emissive) { m.emissive = new THREE.Color(opts.emissive); m.emissiveIntensity = opts.emissiveIntensity || 1; }
+        if (name) _evBaseTint(m, name);   // THE BASE TINT (2026-09-16): a borrowed sheet keeps its identity in the building too
         return m;
     }
     function _hqBasic(color, opts) {

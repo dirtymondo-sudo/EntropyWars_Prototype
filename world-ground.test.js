@@ -23,7 +23,7 @@ D.TERRAIN_SPRITES = (() => {
 const src = f => fs.readFileSync(path.join(REPO, f), 'utf8');
 const TR = src('three-renderer.js'), ST = src('state.js'), MP = src('map.js'), UI = src('ui.js'), IX = src('index.html');
 
-const KINDS = ['plain', 'cavern', 'void', 'room'];
+const KINDS = ['plain', 'cavern', 'void', 'room', 'planet'];   // planet: THE PLANET (2026-09-16)
 const RIM_KINDS = (() => {
     const i = TR.indexOf('var _WD_RIM = {');
     assert.ok(i > 0, 'three-renderer.js has the _WD_RIM builder table');
@@ -55,6 +55,30 @@ test('the rows only ask for rim kinds and terrain sheets the renderer has', () =
         if (w.kind === 'cavern') assert.ok(w.wall, m.id + ': a cavern has a wall');
         if (w.sea) assert.ok(m.near || m.env.near, m.id + ': a sea map has a setting (the moat sheet the sea continues)');
     }
+});
+
+/* THE PLANET (2026-09-16): Mars / the Moon / Saturn — the ground IS the
+   apron (the builder says `planet: true`), curved, with the craters carved in */
+test('a planet world has a planet apron, a curve, and never a torus crater', () => {
+    const rows = D.EW_MAP_META.filter(m => !m.isDelta && m.env && m.env.world && m.env.world.kind === 'planet');
+    assert.ok(rows.length >= 3, 'the three planets are planets: ' + rows.map(m => m.id).join(' '));
+    assert.ok(TR.includes('function _wdBuildPlanet('), 'the renderer builds the planet ground');
+    assert.ok(TR.includes("if (planet) planetInfo = _wdBuildPlanet("), '_worldBuild takes the planet branch');
+    assert.ok(TR.includes('function _nrCrater('), 'the near kit registers craters');
+    for (const m of rows) {
+        const w = m.env.world;
+        assert.ok(typeof w.curve === 'number' && w.curve > 0, m.id + ' has a curve');
+        assert.ok(D.TERRAIN_SPRITES[w.ground], m.id + ' names its ground sheet');
+        const key = m.near || (m.env && m.env.near);
+        const i = TR.indexOf('_NR_BUILDERS.' + key + ' = function');
+        assert.ok(i > 0, m.id + ' has a near builder ' + key);
+        const body = TR.slice(i, TR.indexOf('_NR_BUILDERS.', i + 20));
+        assert.match(body, /_nrApron\(K, \{[^}]*planet: true/, m.id + ': the builder\'s apron is the planet');
+        assert.ok(!/TorusGeometry/.test(body), m.id + ': no torus crater in the builder');
+    }
+    const craters = TR.slice(TR.indexOf('        craters: function (K, s, c) {'), TR.indexOf('    /* THE WALL'));
+    assert.ok(!/TorusGeometry/.test(craters), 'the craters rim builder has no torus');
+    assert.ok(craters.includes('_wdCraterLathe('), 'the non-planet fallback is a lathe bowl');
 });
 
 test('the ships and the cloud islands never ground; the facilities are inert', () => {

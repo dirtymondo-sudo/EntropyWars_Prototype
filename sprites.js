@@ -2899,7 +2899,12 @@ const TERRAIN_SPRITES = {
        _LIQUID_STYLES). 'swamp' = Ooze Trail's toxic slick, 'oil' = oil slick. */
     swamp:            [`${_T}/water.png`],
     oil:              [`${_T}/water.png`],
-    urban_street:     [`${_T}/urban_street.png`],
+    /* THE STREET (2026-09-16): the old urban_street.png carried lane markings
+       running one way, so every street laid across it (and every tile beside
+       another) read as chaos. Streets wear the concrete sheet now, darkened
+       to asphalt by TERRAIN_BASE_TINT (below) — direction-free, one look for
+       every road in the game. The old file stays in the bucket, unreferenced. */
+    urban_street:     [`${_T}/concrete_floor.png?v=20260915`],
 
     // New terrain sprites (Moon / Backrooms / Heaven map set)
     moon:             [`${_T}/moon.png`],
@@ -3002,6 +3007,16 @@ const TERRAIN_SPRITES = {
     holo_red:         [HOLO_RED_TILE_URI],
     training_floor:   [TRAINING_SLAB_URI || `${_T}/concrete_floor.png?v=20260915`],   // canvas-drawn plaster slab (TRAINING_SLAB_URI above)
 };
+
+/* THE BASE TINT (2026-09-16): keys whose sheet is borrowed from another key
+   and darkened — multiplied onto every material that wears the key (board
+   tiles, the near kit's K.mat, the HQ's _hqMat) BEFORE any map tint, so a Δ's
+   own `tints` row still modulates it. urban_street = the concrete sheet as
+   asphalt. Add a key here + point its TERRAIN_SPRITES row at the sheet. */
+const TERRAIN_BASE_TINT = {
+    urban_street: '#4e4e56',
+};
+if (typeof window !== 'undefined') window.TERRAIN_BASE_TINT = TERRAIN_BASE_TINT;
 
 const TERRAIN_SIDE_SPRITES = {
 
