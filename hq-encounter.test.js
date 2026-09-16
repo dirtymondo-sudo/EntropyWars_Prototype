@@ -476,13 +476,85 @@ test('D6 · SOURCE · map.js: the strike reads the Code Red, files the field, SL
      "_hqEncounterStart(L, ev2, field2);", "return _hqEncounterStart(L, ev, field);",
      "function _hqEncounterStart(L, ev, field) {", "field: field || null, gm: L.gm };",
      "window._hqCodeRedRun = L.codeRedRun || null;",
-     "const _encPlaced = _encounterPlaceSeats();", "if (_encPlaced && _encPlaced.has(unit.id)) continue;   // seated by the encounter",
+     "const _encSeated = _encounterPlaceSeats();", "if (_encSeated) {\n                state.spawnZones = _encSeated.zones;",
      "function _encounterPlaceSeats() {", "const F = (typeof window._ewEncounterField === 'function') ? window._ewEncounterField() : null;",
      "if (!_respawnTileSafe(x, y)) return false;", "seats = window.hqEncounterSeats(F, { W: bw(), H: bh(), n1: u1.length, n2: u2.length, free });",
      "F.seats = seats;", "if (_encParty.fallback && typeof optimizeRandomizeParty === 'function') {",
      "YOU CAME TO AT YOUR DESK", "YOU CAME TO IN THE WARD"].forEach(f => assert.ok(MP.includes(f), f));
-    assert.ok(MP.indexOf("const _encPlaced = _encounterPlaceSeats();") < MP.indexOf("/* Relocate existing units into their spawn zone tiles"), 'the seats are placed before the rows would move them');
-    assert.ok(MP.indexOf("SPAWNS[1] = state.spawnZones[1].map(t => ({ x: t.x, y: t.y, z: t.z }));") < MP.indexOf("const _encPlaced = _encounterPlaceSeats();"), 'the zones + SPAWNS stand as before (a TDM respawn comes home to the row)');
+    assert.ok(MP.indexOf("const _encSeated = _encounterPlaceSeats();") < MP.indexOf("state.spawnZones = {};\n\n            /* Determine orientation from SPAWNS hint */"), 'the seats are placed before the rows would be built');
+    assert.ok(!MP.includes('_encPlaced'), 'the Delivery 6 skip inside the row path is gone — a field never reaches the rows');
+});
+
+/* ── THE FIELD stage A rev 2 (Phase 9 Delivery 7): the seats are the zones, the board untouched ── */
+test('D7 · THE TRANSFORM: room metres ↔ tiles round-trip within 1 mm on every board; cellOf clamps onto the board; centre is the cell\'s middle; the field record and the eye read the same rule; null without a board', () => {
+    const T = g('hqFieldTransform');
+    assert.equal(T(null), null); assert.equal(T({ N: 0, C: 1.75 }), null); assert.equal(T({ N: 8 }), null);
+    for (const b of [{ N: 8, C: 1.7534 }, { N: 16, C: 1.7534 }, { N: 8, C: 1.75, half: 7 }, { N: 12, C: 1.7534246575342467 }]) {
+        const tr = T(b);
+        assert.equal(tr.half, b.half != null ? b.half : b.N * b.C / 2);
+        for (let i = 0; i < 400; i++) {
+            const x = (i * 0.37) % (b.N * b.C) - tr.half, z = (i * 0.61) % (b.N * b.C) - tr.half;
+            const t = tr.toTile(x, z), back = tr.toRoom(t.tx, t.tz);
+            assert.ok(Math.abs(back.x - x) < 1e-3 && Math.abs(back.z - z) < 1e-3, 'round trip within 1 mm');
+            const c = tr.cellOf({ x, z });
+            assert.ok(c.x >= 0 && c.y >= 0 && c.x < b.N && c.y < b.N);
+            assert.equal(c.x, Math.floor(t.tx)); assert.equal(c.y, Math.floor(t.tz));
+            const m = tr.centre(c), t2 = tr.toTile(m.x, m.z);
+            assert.ok(Math.abs(t2.tx - (c.x + 0.5)) < 1e-9 && Math.abs(t2.tz - (c.y + 0.5)) < 1e-9, 'the centre is the middle');
+            assert.ok(tr.inside({ x, z }));
+        }
+        const far = tr.cellOf({ x: 1e4, z: -1e4 }); assert.deepEqual(J(far), { x: b.N - 1, y: 0 });
+        assert.ok(!tr.inside({ x: tr.half + 0.01, z: 0 }) && !tr.inside({ x: -tr.half - 0.01, z: 0 }));
+    }
+    /* the field record and the eye agree with the transform to the metre */
+    const board = { N: 8, C: 1.7534, half: 7.0136 }, tr = T(board);
+    const ev = { board, x: -2.2, z: 3.1, y: 0, target: { x: -0.7, z: 3.4 }, eye: { x: -4.0, y: 1.9, z: 2.0, dx: 0.7, dy: -0.4, dz: 0.3, ground: 0, px: -2.2, pz: 3.1 } };
+    const F = g('hqEncounterField')(ev);
+    assert.deepEqual(J(F.cells.walker), J(tr.cellOf({ x: -2.2, z: 3.1 })));
+    assert.deepEqual(J(F.snap.walker), J(tr.centre(F.cells.walker)));
+    const eye = g('hqEncounterEye')(ev, null), t = tr.toTile(-4.0, 2.0);
+    assert.ok(Math.abs(eye.tx - t.tx) < 1e-9 && Math.abs(eye.tz - t.tz) < 1e-9, 'the eye seed is the transform');
+    assert.ok(D.window.hqFieldTransform === T && typeof D.window.hqEncounterZones === 'function', 'on window');
+});
+
+test('D7 · THE ZONES ARE THE SEATS: explicit per seat (seat i is unit i\'s respawn tile), integer cells, `field: true`; null without both parties', () => {
+    const Z = g('hqEncounterZones');
+    assert.equal(Z(null), null); assert.equal(Z({ 1: [], 2: [{ x: 1, y: 1 }] }), null); assert.equal(Z({ 1: [{ x: 1, y: 1 }] }), null);
+    const seats = { 1: [{ x: 3.0, y: 4 }, { x: 2, y: 4 }, { x: 3, y: 5 }], 2: [{ x: 4, y: 4 }, { x: 5, y: 4 }] };
+    const z = Z(seats);
+    assert.equal(z.field, true);
+    assert.deepEqual(J(z[1]), [{ x: 3, y: 4 }, { x: 2, y: 4 }, { x: 3, y: 5 }]);
+    assert.deepEqual(J(z[2]), [{ x: 4, y: 4 }, { x: 5, y: 4 }]);
+    assert.equal(Object.keys(z).sort().join(','), '1,2,field');
+    /* the seats from a real field record feed it end to end */
+    const F = g('hqEncounterField')({ board: { N: 8, C: 1.75 }, x: -1.0, z: 0.2, target: { x: 0.9, z: 0.1 } });
+    const S = g('hqEncounterSeats')(F, { W: 8, H: 8, n1: 4, n2: 4, free: () => true });
+    const zz = Z(S);
+    assert.equal(zz[1].length, 4); assert.equal(zz[2].length, 4);
+    assert.deepEqual(J(zz[1][0]), J(S.lead[1])); assert.deepEqual(J(zz[2][0]), J(S.lead[2]));
+    const all = zz[1].concat(zz[2]).map(c => c.x + ',' + c.y);
+    assert.equal(new Set(all).size, 8, 'every respawn tile distinct');
+});
+
+test('D7 · SOURCE: the zone builder returns before the rows for a field (no flatten, no egress rewrite, no Arena spawn nexus, SPAWNS = the seats, _spawnIndex = the seat); every perk stands down on isFieldSpawnZones — the owner read, the spawn nexuses, the wash, the sanctuary curtain, the minimap; the respawn readers keep the tiles', () => {
+    ['function isFieldSpawnZones() {', 'return !!(state.spawnZones && state.spawnZones.field);', 'window.isFieldSpawnZones = isFieldSpawnZones;',
+     "if (isFieldSpawnZones()) return 0;   // THE FIELD", "if (isFieldSpawnZones()) return;   // THE FIELD: a Code Red fight on the seats has no spawn nexus to steal",
+     "const zones = window.hqEncounterZones(seats);", "return { zones, index, seats };",
+     "if (idx != null) unit._spawnIndex = idx;", "SPAWNS[1] = state.spawnZones[1].map(t => ({ x: t.x, y: t.y }));\n                SPAWNS[2] = state.spawnZones[2].map(t => ({ x: t.x, y: t.y }));\n                console.log('[SpawnZones] THE FIELD"].forEach(f => assert.ok(MP.includes(f), f));
+    const branch = MP.indexOf('const _encSeated = _encounterPlaceSeats();');
+    const ret = MP.indexOf('return;', branch);
+    const flatten = MP.indexOf('_clearSpawnZoneTiles(state.spawnZones[1], z1);');
+    const nex = MP.indexOf('_initArenaSpawnNexuses();\n        }');
+    assert.ok(branch > 0 && ret > branch && flatten > ret && nex > ret, 'the field returns before the flatten and the Arena spawn nexuses');
+    assert.ok(MP.indexOf('function getSpawnZoneOwnerAt(x, y) {') < MP.indexOf("if (isFieldSpawnZones()) return 0;   // THE FIELD"), 'the owner gate is inside getSpawnZoneOwnerAt');
+    /* the end-of-round regen / scorch reads the owner (0 = nothing), the nexus branch is untouched */
+    assert.ok(BT.includes("const zoneOwner = _zoneIsNexus ? (_nzAt.nexus.owner || 0) : getSpawnZoneOwnerAt(unit.x, unit.y);") && BT.includes("if (!zoneOwner) continue;"), 'the perk reads the owner');
+    /* the renderer */
+    ["if (!state.spawnZones || state.spawnZones.field) { _lastSpawnZoneSerial = ser; return; }",
+     "if (!state.spawnZones || state.spawnZones.field) { _lastSanctuaryWallSerial = ser; return; }",
+     "if (sz && !sz.field) {"].forEach(f => assert.ok(TR.includes(f), f));
+    /* the respawn readers still read the tiles by seat / by zone */
+    assert.ok(MP.includes("const home = (state.spawnZones && state.spawnZones[player]) || [];") && MP.includes("if (!homeNex) return { section: 'home', label: 'Spawn', tiles: home, home: true, locked: false };"), 'getRespawnZoneFor comes home to the seats');
 });
 
 test('D6 · SOURCE · three-renderer.js: THE SLIDE — H.snap owns the walker\'s frame (no input), eases both bodies (smoothstep), squares them up, moves the native\'s group, fires the callback once at the end; the API', () => {

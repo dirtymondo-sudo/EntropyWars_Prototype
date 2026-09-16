@@ -10585,6 +10585,28 @@
                 return;
             }
 
+            /* THE FIELD stage A rev 2 (Phase 9 Delivery 7, 2026-09-16 — the user's rule: "forget spawn zones
+               in encounter battles"): an encounter's zones ARE THE SEATS. The two LEADS stand where the walker
+               and the native stood (their cells on the room's board; the map's centre from a cave / a complex
+               part), the parties fan out behind them (data.js hqEncounterSeats over the built board's own
+               walkability), and each seat is its unit's own respawn tile (data.js hqEncounterZones: explicit
+               per seat, `field: true`). NOTHING below runs for a field: no edge row, no flatten, no egress
+               rewrite — the board stays the room's board to the tile — and no Arena spawn nexus; every zone
+               PERK reads isFieldSpawnZones() and stands down (the perks, the wash, the curtain, the minimap).
+               battle.js latches the record (window._ewEncounterField). No free cell → the rows as before. */
+            const _encSeated = _encounterPlaceSeats();
+            if (_encSeated) {
+                state.spawnZones = _encSeated.zones;
+                for (const unit of state.units) {
+                    const idx = _encSeated.index.get(unit.id);
+                    if (idx != null) unit._spawnIndex = idx;
+                }
+                SPAWNS[1] = state.spawnZones[1].map(t => ({ x: t.x, y: t.y }));
+                SPAWNS[2] = state.spawnZones[2].map(t => ({ x: t.x, y: t.y }));
+                console.log('[SpawnZones] THE FIELD — the seats are the zones P1:', JSON.stringify(state.spawnZones[1]), 'P2:', JSON.stringify(state.spawnZones[2]));
+                return;
+            }
+
             state.spawnZones = {};
 
             /* Determine orientation from SPAWNS hint */
@@ -10687,18 +10709,9 @@
                 SPAWNS[2] = state.spawnZones[2].map(t => ({ x: t.x, y: t.y, z: t.z }));
             }
 
-            /* THE FIELD stage A (Phase 9 Delivery 6, 2026-09-16 — the user's rule: "forget spawn zones in
-               encounter battles"): an encounter's START is not the rows — the two LEADS stand where the walker
-               and the native stood (their cells on the room's board; the map's centre from a cave / a complex
-               part), the parties fan out behind them (data.js hqEncounterSeats over the built board's own
-               walkability). The zones themselves stay: a TDM respawn still comes home to the team's row, Arena's
-               spawn nexuses stand where they always did. battle.js latches the record (window._ewEncounterField). */
-            const _encPlaced = _encounterPlaceSeats();
-
             /* Relocate existing units into their spawn zone tiles (units are created before map init) */
             for (const unit of state.units) {
                 if (unit.dead) continue;
-                if (_encPlaced && _encPlaced.has(unit.id)) continue;   // seated by the encounter
                 const zoneArr = state.spawnZones[unit.player];
                 if (!zoneArr || zoneArr.length === 0) continue;
                 const idx = unit._spawnIndex || 0;
@@ -10716,10 +10729,11 @@
         /* THE FIELD stage A: seat both parties from the encounter's field record (null outside an encounter,
            or when no free cell exists — the caller keeps the rows). A free cell = a tile a respawn would take
            (_respawnTileSafe: passable, not lava / deep water / a chasm / the Cube) with a walkable surface and
-           nothing standing on it; the units are not on the board yet, so bodies never count. */
+           nothing standing on it; the units are not on the board yet, so bodies never count. Returns
+           { zones, index, seats }: the seats as explicit per-seat zones (rev 2) and each seated unit's index. */
         function _encounterPlaceSeats() {
             const F = (typeof window._ewEncounterField === 'function') ? window._ewEncounterField() : null;
-            if (!F || typeof window.hqEncounterSeats !== 'function') return null;
+            if (!F || typeof window.hqEncounterSeats !== 'function' || typeof window.hqEncounterZones !== 'function') return null;
             const live = (p) => state.units.filter(u => u.player === p && !u.dead && !u._benched);
             const u1 = live(1), u2 = live(2);
             if (!u1.length || !u2.length) return null;
@@ -10736,19 +10750,29 @@
             let seats = null;
             try { seats = window.hqEncounterSeats(F, { W: bw(), H: bh(), n1: u1.length, n2: u2.length, free }); } catch (e) { console.warn('[HQ] the encounter seats failed', e); seats = null; }
             if (!seats || !seats[1] || !seats[2]) return null;
-            const placed = new Set();
+            const zones = window.hqEncounterZones(seats);
+            if (!zones) return null;
+            const index = new Map();
             [[1, u1], [2, u2]].forEach(([p, us]) => {
                 us.forEach((unit, i) => {
                     const c = seats[p][i]; if (!c) return;
                     unit.x = c.x; unit.y = c.y;
                     if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(c.x, c.y);
-                    placed.add(unit.id);
+                    index.set(unit.id, i);
                 });
             });
             F.seats = seats;   // the eye with no board hangs on P1's lead (battle.js showVSSplash → data.js hqEncounterEyeFromSeats)
-            console.log('[SpawnZones] THE FIELD — encounter seats P1:', JSON.stringify(seats[1]), 'P2:', JSON.stringify(seats[2]));
-            return placed;
+            return { zones, index, seats };
         }
+
+        /* THE FIELD (rev 2): the zones are the seats and carry no perk — the ONE read every zone perk gates on
+           (the end-of-round regen / scorch through getSpawnZoneOwnerAt, the Arena spawn nexuses, the wash, the
+           sanctuary curtain, the minimap tint). The respawn readers (getRespawnZoneFor, recall, reinforcements)
+           keep the tiles. */
+        function isFieldSpawnZones() {
+            return !!(state.spawnZones && state.spawnZones.field);
+        }
+        window.isFieldSpawnZones = isFieldSpawnZones;
 
         /* ── Arena: SPAWN ZONES ARE NEXUSES ─────────────────────────────────
            Every Arena map has 3 nexus zones: the placed center nexus plus BOTH
@@ -10762,6 +10786,7 @@
             const mpMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
             if (!mpMode || mpMode.id !== 'arena') return;
             if (!state.spawnZones) return;
+            if (isFieldSpawnZones()) return;   // THE FIELD: a Code Red fight on the seats has no spawn nexus to steal
             if (!state.nexusPoints) state.nexusPoints = {};
             const thr = (typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined') ? NEXUS_CAPTURE_THRESHOLD : 6;
             for (const p of [1, 2]) {
@@ -10928,6 +10953,7 @@
         function getSpawnZoneOwnerAt(x, y) {
             /* Arena (2026-09-12): a spawn zone is a nexus — it belongs to
                whoever HOLDS it (0 while neutral), not to the home team. */
+            if (isFieldSpawnZones()) return 0;   // THE FIELD: the seats are nobody's ground (no regen, no scorch)
             for (const p of [1, 2]) {
                 if (!isInSpawnZone(x, y, p)) continue;
                 const nx = state.nexusPoints && state.nexusPoints['spawn' + p];

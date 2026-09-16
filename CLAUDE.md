@@ -4355,3 +4355,28 @@ the site's Δ from its centre). `npm test` runs hq-encounter.test.js (30).
 UNSEEN LIVE (RULE #1c): the slide's feel under the strike clip, the eased
 first frame off the seats, the stand-in squad's identities, the one-button
 card over the podium.
+
+## PHASE 9 DELIVERY 7 — THE FIELD, STAGE A rev 2 (the seats are the zones, the board untouched) (2026-09-16, local delivery)
+Delivery 6 seated the parties on their cells but the zone builder still ran its
+ROW pass first — the site board's two edge rows were FLATTENED and their egress
+rows rewritten for a fight the walker had just crossed, a TDM respawn came home
+to an edge row and a Code Red Arena fight put spawn nexuses there. Now map.js
+`autoGenerateSpawnZones` takes THE FIELD branch right after the custom-map one
+(`_encounterPlaceSeats()` → `{ zones, index, seats }`): the seats ARE the zones
+— data.js **`hqEncounterZones(seats)`** = `{ 1: [cells], 2: [cells], field: true }`,
+EXPLICIT PER SEAT (`_spawnIndex` = the seat, `SPAWNS` = the seats) — and the
+builder RETURNS: no row, no flatten, no egress rewrite, no `_initArenaSpawnNexuses`.
+**`isFieldSpawnZones()`** (map.js, on `window`) is the ONE read every zone PERK
+gates on: `getSpawnZoneOwnerAt` → 0 (the end-of-round regen / scorch skips; the
+nexus branch is untouched), the Arena spawn nexuses stand down, three-renderer.js
+skips the spawn wash / the sanctuary curtain / the minimap tint on a `field`
+record. The respawn readers (`getRespawnZoneFor` → `section: 'home'`, recall,
+Gauntlet reinforcements) keep the tiles — a respawn comes home to the seat you
+started on. **`hqFieldTransform(board)`** (data.js, on `window`) is THE ONE
+room-metre ↔ tile rule (`toTile` / `toRoom` / `cellOf` / `centre` / `inside`);
+`hqEncounterField` and `hqEncounterEye` read it — never write `(x + half) / C`
+again. Nothing relayed (an encounter is VS-CPU; `field` is a plain boolean on a
+synced object). `npm test` runs hq-encounter.test.js (33). UNSEEN LIVE (RULE
+#1c): a respawn landing on a mid-board seat beside the enemy, the Code Red
+fight with only the centre nexus. Still open in stage A: §10 stage 4 (the room's
+furniture as the battle's setting), §14 B (the party's arrival).

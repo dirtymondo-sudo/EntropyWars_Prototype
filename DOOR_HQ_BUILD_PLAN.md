@@ -8911,3 +8911,35 @@ roll by the clock). `npm test` 1480 / 1476 / 0 / 4 skipped.
 - **Still open in stage A:** the battle built at the room's transform with the room's
   furniture as the setting (§10 stage 4), explicit spawn zones per seat; then B–E (the
   rasteriser on the cave and the box rooms — the two systems unified).
+
+### 2026-09-16 — PHASE 9 DELIVERY 7 · THE FIELD, STAGE A rev 2 (the seats are the zones, the board untouched)
+- **The defect it closes:** Delivery 6 seated the parties on their cells but let the zone
+  builder run its ROW pass first — `_clearSpawnZoneTiles` flattened the site board's two
+  edge rows and `_ensureEgressRow` rewrote the rows inside them, so the fight's board was
+  not the room's board (the walker had just crossed those tiles); a TDM respawn came home
+  to an edge row nobody had stood on, and a Code Red Arena fight registered spawn nexuses on
+  rows the seats never touched.
+- **data.js:** `hqFieldTransform(board)` — THE ONE room-metre ↔ tile rule (`toTile` /
+  `toRoom` / `cellOf` / `centre` / `inside`); `hqEncounterField` and `hqEncounterEye` read
+  it (the snap, the seats and the eye seed agree to the millimetre — stage A's acceptance);
+  `hqEncounterZones(seats)` = the seats as EXPLICIT PER-SEAT zones (`{ 1, 2, field: true }`).
+- **map.js:** `autoGenerateSpawnZones` takes THE FIELD branch right after the custom-map
+  one: the seats are the zones, `_spawnIndex` = the seat, `SPAWNS` = the seats, and it
+  RETURNS — no row, no flatten, no egress rewrite, no `_initArenaSpawnNexuses`.
+  `isFieldSpawnZones()` (on `window`) is the ONE read every zone PERK gates on:
+  `getSpawnZoneOwnerAt` → 0 (so the end-of-round regen / scorch skips — the nexus branch
+  is untouched), the Arena spawn nexuses stand down. The respawn readers
+  (`getRespawnZoneFor`, recall, Gauntlet reinforcements) keep the tiles: a respawn comes
+  home to the seat you started on.
+- **three-renderer.js:** the spawn wash, the sanctuary curtain and the minimap tint skip a
+  `field` zone record (their serials still stamp).
+- **Tests:** hq-encounter.test.js 33 (+ the transform's 1 mm round trip on four boards,
+  the zones from the seats, the source order: the field returns before the flatten).
+- **Delivery:** `ENTROPY_WARS_PHASE9_FIELD_ZONES.zip` — data.js → R2 AND Render, map.js /
+  three-renderer.js → R2, index.html → Render (`20260916-field-zones-09-cors`), the test +
+  docs → the repo. UNSEEN LIVE (RULE #1c): a respawn landing back on a mid-board seat
+  beside the enemy (Spawn Guard covers the round), the Code Red Arena fight with only the
+  centre nexus to hold.
+- **Still open in stage A:** the battle built at the room's transform with the room's
+  furniture as the setting (§10 stage 4 — the renderer bridge); §14 B (the party's ARRIVAL
+  — today the nearest free cells); then the playtest, then B–E.

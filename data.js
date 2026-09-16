@@ -30455,9 +30455,9 @@ function hqRoomGuarded(roomId) {
 function hqEncounterEye(ev, seats) {
     const e = ev && ev.eye, b = ev && ev.board;
     if (!e) return null;
-    if (!b || !(b.C > 0) || !(b.N > 0)) return hqEncounterEyeFromSeats(ev, seats);
-    const half = (b.half != null) ? +b.half : b.N * b.C / 2;
-    const tx = (+e.x + half) / b.C, tz = (+e.z + half) / b.C;
+    const TR = hqFieldTransform(b);
+    if (!TR) return hqEncounterEyeFromSeats(ev, seats);
+    const { tx, tz } = TR.toTile(+e.x, +e.z);
     const g = (e.ground != null && isFinite(+e.ground)) ? +e.ground : (+e.py || 0);
     const up = Math.max(0.15, (+e.y - g) / b.C);
     let dx = +e.dx, dy = +e.dy, dz = +e.dz;
@@ -30500,10 +30500,45 @@ function hqEncounterEye(ev, seats) {
      office by turns (the record's loss count, the commit already wrote this
      one — the first exit is the ward). The zones stay what they are for a
      TDM respawn; nothing on `state`, nothing relayed (RULE #2). */
+/* THE FIELD stage A rev 2 (Phase 9 Delivery 7, 2026-09-16) — THE TRANSFORM. The ONE
+   rule that turns a room-metre point into a board cell and back (rule 11.2 §9: the
+   battle is built at the room's transform, so the eye seed, the snap and the seats
+   must all agree to the millimetre): a board = N cells of C metres about the room's
+   origin, board x east / board y south. `toTile` is continuous (tile units, the
+   cell (0,0) spanning 0..1), `cellOf` clamps onto the board, `centre` is a cell's
+   middle in room metres, `toRoom` the inverse of `toTile`. Null without a board. */
+function hqFieldTransform(board) {
+    const bb = board;
+    if (!bb || !(+bb.N > 0) || !(+bb.C > 0)) return null;
+    const N = Math.floor(+bb.N), C = +bb.C;
+    const half = (bb.half != null && isFinite(+bb.half)) ? +bb.half : N * C / 2;
+    const cl = (v) => Math.max(0, Math.min(N - 1, v));
+    const T = {
+        N, C, half,
+        toTile: (x, z) => ({ tx: (+x + half) / C, tz: (+z + half) / C }),
+        toRoom: (tx, tz) => ({ x: +tx * C - half, z: +tz * C - half }),
+        cellOf: (p) => ({ x: cl(Math.floor((+p.x + half) / C)), y: cl(Math.floor((+p.z + half) / C)) }),
+        centre: (c) => ({ x: -half + (+c.x + 0.5) * C, z: -half + (+c.y + 0.5) * C }),
+        inside: (p) => { const t = T.toTile(p.x, p.z); return t.tx >= 0 && t.tz >= 0 && t.tx < N && t.tz < N; },
+    };
+    return T;
+}
+/* THE ZONES ARE THE SEATS (rev 2 — the user's rule "forget spawn zones in encounter
+   battles"): a field's spawn zones are EXPLICIT PER SEAT — each seat cell is its
+   unit's own respawn tile (seat i ↔ _spawnIndex i), nothing on an edge row, no
+   flatten. The record wears `field: true` so every zone PERK stands down (the
+   home-team regen / scorch, the Arena spawn nexuses, the wash, the sanctuary
+   curtain, the minimap tint) while the respawn readers keep their tiles. Null
+   without seats. */
+function hqEncounterZones(seats) {
+    if (!seats || !Array.isArray(seats[1]) || !Array.isArray(seats[2]) || !seats[1].length || !seats[2].length) return null;
+    const row = (arr) => arr.map(c => ({ x: Math.floor(+c.x), y: Math.floor(+c.y) }));
+    return { 1: row(seats[1]), 2: row(seats[2]), field: true };
+}
 function hqEncounterField(ev) {
     if (!ev || typeof ev !== 'object') return null;
-    const bb = ev.board;
-    const b = (bb && +bb.N > 0 && +bb.C > 0) ? { N: Math.floor(+bb.N), C: +bb.C, half: (bb.half != null && isFinite(+bb.half)) ? +bb.half : Math.floor(+bb.N) * +bb.C / 2 } : null;
+    const TR = hqFieldTransform(ev.board);
+    const b = TR ? { N: TR.N, C: TR.C, half: TR.half } : null;
     const num = (v, d) => (isFinite(+v) ? +v : d);
     const w = { x: num(ev.x, 0), z: num(ev.z, 0), y: num(ev.y, 0) };
     const T = ev.target || null;
@@ -30515,8 +30550,7 @@ function hqEncounterField(ev) {
                                                             ground: (E.ground != null && isFinite(+E.ground)) ? +E.ground : num(E.py, w.y), px: num(E.px, w.x), pz: num(E.pz, w.z), py: num(E.py, w.y) } : null;
     const F = { board: b, walker: w, target: t, heading, eye, cells: null, snap: null };
     if (b) {
-        const N = b.N, cl = (v) => Math.max(0, Math.min(N - 1, v));
-        const cellOf = (p) => ({ x: cl(Math.floor((p.x + b.half) / b.C)), y: cl(Math.floor((p.z + b.half) / b.C)) });
+        const N = b.N, cellOf = TR.cellOf;
         const cw = cellOf(w); let ct = cellOf(t);
         if (ct.x === cw.x && ct.y === cw.y) {
             /* the same cell (both clamped onto one edge cell, or a body inside a body): the native takes the
@@ -30530,8 +30564,7 @@ function hqEncounterField(ev) {
             }
         }
         F.cells = { walker: cw, target: ct };
-        const centre = (c) => ({ x: -b.half + (c.x + 0.5) * b.C, z: -b.half + (c.y + 0.5) * b.C });
-        F.snap = { walker: centre(cw), target: centre(ct) };
+        F.snap = { walker: TR.centre(cw), target: TR.centre(ct) };
     }
     return F;
 }
@@ -32513,6 +32546,7 @@ if (typeof window !== 'undefined') {
     window.hqSyncedHq = hqSyncedHq; window.hqClearedUnion = hqClearedUnion; window.hqEncountersUnion = hqEncountersUnion; window.hqSkateUnion = hqSkateUnion; window.hqDoorSyncFold = hqDoorSyncFold; window.hqClearedRecord = hqClearedRecord;   // THE SYNCED BUILDING (D5)
     window.hqEncounterCleared = hqEncounterCleared; window.hqRoomGuarded = hqRoomGuarded; window.hqEncounterEye = hqEncounterEye;
     window.hqEncounterLead = hqEncounterLead; window.hqEncounterReturnSpot = hqEncounterReturnSpot;
+    window.hqFieldTransform = hqFieldTransform; window.hqEncounterZones = hqEncounterZones;
     window.hqEncounterField = hqEncounterField; window.hqEncounterSeats = hqEncounterSeats; window.hqEncounterEyeFromSeats = hqEncounterEyeFromSeats; window.hqEncounterWakeRoom = hqEncounterWakeRoom;
     /* SKATEBOARDING (HQ plan 9.8 stage 1, 2026-09-15) */
     window.HQ_SKATE_RULES = HQ_SKATE_RULES; window.hqSkateStatus = hqSkateStatus; window.hqSkateRecord = hqSkateRecord; window.hqSkateBank = hqSkateBank; window.hqSkateScore = hqSkateScore; window.hqSkateIssueFree = hqSkateIssueFree;

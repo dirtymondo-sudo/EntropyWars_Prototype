@@ -8700,7 +8700,8 @@ const ThreeRenderer = (function () {
         if (ser === _lastSpawnZoneSerial) return;
         _clearGroup(_spawnZoneGroup);
         _spawnZoneMats.length = 0;
-        if (!state.spawnZones) { _lastSpawnZoneSerial = ser; return; }
+        /* THE FIELD (Phase 9 Delivery 7): an encounter's zones are the seats and wear no wash */
+        if (!state.spawnZones || state.spawnZones.field) { _lastSpawnZoneSerial = ser; return; }
 
         var ts = CONFIG.tileSize || BASE_TILE;
         var elevStep = ts * ELEV_STEP_RATIO;
@@ -8802,7 +8803,8 @@ const ThreeRenderer = (function () {
         _clearGroup(_sanctuaryWallGroup);
         _sanctuaryWallMats.length = 0;
 
-        if (!state.spawnZones) { _lastSanctuaryWallSerial = ser; return; }
+        /* THE FIELD (Phase 9 Delivery 7): the seats are zones for the respawn only — no curtain round them */
+        if (!state.spawnZones || state.spawnZones.field) { _lastSanctuaryWallSerial = ser; return; }
 
         var ts = CONFIG.tileSize || BASE_TILE;
         var elevStep = ts * ELEV_STEP_RATIO;
@@ -30726,9 +30728,9 @@ const ThreeRenderer = (function () {
                 }
             }
 
-            /* ── Spawn zones ── */
+            /* ── Spawn zones ── (a field's seat zones are not drawn: Phase 9 Delivery 7) */
             var sz = state.spawnZones;
-            if (sz) {
+            if (sz && !sz.field) {
                 for (var sp = 1; sp <= 2; sp++) {
                     var zone = sz[sp];
                     if (!zone) continue;

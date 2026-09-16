@@ -442,8 +442,14 @@ Each item: impact · evidence · files · dependencies · change · acceptance.
   ✅ 2026-09-16, `ENTROPY_WARS_PHASE9_FIELD_A.zip`. The rest of §11.3 A (the battle at the
   room's transform, the room as the setting, explicit spawn zones per seat) and the
   playtest follow.
-- **Delivery 7 — the playtest** (PLAYTEST_NOTES.md) → then §10 / §11 B–E in their own
-  deliveries.
+- **Delivery 7 — THE FIELD, STAGE A rev 2** (data.js, map.js, three-renderer.js; tests): the
+  seats ARE the zones (explicit per seat, `field: true`), the zone builder never reaches the
+  row pass for a field (the board stays the room's board — Delivery 6 still flattened the
+  edge rows), every zone perk stands down on `isFieldSpawnZones()`, `hqFieldTransform` is the
+  one room ↔ tile rule the snap / seats / eye share. ✅ 2026-09-16,
+  `ENTROPY_WARS_PHASE9_FIELD_ZONES.zip`.
+- **Delivery 8 — the playtest** (PLAYTEST_NOTES.md) → then §10 stage 4 (the room as the
+  battle's setting) and §11 B–E in their own deliveries.
 Each delivery = one `ENTROPY_WARS_<TOPIC>.zip`, `npm test` green, the token bumped, the
 caption saying R2 / Render / repo per file (RULE #1, #1b).
 
@@ -562,15 +568,16 @@ square, and the units are not on squares when the fight starts.
 ### 11.3 The stages (each its own delivery, each shippable alone)
 - **A · THE CUT ON A SITE ROOM (no rasteriser).** The site room's board IS the field: the
   window = the Δ. Build: the dissolve (§8 item 7 ✅ D2), the snap + the seats off the cells
-  (rule 7 ✅ Delivery 6 — `hqEncounterSeats` seats the START; the zones still serve respawns,
-  explicit per-seat zones are still open), the native as P2 seat 1 (D2 ✅), the return to the
+  (rule 7 ✅ Delivery 6 — `hqEncounterSeats` seats the START; ✅ Delivery 7 — the seats are
+  the explicit per-seat zones, `hqEncounterZones`, and the row pass never runs for a field), the native as P2 seat 1 (D2 ✅), the return to the
   cell (rule 9 — the swing spot today, D1), the battle at the room's transform with the room's
   furniture as setting (§10 stage 4 — OPEN). Acceptance: from a site
   room's walkway, strike a native standing ON the board: the screen never cuts to black, the
   board's cells fade in under the walker's feet, seat 1 stands where the walker stood, the
   enemy's lead is the native; after the fight the walker stands on seat 1's last cell and the
-  native is gone. hq-encounter.test.js: the snap picks the cell the walker's feet are in; the
-  spawn list is explicit; the transform round-trips (room metres ↔ tiles) within 1 mm.
+  native is gone. hq-encounter.test.js: the snap picks the cell the walker's feet are in ✅; the
+  spawn list is explicit ✅ (Delivery 7); the transform round-trips (room metres ↔ tiles)
+  within 1 mm ✅ (`hqFieldTransform`, Delivery 7).
 - **B · THE RASTERISER ON THE CAVE.** `hqFieldFromRoom(roomId, ox, oz)` (data.js, PURE: reads
   the room sheet — the cave grid's `hqCaveCompile` cells, the box shell, the catalogue props'
   `foot` / `rect` / `top`, the gallery) → a Δ object; the cave first because its grid is
