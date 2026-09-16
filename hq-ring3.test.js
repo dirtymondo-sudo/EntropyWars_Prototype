@@ -154,8 +154,8 @@ test('the builder runs on a stub scene: the slab (cut over the flight), its unde
     c._hqPolarW = (deg, r, y) => new c.THREE.Vector3(Math.sin(deg * Math.PI / 180) * r, y, -Math.cos(deg * Math.PI / 180) * r);
     vm.runInContext(extract('_hqBuildRing3'), c);
     c._hqBuildRing3(ROOM);
-    assert.equal(counts.sector, 4, 'two slab sectors + their undersides (the full band off the flight, the strip over it)');
-    assert.equal(counts.band, 1, 'the fascia');
+    assert.equal(counts.sector, 5, 'two slab sectors + their undersides (the full band off the flight, the strip over it) + the soffit lip\'s underside (THE EDGE THE HALL SEES, 2026-09-16)');
+    assert.equal(counts.band, 3, 'the fascia (BackSide — seen from the hall) between its two trims');
     assert.equal(counts.arc, 4, 'the inner rail\'s two arcs + the strip rail\'s two');
     assert.ok(counts.inst >= ST.steps + 20, 'the treads and the rail posts are instanced (' + counts.inst + ')');
     assert.ok(counts.bar >= 5, 'the flight\'s sloped rail');

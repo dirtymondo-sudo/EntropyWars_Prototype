@@ -8816,3 +8816,68 @@ roll by the clock). `npm test` 1480 / 1476 / 0 / 4 skipped.
   2.7 m beam, the crowd at the machine, the platform at rush hour against the train's arrival, the second device's
   first read of a cleared room.
 
+
+### 2026-09-16 · THE USER'S FIVE — the gallery's edge, Room X's landing, the car, THE PLANET IN THE ROOM, THE ISLANDS (data.js, three-renderer.js, index.html; local, not uploaded)
+- **The user:** "the third floor of the rotunda — the railing looks like it's floating and I can't see the floor of it
+  until I go up the stairs and walk on it; Room X soft locks me; the elevator looks really bad, don't use that metal
+  texture on it; the Moon, Mars and Saturn rooms should look more like their battle maps now; how is there no water
+  in the Bermuda Triangle? it's all sand — it should be a lot of water, it can double as an island / buried treasure map."
+- **THE GALLERY'S EDGE (three-renderer.js `_hqBuildRing3`):** measured offline (playtest_hq_offline.js from the
+  mezzanine and the floor): the slab's sector meshes exist and render, but its FASCIA was a `_hqBand` at the slab's
+  inner radius with `FrontSide` — a cylinder's front faces OUTWARD, so it faced the drum and never the hall — and the
+  underside is a foreshortened sliver from any eye below it; all the hall saw was the rail's posts on the stone. The
+  fascia is `BackSide` now and DEEPER than the slab (a 0.25 m soffit lip, `lipD`): the dado's oxblood between two
+  teal trims, closed under by a ring, the read the mezzanine's edge has against the drum's top trim. The mezzanine's
+  own fascia had the same outward face (hidden behind the lower wall's trim) — `BackSide` too.
+- **ROOM X (data.js `rooms.orb`, three-renderer.js `_hqGoTo`):** the soft lock was the LANDING — 2.4 m in from a wall
+  (THE LANDING, 2026-09-15) is past the middle of a 5 m room, so both of Room X's doors stood the walker INSIDE the
+  orb's collision disc (`floating_orb` foot 0.7, block) and the step rule refused every way out (the railings are
+  `foot: 0` — they never blocked anything). Two fixes: `_hqGoTo`'s box landing is clamped to the room's own depth
+  along the door's normal (`min(2.4, depth/2 − 0.9)`, never under 0.9) and then walked BACK toward the door in 0.2 m
+  steps until it stands on no blocker (a raised landing over its head, a top under its floor, do not count); and the
+  room is 7 × 7 with the orb ring north of centre (the gate at z 1.6, the desk on the north wall, the watcher west).
+- **THE CAR (data.js `rooms.car`, three-renderer.js `_hqBuildDoors`):** the `metal_3` grate is gone from the car's
+  walls and dado (brushed `aluminium` walls over a darker aluminium dado, the deck sheet the Spaceship wears) and the
+  elevator LEAVES are brushed aluminium with a satin finish instead of the TRIM sheet tinted grey (`_hqMat('aluminium',
+  0.9, 2.4, …)` — the teal trim's pattern under a grey tint was the "bad metal"). Room X keeps its `metal_3` walls (not
+  asked; one field each if wanted).
+- **THE PLANET IN THE ROOM (data.js `hqSiteRoom` → `shell.planet` + `shell.world`; three-renderer.js):** a site room
+  whose map's WORLD is a planet (`env.world.kind === 'planet'`: Mars, the Moon, Saturn) stands on THE WORLD's own
+  planet mesh now. `_nrApron({ planet: true })` under `K.hq` records the craters on the KIT (`K.planet`; `_nrCrater`
+  reads it, `K.inCrater` too) and `_nrKit` rides the kit on `ctx.kit`; `_hqBuildSetting` hands the kit every spot
+  that must stay FLAT as keep-outs (the door lanes and the console — the cleared zones, hoisted above the build —
+  plus the room's doors, counters, floor props, natives, online spots, the lamp masts, the spawn, the finds), runs
+  the builder, then **`_hqBuildPlanetGround(room, g, K)`**: `_wdBuildPlanet` on the room's kit (the collar round
+  the board, the flat island to the room's corners, the far ring curving off to `min(row.r, 64)` tiles, the near
+  craters CARVED, Saturn's bands + hexagon as vertex colours — `K.planet.hexR` from the builder), the map's rim
+  builders (`_WD_RIM` craters → hills, peaks) on the curve past the shore, the haze (`_wdInject` with `dissolve:
+  false`; the shared world uniforms pinned grounded: `uWdC` = the room's origin, `uWdStab` 1, `uWdKeep` 1e8, the
+  fog amount off `shell.sky.fog`), `_wd.mats` truncated back and `_wd.hasGround` untouched (`o.hq` in
+  `_wdBuildPlanet`) — a room never touches the battle's world state. The box shell's flat floor bands / apron / skirt
+  are built as before but tagged `_ew_hqGround` and HIDDEN once the planet lands (the fallback when the setting is
+  off). **The walker reads the carved bowls**: `_hq.planet.yAt(x, z)` is a layer of `_hqSurface`'s box branch read
+  before the board's cells (a bowl is a slope, walked in and out; the rim a step). Saturn's storm walls and THE
+  RINGS come indoors (their `!HQ` gate dropped — they are the sky, past the room's roam; a 43 m wall plane is
+  skipped by the piece rule's 40 m sheet test). Sheets: Mars's floor + apron = `moon_2` × #c88a5a and Saturn's =
+  `cloud_thick` × #c8a870 (the boards' own, as the battle's one surface); the Moon already wore its own.
+- **THE ISLANDS (data.js `_MF_BUILDERS.prebuilt_bermuda` / `_MF_DELTA_BUILDERS.prebuilt_bermuda`, the meta desc,
+  Room 345's sign + a line; three-renderer.js `_NR_BUILDERS.bermuda`):** the two desert triangles are the OPEN SEA:
+  the full board is a sheet (`ROWS`, the top half, `sym180`) — a beach each side (the spawn rows), shallows (`water`,
+  a wade) round every shore, the deep between (`deep_water`, a swim that drowns), the treasure island at the centre
+  with the X on it (`dirt_2`, the 2 × 2 across the centre), a west sandbar dry the whole way, a wreck (+2 hull, +1
+  deck) on a rock islet each side, the corner buoys and beach torches; the Δ the same in eight (`M.lake` water 1 /
+  deep 2, a rock step, the wreck block at (7,1) — no spawn neighbour). The near builder builds NO sand apron: the
+  sea (`_nrMoat` deep_water at **depth 1** = the board's own water level, so the board's edge water opens into it)
+  runs to the horizon (`env.world.sea`), the two BEACH TONGUES continue past the spawn rows to the kit's edge (the
+  crossing's doors stand on them), the lighthouse stands on its own rock, the buoy rides the sea, `_nrRocks` takes a
+  `y` (tiles) so the shore rocks break the surface, the chest (`_hzMiscKit('chest')`) sits beside the X at (6,6) /
+  (2,2) and four `palm_tree` GLBs stand on the island and the beaches (the full board only). The site room: the
+  quay is the beach, the moat the sea — the island reads across it.
+- **Tests:** `npm test` 1480 / 1480 / 0. Screenshotted offline: the hall from the
+  mezzanine and the floor (the gallery's edge reads), Room X's landing, the Mars / Saturn / Bermuda rooms
+  (stand-in textures — the SHEETS are unseen, RULE #1c).
+- **Delivery:** `ENTROPY_WARS_HQ_FIXES.zip` — data.js → R2 AND Render (hqSiteRoom is read by the server's data
+  load too), three-renderer.js → R2, index.html → Render (`20260916-hq-fixes-07-cors`), docs → the repo. UNSEEN
+  LIVE (RULE #1c): the fascia's oxblood against the real stone, the elevator's aluminium under the car's warm lamp,
+  the crater bowls under the walker's feet, Saturn's rings from the quay, the real sea sheet against the beach
+  tongues, the chest's scale on the X.

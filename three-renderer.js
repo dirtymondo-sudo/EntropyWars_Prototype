@@ -24649,8 +24649,14 @@ const ThreeRenderer = (function () {
         /* is (x,z) inside the lane that runs out of a spawn row (the gates) */
         K.inLane = function (x, z, half) { half = half == null ? 1.6 * ts : half; return Math.abs(x - K.CX) < half; };
         /* is (x,z) inside a registered crater bowl (+ pad) — the mounds / rocks stay out of them (THE PLANET, 2026-09-16) */
-        K.inCrater = function (x, z, pad) { var cs = (!HQ && _nrLastKit) ? _nrLastKit.craters : null; if (!cs) return false; for (var i = 0; i < cs.length; i++) { var c = cs[i]; if (Math.hypot(x - c.x, z - c.z) < c.r * 1.3 + (pad || 0)) return true; } return false; };
+        K.inCrater = function (x, z, pad) { var cs = HQ ? (K.planet && K.planet.craters) : (_nrLastKit ? _nrLastKit.craters : null); if (!cs) return false; for (var i = 0; i < cs.length; i++) { var c = cs[i]; if (Math.hypot(x - c.x, z - c.z) < c.r * 1.3 + (pad || 0)) return true; } return false; };
         K.keepOut = [];   // [x, z, radius] the builder's fixed props — the crater fields go round them
+        /* THE PLANET IN THE ROOM (2026-09-16): the room hands the kit its own keep-outs
+           (door lanes, the console, props, natives, finds, masts — in the kit's px) so
+           a crater is never carved under a thing that stands flat; and the kit rides
+           the ctx so _hqBuildSetting can read the craters the builder registered */
+        if (HQ && HQ.keepOut && HQ.keepOut.length) K.keepOut = HQ.keepOut.slice();
+        ctx.kit = K;
         /* a light with a soft halo */
         K.lamp = function (x, y, z, color, size, op) { var s = _hzGlowSprite(size || 0.7 * ts, color, op || 0.6, 0.2, 0.08, 0.5 + K.rng() * 0.8); s.position.set(x, y, z); return s; };
         return K;
@@ -24663,7 +24669,7 @@ const ThreeRenderer = (function () {
        one of the builder's props (K.keepOut) or another crater. */
     function _nrCrater(K, x, z, r, o) {
         o = o || {};
-        var kit = _nrLastKit; if (K.hq || !kit || !kit.planet || !kit.craters) return null;
+        var kit = K.hq ? (K.planet || null) : _nrLastKit; if (!kit || (!K.hq && !kit.planet) || !kit.craters) return null;   // the room's kit records its own (THE PLANET IN THE ROOM, 2026-09-16)
         var ts = K.ts, R = r * ts, d = Math.hypot(x - K.CX, z - K.CZ);
         var rb = Math.max(K.BX1 - K.CX, K.BZ1 - K.CZ) * Math.SQRT2 + 0.35 * ts;   // the flat collar round the board (_wdPlanetProfile's rb)
         if (d - R * 1.15 < rb) return null;
@@ -24721,9 +24727,16 @@ const ThreeRenderer = (function () {
     /* The apron: four ground strips around the board (past the gap). deep =
        from the bed's floor (y 0) up, so its outer faces hide the strata; the
        top sits a hair under the tile tops so the rim never z-fights. */
+    function _nrApronHq(K, o) {
+        if (o.planet) K.planet = { craters: [], tex: o.tex || null, color: o.color, skirt: o.skirt || null, skirtColor: o.skirtColor, hexR: 0 };
+        return [];
+    }
+    /* THE PLANET IN THE ROOM (2026-09-16): under K.hq a planet builder still
+       registers its craters on the KIT (K.planet, _nrApronHq) — _hqBuildSetting
+       lays THE WORLD's planet mesh in the room from them (the flat floor is hidden) */
     function _nrApron(K, o) {
         o = o || {};
-        if (K.hq) return [];                      // the room's floor + apron stand for it (stage 5)
+        if (K.hq) return _nrApronHq(K, o);       // the room's floor + apron stand for it (stage 5)
         var ts = K.ts, fy = K.fy, G = K.G, top = fy - (o.drop || 0) * ts - 0.6;
         var T = o.deep ? top : (o.thick || 0.2) * ts;
         if (_nrLastKit) { _nrLastKit.apronTop = top; _nrLastKit.tex = o.tex || null; _nrLastKit.color = o.color; _nrLastKit.skirt = o.skirt || null; _nrLastKit.skirtColor = o.skirtColor; }   // THE WORLD reads the apron's sheet + skirt
@@ -25029,7 +25042,7 @@ const ThreeRenderer = (function () {
             var r = ts * ((o.r || 0.35) * (0.6 + rng() * 0.9));
             if (K.inCrater(x, z, r)) return;
             var m = new THREE.Mesh(new THREE.DodecahedronGeometry(r, 0), mat); m.scale.y = 0.6 + rng() * 0.4;
-            m.position.set(x + (rng() - 0.5) * ts * 0.8, K.fy + r * 0.3, z + (rng() - 0.5) * ts * 0.8); m.rotation.set(rng(), rng() * 6, rng());
+            m.position.set(x + (rng() - 0.5) * ts * 0.8, K.fy + (o.y || 0) * ts + r * 0.3, z + (rng() - 0.5) * ts * 0.8); m.rotation.set(rng(), rng() * 6, rng());   // `y` (tiles): rocks breaking a sea's surface sit a level down (Bermuda)
             K.add(K.lit(m, true));
         }, { skipLanes: true, corners: true, only: o.only });
     }
@@ -25953,13 +25966,14 @@ const ThreeRenderer = (function () {
         _nrApron(K, { tex: 'cloud_thick', color: 0xc8a870, planet: true, skirt: 'cloud_thick', skirtColor: 0x8a7048, dens: 0.5 });
         var hexR = (K.X1 - K.CX) * Math.SQRT2 + 3.0 * ts;
         if (!HQ && _nrLastKit) _nrLastKit.hexR = hexR;
+        if (HQ && K.planet) K.planet.hexR = hexR;   // THE PLANET IN THE ROOM (2026-09-16): the room's deck paints the hexagon too
         _nrMounds(K, { tex: 'cloud_thick', color: 0xdcc090, d: 2.4, spacing: 2.4, r: 1.4, flat: 0.26, p: 0.6, skipLanes: true });   // cloud tops breaking the deck
         var cube = K.mat('gunmetal', 0x3a3a44, { lift: 0.35 });
         [[K.BX0 - 2.2 * ts, K.BZ0 - 2.6 * ts, 1.0], [K.BX1 + 2.4 * ts, K.BZ1 + 2.2 * ts, 1.3], [K.BX1 + 3.0 * ts, K.BZ0 - 1.6 * ts, 0.7], [K.BX0 - 3.2 * ts, K.BZ1 + 3.0 * ts, 0.9]].forEach(function (c) {
             var b = K.box(c[2] * ts, c[2] * ts, c[2] * ts, cube, 0.5); b.position.set(c[0], fy + c[2] * ts / 2, c[1]); b.rotation.y = rng() * 0.6; K.add(K.lit(b, true));
         });
         _nrRectRing(K, 3.6 * ts, 3.0 * ts, function (x, z) { if (rng() < 0.4) return; var l = K.lamp(x, fy + 0.6 * ts, z, 0xfff0c0, 1.6 * ts, 0.18); K.add(l); _hzPulse(l.material, l, 0.15, 0.1, 0.15 + rng() * 0.25); }, { skipLanes: true, corners: true });   // the storm's flicker
-        if (!HQ) {
+        {   /* (in the room too since 2026-09-16 — the storm and the rings are the sky, not the shell; the hexagon stands past the room's roam) */
             /* THE HEXAGON STORM WALL: six walls of cloud on the hexagon's edges
                (the same hexR the planet mesh paints its dark band at), three
                wispy sheets each, the outer ones breathing */
@@ -26202,18 +26216,37 @@ const ThreeRenderer = (function () {
        only the lighthouse and the buoy stand, on the quay's corners. */
     _NR_BUILDERS.bermuda = function (group, ctx) {
         var K = _nrKit(group, ctx, { w: 1.6, gap: 0, occ: false }), ts = K.ts, fy = K.fy, rng = K.rng, HQ = !!K.hq;
-        _nrApron(K, { tex: 'desert', color: 0xe8d8a8, skirt: 'rocks_1', skirtColor: 0x8a8478, deep: true });
-        _nrMoat(K, { key: 'deep_water', depth: _NR_SEA_DEPTH, pad: 40, stream: true });
+        /* THE ISLANDS (2026-09-16, the user: "it should be a lot of water"):
+           NO sand apron any more — the sea runs up to the board's edge at the
+           board's OWN water level (depth 1: the shallows and the deep on the
+           board open straight into it) and on to the horizon (the world row's
+           `sea`). Only the two BEACHES continue past the spawn rows as sand
+           tongues (the crossing's doors stand on them); the lighthouse stands
+           on its own rock off the north-west corner, the lantern buoy rides
+           the swell off the south-east, palms stand on the island and the
+           beaches, and the TREASURE CHEST sits on the X. In the site room
+           the quay is the beach and the moat is the sea (nothing of the sand
+           tongues or the rock is built there). */
         var top = fy - 0.6;
-        if (_nrLastKit) _nrLastKit.apronTop = top;
+        _nrMoat(K, { key: 'deep_water', depth: 1, pad: 40, stream: true });
+        if (_nrLastKit) { _nrLastKit.apronTop = top; _nrLastKit.tex = 'desert'; _nrLastKit.color = 0xe8d8a8; _nrLastKit.skirt = 'rocks_1'; _nrLastKit.skirtColor = 0x8a8478; }
+        var sand = K.mat('desert', 0xe8d8a8, { lift: 0 }), bank = K.mat('rocks_1', 0x8a8478);
+        if (!HQ) {
+            /* the beach tongues: from the spawn rows out to the kit's edge, a rock face into the sea */
+            [[K.BX0 + 3 * ts, K.Z0, K.BX1 - 3 * ts, K.BZ0], [K.BX0 + 3 * ts, K.BZ1, K.BX1 - 3 * ts, K.Z1]].forEach(function (r) {
+                var w = r[2] - r[0], d = r[3] - r[1]; if (w <= 0 || d <= 0) return;
+                var m = K.box(w, top, d, [bank, bank, sand, sand, bank, bank], 1); m.position.set(r[0] + w / 2, top / 2, r[1] + d / 2); K.add(K.lit(m));
+            });
+        }
         /* the lighthouse builder sizes itself off CONFIG.tileSize (the board's) — scale it to THIS build's tile (the room's is 127.75) */
         var lhScale = ts / (CONFIG.tileSize || BASE_TILE);
         var lhX = HQ ? K.BX0 - 0.9 * ts : K.BX0 - 2.4 * ts, lhZ = HQ ? K.BZ0 - 0.9 * ts : K.BZ0 - 2.4 * ts;
+        if (!HQ) { var rock = K.cyl(1.1 * ts, 1.5 * ts, top, 9, bank); rock.position.set(lhX, top / 2, lhZ); rock.rotation.y = 0.4; K.add(K.lit(rock, true)); }   // the lighthouse's rock
         var lh = _nrProp(K, _hzLighthouse, lhX, lhZ, { s: (HQ ? 0.55 : 0.8) * lhScale, wall: false, y: HQ ? 0 : -0.35 });
         if (lh) K.keepOut.push([lhX, lhZ, 2.2 * ts]);
         /* the lantern buoy at P1's right angle: a red can on the swell, a lamp on its mast */
         var buoyX = HQ ? K.BX1 + 0.9 * ts : K.BX1 + 2.0 * ts, buoyZ = HQ ? K.BZ1 + 0.9 * ts : K.BZ1 + 2.0 * ts;
-        var buoyY = HQ ? top : (fy - _NR_SEA_DEPTH * ts - 0.18 * ts);
+        var buoyY = HQ ? top : (fy - 1 * ts - 0.18 * ts);
         var can = K.cyl(0.22 * ts, 0.26 * ts, 0.5 * ts, 12, K.mat('metal', 0xc83a3a, { lift: 0.3 })); can.position.set(buoyX, buoyY + 0.2 * ts, buoyZ); K.add(K.lit(can, true));
         var mast = K.cyl(0.03 * ts, 0.03 * ts, 0.9 * ts, 6, K.mat('metal', 0x5a6068)); mast.position.set(buoyX, buoyY + 0.85 * ts, buoyZ); K.add(mast);
         K.add(K.lamp(buoyX, buoyY + 1.35 * ts, buoyZ, 0xfff1c8, 0.6 * ts, 0.7));
@@ -26221,9 +26254,20 @@ const ThreeRenderer = (function () {
         _hzPulse(can.material, null, 0.06, 0, 1.1);
         /* the corner plate: ∠ 90°, on a post by the buoy */
         _nrSign(K, 'bt_angle', ['∠ 90°', 'NO FIXED POSITION'], 1.4 * ts, 0.5 * ts, buoyX - 0.9 * ts, buoyY + 1.0 * ts, buoyZ - 0.6 * ts, K.face(buoyX, buoyZ), { bg: '#f4f0e0', border: '#c83a3a', color: '#1a2a34' });
+        /* THE TREASURE: the user's pirate chest (MODEL_INDEX §3, `chest`) on the
+           X — the tile north-west of the centre on the full board and the Δ
+           alike ((6,6) / (2,2): the island's sand) */
+        var chest = _hzMiscKit('chest', { tiles: 0.7, fit: 'span', lift: 0.3, cast: true, foot: 0.5, rng: rng });
+        if (chest) { chest.position.set(K.CX - 1.5 * ts, fy, K.CZ - 1.5 * ts); chest.rotation.y = 0.6; K.add(chest); }
+        /* the palms (the user's `palm_tree` GLB): two on the island, one on each beach — the full board only (the Δ's island is the X) */
+        if (K.bw >= 12) {
+            [[K.BX0 + 6.5 * ts, K.BZ0 + 9.5 * ts, 0.4], [K.BX0 + 9.5 * ts, K.BZ0 + 6.5 * ts, 2.3], [K.BX0 + 3.5 * ts, K.BZ0 + 1.5 * ts, 1.1], [K.BX0 + 12.5 * ts, K.BZ0 + 14.5 * ts, 4.2]].forEach(function (p, i) {
+                _nrProp(K, function (rng) { return _hzDoorKitGLB('palm_tree', { metres: 3.0 + (i % 2) * 0.6, foot: 0.35, rng: rng }); }, p[0], p[1], { ry: p[2], wall: false });
+            });
+        }
         if (HQ) return;
-        /* rocks in the shallows off the apron, two faint streaks of current down the long sides */
-        _nrRocks(K, { tex: 'rocks_1', color: 0x8a8478, d: 1.0, spacing: 2.2, p: 0.22, r: 0.3 });
+        /* rocks breaking the swell off the shores, two faint streaks of current down the long sides */
+        _nrRocks(K, { tex: 'rocks_1', color: 0x8a8478, d: 1.0, spacing: 2.2, p: 0.22, r: 0.4, y: -1.0 });
         [K.Z0 - 1.6 * ts, K.Z1 + 1.6 * ts].forEach(function (z, i) { var w = _nrWake(K, K.CX, z, (K.X1 - K.X0) * 1.4, 0.9 * ts, 0.16, 345 + i, 0); if (w) K.add(w); });
     };
 
@@ -27969,7 +28013,7 @@ const ThreeRenderer = (function () {
         var collar = new THREE.Mesh(cgeo, cmat); collar.rotation.x = -Math.PI / 2; collar.position.set(K.CX, y0, K.CZ); collar.receiveShadow = true; collar.name = 'world:collar'; g.add(collar);
         mesh(0, iRi, 'world:island', false);
         mesh(iRi, rows.length - 1, 'world:planet', true);
-        _wd.hasGround = true;
+        if (!o.hq) _wd.hasGround = true;   // THE PLANET IN THE ROOM (2026-09-16): a room never touches the battle's world state
         return { yAt: function (x, z) { return y0 + prof.yAt(x, z); }, ri: prof.ri, rb: prof.rb, craters: prof.craters.length };
     }
     /* SATURN'S RINGS (2026-09-16): one canvas across the radius — the faint C
@@ -36961,7 +37005,7 @@ const ThreeRenderer = (function () {
         /* mezzanine slab: top (terrazzo), underside (ceiling panels), fascia (teal) */
         G.add(_hqSectorMesh(MZ.inner, MZ.outer, 0, 360, WH, _hqMat(texFloor, 26, 2, { shininess: 22 })));
         G.add(_hqSectorMesh(MZ.inner, MZ.outer, 0, 360, WH - MZ.thick, _hqMat(texCeil, 40, 2), true));
-        var fasciaMat = _hqMat(texTrim, circ / 1.2, 1, { side: THREE.FrontSide, shininess: 40, specular: 0x555555 });
+        var fasciaMat = _hqMat(texTrim, circ / 1.2, 1, { side: THREE.BackSide, shininess: 40, specular: 0x555555 });   // BackSide: seen from the hall (2026-09-16, with the gallery's)
         G.add(_hqBand(MZ.inner, WH - MZ.thick, WH, fasciaMat));
         /* upper drum */
         var circ2 = 2 * Math.PI * MZ.outer;
@@ -37068,9 +37112,18 @@ const ThreeRenderer = (function () {
     function _hqBuildRing3(room) {
         var U = _hqUnits(), S = room.shell, G = _hq.shellGroup, GA = S.ring3, st = GA.stair;
         var WH = S.wallH, top = WH + GA.h, TH = GA.thick, railH = GA.railH || 1.05;
-        var texFloor = S.floor || 'terrazzo', texTrim = S.trim || 'teal', texCeil = S.ceiling || 'ceiling';
+        var texFloor = S.floor || 'terrazzo', texTrim = S.trim || 'teal', texCeil = S.ceiling || 'ceiling', texDado = S.dado || 'oxblood';
         var floorMat = _hqMat(texFloor, 26, 2, { shininess: 22 }), ceilMat = _hqMat(texCeil, 40, 2);
-        var fasciaMat = _hqMat(texTrim, 2 * Math.PI * GA.inner / 1.2, 1, { side: THREE.FrontSide, shininess: 40, specular: 0x555555 });
+        /* THE EDGE THE HALL SEES (2026-09-16): the fascia is a cylinder at the
+           slab's INNER radius, looked at from INSIDE it — as FrontSide it faced
+           the drum and never the hall, and the underside is a sliver from any
+           eye below, so from the mezzanine and the floor the gallery read as a
+           rail floating on the stone. BackSide now, and DEEPER than the slab
+           (a 0.25 m soffit lip under it): the dado's oxblood between two teal
+           trims, the read the mezzanine's edge has against the drum's top. */
+        var fasciaMat = _hqMat(texDado, 2 * Math.PI * GA.inner / 2.2, 1, { side: THREE.BackSide, shininess: 14 });
+        var fasciaTrim = _hqMat(texTrim, 2 * Math.PI * GA.inner / 1.5, 1, { side: THREE.BackSide, shininess: 40, specular: 0x555555 });
+        var lipD = 0.25;
         var railMat = _hqMat(texTrim, 4, 1, { shininess: 50, specular: 0x666666 });
         var pos = new THREE.Vector3(), q = new THREE.Quaternion(), e = new THREE.Euler(), one = new THREE.Vector3(1, 1, 1);
         /* the slab: the full band outside the flight's arc, the inner strip over it */
@@ -37080,7 +37133,10 @@ const ThreeRenderer = (function () {
             G.add(_hqSectorMesh(sg[0], sg[1], sg[2], sg[3], top, floorMat));
             G.add(_hqSectorMesh(sg[0], sg[1], sg[2], sg[3], top - TH, ceilMat, true));
         });
-        G.add(_hqBand(GA.inner, top - TH, top, fasciaMat));
+        G.add(_hqBand(GA.inner + 0.012, top - TH - lipD + 0.08, top - 0.08, fasciaMat));
+        G.add(_hqBand(GA.inner, top - TH - lipD, top - TH - lipD + 0.09, fasciaTrim));
+        G.add(_hqBand(GA.inner, top - 0.09, top, fasciaTrim));
+        G.add(_hqSectorMesh(GA.inner, GA.inner + 0.5, 0, 360, top - TH - lipD, ceilMat, true));   // the lip's underside closes the soffit
         /* the inner railing: posts + two arcs, full round */
         var railR = GA.inner + 0.28;
         var postGeo = new THREE.BoxGeometry(0.06 * U, railH * U, 0.06 * U);
@@ -37248,6 +37304,7 @@ const ThreeRenderer = (function () {
              [-(W / 2 + siteHole) / 2, 0, W / 2 - siteHole, 2 * siteHole], [(W / 2 + siteHole) / 2, 0, W / 2 - siteHole, 2 * siteHole]].forEach(function (b) {
                 var band = new THREE.Mesh(new THREE.PlaneGeometry(b[2] * U, b[3] * U), _hqMat(texFloor, b[2] / TRf, b[3] / TRf, flOpts));
                 band.rotation.x = -Math.PI / 2; band.position.set(b[0] * U, 0, b[1] * U);
+                band._ew_hqGround = true;   // THE PLANET IN THE ROOM (2026-09-16): hidden under the planet mesh once it lands
                 G.add(band);
             });
         } else {
@@ -37264,9 +37321,11 @@ const ThreeRenderer = (function () {
             var A = 16;
             var ap = new THREE.Mesh(new THREE.PlaneGeometry((W + 2 * A) * U, (Dp + 2 * A) * U), _hqMat(S.apron || texFloor, (W + 2 * A) / 1.75, (Dp + 2 * A) / 1.75, { shininess: 3, specular: 0x0c0c0c, color: (S.apronColor != null) ? S.apronColor : 0xffffff }));
             ap.rotation.x = -Math.PI / 2; ap.position.y = -0.9; ap.renderOrder = -2;
+            ap._ew_hqGround = true;
             G.add(ap);
             var sk = _hqBox(W + 2 * A, 3.0, Dp + 2 * A, _hqMat(S.skirt || 'dirt', (W + 2 * A) / 1.75, 3.0 / 1.75, { color: 0x6a6660, shininess: 2 }));
             sk.position.y = -1.5 * U - 1.0;
+            sk._ew_hqGround = true;
             G.add(sk);
         }
         /* THE EDGE (2026-09-11, data.js hqSiteRoom → shell.edge): the four
@@ -38400,30 +38459,6 @@ const ThreeRenderer = (function () {
         var seed = 0x5e77 + N * 31; for (var si = 0; si < NR.key.length; si++) seed = (seed * 31 + NR.key.charCodeAt(si)) | 0;
         var ctx = { cx: N * ts / 2, cz: N * ts / 2, ts: ts, bw: N, bh: N, rng: _mulberry32(seed >>> 0), discR: 6000,
                     hq: { w: NR.w, gap: NR.gap || 0, B: B, tints: (board && board.terrainTints) || null } };
-        var pulse0 = _hzGlowPulse.length;
-        /* THE KIT TILE: the vehicles / door-kit GLBs size themselves against the tile of THIS build (see _hzKitTs) */
-        _hzKitTs = ts;
-        try { build(g, ctx); } catch (e) { console.error('[HQ] setting failed', NR.key, e); }
-        finally { _hzKitTs = 0; }
-        /* the glow pulses breathe under the HQ loop, not the battle's */
-        _hzGlowPulse.splice(pulse0).forEach(function (p) { if (p && p.mat) H.fxPulse.push(p); });
-        g.traverse(function (o) {
-            if (!o.material) return;
-            var ms = Array.isArray(o.material) ? o.material : [o.material];
-            for (var i = 0; i < ms.length; i++) {
-                var m = ms[i]; if (!m) continue;
-                if (m.blending === THREE.AdditiveBlending || m.isSpriteMaterial) { if (m.fog !== false) { m.fog = false; m.needsUpdate = true; } }
-            }
-        });
-        g.position.set(-N * ts / 2, -B * elev, -N * ts / 2);
-        H.shellGroup.add(g);
-        g.updateMatrixWorld(true);
-        /* the pieces: direct children, or the children of an occlusion wall group */
-        var units = [];
-        g.children.slice().forEach(function (ch) {
-            if (ch._ew_occWall) ch.children.slice().forEach(function (u) { units.push({ o: u, parent: ch }); });
-            else units.push({ o: ch, parent: g });
-        });
         var half = S.w / 2, dry = N * C / 2 + (S.moat ? S.moat.gap : 0);
         /* kept clear: the way in (the south lane at the wall) and the console */
         var zones = [{ x0: -2.2, x1: 2.2, z0: half - 2.8, z1: half + 1 }];   // the leaf's 3.3 m panel + a shoulder; Camelot's gate towers stand at ±2.5
@@ -38445,6 +38480,59 @@ const ThreeRenderer = (function () {
             var cx = c.x || 0, cz = c.z || 0, onEW = Math.abs(cx) > Math.abs(cz);
             if (onEW) zones.push({ x0: cx > 0 ? half - 2.4 : -half - 1, x1: cx > 0 ? half + 1 : -(half - 2.4), z0: cz - 2.8, z1: cz + 2.8 });
             else zones.push({ x0: cx - 2.8, x1: cx + 2.8, z0: cz > 0 ? half - 2.4 : -half - 1, z1: cz > 0 ? half + 1 : -(half - 2.4) });
+        });
+        /* THE PLANET IN THE ROOM (2026-09-16): a planet builder carves craters
+           into the ground it registers (_nrCrater) — the room hands the kit
+           every spot that must stay FLAT (the kit's px: the board's west/north
+           corner is the kit's origin): the cleared zones, the room's doors,
+           counters, props, natives, finds, the lamp masts and the spawn */
+        if (S.planet) {
+            var ko = [], toK = function (xm, zm) { return [xm * U + N * ts / 2, zm * U + N * ts / 2]; };
+            var koAdd = function (xm, zm, rm) { if (!isFinite(xm) || !isFinite(zm)) return; var k = toK(xm, zm); ko.push([k[0], k[1], rm * U]); };
+            zones.forEach(function (zn) { koAdd((zn.x0 + zn.x1) / 2, (zn.z0 + zn.z1) / 2, Math.hypot(zn.x1 - zn.x0, zn.z1 - zn.z0) / 2 + 0.3); });
+            (room.doors || []).forEach(function (d) { if (!d || !d.wall) return; var dx = d.x || 0, dz = d.z || 0; var pt = d.wall === 'n' ? [dx, -half] : d.wall === 's' ? [dx, half] : d.wall === 'e' ? [half, dz] : d.wall === 'w' ? [-half, dz] : [dx, dz]; koAdd(pt[0], pt[1], 3.2); });
+            (room.counters || []).forEach(function (c) { if (c && c.x != null) koAdd(c.x, c.z || 0, 1.8); });
+            (room.props || []).forEach(function (pp) { if (!pp || pp.wall) return; var cat = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.catalogue && DOOR_HQ.catalogue[pp.key]) || {}; koAdd(pp.x || 0, pp.z || 0, Math.max(1.0, (cat.foot || 0) + 0.6, (cat.span || 0) / 2 + 0.4)); });
+            (room.npcSpots || []).forEach(function (n) { if (n) koAdd(n.x || 0, n.z || 0, 1.0); });
+            (room.onlineSpots || []).forEach(function (n) { if (n) koAdd(n.x || 0, n.z || 0, 1.0); });
+            (S.lights || []).forEach(function (Lt) { if (Lt) koAdd(Lt.x, Lt.z, 1.4); });
+            if (room.spawn) koAdd(room.spawn.x || 0, room.spawn.z || 0, 1.2);
+            try { ((typeof DOOR_HQ !== 'undefined' && DOOR_HQ.finds) || []).forEach(function (f) { if (f && f.room === room.id && f.x != null) koAdd(f.x, f.z || 0, 1.0); }); } catch (e) {}
+            ctx.hq.keepOut = ko;
+        }
+        var pulse0 = _hzGlowPulse.length;
+        /* THE KIT TILE: the vehicles / door-kit GLBs size themselves against the tile of THIS build (see _hzKitTs) */
+        _hzKitTs = ts;
+        try { build(g, ctx); } catch (e) { console.error('[HQ] setting failed', NR.key, e); }
+        finally { _hzKitTs = 0; }
+        /* THE PLANET IN THE ROOM (2026-09-16): THE WORLD's planet ground, laid
+           in the room from the craters the builder just registered */
+        if (S.planet && ctx.kit && ctx.kit.planet) {
+            var planetY = null;
+            try { planetY = _hqBuildPlanetGround(room, g, ctx.kit); } catch (e) { console.warn('[HQ] planet ground failed', NR.key, e); planetY = null; }
+            if (planetY) {
+                H.planet = planetY;
+                H.shellGroup.traverse(function (o) { if (o._ew_hqGround) o.visible = false; });   // the flat floor / apron / skirt: under the planet now
+            }
+        }
+        /* the glow pulses breathe under the HQ loop, not the battle's */
+        _hzGlowPulse.splice(pulse0).forEach(function (p) { if (p && p.mat) H.fxPulse.push(p); });
+        g.traverse(function (o) {
+            if (!o.material) return;
+            var ms = Array.isArray(o.material) ? o.material : [o.material];
+            for (var i = 0; i < ms.length; i++) {
+                var m = ms[i]; if (!m) continue;
+                if (m.blending === THREE.AdditiveBlending || m.isSpriteMaterial) { if (m.fog !== false) { m.fog = false; m.needsUpdate = true; } }
+            }
+        });
+        g.position.set(-N * ts / 2, -B * elev, -N * ts / 2);
+        H.shellGroup.add(g);
+        g.updateMatrixWorld(true);
+        /* the pieces: direct children, or the children of an occlusion wall group */
+        var units = [];
+        g.children.slice().forEach(function (ch) {
+            if (ch._ew_occWall) ch.children.slice().forEach(function (u) { units.push({ o: u, parent: ch }); });
+            else units.push({ o: ch, parent: g });
         });
         var box = new THREE.Box3(), wp = new THREE.Vector3(), kept = 0, dropped = 0, blockers = 0;
         /* THE EDGE (2026-09-11): a room without facility walls KEEPS the
@@ -38496,6 +38584,64 @@ const ThreeRenderer = (function () {
        when it is free, else the nearest free one sliding along the wall it
        stands by (the coordinate nearer the wall is kept), up to 9 m either
        way; the spot itself if nothing is free (the room's own props win) */
+    /* ══ THE PLANET IN THE ROOM (2026-09-16) ══════════════════════════════
+       A site room whose map's WORLD is a planet (data.js hqSiteRoom →
+       shell.planet + shell.world: Mars, the Moon, Saturn) stands on THE
+       WORLD's own planet mesh instead of the flat floor + apron + skirt:
+       _wdBuildPlanet run on the room's kit — the collar round the board, the
+       flat island to the room's corners, the far ring curving off to the
+       horizon, the craters the near builder registered CARVED in (never a
+       mound), Saturn's bands + hexagon as vertex colours — then the map's
+       rim builders (the far crater fields, the peaks) on the curve, and the
+       haze (_wdInject; the dissolve uniforms pinned to "grounded" — nothing
+       in the building comes adrift). The walker reads the carved bowls
+       through _hq.planet.yAt (a layer of _hqSurface's box branch, read before
+       the board's cells). Nothing here touches the battle's _wd state. */
+    function _hqBuildPlanetGround(room, g, K) {
+        var S = room.shell, row = S.world, H = _hq;
+        if (!row || !K || !K.planet || typeof _wdBuildPlanet !== 'function') return null;
+        var ts = K.ts, U = _hqUnits();
+        var kit = { planet: true, craters: K.planet.craters || [], tex: K.planet.tex, color: K.planet.color, skirt: K.planet.skirt, skirtColor: K.planet.skirtColor, hexR: K.planet.hexR || 0 };
+        var half = Math.max(K.X1 - K.CX, K.Z1 - K.CZ), shore = half * Math.SQRT2 * 1.02;
+        var R = Math.min(row.r || 56, 64) * ts, fogR0 = Math.min(R * 0.55, shore + 3 * ts), fogR1 = R;
+        var y0 = K.fy - 0.6;
+        /* the haze uniforms are the battle's (shared): pinned grounded here —
+           the world's centre is the room's origin (the planet's vWdPos is world space) */
+        var WU = (typeof _wdEnsureUni === 'function') ? _wdEnsureUni() : null;
+        if (WU) {
+            WU.uWdC.value.set(0, 0, 0); WU.uWdStab.value = 1; WU.uWdKeep.value = 1e8; WU.uWdTile.value = ts;
+            var fogAmt = (S.sky && S.sky.fog && S.sky.fog.amount != null) ? S.sky.fog.amount : 0.5;
+            WU.uWdFogAmt.value = Math.min(1, fogAmt + 0.25);
+        }
+        var matsN = _wd.mats.length, before = g.children.length;
+        var info = _wdBuildPlanet(K, row, kit, { groundY: y0, R: R, fogR0: fogR0, fogR1: fogR1, hq: true });
+        /* the rim: the far crater fields, the peaks — on the curve, past the shore */
+        var c = { y: y0, shore: shore, R: R, sea: false, moat: null, planet: true, yAt: info.yAt };
+        K._wdMinD = shore / ts + 2;
+        var lowPerf = (typeof window !== 'undefined' && window.EW_PERF_LOW);
+        var rims = row.rim ? (Array.isArray(row.rim) ? row.rim : [row.rim]) : [];
+        if (!lowPerf) rims.forEach(function (spec) {
+            var b = spec && typeof _WD_RIM !== 'undefined' && _WD_RIM[spec.kind]; if (!b) return;
+            try { b(K, spec, c); } catch (e) { console.warn('[HQ] planet rim failed', spec.kind, e); }
+        });
+        /* every lit material the rim made joins the haze */
+        g.children.slice(before).forEach(function (o) {
+            o.traverse(function (m) {
+                if (!m.isMesh || !m.material) return;
+                var ms = Array.isArray(m.material) ? m.material : [m.material];
+                for (var i = 0; i < ms.length; i++) { var mm = ms[i]; if (mm && mm.color && !mm._ew_wdInjected && mm.blending !== THREE.AdditiveBlending && !mm.isSpriteMaterial) _wdInject(mm, { r0: fogR0, r1: fogR1, dissolve: false }); }
+            });
+        });
+        _wd.mats.length = matsN;   // the battle's list keeps none of the room's materials
+        var CX = K.CX, CZ = K.CZ;
+        console.log('[HQ] planet ground', room.id, '— craters:', kit.craters.length, 'R:', +(R / ts).toFixed(0), 'tiles');
+        return {
+            /* the ground's height under (x, z) room metres: the carved bowl / the curve (0 on the flat) */
+            yAt: function (xm, zm) { return (info.yAt(xm * U + CX, zm * U + CZ) - y0) / U; },
+            inCrater: function (xm, zm, padM) { var kx = xm * U + CX, kz = zm * U + CZ; for (var i = 0; i < kit.craters.length; i++) { var cr = kit.craters[i]; if (Math.hypot(kx - cr.x, kz - cr.z) < cr.r * 1.3 + (padM || 0) * U) return true; } return false; },
+            craters: kit.craters.length, R: R / ts,
+        };
+    }
     function _hqSettingFreeSpot(x, z) {
         var H = _hq; if (!H || !H.setting) return { x: x, z: z };
         var S = H.room.shell, half = S.w / 2;
@@ -41982,7 +42128,11 @@ const ThreeRenderer = (function () {
                 var slabDado = _hqBox(ow + 0.02, S.dadoH, 0.03, dadoMatS); slabDado.position.set(slab.position.x, (S.dadoH / 2 + 0.04) * U, 0.065 * U);
                 motion.pivot.add(slabDado);
             } else if (door.proc === 'elevator') {
-                var elMat = _hqMat(S.trim || 'teal', 1.5, 2, { color: 0xb9c2c4, shininess: 90, specular: 0x999999 });
+                /* 2026-09-16 (the user: "don't use that metal texture on it"): the
+                   leaves were the TRIM sheet tinted grey — a patterned, busy panel.
+                   Brushed aluminium now (the Spaceship's plain deck sheet), a
+                   satin finish, and a hairline seam. */
+                var elMat = _hqMat('aluminium', 0.9, 2.4, { color: 0xc8cdd2, shininess: 120, specular: 0xb4b8bc });
                 var half = (ow / 2) - 0.02;
                 var eL = _hqBox(half, oh - 0.04, 0.06, elMat); eL.position.set(-(half / 2 + 0.01) * U, (oh / 2) * U, 0);
                 var eR = _hqBox(half, oh - 0.04, 0.06, elMat); eR.position.set((half / 2 + 0.01) * U, (oh / 2) * U, 0);
@@ -44094,6 +44244,8 @@ const ThreeRenderer = (function () {
             var roamB = _hqRoamM(S);
             if (Math.abs(x) > S.w / 2 + roamB - HQ_BODY_R - 0.08 || Math.abs(z) > S.d / 2 + roamB - HQ_BODY_R - 0.08) return null;
             y = 0;
+            /* THE PLANET IN THE ROOM (2026-09-16): the carved bowls and the far curve are the floor (the board's cells override below) */
+            if (_hq.planet) { var py = _hq.planet.yAt(x, z); if (isFinite(py)) y = py; }
             /* the site board (plan 7.2): a cell's own top — a pit for a lake,
                nothing at all for lava / deep water; raised cells are blockers
                below (climbable one level at a time) */
@@ -46023,7 +46175,24 @@ const ThreeRenderer = (function () {
                behind the open leaf, and the door you came through filled the
                screen until you took a step. The doorway itself is a camera
                blocker now too (_hqCamInDoorway), so the eye stands in the room. */
+            /* THE SMALL ROOM (2026-09-16): 2.4 m in is past the middle of a 5 m
+               room — Room X's landing stood INSIDE the orb's collision disc and
+               every step out was refused (a soft lock). The landing is clamped
+               to the room's own depth along the door's normal, then walked
+               BACK toward the door in 0.2 m steps until it stands on no
+               blocker (a raised landing over your head does not count). */
             spot = new THREE.Vector3((d.box.wx + d.box.nx * 2.4) * U, d.y0 * U, (d.box.wz + d.box.nz * 2.4) * U);
+            if (typeof _hqBlockersUnder === 'function' && typeof _hqBlkTop === 'function') {   // (the landing harnesses sandbox this function without the furniture queries)
+                var along = (Math.abs(d.box.nx) > Math.abs(d.box.nz)) ? S.w : S.d, inM = 2.4;
+                if (isFinite(along) && along > 0) inM = Math.min(inM, Math.max(0.9, along / 2 - 0.9));
+                var lx = d.box.wx + d.box.nx * inM, lz = d.box.wz + d.box.nz * inM;
+                for (var dm = inM; dm >= 0.8; dm -= 0.2) {
+                    var tx = d.box.wx + d.box.nx * dm, tz = d.box.wz + d.box.nz * dm, clear = true, under = _hqBlockersUnder(tx, tz);
+                    for (var ui = 0; ui < under.length; ui++) { var ub = under[ui]; if (ub.y != null && ub.y > (d.y0 || 0) + 1.2) continue; if (_hqBlkTop(ub) <= (d.y0 || 0) + 0.02) continue; clear = false; break; }
+                    if (clear) { lx = tx; lz = tz; break; }
+                }
+                spot.set(lx * U, d.y0 * U, lz * U);
+            }
             var towardB = _hqHeadingOf(-d.box.nx, -d.box.nz);
             face = faceAway ? towardB + 180 : towardB;
         }

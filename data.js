@@ -13316,24 +13316,39 @@ _MF_BUILDERS.prebuilt_bermuda = function () {
     const M = _mfNew({
         name: 'The Bermuda Triangle', w: 16, h: 16, base: 'desert', baseH: 3, seed: 345,
         strata: ['deep_water', 'deep_water', 'rocks_1'], underTop: 'rocks_1',
-        tints: { desert: '#e8d8a8', water: '#5fc8d0', deep_water: '#123c5a', wood: '#6a4a30', rocks_1: '#8a8478', dirt_2: '#d8c090' },
+        tints: { desert: '#e8d8a8', water: '#5fc8d0', deep_water: '#123c5a', wood: '#6a4a30', rocks_1: '#8a8478', dirt_2: '#cfae7c' },
     });
-    // P2's shoal (x + y < 15), then the 180° twin
-    M.rect(2, 4, 3, 5, 'wood', 5); M.rect(4, 4, 4, 5, 'wood', 4);              // the wreck: the hull, its deck
-    M.rect(9, 2, 9, 2, 'rocks_1', 5); M.rect(1, 9, 1, 9, 'rocks_1', 5);         // rocks
-    M.rect(6, 7, 6, 7, 'rocks_1', 4); M.rect(3, 10, 3, 10, 'rocks_1', 4);
-    M.rect(10, 3, 11, 3, 'dirt_2', 4);                                          // a sandbar
-    M.rect(6, 1, 7, 1, 'dirt_2', 4);
-    M.disc(5.5, 8, 1.0, 'water', 2); M.disc(11.5, 1.5, 0.8, 'water', 2);        // tide pools (wade)
-    M.rect(1, 12, 1, 13, 'water', 2);
+    /* THE ISLANDS (2026-09-16, the user: "how is there no water in the
+       Bermuda Triangle? it should be a lot of water; it can double as an
+       island / buried treasure map"): the board is the OPEN SEA now — a
+       beach each side (the spawn rows), a treasure island in the middle
+       with the X on it (dirt_2, the chest stands on it), a wreck on a rock
+       islet each side, shallows (wade) round every shore and the deep
+       between. The top half is a sheet; sym180 paints P1's. */
+    const ROWS = [
+        '~~~SSSSSSSSSS~~~',   // 0  P2's beach — the spawn row (x 5..10)
+        '~~SSSSSSSSSSSS~~',   // 1
+        'D~~SSSSSSSSSS~~D',   // 2
+        'DD~~~bb~~~~~~~DD',   // 3  the west sandbar (b): dry the whole way; the east way is a wade
+        'DDD~~bb~~~~~~~DD',   // 4
+        'RSD~~~SSSS~~~DDD',   // 5  the wreck's islet (R a rock, S its sand); the island's north shore
+        'WwD~~SSSSSS~~DDD',   // 6  W the hull (+2), w its deck (+1)
+        'DDD~~SSXXSSS~~DD',   // 7  X marks the spot (with its twin: the 2×2 at the centre)
+    ];
+    const sea = (x, y, deep) => { M.t(x, y, deep ? 'deep_water' : 'water'); M.h(x, y, 2); if (deep) M.under(x, y, 1, 'deep_water'); };
+    ROWS.forEach((row, y) => {
+        for (let x = 0; x < 16; x++) {
+            const ch = row[x];
+            if (ch === '~') sea(x, y, false);
+            else if (ch === 'D') sea(x, y, true);
+            else if (ch === 'b' || ch === 'X') M.t(x, y, 'dirt_2');
+            else if (ch === 'R') M.rect(x, y, x, y, 'rocks_1', 4);
+            else if (ch === 'W') M.rect(x, y, x, y, 'wood', 5);
+            else if (ch === 'w') M.rect(x, y, x, y, 'wood', 4);
+        }
+    });
     M.sym180();
-    // the hypotenuse: deep water from (15,0) to (0,15), the sandbar at the centre left dry
-    for (let i = 0; i < 16; i++) {
-        const x = i, y = 15 - i;
-        if ((x === 7 && y === 8) || (x === 8 && y === 7)) continue;
-        M.t(x, y, 'deep_water'); M.h(x, y, 2); M.under(x, y, 1, 'deep_water');
-    }
-    // the 90° corners: a lantern buoy on each, more lanterns down the legs
+    // the buoys: a lantern at each 90° corner and off the west/east shores, a torch on each beach
     M.objSym(0, 0, 'torch', { leaf: 'floor' });
     M.objSym(0, 7, 'torch', { leaf: 'floor' }); M.objSym(7, 0, 'torch', { leaf: 'floor' });
     M.spawnEdges('s', 6);
@@ -14075,13 +14090,23 @@ _MF_DELTA_BUILDERS.prebuilt_downtown = function () {
 _MF_DELTA_BUILDERS.prebuilt_bermuda = function () {
     const M = _mfDeltaNew({ name: 'The Bermuda Triangle', base: 'desert', seed: 8420,
         strata: ['deep_water', 'deep_water', 'rocks_1', 'rocks_1', 'desert'], underTop: 'rocks_1',
-        tints: { desert: '#e8d8a8', water: '#5fc8d0', deep_water: '#123c5a', wood: '#6a4a30', rocks_1: '#8a8478' },
-        desc: 'two right triangles of shoal — the deep hypotenuse between them, the sandbar at the centre the only way over on foot, a wreck and a rock a side, the corner buoys; the sea streams past, the storm comes on' });
-    M.block(1, 2, 'wood'); M.step(0, 2, 'wood');            // the wreck: hull, deck
-    M.step(2, 3, 'rocks_1');                                // a rock
-    M.lake(3, 2, 'water', 1); M.lake(0, 1, 'water', 1);     // tide pools
-    M.lake(7, 0, 'deep_water', 2); M.lake(6, 1, 'deep_water', 2); M.lake(5, 2, 'deep_water', 2);   // the hypotenuse (this half)
-    M.obj(0, 0, 'torch', { leaf: 'floor' });                // the buoy at the right angle
+        tints: { desert: '#e8d8a8', water: '#5fc8d0', deep_water: '#123c5a', wood: '#6a4a30', rocks_1: '#8a8478', dirt_2: '#cfae7c' },
+        desc: 'the open sea — a beach each side, the treasure island at the centre with the X on it, a sandbar a side, a wreck and a rock in the shallows, the corner buoys; the sea streams past, the storm comes on' });
+    /* THE ISLANDS (2026-09-16): the top half as a sheet — S sand (the beach,
+       the sandbars, the island), ~ shallows (a wade), D the deep (a swim
+       that drowns), R a rock (+1), B the wreck's hull (+2), X the spot */
+    const ROWS = ['~~SSSS~~', 'D~SSSS~B', 'DRS~~~S~', 'DD~XX~DD'];
+    ROWS.forEach((row, y) => {
+        for (let x = 0; x < 8; x++) {
+            const ch = row[x];
+            if (ch === '~') M.lake(x, y, 'water', 1);
+            else if (ch === 'D') M.lake(x, y, 'deep_water', 2);
+            else if (ch === 'R') M.step(x, y, 'rocks_1');
+            else if (ch === 'B') M.block(x, y, 'wood');
+            else if (ch === 'X') M.t(x, y, 'dirt_2');
+        }
+    });
+    M.obj(0, 0, 'torch', { leaf: 'floor' });                // the buoy at the corner
     M.symAll();
     return M.finishDelta();
 };
@@ -14315,7 +14340,7 @@ const EW_MAP_META = [
     /* 7.7 WAVE 2 (2026-09-16): Room 345 first — the user's right triangle, on the sea kit the Dutchman built */
     { id: 'prebuilt_bermuda', label: 'The Bermuda Triangle', w: 16, h: 16, teamSize: 6, tier: 2, base: 'desert',
       biomes: ['deep_sea', 'tropical'], deltaPad: 'desert', near: 'bermuda',
-      desc: '16×16 prebuilt, 6v6 — two right triangles of shoal in the open Atlantic, the deep hypotenuse between them and one sandbar over it, a wreck and rocks on each, the corner buoys and the lighthouse on the 90° corner; the sea streams past and the storm comes on from round 3',
+      desc: '16×16 prebuilt, 6v6 — the open Atlantic: a beach each side, the treasure island at the centre with the X on it and the chest, a wreck on a rock islet each side, shallows to wade and the deep between, the corner buoys and the lighthouse; the sea streams past and the storm comes on from round 3',
       env: { world: { kind: 'plain', sea: true, root: false, r: 70 },
              tint: 0x6fa8c8, tintAmt: 0.34, stars: 0.35, nebula: 0.25, fog: { color: 0x9fc4d8, amount: 0.5, top: 0.06, band: 0.5 }, scenery: 'sea',
              motion: { kind: 'sea', axis: 'x', speed: 2.5, ramp: 0.2, max: 3.5, sea: true, seaDepth: 2.4, sky: 0.9, storm: { from: 3, to: 10 }, ambience: 'ambWindHigh' } } },
@@ -19806,8 +19831,11 @@ const DOOR_HQ = {
             /* 4 · MARS — the regolith flat: no wall (the airlock stands in
                the open), the mesas and the rover in the room, the biodome
                by the way in; red day */
+            /* THE PLANET IN THE ROOM (2026-09-16): floor + apron = the board's
+               own sheet in the Δ's tint (the battle's one surface); the
+               planet mesh is laid by the renderer over the flat ground */
             prebuilt_mars: { open: true, floor: 'moon_2', wall: 'mars_2', dado: 'mars_2', trim: 'metal', ceiling: null, h: 4.4, dadoH: 1.0, pipes: false,
-                apron: 'mars', skirt: 'mars_2', apronColor: 0xc07a58, floorColor: 0xc88a5a,
+                apron: 'moon_2', skirt: 'mars_2', apronColor: 0xc88a5a, floorColor: 0xc88a5a,
                 mood: { lamp: 0xff9a60, glow: 0xff7a40, strip: 0xffd0b0, light: 0xffe0c8, night: 0,
                     signN: { bg: '#3a1408', border: '#ff9a60', color: '#ffe4d0' }, signS: { bg: '#2a2a30', border: '#cfd8e0', color: '#eef2f8' },
                     signLines: { n: ['MARS', 'ROOM 4', 'THE FOURTH PLANET'], s: ['AIRLOCK CYCLED', 'RED DUST IN THE SEAL · EVERY CROSSING', 'THE CROSSING IS AT THE CONSOLE'] } } },
@@ -19900,8 +19928,8 @@ const DOOR_HQ = {
                     signN: { bg: '#100818', border: '#b08cff', color: '#e8dcff' }, signS: { bg: '#1c1428', border: '#d0b8ff', color: '#f0e8ff' },
                     signLines: { n: ['THE SINGULARITY', 'ROOM 0', 'NO RETURN'], s: ['THERE IS NO OTHER SIDE', 'DO NOT LEAN OUT', 'THE CROSSING IS AT THE CONSOLE'] } } },
             /* 6 · SATURN (7.6 wave 1) — the plateau in the storm; ochre light under the ring plane */
-            prebuilt_saturn: { open: true, floor: 'mars_2', wall: 'cloud_thick', dado: 'cloud_thick', trim: 'gunmetal', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
-                apron: 'cloud_thick', skirt: 'cloud_thick', apronColor: 0xa88a58, floorColor: 0xc8a060,
+            prebuilt_saturn: { open: true, floor: 'cloud_thick', wall: 'cloud_thick', dado: 'cloud_thick', trim: 'gunmetal', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
+                apron: 'cloud_thick', skirt: 'cloud_thick', apronColor: 0xc8a870, floorColor: 0xc8a870,   // THE PLANET IN THE ROOM (2026-09-16): the cloud deck's own sheet + tint
                 mood: { lamp: 0xffd080, glow: 0xffb050, strip: 0xfff0c0, light: 0xffe8b0, night: 1,
                     signN: { bg: '#2a2010', border: '#d8b060', color: '#f8ecc8' }, signS: { bg: '#1a1a20', border: '#a0a0b0', color: '#e8e8f0' },
                     signLines: { n: ['SATURN', 'ROOM 6', 'THE HEXAGON'], s: ['SMALLER CUBES · DO NOT STACK', 'THE RINGS ARE A TREATY', 'THE CROSSING IS AT THE CONSOLE'] } } },
@@ -19925,7 +19953,7 @@ const DOOR_HQ = {
                 moat: { key: 'deep_water', gap: 2.6, bank: 'rocks_1', bankColor: 0x8a8478, bed: 'rocks_dark_fantasy', bedColor: 0x1c3e52, deck: 'desert', deckColor: 0xe8d8a8, causeways: ['s', 'n'] },
                 mood: { lamp: 0xfff1c8, glow: 0x7fe0ea, strip: 0xdff0ff, light: 0xfff0d0, night: 0,
                     signN: { bg: '#0c2a34', border: '#7fe0ea', color: '#dffaff' }, signS: { bg: '#f4f0e0', border: '#c83a3a', color: '#1a2a34' },
-                    signLines: { n: ['THE BERMUDA TRIANGLE', 'ROOM 345', '∠ 90° · NO FIXED POSITION'], s: ['THE SANDBAR IS THE WAY OVER', 'THE COMPASS POINTS AT THE LIGHTHOUSE', 'THE CROSSING IS AT THE CONSOLE'] } } },
+                    signLines: { n: ['THE BERMUDA TRIANGLE', 'ROOM 345', '∠ 90° · NO FIXED POSITION'], s: ['X MARKS THE SPOT · DIGGING IS NOT ON THE FORM', 'THE COMPASS POINTS AT THE LIGHTHOUSE', 'THE CROSSING IS AT THE CONSOLE'] } } },
             /* 888 · VATICAN CITY — the piazza: cobbles, a marble wall, the
                colonnade arms in the room, the basilica front across the
                north, the dome over the wall; day */
@@ -20094,7 +20122,7 @@ const DOOR_HQ = {
                 lines: [
                     'It is a right triangle. Records measured it. The angle is at the buoy; the buoy is not where it was yesterday.',
                     'Five aircraft flew into it in 1945 in formation. The Department filed them as a crossing. They have not filed back.',
-                    'The sandbar is two men wide. The sandbar is the whole battle.',
+                    'One island, one chest, one X. The chest is on the form as “item, one”. The island is on no form at all.',
                     'The storm is on the form. It comes on from round three. Do not be on the deep side of it when it does.',
                     'The yacht was found with breakfast on the table and nobody to eat it. The door on the bay is its cabin door. The breakfast is in Records.',
                 ],
@@ -23359,8 +23387,9 @@ const DOOR_HQ = {
             shell: {
                 w: 2.6, d: 2.4, h: 2.6,
                 wallH: 2.6, dadoH: 0.9,
-                floor: 'aluminium', wall: 'metal_3', dado: 'gunmetal', trim: 'teal', ceiling: 'aluminium',
-                floorColor: 0x9aa2aa, wallColor: 0xb8bec4, dadoColor: 0x6e767e, ceilColor: 0xd0d4d8,
+                /* 2026-09-16: the `metal_3` grate is gone from the car (the user: "don't use that metal texture on it") — brushed aluminium walls over a darker aluminium dado, like the Spaceship's deck */
+                floor: 'aluminium', wall: 'aluminium', dado: 'aluminium', trim: 'teal', ceiling: 'aluminium',
+                floorColor: 0x8e969e, wallColor: 0xc4c9ce, dadoColor: 0x7a8188, ceilColor: 0xd4d8dc,
                 pipes: false,
                 light: { x: 0, z: 0 },
                 mood: { light: 0xfff0d0 },
@@ -24320,8 +24349,12 @@ const DOOR_HQ = {
             sub: 'THE OBJECT · CONTAINMENT',
             roomNo: 'X', why: 'the unknown; the file has a number and the number is redacted',
             kind: 'box',
+            /* 2026-09-16: 5 × 5 → 7 × 7 and the orb ring north of centre — the
+               door landing (2.4 m in) stood inside the orb's collision disc
+               and the room SOFT-LOCKED (three-renderer.js _hqGoTo steps a
+               landing back off a blocker now, too) */
             shell: {
-                w: 5, d: 5, h: 3.4,
+                w: 7, d: 7, h: 3.4,
                 wallH: 3.4, dadoH: 1.0,
                 floor: 'aluminium', wall: 'metal_3', dado: 'gunmetal', trim: 'gunmetal_2', ceiling: 'metal_3',
                 floorColor: 0x7c8890, wallColor: 0x6e7880, dadoColor: 0x505a62, ceilColor: 0x5a646c,
@@ -24329,47 +24362,47 @@ const DOOR_HQ = {
                 strips: false,
                 light: { x: 0, z: 0 },
                 mood: { light: 0x8fdcff, ambient: 0.35 },
-                plate: { x: 0, z: -2.25, y: 2.9 },
+                plate: { x: 0, z: -3.25, y: 2.9 },
             },
             doors: [
                 { id: 'dungeon', wall: 's', x: 0, leaf: 'leaf_portcullis', wide: true,
                   label: 'THE DUNGEON', sub: 'BACK TO THE CELLS',
                   action: { room: 'dungeon', at: 'orb' },
                   desc: 'Back through the portcullis.' },
-                { id: 'gate', wall: 'e', z: 0, leaf: 'leaf_portcullis', wide: true, minClearance: 5,
+                { id: 'gate', wall: 'e', z: 1.6, leaf: 'leaf_portcullis', wide: true, minClearance: 5,
                   label: 'THE GARDEN GATE', sub: 'ROOM 1618 · CLEARANCE L5',
                   action: { room: 'garden', at: 'gate' },
                   desc: 'The gate at the back of the garden, from the other side. The object was found in the garden; the gate is how it came down. An L5 opens it.' },
             ],
             counters: [
-                { id: 'object', x: 0, z: 1.55, face: 0, plateY: 1.9, radius: 2.0, verb: 'READ',
+                { id: 'object', x: 0, z: 0.95, face: 0, plateY: 1.9, radius: 2.0, verb: 'READ',
                   label: 'THE OBJECT', sub: 'DO NOT TOUCH', action: {},
                   desc: 'It floats. It turns. The terminal reads it and the readings do not repeat. The rail is for you, not for it.' },
             ],
             props: [
-                { key: 'floating_orb',   x: 0, z: 0 },
-                { key: 'railing_1m',     x: 0, z: -1.3, face: 0 }, { key: 'railing_1m', x: 0, z: 1.3, face: 0 },
-                { key: 'railing_1m',     x: -1.3, z: 0, face: 90 }, { key: 'railing_1m', x: 1.3, z: 0, face: 90 },
-                { key: 'steel_table',    wall: 'n', x: -1.2, face: 180 },
-                { key: 'crt_terminal',   x: -1.2, z: -2.1, y: 0.76, face: 180 },
-                { key: 'clipboard_flat', x: -0.5, z: -2.05, y: 0.76, face: 20 },
-                { key: 'folding_chair',  x: -1.2, z: -1.5, face: 0 },
-                { key: 'security_camera', wall: 'n', x: 2.0, mount: 2.7 },
-                { key: 'security_camera', wall: 's', x: -2.0, mount: 2.7 },
-                { key: 'breaker_panel',  wall: 'w', z: -1.6 },
-                { key: 'cardboard_boxes', x: -2.1, z: 1.8, face: 90 },
-                { key: 'vent_grille',    wall: 'w', z: 1.6, mount: 2.6 },
-                { key: 'pipe_run',       x: 1.6, z: -1.9, face: 0 },
-                { key: 'keypad',         wall: 'e', z: -1.9 },
+                { key: 'floating_orb',   x: 0, z: -0.6 },
+                { key: 'railing_1m',     x: 0, z: -1.9, face: 0 }, { key: 'railing_1m', x: 0, z: 0.7, face: 0 },
+                { key: 'railing_1m',     x: -1.3, z: -0.6, face: 90 }, { key: 'railing_1m', x: 1.3, z: -0.6, face: 90 },
+                { key: 'steel_table',    wall: 'n', x: -1.6, face: 180 },
+                { key: 'crt_terminal',   x: -1.6, z: -3.1, y: 0.76, face: 180 },
+                { key: 'clipboard_flat', x: -0.9, z: -3.05, y: 0.76, face: 20 },
+                { key: 'folding_chair',  x: -1.6, z: -2.5, face: 0 },
+                { key: 'security_camera', wall: 'n', x: 2.6, mount: 2.7 },
+                { key: 'security_camera', wall: 's', x: -2.6, mount: 2.7 },
+                { key: 'breaker_panel',  wall: 'w', z: -2.2 },
+                { key: 'cardboard_boxes', x: -2.9, z: 2.6, face: 90 },
+                { key: 'vent_grille',    wall: 'w', z: 2.2, mount: 2.6 },
+                { key: 'pipe_run',       x: 2.4, z: -2.7, face: 0 },
+                { key: 'keypad',         wall: 'e', z: -2.6 },
             ],
             agents: [],
-            npcSpots: [{ x: -1.9, z: -0.6, face: 90, race: 'watcher', say: ['“I have watched it for a week.” “And?” “It has watched me for a week.”'] }],
+            npcSpots: [{ x: -2.4, z: -0.6, face: 90, race: 'watcher', say: ['“I have watched it for a week.” “And?” “It has watched me for a week.”'] }],
             onlineSpots: [],
             lines: [
                 '“What is it?” “X.” “What does X stand for?” “It does not stand. It floats.”',
                 '“Has anyone touched it?” “One.” “And?” “And the rail.”',
             ],
-            spawn: { x: 0, z: 1.5, face: 0 },
+            spawn: { x: 0, z: 2.2, face: 0 },
         },
         /* ── 3 · THE ANNEX — the floor above the mezzanine: a lobby with
            five doors (the garden straight ahead is the landmark — glass
@@ -28936,11 +28969,21 @@ function hqSiteRoom(mapId) {
        storefronts) is the wall now. */
     const edge = !open ? 'walls' : (shell.edge === 'low') ? 'low' : 'open';
     const roam = (edge === 'open') ? ((shell.roam != null) ? shell.roam : 5.0) : 0;
+    /* THE PLANET IN THE ROOM (2026-09-16): a map whose WORLD is a planet
+       (`env.world.kind === 'planet'` — Mars, the Moon, Saturn) gets the same
+       ground in its room: three-renderer.js _hqBuildSetting lays THE WORLD's
+       planet mesh (the board's own sheet, the craters carved, the horizon
+       curving off, Saturn's bands + hexagon + rings) in place of the flat
+       apron + skirt — the room looks like the battle map, not a sand box
+       with a Mars-coloured floor. Needs the setting (the builder registers
+       the craters); the box shell draws the flat ground when it is off. */
+    const planet = !!(open && NR && meta.env && meta.env.world && meta.env.world.kind === 'planet');
     const mood = Object.assign({}, ((SR.shell || {}).mood) || {}, (shell.mood) || {});
     const lightsAt = open
         ? [{ x: -(half - 1.3), z: -(half - 1.3) }, { x: half - 1.3, z: -(half - 1.3) }, { x: -(half - 1.3), z: half - 1.3 }, { x: half - 1.3, z: half - 1.3 }]
         : [{ x: -3.5, z: -3.5 }, { x: 3.5, z: -3.5 }, { x: -3.5, z: 3.5 }, { x: 3.5, z: 3.5 }];
     const sky = open ? Object.assign({ night: mood.night ? 1 : 0 }, meta.env || {}) : null;
+    const world = planet ? Object.assign({}, meta.env.world) : null;
     /* THE MOAT (stage 4): the ring between the island and the quay, one
        level down, full of the map's liquid — walk / tint / quay filled in
        from the board and the terrain rules (the renderer reads only this) */
@@ -29064,6 +29107,8 @@ function hqSiteRoom(mapId) {
             /* THE EDGE (2026-09-11): 'walls' | 'open' | 'low' — what stands at
                the bound; `roam` = how far past it the walker may go (open only) */
             edge: edge, roam: roam,
+            /* THE PLANET IN THE ROOM (2026-09-16): the map's env.world row for the renderer's planet ground */
+            planet: planet, world: world,
             /* the moat room (stage 4): the quay's inner edge, the causeways, the liquid */
             moat: moat,
             apron: open ? (shell.apron || shell.floor || 'grass_2') : null, skirt: open ? (shell.skirt || 'dirt') : null,

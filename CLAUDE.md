@@ -2882,6 +2882,40 @@ Shared `getCubeAttackDamage` preserves actual Cube damage order and RNG executio
 
 FINAL delivery: `ENTROPY_WARS_PHASE6_BEAM_ARENA_OBJECTIVES.zip`, containing all beam, Key, Cube and wipeout changes. R2: ai.js/battle.js/map.js/data.js; Render: index.html (`20260914-ai-beam-arena-objectives-01-cors`); remaining files: repository. Sync runtime/entry files too. AI stamp `v4.11-2026-09-14-arena-cube-priority`. This supersedes interim package scopes in earlier entries. No commit, push or deployment. Next: carrier denial, move-then-inspect, residual scenarios/timing and authorized observations; Phase 6 remains open.
 
+## THE GALLERY'S EDGE + ROOM X + THE CAR + THE PLANET IN THE ROOM + THE ISLANDS — 2026-09-16, local delivery
+Five of the user's HQ fixes (DOOR_HQ_BUILD_PLAN §9 has the log). **THE
+GALLERY'S EDGE**: the third ring's fascia (`_hqBuildRing3`) faced the DRUM
+(a `_hqBand` cylinder is FrontSide = outward) and the underside is a sliver
+from below, so the rail floated on the stone from the mezzanine and the
+floor; it is `BackSide` now + a 0.25 m soffit lip (oxblood between two teal
+trims, closed under). RULE: a fascia at a slab's INNER radius is seen from
+inside — `BackSide`. **ROOM X**: the door landing (2.4 m in) stood INSIDE
+the orb's blocker in a 5 m room = a soft lock (`railing_1m` is `foot: 0` —
+it never blocked); `_hqGoTo`'s box landing is clamped to the room's depth
+and walked back toward the door until it stands on no blocker, and the
+room is 7 × 7 with the orb ring north of centre. **THE CAR**: no `metal_3`
+grate (brushed `aluminium` walls / dado), the leaves brushed aluminium
+instead of the trim sheet tinted grey. **THE PLANET IN THE ROOM**:
+`hqSiteRoom` sets `shell.planet` + `shell.world` for a map whose
+`env.world.kind` is `planet`; under `K.hq` the near builder's
+`_nrApron({ planet: true })` records craters on `K.planet` (`_nrCrater` /
+`K.inCrater` read it), `_nrKit` takes `ctx.hq.keepOut` (the room's doors,
+console, props, natives, masts, spawn, finds — hoisted from
+`_hqBuildSetting`'s clear zones) and rides on `ctx.kit`; after the build
+**`_hqBuildPlanetGround(room, g, K)`** runs `_wdBuildPlanet` + the `_WD_RIM`
+builders + `_wdInject` (dissolve off, the shared uniforms pinned grounded,
+`_wd.mats` / `_wd.hasGround` untouched — `o.hq`) in the setting group; the
+flat floor / apron / skirt wear `_ew_hqGround` and hide when it lands;
+`_hq.planet.yAt` is a layer of `_hqSurface`'s box branch (the walker walks
+the bowls). Saturn's storm walls + rings come indoors (no `!HQ` gate). Mars
+/ Saturn rooms wear the board's own sheet + tint. **THE ISLANDS**: Bermuda
+is the open sea — beaches (spawn rows), shallows to wade, the deep, the
+treasure island with the X (`dirt_2`) + the chest, a wreck on a rock islet
+a side, a sandbar; full map + Δ authored from `ROWS` sheets; the near
+builder builds NO sand apron (the sea at `depth: 1` = the board's water
+level, beach tongues past the spawn rows, the lighthouse on a rock, palms,
+`_nrRocks` `y`). Ship data.js to Render too. Unseen live (RULE #1c).
+
 ## THE PLANETS + THE ONE TINT + THE STREET (the visual pass) — 2026-09-16, local delivery
 The user: "I don't get the impression I'm on a planet — a little curve to
 the edges; the mounds that are supposed to be craters are upside down;
