@@ -451,6 +451,7 @@ function MatchSelect(props) {
     return compatibleMapIndices.filter(i => {
       const m = mapList[i];
       if (!m) return false;
+      if (m.field) return false;   // THE FIELD (Phase 9 stage B): an encounter's rasterised window is never filed from the console
       if (deltaOnly && !m.isDelta) return false;
       const w = m.w || 8;
       if (sizeFilter === 'sm' && w > 8) return false;

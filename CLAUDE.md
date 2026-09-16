@@ -4380,3 +4380,52 @@ synced object). `npm test` runs hq-encounter.test.js (33). UNSEEN LIVE (RULE
 #1c): a respawn landing on a mid-board seat beside the enemy, the Code Red
 fight with only the centre nexus. Still open in stage A: §10 stage 4 (the room's
 furniture as the battle's setting), §14 B (the party's arrival).
+
+## PHASE 9 DELIVERY 8 — THE FIELD, STAGE B (the rasteriser on the cave) (2026-09-16, local delivery)
+PHASE9_QUALITY_PLAN §11.3 B: "anywhere you stand becomes the 8×8" — a CAVE
+chamber (no Δ under the walker; it fought Hollow Earth's board from the centre)
+now fights ITS OWN WINDOW. data.js, the block after `hqEncounterWakeRoom`:
+**`HQ_FIELD_RULES`** (size 8, base = MF_DELTA_BASE_H, rockMin 3 / rockPad 2,
+fluidMin −1, prefix `field:`), **`hqFieldRoomOk`** (stage B = a wild room with
+a `cave` grid), **`hqFieldRaster(roomId, ox, oz)`** (the 8 × 8 of the cave grid
+at origin (ox, oz) — off the grid / `#` = ROCK at max(rockMin, the tallest IN
+cell + rockPad), every cell's `tile` = its height in BATTLE LEVELS: a plain
+cell round(top / C), a ramp its middle, a fluid floor(sheet / C) ≥ −1; a
+hazard the walker never enters is OUT but drawn as the liquid), **`hqFieldReach`**
+(the walker's own step rule inside the window), **`hqFieldWindow(roomId,
+walkerPt, targetPt)`** (THE WINDOW'S CHOICE: every origin holding both feet,
+scored by the walker's reach inside it, then the nearest centre to the feet's
+midpoint → `{ id, board: { N, C, x0, z0, cave: true }, cells, raster }`),
+**`hqFieldBuild`** (the map entry through the forge's `_mfNew`: the shared
+bed, the site Δ's tints, deep water / a bridge flooding the layer under them,
+spawns = `hqEncounterSeats` over the IN cells — explicit per seat, rule §7),
+**`hqFieldRegister`** (PREBUILT_MAPS + MAP_LAYOUT_PRESETS under
+`field:<roomId>:<ox>,<oz>`, the site Δ's env → the cavern world + `near`).
+THE GUARANTEE (rule §4) holds by construction — round() of half-levels never
+splits a walker's step — and hq-field.test.js proves it on every window of
+every chamber (2910 windows). `hqFieldTransform` takes an explicit ORIGIN
+(`x0` / `z0`; a site board stays centred) so THE SLIDE / THE SEATS / THE EYE
+read a cave like a board; **`hqSiteId` reads a `field:` id as its room's
+site** (the CPU pool, the Code Red response, the checklist, the stamp).
+map.js: `_hqEncounterFire` chooses the window in a cave and hands its frame
+to the event as `board`; `_hqEncounterStart` → **`_hqFieldRegister`** (the
+GAME_MODES row + an MS_MAP_LIST row wearing `field: true` — match-select.js's
+card filter drops it) and launches the field id; the toast says THE CAVE IS
+THE BOARD. **Two bugs the probe measured and fixed**: (1) THE SLIDE's
+callback leaves the building INSIDE the walker's tick — `_hqFrame` now
+returns when `_hq !== H` after the walker / the crossing tick (the frame
+ticked a disposed room's `chars`); (2) D2's seat-1 pin NEVER FIRED —
+`_msConfirm` nulls `_hqPreselect` long before `optimizeRandomizeParty(2)`;
+the lead rides **`window._hqEncounterLead`** across the null and is spent
+after the draw (state.js reads the marker first). **THE PROBE**:
+`node playtest_field_offline.js [roomId]` (repo tooling — the offline HQ
+harness + a strike; needs the server + `npm i --no-save playwright
+three@0.128.0 react@18 react-dom@18 three.meshline`) prints the mode, the
+zones, the units, the heights; PLAYTEST_NOTES "THE FIELD PROBE". Measured:
+`field:site_prebuilt_hollow_earth_gallery:3,7`, TDM, the seats the zones, P1
+seat 1 on the walker's cell, P2 seat 1 the Gnome wearing the room's name one
+cell east, the ledge at +1 / the rock at +2 in the heights. NOT built: box
+rooms (stage C), the window's thin walls / a door as a threshold (stage D),
+the HUD of the field (E), the room as the battle's setting (§10 stage 4).
+UNSEEN LIVE (RULE #1c): the real cave sheets on the field's columns, the
+rock's height against the chamber's walls, the eye's first frame in a cave.

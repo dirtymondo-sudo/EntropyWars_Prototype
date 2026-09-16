@@ -10668,3 +10668,36 @@ camera alone cannot get in front of it). The frame rate is ~8–10 fps (a 2.4 m/
 build log), the wall placements (the snap, the frame-sized fit, the lane), the carry through a wall pair (the Medical
 Wing's north / south walls — its side walls are its doors' lanes; the training room's west wall stands behind 1 m
 risers and its far walls are past `reach`, so use the lobby).
+
+## THE FIELD PROBE (2026-09-16, Phase 9 Delivery 8) — playtest_field_offline.js: a cave encounter, end to end, offline
+The offline HQ harness (see THE VISUAL PASS: repo scripts from disk, three / React / socket.io mirrored
+from node_modules, stand-in textures, every GLB a 404; `npm i --no-save playwright three@0.128.0 react@18
+react-dom@18 three.meshline`, then `npm start`) plus a strike:
+```
+node playtest_field_offline.js                                  # the gallery (site_prebuilt_hollow_earth_gallery)
+node playtest_field_offline.js site_prebuilt_hollow_earth_adit  # any chamber with a race-hinted native
+```
+It enters the room through `_hqEnter({ from: 'play', room })`, teleports the walker 1.3 m WEST of the
+room's first race-hinted native at that cell's own height (`hqCaveTopAt` — a teleport lands at level 0
+otherwise, under a ledge), faces east, calls `window._hqResume()` + `hq.setPaused(false)` (**the harness
+enters PAUSED** — `hq.strike()` returns false under it; that cost one run), prints `hq.encounterAim()`
+(the native in reach, in the cone, with LOS), strikes, and polls until `activeGameMode` is a `field:` id
+with `state.round ≥ 1`. It prints RESULT (`mode`, the board size, `state.spawnZones` with `field: true`,
+every unit as `[player, x, y, z, race, name]`, the run marker's `fieldId` + cells, `state.boardHeights`
+as rows), CAM (`ThreeCamera.seedState()`), COUNTERS, ERRORS (with stacks) and the [HQ] / [SpawnZones]
+logs; shots/field/field_before.png (the walker beside the native) and field_battle.png (the first frames).
+**What it measured (the gallery, the Gnome at (−11.375, 0.875) on the lvl-2 ledge):**
+`field:site_prebuilt_hollow_earth_gallery:3,7` · 8 × 8 · TDM · zones `{1: (4,5) (3,5) (3,4) (3,6), 2: (5,5)
+(6,5) (6,4) (6,6), field: true}` · P1 seat 1 at (4,5) = the walker's cell, P2 seat 1 at (5,5) = the Gnome
+named "Gnome" (the room's label) · heights `77777777 / 77777555 / 77777555 / 66666666 ×5` (the shelf at
++2, the ledge at +1, the pit at 0 — B = 5) · the camera seeded (`until` > 0) · the result stamp's site
+line reads CAVE · THE CAVERN · THE FIELD. **Two bugs found and fixed by it**: (1) `Cannot read
+properties of null (reading 'chars')` in `_hqTickChars` — THE SLIDE's callback runs INSIDE the walker's
+tick and `_hqLeave`s the building; `_hqFrame` now returns when `_hq !== H` after the walker / the crossing
+tick. (2) The Gnome landed at P2 seat 4, then seat 2, on the first two runs — D2's pin read
+`window._hqPreselect.encounter` in `optimizeRandomizeParty`, but `_msConfirm` nulls the preselect long
+before the CPU party is drawn; the lead now rides `window._hqEncounterLead` across the null (set beside
+it, spent after the draw). **Harness noise to ignore**: `THREE.Scene is not a constructor` at index.html's
+inline loading-screen script — the mirrored three.min.js lands after that script runs in this sandbox;
+it is not the game's. The shots are stand-in textures (the concrete-grey cells are `cave_floor`'s stand-in);
+the real sheets, the rock's height against the chamber and the eye's first frame are UNSEEN (RULE #1c).

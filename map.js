@@ -2034,9 +2034,13 @@
            fights on the board under your feet (THE ROOM IS THE BOARD); a complex part or a cave chamber fights the
            SITE'S Δ (the launch is always `site + '_delta'`; the eye seed is null there) — THE SITE IS THE BOARD */
         function _hqEncounterBoardCopy(board) {
-            if (board === null) return 'THE SITE IS THE BOARD';
-            if (board) return 'THE ROOM IS THE BOARD';
             const room = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms) ? DOOR_HQ.rooms[_hqCurRoom] : null;
+            /* THE FIELD stage B: a cave chamber fights its own window (data.js hqFieldRoomOk) — the renderer reports no board there, the window is the board */
+            const caveField = !!(room && room.cave && typeof window.hqFieldRoomOk === 'function' && window.hqFieldRoomOk(_hqCurRoom));
+            if (board && board.cave) return 'THE CAVE IS THE BOARD';
+            if (board === null) return caveField ? 'THE CAVE IS THE BOARD' : 'THE SITE IS THE BOARD';
+            if (board) return 'THE ROOM IS THE BOARD';
+            if (caveField) return 'THE CAVE IS THE BOARD';
             return (room && room.fx === 'site' && !room.cave) ? 'THE ROOM IS THE BOARD' : 'THE SITE IS THE BOARD';
         }
         function _hqEncounterFire(ev) {
@@ -2056,6 +2060,16 @@
             const L = (typeof window.hqEncounterLaunch === 'function') ? window.hqEncounterLaunch(_hqCurRoom, ev.target, _hqEncounterCfgRaw(), { gesture: ev.gesture, codeRed: !!cr }) : null;
             if (!L) return false;
             L.codeRedRun = cr ? { date: cr.date, site: cr.site, race: cr.race, label: cr.label, bonus: cr.bonus } : null;
+            /* THE FIELD stage B (Phase 9 Delivery 8, 2026-09-16 — the rasteriser on the cave): a cave chamber has no
+               board under the walker, so THE WINDOW is chosen here — the 8 × 8 of the cave's own grid that holds both
+               feet with the most of the walker's reach inside it (data.js hqFieldWindow) — and its frame becomes the
+               event's `board`, so the field record, THE SLIDE, THE SEATS and THE EYE below read a cave exactly like a
+               site room's board. The window is rasterised into a map entry at the launch (_hqFieldRegister). */
+            let win = null;
+            if (!ev.board && typeof window.hqFieldRoomOk === 'function' && window.hqFieldRoomOk(_hqCurRoom) && typeof window.hqFieldWindow === 'function') {
+                try { win = window.hqFieldWindow(_hqCurRoom, { x: ev.x, z: ev.z }, { x: ev.target.x, z: ev.target.z }); } catch (e) { console.warn('[HQ] the field window failed', e); win = null; }
+                if (win && win.board) { ev = Object.assign({}, ev, { board: win.board }); L.field = win; }
+            }
             /* THE FIELD RECORD (data.js hqEncounterField): the board under the room, both feet, the heading, the raw
                eye — and, on a board room, THE SLIDE: the walker and the native ease onto their cell centres
                (ThreeRenderer.hq.encounterSnap, HQ_ENCOUNTER_RULES.snapMs) and the fight starts on those very
@@ -2123,8 +2137,17 @@
                 party = { members: [], fallback: true };
             }
             if (typeof MS_MAP_LIST === 'undefined' || !MS_MAP_LIST.length) return false;
-            const launchId = L.site + '_delta';
+            /* THE FIELD stage B: a cave chamber fights ITS OWN WINDOW — the rasterised map entry registered now under
+               `field:<room>:<ox>,<oz>` (PREBUILT_MAPS / MAP_LAYOUT_PRESETS / GAME_MODES / a hidden MS_MAP_LIST row);
+               a site room keeps its Δ; a complex part (stage C) still fights the site's Δ from the centre */
+            let launchId = L.site + '_delta';
+            if (L.field) {
+                const reg = _hqFieldRegister(L.field, field);
+                if (reg) { launchId = reg.id; window._hqEncounterRun.fieldId = reg.id; }
+                else console.warn('[HQ] the field could not be built — the site\'s Δ stands in', L.field.id);
+            }
             let idx = MS_MAP_LIST.findIndex(m => m.modeId === launchId);
+            if (idx < 0) idx = MS_MAP_LIST.findIndex(m => m.modeId === L.site + '_delta');
             if (idx < 0) idx = MS_MAP_LIST.findIndex(m => m.modeId === L.site);
             if (idx < 0) { console.warn('[HQ] no launch entry for the encounter', L.site); return false; }
             let gi = MS_GAME_MODES.findIndex(g => g.id === L.gm && !g.locked);
@@ -2142,6 +2165,33 @@
             catch (e) { console.error('[HQ] the encounter failed to start', e); window._hqEncounterParty = null; window._hqEncounterRun = null; return false; }
             return true;
         }
+        /* THE FIELD stage B: the window's map entry into the three registries the launch reads — data.js hqFieldRegister
+           (PREBUILT_MAPS + MAP_LAYOUT_PRESETS, the site Δ's env), then the GAME_MODES row (state.js's generated shape)
+           and an MS_MAP_LIST row wearing `field: true` (the terminal's card filter drops it — a field is never filed
+           from the console). Re-registering the same window overwrites in place. */
+        function _hqFieldRegister(win, field) {
+            if (!win || typeof window.hqFieldRegister !== 'function' || typeof GAME_MODES === 'undefined') return null;
+            let reg = null;
+            try { reg = window.hqFieldRegister(win.room, win.ox, win.oz, { cells: (field && field.cells) || win.cells || null }); } catch (e) { console.warn('[HQ] the field failed to register', e); reg = null; }
+            if (!reg || !reg.entry || !reg.entry.spawns) return null;
+            const S = reg.meta.w, n = reg.meta.teamSize;
+            const JOBS = ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Tank'];
+            const builds = []; for (let i = 0; i < n; i++) builds.push(JOBS[i % JOBS.length]);
+            GAME_MODES[reg.id] = {
+                id: reg.id, label: reg.meta.label, desc: reg.meta.desc,
+                boardSize: S, boardWidth: S, boardHeight: S, teamSize: n,
+                winHourglasses: 2, hiddenItemSpawns: 4,
+                blitzMode: true, hasTowers: false, isPrebuilt: true, isDelta: true, field: true, tier: reg.meta.tier, biomes: reg.meta.biomes.slice(),
+                terrainPatches: { water: [0, 0, 0], desert: [0, 0, 0], mountain: [0, 0, 0] },
+                spawns: { 1: reg.entry.spawns[1].map(p => ({ x: p.x, y: p.y })), 2: reg.entry.spawns[2].map(p => ({ x: p.x, y: p.y })) },
+                defaultBuilds: { 1: builds.slice(), 2: builds.slice() },
+            };
+            const row = { modeId: reg.id, name: reg.meta.label, size: S + '×' + S + ' Δ', team: n, floors: false, w: S, h: S, isPrebuilt: true, isDelta: true, field: true, tier: reg.meta.tier, biomes: reg.meta.biomes };
+            const i = MS_MAP_LIST.findIndex(m => m.modeId === reg.id);
+            if (i >= 0) MS_MAP_LIST[i] = row; else MS_MAP_LIST.push(row);
+            return reg;
+        }
+        window._hqFieldRegister = _hqFieldRegister;
         /* the strip pill / the panel button: draw or holster */
         window._hqPortalDraw = function (on) {
             if (_hqSuspended || state.gameState !== GS.HQ) return false;
@@ -5489,6 +5539,11 @@
             window._hqCpuPool = (_pre && _preSite === _pre.mapId && Array.isArray(_pre.roster) && _pre.roster.length) ? _pre.roster : null;
             /* a Code Red response only counts on ITS site (plan 3.3) */
             if (!(_pre && _pre.codeRed && _preSite === _pre.mapId)) window._hqCodeRedRun = null;
+            /* D2 · THE LEAD (measured 2026-09-16, THE FIELD stage B probe): the preselect is dropped HERE, long before
+               optimizeRandomizeParty(2) runs below — the seat-1 pin read `_hqPreselect.encounter` and never fired (the
+               native landed anywhere the pool put it). The lead rides its own marker across the null; the encounter
+               block below spends it after the CPU party is drawn. */
+            window._hqEncounterLead = (_pre && _pre.encounter && _preSite === _pre.mapId) ? _pre.encounter : null;
             window._hqPreselect = null;
 
             // Δ maps are the hand-authored 8×8 boards (data.js DELTA FORGE,
@@ -5658,6 +5713,7 @@
             window._hqEncounterParty = null;
             if (_encParty && typeof _hqApplyLastParty === 'function' && _hqApplyLastParty(_encParty, 1, CONFIG.teamSize)) {
                 if (typeof optimizeRandomizeParty === 'function') optimizeRandomizeParty(2);
+                window._hqEncounterLead = null;   // D2: the pin is spent on this draw — a rematch's reroll never re-seats it
                 /* no roster on file (Delivery 6): the human's stand-in squad gets identities + spell loadouts like the CPU's */
                 if (_encParty.fallback && typeof optimizeRandomizeParty === 'function') {
                     try {
@@ -5680,6 +5736,7 @@
 
             window.requestAnimationFrame(() => {
                 if (typeof optimizeRandomizeParty === 'function') optimizeRandomizeParty(2);
+                window._hqEncounterLead = null;
                 render();
             });
 

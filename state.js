@@ -4123,8 +4123,8 @@
                room's name for it (data.js hqEncounterLead off _hqPreselect.encounter; the
                pool only pinned the race somewhere in the party). Every other seat is the
                pool's draw as before. */
-            const lead = (player === 2 && typeof window !== 'undefined' && window._hqPreselect && window._hqPreselect.encounter && typeof hqEncounterLead === 'function')
-                ? hqEncounterLead(window._hqPreselect.encounter) : null;
+            const _encSpec = (typeof window !== 'undefined') ? (window._hqEncounterLead || (window._hqPreselect && window._hqPreselect.encounter) || null) : null;   // map.js _msConfirm carries the lead past the preselect's null (measured 2026-09-16)
+            const lead = (player === 2 && _encSpec && typeof hqEncounterLead === 'function') ? hqEncounterLead(_encSpec) : null;
             if (lead && state.partyMeta[player].length) {
                 const m0 = randomizeIdentity(false, lead.race);
                 if (m0.race === lead.race) { m0.gender = lead.gender; state.partyMeta[player][0] = m0; }

@@ -316,7 +316,13 @@ test('D2 · THE LEAD: the native you hit is P2\'s seat 1 — race + gender + the
 });
 
 test('D2 · SOURCE · state.js: optimizeRandomizeParty pins seat 1 off _hqPreselect.encounter through hqEncounterLead (race → randomizeIdentity, the gender, the name sanitised); map.js starts the roster with `encounter: L.encounter` on the preselect', () => {
-    assert.ok(ST2.includes("? hqEncounterLead(window._hqPreselect.encounter) : null;"), 'the ONE read');
+    /* measured 2026-09-16 (THE FIELD stage B probe): _msConfirm drops the preselect long before the CPU party is drawn, so the
+       read takes map.js's own marker first — `window._hqEncounterLead`, set beside the null and spent after the draw */
+    assert.ok(ST2.includes("window._hqEncounterLead || (window._hqPreselect && window._hqPreselect.encounter) || null"), 'the ONE read: the marker, then the preselect');
+    assert.ok(ST2.includes("const lead = (player === 2 && _encSpec && typeof hqEncounterLead === 'function') ? hqEncounterLead(_encSpec) : null;"), 'the pin off it');
+    const conf = MP.slice(MP.indexOf("const _pre = window._hqPreselect || null;"), MP.indexOf("dismissTitleScreen();", MP.indexOf("const _pre = window._hqPreselect || null;")));
+    assert.ok(conf.indexOf("window._hqEncounterLead = (_pre && _pre.encounter && _preSite === _pre.mapId) ? _pre.encounter : null;") < conf.indexOf("window._hqPreselect = null;"), 'the lead is stashed BEFORE the preselect is dropped');
+    assert.ok(conf.indexOf("optimizeRandomizeParty(2);\n                window._hqEncounterLead = null;") > 0, 'spent right after the CPU draw');
     assert.ok(ST2.includes("const m0 = randomizeIdentity(false, lead.race);") && ST.includes("if (m0.race === lead.race) { m0.gender = lead.gender; state.partyMeta[player][0] = m0; }"), 'seat 1 = the native, only when the race held');
     assert.ok(ST2.includes("state.partyNames[player][0] = sanitizeUnitName(lead.name, getDefaultUnitName(state.partyBuilds[player][0]));"), 'the nameplate wears the room\'s name');
     assert.ok(MP.includes("codeRed: !!L.codeRedRun, locked: true, presets: null, encounter: L.encounter };"), 'the preselect carries the encounter (+ the Code Red flag, Delivery 6)');

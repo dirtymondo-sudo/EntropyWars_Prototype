@@ -123,7 +123,7 @@ Deployment evidence = `unknown` for every row (see the header).
 | 9.1 Finds — tapes + pay | 100 tapes generated from `HQ_TAPE_SHEET`, one pay envelope per tape room (`hqBuildFinds`), sparkle procs, TAKE via E, the shelf in Room 360, strip pill, OFFICER row | B1 stable tape ids; B2 server-side pay; reserved kinds; clips (user); reachability test for `hard` rows; a TV that plays the last tape (stage 3) | hq-finds.test.js 8 | unseen | unknown |
 | 9.2 Complexes (6) | Haunted House 4 parts (hall with gallery), cave 7, Spaceship 3, Dutchman 3, Strip 2, Downtown 2; `backDoors` arrays; park rule | Distinct landmarks / reveals per complex (§6 D7); natives on gallery slabs; a gallery on a site/cave room; a turning flight | hq-complex 7 · hq-gallery 7 · hq-cave 11 · hq-spaceship 6 · hq-dutchman 6 · hq-urban 6 | unseen | unknown |
 | 9.3 World graph — links, routes, ways | 10 routes, every built site a station, 9 `way` kinds with builders + sounds, THE WORLD tab (subway map), the suites, the third ring | `phonebox` (A14), `tent`; the star chart's route lines; discovered-route state (D6); Room 8's weir ⇄ Atlantis (no lane) | hq-world 15 · hq-suites 6 · hq-ring3 7 · doorhq 97 | unseen | unknown |
-| 9.4 Encounter | Holstered left click at a native → the site's Δ, THE LAST ROSTER, no builder, no intro, THE EYE seed, win → console / loss → the ward, cleared room, guarded envelope | THE FIELD (§11); the material dissolve once the crossfade is eyeballed | hq-encounter.test.js 22 | unseen (the one-shot on the Player rig, the eased first frame) | unknown |
+| 9.4 Encounter | Holstered left click at a native → the site's Δ (a site room) or THE FIELD (a cave chamber: its own 8 × 8 window, Delivery 8), THE LAST ROSTER, no builder, no intro, THE EYE seed, the seats the zones, win → the swing spot / loss → the ward or the office, cleared room, guarded envelope | THE FIELD stages C–E (§11); §10 stage 4; the material dissolve once the crossfade is eyeballed | hq-encounter.test.js 33 · hq-field.test.js 6 | headless probe only (`playtest_field_offline.js`: the cave launch measured); the look unseen | unknown |
 | 9.5 Door gun rev 2 | Any surface, two buttons, two colours, flat-in-plane, touch crossing with carried speed, one profile record, standard issue | Specific refusal reason at the aim (D3); a designed recovery (D3); a rate/comfort cap on hatch loops (D3); arrival validation after async props (D4); learning situations (§6 D8) | hq-portal.test.js 11 | unseen | unknown |
 | 9.8 Skateboarding rev 2 + control fix | Momentum rider, grinds on `_hq.rails`, quarter pipes, tricks, combo/bank, hold-to-jump, fakie, ride stance, camera-follow yaw fix | Feel (P5, playtest); soundtrack slot; graffiti; garage `skate` variant | hq-skate.test.js 15 | unseen | unknown |
 | Promotion ladder / checklist | Field clearance from stabilized sites + Keys; `hqSiteChecklist` on the CRT and the door panels | Balance of the rungs (user) | rank-ladder.test.js 6 | unseen | unknown |
@@ -371,6 +371,16 @@ who waits). `hq-synced-building.test.js` (6). Lines are Claude's DRAFT (A15). NO
 (playtest first). Every §8 item below 10 is now shipped; next is item 10 (the playtest — the
 user's, RULE #1c), then §10 / §11 in their own deliveries.
 
+**Status 2026-09-16 (Delivery 8, `ENTROPY_WARS_PHASE9_FIELD_B.zip`, token
+`20260916-field-cave-10-cors`):** §11.3 **stage B SHIPPED** — the rasteriser on the cave (data.js
+`hqFieldRaster` / `hqFieldWindow` / `hqFieldBuild` / `hqFieldRegister`, the synthetic `field:` id,
+`hqSiteId` reading it as the site, `hqFieldTransform` with an origin; map.js choosing the window and
+launching it; the terminal's filter). Measured end to end with `playtest_field_offline.js` (a cave
+encounter starts on its own window: TDM, the seats the zones, the native at P2 seat 1). Two fixes rode
+along: the frame ticking a disposed room after THE SLIDE's callback (`_hqFrame` guard) and D2's seat-1
+pin, which had never fired (`window._hqEncounterLead`). Next: stage C (box rooms + the room as the
+setting), then D, E.
+
 Each item: impact · evidence · files · dependencies · change · acceptance.
 
 1. ✅ SHIPPED 2026-09-16 (`id` = `<sheetKey>#<slot>`, `num` the display number, legacy claims migrated on read). **B1 stable tape ids** — impact: the collection survives every future site; evidence:
@@ -448,8 +458,11 @@ Each item: impact · evidence · files · dependencies · change · acceptance.
   edge rows), every zone perk stands down on `isFieldSpawnZones()`, `hqFieldTransform` is the
   one room ↔ tile rule the snap / seats / eye share. ✅ 2026-09-16,
   `ENTROPY_WARS_PHASE9_FIELD_ZONES.zip`.
-- **Delivery 8 — the playtest** (PLAYTEST_NOTES.md) → then §10 stage 4 (the room as the
-  battle's setting) and §11 B–E in their own deliveries.
+- **Delivery 8 — THE FIELD, STAGE B** (data.js, map.js, match-select.js, state.js, three-renderer.js;
+  hq-field.test.js, playtest_field_offline.js): the rasteriser on the cave — the window, the entry, the
+  registries, the launch; the probe's two fixes. ✅ 2026-09-16, `ENTROPY_WARS_PHASE9_FIELD_B.zip`.
+- **Delivery 9 — the playtest** (PLAYTEST_NOTES.md) → then §10 stage 4 (the room as the
+  battle's setting) and §11 C–E in their own deliveries.
 Each delivery = one `ENTROPY_WARS_<TOPIC>.zip`, `npm test` green, the token bumped, the
 caption saying R2 / Render / repo per file (RULE #1, #1b).
 
@@ -578,7 +591,7 @@ square, and the units are not on squares when the fight starts.
   native is gone. hq-encounter.test.js: the snap picks the cell the walker's feet are in ✅; the
   spawn list is explicit ✅ (Delivery 7); the transform round-trips (room metres ↔ tiles)
   within 1 mm ✅ (`hqFieldTransform`, Delivery 7).
-- **B · THE RASTERISER ON THE CAVE.** `hqFieldFromRoom(roomId, ox, oz)` (data.js, PURE: reads
+- **B · THE RASTERISER ON THE CAVE.** ✅ SHIPPED 2026-09-16 (Delivery 8) as `hqFieldRaster` / `hqFieldWindow` / `hqFieldBuild` / `hqFieldRegister` — hq-field.test.js proves the reach agreement on every window of every chamber; the engine's move rule is the delta-maps.test.js mirror (|Δh| ≤ 1, cardinal), not a vm run of map.js. Original text: `hqFieldFromRoom(roomId, ox, oz)` (data.js, PURE: reads
   the room sheet — the cave grid's `hqCaveCompile` cells, the box shell, the catalogue props'
   `foot` / `rect` / `top`, the gallery) → a Δ object; the cave first because its grid is
   already the battle's lattice. Acceptance: hq-field.test.js — for every chamber and every

@@ -8943,3 +8943,33 @@ roll by the clock). `npm test` 1480 / 1476 / 0 / 4 skipped.
 - **Still open in stage A:** the battle built at the room's transform with the room's
   furniture as the setting (§10 stage 4 — the renderer bridge); §14 B (the party's ARRIVAL
   — today the nearest free cells); then the playtest, then B–E.
+
+### 2026-09-16 — PHASE 9 DELIVERY 8 · THE FIELD, STAGE B (the rasteriser on the cave)
+PHASE9_QUALITY_PLAN §11.3 B, in code and measured. A cave chamber had no board under the walker, so an
+encounter there fought the site's Δ from the centre with no eye; now THE CAVE GRID IS THE LATTICE and THE
+WINDOW — the 8 × 8 of that grid holding both feet with the most of the walker's reach inside it — is
+rasterised into a Δ-shaped map entry the ordinary launch plays under `field:<roomId>:<ox>,<oz>`.
+- **data.js** (the block after `hqEncounterWakeRoom`): `HQ_FIELD_RULES`, `hqFieldRoomOk`, `hqFieldId` /
+  `hqFieldParse`, `hqFieldCellTile`, `hqFieldRaster`, `hqFieldReach`, `hqFieldWindow`, `hqFieldBuild`,
+  `hqFieldLayout`, `hqFieldRegister` (all on `window`). Rule §3 (in / out): `#` and off-grid = rock at
+  max(3, tallest IN + 2); a hazard fluid is OUT but drawn as the liquid (sight passes). Rule §4 (heights):
+  a cave level is half a battle level — round() never splits a walker's step, proven on every window.
+  Rule §7 (explicit spawns): the entry's `spawns` are `hqEncounterSeats` over the IN cells. Rule §10: the
+  entry rides PREBUILT_MAPS; `hqSiteId('field:…')` = the room's site. `hqFieldTransform` takes `x0` / `z0`.
+- **map.js**: `_hqEncounterFire` → `hqFieldWindow` → `ev.board = win.board`, `L.field = win`;
+  `_hqEncounterStart` → `_hqFieldRegister` (GAME_MODES + a hidden MS_MAP_LIST row) → the field id;
+  `_hqEncounterBoardCopy` says THE CAVE IS THE BOARD. **match-select.js**: the card filter drops `m.field`.
+- **THE PROBE** (`playtest_field_offline.js`, repo tooling): the gallery, 1.3 m west of the Gnome, `hq.strike()`
+  → `activeGameMode = field:site_prebuilt_hollow_earth_gallery:3,7`, 8 × 8, TDM, `spawnZones.field`, P1 seat 1
+  (4,5) = the walker's cell, P2 seat 1 (5,5) = the Gnome ("Gnome"), heights `77777777 / 77777555 / … /
+  66666666` (the shelf at +2, the ledge the walker stood on at +1), the camera seeded. Two bugs it found:
+  **the frame ticked a disposed room** (THE SLIDE's callback runs inside `_hqTickWalker` and `_hqLeave`s —
+  `_hqFrame` returns when `_hq !== H`), and **D2's seat-1 pin never fired** (`_msConfirm` nulled the
+  preselect first — the lead rides `window._hqEncounterLead`, spent after the draw). The Gnome had landed
+  at P2 seat 4 / seat 2 by the pool's chance on the first two runs.
+- **Tests**: hq-field.test.js (6: the rules, the id, the raster on 2910 windows — rock, keys, THE GUARANTEE
+  edge by edge and as a BFS against the engine's move mirror — the window's choice from every door landing,
+  the build + the registries, the source sites); hq-encounter.test.js's D2 guard reads the marker.
+- NOT built: stage C (box rooms — the complex parts still fight the site's Δ from the centre), stage D (the
+  thin walls, a door on the frame's edge), stage E (the HUD of the field), §10 stage 4. Unseen live: the
+  real cave sheets on the field's voxel columns, the rock's height, the eye's first frame in a cave.

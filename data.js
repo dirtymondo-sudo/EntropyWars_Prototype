@@ -28417,7 +28417,12 @@ function hqSectorOfMap(mapId) {
    monotonic progress flags first, then the (capped) match history. A win on
    the map's 8×8 Δ board counts for the map (the flag writer in battle.js
    strips the suffix the same way — HQ plan Phase 1.4). */
-function hqSiteId(mapId) { return String(mapId || '').replace(/_delta$/, ''); }
+function hqSiteId(mapId) {
+    const s = String(mapId || '');
+    /* THE FIELD (stage B): a synthetic `field:<roomId>:<ox>,<oz>` id is its ROOM'S site — the CPU pool, the Code Red response, the checklist and the stamp all read Hollow Earth for a fight in its cave */
+    if (s.indexOf('field:') === 0 && typeof hqFieldParse === 'function') { const f = hqFieldParse(s); const site = f ? hqRoomSite(f.room) : null; if (site) return site; }
+    return s.replace(/_delta$/, '');
+}
 /* The per-condition checklist behind a threshold's lamp (plan 3.1):
    { have: {cond: true}, done: n, total: n, missing: [cond…], mastered }. */
 function hqSiteMastery(mapId, profile) {
@@ -30512,13 +30517,15 @@ function hqFieldTransform(board) {
     if (!bb || !(+bb.N > 0) || !(+bb.C > 0)) return null;
     const N = Math.floor(+bb.N), C = +bb.C;
     const half = (bb.half != null && isFinite(+bb.half)) ? +bb.half : N * C / 2;
+    /* THE FIELD stage B: a window on a cave grid carries its own ORIGIN (`x0`, `z0` — the room-metre point of cell (0,0)'s NW corner); a site board is centred (x0 = z0 = −half) */
+    const x0 = (bb.x0 != null && isFinite(+bb.x0)) ? +bb.x0 : -half, z0 = (bb.z0 != null && isFinite(+bb.z0)) ? +bb.z0 : -half;
     const cl = (v) => Math.max(0, Math.min(N - 1, v));
     const T = {
-        N, C, half,
-        toTile: (x, z) => ({ tx: (+x + half) / C, tz: (+z + half) / C }),
-        toRoom: (tx, tz) => ({ x: +tx * C - half, z: +tz * C - half }),
-        cellOf: (p) => ({ x: cl(Math.floor((+p.x + half) / C)), y: cl(Math.floor((+p.z + half) / C)) }),
-        centre: (c) => ({ x: -half + (+c.x + 0.5) * C, z: -half + (+c.y + 0.5) * C }),
+        N, C, half, x0, z0,
+        toTile: (x, z) => ({ tx: (+x - x0) / C, tz: (+z - z0) / C }),
+        toRoom: (tx, tz) => ({ x: +tx * C + x0, z: +tz * C + z0 }),
+        cellOf: (p) => ({ x: cl(Math.floor((+p.x - x0) / C)), y: cl(Math.floor((+p.z - z0) / C)) }),
+        centre: (c) => ({ x: x0 + (+c.x + 0.5) * C, z: z0 + (+c.y + 0.5) * C }),
         inside: (p) => { const t = T.toTile(p.x, p.z); return t.tx >= 0 && t.tz >= 0 && t.tx < N && t.tz < N; },
     };
     return T;
@@ -30538,7 +30545,7 @@ function hqEncounterZones(seats) {
 function hqEncounterField(ev) {
     if (!ev || typeof ev !== 'object') return null;
     const TR = hqFieldTransform(ev.board);
-    const b = TR ? { N: TR.N, C: TR.C, half: TR.half } : null;
+    const b = TR ? { N: TR.N, C: TR.C, half: TR.half, x0: TR.x0, z0: TR.z0 } : null;
     const num = (v, d) => (isFinite(+v) ? +v : d);
     const w = { x: num(ev.x, 0), z: num(ev.z, 0), y: num(ev.y, 0) };
     const T = ev.target || null;
@@ -30659,6 +30666,218 @@ function hqEncounterWakeRoom(profile) {
     /* the commit already counted this exit: odd = the ward (the first, the third…), even = your office */
     const pick = (n % 2 === 1) ? ward : office;
     return pick || ward || office;
+}
+/* ══ THE FIELD, STAGE B — THE RASTERISER ON THE CAVE (PHASE9_QUALITY_PLAN
+   §11.3 B — Phase 9 Delivery 8, 2026-09-16) ══
+   "Anywhere you stand becomes the 8×8." A cave chamber has no Δ under the
+   walker — until this delivery an encounter there fought Hollow Earth's own
+   board from the map's centre. Now the CAVE GRID IS THE LATTICE (rule 11.2
+   §2: one cell = HQ_CAVE_CELL = a battle tile; one cave level = half a
+   battle level) and THE WINDOW is an 8 × 8 of that grid rasterised into a
+   Δ-shaped map object the ordinary launch plays (rule §10: nothing on
+   `state` but the board; the entry rides PREBUILT_MAPS under the synthetic
+   id `field:<roomId>:<ox>,<oz>` — hqSiteId reads it as the room's site, so
+   the CPU pool, the Code Red response, the checklist and the stamp all see
+   Hollow Earth). Pure reads, every one (the test walks every chamber and
+   every legal window):
+   · hqFieldRoomOk(roomId) — stage B: a WILD room with a `cave` grid.
+   · hqFieldRaster(roomId, ox, oz) → the 8 × 8 window at grid origin (ox,
+     oz) (either may be negative or run past the grid — those cells are
+     ROCK): per cell { in, rock, hazard, tile, key, fluid } where `tile` is
+     the cell's height in BATTLE LEVELS over the room's floor, the walker's
+     own read quantised — a plain cell round(top / C), a ramp its middle,
+     a fluid the sheet's floor (never under −1: the Δ's lake depth), rock
+     max(rockMin, the tallest cell + rockPad) so no rock is ever climbed.
+     THE GUARANTEE (rule §4): every edge the walker steps (hqCaveReach's
+     own rule, one cave level up / HQ_CAVE_DROP down) lands within ONE
+     battle level — round() of half-levels never splits a walkable step —
+     so `walker-reachable ⇒ unit-reachable` holds by construction and the
+     test proves it on every window.
+   · hqFieldReach(raster, x, y) → the walker's reach INSIDE the window (the
+     BFS restricted to the 64 cells; the fight's usable area).
+   · hqFieldWindow(roomId, walkerPt, targetPt) → THE WINDOW'S CHOICE (rule
+     §2, stage B's part): every origin that holds both feet, scored by the
+     walker's reach inside it (most first), then the nearest centre to the
+     two feet's midpoint, then the lowest origin — and the BOARD record the
+     encounter's field reads (`{ N: 8, C, x0, z0 }`: hqFieldTransform's
+     frame with an explicit origin, so THE SLIDE, THE SEATS and THE EYE
+     work in a cave exactly as on a site room's board).
+   · hqFieldBuild(roomId, ox, oz, { cells }) → the map entry through the
+     forge's own `_mfNew` (8 × 8, MF_DELTA_BASE_H, the shared bed, the
+     site Δ's tints; deep water / lava flood the stratum under them, a
+     bridge shows its water in the layer below); spawns = hqEncounterSeats
+     over the window's IN cells (explicit per seat, rule §7).
+   · hqFieldRegister(roomId, ox, oz, opts) → PREBUILT_MAPS[id] +
+     MAP_LAYOUT_PRESETS[id] (the site Δ's env — the cavern world, the
+     crystals, `near`); map.js `_hqFieldRegister` adds the GAME_MODES row
+     and the MS_MAP_LIST row (`field: true` — the terminal never lists it).
+   NOT stage B: box rooms (the complex parts — stage C), thin walls on cell
+   edges / a door as a threshold object (stage D), the room drawn as the
+   battle's setting (§10 stage 4). Nothing relayed (an encounter is VS-CPU;
+   RULE #2). */
+const HQ_FIELD_RULES = {
+    size: 8,            // the window: 8 × 8 cells — the Δ's own frame
+    base: MF_DELTA_BASE_H,   // the room's floor (cave level 0) stands at the Δ's base height
+    rockMin: 3,         // the rock stands at least this many levels over the base…
+    rockPad: 2,         // …and this many over the tallest cell in the window: never climbed
+    fluidMin: -1,       // a sheet never sinks below one level under the floor (the Δ's lake depth)
+    prefix: 'field:',   // the synthetic map id: field:<roomId>:<ox>,<oz>
+    label: 'THE FIELD',
+    teamSize: 4,
+};
+function hqFieldRoomOk(roomId) { const r = (DOOR_HQ.rooms || {})[roomId]; return !!(r && r.cave && hqRoomSite(roomId)); }
+function hqFieldId(roomId, ox, oz) { return HQ_FIELD_RULES.prefix + roomId + ':' + (ox | 0) + ',' + (oz | 0); }
+function hqFieldParse(id) {
+    const s = String(id || '');
+    if (s.indexOf(HQ_FIELD_RULES.prefix) !== 0) return null;
+    const m = /^field:(.+):(-?\d+),(-?\d+)$/.exec(s);
+    return m ? { room: m[1], ox: +m[2], oz: +m[3] } : null;
+}
+/* a cave cell's height in BATTLE LEVELS over the floor — the walker's read, quantised */
+function hqFieldCellTile(info, c) {
+    const C = info.cell;
+    if (c.fluid) return Math.max(HQ_FIELD_RULES.fluidMin, Math.floor(c.sheet / C));
+    return Math.round(c.top / C);
+}
+function hqFieldRaster(roomId, ox, oz) {
+    const info = hqCaveInfo(roomId); if (!info) return null;
+    const S = HQ_FIELD_RULES.size, C = info.cell;
+    ox = ox | 0; oz = oz | 0;
+    const tid = (typeof MF_TID !== 'undefined') ? MF_TID : null;
+    const known = (k) => !!(k && (!tid || tid[k]));
+    const cells = []; let maxIn = 0;
+    for (let y = 0; y < S; y++) {
+        const row = [];
+        for (let x = 0; x < S; x++) {
+            const gx = ox + x, gy = oz + y;
+            const src = (gx >= 0 && gy >= 0 && gx < info.w && gy < info.h) ? info.cells[gy][gx] : null;
+            let cell;
+            if (!src || src.rock) {
+                cell = { x, y, gx, gy, in: false, rock: true, hazard: false, tile: null, key: known(info.rock) ? info.rock : 'cave_wall', fluid: null, under: null, src: src || null };
+            } else {
+                const tile = hqFieldCellTile(info, src);
+                const hazard = !!(src.fluid && !src.walk);
+                let key = known(src.key) ? src.key : (src.fluid ? src.fluid : 'cave_floor');
+                if (!known(key)) key = 'cave_floor';
+                /* what lies UNDER the surface: a deep sheet floods the layer below it, a bridge shows its water there */
+                let under = null;
+                if (src.fluid && (src.lvl | 0) <= -2) under = key;
+                else if (src.bridge && src.under && known(src.under.key)) under = src.under.key;
+                cell = { x, y, gx, gy, in: !!src.walk, rock: false, hazard, tile, key, fluid: src.fluid || null, under, src };
+                if (cell.in) maxIn = Math.max(maxIn, tile);
+            }
+            row.push(cell);
+        }
+        cells.push(row);
+    }
+    const rockTile = Math.max(HQ_FIELD_RULES.rockMin, maxIn + HQ_FIELD_RULES.rockPad);
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) if (cells[y][x].rock) cells[y][x].tile = rockTile;
+    return { room: roomId, ox, oz, S, C, L: info.L, info, cells, rockTile, x0: -info.halfW + ox * C, z0: -info.halfD + oz * C };
+}
+/* the walker's reach INSIDE the window from cell (sx, sy) — hqCaveReach's step rule on the window's cells */
+function hqFieldReach(R, sx, sy) {
+    const seen = new Set();
+    if (!R) return seen;
+    const S = R.S, at = (x, y) => (x >= 0 && y >= 0 && x < S && y < S) ? R.cells[y][x] : null;
+    const start = at(sx, sy); if (!start || !start.in) return seen;
+    const q = [[sx, sy]]; seen.add(sx + ',' + sy);
+    const N = [[0, -1, 'n', 's'], [0, 1, 's', 'n'], [1, 0, 'e', 'w'], [-1, 0, 'w', 'e']];
+    while (q.length) {
+        const p = q.shift(), a = at(p[0], p[1]);
+        for (const n of N) {
+            const nx = p[0] + n[0], ny = p[1] + n[1], k = nx + ',' + ny;
+            if (seen.has(k)) continue;
+            const b = at(nx, ny); if (!b || !b.in) continue;
+            const ha = hqCaveEdgeH(R.info, a.src, n[2]), hb = hqCaveEdgeH(R.info, b.src, n[3]);
+            if (ha == null || hb == null) continue;
+            if (hb - ha > HQ_CAVE_STEP || ha - hb > HQ_CAVE_DROP) continue;
+            seen.add(k); q.push([nx, ny]);
+        }
+    }
+    return seen;
+}
+function hqFieldWindow(roomId, wPt, tPt) {
+    const info = hqCaveInfo(roomId); if (!info || !wPt) return null;
+    const S = HQ_FIELD_RULES.size, C = info.cell;
+    const cl = (v, n) => Math.max(0, Math.min(n - 1, v));
+    const cellOf = (p) => ({ x: cl(Math.floor((+p.x + info.halfW) / C), info.w), y: cl(Math.floor((+p.z + info.halfD) / C), info.h) });
+    const cw = cellOf(wPt), ct = tPt ? cellOf(tPt) : cw;
+    const span = (a, b) => {
+        let lo = Math.max(a, b) - (S - 1), hi = Math.min(a, b);
+        if (lo > hi) { lo = a - (S - 1); hi = a; }   // too far apart to share a window (never at reach 3.4 m): the walker's own
+        const out = []; for (let v = lo; v <= hi; v++) out.push(v); return out;
+    };
+    const midX = (cw.x + ct.x + 1) / 2, midY = (cw.y + ct.y + 1) / 2;
+    let best = null;
+    for (const oz of span(cw.y, ct.y)) for (const ox of span(cw.x, ct.x)) {
+        const R = hqFieldRaster(roomId, ox, oz); if (!R) continue;
+        const reach = hqFieldReach(R, cw.x - ox, cw.y - oz).size;
+        const dist = Math.hypot(ox + S / 2 - midX, oz + S / 2 - midY);
+        const cand = { ox, oz, reach, dist, R };
+        if (!best || reach > best.reach || (reach === best.reach && (dist < best.dist - 1e-9 || (Math.abs(dist - best.dist) <= 1e-9 && (oz < best.oz || (oz === best.oz && ox < best.ox)))))) best = cand;
+    }
+    if (!best) return null;
+    const R = best.R;
+    return {
+        id: hqFieldId(roomId, best.ox, best.oz), room: roomId, site: hqRoomSite(roomId), ox: best.ox, oz: best.oz, reach: best.reach,
+        board: { N: S, C, x0: R.x0, z0: R.z0, cave: true },
+        cells: { walker: { x: cw.x - best.ox, y: cw.y - best.oz }, target: { x: ct.x - best.ox, y: ct.y - best.oz } },
+        raster: R,
+    };
+}
+function hqFieldBuild(roomId, ox, oz, opts) {
+    opts = opts || {};
+    const R = hqFieldRaster(roomId, ox, oz); if (!R) return null;
+    if (typeof _mfNew !== 'function') return null;
+    const room = DOOR_HQ.rooms[roomId], site = hqRoomSite(roomId), S = R.S, B = HQ_FIELD_RULES.base;
+    const id = hqFieldId(roomId, R.ox, R.oz);
+    const siteD = (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[site + '_delta'] : null;
+    const tid = (typeof MF_TID !== 'undefined') ? MF_TID : {};
+    const baseKey = tid[R.info.floor] ? R.info.floor : 'cave_floor';
+    const M = _mfNew({
+        name: (room.label || roomId) + ' · ' + HQ_FIELD_RULES.label, w: S, h: S, base: baseKey, baseH: B, seed: (typeof hqHash === 'function') ? (hqHash(id) % 100000) + 1 : 8008,
+        strata: MF_DELTA_STRATA, underTop: 'dirt_3', fillAbove: 'surface', tints: (siteD && siteD.terrainTints) ? Object.assign({}, siteD.terrainTints) : null,
+    });
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+        const c = R.cells[y][x];
+        M.t(x, y, c.key); M.h(x, y, B + c.tile);
+        if (c.under && B + c.tile - 1 >= 0) M.under(x, y, B + c.tile - 1, c.under);
+    }
+    /* the seats: the two leads on their cells (the window's own frame), the parties on the free cells about them (rule §7: explicit per seat) */
+    const free = (x, y) => { const c = R.cells[y] && R.cells[y][x]; return !!(c && c.in && !c.hazard); };
+    const n = HQ_FIELD_RULES.teamSize;
+    const seats = hqEncounterSeats({ cells: opts.cells || null }, { W: S, H: S, n1: n, n2: n, free });
+    const sp = (seats && seats[1] && seats[2]) ? { 1: seats[1].map(c => ({ x: c.x, y: c.y })), 2: seats[2].map(c => ({ x: c.x, y: c.y })) } : { 1: [], 2: [] };
+    M.spawns(sp[1], sp[2]);
+    const entry = M.finish();
+    entry.isDelta = true;
+    entry.bed = M.strata.slice(); entry.underTop = M.underTop; entry.base = baseKey;
+    entry.deltaDesc = HQ_FIELD_RULES.label + ' — ' + (room.label || roomId) + ' (' + R.ox + ',' + R.oz + ')';
+    entry.field = { id, room: roomId, site, ox: R.ox, oz: R.oz, S, C: R.C, x0: R.x0, z0: R.z0, rockTile: R.rockTile,
+                    cells: R.cells.map(row => row.map(c => (c.rock ? '#' : c.hazard ? '!' : c.in ? String(Math.max(0, Math.min(9, c.tile + 1))) : '?')).join('')) };
+    return entry;
+}
+/* the layout a field plays under: the site Δ's own env (the cavern world, the crystals, `near`), the field's own sections */
+function hqFieldLayout(site, baseKey) {
+    const S = HQ_FIELD_RULES.size;
+    const src = (typeof MAP_LAYOUT_PRESETS !== 'undefined') ? (MAP_LAYOUT_PRESETS[site + '_delta'] || MAP_LAYOUT_PRESETS[site]) : null;
+    const env = (src && src.env) ? JSON.parse(JSON.stringify(src.env)) : null;
+    return {
+        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: S - 1, label: 'Earth', baseTerrain: baseKey || 'cave_floor' }, buffer2: null, below: null },
+        barrierRows: [], barrierOpeningsX: [], hasFloors: false, env, streetLamps: !!(src && src.streetLamps),
+    };
+}
+function hqFieldRegister(roomId, ox, oz, opts) {
+    const entry = hqFieldBuild(roomId, ox, oz, opts); if (!entry) return null;
+    const id = entry.field.id, site = entry.field.site, S = HQ_FIELD_RULES.size;
+    if (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) PREBUILT_MAPS[id] = entry;
+    const layout = hqFieldLayout(site, entry.base);
+    if (typeof MAP_LAYOUT_PRESETS !== 'undefined') MAP_LAYOUT_PRESETS[id] = layout;
+    const siteMeta = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META.find(m => m.id === site) : null;
+    const room = DOOR_HQ.rooms[roomId];
+    const meta = { id, label: (room.label || roomId) + ' · ' + HQ_FIELD_RULES.label, w: S, h: S, teamSize: HQ_FIELD_RULES.teamSize, tier: (siteMeta && siteMeta.tier) || 3,
+                   biomes: (siteMeta && siteMeta.biomes) ? siteMeta.biomes.slice() : [], isDelta: true, field: true, base: entry.base, env: layout.env, desc: entry.deltaDesc };
+    return { id, entry, layout, meta };
 }
 /* ══ SKATEBOARDING — THE RIDER'S TABLE (HQ plan 9.8 stage 1, 2026-09-15) ══
    A walker MODE (three-renderer.js "SKATEBOARDING — THE RIDER"): nothing on
@@ -32548,6 +32767,9 @@ if (typeof window !== 'undefined') {
     window.hqEncounterLead = hqEncounterLead; window.hqEncounterReturnSpot = hqEncounterReturnSpot;
     window.hqFieldTransform = hqFieldTransform; window.hqEncounterZones = hqEncounterZones;
     window.hqEncounterField = hqEncounterField; window.hqEncounterSeats = hqEncounterSeats; window.hqEncounterEyeFromSeats = hqEncounterEyeFromSeats; window.hqEncounterWakeRoom = hqEncounterWakeRoom;
+    /* THE FIELD stage B — the rasteriser on the cave (Phase 9 Delivery 8, 2026-09-16) */
+    window.HQ_FIELD_RULES = HQ_FIELD_RULES; window.hqFieldRoomOk = hqFieldRoomOk; window.hqFieldId = hqFieldId; window.hqFieldParse = hqFieldParse; window.hqFieldRaster = hqFieldRaster; window.hqFieldReach = hqFieldReach;
+    window.hqFieldWindow = hqFieldWindow; window.hqFieldBuild = hqFieldBuild; window.hqFieldLayout = hqFieldLayout; window.hqFieldRegister = hqFieldRegister;
     /* SKATEBOARDING (HQ plan 9.8 stage 1, 2026-09-15) */
     window.HQ_SKATE_RULES = HQ_SKATE_RULES; window.hqSkateStatus = hqSkateStatus; window.hqSkateRecord = hqSkateRecord; window.hqSkateBank = hqSkateBank; window.hqSkateScore = hqSkateScore; window.hqSkateIssueFree = hqSkateIssueFree;
     window.hqLinkRoom = hqLinkRoom;

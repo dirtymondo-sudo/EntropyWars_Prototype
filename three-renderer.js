@@ -45931,7 +45931,12 @@ const ThreeRenderer = (function () {
             if (css2dRenderer) css2dRenderer.setSize(w, h);
         }
         _hqTickWalker(dt);
+        /* THE FIELD stage B (2026-09-16, measured): THE SLIDE's callback runs inside the walker's tick and LEAVES the
+           building (_hqEncounterStart → _hqLeave) — the frame must not tick a disposed room's characters; the same
+           guard covers a portal step that re-enters another room from the crossing tick below */
+        if (_hq !== H) return;
         _hqTickPortalCross(dt);   /* THE DOOR GUN rev 2: a flat threshold is crossed by touch, the same frame the feet land in it */
+        if (_hq !== H) return;
         _hqTickChars(dt);
         _hqTickCamera(dt);
         _hqTickWorld(dt, now);
