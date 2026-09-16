@@ -40889,6 +40889,94 @@ const ThreeRenderer = (function () {
             if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(0.7 * U, 0.17 * U), new THREE.MeshBasicMaterial({ map: tx, transparent: true })); m.position.set(0, 0.08 * U, 0.205 * U); g.add(m); }
             return g;
         },
+        /* ── THE URBAN BLOCK (HQ plan 9.2 stage 4, 2026-09-16) ─────────────
+           THE CASINO FLOOR's machine: a cabinet on a plinth, a lit top box
+           with the house's name, three reels behind glass that SPIN on a
+           ticker (each stops in turn; the third never on the same symbol),
+           a lever on the right, a coin tray. Front is +Z (the placer's
+           contract); the catalogue's `light` is the top box. Procedural until
+           the user's slot machine GLB lands (plan 9.6 #5). */
+        slot_machine: function (U) {
+            var g = new THREE.Group();
+            var body = _hqMat(null, 1, 1, { color: 0x8a1c2c, shininess: 60, specular: 0x442222 });
+            var chrome = _hqMat(null, 1, 1, { color: 0xc8ccd0, shininess: 110, specular: 0x888888 });
+            var plinth = _hqBox(0.62, 0.7, 0.6, _hqMat(null, 1, 1, { color: 0x2a1418, shininess: 20 })); plinth.position.set(0, 0.35 * U, 0); g.add(plinth);
+            var cab = _hqBox(0.64, 0.8, 0.62, body); cab.position.set(0, 1.1 * U, 0); g.add(cab);
+            var top = _hqBox(0.62, 0.32, 0.5, body); top.position.set(0, 1.66 * U, -0.05 * U); g.add(top);
+            var topGlass = new THREE.Mesh(new THREE.PlaneGeometry(0.5 * U, 0.22 * U), new THREE.MeshPhongMaterial({ color: 0xffd040, emissive: 0xffc030, emissiveIntensity: 0.9 }));
+            topGlass.position.set(0, 1.66 * U, 0.205 * U); g.add(topGlass);
+            var tx = _hzTextTex('hq_slot_house', ['THE HOUSE', 'ROOM 21 · PAYS 3:2'], { w: 512, h: 224, color: '#3a1010', bg: '#ffd040' });
+            if (tx) { var lbl = new THREE.Mesh(new THREE.PlaneGeometry(0.48 * U, 0.2 * U), new THREE.MeshBasicMaterial({ map: tx })); lbl.position.set(0, 1.66 * U, 0.21 * U); g.add(lbl); }
+            /* the window and the reels */
+            var win = _hqBox(0.5, 0.26, 0.02, _hqBasic(0x0a0608)); win.position.set(0, 1.22 * U, 0.31 * U); g.add(win);
+            var reels = [], cols = [0xf2d21a, 0xff3a3a, 0x3ad0ff, 0xffffff, 0x40e080, 0xff8a2b];
+            for (var i = 0; i < 3; i++) {
+                var reel = new THREE.Group();
+                var drum = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * U, 0.11 * U, 0.13 * U, 12), _hqBasic(0xf4f0e8)); drum.rotation.z = Math.PI / 2; reel.add(drum);
+                for (var k = 0; k < 6; k++) {
+                    var a = k / 6 * Math.PI * 2;
+                    var sym = _hqBox(0.09, 0.06, 0.012, _hqBasic(cols[(k + i) % 6]));
+                    sym.position.set(0, Math.cos(a) * 0.112 * U, Math.sin(a) * 0.112 * U); sym.rotation.x = -a; reel.add(sym);
+                }
+                reel.position.set((-0.15 + i * 0.15) * U, 1.22 * U, 0.2 * U); g.add(reel); reels.push(reel);
+            }
+            var trim = _hqBox(0.54, 0.3, 0.015, chrome); trim.position.set(0, 1.22 * U, 0.3 * U); g.add(trim);
+            /* the lever, the buttons, the tray */
+            var arm = _hqBox(0.03, 0.42, 0.03, chrome); arm.position.set(0.37 * U, 1.28 * U, 0.05 * U); g.add(arm);
+            var knob = new THREE.Mesh(new THREE.SphereGeometry(0.045 * U, 10, 8), _hqBasic(0xff3a3a)); knob.position.set(0.37 * U, 1.5 * U, 0.05 * U); g.add(knob);
+            var btn = _hqBox(0.28, 0.04, 0.08, chrome); btn.position.set(-0.05 * U, 0.98 * U, 0.3 * U); g.add(btn);
+            var tray = _hqBox(0.44, 0.08, 0.14, chrome); tray.position.set(0, 0.76 * U, 0.3 * U); g.add(tray);
+            var glow = _hzGlowSprite(1.1 * U, 0xffd040, 0.28, 0.05, 0.02, 0.8); glow.position.set(0, 1.7 * U, 0.3 * U); g.add(glow);
+            /* THE TICKER: a spin every few seconds — the reels run, then stop one by one; the top box breathes */
+            var spin = 0, t0 = 0, period = 5.5 + Math.random() * 3;
+            if (_hq) _hq.tickers.push(function (dt, now) {
+                t0 += dt;
+                if (t0 > period) { t0 = 0; spin = 2.4 + Math.random() * 0.8; period = 5.5 + Math.random() * 3; }
+                for (var i = 0; i < 3; i++) {
+                    var stopAt = 0.9 + i * 0.6;
+                    if (spin > stopAt) reels[i].rotation.x += dt * 14;
+                    else if (spin > 0) reels[i].rotation.x = Math.round(reels[i].rotation.x / (Math.PI / 3)) * (Math.PI / 3);
+                }
+                if (spin > 0) spin -= dt;
+                topGlass.material.emissiveIntensity = 0.75 + 0.2 * Math.sin(now / 420);
+            });
+            return g;
+        },
+        /* THE PLATFORM's gate: two steel posts and a tripod of arms on a hub
+           that TURNS a third as the walker comes near (a ticker reads the
+           walker's distance; the arm you would push swings out of the way).
+           Front is +Z (the paying side). Procedural until a turnstile GLB
+           lands (plan 9.6 #5). */
+        turnstile: function (U) {
+            var g = new THREE.Group();
+            var steel = _hqMat(null, 1, 1, { color: 0x9aa0a6, shininess: 90, specular: 0x666666 });
+            var dark = _hqMat(null, 1, 1, { color: 0x2c2c30, shininess: 30 });
+            [-0.36, 0.36].forEach(function (sx) {
+                var post = _hqBox(0.12, 0.98, 0.5, steel); post.position.set(sx * U, 0.49 * U, 0); g.add(post);
+                var cap = _hqBox(0.14, 0.04, 0.54, dark); cap.position.set(sx * U, 1.0 * U, 0); g.add(cap);
+            });
+            var hubHolder = _hqBox(0.14, 0.14, 0.14, dark); hubHolder.position.set(0.3 * U, 0.72 * U, 0.05 * U); g.add(hubHolder);
+            var tri = new THREE.Group();
+            for (var k = 0; k < 3; k++) {
+                var a = k / 3 * Math.PI * 2;
+                var armM = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 0.42 * U, 8), steel);
+                armM.position.set(0, Math.cos(a) * 0.21 * U, Math.sin(a) * 0.21 * U); armM.rotation.x = a + Math.PI / 2; tri.add(armM);
+            }
+            var hub = new THREE.Mesh(new THREE.CylinderGeometry(0.05 * U, 0.05 * U, 0.16 * U, 10), dark); hub.rotation.z = Math.PI / 2; tri.add(hub);
+            tri.position.set(0.22 * U, 0.72 * U, 0.05 * U); g.add(tri);
+            var slot = _hqBox(0.06, 0.02, 0.1, _hqBasic(0xf2d21a)); slot.position.set(-0.36 * U, 1.03 * U, 0.1 * U); g.add(slot);
+            /* THE TICKER: the tripod turns a third when the walker stands at the gate, and eases home */
+            var turn = 0, target = 0;
+            if (_hq) _hq.tickers.push(function (dt) {
+                var pl = _hq && _hq.player, near = false;
+                if (pl) { var wp = new THREE.Vector3(); g.getWorldPosition(wp); near = Math.hypot(pl.x - wp.x / U, pl.z - wp.z / U) < 0.9; }
+                if (near && target === 0) target = Math.PI * 2 / 3;
+                if (!near) target = 0;
+                turn += (target - turn) * Math.min(1, dt * 6);
+                tri.rotation.x = turn;
+            });
+            return g;
+        },
     });
     function _hqProcProp(name) {
         var b = _hqProcBuilders[name];

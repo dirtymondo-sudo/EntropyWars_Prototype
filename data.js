@@ -18538,6 +18538,9 @@ const DOOR_HQ = {
         ticket_booth:    { proc: 'ticket_booth',    h: 2.6,  foot: 0.9,  rect: { hw: 0.9, hd: 0.7 }, block: true, glow: { y: 2.2, size: 1.8, color: 0xffd0a0 } },   // ADMIT ONE
         popcorn_cart:    { proc: 'popcorn_cart',    h: 1.7,  foot: 0.5,  block: true, glow: { y: 1.2, size: 1.2, color: 0xfff0c0 } },
         festoon:         { proc: 'festoon',         h: 0.4,  foot: 0,    ceil: true },                                          // a string of bulbs across the tent
+        /* THE URBAN BLOCK (9.2 stage 4, 2026-09-16): the casino floor's machines and the platform's gates — procs until the user's GLBs land (plan 9.6 #5) */
+        slot_machine:    { proc: 'slot_machine',    h: 1.8,  foot: 0.35, rect: { hw: 0.33, hd: 0.32 }, block: true, glow: { y: 1.3, size: 1.1, color: 0xffd040 }, light: { color: 0xffc040, intensity: 0.45, dist: 4, y: 1.4 } },   // THE CASINO FLOOR: a cabinet, three reels that spin (ticker), a lever, the top light
+        turnstile:       { proc: 'turnstile',       h: 1.0,  foot: 0.4,  block: true },                                        // THE PLATFORM: a tripod gate that turns as you come up (ticker)
         eeg_rack:        { proc: 'eeg_rack',        h: 1.4,  foot: 0.35, block: true, glow: { y: 1.0, size: 0.9, color: 0x80ffb0 }, light: { color: 0x60ff90, intensity: 0.5, dist: 4, y: 1.0 } },   // Room REM: the trace beside a cot (ticker)
         dream_screen:    { proc: 'dream_screen',    h: 1.2,  foot: 0,    wall: true, mount: 1.1, depth: 0.1, glow: { y: 0.6, size: 2.2, color: 0xc0a0ff } },   // Room REM: what the sleepers see (ticker: the drawing drifts)
         iso_tank:        { proc: 'iso_tank',        h: 1.3,  foot: 1.2,  rect: { hw: 1.2, hd: 0.8 }, block: true, glow: { y: 0.9, size: 2.0, color: 0x60a0ff }, light: { color: 0x4080ff, intensity: 0.7, dist: 5, y: 1.0 } },   // Room 0dB: the pod, lid ajar (ticker: it breathes)
@@ -19214,6 +19217,18 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_cyberpunk', wall: 'n', x: -10, sub: 'THE SUBWAY · ALL LINES' },
           why: 'the train at the platform has been there for an hour with its doors open; it goes to every line, and the first stop is under an intersection that is always raining',
           note: 'mind the gap', draft: true },
+        /* THE URBAN BLOCK (9.2 stage 4, 2026-09-16): the subway's third station.
+           Downtown's PLATFORM (a complex part — the spaceship's rule: a link end
+           on a part) stands its train FREE on its own track; the far end is a
+           plain stair mouth on Cyberpunk's last free north lane (x -0.2: a
+           second train there would have run through the Strip's door at -5,
+           and Downtown's own north wall is full). An end that names a `leaf`
+           takes a door instead of the way — hqLinkEndWear. */
+        { id: 'subway_downtown', route: 'subway', way: 'train',
+          a: { site: 'prebuilt_downtown', part: 'subway', wall: 'free', x: -1.5, z: 3, face: 90, sub: 'DOWNTOWN PLATFORM · ALL LINES' },
+          b: { site: 'prebuilt_cyberpunk', wall: 'n', x: -0.2, leaf: 'leaf_frame_only', sub: 'THE SUBWAY · DOWN TO THE PLATFORM', verb: 'GO DOWN' },
+          why: 'the same tunnel, one stop back; the train that has been at Cyberpunk\'s platform for an hour is the train that left Downtown in 1954, and both are on time',
+          note: 'one stop back', draft: true },
         /* THE SEAMS, THE SECOND BATCH (2026-09-15 rev 22): six more kinds,
            seven rows, all on THE SEAMS line. A site room's end stands on its
            north wall in a free lane (the rev 10 rule) or, where the room is
@@ -19323,6 +19338,28 @@ const DOOR_HQ = {
                   label: 'THE FLYING DUTCHMAN', sub: 'THE COMPANIONWAY · BELOW DECKS',
                   action: { room: 'site_prebuilt_revenge_gundeck', at: 'deck' },
                   desc: 'The companionway down from the main deck. Below is the gun deck, aft of that the captain\'s cabin, below that the hold, and below the hold the sea — which on this ship is a door.' },
+            ],
+            /* THE URBAN BLOCK (plan 9.2 stage 4, 2026-09-16): two complexes in
+               one delivery — "the urban maps could be a lot bigger". THE STRIP's
+               boulevard keeps the console; its one free north lane (x -0.2 —
+               the highway's two doors hold -5 and -10) is THE CHAPEL's motel
+               door, and the casino floor is behind the chapel. DOWNTOWN's north
+               wall carries three link doors already (the most a lane rule
+               allows), so THE TOWER's lobby door hangs on its EAST wall — the
+               collapsed tower stands across the intersection — and the subway
+               platform is down the stair off the lobby (the subway route's
+               third station; DOOR_HQ.links subway_downtown). */
+            prebuilt_strip: [
+                { id: 'chapel', wall: 'n', x: -0.2, leaf: 'leaf_motel',
+                  label: 'THE CHAPEL', sub: 'THE MOTEL DOOR · INTO THE CHAPEL',
+                  action: { room: 'site_prebuilt_strip_chapel', at: 'street' },
+                  desc: 'A motel door with a DO NOT DISTURB sign that is a lie, on a chapel that is a business. Eleven chapels on the Strip; this is the one the Department expenses.' },
+            ],
+            prebuilt_downtown: [
+                { id: 'tower', wall: 'e', z: 0, leaf: 'leaf_entrance',
+                  label: 'THE TOWER', sub: 'THE LOBBY DOOR · INTO THE TOWER',
+                  action: { room: 'site_prebuilt_downtown_lobby', at: 'street' },
+                  desc: 'The lobby door of the tower that came down in 1954 and has come down every year since. The glass is taped. The lobby is, against the plate\'s advice, there.' },
             ],
             prebuilt_haunted: [
                 { id: 'house', wall: 'n', x: -7.5, leaf: 'leaf_wooden',
@@ -27110,6 +27147,318 @@ const DOOR_HQ = {
             spawn: { x: 4.6, z: 0, face: 270 },
         },
         /* ══════════════════════════════════════════════════════════════════
+           THE URBAN BLOCK (HQ plan 9.2 stage 4 — 2026-09-16). The FIFTH and
+           SIXTH complexes in one delivery, the plan's fourth row: "the urban
+           maps could be a lot bigger — the block, not just the intersection".
+           Room 21's generated board room stays THE BOULEVARD (the console,
+           the battle marker, the way back to Bay 7); THE CHAPEL's motel door
+           on its north wall (siteRooms.backDoors.prebuilt_strip) opens into
+           the drive-through wedding chapel, and the chapel's saloon door
+           opens onto THE CASINO FLOOR. Room 1954's board room stays THE
+           INTERSECTION; THE TOWER's lobby door on its EAST wall
+           (siteRooms.backDoors.prebuilt_downtown — its north wall carries
+           the highway's three doors) opens into the collapsed tower's ground
+           floor, and the stair off the lobby goes down to THE PLATFORM, the
+           subway route's third station (DOOR_HQ.links subway_downtown: the
+           train stands FREE on the platform's own track; its far end is a
+           stair mouth on Cyberpunk's street). Every room wears `site` +
+           `part` and NO `roomNo` (hqRoomNo reads the threshold's number
+           through `site`; the register lists each site once; 9.4 knows the
+           rooms are WILD). The chapel is lit by its candles, the casino by
+           its machines, the lobby and the platform by the tubes and bulbs
+           that survived (`strips: false`, `lights: []`, ≤ HQ_PROP_LIGHT_MAX).
+           THE PARK RULE (9.8): a `railing_1m` run in every room, `riser_*`
+           tiers in the big ones. Lines are Claude's DRAFT (A15 — the user
+           rewrites). The machines and the gates are procs until the user's
+           GLBs land (plan 9.6 #5: slot machines, a chapel altar, a turnstile).
+           ══════════════════════════════════════════════════════════════════ */
+        /* ── THE CHAPEL — the drive-through window, the altar, the register, the King ── */
+        site_prebuilt_strip_chapel: {
+            label: 'THE STRIP · THE CHAPEL',
+            sub: 'THE ALTAR · THE REGISTER · THE CASINO BEYOND',
+            kind: 'box', site: 'prebuilt_strip', part: 'chapel',
+            shell: {
+                w: 10, d: 14, h: 3.4,
+                wallH: 3.4, dadoH: 1.0,
+                floor: 'carpet', wall: 'urban_wall', dado: 'wood', trim: 'gold', ceiling: 'ceiling',
+                floorColor: 0x8a2030, wallColor: 0xf0e4d0, dadoColor: 0x6a4a30, ceilColor: 0xe8e0d0,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xffd8a8, ambient: 0.44 },
+                plate: { x: 2.6, z: 6.75, y: 2.4 },
+            },
+            doors: [
+                { id: 'street', wall: 's', x: 0, leaf: 'leaf_motel',
+                  label: 'THE STRIP', sub: 'THE MOTEL DOOR · BACK TO THE BOULEVARD',
+                  action: { room: 'site_prebuilt_strip', at: 'chapel' },
+                  desc: 'The motel door, from the inside. The boulevard is behind it, the console is at the end of the boulevard, and the crossing is at the console. DO NOT DISTURB.' },
+                { id: 'casino', wall: 'e', z: 4.6, leaf: 'leaf_saloon',
+                  label: 'THE CASINO FLOOR', sub: 'THROUGH THE SALOON DOOR · THE TABLES',
+                  action: { room: 'site_prebuilt_strip_casino', at: 'chapel' },
+                  desc: 'A saloon door beside the register. Every chapel on the Strip opens onto a casino floor; the vows are the cover charge.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'stone_altar',       x: 0, z: -6.0, face: 0 },                         // THE ALTAR, against the north wall
+                { key: 'candle_ring',       x: -0.7, z: -6.0, y: 0.95 },                       // its candles
+                { key: 'candle_ring',       x: 0.7, z: -6.0, y: 0.95 },
+                { key: 'riser_1',           x: 0, z: -5.0, face: 0 },                          // THE DAIS (the park rule's ramp, one step)
+                { key: 'railing_1m',        x: -2.0, z: -3.4, face: 0 },                       // THE ALTAR RAIL (the park rule's rail)
+                { key: 'railing_1m',        x: -1.0, z: -3.4, face: 0 },
+                { key: 'railing_1m',        x: 1.0, z: -3.4, face: 0 },
+                { key: 'railing_1m',        x: 2.0, z: -3.4, face: 0 },
+                { key: 'lectern',           x: 3.4, z: -3.6, face: 20 },                       // THE REGISTER
+                { key: 'paper_sheet',       x: 3.4, z: -3.6, y: 1.15, face: 20 },              // open at your surname
+                { key: 'pen',               x: 3.55, z: -3.5, y: 1.15, face: 70 },
+                { key: 'rug_round',         x: 0, z: -2.4 },                                   // the aisle's end
+                { key: 'park_bench',        x: -1.6, z: -1.8, face: 180 },                     // THE PEWS, three a side, facing the altar
+                { key: 'park_bench',        x: 1.6, z: -1.8, face: 180 },
+                { key: 'park_bench',        x: -1.6, z: 0.2, face: 180 },
+                { key: 'park_bench',        x: 1.6, z: 0.2, face: 180 },
+                { key: 'park_bench',        x: -1.6, z: 2.2, face: 180 },
+                { key: 'park_bench',        x: 1.6, z: 2.2, face: 180 },
+                { key: 'candle_ring',       x: -3.6, z: -0.8, y: 0.0 },                        // the aisle candles
+                { key: 'candle_ring',       x: 3.6, z: -0.8, y: 0.0 },
+                { key: 'candle_ring',       x: -3.6, z: 3.2, y: 0.0 },
+                { key: 'candle_ring',       x: 3.6, z: 3.2, y: 0.0 },
+                { key: 'steel_table',       x: -3.4, z: 1.5, face: 90 },                       // THE TILL: the licences, the till
+                { key: 'cash_register',     x: -3.4, z: 1.5, y: 0.76, face: 90 },
+                { key: 'paper_sheet',       x: -3.2, z: 1.9, y: 0.76, face: 300 },             // the licence, blank
+                { key: 'false_window',      wall: 'w', z: -2.0, mount: 1.0 },                  // THE DRIVE-THROUGH WINDOW: the boulevard's neon through the glass
+                { key: 'picture_round_a',   wall: 'e', z: -3.0, mount: 1.95 },                 // the King, signed
+                { key: 'wall_clock',        wall: 'n', x: 3.5, mount: 2.6 },                   // the fountain's timer
+                { key: 'notice_board',      wall: 's', x: 3.2 },                               // the price list; every price is "the price"
+                { key: 'floor_stain',       x: -0.4, z: 4.8 },                                 // the rice
+                { key: 'trash_bin',         x: 4.3, z: 6.2 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 0, z: -3.0, face: 180, race: 'chosen one', say: ['“Do you?” “Do I what?” “That is the form. Do you?” “I do.” “Sign here. And here. And here.”'] },   // THE OFFICIANT: the King, in the jumpsuit
+                { x: 2.6, z: 4.4, face: 300, race: 'politician' },                              // the groom, again
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Eleven chapels.” “One marries you to the honda civic.” “Which?” “Not this one. Probably.”',
+                '“The register says your surname.” “It says everyone’s surname.” “In the same hand.” “The King’s.”',
+                '“Drive-through?” “The window is for the car.” “The car is the groom.” “Then the window is for the groom.”',
+            ],
+            spawn: { x: 0, z: 3.6, face: 0 },
+        },
+        /* ── THE CASINO FLOOR — the machines, the tables, the cage, the eye in the sky; no clocks, no windows ── */
+        site_prebuilt_strip_casino: {
+            label: 'THE STRIP · THE CASINO FLOOR',
+            sub: 'THE MACHINES · THE TABLES · THE CAGE',
+            kind: 'box', site: 'prebuilt_strip', part: 'casino',
+            shell: {
+                w: 18, d: 14, h: 3.6,
+                wallH: 3.6, dadoH: 1.0,
+                floor: 'carpet', wall: 'urban_wall', dado: 'wood', trim: 'gold', ceiling: 'ceiling',
+                floorColor: 0x5a1830, wallColor: 0x3a1a2a, dadoColor: 0x5a3a2a, ceilColor: 0x2a1a24,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xffd0a0, ambient: 0.4 },
+                plate: { x: -8.75, z: 2.0, y: 2.4 },
+            },
+            doors: [
+                { id: 'chapel', wall: 'w', z: 4.6, leaf: 'leaf_saloon',
+                  label: 'THE CHAPEL', sub: 'THROUGH THE SALOON DOOR · THE ALTAR',
+                  action: { room: 'site_prebuilt_strip_chapel', at: 'casino' },
+                  desc: 'The saloon door back to the chapel, and through the chapel the boulevard. The floor has no other door you can see, no clock and no window; the exit is the thing they sell least.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'slot_machine',      x: -6.4, z: -4.5, face: 180 },                     // THE MACHINES: a bank of four, west
+                { key: 'slot_machine',      x: -5.6, z: -4.5, face: 180 },
+                { key: 'slot_machine',      x: -4.8, z: -4.5, face: 180 },
+                { key: 'slot_machine',      x: -4.0, z: -4.5, face: 180 },
+                { key: 'slot_machine',      x: 4.0, z: -4.5, face: 180 },                      // … and four, east
+                { key: 'slot_machine',      x: 4.8, z: -4.5, face: 180 },
+                { key: 'slot_machine',      x: 5.6, z: -4.5, face: 180 },
+                { key: 'slot_machine',      x: 6.4, z: -4.5, face: 180 },
+                { key: 'riser_2',           x: 0, z: -6.2, face: 0 },                          // THE STAGE along the north wall (the park rule's ramp, stepped)
+                { key: 'retro_speakers',    x: -3.0, z: -6.2, y: 0.6, face: 160 },             // the act is on a break
+                { key: 'retro_speakers',    x: 3.0, z: -6.2, y: 0.6, face: 200 },
+                { key: 'round_desk',        x: 0, z: -1.0 },                                   // THE TABLES: blackjack, twenty-one, the room's own number
+                { key: 'folding_chair',     x: -1.3, z: -1.0, face: 90 },
+                { key: 'folding_chair',     x: 1.3, z: -1.0, face: 270 },
+                { key: 'folding_chair',     x: 0, z: 0.4, face: 0 },
+                { key: 'solo_cup',          x: 0.4, z: -1.2, y: 0.76 },
+                { key: 'round_desk',        x: 0, z: 3.0 },
+                { key: 'folding_chair',     x: -1.3, z: 3.0, face: 90 },
+                { key: 'folding_chair',     x: 1.3, z: 3.0, face: 270 },
+                { key: 'folding_chair',     x: 0, z: 4.4, face: 0 },
+                { key: 'solo_cup',          x: -0.3, z: 3.3, y: 0.76 },
+                { key: 'papers_b',          x: 0.5, z: 2.7, y: 0.76 },                          // the chips are forms
+                { key: 'steel_table',       x: -6.0, z: -0.5, face: 90 },                      // THE CAGE
+                { key: 'cash_register',     x: -6.0, z: -0.5, y: 0.76, face: 90 },
+                { key: 'railing_1m',        x: -4.6, z: -1.5, face: 90 },                      // the cage rail (the park rule's rail)
+                { key: 'railing_1m',        x: -4.6, z: -0.5, face: 90 },
+                { key: 'railing_1m',        x: -4.6, z: 0.5, face: 90 },
+                { key: 'mobius_bar',        x: 6.2, z: 4.0, face: 270 },                       // THE BAR, the after-hours counter's cousin
+                { key: 'solo_cup',          x: 5.4, z: 4.6, y: 1.5 },
+                { key: 'vending_machine',   wall: 's', x: -3.0 },                              // the ATM; it charges a Key
+                { key: 'security_camera',   wall: 'n', x: -2.0, mount: 3.1 },                  // THE EYE IN THE SKY
+                { key: 'security_camera',   wall: 'n', x: 2.0, mount: 3.1 },
+                { key: 'security_camera',   wall: 's', x: 6.0, mount: 3.1 },
+                { key: 'picture_round_c',   wall: 'e', z: -3.0, mount: 1.95 },                 // a portrait of the House
+                { key: 'floor_stain',       x: 3.0, z: 1.2 },
+                { key: 'trash_bin',         x: -8.2, z: -6.2 },
+                { key: 'trash_bin',         x: 8.2, z: 1.2 },
+                { key: 'cardboard_box',     x: 8.2, z: -6.0, face: 40 },                        // the chips, in the wrong place
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 0, z: -2.5, face: 180, race: 'politician', say: ['“Twenty-one.” “Blackjack.” “The room.” “The room pays three to two.”'] },   // THE DEALER: a politician now; always a dealer
+                { x: 5.2, z: -3.2, face: 200, race: 'conspiracy theorist' },                    // at the machines; he knows which one
+                { x: 2.2, z: 5.6, face: 300, race: 'gangster' },                                // the pit boss
+            ],
+            onlineSpots: [{ x: -5.2, z: -3.3, face: 0 }],                                       // an agent at the machines, on the clock
+            lines: [
+                '“No clocks.” “No windows.” “No exit sign.” “The exit is through the chapel.” “That is the trick.”',
+                '“The Department loses at every table.” “And expenses it.” “As fieldwork.” “Finance approved the fieldwork.”',
+                '“The eye in the sky.” “Which one?” “All of them.” “They are the same eye.”',
+            ],
+            spawn: { x: -5.6, z: 4.6, face: 90 },
+        },
+        /* ── THE TOWER LOBBY — the ground floor of the tower that came down in 1954, and comes down every year ── */
+        site_prebuilt_downtown_lobby: {
+            label: 'DOWNTOWN · THE TOWER LOBBY',
+            sub: 'THE FRONT DESK · THE STAIR DOWN · EVACUATED',
+            kind: 'box', site: 'prebuilt_downtown', part: 'lobby',
+            shell: {
+                w: 14, d: 12, h: 4.2,
+                wallH: 4.2, dadoH: 1.2,
+                floor: 'tilefloor', wall: 'concrete_floor', dado: 'marble', trim: 'gunmetal', ceiling: 'ceiling',
+                floorColor: 0xb8b0a0, wallColor: 0xa8a49c, dadoColor: 0x8a8480, ceilColor: 0x9a9690,
+                pipes: false,
+                strips: false,
+                lights: [],
+                mood: { light: 0xf4f0e8, ambient: 0.46 },
+                plate: { x: -6.75, z: 2.6, y: 2.4 },
+            },
+            doors: [
+                { id: 'street', wall: 'w', z: 0, leaf: 'leaf_entrance',
+                  label: 'DOWNTOWN', sub: 'THE LOBBY DOOR · BACK TO THE INTERSECTION',
+                  action: { room: 'site_prebuilt_downtown', at: 'tower' },
+                  desc: 'The lobby door, from the inside. The intersection is behind it, the console is across the intersection, and the monster was here first.' },
+                { id: 'subway', wall: 'n', x: 3.5, leaf: 'leaf_frame_only',
+                  label: 'THE PLATFORM', sub: 'THE STAIR DOWN · THE SUBWAY',
+                  action: { room: 'site_prebuilt_downtown_subway', at: 'lobby' },
+                  desc: 'The stair down to the platform, under the tower. The tower comes down every year; the platform has never once been touched. Records has a theory. Records has been asked to keep it.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'round_desk',        x: 2.5, z: 2.5 },                                  // THE FRONT DESK
+                { key: 'rotary_phone',      x: 2.2, z: 2.3, y: 0.76, face: 300 },              // it rings for the evacuation
+                { key: 'papers_b',          x: 2.9, z: 2.8, y: 0.76 },
+                { key: 'clipboard_flat',    x: 2.6, z: 2.0, y: 0.76, face: 20 },               // the sign-in sheet, 1954
+                { key: 'office_chair',      x: 2.5, z: 3.9, face: 0 },                         // the receptionist's, empty
+                { key: 'curved_couch',      x: -2.5, z: 3.6, face: 0 },                        // the waiting area
+                { key: 'coffee_table',      x: -2.5, z: 1.6 },
+                { key: 'papers_a',          x: -2.5, z: 1.6, y: 0.45 },                        // the magazines, all 1954
+                { key: 'potted_plant',      x: -5.8, z: -4.8 },
+                { key: 'potted_plant',      x: 5.8, z: 4.8 },
+                { key: 'concrete_pillar',   x: -2.5, z: -2.5 },                                // the lobby's columns; two of four
+                { key: 'concrete_pillar',   x: 2.5, z: -2.5 },
+                { key: 'warning_tape',      x: -2.0, z: -4.4, face: 0 },                       // the line before the fallen stair
+                { key: 'railing_1m',        x: -3.0, z: -4.2, face: 0 },                       // THE CORDON (the park rule's rail)
+                { key: 'railing_1m',        x: -2.0, z: -4.2, face: 0 },
+                { key: 'railing_1m',        x: -1.0, z: -4.2, face: 0 },
+                { key: 'riser_1',           x: -2.4, z: -5.2, face: 0, rect: { hw: 2.4, hd: 0.7 } },   // the foot of the stair that is not there any more (the park rule's ramp)
+                { key: 'cardboard_boxes',   x: -5.6, z: -2.6, face: 30 },                      // THE RUBBLE, boxed by Facilities
+                { key: 'cardboard_box',     x: 5.4, z: -4.6, face: 60 },
+                { key: 'floor_stain',       x: 0.6, z: -1.2 },
+                { key: 'floor_stain',       x: -4.2, z: 0.4 },
+                { key: 'paper_sheet',       x: 0.4, z: 4.6, y: 0.01, face: 140 },              // the evacuation order, blown in
+                { key: 'paper_sheet',       x: -0.8, z: -0.6, y: 0.01, face: 40 },
+                { key: 'wall_clock',        wall: 'e', z: 0, mount: 3.0 },                     // THE LOBBY CLOCK, at 1954
+                { key: 'security_camera',   wall: 'n', x: -4.0, mount: 3.6 },
+                { key: 'exit_sign',         wall: 'w', z: 0, mount: 3.4 },                     // over the street door: the one true exit
+                { key: 'notice_board',      wall: 's', x: -3.0 },                              // the evacuation notice; you are the evacuation
+                { key: 'fire_extinguisher', wall: 's', x: 4.0 },
+                { key: 'flicker_tube',      x: -3.0, z: 0, ceil: true, face: 0 },              // what survived
+                { key: 'flicker_tube',      x: 3.0, z: 0, ceil: true, face: 0 },
+                { key: 'bare_bulb',         x: 0, z: -3.0, ceil: true },
+                { key: 'bare_bulb',         x: 0, z: 3.0, ceil: true },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 0, z: 1.0, face: 180, race: 'superhero', say: ['“I held it up.” “The tower?” “For a year.” “Then?” “Then it was the next year.”'] },
+                { x: -4.6, z: 3.8, face: 60, race: 'zombie' },                                  // waiting for the receptionist
+            ],
+            onlineSpots: [],
+            lines: [
+                '“The clock says 1954.” “It is right once a year.” “Which day?” “The day the tower comes down.”',
+                '“The evacuation order is in force.” “Who is evacuating?” “You are.” “From where?” “Here. Towards the platform.”',
+                '“The stair to the upper floors is gone.” “The upper floors are gone.” “The stair to the platform?” “Never touched.”',
+            ],
+            spawn: { x: -4.0, z: 0, face: 90 },
+        },
+        /* ── THE PLATFORM — under the tower, never once touched; the train stands on the track (the subway route) ── */
+        site_prebuilt_downtown_subway: {
+            label: 'DOWNTOWN · THE PLATFORM',
+            sub: 'THE SUBWAY · ALL LINES · THE STAIR UP',
+            kind: 'box', site: 'prebuilt_downtown', part: 'subway',
+            shell: {
+                w: 8, d: 30, h: 4,
+                wallH: 4, dadoH: 1.6,
+                floor: 'tilefloor', wall: 'tilefloor_2', dado: 'tilefloor', trim: 'gunmetal', ceiling: 'concrete',
+                floorColor: 0x9a968c, wallColor: 0xc8c0a8, dadoColor: 0x6a3a3a, ceilColor: 0x4a4844,
+                pipes: true,
+                strips: false,
+                lights: [],
+                mood: { light: 0xfff0c0, ambient: 0.48 },
+                plate: { x: 1.5, z: 14.75, y: 2.8 },
+            },
+            doors: [
+                { id: 'lobby', wall: 's', x: 1.5, leaf: 'leaf_frame_only',
+                  label: 'THE TOWER LOBBY', sub: 'THE STAIR UP · THE LOBBY',
+                  action: { room: 'site_prebuilt_downtown_lobby', at: 'subway' },
+                  desc: 'The stair up into the tower\'s lobby. The tower comes down every year; the stair has never once been touched, and neither has the platform. The train has.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'track_bed',         x: -2.8, z: 0, face: 0 },                          // THE TRACK — the train stands on it (the `train` way, DOOR_HQ.links subway_downtown)
+                { key: 'platform_edge',     x: -1.2, z: 0, face: 0 },
+                { key: 'turnstile',         x: 0.8, z: 10.5, face: 0 },                        // THE GATES, at the foot of the stair
+                { key: 'turnstile',         x: 1.8, z: 10.5, face: 0 },
+                { key: 'turnstile',         x: 2.8, z: 10.5, face: 0 },
+                { key: 'departures_board',  wall: 'n', x: 0, mount: 2.4 },                     // every line, DELAYED
+                { key: 'tube_map',          wall: 'e', z: -6, mount: 1.1 },
+                { key: 'park_bench',        x: 2.4, z: -6, face: 270 },
+                { key: 'park_bench',        x: 2.4, z: 4, face: 270 },
+                { key: 'trash_bin',         x: 3.4, z: -2, face: 270 },
+                { key: 'vending_machine',   wall: 'e', z: 7 },
+                { key: 'wall_clock',        wall: 'e', z: 0, mount: 3.0 },                     // the platform clock; it agrees with the lobby's
+                { key: 'notice_board',      wall: 'e', z: -10 },
+                { key: 'security_camera',   wall: 'n', x: 2.5, mount: 3.4 },
+                { key: 'exit_sign',         wall: 's', x: 1.5, mount: 3.2 },
+                { key: 'railing_1m',        x: 1.2, z: -13.6, face: 0 },                       // THE PARK RULE: the rail at the platform's end …
+                { key: 'railing_1m',        x: 2.2, z: -13.6, face: 0 },
+                { key: 'riser_1',           x: 3.0, z: -8.0, face: 90, rect: false },          // … and the step (the platform's raised end)
+                { key: 'flicker_tube',      x: 0.8, z: -10, ceil: true, face: 0 },
+                { key: 'bare_bulb',         x: 0.8, z: 0, ceil: true },
+                { key: 'flicker_tube',      x: 0.8, z: 10, ceil: true, face: 0 },
+                { key: 'floor_stain',       x: 2.6, z: -4 },
+                { key: 'paper_sheet',       x: 2.0, z: 8, y: 0.01, face: 20 },                 // the timetable; the same amount of late
+                { key: 'wet_floor_sign',    x: 3.2, z: 12.6, face: 30 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 2.4, z: 0, face: 270, race: 'zombie', say: ['“Waiting.” “It is at the platform.” “This one goes back.” “Back where?” “One stop.”'] },
+                { x: 2.6, z: -3.4, face: 270, race: 'antihero' },                                // not filing; says it is not waiting
+            ],
+            onlineSpots: [{ x: 2.4, z: 4, face: 270 }],                                         // on the bench, on the clock
+            lines: [
+                '“One stop back.” “To where?” “Cyberpunk.” “That is forward.” “Not on this line.”',
+                '“The tower came down.” “Every year.” “And the platform?” “Never once touched. Mind the gap.”',
+                '“Doors open.” “Nobody gets on.” “Somebody got off.” “In 1954.”',
+            ],
+            spawn: { x: 1.5, z: 12, face: 0 },
+        },
+        /* ══════════════════════════════════════════════════════════════════
            H-WING (HQ plan 5.5, stage 1 — 2026-09-14 rev 4). See DOOR_HQ.hwing
            for the shape and the rules. Every room here is the one look:
            beige carpet, drywall, ceiling tile, fluorescents, right angles,
@@ -28775,11 +29124,11 @@ const HQ_TAPE_SHEET = {
     site_prebuilt_revenge_gundeck:   [['THE GUNS', 'Four guns run out through the ports. Nobody at them. The match cords are lit.', 'evidence']],
     site_prebuilt_revenge_cabin:     [['THE STERN WINDOWS', 'The sea through the stern windows. A lit city under it, and a woman on a balcony, waving up at the glass.', 'parents']],
     site_prebuilt_revenge_hold:      [['THE BILGE', 'Water rising in the hold, then falling, then rising. It has a rhythm. The rhythm is breathing.', 'evidence']],
-    /* the exploration floors (Phase 8): never the hall, the foyer, a lobby or a corridor — the finds are the reward for going somewhere. A floor room's tape is a BONUS: the laundry, the locker room and the lecture hall gave theirs to the spaceship (rev 18); the boiler room, the server room and the ritual room to the Dutchman (rev 19) — the hundred stays a hundred */
-    garage:    [['THE RAMP', 'A sedan coming down the ramp with its lights on. Nobody driving.', 'facility']],
-    kitchen:   [['THE ORDER', 'A ticket on the rail. It orders for two, under your surname, every day at noon.', 'parents']],
-    coldroom:  [['−18', 'Frost on the shelves. Breath in the corner of the frame.', 'evidence']],
-    dungeon:   [['24601', 'A cell door shutting. The camera is inside.', 'evidence']],
+    site_prebuilt_strip_chapel:      [['I DO', 'The officiant\'s mouth. It says a name. It is not the name on the register, and the register is in your hand.', 'parents']],
+    site_prebuilt_strip_casino:      [['THE HOUSE', 'A slot machine paying out. The coins are Keys. The eye in the sky blinks first.', 'facility']],
+    site_prebuilt_downtown_lobby:    [['THE LOBBY CLOCK', 'The lobby clock at 1954. The second hand goes backward once, and the dust rises off the desk.', 'evidence']],
+    site_prebuilt_downtown_subway:   [['THE LAST TRAIN', 'Two people boarding. The doors close on the lens. The destination board reads your surname.', 'parents']],
+    /* the exploration floors (Phase 8): never the hall, the foyer, a lobby or a corridor — the finds are the reward for going somewhere. A floor room's tape is a BONUS: the laundry, the locker room and the lecture hall gave theirs to the spaceship (rev 18); the boiler room, the server room and the ritual room to the Dutchman (rev 19); the garage, the kitchen, the cold room and the dungeon to THE URBAN BLOCK (9.2 stage 4, 2026-09-16) — the hundred stays a hundred */
     sacrifice: [['FORM 322', 'A form on the altar. Field 1: NAME. It has been filled in for you.', 'facility']],
     orb:       [['THE OBJECT', 'The orb from every side at once. It turns to keep the same face to the lens.', 'evidence']],
     garden:    [['1618', 'A tree in the garden. Two names carved in it. One is yours, the other is not yet.', 'parents']],
@@ -28937,7 +29286,9 @@ function hqBuildFinds() {
     return rows;
 }
 /* hand-pinned spots (the generator's fallback): the cold room is 4 × 4 with hooks over the floor — the tape stands in the NE corner, the envelope lies on the shelving */
-DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 1.7, y: 1.2 } } };   // the deck (SKATEBOARDING 9.8) takes the generator's far corner of Room 26
+DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 1.7, y: 1.2 } },
+    /* THE URBAN BLOCK (9.2 stage 4): the platform's finds stand on the PLATFORM — the train (a `way` on the track, DOOR_HQ.links subway_downtown) lays its blockers at build, which the generator cannot see; the pins keep both off the track */
+    site_prebuilt_downtown_subway: { tape: { x: 3.2, z: -13.2 }, pay: { x: 0.6, z: -13.4 } } };   // the deck (SKATEBOARDING 9.8) takes the generator's far corner of Room 26
 DOOR_HQ.finds = hqBuildFinds();
 function hqFindById(id) { return (DOOR_HQ.finds || []).find(f => f.id === id) || null; }
 /* the record on the profile (never written by a reader) */

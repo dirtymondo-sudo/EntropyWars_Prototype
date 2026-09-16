@@ -131,7 +131,7 @@ test('an entryway kind the catalogue does not list is held back at BOTH ends; a 
  } finally{HQ.links=saved;}
 });
 test('THE SEAMS THAT ARE NOT DOORS: the wardrobe into Camelot and the well into Hollow Earth are catalogued, paired, plated, voiced and built',()=>{
- assert.deepEqual(SEAMS.map(l=>l.id).sort().join(','),'bureau_vatican,haunted_camelot,lodge_olympus,mirror_lookingglass,natatorium_dutchman,northpole_haunted,nuketown_haunted,observatorium_singularity,tunnel_cyberpunk,well_camelot,well_cellar,well_garden,well_gobekli,well_nuketown,well_skinwalker','the wardrobe, the six wells (rev 10: every well drops into the cave), the train (the tunnel\u2019s platform to Cyberpunk\u2019s subway) and the second batch (rev 22: the mirror, the plunge pool, two paintings, the hearth, the screen, the closet)');
+ assert.deepEqual(SEAMS.map(l=>l.id).sort().join(','),'bureau_vatican,haunted_camelot,lodge_olympus,mirror_lookingglass,natatorium_dutchman,northpole_haunted,nuketown_haunted,observatorium_singularity,subway_downtown,tunnel_cyberpunk,well_camelot,well_cellar,well_garden,well_gobekli,well_nuketown,well_skinwalker','the wardrobe, the six wells (rev 10: every well drops into the cave), the train (the tunnel\u2019s platform to Cyberpunk\u2019s subway; 9.2 stage 4: Downtown\u2019s platform one stop back) and the second batch (rev 22: the mirror, the plunge pool, two paintings, the hearth, the screen, the closet)');
  for(const k of Object.keys(HQ.ways)) {
   const w=HQ.ways[k];
   assert.ok(w.verb && w.sub && w.sfx && w.w>0 && w.h>0, k+': verb · sub · sfx · w · h');
@@ -146,12 +146,15 @@ test('THE SEAMS THAT ARE NOT DOORS: the wardrobe into Camelot and the well into 
   assert.ok(link.way in HQ.ways);assert.ok(link.why && link.note && link.draft===true,link.id+': a why, a note, a draft flag (A15)');
   for(const end of [link.a,link.b]) {
    const rid=D.hqLinkRoom(end), room=HQ.rooms[rid], door=room.doors.find(d=>d.id==='link_'+link.id);
-   assert.ok(door && door.way===link.way && door.leaf===null,rid+' wears the '+link.way);
-   assert.equal(door.sub,end.sub||HQ.ways[link.way].sub,'the kind\u2019s plate line, unless the end names its own (the well room\u2019s heads)');
+   /* an end that names its own `leaf` takes a plain door back instead of the object (hqLinkEndWear; 9.2 stage 4: the stair mouth on Cyberpunk's street at the far end of Downtown's train) */
+   if(end.leaf){assert.ok(door && door.way===undefined && door.leaf===end.leaf,rid+' wears a plain door back ('+end.leaf+')');assert.equal(door.sub,end.sub||'WALK THROUGH');}
+   else {assert.ok(door && door.way===link.way && door.leaf===null,rid+' wears the '+link.way);
+   assert.equal(door.sub,end.sub||HQ.ways[link.way].sub,'the kind\u2019s plate line, unless the end names its own (the well room\u2019s heads)');}
    if(end.verb) assert.equal(door.verb,end.verb,'an end may name its own verb (CLIMB UP)');
    assert.equal(door.why,link.why);
    const dest=HQ.rooms[door.action.room], back=dest.doors.find(d=>d.id===door.action.at);
-   assert.ok(back && back.action.room===rid && back.action.at===door.id && back.way===door.way,'the same object at the far end');
+   const otherEnd=end===link.a?link.b:link.a;
+   assert.ok(back && back.action.room===rid && back.action.at===door.id && (otherEnd.leaf ? back.way===undefined : back.way===link.way),'the same object at the far end, or the plain door back the end names');
    assert.equal(D.hqDoorNo(door),D.hqRoomNo(door.action.room),'the plate reads the far site\'s number');
    assert.equal(D.doorSiteState(door,{}),link.gate?'clearance':'open','rev 22: the Bureau\u2019s painting carries the Bureau\u2019s own gate — the Vatican is no way round the Gatekeeper\u2019s door');
    assert.equal(room.doors.filter(d=>d.id===door.id).length,1);

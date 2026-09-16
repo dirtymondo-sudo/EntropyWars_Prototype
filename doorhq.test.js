@@ -498,7 +498,7 @@ test('box-room props resolve (kit or procedural), sit inside the walls, wall pro
         for (const a of room.agents || []) if (!(typeof a.x === 'number' && typeof a.z === 'number')) problems.push(k + ': agent needs x/z');
         /* an OUTDOOR room (plan 7.2 stage 3) has no ceiling to hang a fluorescent from: its lights are masts */
         if (S.open) assert.ok(Array.isArray(S.lights) && S.lights.length >= 4 && !room.props.some(p => p.ceil), k + ': an outdoor room is lit by masts, nothing hangs from a ceiling');
-        else assert.ok(room.props.some(p => (p.key === 'fluorescent' && (p.ceil || HQ.catalogue.fluorescent.ceil)) || /^(flicker_tube|bare_bulb|wall_torch|candle_ring|floating_orb|cave_torch|crystal_cluster|grow_lamp|monitor_stack|festoon|door_furnace|eeg_rack|iso_tank|ship_lantern)$/.test(p.key)), k + ': lit by a fluorescent (or, since Phase 8, a tube that flickers, a bulb, a torch, the candles, the object; since the cave, a stake torch or a crystal; since the Dutchman, a ship’s lantern)');
+        else assert.ok(room.props.some(p => (p.key === 'fluorescent' && (p.ceil || HQ.catalogue.fluorescent.ceil)) || /^(flicker_tube|bare_bulb|wall_torch|candle_ring|floating_orb|cave_torch|crystal_cluster|grow_lamp|monitor_stack|festoon|door_furnace|eeg_rack|iso_tank|ship_lantern|slot_machine)$/.test(p.key)), k + ': lit by a fluorescent (or, since Phase 8, a tube that flickers, a bulb, a torch, the candles, the object; since the cave, a stake torch or a crystal; since the Dutchman, a ship’s lantern; since the urban block, the machines)');
     }
     assert.deepStrictEqual(problems, []);
     /* the closet reference (janitor_closet_v1): cot, sink, mop bucket, breaker panel, rug, drain, CRT, phone, desk, locker, chair */

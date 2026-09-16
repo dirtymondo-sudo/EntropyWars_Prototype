@@ -3041,6 +3041,39 @@ the park rule, the link hooks, the source sites). Unseen live (RULE #1c):
 the wallpaper tints, the `leaf: null` stair openings, the banister's
 facing, the boiler's glow in a 2.7 m cellar.
 
+## THE URBAN BLOCK — THE STRIP + DOWNTOWN AS COMPLEXES (HQ plan 9.2 stage 4) — 2026-09-16, local delivery
+Rooms 21 and 1954 are the FIFTH and SIXTH complexes: `site_prebuilt_strip_
+chapel` / `_casino` and `site_prebuilt_downtown_lobby` / `_subway` (data.js,
+the block right after the Dutchman's hold; `site` + `part`, no `roomNo`).
+`siteRooms.backDoors.prebuilt_strip` = THE CHAPEL's motel door on the north
+wall at x −0.2 (the Strip's ONE free lane — the highway holds −5 / −10);
+`backDoors.prebuilt_downtown` = THE TOWER's lobby door on the **EAST wall**
+(z 0) — Downtown's north wall carries three link doors, the lane rule's
+full ration, so a back door may hang on ANY wall (the Backrooms' is south;
+`_hqBuildSetting` clears every room door's lane). The casino has ONE door,
+no clock, no window (hq-urban.test.js insists); the chapel's saloon door is
+the way in. **THE SUBWAY's third station**: `links.subway_downtown` (`way:
+'train'`) stands the train FREE on the platform's own track (`{ site, part:
+'subway', wall: 'free', x: −1.5, z: 3, face: 90 }` — a link end on a
+complex part, the spaceship's rule; the body = local x −9..15.4 → room z
+12..−12.4 in a 30 m room) and its far end wears **`leaf: 'leaf_frame_only'`**
+on Cyberpunk's north wall at x −0.2 — the first `way` link with a PLAIN
+DOOR BACK (`hqLinkEndWear`: an end that names a leaf takes a door; the
+hq-world seam test accepts it). Never a second train on a wall that
+already has one: a wall-end train's front car spans x −9..3 from its mark
+and runs through the next lane's door. Two procs in three-renderer.js (the
+Phase 8 stage 2 block): `slot_machine` (block, `light` + `glow`; the reels
+spin on a ticker — doorhq.test.js counts it as a room's light) and
+`turnstile` (block; the tripod turns for the walker). Tapes: one per part,
+re-homed from the garage / kitchen / cold room / dungeon (the hundred
+stays a hundred); **`DOOR_HQ.findSpots.site_prebuilt_downtown_subway`**
+pins the platform's finds onto the platform — a `way`'s blockers are laid
+at build and `hqFindFree` cannot see them, so any room whose far corner
+is a track / a train / a way object needs a pin. `npm test` runs
+`hq-urban.test.js`. UNSEEN LIVE (RULE #1c): the reels, the tripod, the
+train's arrival on the shorter platform, the east-wall lobby door against
+Downtown's setting, the stair mouth on Cyberpunk's street.
+
 ## THE SPACESHIP COMPLEX (HQ plan 9.2 stage 2) + THE CHECKLIST SYNC BUG — 2026-09-15 rev 18, local delivery
 Room 426 is the THIRD complex: `site_prebuilt_derelict_airlock` / `_hold` /
 `_bridge` (data.js, the block right before H-WING; `site` + `part`, no
