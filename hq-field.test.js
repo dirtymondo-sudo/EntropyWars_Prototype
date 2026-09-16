@@ -13,7 +13,16 @@
 // field record / the seats / the eye read it like a site board), THE BUILD
 // (the forge entry: tids, voxels, the bed, explicit spawns per seat, the
 // registries, the site Δ's env) and the source sites in map.js /
-// match-select.js. Repo-only.
+// match-select.js. STAGE D (Phase 9 Delivery 12 — THE EDGE): the lattice's
+// ALIGNMENT (the least rock proud of the room's walls, a wall with doors kept
+// flush, proud ≤ proudMax and on one wall per axis at most), THE RIM (every
+// OUT cell touching an IN cell wears its wall + its proud; the '%' cells of
+// the dump), THE DOORS ON THE FRAME (every room door whose landing lies in the
+// window is recorded with its rim cell), LEGALITY FROM EVERYWHERE (a window
+// with both seats from EVERY cell the walker can stand on in EVERY wild room)
+// and THE DUMP (hqFieldDump + check-field-windows.js). STAGE E: the HUD reads
+// the field (the scoreboard's line, the result stamp, the OFFICER row).
+// Repo-only.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -275,7 +284,7 @@ test('STAGE C · THE BOX LATTICE on every complex part: a battle tile per cell o
     for (const id of parts) {
         const room = HQ.rooms[id], Sh = room.shell, bi = boxInfo(id);
         assert.ok(bi, id + ': a lattice'); assert.equal(bi.C, CB); assert.equal(bi.roomId, id);
-        assert.ok([0, CB / 2].includes(bi.offX) && [0, CB / 2].includes(bi.offZ), 'the offset is 0 or half a cell');
+        assert.ok(bi.offX >= 0 && bi.offX < CB && bi.offZ >= 0 && bi.offZ < CB, 'the offset is a lattice phase (stage D: chosen by the walls\' proud, no longer 0 / half a cell)');
         assert.ok(bi.w >= 1 && bi.h >= 1 && bi.cells.length === bi.h && bi.cells[0].length === bi.w, 'the lattice covers the room');
         assert.ok(MF_TID[bi.floorKey] && TERRAIN_RULES[bi.floorKey], id + ' floor ' + bi.floorKey);
         assert.ok(MF_TID[bi.wallKey] && TERRAIN_RULES[bi.wallKey], id + ' wall ' + bi.wallKey);
@@ -466,4 +475,173 @@ test('STAGE C · THE SOURCE: map.js says THE ROOM IS THE BOARD in a complex part
     ['window.hqFieldRoomOk(_hqCurRoom)', "fieldRoom ? 'THE ROOM IS THE BOARD' : 'THE SITE IS THE BOARD'", "if (board && board.cave) return 'THE CAVE IS THE BOARD';"].forEach(f => assert.ok(copy.includes(f), f));
     ['window.hqFieldBoxInfo = hqFieldBoxInfo;', 'window.hqFieldLattice = hqFieldLattice;', 'window.hqFieldBoxStep = hqFieldBoxStep;', 'window.hqFieldGallery = hqFieldGallery;'].forEach(f => assert.ok(DJ.includes(f), f));
     assert.ok(DJ.includes("if (env && opts.box) { delete env.near; delete env.motion; env.world = { kind: 'room' }; }"), 'the box layout rule');
+});
+
+/* ═══ STAGE D · THE EDGE (Phase 9 Delivery 12, 2026-09-16) ═══ */
+const walkerCanStand = (Lt, gx, gy) => {
+    if (!Lt.walk(gx, gy)) return false;
+    if (Lt.kind === 'cave') return true;
+    const c = Lt.info.cells[gy][gx];
+    return c.top <= 0 || c.top <= BX.climbM;   // a top the walker jumps onto; never a cabinet / the slab from the floor
+};
+test('STAGE D · THE FRAME\'S ALIGNMENT: on every part the rock proud of any wall ≤ proudMax, at most one proud wall per axis, a wall with doors flush whenever the opposite wall has none, and never worse than the old 0 / half-a-cell rule', () => {
+    assert.equal(BX.edgeSnap, 0.3); assert.ok(BX.proudMax <= 0.8 && BX.proudMax > 0); assert.ok(BX.doorWeight >= 1); assert.ok(BX.sweep > 0 && BX.sweep <= 0.1);
+    for (const id of parts) {
+        const bi = boxInfo(id), Sh = HQ.rooms[id].shell, E = bi.edges;
+        assert.ok(E && ['w', 'e', 'n', 's'].every(k => E[k] && isFinite(E[k].proud)), id + ': four edges');
+        ['w', 'e', 'n', 's'].forEach(k => assert.ok(E[k].proud <= BX.proudMax + 1e-9, id + ' wall ' + k + ' proud ' + E[k].proud.toFixed(2)));
+        assert.ok(!(E.w.proud > 1e-9 && E.e.proud > 1e-9), id + ': one proud wall on x at most');
+        assert.ok(!(E.n.proud > 1e-9 && E.s.proud > 1e-9), id + ': one proud wall on z at most');
+        [['w', 'e'], ['e', 'w'], ['n', 's'], ['s', 'n']].forEach(([a, b]) => { if (E[a].doors > 0 && E[b].doors === 0) assert.ok(E[a].proud <= 1e-9, id + ': the doors\' wall ' + a + ' is flush'); });
+        ['w', 'e', 'n', 's'].forEach(k => assert.equal(E[k].flush, E[k].proud <= BX.edgeSnap + 1e-9, 'flush ⇔ ≤ edgeSnap'));
+        assert.equal(E.w.at, -Sh.w / 2); assert.equal(E.e.at, Sh.w / 2); assert.equal(E.n.at, -Sh.d / 2); assert.equal(E.s.at, Sh.d / 2);
+        /* the old rule's proud, recomputed: the chosen lattice stands no more rock proud in total */
+        const proudOf = (len, off) => { const half = len / 2; let p = 0; const k0 = Math.floor((-half - off) / CB), k1 = Math.ceil((half - off) / CB) - 1; for (let k = k0; k <= k1; k++) { const a = off + k * CB, b = a + CB, c = (a + b) / 2, inM = Math.max(0, Math.min(b, half) - Math.max(a, -half)); const IN = inM / CB >= BX.cover && Math.abs(c) <= half - BX.margin; if (!IN && inM > 0) p += inM; } return p; };
+        const oldX = Math.min(proudOf(Sh.w, 0), proudOf(Sh.w, CB / 2)), oldZ = Math.min(proudOf(Sh.d, 0), proudOf(Sh.d, CB / 2));
+        assert.ok(E.w.proud + E.e.proud <= oldX + 1e-9, id + ': x no worse than the old rule (' + (E.w.proud + E.e.proud).toFixed(2) + ' vs ' + oldX.toFixed(2) + ')');
+        assert.ok(E.n.proud + E.s.proud <= oldZ + 1e-9, id + ': z no worse than the old rule');
+        assert.ok(Math.abs(proudOf(Sh.w, bi.offX) - (E.w.proud + E.e.proud)) < 1e-9, 'the record is the lattice\'s own proud (x)');
+        assert.ok(Math.abs(proudOf(Sh.d, bi.offZ) - (E.n.proud + E.s.proud)) < 1e-9, 'the record is the lattice\'s own proud (z)');
+    }
+    /* the hold measured: 16 m = 9 cells + 0.25 — the old rule put a metre proud on BOTH walls, the new one 0.25 on one */
+    const hold = boxInfo('site_prebuilt_derelict_hold').edges;
+    assert.ok(hold.w.proud + hold.e.proud <= 0.25 + 1e-9, 'the hold\'s residue on one wall');
+});
+
+test('STAGE D · THE RIM + THE DOORS ON THE FRAME: on every part\'s window from every landing an OUT cell touching an IN cell wears its wall + its proud (never over proudMax), the dump\'s % is exactly proud > edgeSnap, every door whose landing lies in the window is on the record with its rim cell in the door\'s own column', () => {
+    const win = g('hqFieldWindow'), dump = g('hqFieldDump');
+    let n = 0, doorsN = 0;
+    for (const id of parts) {
+        const bi = boxInfo(id), ri = g('hqFindRoomInfo')(id), room = HQ.rooms[id];
+        for (const L of ri.landings.filter(L => L && isFinite(L.x) && isFinite(L.z))) {
+            const t = { x: Math.max(-bi.S.w / 2 + 0.6, Math.min(bi.S.w / 2 - 0.6, L.x - Math.sign(L.x) * 2 * CB)), z: Math.max(-bi.S.d / 2 + 0.6, Math.min(bi.S.d / 2 - 0.6, L.z - Math.sign(L.z) * 2 * CB)) };
+            const W = win(id, { x: L.x, z: L.z }, t); assert.ok(W, id); n++;
+            const Rr = W.raster, at = (x, y) => (x >= 0 && y >= 0 && x < S && y < S) ? Rr.cells[y][x] : null;
+            assert.equal(Rr.edges, bi.edges, 'the raster carries the lattice\'s edges');
+            for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+                const c = Rr.cells[y][x];
+                const touches = [at(x, y - 1), at(x, y + 1), at(x - 1, y), at(x + 1, y)].some(o => o && o.in);
+                if (c.in) { assert.equal(c.edge, undefined); continue; }
+                if (touches) { assert.equal(c.edge, 'wall', id + ' rim ' + x + ',' + y); assert.ok(c.rock); assert.ok(isFinite(c.proud) && c.proud >= 0 && c.proud <= BX.proudMax + 1e-9, 'proud ' + c.proud); }
+                else assert.ok(c.edge === undefined || c.door, 'beyond the rim: no edge');
+            }
+            const lines = dump(Rr, { walker: W.cells.walker, target: W.cells.target });
+            assert.equal(lines.length, S); lines.forEach(l => { assert.equal(l.length, S); assert.ok(/^[#%.12!DWTab]+$/.test(l), 'the legend only: ' + l); });
+            for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+                const c = Rr.cells[y][x], ch = lines[y][x];
+                if (ch === 'W' || ch === 'T') continue;
+                if (c.door && !c.in) { assert.equal(ch, 'D'); continue; }
+                assert.equal(ch === '%', !!(c.rock && (c.proud || 0) > BX.edgeSnap + 1e-9), id + ' dump ' + x + ',' + y + ' ' + ch);
+            }
+            assert.equal(lines[W.cells.walker.y][W.cells.walker.x], 'W'); assert.equal(lines[W.cells.target.y][W.cells.target.x], 'T');
+            /* THE DOORS: every wall door whose landing cell lies in the window is on the record */
+            assert.ok(Array.isArray(Rr.doors));
+            for (const d of room.doors || []) {
+                if (!d || typeof d.wall !== 'string' || d.wall === 'free' || d.secret) continue;
+                const row = Rr.doors.find(r => r.id === d.id);
+                if (!row) continue;   // its landing lies outside this window
+                doorsN++;
+                assert.equal(row.wall, d.wall);
+                assert.ok(row.inX >= 0 && row.inY >= 0 && row.inX < S && row.inY < S && Rr.cells[row.inY][row.inX].in, 'the door\'s landing is an IN cell of the window');
+                const dir = d.wall === 'n' ? [0, 1] : d.wall === 's' ? [0, -1] : d.wall === 'w' ? [1, 0] : [-1, 0];
+                assert.equal(row.x, row.inX - dir[0]); assert.equal(row.y, row.inY - dir[1]);
+                assert.equal(row.rim, row.x >= 0 && row.y >= 0 && row.x < S && row.y < S);
+                if (row.rim) { const rc = Rr.cells[row.y][row.x]; assert.ok(rc.rock && !rc.in, 'the rim cell is rock'); assert.ok(rc.door, 'and wears the door'); }
+                /* the door's own column: its along-the-wall coordinate lies in the landing cell's lattice column */
+                const along = (d.wall === 'n' || d.wall === 's') ? (+d.x || 0) : (+d.z || 0);
+                const col = (d.wall === 'n' || d.wall === 's') ? bi.colsX[row.inX + W.ox] : bi.colsZ[row.inY + W.oz];
+                assert.ok(col && along >= col.a - 1e-9 && along < col.b + 1e-9, id + ' ' + d.id + ' in its column');
+                assert.equal(row.proud, bi.edges[d.wall].proud); assert.equal(row.flush, bi.edges[d.wall].flush);
+            }
+            /* a door whose landing lies in the window is NEVER missing from the record */
+            for (const d of room.doors || []) {
+                if (!d || typeof d.wall !== 'string' || d.wall === 'free' || d.secret) continue;
+                const along = (d.wall === 'n' || d.wall === 's') ? (+d.x || 0) : (+d.z || 0);
+                const cols = (d.wall === 'n' || d.wall === 's') ? bi.colsX : bi.colsZ;
+                const gi = cols.findIndex(c => along >= c.a - 1e-9 && along < c.b); if (gi < 0) continue;
+                const dir = d.wall === 'n' ? [0, 1] : d.wall === 's' ? [0, -1] : d.wall === 'w' ? [1, 0] : [-1, 0];
+                let gx = d.wall === 'n' || d.wall === 's' ? gi : (d.wall === 'w' ? 0 : bi.w - 1), gy = d.wall === 'n' ? 0 : d.wall === 's' ? bi.h - 1 : gi, inC = null;
+                for (let k = 0; k < 4 && gx >= 0 && gy >= 0 && gx < bi.w && gy < bi.h; k++) { if (bi.cells[gy][gx].in) { inC = { x: gx, y: gy }; break; } gx += dir[0]; gy += dir[1]; }
+                if (!inC) continue;
+                const wx = inC.x - W.ox, wy = inC.y - W.oz;
+                if (wx >= 0 && wy >= 0 && wx < S && wy < S) assert.ok(Rr.doors.some(r => r.id === d.id), id + ': ' + d.id + ' faces the window and is on the record');
+            }
+        }
+    }
+    assert.ok(n >= 20 && doorsN >= 14, 'windows ' + n + ' doors ' + doorsN);
+});
+
+test('STAGE D · LEGALITY FROM EVERYWHERE (§11.3 D acceptance): from EVERY cell the walker can stand on in EVERY wild room, with the target on a neighbouring cell, the window holds both feet, the walker\'s cell is IN, the reach is ≥ 8 and both squads of four seat on free cells', () => {
+    const win = g('hqFieldWindow'), lattice = g('hqFieldLattice'), seatsOf = g('hqEncounterSeats');
+    let n = 0, minReach = Infinity, worst = null;
+    for (const id of caves.concat(parts)) {
+        const Lt = lattice(id); assert.ok(Lt, id);
+        const centre = (x, y) => ({ x: Lt.x0 + (x + 0.5) * Lt.C, z: Lt.z0 + (y + 0.5) * Lt.C });
+        for (let gy = 0; gy < Lt.h; gy++) for (let gx = 0; gx < Lt.w; gx++) {
+            if (!walkerCanStand(Lt, gx, gy)) continue;
+            /* the native stands where a native stands: a walkable cell on the floor (never a table top — the room's natives never do) */
+            const seatable = (x, y) => Lt.walk(x, y) && (Lt.kind === 'cave' || Lt.info.cells[y][x].top === 0);
+            let t = null;
+            for (const [dx, dy] of [[2, 0], [-2, 0], [0, 2], [0, -2], [1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = gx + dx, y = gy + dy; if (x >= 0 && y >= 0 && x < Lt.w && y < Lt.h && seatable(x, y)) { t = { x, y }; break; } }
+            if (!t) continue;
+            const W = win(id, centre(gx, gy), centre(t.x, t.y)); n++;
+            assert.ok(W && W.raster, id + ' ' + gx + ',' + gy + ': a window');
+            const cw = W.cells.walker, ct = W.cells.target;
+            assert.equal(cw.x + W.ox, gx); assert.equal(cw.y + W.oz, gy);
+            [cw, ct].forEach(c => assert.ok(c.x >= 0 && c.y >= 0 && c.x < S && c.y < S, 'inside'));
+            assert.equal(W.raster.cells[cw.y][cw.x].in, true, id + ' ' + gx + ',' + gy + ': the walker\'s cell IN');
+            assert.equal(W.raster.cells[ct.y][ct.x].in, true, 'the target\'s cell IN');
+            if (W.reach < minReach) { minReach = W.reach; worst = id + ' ' + gx + ',' + gy; }
+            assert.ok(W.reach >= 8, id + ' ' + gx + ',' + gy + ': reach ' + W.reach);
+            const Rr = W.raster;
+            const free = (x, y) => { const c = Rr.cells[y] && Rr.cells[y][x]; return !!(c && c.in && !c.hazard && c.seat !== false); };
+            const seats = seatsOf({ cells: W.cells }, { W: S, H: S, n1: R.teamSize, n2: R.teamSize, free });
+            assert.ok(seats && seats[1].length === R.teamSize && seats[2].length === R.teamSize, id + ' ' + gx + ',' + gy + ': both squads seat');
+            assert.deepEqual(J(seats[2][0]), J(ct), 'the native\'s cell is P2 seat 1');
+            if (W.raster.cells[cw.y][cw.x].seat !== false) assert.deepEqual(J(seats[1][0]), J(cw), 'the walker\'s cell is P1 seat 1');   // on a table top the lead is nudged down
+        }
+    }
+    assert.ok(n >= 1500, 'every standing cell of every wild room: ' + n);
+    assert.ok(minReach >= 8, 'the smallest reach ' + minReach + ' at ' + worst);
+});
+
+test('STAGE D · THE ENTRY + THE TOOL: hqFieldBuild carries the doors, the edges and the dump; check-field-windows.js prints every wild room\'s window with the legend and exits 0', () => {
+    const build = g('hqFieldBuild'), win = g('hqFieldWindow');
+    const W = win('site_prebuilt_haunted_attic', { x: 0, z: 0 }, { x: 1.75, z: 0 });
+    const e = build(W.room, W.ox, W.oz, { cells: W.cells });
+    assert.ok(Array.isArray(e.field.doors) && e.field.doors.some(d => d.id === 'hatch'), 'the attic\'s hatch on the record');
+    assert.ok(e.field.edges && e.field.edges.n.proud > 0 && e.field.edges.s.proud === 0, 'the attic: the residue on the north, the hatch\'s wall flush');
+    assert.equal(e.field.dump.length, S); assert.ok(e.field.dump.some(l => l.includes('%')), 'the dump shows the proud rim');
+    assert.ok(e.field.dump.some(l => l.includes('a')) && e.field.dump.some(l => l.includes('b')), 'the seats on the dump');
+    const cave = win('site_prebuilt_hollow_earth_vent', { x: 0, z: 0 }, { x: 1.75, z: 0 });
+    const ce = build(cave.room, cave.ox, cave.oz, { cells: cave.cells });
+    assert.equal(ce.field.edges, null); assert.equal(ce.field.doors.length, 0);
+    const TOOL = fs.readFileSync(__dirname + '/check-field-windows.js', 'utf8');
+    ['hqFieldWindow', 'hqFieldDump', 'hqEncounterSeats', '--all', 'rock PROUD of the wall'].forEach(f => assert.ok(TOOL.includes(f), f));
+    const r = require('node:child_process').spawnSync(process.execPath, [__dirname + '/check-field-windows.js', '--json'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+    assert.equal(r.status, 0, r.stdout.slice(-400) + r.stderr);
+    const J2 = JSON.parse(r.stdout);
+    assert.equal(J2.bad.length, 0, 'no window without a legal field');
+    caves.concat(parts).forEach(id => assert.ok(J2.windows.some(w => w.room === id && w.grid && w.grid.length === S), id + ' in the dump'));
+    const r2 = require('node:child_process').spawnSync(process.execPath, [__dirname + '/check-field-windows.js', 'strip_chapel'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+    assert.equal(r2.status, 0); assert.ok(/1 windows, 0 without a legal field/.test(r2.stdout), r2.stdout.slice(-300));
+    assert.ok(r2.stdout.includes('site_prebuilt_strip_chapel — ') && r2.stdout.includes('walls: '), 'the text form');
+    ['window.hqFieldRimBox = hqFieldRimBox;', 'window.hqFieldDump = hqFieldDump;', 'window.hqEncounterRoomLabel = hqEncounterRoomLabel;'].forEach(f => assert.ok(DJ.includes(f), f));
+});
+
+test('STAGE E · THE HUD OF THE FIELD: the scoreboard\'s mode line wears THE FIELD while an encounter is live, the result stamp reads HELD / EXITED · THE ENCOUNTER · the room, the OFFICER row names the room; hqEncounterRoomLabel', () => {
+    const lab = g('hqEncounterRoomLabel');
+    assert.equal(lab('site_prebuilt_haunted_hall'), 'THE HAUNTED HOUSE · THE HALL');
+    assert.equal(lab('site_prebuilt_hollow_earth_vent'), 'THE CAVE · THE FISSURE');
+    assert.ok(/CERN/i.test(lab('site_prebuilt_cern')), 'a site\'s board room reads the site\'s label');
+    assert.equal(lab('nope'), null); assert.equal(lab(null), null);
+    assert.equal(R.hudLabel, 'THE FIELD');
+    const HUD = fs.readFileSync(__dirname + '/hud.js', 'utf8'), BT = fs.readFileSync(__dirname + '/battle.js', 'utf8');
+    assert.ok(HUD.includes("window._ewEncounterField() : null"), 'the scoreboard reads the live field');
+    assert.ok(HUD.includes("HQ_FIELD_RULES.hudLabel"), 'the label is the rules\'');
+    const stamp = BT.slice(BT.indexOf('function _stampHqSite(flag)'), BT.indexOf('function _encounterResultButtons()'));
+    ['window._hqEncounterResult', "'HELD'", "'EXITED'", 'THE ENCOUNTER · ', 'hqEncounterRoomLabel'].forEach(f => assert.ok(stamp.includes(f), f));
+    assert.ok(stamp.indexOf('window._hqEncounterResult = null') < 0, 'the stamp never consumes the result (the return reads it)');
+    const row = MP.slice(MP.indexOf("html += row('ENCOUNTERS'"), MP.indexOf("html += row('ENCOUNTERS'") + 600);
+    assert.ok(row.includes('hqEncounterRoomLabel'), 'the OFFICER row names the room');
 });

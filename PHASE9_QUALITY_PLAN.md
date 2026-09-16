@@ -405,6 +405,29 @@ for it), the plates. The marker is battle.js `_ewEncounterRoom()` (the latched r
 NOT drawn (its grid is its floor; the cavern world stands) — the cave's own stage. `hq-room-in-battle.
 test.js` (8). §10 stages 1–3 (the board's own materials / light / world in the ROOM) stay after the
 playtest as planned. Next: §11 D (the thin walls on cell edges, a door on the frame's edge), then E.
+**Status 2026-09-16 (Delivery 12, `ENTROPY_WARS_PHASE9_FIELD_D.zip`, token
+`20260916-field-edge-14-cors`):** §11.3 **stage D SHIPPED** as THE EDGE — the box lattice's ALIGNMENT
+(data.js `hqFieldBoxInfo`: the offset per axis is chosen among the exact alignments and a sweep by the rock
+standing PROUD of the room's true walls, a wall with doors weighted to stay flush, then the most cells; the old
+0 / half-a-cell rule left a metre of rock in front of BOTH walls of the hold's long axis, the new one leaves
+≤ 0.75 m on one wall of an axis at most, and never a doors' wall when the other is free — `bi.edges` per wall),
+THE RIM (`hqFieldRimBox`: every OUT cell touching an IN cell wears `edge: 'wall'` + its `proud`), THE DOORS ON
+THE FRAME (`R.doors` / `entry.field.doors`: every room door whose landing lies in the window, with its rim cell,
+its column and its wall's proud — the record only; the engine keeps the rim as rock, rule §10), THE DUMP
+(`hqFieldDump` → `entry.field.dump`; `check-field-windows.js` prints every wild room's window from every
+door landing with the legend — the acceptance grid for the user), and LEGALITY FROM EVERYWHERE proved by
+hq-field.test.js on every cell the walker can stand on in every wild room (≥ 1500 windows: both feet in, the
+walker's cell IN, the reach ≥ 8, both squads of four seated). One seat rule fixed on the way: a lead never
+displaces the other lead (`hqEncounterSeats` held the native's cell while the walker was nudged off a table
+top). NOT built, by decision: the THIN WALL primitive (`M.wall`) on the rim — a thin wall is vaulted by a
+jump-2 race, hovered over by a flyer and breached by a heavy body, so a floor strip fenced by one is not
+sealed; the rim stays a rock column and the true wall is what §10 stage 4 draws; and the door as the party's
+ARRIVAL threshold (rule 7's original text) — superseded by the user's seat rule (Delivery 6: the parties stand
+on the cells beside their leads). **Stage E SHIPPED** in the same delivery: the scoreboard's mode line wears
+THE FIELD · before the mode while an encounter is live (hud.js reads battle.js `_ewEncounterField`), the
+result stamp reads HELD / EXITED · THE ENCOUNTER · the room (battle.js `_stampHqSite`, the mastery flag
+after it), the OFFICER row names the room (`hqEncounterRoomLabel`, the ONE wording). Next: item 10 (the
+playtest), §10 stages 1–3 after it.
 
 Each item: impact · evidence · files · dependencies · change · acceptance.
 
@@ -635,11 +658,11 @@ square, and the units are not on squares when the fight starts.
   DOOR_HQ sheet through the HQ builders on the battle scene — the bridge §10 stage 4 built).
   Acceptance: the six complexes' 18 parts each yield ≥ 24 IN cells with ≥ 2 heights from
   some window; the hall's landing is a +2 tier with its flight as +1 treads.
-- **D · THE WINDOW'S CHOICE + THE EDGE.** Rule 2's slide, the thin walls on cell edges, the
+- **D · THE WINDOW'S CHOICE + THE EDGE.** ✅ SHIPPED 2026-09-16 (Delivery 12) as THE EDGE: the lattice ALIGNED to the room's walls (`hqFieldBoxInfo` — the least rock proud, the doors' wall flush; `bi.edges`), THE RIM + THE DOORS ON THE FRAME on the raster (`hqFieldRimBox`, `R.doors`), THE DUMP (`hqFieldDump`, `check-field-windows.js` — the acceptance grid), legality from every standing cell of every wild room proved. The slide (rule 2) had shipped in stage B; the corridor case stands by construction (the platform: 5 wide inside rock — the dump shows it). SUPERSEDED, not built: the thin-wall primitive on the rim (a thin wall is vaulted / hovered over / breached — the rim stays rock; the true wall is §10 stage 4's) and the door as an ARRIVAL threshold (the user's seat rule, Delivery 6). Original text: Rule 2's slide, the thin walls on cell edges, the
   corridor case, a door on the frame's edge as a threshold object. Acceptance: a headless
   dump of every wild room's best window (a text grid per room in the test's output) reviewed
   by the user; the strike from any point of any wild room yields a legal field.
-- **E · THE HUD OF THE FIELD.** The mode's copy (THE FIELD · WIPEOUT), the scoreboard, the
+- **E · THE HUD OF THE FIELD.** ✅ SHIPPED 2026-09-16 (Delivery 12): the scoreboard's mode line (THE FIELD · TEAM DEATHMATCH — the mode is TDM by the user's decision, rule 8, never WIPEOUT), the result stamp's line (HELD / EXITED · THE ENCOUNTER · the room · the native), the OFFICER row's LAST … IN the room; `hqEncounterRoomLabel` is the one wording. Original text: The mode's copy (THE FIELD · WIPEOUT), the scoreboard, the
   result stamp's site line reading the room, the OFFICER sheet's encounters row by room.
 
 ### 11.4 What this does NOT change
@@ -689,7 +712,7 @@ No game file changed; no cache bump.
 | # | Decision | Needed by |
 |---|---|---|
 | A | THE FIELD's mode: WIPEOUT (REC) vs the sticky mode with zones dropped | §11 stage A |
-| B | The party's arrival in a field: through the nearest room door (REC), through the door gun's A, or seated in the nearest free cells | §11 stage A |
+| B | The party's arrival in a field: through the nearest room door (REC), through the door gun's A, or seated in the nearest free cells — DECIDED 2026-09-16 (the user, Delivery 6): seated in the nearest free cells beside their leads; the rim doors are a record (`field.doors`), not an arrival | §11 stage A |
 | C | Renumber the encounter decision to Part C row 30 (B4) | docs |
 | D | Which six door-gun situations get plaques (D8's list is a proposal) and their wording (A15) | §8 item 9 |
 | E | The tapes' titles, captions, clips (A15); which ~20 tapes are hand-pinned (D9) | §8 item 9 |

@@ -30427,6 +30427,18 @@ function hqEncounterRecord(profile, ev) {
     }
     return E;
 }
+/* STAGE E (Phase 9 Delivery 12, 2026-09-16 — THE HUD OF THE FIELD): the ONE wording for WHERE an encounter was
+   fought — a room's own label (a complex part: 'THE HAUNTED HOUSE · THE HALL'; a cave chamber: 'THE CAVE · THE
+   FISSURE'), a site's board room the site's label (EW_MAP_META), else null. The result stamp, the OFFICER row and
+   the toasts read it; never print a room id. */
+function hqEncounterRoomLabel(roomId) {
+    if (!roomId || typeof roomId !== 'string') return null;
+    const room = (DOOR_HQ.rooms || {})[roomId];
+    if (room && room.label) return String(room.label);
+    const site = (typeof hqRoomSite === 'function') ? hqRoomSite(roomId) : null;
+    if (site && typeof EW_MAP_META !== 'undefined') { const m = EW_MAP_META.find(x => x.id === site); if (m && m.label) return String(m.label).toUpperCase(); }
+    return room ? roomId : null;
+}
 /* the read: { count, wins, losses, last } — never null; the UNION of both records (D5) */
 function hqEncounterLog(profile) {
     let local = null, synced = null;
@@ -30611,7 +30623,12 @@ function hqEncounterSeats(field, opts) {
         }
         return null;
     };
+    /* stage D (2026-09-16): a lead never displaces the other lead — the walker nudged off a table top used to take the
+       native's own cell; the native's wish is held while the walker is seated */
+    const hold2 = ok(l2.x, l2.y) ? key(l2.x, l2.y) : null;
+    if (hold2) taken.add(hold2);
     l1 = nearest(l1); if (!l1) return null; taken.add(key(l1.x, l1.y));
+    if (hold2) taken.delete(hold2);
     l2 = nearest(l2); if (!l2) return null; taken.add(key(l2.x, l2.y));
     const fill = (lead, enemy, n) => {
         const out = [lead];
@@ -30755,7 +30772,20 @@ const HQ_FIELD_RULES = {
         climbM: 1.46,         // the walker's own reach UP (HQ_JUMP_V's apex): a top the walker jumps onto is a step to it
         dropM: HQ_CAVE_DROP,  // the walker's walk-off (HQ_DROP_MAX); a railed slab is never walked off
         galleryRise: 0.25, galleryRun: 0.28,   // = three-renderer.js HQ_GALLERY_RISE / HQ_GALLERY_RUN (hq-field.test.js diffs them)
+        /* STAGE D (Phase 9 Delivery 12, 2026-09-16 — THE EDGE): the lattice's offset per axis is chosen among EVERY
+           offset (the exact alignments first — a wall ON an edge, the two partials shared — then a sweep) by how much
+           ROCK stands PROUD of the room's true wall: an OUT partial cell is a rock column filling its whole cell, so
+           its inside share is rock INSIDE the room (a wall the eye sees a step in front of the real one; a door in that
+           wall buried). The old rule (0 or half a cell, the most cells) left up to a metre proud on BOTH walls of an
+           axis (the hold: 16 m = 9 cells + 0.25). Score = Σ proud × (1 + doorWeight × the doors on that wall) (a wall
+           with a door is the one to keep flush), then the most cells, then the smallest offset. proudMax is the bound
+           the test proves: a residue r < 0.8 m goes on ONE wall (the other exact), r ≥ 0.8 splits into two IN partials. */
+        edgeSnap: 0.3,        // a wall within this of a cell edge is FLUSH: the rock face IS the wall (no proud, no strip)
+        proudMax: 0.8,        // the most rock that can stand proud of any wall (hq-field.test.js proves it on every part)
+        doorWeight: 3,        // a wall's proud counts (1 + doorWeight × its doors) times — keep the doors' wall flush
+        sweep: 0.05,          // m — the offset sweep's step after the exact candidates
     },
+    hudLabel: 'THE FIELD',    // stage E: the scoreboard's mode line while an encounter's field is live
 };
 /* stage B: a WILD room with a cave grid; stage C: a WILD box room that is not a site's BOARD room (that one keeps its own Δ — stage A) */
 function hqFieldRoomOk(roomId) {
@@ -30828,23 +30858,42 @@ function hqFieldBoxInfo(roomId) {
     const W = +S.w || 0, D = +S.d || 0; if (!(W > 0 && D > 0)) return null;
     const tid = (typeof MF_TID !== 'undefined') ? MF_TID : null;
     const known = (k) => !!(k && (!tid || tid[k]));
-    /* the lattice per axis: edges at off + k·C from the centre — the offset that puts the most cells ≥ `cover` inside with their centres clear of the wall */
-    const axis = (len) => {
-        const half = len / 2;
+    /* the lattice per axis: edges at off + k·C from the centre. STAGE D (THE EDGE): the offset that stands the LEAST
+       rock proud of the room's walls (an OUT partial cell = a rock column; its inside share is rock in the room), a
+       wall with doors weighted, then the most cells ≥ `cover` inside with their centres clear of the wall, then the
+       smallest offset. Candidates: the exact alignments (the lo wall on an edge, the hi wall on an edge, the two
+       partials shared equally, 0, half a cell) first, then a sweep — an exact alignment wins any tie. */
+    const doorsOn = (side) => (room.doors || []).filter(d => d && d.wall === side && !d.secret).length;
+    const axis = (len, loSide, hiSide) => {
+        const half = len / 2, r = ((len % C) + C) % C;
+        const mod = v => ((v % C) + C) % C;
+        const aLo = mod(-half), aHi = mod(half), aSym = mod(aLo + (C - r) / 2);
+        const cands = [aLo, aHi, aSym, 0, C / 2];
+        for (let t = 0; t < C - 1e-9; t += B.sweep) cands.push(t);
+        const wLo = 1 + B.doorWeight * doorsOn(loSide), wHi = 1 + B.doorWeight * doorsOn(hiSide);
         let best = null;
-        for (const off of [0, C / 2]) {
+        for (const off of cands) {
             const k0 = Math.floor((-half - off) / C), k1 = Math.ceil((half - off) / C) - 1;
             const cols = [];
+            let n = 0, proudLo = 0, proudHi = 0;
             for (let k = k0; k <= k1; k++) {
-                const a = off + k * C, b = a + C;
-                cols.push({ a, b, c: (a + b) / 2, ov: Math.max(0, Math.min(b, half) - Math.max(a, -half)) / C });
+                const a = off + k * C, b = a + C, c = (a + b) / 2;
+                const inM = Math.max(0, Math.min(b, half) - Math.max(a, -half));
+                const col = { a, b, c, ov: inM / C, inM, in: false, proud: 0 };
+                col.in = col.ov >= B.cover && Math.abs(c) <= half - B.margin;
+                if (col.in) n++;
+                else if (inM > 0) { col.proud = inM; if (c < 0) proudLo += inM; else proudHi += inM; }
+                cols.push(col);
             }
-            const n = cols.filter(c => c.ov >= B.cover && Math.abs(c.c) <= half - B.margin).length;
-            if (!best || n > best.n) best = { off, cols, n };
+            const score = proudLo * wLo + proudHi * wHi;
+            const better = !best || score < best.score - 1e-9
+                || (Math.abs(score - best.score) <= 1e-9 && (n > best.n || (n === best.n && Math.abs(off) < Math.abs(best.off) - 1e-9)));
+            if (better) best = { off, cols, n, score, proud: { lo: proudLo, hi: proudHi }, doors: { lo: doorsOn(loSide), hi: doorsOn(hiSide) } };
         }
+        best.flush = { lo: best.proud.lo <= B.edgeSnap + 1e-9, hi: best.proud.hi <= B.edgeSnap + 1e-9 };
         return best;
     };
-    const AX = axis(W), AZ = axis(D);
+    const AX = axis(W, 'w', 'e'), AZ = axis(D, 'n', 's');
     const floorKey = known(S.floor) ? S.floor : 'concrete_floor';
     const wallKey = known(S.wall) ? S.wall : (known(S.floor) ? S.floor : 'cave_wall');
     /* THE COVERS: every floor prop the renderer BLOCKS (foot > 0, standing — three-renderer.js's own rule at both
@@ -30888,7 +30937,10 @@ function hqFieldBoxInfo(roomId) {
         }
         cells.push(row);
     }
-    const info = { room, roomId, S, C, w: AX.cols.length, h: AZ.cols.length, x0: AX.cols[0].a, z0: AZ.cols[0].a, offX: AX.off, offZ: AZ.off, cells, covers, gallery: gal, floorKey, wallKey, wallH: +S.h || 3 };
+    /* STAGE D: THE EDGES — per wall, the rock proud of it (metres inside the room) and whether it is FLUSH (≤ edgeSnap) */
+    const edges = { w: { proud: AX.proud.lo, flush: AX.flush.lo, doors: AX.doors.lo, at: -W / 2 }, e: { proud: AX.proud.hi, flush: AX.flush.hi, doors: AX.doors.hi, at: W / 2 },
+                    n: { proud: AZ.proud.lo, flush: AZ.flush.lo, doors: AZ.doors.lo, at: -D / 2 }, s: { proud: AZ.proud.hi, flush: AZ.flush.hi, doors: AZ.doors.hi, at: D / 2 } };
+    const info = { room, roomId, S, C, w: AX.cols.length, h: AZ.cols.length, x0: AX.cols[0].a, z0: AZ.cols[0].a, offX: AX.off, offZ: AZ.off, cells, covers, gallery: gal, floorKey, wallKey, wallH: +S.h || 3, edges, colsX: AX.cols, colsZ: AZ.cols };
     if (_hqFieldBoxCache) _hqFieldBoxCache.set(room, info);
     return info;
 }
@@ -30973,7 +31025,95 @@ function hqFieldRasterBox(bi, ox, oz) {
     }
     const rockTile = Math.max(HQ_FIELD_RULES.rockMin, maxIn + HQ_FIELD_RULES.rockPad);
     for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) if (cells[y][x].rock) cells[y][x].tile = rockTile;
-    return { room: bi.roomId, ox, oz, S, C, L: null, info: bi, box: true, cells, rockTile, x0: bi.x0 + ox * C, z0: bi.z0 + oz * C, floorKey: bi.floorKey };
+    const R = { room: bi.roomId, ox, oz, S, C, L: null, info: bi, box: true, cells, rockTile, x0: bi.x0 + ox * C, z0: bi.z0 + oz * C, floorKey: bi.floorKey };
+    hqFieldRimBox(R);
+    return R;
+}
+/* STAGE D — THE EDGE on a box window: every OUT cell with an IN cardinal neighbour is the RIM (`edge: 'wall'` — the
+   room's true wall stands in it or on its edge; a box room has no chasm), and carries `proud` = the metres of that
+   rock column standing INSIDE the room past the wall (0 when the wall is on the cell's edge or the cell is off the
+   lattice). THE DOORS ON THE FRAME (`R.doors`): every room door whose lane meets the window — the rim cell it stands in
+   (window coordinates; `rim: false` when the door's column lies outside the window), the IN cell in front of it, and
+   its wall's proud. Nothing of this reaches the engine (rule §10: the rim IS rock); it is the record the dump, the
+   test and the renderer read. */
+function hqFieldRimBox(R) {
+    const bi = R.info, S = R.S, C = R.C;
+    const at = (x, y) => (x >= 0 && y >= 0 && x < S && y < S) ? R.cells[y][x] : null;
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+        const c = R.cells[y][x]; if (c.in) continue;
+        const nb = [at(x, y - 1), at(x, y + 1), at(x - 1, y), at(x + 1, y)].some(n => n && n.in);
+        if (!nb) continue;
+        c.edge = 'wall';
+        let proud = 0;
+        const cx = bi.colsX[c.gx], cz = bi.colsZ[c.gy];
+        if (cx && cz) {
+            /* the column's rock inside the room = its inside share along the axis it leaves the room on (a corner takes the larger) */
+            if (!(cx.ov >= HQ_FIELD_RULES.box.cover && Math.abs(cx.c) <= bi.S.w / 2 - HQ_FIELD_RULES.box.margin)) proud = Math.max(proud, cx.proud || 0);
+            if (!(cz.ov >= HQ_FIELD_RULES.box.cover && Math.abs(cz.c) <= bi.S.d / 2 - HQ_FIELD_RULES.box.margin)) proud = Math.max(proud, cz.proud || 0);
+        }
+        c.proud = proud;
+    }
+    const doors = [];
+    for (const d of bi.room.doors || []) {
+        if (!d || typeof d.wall !== 'string' || d.wall === 'free' || d.secret) continue;
+        const along = (d.wall === 'n' || d.wall === 's') ? (+d.x || 0) : (+d.z || 0);
+        const cols = (d.wall === 'n' || d.wall === 's') ? bi.colsX : bi.colsZ;
+        let gi = -1; for (let i = 0; i < cols.length; i++) if (along >= cols[i].a - 1e-9 && along < cols[i].b) { gi = i; break; }
+        if (gi < 0) continue;
+        /* the wall's own line of cells, from the wall inward: the first IN cell is the door's landing, the cell before it the rim */
+        const dir = d.wall === 'n' ? [0, 1] : d.wall === 's' ? [0, -1] : d.wall === 'w' ? [1, 0] : [-1, 0];
+        const start = d.wall === 'n' ? { x: gi, y: 0 } : d.wall === 's' ? { x: gi, y: bi.h - 1 } : d.wall === 'w' ? { x: 0, y: gi } : { x: bi.w - 1, y: gi };
+        let g = { x: start.x, y: start.y }, inCell = null, steps = 0;
+        while (g.x >= 0 && g.y >= 0 && g.x < bi.w && g.y < bi.h && steps < 4) {
+            const cell = bi.cells[g.y][g.x];
+            if (cell.in) { inCell = { x: g.x, y: g.y }; break; }
+            g = { x: g.x + dir[0], y: g.y + dir[1] }; steps++;
+        }
+        if (!inCell) continue;
+        const rimG = { x: inCell.x - dir[0], y: inCell.y - dir[1] };
+        const wx = inCell.x - R.ox, wy = inCell.y - R.oz, rx = rimG.x - R.ox, ry = rimG.y - R.oz;
+        const faces = wx >= 0 && wy >= 0 && wx < S && wy < S;
+        if (!faces) continue;
+        const rim = rx >= 0 && ry >= 0 && rx < S && ry < S;
+        const e = bi.edges[d.wall] || { proud: 0, flush: true };
+        const row = { id: d.id || null, wall: d.wall, rim, x: rx, y: ry, inX: wx, inY: wy, proud: e.proud, flush: !!e.flush, link: !!d.link, wide: !!d.wide };
+        if (rim) { const rc = R.cells[ry][rx]; if (rc) { rc.door = d.id || true; if (!rc.in) rc.edge = 'wall'; } }
+        doors.push(row);
+    }
+    R.doors = doors;
+    R.edges = bi.edges;
+    return R;
+}
+/* THE DUMP (stage D's acceptance — a text grid per room): one line per row, north first, west to east.
+   '#' rock · '%' rock PROUD of the room's wall by more than edgeSnap (the rim to look at) · '.' the floor ·
+   '1' / '2' a cell one / two levels up (a tread, a table, the slab) · '!' a hazard the walker never enters ·
+   'D' a room door's rim cell · marks (window coordinates) over everything: { W: walker, T: target, seats }. */
+function hqFieldDump(R, marks) {
+    if (!R) return [];
+    marks = marks || {};
+    const M = {};
+    const put = (p, ch) => { if (p && p.x >= 0 && p.y >= 0 && p.x < R.S && p.y < R.S) M[p.x + ',' + p.y] = ch; };
+    if (marks.seats) { (marks.seats[2] || []).forEach(c => put(c, 'b')); (marks.seats[1] || []).forEach(c => put(c, 'a')); }
+    if (marks.target) put(marks.target, 'T');
+    if (marks.walker) put(marks.walker, 'W');
+    const lines = [];
+    for (let y = 0; y < R.S; y++) {
+        let line = '';
+        for (let x = 0; x < R.S; x++) {
+            const c = R.cells[y][x], k = x + ',' + y;
+            let ch;
+            if (M[k]) ch = M[k];
+            else if (c.door && !c.in) ch = 'D';
+            else if (c.rock && (c.proud || 0) > HQ_FIELD_RULES.box.edgeSnap + 1e-9) ch = '%';
+            else if (c.rock) ch = '#';
+            else if (c.hazard) ch = '!';
+            else if (c.in && c.tile >= 1) ch = String(Math.min(9, c.tile));
+            else ch = '.';
+            line += ch;
+        }
+        lines.push(line);
+    }
+    return lines;
 }
 /* the walker's own step between two box cells (rule §4's guarantee is proved on this): up by a jump's reach, down by
    the walk-off, the flight and the slab one run (the treads climb it) — never onto a +2 from the floor */
@@ -31070,7 +31210,10 @@ function hqFieldBuild(roomId, ox, oz, opts) {
     entry.bed = M.strata.slice(); entry.underTop = M.underTop; entry.base = baseKey;
     entry.deltaDesc = HQ_FIELD_RULES.label + ' — ' + (room.label || roomId) + ' (' + R.ox + ',' + R.oz + ')';
     entry.field = { id, room: roomId, site, ox: R.ox, oz: R.oz, S, C: R.C, x0: R.x0, z0: R.z0, rockTile: R.rockTile, box: !!R.box, cave: !!R.cave,
-                    cells: R.cells.map(row => row.map(c => (c.rock ? '#' : c.hazard ? '!' : c.in ? String(Math.max(0, Math.min(9, c.tile + 1))) : '?')).join('')) };
+                    cells: R.cells.map(row => row.map(c => (c.rock ? '#' : c.hazard ? '!' : c.in ? String(Math.max(0, Math.min(9, c.tile + 1))) : '?')).join('')),
+                    /* STAGE D: the rim's doors and the walls' proud (a box window; a cave has neither) */
+                    doors: Array.isArray(R.doors) ? R.doors.map(d => Object.assign({}, d)) : [], edges: R.edges ? JSON.parse(JSON.stringify(R.edges)) : null,
+                    dump: hqFieldDump(R, { seats: sp }) };
     return entry;
 }
 /* the layout a field plays under: the site Δ's own env (the cavern world, the crystals, `near`), the field's own sections */
@@ -32997,7 +33140,7 @@ if (typeof window !== 'undefined') {
     window.hqFieldTransform = hqFieldTransform; window.hqEncounterZones = hqEncounterZones;
     window.hqEncounterField = hqEncounterField; window.hqEncounterSeats = hqEncounterSeats; window.hqEncounterEyeFromSeats = hqEncounterEyeFromSeats; window.hqEncounterWakeRoom = hqEncounterWakeRoom;
     /* THE FIELD stage B — the rasteriser on the cave (Phase 9 Delivery 8, 2026-09-16) */
-    window.HQ_FIELD_RULES = HQ_FIELD_RULES; window.hqFieldRoomOk = hqFieldRoomOk; window.hqFieldId = hqFieldId; window.hqFieldParse = hqFieldParse; window.hqFieldRaster = hqFieldRaster; window.hqFieldReach = hqFieldReach;
+    window.HQ_FIELD_RULES = HQ_FIELD_RULES; window.hqFieldRimBox = hqFieldRimBox; window.hqEncounterRoomLabel = hqEncounterRoomLabel; window.hqFieldDump = hqFieldDump; window.hqFieldRoomOk = hqFieldRoomOk; window.hqFieldId = hqFieldId; window.hqFieldParse = hqFieldParse; window.hqFieldRaster = hqFieldRaster; window.hqFieldReach = hqFieldReach;
     window.hqFieldWindow = hqFieldWindow; window.hqFieldBuild = hqFieldBuild; window.hqFieldLayout = hqFieldLayout; window.hqFieldRegister = hqFieldRegister;
     window.hqFieldBoxInfo = hqFieldBoxInfo; window.hqFieldGallery = hqFieldGallery; window.hqFieldLattice = hqFieldLattice; window.hqFieldBoxStep = hqFieldBoxStep; window.hqFieldBoxTile = hqFieldBoxTile; window.hqFieldNearestWalk = hqFieldNearestWalk;
     /* SKATEBOARDING (HQ plan 9.8 stage 1, 2026-09-15) */

@@ -1301,6 +1301,11 @@ function Scoreboard({ st }) {
   const roundLimit = st.matchClock && st.matchClock.roundLimit ? st.matchClock.roundLimit : 0;
 
   const isSuddenDeath = !!st.suddenDeathActive;
+  /* THE FIELD (Phase 9 Delivery 12, stage E): an encounter's fight wears THE FIELD before the mode — the latched
+     run's field (battle.js _ewEncounterField; null in every ordinary match) */
+  let encField = null;
+  try { encField = (typeof window._ewEncounterField === 'function') ? window._ewEncounterField() : null; } catch (e) { encField = null; }
+  const fieldTag = (encField && typeof HQ_FIELD_RULES !== 'undefined' && HQ_FIELD_RULES.hudLabel) ? HQ_FIELD_RULES.hudLabel + ' · ' : '';
 
   // Caption under the score = what the number counts. Avoid echoing the mode
   // name (e.g. Arena's score label is literally "ARENA") — fall back to SCORE.
@@ -1363,7 +1368,7 @@ function Scoreboard({ st }) {
           textShadow: isSuddenDeath ? '0 0 8px ' + EW.bad : 'none', whiteSpace: 'nowrap',
           alignSelf: 'stretch', textAlign: 'center',
           borderBottom: '1px solid #262233', paddingBottom: 4, marginBottom: 1,
-        }}, isSuddenDeath ? '⚡ SUDDEN DEATH' : (mode.label || '')),
+        }}, isSuddenDeath ? '⚡ SUDDEN DEATH' : (fieldTag + (mode.label || ''))),
 
         h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 8 }},
           h('span', { style: {

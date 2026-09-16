@@ -30905,6 +30905,22 @@
                 el.className = 'drs-site on form365';
                 return;
             }
+            /* THE ENCOUNTER (Phase 9 Delivery 12, stage E — THE HUD OF THE FIELD): a fight the officer started in
+               a room stamps WHERE it was fought — HELD / EXITED · THE ENCOUNTER · the room (data.js
+               hqEncounterRoomLabel), the mastery flag it filed after it. The result is READ here, never consumed:
+               map.js _hqReturnOrMenu spends it on the way back to the building. */
+            const er = window._hqEncounterResult;
+            if (er && er.room && typeof DOOR_HQ !== 'undefined') {
+                const roomLabel = (typeof hqEncounterRoomLabel === 'function') ? (hqEncounterRoomLabel(er.room) || er.room) : er.room;
+                let tail = '';
+                if (flag && flag.site) {
+                    const labels = DOOR_HQ.masteryLabels || {};
+                    tail = flag.mastered ? ' · THRESHOLD STABILIZED' : (flag.cond ? ' · FILED ' + (labels[flag.cond] || flag.cond) : '');
+                }
+                el.textContent = (er.won ? 'HELD' : 'EXITED') + ' · THE ENCOUNTER · ' + roomLabel + (er.label ? ' · ' + String(er.label).toUpperCase() : '') + tail + (f3Tag ? ' · ' + f3Tag : '');
+                el.className = 'drs-site on' + (er.won ? '' : ' partial');
+                return;
+            }
             if (!flag || !flag.site || typeof DOOR_HQ === 'undefined') { el.className = 'drs-site'; el.textContent = ''; return; }
             let label = flag.site;
             try { const m = EW_MAP_META.find(x => x.id === flag.site); if (m) label = m.label; } catch (e) {}

@@ -9129,3 +9129,59 @@ free-roam as the feel to steer by (the place you walk IS the place you fight).
   FOV frames the same eye differently — a visible pop is possible), the party's GLBs popping in without the
   card, the black sky over the chamber (a fog colour edit on Hollow Earth's row if it reads too flat), the
   crag inside the window, the stalactites' fade under the boom.
+
+### 2026-09-16 — PHASE 9 DELIVERY 12 · THE FIELD, STAGES D + E (THE EDGE + THE HUD OF THE FIELD) — local delivery
+PHASE9_QUALITY_PLAN §11.3 D and E, the last two stages of THE FIELD. The room is the geometry, the 8 × 8 is a
+window laid over it (§11.2 rule 1) — stage D is about where the window's RIM falls against the room's real walls.
+- **THE BUG THE EDGE FIXES**: a box room's lattice offset per axis was 0 or half a cell, whichever gave the most
+  cells. An OUT partial cell is a ROCK COLUMN filling its whole cell, so its inside share stands INSIDE the room in
+  front of the true wall (a step of "wall" the eye sees before the real one; a door in that wall buried behind it).
+  The hold (16 m = 9 cells + 0.25) got 9 cells with a METRE of rock proud of BOTH long walls; the most-cells rule
+  preferred that to 8 flush cells. **THE ALIGNMENT** (data.js `hqFieldBoxInfo`'s `axis`): candidates = the exact
+  alignments (the lo wall on an edge, the hi wall on an edge, the two partials shared, 0, half a cell) then a
+  0.05 m sweep; score = Σ proud × (1 + `doorWeight` × the doors on that wall), then the most IN cells, then the
+  smallest offset; an exact alignment wins any tie. Proved (hq-field.test.js "THE FRAME'S ALIGNMENT"): proud ≤
+  `proudMax` 0.8 on every part (measured 0.75 max, the attic's and the subway's short axes), at most one proud wall
+  per axis (a residue r < 0.8 m goes on one wall, the other exact; r ≥ 0.8 splits into two IN partials with
+  nothing proud), a wall with doors flush whenever the opposite wall has none, never worse than the old rule.
+  `bi.edges = { w, e, n, s: { proud, flush, doors, at } }` is the record; `bi.colsX / colsZ` the columns.
+- **THE RIM + THE DOORS ON THE FRAME** (`hqFieldRimBox`, run by `hqFieldRasterBox`): every OUT cell with an IN
+  cardinal neighbour wears `edge: 'wall'` and `proud` (the rock inside the room past the wall — 0 off the lattice
+  or on an exact edge); `R.doors` = every room door whose landing (the first IN cell inward from its wall, in the
+  door's own column) lies in the window: `{ id, wall, rim, x, y (the rim cell), inX, inY, proud, flush, link,
+  wide }`, the rim cell marked `door`. NOTHING of it reaches the engine (rule §10): the rim IS rock. It is the
+  record the dump, the test and any future reader take (`entry.field.doors / edges / dump`).
+- **NOT built, by decision**: (1) the THIN-WALL primitive on the rim (§11.2 rule 3's `M.wall`) — the engine
+  vaults a 1–2 cell thin wall (jump-2 races), hovers over it (flyers, outside Mystery Dungeon) and breaches it
+  (a heavy body, `_tryBreachThinWall`), so a floor strip beyond the true wall fenced by one is not sealed and a
+  unit could stand in the void behind the room's wall; the rock column is the honest cell and the true wall is
+  what §10 stage 4 draws — the alignment above is what makes them agree. (2) the door as the party's ARRIVAL
+  threshold (rule 7's first text): superseded by the user's seat rule (Delivery 6 — the parties stand on the cells
+  beside their leads); the rim doors are recorded, not walked. (3) a CHASM cell (an open room's edge): every wild
+  box room today is walled; the rule waits for the first open complex part.
+- **THE DUMP** (stage D's acceptance): `hqFieldDump(R, { walker, target, seats })` → eight lines ('#' rock ·
+  '%' rock proud of the wall by more than `edgeSnap` 0.3 · '.' the floor · '1' / '2' a level up · '!' a hazard ·
+  'D' a door's rim cell · W / T / a / b the walker, the target, the seats), on every built entry as
+  `field.dump`; **`node check-field-windows.js [--all] [--json] [room]`** prints every wild room's window from
+  its first (every) door landing with the walls' proud, the rim doors, the reach and the seats, and exits 1 on a
+  window without a legal field (none today — 21 rooms, 0 without). READ IT: the grids are the user's review.
+- **LEGALITY FROM EVERYWHERE** (hq-field.test.js): from every cell the walker can stand on (a cave: every walkable
+  cell; a box: every IN cell that is the floor or a top within the jump's reach) in every wild room, with the
+  native on a neighbouring floor cell, the window holds both feet, the walker's cell is IN, the reach is ≥ 8 and
+  both squads of four seat (≥ 1500 windows). One rule fixed on the way — **a lead never displaces the other
+  lead** (`hqEncounterSeats`): the walker nudged off a table top used to take the native's own cell; the native's
+  wish is held while the walker is seated. The tool's run is part of the test.
+- **STAGE E — THE HUD OF THE FIELD**: the scoreboard's mode line reads **THE FIELD · TEAM DEATHMATCH** (or ·
+  ARENA on a Code Red) while an encounter is live — hud.js reads battle.js `_ewEncounterField()` (the latched run;
+  null in every ordinary match) and `HQ_FIELD_RULES.hudLabel`; the result stamp's site line reads **HELD /
+  EXITED · THE ENCOUNTER · THE HAUNTED HOUSE · THE HALL · <the native>** with the mastery flag it filed after it
+  (battle.js `_stampHqSite` READS `window._hqEncounterResult`, never consumes it — the return spends it; a Code
+  Red cleared still outranks); the pause menu's OFFICER row reads `LAST GHOST IN THE CAVE · THE FISSURE (HELD)`.
+  **`hqEncounterRoomLabel(roomId)`** (data.js, on `window`) is the ONE wording: a room's own label, a site's
+  board room the site's label, never a room id.
+- **Files**: data.js (the rules, the lattice, the rim, the dump, the seat rule, the label; R2), battle.js (the
+  stamp), map.js (the OFFICER row), hud.js (the scoreboard line), index.html (`20260916-field-edge-14-cors`);
+  repo: hq-field.test.js (+5 tests, 18), check-field-windows.js, PHASE9_QUALITY_PLAN.md, CLAUDE.md, this log.
+- **UNSEEN LIVE (RULE #1c)**: the rim against the real wall in a part with a residue (the attic's north wall, the
+  casino's east, the subway's north — 0.25–0.75 m of the wall sheet standing in front of the true wall), the
+  scoreboard line's width with the tag, the stamp's length on the result card.

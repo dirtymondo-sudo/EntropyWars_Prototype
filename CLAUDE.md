@@ -4514,3 +4514,36 @@ has drawn the battle once (`_hqDissolveRec` → `_hqDissolveFrame`; `hold` = the
 `_hqEncounterStart` asks `{ onFrame: true, hold: 1500, ms: 220 }`. `npm test` 1512 / 1508 / 0 / 4 skipped. Unseen
 live (RULE #1c): the swoop's feel (`seedPose(eye, 1.4)`'s second argument is the edit), the fade's pop, the GLBs
 popping in, the black sky over the chamber, the crag at the window's rim.
+
+## PHASE 9 DELIVERY 12 — THE FIELD, STAGES D + E (THE EDGE + THE HUD OF THE FIELD) (2026-09-16, local delivery)
+PHASE9_QUALITY_PLAN §11.3 D and E — the last two stages of THE FIELD. **THE EDGE (D)**: a box room's lattice
+used to sit at offset 0 or half a cell, whichever gave the most cells; an OUT partial cell is a ROCK COLUMN filling
+its whole cell, so its inside share stood INSIDE the room in front of the true wall (the hold: a metre of rock proud
+of BOTH long walls; a door in that wall buried). data.js `hqFieldBoxInfo`'s `axis` now picks the offset per axis
+among the exact alignments (a wall on an edge, the two partials shared, 0, half) then a 0.05 m sweep by the rock
+PROUD of the walls — `HQ_FIELD_RULES.box.edgeSnap` 0.3 (flush) / `proudMax` 0.8 (the bound the test proves — a
+residue r < 0.8 m goes on ONE wall, r ≥ 0.8 splits into two IN partials, nothing proud) / `doorWeight` 3 (a wall
+with doors stays flush when the other is free) / `sweep`; `bi.edges = { w, e, n, s: { proud, flush, doors, at } }`,
+`bi.colsX / colsZ`. **THE RIM + THE DOORS ON THE FRAME** (`hqFieldRimBox`, run by `hqFieldRasterBox`): every OUT
+cell touching an IN cell wears `edge: 'wall'` + `proud`; `R.doors` = every room door whose landing lies in the
+window (`{ id, wall, rim, x, y, inX, inY, proud, flush, link, wide }`, the rim cell marked `door`) — a RECORD only
+(rule §10: the rim IS rock in the engine; `entry.field.doors / edges / dump`). **THE DUMP**: `hqFieldDump(R,
+{ walker, target, seats })` (8 lines: `#` rock · `%` rock proud > edgeSnap · `.` floor · `1`/`2` up · `!` hazard ·
+`D` a door's rim cell · W / T / a / b); **`node check-field-windows.js [--all] [--json] [room]`** prints every
+wild room's window from its door landings — stage D's acceptance grid, the user's to read; `--json` is what the
+test reads (never `process.exit` after prints in a tool the test spawns — a draining pipe lost the tail under
+the parallel run). hq-field.test.js proves LEGALITY FROM EVERYWHERE (every cell the walker can stand on in every
+wild room: both feet in, the walker's cell IN, reach ≥ 8, both squads of four seated; ≥ 1500 windows). Fixed on
+the way: **a lead never displaces the other lead** (`hqEncounterSeats` holds the native's cell while the walker
+is nudged off a table top). NOT built, by decision: the thin-wall primitive on the rim (a thin wall is vaulted /
+hovered over / breached — a floor strip behind the true wall would not be sealed; the rock column is the honest
+cell, the true wall is §10 stage 4's) and the door as the party's ARRIVAL threshold (superseded by the user's
+seat rule, Delivery 6). **THE HUD OF THE FIELD (E)**: the scoreboard's mode line reads THE FIELD · TEAM
+DEATHMATCH while an encounter is live (hud.js reads battle.js `_ewEncounterField()` + `HQ_FIELD_RULES.hudLabel`),
+the result stamp reads HELD / EXITED · THE ENCOUNTER · the room · the native with the mastery flag after it
+(battle.js `_stampHqSite` READS `window._hqEncounterResult`, never consumes it — the return spends it; a Code Red
+cleared still outranks), the pause menu's OFFICER row says LAST <RACE> IN <ROOM>. **`hqEncounterRoomLabel
+(roomId)`** (data.js, on `window`) is the ONE wording for where a fight was (a room's label; a site's board room
+the site's label; never an id). `npm test` runs hq-field.test.js (18). UNSEEN LIVE (RULE #1c): the residue wall
+(the attic's north, the casino's east, the subway's north — 0.25–0.75 m of wall sheet before the true wall), the
+scoreboard line's width with the tag, the stamp's length on the card.
