@@ -8225,3 +8225,73 @@ is always two colours.
   ceiling, the aperture's brightness, the open leaf lying in the floor,
   the fall's speed in a tall room, a wall door's drop to the floor, and
   the two colours against each room's own light.
+
+### 2026-09-16 — THE VISUAL PASS: backwards desks, floating props, the sideways train, the half-size cars (three-renderer.js, data.js, index.html; hq-visual-pass.test.js, playtest_hq_offline.js)
+
+The user's second look at the building: "people sitting at backwards desks, items
+floating off desks in the air, food trays floating off the counter, the subways
+turned sideways, the vehicles too small on their maps." Every one of those was a
+CONVENTION the placer assumed and nobody measured. Four rules replace the guesses:
+- **THE KIT TILE** (three-renderer.js `_hzKitTs` / `_hzKitTile()`): every misc-kit,
+  door-kit and vehicle helper sized itself against `CONFIG.tileSize` — the BATTLE's
+  tile (58 px on the menu). A walkable site room builds its setting at ITS tile
+  (1.75 m × 73 = 127.75), so every vehicle, utility box, rover, lander and palm in
+  a site room landed at ~45 % of its size. `_hqBuildSetting` sets the kit tile
+  round the near builder (try / finally); `_hzMiscKit` / `_hzDoorKitGLB` /
+  `_hzVehicleProc` / the beacon read it first. Measured offline (the stand-in
+  boxes at the room's tile): the Downtown SUV is 4.91 m long in the room now.
+- **THE VEHICLE TURN** (`_VEHICLE_KIT` `yaw: Math.PI / 2` on all nine; catalogue
+  `car_*` rows `turn: 90`): the batch shipped as "nose +Z" and the subway lay
+  ACROSS the tunnel's track. Every long Meshy piece this project has measured
+  lies along X with its front at −X (the cannon, the rowboat, the wreck, the
+  crane, the skateboard), so the whole batch turns +90°. UNMEASURED (RULE #1c —
+  the CDN is blocked from the sandbox): a nose that lands backward is `-π/2` on
+  its kit row / `turn: -90` on its catalogue row — one field.
+- **THE FRONT OFF THE MESH** (`_hqAutoFrontYaw(inst, mode)`, catalogue `front`):
+  a GLB's facing is MEASURED off its own vertices once it lands — `'back'` (every
+  chair and couch: the backrest is the centroid of the band above 62 % of the
+  height; the front is the other way) or `'open'` (the round cubicle: the side
+  band with the least geometry between desk and partition height is the
+  opening) — and the instance is turned so that front is local +Z, the placer's
+  contract, snapped to 90°. Verified on synthetic chairs / cubicles facing all
+  four ways with real three r128 (hq-visual-pass.test.js). The cubicle floor's
+  rows now say which way the mouth points (`face` 180 north row / 0 south row)
+  and the shift sits AT the mouth (z ±0.85 / 0.95, chairs = spots).
+- **THE TABLETOP SEAT** (`_hqSeatTabletops` / `_hqSeatLater`, `_hq.tabletops`):
+  a raised small prop (`y` ≥ 0.25, `foot` ≤ 0.35, not a wall / ceiling prop) is
+  registered and, once the furniture has landed (procs at once, GLBs as they
+  arrive, debounced), a ray from 0.45 m above its authored height finds the
+  nearest surface within ±0.3 m and the prop drops / lifts onto it — a desk top,
+  a tray rail, a shelf; never the floor, never a shelf a metre off. `EW_HQ_DEBUG`
+  logs the rows that have NOTHING under them (the offline probe prints them).
+- **THE ROOMS RE-LAID**: Room 86's serving line is a real `serving_line` proc
+  (a 3 m stainless counter: hot wells under warm lamps, a sneeze guard on chrome
+  posts, THE TRAY SLIDE at 0.85 m on three tube rails; two runs; the trays ON the
+  slide — they were four tanker desks with the trays typed 0.55 m in front of them
+  in the air); Room 4C's `exec_desk` is CENTRED and a FLOOR prop with the
+  drawers on the Director's side and the modesty panel to the room (it was built
+  0…D as a wall proc, so it stood half a metre out with its drawer pulls toward
+  the visitors, and the two visitor chairs faced the door — they face the
+  Director now); Room ?'s clerk sat in FRONT of a wall desk facing the room with
+  the found things typed at her chair — the desk is a floor prop across the
+  room, the clerk behind it, the things on it, the claims counter on the
+  visitors' side; the orphans typed past their desk's end (the foyer lamp and
+  mug, the Bureau's phone and lamp, the H-Wing office, the break room's radio,
+  the dream lab's clipboard, Records' shelf overflow) moved onto their furniture.
+- **Screenshots (offline)**: `playtest_hq_offline.js` (repo tooling — the
+  CDN is blocked from the sandbox now: libs from node_modules, stand-in
+  textures, GLBs 404, `--nogltf` = the kit's procedural stand-ins) photographed
+  the serving line, the executive desk and the claims desk; the vehicle stand-in
+  measured in the Downtown room. The GLB chairs, the cubicle, the cars and the
+  train themselves are UNSEEN (RULE #1c).
+- **Tests**: `hq-visual-pass.test.js` (6); doorhq.test.js's cafeteria list and
+  corner-office rows updated. Full suite green.
+- **Delivery:** `ENTROPY_WARS_HQ_VISUAL_PASS.zip` — three-renderer.js, data.js →
+  R2; index.html (`?v=20260916-hq-visual-pass-01-cors`) → Render;
+  hq-visual-pass.test.js, doorhq.test.js, playtest_hq_offline.js, this file,
+  MODEL_INDEX.md, PLAYTEST_NOTES.md, CLAUDE.md → the repo.
+- **Unseen live (RULE #1c):** the measured chair fronts on the real Meshy chairs
+  (a chair with arms as tall as its back would read as symmetric and stay as
+  placed), the round cubicle's opening, every car's nose, the train arriving
+  nose first, the serving line's chrome under the real sheet, the seat pass on
+  the span-fitted tables.

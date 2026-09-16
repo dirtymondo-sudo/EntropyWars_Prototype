@@ -1976,7 +1976,7 @@ test('Room 86 is a box room off the ground ring at 75°: the way in, the way out
     assert.ok(ROOM.props.some(p => p.key === 'vending_machine' && (p.level || 0) === 0), 'the hall keeps its vending machine');
     /* 7.11's build sheet, every row */
     const has = key => CAFE.props.filter(p => p.key === key).length;
-    for (const key of ['tanker_desk', 'reception_wedge', 'cash_register', 'meal_tray', 'meal_tray_empty', 'observation_window', 'microwave', 'coffee_maker',
+    for (const key of ['serving_line', 'reception_wedge', 'cash_register', 'meal_tray', 'meal_tray_empty', 'observation_window', 'microwave', 'coffee_maker',
                        'round_fridge', 'mini_fridge', 'hook_rail_long', 'conference_table', 'cafeteria_chair', 'molded_chair', 'coffee_mug', 'solo_cup', 'trash_bin',
                        'rug_office', 'potted_plant', 'palm_tree', 'picture_round_a', 'notice_board', 'wall_clock', 'exit_sign', 'vent_grille', 'vending_machine', 'fluorescent']) {
         assert.ok(has(key) >= 1, 'Room 86 has its ' + key);
@@ -2944,13 +2944,13 @@ test('Room 4C is THE CORNER OFFICE off the lobby: the in-tray moved up, the plaq
     assert.ok(!CO.counters.some(c => c.id === 'intray') && OFFICE.counters.some(c => c.id === 'intray' && c.action.overlay === 'intray'), 'the in-tray has one home: Room 101');
     assert.ok(pq && !pq.action.fn && !pq.action.overlay && pq.verb && pq.desc, 'THE PLAQUES are a panel of their own (the achievements open in Room 111)');
     assert.ok(vw && !vw.action.fn && !vw.action.overlay && !vw.action.room && vw.desc, 'THE WINDOW has a panel and no action');
-    assert.ok(CO.props.some(p => p.key === 'exec_desk' && p.wall === 'n' && Math.abs(p.x - tray.x) < 0.3), 'the desk under the in-tray counter');
+    assert.ok(CO.props.some(p => p.key === 'exec_desk' && p.wall == null && p.z < -1.0 && Math.abs(p.x - tray.x) < 0.3), 'the desk under the in-tray counter');
     assert.ok(CO.props.some(p => p.key === 'exec_chair' && Math.abs(p.x - tray.x) < 0.3 && p.z < -1.8), 'the chair behind the desk');
     assert.ok(CO.props.filter(p => p.key === 'wall_plaques' && p.wall === 's').length === 2, 'two plaque boards on the south wall');
     assert.ok(CO.props.some(p => p.key === 'wall_plaques' && Math.abs(p.x - pq.x) < 1.2), 'the plaques counter stands at the boards');
     assert.ok(CO.props.filter(p => p.key === 'false_window').length === 2 && CO.props.some(p => p.key === 'false_window' && p.wall === 'e' && Math.abs(p.z - vw.z) < 0.3) && CO.props.some(p => p.key === 'false_window' && p.wall === 'n'), 'two windows — a corner has two outside walls; the counter stands at the east one');
     assert.ok(CO.props.every(p => p.y == null || p.y < 0.5 || Math.abs(p.y - 0.76) < 0.01), 'desk props sit at the executive desk’s top (0.76)');
-    assert.ok(HQ.catalogue.exec_desk.wall && HQ.catalogue.exec_desk.block && HQ.catalogue.exec_desk.depth > 0.9, 'the desk is a wall proc the walker cannot enter');
+    assert.ok(HQ.catalogue.exec_desk.wall == null && HQ.catalogue.exec_desk.block && HQ.catalogue.exec_desk.rect && HQ.catalogue.exec_desk.rect.hd > 0.45, 'the desk is a floor proc (2026-09-16: centred, the drawers to the sitter) the walker cannot enter');
     assert.ok(HQ.catalogue.exec_chair.block && HQ.catalogue.exec_chair.foot > 0.3, 'the chair blocks');
     for (const k of ['wall_plaques', 'false_window']) assert.ok(HQ.catalogue[k].wall && !HQ.catalogue[k].block && HQ.catalogue[k].mount > 0, k + ' is a wall proc');
     const has = key => CO.props.filter(p => p.key === key).length;

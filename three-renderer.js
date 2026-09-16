@@ -22199,9 +22199,20 @@ const ThreeRenderer = (function () {
     // `fallback` = the procedural builder used when the loader is missing or
     // low-performance mode skips the download (`low: 'skip'` — scenery that
     // has a procedural stand-in; on-board cover NEVER passes it).
+    /* THE KIT TILE (2026-09-16, the visual pass): every misc-kit / door-kit /
+       vehicle helper sizes itself in TILES ("metres / 1.75 × ts"), and `ts`
+       used to be the BATTLE's tile (CONFIG.tileSize — 58 px on the menu,
+       the last board's in a match). A walkable SITE ROOM builds its setting
+       at ITS tile (HQ_TILE_M × the room's units = 127.75), so every vehicle,
+       utility box, rover, lander and palm in a site room landed at ~45 % of
+       its size ("the cars are too small on their maps"). `_hzKitTs` is the
+       tile the CURRENT build runs at: _hqBuildSetting sets it round the
+       near builder (try / finally) and every kit helper reads it first. */
+    var _hzKitTs = 0;
+    function _hzKitTile() { return _hzKitTs || CONFIG.tileSize || BASE_TILE; }
     function _hzMiscKit(key, o) {
         o = o || {};
-        var ts = CONFIG.tileSize || BASE_TILE, rng = o.rng || Math.random;
+        var ts = _hzKitTile(), rng = o.rng || Math.random;
         var off = !_MISC_GLB[key] || typeof THREE.GLTFLoader !== 'function' ||
                   (typeof window !== 'undefined' && window.EW_PERF_LOW && o.low === 'skip');
         if (off) return o.fallback ? (o.fallback(rng) || new THREE.Group()) : new THREE.Group();
@@ -22241,20 +22252,27 @@ const ThreeRenderer = (function () {
     // Lambert (a black SUV under a night sky is a black hole otherwise).
     // The facings are TARGETS (unseen — RULE #1c): if a nose lands
     // backward, `yaw: Math.PI`; sideways, ±Math.PI / 2 — one field.
+    // 2026-09-16 (the visual pass): the batch shipped at `yaw: 0` (= "the
+    // model's nose is +Z") and the subway lay ACROSS its track. Every long
+    // Meshy piece this project has measured lies along X with its front at
+    // −X (the cannon's muzzle, the rowboat's and the wreck's bow, the
+    // crane's jib, the skateboard's length — MODEL_INDEX), so the whole
+    // batch wears `yaw: Math.PI / 2` now (−X → +Z). A nose that lands
+    // BACKWARD (the front was +X) is `-Math.PI / 2` on that row.
     var _VEHICLE_KIT = {
-        suv:          { m: 4.9, yaw: 0, foot: 1.2, w: 2.0, h: 1.8, color: 0x141416, lift: 0.22 },
-        cadillac:     { m: 5.6, yaw: 0, foot: 1.3, w: 2.0, h: 1.4, color: 0x101012, lift: 0.22 },
-        copcar:       { m: 5.0, yaw: 0, foot: 1.2, w: 1.9, h: 1.5, color: 0xe8e8ec, lift: 0.16, beacon: true },
-        cybercar:     { m: 4.6, yaw: 0, foot: 1.1, w: 2.0, h: 1.2, color: 0x2a1a3a, lift: 0.3 },
-        firetruck:    { m: 9.0, yaw: 0, foot: 2.2, w: 2.5, h: 3.4, color: 0xc81e1e, lift: 0.16, beacon: true },
-        schoolbus:    { m: 10.5, yaw: 0, foot: 2.5, w: 2.5, h: 3.0, color: 0xf2b820, lift: 0.14 },
-        ambulance:    { m: 6.2, yaw: 0, foot: 1.5, w: 2.3, h: 2.6, color: 0xf4f4f0, lift: 0.16, beacon: true },
-        subway_front: { m: 12.0, yaw: 0, foot: 3.0, w: 2.6, h: 3.2, color: 0xb8bcc0, lift: 0.2 },
-        subway_cart:  { m: 12.0, yaw: 0, foot: 3.0, w: 2.6, h: 3.2, color: 0xb8bcc0, lift: 0.2 }
+        suv:          { m: 4.9, yaw: Math.PI / 2, foot: 1.2, w: 2.0, h: 1.8, color: 0x141416, lift: 0.22 },
+        cadillac:     { m: 5.6, yaw: Math.PI / 2, foot: 1.3, w: 2.0, h: 1.4, color: 0x101012, lift: 0.22 },
+        copcar:       { m: 5.0, yaw: Math.PI / 2, foot: 1.2, w: 1.9, h: 1.5, color: 0xe8e8ec, lift: 0.16, beacon: true },
+        cybercar:     { m: 4.6, yaw: Math.PI / 2, foot: 1.1, w: 2.0, h: 1.2, color: 0x2a1a3a, lift: 0.3 },
+        firetruck:    { m: 9.0, yaw: Math.PI / 2, foot: 2.2, w: 2.5, h: 3.4, color: 0xc81e1e, lift: 0.16, beacon: true },
+        schoolbus:    { m: 10.5, yaw: Math.PI / 2, foot: 2.5, w: 2.5, h: 3.0, color: 0xf2b820, lift: 0.14 },
+        ambulance:    { m: 6.2, yaw: Math.PI / 2, foot: 1.5, w: 2.3, h: 2.6, color: 0xf4f4f0, lift: 0.16, beacon: true },
+        subway_front: { m: 12.0, yaw: Math.PI / 2, foot: 3.0, w: 2.6, h: 3.2, color: 0xb8bcc0, lift: 0.2 },
+        subway_cart:  { m: 12.0, yaw: Math.PI / 2, foot: 3.0, w: 2.6, h: 3.2, color: 0xb8bcc0, lift: 0.2 }
     };
     /* the stand-in: a lit box on four dark wheels, nose +Z, in the kit's colour */
     function _hzVehicleProc(kind) {
-        var V = _VEHICLE_KIT[kind] || _VEHICLE_KIT.suv, ts = CONFIG.tileSize || BASE_TILE, k = ts / 1.75;
+        var V = _VEHICLE_KIT[kind] || _VEHICLE_KIT.suv, ts = (typeof _hzKitTile === 'function') ? _hzKitTile() : (CONFIG.tileSize || BASE_TILE), k = ts / 1.75;
         var g = new THREE.Group();
         var body = new THREE.Mesh(new THREE.BoxGeometry(V.w * k, V.h * 0.62 * k, V.m * k), _hzLit(null, V.color));
         body.position.y = (0.35 + V.h * 0.31) * k; g.add(body);
@@ -22285,7 +22303,7 @@ const ThreeRenderer = (function () {
         g._ew_footM = (o.foot != null) ? o.foot : V.foot; g._ew_vehicle = kind;
         /* the emergency beacon: a slow red-blue pulse over the roof, on the board only (a room hangs its own lights) */
         if (V.beacon && o.beacon !== false && typeof _hzGlowSprite === 'function') {
-            var ts = CONFIG.tileSize || BASE_TILE, k = ts / 1.75;
+            var ts = (typeof _hzKitTile === 'function') ? _hzKitTile() : (CONFIG.tileSize || BASE_TILE), k = ts / 1.75;
             var red = _hzGlowSprite(0.9 * k, 0xff3040, 0.55, 0.0, 0.0, 0.0), blue = _hzGlowSprite(0.9 * k, 0x3060ff, 0.55, 0.0, 0.0, 0.0);
             red.position.set(-0.35 * k, (V.h + 0.25) * k, 0); blue.position.set(0.35 * k, (V.h + 0.25) * k, 0); g.add(red, blue);
             if (typeof _hzPulse === 'function') { _hzPulse(red.material, red, 0.45, 0.1, 1.6); _hzPulse(blue.material, blue, 0.45, 0.1, 1.6); }
@@ -22307,7 +22325,7 @@ const ThreeRenderer = (function () {
     // overrides the catalogue's span / height rule.
     function _hzDoorKitGLB(key, o) {
         o = o || {};
-        var ts = CONFIG.tileSize || BASE_TILE, mPerTs = 1.75;
+        var ts = _hzKitTile(), mPerTs = 1.75;
         var cat = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.catalogue) ? DOOR_HQ.catalogue[key] : null;
         var skip = typeof window !== 'undefined' && window.EW_PERF_LOW && o.low === 'skip';
         if (!cat || !cat.file || typeof _hqModelUrl !== 'function' || typeof THREE.GLTFLoader !== 'function' || skip) {
@@ -38161,7 +38179,10 @@ const ThreeRenderer = (function () {
         var ctx = { cx: N * ts / 2, cz: N * ts / 2, ts: ts, bw: N, bh: N, rng: _mulberry32(seed >>> 0), discR: 6000,
                     hq: { w: NR.w, gap: NR.gap || 0, B: B, tints: (board && board.terrainTints) || null } };
         var pulse0 = _hzGlowPulse.length;
+        /* THE KIT TILE: the vehicles / door-kit GLBs size themselves against the tile of THIS build (see _hzKitTs) */
+        _hzKitTs = ts;
         try { build(g, ctx); } catch (e) { console.error('[HQ] setting failed', NR.key, e); }
+        finally { _hzKitTs = 0; }
         /* the glow pulses breathe under the HQ loop, not the battle's */
         _hzGlowPulse.splice(pulse0).forEach(function (p) { if (p && p.mat) H.fxPulse.push(p); });
         g.traverse(function (o) {
@@ -38389,6 +38410,49 @@ const ThreeRenderer = (function () {
             }
             var leg = _hqBox(0.06, h - 0.05, d - 0.1, body); leg.position.set((w / 2 - 0.05) * U, ((h - 0.05) / 2) * U, 0); g.add(leg);
             var mod = _hqBox(w - 0.5, h - 0.3, 0.03, body); mod.position.set(0.2 * U, ((h - 0.3) / 2 + 0.12) * U, -(d / 2 - 0.06) * U); g.add(mod);
+            return g;
+        },
+        /* THE SERVING LINE (Room 86, 2026-09-16 — "food trays floating in the
+           air off the counter"): the cafeteria's counter was four TANKER
+           DESKS (0.75 m deep) with the trays typed 0.55 m in FRONT of them.
+           This is a cafeteria line, 3 m per run, a WALL proc centred on its
+           1.15 m depth: the stainless body (0.9 m high, 0.75 deep) with
+           three hot wells under a warm lamp, a sneeze guard on chrome posts
+           over them, and THE TRAY SLIDE along the front — a 0.4 m ledge at
+           0.85 m on three chrome tube rails — where the trays go
+           (`y: 0.85`, z = the wall + 0.95; the seat pass would find it
+           anyway). Kick plate at the base; every top face is a surface the
+           tabletop seat can land on. */
+        serving_line: function (U) {
+            var g = new THREE.Group();
+            var W = 3.0, BD = 0.75, TOP = 0.9, SLIDE = 0.4, SY = 0.85, DEP = BD + SLIDE, z0 = -DEP / 2;   // the body from z0 to z0 + BD, the slide in front of it
+            var steel = _hqMat('aluminium', 3, 1, { color: 0xc9ccd0, shininess: 85, specular: 0xaaaaaa });
+            var dull = _hqMat('aluminium', 3, 1, { color: 0x9fa4aa, shininess: 40, specular: 0x666666 });
+            var dark = _hqMat(null, 1, 1, { color: 0x2a2c30, shininess: 20 });
+            var chrome = _hqMat(null, 1, 1, { color: 0xd6dadf, shininess: 100, specular: 0xffffff });
+            var zb = z0 + BD / 2;
+            var body = _hqBox(W, TOP - 0.12, BD, dull); body.position.set(0, ((TOP - 0.12) / 2 + 0.1) * U, zb * U); g.add(body);
+            var kick = _hqBox(W - 0.06, 0.1, BD - 0.1, dark); kick.position.set(0, 0.05 * U, zb * U); g.add(kick);
+            var top = _hqBox(W + 0.02, 0.03, BD + 0.02, steel); top.position.set(0, (TOP - 0.015) * U, zb * U); g.add(top);
+            /* the hot wells: three dark rectangles let into the top, a warm lamp over each (the food is a matter for the kitchen) */
+            var wellMat = new THREE.MeshPhongMaterial({ color: 0x3a2c22, emissive: 0x6a3a18, emissiveIntensity: 0.35, shininess: 60 });
+            [-1, 0, 1].forEach(function (i) {
+                var well = _hqBox(0.62, 0.012, 0.42, wellMat); well.position.set(i * 0.9 * U, (TOP + 0.002) * U, (zb - 0.03) * U); g.add(well);
+                var rim = _hqBox(0.68, 0.02, 0.48, chrome); rim.position.set(i * 0.9 * U, (TOP - 0.004) * U, (zb - 0.03) * U); g.add(rim);
+                var lampG = _hzGlowSprite(0.7 * U, 0xffb060, 0.28, 0.0, 0.0, 0.0); lampG.position.set(i * 0.9 * U, (TOP + 0.5) * U, (zb - 0.03) * U); g.add(lampG);
+            });
+            /* the sneeze guard: two chrome posts, a glass pane leaning over the wells, a warm-lamp bar under its lip */
+            var glass = new THREE.MeshPhongMaterial({ color: 0xdfeeff, transparent: true, opacity: 0.28, shininess: 140, specular: 0xffffff, side: THREE.DoubleSide, depthWrite: false });
+            [-1, 1].forEach(function (s) { var post = new THREE.Mesh(new THREE.CylinderGeometry(0.018 * U, 0.018 * U, 0.5 * U, 10), chrome); post.position.set(s * (W / 2 - 0.12) * U, (TOP + 0.25) * U, (z0 + BD - 0.06) * U); g.add(post); });
+            var pane = _hqBox(W - 0.1, 0.42, 0.012, glass); pane.rotation.x = 0.55; pane.position.set(0, (TOP + 0.4) * U, (z0 + BD - 0.16) * U); g.add(pane);
+            var bar = _hqBox(W - 0.2, 0.03, 0.06, chrome); bar.position.set(0, (TOP + 0.5) * U, (z0 + BD - 0.06) * U); g.add(bar);
+            var lamp = _hqBox(W - 0.3, 0.012, 0.03, new THREE.MeshBasicMaterial({ color: 0xffc070 })); lamp.position.set(0, (TOP + 0.485) * U, (z0 + BD - 0.04) * U); g.add(lamp);
+            /* THE TRAY SLIDE: a ledge on brackets, three tube rails along it */
+            var zs = z0 + BD + SLIDE / 2;
+            var ledge = _hqBox(W, 0.03, SLIDE, steel); ledge.position.set(0, (SY - 0.015) * U, zs * U); g.add(ledge);
+            [0.08, 0.2, 0.32].forEach(function (d) { var tube = new THREE.Mesh(new THREE.CylinderGeometry(0.012 * U, 0.012 * U, W * U, 8), chrome); tube.rotation.z = Math.PI / 2; tube.position.set(0, (SY + 0.012) * U, (z0 + BD + d) * U); g.add(tube); });
+            [-1, 0, 1].forEach(function (i) { var br = _hqBox(0.05, 0.06, SLIDE - 0.05, dark); br.position.set(i * (W / 2 - 0.2) * U, (SY - 0.06) * U, zs * U); g.add(br); });
+            var lip = _hqBox(W, 0.05, 0.02, chrome); lip.position.set(0, (SY + 0.01) * U, (z0 + DEP - 0.01) * U); g.add(lip);
             return g;
         },
         floor_drain: function (U) {
@@ -39107,20 +39171,34 @@ const ThreeRenderer = (function () {
            modesty panel, a leather inlay on the top (top at 0.76 — desk
            props sit at y: 0.76), a brass rail at the back edge. Wall proc
            (front +z), depth 1.05. */
+        /* THE EXECUTIVE DESK (4C) — re-authored 2026-09-16 (the visual pass:
+           "people sitting at backwards desks"). It was built from z 0 to z D
+           as a WALL prop, so the placer (which centres a proc on its depth)
+           stood it half a metre further into the room than its row said,
+           with the drawer fronts toward the VISITORS and the Director behind
+           a modesty panel. Now it is CENTRED (z −D/2 … +D/2) and a FLOOR
+           prop: the drawers and the knee-hole face −z (the sitter's side —
+           the chair behind it, the wall behind the chair), the modesty
+           panel and the brass gallery rail face +z (the room, the visitors'
+           chairs). `face: 180` puts the visitors' side to the south. */
         exec_desk: function (U) {
             var g = new THREE.Group();
             var W = 2.4, D = 1.05, TOP = 0.76, T = 0.05;
             var walnut = _hqMat('wood', 3, 1.5, { color: 0x5a3a26, shininess: 45, specular: 0x554433 });
             var leather = _hqMat('leather', 4, 2, { color: 0x3a2a22, shininess: 30, specular: 0x333333 });
             var brass = _hqMat(null, 1, 1, { color: 0xb08d4a, shininess: 110, specular: 0xffe7b0 });
-            var top = _hqBox(W, T, D, walnut); top.position.set(0, (TOP - T / 2) * U, (D / 2) * U); g.add(top);
-            var inlay = _hqBox(W - 0.5, 0.006, D - 0.4, leather); inlay.position.set(0, (TOP + 0.003) * U, (D / 2 + 0.05) * U); g.add(inlay);
-            [-1, 1].forEach(function (s) { var ped = _hqBox(0.55, TOP - T, 0.9, walnut); ped.position.set(s * (W / 2 - 0.3) * U, ((TOP - T) / 2) * U, (D / 2) * U); g.add(ped);
-                for (var k = 0; k < 3; k++) { var dr = _hqBox(0.42, 0.16, 0.01, walnut); dr.position.set(s * (W / 2 - 0.3) * U, (0.14 + k * 0.22) * U, (D - 0.04) * U); g.add(dr);
-                    var pull = _hqBox(0.08, 0.02, 0.015, brass); pull.position.set(s * (W / 2 - 0.3) * U, (0.14 + k * 0.22) * U, (D - 0.03) * U); g.add(pull); } });
-            var modesty = _hqBox(W - 1.1, TOP - 0.25, 0.03, walnut); modesty.position.set(0, ((TOP - 0.25) / 2 + 0.2) * U, 0.35 * U); g.add(modesty);
-            var rail = new THREE.Mesh(new THREE.CylinderGeometry(0.012 * U, 0.012 * U, (W - 0.2) * U, 8), brass); rail.rotation.z = Math.PI / 2; rail.position.set(0, (TOP + 0.05) * U, 0.05 * U); g.add(rail);
-            [-1, 1].forEach(function (s) { var post = new THREE.Mesh(new THREE.CylinderGeometry(0.01 * U, 0.01 * U, 0.05 * U, 8), brass); post.position.set(s * (W / 2 - 0.12) * U, (TOP + 0.025) * U, 0.05 * U); g.add(post); });
+            var top = _hqBox(W, T, D, walnut); top.position.set(0, (TOP - T / 2) * U, 0); g.add(top);
+            var inlay = _hqBox(W - 0.5, 0.006, D - 0.4, leather); inlay.position.set(0, (TOP + 0.003) * U, -0.05 * U); g.add(inlay);
+            [-1, 1].forEach(function (s) {
+                var ped = _hqBox(0.55, TOP - T, 0.9, walnut); ped.position.set(s * (W / 2 - 0.3) * U, ((TOP - T) / 2) * U, 0); g.add(ped);
+                for (var k = 0; k < 3; k++) {                                                  // the drawers open toward the sitter (−z)
+                    var dr = _hqBox(0.42, 0.16, 0.01, walnut); dr.position.set(s * (W / 2 - 0.3) * U, (0.14 + k * 0.22) * U, -(0.45 + 0.005) * U); g.add(dr);
+                    var pull = _hqBox(0.08, 0.02, 0.015, brass); pull.position.set(s * (W / 2 - 0.3) * U, (0.14 + k * 0.22) * U, -(0.45 + 0.015) * U); g.add(pull);
+                }
+            });
+            var modesty = _hqBox(W - 1.1, TOP - 0.25, 0.03, walnut); modesty.position.set(0, ((TOP - 0.25) / 2 + 0.2) * U, (D / 2 - 0.2) * U); g.add(modesty);   // the visitors see walnut, not knees
+            var rail = new THREE.Mesh(new THREE.CylinderGeometry(0.012 * U, 0.012 * U, (W - 0.2) * U, 8), brass); rail.rotation.z = Math.PI / 2; rail.position.set(0, (TOP + 0.05) * U, (D / 2 - 0.08) * U); g.add(rail);
+            [-1, 1].forEach(function (s) { var post = new THREE.Mesh(new THREE.CylinderGeometry(0.01 * U, 0.01 * U, 0.05 * U, 8), brass); post.position.set(s * (W / 2 - 0.12) * U, (TOP + 0.025) * U, (D / 2 - 0.08) * U); g.add(post); });
             return g;
         },
         /* THE EXECUTIVE CHAIR (4C): a high leather back on a five-star
@@ -41685,10 +41763,101 @@ const ThreeRenderer = (function () {
     }
 
     /* ── props: the Meshy kit, placed from the layout table ─────────────── */
+    /* THE FRONT OFF THE MESH (2026-09-16, the visual pass — "people sitting
+       at backwards desks"). A catalogue GLB's facing used to be a GUESS (the
+       placer assumes every model's front is +Z); the authored chairs and the
+       round cubicle were never measured, so a sitter could face the desk
+       with the chair's back between them. Now a row that says `front:
+       'back'` (a chair, a couch: the backrest is the centroid of the tallest
+       band — the FRONT is the other way) or `front: 'open'` (a cubicle, a
+       booth: the side band with the least geometry between desk and
+       partition height is the opening) is measured off its OWN vertices once
+       it has landed, and turned so that front lies on local +Z — the
+       placer's contract — snapped to the nearest 90° (models are
+       axis-aligned). `turn` (degrees) is a fixed pre-turn for a model whose
+       axes are known (the cars: Meshy's long axis is X, the front −X). */
+    function _hqAutoFrontYaw(inst, mode) {
+        var pts = [], v = new THREE.Vector3(), min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
+        function localMat(n) { var m = new THREE.Matrix4(), q = n; while (q && q !== inst) { q.updateMatrix(); m.premultiply(q.matrix); q = q.parent; } return m; }
+        inst.traverse(function (n) {
+            if (!n.isMesh || !n.geometry || !n.geometry.attributes || !n.geometry.attributes.position) return;
+            var pos = n.geometry.attributes.position, m = localMat(n), step = Math.max(1, Math.floor(pos.count / 24000));
+            for (var i = 0; i < pos.count; i += step) {
+                v.fromBufferAttribute(pos, i).applyMatrix4(m); pts.push(v.x, v.y, v.z);
+                if (v.x < min[0]) min[0] = v.x; if (v.x > max[0]) max[0] = v.x; if (v.y < min[1]) min[1] = v.y; if (v.y > max[1]) max[1] = v.y; if (v.z < min[2]) min[2] = v.z; if (v.z > max[2]) max[2] = v.z;
+            }
+        });
+        var n = pts.length / 3; if (n < 12) return 0;
+        var ex = max[0] - min[0] || 1, ey = max[1] - min[1] || 1, ez = max[2] - min[2] || 1;
+        var cx = (min[0] + max[0]) / 2, cz = (min[2] + max[2]) / 2, dx = 0, dz = 0, i;
+        if (mode === 'open') {
+            var y0 = min[1] + 0.35 * ey, y1 = min[1] + 0.9 * ey, band = 0.25, cnt = [0, 0, 0, 0];   // N (−z) · S (+z) · W (−x) · E (+x)
+            for (i = 0; i < n; i++) { var y = pts[i * 3 + 1]; if (y < y0 || y > y1) continue; var x = pts[i * 3], z = pts[i * 3 + 2];
+                if (z < min[2] + band * ez) cnt[0]++; if (z > max[2] - band * ez) cnt[1]++; if (x < min[0] + band * ex) cnt[2]++; if (x > max[0] - band * ex) cnt[3]++; }
+            var k = 0; for (i = 1; i < 4; i++) if (cnt[i] < cnt[k]) k = i;
+            dx = (k === 2) ? -1 : (k === 3) ? 1 : 0; dz = (k === 0) ? -1 : (k === 1) ? 1 : 0;
+        } else {
+            var yb = min[1] + 0.62 * ey, sx = 0, sz = 0, c = 0;
+            for (i = 0; i < n; i++) { if (pts[i * 3 + 1] < yb) continue; sx += pts[i * 3]; sz += pts[i * 3 + 2]; c++; }
+            if (!c) return 0;
+            dx = -(sx / c - cx); dz = -(sz / c - cz);                       // the backrest is at the back; the front is the other way
+            if (Math.hypot(dx, dz) < 0.04 * Math.max(ex, ez)) return 0;   // no backrest to speak of (a stool, a cot): leave it
+        }
+        var yaw = -Math.atan2(dx, dz);
+        return Math.round(yaw / (Math.PI / 2)) * (Math.PI / 2);
+    }
+    /* THE TABLETOP SEAT (2026-09-16 — "items floating off desks in the air",
+       "food trays floating off the counter"). A room prop with a hand-typed
+       `y` (a mug at 0.76) stands at that number whatever is really under it:
+       a span-fitted table lands at its own height, a wedge's work surface is
+       not its ledge, a desk that was moved leaves its lamp behind. Every
+       raised small prop (`foot` ≤ 0.35, not a wall / ceiling prop) is
+       registered here and, once the furniture has landed, SEATED: a ray
+       cast down from 0.45 m above its authored height finds the nearest
+       surface within ±0.3 m (a desk top, a tray rail, a shelf — never the
+       floor, never a shelf a metre off) and the prop drops / lifts onto it.
+       The authored `y` is still the author's intent (which surface); the
+       mesh is the truth (where). Re-run after every GLB that lands
+       (_hqSeatLater, debounced). Nothing under a prop = it stays where it
+       was typed (and says so under EW_HQ_DEBUG). */
+    var _hqSeatRay = null, _hqSeatTimer = 0;
+    function _hqSeatTabletops() {
+        var H = _hq; if (!H || !H.tabletops || !H.tabletops.length) return;
+        var U = _hqUnits(), rc = _hqSeatRay || (_hqSeatRay = new THREE.Raycaster());
+        var roots = [H.propGroup, H.shellGroup].filter(Boolean);
+        var wp = new THREE.Vector3(), down = new THREE.Vector3(0, -1, 0), moved = 0;
+        H.tabletops.slice().sort(function (a, b) { return a.y - b.y; }).forEach(function (t) {
+            if (!t.grp.parent) return;
+            t.grp.getWorldPosition(wp);
+            var yA = t.y * U;                                    // the authored height in world units (the group's y before any seat)
+            rc.set(new THREE.Vector3(wp.x, yA + 0.45 * U, wp.z), down); rc.near = 0; rc.far = 0.95 * U;
+            var best = null, hits = [];
+            for (var r = 0; r < roots.length; r++) { try { rc.intersectObject(roots[r], true, hits); } catch (e) { } }
+            for (var i = 0; i < hits.length; i++) {
+                var h = hits[i], o = h.object; if (!o || o.isSprite || o.isLine) continue;
+                var own = false, q = o; while (q) { if (q === t.grp) { own = true; break; } q = q.parent; }
+                if (own) continue;
+                var d = Math.abs(h.point.y - yA);
+                if (d > 0.3 * U) continue;
+                if (!best || d < best.d) best = { d: d, y: h.point.y };
+            }
+            if (best) {
+                var ny = best.y + 0.003 * U;
+                if (Math.abs(t.grp.position.y - ny) > 0.002 * U) { t.grp.position.y = ny; moved++; }
+                t.seated = true;
+            } else if (!t.seated && typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.warn('[HQ] tabletop', t.key, 'in', H.opts && H.opts.room, 'has nothing under it at y', t.y);
+        });
+        if (moved) H.dirty = true;
+    }
+    function _hqSeatLater() {
+        if (_hqSeatTimer) return;
+        _hqSeatTimer = setTimeout(function () { _hqSeatTimer = 0; try { _hqSeatTabletops(); } catch (e) { console.warn('[HQ] seat pass', e); } }, 120);
+    }
     function _hqPlaceProps(room) {
         if (typeof window !== 'undefined' && window.EW_HQ_NO_PROPS) return;
         var U = _hqUnits(), S = room.shell, G = _hq.propGroup, D = _hqData();
         var isBox = room.kind === 'box';
+        _hq.tabletops = [];
         (room.props || []).forEach(function (p) {
             var cat = D.catalogue[p.key];
             if (!cat || (!cat.file && !cat.proc)) return;
@@ -41729,6 +41898,8 @@ const ThreeRenderer = (function () {
             if (isBox) grp.rotation.y = (box ? box.yaw : _hqHeadingYaw(p.face || 0)) - _hqRad(p.rot || 0);
             else grp.rotation.y = _hqFaceCentreYaw(p.deg) + (inward ? Math.PI : 0) - _hqRad(p.rot || 0);
             if (flip) grp.rotation.z = Math.PI;
+            /* THE TABLETOP SEAT: a raised small prop (a mug, a tray, a lamp, a box on a shelf) is seated on the surface under it once the room has landed */
+            var tabletop = !onWall && !onCeil && !flip && (p.y != null && p.y >= 0.25) && !(cat.foot > 0.35) && !cat.block && !cat.rect && !(cat.ceil) && !mount;   // never a structural piece (a stair tread, a landing, a raised desk on a riser)
             if (cat.proc) {
                 /* procedural: built in metres, no async fit */
                 var pg = _hqProcProp(cat.proc);
@@ -41745,12 +41916,14 @@ const ThreeRenderer = (function () {
                 }
                 G.add(grp);
                 _hq.props.push({ key: p.key, grp: grp });
+                if (tabletop) _hq.tabletops.push({ key: p.key, grp: grp, y: y });   // THE TABLETOP SEAT
                 _hqRegisterPropPark(p, cat, grp, y, U);   // SKATEBOARDING (9.8): a catalogue `rail` / `ramp`
                 /* the blocker's base is the prop's own `y` (Phase 8 stage 2: a stair step stacked by `y` is a column from its base, so the floor under a raised landing stays a floor) */
                 if (!flip && cat.foot > 0 && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0 + (p.y || 0), top: y + (cat.h || 1), rect: (p.rect === false) ? undefined : (cat.rect || undefined) });   // `rect` (2026-09-14): a rectangular footprint in room axes
                 return;
             }
             place(0.66);
+            if (tabletop) _hq.tabletops.push({ key: p.key, grp: grp, y: y });   // THE TABLETOP SEAT
             _hqRegisterPropPark(p, cat, grp, y, U);   // SKATEBOARDING (9.8): a catalogue `rail` (railing_1m) / `ramp`
             /* the collision disc carries the prop's TOP (2026-09-05): the
                catalogue height now, the measured skinned height once the GLB
@@ -41775,8 +41948,14 @@ const ThreeRenderer = (function () {
                             g.position.y = LX / 2 + lift; g.position.x = LY / 2;
                         } else g.position.y = lift;                 // already flat
                     }
+                    /* THE FRONT OFF THE MESH: `front: 'back' | 'open'` is measured, `turn` (degrees) is a known pre-turn — both turn the INSTANCE (centred on its own x / z), so the placement yaw keeps its meaning */
+                    var turned = 0;
+                    if (cat.front && !cat.lay) { try { turned = _hqAutoFrontYaw(g, cat.front); } catch (e) { turned = 0; } }
+                    if (cat.turn) turned += _hqRad(cat.turn);
+                    if (turned) g.rotation.y = turned;
+                    var quarter = Math.abs(Math.round(turned / (Math.PI / 2))) % 2 === 1;
                     if (onWall) {
-                        var depth = (bb.max.z - bb.min.z) * s / U;
+                        var depth = (quarter ? (bb.max.x - bb.min.x) : (bb.max.z - bb.min.z)) * s / U;
                         place(depth);
                     }
                     /* ceiling-hung: the loader sits models on y = 0, so drop by the model's height */
@@ -41784,7 +41963,7 @@ const ThreeRenderer = (function () {
                     if (flip) grp.position.y = y * U - ((cat.ceil || p.ceil) ? 0 : 0.01 * U);
                     /* the real top: the fitted height (a laid rug is thin-axis up, and has no disc anyway) */
                     if (blk && !cat.lay) blk.top = y + (bb.max.y - bb.min.y) * s / U;
-                    if (_hq) _hq.dirty = true;
+                    if (_hq) { _hq.dirty = true; _hqSeatLater(); }
                 }
             });
             grp.add(inst);
@@ -41796,6 +41975,7 @@ const ThreeRenderer = (function () {
             G.add(grp);
             _hq.props.push({ key: p.key, grp: grp });
         });
+        try { _hqSeatTabletops(); } catch (e) { console.warn('[HQ] seat pass', e); }   // the procedural furniture is in; the GLBs re-run it as they land
     }
 
     /* A ring of wedge props (plan 2.2): `cat.wedge` describes one annular

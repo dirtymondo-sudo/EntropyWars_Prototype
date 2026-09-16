@@ -4,6 +4,35 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## 🪑 THE VISUAL PASS — the offline HQ probe (2026-09-16, LATEST) — playtest_hq_offline.js, three-renderer.js, data.js
+
+The CDN is BLOCKED from the sandbox now (`CONNECT cdn.entropywars.net` → 403), so
+`playtest_hq.js`'s Node-side asset cache cannot fill. `node playtest_hq_offline.js
+<room> '<views json>' [--nogltf]` photographs a room anyway: repo scripts from disk,
+three r128 / React / socket.io from node_modules (`npm i --no-save three@0.128.0
+react@18 react-dom@18`), stand-in textures coloured by file name, every GLB a 404
+(procedural props only — the serving line, the desks, the shelves, the procs;
+`--nogltf` also removes `THREE.GLTFLoader` so the kit helpers build their
+STAND-INS, which is how the vehicle scale in a site room was measured: traverse
+`ThreeRenderer.hq.dev.hqScene()` for `_ew_vehicle` groups and read their Box3 ÷ 73).
+A view = `{ name, x, z, face, pitch, fp, dist }` (the `hq.dev.teleport` record; a
+third-person view inside a small room clips the boom into the wall — use `fp:
+true`). `EW_HQ_DEBUG` is set, so the TABLETOP SEAT prints every raised prop with
+nothing under it (`[HQ] tabletop <key> in <room> has nothing under it at y`) —
+with GLBs 404ing that list includes everything on a GLB desk; read it in a room
+whose furniture is procedural, or ignore the GLB rows. Findings that matter:
+- The placer assumes every GLB's front is +Z. It never was measured for the
+  chairs, the couches or the round cubicle — `front: 'back' | 'open'` measures it
+  now (three-renderer.js `_hqAutoFrontYaw`; synthetic check in
+  hq-visual-pass.test.js). A new seat / booth GLB = set `front`, never `rot`.
+- A hand-typed `y` is the author's intent, the mesh is the truth: `_hqSeatTabletops`
+  seats a raised small prop on the surface under it (±0.3 m). Type the surface
+  you mean; the number no longer has to be exact.
+- The kit helpers (`_hzMiscKit` / `_hzDoorKitGLB` / `_hzVehicle`) size in tiles
+  and read `_hzKitTile()` — a site room's setting runs at 127.75 units a tile,
+  the battle at CONFIG.tileSize. Never read `CONFIG.tileSize` in a helper a room
+  can call.
+
 ## 📋 THE TUTORIAL — ORIENTATION, DAY 1 (2026-09-13, LATEST) — data.js, ui.js, battle.js, state.js, hud.js, map.js, index.html, styles-base.css, styles-cinematic.css, tutorial.test.js, check-tutorial-drift.js
 Token → `20260913-tutorial-01-cors`. Main menu → TUTORIAL → the shelf: the
 ORIENTATION TAPE (ui.js `doorTapePlay`, `#doorTape`), three core lessons and

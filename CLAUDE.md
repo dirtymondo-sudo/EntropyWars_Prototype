@@ -3807,6 +3807,46 @@ lane. `npm test`: misc-models.test.js (the vehicle block), hq-world,
 hq-stage2. Unseen live (RULE #1c): every facing, the beacons, the
 arrival, the half-buried body.
 
+## THE HQ VISUAL PASS — the measured front, the tabletop seat, the kit tile, the vehicle turn (2026-09-16, local delivery)
+The user's look at the building: backwards desks, props floating off desks,
+trays floating off the counter, the subway sideways, the cars half-size on
+their maps. Every one was a placer CONVENTION nobody measured. **THE KIT
+TILE** (three-renderer.js `_hzKitTs` / `_hzKitTile()`): `_hzMiscKit` /
+`_hzDoorKitGLB` / `_hzVehicleProc` / the beacon size in TILES and read the
+CURRENT build's tile — `_hqBuildSetting` sets it round the near builder
+(try / finally; 127.75 in a site room, `CONFIG.tileSize` on the board).
+Never read `CONFIG.tileSize` in a helper a room can call: every vehicle,
+utility box, rover and palm in a site room was 45 % of its size. **THE
+VEHICLE TURN**: `_VEHICLE_KIT` rows wear `yaw: Math.PI / 2` (Meshy lays a
+long model along X, front −X — every measured piece: the cannon, the
+rowboat, the wreck, the crane, the skateboard) and the catalogue `car_*`
+rows `turn: 90` (the placer applies `turn`, degrees, to the INSTANCE);
+unmeasured — a nose that lands backward is `-π/2` / `turn: -90`, one
+field. **THE FRONT OFF THE MESH** (`_hqAutoFrontYaw(inst, mode)`, catalogue
+`front: 'back' | 'open'`): a GLB seat's facing is MEASURED when it lands
+(backrest = the centroid of the band above 62 % of the height, the front
+is the other way; a cubicle's opening = the emptiest side band between
+desk and partition height) and the instance is turned so that front is
+local +Z, the placer's contract — every chair / couch row and
+`round_cubicle` carry it; a new seat / booth GLB = set `front`, never guess
+`rot`. **THE TABLETOP SEAT** (`_hqSeatTabletops` / `_hqSeatLater`,
+`_hq.tabletops`): a raised small prop (`y` ≥ 0.25, `foot` ≤ 0.35, not
+block / rect / wall / ceiling) is seated on the surface a ray finds within
+±0.3 m of its authored height once the furniture has landed (procs at
+once, each GLB as it arrives, debounced) — type the surface you MEAN, the
+mesh decides where; `EW_HQ_DEBUG` logs the rows with nothing under them.
+**THE ROOMS**: Room 86's counter is the `serving_line` proc (3 m: hot
+wells, sneeze guard, THE TRAY SLIDE at 0.85 m — trays at z = wall + 0.95),
+Room 4C's `exec_desk` is centred, a FLOOR prop, drawers to the sitter,
+modesty panel to the room, the visitors' chairs face the Director; Room
+?'s clerk sits BEHIND her desk; the cubicle floor's `face` names the way
+each mouth points and the shift sits at the mouth. Offline screenshots:
+`node playtest_hq_offline.js <room> '<views>' [--nogltf]` (repo tooling —
+the CDN is blocked from the sandbox; see PLAYTEST_NOTES "THE VISUAL
+PASS"). `npm test` runs `hq-visual-pass.test.js`. UNSEEN LIVE (RULE #1c):
+the real chairs' measured fronts, the cubicle's opening, every car's nose,
+the train arriving nose first, the seat pass on the span-fitted tables.
+
 ## THE MIXER — per-song / per-cue master levels (dev tool, Settings → Audio) — 2026-09-16, local delivery
 The songs and the cues were not mastered at one loudness. audio.js "THE
 MIXER" block (right after `audioFadeVersion`): **`_mixLevel(channel, key,

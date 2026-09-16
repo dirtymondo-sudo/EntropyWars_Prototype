@@ -18284,11 +18284,16 @@ const DOOR_HQ = {
         round_desk:        { file: 'Meshy_AI_A_round_office_desk_0903092905_texture.glb',             h: 0.76, foot: 0.85 },
         coffee_table:      { file: 'Meshy_AI_a_round_office_coffee_table_0903092838_texture.glb',     h: 0.46, foot: 0.55 },
         conference_table:  { file: 'Meshy_AI_a_long_black_oval_conference_table_0903092858_texture.glb', span: 3.2, foot: 1.2 },
-        teal_chair:        { file: 'Meshy_AI_a_teal_office_chair_0903105124_texture.glb',             h: 0.96, foot: 0.32 },
-        office_chair:      { file: 'Meshy_AI_an_office_chair_0903105134_texture.glb',                 h: 0.96, foot: 0.32 },
-        folding_chair:     { file: 'Meshy_AI_a_folding_chair_0903105155_texture.glb',                 h: 0.84, foot: 0.28 },
-        curved_couch:      { file: 'Meshy_AI_a_curved_couch_0903105529_texture.glb',                  span: 2.6, foot: 1.0 },
-        curved_office_couch:{ file: 'Meshy_AI_a_curved_office_couch_0903105539_texture.glb',          span: 2.6, foot: 1.0 },
+        /* `front: 'back'` (2026-09-16): a chair's / a couch's facing is MEASURED off
+           its own mesh when it lands (three-renderer.js _hqAutoFrontYaw — the
+           backrest is the tallest band's centroid, the front is the other way) and
+           the model is turned so that front is +Z, the placer's contract. Nobody sits
+           with the chair's back between them and the desk again. */
+        teal_chair:        { file: 'Meshy_AI_a_teal_office_chair_0903105124_texture.glb',             h: 0.96, foot: 0.32, front: 'back' },
+        office_chair:      { file: 'Meshy_AI_an_office_chair_0903105134_texture.glb',                 h: 0.96, foot: 0.32, front: 'back' },
+        folding_chair:     { file: 'Meshy_AI_a_folding_chair_0903105155_texture.glb',                 h: 0.84, foot: 0.28, front: 'back' },
+        curved_couch:      { file: 'Meshy_AI_a_curved_couch_0903105529_texture.glb',                  span: 2.6, foot: 1.0, front: 'back' },
+        curved_office_couch:{ file: 'Meshy_AI_a_curved_office_couch_0903105539_texture.glb',          span: 2.6, foot: 1.0, front: 'back' },
         filing_cabinet:    { file: 'Meshy_AI_a_filing_cabinet_0903105233_texture.glb',                h: 1.32, foot: 0.40, wall: true },
         round_cabinet:     { file: 'Meshy_AI_a_round_filing_cabinet_0903105248_texture.glb',          h: 1.10, foot: 0.45 },
         office_locker:     { file: 'Meshy_AI_an_office_locker_0903110307_texture.glb',                h: 1.85, foot: 0.40, wall: true },
@@ -18328,13 +18333,17 @@ const DOOR_HQ = {
            face 0 / 180 (nose along z); the yaw the model needs to put its nose
            at +Z is a TARGET (unseen) — the renderer's _VEHICLE_KIT owns it for
            the boards, `yaw` here (degrees) is the room's copy of the same fact. */
-        car_suv:           { file: 'Meshy_AI_a_black_SUV_0915195508_texture.glb',       base: 'misc', span: 4.9, foot: 1.2, rect: { hw: 1.0, hd: 2.45 }, block: true, vehicle: true },
-        car_cadillac:      { file: 'Meshy_AI_a_black_cadillac_0915195323_texture.glb',  base: 'misc', span: 5.6, foot: 1.3, rect: { hw: 1.0, hd: 2.8 },  block: true, vehicle: true },
-        car_cop:           { file: 'Meshy_AI_a_cop_car_0915195443_texture.glb',         base: 'misc', span: 5.0, foot: 1.2, rect: { hw: 0.95, hd: 2.5 }, block: true, vehicle: true, glow: { y: 1.6, size: 1.2, color: 0xff3040 } },
-        car_cyber:         { file: 'Meshy_AI_a_cyberpunk_car_0915195427_texture.glb',   base: 'misc', span: 4.6, foot: 1.1, rect: { hw: 1.0, hd: 2.3 },  block: true, vehicle: true, glow: { y: 0.4, size: 2.0, color: 0xff3ad8 } },
-        car_ambulance:     { file: 'Meshy_AI_an_ambulance_0915195334_texture.glb',      base: 'misc', span: 6.2, foot: 1.5, rect: { hw: 1.15, hd: 3.1 }, block: true, vehicle: true, glow: { y: 2.5, size: 1.2, color: 0xff3040 } },
-        fire_truck:        { file: 'Meshy_AI_a_fire_truck_0915195407_texture.glb',      base: 'misc', span: 9.0, foot: 2.2, rect: { hw: 1.25, hd: 4.5 }, block: true, vehicle: true },   // 3.4 m tall — the works' warehouse, never P1's 2.8 m
-        school_bus:        { file: 'Meshy_AI_a_school_bus_0915195620_texture.glb',      base: 'misc', span: 10.5, foot: 2.5, rect: { hw: 1.25, hd: 5.25 }, block: true, vehicle: true },
+        /* `turn: 90` (2026-09-16): a Meshy vehicle lies along X with its nose at −X
+           (every long piece this project measured — MODEL_INDEX); the placer turns the
+           instance +90° so the nose is +Z and `face` means what it says. A nose that
+           lands backward = `turn: -90` on that row (RULE #1c: unseen). */
+        car_suv:           { file: 'Meshy_AI_a_black_SUV_0915195508_texture.glb',       base: 'misc', span: 4.9, foot: 1.2, rect: { hw: 1.0, hd: 2.45 }, block: true, vehicle: true, turn: 90 },
+        car_cadillac:      { file: 'Meshy_AI_a_black_cadillac_0915195323_texture.glb',  base: 'misc', span: 5.6, foot: 1.3, rect: { hw: 1.0, hd: 2.8 },  block: true, vehicle: true, turn: 90 },
+        car_cop:           { file: 'Meshy_AI_a_cop_car_0915195443_texture.glb',         base: 'misc', span: 5.0, foot: 1.2, rect: { hw: 0.95, hd: 2.5 }, block: true, vehicle: true, turn: 90, glow: { y: 1.6, size: 1.2, color: 0xff3040 } },
+        car_cyber:         { file: 'Meshy_AI_a_cyberpunk_car_0915195427_texture.glb',   base: 'misc', span: 4.6, foot: 1.1, rect: { hw: 1.0, hd: 2.3 },  block: true, vehicle: true, turn: 90, glow: { y: 0.4, size: 2.0, color: 0xff3ad8 } },
+        car_ambulance:     { file: 'Meshy_AI_an_ambulance_0915195334_texture.glb',      base: 'misc', span: 6.2, foot: 1.5, rect: { hw: 1.15, hd: 3.1 }, block: true, vehicle: true, turn: 90, glow: { y: 2.5, size: 1.2, color: 0xff3040 } },
+        fire_truck:        { file: 'Meshy_AI_a_fire_truck_0915195407_texture.glb',      base: 'misc', span: 9.0, foot: 2.2, rect: { hw: 1.25, hd: 4.5 }, block: true, vehicle: true, turn: 90 },   // 3.4 m tall — the works' warehouse, never P1's 2.8 m
+        school_bus:        { file: 'Meshy_AI_a_school_bus_0915195620_texture.glb',      base: 'misc', span: 10.5, foot: 2.5, rect: { hw: 1.25, hd: 5.25 }, block: true, vehicle: true, turn: 90 },
         exit_sign:         { file: 'Meshy_AI_an_exit_sign_0903110032_texture.glb',                    span: 0.55, foot: 0, wall: true, mount: 2.75, glow: { y: 0.1, size: 0.6, color: 0x5cff7a } },
         fluorescent:       { file: 'Meshy_AI_a_fluorescent_fixture_0903105329_texture.glb',           span: 1.25, foot: 0, ceil: true },
         breaker_panel:     { file: 'Meshy_AI_a_breaker_panel_0903105436_texture.glb',                 h: 0.80, foot: 0, wall: true, mount: 1.25 },
@@ -18415,7 +18424,8 @@ const DOOR_HQ = {
         laminator:         { proc: 'laminator',      h: 0.24,    foot: 0 },   // Room 1: the laminator on the intake desk, a card half out of it (tabletop: y = the desk top)
         /* THE EXECUTIVE FLOOR (plan 5.4 stage 1 + 7.4 Rooms 4C + 8, 2026-09-14) — eight procs; a user GLB replaces any of them by giving the entry a `file` */
         floor_panel:       { proc: 'floor_panel',    h: 0.9,     foot: 0, wall: true, mount: 1.0,  depth: 0.05, glow: { y: 0.45, size: 0.7, color: 0xffb020 } },   // the lobby: sixteen buttons, two lit
-        exec_desk:         { proc: 'exec_desk',      span: 2.4,  foot: 0.95, wall: true, depth: 1.05, block: true },   // 4C: the executive desk (top at 0.76 — desk props sit at y: 0.76)
+        exec_desk:         { proc: 'exec_desk',      span: 2.4,  foot: 1.2, depth: 1.05, rect: { hw: 1.2, hd: 0.525 }, block: true },   // 4C: the executive desk (top at 0.76 — desk props sit at y: 0.76). A FLOOR prop since 2026-09-16: centred, the drawers on the sitter's side (−z), the modesty panel to the room (+z)
+        serving_line:      { proc: 'serving_line',   span: 3.0,  foot: 1.5, wall: true, depth: 1.15, rect: { hw: 1.5, hd: 0.575 }, block: true },   // Room 86 (2026-09-16): a 3 m cafeteria counter — the hot wells + sneeze guard on the wall side, THE TRAY SLIDE (0.85 m) along the front; trays at z = wall + 0.95
         exec_chair:        { proc: 'exec_chair',     h: 1.25,    foot: 0.36, block: true },   // 4C: the high-backed leather chair
         wall_plaques:      { proc: 'wall_plaques',   h: 1.2,     foot: 0, wall: true, mount: 1.3,  depth: 0.05 },   // 4C: the achievements engraved (gold per hqTrophyCount, read at build)
         motto_plaque:      { proc: 'motto_plaque',   h: 0.6,     foot: 0, wall: true, mount: 1.5,  depth: 0.05 },   // the Bureau: the reality barometer (hqMottoBarometer at build; the room is rebuilt per entry)
@@ -18554,8 +18564,8 @@ const DOOR_HQ = {
         rotary_phone:      { file: 'Meshy_AI_analog_phone_0910054719_texture.glb',                  span: 0.24, foot: 0 },
         /* ── the cafeteria kit (Room 86, HQ plan 7.4 / 5.6 — the serving
            counter is the `reception_wedge`, as the plan's fallback says) ── */
-        cafeteria_chair:   { file: 'Meshy_AI_cafeteria_chair_0910054640_texture.glb',               h: 0.86, foot: 0.28 },
-        molded_chair:      { file: 'Meshy_AI_a_molded_cafeteria_ch_0910054600_texture.glb',         h: 0.82, foot: 0.28 },
+        cafeteria_chair:   { file: 'Meshy_AI_cafeteria_chair_0910054640_texture.glb',               h: 0.86, foot: 0.28, front: 'back' },
+        molded_chair:      { file: 'Meshy_AI_a_molded_cafeteria_ch_0910054600_texture.glb',         h: 0.82, foot: 0.28, front: 'back' },
         meal_tray:         { file: 'Meshy_AI_cafeteria_meal_tray_w_0910054631_texture.glb',         span: 0.45, foot: 0 },
         meal_tray_empty:   { file: 'Meshy_AI_cafeteria_meal_tray_w_0910054659_texture.glb',         span: 0.42, foot: 0 },
         microwave:         { file: 'Meshy_AI_beige_1980s_microwave_0910054901_texture.glb',         span: 0.50, foot: 0 },
@@ -18576,7 +18586,7 @@ const DOOR_HQ = {
         /* the round cubicle: 2.2 m across, 1.8 m high — a whole workstation.
            It needs a 1 m collision disc, so it never goes on the mezzanine
            slab (doorhq.test.js's walkable-band check would fail it). */
-        round_cubicle:     { file: 'Meshy_AI_round_cubicle_0910054648_texture.glb',                 span: 2.20, foot: 1.00 },
+        round_cubicle:     { file: 'Meshy_AI_round_cubicle_0910054648_texture.glb',                 span: 2.20, foot: 1.00, front: 'open' },   // `front: 'open'` (2026-09-16): the OPENING is measured off the mesh and turned to +Z — the chair / the sitter stands at the model's +Z side (`face` says which way that is)
         /* three round frames, all empty (the building has nothing to hang) */
         picture_round_a:   { file: 'Meshy_AI_round_empty_picture_f_0910054412_texture.glb',         span: 0.62, foot: 0, wall: true, mount: 1.95 },
         picture_round_b:   { file: 'Meshy_AI_round_empty_picture_f_0910054431_texture.glb',         span: 0.55, foot: 0, wall: true, mount: 1.90 },
@@ -18597,8 +18607,8 @@ const DOOR_HQ = {
            site rooms' skies draw the same roster). Sizes are targets: none
            of the four GLBs is in the repo, so the renderer's bbox fit is
            the only scale — if one lands wrong, its `h` / `span` is the edit. */
-        computer_chair_blue:{ file: 'computer_chair_blue.glb',                                    h: 0.98, foot: 0.32 },
-        computer_chair_grey:{ file: 'computer_chair_grey.glb',                                    h: 0.98, foot: 0.32 },
+        computer_chair_blue:{ file: 'computer_chair_blue.glb',                                    h: 0.98, foot: 0.32, front: 'back' },
+        computer_chair_grey:{ file: 'computer_chair_grey.glb',                                    h: 0.98, foot: 0.32, front: 'back' },
         security_camera:   { file: 'camera_01_cc0_clip_ready_v1.glb',                             span: 0.34, foot: 0, wall: true, mount: 2.55 },
         utility_box:       { file: 'utility_box_01_cc0_clip_ready_v1.glb',                        h: 1.35, foot: 0.45 },
         asteroid_a:        { file: 'asteroid_1.glb',                                              span: 4.0, foot: 0 },
@@ -20928,8 +20938,8 @@ const DOOR_HQ = {
                 { key: 'crt_terminal',   x: 4.55, z: -0.45, y: 0.76, face: 270 },
                 { key: 'clipboard_flat', x: 4.6,  z: 0.35,  y: 0.76, face: 260 },    // THE CORNER LOG: four, ninety, four, ninety
                 { key: 'pen',            x: 4.45, z: 0.6,   y: 0.76, face: 300 },
-                { key: 'desk_lamp',      x: 4.55, z: -0.95, y: 0.76, face: 250 },
-                { key: 'coffee_mug',     x: 4.3,  z: 0.9,   y: 0.76, face: 140 },
+                { key: 'desk_lamp',      x: 4.55, z: -0.62, y: 0.76, face: 250 },      // on the desk (it stood 0.2 m past its end)
+                { key: 'coffee_mug',     x: 4.35, z: 0.62,  y: 0.76, face: 140 },
                 { key: 'computer_chair_grey', x: 4.05, z: 0, face: 90 },              // the inspector's, facing the desk
                 { key: 'wall_clock',     wall: 'e', z: -2.2, mount: 2.6 },
                 { key: 'security_camera', wall: 'e', z: 2.2, mount: 3.3 },
@@ -21037,8 +21047,8 @@ const DOOR_HQ = {
                 { key: 'crt_terminal',   x: 1.15, z: 2.3, y: 0.76, face: 0 },
                 { key: 'manila_folders', x: 0.2,  z: 2.35, y: 0.76, face: 10 },
                 { key: 'stapler',        x: -0.25, z: 2.2, y: 0.76, face: 340 },
-                { key: 'rotary_phone',   x: 1.75, z: 2.4, y: 0.76, face: 20 },
-                { key: 'desk_lamp',      x: -0.4, z: 2.45, y: 0.76, face: 30 },
+                { key: 'rotary_phone',   x: 1.2, z: 2.4, y: 0.76, face: 20 },
+                { key: 'desk_lamp',      x: -0.05, z: 2.45, y: 0.76, face: 30 },
                 { key: 'pen',            x: 0.5,  z: 2.15, y: 0.76, face: 80 },
                 { key: 'computer_chair_grey', x: 0.6, z: 1.55, face: 180 },          // the officer's, at the desk, back to the plaque
                 { key: 'wall_clock',     wall: 's', x: -2.8, mount: 2.4 },            // the one clock in the building that is right; nobody has checked
@@ -21205,21 +21215,23 @@ const DOOR_HQ = {
                   desc: 'Form 365 for today, pinned, and the notices under it. The standings are on the board in the hall; this one is for what is due.' },
             ],
             props: [
-                /* ── the north wall: THE SERVING LINE, west to east ── */
-                { key: 'tanker_desk',    wall: 'n', x: -4.2 },
-                { key: 'tanker_desk',    wall: 'n', x: -2.7 },
-                { key: 'tanker_desk',    wall: 'n', x: -1.2 },
-                { key: 'tanker_desk',    wall: 'n', x: 0.3 },
+                /* ── the north wall: THE SERVING LINE, west to east (2026-09-16: two
+                   3 m cafeteria counters — hot wells, sneeze guard, THE TRAY SLIDE at
+                   0.85 m along the front; they were four tanker desks with the trays
+                   typed half a metre in front of them, in the air). The wall is at
+                   z −4.5: the body runs z −4.48 … −3.73, the slide −3.73 … −3.33. ── */
+                { key: 'serving_line',   wall: 'n', x: -3.4 },
+                { key: 'serving_line',   wall: 'n', x: -0.4 },
                 { key: 'reception_wedge', x: 1.95, z: -3.35, face: 200 },                    // the curved till: a straight counter needs a form
                 { key: 'cash_register',  x: 1.55, z: -3.12, y: 0.76, face: 200 },           // on the wedge's counter (0.76 m — the 1.10 is its monitor), the arm the monitor leaves free
-                { key: 'meal_tray',      x: -4.4, z: -3.2, y: 0.76, face: 10 },
-                { key: 'meal_tray',      x: -3.6, z: -3.15, y: 0.76, face: -8 },
-                { key: 'meal_tray',      x: -2.2, z: -3.2, y: 0.76 },
-                { key: 'meal_tray_empty', x: -1.4, z: -3.2, y: 0.76, face: 15 },
-                { key: 'meal_tray_empty', x: -0.4, z: -3.25, y: 0.76, face: -20 },
-                { key: 'coffee_mug',     x: -0.9, z: -3.1, y: 0.76, face: 30 },
-                { key: 'solo_cup',       x: 0.2,  z: -3.05, y: 0.76 },
-                { key: 'clipboard_flat', x: 0.55, z: -3.2, y: 0.76, face: -12 },              // the seconds sheet; nobody has had seconds
+                { key: 'meal_tray',      x: -4.4, z: -3.53, y: 0.85, face: 10 },            // on the slide
+                { key: 'meal_tray',      x: -3.6, z: -3.55, y: 0.85, face: -8 },
+                { key: 'meal_tray',      x: -2.2, z: -3.53, y: 0.85 },
+                { key: 'meal_tray_empty', x: -1.4, z: -3.55, y: 0.85, face: 15 },
+                { key: 'meal_tray_empty', x: -0.4, z: -3.52, y: 0.85, face: -20 },
+                { key: 'coffee_mug',     x: -0.9, z: -4.05, y: 0.9, face: 30 },             // on the counter top, by the wells
+                { key: 'solo_cup',       x: 0.2,  z: -4.0, y: 0.9 },
+                { key: 'clipboard_flat', x: 0.75, z: -4.05, y: 0.9, face: -12 },              // the seconds sheet; nobody has had seconds
                 { key: 'observation_window', wall: 'n', x: -2.0, mount: 1.45 },              // the kitchen hatch; the kitchen is not on the plan
                 { key: 'hook_rail_long', wall: 'n', x: 2.7, mount: 1.8 },                    // the aprons (the rail nobody hangs anything on, moved in)
                 { key: 'wall_clock',     wall: 'n', x: 1.0, mount: 2.9 },
@@ -21315,7 +21327,7 @@ const DOOR_HQ = {
                     why: '86’d by day; after hours the bar has one side, and nobody comments',
                     door: { label: 'MÖBIUS STRIP CLUB', sub: 'AFTER HOURS · LEADERBOARD · SHOP', desc: 'Room 86, after hours. The bar is a Möbius strip: one side, one edge, no last call. Nobody comments. Nobody has ever commented.' },
                     shell: { mood: { light: 0xff4f9a } },
-                    drop: ['tanker_desk', 'reception_wedge', 'cash_register', 'meal_tray', 'meal_tray_empty', 'observation_window',
+                    drop: ['serving_line', 'tanker_desk', 'reception_wedge', 'cash_register', 'meal_tray', 'meal_tray_empty', 'observation_window',
                            'conference_table', 'cafeteria_chair', 'molded_chair', 'papers_a', 'clipboard_flat', 'wet_floor_sign', 'rug_office',
                            'coffee_mug', 'solo_cup'],
                     add: [
@@ -22347,8 +22359,8 @@ const DOOR_HQ = {
             ],
             props: [
                 /* ── the north wall: the desk, the chair behind it, the second window ── */
-                { key: 'exec_desk',      wall: 'n', x: 0.4 },
-                { key: 'exec_chair',     x: 0.4,   z: -2.25, face: 180 },              // behind the desk, facing the room
+                { key: 'exec_desk',      x: 0.4,   z: -1.5, face: 180 },              // a floor prop (2026-09-16): centred on z −1.5, the drawers to the north (the Director's knees), the modesty panel to the room
+                { key: 'exec_chair',     x: 0.4,   z: -2.2, face: 180 },              // behind the desk, facing the room
                 { key: 'crt_terminal',   x: -0.3,  z: -1.75, y: 0.76, face: 0 },
                 { key: 'rotary_phone',   x: 1.15,  z: -1.7,  y: 0.76, face: 340 },
                 { key: 'desk_lamp',      x: -0.6,  z: -1.55, y: 0.76, face: 30 },
@@ -22377,8 +22389,8 @@ const DOOR_HQ = {
                 { key: 'trash_bin',      x: -2.0,  z: -2.2, face: 10 },
                 /* ── the floor, the ceiling ── */
                 { key: 'rug_office',     x: 0.2,   z: 0.4 },
-                { key: 'teal_chair',     x: -0.6,  z: -0.5, face: 180 },               // for whoever the Director is meeting
-                { key: 'teal_chair',     x: 1.3,   z: -0.5, face: 180 },
+                { key: 'teal_chair',     x: -0.6,  z: -0.5, face: 0 },                 // for whoever the Director is meeting — facing the Director (2026-09-16: they faced the door)
+                { key: 'teal_chair',     x: 1.3,   z: -0.5, face: 0 },
                 { key: 'fluorescent',    x: 0,     z: 0.4, ceil: true, face: 0 },
             ],
             agents: [],
@@ -22641,9 +22653,9 @@ const DOOR_HQ = {
                 { key: 'metal_shelving', wall: 'n', x: -0.9 },
                 { key: 'metal_shelving', wall: 'n', x: 0.2 },
                 { key: 'metal_shelving', wall: 'n', x: 1.3 },
-                { key: 'cardboard_boxes', x: -3.1, z: -2.9, y: 0.9, face: 10 },     // on the shelf, the overflow
-                { key: 'manila_folders', x: -0.9, z: -2.95, y: 0.9, face: 0 },
-                { key: 'manila_folder',  x: 1.3,  z: -2.95, y: 0.9, face: 15 },
+                { key: 'cardboard_boxes', x: -3.1, z: -3.25, y: 0.9, face: 10 },     // on the shelf, the overflow
+                { key: 'manila_folders', x: -0.9, z: -3.25, y: 0.9, face: 0 },
+                { key: 'manila_folder',  x: 1.3,  z: -3.25, y: 0.9, face: 15 },
                 { key: 'exit_sign',      wall: 'n', x: 3.4, mount: 2.8 },           // over the stair
                 /* ── the east wall: THE CARD CATALOGUE, the cabinets, the breaker ── */
                 { key: 'card_catalogue', wall: 'e', z: -1.2 },
@@ -24249,10 +24261,14 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 /* ── six round cubicles in two rows ── */
-                { key: 'round_cubicle',  x: -3.2, z: -1.9, rot: 20 },  { key: 'round_cubicle', x: 0.2, z: -1.9, rot: -10 }, { key: 'round_cubicle', x: 3.6, z: -1.9, rot: 15 },
-                { key: 'round_cubicle',  x: -3.2, z: 2.0, rot: 200 },  { key: 'round_cubicle', x: 0.2, z: 2.0, rot: 170 },  { key: 'round_cubicle', x: 3.6, z: 2.0, rot: 195 },
-                { key: 'computer_chair_grey', x: -3.2, z: -0.5, face: 0 }, { key: 'computer_chair_blue', x: 0.2, z: -0.5, face: 0 }, { key: 'computer_chair_grey', x: 3.6, z: -0.5, face: 0 },
-                { key: 'computer_chair_blue', x: -3.2, z: 0.6, face: 180 }, { key: 'computer_chair_grey', x: 0.2, z: 0.6, face: 180 }, { key: 'computer_chair_blue', x: 3.6, z: 0.6, face: 180 },
+                /* the cubicle's OPENING is measured off the mesh (`front: 'open'`) and lies
+                   on the model's +Z, so `face` names the way the mouth points: the north
+                   row opens SOUTH (180), the south row NORTH (0); the chairs sit at the
+                   mouth, 1.0 m from the centre (a 2.2 m cubicle), the sitter facing in */
+                { key: 'round_cubicle',  x: -3.2, z: -1.9, face: 180, rot: 20 },  { key: 'round_cubicle', x: 0.2, z: -1.9, face: 180, rot: -10 }, { key: 'round_cubicle', x: 3.6, z: -1.9, face: 180, rot: 15 },
+                { key: 'round_cubicle',  x: -3.2, z: 2.0, face: 0, rot: 20 },     { key: 'round_cubicle', x: 0.2, z: 2.0, face: 0, rot: -10 },    { key: 'round_cubicle', x: 3.6, z: 2.0, face: 0, rot: 15 },
+                { key: 'computer_chair_grey', x: -3.2, z: -0.85, face: 0 }, { key: 'computer_chair_blue', x: 0.2, z: -0.85, face: 0 }, { key: 'computer_chair_grey', x: 3.6, z: -0.85, face: 0 },
+                { key: 'computer_chair_blue', x: -3.2, z: 0.95, face: 180 }, { key: 'computer_chair_grey', x: 0.2, z: 0.95, face: 180 }, { key: 'computer_chair_blue', x: 3.6, z: 0.95, face: 180 },
                 /* ── the walls: the files, the cooler, the clocks that disagree ── */
                 { key: 'filing_cabinet', wall: 'n', x: -5.0 }, { key: 'filing_cabinet', wall: 'n', x: -4.3 }, { key: 'filing_cabinet', wall: 'n', x: 5.0 },
                 { key: 'water_cooler',   wall: 'e', z: -2.6 },
@@ -24279,8 +24295,8 @@ const DOOR_HQ = {
             ],
             npcSpots: [{ x: -1.5, z: 0.05, face: 90, race: 'politician', say: ['“I have a desk here.” “Which one?” “All of them, at some point. That is what a desk is for.”'] }],
             onlineSpots: [
-                { x: -3.2, z: -0.5, face: 0 }, { x: 0.2, z: -0.5, face: 0 }, { x: 3.6, z: -0.5, face: 0 },
-                { x: -3.2, z: 0.6, face: 180 }, { x: 0.2, z: 0.6, face: 180 }, { x: 3.6, z: 0.6, face: 180 },
+                { x: -3.2, z: -0.85, face: 0 }, { x: 0.2, z: -0.85, face: 0 }, { x: 3.6, z: -0.85, face: 0 },
+                { x: -3.2, z: 0.95, face: 180 }, { x: 0.2, z: 0.95, face: 180 }, { x: 3.6, z: 0.95, face: 180 },
             ],
             lines: [
                 '“What are they working on?” “Crossings.” “All of them?” “All of them are working on all of them.”',
@@ -25061,20 +25077,25 @@ const DOOR_HQ = {
                   desc: 'The way back to the lobby. Check your pockets.' },
             ],
             counters: [
-                { id: 'claims', x: -2.2, z: 0.3, face: 90, plateY: 1.5, radius: 1.8, verb: 'READ',
+                { id: 'claims', x: -1.9, z: 0.3, face: 270, plateY: 1.5, radius: 1.8, verb: 'READ',
                   label: 'THE CLAIMS BOOK', sub: 'DESCRIBE IT · WE WILL LOOK', action: {},
                   desc: 'The book on the counter: every item on the shelves, where it was found, and whether anyone has come for it. One line is yours. You have not lost it yet.' },
             ],
             props: [
                 { key: 'lost_shelf',     wall: 'n', x: -2.4 }, { key: 'lost_shelf', wall: 'n', x: 0 }, { key: 'lost_shelf', wall: 'n', x: 2.4 },
                 { key: 'lost_shelf',     wall: 's', x: 2.0 },
-                { key: 'tanker_desk',    wall: 'w', z: 0.3, face: 90 },
-                { key: 'office_chair',   x: -3.2, z: 0.3, face: 90 },
-                { key: 'notebook_paper', x: -2.9, z: 0.0, y: 0.76, face: 5 },
-                { key: 'pen',            x: -2.7, z: 0.5, y: 0.76, face: 70 },
-                { key: 'pocket_watch',   x: -3.1, z: 0.7, y: 0.76, face: 0 },
-                { key: 'house_key',      x: -2.8, z: -0.4, y: 0.76, face: 30 },
-                { key: 'car_key',        x: -3.2, z: -0.5, y: 0.76, face: 110 },
+                /* THE CLAIMS DESK (re-laid 2026-09-16): the desk stood against the west
+                   wall with the clerk sitting in FRONT of it facing the room — her back to
+                   it, the found things typed at the chair, in the air. Now the desk is a
+                   floor prop across the room (drawers to the clerk at −x, modesty panel to
+                   the counter), the clerk behind it facing east, the things ON it. */
+                { key: 'tanker_desk',    x: -2.75, z: 0.3, face: 270 },
+                { key: 'office_chair',   x: -3.45, z: 0.3, face: 90 },
+                { key: 'notebook_paper', x: -2.85, z: 0.0, y: 0.76, face: 5 },
+                { key: 'pen',            x: -2.6,  z: 0.5, y: 0.76, face: 70 },
+                { key: 'pocket_watch',   x: -2.95, z: 0.75, y: 0.76, face: 0 },
+                { key: 'house_key',      x: -2.65, z: -0.2, y: 0.76, face: 30 },
+                { key: 'car_key',        x: -2.9,  z: -0.35, y: 0.76, face: 110 },
                 { key: 'umbrella_stand', x: -3.4, z: 2.4, face: 0 },
                 { key: 'globe_lamp',     x: -3.4, z: -2.4 },
                 { key: 'cardboard_boxes', x: 3.2, z: -2.3, face: 15 }, { key: 'cardboard_box', x: 2.6, z: -2.6, y: 0.9, face: 40 },
@@ -25087,7 +25108,7 @@ const DOOR_HQ = {
                 { key: 'fluorescent',    x: -1.8, z: 0, ceil: true, face: 90 }, { key: 'fluorescent', x: 1.8, z: 0, ceil: true, face: 90 },
             ],
             agents: [
-                { x: -3.2, z: 0.3, face: 90, pose: 'hqSit', gender: 'female', label: 'THE CLERK', reach: 2.4,
+                { x: -3.45, z: 0.3, face: 90, pose: 'hqSit', gender: 'female', label: 'THE CLERK', reach: 2.4,
                   line: '“Describe it.” “I have not lost anything.” “Describe it anyway. They always have.”' },
             ],
             npcSpots: [{ x: 1.6, z: -1.2, face: 0, race: 'djinn', say: ['“Three of these were wishes. Somebody left them on a shelf.” “Which three?” “The ones you are not allowed to touch.”'] }],
@@ -25451,7 +25472,7 @@ const DOOR_HQ = {
                 { key: 'dream_screen',   wall: 'n', x: 0, mount: 1.1 }, { key: 'dream_screen', wall: 'w', z: 0, mount: 1.1 },
                 { key: 'steel_table',    wall: 'n', x: 3.6, face: 180 },
                 { key: 'crt_terminal',   x: 3.6, z: -3.4, y: 0.76, face: 180 },
-                { key: 'clipboard_flat', x: 2.8, z: -3.3, y: 0.76, face: 12 },
+                { key: 'clipboard_flat', x: 3.05, z: -3.3, y: 0.76, face: 12 },
                 { key: 'desk_lamp',      x: 4.3, z: -3.5, y: 0.76, face: 200 },
                 { key: 'office_chair',   x: 3.6, z: -2.4, face: 0 },
                 { key: 'metal_shelving', wall: 'e', z: -2.6 },
@@ -27402,7 +27423,7 @@ const DOOR_HQ = {
                 { key: 'office_chair',   x: 0, z: -1.0, face: 0 },
                 { key: 'crt_terminal',   x: 0.3, z: -1.85, y: 0.76, face: 180 },
                 { key: 'papers_a',       x: -0.5, z: -1.8, y: 0.76, face: 15 },
-                { key: 'desk_lamp',      x: 0.95, z: -1.9, y: 0.76 },
+                { key: 'desk_lamp',      x: 0.55, z: -1.9, y: 0.76 },
                 { key: 'rotary_phone',   x: -1.0, z: -1.95, y: 0.76, face: 170 },
                 { key: 'filing_cabinet', wall: 'w', z: -0.8 },
                 { key: 'filing_cabinet', wall: 'w', z: 0.3 },
@@ -27513,7 +27534,7 @@ const DOOR_HQ = {
                 { key: 'steel_table',    x: 2.2, z: -1.6, face: 270 },
                 { key: 'microwave',      x: 2.2, z: -2.0, y: 0.76, face: 270 },
                 { key: 'coffee_maker',   x: 2.2, z: -1.2, y: 0.76, face: 270 },
-                { key: 'retro_radio',    x: 2.2, z: -0.6, y: 0.76, face: 270 },
+                { key: 'retro_radio',    x: 2.2, z: -1.0, y: 0.76, face: 270 },
                 { key: 'notice_board',   wall: 'n', x: 1.8, mount: 1.2 },
                 { key: 'wall_clock',     wall: 's', x: 0, mount: 2.05 },
                 { key: 'trash_bin',      x: 2.6, z: 2.0, face: 180 },
