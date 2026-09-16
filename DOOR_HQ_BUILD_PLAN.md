@@ -8973,3 +8973,49 @@ rasterised into a Δ-shaped map entry the ordinary launch plays under `field:<ro
 - NOT built: stage C (box rooms — the complex parts still fight the site's Δ from the centre), stage D (the
   thin walls, a door on the frame's edge), stage E (the HUD of the field), §10 stage 4. Unseen live: the
   real cave sheets on the field's voxel columns, the rock's height, the eye's first frame in a cave.
+
+### 2026-09-16 — PHASE 9 DELIVERY 9 · THE FIELD, STAGE C (the rasteriser on the box rooms)
+PHASE9_QUALITY_PLAN §11.3 C's first half, in code and measured on every part. A complex part (a box room —
+the hall, the hold, the casino, the platform…) had no board under the walker, so an encounter there fought
+the site's Δ from the centre with no eye; now THE BOX LATTICE IS THE ROOM'S OWN (rule §2: cells of a battle
+tile on the room's axes, edges at off + k·1.75 m from the centre, the offset per axis 0 or half a cell —
+whichever puts the most cells inside) and THE WINDOW is chosen and rasterised exactly as on a cave.
+- **data.js** (the stage B block, grown): `HQ_FIELD_RULES.box` (cell · cover 0.5 · margin 0.4 · the three
+  bands low 0.5 / high 2.2 · footMin 0.7 · climbM 1.46 = the walker's jump apex · dropM = HQ_DROP_MAX ·
+  galleryRise / galleryRun = the renderer's), `hqFieldRoomOk` (stage C: a wild box room that is not a site's
+  BOARD room), `hqFieldBoxTile` (rule §5's bands), `hqFieldGallery` (three-renderer.js `_hqGalleryFrame`'s
+  frame in data: the strip, the flight from the named end, the tread height at a cell's run), `hqFieldBoxInfo`
+  (the lattice; THE COVERS = every floor prop the renderer BLOCKS — `foot > 0` and `block` or standing, top =
+  `y + cat.h || 1`, the renderer's own read at both placer sites — as a box in room axes, a disc as the
+  square of its area and ignored under footMin; a cover ≥ 50 % of a cell sets its top; the slab a +2, the
+  treads +1 then +2; `seat: false` on any cover; cached per room OBJECT so a variant swap re-rasterises),
+  `hqFieldLattice` (ONE shape over the cave grid and the box lattice — `walk(gx, gy)`), `hqFieldNearestWalk`
+  (a foot in a partial edge cell / on a slope scores from the nearest walkable), `hqFieldRasterBox` (OUT = the
+  room's WALL, a rock column in the shell's wall sheet; IN = the floor sheet at its band), `hqFieldBoxStep`
+  (up ≤ climbM, down ≤ dropM, the flight + the slab one run), `hqFieldReach` dispatching on `R.box`,
+  `hqFieldWindow` on the lattice (the board record wears `box: true`). THE GUARANTEE holds by the bands (a
+  climb ≤ 1.46 m never crosses two bands) and the test proves it edge by edge and as a BFS on every window of
+  every part. `hqFieldLayout(site, base, { box })`: a box field is INDOORS — the site's `near` setting and
+  `motion` are dropped and THE WORLD is inert (`kind: 'room'`); the site's sky and far roster stand until §10
+  stage 4 draws the room itself round the field.
+- **map.js**: `_hqEncounterBoardCopy` reads `hqFieldRoomOk` — THE ROOM IS THE BOARD in a part; the fire /
+  start comments name stage C. Nothing else moved: the stage B path (`hqFieldRoomOk` → `hqFieldWindow` →
+  `_hqFieldRegister` → the field id) carries a box room unchanged, THE SLIDE reads `_hqSurface`, the seats /
+  the eye read `hqFieldTransform` with the window's origin.
+- **Measured** (every part, the window from the centre): the hall 8 × 7 lattice, 56 IN, heights 0 / 1 / 2 (39
+  / 3 / 14 — the landing two rows deep at +2, the flight's two treads 0.97 → +1 and 2.42 → +2 at the east
+  corner, the couch a +1), the cellar 42 IN with the boiler a +2, the hold 56 IN with the iso tank +1, the
+  gun deck 48 IN with the cannons +1, the casino 64 IN with the bar / the table +1, the lobby 56 IN, the
+  platform the corridor case (5 cells wide inside rock, 40 IN), the attic 15 IN (a 4 × 3 m usable floor —
+  the plan's "≥ 24 IN per part" was written before the rooms were measured; the test pins ≥ 12 and the six
+  two-height parts). Every window seats 4 + 4 on free floor cells; every IN cell reachable from the centre.
+- **Tests**: hq-field.test.js (13: + the box rules vs the renderer's constants, the lattice on every part with
+  the covers diffed against the renderer's blocking rule, the hall's landing, the raster + THE GUARANTEE on
+  every window of every part, the window from every door landing + the nudge, the build + the indoor layout,
+  the acceptance numbers, the source sites).
+- NOT built: §10 stage 4 (the room drawn as the battle's setting — a box field today stands as a rock-walled
+  8 × 8 under the site's sky), stage D (the thin walls on cell edges, a door on the frame's edge as a
+  threshold), stage E (the HUD of the field). Unseen live (RULE #1c): the wall sheet as rock columns
+  (drywall / gunmetal / urban wall / tile), the floor sheet on the columns, the +2 landing's columns, the
+  eye's first frame in a box room.
+

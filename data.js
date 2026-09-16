@@ -30711,10 +30711,25 @@ function hqEncounterWakeRoom(profile) {
      MAP_LAYOUT_PRESETS[id] (the site Δ's env — the cavern world, the
      crystals, `near`); map.js `_hqFieldRegister` adds the GAME_MODES row
      and the MS_MAP_LIST row (`field: true` — the terminal never lists it).
-   NOT stage B: box rooms (the complex parts — stage C), thin walls on cell
-   edges / a door as a threshold object (stage D), the room drawn as the
-   battle's setting (§10 stage 4). Nothing relayed (an encounter is VS-CPU;
-   RULE #2). */
+   STAGE C (Phase 9 Delivery 9, 2026-09-16 — the rasteriser on the BOX
+   rooms, the complex parts): the same window on a LATTICE of the room's
+   own axes — hqFieldBoxInfo(roomId) (the lattice per axis, THE COVERS =
+   every floor prop the renderer would block as a box with its top, the
+   gallery's slab + flight through hqFieldGallery — the renderer's own
+   frame), hqFieldLattice(roomId) (ONE shape over the cave grid and the box
+   lattice for the window's choice, `walk(gx, gy)`), hqFieldRasterBox (an
+   OUT cell = the room's WALL: rock in the shell's wall sheet; an IN cell
+   the floor at its cover's band — hqFieldBoxTile: < 0.5 m the floor,
+   < 2.2 m a +1 (a table, a tread), else a +2 (a cabinet, the slab); `seat`
+   false on a cover), hqFieldBoxStep (the walker's own step: up by a jump's
+   reach, down by the walk-off, the flight + the slab one run) — THE
+   GUARANTEE holds by the bands (a climb ≤ 1.46 m never crosses two bands)
+   and hq-field.test.js proves it on every window of every part; a box
+   field's layout drops the site's near setting + motion and wears an inert
+   world (indoors — the site's sky stands until §10 stage 4 draws the room).
+   NOT stage C: thin walls on cell edges / a door as a threshold object
+   (stage D), the room drawn as the battle's setting (§10 stage 4), the HUD
+   of the field (E). Nothing relayed (an encounter is VS-CPU; RULE #2). */
 const HQ_FIELD_RULES = {
     size: 8,            // the window: 8 × 8 cells — the Δ's own frame
     base: MF_DELTA_BASE_H,   // the room's floor (cave level 0) stands at the Δ's base height
@@ -30724,8 +30739,31 @@ const HQ_FIELD_RULES = {
     prefix: 'field:',   // the synthetic map id: field:<roomId>:<ox>,<oz>
     label: 'THE FIELD',
     teamSize: 4,
+    /* STAGE C (Phase 9 Delivery 9, 2026-09-16) — a BOX room (a complex part) is
+       rasterised on a LATTICE of the room's own axes (rule §2: cells of a battle
+       tile, edges at off + k·C from the room's centre — `off` per axis is 0 or
+       half a cell, whichever yields the most cells inside), every floor prop the
+       renderer would BLOCK is a COVER with its top (rule §5), the gallery's slab a
+       +2 and its flight +1 treads (rule §6). OUT = the room's WALL: a rock column
+       in the shell's wall sheet (rule §3; a walled room has no chasm). */
+    box: {
+        cell: HQ_CAVE_CELL,   // 1.75 m — a battle tile (the cave's own cell)
+        cover: 0.5,           // a cell is IN / a prop counts when this share of the footprint lies inside (rules §3 / §5)
+        margin: 0.4,          // …and a cell's centre stands this far in from the wall (the walker's body never gets closer)
+        low: 0.5, high: 2.2,  // a top under `low` is the floor; under `high` a +1 (a table, a crate — climbable, sight passes); over it a +2 (a cabinet, a pillar — a wall)
+        footMin: 0.7,         // a round footprint narrower than this is scenery the cell ignores (the walker walks round it)
+        climbM: 1.46,         // the walker's own reach UP (HQ_JUMP_V's apex): a top the walker jumps onto is a step to it
+        dropM: HQ_CAVE_DROP,  // the walker's walk-off (HQ_DROP_MAX); a railed slab is never walked off
+        galleryRise: 0.25, galleryRun: 0.28,   // = three-renderer.js HQ_GALLERY_RISE / HQ_GALLERY_RUN (hq-field.test.js diffs them)
+    },
 };
-function hqFieldRoomOk(roomId) { const r = (DOOR_HQ.rooms || {})[roomId]; return !!(r && r.cave && hqRoomSite(roomId)); }
+/* stage B: a WILD room with a cave grid; stage C: a WILD box room that is not a site's BOARD room (that one keeps its own Δ — stage A) */
+function hqFieldRoomOk(roomId) {
+    const r = (DOOR_HQ.rooms || {})[roomId];
+    if (!r || r.kind !== 'box' || !hqRoomSite(roomId)) return false;
+    if (r.cave) return true;
+    return r.fx !== 'site' && !!r.shell;
+}
 function hqFieldId(roomId, ox, oz) { return HQ_FIELD_RULES.prefix + roomId + ':' + (ox | 0) + ',' + (oz | 0); }
 function hqFieldParse(id) {
     const s = String(id || '');
@@ -30739,8 +30777,148 @@ function hqFieldCellTile(info, c) {
     if (c.fluid) return Math.max(HQ_FIELD_RULES.fluidMin, Math.floor(c.sheet / C));
     return Math.round(c.top / C);
 }
+/* a box cell's height in BATTLE LEVELS off the top of what covers it (rule §5's three bands) */
+function hqFieldBoxTile(top) { const B = HQ_FIELD_RULES.box; return (+top || 0) < B.low ? 0 : (+top || 0) < B.high ? 1 : 2; }
+/* THE GALLERY on the lattice — three-renderer.js _hqGalleryFrame's own frame (s along the named wall from
+   its start corner, t into the room): `at(cx, cz)` judges one cell's (a, b) spans on x / z → null off the strip,
+   { top, flight } on it — the flight's cells wear the tread height at the middle of their run, the slab its h */
+function hqFieldGallery(room) {
+    const S = room && room.shell, g = S && S.gallery; if (!g || !S) return null;
+    const B = HQ_FIELD_RULES.box;
+    const side = (g.side === 's' || g.side === 'e' || g.side === 'w') ? g.side : 'n';
+    const ew = side === 'e' || side === 'w';
+    const len = ew ? +S.d : +S.w;
+    const h = Math.max(1.6, +g.h || 2.9), w = Math.max(1.2, +g.w || 3);
+    const n = Math.max(2, Math.ceil(h / (g.rise || B.galleryRise) - 0.0001));
+    const rise = h / n, run = g.run || B.galleryRun, runLen = n * run;
+    let stair = null;
+    if (g.stairAt !== null && g.stairAt !== false) {
+        const atEnd = g.stairAt === 'end';
+        stair = atEnd ? { s0: len - runLen, s1: len, dir: -1 } : { s0: 0, s1: runLen, dir: 1 };
+    }
+    const tread = (s) => { const along = stair.dir > 0 ? (s - stair.s0) : (stair.s1 - s); const k = Math.max(0, Math.min(n - 1, Math.floor(along / run))); return Math.min(h, (k + 1) * rise); };
+    /* a cell's span in (s, t) off its span in room x / z */
+    const span = (cx, cz) => {
+        if (side === 'n') return { s: [cx.a + S.w / 2, cx.b + S.w / 2], t: [cz.a + S.d / 2, cz.b + S.d / 2] };
+        if (side === 's') return { s: [cx.a + S.w / 2, cx.b + S.w / 2], t: [S.d / 2 - cz.b, S.d / 2 - cz.a] };
+        if (side === 'e') return { s: [cz.a + S.d / 2, cz.b + S.d / 2], t: [S.w / 2 - cx.b, S.w / 2 - cx.a] };
+        return { s: [cz.a + S.d / 2, cz.b + S.d / 2], t: [cx.a + S.w / 2, cx.b + S.w / 2] };
+    };
+    const G = { side, ew, len, h, w, n, rise, run, runLen, stair };
+    G.at = (cx, cz) => {
+        const p = span(cx, cz), C = cx.b - cx.a;
+        const ovS = Math.max(0, Math.min(p.s[1], len) - Math.max(p.s[0], 0)), ovT = Math.max(0, Math.min(p.t[1], w) - Math.max(p.t[0], 0));
+        if (ovS * ovT / (C * C) < B.cover) return null;
+        if (stair) {
+            const fs0 = Math.max(p.s[0], stair.s0), fs1 = Math.min(p.s[1], stair.s1);
+            if (fs1 - fs0 >= (p.s[1] - p.s[0]) * 0.5) return { top: tread((fs0 + fs1) / 2), flight: true };
+        }
+        return { top: h, flight: false };
+    };
+    return G;
+}
+/* THE BOX LATTICE (stage C): the whole room on its lattice — per cell { in, top, tile, seat, flight, slab, prop } —
+   cached per room OBJECT (a variant swaps the object, hqApplyRoomVariant; the sheet's cache is its own) */
+const _hqFieldBoxCache = (typeof WeakMap === 'function') ? new WeakMap() : null;
+function hqFieldBoxInfo(roomId) {
+    const room = (DOOR_HQ.rooms || {})[roomId];
+    if (!room || room.kind !== 'box' || room.cave || !room.shell) return null;
+    const hit = _hqFieldBoxCache ? _hqFieldBoxCache.get(room) : null; if (hit) return hit;
+    const B = HQ_FIELD_RULES.box, C = B.cell, S = room.shell;
+    const W = +S.w || 0, D = +S.d || 0; if (!(W > 0 && D > 0)) return null;
+    const tid = (typeof MF_TID !== 'undefined') ? MF_TID : null;
+    const known = (k) => !!(k && (!tid || tid[k]));
+    /* the lattice per axis: edges at off + k·C from the centre — the offset that puts the most cells ≥ `cover` inside with their centres clear of the wall */
+    const axis = (len) => {
+        const half = len / 2;
+        let best = null;
+        for (const off of [0, C / 2]) {
+            const k0 = Math.floor((-half - off) / C), k1 = Math.ceil((half - off) / C) - 1;
+            const cols = [];
+            for (let k = k0; k <= k1; k++) {
+                const a = off + k * C, b = a + C;
+                cols.push({ a, b, c: (a + b) / 2, ov: Math.max(0, Math.min(b, half) - Math.max(a, -half)) / C });
+            }
+            const n = cols.filter(c => c.ov >= B.cover && Math.abs(c.c) <= half - B.margin).length;
+            if (!best || n > best.n) best = { off, cols, n };
+        }
+        return best;
+    };
+    const AX = axis(W), AZ = axis(D);
+    const floorKey = known(S.floor) ? S.floor : 'concrete_floor';
+    const wallKey = known(S.wall) ? S.wall : (known(S.floor) ? S.floor : 'cave_wall');
+    /* THE COVERS: every floor prop the renderer BLOCKS (foot > 0, standing — three-renderer.js's own rule at both
+       placer sites; top = y + the catalogue's h, else 1) as a box in room axes; a disc as the square of its area */
+    const cat = DOOR_HQ.catalogue || {};
+    const covers = [];
+    for (const p of room.props || []) {
+        if (!p || !p.key) continue;
+        const c = cat[p.key] || {};
+        if (p.wall || p.ceil || c.ceil || p.flip) continue;
+        const foot = (p.foot != null) ? +p.foot : (+c.foot || 0);
+        if (!(foot > 0) || !(c.block || !((+p.y || 0) > 0.5))) continue;
+        const y = +p.y || 0, top = y + (+c.h || 1);
+        const rect = (p.rect === false) ? null : (p.rect || c.rect);
+        let hw, hd;
+        if (rect && +rect.hw > 0 && +rect.hd > 0) { hw = +rect.hw; hd = +rect.hd; }
+        else { if (foot < B.footMin) continue; hw = hd = foot * 0.886; }
+        covers.push({ x: +p.x || 0, z: +p.z || 0, hw, hd, top, key: p.key });
+    }
+    const gal = hqFieldGallery(room);
+    const cells = [];
+    for (let gy = 0; gy < AZ.cols.length; gy++) {
+        const row = [];
+        for (let gx = 0; gx < AX.cols.length; gx++) {
+            const cx = AX.cols[gx], cz = AZ.cols[gy];
+            const inRoom = cx.ov >= B.cover && cz.ov >= B.cover && Math.abs(cx.c) <= W / 2 - B.margin && Math.abs(cz.c) <= D / 2 - B.margin;
+            const cell = { gx, gy, in: inRoom, top: 0, tile: 0, seat: inRoom, flight: false, slab: false, prop: null, cx: cx.c, cz: cz.c };
+            if (inRoom) {
+                for (const cv of covers) {
+                    const ovx = Math.max(0, Math.min(cx.b, cv.x + cv.hw) - Math.max(cx.a, cv.x - cv.hw));
+                    const ovz = Math.max(0, Math.min(cz.b, cv.z + cv.hd) - Math.max(cz.a, cv.z - cv.hd));
+                    if (ovx * ovz / (C * C) >= B.cover && cv.top > cell.top) { cell.top = cv.top; cell.prop = cv.key; cell.seat = false; }
+                }
+                if (gal) {
+                    const g = gal.at(cx, cz);
+                    if (g && g.top > cell.top) { cell.top = g.top; cell.flight = g.flight; cell.slab = !g.flight; cell.prop = null; cell.seat = false; }
+                }
+                cell.tile = hqFieldBoxTile(cell.top);
+            }
+            row.push(cell);
+        }
+        cells.push(row);
+    }
+    const info = { room, roomId, S, C, w: AX.cols.length, h: AZ.cols.length, x0: AX.cols[0].a, z0: AZ.cols[0].a, offX: AX.off, offZ: AZ.off, cells, covers, gallery: gal, floorKey, wallKey, wallH: +S.h || 3 };
+    if (_hqFieldBoxCache) _hqFieldBoxCache.set(room, info);
+    return info;
+}
+/* THE LATTICE under a wild room — ONE shape for the window's choice: the cave grid (stage B) or the box lattice (stage C) */
+function hqFieldLattice(roomId) {
+    const room = (DOOR_HQ.rooms || {})[roomId]; if (!room) return null;
+    if (room.cave) {
+        const info = hqCaveInfo(roomId); if (!info) return null;
+        return { kind: 'cave', info, C: info.cell, w: info.w, h: info.h, x0: -info.halfW, z0: -info.halfD,
+                 walk: (gx, gy) => { const c = info.cells[gy] && info.cells[gy][gx]; return !!(c && c.walk && !c.rock); } };
+    }
+    const bi = hqFieldBoxInfo(roomId); if (!bi) return null;
+    return { kind: 'box', info: bi, C: bi.C, w: bi.w, h: bi.h, x0: bi.x0, z0: bi.z0,
+             walk: (gx, gy) => { const c = bi.cells[gy] && bi.cells[gy][gx]; return !!(c && c.in); } };
+}
+/* the nearest walkable lattice cell to (x, y) — a walker standing in a partial edge cell / on a slope */
+function hqFieldNearestWalk(Lt, c) {
+    let best = null, bd = Infinity;
+    for (let gy = 0; gy < Lt.h; gy++) for (let gx = 0; gx < Lt.w; gx++) {
+        if (!Lt.walk(gx, gy)) continue;
+        const d = Math.hypot(gx - c.x, gy - c.y);
+        if (d < bd - 1e-9) { bd = d; best = { x: gx, y: gy }; }
+    }
+    return best;
+}
 function hqFieldRaster(roomId, ox, oz) {
-    const info = hqCaveInfo(roomId); if (!info) return null;
+    const Lt = hqFieldLattice(roomId); if (!Lt) return null;
+    return Lt.kind === 'cave' ? hqFieldRasterCave(roomId, Lt.info, ox, oz) : hqFieldRasterBox(Lt.info, ox, oz);
+}
+function hqFieldRasterCave(roomId, info, ox, oz) {
     const S = HQ_FIELD_RULES.size, C = info.cell;
     ox = ox | 0; oz = oz | 0;
     const tid = (typeof MF_TID !== 'undefined') ? MF_TID : null;
@@ -30772,9 +30950,41 @@ function hqFieldRaster(roomId, ox, oz) {
     }
     const rockTile = Math.max(HQ_FIELD_RULES.rockMin, maxIn + HQ_FIELD_RULES.rockPad);
     for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) if (cells[y][x].rock) cells[y][x].tile = rockTile;
-    return { room: roomId, ox, oz, S, C, L: info.L, info, cells, rockTile, x0: -info.halfW + ox * C, z0: -info.halfD + oz * C };
+    return { room: roomId, ox, oz, S, C, L: info.L, info, cave: true, cells, rockTile, x0: -info.halfW + ox * C, z0: -info.halfD + oz * C, floorKey: known(info.floor) ? info.floor : 'cave_floor' };
 }
-/* the walker's reach INSIDE the window from cell (sx, sy) — hqCaveReach's step rule on the window's cells */
+/* stage C: the window on the box lattice — an OUT cell (off the lattice, a partial edge cell, the wall) is ROCK in
+   the shell's wall sheet; an IN cell is the floor at its cover's band (a prop top / a tread / the slab), `seat`
+   false on a cover (a unit never starts on a table or the slab) */
+function hqFieldRasterBox(bi, ox, oz) {
+    const S = HQ_FIELD_RULES.size, C = bi.C;
+    ox = ox | 0; oz = oz | 0;
+    const cells = []; let maxIn = 0;
+    for (let y = 0; y < S; y++) {
+        const row = [];
+        for (let x = 0; x < S; x++) {
+            const gx = ox + x, gy = oz + y;
+            const src = (gx >= 0 && gy >= 0 && gx < bi.w && gy < bi.h) ? bi.cells[gy][gx] : null;
+            let cell;
+            if (!src || !src.in) cell = { x, y, gx, gy, in: false, rock: true, hazard: false, tile: null, key: bi.wallKey, fluid: null, under: null, src: src || null, seat: false, top: null, flight: false, slab: false, prop: null };
+            else { cell = { x, y, gx, gy, in: true, rock: false, hazard: false, tile: src.tile, key: bi.floorKey, fluid: null, under: null, src, seat: !!src.seat, top: src.top, flight: !!src.flight, slab: !!src.slab, prop: src.prop || null }; maxIn = Math.max(maxIn, src.tile); }
+            row.push(cell);
+        }
+        cells.push(row);
+    }
+    const rockTile = Math.max(HQ_FIELD_RULES.rockMin, maxIn + HQ_FIELD_RULES.rockPad);
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) if (cells[y][x].rock) cells[y][x].tile = rockTile;
+    return { room: bi.roomId, ox, oz, S, C, L: null, info: bi, box: true, cells, rockTile, x0: bi.x0 + ox * C, z0: bi.z0 + oz * C, floorKey: bi.floorKey };
+}
+/* the walker's own step between two box cells (rule §4's guarantee is proved on this): up by a jump's reach, down by
+   the walk-off, the flight and the slab one run (the treads climb it) — never onto a +2 from the floor */
+function hqFieldBoxStep(a, b) {
+    const B = HQ_FIELD_RULES.box;
+    if (!a || !b || !a.in || !b.in) return false;
+    if ((a.flight || a.slab) && (b.flight || b.slab)) return true;
+    const d = (+b.top || 0) - (+a.top || 0);
+    return d > 0 ? d <= B.climbM : -d <= B.dropM;
+}
+/* the walker's reach INSIDE the window from cell (sx, sy) — hqCaveReach's step rule on a cave window, hqFieldBoxStep on a box window */
 function hqFieldReach(R, sx, sy) {
     const seen = new Set();
     if (!R) return seen;
@@ -30788,20 +30998,26 @@ function hqFieldReach(R, sx, sy) {
             const nx = p[0] + n[0], ny = p[1] + n[1], k = nx + ',' + ny;
             if (seen.has(k)) continue;
             const b = at(nx, ny); if (!b || !b.in) continue;
-            const ha = hqCaveEdgeH(R.info, a.src, n[2]), hb = hqCaveEdgeH(R.info, b.src, n[3]);
-            if (ha == null || hb == null) continue;
-            if (hb - ha > HQ_CAVE_STEP || ha - hb > HQ_CAVE_DROP) continue;
+            if (R.box) { if (!hqFieldBoxStep(a, b)) continue; }
+            else {
+                const ha = hqCaveEdgeH(R.info, a.src, n[2]), hb = hqCaveEdgeH(R.info, b.src, n[3]);
+                if (ha == null || hb == null) continue;
+                if (hb - ha > HQ_CAVE_STEP || ha - hb > HQ_CAVE_DROP) continue;
+            }
             seen.add(k); q.push([nx, ny]);
         }
     }
     return seen;
 }
 function hqFieldWindow(roomId, wPt, tPt) {
-    const info = hqCaveInfo(roomId); if (!info || !wPt) return null;
-    const S = HQ_FIELD_RULES.size, C = info.cell;
+    const Lt = hqFieldLattice(roomId); if (!Lt || !wPt) return null;
+    const S = HQ_FIELD_RULES.size, C = Lt.C;
     const cl = (v, n) => Math.max(0, Math.min(n - 1, v));
-    const cellOf = (p) => ({ x: cl(Math.floor((+p.x + info.halfW) / C), info.w), y: cl(Math.floor((+p.z + info.halfD) / C), info.h) });
-    const cw = cellOf(wPt), ct = tPt ? cellOf(tPt) : cw;
+    const cellOf = (p) => ({ x: cl(Math.floor((+p.x - Lt.x0) / C), Lt.w), y: cl(Math.floor((+p.z - Lt.z0) / C), Lt.h) });
+    let cw = cellOf(wPt), ct = tPt ? cellOf(tPt) : cw;
+    /* a foot in a partial edge cell / on a slope: the reach is scored from the nearest walkable cell (the seats nudge the same way) */
+    if (!Lt.walk(cw.x, cw.y)) cw = hqFieldNearestWalk(Lt, cw) || cw;
+    if (!Lt.walk(ct.x, ct.y)) ct = hqFieldNearestWalk(Lt, ct) || ct;
     const span = (a, b) => {
         let lo = Math.max(a, b) - (S - 1), hi = Math.min(a, b);
         if (lo > hi) { lo = a - (S - 1); hi = a; }   // too far apart to share a window (never at reach 3.4 m): the walker's own
@@ -30819,8 +31035,8 @@ function hqFieldWindow(roomId, wPt, tPt) {
     if (!best) return null;
     const R = best.R;
     return {
-        id: hqFieldId(roomId, best.ox, best.oz), room: roomId, site: hqRoomSite(roomId), ox: best.ox, oz: best.oz, reach: best.reach,
-        board: { N: S, C, x0: R.x0, z0: R.z0, cave: true },
+        id: hqFieldId(roomId, best.ox, best.oz), room: roomId, site: hqRoomSite(roomId), ox: best.ox, oz: best.oz, reach: best.reach, kind: Lt.kind,
+        board: Object.assign({ N: S, C, x0: R.x0, z0: R.z0 }, Lt.kind === 'cave' ? { cave: true } : { box: true }),
         cells: { walker: { x: cw.x - best.ox, y: cw.y - best.oz }, target: { x: ct.x - best.ox, y: ct.y - best.oz } },
         raster: R,
     };
@@ -30833,7 +31049,7 @@ function hqFieldBuild(roomId, ox, oz, opts) {
     const id = hqFieldId(roomId, R.ox, R.oz);
     const siteD = (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[site + '_delta'] : null;
     const tid = (typeof MF_TID !== 'undefined') ? MF_TID : {};
-    const baseKey = tid[R.info.floor] ? R.info.floor : 'cave_floor';
+    const baseKey = R.floorKey || (tid[R.info.floor] ? R.info.floor : 'cave_floor');
     const M = _mfNew({
         name: (room.label || roomId) + ' · ' + HQ_FIELD_RULES.label, w: S, h: S, base: baseKey, baseH: B, seed: (typeof hqHash === 'function') ? (hqHash(id) % 100000) + 1 : 8008,
         strata: MF_DELTA_STRATA, underTop: 'dirt_3', fillAbove: 'surface', tints: (siteD && siteD.terrainTints) ? Object.assign({}, siteD.terrainTints) : null,
@@ -30844,7 +31060,7 @@ function hqFieldBuild(roomId, ox, oz, opts) {
         if (c.under && B + c.tile - 1 >= 0) M.under(x, y, B + c.tile - 1, c.under);
     }
     /* the seats: the two leads on their cells (the window's own frame), the parties on the free cells about them (rule §7: explicit per seat) */
-    const free = (x, y) => { const c = R.cells[y] && R.cells[y][x]; return !!(c && c.in && !c.hazard); };
+    const free = (x, y) => { const c = R.cells[y] && R.cells[y][x]; return !!(c && c.in && !c.hazard && c.seat !== false); };
     const n = HQ_FIELD_RULES.teamSize;
     const seats = hqEncounterSeats({ cells: opts.cells || null }, { W: S, H: S, n1: n, n2: n, free });
     const sp = (seats && seats[1] && seats[2]) ? { 1: seats[1].map(c => ({ x: c.x, y: c.y })), 2: seats[2].map(c => ({ x: c.x, y: c.y })) } : { 1: [], 2: [] };
@@ -30853,15 +31069,20 @@ function hqFieldBuild(roomId, ox, oz, opts) {
     entry.isDelta = true;
     entry.bed = M.strata.slice(); entry.underTop = M.underTop; entry.base = baseKey;
     entry.deltaDesc = HQ_FIELD_RULES.label + ' — ' + (room.label || roomId) + ' (' + R.ox + ',' + R.oz + ')';
-    entry.field = { id, room: roomId, site, ox: R.ox, oz: R.oz, S, C: R.C, x0: R.x0, z0: R.z0, rockTile: R.rockTile,
+    entry.field = { id, room: roomId, site, ox: R.ox, oz: R.oz, S, C: R.C, x0: R.x0, z0: R.z0, rockTile: R.rockTile, box: !!R.box, cave: !!R.cave,
                     cells: R.cells.map(row => row.map(c => (c.rock ? '#' : c.hazard ? '!' : c.in ? String(Math.max(0, Math.min(9, c.tile + 1))) : '?')).join('')) };
     return entry;
 }
 /* the layout a field plays under: the site Δ's own env (the cavern world, the crystals, `near`), the field's own sections */
-function hqFieldLayout(site, baseKey) {
+function hqFieldLayout(site, baseKey, opts) {
+    opts = opts || {};
     const S = HQ_FIELD_RULES.size;
     const src = (typeof MAP_LAYOUT_PRESETS !== 'undefined') ? (MAP_LAYOUT_PRESETS[site + '_delta'] || MAP_LAYOUT_PRESETS[site]) : null;
     const env = (src && src.env) ? JSON.parse(JSON.stringify(src.env)) : null;
+    /* stage C: a BOX field (a complex part) is indoors — no near setting round it (the site's apron / moat / hull would
+       stand round a room), no streaming motion, THE WORLD inert (`kind: 'room'`); the site's sky and far roster stay
+       until §10 stage 4 draws the room itself as the battle's setting */
+    if (env && opts.box) { delete env.near; delete env.motion; env.world = { kind: 'room' }; }
     return {
         sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: S - 1, label: 'Earth', baseTerrain: baseKey || 'cave_floor' }, buffer2: null, below: null },
         barrierRows: [], barrierOpeningsX: [], hasFloors: false, env, streetLamps: !!(src && src.streetLamps),
@@ -30871,7 +31092,7 @@ function hqFieldRegister(roomId, ox, oz, opts) {
     const entry = hqFieldBuild(roomId, ox, oz, opts); if (!entry) return null;
     const id = entry.field.id, site = entry.field.site, S = HQ_FIELD_RULES.size;
     if (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) PREBUILT_MAPS[id] = entry;
-    const layout = hqFieldLayout(site, entry.base);
+    const layout = hqFieldLayout(site, entry.base, { box: !!entry.field.box });
     if (typeof MAP_LAYOUT_PRESETS !== 'undefined') MAP_LAYOUT_PRESETS[id] = layout;
     const siteMeta = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META.find(m => m.id === site) : null;
     const room = DOOR_HQ.rooms[roomId];
@@ -32770,6 +32991,7 @@ if (typeof window !== 'undefined') {
     /* THE FIELD stage B — the rasteriser on the cave (Phase 9 Delivery 8, 2026-09-16) */
     window.HQ_FIELD_RULES = HQ_FIELD_RULES; window.hqFieldRoomOk = hqFieldRoomOk; window.hqFieldId = hqFieldId; window.hqFieldParse = hqFieldParse; window.hqFieldRaster = hqFieldRaster; window.hqFieldReach = hqFieldReach;
     window.hqFieldWindow = hqFieldWindow; window.hqFieldBuild = hqFieldBuild; window.hqFieldLayout = hqFieldLayout; window.hqFieldRegister = hqFieldRegister;
+    window.hqFieldBoxInfo = hqFieldBoxInfo; window.hqFieldGallery = hqFieldGallery; window.hqFieldLattice = hqFieldLattice; window.hqFieldBoxStep = hqFieldBoxStep; window.hqFieldBoxTile = hqFieldBoxTile; window.hqFieldNearestWalk = hqFieldNearestWalk;
     /* SKATEBOARDING (HQ plan 9.8 stage 1, 2026-09-15) */
     window.HQ_SKATE_RULES = HQ_SKATE_RULES; window.hqSkateStatus = hqSkateStatus; window.hqSkateRecord = hqSkateRecord; window.hqSkateBank = hqSkateBank; window.hqSkateScore = hqSkateScore; window.hqSkateIssueFree = hqSkateIssueFree;
     window.hqLinkRoom = hqLinkRoom;

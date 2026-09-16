@@ -4429,3 +4429,42 @@ rooms (stage C), the window's thin walls / a door as a threshold (stage D),
 the HUD of the field (E), the room as the battle's setting (§10 stage 4).
 UNSEEN LIVE (RULE #1c): the real cave sheets on the field's columns, the
 rock's height against the chamber's walls, the eye's first frame in a cave.
+
+## PHASE 9 DELIVERY 9 — THE FIELD, STAGE C (the rasteriser on the box rooms) (2026-09-16, local delivery)
+PHASE9_QUALITY_PLAN §11.3 C's rasteriser: a COMPLEX PART (a box room with no Δ
+under the walker — the hall, the hold, the casino, the platform) fights ITS OWN
+WINDOW like a cave since stage B. data.js (the stage B block, grown):
+**`HQ_FIELD_RULES.box`** (cell = HQ_CAVE_CELL · cover 0.5 · margin 0.4 · the
+bands low 0.5 / high 2.2 · footMin 0.7 · climbM 1.46 = the walker's jump apex ·
+dropM · galleryRise / galleryRun = the renderer's constants, hq-field.test.js
+diffs them); **`hqFieldRoomOk`** = a cave chamber OR a wild box room that is not
+a site's BOARD room; **`hqFieldBoxInfo(roomId)`** = THE LATTICE (cells of a
+battle tile on the room's axes, edges at off + k·C from the centre, `off` per
+axis 0 or half a cell — the one that puts the most cells inside; a cell is IN
+when ≥ 50 % of it lies inside and its centre stands 0.4 m off the wall) + THE
+COVERS (every floor prop the renderer BLOCKS — `foot > 0` and `block` or
+standing, top = `y + cat.h || 1`, the renderer's own read — as a box in room
+axes; a disc as the square of its area, ignored under footMin; a cover on
+≥ 50 % of a cell sets its top; `seat: false` on a cover) + the gallery through
+**`hqFieldGallery`** (`_hqGalleryFrame`'s frame in data: the slab a +2, the
+flight's treads at the run's middle → +1 then +2); cached per room OBJECT (a
+variant swap re-rasterises). **`hqFieldBoxTile(top)`** = the band (< 0.5 the
+floor · < 2.2 a +1 · else a +2). **`hqFieldLattice(roomId)`** is ONE shape over
+the cave grid and the box lattice (`walk(gx, gy)`) for **`hqFieldWindow`**,
+which nudges a foot in a partial edge cell to the nearest walkable
+(`hqFieldNearestWalk`) and marks the board `box: true`. **`hqFieldRasterBox`**:
+OUT = the room's WALL (rock in the shell's wall sheet), IN = the floor sheet at
+its band. **`hqFieldBoxStep(a, b)`** = the walker's own step (up ≤ climbM,
+down ≤ dropM, the flight + the slab one run) — `hqFieldReach` dispatches on
+`R.box`; THE GUARANTEE (walker-reachable ⇒ unit-reachable) holds by the bands
+and the test proves it on every window of every part. `hqFieldLayout(site,
+base, { box })`: a box field is INDOORS — no `near`, no `motion`, THE WORLD
+inert (`kind: 'room'`); the site's sky stands until §10 stage 4 draws the room
+round the field. map.js `_hqEncounterBoardCopy` says THE ROOM IS THE BOARD in
+a part. Nothing relayed (VS-CPU; RULE #2). NOT built: §10 stage 4, stage D
+(the thin walls / a door as a threshold), stage E (the HUD). Measured: the
+hall 56 IN / three heights, the platform 5 wide inside rock, the attic 15 IN
+(the plan's "≥ 24" predates the measurement; the test pins ≥ 12). Unseen live
+(RULE #1c): the wall sheets as rock columns, the +2 landing, the eye's first
+frame in a box room.
+

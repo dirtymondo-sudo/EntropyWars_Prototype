@@ -380,6 +380,15 @@ encounter starts on its own window: TDM, the seats the zones, the native at P2 s
 along: the frame ticking a disposed room after THE SLIDE's callback (`_hqFrame` guard) and D2's seat-1
 pin, which had never fired (`window._hqEncounterLead`). Next: stage C (box rooms + the room as the
 setting), then D, E.
+**Status 2026-09-16 (Delivery 9, `ENTROPY_WARS_PHASE9_FIELD_C.zip`, token
+`20260916-field-box-11-cors`):** §11.3 **stage C's rasteriser SHIPPED** — the box lattice on every complex
+part (data.js `HQ_FIELD_RULES.box`, `hqFieldBoxInfo` / `hqFieldGallery` / `hqFieldLattice` / `hqFieldRasterBox`
+/ `hqFieldBoxStep`, `hqFieldWindow` on the lattice, the indoor `hqFieldLayout`), THE COVERS diffed against the
+renderer's own blocking rule, THE GUARANTEE proved on every window of every part, the hall's landing a +2 tier
+with +1 treads; map.js says THE ROOM IS THE BOARD there. Measured: the plan's "≥ 24 IN per part" holds for
+the big rooms and not the attic (15) / the airlock (20) — the rooms are that size; the test pins ≥ 12 and the
+six two-height parts. NOT in it: §10 stage 4 (the room as the battle's setting — a box field stands as a
+rock-walled 8 × 8 under the site's sky until then). Next: §10 stage 4, then D, E.
 
 Each item: impact · evidence · files · dependencies · change · acceptance.
 
@@ -461,8 +470,11 @@ Each item: impact · evidence · files · dependencies · change · acceptance.
 - **Delivery 8 — THE FIELD, STAGE B** (data.js, map.js, match-select.js, state.js, three-renderer.js;
   hq-field.test.js, playtest_field_offline.js): the rasteriser on the cave — the window, the entry, the
   registries, the launch; the probe's two fixes. ✅ 2026-09-16, `ENTROPY_WARS_PHASE9_FIELD_B.zip`.
-- **Delivery 9 — the playtest** (PLAYTEST_NOTES.md) → then §10 stage 4 (the room as the
-  battle's setting) and §11 C–E in their own deliveries.
+- **Delivery 9 — THE FIELD, STAGE C** (data.js, map.js; hq-field.test.js): the rasteriser on the box
+  rooms — the lattice, the covers, the gallery, the step rule, the indoor layout. ✅ 2026-09-16,
+  `ENTROPY_WARS_PHASE9_FIELD_C.zip`. §10 stage 4 (the room as the battle's setting) is its second half.
+- **Delivery 10 — the playtest** (PLAYTEST_NOTES.md) → then §10 stage 4 and §11 D–E in their own
+  deliveries.
 Each delivery = one `ENTROPY_WARS_<TOPIC>.zip`, `npm test` green, the token bumped, the
 caption saying R2 / Render / repo per file (RULE #1, #1b).
 
@@ -599,7 +611,7 @@ square, and the units are not on squares when the fight starts.
   reachability from the walker's cell; no cell is a wall the walker could step; OFF cells are
   rock; `npm test` builds and validates every generated Δ through the forge's own checks
   (`delta-maps.test.js`'s rules).
-- **C · THE RASTERISER ON BOX ROOMS + THE ROOM AS THE SETTING.** The complex parts (the hall
+- **C · THE RASTERISER ON BOX ROOMS + THE ROOM AS THE SETTING.** ✅ the rasteriser SHIPPED 2026-09-16 (Delivery 9): `hqFieldBoxInfo` / `hqFieldLattice` / `hqFieldRasterBox` / `hqFieldBoxStep`; the room as the setting (§10 stage 4) is OPEN. Measured acceptance: every part ≥ 12 IN cells (the attic is 8 × 6 m), six parts ≥ 2 heights, the hall's landing +2 with +1 treads. Original text: The complex parts (the hall
   with its gallery, the hold, the casino). The near pass draws the room (`_nrRoom` from the
   DOOR_HQ sheet through the HQ builders on the battle scene — the bridge §10 stage 4 built).
   Acceptance: the six complexes' 18 parts each yield ≥ 24 IN cells with ≥ 2 heights from

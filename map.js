@@ -2031,17 +2031,19 @@
         function _hqEncounterRoomOkNow() { try { return (typeof window.hqEncounterRoomOk === 'function') ? window.hqEncounterRoomOk(_hqCurRoom) : false; } catch (e) { return false; } }
         /* the landing: file the crossing */
         /* PHASE9_QUALITY_PLAN §4 B3 (2026-09-16): the copy tells the truth about the board — a site's BOARD ROOM
-           fights on the board under your feet (THE ROOM IS THE BOARD); a complex part or a cave chamber fights the
-           SITE'S Δ (the launch is always `site + '_delta'`; the eye seed is null there) — THE SITE IS THE BOARD */
+           fights on the board under your feet (THE ROOM IS THE BOARD); since THE FIELD stages B / C a cave chamber
+           fights its own window (THE CAVE IS THE BOARD) and a complex part its own (THE ROOM IS THE BOARD); only a
+           wild room the rasteriser refuses fights the SITE'S Δ from the centre — THE SITE IS THE BOARD */
         function _hqEncounterBoardCopy(board) {
             const room = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms) ? DOOR_HQ.rooms[_hqCurRoom] : null;
-            /* THE FIELD stage B: a cave chamber fights its own window (data.js hqFieldRoomOk) — the renderer reports no board there, the window is the board */
-            const caveField = !!(room && room.cave && typeof window.hqFieldRoomOk === 'function' && window.hqFieldRoomOk(_hqCurRoom));
+            /* THE FIELD stage B / C: a cave chamber or a complex part fights its own window (data.js hqFieldRoomOk) — the renderer reports no board there, the window is the board */
+            const fieldRoom = !!(room && typeof window.hqFieldRoomOk === 'function' && window.hqFieldRoomOk(_hqCurRoom));
+            const caveField = !!(fieldRoom && room.cave);
             if (board && board.cave) return 'THE CAVE IS THE BOARD';
-            if (board === null) return caveField ? 'THE CAVE IS THE BOARD' : 'THE SITE IS THE BOARD';
+            if (board === null) return caveField ? 'THE CAVE IS THE BOARD' : fieldRoom ? 'THE ROOM IS THE BOARD' : 'THE SITE IS THE BOARD';
             if (board) return 'THE ROOM IS THE BOARD';
             if (caveField) return 'THE CAVE IS THE BOARD';
-            return (room && room.fx === 'site' && !room.cave) ? 'THE ROOM IS THE BOARD' : 'THE SITE IS THE BOARD';
+            return ((room && room.fx === 'site' && !room.cave) || fieldRoom) ? 'THE ROOM IS THE BOARD' : 'THE SITE IS THE BOARD';
         }
         function _hqEncounterFire(ev) {
             if (!ev || !ev.target) return false;
@@ -2060,11 +2062,12 @@
             const L = (typeof window.hqEncounterLaunch === 'function') ? window.hqEncounterLaunch(_hqCurRoom, ev.target, _hqEncounterCfgRaw(), { gesture: ev.gesture, codeRed: !!cr }) : null;
             if (!L) return false;
             L.codeRedRun = cr ? { date: cr.date, site: cr.site, race: cr.race, label: cr.label, bonus: cr.bonus } : null;
-            /* THE FIELD stage B (Phase 9 Delivery 8, 2026-09-16 — the rasteriser on the cave): a cave chamber has no
-               board under the walker, so THE WINDOW is chosen here — the 8 × 8 of the cave's own grid that holds both
-               feet with the most of the walker's reach inside it (data.js hqFieldWindow) — and its frame becomes the
-               event's `board`, so the field record, THE SLIDE, THE SEATS and THE EYE below read a cave exactly like a
-               site room's board. The window is rasterised into a map entry at the launch (_hqFieldRegister). */
+            /* THE FIELD stage B / C (Phase 9 Deliveries 8 + 9, 2026-09-16 — the rasteriser on the cave, then on the
+               box rooms): a cave chamber or a complex part has no board under the walker, so THE WINDOW is chosen here
+               — the 8 × 8 of the room's own lattice (the cave grid / the box lattice, data.js hqFieldLattice) that
+               holds both feet with the most of the walker's reach inside it (data.js hqFieldWindow) — and its frame
+               becomes the event's `board`, so the field record, THE SLIDE, THE SEATS and THE EYE below read it exactly
+               like a site room's board. The window is rasterised into a map entry at the launch (_hqFieldRegister). */
             let win = null;
             if (!ev.board && typeof window.hqFieldRoomOk === 'function' && window.hqFieldRoomOk(_hqCurRoom) && typeof window.hqFieldWindow === 'function') {
                 try { win = window.hqFieldWindow(_hqCurRoom, { x: ev.x, z: ev.z }, { x: ev.target.x, z: ev.target.z }); } catch (e) { console.warn('[HQ] the field window failed', e); win = null; }
@@ -2137,9 +2140,10 @@
                 party = { members: [], fallback: true };
             }
             if (typeof MS_MAP_LIST === 'undefined' || !MS_MAP_LIST.length) return false;
-            /* THE FIELD stage B: a cave chamber fights ITS OWN WINDOW — the rasterised map entry registered now under
-               `field:<room>:<ox>,<oz>` (PREBUILT_MAPS / MAP_LAYOUT_PRESETS / GAME_MODES / a hidden MS_MAP_LIST row);
-               a site room keeps its Δ; a complex part (stage C) still fights the site's Δ from the centre */
+            /* THE FIELD stage B / C: a cave chamber or a complex part fights ITS OWN WINDOW — the rasterised map entry
+               registered now under `field:<room>:<ox>,<oz>` (PREBUILT_MAPS / MAP_LAYOUT_PRESETS / GAME_MODES / a hidden
+               MS_MAP_LIST row); a site's board room keeps its Δ (stage A); the site's Δ from the centre is the fallback
+               when the window cannot be built */
             let launchId = L.site + '_delta';
             if (L.field) {
                 const reg = _hqFieldRegister(L.field, field);
