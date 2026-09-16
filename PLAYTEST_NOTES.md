@@ -10646,3 +10646,25 @@ stands inside a setting's piece = `_hqSettingFreeSpot` did not move it
 (it only moves walkway rows: `!f.cell && f.y == null`). The toast sits
 136 px up, over the prompt; if the prompt and the toast overlap on a
 short window, `.hq-toast { bottom }` is the edit.
+
+## THE DOOR GUN PROBE (2026-09-16, rev 4) — playtest_gun_offline.js: the posed walker, the real gun, the keys
+`playtest_hq_offline.js` serves every GLB as a 404 — fine for rooms, useless for a HELD gun. `playtest_gun_offline.js`
+is the same harness (the npm mirror, the stand-in textures) plus every GLB the repo holds from disk: `Assets/Models/
+<X>.glb` → `rigged_animations/Assets_Models_<X>.glb` (the UAL / MAL libraries — the walker is POSED), `Assets/Models/
+charactercreation/<f>` → `charactercreation/<f>` (the avatar is forced to the creator base: `EW_HQ_AVATAR = { race:
+'homosapien', gender: 'male', appearance }` — the cast GLBs are R2-only), `Assets/door/models/<f>` → `doors/<f>` (the
+kit + the ray gun). Two headless truths it works around: (1) `requestPointerLock` is stubbed on init — a refused lock
+fired `pointerlockchange`, THE PAUSE rule (C-28) read it as the eaten ESC and opened the pause menu over every shot;
+(2) a headless window BLURS on every `page.evaluate` and `H.onBlur` clears the keys, so real key events walk one frame
+— the probe holds a key through `hq.dev.press(key, on)` (a probe-only write) and re-presses it on every sample.
+Steps (a JSON list): `{eval}` (any page expression; `ThreeRenderer.hq.portalDraw(true)` / `portalFire()` /
+`portalAds(on)` / `portalAim()` / `portalDoors()` / `dev.walk()` = the walker's frame: keys, pause, carry, velocity,
+the last fit refusal `fitFail`), `{teleport: {x, z, y, face, pitch, fp, dist}}`, `{shot: name}` (closes the pause,
+hides the strip / prompt / hints), `{wait}`, `{keydown|keyup: key}`, `{sample: ms, n, hold: key}` (prints
+`[x, z, y, mvx, mvz, air, camYaw]` per tick). To photograph the HELD gun from the front / a side, turn the walker's
+group: `hq.dev.playerGroup().rotation.y = Math.PI` (THE STANCE squares the model on the camera every frame, so the
+camera alone cannot get in front of it). The frame rate is ~8–10 fps (a 2.4 m/s walk reads ~1 m/s per real second;
+`dt` is clamped at 0.05) — judge distances, not times. What it settled: the grip (`gun.rot / pos / span` — see the
+build log), the wall placements (the snap, the frame-sized fit, the lane), the carry through a wall pair (the Medical
+Wing's north / south walls — its side walls are its doors' lanes; the training room's west wall stands behind 1 m
+risers and its far walls are past `reach`, so use the lobby).

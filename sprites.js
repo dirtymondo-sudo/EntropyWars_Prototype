@@ -2237,6 +2237,15 @@ const _CAST_POSES = {
 // `hqRide` (_hqSpawnCharacter); never a per-race export.
 const HQ_RIDE_CLIP = { clip: 'Idle_10', lib: 2, ts: 1.0 };
 if (typeof window !== 'undefined') window.HQ_RIDE_CLIP = HQ_RIDE_CLIP;
+// THE DOOR GUN rev 4 (2026-09-16): the walker's GUN clips, baked beside the
+// ride clip on the HQ avatar's rig only (three-renderer.js _hqSpawnCharacter
+// → slots `hqAim` / `hqShoot`). UAL1 (lib 0) has the pistol set — the aim is
+// the two-hand neutral hold (loops: the officer stands with the gun UP while
+// it is drawn), the shot is Pistol_Shoot cut to the recoil. The Pistol_Idle
+// idles were retired for the ROSTER in 2026-08-09; the walker holding a real
+// gun is the one case that wants them.
+const HQ_GUN_CLIPS = { aim: { clip: 'Pistol_Aim_Neutral', lib: 0, ts: 1.0 }, shoot: { clip: 'Pistol_Shoot', lib: 0, ts: 1.6 } };
+if (typeof window !== 'undefined') window.HQ_GUN_CLIPS = HQ_GUN_CLIPS;
 // A cast member: the shared library + every building pose + a per-character
 // flavour. `female` picks the female idle/walk (the roster's gendered
 // defaults only sweep RACE_MODELS_3D). `file` overrides the model filename

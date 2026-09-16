@@ -331,6 +331,15 @@ D9 = `check-find-spots.js` (the audit: 160 finds, 0 relaxed, 1 near the way in; 
 pins are the user's, §14 row E — the tool prints the case). NOT done: D7's variant-driven
 reveals for the Dutchman / the Strip / Downtown (their landmarks exist; no new beat), D5
 (the blob's `cleared` / `encounters` / `skate.best`), D3d. Next: item 10 (the playtest).
+**Status 2026-09-16 (the polish pass, `ENTROPY_WARS_DOOR_GUN_REV4.zip`, token
+`20260916-door-gun-05-cors`):** the user's five gun findings, all done and MEASURED with the new
+`playtest_gun_offline.js` (the walker posed on the real rig holding the real gun): the hold (right side up, the
+grip in the palm — `gun.rot [0, −90, 90]`, `pos [0, 0.05, 0.06]`, `span 0.36`), the holding animation (UAL1's
+pistol aim + shot baked as `hqAim` / `hqShoot`), the first-person HAND (a viewmodel under the eye — the GLB, a glove,
+the sleeve), ONE TRIGGER (left click shoots the selected threshold, R / 1 / 2 the selector, right click held = aim
+down sights), THE WALL (the hit snapped onto the shell plane, the frame's own centre, a frame-sized fit), THE CARRY
+(momentum through a pair, mapped through the doors' frames, run off on the ground, kept in the air, across rooms).
+Build log: DOOR_HQ_BUILD_PLAN §9 2026-09-16 "THE DOOR GUN rev 4".
 
 Each item: impact · evidence · files · dependencies · change · acceptance.
 

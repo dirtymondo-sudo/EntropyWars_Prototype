@@ -8718,3 +8718,65 @@ amended for the blob key, the quiet rooms, the viewport and the profile-aware di
   (`20260916-map-remembers-04-cors`), tests / tool / docs → the repo. UNSEEN LIVE (RULE #1c): the dotted legs on
   the directory, the plates' legibility at 1.1 × 0.7 m, the post in the open, the sun's pass through the porthole,
   the lip snap's feel (aim at the lip from 1–3 m; a corner hit reads NO ROOM — aim at the centre of the face).
+
+### 2026-09-16 · PHASE 9 POLISH — THE DOOR GUN rev 4: THE HOLD, THE HAND, ONE TRIGGER, THE WALL, THE CARRY (data.js, sprites.js, three-renderer.js, map.js, index.html; hq-portal.test.js, hq-skate.test.js, playtest_gun_offline.js; local, not uploaded)
+The user's five: the gun held upside down · no holding animation · no hand in first person · right click should
+be AIM, not the other door · walls refuse doors they should take · you stop dead on the far side of a door.
+**THE HOLD (measured, not guessed).** A scratch probe (now `playtest_gun_offline.js`) serves the repo's own GLBs
+— the UAL / MAL libraries, the creator base, the ray gun — so the walker is a POSED rig holding the real gun,
+photographed from the front / the sides by turning `hq.dev.playerGroup()`. Read off the shots: the hand bone's +Y
+runs down the fingers, its −Z is the back of the hand; the gun's +X is the barrel (the grip is the −X end, the
+lowest part of the silhouette), +Y its top. `HQ_PORTAL_RULES.gun` = `rot [0, −90, 90]` (barrel → +Y, top → −Z; the
+old `[0, 90, 0]` hung it barrel-down, the mirror `[0, 90, 90]` hangs it under the hand), `pos [0, 0.05, 0.06]` (the
+grip in the palm, not at the wrist; `[0, 0.2, 0.07]` floated it past the fingertips), `span 0.36` (the catalogue's
+0.62 was a rifle — `_hqGunAttach` passes `h: G.span` now; the holder used to read the catalogue). The same row
+rides the Door Agent's board hold. A held prop is never frustum-culled (its bounding spheres sit under a 0.01-scaled
+bone and the gun vanished from some angles). **THE HOLDING ANIMATION.** sprites.js `HQ_GUN_CLIPS` = UAL1's
+`Pistol_Aim_Neutral` (loop) + `Pistol_Shoot`; `_hqSpawnCharacter` bakes them onto the walker's rig as `hqAim` /
+`hqShoot` beside `hqRide`; drawn + standing = `hqAim` (the two-hand hold, level, squared on the aim — walking keeps
+the walk / run clips with the gun in the hand); the shot plays `hqShoot` first, the quick-draw chain behind it. The
+Pistol idles were retired for the ROSTER in 2026-08-09 — the walker holding a real gun is the one case that wants
+them. **THE HAND (first person).** The body is hidden in FP, so the gun rides the CAMERA: `_hqViewmodel` — the same
+catalogue GLB at the rules' span, the barrel turned forward, a black GLOVE closed round its grip (fist, four fingers,
+the thumb inside) and the sleeve's cuff running off the bottom-right of the frame — a child of `H.camera` (added to
+the scene for it), at `viewmodel.pos` (metres right / up / forward of the eye), bobbed by the walk, pushed back by the
+shot (`vmKickAt`), swung to `adsPos` by the ADS ease; `_hqGunMuzzle` answers the viewmodel's muzzle in FP so the sight
+and the shot leave from it. **ONE TRIGGER (the user's question).** LEFT CLICK shoots the SELECTED threshold
+(`H.portal.slot`, A first; the ghost, the sight and the word wear its colour; the ghost judges THAT slot, so it reads
+THE TWIN in red over the other door), every shot auto-advances the selector so two clicks lay a pair, R flips A ⇄ B,
+1 / 2 pick outright (`_hqPortalSelect` → map.js says which lays next; the pill reads NEXT A ● / B ■). RIGHT CLICK held
+= AIM DOWN SIGHTS (`_hqPortalAds`, `adsK` eased over `ads.ms`): the lens 52° → `ads.fov` 34°, the mouse × `ads.sens`
+0.55 (`_hqLookGain`), the third-person boom in to `ads.boom` 1.4 m, the viewmodel to the centre; the button up,
+holstering, blur all drop it. `_hqKeyName` knows R / 1 / 2 (before Q, so the pinned line holds). **THE WALL (the
+"collision is wrong").** Two real bugs: (1) the march reads the WALKABLE set, which stops HQ_BODY_R + 0.08 short of
+every shell wall — a wall hit landed 0.42 m in front of the wall, the frame floated off it and "behind must be
+solid" read air → `_hqPortalWallSnap` moves a hit within 0.6 m of a box room's perimeter plane (or a rotunda's
+drum) ONTO it; (2) the fit tested corners a third of a door UNDER a low aim (inside the floor) and padded every
+blocker by a walker's body (a coat rack a body's width from the frame refused the wall) → the aim now computes the
+wall door's OWN centre (base on the floor in front when the aim is low, under the ceiling when high — the record,
+the ghost and the fit read one number), the fit tests the FRAME's corners (a hand inside top / bottom) with a
+frame-sized front test 0.45 m out (`_hqPortalFrontSolidAt`, a 6 cm pad — a picture / a notice board under the frame
+is covered, a bench against the wall still refuses), TOO CLOSE is a floor door under you (a wall at arm's length is
+fine; only standing IN the frame refuses), the lane on the wall is 1.45 m, and in third person the march starts at
+the officer's head (a desk the boom hung over used to catch the ray). Measured in the Medical Wing: both long walls
+take a door at eye level; the doors the room's own doors sit in still read A DOOR'S LANE. **THE CARRY ("I need to
+carry my momentum").** No new physics engine: the walker already had gravity (`vy`) — it lacked horizontal momentum.
+`_hqTickWalker` measures the frame's displacement as `velX / velZ / velY` and the walk's INTENDED velocity as
+`pushX / pushZ`; a WALL door is crossed by TOUCH now (`_hqPortalWallTouch`: the centre inside the opening, within
+`carry.touchM` 1.05 m of the plane — the discs hold a body ~0.85 m off it — moving or PUSHING into it); the crossing
+files the velocity VECTOR; `_hqPortalMapCarry(v, A, B)` (pure, tested in a vm) reads it in A's frame
+(`_hqPortalFrame`, the plain twin of `_hqPortalBasis`) — the part INTO A becomes the part OUT of B, up stays up,
+sideways mirrors — never below `carry.minOut` 2.4 out of a wall (a walk-in is a walk-out), never above `carry.max`
+18; the walker keeps it as `pl.mvx / mvz` (+ `vy`), `_hqTickCarry` runs it with the walk's own slide / step rules,
+run off on the ground over `carry.groundS` 0.55 s, kept in the air (a fall into a floor hatch is a 9 m/s shot out of
+a wall door; a run into a wall door is a leap out of a floor hatch). `_hqPortalWallExit` stands you clear of the
+twin's discs facing out; wall → wall keeps the mouse's offset off the entry heading, anything else looks the way out;
+across a ROOM CHANGE map.js hands the twin's row to `hq.portalCarryFor(twin)` before `_hqGoRoom` and
+`_hqGoTo('portal:x')` spends `_hqPortalCarryMem` on the landing. Measured (Medical Wing, A north / B south): walked
+north into A, out of B at 2.4 m/s still heading north, the camera turned to match, the carry ran off over ~2 s.
+**Tests**: hq-portal.test.js (+5 rev 4 tests: the rules, the clips, the trigger / ADS, the hand, the wall, the carry
+mapping with numbers — 20 / 20), hq-skate.test.js's key pin. `npm test` 1474 / 0. **UNSEEN LIVE (RULE #1c)**: the
+grip on the Player / Belle CAST rigs (the probe posed the creator base — `gun.pos` is the edit if the cast hand sits
+differently), the ADS feel and its boom in third person, the viewmodel's scale at the real FOV, the bob, the fling
+through a ceiling hatch at speed, the lane rule against a room's every door. NOT built: a holstered gun on the hip,
+a reload / inspect idle, the crosshair (the laser dot is the reticle), D3d (the boom's pitch clamp in a loop).

@@ -4161,6 +4161,52 @@ UNSEEN LIVE (RULE #1c): the grip and the muzzle on the Player / Belle rigs
 a unit's hand at tile scale, the flight's arc and the unfold's overshoot,
 the sight's brightness under each room's light, the three cues' loudness.
 
+## THE DOOR GUN rev 4 — THE HOLD, THE HAND, ONE TRIGGER, THE WALL, THE CARRY (Phase 9 polish) — 2026-09-16, local delivery
+The user's five fixed and MEASURED with `playtest_gun_offline.js` (repo tooling: the
+offline HQ harness + every repo GLB served from disk, so the walker is a POSED rig
+holding the real gun; keys through `hq.dev.press`, pointer lock stubbed — see
+PLAYTEST_NOTES "THE DOOR GUN PROBE"). **THE HOLD**: `HQ_PORTAL_RULES.gun` = `rot
+[0, −90, 90]` (the gun's +X barrel down the hand bone's +Y fingers, its +Y top along
+−Z), `pos [0, 0.05, 0.06]` (the grip in the palm), `span 0.36` (`_hqGunAttach` passes
+`h: G.span` — the holder read the catalogue's 0.62 before); a held prop is never
+frustum-culled. **THE ANIMATION**: sprites.js `HQ_GUN_CLIPS` (UAL1 `Pistol_Aim_Neutral`
++ `Pistol_Shoot`) baked onto the walker's rig as `hqAim` / `hqShoot` (the `hqRide`
+pattern); drawn + standing = `hqAim`; the shot plays `hqShoot` first. **THE HAND**:
+in first person the gun is a VIEWMODEL under the camera (`_hqViewmodel` /
+`_hqViewmodelTick`: the GLB at the rules' span, a black glove round the grip, the
+cuff off the corner; `viewmodel.pos` / `adsPos` / `rot` / `bob` / `kick` in the rules;
+the camera is added to the scene for it; `_hqGunMuzzle` answers its muzzle in FP).
+**ONE TRIGGER**: LEFT CLICK shoots the SELECTED threshold (`H.portal.slot`, A first —
+the ghost / sight / word wear its colour and the ghost judges THAT slot), a shot
+auto-advances to the other, R flips, 1 / 2 pick (`_hqPortalSelect`, `_hqPortalFire`;
+`buttons: { fire, aim, select, a, b }`); RIGHT CLICK held = AIM DOWN SIGHTS
+(`_hqPortalAds` → `adsK` eased over `ads.ms`: the lens to `ads.fov`, the mouse ×
+`ads.sens` via `_hqLookGain`, the boom to `ads.boom`, the viewmodel to the centre).
+`_hqKeyName` knows R / 1 / 2 (before Q — the pinned line). **THE WALL**:
+`_hqPortalWallSnap` moves a hit within 0.6 m of a box room's perimeter (or a
+rotunda's drum) ONTO the shell plane (the march reads the walkable set, which stops a
+body short of every wall — the frame floated and its back read as air); the aim
+computes the wall door's OWN centre (on the floor in front when low, under the
+ceiling when high) and the fit tests the FRAME's corners with a frame-sized front
+(`_hqPortalFrontSolidAt`, a 6 cm pad, 0.45 m out) — never the walker's body pad; TOO
+CLOSE is a floor door under you only; the wall lane is 1.45 m; in third person the
+march starts at the officer's head. **THE CARRY** (no new physics engine — gravity
+existed, horizontal momentum did not): `_hqTickWalker` measures `velX / velZ / velY`
+off the frame and `pushX / pushZ` (the intended walk); a WALL door is crossed by
+TOUCH (`_hqPortalWallTouch`, `carry.touchM` 1.05 past the discs, moving or pushing
+in); `_hqPortalMapCarry(v, A, B)` (pure; `_hqPortalFrame` = the plain twin of
+`_hqPortalBasis`) maps the entry vector through the pair — into A → out of B, up
+stays, sideways mirrors, ≥ `carry.minOut` out of a wall, ≤ `carry.max`; the walker
+keeps it as `pl.mvx / mvz` (`_hqTickCarry`: the walk's own slide / step rules, run
+off over `carry.groundS` on the ground, kept in the air); `_hqPortalWallExit` stands
+you clear of the twin's discs; wall → wall keeps the look's offset; across a room
+change map.js calls `hq.portalCarryFor(twin)` before `_hqGoRoom` and
+`_hqGoTo('portal:x')` spends `_hqPortalCarryMem`. Probe-only dev reads:
+`hq.dev.walk()` / `playerGroup()` / `press()`, `hq.portalViewmodel()`. `npm test`
+runs hq-portal.test.js (20). UNSEEN LIVE (RULE #1c): the grip on the CAST rigs
+(the probe posed the creator base; `gun.pos` is the edit), the ADS feel, the
+viewmodel's scale at the real lens, the fling through a ceiling hatch at speed.
+
 ## PHASE 9 DELIVERY 4 — THE MAP REMEMBERS (D6 · D7 · D8 · D9 + THE LIP) (2026-09-16, local delivery)
 PHASE9_QUALITY_PLAN §8 items 8 + 9. **D6 DISCOVERED ROUTES**: a world-graph link
 is CHARTED when the officer walks one of its doors — map.js `_hqRecordVisit` on a

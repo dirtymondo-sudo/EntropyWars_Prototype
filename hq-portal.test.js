@@ -150,16 +150,16 @@ test('THE RENDERER: the aim against the surface set, the ghost, the placed door 
     assert.ok(/H\.blockers\.push\(\{ obj: d, rad: 0\.24, y: y0, top: y0 \+ oh, portal: slot \}\)/.test(build), 'the shut door is a wall from behind');
     assert.ok(/if \(!flat\) \{\s*\n\s*var fr = _hqRad\(spec\.face \|\| 0\)/.test(build), 'a FLAT threshold lays no blockers — you walk onto a hatch');
     assert.ok(/H\.blockers = H\.blockers\.filter\(function \(b\) \{ return b\.portal !== slot; \}\)/.test(TR), 'a dropped slot takes its blockers with it');
-    assert.ok(/function _hqPortalHop\(slot, opts\)/.test(TR) && /_hqGoTo\('portal:' \+ slot, true\)/.test(TR) && /H\.enterDoorLatch = 'portal:' \+ slot/.test(TR), 'the hop lands out of the twin (a wall door in front of it, facing away), latched');
+    assert.ok(/function _hqPortalHop\(slot, opts\)/.test(TR) && /function _hqPortalWallExit\(rec, out\)/.test(TR) && /H\.enterDoorLatch = 'portal:' \+ slot/.test(TR), 'the hop lands out of the twin (rev 4: a wall door — clear of its discs, facing out, carrying the entry), latched');
     assert.ok(/try \{ _hqBuildPortals\(room, opts\); \}/.test(TR), 'rebuilt on every entry');
     assert.ok(/_hqPortalTickAim\(\);/.test(TR.slice(TR.indexOf('function _hqTickWorld'))), 'the ghost follows the aim each frame');
-    assert.ok(/portal: \{ drawn: false, ghost: null, aim: null, placed: \{\}, lastKey: '', hold: null, cross: null, issued:[^\n]*sight: null, fAt: 0, fFired: false \}/.test(TR), 'the record on _hq (the held mouth, the entry speed, the sight and the F hold ride it)');
+    assert.ok(/portal: \{ drawn: false, ghost: null, aim: null, placed: \{\}, lastKey: '', hold: null, cross: null, issued:[^\n]*sight: null, fAt: 0, fFired: false, slot: [^\n]*ads: false, adsK: 0, vm: null \}/.test(TR), 'the record on _hq (the held mouth, the entry speed, the sight, the F hold, the selector, the sights and the viewmodel ride it)');
     ['portalDraw: _hqPortalDraw', 'portalIssued:', 'portalDrawn:', 'portalAim:', 'portalPlace: _hqPortalPlaceAim', 'portalHop: _hqPortalHop', 'portalRemove: _hqPortalRemove', 'portalDoors:'].forEach(k => assert.ok(TR.indexOf(k) >= 0, 'API ' + k));
     assert.ok(/k === 'f'\) \{ e\.preventDefault\(\); if \(!e\.repeat && H\.portal && !H\.portal\.fAt\) \{ H\.portal\.fAt = performance\.now\(\)/.test(TR), 'F is stamped on the press (rev 3: a hold recalls)');
     assert.ok(/if \(k === 'f' && H\.portal && H\.portal\.fAt\) \{ var fired = H\.portal\.fFired; H\.portal\.fAt = 0; H\.portal\.fFired = false; if \(!fired && !H\.paused\) _hqPortalDraw\(!\(H\.portal && H\.portal\.drawn\)\)/.test(TR), 'a TAP draws / holsters on the release');
     assert.ok(/k === 'q' && H\.portal && H\.portal\.drawn\) \{ e\.preventDefault\(\); _hqPortalDraw\(false\)/.test(TR), 'Q holsters a drawn one before the bell');
-    assert.ok(/if \(e\.button === 0\) _hqPortalPlaceAim\('a'\); else if \(e\.button === 2\) _hqPortalPlaceAim\('b'\);/.test(TR), 'TWO BUTTONS: left click places A, right click places B');
-    assert.ok(/k === 'v' \|\| k === 'f' \|\| k === 'q'/.test(TR), 'F is a walker key');
+    assert.ok(/if \(e\.button === 0\) _hqPortalFire\(\); else if \(e\.button === 2\) _hqPortalAds\(true\);/.test(TR), 'ONE TRIGGER (rev 4): left click shoots the selected threshold, right click aims down the sights');
+    assert.ok(/k === 'v' \|\| k === 'f' \|\| k === 'r' \|\| k === '1' \|\| k === '2' \|\| k === 'q'/.test(TR), 'F, R, 1 and 2 are walker keys');
 });
 
 test('MAP.JS: the filer is one transaction, the step goes out of the twin (a hop here, a room change there), the issue is the Quartermaster\'s, a fresh arrival clears the pair, the pill, the prompt', () => {
@@ -189,7 +189,8 @@ test('ANY SURFACE (rev 2): the rules name the three surfaces, two buttons and tw
     assert.equal(R.surfaces.join(','), 'floor,wall,ceiling');
     assert.ok(R.colors && R.colors.a && R.colors.b && R.colors.a !== R.colors.b, 'the pair is ALWAYS two colours');
     assert.ok(R.colorNames.a && R.colorNames.b && R.colorNames.a !== R.colorNames.b);
-    assert.equal(R.buttons.a, 'LEFT CLICK'); assert.equal(R.buttons.b, 'RIGHT CLICK');
+    assert.equal(R.buttons.fire, 'LEFT CLICK'); assert.equal(R.buttons.aim, 'RIGHT CLICK'); assert.equal(R.buttons.select, 'R');
+    assert.ok(/^1 /.test(R.buttons.a) && /^2 /.test(R.buttons.b), 'A and B are picked by 1 / 2, then the trigger');
     const place = g('hqPortalPlace'), p = profile();
     const c = place(p, { room: 'foyer', x: 0, y: 2.7, z: 0, face: 0, surf: 'ceiling' });
     assert.equal(c.ok, true); assert.equal(c.spec.surf, 'ceiling');
@@ -230,7 +231,7 @@ test('THE RENDERER rev 2: the ceiling and the wall are surfaces, the frame is la
     assert.ok(/surf === 'ceiling'\) \{ Z = new THREE\.Vector3\(0, -1, 0\)/.test(basis) && /surf === 'floor'\) \{ Z = new THREE\.Vector3\(0, 1, 0\)/.test(basis) && /makeBasis\(X, Y, Z\)/.test(basis), 'local +Z is the surface normal — flat on the floor, flat on the ceiling, in the wall');
     const aim = TR.slice(TR.indexOf('function _hqPortalAim'), TR.indexOf('function _hqPortalFits'));
     assert.ok(/surf: 'ceiling'/.test(aim) && /surf: 'floor'/.test(aim) && /_hqPortalWallHit\(prev/.test(aim), 'all three kinds come out of the march');
-    assert.ok(/hit\.surf !== 'ceiling' && Math\.hypot\(hit\.x - pl\.x, hit\.z - pl\.z\) < R\.near/.test(aim), 'a ceiling overhead is never refused for being close — that is the trick');
+    assert.ok(/hit\.surf === 'floor' && Math\.hypot\(hit\.x - pl\.x, hit\.z - pl\.z\) < R\.near/.test(aim) && !/hit\.surf === 'ceiling' && Math\.hypot\(hit\.x - pl\.x, hit\.z - pl\.z\) < R\.near/.test(aim), 'a ceiling overhead is never refused for being close — that is the trick (rev 4: nor a wall at arm\'s length)');
     assert.ok(/Math\.hypot\(d\.px - hit\.x, \(d\.py \|\| 0\) - hit\.y, d\.pz - hit\.z\)/.test(aim), 'the twin gap is 3D');
     assert.ok(/if \(slot && d\.door\.portal === slot\) continue;/.test(aim), 'a threshold never blocks its own move');
     const build = TR.slice(TR.indexOf('function _hqPortalBuild'), TR.indexOf('function _hqBuildPortals'));
@@ -241,13 +242,13 @@ test('THE RENDERER rev 2: the ceiling and the wall are surfaces, the frame is la
     /* the crossing */
     assert.ok(/function _hqPortalInMouth\(rec, pl\)/.test(TR) && /function _hqTickPortalCross\(dt\)/.test(TR), 'the touch crossing');
     const mouth = TR.slice(TR.indexOf('function _hqPortalInMouth'), TR.indexOf('function _hqTickPortalCross'));
-    assert.ok(/rec\.portalSurf === 'wall'\) return false/.test(mouth), 'a wall door is walked into, never touched through');
+    assert.ok(/rec\.portalSurf === 'wall'\) return false/.test(mouth), 'a wall door has no mouth of its own (rev 4: it is run into — _hqPortalWallTouch)');
     assert.ok(/pl\.y <= rec\.py \+ 0\.4/.test(mouth) && /var head = pl\.y \+ \(pl\.heightM \|\| 1\.75\)/.test(mouth), 'the feet for a floor hatch, the head for a ceiling one');
     const cross = TR.slice(TR.indexOf('function _hqTickPortalCross'), TR.indexOf('function _hqPortalHop'));
     assert.ok(/H\.portal\.hold = \{ slot: s, at: performance\.now\(\) \}/.test(cross) && /H\.opts\.onPortalCross/.test(cross), 'the mouth is held and the crossing reported');
     const hop = TR.slice(TR.indexOf('function _hqPortalHop'), TR.indexOf('/* The story cast'));
-    assert.ok(/surf === 'ceiling'/.test(hop) && /pl\.vy = -Math\.max\(2, Math\.min\(18, speed\)\)/.test(hop), 'out of a ceiling hatch you keep falling');
-    assert.ok(/if \(speed > 4\) \{ pl\.y = rec\.py \+ 0\.06; pl\.air = true/.test(hop), 'out of a floor hatch you are thrown up when you came in fast');
+    assert.ok(/surf === 'ceiling'/.test(hop) && /pl\.vy = -Math\.max\(2, Math\.min\(18, Math\.max\(speed, -out\.y\)\)\)/.test(hop), 'out of a ceiling hatch you keep falling');
+    assert.ok(/if \(up > 4\) \{ pl\.y = rec\.py \+ 0\.06; pl\.air = true/.test(hop), 'out of a floor hatch you are thrown up when you came in fast');
     assert.ok(/H\.portal\.hold = \{ slot: slot, at: performance\.now\(\) \}/.test(hop), 'the mouth you came out of does not swallow you again');
     /* the sites that had to learn about a flat door */
     assert.ok(/var want = \(d\.portalSurf && d\.portalSurf !== 'wall'\) \? 1 :/.test(TR), 'a flat threshold stands open');
@@ -256,7 +257,7 @@ test('THE RENDERER rev 2: the ceiling and the wall are surfaces, the frame is la
     assert.ok(/_hqTickPortalCross\(dt\);/.test(TR.slice(TR.indexOf('function _hqFrame'))), 'the crossing is ticked with the walker');
     assert.ok(/if \(_hq\.portal\) _hq\.portal\.hold = \{ slot: d\.portal, at: performance\.now\(\) \};/.test(TR), 'a room change through the pair lands held');
     assert.ok(/onPortalCross: function \(slot\)/.test(MP), 'map.js takes the crossing');
-    assert.ok(/L-CLICK ▸ A ● · R-CLICK ▸ B ■/.test(IX), 'index.html: the two buttons (and the two shapes) in the hint');
+    assert.ok(/L-CLICK shoots · R flips A ● \/ B ■ · R-CLICK aims/.test(IX), 'index.html: the trigger, the selector (and the two shapes), the sights in the hint');
     assert.ok(/\.hq-plate\.hq-plate-portal-a b/.test(CSS) && /\.hq-plate\.hq-plate-portal-b b/.test(CSS), 'the CSS: two colours');
 });
 
@@ -293,7 +294,7 @@ test('THE RENDERER rev 3: the gun in the hand while drawn, the laser sight, the 
     const place = TR.slice(TR.indexOf('function _hqPortalPlaceAim'), TR.indexOf('function _hqGunFire'));
     assert.ok(/_hqPortalBuild\(filed\.slot, row, \{ fresh: true, flight: from \? \{ from: from \} : null \}\)/.test(place) && /_hqGunFire\(from, filed\.slot\)/.test(place), 'the placement is a SHOT from the muzzle');
     const fire = TR.slice(TR.indexOf('function _hqGunFire'), TR.indexOf('function _hqPortalLeafKey'));
-    assert.ok(/playDoorSfx\('doorGunShot'/.test(fire) && /_attackChainFor\('ranged'\)/.test(fire) && /H\.cam\.pitch \+= kick/.test(fire), 'the zap, the ranged gesture, the recoil kick');
+    assert.ok(/playDoorSfx\('doorGunShot'/.test(fire) && /\['hqShoot'\]\.concat\(_attackChainFor\('ranged'\)\)/.test(fire) && /H\.cam\.pitch \+= kick/.test(fire), 'the zap, the pistol\'s own shot clip before the ranged chain, the recoil kick');
     const build = TR.slice(TR.indexOf('function _hqPortalBuild'), TR.indexOf('function _hqPortalLandBeat'));
     assert.ok(/shape === 'square' \? 4 : 44/.test(build) && /rim\.rotation\.z = Math\.PI \/ 4/.test(build) && /new THREE\.SphereGeometry\(0\.055 \* U/.test(build), 'D3b: A a circle, B a square (the rim and the lamp caps)');
     assert.ok(/if \(opts\.fresh && opts\.flight && opts\.flight\.from\) _hqPortalFlight\(/.test(build), 'a fresh placement with a muzzle flies');
@@ -329,4 +330,110 @@ test('THE BOARD rev 3: every Door Agent carries the gun, the placements are SHOT
     ['doorGunShot', 'doorGunLand', 'doorGunRecall'].forEach(k => assert.ok(new RegExp(k + '\\(ctx, t, out, vol\\)').test(AU) && new RegExp(k + ': 0\\.').test(AU), 'audio.js recipe + gain ' + k));
     assert.ok(/ev\.kind === 'recall'/.test(MP) && /window\.hqPortalClear\(p\)\) PS\.saveProfile\(idx, p\)/.test(MP), 'map.js clears the pair on the recall in one transaction');
     assert.ok(/HOLD F recall/.test(IX), 'the hint says so');
+});
+
+/* ── REV 4 (2026-09-16, the polish pass): THE HOLD, THE HAND, ONE TRIGGER, THE WALL, THE CARRY ── */
+
+test('REV 4 · THE RULES: the grip is measured (the barrel down the fingers, the top off the palm, a pistol\'s span), the trigger / the sights / the selector are named, the ADS, the viewmodel and the carry have their numbers', () => {
+    assert.equal(R.gun.span, 0.36, 'a ray gun, not a rifle');
+    assert.equal(R.gun.rot.join(','), '0,-90,90', 'the measured grip: +X (the barrel) → the hand\'s +Y (the fingers), +Y (the top) → −Z');
+    assert.ok(R.gun.pos[1] > 0 && R.gun.pos[2] > 0, 'the grip sits past the wrist, into the palm');
+    assert.ok(R.ads && R.ads.fov < 52 && R.ads.sens > 0 && R.ads.sens < 1 && R.ads.ms > 0 && R.ads.boom > 0, 'aim down sights: a narrower lens, a slower mouse, an ease, the boom');
+    assert.ok(R.viewmodel && R.viewmodel.pos.length === 3 && R.viewmodel.adsPos.length === 3 && R.viewmodel.rot.length === 3 && R.viewmodel.bob > 0 && R.viewmodel.kick > 0 && /^#/.test(R.viewmodel.glove), 'the first-person hand: the hip hold, the sighted hold, the bob, the kick, the glove');
+    assert.ok(R.carry && R.carry.minOut >= 2 && R.carry.max >= 10 && R.carry.groundS > 0 && R.carry.touchM > 0.85, 'the carry: a walk-out floor, a cap, the run-off, a touch zone past the discs');
+});
+
+test('REV 4 · THE CLIPS: the walker bakes the library\'s pistol aim + shot (sprites.js HQ_GUN_CLIPS, UAL1) beside the ride clip; drawn and standing it holds the gun up; the shot plays the recoil clip', () => {
+    assert.ok(/const HQ_GUN_CLIPS = \{ aim: \{ clip: 'Pistol_Aim_Neutral', lib: 0[^}]*\}, shoot: \{ clip: 'Pistol_Shoot', lib: 0/.test(SP), 'the two clips, UAL1');
+    assert.ok(/window\.HQ_GUN_CLIPS = HQ_GUN_CLIPS/.test(SP));
+    assert.ok(/spec\.kind === 'player' && def\.libClips && typeof HQ_GUN_CLIPS !== 'undefined' && !def\.libClips\.hqAim/.test(TR) && /glc\.hqAim = \{ clip: GA\.clip, lib: GA\.lib \|\| 0 \}/.test(TR) && /glc\.hqShoot = \{ clip: GS\.clip, lib: GS\.lib \|\| 0 \}/.test(TR), 'baked onto the walker\'s rig only, a clone of the def');
+    assert.ok(/want === 'idle' && H\.portal && H\.portal\.drawn && e\.actions && e\.actions\.hqAim\) want = 'hqAim'/.test(TR), 'drawn + standing = the pistol hold');
+    assert.ok(/\(name === 'hqAim'\) \? acts\.idle : null/.test(TR) && /\(name === 'hqShoot'\) \? \(acts\.castRanged \|\| acts\.cast \|\| acts\.idle\) : null/.test(TR), 'the fallbacks when the library is missing');
+    assert.ok(/h: G\.span \|\| 0\.36/.test(TR.slice(TR.indexOf('function _hqGunAttach'), TR.indexOf('function _hqGunShow'))), 'the holder fits the rules\' span, not the catalogue\'s');
+    assert.ok(/n\.frustumCulled = false/.test(TR.slice(TR.indexOf('function _hqAttachHeld'), TR.indexOf('function _hqSpawnPopulation'))), 'a held prop is never frustum-culled (the gun vanished from some angles)');
+});
+
+test('REV 4 · ONE TRIGGER: left click fires the SELECTED threshold and advances the selector, right click held is ADS, R flips, 1 / 2 pick, the ghost and the sight wear the selected colour, holstering drops the sights', () => {
+    assert.ok(/function _hqPortalSelect\(slot, opts\)/.test(TR) && /function _hqPortalAds\(on\)/.test(TR) && /function _hqPortalFire\(\)/.test(TR));
+    const fire = TR.slice(TR.indexOf('function _hqPortalFire'), TR.indexOf('function _hqPortalPlaceAim'));
+    assert.ok(/var ok = _hqPortalPlaceAim\(slot\);/.test(fire) && /if \(ok\) _hqPortalSelect\(slot === 'a' \? 'b' : 'a', \{ auto: true, quiet: true \}\)/.test(fire), 'a shot lays the selected one and moves on to the other — two clicks lay a pair');
+    assert.ok(/\(k === 'r' \|\| k === '1' \|\| k === '2'\) && H\.portal && H\.portal\.drawn\) \{ e\.preventDefault\(\); if \(!e\.repeat\) _hqPortalSelect\(k === 'r' \? null : \(k === '1' \? 'a' : 'b'\)\)/.test(TR), 'R flips, 1 / 2 pick — drawn only');
+    assert.ok(/if \(e && e\.button === 2 && H\.portal\) _hqPortalAds\(false\);/.test(TR), 'the sights come down with the button');
+    assert.ok(/if \(!on\) H\.portal\.ads = false;/.test(TR.slice(TR.indexOf('function _hqPortalDraw'))), 'holstering drops the sights');
+    const tick = TR.slice(TR.indexOf('function _hqPortalTickAim'), TR.indexOf('function _hqPortalDraw'));
+    assert.ok(/H\.portal\.adsK = \(H\.portal\.adsK \|\| 0\) \+ \(adsT - \(H\.portal\.adsK \|\| 0\)\) \* adsRate;/.test(tick) && /_hqViewmodelTick\(dtA\);/.test(tick), 'the ADS ease + the viewmodel tick run every frame, drawn or not');
+    assert.ok(/var aim = _hqPortalAim\(H\.portal\.slot \|\| 'a'\);/.test(tick) && /var slotHexSel = HQ_PORTAL_COLORS\[H\.portal\.slot \|\| 'a'\]/.test(tick) && /aim\.ok \? slotHexSel : HQ_PORTAL_COLORS\.bad/.test(tick), 'the ghost judges and wears the SELECTED threshold');
+    assert.ok(/function _hqLookGain\(\)/.test(TR) && /var gainL = 0\.0032 \* _hqLookGain\(\);/.test(TR), 'the mouse slows on the sights');
+    const cam = TR.slice(TR.indexOf('function _hqTickCamera'), TR.indexOf('function _hqTickWorld'));
+    assert.ok(/var fovT = 52 \+ \(\(adsR\.fov \|\| 34\) - 52\) \* adsK;/.test(cam) && /cam\.updateProjectionMatrix\(\)/.test(cam) && /multiplyScalar\(boomD\)/.test(cam), 'the lens narrows, the boom comes in');
+    ['portalSelect: _hqPortalSelect', 'portalSlot:', 'portalAds: _hqPortalAds', 'portalFire: _hqPortalFire', 'portalCarryFor: _hqPortalCarryFor', 'portalMapCarry: _hqPortalMapCarry'].forEach(k => assert.ok(TR.indexOf(k) >= 0, 'API ' + k));
+    assert.ok(/ev\.kind === 'select'/.test(MP) && /function _hqPortalSlotWord\(slot\)/.test(MP), 'map.js says which threshold the next shot lays');
+});
+
+test('REV 4 · THE HAND: in first person the gun rides the camera as a viewmodel — the same GLB, a glove round its grip, the sleeve off the corner; the muzzle, the sight and the shot leave from it', () => {
+    assert.ok(/function _hqViewmodel\(\)/.test(TR) && /function _hqViewmodelTick\(dt\)/.test(TR));
+    const vm = TR.slice(TR.indexOf('function _hqViewmodel()'), TR.indexOf('function _hqViewmodelTick'));
+    assert.ok(/gun\.rotation\.y = Math\.PI \/ 2;/.test(vm), 'the barrel (+X) turned forward (−Z)');
+    assert.ok(/_miscModelInstance\(_hqModelUrl\(cat\), true, span \* U, \{ fit: 'span'/.test(vm), 'the catalogue GLB at the rules\' span');
+    assert.ok(/var fist = new THREE\.Mesh/.test(vm) && /var thumb = /.test(vm) && /var arm = new THREE\.Mesh\(new THREE\.CylinderGeometry/.test(vm), 'the fist, the thumb, the forearm');
+    assert.ok(/if \(!H\.camera\.parent\) H\.scene\.add\(H\.camera\);/.test(vm) && /H\.camera\.add\(g\);/.test(vm), 'a child of the camera, and the camera is in the scene for it');
+    const vt = TR.slice(TR.indexOf('function _hqViewmodelTick'), TR.indexOf('function _hqPortalFrame'));
+    assert.ok(/var show = !!\(H\.fp && H\.portal\.drawn && H\.player/.test(vt) && /P\[0\] \+ \(A\[0\] - P\[0\]\) \* k \+ bx/.test(vt) && /H\.portal\.vmKickAt/.test(vt), 'shown in first person while drawn; the hip → the sights by the ADS ease; the bob; the kick');
+    assert.ok(/if \(H\.fp && H\.portal && H\.portal\.vm && H\.portal\.vm\.visible && H\.portal\.vm\.userData\.inst\)/.test(TR.slice(TR.indexOf('function _hqGunMuzzle'))), 'the muzzle is the viewmodel\'s in first person');
+    assert.ok(/if \(H\.portal\) H\.portal\.vmKickAt = performance\.now\(\);/.test(TR.slice(TR.indexOf('function _hqGunFire'))), 'the shot pushes the viewmodel');
+});
+
+test('REV 4 · THE WALL: the hit snaps onto the shell\'s own plane, the frame\'s centre is the door\'s (on the floor when the aim is low, under the ceiling when high), the fit tests the frame\'s corners with a frame-sized front, a wall is never TOO CLOSE at arm\'s length', () => {
+    assert.ok(/function _hqPortalWallSnap\(lo, nx, nz\)/.test(TR) && /_hqPortalWallSnap\(lo, nx, nz\);/.test(TR.slice(TR.indexOf('function _hqPortalWallHit'), TR.indexOf('function _hqPortalWallSnap'))), 'the snap runs on every wall hit');
+    const snap = TR.slice(TR.indexOf('function _hqPortalWallSnap'), TR.indexOf('function _hqPortalBasis'));
+    assert.ok(/limX = S\.w \/ 2 \+ roam, limZ = S\.d \/ 2 \+ roam/.test(snap) && /Math\.abs\(r - S\.rOut\) < 0\.6/.test(snap), 'a box room\'s perimeter, a rotunda\'s drums');
+    const aim = TR.slice(TR.indexOf('function _hqPortalAim'), TR.indexOf('function _hqPortalLedgeSnap'));
+    assert.ok(/if \(!H\.fp\) \{ var hx = pl\.x - eye\.x/.test(aim) && /for \(var t = t0; t <= R\.reach; t \+= HQ_PORTAL_STEP\)/.test(aim), 'in third person the march starts at the officer\'s head, never behind it');
+    assert.ok(/if \(hit\.surf === 'wall'\) \{\s*\n\s*var ohW = 2\.25, lhW = 0\.22;/.test(aim) && /if \(flW !== null && baseW < flW \+ 0\.02\) baseW = flW;/.test(aim) && /baseW = cfW - 0\.03 - ohW - lhW;/.test(aim) && /hit\.y = baseW \+ ohW \/ 2;/.test(aim), 'the wall door\'s own centre: on the floor, under the ceiling');
+    assert.ok(/if \(hit\.surf === 'floor' && Math\.hypot\(hit\.x - pl\.x, hit\.z - pl\.z\) < R\.near/.test(aim) && /if \(hit\.surf === 'wall' && Math\.hypot\(hit\.x - pl\.x, hit\.z - pl\.z\) < 0\.45\)/.test(aim), 'TOO CLOSE is a floor door under you; a wall only when you stand in the frame');
+    assert.ok(/var laneR = \(hit\.surf === 'wall'\) \? 1\.45 : 1\.7;/.test(aim), 'the lane on the wall is the leaf + the frame');
+    const fits = TR.slice(TR.indexOf('function _hqPortalFits'), TR.indexOf('function _hqPortalGhost'));
+    assert.ok(/if \(hit\.surf === 'wall'\) corners = \[\[hw, -1\.0\], \[-hw, -1\.0\], \[hw, 0\], \[-hw, 0\], \[hw, 0\.98\], \[-hw, 0\.98\], \[0, 0\.98\], \[0, -1\.0\]\];/.test(fits), 'the corners are the frame\'s');
+    assert.ok(/var fwd = \(hit\.surf === 'wall'\) \? 0\.45 : 0\.2;/.test(fits) && /_hqPortalFrontSolidAt\(bx \+ B\.Z\.x \* fwd/.test(fits), 'a body\'s width in front must be free — by the frame\'s own footprint');
+    assert.ok(/function _hqPortalFrontSolidAt\(x, z, y\)/.test(TR) && /_hqBlkContains\(b, x, z, 0\.06\)/.test(TR.slice(TR.indexOf('function _hqPortalFrontSolidAt'))), 'the front test pads a blocker by 6 cm, not by a walker');
+});
+
+test('REV 4 · THE CARRY: the velocity is measured off the frame, a wall door is run into (the push counts against the discs), the entry velocity is mapped through the pair and kept — run off on the ground, kept in the air — across a room change too', () => {
+    const walk = TR.slice(TR.indexOf('function _hqTickWalker'), TR.indexOf('function _hqWalkerSetY'));
+    assert.ok(/var sx0 = pl\.x, sz0 = pl\.z, sy0 = pl\.y;/.test(walk) && /pl\.velX = \(pl\.x - sx0\) \/ dt; pl\.velZ = \(pl\.z - sz0\) \/ dt; pl\.velY = \(pl\.y - sy0\) \/ dt;/.test(walk) && /if \(pl\._hopped\) pl\._hopped = false;/.test(walk), 'the frame\'s displacement is the velocity; a hop is never a speed');
+    assert.ok(/pl\.pushX = moving \? mx \* \(running \? 4\.6 : 2\.4\) : 0;/.test(walk) && /_hqTickCarry\(pl, dt, moving\);/.test(walk), 'the push + the carry are ticked with the walk');
+    const carry = TR.slice(TR.indexOf('function _hqTickCarry'), TR.indexOf('function _hqPortalWallTouch'));
+    assert.ok(/if \(pl\.air\) \{\s*\n\s*if \(_hqAirOK\(pl\.x \+ cx, pl\.z, pl\.y\)\) pl\.x \+= cx; else pl\.mvx = 0;/.test(carry) && /var f = Math\.exp\(-dt \/ Math\.max\(0\.05, C\.groundS \|\| 0\.55\)\); pl\.mvx \*= f; pl\.mvz \*= f;/.test(carry), 'kept in the air, run off on the ground, killed by a wall');
+    const touch = TR.slice(TR.indexOf('function _hqPortalWallTouch'), TR.indexOf('function _hqPortalWallExit'));
+    assert.ok(/var pin = -\(\(pl\.pushX \|\| 0\) \* rec\.nx \+ \(pl\.pushZ \|\| 0\) \* rec\.nz\);/.test(touch) && /return Math\.max\(vin, pin\) > 0\.6;/.test(touch), 'held against the discs, the push is the crossing');
+    const cross = TR.slice(TR.indexOf('function _hqTickPortalCross'), TR.indexOf('function _hqPortalHop'));
+    assert.ok(/if \(rec\.portalSurf === 'wall'\) \{ if \(!_hqPortalWallTouch\(rec, pl\)\) continue; \}/.test(cross) && /vx: cvx, vy: pl\.air \? \(pl\.vy \|\| 0\) : \(pl\.velY \|\| 0\), vz: cvz/.test(cross), 'the crossing carries the vector');
+    const hop = TR.slice(TR.indexOf('function _hqPortalHop'), TR.indexOf('function _hqPortalTickHold'));
+    assert.ok(/var out = _hqPortalMapCarry\(vIn, A \|\| \{ surf: 'floor', face: 0 \}, rec, C\);/.test(hop) && /_hqPortalWallExit\(rec, out\);/.test(hop) && /H\.cam\.yaw \+= _hqRad\(_hqHeadingOf\(rec\.nx, rec\.nz\)\) - _hqRad\(_hqHeadingOf\(-A\.nx, -A\.nz\)\);/.test(hop), 'the hop maps the entry through the pair; wall → wall keeps the look\'s offset');
+    assert.ok(/portalCarryFor\(twin\)/.test(MP) && /function _hqPortalCarryFor\(twin\)/.test(TR) && /_hqPortalCarryMem = \{ out: out, at: performance\.now\(\)/.test(TR), 'map.js hands the twin\'s row before a room change; the renderer keeps the carry for the landing');
+    const goto = TR.slice(TR.indexOf('function _hqGoTo'), TR.indexOf('var _hqApi'));
+    assert.ok(/else if \(d && d\.portal && d\.portalSurf === 'wall'\) \{/.test(goto) && /var gapW = HQ_BODY_R \+ 0\.45;/.test(goto) && /if \(carryAfter\) \{/.test(goto), 'a wall twin lands clear of its discs and spends the carry');
+    /* THE MAPPING, in a vm — speed in, speed out: the plain-array frame is the twin of _hqPortalBasis */
+    const src = TR.slice(TR.indexOf('function _hqPortalFrame'), TR.indexOf('function _hqTickCarry'));
+    const ctx = vm.createContext({});
+    vm.runInContext(src + '\nthis.frame = _hqPortalFrame; this.map = _hqPortalMapCarry;', ctx);
+    const C = { minOut: 2.4, max: 18 };
+    const near = (a, b, m) => assert.ok(Math.abs(a - b) < 1e-6, m + ': ' + a + ' vs ' + b);
+    /* a wall door facing +z (face 180 = its normal points +z, into the room); another facing −z */
+    const fN = ctx.frame(180, 'wall'); near(fN.Z[2], 1, 'face 180 → +z normal'); near(fN.Y[1], 1, 'a wall door\'s up is world up');
+    /* walking north (−z) at 2.4 into the +z-facing door → out of the −z-facing twin still heading north */
+    let o = ctx.map({ x: 0, y: 0, z: -2.4 }, { face: 180, surf: 'wall' }, { face: 0, surf: 'wall' }, C);
+    near(o.x, 0, 'no sideways'); near(o.y, 0, 'no lift'); near(o.z, -2.4, 'north in, north out');
+    /* a slow shuffle in still leaves at the walk-out floor */
+    o = ctx.map({ x: 0, y: 0, z: -0.5 }, { face: 180, surf: 'wall' }, { face: 0, surf: 'wall' }, C); near(o.z, -2.4, 'never less than minOut out of a wall');
+    /* sideways mirrors: drifting +x into A comes out drifting −x of B's own frame — seen from the other side, the same hand */
+    o = ctx.map({ x: 1, y: 0, z: -3 }, { face: 180, surf: 'wall' }, { face: 180, surf: 'wall' }, C); near(o.z, 3, 'out along B\'s normal'); near(o.x, -1, 'mirrored');
+    /* a fall into a floor hatch is a shot out of a wall door */
+    o = ctx.map({ x: 0, y: -9, z: 0 }, { face: 0, surf: 'floor' }, { face: 90, surf: 'wall' }, C); near(o.x, 9, 'a 9 m/s fall leaves the east-facing wall door at 9 m/s'); near(o.y, 0, 'level');
+    /* a run into a wall door is a leap out of a floor hatch */
+    o = ctx.map({ x: 0, y: 0, z: -4.6 }, { face: 180, surf: 'wall' }, { face: 0, surf: 'floor' }, C); near(o.y, 4.6, 'up out of the floor at the run\'s speed');
+    /* out of a ceiling hatch: down */
+    o = ctx.map({ x: 0, y: 0, z: -4.6 }, { face: 180, surf: 'wall' }, { face: 0, surf: 'ceiling' }, C); near(o.y, -4.6, 'down out of the ceiling');
+    /* the cap */
+    o = ctx.map({ x: 0, y: -40, z: 0 }, { face: 0, surf: 'floor' }, { face: 90, surf: 'wall' }, C); near(Math.hypot(o.x, o.y, o.z), 18, 'capped at max');
 });

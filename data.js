@@ -29621,7 +29621,7 @@ DOOR_HQ.finds = hqBuildFinds();
    door on that top (three-renderer.js _hqPortalLedgeSnap). Titles + lines
    are Claude's DRAFT (A15, `draft: true`). Read through hqGunLessons(). */
 const HQ_GUN_LESSONS = {
-    floor:   { n: 1, room: 'training', title: 'LESSON ONE · THE FLOOR', lines: ['F DRAWS THE GUN', 'LEFT CLICK · A   RIGHT CLICK · B', 'WALK INTO ONE. YOU ARE AT THE OTHER.'], back: 'the same floor', draft: true },
+    floor:   { n: 1, room: 'training', title: 'LESSON ONE · THE FLOOR', lines: ['F DRAWS THE GUN. LEFT CLICK SHOOTS.', 'R FLIPS A / B · RIGHT CLICK AIMS', 'WALK INTO ONE. YOU ARE AT THE OTHER.'], back: 'the same floor', draft: true },
     ledge:   { n: 2, room: 'site_prebuilt_haunted_hall', title: 'LESSON TWO · THE LEDGE', lines: ['A ON THE LANDING OVER YOUR HEAD', 'B AT YOUR FEET', 'THE STAIRS ARE THE LONG WAY. THEY STILL WORK.'], back: 'the flight', draft: true },
     rooms:   { n: 3, room: 'foyer', title: 'LESSON THREE · TWO ROOMS', lines: ['A HERE. WALK THROUGH THE REVOLVING DOOR.', 'B IN THE HALL. STEP IN.', 'THE PAIR HOLDS ACROSS A WALL. IT HOLDS ACROSS THE BUILDING.'], back: 'the revolving door', draft: true },
     ceiling: { n: 4, room: 'upsidedown', title: 'LESSON FOUR · THE CEILING', lines: ['THE FLOOR IS THE CEILING. AIM UP.', 'A ON THE CEILING. B ON THE FLOOR.', 'JUMP THROUGH B AND COME OUT THE RIGHT WAY UP.'], back: 'the door to the floor', draft: true },
@@ -29874,7 +29874,23 @@ const HQ_PORTAL_RULES = {
     surfaces: ['floor', 'wall', 'ceiling'],
     colors: { a: '#49b0ff', b: '#ff8a2b' },
     colorNames: { a: 'CYAN', b: 'AMBER' },
-    buttons: { a: 'LEFT CLICK', b: 'RIGHT CLICK' },
+    /* rev 4 (2026-09-16, the user's question — "right click is aim in a shooter"): ONE trigger.
+       LEFT CLICK shoots the SELECTED threshold (the ghost wears its colour), RIGHT CLICK (held) is
+       AIM DOWN SIGHTS — the lens narrows, the mouse slows, the viewmodel comes to the centre —
+       R flips the selector A ⇄ B, 1 / 2 pick one outright, and every shot advances the selector
+       to the OTHER threshold so two clicks in a row lay a pair. `a` / `b` = how you get each one. */
+    buttons: { fire: 'LEFT CLICK', aim: 'RIGHT CLICK', select: 'R', a: '1 · LEFT CLICK', b: '2 · LEFT CLICK' },
+    ads: { fov: 34, sens: 0.55, ms: 160, boom: 1.4 },   // aim down sights: the lens (deg), the mouse gain, the ease, the third-person boom (m)
+    /* THE VIEWMODEL (rev 4): in FIRST PERSON the gun is drawn in the officer's own gloved hand under
+       the eye like any shooter — `pos` / `rot` = the hip hold (metres right / up / forward of the eye,
+       degrees), `adsPos` the sighted hold, `bob` the walk sway, `kick` the recoil push (m). */
+    viewmodel: { pos: [0.22, -0.19, 0.42], rot: [0, 5, 0], adsPos: [0.0, -0.12, 0.4], bob: 0.012, kick: 0.06, glove: '#15161a', cuff: '#2a2c33' },
+    /* THE CARRY (rev 4): speed goes in, speed comes out. The walker keeps a momentum vector through
+       a pair (`_hqPortalMapCarry`: the entry velocity in the entry door's frame, mirrored out of the
+       twin's), never below `minOut` m/s out of a wall door (a walk-in is a walk-out), capped at `max`,
+       run off on the ground over `groundS` seconds, kept in the air. A wall door is crossed by TOUCH
+       now too — moving into its opening (`touchM` in front of the plane) — not only by the press-in. */
+    carry: { minOut: 2.4, max: 18, groundS: 0.55, touchM: 1.05 },   // touchM: the discs hold a body ~0.85 m off the plane — the zone must reach past them
     /* rev 3 (2026-09-16, Phase 9 Delivery 3 — THE GUN READS + the user's model):
        THE GUN is the catalogue's `door_gun` GLB in the officer's right hand while
        drawn (three-renderer.js `_hqGunAttach`; the Door Agent carries the same
@@ -29883,7 +29899,7 @@ const HQ_PORTAL_RULES = {
        the ONE place to tune a gun that sits wrong), `muzzle` the barrel's end in
        the gun's own frame (metres from its centre; +X = the long axis) — the
        laser sight, the shot and the recall all leave from it. */
-    gun: { key: 'door_gun', bone: 'RightHand', span: 0.62, pos: [0, -0.06, 0.04], rot: [0, 90, 0], muzzle: [0.5, 0.08, 0] },
+    gun: { key: 'door_gun', bone: 'RightHand', span: 0.36, pos: [0, 0.05, 0.06], rot: [0, -90, 90], muzzle: [0.5, 0.08, 0] },   // rev 4: MEASURED (the offline probe): the barrel down the fingers (+Y), the top away from the palm's back (−Z), the grip in the palm; span 0.36 m (0.62 was a rifle)
     /* THE SHOT: the door flies out of the gun as a folded frame and UNFOLDS on
        the surface — `msPerM` × the distance, clamped to [minMs, maxMs]; the
        recoil kick on the camera (radians) decays over `kickMs`. */
