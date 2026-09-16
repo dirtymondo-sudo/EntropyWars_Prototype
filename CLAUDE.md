@@ -4681,3 +4681,26 @@ register / world tab name a room the map cannot reach. Only `bay_*`
 room that is on the map (or a `links` row) and run `npm test`; ADDING A
 SITE = the 7.10 checklist (the threshold puts it on the map). No manual
 directory edit exists to forget.
+
+## THE WOODS FIXES — the trees, the flight, the storm drain (2026-09-16, local delivery)
+The user's three: no woods, a block staircase, a crag that should be a sewer.
+**THE TREES**: three-renderer.js `_hqBuildCave` handed `_nrTree` a bare
+`{ ts, rng }` — `_nrTreeProc` needs `K.cyl / K.mat / K.lit`, threw, the catch
+swallowed it, and NO woods tree was ever planted. RULE: a tree anywhere in
+the HQ is `_nrTree` on a REAL `_nrKit` (the site board's `hq: { w: 0, gap:
+0, B: 1, tints: null }` kit) — never a hand-typed kit object. Every broadleaf
+cell grows a second smaller tree; **THE TREELINE** = `shell.forest = { depth,
+spacing, rows, start, kinds }` (metres; in `hqWoodsShell`) plants rings of
+the foliage OBJs on the apron PAST the grid, door lanes clear for 4.6 m,
+`EW_PERF_LOW` halves it. There is NO tree GLB in any bucket — the foliage
+set is the OBJs (`_FOLIAGE_MODEL_FOR_KEY`). **THE FLIGHT**: a cave legend
+row `{ lvl, slope, stair: '<sheet>', stairSide }` is a slope cell DRAWN as
+the board's barrier_passage flight (`_buildStairMesh`, STAIR_STEPS treads)
+rising one level — the staircase room's `E G I M`; never plank blocks, never
+a skate ramp. **THE STORM DRAIN**: Dead Man's Cave is the woods' one INDOOR
+part — a closed box on a brick cave grid (`rock: 'bricks_2'` to the 3 m
+ceiling), a 3-cell culvert with the channel down its middle, the sump
+halfway (ledge + ramp `m`), the grate at the east end; `cave.stalactites:
+false` is read by `_hqBuildCave`'s `nSt`. hq-woods.test.js pins all three
+(the sewer's width, the flight, the kit, the treeline). Unseen live (RULE
+#1c): the OBJ foliage at this density — the offline shots show stand-ins.

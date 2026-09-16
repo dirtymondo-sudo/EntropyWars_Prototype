@@ -51,7 +51,7 @@ const room = process.argv[2] || 'cafeteria'; const views = JSON.parse(process.ar
   await page.evaluate(() => { const h = document.getElementById('hqLoad'); if (h) h.style.display = 'none'; const hp = document.getElementById('hqPrompt'); if (hp) hp.style.display = 'none'; const s = document.getElementById('hqStrip'); if (s) s.style.display = 'none'; });
   const spawn = await page.evaluate((room) => DOOR_HQ.rooms[room].spawn, room);
   const list = views.length ? views : [Object.assign({ name: 'spawn', fp: false, dist: 4.2, pitch: -0.2 }, spawn)];
-  for (const v of list) { await page.evaluate((v) => ThreeRenderer.hq.dev.teleport(v), v); await sleep(2600); const f = path.join(OUT, room + '_' + (v.name || 'v') + '.png'); await page.screenshot({ path: f }); console.log('SHOT', f); }
+  for (const v of list) { await page.evaluate((v) => { try { if (window._hqPauseDrop) window._hqPauseDrop(); if (window._hqResume) window._hqResume(); } catch (e) {} ThreeRenderer.hq.dev.teleport(v); }, v); await sleep(2600); await page.evaluate(() => { try { if (window._hqPauseDrop) window._hqPauseDrop(); const pz = document.getElementById('hqPause'); if (pz) pz.style.display = 'none'; } catch (e) {} }); /* the eaten-ESC rule (C-28) reads the headless pointer-lock loss as ESC and opens the pause menu — drop it before the shot */ const f = path.join(OUT, room + '_' + (v.name || 'v') + '.png'); await page.screenshot({ path: f }); console.log('SHOT', f); }
   console.log('COUNTERS', JSON.stringify(cnt)); console.log('ERRORS', JSON.stringify(errs.slice(0, 6))); console.log('LOGS', JSON.stringify(logs.slice(0, 20)));
   await browser.close();
 })().catch(e => { console.error('PROBE FAIL', e); process.exit(1); });

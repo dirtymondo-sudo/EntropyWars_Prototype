@@ -9239,3 +9239,43 @@ to reveal more, draws a node line between two previously unconnected points."
 - **UNSEEN LIVE (RULE #1c)**: the whole look. First things to eyeball: the ring circles against the nodes at the fit
   zoom, the labels' size, the `?` flip's timing, the zoom-out from a one-room map to the hall's, the drag under the
   panel's scroll.
+
+### 2026-09-16 — THE WOODS FIXES · the trees, the flight, the storm drain (the user's visual pass) — local delivery
+The user: "There are no woods. Where are all the trees? Use the glb trees. Dead Man's Cave needs to literally be a
+sewer like a narrow hallway. The stairway in the woods should not be made out of terrain blocks when we already have
+stairs in the game." Photographed offline before and after (`playtest_hq_offline.js`, stand-in textures, the OBJ
+foliage 404s so the trunk-and-sphere stand-ins are what the shots show).
+- **WHY THERE WERE NO TREES**: three-renderer.js `_hqBuildCave` handed `_nrTree` a bare `{ ts, rng }` — the
+  procedural stand-in reads `K.cyl / K.mat / K.lit`, threw, and the `try / catch` round the call swallowed it, so
+  not one tree cell in the seven rooms was ever planted (and the OBJ swap never had a group to land in). The kit is
+  a REAL `_nrKit` on the shell group now (the site board's own rule, `hq: { w: 0, gap: 0, B: 1 }`), each broadleaf
+  cell also grows a smaller second tree (undergrowth), and **THE TREELINE**: `hqWoodsShell` wears `forest: { depth
+  10.5, spacing 2.5, rows 2.3, start 1.4 }` (metres) → rings of the same foliage models on the apron PAST the grid,
+  jittered, dead trees + redwoods mixed in, every door's lane kept clear for the first 4.6 m (the panel stands on the
+  shell wall). The clearing plants ~314 past its grid + its cells (the trail ~190); `EW_PERF_LOW` halves the rings.
+  Six more `T` cells inside the clearing's grid. **The models are the foliage OBJs** (`Assets/foilage/OBJ/Tree_1…`
+  — the only tree the kit has; there is no tree GLB in any bucket, see the wish-list below).
+- **THE FLIGHT**: a cave legend row may carry `stair: '<sheet>'` (+ `stairSide`) on a SLOPE cell — `hqCaveCompile`
+  carries it, `_hqBuildCave`'s ramp pass draws that cell as the board's OWN barrier_passage flight
+  (`_buildStairMesh`: STAIR_STEPS treads + risers, the side strings, the back wall) rising one level toward the slope
+  side; the walker climbs it as the slope it is. The staircase room's `E G I M` are four such cells in `wood_planks`
+  (lvl 0→1→2→3→4) up to the `J` landing (lvl 4, the door's sill 3.5 m). Never a skate ramp.
+- **THE STORM DRAIN**: `site_prebuilt_fairy_forest_deadmans` is the woods' one INDOOR part — a closed box (h 3.0, no
+  sky, the service corridors' concrete, `pipes: false`, lit by three `bare_bulb`s + two `flicker_tube`s) on a 20 × 13
+  cave grid that is BRICK (`rock: 'bricks_2'`, to the ceiling) but for a 3-cell culvert west → east: the channel `~`
+  down its middle (waded), a walkway either side, THE SUMP halfway (a 6 × 5 chamber, the channel widening south, an
+  inspection ledge lvl 1 with the ramp `m` = the park rule's ramp, its rail), the grate (`links.woods_sewer`, z 0
+  now) at the east end. `cave.stalactites: false` (the renderer's `nSt` reads it — no stalactites of concrete). Four
+  graffiti tags against the brick, the ghoul on the walkway, the gangster by the grate.
+- Files: three-renderer.js, data.js → R2 (data.js → Render too, as always since the ledger); index.html → Render
+  (`20260916-the-woods-18-cors`); repo: hq-woods.test.js (10 — the sewer's rules, the flight, the kit, the
+  treeline), playtest_hq_offline.js (drops the pause menu before a shot), CLAUDE.md, PLAYTEST_NOTES.md, this log.
+- **UNSEEN LIVE (RULE #1c)**: the foliage OBJs at these heights and this density (the stand-ins are what was
+  photographed), the treeline's draw-call cost on a low machine (`forest.depth` / `spacing` are the dials), the
+  wood sheet on the treads, the sump's water under the bulbs.
+- **WISH-LIST (Meshy GLBs that would carry the woods)**: a broadleaf tree + a pine/fir + a dead snag (the OBJ set is
+  ten low-poly trunks with the leaves sheet wrapped on; a textured GLB canopy would read at walker scale), a fallen
+  log, a stump, a bush / fern clump, a boulder pair, a wooden signpost with arms, a rope-and-plank footbridge, a
+  campfire ring with logs, a standing stone (the ritual ground's `S` cells are terrain blocks), a storm-drain grate +
+  a culvert mouth, a brick arch section, a rusted ladder, a wooden staircase section (the flight is the board's
+  procedural treads; a GLB flight on posts would let the landing float instead of standing on a 3.5 m plank block).

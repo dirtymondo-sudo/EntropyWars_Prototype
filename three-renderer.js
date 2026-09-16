@@ -37991,6 +37991,18 @@ const ThreeRenderer = (function () {
         /* THE RAMPS: a wedge per slope cell (the walker climbs it as a slope — _hqSiteFloorY interpolates) */
         slopes.forEach(function (s) {
             var y0 = s.c.lvl * L, y1 = (s.c.lvl + 1) * L;
+            /* THE STAIRS (2026-09-16, the user: "we already have stairs in the game"): a
+               slope cell whose legend carries `stair` is drawn as the board's OWN
+               barrier_passage flight (_buildStairMesh — STAIR_STEPS treads + risers,
+               side strings, the back wall — in the sheet `stair` names, sides in
+               `stairSide`) rising one level toward its `slope` side; the walker climbs
+               it as the slope it is (hqCaveFeet interpolates). Never a skate ramp. */
+            if (s.c.stair && typeof _buildStairMesh === 'function') {
+                var sm = null;
+                try { sm = _buildStairMesh(0, 0, CM, L * U, s.c.stair === true ? (s.c.key || 'wood_planks') : s.c.stair, s.c.stairSide || 'wood', { lowH: s.c.lvl, highH: s.c.lvl + 1, highDir: { n: 'N', s: 'S', e: 'E', w: 'W' }[s.c.slope] || 'N' }); }
+                catch (e) { console.warn('[HQ] a stair cell fell back to its wedge', e); sm = null; }
+                if (sm) { sm.position.set(cellX(s.x) * U, 0.3, cellZ(s.y) * U); sm.renderOrder = 1; G.add(sm); return; }
+            }
             var wg = _hqCaveWedge(CM, y0, y1, s.c.slope, U);
             var m = new THREE.Mesh(wg, caveMat(s.c.key || info.floor, s.c.tint, { sh: 5 }));
             m.position.set(cellX(s.x) * U, 0.3, cellZ(s.y) * U); m.renderOrder = 1; G.add(m);
@@ -38067,29 +38079,92 @@ const ThreeRenderer = (function () {
         glows.forEach(function (g) {
             var gl = _hzGlowSprite(1.2 * CM, g.c.glow, 0.22, 0, 0, 0); gl.position.set(cellX(g.x) * U, (g.c.top + 0.45) * U, cellZ(g.y) * U); G.add(gl); pulse(gl.material, 0.1, 0.6 + rng() * 0.6);
         });
-        /* THE WOODS (HQ plan 9.3 stage 3, 2026-09-16): a TREE cell wears the near kit's
-           foliage model (_nrTree — the same OBJ the map settings and the world rim
-           plant; the proc trunk + sphere stands in until the file lands, and the HQ
-           loop's _nrPollPending swaps it), seeded per cell, on the cell's own top.
-           Never a blocker: the cell is a wall to the walker already (hqCaveFeet null). */
-        if (trees.length && typeof _nrTree === 'function') {
-            var TK = { ts: CM, rng: rng, _wdFog: null };
+        /* THE WOODS (HQ plan 9.3 stage 3, 2026-09-16 — fixed the same day): a TREE
+           cell wears the near kit's foliage model (_nrTree — the same OBJ the map
+           settings and the world rim plant; the proc trunk + sphere stands in until
+           the file lands, and the HQ loop's _nrPollPending swaps it), seeded per
+           cell, on the cell's own top. THE KIT IS A REAL _nrKit on the shell group
+           (the site board's rule) — a bare { ts, rng } has no cyl / mat / lit, the
+           stand-in threw, the catch swallowed it and NO tree in the woods was ever
+           planted. Never a blocker: the cell is a wall to the walker already
+           (hqCaveFeet null). A broadleaf cell also grows a smaller second tree
+           (undergrowth) so the border reads as a wood, not a picket of trunks. */
+        var TK = null;
+        if ((trees.length || S.forest) && typeof _nrTree === 'function' && typeof _nrKit === 'function') {
+            try { TK = _nrKit(G, { ts: CM, bw: W, bh: Hh, rng: rng, hq: { w: 0, gap: 0, B: 1, tints: null } }, {}); }
+            catch (e) { console.warn('[HQ] the woods’ tree kit failed', e); TK = null; }
+        }
+        var plantTree = function (kind, h, px, pz, py) {
+            var tg = null;
+            try { tg = _nrTree(TK, kind, { h: h }); } catch (e) { tg = null; }
+            if (!tg) return null;
+            tg.position.set(px * U, py, pz * U);
+            tg.rotation.y = rng() * Math.PI * 2;
+            tg._ew_hqTree = true;
+            if (tg.parent !== G) G.add(tg);
+            return tg;
+        };
+        if (TK && trees.length) {
             trees.forEach(function (t) {
-                var kind = t.c.tree, tall = !!t.c.tall;
-                var h = tall ? 5.2 : (kind === 'tree_5' || kind === 'tree_6') ? 2.3 : 2.6;
-                var tg = null;
-                try { tg = _nrTree(TK, kind, { h: h }); } catch (e) { tg = null; }
-                if (!tg) return;
-                tg.position.set((cellX(t.x) + (rng() - 0.5) * C * 0.35) * U, t.c.top * U + 0.3, (cellZ(t.y) + (rng() - 0.5) * C * 0.35) * U);
-                tg.rotation.y = rng() * Math.PI * 2;
-                tg._ew_hqTree = true;
-                G.add(tg);
+                var kind = t.c.tree, tall = !!t.c.tall, dead = (kind === 'tree_5' || kind === 'tree_6');
+                var h = tall ? 5.2 : dead ? 2.3 : 2.6 + rng() * 0.5;
+                var jx = (rng() - 0.5) * C * 0.35, jz = (rng() - 0.5) * C * 0.35;
+                plantTree(kind, h, cellX(t.x) + jx, cellZ(t.y) + jz, t.c.top * U + 0.3);
+                /* the undergrowth: a smaller tree of another kind on the far side of the cell (never on a raised tier's single tree) */
+                if (!dead && !tall && t.c.lvl === 0 && rng() < 0.55) {
+                    var k2 = rng() < 0.7 ? (rng() < 0.5 ? 'tree_2' : 'tree_3') : 'tree_5';
+                    plantTree(k2, 1.3 + rng() * 0.6, cellX(t.x) - jx * 1.6, cellZ(t.y) - jz * 1.6, t.c.top * U + 0.3);
+                }
             });
+        }
+        /* THE TREELINE (2026-09-16, the user: "there are no woods — where are all the
+           trees?"): an open cave room under a sky wears a FOREST past its grid —
+           `shell.forest = { depth, spacing, rows, start, kinds }` (metres) plants
+           rings of the same foliage models on the apron, from `start` m outside the
+           shell out to `depth`, jittered, dead trees and redwoods mixed in, held
+           clear of every door's lane (the panel stands on the shell wall; a trunk
+           behind it would poke through the doorway) — so the clearing is a hole in
+           a wood, not a field with a hedge. EW_PERF_LOW plants every other tree. */
+        if (TK && S.forest && S.open) {
+            var FR = S.forest, depth = FR.depth || 9, sp = FR.spacing || 2.6, r0 = FR.start || 1.4, rStep = FR.rows || 2.4;
+            var kinds = FR.kinds || ['tree', 'tree', 'tree', 'tree_2', 'tree_3', 'tree_4', 'tree_5'];
+            var lanes = (room.doors || []).filter(function (d) { return d.wall && d.wall !== 'free'; });
+            var inLane = function (px, pz, out) {
+                if (out > 4.6) return false;
+                return lanes.some(function (d) {
+                    var half = (d.wide ? 3.3 : 2.5) / 2 + 1.0;
+                    if (d.wall === 'n') return pz < -halfZ && Math.abs(px - (d.x || 0)) < half;
+                    if (d.wall === 's') return pz > halfZ && Math.abs(px - (d.x || 0)) < half;
+                    if (d.wall === 'e') return px > halfX && Math.abs(pz - (d.z || 0)) < half;
+                    if (d.wall === 'w') return px < -halfX && Math.abs(pz - (d.z || 0)) < half;
+                    return false;
+                });
+            };
+            var low = !!(typeof window !== 'undefined' && window.EW_PERF_LOW), planted = 0;
+            for (var ro = r0; ro <= depth; ro += rStep) {
+                var hx = halfX + ro, hz = halfZ + ro, per = 4 * hx + 4 * hz;
+                var count = Math.max(8, Math.round(per / sp));
+                for (var ti = 0; ti < count; ti++) {
+                    if (low && (ti & 1)) continue;
+                    var sAlong = ((ti + rng() * 0.7) / count) * per, px, pz;
+                    if (sAlong < 2 * hx) { px = -hx + sAlong; pz = -hz; }
+                    else if (sAlong < 2 * hx + 2 * hz) { px = hx; pz = -hz + (sAlong - 2 * hx); }
+                    else if (sAlong < 4 * hx + 2 * hz) { px = hx - (sAlong - 2 * hx - 2 * hz); pz = hz; }
+                    else { px = -hx; pz = hz - (sAlong - 4 * hx - 2 * hz); }
+                    px += (rng() - 0.5) * rStep * 0.9; pz += (rng() - 0.5) * rStep * 0.9;
+                    if (Math.abs(px) < halfX + 0.6 && Math.abs(pz) < halfZ + 0.6) continue;   // never inside the grid
+                    if (inLane(px, pz, ro)) continue;
+                    var fk = kinds[(rng() * kinds.length) | 0];
+                    var fh = fk === 'tree_4' ? 3.6 + rng() * 1.2 : (fk === 'tree_5' || fk === 'tree_6') ? 2.0 + rng() * 0.6 : 2.3 + rng() * 1.1;
+                    if (plantTree(fk, fh, px, pz, 0)) planted++;
+                }
+            }
+            if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] treeline: ' + planted + ' trees past the grid');
         }
         /* THE STALACTITES: over the open cells, seeded, never over a door lane's sill row — and never under an open sky (THE WOODS has no ceiling to hang them from) */
         var open = [];
         for (var sy = 1; sy < Hh - 1; sy++) for (var sx = 1; sx < W - 1; sx++) { var oc = info.cells[sy][sx]; if (!oc.rock && !inHole(sx, sy)) open.push([sx, sy]); }
-        var nSt = S.open ? 0 : Math.min(90, Math.floor(open.length / 7)), stMat = caveMat(info.rock, S.wallColor != null ? S.wallColor : null, { sh: 3, lift: 0.05 });
+        var nSt = (S.open || (room.cave && room.cave.stalactites === false)) ? 0 : Math.min(90, Math.floor(open.length / 7)), stMat = caveMat(info.rock, S.wallColor != null ? S.wallColor : null, { sh: 3, lift: 0.05 });
         for (var si = 0; si < nSt && open.length; si++) {
             var pick = open[Math.floor(rng() * open.length)];
             var len = 0.7 + rng() * 2.2, rad = 0.12 + rng() * 0.3;

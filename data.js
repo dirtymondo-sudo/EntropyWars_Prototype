@@ -18439,6 +18439,11 @@ function hqWoodsShell(o) {
         pipes: false, strips: false, lights: [],
         mood: { light: 0xa8c8ff, ambient: 0.42 },
         sky: sky,
+        /* THE TREELINE (2026-09-16): the forest PAST the grid — rings of the
+           foliage models on the apron from `start` m outside the shell out to
+           `depth`, `spacing` m apart along a ring, a ring every `rows` m
+           (three-renderer.js _hqBuildCave; the door lanes are kept clear) */
+        forest: { depth: 10.5, spacing: 2.5, rows: 2.3, start: 1.4 },
         plate: { x: 0, z: -9.8, y: 4.4 },
     };
     Object.keys(o).forEach(k => { S[k] = o[k]; });
@@ -19377,7 +19382,7 @@ const DOOR_HQ = {
           b: { room: 'stairwell', wall: 'e', z: -2, sub: 'THE STAIRCASE IN THE WOODS · OUT' },
           why: 'four wooden risers in a clearing, a landing, an EXIT door with nothing behind it; the door opens on the building\'s own stairwell, which has no window for it to open through', note: 'nobody built it', draft: true },
         { id: 'woods_sewer', route: 'subway', leaf: 'leaf_cell',
-          a: { site: 'prebuilt_fairy_forest', part: 'deadmans', wall: 'e', z: -0.875, sub: 'THE GRATE · INTO THE TUNNEL' },
+          a: { site: 'prebuilt_fairy_forest', part: 'deadmans', wall: 'e', z: 0, sub: 'THE GRATE · INTO THE TUNNEL' },
           b: { room: 'tunnel', wall: 'e', z: -6, sub: 'THE STORM DRAIN · INTO THE WOODS' },
           why: 'the storm drain in the crag runs the wrong way: the water comes out of the platform wall and into the woods, and the grate between them was welded shut, and then it was not', note: 'the fourth station', draft: true },
         { id: 'woods_ritual', route: 'woods', leaf: 'leaf_hell_arch',
@@ -28047,17 +28052,17 @@ const DOOR_HQ = {
                     'T..T222222...........~~..T.T',
                     'T....222222..T......~~......',
                     'T.....2222.......T..~~......',
-                    '...T....b....T......~~....T.',
+                    '...T....b....T..T...~~....T.',
                     '........a...T.......~=~T...T',
-                    '..T...........R.....~W~....T',
+                    '..T..T........R.....~W~....T',
                     'T.T....D.....RRRT...~~..T..T',
                     'T.....T......RRRR...~~.....T',
-                    'T.........T...RR...~~..T...T',
+                    'T...T.....T...RR...~~..T...T',
                     'TT..T...........T.~~......TT',
                     'T......~~~~~~~~~~~~~.....T.T',
-                    '.....~~...T........~~.......',
-                    '....~~..........T...~~......',
-                    '..~~....T....T.......~~T....',
+                    '..T..~~...T...T....~~..T....',
+                    'T...~~..T.......T...~~...T..',
+                    '..~~....T....T..T....~~T....',
                     'T~..T.......T.........~~...T',
                     'T~.....TT..........T...~~.TT',
                     'TT.T..T.....T.....T....T~..T',
@@ -28085,7 +28090,7 @@ const DOOR_HQ = {
                 { id: 'deadmans', wall: 'e', z: 9.625, leaf: null,
                   label: 'DEAD MAN’S CAVE', sub: 'THE CRAG · THE STORM DRAIN',
                   action: { room: 'site_prebuilt_fairy_forest_deadmans', at: 'clearing' },
-                  desc: 'A crag with a mouth in it and paint on the rock. Water comes out of it that did not go in.' },
+                  desc: 'A crag with a culvert mouth in it and paint on the brick. Water comes out of it that did not go in.' },
                 { id: 'pasture', wall: 'w', z: -4.375, leaf: null,
                   label: 'THE BACK PASTURE', sub: 'WEST · THE FENCE LINE',
                   action: { room: 'site_prebuilt_fairy_forest_pasture', at: 'clearing' },
@@ -28310,20 +28315,22 @@ const DOOR_HQ = {
         /* ── THE STAIRCASE — the lone flight in the woods: four wooden risers to a landing and a door with nothing behind it, which opens ── */
         site_prebuilt_fairy_forest_stair: {
             label: 'THE WOODS · THE STAIRCASE',
-            sub: 'A FLIGHT OF STAIRS · A LANDING · A DOOR',
+            sub: 'A WOODEN FLIGHT · A LANDING · A DOOR',
             kind: 'box', site: 'prebuilt_fairy_forest', part: 'stair',
             shell: hqWoodsShell({ plate: { x: 0, z: -9.8, y: 5.6 }, floorColor: 0x66784a, mood: { light: 0xb0c4ff, ambient: 0.34 } }),
-            /* the grid (12 × 12): the flight `E G I J` (four wooden risers,
-               one level each — the walker climbs one per step) up to THE
-               LANDING (`J`, lvl 4, 3 × 3) against the north wall where the
-               door stands; a dead tree, a mound (lvl 1, the ramp `a`) */
+            /* the grid (12 × 12): THE FLIGHT `E G I M` — four STAIR cells
+               (2026-09-16: the board's own barrier_passage flight, wood
+               treads — never terrain blocks), each rising one level north,
+               up to THE LANDING (`J`, lvl 4, 3 × 3) against the north wall
+               where the door stands; a dead tree, a mound (lvl 1, the ramp
+               `a`) */
             cave: {
                 rows: [
                 //  012345678901
                     'TTTTJJJTTTTT',
                     'T.T.JJJ..T.T',
                     'T...JJJ....T',
-                    'T..T.J...T.T',
+                    'T..T.M...T.T',
                     'T....I.....T',
                     'T.T..G..T..T',
                     'T....E.....T',
@@ -28333,7 +28340,7 @@ const DOOR_HQ = {
                     'T..........T',
                     'TTTT...TTTTT',
                 ],
-                legend: { 'E': { lvl: 1, key: 'wood_planks' }, 'G': { lvl: 2, key: 'wood_planks' }, 'I': { lvl: 3, key: 'wood_planks' }, 'J': { lvl: 4, key: 'wood_planks' } },
+                legend: { 'E': { lvl: 0, slope: 'n', stair: 'wood_planks', stairSide: 'wood' }, 'G': { lvl: 1, slope: 'n', stair: 'wood_planks', stairSide: 'wood' }, 'I': { lvl: 2, slope: 'n', stair: 'wood_planks', stairSide: 'wood' }, 'M': { lvl: 3, slope: 'n', stair: 'wood_planks', stairSide: 'wood' }, 'J': { lvl: 4, key: 'wood_planks' } },
                 floor: 'grass_2', ledge: 'grass_rocky', rock: 'rock_wall_1',
             },
             doors: [
@@ -28365,66 +28372,87 @@ const DOOR_HQ = {
             ],
             spawn: { x: -4.375, z: 7.0, face: 0 },
         },
-        /* ── DEAD MAN'S CAVE — the crag with a storm drain in it: the channel, the paint on the rock, the grate onto THE TUNNEL ── */
+        /* ── DEAD MAN'S CAVE — THE STORM DRAIN (2026-09-16, the user: "literally a sewer, a narrow hallway like the service corridors"): an ENCLOSED brick culvert under the crag, the channel down its middle, a sump chamber halfway, the grate onto THE TUNNEL at the far end ── */
         site_prebuilt_fairy_forest_deadmans: {
             label: 'THE WOODS · DEAD MAN’S CAVE',
-            sub: 'THE CRAG · THE STORM DRAIN · THE WAY TO THE TUNNEL',
+            sub: 'THE STORM DRAIN · THE CHANNEL · THE WAY TO THE TUNNEL',
             kind: 'box', site: 'prebuilt_fairy_forest', part: 'deadmans',
-            shell: hqWoodsShell({ plate: { x: -4.0, z: -9.8, y: 5.0 }, floorColor: 0x6a6a5e, wallColor: 0x5e5a56, mood: { light: 0x9fc0a8, ambient: 0.36 } }),
-            /* the grid (14 × 12): the woods on the west, THE CRAG (rock to
-               the sky) on the east with a three-cell mouth, the channel `~`
-               running out of it into the trees, oil `@` on the concrete, a
-               heap (lvl 1, the ramp `a`) by the grate; the grate is the
-               link door on the east wall — the far side is Room 2's
-               platform */
+            /* the one INDOOR part of the woods: a closed box (a ceiling, no sky),
+               3 m high, the concrete of the service corridors, lit by its own
+               bulbs; the cave grid's rock is the culvert's brick, to the ceiling */
+            shell: {
+                w: 0, d: 0, h: 3.0, wallH: 3.0, dadoH: 1.0,
+                floor: 'concrete', wall: 'concrete', dado: 'oxblood', trim: 'gunmetal', ceiling: 'concrete',
+                floorColor: 0x6e6e66, wallColor: 0x585a56, dadoColor: 0x4a4a44, ceilColor: 0x4a4c48,
+                pipes: false, strips: false, lights: [],
+                mood: { light: 0x9fc0a8, ambient: 0.3 },
+                plate: { x: 1.75, z: -3.4, y: 2.5 },
+            },
+            /* the grid (20 × 13): a 3-cell culvert running west → east through
+               brick (`#`, to the ceiling), the channel `~` down its middle
+               (waded), a walkway either side, THE SUMP — a 6 × 5 chamber
+               halfway with the channel widening into it on the south and a raised
+               inspection ledge (lvl 1, the ramp `m` up its west end — the
+               park rule's ramp) in its north bay; the woods' door at the west
+               end, the grate (the link door) at the east. Every cell outside
+               the culvert is brick. */
             cave: {
                 rows: [
-                //  01234567890123
-                    'TTTTTT########',
-                    'T.T..#......@#',
-                    'T...T#.@..#..#',
-                    'T....#.....#.#',
-                    '.....#..~~~...',
-                    '......~~~.....',
-                    '......~~~~....',
-                    'T....#...~~..#',
-                    'T.T..#.@..~.1#',
-                    'T....#...@~.a#',
-                    'T..T.#......@#',
-                    'TTTTTT########',
+                //  01234567890123456789
+                    '####################',
+                    '####################',
+                    '####################',
+                    '####################',
+                    '########.m111.######',
+                    '....................',
+                    '.~~~~~~~~~~~~~~~~~~.',
+                    '..........~~~~......',
+                    '########......######',
+                    '####################',
+                    '####################',
+                    '####################',
+                    '####################',
                 ],
-                floor: 'concrete_floor', ledge: 'concrete_floor', rock: 'rock_wall_2',
+                floor: 'concrete_floor', ledge: 'concrete_floor', rock: 'bricks_2', stalactites: false,
             },
             doors: [
-                { id: 'clearing', wall: 'w', z: -0.875, leaf: null,
+                { id: 'clearing', wall: 'w', z: 0, leaf: null,
                   label: 'THE CLEARING', sub: 'BACK OUT · INTO THE TREES',
                   action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'deadmans' },
                   desc: 'Back out of the mouth into the trees, where the paint stops and the water keeps going.' },
             ],
             counters: [],
             props: [
-                { key: 'railing_1m',     x: 3.5, z: -1.9, face: 0 },                        // the channel's handrail (the park rule)
-                { key: 'railing_1m',     x: 5.25, z: -1.9, face: 0 },
-                { key: 'graffiti_wall',  x: -1.62, z: -6.125, face: 90 },                   // THE PAINT: on the crag's west face, on the inside rock, by the grate
-                { key: 'graffiti_wall',  x: 5.17, z: -6.125, face: 270 },
-                { key: 'graffiti_wall',  x: 10.42, z: 5.25, face: 270 },
-                { key: 'graffiti_wall',  x: -1.62, z: 4.375, face: 90 },
-                { key: 'cave_torch',     x: -9.625, z: -7.0 },
-                { key: 'cave_torch',     x: -9.625, z: 7.0 },
-                { key: 'flicker_tube',   x: 5.25, z: -7.0, y: 3.2, face: 0 },               // a tube on a bracket in the crag: the Works' power, nobody's bill
-                { key: 'cardboard_boxes', x: 9.625, z: -8.75, face: 15 },
-                { key: 'floor_stain',    x: 0.875, z: 5.25 },
-                { key: 'paper_sheet',    x: 7.0, z: 7.0, y: 0.01, face: 140 },              // a tag on a form: the Department's motto, crossed out, corrected
+                { key: 'railing_1m',     x: -0.875, z: -0.95, face: 0 },                    // the sump's handrail (the park rule): three metres of it along the channel
+                { key: 'railing_1m',     x: 0.875, z: -0.95, face: 0 },
+                { key: 'railing_1m',     x: 2.625, z: -0.95, face: 0 },
+                { key: 'graffiti_wall',  x: -11.375, z: -2.5, face: 180 },                  // THE PAINT: on the culvert's north wall, the sump's back wall, the south wall, by the grate
+                { key: 'graffiti_wall',  x: 0.875, z: -4.25, face: 180 },
+                { key: 'graffiti_wall',  x: 11.375, z: 2.5, face: 0 },
+                { key: 'graffiti_wall',  x: -4.375, z: 2.5, face: 0 },
+                { key: 'bare_bulb',      x: -8.75, z: 0 },                                  // the bulbs: the Works' power, nobody's bill
+                { key: 'bare_bulb',      x: 0.875, z: -1.75 },
+                { key: 'bare_bulb',      x: 10.5, z: 0 },
+                { key: 'flicker_tube',   x: -4.375, z: 1.75, face: 0 },
+                { key: 'flicker_tube',   x: 7.0, z: -1.75, face: 0 },
+                { key: 'pipe_run',       x: -12.25, z: -2.2, face: 0 },
+                { key: 'pipe_run',       x: 12.25, z: 2.2, face: 0 },
+                { key: 'floor_drain',    x: 3.5, z: 1.75 },
+                { key: 'cardboard_boxes', x: 6.125, z: -3.5, face: 15 },                    // somebody's things in the sump's dry corner
+                { key: 'wet_floor_sign', x: -13.125, z: 1.75, face: 30 },
+                { key: 'floor_stain',    x: 0.875, z: 1.75 },
+                { key: 'paper_sheet',    x: 7.0, z: -1.75, y: 0.01, face: 140 },            // a tag on a form: the Department's motto, crossed out, corrected
             ],
             agents: [],
-            npcSpots: [{ x: 3.5, z: 5.25, face: 320, race: 'ghoul' }, { x: -7.0, z: 3.5, face: 90, race: 'gangster' }],
+            npcSpots: [{ x: -5.25, z: 1.75, face: 300, race: 'ghoul' }, { x: 12.25, z: -1.75, face: 270, race: 'gangster' }],
             onlineSpots: [],
             lines: [
                 '“Who is the dead man?” “Read the wall.” “The wall says everybody.” “Then everybody.”',
                 '“The water comes OUT.” “Drains do that.” “Into the woods?” “Into somewhere.”',
                 '“That is the subway.” “That is a grate.” “Behind the grate.” “Behind the grate is the subway.”',
+                '“It is a sewer.” “It is a storm drain.” “What is the difference?” “What is in it.”',
             ],
-            spawn: { x: -7.875, z: 2.625, face: 90 },
+            spawn: { x: -14.0, z: 1.75, face: 90 },
         },
         /* ── THE RITUAL GROUND — the stones, the fire, the circle that is Room 333's circle ── */
         site_prebuilt_fairy_forest_ritual: {
@@ -30374,7 +30402,7 @@ function hqCaveCompile(cave, shellH) {
         for (let x = 0; x < W; x++) {
             const ch = rows[y][x] || ' ';
             const d = legend[ch] || legend['#'];
-            const c = { ch: ch, x: x, y: y, lvl: d.lvl | 0, key: d.key || null, walk: d.walk !== false, fluid: null, rock: !!d.rock, slope: d.slope || null, bridge: d.bridge || null, under: null, glow: d.glow || null, tint: d.tint || cave.tint || null, top: 0, sheet: null, tree: d.tree || null, tall: !!d.tall };
+            const c = { ch: ch, x: x, y: y, lvl: d.lvl | 0, key: d.key || null, walk: d.walk !== false, fluid: null, rock: !!d.rock, slope: d.slope || null, bridge: d.bridge || null, under: null, glow: d.glow || null, tint: d.tint || cave.tint || null, top: 0, sheet: null, tree: d.tree || null, tall: !!d.tall, stair: d.stair || null, stairSide: d.stairSide || null };   // `stair` (2026-09-16): a slope cell drawn as the board's barrier_passage flight in that sheet
             if (c.rock) { c.walk = false; c.key = c.key || rockKey; c.top = rockH; c.lvl = 0; }
             else if (c.tree) { c.walk = false; c.key = c.key || (c.lvl > 0 ? ledgeKey : floorKey); c.top = c.lvl * L; }   // THE WOODS: the floor under a tree draws at its level; the cell is never walked
             else if (d.fluid) {

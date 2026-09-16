@@ -4,6 +4,19 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## 🌲 THE WOODS FIXES — the offline pass on the forest (2026-09-16, LATEST) — three-renderer.js, data.js, hq-woods.test.js, playtest_hq_offline.js
+
+`node playtest_hq_offline.js site_prebuilt_fairy_forest_clearing '[{"name":"spawn","x":-0.9,"z":14,"face":0,"pitch":-0.08,"fp":true}]'`
+(and `_stair`, `_deadmans`). What it found: NOT ONE TREE in any woods room — `_hqBuildCave` gave `_nrTree` a
+bare `{ ts, rng }`, the stand-in threw on `K.cyl`, the catch swallowed it. Fixed with a real `_nrKit` + THE
+TREELINE (`shell.forest`, rings past the grid; `[HQ] treeline: N trees past the grid` under EW_HQ_DEBUG — 314 on
+the clearing, 191 on the stair room). The shots show the trunk-and-sphere STAND-INS (the foliage OBJs 404 here);
+the real look is unseen. The staircase is the board's barrier_passage flight (`stair:` on a slope legend row);
+Dead Man's Cave is an enclosed brick culvert (shoot it `fp: true` — a 5 m corridor). Harness note: the eaten-ESC
+rule (C-28) reads the headless pointer-lock loss as ESC and opened THE PAUSE MENU over the first shot of a long
+build — the harness now calls `_hqPauseDrop()` / `_hqResume()` before each teleport and hides `#hqPause` before
+the shot.
+
 ## 🪑 THE VISUAL PASS — the offline HQ probe (2026-09-16, LATEST) — playtest_hq_offline.js, three-renderer.js, data.js
 
 The CDN is BLOCKED from the sandbox now (`CONNECT cdn.entropywars.net` → 403), so
