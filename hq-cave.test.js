@@ -321,7 +321,7 @@ test('THE DUNGEON’s renderer: the cave builder, the walker’s feet, the doors
     assert.ok(/function _hqBuildCave\(room\)/.test(tr) && /if \(room\.cave\) \{ try \{ _hqBuildCave\(room\); \}/.test(tr), 'a box room with `cave` builds its grid');
     assert.ok(/function _hqSiteFloorY\(sc, x, z\)/.test(tr) && /hqCaveFeet\(st\.info, sc, x, z\)/.test(tr), 'the ONE feet read: a ramp interpolates, a pool wades, a ledge stands');
     assert.ok(/var siteL = _hq\.site \? \(_hq\.site\.L \|\| _hq\.site\.C\) : 0;/.test(tr), 'the step rule climbs one LEVEL (a cave’s half tile), not one tile');
-    assert.ok(/var y0 = level \? S\.wallH : _hqDoorFloorY\(room, door\);/.test(tr), 'a door stands at its lane’s level');
+    assert.ok(/var y0 = level \? _hqLevelY\(S, level\) : _hqDoorFloorY\(room, door\);/.test(tr), 'a door stands at its lane’s level');
     assert.ok(/y0 \+= pcy;/.test(tr) && /y \+= chy;/.test(tr) && /grp\.position\.y \+= ccy \* U;/.test(tr), 'props, natives and counters stand on their cells');
     assert.ok(/if \(room\.cave\) \{ \/\* THE CAVE \(rev 11\)/.test(tr), 'no floor plane under a cave grid');
     assert.ok(/\(mt\.keys \|\| \[mt\.key\]\)\.forEach/.test(tr), 'water and lava are ticked in one room');

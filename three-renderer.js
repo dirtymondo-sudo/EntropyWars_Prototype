@@ -26156,6 +26156,43 @@ const ThreeRenderer = (function () {
         }
         return K.add(g);
     }
+    /* ── 7.7 WAVE 2 (2026-09-16) ─────────────────────────────────────────
+       THE BERMUDA TRIANGLE — the shoal: a sand apron round the board (the
+       full depth of the sea, its skirt rock), the open sea streaming past
+       to the horizon (THE WORLD's `sea: true` runs the sheet out), the
+       LIGHTHOUSE on its rock off the north-west corner (P2's right angle —
+       the one the compass points at), a lantern BUOY off the south-east
+       (P1's), the ∠ 90° plate on the corner, a few rocks in the shallows
+       and two faint streaks of current. No hull: the board IS the shoal.
+       In the site room (K.hq) the quay is the shoal and the moat the sea —
+       only the lighthouse and the buoy stand, on the quay's corners. */
+    _NR_BUILDERS.bermuda = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 1.6, gap: 0, occ: false }), ts = K.ts, fy = K.fy, rng = K.rng, HQ = !!K.hq;
+        _nrApron(K, { tex: 'desert', color: 0xe8d8a8, skirt: 'rocks_1', skirtColor: 0x8a8478, deep: true });
+        _nrMoat(K, { key: 'deep_water', depth: _NR_SEA_DEPTH, pad: 40, stream: true });
+        var top = fy - 0.6;
+        if (_nrLastKit) _nrLastKit.apronTop = top;
+        /* the lighthouse builder sizes itself off CONFIG.tileSize (the board's) — scale it to THIS build's tile (the room's is 127.75) */
+        var lhScale = ts / (CONFIG.tileSize || BASE_TILE);
+        var lhX = HQ ? K.BX0 - 0.9 * ts : K.BX0 - 2.4 * ts, lhZ = HQ ? K.BZ0 - 0.9 * ts : K.BZ0 - 2.4 * ts;
+        var lh = _nrProp(K, _hzLighthouse, lhX, lhZ, { s: (HQ ? 0.55 : 0.8) * lhScale, wall: false, y: HQ ? 0 : -0.35 });
+        if (lh) K.keepOut.push([lhX, lhZ, 2.2 * ts]);
+        /* the lantern buoy at P1's right angle: a red can on the swell, a lamp on its mast */
+        var buoyX = HQ ? K.BX1 + 0.9 * ts : K.BX1 + 2.0 * ts, buoyZ = HQ ? K.BZ1 + 0.9 * ts : K.BZ1 + 2.0 * ts;
+        var buoyY = HQ ? top : (fy - _NR_SEA_DEPTH * ts - 0.18 * ts);
+        var can = K.cyl(0.22 * ts, 0.26 * ts, 0.5 * ts, 12, K.mat('metal', 0xc83a3a, { lift: 0.3 })); can.position.set(buoyX, buoyY + 0.2 * ts, buoyZ); K.add(K.lit(can, true));
+        var mast = K.cyl(0.03 * ts, 0.03 * ts, 0.9 * ts, 6, K.mat('metal', 0x5a6068)); mast.position.set(buoyX, buoyY + 0.85 * ts, buoyZ); K.add(mast);
+        K.add(K.lamp(buoyX, buoyY + 1.35 * ts, buoyZ, 0xfff1c8, 0.6 * ts, 0.7));
+        var lampCore = _hzGlowCore(0.09 * ts, 0xfff1c8, 0xffd080); lampCore.position.set(buoyX, buoyY + 1.35 * ts, buoyZ); K.add(lampCore);
+        _hzPulse(can.material, null, 0.06, 0, 1.1);
+        /* the corner plate: ∠ 90°, on a post by the buoy */
+        _nrSign(K, 'bt_angle', ['∠ 90°', 'NO FIXED POSITION'], 1.4 * ts, 0.5 * ts, buoyX - 0.9 * ts, buoyY + 1.0 * ts, buoyZ - 0.6 * ts, K.face(buoyX, buoyZ), { bg: '#f4f0e0', border: '#c83a3a', color: '#1a2a34' });
+        if (HQ) return;
+        /* rocks in the shallows off the apron, two faint streaks of current down the long sides */
+        _nrRocks(K, { tex: 'rocks_1', color: 0x8a8478, d: 1.0, spacing: 2.2, p: 0.22, r: 0.3 });
+        [K.Z0 - 1.6 * ts, K.Z1 + 1.6 * ts].forEach(function (z, i) { var w = _nrWake(K, K.CX, z, (K.X1 - K.X0) * 1.4, 0.9 * ts, 0.16, 345 + i, 0); if (w) K.add(w); });
+    };
+
     /* THE FLYING DUTCHMAN (rev 2, 2026-09-12 — was Queen Anne's Revenge, and
        a box) — the board is the main deck of the ghost ship under way, bow
        to the EAST (+X, the travel axis). The HULL is a real hull: a plan
@@ -36597,14 +36634,90 @@ const ThreeRenderer = (function () {
         var S = room.shell;
         if (room.kind === 'box') return 0;          // box rooms place by wall (see _hqBoxWall)
         if (room.kind === 'bay') return (side === 'in') ? S.rIn : S.rOut;
-        return level ? S.mezz.outer : S.radius;
+        return _hqLevelR(S, level);
     }
     /* the ceiling height over a floor level (ceiling-hung props) */
     function _hqCeilY(room, level) {
         var S = room.shell;
         if (room.kind === 'box') return S.h;
         if (room.kind === 'bay') return S.wallH;
-        return level ? (S.wallH + S.upperWallH + S.domeH) : (S.wallH - S.mezz.thick);
+        if (level >= 2) return S.wallH + S.upperWallH + S.domeH;
+        return level ? ((S.ring3 ? S.wallH + S.ring3.h - S.ring3.thick : S.wallH + S.upperWallH + S.domeH)) : (S.wallH - S.mezz.thick);
+    }
+    /* ── THE THIRD RING (HQ plan 8.4 / 9.3 "the crowding", 2026-09-16) ──
+       The rotunda knows THREE levels now: the floor (0), the mezzanine (1,
+       at S.wallH) and THE GALLERY (2, at S.wallH + S.ring3.h — a second
+       ring slab inside the upper drum, the same inner / outer radii as the
+       mezzanine, reached by ONE curved flight off the mezzanine's walkway,
+       `S.ring3.stair`). Every level reader goes through these three:
+       _hqLevelY (the floor height of a level), _hqLevelR (the wall a door /
+       wall prop hangs on: the lower drum, or the upper drum for both upper
+       levels) and _hqLevelOf (which level a height is on — the walker, the
+       target finder, the camera). The gallery is a LAYER of _hqSurface like
+       the box room's gallery (_hqRing3At: a tread / the slab / null = the
+       rail band from the slab side or the flight's mass / undefined = not
+       the gallery's — the mezzanine or the floor below decide), a mass in
+       the air (_hqRing3Air) and a wall to the boom (_hqRing3Cam). The slab
+       over the flight's own band is CUT (the flight's top steps stand in
+       it); the strip inside the band stays and wears its own rail. */
+    function _hqLevelY(S, level) {
+        if (!level) return 0;
+        if (level >= 2 && S.ring3) return S.wallH + S.ring3.h;
+        return S.wallH || 0;
+    }
+    function _hqLevelR(S, level) {
+        return level ? S.mezz.outer : S.radius;
+    }
+    function _hqLevelOf(S, y) {
+        if (!(S && S.wallH)) return 0;
+        if (S.ring3 && y > S.wallH + S.ring3.h * 0.6) return 2;
+        return (y > S.wallH * 0.6) ? 1 : 0;
+    }
+    /* the flight's tread height at (deg, r), or undefined off the flight
+       (null = its inner rail / the drum's wall) */
+    function _hqRing3Tread(S, deg, r) {
+        var G = S.ring3, st = G && G.stair; if (!st) return undefined;
+        if (!_hqWithinArc(deg, st.from, st.to, 0.4)) return undefined;
+        if (r < st.rIn - 0.25) return undefined;
+        if (r < st.rIn + 0.12 || r > G.outer - 0.12) return null;
+        var t = _hqDegDiff(deg, st.from) / (st.to - st.from);
+        t = Math.max(0, Math.min(1, t));
+        var n = st.steps || 20;
+        if (t <= 0.001) return S.wallH;
+        return S.wallH + G.h * Math.min(1, Math.ceil(t * n - 0.0001) / n);
+    }
+    function _hqRing3At(x, z, curY) {
+        var S = _hq.room.shell, G = S.ring3; if (!G) return undefined;
+        var r = Math.hypot(x, z), deg = _hqNormDeg(Math.atan2(x, -z) * 180 / Math.PI);
+        var tr = _hqRing3Tread(S, deg, r);
+        if (tr !== undefined) return tr;                       // the flight (a tread, or its rail / the wall)
+        var top = S.wallH + G.h;
+        var high = curY != null && curY > S.wallH + G.h * 0.5;   // only a walker already up there reads the slab — a free query is the mezzanine's / the floor's
+        if (!high) return undefined;
+        if (r >= G.inner + 0.62 && r <= G.outer - 0.55) return top;
+        if (r >= G.inner - 0.05 && r < G.inner + 0.62) return null;   // the railing band, from the slab side
+        return undefined;                                       // over the void: the floor below decides (a 7.5 m drop is refused — the ring is railed)
+    }
+    function _hqRing3Air(x, z, y) {
+        var S = _hq.room.shell, G = S.ring3; if (!G) return true;
+        var r = Math.hypot(x, z), deg = _hqNormDeg(Math.atan2(x, -z) * 180 / Math.PI);
+        var top = S.wallH + G.h;
+        var tr = _hqRing3Tread(S, deg, r);
+        if (tr !== undefined) { if (tr === null) return y > top + 1.15; if (y < tr - 0.05) return false; return true; }   // the flight's mass; its rail
+        if (r >= G.inner - 0.15) {
+            if (y > top - G.thick - 0.05 && y < top - 0.05) return false;                     // the slab's own mass
+            if (r <= G.inner + 0.62 && y >= top - 0.05 && y <= top + (G.railH || 1.05) + 0.1) return false;   // the railing band
+        }
+        return true;
+    }
+    function _hqRing3Cam(px, pz, py, walkerY) {
+        var S = _hq.room.shell, G = S.ring3; if (!G) return false;
+        var r = Math.hypot(px, pz), deg = _hqNormDeg(Math.atan2(px, -pz) * 180 / Math.PI);
+        var top = S.wallH + G.h, onIt = _hqLevelOf(S, walkerY) >= 2;
+        var tr = _hqRing3Tread(S, deg, r);
+        if (tr !== undefined && tr !== null && py < tr + 0.24) return true;   // the flight's mass
+        if (onIt) return r > G.inner - 0.1 && py < top + 0.22;               // from the slab: the slab and its rail
+        return py > top - G.thick - 0.2 && py < top + 0.3 && r > G.inner - 0.3;   // from below: the slab
     }
     /* ── box rooms (HQ plan 2.7): a Cartesian frame, four flat walls ──
        x east, z south, origin at the room centre. `wall` n | e | s | w picks
@@ -36909,6 +37022,81 @@ const ThreeRenderer = (function () {
             _hq.rails.push({ arc: true, r: railR, a0: sg[0], a1: sg[1], y: WH + railH, mezz: true });   // SKATEBOARDING (9.8): the round railings ARE the point
             G.add(_hqRailArc(railR, sg[0], sg[1], WH + railH, 0.03, railMat));
             G.add(_hqRailArc(railR, sg[0], sg[1], WH + railH * 0.55, 0.018, railMat));
+        });
+        if (S.ring3) _hqBuildRing3(room);
+    }
+    /* THE THIRD RING (2026-09-16): the gallery slab (cut over its flight's
+       band), its underside and fascia, the railing on its inner edge (full
+       round — the flight arrives INSIDE the band), the rail on the strip's
+       edge beside the flight, and the flight itself off the mezzanine's
+       walkway (instanced treads, a sloped inner rail). The rail is a
+       SKATEBOARDING (9.8) register like the mezzanine's arcs. */
+    function _hqBuildRing3(room) {
+        var U = _hqUnits(), S = room.shell, G = _hq.shellGroup, GA = S.ring3, st = GA.stair;
+        var WH = S.wallH, top = WH + GA.h, TH = GA.thick, railH = GA.railH || 1.05;
+        var texFloor = S.floor || 'terrazzo', texTrim = S.trim || 'teal', texCeil = S.ceiling || 'ceiling';
+        var floorMat = _hqMat(texFloor, 26, 2, { shininess: 22 }), ceilMat = _hqMat(texCeil, 40, 2);
+        var fasciaMat = _hqMat(texTrim, 2 * Math.PI * GA.inner / 1.2, 1, { side: THREE.FrontSide, shininess: 40, specular: 0x555555 });
+        var railMat = _hqMat(texTrim, 4, 1, { shininess: 50, specular: 0x666666 });
+        var pos = new THREE.Vector3(), q = new THREE.Quaternion(), e = new THREE.Euler(), one = new THREE.Vector3(1, 1, 1);
+        /* the slab: the full band outside the flight's arc, the inner strip over it */
+        var a0 = st ? Math.min(st.from, st.to) : 0, a1 = st ? Math.max(st.from, st.to) : 0;
+        var secs = st ? [[GA.inner, GA.outer, a1, a0 + 360], [GA.inner, st.rIn, a0, a1]] : [[GA.inner, GA.outer, 0, 360]];
+        secs.forEach(function (sg) {
+            G.add(_hqSectorMesh(sg[0], sg[1], sg[2], sg[3], top, floorMat));
+            G.add(_hqSectorMesh(sg[0], sg[1], sg[2], sg[3], top - TH, ceilMat, true));
+        });
+        G.add(_hqBand(GA.inner, top - TH, top, fasciaMat));
+        /* the inner railing: posts + two arcs, full round */
+        var railR = GA.inner + 0.28;
+        var postGeo = new THREE.BoxGeometry(0.06 * U, railH * U, 0.06 * U);
+        var nPost = Math.round(2 * Math.PI * railR / 1.35), mtxs = [];
+        for (var pi = 0; pi < nPost; pi++) {
+            var pa = (360 / nPost) * pi;
+            pos.copy(_hqPolarW(pa, railR, top + railH / 2));
+            e.set(0, -_hqRad(pa), 0); q.setFromEuler(e);
+            mtxs.push(new THREE.Matrix4().compose(pos, q, one));
+        }
+        var posts = new THREE.InstancedMesh(postGeo, railMat, mtxs.length);
+        mtxs.forEach(function (m, i) { posts.setMatrixAt(i, m); });
+        posts.instanceMatrix.needsUpdate = true;
+        G.add(posts);
+        G.add(_hqRailArc(railR, 0, 360, top + railH, 0.03, railMat));
+        G.add(_hqRailArc(railR, 0, 360, top + railH * 0.55, 0.018, railMat));
+        _hq.rails = _hq.rails || [];
+        _hq.rails.push({ arc: true, r: railR, a0: 0, a1: 360, y: top + railH, level: 2 });
+        if (!st) return;
+        /* the strip's edge beside the flight (a drop onto the treads): its own rail */
+        var sr = st.rIn - 0.05;
+        for (var sa = a0 + 1.2; sa < a1 - 0.6; sa += 1.35 * 180 / (Math.PI * sr)) {
+            var sp = _hqBox(0.06, railH, 0.06, railMat); sp.position.copy(_hqPolarW(sa, sr, top + railH / 2)); G.add(sp);
+        }
+        G.add(_hqRailArc(sr, a0 + 0.6, a1 - 0.3, top + railH, 0.03, railMat));
+        G.add(_hqRailArc(sr, a0 + 0.6, a1 - 0.3, top + railH * 0.55, 0.018, railMat));
+        /* the flight: from the mezzanine's walkway up to the slab, its mass to the drum */
+        var stepMat = _hqMat(S.stair || 'concrete', 1.5, 1, { shininess: 6 });
+        var n = st.steps || 20, dir = (st.to > st.from) ? 1 : -1, span = Math.abs(st.to - st.from);
+        var rMid = (st.rIn + GA.outer) / 2, rise = GA.h / n;
+        var stepLen = _hqRad(span / n) * rMid * U + 3, stepW = (GA.outer - st.rIn) * U;
+        var inst = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), stepMat, n);
+        var mtx = new THREE.Matrix4(), scl = new THREE.Vector3(), railPts = [];
+        for (var i = 0; i < n; i++) {
+            var a = st.from + dir * span * (i + 0.5) / n, h = rise * (i + 1);
+            pos.copy(_hqPolarW(a, rMid, WH + h / 2));
+            e.set(0, -_hqRad(a), 0); q.setFromEuler(e);
+            scl.set(stepLen, h * U, stepW);
+            mtx.compose(pos, q, scl); inst.setMatrixAt(i, mtx);
+            if (i % 3 === 0 || i === n - 1) railPts.push({ a: a, top: WH + h });
+        }
+        inst.instanceMatrix.needsUpdate = true;
+        G.add(inst);
+        var prev = null;
+        railPts.forEach(function (rp) {
+            var base = _hqPolarW(rp.a, st.rIn - 0.05, rp.top);
+            var post = _hqBox(0.06, 1.0, 0.06, railMat); post.position.copy(base); post.position.y += 0.5 * U; G.add(post);
+            var tp = base.clone(); tp.y += 1.0 * U;
+            if (prev) G.add(_hqBar(prev, tp, 0.035 * U, railMat));
+            prev = tp;
         });
     }
 
@@ -41557,7 +41745,7 @@ const ThreeRenderer = (function () {
             var level = door.level || 0;
             var inward = door.side === 'in';       // hangs on a bay's inner wall, faces away from the arc centre
             var Rw = _hqWallR(room, level, door.side);
-            var y0 = level ? S.wallH : _hqDoorFloorY(room, door);   // THE CAVE (rev 11): a door stands at its lane's level — a door on a ledge is a door you climb to
+            var y0 = level ? _hqLevelY(S, level) : _hqDoorFloorY(room, door);   // THE THIRD RING (2026-09-16): level 2 = the gallery. THE CAVE (rev 11): a door stands at its lane's level — a door on a ledge is a door you climb to
             /* a SEAM THAT IS NOT A DOOR (plan 9.3 `way`): the entryway object instead of the frame + leaf */
             if (door.way) { try { _hqBuildWay(room, door, level, y0, Rw, inward); } catch (e) { console.warn('[HQ] way failed', door.id, e); } return; }
             /* the office door is the rank (HQ plan 3.4 / MASTER C-1): a
@@ -41763,8 +41951,8 @@ const ThreeRenderer = (function () {
     function _hqBuildCounters(room) {
         var U = _hqUnits(), S = room.shell, G = _hq.doorGroup;
         (room.counters || []).forEach(function (c) {
-            var level = c.level || 0, y0 = level ? S.wallH : 0;
-            var Rw = (room.kind === 'box') ? 0 : (level ? S.mezz.outer : S.radius);
+            var level = c.level || 0, y0 = _hqLevelY(S, level);
+            var Rw = (room.kind === 'box') ? 0 : _hqLevelR(S, level);
             var grp = new THREE.Group();
             var plateY = 2.6, marker = null;
             if (room.kind === 'box') {
@@ -41951,7 +42139,7 @@ const ThreeRenderer = (function () {
             if (!cat || (!cat.file && !cat.proc)) return;
             /* a site room's setting (stage 5): a floor prop stands clear of its houses / stands */
             if (isBox && _hq.setting && !p.wall && !p.ceil && !cat.ceil && !(p.y > 0.5)) { var fsp = _hqSettingFreeSpot(p.x || 0, p.z || 0); if (fsp.x !== (p.x || 0) || fsp.z !== (p.z || 0)) p = Object.assign({}, p, { x: fsp.x, z: fsp.z }); }
-            var level = p.level || 0, y0 = level ? S.wallH : 0;
+            var level = p.level || 0, y0 = _hqLevelY(S, level);
             /* THE CAVE (rev 11): a floor prop stands on its cell — a torch on the terrace, a cot in a sunken cell */
             if (isBox && _hq.site && _hq.site.cave && typeof p.wall !== 'string' && !(cat.ceil || p.ceil)) { var pcy = _hqCaveTop(p.x || 0, p.z || 0); if (pcy != null) y0 += pcy; }
             var inward = p.side === 'in';            // a bay's inner wall: the prop faces outward
@@ -42148,7 +42336,7 @@ const ThreeRenderer = (function () {
         var entry = { group: new THREE.Group(), id: spec.id, unit: unit, modelDef: def };
         entry.group.name = 'hq_' + spec.id;
         _attachUnitModel(entry, unit, def, BASE_TILE);
-        var y = (spec.level ? S.wallH : 0) + (spec.y || 0);
+        var y = _hqLevelY(S, spec.level || 0) + (spec.y || 0);
         if (spec.y == null && spec.x != null && _hq.site && _hq.site.cave) { var chy = _hqCaveTop(spec.x, spec.z || 0); if (chy != null) y += chy; }   // THE CAVE (rev 11): a native / the walker stands on its cell
         /* box rooms place by (x, z) metres; polar rooms by (deg, r) */
         var p = (spec.x != null && spec.deg == null) ? new THREE.Vector3(spec.x * _hqUnits(), y * _hqUnits(), (spec.z || 0) * _hqUnits()) : _hqPolarW(spec.deg, spec.r, y);
@@ -42732,7 +42920,7 @@ const ThreeRenderer = (function () {
         grp.add(plateObj);
         H.doorGroup.add(grp);
         var door = { id: 'portal:' + slot, label: label, sub: subTxt, wall: 'free', x: spec.x, z: spec.z, face: spec.face, surf: surf, portal: slot, verb: 'STEP THROUGH', action: { portal: slot }, leaf: leafKey };
-        var level = (S && S.wallH && y0 > S.wallH * 0.6) ? 1 : 0;
+        var level = (S && S.wallH) ? _hqLevelOf(S, y0) : 0;   // THE THIRD RING (2026-09-16)
         var rec = { door: door, group: grp, lens: null, glow: glow, plate: plateObj, plateEl: el, plateChip: chip, state: 'open', level: level, Rw: 0, y0: y0, wide: wide, ow: ow, oh: oh, inward: false, box: box, leaf: leafKey, motion: motion, openT: 0, portal: slot,
                    portalSurf: surf, px: spec.x, py: hitY, pz: spec.z, nx: (surf === 'wall' ? box.nx : 0), ny: (surf === 'ceiling' ? -1 : surf === 'floor' ? 1 : 0), nz: (surf === 'wall' ? box.nz : 0) };
         H.doors.push(rec);
@@ -43171,6 +43359,8 @@ const ThreeRenderer = (function () {
             if (r < S.rIn + HQ_BODY_R + 0.08 || r > S.rOut - HQ_BODY_R - 0.08) return null;
             y = 0;
         } else {
+            /* THE THIRD RING (2026-09-16): the gallery's flight, its slab (for a walker up there) or its rail — else the mezzanine / the floor decide */
+            if (S.ring3) { var r3 = _hqRing3At(x, z, curY); if (r3 === null) return null; if (r3 !== undefined) y = r3; }
             var stairs = room.stairs || [];
             for (var i = 0; i < stairs.length && y === null; i++) {
                 var st = stairs[i];
@@ -43317,9 +43507,10 @@ const ThreeRenderer = (function () {
             if (!S.full && !_hqWithinArc(deg, S.arc[0] + capPad, S.arc[1] - capPad, 0)) return false;
             if (r < S.rIn + HQ_BODY_R + 0.08 || r > S.rOut - HQ_BODY_R - 0.08) return false;
         } else {
-            var wallR = (y > S.wallH * 0.6) ? S.mezz.outer : S.radius;
+            var wallR = _hqLevelR(S, _hqLevelOf(S, y));
             if (r > wallR - HQ_BODY_R - 0.08) return false;
-            var s = _hqSurface(x, z, null, true);
+            if (S.ring3 && !_hqRing3Air(x, z, y)) return false;   // THE THIRD RING: the slab, its rail and the flight are solid in the air
+            var s = _hqSurface(x, z, (S.ring3 && y > S.wallH + S.ring3.h * 0.5) ? y : null, true);
             if (s !== null) { if (y < s - 0.05) return false; }   // over a floor / stair / the desk top: stay above it
             /* no floor here: only known jumpable masses may be overflown */
             else if (r >= S.mezz.inner - 0.15 && r <= S.mezz.inner + 0.62) { if (y <= S.wallH + 1.15) return false; }   // the mezzanine railing
@@ -43393,14 +43584,15 @@ const ThreeRenderer = (function () {
             return !_hqWithinArc(dg, S.arc[0] + cp, S.arc[1] - cp, 0);
         }
         var pl = _hq.player;
-        var onMezz = pl && pl.y > S.wallH * 0.6;
-        var wallR = onMezz ? S.mezz.outer : S.radius;
+        var lvlC = _hqLevelOf(S, pl ? pl.y : 0), onMezz = lvlC >= 1;
+        var wallR = _hqLevelR(S, lvlC);
         if (r > wallR - 0.28) return true;
+        if (S.ring3 && _hqRing3Cam(px, pz, py, pl ? pl.y : 0)) return true;   // THE THIRD RING: the gallery slab / rail / flight
         if (!onMezz && py > S.wallH - 0.2 && r > S.mezz.inner - 0.3 && py < S.wallH + 0.3) return true;   // the slab
         if (py > S.wallH + S.upperWallH + S.domeH - 0.45) return true;
         if (py < 0.22) return true;
-        if (onMezz && r > S.mezz.inner - 0.1 && py < S.wallH + 0.22) return true;
-        var ground = _hqSurface(px, pz, null, true);
+        if (onMezz && lvlC === 1 && r > S.mezz.inner - 0.1 && py < S.wallH + 0.22) return true;
+        var ground = _hqSurface(px, pz, (lvlC >= 2) ? pl.y : null, true);
         if (ground !== null && py < ground + 0.24) return true;
         return false;
     }
@@ -43410,7 +43602,7 @@ const ThreeRenderer = (function () {
         var pl = _hq.player; if (!pl) return null;
         var S = _hq.room.shell, U = _hqUnits();
         var r = Math.hypot(pl.x, pl.z), deg = _hqNormDeg(Math.atan2(pl.x, -pl.z) * 180 / Math.PI);
-        var lvl = (pl.y > S.wallH * 0.6) ? 1 : 0;
+        var lvl = _hqLevelOf(S, pl.y);   // THE THIRD RING (2026-09-16): 0 / 1 / 2
         var best = null, bestD = 1e9;
         _hq.doors.forEach(function (d) {
             if (d.portalSurf && d.portalSurf !== 'wall') {
@@ -44667,7 +44859,7 @@ const ThreeRenderer = (function () {
         if (H.opts.onDebug && now - H.lastDebug > 250) {
             H.lastDebug = now;
             var pl = H.player;
-            if (pl) H.opts.onDebug({ deg: Math.round(_hqNormDeg(Math.atan2(pl.x, -pl.z) * 180 / Math.PI) * 10) / 10, r: Math.round(Math.hypot(pl.x, pl.z) * 100) / 100, y: Math.round(pl.y * 100) / 100, level: pl.y > H.room.shell.wallH * 0.6 ? 1 : 0, x: Math.round(pl.x * 100) / 100, z: Math.round(pl.z * 100) / 100, fp: H.fp });
+            if (pl) H.opts.onDebug({ deg: Math.round(_hqNormDeg(Math.atan2(pl.x, -pl.z) * 180 / Math.PI) * 10) / 10, r: Math.round(Math.hypot(pl.x, pl.z) * 100) / 100, y: Math.round(pl.y * 100) / 100, level: _hqLevelOf(H.room.shell, pl.y), x: Math.round(pl.x * 100) / 100, z: Math.round(pl.z * 100) / 100, fp: H.fp });
         }
     }
     /* Doors open for the walker (2026-09-04): the door you are standing at
@@ -44857,6 +45049,12 @@ const ThreeRenderer = (function () {
                 pl.position.copy(_hqPolarW(pp[0], pp[1], S.wallH + S.upperWallH * 0.55));
                 sc.add(pl);
             });
+            /* THE THIRD RING (2026-09-16): four warm lights under the cone over the gallery's walkway */
+            if (S.ring3) [45, 135, 225, 315].forEach(function (ga) {
+                var gl = new THREE.PointLight(0xffe0bd, 0.38, 18 * U, 2);
+                gl.position.copy(_hqPolarW(ga, (S.ring3.inner + S.ring3.outer) / 2, S.wallH + S.ring3.h + 2.4));
+                sc.add(gl);
+            });
         }
         /* camera */
         var host = opts.host;
@@ -44997,7 +45195,7 @@ const ThreeRenderer = (function () {
                 }
                 if (c.counter.id === id) {
                     var cr = (c.counter.proc === 'board') ? (c.counter.r - 2.0) : (c.counter.r + (c.counter.id === 'dispatch' ? 0.9 : 1.6));
-                    spot = _hqPolarW(c.counter.deg, cr, c.level ? S.wallH : 0); face = (c.counter.id === 'dispatch') ? c.counter.deg + 180 : c.counter.deg;
+                    spot = _hqPolarW(c.counter.deg, cr, _hqLevelY(S, c.level)); face = (c.counter.id === 'dispatch') ? c.counter.deg + 180 : c.counter.deg;
                     break;
                 }
             }
@@ -45099,7 +45297,7 @@ const ThreeRenderer = (function () {
                 var U = _hqUnits(), pl = _hq.player, S = _hq.room.shell;
                 var p = (o.deg != null) ? _hqPolarW(o.deg, o.r || 0, 0) : new THREE.Vector3((o.x || 0) * U, 0, (o.z || 0) * U);
                 pl.x = p.x / U; pl.z = p.z / U;
-                pl.y = (o.level ? (S.wallH || 0) : 0) + (o.y || 0); pl.visY = pl.y;
+                pl.y = _hqLevelY(S, o.level || 0) + (o.y || 0); pl.visY = pl.y;
                 pl.air = false; pl.vy = 0; pl.jumpT = -1; pl.moving = false;
                 if (o.face != null) { pl.yaw = pl.targetYaw = _hqHeadingYaw(o.face); _hq.cam.yaw = _hqRad(o.face); }
                 if (o.pitch != null) _hq.cam.pitch = o.pitch;

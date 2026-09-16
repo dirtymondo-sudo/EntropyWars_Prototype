@@ -2455,10 +2455,10 @@
             let html = `<div class="hq-panel-hd"><b>BUILDING DIRECTORY</b><span>${_hqEsc(room.label || 'CENTRAL EGRESS')} · YOU ARE HERE · LAYOUT SUBJECT TO REVISION</span></div><div class="hq-rows">`;
             const rows = [];
             const isBox = room.kind === 'box';
-            const where = d => isBox ? ('WALL ' + String(d.wall || '').toUpperCase() + ' · ') : isBay ? ((d.cap ? 'END CAP · ' : (d.side === 'in') ? 'INNER WALL · ' : 'THRESHOLD · ') + (d.bay ? d.bay + ' · ' : '')) : (d.level ? 'MEZZANINE · ' : 'FLOOR · ');
+            const where = d => isBox ? ('WALL ' + String(d.wall || '').toUpperCase() + ' · ') : isBay ? ((d.cap ? 'END CAP · ' : (d.side === 'in') ? 'INNER WALL · ' : 'THRESHOLD · ') + (d.bay ? d.bay + ' · ' : '')) : (d.level >= 2 ? 'THE GALLERY · ' : d.level ? 'MEZZANINE · ' : 'FLOOR · ');
             const noPre = e => { const n = _hqNo(e); return n ? 'ROOM ' + n + ' · ' : ''; };
             (room.doors || []).forEach(d => rows.push({ id: d.id, label: d.label, sub: noPre(d) + where(d) + (d.sub || ''), st: (typeof window.doorSiteState === 'function') ? window.doorSiteState(d, profile) : 'open' }));
-            (room.counters || []).forEach(c => rows.push({ id: c.id, label: c.label, sub: noPre(c) + (c.level ? 'MEZZANINE · ' : 'FLOOR · ') + (c.sub || ''), st: 'open' }));
+            (room.counters || []).forEach(c => rows.push({ id: c.id, label: c.label, sub: noPre(c) + (c.level >= 2 ? 'THE GALLERY · ' : c.level ? 'MEZZANINE · ' : 'FLOOR · ') + (c.sub || ''), st: 'open' }));
             rows.forEach(r => {
                 html += `<div class="hq-row"><b>${_hqEsc(r.label)}</b><span>${_hqEsc(r.sub)}</span>${_hqStateChip(r.st)}<button class="hq-btn hq-btn-sm" data-goto="${_hqEsc(r.id)}">WALK</button></div>`;
             });

@@ -13216,6 +13216,48 @@ _MF_BUILDERS.prebuilt_downtown = function () {
     M.finishSpawns('urban_street');
     return M;
 };
+
+/* ═══════════════ 7.7 WAVE 2 — THE NEW SITES (2026-09-16) ═══════════════ */
+
+/* THE BERMUDA TRIANGLE — 16×16 6v6. "It's a right triangle" — and it IS:
+   the board is TWO right triangles of shoal meeting at a diagonal of DEEP
+   water from the north-east corner to the south-west (the hypotenuse of
+   each), the legs the board's own edges, the 90° corners at the north-west
+   (P2's) and the south-east (P1's) — a lantern buoy on each. The deep runs
+   the whole diagonal but for a two-tile SANDBAR at the centre, the one
+   crossing a ground unit has; flyers cross anywhere. On each shoal: a
+   wreck (the hull two high, its deck one), rocks, sandbars, tide pools. The
+   sea streams past at half the Dutchman's pace, the storm builds from
+   round 3 (env.motion). */
+_MF_BUILDERS.prebuilt_bermuda = function () {
+    const M = _mfNew({
+        name: 'The Bermuda Triangle', w: 16, h: 16, base: 'desert', baseH: 3, seed: 345,
+        strata: ['deep_water', 'deep_water', 'rocks_1'], underTop: 'rocks_1',
+        tints: { desert: '#e8d8a8', water: '#5fc8d0', deep_water: '#123c5a', wood: '#6a4a30', rocks_1: '#8a8478', dirt_2: '#d8c090' },
+    });
+    // P2's shoal (x + y < 15), then the 180° twin
+    M.rect(2, 4, 3, 5, 'wood', 5); M.rect(4, 4, 4, 5, 'wood', 4);              // the wreck: the hull, its deck
+    M.rect(9, 2, 9, 2, 'rocks_1', 5); M.rect(1, 9, 1, 9, 'rocks_1', 5);         // rocks
+    M.rect(6, 7, 6, 7, 'rocks_1', 4); M.rect(3, 10, 3, 10, 'rocks_1', 4);
+    M.rect(10, 3, 11, 3, 'dirt_2', 4);                                          // a sandbar
+    M.rect(6, 1, 7, 1, 'dirt_2', 4);
+    M.disc(5.5, 8, 1.0, 'water', 2); M.disc(11.5, 1.5, 0.8, 'water', 2);        // tide pools (wade)
+    M.rect(1, 12, 1, 13, 'water', 2);
+    M.sym180();
+    // the hypotenuse: deep water from (15,0) to (0,15), the sandbar at the centre left dry
+    for (let i = 0; i < 16; i++) {
+        const x = i, y = 15 - i;
+        if ((x === 7 && y === 8) || (x === 8 && y === 7)) continue;
+        M.t(x, y, 'deep_water'); M.h(x, y, 2); M.under(x, y, 1, 'deep_water');
+    }
+    // the 90° corners: a lantern buoy on each, more lanterns down the legs
+    M.objSym(0, 0, 'torch', { leaf: 'floor' });
+    M.objSym(0, 7, 'torch', { leaf: 'floor' }); M.objSym(7, 0, 'torch', { leaf: 'floor' });
+    M.spawnEdges('s', 6);
+    M.finishSpawns('desert');
+    return M;
+};
+
 /* ═══════════════════════════════════════════════════════════════════════════
    DELTA FORGE — hand-authored 8×8 Δ boards (2026-09-01 delta redesign)
    ─────────────────────────────────────────────────────────────────────────────
@@ -13939,6 +13981,28 @@ _MF_DELTA_BUILDERS.prebuilt_downtown = function () {
    env → state.mapEnv → the firmament dome (tint/stars/nebula/fog) + the
    horizon-scenery theme ring (see three-renderer _buildHorizonScenery).    */
 
+/* ═══════════════ 7.7 WAVE 2 — THE NEW SITES (2026-09-16) ═══════════════ */
+
+/* THE BERMUDA TRIANGLE — two right triangles of shoal meeting at the deep
+   hypotenuse (the diagonal from (7,0) to (0,7)); the SANDBAR at the centre
+   (the nexus tiles (3,4) / (4,3) sit on the diagonal) is the one crossing a
+   ground unit has, the two tiles of it the two routes the forge insists on.
+   Each shoal: the wreck's hull and deck, a rock, a tide pool; the corner
+   buoys at the right angles. Bed: the sea under rock under sand. */
+_MF_DELTA_BUILDERS.prebuilt_bermuda = function () {
+    const M = _mfDeltaNew({ name: 'The Bermuda Triangle', base: 'desert', seed: 8420,
+        strata: ['deep_water', 'deep_water', 'rocks_1', 'rocks_1', 'desert'], underTop: 'rocks_1',
+        tints: { desert: '#e8d8a8', water: '#5fc8d0', deep_water: '#123c5a', wood: '#6a4a30', rocks_1: '#8a8478' },
+        desc: 'two right triangles of shoal — the deep hypotenuse between them, the sandbar at the centre the only way over on foot, a wreck and a rock a side, the corner buoys; the sea streams past, the storm comes on' });
+    M.block(1, 2, 'wood'); M.step(0, 2, 'wood');            // the wreck: hull, deck
+    M.step(2, 3, 'rocks_1');                                // a rock
+    M.lake(3, 2, 'water', 1); M.lake(0, 1, 'water', 1);     // tide pools
+    M.lake(7, 0, 'deep_water', 2); M.lake(6, 1, 'deep_water', 2); M.lake(5, 2, 'deep_water', 2);   // the hypotenuse (this half)
+    M.obj(0, 0, 'torch', { leaf: 'floor' });                // the buoy at the right angle
+    M.symAll();
+    return M.finishDelta();
+};
+
 // THE WORLD (2026-09-13): `env.world` on a row = how the setting continues to the horizon and how
 // ENTROPY takes it apart (three-renderer.js THE WORLD block): { kind: plain | cavern | void | room,
 //   ground (terrain key; default = the apron's sheet), groundColor, sea (the moat's liquid runs to the
@@ -14165,6 +14229,13 @@ const EW_MAP_META = [
       desc: '16×16 prebuilt, 6v6 — the monster-movie downtown in daylight: the avenue and the cross street, roof-walkable blocks, the rubble where something walked through, the collapsed tower as a ramp of debris, a dumpster in every alley',
       env: { world: { kind: 'plain', rim: [{ kind: 'city', d: 17, n: 22, h: 11, tex: 'concrete_floor', color: 0xb8b8bc, lights: false }, { kind: 'city', d: 32, n: 26, h: 18, tex: 'urban_wall', color: 0xa0a4ac, lights: false, ranks: 1 }], fogTop: 0.2 },
              tint: 0xb8c0cc, tintAmt: 0.3, stars: 0.05, nebula: 0.2, fog: { color: 0xc8ccd4, amount: 0.55, top: 0.1, band: 0.5 }, scenery: 'city', density: 0.5, ambience: 'ambDay' } },
+    /* 7.7 WAVE 2 (2026-09-16): Room 345 first — the user's right triangle, on the sea kit the Dutchman built */
+    { id: 'prebuilt_bermuda', label: 'The Bermuda Triangle', w: 16, h: 16, teamSize: 6, tier: 2, base: 'desert',
+      biomes: ['deep_sea', 'tropical'], deltaPad: 'desert', near: 'bermuda',
+      desc: '16×16 prebuilt, 6v6 — two right triangles of shoal in the open Atlantic, the deep hypotenuse between them and one sandbar over it, a wreck and rocks on each, the corner buoys and the lighthouse on the 90° corner; the sea streams past and the storm comes on from round 3',
+      env: { world: { kind: 'plain', sea: true, root: false, r: 70 },
+             tint: 0x6fa8c8, tintAmt: 0.34, stars: 0.35, nebula: 0.25, fog: { color: 0x9fc4d8, amount: 0.5, top: 0.06, band: 0.5 }, scenery: 'sea',
+             motion: { kind: 'sea', axis: 'x', speed: 2.5, ramp: 0.2, max: 3.5, sea: true, seaDepth: 2.4, sky: 0.9, storm: { from: 3, to: 10 }, ambience: 'ambWindHigh' } } },
 ];
 
 /* Build + register everything: full maps and their Δ variants. */
@@ -17359,6 +17430,9 @@ const DOOR_TEXT = {
             summary: 'Four miles of boulevard built by a mob accountant on a road to nowhere in 1941, now the brightest spot on the planet from orbit. It has a pyramid, an Eiffel Tower, a Venice and eleven chapels that marry anyone standing still. Nothing here is the thing it is shaped like, and the fountains dance on schedule. The Department loses money at every table and calls it fieldwork.' },
         prebuilt_downtown: { tone: 'deny', status: 'EVACUATED', juris: 'The city · insurance pending · the monster has not filed',
             summary: 'A downtown of the kind that gets stepped on: an avenue, a cross street, the office block, the department store, and a tower now lying across the intersection. The first film was 1954 and the city was Tokyo; the city has been every city since. The rule is that the army is useless, the scientist is right too late, and the monster was here first. The evacuation order is still in force.' },
+        /* 7.7 WAVE 2 (2026-09-16) */
+        prebuilt_bermuda: { tone: 'deny', status: 'NO FIXED POSITION', juris: 'International waters · the Admiralty has a form and no address to send it to',
+            summary: 'A patch of the Atlantic between Miami, Bermuda and San Juan where ships and aircraft file a position and then file nothing. The Department measured it in 1945 when five aircraft flew into it in formation and did not fly out. It is a right triangle. Two shoals meet at a line of deep water and the only way across on foot is a sandbar the width of two men; the sea moves under everything, the compass points at the lighthouse and the lighthouse is not on any chart.' },
         /* MOVING MAPS (2026-09-12) */
         prebuilt_revenge: { tone: 'deny', status: 'UNDER WAY', juris: 'Admiralty · flag of no nation · Customs by grappling hook',
             summary: "A Dutch East Indiaman that tried to round the Cape in a gale in the 1600s and never did; every sailor who has seen her since saw her under full sail, lit from inside, going somewhere fast, and every one of them was dead within the year. The Department filed her in 1717, the year she was last logged making for a port she did not reach. She does not stop, she does not slow down, the lanterns light themselves at dusk, and the storm she is sailing into has been arriving since the paperwork was filed." },
@@ -18716,7 +18790,7 @@ const DOOR_HQ = {
         ancient:     { label: 'ANCIENT', sub: 'first crossings',
             maps: ['prebuilt_stonehenge', 'prebuilt_giza', 'prebuilt_babel', 'prebuilt_gobekli', 'prebuilt_camelot', 'prebuilt_technoticlan'] },
         hollow:      { label: 'HOLLOW', sub: 'inner earth · polar · the deep',
-            maps: ['prebuilt_shasta', 'prebuilt_hollow_earth', 'prebuilt_agartha', 'prebuilt_antarctica', 'prebuilt_northpole', 'prebuilt_atlantis', 'prebuilt_revenge'] },
+            maps: ['prebuilt_shasta', 'prebuilt_hollow_earth', 'prebuilt_agartha', 'prebuilt_antarctica', 'prebuilt_northpole', 'prebuilt_atlantis', 'prebuilt_revenge', 'prebuilt_bermuda'] },   // 7.7 wave 2: Room 345
         celestial:   { label: 'CELESTIAL', sub: 'space · the far future',
             maps: ['prebuilt_mars', 'prebuilt_moon', 'prebuilt_derelict', 'prebuilt_saturn', 'prebuilt_singularity'] },   // 7.6 wave 1: Rooms 6 + 0 (the Singularity, like the Looking-Glass, out of the sealed Quarantined bay so it is playable)
         diplomatic:  { label: 'DIPLOMATIC', sub: 'immunity claimed',
@@ -18872,6 +18946,8 @@ const DOOR_HQ = {
         prebuilt_saturn:        { roomNo: '6', leaf: 'leaf_bulkhead',       wide: true, why: 'the sixth planet', note: 'the Mars airlock\'s twin; frost on the other side' },
         prebuilt_strip:         { roomNo: '21', leaf: 'leaf_motel',          why: 'blackjack', note: 'a motel door with a DO NOT DISTURB sign that is a lie' },
         prebuilt_downtown:      { roomNo: '1954', leaf: 'leaf_entrance',          why: 'REC — the first kaiju film', note: 'a lobby door; the glass is taped, the lobby is not there' },
+        /* 7.7 WAVE 2 (2026-09-16): Room 345 — "it's a right triangle" (the user's number, the 3-4-5 triangle) */
+        prebuilt_bermuda:       { roomNo: '345', leaf: 'leaf_white_wood',      why: 'the 3-4-5 right triangle; the user\'s', note: 'a white cabin door off a yacht that was found drifting, crewless, with breakfast on the table; it opens onto open water' },
     },
     /* The two FACILITY boards (HQ plan 7.0 rule 3) are not sites: no bay,
        no threshold. They wear the room they are projected in — the Training
@@ -19248,6 +19324,15 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_revenge', part: 'hold', wall: 'free', x: -3.2, z: -0.4, face: 90, sub: 'THE BILGE · SURFACE IN THE NATATORIUM' },
           why: 'the plunge pool at the deep end is deeper than the building; the lifeguard logs what comes up in it, and last week it was a lantern, lit',
           note: 'hold your breath', draft: true },
+        /* 7.7 WAVE 2 (2026-09-16): THE WEIR — Room 8's infinity pool goes over the edge into the Triangle
+           (the plan's REC: re-pointed here from Atlantis) and you surface on the shoal beside the buoy.
+           A `pool` way at BOTH ends: on the parapet's west corner in Room 8, free on the Triangle's
+           north strip (its lanes carry the sea links' doors; a `way` hangs anywhere on the strip). */
+        { id: 'weir_bermuda', route: 'deep', way: 'pool',
+          a: { room: 'pool', wall: 'free', x: -4.2, z: -3.4, face: 180, sub: 'THE WEIR · OVER THE EDGE' },
+          b: { site: 'prebuilt_bermuda', wall: 'free', x: -7.5, z: -11.0, face: 90, sub: 'THE SHOAL POOL · SURFACE IN ROOM 8' },
+          why: 'the water goes over the weir and nobody said where; the lifeguard is not certified for the edge and the Triangle is where the water was going',
+          note: 'you surface in the tide pool by the buoy, dry', draft: true },
         { id: 'lodge_olympus', route: 'seams', way: 'painting',
           a: { site: 'prebuilt_lodge', wall: 'n', x: -0.2 },
           b: { site: 'prebuilt_olympus', wall: 'n', x: -0.2 },
@@ -19377,7 +19462,9 @@ const DOOR_HQ = {
                 /* MOVING MAPS (2026-09-12): the ship on a quay (a moat room), the wreck on hull plate, the board on its slab */
                 'prebuilt_revenge', 'prebuilt_derelict', 'prebuilt_lookingglass',
                 /* 7.6 WAVE 1 (2026-09-13): the new sites */
-                'prebuilt_haunted', 'prebuilt_lodge', 'prebuilt_singularity', 'prebuilt_saturn', 'prebuilt_strip', 'prebuilt_downtown'],
+                'prebuilt_haunted', 'prebuilt_lodge', 'prebuilt_singularity', 'prebuilt_saturn', 'prebuilt_strip', 'prebuilt_downtown',
+                /* 7.7 WAVE 2 (2026-09-16): the right triangle */
+                'prebuilt_bermuda'],
         shell: { pad: 4.0, h: 4.4, dadoH: 1.05, floor: 'concrete', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling', pipes: true,
             /* the room's LIGHT (plan 7.2 stage 2): `lamp` = the containment
                lamps in the corners (lens + glow), `strip` = the wall strips,
@@ -19451,6 +19538,8 @@ const DOOR_HQ = {
             revenge: { w: 1.6 }, derelict: { w: 2.2 }, lookingglass: { w: 1.2 },
             /* 7.6 WAVE 1 (2026-09-13) */
             haunted: { w: 4.5 }, lodge: { w: 3.4, h: 3.6 }, singularity: { w: 4.0 }, saturn: { w: 5.0 }, strip: { w: 4.0 }, downtown: { w: 3.6 },
+            /* 7.7 WAVE 2 (2026-09-16): the shoal's rim */
+            bermuda: { w: 1.6 },
         },
         shells: {
             prebuilt_dumb: { floor: 'concrete', wall: 'concrete', dado: 'teal', trim: 'teal', ceiling: 'concrete' },
@@ -19729,6 +19818,15 @@ const DOOR_HQ = {
                 mood: { lamp: 0xf4f7ff, glow: 0xe0e8ff, strip: 0xffffff, light: 0xf8f8ff, night: 0,
                     signN: { bg: '#e8e4d8', border: '#3a3a3c', color: '#1a1a1c' }, signS: { bg: '#c82020', border: '#f8e8e8', color: '#ffffff' },
                     signLines: { n: ['DOWNTOWN', 'ROOM 1954', 'EVACUATED'], s: ['THE MONSTER WAS HERE FIRST', 'MIND THE TOWER', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 345 · THE BERMUDA TRIANGLE (7.7 wave 2, 2026-09-16) — the shoal
+               on a quay of sand, the open sea round it (the Dutchman's moat
+               recipe in daylight), the lighthouse at the 90° corner */
+            prebuilt_bermuda: { open: true, pad: 5.0, floor: 'desert', wall: 'rocks_1', dado: 'rocks_1', trim: 'gold', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
+                apron: 'desert', skirt: 'rocks_1', apronColor: 0xe8d8a8, floorColor: 0xe8d8a8,
+                moat: { key: 'deep_water', gap: 2.6, bank: 'rocks_1', bankColor: 0x8a8478, bed: 'rocks_dark_fantasy', bedColor: 0x1c3e52, deck: 'desert', deckColor: 0xe8d8a8, causeways: ['s', 'n'] },
+                mood: { lamp: 0xfff1c8, glow: 0x7fe0ea, strip: 0xdff0ff, light: 0xfff0d0, night: 0,
+                    signN: { bg: '#0c2a34', border: '#7fe0ea', color: '#dffaff' }, signS: { bg: '#f4f0e0', border: '#c83a3a', color: '#1a2a34' },
+                    signLines: { n: ['THE BERMUDA TRIANGLE', 'ROOM 345', '∠ 90° · NO FIXED POSITION'], s: ['THE SANDBAR IS THE WAY OVER', 'THE COMPASS POINTS AT THE LIGHTHOUSE', 'THE CROSSING IS AT THE CONSOLE'] } } },
             /* 888 · VATICAN CITY — the piazza: cobbles, a marble wall, the
                colonnade arms in the room, the basilica front across the
                north, the dome over the wall; day */
@@ -19888,6 +19986,24 @@ const DOOR_HQ = {
                     { key: 'cardboard_box',  x: 12.4,  z: -12.2, face: 30 },
                     { key: 'paper_sheet',    x: -12.2, z: 12.4,  y: 0.01, face: 300 },
                     { key: 'trash_bin',      x: 12.0,  z: 12.2 },
+                ],
+            },
+            /* 345 · THE BERMUDA TRIANGLE (7.7 wave 2, 2026-09-16) */
+            prebuilt_bermuda: {
+                agent: '“Room 345. The quay is sand. The sea is on a schedule. If the compass turns, do not follow it — it is pointing at the lighthouse, and the lighthouse is not on the chart.”',
+                lines: [
+                    'It is a right triangle. Records measured it. The angle is at the buoy; the buoy is not where it was yesterday.',
+                    'Five aircraft flew into it in 1945 in formation. The Department filed them as a crossing. They have not filed back.',
+                    'The sandbar is two men wide. The sandbar is the whole battle.',
+                    'The storm is on the form. It comes on from round three. Do not be on the deep side of it when it does.',
+                    'The yacht was found with breakfast on the table and nobody to eat it. The door on the bay is its cabin door. The breakfast is in Records.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'cardboard_box',  x: 10.8,  z: -10.4, face: 30 },
+                    { key: 'folding_chair',  x: 11.2,  z: 8.6,   face: 200 },
+                    { key: 'wet_floor_sign', x: -10.6, z: 10.6,  face: 40 },
+                    { key: 'paper_sheet',    x: -10.4, z: -10.8, y: 0.01, face: 120 },
                 ],
             },
             /* 13 · THE HAUNTED HOUSE (7.6 wave 1) — the officer at the gate */
@@ -20601,7 +20717,21 @@ const DOOR_HQ = {
                 radius: 21,            // ground-floor drum (inner face of the lower wall)
                 wallH: 4.2,            // lower wall = mezzanine height
                 mezz: { inner: 20.6, outer: 24, thick: 0.4 },   // the ring slab (r, m)
-                upperWallH: 5.4,       // upper drum, r = mezz.outer, from the slab up
+                upperWallH: 6.6,       // upper drum, r = mezz.outer, from the slab up (5.4 → 6.6 for THE GALLERY, 2026-09-16)
+                /* THE GALLERY — THE THIRD RING (HQ plan 8.4 / 9.3 "the crowding",
+                   2026-09-16): a second ring slab inside the upper drum, `h`
+                   metres above the mezzanine (same inner / outer radii — it
+                   overhangs the hall like the mezzanine does), reached by ONE
+                   curved flight off the mezzanine's walkway (`stair`: from →
+                   to in degrees, rising clockwise, its band rIn → the drum;
+                   its mass stands on the mezzanine, so nothing else may stand
+                   in that arc on level 1). Doors / props / spots with
+                   `level: 2` stand on it (three-renderer.js _hqLevelY; the key is
+                   `ring3` — `gallery` is the box room's two-floor slab). The
+                   EXPLORATION doors live here; the mezzanine keeps the bays
+                   and the elevator. */
+                ring3: { h: 3.3, inner: 20.6, outer: 24, thick: 0.35, railH: 1.05,
+                           stair: { id: 'stair_g', from: 278, to: 312, rIn: 22.6, steps: 20 } },
                 domeH: 3.2,            // conical ceiling rise above the upper wall
                 dadoH: 1.05,
                 floor: 'terrazzo', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling', stair: 'concrete',
@@ -20678,7 +20808,7 @@ const DOOR_HQ = {
                 /* ── mezzanine (support / executive access) ── */
                 { id: 'elevator',       deg: 0,   level: 1, leaf: null, proc: 'elevator',          label: 'ELEVATOR',                sub: 'B · G · M · 2 · 3 · 4 · PH',     action: { room: 'car', at: 'panel' }, floors: ['B', 'G', 'M', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '14', 'PH'], desc: 'The car. It stops at B, G, M, 2, 3, 4 and PH now; the PH button still wants KEYHOLDER clearance and twelve Keys (DOOR_HQ.elevator.stops).' },
                 { id: 'bay_ancient',    deg: 45,  level: 1, leaf: 'leaf_portcullis',   wide: true,  label: 'BAY 2 · ANCIENT',         sub: 'BATTLE MAPS',            action: { sector: 'ancient' } },
-                { id: 'engineering',    deg: 90,  level: 1, leaf: 'leaf_glass_exec',                label: 'ARCANE ENGINEERING',      sub: 'MAP EDITOR',     action: { fn: '_goToMapEditor' },   desc: 'Research offices. The Map Editor, and the fourth door that wasn’t there yesterday — IT, four doors down. The Spell Library moved in with them.' },
+                { id: 'engineering',    deg: 90,  level: 2, leaf: 'leaf_glass_exec',                label: 'ARCANE ENGINEERING',      sub: 'MAP EDITOR',     action: { fn: '_goToMapEditor' },   desc: 'Research offices. The Map Editor, and the fourth door that wasn’t there yesterday — IT, four doors down. The Spell Library moved in with them.' },
                 /* ROOM 1337 · IT (plan 7.4, 2026-09-13): the user's Hacker Room as a
                    DOOR, not a map — inside Arcane Engineering's stretch of the
                    mezzanine, 30° (12.6 m of the upper drum at r 24) from the
@@ -20688,7 +20818,7 @@ const DOOR_HQ = {
                    holographic one (the Observatorium wears it too — leaves are not
                    exclusive below rank) and the keypad hangs INSIDE, by the way
                    out. The round cabinet that stood at 120° moved to 113°. */
-                { id: 'it',             deg: 120, level: 1, leaf: 'leaf_holographic',              label: 'IT',                      sub: 'SPELL LIBRARY · BALANCE LAB', action: { room: 'it', at: 'egress' },
+                { id: 'it',             deg: 120, level: 2, leaf: 'leaf_holographic',              label: 'IT',                      sub: 'SPELL LIBRARY · BALANCE LAB', action: { room: 'it', at: 'egress' },
                   desc: 'Room 1337. The fourth door. It was not there yesterday and Facilities has no ticket for it. The Spell Library, the balance lab and the racks the CPU trains on; the code is on a sticky note on the keypad, on the inside.' },
                 { id: 'bay_diplomatic', deg: 150, level: 1, leaf: 'leaf_revolving',    wide: true,  label: 'BAY 5 · DIPLOMATIC',      sub: 'BATTLE MAPS',            action: { sector: 'diplomatic' } },
                 { id: 'bay_urban',      deg: 180, level: 1, leaf: 'leaf_orange_glass',                     label: 'BAY 7 · URBAN',           sub: 'BATTLE MAPS',            action: { sector: 'urban' } },
@@ -20700,7 +20830,7 @@ const DOOR_HQ = {
                    that stood at 240° moved to 232°. A holographic door (the
                    Cyberpunk tenement wears the same; leaves are not exclusive
                    below rank). */
-                { id: 'observatorium',  deg: 240, level: 1, leaf: 'leaf_holographic',              label: 'THE OBSERVATORIUM',       sub: 'MAP SELECT · REPLAY',        action: { room: 'observatorium', at: 'egress' },
+                { id: 'observatorium',  deg: 240, level: 2, leaf: 'leaf_holographic',              label: 'THE OBSERVATORIUM',       sub: 'MAP SELECT · REPLAY',        action: { room: 'observatorium', at: 'egress' },
                   desc: 'Room 360. The whole sky from one chair: every threshold in the building is a star on the ceiling — point at one on the chart and its door opens from here. The tape library came upstairs with the projector. The dome is painted; the telescope is pointed at the paint.' },
                 { id: 'bay_quarantined',deg: 270, level: 1, leaf: 'leaf_cell',                      label: 'BAY 6 · QUARANTINED',     sub: 'BATTLE MAPS',            action: { sector: 'quarantined' } },
                 /* THE EXECUTIVE SUITE (plan 9.3 / C-27, 2026-09-15): ONE house door
@@ -20710,7 +20840,7 @@ const DOOR_HQ = {
                    recruit walks the suite and reads the notices and still does not
                    go in; the canon notices are on this door too (map.js). The
                    Trophy Case's own door left the ring at 290°. */
-                { id: 'executive',      deg: 315, level: 1, leaf: 'leaf_suburban_house',            label: 'THE EXECUTIVE SUITE',     sub: 'ACHIEVEMENTS · STORY CANON',              action: { room: 'execwing', at: 'egress' },
+                { id: 'executive',      deg: 315, level: 2, leaf: 'leaf_suburban_house',            label: 'THE EXECUTIVE SUITE',     sub: 'ACHIEVEMENTS · STORY CANON',              action: { room: 'execwing', at: 'egress' },
                   desc: 'The suite. The glass case on one side is every commendation the Department has engraved for you; the house door on the other is the Bureau of Continuity, which is the only department that suspects the schedule. The notices on this door are readable by anyone. The Bureau is not.' },
             ],
             /* walk-up interactions that are not doors */
@@ -20853,7 +20983,7 @@ const DOOR_HQ = {
                 { key: 'cardboard_boxes', deg: 133, r: 23.0, level: 1, rot: 40 },   // moved from 180° for Bay 7's door (plan 7.5)
                 { key: 'cardboard_box',  deg: 136, r: 22.8, level: 1 },
                 { key: 'office_locker',  deg: 232, level: 1, wall: true },   // moved from 240° for Room 360's door (plan 7.4)
-                { key: 'potted_plant',   deg: 300, r: 23.0, level: 1 },
+                { key: 'potted_plant',   deg: 265, r: 23.0, level: 1 },   // moved from 300°: THE GALLERY's stair (278°–312°, 2026-09-16)
                 { key: 'globe_lamp',     deg: 335, r: 22.7, level: 1 },
                 { key: 'globe_lamp',     deg: 70,  r: 22.7, level: 1 },
                 { key: 'globe_lamp',     deg: 195, r: 22.7, level: 1 },
@@ -20861,7 +20991,7 @@ const DOOR_HQ = {
                 { key: 'fire_extinguisher', deg: 105, level: 1, wall: true },
                 { key: 'wall_clock',     deg: 255, level: 1, wall: true },
                 /* Otto's tool crates (DOOR_CAST): one at each door he might be working on */
-                { key: 'cardboard_box',  deg: 309,   r: 22.95, level: 1, rot: 20 },
+                { key: 'cardboard_box',  deg: 258,   r: 22.95, level: 1, rot: 20 },   // moved from 309°: THE GALLERY's stair
                 { key: 'cardboard_box',  deg: 84,    r: 22.95, level: 1, rot: -30 },
                 /* mezzanine clerk stations (the kidney desks, plan 2.2):
                    against the upper wall so the 2.2 m ring stays walkable —
@@ -20888,7 +21018,17 @@ const DOOR_HQ = {
                 { key: 'trash_bin',      deg: 105.5, r: 23.3,  level: 1 },
                 { key: 'hook_rail_long', deg: 342,   level: 1, wall: true, mount: 1.8 },
                 { key: 'picture_round_a', deg: 32,   level: 1, wall: true },
-                { key: 'picture_round_c', deg: 281,  level: 1, wall: true },        // moved from 288°: Room 111's door (2026-09-13)
+                { key: 'picture_round_c', deg: 247,  level: 1, wall: true },        // moved from 288° (2026-09-13), then from 281°: THE GALLERY's stair (2026-09-16)
+                /* THE GALLERY (level 2, 2026-09-16): lamps between the four exploration doors, a plant, the notice frames */
+                { key: 'globe_lamp',     deg: 105, r: 23.0, level: 2 },
+                { key: 'globe_lamp',     deg: 180, r: 23.0, level: 2 },
+                { key: 'globe_lamp',     deg: 278, r: 23.0, level: 2 },
+                { key: 'globe_lamp',     deg: 30,  r: 23.0, level: 2 },
+                { key: 'potted_plant',   deg: 228, r: 23.0, level: 2 },
+                { key: 'potted_plant',   deg: 330, r: 23.0, level: 2 },
+                { key: 'picture_round_a', deg: 60, level: 2, wall: true },
+                { key: 'picture_round_c', deg: 205, level: 2, wall: true },
+                { key: 'fire_extinguisher', deg: 255, level: 2, wall: true },
             ],
             /* where DOOR agents stand (fixed) and roster vessels loiter */
             agents: [
@@ -20897,6 +21037,8 @@ const DOOR_HQ = {
                 { deg: 129, r: 18.95, level: 0, face: 309, gender: 'female', pose: 'hqSit', reach: 3.2, label: 'INTAKE CLERK', line: '“Forms are on the left. The left has moved.”' },
                 { deg: 288, r: 18.8, level: 0, face: 108, line: '“It’s 90 degrees.” … “Oh shit.”' },
                 { deg: 45,  r: 22.4, level: 1, face: 225, line: '“Check your corners.” Not a greeting.' },
+                /* THE GALLERY (2026-09-16): the watch on the third ring, at the top of its stair */
+                { deg: 318, r: 22.3, level: 2, face: 138, label: 'THE GALLERY WATCH', line: '“Third ring. Nothing up here launches. Everything up here looks.” They do not say at what.' },
             ],
             npcSpots: [
                 { deg: 63,  r: 14.6, level: 0, face: 240 },
@@ -22488,13 +22630,14 @@ const DOOR_HQ = {
             props: [
                 /* ── the pool: a raised basin against the north parapet, the weir looking over the edge ── */
                 { key: 'infinity_pool',  x: 0,     z: -2.6, face: 0 },
-                { key: 'wet_floor_sign', x: -3.6,  z: -1.2, face: 140 },
+                { key: 'wet_floor_sign', x: -2.2,  z: 2.2,  face: 140 },   // moved from (−3.6, −1.2): THE WEIR's landing (7.7 wave 2, 2026-09-16)
                 /* ── loungers along the west and east, an umbrella and a table between each pair ── */
-                { key: 'pool_lounger',   x: -4.6,  z: -0.6, face: 90 },
-                { key: 'pool_lounger',   x: -4.6,  z: 0.8,  face: 90 },
-                { key: 'pool_umbrella',  x: -4.9,  z: 0.1 },
-                { key: 'coffee_table',   x: -3.6,  z: 0.1 },
-                { key: 'solo_cup',       x: -3.6,  z: 0.1,  y: 0.46, face: 20 },
+                /* the west pair moved 0.8 m south for THE WEIR's landing (7.7 wave 2, 2026-09-16) */
+                { key: 'pool_lounger',   x: -4.6,  z: 0.2,  face: 90 },
+                { key: 'pool_lounger',   x: -4.6,  z: 1.6,  face: 90 },
+                { key: 'pool_umbrella',  x: -4.9,  z: 0.9 },
+                { key: 'coffee_table',   x: -3.6,  z: 0.9 },
+                { key: 'solo_cup',       x: -3.6,  z: 0.9,  y: 0.46, face: 20 },
                 { key: 'pool_lounger',   x: 4.6,   z: -0.6, face: 270 },
                 { key: 'pool_lounger',   x: 4.6,   z: 0.8,  face: 270 },
                 { key: 'pool_umbrella',  x: 4.9,   z: 0.1 },
@@ -22523,7 +22666,7 @@ const DOOR_HQ = {
                 { x: 1.4, z: 2.4, face: 0 },        // on break, on the south lounger
             ],
             onlineSpots: [
-                { x: -4.6, z: -0.6, face: 90 },
+                { x: -4.6, z: 0.2,  face: 90 },
                 { x: 4.6,  z: 0.8,  face: 270 },
                 { x: 4.6,  z: -0.6, face: 270 },
             ],
@@ -29129,8 +29272,8 @@ const HQ_TAPE_SHEET = {
     site_prebuilt_downtown_lobby:    [['THE LOBBY CLOCK', 'The lobby clock at 1954. The second hand goes backward once, and the dust rises off the desk.', 'evidence']],
     site_prebuilt_downtown_subway:   [['THE LAST TRAIN', 'Two people boarding. The doors close on the lens. The destination board reads your surname.', 'parents']],
     /* the exploration floors (Phase 8): never the hall, the foyer, a lobby or a corridor — the finds are the reward for going somewhere. A floor room's tape is a BONUS: the laundry, the locker room and the lecture hall gave theirs to the spaceship (rev 18); the boiler room, the server room and the ritual room to the Dutchman (rev 19); the garage, the kitchen, the cold room and the dungeon to THE URBAN BLOCK (9.2 stage 4, 2026-09-16) — the hundred stays a hundred */
-    sacrifice: [['FORM 322', 'A form on the altar. Field 1: NAME. It has been filled in for you.', 'facility']],
-    orb:       [['THE OBJECT', 'The orb from every side at once. It turns to keep the same face to the lens.', 'evidence']],
+    /* 7.7 WAVE 2 (2026-09-16): Room 345's two tapes came off the sacrifice room and Room X (the hundred stays a hundred) */
+    prebuilt_bermuda:     [['FLIGHT 19, 14:10', 'Five aircraft in formation over a flat sea. The lead turns. The others turn with it. The sea does not.', 'evidence'], ['THE BUOY', 'A lantern buoy at the right angle. The tape is level; the horizon behind it is not.', 'facility']],
     garden:    [['1618', 'A tree in the garden. Two names carved in it. One is yours, the other is not yet.', 'parents']],
 };
 /* the room a sheet key names: a site key → its generated board room */

@@ -118,7 +118,7 @@ test('THE STAIRWELL LOOPS: you come in at the top landing six metres up, the ste
 
 test('the renderer: a box door carries its own floor (`y`), a blocker knows its own base, a raised blocker is a wall only when you are not on it, flipped props hang from the ceiling with no blocker', () => {
     assert.match(TR, /if \(door && typeof door\.y === 'number'\) return Math\.max\(0, door\.y\);/, '_hqDoorFloorY reads door.y (an explicit 0 is the floor under a gallery — 9.2 stage 2)');
-    assert.match(TR, /var y0 = level \? S\.wallH : _hqDoorFloorY\(room, door\);/, 'the door build stands at that floor');
+    assert.match(TR, /var y0 = level \? _hqLevelY\(S, level\) : _hqDoorFloorY\(room, door\);/, 'the door build stands at that floor');
     assert.match(TR, /spot = new THREE\.Vector3\(\(d\.box\.wx \+ d\.box\.nx \* 2\.4\) \* U, d\.y0 \* U/, 'the landing spot takes the door’s floor');
     assert.equal((TR.match(/y: y0 \+ \(p\.y \|\| 0\), top:/g) || []).length, 2, 'both blocker sites carry the prop’s own base');
     assert.match(TR, /if \(b\.y != null && b\.y > y \+ 1\.2 && \(curY == null \|\| b\.y > curY \+ 1\.2\)\) continue;/, 'a raised blocker is skipped only when it is above the floor AND above the walker');

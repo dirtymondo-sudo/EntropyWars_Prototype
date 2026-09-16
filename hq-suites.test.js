@@ -39,7 +39,7 @@ const SUITES = [
     { lobby: 'recwing',  hall: 'records',   deg: 240, level: 0, leaf: 'leaf_wired_double',
       rooms: [{ room: 'records',       at: 'records',       no: '42' },
               { room: 'clockroom',     at: 'clockroom',     no: '247' }] },
-    { lobby: 'execwing', hall: 'executive', deg: 315, level: 1, leaf: 'leaf_suburban_house',
+    { lobby: 'execwing', hall: 'executive', deg: 315, level: 2, leaf: 'leaf_suburban_house',   // THE GALLERY (2026-09-16): the suite's door rode up to the third ring
       rooms: [{ room: 'trophycase',    at: 'trophycase',    no: '111' },
               { room: 'continuity',    at: 'continuity',    no: '№ — CONTESTED' }] },
 ];
@@ -117,9 +117,11 @@ test('ONE hall door per department: each suite has exactly one way in from the h
     for (const f of FREED) assert.ok(!ROOM.doors.some(d => (d.level || 0) === f.level && Math.abs(d.deg - f.deg) < 5),
         f.deg + '° on level ' + f.level + ' is free wall now');
     for (const id of ['clockroom', 'interrogation', 'trophycase', 'continuity']) assert.ok(!ROOM.doors.some(d => d.id === id), 'the hall no longer wears a ' + id + ' door');
-    /* the ring is thinner: 11 on the ground, 10 upstairs */
+    /* the ring is thinner: 11 on the ground, 10 upstairs — and since THE GALLERY (2026-09-16)
+       the four exploration doors stand on the third ring: 6 on the mezzanine (the bays + the elevator), 4 up top */
     assert.strictEqual(ROOM.doors.filter(d => !(d.level || 0)).length, 11, 'the ground ring wears eleven doors (13 − 2)');
-    assert.strictEqual(ROOM.doors.filter(d => (d.level || 0) === 1).length, 10, 'the mezzanine wears ten (11 − 1)');
+    assert.strictEqual(ROOM.doors.filter(d => (d.level || 0) === 1).length, 6, 'the mezzanine keeps the bays and the elevator (10 − 4)');
+    assert.strictEqual(ROOM.doors.filter(d => (d.level || 0) === 2).length, 4, 'the gallery wears the four exploration doors');
 });
 
 test('every suite is reversible: the lobby\'s way out lands on its hall door, each room\'s way out lands on the lobby door that opened it, and nothing moved but the far end', () => {

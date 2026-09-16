@@ -65,7 +65,7 @@ test('the three moving maps are launch maps with a Δ, a near setting, a far ros
     }
     /* nobody else moves */
     const movers = Array.from(D.EW_MAP_META.filter(m => !m.isDelta && m.env && m.env.motion).map(m => m.id)).sort();
-    assert.deepStrictEqual(movers, ['prebuilt_area51', 'prebuilt_babel', 'prebuilt_derelict', 'prebuilt_heaven', 'prebuilt_hell', 'prebuilt_lookingglass', 'prebuilt_revenge', 'prebuilt_stonehenge']);
+    assert.deepStrictEqual(movers, ['prebuilt_area51', 'prebuilt_babel', 'prebuilt_bermuda', 'prebuilt_derelict', 'prebuilt_heaven', 'prebuilt_hell', 'prebuilt_lookingglass', 'prebuilt_revenge', 'prebuilt_stonehenge']);
 });
 
 test('the Looking-Glass: the pieces ARE the cover — chess monuments with a real tile box on both boards', () => {

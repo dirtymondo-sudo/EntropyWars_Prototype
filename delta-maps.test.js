@@ -53,13 +53,14 @@ function fail(id, msg) { failures++; problems.push(id + ': ' + msg); if (ascii) 
 
 const deltas = EW_MAP_META.filter(m => m.isDelta);
 if (ascii) console.log('delta boards: ' + deltas.length);
-/* 38 = one Δ per launch map (29 + the three MOVING MAPS, 2026-09-12, + the
-   six 7.6 wave-1 sites, 2026-09-13); the
+/* 39 = one Δ per launch map (29 + the three MOVING MAPS, 2026-09-12, + the
+   six 7.6 wave-1 sites, 2026-09-13, + the Bermuda Triangle, 7.7 wave 2,
+   2026-09-16); the
    D.O.O.R. facility boards (data.js EW_FACILITY_META, `facility: true`) ride
    the Δ roster too and obey the same house rules, but they have no parent
    full map. */
 const facility = deltas.filter(m => m.facility);
-if (deltas.length - facility.length !== 38) fail('roster', 'expected 38 Δ boards, got ' + (deltas.length - facility.length));
+if (deltas.length - facility.length !== 39) fail('roster', 'expected 39 Δ boards, got ' + (deltas.length - facility.length));
 if (facility.length !== 2) fail('roster', 'expected 2 facility boards, got ' + facility.length);
 if (EW_MAP_META.some(m => m.isDeltaArena)) fail('roster', 'isDeltaArena entries still exist');
 

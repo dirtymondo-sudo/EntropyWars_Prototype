@@ -762,6 +762,8 @@ const MAP_POOL = [
     { modeId: 'prebuilt_saturn_delta', w: 8, h: 8, team: 4 },
     { modeId: 'prebuilt_strip_delta', w: 8, h: 8, team: 4 },
     { modeId: 'prebuilt_downtown_delta', w: 8, h: 8, team: 4 },
+    // 7.7 WAVE 2 (2026-09-16)
+    { modeId: 'prebuilt_bermuda_delta', w: 8, h: 8, team: 4 },
     // full launch maps (6v6 / 8v8 queues)
     { modeId: 'prebuilt_nuketown', w: 14, h: 14, team: 6 },
     { modeId: 'prebuilt_stonehenge', w: 16, h: 16, team: 6 },
@@ -781,6 +783,7 @@ const MAP_POOL = [
     { modeId: 'prebuilt_saturn', w: 16, h: 16, team: 6 },
     { modeId: 'prebuilt_strip', w: 16, h: 16, team: 6 },
     { modeId: 'prebuilt_downtown', w: 16, h: 16, team: 6 },
+    { modeId: 'prebuilt_bermuda', w: 16, h: 16, team: 6 },
     { modeId: 'prebuilt_shasta', w: 20, h: 20, team: 6 },
     { modeId: 'prebuilt_giza', w: 20, h: 20, team: 6 },
     { modeId: 'prebuilt_heaven', w: 20, h: 20, team: 6 },

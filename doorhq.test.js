@@ -83,7 +83,7 @@ test('doors carry exactly one action and unique ids', () => {
         const keys = Object.keys(d.action || {}).filter(k => ['fn', 'sector', 'room', 'overlay', 'mission'].includes(k));
         if (keys.length !== 1) problems.push(d.id + ': action must be exactly one of fn/sector/room/overlay/mission');
         if (d.action && d.action.sector && !HQ.sectors[d.action.sector]) problems.push(d.id + ': unknown sector ' + d.action.sector);
-        if (![0, 1].includes(d.level || 0)) problems.push(d.id + ': level must be 0 or 1');
+        if (![0, 1, 2].includes(d.level || 0)) problems.push(d.id + ': level must be 0, 1 or 2 (THE GALLERY, 2026-09-16)');
     }
     for (const c of ROOM.counters) {
         if (ids.has(c.id)) problems.push('counter id collides with a door: ' + c.id);
@@ -101,7 +101,7 @@ test('doors on a level are ≥ 25° apart (or leave ≥ 2 m of wall between thei
        proxy for the wall, so the wall is the rule now (2 m of pier between
        the panel edges); the 25° still passes on its own */
     const panel = d => (d.wide || (d.leaf && HQ.catalogue[d.leaf] && HQ.catalogue[d.leaf].wide)) ? 3.3 : 2.5;
-    for (const level of [0, 1]) {
+    for (const level of [0, 1, 2]) {
         const R = level ? ROOM.shell.mezz.outer : ROOM.shell.radius;
         const ds = ROOM.doors.filter(d => (d.level || 0) === level);
         for (let i = 0; i < ds.length; i++) for (let j = i + 1; j < ds.length; j++) {
@@ -110,8 +110,11 @@ test('doors on a level are ≥ 25° apart (or leave ≥ 2 m of wall between thei
             if (dg < 25 && pier < 2.0) problems.push(`${ds[i].id} and ${ds[j].id} are ${dg}° apart on level ${level} (${pier.toFixed(2)} m of pier)`);
         }
     }
-    for (const d of ROOM.doors.filter(d => !(d.level || 0))) {
-        for (const st of ROOM.stairs) {
+    /* THE GALLERY (2026-09-16): its flight stands on the MEZZANINE, so a level-1 door keeps clear of it like a ground door keeps clear of the hall's flights */
+    const gst = ROOM.shell.ring3 && ROOM.shell.ring3.stair;
+    const flightsOn = level => level === 0 ? ROOM.stairs : (level === 1 && gst) ? [gst] : [];
+    for (const d of ROOM.doors) {
+        for (const st of flightsOn(d.level || 0)) {
             const lo = Math.min(st.from, st.to) - 7, hi = Math.max(st.from, st.to) + 7;
             const a = norm(d.deg);
             if ((a >= lo && a <= hi) || (a + 360 >= lo && a + 360 <= hi)) problems.push(`${d.id} @${d.deg}° sits inside stair ${st.id}`);
@@ -145,7 +148,10 @@ test('spawn, counters, npc spots and floor props sit inside the walkable ring', 
     const check = (label, p) => {
         const level = p.level || 0;
         const rMax = level ? S.mezz.outer - 0.3 : S.radius - 0.3;
-        const rMin = level ? S.mezz.inner : ((ROOM.desk && ROOM.desk.rOuter) || 0);
+        const rMin = level >= 2 ? S.ring3.inner + 0.7 : level ? S.mezz.inner : ((ROOM.desk && ROOM.desk.rOuter) || 0);
+        /* THE GALLERY (2026-09-16): nothing with a footprint stands on the mezzanine inside its flight's arc */
+        const gst2 = S.ring3 && S.ring3.stair;
+        if (level === 1 && gst2 && p.r != null && p.r >= gst2.rIn - 0.6 && ((p.deg >= Math.min(gst2.from, gst2.to) - 3 && p.deg <= Math.max(gst2.from, gst2.to) + 3))) problems.push(`${label} stands in the gallery flight's arc`);
         if (p.r == null) return;
         if (p.r > rMax) problems.push(`${label} r=${p.r} is outside the wall (max ${rMax})`);
         /* the dispatch desk's well (inside rInner, floor at 0.05 m) may hold furniture — Rhonda's chair */
@@ -672,7 +678,7 @@ test('THE BUREAU OF CONTINUITY: a box room behind the mezzanine door at 315° �
     const eg = HQ.rooms.execwing.doors.find(d => d.id === 'continuity');   // THE SUITES (2026-09-15): the Bureau's door hangs in the executive suite now
     assert.ok(eg && eg.wall === 'n' && eg.leaf === 'leaf_suburban_house' && eg.action.room === 'continuity' && eg.action.at === 'egress', 'the suite’s house door walks into the Bureau at its way out');
     const suite = ROOM.doors.find(d => d.id === 'executive');
-    assert.ok(suite && suite.deg === 315 && suite.level === 1 && suite.leaf === 'leaf_suburban_house' && suite.action.room === 'execwing' && suite.action.at === 'egress' && !suite.minClearance && !suite.requiresKeys, 'the mezzanine door at 315° is the SUITE’s, ungated');
+    assert.ok(suite && suite.deg === 315 && suite.level === 2 && suite.leaf === 'leaf_suburban_house' && suite.action.room === 'execwing' && suite.action.at === 'egress' && !suite.minClearance && !suite.requiresKeys, 'the gallery door at 315° is the SUITE’s, ungated (THE GALLERY, 2026-09-16)');
     assert.ok(eg.minClearance === 5 && eg.requiresKeys === 24, 'GATEKEEPER + 24 Keys — the gate is the door’s, unchanged');
     assert.strictEqual(D.doorSiteState(eg, null), 'clearance', 'a recruit reads the notices on the door and does not go in');
     assert.strictEqual(D.doorSiteState(eg, { door: { clearance: 5, hq: { keys: 24 } } }), 'open', 'a GATEKEEPER with the Keys goes in');
@@ -2368,7 +2374,7 @@ test('Room 360 is a box room off the mezzanine at 240° (above Records): the way
     for (const k of ['floor', 'wall', 'dado', 'ceiling']) assert.ok(HQ.textures[OBS.shell[k]] || new RegExp('^\\s+' + OBS.shell[k] + ':\\s+\\[', 'm').test(SPRITES_SRC), 'the ' + k + ' is a texture the renderer can find');
     assert.ok(OBS.shell.wallColor != null && OBS.shell.floorColor != null && OBS.shell.mood && OBS.shell.mood.light != null, 'painted down, one blue strip');
     const eg = ROOM.doors.find(d => d.id === 'observatorium');
-    assert.ok(eg && eg.deg === 240 && eg.level === 1 && eg.action.room === 'observatorium' && eg.action.at === 'egress', 'the mezzanine door at 240° walks into the room at its way out');
+    assert.ok(eg && eg.deg === 240 && eg.level === 2 && eg.action.room === 'observatorium' && eg.action.at === 'egress', 'the mezzanine door at 240° walks into the room at its way out');
     assert.strictEqual(D.hqDoorNo(eg), '360', 'the plate over the mezzanine door reads 360');
     const rec = ROOM.doors.find(d => d.id === 'records');
     assert.strictEqual(rec.deg, eg.deg, 'directly above Records');
@@ -2681,7 +2687,7 @@ test('Room 1337 is a box room off the mezzanine at 120° (inside Arcane Engineer
     assert.ok(ITR && ITR.kind === 'box' && ITR.roomNo === '1337', 'rooms.it kind box, Room 1337');
     assert.strictEqual(D.hqRoomNo('it'), '1337');
     const eg = ROOM.doors.find(d => d.id === 'it');
-    assert.ok(eg && eg.deg === 120 && eg.level === 1 && eg.action.room === 'it' && eg.action.at === 'egress', 'the mezzanine door at 120° walks into the room at its way out');
+    assert.ok(eg && eg.deg === 120 && eg.level === 2 && eg.action.room === 'it' && eg.action.at === 'egress', 'the mezzanine door at 120° walks into the room at its way out');
     assert.strictEqual(D.hqDoorNo(eg), '1337', 'the plate over the mezzanine door reads 1337');
     assert.ok(eg.roomNo == null, 'the door does not duplicate the room’s number');
     const out = ITR.doors.find(d => d.id === 'egress');
@@ -2917,7 +2923,7 @@ test('the elevator rides to THE PENTHOUSE: the egress door lands in the lobby, t
         const out = room.doors.find(d => d.id === 'lobby');
         const fwd = PH.doors.find(d => d.id === back);
         assert.ok(out && out.action.room === 'executive' && out.action.at === back && out.leaf === fwd.leaf, back + ': the way back is the same leaf and lands at the lobby door');
-        assert.strictEqual(room.doors.length, 1, back + ': one door');
+        assert.strictEqual(room.doors.filter(d => !d.link).length, 1, back + ': one door (a link seam appends after the room\'s own rows — THE WEIR in Room 8, 2026-09-16)');
     }
     /* THE FLOOR PANEL: a counter with no action, its proc on the wall beside the car, two buttons lit in the proc */
     const fp = PH.counters.find(c => c.id === 'floorpanel');

@@ -3041,6 +3041,49 @@ the park rule, the link hooks, the source sites). Unseen live (RULE #1c):
 the wallpaper tints, the `leaf: null` stair openings, the banister's
 facing, the boiler's glow in a 2.7 m cellar.
 
+## THE THIRD RING (the hall's GALLERY, HQ plan 8.4 / 9.3) + ROOM 345 · THE BERMUDA TRIANGLE (7.7 wave 2 begins) — 2026-09-16, local delivery
+**THE THIRD RING**: `DOOR_HQ.rooms.central_egress.shell.ring3 = { h: 3.3,
+inner: 20.6, outer: 24, thick: 0.35, railH: 1.05, stair: { from: 278, to:
+312, rIn: 22.6, steps: 20 } }` (data.js) — a second ring slab 3.3 m over
+the mezzanine (the same radii; `upperWallH` grew 5.4 → 6.6), ONE curved
+flight off the mezzanine's walkway whose MASS stands on level 1 in that
+arc (nothing else may stand there — doorhq.test.js checks doors and
+props). The key is `ring3`, NEVER `gallery` (that is the box room's
+two-floor slab). Doors / props / spots with **`level: 2`** stand on it:
+the four EXPLORATION doors (engineering 90° · it 120° · observatorium
+240° · executive 315°) — the mezzanine keeps the bays + the elevator
+(hq-suites.test.js: 11 / 6 / 4). three-renderer.js: EVERY rotunda level
+reader goes through **`_hqLevelY(S, level)` / `_hqLevelR(S, level)` /
+`_hqLevelOf(S, y)`** — never write `level ? S.wallH` again
+(hq-ring3.test.js refuses it); the ring is a LAYER read FIRST in
+`_hqSurface`'s rotunda branch (`_hqRing3At(x, z, curY)`: a tread from
+either level, the slab only for a walker already up there — a FREE query
+is never the ring's — the rail band from the slab side, undefined over
+the void), a mass in the air (`_hqRing3Air`) and a wall to the boom
+(`_hqRing3Cam`); `_hqBuildRing3` (end of `_hqBuildShell`) builds the slab
+cut over the flight's band + the strip inside it, the rails, the flight;
+the rail joins `_hq.rails`. map.js's directory says THE GALLERY ·. The
+car has no gallery stop. `npm test` runs `hq-ring3.test.js` (THE CLIMB by
+the step rule alone). **ROOM 345 · THE BERMUDA TRIANGLE** (`prebuilt_
+bermuda`, Hollow, `near: 'bermuda'`, tier 2): the 7.10 checklist end to
+end — the board is TWO right triangles of `desert` shoal meeting at a
+`deep_water` hypotenuse (NE → SW), a two-tile SANDBAR at the centre (on
+the Δ it IS the nexus tiles (3,4) / (4,3) — the forge's two routes), the
+corner buoys (floor torches), a `sea` motion at HALF the Dutchman's pace
+(speed 2.5 — motion-maps' ≥ 5 rule is the three travellers' only; the
+movers list is pinned there), the storm from round 3; the site room on
+the Dutchman's moat recipe in daylight; `_NR_BUILDERS.bermuda` (before
+the MOVING MAPS block) = the sand apron, the streaming sea, the
+LIGHTHOUSE (`_hzLighthouse` scaled to the build's tile — it reads
+CONFIG.tileSize) at the NW corner, the lantern BUOY + the ∠ 90° plate at
+the SE. **THE WEIR**: `links.weir_bermuda` (route `deep`, a `pool` way
+FREE at both ends — Room 8's west parapet corner, whose loungers moved
+south for the landing, and the Triangle's north strip). Two tapes
+re-homed (sacrifice / orb → 345; the hundred stays a hundred);
+delta-maps.test.js expects 39 Δ boards. NOT BUILT: the waterspout,
+Flight 19's flyover, the yacht as the quay, the HUD compass. Next in 7.7:
+Tartaria, then the Tesseract. Unseen live (RULE #1c): all of it.
+
 ## THE URBAN BLOCK — THE STRIP + DOWNTOWN AS COMPLEXES (HQ plan 9.2 stage 4) — 2026-09-16, local delivery
 Rooms 21 and 1954 are the FIFTH and SIXTH complexes: `site_prebuilt_strip_
 chapel` / `_casino` and `site_prebuilt_downtown_lobby` / `_subway` (data.js,
