@@ -8572,3 +8572,52 @@ CONVENTION the placer assumed and nobody measured. Four rules replace the guesse
   placed), the round cubicle's opening, every car's nose, the train arriving
   nose first, the serving line's chrome under the real sheet, the seat pass on
   the span-fitted tables.
+
+### 2026-09-16 — PHASE 9 DELIVERY 1 · THE LEDGER + THE OPEN EDGE + THE WORKS WEAR THE KIT (rev 65, local delivery)
+PHASE9_QUALITY_PLAN.md §9's Delivery 1 and two rules of the user's, in one zip.
+- **B1 THE STABLE TAPE ID** (data.js `DOOR_TAPES`): `id` = `<sheetKey>#<slot>`,
+  `num` / `no` the display number recomputed per build; `hqTapeLegacyId` /
+  `hqFindLegacyId` migrate a positional claim on every read (`hqFindsRecord`).
+  The shelf prints `num`, files `id`. Adding a site never renumbers a shelf.
+- **B2 THE LEDGER**: `progress.hq.finds.taken` rides the synced blob
+  (`mergeProgressBlobs`: union, `true` beats a date, the later date wins,
+  `FIND_RE`, cap 4000); `hqCollectFind(…, { serverPays })` writes both records
+  and leaves a server account's wallet alone; map.js `_hqTakeFind` schedules
+  the push; server.js pays each newly-merged `pay:` claim once through data.js
+  `hqFindsSyncPay` (on the first sync too); profile.js folds the local record
+  into the blob on every `profileLoadProgress` and exports
+  `scheduleProgressSync`. A profile without a v2 blob never gets one invented.
+- **Hardening**: `_hqEncounterRun.armed` — battle.js `startMatch` spends it on
+  its own launch and drops a stale marker on any later match.
+- **B3 copy**: map.js `_hqEncounterBoardCopy(board)` — THE SITE IS THE BOARD
+  from a complex part or a cave chamber.
+- **THE OPEN EDGE** (the user: "battle rooms that are areas outside should not
+  have walls"): `hqSiteRoom` reads an open shell's `edge: 'walls'` as `'open'`
+  — the Stadium, Camelot, Cyberpunk, Babel, Agartha, Hollow Earth, the Strip
+  and Downtown stand in the open; the eight shells keep their `edge: 'walls'`
+  text as history only. The `'low'` field wall stays on Stonehenge, Göbekli
+  Tepe and Flat Lands (one line in `hqSiteRoom` drops it too if wanted).
+  doorhq.test.js refuses `'walls'` on any open site room; hq-world's Camelot
+  line reads the room's edge.
+- **THE WORKS WEAR THE KIT** (the user: "the doors in the works need to be the
+  GLB doors, not procedurally generated ones — visual consistency"):
+  three-renderer.js `_hqWorksLeaf` clones a catalogue leaf (`_HQ_WORKS_LEAVES`,
+  16 plain wooden / glass leaves — the same files the building's doors wear,
+  never a rank leaf) through `_miscModelInstance` + `_hqPropMatPick`, fitted to
+  w × h on its bottom edge facing +Z; `_hqMiniDoor` is the hidden stand-in
+  until the file lands. The belt (4), the gripper (1), the pallet (6), the
+  furnace (1), the vine (6 at 0.2 m), the shelf (1 at 0.26 m). MODEL_INDEX §9.
+- **Tests**: hq-finds.test.js (+ THE LEDGER, 9), achievements.test.js (the
+  export + the server wiring + the merge shape), hq-stage2.test.js (the kit
+  leaf guard), doorhq / hq-world (the edge). Full suite 1439 / 0 / 4 skipped.
+- **Delivery:** `ENTROPY_WARS_PHASE9_LEDGER.zip` — data.js, three-renderer.js,
+  map.js, battle.js, profile.js → R2 (data.js → Render too: server.js runs the
+  merge off it); server.js, index.html (`?v=20260916-phase9-ledger-01-cors`)
+  → Render; the five tests + this file, PHASE9_QUALITY_PLAN.md, MODEL_INDEX.md,
+  CLAUDE.md → the repo.
+- **Unseen live (RULE #1c):** the eight open rooms without their walls (the
+  link doors, the wardrobe and the back doors stand alone on the room's line,
+  like the crossing's lone panel), the kit leaves on the belt and the vine at
+  their small scale, the ledger's toast on a server account, the sync's pay
+  landing at the next commit.
+

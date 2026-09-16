@@ -1478,7 +1478,7 @@
                 let aim = null;
                 try { if (!ThreeRenderer.hq.portalDrawn()) aim = ThreeRenderer.hq.encounterAim(); } catch (e) { aim = null; }
                 if (aim && (!t || t.id === aim.id)) {
-                    el.innerHTML = `<b>▸ ${_hqEsc(aim.label || aim.race || 'THE NATIVE')}</b><span>${_hqEsc(aim.sub || 'A NATIVE · THE ROOM IS THE BOARD')}</span><i>[CLICK] ATTACK · ENGAGE${t ? ' · [E] TALK' : ''}</i>`;
+                    el.innerHTML = `<b>▸ ${_hqEsc(aim.label || aim.race || 'THE NATIVE')}</b><span>${_hqEsc(aim.sub || ('A NATIVE · ' + _hqEncounterBoardCopy()))}</span><i>[CLICK] ATTACK · ENGAGE${t ? ' · [E] TALK' : ''}</i>`;
                     el.style.display = '';
                     return;
                 }
@@ -1980,10 +1980,19 @@
             try { playSfx(ev.gesture === 'attack' ? 'uiButtonConfirm' : 'uiCursorMove'); } catch (e) {}
             if (!ev.armed || !ev.target) return;
             if (!_hqEncounterEnabled() || !_hqEncounterRoomOkNow()) return;
-            _hqToast(`<b>${_hqGestureLabel(ev.gesture)} · ${_hqEsc(ev.target.label || ev.target.race || 'THE NATIVE')}</b><span>ENGAGING · THE ROOM IS THE BOARD</span>`, 1600);
+            _hqToast(`<b>${_hqGestureLabel(ev.gesture)} · ${_hqEsc(ev.target.label || ev.target.race || 'THE NATIVE')}</b><span>ENGAGING · ${_hqEncounterBoardCopy(ev.board)}</span>`, 1600);
         }
         function _hqEncounterRoomOkNow() { try { return (typeof window.hqEncounterRoomOk === 'function') ? window.hqEncounterRoomOk(_hqCurRoom) : false; } catch (e) { return false; } }
         /* the landing: file the crossing */
+        /* PHASE9_QUALITY_PLAN §4 B3 (2026-09-16): the copy tells the truth about the board — a site's BOARD ROOM
+           fights on the board under your feet (THE ROOM IS THE BOARD); a complex part or a cave chamber fights the
+           SITE'S Δ (the launch is always `site + '_delta'`; the eye seed is null there) — THE SITE IS THE BOARD */
+        function _hqEncounterBoardCopy(board) {
+            if (board === null) return 'THE SITE IS THE BOARD';
+            if (board) return 'THE ROOM IS THE BOARD';
+            const room = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms) ? DOOR_HQ.rooms[_hqCurRoom] : null;
+            return (room && room.fx === 'site' && !room.cave) ? 'THE ROOM IS THE BOARD' : 'THE SITE IS THE BOARD';
+        }
         function _hqEncounterFire(ev) {
             if (!ev || !ev.target) return false;
             if (_hqSuspended || state.gameState !== GS.HQ || _hqTerm || _hqPause || _hqPanelTarget) return false;
@@ -2032,7 +2041,7 @@
             let eye = null;
             try { eye = (ev && typeof window.hqEncounterEye === 'function') ? window.hqEncounterEye(ev) : null; } catch (e) { eye = null; }
             window._hqEncounterRun = { site: L.site, room: L.room || _hqCurRoom, race: L.encounter.race, label: L.encounter.label, gesture: L.encounter.gesture, id: L.encounter.id || null,
-                                       date: (typeof hqToday === 'function') ? hqToday() : null, at: Date.now(), noIntro: true,
+                                       date: (typeof hqToday === 'function') ? hqToday() : null, at: Date.now(), noIntro: true, armed: true,   // `armed`: battle.js startMatch spends it on THIS launch; a later match finds it spent and drops a stale marker
                                        eye: eye, walker: ev ? { x: ev.x, z: ev.z, y: ev.y, yaw: ev.yaw, pitch: ev.pitch } : null };
             window._hqEncounterResult = null;
             try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.6 }); } catch (e) {}
@@ -2127,12 +2136,16 @@
                 if (idx === null || idx === undefined) { _hqToast('<b>NO CARD ON FILE</b><span>SIGN IN AT RECEPTION — THE BUILDING FILES FINDS TO A NAME</span>'); return false; }
                 const p = PS.loadProfile(idx);
                 if (!p || typeof window.hqCollectFind !== 'function') return false;
-                beat = window.hqCollectFind(p, t.id);
+                /* THE LEDGER (B2): a server account's wallet is the server's — the claim rides the synced progress
+                   blob and /api/progress/sync pays it once; a local profile is credited here (one save either way) */
+                const serverPays = (typeof PS.hasServerAccount === 'function') && PS.hasServerAccount();
+                beat = window.hqCollectFind(p, t.id, null, { serverPays });
                 if (!beat || !beat.ok) {
                     if (beat && beat.reason === 'unsupported') _hqToast('<b>NOT YET</b><span>THE QUARTERMASTER HAS NOT SIGNED FOR THIS KIND OF THING</span>');
                     return false;
                 }
                 PS.saveProfile(idx, p);
+                try { if (serverPays && typeof PS.scheduleProgressSync === 'function') PS.scheduleProgressSync(); } catch (e) {}   // the debounced push (2 s) carries the claim
                 try { if (typeof window._refreshWallets === 'function') window._refreshWallets(); } catch (e) {}
             } catch (e) { console.warn('[HQ] take find', e); return false; }
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq) ThreeRenderer.hq.takeFind(t.id); } catch (e) {}
@@ -2147,7 +2160,7 @@
                 _hqToast(`<b>TAPE ${beat.count} / ${beat.total}</b><span>${_hqEsc(beat.title)} · FILED · IT PLAYS ON THE SHELF IN ROOM 360</span>`, 4200);
             } else {
                 try { playSfx('uiButtonConfirm'); } catch (e) {}
-                _hqToast(`<b>+${beat.amount} HAZARD PAY</b><span>AN UNMARKED ENVELOPE · ${(beat.gold || 0).toLocaleString()} ON THE BOOKS · NOBODY SAW</span>`, 2800);
+                _hqToast(`<b>+${beat.amount} HAZARD PAY</b><span>AN UNMARKED ENVELOPE · ${beat.serverPays ? 'ON THE BOOKS AT THE NEXT SYNC' : (beat.gold || 0).toLocaleString() + ' ON THE BOOKS'} · NOBODY SAW</span>`, 2800);
             }
             _hqFillStrip(_hqProfile());
             try { _hqSetPrompt(ThreeRenderer.hq.target()); } catch (e) {}
@@ -2166,15 +2179,15 @@
                 if (clip && /\.(gif|png|jpe?g|webp)(\?|$)/i.test(clip)) html += `<img class="hq-tape-clip" src="${_hqEsc(clip)}" alt="">`;
                 else if (clip) html += `<video class="hq-tape-clip" src="${_hqEsc(clip)}" autoplay loop muted playsinline></video>`;
                 else html += '<div class="hq-tape-static"><i>BLANK</i><b>NO CLIP ON FILE</b><span>THE CASSETTE PLAYS STATIC · THE FOOTAGE HAS NOT BEEN SENT UP</span></div>';
-                html += `<div class="hq-tape-osd"><b>▶ PLAY</b><span>${_hqEsc(sel.id)}</span><i>SP 0:00:08</i></div><div class="hq-tape-track"></div>`;
+                html += `<div class="hq-tape-osd"><b>▶ PLAY</b><span>${_hqEsc(sel.num)}</span><i>SP 0:00:08</i></div><div class="hq-tape-track"></div>`;
             } else if (sel) {
-                html += `<div class="hq-tape-static dim"><i>NO TAPE</i><b>${_hqEsc(sel.id)} · NOT ON FILE</b><span>${sel.hint ? 'LAST SEEN · ' + _hqEsc(sel.roomLabel) + (sel.roomNo ? ' · ROOM ' + _hqEsc(sel.roomNo) : '') : 'WHEREABOUTS UNKNOWN · FIND ANOTHER FROM THE SAME PLACE'}</span></div><div class="hq-tape-osd"><b>■ STOP</b><span>${_hqEsc(sel.id)}</span><i>—</i></div>`;
+                html += `<div class="hq-tape-static dim"><i>NO TAPE</i><b>${_hqEsc(sel.num)} · NOT ON FILE</b><span>${sel.hint ? 'LAST SEEN · ' + _hqEsc(sel.roomLabel) + (sel.roomNo ? ' · ROOM ' + _hqEsc(sel.roomNo) : '') : 'WHEREABOUTS UNKNOWN · FIND ANOTHER FROM THE SAME PLACE'}</span></div><div class="hq-tape-osd"><b>■ STOP</b><span>${_hqEsc(sel.num)}</span><i>—</i></div>`;
             } else {
                 html += '<div class="hq-tape-static dim"><i>STANDBY</i><b>INSERT A CASSETTE</b><span>PICK A SPINE BELOW · FOUND ONES ARE LABELLED</span></div><div class="hq-tape-osd"><b>■ STOP</b><span>—</span><i>—</i></div>';
             }
             html += '</div></div>';
             if (sel) {
-                html += `<div class="hq-tape-card"><b>${_hqEsc(sel.id)} · ${sel.found ? _hqEsc(sel.title) : '—'}</b>`
+                html += `<div class="hq-tape-card"><b>${_hqEsc(sel.num)} · ${sel.found ? _hqEsc(sel.title) : '—'}</b>`
                       + `<span>${sel.found ? (sel.roomLabel ? _hqEsc(sel.roomLabel) + (sel.roomNo ? ' · ROOM ' + _hqEsc(sel.roomNo) : '') : '') + ' · ' + _hqEsc(String(sel.kind).toUpperCase()) : (sel.hint ? 'LAST SEEN · ' + _hqEsc(sel.roomLabel) : 'NOT ON FILE')}${sel.hard ? ' · OUT OF REACH ON FOOT' : ''}</span>`
                       + (sel.found ? `<p class="hq-tape-caption">${_hqEsc(sel.caption)}</p>` : '') + '</div>';
             }
@@ -2182,7 +2195,7 @@
             html += '<div class="hq-tapes">';
             sh.rows.forEach(r => {
                 const cls = 'hq-tape-spine' + (r.found ? ' found k-' + _hqEsc(r.kind) : (r.hint ? ' hint' : ' dim')) + (r.id === _hqTapeSel ? ' sel' : '');
-                const tip = r.found ? `${r.id} · ${r.title} · ${r.roomLabel}` : (r.hint ? `${r.id} · last seen: ${r.roomLabel}` : `${r.id} · not on file`);
+                const tip = r.found ? `${r.num} · ${r.title} · ${r.roomLabel}` : (r.hint ? `${r.num} · last seen: ${r.roomLabel}` : `${r.num} · not on file`);   // the display number; data-tape files the stable id
                 html += `<button class="${cls}" data-tape="${_hqEsc(r.id)}" title="${_hqEsc(tip)}"><i>${String(r.no).padStart(3, '0')}</i>${r.found ? `<b>${_hqEsc(r.title)}</b>` : ''}</button>`;
             });
             html += '</div>';

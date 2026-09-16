@@ -36435,6 +36435,16 @@
 
         function startMatch() {
             state.startTime = Date.now();
+            /* THE ENCOUNTER (PHASE9_QUALITY_PLAN §4 hardening, 2026-09-16): the run
+               marker map.js sets for a strike launch (`armed: true`) is spent by
+               the FIRST startMatch after it — this launch — and consumed by the
+               commit; a later match that still finds it (an exit path that
+               skipped finalizeMatch) drops the stale marker, so it can never
+               skip that match's intro, seed a dead eye or file a result. */
+            try {
+                const er = window._hqEncounterRun;
+                if (er) { if (er.armed) er.armed = false; else window._hqEncounterRun = null; }
+            } catch (e) {}
 
             /* Seeded engine RNG (extraction stage 5, see NEXT_SESSION.md):
                one fresh seed per battle, rolled here by whoever runs the

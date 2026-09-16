@@ -193,7 +193,15 @@ test('every new proc is catalogued and has a builder; every new counter has a by
         if (c.wall) assert.ok(c.depth > 0, k + ': a wall proc has a depth');
         if (c.rect) assert.ok(c.block, k + ': a rect is a blocker');
     }
-    assert.match(TR, /function _hqMiniDoor\(U, w, h, mat, knobSide\)/, 'the leaf the works reuse');
+    assert.match(TR, /function _hqMiniDoor\(U, w, h, mat, knobSide\)/, 'the stand-in panel');
+    /* THE WORKS WEAR THE KIT (2026-09-16): every leaf a proc handles is a catalogue GLB leaf cloned from the door kit; the panel is the stand-in only */
+    assert.match(TR, /function _hqWorksLeaf\(U, w, h, i, knobSide\)/, 'the kit leaf');
+    const works = TR.slice(TR.indexOf('function _hqWorksLeaf('), TR.indexOf('/* THE STAIRWELL: a step'));
+    assert.equal((works.match(/_hqMiniDoor\(/g) || []).length, 1, 'no proc builds a panel of its own — the one call is the stand-in inside _hqWorksLeaf');
+    assert.ok((works.match(/_hqWorksLeaf\(U, /g) || []).length >= 7, 'the belt, the arm, the pallet, the furnace, the vine and the shelf all take the kit leaf');
+    const leavesSrc = TR.match(/var _HQ_WORKS_LEAVES = \[([^\]]+)\]/)[1].replace(/[\s']/g, '').split(',');
+    for (const k of leavesSrc) { const c = HQ.catalogue[k]; assert.ok(c && c.leaf && c.file, k + ': a catalogue leaf with a file'); assert.ok(!(c.rank > 0), k + ': never a rank leaf'); }
+    assert.ok(works.indexOf("typeof THREE.GLTFLoader !== 'function'") >= 0 && works.indexOf('stand.visible = false') >= 0, 'GLB-first, the stand-in hidden when the file lands');
     for (const [room, cid] of Object.entries(PANELS)) {
         const c = HQ.rooms[room].counters.find(x => x.id === cid);
         assert.ok(c && c.action && !c.action.fn && !c.action.overlay && !c.action.room && c.desc && c.radius > 0, room + '/' + cid + ': a by-id panel counter');

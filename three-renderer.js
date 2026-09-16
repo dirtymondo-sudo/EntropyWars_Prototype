@@ -40503,6 +40503,44 @@ const ThreeRenderer = (function () {
         if (!_hqLeafMats) _hqLeafMats = [0x8a5a34, 0xb08850, 0x6a4a2c, 0xc0b8a8, 0x4a6a8a, 0x8a3a3a].map(function (c) { return _hqMat('wood', 1, 2, { color: c, shininess: 12 }); });
         return _hqLeafMats[((i | 0) % _hqLeafMats.length + _hqLeafMats.length) % _hqLeafMats.length];
     }
+    /* THE WORKS WEAR THE KIT (2026-09-16, the user's rule: "the doors in the
+       works need to be the GLB doors, not procedurally generated ones —
+       visual consistency"): every leaf a proc handles — on the belt, in the
+       gripper, on the pallet, into the furnace, on the vine, on the shelf —
+       is a CATALOGUE leaf (data.js DOOR_HQ.catalogue `leaf_*`, the same files
+       the building's doors wear; the plain wooden / glass ones, never a
+       rank leaf), cloned from the one cached load and fitted to w × h on its
+       bottom edge at the origin, facing +Z like _hqMiniDoor. The panel
+       (_hqMiniDoor) is the STAND-IN only: it shows until the file lands and
+       stays when the loader is missing (a headless run, EW_PERF_LOW never
+       skips — a leaf is the room's point). `i` picks the finish. */
+    var _HQ_WORKS_LEAVES = ['leaf_coffee', 'leaf_beige_wood', 'leaf_white_wood', 'leaf_shabby_wood', 'leaf_suburban', 'leaf_closet_alt', 'leaf_barn', 'leaf_stable',
+        'leaf_hotel', 'leaf_motel', 'leaf_birch_glass', 'leaf_orange_glass', 'leaf_window_medium', 'leaf_entrance', 'leaf_bathroom', 'leaf_glass'];
+    function _hqWorksLeaf(U, w, h, i, knobSide) {
+        var g = new THREE.Group();
+        var n = _HQ_WORKS_LEAVES.length, key = _HQ_WORKS_LEAVES[(((i | 0) % n) + n) % n];
+        var D = _hqData(), cat = (D && D.catalogue) ? D.catalogue[key] : null;
+        var stand = _hqMiniDoor(U, w, h, _hqLeafMat(i), knobSide || 1); g.add(stand);
+        g._ew_leaf = key;
+        if (!cat || !cat.file || typeof _hqModelUrl !== 'function' || typeof THREE.GLTFLoader !== 'function' || (typeof window !== 'undefined' && window.EW_HQ_NO_WORKS_LEAVES)) return g;
+        var yawDeg = cat.yaw || 0, targetH = h * U, targetW = w * U;
+        var lg = _miscModelInstance(_hqModelUrl(cat), true, targetH, {
+            fit: 'height', matPick: _hqPropMatPick,
+            onDone: function (gg, s, bb) {
+                /* the same fit as _hqBuildDoors: turn a leaf authored edge-on, then fit the width to the slot */
+                var m = gg.children[0];
+                if (m && yawDeg) m.rotation.y = yawDeg * Math.PI / 180;
+                var sideways = (Math.abs(yawDeg) % 180) === 90;
+                var wm = (sideways ? (bb.max.z - bb.min.z) : (bb.max.x - bb.min.x)) * s;
+                if (wm > 0) gg.scale.x = targetW / wm;
+                gg.scale.z = Math.min(1, gg.scale.x);
+                stand.visible = false;   // the kit landed — the stand-in goes
+                if (_hq) _hq.dirty = true;
+            }
+        });
+        g.add(lg);
+        return g;
+    }
     Object.assign(_hqProcBuilders, {
         /* ROOM 1000: a belt — a frame, rollers, a rubber band whose texture slides, and leaves riding it (ticker) */
         _conveyor: function (U, L, alongZ) {
@@ -40519,7 +40557,7 @@ const ThreeRenderer = (function () {
             /* the leaves riding it */
             var leaves = [], count = Math.max(2, Math.round(L / 1.6));
             for (var j = 0; j < count; j++) {
-                var d = _hqMiniDoor(U, 0.7, 1.6, _hqLeafMat(j + (_hqProcSeed++)), 1);
+                var d = _hqWorksLeaf(U, 0.7, 1.6, j + (_hqProcSeed++), 1);
                 d.rotation.x = -0.35; d.position.set((-L / 2 + 0.4 + j * (L - 0.8) / Math.max(1, count - 1)) * U, (H + 0.04) * U, -0.1 * U);
                 g.add(d); leaves.push({ g: d, x: d.position.x / U });
             }
@@ -40545,7 +40583,7 @@ const ThreeRenderer = (function () {
             var wrist = new THREE.Group(); wrist.position.set(0, 0, 1.1 * U); elbow.add(wrist);
             var grip = _hqBox(0.3, 0.12, 0.12, dark); wrist.add(grip);
             var hinge = new THREE.Group(); hinge.position.set(-0.36 * U, -0.9 * U, 0.06 * U); wrist.add(hinge);   // the door hangs from the gripper by its hinge edge
-            var leaf = _hqMiniDoor(U, 0.72, 1.7, _hqLeafMat(_hqProcSeed++), 1); leaf.position.x = 0.36 * U; hinge.add(leaf);
+            var leaf = _hqWorksLeaf(U, 0.72, 1.7, _hqProcSeed++, 1); leaf.position.x = 0.36 * U; hinge.add(leaf);
             var frame = _hqBox(0.8, 0.06, 0.06, dark); frame.position.set(0, 0.86 * U, 0.06 * U); wrist.add(frame);
             var lamp = new THREE.Mesh(new THREE.SphereGeometry(0.05 * U, 8, 6), _hqBasic(0x40ff60)); lamp.position.set(0.2 * U, 0.35 * U, 0); turret.add(lamp);
             elbow.rotation.x = -0.35;
@@ -40564,7 +40602,7 @@ const ThreeRenderer = (function () {
         door_stack: function (U) {
             var g = new THREE.Group();
             var pallet = _hqBox(1.5, 0.12, 0.9, _hqMat('wood', 2, 1, { color: 0xa88a5a })); pallet.position.y = 0.06 * U; g.add(pallet);
-            for (var i = 0; i < 6; i++) { var d = _hqMiniDoor(U, 0.76, 2.0, _hqLeafMat(i + (_hqProcSeed++)), (i % 2) ? -1 : 1); d.position.set((-0.35 + (i % 2) * 0.72) * U, 0.12 * U, (-0.28 + Math.floor(i / 2) * 0.24) * U); g.add(d); }
+            for (var i = 0; i < 6; i++) { var d = _hqWorksLeaf(U, 0.76, 2.0, i + (_hqProcSeed++), (i % 2) ? -1 : 1); d.position.set((-0.35 + (i % 2) * 0.72) * U, 0.12 * U, (-0.28 + Math.floor(i / 2) * 0.24) * U); g.add(d); }
             var strap = _hqBox(1.56, 0.03, 0.96, _hqBasic(0x1a1a1e)); strap.position.y = 1.1 * U; g.add(strap);
             return g;
         },
@@ -40591,7 +40629,7 @@ const ThreeRenderer = (function () {
             var lab = _hzTextTex('hq_furnace_sign', ['CLOSED FOR GOOD'], { w: 512, h: 96, color: '#f0d8a0' });
             if (lab) { var lm = new THREE.Mesh(new THREE.PlaneGeometry(2.4 * U, 0.45 * U), new THREE.MeshBasicMaterial({ map: lab, transparent: true })); lm.position.set(0, (H - 0.5) * U, (D / 2 + 0.01) * U); g.add(lm); }
             /* the leaf on its way in */
-            var leaf = _hqMiniDoor(U, 0.7, 1.6, _hqLeafMat(_hqProcSeed++), 1); leaf.rotation.x = -0.35; g.add(leaf);
+            var leaf = _hqWorksLeaf(U, 0.7, 1.6, _hqProcSeed++, 1); leaf.rotation.x = -0.35; g.add(leaf);
             var seed = (_hqProcSeed++) * 0.7;
             if (_hq) _hq.tickers.push(function (dt, now) {
                 var t = now * 0.001 + seed;
@@ -40680,7 +40718,7 @@ const ThreeRenderer = (function () {
                 var sx = (-W / 2 + 0.2 + k * (W - 0.4) / 5), sy = 0.3 + ((k * 7) % 5) * 0.28;
                 var st = new THREE.Mesh(new THREE.CylinderGeometry(0.012 * U, 0.02 * U, 0.4 * U, 6), green); st.rotation.x = -0.9 + 0.3 * Math.sin(a); st.position.set(0, 0.15 * U, 0.12 * U); stem.add(st);
                 for (var l = 0; l < 3; l++) { var lf = new THREE.Mesh(new THREE.CircleGeometry(0.05 * U, 8), green); lf.material.side = THREE.DoubleSide; lf.position.set((l - 1) * 0.06 * U, (0.05 + l * 0.08) * U, (0.1 + l * 0.05) * U); lf.rotation.x = -0.8; stem.add(lf); }
-                var tiny = _hqMiniDoor(U, 0.11, 0.2, _hqLeafMat(k), 1); tiny.position.set(0, 0.28 * U, 0.3 * U); stem.add(tiny);
+                var tiny = _hqWorksLeaf(U, 0.11, 0.2, k, 1); tiny.position.set(0, 0.28 * U, 0.3 * U); stem.add(tiny);
                 stem.position.set(sx * U, sy * U, 0.03 * U); g.add(stem); doors.push({ s: stem, d: tiny, ph: k * 1.7 });
             }
             var seed = (_hqProcSeed++) * 0.9;
@@ -40760,7 +40798,7 @@ const ThreeRenderer = (function () {
             var sock = _hqBox(0.08, 0.05, 0.2, _hqMat(null, 1, 1, { color: 0xd8d0c0 })); sock.position.copy(at(0.35, 1.05)); sock.position.y += 0.025 * U; sock.rotation.y = 0.4; g.add(sock);
             var files = _hqBox(0.3, 0.18, 0.24, _hqMat(null, 1, 1, { color: 0xc8b890 })); files.position.copy(at(0.72, 1.05)); files.position.y += 0.09 * U; g.add(files);
             /* shelf 3: a small door, a jar, a ring on a cushion */
-            var small = _hqMiniDoor(U, 0.14, 0.26, _hqLeafMat(_hqProcSeed++), 1); small.position.copy(at(-0.6, 1.65, -0.1)); g.add(small);
+            var small = _hqWorksLeaf(U, 0.14, 0.26, _hqProcSeed++, 1); small.position.copy(at(-0.6, 1.65, -0.1)); g.add(small);
             var jar = new THREE.Mesh(new THREE.CylinderGeometry(0.06 * U, 0.06 * U, 0.16 * U, 12), new THREE.MeshPhongMaterial({ color: 0xa0ffc0, transparent: true, opacity: 0.5, shininess: 100 })); jar.position.copy(at(0.0, 1.65)); jar.position.y += 0.08 * U; g.add(jar);
             var cushion = _hqBox(0.14, 0.04, 0.14, _hqMat(null, 1, 1, { color: 0x8a2a3a })); cushion.position.copy(at(0.55, 1.65)); cushion.position.y += 0.02 * U; g.add(cushion);
             var ring = new THREE.Mesh(new THREE.TorusGeometry(0.025 * U, 0.006 * U, 8, 16), brass); ring.rotation.x = Math.PI / 2; ring.position.copy(at(0.55, 1.65)); ring.position.y += 0.05 * U; g.add(ring);

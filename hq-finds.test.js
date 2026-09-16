@@ -52,8 +52,11 @@ test('THE HUNDRED: exactly 100 tapes, T001…T100 in order, every one in a real 
     assert.equal(TAPES.length, 100);
     assert.equal(R.tapes, 100);
     TAPES.forEach((t, i) => {
-        assert.equal(t.id, 'T' + String(i + 1).padStart(3, '0'), 'ids in order');
+        assert.equal(t.num, 'T' + String(i + 1).padStart(3, '0'), 'display numbers in order');
         assert.equal(t.no, i + 1);
+        /* THE STABLE ID (plan §4 B1): sheet key + slot — never the position */
+        assert.match(t.id, /^[a-z0-9_]+#\d$/, t.num + ': a stable id');
+        assert.ok(t.id.slice(0, t.id.indexOf('#')) in g('HQ_TAPE_SHEET') && Number(t.id.slice(t.id.indexOf('#') + 1)) === t.slot, t.num + ': the id names its sheet row');
         const room = HQ.rooms[t.where];
         assert.ok(room && room.kind === 'box', t.id + ': room ' + t.where + ' is a box room');
         assert.ok(NEVER.indexOf(t.where) < 0 && !/^bay_|^ring_|^hwing_/.test(t.where), t.id + ': never in the hall, the foyer, a lobby or a corridor (' + t.where + ')');
@@ -63,6 +66,13 @@ test('THE HUNDRED: exactly 100 tapes, T001…T100 in order, every one in a real 
         assert.equal(D.hqTapeClipUrl(t), t.clip ? 'https://cdn.entropywars.net/Assets/door/tapes/' + t.clip : null, t.id + ': the clip URL is the R2 path or null');
     });
     assert.equal(new Set(TAPES.map(t => t.id)).size, 100, 'unique ids');
+    assert.equal(new Set(TAPES.map(t => t.num)).size, 100, 'unique numbers');
+    /* B1 acceptance: re-homing a site (a different `built` order) moves numbers, never ids */
+    const sheetIds = []; for (const [k, rows] of Object.entries(g('HQ_TAPE_SHEET'))) rows.forEach((r, i) => sheetIds.push(k + '#' + i));
+    assert.equal(sheetIds.sort().join(','), TAPES.map(t => t.id).sort().join(','), 'the id set IS the sheet — independent of siteRooms.built order');
+    assert.equal(D.hqTapeById(TAPES[4].num), TAPES[4], 'a display number still finds its tape');
+    assert.equal(D.hqTapeLegacyId('T005'), TAPES[4].id, 'a legacy positional id resolves to the tape at that position today');
+    assert.equal(D.hqFindLegacyId('tape:T100'), 'tape:' + TAPES[99].id); assert.equal(D.hqFindLegacyId('pay:garage'), 'pay:garage');
     /* two per built site (in its board room), one per complex part */
     for (const site of HQ.siteRooms.built) assert.equal(TAPES.filter(t => t.where === 'site_' + site).length, 2, site + ': two tapes in its board room');
     for (const part of D.hqComplexRooms()) assert.equal(TAPES.filter(t => t.where === part).length, 1, part + ': one tape');
@@ -183,6 +193,58 @@ test('hqCollectFind: a tape once ever, a cache once a day and only on a live day
     assert.equal(D.hqFindsRecord({}).tapes.length, 0, 'a bare profile reads as nothing found');
 });
 
+/* THE LEDGER (PHASE9_QUALITY_PLAN §4 B2, 2026-09-16): the claim rides the synced progress blob; the server pays each envelope once */
+test('THE LEDGER: a take mirrors the claim into progress.hq.finds.taken, a server account is not credited locally, the merge keeps the claim, the sync pays once', () => {
+    const tape = FINDS.find(f => f.kind === 'tape'), pay = FINDS.find(f => f.kind === 'pay');
+    const live = g('hqFindLiveToday');
+    let day = null; for (let d = 1; d <= 31 && !day; d++) { const iso = '2026-11-' + String(d).padStart(2, '0'); if (live(pay, iso)) day = iso; }
+    const at = iso => new Date(iso + 'T12:00:00').getTime();
+    /* a profile with a v2 progress blob and a server account */
+    const p = Object.assign(profile(), { progress: { v: 2, counters: {}, champs: {}, records: {}, unlocked: {} } });
+    const r1 = D.hqCollectFind(p, tape.id, null, { serverPays: true });
+    assert.ok(r1.ok && p.progress.hq.finds.taken[tape.id] === true && p.door.hq.finds.taken[tape.id] === true, 'the tape claim in both records');
+    const gold0 = p.account.gold;
+    const r2 = D.hqCollectFind(p, pay.id, at(day), { serverPays: true });
+    assert.ok(r2.ok && r2.serverPays === true && p.account.gold === gold0, 'a server account: the wallet is the server\'s — no local credit');
+    assert.equal(p.progress.hq.finds.taken[pay.id], day, 'the envelope claim in the blob, dated');
+    assert.equal(p.door.hq.finds.pay, pay.amount, 'the tally still counts it');
+    /* a local profile IS credited (the old rule) */
+    const q = Object.assign(profile(), { progress: { v: 2, counters: {}, champs: {}, records: {}, unlocked: {} } });
+    const r3 = D.hqCollectFind(q, pay.id, at(day));
+    assert.ok(r3.ok && r3.serverPays === false && q.account.gold === 100 + pay.amount, 'no server account: credited locally');
+    /* a profile without a v2 blob never gets one invented; the local record alone carries it (profile.js folds it in on the next read) */
+    const n = profile();
+    assert.ok(D.hqCollectFind(n, tape.id, null, { serverPays: true }).ok && n.progress === undefined && n.door.hq.finds.taken[tape.id] === true, 'no blob invented');
+    /* the union read: a claim only in the synced blob (a second device) is found; a legacy positional claim is migrated */
+    const dev2 = { progress: { v: 2, hq: { finds: { taken: { [tape.id]: true, 'tape:T003': true } } } } };
+    const rec = D.hqFindsRecord(dev2);
+    assert.ok(rec.taken[tape.id] === true && rec.tapes.indexOf(tape.tape) >= 0, 'the other device\'s tape is on the shelf');
+    assert.ok(rec.taken['tape:' + TAPES[2].id] === true && rec.tapes.indexOf(TAPES[2].id) >= 0 && !rec.taken['tape:T003'], 'the legacy claim reads as today\'s id');
+    assert.equal(D.hqCollectFind(dev2, tape.id).reason, 'taken', 'and cannot be taken twice across devices');
+    /* the merge: union, true beats a date, the later date wins, garbage dropped */
+    const merge = g('mergeProgressBlobs');
+    const m1 = merge({ v: 2, hq: { finds: { taken: { [tape.id]: true, [pay.id]: '2026-11-01', 'pay:garage': '2026-11-03', 'bogus key': true, 'pay:x': 'not-a-date', __proto__: { 'pay:y': true } } } } },
+                     { v: 2, hq: { finds: { taken: { [pay.id]: '2026-11-02', 'pay:garage': '2026-11-02', 'deck:locker': true } } } });
+    assert.equal(m1.hq.finds.taken[tape.id], true); assert.equal(m1.hq.finds.taken[pay.id], '2026-11-02'); assert.equal(m1.hq.finds.taken['pay:garage'], '2026-11-03'); assert.equal(m1.hq.finds.taken['deck:locker'], true);
+    assert.ok(!('bogus key' in m1.hq.finds.taken) && !('pay:x' in m1.hq.finds.taken) && !('pay:y' in m1.hq.finds.taken), 'garbage dropped');
+    assert.ok(merge(null, { v: 2 }).hq.finds.taken && Object.keys(merge(null, null).hq.finds.taken).length === 0, 'the shape is always there');
+    /* the sync pays each newly-merged envelope once, on the first sync too, never a tape, never an unknown row */
+    const payFn = g('hqFindsSyncPay');
+    const stored = null, pushed = { v: 2, hq: { finds: { taken: { [tape.id]: true, [pay.id]: day } } } };
+    const merged1 = merge(stored, pushed);
+    assert.equal(payFn(stored, merged1), pay.amount, 'the first sync pays the envelope');
+    assert.equal(payFn(merged1, merge(merged1, pushed)), 0, 'a retry pays nothing');
+    const later = merge(merged1, { v: 2, hq: { finds: { taken: { [pay.id]: '2026-12-31', 'pay:no_such_room': '2026-12-31' } } } });
+    assert.equal(payFn(merged1, later), pay.amount, 'a later day pays again; an unknown row pays nothing');
+    assert.equal(payFn(later, later), 0);
+    /* the sources: the take passes the wallet's owner and schedules the push; the server pays; profile.js folds the local record into the blob */
+    assert.ok(MP.indexOf("hqCollectFind(p, t.id, null, { serverPays })") >= 0 && MP.indexOf('PS.scheduleProgressSync()') >= 0, 'map.js: the take');
+    const SV = require('fs').readFileSync(require('path').join(__dirname, 'server.js'), 'utf8');
+    assert.ok(SV.indexOf('hqFindsSyncPay') >= 0 && SV.indexOf('ACH.findsPay(stored, merged)') >= 0, 'server.js pays the envelopes');
+    const PF = require('fs').readFileSync(require('path').join(__dirname, 'profile.js'), 'utf8');
+    assert.ok(PF.indexOf('window.hqFindsTakenUnion(prog.hq.finds.taken, local)') >= 0 && PF.indexOf('scheduleProgressSync,') >= 0, 'profile.js: the fold + the export');
+});
+
 test('THE SHELF: found / hint / where — an unfound spine reads its room once another tape of the same site is on file', () => {
     const p = profile();
     const site = HQ.siteRooms.built[0], pair = TAPES.filter(t => t.where === 'site_' + site);
@@ -210,8 +272,8 @@ test('source sites: the renderer places, scans and takes; map.js takes in one sa
         assert.ok(MP.indexOf(s) >= 0, 'map.js: ' + s);
     /* one transaction: collect, then save — never creditLocalGold's second load inside the take */
     const take = MP.slice(MP.indexOf('window._hqTakeFind = function (t)'), MP.indexOf('function _hqTapesHtml()'));
-    assert.ok(take.indexOf('hqCollectFind(p, t.id)') >= 0 && take.indexOf('PS.saveProfile(idx, p)') >= 0 && take.indexOf('creditLocalGold') < 0, 'one claim + reward save');
-    assert.ok(take.indexOf('hqCollectFind(p, t.id)') < take.indexOf('PS.saveProfile(idx, p)') && take.indexOf('PS.saveProfile(idx, p)') < take.indexOf('ThreeRenderer.hq.takeFind(t.id)'), 'collect → save → drop');
+    assert.ok(take.indexOf('hqCollectFind(p, t.id, null, { serverPays })') >= 0 && take.indexOf('PS.saveProfile(idx, p)') >= 0 && take.indexOf('creditLocalGold') < 0, 'one claim + reward save');
+    assert.ok(take.indexOf('hqCollectFind(p, t.id') < take.indexOf('PS.saveProfile(idx, p)') && take.indexOf('PS.saveProfile(idx, p)') < take.indexOf('ThreeRenderer.hq.takeFind(t.id)'), 'collect → save → drop');
     for (const s of ['id="hqTapes"', 'id="hqToast"', 'window._hqOpenTapes()']) assert.ok(IX.indexOf(s) >= 0, 'index.html: ' + s);
     for (const s of ['.hq-strip-stat.hq-strip-tapes', '.hq-toast.show', '.hq-tapes {', '.hq-tape-spine.found', '.hq-tape-screen', '.hq-tape-static']) assert.ok(CSS.indexOf(s) >= 0, 'styles-base.css: ' + s);
     /* the catalogue */
@@ -227,6 +289,8 @@ test('source sites: the renderer places, scans and takes; map.js takes in one sa
     for (const room of Object.values(HQ.rooms)) for (const c of (room.counters || []).concat(room.doors || [])) if (c.action && c.action.overlay === 'tapes') homes++;
     assert.equal(homes, 1, 'the shelf is one home');
     assert.ok(obs.counters.find(c => c.id === 'projector').action.fn === '_ewReplayLastMatch', 'the projector still replays');
-    for (const fn of ['hqFindsInRoom', 'hqCollectFind', 'hqTapeShelf', 'hqTapeCount', 'hqTapeClipUrl', 'hqFindById', 'hqTapeById', 'hqFindsRecord']) assert.equal(typeof D[fn], 'function', fn + ' on window');
+    for (const fn of ['hqFindsInRoom', 'hqCollectFind', 'hqTapeShelf', 'hqTapeCount', 'hqTapeClipUrl', 'hqFindById', 'hqTapeById', 'hqFindsRecord', 'hqFindsSyncPay', 'hqTapeLegacyId', 'hqFindLegacyId', 'hqFindsTakenUnion']) assert.equal(typeof D[fn], 'function', fn + ' on window');
+    /* the shelf prints the display number and files the stable id */
+    assert.ok(MP.indexOf('data-tape="${_hqEsc(r.id)}"') >= 0 && MP.indexOf('${_hqEsc(sel.num)} ·') >= 0, 'map.js: num shown, id filed');
     assert.ok(D.DOOR_TAPES === TAPES && D.HQ_FIND_RULES === R, 'the tables on window');
 });

@@ -476,6 +476,21 @@ function profileLoadProgress() {
   if (!prog.champs) prog.champs = {};
   if (!prog.records) prog.records = {};
   if (!prog.unlocked) prog.unlocked = {};
+  /* THE LEDGER (PHASE9_QUALITY_PLAN §4 B2, 2026-09-16): the building's finds
+     ride the synced blob as `hq.finds.taken`; fold the local record
+     (door.hq.finds.taken — claims filed before the blob carried them, or on
+     a profile that had no v2 blob at the take) in on every read, so the next
+     push carries every claim and the server pays each envelope once. */
+  if (!prog.hq || typeof prog.hq !== 'object') prog.hq = {};
+  if (!prog.hq.finds || typeof prog.hq.finds !== 'object') prog.hq.finds = { taken: {} };
+  if (!prog.hq.finds.taken || typeof prog.hq.finds.taken !== 'object') prog.hq.finds.taken = {};
+  try {
+    const local = p.door && p.door.hq && p.door.hq.finds && p.door.hq.finds.taken;
+    if (local && typeof local === 'object') {
+      const union = (typeof window !== 'undefined' && typeof window.hqFindsTakenUnion === 'function') ? window.hqFindsTakenUnion(prog.hq.finds.taken, local) : null;
+      if (union) prog.hq.finds.taken = union;
+    }
+  } catch {}
   return prog;
 }
 
@@ -916,6 +931,7 @@ window.ProfileSystem = {
   serverFetchEconomy,
   serverBankGold,
   serverSyncProgress,
+  scheduleProgressSync,
   serverPurchaseUnit,
   localPurchaseUnit,
   creditLocalGold,

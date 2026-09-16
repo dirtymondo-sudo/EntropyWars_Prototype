@@ -263,9 +263,13 @@ That's why online kept drifting behind VS-CPU. So, for EVERY change:
   (2026-09-11)**: `shells[id].edge` = `'open'` (the default for an
   outdoor room — NO facility walls, a flush paving line, the lone door
   panel, freestanding signboards, `shell.roam` 5 m onto the apron) |
-  `'low'` (a knee-high field wall) | `'walls'` (forced indoors; set by
-  hand only where the place itself is walled — the Stadium, Camelot,
-  Cyberpunk, Babel, Agartha, Hollow Earth). A wall prop survives a
+  `'low'` (a knee-high field wall) | `'walls'` = the full box, INDOOR
+  rooms ONLY — since 2026-09-16 (the user's rule: "battle rooms that are
+  areas outside should not have walls") `hqSiteRoom` reads an OPEN
+  shell's `edge: 'walls'` as `'open'` (the Stadium, Camelot, Cyberpunk,
+  Babel, Agartha, Hollow Earth, the Strip, Downtown stand in the open;
+  their settings' stands / curtain wall / storefronts are the walls).
+  doorhq.test.js refuses `'walls'` on any open site room. A wall prop survives a
   wall-less room only if it STANDS (`hqSitePropStands`); the setting's
   own perimeter (fence / wire / trees) is KEPT there (natural walls are
   fine). The D.O.O.R. kit stands on the boards through three-renderer.js
@@ -3954,6 +3958,47 @@ on `state`, nothing relayed (RULE #2). `npm test` runs
 JSON → hand it to Claude (or paste it over `AUDIO_MIX_SHIPPED`) → ship
 audio.js. Unseen live (RULE #1c): the panel over the CRT / the pause menu,
 the slider's feel, the bed audition's fade.
+
+## PHASE 9 DELIVERY 1 — THE LEDGER + the open edge + the Works' kit doors (2026-09-16, local delivery)
+PHASE9_QUALITY_PLAN §9's Delivery 1, plus two rules of the user's. **B1 THE
+STABLE TAPE ID**: data.js `DOOR_TAPES[i].id` is `<sheetKey>#<slot>`
+(`prebuilt_revenge#0`) — the claim a profile files (`taken['tape:<id>']`,
+`tapes[]`); `num` ('T077') / `no` are the DISPLAY number, recomputed per
+build (map.js `_hqTapesHtml` prints `num`, files `id` in `data-tape`).
+`hqTapeById` accepts either; `hqTapeLegacyId` / `hqFindLegacyId` read a
+positional claim as the tape at that position today (`hqFindsRecord`
+migrates on every read). Adding a site never renumbers a collection.
+**B2 THE LEDGER**: the claims live in TWO places and `hqFindsRecord` is
+their UNION — `door.hq.finds` (the building's local record + the pay tally)
+and **`progress.hq.finds.taken`** (the SYNCED blob: `mergeProgressBlobs`
+carries `hq.finds.taken` — `true` beats a date, two dates keep the later,
+`FIND_RE` + `ACH_MERGE_CAPS.finds`; profile.js `profileLoadProgress` folds
+the local record in on every read). `hqCollectFind(profile, id, now,
+{ serverPays })` writes both; with `serverPays` (map.js `_hqTakeFind` passes
+`PS.hasServerAccount()`) the local wallet is NOT credited — the take
+schedules the debounced push (`PS.scheduleProgressSync`, exported now) and
+server.js `/api/progress/sync` pays every newly-merged `pay:` claim once
+through data.js **`hqFindsSyncPay(before, after)`** (`ACH.findsPay`; on the
+FIRST sync too — a local credit never reached the server). A profile with no
+v2 blob never gets one invented (`hqFindsSyncedTaken`). **Hardening**: the
+encounter marker carries `armed: true`; battle.js `startMatch` spends it on
+its own launch and DROPS a stale one on any later match. **B3 copy**: map.js
+`_hqEncounterBoardCopy(board)` — THE ROOM IS THE BOARD on a board room, THE
+SITE IS THE BOARD from a complex part / a cave. **THE OPEN EDGE** (the rule
+above): no outdoor battle room wears facility walls. **THE WORKS WEAR THE
+KIT** (the user: "the doors in the works need to be the GLB doors, not
+procedurally generated ones — visual consistency"): three-renderer.js
+`_hqWorksLeaf(U, w, h, i, knobSide)` = a catalogue leaf from
+`_HQ_WORKS_LEAVES` (16 plain leaves, never a rank leaf) cloned through
+`_miscModelInstance` + `_hqPropMatPick`, fitted to w × h on its bottom edge
+facing +Z, the `_hqMiniDoor` panel a hidden STAND-IN once the file lands —
+the belt, the arm's gripper, the pallet, the furnace, the vine, the shelf
+all take it (hq-stage2.test.js insists no proc builds a panel of its own).
+Still open from §8: D1 (return to the swing spot), D2 (the native's
+identity), the dissolve, D3–D9. `npm test` 1439 / 0 / 4 skipped. UNSEEN
+LIVE (RULE #1c): the open Stadium / Camelot / city rooms without their
+walls (the link doors and the wardrobe stand alone on the north line), the
+kit leaves at 0.2 m on the vine, the ledger's toast wording.
 
 ## PHASE 9 QUALITY REVIEW — the brief reconciled (2026-09-16, docs only)
 `PHASE9_QUALITY_PLAN.md` is the ACTIVE Phase 9 specification (§1: one answer per

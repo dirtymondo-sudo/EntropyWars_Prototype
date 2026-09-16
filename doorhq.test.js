@@ -1768,14 +1768,16 @@ test('every built site is a launch map with a threshold and generates a box room
 test('the edge: outdoor site rooms stand without facility walls unless the place is walled; the props that need a wall go with it', () => {
     const CAT = HQ.catalogue;
     const built = HQ.siteRooms.built;
-    const WALLED_OUTDOORS = ['prebuilt_stadium', 'prebuilt_camelot', 'prebuilt_cyberpunk', 'prebuilt_babel', 'prebuilt_agartha', 'prebuilt_hollow_earth',
-        'prebuilt_strip', 'prebuilt_downtown'];   // 7.6 wave 1: the storefronts and the city blocks are the walls
+    /* 2026-09-16 (the user's rule): an outdoor battle room NEVER wears facility walls — the eight shells that
+       still say `edge: 'walls'` (the Stadium, Camelot, the city blocks, the cavern) are read as OPEN by hqSiteRoom */
+    const WALLED_OUTDOORS = [];
     const LOW = ['prebuilt_stonehenge', 'prebuilt_gobekli', 'prebuilt_flatlands'];
     for (const id of built) {
         const room = HQ.rooms[D.hqSiteRoomId(id)], S = room.shell, sh = HQ.siteRooms.shells[id] || {};
         assert.ok(['walls', 'open', 'low'].includes(S.edge), id + ': edge is walls | open | low');
         if (!S.open) assert.strictEqual(S.edge, 'walls', id + ': an indoor room is always the full box');
         else if (WALLED_OUTDOORS.includes(id)) assert.ok(S.edge === 'walls' && sh.edge === 'walls', id + ': the place is walled (a building, a cavern) — its shell says so');
+        else if (S.open) assert.notStrictEqual(S.edge, 'walls', id + ': an outdoor battle room never wears facility walls (2026-09-16)');
         else if (LOW.includes(id)) assert.ok(S.edge === 'low' && sh.edge === 'low', id + ': a knee-high field wall');
         else assert.strictEqual(S.edge, 'open', id + ': an outdoor place stands in the open (the default)');
         /* roaming: only past an open edge, and never through a wall or a field wall */

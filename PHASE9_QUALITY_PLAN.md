@@ -296,21 +296,29 @@ Use `NODE_USE_ENV_PROXY=1 node playtest_hq.js <room>` (real CDN) or
 
 ## 8. PRIORITIZED BACKLOG
 
+**Status 2026-09-16 (Delivery 1, `ENTROPY_WARS_PHASE9_LEDGER.zip`, token
+`20260916-phase9-ledger-01-cors`):** items 1 and 2 SHIPPED locally, the §4
+hardening (`armed`) shipped, item 3's B3 copy shipped (D1 / D2 open), item 4
+done. Two rules of the user's shipped in the same delivery: no outdoor battle
+room wears facility walls (`hqSiteRoom` reads an open shell's `edge: 'walls'`
+as `'open'`), and the Works' leaves are the door kit's GLBs
+(`_hqWorksLeaf`). Next: item 3's D1 + D2, then 5–7 (Delivery 2 / 3).
+
 Each item: impact · evidence · files · dependencies · change · acceptance.
 
-1. **B1 stable tape ids** — impact: the collection survives every future site; evidence:
+1. ✅ SHIPPED 2026-09-16 (`id` = `<sheetKey>#<slot>`, `num` the display number, legacy claims migrated on read). **B1 stable tape ids** — impact: the collection survives every future site; evidence:
    confirmed; files: data.js (`HQ_TAPE_SHEET` rows → keys, `DOOR_TAPES`, `hqBuildFinds`,
    `hqCollectFind`, `hqTapeShelf`, `hqTapeById`), map.js `_hqTapesHtml` (reads `id`),
    hq-finds.test.js; deps: none — MUST precede the first finds upload; acceptance: the test in
    §4 B1; the shelf's display numbers unchanged today.
-2. **B2 server-owned finds** — impact: online-account players keep hazard pay and their tapes
+2. ✅ SHIPPED 2026-09-16 (`progress.hq.finds.taken` in the blob, `hqFindsSyncPay` on the server, `serverPays` at the take, the fold in `profileLoadProgress`). **B2 server-owned finds** — impact: online-account players keep hazard pay and their tapes
    follow them; evidence: confirmed; files: data.js `mergeProgressBlobs` (+ the `hq` key),
    `hqCollectFind` (credit rule), profile.js (`profileSaveProgress` after a take, so the
    debounced push fires), server.js `/api/progress/sync` (pay the newly-merged `pay:` claims
    once); deps: B1 (the ids in the blob must be stable); acceptance: vm merge test; a server
    boot smoke with a synthetic sync paying 30 once and 0 the second time; `npm run test:parity`
    untouched (no economy constants move).
-3. **B3 + D1 + D2 encounter truth** — impact: "whom did I attack, where, why am I here";
+3. ◐ B3 copy SHIPPED 2026-09-16 (`_hqEncounterBoardCopy`); D1 + D2 open. **B3 + D1 + D2 encounter truth** — impact: "whom did I attack, where, why am I here";
    evidence: confirmed (B3) / recommendation (D1, D2); files: map.js `_hqEncounterFire`
    (copy), `_hqEncounterStart` / `_hqReturnOrMenu` (land in the strike's room at the swing
    spot), three-renderer.js `_hqGoTo` (a free-spot `at`), state.js `optimizeRandomizeParty`

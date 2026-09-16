@@ -10794,7 +10794,7 @@ const ACH_RECORD_DEFS = [
 
 // Hard ceilings so a hostile blob can't balloon the stored row: key-count
 // caps per section plus a universal value clamp.
-const ACH_MERGE_CAPS = { counters: 256, champs: 256, unlocked: 12000, value: 1e9 };
+const ACH_MERGE_CAPS = { counters: 256, champs: 256, unlocked: 12000, value: 1e9, finds: 4000 };
 
 function mergeProgressBlobs(a, b) {
   const METRIC_RE = /^[A-Za-z0-9_]{1,48}$/;                 // counter metric names
@@ -10819,10 +10819,28 @@ function mergeProgressBlobs(a, b) {
   const recDefs = {};
   for (const d of ACH_RECORD_DEFS) recDefs[d.id] = d;
 
-  const out = { v: 2, counters: {}, champs: {}, records: {}, unlocked: {} };
-  let nCounters = 0, nChamps = 0, nUnlocked = 0;
+  /* THE LEDGER (PHASE9_QUALITY_PLAN §4 B2, 2026-09-16): `hq.finds.taken` = the
+     building's finds — `{ 'tape:<sheetKey>#<slot>': true, 'pay:<roomId>':
+     'YYYY-MM-DD', 'deck:locker': true }`. Union: `true` beats a date, two
+     dates keep the LATER (a daily re-taken on a later day). The server pays
+     each newly-merged `pay:` claim once (hqFindsSyncPay). */
+  const FIND_RE = /^(tape|pay|deck):[A-Za-z0-9_#:-]{1,96}$/;
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  const out = { v: 2, counters: {}, champs: {}, records: {}, unlocked: {}, hq: { finds: { taken: {} } } };
+  let nCounters = 0, nChamps = 0, nUnlocked = 0, nFinds = 0;
   for (const src of [a, b]) {
     if (!src || typeof src !== 'object') continue;
+    const taken = (src.hq && typeof src.hq === 'object' && src.hq.finds && typeof src.hq.finds === 'object' && src.hq.finds.taken && typeof src.hq.finds.taken === 'object') ? src.hq.finds.taken : {};
+    for (const key of Object.keys(taken)) {
+      if (!FIND_RE.test(key) || badKey(key)) continue;
+      const raw = taken[key];
+      const v = raw === true ? true : (typeof raw === 'string' && DATE_RE.test(raw)) ? raw : null;
+      if (v === null) continue;
+      const dst = out.hq.finds.taken;
+      if (dst[key] === undefined) { if (nFinds >= ACH_MERGE_CAPS.finds) continue; nFinds++; dst[key] = v; continue; }
+      if (dst[key] === true) continue;
+      if (v === true || v > dst[key]) dst[key] = v;
+    }
     // Counters: per-bucket max (G-counter join — correct for additive AND
     // high-water metrics alike under full-blob pushes).
     const counters = (src.counters && typeof src.counters === 'object') ? src.counters : {};
@@ -16595,7 +16613,7 @@ Object.assign(window, {
   ACCT_STARTER_UNITS, ACCT_PVP_MODES, isUnitUnlocked, computeAccountMatchGold,
   ACH_CATALOG, ACH_CHAMP_LINES, ACH_TIER_NAMES, ACH_TIER_COLORS,
   ACH_MASTERY, ACH_TIER_REWARDS, ACH_RECORD_DEFS,
-  mergeProgressBlobs, achUnlockKeyReward, achCountMasteredChamps, achComputeSyncRewards,
+  mergeProgressBlobs, achUnlockKeyReward, achCountMasteredChamps, achComputeSyncRewards, hqFindsSyncPay,
   STEAM_STAT_DEFS, STEAM_ACH_DEFS, steamComputeStats, steamEvalAchievements,
   /* spell tree (Tree of Life selector) */
   CLASS_TREE, RACE_TREE, classHasSpellTree, getClassTreeSpells, getRaceTreeSpells,
@@ -28660,8 +28678,13 @@ function hqSiteRoom(mapId) {
     const open = !!shell.open;
     /* THE EDGE (2026-09-11): what stands at the room's bound — an indoor
        room is always the full box; an outdoor room is OPEN unless its shell
-       says the place is walled ('walls') or fenced knee-high ('low') */
-    const edge = !open ? 'walls' : (shell.edge === 'walls' || shell.edge === 'low') ? shell.edge : 'open';
+       says the place is fenced knee-high ('low'). 2026-09-16 (the user's
+       rule: "battle rooms that are areas outside should not have walls"):
+       an OPEN room never wears facility walls — a shell that still says
+       `edge: 'walls'` (the Stadium, Camelot, the city blocks) is read as
+       'open'; the place's own perimeter (the setting's stands, curtain wall,
+       storefronts) is the wall now. */
+    const edge = !open ? 'walls' : (shell.edge === 'low') ? 'low' : 'open';
     const roam = (edge === 'open') ? ((shell.roam != null) ? shell.roam : 5.0) : 0;
     const mood = Object.assign({}, ((SR.shell || {}).mood) || {}, (shell.mood) || {});
     const lightsAt = open
@@ -29278,7 +29301,15 @@ const HQ_TAPE_SHEET = {
 };
 /* the room a sheet key names: a site key → its generated board room */
 function hqTapeRoomId(key) { return DOOR_HQ.rooms[key] ? key : (DOOR_HQ.rooms['site_' + key] ? 'site_' + key : null); }
-/* DOOR_TAPES: T001… in sheet order — the built sites first (in siteRooms.built order), then the parts, then the floors */
+/* DOOR_TAPES: numbered T001… in sheet order — the built sites first (in
+   siteRooms.built order), then the parts, then the floors.
+   THE STABLE ID (PHASE9_QUALITY_PLAN §4 B1, 2026-09-16): a tape's `id` is
+   its SHEET KEY + '#' + its slot (`prebuilt_revenge#0`) — the claim a profile
+   files (`taken['tape:<id>']`, `tapes[]`) never moves when a site is added
+   to `built` or a tape re-homed; `num` ('T077') and `no` are the DISPLAY
+   number, recomputed per build (the shelf prints them, nothing files them).
+   A claim filed before this (a `Tnnn` id) is read as the tape at that
+   position today — hqFindsRecord migrates it on every read. */
 const DOOR_TAPES = (function () {
     const out = [];
     const built = ((DOOR_HQ.siteRooms || {}).built || []);
@@ -29287,13 +29318,24 @@ const DOOR_TAPES = (function () {
         const roomId = hqTapeRoomId(k);
         (HQ_TAPE_SHEET[k] || []).forEach((row, i) => {
             const n = out.length + 1;
-            out.push({ id: 'T' + String(n).padStart(3, '0'), no: n, where: roomId, site: k.indexOf('prebuilt_') === 0 ? k : (DOOR_HQ.rooms[roomId] && DOOR_HQ.rooms[roomId].site) || null,
+            out.push({ id: k + '#' + i, num: 'T' + String(n).padStart(3, '0'), no: n, where: roomId, site: k.indexOf('prebuilt_') === 0 ? k : (DOOR_HQ.rooms[roomId] && DOOR_HQ.rooms[roomId].site) || null,
                        title: row[0], caption: row[1], kind: HQ_TAPE_KINDS.indexOf(row[2]) >= 0 ? row[2] : 'evidence', slot: i, clip: null, draft: true });
         });
     });
     return out;
 })();
-function hqTapeById(id) { return DOOR_TAPES.find(t => t.id === id) || null; }
+function hqTapeById(id) { return DOOR_TAPES.find(t => t.id === id || t.num === id) || null; }
+/* a legacy positional tape id ('T077') → today's stable id at that position; anything else passes through */
+function hqTapeLegacyId(id) {
+    const m = /^T(\d{3})$/.exec(String(id || ''));
+    if (!m) return id;
+    const t = DOOR_TAPES[parseInt(m[1], 10) - 1];
+    return t ? t.id : id;
+}
+function hqFindLegacyId(id) {
+    const m = /^tape:(T\d{3})$/.exec(String(id || ''));
+    return m ? 'tape:' + hqTapeLegacyId(m[1]) : id;
+}
 /* a tape's clip URL — null until the file is on R2 (never a made-up path) */
 function hqTapeClipUrl(tape) {
     if (!tape || !tape.clip) return null;
@@ -29434,10 +29476,47 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_downtown_subway: { tape: { x: 3.2, z: -13.2 }, pay: { x: 0.6, z: -13.4 } } };   // the deck (SKATEBOARDING 9.8) takes the generator's far corner of Room 26
 DOOR_HQ.finds = hqBuildFinds();
 function hqFindById(id) { return (DOOR_HQ.finds || []).find(f => f.id === id) || null; }
-/* the record on the profile (never written by a reader) */
+/* the record on the profile (never written by a reader). THE LEDGER (plan
+   §4 B2, 2026-09-16): the claims live in TWO places and the read is their
+   UNION — `door.hq.finds` (the building's local record: taken / tapes / the
+   pay tally) and `progress.hq.finds.taken` (the SYNCED progress blob —
+   mergeProgressBlobs carries it, the server pays each new `pay:` claim once,
+   a second device reads the same tapes). A `true` beats a date; two dates
+   keep the later. Legacy positional ids are migrated on the read. */
+function hqFindsTakenUnion(a, b) {
+    const out = {};
+    [a, b].forEach(src => {
+        if (!src || typeof src !== 'object') return;
+        Object.keys(src).forEach(k0 => {
+            const k = hqFindLegacyId(k0), v = src[k0];
+            if (!v) return;
+            const cur = out[k];
+            if (cur === true) return;
+            if (v === true) { out[k] = true; return; }
+            const d = String(v);
+            if (!cur || d > String(cur)) out[k] = d;
+        });
+    });
+    return out;
+}
 function hqFindsRecord(profile) {
-    try { const r = profile && profile.door && profile.door.hq && profile.door.hq.finds; if (r && typeof r === 'object') return { taken: r.taken || {}, tapes: r.tapes || [], pay: r.pay | 0 }; } catch (e) {}
-    return { taken: {}, tapes: [], pay: 0 };
+    let local = null, synced = null;
+    try { const r = profile && profile.door && profile.door.hq && profile.door.hq.finds; if (r && typeof r === 'object') local = r; } catch (e) {}
+    try { const h = profile && profile.progress && profile.progress.hq && profile.progress.hq.finds; if (h && typeof h === 'object' && h.taken && typeof h.taken === 'object') synced = h.taken; } catch (e) {}
+    const taken = hqFindsTakenUnion(local && local.taken, synced);
+    const tapes = [];
+    (local && Array.isArray(local.tapes) ? local.tapes : []).forEach(id => { const t = hqTapeLegacyId(id); if (tapes.indexOf(t) < 0) tapes.push(t); });
+    Object.keys(taken).forEach(k => { if (k.indexOf('tape:') === 0) { const t = k.slice(5); if (tapes.indexOf(t) < 0) tapes.push(t); } });
+    return { taken, tapes, pay: local ? (local.pay | 0) : 0 };
+}
+/* the synced mirror on the progress blob (written only through hqCollectFind / profileLoadProgress's fold) */
+function hqFindsSyncedTaken(profile, create) {
+    const prog = profile && profile.progress;
+    if (!prog || typeof prog !== 'object' || !(prog.v >= 2)) return null;   // never invent a progress blob (ensureProgress owns the migration)
+    if (!prog.hq || typeof prog.hq !== 'object') { if (!create) return null; prog.hq = {}; }
+    if (!prog.hq.finds || typeof prog.hq.finds !== 'object') { if (!create) return null; prog.hq.finds = { taken: {} }; }
+    if (!prog.hq.finds.taken || typeof prog.hq.finds.taken !== 'object') { if (!create) return null; prog.hq.finds.taken = {}; }
+    return prog.hq.finds.taken;
 }
 /* a daily cache is live on the days hqHash(date|id) % dailyMod === 0 */
 function hqFindLiveToday(row, date) { return !row.daily || (hqHash((date || hqToday()) + '|' + row.id) % HQ_FIND_RULES.dailyMod) === 0; }
@@ -29457,8 +29536,9 @@ function hqFindsInRoom(roomId, profile, now) {
    it — ONE save for the claim and the reward, never creditLocalGold's second
    load) and returns the beat: { ok, kind, amount?, gold?, tape?, count, total,
    title, label } — or { ok: false, reason }. Reserved kinds are refused. */
-function hqCollectFind(profile, id, now) {
-    const row = hqFindById(id);
+function hqCollectFind(profile, id, now, opts) {
+    opts = opts || {};
+    const row = hqFindById(hqFindLegacyId(id));
     if (!row) return { ok: false, reason: 'unknown' };
     if (!profile) return { ok: false, reason: 'noprofile' };
     if (row.kind !== 'tape' && row.kind !== 'pay' && row.kind !== 'deck') return { ok: false, reason: 'unsupported', kind: row.kind };
@@ -29469,6 +29549,9 @@ function hqCollectFind(profile, id, now) {
     if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = {};
     const R = profile.door.hq.finds = { taken: Object.assign({}, rec.taken), tapes: rec.tapes.slice(), pay: rec.pay | 0 };
     R.taken[row.id] = row.daily ? date : true;
+    /* THE LEDGER (B2): the claim into the SYNCED blob too — the next /api/progress/sync carries it (the server pays a new `pay:` claim once, hqFindsSyncPay) */
+    const synced = hqFindsSyncedTaken(profile, true);
+    if (synced) synced[row.id] = R.taken[row.id];
     if (row.kind === 'deck') {   // SKATEBOARDING (9.8): the board is yours — hqSkateStatus reads it
         const sk = hqSkateRecord(profile, true); sk.deck = true; sk.since = sk.since || date;
         return { ok: true, kind: 'deck', count: 1, total: 1, label: 'A SKATEBOARD · PRESS B' };
@@ -29480,9 +29563,31 @@ function hqCollectFind(profile, id, now) {
     }
     const amount = Math.max(0, row.amount | 0);
     if (!profile.account || typeof profile.account !== 'object') profile.account = { gold: 0, unlockedUnits: [], freeTokens: 0 };
-    profile.account.gold = (profile.account.gold | 0) + amount;
+    /* the pay: the LOCAL mirror only when nobody else owns the wallet (profile.js creditLocalGold's rule — a server
+       account's wallet is the server's, which pays the claim off the synced blob; a local credit would only be
+       overwritten by the next sync, plan §4 B2). `opts.serverPays` = the caller has a server account. */
+    const serverPays = !!(opts.serverPays && synced);
+    if (!serverPays) profile.account.gold = (profile.account.gold | 0) + amount;
     R.pay += amount;
-    return { ok: true, kind: 'pay', amount, gold: profile.account.gold, count: R.pay, total: null, label: '+' + amount + ' HAZARD PAY' };
+    return { ok: true, kind: 'pay', amount, gold: profile.account.gold, count: R.pay, total: null, serverPays, label: '+' + amount + ' HAZARD PAY' };
+}
+/* THE LEDGER (B2): the Hazard Pay a sync owes — every `pay:` claim in `after`
+   that `before` did not carry at that date (a new envelope, or a daily taken
+   on a later day) pays its row's amount ONCE; idempotent by construction
+   (the taken map is the ledger — a retry merges the same date and pays 0).
+   Server-side (server.js /api/progress/sync) beside achComputeSyncRewards;
+   an unknown row (a find that no longer exists) pays nothing. */
+function hqFindsSyncPay(before, after) {
+    const prev = (before && before.hq && before.hq.finds && before.hq.finds.taken) || {};
+    const next = (after && after.hq && after.hq.finds && after.hq.finds.taken) || {};
+    let gold = 0;
+    Object.keys(next).forEach(k => {
+        if (k.indexOf('pay:') !== 0) return;
+        if (prev[k] !== undefined && String(prev[k]) >= String(next[k])) return;
+        const row = hqFindById(k);
+        if (row && row.kind === 'pay') gold += Math.max(0, row.amount | 0);
+    });
+    return gold;
 }
 function hqTapeCount(profile) { const rec = hqFindsRecord(profile); return { found: rec.tapes.length, total: HQ_FIND_RULES.tapes, pay: rec.pay | 0 }; }
 /* THE SHELF: the hundred with found / where / hint — an unfound spine reads
@@ -29497,7 +29602,7 @@ function hqTapeShelf(profile) {
         const room = DOOR_HQ.rooms[t.where] || {};
         const no = (typeof hqRoomNo === 'function') ? hqRoomNo(t.where) : '';
         const f = hqFindById('tape:' + t.id);
-        return { id: t.id, no: t.no, title: t.title, caption: t.caption, kind: t.kind, where: t.where, roomLabel: room.label || t.where, roomNo: no, part: room.part || null,
+        return { id: t.id, num: t.num, no: t.no, title: t.title, caption: t.caption, kind: t.kind, where: t.where, roomLabel: room.label || t.where, roomNo: no, part: room.part || null,
                  found: !!found[t.id], hint: !found[t.id] && !!hinted[groupOf(t)], hard: !!(f && f.hard), clip: hqTapeClipUrl(t), draft: !!t.draft };
     });
     return { found: rec.tapes.length, total: HQ_FIND_RULES.tapes, rows };
@@ -31584,6 +31689,7 @@ if (typeof window !== 'undefined') {
     window.hqCaveTopAt = hqCaveTopAt; window.hqCaveDoorY = hqCaveDoorY; window.hqCaveEdgeH = hqCaveEdgeH; window.hqCaveReach = hqCaveReach;
     /* THE FINDS + THE TAPES (HQ plan 9.1, 2026-09-15 rev 12) */
     window.DOOR_TAPES = DOOR_TAPES; window.HQ_FIND_RULES = HQ_FIND_RULES; window.hqFindsInRoom = hqFindsInRoom; window.hqCollectFind = hqCollectFind;
+    window.hqFindsSyncPay = hqFindsSyncPay; window.hqTapeLegacyId = hqTapeLegacyId; window.hqFindLegacyId = hqFindLegacyId; window.hqFindsTakenUnion = hqFindsTakenUnion; window.hqFindsSyncedTaken = hqFindsSyncedTaken;
     window.hqTapeShelf = hqTapeShelf; window.hqTapeCount = hqTapeCount; window.hqFindById = hqFindById; window.hqTapeById = hqTapeById; window.hqTapeClipUrl = hqTapeClipUrl; window.hqFindsRecord = hqFindsRecord;
     window.hqCaveDoorCell = hqCaveDoorCell; window.hqCaveRooms = hqCaveRooms;
     /* THE DOOR GUN (HQ plan 9.5, 2026-09-15 rev 13) */

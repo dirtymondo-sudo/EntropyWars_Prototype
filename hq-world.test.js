@@ -167,7 +167,7 @@ test('THE SEAMS THAT ARE NOT DOORS: the wardrobe into Camelot and the well into 
  assert.ok(well.wall==='free' && well.x===-2.6 && well.z===1.6 && well.face===90);assert.ok(!cel.props.some(p=>p.key==='fountain'),'the fountain gave its place to the well');
  assert.ok(cel.props.filter(p=>p.key==='railing_1m').length>=3,'the guard rail round the well stays (the park rule)');
  /* the far ends: Camelot's curtain wall is a walled room; the cellar's well comes out in the cave's well room (rev 10), not against Hollow Earth's wall */
- assert.equal(HQ.siteRooms.shells.prebuilt_camelot.edge,'walls','Camelot has a wall to stand the wardrobe against');
+ assert.equal(HQ.rooms.site_prebuilt_camelot.shell.edge,'open','Camelot stands in the open (2026-09-16: no outdoor battle room wears facility walls) — the wardrobe stands alone on the north line like a lone door panel');
  assert.equal(well.action.room,'site_prebuilt_hollow_earth_shaft','the well in the cellar drops into THE WELL ROOM');
  /* the production landing on the free-standing well: 2.4 m east of the ring, facing east (away from it), inside the cellar, on nothing */
  const h=landing(cel,well), p=h.player;

@@ -218,6 +218,11 @@ let _dataJs = null; // the loaded data.js sandbox (null if the load failed)
 const ACH = {
     merge: (_dataJs && typeof _dataJs.mergeProgressBlobs === 'function') ? _dataJs.mergeProgressBlobs : null,
     computeRewards: (_dataJs && typeof _dataJs.achComputeSyncRewards === 'function') ? _dataJs.achComputeSyncRewards : null,
+    /* THE LEDGER (PHASE9_QUALITY_PLAN §4 B2, 2026-09-16): the building's Hazard Pay — each `pay:` claim
+       newly merged into the blob's hq.finds.taken pays its row once (data.js hqFindsSyncPay; the taken
+       map is the ledger, so a retry pays 0). Unlike the achievement tiers it pays on the FIRST sync too:
+       a local credit never reaches the server, so nothing was ever paid before. */
+    findsPay: (_dataJs && typeof _dataJs.hqFindsSyncPay === 'function') ? _dataJs.hqFindsSyncPay : null,
 };
 if (!ACH.merge) console.error('[ACH] mergeProgressBlobs unavailable — /api/progress/sync disabled');
 
@@ -1310,18 +1315,22 @@ app.post('/api/progress/sync', limitProgress, async (req, res) => {
         // existing baseline — the FIRST sync stores silently, so a veteran's
         // migration-seeded pre-unlocks (never paid client-side either) don't
         // arrive as a windfall. Idempotent: a key is only ever new once.
-        let rewardGold = 0, rewardTokens = 0;
+        let rewardGold = 0, rewardTokens = 0, findsGold = 0;
         if (stored && ACH.computeRewards) {
             const r = ACH.computeRewards(stored, merged);
             rewardGold = r.gold || 0;
             rewardTokens = r.tokens || 0;
-            if (rewardGold > 0 || rewardTokens > 0) {
-                await d1.execute(
-                    'UPDATE players SET gold = gold + ?1, free_tokens = free_tokens + ?2 WHERE id = ?3',
-                    [rewardGold, rewardTokens, player.id]
-                );
-                console.log(`[ACH] ${player.id}: synced unlocks paid +${rewardGold}g, +${rewardTokens} token(s)`);
-            }
+        }
+        if (ACH.findsPay) {
+            findsGold = Math.max(0, Math.round(Number(ACH.findsPay(stored, merged)) || 0));
+            rewardGold += findsGold;
+        }
+        if (rewardGold > 0 || rewardTokens > 0) {
+            await d1.execute(
+                'UPDATE players SET gold = gold + ?1, free_tokens = free_tokens + ?2 WHERE id = ?3',
+                [rewardGold, rewardTokens, player.id]
+            );
+            console.log(`[ACH] ${player.id}: synced unlocks paid +${rewardGold}g (${findsGold}g Hazard Pay), +${rewardTokens} token(s)`);
         }
 
         // Normalize through the starter backfill like the economy endpoints —

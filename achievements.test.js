@@ -188,7 +188,7 @@ test('record defs are well-formed (§5, Phase 3)', () => {
 
 test('progress-sync helpers are exported', () => {
     for (const fn of ['mergeProgressBlobs', 'achUnlockKeyReward',
-        'achCountMasteredChamps', 'achComputeSyncRewards']) {
+        'achCountMasteredChamps', 'achComputeSyncRewards', 'hqFindsSyncPay']) {
         assert.strictEqual(typeof data[fn], 'function', `data.js must export ${fn}`);
     }
 });
@@ -275,7 +275,7 @@ test('mergeProgressBlobs: sanitizes hostile/garbage input', () => {
     // The evil '__proto__' bag must not have become the counters' prototype.
     assert.strictEqual(Object.getPrototypeOf(m.counters).pvp, undefined, 'prototype must be untouched');
     // Null/garbage inputs yield a clean empty blob.
-    assert.deepStrictEqual(norm(merge(null, undefined)), { v: 2, counters: {}, champs: {}, records: {}, unlocked: {} });
+    assert.deepStrictEqual(norm(merge(null, undefined)), { v: 2, counters: {}, champs: {}, records: {}, unlocked: {}, hq: { finds: { taken: {} } } });   // hq.finds: THE LEDGER (2026-09-16)
 });
 
 test('mergeProgressBlobs keeps the D.O.O.R. site flags (site:<mapId>:<cond>) — the sync used to drop every key with a colon and un-tick the stabilization checklist (2026-09-15)', () => {
@@ -341,7 +341,7 @@ test('server.js wires the Phase-5 sync surface', () => {
     const fs = require('node:fs');
     const src = fs.readFileSync(require('node:path').join(__dirname, 'server.js'), 'utf8');
     for (const needle of ['/api/progress/sync', "'/api/progress'", 'player_progress',
-        'mergeProgressBlobs', 'achComputeSyncRewards']) {
+        'mergeProgressBlobs', 'achComputeSyncRewards', 'hqFindsSyncPay']) {
         assert.ok(src.includes(needle), `server.js missing: ${needle}`);
     }
     assert.ok(fs.existsSync(require('node:path').join(__dirname, 'migrations', '004_progress.sql')),
