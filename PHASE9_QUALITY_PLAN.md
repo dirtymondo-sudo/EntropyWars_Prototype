@@ -389,6 +389,22 @@ with +1 treads; map.js says THE ROOM IS THE BOARD there. Measured: the plan's "�
 the big rooms and not the attic (15) / the airlock (20) — the rooms are that size; the test pins ≥ 12 and the
 six two-height parts. NOT in it: §10 stage 4 (the room as the battle's setting — a box field stands as a
 rock-walled 8 × 8 under the site's sky until then). Next: §10 stage 4, then D, E.
+**Status 2026-09-16 (Delivery 10, `ENTROPY_WARS_PHASE9_ROOM_FIELD.zip`, token
+`20260916-room-field-12-cors`):** §10 **stage 4 SHIPPED** — THE ROOM ROUND THE FIELD. An encounter's
+battle draws the strike's ROOM round its board: three-renderer.js `_hqBuildRoomInBattle` (called from
+`_buildHorizonScenery` at every `scene.add` site, after THE WORLD; the scenery key carries the room +
+window through `_hqBattleRoomKey`) runs the HQ builders (`_hqBuildBoxShell` / `_hqBuildGallery` /
+`_hqBuildSiteDressing` / `_hqBuildDoors` / `_hqBuildCounters` / `_hqPlaceProps`) on a SCRATCH record
+standing in for `_hq`, bakes every piece through ONE matrix (`_hqBattleRoomMatrix` = hqFieldTransform's
+rule: cell (0,0)'s NW corner on tile (0,0)'s, the floor on the base top, ts / C px per metre) and hangs
+the lot in the scenery group as the occlusion fade's facility group (per-side wall groups — the wall
+between the eye and a unit fades, the Training Room's rule). Not drawn: the board (a site room's walkway
+/ apron / skirt go too; a box room's floor is CUT TO THE WINDOW — `_hq.floorHole`), the ceiling, the
+people, the finds, the portals, the battle marker, a prop on a COVER cell (rule §5: the column stands
+for it), the plates. The marker is battle.js `_ewEncounterRoom()` (the latched run). A cave chamber is
+NOT drawn (its grid is its floor; the cavern world stands) — the cave's own stage. `hq-room-in-battle.
+test.js` (8). §10 stages 1–3 (the board's own materials / light / world in the ROOM) stay after the
+playtest as planned. Next: §11 D (the thin walls on cell edges, a door on the frame's edge), then E.
 
 Each item: impact · evidence · files · dependencies · change · acceptance.
 
@@ -473,8 +489,11 @@ Each item: impact · evidence · files · dependencies · change · acceptance.
 - **Delivery 9 — THE FIELD, STAGE C** (data.js, map.js; hq-field.test.js): the rasteriser on the box
   rooms — the lattice, the covers, the gallery, the step rule, the indoor layout. ✅ 2026-09-16,
   `ENTROPY_WARS_PHASE9_FIELD_C.zip`. §10 stage 4 (the room as the battle's setting) is its second half.
-- **Delivery 10 — the playtest** (PLAYTEST_NOTES.md) → then §10 stage 4 and §11 D–E in their own
-  deliveries.
+- **Delivery 10 — THE ROOM ROUND THE FIELD** (three-renderer.js, battle.js, data.js comment; hq-room-in-battle.test.js):
+  §10 stage 4 — the strike's room drawn round the battle's board at the room's transform, the walls as
+  occlusion groups, the floor cut to the window, the covers left to their columns. ✅ 2026-09-16,
+  `ENTROPY_WARS_PHASE9_ROOM_FIELD.zip`.
+- **Delivery 11 — the playtest** (PLAYTEST_NOTES.md) → then §11 D–E in their own deliveries.
 Each delivery = one `ENTROPY_WARS_<TOPIC>.zip`, `npm test` green, the token bumped, the
 caption saying R2 / Render / repo per file (RULE #1, #1b).
 
@@ -494,7 +513,7 @@ monument builders and the SAME post stack (`ThreePost.renderScene` in `_hqFrame`
 | Board cells | `siteMat`: `MeshPhongMaterial` (shininess 8, specular), `_hzTex(key)` + the cell's tint, emissive lift 0.12 with the map as emissiveMap; instanced planes + boxes, `CM × 0.995` | `rebuildTerrain` voxel columns, Lambert through `K.mat` / `_evTintMat` with `TERRAIN_BASE_TINT` (the street's darkening) and THE ONE TINT rule | **Stage 1**: build the room board's cell materials through the battle's material path (`_evTintMat` + base tint, Lambert, no emissive lift — the room's own lights carry it) and, REC, generate the top/side geometry with the battle's column mesher on a `K` kit (the §0 "no voxel mesher" guardrail was a cost rule; 64 columns cost nothing; shadows stay off) |
 | Light | HQ constants per shell kind (open room: sky-tinted hemi + a sun at (0.45, 1, 0.3), 0.55 / night 0.22; box room: fluorescents + `mood`) | `_updateEnvironment`: the env row's tint, sun colour / direction / intensity, fog | **Stage 2**: an open site room takes its sun + hemi from the map's env row (one helper both sides call — `_envLightRig(env)` — the room adds its lamps on top) |
 | The horizon | an apron / skirt past the walls, the far roster hung round, no ground to the horizon | THE WORLD (`_worldBuild`: ground disc / planet, rim, haze, root, the entropy dissolve) | **Stage 3**: run `_worldBuild` for an open site room with `edge: 'open'` at the room's transform, `stab` pinned to 1 (grounded), the cavern wall for `kind: 'cavern'`; kill-switch `EW_HQ_NO_WORLD` |
-| Furniture | the walkway / quay, the console, the battle marker, the signboards, the lamp masts, the natives, the crossing threshold | none of it | **Stage 4 (the reverse)**: when a match is launched FROM a room (an encounter or the console), the battle's near setting also draws the room's furniture through the HQ builders on the battle scene (`_nrRoomFurniture(K, room)`: the quay's deck / the walkway / the masts / the console as blockers outside the board) — this is §11 stage C's bridge, built once |
+| Furniture | the walkway / quay, the console, the battle marker, the signboards, the lamp masts, the natives, the crossing threshold | none of it | **Stage 4 (the reverse)** ✅ SHIPPED 2026-09-16 (Delivery 10) as `_hqBuildRoomInBattle` (three-renderer.js): when a match is launched by a STRIKE in a room (battle.js `_ewEncounterRoom` — the console's crossings are not marked yet), the battle draws the room through the HQ builders on a scratch `_hq` record — the shell (a site room: the edge kerb / low wall, the signboards, the masts, the containment lamps; the walkway / apron / skirt are the setting's), the doors, the counters, the props — baked at the room's transform into the scenery group; the walls are per-side occlusion groups. Original text: `_nrRoomFurniture(K, room)`: the quay's deck / the walkway / the masts / the console as blockers outside the board — this is §11 stage C's bridge, built once |
 | Scale constant | `128 / DOOR_HQ.units` = 1.7534 m; props at `HQ_TILE_M` 1.75 | `CONFIG.tileSize` 128 | **Stage 1**: `DOOR_HQ.units` → `128 / 1.75 = 73.142857…` or the room cell fixed at 1.75 m (`HQ_TILE_M`) everywhere; one constant, both sides |
 
 **Acceptance (per stage, screenshot-driven — RULE #1c, the user eyeballs):** for three maps
@@ -596,7 +615,7 @@ square, and the units are not on squares when the fight starts.
   (rule 7 ✅ Delivery 6 — `hqEncounterSeats` seats the START; ✅ Delivery 7 — the seats are
   the explicit per-seat zones, `hqEncounterZones`, and the row pass never runs for a field), the native as P2 seat 1 (D2 ✅), the return to the
   cell (rule 9 — the swing spot today, D1), the battle at the room's transform with the room's
-  furniture as setting (§10 stage 4 — OPEN). Acceptance: from a site
+  furniture as setting (§10 stage 4 — ✅ Delivery 10). Acceptance: from a site
   room's walkway, strike a native standing ON the board: the screen never cuts to black, the
   board's cells fade in under the walker's feet, seat 1 stands where the walker stood, the
   enemy's lead is the native; after the fight the walker stands on seat 1's last cell and the
@@ -611,7 +630,7 @@ square, and the units are not on squares when the fight starts.
   reachability from the walker's cell; no cell is a wall the walker could step; OFF cells are
   rock; `npm test` builds and validates every generated Δ through the forge's own checks
   (`delta-maps.test.js`'s rules).
-- **C · THE RASTERISER ON BOX ROOMS + THE ROOM AS THE SETTING.** ✅ the rasteriser SHIPPED 2026-09-16 (Delivery 9): `hqFieldBoxInfo` / `hqFieldLattice` / `hqFieldRasterBox` / `hqFieldBoxStep`; the room as the setting (§10 stage 4) is OPEN. Measured acceptance: every part ≥ 12 IN cells (the attic is 8 × 6 m), six parts ≥ 2 heights, the hall's landing +2 with +1 treads. Original text: The complex parts (the hall
+- **C · THE RASTERISER ON BOX ROOMS + THE ROOM AS THE SETTING.** ✅ the rasteriser SHIPPED 2026-09-16 (Delivery 9): `hqFieldBoxInfo` / `hqFieldLattice` / `hqFieldRasterBox` / `hqFieldBoxStep`; the room as the setting (§10 stage 4) ✅ Delivery 10 (`_hqBuildRoomInBattle`). Measured acceptance: every part ≥ 12 IN cells (the attic is 8 × 6 m), six parts ≥ 2 heights, the hall's landing +2 with +1 treads. Original text: The complex parts (the hall
   with its gallery, the hold, the casino). The near pass draws the room (`_nrRoom` from the
   DOOR_HQ sheet through the HQ builders on the battle scene — the bridge §10 stage 4 built).
   Acceptance: the six complexes' 18 parts each yield ≥ 24 IN cells with ≥ 2 heights from

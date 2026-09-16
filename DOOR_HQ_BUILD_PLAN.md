@@ -9019,3 +9019,65 @@ whichever puts the most cells inside) and THE WINDOW is chosen and rasterised ex
   (drywall / gunmetal / urban wall / tile), the floor sheet on the columns, the +2 landing's columns, the
   eye's first frame in a box room.
 
+### 2026-09-16 — PHASE 9 DELIVERY 10 · THE ROOM ROUND THE FIELD (§10 stage 4) — local delivery
+PHASE9_QUALITY_PLAN §10 stage 4 / §11.2 rule 9: an encounter's battle is built INSIDE the room the
+officer struck from. Before: a site room's strike fought the site's Δ under its setting and sky (the
+walkway, the console, the signboards, the masts, the doors gone at the cut); a complex part's strike
+(stage C) fought a rock-walled 8 × 8 under the site's sky with nothing round it.
+- **three-renderer.js — the bridge** (`THE ROOM ROUND THE FIELD`, right before `_hqEnter`):
+  `_hqBattleRoom()` reads battle.js's marker (`_ewEncounterRoom()` — the latched run's `room`, `field`
+  (the window's frame: N · C · x0 · z0) and `fieldId`; cached on the run's content, the scenery key asks
+  every frame) and answers `{ room, T (hqFieldTransform), site, base, field (the raster's cells) }` for a
+  BOX room that is not a cave; a site room only when the board is its Δ (the console can file the FULL
+  site from the room — that match stands on its own). `_hqBattleRoomMatrix(R, ts)` = ONE matrix: scale
+  `(ts / C) / U`, translation `(−x0 · ts / C, base · elev, −z0 · ts / C)` — cell (0,0)'s NW corner lands
+  on tile (0,0)'s, the room's floor on the base level's top (hq-room-in-battle.test.js proves the corner,
+  the centre, a cell and a wall top). `_hqBuildRoomInBattle(ctx)` (called from `_buildHorizonScenery`
+  at its three `scene.add` sites, after `_worldBuild`; `_hqBattleRoomKey()` rides the horizon key, so a
+  plain match on the same map never wears the room and a new window rebuilds it): a SCRATCH `_hq`
+  record (every list the builders push to, `propLights` pre-spent to `HQ_PROP_LIGHT_MAX −
+  HQ_BATTLE_ROOM_LIGHTS` (4) — every point light recompiles every material once), the builders run in
+  a try / finally that restores the live record — `_hqGalleryFrame` + `_hqBuildBoxShell` +
+  `_hqBuildGallery` + (a site) `_hqBuildSiteDressing` + `_hqBuildDoors` + `_hqBuildCounters` (the
+  `battle` marker filtered off the copy — it stood on the board) + `_hqPlaceProps`; then every direct
+  child of the shell / door / prop groups is FILTERED (a CSS2D plate, a `_ew_hqPart` the room drops, a
+  site room's `_ew_hqGround`, a PROP on a COVER cell of the raster — `_hqBattleRoomCoverAt`: '2'..'9'
+  in `entry.field.cells`, the column stands for it), `applyMatrix4(M)`-baked, and hung: a piece wearing
+  `_ew_hqWall` into its side's occlusion group (`_ew_occWall` / `_ew_occFadeTarget` 0.04 — the wall
+  between the eye and a unit fades, the Training Room's rule), the rest as its own occluder root. The
+  group is `_facilityNearGroup` (or its children join the map's own when an `occ` near builder made
+  one — then a `walls` site room drops the shell's walls, the builder's stand). Materials wear
+  `_ew_hzNear` (the altitude fog leaves them), additive / sprite fog off, shadows off; the room's
+  `fxPulse` glows go into `_hzGlowPulse` (the battle's tick tolerates the HQ shape; cleared with the
+  scenery). What a SITE room drops: floor · ceil · pipe · strip (+ wall with an enclosure) — the battle's
+  setting is the ground; what a PART drops: the ceiling only (the battle looks in from above), its floor
+  CUT TO THE WINDOW. Kill-switch `window.EW_HQ_NO_ROOM_IN_BATTLE`; `EW_HQ_DEBUG` logs kept / dropped.
+- **`_hqBuildBoxShell`**: every piece wears `_ew_hqPart` (floor · ceil · wall / edge (+ `_ew_hqWall` =
+  the side, set in `slab()`) · pipe · strip); a scratch record's `floorHole` (a room-metre rect) draws
+  the floor as FOUR BANDS round the window, each clipped to the room (a window past a wall leaves that
+  band out) — the field's own columns fill the hole. `_hqBuildDoors` / `_hqBuildWay` / `_hqPlaceProps`
+  tag a box-wall door / seam / wall prop with `_ew_hqWall` so it fades with its wall.
+- **`_hqBuildSiteDressing(room)`** — the site board's tail (the signs, the freestanding signboards,
+  the lamp masts, the containment lamps, the strips) split off `_hqBuildSiteBoard` (which calls it
+  last; same code, same order) so the bridge can stand the dressing round a battle whose board is the
+  battle's own. The test proves it reads none of the board's locals.
+- **battle.js**: `window._ewEncounterRoom()` beside `_ewEncounterField` — `{ room, field, fieldId,
+  site }` off the latch, null outside an encounter.
+- **data.js**: `hqFieldLayout`'s stage C comment (the room is drawn now).
+- **NOT built**: a CAVE chamber round a cave field (its grid IS its floor — the ledges / pits / falls
+  would have to be cut to the window like the box floor; the cavern world + Hollow Earth's setting
+  stand, as in stage B); the console's crossing (the marker is the encounter's latch — a crossing filed
+  at the console from a site room fights the Δ under the setting as before; one marker on
+  `_hqTerminalClose({ launch })` would bring it in); a cover cell's column dressed as the prop it stands
+  for (a table is a floor-sheet plinth today); the rock columns of OUT cells past a box room's walls
+  (stage D's chasm / thin-wall rule); the prop / door leaf tickers (a belt stands still in battle).
+- **Tests**: hq-room-in-battle.test.js (8 — the marker, the reader in a vm on the real sheet, the
+  matrix, the cover rule on the hall's window, the scenery hook, the part tags, the dressing split,
+  the data comment). `npm test` 1508 / 0 / 4 skipped.
+- **UNSEEN LIVE (RULE #1c)**: all of it — the walls' fade from the eye's first frame (the south wall
+  stands between the boom and the board), the floor bands meeting the field's columns at the base top,
+  the door leaves (the GLBs land after the build; the swing never runs — they stand as hung), the
+  props' scale against the units, a site room's kerb / signboards / masts on the battle's apron beside
+  the setting's own pieces (nothing culls a house standing where the console does), the light cap, the
+  covers as plinths.
+

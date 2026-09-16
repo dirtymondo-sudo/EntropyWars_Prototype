@@ -28181,7 +28181,7 @@ const ThreeRenderer = (function () {
         var _bh = (typeof bh === 'function') ? bh() : 8;
         var cx = _bw * ts * 0.5, cz = _bh * ts * 0.5;
         var discR = Math.min(11000, Math.max(6000, Math.max(_bw, _bh) * ts * 2.5 + 3500));
-        var key = cx.toFixed(0) + ',' + cz.toFixed(0) + ',' + discR.toFixed(0) + ',' + _hzTheme + ',' + _hzThemeDensity + ',' + (_hzNear || '') + ',' + (_hzMotion ? 'm:' + (_hzMotion.kind || 'x') + ':' + (_hzMotion.axis || 'x') : '');
+        var key = cx.toFixed(0) + ',' + cz.toFixed(0) + ',' + discR.toFixed(0) + ',' + _hzTheme + ',' + _hzThemeDensity + ',' + (_hzNear || '') + ',' + (_hzMotion ? 'm:' + (_hzMotion.kind || 'x') + ':' + (_hzMotion.axis || 'x') : '') + ',' + _hqBattleRoomKey();   // THE ROOM ROUND THE FIELD (§10 stage 4): an encounter's room is part of the scenery
         if (_horizonGroup && _horizonKey === key) return;
         if (_horizonGroup) { scene.remove(_horizonGroup); _disposeR(_horizonGroup); }
         _facilityNearGroup = null;
@@ -28214,11 +28214,11 @@ const ThreeRenderer = (function () {
         var nearCtx = { cx: cx, cz: cz, ts: ts, bw: _bw, bh: _bh, rng: rng, discR: discR };
         if (nearBuild && !_hzThemeRoster(_hzTheme)) {
             _hzRunNearBuilder(nearBuild, nearCtx);
-            _worldBuild(nearCtx); scene.add(_horizonGroup); return;
+            _worldBuild(nearCtx); _hqBuildRoomInBattle(nearCtx); scene.add(_horizonGroup); return;
         }
         // per-map theme: 'none' leaves the void completely empty (underground
         // and liminal maps) — the group still registers so the key cache holds
-        if (_hzTheme === 'none') { _worldBuild(nearCtx); scene.add(_horizonGroup); return; }
+        if (_hzTheme === 'none') { _worldBuild(nearCtx); _hqBuildRoomInBattle(nearCtx); scene.add(_horizonGroup); return; }
         var themeRoster = _hzThemeRoster(_hzTheme);
         var skipP = 1.0 - (1.0 - 0.62) * Math.max(0, Math.min(1.5, _hzThemeDensity));
 
@@ -28338,6 +28338,7 @@ const ThreeRenderer = (function () {
         if (streaming) _motionBuildMotes(rng, stream);
         if (nearBuild) _hzRunNearBuilder(nearBuild, nearCtx);
         _worldBuild(nearCtx);   // THE WORLD (2026-09-13): the ground, the rim, the root — after the setting so it reads the kit
+        _hqBuildRoomInBattle(nearCtx);   // THE ROOM ROUND THE FIELD (§10 stage 4): an encounter's room, at its transform
         scene.add(_horizonGroup);
     }
 
@@ -37307,27 +37308,45 @@ const ThreeRenderer = (function () {
                 var band = new THREE.Mesh(new THREE.PlaneGeometry(b[2] * U, b[3] * U), _hqMat(texFloor, b[2] / TRf, b[3] / TRf, flOpts));
                 band.rotation.x = -Math.PI / 2; band.position.set(b[0] * U, 0, b[1] * U);
                 band._ew_hqGround = true;   // THE PLANET IN THE ROOM (2026-09-16): hidden under the planet mesh once it lands
+                band._ew_hqPart = 'floor';
                 G.add(band);
+            });
+        } else if (_hq.floorHole) {
+            /* THE ROOM ROUND THE FIELD (§10 stage 4, 2026-09-16): a box room drawn round a
+               battle — the field's own columns fill THE WINDOW, so the floor is the room
+               MINUS the window (four bands, each clipped to the room; a window past a wall
+               leaves that side's band out) */
+            var FH = _hq.floorHole, TRh = TR || 1.6;
+            var hx0 = Math.max(-W / 2, FH.x0), hx1 = Math.min(W / 2, FH.x1), hz0 = Math.max(-Dp / 2, FH.z0), hz1 = Math.min(Dp / 2, FH.z1);
+            var holeBands = (hx1 > hx0 && hz1 > hz0) ? [[-W / 2, W / 2, -Dp / 2, hz0], [-W / 2, W / 2, hz1, Dp / 2], [-W / 2, hx0, hz0, hz1], [hx1, W / 2, hz0, hz1]] : [[-W / 2, W / 2, -Dp / 2, Dp / 2]];
+            holeBands.forEach(function (b) {
+                var bwm = b[1] - b[0], bdm = b[3] - b[2]; if (!(bwm > 0.01 && bdm > 0.01)) return;
+                var hb = new THREE.Mesh(new THREE.PlaneGeometry(bwm * U, bdm * U), _hqMat(texFloor, bwm / TRh, bdm / TRh, flOpts));
+                hb.rotation.x = -Math.PI / 2; hb.position.set((b[0] + b[1]) / 2 * U, 0, (b[2] + b[3]) / 2 * U);
+                hb._ew_hqPart = 'floor';
+                G.add(hb);
             });
         } else {
             var fl = new THREE.Mesh(new THREE.PlaneGeometry(W * U, Dp * U), _hqMat(texFloor, W / (TR || 1.6), Dp / (TR || 1.6), flOpts));
             fl.rotation.x = -Math.PI / 2;
+            fl._ew_hqPart = 'floor';
             G.add(fl);
         }
         if (!open) {
             /* `ceilTile` = metres per tile (Room 360's nebula tiles at 4.5 m); `ceilColor` paints it */
             var ce = new THREE.Mesh(new THREE.PlaneGeometry(W * U, Dp * U), _hqMat(texCeil, W / (S.ceilTile || 1.4), Dp / (S.ceilTile || 1.4), { shininess: 2, color: (S.ceilColor != null) ? S.ceilColor : 0xffffff }));
             ce.rotation.x = Math.PI / 2; ce.position.y = H * U;
+            ce._ew_hqPart = 'ceil';   // THE ROOM ROUND THE FIELD: the battle looks in from above — the ceiling is never drawn there
             G.add(ce);
         } else {
             var A = 16;
             var ap = new THREE.Mesh(new THREE.PlaneGeometry((W + 2 * A) * U, (Dp + 2 * A) * U), _hqMat(S.apron || texFloor, (W + 2 * A) / 1.75, (Dp + 2 * A) / 1.75, { shininess: 3, specular: 0x0c0c0c, color: (S.apronColor != null) ? S.apronColor : 0xffffff }));
             ap.rotation.x = -Math.PI / 2; ap.position.y = -0.9; ap.renderOrder = -2;
-            ap._ew_hqGround = true;
+            ap._ew_hqGround = true; ap._ew_hqPart = 'floor';
             G.add(ap);
             var sk = _hqBox(W + 2 * A, 3.0, Dp + 2 * A, _hqMat(S.skirt || 'dirt', (W + 2 * A) / 1.75, 3.0 / 1.75, { color: 0x6a6660, shininess: 2 }));
             sk.position.y = -1.5 * U - 1.0;
-            sk._ew_hqGround = true;
+            sk._ew_hqGround = true; sk._ew_hqPart = 'floor';
             G.add(sk);
         }
         /* THE EDGE (2026-09-11, data.js hqSiteRoom → shell.edge): the four
@@ -37349,6 +37368,7 @@ const ThreeRenderer = (function () {
                 var ax = (ws[0] === 'n' || ws[0] === 's') ? 1 : 0, az = 1 - ax;
                 m.position.set((B.wx + B.nx * inset + ax * mid) * U, ((y0 + y1) / 2) * U, (B.wz + B.nz * inset + az * mid) * U);
                 m.rotation.y = B.yaw;
+                m._ew_hqWall = ws[0]; m._ew_hqPart = (edge === 'walls') ? 'wall' : 'edge';   // THE ROOM ROUND THE FIELD: the side's occlusion group / the part
                 return m;
             }
             /* `wallColor` / `dadoColor` (2026-09-11, Room 360) paint the kit's textures down — a dark room without a dark texture */
@@ -37399,20 +37419,24 @@ const ThreeRenderer = (function () {
                 var pipe = new THREE.Mesh(new THREE.CylinderGeometry(pp[0] * U, pp[0] * U, (W - 0.1) * U, 10), pipeMat);
                 pipe.rotation.z = Math.PI / 2;
                 pipe.position.set(0, pp[1] * U, pp[2] * U);
+                pipe._ew_hqPart = 'pipe';
                 G.add(pipe);
                 var nBr = Math.max(2, Math.round(W / 1.3));
                 for (var bi = 0; bi < nBr; bi++) {
                     var br = _hqBox(0.06, 0.2, 0.16, pipeMat);
                     br.position.set((-W / 2 + 0.3 + (W - 0.6) * bi / (nBr - 1)) * U, (pp[1] + 0.07) * U, pp[2] * U);
+                    br._ew_hqPart = 'pipe';
                     G.add(br);
                 }
             });
             var cross = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * U, 0.04 * U, (Dp - 0.9) * U, 10), pipeMat);
             cross.rotation.x = Math.PI / 2;
             cross.position.set((W / 2 - 0.5) * U, (H - 0.14) * U, 0.2 * U);
+            cross._ew_hqPart = 'pipe';
             G.add(cross);
             var drop = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * U, 0.04 * U, (H - 0.3) * U, 10), pipeMat);
             drop.position.set((W / 2 - 0.5) * U, ((H - 0.3) / 2 + 0.05) * U, (Dp / 2 - 0.25) * U);
+            drop._ew_hqPart = 'pipe';
             G.add(drop);
         }
         /* the fluorescent: a procedural strip + glow at S.light (the kit fixture hangs at the same spot) */
@@ -37422,9 +37446,11 @@ const ThreeRenderer = (function () {
         lightsAt.forEach(function (L) {
             var strip = new THREE.Mesh(new THREE.BoxGeometry(1.3 * U, 0.08 * U, 0.3 * U), _hqBasic(lightC != null ? lightC : 0xeef3ff));
             strip.position.set(L.x * U, (H - 0.05) * U, L.z * U);
+            strip._ew_hqPart = 'strip';
             G.add(strip);
             var gl = _hzGlowSprite(1.6 * U, lightC != null ? lightC : 0xdfe9ff, 0.22, 0.03, 0.02, 0.35);
             gl.position.set(L.x * U, (H - 0.25) * U, L.z * U);
+            gl._ew_hqPart = 'strip';
             G.add(gl);
         });
         /* the room plate (CSS2D) */
@@ -38335,6 +38361,16 @@ const ThreeRenderer = (function () {
             pl.rotation.x = -Math.PI / 2; pl.position.set(0, 0.8, (half + (M ? M.gap : 0) + 0.95) * U); pl.renderOrder = 1;   // before the causeway in a moat room
             G.add(pl);
         }
+        _hqBuildSiteDressing(room);
+    }
+    /* the site room's DRESSING — the signs, the freestanding signboards, the
+       lamp masts, the containment lamps and the strips — split off the board
+       (2026-09-16) so THE ROOM ROUND THE FIELD (§10 stage 4) can stand it round
+       a battle whose board is the battle's own. Same code, same order. */
+    function _hqBuildSiteDressing(room) {
+        var U = _hqUnits(), S = room.shell, G = _hq.shellGroup;
+        var GR = S.grid || { cells: 8, cell: 1.75 }, C = GR.cell, CM = C * U;
+        var pulse = function (mat, opAmp, spd) { _hq.fxPulse.push({ mat: mat, baseOp: mat.opacity, opAmp: opAmp, spd: spd, phase: Math.random() * Math.PI * 2 }); return mat; };
         /* ── the site's signs: the room's own name over the board, the
            site file's status by the way in ── */
         var wallIn = S.w / 2 - 0.08;
@@ -42008,6 +42044,7 @@ const ThreeRenderer = (function () {
         if (room.kind === 'box') plateY = Math.min(plateY, S.h - 0.12);
         plate.position.set(0, plateY * U, 0.3 * U);
         grp.add(plate);
+        if (box && !box.free && typeof door.wall === 'string') grp._ew_hqWall = door.wall;   // THE ROOM ROUND THE FIELD: a wall seam fades with its wall
         G.add(grp);
         /* a way that has a BODY (the train) hands back discs in its own frame
            (x along the wall, z into the room, metres); they stand in the
@@ -42221,6 +42258,7 @@ const ThreeRenderer = (function () {
             var plate = new THREE.CSS2DObject(el);
             plate.position.set(0, ((room.kind === 'box') ? Math.min(ph + 0.42, S.h - 0.12) : (ph + 0.42)) * U, (pd / 2) * U);
             grp.add(plate);
+            if (box && typeof door.wall === 'string' && door.wall !== 'free') grp._ew_hqWall = door.wall;   // THE ROOM ROUND THE FIELD: a door fades with its wall
             G.add(grp);
             var rec = { door: door, group: grp, lens: lens, glow: glow, plate: plate, plateEl: el, plateChip: chip, state: 'open', level: level, Rw: Rw, y0: y0, wide: wide, ow: ow, inward: inward, box: box, leaf: leafKey, motion: motion, openT: 0 };
             if (motion && motion.clips) {
@@ -42457,6 +42495,7 @@ const ThreeRenderer = (function () {
             var target = ((fitSpan ? (p.span || cat.span) : (p.h || cat.h)) || 1) * U;
             if (p.ring && cat.wedge && !isBox) { _hqPlaceWedgeRing(p, cat, r, y0, y, target); return; }
             var grp = new THREE.Group();
+            if (box && typeof p.wall === 'string') grp._ew_hqWall = p.wall;   // THE ROOM ROUND THE FIELD: a wall prop fades with its wall
             /* the spot: a wall point pushed in by `depth` (known now for proc props, on load for GLBs), else the free spot */
             function place(depth) {
                 if (box) grp.position.set((box.wx + box.nx * (0.02 + depth / 2)) * U, y * U, (box.wz + box.nz * (0.02 + depth / 2)) * U);
@@ -45948,6 +45987,157 @@ const ThreeRenderer = (function () {
     }
 
     /* ── lifecycle ─────────────────────────────────────────────────────── */
+    /* ══ THE ROOM ROUND THE FIELD (PHASE9_QUALITY_PLAN §10 stage 4 / §11.2 rule 9 —
+       Phase 9 Delivery 10, 2026-09-16) ══
+       A match launched by a STRIKE in the building fights where the officer stood,
+       but the battle used to build the site's Δ (a site room) or a rock-walled
+       window (a complex part) under the site's sky, and the room the walker had
+       just crossed was gone at the cut. Now the battle DRAWS THE ROOM round its
+       board: the HQ builders (_hqBuildBoxShell / _hqBuildGallery /
+       _hqBuildSiteDressing / _hqBuildDoors / _hqBuildCounters / _hqPlaceProps) run
+       once on a SCRATCH record standing in for `_hq` (they read the live record;
+       the battle has none), every piece is baked into the battle's frame through
+       ONE matrix — hqFieldTransform's rule: cell (0,0)'s NW corner (x0, z0 in room
+       metres) lands on tile (0,0)'s, the room's floor on the base level's top,
+       ts / C px per metre — and the lot joins _horizonGroup, so it is built, keyed
+       and disposed with the scenery. THE EYE seeds the first frame from the
+       walker's own camera, so the room the dissolve fades out of is the room the
+       battle stands in.
+       NOT drawn: the board (the battle's own — a site room's walkway floor, apron
+       and skirt go with it, the setting is the ground; a box room's floor is CUT
+       TO THE WINDOW (`_hq.floorHole`), the field's columns fill it), the ceiling
+       (the battle looks in from above), the natives / the walker / the finds /
+       the portals (the fight IS the people), the site room's battle marker (it
+       stood on the board), a prop whose cell became a COVER (rule §5: the column
+       stands for it), the room plates (CSS2D). THE WALLS are per-side occlusion
+       groups (`_ew_hqWall` on every slab, door and wall prop — the Training
+       Room's rule): the wall between the eye and a unit fades. A site room with
+       `edge: 'walls'` whose near builder built an enclosure keeps the builder's
+       walls and drops the shell's. A CAVE chamber is not drawn yet (its grid IS
+       its floor — cutting the ledges to the window is the cave's own stage; the
+       cavern world stands). The marker is battle.js `_ewEncounterRoom()` (the
+       latched run: the room, the field, the field id). Kill-switch
+       `window.EW_HQ_NO_ROOM_IN_BATTLE`; HQ_BATTLE_ROOM_LIGHTS caps the room's
+       point lights in the battle (every light recompiles every material once). */
+    var HQ_BATTLE_ROOM_LIGHTS = 4;
+    var _hqBattleRoomCache = { key: null, R: null };
+    function _hqBattleRoom() {
+        if (typeof window === 'undefined' || window.EW_HQ_NO_ROOM_IN_BATTLE) return null;
+        var run = null;
+        try { run = (typeof window._ewEncounterRoom === 'function') ? window._ewEncounterRoom() : null; } catch (e) { run = null; }
+        if (!run || !run.room) { _hqBattleRoomCache.key = null; _hqBattleRoomCache.R = null; return null; }
+        /* read once per run (the scenery key asks every frame; the marker is a fresh object per call) */
+        var bd = run.field && run.field.board;
+        var ck = run.room + '|' + (run.fieldId || '') + '|' + (bd ? [bd.N, bd.C, bd.x0, bd.z0, bd.half].join(',') : '');
+        if (_hqBattleRoomCache.key === ck) return _hqBattleRoomCache.R;
+        var R = null;
+        try {
+            var D = _hqData(), room = D && D.rooms && D.rooms[run.room];
+            var board = run.field && run.field.board;
+            if (room && room.kind === 'box' && !room.cave && room.shell && board && board.N > 0 && board.C > 0) {
+                var S = room.shell, site = room.fx === 'site';
+                /* a site room's board is the Δ: the console can also file the FULL site from the room — that match stands on its own */
+                var fits = site ? !!(S.grid && S.grid.cells === Math.floor(+board.N)) : true;
+                var T = (fits && typeof hqFieldTransform === 'function') ? hqFieldTransform(board) : null;
+                if (T) {
+                    var entry = (!site && run.fieldId && typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[run.fieldId] : null;
+                    var info = (site && typeof hqSiteBoardInfo === 'function') ? hqSiteBoardInfo(room.site) : null;
+                    var base = site ? ((info && info.base) || 5) : ((typeof HQ_FIELD_RULES !== 'undefined' && HQ_FIELD_RULES.base) || 5);
+                    R = { room: room, roomId: run.room, T: T, site: site, base: base, field: (entry && entry.field) ? entry.field : null };
+                }
+            }
+        } catch (e) { console.warn('[HQ→battle] the room could not be read', e); R = null; }
+        _hqBattleRoomCache.key = ck; _hqBattleRoomCache.R = R;
+        return R;
+    }
+    /* the scenery key's share: the room and the window it is drawn round ('' = no room) */
+    function _hqBattleRoomKey() { var R = _hqBattleRoom(); return R ? ('hq:' + R.roomId + ':' + R.T.x0.toFixed(2) + ',' + R.T.z0.toFixed(2)) : ''; }
+    /* the matrix: room metres (the HQ's U px per metre) → the battle's frame */
+    function _hqBattleRoomMatrix(R, ts) {
+        var U = _hqUnits(), C = R.T.C, s = (ts / C) / U, elev = ts * ELEV_STEP_RATIO;
+        return new THREE.Matrix4().compose(new THREE.Vector3(-R.T.x0 * ts / C, R.base * elev, -R.T.z0 * ts / C), new THREE.Quaternion(), new THREE.Vector3(s, s, s));
+    }
+    /* a COVER cell (the field's raster: '2'..'9' = an IN cell a level or more up — a table, a crate, the landing) at a room point */
+    function _hqBattleRoomCoverAt(R, xm, zm) {
+        if (!R.field || !R.field.cells) return false;
+        var C = R.T.C, ix = Math.floor((xm - R.T.x0) / C), iz = Math.floor((zm - R.T.z0) / C);
+        if (ix < 0 || iz < 0 || ix >= R.T.N || iz >= R.T.N) return false;
+        var row = R.field.cells[iz], ch = row ? String(row).charAt(ix) : '';
+        return ch >= '2' && ch <= '9';
+    }
+    function _hqBuildRoomInBattle(ctx) {
+        var R = _hqBattleRoom(); if (!R || !ctx || typeof THREE === 'undefined' || !_horizonGroup) return;
+        if (ctx.bw !== R.T.N || ctx.bh !== R.T.N) return;   // the board the battle built is not the room's window
+        var room = R.room, U = _hqUnits(), ts = ctx.ts, C = R.T.C;
+        var walled = !!_facilityNearGroup;   // the map's own enclosure (an `occ` near builder) stands: the shell's walls would double it
+        /* the copy the builders read: no battle marker (it stood on the board's centre cell) */
+        var copy = Object.assign({}, room, { counters: (room.counters || []).filter(function (c) { return !!c && c.id !== 'battle' && c.proc !== 'battle_marker'; }) });
+        var saved = _hq;
+        var H = { ghost: true, opts: {}, host: null, room: copy, profile: null, snap: null, scene: null, camera: null, cube: null,
+                  shellGroup: new THREE.Group(), doorGroup: new THREE.Group(), propGroup: new THREE.Group(), charGroup: new THREE.Group(),
+                  doors: [], counters: [], chars: [], blockers: [], landings: [], player: null, fxPulse: [], site: null, sky: null, setting: null, gallery: null,
+                  rails: [], ramps: [], ride: null, finds: [], findLights: 0,
+                  portal: { drawn: false, ghost: null, aim: null, placed: {}, lastKey: '', hold: null, cross: null, issued: false, sight: null, fAt: 0, fFired: false, slot: 'a', ads: false, adsK: 0, vm: null },
+                  tickers: [], propLights: Math.max(0, HQ_PROP_LIGHT_MAX - HQ_BATTLE_ROOM_LIGHTS), props: [], focus: null, tabletops: [],
+                  keys: {}, drag: null, lastDragAt: 0, fp: false, paused: true, ready: false, t0: 0, lastMs: 0, lastDebug: 0,
+                  cam: { yaw: 0, pitch: 0, dist: 0, init: false }, targetKey: '', w: 0, h: 0, dirty: false };
+        if (!R.site) H.floorHole = { x0: R.T.x0, x1: R.T.x0 + R.T.N * C, z0: R.T.z0, z1: R.T.z0 + R.T.N * C };
+        _hq = H;
+        try {
+            H.gallery = _hqGalleryFrame(copy);
+            try { _hqBuildBoxShell(copy); } catch (e) { console.warn('[HQ→battle] shell failed', e); }
+            if (H.gallery) { try { _hqBuildGallery(copy); } catch (e) { console.warn('[HQ→battle] gallery failed', e); } }
+            if (R.site) { try { _hqBuildSiteDressing(copy); } catch (e) { console.warn('[HQ→battle] dressing failed', e); } }
+            try { _hqBuildDoors(copy); } catch (e) { console.warn('[HQ→battle] doors failed', e); }
+            try { _hqBuildCounters(copy); } catch (e) { console.warn('[HQ→battle] counters failed', e); }
+            try { _hqPlaceProps(copy); } catch (e) { console.warn('[HQ→battle] props failed', e); }
+        } finally { _hq = saved; }
+        /* the breathing glows: the room's list into the battle's (cleared with the scenery) */
+        H.fxPulse.forEach(function (p) { if (p && p.mat) _hzGlowPulse.push(p); });
+        var M = _hqBattleRoomMatrix(R, ts);
+        var g = new THREE.Group(); g.name = 'hqRoom:' + R.roomId; g._ew_occNear = true;
+        /* every piece keeps its ROOM-frame transform under a HOLDER that carries the matrix
+           (a GLB prop's onDone re-places its group in room units when the file lands — a
+           baked group would jump); a holder is one occluder root for the fade */
+        var holder = function (name) { var h = new THREE.Group(); h.name = name; h.applyMatrix4(M); h._ew_occNear = true; return h; };
+        var walls = {};
+        var wallOf = function (side) {
+            if (!walls[side]) { var wg = holder('hq_wall_' + side); wg._ew_occWall = side; wg._ew_occFadeTarget = 0.04; g.add(wg); walls[side] = wg; }
+            return walls[side];
+        };
+        /* what stays: by part on a site room (the battle's setting is the ground and, with an enclosure, the walls) / the ceiling never */
+        var drop = R.site ? { floor: true, ceil: true, pipe: true, strip: true, wall: walled } : { ceil: true };
+        var kept = 0, dropped = 0;
+        var take = function (src, isProp) {
+            src.children.slice().forEach(function (c) {
+                src.remove(c);
+                var out = !!(c.isCSS2DObject || (c._ew_hqPart && drop[c._ew_hqPart]) || (R.site && c._ew_hqGround));
+                if (!out && isProp && !c._ew_hqWall && _hqBattleRoomCoverAt(R, c.position.x / U, c.position.z / U)) out = true;   // the column stands for it
+                if (out) { dropped++; try { _disposeR(c); } catch (e) {} return; }
+                var plates = []; c.traverse(function (o) { if (o.isCSS2DObject) plates.push(o); });
+                plates.forEach(function (o) { if (o.parent) o.parent.remove(o); });
+                if (c._ew_hqWall) wallOf(c._ew_hqWall).add(c);
+                else { var h = holder('hq_piece'); h.add(c); g.add(h); }
+                kept++;
+            });
+        };
+        take(H.shellGroup, false); take(H.doorGroup, false); take(H.propGroup, true);
+        g.traverse(function (o) {
+            if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; }
+            if (!o.material) return;
+            var ms = Array.isArray(o.material) ? o.material : [o.material];
+            for (var i = 0; i < ms.length; i++) {
+                var m = ms[i]; if (!m) continue;
+                m._ew_hzNear = true;   // the horizon's altitude fog leaves a near piece alone (the setting's rule)
+                if (m.blending === THREE.AdditiveBlending || m.isSpriteMaterial) { if (m.fog !== false) { m.fog = false; m.needsUpdate = true; } }
+            }
+        });
+        /* the occlusion fade reads the facility group's direct children as its roots */
+        if (_facilityNearGroup) { g.children.slice().forEach(function (c) { g.remove(c); c._ew_occNear = true; _facilityNearGroup.add(c); }); }
+        else { _facilityNearGroup = g; _horizonGroup.add(g); }
+        if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ→battle] the room round the field:', R.roomId, 'kept', kept, 'dropped', dropped, 'walls', Object.keys(walls).join(''), R.site ? '(site)' : '(field)');
+    }
+
     function _hqEnter(opts) {
         opts = opts || {};
         var D = _hqData();

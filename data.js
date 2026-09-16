@@ -31080,8 +31080,9 @@ function hqFieldLayout(site, baseKey, opts) {
     const src = (typeof MAP_LAYOUT_PRESETS !== 'undefined') ? (MAP_LAYOUT_PRESETS[site + '_delta'] || MAP_LAYOUT_PRESETS[site]) : null;
     const env = (src && src.env) ? JSON.parse(JSON.stringify(src.env)) : null;
     /* stage C: a BOX field (a complex part) is indoors — no near setting round it (the site's apron / moat / hull would
-       stand round a room), no streaming motion, THE WORLD inert (`kind: 'room'`); the site's sky and far roster stay
-       until §10 stage 4 draws the room itself as the battle's setting */
+       stand round a room), no streaming motion, THE WORLD inert (`kind: 'room'`); the site's sky and far roster stand
+       over the room, which the battle draws round the window itself since §10 stage 4 (three-renderer.js
+       _hqBuildRoomInBattle reads battle.js _ewEncounterRoom — the room, the window, the raster's covers) */
     if (env && opts.box) { delete env.near; delete env.motion; env.world = { kind: 'room' }; }
     return {
         sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: S - 1, label: 'Earth', baseTerrain: baseKey || 'cave_floor' }, buffer2: null, below: null },

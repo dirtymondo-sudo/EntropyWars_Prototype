@@ -4468,3 +4468,29 @@ hall 56 IN / three heights, the platform 5 wide inside rock, the attic 15 IN
 (RULE #1c): the wall sheets as rock columns, the +2 landing, the eye's first
 frame in a box room.
 
+## PHASE 9 DELIVERY 10 — THE ROOM ROUND THE FIELD (§10 stage 4) (2026-09-16, local delivery)
+An encounter's battle is built INSIDE the room the officer struck from. three-renderer.js
+"THE ROOM ROUND THE FIELD" (right before `_hqEnter`): **`_hqBattleRoom()`** reads battle.js
+**`window._ewEncounterRoom()`** (the latched run's `room` / `field` / `fieldId`; null outside an
+encounter — a plain match never wears a room) and answers `{ room, T, site, base, field }` for a
+box room that is not a cave (a site room only when the board is its Δ); **`_hqBattleRoomMatrix`**
+= ONE matrix, hqFieldTransform's rule (cell (0,0)'s NW corner on tile (0,0)'s, the floor on the
+base top, `(ts / C) / U`); **`_hqBuildRoomInBattle(ctx)`** (from `_buildHorizonScenery` at every
+`scene.add` site, after THE WORLD; **`_hqBattleRoomKey()` rides the horizon key**) runs the HQ
+builders on a SCRATCH `_hq` record in a try / finally (`_hqBuildBoxShell` · `_hqBuildGallery` ·
+`_hqBuildSiteDressing` · `_hqBuildDoors` · `_hqBuildCounters` minus the `battle` marker ·
+`_hqPlaceProps`), filters the pieces (CSS2D plates; `_ew_hqPart` floor / ceil / pipe / strip on a
+site room, `ceil` on a part; a site room's `_ew_hqGround`; a prop on a COVER cell —
+`_hqBattleRoomCoverAt`, the raster's '2'..'9'), bakes each through the matrix and hangs them as the
+occlusion fade's facility group: a piece wearing **`_ew_hqWall`** (every shell slab — set in
+`slab()` — every box-wall door / seam / wall prop) goes into its side's `_ew_occWall` group, so the
+wall between the eye and a unit fades. A scratch record's **`floorHole`** makes the box shell draw
+its floor as four bands round the window (the field's columns fill it). **`_hqBuildSiteDressing`**
+is the site board's tail (signs · signboards · masts · lamps · strips) split off so it can stand
+without the board. RULES: any new piece of a box shell must wear `_ew_hqPart` (the bridge drops by
+part); a builder that reads `_hq` must tolerate the scratch record (null profile / site / setting,
+every list present); `HQ_BATTLE_ROOM_LIGHTS` (4) caps the room's point lights in a battle. Kill-switch
+`EW_HQ_NO_ROOM_IN_BATTLE`. NOT drawn: a cave chamber (the cavern world stands), the console's
+crossing (no marker), the tickers. `npm test` runs `hq-room-in-battle.test.js`. Unseen live (RULE
+#1c): all of it — DOOR_HQ_BUILD_PLAN §9 lists what to eyeball first.
+

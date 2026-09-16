@@ -36473,6 +36473,11 @@
         function _encRun() { return _encMatch || ((window._hqEncounterRun && window._hqEncounterRun.noIntro) ? window._hqEncounterRun : null); }
         /* THE FIELD stage A: the field record map.js's zone builder places the seats from (null outside an encounter) */
         window._ewEncounterField = function () { return (_encMatch && _encMatch.field) || null; };
+        /* THE ROOM ROUND THE FIELD (PHASE9_QUALITY_PLAN §10 stage 4, 2026-09-16): the renderer draws the strike's
+           ROOM round the board — the latched run's room, its field record (the window's frame) and the field id
+           (the rasterised entry: which cells are covers). Null outside an encounter, so a plain match never wears
+           a room. The same object for the whole match (the scenery keys on it). */
+        window._ewEncounterRoom = function () { return _encMatch ? { room: _encMatch.room || null, field: _encMatch.field || null, fieldId: _encMatch.fieldId || null, site: _encMatch.site || null } : null; };
 
         function startMatch() {
             state.startTime = Date.now();
