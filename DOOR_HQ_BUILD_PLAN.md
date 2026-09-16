@@ -8780,3 +8780,39 @@ grip on the Player / Belle CAST rigs (the probe posed the creator base — `gun.
 differently), the ADS feel and its boom in third person, the viewmodel's scale at the real FOV, the bob, the fling
 through a ceiling hatch at speed, the lane rule against a room's every door. NOT built: a holstered gun on the hip,
 a reload / inspect idle, the crosshair (the laser dot is the reticle), D3d (the boom's pitch clamp in a loop).
+
+### 2026-09-16 · PHASE 9 DELIVERY 5 — THE SYNCED BUILDING + THE THREE REVEALS (PHASE9_QUALITY_PLAN §6 D5 + D7; data.js, profile.js, index.html; hq-synced-building.test.js; local, not uploaded)
+**D5 the synced building.** Three more of the building's records ride the progress blob beside the finds and the
+links, MONOTONIC like the counters: `hq.cleared` = `{ '<roomId>': { date, ids } }` (the LATER day wins; the same day
+unions the beaten natives' ids; caps 256 rooms × 32 ids), `hq.encounters` = `{ count, wins, losses, last }`
+(per-field max; `last` = the later day, a HELD over an EXITED on the same day) and `hq.skate` = `{ best: { score,
+text, date }, total, lines, bails }` (the best by score, the tallies by max). data.js `mergeProgressBlobs` carries
+them (sanitised, the shape always there); `hqClearedUnion` / `hqEncountersUnion` / `hqSkateUnion` are the joins,
+`hqEncounterLog` / `hqEncounterCleared` / `hqSkateRecord` READ the union of the local record and the blob (a second
+device sees the room you cleared today, the log, the best line), `hqEncounterRecord` / `hqSkateBank` continue from
+the union and WRITE both (`hqSyncedHq` never invents a v2 blob), profile.js `profileLoadProgress` folds the local
+record in on every read through `hqDoorSyncFold` (a pre-blob record reaches the server on the next push). The join
+is the counters' — right under full-blob pushes; two devices fighting at the same minute lose one count, the same
+as every counter. `portal` (a visit's rope) and `punch` (a day's clock) stay local. **data.js → Render as well as
+R2** (the server merges off it).
+**D7 the last three reveals**, as room VARIANTS on the complex parts (the same room, the same doors, the roll on a
+fresh arrival like Room 86's; the way in re-plated): the Dutchman's gun deck — **BATTLE STATIONS** (`hours [21, 5]`,
+else `p 0.25`: the crew that is not there stands inboard of every gun, the lanterns burn red, the powder is up from
+the hold, the second match lit, the gunnery table signed); the Strip's casino floor — **THE DEAD HOUR** (`hours [3,
+6]`: the tables empty, the dealer dealing to the room, the one who never left at his machine, the floor being done)
+and **JACKPOT** (`p 0.2`: the east bank has paid, the pit boss over the winner, a crowd of roster draws, the cage
+paying out in forms); Downtown's platform — **RUSH HOUR** (`hours [7, 10]`: a crowd at the edge, every bench taken,
+the shift on the clock, the papers dropped) and **LAST TRAIN** (`hours [0, 5]`: the tubes dropped, one bulb, the
+zombie alone). The floor with no clock now tells you the hour by what is happening on it — the identity, kept: no
+clock and no window in any beat, one door, eight machines, the dealer never leaves the table; the platform's people
+stay off the track; the four guns stand where they stand. Every line is Claude's DRAFT (A15). doorhq.test.js's
+building-wide roll pin reads the cafeteria's key (the roll names every room with a visit variant now);
+achievements.test.js's empty-blob shape grew the three keys. Tests: hq-synced-building.test.js (6: the merge, the
+union reads, the dual writes + the fold, the sheets through the urban / Dutchman prop rules, the identities, the
+roll by the clock). `npm test` 1480 / 1476 / 0 / 4 skipped.
+- **Delivery:** `ENTROPY_WARS_PHASE9_SYNCED_BUILDING.zip` — data.js → R2 AND Render, profile.js → R2, index.html →
+  Render (`20260916-synced-building-06-cors`), tests / docs → the repo. NOT built: D3d (the boom's pitch clamp in a
+  loop — playtest first); §8 item 10 is the user's playtest. UNSEEN LIVE (RULE #1c): the red gun deck under the
+  2.7 m beam, the crowd at the machine, the platform at rush hour against the train's arrival, the second device's
+  first read of a cleared room.
+

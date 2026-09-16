@@ -10794,7 +10794,7 @@ const ACH_RECORD_DEFS = [
 
 // Hard ceilings so a hostile blob can't balloon the stored row: key-count
 // caps per section plus a universal value clamp.
-const ACH_MERGE_CAPS = { counters: 256, champs: 256, unlocked: 12000, value: 1e9, finds: 4000, links: 512 };
+const ACH_MERGE_CAPS = { counters: 256, champs: 256, unlocked: 12000, value: 1e9, finds: 4000, links: 512, cleared: 256, clearedIds: 32 };
 
 function mergeProgressBlobs(a, b) {
   const METRIC_RE = /^[A-Za-z0-9_]{1,48}$/;                 // counter metric names
@@ -10832,10 +10832,59 @@ function mergeProgressBlobs(a, b) {
      date (a discovery is made once). THE WORLD tab draws an unseen leg
      dotted and its far station unlabelled; GO stays for every station. */
   const LINK_RE = /^[a-z0-9_]{1,64}$/;
-  const out = { v: 2, counters: {}, champs: {}, records: {}, unlocked: {}, hq: { finds: { taken: {} }, links: { seen: {} } } };
-  let nCounters = 0, nChamps = 0, nUnlocked = 0, nFinds = 0, nLinks = 0;
+  /* THE SYNCED BUILDING (PHASE9_QUALITY_PLAN §6 D5, 2026-09-16): three more of
+     the building's records ride the blob, MONOTONIC like the counters —
+     `hq.cleared` = { '<roomId>': { date, ids: [] } } (the LATER day wins; the
+     same day unions the beaten natives' ids), `hq.encounters` = { count,
+     wins, losses, last } (per-field max; `last` = the later day, a HELD beats
+     an EXITED on the same day) and `hq.skate` = { best: { score, text,
+     date }, total, lines, bails } (the best by score; the tallies per-field
+     max). The join is the counters' (right under full-blob pushes); `portal`
+     and `punch` stay local (a visit's rope; a day's clock). */
+  const ROOM_RE = /^[A-Za-z0-9_]{1,80}$/;
+  const SPOT_RE = /^[A-Za-z0-9_-]{1,48}$/;
+  const RACE_TXT = v => (typeof v === 'string' && v.length <= 48) ? v : null;
+  const out = { v: 2, counters: {}, champs: {}, records: {}, unlocked: {}, hq: { finds: { taken: {} }, links: { seen: {} }, cleared: {}, encounters: { count: 0, wins: 0, losses: 0, last: null }, skate: { best: null, total: 0, lines: 0, bails: 0 } } };
+  let nCounters = 0, nChamps = 0, nUnlocked = 0, nFinds = 0, nLinks = 0, nCleared = 0;
   for (const src of [a, b]) {
     if (!src || typeof src !== 'object') continue;
+    const hqSrc = (src.hq && typeof src.hq === 'object') ? src.hq : {};
+    /* hq.cleared */
+    const cleared = (hqSrc.cleared && typeof hqSrc.cleared === 'object') ? hqSrc.cleared : {};
+    for (const key of Object.keys(cleared)) {
+      if (!ROOM_RE.test(key) || badKey(key)) continue;
+      const raw = cleared[key];
+      if (!raw || typeof raw !== 'object' || typeof raw.date !== 'string' || !DATE_RE.test(raw.date)) continue;
+      const ids = (Array.isArray(raw.ids) ? raw.ids : []).filter(v => typeof v === 'string' && SPOT_RE.test(v)).slice(0, ACH_MERGE_CAPS.clearedIds);
+      const dst = out.hq.cleared;
+      if (dst[key] === undefined) { if (nCleared >= ACH_MERGE_CAPS.cleared) continue; nCleared++; dst[key] = { date: raw.date, ids: ids.slice() }; continue; }
+      if (raw.date > dst[key].date) { dst[key] = { date: raw.date, ids: ids.slice() }; continue; }
+      if (raw.date < dst[key].date) continue;
+      for (const id of ids) { if (dst[key].ids.length >= ACH_MERGE_CAPS.clearedIds) break; if (dst[key].ids.indexOf(id) < 0) dst[key].ids.push(id); }
+    }
+    /* hq.encounters */
+    const enc = (hqSrc.encounters && typeof hqSrc.encounters === 'object') ? hqSrc.encounters : null;
+    if (enc) {
+      const E = out.hq.encounters;
+      E.count = Math.max(E.count, clampVal(enc.count)); E.wins = Math.max(E.wins, clampVal(enc.wins)); E.losses = Math.max(E.losses, clampVal(enc.losses));
+      const L = enc.last;
+      if (L && typeof L === 'object' && typeof L.date === 'string' && DATE_RE.test(L.date)) {
+        const cand = { site: RACE_TXT(L.site), room: (typeof L.room === 'string' && ROOM_RE.test(L.room)) ? L.room : null, race: RACE_TXT(L.race), date: L.date, won: !!L.won };
+        const cur = E.last;
+        if (!cur || cand.date > cur.date || (cand.date === cur.date && cand.won && !cur.won)) E.last = cand;
+      }
+    }
+    /* hq.skate */
+    const sk = (hqSrc.skate && typeof hqSrc.skate === 'object') ? hqSrc.skate : null;
+    if (sk) {
+      const S = out.hq.skate;
+      S.total = Math.max(S.total, clampVal(sk.total)); S.lines = Math.max(S.lines, clampVal(sk.lines)); S.bails = Math.max(S.bails, clampVal(sk.bails));
+      const B = sk.best;
+      if (B && typeof B === 'object') {
+        const score = clampVal(B.score);
+        if (score > 0 && (!S.best || score > S.best.score)) S.best = { score, text: (typeof B.text === 'string') ? B.text.slice(0, 160) : '', date: (typeof B.date === 'string' && DATE_RE.test(B.date)) ? B.date : null };
+      }
+    }
     const seen = (src.hq && typeof src.hq === 'object' && src.hq.links && typeof src.hq.links === 'object' && src.hq.links.seen && typeof src.hq.links.seen === 'object') ? src.hq.links.seen : {};
     for (const key of Object.keys(seen)) {
       if (!LINK_RE.test(key) || badKey(key)) continue;
@@ -27236,6 +27285,44 @@ const DOOR_HQ = {
                 '“The match is lit.” “It is always lit.” “Since when?” “1717.”',
             ],
             spawn: { x: 0, z: 2.6, face: 0 },
+            /* D7 THE REVEAL (PHASE9_QUALITY_PLAN §6, 2026-09-16): THE GUNS RUN OUT. By
+               night, or one visit in four, the deck is at BATTLE STATIONS — the
+               crew that is not there stands at every gun, the battle lanterns
+               burn red, the powder is up from the hold, the slow match is out of
+               its tub. Same room, same guns (they stand where they stand; the
+               crew runs them), same doors. Lines are Claude's DRAFT (A15). */
+            variants: {
+                battle_stations: {
+                    when: { hours: [21, 5], p: 0.25 },
+                    label: 'THE FLYING DUTCHMAN · BATTLE STATIONS', sub: 'THE GUNS RUN OUT · THE MATCH IS LIT · CLEAR THE DECK',
+                    why: 'the guns are run out and there is nobody to have run them; by night the ship fights something',
+                    door: { sub: 'BATTLE STATIONS · THE GUN DECK' },
+                    shell: { mood: { light: 0xff6a3a, ambient: 0.34 } },
+                    drop: ['paper_sheet', 'cardboard_box'],
+                    add: [
+                        { key: 'cardboard_boxes',   x: -4.4, z: 0.4, face: 350 },                      // the powder, up from the hold, at the guns
+                        { key: 'cardboard_boxes',   x: 4.4, z: -0.8, face: 15 },
+                        { key: 'cardboard_box',     x: -3.2, z: -2.4, face: 40 },                      // the shot, broken out
+                        { key: 'cardboard_box',     x: 5.4, z: 2.2, face: 300 },
+                        { key: 'mop_bucket',        x: -1.6, z: 3.6 },                                 // the match tub, out
+                        { key: 'wall_torch',        wall: 'n', x: -1.6, mount: 1.4 },                  // the second match, lit
+                        { key: 'floor_stain',       x: 3.0, z: 0.4 },
+                        { key: 'paper_sheet',       x: 1.6, z: 1.2, y: 0.01, face: 300 },              // the gunnery table, SIGNED tonight
+                    ],
+                    npcSpots: [
+                        { x: -5.0, z: -1.2, face: 270, race: 'pirate',   say: ['“Run out.” “Run out what?” “The gun.” “At what?” “Run it out.”'] },   // THE GUN CREW: one at every gun
+                        { x: -5.0, z: 2.0, face: 270, race: 'skeleton' },
+                        { x: 5.0, z: -2.0, face: 90, race: 'skeleton', say: ['“Something off the port quarter.” “That is starboard.” “Then it is on both.”'] },
+                        { x: 5.0, z: 0.6, face: 90, race: 'pirate' },
+                        { x: 0, z: -2.0, face: 0, race: 'pirate', say: ['“Clear the deck.” “Of what?” “Of you.”'] },                                  // the gunner at the magazine step
+                    ],
+                    lines: [
+                        '“Battle stations.” “Against whom?” “The sea.” “The sea is winning.” “It has been winning since 1717.”',
+                        '“The crew is at the guns.” “There is no crew.” “Then who is at the guns?” “Do not look.”',
+                        '“The match is lit.” “It is always lit.” “It is lit MORE.”',
+                    ],
+                },
+            },
         },
         /* ── THE CAPTAIN’S CABIN — the stern windows, the table, the log open at tomorrow ── */
         site_prebuilt_revenge_cabin: {
@@ -27522,6 +27609,69 @@ const DOOR_HQ = {
                 '“The eye in the sky.” “Which one?” “All of them.” “They are the same eye.”',
             ],
             spawn: { x: -5.6, z: 4.6, face: 90 },
+            /* D7 THE REVEAL (PHASE9_QUALITY_PLAN §6, 2026-09-16): THE FLOOR WITH NO
+               CLOCK — so the floor never knows what time it is, and the officer
+               finds out only by what is happening on it. Two beats, never a clock:
+               THE DEAD HOUR (3–6 in the morning by YOUR clock: the tables empty,
+               the dealer dealing to nobody, the machines still going, the eye
+               still open) and THE JACKPOT (one visit in five: a machine on the
+               east bank has paid and the whole floor is round it). Same room,
+               same one door. Lines are Claude's DRAFT (A15). */
+            variants: {
+                dead_hour: {
+                    when: { hours: [3, 6] },
+                    label: 'THE STRIP · THE CASINO FLOOR', sub: 'THE DEAD HOUR · THE TABLES EMPTY · THE MACHINES ON',
+                    why: 'there is no clock; the floor at this hour is how you learn the hour',
+                    door: { sub: 'THE DEAD HOUR · THE CASINO FLOOR' },
+                    shell: { mood: { light: 0xe0a880, ambient: 0.3 } },
+                    drop: ['solo_cup', 'papers_b'],
+                    add: [
+                        { key: 'mop_bucket',        x: 2.6, z: 1.2 },                                  // the floor gets done in the dead hour
+                        { key: 'wet_floor_sign',    x: 3.2, z: 0.2, face: 30 },
+                        { key: 'floor_stain',       x: -2.4, z: 4.0 },
+                        { key: 'cardboard_box',     x: -7.6, z: 4.0, face: 20 },                       // the night's take, in a box
+                    ],
+                    npcSpots: [
+                        { x: 0, z: -2.5, face: 180, race: 'politician', say: ['“Twenty-one.” “There is nobody at the table.” “The room is at the table.” “The room pays three to two.”'] },   // THE DEALER deals on
+                        { x: 4.8, z: -3.2, face: 200, race: 'conspiracy theorist', say: ['“This one is due.” “It is four in the morning.” “Then it is due at four.”'] },                    // the one who never left
+                    ],
+                    onlineSpots: [{ x: -5.2, z: -3.3, face: 0 }],
+                    lines: [
+                        '“What time is it?” “There is no clock.” “The dealer is alone.” “Then it is the dead hour.”',
+                        '“The machines never stop.” “Somebody has to be losing.” “The Department.” “On expenses.”',
+                        '“The eye in the sky.” “Awake?” “It does not sleep.” “At this hour it is the only one.”',
+                    ],
+                },
+                jackpot: {
+                    when: { p: 0.2 },
+                    label: 'THE STRIP · THE CASINO FLOOR', sub: 'JACKPOT · THE EAST BANK · THE WHOLE FLOOR IS ROUND IT',
+                    why: 'one machine has paid; nobody at the tables, everybody at the machine, the cage counting',
+                    door: { sub: 'A JACKPOT ON THE FLOOR · THE CASINO' },
+                    shell: { mood: { light: 0xffe090, ambient: 0.48 } },
+                    drop: ['papers_b'],
+                    add: [
+                        { key: 'cardboard_box',     x: 6.6, z: -3.2, face: 330 },                      // the chips, brought to the machine
+                        { key: 'cardboard_box',     x: 3.2, z: -3.6, face: 70 },
+                        { key: 'solo_cup',          x: 5.0, z: -3.9, y: 0.0 },                         // dropped
+                        { key: 'papers_b',          x: -6.0, z: -0.2, y: 0.76 },                        // the cage: the forms it takes to pay one out
+                        { key: 'floor_stain',       x: 4.4, z: -2.6 },
+                    ],
+                    npcSpots: [
+                        { x: 0, z: -2.5, face: 180, race: 'politician', say: ['“Twenty-one.” “Nobody is playing.” “The room is playing.” “The room just lost.”'] },   // THE DEALER, deserted
+                        { x: 5.2, z: -3.2, face: 200, race: 'conspiracy theorist', say: ['“I said this one.” “You said all of them.” “And I was right about this one.”'] },   // THE WINNER, at the machine
+                        { x: 4.2, z: -2.6, face: 160, race: 'gangster', say: ['“Nobody touch the machine.” “He is touching the machine.” “He is allowed.”'] },              // the pit boss, over him
+                        { x: 6.2, z: -2.4, face: 230 },                                                                                                                       // the crowd (roster draws)
+                        { x: 5.6, z: -1.6, face: 190 },
+                        { x: 3.4, z: -1.8, face: 140 },
+                    ],
+                    onlineSpots: [{ x: -5.2, z: -3.3, face: 0 }, { x: 4.6, z: -1.2, face: 170 }],
+                    lines: [
+                        '“It paid.” “Which one?” “The one he said.” “He said all of them.”',
+                        '“The cage is counting.” “In forms.” “It pays out in forms.” “Finance approved the forms.”',
+                        '“No clock.” “No window.” “A jackpot.” “That is how you know the time: it is time to leave.” “Through the chapel.”',
+                    ],
+                },
+            },
         },
         /* ── THE TOWER LOBBY — the ground floor of the tower that came down in 1954, and comes down every year ── */
         site_prebuilt_downtown_lobby: {
@@ -27658,6 +27808,66 @@ const DOOR_HQ = {
                 '“Doors open.” “Nobody gets on.” “Somebody got off.” “In 1954.”',
             ],
             spawn: { x: 1.5, z: 12, face: 0 },
+            /* D7 THE REVEAL (PHASE9_QUALITY_PLAN §6, 2026-09-16): THE PLATFORM AND THE
+               TRAIN. The train arrives on every entry (the `train` way, its own
+               ticker); the platform tells you WHEN. RUSH HOUR (7–10 by your
+               clock): a crowd at the edge, the shift on the clock, every bench
+               taken. LAST TRAIN (midnight to 5): the tubes off, one bulb, the
+               zombie alone on the platform he has never left. Same room, same
+               stair, the train on the same track. Lines are Claude's DRAFT (A15). */
+            variants: {
+                rush_hour: {
+                    when: { hours: [7, 10] },
+                    label: 'DOWNTOWN · THE PLATFORM', sub: 'RUSH HOUR · STAND CLEAR OF THE DOORS · ALL LINES DELAYED',
+                    why: 'the train comes in to a full platform; nobody gets on',
+                    door: { sub: 'RUSH HOUR · THE PLATFORM' },
+                    shell: { mood: { light: 0xfff4d0, ambient: 0.52 } },
+                    drop: ['wet_floor_sign'],
+                    add: [
+                        { key: 'paper_sheet',       x: 2.2, z: -2.0, y: 0.01, face: 80 },              // the morning papers, dropped
+                        { key: 'paper_sheet',       x: 1.4, z: 6.4, y: 0.01, face: 330 },
+                        { key: 'solo_cup',          x: 3.2, z: 2.6, y: 0.0 },                          // a coffee, abandoned at the edge
+                        { key: 'cardboard_box',     x: 3.2, z: -11.4, face: 15 },                       // a delivery nobody signed for
+                    ],
+                    npcSpots: [
+                        { x: 2.4, z: 0, face: 270, race: 'zombie', say: ['“Waiting.” “Everyone is waiting.” “Everyone is waiting for the same train.” “This one goes back.”'] },
+                        { x: 2.6, z: -3.4, face: 270, race: 'antihero', say: ['“Not waiting.” “You are on the platform.” “I am on the platform. That is not waiting.”'] },
+                        { x: 0.4, z: -1.4, face: 270 },                                                  // THE CROWD at the edge (roster draws)
+                        { x: 0.6, z: 2.2, face: 270 },
+                        { x: 0.5, z: -5.2, face: 270 },
+                        { x: 0.4, z: 5.8, face: 270 },
+                        { x: 2.0, z: 8.6, face: 180, say: ['“Which way is up?” “The stair.” “Which way is the stair?” “Up.”'] },   // lost at the gates
+                    ],
+                    onlineSpots: [{ x: 2.4, z: 4, face: 270 }, { x: 2.4, z: -6, face: 270 }, { x: 0.6, z: -8.2, face: 270 }],
+                    lines: [
+                        '“Rush hour.” “Nobody gets on.” “Everybody is late.” “For a train that is here.”',
+                        '“Stand clear of the doors.” “They are open.” “Stand clear of them anyway.”',
+                        '“All lines delayed.” “By how much?” “The same amount.” “It is on the timetable.”',
+                    ],
+                },
+                last_train: {
+                    when: { hours: [0, 5] },
+                    label: 'DOWNTOWN · THE PLATFORM', sub: 'THE LAST TRAIN · ONE BULB · MIND THE GAP',
+                    why: 'the tubes are off and the train still comes; the one who waits is still waiting',
+                    door: { sub: 'THE LAST TRAIN · THE PLATFORM' },
+                    shell: { mood: { light: 0xc0d0ff, ambient: 0.22 } },
+                    drop: ['flicker_tube', 'paper_sheet', 'wet_floor_sign'],
+                    add: [
+                        { key: 'floor_stain',       x: 2.0, z: 8.4 },
+                        { key: 'cardboard_box',     x: 3.2, z: -11.2, face: 340 },                      // somebody's; they got off in 1954
+                        { key: 'mop_bucket',        x: 3.2, z: 11.6 },                                  // the night clean, not started
+                    ],
+                    npcSpots: [
+                        { x: 2.4, z: 0, face: 270, race: 'zombie', say: ['“Last train.” “It is here.” “That is the first train.” “Then I have been waiting a long time.”'] },
+                    ],
+                    onlineSpots: [{ x: 2.4, z: 4, face: 270 }],
+                    lines: [
+                        '“The last train.” “It left.” “It is at the platform.” “Then that is the first train.”',
+                        '“One bulb.” “The tubes are off.” “Somebody switched them off.” “In 1954.”',
+                        '“Mind the gap.” “Between what?” “The train and the platform.” “And the years.”',
+                    ],
+                },
+            },
         },
         /* ══════════════════════════════════════════════════════════════════
            H-WING (HQ plan 5.5, stage 1 — 2026-09-14 rev 4). See DOOR_HQ.hwing
@@ -30055,40 +30265,126 @@ function hqEncounterReturnSpot(run) {
     let face = (yaw * 180 / Math.PI) % 360; if (face < 0) face += 360;
     return { x: +w.x, z: +w.z, y: isFinite(+w.y) ? +w.y : 0, face: Math.round(face * 100) / 100, swing: true };
 }
+/* ── THE SYNCED BUILDING (PHASE9_QUALITY_PLAN §6 D5, 2026-09-16) ──────────
+   Three more of the building's records live in TWO places, like the finds
+   and the links: the LOCAL record (`door.hq.cleared` / `.encounters` /
+   `.skate`) and the SYNCED blob (`progress.hq.cleared` / `.encounters` /
+   `.skate` — mergeProgressBlobs carries them MONOTONIC: the later day, the
+   larger count, the best score). Every READ is the UNION (a second device
+   sees the rooms you cleared today and the line you landed), every WRITE
+   lands in both (the caller saves once, the debounced push carries it);
+   profile.js folds the local record into the blob on every read through
+   hqDoorSyncFold. `portal` and `punch` stay local. */
+const HQ_SYNC_ROOM_RE = /^[A-Za-z0-9_]{1,80}$/;
+const HQ_SYNC_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+/* the synced `hq` object on the blob — never invents a progress blob (ensureProgress owns the migration) */
+function hqSyncedHq(profile, create) {
+    const prog = profile && profile.progress;
+    if (!prog || typeof prog !== 'object' || !(prog.v >= 2)) return null;
+    if (!prog.hq || typeof prog.hq !== 'object') { if (!create) return null; prog.hq = {}; }
+    return prog.hq;
+}
+function hqClearedUnion(a, b) {
+    const out = {};
+    [a, b].forEach(src => {
+        if (!src || typeof src !== 'object') return;
+        Object.keys(src).forEach(k => {
+            if (!HQ_SYNC_ROOM_RE.test(k)) return;
+            const c = src[k];
+            if (!c || typeof c !== 'object' || typeof c.date !== 'string' || !HQ_SYNC_DATE_RE.test(c.date)) return;
+            const ids = (Array.isArray(c.ids) ? c.ids : []).filter(v => typeof v === 'string');
+            const cur = out[k];
+            if (!cur || c.date > cur.date) { out[k] = { date: c.date, ids: ids.slice() }; return; }
+            if (c.date < cur.date) return;
+            ids.forEach(id => { if (cur.ids.indexOf(id) < 0) cur.ids.push(id); });   // the same day: the union of the beaten
+        });
+    });
+    return out;
+}
+function hqEncountersUnion(a, b) {
+    const out = { count: 0, wins: 0, losses: 0, last: null };
+    [a, b].forEach(src => {
+        if (!src || typeof src !== 'object') return;
+        out.count = Math.max(out.count, src.count | 0); out.wins = Math.max(out.wins, src.wins | 0); out.losses = Math.max(out.losses, src.losses | 0);
+        const L = src.last;
+        if (L && typeof L === 'object' && typeof L.date === 'string') {
+            const cur = out.last;
+            if (!cur || L.date > cur.date || (L.date === cur.date && L.won && !cur.won)) out.last = { site: L.site || null, room: L.room || null, race: L.race || null, date: L.date, won: !!L.won };
+        }
+    });
+    return out;
+}
+function hqSkateUnion(a, b) {
+    const out = { best: null, total: 0, lines: 0, bails: 0 };
+    [a, b].forEach(src => {
+        if (!src || typeof src !== 'object') return;
+        out.total = Math.max(out.total, src.total | 0); out.lines = Math.max(out.lines, src.lines | 0); out.bails = Math.max(out.bails, src.bails | 0);
+        const B = src.best;
+        if (B && typeof B === 'object' && (B.score | 0) > 0 && (!out.best || (B.score | 0) > out.best.score)) out.best = { score: B.score | 0, text: String(B.text || '').slice(0, 160), date: B.date || null };
+    });
+    return out;
+}
+/* profile.js's fold (profileLoadProgress): the local `door.hq` record into the
+   blob's `hq` on every read — claims filed before the blob carried them, or on a
+   profile that had no v2 blob at the write. Pure over the objects handed in. */
+function hqDoorSyncFold(hq, door) {
+    if (!hq || typeof hq !== 'object') return hq;
+    const L = (door && typeof door === 'object' && door.hq && typeof door.hq === 'object') ? door.hq : {};
+    hq.cleared = hqClearedUnion(hq.cleared, L.cleared);
+    hq.encounters = hqEncountersUnion(hq.encounters, L.encounters);
+    const sk = hqSkateUnion(hq.skate, L.skate);
+    hq.skate = { best: sk.best, total: sk.total, lines: sk.lines, bails: sk.bails };
+    return hq;
+}
+/* the union reads */
+function hqClearedRecord(profile) {
+    let local = null, synced = null;
+    try { const r = profile && profile.door && profile.door.hq && profile.door.hq.cleared; if (r && typeof r === 'object') local = r; } catch (e) {}
+    try { const h = profile && profile.progress && profile.progress.hq && profile.progress.hq.cleared; if (h && typeof h === 'object') synced = h; } catch (e) {}
+    return hqClearedUnion(local, synced);
+}
 /* the record: door.hq.encounters — the ONE write (the caller saves). STAGE 2
    (2026-09-15): a WIN also files THE CLEARED ROOM — `door.hq.cleared[roomId] =
    { date, ids }` (the natives beaten there TODAY, by their spawn id): the
    renderer leaves them out of the room until tomorrow (the daily rule) and a
-   guarded find (hqRoomGuarded) glows once the room is cleared. */
+   guarded find (hqRoomGuarded) glows once the room is cleared. D5 (2026-09-16):
+   the write starts from the UNION (a second device continues the count) and
+   lands in the synced blob too. */
 function hqEncounterRecord(profile, ev) {
     if (!profile || !ev) return null;
     if (!profile.door || typeof profile.door !== 'object') profile.door = {};
     if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
     const H = profile.door.hq;
-    if (!H.encounters || typeof H.encounters !== 'object') H.encounters = { count: 0, wins: 0, losses: 0, last: null };
-    const E = H.encounters;
+    const E = H.encounters = hqEncounterLog(profile);
     E.count = (E.count | 0) + 1;
     if (ev.won) E.wins = (E.wins | 0) + 1; else E.losses = (E.losses | 0) + 1;
     const date = ev.date || hqToday();
     E.last = { site: ev.site || null, room: ev.room || null, race: ev.race || null, date, won: !!ev.won };
     if (ev.won && ev.room) {
-        if (!H.cleared || typeof H.cleared !== 'object') H.cleared = {};
-        let c = H.cleared[ev.room];
-        if (!c || typeof c !== 'object' || c.date !== date) c = H.cleared[ev.room] = { date, ids: [] };
+        const C = H.cleared = hqClearedRecord(profile);
+        let c = C[ev.room];
+        if (!c || typeof c !== 'object' || c.date !== date) c = C[ev.room] = { date, ids: [] };
         if (!Array.isArray(c.ids)) c.ids = [];
         if (ev.id && c.ids.indexOf(ev.id) < 0) c.ids.push(String(ev.id));
     }
+    const synced = hqSyncedHq(profile, true);
+    if (synced) {
+        synced.encounters = { count: E.count, wins: E.wins, losses: E.losses, last: Object.assign({}, E.last) };
+        if (ev.won && ev.room) synced.cleared = hqClearedUnion(synced.cleared, H.cleared);
+    }
     return E;
 }
-/* the read: { count, wins, losses, last } — never null */
+/* the read: { count, wins, losses, last } — never null; the UNION of both records (D5) */
 function hqEncounterLog(profile) {
-    const E = profile && profile.door && profile.door.hq && profile.door.hq.encounters;
-    return { count: (E && E.count) | 0, wins: (E && E.wins) | 0, losses: (E && E.losses) | 0, last: (E && E.last) || null };
+    let local = null, synced = null;
+    try { const r = profile && profile.door && profile.door.hq && profile.door.hq.encounters; if (r && typeof r === 'object') local = r; } catch (e) {}
+    try { const h = profile && profile.progress && profile.progress.hq && profile.progress.hq.encounters; if (h && typeof h === 'object') synced = h; } catch (e) {}
+    return hqEncountersUnion(local, synced);
 }
-/* THE CLEARED ROOM: { date, ids } when the officer won in this room TODAY, else null (yesterday's clearing has lapsed — the room repopulates) */
+/* THE CLEARED ROOM: { date, ids } when the officer won in this room TODAY, else null (yesterday's clearing has lapsed — the room repopulates); the UNION of both records (D5) */
 function hqEncounterCleared(profile, roomId, now) {
-    const C = profile && profile.door && profile.door.hq && profile.door.hq.cleared;
-    const c = C && roomId && C[roomId];
+    if (!profile || !roomId) return null;
+    const c = hqClearedRecord(profile)[roomId];
     if (!c || typeof c !== 'object') return null;
     const date = hqToday(now ? new Date(now) : undefined);
     if (c.date !== date) return null;
@@ -30190,7 +30486,12 @@ function hqSkateIssueFree() { return !!HQ_SKATE_RULES.free; }
 function hqSkateRecord(profile, make) {
     const empty = { deck: false, since: null, best: null, total: 0, lines: 0, bails: 0 };
     if (!profile) return empty;
-    if (!make) { const r = profile.door && profile.door.hq && profile.door.hq.skate; return (r && typeof r === 'object') ? Object.assign({}, empty, r) : empty; }
+    if (!make) {   /* THE SYNCED BUILDING (D5): the read is the UNION of the local book and the blob's (the best line, the larger tallies); the deck + since are local */
+        const r = profile.door && profile.door.hq && profile.door.hq.skate;
+        const local = (r && typeof r === 'object') ? r : null;
+        let synced = null; try { const h = profile.progress && profile.progress.hq && profile.progress.hq.skate; if (h && typeof h === 'object') synced = h; } catch (e) {}
+        return Object.assign({}, empty, local || {}, hqSkateUnion(local, synced));
+    }
     if (!profile.door || typeof profile.door !== 'object') profile.door = {};
     if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
     if (!profile.door.hq.skate || typeof profile.door.hq.skate !== 'object') profile.door.hq.skate = Object.assign({}, empty);
@@ -30210,10 +30511,15 @@ function hqSkateScore(tricks, pts) { const n = Array.isArray(tricks) ? tricks.le
 function hqSkateBank(profile, ev) {
     if (!profile || !ev) return null;
     const sk = hqSkateRecord(profile, true);
-    if (ev.bail) { sk.bails = (sk.bails | 0) + 1; return sk; }
-    const score = Math.max(0, ev.score | 0);
-    sk.total = (sk.total | 0) + score; sk.lines = (sk.lines | 0) + 1;
-    if (!sk.best || score > (sk.best.score | 0)) sk.best = { score, text: String(ev.text || '').slice(0, 160), date: ev.date || hqToday() };
+    Object.assign(sk, hqSkateUnion(sk, hqSyncedHq(profile) && hqSyncedHq(profile).skate));   // D5: continue from the UNION (a second device's line counts)
+    if (ev.bail) { sk.bails = (sk.bails | 0) + 1; }
+    else {
+        const score = Math.max(0, ev.score | 0);
+        sk.total = (sk.total | 0) + score; sk.lines = (sk.lines | 0) + 1;
+        if (!sk.best || score > (sk.best.score | 0)) sk.best = { score, text: String(ev.text || '').slice(0, 160), date: ev.date || hqToday() };
+    }
+    const synced = hqSyncedHq(profile, true);   // and into the blob (the deck / since stay local — the deck is a find claim already)
+    if (synced) synced.skate = { best: sk.best ? Object.assign({}, sk.best) : null, total: sk.total | 0, lines: sk.lines | 0, bails: sk.bails | 0 };
     return sk;
 }
 /* the ONE read for the pill, the panel, the renderer: who holds it, what stands where, which slot goes next */
@@ -31998,6 +32304,7 @@ if (typeof window !== 'undefined') {
     /* THE ENCOUNTER (HQ plan 9.4 stage 1, 2026-09-15 rev 16) */
     window.HQ_ENCOUNTER_RULES = HQ_ENCOUNTER_RULES; window.hqEncounterRoomOk = hqEncounterRoomOk; window.hqEncounterCharOk = hqEncounterCharOk; window.hqEncounterGesture = hqEncounterGesture;
     window.hqEncounterConfig = hqEncounterConfig; window.hqEncounterLaunch = hqEncounterLaunch; window.hqEncounterRecord = hqEncounterRecord; window.hqEncounterLog = hqEncounterLog;
+    window.hqSyncedHq = hqSyncedHq; window.hqClearedUnion = hqClearedUnion; window.hqEncountersUnion = hqEncountersUnion; window.hqSkateUnion = hqSkateUnion; window.hqDoorSyncFold = hqDoorSyncFold; window.hqClearedRecord = hqClearedRecord;   // THE SYNCED BUILDING (D5)
     window.hqEncounterCleared = hqEncounterCleared; window.hqRoomGuarded = hqRoomGuarded; window.hqEncounterEye = hqEncounterEye;
     window.hqEncounterLead = hqEncounterLead; window.hqEncounterReturnSpot = hqEncounterReturnSpot;
     /* SKATEBOARDING (HQ plan 9.8 stage 1, 2026-09-15) */

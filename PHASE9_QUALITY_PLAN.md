@@ -340,6 +340,21 @@ the sleeve), ONE TRIGGER (left click shoots the selected threshold, R / 1 / 2 th
 down sights), THE WALL (the hit snapped onto the shell plane, the frame's own centre, a frame-sized fit), THE CARRY
 (momentum through a pair, mapped through the doors' frames, run off on the ground, kept in the air, across rooms).
 Build log: DOOR_HQ_BUILD_PLAN §9 2026-09-16 "THE DOOR GUN rev 4".
+**Status 2026-09-16 (Delivery 5, `ENTROPY_WARS_PHASE9_SYNCED_BUILDING.zip`, token
+`20260916-synced-building-06-cors`):** D5 DONE — `hq.cleared` / `hq.encounters` / `hq.skate` ride
+the progress blob MONOTONIC (the later day + the union of the beaten; per-field max + the later
+`last`; the best line by score), every read is the union of the local record and the blob
+(`hqEncounterLog` / `hqEncounterCleared` / `hqSkateRecord`), every write lands in both
+(`hqEncounterRecord` / `hqSkateBank` continue from the union), profile.js folds the local record in
+on every read (`hqDoorSyncFold`); `portal` and `punch` stay local. **Ship data.js to Render too**
+(the server merges off it). D7 DONE for the last three complexes, as VARIANTS (never new rooms):
+the gun deck's BATTLE STATIONS (night, else one visit in four — the crew at every gun, red lanterns,
+the powder up), the casino's THE DEAD HOUR (3–6 by your clock — the floor with no clock tells you
+the hour) + JACKPOT (one visit in five — the whole floor round one machine), the platform's RUSH
+HOUR (7–10 — a full platform, nobody gets on) + LAST TRAIN (0–5 — the tubes off, one bulb, the one
+who waits). `hq-synced-building.test.js` (6). Lines are Claude's DRAFT (A15). NOT done: D3d
+(playtest first). Every §8 item below 10 is now shipped; next is item 10 (the playtest — the
+user's, RULE #1c), then §10 / §11 in their own deliveries.
 
 Each item: impact · evidence · files · dependencies · change · acceptance.
 
@@ -404,7 +419,9 @@ Each item: impact · evidence · files · dependencies · change · acceptance.
 - **Delivery 3 — THE GUN READS** (three-renderer.js, data.js, map.js; tests): D3 + D4 + the
   `hard` reachability test.
 - **Delivery 4 — THE MAP REMEMBERS** (data.js, map.js, styles-base.css; tests): D6 + D8 + D9. ✅ 2026-09-16, `ENTROPY_WARS_PHASE9_MAP_REMEMBERS.zip` (+ profile.js, three-renderer.js; item 9's proof and THE LIP rule rode along).
-- **Delivery 5 — the playtest** (PLAYTEST_NOTES.md) → then §10 / §11 in their own
+- **Delivery 5 — THE SYNCED BUILDING + THE THREE REVEALS** (data.js, profile.js; tests): D5 + the
+  rest of D7. ✅ 2026-09-16, `ENTROPY_WARS_PHASE9_SYNCED_BUILDING.zip`.
+- **Delivery 6 — the playtest** (PLAYTEST_NOTES.md) → then §10 / §11 in their own
   deliveries.
 Each delivery = one `ENTROPY_WARS_<TOPIC>.zip`, `npm test` green, the token bumped, the
 caption saying R2 / Render / repo per file (RULE #1, #1b).

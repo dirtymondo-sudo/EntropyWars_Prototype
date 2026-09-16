@@ -502,6 +502,11 @@ function profileLoadProgress() {
       if (unionL) prog.hq.links.seen = unionL;
     }
   } catch {}
+  /* THE SYNCED BUILDING (PHASE9_QUALITY_PLAN §6 D5, 2026-09-16): the cleared rooms, the encounter log and the
+     skate book ride the blob as `hq.cleared` / `hq.encounters` / `hq.skate` (monotonic); the local record folds in */
+  try {
+    if (typeof window !== 'undefined' && typeof window.hqDoorSyncFold === 'function') window.hqDoorSyncFold(prog.hq, p.door);
+  } catch {}
   return prog;
 }
 

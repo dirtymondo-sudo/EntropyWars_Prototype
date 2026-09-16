@@ -2072,9 +2072,14 @@ test('room variants (plan 5.1): after hours Room 86 is the MÖBIUS STRIP CLUB �
     assert.strictEqual(D.hqRoomRegister().find(x => x.no === '86').label, 'THE CAFETERIUM');
     /* the building-wide roll */
     try {
-        assert.strictEqual(JSON.stringify(D.hqRollRoomVariants(prof(1), { force: { cafeteria: 'after_hours' } })), '{"cafeteria":"after_hours"}');
+        /* (D7, 2026-09-16: the three complexes' reveals roll beside Room 86 — the roll names every room with a visit variant) */
+        const rolledForce = D.hqRollRoomVariants(prof(1), { force: { cafeteria: 'after_hours' } });
+        assert.strictEqual(rolledForce.cafeteria, 'after_hours');
+        assert.ok(Object.keys(rolledForce).length >= 1 && Object.keys(rolledForce).every(id => D.hqRoomVariantIds(id).length), 'every rolled room has variants');
         assert.strictEqual(HQ.rooms.cafeteria.label, 'MÖBIUS STRIP CLUB');
-        assert.strictEqual(JSON.stringify(D.hqRollRoomVariants(prof(1), { force: '' })), '{"cafeteria":null}');
+        const rolledNone = D.hqRollRoomVariants(prof(1), { force: '' });
+        assert.strictEqual(rolledNone.cafeteria, null);
+        assert.ok(Object.values(rolledNone).every(v => v === null), 'the sheet everywhere');
         assert.strictEqual(HQ.rooms.cafeteria, CAFE);
         const rolled = D.hqRollRoomVariants(prof(1), { now: night });
         assert.strictEqual(rolled.cafeteria, 'after_hours');

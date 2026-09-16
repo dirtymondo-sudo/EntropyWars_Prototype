@@ -4242,3 +4242,29 @@ distance · lesson · the case for a pin); the ~20 pins are the user's (§14 E).
 `npm test` runs `hq-map-remembers.test.js`. NOT built: D5's blob keys, D7
 variant beats for the Dutchman / Strip / Downtown, D3d. Unseen live (RULE
 #1c): the dotted map, the plates, the post, the sun's pass, the snap's feel.
+
+## PHASE 9 DELIVERY 5 — THE SYNCED BUILDING + THE THREE REVEALS (D5 · D7) (2026-09-16, local delivery)
+PHASE9_QUALITY_PLAN §6 D5 + the rest of D7. **D5**: `hq.cleared` / `hq.encounters` /
+`hq.skate` ride the progress blob beside the finds and the links (data.js
+`mergeProgressBlobs`, MONOTONIC: the later day + the ids' union; per-field max +
+the later `last`; the best line by score; `ACH_MERGE_CAPS.cleared` 256 ×
+`clearedIds` 32). RULE: every READ is the UNION of `door.hq.*` and
+`progress.hq.*` (`hqEncounterLog` / `hqEncounterCleared` / `hqSkateRecord` —
+never read `door.hq.encounters` or `.cleared` or `.skate` directly again),
+every WRITE continues from the union and lands in BOTH (`hqEncounterRecord` /
+`hqSkateBank` → `hqSyncedHq(profile, true)`, which never invents a v2 blob);
+profile.js `profileLoadProgress` folds the local record in through
+`hqDoorSyncFold(prog.hq, p.door)`. `portal` and `punch` stay local. **Ship
+data.js to Render as well as R2** (the server merges off it). **D7**: the last
+three complexes' reveals are VARIANTS on the parts (never new rooms; rolled on
+a fresh arrival like Room 86, the way in re-plated): `site_prebuilt_revenge_
+gundeck.variants.battle_stations` (night / p 0.25), `site_prebuilt_strip_
+casino.variants.dead_hour` (3–6) + `.jackpot` (p 0.2), `site_prebuilt_downtown_
+subway.variants.rush_hour` (7–10) + `.last_train` (0–5). A variant on a part
+keeps the identity the room's test pins (the casino: no clock, no window, one
+door, eight machines; the platform: nobody on the track; the gun deck: the
+guns where they stand) — hq-synced-building.test.js runs every beat through
+the urban / Dutchman prop rules (landings, the spawn, the lights ≤ 10). Dev:
+`?hqvariant=jackpot`. Lines are Claude's DRAFT (A15). `npm test` runs
+`hq-synced-building.test.js`. Unseen live (RULE #1c): all five beats.
+
