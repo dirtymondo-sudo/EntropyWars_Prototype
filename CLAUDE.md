@@ -4017,3 +4017,30 @@ centres at the strike frame, explicit spawn cells per seat, the battle built at 
 transform behind a 0.6 s dissolve) and THE LOOK (§10: one material path, one light rig, THE
 WORLD in the open room, the room's furniture in the battle) are staged there; the user's
 decisions are §14. `npm test` at HEAD: 1438 / 0 / 4 skipped.
+
+## PHASE 9 DELIVERY 2 — THE ENCOUNTER'S TRUTH (D1 · D2 · the dissolve) (2026-09-16, local delivery)
+PHASE9_QUALITY_PLAN §8 items 3 + 7. **D1 THE SWING SPOT**: the run marker's
+`walker` (feet + camera yaw at the strike) rides home on `_hqEncounterResult`
+(battle.js commit); data.js `hqEncounterReturnSpot(result)` → `{ x, z, y, face°,
+swing }`; map.js `_hqReturnOrMenu` lands a WIN there when the strike's room is
+the return room (a loss = the ward, another room = the console); three-renderer.js
+`_hqGoTo` accepts the FREE-SPOT form (any object with numeric x / z: the
+walkable surface at the recorded level, the recorded heading, `faceAway`
+ignored) before its door scan — use it for any "stand exactly here" landing.
+**D2 THE LEAD**: `hqEncounterLaunch(...).encounter.name` = the room's label for
+the native; `hqEncounterLead(enc)` validates race / gender / name; state.js
+`optimizeRandomizeParty(2)` pins P2's SEAT 1 to it off `_hqPreselect.encounter`
+(`randomizeIdentity(false, race)`, the gender, `sanitizeUnitName`) — the enemy
+lead IS the character you hit. **THE DISSOLVE (seam 3)** = a 2D CROSSFADE, not
+the material dissolve: `_hqLeave({ dissolve: true })` → `_hqDissolveStart` renders
+the room once more and copies it over the canvas IN THE SAME TASK (the drawing
+buffer is not preserved across tasks), disposes the room, holds 150 ms, fades
+600 ms (`HQ_DISSOLVE_MS`); THE EYE seeds the battle from the same viewpoint.
+Only `_hqEncounterStart` asks for it (map.js `window._hqLeave(opts)` passes it
+through; a screen / menu exit still cuts). Off: `EW_HQ_NO_DISSOLVE`, reduced
+motion. Any test that anchors on `window._hqLeave = function (opts)` reads the
+new signature. `npm test` 1444 / 0 / 4 skipped. Unseen live (RULE #1c): the
+crossfade's feel, the swing landing on a tier, the lead's nameplate. Next in
+§8: items 5–6 (Delivery 3 — THE GUN READS: the ghost's refusal reason, the A/B
+shape cue, the hatch-loop cap + the F-hold escape).
+

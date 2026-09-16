@@ -152,7 +152,7 @@ test('SOURCE · battle.js: the intro cinematic is off PER LAUNCH (never the glob
     assert.ok(BT.includes("!(window._hqEncounterRun && window._hqEncounterRun.noIntro) && !state.devAutoSim"), 'the leaf warm-up too');
     assert.ok(!BT.includes("window.EW_DISABLE_INTRO_CINE = true;   // encounter"), 'never the global switch');
     assert.ok(BT.includes("const erun = window._hqEncounterRun;") && BT.includes("hqEncounterRecord(p, { site: erun.site, room: erun.room, race: erun.race, id: erun.id || null, won,"), 'the record on the commit, the native\'s id with it');
-    assert.ok(BT.includes("window._hqEncounterResult = { won, site: erun.site, room: erun.room, race: erun.race, label: erun.label || erun.race };"));
+    assert.ok(BT.includes("window._hqEncounterResult = { won, site: erun.site, room: erun.room, race: erun.race, label: erun.label || erun.race, walker: erun.walker || null };"));
 });
 
 test('SOURCE · index.html: the hint under the door gun\'s', () => {
@@ -293,4 +293,66 @@ test('SOURCE · stage 2: the camera seed (both sync branches, the snap guard, th
     /* the ONE reason spawnSide is NOT mirrored: the spawn zones and the nexus points are keyed by seat + row, never by SPAWNS — a lane swap would seat P1 on P2's spawn nexus */
     assert.ok(MP.includes("state.spawnZones[1].push({ x: col, y: p1Row });"), 'the zone rows are the seat\'s (map.js) — the mirror waits on the zone system');
     for (const fn of ['hqEncounterCleared', 'hqRoomGuarded', 'hqEncounterEye']) assert.equal(typeof D[fn], 'function', fn + ' on window');
+});
+
+/* ── DELIVERY 2 · THE ENCOUNTER'S TRUTH (PHASE9_QUALITY_PLAN §8 item 3 + item 7, 2026-09-16) ── */
+const ST2 = ST;   // state.js source (declared above for THE EYE)
+
+test('D2 · THE LEAD: the native you hit is P2\'s seat 1 — race + gender + the room\'s name; a race off the roster → null; a gender the race cannot wear → the race\'s first; the launch carries `name`', () => {
+    const lead = g('hqEncounterLead')({ race: 'grey', gender: 'female', label: 'Grey', id: 'hq-native-0' });
+    assert.ok(lead); assert.equal(lead.race, 'grey'); assert.equal(lead.name, 'Grey'); assert.equal(lead.id, 'hq-native-0');
+    assert.ok(lead.gender === 'female' || lead.gender === 'male');
+    assert.equal(g('hqEncounterLead')({ race: 'not-a-race', gender: 'male' }), null, 'never an invented race');
+    assert.equal(g('hqEncounterLead')(null), null);
+    const noName = g('hqEncounterLead')({ race: 'grey', gender: 'male', label: '   ' });
+    assert.equal(noName.name, null, 'a blank label is no name');
+    assert.equal(g('hqEncounterLead')({ race: 'grey', gender: 'male', name: 'x'.repeat(40) }).name.length, 24, 'capped');
+    const L = g('hqEncounterLaunch')('site_prebuilt_dumb', native({ label: 'The Grey at the Desk' }), null);
+    assert.equal(L.encounter.name, 'The Grey at the Desk', 'the launch carries the room\'s name for it');
+    assert.equal(JSON.parse(JSON.stringify(L)).encounter.name, 'The Grey at the Desk');
+});
+
+test('D2 · SOURCE · state.js: optimizeRandomizeParty pins seat 1 off _hqPreselect.encounter through hqEncounterLead (race → randomizeIdentity, the gender, the name sanitised); map.js starts the roster with `encounter: L.encounter` on the preselect', () => {
+    assert.ok(ST2.includes("? hqEncounterLead(window._hqPreselect.encounter) : null;"), 'the ONE read');
+    assert.ok(ST2.includes("const m0 = randomizeIdentity(false, lead.race);") && ST.includes("if (m0.race === lead.race) { m0.gender = lead.gender; state.partyMeta[player][0] = m0; }"), 'seat 1 = the native, only when the race held');
+    assert.ok(ST2.includes("state.partyNames[player][0] = sanitizeUnitName(lead.name, getDefaultUnitName(state.partyBuilds[player][0]));"), 'the nameplate wears the room\'s name');
+    assert.ok(MP.includes("codeRed: false, locked: true, presets: null, encounter: L.encounter };"), 'the preselect carries the encounter');
+    assert.ok(MP.includes("name: ch.label || null }") || fs.readFileSync(__dirname + '/data.js', 'utf8').includes("name: ch.label || null },"), 'the launch names it');
+});
+
+test('D1 · THE RETURN SPOT: the run marker\'s walker (feet + camera yaw in radians) → the free-spot form { x, z, y, face° }; a heading wraps to 0..360; no walker → null (the console as before)', () => {
+    const f = g('hqEncounterReturnSpot');
+    const s = f({ walker: { x: 1.25, z: -3.5, y: 2.9, yaw: Math.PI / 2, pitch: 0.1 } });
+    assert.ok(s); assert.equal(s.x, 1.25); assert.equal(s.z, -3.5); assert.equal(s.y, 2.9); assert.equal(s.face, 90); assert.equal(s.swing, true);
+    assert.equal(f({ walker: { x: 0, z: 0, yaw: -Math.PI / 2 } }).face, 270, 'wrapped');
+    assert.equal(f({ walker: { x: 0, z: 0, yaw: 0 } }).y, 0, 'a missing height is the floor');
+    assert.equal(f({ walker: null }), null); assert.equal(f(null), null); assert.equal(f({ walker: { x: 'a', z: 0 } }), null);
+    assert.equal(JSON.parse(JSON.stringify(s)).face, 90, 'serialisable (it rides _hqLastDoor)');
+});
+
+test('D1 · SOURCE: battle.js carries the walker home on the result; map.js lands a WIN in the strike\'s own room at the swing spot (never a loss, never another room); three-renderer.js _hqGoTo takes the free-spot form (surface first, the recorded heading, faceAway ignored)', () => {
+    assert.ok(BT.includes("label: erun.label || erun.race, walker: erun.walker || null };"), 'the result carries the swing');
+    assert.ok(MP.includes("if (encRes && encRes.won && enabled && _hqHome && encRes.room && encRes.room === _hqLastRoom && typeof window.hqEncounterReturnSpot === 'function') {"), 'a win in the same room');
+    assert.ok(MP.includes("const spot = window.hqEncounterReturnSpot(encRes);") && MP.includes("if (spot) _hqLastDoor = spot;"), 'the spot becomes the landing');
+    assert.ok(MP.indexOf("if (spot) _hqLastDoor = spot;") < MP.indexOf("if (window._hqEnter({ room: _hqLastRoom, at: _hqLastDoor, quiet: true, from: 'return' })) {"), 'before the re-entry');
+    assert.ok(TR.includes("if (id && typeof id === 'object' && isFinite(+id.x) && isFinite(+id.z)) {"), 'the free-spot form');
+    assert.ok(TR.includes("fy = _hqSurface(+id.x, +id.z, (isFinite(+id.y) ? +id.y : null), true);"), 'the feet take the surface at the recorded level');
+    assert.ok(TR.includes("face = isFinite(+id.face) ? +id.face : 0;"), 'the recorded heading — faceAway never turns it');
+    assert.ok(TR.includes("else for (var i = 0; i < _hq.doors.length; i++) if (_hq.doors[i].door.id === id) { d = _hq.doors[i]; break; }"), 'the door scan still runs for an id');
+});
+
+test('THE DISSOLVE (seam 3) · SOURCE: _hqLeave({ dissolve }) renders the room once more and copies it over the canvas before disposing; a hold then a 600 ms fade; kill-switch + reduced motion; map.js passes the opts through and the encounter asks for it; no other leave does', () => {
+    assert.ok(TR.includes("function _hqLeave(opts) {") && TR.includes("if (opts && opts.dissolve) { try { _hqDissolveStart(H,"), 'the leave takes the ask');
+    assert.ok(TR.indexOf("if (opts && opts.dissolve)") < TR.indexOf("_hqUnbindInput();\n        _hq = null;"), 'the snapshot is taken BEFORE the scene goes');
+    assert.ok(TR.includes("var HQ_DISSOLVE_MS = 600, HQ_DISSOLVE_HOLD_MS = 150;"), 'the crossing\'s 0.6 s');
+    assert.ok(TR.includes("try { _hqRenderOnce(H); ctx.drawImage(canvas, 0, 0); } catch (e) { return null; }"), 'rendered + copied in ONE task (the drawing buffer is not preserved across tasks)');
+    assert.ok(TR.includes("if (typeof window !== 'undefined' && window.EW_HQ_NO_DISSOLVE) return null;"), 'kill-switch');
+    assert.ok(TR.includes("prefers-reduced-motion: reduce"), 'reduced motion = the cut');
+    assert.ok(TR.includes("z-index:100050;pointer-events:none;opacity:1;transition:opacity"), 'over everything, under nothing that needs the mouse');
+    assert.ok(TR.includes("setTimeout(drop, hold + ms + 120);"), 'always removed');
+    const once = TR.slice(TR.indexOf('function _hqRenderOnce'), TR.indexOf('function _hqDissolveStart'));
+    assert.ok(once.includes("ThreePost.renderScene(H.scene, H.camera)") && once.includes("renderer.render(H.scene, H.camera)"), 'the same render branch as the frame');
+    assert.ok(MP.includes("window._hqLeave = function (opts) {") && MP.includes("ThreeRenderer.hq.leave(opts || undefined);"), 'the wrapper passes it through');
+    assert.ok(MP.includes("window._hqLeave({ dissolve: true });   // THE DISSOLVE (seam 3)"), 'the encounter asks');
+    assert.equal((MP.match(/_hqLeave\(\{ dissolve/g) || []).length, 1, 'only the encounter dissolves (a screen / a menu exit still cuts)');
 });

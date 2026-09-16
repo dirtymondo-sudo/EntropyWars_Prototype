@@ -8621,3 +8621,43 @@ PHASE9_QUALITY_PLAN.md §9's Delivery 1 and two rules of the user's, in one zip.
   their small scale, the ledger's toast on a server account, the sync's pay
   landing at the next commit.
 
+### 2026-09-16 · PHASE 9 DELIVERY 2 — THE ENCOUNTER'S TRUTH (PHASE9_QUALITY_PLAN §8 items 3 + 7)
+- **D1 · RETURN TO WHERE YOU SWUNG.** data.js `hqEncounterReturnSpot(run)` turns the
+  run marker's `walker` (feet + camera yaw at the strike, the dead field until now)
+  into `{ x, z, y, face°, swing: true }`; battle.js's commit carries `walker` home on
+  `_hqEncounterResult`; map.js `_hqReturnOrMenu` makes it `_hqLastDoor` on a WIN
+  whose room is the return room (a loss is still the ward, another room still the
+  console); three-renderer.js `_hqGoTo` takes the FREE-SPOT form (an object with
+  x / z — the walkable surface at the recorded level, the recorded heading,
+  `faceAway` ignored) before the door scan. You stand where you swung, looking at
+  the empty spot (THE CLEARED ROOM leaves the native out).
+- **D2 · THE NATIVE'S IDENTITY.** `hqEncounterLaunch(...).encounter.name` = the room's
+  label for the native; data.js `hqEncounterLead(enc)` = `{ race, gender, name, id }`
+  validated against the roster / the race's genders; state.js
+  `optimizeRandomizeParty(2)` reads `_hqPreselect.encounter` through it and pins
+  SEAT 1 (`randomizeIdentity(false, race)` + the gender; the name through
+  `sanitizeUnitName`) — the enemy's lead IS the character you hit, named as the
+  room named it. The pool still leads the rest of the party.
+- **THE DISSOLVE (seam 3).** three-renderer.js `_hqLeave(opts)` → `_hqDissolveStart`:
+  the room's last frame rendered once more and copied into a 2D canvas laid over
+  the WebGL canvas in the same task (the drawing buffer is not preserved across
+  tasks), the room disposed as always, the copy HELD 150 ms and FADED 600 ms over
+  the battle's first frames — with THE EYE seeding the camera from the walker's
+  own viewpoint, the room dissolves into the board from one eye. map.js
+  `window._hqLeave(opts)` passes it through; only `_hqEncounterStart` asks
+  (`{ dissolve: true }`) — a screen / a menu exit still cuts. Off:
+  `window.EW_HQ_NO_DISSOLVE`, `prefers-reduced-motion`. NOT the material dissolve
+  the plan named: keeping the HQ scene alive over the battle's own render pass
+  (shared renderer, ThreePost chain, depth, the sky uniforms) risks the battle's
+  frame for a beat no one has seen (RULE #1c); revisit once this one is eyeballed.
+- **Tests:** hq-encounter.test.js +5 (the lead, the return spot, the source sites
+  on all four files, the dissolve's rules); scene-lifecycle / hq-pause anchors
+  follow `_hqLeave`'s new signature. Full suite 1444 / 0 / 4 skipped.
+- **Delivery:** `ENTROPY_WARS_PHASE9_ENCOUNTER.zip` — data.js, state.js, battle.js,
+  map.js, three-renderer.js → R2 (data.js → Render too); index.html
+  (`?v=20260916-phase9-encounter-02-cors`) → Render; the three tests + this file,
+  PHASE9_QUALITY_PLAN.md, CLAUDE.md → the repo.
+- **Unseen live (RULE #1c):** the crossfade's feel (the hold, the fade length, a
+  slow board build showing under a half-faded room), the swing-spot landing on a
+  gallery / a cave tier, the lead's nameplate wearing a race label as a name.
+

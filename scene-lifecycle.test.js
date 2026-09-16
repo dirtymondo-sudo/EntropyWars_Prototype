@@ -52,7 +52,7 @@ function hqHarness() {
     });
     vm.runInContext(section(src, '        let _hqEnteredAt = 0;', '\n        let _hqHome = false;').replace('        let _hqHome = false;', '') + '\n' +
         section(src, '        window._hqEnter = function (opts)', '\n        };') + '\n' +
-        section(src, '        window._hqLeave = function ()', '\n        };'), ctx);
+        section(src, '        window._hqLeave = function (opts)', '\n        };'), ctx);
     return { ctx, entries, timers, card: els.hqLoad,
         enter: opts => ctx.window._hqEnter(opts), leave: () => ctx.window._hqLeave(),
         setNow: value => { now = value; }, setResult: value => { result = value; },

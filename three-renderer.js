@@ -45143,8 +45143,51 @@ const ThreeRenderer = (function () {
         console.log('[HQ] entered', opts.room || 'central_egress', '(' + (room.kind || 'rotunda') + ') — doors:', _hq.doors.length, 'props:', (room.props || []).length, 'chars:', _hq.chars.length);
         return true;
     }
-    function _hqLeave() {
+    /* THE DISSOLVE (HQ plan 9.4 seam 3 — PHASE9_QUALITY_PLAN §8 item 7, 2026-09-16):
+       the cut from the room to the battle is no longer a hard cut. On a leave that
+       asks for it (map.js _hqEncounterStart → _hqLeave({ dissolve: true })) the LAST
+       ROOM FRAME is rendered once more, synchronously, and copied into a 2D canvas laid
+       exactly over the WebGL canvas (the same JS task — the drawing buffer is intact
+       there); the room is then disposed as always and the battle builds under the
+       copy, which HOLDS for `hold` ms and FADES over `ms` (the crossing's 0.6 s). With
+       THE EYE seeding the battle's first frame from the walker's own camera, the room
+       dissolves into the board from one viewpoint. A 2D crossfade, on purpose: keeping
+       the HQ scene alive over the battle's own render pass (shared renderer, post chain,
+       depth, sky uniforms) risks the battle's frame for an effect no one has seen live
+       (RULE #1c); the material dissolve can replace this once the seam is eyeballed.
+       Off: window.EW_HQ_NO_DISSOLVE, or prefers-reduced-motion. */
+    var HQ_DISSOLVE_MS = 600, HQ_DISSOLVE_HOLD_MS = 150;
+    function _hqRenderOnce(H) {
+        var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST);
+        if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera);
+        else renderer.render(H.scene, H.camera);
+    }
+    function _hqDissolveStart(H, o) {
+        if (typeof document === 'undefined' || !canvas || !H || !H.scene || !H.camera) return null;
+        if (typeof window !== 'undefined' && window.EW_HQ_NO_DISSOLVE) return null;
+        try { if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return null; } catch (e) {}
+        var ms = (o && isFinite(+o.ms)) ? Math.max(0, +o.ms) : HQ_DISSOLVE_MS;
+        var hold = (o && isFinite(+o.hold)) ? Math.max(0, +o.hold) : HQ_DISSOLVE_HOLD_MS;
+        var rect = canvas.getBoundingClientRect();
+        if (!(rect.width > 0 && rect.height > 0) || !(canvas.width > 0 && canvas.height > 0)) return null;
+        var snap = document.createElement('canvas');
+        snap.width = canvas.width; snap.height = canvas.height;
+        var ctx = snap.getContext('2d'); if (!ctx) return null;
+        try { _hqRenderOnce(H); ctx.drawImage(canvas, 0, 0); } catch (e) { return null; }
+        snap.className = 'hq-dissolve';
+        snap.style.cssText = 'position:fixed;left:' + rect.left + 'px;top:' + rect.top + 'px;width:' + rect.width + 'px;height:' + rect.height + 'px;'
+            + 'z-index:100050;pointer-events:none;opacity:1;transition:opacity ' + ms + 'ms ease-out;';
+        try { var old = document.querySelector('.hq-dissolve'); if (old && old.parentNode) old.parentNode.removeChild(old); } catch (e) {}
+        document.body.appendChild(snap);
+        var done = false;
+        var drop = function () { if (done) return; done = true; try { if (snap.parentNode) snap.parentNode.removeChild(snap); } catch (e) {} };
+        setTimeout(function () { try { snap.style.opacity = '0'; } catch (e) {} }, hold);
+        setTimeout(drop, hold + ms + 120);
+        return { el: snap, ms: ms, hold: hold, drop: drop };
+    }
+    function _hqLeave(opts) {
         var H = _hq; if (!H) return;
+        if (opts && opts.dissolve) { try { _hqDissolveStart(H, (typeof opts.dissolve === 'object') ? opts.dissolve : null); } catch (e) { console.warn('[HQ] the dissolve did not start', e); } }
         _hqUnbindInput();
         _hq = null;
         if (H.sky) _horizonFogDirty = true;   // an outdoor room drove the shared sky uniforms: the battle re-applies its fog
@@ -45189,9 +45232,22 @@ const ThreeRenderer = (function () {
         if (!_hq || !_hq.player) return false;
         var S = _hq.room.shell, U = _hqUnits(), pl = _hq.player;
         var d = null;
-        for (var i = 0; i < _hq.doors.length; i++) if (_hq.doors[i].door.id === id) { d = _hq.doors[i]; break; }
         var spot = null, face = 0;
-        if (d && d.portalSurf && d.portalSurf !== 'wall') {
+        /* THE FREE SPOT (D1, PHASE9_QUALITY_PLAN §6, 2026-09-16): `{ x, z, y?, face }` in room
+           metres + a heading in degrees — the encounter's return lands where the officer
+           SWUNG, looking where they looked (the beaten native's empty spot is in front of
+           them; `faceAway` never turns a free spot — the heading recorded is the one wanted).
+           The feet take the walkable surface there, else the recorded height. */
+        if (id && typeof id === 'object' && isFinite(+id.x) && isFinite(+id.z)) {
+            var fy = null;
+            try { fy = _hqSurface(+id.x, +id.z, (isFinite(+id.y) ? +id.y : null), true); } catch (e) { fy = null; }
+            if (fy === null || fy === undefined || !isFinite(fy)) fy = isFinite(+id.y) ? +id.y : 0;
+            spot = new THREE.Vector3(+id.x * U, fy * U, +id.z * U);
+            face = isFinite(+id.face) ? +id.face : 0;
+        }
+        else for (var i = 0; i < _hq.doors.length; i++) if (_hq.doors[i].door.id === id) { d = _hq.doors[i]; break; }
+        if (spot) { /* placed above */ }
+        else if (d && d.portalSurf && d.portalSurf !== 'wall') {
             /* THE DOOR GUN rev 2: a flat threshold — you come out of a ceiling
                hatch onto whatever is under it, out of a floor hatch standing on
                it; the mouth is HELD so it does not swallow you on arrival. */

@@ -29753,8 +29753,38 @@ function hqEncounterLaunch(roomId, ch, cfg, opts) {
     return {
         site, delta: true, gm: c.gm, teamSize: n, rounds: c.rounds, roster,
         doorId: 'crossing', counterId: 'crossing',
-        encounter: { race: ch.race, gender: ch.gender || 'male', id: ch.id || null, room: roomId, x: +(ch.x || 0), z: +(ch.z || 0), gesture: opts.gesture || 'attack', label: ch.label || ch.race },
+        encounter: { race: ch.race, gender: ch.gender || 'male', id: ch.id || null, room: roomId, x: +(ch.x || 0), z: +(ch.z || 0), gesture: opts.gesture || 'attack', label: ch.label || ch.race,
+                     name: ch.label || null },   // D2: the room's own name for the native — the enemy lead wears it on the nameplate
     };
+}
+/* D2 · THE NATIVE'S IDENTITY (PHASE9_QUALITY_PLAN §6, 2026-09-16): the character you
+   hit IS the enemy's lead — state.js optimizeRandomizeParty pins P2's seat 1 to this
+   read (race + gender + the room's name for it) off `_hqPreselect.encounter`. Pure:
+   a race the roster does not carry → null (the pool's own draw stands); a gender the
+   race has no model for falls to the race's first. */
+function hqEncounterLead(enc) {
+    if (!enc || typeof enc !== 'object' || !enc.race) return null;
+    const race = String(enc.race);
+    if (typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES.indexOf(race) < 0) return null;
+    let genders = ['male', 'female'];
+    try { if (typeof getAvailableGendersForRace === 'function') { const gs = getAvailableGendersForRace(race); if (Array.isArray(gs) && gs.length) genders = gs.slice(); } } catch (e) {}
+    const want = (enc.gender === 'female' || enc.gender === 'male') ? enc.gender : null;
+    const gender = (want && genders.indexOf(want) >= 0) ? want : genders[0];
+    const raw = (enc.name != null ? enc.name : enc.label);
+    const name = (typeof raw === 'string' && raw.trim()) ? raw.trim().slice(0, 24) : null;
+    return { race, gender, name, id: enc.id || null };
+}
+/* D1 · RETURN TO WHERE YOU SWUNG: the run marker's `walker` (the walker's feet + the
+   camera yaw in RADIANS at the strike, room metres) → the FREE-SPOT form _hqGoTo
+   accepts: { x, z, y, face } with `face` the heading in DEGREES (the walker's own
+   look — the empty spot the native stood on is in front of you). Null without a
+   usable walker (the old return: the console). */
+function hqEncounterReturnSpot(run) {
+    const w = run && run.walker;
+    if (!w || !isFinite(+w.x) || !isFinite(+w.z)) return null;
+    const yaw = isFinite(+w.yaw) ? +w.yaw : 0;
+    let face = (yaw * 180 / Math.PI) % 360; if (face < 0) face += 360;
+    return { x: +w.x, z: +w.z, y: isFinite(+w.y) ? +w.y : 0, face: Math.round(face * 100) / 100, swing: true };
 }
 /* the record: door.hq.encounters — the ONE write (the caller saves). STAGE 2
    (2026-09-15): a WIN also files THE CLEARED ROOM — `door.hq.cleared[roomId] =
@@ -31699,6 +31729,7 @@ if (typeof window !== 'undefined') {
     window.HQ_ENCOUNTER_RULES = HQ_ENCOUNTER_RULES; window.hqEncounterRoomOk = hqEncounterRoomOk; window.hqEncounterCharOk = hqEncounterCharOk; window.hqEncounterGesture = hqEncounterGesture;
     window.hqEncounterConfig = hqEncounterConfig; window.hqEncounterLaunch = hqEncounterLaunch; window.hqEncounterRecord = hqEncounterRecord; window.hqEncounterLog = hqEncounterLog;
     window.hqEncounterCleared = hqEncounterCleared; window.hqRoomGuarded = hqRoomGuarded; window.hqEncounterEye = hqEncounterEye;
+    window.hqEncounterLead = hqEncounterLead; window.hqEncounterReturnSpot = hqEncounterReturnSpot;
     /* SKATEBOARDING (HQ plan 9.8 stage 1, 2026-09-15) */
     window.HQ_SKATE_RULES = HQ_SKATE_RULES; window.hqSkateStatus = hqSkateStatus; window.hqSkateRecord = hqSkateRecord; window.hqSkateBank = hqSkateBank; window.hqSkateScore = hqSkateScore; window.hqSkateIssueFree = hqSkateIssueFree;
     window.hqLinkRoom = hqLinkRoom;

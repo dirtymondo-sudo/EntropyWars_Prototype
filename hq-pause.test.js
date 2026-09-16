@@ -115,7 +115,7 @@ test('ESC / P opens the pause overlay inside #hqPage, never the settings page', 
     /* every way out of the building drops the overlay */
     const resume = between(mp, 'window._hqResume = function () {', 'window._hqReturnOrMenu = function');
     assert.match(resume, /_hqPauseDrop\(\);/);
-    const leave = between(mp, 'window._hqLeave = function () {', 'window._hqGoRoom = function');
+    const leave = between(mp, 'window._hqLeave = function (opts) {', 'window._hqGoRoom = function');
     assert.match(leave, /_hqPauseDrop\(\);/);
     const enter = between(mp, 'window._hqEnter = function', 'ThreeRenderer.hq.enter({');
     assert.match(enter, /_hqTermDrop\(\);\s*_hqPauseDrop\(\);/);

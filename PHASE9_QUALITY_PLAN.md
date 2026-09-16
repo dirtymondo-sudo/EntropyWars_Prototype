@@ -60,11 +60,11 @@ are stated here. The plan's superseded bullets are marked in place (see §13).
 |---|---|---|
 | Encounter trigger | Player-initiated only. Door gun HOLSTERED + LEFT CLICK = the walker's attack clip; a native within `reach` 3.4 m, `cone` 55°, `dy` 1.8 m, line of sight (`_hqLosClear`), cooldown 1400 ms. E talks. `HQ_ENCOUNTER_RULES` (data.js), `_hqStrikeClick` / `_hqEncounterAim` (three-renderer.js), `_hqEncounterFire` (map.js). VS-CPU only (`isOnlineMatch()` refuses). | 9.4's "The roamer" (patrol, sight, hostile run, stinger, contact), the ROAMERS settings row, `EW_HQ_NO_ROAMERS`, rev 16's number keys. |
 | Where encounters happen | Any WILD room = `hqRoomSite(roomId)` non-null (a site's board room or a complex part, the cave included). Facility rooms are safe by construction. | — (agrees) |
-| What board an encounter fights on | Always the site's Δ 8×8 (`delta: true`, `launchId = site + '_delta'`), Arena · 4 unless the sticky config says otherwise (Clash / Gauntlet forced back to Arena). | 9.4 "the area you stand in becomes the board" is the GOAL (§11), not the shipped behaviour. |
+| What board an encounter fights on | Always the site's Δ 8×8 (`delta: true`, `launchId = site + '_delta'`), Arena · 4 unless the sticky config says otherwise (Clash / Gauntlet forced back to Arena). P2's SEAT 1 is the native you hit (D2, 2026-09-16: `hqEncounterLead` → race + gender + the room's name, pinned in state.js `optimizeRandomizeParty`). | 9.4 "the area you stand in becomes the board" is the GOAL (§11), not the shipped behaviour. |
 | First battle frame | THE EYE: `hqEncounterEye(ev)` → `ThreeCamera.seedPose(seed, 1.4)`; no VS card, no intro cinematic, per launch (`_hqEncounterRun.noIntro`). Null (plain start) from a complex part or a cave. | 9.4's "three-camera.js has no initial-pose API". |
 | Spawn orientation | NOT mirrored, on purpose: zones are keyed by seat + row (map.js `state.spawnZones[1]` = P1's row). Never swap `SPAWNS` alone. | 9.4's `spawnSide` bullet and its test line. |
-| The dissolve (seam 3) | NOT built. Hard cut: `_hqLeave` disposes the room; `activate()` rebuilds the battle; the HQ load card is entry-only. | 9.4's "the crossing's dissolve shader on the HQ scene for 0.6 s" is still a promise. |
-| After an encounter | Win → the same wild room, landing 1.0 m in front of the CROSSING console (`_hqGoTo('crossing')`), the beaten native gone until tomorrow (`door.hq.cleared`), its guarded envelope lit. Loss → Medical's cot, the chart reads RECOVERING. No hazard pay docked. | — (agrees; row 30 REC stands) |
+| The dissolve (seam 3) | BUILT 2026-09-16 (Delivery 2) as a 2D CROSSFADE: `_hqLeave({ dissolve: true })` renders the room's last frame once more, copies it over the WebGL canvas (`_hqDissolveStart`, same JS task), disposes the room, and the copy holds 150 ms then fades 600 ms over the battle's first frames (THE EYE seeds them from the same viewpoint). Only the encounter asks for it. Off: `EW_HQ_NO_DISSOLVE`, reduced motion. | 9.4's "the crossing's dissolve shader on the HQ scene" — the material dissolve was NOT chosen: it would keep the HQ scene alive over the battle's render pass on the shared renderer / post chain, unseen (RULE #1c). Revisit after the seam is eyeballed. |
+| After an encounter | Win → the same wild room AT THE SWING SPOT (D1, 2026-09-16: `hqEncounterReturnSpot(result)` = the walker's feet + heading at the strike → `_hqGoTo`'s free-spot form `{ x, z, y, face }`; the console only when the strike's room is not the return room), the beaten native gone until tomorrow (`door.hq.cleared`), its guarded envelope lit. Loss → Medical's cot, the chart reads RECOVERING. No hazard pay docked. | 9.4 / rev 24's "landing 1.0 m in front of the CROSSING console" on a win. |
 | Door gun availability | STANDARD ISSUE for the test: `HQ_PORTAL_RULES.free: true` (cost 0, rank 1). The Quartermaster's signature returns with `free: false, cost: 24, rank: 4`. | 9.5 "Issue" (Keyholder + 24 Keys) and the plan's "Current implementation" paragraph. |
 | Door gun controls | F draws / holsters, Q holsters. Drawn: LEFT CLICK places THRESHOLD A (cyan), RIGHT CLICK places THRESHOLD B (amber); a named slot moves its own row. Surfaces: floor set, WALL, CEILING; the door lies flat in the surface's plane. `_hqPortalAim(slot)`, `_hqPortalBasis`, `HQ_PORTAL_COLORS`. | 9.5 "LEFT CLICK places A, the next click B, the third moves A", "any WALKABLE SURFACE … never a wall". |
 | Crossing a placed door | A wall door is walked into (press-in / E). A floor or ceiling hatch is crossed by TOUCH (`_hqTickPortalCross`), the twin's mouth HELD until the body leaves it; speed carried (clamped 2–18 m/s). Same room = hop; another room = the ordinary room change (`_hqGoRoom`). | — |
@@ -123,7 +123,7 @@ Deployment evidence = `unknown` for every row (see the header).
 | 9.1 Finds — tapes + pay | 100 tapes generated from `HQ_TAPE_SHEET`, one pay envelope per tape room (`hqBuildFinds`), sparkle procs, TAKE via E, the shelf in Room 360, strip pill, OFFICER row | B1 stable tape ids; B2 server-side pay; reserved kinds; clips (user); reachability test for `hard` rows; a TV that plays the last tape (stage 3) | hq-finds.test.js 8 | unseen | unknown |
 | 9.2 Complexes (6) | Haunted House 4 parts (hall with gallery), cave 7, Spaceship 3, Dutchman 3, Strip 2, Downtown 2; `backDoors` arrays; park rule | Distinct landmarks / reveals per complex (§6 D7); natives on gallery slabs; a gallery on a site/cave room; a turning flight | hq-complex 7 · hq-gallery 7 · hq-cave 11 · hq-spaceship 6 · hq-dutchman 6 · hq-urban 6 | unseen | unknown |
 | 9.3 World graph — links, routes, ways | 10 routes, every built site a station, 9 `way` kinds with builders + sounds, THE WORLD tab (subway map), the suites, the third ring | `phonebox` (A14), `tent`; the star chart's route lines; discovered-route state (D6); Room 8's weir ⇄ Atlantis (no lane) | hq-world 15 · hq-suites 6 · hq-ring3 7 · doorhq 97 | unseen | unknown |
-| 9.4 Encounter | Holstered left click at a native → the site's Δ, THE LAST ROSTER, no builder, no intro, THE EYE seed, win → console / loss → the ward, cleared room, guarded envelope | B3 copy in parts/caves; return to the swing spot (D1); the native's identity pinned (D2); the dissolve (seam 3); THE FIELD (§11) | hq-encounter.test.js 17 | unseen (the one-shot on the Player rig, the eased first frame) | unknown |
+| 9.4 Encounter | Holstered left click at a native → the site's Δ, THE LAST ROSTER, no builder, no intro, THE EYE seed, win → console / loss → the ward, cleared room, guarded envelope | THE FIELD (§11); the material dissolve once the crossfade is eyeballed | hq-encounter.test.js 22 | unseen (the one-shot on the Player rig, the eased first frame) | unknown |
 | 9.5 Door gun rev 2 | Any surface, two buttons, two colours, flat-in-plane, touch crossing with carried speed, one profile record, standard issue | Specific refusal reason at the aim (D3); a designed recovery (D3); a rate/comfort cap on hatch loops (D3); arrival validation after async props (D4); learning situations (§6 D8) | hq-portal.test.js 11 | unseen | unknown |
 | 9.8 Skateboarding rev 2 + control fix | Momentum rider, grinds on `_hq.rails`, quarter pipes, tricks, combo/bank, hold-to-jump, fakie, ride stance, camera-follow yaw fix | Feel (P5, playtest); soundtrack slot; graffiti; garage `skate` variant | hq-skate.test.js 15 | unseen | unknown |
 | Promotion ladder / checklist | Field clearance from stabilized sites + Keys; `hqSiteChecklist` on the CRT and the door panels | Balance of the rungs (user) | rank-ladder.test.js 6 | unseen | unknown |
@@ -198,8 +198,8 @@ spot, D1) rather than at the board room's console.
 
 ## 5. DOCUMENTED UNFINISHED (the build log says so; the code agrees)
 
-- 9.4 seam (3) the dissolve; the `spawnSide` mirror (blocked by the zone system — §11 solves it
-  by generalising zones to explicit cells).
+- 9.4 the `spawnSide` mirror (blocked by the zone system — §11 solves it by generalising zones to
+  explicit cells). (Seam 3 shipped 2026-09-16 as the crossfade — §1.)
 - 9.1 reserved kinds (potion / item / cube); the clips (user assets); a TV that plays the
   last tape.
 - 9.2 natives on a gallery slab; a gallery on a site / cave room; a half-landing flight; the
@@ -302,7 +302,11 @@ hardening (`armed`) shipped, item 3's B3 copy shipped (D1 / D2 open), item 4
 done. Two rules of the user's shipped in the same delivery: no outdoor battle
 room wears facility walls (`hqSiteRoom` reads an open shell's `edge: 'walls'`
 as `'open'`), and the Works' leaves are the door kit's GLBs
-(`_hqWorksLeaf`). Next: item 3's D1 + D2, then 5–7 (Delivery 2 / 3).
+(`_hqWorksLeaf`).
+**Status 2026-09-16 (Delivery 2, `ENTROPY_WARS_PHASE9_ENCOUNTER.zip`, token
+`20260916-phase9-encounter-02-cors`):** item 3 DONE (D1 the swing spot, D2 the
+lead's identity), item 7 DONE as the 2D crossfade (§1 says why not the material
+dissolve). Next: items 5–6 (Delivery 3 — THE GUN READS), then 8–9.
 
 Each item: impact · evidence · files · dependencies · change · acceptance.
 
@@ -318,7 +322,7 @@ Each item: impact · evidence · files · dependencies · change · acceptance.
    once); deps: B1 (the ids in the blob must be stable); acceptance: vm merge test; a server
    boot smoke with a synthetic sync paying 30 once and 0 the second time; `npm run test:parity`
    untouched (no economy constants move).
-3. ◐ B3 copy SHIPPED 2026-09-16 (`_hqEncounterBoardCopy`); D1 + D2 open. **B3 + D1 + D2 encounter truth** — impact: "whom did I attack, where, why am I here";
+3. ✅ SHIPPED 2026-09-16 (B3 `_hqEncounterBoardCopy`; D1 `hqEncounterReturnSpot` + the free-spot `_hqGoTo`; D2 `hqEncounterLead` + the seat-1 pin). **B3 + D1 + D2 encounter truth** — impact: "whom did I attack, where, why am I here";
    evidence: confirmed (B3) / recommendation (D1, D2); files: map.js `_hqEncounterFire`
    (copy), `_hqEncounterStart` / `_hqReturnOrMenu` (land in the strike's room at the swing
    spot), three-renderer.js `_hqGoTo` (a free-spot `at`), state.js `optimizeRandomizeParty`
@@ -336,7 +340,7 @@ Each item: impact · evidence · files · dependencies · change · acceptance.
    `H.onKeyDown` (hold F = remove both), map.js `_hqPortalStep` (toast), hq-portal.test.js;
    deps: none; acceptance: a vm loop of 10 s crosses ≤ 4/s; F-hold from mid-air lands the
    walker on the floor under the lower hatch with both doors gone and the record cleared.
-7. **THE DISSOLVE (seam 3) — stage A of §11** — impact: the cut stops being a load; files:
+7. ✅ SHIPPED 2026-09-16 as the crossfade (`_hqDissolveStart`; the material dissolve deferred — §1). **THE DISSOLVE (seam 3) — stage A of §11** — impact: the cut stops being a load; files:
    three-renderer.js (`_hqLeave({ dissolve })` keeps the scene 0.6 s, fades shell / walkway /
    props / natives with the crossing's `_introFadeMats` rule, then disposes), battle.js
    `showVSSplash` (the seed already), map.js `_hqEncounterStart`; deps: 3; acceptance: a
@@ -363,7 +367,7 @@ Each item: impact · evidence · files · dependencies · change · acceptance.
 - **Delivery 1 — THE LEDGER** (data.js, profile.js, server.js, tests; index.html bump): B1 +
   B2 + the `startMatch` clear. Ships before any finds go live.
 - **Delivery 2 — THE ENCOUNTER'S TRUTH** (map.js, three-renderer.js, state.js, data.js copy;
-  tests): B3 + D1 + D2 + the dissolve (item 7).
+  tests): B3 + D1 + D2 + the dissolve (item 7). ✅ 2026-09-16, `ENTROPY_WARS_PHASE9_ENCOUNTER.zip`.
 - **Delivery 3 — THE GUN READS** (three-renderer.js, data.js, map.js; tests): D3 + D4 + the
   `hard` reachability test.
 - **Delivery 4 — THE MAP REMEMBERS** (data.js, map.js, styles-base.css; tests): D6 + D8 + D9.

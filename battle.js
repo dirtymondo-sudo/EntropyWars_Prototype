@@ -11775,7 +11775,7 @@
                             hqEncounterRecord(p, { site: erun.site, room: erun.room, race: erun.race, id: erun.id || null, won, date: erun.date || ((typeof hqToday === 'function') ? hqToday() : null) });
                             PS.saveProfile(idx, p);
                         }
-                        window._hqEncounterResult = { won, site: erun.site, room: erun.room, race: erun.race, label: erun.label || erun.race };
+                        window._hqEncounterResult = { won, site: erun.site, room: erun.room, race: erun.race, label: erun.label || erun.race, walker: erun.walker || null };   // D1: the swing spot rides home
                         addLog(won ? `🚪 The encounter is over — ${erun.label || erun.race} is off the room.` : `🚪 EXITED — the ward. ${erun.label || erun.race} held the room.`);
                     }
                 } catch (e) { console.warn('[HQ] encounter record failed', e); }

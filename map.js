@@ -781,11 +781,12 @@
                 return p.door.clearance;
             } catch (e) { console.warn('[DOOR] promote failed', e); return false; }
         };
-        window._hqLeave = function () {
+        window._hqLeave = function (opts) {
             _hqCancelLoadCard();
             _hqTermDrop();   // a console screen left up goes down with the building
             _hqPauseDrop();  // and the pause menu (2026-09-15)
-            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active()) ThreeRenderer.hq.leave(); } catch (e) { console.error('[HQ] leave failed', e); }
+            /* `opts.dissolve` (9.4 seam 3): the room's last frame crossfades over the battle (three-renderer.js _hqDissolveStart) */
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active()) ThreeRenderer.hq.leave(opts || undefined); } catch (e) { console.error('[HQ] leave failed', e); }
             _hqSuspended = false;
             window._hqClosePanel();
             _hqSetPrompt(null);
@@ -869,6 +870,13 @@
             const encRes = window._hqEncounterResult || null;
             window._hqEncounterResult = null;
             if (encRes && !encRes.won && enabled && _hqHome && DOOR_HQ.rooms && DOOR_HQ.rooms.medical) { _hqLastRoom = 'medical'; _hqLastDoor = null; }
+            /* D1 (PHASE9_QUALITY_PLAN §6, 2026-09-16): a WIN lands where you SWUNG — the walker's feet + heading at the
+               strike (the run marker's `walker`, home on the result) as _hqGoTo's free-spot form; the beaten native's spot
+               in front of you stands empty (THE CLEARED ROOM). Only in the strike's own room; else the console as before. */
+            if (encRes && encRes.won && enabled && _hqHome && encRes.room && encRes.room === _hqLastRoom && typeof window.hqEncounterReturnSpot === 'function') {
+                const spot = window.hqEncounterReturnSpot(encRes);
+                if (spot) _hqLastDoor = spot;
+            }
             if (enabled && _hqHome) {
                 if (alive && _hqSuspended && window._hqResume()) return true;
                 if (alive) window._hqLeave();
@@ -2063,7 +2071,7 @@
             _msSelectedMap = idx; _msSelectedGM = gi; _msSelectedTeamSize = L.teamSize; _msSelectedRounds = L.rounds | 0;
             window._hqEncounterParty = party;
             _hqClosePanel({ keepPaused: true });
-            window._hqLeave();
+            window._hqLeave({ dissolve: true });   // THE DISSOLVE (seam 3): the room's last frame fades over the battle's first
             try { window._msConfirm(); }
             catch (e) { console.error('[HQ] the encounter failed to start', e); window._hqEncounterParty = null; window._hqEncounterRun = null; return false; }
             return true;

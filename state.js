@@ -4118,6 +4118,17 @@
             /* CPU side of a D.O.O.R. crossing: draw from the pinned native pool. */
             const pinned = (player === 2 && typeof window !== 'undefined' && Array.isArray(window._hqCpuPool)) ? window._hqCpuPool : null;
             state.partyMeta[player] = randomizePartyIdentities(size, false, pinned);
+            /* THE ENCOUNTER · D2 (PHASE9_QUALITY_PLAN §6, 2026-09-16): the native the officer
+               hit IS the enemy's lead — seat 1 of P2 wears its race, its gender and the
+               room's name for it (data.js hqEncounterLead off _hqPreselect.encounter; the
+               pool only pinned the race somewhere in the party). Every other seat is the
+               pool's draw as before. */
+            const lead = (player === 2 && typeof window !== 'undefined' && window._hqPreselect && window._hqPreselect.encounter && typeof hqEncounterLead === 'function')
+                ? hqEncounterLead(window._hqPreselect.encounter) : null;
+            if (lead && state.partyMeta[player].length) {
+                const m0 = randomizeIdentity(false, lead.race);
+                if (m0.race === lead.race) { m0.gender = lead.gender; state.partyMeta[player][0] = m0; }
+            }
             state.partyBuilds[player] = state.partyMeta[player].map(meta => {
                 const race = meta.race || 'homosapien';
                 const lockedJob = (race !== 'homosapien' && typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race])
@@ -4125,6 +4136,7 @@
                 return lockedJob || classNames[randInt(classNames.length)];
             });
             state.partyNames[player] = state.partyBuilds[player].map(cls => getDefaultUnitName(cls));
+            if (lead && lead.name && state.partyMeta[player][0] && state.partyMeta[player][0].race === lead.race) state.partyNames[player][0] = sanitizeUnitName(lead.name, getDefaultUnitName(state.partyBuilds[player][0]));
             state.loadouts[player] = state.partyBuilds[player].map((cls, idx) =>
                 optimizeLoadoutForClass(cls, state.partyMeta[player][idx]?.race || '')
             );
