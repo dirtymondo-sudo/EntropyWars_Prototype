@@ -4704,3 +4704,41 @@ halfway (ledge + ramp `m`), the grate at the east end; `cave.stalactites:
 false` is read by `_hqBuildCave`'s `nSt`. hq-woods.test.js pins all three
 (the sewer's width, the flight, the kit, the treeline). Unseen live (RULE
 #1c): the OBJ foliage at this density — the offline shots show stand-ins.
+
+## THE SHIP'S ONE DOOR + THE PLANET FLOOR + THE ROCKS + THE PYRAMID ON MARS — 2026-09-16, local delivery
+**THE SHIP'S ONE DOOR**: the Spaceship's airlock has ONE collar (`site_prebuilt_
+derelict_airlock` door `collar`, port wall, `action: { ship: true }`) that opens
+on the course THE NAV CONSOLE on the bridge laid in (counter `nav`, `overlay:
+'nav'` → map.js `_hqNavHtml`, `[data-course]` → `window._hqSetCourse` → data.js
+`hqShipSetCourse`, one profile transaction, `door.hq.ship = { dest, set }`,
+viewer-local). `DOOR_HQ.ship` names the collar + the console. A destination is
+a `DOOR_HQ.links` row DOCKED on the collar — an end `{ site, part: 'airlock',
+door: 'collar' }` (`hqLinkEndOk` accepts it, `hqLinkEndWear` reads the door's
+leaf, `hqLinkDoors` generates NO door at that end and lands the far end AT the
+door; `hqLinkDockedDoor` — only a ship door takes a dock). Reads:
+`hqShipDestinations()` (sheet order), `hqShipCourse` / `hqShipResolve(profile,
+{ force })` (what the collar opens on), `hqShipApplyCourse(profile)` re-plates
+the collar (map.js `_hqEnter` calls it; `hqDoorNo` reads the destination's
+number off `_courseNo` — never `roomNo`). map.js `_hqDoorDirectAction` resolves
+`act.ship` (a course = straight through, charting the link; none = the panel
+naming the bridge). `hqWorldGraph` gives the collar one edge per destination.
+Adding a port = one link row docked on the collar. hq-spaceship.test.js /
+hq-world.test.js own it. **THE PLANET FLOOR**: three-renderer.js
+`_hqBuildSetting`'s cull dropped the planet ground as "in a door zone" (every
+planet room stood on the sky) — `_wdBuildPlanet` tags its meshes `_ew_hqPlanet`
+under `o.hq` and the cull keeps them; the room's planet + rim build at the
+room's tile (`_hzKitTs`) with `K._wdFog` set. **THE ROCKS** (the user: no
+pointy cones): `_hzRock(K, { kind: boulder | crag | stone | any, span, h, tex,
+color, lift, snow, sink, tilt, rng, fog, cast, foot })` = the asteroid GLBs /
+the standing stone in a TINTED Lambert (`_hzRockPick`), stretched toward `h`,
+sunk, a snow cap on request, the jostled dodecahedron as the fallback; it
+replaced every cone in `_nrPeaks`, `_nrSpires`, `_WD_RIM.peaks` (a mesa = the
+boulder squashed) and `_WD_RIM.spires`; `_hzDoorKitGLB` / `_hzMiscKit` take
+`matPick` + `onDone`. Never raise a ConeGeometry as a mountain / spire again —
+call `_hzRock`. The pyramids and the icebergs keep their geometry. **THE
+PYRAMID ON MARS**: `_hzModelPyramid(rng, { h, color, lift, cap })` (a lit
+tinted Lambert when `color` is given; sizes against the kit tile) stands the
+Cydonia pyramid off Mars's far corner in `_NR_BUILDERS.mars`. Log:
+DOOR_HQ_BUILD_PLAN §9. Unseen live (RULE #1c): the rock GLBs' read, the tint,
+the pyramid's size, the collar's plate, the console's rows.
+

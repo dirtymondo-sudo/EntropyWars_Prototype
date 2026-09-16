@@ -19227,6 +19227,8 @@ const DOOR_HQ = {
        wall like any door (`wall: 'e', z`). A `way` seam lands the walker
        facing AWAY from the object (_hqGoTo, the same rule as a door): you
        climb OUT of the wardrobe into the snow; you do not stand in it. */
+    /* THE SHIP'S ONE DOOR (2026-09-16): the collar and the console — see hqShipDestinations */
+    ship: { room: 'site_prebuilt_derelict_airlock', door: 'collar', bridge: 'site_prebuilt_derelict_bridge', counter: 'nav' },
     ways: {
         wardrobe: { verb: 'CLIMB IN', sub: 'THE WARDROBE · THROUGH THE COATS', sfx: 'wayCreak', w: 1.5, h: 2.3 },
         well:     { verb: 'CLIMB DOWN', sub: 'THE WELL · DOWN THE ROPE', sfx: 'wayWell', w: 1.4, h: 1.0 },
@@ -19277,12 +19279,20 @@ const DOOR_HQ = {
     },
     links: [
         /* THE LUNAR ROUTE (the pilot's two, plus Mars and the drop) */
+        /* THE SHIP'S ONE DOOR (2026-09-16, the user: "one door to the destination
+           planet; set the destination in the cockpit, then the door leads to that
+           planet"): both spaceship ends are DOCKED on the airlock's single collar
+           (`door: 'collar'` — the room's own authored door, see DOOR_HQ.ship): no
+           door is generated at that end, the far end's door lands AT the collar,
+           and the collar opens on whichever destination THE NAV CONSOLE on the
+           bridge laid in (hqShipCourse). Adding a destination = another link with
+           a docked end on the collar. */
         { id: 'moon_derelict', route: 'lunar', leaf: 'leaf_bulkhead',
           a: { site: 'prebuilt_moon', wall: 'n', x: -5 },
-          b: { site: 'prebuilt_derelict', part: 'airlock', wall: 'w', z: 2.5, sub: 'THE PORT COLLAR · TO THE MOON' },   // 9.2 stage 2: the collar is the airlock's, not the deck's
+          b: { site: 'prebuilt_derelict', part: 'airlock', door: 'collar' },   // docked: the airlock's one collar (9.2 stage 2 had a port collar here)
           why: 'the lander\'s hatch and the docking collar are the same bore; the ship parked here once', note: 'the collar seals', draft: true },
         { id: 'derelict_saturn', route: 'lunar', leaf: 'leaf_bulkhead',
-          a: { site: 'prebuilt_derelict', part: 'airlock', wall: 'e', z: 2.5, sub: 'THE STARBOARD COLLAR · TO SATURN' },   // 9.2 stage 2: the airlock's second collar
+          a: { site: 'prebuilt_derelict', part: 'airlock', door: 'collar' },   // docked: the same collar, a different course
           b: { site: 'prebuilt_saturn', wall: 'n', x: -5 },
           why: 'the second collar opens onto the hexagon plateau; the ship swings past Saturn on every orbit', note: 'mind the ring plane', draft: true },
         { id: 'mars_moon', route: 'lunar', leaf: 'leaf_bulkhead',
@@ -27157,7 +27167,7 @@ const DOOR_HQ = {
         site_prebuilt_derelict_airlock: {
             label: 'THE SPACESHIP · THE AIRLOCK',
             quiet: true,   // D7: a quiet room — the collars are the content; no envelope
-            sub: 'THE DOCKING COLLARS · THE DECK · THE HOLD',
+            sub: 'THE DOCKING COLLAR · THE DECK · THE HOLD',
             kind: 'box', site: 'prebuilt_derelict', part: 'airlock',
             shell: {
                 w: 8, d: 10, h: 3.2,
@@ -27179,10 +27189,20 @@ const DOOR_HQ = {
                   label: 'THE CARGO HOLD', sub: 'FORWARD · INTO THE SHIP',
                   action: { room: 'site_prebuilt_derelict_hold', at: 'airlock' },
                   desc: 'The forward hatch. The hold is behind it, and the bridge behind that, and behind the bridge the half of the ship that is not there.' },
+                /* THE COLLAR (2026-09-16): the ship's ONE door to a planet. `action.ship`
+                   resolves at the press to the course the bridge laid in (data.js
+                   hqShipResolve; map.js _hqDoorDirectAction) — no course, and the panel
+                   says where to set one. The plate is re-written by hqShipApplyCourse on
+                   every room entry (the label / sub here are the sheet's no-course wording). */
+                { id: 'collar', wall: 'w', z: 0, leaf: 'leaf_bulkhead', wide: true,
+                  label: 'THE DOCKING COLLAR', sub: 'NO COURSE LAID IN · SET IT ON THE BRIDGE',
+                  action: { ship: true },
+                  why: 'one collar, every port: the ship docks wherever the bridge says it is',
+                  desc: 'The docking collar. One bore, one seal, and it mates with whatever the nav console says is on the other side — the Moon, Saturn, wherever the course was laid. Set no course and it opens on the hull.' },
             ],
             counters: [],
             props: [
-                { key: 'locker',            wall: 'w', z: -2.6 },
+                { key: 'locker',            wall: 'w', z: -3.4 },
                 { key: 'locker',            wall: 'e', z: -2.6 },
                 { key: 'railing_1m',        x: 2.4, z: -0.5, face: 90 },                    // the grab rail by the starboard collar (the park rule's rail)
                 { key: 'railing_1m',        x: 2.4, z: 0.5, face: 90 },
@@ -27201,7 +27221,7 @@ const DOOR_HQ = {
             npcSpots: [{ x: -2.2, z: 0.8, face: 90, race: 'grey' }],
             onlineSpots: [],
             lines: [
-                '“Port collar.” “The Moon.” “Starboard collar.” “Saturn.” “Which one is the way out?” “Aft.”',
+                '“Where does the collar go?” “Wherever the bridge says.” “And if the bridge says nothing?” “Then it goes nowhere, and you stay.”',
                 '“Pressure?” “Nominal.” “Nominal on which side?” “Yes.”',
                 '“The suits are hung up.” “The helmets are not.” “Where are the helmets?” “Wherever the heads went.”',
             ],
@@ -27272,7 +27292,7 @@ const DOOR_HQ = {
         /* ── THE BRIDGE — the viewport, the screens, the chair that is warm ── */
         site_prebuilt_derelict_bridge: {
             label: 'THE SPACESHIP · THE BRIDGE',
-            sub: 'THE VIEWPORT · THE SCREENS · THE CHAIR',
+            sub: 'THE VIEWPORT · THE NAV CONSOLE · THE CHAIR',
             kind: 'box', site: 'prebuilt_derelict', part: 'bridge',
             shell: {
                 w: 12, d: 8, h: 3.4,
@@ -27291,7 +27311,14 @@ const DOOR_HQ = {
                   action: { room: 'site_prebuilt_derelict_hold', at: 'bridge' },
                   desc: 'The ladder down to the hold. Down is the way you came; every other way off the bridge is the viewport, and the viewport is the sun.' },
             ],
-            counters: [],
+            /* THE NAV CONSOLE (2026-09-16): the pilot's seat — SET COURSE lays in where the
+               airlock's collar opens (overlay 'nav' → map.js _hqNavHtml → hqShipSetCourse) */
+            counters: [
+                { id: 'nav', x: 4.6, z: -0.35, face: 90, plateY: 1.7, radius: 1.6, verb: 'SET COURSE',
+                  label: 'THE NAV CONSOLE', sub: 'SET COURSE · THE COLLAR OPENS THERE',
+                  action: { overlay: 'nav' },
+                  desc: 'The nav console. A course laid in here is where the docking collar in the airlock mates on the next cycle. The last hand to lay one in was not on the crew list either.' },
+            ],
             props: [
                 { key: 'riser_1',           x: 0, z: -2.9, face: 0 },                        // THE COMMAND DAIS (the park rule's ramp, one step)
                 { key: 'railing_1m',        x: -1.0, z: 2.6, face: 0 },                      // the rail behind the seats (the park rule's rail)
@@ -29764,6 +29791,7 @@ function hqLinkRoom(end) {
    a FREE-STANDING seam (`wall: 'free'`, x, z, face) — null = malformed */
 function hqLinkEndOk(e) {
     if (!e) return false;
+    if (e.door) return typeof e.door === 'string' && /^[a-z0-9_]+$/.test(e.door) && !e.wall;   // THE SHIP'S ONE DOOR: a DOCKED end = the room's own authored door (no wall, no coordinate)
     if (e.wall === 'free') return Number.isFinite(e.x) && Number.isFinite(e.z) && Number.isFinite(e.face);
     return ['n', 's', 'e', 'w'].includes(e.wall) && Number.isFinite(e[(e.wall === 'n' || e.wall === 's') ? 'x' : 'z']);
 }
@@ -29772,7 +29800,20 @@ function hqLinkEndOk(e) {
    an end may override with its own `leaf` (a plain door back) or `way`.
    null = the end is unsupported (an unknown leaf / an unlisted way) and
    the whole link is held back — never half a seam. */
+/* a docked end's door: the authored row it names in the room it resolves to (null = none) */
+function hqLinkDockedDoor(end) {
+    if (!end || !end.door) return null;
+    const rid = hqLinkRoom(end);
+    const room = rid ? DOOR_HQ.rooms[rid] : null;
+    const d = room ? (room.doors || []).find(x => x && x.id === end.door && !x.link) : null;
+    return (d && d.action && d.action.ship) ? d : null;   // only a SHIP door takes a docked end (its action resolves the course)
+}
 function hqLinkEndWear(link, end) {
+    if (end && end.door) {   // a docked end wears the authored door's own leaf
+        const d = hqLinkDockedDoor(end);
+        const cat = d && d.leaf ? DOOR_HQ.catalogue[d.leaf] : null;
+        return (cat && cat.leaf) ? { leaf: d.leaf, cat: cat, docked: true } : null;
+    }
     const way = (end && end.way) || ((end && end.leaf) ? null : link.way) || null;
     if (way) return (DOOR_HQ.ways || {})[way] ? { way: way, cat: DOOR_HQ.ways[way] } : null;
     const leaf = (end && end.leaf) || link.leaf;
@@ -29801,6 +29842,7 @@ function hqLinkDoors(roomId) {
         const a = live.a, b = live.b, wearA = live.wearA, wearB = live.wearB;
         const end = roomId === a ? link.a : roomId === b ? link.b : null;
         if (!end) return;
+        if (end.door) return;   // a DOCKED end: the room's own door is the end — nothing generated (THE SHIP'S ONE DOOR)
         const wear = roomId === a ? wearA : wearB;
         const other = roomId === a ? link.b : link.a, to = roomId === a ? b : a;
         const site = other.site || (DOOR_HQ.rooms[to] || {}).site;
@@ -29810,7 +29852,7 @@ function hqLinkDoors(roomId) {
             label: ((meta && meta.label) || (DOOR_HQ.rooms[to] || {}).label || to).toUpperCase(),
             /* an end may override the kind's plate line and the prompt's verb
                (the well room's heads: THE GARDEN WELL · CLIMB UP) */
-            sub: end.sub || (wear.way ? (wear.cat.sub || 'STEP THROUGH') : 'WALK THROUGH'), action: { room: to, at: 'link_' + link.id } };
+            sub: end.sub || (wear.way ? (wear.cat.sub || 'STEP THROUGH') : 'WALK THROUGH'), action: { room: to, at: other.door ? other.door : 'link_' + link.id } };   // the far end lands AT a docked end's own door
         if (wear.way) d.way = wear.way;
         if (end.verb) d.verb = String(end.verb);
         if (link.why) d.why = link.why;
@@ -29826,6 +29868,79 @@ function hqLinkDoors(roomId) {
     });
     return doors;
 }
+/* ══ THE SHIP'S ONE DOOR (2026-09-16) ═════════════════════════════════════
+   The user: "Spaceship — one door to the destination planet; must set the
+   destination in the pilot room / cockpit, then the door will lead to that
+   planet." DOOR_HQ.ship names the collar (the airlock's authored door whose
+   action is `{ ship: true }`) and the bridge's nav counter. A DESTINATION is
+   any DOOR_HQ.links row with an end DOCKED on that collar (`{ site, part,
+   door: 'collar' }`): hqShipDestinations() lists them in sheet order (the
+   far end's room, the door to land at, the site's label + number);
+   hqShipCourse(profile) reads the course on file (`door.hq.ship.dest` = the
+   link id; viewer-local, never synced — a course is a session's business);
+   hqShipSetCourse(profile, linkId) is the ONE write (the caller saves);
+   hqShipResolve(profile) is what the collar opens on ({ room, at, link } or
+   null); hqShipApplyCourse(profile) re-plates the collar door (label / sub)
+   so the plate in the airlock reads the destination — map.js _hqEnter calls
+   it before a room builds. Nothing on `state`, nothing relayed (RULE #2). */
+function hqShipDef() { return DOOR_HQ.ship || null; }
+function hqShipDoor(roomId, doorId) {
+    const sh = hqShipDef(); roomId = roomId || (sh && sh.room); doorId = doorId || (sh && sh.door);
+    const room = roomId ? DOOR_HQ.rooms[roomId] : null;
+    return room ? ((room.doors || []).find(d => d && d.id === doorId && d.action && d.action.ship) || null) : null;
+}
+function hqShipDestinations(roomId, doorId) {
+    const sh = hqShipDef(); roomId = roomId || (sh && sh.room); doorId = doorId || (sh && sh.door);
+    if (!roomId || !doorId) return [];
+    const out = [];
+    (DOOR_HQ.links || []).forEach(link => {
+        const live = hqLinkLive(link); if (!live) return;
+        let here = null, far = null, farRoom = null;
+        if (link.a && link.a.door === doorId && live.a === roomId) { here = link.a; far = link.b; farRoom = live.b; }
+        else if (link.b && link.b.door === doorId && live.b === roomId) { here = link.b; far = link.a; farRoom = live.a; }
+        if (!here || !farRoom) return;
+        const site = far.site || (DOOR_HQ.rooms[farRoom] || {}).site || null;
+        const meta = site ? (typeof EW_MAP_META !== 'undefined' ? EW_MAP_META : []).find(m => m.id === hqSiteId(site)) : null;
+        const label = String((meta && meta.label) || (DOOR_HQ.rooms[farRoom] || {}).label || farRoom).toUpperCase();
+        let no = null; try { no = site ? hqRoomNo(hqSiteId(site)) : hqRoomNo(farRoom); } catch (e) { no = null; }
+        out.push({ link: link.id, route: link.route || null, room: farRoom, at: far.door ? far.door : 'link_' + link.id, site: site ? hqSiteId(site) : null,
+            label: label, no: no, sub: here.sub || null, why: link.why || null, note: link.note || null });
+    });
+    return out;
+}
+function hqShipCourse(profile, opts) {
+    const force = opts && opts.force;
+    const dests = hqShipDestinations();
+    const id = force || (profile && profile.door && profile.door.hq && profile.door.hq.ship && profile.door.hq.ship.dest) || null;
+    return id ? (dests.find(d => d.link === id) || null) : null;
+}
+function hqShipSetCourse(profile, linkId) {
+    const id = String(linkId || '');
+    if (!profile) return { ok: false, reason: 'profile' };
+    if (id === '' || id === 'none') {   // clear the course
+        if (profile.door && profile.door.hq && profile.door.hq.ship) profile.door.hq.ship = { dest: null, set: hqToday() };
+        return { ok: true, course: null };
+    }
+    const dst = hqShipDestinations().find(d => d.link === id) || null;
+    if (!dst) return { ok: false, reason: 'unknown', link: id };
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
+    profile.door.hq.ship = { dest: dst.link, set: hqToday() };
+    return { ok: true, course: dst };
+}
+function hqShipResolve(profile, opts) {
+    const c = hqShipCourse(profile, opts);
+    return c ? { room: c.room, at: c.at, link: c.link, label: c.label, no: c.no } : null;
+}
+function hqShipApplyCourse(profile, opts) {
+    const d = hqShipDoor(); if (!d) return null;
+    if (!d._base) d._base = { label: d.label, sub: d.sub };
+    const c = hqShipCourse(profile, opts);
+    d.label = d._base.label;
+    d.sub = c ? ('COURSE LAID IN · ' + (c.no ? 'ROOM ' + c.no + ' · ' : '') + c.label) : d._base.sub;
+    d._courseNo = c && c.no ? String(c.no) : '';   // the plate's number (hqDoorNo) — never `roomNo` (the register would list the port twice)
+    return c;
+}
 function hqWorldGraph() {
     const rooms = DOOR_HQ.rooms || {};
     const nodes = Object.keys(rooms).map(id => ({ id: id, label: rooms[id].label, site: rooms[id].site || null }));
@@ -29836,6 +29951,12 @@ function hqWorldGraph() {
         if (act.sector) { to = hqBayId(act.sector); at = act.at || hqBayEntry(act.sector); }
         if (act.mission && ((DOOR_HQ.siteRooms || {}).built || []).includes(hqSiteId(act.mission))) {
             to = hqSiteRoomId(act.mission); at = 'egress';
+        }
+        /* THE SHIP'S ONE DOOR: the collar is every destination's edge (one per docked link) */
+        if (act.ship) {
+            hqShipDestinations(id, d.id).forEach(dst => edges.push({ from: id, door: d.id, to: dst.room, at: dst.at, link: dst.link,
+                minClearance: d.minClearance || 0, requiresKeys: d.requiresKeys || 0 }));
+            return;
         }
         if (to) edges.push({ from: id, door: d.id, to: to, at: at, link: d.link || null,
             minClearance: d.minClearance || 0, requiresKeys: d.requiresKeys || 0 });
@@ -32407,6 +32528,7 @@ function hqDoorNo(entry) {
     if (entry.roomNo != null) return hqRoomNoStr(entry.roomNo);
     const act = entry.action || {};
     if (act.mission) return hqRoomNo(act.mission);
+    if (act.ship) return entry._courseNo || '';   // THE SHIP'S ONE DOOR: the collar's plate reads the destination's number while a course is laid in (hqShipApplyCourse), else nothing
     if (entry.site) return hqRoomNo(entry.site);   // a site room's console wears the site's number (plan 7.2)
     if (act.room && DOOR_HQ.rooms[act.room] && DOOR_HQ.rooms[act.room].roomNo != null) return hqRoomNoStr(DOOR_HQ.rooms[act.room].roomNo);
     if (act.room && DOOR_HQ.rooms[act.room] && DOOR_HQ.rooms[act.room].site) return hqRoomNo(DOOR_HQ.rooms[act.room].site);
@@ -34087,6 +34209,13 @@ if (typeof window !== 'undefined') {
     window.hqLinkEndWear = hqLinkEndWear;
     window.hqWorldGraph = hqWorldGraph;
     window.hqLinkLive = hqLinkLive;
+    window.hqLinkDockedDoor = hqLinkDockedDoor;
+    window.hqShipDestinations = hqShipDestinations;
+    window.hqShipCourse = hqShipCourse;
+    window.hqShipSetCourse = hqShipSetCourse;
+    window.hqShipResolve = hqShipResolve;
+    window.hqShipApplyCourse = hqShipApplyCourse;
+    window.hqShipDoor = hqShipDoor;
     window.hqWorldRoutes = hqWorldRoutes;
     window.hqLinksSeenUnion = hqLinksSeenUnion; window.hqLinksSeenRecord = hqLinksSeenRecord;
     window.hqRoomsSeenUnion = hqRoomsSeenUnion; window.hqRoomsSeenRecord = hqRoomsSeenRecord; window.hqRoomSeen = hqRoomSeen; window.hqRoomSee = hqRoomSee; window.hqMapRoomNo = hqMapRoomNo; window.hqMapGraph = hqMapGraph; window.hqMapLayout = hqMapLayout; window.hqMapModel = hqMapModel; window.HQ_MAP_L = HQ_MAP_L;

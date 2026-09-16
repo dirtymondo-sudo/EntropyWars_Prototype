@@ -44,10 +44,18 @@ test('the Lunar pilot connects Moon, Derelict and Saturn both ways with distinct
  assert.equal(LUNAR.length,4,'the pilot\'s two, Mars and the drop (rev 7)');
  for(const link of LUNAR) for(const end of [link.a,link.b]) {
   const rid=D.hqLinkRoom(end), room=HQ.rooms[rid];
+  if(end.door){   // THE SHIP'S ONE DOOR (2026-09-16): a DOCKED end is the room's own ship door — the far end lands at it, it opens on the course
+   const dock=room.doors.find(d=>d.id===end.door);
+   assert.ok(dock && dock.action.ship,'the docked end names a ship door');
+   assert.ok(D.hqShipDestinations(rid,end.door).some(x=>x.link===link.id),'the link is one of the collar\'s ports');
+   continue;
+  }
   const door=room.doors.find(d=>d.id==='link_'+link.id);
   assert.ok(door);
   const dest=HQ.rooms[door.action.room], back=dest.doors.find(d=>d.id===door.action.at);
-  assert.ok(back);assert.equal(back.action.room,rid);assert.equal(back.action.at,door.id);
+  assert.ok(back);
+  if(back.action.ship){ assert.ok(D.hqShipDestinations(door.action.room,back.id).some(x=>x.link===link.id && x.room===rid && x.at===door.id),'the collar opens back on this end'); }
+  else { assert.equal(back.action.room,rid); assert.equal(back.action.at,door.id); }
   assert.equal(back.leaf,door.leaf);assert.equal(D.doorSiteState(door,{}),'open');
   assert.equal(D.hqDoorNo(door),D.hqRoomNo(door.action.room));
   /* a link end may be a complex's PART (9.2 stage 2: the Spaceship's collars are the airlock's) — the board room of its site keeps the egress and the marker */
@@ -95,39 +103,57 @@ test('legacy H-Wing exit and array back doors both survive repeated room generat
   for(let i=0;i<2;i++)assert.equal(D.hqSiteRoom(id).doors.filter(d=>['hwing','second'].includes(d.id)).length,2);
  } finally {HQ.siteRooms.backDoors[id]=old;}
 });
+/* THE PROBE LINK: a plain wall-to-wall link with a Moon end (the Spaceship's two ends are DOCKED on
+   the airlock's ONE collar since 2026-09-16 — hq-spaceship.test.js owns that contract) */
+const PLAIN = () => { const l = HQ.links.find(l => l.id === 'mars_moon'); assert.ok(l && !l.a.door && !l.b.door && !l.way, 'mars_moon is the plain probe link'); return l; };
 test('invalid or unbuilt link endpoints generate neither half of a broken connection',()=>{
- const saved=HQ.links;
- try {for(const patch of [{site:'missing',wall:'n',x:0},{site:'prebuilt_moon',part:'airlock',wall:'n',x:0},{site:'prebuilt_moon',wall:'e',x:0},{site:'prebuilt_moon',wall:'n',x:NaN}]) {
-  HQ.links=[{...saved[0],a:patch}];
-  assert.equal(D.hqLinkDoors(D.hqSiteRoomId('prebuilt_derelict')).length,0);
+ const saved=HQ.links, L=PLAIN();
+ try {for(const patch of [{site:'missing',wall:'n',x:0},{site:'prebuilt_moon',part:'airlock',wall:'n',x:0},{site:'prebuilt_moon',wall:'e',x:0},{site:'prebuilt_moon',wall:'n',x:NaN},{site:'prebuilt_moon',door:'collar'},{site:'prebuilt_moon',door:'egress'}]) {
+  HQ.links=[{...L,a:patch}];
+  assert.equal(D.hqLinkDoors(D.hqSiteRoomId('prebuilt_moon')).length,0);
+  assert.equal(D.hqLinkDoors(D.hqSiteRoomId('prebuilt_mars')).length,0,'the Mars end is held with it');
  }} finally{HQ.links=saved;}
 });
-test('links are fresh copies and their own clearance/Key requirements use existing gate rules',()=>{
- const saved=HQ.links;
+test('THE SHIP\'S ONE DOOR: a DOCKED end generates no door, the far end lands AT the authored door, and only a ship door takes a dock',()=>{
+ const saved=HQ.links, L=PLAIN(), AIR='site_prebuilt_derelict_airlock';
  try {
-  HQ.links=[{...saved[0],gate:{minClearance:6,requiresKeys:24}}];
-  const door=D.hqLinkDoors(D.hqLinkRoom(saved[0].a))[0];
+  HQ.links=[{...L,b:{site:'prebuilt_derelict',part:'airlock',door:'collar'}}];
+  assert.equal(D.hqLinkDoors(AIR).length,0,'nothing generated at the docked end');
+  const far=D.hqLinkDoors(D.hqLinkRoom(L.a))[0];
+  assert.ok(far && far.action.room===AIR && far.action.at==='collar','the far end lands at the collar');
+  assert.equal(far.leaf,'leaf_bulkhead','the docked end wears the collar\'s own leaf');
+  HQ.links=[{...L,b:{site:'prebuilt_derelict',part:'airlock',door:'deck'}}];
+  assert.equal(D.hqLinkDoors(D.hqLinkRoom(L.a)).length,0,'a dock on a door that is not a ship door holds the link');
+  HQ.links=[{...L,b:{site:'prebuilt_derelict',part:'airlock',door:'collar',wall:'w',z:0}}];
+  assert.equal(D.hqLinkDoors(D.hqLinkRoom(L.a)).length,0,'a docked end never also names a wall');
+ } finally{HQ.links=saved;}
+});
+test('links are fresh copies and their own clearance/Key requirements use existing gate rules',()=>{
+ const saved=HQ.links, L=PLAIN();
+ try {
+  HQ.links=[{...L,gate:{minClearance:6,requiresKeys:24}}];
+  const door=D.hqLinkDoors(D.hqLinkRoom(L.a))[0];
   assert.equal(D.doorSiteState(door,{}),'clearance');
   assert.equal(door.requiresKeys,24);assert.equal(door.minClearance,6);
-  door.action.at='changed';assert.equal(D.hqLinkDoors(D.hqLinkRoom(saved[0].a))[0].action.at,'link_moon_derelict');
+  door.action.at='changed';assert.equal(D.hqLinkDoors(D.hqLinkRoom(L.a))[0].action.at,'link_'+L.id);
  } finally{HQ.links=saved;}
 });
 test('an entryway kind the catalogue does not list is held back at BOTH ends; a listed one builds; a per-end leaf makes a plain door back',()=>{
- const saved=HQ.links;
+ const saved=HQ.links, L=PLAIN();
  try {
-  HQ.links=[{...saved[0],way:'phonebox'}];   // rev 22: the mirror is catalogued now — the phone box is the kind that waits on A14
-  assert.equal(D.hqLinkDoors(D.hqLinkRoom(saved[0].a)).length,0);assert.equal(D.hqLinkDoors(D.hqLinkRoom(saved[0].b)).length,0);
-  HQ.links=[{...saved[0],a:{...saved[0].a,way:'phonebox'}}];
-  assert.equal(D.hqLinkDoors(D.hqLinkRoom(saved[0].b)).length,0,'one unknown end holds the whole link back — never half a seam');
-  HQ.links=[{...saved[0],way:'wardrobe'}];
-  const a=D.hqLinkDoors(D.hqLinkRoom(saved[0].a))[0], b=D.hqLinkDoors(D.hqLinkRoom(saved[0].b))[0];
+  HQ.links=[{...L,way:'phonebox'}];   // rev 22: the mirror is catalogued now — the phone box is the kind that waits on A14
+  assert.equal(D.hqLinkDoors(D.hqLinkRoom(L.a)).length,0);assert.equal(D.hqLinkDoors(D.hqLinkRoom(L.b)).length,0);
+  HQ.links=[{...L,a:{...L.a,way:'phonebox'}}];
+  assert.equal(D.hqLinkDoors(D.hqLinkRoom(L.b)).length,0,'one unknown end holds the whole link back — never half a seam');
+  HQ.links=[{...L,way:'wardrobe'}];
+  const a=D.hqLinkDoors(D.hqLinkRoom(L.a))[0], b=D.hqLinkDoors(D.hqLinkRoom(L.b))[0];
   assert.ok(a && b && a.way==='wardrobe' && b.way==='wardrobe' && a.leaf===null && b.leaf===null);
   assert.equal(a.sub,HQ.ways.wardrobe.sub);
-  HQ.links=[{...saved[0],way:'wardrobe',b:{...saved[0].b,leaf:'leaf_bulkhead',sub:undefined}}];   // the collar end's own plate line stripped: this probes the kind's default
-  const a2=D.hqLinkDoors(D.hqLinkRoom(saved[0].a))[0], b2=D.hqLinkDoors(D.hqLinkRoom(saved[0].b))[0];
+  HQ.links=[{...L,way:'wardrobe',b:{...L.b,leaf:'leaf_bulkhead',sub:undefined}}];   // one end's own plate line stripped: this probes the kind's default
+  const a2=D.hqLinkDoors(D.hqLinkRoom(L.a))[0], b2=D.hqLinkDoors(D.hqLinkRoom(L.b))[0];
   assert.equal(a2.way,'wardrobe');assert.equal(b2.way,undefined);assert.equal(b2.leaf,'leaf_bulkhead');assert.equal(b2.sub,'WALK THROUGH');
-  HQ.links=[{...saved[0],a:{site:'prebuilt_moon',wall:'free',x:0,z:0}}];
-  assert.equal(D.hqLinkDoors(D.hqLinkRoom(saved[0].b)).length,0,'a free end without a face is malformed');
+  HQ.links=[{...L,a:{site:'prebuilt_mars',wall:'free',x:0,z:0}}];
+  assert.equal(D.hqLinkDoors(D.hqLinkRoom(L.b)).length,0,'a free end without a face is malformed');
  } finally{HQ.links=saved;}
 });
 test('THE SEAMS THAT ARE NOT DOORS: the wardrobe into Camelot and the well into Hollow Earth are catalogued, paired, plated, voiced and built',()=>{

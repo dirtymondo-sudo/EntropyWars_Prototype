@@ -458,7 +458,7 @@ test('box-room doors hang on a named wall with a panel that fits, one action eac
             const wide = !!d.wide || (d.rankDoor && D.DOOR_TEXT.CLEARANCE.some(r => HQ.catalogue[r.door] && HQ.catalogue[r.door].wide));
             const halfPanel = (wide ? 3.3 : 2.5) / 2;
             if (typeof a.v !== 'number' || Math.abs(a.v) + halfPanel > a.half) problems.push(k + ': door ' + d.id + ' panel runs off the wall');
-            const keys = Object.keys(d.action || {}).filter(x => ['fn', 'sector', 'room', 'overlay', 'mission'].includes(x));
+            const keys = Object.keys(d.action || {}).filter(x => ['fn', 'sector', 'room', 'overlay', 'mission', 'ship'].includes(x));   // `ship` = THE SHIP'S ONE DOOR (2026-09-16): the collar resolves its room at the press
             if (keys.length !== 1) problems.push(k + ': door ' + d.id + ' action');
             if (d.action && d.action.room && !HQ.rooms[d.action.room]) problems.push(k + ': door ' + d.id + ' leads to no room');
             if (d.leaf && !(HQ.catalogue[d.leaf] && HQ.catalogue[d.leaf].leaf)) problems.push(k + ': door ' + d.id + ' leaf ' + d.leaf);

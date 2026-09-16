@@ -573,6 +573,8 @@
                     }
                 }
             } catch (e) { console.warn('[HQ] per-entry variant roll failed', e); }
+            /* THE SHIP'S ONE DOOR (2026-09-16): the collar's plate reads the course on file (the room builds it) */
+            try { if (typeof window.hqShipApplyCourse === 'function') window.hqShipApplyCourse(_hqProfile()); } catch (e) {}
             const roomDef = DOOR_HQ.rooms[roomId];
             try { playSfx('uiButtonConfirm'); } catch (e) {}
             /* the strike plate buzzes on the way IN from Play; a return from a
@@ -2472,6 +2474,65 @@
         /* THE FLOOR PANEL (Phase 8, 2026-09-14): the stops from data.js hqElevatorStops — a button per
            floor that works, YOU ARE HERE on the floor the car was boarded from, the PH gate (the
            mezzanine door's old KEYHOLDER + 12 Keys) as a red chip, the other buttons dim */
+        /* ══ THE SHIP'S ONE DOOR (2026-09-16) ═══════════════════════════════
+           THE NAV CONSOLE (the bridge, counter `nav`, overlay 'nav'): one row per
+           destination on file (data.js hqShipDestinations — every DOOR_HQ.links
+           row docked on the collar), SET COURSE lays it in (`[data-course]` →
+           window._hqSetCourse → hqShipSetCourse, ONE profile transaction) and
+           the airlock's collar opens there. The collar's own panel (no course)
+           lists the same and names the bridge. Viewer-local (RULE #2). */
+        function _hqShipRows(profile, opts) {
+            const dests = (typeof window.hqShipDestinations === 'function') ? window.hqShipDestinations() : [];
+            const cur = (typeof window.hqShipCourse === 'function') ? window.hqShipCourse(profile) : null;
+            const setHere = !!(opts && opts.set);
+            let html = '<div class="hq-rows">';
+            if (!dests.length) html += '<p class="hq-panel-note">NO DESTINATION ON FILE — the collar mates with nothing.</p>';
+            dests.forEach(d => {
+                const laid = !!(cur && cur.link === d.link);
+                const R = (DOOR_HQ.routes || {})[d.route] || null;
+                html += `<div class="hq-row" title="${_hqEsc(d.why || '')}"><b>${_hqNoTag(d.no)}${_hqEsc(d.label)}</b>`
+                    + `<span class="hq-row-stamp tone-${laid ? 'admit' : 'void'}">${laid ? 'COURSE LAID IN' : (R ? _hqEsc(R.label) : 'ON FILE')}</span>`
+                    + (setHere ? `<div class="hq-row-btns"><button class="hq-btn hq-btn-sm ${laid ? '' : 'hq-btn-primary'}" data-course="${_hqEsc(d.link)}" ${laid ? 'disabled' : ''}>${laid ? 'LAID IN' : 'SET COURSE'}</button></div>` : '')
+                    + '</div>';
+            });
+            html += '</div>';
+            return html;
+        }
+        function _hqNavHtml() {
+            const profile = _hqProfile();
+            const cur = (typeof window.hqShipCourse === 'function') ? window.hqShipCourse(profile) : null;
+            const sh = DOOR_HQ.ship || {};
+            let html = `<div class="hq-panel-hd"><b>THE NAV CONSOLE</b><span>${cur ? 'COURSE LAID IN · ' + _hqEsc(cur.label) : 'NO COURSE LAID IN'}</span></div>`;
+            html += '<p class="hq-panel-desc">Lay in a course. The docking collar in the airlock mates with whatever is on the other side of it on the next cycle — one collar, every port. The ship does not move; the collar does the moving.</p>';
+            html += _hqShipRows(profile, { set: true });
+            html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-sm" data-course="none" ${cur ? '' : 'disabled'}>CLEAR THE COURSE</button></div>`;
+            html += `<p class="hq-panel-note">${cur ? 'THE COLLAR OPENS ON ' + _hqEsc(cur.label) + ' — aft through the hold to the airlock.' : 'The collar opens on the hull until a course is laid in.'}</p>`;
+            return html;
+        }
+        function _hqShipDoorHtml(profile) {
+            const cur = (typeof window.hqShipCourse === 'function') ? window.hqShipCourse(profile) : null;
+            const sh = DOOR_HQ.ship || {}, bridge = sh.bridge ? DOOR_HQ.rooms[sh.bridge] : null;
+            let html = _hqShipRows(profile, { set: false });
+            if (!cur) html += `<p class="hq-panel-note">NO COURSE LAID IN — the collar opens on the hull. Set the course on THE NAV CONSOLE${bridge ? ' (' + _hqEsc(bridge.label) + ': forward through the hold, up the ladder)' : ''}.</p>`;
+            return html;
+        }
+        window._hqSetCourse = function (linkId) {
+            try {
+                const PS = window.ProfileSystem;
+                const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
+                if (idx === null || idx === undefined) { _hqToast('<b>NO CARD ON FILE</b><span>SIGN IN AT RECEPTION — THE COURSE IS FILED TO A NAME</span>'); return false; }
+                const p = PS.loadProfile(idx);
+                if (!p || typeof window.hqShipSetCourse !== 'function') return false;
+                const r = window.hqShipSetCourse(p, linkId);
+                if (!r || !r.ok) { _hqToast('<b>NO SUCH PORT</b><span>THE NAV CONSOLE HAS NO ENTRY FOR IT</span>'); return false; }
+                PS.saveProfile(idx, p);
+                try { if (typeof window.hqShipApplyCourse === 'function') window.hqShipApplyCourse(p); } catch (e) {}
+                try { playSfx('uiButtonConfirm'); } catch (e) {}
+                if (r.course) _hqToast(`<b>COURSE LAID IN</b> · ${_hqEsc(r.course.label)}<span>THE DOCKING COLLAR OPENS THERE · AFT, THROUGH THE HOLD</span>`);
+                else _hqToast('<b>COURSE CLEARED</b><span>THE COLLAR OPENS ON THE HULL</span>');
+                return true;
+            } catch (e) { console.warn('[HQ] set course', e); return false; }
+        };
         function _hqFloorPanelHtml(c, html) {
             const profile = _hqProfile();
             const from = (_hqCurRoom === 'car') ? (window._hqCarFrom || null) : _hqCurRoom;
@@ -2554,6 +2615,8 @@
                 else html += '<p class="hq-panel-note">CROSS ▸ Δ = Arena, 4v4 on the site’s 8×8 board, the CPU fielding the entities on file for it. DEEP = the full map. Each ☐ is a win condition still to be filed for the threshold; all three turn it green.</p>';
             } else {
                 if (d.desc) html += `<p class="hq-panel-desc">${_hqEsc(d.desc)}</p>`;
+                /* THE SHIP'S ONE DOOR (2026-09-16): the collar with no course — the destinations on file, the bridge named */
+                if (act.ship) html += _hqShipDoorHtml(profile);
                 /* THE BUREAU OF CONTINUITY (plan 4.4, 2026-09-15): the canon notices are ON THE DOOR — the motto's current
                    form and the latest notices read at any rank; the room behind it is GATEKEEPER's. Since THE SUITES
                    (plan 9.3, 2026-09-15) the Bureau's door hangs in the executive suite, so the suite's own door in the
@@ -3082,6 +3145,7 @@
             if (act.overlay === 'transcript') return _hqTranscriptHtml();
             if (act.overlay === 'chart') return _hqChartHtml();
             if (act.overlay === 'intake') return _hqIntakeHtml();
+            if (act.overlay === 'nav') return _hqNavHtml();   // THE SHIP'S ONE DOOR: the bridge's nav console
             if (act.overlay === 'training') return _hqTrainingHtml();
             if (act.overlay === 'crossing') return _hqCrossingHtml(t);
             let html = `<div class="hq-panel-hd"><b>${_hqEsc(c.label)}</b><span>${_hqEsc(c.sub || '')}</span></div>`;
@@ -3557,6 +3621,12 @@
                 return null;
             }
             if (d.alt || d.alt2) return null;
+            /* THE SHIP'S ONE DOOR (2026-09-16): the collar opens on the course the bridge laid in;
+               no course = the panel (which says where to set one). `link` charts the route walked. */
+            if (act.ship) {
+                const c = (typeof window.hqShipResolve === 'function') ? window.hqShipResolve(_hqProfile()) : null;
+                return (c && c.room && _hqRoomExists(c.room)) ? { room: c.room, at: c.at || null, link: c.link || null } : null;
+            }
             if (act.room && _hqRoomExists(act.room)) return { room: act.room, at: act.at || null };
             if (act.sector) {
                 const bayId = (typeof window.hqBayId === 'function') ? window.hqBayId(act.sector) : ('bay_' + act.sector);
@@ -3650,7 +3720,7 @@
             if (act.room || act.sector) {
                 const roomId = act.room || ((typeof window.hqBayId === 'function') ? window.hqBayId(act.sector) : ('bay_' + act.sector));
                 const from = t || _hqPanelTarget;
-                if (from && from.kind === 'door') _hqRecordVisit(from.id);
+                if (from && from.kind === 'door') _hqRecordVisit(act.link ? ('link_' + act.link) : from.id);   // the collar charts the link it opened on (THE SHIP'S ONE DOOR)
                 const at = act.at || (act.sector ? _hqBayEntry(act.sector) : null);
                 /* a `way` seam voices its own kind (the creak, the rope) instead of the strike plate */
                 const waySfx = (from && from.kind === 'door' && from.door && from.door.way) ? _hqWayCat(from.door.way).sfx : null;
@@ -3688,6 +3758,9 @@
             const mapZoom = e.target.closest('[data-mapzoom]');
             if (mapZoom) { const svg = body.querySelector('svg.hq-map-svg'); if (svg) { _hqMap.anim++; const v = (svg.getAttribute('viewBox') || '').split(/\s+/).map(Number); const f = mapZoom.getAttribute('data-mapzoom') === 'in' ? 1 / 1.3 : 1.3; const w = Math.max(160, Math.min(v[2] * f, 6000)), h = v[3] * (w / v[2]); _hqMapSetView(svg, [v[0] + (v[2] - w) / 2, v[1] + (v[3] - h) / 2, w, h]); } return; }
             if (e.target.closest('[data-mapfit]')) { const svg = body.querySelector('svg.hq-map-svg'); if (svg) { _hqMap.anim++; _hqMap.view = null; svg.setAttribute('viewBox', svg.getAttribute('data-fit') || ''); } return; }
+            /* THE NAV CONSOLE (THE SHIP'S ONE DOOR): SET COURSE — the console re-renders in place */
+            const course = e.target.closest('[data-course]');
+            if (course && !course.disabled) { if (window._hqSetCourse(course.getAttribute('data-course'))) body.innerHTML = _hqNavHtml() + '<p class="hq-panel-foot">ESC · CLOSE</p>'; return; }
             const spine = e.target.closest('[data-tape]');
             if (spine) { _hqTapeSel = spine.getAttribute('data-tape'); body.innerHTML = _hqTapesHtml() + '<p class="hq-panel-foot">ESC · CLOSE</p>'; try { playSfx('uiButtonConfirm'); } catch (err) {} return; }
             /* THE STAR CHART (Room 360): a star opens its threshold's door panel; ◂ THE CHART comes back */

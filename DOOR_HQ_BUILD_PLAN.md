@@ -9279,3 +9279,52 @@ foliage 404s so the trunk-and-sphere stand-ins are what the shots show).
   campfire ring with logs, a standing stone (the ritual ground's `S` cells are terrain blocks), a storm-drain grate +
   a culvert mouth, a brick arch section, a rusted ladder, a wooden staircase section (the flight is the board's
   procedural treads; a GLB flight on posts would let the landing float instead of standing on a 3.5 m plank block).
+
+### 2026-09-16 — THE SHIP'S ONE DOOR · THE PLANET FLOOR · THE ROCKS · THE PYRAMID ON MARS — local delivery
+The user's four: "Spaceship — one door to the destination planet, must set destination in pilot room / cockpit, then
+the door will lead to that planet. Planets are missing floor. Mars needs the glb pyramid. I don't like these pointy
+cone things, they don't look realistic at all — use the boulders or asteroids or stones instead and tint them to match
+the landscape / planet / map."
+- **THE SHIP'S ONE DOOR** (data.js `DOOR_HQ.ship`, the ship block before `hqWorldGraph`; map.js THE NAV CONSOLE): the
+  airlock's two collars are ONE — `collar` on the port wall, an authored door whose action is `{ ship: true }`. Both
+  Lunar-route ends are DOCKED on it (`{ site, part: 'airlock', door: 'collar' }` — a link end that names the room's
+  own door: `hqLinkEndOk` accepts it, `hqLinkEndWear` reads the door's leaf, `hqLinkDoors` generates NOTHING at that
+  end and lands the far end AT the door; only a ship door takes a dock — `hqLinkDockedDoor`). The bridge's new counter
+  `nav` (THE NAV CONSOLE, overlay `nav`, map.js `_hqNavHtml`) lists every destination (`hqShipDestinations()` = every
+  link docked on the collar, in sheet order: room · landing door · the site's label + number) with SET COURSE
+  (`[data-course]` → `window._hqSetCourse` → `hqShipSetCourse`, one profile transaction, `door.hq.ship = { dest,
+  set }`, viewer-local, never synced) and CLEAR THE COURSE. The collar: `_hqDoorDirectAction` resolves `act.ship`
+  through `hqShipResolve(profile)` → straight through to the course's room at its own link door (the walk charts the
+  link — `_hqDoAction` records `link_<id>`); no course → the panel, which lists the ports and names the bridge.
+  `hqShipApplyCourse(profile)` re-plates the collar on every room entry (`_hqEnter`): `COURSE LAID IN · ROOM 1969 ·
+  MOON`, and `hqDoorNo` reads the destination's number off `_courseNo` (never `roomNo` — the register would list the
+  port twice). `hqWorldGraph` gives the collar one edge per destination, so THE MAP and the directory guard still reach
+  both planets from the ship; the Lunar line's stations are unchanged. hq-spaceship.test.js and hq-world.test.js own
+  the contract (a dock on a non-ship door holds the link; a docked end never names a wall). Adding a port = one
+  `links` row docked on the collar.
+- **THE PLANET FLOOR** (three-renderer.js `_hqBuildSetting`): the planet ground (`_wdBuildPlanet` under `o.hq` — the
+  island and the far ring, carved and curved so never `flat`) was CULLED by the setting's "in a door zone" rule the
+  moment it was built — every planet room stood on the sky (the flat floor had been hidden under a mesh that was
+  gone; the collar survived because it is flat). The meshes wear `_ew_hqPlanet` now and the cull keeps them. Measured
+  offline (`playtest_hq_offline.js site_prebuilt_mars`: before, only `world:collar` in the scene; after, collar +
+  island + planet, the regolith to the horizon). The planet ground + its rim now build at the ROOM's tile
+  (`_hzKitTs`), and `K._wdFog` is set there so a rim GLB that lands later joins the haze.
+- **THE ROCKS** (three-renderer.js `_hzRock`, before `_nrMounds`): no cone anywhere a mountain, mesa, stalagmite or
+  spire stood — `_nrPeaks`, `_nrSpires`, `_WD_RIM.peaks` (a mesa = the boulder squashed to 0.6 of its height),
+  `_WD_RIM.spires` place the user's rock GLBs (`asteroid_a` = the boulder, `asteroid_b` = the crag, `standingstone` =
+  the tall stone) wearing a TINTED Lambert (`_hzRockPick`: the bake as the grain, the map's colour over it — the same
+  `K.mat` tint the cone wore, so THE ONE TINT rule holds — the rim's self-lit lift), sized by span (the old cone's
+  foot), stretched toward the old cone's height (`grp.scale.y`, clamped 0.55–2.4), sunk 16 % into the ground, turned
+  any way, a snow cap (a squashed sphere on the top) where the row had one; `_hzDoorKitGLB` / `_hzMiscKit` take
+  `matPick` + `onDone` for it; the walkable site room gets a collision foot before the GLB lands (`_ew_footM`). The
+  fallback (no loader / EW_PERF_LOW) is a jostled dodecahedron in the same sheet — a rock, never a cone. Kept as they
+  were: the pyramids (`_WD_RIM.pyramids`, Technoticlan / Giza) and the icebergs.
+- **THE PYRAMID ON MARS** (`_NR_BUILDERS.mars`): the Cydonia pyramid — `_hzModelPyramid(rng, { h: 9.5, color:
+  0xc27a56, lift: 0.22, cap: false })` off the far north-west corner past the big mesa (11.5 × 9.5 tiles out), a keep-
+  out so no crater is carved under it, half a tile sunk; the helper takes options now (a LIT tinted Lambert when
+  `color` is given; the plain call is still the unlit sandstone the rosters hang) and sizes against THE KIT TILE, so
+  the site room inherits it at the room's scale.
+- UNSEEN LIVE (RULE #1c): the rock GLBs' silhouettes against the horizon (the offline shots show the dodecahedron
+  fallback), the tint on the bake (a rock that reads too dark = `lift` on the row), the standing stone as a stalagmite,
+  the pyramid's size against the mesas, the collar's plate wording, the nav console's rows on the CRT.
+

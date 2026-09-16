@@ -67,8 +67,13 @@ test('the sheet: the Spaceship is a complex of the deck and three compartments, 
         assert.strictEqual(r.fx, undefined, id + ' is not a board room');
         assert.strictEqual(D.hqRoomNo(id), '426', id + ': hqRoomNo reads the threshold’s 426 through site');
         assert.ok(/THE SPACESHIP/.test(r.label) && r.sub, id + ': ROOM № · name · function on the plate');
-        for (const d of r.doors) if (!d.link) assert.strictEqual(D.hqDoorNo(d), '426', id + '/' + d.id + ': every plate in the ship reads 426');
-        for (const d of r.doors) if (d.link) assert.notStrictEqual(D.hqDoorNo(d), '426', id + '/' + d.id + ': a collar’s plate reads the FAR site’s number');
+        for (const d of r.doors) if (!d.link && !(d.action && d.action.ship)) assert.strictEqual(D.hqDoorNo(d), '426', id + '/' + d.id + ': every plate in the ship reads 426');
+        for (const d of r.doors) if (d.link) assert.notStrictEqual(D.hqDoorNo(d), '426', id + '/' + d.id + ': a link door’s plate reads the FAR site’s number');
+        for (const d of r.doors) if (d.action && d.action.ship) {   // THE SHIP'S ONE DOOR: the collar's plate reads the course's number, nothing without one
+            D.hqShipApplyCourse({ door: {} }); assert.strictEqual(D.hqDoorNo(d), '', id + '/' + d.id + ': no course, no number');
+            D.hqShipApplyCourse(null, { force: 'moon_derelict' }); assert.strictEqual(D.hqDoorNo(d), D.hqRoomNo('prebuilt_moon'), id + '/' + d.id + ': the Moon laid in, the Moon’s number');
+            D.hqShipApplyCourse({ door: {} });
+        }
         for (const d of r.doors) assert.notStrictEqual(d.leaf, 'leaf_hollow_core', id + '/' + d.id + ': never the rank leaf');
     }
     const reg = D.hqRoomRegister();
@@ -99,31 +104,75 @@ test('the airlock: the deck’s back door hangs on the north wall in the old Moo
     for (const m of S.lights || []) assert.ok(Math.hypot(p.x - m.x, p.z - m.z) > 1.2, 'a lamp mast stands on the landing');
 });
 
-test('the Lunar route docks in the airlock: both spaceship link ends name the airlock part on its port and starboard walls, the collars hang there with their own plate lines, and the line still runs Mars → Moon → Spaceship → Saturn → the Singularity', () => {
+test('THE SHIP\'S ONE DOOR (2026-09-16): both Lunar-route ends are DOCKED on the airlock\'s single collar, the collar opens on the course the nav console laid in, the far ends land at the collar, and the line still runs Mars → Moon → Spaceship → Saturn → the Singularity', () => {
     const moon = HQ.links.find(l => l.id === 'moon_derelict'), sat = HQ.links.find(l => l.id === 'derelict_saturn');
-    assert.ok(moon.b.site === SITE && moon.b.part === 'airlock' && moon.b.wall === 'w' && typeof moon.b.z === 'number', 'the Moon collar is the airlock’s port wall');
-    assert.ok(sat.a.site === SITE && sat.a.part === 'airlock' && sat.a.wall === 'e' && typeof sat.a.z === 'number', 'the Saturn collar is the airlock’s starboard wall');
-    assert.strictEqual(D.hqLinkRoom(moon.b), BOARD + '_airlock'); assert.strictEqual(D.hqLinkRoom(sat.a), BOARD + '_airlock');
+    const AIR = BOARD + '_airlock';
+    assert.ok(moon.b.site === SITE && moon.b.part === 'airlock' && moon.b.door === 'collar' && !moon.b.wall, 'the Moon end docks on the collar');
+    assert.ok(sat.a.site === SITE && sat.a.part === 'airlock' && sat.a.door === 'collar' && !sat.a.wall, 'the Saturn end docks on the same collar');
+    assert.strictEqual(D.hqLinkRoom(moon.b), AIR); assert.strictEqual(D.hqLinkRoom(sat.a), AIR);
     assert.ok(D.hqLinkLive(moon) && D.hqLinkLive(sat), 'both links are live');
-    const air = HQ.rooms[BOARD + '_airlock'];
-    const dm = air.doors.find(d => d.link === 'moon_derelict'), ds = air.doors.find(d => d.link === 'derelict_saturn');
-    assert.ok(dm && dm.wall === 'w' && dm.action.room === 'site_prebuilt_moon' && /PORT COLLAR/.test(dm.sub), 'the port collar door, its own plate line');
-    assert.ok(ds && ds.wall === 'e' && ds.action.room === 'site_prebuilt_saturn' && /STARBOARD COLLAR/.test(ds.sub), 'the starboard collar door');
-    assert.ok(D.hqLinkDoors('site_prebuilt_moon').some(d => d.link === 'moon_derelict' && d.action.room === BOARD + '_airlock' && d.action.at === dm.id), 'the Moon’s end comes back to the airlock');
-    assert.ok(D.hqLinkDoors('site_prebuilt_saturn').some(d => d.link === 'derelict_saturn' && d.action.room === BOARD + '_airlock' && d.action.at === ds.id), 'Saturn’s end too');
+    assert.strictEqual([HQ.ship.room, HQ.ship.door, HQ.ship.bridge, HQ.ship.counter].join('|'), [AIR, 'collar', BOARD + '_bridge', 'nav'].join('|'), 'DOOR_HQ.ship names the collar and the console');
+    const air = HQ.rooms[AIR];
+    assert.strictEqual(air.doors.filter(d => d.link).length, 0, 'no generated link door in the airlock — the collar is the one door');
+    const collar = air.doors.find(d => d.id === 'collar');
+    assert.ok(collar && collar.wall === 'w' && collar.action && collar.action.ship === true && collar.leaf === 'leaf_bulkhead' && collar.wide === true, 'ONE collar on the port wall, a ship door');
+    assert.strictEqual(D.hqShipDoor(), collar);
+    assert.ok(D.hqLinkDoors('site_prebuilt_moon').some(d => d.link === 'moon_derelict' && d.action.room === AIR && d.action.at === 'collar'), 'the Moon\'s end comes back to the collar');
+    assert.ok(D.hqLinkDoors('site_prebuilt_saturn').some(d => d.link === 'derelict_saturn' && d.action.room === AIR && d.action.at === 'collar'), 'Saturn\'s end too');
+    /* the destinations = every link docked on the collar, in sheet order */
+    const dests = D.hqShipDestinations();
+    assert.strictEqual(dests.map(d => d.link).join(','), 'moon_derelict,derelict_saturn');
+    assert.strictEqual(dests[0].room, 'site_prebuilt_moon'); assert.strictEqual(dests[0].at, 'link_moon_derelict'); assert.strictEqual(dests[0].label, 'MOON');
+    assert.strictEqual(dests[1].room, 'site_prebuilt_saturn'); assert.strictEqual(dests[1].at, 'link_derelict_saturn'); assert.strictEqual(dests[1].label, 'SATURN');
+    assert.ok(dests.every(d => d.no), 'every destination carries its site number');
+    /* the course: nothing on file → the collar opens on nothing; SET COURSE → the collar opens there; an unknown port is refused; the plate follows */
+    const p = { door: {} };
+    assert.strictEqual(D.hqShipCourse(p), null); assert.strictEqual(D.hqShipResolve(p), null);
+    assert.strictEqual(D.hqShipApplyCourse(p), null); assert.match(collar.sub, /NO COURSE/);
+    const bad = D.hqShipSetCourse(p, 'nowhere'); assert.ok(bad.ok === false && bad.reason === 'unknown' && bad.link === 'nowhere', 'an unknown port is refused');
+    assert.ok(D.hqShipSetCourse(p, 'derelict_saturn').ok); assert.strictEqual(p.door.hq.ship.dest, 'derelict_saturn');
+    const r = D.hqShipResolve(p);
+    assert.ok(r && r.room === 'site_prebuilt_saturn' && r.at === 'link_derelict_saturn' && r.link === 'derelict_saturn');
+    assert.ok(D.hqShipApplyCourse(p)); assert.match(collar.sub, /COURSE LAID IN · ROOM 6 · SATURN/);
+    assert.ok(D.hqShipSetCourse(p, 'moon_derelict').ok); assert.strictEqual(D.hqShipResolve(p).room, 'site_prebuilt_moon');
+    assert.ok(D.hqShipSetCourse(p, 'none').ok); assert.strictEqual(D.hqShipResolve(p), null);
+    D.hqShipApplyCourse(p); assert.match(collar.sub, /NO COURSE/);
+    assert.strictEqual(D.hqShipResolve(p, { force: 'moon_derelict' }).room, 'site_prebuilt_moon', 'a dev force beats the file');
+    /* the bridge's nav console */
+    const bridge = HQ.rooms[BOARD + '_bridge'];
+    const nav = (bridge.counters || []).find(c => c.id === 'nav');
+    assert.ok(nav && nav.action && nav.action.overlay === 'nav', 'THE NAV CONSOLE on the bridge lays the course in');
+    /* the world graph: the collar is every destination's edge; the map still reaches both planets from the ship */
+    const edges = D.hqWorldGraph().edges.filter(e => e.from === AIR && e.door === 'collar');
+    assert.strictEqual(edges.map(e => e.to).sort().join(','), 'site_prebuilt_moon,site_prebuilt_saturn');
+    assert.ok(edges.every(e => e.link), 'each edge carries its link');
     const lunar = D.hqWorldRoutes('foyer').find(r => r.id === 'lunar' || r.route === 'lunar');
     const st = (lunar.stations || []).map(s => s.site);
-    assert.strictEqual(st.join(','), 'prebuilt_mars,prebuilt_moon,prebuilt_derelict,prebuilt_saturn,prebuilt_singularity', 'the stations are SITES: the ship is one station whether the collar is on the deck or in the airlock');
-    for (const w of air.doors.filter(d => d.wall === 'w' || d.wall === 'e')) for (const o of air.doors) if (o !== w && o.wall === w.wall) assert.ok(Math.abs(o.z - w.z) > 2.6, 'collars overlap');
+    assert.strictEqual(st.join(','), 'prebuilt_mars,prebuilt_moon,prebuilt_derelict,prebuilt_saturn,prebuilt_singularity', 'the stations are SITES: the ship is one station');
+    /* the source sites */
+    const mapSrc = fs.readFileSync(__dirname + '/map.js', 'utf8');
+    for (const needle of ['if (act.ship) {', 'hqShipResolve(_hqProfile())', "act.overlay === 'nav'", 'function _hqNavHtml', 'window._hqSetCourse = function', "closest('[data-course]')", 'hqShipApplyCourse(_hqProfile())', "_hqRecordVisit(act.link ? ('link_' + act.link) : from.id)"]) assert.ok(mapSrc.includes(needle), 'map.js: ' + needle);
+    for (const needle of ['function hqShipDestinations', 'function hqShipSetCourse', 'function hqShipApplyCourse', 'function hqLinkDockedDoor', 'if (end.door) return;']) assert.ok(dataSrc.includes(needle), 'data.js: ' + needle);
 });
 
-test('every hatch in the ship is reversible, the complex is connected from the deck, and nothing leaves the site but the deck’s egress and the two collars', () => {
+test('every hatch in the ship is reversible, the complex is connected from the deck, and nothing leaves the site but the deck’s egress and the one collar', () => {
     const ROOMS = [BOARD].concat(PART_IDS);
     const seen = new Set([BOARD]), queue = [BOARD];
     while (queue.length) {
         const id = queue.shift();
         for (const d of HQ.rooms[id].doors) {
             const a = d.action || {};
+            if (a.ship) {   // THE SHIP'S ONE DOOR: the collar leaves the site through every docked link, each a pair back to it
+                assert.strictEqual(id, BOARD + '_airlock', 'only the airlock carries the collar');
+                const dests = D.hqShipDestinations(id, d.id);
+                assert.ok(dests.length >= 2, 'the collar has ports on file');
+                for (const dst of dests) {
+                    const far = (HQ.rooms[dst.room].doors || []).find(x => x.id === dst.at);
+                    assert.ok(far && far.action.room === id && far.action.at === d.id, id + '/' + d.id + ' ⇄ ' + dst.room + ' is a pair');
+                    assert.strictEqual(far.leaf, d.leaf, 'the same leaf on both sides of the collar');
+                }
+                continue;
+            }
             assert.ok(a.room && HQ.rooms[a.room], id + '/' + d.id + ' leads to a room');
             if (d.link) {
                 assert.strictEqual(id, BOARD + '_airlock', 'only the airlock leaves the site through a links row');

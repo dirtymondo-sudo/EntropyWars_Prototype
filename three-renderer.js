@@ -22040,9 +22040,14 @@ const ThreeRenderer = (function () {
     // beat as the procedural obelisk. The .glb only embeds Mask.png (a mask, not
     // the diffuse), so we override its material with the real BakedPyramid.png
     // bake as an unlit map — that way it never renders flat/dark.
-    function _hzModelPyramid(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var h = ts * (8 + rng() * 7);
+    /* 2026-09-16 (Mars): `o.h` = the height in tiles, `o.color` = a tint over the
+       bake (a LIT Lambert with a self-lit lift, so the red dust grades it like
+       the mesas — the plain call stays the unlit sandstone the rosters hang),
+       `o.cap: false` = no ember capstone. Sizes against THE KIT TILE. */
+    function _hzModelPyramid(rng, o) {
+        o = o || {};
+        var ts = _hzKitTile();
+        var h = ts * (o.h || (8 + rng() * 7));
         // glTF UVs assume flipY:false — the default TextureLoader flips, which
         // would render the bake upside-down, so build this one with flipY off.
         // (Use TextureBake.png — the baked sandstone diffuse; BakedPyramid.png in
@@ -22054,12 +22059,19 @@ const ThreeRenderer = (function () {
         if (tex && tex.flipY !== false) { tex.flipY = false; if (tex.image) tex.needsUpdate = true; }
         var g = _miscModelInstance(_R2_MISC + 'Pyramid/Pyramid.glb', true, h, {
             matPick: function () {
+                if (o.color != null) {
+                    var col = new THREE.Color(o.color), m = new THREE.MeshLambertMaterial({ map: tex, color: col, side: THREE.FrontSide });
+                    m.emissive = col.clone().multiplyScalar(o.lift == null ? 0.24 : o.lift); m.emissiveMap = tex;
+                    return m;
+                }
                 return new THREE.MeshBasicMaterial({ map: tex, side: THREE.FrontSide, fog: false });
             }
         });
-        var cap = _hzGlowCore(h * 0.10, 0xffe6b0, 0xffc070);
-        cap.position.y = h * 1.0;
-        g.add(cap);
+        if (o.cap !== false) {
+            var cap = _hzGlowCore(h * 0.10, 0xffe6b0, 0xffc070);
+            cap.position.y = h * 1.0;
+            g.add(cap);
+        }
         return g;
     }
 
@@ -22254,7 +22266,7 @@ const ThreeRenderer = (function () {
         if (off) return o.fallback ? (o.fallback(rng) || new THREE.Group()) : new THREE.Group();
         var target = o.tiles != null ? o.tiles * ts : (o.metres != null ? o.metres / 1.75 * ts : ts);
         var lit = o.lit !== false;
-        var pick = lit ? (o.lift ? _hzPropLitLiftPick(o.lift) : _hzPropLitPick) : _hzMiscUnlitPick;
+        var pick = o.matPick || (lit ? (o.lift ? _hzPropLitLiftPick(o.lift) : _hzPropLitPick) : _hzMiscUnlitPick);   // `matPick` = the caller's own material (THE ROCKS)
         var g = _miscModelInstance(_R2_MISC + _MISC_GLB[key], true, target, {
             fit: o.fit || 'height', matPick: pick, repeat: o.repeat,
             onDone: function (grp, s, bb) {
@@ -22369,8 +22381,8 @@ const ThreeRenderer = (function () {
         }
         var fitSpan = o.fit ? (o.fit === 'span') : (cat.span != null && cat.h == null);
         var metres = (o.metres != null) ? o.metres : (fitSpan ? cat.span : cat.h);
-        var pick = o.unlit ? _hzMiscUnlitPick : (o.lift ? _hzPropLitLiftPick(o.lift) : _hzPropLitPick);
-        var g = _miscModelInstance(_hqModelUrl(cat), true, metres / mPerTs * ts, { fit: fitSpan ? 'span' : 'height', matPick: pick });
+        var pick = o.matPick || (o.unlit ? _hzMiscUnlitPick : (o.lift ? _hzPropLitLiftPick(o.lift) : _hzPropLitPick));   // `matPick` = the caller's own material (THE ROCKS: a tinted Lambert)
+        var g = _miscModelInstance(_hqModelUrl(cat), true, metres / mPerTs * ts, { fit: fitSpan ? 'span' : 'height', matPick: pick, onDone: o.onDone });
         g._ew_footM = (o.foot != null) ? o.foot : (cat.foot || 0);
         g._ew_kit = key;
         return g;
@@ -25022,6 +25034,70 @@ const ThreeRenderer = (function () {
         }, { skipLanes: o.skipLanes !== false, laneHalf: (o.laneHalf || 1.7) * ts, corners: true, only: o.only });
     }
     /* soft hills / dunes / drifts: squashed spheres wearing a terrain sprite */
+    /* ══ THE ROCKS (2026-09-16) — no more cones ═══════════════════════════
+       The user: "I don't like these pointy cone things, they don't look
+       realistic at all. Use the boulders or asteroids or stones instead and
+       tint them to match the landscape / planet / map." Every mountain,
+       mesa, stalagmite and spire the settings and THE WORLD's rim used to
+       raise as a ConeGeometry is one of the user's rock GLBs now — the two
+       asteroids (D.O.O.R. kit `asteroid_a` / `asteroid_b`, a round boulder /
+       a crag) and the standing stone (`_MISC_GLB.standingstone`, tall — the
+       spires) — wearing a TINTED Lambert (the bake as the grain, the map's
+       colour over it, the self-lit lift the rim already wore) so a rock on
+       Mars is red, on the Moon grey, in a cavern violet. `_hzRock(K, {
+       kind: 'boulder' | 'crag' | 'stone' | 'any', span (px, the footprint),
+       h (px, the height — the model is stretched to it), color, tex, lift,
+       sink, snow, rng, fog })` sizes it, sinks it a little into the ground,
+       turns it any way, stretches it toward `h`, sets a snow cap on the top
+       when asked, and hands the material to the haze (K._wdFog) when it
+       lands. The fallback (loader missing, EW_PERF_LOW) is a jostled
+       dodecahedron in the same tinted sheet — a rock, never a cone.
+       The pyramids (a pyramid is a pyramid) and the icebergs keep their
+       geometry. */
+    var _ROCK_KINDS = { boulder: ['door', 'asteroid_a'], crag: ['door', 'asteroid_b'], stone: ['misc', 'standingstone'] };
+    function _hzRockPick(color, lift, tex) {
+        var col = new THREE.Color(color == null ? 0xffffff : color), lf = lift == null ? 0.26 : lift;
+        return function (node, srcMat) {
+            var map = (srcMat && srcMat.map) || tex || null;
+            var m = new THREE.MeshLambertMaterial({ map: map, color: col.clone(), side: THREE.FrontSide });
+            if (lf > 0) { m.emissive = col.clone().multiplyScalar(lf); if (map) m.emissiveMap = map; }
+            return m;
+        };
+    }
+    function _hzRockProc(K, span, h, mat, rng) {
+        var r = span / 2, geo = new THREE.DodecahedronGeometry(r, 1), pos = geo.getAttribute('position'), seed = rng() * 900;
+        var jos = function (x, y, z) { var v = Math.sin(Math.round(x / r * 9) * 12.9898 + Math.round(y / r * 9) * 78.233 + Math.round(z / r * 9) * 37.719 + seed) * 43758.5453; return v - Math.floor(v); };
+        for (var i = 0; i < pos.count; i++) { var px = pos.getX(i), py = pos.getY(i), pz = pos.getZ(i), k = 0.78 + jos(px, py, pz) * 0.44; pos.setXYZ(i, px * k, py * k * (h / span), pz * k); }
+        geo.computeVertexNormals(); _nrUV(geo, Math.max(1, span / K.ts * 1.5), Math.max(1, h / K.ts * 1.5));
+        var m = new THREE.Mesh(geo, mat); m.position.y = h * 0.42;
+        var g = new THREE.Group(); g.add(m); return g;
+    }
+    function _hzRock(K, o) {
+        o = o || {};
+        var ts = K.ts, rng = o.rng || K.rng, kind = o.kind || 'any';
+        if (kind === 'any') kind = rng() < 0.5 ? 'boulder' : 'crag';
+        var row = _ROCK_KINDS[kind] || _ROCK_KINDS.boulder;
+        var span = o.span || ts * 2, h = o.h || span * 0.8, sink = o.sink == null ? 0.16 : o.sink;
+        var mat = K.mat(o.tex || 'rocks_3', o.color == null ? 0xffffff : o.color, { lift: o.lift == null ? 0.26 : o.lift });
+        var pick = _hzRockPick(mat.color.getHex(), o.lift == null ? 0.26 : o.lift, null);
+        var g = new THREE.Group(), wrap = null;
+        var onDone = function (grp, s, bb) {
+            /* stretch the model toward the height asked for (a mountain is taller than it is wide), sink the foot, the snow cap on the top */
+            var ey = (bb.max.y - bb.min.y) * s || 1, k = Math.max(0.55, Math.min(2.4, h / ey));
+            grp.scale.y = k; grp.position.y = -h * sink;
+            if (o.snow) { var cap = new THREE.Mesh(new THREE.SphereGeometry(span * 0.32, 9, 6), o.snow); cap.scale.set(1, 0.42 / k, 1); cap.position.y = ey * 0.98; grp.add(cap); }
+            if (o.fog !== false) _nrInjectWorld(K, grp);
+        };
+        var fallback = function () { var f = _hzRockProc(K, span, h, mat, rng); if (o.snow) { var cap = new THREE.Mesh(new THREE.SphereGeometry(span * 0.32, 9, 6), o.snow); cap.scale.set(1, 0.42, 1); cap.position.y = h * 0.88; f.add(cap); } f.position.y = -h * sink; return f; };
+        if (row[0] === 'door') wrap = _hzDoorKitGLB(row[1], { metres: span / ts * 1.75, fit: 'span', low: 'skip', matPick: pick, onDone: onDone, rng: rng, fallback: fallback });
+        else wrap = _hzMiscKit(row[1], { tiles: h / ts, fit: 'height', low: 'skip', matPick: pick, rng: rng, fallback: fallback, onDone: function (grp, s, bb) { grp.position.y = -h * sink; if (o.fog !== false) _nrInjectWorld(K, grp); } });
+        g.add(wrap);
+        g._ew_footM = o.foot === false ? 0 : Math.max(0.3, span / ts * 1.75 * 0.38);   // the walkable site room's collision disc before the GLB lands (the cull reads it)
+        g.rotation.y = rng() * Math.PI * 2;
+        g.rotation.x = (rng() - 0.5) * (o.tilt == null ? 0.12 : o.tilt); g.rotation.z = (rng() - 0.5) * (o.tilt == null ? 0.12 : o.tilt);
+        g.traverse(function (m) { if (m.isMesh) { m.receiveShadow = true; m.castShadow = !!o.cast; } });
+        return g;
+    }
     function _nrMounds(K, o) {
         o = o || {};
         var ts = K.ts, rng = K.rng, mat = K.mat(o.tex, o.color == null ? 0xffffff : o.color);
@@ -25337,26 +25413,27 @@ const ThreeRenderer = (function () {
     /* mountain backdrop: big cones (with a snow cap) some tiles out */
     function _nrPeaks(K, o) {
         o = o || {};
-        var ts = K.ts, rng = K.rng, rock = K.mat(o.tex || 'mountain', o.color == null ? 0xffffff : o.color), snow = o.snow ? K.mat(o.snow, 0xffffff) : null;
+        var ts = K.ts, rng = K.rng, snow = o.snow ? K.mat(o.snow, 0xffffff) : null;
         var dd = (o.d || 7) * ts;
         _nrRectRing(K, dd, (o.spacing || 4) * ts, function (x, z) {
             if (rng() > (o.p == null ? 0.75 : o.p)) return;
             var h = ts * ((o.h || 7) * (0.6 + rng() * 0.8)), r = Math.min(h * (0.7 + rng() * 0.5), dd - 1.5 * ts);   // the foot never reaches the apron's inner half
-            var geo = new THREE.ConeGeometry(r, h, 6 + (rng() * 3 | 0), 1); _nrConeUV(geo, r, h, ts, 0.5);
-            var m = new THREE.Mesh(geo, rock); m.position.set(x, K.fy + h / 2 - ts * 0.6, z); m.rotation.y = rng() * 6; K.add(K.lit(m, true));
-            if (snow) { var cg = new THREE.ConeGeometry(r * 0.32, h * 0.32, geo.parameters.radialSegments, 1); _nrConeUV(cg, r * 0.32, h * 0.32, ts, 0.5); var cap = new THREE.Mesh(cg, snow); cap.position.set(x, K.fy + h - h * 0.16 - ts * 0.6 + 1, z); cap.rotation.y = m.rotation.y; K.add(cap); }
+            /* THE ROCKS (2026-09-16): a crag GLB in the map's tint, never a cone */
+            var m = _hzRock(K, { kind: rng() < 0.6 ? 'crag' : 'boulder', span: r * 2, h: h, tex: o.tex || 'mountain', color: o.color, snow: snow, rng: rng, fog: false, cast: true });
+            m.position.set(x, K.fy - ts * 0.3, z); K.add(m);
         }, { skipLanes: !!o.skipLanes, corners: true, only: o.only });
     }
     /* a cave-wall ring: stalagmite cones and rock spires */
     function _nrSpires(K, o) {
         o = o || {};
-        var ts = K.ts, rng = K.rng, mat = K.mat(o.tex || 'cave_wall', o.color == null ? 0xffffff : o.color);
+        var ts = K.ts, rng = K.rng;
         _nrRectRing(K, (o.d || 2.2) * ts, (o.spacing || 1.1) * ts, function (x, z, side) {
             if (rng() > (o.p == null ? 0.85 : o.p)) return;
             var h = ts * ((o.h || 3) * (0.5 + rng() * 1.0)), r = ts * ((o.r || 0.5) * (0.6 + rng() * 0.8));
-            var geo = new THREE.ConeGeometry(r, h, 6, 1); _nrConeUV(geo, r, h, ts, 0.7);
-            var m = new THREE.Mesh(geo, mat); m.position.set(x + (rng() - 0.5) * ts * 0.6, K.fy + h / 2 - ts * 0.3, z + (rng() - 0.5) * ts * 0.6); m.rotation.set((rng() - 0.5) * 0.2, rng() * 6, (rng() - 0.5) * 0.2);
-            K.lit(m, true); if (K.occ) K.addW(side, m); else K.add(m);
+            /* THE ROCKS (2026-09-16): a standing stone / a crag in the cave's tint, never a cone */
+            var m = _hzRock(K, { kind: rng() < 0.55 ? 'stone' : 'crag', span: r * 2, h: h, tex: o.tex || 'cave_wall', color: o.color, rng: rng, fog: false, tilt: 0.2, cast: true });
+            m.position.set(x + (rng() - 0.5) * ts * 0.6, K.fy - ts * 0.25, z + (rng() - 0.5) * ts * 0.6);
+            if (K.occ) K.addW(side, m); else K.add(m);
         }, { skipLanes: o.skipLanes !== false, corners: true, only: o.only });
     }
     /* road markings: a dashed centre line + edge lines on the lane strips */
@@ -25617,6 +25694,12 @@ const ThreeRenderer = (function () {
         _nrProp(K, function (rng) { return _hzDoorKitGLB('mars_rover', { metres: 2.6, foot: 1.1, rng: rng, fallback: _hzRover }); }, K.BX1 + 1.9 * ts, K.BZ0 - 2.4 * ts, { ry: 0.8 });
         _nrProp(K, _hzBiodome, K.BX0 - 2.8 * ts, K.BZ1 + 2.6 * ts, { s: 0.8 });
         _nrRocks(K, { tex: 'mars_2', color: 0x9a5a44, d: 1.0, p: 0.4, r: 0.3 });
+        /* THE PYRAMID (2026-09-16, the user: "Mars needs the glb pyramid"): the Cydonia
+           pyramid — the Pyramid GLB in the regolith's red, off the far corner past the
+           big mesa, half-buried in the dust, no ember cap; the site room inherits it */
+        var pxq = K.BX0 - 11.5 * ts, pzq = K.BZ0 - 9.5 * ts;
+        K.keepOut.push([pxq, pzq, 7.5 * ts]);
+        _nrProp(K, function (rng) { var py = _hzModelPyramid(rng, { h: 9.5, color: 0xc27a56, lift: 0.22, cap: false }); py.position.y = -0.35 * ts; return py; }, pxq, pzq, { wall: false, ry: 0.35 });
         K.add(K.lamp(K.CX, K.fy + 0.5 * ts, K.CZ, 0xff9a60, 30 * ts, 0.05));
     };
     /* AREA 51 — the base: tarmac, the perimeter fence with its floodlights,
@@ -27675,7 +27758,7 @@ const ThreeRenderer = (function () {
     var _WD_RIM = {
         /* a mountain range in ranks; `mesa` = flat tops (the desert); `snow` = a cap sheet */
         peaks: function (K, s, c) {
-            var ts = K.ts, rng = K.rng, rock = K.mat(s.tex || 'mountain', s.color != null ? s.color : 0xffffff, { lift: 0.28 }), snow = s.snow ? K.mat(s.snow, 0xffffff, { lift: 0.3 }) : null;
+            var ts = K.ts, rng = K.rng, snow = s.snow ? K.mat(s.snow, 0xffffff, { lift: 0.3 }) : null;
             for (var k = 0; k < (s.ranks || 2); k++) {
                 var hh = (s.h || 7) * (1 + k * 0.3);
                 _wdRing(K, (s.d || 24) * (1 + k * 0.32), Math.round((s.n || 12) * (1 + k * 0.25)), function (x, z, a, i, rr) {
@@ -27683,14 +27766,10 @@ const ThreeRenderer = (function () {
                     var h = ts * hh * (0.6 + rng() * 0.8), r = h * (0.32 + rng() * 0.25), flat = s.mesa ? 0.55 : 0;   // steep and slim: a range, not a carpet
                     r = Math.min(r, rr - ((K._wdMinD || 0) + 1.5) * ts, rr * 0.16);   // the foot never reaches back over the shore, and never two ring-widths
                     if (r < ts * 0.8) return;
-                    var geo = flat ? new THREE.CylinderGeometry(r * flat, r, h, 7, 1) : new THREE.ConeGeometry(r, h, 5 + (rng() * 3 | 0), 1);
-                    _nrConeUV(geo, r, h, ts, 0.5);
                     var gy = c.yAt ? c.yAt(x, z) : c.y;   // THE PLANET: on the curve
-                    var m = new THREE.Mesh(geo, rock); m.position.set(x, gy + h / 2 - ts * 0.25, z); m.rotation.y = rng() * 6; m.scale.x = 1 + rng() * 0.8; K.add(K.lit(m));
-                    if (snow && !flat) {
-                        var cg = new THREE.ConeGeometry(r * 0.30, h * 0.30, geo.parameters.radialSegments, 1); _nrConeUV(cg, r * 0.3, h * 0.3, ts, 0.5);
-                        var cap = new THREE.Mesh(cg, snow); cap.position.set(x, gy + h - h * 0.15 - ts * 0.25 + 1.5, z); cap.rotation.y = m.rotation.y; cap.scale.x = m.scale.x; K.add(cap);
-                    }
+                    /* THE ROCKS (2026-09-16): a crag / boulder GLB in the map's tint — a mesa is the same rock squashed flat */
+                    var m = _hzRock(K, { kind: flat ? 'boulder' : (rng() < 0.65 ? 'crag' : 'boulder'), span: r * 2 * (1 + rng() * 0.6), h: flat ? h * 0.6 : h, tex: s.tex || 'mountain', color: s.color, lift: 0.28, snow: (snow && !flat) ? snow : null, rng: rng });
+                    m.position.set(x, gy - ts * 0.2, z); K.add(m);
                 });
             }
         },
@@ -27754,12 +27833,13 @@ const ThreeRenderer = (function () {
         },
         /* stalagmites and rock spires — the floor of a cavern */
         spires: function (K, s, c) {
-            var ts = K.ts, rng = K.rng, mat = K.mat(s.tex || 'cave_wall', s.color != null ? s.color : 0xffffff, { lift: 0.24 });
+            var ts = K.ts, rng = K.rng;
             for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 14) * (1 + k * 0.4), Math.round((s.n || 26) * (1 + k * 0.3)), function (x, z) {
                 if (rng() > (s.p == null ? 0.8 : s.p)) return;
                 var h = ts * (s.h || 8) * (0.4 + rng() * 1.1), r = ts * (s.r || 1.6) * (0.6 + rng() * 0.9);
-                var geo = new THREE.ConeGeometry(r, h, 6, 1); _nrConeUV(geo, r, h, ts, 0.5);
-                var m = new THREE.Mesh(geo, mat); m.position.set(x, (c.yAt ? c.yAt(x, z) : c.y) + h / 2 - ts * 0.3, z); m.rotation.set((rng() - 0.5) * 0.25, rng() * 6, (rng() - 0.5) * 0.25); K.add(K.lit(m));
+                /* THE ROCKS (2026-09-16): a standing stone / a crag in the cavern's tint, never a cone */
+                var m = _hzRock(K, { kind: rng() < 0.55 ? 'stone' : 'crag', span: r * 2, h: h, tex: s.tex || 'cave_wall', color: s.color, lift: 0.24, tilt: 0.25, rng: rng });
+                m.position.set(x, (c.yAt ? c.yAt(x, z) : c.y) - ts * 0.25, z); K.add(m);
             });
         },
         /* icebergs and pack ice in the sea */
@@ -28002,7 +28082,7 @@ const ThreeRenderer = (function () {
             if (geo.attributes.normal.getY(0) < 0) { for (var q = 0; q < idx.length; q += 3) { var tq = idx[q + 1]; idx[q + 1] = idx[q + 2]; idx[q + 2] = tq; } geo.setIndex(idx); geo.computeVertexNormals(); }
             var mat = K.mat(gtex, gcol, { lift: 0 }); mat.vertexColors = true; mat.needsUpdate = true;
             if (inject) _wdInject(mat, { r0: o.fogR0, r1: o.fogR1 });
-            var m = new THREE.Mesh(geo, mat); m.name = name; m.receiveShadow = true; m.frustumCulled = false; g.add(m); return m;
+            var m = new THREE.Mesh(geo, mat); m.name = name; m.receiveShadow = true; m.frustumCulled = false; if (o.hq) m._ew_hqPlanet = true; g.add(m); return m;
         }
         /* the collar: the flat ring between the board's square and the first circle (a shape with the footprint cut out — THE CRATER FIX's rule: nothing under the tiles) */
         var shape = new THREE.Shape(); shape.absarc(0, 0, prof.rb + 0.02 * ts, 0, Math.PI * 2, false);
@@ -28012,7 +28092,7 @@ const ThreeRenderer = (function () {
         for (var v = 0; v < cp.count; v++) { var wx = K.CX + cp.getX(v), wz = K.CZ - cp.getY(v); cuv.setXY(v, wx / ts, wz / ts); prof.colorAt(wx, wz, col); cvc[v * 3] = col.r; cvc[v * 3 + 1] = col.g; cvc[v * 3 + 2] = col.b; }
         cgeo.setAttribute('color', new THREE.BufferAttribute(cvc, 3)); cuv.needsUpdate = true;
         var cmat = K.mat(gtex, gcol, { lift: 0 }); cmat.vertexColors = true; cmat.needsUpdate = true;
-        var collar = new THREE.Mesh(cgeo, cmat); collar.rotation.x = -Math.PI / 2; collar.position.set(K.CX, y0, K.CZ); collar.receiveShadow = true; collar.name = 'world:collar'; g.add(collar);
+        var collar = new THREE.Mesh(cgeo, cmat); collar.rotation.x = -Math.PI / 2; collar.position.set(K.CX, y0, K.CZ); collar.receiveShadow = true; collar.name = 'world:collar'; if (o.hq) collar._ew_hqPlanet = true; g.add(collar);
         mesh(0, iRi, 'world:island', false);
         mesh(iRi, rows.length - 1, 'world:planet', true);
         if (!o.hq) _wd.hasGround = true;   // THE PLANET IN THE ROOM (2026-09-16): a room never touches the battle's world state
@@ -38650,7 +38730,9 @@ const ThreeRenderer = (function () {
            in the room from the craters the builder just registered */
         if (S.planet && ctx.kit && ctx.kit.planet) {
             var planetY = null;
+            _hzKitTs = ts;   // the rim's GLB rocks size against the room's tile (THE KIT TILE)
             try { planetY = _hqBuildPlanetGround(room, g, ctx.kit); } catch (e) { console.warn('[HQ] planet ground failed', NR.key, e); planetY = null; }
+            finally { _hzKitTs = 0; }
             if (planetY) {
                 H.planet = planetY;
                 H.shellGroup.traverse(function (o) { if (o._ew_hqGround) o.visible = false; });   // the flat floor / apron / skirt: under the planet now
@@ -38682,6 +38764,11 @@ const ThreeRenderer = (function () {
         var walled = !(S.edge === 'open' || S.edge === 'low');
         units.forEach(function (u) {
             if (u.o.isSprite) return;
+            /* THE PLANET FLOOR (2026-09-16): the planet ground (_wdBuildPlanet under o.hq — the
+               island and the far ring, both carved / curved so never `flat`) spans every door
+               zone by construction; it is the FLOOR, never a piece to drop or to block on.
+               (It was culled as "in a door zone" — every planet room stood on the sky.) */
+            if (u.o._ew_hqPlanet) { kept++; return; }
             box.setFromObject(u.o);
             if (box.isEmpty()) {
                 /* a D.O.O.R.-kit GLB still loading (_hzDoorKitGLB): its
@@ -38759,6 +38846,7 @@ const ThreeRenderer = (function () {
         /* the rim: the far crater fields, the peaks — on the curve, past the shore */
         var c = { y: y0, shore: shore, R: R, sea: false, moat: null, planet: true, yAt: info.yAt };
         K._wdMinD = shore / ts + 2;
+        K._wdFog = { r0: fogR0, r1: fogR1, dissolve: false };   // THE ROCKS: a GLB that lands later joins the haze through _nrInjectWorld
         var lowPerf = (typeof window !== 'undefined' && window.EW_PERF_LOW);
         var rims = row.rim ? (Array.isArray(row.rim) ? row.rim : [row.rim]) : [];
         if (!lowPerf) rims.forEach(function (spec) {
