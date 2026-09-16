@@ -316,6 +316,21 @@ muzzle flash, a recoil kick, three synth cues) and in every Door Agent's hand
 in battle, where every placement is a shot from it. NOT done: D3d (the boom's
 pitch clamp + the fade after the third crossing — playtest first), item 9's
 `hard` reachability test (the next delivery, with D8/D9). Next: 8–9.
+**Status 2026-09-16 (Delivery 6, `ENTROPY_WARS_PHASE9_FIELD_A.zip`, token
+`20260916-encounter-field-08-cors`):** the user's brief of the day, all of it in code — (a) NO
+VS SCREEN, robustly: battle.js LATCHES the run at `startMatch` (`_encMatch`) and every gate
+reads the latch, so the card cannot come back whatever touches the window marker; (b) ONE
+CLICK BACK: the result card of an encounter is one button (▸ BACK TO THE ROOM on a win → the
+swing spot; ▸ WAKE UP on a loss), never Find Next Match / the builder / the exports; (c) TDM,
+Arena on a Code Red (§11.2 rule 8 decided) — a Code Red encounter IS the response; (d) a loss
+wakes you in the WARD or YOUR OFFICE by turns (`hqEncounterWakeRoom`); (e) THE SEATS: "forget
+spawn zones" — P1 seat 1 stands on the walker's cell, P2 seat 1 on the native's, the parties
+fan out on their own sides (`hqEncounterField` / `hqEncounterSeats`, placed by the zone builder's
+`_encounterPlaceSeats`; the rows keep serving respawns), and THE SLIDE eases both bodies onto
+their cell centres before the cut (`hq.encounterSnap`); a cave / a complex part starts at the
+map's centre with the eye hung on P1's lead (`hqEncounterEyeFromSeats`); (f) no roster on file
+→ a stand-in squad, never the terminal. NOT yet: §11.3 A's battle at the room's transform +
+the room as the setting (§10 stage 4), explicit spawn zones per seat, the rasteriser (B–D).
 **Status 2026-09-16 (Delivery 4, `ENTROPY_WARS_PHASE9_MAP_REMEMBERS.zip`, token
 `20260916-map-remembers-04-cors`):** item 8 DONE for D6 (the per-link `seen` set in
 both records + the blob key `hq.links.seen`, THE WORLD dotted / unlabelled until walked,
@@ -421,7 +436,13 @@ Each item: impact · evidence · files · dependencies · change · acceptance.
 - **Delivery 4 — THE MAP REMEMBERS** (data.js, map.js, styles-base.css; tests): D6 + D8 + D9. ✅ 2026-09-16, `ENTROPY_WARS_PHASE9_MAP_REMEMBERS.zip` (+ profile.js, three-renderer.js; item 9's proof and THE LIP rule rode along).
 - **Delivery 5 — THE SYNCED BUILDING + THE THREE REVEALS** (data.js, profile.js; tests): D5 + the
   rest of D7. ✅ 2026-09-16, `ENTROPY_WARS_PHASE9_SYNCED_BUILDING.zip`.
-- **Delivery 6 — the playtest** (PLAYTEST_NOTES.md) → then §10 / §11 in their own
+- **Delivery 6 — THE FIELD, STAGE A** (data.js, map.js, battle.js, three-renderer.js; tests):
+  the user's 2026-09-16 brief — no VS card (the latch), one-button return, TDM / Arena on a
+  Code Red, the wake room, the seats off the walker's and the native's cells + THE SLIDE.
+  ✅ 2026-09-16, `ENTROPY_WARS_PHASE9_FIELD_A.zip`. The rest of §11.3 A (the battle at the
+  room's transform, the room as the setting, explicit spawn zones per seat) and the
+  playtest follow.
+- **Delivery 7 — the playtest** (PLAYTEST_NOTES.md) → then §10 / §11 B–E in their own
   deliveries.
 Each delivery = one `ENTROPY_WARS_<TOPIC>.zip`, `npm test` green, the token bumped, the
 caption saying R2 / Render / repo per file (RULE #1, #1b).
@@ -521,8 +542,10 @@ square, and the units are not on squares when the fight starts.
    unblocks the `spawnSide` mirror, done once.
 8. **Modes.** A field is a WIPEOUT fight (TDM-style kills / team wipe, no nexus zones, no
    Keys, no Cube — a room has none of them); Arena stays the CONSOLE's crossing on the site's
-   authored Δ. `hqEncounterConfig` already forces Clash / Gauntlet back to Arena; a field forces
-   Arena → TDM. **User decision (§14 row A).**
+   authored Δ. **DECIDED 2026-09-16 (the user):** an encounter is TEAM DEATHMATCH; a fight
+   with a Cube / a Code Red on the site is ARENA (`HQ_ENCOUNTER_RULES.gm` / `gmCodeRed`,
+   `hqEncounterConfig(raw, { codeRed })`; the sticky config lends its team size only). Shipped
+   in Delivery 6.
 9. **The cut.** The battle board is built AT THE ROOM'S TRANSFORM (the window's origin in
    room metres → the battle's tile origin: `_hqBuildSetting` already does the inverse with
    `g.position.set(-N·ts/2, -B·elev, -N·ts/2)`), so the eye seed is exact and the shared
@@ -538,9 +561,11 @@ square, and the units are not on squares when the fight starts.
 
 ### 11.3 The stages (each its own delivery, each shippable alone)
 - **A · THE CUT ON A SITE ROOM (no rasteriser).** The site room's board IS the field: the
-  window = the Δ. Build: the dissolve (§8 item 7), the snap + explicit spawn cells (rule 7),
-  the native as P2 seat 1 (D2), the return to the cell (rule 9), the battle at the room's
-  transform with the room's furniture as setting (§10 stage 4). Acceptance: from a site
+  window = the Δ. Build: the dissolve (§8 item 7 ✅ D2), the snap + the seats off the cells
+  (rule 7 ✅ Delivery 6 — `hqEncounterSeats` seats the START; the zones still serve respawns,
+  explicit per-seat zones are still open), the native as P2 seat 1 (D2 ✅), the return to the
+  cell (rule 9 — the swing spot today, D1), the battle at the room's transform with the room's
+  furniture as setting (§10 stage 4 — OPEN). Acceptance: from a site
   room's walkway, strike a native standing ON the board: the screen never cuts to black, the
   board's cells fade in under the walker's feet, seat 1 stands where the walker stood, the
   enemy's lead is the native; after the fight the walker stands on seat 1's last cell and the

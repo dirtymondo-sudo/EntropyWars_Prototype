@@ -35,7 +35,10 @@ test('THE RULES: a reach you can throw across, a cone, the CLICK with the gun HO
     assert.equal(R.keys, undefined, 'the 1–4 keys are gone (the user)');
     assert.ok(R.cooldownMs >= 600);
     assert.ok(R.labels.attack, 'a label for the attack');
-    assert.equal(R.gm, 'arena'); assert.equal(R.teamSize, 4);
+    /* Delivery 6 (the user's rule): an encounter is TEAM DEATHMATCH; a Cube / Code Red fight is ARENA */
+    assert.equal(R.gm, 'tdm'); assert.equal(R.gmCodeRed, 'arena'); assert.equal(R.teamSize, 4);
+    assert.ok(R.tileM > 1 && R.tileM < 3, 'the metres per tile a board-less room is read in');
+    assert.ok(R.snapMs >= 100 && R.snapMs <= 800, 'the slide onto the cells is a beat, never a wait');
 });
 
 test('WHERE: only a WILD room — a site\'s board room and its complex parts; never the facility (safe by construction, no flag to forget)', () => {
@@ -68,22 +71,22 @@ test('THE GESTURE: the click = the attack, the old number keys nothing', () => {
     ['1', '2', '3', '4', 'e', ''].forEach(k => assert.equal(gs(k), null, k));
 });
 
-test('THE STICKY CONFIG: JSON or an object, sanitised — a bad mode / Clash / Gauntlet fall back to Arena, the team size clamps 1..8, rounds ≥ 0', () => {
+test('THE STICKY CONFIG (Delivery 6): the MODE is the encounter\'s own — TDM, Arena on a Code Red — never the sticky one; only the team size sticks (clamped 1..8); the rounds are the mode\'s', () => {
     const cfg = g('hqEncounterConfig');
-    assert.deepEqual(J(cfg(null)), { gm: 'arena', teamSize: 4, rounds: 0 });
-    assert.deepEqual(J(cfg('not json')), { gm: 'arena', teamSize: 4, rounds: 0 });
-    assert.deepEqual(J(cfg({ gm: 'clash', teamSize: 3, rounds: 12 })), { gm: 'arena', teamSize: 3, rounds: 12 });
-    assert.deepEqual(J(cfg({ gm: 'gauntlet' })), { gm: 'arena', teamSize: 4, rounds: 0 });
+    assert.deepEqual(J(cfg(null)), { gm: 'tdm', teamSize: 4, rounds: 0 });
+    assert.deepEqual(J(cfg('not json')), { gm: 'tdm', teamSize: 4, rounds: 0 });
+    assert.deepEqual(J(cfg({ gm: 'clash', teamSize: 3, rounds: 12 })), { gm: 'tdm', teamSize: 3, rounds: 0 }, 'an Arena crossing\'s rounds never cap a TDM');
+    assert.deepEqual(J(cfg({ gm: 'arena', teamSize: 5, rounds: 100 })), { gm: 'tdm', teamSize: 5, rounds: 0 }, 'the sticky Arena is not the encounter\'s mode');
+    assert.deepEqual(J(cfg({ gm: 'gauntlet' }, { codeRed: true })), { gm: 'arena', teamSize: 4, rounds: 0 }, 'a Code Red site = the Cube fight');
     assert.equal(cfg({ teamSize: 40 }).teamSize, 8); assert.equal(cfg({ teamSize: 0 }).teamSize, 1); assert.equal(cfg({ teamSize: 'x' }).teamSize, 4);
     assert.equal(cfg({ rounds: -3 }).rounds, 0);
-    assert.equal(cfg({ gm: 'tdm' }).gm, 'tdm', 'a field mode holds without state.js loaded');
-    assert.equal(cfg({ gm: 'nope' }).gm, 'arena');
 });
 
 test('THE LAUNCH: pure and serialisable — the site\'s Δ, the config, the CPU pool led by the native\'s race, the console as the way back, the native on the record; refused off a wild room or for a non-native', () => {
     const L = g('hqEncounterLaunch')('site_prebuilt_dumb', native(), '{"gm":"arena","teamSize":3}', { gesture: 'magic' });
     assert.ok(L);
-    assert.equal(L.site, 'prebuilt_dumb'); assert.equal(L.delta, true); assert.equal(L.gm, 'arena'); assert.equal(L.teamSize, 3);
+    assert.equal(L.site, 'prebuilt_dumb'); assert.equal(L.delta, true); assert.equal(L.gm, 'tdm'); assert.equal(L.teamSize, 3); assert.equal(L.codeRed, false);
+    assert.equal(g('hqEncounterLaunch')('site_prebuilt_dumb', native(), null, { codeRed: true }).gm, 'arena', 'the Code Red response is Arena');
     assert.equal(L.roster[0], 'grey', 'the native leads the pool');
     assert.equal(L.roster.length, 3); assert.equal(new Set(L.roster).size, 3);
     assert.equal(L.doorId, 'crossing'); assert.equal(L.counterId, 'crossing');
@@ -135,13 +138,13 @@ test('SOURCE · map.js: the enter opts, the guards (wild room · the gun · the 
     assert.ok(MP.includes("if (drawn) return false;   // the gun drawn: a click is a threshold, never a fight (rev 17)"), 'the gun drawn never fights');
     assert.ok(MP.includes("try { if (!ThreeRenderer.hq.portalDrawn()) aim = ThreeRenderer.hq.encounterAim(); } catch (e) { aim = null; }"), 'the prompt aims holstered');
     assert.ok(MP.includes("if (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return false;   // RULE #2"), 'never from an online seat');
-    assert.ok(MP.includes("window.hqEncounterLaunch(_hqCurRoom, ev.target, _hqEncounterCfgRaw(), { gesture: ev.gesture })"));
+    assert.ok(MP.includes("window.hqEncounterLaunch(_hqCurRoom, ev.target, _hqEncounterCfgRaw(), { gesture: ev.gesture, codeRed: !!cr })"), 'the launch carries the Code Red read');
     assert.ok(MP.includes("window._hqEncounterParty = party;") && MP.includes("const _encParty = window._hqEncounterParty || null;"), 'the roster hands through _msConfirm');
     assert.ok(MP.includes("if (_encParty && typeof _hqApplyLastParty === 'function' && _hqApplyLastParty(_encParty, 1, CONFIG.teamSize)) {"), 'seated after every config rule');
     assert.ok(MP.includes("try { okStart = applyPartyBuild(false) !== false; if (okStart) startMatch(); }"), 'the builder is skipped (the tutorial\'s recipe)');
-    assert.ok(MP.includes("if (!party) {") && MP.includes("return window._hqLaunchMission(L.site, { delta: true, doorId: L.doorId, doorLabel: 'THE ENCOUNTER', counterId: L.counterId, variant: 'site', roster: L.roster });"), 'no roster → the terminal, once');
+    assert.ok(MP.includes("if (!party) {") && MP.includes("party = { members: [], fallback: true };") && !MP.includes("doorLabel: 'THE ENCOUNTER', counterId: L.counterId, variant: 'site', roster: L.roster });"), 'no roster → a stand-in squad, never the terminal (Delivery 6)');
     assert.ok(MP.includes("_hqEncounterRememberCfg(gm.id, _msSelectedTeamSize, _msSelectedRounds)"), 'a filed crossing is the next encounter\'s config');
-    assert.ok(MP.includes("if (encRes && !encRes.won && enabled && _hqHome && DOOR_HQ.rooms && DOOR_HQ.rooms.medical) { _hqLastRoom = 'medical'; _hqLastDoor = null; }"), 'a loss is the ward');
+    assert.ok(MP.includes("wake = (typeof window.hqEncounterWakeRoom === 'function') ? window.hqEncounterWakeRoom(_hqProfile()) : null;") && MP.includes("if (wake) { _hqLastRoom = wake; _hqLastDoor = null; encRes.wake = wake; }"), 'a loss is where you wake up (the ward / the office)');
     assert.ok(MP.includes("[CLICK] ATTACK · ENGAGE"), 'the prompt');
     assert.ok(MP.includes("window.hqEncounterLog(profile)"), 'the officer sheet');
     assert.ok(MP.includes("window._hqEncounterRun = { site: L.site,") && MP.includes("noIntro: true"), 'the run marker with the per-launch intro flag');
@@ -151,7 +154,7 @@ test('SOURCE · battle.js: the intro cinematic is off PER LAUNCH (never the glob
     assert.ok(BT.includes("if (window._hqEncounterRun && window._hqEncounterRun.noIntro) return false;"), '_introCineEligible');
     assert.ok(BT.includes("!(window._hqEncounterRun && window._hqEncounterRun.noIntro) && !state.devAutoSim"), 'the leaf warm-up too');
     assert.ok(!BT.includes("window.EW_DISABLE_INTRO_CINE = true;   // encounter"), 'never the global switch');
-    assert.ok(BT.includes("const erun = window._hqEncounterRun;") && BT.includes("hqEncounterRecord(p, { site: erun.site, room: erun.room, race: erun.race, id: erun.id || null, won,"), 'the record on the commit, the native\'s id with it');
+    assert.ok(BT.includes("const erun = _encMatch || window._hqEncounterRun;") && BT.includes("hqEncounterRecord(p, { site: erun.site, room: erun.room, race: erun.race, id: erun.id || null, won,"), 'the record on the commit (the latched run first), the native\'s id with it');
     assert.ok(BT.includes("window._hqEncounterResult = { won, site: erun.site, room: erun.room, race: erun.race, label: erun.label || erun.race, walker: erun.walker || null };"));
 });
 
@@ -287,9 +290,9 @@ test('THE WARD\'S CHART: exited from a wild room TODAY → RECOVERING (the cot i
 test('SOURCE · stage 2: the camera seed (both sync branches, the snap guard, the API), the battle\'s first frame + no VS card for an encounter, the renderer\'s eye / board / the cleared natives, map.js\'s run marker', () => {
     ['function seedPose(seed, easeS)', 'function _consumeSeed(nowS)', 'function seedState()', "if (_seedUntil > performance.now() / 1000) return;   // the encounter's seed is easing — never cut it",
      'const seededFp = _seed ? _consumeSeed(nowFp) : false;', 'const seeded = _seed ? _consumeSeed(now) : false;', '} else if (!seeded) {', 'const st = (now < _seedUntil) ? _seedSt : (_smoothOverride > 0 ? SMOOTH_TIME_FAST : SMOOTH_TIME);', '        seedPose,\n        seedState,'].forEach(f => assert.ok(CAM.includes(f), f));
-    assert.ok(BT.includes("if (window._hqEncounterRun && window._hqEncounterRun.noIntro) {\n                const eye = window._hqEncounterRun.eye;") && BT.includes("ThreeCamera.seedPose(eye, 1.4)") && BT.includes("if (onDone) onDone();\n                return;\n            }\n\n            /* The cinematic intro replaces the flat VS card"), 'the seed, then no card — before the intro gate');
+    assert.ok(BT.includes("const _er = _encRun();\n            if (_er) {\n                let eye = _er.eye;") && BT.includes("ThreeCamera.seedPose(eye, 1.4)") && BT.includes("if (onDone) onDone();\n                return;\n            }\n\n            /* The cinematic intro replaces the flat VS card"), 'the seed, then no card — before the intro gate (the latched run, Delivery 6)');
     ['function _hqEncounterEye()', 'function _hqEncounterBoard()', "var st = _hq && _hq.site; if (!st || st.cave) return null;", "if (gone.indexOf('hq-native-' + si) >= 0) return;   // beaten today — the room is yours", "if (gone.indexOf('hq-npc-' + k) >= 0) continue;", "hqEncounterCleared(prof, opts.room)"].forEach(f => assert.ok(TR.includes(f), f));
-    assert.ok(MP.includes("eye = (ev && typeof window.hqEncounterEye === 'function') ? window.hqEncounterEye(ev) : null;") && MP.includes("id: L.encounter.id || null,") && MP.includes("eye: eye, walker: ev ?"), 'the run marker');
+    assert.ok(MP.includes("eye = (ev && typeof window.hqEncounterEye === 'function') ? window.hqEncounterEye(field || ev) : null;") && MP.includes("id: L.encounter.id || null,") && MP.includes("eye: eye, walker: ev ?"), 'the run marker');
     /* the ONE reason spawnSide is NOT mirrored: the spawn zones and the nexus points are keyed by seat + row, never by SPAWNS — a lane swap would seat P1 on P2's spawn nexus */
     assert.ok(MP.includes("state.spawnZones[1].push({ x: col, y: p1Row });"), 'the zone rows are the seat\'s (map.js) — the mirror waits on the zone system');
     for (const fn of ['hqEncounterCleared', 'hqRoomGuarded', 'hqEncounterEye']) assert.equal(typeof D[fn], 'function', fn + ' on window');
@@ -316,7 +319,7 @@ test('D2 · SOURCE · state.js: optimizeRandomizeParty pins seat 1 off _hqPresel
     assert.ok(ST2.includes("? hqEncounterLead(window._hqPreselect.encounter) : null;"), 'the ONE read');
     assert.ok(ST2.includes("const m0 = randomizeIdentity(false, lead.race);") && ST.includes("if (m0.race === lead.race) { m0.gender = lead.gender; state.partyMeta[player][0] = m0; }"), 'seat 1 = the native, only when the race held');
     assert.ok(ST2.includes("state.partyNames[player][0] = sanitizeUnitName(lead.name, getDefaultUnitName(state.partyBuilds[player][0]));"), 'the nameplate wears the room\'s name');
-    assert.ok(MP.includes("codeRed: false, locked: true, presets: null, encounter: L.encounter };"), 'the preselect carries the encounter');
+    assert.ok(MP.includes("codeRed: !!L.codeRedRun, locked: true, presets: null, encounter: L.encounter };"), 'the preselect carries the encounter (+ the Code Red flag, Delivery 6)');
     assert.ok(MP.includes("name: ch.label || null }") || fs.readFileSync(__dirname + '/data.js', 'utf8').includes("name: ch.label || null },"), 'the launch names it');
 });
 
@@ -355,4 +358,164 @@ test('THE DISSOLVE (seam 3) · SOURCE: _hqLeave({ dissolve }) renders the room o
     assert.ok(MP.includes("window._hqLeave = function (opts) {") && MP.includes("ThreeRenderer.hq.leave(opts || undefined);"), 'the wrapper passes it through');
     assert.ok(MP.includes("window._hqLeave({ dissolve: true });   // THE DISSOLVE (seam 3)"), 'the encounter asks');
     assert.equal((MP.match(/_hqLeave\(\{ dissolve/g) || []).length, 1, 'only the encounter dissolves (a screen / a menu exit still cuts)');
+});
+
+/* ── DELIVERY 6 · THE FIELD, STAGE A (PHASE9_QUALITY_PLAN §11.3 A, 2026-09-16) ──
+   The user: "forget spawn zones in encounter battles — if I attack an enemy up
+   close the battle starts with us right up close, slid to the nearest square
+   tile during the transition; no VS screen; TDM (Arena with a Cube / Code Red);
+   a loss wakes you in your office or the infirmary; one click back to where I
+   was walking". */
+const evBoard = () => ({ x: -6.2, z: 5.9, y: 0, yaw: 1.2, pitch: 0, target: { id: 'hq-native-0', x: -4.7, z: 5.1, y: 0 },
+    eye: { x: -8, y: 1.9, z: 7.5, dx: 0.6, dy: -0.3, dz: -0.5, ground: 0, px: -6.2, pz: 5.9, py: 0 }, board: { N: 8, C: 1.7534, half: 7.0136 } });
+
+test('D6 · THE FIELD RECORD: the board, both feet, the walker → native heading, the raw eye; on a board the two CELLS (clamped in from the walkway, never the same cell) + THE SNAP (their centres in room metres); off a board no cells and no snap; serialisable', () => {
+    const field = g('hqEncounterField');
+    const F = field(evBoard());
+    assert.equal(F.board.N, 8); assert.ok(Math.abs(F.board.C - 1.7534) < 1e-9);
+    assert.deepEqual(J(F.cells), { walker: { x: 0, y: 7 }, target: { x: 1, y: 6 } }, 'the feet fall in these cells (x east, z south)');
+    assert.ok(Math.abs(F.snap.walker.x - (-7.0136 + 0.5 * 1.7534)) < 1e-9 && Math.abs(F.snap.walker.z - (-7.0136 + 7.5 * 1.7534)) < 1e-9, 'the walker\'s cell centre');
+    assert.ok(Math.abs(F.heading - Math.atan2(5.1 - 5.9, -4.7 + 6.2)) < 1e-9);
+    assert.equal(F.eye.ground, 0); assert.equal(F.walker.x, -6.2); assert.equal(F.target.z, 5.1);
+    JSON.stringify(F);
+    /* the walkway: both feet far off the board → clamped onto the edge; the native takes the next cell along the heading */
+    const far = field(Object.assign(evBoard(), { x: -30, z: 5, target: { x: -29, z: 5 } }));
+    assert.deepEqual(J(far.cells.walker), { x: 0, y: 6 }); assert.notDeepEqual(J(far.cells.target), J(far.cells.walker), 'never the same cell');
+    assert.ok(far.cells.target.x >= 0 && far.cells.target.x < 8 && far.cells.target.y >= 0 && far.cells.target.y < 8);
+    /* a corner: the walker in the last cell, the heading pointing off the board — the native still lands on the board */
+    const corner = field(Object.assign(evBoard(), { x: 6.9, z: 6.9, target: { x: 9, z: 9 } }));
+    assert.deepEqual(J(corner.cells.walker), { x: 7, y: 7 }); assert.ok(corner.cells.target.x <= 7 && corner.cells.target.y <= 7 && (corner.cells.target.x !== 7 || corner.cells.target.y !== 7));
+    /* no board (a cave, a complex part): no cells, no snap, the heading and the eye still filed */
+    const F0 = field(Object.assign(evBoard(), { board: null }));
+    assert.equal(F0.board, null); assert.equal(F0.cells, null); assert.equal(F0.snap, null); assert.ok(F0.eye && isFinite(F0.heading));
+    assert.equal(field(null), null);
+    assert.ok(field({ x: 1, z: 1 }).target, 'no target → a stand-in one cell east');
+});
+
+test('D6 · THE SEATS: P1 seat 1 = the walker\'s cell, P2 seat 1 = the native\'s; each nudged to the nearest FREE cell; the parties fill their own side nearest their lead; every seat distinct + free; no board → the middle of the map, the enemy one cell east; null with no free cell', () => {
+    const seats = g('hqEncounterSeats'), field = g('hqEncounterField');
+    const F = field(evBoard());
+    const S = seats(F, { W: 8, H: 8, n1: 4, n2: 4 });
+    assert.deepEqual(J(S.lead), { 1: { x: 0, y: 7 }, 2: { x: 1, y: 6 } });
+    assert.equal(S[1].length, 4); assert.equal(S[2].length, 4); assert.equal(S.board, true);
+    const all = S[1].concat(S[2]).map(c => c.x + ',' + c.y);
+    assert.equal(new Set(all).size, 8, 'eight distinct cells');
+    all.forEach(k => { const [x, y] = k.split(',').map(Number); assert.ok(x >= 0 && x < 8 && y >= 0 && y < 8); });
+    const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+    S[1].forEach(c => assert.ok(cheb(c, S.lead[1]) <= 2, 'P1 stands with its lead')); S[2].forEach(c => assert.ok(cheb(c, S.lead[2]) <= 2, 'P2 too'));
+    /* the lead's own cell is not free (a wall grew there): the nearest free cell takes it */
+    const S2 = seats(F, { W: 8, H: 8, n1: 2, n2: 2, free: (x, y) => !(x === 0 && y === 7) });
+    assert.notDeepEqual(J(S2.lead[1]), { x: 0, y: 7 }); assert.equal(cheb(S2.lead[1], { x: 0, y: 7 }), 1);
+    /* the free predicate is the law: no seat on a refused cell */
+    const banned = (x, y) => (x + y) % 2 === 0;
+    const S3 = seats(F, { W: 8, H: 8, n1: 4, n2: 4, free: (x, y) => !banned(x, y) });
+    S3[1].concat(S3[2]).forEach(c => assert.ok(!banned(c.x, c.y)));
+    /* no board: the centre, the enemy east (the heading is rotated onto +x) */
+    const S0 = seats(field(Object.assign(evBoard(), { board: null })), { W: 8, H: 8, n1: 4, n2: 4 });
+    assert.deepEqual(J(S0.lead), { 1: { x: 3, y: 4 }, 2: { x: 4, y: 4 } }); assert.equal(S0.board, false);
+    const S00 = seats(null, { W: 12, H: 10, n1: 1, n2: 1 });
+    assert.deepEqual(J(S00.lead), { 1: { x: 5, y: 5 }, 2: { x: 6, y: 5 } }, 'a bigger board: still the middle');
+    /* nothing free → null (the caller keeps the rows) */
+    assert.equal(seats(F, { W: 8, H: 8, n1: 1, n2: 1, free: () => false }), null);
+    assert.equal(seats(F, { W: 0, H: 8 }), null);
+    /* a party larger than the board's free cells: as many as fit, never a duplicate */
+    const S4 = seats(F, { W: 2, H: 2, n1: 4, n2: 4 });
+    assert.equal(S4[1].length + S4[2].length, 4); assert.equal(new Set(S4[1].concat(S4[2]).map(c => c.x + ',' + c.y)).size, 4);
+});
+
+test('D6 · THE EYE WITHOUT A BOARD: the camera\'s offset from the feet rotated by the heading and hung on P1\'s lead cell — the gaze looks along +x at P2\'s lead; up in tiles off the ground; null without seats / an eye; hqEncounterEye routes to it', () => {
+    const field = g('hqEncounterField'), seats = g('hqEncounterSeats'), eyeOf = g('hqEncounterEye'), fromSeats = g('hqEncounterEyeFromSeats');
+    const F0 = field(Object.assign(evBoard(), { board: null }));
+    const S0 = seats(F0, { W: 8, H: 8, n1: 4, n2: 4 });
+    const E = eyeOf(F0, S0);
+    assert.ok(E && isFinite(E.tx + E.tz + E.up + E.dx + E.dy + E.dz));
+    assert.ok(E.dx > 0.8, 'the gaze runs east — at the enemy\'s lead');
+    assert.ok(E.tx < S0.lead[1].x + 0.5, 'the eye hangs behind P1\'s lead');
+    assert.ok(Math.abs(Math.hypot(E.dx, E.dy, E.dz) - 1) < 1e-9, 'normalised');
+    assert.ok(Math.abs(E.up - 1.9 / R.tileM) < 1e-9, 'up = the eye\'s height over the ground in tiles');
+    assert.deepEqual(J(fromSeats(F0, S0)), J(E));
+    assert.equal(eyeOf(F0), null, 'no seats yet → null (the seed waits for the zone builder)');
+    assert.equal(fromSeats(Object.assign({}, F0, { eye: null }), S0), null);
+    /* with a board the old read stands — the walker\'s camera in the board\'s own tiles */
+    const E1 = eyeOf(field(evBoard()));
+    assert.ok(E1 && Math.abs(E1.tx - (-8 + 7.0136) / 1.7534) < 1e-9);
+});
+
+test('D6 · WHERE YOU WAKE UP: a loss lands in the ward and your office by turns (the first exit is the ward — the commit already counted it); both rooms exist; a profile with no record → the office (an even count) never throws', () => {
+    const wake = g('hqEncounterWakeRoom');
+    assert.ok(HQ.rooms.medical && HQ.rooms.office, 'the two rooms');
+    const p = (losses) => profile({ door: { clearance: 1, hq: { encounters: { count: losses, wins: 0, losses } } } });
+    assert.equal(wake(p(1)), 'medical'); assert.equal(wake(p(2)), 'office'); assert.equal(wake(p(3)), 'medical'); assert.equal(wake(p(4)), 'office');
+    assert.equal(wake(profile()), 'office'); assert.equal(wake(null), 'office');
+    /* the synced record counts too (D5: the union) */
+    assert.equal(wake(profile({ progress: { hq: { encounters: { count: 1, wins: 0, losses: 1 } } } })), 'medical');
+});
+
+test('D6 · SOURCE · battle.js: the run is LATCHED at startMatch (never the window marker after that), the intro gate + the warm-up + the VS card read the latch, the eye falls back to the seats, the field is published for the zone builder, the result bar is ONE button, the standard bar comes back for the next match, a rematch drops the latch', () => {
+    assert.ok(BT.includes("let _encMatch = null;") && BT.includes("function _encRun() { return _encMatch || ((window._hqEncounterRun && window._hqEncounterRun.noIntro) ? window._hqEncounterRun : null); }"), 'the latch');
+    assert.ok(BT.includes("if (er) { if (er.armed) { er.armed = false; _encMatch = er; } else window._hqEncounterRun = null; }"), 'armed → latched for THIS match');
+    assert.ok(BT.includes("_encMatch = null;\n            try {\n                const er = window._hqEncounterRun;"), 'a plain match starts with no latch');
+    assert.ok(BT.includes("if (_encMatch) return false;   // THE ENCOUNTER (Delivery 6)"), 'the intro gate');
+    assert.ok(BT.includes("&& !window.EW_DISABLE_INTRO_CINE && !_encMatch && !(window._hqEncounterRun"), 'the leaf warm-up');
+    assert.ok(BT.includes("if (!eye && _er.field && typeof hqEncounterEye === 'function') { try { eye = hqEncounterEye(_er.field, _er.field.seats || null); }"), 'the eye off the seats');
+    assert.ok(BT.includes("window._ewEncounterField = function () { return (_encMatch && _encMatch.field) || null; };"), 'the field for map.js');
+    assert.ok(BT.includes("function _encounterResultButtons()") && BT.includes("${won ? '▸ BACK TO THE ROOM' : '▸ WAKE UP'}") && BT.includes("b.onclick = () => { b.disabled = true; window.backToMainMenu(); };"), 'one button, through the building\'s return');
+    assert.ok(BT.includes("try { _encounterResultButtons(); } catch (e)"), 'after the overlay shows');
+    assert.ok(BT.includes("if (!document.getElementById('nextMatchBtn') && typeof _restoreResultOverlayButtons === 'function') _restoreResultOverlayButtons();"), 'the standard bar returns');
+    assert.ok(BT.includes("_encMatch = null;   // a rematch is never the encounter"), 'Find Next Match drops it');
+    assert.ok(BT.includes("window._hqEncounterRun = null; _encMatch = null;"), 'the commit consumes the latch');
+});
+
+test('D6 · SOURCE · map.js: the strike reads the Code Red, files the field, SLIDES the two onto their cells (the eye re-read after) then starts; the run marker carries the field + the mode; a Code Red encounter is the response; the zone builder seats the parties from the field and never moves a seated unit onto a row', () => {
+    ['let cr = null;', "if (!cr || cr.cleared || !site || cr.site !== site) cr = null;", "L.codeRedRun = cr ? { date: cr.date, site: cr.site, race: cr.race, label: cr.label, bonus: cr.bonus } : null;",
+     "const field = (typeof window.hqEncounterField === 'function') ? window.hqEncounterField(ev) : null;",
+     "if (field && field.snap && ThreeRenderer.hq && typeof ThreeRenderer.hq.encounterSnap === 'function') {",
+     "const started = ThreeRenderer.hq.encounterSnap({ walker: field.snap.walker, target: field.snap.target, targetId: ev.target.id }, snapMs, () => {",
+     "eye2 = (typeof ThreeRenderer.hq.encounterEye === 'function') ? ThreeRenderer.hq.encounterEye() : null;",
+     "const ev2 = Object.assign({}, ev, { x: field.snap.walker.x, z: field.snap.walker.z }, eye2 ? { eye: eye2 } : {});",
+     "_hqEncounterStart(L, ev2, field2);", "return _hqEncounterStart(L, ev, field);",
+     "function _hqEncounterStart(L, ev, field) {", "field: field || null, gm: L.gm };",
+     "window._hqCodeRedRun = L.codeRedRun || null;",
+     "const _encPlaced = _encounterPlaceSeats();", "if (_encPlaced && _encPlaced.has(unit.id)) continue;   // seated by the encounter",
+     "function _encounterPlaceSeats() {", "const F = (typeof window._ewEncounterField === 'function') ? window._ewEncounterField() : null;",
+     "if (!_respawnTileSafe(x, y)) return false;", "seats = window.hqEncounterSeats(F, { W: bw(), H: bh(), n1: u1.length, n2: u2.length, free });",
+     "F.seats = seats;", "if (_encParty.fallback && typeof optimizeRandomizeParty === 'function') {",
+     "YOU CAME TO AT YOUR DESK", "YOU CAME TO IN THE WARD"].forEach(f => assert.ok(MP.includes(f), f));
+    assert.ok(MP.indexOf("const _encPlaced = _encounterPlaceSeats();") < MP.indexOf("/* Relocate existing units into their spawn zone tiles"), 'the seats are placed before the rows would move them');
+    assert.ok(MP.indexOf("SPAWNS[1] = state.spawnZones[1].map(t => ({ x: t.x, y: t.y, z: t.z }));") < MP.indexOf("const _encPlaced = _encounterPlaceSeats();"), 'the zones + SPAWNS stand as before (a TDM respawn comes home to the row)');
+});
+
+test('D6 · SOURCE · three-renderer.js: THE SLIDE — H.snap owns the walker\'s frame (no input), eases both bodies (smoothstep), squares them up, moves the native\'s group, fires the callback once at the end; the API', () => {
+    ['function _hqTickSnap(dt) {', 'if (H.snap) { _hqTickSnap(dt); return; }', 'var k = S.t * S.t * (3 - 2 * S.t);',
+     'ch.entry.group.position.set(ch.x * U, ch.y * U, ch.z * U);', 'pl.targetYaw = Math.atan2(ch.x - pl.x, ch.z - pl.z);', 'ch.yaw = ch.targetYaw = Math.atan2(pl.x - ch.x, pl.z - ch.z);',
+     'H.snap = null;\n            var cb = S.cb; S.cb = null;', 'function _hqEncounterSnap(spec, ms, cb) {', 'encounterSnap: _hqEncounterSnap,', "encounterEye: function () { return _hq ? _hqEncounterEye() : null; },",
+     'snap: null,   // THE SLIDE (Delivery 6)'].forEach(f => assert.ok(TR.includes(f), f));
+    assert.ok(TR.indexOf('if (H.snap) { _hqTickSnap(dt); return; }') < TR.indexOf('if (H.ride && H.ride.on) { _hqTickRide(dt); return; }'), 'the slide outranks the ride');
+});
+
+test('D6 · THE SLIDE in a vm: two bodies ease onto their cells over the beat, face each other, the callback fires exactly once, input is ignored meanwhile', () => {
+    const start = TR.indexOf('    /* THE SLIDE (THE FIELD stage A'), end = TR.indexOf('    function _hqTickWalker(dt) {');
+    assert.ok(start > 0 && end > start);
+    const ctx = { console, Math, isFinite, performance: { now: () => 0 } };
+    ctx._hqUnits = () => 73; ctx.HQ_FALL_MIN = 0.5; ctx._hqSurface = () => 0;
+    const calls = [];
+    const pl = { x: 0, z: 0, y: 0, visY: 0, yaw: 0, targetYaw: 0, air: false, moving: false, running: false, entry: { group: { position: { set: (x, y, z) => calls.push(['pl', x, y, z]) } } } };
+    const ch = { id: 'hq-native-0', x: 3, z: 0, y: 0, visY: 0, yaw: 0, targetYaw: 0, entry: { group: { position: { set: (x, y, z) => calls.push(['ch', x, y, z]) } } } };
+    ctx._hq = { player: pl, chars: [ch], snap: null };
+    vm.createContext(ctx);
+    vm.runInContext(TR.slice(start, end) + '\nthis._hqEncounterSnap = _hqEncounterSnap; this._hqTickSnap = _hqTickSnap;', ctx);
+    let fired = 0;
+    assert.equal(ctx._hqEncounterSnap({ walker: { x: 0.9, z: 0.9 }, target: { x: 2.6, z: 0.9 }, targetId: 'hq-native-0' }, 260, () => fired++), true);
+    assert.ok(ctx._hq.snap);
+    let n = 0; while (ctx._hq.snap && n++ < 40) ctx._hqTickSnap(0.05);   // 50 ms steps until the slide drops itself
+    assert.ok(n >= 5 && n <= 7, 'the beat is ~260 ms (' + n + ' steps)');
+    assert.equal(fired, 1, 'once');
+    assert.equal(ctx._hq.snap, null, 'dropped at the end');
+    assert.ok(Math.abs(pl.x - 0.9) < 1e-9 && Math.abs(pl.z - 0.9) < 1e-9, 'the walker on its cell');
+    assert.ok(Math.abs(ch.x - 2.6) < 1e-9 && Math.abs(ch.z - 0.9) < 1e-9, 'the native on its cell');
+    assert.ok(Math.abs(pl.targetYaw - Math.atan2(ch.x - pl.x, ch.z - pl.z)) < 1e-9 && Math.abs(ch.yaw - Math.atan2(pl.x - ch.x, pl.z - ch.z)) < 1e-9, 'squared up on each other');
+    assert.ok(calls.some(c => c[0] === 'ch') && calls.some(c => c[0] === 'pl'), 'both groups moved');
+    assert.equal(ctx._hqEncounterSnap({ walker: { x: 'x' } }, 260, null), false, 'a bad spec is refused');
+    /* the walker tick hands the frame to the slide before the ride and before any key */
+    assert.ok(TR.includes("if (H.snap) { _hqTickSnap(dt); return; }"));
 });

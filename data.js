@@ -30233,7 +30233,12 @@ const HQ_ENCOUNTER_RULES = {
     cone: 55,            // degrees either side of the aim (the camera's yaw)
     dy: 1.8,             // metres of height difference allowed
     cooldownMs: 1400,    // between two swings
-    gm: 'arena', teamSize: 4,   // the fallback config when nothing sticky is on file
+    /* THE FIELD stage A (Phase 9 Delivery 6, 2026-09-16 — the user's rule): an encounter is TEAM DEATHMATCH;
+       a fight with a Cube / a Code Red on the site is ARENA. The mode is never the sticky config's any more —
+       only the team size sticks (the console's last crossing). */
+    gm: 'tdm', gmCodeRed: 'arena', teamSize: 4,
+    tileM: 1.75,         // metres per battle tile — the frame a room with no board (a cave, a complex part) is read in
+    snapMs: 260,         // THE SLIDE: the walker + the native ease onto their cells before the cut
     /* rev 17 (the user's correction): the strike is LEFT CLICK with the door gun HOLSTERED
        — drawn, a click places a threshold (9.5) and never attacks. No number keys. */
     trigger: 'click',
@@ -30253,29 +30258,27 @@ function hqEncounterCharOk(ch) {
 /* the gesture a trigger throws: the click (the default) → 'attack'; anything else null (the number keys are gone, rev 17) */
 function hqEncounterGesture(trigger) { return (trigger == null || String(trigger) === HQ_ENCOUNTER_RULES.trigger) ? HQ_ENCOUNTER_RULES.gesture : null; }
 /* the sticky config: what the terminal last filed (map.js writes it as JSON in localStorage `ew_hq_encounter_cfg`), sanitised; else the rules' fallback */
-function hqEncounterConfig(raw) {
+function hqEncounterConfig(raw, ctx) {
     let o = null;
     try { o = (typeof raw === 'string') ? JSON.parse(raw) : (raw && typeof raw === 'object' ? raw : null); } catch (e) { o = null; }
-    const MM = (typeof MULTIPLAYER_MODES !== 'undefined') ? MULTIPLAYER_MODES : {};
-    const known = (id) => MM[id] || (!Object.keys(MM).length && /^(arena|tdm|simul)$/.test(id));   // headless (no state.js): the field modes
-    let gm = (o && typeof o.gm === 'string' && known(o.gm)) ? o.gm : HQ_ENCOUNTER_RULES.gm;
-    /* Clash plays its own stage and Gauntlet needs the full board — a Δ encounter is a field fight: Arena / TDM / Simul */
-    if (gm === 'clash' || gm === 'gauntlet') gm = HQ_ENCOUNTER_RULES.gm;
+    /* THE FIELD stage A (2026-09-16, the user's rule): the MODE is the encounter's own — TDM, or ARENA when the site
+       is in Code Red (the Cube + the zones are that fight's); the sticky config lends only its TEAM SIZE. The rounds
+       are the mode's own (a TDM never inherits an Arena crossing's 100-round cap). */
+    const gm = (ctx && ctx.codeRed) ? HQ_ENCOUNTER_RULES.gmCodeRed : HQ_ENCOUNTER_RULES.gm;
     let teamSize = (o && Number.isFinite(+o.teamSize)) ? Math.max(1, Math.min(8, Math.floor(+o.teamSize))) : HQ_ENCOUNTER_RULES.teamSize;
-    const rounds = (o && Number.isFinite(+o.rounds) && +o.rounds > 0) ? Math.floor(+o.rounds) : 0;
-    return { gm, teamSize, rounds };
+    return { gm, teamSize, rounds: 0 };
 }
 /* the launch: everything map.js hands _hqLaunchMission / the builder-less start — pure, so the test can read it */
 function hqEncounterLaunch(roomId, ch, cfg, opts) {
     opts = opts || {};
     const site = hqRoomSite(roomId);
     if (!site || !hqEncounterCharOk(ch)) return null;
-    const c = hqEncounterConfig(cfg);
+    const c = hqEncounterConfig(cfg, { codeRed: !!opts.codeRed });
     const n = c.teamSize;
     const pool = (typeof hqMissionPool === 'function') ? hqMissionPool(site, n) : [];
     const roster = [ch.race].concat(pool.filter(r => r !== ch.race)).slice(0, Math.max(n, 1));
     return {
-        site, delta: true, gm: c.gm, teamSize: n, rounds: c.rounds, roster,
+        site, delta: true, gm: c.gm, teamSize: n, rounds: c.rounds, roster, codeRed: !!opts.codeRed,
         doorId: 'crossing', counterId: 'crossing',
         encounter: { race: ch.race, gender: ch.gender || 'male', id: ch.id || null, room: roomId, x: +(ch.x || 0), z: +(ch.z || 0), gesture: opts.gesture || 'attack', label: ch.label || ch.race,
                      name: ch.label || null },   // D2: the room's own name for the native — the enemy lead wears it on the nameplate
@@ -30449,9 +30452,10 @@ function hqRoomGuarded(roomId) {
    { tx, tz } the eye over the board, `up` tiles above the ground of that
    column, the gaze as a unit vector, `look` tiles ahead. Null when the room
    has no board (a complex part, a cave): the battle opens on its own frame. */
-function hqEncounterEye(ev) {
+function hqEncounterEye(ev, seats) {
     const e = ev && ev.eye, b = ev && ev.board;
-    if (!e || !b || !(b.C > 0) || !(b.N > 0)) return null;
+    if (!e) return null;
+    if (!b || !(b.C > 0) || !(b.N > 0)) return hqEncounterEyeFromSeats(ev, seats);
     const half = (b.half != null) ? +b.half : b.N * b.C / 2;
     const tx = (+e.x + half) / b.C, tz = (+e.z + half) / b.C;
     const g = (e.ground != null && isFinite(+e.ground)) ? +e.ground : (+e.py || 0);
@@ -30465,6 +30469,163 @@ function hqEncounterEye(ev) {
     out.tx = Math.max(-2, Math.min(b.N + 2, out.tx));
     out.tz = Math.max(-2, Math.min(b.N + 2, out.tz));
     return out;
+}
+/* ══ THE FIELD, STAGE A (PHASE9_QUALITY_PLAN §11.3 A — Phase 9 Delivery 6, 2026-09-16) ══
+   The user's rule: "forget spawn zones in encounter battles — if I attack an
+   enemy up close the battle starts with us right up close to each other, slid
+   to the nearest square tile of the grid during the transition". Three pure
+   reads, all in the renderer's onEncounter payload's terms (room METRES; a
+   board = the site room's own Δ, N cells of C metres about the room's origin,
+   board x east / board y south — three-renderer.js _hqSiteCellAt's frame):
+   · hqEncounterField(ev) → THE FIELD RECORD the run marker carries: the board
+     (or null), the walker's and the native's feet, the walker → native
+     HEADING, the raw eye, and — with a board — their CELLS (clamped onto the
+     board from the walkway; the native never shares the walker's cell) plus
+     THE SNAP (the two cell centres the renderer slides them onto before the
+     cut; hq.encounterSnap).
+   · hqEncounterSeats(field, { W, H, n1, n2, free }) → the START of both
+     parties on the built board: the two LEADS (the walker's cell = P1 seat 1,
+     the native's = P2 seat 1; with no board the MAP'S CENTRE, P2 one cell east
+     — the heading is rotated onto +x so the enemy still stands in front of
+     you), each nudged to the nearest free cell, the rest of each party filling
+     the free cells nearest its own lead on its own side (nearer its lead than
+     the enemy's first). `free(x, y)` is the caller's walkability (map.js hands
+     the built board's; the units are not on it yet). Null = no free cell (the
+     caller keeps the rows).
+   · hqEncounterEyeFromSeats(field, seats) → THE EYE with no board under the
+     walker: the camera's offset from the feet, rotated by the heading, hung on
+     P1's lead cell at HQ_ENCOUNTER_RULES.tileM per tile — the first frame is
+     still "behind your own shoulder, looking at them".
+   · hqEncounterWakeRoom(profile) → where a LOSS lands you: the ward and your
+     office by turns (the record's loss count, the commit already wrote this
+     one — the first exit is the ward). The zones stay what they are for a
+     TDM respawn; nothing on `state`, nothing relayed (RULE #2). */
+function hqEncounterField(ev) {
+    if (!ev || typeof ev !== 'object') return null;
+    const bb = ev.board;
+    const b = (bb && +bb.N > 0 && +bb.C > 0) ? { N: Math.floor(+bb.N), C: +bb.C, half: (bb.half != null && isFinite(+bb.half)) ? +bb.half : Math.floor(+bb.N) * +bb.C / 2 } : null;
+    const num = (v, d) => (isFinite(+v) ? +v : d);
+    const w = { x: num(ev.x, 0), z: num(ev.z, 0), y: num(ev.y, 0) };
+    const T = ev.target || null;
+    const t = T ? { x: num(T.x, w.x + 1), z: num(T.z, w.z), y: num(T.y, w.y) } : { x: w.x + 1, z: w.z, y: w.y };
+    let heading = Math.atan2(t.z - w.z, t.x - w.x);
+    if (!isFinite(heading)) heading = 0;
+    const E = ev.eye;
+    const eye = (E && isFinite(+E.x) && isFinite(+E.z)) ? { x: +E.x, y: num(E.y, w.y + 1.6), z: +E.z, dx: num(E.dx, 0), dy: num(E.dy, -0.5), dz: num(E.dz, 1),
+                                                            ground: (E.ground != null && isFinite(+E.ground)) ? +E.ground : num(E.py, w.y), px: num(E.px, w.x), pz: num(E.pz, w.z), py: num(E.py, w.y) } : null;
+    const F = { board: b, walker: w, target: t, heading, eye, cells: null, snap: null };
+    if (b) {
+        const N = b.N, cl = (v) => Math.max(0, Math.min(N - 1, v));
+        const cellOf = (p) => ({ x: cl(Math.floor((p.x + b.half) / b.C)), y: cl(Math.floor((p.z + b.half) / b.C)) });
+        const cw = cellOf(w); let ct = cellOf(t);
+        if (ct.x === cw.x && ct.y === cw.y) {
+            /* the same cell (both clamped onto one edge cell, or a body inside a body): the native takes the
+               neighbour along the heading, else any neighbour on the board */
+            const sx = Math.round(Math.cos(heading)), sy = Math.round(Math.sin(heading));
+            const cands = [[sx, sy], [sx, 0], [0, sy], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]];
+            for (const d of cands) {
+                if (!d[0] && !d[1]) continue;
+                const nx = cw.x + d[0], ny = cw.y + d[1];
+                if (nx >= 0 && ny >= 0 && nx < N && ny < N) { ct = { x: nx, y: ny }; break; }
+            }
+        }
+        F.cells = { walker: cw, target: ct };
+        const centre = (c) => ({ x: -b.half + (c.x + 0.5) * b.C, z: -b.half + (c.y + 0.5) * b.C });
+        F.snap = { walker: centre(cw), target: centre(ct) };
+    }
+    return F;
+}
+function hqEncounterSeats(field, opts) {
+    opts = opts || {};
+    const W = Math.floor(+opts.W || 0), H = Math.floor(+opts.H || 0);
+    if (!(W > 0 && H > 0)) return null;
+    const n1 = Math.max(1, Math.floor(+opts.n1 || 1)), n2 = Math.max(1, Math.floor(+opts.n2 || 1));
+    const free = (typeof opts.free === 'function') ? opts.free : (() => true);
+    const taken = new Set();
+    const key = (x, y) => x + ',' + y;
+    const ok = (x, y) => x >= 0 && y >= 0 && x < W && y < H && !taken.has(key(x, y)) && !!free(x, y);
+    const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+    const euc = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+    const cl = (v, n) => Math.max(0, Math.min(n - 1, Math.floor(+v || 0)));
+    let l1, l2;
+    const C = field && field.cells;
+    if (C && C.walker && C.target) {
+        l1 = { x: cl(C.walker.x, W), y: cl(C.walker.y, H) };
+        l2 = { x: cl(C.target.x, W), y: cl(C.target.y, H) };
+    } else {
+        /* no board under the walker: the middle of the map, the enemy one cell east (the heading is rotated onto +x) */
+        l1 = { x: Math.floor((W - 1) / 2), y: Math.floor(H / 2) };
+        l2 = { x: Math.min(W - 1, l1.x + 1), y: l1.y };
+        if (l2.x === l1.x) l2 = { x: Math.max(0, l1.x - 1), y: l1.y };
+    }
+    /* the nearest free cell to a wish, by rings (the wish itself first) */
+    const nearest = (c) => {
+        const R = Math.max(W, H);
+        for (let r = 0; r <= R; r++) {
+            const ring = [];
+            for (let y = c.y - r; y <= c.y + r; y++) for (let x = c.x - r; x <= c.x + r; x++) {
+                if (Math.max(Math.abs(x - c.x), Math.abs(y - c.y)) !== r) continue;
+                if (ok(x, y)) ring.push({ x, y });
+            }
+            if (ring.length) { ring.sort((a, b) => euc(a, c) - euc(b, c)); return ring[0]; }
+        }
+        return null;
+    };
+    l1 = nearest(l1); if (!l1) return null; taken.add(key(l1.x, l1.y));
+    l2 = nearest(l2); if (!l2) return null; taken.add(key(l2.x, l2.y));
+    const fill = (lead, enemy, n) => {
+        const out = [lead];
+        if (n <= 1) return out;
+        const cands = [];
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (ok(x, y)) cands.push({ x, y });
+        cands.sort((a, b) => {
+            const sa = (cheb(a, lead) >= cheb(a, enemy)) ? 1 : 0, sb = (cheb(b, lead) >= cheb(b, enemy)) ? 1 : 0;   // your own side first
+            if (sa !== sb) return sa - sb;
+            const da = cheb(a, lead), db = cheb(b, lead);
+            if (da !== db) return da - db;
+            const ea = cheb(a, enemy), eb = cheb(b, enemy);
+            if (ea !== eb) return eb - ea;   // farther from the enemy's lead
+            return euc(a, lead) - euc(b, lead);
+        });
+        for (const c of cands) { if (out.length >= n) break; taken.add(key(c.x, c.y)); out.push(c); }
+        return out;
+    };
+    const s1 = fill(l1, l2, n1), s2 = fill(l2, l1, n2);
+    return { 1: s1, 2: s2, lead: { 1: l1, 2: l2 }, W, H, board: !!(C && C.walker) };
+}
+function hqEncounterEyeFromSeats(field, seats) {
+    const e = field && field.eye, w = field && field.walker;
+    const lead = seats && seats.lead && seats.lead[1];
+    if (!e || !w || !lead) return null;
+    const C = (HQ_ENCOUNTER_RULES.tileM > 0) ? HQ_ENCOUNTER_RULES.tileM : 1.75;
+    const h = isFinite(+field.heading) ? +field.heading : 0;
+    const ch = Math.cos(h), sh = Math.sin(h);
+    /* rotate the room frame so the walker → native heading lies along board +x (P2's lead stands east of P1's) */
+    const rot = (x, z) => ({ x: x * ch + z * sh, z: -x * sh + z * ch });
+    const off = rot(e.x - w.x, e.z - w.z);
+    const tx = lead.x + 0.5 + off.x / C, tz = lead.y + 0.5 + off.z / C;
+    const g = (e.ground != null && isFinite(+e.ground)) ? +e.ground : (+e.py || 0);
+    const up = Math.max(0.15, (+e.y - g) / C);
+    const d = rot(+e.dx, +e.dz);
+    let dx = d.x, dy = +e.dy, dz = d.z;
+    const L = Math.hypot(dx, dy, dz);
+    if (!(L > 1e-6)) { dx = 1; dy = -0.5; dz = 0; } else { dx /= L; dy /= L; dz /= L; }
+    const out = { tx, tz, up, dx, dy, dz, look: 3 };
+    for (const k in out) if (!isFinite(out[k])) return null;
+    const W = (seats.W > 0) ? seats.W : 8, Hh = (seats.H > 0) ? seats.H : 8;
+    out.tx = Math.max(-2, Math.min(W + 2, out.tx));
+    out.tz = Math.max(-2, Math.min(Hh + 2, out.tz));
+    return out;
+}
+function hqEncounterWakeRoom(profile) {
+    const rooms = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms) || {};
+    const ward = rooms.medical ? 'medical' : null, office = rooms.office ? 'office' : null;
+    if (!ward && !office) return null;
+    let n = 0;
+    try { n = (hqEncounterLog(profile).losses | 0); } catch (e) { n = 0; }
+    /* the commit already counted this exit: odd = the ward (the first, the third…), even = your office */
+    const pick = (n % 2 === 1) ? ward : office;
+    return pick || ward || office;
 }
 /* ══ SKATEBOARDING — THE RIDER'S TABLE (HQ plan 9.8 stage 1, 2026-09-15) ══
    A walker MODE (three-renderer.js "SKATEBOARDING — THE RIDER"): nothing on
@@ -32352,6 +32513,7 @@ if (typeof window !== 'undefined') {
     window.hqSyncedHq = hqSyncedHq; window.hqClearedUnion = hqClearedUnion; window.hqEncountersUnion = hqEncountersUnion; window.hqSkateUnion = hqSkateUnion; window.hqDoorSyncFold = hqDoorSyncFold; window.hqClearedRecord = hqClearedRecord;   // THE SYNCED BUILDING (D5)
     window.hqEncounterCleared = hqEncounterCleared; window.hqRoomGuarded = hqRoomGuarded; window.hqEncounterEye = hqEncounterEye;
     window.hqEncounterLead = hqEncounterLead; window.hqEncounterReturnSpot = hqEncounterReturnSpot;
+    window.hqEncounterField = hqEncounterField; window.hqEncounterSeats = hqEncounterSeats; window.hqEncounterEyeFromSeats = hqEncounterEyeFromSeats; window.hqEncounterWakeRoom = hqEncounterWakeRoom;
     /* SKATEBOARDING (HQ plan 9.8 stage 1, 2026-09-15) */
     window.HQ_SKATE_RULES = HQ_SKATE_RULES; window.hqSkateStatus = hqSkateStatus; window.hqSkateRecord = hqSkateRecord; window.hqSkateBank = hqSkateBank; window.hqSkateScore = hqSkateScore; window.hqSkateIssueFree = hqSkateIssueFree;
     window.hqLinkRoom = hqLinkRoom;

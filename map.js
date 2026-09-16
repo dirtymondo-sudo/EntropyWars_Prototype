@@ -881,10 +881,16 @@
                 return false;
             }
             window._tutReturnPage = null;
-            /* THE ENCOUNTER (9.4): a loss is the ward — you come to in Medical's cot (Part C row 30: the ward and nothing else) */
+            /* THE ENCOUNTER (9.4 / Delivery 6): a loss is where you WAKE UP — the ward or your office by turns
+               (data.js hqEncounterWakeRoom off the loss count the commit already wrote; the user's rule) */
             const encRes = window._hqEncounterResult || null;
             window._hqEncounterResult = null;
-            if (encRes && !encRes.won && enabled && _hqHome && DOOR_HQ.rooms && DOOR_HQ.rooms.medical) { _hqLastRoom = 'medical'; _hqLastDoor = null; }
+            if (encRes && !encRes.won && enabled && _hqHome && DOOR_HQ.rooms) {
+                let wake = null;
+                try { wake = (typeof window.hqEncounterWakeRoom === 'function') ? window.hqEncounterWakeRoom(_hqProfile()) : null; } catch (e) { wake = null; }
+                if (!wake || !DOOR_HQ.rooms[wake]) wake = DOOR_HQ.rooms.medical ? 'medical' : null;
+                if (wake) { _hqLastRoom = wake; _hqLastDoor = null; encRes.wake = wake; }
+            }
             /* D1 (PHASE9_QUALITY_PLAN §6, 2026-09-16): a WIN lands where you SWUNG — the walker's feet + heading at the
                strike (the run marker's `walker`, home on the result) as _hqGoTo's free-spot form; the beaten native's spot
                in front of you stands empty (THE CLEARED ROOM). Only in the strike's own room; else the console as before. */
@@ -896,7 +902,7 @@
                 if (alive && _hqSuspended && window._hqResume()) return true;
                 if (alive) window._hqLeave();
                 if (window._hqEnter({ room: _hqLastRoom, at: _hqLastDoor, quiet: true, from: 'return' })) {
-                    if (encRes) setTimeout(() => { try { _hqToast(encRes.won ? `<b>THRESHOLD HELD</b><span>${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} · THE ROOM IS YOURS</span>` : `<b>EXITED</b><span>YOU CAME TO IN THE WARD · ${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} HAD THE ROOM</span>`, 3600); } catch (e) {} }, 1400);
+                    if (encRes) setTimeout(() => { try { _hqToast(encRes.won ? `<b>THRESHOLD HELD</b><span>${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} · THE ROOM IS YOURS</span>` : `<b>EXITED</b><span>${encRes.wake === 'office' ? 'YOU CAME TO AT YOUR DESK' : 'YOU CAME TO IN THE WARD'} · ${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} HAD THE ROOM</span>`, 3600); } catch (e) {} }, 1400);
                     return true;
                 }
             } else if (alive) {
@@ -2040,15 +2046,39 @@
             if (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return false;   // RULE #2: never from an online seat
             let drawn = false; try { drawn = ThreeRenderer.hq.portalDrawn(); } catch (e) { drawn = false; }
             if (drawn) return false;   // the gun drawn: a click is a threshold, never a fight (rev 17)
-            const L = (typeof window.hqEncounterLaunch === 'function') ? window.hqEncounterLaunch(_hqCurRoom, ev.target, _hqEncounterCfgRaw(), { gesture: ev.gesture }) : null;
+            /* THE FIELD stage A (Phase 9 Delivery 6, 2026-09-16 — the user's rules): the mode is TDM, or ARENA
+               when the site is today's Code Red (a Cube fight — the encounter IS the response then); the sticky
+               config lends its team size only (data.js hqEncounterConfig) */
+            let cr = null;
+            try { cr = (typeof window.hqCodeRed === 'function') ? window.hqCodeRed(_hqProfile()) : null; } catch (e) { cr = null; }
+            const site = (typeof window.hqRoomSite === 'function') ? window.hqRoomSite(_hqCurRoom) : null;
+            if (!cr || cr.cleared || !site || cr.site !== site) cr = null;
+            const L = (typeof window.hqEncounterLaunch === 'function') ? window.hqEncounterLaunch(_hqCurRoom, ev.target, _hqEncounterCfgRaw(), { gesture: ev.gesture, codeRed: !!cr }) : null;
             if (!L) return false;
-            return _hqEncounterStart(L, ev);
+            L.codeRedRun = cr ? { date: cr.date, site: cr.site, race: cr.race, label: cr.label, bonus: cr.bonus } : null;
+            /* THE FIELD RECORD (data.js hqEncounterField): the board under the room, both feet, the heading, the raw
+               eye — and, on a board room, THE SLIDE: the walker and the native ease onto their cell centres
+               (ThreeRenderer.hq.encounterSnap, HQ_ENCOUNTER_RULES.snapMs) and the fight starts on those very
+               cells; the eye is read again after the slide so the first battle frame is the camera as it stands */
+            const field = (typeof window.hqEncounterField === 'function') ? window.hqEncounterField(ev) : null;
+            const snapMs = (typeof HQ_ENCOUNTER_RULES !== 'undefined' && HQ_ENCOUNTER_RULES.snapMs) || 260;
+            if (field && field.snap && ThreeRenderer.hq && typeof ThreeRenderer.hq.encounterSnap === 'function') {
+                const started = ThreeRenderer.hq.encounterSnap({ walker: field.snap.walker, target: field.snap.target, targetId: ev.target.id }, snapMs, () => {
+                    let eye2 = null;
+                    try { eye2 = (typeof ThreeRenderer.hq.encounterEye === 'function') ? ThreeRenderer.hq.encounterEye() : null; } catch (e) { eye2 = null; }
+                    const ev2 = Object.assign({}, ev, { x: field.snap.walker.x, z: field.snap.walker.z }, eye2 ? { eye: eye2 } : {});
+                    const field2 = window.hqEncounterField(ev2) || field;
+                    _hqEncounterStart(L, ev2, field2);
+                });
+                if (started) return true;
+            }
+            return _hqEncounterStart(L, ev, field);
         }
         window._hqEncounterFire = _hqEncounterFire;
         /* THE LAST ROSTER → the human seat's party (the builder is skipped): sized to the team, padded with the mode's defaults */
         function _hqApplyLastParty(party, seat, n) {
             const members = (party && Array.isArray(party.members)) ? party.members.slice(0, n) : [];
-            if (!members.length) return false;
+            if (!members.length && !(party && party.fallback)) return false;   // `fallback`: no roster on file — the mode's default squad stands in (Delivery 6)
             const builds = [], names = [], metas = [], los = [];
             members.forEach(m => {
                 builds.push(String(m.cls || 'Freelancer'));
@@ -2073,22 +2103,24 @@
             state.partyMeta[seat] = metas;
             return true;
         }
-        function _hqEncounterStart(L, ev) {
-            const party = _hqLastParty();
+        function _hqEncounterStart(L, ev, field) {
+            let party = _hqLastParty();
             _hqLastDoor = L.doorId || 'crossing'; _hqLastRoom = _hqCurRoom; _hqRecordVisit(_hqLastDoor);
-            /* the run marker: the intro off PER LAUNCH, the native's spawn id (THE CLEARED ROOM on a win), and THE EYE
-               (stage 2) — the walker's camera in board tiles, the first battle frame (battle.js → ThreeCamera.seedPose) */
+            /* the run marker: the intro off PER LAUNCH, the native's spawn id (THE CLEARED ROOM on a win), THE EYE
+               (stage 2) — the walker's camera in board tiles, the first battle frame (battle.js → ThreeCamera.seedPose)
+               — and THE FIELD (Delivery 6): the record the zone builder seats both parties from */
             let eye = null;
-            try { eye = (ev && typeof window.hqEncounterEye === 'function') ? window.hqEncounterEye(ev) : null; } catch (e) { eye = null; }
+            try { eye = (ev && typeof window.hqEncounterEye === 'function') ? window.hqEncounterEye(field || ev) : null; } catch (e) { eye = null; }
             window._hqEncounterRun = { site: L.site, room: L.room || _hqCurRoom, race: L.encounter.race, label: L.encounter.label, gesture: L.encounter.gesture, id: L.encounter.id || null,
                                        date: (typeof hqToday === 'function') ? hqToday() : null, at: Date.now(), noIntro: true, armed: true,   // `armed`: battle.js startMatch spends it on THIS launch; a later match finds it spent and drops a stale marker
-                                       eye: eye, walker: ev ? { x: ev.x, z: ev.z, y: ev.y, yaw: ev.yaw, pitch: ev.pitch } : null };
+                                       eye: eye, walker: ev ? { x: ev.x, z: ev.z, y: ev.y, yaw: ev.yaw, pitch: ev.pitch } : null, field: field || null, gm: L.gm };
             window._hqEncounterResult = null;
             try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.6 }); } catch (e) {}
-            /* no roster on file: the terminal as today — the site's own console screen, the native's race leading the pool */
+            /* no roster on file (Delivery 6): the fight still starts on the spot — the mode's default squad stands in
+               (randomised like the CPU's); the terminal is never the answer to a swing */
             if (!party) {
-                _hqToast('<b>NO ROSTER ON FILE</b><span>FILE ONE CROSSING AT THE CONSOLE · THE NEXT ENCOUNTER STARTS ON ITS OWN</span>', 3200);
-                return window._hqLaunchMission(L.site, { delta: true, doorId: L.doorId, doorLabel: 'THE ENCOUNTER', counterId: L.counterId, variant: 'site', roster: L.roster });
+                _hqToast('<b>NO ROSTER ON FILE</b><span>A DEFAULT SQUAD STANDS IN · FILE A CROSSING AT THE CONSOLE TO FIELD YOUR OWN</span>', 3200);
+                party = { members: [], fallback: true };
             }
             if (typeof MS_MAP_LIST === 'undefined' || !MS_MAP_LIST.length) return false;
             const launchId = L.site + '_delta';
@@ -2097,8 +2129,10 @@
             if (idx < 0) { console.warn('[HQ] no launch entry for the encounter', L.site); return false; }
             let gi = MS_GAME_MODES.findIndex(g => g.id === L.gm && !g.locked);
             if (gi < 0) gi = 0;
+            /* a Code Red site: the encounter IS the response — the run marker the commit reads to clear it and pay the bonus */
+            window._hqCodeRedRun = L.codeRedRun || null;
             window._hqPreselect = { mapId: L.site, launchId: MS_MAP_LIST[idx].modeId, delta: true, teamSize: L.teamSize, gm: L.gm, roster: L.roster,
-                                    doorId: L.doorId, doorLabel: 'THE ENCOUNTER', codeRed: false, locked: true, presets: null, encounter: L.encounter };
+                                    doorId: L.doorId, doorLabel: 'THE ENCOUNTER', codeRed: !!L.codeRedRun, locked: true, presets: null, encounter: L.encounter };
             window._msCpuOnly = true;
             _msSelectedMap = idx; _msSelectedGM = gi; _msSelectedTeamSize = L.teamSize; _msSelectedRounds = L.rounds | 0;
             window._hqEncounterParty = party;
@@ -5624,6 +5658,15 @@
             window._hqEncounterParty = null;
             if (_encParty && typeof _hqApplyLastParty === 'function' && _hqApplyLastParty(_encParty, 1, CONFIG.teamSize)) {
                 if (typeof optimizeRandomizeParty === 'function') optimizeRandomizeParty(2);
+                /* no roster on file (Delivery 6): the human's stand-in squad gets identities + spell loadouts like the CPU's */
+                if (_encParty.fallback && typeof optimizeRandomizeParty === 'function') {
+                    try {
+                        optimizeRandomizeParty(1);
+                        if (typeof randomSpellLoadoutForClass === 'function') {
+                            (state.partyBuilds[1] || []).forEach((cls, i) => { state.loadouts[1][i] = randomSpellLoadoutForClass(cls, state.partyMeta?.[1]?.[i]?.race || ''); });
+                        }
+                    } catch (e) { console.warn('[HQ] the stand-in squad could not be randomised', e); }
+                }
                 if (startOverlay) { startOverlay.classList.add('hidden'); startOverlay.style.display = 'none'; startOverlay.style.pointerEvents = 'none'; startOverlay.setAttribute('aria-hidden', 'true'); }
                 state.teamLockedIn = true;
                 let okStart = false;
@@ -10644,9 +10687,18 @@
                 SPAWNS[2] = state.spawnZones[2].map(t => ({ x: t.x, y: t.y, z: t.z }));
             }
 
+            /* THE FIELD stage A (Phase 9 Delivery 6, 2026-09-16 — the user's rule: "forget spawn zones in
+               encounter battles"): an encounter's START is not the rows — the two LEADS stand where the walker
+               and the native stood (their cells on the room's board; the map's centre from a cave / a complex
+               part), the parties fan out behind them (data.js hqEncounterSeats over the built board's own
+               walkability). The zones themselves stay: a TDM respawn still comes home to the team's row, Arena's
+               spawn nexuses stand where they always did. battle.js latches the record (window._ewEncounterField). */
+            const _encPlaced = _encounterPlaceSeats();
+
             /* Relocate existing units into their spawn zone tiles (units are created before map init) */
             for (const unit of state.units) {
                 if (unit.dead) continue;
+                if (_encPlaced && _encPlaced.has(unit.id)) continue;   // seated by the encounter
                 const zoneArr = state.spawnZones[unit.player];
                 if (!zoneArr || zoneArr.length === 0) continue;
                 const idx = unit._spawnIndex || 0;
@@ -10659,6 +10711,43 @@
             console.log('[SpawnZones] P1:', JSON.stringify(state.spawnZones[1]),
                         'P2:', JSON.stringify(state.spawnZones[2]));
             _initArenaSpawnNexuses();
+        }
+
+        /* THE FIELD stage A: seat both parties from the encounter's field record (null outside an encounter,
+           or when no free cell exists — the caller keeps the rows). A free cell = a tile a respawn would take
+           (_respawnTileSafe: passable, not lava / deep water / a chasm / the Cube) with a walkable surface and
+           nothing standing on it; the units are not on the board yet, so bodies never count. */
+        function _encounterPlaceSeats() {
+            const F = (typeof window._ewEncounterField === 'function') ? window._ewEncounterField() : null;
+            if (!F || typeof window.hqEncounterSeats !== 'function') return null;
+            const live = (p) => state.units.filter(u => u.player === p && !u.dead && !u._benched);
+            const u1 = live(1), u2 = live(2);
+            if (!u1.length || !u2.length) return null;
+            const free = (x, y) => {
+                if (!_respawnTileSafe(x, y)) return false;
+                if (typeof getWalkableSurfaces === 'function' && !getWalkableSurfaces(x, y).length) return false;
+                if (typeof objectBlocksLanding === 'function' && objectBlocksLanding(x, y)) return false;
+                if (typeof getBlockAt === 'function' && typeof nearestWalkableZ === 'function') {
+                    const blk = getBlockAt(x, y, nearestWalkableZ(x, y));
+                    if (blk) { const rule = getTerrainRule(blk.terrain); if (rule && rule.passable === false) return false; }
+                }
+                return true;
+            };
+            let seats = null;
+            try { seats = window.hqEncounterSeats(F, { W: bw(), H: bh(), n1: u1.length, n2: u2.length, free }); } catch (e) { console.warn('[HQ] the encounter seats failed', e); seats = null; }
+            if (!seats || !seats[1] || !seats[2]) return null;
+            const placed = new Set();
+            [[1, u1], [2, u2]].forEach(([p, us]) => {
+                us.forEach((unit, i) => {
+                    const c = seats[p][i]; if (!c) return;
+                    unit.x = c.x; unit.y = c.y;
+                    if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(c.x, c.y);
+                    placed.add(unit.id);
+                });
+            });
+            F.seats = seats;   // the eye with no board hangs on P1's lead (battle.js showVSSplash → data.js hqEncounterEyeFromSeats)
+            console.log('[SpawnZones] THE FIELD — encounter seats P1:', JSON.stringify(seats[1]), 'P2:', JSON.stringify(seats[2]));
+            return placed;
         }
 
         /* ── Arena: SPAWN ZONES ARE NEXUSES ─────────────────────────────────

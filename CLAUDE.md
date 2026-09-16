@@ -4302,3 +4302,56 @@ the urban / Dutchman prop rules (landings, the spawn, the lights ≤ 10). Dev:
 `?hqvariant=jackpot`. Lines are Claude's DRAFT (A15). `npm test` runs
 `hq-synced-building.test.js`. Unseen live (RULE #1c): all five beats.
 
+
+## PHASE 9 DELIVERY 6 — THE FIELD, STAGE A (the seamless encounter) (2026-09-16, local delivery)
+PHASE9_QUALITY_PLAN §11.3 stage A, the user's rules: no VS screen, one click
+back to where you were walking, TDM (Arena with a Cube / Code Red), a loss
+wakes you in your office or the ward, "forget spawn zones — slid to the
+nearest square tile, right up close to each other". **THE LATCH**: battle.js
+`_encMatch` (module-local, never on `state`) is the run for THIS match, set in
+`startMatch` from the armed marker; `_encRun()` is the ONE read for the intro
+gate, the leaf warm-up, the VS card, the eye and the commit — nothing that
+touches `window._hqEncounterRun` after the launch can bring the card back;
+`window._ewEncounterField()` publishes its field; a rematch / a plain match
+clears it. **THE FIELD RECORD** (data.js, after `hqEncounterEye`):
+`hqEncounterField(ev)` = the board (or null), both feet, the walker → native
+HEADING, the raw eye, and on a board the two CELLS (clamped in from the
+walkway, never shared) + `snap` (their centres, room metres);
+**`hqEncounterSeats(field, { W, H, n1, n2, free })`** = the START of both
+parties: P1 seat 1 the walker's cell, P2 seat 1 the native's (no board → the
+map's centre, P2 one cell east), each nudged to the nearest FREE cell, the
+rest of each party on its own side nearest its lead; `free` is the caller's
+walkability. map.js `autoGenerateSpawnZones` → **`_encounterPlaceSeats()`**
+(a free cell = `_respawnTileSafe` + a walkable surface + nothing landing-
+blocked) seats the units and the row relocation SKIPS them — the zones and
+SPAWNS stand as before, so a TDM respawn still comes home to the team's row
+and Arena's spawn nexuses are untouched. **THE SLIDE**: map.js
+`_hqEncounterFire` → `ThreeRenderer.hq.encounterSnap({ walker, target,
+targetId }, HQ_ENCOUNTER_RULES.snapMs, cb)` — three-renderer.js `H.snap` owns
+the walker's frame (`_hqTickSnap`, smoothstep, no input, both bodies squared
+up, the native's group moved) and the launch fires from its callback with the
+eye re-read (`hq.encounterEye()`); a room with no board starts at once.
+**THE EYE WITHOUT A BOARD**: `hqEncounterEyeFromSeats(field, seats)` (routed
+through `hqEncounterEye(field, seats)`) hangs the camera's offset, rotated by
+the heading, on P1's lead at `tileM` per tile — battle.js seeds it from
+`field.seats` once the zone builder placed them. **THE MODE**:
+`hqEncounterConfig(raw, ctx)` = `gm` TDM, `gmCodeRed` Arena when the site is
+today's uncleared Code Red (map.js reads `hqCodeRed` and the encounter IS the
+response — `L.codeRedRun` → `window._hqCodeRedRun`, `codeRed` on the
+preselect); only the sticky TEAM SIZE is kept, rounds are the mode's own.
+**NO ROSTER ON FILE** = a stand-in squad (`party.fallback` →
+`_hqApplyLastParty` pads, `_msConfirm` randomises identities + loadouts),
+never the terminal. **THE WAY OUT**: battle.js `_encounterResultButtons()`
+replaces the result bar with ONE button (▸ BACK TO THE ROOM / ▸ WAKE UP →
+`backToMainMenu` → `_hqReturnOrMenu`); `showResultOverlay` restores the
+standard bar first when the last match left the encounter's. **WHERE YOU
+WAKE**: `hqEncounterWakeRoom(profile)` = the ward on an odd loss count, your
+office (Room 101) on an even one (the commit already counted this exit);
+`_hqReturnOrMenu` lands there (`encRes.wake`), the toast says which. NOT
+BUILT (stage A's rest): the battle at the room's transform with the room's
+furniture as the setting (§10 stage 4), explicit spawn zones per seat for
+respawns, the rasteriser (stages B–D — a cave / a complex part still fights
+the site's Δ from its centre). `npm test` runs hq-encounter.test.js (30).
+UNSEEN LIVE (RULE #1c): the slide's feel under the strike clip, the eased
+first frame off the seats, the stand-in squad's identities, the one-button
+card over the podium.

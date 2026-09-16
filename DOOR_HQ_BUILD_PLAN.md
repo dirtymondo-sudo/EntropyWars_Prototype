@@ -8881,3 +8881,33 @@ roll by the clock). `npm test` 1480 / 1476 / 0 / 4 skipped.
   LIVE (RULE #1c): the fascia's oxblood against the real stone, the elevator's aluminium under the car's warm lamp,
   the crater bowls under the walker's feet, Saturn's rings from the quay, the real sea sheet against the beach
   tongues, the chest's scale on the X.
+
+### 2026-09-16 — PHASE 9 DELIVERY 6 · THE FIELD, STAGE A (the seamless encounter)
+- **The brief (the user):** "after an encounter there is no way to just return to where I was
+  exploring; there is still a pre-fight VS screen; encounters can be TDM, a Cube / Code Red
+  fight Arena; a loss wakes you in your office or the infirmary; forget spawn zones — start us
+  up close, slid to the nearest square tile during the transition."
+- **battle.js:** `_encMatch` latches the run at `startMatch` (the VS card, the intro gate, the
+  warm-up, the eye and the commit all read `_encRun()`); `_encounterResultButtons()` = the
+  one-button card (▸ BACK TO THE ROOM / ▸ WAKE UP → `backToMainMenu`); the standard bar is
+  restored for the next plain match; `window._ewEncounterField()`.
+- **data.js:** `HQ_ENCOUNTER_RULES` gm `tdm` / `gmCodeRed` `arena` / `tileM` / `snapMs`;
+  `hqEncounterConfig(raw, ctx)`; `hqEncounterField`, `hqEncounterSeats`,
+  `hqEncounterEyeFromSeats` (through `hqEncounterEye(field, seats)`), `hqEncounterWakeRoom`.
+- **map.js:** `_hqEncounterFire` reads the day's Code Red, files the field, asks the renderer
+  for THE SLIDE and starts from its callback with the eye re-read; the run marker carries the
+  field + the mode; a Code Red encounter sets `_hqCodeRedRun` (it IS the response); no roster
+  → a stand-in squad (`party.fallback`); `_hqReturnOrMenu` lands a loss in the ward / the
+  office by turns; `autoGenerateSpawnZones` → `_encounterPlaceSeats()` seats both parties
+  from the field and the row relocation skips them (the zones + SPAWNS stand for respawns).
+- **three-renderer.js:** `H.snap` / `_hqTickSnap` / `_hqEncounterSnap`; API `encounterSnap`,
+  `encounterEye`, `snapping`.
+- **Tests:** hq-encounter.test.js 30 (the field, the seats, the eye off the seats, the wake
+  room, the slide in a vm, the source sites). `npm test` 1484 / 0 / 4 skipped.
+- **Delivery:** `ENTROPY_WARS_PHASE9_FIELD_A.zip` — data.js → R2 AND Render, map.js /
+  battle.js / three-renderer.js → R2, index.html → Render (`20260916-encounter-field-08-cors`),
+  the test + docs → the repo. UNSEEN LIVE (RULE #1c): the slide under the strike clip, the
+  first frame easing off P1's seat, the one-button card, the stand-in squad.
+- **Still open in stage A:** the battle built at the room's transform with the room's
+  furniture as the setting (§10 stage 4), explicit spawn zones per seat; then B–E (the
+  rasteriser on the cave and the box rooms — the two systems unified).

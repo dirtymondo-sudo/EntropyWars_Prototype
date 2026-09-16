@@ -11765,8 +11765,8 @@
                    marker is consumed here; a cancelled match never reaches this commit and the
                    next _hqEnter / launch overwrites it. Viewer-local, never on state (RULE #2). */
                 try {
-                    const erun = window._hqEncounterRun;
-                    window._hqEncounterRun = null;
+                    const erun = _encMatch || window._hqEncounterRun;
+                    window._hqEncounterRun = null; _encMatch = null;
                     if (erun && kind === 'match' && typeof hqEncounterRecord === 'function') {
                         const PS = window.ProfileSystem;
                         const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
@@ -11776,7 +11776,7 @@
                             PS.saveProfile(idx, p);
                         }
                         window._hqEncounterResult = { won, site: erun.site, room: erun.room, race: erun.race, label: erun.label || erun.race, walker: erun.walker || null };   // D1: the swing spot rides home
-                        addLog(won ? `🚪 The encounter is over — ${erun.label || erun.race} is off the room.` : `🚪 EXITED — the ward. ${erun.label || erun.race} held the room.`);
+                        addLog(won ? `🚪 The encounter is over — ${erun.label || erun.race} is off the room.` : `🚪 EXITED — ${erun.label || erun.race} held the room. You come to elsewhere.`);
                     }
                 } catch (e) { console.warn('[HQ] encounter record failed', e); }
                 try {
@@ -30918,9 +30918,32 @@
             el.className = 'drs-site on' + (mastered ? '' : ' partial');
         }
 
+        /* THE ENCOUNTER'S WAY OUT (Phase 9 Delivery 6, 2026-09-16 — the user: "I just
+           need to be able to click and be back where I was walking"): the result
+           card of an encounter carries ONE button — BACK TO THE ROOM on a win (the
+           swing spot, D1), WAKE UP on a loss (the ward / your office,
+           hqEncounterWakeRoom) — never Find Next Match / the party builder / the
+           exports. Both go through backToMainMenu → _hqReturnOrMenu, which reads
+           the result the commit left. ENTER / SPACE press it (it takes focus). */
+        function _encounterResultButtons() {
+            const res = window._hqEncounterResult;
+            const vicBottom = document.getElementById('vicBottom');
+            if (!res || !vicBottom) return false;
+            const won = !!res.won;
+            vicBottom.innerHTML = `<button id="encReturnBtn" class="primary enc-return">${won ? '▸ BACK TO THE ROOM' : '▸ WAKE UP'}</button>`;
+            const b = document.getElementById('encReturnBtn');
+            if (b) {
+                b.onclick = () => { b.disabled = true; window.backToMainMenu(); };
+                setTimeout(() => { try { b.focus(); } catch (e) {} }, 80);
+            }
+            return true;
+        }
+
         function showResultOverlay() {
             const viewer = getViewerPlayer();
             const isNoContest = state.winner === 0;
+            /* an encounter's one-button bar from the last match: the standard bar comes back first */
+            if (!document.getElementById('nextMatchBtn') && typeof _restoreResultOverlayButtons === 'function') _restoreResultOverlayButtons();
             const playerWon = isNoContest ? false : (ONLINE_RULES.active ? (state.winner === viewer) : (state.winner === 1));
             const wonClass = isNoContest ? 'defeat' : (playerWon ? 'victory' : 'defeat');
 
@@ -31269,6 +31292,7 @@
             _accountBankMatchGold();
 
             resultOverlay.classList.remove('hidden');
+            try { _encounterResultButtons(); } catch (e) { console.warn('[HQ] the encounter result bar failed', e); }
 
             /* Stage the 3D podium LAST — career stats, gold banking and every
                stat readout above snapshot the real outcome before the visual
@@ -34456,6 +34480,7 @@
             state.matchScores = { 1: 0, 2: 0 };
             state._arenaNexusControl = { 1: 0, 2: 0 };
             state.entropyGauge = { 1: 0, 2: 0 };
+            _encMatch = null;   // a rematch is never the encounter (its result bar offers none anyway)
             // Simul mode: a stale plan/resolve phase from an aborted match
             // would make interceptAdvance swallow the new match's boot.
             state._simulPhase = null;
@@ -35266,7 +35291,7 @@
             // stand-in. Capped inside the renderer (7 s); never rejects.
             if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer
                 && typeof ThreeRenderer.introCineWarm === 'function'
-                && !window.EW_DISABLE_INTRO_CINE && !(window._hqEncounterRun && window._hqEncounterRun.noIntro) && !state.devAutoSim) {
+                && !window.EW_DISABLE_INTRO_CINE && !_encMatch && !(window._hqEncounterRun && window._hqEncounterRun.noIntro) && !state.devAutoSim) {
                 try {
                     warmers.push(ThreeRenderer.introCineWarm(
                         (typeof activeGameMode !== 'undefined') ? activeGameMode : null));
@@ -35656,6 +35681,7 @@
 
         function _introCineEligible() {
             if (window.EW_DISABLE_INTRO_CINE) return false;
+            if (_encMatch) return false;   // THE ENCOUNTER (Delivery 6): the latched run — the teams are already here
             if (window._hqEncounterRun && window._hqEncounterRun.noIntro) return false;   // THE ENCOUNTER (HQ plan 9.4): the teams are already here — per launch, never the global switch
             if (_skipVisuals() || state.cameraDisabled) return false;
             if (typeof _isDungeonMode === 'function' && _isDungeonMode()) return false;
@@ -36202,8 +36228,12 @@
                starts the smoothed camera THERE, easing to the match's frame
                over ~1.4 s (the seed survives the start's snap). A room with
                no board (a cave, a complex part) seeds nothing. */
-            if (window._hqEncounterRun && window._hqEncounterRun.noIntro) {
-                const eye = window._hqEncounterRun.eye;
+            const _er = _encRun();
+            if (_er) {
+                let eye = _er.eye;
+                /* THE FIELD stage A (Delivery 6): no board under the walker (a cave, a complex part) — the eye hangs
+                   on P1's lead cell from the seats the zone builder placed (data.js hqEncounterEyeFromSeats) */
+                if (!eye && _er.field && typeof hqEncounterEye === 'function') { try { eye = hqEncounterEye(_er.field, _er.field.seats || null); } catch (e) { eye = null; } }
                 if (eye && typeof ThreeCamera !== 'undefined' && ThreeCamera.seedPose) { try { ThreeCamera.seedPose(eye, 1.4); } catch (e) { console.warn('[HQ] the encounter eye did not seed', e); } }
                 if (onDone) onDone();
                 return;
@@ -36432,6 +36462,17 @@
            maybeAdvanceTurn on a board with NO turn order built — then the
            real boot lands later and re-runs beginBlitzRound mid-play. */
         let _matchBootPendingSince = 0;
+        /* THE ENCOUNTER · THE LATCH (Phase 9 Delivery 6, 2026-09-16): the run
+           marker map.js armed for a strike launch is LATCHED here for THIS
+           match — every reader below (the intro gate, the VS card, the eye,
+           the seats, the commit) reads `_encMatch`, never the window marker
+           again, so nothing that touches `window._hqEncounterRun` between the
+           launch and the first frame can bring the VS card back. Module-local,
+           never on `state` (RULE #2 — an encounter is VS-CPU only). */
+        let _encMatch = null;
+        function _encRun() { return _encMatch || ((window._hqEncounterRun && window._hqEncounterRun.noIntro) ? window._hqEncounterRun : null); }
+        /* THE FIELD stage A: the field record map.js's zone builder places the seats from (null outside an encounter) */
+        window._ewEncounterField = function () { return (_encMatch && _encMatch.field) || null; };
 
         function startMatch() {
             state.startTime = Date.now();
@@ -36441,9 +36482,10 @@
                commit; a later match that still finds it (an exit path that
                skipped finalizeMatch) drops the stale marker, so it can never
                skip that match's intro, seed a dead eye or file a result. */
+            _encMatch = null;
             try {
                 const er = window._hqEncounterRun;
-                if (er) { if (er.armed) er.armed = false; else window._hqEncounterRun = null; }
+                if (er) { if (er.armed) { er.armed = false; _encMatch = er; } else window._hqEncounterRun = null; }
             } catch (e) {}
 
             /* Seeded engine RNG (extraction stage 5, see NEXT_SESSION.md):

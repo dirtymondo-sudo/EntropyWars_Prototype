@@ -45457,9 +45457,60 @@ const ThreeRenderer = (function () {
     }
 
     /* ── per-frame ─────────────────────────────────────────────────────── */
+    /* THE SLIDE (THE FIELD stage A — Phase 9 Delivery 6, 2026-09-16): between the strike frame and the cut the
+       walker and the native EASE onto their cell centres (the user's rule: "slid to the nearest square tile of
+       the grid during the transition"), squared up on each other, no input; the callback (map.js: the launch)
+       fires once at the end. map.js hands the centres from data.js hqEncounterField's `snap` (room metres);
+       H.snap = { t, ms, w0, w1, ch, c0, c1, cb }. A room change under it (the record replaced) drops it. */
+    function _hqTickSnap(dt) {
+        var H = _hq, S = H.snap, pl = H.player, U = _hqUnits();
+        S.t = Math.min(1, S.t + dt / (S.ms / 1000));
+        var k = S.t * S.t * (3 - 2 * S.t);
+        var lerp = function (a, b) { return a + (b - a) * k; };
+        var sx0 = pl.x, sz0 = pl.z;
+        pl.x = lerp(S.w0.x, S.w1.x); pl.z = lerp(S.w0.z, S.w1.z);
+        var y = _hqSurface(pl.x, pl.z, pl.y, true);
+        if (y !== null && y !== undefined && isFinite(y) && !pl.air) { if (y > pl.y || pl.y - y <= HQ_FALL_MIN) pl.y = y; }
+        pl.moving = S.t < 1; pl.running = false;
+        var ch = S.ch;
+        if (ch && ch.entry && S.c1) {
+            ch.x = lerp(S.c0.x, S.c1.x); ch.z = lerp(S.c0.z, S.c1.z);
+            var cy = _hqSurface(ch.x, ch.z, ch.y, true);
+            if (cy !== null && cy !== undefined && isFinite(cy) && Math.abs(cy - ch.y) <= HQ_FALL_MIN) ch.y = cy;
+            ch.visY = ch.y;
+            ch.yaw = ch.targetYaw = Math.atan2(pl.x - ch.x, pl.z - ch.z);
+            ch.entry.group.position.set(ch.x * U, ch.y * U, ch.z * U);
+            pl.targetYaw = Math.atan2(ch.x - pl.x, ch.z - pl.z);
+        }
+        pl.visY += (pl.y - pl.visY) * Math.min(1, dt * 14);
+        if (Math.abs(pl.y - pl.visY) < 0.004) pl.visY = pl.y;
+        if (dt > 0.0005) { pl.velX = (pl.x - sx0) / dt; pl.velZ = (pl.z - sz0) / dt; }
+        var dy = pl.targetYaw - pl.yaw;
+        while (dy > Math.PI) dy -= Math.PI * 2;
+        while (dy < -Math.PI) dy += Math.PI * 2;
+        pl.yaw += dy * Math.min(1, dt * 14);
+        pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
+        if (S.t >= 1) {
+            H.snap = null;
+            var cb = S.cb; S.cb = null;
+            if (cb) { try { cb(); } catch (e) { console.warn('[HQ] the slide\'s callback failed', e); } }
+        }
+    }
+    function _hqEncounterSnap(spec, ms, cb) {
+        var H = _hq; if (!H || !H.player || !spec || !spec.walker) return false;
+        var pl = H.player, ch = null;
+        if (spec.targetId) for (var i = 0; i < H.chars.length; i++) if (H.chars[i].id === spec.targetId) { ch = H.chars[i]; break; }
+        var wx = +spec.walker.x, wz = +spec.walker.z;
+        if (!isFinite(wx) || !isFinite(wz)) return false;
+        var c1 = (ch && spec.target && isFinite(+spec.target.x) && isFinite(+spec.target.z)) ? { x: +spec.target.x, z: +spec.target.z } : null;
+        H.snap = { t: 0, ms: Math.max(60, (ms | 0) || 260), w0: { x: pl.x, z: pl.z }, w1: { x: wx, z: wz }, ch: ch, c0: ch ? { x: ch.x, z: ch.z } : null, c1: c1, cb: cb || null };
+        return true;
+    }
     function _hqTickWalker(dt) {
         var H = _hq, pl = H.player; if (!pl) return;
         var k = H.keys;
+        /* THE SLIDE (Delivery 6): onto the cells, no input, then the cut */
+        if (H.snap) { _hqTickSnap(dt); return; }
         /* SKATEBOARDING (HQ plan 9.8): on the board the frame is the rider's */
         if (H.ride && H.ride.on) { _hqTickRide(dt); return; }
         var sx0 = pl.x, sz0 = pl.z, sy0 = pl.y;   // THE CARRY (rev 4): the frame's displacement is the walk's velocity
@@ -45907,6 +45958,7 @@ const ThreeRenderer = (function () {
         var U = _hqUnits(), S = room.shell;
         _hq = {
             opts: opts, host: opts.host, room: room, profile: opts.profile || null,
+            snap: null,   // THE SLIDE (Delivery 6): the walker + the native easing onto their cells before the cut
             scene: new THREE.Scene(), camera: null, cube: null,
             shellGroup: new THREE.Group(), doorGroup: new THREE.Group(), propGroup: new THREE.Group(), charGroup: new THREE.Group(),
             doors: [], counters: [], chars: [], blockers: [], landings: [], player: null, fxPulse: [], site: null, sky: null, setting: null,
@@ -46305,6 +46357,10 @@ const ThreeRenderer = (function () {
         /* THE ENCOUNTER (HQ plan 9.4, 2026-09-15 rev 16): throw a gesture by key ('1'..'4'), the native the gesture would land on */
         strike: _hqStrikeClick,
         encounterAim: function () { return _hq ? _hqEncounterAim() : null; },
+        /* THE FIELD stage A (Delivery 6): the slide onto the cells before the cut, the eye as it stands now */
+        encounterSnap: _hqEncounterSnap,
+        encounterEye: function () { return _hq ? _hqEncounterEye() : null; },
+        snapping: function () { return !!(_hq && _hq.snap); },
         /* SKATEBOARDING (HQ plan 9.8, 2026-09-15): B in code — on / off / toggle, the state, THE PARK RULE's registers */
         skate: function (on) { return _hqRideToggle(on); },
         skating: function () { return !!(_hq && _hq.ride && _hq.ride.on); },
