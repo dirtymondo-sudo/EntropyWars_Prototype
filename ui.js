@@ -7218,6 +7218,9 @@
                         <input type="range" min="0" max="100" step="1" value="${ambVol}" class="pm-vol-slider" oninput="window._pauseSetAmbienceVol(this.value)">
                         <span class="pm-vol-val">${ambVol}%</span>
                     </div>
+                    <div class="pm-set-row" style="margin-top:6px">
+                        <button class="pm-set-btn" onclick="window.AudioMixer&&window.AudioMixer.open()" title="Dev tool: per-song / per-cue master levels, with export">🎚 Mixer (dev)</button>
+                    </div>
                 </div>
 
                 ${_buildPauseTrackList(currentKey)}

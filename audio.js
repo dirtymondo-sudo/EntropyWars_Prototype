@@ -407,12 +407,408 @@
         const STINGER_FADE_OUT_MS = 350;
         let audioFadeVersion = 0;
 
+        /* ═══════════════════════════════════════════════════════════════════
+           THE MIXER — per-track / per-cue MASTER LEVELS (dev tool, 2026-09-16)
+           The songs and the cues were not mastered at one loudness, so every
+           key in the four base tables above (AUDIO_BASE_VOLUMES · SFX_BASE_
+           VOLUMES · AMBIENCE_BASE_VOLUMES · _DOOR_SFX_GAIN) can be re-levelled
+           without touching the table. ONE read: _mixLevel(channel, key, base)
+           = the LOCAL dev override (localStorage `ew_audio_mix`, what the
+           mixer panel writes) → else AUDIO_MIX_SHIPPED (the level shipped to
+           everyone) → else the table. The panel (AudioMixer.open(); Settings →
+           Audio → 🎚 MIXER, and the pause menu's Music tab) auditions any key,
+           slides its level 0–150 % of full scale, and EXPORTS:
+             · JSON  = the override object — paste it over AUDIO_MIX_SHIPPED
+                       below and every player gets the mix (the shipped path);
+             · JS    = the four base tables rewritten with the mix folded in
+                       (for baking it into the tables themselves).
+           IMPORT takes either JSON back. The level is an ABSOLUTE base (the
+           fraction of the file's own loudness), never a multiplier, so an
+           exported number reads exactly like the table it replaces. Viewer-
+           local, nothing on state, nothing relayed (RULE #2).
+           ═══════════════════════════════════════════════════════════════════ */
+        const AUDIO_MIX_SHIPPED = {
+            music: {},
+            sfx: {},
+            ambience: {},
+            door: {},
+        };
+        const AUDIO_MIX_CHANNELS = ['music', 'sfx', 'ambience', 'door'];
+        const AUDIO_MIX_MAX = 1.5;   // a quiet file may need lifting past the table's 1.0 (the slider's ceiling; the play-time clamp to 1 still applies)
+        const AUDIO_MIX_LS = 'ew_audio_mix';
+        let _mixLocal = null;        // { music: {key: level}, ... } — lazy-loaded from localStorage
+        const _mixAudition = { ambience: null, timer: 0 };
+        function _mixLoadLocal() {
+            if (_mixLocal) return _mixLocal;
+            _mixLocal = { music: {}, sfx: {}, ambience: {}, door: {} };
+            try {
+                const raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(AUDIO_MIX_LS) : null;
+                if (raw) {
+                    const o = JSON.parse(raw);
+                    AUDIO_MIX_CHANNELS.forEach(ch => {
+                        if (o && o[ch] && typeof o[ch] === 'object') Object.entries(o[ch]).forEach(([k, v]) => {
+                            const n = Number(v);
+                            if (Number.isFinite(n)) _mixLocal[ch][k] = Math.max(0, Math.min(AUDIO_MIX_MAX, n));
+                        });
+                    });
+                }
+            } catch (e) {}
+            return _mixLocal;
+        }
+        function _mixSaveLocal() {
+            try {
+                const o = _mixLoadLocal();
+                const any = AUDIO_MIX_CHANNELS.some(ch => Object.keys(o[ch]).length);
+                if (typeof localStorage === 'undefined') return;
+                if (any) localStorage.setItem(AUDIO_MIX_LS, JSON.stringify(o));
+                else localStorage.removeItem(AUDIO_MIX_LS);
+            } catch (e) {}
+        }
+        function _mixLevel(channel, key, base) {
+            const loc = _mixLoadLocal()[channel];
+            if (loc && Object.prototype.hasOwnProperty.call(loc, key)) return loc[key];
+            const sh = AUDIO_MIX_SHIPPED[channel];
+            if (sh && Number.isFinite(sh[key])) return Math.max(0, Math.min(AUDIO_MIX_MAX, sh[key]));
+            return base;
+        }
+        function _mixTable(channel) {
+            return channel === 'music' ? AUDIO_BASE_VOLUMES
+                : channel === 'sfx' ? SFX_BASE_VOLUMES
+                : channel === 'ambience' ? AMBIENCE_BASE_VOLUMES
+                : channel === 'door' ? _DOOR_SFX_GAIN : null;
+        }
+        function _mixDefault(channel, key) {
+            const t = _mixTable(channel);
+            const v = t ? t[key] : undefined;
+            if (Number.isFinite(v)) return v;
+            return channel === 'music' ? 0.55 : channel === 'sfx' ? 0.7 : channel === 'ambience' ? 0.3 : 0.5;
+        }
+        function _mixKeys(channel) {
+            if (channel === 'music') return Object.keys(_R2_MUSIC);
+            if (channel === 'sfx') return Object.keys(sfxLibrary);
+            if (channel === 'ambience') return Object.keys(_R2_AMBIENCE);
+            if (channel === 'door') return Object.keys(_DOOR_SFX_GAIN);
+            return [];
+        }
+        function _mixApplyLive(channel) {
+            try {
+                if (channel === 'music') applyMusicVolumeMix();
+                else if (channel === 'ambience') applyAmbienceVolumeMix();
+            } catch (e) {}
+        }
+        function _mixRound(v) { return Math.round(v * 1000) / 1000; }
+        const AudioMixer = {
+            channels: AUDIO_MIX_CHANNELS,
+            keys: _mixKeys,
+            /* the effective level (local → shipped → table), the shipped one and the table's own */
+            get(channel, key) { return _mixLevel(channel, key, _mixDefault(channel, key)); },
+            shipped(channel, key) { const sh = AUDIO_MIX_SHIPPED[channel]; return (sh && Number.isFinite(sh[key])) ? sh[key] : _mixDefault(channel, key); },
+            base(channel, key) { return _mixDefault(channel, key); },
+            isLocal(channel, key) { const loc = _mixLoadLocal()[channel]; return !!loc && Object.prototype.hasOwnProperty.call(loc, key); },
+            set(channel, key, level) {
+                if (!AUDIO_MIX_CHANNELS.includes(channel)) return false;
+                const n = Number(level);
+                if (!Number.isFinite(n)) return false;
+                _mixLoadLocal()[channel][key] = _mixRound(Math.max(0, Math.min(AUDIO_MIX_MAX, n)));
+                _mixSaveLocal();
+                _mixApplyLive(channel);
+                return true;
+            },
+            reset(channel, key) {
+                const o = _mixLoadLocal();
+                if (channel && key) delete o[channel][key];
+                else if (channel) o[channel] = {};
+                else AUDIO_MIX_CHANNELS.forEach(ch => { o[ch] = {}; });
+                _mixSaveLocal();
+                AUDIO_MIX_CHANNELS.forEach(_mixApplyLive);
+            },
+            /* the override object: every key whose effective level differs from the TABLE (so a shipped
+               value that is still wanted survives a re-export) */
+            overrides() {
+                const out = {};
+                AUDIO_MIX_CHANNELS.forEach(ch => {
+                    out[ch] = {};
+                    _mixKeys(ch).forEach(k => {
+                        const v = _mixRound(AudioMixer.get(ch, k));
+                        if (Math.abs(v - _mixDefault(ch, k)) > 0.0005) out[ch][k] = v;
+                    });
+                });
+                return out;
+            },
+            exportJson() { return JSON.stringify(AudioMixer.overrides(), null, 2); },
+            /* the four tables with the mix folded in — paste over the literals in audio.js */
+            exportJs() {
+                const stamp = new Date().toISOString().slice(0, 10);
+                const names = { music: 'AUDIO_BASE_VOLUMES', sfx: 'SFX_BASE_VOLUMES', ambience: 'AMBIENCE_BASE_VOLUMES', door: '_DOOR_SFX_GAIN' };
+                const lines = [`/* ENTROPY WARS AUDIO MIX — exported from the mixer ${stamp} */`];
+                AUDIO_MIX_CHANNELS.forEach(ch => {
+                    lines.push(`const ${names[ch]} = {`);
+                    _mixKeys(ch).forEach(k => { lines.push(`    ${k}: ${_mixRound(AudioMixer.get(ch, k))},`); });
+                    lines.push('};');
+                });
+                lines.push('/* — or paste this over AUDIO_MIX_SHIPPED in audio.js: */');
+                lines.push('const AUDIO_MIX_SHIPPED = ' + AudioMixer.exportJson() + ';');
+                return lines.join('\n');
+            },
+            /* JSON in (the override object, or a full { music, sfx, ambience, door } table set) */
+            importJson(text) {
+                let o;
+                try { o = typeof text === 'string' ? JSON.parse(text) : text; } catch (e) { return { ok: false, error: 'not JSON' }; }
+                if (!o || typeof o !== 'object') return { ok: false, error: 'not an object' };
+                let n = 0;
+                const loc = _mixLoadLocal();
+                AUDIO_MIX_CHANNELS.forEach(ch => {
+                    if (!o[ch] || typeof o[ch] !== 'object') return;
+                    Object.entries(o[ch]).forEach(([k, v]) => {
+                        const num = Number(v);
+                        if (!Number.isFinite(num)) return;
+                        loc[ch][k] = _mixRound(Math.max(0, Math.min(AUDIO_MIX_MAX, num)));
+                        n++;
+                    });
+                });
+                _mixSaveLocal();
+                AUDIO_MIX_CHANNELS.forEach(_mixApplyLive);
+                return { ok: true, count: n };
+            },
+            /* play the key at its CURRENT level (a click is the gesture that unlocks audio) */
+            audition(channel, key) {
+                try {
+                    state.audioUnlocked = true;
+                    if (channel === 'music') {
+                        if (!audioTracks[key]) return false;
+                        if (key.startsWith('battleTheme')) { state.currentBattleTrackKey = key; state.lastBattleTrackKey = key; }
+                        playMusic(key);
+                        return true;
+                    }
+                    if (channel === 'sfx') return playSfx(key, { allowBeforeUnlock: true, cooldownMs: 0 });
+                    if (channel === 'door') return playDoorSfx(key, { allowBeforeUnlock: true });
+                    if (channel === 'ambience') {
+                        if (!_R2_AMBIENCE[key]) return false;
+                        const prev = _mixAudition.ambience;
+                        _mixAudition.ambience = key;
+                        if (prev && prev !== key) _stopAmbienceBed(prev);
+                        _startAmbienceBed(key);
+                        clearTimeout(_mixAudition.timer);
+                        _mixAudition.timer = setTimeout(() => AudioMixer.stopAudition(), 12000);
+                        return true;
+                    }
+                } catch (e) {}
+                return false;
+            },
+            stopAudition() {
+                clearTimeout(_mixAudition.timer);
+                const k = _mixAudition.ambience;
+                _mixAudition.ambience = null;
+                if (k) _stopAmbienceBed(k);
+            },
+            auditioning() { return _mixAudition.ambience; },
+            _lsKey: AUDIO_MIX_LS,
+            max: AUDIO_MIX_MAX,
+        };
+        window.AudioMixer = AudioMixer;
+        window.AUDIO_MIX_SHIPPED = AUDIO_MIX_SHIPPED;
+
+        /* ── THE PANEL — a fixed overlay above everything (the pause menu, the HQ pause, the CRT) ── */
+        const _MIX_CH_LABEL = { music: 'MUSIC', sfx: 'SFX', ambience: 'AMBIENCE', door: 'DOOR KIT' };
+        const _MIX_CH_HINT = {
+            music: 'Songs. ▶ plays the song through the normal music path (it becomes the current track). The level is the song\'s share of full scale before the Music slider.',
+            sfx: 'One-shot cues (the R2 files). ▶ fires the cue once at its level. Before the SFX slider.',
+            ambience: 'The looping beds. ▶ fades the bed in for twelve seconds (■ stops it). Before the Ambience slider.',
+            door: 'The D.O.O.R. synth kit — the office, the seams, the skateboard. Before the SFX slider. Muted placeholders (the buzz, the ring) stay silent.',
+        };
+        let _mixUi = { ch: 'music', q: '' };
+        function _mixCss() {
+            if (document.getElementById('audioMixerCss')) return;
+            const st = document.createElement('style');
+            st.id = 'audioMixerCss';
+            st.textContent = `
+#audioMixer{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;background:rgba(2,4,12,0.72);font-family:'Rajdhani','Segoe UI',system-ui,sans-serif;color:#e6e4f2}
+#audioMixer .amx{width:min(860px,96vw);height:min(86vh,760px);display:flex;flex-direction:column;background:#0e1020;border:1px solid rgba(160,150,255,0.35);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.6)}
+#audioMixer .amx-head{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.10)}
+#audioMixer .amx-title{font-weight:700;letter-spacing:0.14em;font-size:14px;text-transform:uppercase;color:#cfc7ff}
+#audioMixer .amx-sub{font-size:11px;opacity:0.65;flex:1}
+#audioMixer .amx-tabs{display:flex;gap:4px;padding:8px 14px 0}
+#audioMixer .amx-tab{flex:1;padding:7px 8px;border:1px solid rgba(255,255,255,0.14);border-bottom:none;border-radius:8px 8px 0 0;background:rgba(255,255,255,0.04);color:#bdb8d8;font:inherit;font-size:12px;letter-spacing:0.08em;cursor:pointer}
+#audioMixer .amx-tab.on{background:rgba(124,77,255,0.30);color:#fff;border-color:rgba(160,150,255,0.5)}
+#audioMixer .amx-tab b{opacity:0.6;font-weight:400;margin-left:4px}
+#audioMixer .amx-tools{display:flex;gap:8px;align-items:center;padding:8px 14px;border-top:1px solid rgba(160,150,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);background:rgba(124,77,255,0.08)}
+#audioMixer .amx-tools input{flex:1;min-width:0;padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(0,0,0,0.35);color:#fff;font:inherit;font-size:12px}
+#audioMixer .amx-hint{font-size:11px;opacity:0.7;padding:6px 14px 0;line-height:1.35}
+#audioMixer .amx-list{flex:1;overflow-y:auto;padding:6px 10px 10px}
+#audioMixer .amx-row{display:grid;grid-template-columns:28px minmax(120px,1.2fr) 2fr 52px 44px 26px;gap:8px;align-items:center;padding:4px 6px;border-radius:6px}
+#audioMixer .amx-row:hover{background:rgba(255,255,255,0.05)}
+#audioMixer .amx-row.local .amx-name{color:#ffd76a}
+#audioMixer .amx-play{width:26px;height:24px;border-radius:6px;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.06);color:#fff;cursor:pointer;font-size:11px}
+#audioMixer .amx-play:hover{background:rgba(124,77,255,0.45)}
+#audioMixer .amx-name{font-size:12.5px;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#audioMixer .amx-name small{display:block;font-size:10px;opacity:0.5;font-family:ui-monospace,monospace}
+#audioMixer .amx-row input[type=range]{width:100%;accent-color:#9d86ff}
+#audioMixer .amx-val{font-variant-numeric:tabular-nums;text-align:right;font-size:12.5px}
+#audioMixer .amx-tbl{font-size:10px;opacity:0.5;text-align:right;font-variant-numeric:tabular-nums}
+#audioMixer .amx-reset{width:24px;height:22px;border-radius:5px;border:1px solid rgba(255,255,255,0.14);background:transparent;color:#ddd;cursor:pointer;font-size:12px}
+#audioMixer .amx-reset:disabled{opacity:0.2;cursor:default}
+#audioMixer .amx-foot{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:10px 14px;border-top:1px solid rgba(255,255,255,0.10)}
+#audioMixer .amx-btn{padding:6px 10px;border-radius:7px;border:1px solid rgba(160,150,255,0.4);background:rgba(124,77,255,0.22);color:#fff;font:inherit;font-size:12px;letter-spacing:0.06em;cursor:pointer}
+#audioMixer .amx-btn:hover{background:rgba(124,77,255,0.45)}
+#audioMixer .amx-btn.warn{border-color:rgba(255,120,120,0.45);background:rgba(255,80,80,0.15)}
+#audioMixer .amx-btn.close{margin-left:auto}
+#audioMixer .amx-status{font-size:11px;opacity:0.75;width:100%}
+#audioMixer .amx-io{display:none;padding:8px 14px;border-top:1px solid rgba(255,255,255,0.10)}
+#audioMixer .amx-io.on{display:block}
+#audioMixer .amx-io textarea{width:100%;height:120px;box-sizing:border-box;font:11px ui-monospace,monospace;background:rgba(0,0,0,0.4);color:#dfe;border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:6px}
+`;
+            document.head.appendChild(st);
+        }
+        function _mixName(channel, key) {
+            if (channel === 'music' && typeof _TRACK_DISPLAY_NAMES !== 'undefined' && _TRACK_DISPLAY_NAMES[key]) return _TRACK_DISPLAY_NAMES[key];
+            if (channel === 'music' && _R2_MUSIC[key]) { try { return decodeURIComponent(_R2_MUSIC[key].split('/').pop()); } catch (e) {} }
+            return key;
+        }
+        function _mixEsc(t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
+        function _mixStatus(msg) {
+            const el = document.getElementById('amxStatus');
+            if (el) el.textContent = msg;
+        }
+        function _mixRenderList() {
+            const list = document.getElementById('amxList');
+            if (!list) return;
+            const ch = _mixUi.ch;
+            const q = (_mixUi.q || '').toLowerCase();
+            const keys = _mixKeys(ch).filter(k => !q || k.toLowerCase().includes(q) || _mixName(ch, k).toLowerCase().includes(q));
+            list.innerHTML = keys.map(k => {
+                const v = AudioMixer.get(ch, k);
+                const tbl = AudioMixer.base(ch, k);
+                const loc = AudioMixer.isLocal(ch, k);
+                const pct = Math.round(v * 100);
+                return `<div class="amx-row${loc ? ' local' : ''}" data-key="${_mixEsc(k)}">
+                    <button class="amx-play" data-play="${_mixEsc(k)}" title="Audition">▶</button>
+                    <div class="amx-name" title="${_mixEsc(k)}">${_mixEsc(_mixName(ch, k))}<small>${_mixEsc(k)}</small></div>
+                    <input type="range" min="0" max="${Math.round(AUDIO_MIX_MAX * 100)}" step="1" value="${pct}" data-slide="${_mixEsc(k)}">
+                    <span class="amx-val" data-val="${_mixEsc(k)}">${pct}%</span>
+                    <span class="amx-tbl" title="the table's value">tbl ${Math.round(tbl * 100)}</span>
+                    <button class="amx-reset" data-reset="${_mixEsc(k)}" title="Back to the shipped level" ${loc ? '' : 'disabled'}>↺</button>
+                </div>`;
+            }).join('') || '<div style="padding:20px;opacity:0.6">nothing matches</div>';
+            const ov = AudioMixer.overrides();
+            const n = AUDIO_MIX_CHANNELS.reduce((a, c) => a + Object.keys(ov[c]).length, 0);
+            const nl = AUDIO_MIX_CHANNELS.reduce((a, c) => a + _mixKeys(c).filter(k => AudioMixer.isLocal(c, k)).length, 0);
+            _mixStatus(`${n} level${n === 1 ? '' : 's'} differ from the tables (${nl} set here, saved in this browser). Gold = set here. EXPORT to ship them to everyone.`);
+            const hint = document.getElementById('amxHint');
+            if (hint) hint.textContent = _MIX_CH_HINT[ch] || '';
+            document.querySelectorAll('#audioMixer .amx-tab').forEach(t => t.classList.toggle('on', t.dataset.ch === ch));
+        }
+        function _mixCopy(text, what) {
+            const done = () => _mixStatus(what + ' copied to the clipboard.');
+            const fail = () => { const ta = document.getElementById('amxIoText'); const io = document.getElementById('amxIo'); if (ta && io) { io.classList.add('on'); ta.value = text; ta.select(); } _mixStatus(what + ' is in the box below — copy it from there.'); };
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fail);
+                else fail();
+            } catch (e) { fail(); }
+        }
+        function _mixDownload() {
+            try {
+                const blob = new Blob([AudioMixer.exportJson()], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'entropy_wars_audio_mix_' + new Date().toISOString().slice(0, 10) + '.json';
+                document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+                _mixStatus('audio mix JSON downloaded.');
+            } catch (e) { _mixStatus('download failed: ' + e.message); }
+        }
+        AudioMixer.open = function(channel) {
+            if (typeof document === 'undefined') return;
+            _mixCss();
+            if (channel && AUDIO_MIX_CHANNELS.includes(channel)) _mixUi.ch = channel;
+            let root = document.getElementById('audioMixer');
+            if (!root) {
+                root = document.createElement('div');
+                root.id = 'audioMixer';
+                root.innerHTML = `<div class="amx" role="dialog" aria-label="Audio mixer">
+                    <div class="amx-head">
+                        <span class="amx-title">🎚 Audio Mixer</span>
+                        <span class="amx-sub">per-song / per-cue master levels · dev tool · levels sit BEFORE the Music / SFX / Ambience sliders</span>
+                    </div>
+                    <div class="amx-tabs">${AUDIO_MIX_CHANNELS.map(c => `<button class="amx-tab" data-ch="${c}">${_MIX_CH_LABEL[c]}<b>${_mixKeys(c).length}</b></button>`).join('')}</div>
+                    <div class="amx-tools">
+                        <input id="amxSearch" type="search" placeholder="filter by name or key…" value="${_mixEsc(_mixUi.q)}">
+                        <button class="amx-btn" id="amxStopAmb" title="Stop the auditioned bed">■ STOP</button>
+                        <button class="amx-btn warn" id="amxResetCh" title="Clear every level set here on this tab">↺ TAB</button>
+                    </div>
+                    <div class="amx-hint" id="amxHint"></div>
+                    <div class="amx-list" id="amxList"></div>
+                    <div class="amx-io" id="amxIo">
+                        <textarea id="amxIoText" spellcheck="false" placeholder="paste an exported JSON here, then IMPORT"></textarea>
+                        <div style="display:flex;gap:6px;margin-top:6px"><button class="amx-btn" id="amxIoImport">IMPORT THIS</button><button class="amx-btn" id="amxIoHide">HIDE</button></div>
+                    </div>
+                    <div class="amx-foot">
+                        <button class="amx-btn" id="amxExportJson" title="The override object — paste it over AUDIO_MIX_SHIPPED in audio.js">⎘ EXPORT JSON</button>
+                        <button class="amx-btn" id="amxExportJs" title="The four base tables rewritten with the mix folded in">⎘ EXPORT JS TABLES</button>
+                        <button class="amx-btn" id="amxDownload">⭳ DOWNLOAD .json</button>
+                        <button class="amx-btn" id="amxImport">⭱ IMPORT</button>
+                        <button class="amx-btn warn" id="amxResetAll">↺ RESET ALL</button>
+                        <button class="amx-btn close" id="amxClose">✕ CLOSE</button>
+                        <div class="amx-status" id="amxStatus"></div>
+                    </div>
+                </div>`;
+                document.body.appendChild(root);
+                root.addEventListener('click', ev => {
+                    const t = ev.target.closest('button');
+                    if (!t) { if (ev.target === root) AudioMixer.close(); return; }
+                    if (t.dataset.ch) { _mixUi.ch = t.dataset.ch; _mixRenderList(); return; }
+                    if (t.dataset.play) { AudioMixer.audition(_mixUi.ch, t.dataset.play); _mixStatus('▶ ' + _mixName(_mixUi.ch, t.dataset.play) + ' @ ' + Math.round(AudioMixer.get(_mixUi.ch, t.dataset.play) * 100) + '%'); return; }
+                    if (t.dataset.reset) { AudioMixer.reset(_mixUi.ch, t.dataset.reset); _mixRenderList(); return; }
+                    switch (t.id) {
+                        case 'amxClose': AudioMixer.close(); break;
+                        case 'amxStopAmb': AudioMixer.stopAudition(); _mixStatus('bed stopped.'); break;
+                        case 'amxResetCh': AudioMixer.reset(_mixUi.ch); _mixRenderList(); break;
+                        case 'amxResetAll': if (window.confirm('Clear every level set in this browser? (The shipped mix stays.)')) { AudioMixer.reset(); _mixRenderList(); } break;
+                        case 'amxExportJson': _mixCopy(AudioMixer.exportJson(), 'JSON (paste over AUDIO_MIX_SHIPPED)'); break;
+                        case 'amxExportJs': _mixCopy(AudioMixer.exportJs(), 'the JS tables'); break;
+                        case 'amxDownload': _mixDownload(); break;
+                        case 'amxImport': { const io = document.getElementById('amxIo'); io.classList.toggle('on'); document.getElementById('amxIoText').focus(); break; }
+                        case 'amxIoHide': document.getElementById('amxIo').classList.remove('on'); break;
+                        case 'amxIoImport': { const r = AudioMixer.importJson(document.getElementById('amxIoText').value); _mixRenderList(); _mixStatus(r.ok ? `imported ${r.count} level${r.count === 1 ? '' : 's'}.` : 'import failed: ' + r.error); break; }
+                    }
+                });
+                root.addEventListener('input', ev => {
+                    const t = ev.target;
+                    if (t.id === 'amxSearch') { _mixUi.q = t.value; _mixRenderList(); return; }
+                    if (t.dataset.slide) {
+                        const k = t.dataset.slide;
+                        AudioMixer.set(_mixUi.ch, k, Number(t.value) / 100);
+                        const v = root.querySelector(`[data-val="${CSS.escape(k)}"]`);
+                        if (v) v.textContent = t.value + '%';
+                        const row = t.closest('.amx-row'); if (row) { row.classList.add('local'); const rb = row.querySelector('[data-reset]'); if (rb) rb.disabled = false; }
+                    }
+                });
+                root.addEventListener('change', ev => {
+                    const t = ev.target;
+                    if (t.dataset.slide) {
+                        /* a released slider re-fires a one-shot so the new level is heard; music / beds are live already */
+                        if (_mixUi.ch === 'sfx' || _mixUi.ch === 'door') AudioMixer.audition(_mixUi.ch, t.dataset.slide);
+                        _mixRenderList();
+                    }
+                });
+                root.addEventListener('keydown', ev => { if (ev.key === 'Escape') { ev.stopPropagation(); AudioMixer.close(); } });
+            }
+            root.style.display = 'flex';
+            _mixRenderList();
+            const s = document.getElementById('amxSearch'); if (s) s.focus();
+        };
+        AudioMixer.close = function() {
+            const root = document.getElementById('audioMixer');
+            if (root) root.style.display = 'none';
+            AudioMixer.stopAudition();
+        };
+        AudioMixer.isOpen = function() { const r = document.getElementById('audioMixer'); return !!r && r.style.display !== 'none'; };
+
         function getMusicBaseVolume(key) {
-            return Math.max(0, Math.min(1, (AUDIO_BASE_VOLUMES[key] ?? 0.55) * (state.musicVolume ?? 1)));
+            return Math.max(0, Math.min(1, _mixLevel('music', key, AUDIO_BASE_VOLUMES[key] ?? 0.55) * (state.musicVolume ?? 1)));
         }
 
         function getSfxBaseVolume(key) {
-            return Math.max(0, Math.min(1, (SFX_BASE_VOLUMES[key] ?? 0.7) * (state.sfxVolume ?? 1)));
+            return Math.max(0, Math.min(1, _mixLevel('sfx', key, SFX_BASE_VOLUMES[key] ?? 0.7) * (state.sfxVolume ?? 1)));
         }
 
         function refreshVisibleVolumeValues() {
@@ -867,7 +1263,7 @@
         const _ambienceFadeTokens = {};      // key -> int; bumping cancels that bed's in-flight fade
 
         function _ambienceTargetVol(key) {
-            const base = AMBIENCE_BASE_VOLUMES[key] ?? 0.3;
+            const base = _mixLevel('ambience', key, AMBIENCE_BASE_VOLUMES[key] ?? 0.3);
             return Math.max(0, Math.min(1, base * (state.ambienceVolume ?? 0.8)));
         }
 
@@ -990,6 +1386,8 @@
             try {
                 if (window.EW_DISABLE_AMBIENCE) return [];
                 if (!state.audioUnlocked || state.devAutoSim) return [];
+                /* THE MIXER (2026-09-16): a bed under audition stays up outside a battle */
+                if (_mixAudition.ambience && _R2_AMBIENCE[_mixAudition.ambience]) return [_mixAudition.ambience];
                 if (state.phase !== 'battle' || state.winner) return [];
                 const keys = [];
                 const aw = state.activeWeather || [];
@@ -1487,7 +1885,7 @@
                 const recipe = _DOOR_SFX_RECIPES[key];
                 if (!recipe) return false;
                 const ctx = _doorCtx();
-                const vol = Math.max(0, Math.min(1, (_DOOR_SFX_GAIN[key] ?? 0.5) * (state.sfxVolume ?? 0.9) * (opts.volume ?? 1)));
+                const vol = Math.max(0, Math.min(1, _mixLevel('door', key, _DOOR_SFX_GAIN[key] ?? 0.5) * (state.sfxVolume ?? 0.9) * (opts.volume ?? 1)));
                 if (vol <= 0) return false;
                 const schedule = () => {
                     const out = ctx.createGain();

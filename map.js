@@ -4847,6 +4847,7 @@
                         </div>
                         <div class="pm-set-row" style="margin-top:10px">
                             <button class="pm-set-btn" onclick="document.getElementById('skipTrackBtn')?.click()">Skip Track</button>
+                            <button class="pm-set-btn" onclick="window.AudioMixer&&window.AudioMixer.open()" title="Dev tool: per-song / per-cue master levels, with export">🎚 Mixer (dev)</button>
                         </div>
                     </div>
                     <div class="pm-set-group">

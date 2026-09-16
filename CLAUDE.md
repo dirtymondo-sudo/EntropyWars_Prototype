@@ -3806,3 +3806,35 @@ audio.js `wayTrain`. Downtown's / CERN's platforms wait on a free north
 lane. `npm test`: misc-models.test.js (the vehicle block), hq-world,
 hq-stage2. Unseen live (RULE #1c): every facing, the beacons, the
 arrival, the half-buried body.
+
+## THE MIXER — per-song / per-cue master levels (dev tool, Settings → Audio) — 2026-09-16, local delivery
+The songs and the cues were not mastered at one loudness. audio.js "THE
+MIXER" block (right after `audioFadeVersion`): **`_mixLevel(channel, key,
+base)`** is the ONE read at every play path — `getMusicBaseVolume` /
+`getSfxBaseVolume` / `_ambienceTargetVol` / `playDoorSfx` — precedence
+LOCAL dev override (localStorage `ew_audio_mix`, what the panel writes) →
+**`AUDIO_MIX_SHIPPED`** (`{ music, sfx, ambience, door }`, the mix every
+player gets) → the four base tables (`AUDIO_BASE_VOLUMES` ·
+`SFX_BASE_VOLUMES` · `AMBIENCE_BASE_VOLUMES` · `_DOOR_SFX_GAIN`). A level
+is an ABSOLUTE base (the file's share of full scale, 0–1.5, clamped to 1
+at play time), never a multiplier — an exported number reads exactly like
+the table entry it replaces. **`window.AudioMixer`**: `open(channel)` /
+`close()` (the panel `#audioMixer`, z 100000, CSS injected by `_mixCss`;
+tabs MUSIC · SFX · AMBIENCE · DOOR KIT, a filter, ▶ audition at the
+current level — a song through `playMusic` (the shuffle continues from
+it), a cue once, a bed for 12 s kept alive by `_desiredAmbienceKeys`
+through `_mixAudition.ambience`, a door-kit recipe — a slider per key,
+`tbl n` = the table's value, gold = set here, ↺ per row / per tab / all),
+`get / shipped / base / isLocal / set / reset`, **`overrides()`** = every
+key whose effective level differs from the TABLE (a shipped value still
+wanted survives a re-export), `exportJson()` (= the override object —
+**paste it over `AUDIO_MIX_SHIPPED` to ship the mix**), `exportJs()` (the
+four tables rewritten with the mix folded in, for baking into the
+literals), `importJson(text)`, `audition / stopAudition`. Buttons:
+map.js `_renderMainMenuSettings` Audio group (so the HQ pause menu's
+SETTINGS has it too) and ui.js `_buildPauseMusic`. Viewer-local, nothing
+on `state`, nothing relayed (RULE #2). `npm test` runs
+`audio-mixer.test.js`. The user's workflow: tune in the panel → EXPORT
+JSON → hand it to Claude (or paste it over `AUDIO_MIX_SHIPPED`) → ship
+audio.js. Unseen live (RULE #1c): the panel over the CRT / the pause menu,
+the slider's feel, the bed audition's fade.
