@@ -18402,6 +18402,12 @@ const DOOR_HQ = {
         wet_floor_sign:    { file: 'Meshy_AI_a_yellow_wet_floor_sign_0903105220_texture.glb',         h: 0.72, foot: 0.22 },
         mop_bucket:        { file: 'Meshy_AI_a_yellow_mop_bucket_0903105455_texture.glb',             h: 0.90, foot: 0.30 },
         mop:               { file: 'Meshy_AI_a_mop_0903105505_texture.glb',                           h: 1.45, foot: 0 },
+        /* THE DOOR GUN (HQ plan 9.5 rev 3, 2026-09-16): the user's retro ray gun that shoots doors — the
+           walker holds it drawn (F), the Door Agent carries it in every battle (sprites.js `hold`).
+           Measured off the GLB: 1.0 long on X, 0.615 tall, 0.325 wide — a Meshy long-on-X prop, the
+           MUZZLE read as −X like the cannon / the guns (unmeasured: a barrel that lands backward is
+           `HQ_PORTAL_RULES.gun.rot[1]` ± 180, one field). `span` = its real length. MODEL_INDEX §3b. */
+        door_gun:          { file: 'Meshy_AI_a_retro_gun_that_shoo_0916054449_texture.glb',             span: 0.62, foot: 0, gun: true },
         wall_clock:        { file: 'Meshy_AI_a_clock_0903110243_texture.glb',                         h: 0.50, foot: 0, wall: true, mount: 3.05 },
         /* 2026-09-12 from the SHARED misc bucket (`base: 'misc'` → Assets/misc/,
            three-renderer.js _hqModelUrl): the moving-maps batch's pieces that
@@ -29656,6 +29662,34 @@ const HQ_PORTAL_RULES = {
     colors: { a: '#49b0ff', b: '#ff8a2b' },
     colorNames: { a: 'CYAN', b: 'AMBER' },
     buttons: { a: 'LEFT CLICK', b: 'RIGHT CLICK' },
+    /* rev 3 (2026-09-16, Phase 9 Delivery 3 — THE GUN READS + the user's model):
+       THE GUN is the catalogue's `door_gun` GLB in the officer's right hand while
+       drawn (three-renderer.js `_hqGunAttach`; the Door Agent carries the same
+       row in battle through sprites.js `RACE_MODELS_3D['door agent'].hold`).
+       `pos` / `rot` are the grip in the hand bone's frame (metres / degrees —
+       the ONE place to tune a gun that sits wrong), `muzzle` the barrel's end in
+       the gun's own frame (metres from its centre; +X = the long axis) — the
+       laser sight, the shot and the recall all leave from it. */
+    gun: { key: 'door_gun', bone: 'RightHand', span: 0.62, pos: [0, -0.06, 0.04], rot: [0, 90, 0], muzzle: [0.5, 0.08, 0] },
+    /* THE SHOT: the door flies out of the gun as a folded frame and UNFOLDS on
+       the surface — `msPerM` × the distance, clamped to [minMs, maxMs]; the
+       recoil kick on the camera (radians) decays over `kickMs`. */
+    shot: { msPerM: 28, minMs: 110, maxMs: 380, unfoldMs: 300, kick: 0.045, kickMs: 220 },
+    /* A / B beyond colour (D3b): the placed frame's aperture rim and jamb lamps
+       wear a SHAPE — A a circle, B a square — so a monochrome read tells them
+       apart. (The ghost keeps the ring: it is neither yet.) */
+    shapes: { a: 'circle', b: 'square' },
+    /* D3a: the ghost's refusal reason is a WORD on the frame, not just red. */
+    reasons: { fluid: 'NOT ON WATER', near: 'TOO CLOSE', twin: 'THE TWIN', door: 'A DOOR\'S LANE', room: 'NO ROOM', wall: 'NOT A SURFACE', none: 'NOTHING THERE' },
+    /* D3c: THE RECALL — holding F for `recallMs` pulls BOTH doors back into the
+       gun from anywhere (falling included) and clears the pair; a tap still
+       draws / holsters (on the release). A mouth re-arms only `rearmMs` after
+       its last crossing AND after the body has left it (the hatch-loop cap). */
+    recallMs: 600,
+    rearmMs: 250,
+    /* D4: out of the twin, the body must stand clear — nudged along the twin's
+       normal up to `exitNudgeM` before the hop gives up and lands anyway. */
+    exitNudgeM: 0.6,
 };
 function hqPortalRecord(profile) {
     const r = (profile && profile.door && profile.door.hq && profile.door.hq.portal) || {};

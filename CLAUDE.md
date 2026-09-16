@@ -4094,3 +4094,69 @@ adding a place = a `MUSIC_CONTEXTS` row + a branch in
 `musicContextForState`. `npm test` runs `music-tags.test.js`. UNSEEN LIVE
 (RULE #1c): the chips' wrap in the panel, the picker in the settings row,
 the crossfade when a walk changes pools.
+
+## THE DOOR GUN rev 3 — THE MODEL, THE SHOT, THE RECALL (Phase 9 Delivery 3 — THE GUN READS) — 2026-09-16, local delivery
+The user's retro ray gun (R2 `Assets/door/models/Meshy_AI_a_retro_gun_that_
+shoo_0916054449_texture.glb`, repo `doors/`; MODEL_INDEX §3b) is
+`DOOR_HQ.catalogue.door_gun` (data.js; `span` 0.62, `gun: true`). **ONE
+tuning row**: `HQ_PORTAL_RULES.gun = { key, bone, span, pos, rot, muzzle }` —
+the grip in the hand bone's frame (metres / degrees) and the barrel's end in
+the gun's own frame (metres from the instance's base centre, +X the barrel —
+the Meshy long-on-X convention, muzzle read as −X UNMEASURED: a barrel that
+lands backward is `rot[1]` ± 180). **THE BUILDING** (three-renderer.js, the
+gun helpers right after `_hqPortalRules`): `_hqGunAttach` parents it to the
+walker's RightHand through `_hqAttachHeld` (the Janitor's-mop holder), shown
+only while DRAWN (`_hqGunShow` from `_hqPortalDraw`); `_hqGunMuzzle()` is
+the ONE origin (world metres; the chest + half a metre while the GLB streams).
+Drawn: THE LASER SIGHT (`_hqPortalSight`, a 1 px additive Line muzzle → hit
++ a dot; white while F is held), THE STANCE (standing, the officer squares up
+on the aim), THE WORD (D3a: `_hqPortalGhostLabel` — `HQ_PORTAL_RULES.reasons
+[reason]` over the ghost's lintel in red, the surface + `A / B` in green).
+**THE SHOT**: `_hqPortalPlaceAim` files the record at the click as before
+and builds with `{ fresh, flight: { from: muzzle } }` → `_hqPortalFlight`
+hides the frame, flies a tumbling miniature + a comet trail on a shallow arc
+(`HQ_PORTAL_RULES.shot`: msPerM / minMs / maxMs), then UNFOLDS it about the
+opening's centre (ease-out-back, `unfoldMs`) over `_hqPortalLandBeat` (the
+old mote ring + a shock ring in the surface's plane + a 600 ms PointLight +
+`doorGunLand`); `_hqGunFire` at the trigger = muzzle flash + sparks + the
+camera's pitch kick (`shot.kick`, eased back over `kickMs`) + the walker's
+ranged clip (`_attackChainFor('ranged')`) + `doorGunShot`. A slot removed
+mid-flight kills the projectile. **D3b THE SHAPES**: `HQ_PORTAL_RULES.
+shapes` — the placed frame's aperture rim is a circle (A) or a four-segment
+ring turned a quarter (B, a square), the jamb-lamp caps a ball / a cube.
+**D3c**: a mouth re-arms only `rearmMs` (250) after its last crossing
+(`rec.lastCrossAt`, the hatch-loop cap); **F is a TAP on the release** (the
+press stamps `H.portal.fAt`, `_hqPortalTickHold` runs from
+`_hqPortalTickAim` every frame) and a HOLD of `recallMs` (600) with a door
+placed = **THE RECALL** — `_hqPortalRecall` drops both records at once
+(`_hqPortalRemove(slot, { keep: true })` keeps the group), flies each frame
+home to the muzzle shrinking on its own comet, `doorGunRecall`, then
+`onPortal({ kind: 'recall', n })` → map.js clears the pair on the profile
+(`hqPortalClear`, one transaction) + the toast. **D4**: `_hqPortalHop` out of
+a flat twin nudges the body along the twin's normal up to `exitNudgeM` (0.6)
+until `_hqAirClearOfBlockers` passes at the feet and the head. API:
+`hq.portalRecall()`, `hq.gunMuzzle()`. **THE BOARD**: sprites.js
+`RACE_MODELS_3D['door agent']` (both genders) carries `hold:
+_DOOR_AGENT_HOLD` (sprites.js loads before data.js — the row is the
+fallback; three-renderer.js `_unitAttachHeld(m, hold, ts)` merges the live
+`HQ_PORTAL_RULES.gun` over it at attach time, parents the catalogue GLB to
+the rig's hand bone at real scale (`ts / HQ_TILE_M` px per metre, the bone's
+world scale undone), `_ew_noTwin`, and it rides the rig cache with the body;
+any def may carry `hold` now). Every placement is a SHOT from the gun:
+three-vfx-effects.js `_sigDoorGunShot3D` (registered `raceDoorGun:shot` —
+a folded frame in the agent's teal on a comet trail from the caster's hand
+to the tile, the muzzle flash, a shock ring on landing, the two cues voiced
+INSIDE the recipe so the guest hears them — `playDoorSfx` is never relayed)
+fired by battle.js through `window._doorGeom` (relayed `vfx3d-x`, RULE #2)
+before Knock Knock's two doors (the second `delay: 140`), Breaking and
+Entering's door, EXIT and the Trapdoor; the door recipes rise under it. The
+basic attack stays the punch (the Closer's kit). audio.js: `doorGunShot`
+(a ray-gun zap) / `doorGunLand` (the unfold) / `doorGunRecall` (the zap in
+reverse) in `_DOOR_SFX_RECIPES` + `_DOOR_SFX_GAIN`. NOT BUILT: D3d (the
+boom's pitch clamp in a loop, the fade after the third crossing — playtest
+first), the `hard` reachability test (item 9), a holstered gun on the hip.
+`npm test` runs hq-portal.test.js (14 tests: the hold's arithmetic in a vm).
+UNSEEN LIVE (RULE #1c): the grip and the muzzle on the Player / Belle rigs
+(`HQ_PORTAL_RULES.gun.pos / rot / muzzle` are the edits), the gun's scale in
+a unit's hand at tile scale, the flight's arc and the unfold's overshoot,
+the sight's brightness under each room's light, the three cues' loudness.

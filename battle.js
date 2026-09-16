@@ -53818,6 +53818,9 @@
                     _spellFocusCamera(unit, x, y);
                     unit.mp -= effectiveSpellCost;
                     placeDoorPair(unit, _pickA.x, _pickA.y, x, y, { spellName: spell.name });
+                    /* THE DOOR GUN (2026-09-16): both doors are SHOT out of the gun in the agent's hand — the second a beat behind */
+                    window._doorGeom('raceDoorGun:shot', _pickA.x, _pickA.y, { fromX: unit.x, fromY: unit.y });
+                    window._doorGeom('raceDoorGun:shot', x, y, { fromX: unit.x, fromY: unit.y, delay: 140 });
                     window._doorGeom('raceKnockKnock', _pickA.x, _pickA.y, { twinX: x, twinY: y });
                     window._doorGeom('raceKnockKnock', x, y, { twinX: _pickA.x, twinY: _pickA.y });
                     if (typeof playDoorSfx === 'function') playDoorSfx('doorbell');
@@ -53849,7 +53852,8 @@
                 playSfx('teleport');
                 unit.mp -= effectiveSpellCost;
                 const fx = unit.x, fy = unit.y;
-                /* the door nobody saw: it stands up on the landing tile, facing the victim, and the agent comes through it */
+                /* the door nobody saw: it stands up on the landing tile, facing the victim, and the agent comes through it (shot there from the gun first) */
+                window._doorGeom('raceDoorGun:shot', land.x, land.y, { fromX: unit.x, fromY: unit.y });
                 window._doorGeom('raceBreakingEntering:door', land.x, land.y, { fromX: target.x, fromY: target.y });
                 if (land.x !== unit.x || land.y !== unit.y) {
                     unit.x = land.x; unit.y = land.y;
@@ -53966,7 +53970,8 @@
                     target._exited = true;
                     if ((target.hourglasses || 0) > 0 && typeof dropHourglassesFromUnit === 'function') dropHourglassesFromUnit(target);
                     if (typeof playDoorSfx === 'function') playDoorSfx('stamp');
-                    /* the door stands up in front of the victim, takes them, shuts, and the EXIT stamp lands on the leaf */
+                    /* the door stands up in front of the victim, takes them, shuts, and the EXIT stamp lands on the leaf (shot there from the gun) */
+                    window._doorGeom('raceDoorGun:shot', target.x, target.y, { fromX: unit.x, fromY: unit.y });
                     window._doorGeom('raceExit', target.x, target.y, { fromX: unit.x, fromY: unit.y });
                     if (!_skipVisuals()) { _vfxTeleport(target.x, target.y, _doorOrg ? _doorOrg.x : target.x, _doorOrg ? _doorOrg.y : target.y); showFloatingTextForUnit(target, '🚪 EXITED', 'debuff'); }
                     addLog(`🚪 Extradimensional Incident Transfer: ${unitDisplayName(unit)} files ${unitDisplayName(target)} out through the door at ${coordLabel(_doorOrg ? _doorOrg.x : x, _doorOrg ? _doorOrg.y : y)}. Sign here.`);
@@ -53988,7 +53993,8 @@
                 triggerAttackAnim(unit, target.x, target.y);
                 const VFX = window.ThreeVFXEffects;
                 if (VFX && VFX.hasMapping(spell.id, 'impact') && state.phase === 'battle' && !_skipVisuals()) VFX.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
-                /* the trapdoor: a door lies flat under the victim and swings DOWN (the drop below lands on its open beat) */
+                /* the trapdoor: a door lies flat under the victim and swings DOWN (the drop below lands on its open beat; shot there from the gun) */
+                window._doorGeom('raceDoorGun:shot', target.x, target.y, { fromX: unit.x, fromY: unit.y });
                 window._doorGeom('raceTrapdoor', target.x, target.y, { fromX: unit.x, fromY: unit.y });
                 applyDamageToUnit(target, (spell.dmg || 0) + spellPower, `${spell.name}: `, { sourceUnit: unit, allowMarkBonus: true, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType });
                 if (spell.statusEffects) applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);

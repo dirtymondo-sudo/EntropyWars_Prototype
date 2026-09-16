@@ -1168,7 +1168,7 @@
             if (k) html += row('KEYS', `${k.pickups | 0} RECOVERED${k.issued ? ' + ' + k.issued + ' ISSUED' : ''}`, `${k.keys | 0}`);
             if (mc) html += row('STABILIZED', 'THRESHOLDS WON BY EVERY WIN CONDITION', `${mc.mastered} / ${mc.total}`, mc.mastered === mc.total ? 'stabilized' : 'open');
             { const el = (typeof window.hqEncounterLog === 'function') ? window.hqEncounterLog(profile) : null; if (el && el.count) html += row('ENCOUNTERS', `${el.wins} HELD · ${el.losses} EXITED${el.last ? ' · LAST ' + _hqEsc(String(el.last.race || '').toUpperCase()) + (el.last.won ? ' (HELD)' : ' (EXITED)') : ''}`, String(el.count), el.last && el.last.won ? 'stabilized' : 'open'); }
-            { const ps = _hqPortalStatus(profile); if (ps && ps.issued) html += row('THE THRESHOLD', 'PORTABLE · DOOR ISSUE · F DRAWS · L-CLICK = A · R-CLICK = B · Q HOLSTERS', `${ps.a ? 'A' : '·'} ${ps.b ? 'B' : '·'}`, ps.paired ? 'stabilized' : 'open'); }
+            { const ps = _hqPortalStatus(profile); if (ps && ps.issued) html += row('THE THRESHOLD', 'PORTABLE · DOOR ISSUE · F DRAWS · L-CLICK = A ● · R-CLICK = B ■ · Q HOLSTERS · HOLD F RECALLS', `${ps.a ? 'A' : '·'} ${ps.b ? 'B' : '·'}`, ps.paired ? 'stabilized' : 'open'); }
             { const st = _hqSkateStatus(profile); if (st && st.issued) html += row('THE BOARD', st.best ? `BEST LINE · ${_hqEsc(st.best.text)} · ${st.lines | 0} LANDED · ${st.bails | 0} BAILS` : `B DROPS IT · NOTHING LANDED YET · ${_hqEsc(st.label)}`, st.best ? (st.best.score | 0).toLocaleString() : '—', st.best ? 'stabilized' : 'open'); }   // SKATEBOARDING (9.8)
             if (tc) html += row('THE TAPES', `THE HUNDRED · THE SHELF IN ROOM 360${tc.pay ? ' · ' + tc.pay + ' HAZARD PAY IN ENVELOPES' : ''}`, `${tc.found} / ${tc.total}`, tc.found >= tc.total ? 'stabilized' : 'open');
             if (sh) html += row('FORM 365', 'DAILY OFFICE OPERATIONS · ROOM 247', `${sh.done} / ${sh.total}`, sh.allDone ? 'stabilized' : 'unstable');
@@ -1860,10 +1860,19 @@
                 _hqFillStrip(_hqProfile());
                 const h = _hqEl('hqHints'); if (h) h.classList.toggle('portal', !!ev.on);
                 try { playSfx(ev.on ? 'uiButtonConfirm' : 'uiCursorMove'); } catch (e) {}
-                if (ev.on) _hqToast('<b>THE PORTABLE THRESHOLD</b><span>ANY SURFACE — FLOOR · WALL · CEILING · L-CLICK = A (CYAN) · R-CLICK = B (AMBER) · Q HOLSTERS</span>', 2800);
+                if (ev.on) _hqToast('<b>THE PORTABLE THRESHOLD</b><span>ANY SURFACE — FLOOR · WALL · CEILING · L-CLICK = A (CYAN ●) · R-CLICK = B (AMBER ■) · Q HOLSTERS · HOLD F = RECALL BOTH</span>', 2800);
             }
             else if (ev.kind === 'refused') _hqPortalRefused(ev.reason);
             else if (ev.kind === 'unissued') _hqPortalRefused('unissued');
+            /* THE RECALL (rev 3, D3c): the renderer pulled both doors home — clear the pair on the record in one transaction */
+            else if (ev.kind === 'recall') {
+                try {
+                    const PS = window.ProfileSystem;
+                    const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
+                    if (idx !== null && idx !== undefined && typeof window.hqPortalClear === 'function') { const p = PS.loadProfile(idx); if (p && window.hqPortalClear(p)) PS.saveProfile(idx, p); _hqFillStrip(p); }
+                } catch (e) { console.warn('[HQ] portal recall', e); }
+                if (ev.n) _hqToast(`<b>RECALLED</b><span>${ev.n === 2 ? 'BOTH THRESHOLDS' : 'THE THRESHOLD'} BACK IN THE GUN · THE PAIR IS CLEAR</span>`, 2200);
+            }
         }
         /* ═══════════════════════════════════════════════════════════════
            SKATEBOARDING (HQ plan 9.8 stage 1, 2026-09-15) — a walker MODE.

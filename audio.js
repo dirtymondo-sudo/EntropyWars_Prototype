@@ -1865,6 +1865,8 @@
             wayMirror: 0.3, waySplash: 0.32, wayCanvas: 0.28, wayFloo: 0.32, wayStatic: 0.26,   // the second batch (rev 22)
             /* SKATEBOARDING (HQ plan 9.8, 2026-09-15): the deck's own kit — quiet, the ride plays them thirty times a minute */
             skatePush: 0.3, skateOllie: 0.4, skateLand: 0.36, skateGrind: 0.3, skateBail: 0.45, skateBank: 0.4,
+            /* THE DOOR GUN rev 3 (2026-09-16): the zap, the frame landing, the recall — the building AND the board (the shot VFX voices them) */
+            doorGunShot: 0.5, doorGunLand: 0.45, doorGunRecall: 0.42,
         };
         let _doorNoiseBuf = null;
         function _doorCtx() {
@@ -2230,6 +2232,32 @@
                 _doorNoiseSrc(ctx, _doorEnv(ctx, out, tk, vol * 0.6, 0.001, 0.015, 0.06), tk, 0.08, { type: 'bandpass', f0: 1700, q: 1 });
                 _doorOsc(ctx, _doorEnv(ctx, out, tk, vol * 0.45, 0.001, 0.015, 0.08), 'sine', 220, tk, 0.1, { f1: 90, slide: 0.08 });
                 return 0.9;
+            },
+            /* THE DOOR GUN (2026-09-16): a retro ray-gun ZAP — a fast sweep down
+               with a detuned partner, a click of noise at the trigger, a sub thump. */
+            doorGunShot(ctx, t, out, vol) {
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.7, 0.001, 0.02, 0.05), t, 0.06, { type: 'highpass', f0: 2400, q: 0.8 });
+                _doorOsc(ctx, _doorEnv(ctx, out, t, vol * 0.5, 0.002, 0.1, 0.12), 'sawtooth', 1500, t, 0.24, { f1: 240, slide: 0.2 });
+                _doorOsc(ctx, _doorEnv(ctx, out, t, vol * 0.35, 0.002, 0.08, 0.1), 'square', 1500, t, 0.2, { f1: 330, slide: 0.16, detune: 11 });
+                _doorOsc(ctx, _doorEnv(ctx, out, t, vol * 0.55, 0.001, 0.05, 0.14), 'sine', 140, t, 0.2, { f1: 46, slide: 0.14 });
+                return 0.3;
+            },
+            /* the frame UNFOLDS on the surface: a low thump under a bright rising chirp, a shimmer */
+            doorGunLand(ctx, t, out, vol) {
+                _doorOsc(ctx, _doorEnv(ctx, out, t, vol * 0.6, 0.001, 0.06, 0.18), 'sine', 120, t, 0.24, { f1: 44, slide: 0.18 });
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.4, 0.001, 0.03, 0.12), t, 0.16, { type: 'bandpass', f0: 900, q: 1.2 });
+                _doorOsc(ctx, _doorEnv(ctx, out, t + 0.04, vol * 0.32, 0.005, 0.12, 0.16), 'triangle', 420, t + 0.04, 0.3, { f1: 1260, slide: 0.22 });
+                _doorOsc(ctx, _doorEnv(ctx, out, t + 0.16, vol * 0.2, 0.01, 0.2, 0.3), 'sine', 1680, t + 0.16, 0.5, { detune: 7 });
+                return 0.7;
+            },
+            /* THE RECALL: the shot in reverse — a sweep UP, then the click home */
+            doorGunRecall(ctx, t, out, vol) {
+                _doorOsc(ctx, _doorEnv(ctx, out, t, vol * 0.45, 0.01, 0.22, 0.1), 'sawtooth', 260, t, 0.34, { f1: 1500, slide: 0.3 });
+                _doorOsc(ctx, _doorEnv(ctx, out, t, vol * 0.3, 0.01, 0.2, 0.1), 'square', 330, t, 0.3, { f1: 1400, slide: 0.28, detune: -9 });
+                const tk = t + 0.32;
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, tk, vol * 0.6, 0.001, 0.015, 0.05), tk, 0.05, { type: 'highpass', f0: 2000, q: 0.8 });
+                _doorOsc(ctx, _doorEnv(ctx, out, tk, vol * 0.5, 0.001, 0.05, 0.12), 'sine', 160, tk, 0.16, { f1: 52, slide: 0.12 });
+                return 0.5;
             },
             /* Ident sting (placeholder for the hand-made jingle): CRT on, then a
                DX7-style detuned-saw chord with a filter sweep, a bell arpeggio,

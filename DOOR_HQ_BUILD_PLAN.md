@@ -8661,3 +8661,15 @@ PHASE9_QUALITY_PLAN.md §9's Delivery 1 and two rules of the user's, in one zip.
   slow board build showing under a half-faded room), the swing-spot landing on a
   gallery / a cave tier, the lead's nameplate wearing a race label as a name.
 
+
+### 2026-09-16 · PHASE 9 DELIVERY 3 — THE GUN READS + THE GUN ITSELF (PHASE9_QUALITY_PLAN §8 items 5 + 6; data.js, sprites.js, three-renderer.js, three-vfx-effects.js, battle.js, audio.js, map.js, index.html; hq-portal.test.js; MODEL_INDEX §3b; local, not uploaded)
+The user uploaded the door gun (a Meshy retro ray gun, R2 `Assets/door/models/`, repo `doors/`) and asked for it in the
+officer's hand, in every Door Agent's hand in battle, and for the door to SHOOT out of it with juice. Shipped: the
+catalogue row `door_gun`; `HQ_PORTAL_RULES.gun / shot / shapes / reasons / recallMs / rearmMs / exitNudgeM`; the held
+gun while drawn (the mop's holder), the laser sight, the stance, the reason word (D3a), the shot that flies and unfolds
+with a muzzle flash + recoil kick + the ranged clip, the landing beat (shock ring in the surface's plane, a breath of
+light), A ● / B ■ (D3b), the re-arm cap + the F-hold recall that flies both doors back into the gun and clears the pair
+(D3c), the exit nudge (D4); on the board every Door Agent carries it (`_unitAttachHeld`) and every placement is
+`raceDoorGun:shot` from the caster's hand (relayed geometry; the two cues voiced inside the recipe). Three synth cues.
+NOT built: D3d (playtest first), item 9's `hard` test, a hip holster. UNSEEN LIVE: the grip / muzzle on the Player and
+Belle rigs — `HQ_PORTAL_RULES.gun.pos / rot / muzzle` are the edits; the muzzle's −X reading is unmeasured.

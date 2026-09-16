@@ -10214,6 +10214,34 @@ const ThreeRenderer = (function () {
        disposed only here (evicted when its unit leaves the board, cleared
        wholesale on match reset/dispose). */
     var _unitModelRigs = new Map();    // unit id -> { url, inner, mixer, actions, modelMats, silMats }
+    /* A held prop on a BATTLE rig (2026-09-16): the D.O.O.R. catalogue GLB (`hold.key`) in the
+       named hand bone at real scale — the bone's world scale (the model's fit rides the
+       skeleton) undone on a holder group; `pos` / `rot` are the grip in the bone's frame
+       (metres / degrees, HQ_TILE_M metres to a tile), never twinned by the x-ray pass. */
+    function _unitAttachHeld(m, hold, ts) {
+        var D = (typeof DOOR_HQ !== 'undefined') ? DOOR_HQ : null;
+        /* the door gun's grip is tuned in ONE place — data.js HQ_PORTAL_RULES.gun (sprites.js loads before data.js, so its row is the fallback) */
+        try { var G = (typeof HQ_PORTAL_RULES !== 'undefined') ? HQ_PORTAL_RULES.gun : null; if (G && G.key === hold.key) hold = Object.assign({}, hold, G); } catch (_g) {}
+        var cat = D && D.catalogue && D.catalogue[hold.key];
+        if (!cat || !cat.file || !D.assets || !D.assets.models) return null;
+        var bone = m.getObjectByName(hold.bone || 'RightHand');
+        if (!bone) return null;
+        var pxm = ts / HQ_TILE_M;
+        m.updateMatrixWorld(true);
+        var ws = new THREE.Vector3(); bone.getWorldScale(ws);
+        var holder = new THREE.Group(); holder.name = 'ew_held_' + hold.key;
+        holder.scale.setScalar(1 / (ws.x || 1));
+        var inner = new THREE.Group();
+        var p = hold.pos || [0, 0, 0], r = hold.rot || [0, 0, 0];
+        inner.position.set(p[0] * pxm, p[1] * pxm, p[2] * pxm);
+        inner.rotation.set(r[0] * Math.PI / 180, r[1] * Math.PI / 180, r[2] * Math.PI / 180);
+        var target = ((hold.h != null ? hold.h : (cat.h || cat.span)) || 1) * pxm;
+        var url = (cat.base === 'misc') ? _R2_MISC + encodeURIComponent(cat.file) : D.assets.models + encodeURIComponent(cat.file);
+        var inst = _miscModelInstance(url, true, target, { fit: (cat.span != null && cat.h == null) ? 'span' : 'height', matPick: _hqPropMatPick,
+            onDone: function (g) { g.traverse(function (n) { if (n.isMesh) { n._ew_noTwin = true; n.frustumCulled = false; n.castShadow = true; n.renderOrder = 2; } }); } });
+        inner.add(inst); holder.add(inner); bone.add(holder);
+        return holder;
+    }
     function _disposeModelRig(rig) {
         if (!rig) return;
         if (rig.appearanceRig) rig.appearanceRig.dispose();
@@ -10961,6 +10989,10 @@ const ThreeRenderer = (function () {
             var appearanceRig = def.creatorBase ? _createAppearanceRig(m, unit.appearance, true) : null;
             inner.add(m);
             wrap.add(inner);
+            /* THE DOOR GUN IN BATTLE (2026-09-16): a def's `hold` (sprites.js — the Door Agent's
+               `RACE_MODELS_3D['door agent']`) parents the catalogue GLB to a hand bone of THIS model, so
+               it rides the rig cache with the body — the same holder rule as the building's held props */
+            if (def.hold) { try { _unitAttachHeld(m, def.hold, ts); } catch (_he) { console.warn('[3D] held prop failed', _he); } }
 
             var hasSkin = false;
             var _stRef = _unitStencilRef(unit.id);
@@ -42569,7 +42601,69 @@ const ThreeRenderer = (function () {
     var HQ_PORTAL_COLORS = { ok: 0x7dffb0, bad: 0xff5a5a, a: 0x49b0ff, b: 0xff8a2b };
     function _hqPortalRules() {
         var R = (typeof window !== 'undefined' && window.HQ_PORTAL_RULES) || {};
-        return { reach: R.reach || HQ_PORTAL_REACH, gap: R.minGap || HQ_PORTAL_GAP, near: R.minFromWalker || HQ_PORTAL_NEAR, foot: R.footprint || HQ_PORTAL_FOOT };
+        return { reach: R.reach || HQ_PORTAL_REACH, gap: R.minGap || HQ_PORTAL_GAP, near: R.minFromWalker || HQ_PORTAL_NEAR, foot: R.footprint || HQ_PORTAL_FOOT,
+                 shot: R.shot || { msPerM: 28, minMs: 110, maxMs: 380, unfoldMs: 300, kick: 0.045, kickMs: 220 }, shapes: R.shapes || { a: 'circle', b: 'square' },
+                 reasons: R.reasons || {}, recallMs: R.recallMs || 600, rearmMs: R.rearmMs || 250, exitNudge: R.exitNudgeM || 0.6 };
+    }
+    /* ── THE GUN ITSELF (rev 3, 2026-09-16 — the user's model) ─────────────
+       The catalogue's `door_gun` GLB (data.js HQ_PORTAL_RULES.gun: the row,
+       the hand bone, the grip `pos` / `rot`, the `muzzle` in the gun's own
+       frame — metres from the instance's base centre, +X the barrel) rides
+       the officer's right hand through the same holder `_hqAttachHeld` gives
+       the Janitor's mop, shown while DRAWN and hidden holstered. The laser
+       sight, the shot and the recall all leave from `_hqGunMuzzle()`. */
+    function _hqGunRules() {
+        var R = (typeof window !== 'undefined' && window.HQ_PORTAL_RULES) || {};
+        return R.gun || { key: 'door_gun', bone: 'RightHand', span: 0.62, pos: [0, -0.06, 0.04], rot: [0, 90, 0], muzzle: [0.5, 0.08, 0] };
+    }
+    function _hqGunAttach() {
+        var H = _hq, pl = H && H.player; if (!pl || pl.held || pl._gunTried) return;
+        var G = _hqGunRules(), D = _hqData();
+        if (!D || !D.catalogue || !D.catalogue[G.key] || !D.catalogue[G.key].file) return;
+        pl._gunTried = true;
+        _hqAttachHeld(pl, { key: G.key, bone: G.bone || 'RightHand', pos: G.pos || [0, 0, 0], rot: G.rot || [0, 0, 0] });
+        var tries = 0;
+        (function show() { if (_hq !== H) return; if (!pl.held) { if (tries++ < 400) setTimeout(show, 100); return; } pl.held.visible = !!(H.portal && H.portal.drawn); H.dirty = true; })();
+    }
+    function _hqGunShow(on) {
+        var H = _hq, pl = H && H.player; if (!pl) return;
+        if (on) _hqGunAttach();
+        if (pl.held) { pl.held.visible = !!on; H.dirty = true; }
+    }
+    /* the barrel's end, in ROOM METRES (the gun's own frame → world); the
+       chest + half a metre along the heading while the model streams in */
+    function _hqGunMuzzle() {
+        var H = _hq, pl = H && H.player; if (!pl) return null;
+        var U = _hqUnits(), G = _hqGunRules();
+        if (pl.held && pl.held.visible && pl.held.children[0]) {
+            try {
+                var inner = pl.held.children[0], inst = inner.children[0];
+                var mz = G.muzzle || [0.5, 0.08, 0];
+                var v = new THREE.Vector3(mz[0] * U, mz[1] * U, mz[2] * U);
+                (inst || inner).updateWorldMatrix(true, false);
+                (inst || inner).localToWorld(v);
+                if (isFinite(v.x) && isFinite(v.y) && isFinite(v.z)) return { x: v.x / U, y: v.y / U, z: v.z / U };
+            } catch (e) {}
+        }
+        var yaw = pl.yaw || 0;
+        return { x: pl.x + Math.sin(yaw) * 0.55, y: pl.visY + (pl.heightM || 1.75) * 0.72, z: pl.z + Math.cos(yaw) * 0.55 };
+    }
+    /* THE LASER SIGHT: a thread from the muzzle to the aim in the verdict's
+       colour with a dot on the surface — the read that says WHERE before the
+       ghost says WHETHER (a 1 px additive line; never a blocker) */
+    function _hqPortalSight() {
+        var H = _hq; if (!H) return null;
+        if (H.portal.sight) return H.portal.sight;
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+        var mat = new THREE.LineBasicMaterial({ color: HQ_PORTAL_COLORS.ok, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
+        var line = new THREE.Line(geo, mat); line.frustumCulled = false; line.renderOrder = 6;
+        var dot = _hzGlowSprite(0.22 * _hqUnits(), HQ_PORTAL_COLORS.ok, 0.85, 0.15, 0.2, 5);
+        var g = new THREE.Group(); g.name = 'hq-portal-sight'; g.add(line, dot); g.visible = false;
+        g.userData = { line: line, mat: mat, dot: dot };
+        H.propGroup.add(g);
+        H.portal.sight = g;
+        return g;
     }
     /* the walkable surface under (x, z) for a ray point at height ry:
        the floor / the cell's feet / a pit's bed (blockers off), lifted to
@@ -42743,18 +42837,42 @@ const ThreeRenderer = (function () {
         var ring = new THREE.Mesh(new THREE.RingGeometry(0.62 * U, 0.78 * U, 40), mat); ring.position.set(0, oh / 2 * U, 0.03 * U);
         var arrow = new THREE.Mesh(new THREE.ConeGeometry(0.12 * U, 0.3 * U, 3), mat); arrow.rotation.x = Math.PI / 2; arrow.position.set(0, oh / 2 * U, 0.5 * U);   // out along the opening's normal
         g.add(jL, jR, lin, pane, ring, arrow);
-        g.userData.mat = mat; g.userData.pane = pane;
+        /* D3a (Delivery 3): the verdict is a WORD over the lintel — the refusal
+           reason in red, the surface in green — never just a colour */
+        var lblMat = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, depthTest: false, fog: false, side: THREE.DoubleSide, opacity: 0.95 });
+        var lbl = new THREE.Mesh(new THREE.PlaneGeometry(1.5 * U, 0.3 * U), lblMat); lbl.position.set(0, (oh + 0.55) * U, 0.05 * U); lbl.renderOrder = 7; lbl.visible = false;
+        g.add(lbl);
+        g.userData.mat = mat; g.userData.pane = pane; g.userData.lbl = lbl; g.userData.lblKey = '';
         H.propGroup.add(g);
         H.portal.ghost = g;
         return g;
     }
+    function _hqPortalGhostLabel(g, aim) {
+        var lbl = g.userData.lbl; if (!lbl) return;
+        var R = _hqPortalRules();
+        var word = aim.ok ? ((aim.surf || 'floor').toUpperCase() + ' · A / B') : (R.reasons[aim.reason] || R.reasons.none || String(aim.reason || '').toUpperCase());
+        var key = (aim.ok ? 'ok:' : 'no:') + word;
+        if (key !== g.userData.lblKey) {
+            g.userData.lblKey = key;
+            try {
+                var tex = _hzTextTex('hq_portal_lbl_' + key, [word], { w: 512, h: 104, color: aim.ok ? '#bfffd6' : '#ffb3b3', pad: 0.14, weight: 'bold', font: '"Courier New", Courier, monospace' });
+                lbl.material.map = tex || null; lbl.material.needsUpdate = true;
+            } catch (e) {}
+        }
+        lbl.visible = !!lbl.material.map;
+    }
     function _hqPortalTickAim() {
-        var H = _hq; if (!H || !H.portal || !H.portal.drawn) return;
+        var H = _hq; if (!H || !H.portal) return;
+        _hqPortalTickHold();   // THE RECALL (D3c): F held pulls the pair home, drawn or not
+        if (!H.portal.drawn) return;
         var aim = _hqPortalAim(null);
         H.portal.aim = aim;
         var g = _hqPortalGhost(); if (!g) return;
-        var U = _hqUnits();
-        if (!aim || !aim.dist) { g.visible = false; }   // no surface under the ray at all: nothing to show
+        var U = _hqUnits(), pl = H.player;
+        /* THE STANCE: drawn and standing, the officer squares up on the aim so the gun points where the eye looks */
+        if (pl && !pl.moving && !(H.ride && H.ride.on)) pl.targetYaw = Math.atan2(Math.sin(H.cam.yaw), -Math.cos(H.cam.yaw));
+        var sight = _hqPortalSight();
+        if (!aim || !aim.dist) { g.visible = false; if (sight) sight.visible = false; }   // no surface under the ray at all: nothing to show
         else {
             g.visible = true;
             var B = _hqPortalBasis(aim.face, aim.surf || 'floor');
@@ -42764,6 +42882,23 @@ const ThreeRenderer = (function () {
             g.position.set((aim.x - B.Y.x * oh / 2 + B.Z.x * off) * U, (aim.y - B.Y.y * oh / 2 + B.Z.y * off) * U, (aim.z - B.Y.z * oh / 2 + B.Z.z * off) * U);
             g.userData.mat.color.setHex(aim.ok ? HQ_PORTAL_COLORS.ok : HQ_PORTAL_COLORS.bad);
             g.userData.mat.opacity = 0.34 + 0.1 * Math.sin(performance.now() * 0.006);
+            _hqPortalGhostLabel(g, aim);
+            /* THE LASER SIGHT: muzzle → the hit */
+            if (sight) {
+                var mz = _hqGunMuzzle();
+                if (mz) {
+                    var pos = sight.userData.line.geometry.attributes.position;
+                    pos.setXYZ(0, mz.x * U, mz.y * U, mz.z * U); pos.setXYZ(1, aim.x * U, aim.y * U, aim.z * U); pos.needsUpdate = true;
+                    sight.userData.line.geometry.computeBoundingSphere();
+                    var hex = aim.ok ? HQ_PORTAL_COLORS.ok : HQ_PORTAL_COLORS.bad;
+                    var holdK = (H.portal.fAt && !H.portal.fFired) ? Math.min(1, (performance.now() - H.portal.fAt) / _hqPortalRules().recallMs) : 0;
+                    sight.userData.mat.color.setHex(hex).lerp(new THREE.Color(0xffffff), holdK);
+                    sight.userData.mat.opacity = 0.45 + 0.25 * holdK;
+                    sight.userData.dot.material.color.setHex(hex);
+                    sight.userData.dot.position.set((aim.x + B.Z.x * 0.03) * U, (aim.y + B.Z.y * 0.03) * U, (aim.z + B.Z.z * 0.03) * U);
+                    sight.visible = true;
+                } else sight.visible = false;
+            }
         }
         var key = aim ? ((aim.ok ? 'ok:' + (aim.surf || '') : (aim.reason || 'none'))) : 'none';
         if (key !== H.portal.lastKey) { H.portal.lastKey = key; if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'aim', ok: !!(aim && aim.ok), surf: aim ? aim.surf : null, reason: aim ? aim.reason : 'none' }); } catch (e) {} } }
@@ -42776,6 +42911,8 @@ const ThreeRenderer = (function () {
         H.portal.drawn = on;
         H.portal.lastKey = '';
         if (!on && H.portal.ghost) H.portal.ghost.visible = false;
+        if (!on && H.portal.sight) H.portal.sight.visible = false;
+        _hqGunShow(on);   // rev 3: the model in the hand while drawn
         if (on) _hqTryLock();
         if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'draw', on: on }); } catch (e) {} }
         H.dirty = true;
@@ -42798,23 +42935,69 @@ const ThreeRenderer = (function () {
         var row = filed.spec || spec;
         row.leaf = row.leaf || _hqPortalLeafKey(H.room);
         if (!row.surf) row.surf = aim.surf;
-        _hqPortalBuild(filed.slot, row, { fresh: true });
-        try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.45 }); } catch (e) {}
+        /* THE SHOT (rev 3): the door leaves the gun as a folded frame and unfolds on the surface —
+           the muzzle flash, the recoil kick, the ranged gesture, the sound; the record is filed NOW */
+        var from = _hqGunMuzzle();
+        _hqPortalBuild(filed.slot, row, { fresh: true, flight: from ? { from: from } : null });
+        _hqGunFire(from, filed.slot);
         H.portal.lastKey = '';
         return true;
+    }
+    /* the beat at the gun: a flash at the muzzle, sparks, the camera's kick, the officer's shot clip, the zap */
+    function _hqGunFire(from, slot) {
+        var H = _hq, pl = H && H.player; if (!H) return;
+        var U = _hqUnits(), R = _hqPortalRules(), hex = HQ_PORTAL_COLORS[slot] || 0xffffff;
+        try { if (typeof playDoorSfx === 'function') playDoorSfx('doorGunShot', { volume: 0.7 }); } catch (e) {}
+        if (pl && pl.entry && pl.entry.actions) {
+            var chain = _attackChainFor('ranged'), name = null;
+            for (var i = 0; i < chain.length; i++) if (pl.entry.actions[chain[i]]) { name = chain[i]; break; }
+            if (name) { var act = pl.entry.actions[name], clip = act.getClip(); pl.strike = { name: name, until: performance.now() + Math.min(700, (clip && clip.duration ? clip.duration / (Math.abs(act.timeScale) || 1) * 1000 : 500)), fresh: true }; }
+        }
+        /* the recoil: a pitch kick that eases back over kickMs */
+        var kick = R.shot.kick || 0, kms = R.shot.kickMs || 220;
+        if (kick > 0) {
+            H.cam.pitch += kick; var left = kick, t0 = performance.now();
+            H.tickers.push(function (dt, now) { if (left <= 0) return; var step = Math.min(left, kick * (dt * 1000) / kms); H.cam.pitch -= step; left -= step; });
+        }
+        if (!from) return;
+        try {
+            var burst = new THREE.Group(); burst.position.set(from.x * U, from.y * U, from.z * U);
+            var flash = _hzGlowSprite(0.9 * U, 0xffffff, 0.95, 0, 0, 0); burst.add(flash);
+            var ring = _hzGlowSprite(0.5 * U, hex, 0.9, 0, 0, 0); burst.add(ring);
+            var sparks = [];
+            var dir = new THREE.Vector3(); H.camera.getWorldDirection(dir);
+            for (var k = 0; k < 8; k++) {
+                var m = _hzGlowSprite(0.09 * U, k % 2 ? hex : 0xffffff, 0.9, 0, 0, 0);
+                var a = Math.random() * Math.PI * 2, sp = 1.2 + Math.random() * 2.2;
+                m.userData.v = { x: dir.x * sp + Math.cos(a) * 0.8, y: dir.y * sp + 0.6 + Math.sin(a) * 0.5, z: dir.z * sp + Math.sin(a) * 0.8 };
+                sparks.push(m); burst.add(m);
+            }
+            H.propGroup.add(burst);
+            var t1 = performance.now();
+            H.tickers.push(function (dt, now) {
+                if (!burst.parent) return;
+                var k2 = Math.min(1, (now - t1) / 260), e = 1 - k2;
+                flash.material.opacity = 0.95 * e * e; flash.scale.setScalar((0.9 + 0.8 * k2) * U);
+                ring.material.opacity = 0.9 * e; ring.scale.setScalar((0.5 + 1.6 * k2) * U);
+                for (var j = 0; j < sparks.length; j++) { var v = sparks[j].userData.v; sparks[j].position.set(v.x * k2 * U, (v.y * k2 - 2.2 * k2 * k2) * U, v.z * k2 * U); sparks[j].material.opacity = 0.9 * e; }
+                if (k2 >= 1) { try { H.propGroup.remove(burst); _disposeR(burst); } catch (err) {} }
+            });
+        } catch (e) {}
+        H.dirty = true;
     }
     function _hqPortalLeafKey(room) {
         var D = _hqData(), roomId = (_hq && _hq.opts.room) || 'central_egress';
         try { if (typeof window !== 'undefined' && typeof window.hqPortalLeaf === 'function') { var k = window.hqPortalLeaf(roomId); if (k && D.catalogue[k]) return k; } } catch (e) {}
         return (D && D.catalogue.leaf_coffee) ? 'leaf_coffee' : null;
     }
-    function _hqPortalRemove(slot) {
+    function _hqPortalRemove(slot, opts) {
         var H = _hq; if (!H || !H.portal) return false;
         var rec = H.portal.placed[slot]; if (!rec) return false;
         delete H.portal.placed[slot];
         var di = H.doors.indexOf(rec); if (di >= 0) H.doors.splice(di, 1);
         H.blockers = H.blockers.filter(function (b) { return b.portal !== slot; });
-        try { H.doorGroup.remove(rec.group); _disposeR(rec.group); } catch (e) {}
+        if (opts && opts.keep) { try { H.doorGroup.remove(rec.group); if (rec.plate) rec.plate.visible = false; } catch (e) {} }   // the recall animates the group home and disposes it itself
+        else { try { H.doorGroup.remove(rec.group); _disposeR(rec.group); } catch (e) {} }
         if (H.targetKey === 'door:' + rec.door.id) H.targetKey = '';
         if (H.portal.hold && H.portal.hold.slot === slot) H.portal.hold = null;
         H.dirty = true;
@@ -42879,8 +43062,11 @@ const ThreeRenderer = (function () {
         var apMat = new THREE.MeshBasicMaterial({ color: slotHex, transparent: true, opacity: flat ? 0.3 : 0.2, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
         var pane = new THREE.Mesh(new THREE.PlaneGeometry(ow * U, oh * U), apMat);
         pane.position.set(0, oh / 2 * U, 0.015 * U); grp.add(pane);
-        var rim = new THREE.Mesh(new THREE.RingGeometry(Math.min(ow, oh) * 0.46 * U, Math.min(ow, oh) * 0.5 * U, 44), apMat);
-        rim.position.set(0, oh / 2 * U, 0.02 * U); grp.add(rim);
+        /* D3b: THE SHAPE — A a circle, B a square (RingGeometry with four segments, turned a quarter);
+           the jamb lamps' caps follow (a ball / a cube), so a monochrome read tells the pair apart */
+        var shape = (_hqPortalRules().shapes || {})[slot] || (slot === 'b' ? 'square' : 'circle');
+        var rim = new THREE.Mesh(new THREE.RingGeometry(Math.min(ow, oh) * 0.46 * U, Math.min(ow, oh) * 0.5 * U, shape === 'square' ? 4 : 44), apMat);
+        rim.position.set(0, oh / 2 * U, 0.02 * U); if (shape === 'square') rim.rotation.z = Math.PI / 4; grp.add(rim);
         var plateW = Math.max(ow, 0.7);
         if (!flat) {
             var plate = _hqBox(plateW * 0.62, plateW * 0.62, 0.03, plateMat); plate.position.set(0, (oh + lh + 0.08 + plateW * 0.31) * U, 0);
@@ -42909,6 +43095,8 @@ const ThreeRenderer = (function () {
         /* the slot lamp: a strip on each jamb in the slot's colour, and a glow at the mouth */
         var lampL = new THREE.Mesh(new THREE.BoxGeometry(0.03 * U, (oh * 0.8) * U, 0.03 * U), slotMat); lampL.position.set(-(ow / 2 + 0.02) * U, (oh / 2) * U, (pd / 2 + 0.01) * U);
         var lampR = lampL.clone(); lampR.position.x = -lampL.position.x;
+        var capGeo = (shape === 'square') ? new THREE.BoxGeometry(0.09 * U, 0.09 * U, 0.09 * U) : new THREE.SphereGeometry(0.055 * U, 10, 8);
+        [lampL, lampR].forEach(function (lp) { var c1 = new THREE.Mesh(capGeo, slotMat); c1.position.set(lp.position.x, (oh * 0.9 + 0.06) * U, lp.position.z); grp.add(c1); var c2 = c1.clone(); c2.position.y = (oh * 0.1 - 0.06) * U; grp.add(c2); });
         var glow = _hzGlowSprite(1.4 * U, slotHex, 0.35, 0.12, 0.1, 1.4); glow.position.set(0, (flat ? oh / 2 : 0.25) * U, 0.35 * U);
         grp.add(lampL, lampR, glow);
         /* the leaf: the catalogue GLB on a swing pivot, opening out of the mouth (+Z) like every room door */
@@ -42974,8 +43162,17 @@ const ThreeRenderer = (function () {
                 H.blockers.push({ obj: d, rad: 0.24, y: y0, top: y0 + oh, portal: slot });
             });
         }
-        if (opts.fresh) {
-            /* the placing beat: a ring of motes out of the mouth */
+        if (opts.fresh && opts.flight && opts.flight.from) _hqPortalFlight(rec, grp, B, org, opts.flight.from, slot, spec, hitY, oh);
+        else if (opts.fresh) _hqPortalLandBeat(B, spec, hitY, slot, U);
+        H.dirty = true;
+        return rec;
+    }
+    /* the placing beat: a ring of motes out of the mouth (+ rev 3: the shock ring on the surface and a breath of light) */
+    function _hqPortalLandBeat(B, spec, hitY, slot, U) {
+        var H = _hq; if (!H) return;
+        var slotHex = HQ_PORTAL_COLORS[slot] || 0xffffff;
+        try { if (typeof playDoorSfx === 'function') playDoorSfx('doorGunLand', { volume: 0.6 }); } catch (e) {}
+        {
             try {
                 var burst = new THREE.Group(); burst.position.set(spec.x * U, hitY * U, spec.z * U);
                 var bits = [];
@@ -42985,18 +43182,92 @@ const ThreeRenderer = (function () {
                     m.userData.v = { x: B.X.x * Math.cos(a) * 0.7 + B.Y.x * Math.sin(a) * 0.7, y: B.X.y * Math.cos(a) * 0.7 + B.Y.y * Math.sin(a) * 0.7, z: B.X.z * Math.cos(a) * 0.7 + B.Y.z * Math.sin(a) * 0.7 };
                     bits.push(m); burst.add(m);
                 }
+                /* the shock ring in the surface's own plane + the breath of light */
+                var ringMat = new THREE.MeshBasicMaterial({ color: slotHex, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
+                var shock = new THREE.Mesh(new THREE.RingGeometry(0.5 * U, 0.62 * U, 40), ringMat); shock.quaternion.copy(B.q); shock.position.set(B.Z.x * 0.03 * U, B.Z.y * 0.03 * U, B.Z.z * 0.03 * U); burst.add(shock);
+                var breath = _hzGlowSprite(2.4 * U, slotHex, 0.6, 0, 0, 0); breath.position.set(B.Z.x * 0.4 * U, B.Z.y * 0.4 * U, B.Z.z * 0.4 * U); burst.add(breath);
+                var lamp = null;
+                try { lamp = new THREE.PointLight(slotHex, 1.6, 6 * U, 2); lamp.position.set(B.Z.x * 0.6 * U, B.Z.y * 0.6 * U, B.Z.z * 0.6 * U); burst.add(lamp); } catch (e) { lamp = null; }
                 H.propGroup.add(burst);
                 var t0 = performance.now();
                 H.tickers.push(function (dt, now) {
                     if (!burst.parent) return;
                     var k = Math.min(1, (now - t0) / 600), e = 1 - k;
                     for (var j = 0; j < bits.length; j++) { var v = bits[j].userData.v; bits[j].position.set((v.x + B.Z.x * 1.6 * k) * U, (v.y + B.Z.y * 1.6 * k) * U, (v.z + B.Z.z * 1.6 * k) * U); bits[j].material.opacity = 0.9 * e; }
+                    var sk = 1 + 2.6 * k; shock.scale.set(sk, sk, 1); ringMat.opacity = 0.8 * e * e;
+                    breath.material.opacity = 0.6 * e; breath.scale.setScalar((2.4 + 1.5 * k) * U);
+                    if (lamp) lamp.intensity = 1.6 * e;
                     if (k >= 1) { try { H.propGroup.remove(burst); _disposeR(burst); } catch (err) {} }
                 });
             } catch (e) {}
         }
         H.dirty = true;
-        return rec;
+    }
+    /* THE FLIGHT (rev 3): the frame leaves the muzzle folded — a tumbling
+       miniature of itself in the slot's colour with a comet trail — and
+       UNFOLDS on the surface (ease-out-back about the opening's centre),
+       the landing beat under it. The record stands from the click (the
+       blockers, the plate, the scan); only the picture is late. A slot
+       removed mid-flight (a recall, a move) kills the projectile. */
+    function _hqPortalFlight(rec, grp, B, org, from, slot, spec, hitY, oh) {
+        var H = _hq; if (!H) return;
+        var U = _hqUnits(), R = _hqPortalRules(), slotHex = HQ_PORTAL_COLORS[slot] || 0xffffff;
+        var to = { x: spec.x, y: hitY, z: spec.z };
+        var dist = Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z);
+        var ms = Math.max(R.shot.minMs || 110, Math.min(R.shot.maxMs || 380, dist * (R.shot.msPerM || 28)));
+        var unfoldMs = R.shot.unfoldMs || 300;
+        grp.visible = false;
+        if (rec.plate) rec.plate.visible = false;
+        var proj = new THREE.Group(); proj.name = 'hq-portal-shot-' + slot;
+        var pm = new THREE.MeshBasicMaterial({ color: slotHex, transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
+        var mini = new THREE.Group();
+        var mw = 0.34, mh = 0.62, mj = 0.05;
+        var a1 = new THREE.Mesh(new THREE.BoxGeometry(mj * U, mh * U, mj * U), pm); a1.position.x = -(mw / 2) * U; mini.add(a1);
+        var a2 = a1.clone(); a2.position.x = (mw / 2) * U; mini.add(a2);
+        var a3 = new THREE.Mesh(new THREE.BoxGeometry((mw + mj) * U, mj * U, mj * U), pm); a3.position.y = (mh / 2) * U; mini.add(a3);
+        var a4 = a3.clone(); a4.position.y = -(mh / 2) * U; mini.add(a4);
+        proj.add(mini);
+        var core = _hzGlowSprite(0.7 * U, 0xffffff, 0.9, 0, 0, 0); proj.add(core);
+        var halo = _hzGlowSprite(1.3 * U, slotHex, 0.55, 0, 0, 0); proj.add(halo);
+        var trail = [], TN = 12;
+        for (var i = 0; i < TN; i++) { var t = _hzGlowSprite((0.28 - i * 0.016) * U, i % 3 ? slotHex : 0xffffff, 0.7, 0, 0, 0); trail.push({ m: t, p: null }); H.propGroup.add(t); }
+        H.propGroup.add(proj);
+        var t0 = performance.now(), landed = false, spinAx = new THREE.Vector3(Math.random() - 0.5, 1, Math.random() - 0.5).normalize();
+        var centre = { x: org.x + B.Y.x * (oh / 2), y: org.y + B.Y.y * (oh / 2), z: org.z + B.Y.z * (oh / 2) };
+        function done() {
+            try { H.propGroup.remove(proj); _disposeR(proj); } catch (e) {}
+            for (var j = 0; j < trail.length; j++) { try { H.propGroup.remove(trail[j].m); _disposeR(trail[j].m); } catch (e) {} }
+        }
+        H.tickers.push(function (dt, now) {
+            if (!proj.parent) return;
+            if (!grp.parent) { done(); return; }   // the slot went (a recall / a move) — the shot dies with it
+            var el = now - t0;
+            if (!landed) {
+                var k = Math.min(1, el / ms), e = 1 - (1 - k) * (1 - k);
+                /* a shallow arc, the tumble tightening as it lands */
+                var lift = Math.sin(k * Math.PI) * Math.min(0.5, dist * 0.08);
+                var px = from.x + (to.x - from.x) * e, py = from.y + (to.y - from.y) * e + lift, pz = from.z + (to.z - from.z) * e;
+                proj.position.set(px * U, py * U, pz * U);
+                mini.quaternion.setFromAxisAngle(spinAx, el * 0.02);
+                for (var j = trail.length - 1; j >= 0; j--) { var tp = j ? trail[j - 1].p : { x: px * U, y: py * U, z: pz * U }; if (tp) { trail[j].p = { x: tp.x, y: tp.y, z: tp.z }; trail[j].m.position.set(tp.x, tp.y, tp.z); trail[j].m.material.opacity = 0.7 * (1 - j / TN); } }
+                if (k < 1) return;
+                landed = true; t0 = now;
+                grp.visible = true;
+                _hqPortalLandBeat(B, spec, hitY, slot, U);
+                try { if (typeof window !== 'undefined' && window.playDoorSfx) window.playDoorSfx('doorBuzz', { volume: 0.45 }); } catch (e) {}
+                return;
+            }
+            var u = Math.min(1, el / unfoldMs);
+            var s = 1.70158, q = u - 1, back = q * q * ((s + 1) * q + s) + 1;   // ease-out-back
+            var sc = Math.max(0.04, back);
+            grp.scale.setScalar(sc);
+            /* scale about the opening's CENTRE, not the sill */
+            grp.position.set((centre.x - B.Y.x * (oh / 2) * sc) * U, (centre.y - B.Y.y * (oh / 2) * sc) * U, (centre.z - B.Y.z * (oh / 2) * sc) * U);
+            var f = Math.max(0, 1 - u * 2.2);
+            core.material.opacity = 0.9 * f; halo.material.opacity = 0.55 * f; halo.scale.setScalar((1.3 + 2.5 * u) * U);
+            for (var j2 = 0; j2 < trail.length; j2++) trail[j2].m.material.opacity *= 0.82;
+            if (u >= 1) { grp.scale.setScalar(1); grp.position.set(org.x * U, org.y * U, org.z * U); if (rec.plate) rec.plate.visible = true; done(); }
+        });
     }
     /* on every room entry: the pair's doors standing in THIS room, from the record map.js hands in */
     function _hqBuildPortals(room, opts) {
@@ -43029,12 +43300,14 @@ const ThreeRenderer = (function () {
             var hr = H.portal.placed[hold.slot];
             if (!hr || !_hqPortalInMouth(hr, pl) || performance.now() - hold.at > 4000) H.portal.hold = null;
         }
-        var slots = ['a', 'b'];
+        var slots = ['a', 'b'], rearm = _hqPortalRules().rearmMs;
         for (var i = 0; i < slots.length; i++) {
             var s = slots[i], rec = H.portal.placed[s];
             if (!rec) continue;
             if (H.portal.hold && H.portal.hold.slot === s) continue;
+            if (rec.lastCrossAt && performance.now() - rec.lastCrossAt < rearm) continue;   // D3c: a mouth re-arms only rearmMs after its last crossing (the hatch-loop cap)
             if (!_hqPortalInMouth(rec, pl)) continue;
+            rec.lastCrossAt = performance.now();
             H.portal.cross = { slot: s, speed: Math.abs(pl.vy || 0), at: performance.now() };
             H.portal.hold = { slot: s, at: performance.now() };   // held either way: a refused crossing must not re-fire every frame
             if (H.opts.onPortalCross) { try { H.opts.onPortalCross(s); } catch (e) { console.warn('[HQ] portal cross failed', e); } }
@@ -43062,7 +43335,17 @@ const ThreeRenderer = (function () {
         } else {
             if (!_hqGoTo('portal:' + slot, true)) return false;
         }
+        /* D4 (Delivery 3): out of a flat twin the body must stand CLEAR — a prop re-seated over the
+           mouth, a shelf under a ceiling hatch — nudged along the twin's own normal up to exitNudge */
+        if (surf !== 'wall') {
+            var nudge = _hqPortalRules().exitNudge, ny = rec.ny || (surf === 'ceiling' ? -1 : 1);
+            for (var nd = 0; nd <= nudge + 1e-6; nd += 0.15) {
+                var fy = pl.y + ny * nd;
+                if (_hqAirClearOfBlockers(pl.x, pl.z, fy) && _hqAirClearOfBlockers(pl.x, pl.z, fy + (pl.heightM || 1.75) * 0.9)) { pl.y = fy; break; }
+            }
+        }
         pl.visY = pl.y;
+        rec.lastCrossAt = performance.now();
         H.portal.hold = { slot: slot, at: performance.now() };   // the mouth you came out of does not swallow you again
         H.portal.cross = null;
         H.enterDoorLatch = 'portal:' + slot;
@@ -43077,6 +43360,53 @@ const ThreeRenderer = (function () {
         } catch (e) {}
         H.dirty = true;
         return true;
+    }
+    /* THE RECALL (D3c, Delivery 3): F held for recallMs pulls BOTH doors back
+       into the gun — from anywhere, mid-fall included — and clears the pair
+       (map.js `onPortal({ kind: 'recall' })` files it). Each door shrinks
+       toward the muzzle on a comet of its own colour, then goes. */
+    function _hqPortalTickHold() {
+        var H = _hq; if (!H || !H.portal || !H.portal.fAt || H.portal.fFired) return;
+        if (performance.now() - H.portal.fAt < _hqPortalRules().recallMs) return;
+        if (!H.portal.placed.a && !H.portal.placed.b) return;   // nothing to recall: the release still toggles the draw
+        H.portal.fFired = true;
+        _hqPortalRecall();
+    }
+    function _hqPortalRecall() {
+        var H = _hq; if (!H || !H.portal) return 0;
+        var U = _hqUnits(), from = _hqGunMuzzle() || { x: H.player ? H.player.x : 0, y: H.player ? H.player.visY + 1.2 : 1.2, z: H.player ? H.player.z : 0 };
+        var n = 0;
+        ['a', 'b'].forEach(function (slot) {
+            var rec = H.portal.placed[slot]; if (!rec) return;
+            n++;
+            var grp = rec.group, hex = HQ_PORTAL_COLORS[slot] || 0xffffff;
+            /* the record goes NOW (the blockers, the scan, the plate); the picture flies home */
+            var start = grp.position.clone(), q0 = grp.quaternion.clone(), s0 = grp.scale.x || 1;
+            _hqPortalRemove(slot, { keep: true });
+            var ghostG = grp; H.propGroup.add(ghostG);
+            var bits = [];
+            for (var i = 0; i < 8; i++) { var m = _hzGlowSprite(0.2 * U, i % 2 ? hex : 0xffffff, 0.8, 0, 0, 0); bits.push(m); H.propGroup.add(m); }
+            var t0 = performance.now(), ms = 320;
+            H.tickers.push(function (dt, now) {
+                if (!ghostG.parent) return;
+                var k = Math.min(1, (now - t0) / ms), e = k * k;
+                var mz = _hqGunMuzzle() || from;
+                ghostG.position.set(start.x + (mz.x * U - start.x) * e, start.y + (mz.y * U - start.y) * e, start.z + (mz.z * U - start.z) * e);
+                ghostG.scale.setScalar(Math.max(0.02, s0 * (1 - e)));
+                ghostG.quaternion.copy(q0); ghostG.rotateY(e * 6);
+                for (var j = 0; j < bits.length; j++) { var lag = Math.max(0, e - j * 0.06); bits[j].position.set(start.x + (mz.x * U - start.x) * lag, start.y + (mz.y * U - start.y) * lag + Math.sin(j + now * 0.02) * 0.08 * U, start.z + (mz.z * U - start.z) * lag); bits[j].material.opacity = 0.8 * (1 - k); }
+                if (k >= 1) { try { H.propGroup.remove(ghostG); _disposeR(ghostG); } catch (er) {} for (var j2 = 0; j2 < bits.length; j2++) { try { H.propGroup.remove(bits[j2]); _disposeR(bits[j2]); } catch (er2) {} } }
+            });
+        });
+        if (n) {
+            try { if (typeof playDoorSfx === 'function') playDoorSfx('doorGunRecall', { volume: 0.6 }); } catch (e) {}
+            var mzf = _hqGunMuzzle();
+            if (mzf) { try { var fl = _hzGlowSprite(1.6 * U, 0xffffff, 0.9, 0, 0, 0); fl.position.set(mzf.x * U, mzf.y * U, mzf.z * U); H.propGroup.add(fl); var tf = performance.now(); H.tickers.push(function (dt, now) { if (!fl.parent) return; var k = Math.min(1, (now - tf - 260) / 300); if (k < 0) { fl.material.opacity = 0.2; return; } fl.material.opacity = 0.9 * (1 - k); fl.scale.setScalar((1.6 + 1.2 * k) * U); if (k >= 1) { try { H.propGroup.remove(fl); _disposeR(fl); } catch (e2) {} } }); } catch (e) {} }
+            H.portal.hold = null; H.portal.cross = null;
+        }
+        if (H.opts.onPortal) { try { H.opts.onPortal({ kind: 'recall', n: n }); } catch (e) {} }
+        H.dirty = true;
+        return n;
     }
     /* The story cast (data.js DOOR_CAST → sprites.js DOOR_CAST_MODELS,
        2026-09-06): named people at their posts — Rhonda seated behind the
@@ -43855,15 +44185,19 @@ const ThreeRenderer = (function () {
             if (k === 'v') { e.preventDefault(); _hqToggleView(); return; }
             /* SKATEBOARDING (HQ plan 9.8): B drops the deck / picks it up */
             if (k === 'b') { e.preventDefault(); _hqRideToggle(); return; }
-            /* THE DOOR GUN (HQ plan 9.5): F draws / holsters; Q holsters a drawn one (else the bell) */
-            if (k === 'f') { e.preventDefault(); _hqPortalDraw(!(H.portal && H.portal.drawn)); return; }
+            /* THE DOOR GUN (HQ plan 9.5): F draws / holsters — on the RELEASE of a tap (rev 3: a HOLD of
+               recallMs pulls both doors home instead, `_hqPortalTickHold`); Q holsters a drawn one (else the bell) */
+            if (k === 'f') { e.preventDefault(); if (!e.repeat && H.portal && !H.portal.fAt) { H.portal.fAt = performance.now(); H.portal.fFired = false; } return; }
             if (k === 'q' && H.portal && H.portal.drawn) { e.preventDefault(); _hqPortalDraw(false); return; }
             /* Q = answer a BELL call from anywhere in the building (HQ plan D2) */
             if (k === 'q') { e.preventDefault(); if (H.opts.onHotkey) H.opts.onHotkey('q'); return; }
             H.keys[k] = true;
             if (k === 'space' || (e.key && e.key.indexOf('Arrow') === 0)) e.preventDefault();
         };
-        H.onKeyUp = function (e) { if (!_hq) return; var k = _hqKeyName(e); if (k) H.keys[k] = false; };
+        H.onKeyUp = function (e) {
+            if (!_hq) return; var k = _hqKeyName(e); if (k) H.keys[k] = false;
+            if (k === 'f' && H.portal && H.portal.fAt) { var fired = H.portal.fFired; H.portal.fAt = 0; H.portal.fFired = false; if (!fired && !H.paused) _hqPortalDraw(!(H.portal && H.portal.drawn)); }
+        };
         H.onBlur = function () { if (_hq) { H.keys = {}; H.drag = null; } };
         H.onMouseDown = function (e) {
             if (!_hq || H.paused) return;
@@ -45014,7 +45348,7 @@ const ThreeRenderer = (function () {
             gallery: null,   /* THE GALLERY (9.2 stage 2, 2026-09-15 rev 20): the box room's two-floor frame (_hqGalleryFrame), read by _hqSurface / _hqAirOK / _hqCamBlocked / _hqBlockerFloor */
             rails: [], ramps: [], ride: null,   /* SKATEBOARDING (9.8, 2026-09-15): THE PARK RULE's registers (every builder pushes its rails / ramps) and the rider (_hqRideArm) */
             finds: [], findLights: 0,   /* THE FINDS (9.1, 2026-09-15): the takeable objects standing in the room (_hqPlaceFinds) and the count of their point lights */
-            portal: { drawn: false, ghost: null, aim: null, placed: {}, lastKey: '', hold: null, cross: null, issued: !!(opts.portal && opts.portal.issued) },   /* THE DOOR GUN (9.5, rev 13; rev 2 2026-09-15: `hold` = the mouth you came out of, `cross` = the entry's speed): the drawn state, the ghost, the last aim, the placed door records by slot */
+            portal: { drawn: false, ghost: null, aim: null, placed: {}, lastKey: '', hold: null, cross: null, issued: !!(opts.portal && opts.portal.issued), sight: null, fAt: 0, fFired: false },   /* THE DOOR GUN (9.5, rev 13; rev 2 2026-09-15: `hold` = the mouth you came out of, `cross` = the entry's speed): the drawn state, the ghost, the last aim, the placed door records by slot */
             tickers: [], propLights: 0,   /* Phase 8 (2026-09-14): per-frame callbacks registered by procs (the orb, the torches, the shaft); the count of catalogue `light`s placed */
             props: [], focus: null,   /* props: { key, grp } per placed catalogue prop (the terminal's camera finds the CRT by key); focus: the screen push (_hqFocusScreen) */
             keys: {}, drag: null, lastDragAt: 0, fp: false, paused: false, ready: false, t0: performance.now(), lastMs: 0, lastDebug: 0,
@@ -45359,6 +45693,8 @@ const ThreeRenderer = (function () {
         portalHop: _hqPortalHop,
         portalCross: function (slot) { return _hqPortalHop(slot); },
         portalRemove: _hqPortalRemove,
+        portalRecall: _hqPortalRecall,   /* rev 3: both doors back into the gun (the F hold; the pill) */
+        gunMuzzle: _hqGunMuzzle,
         /* THE ENCOUNTER (HQ plan 9.4, 2026-09-15 rev 16): throw a gesture by key ('1'..'4'), the native the gesture would land on */
         strike: _hqStrikeClick,
         encounterAim: function () { return _hq ? _hqEncounterAim() : null; },

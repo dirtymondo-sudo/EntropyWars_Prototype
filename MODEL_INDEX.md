@@ -122,6 +122,7 @@ boards through `_hzDoorKitGLB`, which since this batch takes `unlit` /
 | `security_camera` | camera_01_cc0_clip_ready_v1.glb | wall prop, `mount` 2.55 | Downtown (`_hzSecurityCam`'s head, GLB-first over the box head; the `securitycam` monument too) | | the hall (over Reception, over the vault), IT, the Interrogation Room | |
 | `utility_box` | utility_box_01_cc0_clip_ready_v1.glb | 1.35 m, foot 0.45 | Cyberpunk ×2 · the Strip ×2 · Downtown ×2 · Nuketown · the Stadium ×2 (`_nrProp` + `_hzDoorKitGLB`; the site rooms inherit them) | | | |
 | `asteroid_a` / `asteroid_b` | asteroid_1.glb / asteroid_2.glb | unlit, tumbling | | **space** (Mars, the Moon, Saturn, the Singularity) + **wreckage** (the Spaceship) via `_hzAsteroidFar` — `_hzAsteroid` (the procedural rock) is the fallback | the celestial site rooms' skies (same roster) | |
+| `door_gun` | Meshy_AI_a_retro_gun_that_shoo_0916054449_texture.glb | **THE DOOR GUN** (2026-09-16): 1.0 long on X · 0.615 tall · 0.325 wide, 8.8k tris, the muzzle read as −X (unmeasured — `HQ_PORTAL_RULES.gun.rot[1]` ± 180 is the fix); `span` 0.62 m | every **Door Agent**'s right hand, every battle (sprites.js `hold` → three-renderer.js `_unitAttachHeld`); the placements are SHOTS from it (`_sigDoorGunShot3D`, `raceDoorGun:shot`) | | the officer's right hand while the gun is DRAWN (`_hqGunAttach`; the laser sight, the shot, the recall leave its muzzle) | repo `doors/` |
 
 The frame fits the leaf since this batch: a leaf may carry `shape:
 'circle'` (+ `hole`, the disc's share of the opening — the vault 0.64,

@@ -2291,9 +2291,16 @@ if (typeof window !== 'undefined') {
 // THE DOOR AGENT race (DOOR_RACE_DESIGN.md, 2026-09-14) walks the board as the
 // cast: the recruit (male) and Agent Belle (female). Registered HERE — after
 // the cast library — because RACE_MODELS_3D is built before _CAST_POSES exists.
+// 2026-09-16: every Door Agent CARRIES THE DOOR GUN by default — the D.O.O.R. catalogue's
+// `door_gun` GLB (data.js, the user's retro ray gun) in the right hand, at real scale, the
+// same grip tuning the building's walker uses (data.js HQ_PORTAL_RULES.gun — the ONE place
+// to move it). three-renderer.js `_unitAttachHeld` parents it to the rig's hand bone.
+// (sprites.js loads BEFORE data.js: this row is the fallback — `_unitAttachHeld` merges the live
+// HQ_PORTAL_RULES.gun over it at attach time, so the grip is tuned there, once.)
+const _DOOR_AGENT_HOLD = { key: 'door_gun', bone: 'RightHand', pos: [0, -0.06, 0.04], rot: [0, 90, 0] };
 RACE_MODELS_3D['door agent'] = {
-  male:   Object.assign({}, DOOR_CAST_MODELS.player, { basicAttackKind: 'punch' }),
-  female: Object.assign({}, DOOR_CAST_MODELS.belle,  { basicAttackKind: 'punch' }),
+  male:   Object.assign({}, DOOR_CAST_MODELS.player, { basicAttackKind: 'punch', hold: _DOOR_AGENT_HOLD }),
+  female: Object.assign({}, DOOR_CAST_MODELS.belle,  { basicAttackKind: 'punch', hold: _DOOR_AGENT_HOLD }),
 };
 
 // ───────────────────────────────────────────────────────────────────────────

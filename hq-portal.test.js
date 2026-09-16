@@ -153,9 +153,10 @@ test('THE RENDERER: the aim against the surface set, the ghost, the placed door 
     assert.ok(/function _hqPortalHop\(slot, opts\)/.test(TR) && /_hqGoTo\('portal:' \+ slot, true\)/.test(TR) && /H\.enterDoorLatch = 'portal:' \+ slot/.test(TR), 'the hop lands out of the twin (a wall door in front of it, facing away), latched');
     assert.ok(/try \{ _hqBuildPortals\(room, opts\); \}/.test(TR), 'rebuilt on every entry');
     assert.ok(/_hqPortalTickAim\(\);/.test(TR.slice(TR.indexOf('function _hqTickWorld'))), 'the ghost follows the aim each frame');
-    assert.ok(/portal: \{ drawn: false, ghost: null, aim: null, placed: \{\}, lastKey: '', hold: null, cross: null, issued:/.test(TR), 'the record on _hq (the held mouth and the entry speed ride it)');
+    assert.ok(/portal: \{ drawn: false, ghost: null, aim: null, placed: \{\}, lastKey: '', hold: null, cross: null, issued:[^\n]*sight: null, fAt: 0, fFired: false \}/.test(TR), 'the record on _hq (the held mouth, the entry speed, the sight and the F hold ride it)');
     ['portalDraw: _hqPortalDraw', 'portalIssued:', 'portalDrawn:', 'portalAim:', 'portalPlace: _hqPortalPlaceAim', 'portalHop: _hqPortalHop', 'portalRemove: _hqPortalRemove', 'portalDoors:'].forEach(k => assert.ok(TR.indexOf(k) >= 0, 'API ' + k));
-    assert.ok(/k === 'f'\) \{ e\.preventDefault\(\); _hqPortalDraw\(!\(H\.portal && H\.portal\.drawn\)\)/.test(TR), 'F draws / holsters');
+    assert.ok(/k === 'f'\) \{ e\.preventDefault\(\); if \(!e\.repeat && H\.portal && !H\.portal\.fAt\) \{ H\.portal\.fAt = performance\.now\(\)/.test(TR), 'F is stamped on the press (rev 3: a hold recalls)');
+    assert.ok(/if \(k === 'f' && H\.portal && H\.portal\.fAt\) \{ var fired = H\.portal\.fFired; H\.portal\.fAt = 0; H\.portal\.fFired = false; if \(!fired && !H\.paused\) _hqPortalDraw\(!\(H\.portal && H\.portal\.drawn\)\)/.test(TR), 'a TAP draws / holsters on the release');
     assert.ok(/k === 'q' && H\.portal && H\.portal\.drawn\) \{ e\.preventDefault\(\); _hqPortalDraw\(false\)/.test(TR), 'Q holsters a drawn one before the bell');
     assert.ok(/if \(e\.button === 0\) _hqPortalPlaceAim\('a'\); else if \(e\.button === 2\) _hqPortalPlaceAim\('b'\);/.test(TR), 'TWO BUTTONS: left click places A, right click places B');
     assert.ok(/k === 'v' \|\| k === 'f' \|\| k === 'q'/.test(TR), 'F is a walker key');
@@ -255,6 +256,77 @@ test('THE RENDERER rev 2: the ceiling and the wall are surfaces, the frame is la
     assert.ok(/_hqTickPortalCross\(dt\);/.test(TR.slice(TR.indexOf('function _hqFrame'))), 'the crossing is ticked with the walker');
     assert.ok(/if \(_hq\.portal\) _hq\.portal\.hold = \{ slot: d\.portal, at: performance\.now\(\) \};/.test(TR), 'a room change through the pair lands held');
     assert.ok(/onPortalCross: function \(slot\)/.test(MP), 'map.js takes the crossing');
-    assert.ok(/L-CLICK ▸ A · R-CLICK ▸ B/.test(IX), 'index.html: the two buttons in the hint');
+    assert.ok(/L-CLICK ▸ A ● · R-CLICK ▸ B ■/.test(IX), 'index.html: the two buttons (and the two shapes) in the hint');
     assert.ok(/\.hq-plate\.hq-plate-portal-a b/.test(CSS) && /\.hq-plate\.hq-plate-portal-b b/.test(CSS), 'the CSS: two colours');
+});
+
+/* ═══ rev 3 (2026-09-16, Phase 9 Delivery 3 — THE GUN READS + the user's model) ═══ */
+const SP = fs.readFileSync(__dirname + '/sprites.js', 'utf8');
+const VFX = fs.readFileSync(__dirname + '/three-vfx-effects.js', 'utf8');
+const BT = fs.readFileSync(__dirname + '/battle.js', 'utf8');
+const AU = fs.readFileSync(__dirname + '/audio.js', 'utf8');
+const MI = fs.readFileSync(__dirname + '/MODEL_INDEX.md', 'utf8');
+
+test('THE GUN (rev 3): the catalogue row is the user\'s GLB in the door-kit folder, the rules name the grip, the muzzle, the shot, the shapes, the words, the recall and the re-arm', () => {
+    const cat = HQ.catalogue.door_gun;
+    assert.ok(cat && /retro_gun/.test(cat.file) && cat.span > 0 && cat.gun === true, 'door_gun: the retro ray gun, sized by its span');
+    assert.ok(fs.existsSync(__dirname + '/doors/' + cat.file), 'the file is in the repo\'s doors/ folder (the user uploaded it to R2 Assets/door/models/ too)');
+    assert.ok(MI.includes(cat.file), 'MODEL_INDEX.md names it');
+    assert.equal(R.gun.key, 'door_gun'); assert.equal(R.gun.bone, 'RightHand');
+    assert.ok(Array.isArray(R.gun.pos) && R.gun.pos.length === 3 && Array.isArray(R.gun.rot) && R.gun.rot.length === 3 && Array.isArray(R.gun.muzzle) && R.gun.muzzle.length === 3, 'the grip and the muzzle are three numbers each');
+    assert.ok(R.shot.msPerM > 0 && R.shot.minMs > 0 && R.shot.maxMs >= R.shot.minMs && R.shot.unfoldMs > 0 && R.shot.kick >= 0 && R.shot.kickMs > 0, 'the shot\'s timing');
+    assert.equal(R.shapes.a, 'circle'); assert.equal(R.shapes.b, 'square');
+    ['fluid', 'near', 'twin', 'door', 'room', 'wall', 'none'].forEach(k => assert.ok(typeof R.reasons[k] === 'string' && R.reasons[k].length, 'a word for ' + k));
+    assert.ok(R.recallMs >= 400 && R.recallMs <= 1200, 'the recall hold is a deliberate hold, not a tap');
+    assert.ok(R.rearmMs >= 200, 'a mouth re-arms no sooner than 200 ms (the hatch-loop cap)');
+    assert.ok(R.exitNudgeM > 0 && R.exitNudgeM <= 1, 'D4: the exit nudge');
+});
+
+test('THE RENDERER rev 3: the gun in the hand while drawn, the laser sight, the reason label, the shot that unfolds, the A/B shapes, the re-arm, the recall, the exit nudge', () => {
+    assert.ok(/function _hqGunAttach\(\)/.test(TR) && /_hqAttachHeld\(pl, \{ key: G\.key, bone: G\.bone \|\| 'RightHand'/.test(TR), 'the gun rides the same holder as the Janitor\'s mop');
+    assert.ok(/function _hqGunShow\(on\)/.test(TR) && /_hqGunShow\(on\);/.test(TR.slice(TR.indexOf('function _hqPortalDraw'))), 'shown while drawn, hidden holstered');
+    assert.ok(/function _hqGunMuzzle\(\)/.test(TR) && /G\.muzzle/.test(TR), 'the muzzle off the gun\'s own frame');
+    assert.ok(/function _hqPortalSight\(\)/.test(TR) && /new THREE\.Line\(geo, mat\)/.test(TR.slice(TR.indexOf('function _hqPortalSight'), TR.indexOf('function _hqPortalSurf'))), 'THE LASER SIGHT is a line');
+    const tick = TR.slice(TR.indexOf('function _hqPortalTickAim'), TR.indexOf('function _hqPortalDraw'));
+    assert.ok(/_hqPortalTickHold\(\);/.test(tick) && /_hqPortalGhostLabel\(g, aim\)/.test(tick) && /pl\.targetYaw = Math\.atan2\(Math\.sin\(H\.cam\.yaw\), -Math\.cos\(H\.cam\.yaw\)\)/.test(tick), 'the hold is ticked, the label written, the officer squares up on the aim');
+    assert.ok(/function _hqPortalGhostLabel\(g, aim\)/.test(TR) && /R\.reasons\[aim\.reason\]/.test(TR), 'D3a: the refusal reason is a WORD on the ghost');
+    const place = TR.slice(TR.indexOf('function _hqPortalPlaceAim'), TR.indexOf('function _hqGunFire'));
+    assert.ok(/_hqPortalBuild\(filed\.slot, row, \{ fresh: true, flight: from \? \{ from: from \} : null \}\)/.test(place) && /_hqGunFire\(from, filed\.slot\)/.test(place), 'the placement is a SHOT from the muzzle');
+    const fire = TR.slice(TR.indexOf('function _hqGunFire'), TR.indexOf('function _hqPortalLeafKey'));
+    assert.ok(/playDoorSfx\('doorGunShot'/.test(fire) && /_attackChainFor\('ranged'\)/.test(fire) && /H\.cam\.pitch \+= kick/.test(fire), 'the zap, the ranged gesture, the recoil kick');
+    const build = TR.slice(TR.indexOf('function _hqPortalBuild'), TR.indexOf('function _hqPortalLandBeat'));
+    assert.ok(/shape === 'square' \? 4 : 44/.test(build) && /rim\.rotation\.z = Math\.PI \/ 4/.test(build) && /new THREE\.SphereGeometry\(0\.055 \* U/.test(build), 'D3b: A a circle, B a square (the rim and the lamp caps)');
+    assert.ok(/if \(opts\.fresh && opts\.flight && opts\.flight\.from\) _hqPortalFlight\(/.test(build), 'a fresh placement with a muzzle flies');
+    const flight = TR.slice(TR.indexOf('function _hqPortalFlight'), TR.indexOf('function _hqBuildPortals'));
+    assert.ok(/grp\.visible = false;/.test(flight) && /if \(!grp\.parent\) \{ done\(\); return; \}/.test(flight) && /ease-out-back/.test(flight) && /_hqPortalLandBeat\(B, spec, hitY, slot, U\)/.test(flight), 'the frame is hidden in flight, dies with its slot, unfolds with an ease-out-back, and the landing beat runs under it');
+    const land = TR.slice(TR.indexOf('function _hqPortalLandBeat'), TR.indexOf('function _hqPortalFlight'));
+    assert.ok(/playDoorSfx\('doorGunLand'/.test(land) && /new THREE\.PointLight\(slotHex/.test(land) && /shock\.quaternion\.copy\(B\.q\)/.test(land), 'the landing: the sound, a breath of light, the shock ring in the surface\'s plane');
+    const cross = TR.slice(TR.indexOf('function _hqTickPortalCross'), TR.indexOf('function _hqPortalHop'));
+    assert.ok(/rec\.lastCrossAt && performance\.now\(\) - rec\.lastCrossAt < rearm\) continue;/.test(cross) && /rec\.lastCrossAt = performance\.now\(\);/.test(cross), 'D3c: a mouth re-arms only after rearmMs');
+    const hop = TR.slice(TR.indexOf('function _hqPortalHop'), TR.indexOf('function _hqPortalTickHold'));
+    assert.ok(/for \(var nd = 0; nd <= nudge \+ 1e-6; nd \+= 0\.15\)/.test(hop) && /_hqAirClearOfBlockers\(pl\.x, pl\.z, fy\)/.test(hop), 'D4: the exit is nudged clear along the twin\'s normal');
+    assert.ok(/function _hqPortalTickHold\(\)/.test(TR) && /function _hqPortalRecall\(\)/.test(TR), 'the hold and the recall');
+    const recall = TR.slice(TR.indexOf('function _hqPortalRecall'), TR.indexOf('/* The story cast'));
+    assert.ok(/_hqPortalRemove\(slot, \{ keep: true \}\)/.test(recall) && /playDoorSfx\('doorGunRecall'/.test(recall) && /H\.opts\.onPortal\(\{ kind: 'recall', n: n \}\)/.test(recall), 'the record goes at once, the picture flies home, map.js is told');
+    assert.ok(/portalRecall: _hqPortalRecall/.test(TR) && /gunMuzzle: _hqGunMuzzle/.test(TR), 'the API');
+    /* the hold's own arithmetic, in a vm sandbox: a tap never recalls, a hold does, a hold with nothing placed leaves the release its toggle */
+    const src = TR.slice(TR.indexOf('function _hqPortalTickHold'), TR.indexOf('function _hqPortalRecall'));
+    const ctx = vm.createContext({ performance: { now: () => 1000 }, _hqPortalRules: () => ({ recallMs: 600 }), recalled: 0 });
+    vm.runInContext(src + '\nfunction _hqPortalRecall() { recalled++; }\nthis.tick = _hqPortalTickHold;', ctx);
+    ctx._hq = { portal: { fAt: 700, fFired: false, placed: { a: {} } } }; ctx.tick(); assert.equal(ctx.recalled, 0, 'a 300 ms press is a tap'); assert.equal(ctx._hq.portal.fFired, false);
+    ctx._hq = { portal: { fAt: 300, fFired: false, placed: {} } }; ctx.tick(); assert.equal(ctx.recalled, 0, 'nothing placed: nothing to recall'); assert.equal(ctx._hq.portal.fFired, false, 'the release still toggles the draw');
+    ctx._hq = { portal: { fAt: 300, fFired: false, placed: { b: {} } } }; ctx.tick(); assert.equal(ctx.recalled, 1, 'a 700 ms hold recalls'); assert.equal(ctx._hq.portal.fFired, true, 'once');
+    ctx.tick(); assert.equal(ctx.recalled, 1, 'and never again while held');
+});
+
+test('THE BOARD rev 3: every Door Agent carries the gun, the placements are SHOTS from it (relayed geometry), the three cues are in the kit, map.js files the recall', () => {
+    assert.ok(/const _DOOR_AGENT_HOLD = \{ key: 'door_gun', bone: 'RightHand'/.test(SP) && /basicAttackKind: 'punch', hold: _DOOR_AGENT_HOLD/.test(SP), 'sprites.js: both genders hold it');
+    assert.ok(/function _unitAttachHeld\(m, hold, ts\)/.test(TR) && /if \(def\.hold\) \{ try \{ _unitAttachHeld\(m, def\.hold, ts\);/.test(TR) && /HQ_PORTAL_RULES\.gun : null; if \(G && G\.key === hold\.key\) hold = Object\.assign\(\{\}, hold, G\)/.test(TR), 'the battle rig parents it to the hand bone; the grip is data.js\'s');
+    assert.ok(/n\._ew_noTwin = true/.test(TR.slice(TR.indexOf('function _unitAttachHeld'), TR.indexOf('function _disposeModelRig'))), 'never twinned by the x-ray pass');
+    assert.ok(/function _sigDoorGunShot3D\(tx, ty, o\)/.test(VFX) && /'raceDoorGun:shot':/.test(VFX) && /_sigRunOwned\(g, total/.test(VFX.slice(VFX.indexOf('function _sigDoorGunShot3D'), VFX.indexOf('function _sigDoorKnock3D'))), 'the shot recipe owns its group');
+    const shots = (BT.match(/window\._doorGeom\('raceDoorGun:shot'/g) || []).length;
+    assert.ok(shots >= 5, 'battle.js shoots before Knock Knock (×2), the way in, EXIT and the trapdoor — ' + shots);
+    ['doorGunShot', 'doorGunLand', 'doorGunRecall'].forEach(k => assert.ok(new RegExp(k + '\\(ctx, t, out, vol\\)').test(AU) && new RegExp(k + ': 0\\.').test(AU), 'audio.js recipe + gain ' + k));
+    assert.ok(/ev\.kind === 'recall'/.test(MP) && /window\.hqPortalClear\(p\)\) PS\.saveProfile\(idx, p\)/.test(MP), 'map.js clears the pair on the recall in one transaction');
+    assert.ok(/HOLD F recall/.test(IX), 'the hint says so');
 });

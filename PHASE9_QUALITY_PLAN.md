@@ -307,6 +307,15 @@ as `'open'`), and the Works' leaves are the door kit's GLBs
 `20260916-phase9-encounter-02-cors`):** item 3 DONE (D1 the swing spot, D2 the
 lead's identity), item 7 DONE as the 2D crossfade (§1 says why not the material
 dissolve). Next: items 5–6 (Delivery 3 — THE GUN READS), then 8–9.
+**Status 2026-09-16 (Delivery 3, `ENTROPY_WARS_DOOR_GUN.zip`, token
+`20260916-door-gun-03-cors`):** items 5 and 6 DONE (D3a the reason word on the
+ghost, D3b A ● / B ■, D3c the re-arm cap + the F-hold recall, D4 the exit
+nudge) and THE GUN ITSELF landed — the user's retro ray-gun GLB in the
+officer's hand while drawn (a laser sight, a shot that flies and UNFOLDS, a
+muzzle flash, a recoil kick, three synth cues) and in every Door Agent's hand
+in battle, where every placement is a shot from it. NOT done: D3d (the boom's
+pitch clamp + the fade after the third crossing — playtest first), item 9's
+`hard` reachability test (the next delivery, with D8/D9). Next: 8–9.
 
 Each item: impact · evidence · files · dependencies · change · acceptance.
 
