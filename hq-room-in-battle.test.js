@@ -47,7 +47,7 @@ test('the marker: battle.js publishes the latched run\'s room, field and field i
     assert.match(TR, /run = \(typeof window\._ewEncounterRoom === 'function'\) \? window\._ewEncounterRoom\(\) : null;/, 'the renderer reads it');
 });
 
-test('the reader: a site\'s board room is drawn at its centred board, a mismatched board / a cave / no run / the kill-switch are not', () => {
+test('the reader: a site\'s board room is drawn at its centred board and a cave chamber at its window; a mismatched board / no run / the kill-switch are not', () => {
     const { B, W } = bridgeCtx();
     const site = 'site_prebuilt_camelot', S = HQ.rooms[site].shell;
     assert.equal(B.room(), null, 'no run = no room');
@@ -64,10 +64,14 @@ test('the reader: a site\'s board room is drawn at its centred board, a mismatch
     /* the console filed the FULL site from the room: the board is not the room's */
     W._ewEncounterRoom = () => ({ room: site, field: { board: { N: 16, C: S.grid.cell, half: 8 * S.grid.cell } } });
     assert.equal(B.room(), null, 'a 16-wide board is not the room\'s Δ');
-    /* a cave chamber keeps the cavern world (its grid is its floor) */
+    /* Phase 9 polish (2026-09-16): a cave chamber IS drawn — its rock, ledges and pools round the window (the
+       builder cuts the window out through the scratch record's floorHole; the field's columns fill it) */
     const cave = g('hqCaveRooms')()[0];
     W._ewEncounterRoom = () => ({ room: cave, field: { board: { N: 8, C: 1.75, x0: 0, z0: 0, cave: true } } });
-    assert.equal(B.room(), null, 'a cave is not drawn');
+    const Rc = B.room();
+    assert.ok(Rc && Rc.cave && !Rc.site && Rc.T && Rc.T.N === 8, 'a cave is drawn at its window');
+    assert.ok(TR.includes("if (R.cave) { try { _hqBuildCave(copy); }"), 'the cave is built on the scratch record, before the shell');
+    assert.ok(TR.includes("var hole = _hq.floorHole || null;") && TR.includes("if (!c.rock && inHole(x, y)) continue;   // the field's column stands for it"), 'the window is cut out of the cave (its rock stays)');
     /* the hall (the rotunda) is never a field */
     W._ewEncounterRoom = () => ({ room: 'central_egress', field: { board: { N: 8, C: 1.75, x0: 0, z0: 0 } } });
     assert.equal(B.room(), null);

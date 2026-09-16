@@ -31084,6 +31084,13 @@ function hqFieldLayout(site, baseKey, opts) {
        over the room, which the battle draws round the window itself since §10 stage 4 (three-renderer.js
        _hqBuildRoomInBattle reads battle.js _ewEncounterRoom — the room, the window, the raster's covers) */
     if (env && opts.box) { delete env.near; delete env.motion; env.world = { kind: 'room' }; }
+    /* Phase 9 polish (2026-09-16): a CAVE field is indoors too — the chamber's own rock, ledges and pools are drawn
+       round the window by the battle (three-renderer.js _hqBuildRoomInBattle → _hqBuildCave with the window cut out),
+       so the site's sky is a DARK CEILING: no stars, no nebula, no far roster (`scenery: 'none'` — the crystals that
+       floated round Hollow Earth's board never stood in the chamber), no near builder, no motion, THE WORLD inert.
+       The site's fog + tint stay (the dark the cave reads under). The maps only reach the esoteric look as the
+       gauge fills; a cave never does — there is nothing to take apart. */
+    if (env && opts.cave) { delete env.near; delete env.motion; env.world = { kind: 'room' }; env.scenery = 'none'; env.stars = 0; env.nebula = 0; delete env.density; }
     return {
         sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: S - 1, label: 'Earth', baseTerrain: baseKey || 'cave_floor' }, buffer2: null, below: null },
         barrierRows: [], barrierOpeningsX: [], hasFloors: false, env, streetLamps: !!(src && src.streetLamps),
@@ -31093,7 +31100,7 @@ function hqFieldRegister(roomId, ox, oz, opts) {
     const entry = hqFieldBuild(roomId, ox, oz, opts); if (!entry) return null;
     const id = entry.field.id, site = entry.field.site, S = HQ_FIELD_RULES.size;
     if (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) PREBUILT_MAPS[id] = entry;
-    const layout = hqFieldLayout(site, entry.base, { box: !!entry.field.box });
+    const layout = hqFieldLayout(site, entry.base, { box: !!entry.field.box, cave: !!entry.field.cave });
     if (typeof MAP_LAYOUT_PRESETS !== 'undefined') MAP_LAYOUT_PRESETS[id] = layout;
     const siteMeta = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META.find(m => m.id === site) : null;
     const room = DOOR_HQ.rooms[roomId];

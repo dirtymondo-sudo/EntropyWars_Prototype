@@ -35417,6 +35417,15 @@
                 Promise.resolve().then(finish);
                 return;
             }
+            /* THE ENCOUNTER (Phase 9 polish, 2026-09-16): no loading card — the strike is one continuous move
+               from the walker's eye to the board (the room's last frame holds over the build, THE EYE seeds the
+               first battle frame, the camera swoops home). The warmers above still fire and the renderer swaps
+               models in as they land; a cold GLB is a stand-in for a moment, never a card. VS-CPU only, so no
+               start barrier is skipped. */
+            if (_encMatch) {
+                Promise.resolve().then(finish);
+                return;
+            }
 
             const assetsReady = Promise.race([
                 Promise.all(warmers),

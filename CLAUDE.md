@@ -4494,3 +4494,23 @@ every list present); `HQ_BATTLE_ROOM_LIGHTS` (4) caps the room's point lights in
 crossing (no marker), the tickers. `npm test` runs `hq-room-in-battle.test.js`. Unseen live (RULE
 #1c): all of it — DOOR_HQ_BUILD_PLAN §9 lists what to eyeball first.
 
+
+## PHASE 9 DELIVERY 11 — THE SWOOP + THE CAVE ROUND THE FIELD (the encounter's seam) (2026-09-16, local delivery)
+The user's three notes: the cave fight opened under Hollow Earth's stars / nebula / floating crystal roster, a
+loading card stood between the strike and the board, and the cut should be ONE camera swoop. **THE DARK
+CEILING**: data.js `hqFieldLayout(site, base, { cave })` — a cave field is indoors like a box field (no `near` /
+`motion`, `world: { kind: 'room' }`) AND `scenery: 'none'`, `stars: 0`, `nebula: 0` (the fog + tint stay; the
+site's own EW_MAP_META row is untouched). THE WORLD's dissolve was never it (`_wd.stab` starts grounded).
+**THE CAVE ROUND THE FIELD**: three-renderer.js `_hqBattleRoom` takes a cave (`R.cave`); `_hqBuildRoomInBattle`
+runs `_hqBuildCave(copy)` on the scratch record BEFORE the shell; `_hqBuildCave` reads `_hq.floorHole` and draws no
+floor / ledge / ramp / bridge / pool / glow inside the window (the field's columns stand there) — its ROCK is drawn
+inside too (the crag encloses the field's short rock column), stalactites outside only. RULE: a builder that runs
+on the scratch record reads `_hq.floorHole` for the window. **NO LOADING CARD**: battle.js `showBattleLoadingScreen`
+— `_encMatch` takes the auto-sim path (warmers fire, microtask boot, models stream in). **THE SWOOP**:
+three-camera.js tweens the seed (`_seedFrom` → the ideal, smoothstep over the window, `_seedT0 / _seedEase`) — never
+a damp (a damp reads as a jump then a drift); the ordinary damp after the window. **THE DISSOLVE keyed on the
+first frame**: `_hqDissolveStart(H, { onFrame: true, hold, ms })` holds the room's last frame until `renderFrame`
+has drawn the battle once (`_hqDissolveRec` → `_hqDissolveFrame`; `hold` = the cap), then fades over `ms`; map.js
+`_hqEncounterStart` asks `{ onFrame: true, hold: 1500, ms: 220 }`. `npm test` 1512 / 1508 / 0 / 4 skipped. Unseen
+live (RULE #1c): the swoop's feel (`seedPose(eye, 1.4)`'s second argument is the edit), the fade's pop, the GLBs
+popping in, the black sky over the chamber, the crag at the window's rim.

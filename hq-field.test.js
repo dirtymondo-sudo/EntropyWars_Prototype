@@ -231,7 +231,14 @@ test('THE BUILD: the forge entry — 8 × 8, real tids, contiguous voxels on the
     assert.equal(g('PREBUILT_MAPS')[W.id], reg.entry, 'PREBUILT_MAPS');
     const lay = g('MAP_LAYOUT_PRESETS')[W.id];
     assert.ok(lay && lay.env, 'a layout with the site\'s env');
-    assert.equal(lay.env.near, 'hollow_earth'); assert.equal(lay.env.world.kind, 'cavern');
+    /* Phase 9 polish (2026-09-16): a cave field is INDOORS — the battle draws the chamber round the window
+       (three-renderer.js _hqBuildRoomInBattle → _hqBuildCave), so the site's sky is a dark ceiling: no near
+       builder, no motion, no far roster, no stars / nebula, THE WORLD inert; the site's fog + tint stay */
+    assert.equal(lay.env.near, undefined, 'no near setting in a cave'); assert.equal(lay.env.motion, undefined);
+    assert.deepEqual(JSON.parse(JSON.stringify(lay.env.world)), { kind: 'room' }, 'THE WORLD is inert in a cave');
+    assert.equal(lay.env.scenery, 'none', 'no floating roster in a cave'); assert.equal(lay.env.stars, 0); assert.equal(lay.env.nebula, 0);
+    assert.ok(lay.env.fog && lay.env.tint != null, 'the cave\'s dark stays');
+    assert.equal(g('EW_MAP_META').find(m => m.id === 'prebuilt_hollow_earth').env.scenery, 'crystals', 'the site\'s own row is untouched');
     assert.equal(lay.sections.earth.endRow, S - 1);
     assert.equal(reg.meta.field, true); assert.equal(reg.meta.isDelta, true); assert.equal(reg.meta.w, S); assert.equal(reg.meta.teamSize, 4);
     assert.ok(reg.meta.label.indexOf(R.label) >= 0);
@@ -432,7 +439,7 @@ test('STAGE C · THE BUILD: a box field\'s forge entry — 8 × 8, real tids, th
     assert.equal(g('hqSiteId')(W.id), 'prebuilt_haunted', 'the field reads as its site');
     /* a cave field keeps its near setting (stage B unchanged) */
     const cave = caves[0], Wc = g('hqFieldWindow')(cave, cellCentre(info(cave), 2, 2), cellCentre(info(cave), 3, 2));
-    if (Wc) { const rc = g('hqFieldRegister')(cave, Wc.ox, Wc.oz, { cells: Wc.cells }); const lc = g('MAP_LAYOUT_PRESETS')[rc.id]; assert.ok(!lc.env || lc.env.world == null || lc.env.world.kind !== 'room', 'a cave field is not boxed'); }
+    if (Wc) { const rc = g('hqFieldRegister')(cave, Wc.ox, Wc.oz, { cells: Wc.cells }); const lc = g('MAP_LAYOUT_PRESETS')[rc.id]; assert.ok(lc.env && lc.env.world && lc.env.world.kind === 'room' && lc.env.scenery === 'none' && lc.env.near === undefined, 'a cave field is indoors too (Phase 9 polish): inert world, no roster, no near'); assert.equal(rc.entry.field.cave, true); }
 });
 
 test('STAGE C · ACCEPTANCE (§11.3 C, measured): every part yields a window with all of its IN cells reachable from the centre; the parts with a cover or a gallery yield ≥ 2 heights; the subway is the corridor case (a 5-wide field inside rock)', () => {

@@ -9081,3 +9081,51 @@ walkway, the console, the signboards, the masts, the doors gone at the cut); a c
   the setting's own pieces (nothing culls a house standing where the console does), the light cap, the
   covers as plinths.
 
+
+### 2026-09-16 — PHASE 9 DELIVERY 11 · THE SWOOP + THE CAVE ROUND THE FIELD (the encounter's seam, polish) — local delivery
+The user's three notes on the encounters, in order: (1) "the battles start with the esoteric background sky
+stuff, even though that is not in the cave at all — the maps are supposed to start normal and only get there
+as the entropy gauge fills"; (2) "I am still seeing a loading screen before the battles"; (3) "one single camera
+swoop from the third-person exploring angle to the overhead battle angle — smooth", with the Mystery Dungeon
+free-roam as the feel to steer by (the place you walk IS the place you fight).
+- **THE DARK CEILING (1)**: a cave field inherited Hollow Earth's whole env — `stars` 0.9, `nebula` 1.0, the
+  `crystals` far roster floating round the board, the `hollow_earth` near builder (its apron + spires) and THE
+  WORLD's `cavern` — none of which stood in the chamber. data.js `hqFieldLayout(site, base, { cave })` treats a
+  cave like a box field now (no `near`, no `motion`, `world: { kind: 'room' }`) AND turns the sky off:
+  `scenery: 'none'` (the 'none' theme = an empty void), `stars: 0`, `nebula: 0`; the site's fog + tint stay (the
+  dark the cave reads under). The site's own EW_MAP_META row is untouched (the Δ from the console still has its
+  sky). THE WORLD's entropy dissolve was never the culprit — `_wd.stab` starts AT its target (grounded) — the
+  floating roster was the site's, not the gauge's.
+- **THE CAVE ROUND THE FIELD**: three-renderer.js `_hqBattleRoom` accepts a cave chamber (`R.cave`), and
+  `_hqBuildRoomInBattle` runs `_hqBuildCave(copy)` on the scratch record BEFORE the shell (it sets `H.site`, which
+  the doors' lane height reads); `_hqBuildCave` reads the scratch record's `floorHole` (the window, room metres)
+  and draws NO floor / ledge / ramp / bridge / pool / glow inside it (the field's own columns stand there) — its
+  ROCK is still drawn inside the window: the crag to the ceiling encloses the field's short rock column, so the
+  window's rim reads as the chamber's wall, not a step; stalactites hang outside the window only. The box shell's
+  walls stand behind the rock as the occlusion fade's side groups; the ceiling is dropped as in every room (the
+  battle looks in from above — the sky over it is now black). Measured on a stub scene: the gallery's window
+  (14,13) cuts 64 instanced cells + 14 pieces out of the chamber's 562 + 382.
+- **NO LOADING CARD (2)**: battle.js `showBattleLoadingScreen` — a latched encounter (`_encMatch`) takes the
+  auto-sim path: the warmers still fire, the board boots on a microtask, the renderer swaps the party's GLBs in
+  as they land (a cold model is a stand-in for a moment, never a card). VS-CPU only, so no start barrier is skipped.
+- **THE SWOOP (3)**: three-camera.js — while the seed eases, the camera is TWEENED (`_seedFrom` → the frame's
+  ideal, smoothstep over the window, `_seedT0 / _seedEase`) instead of damped: a damp started fast and settled
+  slow, which read as a jump then a drift; the tween is one continuous crane from the walker's eye up to the
+  board's angle, landing exactly at the window's end (1.4 s from battle.js `seedPose(eye, 1.4)`), the ordinary
+  damp after. THE DISSOLVE is no longer a crossfade on a timer: `_hqDissolveStart(H, { onFrame: true, hold, ms })`
+  HOLDS the room's last frame until the battle's FIRST frame has rendered (`renderFrame` → `_hqDissolveFrame`;
+  `hold` 1500 is the cap) and only then fades it over 220 ms — so the gap while the board builds is the room's
+  own frame, and the fade lands over the battle's first frame from THE EYE (the same viewpoint). map.js
+  `_hqEncounterStart` asks for exactly that.
+- **NOT built**: the room's fluid sheets ticked in battle (the battle's fluid material animates on its own
+  shared uniform; the cave's own `_hqTickMoat` does not run — unseen); the crag's height against the field's
+  rock columns at the window's rim (a cave rock cell inside the window is drawn by BOTH — the crag box hides the
+  column; a grazing angle may show a seam at the base); the console's crossing; stage D / E.
+- **Tests**: hq-field.test.js (the cave layout: inert world, no roster, no stars), hq-room-in-battle.test.js
+  (the reader takes a cave; the build order + the hole guards), hq-encounter.test.js (the on-frame dissolve,
+  the no-card path, the tween). `npm test` 1512 / 1508 / 0 / 4 skipped.
+- **UNSEEN LIVE (RULE #1c)**: the swoop's feel (1.4 s smoothstep from a 1.6 m eye to the boom — `seedPose`'s
+  second argument is the edit), the held frame's fade over the first battle frame (an HQ boom vs the battle's
+  FOV frames the same eye differently — a visible pop is possible), the party's GLBs popping in without the
+  card, the black sky over the chamber (a fog colour edit on Hollow Earth's row if it reads too flat), the
+  crag inside the window, the stalactites' fade under the boom.

@@ -32,6 +32,11 @@ const ThreeCamera = (function () {
        board is one continuous move. snapImmediate() is IGNORED while the seed
        eases (a match start snaps the camera home; the seed must survive it). */
     let _seed = null, _seedUntil = 0, _seedSt = 0;
+    /* Phase 9 polish (2026-09-16): THE SWOOP — while the seed eases, the camera is TWEENED from the seed pose
+       (`_seedFrom`) to the frame's ideal with an ease-in-out over the window (a damp started fast and settled
+       slow, which read as a jump then a drift; a smoothstep reads as one continuous crane from the walker's eye
+       up to the board's angle). After the window the ordinary damp takes over. */
+    let _seedFrom = null, _seedT0 = 0, _seedEase = 0;
     /* Focal height latched while the user hand-pans the board — see sync(). */
     let _panFocalY = null;
 
@@ -483,6 +488,17 @@ const ThreeCamera = (function () {
             _smoothLookY = targetLookY;
             _smoothLookZ = targetLookZ;
             _initialized = true;
+        } else if (!seeded && _seedFrom && now < _seedUntil && _seedEase > 0) {
+            /* THE SWOOP: the tween from the seed to the ideal (the target may still drift — the blend reads it live) */
+            const u = Math.max(0, Math.min(1, (now - _seedT0) / _seedEase));
+            const k = u * u * (3 - 2 * u);
+            _smoothPosX  = _seedFrom.px + (targetPosX  - _seedFrom.px) * k;
+            _smoothPosY  = _seedFrom.py + (targetPosY  - _seedFrom.py) * k;
+            _smoothPosZ  = _seedFrom.pz + (targetPosZ  - _seedFrom.pz) * k;
+            _smoothLookX = _seedFrom.lx + (targetLookX - _seedFrom.lx) * k;
+            _smoothLookY = _seedFrom.ly + (targetLookY - _seedFrom.ly) * k;
+            _smoothLookZ = _seedFrom.lz + (targetLookZ - _seedFrom.lz) * k;
+            if (u >= 1) _seedFrom = null;
         } else if (!seeded) {
             const st = (now < _seedUntil) ? _seedSt : (_smoothOverride > 0 ? SMOOTH_TIME_FAST : SMOOTH_TIME);
             if (_smoothOverride > 0) _smoothOverride--;
@@ -731,6 +747,7 @@ const ThreeCamera = (function () {
         _seed = { tx: +seed.tx, tz: +seed.tz, up: +seed.up, dx: +seed.dx, dy: +seed.dy, dz: +seed.dz, look: (isFinite(seed.look) && seed.look > 0) ? +seed.look : 3 };
         const ease = (isFinite(easeS) && easeS > 0) ? +easeS : 1.2;
         _seedSt = ease / 3;   // a damp settles ~95 % in three time constants
+        _seedEase = ease; _seedFrom = null;
         _seedUntil = performance.now() / 1000 + ease;
         return true;
     }
@@ -746,6 +763,8 @@ const ThreeCamera = (function () {
         _smoothLookX = lx; _smoothLookY = ly; _smoothLookZ = lz;
         _initialized = true;
         if (nowS > _seedUntil) _seedUntil = nowS + _seedSt * 3;   // seeded long before the first sync: the ease starts now
+        /* THE SWOOP starts from this very frame and lands at the window's end */
+        _seedFrom = { px: ex, py: ey, pz: ez, lx: lx, ly: ly, lz: lz }; _seedT0 = nowS; _seedEase = Math.max(0.05, _seedUntil - nowS);
         return true;
     }
     /* the seed's state for probes: { pending, easing, until } */

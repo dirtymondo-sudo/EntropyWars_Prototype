@@ -31178,6 +31178,7 @@ const ThreeRenderer = (function () {
 
                 if (css2dRenderer) css2dRenderer.render(scene, cam);
                 _scalePlates(cam);
+                if (_hqDissolveRec) _hqDissolveFrame();   // THE ENCOUNTER: the room's held frame fades over this, the battle's first
             }
         }
 
@@ -37921,6 +37922,12 @@ const ThreeRenderer = (function () {
             return m;
         };
         var at = function (ix, iy) { return (iy >= 0 && iy < Hh && ix >= 0 && ix < W) ? info.cells[iy][ix] : null; };
+        /* THE ROOM ROUND THE FIELD (Phase 9 polish, 2026-09-16): in a battle the scratch record carries the window
+           (`floorHole`, room metres) — the field's own columns stand there, so the cave draws no floor / ledge / ramp /
+           bridge / pool inside it; its ROCK is still drawn there (the crag to the ceiling encloses the field's short
+           rock column, so the window's rim reads as the chamber's wall, not a step) */
+        var hole = _hq.floorHole || null;
+        var inHole = function (ix, iy) { if (!hole) return false; var cx = cellX(ix), cz = cellZ(iy); return cx > hole.x0 && cx < hole.x1 && cz > hole.z0 && cz < hole.z1; };
         var dummy = new THREE.Object3D();
         var inst = function (geo, mat, list, place) {
             if (!list.length) return null;
@@ -37932,6 +37939,7 @@ const ThreeRenderer = (function () {
         var tops = {}, ledges = {}, rocks = [], slopes = [], bridges = [], fluids = [], glows = [];
         for (var y = 0; y < Hh; y++) for (var x = 0; x < W; x++) {
             var c = info.cells[y][x];
+            if (!c.rock && inHole(x, y)) continue;   // the field's column stands for it
             if (c.rock) {
                 /* an interior rock cell (rock on every side) is never seen: skip it */
                 var n4 = [at(x, y - 1), at(x, y + 1), at(x - 1, y), at(x + 1, y)];
@@ -38060,7 +38068,7 @@ const ThreeRenderer = (function () {
         });
         /* THE STALACTITES: over the open cells, seeded, never over a door lane's sill row */
         var open = [];
-        for (var sy = 1; sy < Hh - 1; sy++) for (var sx = 1; sx < W - 1; sx++) { var oc = info.cells[sy][sx]; if (!oc.rock) open.push([sx, sy]); }
+        for (var sy = 1; sy < Hh - 1; sy++) for (var sx = 1; sx < W - 1; sx++) { var oc = info.cells[sy][sx]; if (!oc.rock && !inHole(sx, sy)) open.push([sx, sy]); }
         var nSt = Math.min(90, Math.floor(open.length / 7)), stMat = caveMat(info.rock, S.wallColor != null ? S.wallColor : null, { sh: 3, lift: 0.05 });
         for (var si = 0; si < nSt && open.length; si++) {
             var pick = open[Math.floor(rng() * open.length)];
@@ -46034,8 +46042,10 @@ const ThreeRenderer = (function () {
         try {
             var D = _hqData(), room = D && D.rooms && D.rooms[run.room];
             var board = run.field && run.field.board;
-            if (room && room.kind === 'box' && !room.cave && room.shell && board && board.N > 0 && board.C > 0) {
-                var S = room.shell, site = room.fx === 'site';
+            /* Phase 9 polish (2026-09-16): a CAVE chamber is drawn too — its rock, ledges and pools round the window
+               (the field's own columns fill the window; _hqBuildCave cuts it out through the scratch record's floorHole) */
+            if (room && room.kind === 'box' && room.shell && board && board.N > 0 && board.C > 0) {
+                var S = room.shell, site = room.fx === 'site', cave = !!room.cave;
                 /* a site room's board is the Δ: the console can also file the FULL site from the room — that match stands on its own */
                 var fits = site ? !!(S.grid && S.grid.cells === Math.floor(+board.N)) : true;
                 var T = (fits && typeof hqFieldTransform === 'function') ? hqFieldTransform(board) : null;
@@ -46043,7 +46053,7 @@ const ThreeRenderer = (function () {
                     var entry = (!site && run.fieldId && typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[run.fieldId] : null;
                     var info = (site && typeof hqSiteBoardInfo === 'function') ? hqSiteBoardInfo(room.site) : null;
                     var base = site ? ((info && info.base) || 5) : ((typeof HQ_FIELD_RULES !== 'undefined' && HQ_FIELD_RULES.base) || 5);
-                    R = { room: room, roomId: run.room, T: T, site: site, base: base, field: (entry && entry.field) ? entry.field : null };
+                    R = { room: room, roomId: run.room, T: T, site: site, cave: cave, base: base, field: (entry && entry.field) ? entry.field : null };
                 }
             }
         } catch (e) { console.warn('[HQ→battle] the room could not be read', e); R = null; }
@@ -46085,6 +46095,7 @@ const ThreeRenderer = (function () {
         _hq = H;
         try {
             H.gallery = _hqGalleryFrame(copy);
+            if (R.cave) { try { _hqBuildCave(copy); } catch (e) { console.warn('[HQ→battle] cave failed', e); } }
             try { _hqBuildBoxShell(copy); } catch (e) { console.warn('[HQ→battle] shell failed', e); }
             if (H.gallery) { try { _hqBuildGallery(copy); } catch (e) { console.warn('[HQ→battle] gallery failed', e); } }
             if (R.site) { try { _hqBuildSiteDressing(copy); } catch (e) { console.warn('[HQ→battle] dressing failed', e); } }
@@ -46108,6 +46119,7 @@ const ThreeRenderer = (function () {
         /* what stays: by part on a site room (the battle's setting is the ground and, with an enclosure, the walls) / the ceiling never */
         var drop = R.site ? { floor: true, ceil: true, pipe: true, strip: true, wall: walled } : { ceil: true };
         var kept = 0, dropped = 0;
+        var holeM = H.floorHole;   // a cave's fluid sheets / glows / falls stand as pieces: those inside the window went at the build
         var take = function (src, isProp) {
             src.children.slice().forEach(function (c) {
                 src.remove(c);
@@ -46135,7 +46147,7 @@ const ThreeRenderer = (function () {
         /* the occlusion fade reads the facility group's direct children as its roots */
         if (_facilityNearGroup) { g.children.slice().forEach(function (c) { g.remove(c); c._ew_occNear = true; _facilityNearGroup.add(c); }); }
         else { _facilityNearGroup = g; _horizonGroup.add(g); }
-        if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ→battle] the room round the field:', R.roomId, 'kept', kept, 'dropped', dropped, 'walls', Object.keys(walls).join(''), R.site ? '(site)' : '(field)');
+        if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ→battle] the room round the field:', R.roomId, 'kept', kept, 'dropped', dropped, 'walls', Object.keys(walls).join(''), R.site ? '(site)' : R.cave ? '(cave)' : '(field)');
     }
 
     function _hqEnter(opts) {
@@ -46305,6 +46317,13 @@ const ThreeRenderer = (function () {
        (RULE #1c); the material dissolve can replace this once the seam is eyeballed.
        Off: window.EW_HQ_NO_DISSOLVE, or prefers-reduced-motion. */
     var HQ_DISSOLVE_MS = 600, HQ_DISSOLVE_HOLD_MS = 150;
+    /* Phase 9 polish (2026-09-16): `o.onFrame` = the snapshot HOLDS until the battle's FIRST frame has rendered
+       (renderFrame calls _hqDissolveFrame after its draw) and only then fades — so the gap while the board builds
+       is the room's last frame, and the fade lands over the battle's first frame from THE EYE (the same
+       viewpoint); `hold` is then the CAP on that wait. The encounter asks for a short fade: the seam is a
+       camera move, not a crossfade. */
+    var _hqDissolveRec = null;
+    function _hqDissolveFrame() { var r = _hqDissolveRec; if (!r) return; _hqDissolveRec = null; try { r.fade(); } catch (e) {} }
     function _hqRenderOnce(H) {
         var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST);
         if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera);
@@ -46327,11 +46346,14 @@ const ThreeRenderer = (function () {
             + 'z-index:100050;pointer-events:none;opacity:1;transition:opacity ' + ms + 'ms ease-out;';
         try { var old = document.querySelector('.hq-dissolve'); if (old && old.parentNode) old.parentNode.removeChild(old); } catch (e) {}
         document.body.appendChild(snap);
-        var done = false;
-        var drop = function () { if (done) return; done = true; try { if (snap.parentNode) snap.parentNode.removeChild(snap); } catch (e) {} };
-        setTimeout(function () { try { snap.style.opacity = '0'; } catch (e) {} }, hold);
+        var done = false, fading = false;
+        var drop = function () { if (done) return; done = true; if (_hqDissolveRec && _hqDissolveRec.el === snap) _hqDissolveRec = null; try { if (snap.parentNode) snap.parentNode.removeChild(snap); } catch (e) {} };
+        var fade = function () { if (fading || done) return; fading = true; try { snap.style.opacity = '0'; } catch (e) {} setTimeout(drop, ms + 120); };
+        var rec = { el: snap, ms: ms, hold: hold, drop: drop, fade: fade };
+        if (o && o.onFrame) _hqDissolveRec = rec;   // the first battle frame fades it; `hold` caps the wait
+        setTimeout(fade, hold);
         setTimeout(drop, hold + ms + 120);
-        return { el: snap, ms: ms, hold: hold, drop: drop };
+        return rec;
     }
     function _hqLeave(opts) {
         var H = _hq; if (!H) return;
