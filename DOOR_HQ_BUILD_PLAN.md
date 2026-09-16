@@ -1396,7 +1396,16 @@ mirrors as mirrors, cast members on the new floors, sounds. UNSEEN LIVE
 walker and the camera boom on the landing, the belts' pace, the flipped
 office, the Mandela room's swap on re-entry, the clone's face.
 
-### Phase 9 — THE WORLD: finds, complexes, the world graph, encounters, the door gun (planned 2026-09-15, nothing shipped)
+### Phase 9 — THE WORLD: finds, complexes, the world graph, encounters, the door gun (planned 2026-09-15; stages 9.1–9.5 + 9.8 SHIPPED LOCALLY revs 43–63, not uploaded; the ACTIVE SPECIFICATION is `PHASE9_QUALITY_PLAN.md` §1)
+> **READ FIRST (2026-09-16 reconciliation).** This section was written as a proposal and
+> patched by appending, so it still carries superseded instructions. The one current answer
+> per behaviour — the player-initiated click, the any-surface two-button two-colour door gun,
+> standard issue for the gun and the deck, the site's Δ as every encounter's board, THE EYE,
+> the unbuilt dissolve and spawn mirror — is the table in **`PHASE9_QUALITY_PLAN.md` §1**.
+> Bullets marked `[SUPERSEDED — see PHASE9_QUALITY_PLAN.md §1]` below are history: never
+> implement from them. The confirmed defects (positional tape ids, hazard pay lost to the
+> server sync, "the room is the board" copy in a complex part) and the staged plans for the
+> rooms ↔ boards look and for THE FIELD (anywhere becomes the 8×8) are there too (§4, §10, §11).
 The user's brief (2026-09-15), five things in one message: **(1)** glowing,
 sparkling hidden objects to pick up — hazard pay, healing potions, held
 items — and a COLLECTIBLE scattered over the whole world, a hundred of
@@ -1421,7 +1430,7 @@ door by a safe area, explore, and when in trouble place the other and go
 back — an escape rope.
 
 **Current implementation — Phase 9.5 stage 1: THE DOOR GUN, local delivery
-(2026-09-15 rev 13).** THE PORTABLE THRESHOLD as 9.5 specifies: the aim ray
+(2026-09-15 rev 13). [SUPERSEDED by 9.5 REV 2 (§9 2026-09-15 rev 19: any surface, LEFT = A / RIGHT = B, two colours) and by standard issue (rev 15, `HQ_PORTAL_RULES.free`) — see PHASE9_QUALITY_PLAN.md §1]** THE PORTABLE THRESHOLD as 9.5 specifies: the aim ray
 against the walkable surface set, the ghost, A / B / A-moves, the hop and
 the cross-room landing, the profile record, the Quartermaster's issue at
 KEYHOLDER + 24 Keys. See §9 2026-09-15 rev 13 for what stage 2 still owes
@@ -1503,7 +1512,7 @@ ends move to its airlock only after that room is built. No authored
 story text, new prices, collectible counts or optional skate rewards
 are approved by this technical implementation.
 
-**Reviewed order:** 9.3 stage 1 (multiple exits + a reversible pilot — DONE) →
+**Reviewed order [SUPERSEDED — every stage below has shipped locally; the open work is PHASE9_QUALITY_PLAN.md §8]:** 9.3 stage 1 (multiple exits + a reversible pilot — DONE) →
 9.2 stage 1 (first complex — DONE, the Haunted House) → 9.3 expansion (routes — DONE rev 7, WORLD tab — DONE rev 7; suites and the star chart's lines open)
 → 9.1 finds (stage 1 DONE, rev 12: tapes + pay) → 9.5 portable thresholds → 9.4 encounters. THE SUITES are DONE
 (rev 9, 2026-09-15). THE WELLS + THE
@@ -1991,7 +2000,7 @@ are not promises of one-session completion.
   parts (`hqRoomSite(roomId)` non-null). The facility, the foyer, the
   corridors, the rings, H-Wing are SAFE by construction (the user's rule)
   — never a flag to forget on a facility room.
-- **The roamer.** `room.roamers = [{ race, gender?, spot: {x, z}, patrol:
+- **The roamer.** [SUPERSEDED — no roamers, no random or contact encounters (Part C row 35 / PHASE9_QUALITY_PLAN.md §1)] `room.roamers = [{ race, gender?, spot: {x, z}, patrol:
   [{x, z}…], sight: 7, speed: 1.4, fights: <mapId> }]` (REC: 1–2 per
   wild room, drawn from the site's CPU pool — the natives that stand on
   the walkway today are the pool made visible). The renderer spawns a
@@ -2004,7 +2013,7 @@ are not promises of one-session completion.
   the opening order), fires the encounter. `EW_HQ_NO_ROAMERS` (dev) and
   a Settings row (ROAMERS: On / Off — the building must stay a menu for
   anyone who wants a menu).
-- **The launch.** `_hqEncounter(roamer)` → `_hqLaunchMission(site, {
+- **The launch.** [SUPERSEDED — see `_hqEncounterStart` (map.js) and PHASE9_QUALITY_PLAN.md §1; `spawnSide` is NOT built] `_hqEncounter(roamer)` → `_hqLaunchMission(site, {
   delta: true, encounter: { race, side, x, z }, doorId: 'crossing' })`
   with NO terminal: the config is the STICKY one (the last mode / team
   size / rounds the terminal filed, else Arena · 4 · the site's default),
@@ -2015,7 +2024,7 @@ are not promises of one-session completion.
   seats' lanes are mirrored, which `applyGameMode` must learn: today P1
   is always the south row), the roamer's team on the far lane. RULE #2:
   VS-CPU only (the tutorial's precedent — an online seat never encounters).
-- **The seam.** Three cuts make it near-seamless without a new scene:
+- **The seam.** [PARTLY SHIPPED — (1) and (2) are built (rev 24); (3) the dissolve is open: PHASE9_QUALITY_PLAN.md §8 item 7 / §11] Three cuts make it near-seamless without a new scene:
   **(1)** the intro cinematic is off for an encounter
   (`EW_DISABLE_INTRO_CINE`'s path, per launch — the teams are already
   here); **(2)** the battle's first camera pose is the WALKER's: the HQ
@@ -2030,20 +2039,20 @@ are not promises of one-session completion.
   shader on the HQ scene for 0.6 s, then the swap). The loading card
   still shows for the model warm-up — the seam is an eased cut, not a
   hidden load.
-- **After.** A win: back at the room's console as today, the roamer
+- **After.** [SHIPPED as written but for the roamer — the beaten NATIVE is gone until tomorrow (`door.hq.cleared`); the return lands at the console, PHASE9_QUALITY_PLAN.md D1 proposes the swing spot] A win: back at the room's console as today, the roamer
   gone (`door.hq.cleared[roomId] = date`; the room repopulates tomorrow
   — the daily rule), the find it guarded (a `roamer` field on a find
   row: built only once the room is cleared today) now glows. A loss: the
   ward — EXITED lands you in Medical's cot with the CONDITION line
   updated (`hqMedicalRecord.exits` already counts it), the Padded Room's
   hook; no hazard pay lost (Part C row 30 — the user rules the cost).
-- **Tests.** `hq-encounter.test.js`: no facility room carries roamers, a
+- **Tests.** [SUPERSEDED — hq-encounter.test.js (17) tests the click rule, the launch, THE EYE, the cleared room; nothing about roamers or `spawnSide`] `hq-encounter.test.js`: no facility room carries roamers, a
   roamer's race is in the site's pool, the patrol stays inside the room,
   the launch opts serialize, `spawnSide` mirrors the lanes in
   `applyGameMode` (a vm run), the pose conversion round-trips.
 
 **9.5 THE DOOR GUN — two doors you place.**
-- **The object.** THE PORTABLE THRESHOLD, DOOR issue: two freestanding
+- **The object.** [SUPERSEDED by 9.5 REV 2 (§9 2026-09-15 rev 19): ANY surface — floor set, wall, ceiling — the door flat in the surface's plane; LEFT CLICK = THRESHOLD A, RIGHT CLICK = THRESHOLD B, F / Q holster; `leaf_coffee` in the facility] THE PORTABLE THRESHOLD, DOOR issue: two freestanding
   leaves (the CROSSING's `_introBuildDoor` on the HQ scene — the frame,
   the seal, the case line, the leaf being the map's own threshold leaf
   in a site room and `leaf_coffee` in the facility (rank leaves stay exclusive)) that you place on
@@ -2076,13 +2085,13 @@ are not promises of one-session completion.
   encounter needs contact or E). A pair with one end in the facility and
   one in a site is the user's own use case; nothing special is needed
   beyond the cross-room landing.
-- **Issue.** Who has it and when is Part C row 31. REC: the Quartermaster
+- **Issue.** [SUPERSEDED — STANDARD ISSUE for the test (rev 15, `HQ_PORTAL_RULES.free: true`); `free: false, cost: 24, rank: 4` restores the Quartermaster's signature] Who has it and when is Part C row 31. REC: the Quartermaster
   ISSUES it (a counter on the shop's page: PORTABLE THRESHOLD · DOOR
   ISSUE · 24 Keys, one per officer, Keyholder rank — L2 is the door rank
   by name) and the first door is free at intake so the tutorial can
   teach it; alt: day one, both doors, no gate — the puzzles are the
   gate.
-- **Renderer.** `_hqPortal` (three-renderer.js): the two placed doors as
+- **Renderer.** [SHIPPED under different names — `_hqPortalAim` / `_hqPortalBasis` / `_hqPortalBuild` / `_hqTickPortalCross` / `_hqPortalHop`; the record is `door.hq.portal`] `_hqPortal` (three-renderer.js): the two placed doors as
   `_introBuildDoor` groups on the HQ scene with a `_hqCamInDoorway`-style
   blocker each and an ENTER trigger (the door's own `onEnterDoor` path —
   walking into an open placed door fires the step-through, exactly the
@@ -2566,6 +2575,35 @@ Guild Hub was the prototype; this plan is the building.
 - Hazard Pay wallet on the strip vs only at the Quartermaster. Rec: strip.
 
 ## 9. Build log (append per session)
+
+### 2026-09-16 — PHASE 9 QUALITY REVIEW: the brief reconciled against rev 63 (PHASE9_QUALITY_PLAN.md; docs only, nothing uploaded)
+The user's Phase 9 quality brief (2026-09-15, written against rev 60) was read against the
+code at HEAD and revs 61–63. `npm test`: 1438 pass / 0 fail / 4 skipped. Nothing in the game
+files changed. Findings, each labelled confirmed / documented-unfinished / recommendation /
+requires-playtest, with the status table, the backlog, the delivery sequence and the two
+programmes the user asked for, are in **`PHASE9_QUALITY_PLAN.md`**. In one paragraph:
+- CONFIRMED (ship before the finds go live): tape ids are POSITIONAL (`DOOR_TAPES` numbers
+  by `siteRooms.built` + sheet order; claims are `tape:Tnnn` — every re-home since rev 18
+  renumbered the shelf); hazard pay is a LOCAL credit the server wallet overwrites at the
+  next `/api/progress/sync`, and `door.hq.*` never syncs; the strike toast says "THE ROOM IS
+  THE BOARD" in a complex part / a cave where the launch is the SITE'S Δ and the eye seed is
+  null. Also the plan's 9.7 numbers two decisions "35".
+- OUTDATED IN THE BRIEF: THE EYE, the cleared room, the guarded envelope and the ward hook
+  are built (rev 24); the gun is any-surface / two-button / two-colour and standard issue.
+- RECOMMENDED: return the win to the swing spot; pin the native's identity as P2 seat 1; the
+  refusal reason on the ghost + an A/B shape cue; a hatch-loop cap + hold-F ESCAPE; discovered
+  routes drawn dotted (GO stays); one landmark / reveal per complex; six door-gun situations.
+- THE LOOK (rooms ↔ boards): the room board is Phong + emissive through its own `siteMat`,
+  the battle is Lambert through `K.mat` / `_evTintMat` with `TERRAIN_BASE_TINT`; the room's
+  sun is an HQ constant, the battle's the env row; the room has no THE WORLD; the battle has
+  none of the room's furniture. Four stages (§10).
+- THE FIELD (anywhere becomes the 8×8): the grid is a WINDOW on the room's own lattice (the
+  Δ at 1.7534 m, the cave at 1.75 m / half-levels, a box room in metres); in/out cells,
+  heights clamped so walker-reachable ⇒ unit-reachable, props by `top`, the gallery as +2 with
+  +1 treads, units SNAP to cell centres at the strike frame, explicit spawn cells per seat
+  (which also unblocks `spawnSide`), the battle built at the room's transform behind a 0.6 s
+  dissolve, the return to seat 1's last cell. Five stages A–E (§11); user decisions in §14.
+This section's heading and superseded bullets are marked in place (never deleted).
 
 ### 2026-09-16 (rev 63) — THE THIRD RING ships + 7.7 WAVE 2 begins: 345 · THE BERMUDA TRIANGLE (data.js, three-renderer.js, map.js, server.js, index.html; hq-ring3.test.js, doorhq / hq-suites / hq-cave / hq-stage2 / hq-world / motion-maps / delta-maps tests; local, not uploaded)
 Baseline: the rev 62 tree (the urban block, the visual pass, the mixer).

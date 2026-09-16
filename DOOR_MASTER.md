@@ -2593,3 +2593,13 @@ points at, five aircraft filed as a crossing in 1945; THE WEIR — Room 8's
 infinity pool goes over the edge into it (route THE DEEP). Not built: the
 waterspout, Flight 19's flyover, the yacht. HQ plan 8.4 / 9.3 / 7.7, §9
 2026-09-16 rev 63.
+
+### 2026-09-16 — PHASE 9 QUALITY REVIEW (docs only)
+The user's Phase 9 quality brief reconciled against rev 63: the active specification
+(the click, the any-surface door gun, standard issue, the site's Δ as every encounter's
+board, THE EYE, the unbuilt dissolve), three confirmed defects (positional tape ids, hazard
+pay lost to the server sync, the "room is the board" copy in a complex part), the backlog
+and the two programmes — the rooms ↔ boards look and THE FIELD (anywhere becomes the 8×8)
+— are in `PHASE9_QUALITY_PLAN.md`. Part C row 30 should also carry the "never random"
+rule now filed under the text of row 35 (a numbering clash — the user's call). No canon
+touched; every proposed plaque / tape line stays Claude's draft (A15).

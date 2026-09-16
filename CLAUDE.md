@@ -3954,3 +3954,21 @@ on `state`, nothing relayed (RULE #2). `npm test` runs
 JSON → hand it to Claude (or paste it over `AUDIO_MIX_SHIPPED`) → ship
 audio.js. Unseen live (RULE #1c): the panel over the CRT / the pause menu,
 the slider's feel, the bed audition's fade.
+
+## PHASE 9 QUALITY REVIEW — the brief reconciled (2026-09-16, docs only)
+`PHASE9_QUALITY_PLAN.md` is the ACTIVE Phase 9 specification (§1: one answer per
+behaviour — read it before the plan's Phase 9 section, whose superseded bullets are marked
+in place) plus the findings and the plan. Before the finds go live, ship §8 items 1–2:
+**tape ids are POSITIONAL** (data.js `DOOR_TAPES` numbers T001… by `siteRooms.built` +
+`HQ_TAPE_SHEET` order; claims are `tape:Tnnn` — give every sheet row a stable key and make
+`Tnnn` display-only) and **hazard pay is a local credit the server wallet overwrites**
+(`hqCollectFind` → `profile.account.gold`; `serverSyncProgress` → `_syncEconomyToLocal`
+replaces it; `door.hq.*` is not in the synced progress blob — put a monotonic `hq.finds.taken`
+map in the blob and let `/api/progress/sync` pay each new `pay:` claim once). From a complex
+part or a cave the encounter fights the SITE'S Δ with no eye seed — the toast must not say
+THE ROOM IS THE BOARD there. THE FIELD (§11: the room's own lattice as the 8×8 window,
+in/out cells, heights clamped so walker-reachable ⇒ unit-reachable, units snapped to cell
+centres at the strike frame, explicit spawn cells per seat, the battle built at the room's
+transform behind a 0.6 s dissolve) and THE LOOK (§10: one material path, one light rig, THE
+WORLD in the open room, the room's furniture in the battle) are staged there; the user's
+decisions are §14. `npm test` at HEAD: 1438 / 0 / 4 skipped.
