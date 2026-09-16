@@ -350,7 +350,9 @@ test('the directory draws THE WORLD: _hqWorldHtml renders every line as a subway
  assert.ok(start>0&&end>start);
  const src=map.slice(start,end+11);
  assert.ok(map.includes("html += _hqWorldHtml();"),'the directory calls it');
- const ctx={window:{hqWorldRoutes:D.hqWorldRoutes},DOOR_HQ:HQ,_hqCurRoom:'site_prebuilt_moon',
+ /* THE MAP REMEMBERS (Phase 9 Delivery 4, D6): the directory reads the profile — an officer who has walked every link sees the whole map */
+ const prof={door:{}}; for(const l of HQ.links) if(D.hqLinkLive(l)) D.hqLinkSee(prof,l.id);
+ const ctx={window:{hqWorldRoutes:D.hqWorldRoutes,hqWorldCharted:D.hqWorldCharted},DOOR_HQ:HQ,_hqCurRoom:'site_prebuilt_moon',_hqProfile:()=>prof,
   _hqEsc:v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
   _hqNoTag:(no)=>no?'<em class="hq-no">ROOM '+no+'</em>':'',_hqRoomExists:id=>!!HQ.rooms[id]};
  vm.createContext(ctx);vm.runInContext(src+'\nthis.out=_hqWorldHtml();',ctx);
@@ -363,6 +365,13 @@ test('the directory draws THE WORLD: _hqWorldHtml renders every line as a subway
  assert.ok(html.includes('hq-world-dashed'),'the seams are dashed');
  assert.ok(html.includes('INTERCHANGE'));
  assert.ok(!/undefined|NaN|\[object/.test(html));
+ assert.ok(!html.includes('hq-world-unseen')&&!html.includes('UNCHARTED'),'a fully charted map draws nothing dotted');
+ /* a STRANGER: every leg dotted, the unknown stops unlabelled, GO still on every stop */
+ ctx._hqProfile=()=>null; vm.runInContext('this.out=_hqWorldHtml();',ctx);
+ const cold=ctx.out;
+ assert.equal((cold.match(/hq-world-unseen/g)||[]).length,HQ.links.length,'every leg unwalked');
+ assert.ok(cold.includes('UNCHARTED')&&cold.includes('0 OF '+HQ.links.length+' LEGS CHARTED'));
+ assert.equal((cold.match(/data-room="/g)||[]).length,(html.match(/data-room="/g)||[]).length,'GO on every stop either way');
  const css=fs.readFileSync(__dirname+'/styles-base.css','utf8');
- for(const c of ['.hq-world-line','.hq-world-leg','.hq-world-dashed','.hq-world-stop.here .hq-world-dot','.hq-world-ring']) assert.ok(css.includes(c),c);
+ for(const c of ['.hq-world-line','.hq-world-leg','.hq-world-dashed','.hq-world-stop.here .hq-world-dot','.hq-world-ring','.hq-world-leg.hq-world-unseen','.hq-world-stop.unk']) assert.ok(css.includes(c),c);
 });

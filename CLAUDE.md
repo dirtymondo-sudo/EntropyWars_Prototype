@@ -4160,3 +4160,39 @@ UNSEEN LIVE (RULE #1c): the grip and the muzzle on the Player / Belle rigs
 (`HQ_PORTAL_RULES.gun.pos / rot / muzzle` are the edits), the gun's scale in
 a unit's hand at tile scale, the flight's arc and the unfold's overshoot,
 the sight's brightness under each room's light, the three cues' loudness.
+
+## PHASE 9 DELIVERY 4 — THE MAP REMEMBERS (D6 · D7 · D8 · D9 + THE LIP) (2026-09-16, local delivery)
+PHASE9_QUALITY_PLAN §8 items 8 + 9. **D6 DISCOVERED ROUTES**: a world-graph link
+is CHARTED when the officer walks one of its doors — map.js `_hqRecordVisit` on a
+`link_<id>` door → data.js **`hqLinkSee(profile, id)`** (the ONE write; both
+records: `door.hq.links.seen[id] = 'YYYY-MM-DD'` + the SYNCED blob
+`progress.hq.links.seen` — `mergeProgressBlobs` carries it, EARLIER day wins,
+`ACH_MERGE_CAPS.links` 512; profile.js folds the local record in on every read
+like the finds; **ship data.js to Render too**), the caller saves once, a first
+sighting toasts ROUTE CHARTED. Reads: `hqLinksSeenRecord` (the union),
+`hqLinkSeen`, `hqWorldCharted(profile)`, and **`hqWorldRoutes(curRoom, { profile
+})`** marks every leg `seen` / station `known` (`hqWorldApplyKnown`: here, a
+FACILITY room, or a charted leg touches it) — no `opts` = no marks. THE WORLD
+tab (map.js `_hqWorldHtml`) draws an unseen leg DOTTED (`.hq-world-unseen`), an
+unknown stop as a hollow `?` + an UNCHARTED row; **GO stays on every stop** (the
+user's rule, C row G). **D7**: `room.quiet = true` (the attic, the airlock) =
+a tape and NO envelope (`hqBuildFinds`); the Spaceship's reveal is
+`sun_viewport` (three-renderer.js proc + ticker) on the bridge's bow wall.
+**D8 THE LEARNING SEQUENCE**: data.js `HQ_GUN_LESSONS` / `hqGunLessons()` (six
+rows, `draft: true`, A15), catalogue `lesson_plaque` (wall) / `lesson_sign`
+(a post) → proc `lesson_plaque(U, p)` — **`_hqProcProp(name, p)` hands a proc
+its own placement row now** (a builder ignoring the 2nd arg is unaffected);
+the six rows sit in training · the haunted hall · the foyer · upsidedown · the
+stairwell · the Singularity's flavour (`lesson: '<id>'`); the hall's tape is
+PINNED on the landing (`findSpots`, `y: 2.9`). **THE LIP (item 9)**:
+`hqFindHardReach(row)` (data.js) proves every `hard` board find has a shot
+from a walkway point — it FAILED on the gun as it stood (a 3.5 m top is
+invisible from a 1.6 m eye; a wall exit lands at the base), so
+`HQ_PORTAL_RULES.ledgeSnapM` (0.9) + three-renderer.js `_hqPortalLedgeSnap`:
+a WALL hit on a raised board cell's side within 0.9 m of its top = a FLOOR
+door ON the top, 0.55 m in (never in a cave; the ghost says THE LIP · ON TOP).
+**D9**: `node check-find-spots.js --suggest` audits every find (spot · relax ·
+distance · lesson · the case for a pin); the ~20 pins are the user's (§14 E).
+`npm test` runs `hq-map-remembers.test.js`. NOT built: D5's blob keys, D7
+variant beats for the Dutchman / Strip / Downtown, D3d. Unseen live (RULE
+#1c): the dotted map, the plates, the post, the sun's pass, the snap's feel.

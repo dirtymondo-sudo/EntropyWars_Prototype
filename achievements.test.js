@@ -275,7 +275,7 @@ test('mergeProgressBlobs: sanitizes hostile/garbage input', () => {
     // The evil '__proto__' bag must not have become the counters' prototype.
     assert.strictEqual(Object.getPrototypeOf(m.counters).pvp, undefined, 'prototype must be untouched');
     // Null/garbage inputs yield a clean empty blob.
-    assert.deepStrictEqual(norm(merge(null, undefined)), { v: 2, counters: {}, champs: {}, records: {}, unlocked: {}, hq: { finds: { taken: {} } } });   // hq.finds: THE LEDGER (2026-09-16)
+    assert.deepStrictEqual(norm(merge(null, undefined)), { v: 2, counters: {}, champs: {}, records: {}, unlocked: {}, hq: { finds: { taken: {} }, links: { seen: {} } } });   // hq.finds: THE LEDGER (2026-09-16)
 });
 
 test('mergeProgressBlobs keeps the D.O.O.R. site flags (site:<mapId>:<cond>) — the sync used to drop every key with a colon and un-tick the stabilization checklist (2026-09-15)', () => {

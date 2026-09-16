@@ -39498,6 +39498,75 @@ const ThreeRenderer = (function () {
             var glow = new THREE.Mesh(new THREE.PlaneGeometry(0.44 * U, 0.02 * U), _hqBasic(0xfff1c8)); glow.position.set(0, (H + 0.055) * U, 0.08 * U); glow.rotation.x = Math.PI / 2; g.add(glow);
             return g;
         },
+        /* THE MAP REMEMBERS (PHASE9_QUALITY_PLAN §6 D8, 2026-09-16): THE LESSON
+           PLATE — the door gun's learning sequence, one brushed plate per
+           situation (data.js HQ_GUN_LESSONS; the prop row names it with
+           `lesson`). Wall form (`lesson_plaque`, front +z): the plate with
+           the two thresholds' glyphs — A a ring in cyan, B a square in amber
+           (the D3b shapes, the same read as the frames). Floor form
+           (`lesson_sign`, no `wall` on the row): the same plate on a post, for
+           an OPEN room with no wall to hang it on. */
+        lesson_plaque: function (U, p) {
+            var g = new THREE.Group();
+            var W = 1.1, H = 0.7, D = 0.05;
+            var standing = !(p && typeof p.wall === 'string');
+            var id = (p && p.lesson) || 'floor';
+            var L = (typeof window !== 'undefined' && window.HQ_GUN_LESSONS && window.HQ_GUN_LESSONS[id]) || { n: 0, title: 'LESSON · THE DOOR GUN', lines: ['F DRAWS THE GUN', 'LEFT CLICK · A   RIGHT CLICK · B', 'WALK INTO ONE. YOU ARE AT THE OTHER.'] };
+            var C = (typeof HQ_PORTAL_COLORS !== 'undefined') ? HQ_PORTAL_COLORS : { a: 0x49b0ff, b: 0xff8a2b };
+            var steel = _hqMat(null, 1, 1, { color: 0x8c9096, shininess: 90, specular: 0xcfd6dd });
+            var y0 = standing ? 1.15 : 0;
+            if (standing) {
+                var post = new THREE.Mesh(new THREE.CylinderGeometry(0.03 * U, 0.035 * U, y0 * U, 10), steel); post.position.set(0, y0 / 2 * U, 0); g.add(post);
+                var foot = new THREE.Mesh(new THREE.CylinderGeometry(0.22 * U, 0.25 * U, 0.04 * U, 14), steel); foot.position.set(0, 0.02 * U, 0); g.add(foot);
+            }
+            var board = _hqBox(W, H, D, steel); board.position.set(0, (y0 + H / 2) * U, (D / 2) * U); g.add(board);
+            var lines = [String(L.title || '').toUpperCase()].concat((L.lines || []).slice(0, 3).map(function (t) { return String(t).toUpperCase(); }));
+            var tex = (typeof _hzTextTex === 'function') ? _hzTextTex('hq_lesson_plaque_' + id, lines, { w: 1024, h: 640, bg: '#2b2f36', color: '#e8e2cc', border: '#6b7280', pad: 0.1, sizes: [64, 44, 44, 44], font: '"Courier New", Courier, monospace', weight: 'bold' }) : null;
+            var plate = new THREE.Mesh(new THREE.PlaneGeometry((W - 0.12) * U, (H - 0.24) * U), tex ? new THREE.MeshLambertMaterial({ map: tex, emissive: 0x1a1d22, emissiveIntensity: 0.35 }) : steel);
+            plate.position.set(0, (y0 + H / 2 + 0.05) * U, (D + 0.004) * U); g.add(plate);
+            /* the glyph strip along the foot of the plate: A ● cyan, B ■ amber — the shapes the placed frames wear */
+            var matA = _hqBasic(C.a), matB = _hqBasic(C.b);
+            var ring = new THREE.Mesh(new THREE.RingGeometry(0.035 * U, 0.05 * U, 24), matA); ring.position.set(-0.18 * U, (y0 + 0.1) * U, (D + 0.006) * U); g.add(ring);
+            var sq = new THREE.Mesh(new THREE.RingGeometry(0.035 * U, 0.05 * U, 4), matB); sq.rotation.z = Math.PI / 4; sq.position.set(0.18 * U, (y0 + 0.1) * U, (D + 0.006) * U); g.add(sq);
+            var lampA = new THREE.Mesh(new THREE.PlaneGeometry(0.08 * U, 0.012 * U), matA); lampA.position.set(-0.18 * U, (y0 + 0.04) * U, (D + 0.006) * U); g.add(lampA);
+            var lampB = new THREE.Mesh(new THREE.PlaneGeometry(0.08 * U, 0.012 * U), matB); lampB.position.set(0.18 * U, (y0 + 0.04) * U, (D + 0.006) * U); g.add(lampB);
+            var num = (typeof _hzTextTex === 'function') ? _hzTextTex('hq_lesson_no_' + (L.n | 0), [String(L.n | 0)], { w: 128, h: 128, bg: '#e8e2cc', color: '#2b2f36', pad: 0.18, weight: 'bold', font: 'Georgia, serif' }) : null;
+            var badge = new THREE.Mesh(new THREE.CircleGeometry(0.075 * U, 24), num ? new THREE.MeshBasicMaterial({ map: num }) : _hqBasic(0xe8e2cc)); badge.position.set((W / 2 - 0.02) * U, (y0 + H - 0.02) * U, (D + 0.008) * U); g.add(badge);
+            return g;
+        },
+        /* D7 THE SPACESHIP'S REVEAL: THE VIEWPORT on the bridge — a bulkhead
+           porthole framing the black and THE SUN the derelict swings in toward.
+           A ticker swells the disc and its corona on a slow cycle (~36 s: the
+           close pass and the retreat), flares the rim and drifts a star field
+           behind it. Wall proc, 1.4 × 1.6, front +z. */
+        sun_viewport: function (U) {
+            var g = new THREE.Group();
+            var W = 1.4, H = 1.6, D = 0.1, R = 0.6;
+            var hull = _hqMat(null, 1, 1, { color: 0x50565e, shininess: 70, specular: 0x9aa4ae });
+            var frame = new THREE.Mesh(new THREE.RingGeometry(R * U, (R + 0.14) * U, 48), hull); frame.position.set(0, (H / 2) * U, (D + 0.004) * U); g.add(frame);
+            var collar = new THREE.Mesh(new THREE.CylinderGeometry((R + 0.14) * U, (R + 0.14) * U, D * U, 48, 1, true), hull); collar.rotation.x = Math.PI / 2; collar.position.set(0, (H / 2) * U, (D / 2) * U); g.add(collar);
+            var plate = _hqBox(W, H, 0.03, hull); plate.position.set(0, (H / 2) * U, 0.015 * U); g.add(plate);
+            var space = new THREE.Mesh(new THREE.CircleGeometry(R * U, 48), new THREE.MeshBasicMaterial({ color: 0x03040a })); space.position.set(0, (H / 2) * U, 0.035 * U); g.add(space);
+            /* the stars: a handful of points that drift with the pass */
+            var sp = []; for (var i = 0; i < 46; i++) { var a = Math.random() * Math.PI * 2, rr = Math.sqrt(Math.random()) * R * 0.96; sp.push(Math.cos(a) * rr * U, (H / 2 + Math.sin(a) * rr) * U, 0.04 * U); }
+            var starGeo = new THREE.BufferGeometry(); starGeo.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
+            var stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xdfe6ff, size: 0.012 * U, sizeAttenuation: true, transparent: true, opacity: 0.85 })); g.add(stars);
+            var corona = new THREE.Mesh(new THREE.CircleGeometry(0.34 * U, 40), new THREE.MeshBasicMaterial({ color: 0xff8a3a, transparent: true, opacity: 0.32, blending: THREE.AdditiveBlending, depthWrite: false })); corona.position.set(0.06 * U, (H / 2 + 0.05) * U, 0.045 * U); g.add(corona);
+            var sun = new THREE.Mesh(new THREE.CircleGeometry(0.2 * U, 40), _hqBasic(0xffd9a0)); sun.position.set(0.06 * U, (H / 2 + 0.05) * U, 0.05 * U); g.add(sun);
+            var glare = new THREE.Mesh(new THREE.RingGeometry(R * 0.97 * U, R * U, 48), new THREE.MeshBasicMaterial({ color: 0xffb066, transparent: true, opacity: 0.0, blending: THREE.AdditiveBlending, depthWrite: false })); glare.position.set(0, (H / 2) * U, 0.052 * U); g.add(glare);
+            var rivet = _hqMat(null, 1, 1, { color: 0x2c3036, shininess: 40 });
+            for (var k = 0; k < 8; k++) { var t = k / 8 * Math.PI * 2, rv = new THREE.Mesh(new THREE.CylinderGeometry(0.014 * U, 0.014 * U, 0.01 * U, 8), rivet); rv.rotation.x = Math.PI / 2; rv.position.set(Math.cos(t) * (R + 0.07) * U, (H / 2 + Math.sin(t) * (R + 0.07)) * U, (D + 0.01) * U); g.add(rv); }
+            /* THE PASS: the sun swells 1× → 2.4× and back over the cycle, the corona breathes, the glare rises near perihelion, the stars slide */
+            if (_hq) _hq.tickers.push(function (dt, now) {
+                var ph = (now * 0.001 / 36) % 1, k2 = 0.5 - 0.5 * Math.cos(ph * Math.PI * 2);   // 0 far → 1 near → 0
+                var s1 = 1 + 1.4 * k2; sun.scale.set(s1, s1, 1);
+                var s2 = 1 + 2.0 * k2 + 0.06 * Math.sin(now * 0.004); corona.scale.set(s2, s2, 1); corona.material.opacity = 0.22 + 0.3 * k2;
+                glare.material.opacity = Math.max(0, k2 - 0.55) * 1.6;
+                sun.material.color.setHex(k2 > 0.8 ? 0xfff3d6 : 0xffd9a0);
+                stars.rotation.z = ph * 0.35; stars.position.x = -0.04 * U * k2;
+            });
+            return g;
+        },
         /* THE WINDOW THAT SHOULD NOT EXIST (4C): a walnut frame, a lit pane
            (a pale sky with a horizon line — the building is round; this is
            the view anyway) and venetian blinds half drawn. Wall proc,
@@ -41236,7 +41305,7 @@ const ThreeRenderer = (function () {
             return g;
         },
     });
-    function _hqProcProp(name) {
+    function _hqProcProp(name, p) {
         var b = _hqProcBuilders[name];
         if (!b) return null;
         /* a proc built from the board's kit (the torch's _hzGlowCore halo,
@@ -41245,7 +41314,7 @@ const ThreeRenderer = (function () {
            own fxPulse list, the way the setting builders do */
         var pulse0 = (typeof _hzGlowPulse !== 'undefined') ? _hzGlowPulse.length : -1;
         try {
-            var g = b(_hqUnits()); g.traverse(function (n) { if (n.isMesh) n._ew_pixelate = true; });
+            var g = b(_hqUnits(), p || null); g.traverse(function (n) { if (n.isMesh) n._ew_pixelate = true; });   // THE MAP REMEMBERS (D8): a proc may read its own row (`lesson_plaque` reads p.lesson)
             if (pulse0 >= 0 && _hzGlowPulse.length > pulse0) { var adopted = _hzGlowPulse.splice(pulse0); if (_hq && _hq.fxPulse) adopted.forEach(function (p) { if (p && p.mat) _hq.fxPulse.push(p); }); }
             return g;
         }
@@ -42248,7 +42317,7 @@ const ThreeRenderer = (function () {
             var tabletop = !onWall && !onCeil && !flip && (p.y != null && p.y >= 0.25) && !(cat.foot > 0.35) && !cat.block && !cat.rect && !(cat.ceil) && !mount;   // never a structural piece (a stair tread, a landing, a raised desk on a riser)
             if (cat.proc) {
                 /* procedural: built in metres, no async fit */
-                var pg = _hqProcProp(cat.proc);
+                var pg = _hqProcProp(cat.proc, p);
                 if (!pg) return;
                 place(onWall ? (cat.depth || 0.1) : 0);
                 if (onCeil && !flip) grp.position.y = y * U - (cat.h || 0.1) * U;
@@ -42748,6 +42817,7 @@ const ThreeRenderer = (function () {
             var surf = _hqPortalSurf(px, pz, py);
             if (surf === null || !_hqAirClearOfBlockers(px, pz, py)) {            // THE WALL: rock, a shell wall, a raised cell, a cabinet's side
                 hit = _hqPortalWallHit(prev, { x: px, y: py, z: pz }, dir, t);
+                if (hit) hit = _hqPortalLedgeSnap(hit, R) || hit;                  // THE LIP (item 9): a hit just under a board cell's top lands ON the top
                 if (!hit) reason = 'wall';
                 break;
             }
@@ -42757,7 +42827,7 @@ const ThreeRenderer = (function () {
         var out = { ok: false, reason: reason, surf: null, x: 0, y: 0, z: 0, face: 0, nx: 0, ny: 1, nz: 0, dist: 0 };
         if (!hit) return out;
         out.surf = hit.surf; out.x = hit.x; out.y = hit.y; out.z = hit.z; out.dist = hit.dist;
-        out.nx = hit.nx; out.ny = hit.ny; out.nz = hit.nz;
+        out.nx = hit.nx; out.ny = hit.ny; out.nz = hit.nz; out.lip = !!hit.lip;
         /* a wall door faces out of its wall; a flat door's `face` is the
            ROLL only — the officer's own heading, so it lies the way you stand */
         out.face = (hit.surf === 'wall') ? _hqHeadingOf(hit.nx, hit.nz) : _hqHeadingOf(pl.x - hit.x, pl.z - hit.z);
@@ -42786,6 +42856,27 @@ const ThreeRenderer = (function () {
         if (!_hqPortalFits(hit, out.face, R)) { out.reason = 'room'; return out; }
         out.ok = true; out.reason = null;
         return out;
+    }
+    /* THE LIP (PHASE9_QUALITY_PLAN §8 item 9, 2026-09-16): a WALL hit on the
+       side of a raised board cell (a `site` blocker with a top) within
+       R.ledgeSnapM of that top reads as a FLOOR door ON the top, 0.55 m in
+       from the edge — the `hard` finds on the +2 rims are reached from the
+       walkway by aiming at the lip (data.js hqFindHardReach is the proof; the
+       cave's ledges are climbable and never snap). Null = not a lip. */
+    function _hqPortalLedgeSnap(hit, R) {
+        var H = _hq; if (!H || !H.site || H.site.cave || !hit || hit.surf !== 'wall') return null;
+        var snap = (R && R.ledgeSnapM) || 0;
+        if (!(snap > 0)) return null;
+        var bx = hit.x - hit.nx * 0.3, bz = hit.z - hit.nz * 0.3;              // just inside the face
+        var hits = _hqBlockersUnder(bx, bz), top = null;
+        for (var i = 0; i < hits.length; i++) {
+            var b = hits[i]; if (!b.site || b.top == null) continue;           // a cell block has a finite top; a wall / a monument / a mast has none
+            var bt = _hqBlkTop(b); if (!isFinite(bt)) continue;
+            if (top === null || bt > top) top = bt;
+        }
+        if (top === null || top <= hit.y || top - hit.y > snap) return null;
+        var sx = hit.x - hit.nx * 0.55, sz = hit.z - hit.nz * 0.55;
+        return { surf: 'floor', x: sx, y: top, z: sz, dist: hit.dist, nx: 0, ny: 1, nz: 0, lip: true };
     }
     /* the surface must carry the WHOLE frame: a floor level either side and
        a step in front; a wall / ceiling solid behind and clear in front at
@@ -42850,7 +42941,7 @@ const ThreeRenderer = (function () {
     function _hqPortalGhostLabel(g, aim) {
         var lbl = g.userData.lbl; if (!lbl) return;
         var R = _hqPortalRules();
-        var word = aim.ok ? ((aim.surf || 'floor').toUpperCase() + ' · A / B') : (R.reasons[aim.reason] || R.reasons.none || String(aim.reason || '').toUpperCase());
+        var word = aim.ok ? (aim.lip ? (R.reasons.lip || 'THE LIP · ON TOP') : ((aim.surf || 'floor').toUpperCase() + ' · A / B')) : (R.reasons[aim.reason] || R.reasons.none || String(aim.reason || '').toUpperCase());
         var key = (aim.ok ? 'ok:' : 'no:') + word;
         if (key !== g.userData.lblKey) {
             g.userData.lblKey = key;

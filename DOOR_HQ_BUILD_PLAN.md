@@ -8673,3 +8673,48 @@ light), A ● / B ■ (D3b), the re-arm cap + the F-hold recall that flies both 
 `raceDoorGun:shot` from the caster's hand (relayed geometry; the two cues voiced inside the recipe). Three synth cues.
 NOT built: D3d (playtest first), item 9's `hard` test, a hip holster. UNSEEN LIVE: the grip / muzzle on the Player and
 Belle rigs — `HQ_PORTAL_RULES.gun.pos / rot / muzzle` are the edits; the muzzle's −X reading is unmeasured.
+
+### 2026-09-16 · PHASE 9 DELIVERY 4 — THE MAP REMEMBERS (PHASE9_QUALITY_PLAN §8 items 8 + 9; data.js, three-renderer.js, map.js, profile.js, styles-base.css, index.html; hq-map-remembers.test.js, check-find-spots.js; local, not uploaded)
+**D6 discovered routes.** A world-graph link is CHARTED the first time the officer walks one of its doors: map.js
+`_hqRecordVisit` on a `link_<id>` door → data.js `hqLinkSee(profile, id)` writes `door.hq.links.seen[id] = date` AND
+`progress.hq.links.seen` (the synced blob — `mergeProgressBlobs` carries the key, EARLIER day wins, cap 512; profile.js
+folds the local record in on every read like the finds) in the visit's one transaction; a first sighting toasts
+ROUTE CHARTED · <line>. `hqWorldRoutes(curRoom, { profile })` marks every leg `seen` and every station `known` (here,
+a facility room, or touched by a charted leg — `hqWorldApplyKnown`); `hqWorldCharted(profile)` counts. THE WORLD
+tab draws an unseen leg DOTTED (`.hq-world-unseen`), an unknown stop as a hollow `?` with an UNCHARTED row — GO
+stays on every stop (the user's convenience rule, §14 row G). A read without `opts` carries no marks (older readers).
+**D7 the reveals.** Each complex's ONE landmark / idea / reveal, as they stand: the Haunted House — the hall's
+landing (the gallery), the wardrobe, the well; the Spaceship — THE SUN through the bridge's viewport (NEW:
+`sun_viewport`, a wall proc whose ticker swells the disc and its corona, flares the rim near perihelion and slides
+the stars over a 36 s pass; replaces the `false_window` on the bow wall) + the airlock's collars; the Dutchman —
+the guns run out on the gun deck + the bilge's plunge pool; the Strip — the casino with no clock; Downtown — the
+platform and the train's arrival; the cave — the six well heads in one room. Quiet rooms: `room.quiet = true` on
+the attic and the airlock → `hqBuildFinds` lays the tape and NO envelope (not every room reads tape + envelope +
+rail + exit). Not built: variant-driven beats for the Dutchman / the Strip / Downtown.
+**Item 9 · THE LIP.** `hqFindHardReach(row)` (data.js) is the proof that a `hard` board find (a wall cell two levels
+up) has a legal shot from a walkway point. Run against the gun as it stood it FAILED everywhere: a 1.6 m eye never
+sees a 3.5 m top (a horizontal surface is invisible from below), and a wall door's exit lands at the door's BASE. So
+the rule: `HQ_PORTAL_RULES.ledgeSnapM` (0.9) — three-renderer.js `_hqPortalLedgeSnap` turns a WALL hit on a raised
+board cell's side (a `site` blocker with a finite top) within 0.9 m of that top into a FLOOR door ON the top, 0.55 m
+in from the edge (a cave ledge is climbable and never snaps); the ghost reads THE LIP · ON TOP. The proof: an open
+face, the aim in the band under the top, inside `reach`, over every other cell / monument, from a free walkway point —
+all 30 `hard` finds pass (d 1–7.5 m). The way down is the twin, or ESC → DIRECTORY.
+**D8 the learning sequence.** `HQ_GUN_LESSONS` (six rows, draft copy A15) + `hqGunLessons()`; catalogue
+`lesson_plaque` (wall) / `lesson_sign` (a post, for the open room) → proc `lesson_plaque(U, p)` — `_hqProcProp(name,
+p)` now hands a proc ITS OWN ROW (`p.lesson`); the plate wears the title, three lines, the number and the A ● / B ■
+glyphs in the two colours. Placed: (1) THE FLOOR — the Training Room's west wall by the RANGE console; (2) THE LEDGE —
+the Haunted House hall's east wall under the landing (the flight is the other way up) and the hall's tape PINNED on
+the slab at (2.6, −4.9, 2.9); (3) TWO ROOMS — the foyer's west wall (↔ the hall, safe both ends); (4) THE CEILING —
+Room 9's south wall, the right way up like the rail; (5) THE FALL — the stairwell's east wall (a floor hatch at the
+bottom, a ceiling hatch on the top landing; hold F); (6) THE LIP — a post on the Singularity's walkway at (12.4, −2).
+**D9 the audit.** `node check-find-spots.js [--suggest] [--json] [room]` dumps every find: spot, relax pass, distance
+from the way in, the lesson it teaches as it stands (observation · navigation · portal · fight · evidence), the
+pins, and the case for a hand pin. Today: 160 finds, 0 relaxed, 1 near the way in, 3 pinned; the ~20 pins are the
+user's call (§14 row E). Tests: hq-map-remembers.test.js (8); achievements / hq-finds / hq-spaceship / hq-world
+amended for the blob key, the quiet rooms, the viewport and the profile-aware directory. `npm test` 1468 / 1464 /
+0 / 4 skipped.
+- **Delivery:** `ENTROPY_WARS_PHASE9_MAP_REMEMBERS.zip` — data.js → R2 AND Render (the server merges the blob off
+  it), three-renderer.js / map.js / profile.js / styles-base.css → R2, index.html → Render
+  (`20260916-map-remembers-04-cors`), tests / tool / docs → the repo. UNSEEN LIVE (RULE #1c): the dotted legs on
+  the directory, the plates' legibility at 1.1 × 0.7 m, the post in the open, the sun's pass through the porthole,
+  the lip snap's feel (aim at the lip from 1–3 m; a corner hit reads NO ROOM — aim at the centre of the face).

@@ -322,7 +322,21 @@
                 if (!p.door || typeof p.door !== 'object') p.door = {};
                 if (!p.door.hq || typeof p.door.hq !== 'object') p.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
                 if (p.door.hq.variantSeed == null) p.door.hq.variantSeed = Math.floor(Math.random() * 1e9);   // the variant roll's salt (plan 5.1), once per profile
-                if (doorId) { p.door.hq.lastDoor = doorId; p.door.hq.lastRoom = _hqCurRoom; }
+                if (doorId) {
+                    p.door.hq.lastDoor = doorId; p.door.hq.lastRoom = _hqCurRoom;
+                    /* THE MAP REMEMBERS (PHASE9_QUALITY_PLAN §6 D6, 2026-09-16): a world-graph door
+                       CHARTS its link — the same transaction as the visit; the blob rides the next
+                       progress push; a first sighting says so */
+                    if (/^link_/.test(doorId) && typeof window.hqLinkSee === 'function') {
+                        try {
+                            const sr = window.hqLinkSee(p, doorId.slice(5));
+                            if (sr && sr.ok) {
+                                if (sr.first) { const R = (DOOR_HQ.routes || {})[sr.route] || {}; _hqToast(`<b>ROUTE CHARTED</b> · ${_hqEsc(R.label || sr.route || sr.link)}<span>THE WORLD · DIRECTORY</span>`); }
+                                if (PS.hasServerAccount && PS.hasServerAccount() && typeof PS.scheduleProgressSync === 'function') setTimeout(() => { try { PS.scheduleProgressSync(); } catch (e) {} }, 0);
+                            }
+                        } catch (e) {}
+                    }
+                }
                 else {
                     p.door.hq.visits = (p.door.hq.visits || 0) + 1;
                     /* THE DOOR GUN (plan 9.5): the rope is for one visit — a fresh arrival clears the placed pair (the issue stays) */
@@ -2528,11 +2542,14 @@
            takes you to the site's board room at its way in). A leg's `why`
            is the row's title. Viewer-local (RULE #2). */
         function _hqWorldHtml() {
-            const routes = (typeof window.hqWorldRoutes === 'function') ? window.hqWorldRoutes(_hqCurRoom) : [];
+            /* THE MAP REMEMBERS (D6): the profile decides what is CHARTED — an unseen leg is dotted, an unknown stop unlabelled; GO stays for every stop */
+            const profile = _hqProfile();
+            const routes = (typeof window.hqWorldRoutes === 'function') ? window.hqWorldRoutes(_hqCurRoom, { profile }) : [];
             if (!routes.length) return '';
             const f1 = v => v.toFixed(1);
             const nStations = routes.reduce((n, r) => n + r.stations.length, 0);
-            let html = `<div class="hq-chips" style="margin-top:12px"><span>THE WORLD · ${routes.length} LINES · ${nStations} STOPS · A DOOR IN ONE SITE OPENS ON ANOTHER</span></div>`;
+            const charted = (typeof window.hqWorldCharted === 'function') ? window.hqWorldCharted(profile) : null;
+            let html = `<div class="hq-chips" style="margin-top:12px"><span>THE WORLD · ${routes.length} LINES · ${nStations} STOPS${charted ? ' · ' + charted.seen + ' OF ' + charted.total + ' LEGS CHARTED' : ''} · A DOOR IN ONE SITE OPENS ON ANOTHER</span></div>`;
             routes.forEach(r => {
                 const n = r.stations.length, W = 420, PADX = 26, H = 62, cy = 24;
                 const step = n > 1 ? (W - PADX * 2) / (n - 1) : 0;
@@ -2543,16 +2560,16 @@
                     const i = idx[l.from], j = idx[l.to];
                     if (i == null || j == null) return;
                     const x1 = xAt(Math.min(i, j)), x2 = xAt(Math.max(i, j));
-                    const dash = (r.dashed || l.way) ? ' hq-world-dashed' : '';
+                    const dash = ((r.dashed || l.way) ? ' hq-world-dashed' : '') + (l.seen === false ? ' hq-world-unseen' : '');
                     if (Math.abs(i - j) === 1) svg += `<line class="hq-world-leg${dash}" x1="${f1(x1)}" y1="${cy}" x2="${f1(x2)}" y2="${cy}" style="stroke:${_hqEsc(r.color)}"><title>${_hqEsc(l.why || l.link)}</title></line>`;
                     else svg += `<path class="hq-world-leg${dash}" d="M ${f1(x1)} ${cy} Q ${f1((x1 + x2) / 2)} ${f1(cy - 20 - (x2 - x1) * 0.08)} ${f1(x2)} ${cy}" style="stroke:${_hqEsc(r.color)}"><title>${_hqEsc(l.why || l.link)}</title></path>`;
                 });
                 r.stations.forEach((st, i) => {
-                    const x = xAt(i), xchg = st.lines.length > 1;
-                    svg += `<g class="hq-world-stop${st.here ? ' here' : ''}${xchg ? ' xchg' : ''}" style="--hq-line:${_hqEsc(r.color)}"><title>ROOM ${_hqEsc(st.no || '—')} · ${_hqEsc(st.label)}${xchg ? ' · INTERCHANGE' : ''}${st.here ? ' · YOU ARE HERE' : ''}</title>`;
-                    if (xchg) svg += `<circle class="hq-world-ring" cx="${f1(x)}" cy="${cy}" r="7.5"/>`;
+                    const x = xAt(i), xchg = st.lines.length > 1, unk = st.known === false;
+                    svg += `<g class="hq-world-stop${st.here ? ' here' : ''}${xchg ? ' xchg' : ''}${unk ? ' unk' : ''}" style="--hq-line:${_hqEsc(r.color)}"><title>${unk ? 'UNCHARTED · WALK A DOOR TO IT' : 'ROOM ' + _hqEsc(st.no || '—') + ' · ' + _hqEsc(st.label) + (xchg ? ' · INTERCHANGE' : '') + (st.here ? ' · YOU ARE HERE' : '')}</title>`;
+                    if (xchg && !unk) svg += `<circle class="hq-world-ring" cx="${f1(x)}" cy="${cy}" r="7.5"/>`;
                     svg += `<circle class="hq-world-dot" cx="${f1(x)}" cy="${cy}" r="${xchg ? 4.2 : 4.8}"/>`;
-                    svg += `<text x="${f1(x)}" y="${cy + 21}" text-anchor="middle">${_hqEsc(st.no || '')}</text></g>`;
+                    svg += `<text x="${f1(x)}" y="${cy + 21}" text-anchor="middle">${unk ? '?' : _hqEsc(st.no || '')}</text></g>`;
                 });
                 svg += '</svg>';
                 html += `<div class="hq-world-line" style="--hq-line:${_hqEsc(r.color)}"><div class="hq-world-hd"><b>${_hqEsc(r.label)}</b><span>${_hqEsc(r.sub)}</span></div>${svg}<div class="hq-rows">`;
@@ -2560,11 +2577,12 @@
                     const board = st.site ? ('site_' + st.site) : st.room;
                     const go = st.here ? '<span>YOU ARE HERE</span>' : (_hqRoomExists(board) ? `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(board)}" data-at="egress">GO</button>` : '');
                     const other = st.lines.filter(id => id !== r.id).map(id => (DOOR_HQ.routes && DOOR_HQ.routes[id] && DOOR_HQ.routes[id].label) || id.toUpperCase());
+                    if (st.known === false) { html += `<div class="hq-row hq-row-tray hq-world-unk"><b>${_hqNoTag('?')}UNCHARTED</b><span>WALK A DOOR TO IT · GO STILL TAKES YOU</span>${go}</div>`; return; }
                     html += `<div class="hq-row hq-row-tray"><b>${_hqNoTag(st.no)}${_hqEsc(st.label)}</b><span>${other.length ? 'INTERCHANGE · ' + _hqEsc(other.join(' · ')) : 'STOP'}</span>${go}</div>`;
                 });
                 html += '</div></div>';
             });
-            html += '<p class="hq-panel-note">A line is walked door to door; the bays are how a crossing is FILED. A dashed leg is a seam that is not a door. The Looking-Glass is on no line yet: its room is nine metres across and a door would land on the board.</p>';
+            html += '<p class="hq-panel-note">A line is walked door to door; the bays are how a crossing is FILED. A dashed leg is a seam that is not a door. A dotted leg is one you have not walked — the map fills in as you do. The Looking-Glass is on no line yet: its room is nine metres across and a door would land on the board.</p>';
             return html;
         }
         function _hqDispatchHtml() {

@@ -4242,6 +4242,11 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-world-line svg { display: block; width: 100%; height: auto; overflow: visible; }
 .hq-world-leg { fill: none; stroke-width: 3; stroke-linecap: round; opacity: 0.85; }
 .hq-world-leg.hq-world-dashed { stroke-dasharray: 5 4; opacity: 0.7; }
+/* THE MAP REMEMBERS (PHASE9_QUALITY_PLAN §6 D6, 2026-09-16): a leg not yet walked is DOTTED and faint; an uncharted stop is a hollow dot with a ? */
+.hq-world-leg.hq-world-unseen { stroke-dasharray: 1.5 5; opacity: 0.38; }
+.hq-world-stop.unk .hq-world-dot { fill: #070a14; stroke: #4a4a52; stroke-dasharray: 2 2; }
+.hq-world-stop.unk text { fill: #5a5a62; }
+.hq-row.hq-world-unk b { color: #6f6f78; font-style: italic; }
 .hq-world-stop .hq-world-dot { fill: #070a14; stroke: var(--hq-line, #b8a060); stroke-width: 2; }
 .hq-world-stop.here .hq-world-dot { fill: var(--hq-line, #b8a060); }
 .hq-world-stop .hq-world-ring { fill: #070a14; stroke: #f0e6c8; stroke-width: 1.4; }

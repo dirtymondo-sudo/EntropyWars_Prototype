@@ -491,6 +491,17 @@ function profileLoadProgress() {
       if (union) prog.hq.finds.taken = union;
     }
   } catch {}
+  /* THE MAP REMEMBERS (PHASE9_QUALITY_PLAN §6 D6, 2026-09-16): the charted world-graph links ride the blob as
+     `hq.links.seen`; the building's local record folds in the same way */
+  if (!prog.hq.links || typeof prog.hq.links !== 'object') prog.hq.links = { seen: {} };
+  if (!prog.hq.links.seen || typeof prog.hq.links.seen !== 'object') prog.hq.links.seen = {};
+  try {
+    const localL = p.door && p.door.hq && p.door.hq.links && p.door.hq.links.seen;
+    if (localL && typeof localL === 'object') {
+      const unionL = (typeof window !== 'undefined' && typeof window.hqLinksSeenUnion === 'function') ? window.hqLinksSeenUnion(prog.hq.links.seen, localL) : null;
+      if (unionL) prog.hq.links.seen = unionL;
+    }
+  } catch {}
   return prog;
 }
 

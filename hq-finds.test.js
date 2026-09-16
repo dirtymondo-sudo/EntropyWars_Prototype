@@ -87,7 +87,9 @@ test('every tape has a find, every tape room a daily pay cache, and no other kin
     const rooms = new Set(TAPES.map(t => t.where));
     for (const rid of rooms) {
         const pays = FINDS.filter(f => f.room === rid && f.kind === 'pay');
-        assert.equal(pays.length, 1, rid + ': one pay cache');
+        /* D7 (Phase 9 Delivery 4): a `quiet: true` part keeps its tape and goes without the envelope */
+        assert.equal(pays.length, HQ.rooms[rid].quiet ? 0 : 1, rid + ': one pay cache' + (HQ.rooms[rid].quiet ? ' — none, a quiet room' : ''));
+        if (!pays.length) continue;
         assert.ok(pays[0].daily === true && pays[0].amount > 0 && pays[0].id === 'pay:' + rid, rid + ': daily, paid, id');
         assert.equal(pays[0].amount, HQ.rooms[rid].fx === 'site' ? R.pay : R.payDeep, rid + ': the walkway rate on a board room, the deep rate elsewhere');
     }

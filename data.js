@@ -10794,7 +10794,7 @@ const ACH_RECORD_DEFS = [
 
 // Hard ceilings so a hostile blob can't balloon the stored row: key-count
 // caps per section plus a universal value clamp.
-const ACH_MERGE_CAPS = { counters: 256, champs: 256, unlocked: 12000, value: 1e9, finds: 4000 };
+const ACH_MERGE_CAPS = { counters: 256, champs: 256, unlocked: 12000, value: 1e9, finds: 4000, links: 512 };
 
 function mergeProgressBlobs(a, b) {
   const METRIC_RE = /^[A-Za-z0-9_]{1,48}$/;                 // counter metric names
@@ -10826,10 +10826,26 @@ function mergeProgressBlobs(a, b) {
      each newly-merged `pay:` claim once (hqFindsSyncPay). */
   const FIND_RE = /^(tape|pay|deck):[A-Za-z0-9_#:-]{1,96}$/;
   const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-  const out = { v: 2, counters: {}, champs: {}, records: {}, unlocked: {}, hq: { finds: { taken: {} } } };
-  let nCounters = 0, nChamps = 0, nUnlocked = 0, nFinds = 0;
+  /* THE MAP REMEMBERS (PHASE9_QUALITY_PLAN §6 D6, 2026-09-16): `hq.links.seen`
+     = the world-graph links the officer has WALKED — `{ '<linkId>':
+     'YYYY-MM-DD' }`, the day it was first charted. Union keeps the EARLIER
+     date (a discovery is made once). THE WORLD tab draws an unseen leg
+     dotted and its far station unlabelled; GO stays for every station. */
+  const LINK_RE = /^[a-z0-9_]{1,64}$/;
+  const out = { v: 2, counters: {}, champs: {}, records: {}, unlocked: {}, hq: { finds: { taken: {} }, links: { seen: {} } } };
+  let nCounters = 0, nChamps = 0, nUnlocked = 0, nFinds = 0, nLinks = 0;
   for (const src of [a, b]) {
     if (!src || typeof src !== 'object') continue;
+    const seen = (src.hq && typeof src.hq === 'object' && src.hq.links && typeof src.hq.links === 'object' && src.hq.links.seen && typeof src.hq.links.seen === 'object') ? src.hq.links.seen : {};
+    for (const key of Object.keys(seen)) {
+      if (!LINK_RE.test(key) || badKey(key)) continue;
+      const raw = seen[key];
+      const v = (typeof raw === 'string' && DATE_RE.test(raw)) ? raw : null;
+      if (v === null) continue;
+      const dst = out.hq.links.seen;
+      if (dst[key] === undefined) { if (nLinks >= ACH_MERGE_CAPS.links) continue; nLinks++; dst[key] = v; continue; }
+      if (v < dst[key]) dst[key] = v;
+    }
     const taken = (src.hq && typeof src.hq === 'object' && src.hq.finds && typeof src.hq.finds === 'object' && src.hq.finds.taken && typeof src.hq.finds.taken === 'object') ? src.hq.finds.taken : {};
     for (const key of Object.keys(taken)) {
       if (!FIND_RE.test(key) || badKey(key)) continue;
@@ -18526,7 +18542,17 @@ const DOOR_HQ = {
         serving_line:      { proc: 'serving_line',   span: 3.0,  foot: 1.5, wall: true, depth: 1.15, rect: { hw: 1.5, hd: 0.575 }, block: true },   // Room 86 (2026-09-16): a 3 m cafeteria counter — the hot wells + sneeze guard on the wall side, THE TRAY SLIDE (0.85 m) along the front; trays at z = wall + 0.95
         exec_chair:        { proc: 'exec_chair',     h: 1.25,    foot: 0.36, block: true },   // 4C: the high-backed leather chair
         wall_plaques:      { proc: 'wall_plaques',   h: 1.2,     foot: 0, wall: true, mount: 1.3,  depth: 0.05 },   // 4C: the achievements engraved (gold per hqTrophyCount, read at build)
-        motto_plaque:      { proc: 'motto_plaque',   h: 0.6,     foot: 0, wall: true, mount: 1.5,  depth: 0.05 },   // the Bureau: the reality barometer (hqMottoBarometer at build; the room is rebuilt per entry)
+        motto_plaque:      { proc: 'motto_plaque',   h: 0.6,     foot: 0, wall: true, mount: 1.5,  depth: 0.05 },
+        /* THE MAP REMEMBERS (PHASE9_QUALITY_PLAN §6 D8, 2026-09-16): the door gun's
+           LEARNING SEQUENCE — one brushed plate per situation (HQ_GUN_LESSONS; the
+           prop row names it with `lesson: '<id>'`, the proc reads the row). The
+           wall form hangs; the floor form (`lesson_sign`) stands on a post where an
+           OPEN room has no wall (the Singularity). Wording is Claude's DRAFT (A15). */
+        lesson_plaque:     { proc: 'lesson_plaque',  h: 0.7,     foot: 0, wall: true, mount: 1.35, depth: 0.05 },
+        lesson_sign:       { proc: 'lesson_plaque',  h: 1.9,     foot: 0.25 },
+        /* D7 THE SPACESHIP'S REVEAL: the bridge's viewport — the SUN the derelict
+           swings in toward, swelling and flaring on a slow cycle (a ticker) */
+        sun_viewport:      { proc: 'sun_viewport',   h: 1.6,     foot: 0, wall: true, mount: 1.0,  depth: 0.1, glow: { y: 0.8, size: 1.6, color: '#ffb066' }, light: { color: '#ffb066', intensity: 0.9, dist: 6, y: 1.6 } },   // the Bureau: the reality barometer (hqMottoBarometer at build; the room is rebuilt per entry)
         false_window:      { proc: 'false_window',   h: 1.6,     foot: 0, wall: true, mount: 1.0,  depth: 0.08, glow: { y: 0.8, size: 1.8, color: 0xfff3d0 } },   // 4C: the window that should not exist (a lit pane behind blinds)
         infinity_pool:     { proc: 'infinity_pool',  h: 0.48,    foot: 3.0, rect: { hw: 3.1, hd: 1.85 }, block: true },   // Room 8: the raised basin, a RECT blocker (room axes: place it at face 0 / 180)
         pool_lounger:      { proc: 'pool_lounger',   h: 0.8,     foot: 0.5, block: true },   // Room 8: a lounger (a seat for hqSit at its own x/z)
@@ -19958,6 +19984,7 @@ const DOOR_HQ = {
                 ],
                 fitted: true,
                 props: [
+                    { key: 'lesson_sign',    x: 12.4,  z: -2.0,  face: 270 , lesson: 'lip' },                 // D8 (6): the combination — the hard tape on the +2 rim, reached by aiming at the LIP
                     { key: 'cardboard_box',  x: 13.0,  z: -12.8, face: 30 },
                     { key: 'paper_sheet',    x: -12.8, z: 13.0,  y: 0.01, face: 300 },
                 ],
@@ -21156,6 +21183,7 @@ const DOOR_HQ = {
                 { key: 'park_bench',     x: -4.4, z: -0.6, face: 90, rect: false },   // the visitors' bench, facing the seal
                 { key: 'hook_rail',      wall: 'w', z: 1.6 },
                 { key: 'notice_board',   wall: 'w', z: -2.2 },
+                { key: 'lesson_plaque',  wall: 'w', z: 0.2, lesson: 'rooms' },                                 // D8 (3): a door in one room, its twin in the next — the foyer ↔ the hall, safe at both ends
                 { key: 'potted_plant',   x: -4.5, z: -2.5, face: 30 },
                 /* ── the north wall: the plate, the camera over the revolving door ── */
                 { key: 'nameplate',      wall: 'n', x: 2.4, mount: 1.6 },
@@ -23212,6 +23240,7 @@ const DOOR_HQ = {
                    is a long time; the sign takes x −7.4…−2.6) */
                 { key: 'wall_clock',    wall: 's', x: 2.5 },
                 { key: 'water_cooler',  wall: 's', x: -7.8 },
+                { key: 'lesson_plaque', wall: 'w', z: 3.1, lesson: 'floor' },                                  // D8 (1): A → B on the floor, beside the RANGE console
                 /* THE FORTY-FOUR-MINUTE CORNER (2026-09-10) — the instructor
                    takes his break at forty-four and he takes it here: a crate
                    for a counter, the coffee maker, two cafeteria chairs that
@@ -25384,6 +25413,7 @@ const DOOR_HQ = {
                 { key: 'exit_sign',      wall: 'n', x: 1.1, mount: 7.6 },
                 { key: 'pipe_run',       x: 2.2, z: -2.6, face: 90 },
                 { key: 'fire_extinguisher', wall: 'w', z: -0.4 },
+                { key: 'lesson_plaque',  wall: 'e', z: 1.2, lesson: 'fall' },                                 // D8 (5): falling + momentum — a floor hatch at the bottom, a ceiling hatch on the top landing
                 { key: 'floor_stain',    x: 0.4, z: 0.6 },
                 { key: 'clipboard',      wall: 'e', z: -1.4, mount: 1.5, rot: 5 },              // the inspection: FLIGHTS 3 · FLOORS ∞
                 { key: 'security_camera', wall: 's', x: -1.8, mount: 7.4 },
@@ -25923,6 +25953,7 @@ const DOOR_HQ = {
                 { key: 'railing_1m',     x: -1.2, z: 1.8, face: 0 },                              // THE PARK RULE: the one thing the right way up
                 { key: 'riser_1',        x: 2.4, z: -0.6, face: 0, rect: false },                 // … and the step
                 { key: 'vent_grille',    wall: 'w', z: 2.0, mount: 0.3 },
+                { key: 'lesson_plaque',  wall: 's', x: 1.6, lesson: 'ceiling' },                             // D8 (4): the right way up, like the rail — a hatch OUT of the flipped office
                 { key: 'exit_sign',      wall: 'w', z: 0, mount: 0.4, flip: true },
             ],
             agents: [],
@@ -26180,6 +26211,7 @@ const DOOR_HQ = {
                 { key: 'picture_round_a', wall: 'w', z: -0.8, mount: 1.9 },
                 { key: 'wall_clock',     wall: 'n', x: -6.2, mount: 2.1 },                 // stopped at the hour the house keeps (under the landing)
                 { key: 'wall_shelf',     wall: 'e', z: -1.2, mount: 1.5 },
+                { key: 'lesson_plaque',  wall: 'e', z: -5.0, mount: 1.35, lesson: 'ledge' },                 // D8 (2): the visible LEDGE — the landing over your head; the flight beside you is the other way up
                 { key: 'floor_stain',    x: 5.6, z: -1.2 },
                 { key: 'cardboard_box',  x: 6.2, z: 4.6, face: 30 },
                 { key: 'umbrella_stand', x: 1.6, z: 5.2 },
@@ -26260,6 +26292,7 @@ const DOOR_HQ = {
         /* ── THE ATTIC — low, one bulb, the trunk; a `hard` tape later (9.1) ── */
         site_prebuilt_haunted_attic: {
             label: 'THE HAUNTED HOUSE · THE ATTIC',
+            quiet: true,   // D7 (PHASE9_QUALITY_PLAN §6): the smallest parts go without the pay envelope — a tape, a rail, the way out; not every room reads the same
             sub: 'THE HATCH · ONE BULB · THE TRUNK',
             kind: 'box', site: 'prebuilt_haunted', part: 'attic',
             shell: {
@@ -26954,6 +26987,7 @@ const DOOR_HQ = {
         /* ── THE AIRLOCK — the collars port and starboard, the deck aft, the hold forward ── */
         site_prebuilt_derelict_airlock: {
             label: 'THE SPACESHIP · THE AIRLOCK',
+            quiet: true,   // D7: a quiet room — the collars are the content; no envelope
             sub: 'THE DOCKING COLLARS · THE DECK · THE HOLD',
             kind: 'box', site: 'prebuilt_derelict', part: 'airlock',
             shell: {
@@ -27094,7 +27128,7 @@ const DOOR_HQ = {
                 { key: 'railing_1m',        x: -1.0, z: 2.6, face: 0 },                      // the rail behind the seats (the park rule's rail)
                 { key: 'railing_1m',        x: 0, z: 2.6, face: 0 },
                 { key: 'railing_1m',        x: 1.0, z: 2.6, face: 0 },
-                { key: 'false_window',      wall: 'n', x: 0, mount: 1.0 },                   // THE VIEWPORT: the sun, closer every crossing
+                { key: 'sun_viewport',      wall: 'n', x: 0, mount: 1.0 },                   // THE VIEWPORT: the sun, closer every crossing
                 { key: 'monitor_stack',     wall: 'n', x: -3.6 },
                 { key: 'monitor_stack',     wall: 'n', x: 3.6 },
                 { key: 'tanker_desk',       wall: 'e', z: 0 },
@@ -28947,7 +28981,7 @@ function hqWorldGraph() {
    to the site's board room (`fromRoom` / `toRoom` keep the real ends).
    `here` = the viewer stands in that room or anywhere in that site.
    Nothing here is manufactured. Viewer-local (RULE #2). */
-function hqWorldRoutes(curRoom) {
+function hqWorldRoutes(curRoom, opts) {
     const R = DOOR_HQ.routes || {};
     const rooms = DOOR_HQ.rooms || {};
     const hereSite = curRoom ? hqRoomSite(curRoom) : null;
@@ -28983,7 +29017,99 @@ function hqWorldRoutes(curRoom) {
         out.push({ id: id, label: R[id].label || id.toUpperCase(), sub: R[id].sub || '', color: R[id].color || '#b8a060', dashed: !!R[id].dashed,
             stations: order.map(station), legs: legs });
     });
+    /* THE MAP REMEMBERS (D6): with `opts.profile` (null = a stranger) every leg is marked seen / every station known */
+    if (opts && Object.prototype.hasOwnProperty.call(opts, 'profile')) hqWorldApplyKnown(out, opts.profile, curRoom);
     return out;
+}
+/* ── THE MAP REMEMBERS (PHASE9_QUALITY_PLAN §6 D6, 2026-09-16) ───────────
+   Discovered routes. A link is CHARTED the first time the officer walks
+   through one of its doors (map.js _hqRecordVisit on a `link_<id>` door →
+   hqLinkSee). The record lives in TWO places and hqLinksSeenRecord is
+   their UNION — `door.hq.links.seen` (the building's local record) and
+   `progress.hq.links.seen` (the SYNCED blob; mergeProgressBlobs carries it,
+   profile.js folds the local record in on every read). THE WORLD tab
+   (hqWorldRoutes(curRoom, { profile })) marks every leg `seen` and every
+   station `known` — a station is known when you stand in it, when it is a
+   FACILITY room (the garden, the barbershop: the building's own map), or
+   when a charted leg touches it; an unknown station draws unlabelled and
+   its legs dotted. GO stays available for every station (the user's
+   convenience rule — a display rule only, C row G). Viewer-local, nothing
+   on `state`, nothing relayed (RULE #2). */
+const HQ_LINK_ID_RE = /^[a-z0-9_]{1,64}$/;
+function hqLinksSeenUnion(a, b) {
+    const out = {};
+    [a, b].forEach(src => {
+        if (!src || typeof src !== 'object') return;
+        Object.keys(src).forEach(k => {
+            if (!HQ_LINK_ID_RE.test(k)) return;
+            const v = src[k]; if (!v) return;
+            const d = (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) ? v : hqToday();
+            if (!out[k] || d < out[k]) out[k] = d;      // the EARLIER day: a discovery is made once
+        });
+    });
+    return out;
+}
+function hqLinksSeenRecord(profile) {
+    let local = null, synced = null;
+    try { const r = profile && profile.door && profile.door.hq && profile.door.hq.links; if (r && typeof r === 'object' && r.seen && typeof r.seen === 'object') local = r.seen; } catch (e) {}
+    try { const h = profile && profile.progress && profile.progress.hq && profile.progress.hq.links; if (h && typeof h === 'object' && h.seen && typeof h.seen === 'object') synced = h.seen; } catch (e) {}
+    return hqLinksSeenUnion(local, synced);
+}
+/* the synced set on the blob — never invents a progress blob (ensureProgress owns the migration) */
+function hqLinksSeenSynced(profile, create) {
+    const prog = profile && profile.progress;
+    if (!prog || typeof prog !== 'object' || !(prog.v >= 2)) return null;
+    if (!prog.hq || typeof prog.hq !== 'object') { if (!create) return null; prog.hq = {}; }
+    if (!prog.hq.links || typeof prog.hq.links !== 'object') { if (!create) return null; prog.hq.links = { seen: {} }; }
+    if (!prog.hq.links.seen || typeof prog.hq.links.seen !== 'object') { if (!create) return null; prog.hq.links.seen = {}; }
+    return prog.hq.links.seen;
+}
+function hqLinkSeen(profile, linkId) { return !!hqLinksSeenRecord(profile)[String(linkId || '')]; }
+/* the ONE write: charts a link on the profile OBJECT handed in (both records) —
+   the caller saves once. Returns { ok, first, date, link } — `first` = a new
+   discovery (the toast), false when it was charted already. */
+function hqLinkSee(profile, linkId, now) {
+    const id = String(linkId || '').replace(/^link_/, '');
+    if (!profile || !HQ_LINK_ID_RE.test(id)) return { ok: false, reason: 'id' };
+    const link = (DOOR_HQ.links || []).find(l => l.id === id) || null;
+    if (!link) return { ok: false, reason: 'unknown', link: id };
+    const rec = hqLinksSeenRecord(profile);
+    const first = !rec[id];
+    const date = rec[id] || hqToday(now ? new Date(now) : undefined);
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
+    const L = profile.door.hq.links = Object.assign({}, profile.door.hq.links || {});
+    L.seen = Object.assign({}, rec); L.seen[id] = date;
+    const synced = hqLinksSeenSynced(profile, true);
+    if (synced && !synced[id]) synced[id] = date;
+    return { ok: true, first, date, link: id, route: link.route || null };
+}
+/* how much of the world is charted: { seen, total, routes: { [id]: { seen, total } } } over the LIVE links */
+function hqWorldCharted(profile) {
+    const rec = hqLinksSeenRecord(profile), routes = {};
+    let seen = 0, total = 0;
+    (DOOR_HQ.links || []).forEach(l => {
+        if (!hqLinkLive(l)) return;
+        total++; const r = routes[l.route || '?'] = routes[l.route || '?'] || { seen: 0, total: 0 }; r.total++;
+        if (rec[l.id]) { seen++; r.seen++; }
+    });
+    return { seen, total, routes };
+}
+/* mark a routes read (hqWorldRoutes) with what the officer knows: every leg
+   `seen`, every station `known`, every line `seenLegs` / `totalLegs` */
+function hqWorldApplyKnown(routes, profile, curRoom) {
+    const rec = hqLinksSeenRecord(profile);
+    const hereSite = curRoom ? hqRoomSite(curRoom) : null;
+    const touched = {};
+    routes.forEach(r => { r.legs.forEach(l => { l.seen = !!rec[l.link]; if (l.seen) { touched[l.from] = true; touched[l.to] = true; } }); });
+    routes.forEach(r => {
+        r.seenLegs = r.legs.filter(l => l.seen).length; r.totalLegs = r.legs.length;
+        r.stations.forEach(st => {
+            const facility = !hqRoomSite(st.room);
+            st.known = !!(st.here || facility || touched[st.room] || (st.site && hereSite && st.site === hereSite));
+        });
+    });
+    return routes;
 }
 /* ── THE COMPLEXES (HQ plan 9.2 stage 1, 2026-09-15) ─────────────────────
    A site that is several rooms. The GENERATED room (hqSiteRoom) stays the
@@ -29466,7 +29592,8 @@ function hqBuildFinds() {
             rows.push(Object.assign({ id: 'tape:' + t.id, room: roomId, kind: 'tape', tape: t.id, x: sp.x, z: sp.z, relax: sp.relax || 0, why: onBoard ? (sp.hard ? 'on a wall of the board — the door gun reaches it' : 'on the board, up a level') : 'in the far corner, in plain sight of anyone who looks' },
                 sp.y != null ? { y: sp.y } : {}, sp.cell ? { cell: sp.cell } : {}, sp.hard ? { hard: true } : {}));
         });
-        const ps = pin.pay || hqFindSpot(roomId, 'pay', placed);
+        /* D7 (2026-09-16): a `quiet: true` room keeps its tape and goes without the envelope */
+        const ps = room.quiet ? null : (pin.pay || hqFindSpot(roomId, 'pay', placed));
         /* THE GUARDED ENVELOPE (9.4 stage 2): in a room with natives of its own the pay stands only once the room is CLEARED today (hqFindsInRoom) */
         const guarded = hqRoomGuarded(roomId);
         if (ps) rows.push(Object.assign({ id: 'pay:' + roomId, room: roomId, kind: 'pay', amount: room.fx === 'site' ? R.pay : R.payDeep, daily: true, x: ps.x, z: ps.z, relax: ps.relax || 0 }, ps.y != null ? { y: ps.y } : {}, guarded ? { guard: true } : {},
@@ -29478,9 +29605,95 @@ function hqBuildFinds() {
 }
 /* hand-pinned spots (the generator's fallback): the cold room is 4 × 4 with hooks over the floor — the tape stands in the NE corner, the envelope lies on the shelving */
 DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 1.7, y: 1.2 } },
+    /* D8 (PHASE9_QUALITY_PLAN §6, 2026-09-16): the door gun's second lesson — a visible LEDGE. The hall's tape stands ON THE LANDING
+       (shell.gallery, 2.9 m up, the west end): the flight at the east end is the way that is not a portal, the gun is the short one */
+    site_prebuilt_haunted_hall: { tape: { x: 2.6, z: -4.9, y: 2.9 } },   // east of the stair doorway, clear of THE DAIS (riser_1 spans x −6.7..1.7 on the floor below)
     /* THE URBAN BLOCK (9.2 stage 4): the platform's finds stand on the PLATFORM — the train (a `way` on the track, DOOR_HQ.links subway_downtown) lays its blockers at build, which the generator cannot see; the pins keep both off the track */
     site_prebuilt_downtown_subway: { tape: { x: 3.2, z: -13.2 }, pay: { x: 0.6, z: -13.4 } } };   // the deck (SKATEBOARDING 9.8) takes the generator's far corner of Room 26
 DOOR_HQ.finds = hqBuildFinds();
+/* ── THE DOOR GUN'S LEARNING SEQUENCE (PHASE9_QUALITY_PLAN §6 D8, 2026-09-16) ──
+   Six situations the world already had, now LABELLED: a plate (catalogue
+   `lesson_plaque` on a wall, `lesson_sign` on a post) stands where each is
+   met; the prop row names its lesson (`lesson: '<id>'`). Every situation
+   keeps a way back that is not a portal (`back`). `hard` = the sixth: the
+   +2 rim of a board is reached by aiming at its LIP — the gun reads a wall
+   hit within HQ_PORTAL_RULES.ledgeSnapM of a board cell's top as a FLOOR
+   door on that top (three-renderer.js _hqPortalLedgeSnap). Titles + lines
+   are Claude's DRAFT (A15, `draft: true`). Read through hqGunLessons(). */
+const HQ_GUN_LESSONS = {
+    floor:   { n: 1, room: 'training', title: 'LESSON ONE · THE FLOOR', lines: ['F DRAWS THE GUN', 'LEFT CLICK · A   RIGHT CLICK · B', 'WALK INTO ONE. YOU ARE AT THE OTHER.'], back: 'the same floor', draft: true },
+    ledge:   { n: 2, room: 'site_prebuilt_haunted_hall', title: 'LESSON TWO · THE LEDGE', lines: ['A ON THE LANDING OVER YOUR HEAD', 'B AT YOUR FEET', 'THE STAIRS ARE THE LONG WAY. THEY STILL WORK.'], back: 'the flight', draft: true },
+    rooms:   { n: 3, room: 'foyer', title: 'LESSON THREE · TWO ROOMS', lines: ['A HERE. WALK THROUGH THE REVOLVING DOOR.', 'B IN THE HALL. STEP IN.', 'THE PAIR HOLDS ACROSS A WALL. IT HOLDS ACROSS THE BUILDING.'], back: 'the revolving door', draft: true },
+    ceiling: { n: 4, room: 'upsidedown', title: 'LESSON FOUR · THE CEILING', lines: ['THE FLOOR IS THE CEILING. AIM UP.', 'A ON THE CEILING. B ON THE FLOOR.', 'JUMP THROUGH B AND COME OUT THE RIGHT WAY UP.'], back: 'the door to the floor', draft: true },
+    fall:    { n: 5, room: 'stairwell', title: 'LESSON FIVE · THE FALL', lines: ['A ON THE FLOOR UNDER YOU', 'B ON THE CEILING OF THE TOP LANDING', 'FALL. KEEP FALLING. HOLD F WHEN YOU HAVE HAD ENOUGH.'], back: 'the treads', draft: true },
+    lip:     { n: 6, room: 'site_prebuilt_singularity', title: 'LESSON SIX · THE LIP', lines: ['THE TAPE IS ON THE RIM. TWO LEVELS. YOU CANNOT CLIMB IT.', 'AIM AT THE LIP OF THE WALL. THE DOOR LANDS ON TOP.', 'B AT YOUR FEET. THE DIRECTORY IS THE WAY DOWN.'], back: 'ESC · DIRECTORY', draft: true },
+};
+function hqGunLessons() {
+    return Object.keys(HQ_GUN_LESSONS).map(id => {
+        const L = HQ_GUN_LESSONS[id], room = DOOR_HQ.rooms[L.room];
+        const prop = room ? (room.props || []).find(p => p.lesson === id) : null;
+        return Object.assign({ id, placed: !!prop, prop: prop || null, roomLabel: room ? room.label : null }, L);
+    }).sort((a, b) => a.n - b.n);
+}
+/* THE LIP (item 9's proof, PHASE9_QUALITY_PLAN §8): can the door gun reach a
+   `hard` board find from the walkway? A wall hit on the cell's side face
+   within `snap` of its top becomes a floor door on the top — so the officer
+   needs ONE walkway point whose eye (HQ_HARD_REACH.eye up) sees a point in
+   that lip band, inside the gun's reach, over the other cells (their tops,
+   a monument's height) and the moat. Returns { ok, from: {x, z}, dist,
+   face, hit: {x, y, z} } or { ok: false, reason }. */
+const HQ_HARD_REACH = { eye: 1.6, step: 0.5, band: 0.35 };
+function hqFindHardReach(row) {
+    if (!row || !row.hard || !row.cell) return { ok: false, reason: 'not hard' };
+    const ri = hqFindRoomInfo(row.room); if (!ri || !ri.board) return { ok: false, reason: 'no board' };
+    const B = ri.board, b = B.info, C = B.cell, half = B.half, S = ri.S;
+    const R = (typeof HQ_PORTAL_RULES !== 'undefined') ? HQ_PORTAL_RULES : { reach: 14, ledgeSnapM: 0.9 };
+    const snap = R.ledgeSnapM || 0.9, reach = R.reach || 14;
+    const [tx, ty] = row.cell, top = b.cells[ty][tx].lvl * C;
+    const cellTop = (cx, cy) => {
+        if (cx < 0 || cy < 0 || cx >= b.w || cy >= b.h) return -Infinity;
+        const c = b.cells[cy][cx]; let h = Math.max(0, c.lvl) * C;
+        for (const m of b.mons) if (cx >= m.x && cx < m.x + m.foot && cy >= m.y && cy < m.y + m.foot) h = Math.max(h, (Math.max(0, c.lvl) + (m.maxH || 2)) * C);
+        return h;
+    };
+    const cellOf = (x, z) => [Math.floor((x + half) / C), Math.floor((z + half) / C)];
+    /* the four faces of the target cell: a point in the lip band on each, 0.3 m in from the corners */
+    const cx0 = tx * C - half, cz0 = ty * C - half;
+    const faces = [
+        { face: 'n', x: cx0 + C / 2, z: cz0, nx: 0, nz: -1 }, { face: 's', x: cx0 + C / 2, z: cz0 + C, nx: 0, nz: 1 },
+        { face: 'w', x: cx0, z: cz0 + C / 2, nx: -1, nz: 0 }, { face: 'e', x: cx0 + C, z: cz0 + C / 2, nx: 1, nz: 0 },
+    ].filter(f => { const [nx, ny] = [tx + f.nx, ty + f.nz]; return cellTop(nx, ny) < top - snap; });   // an open face: the neighbour is lower than the band
+    if (!faces.length) return { ok: false, reason: 'no open face' };
+    const hy = top - HQ_HARD_REACH.band;   // the aim point, inside the band
+    const clear = (fx, fz, ex, ez, ey, f) => {
+        const dx = fx - ex, dz = fz - ez, dy = hy - ey, len = Math.hypot(dx, dz);
+        if (len > reach || len < 0.5) return false;
+        const n = Math.ceil(len / 0.2);
+        for (let i = 1; i < n; i++) {
+            const t = i / n, px = ex + dx * t, pz = ez + dz * t, py = ey + dy * t;
+            if (Math.abs(px) >= half || Math.abs(pz) >= half) continue;      // over the walkway / the moat: nothing stands there but the water below
+            const [cx, cy] = cellOf(px, pz);
+            if (cx === tx && cy === ty) continue;
+            if (py <= cellTop(cx, cy) + 0.05) return false;
+        }
+        /* the last 0.2 m must arrive from the open side (never through the cell's own body) */
+        return (fx - ex) * f.nx + (fz - ez) * f.nz < 0;
+    };
+    let best = null;
+    for (let x = -S.w / 2 + 0.5; x <= S.w / 2 - 0.5 + 1e-6; x += HQ_HARD_REACH.step) {
+        for (let z = -S.d / 2 + 0.5; z <= S.d / 2 - 0.5 + 1e-6; z += HQ_HARD_REACH.step) {
+            const px = Math.round(x * 100) / 100, pz = Math.round(z * 100) / 100;
+            if (!hqFindFree(ri, px, pz, { rules: Object.assign({}, HQ_FIND_RULES, { awayDoor: 0.8, awayProp: 0.4, awayNpc: 0.5, awayCounter: 0 }) })) continue;
+            for (const f of faces) {
+                const fx = f.x + f.nx * 0.02, fz = f.z + f.nz * 0.02;
+                if (!clear(fx, fz, px, pz, HQ_HARD_REACH.eye, f)) continue;
+                const dist = Math.hypot(fx - px, fz - pz);
+                if (!best || dist < best.dist) best = { ok: true, from: { x: px, z: pz }, dist: Math.round(dist * 100) / 100, face: f.face, hit: { x: fx, y: hy, z: fz }, top };
+            }
+        }
+    }
+    return best || { ok: false, reason: 'no aim point', top };
+}
 function hqFindById(id) { return (DOOR_HQ.finds || []).find(f => f.id === id) || null; }
 /* the record on the profile (never written by a reader). THE LEDGER (plan
    §4 B2, 2026-09-16): the claims live in TWO places and the read is their
@@ -29680,7 +29893,7 @@ const HQ_PORTAL_RULES = {
        apart. (The ghost keeps the ring: it is neither yet.) */
     shapes: { a: 'circle', b: 'square' },
     /* D3a: the ghost's refusal reason is a WORD on the frame, not just red. */
-    reasons: { fluid: 'NOT ON WATER', near: 'TOO CLOSE', twin: 'THE TWIN', door: 'A DOOR\'S LANE', room: 'NO ROOM', wall: 'NOT A SURFACE', none: 'NOTHING THERE' },
+    reasons: { fluid: 'NOT ON WATER', near: 'TOO CLOSE', twin: 'THE TWIN', door: 'A DOOR\'S LANE', room: 'NO ROOM', wall: 'NOT A SURFACE', none: 'NOTHING THERE', lip: 'THE LIP · ON TOP' },
     /* D3c: THE RECALL — holding F for `recallMs` pulls BOTH doors back into the
        gun from anywhere (falling included) and clears the pair; a tap still
        draws / holsters (on the release). A mouth re-arms only `rearmMs` after
@@ -29690,6 +29903,12 @@ const HQ_PORTAL_RULES = {
     /* D4: out of the twin, the body must stand clear — nudged along the twin's
        normal up to `exitNudgeM` before the hop gives up and lands anyway. */
     exitNudgeM: 0.6,
+    /* THE LIP (PHASE9_QUALITY_PLAN §8 item 9, 2026-09-16): a wall hit on a board
+       cell's side face within this many metres of the cell's TOP reads as a
+       FLOOR door on that top — the `hard` finds on the +2 rims are reached by
+       aiming at the lip from the walkway (three-renderer.js _hqPortalLedgeSnap;
+       data.js hqFindHardReach is the proof). */
+    ledgeSnapM: 0.9,
 };
 function hqPortalRecord(profile) {
     const r = (profile && profile.door && profile.door.hq && profile.door.hq.portal) || {};
@@ -31752,6 +31971,7 @@ if (typeof window !== 'undefined') {
     window.hqCaveCompile = hqCaveCompile; window.hqCaveInfo = hqCaveInfo; window.hqCaveCellAt = hqCaveCellAt; window.hqCaveFeet = hqCaveFeet;
     window.hqCaveTopAt = hqCaveTopAt; window.hqCaveDoorY = hqCaveDoorY; window.hqCaveEdgeH = hqCaveEdgeH; window.hqCaveReach = hqCaveReach;
     /* THE FINDS + THE TAPES (HQ plan 9.1, 2026-09-15 rev 12) */
+    window.HQ_GUN_LESSONS = HQ_GUN_LESSONS; window.hqGunLessons = hqGunLessons; window.hqFindHardReach = hqFindHardReach; window.HQ_HARD_REACH = HQ_HARD_REACH;
     window.DOOR_TAPES = DOOR_TAPES; window.HQ_FIND_RULES = HQ_FIND_RULES; window.hqFindsInRoom = hqFindsInRoom; window.hqCollectFind = hqCollectFind;
     window.hqFindsSyncPay = hqFindsSyncPay; window.hqTapeLegacyId = hqTapeLegacyId; window.hqFindLegacyId = hqFindLegacyId; window.hqFindsTakenUnion = hqFindsTakenUnion; window.hqFindsSyncedTaken = hqFindsSyncedTaken;
     window.hqTapeShelf = hqTapeShelf; window.hqTapeCount = hqTapeCount; window.hqFindById = hqFindById; window.hqTapeById = hqTapeById; window.hqTapeClipUrl = hqTapeClipUrl; window.hqFindsRecord = hqFindsRecord;
@@ -31773,6 +31993,7 @@ if (typeof window !== 'undefined') {
     window.hqWorldGraph = hqWorldGraph;
     window.hqLinkLive = hqLinkLive;
     window.hqWorldRoutes = hqWorldRoutes;
+    window.hqLinksSeenUnion = hqLinksSeenUnion; window.hqLinksSeenRecord = hqLinksSeenRecord; window.hqLinkSeen = hqLinkSeen; window.hqLinkSee = hqLinkSee; window.hqWorldCharted = hqWorldCharted; window.hqWorldApplyKnown = hqWorldApplyKnown;
     window.hqStarChart = hqStarChart;
     window.doorSiteState = doorSiteState;
     window.hqKeys = hqKeys;

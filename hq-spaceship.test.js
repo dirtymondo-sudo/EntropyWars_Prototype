@@ -183,6 +183,6 @@ test('THE PARK RULE + the light: a rail in every compartment, a stepped ramp in 
     }
     assert.strictEqual(D.DOOR_TAPES.length, 100);
     assert.ok(HQ.rooms[BOARD + '_hold'].props.some(p => p.key === 'iso_tank'), 'THE CRYO POD is still running');
-    assert.ok(HQ.rooms[BOARD + '_bridge'].props.some(p => p.key === 'false_window' && p.wall === 'n'), 'THE VIEWPORT looks forward');
+    assert.ok(HQ.rooms[BOARD + '_bridge'].props.some(p => (p.key === 'sun_viewport' || p.key === 'false_window') && p.wall === 'n'), 'THE VIEWPORT looks forward');   // D7 (Phase 9 Delivery 4): the sun in the viewport
     assert.match(dataSrc, /prebuilt_derelict: \[\n\s+\{ id: 'airlock', wall: 'n', x: -6, leaf: 'leaf_bulkhead',/, 'the back-door row');
 });

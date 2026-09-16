@@ -316,6 +316,21 @@ muzzle flash, a recoil kick, three synth cues) and in every Door Agent's hand
 in battle, where every placement is a shot from it. NOT done: D3d (the boom's
 pitch clamp + the fade after the third crossing — playtest first), item 9's
 `hard` reachability test (the next delivery, with D8/D9). Next: 8–9.
+**Status 2026-09-16 (Delivery 4, `ENTROPY_WARS_PHASE9_MAP_REMEMBERS.zip`, token
+`20260916-map-remembers-04-cors`):** item 8 DONE for D6 (the per-link `seen` set in
+both records + the blob key `hq.links.seen`, THE WORLD dotted / unlabelled until walked,
+GO everywhere, ROUTE CHARTED toast) and PARTLY for D7 (the Spaceship's reveal — THE SUN in
+the bridge's viewport, a ticker; quiet rooms = the attic + the airlock go without the
+envelope; the other four complexes' reveals already stood — the table is in the build log);
+item 9 DONE: the `hard` proof (`hqFindHardReach`) FAILED as the gun stood — a +2 top is
+never visible from a 1.6 m eye and a wall exit lands at the door's base — so THE LIP rule
+shipped with it (`HQ_PORTAL_RULES.ledgeSnapM` 0.9: a wall hit under a board cell's top
+reads as a floor door ON the top; `_hqPortalLedgeSnap`), D8's six plates stand
+(`HQ_GUN_LESSONS`, `lesson_plaque` / `lesson_sign`; the hall's tape pinned on THE LANDING),
+D9 = `check-find-spots.js` (the audit: 160 finds, 0 relaxed, 1 near the way in; the ~20
+pins are the user's, §14 row E — the tool prints the case). NOT done: D7's variant-driven
+reveals for the Dutchman / the Strip / Downtown (their landmarks exist; no new beat), D5
+(the blob's `cleared` / `encounters` / `skate.best`), D3d. Next: item 10 (the playtest).
 
 Each item: impact · evidence · files · dependencies · change · acceptance.
 
@@ -355,11 +370,11 @@ Each item: impact · evidence · files · dependencies · change · acceptance.
    `showVSSplash` (the seed already), map.js `_hqEncounterStart`; deps: 3; acceptance: a
    screenshot at t = 0 and t = 0.6 s from the same eye differ only by the dissolved pieces and
    the units; no load card.
-8. **D6 discovered routes + D7 complex reveals** — files: data.js (`hqLinkSeen`, the blob key),
+8. ✅ D6 SHIPPED 2026-09-16 / D7 partly (the sun, the quiet rooms). **D6 discovered routes + D7 complex reveals** — files: data.js (`hqLinkSeen`, the blob key),
    map.js `_hqWorldHtml`, `_hqEnter`; the variants / tickers per complex; deps: B2's blob;
    acceptance: a fresh profile's WORLD tab shows the facility's line and dotted unknowns;
    walking a link solidifies it; each complex has its named reveal in the build log.
-9. **`hard` reachability test + D8 learning plaques + D9 pins** — files: hq-finds.test.js (a vm
+9. ✅ SHIPPED 2026-09-16 (the proof + THE LIP rule, six plates, the audit tool; the pins beyond the hall's are the user's). **`hard` reachability test + D8 learning plaques + D9 pins** — files: hq-finds.test.js (a vm
    `_hqPortalFits` at each `hard` cell from the walkway), data.js `findSpots`, six plaque
    procs; deps: 5, 6; acceptance: every `hard` find has a legal placement in reach of a
    walkable aim point; the six situations exist with a non-portal way back.
@@ -379,7 +394,7 @@ Each item: impact · evidence · files · dependencies · change · acceptance.
   tests): B3 + D1 + D2 + the dissolve (item 7). ✅ 2026-09-16, `ENTROPY_WARS_PHASE9_ENCOUNTER.zip`.
 - **Delivery 3 — THE GUN READS** (three-renderer.js, data.js, map.js; tests): D3 + D4 + the
   `hard` reachability test.
-- **Delivery 4 — THE MAP REMEMBERS** (data.js, map.js, styles-base.css; tests): D6 + D8 + D9.
+- **Delivery 4 — THE MAP REMEMBERS** (data.js, map.js, styles-base.css; tests): D6 + D8 + D9. ✅ 2026-09-16, `ENTROPY_WARS_PHASE9_MAP_REMEMBERS.zip` (+ profile.js, three-renderer.js; item 9's proof and THE LIP rule rode along).
 - **Delivery 5 — the playtest** (PLAYTEST_NOTES.md) → then §10 / §11 in their own
   deliveries.
 Each delivery = one `ENTROPY_WARS_<TOPIC>.zip`, `npm test` green, the token bumped, the
