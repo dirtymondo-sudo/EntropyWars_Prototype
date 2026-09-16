@@ -671,6 +671,8 @@
             /* post-match / post-screen: stand where you left, door at your back */
             if (opts.at) { try { ThreeRenderer.hq.goTo(opts.at, true); } catch (e) {} }
             if (opts.from === 'play') { _hqLastRoom = roomId; _hqLastDoor = null; _hqRecordVisit(null); }
+            /* THE MAP (2026-09-16): every room entered is a room SEEN — the directory's map draws it from now on */
+            if (typeof _hqRecordRoomSeen === 'function') _hqRecordRoomSeen(roomId);
             window._hqRelabelMenuButtons();
             try { if (typeof startDoorRoomTone === 'function') startDoorRoomTone(); } catch (e) {}
             try { syncMusicToState().catch(() => {}); } catch (e) {}
@@ -938,7 +940,7 @@
             { id: 'party',     label: 'PARTY',     sub: 'THE LAST ROSTER' },
             { id: 'officer',   label: 'OFFICER',   sub: 'YOUR FILE' },
             { id: 'settings',  label: 'SETTINGS',  sub: 'AUDIO · DISPLAY · CONTROLS' },
-            { id: 'directory', label: 'DIRECTORY', sub: 'EVERY ROOM' },
+            { id: 'directory', label: 'DIRECTORY', sub: 'THE MAP · EVERY ROOM YOU HAVE REACHED' },
             { id: 'exit',      label: 'EXIT',      sub: 'TO THE MAIN MENU' },
         ];
         const _HQ_TYPE_COLORS = { human: '#a0a0c3', alien: '#32aa50', divine: '#dcaa1e', unholy: '#9632b4', tech: '#28a0be', anomaly: '#dc3c82' };
@@ -1227,6 +1229,7 @@
                 /* the directory is a PANEL over the paused walk (ESC closes it and resumes) */
                 _hqPauseDrop();
                 _hqSuspended = false;
+                _hqMap.sel = null;
                 _hqOpenCounter('directory');
                 return;
             }
@@ -1297,7 +1300,7 @@
             if (_hqPanelTarget) window._hqClosePanel();
             _hqOpenPanel({ kind: 'counter', id: c.id, label: c.label, sub: c.sub, counter: c });
         }
-        window._hqOpenDirectory = function () { _hqOpenCounter('directory'); };
+        window._hqOpenDirectory = function () { _hqMap.sel = null; _hqOpenCounter('directory'); };
         window._hqOpenDispatch = function () { _hqOpenCounter('dispatch'); };
         /* Bay door → the pre-selected match setup (plan D3 / §3.7): Arena on
            the site's 8×8 Δ board, 4v4, the CPU pinned to the site's native
@@ -2592,28 +2595,306 @@
             }
             return html;
         }
+        /* ══ THE MAP — the directory as a subway map (2026-09-16) ═══════════
+           data.js hqMapModel(profile, curRoom) says WHAT is drawn (every room
+           the officer has stood in, a ? for a room behind a door of one of
+           those, the edges between them, the box that fits them); this block
+           DRAWS it (an SVG the panel pans and zooms) and ANIMATES THE
+           DIFFERENCE against the last open: the profile keeps what the map
+           last SHOWED (`door.hq.map = { n: { roomId: 'n' | 'q' }, e: { key: 1 },
+           box }`, viewer-local, never synced — it is a memory of a drawing,
+           not a discovery), so a ? that has become a number FLIPS, a new
+           room POPS, a new leg DRAWS itself, and the frame ZOOMS OUT from the
+           last box to the new one. A re-render inside one open (a node
+           picked) finds no difference and animates nothing. Viewer-local,
+           nothing on `state`, nothing relayed (RULE #2). */
+        const HQ_MAP_U = 100;          // px per layout unit (the ground ring's radius)
+        const HQ_MAP_PAD = 0.5;        // units of margin round the fitted box
+        const HQ_MAP_ZOOM_MS = 950;    // the zoom-out
+        const HQ_MAP_POP_AT = 260;     // the first reveal, ms after the zoom starts
+        let _hqMap = { sel: null, view: null, model: null, fit: null, anim: 0, dragged: false, seenN: -1, mem: null, ptr: null };
+        const _hqMapEnabled = () => (typeof window.hqMapModel === 'function');
+        function _hqMapShown() {
+            /* what the map last drew — the profile's record, else the session's */
+            try { const p = _hqProfile(); const m = p && p.door && p.door.hq && p.door.hq.map; if (m && typeof m === 'object' && m.n && typeof m.n === 'object') return m; } catch (e) {}
+            return _hqMap.mem;
+        }
+        function _hqMapRemember(rec) {
+            _hqMap.mem = rec;
+            try {
+                const PS = window.ProfileSystem;
+                if (!PS || typeof PS.getActiveProfileIndex !== 'function') return;
+                const idx = PS.getActiveProfileIndex(); if (idx === null || idx === undefined) return;
+                const p = PS.loadProfile(idx); if (!p) return;
+                if (!p.door || typeof p.door !== 'object') p.door = {};
+                if (!p.door.hq || typeof p.door.hq !== 'object') p.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
+                p.door.hq.map = rec;
+                PS.saveProfile(idx, p);
+            } catch (e) {}
+        }
+        /* the ONE write of a room seen: every room entry (_hqEnter) — the
+           discovery is the profile's; the map animates it on the next open */
+        function _hqRecordRoomSeen(roomId) {
+            try {
+                if (typeof window.hqRoomSee !== 'function') return;
+                const PS = window.ProfileSystem;
+                if (!PS || typeof PS.getActiveProfileIndex !== 'function') return;
+                const idx = PS.getActiveProfileIndex(); if (idx === null || idx === undefined) return;
+                const p = PS.loadProfile(idx); if (!p) return;
+                const r = window.hqRoomSee(p, roomId);
+                if (!r || !r.ok) return;
+                PS.saveProfile(idx, p);
+                if (r.first) {
+                    const no = (typeof window.hqMapRoomNo === 'function') ? window.hqMapRoomNo(roomId) : '';
+                    const room = DOOR_HQ.rooms[roomId] || {};
+                    if (roomId !== _HQ_FOYER) _hqToast(`<b>ON THE MAP</b> · ${no ? 'ROOM ' + _hqEsc(no) + ' · ' : ''}${_hqEsc(String(room.label || roomId).toUpperCase())}<span>THE DIRECTORY REDRAWS</span>`, 2400);
+                    if (PS.hasServerAccount && PS.hasServerAccount() && typeof PS.scheduleProgressSync === 'function') setTimeout(() => { try { PS.scheduleProgressSync(); } catch (e) {} }, 0);
+                }
+            } catch (e) {}
+        }
+        const _hqMapF = v => (Math.round(v * 10) / 10).toString();
+        function _hqMapFitBox(box) { return [(box.x - HQ_MAP_PAD) * HQ_MAP_U, (box.y - HQ_MAP_PAD) * HQ_MAP_U, (box.w + 2 * HQ_MAP_PAD) * HQ_MAP_U, (box.h + 2 * HQ_MAP_PAD) * HQ_MAP_U]; }
+        function _hqMapWhere(n) { return n.where || (n.wild ? 'THE WORLD' : 'THE FACILITY'); }
+        /* the GO landing for a node: a site room's egress, else nothing (the room's default spot) */
+        function _hqMapAt(id) { const r = DOOR_HQ.rooms[id]; if (r && (r.doors || []).some(d => d.id === 'egress')) return 'egress'; return ''; }
+        function _hqMapCardHtml(M) {
+            const selId = (_hqMap.sel && M.nodes.some(n => n.id === _hqMap.sel)) ? _hqMap.sel : M.here;
+            const n = M.nodes.find(x => x.id === selId);
+            if (!n) return '';
+            const here = n.st === 'here';
+            let html = `<div class="hq-map-card st-${n.st}${here ? ' here' : ''}">`;
+            if (n.st === 'q') {
+                html += `<div class="hq-map-card-hd"><b>${_hqNoTag('?')}UNCHARTED</b><span>A DOOR YOU HAVE SEEN · WALK THROUGH IT TO PUT IT ON THE MAP</span></div>`;
+                html += `<div class="hq-panel-actions">${_hqRoomExists(n.id) ? `<button class="hq-btn" data-room="${_hqEsc(n.id)}" data-at="${_hqEsc(_hqMapAt(n.id))}" title="The building will take you; the map fills in when you arrive">GO ANYWAY ▸</button>` : ''}<button class="hq-btn" data-mapnode="${_hqEsc(M.here || '')}">◂ YOU ARE HERE</button></div>`;
+                return html + '</div>';
+            }
+            const kv = [];
+            kv.push(_hqMapWhere(n) + (n.bayNo && !/BAY/.test(n.where || '') ? ' · BAY ' + n.bayNo : ''));
+            if (n.part) kv.push('PART OF ' + _hqEsc(String(_hqMapLabel(n.site)).toUpperCase()));
+            if (n.first) kv.push('FIRST SEEN ' + n.first);
+            kv.push(`DOORS ${n.known} OF ${n.doors} CHARTED`);
+            html += `<div class="hq-map-card-hd"><b>${_hqNoTag(n.no)}${_hqEsc(String(n.label).toUpperCase())}</b><span>${n.sub ? _hqEsc(n.sub) + ' · ' : ''}${kv.join(' · ')}</span></div>`;
+            if (here) {
+                /* THIS ROOM: the old directory's top — every door and counter here, WALK to it */
+                const room = _hqRoom() || {}, profile = _hqProfile();
+                const isBox = room.kind === 'box', isBay = room.kind === 'bay';
+                const where = d => isBox ? ('WALL ' + String(d.wall || '').toUpperCase() + ' · ') : isBay ? ((d.cap ? 'END CAP · ' : (d.side === 'in') ? 'INNER WALL · ' : 'THRESHOLD · ') + (d.bay ? d.bay + ' · ' : '')) : (d.level >= 2 ? 'THE GALLERY · ' : d.level ? 'MEZZANINE · ' : 'FLOOR · ');
+                const noPre = e => { const no = _hqNo(e); return no ? 'ROOM ' + no + ' · ' : ''; };
+                const rows = [];
+                (room.doors || []).forEach(d => rows.push({ id: d.id, label: d.label, sub: noPre(d) + where(d) + (d.sub || ''), st: (typeof window.doorSiteState === 'function') ? window.doorSiteState(d, profile) : 'open' }));
+                (room.counters || []).forEach(c => rows.push({ id: c.id, label: c.label, sub: noPre(c) + (c.level >= 2 ? 'THE GALLERY · ' : c.level ? 'MEZZANINE · ' : 'FLOOR · ') + (c.sub || ''), st: 'open' }));
+                if (rows.length) {
+                    html += `<details class="hq-map-det" open><summary>THIS ROOM · ${rows.length} DOORS AND COUNTERS · WALK</summary><div class="hq-rows hq-rows-scroll">`;
+                    rows.forEach(r => { html += `<div class="hq-row"><b>${_hqEsc(r.label)}</b><span>${_hqEsc(r.sub)}</span>${_hqStateChip(r.st)}<button class="hq-btn hq-btn-sm" data-goto="${_hqEsc(r.id)}">WALK</button></div>`; });
+                    html += '</div></details>';
+                }
+            } else {
+                html += `<div class="hq-panel-actions">${_hqRoomExists(n.id) ? `<button class="hq-btn hq-btn-primary" data-room="${_hqEsc(n.id)}" data-at="${_hqEsc(_hqMapAt(n.id))}">GO ▸ ${_hqEsc(String(n.label).toUpperCase())}</button>` : ''}<button class="hq-btn" data-mapnode="${_hqEsc(M.here || '')}">◂ YOU ARE HERE</button></div>`;
+            }
+            return html + '</div>';
+        }
+        function _hqMapSvg(M) {
+            const U = HQ_MAP_U, F = _hqMapF;
+            const fit = _hqMapFitBox(M.box);
+            const view = _hqMap.view || fit;
+            const posOf = {}; M.nodes.forEach(n => { posOf[n.id] = n; });
+            const ringPt = (ringNode, toX, toY) => { const a = Math.atan2(toY - ringNode.y, toX - ringNode.x); return { x: ringNode.x + Math.cos(a) * ringNode.ring, y: ringNode.y + Math.sin(a) * ringNode.ring }; };
+            let svg = `<svg class="hq-map-svg" viewBox="${view.map(F).join(' ')}" preserveAspectRatio="xMidYMid meet" data-fit="${fit.map(F).join(' ')}" role="img" aria-label="THE MAP">`;
+            svg += '<defs><pattern id="hqMapGrid" width="50" height="50" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="0.8" class="hq-map-grid"/></pattern></defs>';
+            svg += `<rect class="hq-map-bg" x="${F(fit[0] - 4000)}" y="${F(fit[1] - 4000)}" width="${F(fit[2] + 8000)}" height="${F(fit[3] + 8000)}" fill="url(#hqMapGrid)"/>`;
+            /* THE SHAFT: one line through the car and every visible stop */
+            const shaftYs = M.nodes.filter(n => Math.abs(n.x - M.shaft.x) < 0.7 && (n.id === 'car' || M.edges.some(e => e.stop && (e.a === n.id || e.b === n.id)))).map(n => n.y);
+            if (shaftYs.length > 1) svg += `<line class="hq-map-shaft" x1="${F(M.shaft.x * U)}" y1="${F(Math.min(...shaftYs) * U)}" x2="${F(M.shaft.x * U)}" y2="${F(Math.max(...shaftYs) * U)}"/>`;
+            /* the edges */
+            M.edges.forEach(e => {
+                const A = posOf[e.a], B = posOf[e.b];
+                if (!A || !B) return;
+                if (A.hall && B.ring || B.hall && A.ring) return;          // the ring encloses the hall
+                if (e.stop && (A.id === 'car' || B.id === 'car')) {          // the shaft draws the stops; a stop's row is a stub off it
+                    const S = A.id === 'car' ? B : A;
+                    svg += `<line class="hq-map-e k-lift st-${e.st}" data-mapedge="${_hqEsc(e.key)}" x1="${F(M.shaft.x * U)}" y1="${F(S.y * U)}" x2="${F(S.x * U)}" y2="${F(S.y * U)}"><title>${_hqEsc('THE ELEVATOR · ' + e.stop)}</title></line>`;
+                    return;
+                }
+                let a = { x: A.x, y: A.y }, b = { x: B.x, y: B.y };
+                if (A.ring) a = ringPt(A, B.x, B.y);
+                if (B.ring) b = ringPt(B, A.x, A.y);
+                const cls = `hq-map-e k-${e.kind} st-${e.st}${e.charted ? '' : ' uncharted'}${e.gate ? ' gated' : ''}`;
+                const style = e.color ? ` style="stroke:${_hqEsc(e.color)}"` : '';
+                const title = (e.kind === 'link' || e.kind === 'way') ? ((e.route && DOOR_HQ.routes && DOOR_HQ.routes[e.route] && DOOR_HQ.routes[e.route].label) || 'A SEAM') + (e.way ? ' · ' + String(e.way).toUpperCase() : '') : (e.kind === 'secret' ? 'A DOOR THAT IS NOT ON A PLATE' : e.kind === 'lift' ? 'THE ELEVATOR' : 'A DOOR');
+                if (e.kind === 'link' || e.kind === 'way' || (e.kind === 'lift' && !e.stop)) {
+                    /* a seam bows outward from the hall — the world's lines arc round the outside */
+                    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, d = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+                    const om = Math.hypot(mx, my) || 1, k = 0.18 * d;
+                    const cx = mx + (mx / om) * k, cy = my + (my / om) * k;
+                    svg += `<path class="${cls}" data-mapedge="${_hqEsc(e.key)}"${style} d="M ${F(a.x * U)} ${F(a.y * U)} Q ${F(cx * U)} ${F(cy * U)} ${F(b.x * U)} ${F(b.y * U)}"><title>${_hqEsc(title)}</title></path>`;
+                } else {
+                    svg += `<line class="${cls}" data-mapedge="${_hqEsc(e.key)}"${style} x1="${F(a.x * U)}" y1="${F(a.y * U)}" x2="${F(b.x * U)}" y2="${F(b.y * U)}"><title>${_hqEsc(title)}</title></line>`;
+                }
+            });
+            /* the nodes */
+            const sel = _hqMap.sel;
+            M.nodes.forEach(n => {
+                const cls = `hq-map-n st-${n.st}${n.wild ? ' wild' : ''}${n.part ? ' part' : ''}${n.hall ? ' hall' : ''}${n.ring ? ' ring' : ''}${n.no ? ' numbered' : ''}${sel === n.id ? ' sel' : ''}`;
+                const title = n.st === 'q' ? 'UNCHARTED · WALK A DOOR TO IT' : `${n.no ? 'ROOM ' + n.no + ' · ' : ''}${String(n.label).toUpperCase()}${n.st === 'here' ? ' · YOU ARE HERE' : ''} · ${_hqMapWhere(n)}`;
+                svg += `<g class="${cls}" data-mapnode="${_hqEsc(n.id)}" transform="translate(${F(n.x * U)} ${F(n.y * U)})"><title>${_hqEsc(title)}</title>`;
+                if (n.ring) {
+                    svg += `<circle class="hq-map-ringline" r="${F(n.ring * U)}"/><text class="hq-map-lbl ringlbl" y="${F(-n.ring * U - 5)}" text-anchor="middle">${n.st === 'q' ? '?' : _hqEsc(String(n.label).toUpperCase())}</text>`;
+                } else {
+                    if (n.st === 'here') svg += '<circle class="hq-map-here" r="22"/>';
+                    if (n.hall) svg += '<circle class="hq-map-dot" r="20"/><circle class="hq-map-dot inner" r="14"/>';
+                    else if (n.wild && !n.part) svg += '<rect class="hq-map-dot" x="-12" y="-12" width="24" height="24" rx="3" transform="rotate(45)"/>';
+                    else if (n.part) svg += '<circle class="hq-map-dot" r="8"/>';
+                    else svg += `<circle class="hq-map-dot" r="${n.no ? 12 : 7}"/>`;
+                    svg += `<text class="hq-map-q" text-anchor="middle" dy="3.5">?</text>`;
+                    if (n.no) svg += `<text class="hq-map-no" text-anchor="middle" dy="${n.no.length > 3 ? 3 : 3.5}"${n.no.length > 3 ? ' style="font-size:7px"' : ''}>${_hqEsc(n.no)}</text>`;
+                    const lblOn = n.st !== 'q' && (!n.no || n.st === 'here' || sel === n.id || n.hall);
+                    if (lblOn) svg += `<text class="hq-map-lbl" y="${n.hall ? 32 : (n.no ? 24 : 19)}" text-anchor="middle">${_hqEsc(String(n.label).toUpperCase().slice(0, 22))}</text>`;
+                }
+                svg += '</g>';
+            });
+            svg += '</svg>';
+            return svg;
+        }
+        function _hqMapHtml() {
+            if (!_hqMapEnabled()) return '';
+            const profile = _hqProfile();
+            const M = window.hqMapModel(profile, _hqCurRoom, { all: !!window.EW_HQ_MAP_ALL });
+            /* a discovery since the last render drops the officer's own pan / zoom: the frame refits (and the zoom-out plays) */
+            if (_hqMap.seenN !== M.seen + M.q * 1000) { _hqMap.view = null; _hqMap.seenN = M.seen + M.q * 1000; }
+            _hqMap.model = M; _hqMap.fit = _hqMapFitBox(M.box);
+            const charted = (typeof window.hqWorldCharted === 'function') ? window.hqWorldCharted(profile) : null;
+            let html = `<div class="hq-map"><div class="hq-map-bar"><span>${M.seen} OF ${M.total} PLACES CHARTED · ${M.q} IN QUESTION${charted ? ' · ' + charted.seen + ' OF ' + charted.total + ' SEAMS WALKED' : ''}</span><i><button class="hq-btn hq-btn-sm" data-mapzoom="in" title="zoom in">+</button><button class="hq-btn hq-btn-sm" data-mapzoom="out" title="zoom out">−</button><button class="hq-btn hq-btn-sm" data-mapfit="1" title="fit the charted map">FIT</button></i></div>`;
+            html += `<div class="hq-map-stage">${_hqMapSvg(M)}</div>`;
+            html += '<div class="hq-map-legend"><i class="lg-room">●</i> ROOM <i class="lg-site">◆</i> SITE <i class="lg-part">•</i> PART OF A SITE <i class="lg-q">?</i> UNCHARTED <i class="lg-lift">┃</i> THE ELEVATOR <i class="lg-seam">╌</i> A SEAM · DRAG TO PAN · WHEEL TO ZOOM · CLICK A NODE</div>';
+            html += _hqMapCardHtml(M);
+            return html + '</div>';
+        }
+        /* after the panel's innerHTML lands: the reveal, the zoom, the handlers */
+        function _hqMapAfterRender(body) {
+            const svg = body && body.querySelector && body.querySelector('svg.hq-map-svg');
+            const M = _hqMap.model;
+            if (!svg || !M) return;
+            const reduced = (() => { try { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } })();
+            const prev = _hqMapShown();
+            const cur = { n: {}, e: {}, box: _hqMap.fit.slice() };
+            M.nodes.forEach(n => { cur.n[n.id] = (n.st === 'q') ? 'q' : 'n'; });
+            M.edges.forEach(e => { cur.e[e.key] = 1; });
+            const first = !prev;
+            let pops = 0, flips = 0, draws = 0;
+            if (!reduced) {
+                const tNode = HQ_MAP_POP_AT;
+                const nodesNew = [];
+                svg.querySelectorAll('g[data-mapnode]').forEach(g => {
+                    const id = g.getAttribute('data-mapnode'), was = prev ? prev.n[id] : undefined, now = cur.n[id];
+                    if (now === 'n' && was === 'q') nodesNew.push({ g, cls: 'flip' });
+                    else if (now === 'n' && !was) nodesNew.push({ g, cls: 'pop' });
+                    else if (now === 'q' && !was) nodesNew.push({ g, cls: 'qin' });
+                });
+                const stag = Math.min(60, 1400 / Math.max(1, nodesNew.length));
+                nodesNew.forEach((r, i) => { r.g.classList.add('reveal', r.cls); r.g.style.setProperty('--d', (tNode + i * stag) + 'ms'); if (r.cls === 'flip') flips++; else pops++; });
+                const tEdge = tNode + nodesNew.length * stag + 120;
+                const edgesNew = [];
+                svg.querySelectorAll('[data-mapedge]').forEach(el => { const k = el.getAttribute('data-mapedge'); if (!prev || !prev.e[k]) edgesNew.push(el); });
+                const estag = Math.min(50, 1200 / Math.max(1, edgesNew.length));
+                edgesNew.forEach((el, i) => {
+                    draws++;
+                    el.style.setProperty('--d', (tEdge + i * estag) + 'ms');
+                    const dashed = /k-way|uncharted|k-secret|st-q/.test(el.getAttribute('class') || '');
+                    let len = 0; try { len = el.getTotalLength ? el.getTotalLength() : 0; } catch (e) { len = 0; }
+                    if (!dashed && len > 0) { el.style.setProperty('--len', len.toFixed(1)); el.classList.add('reveal', 'draw'); }
+                    else el.classList.add('reveal', 'fade');
+                });
+                /* the zoom-out: from the box the map last showed to the new fit (never on the first open, never over the officer's own view) */
+                if (prev && Array.isArray(prev.box) && prev.box.length === 4 && !_hqMap.view) {
+                    const from = prev.box.map(Number), to = _hqMap.fit;
+                    if (from.some((v, i) => Math.abs(v - to[i]) > 0.5) && from.every(v => isFinite(v))) _hqMapTweenView(svg, from, to, HQ_MAP_ZOOM_MS);
+                }
+                if (pops + flips + draws > 0 && !first) { setTimeout(() => { try { playSfx('uiButtonConfirm'); } catch (e) {} }, tNode); }
+            }
+            _hqMapRemember(cur);
+            _hqMapBind(svg);
+        }
+        function _hqMapSetView(svg, v) { _hqMap.view = v.slice(); svg.setAttribute('viewBox', v.map(_hqMapF).join(' ')); }
+        function _hqMapTweenView(svg, from, to, ms) {
+            const token = ++_hqMap.anim, t0 = performance.now();
+            const ease = t => (t < 0.5) ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+            const step = () => {
+                if (token !== _hqMap.anim) return;
+                const k = Math.min(1, (performance.now() - t0) / ms), e = ease(k);
+                const v = from.map((a, i) => a + (to[i] - a) * e);
+                svg.setAttribute('viewBox', v.map(_hqMapF).join(' '));
+                if (k < 1) requestAnimationFrame(step); else _hqMap.view = null;
+            };
+            svg.setAttribute('viewBox', from.map(_hqMapF).join(' '));
+            requestAnimationFrame(step);
+        }
+        /* the officer's own hand on the map: wheel zooms about the cursor, a drag pans, a click picks a node */
+        function _hqMapBind(svg) {
+            const cur = () => (svg.getAttribute('viewBox') || '').split(/\s+/).map(Number);
+            const toUser = (cx, cy) => {
+                const r = svg.getBoundingClientRect(), v = cur();
+                const s = Math.max(v[2] / (r.width || 1), v[3] / (r.height || 1));
+                const ox = v[0] - (s * r.width - v[2]) / 2, oy = v[1] - (s * r.height - v[3]) / 2;
+                return { x: ox + (cx - r.left) * s, y: oy + (cy - r.top) * s, s };
+            };
+            svg.addEventListener('wheel', (e) => {
+                e.preventDefault(); _hqMap.anim++;
+                const v = cur(), p = toUser(e.clientX, e.clientY);
+                const f = Math.pow(1.15, e.deltaY > 0 ? 1 : -1);
+                const w = Math.max(160, Math.min(v[2] * f, 6000)), h = v[3] * (w / v[2]);
+                _hqMapSetView(svg, [p.x - (p.x - v[0]) * (w / v[2]), p.y - (p.y - v[1]) * (h / v[3]), w, h]);
+            }, { passive: false });
+            svg.addEventListener('pointerdown', (e) => {
+                if (e.button !== 0) return;
+                _hqMap.ptr = { x: e.clientX, y: e.clientY, v: cur(), moved: false, id: e.pointerId };
+                _hqMap.dragged = false;
+                try { svg.setPointerCapture(e.pointerId); } catch (err) {}
+            });
+            svg.addEventListener('pointermove', (e) => {
+                const P = _hqMap.ptr; if (!P) return;
+                const dx = e.clientX - P.x, dy = e.clientY - P.y;
+                if (!P.moved && Math.hypot(dx, dy) < 4) return;
+                P.moved = true; _hqMap.dragged = true; _hqMap.anim++;
+                const r = svg.getBoundingClientRect(), s = Math.max(P.v[2] / (r.width || 1), P.v[3] / (r.height || 1));
+                _hqMapSetView(svg, [P.v[0] - dx * s, P.v[1] - dy * s, P.v[2], P.v[3]]);
+            });
+            const up = (e) => { const P = _hqMap.ptr; _hqMap.ptr = null; if (P) { try { svg.releasePointerCapture(P.id); } catch (err) {} } if (P && P.moved) setTimeout(() => { _hqMap.dragged = false; }, 0); };
+            svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
+            svg.addEventListener('dblclick', () => { _hqMap.anim++; _hqMap.view = null; svg.setAttribute('viewBox', (svg.getAttribute('data-fit') || '')); });
+        }
+        /* a re-render of the directory in place (a node picked, a zoom button) */
+        function _hqMapRerender() {
+            const body = _hqEl('hqPanelBody'); if (!body) return;
+            body.innerHTML = _hqDirectoryHtml() + '<p class="hq-panel-foot">ESC · CLOSE</p>';
+            _hqMapAfterRender(body);
+        }
+        window._hqMapDev = function () { return { model: _hqMap.model, shown: _hqMapShown(), view: _hqMap.view, fit: _hqMap.fit }; };
         function _hqDirectoryHtml() {
             const room = _hqRoom(), profile = _hqProfile();
-            const isBay = room.kind === 'bay';
-            let html = `<div class="hq-panel-hd"><b>BUILDING DIRECTORY</b><span>${_hqEsc(room.label || 'CENTRAL EGRESS')} · YOU ARE HERE · LAYOUT SUBJECT TO REVISION</span></div><div class="hq-rows">`;
-            const rows = [];
-            const isBox = room.kind === 'box';
-            const where = d => isBox ? ('WALL ' + String(d.wall || '').toUpperCase() + ' · ') : isBay ? ((d.cap ? 'END CAP · ' : (d.side === 'in') ? 'INNER WALL · ' : 'THRESHOLD · ') + (d.bay ? d.bay + ' · ' : '')) : (d.level >= 2 ? 'THE GALLERY · ' : d.level ? 'MEZZANINE · ' : 'FLOOR · ');
-            const noPre = e => { const n = _hqNo(e); return n ? 'ROOM ' + n + ' · ' : ''; };
-            (room.doors || []).forEach(d => rows.push({ id: d.id, label: d.label, sub: noPre(d) + where(d) + (d.sub || ''), st: (typeof window.doorSiteState === 'function') ? window.doorSiteState(d, profile) : 'open' }));
-            (room.counters || []).forEach(c => rows.push({ id: c.id, label: c.label, sub: noPre(c) + (c.level >= 2 ? 'THE GALLERY · ' : c.level ? 'MEZZANINE · ' : 'FLOOR · ') + (c.sub || ''), st: 'open' }));
-            rows.forEach(r => {
-                html += `<div class="hq-row"><b>${_hqEsc(r.label)}</b><span>${_hqEsc(r.sub)}</span>${_hqStateChip(r.st)}<button class="hq-btn hq-btn-sm" data-goto="${_hqEsc(r.id)}">WALK</button></div>`;
-            });
-            html += '</div>';
-            /* THE ROOM REGISTER (HQ plan 7.1): every numbered place in the
-               building, numbers first then the alphanumerics, each with the
-               way there — WALK inside this room, GO into the room that holds
-               it (a bay at that threshold, the training room at the console). */
+            let html = `<div class="hq-panel-hd"><b>THE MAP</b><span>BUILDING DIRECTORY · ${_hqEsc(room.label || 'CENTRAL EGRESS')} · YOU ARE HERE · LAYOUT SUBJECT TO REVISION</span></div>`;
+            const mapHtml = _hqMapHtml();
+            html += mapHtml;
+            const seen = (typeof window.hqRoomsSeenRecord === 'function') ? window.hqRoomsSeenRecord(profile) : {};
+            const known = id => !!(id && (seen[id] || id === _hqCurRoom || window.EW_HQ_MAP_ALL));
+            if (!mapHtml) {
+                /* no map (data.js without it): the old top — this room's doors, WALK */
+                const isBay = room.kind === 'bay', isBox = room.kind === 'box';
+                const where = d => isBox ? ('WALL ' + String(d.wall || '').toUpperCase() + ' · ') : isBay ? ((d.cap ? 'END CAP · ' : (d.side === 'in') ? 'INNER WALL · ' : 'THRESHOLD · ') + (d.bay ? d.bay + ' · ' : '')) : (d.level >= 2 ? 'THE GALLERY · ' : d.level ? 'MEZZANINE · ' : 'FLOOR · ');
+                const noPre = e => { const n = _hqNo(e); return n ? 'ROOM ' + n + ' · ' : ''; };
+                html += '<div class="hq-rows">';
+                (room.doors || []).forEach(d => { html += `<div class="hq-row"><b>${_hqEsc(d.label)}</b><span>${_hqEsc(noPre(d) + where(d) + (d.sub || ''))}</span><button class="hq-btn hq-btn-sm" data-goto="${_hqEsc(d.id)}">WALK</button></div>`; });
+                (room.counters || []).forEach(c => { html += `<div class="hq-row"><b>${_hqEsc(c.label)}</b><span>${_hqEsc(noPre(c) + (c.sub || ''))}</span><button class="hq-btn hq-btn-sm" data-goto="${_hqEsc(c.id)}">WALK</button></div>`; });
+                html += '</div>';
+            }
+            /* THE ROOM REGISTER (HQ plan 7.1): every numbered place — the ones
+               the officer has reached; the rest are a count. GO takes you to
+               the room that holds it (a bay at that threshold, the training
+               room at the console). */
             const reg = (typeof window.hqRoomRegister === 'function') ? window.hqRoomRegister() : [];
             if (reg.length) {
-                html += `<div class="hq-chips" style="margin-top:12px"><span>THE ROOM REGISTER · ${reg.length} NUMBERED PLACES · ONE NUMBER, ONE PLACE</span></div><div class="hq-rows">`;
-                reg.forEach(r => {
+                const rows = reg.filter(r => mapHtml ? (r.kind === 'site' ? known(r.siteRoom) || known(r.room) : r.kind === 'room' ? known(r.id) : r.kind === 'facility' ? known('training') : known(r.room)) : true);
+                html += `<details class="hq-map-det"><summary>THE ROOM REGISTER · ${rows.length} OF ${reg.length} NUMBERED PLACES REACHED · ONE NUMBER, ONE PLACE</summary><div class="hq-rows hq-rows-scroll">`;
+                rows.forEach(r => {
                     let go = '';
                     const hereId = r.kind === 'site' ? 'site_' + r.id : (r.kind === 'room' ? null : r.id);
                     if (r.room && r.room === _hqCurRoom && hereId) go = `<button class="hq-btn hq-btn-sm" data-goto="${_hqEsc(hereId)}">WALK</button>`;
@@ -2625,10 +2906,13 @@
                     const where = r.kind === 'site' ? `BAY ${r.bayNo || '?'} · ${_hqEsc(r.sub)}` : _hqEsc(r.sub);
                     html += `<div class="hq-row hq-row-tray" title="${_hqEsc(r.why || '')}"><b>${_hqNoTag(r.no)}${_hqEsc(r.label)}</b><span>${where}</span>${go}</div>`;
                 });
-                html += '</div>';
+                html += '</div></details>';
             }
+            /* THE LINES (9.3): the world's routes as subway lines, one sheet per line */
+            html += '<details class="hq-map-det"><summary>THE LINES · THE WORLD ROUTE BY ROUTE</summary>';
             html += _hqWorldHtml();
-            html += '<p class="hq-panel-note">WALK moves you to the door; GO takes you to the room that holds it. The building stays consistent long enough to be memorised. The numbers are permanent, which is more than can be said for the rooms.</p>';
+            html += '</details>';
+            html += '<p class="hq-panel-note">The map draws what you have walked: a room you have stood in wears its number, a door you have seen leads to a question mark, and the rest is off the sheet until you get there. WALK moves you to the door; GO takes you to the room. The building stays consistent long enough to be memorised. The numbers are permanent, which is more than can be said for the rooms.</p>';
             return html;
         }
         /* THE WORLD (HQ plan 9.3, 2026-09-15 rev 7): the directory's second
@@ -3314,6 +3598,7 @@
             else if (t.kind === 'notice') html = _hqNoticePanelHtml(t);
             else html = _hqNpcPanelHtml(t);
             body.innerHTML = html + '<p class="hq-panel-foot">ESC · CLOSE</p>';
+            if (typeof _hqMapAfterRender === 'function') _hqMapAfterRender(body);   // THE MAP: the reveal + the handlers
             panel.style.display = '';
             _hqSetPrompt(null);
             try { playSfx('uiButtonConfirm'); } catch (e) {}
@@ -3386,6 +3671,12 @@
             const avBtn = e.target.closest('[data-avatar]');
             if (avBtn && !avBtn.disabled) { window._hqPickAvatar(avBtn.getAttribute('data-avatar')); return; }
             /* THE SHELF (Room 360, 9.1): a spine puts that cassette in the set — the panel re-renders in place */
+            /* THE MAP: a node picked / a zoom button — the directory re-renders in place (no reveal: the record already holds this open) */
+            const mapNode = e.target.closest('[data-mapnode]');
+            if (mapNode) { if (_hqMap.dragged) return; _hqMap.sel = mapNode.getAttribute('data-mapnode') || null; _hqMapRerender(); return; }
+            const mapZoom = e.target.closest('[data-mapzoom]');
+            if (mapZoom) { const svg = body.querySelector('svg.hq-map-svg'); if (svg) { _hqMap.anim++; const v = (svg.getAttribute('viewBox') || '').split(/\s+/).map(Number); const f = mapZoom.getAttribute('data-mapzoom') === 'in' ? 1 / 1.3 : 1.3; const w = Math.max(160, Math.min(v[2] * f, 6000)), h = v[3] * (w / v[2]); _hqMapSetView(svg, [v[0] + (v[2] - w) / 2, v[1] + (v[3] - h) / 2, w, h]); } return; }
+            if (e.target.closest('[data-mapfit]')) { const svg = body.querySelector('svg.hq-map-svg'); if (svg) { _hqMap.anim++; _hqMap.view = null; svg.setAttribute('viewBox', svg.getAttribute('data-fit') || ''); } return; }
             const spine = e.target.closest('[data-tape]');
             if (spine) { _hqTapeSel = spine.getAttribute('data-tape'); body.innerHTML = _hqTapesHtml() + '<p class="hq-panel-foot">ESC · CLOSE</p>'; try { playSfx('uiButtonConfirm'); } catch (err) {} return; }
             /* THE STAR CHART (Room 360): a star opens its threshold's door panel; ◂ THE CHART comes back */

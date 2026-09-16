@@ -9185,3 +9185,23 @@ window laid over it (§11.2 rule 1) — stage D is about where the window's RIM 
 - **UNSEEN LIVE (RULE #1c)**: the rim against the real wall in a part with a residue (the attic's north wall, the
   casino's east, the subway's north — 0.25–0.75 m of the wall sheet standing in front of the true wall), the
   scoreboard line's width with the tag, the stamp's length on the result card.
+
+### 2026-09-16 — THE MAP · the directory as a subway map (discovery, the reveal) — local delivery
+The user: "a map for exploration, it can also be the Directory (the current directory is just a huge list) —
+interactable, subway nodes trying to make sense of the impossible architecture; undiscovered rooms don't show
+or show a question mark; every open after a discovery animates the question marks into room numbers, zooms out
+to reveal more, draws a node line between two previously unconnected points."
+- **THE LEDGER**: `hqRoomSee` / `hqRoomsSeenRecord` (data.js) — a room is on the map once the officer has STOOD
+  in it; both records, the synced blob `hq.rooms.seen` (merge + fold, like the links). map.js `_hqEnter` files it.
+- **THE GRAPH + THE LAYOUT** (`hqMapGraph` / `hqMapLayout`): 134 rooms reachable from the foyer, 200 typed edges;
+  a deterministic, collision-free placement (the hall, the rings, the hall's doors at their angle, the sites at their
+  thresholds' angles, the shaft with a band per floor, H-Wing under it, the rest walked into free cells).
+- **THE MODEL** (`hqMapModel`): here / seen / `?` / off the sheet; a secret door only once both rooms are seen;
+  a seam charted by walking it. **THE PANEL**: the SVG, pan + zoom, the card with GO, the register + the lines
+  folded under `<details>`. **THE REVEAL** (`_hqMapAfterRender`): the diff against `door.hq.map` — flip / pop /
+  qin / draw + the zoom-out.
+- Files: data.js (→ R2 AND Render), map.js, styles-base.css → R2; index.html → Render (`20260916-the-map-15-cors`);
+  repo: hq-map.test.js (7), achievements.test.js (the empty-merge pin grows `rooms`), CLAUDE.md, this log.
+- **UNSEEN LIVE (RULE #1c)**: the whole look. First things to eyeball: the ring circles against the nodes at the fit
+  zoom, the labels' size, the `?` flip's timing, the zoom-out from a one-room map to the hall's, the drag under the
+  panel's scroll.

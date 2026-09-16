@@ -10794,7 +10794,7 @@ const ACH_RECORD_DEFS = [
 
 // Hard ceilings so a hostile blob can't balloon the stored row: key-count
 // caps per section plus a universal value clamp.
-const ACH_MERGE_CAPS = { counters: 256, champs: 256, unlocked: 12000, value: 1e9, finds: 4000, links: 512, cleared: 256, clearedIds: 32 };
+const ACH_MERGE_CAPS = { counters: 256, champs: 256, unlocked: 12000, value: 1e9, finds: 4000, links: 512, cleared: 256, clearedIds: 32, rooms: 512 };
 
 function mergeProgressBlobs(a, b) {
   const METRIC_RE = /^[A-Za-z0-9_]{1,48}$/;                 // counter metric names
@@ -10844,8 +10844,8 @@ function mergeProgressBlobs(a, b) {
   const ROOM_RE = /^[A-Za-z0-9_]{1,80}$/;
   const SPOT_RE = /^[A-Za-z0-9_-]{1,48}$/;
   const RACE_TXT = v => (typeof v === 'string' && v.length <= 48) ? v : null;
-  const out = { v: 2, counters: {}, champs: {}, records: {}, unlocked: {}, hq: { finds: { taken: {} }, links: { seen: {} }, cleared: {}, encounters: { count: 0, wins: 0, losses: 0, last: null }, skate: { best: null, total: 0, lines: 0, bails: 0 } } };
-  let nCounters = 0, nChamps = 0, nUnlocked = 0, nFinds = 0, nLinks = 0, nCleared = 0;
+  const out = { v: 2, counters: {}, champs: {}, records: {}, unlocked: {}, hq: { finds: { taken: {} }, links: { seen: {} }, rooms: { seen: {} }, cleared: {}, encounters: { count: 0, wins: 0, losses: 0, last: null }, skate: { best: null, total: 0, lines: 0, bails: 0 } } };
+  let nCounters = 0, nChamps = 0, nUnlocked = 0, nFinds = 0, nLinks = 0, nCleared = 0, nRooms = 0;
   for (const src of [a, b]) {
     if (!src || typeof src !== 'object') continue;
     const hqSrc = (src.hq && typeof src.hq === 'object') ? src.hq : {};
@@ -10893,6 +10893,17 @@ function mergeProgressBlobs(a, b) {
       if (v === null) continue;
       const dst = out.hq.links.seen;
       if (dst[key] === undefined) { if (nLinks >= ACH_MERGE_CAPS.links) continue; nLinks++; dst[key] = v; continue; }
+      if (v < dst[key]) dst[key] = v;
+    }
+    /* THE MAP (2026-09-16): the rooms the officer has stood in ride the blob as hq.rooms.seen — the EARLIER day wins, like a link */
+    const roomsSeen = (src.hq && typeof src.hq === 'object' && src.hq.rooms && typeof src.hq.rooms === 'object' && src.hq.rooms.seen && typeof src.hq.rooms.seen === 'object') ? src.hq.rooms.seen : {};
+    for (const key of Object.keys(roomsSeen)) {
+      if (!ROOM_RE.test(key) || badKey(key)) continue;
+      const raw = roomsSeen[key];
+      const v = (typeof raw === 'string' && DATE_RE.test(raw)) ? raw : null;
+      if (v === null) continue;
+      const dst = out.hq.rooms.seen;
+      if (dst[key] === undefined) { if (nRooms >= ACH_MERGE_CAPS.rooms) continue; nRooms++; dst[key] = v; continue; }
       if (v < dst[key]) dst[key] = v;
     }
     const taken = (src.hq && typeof src.hq === 'object' && src.hq.finds && typeof src.hq.finds === 'object' && src.hq.finds.taken && typeof src.hq.finds.taken === 'object') ? src.hq.finds.taken : {};
@@ -29371,6 +29382,308 @@ function hqWorldApplyKnown(routes, profile, curRoom) {
     });
     return routes;
 }
+/* ── THE MAP (the directory as a subway map, 2026-09-16) ─────────────────
+   The Building Directory is a MAP now: every room of the building and every
+   site of the world is a NODE, every door / lift / seam an EDGE, drawn as
+   subway lines making sense of the impossible architecture. It is drawn
+   from THREE reads, all here, all pure:
+     hqRoomsSeenRecord(profile)  → { roomId: 'YYYY-MM-DD' } — every room the
+                                    officer has STOOD IN (the union of the
+                                    local record `door.hq.rooms.seen` and the
+                                    SYNCED blob `progress.hq.rooms.seen`;
+                                    mergeProgressBlobs carries it, the earlier
+                                    day wins, hqDoorSyncFold folds the local
+                                    record in on every read)
+     hqRoomSee(profile, roomId)  → the ONE write (map.js _hqEnter on every
+                                    room entry; the caller saves once)
+     hqMapModel(profile, curRoom)→ what the panel draws: nodes with a place
+                                    and a STATE — 'here' / 'seen' (numbered)
+                                    / 'q' (a question mark: an unseen room
+                                    behind a door of a seen room) — the rest
+                                    are not on the map at all; edges with a
+                                    state ('known' both ends seen, 'q' to a
+                                    question mark, and a link's `charted`);
+                                    the BOX that fits what is drawn.
+   THE LAYOUT (hqMapLayout, cached) is DETERMINISTIC — the same map every
+   open, so the panel can diff one open against the last and animate the
+   difference (map.js _hqMapAfterRender): the hall at the centre, the two
+   rings round it, the hall's doors' rooms at their door's angle, the sites
+   at their threshold's angle on the ring, the elevator a SHAFT to the left
+   with a band per floor, everything else walked outward from the first
+   placed neighbour into the first FREE cell (never a random number, never
+   a force pass). A secret door shows only once both rooms are seen. A room
+   the officer has not reached is never named. Viewer-local, nothing on
+   `state`, nothing relayed (RULE #2). */
+const HQ_ROOM_ID_RE = /^[A-Za-z0-9_]{1,80}$/;
+function hqRoomsSeenUnion(a, b) {
+    const out = {};
+    [a, b].forEach(src => {
+        if (!src || typeof src !== 'object') return;
+        Object.keys(src).forEach(k => {
+            if (!HQ_ROOM_ID_RE.test(k) || k === '__proto__' || k === 'constructor' || k === 'prototype') return;
+            const v = src[k]; if (!v) return;
+            const d = (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) ? v : hqToday();
+            if (!out[k] || d < out[k]) out[k] = d;      // the EARLIER day: a room is discovered once
+        });
+    });
+    return out;
+}
+function hqRoomsSeenRecord(profile) {
+    let local = null, synced = null;
+    try { const r = profile && profile.door && profile.door.hq && profile.door.hq.rooms; if (r && typeof r === 'object' && r.seen && typeof r.seen === 'object') local = r.seen; } catch (e) {}
+    try { const h = profile && profile.progress && profile.progress.hq && profile.progress.hq.rooms; if (h && typeof h === 'object' && h.seen && typeof h.seen === 'object') synced = h.seen; } catch (e) {}
+    return hqRoomsSeenUnion(local, synced);
+}
+function hqRoomsSeenSynced(profile, create) {
+    const prog = profile && profile.progress;
+    if (!prog || typeof prog !== 'object' || !(prog.v >= 2)) return null;
+    if (!prog.hq || typeof prog.hq !== 'object') { if (!create) return null; prog.hq = {}; }
+    if (!prog.hq.rooms || typeof prog.hq.rooms !== 'object') { if (!create) return null; prog.hq.rooms = { seen: {} }; }
+    if (!prog.hq.rooms.seen || typeof prog.hq.rooms.seen !== 'object') { if (!create) return null; prog.hq.rooms.seen = {}; }
+    return prog.hq.rooms.seen;
+}
+function hqRoomSeen(profile, roomId) { return !!hqRoomsSeenRecord(profile)[String(roomId || '')]; }
+/* the ONE write: files a room as SEEN on the profile OBJECT handed in (both
+   records) — the caller saves once. { ok, first, date, room } */
+function hqRoomSee(profile, roomId, now) {
+    const id = String(roomId || '');
+    if (!profile || !HQ_ROOM_ID_RE.test(id)) return { ok: false, reason: 'id' };
+    if (!Object.prototype.hasOwnProperty.call(DOOR_HQ.rooms || {}, id)) return { ok: false, reason: 'unknown', room: id };
+    const rec = hqRoomsSeenRecord(profile);
+    const first = !rec[id];
+    const date = rec[id] || hqToday(now ? new Date(now) : undefined);
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
+    const R = profile.door.hq.rooms = Object.assign({}, profile.door.hq.rooms || {});
+    R.seen = Object.assign({}, rec); R.seen[id] = date;
+    const synced = hqRoomsSeenSynced(profile, true);
+    if (synced && !synced[id]) synced[id] = date;
+    return { ok: true, first, date, room: id };
+}
+/* the node's number for the map: a room's own, a site board room's site
+   number, a room numbered on its own door (the Bureau); a complex PART / a
+   cave chamber wears none (the site's number is the board room's) */
+function hqMapRoomNo(roomId) {
+    const r = (DOOR_HQ.rooms || {})[roomId];
+    if (!r) return '';
+    if (r.roomNo != null) return hqRoomNoStr(r.roomNo);
+    if (r.site && r.part) return '';
+    return hqRoomNo(roomId) || '';
+}
+/* THE GRAPH: every room reachable from the foyer (the stage-1 bay rooms
+   that come back with `corridor.on: false` are registered but off the
+   walk — they are not on the map), undirected edges deduped by pair with
+   the strongest kind kept (link / way > secret > lift > door) */
+function hqMapGraph() {
+    const rooms = DOOR_HQ.rooms || {};
+    const g = hqWorldGraph();
+    const edgeMap = {};
+    const RANK = { door: 0, lift: 1, secret: 2, way: 3, link: 3 };
+    const add = (a, b, e) => {
+        if (!rooms[a] || !rooms[b] || a === b) return;
+        const key = a < b ? a + '|' + b : b + '|' + a;
+        const cur = edgeMap[key];
+        if (cur && RANK[cur.kind] >= RANK[e.kind]) { if (!cur.gate && e.gate) cur.gate = e.gate; if (e.stop && !cur.stop) cur.stop = e.stop; return; }
+        edgeMap[key] = Object.assign({ key, a: a < b ? a : b, b: a < b ? b : a }, e, cur ? { gate: e.gate || cur.gate } : {});
+    };
+    const linkOf = id => (DOOR_HQ.links || []).find(l => l.id === id) || null;
+    g.edges.forEach(e => {
+        const d = ((rooms[e.from] || {}).doors || []).find(x => x.id === e.door) || {};
+        const gate = (e.minClearance || e.requiresKeys) ? { minClearance: e.minClearance || 0, requiresKeys: e.requiresKeys || 0 } : null;
+        let kind = 'door', route = null, color = null, way = null;
+        if (e.link) {
+            const L = linkOf(e.link);
+            kind = (d.way || (L && L.way)) ? 'way' : 'link';
+            way = d.way || (L && L.way) || null;
+            route = (L && L.route) || null;
+            color = (route && DOOR_HQ.routes && DOOR_HQ.routes[route] && DOOR_HQ.routes[route].color) || null;
+        } else if (d.secret) kind = 'secret';
+        else if (d.proc === 'elevator' || e.to === 'car' || e.from === 'car') kind = 'lift';
+        add(e.from, e.to, { kind, link: e.link || null, route, color, way, gate, door: e.door });
+    });
+    /* the car has no doors: its FLOOR PANEL rides to the stops */
+    ((DOOR_HQ.elevator && DOOR_HQ.elevator.stops) || []).forEach(st => {
+        const gate = (st.minClearance || st.requiresKeys) ? { minClearance: st.minClearance || 0, requiresKeys: st.requiresKeys || 0 } : null;
+        add('car', st.room, { kind: 'lift', link: null, route: null, color: null, way: null, gate, door: 'elevator_' + st.id, stop: st.id });
+    });
+    const edges = Object.keys(edgeMap).sort().map(k => edgeMap[k]);
+    /* reachable from the foyer along the DIRECTED doors (gates ignored): a room
+       nobody can walk INTO (the stage-1 bay rooms, whose way out still lands in
+       the hall) is not on the map */
+    const dir = {};
+    g.edges.forEach(e => { (dir[e.from] = dir[e.from] || []).push(e.to); });
+    ((DOOR_HQ.elevator && DOOR_HQ.elevator.stops) || []).forEach(st => { (dir.car = dir.car || []).push(st.room); (dir[st.room] = dir[st.room] || []).push('car'); });
+    const start = rooms.foyer ? 'foyer' : (rooms.central_egress ? 'central_egress' : Object.keys(rooms)[0]);
+    const reach = {}; const todo = [start]; reach[start] = true;
+    while (todo.length) { const at = todo.shift(); (dir[at] || []).forEach(b => { if (!reach[b] && rooms[b]) { reach[b] = true; todo.push(b); } }); }
+    const adj = {};
+    edges.forEach(e => { if (!reach[e.a] || !reach[e.b]) return; (adj[e.a] = adj[e.a] || []).push(e.b); (adj[e.b] = adj[e.b] || []).push(e.a); });
+    const order = Object.keys(rooms).filter(id => reach[id]);
+    const nodes = {};
+    order.forEach(id => {
+        const r = rooms[id];
+        const site = r.site ? (hqSiteId(r.site) || null) : null;
+        const sector = site ? hqSectorOfMap(site) : null;
+        nodes[id] = { id, label: String(r.label || id), sub: String(r.sub || ''), no: hqMapRoomNo(id), site, part: (site && r.part) ? String(r.part) : null,
+            wild: !!site, ring: r.kind === 'bay' ? id : null, hall: r.kind === 'rotunda',
+            bayNo: sector ? hqBayNo(sector) : null, adj: (adj[id] || []).slice() };
+    });
+    return { nodes, order, edges: edges.filter(e => reach[e.a] && reach[e.b]), adj };
+}
+/* THE LAYOUT — deterministic, cached per DOOR_HQ.rooms object. Units: the
+   ground ring's radius = 1. Screen: deg 0 at twelve, clockwise (the star
+   chart's rule); the shaft at x = −HQ_MAP_SHAFT_X, a band per floor. */
+const HQ_MAP_L = { ringG: 1.0, ringM: 1.28, hallRoomR: [1.7, 1.7, 2.2], siteR: [2.9, 3.3], shaftX: -3.9, floorDy: 0.95, lobbyDx: 0.55, stepX: 0.5, stepY: 0.45, polarStep: 0.45, minD: 0.36 };
+let _hqMapLayoutCache = null;
+function hqMapLayout(graph) {
+    if (_hqMapLayoutCache && _hqMapLayoutCache.rooms === DOOR_HQ.rooms) return _hqMapLayoutCache.layout;
+    const G = graph || hqMapGraph();
+    const rooms = DOOR_HQ.rooms || {};
+    const L = HQ_MAP_L;
+    const pos = {};
+    const placed = [];
+    const free = (x, y) => placed.every(p => { const dx = p.x - x, dy = p.y - y; return dx * dx + dy * dy >= L.minD * L.minD; });
+    const put = (id, x, y, mode, where, extra) => {
+        if (!G.nodes[id] || pos[id]) return false;
+        /* a seed on a taken spot (two thresholds at one angle on the two rings) steps outward / down until free */
+        if (!(extra && extra.ring)) { let k = 0; while (!free(x, y) && k < 12) { k++; if (extra && extra.r) { const r = extra.r + k * L.polarStep, a = (extra.deg || 0) * Math.PI / 180; x = r * Math.sin(a); y = -r * Math.cos(a); extra.r = r; } else y += L.stepY; } }
+        pos[id] = Object.assign({ x, y, mode, where, depth: 0 }, extra || {});
+        if (!(extra && extra.ring)) placed.push(pos[id]);
+        return true;
+    };
+    const polar = (deg, r) => { const a = deg * Math.PI / 180; return { x: r * Math.sin(a), y: -r * Math.cos(a) }; };
+    /* seeds */
+    put('central_egress', 0, 0, 'polar', 'THE MAIN HALL', { deg: 0, r: 0, hall: true });
+    const ringId = level => { try { return hqRingId(level); } catch (e) { return level ? 'ring_m' : 'ring_g'; } };
+    put(ringId(0), 0, 0, 'ring', 'THE GROUND RING', { ring: L.ringG, deg: 0, r: L.ringG });
+    put(ringId(1), 0, 0, 'ring', 'THE MEZZANINE RING', { ring: L.ringM, deg: 0, r: L.ringM });
+    const hall = rooms.central_egress || {};
+    const seedQ = [];
+    (hall.doors || []).forEach(d => {
+        const act = d.action || {};
+        if (!act.room || act.room === 'car') return;
+        const lvl = Math.max(0, Math.min(2, d.level | 0));
+        const r = L.hallRoomR[lvl], p = polar(d.deg || 0, r);
+        if (put(act.room, p.x, p.y, 'polar', ['THE GROUND FLOOR', 'THE MEZZANINE', 'THE GALLERY'][lvl], { deg: d.deg || 0, r })) seedQ.push(act.room);
+    });
+    /* the elevator: a shaft to the left, a band per stop (the car = M) */
+    const stops = (DOOR_HQ.elevator && DOOR_HQ.elevator.stops) || [];
+    const mIdx = Math.max(0, stops.findIndex(s => s.room === 'central_egress'));
+    if (put('car', L.shaftX, 0, 'band', 'THE ELEVATOR', { band: 0, shaft: true })) seedQ.push('car');
+    stops.forEach((st, i) => {
+        if (st.room === 'central_egress') return;
+        const y = (i - mIdx) * L.floorDy;
+        if (put(st.room, L.shaftX - L.lobbyDx, y, 'band', 'FLOOR ' + st.id + ' · ' + String(st.label || '').toUpperCase(), { band: y, stop: st.id })) seedQ.push(st.room);
+    });
+    /* H-WING hangs under the lowest stop; the cave is walked from Hollow Earth (a later seed, but a nearer walk) */
+    if (rooms.hwing_lobby) { const y = (stops.length - mIdx) * L.floorDy; if (put('hwing_lobby', L.shaftX - L.lobbyDx, y, 'band', 'H-WING · UNDER THE FACILITY', { band: y })) seedQ.push('hwing_lobby'); }
+    /* the sites at their threshold's angle on the ring */
+    [ringId(0), ringId(1)].forEach(rid => ((rooms[rid] || {}).doors || []).forEach(d => {
+        const act = d.action || {};
+        if (!act.mission) return;
+        const site = hqSiteId(act.mission), sr = hqSiteRoomId(site);
+        if (!rooms[sr] || pos[sr]) return;
+        const sR = L.siteR[rid === ringId(1) ? 1 : 0];
+        const p = polar(d.deg || 0, sR);
+        const sector = hqSectorOfMap(site);
+        if (put(sr, p.x, p.y, 'polar', 'THE WORLD · BAY ' + (sector ? hqBayNo(sector) : '?'), { deg: d.deg || 0, r: sR, site })) seedQ.push(sr);
+    }));
+    /* BFS outward from every placed node into the first FREE cell — doors
+       first (the building's own walk), then the seams for whatever only a
+       seam reaches, then a lost row for anything left */
+    const doorKinds = { door: 1, secret: 1, lift: 1 };
+    const walk = (allowSeams) => {
+        let q = Object.keys(pos).filter(id => !pos[id].ring).sort((a, b) => seedQ.indexOf(a) - seedQ.indexOf(b));
+        const roomsOrder = id => ((rooms[id] || {}).doors || []).map(d => { const a = d.action || {}; return a.room || (a.sector ? hqBayId(a.sector) : (a.mission ? hqSiteRoomId(hqSiteId(a.mission)) : null)); }).filter(Boolean);
+        while (q.length) {
+            /* level by level across EVERY seed (the nearest walk claims a room, not the earliest seed) */
+            let bi = 0; for (let i = 1; i < q.length; i++) if (pos[q[i]].depth < pos[q[bi]].depth) bi = i;
+            const id = q.splice(bi, 1)[0], P = pos[id];
+            const kids = [];
+            const seen = {};
+            roomsOrder(id).concat(G.nodes[id].adj).forEach(b => {
+                if (seen[b] || pos[b] || !G.nodes[b]) return;
+                const e = G.edges.find(x => (x.a === id && x.b === b) || (x.a === b && x.b === id));
+                /* a seam that stays inside ONE site (the cave's mouth off Hollow Earth's board room) is a domestic door for the walk */
+                const domestic = !!(e && e.kind === 'link' && hqRoomSite(id) && hqRoomSite(id) === hqRoomSite(b));
+                if (!e || (!allowSeams && !doorKinds[e.kind] && !domestic)) return;
+                seen[b] = true; kids.push(b);
+            });
+            kids.forEach(b => {
+                let spot = null;
+                if (P.mode === 'band') {
+                    for (let dx = 1; dx <= 12 && !spot; dx++) for (let k = 0; k <= 8 && !spot; k++) {
+                        const dy = (k === 0) ? 0 : ((k % 2) ? Math.ceil(k / 2) : -Math.ceil(k / 2)) * L.stepY;
+                        const x = P.x - dx * L.stepX, y = P.band + dy;
+                        if (free(x, y)) spot = { x, y, mode: 'band', band: P.band, where: P.where };
+                    }
+                } else {
+                    for (let dr = 1; dr <= 8 && !spot; dr++) for (let k = 0; k <= 10 && !spot; k++) {
+                        const r = (P.r || 0) + dr * L.polarStep;
+                        const dth = (k === 0) ? 0 : ((k % 2) ? Math.ceil(k / 2) : -Math.ceil(k / 2)) * (L.polarStep / r) * (180 / Math.PI);
+                        const deg = (P.deg || 0) + dth, p = polar(deg, r);
+                        if (free(p.x, p.y)) spot = { x: p.x, y: p.y, mode: 'polar', deg, r, where: P.where };
+                    }
+                }
+                if (!spot) spot = { x: P.x, y: P.y + 0.6, mode: P.mode, band: P.band, deg: P.deg, r: P.r, where: P.where };
+                spot.depth = (P.depth || 0) + 1;
+                put(b, spot.x, spot.y, spot.mode, spot.where, spot);
+                q.push(b);
+            });
+        }
+    };
+    walk(false); walk(true);
+    let lost = 0;
+    G.order.forEach(id => { if (!pos[id]) { put(id, L.shaftX + lost * L.stepX, (stops.length - mIdx + 1) * L.floorDy + 0.6, 'band', 'UNPLACED', { band: 0 }); lost++; } });
+    const layout = { pos, shaft: { x: L.shaftX, y0: -mIdx * L.floorDy, y1: (stops.length - 1 - mIdx) * L.floorDy }, rings: [{ id: ringId(0), r: L.ringG }, { id: ringId(1), r: L.ringM }] };
+    _hqMapLayoutCache = { rooms: DOOR_HQ.rooms, layout };
+    return layout;
+}
+/* THE MODEL: what the panel draws for THIS officer standing HERE.
+   opts.all = every room (dev), opts.seen = a seen record to use instead of
+   the profile's (tests). */
+function hqMapModel(profile, curRoom, opts) {
+    opts = opts || {};
+    const G = hqMapGraph(), LY = hqMapLayout(G);
+    const rec = opts.seen || hqRoomsSeenRecord(profile);
+    const links = hqLinksSeenRecord(profile);
+    const seen = {};
+    G.order.forEach(id => { if (opts.all || rec[id]) seen[id] = true; });
+    if (curRoom && G.nodes[curRoom]) seen[curRoom] = true;
+    const q = {};
+    G.edges.forEach(e => {
+        if (e.kind === 'secret') return;                 // a secret door is on no plate: the far room is not a question, it is nothing
+        if (seen[e.a] && !seen[e.b]) q[e.b] = true;
+        if (seen[e.b] && !seen[e.a]) q[e.a] = true;
+    });
+    const nodes = [];
+    G.order.forEach(id => {
+        const st = (id === curRoom) ? 'here' : seen[id] ? 'seen' : q[id] ? 'q' : null;
+        if (!st) return;
+        const n = G.nodes[id], p = LY.pos[id] || { x: 0, y: 0 };
+        nodes.push({ id, st, x: p.x, y: p.y, ring: p.ring || 0, hall: !!p.hall, where: p.where || '', no: (st === 'q') ? '' : n.no, label: (st === 'q') ? 'UNCHARTED' : n.label, sub: (st === 'q') ? '' : n.sub,
+            wild: n.wild, site: n.site, part: n.part, bayNo: n.bayNo, first: rec[id] || null,
+            doors: n.adj.length, known: n.adj.filter(b => seen[b]).length });
+    });
+    const edges = [];
+    G.edges.forEach(e => {
+        const A = seen[e.a] ? 'seen' : q[e.a] ? 'q' : null, B = seen[e.b] ? 'seen' : q[e.b] ? 'q' : null;
+        if (!A || !B) return;
+        if (A === 'q' && B === 'q') return;
+        if (e.kind === 'secret' && (A !== 'seen' || B !== 'seen')) return;
+        const pa = LY.pos[e.a] || { x: 0, y: 0 }, pb = LY.pos[e.b] || { x: 0, y: 0 };
+        edges.push({ key: e.key, a: e.a, b: e.b, kind: e.kind, route: e.route, color: e.color, way: e.way, gate: e.gate, stop: e.stop || null,
+            st: (A === 'seen' && B === 'seen') ? 'known' : 'q', charted: e.link ? !!links[e.link] : true,
+            ax: pa.x, ay: pa.y, bx: pb.x, by: pb.y, aRing: pa.ring || 0, bRing: pb.ring || 0 });
+    });
+    /* the box that fits what is drawn (a ring counts by its radius) */
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    nodes.forEach(n => { const r = n.ring || 0.05; minX = Math.min(minX, n.x - r); maxX = Math.max(maxX, n.x + r); minY = Math.min(minY, n.y - r); maxY = Math.max(maxY, n.y + r); });
+    if (!nodes.length) { minX = -1; minY = -1; maxX = 1; maxY = 1; }
+    const box = { x: minX, y: minY, w: Math.max(0.6, maxX - minX), h: Math.max(0.6, maxY - minY) };
+    const total = G.order.length, nSeen = Object.keys(seen).length, nQ = Object.keys(q).length;
+    return { nodes, edges, box, shaft: LY.shaft, total, seen: nSeen, q: nQ, here: curRoom || null };
+}
 /* ── THE COMPLEXES (HQ plan 9.2 stage 1, 2026-09-15) ─────────────────────
    A site that is several rooms. The GENERATED room (hqSiteRoom) stays the
    board room; a COMPLEX is hand-authored box rooms in DOOR_HQ.rooms with
@@ -30385,6 +30698,8 @@ function hqDoorSyncFold(hq, door) {
     const L = (door && typeof door === 'object' && door.hq && typeof door.hq === 'object') ? door.hq : {};
     hq.cleared = hqClearedUnion(hq.cleared, L.cleared);
     hq.encounters = hqEncountersUnion(hq.encounters, L.encounters);
+    /* THE MAP (2026-09-16): the rooms seen fold like the links */
+    hq.rooms = { seen: hqRoomsSeenUnion(hq.rooms && hq.rooms.seen, L.rooms && L.rooms.seen) };
     const sk = hqSkateUnion(hq.skate, L.skate);
     hq.skate = { best: sk.best, total: sk.total, lines: sk.lines, bails: sk.bails };
     return hq;
@@ -33152,7 +33467,9 @@ if (typeof window !== 'undefined') {
     window.hqWorldGraph = hqWorldGraph;
     window.hqLinkLive = hqLinkLive;
     window.hqWorldRoutes = hqWorldRoutes;
-    window.hqLinksSeenUnion = hqLinksSeenUnion; window.hqLinksSeenRecord = hqLinksSeenRecord; window.hqLinkSeen = hqLinkSeen; window.hqLinkSee = hqLinkSee; window.hqWorldCharted = hqWorldCharted; window.hqWorldApplyKnown = hqWorldApplyKnown;
+    window.hqLinksSeenUnion = hqLinksSeenUnion; window.hqLinksSeenRecord = hqLinksSeenRecord;
+    window.hqRoomsSeenUnion = hqRoomsSeenUnion; window.hqRoomsSeenRecord = hqRoomsSeenRecord; window.hqRoomSeen = hqRoomSeen; window.hqRoomSee = hqRoomSee; window.hqMapRoomNo = hqMapRoomNo; window.hqMapGraph = hqMapGraph; window.hqMapLayout = hqMapLayout; window.hqMapModel = hqMapModel; window.HQ_MAP_L = HQ_MAP_L;
+     window.hqLinkSeen = hqLinkSeen; window.hqLinkSee = hqLinkSee; window.hqWorldCharted = hqWorldCharted; window.hqWorldApplyKnown = hqWorldApplyKnown;
     window.hqStarChart = hqStarChart;
     window.doorSiteState = doorSiteState;
     window.hqKeys = hqKeys;

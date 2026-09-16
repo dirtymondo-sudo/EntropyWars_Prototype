@@ -4547,3 +4547,71 @@ cleared still outranks), the pause menu's OFFICER row says LAST <RACE> IN <ROOM>
 the site's label; never an id). `npm test` runs hq-field.test.js (18). UNSEEN LIVE (RULE #1c): the residue wall
 (the attic's north, the casino's east, the subway's north — 0.25–0.75 m of wall sheet before the true wall), the
 scoreboard line's width with the tag, the stamp's length on the card.
+
+## THE MAP — the directory as a subway map (2026-09-16, local delivery)
+The Building Directory (the hall's kiosk, the pause menu's DIRECTORY, `Q`)
+is a MAP: every room of the building and every site of the world is a
+NODE, every door / lift / seam an EDGE, drawn as subway lines over the
+impossible architecture, and it only shows what the officer has WALKED.
+**THE LEDGER** (data.js, the block before THE COMPLEXES): `hqRoomSee
+(profile, roomId)` is the ONE write — map.js `_hqEnter` calls
+`_hqRecordRoomSeen(roomId)` on EVERY room entry (typeof-guarded; a first
+sighting toasts ON THE MAP) — into both records, `door.hq.rooms.seen` and
+the SYNCED blob `progress.hq.rooms.seen` (`mergeProgressBlobs` carries it,
+the EARLIER day wins, `ACH_MERGE_CAPS.rooms` 512; `hqDoorSyncFold` folds
+the local record in on every read — **ship data.js to Render too**);
+`hqRoomsSeenRecord(profile)` is the union read. **THE GRAPH**
+`hqMapGraph()` = every room reachable from the foyer along the DIRECTED
+doors (the stage-1 `bay_*` rooms nobody can walk into are off the map) +
+the car ⇄ its stops; edges deduped per pair, kind door / lift / secret /
+way / link (a seam wears its route's colour), `gate` kept. **THE LAYOUT**
+`hqMapLayout()` (cached per rooms object) is DETERMINISTIC and
+collision-free — never a random number, never a force pass: the hall at
+the origin, `ring_g` / `ring_m` drawn as RINGS round it, the hall's doors'
+rooms at their door's `deg` (deg 0 at twelve, clockwise — the star chart's
+rule; radius by level), the sites at their threshold's angle on the ring
+(`HQ_MAP_L.siteR` per ring), the elevator a SHAFT at `shaftX` with a band
+per stop (`floorDy`), H-Wing under the lowest stop, everything else walked
+level-by-level from EVERY seed into the first FREE cell (band mode steps
+left, polar mode steps outward; a same-site `links` row — the cave's
+mouth — is a domestic door for the walk). Tune `HQ_MAP_L`, not the code.
+**THE MODEL** `hqMapModel(profile, curRoom, { all, seen })` = nodes with
+a state — `here` / `seen` (numbered: `hqMapRoomNo`, a part wears none) /
+`q` (a question mark: an unseen room behind a NON-secret door of a seen
+room; a link's far end too) — the rest are off the sheet; edges `known` /
+`q` (never between two question marks; a secret door only once both rooms
+are seen), `charted` off `hqLinksSeenRecord`; the BOX that fits the drawn
+nodes. **THE PANEL** (map.js "THE MAP" block, before `_hqWorldHtml`):
+`_hqMapHtml` draws the SVG (`.hq-map-svg`, `viewBox` = the fit box ×
+`HQ_MAP_U` 100 px per unit; the hall a double circle, a site a diamond, a
+part a small dot, a ring a dashed circle, the shaft a thick gold line with
+a stub per stop, a seam a curve bowing away from the hall in its route
+colour, a way dashed, an unwalked seam dotted, a `?` node dotted; the
+number inside a numbered node, a label under an un-numbered / the here /
+the picked one) + the bar (N OF M PLACES · Q IN QUESTION · seams walked,
++ / − / FIT) + the legend + THE CARD (`_hqMapCardHtml`: the picked node —
+number · label · where (`pos.where`) · FIRST SEEN · doors charted · GO;
+a `?` offers GO ANYWAY (C row G, GO stays); the here-card carries THIS
+ROOM's WALK rows); then `<details>` THE ROOM REGISTER (reached places
+only) and THE LINES (`html += _hqWorldHtml();` — hq-world.test.js pins
+the literal). **THE REVEAL** `_hqMapAfterRender(body)` (called by
+`_hqOpenPanel` after the innerHTML lands) diffs the model against what the
+map LAST DREW — `door.hq.map = { n: { id: 'n' | 'q' }, e: { key: 1 }, box }`
+(viewer-local, never synced: a memory of a drawing, not a discovery;
+`_hqMap.mem` without a profile) — and animates the difference with CSS
+classes delayed by `--d`: a `?` that became a number FLIPS (`.flip`: the ?
+spins out, the number spins in, the dot's dashes solidify), a new room
+POPS, a new `?` fades in (`.qin`), a new leg DRAWS itself (`.draw`,
+`--len` = its length; dashed legs fade), and the frame ZOOMS OUT from the
+last box to the new fit (`_hqMapTweenView`, `HQ_MAP_ZOOM_MS`); the first
+open pops with no zoom; a re-render inside one open (a node picked, a
+zoom button) finds no difference. `prefers-reduced-motion` kills it.
+Wheel zooms about the cursor, a drag pans (a drag never picks), double
+click / FIT refits; a discovery drops the officer's own view. Dev:
+`window.EW_HQ_MAP_ALL` draws everything; `window._hqMapDev()`. Nothing
+on `state`, nothing relayed (RULE #2). `npm test` runs `hq-map.test.js`
+(the ledger, the graph, the layout's guarantees, the model's rules, the
+panel headless, THE REVEAL through a fake DOM). UNSEEN LIVE (RULE #1c):
+the whole look — the ring circles' weight, the label sizes at the fit
+zoom, the flip's timing, the zoom-out's ease, the pan under the panel's
+scroll (the stage is `touch-action: none`; the card scrolls).
