@@ -1865,6 +1865,7 @@
             wayMirror: 0.3, waySplash: 0.32, wayCanvas: 0.28, wayFloo: 0.32, wayStatic: 0.26,   // the second batch (rev 22)
             wayHollow: 0.3,   // THE TREES WITH HOLES IN THEM (2026-09-17)
             wayScope: 0.28,   // THE TELESCOPE (2026-09-17, THE DIVINE STAIR): the brass creak of the tube, a rising shimmer, the step onto cloud
+            wayTime: 0.3, wayGutter: 0.3,   // DISASTER CITY (2026-09-17): the time machine's disc spinning up to a chord and a snap; the gutter's grate, the drop, the splash below
             /* SKATEBOARDING (HQ plan 9.8, 2026-09-15): the deck's own kit — quiet, the ride plays them thirty times a minute */
             skatePush: 0.3, skateOllie: 0.4, skateLand: 0.36, skateGrind: 0.3, skateBail: 0.45, skateBank: 0.4,
             /* THE DOOR GUN rev 3 (2026-09-16): the zap, the frame landing, the recall — the building AND the board (the shot VFX voices them) */
@@ -2109,6 +2110,28 @@
                 [261.6, 329.6, 392.0, 523.3].forEach((f, i) => { _doorOsc(ctx, _doorEnv(ctx, out, tc + i * 0.04, vol * 0.14, 0.03, 0.9, 1.2), 'triangle', f, tc + i * 0.04, 2.0); });
                 _doorNoiseSrc(ctx, _doorEnv(ctx, out, tc, vol * 0.1, 0.1, 1.2, 0.8), tc, 2.0, { type: 'lowpass', f0: 900, f1: 300, slide: 1.8 });
                 return tc - t + 2.2;
+            },
+            wayTime(ctx, t, out, vol) {
+                /* the disc spinning up (a rising hum, faster), the lever's clack, a bright chord as the light fills the cage, then the snap of the year changing */
+                _doorOsc(ctx, _doorEnv(ctx, out, t, vol * 0.22, 0.05, 1.3, 0.3), 'sawtooth', 55, t, 1.7, { f1: 220, slide: 1.5 });
+                _doorOsc(ctx, _doorEnv(ctx, out, t, vol * 0.14, 0.05, 1.3, 0.3), 'square', 110, t, 1.7, { f1: 440, slide: 1.5 });
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t + 0.25, vol * 0.3, 0.002, 0.03, 0.08), t + 0.25, 0.12, { type: 'bandpass', f0: 1800, f1: 900, slide: 0.1, q: 2 });
+                const tc = t + 1.35;
+                [329.6, 415.3, 493.9, 659.3, 830.6].forEach((f, i) => { _doorOsc(ctx, _doorEnv(ctx, out, tc + i * 0.03, vol * 0.13, 0.02, 0.8, 1.0), 'triangle', f, tc + i * 0.03, 1.8); });
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, tc + 0.5, vol * 0.35, 0.002, 0.05, 0.25), tc + 0.5, 0.35, { type: 'highpass', f0: 3000 });
+                _doorOsc(ctx, _doorEnv(ctx, out, tc + 0.5, vol * 0.2, 0.002, 0.2, 0.4), 'sine', 1200, tc + 0.5, 0.6, { f1: 200, slide: 0.5 });
+                return tc - t + 1.9;
+            },
+            wayGutter(ctx, t, out, vol) {
+                /* the grate lifting (an iron scrape), the drop (a falling tone), the splash in the culvert, the echo */
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.3, 0.01, 0.3, 0.2), t, 0.5, { type: 'bandpass', f0: 500, f1: 900, slide: 0.45, q: 4 });
+                _doorOsc(ctx, _doorEnv(ctx, out, t + 0.1, vol * 0.16, 0.01, 0.3, 0.2), 'square', 180, t + 0.1, 0.4, { f1: 120, slide: 0.35 });
+                const td = t + 0.55;
+                _doorOsc(ctx, _doorEnv(ctx, out, td, vol * 0.2, 0.02, 0.5, 0.3), 'sine', 420, td, 0.8, { f1: 90, slide: 0.75 });
+                const ts = t + 1.3;
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, ts, vol * 0.45, 0.005, 0.25, 0.6), ts, 0.9, { type: 'lowpass', f0: 2400, f1: 600, slide: 0.8 });
+                _doorOsc(ctx, _doorEnv(ctx, out, ts + 0.15, vol * 0.1, 0.05, 0.6, 0.9), 'sine', 96, ts + 0.15, 1.5, { f1: 64, slide: 1.4 });
+                return ts - t + 1.8;
             },
             wayStatic(ctx, t, out, vol) {
                 _doorOsc(ctx, _doorEnv(ctx, out, t, vol * 0.12, 0.05, 0.9, 0.1), 'sawtooth', 60, t, 1.05);

@@ -277,6 +277,45 @@ Columns as in §3.
 | `white_cloud` | `white_cloud` | Meshy_AI_white_cloud_0917035538_texture.glb | | the stairway ×6 + the fields ×4 hung in the air (`y`, foot 0), scatter on the cloud floors | a cloud |
 | `telescope` | `brass_telescope` | Meshy_AI_telescope_0917035520_texture.glb | | THE TELESCOPE way in the observatory (`_hqWayBuilders.telescope`) | the seam to the stair |
 
+## 3h. DISASTER CITY (2026-09-17 — complex candidate #1) — what stands there, and the wishlist for the second pass
+
+No new file. THE STREETS and THE MALL (DOOR_HQ_BUILD_PLAN §9, 2026-09-17) are
+dressed from the buckets as they stand:
+
+| family | file(s) | stands as |
+| --- | --- | --- |
+| the map-builder buildings | `building_1..8` sprites (OBJECT_SPRITES) | every LOT of the streets' `city` plan wears one as a prism (`_nrSpriteBuilding` on the podium, 1–4 storeys; a `low` lot is a flat roof with its AC unit and tank) — `_hqBuildCityLots` |
+| THE VEHICLE BATCH (§3c) | suv · cadillac · copcar · ambulance · firetruck · schoolbus | NPC TRAFFIC on the ring road (both ways) and the avenues (`_hqBuildTraffic` / `_hqTickTraffic`); the parked cars are the catalogue rows `car_cop` / `car_suv` / `car_cadillac` / `car_ambulance` on the parking lanes |
+| the street lamp OBJ (§4) | streetlamp/Street Lamp.obj | every street of the plan, alternating kerbs every 14 m (`_hqBuildStreetLamps`) |
+| the kit (§6 / §6b) | `slot_machine` (the arcade's cabinets), `concrete_pillar` + `cave_stone` + `brazier` (THE COLLAPSE), `trash_bin` / `park_bench` / `signpost` / `potted_plant` / `coffee_table` / `office_chair` / `notice_board` / `quarter_pipe` / `railing_1m` / `riser_*` | the streets and the mall |
+
+Procedural, in three-renderer.js: the FRONTS (`'window'` = the ground floor's
+windows, door, awning, a shop sign on some; `'store'` = the mall's storefront:
+a lit sign band with a name from `_HQ_STORE_NAMES`, the glass, the mullion, the
+door, a shutter half down on every third), THE CIRCUIT's START / FINISH banner
+and its checkpoint posts, THE TIME MACHINE (`_hqWayBuilders.timemachine`: the
+brass cage on its dais, the console with the dial and lever, THE DISC behind it),
+THE GUTTER (`_hqWayBuilders.gutter`: the kerb inlet with its slot, the grate in
+the road). Stand-ins in use: the prisms are FLAT sprites on a concrete podium
+(the podium is the plan's rise in the cliff sheet; the façade planes cover it),
+`slot_machine` for arcade cabinets, `coffee_table` + `office_chair` for the food
+court, `notice_board` for the mall directory, `potted_plant` for the atrium's
+palms.
+
+THE WISHLIST (Meshy, unit-normalised; a row = `base: 'misc'` + `h`/`span` +
+`foot`/`block`, then a prop line or a `scatter` row — nothing in the renderer;
+the first four would replace procedural pieces and need one hook each):
+1. **a low-poly city block** — a 2–4-storey brick building with a storefront, an office tower, a parking garage (3 files): the lots would stand REAL buildings instead of sprite prisms (`_hqBuildCityLots`: a `kit` per lot key).
+2. **a storefront unit** (glass front, sign band, ~7 × 4 m) and **a rolling shutter** — the mall's fronts (`'store'`) as a model.
+3. **a time machine** (the user's own — a Wells cage, a phone box, a DeLorean; the cage is the stand-in) — `_hqWayBuilders.timemachine` swaps the stand-in like the telescope did.
+4. **a storm inlet / manhole cover** — the gutter's kerb box.
+5. **an escalator** (~7 m run, static is fine) — THE MEZZANINE's; the stairs stay the walker's treads.
+6. **a mall fountain**, **a food-court table set** (a round table + four chairs), **a directory kiosk** (YOU ARE HERE), **a planter with a palm**, **an arcade cabinet** (a real one; two or three finishes), **a mall bench**.
+7. **traffic lights**, **a fire hydrant**, **a bus shelter**, **a newspaper box**, **a mailbox**, **a hot-dog cart**, **police barricades** and **a road cone** — the kerbs.
+8. **a crashed car** and **a fallen street lamp** — THE COLLAPSE; **scaffolding** and **a water tower + rooftop AC units** — the roofs.
+9. **a subway entrance canopy** (the stair head with the sign) — the metro stair on the streets; **a stadium gate / turnstile bank** — Gate C.
+10. **a delivery truck** and **a taxi** — two more kinds for the traffic (`_VEHICLE_KIT` rows).
+
 ## 4. The older `Assets/misc/` models (`_MISC_GLB` + the OBJ landmarks)
 
 | key | file | kind | stands as |

@@ -31,11 +31,12 @@ const PLANNED = ROOMS.filter(id => HQ.rooms[id].terrain.gen);
 const G = D.HQ_TERRAIN_GEN;
 
 test('the sheet: seventeen of the eighteen terrain rooms carry a floor plan — the cave chambers cellular automata, the open woods clearings + corridors; the storm drain (a culvert) keeps its box', () => {
-    assert.equal(PLANNED.length, 19, PLANNED.join(','));   // + THE DIVINE STAIR's four, + THE VATICAN's archive and cortile (2026-09-17; the basilica and the observatory are their own floors)
+    assert.equal(PLANNED.length, 21, PLANNED.join(','));   // + THE DIVINE STAIR's four, + THE VATICAN's archive and cortile (2026-09-17; the basilica and the observatory are their own floors), + DISASTER CITY's streets and mall (the `city` kind)
     for (const id of PLANNED) {
         const room = HQ.rooms[id], gen = room.terrain.gen, info = D.hqTerrainInfo(id);
-        assert.ok(gen.kind === 'cave' || gen.kind === 'rooms', id + ': kind ' + gen.kind);
-        if (room.shell.open) assert.equal(gen.kind, 'rooms', id + ': an open room grows a thicket, not rock');
+        assert.ok(gen.kind === 'cave' || gen.kind === 'rooms' || gen.kind === 'city', id + ': kind ' + gen.kind);
+        if (gen.kind === 'city') { assert.ok(Array.isArray(gen.streets) && gen.streets.length >= 2 && info.lots.length >= 10 && info.fronts.length >= 4, id + ': a city plan — streets, lots, fronts'); }   // DISASTER CITY (2026-09-17)
+        else if (room.shell.open) assert.equal(gen.kind, 'rooms', id + ': an open room grows a thicket, not rock');
         else assert.equal(gen.kind, 'cave', id + ': a closed chamber is carved, not planted');
         assert.ok(info.mask && info.maskD && info.forced && info.mask.length === info.nx * info.nz, id + ': a mask on the field\'s own grid');
         assert.ok(info.gen && info.gen.kind === gen.kind && info.gen.wallH > 1.0, id + ': the plan record');
@@ -64,10 +65,14 @@ test('THE MASK IS THE HEIGHT: every solid cell deep in the plan stands at least 
         assert.equal(rimOpen, 0, id + ': the rim is open in ' + rimOpen + ' cells (the plan\'s edge is solid)');
         assert.ok(deep >= 1, id + ': solid past the rise band: ' + deep + ' (a room that is nearly all authored keeps its plan to the rim and the tiers\' edges)');
         assert.ok(low / deep < 0.15, id + ': ' + low + ' of ' + deep + ' deep solid cells stand low');
-        /* the walker's rule: from open ground beside the solid, walk straight at it carrying the feet — the rise is never climbed (the slope refuses it) */
+        /* the walker's rule: from open ground THE WALKER REACHES beside the solid, walk straight at it carrying the feet — the rise is never climbed
+           (the slope refuses it). DISASTER CITY (2026-09-17): a hard tape's roof is an open tier INSIDE the solid (its top is the door gun's) — a
+           walk that starts up there is not the walker's, so the start cells are the reach from the first door. */
+        const L0 = D.hqTerrainDoorLanding(room, room.doors[0]), R0 = D.hqTerrainReach(info, L0.x, L0.z);
         let climbed = 0, tried = 0;
         for (let j = 2; j + 2 < info.nz; j += 2) for (let i = 2; i + 2 < info.nx; i += 2) {
             const k = j * info.nx + i; if (!info.mask[k] || info.maskD[k] > 0.7 || info.maskD[k] < 0.2) continue;
+            if (!R0.has(D.hqTerrainNodeKey(info, info.x0 + i * res, info.z0 + j * res))) continue;
             const x = info.x0 + i * res, z = info.z0 + j * res, y0 = D.hqTerrainFeet(info, x, z, null); if (y0 == null) continue;
             for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
                 const kk = k + dx * 3 + dz * 3 * info.nx; if (kk < 0 || kk >= info.mask.length || info.maskD[kk] > -0.2) continue;
@@ -92,7 +97,8 @@ test('THE GUARANTEE holds with the plan: every door reaches every other under th
         for (const t of info.trees) assert.ok(D.hqTerrainMaskAt(info, t.x, t.z) > 0, id + ': a tree at ' + t.x + ',' + t.z + ' on the solid');
         for (const q of info.scatter) assert.ok(D.hqTerrainMaskAt(info, q.x, q.z) > 0, id + ': ' + q.key + ' on the solid');
         for (const t of info.thicket || []) assert.ok(D.hqTerrainMaskAt(info, t.x, t.z) < -0.5, id + ': a thicket tree on the open floor');
-        if (room.shell.open && room.terrain.gen.thicket !== false) assert.ok(info.thicket.length >= 3 && info.thicket.length <= G.rooms.maxTrees, id + ': thicket ' + info.thicket.length);
+        if (room.terrain.gen.kind === 'city') assert.equal(info.thicket.length, 0, id + ': a city grows buildings, not a thicket');   // DISASTER CITY (2026-09-17)
+        else if (room.shell.open && room.terrain.gen.thicket !== false) assert.ok(info.thicket.length >= 3 && info.thicket.length <= G.rooms.maxTrees, id + ': thicket ' + info.thicket.length);
         else if (room.shell.open) assert.equal(info.thicket.length, 0, id + ': no thicket in heaven (gen.thicket: false)');
         else assert.equal(info.thicket.length, 0, id + ': a cave grows no thicket');
         for (const q of (room.npcSpots || []).concat([room.spawn])) if (q && q.x != null) assert.ok(D.hqTerrainMaskAt(info, q.x, q.z) > 0.3, id + ': a body at ' + q.x + ',' + q.z + ' in the solid');

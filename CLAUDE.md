@@ -5042,6 +5042,61 @@ hq-divine.test.js (9). Ship data.js to Render too. UNSEEN LIVE (RULE #1c): every
 GLB's scale and facing, the stacks in wood, the cypress banks, the landmark's
 size from the dome, the rescue cuts between the cloud banks.
 
+## DISASTER CITY — THE STREETS + THE MALL (complex candidate #1, HQ plan 9.3 stage 7) — 2026-09-17, local delivery
+The FIRST complex on the blueprint after the rule, and the THIRD floor-plan
+kind: **`terrain.gen.kind: 'city'`** (data.js `HQ_TERRAIN_GEN.city`, the
+branch in `_hqTGenerate`) — `gen.streets` `{ pts, w, loop }` are the
+corridors with a `walkW` SIDEWALK band and a `kerb` step (never on a forced
+cell), the solid = THE BLOCKS risen `wallH` **as a MAX, never a stack** (an
+authored roof / mezzanine inside a block keeps its height), cut by greedy
+packing into LOTS (`info.lots`: `lotW`, `storeys`, `lowP` = a flat roof,
+`building_1..8`) whose street-facing edges are FRONTS (`info.fronts`, the
+façade where the rise begins); `info.gen.sidewalk / kerb / fronts ('window'
+| 'store') / prisms` and `info.traffic` / `info.race` (`terrain.traffic` /
+`terrain.race`, defaulted in `hqTerrainCompile`) ride to the renderer. Two
+parts on Room 1954 (data.js, the block before THE DIVINE STAIR): **THE
+STREETS** (`site_prebuilt_downtown_streets`, 112 × 88, open under Downtown's
+sky through `hqCityShell`, `HQ_ROOM_LOOKS.city`): THE RING ROAD = THE
+CIRCUIT, the avenue + cross street, the plaza, THE PARKING DECK (3 m, a
+car ramp, a rail, two quarter pipes), THE COLLAPSE, THE ROOFTOP (4 m, the
+hard tape — flush with the sidewalk so the shot is from the street),
+parked cars on the parking lanes; doors `tower` ⇄ the lobby's NEW `avenue`
+doors (east wall; the clock moved), `mall`, `metro` ⇄ the platform's NEW
+`street` stair (n x 2.2; the departures board moved over the track).
+**THE MALL** (`site_prebuilt_downtown_mall`, 66 × 46 × 7.6, closed,
+`HQ_ROOM_LOOKS.mall`): the concourse cross, the atrium, the food court,
+THE ARCADE with THE TIME MACHINE free against its back, the store units
+the solid (5 m, `fronts: 'store'`, `prisms: false`), THE MEZZANINE up THE
+ESCALATOR (**THE RAMP RULE's other half: a ramp is never INSIDE its tier's
+rect while it is still low** — run it up to the rect and end 0.7 m in),
+THE STORE ROOF (the hard tape, its face the concourse wall). **Renderer**
+(three-renderer.js, before `_hqBuildSiteBoard`): `_hqBuildCityLots` (the
+map-builder sprite prisms on the podiums via `_nrSpriteBuilding` on the
+terrain's `_nrKit`; a `low` lot's parapet + plant; the fronts —
+`_HQ_STORE_NAMES` on the mall's signs), `_hqBuildStreetLamps` (the lamp
+OBJ on every street's kerbs), the sidewalk paint in the blend; **NPC
+TRAFFIC** `_hqBuildTraffic` / `_hqTickTraffic` (`_hzVehicle` at the room's
+tile — `_hzKitTs` set round the build — on the right, following the car
+ahead, an open route's end teleporting to its start; **THE HIT** shoves
+the walker along the car's heading with a hop (`pl.mvx / mvz` + `pl.vy`)
+and throws a rider — `_hqRideBail(R, pl, 'car')`; `EW_HQ_NO_TRAFFIC`);
+**THE CIRCUIT** `_hqBuildRace` (gates at the loop's MID-SEGMENTS — a gate
+at a corner is never crossed; the START / FINISH banner) / `_hqTickRace`
+(the rider only: `lapstart` · `gate` · `laptick` · `lap { ms, best }` ·
+`lapdrop`, the wrong way never counts, `HQ_SKATE_RULES.race` =
+`HQ_SKATE_DEFAULT.race` `{ hw, tickMs, minLapMs }`); `_hqWayBuilders.
+timemachine` / `.gutter`. map.js `_hqSkateEvent` hears the beats (the
+lap timer on the trick line, `_hqLapFmt`; a live combo beats it), files
+a lap through `hqSkateBank` → `door.hq.skate.laps[room]` (THE BEST LAP PER
+ROOM, LOCAL like the deck), the OFFICER sheet's THE CIRCUIT rows; audio.js
+`wayTime` / `wayGutter`. **Seams**: `streets_strip` (the chapel's WEST
+wall z 5), `streets_stadium` (Room 50's n x −10), `timemachine_cyberpunk`
+(`way` at BOTH ends, Cyberpunk's free on its north strip — the ONLY way
+from the city into Cyberpunk), `streets_drain` (`way: 'gutter'` ⇄ the
+storm drain's `leaf_cell` grate n x −13, on the NEW dashed
+`routes.sewers`). `npm test` runs `hq-city.test.js`. Second-pass asset
+wishlist: MODEL_INDEX §3h. Unseen live (RULE #1c): all of it.
+
 ## THE COMPLEX BLUEPRINT + THE CANDIDATE LIST (the user's rule, 2026-09-17)
 The user: "these two areas [THE CAVE and THE WOODS] are the blueprint for
 making complex maps now — especially the part about getting the aesthetic

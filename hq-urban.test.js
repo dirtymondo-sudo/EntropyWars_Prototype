@@ -25,7 +25,7 @@ const D = loadGameData(), HQ = D.DOOR_HQ;
 const TERRAIN_RULES = vm.runInContext('TERRAIN_RULES', D);
 const SITES = {
     prebuilt_strip:    { no: '21',   board: 'site_prebuilt_strip',    parts: ['chapel', 'casino'], back: { id: 'chapel', wall: 'n', x: -0.2, leaf: 'leaf_motel', into: 'chapel', at: 'street' } },
-    prebuilt_downtown: { no: '1954', board: 'site_prebuilt_downtown', parts: ['lobby', 'subway'], back: { id: 'tower', wall: 'e', z: 0, leaf: 'leaf_entrance', into: 'lobby', at: 'street' } },
+    prebuilt_downtown: { no: '1954', board: 'site_prebuilt_downtown', parts: ['lobby', 'subway', 'streets', 'mall'], back: { id: 'tower', wall: 'e', z: 0, leaf: 'leaf_entrance', into: 'lobby', at: 'street' } },   // DISASTER CITY (2026-09-17): THE STREETS + THE MALL hang off the lobby's avenue doors (hq-city.test.js owns them)
 };
 const PART_IDS = [].concat(...Object.entries(SITES).map(([s, S]) => S.parts.map(p => S.board + '_' + p)));
 const renderer = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8');
@@ -146,7 +146,8 @@ test('THE SUBWAY’s third station: Downtown’s platform stands its train FREE 
     assert.ok(st.action.room === 'site_prebuilt_downtown_subway' && st.action.at === tr.id && tr.action.at === st.id, 'the pair');
     assert.strictEqual(D.hqDoorNo(st), '1954', 'the stair’s plate reads Downtown’s number');
     assert.strictEqual(D.hqDoorNo(tr), '2047', 'the train’s plate reads Cyberpunk’s number');
-    assert.strictEqual(cy.doors.filter(d => d.link).length, 3, 'Cyberpunk carries three link doors now — the lane rule’s ration');
+    assert.strictEqual(cy.doors.filter(d => d.link).length, 4, 'Cyberpunk carries three link doors on its north wall — the lane rule’s ration — and, since DISASTER CITY (2026-09-17), THE TIME MACHINE standing FREE on its north strip (a way, never a lane)');
+    assert.strictEqual(cy.doors.filter(d => d.link && d.wall === 'n').length, 3, 'three on the wall');
     for (const o of cy.doors) if (o !== st && o.wall === 'n') assert.ok(Math.abs(o.x - st.x) >= 4.4, 'the stair shares a lane with ' + o.id);
     const sub = D.hqWorldRoutes('foyer').find(r => r.id === 'subway');
     assert.strictEqual(sub.stations.map(s => s.room).join(' — '), 'site_prebuilt_fairy_forest — tunnel — site_prebuilt_cyberpunk — site_prebuilt_downtown', 'the line is walked from its end — THE WOODS\' storm drain (9.3 stage 3) — through the tunnel; the last stop is Downtown');
@@ -167,7 +168,8 @@ test('every door in both complexes is reversible, each complex is connected from
                 assert.ok(a.room && HQ.rooms[a.room], id + '/' + d.id + ' leads to a room');
                 if (d.link) {
                     if (id === S.board) continue;   // the highway's doors on the board room (hq-world.test.js guards them)
-                    assert.strictEqual(id, 'site_prebuilt_downtown_subway', 'only the platform leaves a site through a links row');
+                    /* the platform's train, and since DISASTER CITY (2026-09-17) the streets' seams (the Strip, the Stadium, the gutter), the mall's time machine and the chapel's parking lot — every one a links row that pairs */
+                    assert.ok(HQ.links.some(l => l.id === d.link), id + '/' + d.id + ' is a links row');
                     const far = at(a.room, a.at);
                     assert.ok(far && far.action.room === id && far.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + ' is a pair');
                     continue;
@@ -185,7 +187,7 @@ test('every door in both complexes is reversible, each complex is connected from
     assert.ok(at('site_prebuilt_strip_chapel', 'casino').action.room === 'site_prebuilt_strip_casino', 'boulevard → chapel → the casino floor');
     assert.strictEqual(HQ.rooms.site_prebuilt_strip_casino.doors.length, 1, 'the casino floor has ONE door you can see — no clock, no window, the exit through the chapel');
     assert.ok(at('site_prebuilt_downtown_lobby', 'subway').action.room === 'site_prebuilt_downtown_subway', 'intersection → lobby → the platform');
-    assert.strictEqual(HQ.rooms.site_prebuilt_downtown_subway.doors.filter(d => !d.link).length, 1, 'the platform has one stair and one train');
+    assert.strictEqual(HQ.rooms.site_prebuilt_downtown_subway.doors.filter(d => !d.link).length, 2, 'the platform has two stairs (the lobby\'s, and the street\'s since DISASTER CITY 2026-09-17) and one train');
 });
 
 test('the production renderer lands every door inside its room, clear of every blocker and native, facing along the doorway; every native is a real race standing on the floor', () => {

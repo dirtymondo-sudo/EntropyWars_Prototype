@@ -9510,12 +9510,108 @@ falling down you have to find your way back up; clouds are perfect for floating 
   stacks in the wood sheet, the cypress banks, the stairway landmark's size from the dome (`landmarks[0].s / dist / y`
   are the edits), the rescue cuts' look between the cloud banks, the stepping clouds under the jump.
 
+### 2026-09-17 — DISASTER CITY (complex candidate #1: DOWNTOWN · THE STRIP · CYBERPUNK · THE STADIUM · THE METRO · THE MALL), local delivery
+The user: "Disaster City next: downtown, the strip, cyberpunk city (accessible through a time machine somewhere in a
+building in the city, not just a regular door), the football stadium, metro station, and a new place called The Mall —
+inspired by the Miami Mall incident, just an average American shopping mall. A gutter or sewer entrance to the
+underground tunnels. Ideally NPC cars driving down the streets. The main city area big — enough to be a Mario Kart-like
+track for a mini racing game, even if just with the skateboards for now. Use whatever Meshy assets fit; tell me what new
+ones would be good for a second pass."
+- **THE THIRD FLOOR-PLAN KIND — `city`** (data.js `HQ_TERRAIN_GEN.city`, the branch in `_hqTGenerate`): `gen.streets`
+  are the corridors (`{ pts, w, loop }`; a 2.4 m SIDEWALK band `walkW` either side with a 12 cm `kerb` step the walker
+  takes and the rider hops — never on a forced cell), everything else the solid = THE BLOCKS, risen `wallH` (3.2 m — the
+  podium every building stands on, in the cliff sheet; the mall's 5 m store units). **A city's rise is a MAX, never a
+  stack**: an authored roof / mezzanine inside a block keeps its own height (the cave's additive rise put a 3 m parapet
+  round a 4 m roof). After the rise the solid is cut into LOTS by GREEDY PACKING (`info.lots`: `lotW` a side, `storeys`
+  1–4, `lowP` = a flat roof with its plant, a key of `building_1..8`) and every lot edge with the street past it is a
+  FRONT (`info.fronts`, the façade standing where the rise begins — `frontOff`). `info.gen.sidewalk / kerb / fronts /
+  prisms` ride to the renderer. THE ROUTES and THE CIRCUIT ride the info too (`terrain.traffic`, `terrain.race`, with
+  defaults). `hqTerrainCompile`'s plan test in hq-floor-plan.test.js walks only from cells THE WALKER REACHES now (a hard
+  tape's roof is an open tier inside the solid — its top is the door gun's, not a walk's start).
+- **THE STREETS** (`site_prebuilt_downtown_streets`, 112 × 88 m, open under Downtown's sky through `hqCityShell`, asphalt
+  underfoot, a fog per metre, `HQ_ROOM_LOOKS.city` = the disaster-movie print): THE RING ROAD (a loop at ±40 / ±29 with
+  a chicane on the east leg and a bend on the south — THE CIRCUIT), THE AVENUE and THE CROSS STREET (w 10, a parking lane
+  either side), THE PLAZA (the fountain waded, four trees), THE PARKING DECK (a 3 m tier up a car ramp the walker climbs,
+  a rail round its roof — the grind — two quarter pipes), THE COLLAPSE (a rubble mound with the tower's fallen pillars,
+  the barrel fires), THE ROOFTOP (a 4 m low building flush with the ring road's west sidewalk — the tape on it is the
+  door gun's; `hqFindHardReachTerrain` proves the shot from the sidewalk), six parked cars on the parking lanes, the
+  benches / bins / signposts scattered on the sidewalks. Doors: `tower` (w wall z −8 ⇄ the lobby's new `avenue` doors
+  on its EAST wall — the lobby clock moved to z −4), `mall` (s wall x 0), `metro` (n wall x 12 ⇄ the platform's new
+  `street` stair on its north wall at x 2.2 — the departures board moved over the track). Every door's side street is a
+  `path` (a forced corridor).
+- **THE MALL** (`site_prebuilt_downtown_mall`, 66 × 46 × 7.6 m, closed, `HQ_ROOM_LOOKS.mall` = the security camera's
+  tape): a `city` plan too — THE CONCOURSE cross (w 10 / 9), THE ATRIUM (r 9, the fountain full of pennies), THE FOOD
+  COURT (r 8 — tables, the shift at lunch), THE ARCADE (r 7.5 — five `slot_machine` cabinets) with THE TIME MACHINE
+  free-standing against its back; the store units the solid (5 m, `fronts: 'store'`, `prisms: false`); THE MEZZANINE
+  (3.4 m over the north wing's mouth) up THE ESCALATOR (`stairs: true`, 7.2 m along the concourse's north side — a
+  tread a metre, 0.49 a step; **THE RAMP RULE's other half**: a ramp is never INSIDE its tier's rect while it is still
+  low — the first draft ran diagonally into the rect at 60 % height and met a 1.5 m step); THE STORE ROOF on the west
+  concourse's north side (5 m, the tape — its face IS the concourse wall, so the shot is from the floor). Natives: the
+  zombie shopper, the conspiracy theorist ("ten feet tall, nobody filmed it in FOCUS"), the mad scientist by the
+  cabinet at the back. Lines are Claude's DRAFT (A15).
+- **THE RENDERER** (three-renderer.js, the block before `_hqBuildSiteBoard`): `_hqBuildCityLots` (the map-builder
+  sprite prisms on the podiums via `_nrSpriteBuilding` on the terrain's `_nrKit`, a flat roof's parapet + AC + tank on a
+  `low` lot; the FRONTS — `'window'`: windows, a door, an awning on every third, a shop sign on some; `'store'`: a lit
+  sign band naming a store from `_HQ_STORE_NAMES`, the glass, the mullion, the door, a shutter half down on every
+  third), `_hqBuildStreetLamps` (the street lamp OBJ on the kerbs of every street of the plan, alternating sides every
+  14 m, clear of the door pads), the SIDEWALK painted in the path sheet through the blend (`info.gen.sidewalk`).
+  **NPC TRAFFIC**: `_hqBuildTraffic` stands `_hzVehicle`s (at the room's tile — `_hzKitTs` set round the build, the
+  visual-pass rule) with headlights and tail lights on `info.traffic` routes, spaced along each; `_hqTickTraffic` drives
+  them on the right (`lane`), following the car ahead (never closer than a length and 1.4 m), a car off the end of an
+  open route back on at its start, the body's yaw the route's heading (nose +Z); **THE HIT**: the walker inside a car's
+  box is shoved along its heading with a hop (the carry momentum, `pl.mvx / mvz`, + `pl.vy` 3.4) and a rider is thrown
+  (`_hqRideBail(R, pl, 'car')` → THE TRAFFIC); `carhit` reaches map.js (a toast). Kill-switch `EW_HQ_NO_TRAFFIC`;
+  `EW_PERF_LOW` halves the cars and the lamps. **THE CIRCUIT**: `_hqBuildRace` lays `race.gates` (8) at the loop's
+  mid-segments (never at a corner — a gate whose plane the approach runs along is never crossed), a START / FINISH
+  banner with the label on the first, striped posts + a glow on the rest; `_hqTickRace` (a ticker; the rider only)
+  times the gates in order — `lapstart` at the banner, a `gate` beat each, `laptick` at 4 Hz, a `lap` at the banner
+  again with its ms and `best`, `lapdrop` when the board is dropped; the wrong way never counts; `minLapMs` 8 s.
+  `HQ_SKATE_RULES.race` / `HQ_SKATE_DEFAULT.race` = `{ hw, tickMs, minLapMs }` (hq-skate.test.js diffs the keys).
+  **THE WAYS**: `_hqWayBuilders.timemachine` (a brass cage on a round dais, the console with its dial and lever, THE
+  DISC standing behind — spun up by the press-in, the light through the cage with it; blockers at the console and the
+  disc) and `.gutter` (the kerb inlet box with its slot and the drain's green light, the grate in the road in front).
+- **map.js**: `_hqSkateEvent` hears `carhit` / `lapstart` / `gate` / `laptick` / `lap` / `lapdrop`; the lap timer rides
+  the trick line (`_hqLapFmt` m:ss.t; a live combo beats it — `_hqComboLive`); a lap is filed through `_hqSkateFile({ lap
+  })` → data.js `hqSkateBank` keeps THE BEST LAP PER ROOM (`door.hq.skate.laps[room] = { ms, date }`, `lapsRun`) — LOCAL
+  like the deck, never in the synced blob; `hqSkateStatus` reads `laps`; the pause menu's OFFICER sheet lists THE CIRCUIT
+  rows. audio.js: `wayTime` (the disc spinning up to a chord and the snap of the year), `wayGutter` (the grate, the drop,
+  the splash).
+- **THE SEAMS** (`DOOR_HQ.links`): `streets_strip` (highway, `leaf_motel`: the streets' west wall z 18 ⇄ the chapel's
+  WEST wall z 5 — the altar holds the north), `streets_stadium` (highway, `leaf_wired_double`: n x −24 ⇄ Room 50's last
+  free north lane x −10), `timemachine_cyberpunk` (seams, `way: 'timemachine'` at BOTH ends: free in the arcade ⇄ free
+  on Cyberpunk's north strip at (9, −9.4) set for 1954 — **the ONLY way from the city into Cyberpunk**; Cyberpunk's
+  three wall lanes were full, a `way` stands free), `streets_drain` (a NEW line **`routes.sewers`**, dashed — the
+  tunnels' first seam, candidate #3: `way: 'gutter'` free in the east kerb at (46.2, 14) ⇄ the storm drain's own
+  `leaf_cell` grate on its north wall at x −13, CLIMB UP). Two new `DOOR_HQ.ways`: `timemachine` (STEP IN · SET FOR
+  2077) and `gutter` (CLIMB DOWN). Tapes: the Stadium's HALF-TIME → the streets, Cyberpunk's THE NOODLE STAND → the
+  mall's food court (the hundred stays a hundred, every site keeps ≥ 1). `findSpots` pins both hard tapes.
+- **Tests**: `hq-city.test.js` (10: the sheet, the plan, the ways in, the seams, ONE PIECE, THE SOLVER + THE RETURN
+  GUARANTEE + the production landing on every door incl. the free ways, THE PARK RULE + the hard tapes, the traffic +
+  the circuit's data, THE CIRCUIT run in a vm — a rider round the loop twice, the wrong way, the drop, the bank — and
+  the source sites); hq-terrain (24 rooms; a mall's walls are its store units — no crag), hq-floor-plan (21 plans, the
+  `city` kind, the reach-restricted walk), hq-urban (Downtown's parts are four; the platform's two stairs; a seam on a
+  part pairs; Cyberpunk's fourth link door stands free), hq-world (the seams list + THE SEAMS' 17 stations).
+- **NOT BUILT / SECOND PASS**: real building models on the lots (the prisms are flat sprites on a concrete podium —
+  MODEL_INDEX §3h lists the wishlist: a low-poly city block kit, a storefront unit, the user's own time machine, a
+  storm inlet, an escalator, the mall's fountain / tables / kiosk / cabinets, the kerb furniture, the collapse's crashed
+  car, the metro canopy, Gate C's turnstiles, a truck and a taxi for the traffic); the race as a MODE (a start
+  countdown, a ghost, opponents on decks — the lap timer and the record are the v1); cars as blockers (they shove, they
+  never stop for you); THE METRO as its own concourse (the platform is the station); a `way` for the stadium (Gate C is
+  a door); the Strip's and Cyberpunk's own street rooms (their board rooms stand as they were).
+- **UNSEEN LIVE (RULE #1c)**: everything — first the prisms' scale against the podiums and the fronts' planes on the
+  slope, the kerb under the walker, the cars' pace and the follow gap on the chicane, the hit's shove, the banner at the
+  first gate, the lap line over the trick line, the store signs' legibility, the time machine's cage against the
+  cabinets, the gutter's slot at road level, the Cyberpunk end on the strip against the setting's parked cars.
+
 ### THE COMPLEX CANDIDATES (the user's list, 2026-09-17) — build each on THE CAVE / THE WOODS blueprint
 The cave and the woods are the blueprint for every complex from here: a generated floor plan (`terrain.gen`),
 the ground running out under a real fog, a `shell.look` grade tuned to the vibe, the room's own light, THE PARK
 RULE, the hard tapes, `check-terrain.js` before any claim. The aesthetic is the deliverable, not the room count.
 1. **DISASTER CITY** — Downtown, Cyberpunk, the Strip, the Metro (the subway stations) as ONE city: streets as
    corridors, blocks as rooms, the metro joining them below.
+   **STARTED 2026-09-17 (DISASTER CITY, the entry below): THE STREETS + THE MALL shipped locally on Room 1954 — the
+   `city` floor-plan kind, the ring-road circuit with its lap timer, the NPC traffic, the time machine into Cyberpunk,
+   the metro stair, the Strip's and the Stadium's seams, the gutter into the storm drain.**
 2. **CAMELOT CASTLE** — the exterior (moats, gardens, the curtain wall) and an interior of several floors;
    possibly a castle in the sky (Howl's moving castle).
 3. **THE TUNNELS / THE DUNGEONS** — every subway tunnel, the sewer system (the storm drain), the dungeons

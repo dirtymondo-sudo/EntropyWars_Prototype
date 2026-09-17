@@ -38470,8 +38470,14 @@ const ThreeRenderer = (function () {
             var sl = hqTerrainSlope(info, px, pz);
             var rock = (sl - R.cliffFrom) / (R.cliffTo - R.cliffFrom); rock = rock < 0 ? 0 : rock > 1 ? 1 : rock;
             /* THE GENERATED FLOOR PLAN (2026-09-17): a cave's solid wears the cliff sheet to its top (info.gen.solidSheet); the woods' thicket bank keeps the forest floor */
-            if (info.maskD && info.gen && info.gen.solidSheet === 'cliff' && typeof hqTerrainMaskAt === 'function') { var md = hqTerrainMaskAt(info, px, pz); if (md < 0.1) { var mr = (0.1 - md) / 0.6; rock = Math.max(rock, mr > 1 ? 1 : mr); } }
-            blend[k * 2] = rock * rock * (3 - 2 * rock); blend[k * 2 + 1] = pathW(px, pz) * (1 - blend[k * 2]);
+            var sw = 0;
+            if (info.maskD && info.gen && typeof hqTerrainMaskAt === 'function') {
+                var md = hqTerrainMaskAt(info, px, pz);
+                if (info.gen.solidSheet === 'cliff' && md < 0.1) { var mr = (0.1 - md) / 0.6; rock = Math.max(rock, mr > 1 ? 1 : mr); }
+                /* THE SIDEWALK (DISASTER CITY, 2026-09-17): the band along the solid wears the path sheet (concrete) over the asphalt */
+                if (info.gen.sidewalk > 0 && md > 0 && md < info.gen.sidewalk + 0.15) sw = 1 - Math.max(0, (md - info.gen.sidewalk) / 0.15);
+            }
+            blend[k * 2] = rock * rock * (3 - 2 * rock); blend[k * 2 + 1] = Math.max(pathW(px, pz), sw) * (1 - blend[k * 2]);
         }
         var idx = [];
         for (var j2 = 0; j2 + 1 < nz; j2++) for (var i2 = 0; i2 + 1 < nx; i2++) {
@@ -38575,7 +38581,7 @@ const ThreeRenderer = (function () {
         });
         /* ── THE TREES: the near kit's foliage on the ground, each a blocker; the treeline past an open edge ── */
         var TK = null;
-        if ((info.trees.length || (S.forest && S.open)) && typeof _nrTree === 'function' && typeof _nrKit === 'function') {
+        if ((info.trees.length || (S.forest && S.open) || (info.lots && info.lots.length)) && typeof _nrTree === 'function' && typeof _nrKit === 'function') {
             try { TK = _nrKit(G, { ts: TM, bw: Math.round(S.w / info.tile), bh: Math.round(S.d / info.tile), rng: rng, hq: { w: 0, gap: 0, B: 1, tints: null } }, {}); }
             catch (e) { console.warn('[HQ] the terrain’s tree kit failed', e); TK = null; }
         }
@@ -38602,6 +38608,11 @@ const ThreeRenderer = (function () {
             _hq.blockers.push({ obj: tb, y: t.y, top: null, rad: t.r || 0.42, thicket: true });
         });
         if (TK && S.forest && S.open) _hqPlantTreeline(room, S, S.w / 2, S.d / 2, plantTree, rng);
+        /* ── DISASTER CITY (2026-09-17): the buildings on the lots + the fronts, the street lamps, the traffic, the circuit ── */
+        if (info.lots && info.lots.length) { try { _hqBuildCityLots(room, info, G, TM, rng, TK); } catch (e) { console.warn('[HQ] the city lots failed', e); } }
+        if (info.genPlan && info.genPlan.streets) { try { _hqBuildStreetLamps(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the street lamps failed', e); } }
+        if (info.traffic && info.traffic.length) { try { _hqBuildTraffic(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the traffic failed', e); } }
+        if (info.race) { try { _hqBuildRace(room, info, G, TM); } catch (e) { console.warn('[HQ] the circuit failed', e); } }
         /* ── THE SCATTER: catalogue props at the compiler's spots, placed by _hqPlaceProps on the ground ── */
         _hq.terrainScatter = info.scatter.map(function (q) { return { key: q.key, x: q.x, z: q.z, face: q.face, foot: q.foot, rect: false, scatter: true }; });
         /* ── THE STALACTITES under a closed ceiling, over the open floor ── */
@@ -38620,6 +38631,245 @@ const ThreeRenderer = (function () {
             }
         }
         if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] terrain', roomId, nx + '×' + nz, 'trees', info.trees.length, 'scatter', info.scatter.length, 'fluids', info.fluids.length);
+    }
+    /* ═══════════════════════════════════════════════════════════════════════
+       DISASTER CITY (HQ plan 9.3 stage 7 — THE COMPLEX CANDIDATES #1, 2026-09-17)
+       The `city` floor plan on a terrain room: the compiler cut the solid into
+       LOTS (info.lots) with FRONTS (info.fronts) — here THE BUILDINGS stand on
+       the podiums (the map-builder sprite prisms, _nrSpriteBuilding, on an OPEN
+       room; a flat roof with its plant on a `low` lot) and every front wears a
+       FAÇADE over the podium's face: 'window' = the ground floor's windows + a
+       door + an awning now and then (the streets), 'store' = a STOREFRONT — a
+       lit sign, the glass, a shutter half down (the mall). NPC TRAFFIC
+       (info.traffic): the catalogue's vehicles (_hzVehicle at the room's tile)
+       driving their routes on the right, following the car ahead, a car off
+       the end of an open route coming back on at its start; a car through the
+       walker SHOVES (the carry momentum + a hop) and throws a rider (a bail,
+       'car'). THE CIRCUIT (info.race): gates round the loop, a START / FINISH
+       banner at the first, the rider crossing them in order times a LAP —
+       _hqTickRace emits lapstart / gate / laptick / lap through onSkate (map.js
+       banks the best per room, hqSkateBank). THE STREET LAMPS stand on the
+       kerbs of every street of the plan. Kill-switches: EW_HQ_NO_TRAFFIC.
+       ═══════════════════════════════════════════════════════════════════════ */
+    var _HQ_STORE_NAMES = ['DOORS R US', 'KEYS & KEYS', 'TAPE WORLD', 'CUBE STOP', 'THE GOO SHOP', 'OCCAM’S', 'FORM 365 EXPRESS', 'PRETZELS', 'SHOES', 'PHONES', 'RECORDS', 'NOTHING HAPPENED', 'DEPARTMENT STORE', 'THE LIMITED FORM', 'SALT & LAMP', 'OUT OF BUSINESS', 'FOOD COURT', 'ARCADE', 'HAZARD PAY LOANS', 'GLASSES IN AN HOUR'];
+    var _HQ_STORE_INKS = [0xd23c3c, 0x2f7bd6, 0x1e9e5a, 0xe0a020, 0xb04ad0, 0x20a8b8, 0xf06030, 0x2a2a2a];
+    function _hqCityFrontGroup(f, U) {
+        var g = new THREE.Group();
+        g.position.set((f.x0 + f.x1) / 2 * U, 0.3, (f.z0 + f.z1) / 2 * U);
+        g.rotation.y = Math.atan2(f.nx, f.nz);   // local +Z = the street
+        return g;
+    }
+    function _hqBuildCityLots(room, info, G, TM, rng, TK) {
+        var U = _hqUnits(), gen = info.gen || {}, lots = info.lots || [], fronts = info.fronts || [];
+        if (!lots.length) return;
+        var store = gen.fronts === 'store', prisms = gen.prisms !== false;
+        var lowMat = new THREE.MeshPhongMaterial({ map: _hzTex('concrete') || null, color: 0x9a9a98, shininess: 4 }); lowMat.emissive = new THREE.Color(0x141414);
+        var acMat = new THREE.MeshPhongMaterial({ color: 0x8a8e94, shininess: 20 }); acMat.emissive = new THREE.Color(0x101214);
+        lots.forEach(function (lot) {
+            var top = lot.top * U + 0.3;
+            if (prisms && lot.storeys && TK && typeof _nrSpriteBuilding === 'function') {
+                var w = Math.min(lot.w, lot.d) * 0.92;
+                try {
+                    var b = _nrSpriteBuilding(TK, lot.key, lot.x * U, lot.z * U, { w: w / info.tile, stack: lot.storeys, yAbs: top, cast: false, wall: false, lift: 0.18, roofKit: lot.storeys >= 3, beacon: 0xff3030 });
+                    if (b) { b._ew_hqLot = lot.i; b.rotation.y = (lot.seed % 4) * Math.PI / 2; }
+                } catch (e) { console.warn('[HQ] a city lot failed', lot.key, e); }
+            } else {
+                /* a flat roof: the parapet and the plant (an AC unit, a tank) */
+                var par = new THREE.Mesh(new THREE.BoxGeometry(lot.w * U, 0.5 * U, lot.d * U), lowMat); _hzBoxUV(par.geometry, lot.w * U, 0.5 * U, lot.d * U, TM);
+                par.position.set(lot.x * U, top + 0.25 * U, lot.z * U); G.add(par);
+                var ac = new THREE.Mesh(new THREE.BoxGeometry(1.2 * U, 0.8 * U, 1.0 * U), acMat); ac.position.set((lot.x + (lot.seed % 3 - 1) * 1.2) * U, top + 0.9 * U, (lot.z + ((lot.seed >> 2) % 3 - 1) * 1.1) * U); G.add(ac);
+                if (lot.seed % 2) { var tank = new THREE.Mesh(new THREE.CylinderGeometry(0.55 * U, 0.55 * U, 1.1 * U, 12), acMat); tank.position.set((lot.x - lot.w * 0.3) * U, top + 1.05 * U, (lot.z + lot.d * 0.25) * U); G.add(tank); }
+            }
+        });
+        /* THE FRONTS */
+        var glassMat = new THREE.MeshPhongMaterial({ color: 0x2a3a4a, shininess: 90, specular: 0x88aacc, transparent: true, opacity: 0.62 }); glassMat.emissive = new THREE.Color(0x0e1822);
+        var frameMat = new THREE.MeshPhongMaterial({ color: 0x2a2c30, shininess: 30 });
+        var shutterMat = new THREE.MeshPhongMaterial({ map: _hzTex('metal') || null, color: 0x9a9ea4, shininess: 40 }); shutterMat.emissive = new THREE.Color(0x101214);
+        var doorMat = new THREE.MeshPhongMaterial({ color: 0x3a2e24, shininess: 12 });
+        var awnCols = [0xc03030, 0x2a60b0, 0x2a8a4a, 0xd09020];
+        fronts.forEach(function (f, fi) {
+            var g = _hqCityFrontGroup(f, U), L = f.len, top = f.top;
+            var ink = _HQ_STORE_INKS[(f.lot * 7 + fi) % _HQ_STORE_INKS.length];
+            if (store) {
+                /* THE STOREFRONT: a sign band under the roof line, the glass under it, a door, a shutter half down on every third */
+                var name = _HQ_STORE_NAMES[(f.lot * 3 + fi) % _HQ_STORE_NAMES.length];
+                var signH = 0.7, signY = Math.min(top - 0.45, 3.3);
+                var back = new THREE.Mesh(new THREE.BoxGeometry((L - 0.3) * U, signH * U, 0.16 * U), new THREE.MeshPhongMaterial({ color: ink, shininess: 30 })); back.material.emissive = new THREE.Color(ink).multiplyScalar(0.35);
+                back.position.set(0, signY * U, 0.08 * U); g.add(back);
+                var tt = (typeof _hzTextTex === 'function') ? _hzTextTex('hq_store_' + name, [name], { w: 512, h: 128, color: '#fff6e0', pad: 0.18, weight: 'bold', font: '"Arial Black", Impact, sans-serif' }) : null;
+                if (tt) { var sp = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(L - 0.5, 4.6) * U, signH * 0.85 * U), new THREE.MeshBasicMaterial({ map: tt, transparent: true, depthWrite: false, fog: false })); sp.position.set(0, signY * U, 0.17 * U); g.add(sp); }
+                var glass = new THREE.Mesh(new THREE.PlaneGeometry((L - 0.5) * U, (signY - signH / 2 - 0.05) * U), glassMat); glass.position.set(0, (signY - signH / 2 - 0.05) / 2 * U, 0.02 * U); g.add(glass);
+                var mull = new THREE.Mesh(new THREE.BoxGeometry(0.06 * U, (signY - signH / 2) * U, 0.05 * U), frameMat); mull.position.set(-(L * 0.18) * U, (signY - signH / 2) / 2 * U, 0.04 * U); g.add(mull);
+                var dr = new THREE.Mesh(new THREE.PlaneGeometry(1.0 * U, 2.1 * U), glassMat); dr.position.set((L * 0.22) * U, 1.05 * U, 0.035 * U); g.add(dr);
+                var drF = new THREE.Mesh(new THREE.BoxGeometry(1.1 * U, 0.06 * U, 0.06 * U), frameMat); drF.position.set((L * 0.22) * U, 2.13 * U, 0.05 * U); g.add(drF);
+                if (fi % 3 === 1) { var sh = new THREE.Mesh(new THREE.BoxGeometry((L - 0.4) * U, (signY - signH / 2) * 0.55 * U, 0.05 * U), shutterMat); _hzBoxUV(sh.geometry, (L - 0.4) * U, (signY - signH / 2) * 0.55 * U, 0.05 * U, TM); sh.position.set(0, (signY - signH / 2) * (1 - 0.275) * U, 0.07 * U); g.add(sh); }
+                var lamp = _hzGlowSprite(1.6 * U, 0xfff0d0, 0.16, 0.0, 0.0, 0.0); lamp.position.set(0, (signY + 0.1) * U, 0.5 * U); g.add(lamp);
+            } else {
+                /* THE GROUND FLOOR: a run of windows, a door, an awning now and then, the shopfront's own sign on some */
+                var nW = Math.max(1, Math.floor((L - 1.6) / 1.6)), x0 = -(nW - 1) * 0.8 - 0.4;
+                for (var wi = 0; wi < nW; wi++) {
+                    var win = new THREE.Mesh(new THREE.PlaneGeometry(1.0 * U, 1.3 * U), glassMat); win.position.set((x0 + wi * 1.6) * U, 1.5 * U, 0.03 * U); g.add(win);
+                    var sill = new THREE.Mesh(new THREE.BoxGeometry(1.1 * U, 0.08 * U, 0.12 * U), frameMat); sill.position.set((x0 + wi * 1.6) * U, 0.82 * U, 0.06 * U); g.add(sill);
+                }
+                var door = new THREE.Mesh(new THREE.PlaneGeometry(0.95 * U, 2.1 * U), doorMat); door.position.set((L / 2 - 1.0) * U, 1.05 * U, 0.03 * U); g.add(door);
+                var lintel = new THREE.Mesh(new THREE.BoxGeometry(1.15 * U, 0.1 * U, 0.14 * U), frameMat); lintel.position.set((L / 2 - 1.0) * U, 2.15 * U, 0.07 * U); g.add(lintel);
+                if (fi % 3 === 0) {
+                    var aw = new THREE.Mesh(new THREE.BoxGeometry(Math.min(L - 1.2, 3.4) * U, 0.05 * U, 0.9 * U), new THREE.MeshPhongMaterial({ color: awnCols[fi % awnCols.length], shininess: 8 }));
+                    aw.position.set(-(L * 0.1) * U, 2.45 * U, 0.5 * U); aw.rotation.x = 0.28; g.add(aw);
+                }
+                if (fi % 4 === 2 && typeof _hzTextTex === 'function') {
+                    var nm = _HQ_STORE_NAMES[(f.lot * 5 + fi) % _HQ_STORE_NAMES.length];
+                    var tx = _hzTextTex('hq_shop_' + nm, [nm], { w: 512, h: 128, color: '#' + ('000000' + ink.toString(16)).slice(-6), pad: 0.18, weight: 'bold', font: '"Arial Black", Impact, sans-serif' });
+                    if (tx) { var sg = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(L - 0.8, 3.6) * U, 0.55 * U), new THREE.MeshBasicMaterial({ map: tx, transparent: true, depthWrite: false, fog: false })); sg.position.set(0, Math.min(top - 0.35, 2.85) * U, 0.05 * U); g.add(sg); }
+                }
+            }
+            G.add(g);
+        });
+    }
+    /* THE STREET LAMPS: on the kerb of every street of the plan, alternating sides every `every` metres, clear of the doors' lanes */
+    function _hqBuildStreetLamps(room, info, G, TM, rng) {
+        var U = _hqUnits(), plan = info.genPlan; if (!plan || !plan.streets || typeof _miscModelInstance !== 'function' || typeof _R2_MISC === 'undefined') return;
+        var every = (typeof window !== 'undefined' && window.EW_PERF_LOW) ? 26 : 14, cap = 44, made = 0, walk = (plan.walkW || 0), lampH = 3.6 * U;
+        var col = 0xffd8a0;
+        var lampMat = function (node, srcMat) { var nm = (srcMat && srcMat.name) || ''; if (nm === 'Glass') return new THREE.MeshBasicMaterial({ color: col, fog: false }); return new THREE.MeshLambertMaterial({ color: 0x23262e }); };
+        plan.streets.forEach(function (st, si) {
+            var pts = st.pts, side = si % 2 ? 1 : -1, acc = every * 0.5;
+            for (var i = 0; i + 1 < pts.length; i++) {
+                var dx = pts[i + 1][0] - pts[i][0], dz = pts[i + 1][1] - pts[i][1], L = Math.hypot(dx, dz) || 1; dx /= L; dz /= L;
+                for (var s = acc; s < L; s += every) {
+                    side = -side;
+                    var px = pts[i][0] + dx * s + (-dz) * side * (st.w / 2 + Math.min(walk, 0.7) + 0.1), pz = pts[i][1] + dz * s + dx * side * (st.w / 2 + Math.min(walk, 0.7) + 0.1);
+                    if (made >= cap || Math.abs(px) > info.S.w / 2 - 1 || Math.abs(pz) > info.S.d / 2 - 1) continue;
+                    if (info.pads.some(function (p) { return Math.hypot(p.x - px, p.z - pz) < 3.2; })) continue;
+                    if (hqTerrainMaskAt(info, px, pz) < 0.2) continue;
+                    var gy = hqTerrainHeight(info, px, pz);
+                    var lamp = _miscModelInstance(_R2_MISC + 'streetlamp/Street%20Lamp.obj', false, lampH, { matPick: lampMat });
+                    lamp.position.set(px * U, gy * U + 0.3, pz * U); lamp.rotation.y = Math.atan2(-dz * side, dx * side) + Math.PI / 2; G.add(lamp);
+                    var glow = _hzGlowSprite(0.9 * U, col, 0.32, 0.0, 0.0, 0.0); glow.position.set(px * U, (gy + 3.1) * U, pz * U); G.add(glow);
+                    var blk = new THREE.Object3D(); blk.position.set(px * U, gy * U, pz * U); G.add(blk);
+                    _hq.blockers.push({ obj: blk, y: gy, top: null, rad: 0.22, lamp: true });
+                    made++;
+                }
+                acc = (s - L);
+            }
+        });
+    }
+    /* ── NPC TRAFFIC ── */
+    function _hqRoutePose(car, s) {
+        var pts = car.pts, cum = car.cum, i = 0;
+        while (i + 2 < cum.length && cum[i + 1] <= s) i++;
+        var a = pts[i], b = pts[i + 1], segL = Math.max(1e-6, cum[i + 1] - cum[i]), t = Math.max(0, Math.min(1, (s - cum[i]) / segL));
+        var dx = (b[0] - a[0]) / segL, dz = (b[1] - a[1]) / segL;
+        return { x: a[0] + (b[0] - a[0]) * t + (-dz) * car.lane, z: a[1] + (b[1] - a[1]) * t + dx * car.lane, dx: dx, dz: dz };
+    }
+    function _hqBuildTraffic(room, info, G, TM, rng) {
+        var U = _hqUnits(), H = _hq, routes = info.traffic || [];
+        if (!routes.length || H.traffic || (typeof window !== 'undefined' && window.EW_HQ_NO_TRAFFIC)) return;
+        var prevTs = _hzKitTs; _hzKitTs = TM;
+        var cars = [];
+        try {
+            routes.forEach(function (rt, ri) {
+                var pts = rt.loop ? rt.pts.concat([rt.pts[0]]) : rt.pts, cum = [0];
+                for (var i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+                var L = cum[cum.length - 1]; if (L < 6) return;
+                var n = Math.max(1, rt.n | 0); if (typeof window !== 'undefined' && window.EW_PERF_LOW) n = Math.max(1, Math.ceil(n / 2));
+                for (var c = 0; c < n; c++) {
+                    var kind = rt.kinds[c % rt.kinds.length];
+                    var V = (typeof _VEHICLE_KIT !== 'undefined' && _VEHICLE_KIT[kind]) ? _VEHICLE_KIT[kind] : null;
+                    var g = (typeof _hzVehicle === 'function') ? _hzVehicle(kind, { foot: 0, beacon: (kind === 'copcar' || kind === 'ambulance' || kind === 'firetruck'), rng: rng, low: 'skip' }) : new THREE.Group();
+                    var len = V ? V.m : 4.6;
+                    [-0.6, 0.6].forEach(function (hx) { var hl = _hzGlowSprite(0.5 * U, 0xfff2c8, 0.55, 0.0, 0.0, 0.0); hl.position.set(hx * U, 0.7 * U, (len / 2 + 0.1) * U); g.add(hl); var tl = _hzGlowSprite(0.3 * U, 0xff3030, 0.5, 0.0, 0.0, 0.0); tl.position.set(hx * U, 0.75 * U, -(len / 2 + 0.05) * U); g.add(tl); });
+                    g._ew_hqCar = kind; G.add(g);
+                    cars.push({ g: g, route: ri, pts: pts, cum: cum, L: L, loop: !!rt.loop, s: ((c + rng() * 0.6) / n) * L, v: (rt.speed || 7) * (0.9 + rng() * 0.2), v0: (rt.speed || 7), lane: rt.lane || 0, len: len, hitT: 0 });
+                }
+            });
+        } finally { _hzKitTs = prevTs; }
+        if (!cars.length) return;
+        cars.forEach(function (car) { var p = _hqRoutePose(car, car.s); car.g.position.set(p.x * U, hqTerrainHeight(info, p.x, p.z) * U + 0.3, p.z * U); car.g.rotation.y = Math.atan2(p.dx, p.dz); });
+        H.traffic = cars;
+        H.tickers.push(function (dt) { _hqTickTraffic(dt); });
+    }
+    function _hqTickTraffic(dt) {
+        var H = _hq, cars = H && H.traffic; if (!cars || !cars.length || H.paused) return;
+        var U = _hqUnits(), info = H.terrain, pl = H.player, R = H.ride;
+        if (dt > 0.1) dt = 0.1;
+        for (var i = 0; i < cars.length; i++) {
+            var car = cars[i], adv = car.v * dt;
+            /* follow the car ahead on the same route: never closer than a length and a bit */
+            var gap = Infinity;
+            for (var j = 0; j < cars.length; j++) { if (j === i || cars[j].route !== car.route) continue; var d = cars[j].s - car.s; if (car.loop) { d = ((d % car.L) + car.L) % car.L; } if (d > 0 && d < gap) gap = d; }
+            var need = (car.len + cars[0].len) / 2 + 1.4;
+            if (gap - adv < need) adv = Math.max(0, gap - need);
+            car.s += adv;
+            if (car.loop) { if (car.s >= car.L) car.s -= car.L; }
+            else if (car.s >= car.L) car.s = 0;   // off the end of the avenue, back on at the start (the city continues past the wall)
+            var p = _hqRoutePose(car, car.s), gy = hqTerrainHeight(info, p.x, p.z);
+            car.g.position.set(p.x * U, gy * U + 0.3, p.z * U);
+            car.g.rotation.y = Math.atan2(p.dx, p.dz);
+            car.x = p.x; car.z = p.z; car.dx = p.dx; car.dz = p.dz; car.y = gy;
+            if (car.hitT > 0) { car.hitT -= dt; continue; }
+            /* THE HIT: the walker inside the car's box — shoved along its heading with a hop; a rider is thrown */
+            if (!pl || adv <= 0) continue;
+            var rx = pl.x - p.x, rz = pl.z - p.z, along = rx * p.dx + rz * p.dz, across = -rx * p.dz + rz * p.dx;
+            if (Math.abs(along) < car.len / 2 + 0.45 && Math.abs(across) < 1.25 && Math.abs(pl.y - gy) < 1.8) {
+                car.hitT = 1.2;
+                var vx = p.dx * car.v * 1.15 + (across > 0 ? -p.dz : p.dz) * 2.2, vz = p.dz * car.v * 1.15 + (across > 0 ? p.dx : -p.dx) * 2.2;
+                if (R && R.on) { _hqRideBail(R, pl, 'car'); }
+                pl.mvx = vx; pl.mvz = vz; pl.air = true; pl.vy = 3.4; pl.jumpT = -1; pl._hopped = true;
+                _hqRideEmit({ kind: 'carhit', kindOf: car.g._ew_hqCar, v: car.v });
+            }
+        }
+    }
+    /* ── THE CIRCUIT ── */
+    function _hqBuildRace(room, info, G, TM) {
+        var U = _hqUnits(), H = _hq, rc = info.race; if (!rc || H.race) return;
+        var pts = rc.pts.concat([rc.pts[0]]), cum = [0];
+        for (var i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+        var L = cum[cum.length - 1], nG = Math.max(3, rc.gates | 0), gates = [], hw = (rc.w || 10) / 2;
+        var car = { pts: pts, cum: cum, lane: 0 };
+        for (var gi = 0; gi < nG; gi++) { var p = _hqRoutePose(car, (gi + 0.5) * L / nG); gates.push({ x: p.x, z: p.z, dx: p.dx, dz: p.dz, hw: hw, y: hqTerrainHeight(info, p.x, p.z) }); }
+        var postMat = new THREE.MeshPhongMaterial({ color: 0xe8e8ec, shininess: 40 }), stripe = new THREE.MeshPhongMaterial({ color: 0xff7a1a, shininess: 20 }); stripe.emissive = new THREE.Color(0x5a2400);
+        gates.forEach(function (g, gi) {
+            var grp = new THREE.Group(); grp.position.set(g.x * U, g.y * U + 0.3, g.z * U); grp.rotation.y = Math.atan2(g.dx, g.dz);
+            var first = gi === 0, ph = first ? 4.4 : 1.6;
+            [-1, 1].forEach(function (sd) {
+                var post = new THREE.Mesh(new THREE.CylinderGeometry(0.07 * U, 0.09 * U, ph * U, 8), first ? postMat : stripe); post.position.set(sd * hw * U, ph / 2 * U, 0); grp.add(post);
+                var gl = _hzGlowSprite(0.7 * U, first ? 0xffffff : 0xff9a40, 0.35, 0.0, 0.0, 0.0); gl.position.set(sd * hw * U, (ph + 0.15) * U, 0); grp.add(gl);
+            });
+            if (first) {
+                var bar = new THREE.Mesh(new THREE.BoxGeometry(2 * hw * U, 0.08 * U, 0.08 * U), postMat); bar.position.set(0, 4.3 * U, 0); grp.add(bar);
+                var tt = (typeof _hzTextTex === 'function') ? _hzTextTex('hq_race_' + (rc.label || 'RACE'), ['START · FINISH', String(rc.label || 'THE CIRCUIT')], { w: 1024, h: 192, color: '#ffffff', bg: 'rgba(20,20,26,0.92)', border: '#ff7a1a', pad: 0.12, weight: 'bold', font: '"Arial Black", Impact, sans-serif' }) : null;
+                var ban = new THREE.Mesh(new THREE.PlaneGeometry(2 * hw * 0.92 * U, 1.0 * U), tt ? new THREE.MeshBasicMaterial({ map: tt, transparent: true, side: THREE.DoubleSide, fog: false }) : new THREE.MeshBasicMaterial({ color: 0x1a1a22, side: THREE.DoubleSide }));
+                ban.position.set(0, 3.75 * U, 0); grp.add(ban);
+                /* the chequer on the road */
+                var chk = new THREE.Mesh(new THREE.PlaneGeometry(2 * hw * U, 1.4 * U), new THREE.MeshBasicMaterial({ color: 0xf0f0f0, transparent: true, opacity: 0.55, depthWrite: false })); chk.rotation.x = -Math.PI / 2; chk.position.set(0, 0.03 * U, 0); chk.renderOrder = 2; grp.add(chk);
+            }
+            G.add(grp);
+        });
+        H.race = { label: rc.label || 'THE CIRCUIT', room: (_hq.opts && _hq.opts.room) || room.id || null, gates: gates, n: nG, next: 0, live: false, t0: 0, lastTick: 0, laps: 0, best: null, px: null, pz: null, L: L };
+        H.tickers.push(function (dt, now) { _hqTickRace(dt, now); });
+    }
+    function _hqTickRace(dt, now) {
+        var H = _hq, rc = H && H.race; if (!rc || H.paused) return;
+        var R = H.ride, pl = H.player, S = _hqSkateRules(), RR = S.race || {}, n = rc.n;
+        if (!R || !R.on) { if (rc.live) { rc.live = false; rc.next = 0; _hqRideEmit({ kind: 'lapdrop', label: rc.label }); } rc.px = null; return; }
+        if (rc.px == null) { rc.px = pl.x; rc.pz = pl.z; return; }
+        var g = rc.gates[rc.next];
+        var dPrev = (rc.px - g.x) * g.dx + (rc.pz - g.z) * g.dz, dCur = (pl.x - g.x) * g.dx + (pl.z - g.z) * g.dz;
+        var lat = Math.abs(-(pl.x - g.x) * g.dz + (pl.z - g.z) * g.dx);
+        var crossed = dPrev < 0 && dCur >= 0 && lat <= ((RR.hw != null) ? RR.hw : g.hw) && Math.abs(pl.y - g.y) < 3.2;
+        rc.px = pl.x; rc.pz = pl.z;
+        if (crossed) {
+            if (rc.next === 0) {
+                if (rc.live) {
+                    var ms = Math.round(now - rc.t0);
+                    if (ms >= (RR.minLapMs || 8000)) { rc.laps++; var best = !rc.best || ms < rc.best; if (best) rc.best = ms; _hqRideEmit({ kind: 'lap', ms: ms, best: best, room: rc.room, label: rc.label, laps: rc.laps }); }
+                }
+                rc.live = true; rc.t0 = now; rc.next = 1 % n;
+                _hqRideEmit({ kind: 'lapstart', label: rc.label, n: n });
+            } else { var crossedIdx = rc.next; rc.next = (rc.next + 1) % n; _hqRideEmit({ kind: 'gate', i: crossedIdx, n: n, ms: Math.round(now - rc.t0) }); }
+        }
+        if (rc.live && now - rc.lastTick > (RR.tickMs || 250)) { rc.lastTick = now; _hqRideEmit({ kind: 'laptick', ms: Math.round(now - rc.t0), gate: rc.next === 0 ? n : rc.next, n: n, label: rc.label, best: rc.best }); }
     }
     function _hqBuildSiteBoard(room) {
         var U = _hqUnits(), S = room.shell, G = _hq.shellGroup;
@@ -42771,6 +43021,70 @@ const ThreeRenderer = (function () {
             if (_hq) _hq.tickers.push(function (dt, now) { glow.scale.setScalar((0.5 + 0.06 * Math.sin(now * 0.0031)) * U); });
             return { g: g, motion: motion, ow: W, oh: H, plateY: H + 0.9 };
         },
+        /* DISASTER CITY (2026-09-17): THE TIME MACHINE — a brass cage on a round dais, the console column with its dial and
+           lever at the back, THE DISC standing behind it (spun up by the press-in, the light through the cage with it); the
+           opening is the gap in the rods at the front. The far end stands FREE on Cyberpunk's north strip set for 1954. */
+        timemachine: function (U, ctx) {
+            var g = new THREE.Group();
+            var W = 1.4, H = 2.4, R = 0.62;
+            var brass = _hqMat(null, 1, 1, { color: 0xc9a850, shininess: 90, specular: 0x886622 });
+            var dark = _hqMat(null, 1, 1, { color: 0x2a2620, shininess: 30 });
+            var velvet = _hqMat(null, 1, 1, { color: 0x6a1a2a, shininess: 6 });
+            var dais = new THREE.Mesh(new THREE.CylinderGeometry(0.95 * U, 1.02 * U, 0.12 * U, 24), dark); dais.position.set(0, 0.06 * U, 0); g.add(dais);
+            var rim = new THREE.Mesh(new THREE.TorusGeometry(0.98 * U, 0.03 * U, 8, 32), brass); rim.rotation.x = Math.PI / 2; rim.position.set(0, 0.12 * U, 0); g.add(rim);
+            var mat = new THREE.Mesh(new THREE.CylinderGeometry(0.6 * U, 0.6 * U, 0.02 * U, 20), velvet); mat.position.set(0, 0.13 * U, 0); g.add(mat);
+            /* the cage: eight rods on the ring, none across the front (the opening), two rings top and bottom */
+            for (var i = 0; i < 8; i++) {
+                var a = (i + 0.5) * Math.PI * 2 / 8; if (Math.abs(Math.sin(a)) < 0.45 && Math.cos(a) > 0) continue;   // the front gap: |x| small, +z
+                var rod = new THREE.Mesh(new THREE.CylinderGeometry(0.025 * U, 0.025 * U, 2.2 * U, 8), brass); rod.position.set(Math.sin(a) * R * U, 1.22 * U, Math.cos(a) * R * U); g.add(rod);
+            }
+            var ringT = new THREE.Mesh(new THREE.TorusGeometry(R * U, 0.03 * U, 8, 32), brass); ringT.rotation.x = Math.PI / 2; ringT.position.set(0, 2.32 * U, 0); g.add(ringT);
+            var ringB = new THREE.Mesh(new THREE.TorusGeometry(R * U, 0.03 * U, 8, 32), brass); ringB.rotation.x = Math.PI / 2; ringB.position.set(0, 0.16 * U, 0); g.add(ringB);
+            var cap = new THREE.Mesh(new THREE.SphereGeometry(R * 1.02 * U, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), brass); cap.position.set(0, 2.32 * U, 0); cap.scale.set(1, 0.45, 1); g.add(cap);
+            /* the console at the back: the column, the dial, the lever */
+            var col = _hqBox(0.56, 1.05, 0.28, dark); col.position.set(0, 0.64 * U, -0.42 * U); g.add(col);
+            var dial = new THREE.Mesh(new THREE.CircleGeometry(0.15 * U, 20), _hqBasic(0xffe8a0)); dial.position.set(0, 0.98 * U, -0.275 * U); g.add(dial);
+            var lever = _hqBox(0.04, 0.42, 0.04, brass); lever.position.set(0.18 * U, 1.28 * U, -0.36 * U); lever.rotation.x = 0.55; g.add(lever);
+            var knob = new THREE.Mesh(new THREE.SphereGeometry(0.045 * U, 10, 8), _hqBasic(0xd23c3c)); knob.position.set(0.18 * U, 1.47 * U, -0.25 * U); g.add(knob);
+            /* the seat */
+            var seat = _hqBox(0.5, 0.42, 0.5, velvet); seat.position.set(0, 0.34 * U, -0.05 * U); g.add(seat);
+            /* THE DISC behind the cage, standing, and the light through the cage */
+            var disc = new THREE.Mesh(new THREE.RingGeometry(0.35 * U, 1.05 * U, 32, 3), brass); disc.position.set(0, 1.25 * U, -0.95 * U); g.add(disc);
+            var spokes = new THREE.Group(); spokes.position.copy(disc.position); g.add(spokes);
+            for (var sk = 0; sk < 6; sk++) { var spoke = _hqBox(0.05, 1.9, 0.03, dark); spoke.rotation.z = sk * Math.PI / 6; spokes.add(spoke); }
+            var light = new THREE.Mesh(new THREE.CircleGeometry(0.34 * U, 20), _hqBasic(0xbfe8ff, { transparent: true, opacity: 0.25, depthWrite: false })); light.position.set(0, 1.25 * U, -0.93 * U); light.renderOrder = 2; g.add(light);
+            var glow = _hzGlowSprite(1.6 * U, 0x9fd8ff, 0.18, 0.0, 0.0, 0.0); glow.position.set(0, 1.25 * U, -0.6 * U); g.add(glow);
+            var plate = new THREE.Mesh(new THREE.PlaneGeometry(0.5 * U, 0.16 * U), _hqBasic(0x1a1612)); plate.position.set(0, 1.9 * U, -0.32 * U); g.add(plate);
+            var spun = 0;
+            var motion = { mode: 'way', ow: W, tick: function (k) { spun += 0.0; disc.rotation.z = k * 9.0; spokes.rotation.z = -k * 9.0; light.material.opacity = 0.25 + 0.7 * k; glow.material.opacity = 0.18 + 0.7 * k; glow.scale.setScalar((1.6 + 1.4 * k) * U); dial.material.opacity = 1; } };
+            if (_hq) _hq.tickers.push(function (dt, now) { disc.rotation.z += dt * 0.35; spokes.rotation.z -= dt * 0.35; glow.scale.setScalar((1.6 + 0.08 * Math.sin(now * 0.0027)) * U); });
+            return { g: g, motion: motion, ow: W, oh: H, plateY: H + 0.4, blockers: [{ x: 0, z: -0.95, r: 0.55 }, { x: 0, z: -0.42, r: 0.36 }] };
+        },
+        /* DISASTER CITY (2026-09-17): THE GUTTER — a storm inlet in the kerb (the concrete box with the slot) and the grate in
+           the road in front of it; the walker walks onto the grate toward the slot and goes down. The far end is the storm
+           drain's own grate door. The green glow in the slot is the drain's light. */
+        gutter: function (U, ctx) {
+            var g = new THREE.Group();
+            var W = 1.2, H = 0.9;
+            var conc = _hqMat('concrete', 1, 1, { color: 0x9a9a98, shininess: 4 });
+            var iron = _hqMat(null, 1, 1, { color: 0x2c2e32, shininess: 40 });
+            /* the kerb inlet: the box, the slot in its face, the drain's light in the slot */
+            var box = _hqBox(1.7, 0.46, 0.55, conc); box.position.set(0, 0.23 * U, -0.36 * U); g.add(box);
+            var lip = _hqBox(1.8, 0.06, 0.62, conc); lip.position.set(0, 0.49 * U, -0.36 * U); g.add(lip);
+            var slot = new THREE.Mesh(new THREE.PlaneGeometry(W * U, 0.24 * U), _hqBasic(0x05070a)); slot.position.set(0, 0.2 * U, -0.083 * U); g.add(slot);
+            var inner = new THREE.Mesh(new THREE.PlaneGeometry((W - 0.2) * U, 0.16 * U), _hqBasic(0x8ff0a8, { transparent: true, opacity: 0.12, depthWrite: false })); inner.position.set(0, 0.2 * U, -0.078 * U); inner.renderOrder = 2; g.add(inner);
+            /* the grate in the road in front: the frame, the bars, the dark under them */
+            var under = new THREE.Mesh(new THREE.PlaneGeometry(1.3 * U, 0.9 * U), _hqBasic(0x05070a)); under.rotation.x = -Math.PI / 2; under.position.set(0, 0.005 * U, 0.42 * U); g.add(under);
+            for (var b = 0; b < 7; b++) { var bar = _hqBox(0.06, 0.05, 0.86, iron); bar.position.set((-0.54 + b * 0.18) * U, 0.03 * U, 0.42 * U); g.add(bar); }
+            var f1 = _hqBox(1.36, 0.06, 0.06, iron); f1.position.set(0, 0.03 * U, -0.02 * U); g.add(f1);
+            var f2 = _hqBox(1.36, 0.06, 0.06, iron); f2.position.set(0, 0.03 * U, 0.86 * U); g.add(f2);
+            var stain = new THREE.Mesh(new THREE.CircleGeometry(0.9 * U, 18), _hqBasic(0x30363a, { transparent: true, opacity: 0.35, depthWrite: false })); stain.rotation.x = -Math.PI / 2; stain.position.set(0, 0.012 * U, 0.5 * U); stain.renderOrder = 1; g.add(stain);
+            var glow = _hzGlowSprite(0.9 * U, 0x8ff0a8, 0.14, 0.0, 0.0, 0.0); glow.position.set(0, 0.16 * U, 0.1 * U); g.add(glow);
+            var sign = new THREE.Mesh(new THREE.PlaneGeometry(0.5 * U, 0.16 * U), _hqBasic(0xe8e4d8)); sign.position.set(0, 0.36 * U, -0.082 * U); g.add(sign);   // NO DUMPING · DRAINS TO THE DRAIN
+            var motion = { mode: 'way', ow: W, tick: function (k) { inner.material.opacity = 0.12 + 0.7 * k; glow.material.opacity = 0.14 + 0.6 * k; glow.scale.setScalar((0.9 + 1.2 * k) * U); under.material.opacity = 1; } };
+            if (_hq) _hq.tickers.push(function (dt, now) { glow.scale.setScalar((0.9 + 0.06 * Math.sin(now * 0.0031)) * U); });
+            return { g: g, motion: motion, ow: W, oh: H, plateY: 1.7, blockers: [{ x: 0, z: -0.36, r: 0.5 }] };
+        },
     };
     function _hqTreeWay(U, ctx, dead) {
         var g = new THREE.Group();
@@ -45797,6 +46111,7 @@ const ThreeRenderer = (function () {
         reverseMaxV: 5.0, reversePushV: 1.8, kickEvery: [3.5, 7], kickMinV: 2.5,
         ollieV: 7.25, ollieTapV: 4.6, ollieHoldS: 0.42, ollieHoldAcc: 13, stanceYaw: -Math.PI / 2, bailV: 4.2, bailDrop: 2.4, bailMs: 900, deckBackMs: 2000,
         grindSnap: 0.6, grindDy: 0.5, grindMinV: 1.4, grindFriction: 0.996, grindBalance: 0.6, grindDrift: 0.45,
+        race: { hw: 5.5, tickMs: 250, minLapMs: 8000 },   // THE CIRCUIT (DISASTER CITY, 2026-09-17)
         rampLaunchMin: 1.3, rampLaunchMax: 9.5, qpTop: 0.9, qpLaunch: 1.0, bigAirS: 1.0,
         tricks: {
             kickflip:  { pts: 100, ms: 430, label: 'KICKFLIP' },

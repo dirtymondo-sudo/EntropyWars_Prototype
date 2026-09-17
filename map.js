@@ -1246,7 +1246,9 @@
             if (mc) html += row('STABILIZED', 'THRESHOLDS WON BY EVERY WIN CONDITION', `${mc.mastered} / ${mc.total}`, mc.mastered === mc.total ? 'stabilized' : 'open');
             { const el = (typeof window.hqEncounterLog === 'function') ? window.hqEncounterLog(profile) : null; if (el && el.count) html += row('ENCOUNTERS', `${el.wins} HELD · ${el.losses} EXITED${el.last ? ' · LAST ' + _hqEsc(String(el.last.race || '').toUpperCase()) + (el.last.room && typeof window.hqEncounterRoomLabel === 'function' && window.hqEncounterRoomLabel(el.last.room) ? ' IN ' + _hqEsc(window.hqEncounterRoomLabel(el.last.room)) : '') + (el.last.won ? ' (HELD)' : ' (EXITED)') : ''}`, String(el.count), el.last && el.last.won ? 'stabilized' : 'open'); }
             { const ps = _hqPortalStatus(profile); if (ps && ps.issued) html += row('THE THRESHOLD', 'PORTABLE · DOOR ISSUE · F DRAWS · LEFT CLICK SHOOTS · R FLIPS A ● / B ■ · RIGHT CLICK AIMS · Q HOLSTERS · HOLD F RECALLS', `${ps.a ? 'A' : '·'} ${ps.b ? 'B' : '·'}`, ps.paired ? 'stabilized' : 'open'); }
-            { const st = _hqSkateStatus(profile); if (st && st.issued) html += row('THE BOARD', st.best ? `BEST LINE · ${_hqEsc(st.best.text)} · ${st.lines | 0} LANDED · ${st.bails | 0} BAILS` : `B DROPS IT · NOTHING LANDED YET · ${_hqEsc(st.label)}`, st.best ? (st.best.score | 0).toLocaleString() : '—', st.best ? 'stabilized' : 'open'); }   // SKATEBOARDING (9.8)
+            { const st = _hqSkateStatus(profile); if (st && st.issued) html += row('THE BOARD', st.best ? `BEST LINE · ${_hqEsc(st.best.text)} · ${st.lines | 0} LANDED · ${st.bails | 0} BAILS` : `B DROPS IT · NOTHING LANDED YET · ${_hqEsc(st.label)}`, st.best ? (st.best.score | 0).toLocaleString() : '—', st.best ? 'stabilized' : 'open');
+              /* DISASTER CITY (2026-09-17): the best lap per circuit (hqSkateBank laps — local) */
+              if (st && st.issued && st.laps) Object.keys(st.laps).forEach(rid => { const L = st.laps[rid], r = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms[rid]) || null; if (L && L.ms) html += row('THE CIRCUIT', `${_hqEsc((r && r.label) || rid)} · BEST LAP · ${L.date || ''}`, _hqLapFmt(L.ms), 'stabilized'); }); }   // SKATEBOARDING (9.8)
             if (tc) html += row('THE TAPES', `THE HUNDRED · THE SHELF IN ROOM 360${tc.pay ? ' · ' + tc.pay + ' HAZARD PAY IN ENVELOPES' : ''}`, `${tc.found} / ${tc.total}`, tc.found >= tc.total ? 'stabilized' : 'open');
             if (sh) html += row('FORM 365', 'DAILY OFFICE OPERATIONS · ROOM 247', `${sh.done} / ${sh.total}`, sh.allDone ? 'stabilized' : 'unstable');
             if (walks) html += row('WALKS AS', 'OCCAM’S BARBERSHOP · ROOM 1287', _hqEsc(walks));
@@ -1989,6 +1991,8 @@
             } catch (e) { return null; }
         }
         let _hqTrickT = null;
+        let _hqComboLive = false;   // DISASTER CITY (2026-09-17): a combo on the trick line beats the lap timer's tick
+        function _hqLapFmt(ms) { ms = Math.max(0, ms | 0); const m = Math.floor(ms / 60000), sct = ms - m * 60000; return m + ':' + String(Math.floor(sct / 1000)).padStart(2, '0') + '.' + Math.floor((sct % 1000) / 100); }
         function _hqTrickLine(html, cls, ms) {
             const el = _hqEl('hqTrick'); if (!el) return;
             clearTimeout(_hqTrickT);
@@ -2024,9 +2028,10 @@
                 case 'grindstart': _hqSkateSfx('skateGrind', 0.5); break;
                 case 'grind': _hqSkateSfx('skateGrind', 0.22); break;
                 case 'trick': try { playSfx('uiCursorMove'); } catch (e) {} break;
-                case 'combo': _hqTrickLine(`<span>${_hqEsc(ev.text)}</span><b>${(ev.score | 0).toLocaleString()}</b><i>× ${ev.mult}</i>`, 'live'); break;
+                case 'combo': _hqTrickLine(`<span>${_hqEsc(ev.text)}</span><b>${(ev.score | 0).toLocaleString()}</b><i>× ${ev.mult}</i>`, 'live'); _hqComboLive = true; break;   // DISASTER CITY (2026-09-17): a live combo beats the lap timer's tick
                 case 'land': _hqSkateSfx('skateLand', 0.5); break;
                 case 'bank': {
+                    _hqComboLive = false;
                     _hqSkateSfx('skateBank', 0.55);
                     const sk = _hqSkateFile({ score: ev.score, text: ev.text });
                     const best = sk && sk.best && sk.best.score === ev.score && sk.best.text === ev.text;
@@ -2037,9 +2042,34 @@
                 case 'bail': {
                     _hqSkateSfx('skateBail', 0.6);
                     _hqSkateFile({ bail: true });
-                    _hqTrickLine(`<span>BAIL</span><b>${ev.lost ? '−' + (ev.lost | 0).toLocaleString() : ''}</b><i>${ev.why === 'wall' ? 'THE WALL' : ev.why === 'balance' ? 'OFF THE RAIL' : ev.why === 'offaxis' ? 'LANDED SIDEWAYS' : ev.why === 'drop' ? 'TOO FAR DOWN' : 'STILL TURNING'}</i>`, 'bail', 1800);
+                    _hqComboLive = false;
+                    _hqTrickLine(`<span>BAIL</span><b>${ev.lost ? '−' + (ev.lost | 0).toLocaleString() : ''}</b><i>${ev.why === 'wall' ? 'THE WALL' : ev.why === 'balance' ? 'OFF THE RAIL' : ev.why === 'offaxis' ? 'LANDED SIDEWAYS' : ev.why === 'drop' ? 'TOO FAR DOWN' : ev.why === 'car' ? 'THE TRAFFIC' : 'STILL TURNING'}</i>`, 'bail', 1800);
                     break;
                 }
+                /* DISASTER CITY (2026-09-17): the traffic and the circuit — three-renderer.js _hqTickTraffic / _hqTickRace */
+                case 'carhit':
+                    _hqSkateSfx('skateBail', 0.5);
+                    _hqToast(`<b>HIT BY A CAR</b><span>${_hqEsc(String(ev.kindOf || 'A CAR').toUpperCase())} · NOBODY IS DRIVING IT · CROSS AT THE LIGHT</span>`, 2400);
+                    break;
+                case 'lapstart':
+                    _hqSkateSfx('skateBank', 0.4);
+                    _hqTrickLine(`<span>LAP</span><b>0:00.0</b><i>${_hqEsc(ev.label || 'THE CIRCUIT')} · GO</i>`, 'live');
+                    break;
+                case 'gate':
+                    try { playSfx('uiCursorMove'); } catch (e) {}
+                    break;
+                case 'laptick':
+                    if (!_hqComboLive) _hqTrickLine(`<span>LAP · GATE ${ev.gate | 0} / ${ev.n | 0}</span><b>${_hqLapFmt(ev.ms)}</b><i>${ev.best ? 'BEST ' + _hqLapFmt(ev.best) : _hqEsc(ev.label || 'THE CIRCUIT')}</i>`, 'live');
+                    break;
+                case 'lap': {
+                    _hqSkateSfx('skateBank', 0.6);
+                    const sk = _hqSkateFile({ lap: { room: ev.room, ms: ev.ms } });
+                    const rec = sk && sk.laps && sk.laps[ev.room], record = rec && (rec.ms | 0) === (ev.ms | 0);
+                    _hqTrickLine(`<span>LAP ${ev.laps | 0}</span><b>${_hqLapFmt(ev.ms)}</b><i>${record ? 'NEW RECORD · ' : ''}${_hqEsc(ev.label || 'THE CIRCUIT')}</i>`, 'bank', 3200);
+                    _hqFillStrip(_hqProfile());
+                    break;
+                }
+                case 'lapdrop': _hqTrickLine(null); break;
             }
         }
         /* the pill's click = B */
