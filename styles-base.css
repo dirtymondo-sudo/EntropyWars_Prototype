@@ -5471,3 +5471,178 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-map-det > summary::-webkit-details-marker { display: none; }
 .hq-map-det > .hq-rows, .hq-map-det > .hq-world-line, .hq-map-det > .hq-chips, .hq-map-det > .hq-panel-note { margin-left: 8px; margin-right: 8px; }
 @media (prefers-reduced-motion: reduce) { .hq-map-here, .hq-map-n.reveal, .hq-map-e.reveal, .hq-map-n.reveal .hq-map-q, .hq-map-n.reveal .hq-map-no, .hq-map-n.reveal .hq-map-dot, .hq-map-n.reveal .hq-map-lbl { animation: none !important; stroke-dashoffset: 0; } }
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   THE HQ HUD PASS (2026-09-16) — the exploring HUD wears the BATTLE HUD's
+   material. The user's rule: no more "dark box with a gold or purple
+   outline"; the strip, the prompt, the toast, the trick line, the door
+   plates, the panel card, the pause frame and the map read the SAME theme
+   tokens the Horologe reads (hud.js THE COLOUR PASS: --ew-plate-bg /
+   -edge / -seam / -rim / -lip / -scan, --ew-ink / -mute / -dim, --ew-sel,
+   --ew-drop; hud.js injects them at script load now) with the same
+   rounding (soft radii, a bevelled rim, capsule pills). Settings → Display
+   → HUD Theme restyles the building with the battle. Every fallback after
+   a token is CLASSIC BLUE. Restyle HERE, after the rules above, never
+   upstream. The strip: the room you stand in is the TITLE; a pill sits on
+   the strip only while it is live (map.js _hqStripPillLive); no buttons —
+   M is the map, ESC / P the menu. The door plates are floating labels
+   (the CSS2D "grey box" is gone): the name in the theme's ink over a
+   shadow, a hairline of the function colour under it, the number small.
+   ═══════════════════════════════════════════════════════════════════════ */
+#hqPage {
+  --hq-plate-bg: var(--ew-plate-bg, linear-gradient(180deg, #1f34a8 0%, #15258a 45%, #0c165e 100%));
+  --hq-plate-edge: var(--ew-plate-edge, #e6e8f4);
+  --hq-plate-seam: var(--ew-plate-seam, #061040);
+  --hq-plate-rim: var(--ew-plate-rim, #6b7fd6);
+  --hq-plate-lip: var(--ew-plate-lip, rgba(255,255,255,0.08));
+  --hq-plate-scan: var(--ew-plate-scan, repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0 1px, rgba(0,0,0,0.05) 1px 2px, transparent 2px 3px));
+  --hq-head-bg: var(--ew-head-bg, linear-gradient(180deg, #2a42b8 0%, #1a2c8e 100%));
+  --hq-head-ink: var(--ew-head-ink, #c9d2ff);
+  --hq-row-bg: var(--ew-row-bg, linear-gradient(180deg, #24399f 0%, #1a2c86 55%, #12206c 100%));
+  --hq-row-sel-bg: var(--ew-row-sel-bg, linear-gradient(180deg, #3550c4 0%, #2841ab 55%, #1e359a 100%));
+  --hq-row-edge: var(--ew-row-edge, #7b90dc);
+  --hq-row-lip: var(--ew-row-lip, rgba(255,255,255,0.1));
+  --hq-ink: var(--ew-ink, #f4f4f8);
+  --hq-ink-mute: var(--ew-ink-mute, #b8c1ee);
+  --hq-ink-dim: var(--ew-ink-dim, #7c88c4);
+  --hq-hair: var(--ew-hair, rgba(255,255,255,0.14));
+  --hq-sel: var(--ew-sel, #f0d060);
+  --hq-sel-soft: var(--ew-sel-soft, rgba(240,208,96,0.55));
+  --hq-sel-faint: var(--ew-sel-faint, rgba(240,208,96,0.2));
+  --hq-tshadow: var(--ew-tshadow, 0 1px 2px rgba(0,0,0,0.7));
+  --hq-drop: var(--ew-drop, 0 3px 0 rgba(0,0,0,0.55), 0 8px 18px rgba(0,0,0,0.45));
+  --hq-r: 10px;       /* the plate radius */
+  --hq-r-pill: 999px; /* the capsule */
+  --hq-frame:         /* the bevelled rim every plate wears — the Horologe's identity column */
+    inset 0 0 0 1px var(--hq-plate-seam),
+    inset 0 0 0 2px var(--hq-plate-rim),
+    inset 0 3px 0 var(--hq-plate-lip),
+    var(--hq-drop);
+}
+/* ── THE STRIP: the room is the title; the rest are capsule chips ── */
+#hqPage .hq-strip { padding: 12px 18px 0; background: linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0)); align-items: flex-start; }
+#hqPage .hq-strip-l { gap: 12px; align-items: center; padding: 6px 16px 6px 8px; border-radius: var(--hq-r-pill); background: var(--hq-plate-scan), var(--hq-plate-bg); border: 1px solid var(--hq-plate-edge); box-shadow: var(--hq-frame); pointer-events: auto; }
+#hqPage .hq-strip-l img { width: 38px; height: 38px; }
+#hqPage .hq-strip-l b { font-size: 22px; letter-spacing: 0.14em; line-height: 1; color: var(--hq-ink); text-shadow: var(--hq-tshadow); }
+#hqPage .hq-strip-l span { margin-top: 3px; font-size: 8px; letter-spacing: 0.24em; color: var(--hq-ink-mute); }
+#hqPage .hq-strip-r { gap: 8px; flex-wrap: wrap; justify-content: flex-end; max-width: 62vw; }
+#hqPage .hq-strip-r .door-officer, #hqPage .hq-strip-stat, #hqPage .hq-strip-r .ew-wallet, #hqPage .hq-strip-alert {
+  display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: var(--hq-r-pill);
+  background: var(--hq-row-bg); border: 1px solid var(--hq-row-edge); color: var(--hq-ink);
+  box-shadow: inset 0 1px 0 var(--hq-row-lip), inset 0 -1px 0 rgba(0,0,0,0.35), 0 2px 0 rgba(0,0,0,0.4);
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.2em; line-height: 1.2; text-shadow: var(--hq-tshadow);
+}
+#hqPage .hq-strip-r .door-officer { flex-direction: column; align-items: flex-end; gap: 1px; padding: 4px 12px; }
+#hqPage .door-officer b { color: var(--hq-ink); font-size: 13px; }
+#hqPage .door-officer span { color: var(--hq-ink-mute); }
+#hqPage .hq-strip-stat b { color: var(--hq-sel); }
+#hqPage .hq-strip-stat.hq-strip-keys { color: var(--hq-ink); }
+#hqPage .hq-strip-r .ew-wallet { color: var(--hq-ink); }
+#hqPage .hq-strip-stat.hq-strip-form, #hqPage .hq-strip-stat.hq-strip-tapes, #hqPage .hq-strip-stat.hq-strip-portal, #hqPage .hq-strip-stat.hq-strip-skate { color: var(--hq-ink); border-color: var(--hq-row-edge); padding: 5px 12px; box-shadow: inset 0 1px 0 var(--hq-row-lip), inset 0 -1px 0 rgba(0,0,0,0.35), 0 2px 0 rgba(0,0,0,0.4); animation: hqPillIn 0.22s ease-out; }
+#hqPage .hq-strip-stat.hq-strip-tapes b { color: #ff9ae4; }
+#hqPage .hq-strip-stat.hq-strip-portal b { color: #7fd0ff; }
+#hqPage .hq-strip-stat.hq-strip-portal.drawn { border-color: var(--hq-sel); box-shadow: 0 0 12px var(--hq-sel-soft), inset 0 0 8px var(--hq-sel-faint); }
+#hqPage .hq-strip-stat.hq-strip-skate.riding { border-color: var(--hq-sel); box-shadow: 0 0 12px var(--hq-sel-soft), inset 0 0 8px var(--hq-sel-faint); }
+#hqPage .hq-strip-stat.hq-strip-skate b { color: #7dffb0; }
+#hqPage .hq-strip-stat.done b { color: #8fd3a0; }
+#hqPage .hq-strip-alert { background: linear-gradient(180deg, #8a1414, #4a0a0a); border-color: #ff8a8a; color: #ffd2d2; }
+#hqPage .hq-strip-alert.cleared { background: linear-gradient(180deg, #145a2c, #0a3218); border-color: #7fe0a0; color: #c9f7d3; }
+@keyframes hqPillIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes hqStrobe { 50% { background: linear-gradient(180deg, #d02a2a, #8a1414); border-color: #ffd0d0; } }
+/* ── THE HINTS: quiet ink, no dots ── */
+#hqPage .hq-hints { left: 18px; bottom: 12px; gap: 6px 12px; font-size: 8px; letter-spacing: 0.18em; color: var(--hq-ink-mute); opacity: 0.8; text-shadow: 0 1px 2px #000, 0 0 6px rgba(0,0,0,0.85); }
+#hqPage .hq-hints span::before { content: ''; margin: 0; display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--hq-sel); margin-right: 7px; vertical-align: 1px; opacity: 0.8; }
+/* ── THE PROMPT / THE TOAST / THE TRICK LINE: plates, rounded, bevelled ── */
+#hqPage .hq-prompt, #hqPage .hq-toast, #hqPage .hq-trick {
+  border-radius: var(--hq-r); background: var(--hq-plate-scan), var(--hq-plate-bg); border: 1px solid var(--hq-plate-edge); box-shadow: var(--hq-frame); color: var(--hq-ink);
+}
+#hqPage .hq-prompt { padding: 9px 20px 9px 16px; gap: 12px; }
+#hqPage .hq-prompt b { color: var(--hq-ink); text-shadow: var(--hq-tshadow); }
+#hqPage .hq-prompt span { color: var(--hq-ink-mute); }
+#hqPage .hq-prompt i { color: var(--hq-sel); padding: 3px 9px; border-radius: var(--hq-r-pill); background: var(--hq-row-bg); border: 1px solid var(--hq-row-edge); box-shadow: inset 0 1px 0 var(--hq-row-lip); }
+#hqPage .hq-toast { padding: 10px 22px; }
+#hqPage .hq-toast b { color: var(--hq-sel); text-shadow: var(--hq-tshadow); }
+#hqPage .hq-toast span { color: var(--hq-ink-mute); }
+#hqPage .hq-trick { padding: 8px 24px; }
+#hqPage .hq-trick span { color: var(--hq-ink); }
+#hqPage .hq-trick b { color: var(--hq-sel); text-shadow: var(--hq-tshadow), 0 0 14px var(--hq-sel-soft); }
+#hqPage .hq-trick i { color: var(--hq-ink-mute); }
+#hqPage .hq-trick.bank { border-color: var(--hq-sel); box-shadow: var(--hq-frame), 0 0 30px var(--hq-sel-faint); }
+#hqPage .hq-trick.bail { border-color: #ff7a7a; }
+#hqPage .hq-trick.bail span, #hqPage .hq-trick.bail b { color: #ff9a9a; }
+/* ── THE DOOR PLATES (CSS2D): floating labels, no box ── */
+#hqPage .hq-plate { padding: 0 2px 5px; background: none; border: none; border-bottom: 2px solid var(--hq-sel-soft); border-radius: 0; gap: 0; }
+#hqPage .hq-plate b { font-size: 13px; letter-spacing: 0.14em; color: var(--hq-ink); text-shadow: 0 1px 2px #000, 0 0 8px rgba(0,0,0,0.9), 0 0 2px #000; }
+#hqPage .hq-plate span { font-size: 7px; letter-spacing: 0.22em; color: var(--hq-ink-mute); text-shadow: 0 1px 2px #000, 0 0 6px #000; }
+#hqPage .hq-plate em { font-size: 8px; letter-spacing: 0.28em; color: var(--hq-ink-mute); text-shadow: 0 1px 2px #000, 0 0 6px #000; }
+#hqPage .hq-plate-counter { border-bottom-color: rgba(127,217,221,0.6); }
+#hqPage .hq-plate-way { border-bottom-color: rgba(207,228,255,0.6); }
+#hqPage .hq-plate-battle { border-bottom-color: rgba(255,176,32,0.85); }
+#hqPage .hq-plate-battle b { color: #ffd39a; }
+#hqPage .hq-plate .hq-lamp-chip { border-radius: var(--hq-r-pill); background: rgba(0,0,0,0.55); border-color: currentColor; }
+/* ── THE BUTTONS: capsules in the row material; the primary + hover in the select colour ── */
+#hqPage .hq-btn { border-radius: var(--hq-r-pill); background: var(--hq-row-bg); border: 1px solid var(--hq-row-edge); color: var(--hq-ink); text-shadow: var(--hq-tshadow); box-shadow: inset 0 1px 0 var(--hq-row-lip), inset 0 -1px 0 rgba(0,0,0,0.35), 0 2px 0 rgba(0,0,0,0.4); }
+#hqPage .hq-btn:hover:not(:disabled) { background: var(--hq-row-sel-bg); border-color: var(--hq-sel); color: var(--hq-sel); box-shadow: 0 0 12px var(--hq-sel-soft), inset 0 0 8px var(--hq-sel-faint); }
+#hqPage .hq-btn-primary { border-color: var(--hq-sel); color: var(--hq-sel); }
+#hqPage .hq-btn-codered { border-color: #ff6a6a; color: #ffd2d2; }
+#hqPage .hq-btn-codered:hover:not(:disabled) { border-color: #ff8a8a; color: #fff; box-shadow: 0 0 12px rgba(255,74,74,0.5); }
+/* ── THE PANEL CARD: a plate ── */
+#hqPage .hq-panel { background: rgba(0,0,0,0.45); }
+#hqPage .hq-panel-card { border-radius: var(--hq-r); background: var(--hq-plate-scan), var(--hq-plate-bg); border: 1px solid var(--hq-plate-edge); box-shadow: var(--hq-frame); color: var(--hq-ink); }
+#hqPage .hq-panel-x { border-radius: 50%; border: 1px solid var(--hq-row-edge); background: var(--hq-row-bg); color: var(--hq-ink); }
+#hqPage .hq-panel-x:hover { border-color: var(--hq-sel); color: var(--hq-sel); }
+#hqPage .hq-panel-hd { border-bottom: 1px solid var(--hq-hair); }
+#hqPage .hq-panel-hd b { color: var(--hq-ink); text-shadow: var(--hq-tshadow); }
+#hqPage .hq-panel-hd span, #hqPage .hq-panel-desc, #hqPage .hq-panel-line { color: var(--hq-ink-mute); }
+#hqPage .hq-panel-line { color: var(--hq-ink); }
+#hqPage .hq-panel-note { color: var(--hq-ink-mute); }
+#hqPage .hq-panel-foot { color: var(--hq-ink-dim); }
+#hqPage .hq-row, #hqPage .hq-site { border-radius: 8px; background: var(--hq-row-bg); border: 1px solid var(--hq-row-edge); box-shadow: inset 0 1px 0 var(--hq-row-lip), inset 0 -1px 0 rgba(0,0,0,0.3); }
+#hqPage .hq-row b, #hqPage .hq-site-kv { color: var(--hq-ink); }
+#hqPage .hq-row span, #hqPage .hq-site-kv b { color: var(--hq-ink-mute); }
+#hqPage .hq-row.hq-row-you { outline-color: var(--hq-sel); }
+#hqPage .hq-row-stamp, #hqPage .hq-lamp-chip { border-radius: var(--hq-r-pill); }
+#hqPage .hq-no, #hqPage .hq-no i { color: var(--hq-ink-mute); }
+#hqPage .hq-panel-card::-webkit-scrollbar-thumb, #hqPage .hq-pause-body::-webkit-scrollbar-thumb { background: var(--hq-plate-rim); border-radius: 6px; }
+/* ── THE PAUSE MENU: the frame is a plate, the commands are blades ── */
+#hqPage .hq-pause { color: var(--hq-ink); }
+#hqPage .hq-pause-frame { border-radius: 14px; background: var(--hq-plate-scan), var(--hq-plate-bg); border: 1px solid var(--hq-plate-edge); box-shadow: var(--hq-frame), 0 30px 80px rgba(0,0,0,0.7); }
+#hqPage .hq-pause-frame::before { display: none; }
+#hqPage .hq-pause-head { border-bottom: 1px solid var(--hq-hair); background: var(--hq-head-bg); color: var(--hq-ink); box-shadow: inset 0 1px 0 var(--hq-plate-lip); }
+#hqPage .hq-pause-title b { color: var(--hq-ink); text-shadow: var(--hq-tshadow); }
+#hqPage .hq-pause-title span, #hqPage .hq-pause-vitals i { color: var(--hq-head-ink); }
+#hqPage .hq-pause-vitals b { color: var(--hq-ink); }
+#hqPage .hq-pause-nav { border-right: 1px solid var(--hq-hair); background: rgba(0,0,0,0.18); }
+#hqPage .hq-pause-cmd { border-radius: 7px 15px 15px 7px; background: var(--hq-row-bg); border: 1px solid var(--hq-row-edge); border-left: 3px solid var(--hq-row-edge); color: var(--hq-ink); box-shadow: inset 0 1px 0 var(--hq-row-lip), inset 0 -1px 0 rgba(0,0,0,0.35), 0 2px 0 rgba(0,0,0,0.45); }
+#hqPage .hq-pause-cmd span { color: var(--hq-ink-mute); }
+#hqPage .hq-pause-cmd::before { color: var(--hq-sel); }
+#hqPage .hq-pause-cmd:hover, #hqPage .hq-pause-cmd.cur { background: var(--hq-row-sel-bg); border-color: var(--hq-sel); border-left-color: var(--hq-sel); color: var(--hq-sel); }
+#hqPage .hq-pause-cmd:hover b, #hqPage .hq-pause-cmd.cur b { color: var(--hq-sel); }
+#hqPage .hq-pause-cmd.sel { background: var(--hq-row-sel-bg); border-color: var(--hq-sel); color: var(--hq-ink); }
+#hqPage .hq-pause-cmd.sel b { color: var(--hq-sel); }
+#hqPage .hq-pause-cmd.danger { border-left-color: #ff6a6a; }
+#hqPage .hq-pause-cmd.danger:hover, #hqPage .hq-pause-cmd.danger.cur { border-color: #ff8a8a; border-left-color: #ff8a8a; color: #ffb0b0; }
+#hqPage .hq-pause-cmd.danger:hover b, #hqPage .hq-pause-cmd.danger.cur b, #hqPage .hq-pause-cmd.danger::before { color: #ffb0b0; }
+#hqPage .hq-pause-body { scrollbar-color: var(--hq-plate-rim) transparent; }
+#hqPage .hq-pause-foot { border-top: 1px solid var(--hq-hair); background: rgba(0,0,0,0.18); color: var(--hq-ink-dim); }
+/* ── THE MAP: the stage is the theme's dark seam, the card a row ── */
+#hqPage .hq-panel.hq-panel-map { background: var(--hq-plate-seam); }
+#hqPage .hq-panel.hq-panel-map .hq-panel-card { border-radius: 0; box-shadow: none; border: none; background: var(--hq-plate-scan), var(--hq-plate-bg); }
+#hqPage .hq-map-stage { border-radius: var(--hq-r); background: var(--hq-plate-seam); border: 1px solid var(--hq-plate-rim); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.6), inset 0 0 60px rgba(0,0,0,0.5); }
+#hqPage .hq-map-bar > span, #hqPage .hq-map-legend { color: var(--hq-ink-mute); }
+#hqPage .hq-map-card { border-radius: 8px; background: var(--hq-row-bg); border: 1px solid var(--hq-row-edge); border-left: 3px solid var(--hq-row-edge); box-shadow: inset 0 1px 0 var(--hq-row-lip); }
+#hqPage .hq-map-card.here { border-left-color: var(--hq-sel); }
+#hqPage .hq-map-card-hd b { color: var(--hq-ink); }
+#hqPage .hq-map-card-hd span { color: var(--hq-ink-mute); }
+#hqPage .hq-map-n.sel .hq-map-dot, #hqPage .hq-map-n.sel .hq-map-ringline { stroke: var(--hq-sel); }
+#hqPage .hq-map-n.sel .hq-map-lbl { fill: var(--hq-sel); }
+#hqPage .hq-map-det > summary { color: var(--hq-ink-mute); }
+/* ── THE LOADING CARD: the theme's ink ── */
+#hqPage .hq-load-card b { color: var(--hq-ink); }
+#hqPage .hq-load-card span { color: var(--hq-ink-mute); }
+@media (max-width: 860px) {
+  #hqPage .hq-strip { flex-direction: column; align-items: stretch; gap: 8px; }
+  #hqPage .hq-strip-r { max-width: none; justify-content: flex-start; }
+  #hqPage .hq-strip-l b { font-size: 17px; }
+}

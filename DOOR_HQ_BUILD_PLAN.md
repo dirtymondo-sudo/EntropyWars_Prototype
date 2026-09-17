@@ -9328,3 +9328,20 @@ the landscape / planet / map."
   fallback), the tint on the bake (a rock that reads too dark = `lift` on the row), the standing stone as a stalagmite,
   the pyramid's size against the mesas, the collar's plate wording, the nav console's rows on the CRT.
 
+
+### 2026-09-16 — THE HQ HUD PASS · the exploring HUD wears the battle HUD's themes — local delivery
+- The user's brief: the HQ HUD "has gotten ridiculous … a dark box with a gold or purple outline"; use the battle
+  HUD's colour themes + rounded aesthetic; the room's name replaces D.O.O.R. HEADQUARTERS top-left (no grey box); no
+  skate score / tapes count on the strip unless live; no main-menu button; M opens the map; a map node click takes
+  you there.
+- styles-base.css "THE HQ HUD PASS" (appended at the end, the battle HUD's own "restyle after, never upstream"
+  rule): `#hqPage` maps `--hq-*` onto hud.js's `--ew-*` theme tokens; strip / prompt / toast / trick line / panel
+  card / pause frame + blades / map stage + card / buttons / door plates restyled. hud.js injects its stylesheet at
+  script load (the tokens must exist before any battle).
+- index.html: `#hqRoomTitle` (the room) + `#hqRoomName` (the building · number · sub); DIRECTORY / EXIT buttons
+  removed (the pause menu's); hint `M map`. map.js: `_hqStripFlash` / `_hqStripPillLive` (tapes on a find, threshold
+  on a shot, Form 365 on arrival / a ticking return; skate while riding only); `onHotkey('m')` toggles the directory;
+  a second click on the picked node = `_hqDoAction({ room, at })`. three-renderer.js: `m` in `_hqKeyName` (after `d`),
+  the M branch before the pause gate, the battle marker's plate wears its class only.
+- UNSEEN LIVE (RULE #1c): the whole look — the plates' material under each room's light, the floating door labels
+  against pale walls, the strip's wrap at narrow widths, the pills' fade, the light themes (parchment) in the building.

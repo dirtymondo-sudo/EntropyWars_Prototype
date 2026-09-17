@@ -4742,3 +4742,41 @@ Cydonia pyramid off Mars's far corner in `_NR_BUILDERS.mars`. Log:
 DOOR_HQ_BUILD_PLAN §9. Unseen live (RULE #1c): the rock GLBs' read, the tint,
 the pyramid's size, the collar's plate, the console's rows.
 
+
+## THE HQ HUD PASS — the exploring HUD wears the battle HUD's themes (2026-09-16, local delivery)
+The user: "a dark box with a gold or purple outline … the same issues plaguing
+the battle HUD." The D.O.O.R. HQ's exploring HUD reads the BATTLE HUD's theme
+TOKENS now: styles-base.css "THE HQ HUD PASS" (appended at the END of the file
+so it wins the cascade — restyle THERE, never the HQ block above it) maps
+`--hq-*` on `#hqPage` to `--ew-plate-bg / -edge / -seam / -rim / -lip / -scan`,
+`--ew-row-*`, `--ew-ink*`, `--ew-sel*`, `--ew-drop` (Classic Blue fallbacks),
+and every plate — the strip, the prompt, the toast, the trick line, the panel
+card, the pause frame + its command blades, the map stage / card, the buttons
+(capsules) — wears the Horologe's rounded, bevelled material; Settings →
+Display → HUD Theme restyles the building with the battle. hud.js injects its
+stylesheet (the tokens live in it) ONCE AT SCRIPT LOAD now
+(`_injectHudHideStyles()` after its definition — idempotent, battle-scoped
+rules), because the HQ renders before any battle HUD mounts. **THE STRIP**:
+the room you stand in IS the title (`#hqRoomTitle`, map.js `_hqFillStrip`;
+`#hqRoomName` under it = D.O.O.R. HEADQUARTERS · ROOM № · sub) — no second
+box with the room's name anywhere; the CSS2D **door plates are floating
+labels** (no background / border, a hairline of the function colour under
+the name; the battle marker's inline border is gone); NO buttons (DIRECTORY /
+EXIT are the pause menu's — ESC / P); a pill sits on the strip only while it
+is LIVE: `_hqStripFlash(key, ms)` (the one write; `HQ_STRIP_FLASH_MS` 6 s) /
+`_hqStripPillLive(key)` (the one read, the strip re-fills when the flash runs
+out) — a found tape flashes TAPES, a placed door flashes THRESHOLD (drawn =
+always shown), FORM 365 flashes on a fresh arrival and on a return from a
+match that ticked a line; the SKATEBOARD pill shows only while riding. The
+pause menu's OFFICER sheet carries every count. **M = THE MAP**:
+three-renderer.js `_hqKeyName` knows `m` (inserted after `d` — the pinned
+`e … q || p` chain is untouched), the handler routes `onHotkey('m')` BEFORE
+the pause gate; map.js opens the directory, M again closes it (a pause menu /
+terminal / other panel keeps the key). **A NODE CLICKED TWICE GOES**: the
+first click picks the room (the card: where it is + GO), the second click on
+the same node walks you there through `_hqDoAction({ room, at })` — the same
+path as the card's GO; the card says CLICK THE NODE AGAIN TO GO. `npm test`
+1532 / 0 / 4 skipped. UNSEEN LIVE (RULE #1c): the plate material over each
+room's light, the floating plates' legibility against bright walls, the strip
+at narrow widths, the pill fade, the parchment theme's light ink in the
+building.

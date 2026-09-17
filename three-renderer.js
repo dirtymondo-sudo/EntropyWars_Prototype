@@ -42625,7 +42625,6 @@ const ThreeRenderer = (function () {
             }
             var el = document.createElement('div');
             el.className = 'hq-plate hq-plate-counter' + (marker ? ' hq-plate-battle' : '');
-            if (marker) { el.style.borderColor = 'rgba(255,176,32,0.75)'; el.style.boxShadow = '0 0 14px rgba(255,176,32,0.35)'; }
             var cNo = _hqPlateNo(c);
             el.innerHTML = (cNo ? '<em>ROOM ' + cNo + '</em>' : '') + '<b>' + c.label + '</b><span>' + (c.sub || '') + '</span>';
             var plate = new THREE.CSS2DObject(el);
@@ -45033,7 +45032,7 @@ const ThreeRenderer = (function () {
         if (k === 'arrowright') return 'right';
         if (k === 'shift') return 'shift';
         if (k === ' ' || k === 'spacebar') return 'space';
-        if (k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'e' || k === 'b' || k === 'v' || k === 'f' || k === 'r' || k === '1' || k === '2' || k === 'q' || k === 'p') return k;   // F = the door gun (9.5); R / 1 / 2 = its selector (rev 4); B = the skateboard (9.8)
+        if (k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'm' || k === 'e' || k === 'b' || k === 'v' || k === 'f' || k === 'r' || k === '1' || k === '2' || k === 'q' || k === 'p') return k;   // F = the door gun (9.5); R / 1 / 2 = its selector (rev 4); B = the skateboard (9.8); M = the map (THE HQ HUD PASS)
         if (k === 'enter') return 'e';
         if (k === 'escape' || k === 'esc') return 'esc';
         return null;
@@ -45057,6 +45056,9 @@ const ThreeRenderer = (function () {
                key, so the settings could not be opened from the walk without a
                click on the strip — which the locked cursor could not make */
             if (k === 'p') { e.preventDefault(); e.stopPropagation(); if (H.opts.onEscape) H.opts.onEscape(); return; }
+            /* M = THE MAP (THE HQ HUD PASS, 2026-09-16): the directory from anywhere — before the pause
+               gate so a second M closes the sheet it opened (map.js decides what is open) */
+            if (k === 'm') { e.preventDefault(); e.stopPropagation(); if (!e.repeat && H.opts.onHotkey) H.opts.onHotkey('m'); return; }
             if (H.paused) return;
             /* a gameplay key is a user gesture: grab the pointer so the mouse
                aims edge-free with no click (hover-look covers it until then).

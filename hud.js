@@ -10169,6 +10169,12 @@ function _injectHudHideStyles() {
   // CRT veil kill switch (console: window.EW_DISABLE_CRT = true, then re-enter battle)
   document.body.classList.toggle('ew-no-crt', !!window.EW_DISABLE_CRT);
 }
+/* THE HQ HUD PASS (2026-09-16): the theme TOKENS (--ew-plate-bg … --ew-sel, THE
+   COLOUR PASS above) are read by the D.O.O.R. HQ's exploring HUD too (styles-base.css
+   "THE HQ HUD PASS"), which renders before any battle HUD has mounted — so the
+   stylesheet is injected once at script load. It is idempotent (the id guard) and
+   every rule in it is scoped to battle-HUD classes. */
+try { if (document.head) _injectHudHideStyles(); } catch (e) {}
 
 function _removeHudHideStyles() {
   const el = document.getElementById('reactHudHideStyles');

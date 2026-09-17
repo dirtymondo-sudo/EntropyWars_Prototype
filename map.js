@@ -442,6 +442,20 @@
             } catch (e) {}
             return { race: 'men in black', gender: 'male' };
         }
+        /* THE HQ HUD PASS (2026-09-16): a strip pill that is not LIVE stays off the strip —
+           the pause menu's OFFICER sheet carries every count. A pill is shown for
+           HQ_STRIP_FLASH_MS after its moment (a tape found, a door placed, the day's
+           form ticked) and fades; _hqStripFlash(key) is the one write, _hqStripPillLive
+           the one read, and the strip re-fills itself when the flash runs out. */
+        const HQ_STRIP_FLASH_MS = 6000;
+        const _hqStripFlashAt = {};
+        let _hqStripFlashT = null;
+        function _hqStripFlash(key, ms) {
+            _hqStripFlashAt[key] = performance.now() + (ms || HQ_STRIP_FLASH_MS);
+            clearTimeout(_hqStripFlashT);
+            _hqStripFlashT = setTimeout(() => { try { if (state.gameState === GS.HQ) _hqFillStrip(_hqProfile()); } catch (e) {} }, (ms || HQ_STRIP_FLASH_MS) + 50);
+        }
+        function _hqStripPillLive(key) { return (_hqStripFlashAt[key] || 0) > performance.now(); }
         function _hqFillStrip(profile) {
             try {
                 const off = _hqEl('hqOfficer');
@@ -455,9 +469,14 @@
                     const gold = (profile && profile.account && profile.account.gold) || 0;
                     w.textContent = '💰 ' + gold.toLocaleString() + ' Hazard Pay';
                 }
+                /* THE HQ HUD PASS (2026-09-16, the user's rule): the room you stand in IS the
+                   title in the corner — no second box with its name anywhere on the screen.
+                   The building's name and the room's number ride the sub-line under it. */
                 const room = _hqRoom();
+                const rt = _hqEl('hqRoomTitle');
+                if (rt && room) rt.textContent = String(room.label || _hqCurRoom || '').toUpperCase();
                 const rn = _hqEl('hqRoomName');
-                if (rn && room) rn.textContent = ((room.roomNo != null) ? 'ROOM ' + room.roomNo + ' · ' : '') + room.label + ' · ' + room.sub;
+                if (rn && room) rn.textContent = 'D.O.O.R. HEADQUARTERS · ' + ((room.roomNo != null) ? 'ROOM ' + room.roomNo + ' · ' : '') + String(room.sub || '').toUpperCase();
                 const ms = _hqEl('hqMastery');
                 if (ms) {
                     const mc = (typeof window.hqMasteryCount === 'function') ? window.hqMasteryCount(profile) : null;
@@ -475,7 +494,7 @@
                 const fp = _hqEl('hqForm365');
                 if (fp) {
                     const sh = (typeof window.hqDailyOps === 'function') ? window.hqDailyOps(profile) : null;
-                    if (sh) {
+                    if (sh && _hqStripPillLive('form365')) {
                         fp.style.display = '';
                         fp.classList.toggle('done', !!sh.allDone);
                         fp.innerHTML = `FORM 365 <b>${sh.done}</b> / ${sh.total}`;
@@ -486,15 +505,15 @@
                 const tp = _hqEl('hqTapes');
                 if (tp) {
                     const tc = (typeof window.hqTapeCount === 'function') ? window.hqTapeCount(profile) : null;
-                    if (tc) { tp.style.display = ''; tp.classList.toggle('done', tc.found >= tc.total); tp.innerHTML = `TAPES <b>${tc.found}</b> / ${tc.total}`; tp.title = 'THE TAPES — a hundred cassettes hidden about the world. Found ones play on the shelf in Room 360. Click for the shelf.'; }
+                    if (tc && _hqStripPillLive('tapes')) { tp.style.display = ''; tp.classList.toggle('done', tc.found >= tc.total); tp.innerHTML = `TAPES <b>${tc.found}</b> / ${tc.total}`; tp.title = 'THE TAPES — a hundred cassettes hidden about the world. Found ones play on the shelf in Room 360. Click for the shelf.'; }
                     else { tp.style.display = 'none'; tp.innerHTML = ''; }
                 }
                 /* THE DOOR GUN (plan 9.5): the issue and the pair on the strip; click = draw / holster */
                 const pp = _hqEl('hqPortal');
                 if (pp) {
                     const ps = _hqPortalStatus(profile);
-                    if (ps && ps.issued) {
-                        const drawn = (() => { try { return ThreeRenderer.hq.portalDrawn(); } catch (e) { return false; } })();
+                    const drawn = (() => { try { return ThreeRenderer.hq.portalDrawn(); } catch (e) { return false; } })();
+                    if (ps && ps.issued && (drawn || _hqStripPillLive('portal'))) {
                         pp.style.display = '';
                         pp.classList.toggle('drawn', drawn);
                         pp.classList.toggle('paired', !!ps.paired);
@@ -507,8 +526,8 @@
                 const skp = _hqEl('hqSkate');
                 if (skp) {
                     const st = _hqSkateStatus(profile);
-                    if (st && st.issued) {
-                        const riding = (() => { try { return ThreeRenderer.hq.skating(); } catch (e) { return false; } })();
+                    const riding = (() => { try { return ThreeRenderer.hq.skating(); } catch (e) { return false; } })();
+                    if (st && st.issued && riding) {   // THE HQ HUD PASS: the board is on the strip only while you ride it (the pause menu keeps the best line)
                         skp.style.display = '';
                         skp.classList.toggle('riding', riding);
                         skp.innerHTML = `🛹 <b>${riding ? 'RIDING' : 'BOARD'}</b>${st.best ? ' · BEST ' + (st.best.score | 0).toLocaleString() : ''}`;
@@ -637,7 +656,16 @@
                    not a place); EXIT on the strip is how you leave */
                 onEscape: () => { if (_hqTerm) { window._hqTerminalClose(); return; } if (_hqPause) { window._hqClosePause(); return; } if (_hqPanelTarget) window._hqClosePanel(); else window._hqOpenPause(); },
                 /* Q: answer a BELL call from anywhere in the building (plan D2) */
-                onHotkey: (k) => { if (k === 'q') _hqOpenCounter('dispatch'); },
+                onHotkey: (k) => {
+                    if (k === 'q') _hqOpenCounter('dispatch');
+                    /* M = THE MAP (THE HQ HUD PASS): open the directory; M again closes it. A pause
+                       menu / terminal / another panel keeps the key (ESC is theirs). */
+                    else if (k === 'm') {
+                        if (_hqTerm || _hqPause) return;
+                        if (_hqPanelTarget) { if (_hqPanelIsMap(_hqPanelTarget)) window._hqClosePanel(); return; }
+                        window._hqOpenDirectory();
+                    }
+                },
                 onReady: () => {
                     if (loadGeneration !== _hqLoadGeneration || loadReady) return;
                     loadReady = true;
@@ -672,7 +700,8 @@
             }
             /* post-match / post-screen: stand where you left, door at your back */
             if (opts.at) { try { ThreeRenderer.hq.goTo(opts.at, true); } catch (e) {} }
-            if (opts.from === 'play') { _hqLastRoom = roomId; _hqLastDoor = null; _hqRecordVisit(null); }
+            if (opts.from === 'play') { _hqLastRoom = roomId; _hqLastDoor = null; _hqRecordVisit(null); _hqStripFlash('form365', 9000); }   // THE HQ HUD PASS: the day's sheet shows on arrival, then the strip goes quiet
+            else if (returning && window._lastHqForm365) _hqStripFlash('form365', 9000);   // back from a match that ticked a line
             /* THE MAP (2026-09-16): every room entered is a room SEEN — the directory's map draws it from now on */
             if (typeof _hqRecordRoomSeen === 'function') _hqRecordRoomSeen(roomId);
             window._hqRelabelMenuButtons();
@@ -1852,6 +1881,7 @@
                 const r = window.hqPortalPlace(p, spec, { force: _hqPortalForce() });
                 if (!r || !r.ok) { _hqPortalRefused(r ? r.reason : 'none'); return null; }
                 PS.saveProfile(idx, p);
+                _hqStripFlash('portal');   // THE HQ HUD PASS: the pair's pill shows for a moment after a shot, then the strip is quiet
                 const RL = window.HQ_PORTAL_RULES || {};
                 const L = RL.labels || {}, CN = RL.colorNames || {};
                 const here = r.twin && r.twin.room === spec.room;
@@ -2293,6 +2323,7 @@
                 try { playSfx('levelUp'); } catch (e) {}
                 try { if (typeof playDoorSfx === 'function') playDoorSfx('doorStamp', { volume: 0.6 }); } catch (e) {}
                 _hqToast(`<b>TAPE ${beat.count} / ${beat.total}</b><span>${_hqEsc(beat.title)} · FILED · IT PLAYS ON THE SHELF IN ROOM 360</span>`, 4200);
+                _hqStripFlash('tapes');   // THE HQ HUD PASS: the count shows for a moment, then the strip is quiet again
             } else {
                 try { playSfx('uiButtonConfirm'); } catch (e) {}
                 _hqToast(`<b>+${beat.amount} HAZARD PAY</b><span>AN UNMARKED ENVELOPE · ${beat.serverPays ? 'ON THE BOOKS AT THE NEXT SYNC' : (beat.gold || 0).toLocaleString() + ' ON THE BOOKS'} · NOBODY SAW</span>`, 2800);
@@ -2753,6 +2784,7 @@
                 }
             } else {
                 html += `<div class="hq-panel-actions">${_hqRoomExists(n.id) ? `<button class="hq-btn hq-btn-primary" data-room="${_hqEsc(n.id)}" data-at="${_hqEsc(_hqMapAt(n.id))}">GO ▸ ${_hqEsc(String(n.label).toUpperCase())}</button>` : ''}<button class="hq-btn" data-mapnode="${_hqEsc(M.here || '')}">◂ YOU ARE HERE</button></div>`;
+                if (_hqRoomExists(n.id)) html += '<p class="hq-panel-note">CLICK THE NODE AGAIN TO GO</p>';
             }
             return html + '</div>';
         }
@@ -2933,7 +2965,7 @@
         window._hqMapDev = function () { return { model: _hqMap.model, shown: _hqMapShown(), view: _hqMap.view, fit: _hqMap.fit }; };
         function _hqDirectoryHtml() {
             const room = _hqRoom(), profile = _hqProfile();
-            let html = `<div class="hq-panel-hd"><b>THE MAP</b><span>BUILDING DIRECTORY · ${_hqEsc(room.label || 'CENTRAL EGRESS')} · YOU ARE HERE · LAYOUT SUBJECT TO REVISION</span></div>`;
+            let html = `<div class="hq-panel-hd"><b>THE MAP</b><span>BUILDING DIRECTORY · ${_hqEsc(room.label || 'CENTRAL EGRESS')} · YOU ARE HERE · CLICK A ROOM TWICE TO GO · M CLOSES</span></div>`;
             const mapHtml = _hqMapHtml();
             html += mapHtml;
             /* THE SIDE COLUMN (full screen): the picked node's card, then the
@@ -3754,7 +3786,20 @@
             /* THE SHELF (Room 360, 9.1): a spine puts that cassette in the set — the panel re-renders in place */
             /* THE MAP: a node picked / a zoom button — the directory re-renders in place (no reveal: the record already holds this open) */
             const mapNode = e.target.closest('[data-mapnode]');
-            if (mapNode) { if (_hqMap.dragged) return; _hqMap.sel = mapNode.getAttribute('data-mapnode') || null; _hqMapRerender(); return; }
+            if (mapNode) {
+                if (_hqMap.dragged) return;
+                const nid = mapNode.getAttribute('data-mapnode') || null;
+                /* THE HQ HUD PASS (the user's rule: "clicking a node actually takes me there"):
+                   the first click picks the room (the card shows where it is + GO), the
+                   second click on the SAME node goes — the card's GO stays for the mouse
+                   that reads first. YOU ARE HERE never walks. */
+                if (nid && nid === _hqMap.sel && nid !== _hqCurRoom && _hqRoomExists(nid)) {
+                    try { playSfx('uiButtonConfirm'); } catch (err) {}
+                    window._hqDoAction({ room: nid, at: _hqMapAt(nid) }, null);
+                    return;
+                }
+                _hqMap.sel = nid; _hqMapRerender(); return;
+            }
             const mapZoom = e.target.closest('[data-mapzoom]');
             if (mapZoom) { const svg = body.querySelector('svg.hq-map-svg'); if (svg) { _hqMap.anim++; const v = (svg.getAttribute('viewBox') || '').split(/\s+/).map(Number); const f = mapZoom.getAttribute('data-mapzoom') === 'in' ? 1 / 1.3 : 1.3; const w = Math.max(160, Math.min(v[2] * f, 6000)), h = v[3] * (w / v[2]); _hqMapSetView(svg, [v[0] + (v[2] - w) / 2, v[1] + (v[3] - h) / 2, w, h]); } return; }
             if (e.target.closest('[data-mapfit]')) { const svg = body.querySelector('svg.hq-map-svg'); if (svg) { _hqMap.anim++; _hqMap.view = null; svg.setAttribute('viewBox', svg.getAttribute('data-fit') || ''); } return; }
