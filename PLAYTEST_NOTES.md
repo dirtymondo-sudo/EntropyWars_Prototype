@@ -10739,3 +10739,14 @@ step in the digits; a deck that ends on a bank shows `^` at its end (a one-way c
 a door pad on a crag shows a high digit under `D` (the crag never stands in a lane — check the feature order).
 The offline HQ harness (`playtest_hq_offline.js <room>`) photographs a field with stand-in textures; the real
 sheets are unseen. The tape pinnacles: `hqFindHardReachTerrain` (data.js) prints the shot when it exists.
+
+## DISASTER CITY, THE SECOND PASS (2026-09-17) — the offline HQ probe serves the repo's GLBs now
+`playtest_hq_offline.js` serves any GLB the repo holds (doors/, the repo root — the road tiles, the crashed car,
+the escalator, the skateboard, the gun) from disk; every other GLB still 404s (the vehicles, the batch on R2), so
+a `way` that is only a GLB (the subway train) is invisible offline and the sprite prisms wear stand-in grey. The
+screenshot timeout is 180 s (a loaded sandbox timed out at 30). Shots that read the second pass: the streets from
+above (`{"x":-20,"z":-12,"face":90,"pitch":-0.85,"dist":40}` — the prisms from the kerb, the road tiles), the
+ring road's corner (`{"x":46,"z":36,"face":308,"pitch":-0.45,"dist":18}` — the quarter tile joining the two
+legs), the mall's mezzanine (`{"x":-3,"z":-2,"face":90}` — the escalator over the ramp). A spawn on a traffic
+route reads HIT BY A CAR in the first second — that is how the first probe found the streets' spawn in the ring
+road's west leg (moved to the tower's side street, x −50).

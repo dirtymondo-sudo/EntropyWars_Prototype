@@ -316,6 +316,41 @@ the first four would replace procedural pieces and need one hook each):
 9. **a subway entrance canopy** (the stair head with the sign) — the metro stair on the streets; **a stadium gate / turnstile bank** — Gate C.
 10. **a delivery truck** and **a taxi** — two more kinds for the traffic (`_VEHICLE_KIT` rows).
 
+## 3i. THE CITY BATCH (Assets/misc/, 2026-09-17 — DISASTER CITY's second pass + CYBERPUNK CITY)
+
+Nineteen Meshy GLBs the user uploaded to R2 `Assets/misc/` (`_MISC_GLB` keys;
+the catalogue rows read the same files, `base: 'misc'` — the same-thing rule).
+Four are in the repo and were MEASURED (`node` bounds + a three r128 render
+with an AxesHelper); the rest are TARGETS (unseen — RULE #1c). The bin is the
+OUTDOOR one (the kerbs), the trash bin the INDOOR one (the mall, the casino);
+the Vatican dome is for OUTSIDE the Vatican (the setting, the cortile's sky).
+
+| key | file | measured / target | stands as |
+| --- | --- | --- | --- |
+| `city_bin` | Meshy_AI_a_city_bin_0917065144_texture.glb | target h 1.05 | catalogue `city_bin` — the streets' and the grid's kerb scatter, THE ROOFTOP / THE BILLBOARD ROOF |
+| `city_trash_bin` | Meshy_AI_a_city_trash_bin_0917065157_texture.glb | target h 0.9 | catalogue `mall_bin` — the mall's scatter + the food court |
+| `taxi` | Meshy_AI_a_city_taxi_0917065634_texture.glb | target m 4.8 | `_VEHICLE_KIT.taxi` (the traffic on both cities' loops and boulevards); catalogue `car_taxi` parked on the grid |
+| `truck` | Meshy_AI_a_truck_0917065131_texture.glb | target m 8.0 | `_VEHICLE_KIT.truck` (the traffic); catalogue `car_truck` |
+| `crashed_car` / `crashed_car_2` | Meshy_AI_a_crashed_car_0917065033_texture.glb / Meshy_AI_a_crashed_car_2_0917065052_texture.glb | MEASURED 1.0 × 0.36 × 0.45, nose −X → `turn: 90` | catalogue rows — THE COLLAPSE (two), the chicane, the grid's boulevard |
+| `time_machine` | Meshy_AI_a_retro_time_machine_0917064610_texture.glb | target h 2.4, `rot: 90` (the opening at −X assumed) | catalogue `time_machine` — the `timemachine` way's model over the brass cage (the supply closet ⇄ the noodle bar) |
+| `road_straight` | Meshy_AI_a_straight_city_road_0917064651_texture.glb | MEASURED 1 × 1 square, the dashes along Z, kerbs on the X sides | `_hqBuildRoadTiles`: a tile every street width along every segment of a sidewalked `city` plan, fitted by span to the street's width, squashed to a kerb (scale.y 0.3) |
+| `road_turn` | Meshy_AI_a_road_turn_quarter_0917065230_texture.glb | MEASURED 1 × 1, a quarter circle joining two adjacent edges | `_hqBuildRoadTiles`: on every right-angle vertex |
+| `street_drain` | Meshy_AI_a_round_street_drain__0917064638_texture.glb | target span 1.3 | catalogue `street_drain` — the `gutter` way's grate (GLB over the bars), manholes scattered on both cities' roads |
+| `escalator` | Meshy_AI_an_escalator_0917064623_texture.glb | MEASURED 0.53 × 0.72 × 1.0, rising toward −Z; fitted h 4.6 → a 6.4 m run | catalogue `escalator` — the mall's mezzanine (`face: 270`, top at +x; `foot` 0: the terrain ramp under it is the walker's treads) |
+| `bus_shelter` | Meshy_AI_bus_shelter_0917064913_texture.glb | target span 3.8, `turn: 90` (the opening −X assumed) | catalogue `bus_shelter` — two per city on the avenue's / boulevard's sidewalks, the opening to the road |
+| `cinder_block` | Meshy_AI_cinder_block_0917064959_texture.glb | target span 0.4 | catalogue — THE COLLAPSE's scatter |
+| `fire_hydrant` | Meshy_AI_fire_hydrant_0917064858_texture.glb | target h 0.8 | catalogue — the kerb scatter, both cities |
+| `storefront` | Meshy_AI_storefront_0917064551_texture.glb | target span = the front's length (≤ 8), `yaw π/2` (front −X assumed) | `_hqBuildCityLots`: a LOW street lot's ground floor (over the procedural windows once it lands) |
+| `storefront_unit` | Meshy_AI_storefront_unit_0917064533_texture.glb | target span = the unit's length, `yaw π/2` | `_hqBuildCityLots`: the mall's store units (over the procedural glass / mullion / door / shutter once it lands; the sign band stays) |
+| `vatican_dome` | Meshy_AI_the_Vatican_dome_0917061915_texture.glb | target 3.6 tiles tall × the setting's `s` 1.6 | `_hzBasilicaDome` GLB-first (the Vatican setting behind the board, the `basilicadome` monument; `_hzBasilicaDomeProc` the stand-in) + `_hqLandmarkBuilders.dome` |
+| `traffic_barrel` / `traffic_cone` | Meshy_AI_traffic_barrel_0917064936_texture.glb / Meshy_AI_traffic_cone_0917064925_texture.glb | targets h 1.0 / 0.7 | catalogue — THE COLLAPSE, the chicane, the grid's boulevard wreck |
+
+Facings to eyeball first: the time machine's opening, the bus shelter's open
+side, the storefronts' fronts (all three assumed −X → the `rot` / `turn` /
+`yaw` on their rows are the one-field edits), the escalator's direction, the
+quarter tile's curve at each corner of the ring road (`_hqBuildRoadTiles`'s
+corner rule assumes the road joins the tile's +X and +Z edges).
+
 ## 4. The older `Assets/misc/` models (`_MISC_GLB` + the OBJ landmarks)
 
 | key | file | kind | stands as |

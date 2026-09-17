@@ -9603,6 +9603,104 @@ ones would be good for a second pass."
   first gate, the lap line over the trick line, the store signs' legibility, the time machine's cage against the
   cabinets, the gutter's slot at road level, the Cyberpunk end on the strip against the setting's parked cars.
 
+### 2026-09-17 — DISASTER CITY, THE SECOND PASS + CYBERPUNK CITY (complex candidate #1 continued), local delivery
+
+The user's notes on the first pass: "I do not like how the buildings are on
+raised plateaus, they should be street level"; "the cyberpunk city is supposed
+to be another big area, basically a reskin of disaster city but cyberpunk";
+"the time machine should be in a random basement or supply closet of the mall";
+the bin is for outside and the trash bin for inside; the city batch of Meshy
+models uploaded to R2 `Assets/misc/` (four committed to the repo for their
+scale); "keep improving the overall feel of city and making the different areas
+feel more interconnected and part of the same city/world".
+
+**STREET LEVEL.** The `city` plan's rise (3.2 m in the concrete sheet) was the
+podium every building stood on. Two changes: the compiler (data.js, the city
+branch of `_hqTGenerate`) starts the rise `riseIn` (0.1 m) INSIDE the mask
+boundary instead of 0.2 m outside it, and the LOTS are a TERRACE — laid along
+every street FACE (the corridor's edge + the sidewalk) shoulder to shoulder, a
+lot's face standing `frontOut` (0.35 m) OUTSIDE the boundary over the sampled
+ramp (the field is sampled every 0.5 m, so the drawn ramp spans a cell either
+side of the line whatever `edge` says — the face must stand past it), its depth
+capped at half the block when a street lies on the far side (the ring road's
+inner faces and the cross street's faces share their blocks) and short of any
+feature otherwise, every lot wearing `rot` (the face's yaw), `base` (the
+sidewalk's ground under its front) and `face` (the street index); the fronts
+hang on the lots' own edges (the main one always, a corner lot's side when the
+street lies past it). The renderer (`_hqBuildCityLots`) stands every prism FROM
+THE GROUND — `_nrSpriteBuilding` took a depth (`o.d`) so the box is w × d,
+turned by `ry` — and a LOW lot is a one-storey concrete box with its parapet and
+plant; the 'window' front on a prism lot keeps only the awning and the shop sign
+(the sprite's own ground floor shows), a low lot's ground floor keeps the
+windows + door and takes the user's `storefront` GLB over them; the mall's
+'store' front takes the `storefront_unit` GLB over its glass (the sign band
+stays). Measured (hq-city.test.js): every lot's base ≈ the kerb (0.08–0.14 m on
+the streets, ≈ 0 in the mall), the rise ≥ 60 % of wallH 1.5 m inside every
+face, 44 lots on the streets / 13 units in the mall / 41 on the grid, ≥ 55 %
+of the street lots touching a neighbour on their face (the blocks are full of
+features: the deck, the collapse, the chicane — that is the plan's own limit).
+
+**THE ROAD TILES.** The user's straight road and quarter-turn GLBs (1 × 1
+squares — the straight one's dashes along Z with kerbs on the X sides, the turn
+a quarter circle joining two adjacent edges; measured) are laid by
+`_hqBuildRoadTiles` (three-renderer.js, after the lots) along every street of a
+sidewalked `city` plan: a straight tile every street width along each segment
+(fitted by span to the street's width, squashed to a kerb — scale.y 0.3 — 2 cm
+over the field), a quarter tile ON every right-angle vertex with the runs
+stopping half a width short, nothing inside another street's corridor (an
+intersection is plain asphalt) or beside a bend that is not a right angle.
+Kill-switches EW_HQ_NO_ROAD_TILES / EW_PERF_LOW.
+
+**THE CITY BATCH** (MODEL_INDEX §3i): nineteen `_MISC_GLB` rows + fourteen
+catalogue rows (`base: 'misc'`); the taxi and the truck in `_VEHICLE_KIT` and in
+both cities' traffic; `city_bin` outside / `mall_bin` inside; the crashed cars
+under THE COLLAPSE and on the chicane; cones, barrels, cinder blocks, hydrants,
+manholes scattered; two bus shelters per city; the escalator over the mezzanine
+ramp (the treads under it stay the walker's); the time machine GLB over the
+brass cage in the `timemachine` way, the round drain over the `gutter`'s grate;
+`_hzBasilicaDome` GLB-first (the Vatican setting, the `basilicadome`
+monument; `_hzBasilicaDomeProc` the stand-in) and a `dome` landmark builder.
+
+**THE SUPPLY CLOSET** (`site_prebuilt_downtown_closet`, 7 × 7 × 3 — four cells
+a side so THE FIELD's lattice sits flush): the service door at the end of the
+mall's north wing, the shelves, the mop, THE TIME MACHINE free against its back
+wall. **THE TIME MACHINE** (`links.timemachine_cyberpunk`) now runs closet ⇄
+the noodle bar's back room — both FREE ends on complex parts, both a building
+in the city; the arcade and the board room's strip gave it up.
+
+**CYBERPUNK CITY · THE GRID** (`site_prebuilt_cyberpunk_streets`, 104 × 84,
+`hqCityShell({ neon: true })` — Cyberpunk's own violet night and magenta fog,
+the wet asphalt darker, the neon mood, `HQ_ROOM_LOOKS.neon` — Dreamy, night
+mood 0.9, bloom 0.55): the same `city` plan with `gen.neon` (a neon name in its
+own ink on every main front, a hologram over every tall lot, the sprites lit
+brighter): THE LOOP (THE NEON GRAND PRIX — 8 gates; cybercars, taxis, cop cars,
+trucks both ways), THE BOULEVARD and THE CROSS, THE HOLO-PLAZA (a mound), THE
+SKYWAY (4.5 m up a car ramp, three rails, two quarter pipes), THE BILLBOARD ROOF
+(5 m, never climbed — the hard tape with a shot), THE PUDDLE (waded), THE MARKET
+ALLEY (the vending machines, the pachinko parlour's cabinets, the barrel fire),
+THE STATION (a siding west of the loop where the tunnel's train now ARRIVES —
+`links.tunnel_cyberpunk.b` is a free end on the grid; the Downtown platform's
+stair comes up on the grid's north wall — `links.subway_downtown.b`), the
+board room's back gate (`siteRooms.backDoors.prebuilt_cyberpunk`, n x −10 — the
+lane the train stood on; the board room keeps the highway alone). **THE NOODLE
+BAR** (`site_prebuilt_cyberpunk_noodle`, 8.75 × 7): the back door on the market
+alley, the far end of the machine, set for 1954. Three tapes re-homed
+(Technoticlan's THE UPLINK → the grid, Stonehenge's THE WHEEL → the noodle bar,
+the Flat Lands' THE FOURTH CORNER → the closet); the hundred stays a hundred.
+
+**Rules that came with it:** a lot's row is rounded to a centimetre, so
+neighbours are laid with a 4 cm seam (two touching lots must never round into
+an overlap); a spawn or a native never stands in a traffic lane (the first
+probe spawned in the ring road's west leg and was HIT BY A CAR at once); a part
+that a link end names is `site_<mapId>_<part>` — `hqComplexRoomId` — never a
+longer id. Tests: hq-city.test.js (re-pinned), hq-city-2.test.js (new),
+hq-urban / hq-terrain / hq-floor-plan / hq-stage2 / hq-visual-pass pins moved.
+`node check-terrain.js` on the three city rooms: every door reached, nothing
+traps. **Screenshotted offline** (playtest_hq_offline.js now serves the repo's
+GLBs from disk): the escalator on the mezzanine, the road tiles, the buildings
+at the kerb — stand-in textures, so the sprite prisms read as grey blocks; the
+real sheets, the neon inks and every batch facing are UNSEEN (RULE #1c).
+
 ### THE COMPLEX CANDIDATES (the user's list, 2026-09-17) — build each on THE CAVE / THE WOODS blueprint
 The cave and the woods are the blueprint for every complex from here: a generated floor plan (`terrain.gen`),
 the ground running out under a real fog, a `shell.look` grade tuned to the vibe, the room's own light, THE PARK
@@ -9622,5 +9720,5 @@ RULE, the hard tapes, `check-terrain.js` before any claim. The aesthetic is the 
    catacombs, the pit, the stairway, the cloud fields.**
 5. **D.U.M.B.** — Area 51, CERN, the padded rooms, the dream lab, clone disposal: the base under the base.
 6. **DOOR MANUFACTURING** — the service hallways, the warehouse, the Works: what keeps D.O.O.R. running.
-#4 started (above); the rest not. Each needs its own `HQ_ROOM_LOOKS` row, its own sky / fog, its links on the
+#1 has its second pass and CYBERPUNK CITY (the entry above); #4 started; the rest not. Each needs its own `HQ_ROOM_LOOKS` row, its own sky / fog, its links on the
 world graph and the 7.10 checklist for any new site it introduces.

@@ -1,6 +1,6 @@
 // playtest_hq_offline.js — the D.O.O.R. HQ screenshot probe for a sandbox where the CDN is BLOCKED (2026-09-16, the visual pass).
 // Repo scripts served from disk, three r128 / React / socket.io from node_modules (npm i --no-save three@0.128.0 react@18 react-dom@18),
-// stand-in textures coloured by file name, every GLB a 404 (procedural props only; --nogltf removes THREE.GLTFLoader so the
+// stand-in textures coloured by file name, every GLB a 404 unless the repo holds it (doors/, the root — 2026-09-17; otherwise procedural props only; --nogltf removes THREE.GLTFLoader so the
 // kit helpers build their procedural STAND-INS — the vehicles' boxes at the room's tile). Needs the server (npm start).
 //   node playtest_hq_offline.js <room> '[{"name":"v","x":0,"z":0,"face":0,"pitch":-0.2,"fp":true}]' [--nogltf]   → shots/hqpass/<room>_<name>.png
 // Prints [HQ] logs (the TABLETOP SEAT's 'nothing under it' warnings under EW_HQ_DEBUG) — see PLAYTEST_NOTES 'THE VISUAL PASS'.
@@ -35,6 +35,7 @@ const room = process.argv[2] || 'cafeteria'; const views = JSON.parse(process.ar
     for (const [re, target] of NPM_MIRROR) { const m = re.exec(u.pathname); if (m) { const abs = path.join(REPO, 'node_modules', target.replace(/\$(\d)/g, (_, i) => m[Number(i)])); if (fs.existsSync(abs)) { cnt.mirror++; return route.fulfill({ status: 200, contentType: 'application/javascript', body: fs.readFileSync(abs) }); } } }
     if ((ext === '.js' || ext === '.css') && fs.existsSync(path.join(REPO, base))) { cnt.local++; return route.fulfill({ status: 200, contentType: CT[ext], body: fs.readFileSync(path.join(REPO, base)) }); }
     if (ext === '.js') { cnt.miss++; return route.fulfill({ status: 200, contentType: 'application/javascript', body: '' }); }
+    if (ext === '.glb') { const pn = decodeURIComponent(u.pathname), b2 = path.basename(pn); for (const c of [path.join(REPO, 'doors', b2), path.join(REPO, b2)]) if (fs.existsSync(c)) { cnt.glb = (cnt.glb || 0) + 1; return route.fulfill({ status: 200, contentType: 'model/gltf-binary', body: fs.readFileSync(c) }); } cnt.miss++; return route.fulfill({ status: 404, body: '' }); }   // DISASTER CITY's second pass (2026-09-17): a GLB the repo holds (doors/, the root — the road tiles, the crashed car, the escalator) is served from disk; the rest 404 as before
     if (/\.(png|jpg|jpeg|webp)$/.test(ext)) { cnt.tex++; return route.fulfill({ status: 200, contentType: 'image/png', body: standIn(u.pathname) }); }
     cnt.miss++; return route.fulfill({ status: 404, body: '' });
   });
@@ -51,7 +52,7 @@ const room = process.argv[2] || 'cafeteria'; const views = JSON.parse(process.ar
   await page.evaluate(() => { const h = document.getElementById('hqLoad'); if (h) h.style.display = 'none'; const hp = document.getElementById('hqPrompt'); if (hp) hp.style.display = 'none'; const s = document.getElementById('hqStrip'); if (s) s.style.display = 'none'; });
   const spawn = await page.evaluate((room) => DOOR_HQ.rooms[room].spawn, room);
   const list = views.length ? views : [Object.assign({ name: 'spawn', fp: false, dist: 4.2, pitch: -0.2 }, spawn)];
-  for (const v of list) { await page.evaluate((v) => { try { if (window._hqPauseDrop) window._hqPauseDrop(); if (window._hqResume) window._hqResume(); } catch (e) {} ThreeRenderer.hq.dev.teleport(v); }, v); await sleep(2600); await page.evaluate(() => { try { if (window._hqPauseDrop) window._hqPauseDrop(); const pz = document.getElementById('hqPause'); if (pz) pz.style.display = 'none'; } catch (e) {} }); /* the eaten-ESC rule (C-28) reads the headless pointer-lock loss as ESC and opens the pause menu — drop it before the shot */ const f = path.join(OUT, room + '_' + (v.name || 'v') + '.png'); await page.screenshot({ path: f }); console.log('SHOT', f); }
+  for (const v of list) { await page.evaluate((v) => { try { if (window._hqPauseDrop) window._hqPauseDrop(); if (window._hqResume) window._hqResume(); } catch (e) {} ThreeRenderer.hq.dev.teleport(v); }, v); await sleep(2600); await page.evaluate(() => { try { if (window._hqPauseDrop) window._hqPauseDrop(); const pz = document.getElementById('hqPause'); if (pz) pz.style.display = 'none'; } catch (e) {} }); /* the eaten-ESC rule (C-28) reads the headless pointer-lock loss as ESC and opens the pause menu — drop it before the shot */ const f = path.join(OUT, room + '_' + (v.name || 'v') + '.png'); await page.screenshot({ path: f, timeout: 180000 }); console.log('SHOT', f); }
   console.log('COUNTERS', JSON.stringify(cnt)); console.log('ERRORS', JSON.stringify(errs.slice(0, 6))); console.log('LOGS', JSON.stringify(logs.slice(0, 20)));
   await browser.close();
 })().catch(e => { console.error('PROBE FAIL', e); process.exit(1); });

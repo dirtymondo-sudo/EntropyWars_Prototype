@@ -14151,6 +14151,8 @@ const HQ_ROOM_LOOKS = {
     /* DISASTER CITY (2026-09-17): the disaster-movie print — overcast daylight, faded, a light vignette; the mall = the security camera's tape (grainy, fluorescent, the tubes smearing) */
     city: { name: 'DISASTER CITY', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.4, grain: 0.04, tintAmount: 0.35, levels: 20 }, cin: { vignette: true, vigAmount: 0.35, vigSize: 0.55 }, nightMood: 0.15, bloom: 0.14 },
     mall: { name: 'THE MALL', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.45, grain: 0.055, tintAmount: 0.4, levels: 18 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.6 }, nightMood: 0.1, bloom: 0.22, dof: 0 },
+    /* CYBERPUNK CITY (2026-09-17): the reskin's print — the rain-slick night, magenta / cyan in the puddles, bloomed, a hard vignette */
+    neon: { name: 'CYBERPUNK CITY', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.42, grain: 0.035, tintAmount: 0.45, levels: 24 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.46 }, nightMood: 0.9, bloom: 0.55 },
 };
 // THE LOOK (2026-09-17): `env.look` on a row = a grade (a HQ_ROOM_LOOKS row: retro preset, dither,
 // vignette, night mood, bloom, exposure, dof) laid over the player's video settings for that map —
@@ -18548,19 +18550,24 @@ function hqVaticanShell(o) {
    No treeline (the city's edge is the outer ring of buildings). One function
    so a second street room cannot drift from the first; `o` overrides. */
 function hqCityShell(o) {
-    o = o || {};
-    const sky = { night: 0, tint: 0xb8c0cc, tintAmt: 0.3, stars: 0.05, nebula: 0.2, fog: { color: 0xc8ccd4, amount: 0.55, top: 0.1, band: 0.5, density: 0.016 }, scenery: 'city', density: 0.5 };
+    o = Object.assign({}, o || {});
+    /* CYBERPUNK CITY (2026-09-17): `neon: true` = the reskin — Cyberpunk's own night (the EW_MAP_META row's violet tint, the
+       nebula, the magenta fog), the wet asphalt darker and bluer, the neon mood, the neon look; the same city otherwise */
+    const neon = !!o.neon; delete o.neon;
+    const sky = neon
+        ? { night: 1, tint: 0x1a0f33, tintAmt: 0.5, stars: 0.7, nebula: 1.3, fog: { color: 0x3a1a5a, amount: 0.55, top: 0.1, band: 0.55, density: 0.02 }, scenery: 'city', density: 0.6 }
+        : { night: 0, tint: 0xb8c0cc, tintAmt: 0.3, stars: 0.05, nebula: 0.2, fog: { color: 0xc8ccd4, amount: 0.55, top: 0.1, band: 0.5, density: 0.016 }, scenery: 'city', density: 0.5 };
     const S = {
         w: 0, d: 0, h: 9.0, wallH: 9.0, dadoH: 1.0,
         open: true, edge: 'open',
         floor: 'urban_street', wall: 'concrete', dado: 'concrete', trim: 'gunmetal', ceiling: 'concrete',
         apron: 'urban_street', skirt: 'concrete', apronColor: 0x8a8c90,
-        floorColor: 0x9a9a98, wallColor: 0xa8a8a4, dadoColor: 0x8a8480,
+        floorColor: neon ? 0x6a6a86 : 0x9a9a98, wallColor: neon ? 0x8a86a0 : 0xa8a8a4, dadoColor: neon ? 0x6a6478 : 0x8a8480,
         pipes: false, strips: false, lights: [],
-        mood: { light: 0xe8ecf4, ambient: 0.5 },
+        mood: neon ? { lamp: 0xff3ad8, glow: 0x35e0ff, strip: 0xff6ad8, light: 0xcfe8ff, ambient: 0.44, night: 1 } : { light: 0xe8ecf4, ambient: 0.5 },
         sky: sky,
         plate: { x: 0, z: -9.8, y: 4.4 },
-        look: HQ_ROOM_LOOKS.city,
+        look: neon ? HQ_ROOM_LOOKS.neon : HQ_ROOM_LOOKS.city,
     };
     Object.keys(o).forEach(k => { S[k] = o[k]; });
     return S;
@@ -18727,6 +18734,24 @@ const DOOR_HQ = {
         stained_glass:      { file: 'Meshy_AI_stained_glass_window_0917035453_texture.glb',           base: 'misc', h: 3.2, foot: 0, wall: true, mount: 5.5, glow: { y: 1.6, size: 3.0, color: 0xffd090 } },
         sarcophagus:        { file: 'Meshy_AI_stone_sarcophagus_0917035255_texture.glb',              base: 'misc', span: 2.3, foot: 0.8, block: true },
         brass_telescope:    { file: 'Meshy_AI_telescope_0917035520_texture.glb',                      base: 'misc', h: 2.0, foot: 0.5, block: true },   // the WAY's model (the Observatorium's `telescope` proc keeps its key)
+        /* DISASTER CITY, THE SECOND PASS (2026-09-17): the user's city batch on R2 Assets/misc/ (MODEL_INDEX §3i) — the same
+           files three-renderer.js _MISC_GLB names (the same-thing rule). MEASURED: the crashed car (1.0 × 0.36 × 0.45, nose
+           −X → `turn: 90` like the cars), the escalator (0.53 × 0.72 × 1.0, rising toward −Z — face 270 puts its top at +x);
+           the rest are TARGETS. `city_bin` is the OUTDOOR bin (the kerbs), `mall_bin` the indoor one (the mall, the casino). */
+        city_bin:          { file: 'Meshy_AI_a_city_bin_0917065144_texture.glb',                  base: 'misc', h: 1.05, foot: 0.32, block: true },
+        mall_bin:          { file: 'Meshy_AI_a_city_trash_bin_0917065157_texture.glb',            base: 'misc', h: 0.9, foot: 0.3, block: true },
+        crashed_car:       { file: 'Meshy_AI_a_crashed_car_0917065033_texture.glb',               base: 'misc', span: 4.6, foot: 1.2, rect: { hw: 1.05, hd: 2.3 }, block: true, turn: 90 },
+        crashed_car_2:     { file: 'Meshy_AI_a_crashed_car_2_0917065052_texture.glb',             base: 'misc', span: 4.6, foot: 1.2, rect: { hw: 1.05, hd: 2.3 }, block: true, turn: 90 },
+        car_taxi:          { file: 'Meshy_AI_a_city_taxi_0917065634_texture.glb',                 base: 'misc', span: 4.8, foot: 1.2, rect: { hw: 1.0, hd: 2.4 }, block: true, vehicle: true, turn: 90 },
+        car_truck:         { file: 'Meshy_AI_a_truck_0917065131_texture.glb',                     base: 'misc', span: 8.0, foot: 2.0, rect: { hw: 1.3, hd: 4.0 }, block: true, vehicle: true, turn: 90 },
+        time_machine:      { file: 'Meshy_AI_a_retro_time_machine_0917064610_texture.glb',        base: 'misc', h: 2.4, foot: 0.7, block: true, rot: 90 },   // the `timemachine` way's model (the brass cage is its stand-in)
+        street_drain:      { file: 'Meshy_AI_a_round_street_drain__0917064638_texture.glb',       base: 'misc', span: 1.3, foot: 0 },                       // the `gutter` way's grate; a manhole on the road
+        escalator:         { file: 'Meshy_AI_an_escalator_0917064623_texture.glb',                base: 'misc', h: 4.6, foot: 0 },                          // THE MEZZANINE's (the terrain ramp under it is the walker's)
+        bus_shelter:       { file: 'Meshy_AI_bus_shelter_0917064913_texture.glb',                 base: 'misc', span: 3.8, foot: 1.2, rect: { hw: 1.9, hd: 0.9 }, block: true, turn: 90 },
+        cinder_block:      { file: 'Meshy_AI_cinder_block_0917064959_texture.glb',                base: 'misc', span: 0.4, foot: 0.2 },
+        fire_hydrant:      { file: 'Meshy_AI_fire_hydrant_0917064858_texture.glb',                base: 'misc', h: 0.8, foot: 0.22, block: true },
+        traffic_barrel:    { file: 'Meshy_AI_traffic_barrel_0917064936_texture.glb',              base: 'misc', h: 1.0, foot: 0.3 },
+        traffic_cone:      { file: 'Meshy_AI_traffic_cone_0917064925_texture.glb',                base: 'misc', h: 0.7, foot: 0.18 },
         white_cloud:        { file: 'Meshy_AI_white_cloud_0917035538_texture.glb',                    base: 'misc', span: 3.0, foot: 0 },
         wooden_cross:       { file: 'Meshy_AI_wooden_cross_0917035711_texture.glb',                   base: 'misc', h: 3.0, foot: 0, wall: true, mount: 2.6 },
         /* 2026-09-15 THE VEHICLE BATCH (nine Meshy vehicles in the misc bucket —
@@ -19705,7 +19730,7 @@ const DOOR_HQ = {
            full — rev 10's lane rule); the tunnel is one tunnel. */
         { id: 'tunnel_cyberpunk', route: 'subway', way: 'train',
           a: { room: 'tunnel', wall: 'free', x: -1.5, z: 6, face: 90, sub: 'ALL LINES · MIND THE GAP' },
-          b: { site: 'prebuilt_cyberpunk', wall: 'n', x: -10, sub: 'THE SUBWAY · ALL LINES' },
+          b: { site: 'prebuilt_cyberpunk', part: 'streets', wall: 'free', x: -42, z: -6, face: 90, sub: 'THE STATION · ALL LINES' },   // THE SECOND PASS (2026-09-17): the train arrives at THE STATION on the grid's siding (a free end on the part), no longer half inside the board room's wall
           why: 'the train at the platform has been there for an hour with its doors open; it goes to every line, and the first stop is under an intersection that is always raining',
           note: 'mind the gap', draft: true },
         /* THE URBAN BLOCK (9.2 stage 4, 2026-09-16): the subway's third station.
@@ -19717,7 +19742,7 @@ const DOOR_HQ = {
            takes a door instead of the way — hqLinkEndWear. */
         { id: 'subway_downtown', route: 'subway', way: 'train',
           a: { site: 'prebuilt_downtown', part: 'subway', wall: 'free', x: -1.5, z: 3, face: 90, sub: 'DOWNTOWN PLATFORM · ALL LINES' },
-          b: { site: 'prebuilt_cyberpunk', wall: 'n', x: -0.2, leaf: 'leaf_frame_only', sub: 'THE SUBWAY · DOWN TO THE PLATFORM', verb: 'GO DOWN' },
+          b: { site: 'prebuilt_cyberpunk', part: 'streets', wall: 'n', x: 12, leaf: 'leaf_frame_only', sub: 'THE SUBWAY · DOWN TO THE PLATFORM', verb: 'GO DOWN' },   // THE SECOND PASS (2026-09-17): the stair comes up on the grid's north wall
           why: 'the same tunnel, one stop back; the train that has been at Cyberpunk\'s platform for an hour is the train that left Downtown in 1954, and both are on time',
           note: 'one stop back', draft: true },
         /* DISASTER CITY (HQ plan 9.3 stage 7 — THE COMPLEX CANDIDATES #1, 2026-09-17): the city's seams.
@@ -19737,8 +19762,9 @@ const DOOR_HQ = {
           why: 'Gate C opens on the stadium road; eighty thousand came in through it and the turnstile count says none of them left',
           note: 'gate c', draft: true },
         { id: 'timemachine_cyberpunk', route: 'seams', way: 'timemachine',
-          a: { site: 'prebuilt_downtown', part: 'mall', wall: 'free', x: -27.5, z: 4.5, face: 90, sub: 'THE TIME MACHINE · SET FOR 2077 · CYBERPUNK CITY' },
-          b: { site: 'prebuilt_cyberpunk', wall: 'free', x: 9, z: -9.4, face: 90, sub: 'THE TIME MACHINE · SET FOR 1954 · THE MALL' },
+          /* THE SECOND PASS (2026-09-17): the machine moved out of the arcade into the mall's SUPPLY CLOSET (the user's rule) and its far end into the noodle bar's back room on the grid — a building in the city, never the board room's strip */
+          a: { site: 'prebuilt_downtown', part: 'closet', wall: 'free', x: 0, z: -1.8, face: 180, sub: 'THE TIME MACHINE · SET FOR 2047 · CYBERPUNK CITY' },
+          b: { site: 'prebuilt_cyberpunk', part: 'noodle', wall: 'free', x: 2.6, z: 0, face: 270, sub: 'THE TIME MACHINE · SET FOR 1954 · THE MALL' },
           why: 'the cabinet at the back of the arcade is OUT OF ORDER and takes one token; the token is the year, and the year the mall was built is the year the city was still here',
           note: 'out of order', draft: true },
         { id: 'streets_drain', route: 'sewers', way: 'gutter',
@@ -19839,6 +19865,12 @@ const DOOR_HQ = {
                 label: 'THE WOODS', sub: 'THE HOLLOW TREE · INTO THE WOODS',
                 action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'forest' },
                 desc: 'A path between two trees that lean in to hear you go. The woods are bigger than the board allows, which Continuity has a form for, and the mountain is over them.' },
+            /* CYBERPUNK CITY (THE SECOND PASS, 2026-09-17): the tenement's back gate on the board room's north wall (the lane the
+               subway train stood on until the grid had a station) walks into THE GRID — the city at night round the board */
+            prebuilt_cyberpunk: { id: 'street', wall: 'n', x: -10, leaf: 'leaf_holographic',
+                label: 'THE GRID', sub: 'THE BACK GATE · INTO THE CITY',
+                action: { room: 'site_prebuilt_cyberpunk_streets', at: 'board' },
+                desc: 'The tenement\'s back gate. The city is bigger than the board allows, which Continuity has a form for, and it is raining on all of it.' },
             prebuilt_backrooms: { id: 'hwing', wall: 's', x: 6.0, leaf: 'leaf_exit',
                 label: 'H-WING', sub: 'EXIT · THIS ONE IS',
                 action: { room: 'hwing_w', at: 'exit' },
@@ -28847,14 +28879,18 @@ const DOOR_HQ = {
                     { k: 'path', pts: [[6, -15], [14.0, -15]], w: 4 },                                                               // the deck's side street off the avenue
                     { k: 'tree', x: 5.5, z: 5.5, kind: 'tree_2', h: 3.2 }, { k: 'tree', x: -5.5, z: 5.5, kind: 'tree_2', h: 3.2 }, { k: 'tree', x: 5.5, z: -5.5, kind: 'tree_2', h: 3.2 }, { k: 'tree', x: -5.5, z: -5.5, kind: 'tree_2', h: 3.2 },   // the plaza's four
                     { k: 'scatter', key: 'cave_stone', n: 7, x: -20, z: -14, r: 5, seed: 2 },                                       // THE COLLAPSE's rubble
-                    { k: 'scatter', key: 'trash_bin', n: 10, seed: 3 },
+                    { k: 'scatter', key: 'cinder_block', n: 9, x: -20, z: -14, r: 6, seed: 12 },                                     // THE SECOND PASS (2026-09-17): the user's kit on the kerbs and at the collapse
+                    { k: 'scatter', key: 'traffic_cone', n: 7, x: -20, z: -14, r: 7, seed: 13 },
+                    { k: 'scatter', key: 'city_bin', n: 10, seed: 3 },
+                    { k: 'scatter', key: 'fire_hydrant', n: 6, seed: 14 },
+                    { k: 'scatter', key: 'street_drain', n: 5, seed: 15 },
                     { k: 'scatter', key: 'park_bench', n: 6, seed: 4 },
                     { k: 'scatter', key: 'signpost', n: 5, seed: 5 },
                 ],
                 /* NPC TRAFFIC (2026-09-17): cars on the ring road, both ways, on the right; three-renderer.js _hqBuildTraffic */
                 traffic: [
-                    { pts: [[-40, -29], [40, -29], [40, -6], [31, 4], [40, 14], [40, 29], [12, 29], [-8, 22], [-40, 29], [-40, 4]], loop: true, n: 7, speed: 7.5, lane: 2.3, kinds: ['suv', 'cadillac', 'copcar', 'suv', 'cadillac', 'ambulance', 'schoolbus'] },
-                    { pts: [[-40, 4], [-40, 29], [-8, 22], [12, 29], [40, 29], [40, 14], [31, 4], [40, -6], [40, -29], [-40, -29]], loop: true, n: 6, speed: 8.5, lane: 2.3, kinds: ['cadillac', 'suv', 'copcar', 'cadillac', 'suv', 'firetruck'] },
+                    { pts: [[-40, -29], [40, -29], [40, -6], [31, 4], [40, 14], [40, 29], [12, 29], [-8, 22], [-40, 29], [-40, 4]], loop: true, n: 7, speed: 7.5, lane: 2.3, kinds: ['suv', 'taxi', 'copcar', 'suv', 'cadillac', 'ambulance', 'schoolbus'] },
+                    { pts: [[-40, 4], [-40, 29], [-8, 22], [12, 29], [40, 29], [40, 14], [31, 4], [40, -6], [40, -29], [-40, -29]], loop: true, n: 6, speed: 8.5, lane: 2.3, kinds: ['cadillac', 'taxi', 'copcar', 'truck', 'suv', 'firetruck'] },
                     { pts: [[0, -46], [0, -8]], loop: false, n: 1, speed: 6.5, lane: 2.2, kinds: ['suv'] }, { pts: [[0, 8], [0, 46]], loop: false, n: 1, speed: 6.5, lane: 2.2, kinds: ['cadillac'] },   // the avenue, either side of the plaza (a car off the end comes back on at the start)
                     { pts: [[-58, 0], [-8, 0]], loop: false, n: 1, speed: 6.5, lane: 2.2, kinds: ['copcar'] }, { pts: [[8, 0], [58, 0]], loop: false, n: 1, speed: 6.5, lane: 2.2, kinds: ['suv'] },
                 ],
@@ -28884,13 +28920,19 @@ const DOOR_HQ = {
                 { key: 'car_suv',       x: -4.0, z: 16, face: 180 },
                 { key: 'car_ambulance', x: -46, z: -10.2, face: 90 },                       // at the tower's side street — the evacuation
                 { key: 'car_cadillac',  x: 10, z: -12.8, face: 90 },                        // on the deck's side street
+                { key: 'crashed_car',     x: -17.5, z: -21.5, face: 300 },                   // THE SECOND PASS (2026-09-17): the wrecks — two under the collapse, one on the chicane
+                { key: 'crashed_car_2',   x: -26.0, z: -8.5, face: 60 },
+                { key: 'crashed_car_2',   x: 35.0, z: -1.5, face: 40 },
+                { key: 'traffic_barrel',  x: 33.0, z: 2.6 }, { key: 'traffic_barrel', x: 37.0, z: -4.4 },
+                { key: 'bus_shelter',     x: 6.3, z: -22.0, face: 270 },                     // the avenue's stops (the opening to the road)
+                { key: 'bus_shelter',     x: -6.3, z: 20.0, face: 90 },
                 { key: 'concrete_pillar', x: -17, z: -10.5 },                               // THE COLLAPSE: the tower's pillars where they fell
                 { key: 'concrete_pillar', x: -23.5, z: -17.5 },
                 { key: 'warning_tape',    x: -15.5, z: -14, face: 90 },
                 { key: 'brazier',         x: -17.5, z: -17.0 },                              // THE COLLAPSE's barrel fires (the room's own light — the evacuation camped here)
                 { key: 'brazier',         x: -23.0, z: -11.5 },
                 { key: 'wet_floor_sign',  x: 3.6, z: 3.8, face: 200 },                      // by the fountain
-                { key: 'trash_bin',       x: -31.3, z: 17.4 },                              // on THE ROOFTOP (the ground read puts it on the roof), off the tape's spot
+                { key: 'city_bin',        x: -31.3, z: 17.4 },                               // on THE ROOFTOP (the ground read puts it on the roof), off the tape's spot
                 { key: 'signpost',        x: -27.8, z: 16.6, face: 20 },
                 { key: 'railing_1m',      x: 24, z: -15, face: 0 },                          // THE PARK RULE's rail on the deck (the terrain's rails are the grind; this one is the catalogue's)
                 { key: 'quarter_pipe',    x: 27, z: -12.5, face: 180 },                      // the deck's quarter pipe (SKATEBOARDING 9.8)
@@ -28901,7 +28943,7 @@ const DOOR_HQ = {
             agents: [],
             npcSpots: [
                 { x: 4.2, z: -6.0, face: 200, race: 'superhero', say: ['“I held it up.” “The tower?” “The traffic. Nobody stops for the fountain.”', '“Cross at the light.” “There is no light.” “Then cross at the crossing.”'] },
-                { x: -12.5, z: 3.0, face: 90, race: 'zombie', say: ['“Walking.” “Where?” “Round.” “Round what?” “Round.”'] },
+                { x: -12.5, z: 6.2, face: 90, race: 'zombie', say: ['“Walking.” “Where?” “Round.” “Round what?” “Round.”'] },   // on the sidewalk (the second pass: 3.0 was the cross street's lane)
                 { x: 24.0, z: -5.6, face: 0, race: 'antihero', say: ['“The deck is three metres. The rail is the deck’s. The fall is yours.”'] },
                 { x: -34.0, z: -6.0, face: 40, race: 'king kong', say: ['“…” “Was that you?” “…” “The tower.” “…” “Every year?” “…”'] },   // by the collapse, not filing
             ],
@@ -28912,7 +28954,7 @@ const DOOR_HQ = {
                 '“The tower comes down every year.” “Where does it land?” “Here. Mind the pillars.”',
                 '“Is the mall open?” “The mall is open. The sign says so. The other sign says nothing happened.”',
             ],
-            spawn: { x: -42, z: -8, face: 90 },
+            spawn: { x: -50, z: -8, face: 90 },   // on the tower's side street, WEST of the ring road (the second pass: the old spot stood in the traffic's lane)
         },
         /* ── THE MALL — the concourse, the atrium, the food court, the arcade, and the time machine in the back ── */
         site_prebuilt_downtown_mall: {
@@ -28941,7 +28983,7 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'tilefloor', cliff: 'tilefloor_2', path: 'marble',
                 noise: { amp: 0.0, scale: 6 },
-                gen: { kind: 'city', seed: 11, walkW: 0, kerb: 0, wallH: 5.0, edge: 0.3, lotPitch: 8.4, lotW: [6.2, 7.2], lowP: 0, fronts: 'store', prisms: false,
+                gen: { kind: 'city', seed: 11, walkW: 0, kerb: 0, wallH: 5.0, edge: 0.3, lotPitch: 8.4, lotW: [6.2, 7.2], lotD: [6, 8], lotMinW: 3.0, lowP: 0, fronts: 'store', prisms: false,
                        streets: [
                            { pts: [[-30, 0], [30, 0]], w: 10 },                            // THE CONCOURSE (east–west)
                            { pts: [[0, 0], [0, -18]], w: 9 },                             // THE NORTH WING
@@ -28958,7 +29000,7 @@ const DOOR_HQ = {
                     { k: 'path', pts: [[-30, 0], [30, 0]], w: 3.0 },
                     { k: 'scatter', key: 'park_bench', n: 6, seed: 1 },
                     { k: 'scatter', key: 'potted_plant', n: 8, seed: 2 },
-                    { k: 'scatter', key: 'trash_bin', n: 5, seed: 3 },
+                    { k: 'scatter', key: 'mall_bin', n: 5, seed: 3 },
                 ],
             },
             doors: [
@@ -28966,16 +29008,22 @@ const DOOR_HQ = {
                   label: 'THE STREETS', sub: 'THE MAIN ENTRANCE · OUT TO THE CITY',
                   action: { room: 'site_prebuilt_downtown_streets', at: 'mall' },
                   desc: 'The sliding doors, from the inside. They open for everyone, which is the policy, and closed for the incident, which was not.' },
+                /* THE SECOND PASS (2026-09-17, the user: "the time machine should be in a random basement or supply closet of the mall"): the service door at the end of the north wing */
+                { id: 'closet', wall: 'n', x: 0, leaf: 'leaf_closet',
+                  label: 'SUPPLY CLOSET', sub: 'STAFF ONLY · THE BASEMENT STAIR',
+                  action: { room: 'site_prebuilt_downtown_closet', at: 'mall' },
+                  desc: 'STAFF ONLY, on a door at the end of the north wing past the last shutter. The stair behind it goes down further than the mall has floors.' },
             ],
             counters: [],
             props: [
+                { key: 'escalator',       x: 5.1, z: -4.0, face: 270 },                        // THE SECOND PASS (2026-09-17): the user's escalator over the mezzanine ramp (the treads under it are the walker's; its top at +x)
                 { key: 'notice_board',    x: 0, z: 14, face: 0, rect: false },                 // THE DIRECTORY — YOU ARE HERE
                 { key: 'wet_floor_sign',  x: 2.8, z: 2.6, face: 30 },
                 { key: 'potted_plant',    x: 3.6, z: -3.6 }, { key: 'potted_plant', x: -3.6, z: -3.6 }, { key: 'potted_plant', x: 3.6, z: 3.6 }, { key: 'potted_plant', x: -3.6, z: 3.6 },   // the atrium's palms
                 { key: 'coffee_table',    x: 22, z: -3.2 }, { key: 'coffee_table', x: 26, z: 3.0 }, { key: 'coffee_table', x: 22, z: 3.2 },                      // THE FOOD COURT's tables
                 { key: 'office_chair',    x: 22.9, z: -3.2, face: 270 }, { key: 'office_chair', x: 26.9, z: 3.0, face: 270 }, { key: 'office_chair', x: 21.1, z: 3.2, face: 90 },
                 { key: 'solo_cup',        x: 22, z: -3.2, y: 0.45 }, { key: 'papers_a', x: 26, z: 3.0, y: 0.45 },
-                { key: 'trash_bin',       x: 29.5, z: -2.5 },
+                { key: 'mall_bin',        x: 29.5, z: -2.5 },
                 { key: 'slot_machine',    x: -23, z: -5.0, face: 0 }, { key: 'slot_machine', x: -25, z: -5.0, face: 0 }, { key: 'slot_machine', x: -21, z: -5.0, face: 0 },   // THE ARCADE's cabinets (the casino's reels — arcade enough)
                 { key: 'slot_machine',    x: -19.5, z: 5.4, face: 180 }, { key: 'slot_machine', x: -21.5, z: 5.4, face: 180 },   // the south row, clear of the time machine's landing
                 { key: 'railing_1m',      x: 14, z: -2.3, face: 0 },                             // THE PARK RULE's rail on the mezzanine's lip
@@ -29004,6 +29052,217 @@ const DOOR_HQ = {
                 '“Is the escalator working?” “It is stairs now. It was always stairs. It has a motor for company.”',
             ],
             spawn: { x: 0, z: 19, face: 0 },
+        },
+        /* ── THE SUPPLY CLOSET (THE SECOND PASS, 2026-09-17 — the user: "the time machine should be in a random basement or
+           supply closet of the mall"): a service room down the stair at the end of the north wing, and THE TIME MACHINE
+           against its back wall (the `timemachine` way — the seam to CYBERPUNK CITY's noodle bar, the ONLY way over). ── */
+        site_prebuilt_downtown_closet: {
+            label: 'DISASTER CITY · SUPPLY CLOSET',
+            sub: 'STAFF ONLY · THE BASEMENT · OUT OF ORDER',
+            kind: 'box', site: 'prebuilt_downtown', part: 'closet',
+            shell: {
+                w: 7.0, d: 7.0, h: 3.0,   // four battle cells a side (THE FIELD's lattice sits flush)
+                wallH: 3.0, dadoH: 1.0,
+                floor: 'concrete', wall: 'drywall', dado: 'concrete', trim: 'gunmetal', ceiling: 'ceiling',
+                floorColor: 0x8a8a88, wallColor: 0xb0aa9c, dadoColor: 0x807c78, ceilColor: 0xa8a49c,
+                pipes: true, strips: false, lights: [],
+                mood: { light: 0xfff0d8, ambient: 0.4 },
+                plate: { x: 0, z: 3.4, y: 2.4 },
+                look: HQ_ROOM_LOOKS.mall,
+            },
+            doors: [
+                { id: 'mall', wall: 's', x: 0, leaf: 'leaf_closet',
+                  label: 'THE MALL', sub: 'THE STAIR UP · THE NORTH WING',
+                  action: { room: 'site_prebuilt_downtown_mall', at: 'closet' },
+                  desc: 'The stair back up to the mall. Somebody has taped a handwritten sign to the inside of the door: DO NOT USE THE CABINET. Somebody else has crossed out DO NOT.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'metal_shelving',  wall: 'e', z: -1.6 }, { key: 'metal_shelving', wall: 'e', z: 1.2 },
+                { key: 'cardboard_boxes', x: -2.5, z: -2.3, face: 20 }, { key: 'cardboard_box', x: -2.8, z: -1.0, face: 70 },
+                { key: 'mop_bucket',      x: 2.4, z: 2.2, face: 200 },
+                { key: 'wet_floor_sign',  x: 1.4, z: 1.6, face: 30 },
+                { key: 'solo_cup',        x: 2.9, z: -1.6, y: 0.45 },
+                { key: 'paper_sheet',     x: -1.0, z: 1.2, y: 0.01, face: 300 },
+                { key: 'railing_1m',      x: -2.9, z: 2.2, face: 90 },                        // THE PARK RULE's rail (a closet is no place for a tier)
+                { key: 'flicker_tube',    x: 0, z: 0.6, ceil: true, face: 90 },
+                { key: 'bare_bulb',       x: 0, z: -1.8, ceil: true },
+                { key: 'floor_stain',     x: 1.2, z: -0.4 },
+                { key: 'exit_sign',       wall: 's', x: 0.9, mount: 2.6 },
+            ],
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [
+                '“Out of order.” “It says.” “Mostly.” “It says that too.”',
+                '“Which year?” “The one on the token.” “Which token?” “The one you have not got yet.”',
+                '“Staff only.” “I am staff.” “Then it is your closet.”',
+            ],
+            spawn: { x: 0, z: 1.2, face: 0 },
+        },
+        /* ═══════════════════════════════════════════════════════════════════
+           CYBERPUNK CITY (THE SECOND PASS, 2026-09-17 — the user: "the
+           cyberpunk city is supposed to be another big area, basically a
+           reskin of disaster city but cyberpunk"): THE SAME CITY AT NIGHT —
+           the `city` floor plan on Room 2047 with hqCityShell({ neon: true })
+           (Cyberpunk's own violet sky and magenta fog, the wet asphalt, the
+           neon look) and `gen.neon` (a neon name on every street front, a
+           hologram over every tall lot, the sprites lit). Two parts:
+             site_prebuilt_cyberpunk_streets — THE GRID: THE LOOP (the circuit
+               — THE NEON GRAND PRIX; the traffic drives it, taxis and trucks
+               among the cybercars), THE BOULEVARD and THE CROSS, THE
+               HOLO-PLAZA (a mound under the projector), THE SKYWAY (a 4.5 m
+               deck up a car ramp, rails, two quarter pipes — the rider's
+               air), THE BILLBOARD ROOF (5 m, never climbed — the door gun's
+               tape), THE PUDDLE (the rain pooled on the cross street), THE
+               MARKET ALLEY (the vending machines) and THE STATION (the
+               subway's train on its siding west of the loop — the tunnel's
+               train arrives HERE now; the Downtown platform's stair comes up
+               on the north wall). Ways: the board room's back gate (south),
+               the noodle bar's back door (west), the station and the stair.
+             site_prebuilt_cyberpunk_noodle — THE NOODLE BAR's back room: the
+               far end of THE TIME MACHINE (the mall's supply closet is the
+               other), set for 1954.
+           RULES kept: no part wears a number, a part's doors stay inside the
+           site (site ⇄ site is a links row), every door reaches every other
+           (hq-city.test.js runs the solver + the return guarantee), lights ≤
+           HQ_PROP_LIGHT_MAX, never a rank leaf. Lines are Claude's DRAFT (A15).
+           ═══════════════════════════════════════════════════════════════════ */
+        site_prebuilt_cyberpunk_streets: {
+            label: 'CYBERPUNK CITY · THE GRID',
+            sub: 'THE LOOP · THE BOULEVARD · THE SKYWAY · THE STATION · THE MARKET',
+            kind: 'box', site: 'prebuilt_cyberpunk', part: 'streets',
+            shell: hqCityShell({ neon: true, w: 104, d: 84, plate: { x: 0, z: 38, y: 4.6 } }),
+            terrain: {
+                floor: 'urban_street', cliff: 'concrete', path: 'concrete',
+                noise: { amp: 0.05, scale: 6 },
+                gen: { kind: 'city', seed: 21, walkW: 2.4, kerb: 0.12, wallH: 3.6, lotW: [5.8, 8.0], lotD: [8, 11], lowP: 0.12, storeys: [2, 4], fronts: 'window', neon: true,
+                       streets: [
+                           { pts: [[-34, -24], [34, -24], [34, -4], [26, 4], [34, 12], [34, 24], [10, 24], [-4, 18], [-34, 24], [-34, 4]], w: 9, loop: true },   // THE LOOP (the circuit)
+                           { pts: [[0, -42], [0, 42]], w: 10 },                                                                                                  // THE BOULEVARD
+                           { pts: [[-52, 0], [52, 0]], w: 9 },                                                                                                   // THE CROSS
+                           { pts: [[-42, -28], [-42, 22]], w: 7 },                                                                                               // THE STATION's siding, west of the loop
+                       ],
+                       open: [{ x: 0, z: 0, r: 11 }] },                                                                                                          // THE HOLO-PLAZA
+                features: [
+                    { k: 'hill', x: 0, z: 0, r: 4.2, h: 0.6, open: true },                                                            // THE HOLO-PLAZA's mound under the projector
+                    { k: 'plateau', x: 22, z: -13, w: 12, d: 10, h: 4.5, edge: 0.35 },                                                 // THE SKYWAY (a deck inside the north-east block)
+                    { k: 'ramp', x0: 10.5, z0: -13, x1: 16.7, z1: -13, w: 4.0, h0: 0, h1: 4.5 },                                       // the car ramp up to it (its last 0.7 m inside the deck's rect — THE RAMP RULE)
+                    { k: 'rail', x0: 16.4, z0: -18.6, x1: 27.6, z1: -18.6 }, { k: 'rail', x0: 27.6, z0: -18.6, x1: 27.6, z1: -7.4 }, { k: 'rail', x0: 16.4, z0: -7.4, x1: 27.6, z1: -7.4 },   // the deck's rails (the grind)
+                    { k: 'plateau', x: -26, z: -13, w: 7, d: 7, h: 5.0, edge: 0.3 },                                                   // THE BILLBOARD ROOF (the tape's; the door gun's) — flush with the loop's west sidewalk
+                    { k: 'pool', x: -22, z: 0, r: 3.4, y: 0, depth: 0.35 },                                                           // THE PUDDLE (the rain pooled on the cross street; waded)
+                    { k: 'path', pts: [[-52, 12], [-34, 12]], w: 5 },                                                                  // THE MARKET ALLEY (the noodle bar's back door on the west wall, z 12)
+                    { k: 'path', pts: [[12, -24], [12, -42]], w: 5 },                                                                  // THE STAIR's street (the north wall, x 12)
+                    { k: 'path', pts: [[6, -13], [10.5, -13]], w: 4 },                                                                 // the skyway's side street off the boulevard
+                    { k: 'scatter', key: 'vending_machine', n: 4, x: -43, z: 12, r: 8, seed: 7 },                                     // THE MARKET's machines
+                    { k: 'scatter', key: 'city_bin', n: 8, seed: 3 },
+                    { k: 'scatter', key: 'fire_hydrant', n: 4, seed: 4 },
+                    { k: 'scatter', key: 'traffic_cone', n: 4, seed: 5 },
+                    { k: 'scatter', key: 'street_drain', n: 5, seed: 6 },
+                    { k: 'scatter', key: 'signpost', n: 3, seed: 8 },
+                ],
+                traffic: [
+                    { pts: [[-34, -24], [34, -24], [34, -4], [26, 4], [34, 12], [34, 24], [10, 24], [-4, 18], [-34, 24], [-34, 4]], loop: true, n: 7, speed: 8.5, lane: 2.3, kinds: ['cybercar', 'taxi', 'copcar', 'cybercar', 'taxi', 'truck', 'suv'] },
+                    { pts: [[-34, 4], [-34, 24], [-4, 18], [10, 24], [34, 24], [34, 12], [26, 4], [34, -4], [34, -24], [-34, -24]], loop: true, n: 6, speed: 9.5, lane: 2.3, kinds: ['taxi', 'cybercar', 'copcar', 'cybercar', 'truck', 'cadillac'] },
+                    { pts: [[0, -42], [0, -8]], loop: false, n: 1, speed: 7.5, lane: 2.2, kinds: ['cybercar'] }, { pts: [[0, 8], [0, 42]], loop: false, n: 1, speed: 7.5, lane: 2.2, kinds: ['taxi'] },
+                    { pts: [[-52, 0], [-8, 0]], loop: false, n: 1, speed: 7.0, lane: 2.2, kinds: ['copcar'] }, { pts: [[8, 0], [52, 0]], loop: false, n: 1, speed: 7.0, lane: 2.2, kinds: ['cybercar'] },
+                ],
+                race: { label: 'THE NEON GRAND PRIX', pts: [[-34, -24], [34, -24], [34, -4], [26, 4], [34, 12], [34, 24], [10, 24], [-4, 18], [-34, 24], [-34, 4]], w: 11, gates: 8 },
+            },
+            doors: [
+                { id: 'board', wall: 's', x: 0, leaf: 'leaf_holographic',
+                  label: 'THE TENEMENT', sub: 'THE BACK GATE · THE CROSSING',
+                  action: { room: 'site_prebuilt_cyberpunk', at: 'street' },
+                  desc: 'The tenement\'s back gate, off the boulevard. The board is behind it, the console is behind the board, and the year on the lease is behind everything.' },
+                { id: 'noodle', wall: 'w', z: 12, leaf: 'leaf_exit',
+                  label: 'THE NOODLE BAR', sub: 'THE BACK DOOR · THE MARKET ALLEY',
+                  action: { room: 'site_prebuilt_cyberpunk_noodle', at: 'alley' },
+                  desc: 'A steel door at the end of the market alley with a menu taped to it. Every item is a year. The special is 1954.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'car_cyber',       x: -14.5, z: -4.0, face: 90 },                        // the cross street's north parking lane
+                { key: 'car_taxi',        x: 14.5, z: 4.0, face: 270 },                         // the south lane
+                { key: 'car_taxi',        x: 4.0, z: -20, face: 0 },                            // the boulevard's east lane
+                { key: 'car_cyber',       x: -4.0, z: 18, face: 180 },
+                { key: 'car_cop',         x: 4.0, z: 30, face: 0 },
+                { key: 'crashed_car_2',   x: -4.0, z: -30, face: 160 },                        // the wreck on the boulevard — the rain got it
+                { key: 'traffic_barrel',  x: -1.5, z: -33 }, { key: 'traffic_cone', x: -6.0, z: -27 },
+                { key: 'bus_shelter',     x: 6.3, z: 14.0, face: 270 },                         // the boulevard's stop (the opening to the road)
+                { key: 'bus_shelter',     x: -6.3, z: -30.0, face: 90 },
+                { key: 'slot_machine',    x: -44.5, z: 8.4, face: 180 }, { key: 'slot_machine', x: -46.5, z: 8.4, face: 180 },   // the pachinko parlour spilling onto the alley (the machines' own light)
+                { key: 'brazier',         x: -40.5, z: 15.6 },                                  // the market's barrel fire (the room's own light)
+                { key: 'railing_1m',      x: 22, z: -13, face: 0 },                             // THE PARK RULE's rail on the skyway (the terrain's rails are the grind; this one is the catalogue's)
+                { key: 'quarter_pipe',    x: 25, z: -10.5, face: 180 },                         // the skyway's quarter pipe (SKATEBOARDING 9.8)
+                { key: 'quarter_pipe',    x: -9, z: 9, face: 0 },                               // and one on the plaza's south edge
+                { key: 'riser_2',         x: 18, z: 5.6, face: 90 },                            // the loading dock's riser on the cross street's south sidewalk
+                { key: 'cardboard_boxes', x: 19.8, z: 6.3, face: 30 },
+                { key: 'signpost',        x: -24.5, z: -9.0, face: 20 },                        // under THE BILLBOARD ROOF
+                { key: 'city_bin',        x: -27.6, z: -14.6 },                                 // on THE BILLBOARD ROOF (the ground read puts it on the roof), off the tape's spot
+                { key: 'wet_floor_sign',  x: -19.0, z: 2.6, face: 200 },                        // by the puddle
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 4.2, z: -6.0, face: 200, race: 'android', say: ['“Do not look at the billboard.” “Which one?” “Any of them. They keep count.”', '“It is raining.” “It is always raining.” “On a lease.”'] },
+                { x: -12.5, z: 6.2, face: 90, race: 'ai', say: ['“Walking.” “You do not walk.” “Rendering walking.”'] },
+                { x: 22.0, z: -5.6, face: 0, race: 'gangster', say: ['“The deck is four and a half metres. The rail is the deck’s. The drop is the city’s.”'] },
+                { x: -44.0, z: 10.0, face: 60, race: 'conspiracy theorist', say: ['“The noodle bar has a back room.” “Every noodle bar has a back room.” “This one has a year in it.”'] },
+                { x: -40.0, z: -2.0, face: 90, race: 'catgirl', say: ['“Waiting for the train.” “It came an hour ago.” “Then I am waiting for the next one.”'] },   // at the station
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Which way is downtown?” “This is downtown, later.” “How much later?” “Read the lease.”',
+                '“Every window is lit.” “Nobody is home.” “That is the whole city.”',
+                '“The train has been at the platform for an hour.” “It goes to every line.” “The first stop is here.”',
+                '“Complaints are filed in advance.” “About what?” “About you. This one is about the rain.”',
+            ],
+            spawn: { x: 7.0, z: 36, face: 0 },   // the boulevard's east sidewalk (the road is the traffic's)
+        },
+        /* ── THE NOODLE BAR's back room: the far end of the time machine, set for 1954 ── */
+        site_prebuilt_cyberpunk_noodle: {
+            label: 'CYBERPUNK CITY · THE NOODLE BAR',
+            sub: 'THE BACK ROOM · SET FOR 1954',
+            kind: 'box', site: 'prebuilt_cyberpunk', part: 'noodle',
+            shell: {
+                w: 8.75, d: 7.0, h: 3.0,   // five × four battle cells (THE FIELD's lattice sits flush)
+                wallH: 3.0, dadoH: 1.0,
+                floor: 'tilefloor_2', wall: 'urban_wall', dado: 'metal_3', trim: 'metal', ceiling: 'ceiling',
+                floorColor: 0x8a8a98, wallColor: 0x8a86a0, dadoColor: 0x6a6478, ceilColor: 0x9a96a8,
+                pipes: true, strips: false, lights: [],
+                mood: { lamp: 0xff3ad8, glow: 0x35e0ff, strip: 0xff6ad8, light: 0xcfe8ff, ambient: 0.3, night: 1 },
+                plate: { x: 0, z: 3.4, y: 2.4 },
+                look: HQ_ROOM_LOOKS.neon,
+            },
+            doors: [
+                { id: 'alley', wall: 'w', z: 0, leaf: 'leaf_exit',
+                  label: 'THE MARKET ALLEY', sub: 'THE BACK DOOR · OUT TO THE GRID',
+                  action: { room: 'site_prebuilt_cyberpunk_streets', at: 'noodle' },
+                  desc: 'The back door onto the market alley. The rain outside is the same rain; the year is not.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'vending_machine', wall: 'n', x: -2.6 },
+                { key: 'cardboard_boxes', x: -3.4, z: 2.4, face: 20 }, { key: 'cardboard_box', x: -2.2, z: 2.8, face: 60 },
+                { key: 'mop_bucket',      x: 3.4, z: 2.6, face: 200 },
+                { key: 'solo_cup',        x: 0.8, z: -2.6, y: 0.45 },
+                { key: 'paper_sheet',     x: -0.6, z: 1.6, y: 0.01, face: 300 },
+                { key: 'railing_1m',      x: -1.0, z: 3.0, face: 0 },                         // THE PARK RULE's rail
+                { key: 'flicker_tube',    x: 0, z: 0.6, ceil: true, face: 90 },
+                { key: 'bare_bulb',       x: 2.4, z: -1.6, ceil: true },
+                { key: 'floor_stain',     x: 1.4, z: 0.4 },
+                { key: 'exit_sign',       wall: 'w', z: 1.0, mount: 2.6 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: -2.2, z: -1.8, face: 180, race: 'android', say: ['“The special?” “1954.” “How is it?” “Overcast.”', '“Back room is staff.” “I am staff.” “Then it is your machine.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“One token.” “Which year?” “The one the mall was built.” “That is not a year, that is a mall.”',
+                '“The cabinet in the back is not a cabinet.” “Then what is it?” “Out of order, mostly.”',
+                '“It rains on a lease.” “The lease is up.” “Then it rains for free.”',
+            ],
+            spawn: { x: -1.6, z: 0.8, face: 90 },
         },
         /* ═══════════════════════════════════════════════════════════════════
            THE DIVINE STAIR (HQ plan 9.3 stage 6 — THE COMPLEX CANDIDATES #4,
@@ -32035,7 +32294,14 @@ const HQ_TERRAIN_GEN = {
        into LOTS on a `lotPitch` lattice (`lotW` a side, `storeys` the prism's, `lowP` the share with no prism = a flat roof) whose
        street-facing edges are FRONTS (`gen.fronts`: 'window' = the ground floor's windows + door, 'store' = a storefront with a
        sign and a shutter; `prisms: false` = the mall's units, no building on top). The renderer reads info.lots / info.fronts. */
-    city:  { streetW: 8, walkW: 2.4, kerb: 0.12, lotPitch: 9.5, lotW: [6.4, 8.2], lowP: 0.2, storeys: [1, 4], wallH: 3.2, edge: 0.45, jitter: 0.05, topNoise: 0.15, rim: 0.6, frontOff: 0.25 },
+    /* STREET LEVEL (2026-09-17, the user: "the buildings should be street level, not on raised plateaus"): the rise
+       is a wall the walker never sees — it begins `riseIn` m INSIDE the boundary and climbs over `edge` m, but the
+       field is sampled every `res` m, so the drawn ramp spans a grid cell either side of the line: a lot's FACE stands
+       `frontOut` m OUTSIDE the boundary (on the sidewalk's inner edge) and the whole ramp is inside the building;
+       the LOTS are TERRACED: contiguous along every street face (`lotW` a frontage, `lotD` a depth into the block,
+       `lotMinW` the narrowest infill), turned to the face (`rot`), each building standing on the SIDEWALK's own
+       ground (`base`) with its prism from the ground up. `lotPitch` is unused by the terrace (kept for the mall's row). */
+    city:  { streetW: 8, walkW: 2.4, kerb: 0.12, lotPitch: 9.5, lotW: [6.4, 8.2], lotD: [8.5, 11.5], lotMinW: 3.2, lowP: 0.2, storeys: [1, 4], wallH: 3.2, edge: 0.3, riseIn: 0.1, jitter: 0.05, topNoise: 0.15, rim: 0.6, frontOut: 0.35 },
     forceGrow: 0.8, corridorW: 2.6, rim: 1.2, pathGrow: 1.1, minOpen: 0.28, maxOpen: 0.82, minIsland: 2.2,
 };
 function _hqTRng(seed) { let s = (seed >>> 0) || 1; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
@@ -32490,8 +32756,10 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
             if (mask[k]) open++;
             const d = D[k];
             if (kerb > 0 && walkW > 0 && !forced[k] && d > 0 && d < walkW + 0.3) info.H[k] += kerb * _hqTSmooth((walkW + 0.3 - d) / 0.45);
-            if (d > 0.2) return;
-            const t = _hqTSmooth((0.2 - d) / (edge + 0.2));
+            /* STREET LEVEL (2026-09-17): a city's rise begins `riseIn` m INSIDE the boundary (no plinth under a building's face); a cave's / the woods' 0.2 m outside it */
+            const d0 = (gen.kind === 'city') ? -((gen.riseIn != null) ? gen.riseIn : K.riseIn) : 0.2;
+            if (d > d0) return;
+            const t = _hqTSmooth((d0 - d) / (gen.kind === 'city' ? edge : (edge + 0.2)));
             const j1 = 1 + jit * _hqTNoise(px, pz, 2.6, seed + 17), top = topN * _hqTNoise(px, pz, 1.9, seed + 29) * _hqTSmooth((-d - 0.4) / 0.8);
             /* a CITY's podium is a LEVEL, never a stack: an authored roof / mezzanine inside a block keeps its own height (max), the rest rises to wallH */
             if (gen.kind === 'city') info.H[k] = info.H[k] * (1 - t) + Math.max(info.H[k], (info.base || 0) + wallH * j1 + top) * t;
@@ -32510,34 +32778,99 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
     /* ── THE LOTS (the city): the solid cut into building lots on a lattice, each edge that looks onto a street a FRONT ── */
     info.lots = []; info.fronts = [];
     if (gen.kind === 'city') {
-        const P = gen.lotPitch || K.lotPitch, LW = gen.lotW || K.lotW, lowP = (gen.lowP != null) ? gen.lowP : K.lowP, st = gen.storeys || K.storeys, fOff = (gen.frontOff != null) ? gen.frontOff : K.frontOff;
+        const LW = gen.lotW || K.lotW, LD = gen.lotD || K.lotD, minW = (gen.lotMinW != null) ? gen.lotMinW : K.lotMinW, lowP = (gen.lowP != null) ? gen.lowP : K.lowP, st = gen.storeys || K.storeys, fOut = (gen.frontOut != null) ? gen.frontOut : K.frontOut;
+        const walkW = info.genPlan.walkW || 0, plan = info.genPlan;
         const solidBy = (px, pz, m) => hqTerrainMaskAt(info, px, pz) < -m;
         let li = 0;
-        /* GREEDY PACKING: the lattice is scanned at a third of the pitch and a lot is kept where it fits the solid and stands
-           clear of every lot placed before it (a gap of `lotGap`) — a block of any size fills from its corner, whatever the
-           street grid's spacing; `lotPitch` is the scan's coarse pitch, the fine step a third of it */
-        const gap = (gen.lotGap != null) ? gen.lotGap : 0.7, step = P / 3;
-        for (let gz = -halfD + 1.0; gz < halfD; gz += step) for (let gx = -halfW + 1.0; gx < halfW; gx += step) {
-            const w = LW[0] + rnd() * (LW[1] - LW[0]), d = LW[0] + rnd() * (LW[1] - LW[0]);
-            const cx = gx + w / 2 + (rnd() - 0.5) * 0.6, cz = gz + d / 2 + (rnd() - 0.5) * 0.6;
-            if (!inShell(cx, cz, 0.8)) continue;
-            let ok = solidBy(cx, cz, 0.6);
-            for (const c of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1], [-1, 0], [1, 0]]) if (ok && !solidBy(cx + c[0] * w / 2, cz + c[1] * d / 2, 0.35)) ok = false;
-            if (ok) for (const q of info.lots) if (Math.abs(q.x - cx) < (q.w + w) / 2 + gap && Math.abs(q.z - cz) < (q.d + d) / 2 + gap) { ok = false; break; }
-            if (!ok) continue;
-            const low = rnd() < lowP, storeys = low ? 0 : st[0] + Math.floor(rnd() * (st[1] - st[0] + 1));
-            const lot = { i: li++, x: Math.round(cx * 100) / 100, z: Math.round(cz * 100) / 100, w: Math.round(w * 100) / 100, d: Math.round(d * 100) / 100, top: wallH, storeys, key: 'building_' + (1 + Math.floor(rnd() * 8)), low, seed: Math.floor(rnd() * 1e6) };
-            info.lots.push(lot);
-            [[0, -1], [1, 0], [0, 1], [-1, 0]].forEach(n => {
-                /* an edge is a FRONT when the street lies past it; the façade stands where the rise begins (maskD ≈ frontOff), not on the lot line */
-                const ex = lot.x + n[0] * lot.w / 2, ez = lot.z + n[1] * lot.d / 2;
-                let off = 0, found = false;
-                for (let m = 0.2; m <= 4.0; m += 0.2) { if (hqTerrainMaskAt(info, ex + n[0] * m, ez + n[1] * m) >= fOff) { off = m; found = true; break; } }
-                if (!found) return;
-                const L = n[0] ? lot.d : lot.w, tx = -n[1], tz = n[0], fx = ex + n[0] * off, fz = ez + n[1] * off;
-                info.fronts.push({ lot: lot.i, x0: Math.round((fx - tx * L / 2) * 100) / 100, z0: Math.round((fz - tz * L / 2) * 100) / 100, x1: Math.round((fx + tx * L / 2) * 100) / 100, z1: Math.round((fz + tz * L / 2) * 100) / 100, nx: n[0], nz: n[1], len: L, top: wallH });
+        /* THE TERRACE (STREET LEVEL, 2026-09-17): the lots are laid ALONG EVERY STREET FACE, shoulder to shoulder —
+           a face is the corridor's edge (w/2 + the sidewalk) on either side of each segment; a lot's FRONT edge stands
+           `fOut` OUTSIDE the mask boundary (over the ramp), its depth runs into the block (shrunk until its back corners are solid), its
+           width a frontage from lotW (the last run of a face filled by a narrower infill ≥ lotMinW); a lot never
+           overlaps another (two faces meeting at a corner: the second face's lot shrinks to fit or the run steps on).
+           Every lot wears `rot` (the face's yaw: local +Z = the street), `base` (the sidewalk's own ground under its
+           front, where its building stands) and its FRONT (info.fronts, one per street face it looks onto). */
+        const rectOf = (lot) => { const c = Math.cos(lot.rot), sn = Math.sin(lot.rot), ax = [c, -sn], az = [sn, c]; return { x: lot.x, z: lot.z, hw: lot.w / 2, hd: lot.d / 2, ax, az }; };   // ax = the lot's local +x (along the face), az = local +z (toward the street)
+        const overlaps = (A, B) => {   // OBB vs OBB (separating axes, 2D)
+            const axes = [A.ax, A.az, B.ax, B.az];
+            for (const ax of axes) {
+                const proj = (R) => { const c = R.x * ax[0] + R.z * ax[1]; const e = Math.abs((R.ax[0] * ax[0] + R.ax[1] * ax[1])) * R.hw + Math.abs((R.az[0] * ax[0] + R.az[1] * ax[1])) * R.hd; return [c - e, c + e]; };
+                const pa = proj(A), pb = proj(B);
+                if (pa[1] <= pb[0] + 0.03 || pb[1] <= pa[0] + 0.03) return false;   // a 3 cm gap at least (the rows are rounded to a centimetre)
+            }
+            return true;
+        };
+        const placed = [];
+        const streetsNear = (px, pz, m) => plan.streets.some(st => _hqTPolyDist(px, pz, st.pts).d < st.w / 2 + walkW + m);
+        const tryLot = (fx, fz, tx, tz, nx, nz, w, dMax) => {
+            /* the front edge's centre (fx, fz) on the line `fOut` outside the boundary; local +x = (tx, tz) along the face, +z = (nx, nz) toward the street */
+            /* THE BLOCK'S DEPTH: march in from the front until the mask opens — a street on the far side shares the block (half each),
+               anything else (the deck, the collapse, a side path's pad, the rim) caps the lot short of it */
+            let solid = fOut + 0.35, far = null;   // start past the line (the front stands fOut outside it)
+            while (solid < 30) { const px = fx - nx * solid, pz = fz - nz * solid; if (hqTerrainMaskAt(info, px, pz) >= 0 || !inShell(px, pz, 0.2)) { far = [px, pz]; break; } solid += 0.25; }
+            const cap = far ? (streetsNear(far[0], far[1], 0.6) ? solid / 2 - 0.12 : solid - 0.45) : dMax;
+            let d = Math.min(dMax, Math.max(LD[0] * 0.42, cap));
+            const rot = Math.atan2(nx, nz);
+            while (d >= LD[0] * 0.42) {
+                const cx = fx - nx * d / 2, cz = fz - nz * d / 2;
+                const lot = { x: cx, z: cz, w, d, rot };
+                const R = rectOf(lot);
+                let ok = inShell(cx, cz, 0.6) && inShell(fx, fz, 1.8);   // never in the rim band (the shell edge's solid is not a block)
+                /* the back corners + the back edge's middle deep in the solid, the centre solid, the side edges' middles at most a little past the line (a corner lot may stand proud of its side street's line, as its front does), the front corners no further out than the front line */
+                const pts = [[-1, -1, 0.35], [1, -1, 0.35], [0, -1, 0.35], [0, 0, 0.3], [-1, 0, -0.4], [1, 0, -0.4], [-1, 1, -(fOut + 0.4)], [1, 1, -(fOut + 0.4)]];
+                for (const q of pts) { if (!ok) break; const px = cx + R.ax[0] * q[0] * R.hw + R.az[0] * q[1] * R.hd, pz = cz + R.ax[1] * q[0] * R.hw + R.az[1] * q[1] * R.hd; if (!solidBy(px, pz, q[2])) ok = false; }
+                if (ok) for (const q of placed) if (overlaps(R, rectOf(q))) { ok = false; break; }
+                if (ok) return lot;
+                d -= 1.0;
+            }
+            return null;
+        };
+        const faces = [];
+        (plan.streets || []).forEach((stt, si) => {
+            const pts = stt.pts, off = stt.w / 2 + walkW;
+            for (let i = 0; i + 1 < pts.length; i++) {
+                const ax = pts[i][0], az = pts[i][1], bx = pts[i + 1][0], bz = pts[i + 1][1], L = Math.hypot(bx - ax, bz - az); if (L < 2) continue;
+                const tx = (bx - ax) / L, tz = (bz - az) / L;
+                for (const side of [-1, 1]) {
+                    const nx = -tz * side, nz = tx * side;   // the normal pointing OUT of the corridor on this side
+                    faces.push({ x0: ax + nx * (off - fOut), z0: az + nz * (off - fOut), tx, tz, nx: -nx, nz: -nz, L, si });   // the lot's +z is TOWARD the street: -n; the face line fOut outside the boundary
+                }
+            }
+        });
+        /* deterministic: the faces in street order; the ring road first so its blocks fill from the ring */
+        faces.forEach((F) => {
+            let u = 0.3;
+            while (u < F.L - minW) {
+                let w = LW[0] + rnd() * (LW[1] - LW[0]);
+                const dMax = LD[0] + rnd() * (LD[1] - LD[0]);
+                if (F.L - u - w < minW) w = Math.max(minW, Math.min(w, F.L - u - 0.3));   // the last of the run fills to the face's end
+                let lot = null;
+                for (let ww = w; ww >= minW - 0.01 && !lot; ww -= 1.0) {
+                    const fx = F.x0 + F.tx * (u + ww / 2), fz = F.z0 + F.tz * (u + ww / 2);
+                    lot = tryLot(fx, fz, F.tx, F.tz, F.nx, F.nz, ww, dMax);
+                    if (lot) w = ww;
+                }
+                if (!lot) { u += 0.7; continue; }
+                const low = rnd() < lowP, storeys = low ? 0 : st[0] + Math.floor(rnd() * (st[1] - st[0] + 1));
+                const fmx = F.x0 + F.tx * (u + w / 2), fmz = F.z0 + F.tz * (u + w / 2);
+                /* the building's base: the sidewalk's own ground under its front (the kerb band's middle, clear of the ramp's sampled cell) */
+                const base = hqTerrainHeight(info, fmx + F.nx * (walkW / 2 + 0.25), fmz + F.nz * (walkW / 2 + 0.25));
+                const row = { i: li++, x: Math.round(lot.x * 100) / 100, z: Math.round(lot.z * 100) / 100, w: Math.round(w * 100) / 100, d: Math.round(lot.d * 100) / 100, rot: Math.round(lot.rot * 1000) / 1000, top: wallH, base: Math.round(base * 100) / 100, storeys, key: 'building_' + (1 + Math.floor(rnd() * 8)), low, seed: Math.floor(rnd() * 1e6), face: F.si };
+                placed.push(row); info.lots.push(row);
+                u += w + 0.04;   // a 4 cm seam between neighbours (the rows are rounded to a centimetre; two touching lots must never round into an overlap)
+            }
+        });
+        /* THE FRONTS: every lot edge past which the street lies (the face it was laid on always; a corner lot's side too) */
+        info.lots.forEach((lot) => {
+            const R = rectOf(lot);
+            [[0, 1], [1, 0], [-1, 0], [0, -1]].forEach((n) => {   // in the lot's frame: +z = the laid face, ±x the sides, −z the back
+                const ex = lot.x + R.ax[0] * n[0] * R.hw + R.az[0] * n[1] * R.hd, ez = lot.z + R.ax[1] * n[0] * R.hw + R.az[1] * n[1] * R.hd;
+                const wnx = R.ax[0] * n[0] + R.az[0] * n[1], wnz = R.ax[1] * n[0] + R.az[1] * n[1];   // the edge's outward normal (world)
+                /* the street lies past it when the mask is open a short step out and stays open a stride further; the façade stands ON the lot's edge (the box face) */
+                if (n[1] !== 1 && (hqTerrainMaskAt(info, ex + wnx * 0.5, ez + wnz * 0.5) < 0.1 || hqTerrainMaskAt(info, ex + wnx * 1.6, ez + wnz * 1.6) < 0.5)) return;
+                const Lf = n[0] ? lot.d : lot.w, tx = -wnz, tz = wnx;
+                info.fronts.push({ lot: lot.i, x0: Math.round((ex - tx * Lf / 2) * 100) / 100, z0: Math.round((ez - tz * Lf / 2) * 100) / 100, x1: Math.round((ex + tx * Lf / 2) * 100) / 100, z1: Math.round((ez + tz * Lf / 2) * 100) / 100, nx: Math.round(wnx * 1000) / 1000, nz: Math.round(wnz * 1000) / 1000, len: Lf, top: wallH, base: lot.base, main: n[1] === 1 });
             });
-        }
+        });
     }
     /* ── THE THICKET (rooms): the forest growing on the solid, a lattice of trees `spacing` apart ── */
     info.thicket = [];
@@ -32932,11 +33265,11 @@ const HQ_TAPE_SHEET = {
     prebuilt_camelot:     [['THE ROUND TABLE', 'Twelve chairs. Thirteen shadows.', 'evidence']],   // THE VATICAN (2026-09-17): SNOW ON THE BATTLEMENTS went to the basilica
     prebuilt_atlantis:    [['SONAR, 0400', 'Something answers the ping. It answers in a voice.', 'evidence'], ['THE PEARL DIVER', 'A woman surfacing with something in her hand. She is not wearing a suit.', 'parents']],
     prebuilt_hell:        [['THE FISSURE', 'Heat shimmer over the causeway. The shimmer has a face.', 'evidence']],   // THE DIVINE STAIR (2026-09-17): FORM 666 went down to the pit
-    prebuilt_technoticlan: [['THE UPLINK', 'A screen of static that resolves into a floor plan of this building.', 'facility'], ['MOTHER', 'Nine frames of a woman at a console. The console is the one in Room 1337.', 'parents']],
+    prebuilt_technoticlan: [['MOTHER', 'Nine frames of a woman at a console. The console is the one in Room 1337.', 'parents']],   // THE SECOND PASS (2026-09-17): THE UPLINK went to the grid
     prebuilt_agartha:     [['THE ADIT', 'A lamp moving through the crystal. Nobody carries it.', 'evidence']],   // THE VATICAN (2026-09-17): THE GREAT DOOR went to the archive
     prebuilt_antarctica:  [['THE ICE CORE', 'Something frozen in the core. It is looking at the drill.', 'evidence'], ['THE EXPEDITION', 'Two parkas at a ridge. The taller one waves at the camera by name.', 'parents']],
     prebuilt_shasta:      [['THE LENTICULAR', 'A cloud that holds still while the sky moves. Then it does not.', 'evidence']],
-    prebuilt_stonehenge:  [['SOLSTICE', 'The stones throw two shadows. The sun is on the wrong side for one of them.', 'evidence'], ['THE WHEEL', 'The stones turn. The camera does not. Records is unhappy about this tape.', 'facility']],
+    prebuilt_stonehenge:  [['SOLSTICE', 'The stones throw two shadows. The sun is on the wrong side for one of them.', 'evidence']],   // THE SECOND PASS (2026-09-17): THE WHEEL went to the noodle bar
     prebuilt_giza:        [['THE SHAFT', 'A robot camera reaching a door with two copper handles. Then the feed cuts.', 'evidence'], ['THE SURVEY, 1987', 'Two surveyors at the base. The empty frame in the hall had their photo.', 'parents']],
     prebuilt_heaven:      [['CHOIR', 'Eight seconds of singing with no source. The mic was off.', 'evidence']],   // THE DIVINE STAIR (2026-09-17): THE GATE went out to the fields
     prebuilt_cyberpunk:   [['BILLBOARD', 'An advert for the Department. We have never advertised.', 'facility']],   // DISASTER CITY (2026-09-17): THE NOODLE STAND went back in time to the mall's food court
@@ -32952,7 +33285,7 @@ const HQ_TAPE_SHEET = {
     prebuilt_bohemian_grove: [['THE OWL', 'A statue of an owl. The owl blinks once, at 0:06.', 'evidence']],
     prebuilt_gobekli:     [['THE PILLARS', 'Carvings of animals. On the loop, one animal has moved.', 'evidence'], ['THE DIG', 'A trench and a trowel. The hand holding the trowel wears your mother’s ring.', 'parents']],
     prebuilt_northpole:   [['THE WORKSHOP', 'Benches, tools, no one. A bell rings on the ceiling.', 'evidence'], ['THE LIST', 'A scroll unrolling. Your name is on it. Twice.', 'facility']],
-    prebuilt_flatlands:   [['THE EDGE', 'A camera on a tripod at the edge. There is an edge.', 'evidence'], ['THE FOURTH CORNER', 'Somebody counting corners in a field. They count five.', 'facility']],
+    prebuilt_flatlands:   [['THE EDGE', 'A camera on a tripod at the edge. There is an edge.', 'evidence']],   // THE SECOND PASS (2026-09-17): THE FOURTH CORNER went to the supply closet
     prebuilt_revenge:     [['THE HELM', 'The wheel turns itself into the storm. The compass points down.', 'evidence'], ['THE CAPTAIN’S TABLE', 'A log open on the table. The last entry is dated tomorrow.', 'evidence']],
     prebuilt_derelict:    [['THE BRIDGE', 'A dead console lights up when the camera enters. It shows a door.', 'evidence'], ['CRYO', 'A dark bay of pods. One is warm.', 'evidence']],
     prebuilt_lookingglass: [['THE TEA PARTY', 'A table set for four. The cups fill in the wrong order.', 'evidence'], ['THE MIRROR', 'A mirror that shows the corridor behind the camera. There is no corridor.', 'facility']],
@@ -32987,6 +33320,10 @@ const HQ_TAPE_SHEET = {
     /* DISASTER CITY (2026-09-17): the streets' tape came off the stadium (HALF-TIME), the mall's off Cyberpunk (THE NOODLE STAND) — the hundred stays a hundred */
     site_prebuilt_downtown_streets:  [['HALF-TIME', 'A man in a coat crossing at the light, alone, from a rooftop. He knows where the camera is. The cars do not stop.', 'parents']],
     site_prebuilt_downtown_mall:     [['THE FOOD COURT', 'Two people eating under the skylights. The receipt on the table has your employee number. The third chair is ten feet tall.', 'parents']],
+    /* THE SECOND PASS (2026-09-17): the closet's tape came off the Flat Lands, the grid's off Technoticlan, the noodle bar's off Stonehenge — the hundred stays a hundred */
+    site_prebuilt_downtown_closet: [['STAFF ONLY', 'A shelf of cleaning products. Between the bottles, a brass lever. A hand pulls it. The shelf is empty on the next pass.', 'facility']],
+    site_prebuilt_cyberpunk_streets:  [['THE UPLINK', 'A billboard of static over the boulevard. It resolves into a floor plan of this building, and then into your face.', 'facility']],
+    site_prebuilt_cyberpunk_noodle:   [['THE SPECIAL', 'A bowl on the counter, steaming. The steam has a year in it. The year is on the receipt, and the receipt is in your hand.', 'evidence']],
     /* the exploration floors (Phase 8): never the hall, the foyer, a lobby or a corridor — the finds are the reward for going somewhere. A floor room's tape is a BONUS: the laundry, the locker room and the lecture hall gave theirs to the spaceship (rev 18); the boiler room, the server room and the ritual room to the Dutchman (rev 19); the garage, the kitchen, the cold room and the dungeon to THE URBAN BLOCK (9.2 stage 4, 2026-09-16) — the hundred stays a hundred */
     /* 7.7 WAVE 2 (2026-09-16): Room 345's two tapes came off the sacrifice room and Room X (the hundred stays a hundred) */
     prebuilt_bermuda:     [['FLIGHT 19, 14:10', 'Five aircraft in formation over a flat sea. The lead turns. The others turn with it. The sea does not.', 'evidence'], ['THE BUOY', 'A lantern buoy at the right angle. The tape is level; the horizon behind it is not.', 'facility']],
@@ -33254,6 +33591,7 @@ function _hqFindsPin(v) { Object.defineProperty(DOOR_HQ, 'finds', { value: v, wr
 DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 1.7, y: 1.2 } },
     /* DISASTER CITY (2026-09-17): the streets' tape on THE ROOFTOP (the 4 m low building on the ring road's west leg — the door gun's), the mall's on a store roof over the west concourse */
     site_prebuilt_downtown_streets: { tape: { x: -29.5, z: 15.0 } },
+    site_prebuilt_cyberpunk_streets: { tape: { x: -26, z: -13 } },   // CYBERPUNK CITY (2026-09-17): the grid's tape on THE BILLBOARD ROOF (5 m, never climbed — the door gun's)
     site_prebuilt_downtown_mall: { tape: { x: -12, z: -8 } },
     /* D8 (PHASE9_QUALITY_PLAN §6, 2026-09-16): the door gun's second lesson — a visible LEDGE. The hall's tape stands ON THE LANDING
        (shell.gallery, 2.9 m up, the west end): the flight at the east end is the way that is not a portal, the gun is the short one */

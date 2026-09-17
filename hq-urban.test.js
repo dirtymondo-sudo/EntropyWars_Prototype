@@ -25,7 +25,7 @@ const D = loadGameData(), HQ = D.DOOR_HQ;
 const TERRAIN_RULES = vm.runInContext('TERRAIN_RULES', D);
 const SITES = {
     prebuilt_strip:    { no: '21',   board: 'site_prebuilt_strip',    parts: ['chapel', 'casino'], back: { id: 'chapel', wall: 'n', x: -0.2, leaf: 'leaf_motel', into: 'chapel', at: 'street' } },
-    prebuilt_downtown: { no: '1954', board: 'site_prebuilt_downtown', parts: ['lobby', 'subway', 'streets', 'mall'], back: { id: 'tower', wall: 'e', z: 0, leaf: 'leaf_entrance', into: 'lobby', at: 'street' } },   // DISASTER CITY (2026-09-17): THE STREETS + THE MALL hang off the lobby's avenue doors (hq-city.test.js owns them)
+    prebuilt_downtown: { no: '1954', board: 'site_prebuilt_downtown', parts: ['lobby', 'subway', 'streets', 'mall', 'closet'], back: { id: 'tower', wall: 'e', z: 0, leaf: 'leaf_entrance', into: 'lobby', at: 'street' } },   // DISASTER CITY (2026-09-17): THE STREETS + THE MALL hang off the lobby's avenue doors (hq-city.test.js owns them)
 };
 const PART_IDS = [].concat(...Object.entries(SITES).map(([s, S]) => S.parts.map(p => S.board + '_' + p)));
 const renderer = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8');
@@ -126,13 +126,14 @@ test('THE SUBWAY’s third station: Downtown’s platform stands its train FREE 
     const link = HQ.links.find(l => l.id === 'subway_downtown');
     assert.ok(link && link.route === 'subway' && link.way === 'train' && link.draft === true && link.why && link.note, 'the row');
     assert.ok(link.a.site === 'prebuilt_downtown' && link.a.part === 'subway' && link.a.wall === 'free' && link.a.face === 90 && Number.isFinite(link.a.x) && Number.isFinite(link.a.z), 'the near end: FREE on the platform, facing east onto it');
-    assert.ok(link.b.site === 'prebuilt_cyberpunk' && link.b.wall === 'n' && link.b.x === -0.2 && link.b.leaf === 'leaf_frame_only' && !link.b.way, 'the far end: a plain door back on the north wall, x -0.2');
+    /* THE SECOND PASS (2026-09-17): the stair comes up on CYBERPUNK CITY's grid (a complex part), no longer the board room's strip */
+    assert.ok(link.b.site === 'prebuilt_cyberpunk' && link.b.part === 'streets' && link.b.wall === 'n' && link.b.x === 12 && link.b.leaf === 'leaf_frame_only' && !link.b.way, 'the far end: a plain door back on the grid\'s north wall, x 12');
     const live = D.hqLinkLive(link);
-    assert.ok(live && live.a === 'site_prebuilt_downtown_subway' && live.b === 'site_prebuilt_cyberpunk', 'live, both ends resolved');
+    assert.ok(live && live.a === 'site_prebuilt_downtown_subway' && live.b === 'site_prebuilt_cyberpunk_streets', 'live, both ends resolved');
     assert.ok(live.wearA.way === 'train' && live.wearB.leaf === 'leaf_frame_only', 'the train at one end, a frame at the other (hqLinkEndWear)');
     const plat = HQ.rooms.site_prebuilt_downtown_subway, tr = plat.doors.find(d => d.link === 'subway_downtown');
     assert.ok(tr && tr.way === 'train' && tr.leaf === null && tr.wall === 'free' && tr.x === -1.5 && tr.z === 3 && tr.face === 90, 'the platform wears the train');
-    assert.strictEqual(tr.sub, link.a.sub); assert.strictEqual(tr.action.room, 'site_prebuilt_cyberpunk');
+    assert.strictEqual(tr.sub, link.a.sub); assert.strictEqual(tr.action.room, 'site_prebuilt_cyberpunk_streets');
     /* the train stands ON the track: the way's local +Z is the door's face (east), the body behind the plane over the track bed at x -2.8 */
     const bed = plat.props.find(p => p.key === 'track_bed'), edge = plat.props.find(p => p.key === 'platform_edge');
     assert.ok(bed && edge && bed.x < tr.x && tr.x < edge.x + 0.1, 'the doorway plane stands between the track bed and the platform edge');
@@ -141,13 +142,14 @@ test('THE SUBWAY’s third station: Downtown’s platform stands its train FREE 
     assert.ok(tr.z + 9 < plat.shell.d / 2 && tr.z - 15.4 > -plat.shell.d / 2, 'the whole train (front car + cart) stands inside the platform’s length');
     /* nothing of the platform stands in the train’s body: every floor prop and native is east of the platform edge */
     for (const q of [...plat.props, ...plat.npcSpots, ...plat.onlineSpots]) if (!q.wall && !q.ceil && q.key !== 'track_bed' && q.key !== 'platform_edge') assert.ok((q.x || 0) > -1.0, (q.key || q.race || 'seat') + ' stands on the track');
-    const cy = HQ.rooms.site_prebuilt_cyberpunk, st = cy.doors.find(d => d.link === 'subway_downtown');
-    assert.ok(st && st.way === undefined && st.leaf === 'leaf_frame_only' && st.wall === 'n' && st.x === -0.2 && st.verb === 'GO DOWN', 'Cyberpunk wears the stair mouth');
+    const cy = HQ.rooms.site_prebuilt_cyberpunk_streets, st = cy.doors.find(d => d.link === 'subway_downtown');
+    assert.ok(st && st.way === undefined && st.leaf === 'leaf_frame_only' && st.wall === 'n' && st.x === 12 && st.verb === 'GO DOWN', 'the grid wears the stair mouth');
     assert.ok(st.action.room === 'site_prebuilt_downtown_subway' && st.action.at === tr.id && tr.action.at === st.id, 'the pair');
     assert.strictEqual(D.hqDoorNo(st), '1954', 'the stair’s plate reads Downtown’s number');
     assert.strictEqual(D.hqDoorNo(tr), '2047', 'the train’s plate reads Cyberpunk’s number');
-    assert.strictEqual(cy.doors.filter(d => d.link).length, 4, 'Cyberpunk carries three link doors on its north wall — the lane rule’s ration — and, since DISASTER CITY (2026-09-17), THE TIME MACHINE standing FREE on its north strip (a way, never a lane)');
-    assert.strictEqual(cy.doors.filter(d => d.link && d.wall === 'n').length, 3, 'three on the wall');
+    assert.strictEqual(cy.doors.filter(d => d.link).length, 2, 'the grid carries the stair on its north wall and the tunnel\'s train FREE at its station (the second pass)');
+    assert.strictEqual(HQ.rooms.site_prebuilt_cyberpunk.doors.filter(d => d.link).length, 1, 'the board room keeps the highway alone (the train, the stair and the machine moved into the city)');
+    assert.strictEqual(cy.doors.filter(d => d.link && d.wall === 'n').length, 1, 'one on the wall');
     for (const o of cy.doors) if (o !== st && o.wall === 'n') assert.ok(Math.abs(o.x - st.x) >= 4.4, 'the stair shares a lane with ' + o.id);
     const sub = D.hqWorldRoutes('foyer').find(r => r.id === 'subway');
     assert.strictEqual(sub.stations.map(s => s.room).join(' — '), 'site_prebuilt_fairy_forest — tunnel — site_prebuilt_cyberpunk — site_prebuilt_downtown', 'the line is walked from its end — THE WOODS\' storm drain (9.3 stage 3) — through the tunnel; the last stop is Downtown');

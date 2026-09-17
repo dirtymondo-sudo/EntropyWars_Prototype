@@ -26,7 +26,7 @@ test('THE KIT TILE: the misc / door-kit / vehicle helpers size against the build
 test('THE VEHICLE BATCH lies along X, nose −X: every kit row turns +90°', () => {
     const kit = TR.slice(TR.indexOf('var _VEHICLE_KIT = {'), TR.indexOf('};', TR.indexOf('var _VEHICLE_KIT = {')));
     const rows = kit.match(/\n\s*\w+:\s*\{ m: [0-9.]+, yaw: [^,]+,/g) || [];
-    assert.equal(rows.length, 9, 'nine rows');
+    assert.equal(rows.length, 11, 'nine rows + the taxi and the truck (the city batch, 2026-09-17)');
     rows.forEach(r => assert.match(r, /yaw: Math\.PI \/ 2,/, r.trim() + ' turns −X onto +Z'));
     for (const k of ['car_suv', 'car_cadillac', 'car_cop', 'car_cyber', 'car_ambulance', 'fire_truck', 'school_bus']) assert.equal(HQ.catalogue[k].turn, 90, k + ' pre-turns 90');
     assert.match(TR, /if \(cat\.turn\) turned \+= _hqRad\(cat\.turn\);/, 'the placer applies `turn`');

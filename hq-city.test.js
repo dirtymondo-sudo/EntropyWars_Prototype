@@ -29,6 +29,7 @@ const TERRAIN_RULES = vm.runInContext('TERRAIN_RULES', D);
 const STREETS = 'site_prebuilt_downtown_streets', MALL = 'site_prebuilt_downtown_mall', LOBBY = 'site_prebuilt_downtown_lobby', PLAT = 'site_prebuilt_downtown_subway', CHAPEL = 'site_prebuilt_strip_chapel', DRAIN = 'site_prebuilt_fairy_forest_deadmans';
 const CYBER = D.hqSiteRoomId('prebuilt_cyberpunk'), STADIUM = D.hqSiteRoomId('prebuilt_stadium');
 const IDS = [STREETS, MALL];
+const CLOSET = 'site_prebuilt_downtown_closet', GRID = 'site_prebuilt_cyberpunk_streets', NOODLE = 'site_prebuilt_cyberpunk_noodle';   // THE SECOND PASS (2026-09-17)
 const renderer = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8'), map = fs.readFileSync(__dirname + '/map.js', 'utf8'), audio = fs.readFileSync(__dirname + '/audio.js', 'utf8'), data = fs.readFileSync(__dirname + '/data.js', 'utf8');
 const at = (room, id) => (HQ.rooms[room].doors || []).find(d => d.id === id);
 
@@ -85,28 +86,41 @@ test('the sheet: two parts on Room 1954 — THE STREETS (open under Downtown’s
     assert.ok(/function hqCityShell\(o\)/.test(data) && /window\.hqCityShell = hqCityShell/.test(data) && typeof D.hqCityShell === 'function', 'the shell helper');
     const reg = D.hqRoomRegister();
     assert.equal(reg.filter(r => r.mapId === 'prebuilt_downtown').length, 1); assert.ok(!reg.some(r => IDS.includes(r.id) || IDS.includes(r.room)));
-    assert.equal(D.hqSiteComplex('prebuilt_downtown').length, 5, 'the board room, the lobby, the platform, the streets, the mall');
+    assert.equal(D.hqSiteComplex('prebuilt_downtown').length, 6, 'the board room, the lobby, the platform, the streets, the mall, the supply closet (the second pass)');
 });
 
 test('THE PLAN (`city`): the streets are the corridors (the ring road a loop, the two avenues), the solid the blocks cut into LOTS (≥ 20 on the streets, ≥ 10 store units in the mall) with FRONTS that look onto a street (the façade standing where the rise begins); a 2.4 m SIDEWALK with a 12 cm kerb on the streets, none in the mall; a podium is a LEVEL, never a stack (the rooftop stays 4.0, the mezzanine 3.4); the plan is deterministic; the outer ring of blocks stands past the ring road', () => {
     const G = D.HQ_TERRAIN_GEN;
-    assert.ok(G.city && G.city.walkW === 2.4 && G.city.kerb === 0.12 && G.city.wallH === 3.2 && Array.isArray(G.city.lotW) && G.city.frontOff > 0, 'the city defaults');
+    assert.ok(G.city && G.city.walkW === 2.4 && G.city.kerb === 0.12 && G.city.wallH === 3.2 && Array.isArray(G.city.lotW) && Array.isArray(G.city.lotD) && G.city.frontOut > 0 && G.city.riseIn > 0 && G.city.lotMinW > 0, 'the city defaults (STREET LEVEL: the face fOut outside the line, the rise riseIn inside it)');
+    /* the second pass: a rotated lot's frame (ax along the face, az toward the street) and the OBB overlap the compiler uses */
+    const rectOf = (lot) => { const c = Math.cos(lot.rot), sn = Math.sin(lot.rot); return { x: lot.x, z: lot.z, hw: lot.w / 2, hd: lot.d / 2, ax: [c, -sn], az: [sn, c] }; };
+    const overlaps = (A, B) => [A.ax, A.az, B.ax, B.az].every(ax => { const pr = R => { const c = R.x * ax[0] + R.z * ax[1], e = Math.abs(R.ax[0] * ax[0] + R.ax[1] * ax[1]) * R.hw + Math.abs(R.az[0] * ax[0] + R.az[1] * ax[1]) * R.hd; return [c - e, c + e]; }; const a = pr(A), b = pr(B); return !(a[1] <= b[0] + 0.015 || b[1] <= a[0] + 0.015); });
+    const corner = (lot, sx, sz) => { const R = rectOf(lot); return [lot.x + R.ax[0] * sx * R.hw + R.az[0] * sz * R.hd, lot.z + R.ax[1] * sx * R.hw + R.az[1] * sz * R.hd]; };
     for (const id of IDS) {
         const room = HQ.rooms[id], gen = room.terrain.gen, info = D.hqTerrainInfo(id);
         assert.ok(info.gen && info.gen.kind === 'city' && info.gen.solidSheet === 'cliff' && info.mask && info.maskD && info.genPlan && info.genPlan.streets.length === gen.streets.length, id + ': the plan compiled');
         assert.ok(info.lots.length >= (id === STREETS ? 20 : 10) && info.fronts.length >= (id === STREETS ? 20 : 6), id + ': lots ' + info.lots.length + ' / fronts ' + info.fronts.length);
+        const LW = gen.lotW, LD = gen.lotD || G.city.lotD, minW = (gen.lotMinW != null) ? gen.lotMinW : G.city.lotMinW;
         for (const lot of info.lots) {
-            assert.ok(lot.w >= gen.lotW[0] - 0.01 && lot.w <= gen.lotW[1] + 0.01 && lot.d >= gen.lotW[0] - 0.01 && lot.top === gen.wallH && /^building_[1-8]$/.test(lot.key), id + ': a lot ' + JSON.stringify(lot));
-            for (const c of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) assert.ok(D.hqTerrainMaskAt(info, lot.x + c[0] * lot.w / 2, lot.z + c[1] * lot.d / 2) < -0.3, id + ': a lot corner in the open');
-            for (const q of info.lots) if (q !== lot) assert.ok(Math.abs(q.x - lot.x) >= (q.w + lot.w) / 2 || Math.abs(q.z - lot.z) >= (q.d + lot.d) / 2, id + ': lots overlap');
-            assert.ok(Math.abs(D.hqTerrainHeight(info, lot.x, lot.z) - gen.wallH) < 0.5, id + ': the podium under a lot stands at wallH');
+            assert.ok(lot.w >= minW - 0.01 && lot.w <= LW[1] + 0.01 && lot.d >= LD[0] * 0.42 - 0.01 && lot.d <= LD[1] + 0.01 && lot.top === gen.wallH && Number.isFinite(lot.rot) && Number.isFinite(lot.base) && Number.isInteger(lot.face) && /^building_[1-8]$/.test(lot.key), id + ': a lot ' + JSON.stringify(lot));
+            /* STREET LEVEL: the back corners deep in the solid, the front corners no further out than the face line, the building's base on the sidewalk (never the podium) */
+            for (const c of [[-1, -1], [1, -1]]) { const p = corner(lot, c[0], c[1]); assert.ok(D.hqTerrainMaskAt(info, p[0], p[1]) < -0.3, id + ': a back corner in the open'); }
+            for (const c of [[-1, 1], [1, 1]]) { const p = corner(lot, c[0], c[1]); assert.ok(D.hqTerrainMaskAt(info, p[0], p[1]) < G.city.frontOut + 0.45, id + ': a front corner past the face line'); }
+            assert.ok(lot.base >= -0.14 && lot.base <= (gen.kerb || 0) + 0.12, id + ': the base is the sidewalk\'s (' + lot.base + ')');
+            for (const q of info.lots) if (q !== lot) assert.ok(!overlaps(rectOf(lot), rectOf(q)), id + ': lots overlap');
+            assert.ok(Math.abs(D.hqTerrainHeight(info, lot.x, lot.z) - gen.wallH) < 0.5, id + ': the rise stands inside a lot at wallH');
         }
+        const mains = info.fronts.filter(f => f.main);
+        assert.equal(mains.length, info.lots.length, id + ': one main front per lot');
         for (const f of info.fronts) {
-            const mx = (f.x0 + f.x1) / 2, mz = (f.z0 + f.z1) / 2, md = D.hqTerrainMaskAt(info, mx, mz);
-            assert.ok(md >= G.city.frontOff - 0.3 && md < 1.6, id + ': a front stands where the rise begins (' + md + ')');
-            assert.ok(D.hqTerrainMaskAt(info, mx + f.nx * 1.5, mz + f.nz * 1.5) > 0.5, id + ': the street lies past the front');
-            assert.ok(Math.abs(Math.hypot(f.x1 - f.x0, f.z1 - f.z0) - f.len) < 0.05 && f.top === gen.wallH);
+            const mx = (f.x0 + f.x1) / 2, mz = (f.z0 + f.z1) / 2, md = D.hqTerrainMaskAt(info, mx, mz), lot = info.lots[f.lot];
+            if (f.main) assert.ok(md > -0.25 && md < G.city.frontOut + 0.6, id + ': a main front stands on the face line, over the ramp (' + md + ')');
+            assert.ok(D.hqTerrainMaskAt(info, mx + f.nx * 1.6, mz + f.nz * 1.6) > 0.4, id + ': the street lies past the front');
+            assert.ok(Math.abs(Math.hypot(f.x1 - f.x0, f.z1 - f.z0) - f.len) < 0.05 && f.top === gen.wallH && f.base === lot.base);
         }
+        /* THE TERRACE: the lots stand shoulder to shoulder along their faces — most have a neighbour on the same face touching them */
+        const touching = info.lots.filter(l => info.lots.some(q => q !== l && q.face === l.face && Math.abs(q.rot - l.rot) < 1e-6 && Math.abs((q.x - l.x) * Math.cos(l.rot) - (q.z - l.z) * Math.sin(l.rot)) <= (q.w + l.w) / 2 + 0.35 && Math.abs((q.x - l.x) * Math.sin(l.rot) + (q.z - l.z) * Math.cos(l.rot)) < 2.0));
+        assert.ok(touching.length >= info.lots.length * (id === STREETS ? 0.55 : 0.5), id + ': ' + touching.length + ' of ' + info.lots.length + ' lots have a neighbour on their face');
         assert.equal(info.gen.sidewalk, gen.walkW); assert.equal(info.gen.kerb, gen.kerb); assert.equal(info.gen.fronts, gen.fronts); assert.equal(info.gen.prisms, gen.prisms !== false);
         assert.equal((info.thicket || []).length, 0, id + ': no thicket');
         const a = D.hqTerrainCompile(room, id), b = D.hqTerrainCompile(room, id);
@@ -151,14 +165,15 @@ test('THE SEAMS: the Strip (streets_strip — the chapel’s west wall, a motel 
     assert.equal(D.hqLinkRoom(stad.b), STADIUM);
     for (const o of HQ.rooms[STADIUM].doors) if (o.id !== 'link_streets_stadium' && o.wall === 'n') assert.ok(Math.abs(o.x - (-10)) >= 4.4, 'the stadium gate shares a lane with ' + o.id);
     assert.ok(HQ.rooms[STADIUM].doors.filter(d => d.link && d.wall === 'n').length <= 3, 'the stadium keeps ≤ 3 link doors on its north wall');
-    assert.ok(tm.route === 'seams' && tm.way === 'timemachine' && tm.a.part === 'mall' && tm.a.wall === 'free' && tm.a.face === 90 && tm.b.site === 'prebuilt_cyberpunk' && !tm.b.part && tm.b.wall === 'free' && tm.b.face === 90 && !tm.b.leaf, 'the time machine at both ends');
-    const a = at(MALL, 'link_timemachine_cyberpunk'), b = at(CYBER, 'link_timemachine_cyberpunk');
+    /* THE SECOND PASS (2026-09-17): the machine stands in the mall's SUPPLY CLOSET and comes out in the noodle bar's back room on the grid — both FREE ends on complex parts, both a building in the city */
+    assert.ok(tm.route === 'seams' && tm.way === 'timemachine' && tm.a.site === 'prebuilt_downtown' && tm.a.part === 'closet' && tm.a.wall === 'free' && tm.a.face === 180 && tm.b.site === 'prebuilt_cyberpunk' && tm.b.part === 'noodle' && tm.b.wall === 'free' && tm.b.face === 270 && !tm.b.leaf, 'the time machine at both ends');
+    const a = at(CLOSET, 'link_timemachine_cyberpunk'), b = at(NOODLE, 'link_timemachine_cyberpunk');
     assert.ok(a && b && a.way === 'timemachine' && b.way === 'timemachine' && a.leaf === null && b.leaf === null && a.wall === 'free' && b.wall === 'free', 'both ends wear the machine');
-    assert.ok(a.action.room === CYBER && a.action.at === b.id && b.action.room === MALL && b.action.at === a.id, 'both halves pair');
-    const cy = HQ.rooms[CYBER], gr = cy.shell.grid;
-    assert.ok(Math.abs(b.z) > gr.cells * gr.cell / 2 + 0.4 && Math.abs(b.z) < cy.shell.d / 2 - 0.6 && Math.abs(b.x) < cy.shell.w / 2 - 2.5, 'the far end stands on Cyberpunk’s north strip, off the board, inside the room');
-    assert.ok(!HQ.links.some(l => l.id !== 'timemachine_cyberpunk' && ((D.hqLinkRoom(l.a) === CYBER && [STREETS, MALL].includes(D.hqLinkRoom(l.b))) || (D.hqLinkRoom(l.b) === CYBER && [STREETS, MALL].includes(D.hqLinkRoom(l.a))))), 'no regular door joins the city to Cyberpunk');
-    assert.ok(!HQ.rooms[STREETS].doors.concat(HQ.rooms[MALL].doors).some(d => d.action && d.action.room === CYBER && d.way !== 'timemachine'), 'the machine is the only way');
+    assert.ok(a.action.room === NOODLE && a.action.at === b.id && b.action.room === CLOSET && b.action.at === a.id, 'both halves pair');
+    assert.ok(!at(MALL, 'link_timemachine_cyberpunk') && !at(CYBER, 'link_timemachine_cyberpunk'), 'the arcade and the board room\'s strip gave it up');
+    const DOWN = [STREETS, MALL, CLOSET], CYB = [CYBER, GRID, NOODLE];   // the platform's train is the subway's (a way, one stop back), never the city's door
+    assert.ok(!HQ.links.some(l => l.id !== 'timemachine_cyberpunk' && ((CYB.includes(D.hqLinkRoom(l.a)) && DOWN.includes(D.hqLinkRoom(l.b))) || (CYB.includes(D.hqLinkRoom(l.b)) && DOWN.includes(D.hqLinkRoom(l.a))))), 'no regular door joins the city to Cyberpunk');
+    for (const id of DOWN) assert.ok(!HQ.rooms[id].doors.some(d => d.action && CYB.includes(d.action.room) && d.way !== 'timemachine'), id + ': the machine is the only way');
     assert.ok(gut.route === 'sewers' && HQ.routes.sewers && HQ.routes.sewers.dashed && gut.way === 'gutter' && gut.a.part === 'streets' && gut.a.wall === 'free' && gut.a.face === 270 && gut.b.site === 'prebuilt_fairy_forest' && gut.b.part === 'deadmans' && gut.b.wall === 'n' && gut.b.leaf === 'leaf_cell' && gut.b.verb === 'CLIMB UP', 'the gutter');
     const ga = at(STREETS, 'link_streets_drain'), gb = at(DRAIN, 'link_streets_drain');
     assert.ok(ga && gb && ga.way === 'gutter' && !gb.way && gb.leaf === 'leaf_cell' && gb.wall === 'n' && gb.x === -13 && ga.action.room === DRAIN && gb.action.room === STREETS, 'the grate at the drain’s end');
@@ -182,11 +197,11 @@ test('ONE PIECE: from the lobby’s avenue doors both parts are walked; every in
             assert.ok(other && other.action.room === id && other.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + ' is a pair');
             assert.equal(other.leaf, d.leaf); assert.equal(other.way, d.way);
             assert.ok(HQ.rooms[a.room].site === 'prebuilt_downtown', id + '/' + d.id + ' stays inside the site');
-            if (IDS.includes(a.room)) queue.push(a.room);
+            if (IDS.includes(a.room) || a.room === CLOSET) queue.push(a.room);
         }
     }
-    assert.equal(Array.from(seen).sort().join(','), IDS.slice().sort().join(','));
-    assert.equal(D.hqSiteComplex('prebuilt_downtown').filter(r => IDS.includes(r) || r === LOBBY || r === PLAT).length, 4);
+    assert.equal(Array.from(seen).sort().join(','), IDS.concat([CLOSET]).sort().join(','));
+    assert.equal(D.hqSiteComplex('prebuilt_downtown').filter(r => IDS.includes(r) || r === LOBBY || r === PLAT || r === CLOSET).length, 5);
 });
 
 test('THE SOLVER + THE RETURN GUARANTEE + THE PRODUCTION LANDING: in both parts every door reaches every other under the walker’s rule, nothing traps, every ramp tops out on reached ground; the renderer lands every door (the free ways included) at its sill on level ground, clear of every prop, native, car and scattered bin; natives, the spawn and every parked car stand on dry level ground off the road’s middle', () => {

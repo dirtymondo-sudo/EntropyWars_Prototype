@@ -5163,3 +5163,45 @@ own light, THE PARK RULE, the hard tapes, and `node check-terrain.js` before
 anything is claimed. The candidates are in DOOR_HQ_BUILD_PLAN.md §9
 "THE COMPLEX CANDIDATES" — read that list before starting a new complex,
 and append to it when the user names another.
+
+## DISASTER CITY, THE SECOND PASS + CYBERPUNK CITY (STREET LEVEL, the road tiles, the city batch, the closet) — 2026-09-17, local delivery
+**STREET LEVEL** (the user: "the buildings should be street level, not on raised
+plateaus"): the `city` plan's rise is INSIDE the buildings now — data.js
+`HQ_TERRAIN_GEN.city` `riseIn` (the rise begins 0.1 m inside the mask line) +
+`frontOut` (a lot's face stands 0.35 m OUTSIDE the line, over the ramp the 0.5 m
+sampling draws either side of it), and THE TERRACE: the lots are laid ALONG
+EVERY STREET FACE shoulder to shoulder (`lotW` a frontage, `lotD` a depth,
+`lotMinW` the infill, a 4 cm seam between neighbours — the rows are rounded to
+a centimetre), each wearing `rot` (the face's yaw, local +Z = the street),
+`base` (the sidewalk's own ground under its front) and `face`; the depth is
+capped at half the block when a street lies on the far side, short of any
+feature otherwise; the fronts hang on the lots' own edges (`main: true` = the
+laid face). three-renderer.js `_hqBuildCityLots`: every prism FROM THE GROUND
+(`_nrSpriteBuilding` takes `o.d` — a w × d box turned by `ry`), a LOW lot a
+one-storey concrete box from the ground; the 'window' front keeps only the
+awning + the shop sign on a prism lot, the `storefront` GLB on a low lot's
+ground floor, the `storefront_unit` GLB over the mall's glass; `gen.neon` = a
+neon name on every main front + a hologram over a tall lot. **THE ROAD TILES**:
+`_hqBuildRoadTiles` lays the user's straight + quarter-turn GLBs along every
+street of a sidewalked city plan (a tile per street width, the turn ON a
+right-angle vertex, nothing in an intersection; squashed to a kerb, 2 cm over
+the field; EW_HQ_NO_ROAD_TILES). **THE CITY BATCH** = MODEL_INDEX §3i (19
+`_MISC_GLB` rows, 14 catalogue rows, `_VEHICLE_KIT.taxi` / `.truck`; `city_bin`
+OUTSIDE, `mall_bin` INSIDE; the time machine GLB over the `timemachine` way's
+cage, the drain over the `gutter`'s grate; `_hzBasilicaDome` GLB-first with
+`_hzBasilicaDomeProc` the stand-in + the `dome` landmark). **THE SUPPLY
+CLOSET** (`site_prebuilt_downtown_closet` — a part's id is
+`site_<mapId>_<part>`, hqComplexRoomId, never longer) off the mall's north wing
+holds THE TIME MACHINE; its far end is **THE NOODLE BAR** (`site_prebuilt_
+cyberpunk_noodle`) off **CYBERPUNK CITY · THE GRID** (`site_prebuilt_cyberpunk_
+streets`, `hqCityShell({ neon: true })` + `HQ_ROOM_LOOKS.neon`: THE LOOP = THE
+NEON GRAND PRIX, THE SKYWAY, THE BILLBOARD ROOF (the hard tape), THE STATION
+where `links.tunnel_cyberpunk`'s train ARRIVES (a free end on the part) and
+`links.subway_downtown`'s stair comes up (n x 12); the board room's back gate
+`backDoors.prebuilt_cyberpunk` n x −10 — the board room keeps the highway
+alone). RULES: a spawn / a native never stands in a traffic lane (the sidewalk
+is theirs); a new city = `hqCityShell` + a `city` plan + the 7.10 checklist.
+`npm test` runs `hq-city-2.test.js`. Ship data.js to Render too (the finds
+ledger). UNSEEN LIVE (RULE #1c): the sprite prisms' look from the kerb (stand-in
+textures offline), the neon inks, every batch facing (MODEL_INDEX §3i lists the
+one-field edits), the quarter tile's curve at each corner.
