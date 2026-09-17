@@ -39051,7 +39051,7 @@ const ThreeRenderer = (function () {
             (room.onlineSpots || []).forEach(function (n) { if (n) koAdd(n.x || 0, n.z || 0, 1.0); });
             (S.lights || []).forEach(function (Lt) { if (Lt) koAdd(Lt.x, Lt.z, 1.4); });
             if (room.spawn) koAdd(room.spawn.x || 0, room.spawn.z || 0, 1.2);
-            try { ((typeof DOOR_HQ !== 'undefined' && DOOR_HQ.finds) || []).forEach(function (f) { if (f && f.room === room.id && f.x != null) koAdd(f.x, f.z || 0, 1.0); }); } catch (e) {}
+            try { ((typeof hqFindsForRoom === 'function' ? hqFindsForRoom(room.id) : ((typeof DOOR_HQ !== 'undefined' && DOOR_HQ.finds) || [])) || []).forEach(function (f) { if (f && f.room === room.id && f.x != null) koAdd(f.x, f.z || 0, 1.0); }); } catch (e) {}
             ctx.hq.keepOut = ko;
         }
         var pulse0 = _hzGlowPulse.length;

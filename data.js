@@ -32073,11 +32073,48 @@ function hqTerrainFindSpot(roomId, sp) {
     if (!out.hard) delete out.hard;
     return out;
 }
-function hqBuildFinds() {
-    const rows = [], R = HQ_FIND_RULES, pins = DOOR_HQ.findSpots || {};
+/* THE FINDS ARE BUILT PER ROOM, ON FIRST READ (2026-09-17): placing a room's
+   finds compiles its height field and its generated floor plan — seconds of
+   work across the building, and the officer only ever needs the room they
+   stand in. `hqBuildFinds(roomId)` builds one room, `hqBuildFinds()` the lot;
+   `hqFindsForRoom(roomId)` is the CACHED per-room read every runtime site goes
+   through (hqFindsInRoom, the renderer's keep-out), and `DOOR_HQ.finds` is a
+   one-time getter over all of them (tests + tooling). Editing DOOR_HQ.findSpots
+   / DOOR_TAPES at runtime = call hqFindsDrop() to clear both caches. */
+const _HQ_FINDS_CACHE = {};
+function hqFindsTapesByRoom() {
     const byRoom = {};
     DOOR_TAPES.forEach(t => { (byRoom[t.where] = byRoom[t.where] || []).push(t); });
-    Object.keys(byRoom).forEach(roomId => {
+    return byRoom;
+}
+function hqFindsForRoom(roomId) {
+    if (!_HQ_FINDS_CACHE[roomId]) _HQ_FINDS_CACHE[roomId] = hqBuildFinds(roomId);
+    return _HQ_FINDS_CACHE[roomId];
+}
+/* THE WARM (2026-09-17): the shelf (hqTapeShelf) and the register need every
+   room's finds, so the building warms the cache in the BACKGROUND — a few
+   rooms per idle slice, never a frame's worth of work at once. Returns how
+   many rooms are still cold (0 = the whole list is ready). */
+function hqFindsWarm(budgetMs) {
+    const byRoom = hqFindsTapesByRoom(), rooms = Object.keys(byRoom);
+    if (DOOR_HQ.rooms.locker && rooms.indexOf('locker') < 0) rooms.push('locker');
+    const cold = rooms.filter(id => !_HQ_FINDS_CACHE[id]);
+    const t0 = Date.now(), budget = budgetMs > 0 ? budgetMs : 8;
+    for (let i = 0; i < cold.length; i++) {
+        hqFindsForRoom(cold[i]);
+        if (Date.now() - t0 >= budget) return cold.length - i - 1;
+    }
+    return 0;
+}
+function hqFindsDrop() {
+    Object.keys(_HQ_FINDS_CACHE).forEach(k => { delete _HQ_FINDS_CACHE[k]; });
+    Object.defineProperty(DOOR_HQ, 'finds', { configurable: true, enumerable: true, get: _hqFindsAll, set: _hqFindsPin });
+}
+function hqBuildFinds(only) {
+    const rows = [], R = HQ_FIND_RULES, pins = DOOR_HQ.findSpots || {};
+    const byRoom = hqFindsTapesByRoom();
+    (only != null ? [only] : Object.keys(byRoom)).forEach(roomId => {
+        if (!byRoom[roomId]) return;   // a room with no tape is no stop (the locker's deck row below is its own)
         const room = DOOR_HQ.rooms[roomId]; if (!room) return;
         const pin = pins[roomId] || {};
         const placed = [];
@@ -32099,9 +32136,18 @@ function hqBuildFinds() {
             { why: guarded ? 'a manila envelope of Hazard Pay the natives sit on — clear the room (9.4) and it glows' : 'a manila envelope of Hazard Pay — the building restocks it on a third of the days' }));
     });
     /* SKATEBOARDING (9.8): THE DECK leans on a locker in Room 26 — one row, never daily, shown only while the issue is not free (hqFindsInRoom); the locker room has no tape, so it is its own stop */
-    if (DOOR_HQ.rooms.locker) { const dpin = pins.locker || {}, ds = dpin.deck || hqFindSpot('locker', 'deck', []); if (ds) rows.push({ id: 'deck:locker', room: 'locker', kind: 'deck', x: ds.x, z: ds.z, relax: ds.relax || 0, why: 'a skateboard leaning on a locker; the letter on the locker is yours' }); }
+    if ((only == null || only === 'locker') && DOOR_HQ.rooms.locker) { const dpin = pins.locker || {}, ds = dpin.deck || hqFindSpot('locker', 'deck', []); if (ds) rows.push({ id: 'deck:locker', room: 'locker', kind: 'deck', x: ds.x, z: ds.z, relax: ds.relax || 0, why: 'a skateboard leaning on a locker; the letter on the locker is yours' }); }
     return rows;
 }
+function _hqFindsAll() {
+    const rooms = Object.keys(hqFindsTapesByRoom());
+    if (DOOR_HQ.rooms.locker && rooms.indexOf('locker') < 0) rooms.push('locker');
+    const rows = [];
+    rooms.forEach(id => { hqFindsForRoom(id).forEach(r => rows.push(r)); });
+    _hqFindsPin(rows);
+    return rows;
+}
+function _hqFindsPin(v) { Object.defineProperty(DOOR_HQ, 'finds', { value: v, writable: true, configurable: true, enumerable: true }); }
 /* hand-pinned spots (the generator's fallback): the cold room is 4 × 4 with hooks over the floor — the tape stands in the NE corner, the envelope lies on the shelving */
 DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 1.7, y: 1.2 } },
     /* D8 (PHASE9_QUALITY_PLAN §6, 2026-09-16): the door gun's second lesson — a visible LEDGE. The hall's tape stands ON THE LANDING
@@ -32125,7 +32171,7 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_heaven_stair:      { tape: { x: 10.0, z: 8.0 } },
     site_prebuilt_heaven_gate:       { tape: { x: 12.0, z: -8.0 } },
     site_prebuilt_fairy_forest_ritual:  { tape: { x: 0.0, z: -6.3 } } };    // THE ALTAR STONE   // the deck (SKATEBOARDING 9.8) takes the generator's far corner of Room 26
-DOOR_HQ.finds = hqBuildFinds();
+Object.defineProperty(DOOR_HQ, 'finds', { configurable: true, enumerable: true, get: _hqFindsAll, set: _hqFindsPin });
 /* ── THE DOOR GUN'S LEARNING SEQUENCE (PHASE9_QUALITY_PLAN §6 D8, 2026-09-16) ──
    Six situations the world already had, now LABELLED: a plate (catalogue
    `lesson_plaque` on a wall, `lesson_sign` on a post) stands where each is
@@ -32252,7 +32298,21 @@ function hqFindHardReach(row) {
     }
     return best || { ok: false, reason: 'no aim point', top };
 }
-function hqFindById(id) { return (DOOR_HQ.finds || []).find(f => f.id === id) || null; }
+/* the id names its room (`pay:<roomId>` · `deck:<roomId>` · `tape:<tapeId>` →
+   the sheet's `where`), so a lookup builds THAT room only — never the lot */
+function hqFindRoomOfId(id) {
+    if (typeof id !== 'string') return null;
+    const i = id.indexOf(':'); if (i < 0) return null;
+    const kind = id.slice(0, i), rest = id.slice(i + 1);
+    if (kind === 'pay' || kind === 'deck') return rest;
+    if (kind === 'tape') { const t = DOOR_TAPES.find(t => t.id === rest); return t ? t.where : null; }
+    return null;
+}
+function hqFindById(id) {
+    const room = hqFindRoomOfId(id);
+    if (room) return (hqFindsForRoom(room) || []).find(f => f.id === id) || null;
+    return (DOOR_HQ.finds || []).find(f => f.id === id) || null;
+}
 /* the record on the profile (never written by a reader). THE LEDGER (plan
    §4 B2, 2026-09-16): the claims live in TWO places and the read is their
    UNION — `door.hq.finds` (the building's local record: taken / tapes / the
@@ -32306,7 +32366,7 @@ function hqFindTaken(row, rec, date) {
 function hqFindsInRoom(roomId, profile, now) {
     const date = hqToday(now ? new Date(now) : undefined), rec = hqFindsRecord(profile);
     const cleared = (typeof hqEncounterCleared === 'function') ? !!hqEncounterCleared(profile, roomId, now) : false;
-    return (DOOR_HQ.finds || []).filter(f => f.room === roomId && hqFindLiveToday(f, date) && !hqFindTaken(f, rec, date) && !(f.kind === 'deck' && hqSkateIssueFree())   // the deck stands only while the issue is not free (9.8)
+    return (hqFindsForRoom(roomId) || []).filter(f => hqFindLiveToday(f, date) && !hqFindTaken(f, rec, date) && !(f.kind === 'deck' && hqSkateIssueFree())   // the deck stands only while the issue is not free (9.8)
         && !(f.guard && !cleared));   // a guarded find waits for the room to be cleared today (9.4 stage 2)
 }
 /* TAKE: writes the record on the profile object handed in (the caller saves
@@ -35430,7 +35490,7 @@ if (typeof window !== 'undefined') {
     window.HQ_GUN_LESSONS = HQ_GUN_LESSONS; window.hqGunLessons = hqGunLessons; window.hqFindHardReach = hqFindHardReach; window.HQ_HARD_REACH = HQ_HARD_REACH;
     window.DOOR_TAPES = DOOR_TAPES; window.HQ_FIND_RULES = HQ_FIND_RULES; window.hqFindsInRoom = hqFindsInRoom; window.hqCollectFind = hqCollectFind;
     window.hqFindsSyncPay = hqFindsSyncPay; window.hqTapeLegacyId = hqTapeLegacyId; window.hqFindLegacyId = hqFindLegacyId; window.hqFindsTakenUnion = hqFindsTakenUnion; window.hqFindsSyncedTaken = hqFindsSyncedTaken;
-    window.hqTapeShelf = hqTapeShelf; window.hqTapeCount = hqTapeCount; window.hqFindById = hqFindById; window.hqTapeById = hqTapeById; window.hqTapeClipUrl = hqTapeClipUrl; window.hqFindsRecord = hqFindsRecord;
+    window.hqTapeShelf = hqTapeShelf; window.hqTapeCount = hqTapeCount; window.hqFindById = hqFindById; window.hqFindsForRoom = hqFindsForRoom; window.hqFindsWarm = hqFindsWarm; window.hqFindsDrop = hqFindsDrop; window.hqTapeById = hqTapeById; window.hqTapeClipUrl = hqTapeClipUrl; window.hqFindsRecord = hqFindsRecord;
     window.hqCaveDoorCell = hqCaveDoorCell; window.hqCaveRooms = hqCaveRooms;
     /* THE TERRAIN ROOM (2026-09-17) */
     window.HQ_TERRAIN_RULES = HQ_TERRAIN_RULES; window.HQ_TERRAIN_GEN = HQ_TERRAIN_GEN; window.HQ_ROOM_LOOKS = HQ_ROOM_LOOKS; window.hqTerrainMaskAt = hqTerrainMaskAt; window.hqTerrainOpenAt = hqTerrainOpenAt; window.hqTerrainRooms = hqTerrainRooms; window.hqTerrainInfo = hqTerrainInfo; window.hqTerrainCompile = hqTerrainCompile;

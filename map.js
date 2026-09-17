@@ -547,6 +547,23 @@
                 }
             } catch (e) {}
         }
+        /* the idle warmer for data.js hqFindsWarm — one slice per idle callback
+           (or a timer where requestIdleCallback is absent), dropped once the
+           whole list is ready. Never runs during a battle: the HQ owns it. */
+        let _hqWarmPending = false;
+        function _hqScheduleFindsWarm() {
+            if (_hqWarmPending) return;
+            _hqWarmPending = true;
+            const idle = (typeof window.requestIdleCallback === 'function')
+                ? (fn => window.requestIdleCallback(fn, { timeout: 1200 }))
+                : (fn => setTimeout(fn, 120));
+            idle(function () {
+                _hqWarmPending = false;
+                let left = 0;
+                try { left = window.hqFindsWarm(6); } catch (e) { return; }   // a build that throws stops the warmer, never the building
+                if (left > 0 && state.gameState === GS.HQ) _hqScheduleFindsWarm();
+            });
+        }
         window._hqEnter = function (opts) {
             opts = opts || {};
             const loadGeneration = _hqCancelLoadCard();
@@ -556,6 +573,12 @@
             }
             const host = _hqEl('hqStage');
             if (!host) return false;
+            /* THE WARM (2026-09-17): a room's finds are built on first read
+               (data.js hqFindsForRoom) — the room you stand in is built here by
+               the renderer, and the REST are warmed a few at a time while the
+               building idles, so the tape shelf and the register never stall on
+               a cold cache. Cheap and idempotent: it stops at 0 cold rooms. */
+            if (typeof window.hqFindsWarm === 'function') _hqScheduleFindsWarm();
             const returning = !!opts.at || opts.from === 'return';
             const walking = opts.from === 'walk';
             /* which room: an explicit ask, else the room the player left from

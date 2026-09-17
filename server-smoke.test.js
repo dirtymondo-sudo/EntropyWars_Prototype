@@ -24,16 +24,17 @@ test('server boots and serves /api/queue-stats', { skip: !hasDeps, timeout: 3000
     let stderr = '';
     child.stderr.on('data', d => { stderr += d; });
     try {
-        // Poll until the server answers (or ~10s passes).
+        // Poll until the server answers (or ~25s passes — inside the 30s test
+        // timeout; a loaded CI runner boots slower than a warm laptop).
         let res = null;
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 125; i++) {
             await new Promise(r => setTimeout(r, 200));
             if (child.exitCode !== null) break;
             try { res = await fetch(`http://127.0.0.1:${port}/api/queue-stats`); break; }
             catch { /* not up yet */ }
         }
         assert.ok(child.exitCode === null, `server exited early (code ${child.exitCode}):\n${stderr}`);
-        assert.ok(res, 'server never answered /api/queue-stats');
+        assert.ok(res, `server never answered /api/queue-stats (no exit; stderr:\n${stderr})`);
         assert.strictEqual(res.status, 200);
         const body = await res.json();
         assert.strictEqual(typeof body, 'object');
