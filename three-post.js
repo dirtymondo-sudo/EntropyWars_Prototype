@@ -16,6 +16,7 @@ const ThreePost = (function () {
     // day/night presets carry bloomStr 0, so without this floor bloom is
     // invisible. A strength of 0 turns bloom off entirely.
     var BLOOM_USER_STRENGTH  = 0.05;   // default glow intensity (slider value) — near-off: day maps washed out at higher values
+    var BLOOM_FACTORY = BLOOM_USER_STRENGTH;   // THE LOOK YIELDS (2026-09-17): the factory default — a scene look fills a setting only while it still reads this
     var BLOOM_USER_RADIUS    = 0.6;    // how far the glow spreads
     var BLOOM_USER_THRESHOLD = 0.72;   // higher → only the brightest surfaces bloom (less daytime over-bloom on map/spawn zones)
     var BLOOM_MAX_STRENGTH   = 1.6;    // pause-menu slider ceiling
@@ -32,6 +33,7 @@ const ThreePost = (function () {
     // Daytime ambient pushes the map surfaces and the spawn zones bright enough
     // to bloom hard, so this lets the player dial the overall brightness down.
     var _exposureUser = 1.0;
+    var EXPOSURE_FACTORY = 1.0;
     var EXPOSURE_MIN = 0.55, EXPOSURE_MAX = 1.25;
     try {
         var _expSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_exposure') : null;
@@ -72,6 +74,7 @@ const ThreePost = (function () {
     // the screen around the camera's focal point stays sharp, everything
     // nearer/farther melts into a miniature-photography blur. Strength 0 = off.
     var _dofStrength = 0.65;                   // 0..1 (slider), 0 disables
+    var DOF_FACTORY = 0.65;
     var DOF_MAX_BLUR_PX = 5.0;                 // tap spread at strength 1 (per pass)
     var DOF_BAND = 0.13;                       // half-height of the fully-sharp band (uv)
     var DOF_FEATHER = 0.30;                    // uv distance over which blur ramps to full
@@ -400,6 +403,7 @@ const ThreePost = (function () {
         vigSize:    0.275,   // vignette radius (uVignetteSize) — 15% slider
         vigSoft:    0.55     // vignette edge softness (uVignetteSoft)
     };
+    var _CIN_FACTORY = {}; for (var _ck in _cin) _CIN_FACTORY[_ck] = _cin[_ck];   // THE LOOK YIELDS (2026-09-17): the sheet's defaults, before the saved preference lands
     try {
         var _cinSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_cinematic') : null;
         if (_cinSaved) {
@@ -717,6 +721,7 @@ const ThreePost = (function () {
         // sits below it; 0.075 (15% slider) lets a shallow band climb the sky.
         fogHorizon:     0.075
     };
+    var _RETRO_FACTORY = {}; for (var _rk in _retro) _RETRO_FACTORY[_rk] = _retro[_rk];   // THE LOOK YIELDS (2026-09-17)
     try {
         var _retroSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_retro') : null;
         if (_retroSaved) {
@@ -971,21 +976,41 @@ const ThreePost = (function () {
        every look at once (Settings → Graphics → Map Looks): map.js / the renderer pass null
        when localStorage ew_scene_looks === 'off'. */
     var _look = null;
-    function _lkNum(key, base) { return (_look && typeof _look[key] === 'number' && !isNaN(_look[key])) ? _look[key] : base; }
+    /* THE LOOK YIELDS TO THE PLAYER (2026-09-17 — the user: "when I change the settings in the menu it doesn't change anything;
+       it needs to still let me adjust the graphics"): a look fills in ONLY the settings the player has left at their FACTORY
+       default (the sheet's numbers above, captured before the saved preference lands). Any slider or toggle the player has
+       moved off its default wins everywhere, look or no look — so the map's grade is the starting point, never a lock.
+       _lkOwn(key) = the player owns that setting. */
+    var _LK_FACTORY = { exposure: EXPOSURE_FACTORY, bloom: BLOOM_FACTORY, dof: DOF_FACTORY, nightMood: NIGHT_FACTORY };
+    function _lkSame(a, b) { return (typeof a === 'number' && typeof b === 'number') ? Math.abs(a - b) < 1e-6 : a === b; }
+    function _lkOwnNum(key, base) { return !_lkSame(base, _LK_FACTORY[key]); }
+    function _lkNum(key, base) { return (_look && typeof _look[key] === 'number' && !isNaN(_look[key]) && !_lkOwnNum(key, base)) ? _look[key] : base; }
     function _lkRetro() {
         if (!_look || !_look.retro) return _retro;
         var o = {}; for (var k in _retro) o[k] = _retro[k];
-        var L = _look.retro; for (var k2 in L) if (L[k2] != null) o[k2] = L[k2];
+        var L = _look.retro, presetOwned = !_lkSame(_retro.preset, _RETRO_FACTORY.preset);
+        for (var k2 in L) if (L[k2] != null && _lkSame(_retro[k2], _RETRO_FACTORY[k2])) o[k2] = L[k2];
         if (!RETRO_PRESETS[o.preset]) o.preset = _retro.preset;
-        /* a preset named by the look re-seeds its own levels / tint unless the look pins them */
-        if (L.preset && RETRO_PRESETS[L.preset]) { if (L.levels == null) o.levels = RETRO_PRESETS[L.preset].levels; if (L.tintAmount == null) o.tintAmount = RETRO_PRESETS[L.preset].tintAmount; }
+        /* a preset named by the look re-seeds its own levels / tint unless the look pins them — only while the player has not chosen a preset or moved those sliders */
+        if (!presetOwned && L.preset && RETRO_PRESETS[L.preset]) {
+            if (L.levels == null && _lkSame(_retro.levels, _RETRO_FACTORY.levels)) o.levels = RETRO_PRESETS[L.preset].levels;
+            if (L.tintAmount == null && _lkSame(_retro.tintAmount, _RETRO_FACTORY.tintAmount)) o.tintAmount = RETRO_PRESETS[L.preset].tintAmount;
+        }
         return o;
     }
     function _lkCin() {
         if (!_look || !_look.cin) return _cin;
         var o = {}; for (var k in _cin) o[k] = _cin[k];
-        var L = _look.cin; for (var k2 in L) if (L[k2] != null) o[k2] = L[k2];
+        var L = _look.cin; for (var k2 in L) if (L[k2] != null && _lkSame(_cin[k2], _CIN_FACTORY[k2])) o[k2] = L[k2];
         return o;
+    }
+    /* what the look is worn over: every key the player owns (for the settings panels' hint + the tests) */
+    function getSceneLookOwned() {
+        var own = [];
+        for (var k in _LK_FACTORY) if (_lkOwnNum(k, k === 'exposure' ? _exposureUser : k === 'bloom' ? BLOOM_USER_STRENGTH : k === 'dof' ? _dofStrength : _nightMood)) own.push(k);
+        for (var r in _RETRO_FACTORY) if (!_lkSame(_retro[r], _RETRO_FACTORY[r])) own.push('retro.' + r);
+        for (var c in _CIN_FACTORY) if (!_lkSame(_cin[c], _CIN_FACTORY[c])) own.push('cin.' + c);
+        return own;
     }
     function setSceneLook(look) {
         var next = null;
@@ -1116,6 +1141,7 @@ const ThreePost = (function () {
     };
 
     var _nightMood = 0.40;                     // 0..1 pause-menu slider
+    var NIGHT_FACTORY = 0.40;
     try {
         var _nmSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_nightMood') : null;
         if (_nmSaved !== null) {
@@ -2439,6 +2465,7 @@ const ThreePost = (function () {
         setRetroFogHorizon: setRetroFogHorizon,
         getRetroFogHorizon: getRetroFogHorizon,
         setSceneLook: setSceneLook,
+        getSceneLookOwned: getSceneLookOwned,
         getSceneLook: getSceneLook,
         isReady: isReady,
         dispose: dispose

@@ -585,6 +585,19 @@
                (a return), else the egress (Play always starts on the floor) */
             let roomId = opts.room || (returning ? _hqLastRoom : (opts.from === 'play' ? _hqArrivalRoom() : 'central_egress'));
             if (!_hqRoomExists(roomId)) roomId = 'central_egress';
+            /* THE ENTRY (2026-09-17 — the user: "if I walk into a door or entry labeled Cyberpunk City it needs to take me to the grid;
+               same with the Strip"): a bypassed BOARD ROOM (data.js DOOR_HQ.siteRooms.entry — Cyberpunk City, the Strip, Downtown)
+               lands in the part that stands for the site, whatever led here (a threshold, GO on the map, a return from a match,
+               a lobby's street door); an `at` the part has is kept, the rest land at the part's bay door. The board room is
+               marked seen too, so the map's node for the site never stays a question mark. */
+            try {
+                const ent = (typeof window.hqSiteEntry === 'function') ? window.hqSiteEntry(roomId, opts.at) : null;
+                if (ent && ent.room && _hqRoomExists(ent.room)) {
+                    if (typeof _hqRecordRoomSeen === 'function') _hqRecordRoomSeen(roomId);
+                    if (_hqLastRoom === roomId) _hqLastRoom = ent.room;
+                    roomId = ent.room; opts.at = ent.at;
+                }
+            } catch (e) { console.warn('[HQ] site entry failed', e); }
             _hqCurRoom = roomId;
             /* ROOM VARIANTS (HQ plan 5.1, 2026-09-11): a fresh arrival rolls the
                building's variants for this visit (Room 86 after hours = the

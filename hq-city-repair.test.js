@@ -45,7 +45,7 @@ test('every normal outdoor city door is on a building front in the same frame; s
 test('escalator is built at the lower floor with a fitted width, uphill direction and fallback steps',()=>{
  const D=loadGameData(),room=D.DOOR_HQ.rooms.site_prebuilt_downtown_mall,{c,kits}=sandbox(),scene=new Group();
  const f=room.terrain.features.find(f=>f.escalator);assert.ok(f&&!f.stairs);c._hqBuildEscalators(room,{},scene,1.75);
- const group=scene.children[0],fallback=group.children[0];assert.equal(group.position.y,.3);assert.ok(fallback.children.length>30);assert.equal(group.rotation.y,-Math.PI/2);
+ const group=scene.children[0],fallback=group.children[0];assert.equal(group.position.y,.3);assert.ok(fallback.children.length>30);assert.equal(Math.abs(group.rotation.y),0);/* THE THIRD PASS (2026-09-17): the escalators climb north / south from the west concourse */assert.equal(scene.children.length,2);
  const {g,o}=kits[0];o.onDone(g,1,{min:{x:-.263672,z:-.5},max:{x:.267578,z:.5}});assert.ok(Math.abs(g.scale.x*.53125-f.w)<1e-8);assert.ok(Math.abs(g.scale.y*.56-f.h1)<1e-8);assert.equal(fallback.visible,false);
 });
 function car(s=0,pts=[[0,0],[20,0]],loop=false,len=5) {return {s,pts,cum:pts.length===2?[0,20]:[0,10,20],L:20,lane:0,v:4,len,route:0,loop,g:new Group(),hitT:0};}

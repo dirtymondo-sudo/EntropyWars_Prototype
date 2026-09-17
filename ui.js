@@ -7537,7 +7537,7 @@
                         <label class="pm-toggle"><input type="checkbox" ${spellGradeOn ? 'checked' : ''} onchange="window.EW_DISABLE_SPELL_GRADE=!this.checked;if(!this.checked&&typeof ThreePost!=='undefined'&&ThreePost.spellGradeClear)ThreePost.spellGradeClear();try{localStorage.setItem('ew_spellGrade',this.checked?'1':'0');}catch(e){}"><span class="pm-toggle-label">Spell Cinematics</span><span class="pm-toggle-hint">big spells black out the board around the caster and target, cycle colour and split the RGB</span></label>
                     </div>
                     <div class="pm-set-toggles" style="margin-top:8px">
-                        <label class="pm-toggle"><input type="checkbox" ${looksOn ? 'checked' : ''} onchange="if(window._setSceneLooks)window._setSceneLooks(this.checked);${RJ}"><span class="pm-toggle-label">Map Looks</span><span class="pm-toggle-hint">${lookNow ? 'wearing ' + lookNow + ' over your settings' : 'a map or a room may lay its own grade over these settings'}</span></label>
+                        <label class="pm-toggle"><input type="checkbox" ${looksOn ? 'checked' : ''} onchange="if(window._setSceneLooks)window._setSceneLooks(this.checked);${RJ}"><span class="pm-toggle-label">Map Looks</span><span class="pm-toggle-hint">${lookNow ? 'wearing ' + lookNow + ' under your settings — a slider you move wins over it' : 'a map or a room may fill in any setting you have left at its default; a slider you move wins'}</span></label>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Pixel Ratio</span>

@@ -5331,3 +5331,53 @@ amended. Ship data.js to R2 AND Render. UNSEEN LIVE (RULE #1c): the plates'
 loudness, the road out at the Strip's / the Stadium's / Nuketown's ends (a site
 room's apron), the neon glow at 60 fps. The rest of the pack (D.U.M.B., CERN,
 Area 51, the Δ boards) is still unworn — the key is the edit.
+
+## DISASTER CITY, THE THIRD PASS — THE LOOK YIELDS · THE TWO-FLOOR MALL · THE KERB RULE · THE MITRE · CYBERPUNK CITY IS THE GRID · THE STRIP ITS OWN AREA (2026-09-17, local delivery)
+**THE LOOK YIELDS TO THE PLAYER** (three-post.js): a scene look (`HQ_ROOM_LOOKS` /
+`env.look` / `shell.look`) fills in ONLY the settings still at their FACTORY
+default (`_RETRO_FACTORY` / `_CIN_FACTORY` / `BLOOM_FACTORY` / `EXPOSURE_FACTORY`
+/ `DOF_FACTORY` / `NIGHT_FACTORY`, captured before the saved preference lands);
+any slider / toggle the player moved wins everywhere (`_lkSame` at `_lkNum` /
+`_lkRetro` / `_lkCin`; a look's preset re-seeds levels / tint only while the
+player owns none of the three). `ThreePost.getSceneLookOwned()` lists the
+player's keys. RULE: a look is a starting grade, never a lock. **THE ENTRY**
+(data.js `DOOR_HQ.siteRooms.entry[mapId] = { room, door: { id, wall, x } }`,
+`hqSiteEntry(roomId, at)` / `hqSiteEntryOf(mapId)` / `hqApplySiteEntries()`;
+map.js `_hqEnter` redirects at its ONE room-resolution point and marks the
+board room seen): a site named there is BYPASSED — every door, threshold, GO
+and post-match return that would land in `site_<mapId>` lands in the part
+(`at` kept when the part has it, else the part's `bay` door = the board room's
+own egress copied onto the part at load, wearing `site` so its plate reads the
+number). Cyberpunk City = `site_prebuilt_cyberpunk_streets`, the Strip =
+`site_prebuilt_strip_streets` (NEW: `hqCityShell({ strip: true })`,
+`HQ_ROOM_LOOKS.strip`, the boulevard + the back-lane circuit + the valet deck
++ THE MARQUEE ROOF's hard tape; the highway links `downtown_strip` /
+`strip_cyberpunk` end on its e / w walls; the chapel's `street` door comes back
+onto it), Downtown = `site_prebuilt_downtown_streets` (its bay door at s x −30).
+The grid's tenement door is gone. Every part's label reads `DISASTER CITY ·
+<place>`. Bypassing a new site = one `entry` row (+ a `path` for the bay door's
+street on a city plan). **THE MALL** (`site_prebuilt_downtown_mall`): one open
+box 96 × 64 × 12, NO plan, NO store-unit mass — the upper floor is five
+plateaus at 4.6 (four galleries + THE EAST BRIDGE), the shops are
+`terrain.shops` rows (`{ x0, z0, x1, z1, nx, nz, y, lip | wall, names }`) drawn
+by three-renderer.js **`_hqBuildShopfronts`** (`HQ_SHOP`: bays, pilasters, the
+pack's tall glass + glow, a door, a shutter in three, a fascia sign per bay
+via `_hzTextTex`, the lip fascia + edge quad over the plateau's 0.35 m slope;
+merged per sheet; `_ew_hqPart: 'wall'`) — a shop is a FRONT on a surface that
+exists, never a mass. Two escalators (12 m) wear **`_hqEscalatorBalustrades`**
+(solid side panels over the field's sampled skirt); two 12-m stairs (RULE: a
+stair's last tread must stand within a climb of the tier before the tier's
+0.35 m edge overtakes it — a 9 m stair jumped 1.02 m); THE FUN BOX, two grind
+ledges (walls), the half pipe, THE CLOCK TOWER (the tape, 8.5 m). **THE
+SCATTER RULES** (`hqTerrainCompile` freeFor): never on a ramp / stair /
+escalator or its skirt; a seeded row refuses a slope > 0.25 (a row with its own
+centre keeps 0.5); **THE KERB RULE** in a city plan: `rad + 0.35 ≤ maskD ≤
+sidewalk − rad/2` (`f.road: true` opts out). **THE MITRE**
+(`_hqBuildRoadMarkings`): kerbs + edge lines trimmed on the inner side and
+extended on the outer by off·tan(θ/2) at every same-street corner. **THE
+OVERLAP SWEEP** (`_hqTGenerate` city): a lot overlapping an earlier lot on
+another face (1 cm) is dropped before the fronts. `HQ_TEXB.tint` /
+`tintNeon` darken the textured buildings. `npm test` runs
+`disaster-city-3.test.js`. Ship data.js to Render too. UNSEEN LIVE (RULE #1c):
+the shopfronts, the balustrades, the stairs, the kerb density, the mitres on
+the 45° chicane, the Strip at night, the bay doors.

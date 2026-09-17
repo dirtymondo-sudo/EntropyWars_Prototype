@@ -26,7 +26,7 @@ const TERRAIN_RULES = vm.runInContext('TERRAIN_RULES', D);
 const SPRITES_SRC = fs.readFileSync(require('node:path').join(__dirname, 'sprites.js'), 'utf8');
 const urbanOk = k => typeof k === 'string' && k.startsWith('urban:') && SPRITES_SRC.includes("'" + k.slice(6) + "'");   // THE URBAN PACK (2026-09-17)
 const SITES = {
-    prebuilt_strip:    { no: '21',   board: 'site_prebuilt_strip',    parts: ['chapel', 'casino'], back: { id: 'chapel', wall: 'n', x: -0.2, leaf: 'leaf_motel', into: 'chapel', at: 'street' } },
+    prebuilt_strip:    { no: '21',   board: 'site_prebuilt_strip',    parts: ['streets', 'chapel', 'casino'], back: { id: 'chapel', wall: 'n', x: -0.2, leaf: 'leaf_motel', into: 'chapel', at: 'street', backTo: 'site_prebuilt_strip_streets' } },   // THE THIRD PASS (2026-09-17): the Strip's own streets; the chapel walks back onto them
     prebuilt_downtown: { no: '1954', board: 'site_prebuilt_downtown', parts: ['lobby', 'subway', 'streets', 'mall', 'closet'], back: { id: 'tower', wall: 'e', z: 0, leaf: 'leaf_entrance', into: 'lobby', at: 'street' } },   // DISASTER CITY (2026-09-17): THE STREETS + THE MALL hang off the lobby's avenue doors (hq-city.test.js owns them)
 };
 const PART_IDS = [].concat(...Object.entries(SITES).map(([s, S]) => S.parts.map(p => S.board + '_' + p)));
@@ -103,8 +103,8 @@ test('the back doors: the chapel’s motel door takes the Strip’s one free nor
         assert.ok(bd.action.room === S.board + '_' + B.into && bd.action.at === B.at, site + ': walks into the ' + B.into);
         assert.notStrictEqual(bd.action, BD[0].action, 'the generator copies the action');
         const back = at(S.board + '_' + B.into, B.at);
-        assert.ok(back && back.leaf === B.leaf && back.action.room === S.board && back.action.at === B.id, site + ': the way back returns to the board room at the back door');
-        assert.strictEqual(back.wall, { n: 's', s: 'n', e: 'w', w: 'e' }[B.wall], site + ': the way back is on the opposite wall');
+        assert.ok(back && back.leaf === B.leaf && back.action.room === (B.backTo || S.board) && (B.backTo ? at(B.backTo, back.action.at) : back.action.at === B.id), site + ': the way back returns to ' + (B.backTo || 'the board room at the back door'));
+        if (!B.backTo) assert.strictEqual(back.wall, { n: 's', s: 'n', e: 'w', w: 'e' }[B.wall], site + ': the way back is on the opposite wall');
         assert.strictEqual(D.doorSiteState(bd, null), 'open', 'a room door is never sector-gated (C-12)');
         /* the lanes: a north door ≥ 4.4 m from every link door and clear of the x 5 signboard; an east door clear of the corner masts */
         const links = room.doors.filter(d => d.link);
@@ -178,9 +178,10 @@ test('every door in both complexes is reversible, each complex is connected from
                     assert.ok(far && far.action.room === id && far.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + ' is a pair');
                     continue;
                 }
-                if (HQ.rooms[a.room].kind === 'bay') { assert.strictEqual(id, S.board, 'only the board room walks back to the bay'); continue; }
-                const back = at(a.room, a.at);
-                assert.ok(back && back.action.room === id && back.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + '/' + (back && back.id) + ' is a pair');
+                if (HQ.rooms[a.room].kind === 'bay') { assert.ok(id === S.board || (d.entry && D.hqSiteEntryOf(site) && D.hqSiteEntryOf(site).room === id), 'only the board room — or the part that stands for it (siteRooms.entry, 2026-09-17) — walks back to the bay'); continue; }
+                const back = at(a.room, a.at), ent = D.hqSiteEntryOf(site);
+                const standIn = !!(ent && id === S.board && back && back.action.room === ent.room);   // THE ENTRY (2026-09-17): the board room is bypassed — its parts walk back onto the part that stands for it
+                assert.ok(back && ((back.action.room === id && back.action.at === d.id) || standIn), id + '/' + d.id + ' ⇄ ' + a.room + '/' + (back && back.id) + ' is a pair');
                 assert.strictEqual(back.leaf, d.leaf, 'the same leaf on both sides of ' + d.id);
                 assert.ok(ROOMS.includes(a.room), id + '/' + d.id + ' stays inside the site');
                 if (!seen.has(a.room)) { seen.add(a.room); queue.push(a.room); }

@@ -74,7 +74,7 @@ test('the sheet: two parts on Room 1954 — THE STREETS (open under Downtown’s
         assert.equal(D.hqComplexRoomId('prebuilt_downtown', r.part), id);
         assert.equal(r.roomNo, undefined); assert.equal(D.hqRoomNo(id), HQ.thresholds.prebuilt_downtown.roomNo); assert.equal(D.hqRoomSite(id), 'prebuilt_downtown');
         assert.ok(/DISASTER CITY/.test(r.label) && r.sub && r.spawn && Array.isArray(r.lines) && r.lines.length >= 3, id + ': plate, spawn, lines');
-        assert.ok(r.terrain && r.terrain.gen && r.terrain.gen.kind === 'city' && D.hqTerrainInfo(id), id + ': a city plan');
+        assert.ok(r.terrain && (id === MALL ? !r.terrain.gen : r.terrain.gen && r.terrain.gen.kind === 'city') && D.hqTerrainInfo(id), id + (id === MALL ? ': one open box, no plan (the third pass)' : ': a city plan'));
         assert.ok(r.shell.strips === false && Array.isArray(r.shell.lights) && r.shell.lights.length === 0 && r.shell.mood && r.shell.look && r.shell.look.name, id + ': the room lights itself, and wears a grade');
         for (const n of ['floor', 'wall', 'dado', 'trim']) assert.ok(HQ.textures[r.shell[n]] || TERRAIN_RULES[r.shell[n]] || urbanOk(r.shell[n]), id + ': texture ' + r.shell[n]);
         assert.ok(!r.doors.some(d => (HQ.catalogue[d.leaf] || {}).rank), id + ': no rank leaf');
@@ -84,7 +84,7 @@ test('the sheet: two parts on Room 1954 — THE STREETS (open under Downtown’s
     assert.ok(S.open && S.edge === 'open' && S.sky && S.sky.fog.density > 0 && !S.forest && S.floor === 'urban_street', 'the streets stand open on asphalt under a per-metre fog with no treeline');
     assert.equal(S.sky.tint, meta.tint); assert.equal(S.sky.scenery, meta.scenery); assert.equal(S.sky.fog.color, meta.fog.color); assert.equal(S.sky.night, 0);
     assert.equal(S.look, D.HQ_ROOM_LOOKS.city); assert.equal(HQ.rooms[MALL].shell.look, D.HQ_ROOM_LOOKS.mall);
-    assert.ok(!HQ.rooms[MALL].shell.open && HQ.rooms[MALL].shell.fog && HQ.rooms[MALL].shell.h >= 7.5 && HQ.rooms[MALL].terrain.gen.wallH + 2.4 <= HQ.rooms[MALL].shell.h, 'the mall is closed with headroom over its store roofs');
+    assert.ok(!HQ.rooms[MALL].shell.open && HQ.rooms[MALL].shell.fog && HQ.rooms[MALL].shell.h >= 7.5 && 4.6 + 2.4 <= HQ.rooms[MALL].shell.h, 'the mall is closed with headroom over its upper floor');
     assert.ok(D.HQ_ROOM_LOOKS.city.retro.preset === 'faded' && D.HQ_ROOM_LOOKS.mall.retro.preset === 'faded' && D.HQ_ROOM_LOOKS.city.nightMood < 0.3, 'the disaster-movie print');
     assert.ok(/function hqCityShell\(o\)/.test(data) && /window\.hqCityShell = hqCityShell/.test(data) && typeof D.hqCityShell === 'function', 'the shell helper');
     const reg = D.hqRoomRegister();
@@ -99,7 +99,7 @@ test('THE PLAN (`city`): the streets are the corridors (the ring road a loop, th
     const rectOf = (lot) => { const c = Math.cos(lot.rot), sn = Math.sin(lot.rot); return { x: lot.x, z: lot.z, hw: lot.w / 2, hd: lot.d / 2, ax: [c, -sn], az: [sn, c] }; };
     const overlaps = (A, B) => [A.ax, A.az, B.ax, B.az].every(ax => { const pr = R => { const c = R.x * ax[0] + R.z * ax[1], e = Math.abs(R.ax[0] * ax[0] + R.ax[1] * ax[1]) * R.hw + Math.abs(R.az[0] * ax[0] + R.az[1] * ax[1]) * R.hd; return [c - e, c + e]; }; const a = pr(A), b = pr(B); return !(a[1] <= b[0] + 0.015 || b[1] <= a[0] + 0.015); });
     const corner = (lot, sx, sz) => { const R = rectOf(lot); return [lot.x + R.ax[0] * sx * R.hw + R.az[0] * sz * R.hd, lot.z + R.ax[1] * sx * R.hw + R.az[1] * sz * R.hd]; };
-    for (const id of IDS) {
+    for (const id of [STREETS]) {   // THE THIRD PASS (2026-09-17): the mall has no plan any more — its shops are fronts on its galleries (disaster-city-3.test.js)
         const room = HQ.rooms[id], gen = room.terrain.gen, info = D.hqTerrainInfo(id);
         assert.ok(info.gen && info.gen.kind === 'city' && info.gen.solidSheet === 'cliff' && info.mask && info.maskD && info.genPlan && info.genPlan.streets.length === gen.streets.length, id + ': the plan compiled');
         assert.ok(info.lots.length >= (id === STREETS ? 20 : 10) && info.fronts.length >= (id === STREETS ? 20 : 6), id + ': lots ' + info.lots.length + ' / fronts ' + info.fronts.length);
@@ -141,16 +141,16 @@ test('THE PLAN (`city`): the streets are the corridors (the ring road a loop, th
     const road = D.hqTerrainHeight(st, 0, -20), walk = D.hqTerrainHeight(st, 6.2, -20), block = D.hqTerrainHeight(st, 12, -20);
     assert.ok(Math.abs(road) < 0.08 && walk - road > 0.09 && walk - road < 0.2 && block < 0.3, 'road ' + road + ' · sidewalk ' + walk + ' · block ' + block);
     assert.ok(st.gen.solidMass && st.gen.solidPad > 0 && D.hqTerrainSolidAt(st, 12, -20, 0) && D.hqTerrainFeet(st, 12, -20, null) === null && D.hqTerrainSolidTop(st, 12, -20) >= 3.2, 'the block is a mass');
-    assert.ok(!D.hqTerrainInfo(MALL).gen.solidMass && D.hqTerrainHeight(D.hqTerrainInfo(MALL), D.hqTerrainInfo(MALL).lots[0].x, D.hqTerrainInfo(MALL).lots[0].z) > 4.5, 'the mall keeps its podium: the units are the mass');
+    assert.ok(!D.hqTerrainInfo(MALL).gen && !(D.hqTerrainInfo(MALL).lots || []).length, 'the mall has no plan and no units (the third pass)');
     /* THE YARD WALLS: a frontage no lot covers wears a wall on the face line; never in front of a tier (the rooftop's own cliff is the door gun's) */
     assert.ok(st.yardWalls.length >= 6 && st.walls.filter(w => w.yard).length === st.yardWalls.length && st.yardWalls.every(w => w.h >= 1.7 && w.key)   /* THE URBAN PACK (2026-09-17): a hoarding is one 1.75 m tile of the corrugated sheet */, 'yard walls ' + st.yardWalls.length);
     assert.ok(!st.yardWalls.some(w => Math.abs(w.x0 - w.x1) < 0.1 && w.x0 < -32 && w.x0 > -35 && Math.min(w.z0, w.z1) < 19 && Math.max(w.z0, w.z1) > 11), 'no yard wall in front of THE ROOFTOP\'s west face');
     assert.ok(Math.abs(D.hqTerrainHeight(st, -29.5, 15) - 4.0) < 0.01, 'THE ROOFTOP is a level (max), not wallH stacked on it');
     assert.ok(Math.abs(D.hqTerrainHeight(st, 24, -15) - 3.0) < 0.05, 'the parking deck');
-    assert.ok(Math.abs(D.hqTerrainHeight(D.hqTerrainInfo(MALL), 14, -6.5) - 3.4) < 0.01, 'the mezzanine');
+    assert.ok(Math.abs(D.hqTerrainHeight(D.hqTerrainInfo(MALL), 29, -24.5) - 4.6) < 0.01, 'the upper floor');
     assert.ok(D.hqTerrainMaskAt(st, 20, -41) < -0.5 && D.hqTerrainMaskAt(st, 50, 22) < -0.5 && D.hqTerrainMaskAt(st, -20, 41) < -0.5, 'the outer ring of blocks stands between the ring road and the edge');
     assert.ok(st.gen.open > 0.45 && st.gen.open < 0.75, 'the streets are ' + Math.round(st.gen.open * 100) + '% open');
-    assert.equal(D.hqTerrainMaskAt(D.hqTerrainInfo(MALL), 0, 0) > 0, true, 'the atrium is open');
+    assert.ok(D.hqTerrainHeight(D.hqTerrainInfo(MALL), 0, 6) < 0.05, 'the atrium is open floor');
 });
 
 test('THE WAYS IN: the tower lobby’s AVENUE doors (its east wall, the clock moved) ⇄ the streets’ west wall at z −8; THE METRO stair on the platform’s north wall (the departures board moved over the track) ⇄ the streets’ north wall at x 12; THE MALL’s main entrance on the streets’ south wall ⇄ the mall’s; every pair the same leaf, never gated; the board room’s single back door is untouched', () => {
@@ -213,6 +213,7 @@ test('ONE PIECE: from the lobby’s avenue doors both parts are walked; every in
             const a = d.action || {};
             assert.ok(a.room && HQ.rooms[a.room], id + '/' + d.id + ' leads to a room');
             if (d.link) { assert.ok(HQ.links.some(l => l.id === d.link), id + '/' + d.id + ' is a links row'); const far = at(a.room, a.at); assert.ok(far && far.link === d.link, id + '/' + d.id + ': the far end pairs'); continue; }
+            if (d.entry) { assert.ok(HQ.rooms[a.room].kind === 'bay' && d.entry === 'prebuilt_downtown', id + '/' + d.id + ' is the site\'s bay door (siteRooms.entry, 2026-09-17)'); continue; }
             const other = at(a.room, a.at);
             assert.ok(other && other.action.room === id && other.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + ' is a pair');
             assert.equal(other.leaf, d.leaf); assert.equal(other.way, d.way);
@@ -277,10 +278,10 @@ test('THE PARK RULE + THE PLATFORMING: the streets have the parking deck (a 3 m 
     const foot = D.hqTerrainDoorLanding(HQ.rooms[STREETS], at(STREETS, 'tower')), R = D.hqTerrainReach(st, foot.x, foot.z);
     assert.ok(R.has(D.hqTerrainNodeKey(st, deck.x, deck.z)) && Math.abs(R.get(D.hqTerrainNodeKey(st, deck.x, deck.z)) - 3.0) < 0.3, 'the deck is walked up to');
     assert.ok(!R.has(D.hqTerrainNodeKey(st, roof.x, roof.z)), 'THE ROOFTOP is nobody’s but the door gun’s');
-    const mez = mF.find(f => f.k === 'plateau' && f.h === 3.4), esc = mF.find(f => f.k === 'ramp' && f.escalator);
-    assert.ok(mez && esc && esc.h1 === 3.4 && Math.hypot(esc.x1 - esc.x0, esc.z1 - esc.z0) >= 6 && mF.filter(f => f.k === 'rail').length >= 2 && HQ.rooms[MALL].props.some(p => p.key === 'railing_1m') && HQ.rooms[MALL].props.some(p => /^riser_/.test(p.key)), 'the mall’s park');
+    const mez = mF.find(f => f.k === 'plateau' && f.h === 4.6), esc = mF.find(f => f.k === 'ramp' && f.escalator);   // THE THIRD PASS: the upper floor's galleries at 4.6
+    assert.ok(mez && esc && esc.h1 === 4.6 && Math.hypot(esc.x1 - esc.x0, esc.z1 - esc.z0) >= 6 && mF.filter(f => f.k === 'rail').length >= 2 && HQ.rooms[MALL].props.some(p => p.key === 'railing_1m') && HQ.rooms[MALL].props.some(p => /^riser_/.test(p.key)), 'the mall’s park');
     const mfoot = D.hqTerrainDoorLanding(HQ.rooms[MALL], at(MALL, 'street')), MR = D.hqTerrainReach(ml, mfoot.x, mfoot.z);
-    assert.ok(MR.has(D.hqTerrainNodeKey(ml, mez.x, mez.z)) && Math.abs(MR.get(D.hqTerrainNodeKey(ml, mez.x, mez.z)) - 3.4) < 0.3, 'the mezzanine is walked up the escalator');
+    assert.ok(MR.has(D.hqTerrainNodeKey(ml, mez.x, mez.z)) && Math.abs(MR.get(D.hqTerrainNodeKey(ml, mez.x, mez.z)) - 4.6) < 0.3, 'the upper floor is walked up the escalator');
     for (const [id, pin] of [[STREETS, HQ.findSpots[STREETS].tape], [MALL, HQ.findSpots[MALL].tape]]) {
         const rows = D.hqFindsForRoom(id), tape = rows.find(r => /^tape:/.test(r.id));
         assert.ok(tape && tape.hard === true && tape.x === pin.x && tape.z === pin.z && tape.y >= 3.9, id + ': the tape is pinned high and hard (' + JSON.stringify(tape) + ')');

@@ -31,7 +31,7 @@ const PLANNED = ROOMS.filter(id => HQ.rooms[id].terrain.gen);
 const G = D.HQ_TERRAIN_GEN;
 
 test('the sheet: seventeen of the eighteen terrain rooms carry a floor plan — the cave chambers cellular automata, the open woods clearings + corridors; the storm drain (a culvert) keeps its box', () => {
-    assert.equal(PLANNED.length, 22, PLANNED.join(','));   // + CYBERPUNK CITY's grid (the second pass, 2026-09-17), + THE DIVINE STAIR's four, + THE VATICAN's archive and cortile (2026-09-17; the basilica and the observatory are their own floors), + DISASTER CITY's streets and mall (the `city` kind)
+    assert.equal(PLANNED.length, 22, PLANNED.join(','));   // + THE STRIP's streets, − the mall (its plan went in the third pass, 2026-09-17)   // + CYBERPUNK CITY's grid (the second pass, 2026-09-17), + THE DIVINE STAIR's four, + THE VATICAN's archive and cortile (2026-09-17; the basilica and the observatory are their own floors), + DISASTER CITY's streets and mall (the `city` kind)
     for (const id of PLANNED) {
         const room = HQ.rooms[id], gen = room.terrain.gen, info = D.hqTerrainInfo(id);
         assert.ok(gen.kind === 'cave' || gen.kind === 'rooms' || gen.kind === 'city', id + ': kind ' + gen.kind);

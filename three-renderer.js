@@ -38661,6 +38661,7 @@ const ThreeRenderer = (function () {
         /* ── DISASTER CITY (2026-09-17): the buildings on the lots + the fronts, the street lamps, the traffic, the circuit ── */
         _hqBuildCityEntrances(room, info, G, TK);
         _hqBuildEscalators(room, info, G, TM);
+        if (info.shops && info.shops.length) { try { _hqBuildShopfronts(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the shopfronts failed', e); } }   // THE MALL, THE THIRD PASS (2026-09-17)
         if (info.lots && info.lots.length) { try { _hqBuildCityLots(room, info, G, TM, rng, TK); } catch (e) { console.warn('[HQ] the city lots failed', e); } }
         if (info.genPlan && info.genPlan.streets) { try { _hqBuildStreetLamps(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the street lamps failed', e); } }
         if (info.genPlan && info.genPlan.streets && info.gen && info.gen.kind === 'city') { try { _hqBuildRoadMarkings(room, info, G, TM); } catch (e) { console.warn('[HQ] the road markings failed', e); } }   // THE STREETS IN THE PACK (2026-09-17): the asphalt is the field's floor sheet; the paint, the kerbs, the manholes and the signs stand on it
@@ -38748,7 +38749,7 @@ const ThreeRenderer = (function () {
        textured shop now (the plain concrete box is gone). Blocking is the
        plan's own mass rule (hqTerrainSolidAt) — a building adds no blocker.
        ═══════════════════════════════════════════════════════════════════════ */
-    var HQ_TEXB = { cell: 1.75, storey: 3.5, parapet: 0.45, outset: 0.012 };
+    var HQ_TEXB = { cell: 1.75, storey: 3.5, parapet: 0.45, outset: 0.012, tint: 0xa8a49c, tintNeon: 0x62627a };
     var _HQ_TEX_STYLES = {
         office:      { spandrel: 'ConcreteStriped', glass: 'GlassWindowSquare', ground: 'store', door: 'DoorStorefrontHalf', roof: 'ConcreteUnderTiles1', maxS: 6 },
         tower:       { spandrel: null, glass: 'GlassWindowTall', ground: 'store', door: 'DoorStorefrontHalf', roof: 'ConcreteUnderTiles1', tall: true, minS: 3 },
@@ -38803,8 +38804,9 @@ const ThreeRenderer = (function () {
             var tex = _hzTex(key), m;
             if (kind === 'over') { m = new THREE.MeshPhongMaterial({ map: tex || null, transparent: true, alphaTest: 0.35, shininess: 30, specular: 0x333333, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }); }
             else m = new THREE.MeshPhongMaterial({ map: tex || null, shininess: (kind === 'glass') ? 70 : 6, specular: (kind === 'glass') ? 0x445566 : 0x151515 });
-            m.color = new THREE.Color(neon ? 0x8c8ca4 : 0xffffff);
-            m.emissive = new THREE.Color(neon ? 0x0c0a14 : 0x101010);
+            /* THE TINT (2026-09-17 — the user: "the textures are too light compared to the prism buildings, tint them a little darker"): HQ_TEXB.tint / tintNeon, one number each */
+            m.color = new THREE.Color(neon ? HQ_TEXB.tintNeon : HQ_TEXB.tint);
+            m.emissive = new THREE.Color(neon ? 0x08060e : 0x0a0a0a);
             if (glowKey) { var gt = _hzTex(glowKey); if (gt) { m.emissiveMap = gt; m.emissive = new THREE.Color(0xffffff); m.emissiveIntensity = neon ? 0.95 : 0.35; } }
             m._ew_hzNear = true;
             return m;
@@ -39048,6 +39050,138 @@ const ThreeRenderer = (function () {
             if (tx) { var sign = new THREE.Mesh(new THREE.PlaneGeometry(5.5 * U, 0.7 * U), new THREE.MeshBasicMaterial({ map: tx, transparent: true })); sign.position.set(0, 4.05 * U, 0.02 * U); g.add(sign); }
         });
     }
+    /* ═══════════════════════════════════════════════════════════════════════
+       THE SHOPFRONTS (THE MALL, THE THIRD PASS — 2026-09-17; the user: "get rid
+       of the mall shop buildings, they are poking out the sides of the walls
+       and clipping; think of the mall as a skating playground, bigger, at
+       least 2 floors with shops"). A shop is a FRONT drawn on a surface that
+       already exists — a tier's cliff face (the upper floor's galleries: their
+       faces toward the concourse are the ground floor's shops) or the room's
+       own wall (the upper floor's) — never a mass of its own, so nothing can
+       poke through a wall. terrain.shops rows (data.js): { x0, z0, x1, z1 } the
+       line, (nx, nz) the way it faces, y the floor it stands on, lip = the tier
+       height whose slope it dresses (the balcony's fascia + an edge quad over
+       the field's 0.35 m blend), wall = it hangs on the shell (6 cm proud),
+       names = the signs in order. Each run is cut into bays of ~6.4 m: a
+       pilaster between bays, glazing (the pack's tall glass, its glow twin as
+       the emissive), a door in the middle, one bay in three SHUTTERED (the
+       corrugated sheet), a fascia sign per bay (_hzTextTex, the store's
+       name), merged per material (one draw call per sheet + one per sign).
+       ═══════════════════════════════════════════════════════════════════════ */
+    var HQ_SHOP = { bay: 6.4, pilaster: 0.35, pilasterOut: 0.22, glassTop: 2.9, fasciaH: 0.95, fasciaOut: 0.14, doorW: 1.15, doorH: 2.25, shutterP: 0.3, lipOut: 0.42, wallOut: 0.06, signW: 512, signH: 128 };
+    function _hqBuildShopfronts(room, info, G, TM, rng) {
+        var U = _hqUnits(), S = room.shell || {}, rows = info.shops || [], made = 0, signs = 0;
+        var hAt = function (x, z) { return hqTerrainHeight(info, x, z); };
+        var bucket = function () { return { pos: [], uv: [], idx: [], n: 0 }; };
+        var B = { glass: bucket(), shutter: bucket(), wall: bucket(), floor: bucket(), door: bucket() }, signMeshes = [];
+        var signRng = rng || _mulberry32(0x5170);
+        /* a quad on a run: t along the line, y up, d out along the normal; wound to face (nx, nz) */
+        var quad = function (Bk, P, t0, t1, y0, y1, d, uv) {
+            var A = P.at(t0, y0, d), Bp = P.at(t1, y0, d), C = P.at(t1, y1, d), D = P.at(t0, y1, d);
+            var flip = (-P.az * P.nx + P.ax * P.nz) < 0;
+            var q = flip ? [D, C, Bp, A] : [A, Bp, C, D], u = flip ? [uv[3], uv[2], uv[1], uv[0]] : uv;
+            for (var i = 0; i < 4; i++) { Bk.pos.push(q[i][0] * U, q[i][1] * U + 0.3, q[i][2] * U); Bk.uv.push(u[i][0], u[i][1]); }
+            var b = Bk.n; Bk.idx.push(b, b + 1, b + 2, b, b + 2, b + 3); Bk.n += 4;
+        };
+        /* a box proud of the run (a pilaster): its front + its two returns */
+        var box = function (Bk, P, t0, t1, y0, y1, d0, d1) {
+            quad(Bk, P, t0, t1, y0, y1, d1, [[0, 0], [(t1 - t0) / 1.75, 0], [(t1 - t0) / 1.75, (y1 - y0) / 1.75], [0, (y1 - y0) / 1.75]]);
+            /* the returns: thin quads at t0 and t1 between d0 and d1 (drawn double-sided by the material) */
+            [t0, t1].forEach(function (t) {
+                var A = P.at(t, y0, d0), Bq = P.at(t, y0, d1), C = P.at(t, y1, d1), D = P.at(t, y1, d0);
+                for (var i = 0; i < 4; i++) { var v = [A, Bq, C, D][i]; Bk.pos.push(v[0] * U, v[1] * U + 0.3, v[2] * U); Bk.uv.push(i === 1 || i === 2 ? (d1 - d0) / 1.75 : 0, i >= 2 ? (y1 - y0) / 1.75 : 0); }
+                var b = Bk.n; Bk.idx.push(b, b + 1, b + 2, b, b + 2, b + 3); Bk.n += 4;
+            });
+        };
+        rows.forEach(function (r, ri) {
+            var dx = r.x1 - r.x0, dz = r.z1 - r.z0, L = Math.hypot(dx, dz); if (L < 2) return;
+            var ax = dx / L, az = dz / L, nl = Math.hypot(r.nx || 0, r.nz || 0) || 1, nx = (r.nx || 0) / nl, nz = (r.nz || 0) / nl;
+            var y0 = (typeof r.y === 'number') ? r.y : 0, out = r.wall ? HQ_SHOP.wallOut : HQ_SHOP.lipOut;
+            var P = { ax: ax, az: az, nx: nx, nz: nz, at: function (t, y, d) { return [r.x0 + ax * t + nx * d, y, r.z0 + az * t + nz * d]; } };
+            var nb = Math.max(1, Math.round(L / (r.bay || HQ_SHOP.bay))), bw = L / nb, names = r.names || _HQ_STORE_NAMES;
+            var gTop = y0 + HQ_SHOP.glassTop, fTop = gTop + HQ_SHOP.fasciaH;
+            for (var i = 0; i < nb; i++) {
+                var t0 = i * bw, t1 = (i + 1) * bw, p = HQ_SHOP.pilaster / 2;
+                var shut = (r.shutter != null ? r.shutter : HQ_SHOP.shutterP) > signRng();
+                /* the glazing (or the shutter) between the pilasters, on the panel plane */
+                var Bk = shut ? B.shutter : B.glass, sw = (t1 - t0) - 2 * p;
+                quad(Bk, P, t0 + p, t1 - p, y0 + 0.04, gTop, out, [[0, 0], [sw / 1.75, 0], [sw / 1.75, (gTop - y0) / 1.75], [0, (gTop - y0) / 1.75]]);
+                if (!shut) { var dm = (t0 + t1) / 2, dw = HQ_SHOP.doorW / 2; quad(B.door, P, dm - dw, dm + dw, y0 + 0.04, y0 + HQ_SHOP.doorH, out + 0.012, [[0, 0], [1, 0], [1, 1], [0, 1]]); }
+                /* the fascia: a sign per bay, proud of the glass */
+                var name = String(names[(i + ri) % names.length] || 'STORE');
+                var tex = _hzTextTex('hq_shop_' + name.replace(/[^A-Z0-9]+/gi, '_').toLowerCase() + '_' + (shut ? 'x' : 'o'), [name], { w: HQ_SHOP.signW, h: HQ_SHOP.signH, bg: shut ? '#3a3632' : ['#1e3a8a', '#8a1e2a', '#1e6a3a', '#5a2a7a', '#8a5a1e'][(i + ri) % 5], color: shut ? '#8a847a' : '#fff4e0', border: shut ? '#54504a' : '#ffffff', pad: 0.2 });
+                var Bs = bucket(); quad(Bs, P, t0 + p, t1 - p, gTop, fTop, out + HQ_SHOP.fasciaOut, [[0, 0], [1, 0], [1, 1], [0, 1]]);
+                signMeshes.push({ B: Bs, tex: tex, shut: shut });
+                /* the fascia's underside + top (so the sign is a box, not a card): thin wall-sheet strips */
+                quad(B.wall, P, t0 + p, t1 - p, gTop - 0.02, gTop, out + HQ_SHOP.fasciaOut, [[0, 0], [sw / 1.75, 0], [sw / 1.75, 0.02], [0, 0.02]]);
+                /* the pilaster at the bay's start (and the run's end) */
+                box(B.wall, P, t0 - (i ? p : 0), t0 + p, y0 - 0.05, fTop + (r.lip ? 0 : 0.25), out - 0.02, out + HQ_SHOP.pilasterOut);
+                if (i === nb - 1) box(B.wall, P, t1 - p, t1, y0 - 0.05, fTop + (r.lip ? 0 : 0.25), out - 0.02, out + HQ_SHOP.pilasterOut);
+                signs++;
+            }
+            /* THE LIP: the balcony's band from the fascia up over the tier's edge (covers the field's slope), and the edge quad on top */
+            if (r.lip) {
+                var lipY = y0 + r.lip;
+                quad(B.wall, P, 0, L, fTop, lipY + 0.12, out + 0.02, [[0, 0], [L / 1.75, 0], [L / 1.75, (lipY + 0.12 - fTop) / 1.75], [0, (lipY + 0.12 - fTop) / 1.75]]);
+                /* the edge quad: from the rect line (d = 0) to the panel plane (d = out + 0.02), flat at lipY + 0.02 — wound to face up */
+                var A = P.at(0, lipY + 0.02, 0), Bq = P.at(L, lipY + 0.02, 0), C = P.at(L, lipY + 0.02, out + 0.04), D = P.at(0, lipY + 0.02, out + 0.04);
+                var up = ((Bq[0] - A[0]) * (C[2] - Bq[2]) - (Bq[2] - A[2]) * (C[0] - Bq[0])) < 0;   // (B−A) × (C−B) has y = ax*cz − az*cx; want +y
+                var q = up ? [A, Bq, C, D] : [D, C, Bq, A];
+                for (var j = 0; j < 4; j++) { B.floor.pos.push(q[j][0] * U, q[j][1] * U + 0.3, q[j][2] * U); B.floor.uv.push(q[j][0] / 1.75, q[j][2] / 1.75); }
+                var b0 = B.floor.n; B.floor.idx.push(b0, b0 + 1, b0 + 2, b0, b0 + 2, b0 + 3); B.floor.n += 4;
+            }
+            made++;
+        });
+        var mk = function (Bk, mat, order) {
+            if (!Bk.n) return null;
+            var g = new THREE.BufferGeometry();
+            g.setAttribute('position', new THREE.Float32BufferAttribute(Bk.pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(Bk.uv, 2)); g.setIndex(Bk.idx); g.computeVertexNormals();
+            var m = new THREE.Mesh(g, mat); m.renderOrder = order || 1; m.castShadow = false; m.receiveShadow = true; m._ew_hqShop = true; m._ew_hqPart = 'wall'; G.add(m); return m;
+        };
+        var glassTex = _hzTex('urban:GlassWindowTall1a'), glowTex = (typeof urbanTexGlow === 'function' && urbanTexGlow('GlassWindowTall1a')) ? _hzTex('urban:' + urbanTexGlow('GlassWindowTall1a')) : null;
+        var glassMat = new THREE.MeshPhongMaterial({ map: glassTex || null, color: glassTex ? 0xb8bcc4 : 0x1e2830, shininess: 80, specular: 0x556677, side: THREE.DoubleSide });
+        if (glowTex) { glassMat.emissiveMap = glowTex; glassMat.emissive = new THREE.Color(0xffffff); glassMat.emissiveIntensity = 0.28; } else glassMat.emissive = new THREE.Color(0x0c1014);
+        var shutTex = _hzTex('urban:MetalCorrugatedPainted1a'), shutMat = new THREE.MeshPhongMaterial({ map: shutTex || null, color: shutTex ? 0x9a9690 : 0x6a6660, shininess: 12, side: THREE.DoubleSide }); shutMat.emissive = new THREE.Color(0x0a0a0a);
+        var wallTex = _hzTex(S.wall || 'concrete'), wallMat = new THREE.MeshLambertMaterial({ map: wallTex || null, color: (S.wallColor != null) ? S.wallColor : 0xcfcbc4, side: THREE.DoubleSide }); wallMat.emissive = new THREE.Color(0x101010);
+        var floorTex = _hzTex(S.floor || 'concrete'), floorMat = new THREE.MeshLambertMaterial({ map: floorTex || null, color: (S.floorColor != null) ? S.floorColor : 0xe0dcd4 }); floorMat.emissive = new THREE.Color(0x101010);
+        var doorName = (typeof urbanTexPick === 'function') ? urbanTexPick('DoorStorefrontHalf', signRng) : null, doorTex = doorName ? _hzTex('urban:' + doorName) : null;
+        var doorMat = new THREE.MeshLambertMaterial({ map: doorTex || null, color: doorTex ? 0xffffff : 0x2a3038, transparent: !!doorTex, alphaTest: doorTex ? 0.3 : 0, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }); doorMat.emissive = new THREE.Color(0x141414);
+        mk(B.wall, wallMat, 1); mk(B.floor, floorMat, 1); mk(B.glass, glassMat, 1); mk(B.shutter, shutMat, 1); mk(B.door, doorMat, 2);
+        signMeshes.forEach(function (sm) {
+            var m = new THREE.MeshLambertMaterial({ map: sm.tex || null, color: sm.tex ? 0xffffff : 0x1e3a8a }); m.emissive = new THREE.Color(sm.shut ? 0x101010 : 0x303030); if (sm.tex) m.emissiveMap = sm.tex;
+            mk(sm.B, m, 2);
+        });
+        if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] shopfronts', made, 'runs', signs, 'bays');
+    }
+    /* THE BALUSTRADES (THE MALL, THE THIRD PASS — 2026-09-17; the user: "why is there this stretched tile texture going up the
+       side of the escalator?"): the field is sampled every 0.5 m, so a hard-edged ramp still draws a sloped skirt of the cliff
+       sheet either side of itself. Every escalator wears a solid steel balustrade along both sides — a wedge from below the
+       floor to a metre over the treads — that hides the skirt and reads as the machine's own side panel. Local frame: +Z the
+       low end, −Z the top (the builder's). */
+    function _hqEscalatorBalustrades(group, f, U) {
+        var len = Math.hypot(f.x1 - f.x0, f.z1 - f.z0), rise = f.h1 - f.h0, hw = f.w / 2 + 0.55, th = 0.12, over = 1.0, under = 0.25;
+        var mat = new THREE.MeshPhongMaterial({ color: 0x7a7e86, shininess: 55, specular: 0x333338, side: THREE.DoubleSide }); mat.emissive = new THREE.Color(0x0e0e10);
+        var pos = [], idx = [], uv = [];
+        var v = function (x, y, z) { pos.push(x * U, y * U, z * U); uv.push(z / 1.75, y / 1.75); return pos.length / 3 - 1; };
+        [-1, 1].forEach(function (side) {
+            [0, 1].forEach(function (inner) {
+                var x = side * (hw - (inner ? th : 0));
+                var a = v(x, -under, len / 2), b = v(x, -under, -len / 2), c = v(x, rise + over, -len / 2), d = v(x, over, len / 2);
+                idx.push(a, b, c, a, c, d);
+            });
+            /* the top strip between the two faces */
+            var xo = side * hw, xi = side * (hw - th);
+            var t0 = v(xo, over, len / 2), t1 = v(xo, rise + over, -len / 2), t2 = v(xi, rise + over, -len / 2), t3 = v(xi, over, len / 2);
+            idx.push(t0, t1, t2, t0, t2, t3);
+            /* the two ends */
+            var e0 = v(xo, -under, len / 2), e1 = v(xi, -under, len / 2); idx.push(e0, e1, t3, e0, t3, t0);
+            var e2 = v(xo, -under, -len / 2), e3 = v(xi, -under, -len / 2); idx.push(e2, t1, t2, e2, t2, e3);
+        });
+        var g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+        var m = new THREE.Mesh(g, mat); m._ew_hqBalustrade = true; m.castShadow = false; group.add(m);
+        return m;
+    }
     /* The escalator replaces the visible terrain ramp. Its measured GLB has
        +Z at the low end, -Z at the top, and flat landings at both ends.
        A fitted metal stair remains visible if the model is unavailable. */
@@ -39059,6 +39193,7 @@ const ThreeRenderer = (function () {
             var dx = f.x1 - f.x0, dz = f.z1 - f.z0, len = Math.hypot(dx, dz), rise = f.h1 - f.h0;
             var group = new THREE.Group(); group.position.set((f.x0 + f.x1) / 2 * U, f.h0 * U + 0.3, (f.z0 + f.z1) / 2 * U); group.rotation.y = Math.atan2(-dx, -dz); G.add(group);
             var fallback = new THREE.Group(); group.add(fallback);
+            try { _hqEscalatorBalustrades(group, f, U); } catch (e) { console.warn('[HQ] the balustrades failed', e); }   // THE THIRD PASS (2026-09-17): the side panels over the field's skirt
             var metal = new THREE.MeshPhongMaterial({ color: 0x666b70, shininess: 70 }), edge = new THREE.MeshBasicMaterial({ color: 0xd7b74a });
             var n = Math.ceil(rise / 0.15);
             for (var i = 0; i < n; i++) {
@@ -39207,6 +39342,17 @@ const ThreeRenderer = (function () {
                 if (dot < 0.985) corner[i] = (Math.abs(dot) < 0.2) ? w / 2 + R.cornerTrim : w * 0.55;
             }
             if (loop) corner[n - 1] = corner[0];
+            /* THE MITRE (2026-09-17 — the user: "the lines / curbs on the street are clipping in some areas or just don't make sense"): at a
+               corner of the SAME street an offset line on the INNER side is trimmed by off · tan(θ/2) before the vertex and the OUTER one
+               extended by the same, so the two segments' kerbs and edge lines meet at one point — they used to cross on the inside and
+               leave a square gap on the outside of every right angle. An open end or a junction with another street gets 0. */
+            var mitre = function (vi, sd, off, dOwn) {
+                var hasPrev = vi > 0 || loop, hasNext = vi + 1 < n || loop; if (!hasPrev || !hasNext) return 0;
+                var ip = vi > 0 ? vi - 1 : n - 2, inx = vi + 1 < n ? vi + 1 : 1, d1 = dir(pts[ip], pts[vi]), d2 = dir(pts[vi], pts[inx]);
+                var dot = d1.x * d2.x + d1.z * d2.z; if (dot > 0.985) return 0;
+                var cross = d1.x * d2.z - d1.z * d2.x, inner = (cross * sd) > 0, theta = Math.acos(Math.max(-1, Math.min(1, dot)));
+                return (inner ? -1 : 1) * off * Math.tan(theta / 2);
+            };
             for (var k = 0; k + 1 < n; k++) {
                 var d = dir(pts[k], pts[k + 1]), L = d.L, t0 = corner[k] || 0, t1 = L - (corner[k + 1] || 0);
                 var edgeOff = w / 2 - R.edgeIn;
@@ -39220,9 +39366,10 @@ const ThreeRenderer = (function () {
                 [-1, 1].forEach(function (sd) {
                     var run = null;
                     var flush = function () { if (run && run[1] - run[0] > 0.6) { var mid = (run[0] + run[1]) / 2; flat(Bw, pts[k][0] + d.x * mid, pts[k][1] + d.z * mid, d.x, d.z, run[1] - run[0], R.edgeW, sd * edgeOff); } run = null; };
-                    for (var u = 0; u <= L; u += 0.5) {
+                    var mA = mitre(k, sd, edgeOff), mB = mitre(k + 1, sd, edgeOff);
+                    for (var u = -mA; u <= L + mB; u += 0.5) {
                         var px = pts[k][0] + d.x * u + (-d.z) * sd * edgeOff, pz = pts[k][1] + d.z * u + d.x * sd * edgeOff;
-                        var ok = !inOther(px, pz, si, 0.3) && !inPad(px, pz, 1.9) && u >= (corner[k] ? corner[k] - w / 2 : 0) && u <= L - (corner[k + 1] ? corner[k + 1] - w / 2 : 0);
+                        var ok = !inOther(px, pz, si, 0.3) && !inPad(px, pz, 1.9);
                         if (ok) { if (!run) run = [u, u]; else run[1] = u; } else flush();
                     }
                     flush();
@@ -39245,7 +39392,8 @@ const ThreeRenderer = (function () {
                         quad(Bk, face, [[0, 0], [0.1, 0], [0.1, vl], [0, vl]]);
                         run = null;
                     };
-                    for (var u2 = 0; u2 <= L; u2 += 0.5) {
+                    var kA = mitre(k, sd, kOff), kB = mitre(k + 1, sd, kOff);
+                    for (var u2 = -kA; u2 <= L + kB; u2 += 0.5) {
                         var qx = pts[k][0] + d.x * u2 + (-d.z) * sd * kOff, qz = pts[k][1] + d.z * u2 + d.x * sd * kOff;
                         var okK = !inOther(qx, qz, si, walk + 0.3) && !inPad(qx, qz, 2.6) && Math.abs(qx) < info.halfW - 0.6 && Math.abs(qz) < info.halfD - 0.6;
                         if (okK) { if (!run) run = [u2, u2]; else run[1] = u2; } else flushK();

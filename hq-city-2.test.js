@@ -89,9 +89,9 @@ test('CYBERPUNK CITY · THE GRID: a terrain part on Room 2047 wearing hqCityShel
     assert.ok(shot && shot.ok === true, 'the door gun has a shot: ' + JSON.stringify(shot));
     assert.ok(rows.some(x => /^pay:/.test(x.id) && !x.hard), 'the envelope on the ground');
     /* the board room's back gate: the lane the train stood on */
-    const back = at(CYBER, 'street'), gate = at(GRID, 'board');
-    assert.ok(back && back.wall === 'n' && back.x === -10 && back.leaf === 'leaf_holographic' && back.action.room === GRID && back.action.at === 'board', 'the back gate on the board room');
-    assert.ok(gate && gate.wall === 's' && gate.leaf === back.leaf && gate.action.room === CYBER && gate.action.at === 'street', 'the gate pairs');
+    const back = at(CYBER, 'street'), gate = at(GRID, 'bay');   // THE THIRD PASS (2026-09-17): the grid IS Cyberpunk City — the board room is bypassed (siteRooms.entry) and the grid's south door is the bay's
+    assert.ok(back && back.wall === 'n' && back.x === -10 && back.leaf === 'leaf_holographic' && back.action.room === GRID && back.action.at === 'bay', 'the back gate on the board room lands at the grid\'s bay door');
+    assert.ok(gate && gate.wall === 's' && gate.leaf === back.leaf && gate.entry === 'prebuilt_cyberpunk' && HQ.rooms[gate.action.room].kind === 'bay' && !at(GRID, 'board'), 'the bay door stands where the tenement gate stood');
     for (const o of HQ.rooms[CYBER].doors) if (o !== back && o.wall === 'n') assert.ok(Math.abs(o.x - back.x) >= 4.4, 'the gate shares a lane with ' + o.id);
     assert.ok(!r.doors.some(d => (HQ.catalogue[d.leaf] || {}).rank), 'no rank leaf');
     assert.ok(r.npcSpots.every(n => D.AVAILABLE_RACES.includes(n.race)), 'the natives are races');
@@ -150,7 +150,7 @@ test('THE CITY BATCH: every file is in _MISC_GLB under its key once and named on
     assert.ok(st.terrain.features.some(f => f.k === 'scatter' && f.key === 'city_bin') && !st.terrain.features.some(f => f.k === 'scatter' && f.key === 'trash_bin') && ml.terrain.features.some(f => f.k === 'scatter' && f.key === 'mall_bin') && !ml.terrain.features.some(f => f.k === 'scatter' && f.key === 'trash_bin'), 'the bins: outside / inside');
     assert.ok(st.props.filter(p => /^crashed_car/.test(p.key)).length >= 3 && st.props.filter(p => p.key === 'bus_shelter').length === 2 && st.terrain.features.some(f => f.key === 'traffic_cone') && st.terrain.features.some(f => f.key === 'fire_hydrant') && st.terrain.features.some(f => f.key === 'cinder_block') && st.terrain.features.some(f => f.key === 'street_drain'), 'the kerb kit on the streets');
     const ramp = ml.terrain.features.find(f => f.k === 'ramp' && f.escalator);
-    assert.ok(ramp && !ramp.stairs && ramp.h1 === 3.4 && !ml.props.some(p => p.key === 'escalator'), 'one fitted escalator replaces the stepped terrain and duplicate prop');
+    assert.ok(ramp && !ramp.stairs && ramp.h1 === 4.6 && ml.terrain.features.filter(f => f.k === 'ramp' && f.escalator).length === 2 && !ml.props.some(p => p.key === 'escalator'), 'two fitted escalators replace the stepped terrain and the duplicate prop (THE THIRD PASS: 4.6 m up to the galleries)');
     const tm = section(renderer, '        timemachine: function (U, ctx) {', '\n        },'), gut = section(renderer, '        gutter: function (U, ctx) {', '\n        },');
     assert.ok(/catalogue \|\| \{\}\)\.time_machine\)/.test(tm) && /cage\.forEach\(function \(m\) \{ m\.visible = false; \}\)/.test(tm), 'the time machine GLB over the cage');
     assert.ok(/catalogue \|\| \{\}\)\.street_drain\)/.test(gut) && /grateBits\.forEach/.test(gut), 'the drain GLB over the grate');
