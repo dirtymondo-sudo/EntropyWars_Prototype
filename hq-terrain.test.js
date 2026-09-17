@@ -39,7 +39,7 @@ test('THE RULES agree with the renderer\'s walker: climb = HQ_STEP_TOL, wade = H
 });
 
 test('the sheet: eighteen terrain rooms — the cave\'s seven, the woods\' seven and the divine stair\'s four — no room wears `cave` any more, every one compiles on real sheets with known feature kinds and a shell of its own', () => {
-    assert.equal(ROOMS.length, 18, ROOMS.join(','));
+    assert.equal(ROOMS.length, 22, ROOMS.join(','));   // + THE VATICAN's four (2026-09-17)
     assert.equal(D.hqCaveRooms().length, 0, 'the ASCII grid is retired from every room');
     for (const id of ROOMS) {
         const room = HQ.rooms[id], T = room.terrain, info = D.hqTerrainInfo(id);
@@ -77,7 +77,7 @@ test('THE PARK RULE + THE PLATFORMING: every room has a tier or a ramp AND a rai
         assert.ok(F.some(f => f.k === 'plateau' || f.k === 'ramp'), id + ': a tier or a ramp');
         assert.ok(info.rails.length >= 1, id + ': a rail to grind (the park rule)');
         if (room.shell.open) { if (room.site === 'prebuilt_fairy_forest') assert.ok(info.trees.length >= 3, id + ': trees in the open'); }   // the woods; heaven's open parts grow none (THE DIVINE STAIR, 2026-09-17)
-        else assert.ok(T.crag || id.includes('deadmans'), id + ': a closed chamber wears a crag (the storm drain is brick)');
+        else assert.ok(T.crag || T.crag === false || !T.gen || id.includes('deadmans'), id + ': a closed chamber wears a crag (the storm drain is brick; the archive opts out — its stacks are the walls; a room that is its own floor has none)');
         tall += F.filter(f => f.k === 'plateau' && f.h > 1.5).length;
     }
     assert.ok(tall >= 5, 'tall platforms: ' + tall);

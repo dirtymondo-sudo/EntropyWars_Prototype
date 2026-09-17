@@ -22234,7 +22234,42 @@ const ThreeRenderer = (function () {
         menhir:        'Meshy_AI_a_standing_stone_0916235906_texture.glb',
         drain_grate:   'Meshy_AI_a_storm_drain_grate_0916235918_texture.glb',
         stump:         'Meshy_AI_a_stump_0916235717_texture.glb',
-        hollow_tree:   'Meshy_AI_a_tree_with_a_hole_0916235727_texture.glb'
+        hollow_tree:   'Meshy_AI_a_tree_with_a_hole_0916235727_texture.glb',
+        /* 2026-09-17 THE VATICAN BATCH (twenty-four Meshy props the user uploaded to
+           Assets/misc/ — MODEL_INDEX.md §3g): the basilica (two pews, the podium, the
+           throne, the cross, the stained glass, the holy carpet, the confessional,
+           the church wall / building), the archive (two shelves), the cortile (the
+           ancient walkway, two Italian buildings), the catacombs (the catacomb wall,
+           the sarcophagus, the skull pile), the pit (the demon statue), the clouds
+           (the angel, the pearly gate, the white cloud, the brazier) and THE
+           TELESCOPE (the observatory's way: _hqWayBuilders.telescope). Facings
+           UNMEASURED (the CDN is unreachable from the sandbox) — the building reads
+           them through DOOR_HQ.catalogue (base: 'misc'), a wrong front is the row's
+           `rot` / `front`, a wrong height its `h` / `span`. */
+        library_shelf:      'Meshy_AI_a_library_shelf_0917035552_texture.glb',
+        ancient_walkway:    'Meshy_AI_ancient_walkway_0917035609_texture.glb',
+        angel_statue:       'Meshy_AI_angel_statue_0917035332_texture.glb',
+        brazier:            'Meshy_AI_brazier_0917035429_texture.glb',
+        catacomb_wall:      'Meshy_AI_catacomb_wall_0917035320_texture.glb',
+        church_building:    'Meshy_AI_catholic_church_building_0917035753_texture.glb',
+        catholic_pew:       'Meshy_AI_catholic_church_pew_0917035928_texture.glb',
+        church_wall:        'Meshy_AI_catholic_church_wall_0917035726_texture.glb',
+        church_pew:         'Meshy_AI_church_pew_0917035915_texture.glb',
+        church_podium:      'Meshy_AI_church_podium_0917035658_texture.glb',
+        confessional:       'Meshy_AI_confessional_booth_0917035307_texture.glb',
+        demon_statue:       'Meshy_AI_demon_statue_0917040101_texture.glb',
+        italian_building:   'Meshy_AI_Italian_building_0917035900_texture.glb',
+        italian_building_2: 'Meshy_AI_Italian_building_2_0917035828_texture.glb',
+        library_shelf_full: 'Meshy_AI_library_shelf_full_of_books_0917035645_texture.glb',
+        holy_carpet:        'Meshy_AI_ornate_holy_carpet_0917035624_texture.glb',
+        pearly_gate:        'Meshy_AI_pearly_gate_0917035350_texture.glb',
+        royal_throne:       'Meshy_AI_royal_throne_0917035803_texture.glb',
+        skull_pile:         'Meshy_AI_skull_pile_0917035243_texture.glb',
+        stained_glass:      'Meshy_AI_stained_glass_window_0917035453_texture.glb',
+        sarcophagus:        'Meshy_AI_stone_sarcophagus_0917035255_texture.glb',
+        telescope:          'Meshy_AI_telescope_0917035520_texture.glb',
+        white_cloud:        'Meshy_AI_white_cloud_0917035538_texture.glb',
+        wooden_cross:       'Meshy_AI_wooden_cross_0917035711_texture.glb'
     };
 
     // keep the GLB's own baked texture, just unlit — the misc-model default
@@ -39280,6 +39315,41 @@ const ThreeRenderer = (function () {
             }
             return g;
         },
+        /* THE STAIRWAY IN THE SKY (2026-09-17, THE DIVINE STAIR): what the Vatican's
+           telescope is aimed at — a climbing chain of cloud islands, a flight of
+           cloud steps between each, a lit gate at the top; hung due north of the
+           observatory's dome (DOOR_HQ.rooms.site_prebuilt_vatican_observatory
+           shell.sky.landmarks) and a third of the way up the disc. `s` scales it. */
+        stairway: function (U, o, rng) {
+            var g = new THREE.Group(), s = o.s || 1;
+            var cloud = _hqMat('cloud_thick', 3, 2, { color: 0xf4f0ff, shininess: 2 });
+            var step = _hqMat('marble_light', 2, 1, { color: 0xfff6dc, shininess: 6 });
+            var gold = _hqMat(null, 1, 1, { color: 0xffd070, shininess: 60, specular: 0x886622 });
+            var isles = [[0, 0, 0, 26], [16, 14, 8, 20], [4, 30, 18, 18], [18, 46, 6, 16], [8, 62, 20, 14]];   // x, y, z, radius (× s)
+            var last = null;
+            isles.forEach(function (p, i) {
+                var r = p[3] * s;
+                var isle = new THREE.Mesh(new THREE.SphereGeometry(r * U, 14, 9), cloud);
+                isle.scale.set(1, 0.34, 0.8); isle.position.set(p[0] * s * U, p[1] * s * U, p[2] * s * U); g.add(isle);
+                if (last) {
+                    /* the flight between: nine treads climbing from the last isle's rim to this one's */
+                    var n = 9;
+                    for (var k = 0; k < n; k++) {
+                        var t = (k + 0.5) / n;
+                        var tx = (last[0] + (p[0] - last[0]) * t) * s, ty = (last[1] + (p[1] - last[1]) * t) * s + 2 * s, tz = (last[2] + (p[2] - last[2]) * t) * s;
+                        var tread = _hqBox(6 * s, 1.1 * s, 4 * s, step); tread.position.set(tx * U, ty * U, tz * U); tread.rotation.y = Math.atan2(p[0] - last[0], -(p[2] - last[2])); g.add(tread);
+                    }
+                }
+                last = p;
+            });
+            /* THE GATE at the top: two posts, a lintel, the light behind it */
+            var top = isles[isles.length - 1], gx = top[0] * s, gy = (top[1] + 4) * s, gz = top[2] * s;
+            [[-4, 0], [4, 0]].forEach(function (q) { var post = _hqBox(1.2 * s, 12 * s, 1.2 * s, gold); post.position.set((gx + q[0] * s) * U, (gy + 6 * s) * U, gz * U); g.add(post); });
+            var lintel = _hqBox(10.4 * s, 1.6 * s, 1.4 * s, gold); lintel.position.set(gx * U, (gy + 12.6 * s) * U, gz * U); g.add(lintel);
+            var light = _hzGlowSprite(22 * s * U, 0xfff2c8, 0.75, 0.15, 0.06, 0.6); light.position.set(gx * U, (gy + 7 * s) * U, (gz - 1.5 * s) * U); g.add(light);
+            var halo = _hzGlowSprite(60 * s * U, 0xffe8b0, 0.22, 0.0, 0.0, 0.0); halo.position.set(gx * U, (gy + 8 * s) * U, (gz - 4 * s) * U); g.add(halo);
+            return g;
+        },
     };
     function _hqBuildLandmarks(H, list, discR) {
         var U = _hqUnits(), group = new THREE.Group(); group.name = 'hqLandmarks'; group.renderOrder = -41;
@@ -42659,6 +42729,47 @@ const ThreeRenderer = (function () {
             var motion = { mode: 'way', ow: W, tick: function (k) { piv.rotation.y = -1.9 * k; glow.material.opacity = 0.2 + 0.6 * k; warm.material.opacity = 0.4 + 0.45 * k; } };
             if (_hq) _hq.tickers.push(function (dt, now) { glow.scale.setScalar((1.4 + 0.05 * Math.sin(now * 0.0021)) * U); });
             return { g: g, motion: motion, ow: W, oh: H, plateY: H + 0.4 };
+        },
+        /* THE TELESCOPE (2026-09-17, THE DIVINE STAIR): the Vatican observatory's brass
+           refractor on a tripod, its eyepiece to +Z (the officer's side), the tube
+           aimed up and away (−Z) at THE STAIRWAY IN THE SKY hung on the dome's sky;
+           the user's GLB (DOOR_HQ.catalogue.brass_telescope) over the procedural tube once
+           it lands. The press-in tilts the tube onto the stair and the lens flares:
+           whoever looks long enough is on the first step. The "opening" is the
+           eyepiece's stand (catalogue w 1.2 × h 1.6). */
+        telescope: function (U, ctx) {
+            var g = new THREE.Group();
+            var W = 1.2, H = 1.6;
+            var brass = _hqMat(null, 1, 1, { color: 0xc9a850, shininess: 90, specular: 0x886622 });
+            var dark = _hqMat(null, 1, 1, { color: 0x2a2620, shininess: 30 });
+            var stand = new THREE.Group(); g.add(stand);
+            /* the tripod: three legs from a hub at 1.05 m */
+            for (var i = 0; i < 3; i++) {
+                var a = i * Math.PI * 2 / 3 + Math.PI / 6;
+                var leg = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.03 * U, 1.18 * U, 8), dark);
+                leg.position.set(Math.sin(a) * 0.3 * U, 0.52 * U, Math.cos(a) * 0.3 * U); leg.rotation.z = -Math.sin(a) * 0.5; leg.rotation.x = Math.cos(a) * 0.5; stand.add(leg);
+            }
+            var hub = new THREE.Mesh(new THREE.SphereGeometry(0.09 * U, 12, 10), brass); hub.position.set(0, 1.05 * U, 0); stand.add(hub);
+            /* the tube on its pivot: pointing −Z and up; the eyepiece at the +Z end */
+            var piv = new THREE.Group(); piv.position.set(0, 1.12 * U, 0); piv.rotation.x = 0.62; g.add(piv);
+            var tube = new THREE.Mesh(new THREE.CylinderGeometry(0.075 * U, 0.1 * U, 1.7 * U, 14), brass); tube.rotation.x = Math.PI / 2; tube.position.set(0, 0, -0.35 * U); piv.add(tube);
+            var hood = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * U, 0.1 * U, 0.16 * U, 14), dark); hood.rotation.x = Math.PI / 2; hood.position.set(0, 0, -1.22 * U); piv.add(hood);
+            var eye = new THREE.Mesh(new THREE.CylinderGeometry(0.03 * U, 0.05 * U, 0.22 * U, 10), dark); eye.rotation.x = Math.PI / 2; eye.position.set(0, 0, 0.6 * U); piv.add(eye);
+            var lens = new THREE.Mesh(new THREE.CircleGeometry(0.095 * U, 16), _hqBasic(0xcfe6ff, { transparent: true, opacity: 0.35, depthWrite: false })); lens.position.set(0, 0, -1.305 * U); lens.rotation.y = Math.PI; piv.add(lens);
+            var glow = _hzGlowSprite(0.5 * U, 0xdff0ff, 0.2, 0.0, 0.0, 0.0); glow.position.set(0, 0, -1.34 * U); piv.add(glow);
+            /* a brass ring on the floor to stand on, the base plate under the tripod, the star chart leaning on a leg */
+            var ring = new THREE.Mesh(new THREE.RingGeometry(0.42 * U, 0.55 * U, 24), brass); ring.rotation.x = -Math.PI / 2; ring.position.set(0, 0.012 * U, 0.7 * U); ring.renderOrder = 2; g.add(ring);
+            var base = new THREE.Mesh(new THREE.CylinderGeometry(0.46 * U, 0.5 * U, 0.04 * U, 18), dark); base.position.set(0, 0.02 * U, 0); g.add(base);
+            var chart = new THREE.Mesh(new THREE.PlaneGeometry(0.42 * U, 0.3 * U), _hqMat(null, 1, 1, { color: 0xe8e0c8, shininess: 4 })); chart.position.set(0.34 * U, 0.2 * U, 0.26 * U); chart.rotation.x = -0.5; chart.rotation.y = 0.4; chart.material.side = THREE.DoubleSide; g.add(chart);
+            /* the user's GLB over the stand-in, once it lands */
+            var cat = (typeof _hqData === 'function') ? (((_hqData() || {}).catalogue || {}).brass_telescope) : null;
+            if (cat && cat.file && typeof _miscModelInstance === 'function' && typeof _hqModelUrl === 'function' && typeof THREE.GLTFLoader === 'function') {
+                var inst = _miscModelInstance(_hqModelUrl(cat), true, (cat.h || 2.0) * U, { matPick: (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined, onDone: function () { stand.visible = false; tube.visible = false; hood.visible = false; eye.visible = false; } });
+                inst.rotation.y = ((cat.rot || 0) * Math.PI / 180); g.add(inst);
+            }
+            var motion = { mode: 'way', ow: W, tick: function (k) { piv.rotation.x = 0.62 + 0.28 * k; glow.material.opacity = 0.2 + 0.7 * k; glow.scale.setScalar((0.5 + 1.2 * k) * U); lens.material.opacity = 0.35 + 0.5 * k; } };
+            if (_hq) _hq.tickers.push(function (dt, now) { glow.scale.setScalar((0.5 + 0.06 * Math.sin(now * 0.0031)) * U); });
+            return { g: g, motion: motion, ow: W, oh: H, plateY: H + 0.9 };
         },
     };
     function _hqTreeWay(U, ctx, dead) {

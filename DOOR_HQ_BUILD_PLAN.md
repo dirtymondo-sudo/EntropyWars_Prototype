@@ -9450,6 +9450,66 @@ and every room is a terrain room the kit already draws. Four parts on three site
   `terrain.cliff` is the edit), the treads at 12 m and the boom over the void, the lava under the causeway, the
   frame-only foot, the teal grade on brick, the column GLB's scale (`greek_column.h`).
 
+### 2026-09-17 — THE DIVINE STAIR, second delivery: THE VATICAN (five parts), THE FALL, THE RETURN GUARANTEE, THE VATICAN BATCH
+The user: "use these assets [24 GLBs in Assets/misc] to continue improving the divine complex; the Vatican needs to be
+a bigger building — library, mass, courtyard; catacombs underneath it; the stairway at the top dome room, in the
+observatory with the telescope — activating it lets you see the stairway in the sky and enter it; the stairway
+entrance should NOT be in the catacombs; there is a part in the clouds where you can fall and get trapped between
+walls of cloud — make sure that doesn't happen during room generation; multiple levels of pathways in the same area,
+falling down you have to find your way back up; clouds are perfect for floating platforming."
+- **THE RETURN GUARANTEE** (data.js `_hqTReturnGuarantee`, run by `_hqTGenerate` AFTER the door guarantee on the RISEN
+  field, and by `hqTerrainCompile` for a room with no plan): every cell the walker can reach from the door pads WITH
+  ITS JUMP (`HQ_TERRAIN_RULES.jump` 1.3 — a hop onto a low bank counts, a cliff does not; any drop) must reach a pad
+  again the same way. A TRAP component gets A RESCUE RAMP (`_hqTRescuePath`: the shortest way over the field from the
+  trap to returning ground whose rise fits `rescueSlope` 0.7 — phase 1 never crosses returning ground, phase 2 may
+  notch through it; the cut (`_hqTLayRamp`) opens the plan's solid and fills lower ground up to the incline but never
+  lowers higher open ground beside the path; a cut that breaks a door route is undone and its landing banned, six
+  tries) — else the trap is SEALED (solid; a forced cell only as a last resort, `info.sealedCells`; never a pad; a
+  seal that cuts a door off is undone). Repeated until nothing traps; `info.rescues` lists the ramps. Reads:
+  **`hqTerrainTraps(info)`** (empty = the room passes; hq-terrain.test.js insists on it for every room; check-terrain.js
+  prints TRAPS / rescue ramps cut). Found on the way: every cloud room and cave chamber had pockets (the stairway's
+  ground under the flights, the cavern's floor slots); the pit's GALLERY LEDGE was never reachable (its ramp ended
+  0.3 m short); THE RAMP RULE is sharper — a ramp ends **0.7 m inside** its tier's rect (past the 0.35 m edge blend
+  AND the next 0.5 m sample; a 0.3 m end sampled a hole) — hq-divine.test.js proves every ramp's top is walked to.
+- **THE VATICAN** (data.js, the block before THE PIT): `site_prebuilt_vatican_basilica` (mass — the nave 36 × 52 × 16,
+  the chancel 0.9, the altar steps, TWO TRIFORIUM GALLERIES at 4.6 up stairs behind the chancel, the altar rail a
+  step, the organ loft 6.4 = the tape; pews, columns, the podium, the cathedra, the cross, six windows, the carpet, the
+  confessionals, the braziers; doors: the piazza s, the archive w, the cortile e, THE CRYPT n on the chancel at y 0.9),
+  `_library` (THE SECRET ARCHIVE — `gen: cave` in the `wood` sheet = the stacks 5.6 m, `crag: false`; the reading well,
+  the gallery at 4.0 up the east stair, THE DOME STAIR's door on it at y 4; the high shelf 6.2 = the tape), `_courtyard`
+  (THE CORTILE — `hqVaticanShell`: open behind a parapet under the Vatican's own sky; `gen: rooms` with a cypress
+  thicket = the garden maze; the fountain's bowl, THE TERRACE 1.2 under the `church_building` façade, the palace wings,
+  the arcade, the campanile's stump 4.4 = the tape; THE CISTERN — a `way: 'well'` DOOR ROW (free, hand-authored, the
+  first inside a site) down into the catacombs' north), `_observatory` (THE DOME — `hqVaticanShell({ night: true })`,
+  the dais 1.2, the finial 4.4 = the tape, THE TELESCOPE at the dais's heart, THE STAIRWAY IN THE SKY hung due north:
+  `shell.sky.landmarks: [{ kind: 'stairway' }]` → three-renderer.js `_hqLandmarkBuilders.stairway`). The catacombs'
+  way in is the basilica's crypt door now (the board's white door opens on THE BASILICA: `backDoors.prebuilt_vatican`
+  id `basilica`); its north link door is gone.
+- **THE TELESCOPE IS THE SEAM**: `links.observatory_stair` (route `divine`, `way: 'telescope'`) — a `wall: 'free'` end
+  on the observatory part (the eyepiece to the south, face 180) ⇄ the stair's south wall with `leaf: 'leaf_frame_only'`
+  (a plain door back). `DOOR_HQ.ways.telescope` (verb LOOK, sfx `wayScope`), `_hqWayBuilders.telescope` (the tripod, the
+  tube aimed −Z and up, the lens; the GLB `brass_telescope` over it; the press-in tilts the tube onto the stair and the
+  lens flares), audio.js `wayScope`. `links.catacombs_stair` is GONE (the user's rule). The divine line still reads four
+  legs (heaven_olympus · vatican_heaven · vatican_hell · observatory_stair).
+- **THE STAIRWAY rebuilt (40 × 54 × 18)**: the four flights kept (0 → 3.5 → 7 → 10 → 12) + THE FALL — THE LOWER SHELF
+  (2 m, east, its own incline from the foot), THE LONG WAY (a winding incline up the west to THE WEST SHELF at 6 m and
+  three steps onto the second landing — the way back for whoever falls west), THE STEPPING CLOUDS (hop-high columns:
+  the shelf → the first landing, the first landing → the west shelf, a lookout beside flight C), THE PINNACLE on the
+  lower shelf (6 m, the tape; `findSpots` moved to (17, 8)), `white_cloud` props hung in the air (`y`, foot 0) and
+  scattered on the floor. The compiler still cut nine rescue ramps between the cloud banks — every fall returns.
+- **THE VATICAN BATCH** (MODEL_INDEX §3g): 24 `_MISC_GLB` rows + 24 `DOOR_HQ.catalogue` rows (`base: 'misc'`); the
+  catacombs took the skull piles, the sarcophagi (on the tomb rows), the bone walls, the booth; the pit the demon and
+  the braziers; the fields THE PEARLY GATE (open in the gap of the pearly walls; the hotel door stays the leaf), the
+  angels, the clouds. Tapes: four re-homed (Camelot's, Agartha's, CERN's, Area 51's second) — every site keeps one.
+  Looks: `HQ_ROOM_LOOKS.basilica` / `.archive` / `.observatory`.
+- Tests: hq-divine.test.js rewritten (9 — the eight parts, THE FALL, the return guarantee, the batch); hq-terrain's
+  count 22 and its crag rule (`crag: false` / no plan opt out); hq-floor-plan's count 19 and the sealed-cell exemption;
+  hq-world's seam list. `npm test` — see CLAUDE.md's entry for the numbers. Token `20260917-vatican-divine-01-cors`.
+- UNSEEN LIVE (RULE #1c): all of it — the GLBs' scale and facing (the pews' fronts, the throne's `front: 'back'`, the
+  church building's size against the terrace, the italian wings half through the parapet, the telescope's tube), the
+  stacks in the wood sheet, the cypress banks, the stairway landmark's size from the dome (`landmarks[0].s / dist / y`
+  are the edits), the rescue cuts' look between the cloud banks, the stepping clouds under the jump.
+
 ### THE COMPLEX CANDIDATES (the user's list, 2026-09-17) — build each on THE CAVE / THE WOODS blueprint
 The cave and the woods are the blueprint for every complex from here: a generated floor plan (`terrain.gen`),
 the ground running out under a real fog, a `shell.look` grade tuned to the vibe, the room's own light, THE PARK
@@ -9461,8 +9521,9 @@ RULE, the hard tapes, `check-terrain.js` before any claim. The aesthetic is the 
 3. **THE TUNNELS / THE DUNGEONS** — every subway tunnel, the sewer system (the storm drain), the dungeons
    (24601, the oubliette) joined into one underworld.
 4. **HEAVEN · HELL · THE VATICAN · THE CATACOMBS · THE STAIRWAY TO HEAVEN** — one epic-fantasy complex, the
-   stairway the spine from the catacombs to the clouds. **STARTED 2026-09-17 (THE DIVINE STAIR, the entry
-   above): four parts shipped locally — the catacombs, the pit, the stairway, the cloud fields.**
+   stairway the spine from the Vatican's dome to the clouds. **STARTED 2026-09-17 (THE DIVINE STAIR, the two
+   entries above): eight parts shipped locally — the basilica, the archive, the cortile, the observatory, the
+   catacombs, the pit, the stairway, the cloud fields.**
 5. **D.U.M.B.** — Area 51, CERN, the padded rooms, the dream lab, clone disposal: the base under the base.
 6. **DOOR MANUFACTURING** — the service hallways, the warehouse, the Works: what keeps D.O.O.R. running.
 #4 started (above); the rest not. Each needs its own `HQ_ROOM_LOOKS` row, its own sky / fog, its links on the

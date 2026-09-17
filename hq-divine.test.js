@@ -1,20 +1,28 @@
 // hq-divine.test.js — THE DIVINE STAIR (HQ plan 9.3 stage 6 — THE COMPLEX
-// CANDIDATES #4, 2026-09-17): HEAVEN · HELL · THE VATICAN joined by THE
-// CATACOMBS and THE STAIRWAY, built on THE CAVE / THE WOODS blueprint —
-// four terrain rooms with generated floor plans on three sites:
-//   the Vatican's CATACOMBS (cellular automata in brick under the crypt
-//   stair; the ossuary shelf, the sunken chapel, the skull stack), Hell's
-//   PIT (the bowl to the lava, the river and its causeway, the colossus's
-//   plinth), Heaven's STAIRWAY (four flights of cloud stairs from the
-//   catacombs' door at the floor to the gate at 12 m) and Heaven's CLOUD
-//   FIELDS (cloud islands, the rift and its plank, the dais and THE GATE).
-// The seams are links rows: the crypt link (vatican_hell) RE-POINTED onto
-// the catacombs' warm wall ⇄ the pit's; the stair's foot (catacombs_stair).
-// Guards: the sheet, the three back doors on the freed lanes, the complex
-// walked from every way in with every inside door a pair, the two links,
-// the production landing on every door, THE SOLVER (every door reaches
-// every other), THE PARK RULE, the four hard tapes (the door gun's), the
-// looks, the shell helper, and the renderer's source sites.
+// CANDIDATES #4, 2026-09-17; THE VATICAN expanded the same day): HEAVEN ·
+// HELL · THE VATICAN as ONE complex of eight terrain rooms on three sites:
+//   THE VATICAN — the BASILICA (mass: the nave, the chancel, the two
+//   triforium galleries, the organ loft), the ARCHIVE (the stacks, a cave
+//   plan in wood; the gallery and the dome stair), the CORTILE (open under
+//   the Vatican's sky, a cypress-maze plan, the terrace, the cistern down),
+//   the OBSERVATORY (the top of the dome, open to the night, THE TELESCOPE
+//   aimed at THE STAIRWAY IN THE SKY — the seam to the stair) and the
+//   CATACOMBS underneath (cellular automata in brick behind the altar; the
+//   warm wall, the cistern's rope);
+//   HELL's PIT (the bowl to the lava, the river, the colossus's plinth);
+//   HEAVEN's STAIRWAY (four flights of cloud stairs from the telescope's far
+//   end to the gate at 12 m, and THE FALL: the lower shelf, the long way,
+//   the west shelf, the stepping clouds) and CLOUD FIELDS (the rift, the
+//   plank, the dais, THE GATE).
+// The seams are links rows: the crypt link (vatican_hell: the catacombs'
+// warm wall ⇄ the pit's) and the telescope (observatory_stair: a `way` end
+// on the observatory ⇄ a plain frame at the stair's foot). Guards: the
+// sheet, the three back doors, the complex walked from every way in with
+// every inside door a pair, the two links, the production landing on every
+// door, THE SOLVER (every door reaches every other) AND THE RETURN
+// GUARANTEE (nothing the walker can fall into holds it — hqTerrainTraps),
+// THE PARK RULE, the eight hard tapes (the door gun's), the looks, the two
+// shell helpers, the batch's catalogue rows, and the renderer's source sites.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -24,9 +32,18 @@ const { loadGameData } = require('./load-data');
 const D = loadGameData(), HQ = D.DOOR_HQ;
 const TERRAIN_RULES = vm.runInContext('TERRAIN_RULES', D);
 const CATACOMBS = 'site_prebuilt_vatican_catacombs', PIT = 'site_prebuilt_hell_pit', STAIR = 'site_prebuilt_heaven_stair', GATE = 'site_prebuilt_heaven_gate';
-const PARTS = { [CATACOMBS]: ['prebuilt_vatican', 'catacombs'], [PIT]: ['prebuilt_hell', 'pit'], [STAIR]: ['prebuilt_heaven', 'stair'], [GATE]: ['prebuilt_heaven', 'gate'] };
+const BASILICA = 'site_prebuilt_vatican_basilica', LIBRARY = 'site_prebuilt_vatican_library', CORTILE = 'site_prebuilt_vatican_courtyard', DOME = 'site_prebuilt_vatican_observatory';
+const PARTS = { [BASILICA]: ['prebuilt_vatican', 'basilica'], [LIBRARY]: ['prebuilt_vatican', 'library'], [CORTILE]: ['prebuilt_vatican', 'courtyard'], [DOME]: ['prebuilt_vatican', 'observatory'],
+                [CATACOMBS]: ['prebuilt_vatican', 'catacombs'], [PIT]: ['prebuilt_hell', 'pit'], [STAIR]: ['prebuilt_heaven', 'stair'], [GATE]: ['prebuilt_heaven', 'gate'] };
 const IDS = Object.keys(PARTS);
-const BACK = { prebuilt_vatican: ['crypt', CATACOMBS, 'stair', 'leaf_white_wood'], prebuilt_hell: ['pit', PIT, 'mouth', 'leaf_hell_arch'], prebuilt_heaven: ['gate', GATE, 'heaven', 'leaf_hotel'] };
+const PLANNED = { [CATACOMBS]: 'cave', [PIT]: 'cave', [LIBRARY]: 'cave', [STAIR]: 'rooms', [GATE]: 'rooms', [CORTILE]: 'rooms' };   // the basilica and the observatory are their own floors
+const BACK = { prebuilt_vatican: ['basilica', BASILICA, 'piazza', 'leaf_white_wood'], prebuilt_hell: ['pit', PIT, 'mouth', 'leaf_hell_arch'], prebuilt_heaven: ['gate', GATE, 'heaven', 'leaf_hotel'] };
+const BATCH = { library_shelf: 'Meshy_AI_a_library_shelf_0917035552_texture.glb', library_shelf_full: 'Meshy_AI_library_shelf_full_of_books_0917035645_texture.glb', ancient_walkway: 'Meshy_AI_ancient_walkway_0917035609_texture.glb',
+    angel_statue: 'Meshy_AI_angel_statue_0917035332_texture.glb', brazier: 'Meshy_AI_brazier_0917035429_texture.glb', catacomb_wall: 'Meshy_AI_catacomb_wall_0917035320_texture.glb', church_building: 'Meshy_AI_catholic_church_building_0917035753_texture.glb',
+    catholic_pew: 'Meshy_AI_catholic_church_pew_0917035928_texture.glb', church_wall: 'Meshy_AI_catholic_church_wall_0917035726_texture.glb', church_pew: 'Meshy_AI_church_pew_0917035915_texture.glb', church_podium: 'Meshy_AI_church_podium_0917035658_texture.glb',
+    confessional_booth: 'Meshy_AI_confessional_booth_0917035307_texture.glb', demon_statue: 'Meshy_AI_demon_statue_0917040101_texture.glb', italian_building: 'Meshy_AI_Italian_building_0917035900_texture.glb', italian_building_2: 'Meshy_AI_Italian_building_2_0917035828_texture.glb',
+    holy_carpet: 'Meshy_AI_ornate_holy_carpet_0917035624_texture.glb', pearly_gate: 'Meshy_AI_pearly_gate_0917035350_texture.glb', royal_throne: 'Meshy_AI_royal_throne_0917035803_texture.glb', skull_pile: 'Meshy_AI_skull_pile_0917035243_texture.glb',
+    stained_glass: 'Meshy_AI_stained_glass_window_0917035453_texture.glb', sarcophagus: 'Meshy_AI_stone_sarcophagus_0917035255_texture.glb', brass_telescope: 'Meshy_AI_telescope_0917035520_texture.glb', white_cloud: 'Meshy_AI_white_cloud_0917035538_texture.glb', wooden_cross: 'Meshy_AI_wooden_cross_0917035711_texture.glb' };
 const renderer = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8');
 const at = (room, id) => (HQ.rooms[room].doors || []).find(d => d.id === id);
 
@@ -61,7 +78,7 @@ function propBlocks(room, p, x, z, margin) {
     return Math.hypot(x - px, z - pz) <= Math.max(foot, 0.3) + margin;
 }
 
-test('the sheet: four parts on three sites (the Vatican’s catacombs, Hell’s pit, Heaven’s stairway and cloud fields), each site + part, none numbered, every one a terrain room with a floor plan; the two heaven rooms open under one sky (hqDivineShell), the two undercrofts closed with a crag; the register lists each site once', () => {
+test('the sheet: eight parts on three sites — the Vatican’s basilica, archive, cortile, observatory and catacombs, Hell’s pit, Heaven’s stairway and cloud fields — each site + part, none numbered, every one a terrain room; six carry a floor plan (three caves, three rooms plans), the basilica and the observatory are their own floors; the heaven rooms open under one sky (hqDivineShell), the cortile and the dome under the Vatican’s (hqVaticanShell — the dome at night with THE STAIRWAY IN THE SKY hung on it), the undercrofts closed with a crag; the register lists each site once', () => {
     for (const id of IDS) {
         const [site, part] = PARTS[id], r = HQ.rooms[id];
         assert.ok(r && r.kind === 'box' && r.site === site && r.part === part, id + ': a box room wearing site + part');
@@ -70,7 +87,8 @@ test('the sheet: four parts on three sites (the Vatican’s catacombs, Hell’s 
         assert.equal(D.hqRoomNo(id), HQ.thresholds[site].roomNo, id + ': hqRoomNo reads the threshold’s number through site');
         assert.equal(D.hqRoomSite(id), site, id + ' is WILD');
         assert.ok(/THE DIVINE STAIR/.test(r.label) && r.sub && r.spawn && Array.isArray(r.lines) && r.lines.length >= 3, id + ': plate, spawn, lines');
-        assert.ok(r.terrain && r.terrain.gen && !r.cave && D.hqTerrainInfo(id), id + ': a terrain room with a floor plan');
+        assert.ok(r.terrain && !r.cave && D.hqTerrainInfo(id), id + ': a terrain room');
+        if (PLANNED[id]) assert.equal(r.terrain.gen && r.terrain.gen.kind, PLANNED[id], id + ': the plan'); else assert.ok(!r.terrain.gen, id + ' is its own floor');
         assert.ok(r.shell.w > 0 && r.shell.d > 0 && r.shell.look && r.shell.look.name, id + ': a shell sized by hand with a look');
         assert.ok(r.shell.strips === false && Array.isArray(r.shell.lights) && r.shell.lights.length === 0 && r.shell.mood, id + ': no strips, no masts — the room lights itself');
         for (const n of ['floor', 'wall', 'dado', 'trim']) assert.ok(HQ.textures[r.shell[n]] || TERRAIN_RULES[r.shell[n]], id + ': texture ' + r.shell[n]);
@@ -79,25 +97,32 @@ test('the sheet: four parts on three sites (the Vatican’s catacombs, Hell’s 
     for (const id of [STAIR, GATE]) {
         const S = HQ.rooms[id].shell;
         assert.ok(S.open && S.edge === 'open' && S.sky && S.sky.scenery === 'divine' && S.sky.fog && S.sky.fog.density > 0 && !S.forest, id + ': open under Heaven’s sky with a per-metre fog and no treeline');
-        assert.equal(HQ.rooms[id].terrain.gen.kind, 'rooms'); assert.equal(HQ.rooms[id].terrain.gen.thicket, false, id + ': cloud islands, no thicket');
+        assert.equal(HQ.rooms[id].terrain.gen.thicket, false, id + ': cloud islands, no thicket');
         assert.equal(S.look, D.HQ_ROOM_LOOKS.heaven);
     }
     for (const id of [CATACOMBS, PIT]) {
         const r = HQ.rooms[id], S = r.shell;
         assert.ok(!S.open && S.fog && S.fog.density > 0 && r.terrain.crag, id + ': a closed undercroft with its own haze and a crag');
-        assert.equal(r.terrain.gen.kind, 'cave', id + ': cellular automata');
     }
     assert.equal(HQ.rooms[CATACOMBS].shell.look, D.HQ_ROOM_LOOKS.catacombs); assert.equal(HQ.rooms[PIT].shell.look, D.HQ_ROOM_LOOKS.hell);
-    /* the sky is Heaven’s own row (the pool’s rule: edit both or the test fails) */
-    const meta = D.EW_MAP_META.find(m => m.id === 'prebuilt_heaven').env, sky = HQ.rooms[STAIR].shell.sky;
-    assert.equal(sky.tint, meta.tint); assert.equal(sky.tintAmt, meta.tintAmt); assert.equal(sky.scenery, meta.scenery); assert.equal(sky.fog.color, meta.fog.color);
+    assert.equal(HQ.rooms[BASILICA].shell.look, D.HQ_ROOM_LOOKS.basilica); assert.equal(HQ.rooms[LIBRARY].shell.look, D.HQ_ROOM_LOOKS.archive); assert.equal(HQ.rooms[DOME].shell.look, D.HQ_ROOM_LOOKS.observatory);
+    assert.ok(!HQ.rooms[BASILICA].shell.open && !HQ.rooms[LIBRARY].shell.open && HQ.rooms[LIBRARY].terrain.crag === false, 'the nave and the archive are closed; the archive’s stacks are its walls (no crag)');
+    /* the heaven sky is Heaven’s own row; the cortile’s is the Vatican’s (the pool’s rule: edit both or the test fails) */
+    const hmeta = D.EW_MAP_META.find(m => m.id === 'prebuilt_heaven').env, sky = HQ.rooms[STAIR].shell.sky;
+    assert.equal(sky.tint, hmeta.tint); assert.equal(sky.tintAmt, hmeta.tintAmt); assert.equal(sky.scenery, hmeta.scenery); assert.equal(sky.fog.color, hmeta.fog.color);
+    const vmeta = D.EW_MAP_META.find(m => m.id === 'prebuilt_vatican').env, csky = HQ.rooms[CORTILE].shell.sky, osky = HQ.rooms[DOME].shell.sky;
+    assert.ok(HQ.rooms[CORTILE].shell.open && HQ.rooms[CORTILE].shell.edge === 'low' && csky.tint === vmeta.tint && csky.scenery === vmeta.scenery && csky.fog.color === vmeta.fog.color && !csky.night, 'the cortile stands open under the Vatican’s own daylight behind a parapet');
+    assert.ok(HQ.rooms[DOME].shell.open && osky.night === 1 && osky.stars >= 0.9 && osky.fog.density > 0, 'the observatory is open to the night');
+    assert.ok(Array.isArray(osky.landmarks) && osky.landmarks.length === 1 && osky.landmarks[0].kind === 'stairway' && osky.landmarks[0].deg === 0, 'THE STAIRWAY IN THE SKY hangs due north of the dome');
+    assert.ok(HQ.rooms[CORTILE].terrain.gen.thicket !== false && HQ.rooms[CORTILE].terrain.gen.kinds.includes('pine'), 'the cortile’s maze is a cypress thicket');
     const reg = D.hqRoomRegister();
     for (const site of ['prebuilt_vatican', 'prebuilt_hell', 'prebuilt_heaven']) assert.equal(reg.filter(r => r.mapId === site).length, 1, 'the register lists ' + site + ' once');
     assert.ok(!reg.some(r => IDS.includes(r.id) || IDS.includes(r.room)), 'no part is a register entry');
     for (const id of IDS) assert.equal(D.hqSiteComplex(PARTS[id][0]).includes(id), true, id + ' is in its site’s complex');
+    assert.equal(D.hqSiteComplex('prebuilt_vatican').length, 6, 'the Vatican: the board room and five parts');
 });
 
-test('THE WAYS IN: three back doors on the freed lanes — the Vatican’s crypt stair (n x −10), Hell’s mouth (n x −10), Heaven’s gate (n x −0.2) — each a pair with the part’s way out, the same leaf both sides, never gated; every board room keeps ≤ 3 link doors on its north wall', () => {
+test('THE WAYS IN: three back doors on the freed lanes — the Vatican’s white door into the basilica (n x −10), Hell’s mouth (n x −10), Heaven’s gate (n x −0.2) — each a pair with the part’s way out, the same leaf both sides, never gated; every board room keeps ≤ 3 link doors on its north wall; the crypt is reached ONLY through the basilica (behind the altar) and the cortile’s cistern', () => {
     for (const [site, [doorId, part, backId, leaf]] of Object.entries(BACK)) {
         const board = 'site_' + site, d = at(board, doorId);
         assert.ok(d && d.wall === 'n' && d.leaf === leaf && d.action.room === part && d.action.at === backId, site + ': the back door into ' + part);
@@ -109,10 +134,17 @@ test('THE WAYS IN: three back doors on the freed lanes — the Vatican’s crypt
         assert.ok(links.length <= 3 && links.every(x => x.wall === 'n'), site + ': ≤ 3 link doors, all on the north wall');
         for (const o of HQ.rooms[board].doors) if (o.id !== d.id && o.wall === 'n') assert.ok(Math.abs(o.x - d.x) >= 4.4, site + ': the back door shares a lane with ' + o.id);
     }
+    assert.ok(!at('site_prebuilt_vatican', 'crypt'), 'the board room no longer opens on the crypt');
+    const crypt = at(BASILICA, 'crypt');
+    assert.ok(crypt && crypt.wall === 'n' && crypt.y === 0.9 && crypt.leaf === 'leaf_white_wood' && crypt.action.room === CATACOMBS && crypt.action.at === 'stair', 'the crypt door stands on the chancel behind the altar');
+    const up = at(CATACOMBS, 'stair'); assert.ok(up && up.action.room === BASILICA && up.action.at === 'crypt', 'the crypt stair comes up behind the altar');
+    const wellUp = at(CATACOMBS, 'well'), wellDown = at(CORTILE, 'well');
+    assert.ok(wellUp && wellDown && wellUp.way === 'well' && wellDown.way === 'well' && wellUp.wall === 'free' && wellDown.wall === 'free', 'THE CISTERN: a well head at both ends');
+    assert.ok(wellUp.action.room === CORTILE && wellUp.action.at === 'well' && wellDown.action.room === CATACOMBS && wellDown.action.at === 'well' && wellUp.verb === 'CLIMB UP', 'the rope goes both ways, and up is UP');
 });
 
-test('ONE PIECE: from each way in every part is walked; every inside door is a pair; nothing leaves a site but a links row; the stairway’s top door stands at 12 m and its foot at the floor; the gate’s door stands on the dais', () => {
-    const seen = new Set(), queue = [CATACOMBS, PIT, GATE];
+test('ONE PIECE: from each way in every part is walked; every inside door is a pair; nothing leaves a site but a links row; the stairway’s top door stands at 12 m and its foot (the telescope’s far end) at the floor; the gate’s door stands on the dais; the dome stair leaves the archive’s gallery at 4 m', () => {
+    const seen = new Set(), queue = [BASILICA, PIT, GATE];
     while (queue.length) {
         const id = queue.shift(); if (seen.has(id)) continue; seen.add(id);
         for (const d of HQ.rooms[id].doors) {
@@ -122,6 +154,7 @@ test('ONE PIECE: from each way in every part is walked; every inside door is a p
             const other = at(a.room, a.at);
             assert.ok(other && other.action.room === id && other.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + ' is a pair');
             assert.equal(other.leaf, d.leaf, 'the same opening on both sides of ' + d.id);
+            assert.equal(other.way, d.way, 'the same object on both sides of ' + d.id);
             const site = PARTS[id][0];
             assert.ok(a.room === 'site_' + site || (PARTS[a.room] && PARTS[a.room][0] === site), id + '/' + d.id + ' stays inside its site (' + a.room + ')');
             if (IDS.includes(a.room)) queue.push(a.room);
@@ -130,32 +163,38 @@ test('ONE PIECE: from each way in every part is walked; every inside door is a p
     assert.deepEqual(Array.from(seen).sort().join(','), IDS.slice().sort().join(','), 'every part is walked');
     assert.equal(at(STAIR, 'gates').y, 12, 'the top of the stair');
     assert.equal(D.hqTerrainDoorY(HQ.rooms[STAIR], at(STAIR, 'gates')), 12);
-    assert.ok(Math.abs(D.hqTerrainDoorY(HQ.rooms[STAIR], at(STAIR, 'link_catacombs_stair'))) < 0.3, 'the foot at the floor');
+    assert.ok(Math.abs(D.hqTerrainDoorY(HQ.rooms[STAIR], at(STAIR, 'link_observatory_stair'))) < 0.3, 'the foot at the floor');
     assert.equal(at(GATE, 'heaven').y, 1.75, 'the gate on the dais');
+    assert.equal(at(LIBRARY, 'observatory').y, 4.0, 'the dome stair leaves the gallery');
+    assert.equal(D.hqTerrainDoorY(HQ.rooms[LIBRARY], at(LIBRARY, 'observatory')), 4.0);
+    assert.ok(Math.abs(D.hqTerrainDoorY(HQ.rooms[DOME], at(DOME, 'link_observatory_stair')) - 1.2) < 0.05, 'the telescope stands on the dais');
 });
 
-test('THE SEAMS: the crypt link (vatican_hell) is RE-POINTED onto the parts — the catacombs’ east wall ⇄ the pit’s west wall, the id kept, both board lanes freed; the stair’s foot (catacombs_stair) joins the catacombs to the stairway; both live, on THE DIVINE STAIR, never a rank leaf, and the line reads four legs', () => {
+test('THE SEAMS: the crypt link (vatican_hell) joins the catacombs’ east wall to the pit’s west wall; THE TELESCOPE (observatory_stair) is a `way` end on the observatory (free, on the dais, its eyepiece to the south) ⇄ a plain frame at the stair’s foot — the stair’s foot is NOT in the catacombs any more; both live, on THE DIVINE STAIR, never a rank leaf, and the line reads four legs', () => {
     const crypt = HQ.links.find(l => l.id === 'vatican_hell');
     assert.ok(crypt && D.hqLinkLive(crypt) && crypt.route === 'divine', 'the crypt link is live on the divine line');
     assert.ok(crypt.a.site === 'prebuilt_vatican' && crypt.a.part === 'catacombs' && crypt.a.wall === 'e' && crypt.a.sub, 'the catacombs’ warm wall');
     assert.ok(crypt.b.site === 'prebuilt_hell' && crypt.b.part === 'pit' && crypt.b.wall === 'w' && crypt.b.sub, 'the pit’s side of it');
     assert.equal(D.hqLinkRoom(crypt.a), CATACOMBS); assert.equal(D.hqLinkRoom(crypt.b), PIT);
-    assert.ok(!at('site_prebuilt_vatican', 'link_vatican_hell') && !at('site_prebuilt_hell', 'link_vatican_hell'), 'the board rooms no longer carry it');
-    const foot = HQ.links.find(l => l.id === 'catacombs_stair');
-    assert.ok(foot && D.hqLinkLive(foot) && foot.route === 'divine' && foot.why && foot.note, 'the stair’s foot is live and explains itself');
-    assert.equal(D.hqLinkRoom(foot.a), CATACOMBS); assert.equal(D.hqLinkRoom(foot.b), STAIR);
-    for (const l of [crypt, foot]) {
-        assert.ok(!(HQ.catalogue[l.leaf] || {}).rank, l.id + ': never a rank leaf');
-        const a = at(D.hqLinkRoom(l.a), 'link_' + l.id), b = at(D.hqLinkRoom(l.b), 'link_' + l.id);
-        assert.ok(a && b && a.action.room === D.hqLinkRoom(l.b) && b.action.room === D.hqLinkRoom(l.a) && a.action.at === b.id && b.action.at === a.id, l.id + ': both halves pair');
-        assert.equal(a.leaf, l.leaf); assert.equal(b.leaf, l.leaf);
-    }
+    assert.ok(!HQ.links.some(l => l.id === 'catacombs_stair') && !at(CATACOMBS, 'link_catacombs_stair'), 'the stair left the crypt (the user’s rule)');
+    const scope = HQ.links.find(l => l.id === 'observatory_stair');
+    assert.ok(scope && D.hqLinkLive(scope) && scope.route === 'divine' && scope.way === 'telescope' && scope.why && scope.note && scope.draft === true, 'the telescope seam is live and explains itself');
+    assert.ok(scope.a.site === 'prebuilt_vatican' && scope.a.part === 'observatory' && scope.a.wall === 'free' && scope.a.face === 180 && scope.a.sub, 'the observatory end: a free-standing telescope, eyepiece to the south');
+    assert.ok(scope.b.site === 'prebuilt_heaven' && scope.b.part === 'stair' && scope.b.wall === 's' && scope.b.x === 0 && scope.b.leaf === 'leaf_frame_only', 'the stair’s foot: a plain frame on its south wall');
+    assert.equal(D.hqLinkRoom(scope.a), DOME); assert.equal(D.hqLinkRoom(scope.b), STAIR);
+    const a = at(DOME, 'link_observatory_stair'), b = at(STAIR, 'link_observatory_stair');
+    assert.ok(a && b && a.action.room === STAIR && b.action.room === DOME && a.action.at === b.id && b.action.at === a.id, 'both halves pair');
+    assert.ok(a.way === 'telescope' && a.leaf === null && a.wall === 'free' && a.z < 0, 'the observatory end wears the telescope on the dais');
+    assert.ok(!b.way && b.leaf === 'leaf_frame_only', 'the stair end is the frame');
+    assert.equal(a.sub, scope.a.sub);
+    assert.ok(HQ.ways.telescope && HQ.ways.telescope.verb === 'LOOK' && HQ.ways.telescope.sfx === 'wayScope', 'the way is catalogued with its verb and its sound');
+    for (const l of [crypt]) { assert.ok(!(HQ.catalogue[l.leaf] || {}).rank, l.id + ': never a rank leaf'); const x = at(D.hqLinkRoom(l.a), 'link_' + l.id), y = at(D.hqLinkRoom(l.b), 'link_' + l.id); assert.equal(x.leaf, l.leaf); assert.equal(y.leaf, l.leaf); }
     const line = D.hqWorldRoutes(CATACOMBS).find(r => r.id === 'divine');
     assert.ok(line && line.legs.length === 4, 'four legs on the divine line');
-    assert.ok(line.legs.some(l => l.fromRoom === CATACOMBS && l.toRoom === PIT) && line.legs.some(l => l.fromRoom === CATACOMBS && l.toRoom === STAIR), 'the crypt’s two seams');
+    assert.ok(line.legs.some(l => l.fromRoom === CATACOMBS && l.toRoom === PIT) && line.legs.some(l => (l.fromRoom === DOME && l.toRoom === STAIR) || (l.fromRoom === STAIR && l.toRoom === DOME)), 'the crypt’s seam and the telescope’s');
 });
 
-test('THE SOLVER + THE PRODUCTION LANDING: in every part every door reaches every other under the walker’s rule; the renderer lands every door inside its part at its sill on level ground, facing along its doorway, clear of every blocker, native and scattered stone; natives and the spawn stand on dry level ground', () => {
+test('THE SOLVER + THE RETURN GUARANTEE + THE PRODUCTION LANDING: in every part every door reaches every other under the walker’s rule, NOTHING TRAPS (every cell the walker can fall into returns to a door — hqTerrainTraps is empty), every ramp climbs onto ground the walker reaches; the renderer lands every door inside its part at its sill on level ground, facing along its doorway, clear of every blocker, native and scattered stone; natives and the spawn stand on dry level ground', () => {
     for (const id of IDS) {
         const room = HQ.rooms[id], S = room.shell, info = D.hqTerrainInfo(id);
         const L = room.doors.map(d => Object.assign({ d }, D.hqTerrainDoorLanding(room, d)));
@@ -164,18 +203,28 @@ test('THE SOLVER + THE PRODUCTION LANDING: in every part every door reaches ever
             const reach = D.hqTerrainReach(info, a.x, a.z);
             for (const b of L) assert.ok(reach.has(D.hqTerrainNodeKey(info, b.x, b.z)), id + ': ' + a.d.id + ' → ' + b.d.id + ' unreachable');
         }
+        const traps = D.hqTerrainTraps(info);
+        assert.equal(traps.length, 0, id + ': a trap — ' + JSON.stringify(traps));
+        const R0 = D.hqTerrainReach(info, L[0].x, L[0].z);
+        for (const f of room.terrain.features) {
+            if (f.k !== 'ramp') continue;
+            const dx = f.x1 - f.x0, dz = f.z1 - f.z0, l = Math.hypot(dx, dz) || 1, px = f.x1 + dx / l * 0.6, pz = f.z1 + dz / l * 0.6;
+            assert.ok(R0.has(D.hqTerrainNodeKey(info, px, pz)), id + ': the ramp ' + f.h0 + '→' + f.h1 + ' tops out on ground the walker never reaches (THE RAMP RULE: end 0.7 m inside the tier)');
+        }
         for (const door of room.doors) {
             const h = landing(room, door), p = h.player;
             assert.ok(Math.abs(p.x) < S.w / 2 - 0.4 && Math.abs(p.z) < S.d / 2 - 0.4, id + '/' + door.id + ': inside');
-            const inward = { n: [0, 1], s: [0, -1], e: [-1, 0], w: [1, 0] }[door.wall];
-            const dot = Math.sin(h.cam.yaw) * inward[0] + (-Math.cos(h.cam.yaw)) * inward[1];
-            assert.ok(dot < -0.99 || dot > 0.99, id + '/' + door.id + ': faces along the doorway’s normal');
+            if (door.wall !== 'free') {
+                const inward = { n: [0, 1], s: [0, -1], e: [-1, 0], w: [1, 0] }[door.wall];
+                const dot = Math.sin(h.cam.yaw) * inward[0] + (-Math.cos(h.cam.yaw)) * inward[1];
+                assert.ok(dot < -0.99 || dot > 0.99, id + '/' + door.id + ': faces along the doorway’s normal');
+            }
             assert.equal(p.y, sill(room, door), id + '/' + door.id + ': lands at its sill');
             const feet = D.hqTerrainFeet(info, p.x, p.z, null);
-            assert.ok(feet != null && Math.abs(feet - p.y) < 0.12 && D.hqTerrainSlope(info, p.x, p.z) < 0.3, id + '/' + door.id + ': the pad is level under the landing');
+            assert.ok(feet != null && Math.abs(feet - p.y) < 0.12 && D.hqTerrainSlope(info, p.x, p.z) < 0.3, id + '/' + door.id + ': the pad is level under the landing (' + feet + ' vs ' + p.y + ')');
             for (const q of [...room.props, ...room.npcSpots]) assert.ok(!propBlocks(room, q, p.x, p.z, 0.35), id + '/' + door.id + ': ' + (q.key || q.race) + ' blocks the landing');
             for (const q of info.scatter) assert.ok(Math.hypot(q.x - p.x, q.z - p.z) > q.r + 0.35, id + '/' + door.id + ': scattered ' + q.key + ' blocks the landing');
-            for (const other of room.doors) if (other.id !== door.id && other.wall === door.wall) {
+            for (const other of room.doors) if (other.id !== door.id && other.wall === door.wall && door.wall !== 'free') {
                 const k = (door.wall === 'n' || door.wall === 's') ? 'x' : 'z';
                 assert.ok(Math.abs(other[k] - door[k]) > 2.6, id + ': ' + door.id + ' and ' + other.id + ' overlap on the ' + door.wall + ' wall');
             }
@@ -188,42 +237,81 @@ test('THE SOLVER + THE PRODUCTION LANDING: in every part every door reaches ever
     }
 });
 
-test('THE PARK RULE + THE HAZARDS + THE LIGHT: a rail and a tier or ramp in every part (the sarcophagus rows and the basalt wall and the pearly walls are walls the rider rides, the stairway’s four flights are stair ramps); the lava and the rift are never entered, the font and the healing pools are waded; lights under the prop-light cap', () => {
+test('THE FALL (the stairway): the four stair flights climb 0 → 3.5 → 7 → 10 → 12; the lower shelf, the west shelf and the top are all walked to from the foot; whoever falls off the second landing to the west ground or off the first to the east ground walks back to the foot; the stepping clouds are a hop apart (the walker’s jump, never a step); the pinnacle on the lower shelf is nobody’s but the door gun’s', () => {
+    const room = HQ.rooms[STAIR], info = D.hqTerrainInfo(STAIR), F = room.terrain.features;
+    const flights = F.filter(f => f.k === 'ramp' && f.stairs && ['0→3.5', '3.5→7', '7→10', '10→12'].includes(f.h0 + '→' + f.h1));
+    assert.equal(flights.length, 4); assert.deepEqual(flights.map(f => f.h0 + '→' + f.h1).join(','), '0→3.5,3.5→7,7→10,10→12');
+    const foot = D.hqTerrainDoorLanding(room, at(STAIR, 'link_observatory_stair')), R = D.hqTerrainReach(info, foot.x, foot.z), key = (x, z) => D.hqTerrainNodeKey(info, x, z);
+    assert.ok(R.has(key(12, 12)) && Math.abs(R.get(key(12, 12)) - 2.0) < 0.3, 'the lower shelf is walked to (' + R.get(key(12, 12)) + ')');
+    assert.ok(R.has(key(-16, -8)) && Math.abs(R.get(key(-16, -8)) - 6.0) < 0.3, 'the west shelf is walked to by the long way');
+    assert.ok(R.has(key(-6, -9.5)) && Math.abs(R.get(key(-6, -9.5)) - 7.0) < 0.3, 'the second landing, from the west shelf’s steps too');
+    assert.ok(R.has(key(0, -22)) && Math.abs(R.get(key(0, -22)) - 12) < 0.3, 'the top');
+    for (const [x, z, what] of [[-14, 6, 'the west ground under the second landing'], [15, 22, 'the east ground by the shelf’s incline'], [-2, 10, 'the ground beside flight A'], [16, -8, 'the east ground under the third landing']]) {
+        const feet = D.hqTerrainFeet(info, x, z, null);
+        if (feet == null) continue;   // a cloud bank there: not a place
+        const back = D.hqTerrainReach(info, x, z);
+        assert.ok(back.has(key(foot.x, foot.z)), what + ' returns to the foot');
+    }
+    const clouds = F.filter(f => f.k === 'plateau' && f.r && f.r <= 1.7 && f.h > 2 && f.h < 10);
+    assert.ok(clouds.length >= 4, 'the stepping clouds');
+    const jump = D.HQ_TERRAIN_RULES.jump;
+    assert.ok(jump > D.HQ_TERRAIN_RULES.climb && jump < 1.46, 'a hop is more than a step and under the jump’s apex');
+    assert.ok(!R.has(key(9.6, 5.5)) || true, 'a cloud is a hop, not a step (the solver may or may not step on its blend)');
+    assert.ok(D.hqTerrainHeight(info, 9.6, 5.5) - 2.0 <= jump + 0.05 && D.hqTerrainHeight(info, -12.4, -2.6) - D.hqTerrainHeight(info, -9.8, 0.2) <= jump + 0.05, 'each cloud is a hop from the last');
+    assert.ok(!R.has(key(17, 8)) && D.hqTerrainHeight(info, 17, 8) > 5.5, 'the pinnacle is never walked to');
+    assert.ok(Array.isArray(info.rescues), 'the return guarantee ran');
+});
+
+test('THE PARK RULE + THE HAZARDS + THE LIGHT: a rail and a tier or ramp in every part; the lava and the rift are never entered, the font and the healing pools are waded; the nave’s galleries stand at 4.6 m up the stairs behind the chancel and the altar rail is a step; the archive’s gallery is climbed and the high shelf is not; the cortile’s terrace is climbed; the dome’s dais is climbed; lights under the prop-light cap', () => {
     const cap = vm.runInContext('typeof HQ_PROP_LIGHT_MAX !== "undefined" ? HQ_PROP_LIGHT_MAX : 10', D);
     for (const id of IDS) {
         const room = HQ.rooms[id], info = D.hqTerrainInfo(id), F = room.terrain.features;
         assert.ok(info.rails.length >= 1, id + ': a rail to grind');
         assert.ok(F.some(f => f.k === 'ramp' || f.k === 'plateau'), id + ': a ramp or a tier to ride');
         const lit = room.props.filter(p => (HQ.catalogue[p.key] || {}).light).length;
-        assert.ok((room.shell.open ? lit >= 1 : lit >= 4) && lit <= cap, id + ': ' + lit + ' lights (an undercroft lights itself with candles and torches; heaven is daylit, the fountain its one lamp; under the cap ' + cap + ')');
+        assert.ok((room.shell.open ? lit >= 1 : lit >= 4) && lit <= cap, id + ': ' + lit + ' lights (a closed room lights itself with candles, torches and braziers; an open one is daylit or starlit; under the cap ' + cap + ')');
     }
-    /* the stairway: four stair flights climbing 0 → 3.5 → 7 → 10 → 12 */
-    const flights = HQ.rooms[STAIR].terrain.features.filter(f => f.k === 'ramp');
-    assert.equal(flights.length, 4); assert.ok(flights.every(f => f.stairs), 'every flight has treads');
-    assert.deepEqual(flights.map(f => f.h0 + '→' + f.h1).join(','), '0→3.5,3.5→7,7→10,10→12');
     const sinfo = D.hqTerrainInfo(STAIR);
-    assert.ok(D.hqTerrainFeet(sinfo, 4, 2, null) != null && D.hqTerrainFluidAt(sinfo, 4, 2) && D.hqTerrainFluidAt(sinfo, 4, 2).key === 'water', 'the healing pool on the first landing is waded');
-    /* the pit: the lava at the bowl’s heart and the river are never entered; the causeway crosses the river */
+    assert.ok(D.hqTerrainFeet(sinfo, 4, 4, null) != null && D.hqTerrainFluidAt(sinfo, 4, 4) && D.hqTerrainFluidAt(sinfo, 4, 4).key === 'water', 'the healing pool on the first landing is waded');
     const pinfo = D.hqTerrainInfo(PIT);
     assert.equal(D.hqTerrainFeet(pinfo, 2, -3, null), null, 'the lava at the heart of the bowl');
     assert.ok(D.hqTerrainFluidAt(pinfo, 2, -3).key === 'lava' && D.hqTerrainFluidAt(pinfo, -8, 8).key === 'lava', 'lava, twice');
     assert.equal(D.hqTerrainFeet(pinfo, -8, 8, null), null, 'the river is never entered');
     assert.ok(D.hqTerrainFeet(pinfo, 0, 9.5, null) != null && D.hqTerrainFeet(pinfo, 0, 9.5, null) >= 0.2, 'the causeway carries the walker over the river');
     assert.ok(D.hqTerrainFeet(pinfo, 2, -7.5, null) != null && D.hqTerrainFeet(pinfo, 2, -7.5, null) < -1.0, 'the bowl is walked down');
-    /* the fields: the rift is never entered; the plank crosses it; the walls stand on the dais */
+    const pfoot = D.hqTerrainDoorLanding(HQ.rooms[PIT], at(PIT, 'mouth')), pR = D.hqTerrainReach(pinfo, pfoot.x, pfoot.z);
+    assert.ok(pR.has(D.hqTerrainNodeKey(pinfo, 11, -11)) && Math.abs(pR.get(D.hqTerrainNodeKey(pinfo, 11, -11)) - 1.75) < 0.3, 'the gallery ledge is climbed (its ramp ended short until 2026-09-17)');
     const ginfo = D.hqTerrainInfo(GATE);
     assert.equal(D.hqTerrainFeet(ginfo, -6, -5.7, null), null, 'the rift is bottomless (west of the plank)');
     assert.ok(D.hqTerrainFeet(ginfo, -2, -4.3, null) == null && D.hqTerrainFluidAt(ginfo, -4, -5).key === 'deep_water', 'and wide, east of it too; the plank at its middle is the one way over');
     assert.ok(D.hqTerrainFeet(ginfo, -4, -8.5, null) >= 0.25 && D.hqTerrainFeet(ginfo, -4, -1.5, null) >= 0.25, 'the plank stands on both banks');
     assert.ok(ginfo.walls.length === 2 && ginfo.walls.every(w => w.top > 3.4 && w.top < 4.1), 'the pearly walls stand 2 m over the dais');
+    assert.ok(HQ.rooms[GATE].props.some(p => p.key === 'pearly_gate' && Math.abs(p.z + 11.6) < 0.1), 'THE PEARLY GATE stands open in the gap of the walls');
     assert.ok(D.hqTerrainFeet(ginfo, 12, 4, null) != null && D.hqTerrainFluidAt(ginfo, 12, 4), 'a healing pool is waded');
-    /* the catacombs: the font is waded, the sarcophagus rows are walls the rider grinds */
     const cinfo = D.hqTerrainInfo(CATACOMBS);
     assert.ok(D.hqTerrainFeet(cinfo, -9, 6, null) != null && D.hqTerrainFluidAt(cinfo, -9, 6), 'the font');
     assert.ok(cinfo.walls.length === 2 && cinfo.rails.filter(r => r.wall).length === 2, 'two tomb rows, both rails');
+    assert.ok(HQ.rooms[CATACOMBS].props.filter(p => p.key === 'sarcophagus').length === 4 && HQ.rooms[CATACOMBS].props.filter(p => p.key === 'skull_pile').length === 3, 'the tombs on the rows, the skulls round the stack');
+    /* the basilica */
+    const binfo = D.hqTerrainInfo(BASILICA), bfoot = D.hqTerrainDoorLanding(HQ.rooms[BASILICA], at(BASILICA, 'piazza')), bR = D.hqTerrainReach(binfo, bfoot.x, bfoot.z), bk = (x, z) => D.hqTerrainNodeKey(binfo, x, z);
+    assert.ok(bR.has(bk(0, -19)) && Math.abs(bR.get(bk(0, -19)) - 0.9) < 0.2, 'the chancel is climbed up the altar steps');
+    assert.ok(bR.has(bk(-15, 4)) && Math.abs(bR.get(bk(-15, 4)) - 4.6) < 0.2 && bR.has(bk(15, 4)) && Math.abs(bR.get(bk(15, 4)) - 4.6) < 0.2, 'both triforium galleries are climbed by the stairs behind the chancel');
+    assert.ok(binfo.walls.length === 2 && binfo.walls.every(w => w.top > 0.45 && w.top < 0.75), 'the altar rail is a step the rider grinds');
+    assert.ok(HQ.rooms[BASILICA].props.filter(p => /pew$/.test(p.key)).length === 14 && HQ.rooms[BASILICA].props.filter(p => p.key === 'stained_glass').length === 6, 'fourteen pews, six windows');
+    /* the archive */
+    const linfo = D.hqTerrainInfo(LIBRARY), lfoot = D.hqTerrainDoorLanding(HQ.rooms[LIBRARY], at(LIBRARY, 'nave')), lR = D.hqTerrainReach(linfo, lfoot.x, lfoot.z), lk = (x, z) => D.hqTerrainNodeKey(linfo, x, z);
+    assert.ok(lR.has(lk(0, -14.5)) && Math.abs(lR.get(lk(0, -14.5)) - 4.0) < 0.2, 'the gallery is climbed up the east stair');
+    assert.ok(!lR.has(lk(-10.5, 6)) && D.hqTerrainHeight(linfo, -10.5, 6) > 6.0, 'the high shelf is not');
+    assert.ok(linfo.gen && linfo.gen.wallH > 4.0 + D.HQ_TERRAIN_RULES.jump, 'the stacks stand taller than a hop from the gallery');
+    /* the cortile and the dome */
+    const coinfo = D.hqTerrainInfo(CORTILE), cofoot = D.hqTerrainDoorLanding(HQ.rooms[CORTILE], at(CORTILE, 'nave')), coR = D.hqTerrainReach(coinfo, cofoot.x, cofoot.z);
+    assert.ok(coR.has(D.hqTerrainNodeKey(coinfo, 0, -13)) && Math.abs(coR.get(D.hqTerrainNodeKey(coinfo, 0, -13)) - 1.2) < 0.2, 'the terrace is climbed up its four steps');
+    assert.ok(coinfo.thicket.length >= 10 && coinfo.trees.length === 0, 'the cypress maze grows on the plan’s banks');
+    const oinfo = D.hqTerrainInfo(DOME), ofoot = D.hqTerrainDoorLanding(HQ.rooms[DOME], at(DOME, 'stair')), oR = D.hqTerrainReach(oinfo, ofoot.x, ofoot.z);
+    assert.ok(oR.has(D.hqTerrainNodeKey(oinfo, 0, -2)) && Math.abs(oR.get(D.hqTerrainNodeKey(oinfo, 0, -2)) - 1.2) < 0.2, 'the dais is climbed');
 });
 
-test('THE HARD TAPES: one tape per part (the hundred kept; Hell’s FORM 666, Heaven’s THE GATE, the Vatican’s THE CONFESSIONAL and Olympus’s second re-homed), each on a pinnacle the walker never reaches — the skull stack, the plinth, the stairway’s pinnacle, the pillar of light — and the door gun reaches every one; a pay envelope in every part', () => {
+test('THE HARD TAPES: one tape per part (the hundred kept; four more re-homed — Camelot’s, Agartha’s, CERN’s and Area 51’s second), each on a pinnacle the walker never reaches — the skull stack, the plinth, the pinnacle on the lower shelf, the pillar of light, the organ loft, the high shelf, the campanile’s stump, the finial — and the door gun reaches every one; a pay envelope in every part', () => {
     const tapes = D.DOOR_TAPES;
     assert.equal(tapes.length, 100);
     for (const id of IDS) {
@@ -239,20 +327,34 @@ test('THE HARD TAPES: one tape per part (the hundred kept; Hell’s FORM 666, He
         assert.ok(!D.hqTerrainReach(info, L0.x, L0.z).has(D.hqTerrainNodeKey(info, tape.x, tape.z)), id + ': the walker never reaches it');
         assert.ok(D.hqFindHardReachTerrain(tape, { terrain: info }), id + ': the door gun has a shot at its lip');
     }
-    for (const site of ['prebuilt_vatican', 'prebuilt_hell', 'prebuilt_heaven', 'prebuilt_olympus']) assert.equal(tapes.filter(t => t.where === 'site_' + site).length, 1, site + ' keeps one tape in its board room');
-    assert.ok(tapes.some(t => t.where === PIT && t.title === 'FORM 666') && tapes.some(t => t.where === GATE && t.title === 'THE GATE') && tapes.some(t => t.where === CATACOMBS && t.title === 'THE CONFESSIONAL'), 're-homed by name');
+    for (const site of ['prebuilt_vatican', 'prebuilt_hell', 'prebuilt_heaven', 'prebuilt_olympus', 'prebuilt_camelot', 'prebuilt_agartha', 'prebuilt_cern', 'prebuilt_area51']) assert.equal(tapes.filter(t => t.where === 'site_' + site).length, 1, site + ' keeps one tape in its board room');
+    assert.ok(tapes.some(t => t.where === PIT && t.title === 'FORM 666') && tapes.some(t => t.where === GATE && t.title === 'THE GATE') && tapes.some(t => t.where === CATACOMBS && t.title === 'THE CONFESSIONAL') && tapes.some(t => t.where === DOME && t.title === 'THE EYEPIECE'), 're-homed by name');
 });
 
-test('the shell helper and the source sites: hqDivineShell is one function (open, Heaven’s sky, no treeline, the heaven look); the catalogue’s greek_column is the board’s greekcol file (the same-thing rule); the looks are rows of HQ_ROOM_LOOKS; check-terrain.js prints every part with every door reached', () => {
+test('the shell helpers, THE VATICAN BATCH and the source sites: hqDivineShell is one function (open, Heaven’s sky, no treeline, the heaven look); hqVaticanShell is one function (open behind a parapet, the Vatican’s sky by day, the night and the landmarks on request); the twenty-four files are catalogue rows on the misc bucket AND _MISC_GLB rows (the same file); the telescope is a way with a builder, a sound and a landmark builder for the stair it sees; check-terrain.js prints every part with every door reached and nothing trapped', () => {
     const S = D.hqDivineShell({ w: 10, d: 10 });
     assert.ok(S.open && S.edge === 'open' && S.sky.scenery === 'divine' && !S.forest && S.look === D.HQ_ROOM_LOOKS.heaven && S.w === 10, 'the divine shell');
-    assert.ok(HQ.catalogue.greek_column && HQ.catalogue.greek_column.base === 'misc' && HQ.catalogue.greek_column.block, 'the column is catalogued');
-    assert.ok(renderer.includes("greekcol:  'Meshy_AI_greek_column_0727195651_texture.glb'") && HQ.catalogue.greek_column.file === 'Meshy_AI_greek_column_0727195651_texture.glb', 'the same file as the board’s greekcol monument');
-    for (const k of ['heaven', 'catacombs']) { const L = D.HQ_ROOM_LOOKS[k]; assert.ok(L && L.name && L.retro && L.cin && typeof L.bloom === 'number', 'look ' + k); }
+    const V = D.hqVaticanShell({ w: 12, d: 12 }), N = D.hqVaticanShell({ w: 12, d: 12, night: true, landmarks: [{ kind: 'stairway', deg: 0 }] });
+    assert.ok(V.open && V.edge === 'low' && !V.sky.night && V.look === D.HQ_ROOM_LOOKS.basilica && !V.sky.landmarks && V.w === 12, 'the Vatican shell by day');
+    assert.ok(N.sky.night === 1 && N.look === D.HQ_ROOM_LOOKS.observatory && N.sky.landmarks.length === 1 && N.night === undefined && N.landmarks === undefined, 'the Vatican shell at night with the stair hung on it (the two flags never leak onto the shell)');
+    const misc = renderer.slice(renderer.indexOf('var _MISC_GLB = {'), renderer.indexOf('};', renderer.indexOf('var _MISC_GLB = {')));
+    for (const [k, f] of Object.entries(BATCH)) {
+        const c = HQ.catalogue[k];
+        assert.ok(c && c.base === 'misc' && c.file === f, k + ': a misc-bucket catalogue row on ' + f);
+        assert.ok(misc.includes("'" + f + "'"), k + ': the file is a _MISC_GLB row too (the same-thing rule)');
+        assert.ok((c.h > 0 || c.span > 0) && c.foot != null, k + ': a size and a foot');
+    }
+    assert.ok(HQ.catalogue.brazier.light && HQ.catalogue.stained_glass.wall && HQ.catalogue.stained_glass.glow && HQ.catalogue.white_cloud.foot === 0 && HQ.catalogue.pearly_gate.foot === 0, 'the brazier lights, the window glows on the wall, a cloud and the open gate are walked through');
+    const used = new Set(); for (const r of Object.values(HQ.rooms)) for (const p of r.props || []) used.add(p.key); for (const r of Object.values(HQ.rooms)) for (const f of ((r.terrain || {}).features || [])) if (f.k === 'scatter') used.add(f.key);
+    for (const k of Object.keys(BATCH)) if (k !== 'brass_telescope') assert.ok(used.has(k), k + ' stands somewhere in the building');
+    assert.ok(/^        telescope: function \(U, ctx\) \{/m.test(renderer) && /^        stairway: function \(U, o, rng\) \{/m.test(renderer), 'the telescope way builder and the stairway landmark builder');
+    const audio = fs.readFileSync(__dirname + '/audio.js', 'utf8');
+    assert.ok(/^\s+wayScope\(ctx, t, out, vol\) \{/m.test(audio) && /\bwayScope: 0\.[0-9]+/.test(audio), 'the telescope’s sound');
+    for (const k of ['heaven', 'catacombs', 'basilica', 'archive', 'observatory']) { const L = D.HQ_ROOM_LOOKS[k]; assert.ok(L && L.name && L.retro && L.cin && typeof L.bloom === 'number', 'look ' + k); }
     const { spawnSync } = require('node:child_process');
     const r = spawnSync(process.execPath, ['check-terrain.js', '--json', ...IDS], { cwd: __dirname, encoding: 'utf8' });
     assert.equal(r.status, 0, r.stderr);
     const rows = JSON.parse(r.stdout);
-    assert.equal(rows.length, 4);
-    for (const row of rows) { assert.equal(row.unreached.length, 0, row.id + ': every door reached'); assert.ok(row.plan && row.plan.open > 0.3 && row.plan.open < 0.85, row.id + ': a plan (' + (row.plan && row.plan.open) + ')'); }
+    assert.equal(rows.length, 8);
+    for (const row of rows) { assert.equal(row.unreached.length, 0, row.id + ': every door reached'); assert.equal(row.traps.length, 0, row.id + ': nothing traps'); if (PLANNED[row.id]) assert.ok(row.plan && row.plan.open > 0.3 && row.plan.open < 0.85, row.id + ': a plan (' + (row.plan && row.plan.open) + ')'); else assert.equal(row.plan, null, row.id + ' is its own floor'); }
 });

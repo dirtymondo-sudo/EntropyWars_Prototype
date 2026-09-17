@@ -1864,6 +1864,7 @@
             wayCreak: 0.28, wayWell: 0.3, wayTrain: 0.32,
             wayMirror: 0.3, waySplash: 0.32, wayCanvas: 0.28, wayFloo: 0.32, wayStatic: 0.26,   // the second batch (rev 22)
             wayHollow: 0.3,   // THE TREES WITH HOLES IN THEM (2026-09-17)
+            wayScope: 0.28,   // THE TELESCOPE (2026-09-17, THE DIVINE STAIR): the brass creak of the tube, a rising shimmer, the step onto cloud
             /* SKATEBOARDING (HQ plan 9.8, 2026-09-15): the deck's own kit — quiet, the ride plays them thirty times a minute */
             skatePush: 0.3, skateOllie: 0.4, skateLand: 0.36, skateGrind: 0.3, skateBail: 0.45, skateBank: 0.4,
             /* THE DOOR GUN rev 3 (2026-09-16): the zap, the frame landing, the recall — the building AND the board (the shot VFX voices them) */
@@ -2099,6 +2100,15 @@
                 _doorOsc(ctx, _doorEnv(ctx, out, th, vol * 0.42, 0.02, 0.5, 0.9), 'sine', 110, th, 1.4, { f1: 82, slide: 1.2 });
                 _doorOsc(ctx, _doorEnv(ctx, out, th, vol * 0.16, 0.02, 0.4, 0.7), 'triangle', 220, th, 1.1, { f1: 164, slide: 1.0 });
                 return th - t + 1.5;
+            },
+            wayScope(ctx, t, out, vol) {
+                /* the mount's brass creak as the tube tilts, a rising glassy shimmer (the lens filling with the stair), then a soft chord — the first step */
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.22, 0.01, 0.25, 0.2), t, 0.45, { type: 'bandpass', f0: 700, f1: 1400, slide: 0.4, q: 3.5 });
+                [0, 0.12, 0.24].forEach(k => { const tk = t + 0.3 + k; _doorOsc(ctx, _doorEnv(ctx, out, tk, vol * 0.18, 0.02, 0.5, 0.6), 'sine', 880 + k * 900, tk, 1.1, { f1: 1760 + k * 900, slide: 1.0 }); });
+                const tc = t + 0.9;
+                [261.6, 329.6, 392.0, 523.3].forEach((f, i) => { _doorOsc(ctx, _doorEnv(ctx, out, tc + i * 0.04, vol * 0.14, 0.03, 0.9, 1.2), 'triangle', f, tc + i * 0.04, 2.0); });
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, tc, vol * 0.1, 0.1, 1.2, 0.8), tc, 2.0, { type: 'lowpass', f0: 900, f1: 300, slide: 1.8 });
+                return tc - t + 2.2;
             },
             wayStatic(ctx, t, out, vol) {
                 _doorOsc(ctx, _doorEnv(ctx, out, t, vol * 0.12, 0.05, 0.9, 0.1), 'sawtooth', 60, t, 1.05);

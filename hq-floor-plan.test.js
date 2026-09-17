@@ -31,7 +31,7 @@ const PLANNED = ROOMS.filter(id => HQ.rooms[id].terrain.gen);
 const G = D.HQ_TERRAIN_GEN;
 
 test('the sheet: seventeen of the eighteen terrain rooms carry a floor plan — the cave chambers cellular automata, the open woods clearings + corridors; the storm drain (a culvert) keeps its box', () => {
-    assert.equal(PLANNED.length, 17, PLANNED.join(','));   // + THE DIVINE STAIR's four (2026-09-17)
+    assert.equal(PLANNED.length, 19, PLANNED.join(','));   // + THE DIVINE STAIR's four, + THE VATICAN's archive and cortile (2026-09-17; the basilica and the observatory are their own floors)
     for (const id of PLANNED) {
         const room = HQ.rooms[id], gen = room.terrain.gen, info = D.hqTerrainInfo(id);
         assert.ok(gen.kind === 'cave' || gen.kind === 'rooms', id + ': kind ' + gen.kind);
@@ -50,7 +50,7 @@ test('THE MASK IS THE HEIGHT: every solid cell deep in the plan stands at least 
         let deep = 0, low = 0, forcedSolid = 0, rimOpen = 0;
         for (let j = 0; j < info.nz; j++) for (let i = 0; i < info.nx; i++) {
             const k = j * info.nx + i, x = info.x0 + i * res, z = info.z0 + j * res;
-            if (info.forced[k] && !info.mask[k] && Math.abs(x) < S.w / 2 && Math.abs(z) < S.d / 2) forcedSolid++;   // inside the walls (a lane runs past them; past the wall is solid by rule)
+            if (info.forced[k] && !info.mask[k] && Math.abs(x) < S.w / 2 && Math.abs(z) < S.d / 2 && !(info.sealedCells && info.sealedCells.has(k))) forcedSolid++;   // inside the walls (a lane runs past them; past the wall is solid by rule); THE RETURN GUARANTEE (2026-09-17) may SEAL a trap's forced cells as a last resort (info.sealedCells) — nobody can use a trap
             if (Math.abs(x) < S.w / 2 - 0.4 && Math.abs(z) < S.d / 2 - 0.4 && (Math.abs(x) > S.w / 2 - 0.55 || Math.abs(z) > S.d / 2 - 0.55) && info.mask[k] && !info.forced[k]) rimOpen++;
             if (info.maskD[k] < -(info.gen.edge + 0.2) && Math.abs(x) < S.w / 2 - 1 && Math.abs(z) < S.d / 2 - 1) {
                 deep++;

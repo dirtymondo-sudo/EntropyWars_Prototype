@@ -237,6 +237,46 @@ THE WISHLIST (Meshy, unit-normalised; a row = `base: 'misc'` + `h`/`span`
 9. **brazier** (a `light`) and a **broken column** — the pit and the fields.
 10. **bone-and-obsidian stair segment** — if the flights are to be modelled rather than drawn treads.
 
+## 3g. THE VATICAN BATCH (Assets/misc/, 2026-09-17 — THE DIVINE STAIR expanded)
+
+Twenty-four Meshy props the user uploaded for the Vatican, the catacombs, the
+pit and the clouds. Every one is in `_MISC_GLB` (three-renderer.js) AND in
+`DOOR_HQ.catalogue` with `base: 'misc'` (the building's props; the terrain
+rooms' `scatter` rows). THE TELESCOPE is a SEAM: `DOOR_HQ.ways.telescope`
+(three-renderer.js `_hqWayBuilders.telescope`: the catalogue GLB
+`brass_telescope` over a procedural tube on a tripod; the Observatorium's
+`telescope` PROC keeps its key). Facings are UNMEASURED — a backward front
+is the catalogue row's `rot` / `front`; a wrong height is its `h` / `span`.
+A `rect` row (the pews, the church building) is placed at face 0 / 180 only.
+Columns as in §3.
+
+| `_MISC_GLB` key | catalogue key | file | S | H | stands as |
+| --- | --- | --- | --- | --- | --- |
+| `church_pew` | `church_pew` | Meshy_AI_church_pew_0917035915_texture.glb | | the basilica ×8 (the back rows) | a pew |
+| `catholic_pew` | `catholic_pew` | Meshy_AI_catholic_church_pew_0917035928_texture.glb | | the basilica ×6 (the front rows) | a pew |
+| `church_podium` | `church_podium` | Meshy_AI_church_podium_0917035658_texture.glb | | the chancel | the pulpit |
+| `royal_throne` | `royal_throne` | Meshy_AI_royal_throne_0917035803_texture.glb | | the chancel (`front: 'back'` — measured on landing) | the cathedra |
+| `wooden_cross` | `wooden_cross` | Meshy_AI_wooden_cross_0917035711_texture.glb | | the basilica's north wall (mount 2.6), the catacombs' chapel (mount 1.0) | the cross |
+| `stained_glass` | `stained_glass` | Meshy_AI_stained_glass_window_0917035453_texture.glb | | the basilica ×6 (wall, mount 5.5, a glow) | a window |
+| `holy_carpet` | `holy_carpet` | Meshy_AI_ornate_holy_carpet_0917035624_texture.glb | | the aisle ×3 (y 0.01, foot 0) | the carpet |
+| `confessional` | `confessional_booth` | Meshy_AI_confessional_booth_0917035307_texture.glb | | the basilica's side aisles ×2, the catacombs (THE CONFESSIONAL) | a booth |
+| `church_wall` | `church_wall` | Meshy_AI_catholic_church_wall_0917035726_texture.glb | | the chancel screens ×2 (wall, mount 0) | a screen |
+| `church_building` | `church_building` | Meshy_AI_catholic_church_building_0917035753_texture.glb | | the cortile's terrace (the façade, rect 20 × 6) | the basilica's front |
+| `italian_building` | `italian_building` | Meshy_AI_Italian_building_0917035900_texture.glb | | the cortile's east wing | the palace |
+| `italian_building_2` | `italian_building_2` | Meshy_AI_Italian_building_2_0917035828_texture.glb | | the cortile's west wing | the palace |
+| `ancient_walkway` | `ancient_walkway` | Meshy_AI_ancient_walkway_0917035609_texture.glb | | the cortile ×3 (foot 0) | the cloister's arcade |
+| `library_shelf` | `library_shelf` | Meshy_AI_a_library_shelf_0917035552_texture.glb | | the archive ×5 (wall) + scatter ×5 | a case |
+| `library_shelf_full` | `library_shelf_full` | Meshy_AI_library_shelf_full_of_books_0917035645_texture.glb | | the archive's gallery ×2 + scatter ×7 | a full case |
+| `catacomb_wall` | `catacomb_wall` | Meshy_AI_catacomb_wall_0917035320_texture.glb | | the catacombs ×3 (wall, mount 0) | the bone walls |
+| `sarcophagus` | `sarcophagus` | Meshy_AI_stone_sarcophagus_0917035255_texture.glb | | the catacombs ×4 (on the two low tomb rows) | a tomb |
+| `skull_pile` | `skull_pile` | Meshy_AI_skull_pile_0917035243_texture.glb | | the catacombs ×3 (round THE SKULL STACK), the pit ×2 | the bones |
+| `demon_statue` | `demon_statue` | Meshy_AI_demon_statue_0917040101_texture.glb | | the pit (chained beside THE PLINTH) | the colossus |
+| `brazier` | `brazier` | Meshy_AI_brazier_0917035429_texture.glb | | every part of the complex (a `light` + a glow) | the flame |
+| `angel_statue` | `angel_statue` | Meshy_AI_angel_statue_0917035332_texture.glb | | the basilica, the cortile, the stairway ×3, the fields ×2, the dome | an angel |
+| `pearly_gate` | `pearly_gate` | Meshy_AI_pearly_gate_0917035350_texture.glb | | the cloud fields' dais, standing open in the gap of the pearly walls (foot 0; `leaf_hotel` stays the door) | THE GATE |
+| `white_cloud` | `white_cloud` | Meshy_AI_white_cloud_0917035538_texture.glb | | the stairway ×6 + the fields ×4 hung in the air (`y`, foot 0), scatter on the cloud floors | a cloud |
+| `telescope` | `brass_telescope` | Meshy_AI_telescope_0917035520_texture.glb | | THE TELESCOPE way in the observatory (`_hqWayBuilders.telescope`) | the seam to the stair |
+
 ## 4. The older `Assets/misc/` models (`_MISC_GLB` + the OBJ landmarks)
 
 | key | file | kind | stands as |

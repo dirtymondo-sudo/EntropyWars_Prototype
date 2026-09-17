@@ -4992,6 +4992,56 @@ under the walker at 12 m, the lava under the obsidian causeway, the
 `leaf_frame_only` foot, the brick catacombs under the teal grade, the
 column GLB's scale. Assets that would lift it: MODEL_INDEX §3f.
 
+## THE DIVINE STAIR, second delivery — THE VATICAN + THE FALL + THE RETURN GUARANTEE + THE VATICAN BATCH (2026-09-17, local delivery)
+**THE RETURN GUARANTEE** (data.js `_hqTReturnGuarantee`, after the door
+guarantee in `_hqTGenerate` and in `hqTerrainCompile` for a room without a
+plan): nothing the walker can FALL INTO holds it — every cell reached from the
+door pads with the walker's JUMP (`HQ_TERRAIN_RULES.jump` 1.3, any drop) must
+reach a pad again; a TRAP gets A RESCUE RAMP (`_hqTRescuePath` / `_hqTLayRamp`:
+the shortest way from the trap to returning ground at ≤ `rescueSlope` 0.7,
+cut through the plan's solid, never lowering higher open ground beside it,
+undone if it breaks a door route) else is SEALED (a forced cell only as a
+last resort, `info.sealedCells`; never a pad; undone if it cuts a door off).
+**`hqTerrainTraps(info)`** is the ONE read (empty = the room passes;
+hq-terrain.test.js insists for every terrain room; `node check-terrain.js`
+prints TRAPS + the rescue ramps cut; `info.rescues`). THE RAMP RULE is sharper:
+a ramp ends **0.7 m inside** its tier's rect (the 0.35 m edge blend + a 0.5 m
+sample — 0.3 m sampled a hole; the pit's gallery ledge was never reachable).
+**THE VATICAN** is five parts (data.js, the block before THE PIT):
+`site_prebuilt_vatican_basilica` (mass — the chancel, two TRIFORIUM galleries
+at 4.6 up stairs behind the chancel, the organ loft = the tape; THE CRYPT door
+on the chancel at y 0.9 → the catacombs; the board's white door opens on it:
+`backDoors.prebuilt_vatican` id `basilica`), `_library` (THE SECRET ARCHIVE:
+`gen: cave` in the `wood` sheet = the stacks, `crag: false`; the gallery at
+4.0, THE DOME STAIR's door on it at y 4), `_courtyard` (THE CORTILE:
+**`hqVaticanShell(o)`** — open behind a parapet under the Vatican's sky; a
+cypress thicket plan; THE CISTERN = a hand-authored `way: 'well'` DOOR ROW,
+free-standing, ⇄ the catacombs' north), `_observatory` (THE DOME:
+`hqVaticanShell({ night: true, landmarks })` — THE STAIRWAY IN THE SKY due north
+via three-renderer.js `_hqLandmarkBuilders.stairway`), `_catacombs` (its north
+link door GONE). **THE TELESCOPE IS THE SEAM**: `links.observatory_stair`
+(`way: 'telescope'`, a `wall: 'free'` end on the observatory part, eyepiece
+south, ⇄ the stair's south wall wearing `leaf: 'leaf_frame_only'`);
+`DOOR_HQ.ways.telescope`, `_hqWayBuilders.telescope` (the GLB
+`brass_telescope` over a procedural tube — the Observatorium's `telescope` PROC
+keeps its key), audio.js `wayScope`. `links.catacombs_stair` no longer exists
+(the user's rule: the stair's foot is in the sky over the dome, not the crypt).
+**THE STAIRWAY** (40 × 54) keeps the four flights and adds THE FALL: the lower
+shelf (2 m) with its incline, THE LONG WAY up the west to the west shelf (6 m)
++ three steps onto the second landing, the stepping clouds (hop-high columns),
+the pinnacle on the lower shelf (the tape; pin (17, 8)), `white_cloud` props
+hung in the air (`y`, foot 0). **THE VATICAN BATCH** (24 GLBs, MODEL_INDEX §3g):
+`_MISC_GLB` + `DOOR_HQ.catalogue` rows (`base: 'misc'`) — pews, podium,
+throne (`front: 'back'`), cross, stained glass (wall, glow), carpet,
+confessional, church wall / building (rect), italian buildings, arcade, two
+shelves, catacomb wall, sarcophagus, skull pile, demon, brazier (`light`),
+angel, pearly gate (open in the gap of the pearly walls, foot 0), white cloud.
+Looks `HQ_ROOM_LOOKS.basilica` / `.archive` / `.observatory`. Tapes: Camelot's,
+Agartha's, CERN's and Area 51's second re-homed. `npm test` runs
+hq-divine.test.js (9). Ship data.js to Render too. UNSEEN LIVE (RULE #1c): every
+GLB's scale and facing, the stacks in wood, the cypress banks, the landmark's
+size from the dome, the rescue cuts between the cloud banks.
+
 ## THE COMPLEX BLUEPRINT + THE CANDIDATE LIST (the user's rule, 2026-09-17)
 The user: "these two areas [THE CAVE and THE WOODS] are the blueprint for
 making complex maps now — especially the part about getting the aesthetic

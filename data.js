@@ -14143,6 +14143,10 @@ const HQ_ROOM_LOOKS = {
     drain: { name: 'THE STORM DRAIN', retro: { enabled: true, preset: 'green', pixelSize: 1, ditherStrength: 0.5, grain: 0.035, tintAmount: 0.55, levels: 20 }, cin: { vignette: true, vigAmount: 0.55, vigSize: 0.44 }, nightMood: 0.65, bloom: 0.16 },
     /* THE DIVINE STAIR (2026-09-17): the clouds bright, bloomed, barely vignetted; the crypt teal-dark under candles */
     heaven: { name: 'HEAVEN', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.3, grain: 0.02, tintAmount: 0.35, levels: 30 }, cin: { vignette: true, vigAmount: 0.25, vigSize: 0.6 }, nightMood: 0.0, bloom: 0.5 },
+    /* THE VATICAN (2026-09-17): the nave gold under incense, the archive dark amber, the dome teal-dark under the stars */
+    basilica: { name: 'THE BASILICA', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.35, grain: 0.025, tintAmount: 0.3, levels: 26 }, cin: { vignette: true, vigAmount: 0.4, vigSize: 0.5 }, nightMood: 0.25, bloom: 0.4 },
+    archive: { name: 'THE ARCHIVE', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.45, grain: 0.035, tintAmount: 0.45, levels: 20 }, cin: { vignette: true, vigAmount: 0.55, vigSize: 0.44 }, nightMood: 0.6, bloom: 0.18 },
+    observatory: { name: 'THE OBSERVATORY', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.4, grain: 0.03, tintAmount: 0.4, levels: 24 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.48 }, nightMood: 0.85, bloom: 0.45 },
     catacombs: { name: 'THE CATACOMBS', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.5, grain: 0.04, tintAmount: 0.45, levels: 18 }, cin: { vignette: true, vigAmount: 0.6, vigSize: 0.42 }, nightMood: 0.75, bloom: 0.14 },
 };
 // THE LOOK (2026-09-17): `env.look` on a row = a grade (a HQ_ROOM_LOOKS row: retro preset, dither,
@@ -18503,6 +18507,35 @@ function hqDivineShell(o) {
     Object.keys(o).forEach(k => { S[k] = o[k]; });
     return S;
 }
+/* ── THE VATICAN'S SHELL (2026-09-17) ─────────────────────────────────────
+   The cortile and the observatory are OPEN rooms under the Vatican's own sky
+   (EW_MAP_META prebuilt_vatican env: the gilt tint, the divine roster) behind a
+   low parapet — the observatory at NIGHT (`night: true`: the stars up, the
+   telescope's hour) with THE STAIRWAY IN THE SKY hung on it (`landmarks`).
+   One function so the two cannot drift apart; `o` overrides a field. */
+function hqVaticanShell(o) {
+    o = Object.assign({}, o || {});
+    const night = !!o.night; delete o.night;
+    const landmarks = o.landmarks || null; delete o.landmarks;
+    const sky = night
+        ? { night: 1, tint: 0x384068, tintAmt: 0.42, stars: 1.0, nebula: 0.3, fog: { color: 0x141a2c, amount: 0.5, top: 0.05, band: 0.5, density: 0.02 }, scenery: 'divine', density: 0.6 }
+        : { night: 0, tint: 0xd8c090, tintAmt: 0.35, stars: 0.4, nebula: 0.5, fog: { color: 0xd8c8a0, amount: 0.5, top: 0.05, band: 0.5, density: 0.022 }, scenery: 'divine', density: 0.8 };
+    if (landmarks) sky.landmarks = landmarks;
+    const S = {
+        w: 0, d: 0, h: 9.0, wallH: 9.0, dadoH: 1.1,
+        open: true, edge: 'low',
+        floor: 'cobblestone', wall: 'marble_light', dado: 'marble_light', trim: 'gold', ceiling: 'marble_light',
+        apron: 'cobblestone', skirt: 'marble_light', apronColor: 0xc8beab,
+        floorColor: 0xc8beab, wallColor: 0xe8e4dc, dadoColor: 0xd8b860,
+        pipes: false, strips: false, lights: [],
+        mood: night ? { light: 0xb8c4ff, ambient: 0.3 } : { light: 0xfff4e0, ambient: 0.5 },
+        sky: sky,
+        plate: { x: 0, z: -9.8, y: 4.4 },
+        look: night ? HQ_ROOM_LOOKS.observatory : HQ_ROOM_LOOKS.basilica,
+    };
+    Object.keys(o).forEach(k => { S[k] = o[k]; });
+    return S;
+}
 const DOOR_HQ = {
     units: 73,
     assets: { models: DOOR_HQ_ASSETS + 'models/', textures: DOOR_HQ_ASSETS + 'textures/' },
@@ -18636,6 +18669,37 @@ const DOOR_HQ = {
         drain_grate:       { file: 'Meshy_AI_a_storm_drain_grate_0916235918_texture.glb',          base: 'misc', span: 1.2, foot: 0, mount: 0.4 },
         stump:             { file: 'Meshy_AI_a_stump_0916235717_texture.glb',                      base: 'misc', h: 0.6, foot: 0.4, block: true },
         hollow_tree:       { file: 'Meshy_AI_a_tree_with_a_hole_0916235727_texture.glb',           base: 'misc', h: 6.0, foot: 0.7, block: true, rot: 0 },
+        /* 2026-09-17 THE VATICAN BATCH (twenty-four Meshy props the user uploaded to Assets/misc/ — MODEL_INDEX §3g): the
+           basilica's furniture (pews of two kinds, the podium, the cathedra, the cross, the windows, the carpet, the
+           confessional, the chancel screens), the archive's cases, the cortile's façade and palace wings and arcade,
+           the catacombs' bone wall / sarcophagi / skull piles, the pit's demon, the clouds' angels / gate / cloud puffs
+           / braziers, and THE TELESCOPE (the observatory's way — DOOR_HQ.ways.telescope reads `brass_telescope`). Sizes and
+           facings are TARGETS (the files are unmeasured — a wrong height is `h` / `span`, a backward front is `rot` /
+           `front`); a `rect` row is placed at face 0 / 180 only (the pews); the sarcophagi and booths keep a disc. */
+        library_shelf:      { file: 'Meshy_AI_a_library_shelf_0917035552_texture.glb',                base: 'misc', h: 2.6, foot: 0.6, block: true, wall: true },
+        library_shelf_full: { file: 'Meshy_AI_library_shelf_full_of_books_0917035645_texture.glb',    base: 'misc', h: 2.6, foot: 0.9, block: true },
+        ancient_walkway:    { file: 'Meshy_AI_ancient_walkway_0917035609_texture.glb',                base: 'misc', span: 6.0, foot: 0 },
+        angel_statue:       { file: 'Meshy_AI_angel_statue_0917035332_texture.glb',                   base: 'misc', h: 2.8, foot: 0.5, block: true },
+        brazier:            { file: 'Meshy_AI_brazier_0917035429_texture.glb',                        base: 'misc', h: 1.3, foot: 0.4, block: true, glow: { y: 1.25, size: 1.6, color: 0xff9a40 }, light: { color: 0xff9040, intensity: 0.85, dist: 9, y: 1.4 } },
+        catacomb_wall:      { file: 'Meshy_AI_catacomb_wall_0917035320_texture.glb',                  base: 'misc', span: 3.2, foot: 0, wall: true, mount: 0 },
+        church_building:    { file: 'Meshy_AI_catholic_church_building_0917035753_texture.glb',       base: 'misc', span: 20, foot: 6, rect: { hw: 10, hd: 3 }, block: true },
+        catholic_pew:       { file: 'Meshy_AI_catholic_church_pew_0917035928_texture.glb',            base: 'misc', span: 3.6, foot: 1.0, rect: { hw: 1.8, hd: 0.5 }, block: true },
+        church_wall:        { file: 'Meshy_AI_catholic_church_wall_0917035726_texture.glb',           base: 'misc', span: 4.0, foot: 0, wall: true, mount: 0 },
+        church_pew:         { file: 'Meshy_AI_church_pew_0917035915_texture.glb',                     base: 'misc', span: 3.6, foot: 1.0, rect: { hw: 1.8, hd: 0.5 }, block: true },
+        church_podium:      { file: 'Meshy_AI_church_podium_0917035658_texture.glb',                  base: 'misc', h: 1.3, foot: 0.45, block: true },
+        confessional_booth: { file: 'Meshy_AI_confessional_booth_0917035307_texture.glb',             base: 'misc', h: 2.5, foot: 0.9, block: true },
+        demon_statue:       { file: 'Meshy_AI_demon_statue_0917040101_texture.glb',                   base: 'misc', h: 3.4, foot: 0.7, block: true },
+        italian_building:   { file: 'Meshy_AI_Italian_building_0917035900_texture.glb',               base: 'misc', span: 12, foot: 4.5, block: true },
+        italian_building_2: { file: 'Meshy_AI_Italian_building_2_0917035828_texture.glb',             base: 'misc', span: 12, foot: 4.5, block: true },
+        holy_carpet:        { file: 'Meshy_AI_ornate_holy_carpet_0917035624_texture.glb',             base: 'misc', span: 6.0, foot: 0 },
+        pearly_gate:        { file: 'Meshy_AI_pearly_gate_0917035350_texture.glb',                    base: 'misc', span: 4.2, foot: 0, glow: { y: 2.2, size: 3.2, color: 0xfff0c0 } },
+        royal_throne:       { file: 'Meshy_AI_royal_throne_0917035803_texture.glb',                   base: 'misc', h: 1.9, foot: 0.5, block: true, front: 'back' },
+        skull_pile:         { file: 'Meshy_AI_skull_pile_0917035243_texture.glb',                     base: 'misc', span: 1.3, foot: 0.5, block: true },
+        stained_glass:      { file: 'Meshy_AI_stained_glass_window_0917035453_texture.glb',           base: 'misc', h: 3.2, foot: 0, wall: true, mount: 5.5, glow: { y: 1.6, size: 3.0, color: 0xffd090 } },
+        sarcophagus:        { file: 'Meshy_AI_stone_sarcophagus_0917035255_texture.glb',              base: 'misc', span: 2.3, foot: 0.8, block: true },
+        brass_telescope:    { file: 'Meshy_AI_telescope_0917035520_texture.glb',                      base: 'misc', h: 2.0, foot: 0.5, block: true },   // the WAY's model (the Observatorium's `telescope` proc keeps its key)
+        white_cloud:        { file: 'Meshy_AI_white_cloud_0917035538_texture.glb',                    base: 'misc', span: 3.0, foot: 0 },
+        wooden_cross:       { file: 'Meshy_AI_wooden_cross_0917035711_texture.glb',                   base: 'misc', h: 3.0, foot: 0, wall: true, mount: 2.6 },
         /* 2026-09-15 THE VEHICLE BATCH (nine Meshy vehicles in the misc bucket —
            MODEL_INDEX §3c): the ones that fit under a 2.8 m garage ceiling park
            in Room P1 (`vehicle: true` = the booth counts it as a car). `span` =
@@ -19328,6 +19392,11 @@ const DOOR_HQ = {
            Looking-Glass's marble (three-renderer.js _hqTreeWay: the catalogue GLB, hole to +Z, a trunk until it lands) */
         hollowtree: { verb: 'CLIMB IN', sub: 'THE HOLLOW TREE · THROUGH THE HOLE', sfx: 'wayHollow', w: 0.95, h: 1.9 },
         deadtree:   { verb: 'CLIMB IN', sub: 'THE DEAD TREE · INTO THE DARK', sfx: 'wayHollow', w: 0.95, h: 1.9 },
+        /* THE TELESCOPE (2026-09-17, THE DIVINE STAIR): the Vatican observatory's brass refractor aimed at THE STAIRWAY IN
+           THE SKY — look through it long enough and you are on the first step (three-renderer.js _hqWayBuilders.telescope:
+           the catalogue GLB over a procedural tube on a tripod, the eyepiece to +Z, the tube tilting to the stair on the
+           press-in; the far end is a plain frame at the stair's foot). The "opening" is the eyepiece's stand. */
+        telescope:  { verb: 'LOOK', sub: 'THE TELESCOPE · THE STAIR IN THE SKY', sfx: 'wayScope', w: 1.2, h: 1.6 },
     },
     /* Phase 9.3 pilot: ordinary, reversible doors between existing board
        rooms. Move the Derelict ends to its airlock when that room exists.
@@ -19429,10 +19498,13 @@ const DOOR_HQ = {
           a: { site: 'prebuilt_vatican', part: 'catacombs', wall: 'e', z: 4, sub: 'THE WARM WALL · DOWN' },
           b: { site: 'prebuilt_hell', part: 'pit', wall: 'w', z: 4, sub: 'THE WARM WALL · UP' },
           why: 'the crypt\'s back wall is warm to the touch; the masons were paid extra and did not stay', note: 'warm to the touch', draft: true },
-        { id: 'catacombs_stair', route: 'divine', leaf: 'leaf_frame_only',
-          a: { site: 'prebuilt_vatican', part: 'catacombs', wall: 'n', x: -6, sub: 'THE FOOT OF THE STAIR · UP' },
-          b: { site: 'prebuilt_heaven', part: 'stair', wall: 's', x: 0, sub: 'THE FOOT OF THE STAIR · BACK DOWN' },
-          why: 'the stair that only goes up starts in the crypt that only goes down; the frame at its foot has no door in it because nobody has ever wanted to shut it', note: 'the stair only goes up', draft: true },
+        /* THE VATICAN expanded (2026-09-17): the stair's foot LEFT THE CATACOMBS (the user's rule) — it is IN THE SKY over
+           the dome, and THE TELESCOPE in the observatory is the seam (a `way` end on the part; the far end a plain frame
+           at the stair's foot, `leaf_frame_only` — "nobody has ever wanted to shut it"). */
+        { id: 'observatory_stair', route: 'divine', way: 'telescope',
+          a: { site: 'prebuilt_vatican', part: 'observatory', wall: 'free', x: 0, z: -2.5, face: 180, sub: 'THE TELESCOPE · THE STAIR IN THE SKY' },
+          b: { site: 'prebuilt_heaven', part: 'stair', wall: 's', x: 0, leaf: 'leaf_frame_only', sub: 'THE FOOT OF THE STAIR · BACK TO THE DOME' },
+          why: 'the stair that only goes up hangs in the sky over the dome; the archive filed it as an optical effect and the telescope keeps being pointed at it, and whoever looks long enough is on the first step; the frame at its foot has no door in it because nobody has ever wanted to shut it', note: 'an optical effect', draft: true },
         /* THE BASES */
         { id: 'area51_dumb', route: 'bases', leaf: 'leaf_wired_double',
           a: { site: 'prebuilt_area51', wall: 'n', x: -5 },
@@ -19768,10 +19840,11 @@ const DOOR_HQ = {
                the board side, out onto THE CLOUD FIELDS. The stairway hangs off the
                catacombs (links.catacombs_stair) and climbs to the fields. */
             prebuilt_vatican: [
-                { id: 'crypt', wall: 'n', x: -10, leaf: 'leaf_white_wood',
-                  label: 'THE CATACOMBS', sub: 'THE CRYPT STAIR · DOWN',
-                  action: { room: 'site_prebuilt_vatican_catacombs', at: 'stair' },
-                  desc: 'A white door in the colonnade, painted by decree, with a stair behind it that only goes down. The archive filed the fact that it also goes up and sealed the file.' },
+                /* expanded 2026-09-17: the white door opens on THE BASILICA now; the crypt stair is behind its altar */
+                { id: 'basilica', wall: 'n', x: -10, leaf: 'leaf_white_wood',
+                  label: 'THE BASILICA', sub: 'THE WHITE DOOR · INTO THE BASILICA',
+                  action: { room: 'site_prebuilt_vatican_basilica', at: 'piazza' },
+                  desc: 'A white door in the colonnade, painted by decree. Behind it the nave, the archive, the cortile, the crypt under all of it and the dome over all of it. Immunity claimed, three times.' },
             ],
             prebuilt_hell: [
                 { id: 'pit', wall: 'n', x: -10, leaf: 'leaf_hell_arch',
@@ -28660,7 +28733,7 @@ const DOOR_HQ = {
         /* ── THE CATACOMBS — the Vatican's crypt: bone galleries, the ossuary shelf, the chapel, the warm wall ── */
         site_prebuilt_vatican_catacombs: {
             label: 'THE DIVINE STAIR · THE CATACOMBS',
-            sub: 'THE CRYPT THAT ONLY GOES DOWN · THE WARM WALL · THE FOOT OF THE STAIR',
+            sub: 'THE CRYPT UNDER THE BASILICA · THE WARM WALL · THE CISTERN',
             kind: 'box', site: 'prebuilt_vatican', part: 'catacombs',
             shell: {
                 w: 38.5, d: 31.5, h: 4.6,
@@ -28695,7 +28768,7 @@ const DOOR_HQ = {
                     { k: 'rail', x0: 4.6, z0: -4.6, x1: 15.4, z1: -4.6 },                                           // the shelf's rim rail
                     { k: 'path', pts: [[0, 14], [0, 4], [6, 1.2]], w: 1.6 },                                        // the way in, to the stair
                     { k: 'path', pts: [[0, 4], [-5.5, 3.2], [-9, 2]], w: 1.4 },                                     // to the chapel
-                    { k: 'path', pts: [[0, 4], [-3, -6], [-6, -13.5]], w: 1.6 },                                    // to the foot of the stair (n x −6)
+                    { k: 'path', pts: [[0, 4], [-3, -6], [-4, -8]], w: 1.6 },                                       // to the cistern's rope (the well head at (−4, −10))
                     { k: 'path', pts: [[6, 1.2], [12, 3.2], [17.5, 4]], w: 1.6 },                                   // to the warm wall (e z 4)
                     { k: 'scatter', key: 'cave_stone', n: 8, seed: 1 },                                             // the rubble
                     { k: 'scatter', key: 'menhir', n: 4, seed: 2 },                                                 // the standing tombstones
@@ -28703,9 +28776,14 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'stair', wall: 's', x: 0, leaf: 'leaf_white_wood',
-                  label: 'THE VATICAN', sub: 'THE CRYPT STAIR · BACK UP · ROOM 888',
-                  action: { room: 'site_prebuilt_vatican', at: 'crypt' },
-                  desc: 'The stair back up to the piazza. It is longer going up. The masons who built it were paid extra and did not stay to count the steps.' },
+                  label: 'THE BASILICA', sub: 'THE CRYPT STAIR · UP · BEHIND THE ALTAR',
+                  action: { room: 'site_prebuilt_vatican_basilica', at: 'crypt' },
+                  desc: 'The stair back up behind the altar. It is longer going up. The masons who built it were paid extra and did not stay to count the steps.' },
+                /* THE CISTERN (2026-09-17): the cortile's well comes up here — a free-standing well head in the crypt's floor, a way UP */
+                { id: 'well', wall: 'free', x: -4, z: -10, face: 180, way: 'well', verb: 'CLIMB UP',
+                  label: 'THE CORTILE', sub: 'THE CISTERN · UP THE ROPE · THE COURTYARD',
+                  action: { room: 'site_prebuilt_vatican_courtyard', at: 'well' },
+                  desc: 'The cistern from below: a rope, and daylight at the top of it, and the gardener’s face looking down and away.' },
             ],
             counters: [],
             props: [
@@ -28726,6 +28804,20 @@ const DOOR_HQ = {
                 { key: 'brick_arch',     x: 0, z: -2.0, face: 0 },
                 { key: 'paper_sheet',    x: 2.4, z: 11.0, y: 0.01, face: 40 },                    // a form under a candle: CRYPT — WHICH
                 { key: 'floor_stain',    x: 11.0, z: 4.6 },
+                /* THE VATICAN BATCH (2026-09-17): the bones, the tombs, the booth */
+                { key: 'skull_pile',     x: -11.0, z: -7.5 },                                   // round THE SKULL STACK
+                { key: 'skull_pile',     x: -14.5, z: -10.6 },
+                { key: 'skull_pile',     x: -11.6, z: -11.0 },
+                { key: 'sarcophagus',    x: 7.8, z: 9.5, face: 90 },                             // the tombs on the two low rows
+                { key: 'sarcophagus',    x: 11.2, z: 9.5, face: 90 },
+                { key: 'sarcophagus',    x: 7.8, z: 12.5, face: 90 },
+                { key: 'sarcophagus',    x: 11.2, z: 12.5, face: 90 },
+                { key: 'catacomb_wall',  wall: 'n', x: -10 },                                    // the bone walls
+                { key: 'catacomb_wall',  wall: 'w', z: 3 },
+                { key: 'catacomb_wall',  wall: 's', x: 8 },
+                { key: 'confessional_booth', x: -4.5, z: 13, face: 90 },                         // THE CONFESSIONAL (the tape's namesake)
+                { key: 'wooden_cross',   wall: 'w', z: 6.5, mount: 1.0 },                        // under the crypt's 4.6 m vault
+                { key: 'brazier',        x: 13, z: 1 },
             ],
             agents: [],
             npcSpots: [
@@ -28740,6 +28832,374 @@ const DOOR_HQ = {
                 '“Is the wall supposed to be warm?” “The wall is supposed to be a wall.”',
             ],
             spawn: { x: 0, z: 12.5, face: 0 },
+        },
+        /* ═══════════════════════════════════════════════════════════════════
+           THE VATICAN (THE DIVINE STAIR, expanded 2026-09-17 — the user: "the
+           Vatican needs to be a bigger building: library, mass, courtyard;
+           catacombs underneath it; the stairway at the top dome room, in the
+           observatory with the telescope"). Four parts on Room 888 behind the
+           board room's white door (siteRooms.backDoors.prebuilt_vatican →
+           the basilica's piazza door):
+             site_prebuilt_vatican_basilica — THE BASILICA (mass): the nave
+               under a 16 m vault, the chancel a tier up the altar steps, TWO
+               TRIFORIUM GALLERIES (4.6 m) along the side walls reached by the
+               stairs behind the chancel, the organ loft (the tape's), the
+               crypt door behind the altar DOWN to the catacombs, the archive
+               west, the cortile east. No floor plan: a nave is its own floor.
+             site_prebuilt_vatican_library — THE SECRET ARCHIVE: cellular-
+               automata STACKS (the solid in the wood sheet, 5.6 m), the
+               reading well, the gallery along the north wall and, on it, the
+               dome stair UP to the observatory; the high shelf (the tape's).
+             site_prebuilt_vatican_courtyard — THE CORTILE: open under the
+               Vatican's sky, a rooms plan with a cypress thicket (the garden
+               maze), the fountain's basin, the terrace under the basilica's
+               façade, the campanile's stump (the tape's), THE CISTERN — a
+               well seam down into the catacombs' north.
+             site_prebuilt_vatican_observatory — THE OBSERVATORY: the top of
+               the dome, open to the NIGHT sky, the dais, THE TELESCOPE (a way
+               — links.observatory_stair) aimed at THE STAIRWAY IN THE SKY
+               (shell.sky.landmarks: kind 'stairway'); look through it and
+               you are on the first step. The finial (the tape's).
+           RULES kept: a part's doors stay inside the site; no part wears a
+           number; every door reaches every other AND nothing traps (the
+           return guarantee); lights ≤ HQ_PROP_LIGHT_MAX; never a rank leaf;
+           lines are Claude's DRAFT (A15).
+           ═══════════════════════════════════════════════════════════════════ */
+        /* ── THE BASILICA — the nave, the chancel, the two triforium galleries, the organ loft ── */
+        site_prebuilt_vatican_basilica: {
+            label: 'THE DIVINE STAIR · THE BASILICA',
+            sub: 'MASS · THE NAVE · THE CHANCEL · THE TRIFORIUM · THE CRYPT DOOR BEHIND THE ALTAR',
+            kind: 'box', site: 'prebuilt_vatican', part: 'basilica',
+            shell: {
+                w: 36, d: 52, h: 16,
+                wallH: 16, dadoH: 1.4,
+                floor: 'marble', wall: 'marble_light', dado: 'gold', trim: 'gold', ceiling: 'damask_2',
+                floorColor: 0xd8d0c0, wallColor: 0xe6e0d4, dadoColor: 0xd8b860, ceilColor: 0x8a7a5a,
+                pipes: false, strips: false, lights: [],
+                mood: { light: 0xffe4b0, ambient: 0.42 },
+                plate: { x: 0, z: -24.5, y: 6.5 },
+                fog: { color: 0x2a2418, density: 0.012 },   /* the incense */
+                look: HQ_ROOM_LOOKS.basilica,
+            },
+            /* THE FIELD: the white door on the south wall; THE AISLE up the middle
+               (the carpet) to THE ALTAR STEPS and THE CHANCEL (0.9 m); THE TRIFORIUM
+               — two galleries at 4.6 m along the side walls, each climbed by a stair
+               from the back of the chancel; THE ALTAR RAIL (a step the rider grinds);
+               THE ORGAN LOFT in the south-west (6.4 m — the tape's, the door gun's). */
+            terrain: {
+                floor: 'marble', cliff: 'marble_2', path: 'carpet_3',
+                noise: { amp: 0.02, scale: 5 },
+                features: [
+                    { k: 'plateau', x: 0, z: -19, w: 30, d: 10, h: 0.9 },                                          // THE CHANCEL
+                    { k: 'ramp', x0: 0, z0: -12.6, x1: 0, z1: -14.4, w: 6, h0: 0, h1: 0.9, stairs: true },         // THE ALTAR STEPS
+                    { k: 'plateau', x: -15, z: 2, w: 4.5, d: 30, h: 4.6 },                                         // THE WEST TRIFORIUM
+                    { k: 'plateau', x: 15, z: 2, w: 4.5, d: 30, h: 4.6 },                                          // THE EAST TRIFORIUM
+                    { k: 'ramp', x0: -15, z0: -22.5, x1: -15, z1: -12.6, w: 3, h0: 0.9, h1: 4.6, stairs: true },  // the west stair, from the back of the chancel up to the gallery
+                    { k: 'ramp', x0: 15, z0: -22.5, x1: 15, z1: -12.6, w: 3, h0: 0.9, h1: 4.6, stairs: true },    // the east stair
+                    { k: 'wall', x0: -11, z0: -13.0, x1: -4.5, z1: -13.0, h: 0.55, t: 0.3, key: 'marble' },        // THE ALTAR RAIL (a step; the park rule's grind)
+                    { k: 'wall', x0: 4.5, z0: -13.0, x1: 11, z1: -13.0, h: 0.55, t: 0.3, key: 'marble' },
+                    { k: 'plateau', x: -9.5, z: 22.5, r: 1.6, h: 6.4, edge: 0.3 },                                 // THE ORGAN LOFT (the tape's)
+                    { k: 'rail', x0: -12.75, z0: -12.5, x1: -12.75, z1: 16.5 },                                     // the galleries' balustrades
+                    { k: 'rail', x0: 12.75, z0: -12.5, x1: 12.75, z1: 16.5 },
+                    { k: 'path', pts: [[0, 25], [0, -12.6]], w: 3.0 },                                             // THE AISLE
+                    { k: 'path', pts: [[-16, 22], [0, 22], [16, 22]], w: 2.2 },                                    // the narthex, door to door
+                    { k: 'path', pts: [[-11, -18], [11, -18]], w: 2.0 },                                           // across the chancel
+                ],
+            },
+            doors: [
+                { id: 'piazza', wall: 's', x: 0, leaf: 'leaf_white_wood',
+                  label: 'THE VATICAN', sub: 'THE WHITE DOOR · BACK TO THE PIAZZA · ROOM 888',
+                  action: { room: 'site_prebuilt_vatican', at: 'basilica' },
+                  desc: 'The white door from the inside. It is not white on this side. Nobody has filed the discrepancy because nobody has stood here and looked back.' },
+                { id: 'library', wall: 'w', z: 22, leaf: 'leaf_coffee',
+                  label: 'THE ARCHIVE', sub: 'THE SECRET ARCHIVE · THE STACKS',
+                  action: { room: 'site_prebuilt_vatican_library', at: 'nave' },
+                  desc: 'The archive door. Secret is the name, not the status: the catalogue is public and the index is not.' },
+                { id: 'cloister', wall: 'e', z: 22, leaf: 'leaf_coffee',
+                  label: 'THE CORTILE', sub: 'THE COURTYARD · THE FOUNTAIN · THE CISTERN',
+                  action: { room: 'site_prebuilt_vatican_courtyard', at: 'nave' },
+                  desc: 'The cloister door. Daylight through it, and the fountain, and a well the gardener does not draw from.' },
+                { id: 'crypt', wall: 'n', x: 9, y: 0.9, leaf: 'leaf_white_wood',
+                  label: 'THE CATACOMBS', sub: 'THE CRYPT STAIR · DOWN · BEHIND THE ALTAR',
+                  action: { room: 'site_prebuilt_vatican_catacombs', at: 'stair' },
+                  desc: 'A white door behind the altar, painted by decree, with a stair behind it that only goes down. The archive filed the fact that it also goes up and sealed the file.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'holy_carpet',    x: 0, z: 12, y: 0.01, face: 0 },                       // THE AISLE's carpet, three lengths
+                { key: 'holy_carpet',    x: 0, z: 2, y: 0.01, face: 0 },
+                { key: 'holy_carpet',    x: 0, z: -8, y: 0.01, face: 0 },
+                { key: 'church_pew',     x: -4.6, z: 18, face: 0 },                              // THE PEWS: the back rows
+                { key: 'church_pew',     x: 4.6, z: 18, face: 0 },
+                { key: 'church_pew',     x: -4.6, z: 14, face: 0 },
+                { key: 'church_pew',     x: 4.6, z: 14, face: 0 },
+                { key: 'church_pew',     x: -4.6, z: 10, face: 0 },
+                { key: 'church_pew',     x: 4.6, z: 10, face: 0 },
+                { key: 'church_pew',     x: -4.6, z: 6, face: 0 },
+                { key: 'church_pew',     x: 4.6, z: 6, face: 0 },
+                { key: 'catholic_pew',   x: -4.6, z: 2, face: 0 },                               // the front rows
+                { key: 'catholic_pew',   x: 4.6, z: 2, face: 0 },
+                { key: 'catholic_pew',   x: -4.6, z: -2, face: 0 },
+                { key: 'catholic_pew',   x: 4.6, z: -2, face: 0 },
+                { key: 'catholic_pew',   x: -4.6, z: -6, face: 0 },
+                { key: 'catholic_pew',   x: 4.6, z: -6, face: 0 },
+                { key: 'greek_column',   x: -8.5, z: 16 },                                       // THE NAVE'S COLUMNS
+                { key: 'greek_column',   x: 8.5, z: 16 },
+                { key: 'greek_column',   x: -8.5, z: 8 },
+                { key: 'greek_column',   x: 8.5, z: 8 },
+                { key: 'greek_column',   x: -8.5, z: 0 },
+                { key: 'greek_column',   x: 8.5, z: 0 },
+                { key: 'greek_column',   x: -8.5, z: -8 },
+                { key: 'greek_column',   x: 8.5, z: -8 },
+                { key: 'church_podium',  x: -4, z: -16, face: 180 },                             // THE CHANCEL
+                { key: 'lectern',        x: 4, z: -16, face: 180 },
+                { key: 'royal_throne',   x: 0, z: -22.5, face: 180 },                            // the cathedra
+                { key: 'wooden_cross',   wall: 'n', x: 0 },
+                { key: 'church_wall',    wall: 'n', x: -12 },                                    // the chancel screens
+                { key: 'church_wall',    wall: 'n', x: 12 },
+                { key: 'angel_statue',   x: -6, z: -11.2, face: 180 },                           // flanking the altar steps
+                { key: 'angel_statue',   x: 6, z: -11.2, face: 180 },
+                { key: 'brazier',        x: -4, z: -19.5 },                                      // the lights: two on the chancel, two at the door, the candles
+                { key: 'brazier',        x: 4, z: -19.5 },
+                { key: 'brazier',        x: -5, z: 24 },
+                { key: 'brazier',        x: 5, z: 24 },
+                { key: 'candle_ring',    x: -8, z: -20 },
+                { key: 'candle_ring',    x: 8, z: -20 },
+                { key: 'stained_glass',  wall: 'w', z: -6 },                                     // THE WINDOWS
+                { key: 'stained_glass',  wall: 'w', z: 4 },
+                { key: 'stained_glass',  wall: 'w', z: 14 },
+                { key: 'stained_glass',  wall: 'e', z: -6 },
+                { key: 'stained_glass',  wall: 'e', z: 4 },
+                { key: 'stained_glass',  wall: 'e', z: 14 },
+                { key: 'confessional_booth', x: -10.5, z: 10, face: 90 },                        // the confessionals in the side aisles
+                { key: 'confessional_booth', x: 10.5, z: 10, face: 270 },
+                { key: 'paper_sheet',    x: 2.6, z: 23.5, y: 0.01, face: 30 },                    // a form by the door: MASS — WHICH
+            ],
+            agents: [],
+            npcSpots: [
+                { x: -7, z: 21, face: 90, race: 'nun', say: ['“Cover your head. Not for Him. For the draught.”', '“The gallery is for the choir. The choir is for the gallery. Neither has been up there since the decree.”'] },
+                { x: 6.5, z: -18, face: 200, race: 'priest', say: ['“The door behind the altar goes down. Everyone assumes I mean it theologically.”', '“Immunity claimed, three times. The third time was for the paperwork.”'] },
+                { x: 15, z: 6, face: 270, race: 'seraphim', say: '“I sit up here. I was told to wait, and the view is of the waiting.”' },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Is this the mass?” “This is the building. The mass is the paperwork.”',
+                '“Who sits in the chair?” “Nobody sits in the chair.” “It is warm.” “Nobody sits in it for long.”',
+                '“The windows tell a story.” “Which?” “Ours. Badly.”',
+                '“The galleries are closed.” “There are no doors on the galleries.” “That is how they are closed.”',
+            ],
+            spawn: { x: 0, z: 23, face: 0 },
+        },
+        /* ── THE SECRET ARCHIVE — the stacks (a cave plan in wood), the reading well, the gallery and the dome stair ── */
+        site_prebuilt_vatican_library: {
+            label: 'THE DIVINE STAIR · THE ARCHIVE',
+            sub: 'THE SECRET ARCHIVE · THE STACKS · THE GALLERY · THE DOME STAIR',
+            kind: 'box', site: 'prebuilt_vatican', part: 'library',
+            shell: {
+                w: 30, d: 36, h: 9,
+                wallH: 9, dadoH: 1.2,
+                floor: 'wood_planks', wall: 'wood', dado: 'leather', trim: 'gold', ceiling: 'damask_3',
+                floorColor: 0x8a6a48, wallColor: 0x6a4a34, dadoColor: 0x4a3324, ceilColor: 0x5a4a3a,
+                pipes: false, strips: false, lights: [],
+                mood: { light: 0xffd090, ambient: 0.32 },
+                plate: { x: 0, z: -16.6, y: 6.6 },
+                fog: { color: 0x120c06, density: 0.03 },   /* dust in the lamplight */
+                look: HQ_ROOM_LOOKS.archive,
+            },
+            /* THE FIELD: the nave door on the east wall; THE STACKS = the plan's
+               solid (cellular automata in the wood sheet, 5.6 m — taller than a
+               hop from the gallery); THE READING WELL (a sunk reading room round the
+               lectern); THE GALLERY along the north wall (4 m) up the stair on the
+               east wall, THE DOME STAIR's door on it; THE HIGH SHELF in the west
+               (6.2 m — the tape's, the door gun's). */
+            terrain: {
+                floor: 'wood_planks', cliff: 'wood', path: 'carpet_2',
+                noise: { amp: 0.02, scale: 4 }, crag: false,                                                          // no rock crag: the stacks ARE the walls
+                gen: { kind: 'cave', fill: 0.42, seed: 5, wallH: 5.6, cell: 1.4 },                                  // THE FLOOR PLAN: the stacks
+                features: [
+                    { k: 'plateau', x: 0, z: -14.5, w: 27, d: 6, h: 4.0 },                                          // THE GALLERY
+                    { k: 'ramp', x0: 13, z0: 0.4, x1: 13, z1: -12.2, w: 2.8, h0: 0, h1: 4.0, stairs: true },        // the gallery stair up the east wall (THE RAMP RULE: it ends 0.7 m inside the tier's rect — past the tier's 0.35 m edge blend AND the next 0.5 m sample)
+                    { k: 'dip', x: 1, z: 5, r: 4.5, h: 0.9 },                                                        // THE READING WELL
+                    { k: 'plateau', x: -10.5, z: 6, r: 1.2, h: 6.2, edge: 0.3 },                                     // THE HIGH SHELF (the tape's)
+                    { k: 'rail', x0: -13, z0: -11.5, x1: 11, z1: -11.5 },                                            // the gallery's rail
+                    { k: 'path', pts: [[13.5, 10], [8, 8], [1, 5]], w: 1.6 },                                        // the nave door to the well
+                    { k: 'path', pts: [[1, 5], [8, 4], [13, 0.4]], w: 1.6 },                                         // the well to the stair
+                    { k: 'path', pts: [[1, 5], [-6, 8], [-12, 12]], w: 1.4 },                                        // into the stacks
+                    { k: 'scatter', key: 'library_shelf_full', n: 7, seed: 2, r0: 0.9 },                            // the free-standing cases
+                    { k: 'scatter', key: 'library_shelf', n: 5, seed: 3, r0: 0.9 },
+                ],
+            },
+            doors: [
+                { id: 'nave', wall: 'e', z: 10, leaf: 'leaf_coffee',
+                  label: 'THE BASILICA', sub: 'BACK TO THE NAVE',
+                  action: { room: 'site_prebuilt_vatican_basilica', at: 'library' },
+                  desc: 'The way back to the nave. The door is quieter on this side; the archive asked.' },
+                { id: 'observatory', wall: 'n', x: 0, y: 4.0, leaf: null,
+                  label: 'THE OBSERVATORY', sub: 'THE DOME STAIR · UP · 401 STEPS',
+                  action: { room: 'site_prebuilt_vatican_observatory', at: 'stair' },
+                  desc: 'An opening at the back of the gallery and a stair inside the dome’s skin. Four hundred and one steps; the archive counted, the archive is not sure.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'library_shelf',  wall: 'w', z: -6 },                                     // the cases along the walls
+                { key: 'library_shelf',  wall: 'w', z: 0 },
+                { key: 'library_shelf',  wall: 'w', z: 12 },
+                { key: 'library_shelf',  wall: 's', x: -8 },
+                { key: 'library_shelf',  wall: 's', x: 8 },
+                { key: 'library_shelf_full', x: -6, z: -15.5, face: 0 },                         // on the gallery
+                { key: 'library_shelf_full', x: 6, z: -15.5, face: 0 },
+                { key: 'lectern',        x: 1, z: 3.2, face: 180 },                              // THE READING WELL's book
+                { key: 'candle_ring',    x: -1.5, z: 6.5 },
+                { key: 'candle_ring',    x: 8, z: -13 },
+                { key: 'brazier',        x: -12, z: 15 },
+                { key: 'brazier',        x: 9.5, z: 14.5 },
+                { key: 'ship_lantern',   x: 0, z: -14.5, ceil: true },                           // the lamps on chains
+                { key: 'ship_lantern',   x: 1, z: 5, ceil: true },
+                { key: 'wall_torch',     wall: 'e', z: 4 },
+                { key: 'paper_sheet',    x: 2.4, z: 7.2, y: 0.01, face: 60 },                     // a request slip: ARCHIVE — WHICH
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 3, z: 5.5, face: 300, race: 'priest', say: ['“The index is not secret. The index is the secret.”', '“Every card in this drawer is your callsign. I did not file them. Please stop asking who did.”'] },
+                { x: -4, z: -14.5, face: 90, race: 'nun', say: '“Four hundred and one steps. I count them going up and it is a different number coming down.”' },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Where is the floor plan of the Bureau?” “Open, on the desk, under the lamp.” “That is a map of this room.” “Yes.”',
+                '“The stacks move.” “The stacks are shelves.” “The shelves move.”',
+                '“Can I borrow it?” “You can read it here.” “Where is here?” “That is the first question the book answers.”',
+                '“The stair goes up inside the dome.” “To what?” “To the part of the dome that is outside.”',
+            ],
+            spawn: { x: 9, z: 11, face: 270 },
+        },
+        /* ── THE CORTILE — the courtyard under the Vatican's sky: the fountain, the terrace, the cypress maze, the cistern ── */
+        site_prebuilt_vatican_courtyard: {
+            label: 'THE DIVINE STAIR · THE CORTILE',
+            sub: 'THE COURTYARD · THE FOUNTAIN · THE TERRACE · THE CISTERN DOWN',
+            kind: 'box', site: 'prebuilt_vatican', part: 'courtyard',
+            shell: hqVaticanShell({ w: 40, d: 36, plate: { x: 0, z: -16.5, y: 4.6 } }),
+            /* THE FIELD: the nave door on the west wall; THE FOUNTAIN's basin at the
+               centre (waded); THE TERRACE (1.2 m) under the basilica's façade along the
+               north, up four steps between the angels; THE CLOISTER WALK round the
+               rim; the rooms plan with a CYPRESS thicket = the garden maze between;
+               THE CAMPANILE'S STUMP in the east (4.4 m — the tape's); THE CISTERN, a
+               well head in the west lawn down into the catacombs. */
+            terrain: {
+                floor: 'cobblestone', cliff: 'marble_light', path: 'cobblestone_2',
+                noise: { amp: 0.08, scale: 5 },
+                gen: { kind: 'rooms', seed: 9, loops: 3, kinds: ['pine', 'pine', 'tree_5'], wallH: 1.5, spacing: 2.3 },   // THE FLOOR PLAN: the garden maze (the hedges a bank with the cypresses on it)
+                features: [
+                    { k: 'hill', x: -12, z: 8, r: 6, h: 0.7 },                                                       // the west lawn
+                    { k: 'dip', x: 10, z: 5, r: 4, h: 0.5 },                                                          // the east hollow
+                    { k: 'dip', x: 0, z: 1, r: 3.4, h: 0.3 },                                                          // THE FOUNTAIN's bowl (the prop carries its own basin — a prop never stands in a sheet)
+                    { k: 'plateau', x: 0, z: -13, w: 24, d: 6, h: 1.2 },                                              // THE TERRACE
+                    { k: 'ramp', x0: 0, z0: -6.4, x1: 0, z1: -10.4, w: 5, h0: 0, h1: 1.2, stairs: true },             // its four steps
+                    { k: 'plateau', x: 15, z: 12, r: 1.3, h: 4.4, edge: 0.3 },                                        // THE CAMPANILE'S STUMP (the tape's)
+                    { k: 'rail', x0: -11, z0: -10, x1: -3.2, z1: -10 },                                               // the terrace balustrade (the park rule's grind)
+                    { k: 'rail', x0: 3.2, z0: -10, x1: 11, z1: -10 },
+                    { k: 'path', pts: [[-17.5, 10], [-8, 6], [0, 4.5]], w: 1.8 },                                     // the nave door to the fountain
+                    { k: 'path', pts: [[0, 4.5], [3.5, 0], [0, -4], [0, -6.4]], w: 1.8 },                              // round the basin to the steps
+                    { k: 'path', pts: [[-16, 14], [16, 14], [16, -6], [-16, -6], [-16, 14]], w: 2.0 },                 // THE CLOISTER WALK
+                    { k: 'path', pts: [[0, 4.5], [10, 5], [15, 9]], w: 1.4 },                                          // to the campanile
+                    { k: 'scatter', key: 'fern', n: 8, seed: 1 },
+                    { k: 'scatter', key: 'potted_plant', n: 6, seed: 2 },
+                ],
+            },
+            doors: [
+                { id: 'nave', wall: 'w', z: 10, leaf: 'leaf_coffee',
+                  label: 'THE BASILICA', sub: 'BACK INTO THE NAVE',
+                  action: { room: 'site_prebuilt_vatican_basilica', at: 'cloister' },
+                  desc: 'The cloister door back into the dark of the nave. The gardener uses it to fetch candles he is not supposed to have.' },
+                { id: 'well', wall: 'free', x: -8, z: 4, face: 90, way: 'well', verb: 'CLIMB DOWN',
+                  label: 'THE CISTERN', sub: 'THE WELL · DOWN THE ROPE · THE CATACOMBS',
+                  action: { room: 'site_prebuilt_vatican_catacombs', at: 'well' },
+                  desc: 'The cistern. Consecrated once, then drained, then a rope. It comes up in the catacombs, which the gardener says is why he waters from the fountain.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'fountain',       x: 0, z: 1 },                                           // THE FOUNTAIN in its basin
+                { key: 'church_building', x: 0, z: -16.0, face: 180 },                          // THE FAÇADE over the terrace (its back through the parapet)
+                { key: 'italian_building', x: 18.5, z: -1, face: 270 },                          // THE PALACE WINGS either side
+                { key: 'italian_building_2', x: -18.5, z: -8, face: 90 },
+                { key: 'ancient_walkway', x: -9, z: 16.2, face: 0 },                             // THE CLOISTER's arcade
+                { key: 'ancient_walkway', x: 9, z: 16.2, face: 0 },
+                { key: 'ancient_walkway', x: 17, z: 8, face: 90 },
+                { key: 'angel_statue',   x: -4.5, z: -8, face: 180 },                            // flanking the steps
+                { key: 'angel_statue',   x: 4.5, z: -8, face: 180 },
+                { key: 'brazier',        x: -7, z: -5 },                                         // the lights (daylit: the braziers are for the evening)
+                { key: 'brazier',        x: 7, z: -5 },
+                { key: 'park_bench',     x: -13, z: 4, face: 90 },
+                { key: 'park_bench',     x: 12, z: 13.5, face: 270 },
+                { key: 'paper_sheet',    x: -14.5, z: 11.5, y: 0.01, face: 80 },                  // a form on the walk: GARDEN — WHICH
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 6, z: 8, face: 250, race: 'priest', say: ['“I am the gardener. The hedges were planted as a maze and grew as a maze and I am told that is a miracle.”', '“Do not draw from the well. It is not that the water is bad. It is that something drinks.”'] },
+                { x: -6, z: -12, face: 120, race: 'nun', say: '“The façade is the front of the building. We are behind it. That is the whole doctrine.”' },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Where does the well go?” “Down.” “To what?” “To the part of the building that is filed under S.”',
+                '“The fountain runs on consecrated water.” “The pump?” “Nobody asks.”',
+                '“Is the campanile ringing?” “The campanile is a stump.” “Then what is ringing?”',
+                '“The hedges are a maze.” “The hedges are hedges.” “Then why do we keep losing the gardener?”',
+            ],
+            spawn: { x: -14, z: 10, face: 90 },
+        },
+        /* ── THE OBSERVATORY — the top of the dome, open to the night, the dais, THE TELESCOPE aimed at the stair in the sky ── */
+        site_prebuilt_vatican_observatory: {
+            label: 'THE DIVINE STAIR · THE OBSERVATORY',
+            sub: 'THE TOP OF THE DOME · THE TELESCOPE · THE STAIR IN THE SKY',
+            kind: 'box', site: 'prebuilt_vatican', part: 'observatory',
+            shell: hqVaticanShell({ w: 24, d: 24, night: true, plate: { x: 0, z: -10.5, y: 4.0 },
+                landmarks: [{ kind: 'stairway', id: 'stairway', deg: 0, dist: 0.62, s: 1.0, y: 0.34 }] }),   // THE STAIRWAY IN THE SKY, due north, hung a third of the way up the disc
+            /* THE FIELD: the dome stair on the south wall; THE DAIS (1.2 m) up four
+               steps, its balustrade, THE TELESCOPE at its heart (the way — its eyepiece
+               to the south, the tube aimed north at the stair); THE FINIAL in the
+               south-east (4.4 m — the tape's, the door gun's). */
+            terrain: {
+                floor: 'marble', cliff: 'marble_light', path: 'marble_2',
+                noise: { amp: 0.02, scale: 4 },
+                features: [
+                    { k: 'plateau', x: 0, z: -2, r: 6.5, h: 1.2 },                                                   // THE DAIS
+                    { k: 'ramp', x0: 0, z0: 7.7, x1: 0, z1: 4.1, w: 3.2, h0: 0, h1: 1.2, stairs: true },             // its four steps
+                    { k: 'plateau', x: 8.5, z: 7.5, r: 1.0, h: 4.4, edge: 0.3 },                                     // THE FINIAL (the tape's)
+                    { k: 'rail', x0: -2.8, z0: -7.9, x1: 2.8, z1: -7.9 },                                             // the dais's balustrade (the park rule's grind)
+                    { k: 'rail', x0: -5.8, z0: -4, x1: -5.8, z1: 0 },
+                    { k: 'path', pts: [[0, 11], [0, 7.7]], w: 2.0 },                                                 // the stair door to the steps
+                    { k: 'path', pts: [[0, 4.1], [0, -2.5]], w: 1.6 },                                               // up to the telescope
+                ],
+            },
+            doors: [
+                { id: 'stair', wall: 's', x: 0, leaf: null,
+                  label: 'THE ARCHIVE', sub: 'THE DOME STAIR · DOWN · 401 STEPS',
+                  action: { room: 'site_prebuilt_vatican_library', at: 'observatory' },
+                  desc: 'The stair back down inside the dome. Four hundred steps, and one the archive disputes.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'greek_column',   x: -7.5, z: -9.5 },                                     // the drum's four columns
+                { key: 'greek_column',   x: 7.5, z: -9.5 },
+                { key: 'greek_column',   x: -7.5, z: 5.5 },
+                { key: 'greek_column',   x: 7.5, z: 5.5 },
+                { key: 'brazier',        x: -3.6, z: 9 },                                        // the lights at the foot of the steps
+                { key: 'brazier',        x: 3.6, z: 9 },
+                { key: 'lectern',        x: -3, z: -4.5, face: 60 },                             // the star charts
+                { key: 'angel_statue',   x: -8.5, z: -8, face: 135 },
+                { key: 'paper_sheet',    x: 2.5, z: -4.4, y: 0.01, face: 300 },                   // the night's log: STAIR — SEEN
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 4, z: -3.5, face: 300, race: 'watcher', say: ['“It is not the moon. It is closer than the moon. It has a door at the top and the door is open.”', '“Look for as long as you like. That is the only instruction, and it is a trap, and the trap is the stair.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“What am I looking at?” “A stair.” “In the sky.” “That is where they keep it.”',
+                '“Is it real?” “Optical effect. Filed and sealed. The seal is on the eyepiece.”',
+                '“How do I get there?” “You are already looking.”',
+                '“Four hundred and one steps up, to look at a stair.” “Four flights more, once you are on it.”',
+            ],
+            spawn: { x: 0, z: 10, face: 0 },
         },
         /* ── THE PIT — the mirror of the crypt: the bowl to the lava, the river, the colossus's plinth ── */
         site_prebuilt_hell_pit: {
@@ -28774,7 +29234,7 @@ const DOOR_HQ = {
                     { k: 'deck', x0: 0, z0: 12.5, x1: 0, z1: 6.5, w: 2.2, y: 0.25 },                                // THE CAUSEWAY over it, both banks
                     { k: 'plateau', x: -11, z: -9, r: 2.0, h: 3.6, edge: 0.3 },                                      // THE PLINTH (the tape's)
                     { k: 'plateau', x: 11, z: -11, w: 9, d: 6, h: 1.75 },                                            // THE GALLERY LEDGE
-                    { k: 'ramp', x0: 13, z0: -3, x1: 13, z1: -7.7, w: 2.6, h0: 0, h1: 1.75 },                        // its ramp, outside the bowl
+                    { k: 'ramp', x0: 13, z0: -3, x1: 13, z1: -8.8, w: 2.6, h0: 0, h1: 1.75 },                        // its ramp, outside the bowl (2026-09-17: it ended 0.3 m SHORT of the ledge — the ledge was never reached; THE RAMP RULE)
                     { k: 'wall', x0: -14, z0: 2, x1: -6, z1: 2, h: 1.1, t: 0.6, key: 'obsidian' },                   // THE BASALT WALL (the rider's)
                     { k: 'rail', x0: 7, z0: -8.6, x1: 15, z1: -8.6 },                                                // the ledge's chain rail
                     { k: 'path', pts: [[0, 16], [0, 6], [2, 3]], w: 1.8 },                                           // the mouth, over the causeway, into the bowl
@@ -28806,6 +29266,12 @@ const DOOR_HQ = {
                 { key: 'fire_extinguisher', wall: 'e', z: 12.0 },                                // inspected monthly
                 { key: 'floor_stain',    x: -8.0, z: 12.6 },
                 { key: 'paper_sheet',    x: 3.2, z: 15.2, y: 0.01, face: 300 },                   // FORM 666, filled in by hand
+                /* THE VATICAN BATCH (2026-09-17): the colossus, chained beside its plinth; the bones; the braziers */
+                { key: 'demon_statue',   x: -7.5, z: -11.5, face: 120 },
+                { key: 'skull_pile',     x: 12.0, z: 7.0 },
+                { key: 'skull_pile',     x: -13.5, z: -14.0 },
+                { key: 'brazier',        x: -6.5, z: 13.0 },
+                { key: 'brazier',        x: 6.5, z: 13.0 },
             ],
             agents: [],
             npcSpots: [
@@ -28821,44 +29287,69 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: 15.0, face: 0 },
         },
-        /* ── THE STAIRWAY TO HEAVEN — four flights of cloud stairs from the catacombs' door to the gate at 12 m ── */
+        /* ── THE STAIRWAY TO HEAVEN — four flights of cloud stairs from the foot (the telescope's far end) to the gate at 12 m, and THE FALL ── */
         site_prebuilt_heaven_stair: {
             label: 'THE DIVINE STAIR · THE STAIRWAY',
-            sub: 'THE STAIR THAT ONLY GOES UP · FOUR FLIGHTS · THE GATE AT THE TOP',
+            sub: 'THE STAIR THAT ONLY GOES UP · FOUR FLIGHTS · THE FALL · THE GATE AT THE TOP',
             kind: 'box', site: 'prebuilt_heaven', part: 'stair',
-            shell: hqDivineShell({ w: 31.5, d: 42, h: 16, wallH: 16, plate: { x: 0, z: -14, y: 14.6 } }),
-            /* THE FIELD: the foot on the south wall (the catacombs' link door), FLIGHT A
-               straight up to THE FIRST LANDING (3.5 m) with the healing pool on it;
-               FLIGHT B up the west side to THE SECOND (7 m); FLIGHT C east across to
-               THE THIRD (10 m); FLIGHT D north to THE TOP LANDING (12 m, the gate's
-               door on it); THE PINNACLE off the first landing's east (5.2 m — the tape
-               on top of it is the door gun's); cloud mounds and hollows round it all;
-               the plan's cloud banks between. Every flight is a stair ramp (treads). */
+            shell: hqDivineShell({ w: 40, d: 54, h: 18, wallH: 18, plate: { x: 0, z: -19, y: 15.6 } }),
+            /* THE FIELD (rebuilt 2026-09-17 — the user: "multiple levels of pathways in
+               the same area; falling down you have to find your way back up; clouds
+               are perfect for floating platforming"): the foot on the south wall (the
+               telescope's far end, a frame with no door), FLIGHT A up to THE FIRST
+               LANDING (3.5 m, the healing pool), FLIGHT B up the west side to THE
+               SECOND (7 m), FLIGHT C east across to THE THIRD (10 m), FLIGHT D north
+               to THE TOP LANDING (12 m, the gate's door). THE FALL — where the
+               flights drop you: THE LOWER SHELF (2 m, east) up its own incline from
+               the foot; THE LONG WAY (a winding incline up the west side to THE WEST
+               SHELF at 6 m and three steps onto the second landing — the way back up
+               for whoever falls west); THE STEPPING CLOUDS (hop-high cloud columns:
+               the lower shelf → the first landing, the first landing → the west
+               shelf, a lookout beside flight C); THE PINNACLE on the lower shelf
+               (6 m — the tape's, the door gun's). Every flight is a stair ramp;
+               every fall has a way back (the return guarantee runs the check). */
             terrain: {
                 floor: 'cloud_2', cliff: 'cloud_thick', path: 'marble_light',
                 noise: { amp: 0.25, scale: 7 },
                 gen: { kind: 'rooms', seed: 7, loops: 2, thicket: false, wallH: 2.4 },  // THE FLOOR PLAN: cloud islands and cloud bridges — no thicket in heaven
                 features: [
-                    { k: 'hill', x: -11, z: 12, r: 5, h: 1.2 },                                                       // cloud mounds
-                    { k: 'hill', x: 12, z: -2, r: 4, h: 0.9 },
-                    { k: 'dip', x: -10, z: -18, r: 4, h: 0.8 },
-                    { k: 'ramp', x0: 0, z0: 15.5, x1: 0, z1: 4.7, w: 3.2, h0: 0, h1: 3.5, stairs: true },            // FLIGHT A (every flight ends 0.3 m INSIDE its landing's edge)
-                    { k: 'plateau', x: 0, z: 2, w: 14, d: 6, h: 3.5 },                                               // THE FIRST LANDING
-                    { k: 'pool', x: 4, z: 2, r: 1.3, y: 3.45, depth: 0.45 },                                         // the healing pool on it (waded)
-                    { k: 'ramp', x0: -5.5, z0: -0.7, x1: -5.5, z1: -7.8, w: 3, h0: 3.5, h1: 7, stairs: true },       // FLIGHT B
-                    { k: 'plateau', x: -5.5, z: -10.5, w: 8, d: 6, h: 7 },                                           // THE SECOND LANDING
-                    { k: 'ramp', x0: -1.9, z0: -11, x1: 7.8, z1: -11, w: 3, h0: 7, h1: 10, stairs: true },           // FLIGHT C (a flight STARTS ≥ 0.4 m inside the lower landing too — its edge blend is 0.35 m)
-                    { k: 'plateau', x: 10, z: -11, w: 5, d: 6, h: 10 },                                              // THE THIRD LANDING
-                    { k: 'ramp', x0: 10, z0: -13.7, x1: 10, z1: -17.6, w: 3, h0: 10, h1: 12, stairs: true },         // FLIGHT D
-                    { k: 'plateau', x: 0, z: -19.5, w: 24, d: 4.4, h: 12 },                                          // THE TOP LANDING (the gate's door on it)
-                    { k: 'plateau', x: 10, z: 8, r: 1.4, h: 5.2, edge: 0.3 },                                        // THE PINNACLE (the tape's)
-                    { k: 'rail', x0: 7.2, z0: -1, x1: 7.2, z1: 5 },                                                  // the first landing's rim rail (the park rule's grind)
-                    { k: 'rail', x0: -11, z0: -17.5, x1: -3, z1: -17.5 },                                            // the top landing's front rail
-                    { k: 'path', pts: [[0, 19], [0, 15.5]], w: 2.0 },                                                // the foot
-                    { k: 'path', pts: [[0, 5], [0, -0.5], [-5.5, -0.7]], w: 1.6 },                                   // across the first landing
-                    { k: 'path', pts: [[-5.5, -7.8], [-5.5, -11], [-1.9, -11]], w: 1.6 },                            // across the second
-                    { k: 'path', pts: [[7.8, -11], [10, -11], [10, -13.7]], w: 1.6 },                                // across the third
-                    { k: 'path', pts: [[10, -17.6], [10, -19.5], [0, -19.5]], w: 1.6 },                              // along the top
+                    { k: 'hill', x: -12, z: 18, r: 5, h: 1.0 },                                                       // cloud mounds
+                    { k: 'hill', x: 15, z: -4, r: 4, h: 0.8 },
+                    { k: 'dip', x: -13, z: -20, r: 4, h: 0.8 },
+                    /* THE FOUR FLIGHTS (every flight ends ≥ 0.3 m INSIDE its landing's edge and starts ≥ 0.4 m inside the lower one) */
+                    { k: 'ramp', x0: 0, z0: 18, x1: 0, z1: 7.4, w: 3.2, h0: 0, h1: 3.5, stairs: true },            // FLIGHT A
+                    { k: 'plateau', x: 0, z: 4, w: 16, d: 7, h: 3.5 },                                               // THE FIRST LANDING
+                    { k: 'pool', x: 4, z: 4, r: 1.3, y: 3.45, depth: 0.45 },                                         // the healing pool on it (waded)
+                    { k: 'ramp', x0: -6, z0: 1.5, x1: -6, z1: -6.9, w: 3, h0: 3.5, h1: 7, stairs: true },            // FLIGHT B
+                    { k: 'plateau', x: -6, z: -9.5, w: 9, d: 6, h: 7 },                                              // THE SECOND LANDING
+                    { k: 'ramp', x0: -2.0, z0: -10, x1: 7.8, z1: -10, w: 3, h0: 7, h1: 10, stairs: true },           // FLIGHT C
+                    { k: 'plateau', x: 10, z: -10, w: 5.2, d: 6, h: 10 },                                            // THE THIRD LANDING
+                    { k: 'ramp', x0: 10, z0: -12.6, x1: 10, z1: -19.4, w: 3, h0: 10, h1: 12, stairs: true },         // FLIGHT D
+                    { k: 'plateau', x: 0, z: -22, w: 30, d: 6, h: 12 },                                              // THE TOP LANDING (the gate's door on it)
+                    /* THE FALL */
+                    { k: 'plateau', x: 12, z: 12, w: 12, d: 10, h: 2.0 },                                            // THE LOWER SHELF
+                    { k: 'ramp', x0: 12, z0: 23, x1: 12, z1: 16.4, w: 3, h0: 0, h1: 2.0 },                           // its incline (a rider's ramp; ends 0.6 m inside the shelf)
+                    { k: 'ramp', x0: -16, z0: 14, x1: -16, z1: -4.7, w: 3, h0: 0, h1: 6.0 },                          // THE LONG WAY (18.7 m, 0.32; ends 0.7 m inside the west shelf)
+                    { k: 'plateau', x: -16, z: -8, w: 6, d: 8, h: 6.0 },                                             // THE WEST SHELF
+                    { k: 'ramp', x0: -13.7, z0: -9.5, x1: -10.8, z1: -9.5, w: 2.6, h0: 6.0, h1: 7, stairs: true },   // three steps onto the second landing (0.7 m inside both tiers)
+                    { k: 'plateau', x: 9.6, z: 5.5, r: 1.5, h: 3.1, edge: 0.3 },                                     // THE STEPPING CLOUDS: the lower shelf → the first landing
+                    { k: 'plateau', x: -9.8, z: 0.2, r: 1.5, h: 4.6, edge: 0.3 },                                    // the first landing → the west shelf, two hops
+                    { k: 'plateau', x: -12.4, z: -2.6, r: 1.4, h: 5.6, edge: 0.3 },
+                    { k: 'plateau', x: 3.0, z: -13.2, r: 1.6, h: 9.4, edge: 0.3 },                                   // the lookout beside flight C
+                    { k: 'plateau', x: 17, z: 8, r: 1.4, h: 6.0, edge: 0.3 },                                        // THE PINNACLE on the lower shelf (the tape's)
+                    /* the rails (the park rule) */
+                    { k: 'rail', x0: 7.7, z0: 0.8, x1: 7.7, z1: 4.6 },                                               // the first landing's east rim
+                    { k: 'rail', x0: -14.5, z0: -19.3, x1: 6, z1: -19.3 },                                            // the top landing's front rail
+                    { k: 'rail', x0: 6.3, z0: 8, x1: 6.3, z1: 16 },                                                  // the lower shelf's west edge
+                    /* the paths */
+                    { k: 'path', pts: [[0, 25.5], [0, 18]], w: 2.0 },                                                // the foot
+                    { k: 'path', pts: [[0, 7.4], [0, 1.6], [-6, 1.5]], w: 1.6 },                                     // across the first landing
+                    { k: 'path', pts: [[-6, -6.9], [-6, -10], [-2, -10]], w: 1.6 },                                  // across the second
+                    { k: 'path', pts: [[7.8, -10], [10, -10], [10, -12.6]], w: 1.6 },                                // across the third
+                    { k: 'path', pts: [[10, -19.4], [10, -22], [0, -22], [0, -24]], w: 1.6 },                        // along the top
+                    { k: 'path', pts: [[0, 22], [-16, 18], [-16, 14]], w: 1.6 },                                     // the long way's foot
+                    { k: 'path', pts: [[0, 22], [12, 24], [12, 23]], w: 1.6 },                                       // to the lower shelf's incline
+                    { k: 'scatter', key: 'white_cloud', n: 5, seed: 4, r0: 0.2 },                                    // cloud puffs on the ground (foot 0)
                 ],
             },
             doors: [
@@ -28869,30 +29360,41 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'greek_column',   x: -2.6, z: 16.5 },                                    // the columns: two at the foot, two on the first landing, two at the gate
-                { key: 'greek_column',   x: 2.6, z: 16.5 },
-                { key: 'greek_column',   x: -8.5, z: 2.0 },
-                { key: 'greek_column',   x: 8.5, z: 2.0 },
-                { key: 'greek_column',   x: -5.0, z: -19.5 },
-                { key: 'greek_column',   x: 5.0, z: -19.5 },
-                { key: 'fountain',       x: -4.0, z: 2.0 },                                     // the first landing's fountain
-                { key: 'lectern',        x: 3.0, z: -19.6, face: 180 },                          // the book at the top
-                { key: 'park_bench',     x: 12.0, z: 18.0, face: 300 },                          // a bench for whoever is asked to wait
-                { key: 'paper_sheet',    x: -3.4, z: 18.4, y: 0.01, face: 20 },                  // a form at the foot: STAIR — WHICH WAY
+                { key: 'greek_column',   x: -2.8, z: 25 },                                      // the columns: two at the foot, two at the gate
+                { key: 'greek_column',   x: 2.8, z: 25 },
+                { key: 'greek_column',   x: -6, z: -23 },
+                { key: 'greek_column',   x: 6, z: -23 },
+                { key: 'angel_statue',   x: -11, z: -23, face: 90 },                             // the angels at the top
+                { key: 'angel_statue',   x: 11, z: -23, face: 270 },
+                { key: 'angel_statue',   x: 6.4, z: 1.4, face: 270 },                            // and one by the pool
+                { key: 'fountain',       x: -4, z: 4.5 },                                       // the first landing's fountain
+                { key: 'brazier',        x: -3.4, z: 22.6 },                                    // the lights: the foot, the top
+                { key: 'brazier',        x: 3.4, z: 22.6 },
+                { key: 'brazier',        x: -13.5, z: -21.5 },
+                { key: 'brazier',        x: 13.5, z: -21.5 },
+                { key: 'lectern',        x: 3, z: -23.4, face: 180 },                            // the book at the top
+                { key: 'white_cloud',    x: -10, z: 10, y: 5.0 },                               // THE FLOATING CLOUDS (foot 0 — scenery in the air)
+                { key: 'white_cloud',    x: 16, z: -17, y: 7.5 },
+                { key: 'white_cloud',    x: -3, z: -15, y: 14.5 },
+                { key: 'white_cloud',    x: 18, z: 1, y: 9.5 },
+                { key: 'white_cloud',    x: -18, z: 21, y: 4.0 },
+                { key: 'white_cloud',    x: 14, z: 20, y: 6.0 },
+                { key: 'park_bench',     x: 15, z: 25, face: 300 },                             // a bench for whoever is asked to wait
+                { key: 'paper_sheet',    x: -3.2, z: 24.2, y: 0.01, face: 20 },                  // a form at the foot: STAIR — WHICH WAY
             ],
             agents: [],
             npcSpots: [
-                { x: -8.0, z: -19.5, face: 90, race: 'seraphim', say: ['“Nobody has been refused. Several have been asked to wait. You are early.”', '“Four flights. The fifth is administrative.”'] },
-                { x: 6.0, z: 14.0, face: 20, race: 'chosen one', say: '“I was told it only goes up. I have been going up for a while.”' },
+                { x: -9, z: -21.5, face: 90, race: 'seraphim', say: ['“Nobody has been refused. Several have been asked to wait. You are early.”', '“Four flights. The fifth is administrative.”'] },
+                { x: 6, z: 20, face: 20, race: 'chosen one', say: '“I was told it only goes up. I fell off it twice. There is a long way round on the left; I am told that is also up.”' },
             ],
             onlineSpots: [],
             lines: [
                 '“How many steps?” “Enough.” “Enough for what?” “That is the second question and you have used the first.”',
                 '“The pool heals.” “Heals what?” “The stairs.”',
-                '“Can you see the top?” “You can see the top from everywhere. That is what it is for.”',
+                '“I fell.” “Everyone falls. The long way is on the left. It is also up.”',
                 '“The pillar has no stair.” “The pillar is not for walking.” “What is it for?” “The door.”',
             ],
-            spawn: { x: 0, z: 17.5, face: 0 },
+            spawn: { x: 0, z: 22.5, face: 0 },
         },
         /* ── THE CLOUD FIELDS — islands of cloud, the rift and its plank, the dais and THE GATE ── */
         site_prebuilt_heaven_gate: {
@@ -28928,6 +29430,7 @@ const DOOR_HQ = {
                     { k: 'path', pts: [[-4, -9.6], [0, -8], [3, -6.6]], w: 1.6 },                                     // off the plank to the steps
                     { k: 'path', pts: [[0, 8], [8, 6], [12, 2]], w: 1.4 },                                            // to the east pool
                     { k: 'path', pts: [[0, 8], [-10, 4]], w: 1.4 },                                                   // to the mound
+                    { k: 'scatter', key: 'white_cloud', n: 6, seed: 5, r0: 0.2 },                                     // cloud puffs on the ground (foot 0)
                 ],
             },
             doors: [
@@ -28953,6 +29456,16 @@ const DOOR_HQ = {
                 { key: 'potted_plant',   x: -16.0, z: 15.0 },
                 { key: 'potted_plant',   x: 16.0, z: 15.0 },
                 { key: 'paper_sheet',    x: -2.0, z: 13.8, y: 0.01, face: 320 },                 // a form on the cloud: GATE — WHICH
+                /* THE VATICAN BATCH (2026-09-17): THE PEARLY GATE standing open in the gap of the pearly walls (the hotel door stays the leaf), the angels, the clouds */
+                { key: 'pearly_gate',    x: 3, z: -11.6, face: 0 },
+                { key: 'angel_statue',   x: -7, z: -15, face: 180 },
+                { key: 'angel_statue',   x: 7, z: -15, face: 180 },
+                { key: 'brazier',        x: -10, z: 12 },
+                { key: 'brazier',        x: 10, z: 12 },
+                { key: 'white_cloud',    x: -14, z: 0, y: 5.0 },                                 // THE FLOATING CLOUDS
+                { key: 'white_cloud',    x: 8, z: 8, y: 6.5 },
+                { key: 'white_cloud',    x: 14, z: -14, y: 4.5 },
+                { key: 'white_cloud',    x: -6, z: 14, y: 7.0 },
             ],
             agents: [],
             npcSpots: [
@@ -31122,6 +31635,8 @@ hqCaveFitRooms();
 const HQ_TERRAIN_RULES = {
     res: 0.5, resFine: 0.35, fineBelow: 26,
     maxSlope: 1.0, climb: 0.62, dropMax: 40, wade: 0.55, wadeMax: 1.15,
+    jump: 1.3,                           // THE RETURN GUARANTEE (2026-09-17): the walker's jump reaches a top this far up (HQ_JUMP_V's apex 1.46 less a margin) — the trap rule's climb
+    rescueSlope: 0.7,                    // a RESCUE RAMP's incline (tan) — under maxSlope so the walker climbs it whatever the noise adds
     padW: 3.4, padD: 3.2, padEdge: 1.2, freePadR: 1.7, rim: 1.0,
     cliffFrom: 0.55, cliffTo: 1.3,       // the cliff sheet fades in between these slopes
     bodyR: 0.34, treeR: 0.38, tile: 1.75,
@@ -31261,6 +31776,188 @@ function _hqTReachGrid(info, i0, j0, mask, until) {
         }
     }
     return { seen, path: null };
+}
+/* THE TRAP RULE (2026-09-17): the cells the walker reaches from the pads with its JUMP (a climb of
+   rules.jump, any drop) that cannot reach a pad again the same way. `mask` restricts both walks
+   (null = the whole field). Returns the trap COMPONENTS (arrays of cell keys), largest first. */
+function _hqTReachJump(info, seeds, mask, climb) {
+    const nx = info.nx, nz = info.nz, res = info.res, seen = new Map(), q = [];
+    /* the body never stands inside the shell's wall band (HQ_BODY_R off the wall): a sliver on a tier's edge blend AT the wall is not a place */
+    const bx = info.S.w / 2 - (info.rules.bodyR || 0.34), bz = info.S.d / 2 - (info.rules.bodyR || 0.34);
+    const feet = (i, j, prev) => { const x = info.x0 + i * res, z = info.z0 + j * res; if (Math.abs(x) > bx || Math.abs(z) > bz) return null; return hqTerrainFeet(info, x, z, prev); };
+    seeds.forEach(sd => { const k = sd[1] * nx + sd[0]; if (seen.has(k)) return; const y = feet(sd[0], sd[1], null); if (y == null) return; seen.set(k, y); q.push([sd[0], sd[1], y]); });
+    const N = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    let head = 0;
+    while (head < q.length) {
+        const p = q[head++];
+        for (const n of N) {
+            const i = p[0] + n[0], j = p[1] + n[1];
+            if (i < 0 || j < 0 || i >= nx || j >= nz) continue;
+            const k = j * nx + i; if (seen.has(k)) continue;
+            if (mask && !mask[k]) continue;
+            let y = feet(i, j, p[2]);
+            if (y == null) { y = feet(i, j, null); if (y == null || y - p[2] > climb) continue; }   // a cliff the step refuses: the jump lands on its top when it is low enough
+            else if (y - p[2] > climb) continue;
+            seen.set(k, y); q.push([i, j, y]);
+        }
+    }
+    return seen;
+}
+function _hqTReturnJump(info, forward, pads, mask, climb) {
+    /* the cells that can step / jump INTO a returning cell: BFS backwards from the pads */
+    const nx = info.nx, nz = info.nz, res = info.res, ret = new Set(), q = [];
+    const feet = (i, j, prev) => hqTerrainFeet(info, info.x0 + i * res, info.z0 + j * res, prev);
+    pads.forEach(pn => { const k = pn[1] * nx + pn[0]; if (!ret.has(k) && forward.has(k)) { ret.add(k); q.push(k); } });
+    const N = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    let head = 0;
+    while (head < q.length) {
+        const k = q[head++], i = k % nx, j = (k - i) / nx;
+        for (const n of N) {
+            const ii = i + n[0], jj = j + n[1];
+            if (ii < 0 || jj < 0 || ii >= nx || jj >= nz) continue;
+            const kk = jj * nx + ii; if (ret.has(kk) || !forward.has(kk)) continue;
+            if (mask && !mask[kk]) continue;
+            const yp = forward.get(kk);
+            let yn = feet(i, j, yp);
+            if (yn == null) { yn = feet(i, j, null); if (yn == null || yn - yp > climb) continue; }
+            else if (yn - yp > climb) continue;
+            ret.add(kk); q.push(kk);
+        }
+    }
+    return ret;
+}
+function _hqTTraps(info, padNodes, mask) {
+    const climb = (info.rules.jump != null) ? info.rules.jump : info.rules.climb;
+    const forward = _hqTReachJump(info, padNodes, mask, climb);
+    const ret = _hqTReturnJump(info, forward, padNodes, mask, climb);
+    const nx = info.nx, trapped = new Set();
+    for (const k of forward.keys()) if (!ret.has(k)) trapped.add(k);
+    const comps = [], seen = new Set();
+    for (const k0 of trapped) {
+        if (seen.has(k0)) continue;
+        const comp = [k0], q = [k0]; seen.add(k0);
+        while (q.length) {
+            const k = q.pop(), i = k % nx, j = (k - i) / nx;
+            [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(n => { const ii = i + n[0], jj = j + n[1]; if (ii < 0 || jj < 0 || ii >= nx || jj >= info.nz) return; const kk = jj * nx + ii; if (!trapped.has(kk) || seen.has(kk)) return; seen.add(kk); comp.push(kk); q.push(kk); });
+        }
+        comp.forward = forward; comp.ret = ret;
+        comps.push(comp);
+    }
+    comps.sort((a, b) => b.length - a.length);
+    return comps;
+}
+/* the rescue ramp for one trap component: the walker's shortest open path (no heights) from the trap to the
+   returning ground whose rise fits rescueSlope — BFS by distance, so the first fit is the shortest */
+function _hqTRescuePath(info, comp, mask, forced, banned) {
+    const nx = info.nx, nz = info.nz, res = info.res, R = info.rules, slope = R.rescueSlope || 0.7;
+    banned = banned || new Set();
+    const H = info.H, ret = comp.ret, inComp = new Set(comp);
+    /* the path may CUT THROUGH the plan's solid (a cloud bank, the rock — never a feature: forced cells are open already), never a wall,
+       a hazard, a door's pad or the rim; PHASE 1 never crosses returning ground (the ramp lands on its first returning cell), PHASE 2
+       (when nothing fits) may notch through it — a stair cut into a tier's edge is the honest way up */
+    const pads = info.pads || [];
+    const inPad = (x, z) => { for (const p of pads) { const din = p.r ? p.r - Math.hypot(x - p.x, z - p.z) : _hqTRectIn(x, z, p); if (din > -0.3) return true; } return false; };
+    const walkable = (k) => { const i = k % nx, j = (k - i) / nx; const x = info.x0 + i * res, z = info.z0 + j * res; if (hqTerrainWallAt(info, x, z, 0)) return false; const f = hqTerrainFluidAt(info, x, z); if (f && H[k] < f.y - 0.05 && (f.key !== 'water' || f.y - H[k] > R.wadeMax)) return false; if (inPad(x, z)) return false; return Math.abs(x) < info.S.w / 2 - 0.7 && Math.abs(z) < info.S.d / 2 - 0.7; };
+    const N = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    for (let phase = 1; phase <= 2; phase++) {
+        const dist = new Map(), from = new Map(), q = [];
+        comp.forEach(k => { dist.set(k, 0); q.push(k); });
+        let head = 0;
+        while (head < q.length) {
+            const k = q[head++], d = dist.get(k), i = k % nx, j = (k - i) / nx;
+            const returning = ret.has(k) && !inComp.has(k) && !banned.has(k);
+            if (returning) {
+                /* walk back to the trap: the ramp from the trap cell the path left to here */
+                const path = [k]; let c = k; while (from.has(c)) { c = from.get(c); path.push(c); }
+                path.reverse();
+                const y0 = H[path[0]], y1 = H[k], len = d * res;
+                if (len >= 0.5 && Math.abs(y1 - y0) / len <= slope) return { path, from: [path[0] % nx, (path[0] - path[0] % nx) / nx], y0, y1, len, to: k };
+                if (phase === 1) continue;   // too steep from here: a farther returning cell may fit
+            }
+            if (d > 260) break;
+            for (const n of N) {
+                const ii = i + n[0], jj = j + n[1];
+                if (ii < 0 || jj < 0 || ii >= nx || jj >= nz) continue;
+                const kk = jj * nx + ii; if (dist.has(kk) || !walkable(kk)) continue;
+                dist.set(kk, d + 1); from.set(kk, k); q.push(kk);
+            }
+        }
+    }
+    return null;
+}
+/* lay the incline: every cell within the corridor's radius of the path takes the path's lerped height, opened and forced */
+function _hqTLayRamp(info, ramp, mask, forced, cR) {
+    const nx = info.nx, nz = info.nz, H = info.H, path = ramp.path, n = path.length;
+    const target = new Map();
+    for (let s = 0; s < n; s++) {
+        const k = path[s], i = k % nx, j = (k - i) / nx, t = n > 1 ? s / (n - 1) : 1, y = ramp.y0 + (ramp.y1 - ramp.y0) * t;
+        for (let dj = -cR; dj <= cR; dj++) for (let di = -cR; di <= cR; di++) {
+            if (di * di + dj * dj > cR * cR + 0.5) continue;
+            const ii = i + di, jj = j + dj; if (ii < 0 || jj < 0 || ii >= nx || jj >= nz) continue;
+            const kk = jj * nx + ii, cur = target.get(kk), dd = di * di + dj * dj;
+            if (cur == null || dd < cur.dd) target.set(kk, { y, dd });
+        }
+    }
+    /* the run holds the incline (the nearest path node's height); opened in the plan and forced so no later pass seals it; the CUT is returned so it can be re-laid over the rise */
+    /* what the cut may touch: the path's own cells; the plan's SOLID (the cutting through a bank / the rock); open ground LOWER than the
+       incline (filled up to it — a bank); never an open cell that stands HIGHER beside the path (a tier's edge, a walkway: the incline
+       runs beside it and its side is a step or a cliff — lowering it once cut the cavern's terrace route) */
+    const onPath = new Set(path);
+    const cut = new Map(), was = new Map();
+    target.forEach((v, kk) => {
+        const solid = mask ? !mask[kk] : false;
+        if (!onPath.has(kk) && !solid && H[kk] > v.y + 0.02) return;
+        was.set(kk, { h: H[kk], m: mask ? mask[kk] : 1, f: forced ? forced[kk] : 0 }); H[kk] = v.y; cut.set(kk, v.y); if (mask) mask[kk] = 1; if (forced) forced[kk] = 1;
+    });
+    cut.undo = () => { was.forEach((w, kk) => { H[kk] = w.h; if (mask) mask[kk] = w.m; if (forced) forced[kk] = w.f; }); };
+    return cut;
+}
+/* THE RETURN GUARANTEE itself: traps (and, on a plan, any forced pocket the walker never reaches — the bank it hops
+   onto drops into it) get a rescue ramp, else are sealed (never a forced cell); repeated until nothing traps.
+   `mask` null = a room without a plan (nothing to seal — ramps only). Returns { sealed, rescues }. */
+function _hqTReturnGuarantee(info, padNodes, mask, forced, cR, applyRise) {
+    const res = info.res, x0 = info.x0, z0 = info.z0;
+    let sealed = 0; const rescues = [], cuts = [];
+    if (!padNodes.length) { if (applyRise) applyRise(); return { sealed, rescues }; }
+    const relay = () => { if (applyRise) applyRise(); cuts.forEach(c => c.forEach((y, kk) => { info.H[kk] = y; })); };
+    for (let guard = 0; guard < 40; guard++) {
+        relay();
+        const traps = _hqTTraps(info, padNodes, null);
+        if (!traps.length) break;
+        let progressed = false;
+        const doorsOk = () => { const main = _hqTReachGrid(info, padNodes[0][0], padNodes[0][1], mask, null).seen; return padNodes.every(pn => main.has(pn[1] * info.nx + pn[0])); };
+        for (const comp of traps) {
+            /* A RESCUE RAMP — the first candidate landing whose cut keeps every door reached (a cut across a walkway is a ridge; six tries, then the seal) */
+            let ramp = null; const banned = new Set();
+            for (let tries = 0; tries < 6; tries++) {
+                const cand = _hqTRescuePath(info, comp, mask, forced, banned);
+                if (!cand) break;
+                const cut = _hqTLayRamp(info, cand, mask, forced, cR);
+                if (doorsOk()) { cuts.push(cut); ramp = cand; break; }
+                cut.undo(); banned.add(cand.to);
+            }
+            if (ramp) {
+                rescues.push({ x: +(x0 + ramp.from[0] * res).toFixed(2), z: +(z0 + ramp.from[1] * res).toFixed(2), y0: +ramp.y0.toFixed(2), y1: +ramp.y1.toFixed(2), len: +(ramp.len).toFixed(1), cells: comp.length });
+                progressed = true;
+            } else if (mask) {
+                /* SEAL the trap (never a forced cell) — and undo it if the seal cut a door off (a seal that breaks the door guarantee is no fix) */
+                const free = comp.filter(k => !forced[k]);
+                /* the free cells first; as a LAST RESORT the whole trap, forced cells too (a sliver inside a ramp's own margin — nobody
+                   can use a trap, so rock there buries nothing that works); a door pad is never sealed */
+                for (const pick of [free, comp]) {
+                    if (!pick.length) continue;
+                    const cells = pick.filter(k => !padNodes.some(pn => pn[1] * info.nx + pn[0] === k));
+                    cells.forEach(k => { mask[k] = 0; });
+                    const main = _hqTReachGrid(info, padNodes[0][0], padNodes[0][1], mask, null).seen;
+                    if (padNodes.every(pn => main.has(pn[1] * info.nx + pn[0]))) { sealed += cells.length; progressed = true; cells.forEach(k => { if (!info.sealedCells) info.sealedCells = new Set(); info.sealedCells.add(k); }); break; }
+                    cells.forEach(k => { mask[k] = 1; });
+                }
+            }
+        }
+        if (!progressed) break;   // a trap with no incline and no seal: the solver test names it
+    }
+    relay();
+    return { sealed, rescues };
 }
 function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
     const G = HQ_TERRAIN_GEN, K = G[gen.kind] || G.cave, S = info.S, nx = info.nx, nz = info.nz, res = info.res, x0 = info.x0, z0 = info.z0;
@@ -31423,7 +32120,8 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
         });
     };
     let carved = 0;
-    if (padNodes.length) {
+    const carveDoors = () => {
+        if (!padNodes.length) return;
         for (let guard = 0; guard < 24; guard++) {
             const main = _hqTReachGrid(info, padNodes[0][0], padNodes[0][1], mask, null).seen;
             const missing = padNodes.find(pn => !main.has(pn[1] * nx + pn[0]));
@@ -31436,7 +32134,8 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
         /* open = reachable: a pocket the walker never reaches (and no feature needs) is filled back in */
         const main2 = _hqTReachGrid(info, padNodes[0][0], padNodes[0][1], mask, null).seen;
         for (let k = 0; k < mask.length; k++) if (mask[k] && !forced[k] && !main2.has(k)) mask[k] = 0;
-    }
+    };
+    carveDoors();
     /* a solid island smaller than minIsland m² is a bump, not a wall: opened */
     { const minCells = Math.round(((gen.minIsland != null) ? gen.minIsland : G.minIsland) / (res * res)), seenI = new Uint8Array(nx * nz);
       for (let k0 = 0; k0 < mask.length; k0++) {
@@ -31446,21 +32145,40 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
               [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(n => { const ii = i + n[0], jj = j + n[1]; if (ii < 0 || jj < 0 || ii >= nx || jj >= nz) return; const kk = jj * nx + ii; if (mask[kk] || seenI[kk]) return; seenI[kk] = 1; comp.push(kk); q.push(kk); }); }
           if (!edgeTouch && comp.length < minCells) comp.forEach(k => { mask[k] = 1; });
       } }
+    /* ── THE RETURN GUARANTEE (2026-09-17): nothing the walker can FALL INTO holds it ──
+       The door guarantee above walks DOWN as freely as the walker does (any drop), so a
+       pocket below a landing was "reached" and kept — and had no way back up: the cloud
+       banks of the stairway trapped whoever fell off a flight. Now every cell the walker
+       reaches (with its jump) must reach a door again (with its jump): a TRAP component
+       gets A RESCUE RAMP — the walker's shortest way over the open plan from the trap to
+       the returning ground, its heights laid as an incline the walker climbs (rescueSlope)
+       — or, when no incline fits, is SEALED (filled back into the solid, never a feature's
+       forced cell). Repeated until nothing traps. `info.rescues` lists the ramps. */
     /* ── the distance field and the rise ── */
-    const D = _hqTMaskDistance(mask, nx, nz, res);
     const wallH = (gen.wallH != null) ? gen.wallH : Math.min(K.wallH, S.open ? 99 : Math.max(1.2, (S.h || 4) - 1.2));
     const edge = (gen.edge != null) ? gen.edge : K.edge, jit = (gen.jitter != null) ? gen.jitter : K.jitter, topN = (gen.topNoise != null) ? gen.topNoise : K.topNoise;
-    let open = 0;
-    each((k, px, pz) => {
-        if (mask[k]) open++;
-        const d = D[k];
-        if (d > 0.2) return;
-        const t = _hqTSmooth((0.2 - d) / (edge + 0.2));
-        const j1 = 1 + jit * _hqTNoise(px, pz, 2.6, seed + 17), top = topN * _hqTNoise(px, pz, 1.9, seed + 29) * _hqTSmooth((-d - 0.4) / 0.8);
-        info.H[k] += (wallH * j1 + top) * t;
-    });
+    const H0 = Float32Array.from(info.H);   // the authored field (before the plan's rise)
+    let D = null, open = 0;
+    const applyRise = () => {
+        D = _hqTMaskDistance(mask, nx, nz, res); open = 0;
+        info.H.set(H0);
+        each((k, px, pz) => {
+            if (mask[k]) open++;
+            const d = D[k];
+            if (d > 0.2) return;
+            const t = _hqTSmooth((0.2 - d) / (edge + 0.2));
+            const j1 = 1 + jit * _hqTNoise(px, pz, 2.6, seed + 17), top = topN * _hqTNoise(px, pz, 1.9, seed + 29) * _hqTSmooth((-d - 0.4) / 0.8);
+            info.H[k] += (wallH * j1 + top) * t;
+        });
+        info.maskD = D;
+    };
+    /* THE RETURN GUARANTEE runs on the RISEN field — what the walker meets (a low bank is hopped onto, a cliff is not) — and
+       every rescue ramp is a CUT re-laid over the rise each round */
+    const RG = _hqTReturnGuarantee(info, padNodes, mask, forced, cR, applyRise);
+    const sealed = RG.sealed, rescues = RG.rescues;
+    info.rescues = rescues;
     info.mask = mask; info.maskD = D; info.forced = forced;
-    info.gen = { kind: gen.kind, wallH, edge, open: open / (nx * nz), carved, solidSheet: (gen.kind === 'cave') ? 'cliff' : 'floor' };
+    info.gen = { kind: gen.kind, wallH, edge, open: open / (nx * nz), carved, sealed, rescued: rescues.length, solidSheet: (gen.kind === 'cave') ? 'cliff' : 'floor' };
     /* ── THE THICKET (rooms): the forest growing on the solid, a lattice of trees `spacing` apart ── */
     info.thicket = [];
     if (gen.kind === 'rooms' && gen.thicket !== false) {
@@ -31616,6 +32334,11 @@ function hqTerrainCompile(room, roomId) {
                    pads: doorPads, walls: [], rails: [], paths, decks, fluids, trees: [], scatter: [], tile: T.tile || R.tile, rules: R, closed, hFn: hFinal };
     /* THE GENERATED FLOOR PLAN (2026-09-17): the mask, the rise on the solid, the thicket — before the walls / trees / scatter read the field */
     if (T.gen) { try { _hqTGenerate(info, room, roomId, T.gen, doorPads, F); } catch (e) { console.warn('[terrain] the floor plan failed', roomId, e); } }
+    else {
+        /* THE RETURN GUARANTEE without a plan (2026-09-17): a room that is its own floor still gets its rescue ramps */
+        try { const pn = doorPads.map(p => [Math.round((p.x - x0) / res), Math.round((p.z - z0) / res)]); info.rescues = _hqTReturnGuarantee(info, pn, null, null, Math.ceil(HQ_TERRAIN_GEN.corridorW / 2 / res), null).rescues; }
+        catch (e) { console.warn('[terrain] the return guarantee failed', roomId, e); info.rescues = []; }
+    }
     const hAt = (px, pz) => hqTerrainHeight(info, px, pz);
     /* the walls: standing on the ground, their top h above the highest ground under them (or an absolute `y`) */
     walls.forEach(w => {
@@ -31763,6 +32486,14 @@ function hqTerrainReach(info, x, z) {
     }
     return seen;
 }
+/* THE TRAP CHECK (2026-09-17): the trap components of a compiled field — every cell the walker reaches from the
+   door pads (with its jump) that cannot reach a pad again. A room passes when this is empty; hq-terrain.test.js
+   insists on it for every terrain room and check-terrain.js prints the offenders. Each row: { cells, x, z, y }. */
+function hqTerrainTraps(info) {
+    const pads = (info.pads || []).map(p => [Math.round((p.x - info.x0) / info.res), Math.round((p.z - info.z0) / info.res)]);
+    if (!pads.length) return [];
+    return _hqTTraps(info, pads, null).map(c => { const k = c[0], i = k % info.nx, j = (k - i) / info.nx; return { cells: c.length, x: +(info.x0 + i * info.res).toFixed(2), z: +(info.z0 + j * info.res).toFixed(2), y: +hqTerrainHeight(info, info.x0 + i * info.res, info.z0 + j * info.res).toFixed(2) }; });
+}
 function hqTerrainNodeKey(info, x, z) { return Math.round((x - info.x0) / info.res) + ',' + Math.round((z - info.z0) / info.res); }
 /* the landing of a door in a terrain room (2.4 m inside its wall / in front of a free way), with its feet */
 function hqTerrainDoorLanding(room, door) {
@@ -31831,15 +32562,15 @@ const HQ_TAPE_KINDS = ['evidence', 'parents', 'facility'];
    caption, kind]. A site key (no `site_` prefix) = its generated board room. */
 const HQ_TAPE_SHEET = {
     prebuilt_dumb:        [['THE LIFT LOG', 'Sub-level 7 does not exist. The lift stops there anyway.', 'facility'], ['THE BLAST DOOR, 03:14', 'Nine seconds of a door opening from the other side. Nobody comes through.', 'evidence']],
-    prebuilt_cern:        [['BEAM DUMP', 'The ring hums at a pitch the tape cannot hold. Watch the coffee.', 'evidence'], ['A BADGE ON THE FLOOR', 'Your mother’s badge. The photo has been cut out.', 'parents']],
+    prebuilt_cern:        [['A BADGE ON THE FLOOR', 'Your mother’s badge. The photo has been cut out.', 'parents']],   // THE VATICAN (2026-09-17): BEAM DUMP went to the cortile
     prebuilt_backrooms:   [['HUM, LEVEL 0', 'Forty seconds of carpet. Something in the wallpaper blinks.', 'evidence'], ['THE EXIT SIGN', 'It points the wrong way every time the tape loops.', 'facility']],
     prebuilt_nuketown:    [['THE MANNEQUINS, 05:29', 'They face the blast. On the second pass they face the camera.', 'evidence'], ['TEST CARD', 'A family at a kitchen table. One chair is empty. It is your chair.', 'parents']],
     prebuilt_stadium:     [['THE CROWD NOISE', 'Eighty thousand voices. The seats are empty.', 'evidence'], ['HALF-TIME', 'A man in a coat walks the pitch alone. He knows where the camera is.', 'parents']],
-    prebuilt_camelot:     [['THE ROUND TABLE', 'Twelve chairs. Thirteen shadows.', 'evidence'], ['SNOW ON THE BATTLEMENTS', 'It falls upward for two seconds. Records logged it as tracking error.', 'facility']],
+    prebuilt_camelot:     [['THE ROUND TABLE', 'Twelve chairs. Thirteen shadows.', 'evidence']],   // THE VATICAN (2026-09-17): SNOW ON THE BATTLEMENTS went to the basilica
     prebuilt_atlantis:    [['SONAR, 0400', 'Something answers the ping. It answers in a voice.', 'evidence'], ['THE PEARL DIVER', 'A woman surfacing with something in her hand. She is not wearing a suit.', 'parents']],
     prebuilt_hell:        [['THE FISSURE', 'Heat shimmer over the causeway. The shimmer has a face.', 'evidence']],   // THE DIVINE STAIR (2026-09-17): FORM 666 went down to the pit
     prebuilt_technoticlan: [['THE UPLINK', 'A screen of static that resolves into a floor plan of this building.', 'facility'], ['MOTHER', 'Nine frames of a woman at a console. The console is the one in Room 1337.', 'parents']],
-    prebuilt_agartha:     [['THE ADIT', 'A lamp moving through the crystal. Nobody carries it.', 'evidence'], ['THE GREAT DOOR', 'An hour of a closed door, cut to eight seconds. It breathes.', 'evidence']],
+    prebuilt_agartha:     [['THE ADIT', 'A lamp moving through the crystal. Nobody carries it.', 'evidence']],   // THE VATICAN (2026-09-17): THE GREAT DOOR went to the archive
     prebuilt_antarctica:  [['THE ICE CORE', 'Something frozen in the core. It is looking at the drill.', 'evidence'], ['THE EXPEDITION', 'Two parkas at a ridge. The taller one waves at the camera by name.', 'parents']],
     prebuilt_shasta:      [['THE LENTICULAR', 'A cloud that holds still while the sky moves. Then it does not.', 'evidence']],
     prebuilt_stonehenge:  [['SOLSTICE', 'The stones throw two shadows. The sun is on the wrong side for one of them.', 'evidence'], ['THE WHEEL', 'The stones turn. The camera does not. Records is unhappy about this tape.', 'facility']],
@@ -31849,7 +32580,7 @@ const HQ_TAPE_SHEET = {
     prebuilt_babel:       [['ONE VOICE', 'Everyone on the tower says the same word. It is not a word.', 'evidence']],
     prebuilt_olympus:     [['THE FORGE', 'Sparks falling up. A hammer with no hand.', 'evidence']],   // THE DIVINE STAIR (2026-09-17): the second tape went to the stairway
     prebuilt_mars:        [['ROVER FEED 07', 'The rover turns to look at something behind it. The something waves.', 'evidence'], ['THE CRATER', 'A boot print beside the rover’s tracks. The rover has no boots.', 'evidence']],
-    prebuilt_area51:      [['HANGAR 18', 'A craft on jacks. The jacks are made of the same thing as the craft.', 'evidence'], ['THE BADGE PHOTO', 'A man in a lab coat at the gate. He is holding a copy of this tape.', 'parents']],
+    prebuilt_area51:      [['THE BADGE PHOTO', 'A man in a lab coat at the gate. He is holding a copy of this tape.', 'parents']],   // THE VATICAN (2026-09-17): HANGAR 18 went to the observatory
     prebuilt_skinwalker:  [['THE RANCH HOUSE', 'A woman on the porch, looking into the yard. The yard looks back.', 'parents']],
     prebuilt_hollow_earth: [['THE INNER SUN', 'A light under the ground. It has a horizon.', 'evidence'], ['THE WELL', 'A bucket coming up the rope. Something has written on the bucket.', 'evidence']],
     prebuilt_fairy_forest: [['THE RING', 'Toadstools in a circle. On the second pass, the circle is one wider.', 'evidence']],
@@ -31904,6 +32635,11 @@ const HQ_TAPE_SHEET = {
     /* THE DIVINE STAIR (9.3 stage 6, 2026-09-17): four tapes re-homed — Hell's FORM 666, Heaven's THE GATE, the Vatican's THE CONFESSIONAL
        and Olympus's second (the hundred stays a hundred; a built site keeps ≥ 1) */
     site_prebuilt_vatican_catacombs: [['THE CONFESSIONAL', 'A voice through the screen. It says your callsign. The screen is in a wall of skulls.', 'parents']],
+    /* THE VATICAN expanded (2026-09-17): four more parts, four tapes re-homed (Camelot's, Agartha's, CERN's and Area 51's second — the hundred stays a hundred, every site keeps one) */
+    site_prebuilt_vatican_basilica:    [['THE HOMILY', 'Forty minutes of a sermon in a language the tape marks UNKNOWN. The congregation nods in the right places.', 'evidence']],
+    site_prebuilt_vatican_library:     [['THE INDEX', 'A card drawer opening by itself. Every card is your callsign. The hand that filed them is in frame for one second.', 'parents']],
+    site_prebuilt_vatican_courtyard:   [['THE FOUNTAIN, 0300', 'The water runs up. The gardener rakes gravel that is not there and does not look at the well.', 'evidence']],
+    site_prebuilt_vatican_observatory: [['THE EYEPIECE', 'A stair, through the telescope. It is closer than the moon. There is a door at the top and it is open.', 'facility']],
     site_prebuilt_hell_pit:          [['FORM 666', 'A clearance form filled in by hand. The hand is not anyone in the building. It is chained to the plinth.', 'facility']],
     site_prebuilt_heaven_stair:      [['THE CLIMB, 4', 'A stair of cloud. The camera goes up it for an hour. The top does not get closer and then it is there.', 'evidence']],
     site_prebuilt_heaven_gate:       [['THE GATE', 'Clouds part on a corridor. The corridor is the one outside. A hotel door at the end of it, and the book beside it, open.', 'facility']],
@@ -32168,7 +32904,12 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     /* THE DIVINE STAIR (9.3 stage 6, 2026-09-17): the skull stack, the colossus's plinth, the stairway's pinnacle, the pillar of light — the door gun's four */
     site_prebuilt_vatican_catacombs: { tape: { x: -13.0, z: -9.0 } },
     site_prebuilt_hell_pit:          { tape: { x: -11.0, z: -9.0 } },
-    site_prebuilt_heaven_stair:      { tape: { x: 10.0, z: 8.0 } },
+    site_prebuilt_heaven_stair:      { tape: { x: 17.0, z: 8.0 } },   // THE PINNACLE on the lower shelf (rebuilt 2026-09-17)
+    /* THE VATICAN (2026-09-17): the organ loft, the high shelf, the campanile's stump, the finial — the door gun's four more */
+    site_prebuilt_vatican_basilica:    { tape: { x: -9.5, z: 22.5 } },
+    site_prebuilt_vatican_library:     { tape: { x: -10.5, z: 6.0 } },
+    site_prebuilt_vatican_courtyard:   { tape: { x: 15.0, z: 12.0 } },
+    site_prebuilt_vatican_observatory: { tape: { x: 8.5, z: 7.5 } },
     site_prebuilt_heaven_gate:       { tape: { x: 12.0, z: -8.0 } },
     site_prebuilt_fairy_forest_ritual:  { tape: { x: 0.0, z: -6.3 } } };    // THE ALTAR STONE   // the deck (SKATEBOARDING 9.8) takes the generator's far corner of Room 26
 Object.defineProperty(DOOR_HQ, 'finds', { configurable: true, enumerable: true, get: _hqFindsAll, set: _hqFindsPin });
@@ -35493,7 +36234,7 @@ if (typeof window !== 'undefined') {
     window.hqTapeShelf = hqTapeShelf; window.hqTapeCount = hqTapeCount; window.hqFindById = hqFindById; window.hqFindsForRoom = hqFindsForRoom; window.hqFindsWarm = hqFindsWarm; window.hqFindsDrop = hqFindsDrop; window.hqTapeById = hqTapeById; window.hqTapeClipUrl = hqTapeClipUrl; window.hqFindsRecord = hqFindsRecord;
     window.hqCaveDoorCell = hqCaveDoorCell; window.hqCaveRooms = hqCaveRooms;
     /* THE TERRAIN ROOM (2026-09-17) */
-    window.HQ_TERRAIN_RULES = HQ_TERRAIN_RULES; window.HQ_TERRAIN_GEN = HQ_TERRAIN_GEN; window.HQ_ROOM_LOOKS = HQ_ROOM_LOOKS; window.hqTerrainMaskAt = hqTerrainMaskAt; window.hqTerrainOpenAt = hqTerrainOpenAt; window.hqTerrainRooms = hqTerrainRooms; window.hqTerrainInfo = hqTerrainInfo; window.hqTerrainCompile = hqTerrainCompile;
+    window.HQ_TERRAIN_RULES = HQ_TERRAIN_RULES; window.HQ_TERRAIN_GEN = HQ_TERRAIN_GEN; window.HQ_ROOM_LOOKS = HQ_ROOM_LOOKS; window.hqTerrainMaskAt = hqTerrainMaskAt; window.hqTerrainOpenAt = hqTerrainOpenAt; window.hqTerrainRooms = hqTerrainRooms; window.hqTerrainInfo = hqTerrainInfo; window.hqTerrainTraps = hqTerrainTraps; window.hqTerrainCompile = hqTerrainCompile;
     window.hqTerrainHeight = hqTerrainHeight; window.hqTerrainSlope = hqTerrainSlope; window.hqTerrainFeet = hqTerrainFeet; window.hqTerrainAir = hqTerrainAir; window.hqTerrainCam = hqTerrainCam;
     window.hqTerrainFluidAt = hqTerrainFluidAt; window.hqTerrainWallAt = hqTerrainWallAt; window.hqTerrainDoorY = hqTerrainDoorY; window.hqTerrainReach = hqTerrainReach; window.hqTerrainNodeKey = hqTerrainNodeKey;
     window.hqTerrainDoorLanding = hqTerrainDoorLanding; window.hqTerrainDump = hqTerrainDump; window.hqFindHardReachTerrain = hqFindHardReachTerrain; window.hqTerrainFindSpot = hqTerrainFindSpot; window._hqTPolyDist = _hqTPolyDist;
