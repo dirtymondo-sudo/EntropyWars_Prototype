@@ -205,6 +205,38 @@ faces the wrong way is the catalogue row's `rot`; a wrong height is its
 | `culvert` | `culvert_mouth` | Meshy_AI_a_culvert_mouth_0916235929_texture.glb | | the clearing's crag (the storm drain's mouth) | a culvert |
 | `drain_grate` | `drain_grate` | Meshy_AI_a_storm_drain_grate_0916235918_texture.glb | | Dead Man's Cave ×2 (wall, mount 0.4) | a grate |
 
+## 3f. THE DIVINE STAIR (2026-09-17 — complex candidate #4) — what stands there, and the wishlist
+
+No new file. The four parts (the Vatican's catacombs, Hell's pit, Heaven's
+stairway and cloud fields — DOOR_HQ_BUILD_PLAN §9) are dressed from the
+catalogue as it stands; ONE catalogue row was added on an EXISTING file:
+
+| catalogue key | file (already in `_MISC_GLB`) | stands as |
+| --- | --- | --- |
+| `greek_column` | Meshy_AI_greek_column_0727195651_texture.glb (`greekcol`, the board monument) | the columns at the stairway's foot / landings / gate, the dais and the way in of the fields (h 3.6, block) — the same-thing rule (§9) |
+
+Stand-ins in use (the aesthetic is the deliverable — these are the rows to
+replace when the models exist): `cell_bars` for the loculi, low `marble`
+walls for the sarcophagus rows, a brick pinnacle for THE SKULL STACK,
+`ship_lantern` for the crypt's hanging lights, `candle_ring` / `wall_torch`
+/ `cave_torch` for every flame, `menhir` for tombstones and basalt spikes,
+`stone_altar` + `lectern` for the chapel and the book, `wall_chains` +
+`stocks` for the colossus's chains, `leaf_hotel` on a marble wall for THE
+GATE, `fountain` + `park_bench` + `potted_plant` in the clouds.
+
+THE WISHLIST (Meshy, unit-normalised; a row = `base: 'misc'` + `h`/`span`
++ `foot`/`block`, then a prop line — nothing in the renderer):
+1. **skull wall / ossuary panel** (wall prop, `mount` 0) — the loculi.
+2. **skull pile** (floor, ~1.2 m) — THE SKULL STACK's crown; the tape sits on it.
+3. **stone sarcophagus** (~2.2 × 0.9 m, block) — the tomb rows.
+4. **candelabra** / **bone chandelier** (`ceil`, a `light`) — the crypt.
+5. **confessional booth** (~2.4 m, block) — the catacombs' tape's home.
+6. **angel statue** (~2.6 m) and **pearly gate** (a double gate, ~4 m) — the dais; the hotel door stays the LEAF.
+7. **harp** and **cloud puff** (a soft prop, `foot` 0) — the fields.
+8. **chained colossus / demon statue** (~3.5 m) — THE PLINTH.
+9. **brazier** (a `light`) and a **broken column** — the pit and the fields.
+10. **bone-and-obsidian stair segment** — if the flights are to be modelled rather than drawn treads.
+
 ## 4. The older `Assets/misc/` models (`_MISC_GLB` + the OBJ landmarks)
 
 | key | file | kind | stands as |

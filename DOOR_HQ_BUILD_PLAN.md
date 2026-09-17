@@ -9403,6 +9403,53 @@ the landscape / planet / map."
 - UNSEEN LIVE (RULE #1c): all of it — the rock masses' sheet and shading, the thicket banks under the trees, the outer
   ground's swell, the fog density, each look's strength, the settings sheet in the pause overlay.
 
+### 2026-09-17 — THE DIVINE STAIR (complex candidate #4: HEAVEN · HELL · THE VATICAN · THE CATACOMBS · THE STAIRWAY), local delivery
+The first complex after the blueprint rule — chosen because it needs no new site (the 7.10 checklist stays shut)
+and every room is a terrain room the kit already draws. Four parts on three sites, joined by seams:
+- **THE CATACOMBS** (`site_prebuilt_vatican_catacombs`, 38.5 × 31.5 m, closed, brick, `gen: cave`, the teal
+  `catacombs` look under candles): the crypt stair down from the Vatican's north wall at x −10 (THE WAY IN);
+  the ossuary shelf (1.75 m) up a brick stair with cell bars over the loculi; THE SUNKEN CHAPEL — a bowl round a
+  waded font, the altar and the lectern on its rim; two sarcophagus rows (low marble walls the rider grinds);
+  THE SKULL STACK (3.4 m, the door gun's tape); the warm wall on the east (the crypt link, re-pointed), the foot
+  of the stair on the north (`links.catacombs_stair`, `leaf_frame_only` — "nobody has ever wanted to shut it").
+- **THE PIT** (`site_prebuilt_hell_pit`, 35 × 35 m, closed, obsidian, `gen: cave`, the `hell` look): the mouth
+  from Hell's north wall at x −10; THE LAVA RIVER across the south with THE CAUSEWAY (an obsidian deck spanning
+  both banks); THE BOWL (a 2.4 m dip) walked down round the lava at its heart; THE GALLERY LEDGE up a ramp kept
+  outside the bowl; THE PLINTH (3.6 m, the colossus's chains running to the wall — the tape); the basalt wall.
+- **THE STAIRWAY** (`site_prebuilt_heaven_stair`, 31.5 × 42 m, OPEN under Heaven's sky via `hqDivineShell`,
+  `gen: rooms` with `thicket: false` = cloud banks, no trees; the `heaven` look, bloom up, no night): FOUR
+  FLIGHTS of cloud stairs in switchbacks — 0 → 3.5 (the first landing, the healing pool, the fountain) → 7 → 10
+  → 12 (the top landing, the gate's door ON it at `y: 12`, the seraph at the book); THE PINNACLE (5.2 m) off the
+  first landing — the tape the door gun reaches; columns at the foot, the landing and the gate.
+- **THE CLOUD FIELDS** (`site_prebuilt_heaven_gate`, 42 × 35 m, open, `gen: rooms`, no thicket): the top of the
+  stair on the south; cloud islands joined by cloud bridges; THE RIFT (`deep_water`, bottomless) with THE PLANK
+  over it; THE DAIS (1.75 m) with THE PEARLY WALLS either side of the steps (walls the rider jumps onto) and THE
+  GATE — Room 777's hotel door — at its back, out onto Heaven's board (its north wall at x −0.2); THE PILLAR OF
+  LIGHT (4.6 m, the tape); two healing pools; the book beside the gate.
+- THE SEAMS: `links.vatican_hell` RE-POINTED from the two board rooms (n x −10 both) onto the catacombs' east
+  wall ⇄ the pit's west wall (the id kept — a charted route stays charted; both lanes went to the back doors);
+  `links.catacombs_stair` new. The divine line reads four legs; hq-world / hq-map / the directory guard pass.
+- THE TWO RAMP RULES the solver taught (both flights refused at first): a flight ENDS 0.3 m INSIDE the upper
+  landing's edge (past it there is a hole between the ramp's end and the tier's 0.35 m edge blend) and STARTS
+  ≥ 0.4 m inside the lower one (the ramp tolerates only 0.18 m before its own start). Written into the rooms.
+- Tests: `hq-divine.test.js` (8); hq-floor-plan's "solid stands high" rule now measures against the AUTHORED
+  floor under the cell (`info.hFn`) — a row-walk to the nearest open cell judged a cloud bank at the floor
+  against a 12 m landing; its thicket rule reads `gen.thicket !== false`; hq-terrain's tree rule is the woods'
+  only; the counts are 18 / 17. Full suite 1553 / 0 / 6 skipped. Token `20260917-divine-stair-01-cors`.
+- ASSETS THAT WOULD LIFT IT (MODEL_INDEX §3f — stand-ins today): a SKULL WALL / ossuary panel and a SKULL PILE
+  (the stack is a `cloud_thick`-less brick pinnacle; the loculi are `cell_bars`), a SARCOPHAGUS (the rows are
+  low marble walls), a CANDELABRA / bone chandelier (the `ship_lantern` hangs there), a CONFESSIONAL booth, an
+  ANGEL STATUE and a PEARLY GATE (the gate is `leaf_hotel` on a marble wall — the canon says frosted for
+  modesty, so a hotel door is defensible), a HARP, a CLOUD PUFF prop, a CHAINED COLOSSUS / demon statue for the
+  plinth, a BRAZIER, a broken COLUMN, a bone-and-obsidian STAIR SEGMENT. Every one lands as a `DOOR_HQ.catalogue`
+  row with `base: 'misc'` + a prop line; nothing in the renderer.
+- NOT BUILT: a fifth part (THE CONFESSIONAL as a room off the catacombs; the choir loft over the fields); the
+  colossus itself (the plinth is bare); a `way` seam (a mirror in the chapel ⇄ the Looking-Glass); the Vatican's
+  own interior (the basilica floor, the archive) — the next rooms of this complex if the user wants it grown.
+- UNSEEN LIVE (RULE #1c): all of it — the cloud banks in `cloud_thick` (if they read as walls, the sheet on
+  `terrain.cliff` is the edit), the treads at 12 m and the boom over the void, the lava under the causeway, the
+  frame-only foot, the teal grade on brick, the column GLB's scale (`greek_column.h`).
+
 ### THE COMPLEX CANDIDATES (the user's list, 2026-09-17) — build each on THE CAVE / THE WOODS blueprint
 The cave and the woods are the blueprint for every complex from here: a generated floor plan (`terrain.gen`),
 the ground running out under a real fog, a `shell.look` grade tuned to the vibe, the room's own light, THE PARK
@@ -9414,8 +9461,9 @@ RULE, the hard tapes, `check-terrain.js` before any claim. The aesthetic is the 
 3. **THE TUNNELS / THE DUNGEONS** — every subway tunnel, the sewer system (the storm drain), the dungeons
    (24601, the oubliette) joined into one underworld.
 4. **HEAVEN · HELL · THE VATICAN · THE CATACOMBS · THE STAIRWAY TO HEAVEN** — one epic-fantasy complex, the
-   stairway the spine from the catacombs to the clouds.
+   stairway the spine from the catacombs to the clouds. **STARTED 2026-09-17 (THE DIVINE STAIR, the entry
+   above): four parts shipped locally — the catacombs, the pit, the stairway, the cloud fields.**
 5. **D.U.M.B.** — Area 51, CERN, the padded rooms, the dream lab, clone disposal: the base under the base.
 6. **DOOR MANUFACTURING** — the service hallways, the warehouse, the Works: what keeps D.O.O.R. running.
-Not started. Each needs its own `HQ_ROOM_LOOKS` row, its own sky / fog, its links on the world graph and the
-7.10 checklist for any new site it introduces.
+#4 started (above); the rest not. Each needs its own `HQ_ROOM_LOOKS` row, its own sky / fog, its links on the
+world graph and the 7.10 checklist for any new site it introduces.

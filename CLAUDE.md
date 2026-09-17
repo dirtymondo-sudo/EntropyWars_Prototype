@@ -4939,6 +4939,59 @@ ground's swell against the treeline, the fog's density (`sky.fog.density` is
 the edit), each look's strength (the table is the edit), the settings sheet's
 length in the HQ pause overlay.
 
+## THE DIVINE STAIR — HEAVEN · HELL · THE VATICAN · THE CATACOMBS · THE STAIRWAY (complex candidate #4, HQ plan 9.3 stage 6) — 2026-09-17, local delivery
+The first complex built on THE CAVE / THE WOODS blueprint after the rule: four
+TERRAIN rooms with generated floor plans on THREE sites (data.js, the block
+right before H-WING; `site` + `part`, no `roomNo`), joined by seams.
+**THE CATACOMBS** (`site_prebuilt_vatican_catacombs`, closed, `gen: cave`,
+brick + `dungeon` floor, the crypt's own fog, `HQ_ROOM_LOOKS.catacombs` = the
+teal preset under candles): the ossuary shelf up a brick stair, the sunken
+chapel round a waded font, two sarcophagus rows (walls the rider grinds), THE
+SKULL STACK (3.4 m, the hard tape). **THE PIT** (`site_prebuilt_hell_pit`,
+closed, `gen: cave`, obsidian, `HQ_ROOM_LOOKS.hell`): THE BOWL (a 2.4 m dip)
+down to a lava pool at its heart, THE LAVA RIVER with an obsidian causeway
+(a deck spanning both banks), THE PLINTH (3.6 m, the hard tape), the gallery
+ledge, the basalt wall. **THE STAIRWAY** (`site_prebuilt_heaven_stair`, OPEN
+under Heaven's sky through **`hqDivineShell(o)`** — defined beside
+`hqWoodsShell`; `HQ_ROOM_LOOKS.heaven` = Dreamy, bloom 0.5, no night; `gen:
+rooms` with **`thicket: false`** (cloud banks, no trees — the rooms plan
+without a thicket) and `wallH` 2.4): FOUR STAIR FLIGHTS in switchbacks
+0 → 3.5 → 7 → 10 → 12 m (`stairs: true`), the healing pool on the first
+landing, THE PINNACLE (5.2 m, the hard tape), the gate's door ON the top
+landing (`y: 12`). **THE CLOUD FIELDS** (`site_prebuilt_heaven_gate`, open,
+`gen: rooms`, `thicket: false`): cloud islands, THE RIFT (`deep_water`, never
+entered) with THE PLANK over it, THE DAIS (1.75 m) with THE PEARLY WALLS and
+THE GATE (`leaf_hotel`, Room 777's own, `y: 1.75`), THE PILLAR OF LIGHT (4.6 m,
+the hard tape), two healing pools. **THE WAYS IN** = `siteRooms.backDoors`
+rows on the FREED lanes: the Vatican's `crypt` (n x −10 → the catacombs'
+`stair`), Hell's `pit` (n x −10 → the pit's `mouth`), Heaven's `gate` (n x
+−0.2 → the fields' `heaven`). **THE SEAMS**: `links.vatican_hell` is
+RE-POINTED (the id kept) off the two board rooms onto the parts — the
+catacombs' EAST wall (z 4) ⇄ the pit's WEST wall — "the crypt's warm wall";
+`links.catacombs_stair` (route `divine`, `leaf_frame_only`) = the catacombs'
+north wall (x −6) ⇄ the stairway's south wall (the foot). The divine line
+reads four legs now. **TWO RAMP RULES the flights taught** (the solver caught
+both): a ramp ENDS 0.3 m INSIDE its upper tier's edge (`x1/z1` past the edge
+leaves a hole between the ramp's end and the tier's 0.35 m edge blend) and
+STARTS ≥ 0.4 m inside its lower tier (the ramp's own tolerance past `t < 0`
+is 0.18 m). TAPES: four re-homed (Hell's FORM 666 → the pit, Heaven's THE
+GATE → the fields, the Vatican's THE CONFESSIONAL → the catacombs, Olympus's
+second → the stairway; the hundred stays a hundred, every site keeps ≥ 1);
+`findSpots` pins the four hard tapes. Catalogue: `greek_column` (`base:
+'misc'`, the board's `greekcol` file — the same-thing rule). Tests amended
+for a multi-level plan: hq-floor-plan.test.js judges a deep solid cell
+against `info.hFn(x, z)` (the authored floor under it, not a row-walk to
+the nearest open cell — a cloud bank at the floor beside a 12 m landing);
+the thicket rule reads `gen.thicket !== false`; hq-terrain.test.js's
+tree rule is the woods' only; both count 18 / 17 rooms. `npm test` runs
+`hq-divine.test.js` (the sheet, the ways in, one piece, the seams, the
+solver + the production landing on every door, the park rule + the
+hazards, the hard tapes, the helper + the source sites). UNSEEN LIVE (RULE
+#1c): all of it — the cloud banks' read in `cloud_thick`, the stair treads
+under the walker at 12 m, the lava under the obsidian causeway, the
+`leaf_frame_only` foot, the brick catacombs under the teal grade, the
+column GLB's scale. Assets that would lift it: MODEL_INDEX §3f.
+
 ## THE COMPLEX BLUEPRINT + THE CANDIDATE LIST (the user's rule, 2026-09-17)
 The user: "these two areas [THE CAVE and THE WOODS] are the blueprint for
 making complex maps now — especially the part about getting the aesthetic
