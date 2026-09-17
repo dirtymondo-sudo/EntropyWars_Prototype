@@ -9722,3 +9722,17 @@ RULE, the hard tapes, `check-terrain.js` before any claim. The aesthetic is the 
 6. **DOOR MANUFACTURING** — the service hallways, the warehouse, the Works: what keeps D.O.O.R. running.
 #1 has its second pass and CYBERPUNK CITY (the entry above); #4 started; the rest not. Each needs its own `HQ_ROOM_LOOKS` row, its own sky / fog, its links on the
 world graph and the 7.10 checklist for any new site it introduces.
+
+
+### 2026-09-17 — Disaster City geometry, entrances and pedestrian traffic repair (local delivery)
+
+Based on GitHub main c65341886eb7a4bd5f895d9d8618dfa6d393d57f. Not uploaded or deployed.
+
+- Straight road GLB has baked vertical extent 0.478515 on its unit footprint. Road tiles now fit to 0.035 m thickness after loading, independently of road width, and sit 0.01 m over the field. This also keeps quarter-turn tiles at the same thickness.
+- Inspected the storefront_unit asset: width along X, front toward +Z, depth 0.660156. Removed the assumed quarter-turn, recessed the back half-depth into the store, and fitted height below the existing sign band. The model no longer occupies the concourse. Procedural fronts remain available while loading / at low detail.
+- The mezzanine ramp is now marked escalator with smooth collision and no lateral terrain rounding. Its visible terrain triangles are omitted under the escalator. _hqBuildEscalators places the supplied two-lane escalator at the lower floor rather than on the ramp midpoint, fits its width/run/rise, and retains a metal-step/handrail fallback when the model is unavailable. Removed the duplicate catalogue prop. Explicit noise amp:0 is now respected (the mall previously inherited 0.15 m noise).
+- _hqBuildCityEntrances gives every normal outdoor city area door its own sprite building at the end of its existing approach street, aligned directly behind the working door, with a canopy, surround and destination sign. Shared by Disaster City and Cyberpunk. Door coordinates/actions and return landings are preserved. Special ways such as the gutter and train keep their existing forms; indoor doors already have walls.
+- Disaster City traffic: 17 -> 8 vehicles; ring-road speed 4.5 m/s, avenue speed 3.5 m/s. Shared traffic yields to walkers/skaters along a sampled upcoming path, including corners and route respawns. Following gaps use the actual lead vehicle length. A three-second player-wide hit cooldown prevents successive cars from repeatedly shoving the player.
+- Existing files only for runtime: data.js, three-renderer.js, index.html. Shared token 20260917-city-repair-03-cors. data.js belongs on both R2 and Render; three-renderer.js on R2; index.html on Render. No model files changed and no additional asset upload required.
+- Validation: Node v24-compatible bundled runtime; package test command `node --test *.test.js`: 1,584 tests, 1,578 passed, 6 skipped, 0 failed. Syntax checks passed for edited runtime JS. 42 focused city/terrain/floor-plan tests passed; terrain connectivity and return checks run in that suite. New hq-city-repair.test.js covers mesh fit callbacks, entrance alignment, escalator fit/fallback, yielding through bends/respawn, lead-vehicle spacing, density and zero noise. Updated old assertions that required the removed stepped ramp and 0.3 road squash.
+- HQ rendering/traffic changes apply to each player's local exploration; battle simulation and online relay are unchanged. No browser playtest performed. Final visual feel, escalator tread alignment and sign readability remain for in-game confirmation.

@@ -1,6 +1,11 @@
-Node v24.19.0: full package test command (node --test *.test.js), executed
-with the bundled Node runtime because npm is not installed.
-1406 tests: 1400 passed, 6 skipped, 0 failed.
-Targeted skateboard tests: 11 passed, 0 failed.
-Syntax: three-renderer.js and hq-skate.test.js passed node --check.
-Browser playtest: not run. Deployment: not performed.
+ℹ tests 1584
+ℹ suites 0
+ℹ pass 1578
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 6
+ℹ todo 0
+ℹ duration_ms 27960.807875
+
+Runtime syntax: data.js and three-renderer.js passed.
+Browser playtest: not performed. Deployment: not performed.

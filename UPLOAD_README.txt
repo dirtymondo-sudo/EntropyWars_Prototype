@@ -1,16 +1,18 @@
-SKATEBOARD CONTROLS FIX — 2026-09-15
+DISASTER CITY REPAIR — 2026-09-17
+Complete replacement files based on GitHub main c65341886eb7a4bd5f895d9d8618dfa6d393d57f.
 
-Complete replacement files, based on current GitHub main.
+R2: data.js, three-renderer.js (replace the existing root scripts).
+Render: data.js and index.html (redeploy together with the R2 scripts).
+Repository only: the four included *.test.js files, CLAUDE.md, DOOR_MASTER.md,
+DOOR_HQ_BUILD_PLAN.md and these delivery notes.
 
-R2: three-renderer.js
-Render: index.html (redeploy so the updated shared cache token is served)
-Repository only: hq-skate.test.js, CLAUDE.md, DOOR_MASTER.md,
-DOOR_HQ_BUILD_PLAN.md, VALIDATION.txt, this readme.
+Cache token: 20260917-city-repair-03-cors. No model upload is required.
+These files are not yet uploaded, deployed or browser-playtested.
 
-Fixes W pushing opposite the camera, reversed A/D steering, and camera
-tracking during turns. Mouse-look offset remains under player control;
-airborne tricks do not spin the camera. Grinds now update visible rider
-position and facing. Cache token: 20260915-skate-controls-02-cors.
+Changes: near-flat road tiles, correctly oriented/recessed mall storefronts,
+fitted escalator replacing visible terrain ramp, building fronts directly behind
+outdoor area doors, eight slower Disaster City vehicles, pedestrian yielding,
+correct lead-vehicle spacing and protection against consecutive impacts.
 
-No deployment or browser playtest performed. Upload the complete renderer
-and redeploy index.html together, then sync the changed files to the repo.
+Validation: 1,578 passed, 6 skipped, 0 failed (1,584 total).
+42 focused checks passed, including terrain access and return checks.

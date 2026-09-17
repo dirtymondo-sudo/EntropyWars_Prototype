@@ -38517,10 +38517,16 @@ const ThreeRenderer = (function () {
             }
             blend[k * 2] = rock * rock * (3 - 2 * rock); blend[k * 2 + 1] = Math.max(pathW(px, pz), sw) * (1 - blend[k * 2]);
         }
-        var idx = [];
+        var idx = [], escalators = (room.terrain.features || []).filter(function (f) { return f.escalator; });
         for (var j2 = 0; j2 + 1 < nz; j2++) for (var i2 = 0; i2 + 1 < nx; i2++) {
             var a = j2 * nx + i2, b = a + 1, c = a + nx, d = c + 1;
-            idx.push(a, c, b, b, c, d);
+            var mx = info.x0 + (i2 + 0.5) * res, mz = info.z0 + (j2 + 0.5) * res;
+            var underEscalator = escalators.some(function (f) {
+                var dx = f.x1 - f.x0, dz = f.z1 - f.z0, len = Math.hypot(dx, dz);
+                var q = { t: ((mx - f.x0) * dx + (mz - f.z0) * dz) / (len * len), v: (-(mx - f.x0) * dz + (mz - f.z0) * dx) / len };
+                return q.t >= 0 && q.t <= 1 && Math.abs(q.v) <= f.w / 2;
+            });
+            if (!underEscalator) idx.push(a, c, b, b, c, d);
         }
         var geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -38647,6 +38653,8 @@ const ThreeRenderer = (function () {
         });
         if (TK && S.forest && S.open) _hqPlantTreeline(room, S, S.w / 2, S.d / 2, plantTree, rng);
         /* ── DISASTER CITY (2026-09-17): the buildings on the lots + the fronts, the street lamps, the traffic, the circuit ── */
+        _hqBuildCityEntrances(room, info, G, TK);
+        _hqBuildEscalators(room, info, G, TM);
         if (info.lots && info.lots.length) { try { _hqBuildCityLots(room, info, G, TM, rng, TK); } catch (e) { console.warn('[HQ] the city lots failed', e); } }
         if (info.genPlan && info.genPlan.streets) { try { _hqBuildStreetLamps(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the street lamps failed', e); } }
         if (info.genPlan && info.genPlan.streets && info.gen && info.gen.kind === 'city' && info.gen.sidewalk > 0) { try { _hqBuildRoadTiles(room, info, G, TM); } catch (e) { console.warn('[HQ] the road tiles failed', e); } }
@@ -38781,7 +38789,7 @@ const ThreeRenderer = (function () {
                     if (fi % 3 === 1) { sh = new THREE.Mesh(new THREE.BoxGeometry((L - 0.4) * U, (signY - signH / 2) * 0.55 * U, 0.05 * U), shutterMat); _hzBoxUV(sh.geometry, (L - 0.4) * U, (signY - signH / 2) * 0.55 * U, 0.05 * U, TM); sh.position.set(0, (signY - signH / 2) * (1 - 0.275) * U, 0.07 * U); g.add(sh); }
                     var lamp = _hzGlowSprite(1.6 * U, 0xfff0d0, 0.16, 0.0, 0.0, 0.0); lamp.position.set(0, (signY + 0.1) * U, 0.5 * U); g.add(lamp);
                     if (kitOn) {
-                        var su = _hzMiscKit('storefront_unit', { metres: L - 0.3, fit: 'span', yaw: Math.PI / 2, lift: 0.14, cast: false, low: 'skip', foot: 0, onDone: function () { glass.visible = false; mull.visible = false; dr.visible = false; drF.visible = false; if (sh) sh.visible = false; } });
+                        var su = _hzMiscKit('storefront_unit', { metres: L - 0.3, fit: 'span', yaw: 0, lift: 0.14, cast: false, low: 'skip', foot: 0, onDone: function (grp, scale, bb) { /* +Z is the measured shop front; recess its full depth behind the facade. */ grp.position.z = 0.06 * U - (bb.max.z - bb.min.z) * scale / 2; grp.scale.y = (signY - signH / 2) * U / ((bb.max.y - bb.min.y) * scale); glass.visible = false; mull.visible = false; dr.visible = false; drF.visible = false; if (sh) sh.visible = false; } });
                         su.position.set(0, 0, 0.06 * U); g.add(su);
                     }
                 } else if (lot.low) {
@@ -38822,6 +38830,59 @@ const ThreeRenderer = (function () {
             });
         } finally { _hzKitTs = prevTs; }
     }
+    /* Buildings at the ends of the authored approach streets: each normal area
+       door is on a sprite building, with its front just behind the working leaf.
+       Uses the door's own frame so interaction and return landings stay aligned. */
+    function _hqBuildCityEntrances(room, info, G, TK) {
+        if (!room.shell.open || !info.gen || info.gen.kind !== 'city') return;
+        var U = _hqUnits();
+        (room.doors || []).forEach(function (door, i) {
+            if (door.way || !door.leaf) return;
+            var f = _hqBoxWall(room, door.wall, door), depth = 6, width = door.wide ? 10 : 8;
+            var y = hqTerrainDoorY(room, door), setback = depth / 2 + 0.16;
+            if (TK && typeof _nrSpriteBuilding === 'function') {
+                var building = _nrSpriteBuilding(TK, 'building_' + (1 + i % 8), (f.wx - f.nx * setback) * U, (f.wz - f.nz * setback) * U,
+                    { w: width / info.tile, d: depth / info.tile, stack: door.id === 'tower' ? 4 : 2, yAbs: y * U + 0.3, cast: false, wall: false, lift: 0.22, ry: f.yaw });
+                if (building) building._ew_hqEntrance = door.id;
+            }
+            var g = new THREE.Group(); g.position.set(f.wx * U, y * U + 0.3, f.wz * U); g.rotation.y = f.yaw; G.add(g);
+            // A recessed surround and canopy make the working leaf read as the building entrance.
+            var mat = new THREE.MeshPhongMaterial({ color: 0x34383f, shininess: 20 });
+            [-1, 1].forEach(function (side) { var jamb = new THREE.Mesh(new THREE.BoxGeometry(0.18 * U, 3.5 * U, 0.32 * U), mat); jamb.position.set(side * 1.65 * U, 1.75 * U, -0.06 * U); g.add(jamb); });
+            var awning = new THREE.Mesh(new THREE.BoxGeometry(4.0 * U, 0.16 * U, 1.25 * U), mat); awning.position.set(0, 3.55 * U, 0.35 * U); g.add(awning);
+            var tx = _hzTextTex('city_entrance_' + door.id, [door.label || 'ENTRANCE'], { w: 1024, h: 128, color: '#fff4de', bg: '#242830', pad: 0.12 });
+            if (tx) { var sign = new THREE.Mesh(new THREE.PlaneGeometry(5.5 * U, 0.7 * U), new THREE.MeshBasicMaterial({ map: tx, transparent: true })); sign.position.set(0, 4.05 * U, 0.02 * U); g.add(sign); }
+        });
+    }
+    /* The escalator replaces the visible terrain ramp. Its measured GLB has
+       +Z at the low end, -Z at the top, and flat landings at both ends.
+       A fitted metal stair remains visible if the model is unavailable. */
+    function _hqBuildEscalators(room, info, G, TM) {
+        if (!(room.terrain.features || []).some(function (f) { return f.escalator; })) return;
+        var U = _hqUnits(), prevTs = _hzKitTs; _hzKitTs = TM;
+        try { (room.terrain.features || []).forEach(function (f) {
+            if (!f.escalator) return;
+            var dx = f.x1 - f.x0, dz = f.z1 - f.z0, len = Math.hypot(dx, dz), rise = f.h1 - f.h0;
+            var group = new THREE.Group(); group.position.set((f.x0 + f.x1) / 2 * U, f.h0 * U + 0.3, (f.z0 + f.z1) / 2 * U); group.rotation.y = Math.atan2(-dx, -dz); G.add(group);
+            var fallback = new THREE.Group(); group.add(fallback);
+            var metal = new THREE.MeshPhongMaterial({ color: 0x666b70, shininess: 70 }), edge = new THREE.MeshBasicMaterial({ color: 0xd7b74a });
+            var n = Math.ceil(rise / 0.15);
+            for (var i = 0; i < n; i++) {
+                var h = rise * (i + 1) / n, z = len / 2 - len * (i + 0.5) / n;
+                var step = new THREE.Mesh(new THREE.BoxGeometry(f.w * U, h * U, len / n * U), metal); step.position.set(0, h / 2 * U, z * U); fallback.add(step);
+                var stripe = new THREE.Mesh(new THREE.BoxGeometry(f.w * U, 0.012 * U, 0.025 * U), edge); stripe.position.set(0, h * U, (z + len / n / 2 - 0.02) * U); fallback.add(stripe);
+            }
+            [-1, 0, 1].forEach(function (side) {
+                var rail = new THREE.Mesh(new THREE.BoxGeometry(0.08 * U, 0.1 * U, Math.hypot(len, rise) * U), metal);
+                rail.position.set(side * (f.w / 2 - 0.04) * U, (rise / 2 + 0.85) * U, 0); rail.rotation.x = Math.atan2(rise, len); fallback.add(rail);
+            });
+            var kit = _hzMiscKit('escalator', { metres: 1, fit: 'span', lift: 0.12, foot: 0, low: 'skip', onDone: function (grp, scale, bb) {
+                grp.scale.set(f.w * U / ((bb.max.x - bb.min.x) * scale), rise * U / (0.56 * scale), (len / 0.66) * U / ((bb.max.z - bb.min.z) * scale));
+                grp.position.y = -0.035 * rise / 0.56 * U;
+                fallback.visible = false;
+            } }); group.add(kit);
+        }); } finally { _hzKitTs = prevTs; }
+    }
     /* THE ROAD TILES (DISASTER CITY, THE SECOND PASS, 2026-09-17): the user's straight road + quarter-turn GLBs (1 × 1
        squares; the straight one's dashes along its Z, kerbs on its X sides; the turn joins two adjacent edges round a
        quarter circle) laid along every street of the plan — a straight tile every street width along each segment, a
@@ -38838,8 +38899,8 @@ const ThreeRenderer = (function () {
         var place = function (key, px, pz, th, w) {
             if (made >= cap) return;
             var gy = hqTerrainHeight(info, px, pz);
-            var g = _hzMiscKit(key, { metres: w, fit: 'span', lit: true, lift: 0.08, cast: false, low: 'skip', foot: 0 });
-            g.position.set(px * U, gy * U + 0.3 + 0.02 * U, pz * U); g.rotation.y = th; g.scale.y = 0.3; g._ew_hqRoad = key; G.add(g); made++;
+            var g = _hzMiscKit(key, { metres: w, fit: 'span', lit: true, lift: 0.08, cast: false, low: 'skip', foot: 0, onDone: function (grp, scale, bb) { /* The straight asset has a baked 0.48 rise: fit thickness in metres, not a fraction of street width. */ grp.scale.y = 0.035 * U / Math.max(0.001, (bb.max.y - bb.min.y) * scale); } });
+            g.position.set(px * U, gy * U + 0.3 + 0.01 * U, pz * U); g.rotation.y = th; g._ew_hqRoad = key; G.add(g); made++;
         };
         try {
             streets.forEach(function (st, si) {
@@ -38937,13 +38998,23 @@ const ThreeRenderer = (function () {
         var H = _hq, cars = H && H.traffic; if (!cars || !cars.length || H.paused) return;
         var U = _hqUnits(), info = H.terrain, pl = H.player, R = H.ride;
         if (dt > 0.1) dt = 0.1;
+        H.trafficTime = (H.trafficTime || 0) + dt;
         for (var i = 0; i < cars.length; i++) {
             var car = cars[i], adv = car.v * dt;
             /* follow the car ahead on the same route: never closer than a length and a bit */
-            var gap = Infinity;
-            for (var j = 0; j < cars.length; j++) { if (j === i || cars[j].route !== car.route) continue; var d = cars[j].s - car.s; if (car.loop) { d = ((d % car.L) + car.L) % car.L; } if (d > 0 && d < gap) gap = d; }
-            var need = (car.len + cars[0].len) / 2 + 1.4;
+            var gap = Infinity, leadLength = car.len;
+            for (var j = 0; j < cars.length; j++) { if (j === i || cars[j].route !== car.route) continue; var d = cars[j].s - car.s; if (car.loop) { d = ((d % car.L) + car.L) % car.L; } if (d > 0 && d < gap) { gap = d; leadLength = cars[j].len; } }
+            var need = (car.len + leadLength) / 2 + 2.5;
             if (gap - adv < need) adv = Math.max(0, gap - need);
+            // Yield to pedestrians and skaters along the upcoming path, including a bend
+            // or an open route's respawn. Sampling avoids driving through someone on a turn.
+            if (pl) {
+                var look = Math.max(adv, car.v * 1.2 + car.len / 2 + 2);
+                for (var ahead = 0; ahead <= look + 0.5; ahead += 0.5) {
+                    var sampleS = (car.s + Math.min(ahead, look)) % car.L, q = _hqRoutePose(car, sampleS);
+                    if (Math.abs(pl.y - hqTerrainHeight(info, q.x, q.z)) < 1.8 && Math.hypot(pl.x - q.x, pl.z - q.z) < 1.65) { adv = 0; break; }
+                }
+            }
             car.s += adv;
             if (car.loop) { if (car.s >= car.L) car.s -= car.L; }
             else if (car.s >= car.L) car.s = 0;   // off the end of the avenue, back on at the start (the city continues past the wall)
@@ -38953,10 +39024,10 @@ const ThreeRenderer = (function () {
             car.x = p.x; car.z = p.z; car.dx = p.dx; car.dz = p.dz; car.y = gy;
             if (car.hitT > 0) { car.hitT -= dt; continue; }
             /* THE HIT: the walker inside the car's box — shoved along its heading with a hop; a rider is thrown */
-            if (!pl || adv <= 0) continue;
+            if (!pl || adv <= 0 || (H.trafficHitUntil || 0) > (H.trafficTime || 0)) continue;
             var rx = pl.x - p.x, rz = pl.z - p.z, along = rx * p.dx + rz * p.dz, across = -rx * p.dz + rz * p.dx;
             if (Math.abs(along) < car.len / 2 + 0.45 && Math.abs(across) < 1.25 && Math.abs(pl.y - gy) < 1.8) {
-                car.hitT = 1.2;
+                car.hitT = 3; H.trafficHitUntil = H.trafficTime + 3;
                 var vx = p.dx * car.v * 1.15 + (across > 0 ? -p.dz : p.dz) * 2.2, vz = p.dz * car.v * 1.15 + (across > 0 ? p.dx : -p.dx) * 2.2;
                 /* SKATEBOARDING rev 3: a car is not a failed trick — the rider is KNOCKED along the car's heading, still on the deck */
                 if (R && R.on) { R.hd = Math.atan2(vx, vz); R.v = Math.min(_hqSkateRules().maxV, Math.hypot(vx, vz)); R.stance = 0; R.grind = null; R.airT = 0; R.airY0 = pl.y; R.jumpFromWalkOff = false; }

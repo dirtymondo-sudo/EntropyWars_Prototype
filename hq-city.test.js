@@ -249,7 +249,7 @@ test('THE SOLVER + THE RETURN GUARANTEE + THE PRODUCTION LANDING: in both parts 
     }
 });
 
-test('THE PARK RULE + THE PLATFORMING: the streets have the parking deck (a 3 m tier up a car ramp the walker climbs, a rail round its roof, two quarter pipes) and THE ROOFTOP (4 m, never climbed — a hop from nothing); the mall has THE MEZZANINE (3.4 m up the escalator — stairs, a tread a metre) with its rails and the escalator’s riser; a `railing_1m` in each; the two hard tapes (the rooftop, a store roof) are the door gun’s and each has a shot', () => {
+test('THE PARK RULE + THE PLATFORMING: the streets have the parking deck (a 3 m tier up a car ramp the walker climbs, a rail round its roof, two quarter pipes) and THE ROOFTOP (4 m, never climbed — a hop from nothing); the mall has THE MEZZANINE (3.4 m up the escalator — smooth collision under the fitted escalator) with its rails and the escalator’s riser; a `railing_1m` in each; the two hard tapes (the rooftop, a store roof) are the door gun’s and each has a shot', () => {
     const sF = HQ.rooms[STREETS].terrain.features, mF = HQ.rooms[MALL].terrain.features, st = D.hqTerrainInfo(STREETS), ml = D.hqTerrainInfo(MALL);
     const deck = sF.find(f => f.k === 'plateau' && f.h === 3.0), ramp = sF.find(f => f.k === 'ramp' && f.h1 === 3.0), roof = sF.find(f => f.k === 'plateau' && f.h === 4.0);
     assert.ok(deck && ramp && roof && sF.filter(f => f.k === 'rail').length >= 3 && HQ.rooms[STREETS].props.filter(p => p.key === 'quarter_pipe').length === 2 && HQ.rooms[STREETS].props.some(p => p.key === 'railing_1m'), 'the streets’ park');
@@ -257,7 +257,7 @@ test('THE PARK RULE + THE PLATFORMING: the streets have the parking deck (a 3 m 
     const foot = D.hqTerrainDoorLanding(HQ.rooms[STREETS], at(STREETS, 'tower')), R = D.hqTerrainReach(st, foot.x, foot.z);
     assert.ok(R.has(D.hqTerrainNodeKey(st, deck.x, deck.z)) && Math.abs(R.get(D.hqTerrainNodeKey(st, deck.x, deck.z)) - 3.0) < 0.3, 'the deck is walked up to');
     assert.ok(!R.has(D.hqTerrainNodeKey(st, roof.x, roof.z)), 'THE ROOFTOP is nobody’s but the door gun’s');
-    const mez = mF.find(f => f.k === 'plateau' && f.h === 3.4), esc = mF.find(f => f.k === 'ramp' && f.stairs);
+    const mez = mF.find(f => f.k === 'plateau' && f.h === 3.4), esc = mF.find(f => f.k === 'ramp' && f.escalator);
     assert.ok(mez && esc && esc.h1 === 3.4 && Math.hypot(esc.x1 - esc.x0, esc.z1 - esc.z0) >= 6 && mF.filter(f => f.k === 'rail').length >= 2 && HQ.rooms[MALL].props.some(p => p.key === 'railing_1m') && HQ.rooms[MALL].props.some(p => /^riser_/.test(p.key)), 'the mall’s park');
     const mfoot = D.hqTerrainDoorLanding(HQ.rooms[MALL], at(MALL, 'street')), MR = D.hqTerrainReach(ml, mfoot.x, mfoot.z);
     assert.ok(MR.has(D.hqTerrainNodeKey(ml, mez.x, mez.z)) && Math.abs(MR.get(D.hqTerrainNodeKey(ml, mez.x, mez.z)) - 3.4) < 0.3, 'the mezzanine is walked up the escalator');

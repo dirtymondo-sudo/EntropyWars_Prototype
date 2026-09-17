@@ -18746,7 +18746,7 @@ const DOOR_HQ = {
         car_truck:         { file: 'Meshy_AI_a_truck_0917065131_texture.glb',                     base: 'misc', span: 8.0, foot: 2.0, rect: { hw: 1.3, hd: 4.0 }, block: true, vehicle: true, turn: 90 },
         time_machine:      { file: 'Meshy_AI_a_retro_time_machine_0917064610_texture.glb',        base: 'misc', h: 2.4, foot: 0.7, block: true, rot: 90 },   // the `timemachine` way's model (the brass cage is its stand-in)
         street_drain:      { file: 'Meshy_AI_a_round_street_drain__0917064638_texture.glb',       base: 'misc', span: 1.3, foot: 0 },                       // the `gutter` way's grate; a manhole on the road
-        escalator:         { file: 'Meshy_AI_an_escalator_0917064623_texture.glb',                base: 'misc', h: 4.6, foot: 0 },                          // THE MEZZANINE's (the terrain ramp under it is the walker's)
+        escalator:         { file: 'Meshy_AI_an_escalator_0917064623_texture.glb',                base: 'misc', h: 4.6, foot: 0 },                          // Generic catalogue asset; the mall uses the fitted escalator builder.
         bus_shelter:       { file: 'Meshy_AI_bus_shelter_0917064913_texture.glb',                 base: 'misc', span: 3.8, foot: 1.2, rect: { hw: 1.9, hd: 0.9 }, block: true, turn: 90 },
         cinder_block:      { file: 'Meshy_AI_cinder_block_0917064959_texture.glb',                base: 'misc', span: 0.4, foot: 0.2 },
         fire_hydrant:      { file: 'Meshy_AI_fire_hydrant_0917064858_texture.glb',                base: 'misc', h: 0.8, foot: 0.22, block: true },
@@ -28889,10 +28889,10 @@ const DOOR_HQ = {
                 ],
                 /* NPC TRAFFIC (2026-09-17): cars on the ring road, both ways, on the right; three-renderer.js _hqBuildTraffic */
                 traffic: [
-                    { pts: [[-40, -29], [40, -29], [40, -6], [31, 4], [40, 14], [40, 29], [12, 29], [-8, 22], [-40, 29], [-40, 4]], loop: true, n: 7, speed: 7.5, lane: 2.3, kinds: ['suv', 'taxi', 'copcar', 'suv', 'cadillac', 'ambulance', 'schoolbus'] },
-                    { pts: [[-40, 4], [-40, 29], [-8, 22], [12, 29], [40, 29], [40, 14], [31, 4], [40, -6], [40, -29], [-40, -29]], loop: true, n: 6, speed: 8.5, lane: 2.3, kinds: ['cadillac', 'taxi', 'copcar', 'truck', 'suv', 'firetruck'] },
-                    { pts: [[0, -46], [0, -8]], loop: false, n: 1, speed: 6.5, lane: 2.2, kinds: ['suv'] }, { pts: [[0, 8], [0, 46]], loop: false, n: 1, speed: 6.5, lane: 2.2, kinds: ['cadillac'] },   // the avenue, either side of the plaza (a car off the end comes back on at the start)
-                    { pts: [[-58, 0], [-8, 0]], loop: false, n: 1, speed: 6.5, lane: 2.2, kinds: ['copcar'] }, { pts: [[8, 0], [58, 0]], loop: false, n: 1, speed: 6.5, lane: 2.2, kinds: ['suv'] },
+                    { pts: [[-40, -29], [40, -29], [40, -6], [31, 4], [40, 14], [40, 29], [12, 29], [-8, 22], [-40, 29], [-40, 4]], loop: true, n: 2, speed: 4.5, lane: 2.3, kinds: ['suv', 'taxi', 'copcar', 'suv', 'cadillac', 'ambulance', 'schoolbus'] },
+                    { pts: [[-40, 4], [-40, 29], [-8, 22], [12, 29], [40, 29], [40, 14], [31, 4], [40, -6], [40, -29], [-40, -29]], loop: true, n: 2, speed: 4.5, lane: 2.3, kinds: ['cadillac', 'taxi', 'copcar', 'truck', 'suv', 'firetruck'] },
+                    { pts: [[0, -46], [0, -8]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['suv'] }, { pts: [[0, 8], [0, 46]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['cadillac'] },   // the avenue, either side of the plaza (a car off the end comes back on at the start)
+                    { pts: [[-58, 0], [-8, 0]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['copcar'] }, { pts: [[8, 0], [58, 0]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['suv'] },
                 ],
                 /* THE CIRCUIT (2026-09-17): the ring road as a lap — the rider crosses the gates in order; the lap is banked (hqSkateBank laps) */
                 race: { label: 'THE DISASTER CITY GRAND PRIX', pts: [[-40, -29], [40, -29], [40, -6], [31, 4], [40, 14], [40, 29], [12, 29], [-8, 22], [-40, 29], [-40, 4]], w: 11, gates: 8 },
@@ -28993,7 +28993,7 @@ const DOOR_HQ = {
                 features: [
                     { k: 'pool', x: 0, z: 0, r: 2.4, y: 0, depth: 0.4 },                                                       // THE FOUNTAIN (pennies, waded)
                     { k: 'plateau', x: 14, z: -6.5, w: 12, d: 10, h: 3.4, edge: 0.3 },                                          // THE MEZZANINE (deep enough that the escalator's forced mouth stays on it)
-                    { k: 'ramp', x0: 1.5, z0: -4.0, x1: 8.7, z1: -4.0, w: 2.2, h0: 0, h1: 3.4, stairs: true },                  // THE ESCALATOR (up, along the concourse's north side; 7.2 m — a tread a metre, 0.49 a step; it enters the mezzanine's rect only for its last 0.7 m — THE RAMP RULE's other half: a ramp is never INSIDE its tier while it is still low)
+                    { k: 'ramp', x0: 1.5, z0: -4.0, x1: 8.7, z1: -4.0, w: 2.2, h0: 0, h1: 3.4, escalator: true, edge: 0 },                  // THE ESCALATOR: smooth hidden walking surface, fitted model at floor level; top meets the mezzanine.
                     { k: 'rail', x0: 8.4, z0: -1.9, x1: 19.6, z1: -1.9 }, { k: 'rail', x0: 19.6, z0: -11.1, x1: 19.6, z1: -1.9 },  // the mezzanine's rails (the lip over the concourse, the east side)
                     { k: 'plateau', x: -12, z: -8, w: 6, d: 6, h: 5.0, edge: 0.3 },                                                // THE STORE ROOF on the west concourse's north side (the tape's — the door gun's; its face IS the concourse wall)
                     { k: 'path', pts: [[0, 22], [0, 0], [0, -18]], w: 3.0 },                                                    // the marble runner down the middle
@@ -29016,7 +29016,6 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'escalator',       x: 5.1, z: -4.0, face: 270 },                        // THE SECOND PASS (2026-09-17): the user's escalator over the mezzanine ramp (the treads under it are the walker's; its top at +x)
                 { key: 'notice_board',    x: 0, z: 14, face: 0, rect: false },                 // THE DIRECTORY — YOU ARE HERE
                 { key: 'wet_floor_sign',  x: 2.8, z: 2.6, face: 30 },
                 { key: 'potted_plant',    x: 3.6, z: -3.6 }, { key: 'potted_plant', x: -3.6, z: -3.6 }, { key: 'potted_plant', x: 3.6, z: 3.6 }, { key: 'potted_plant', x: -3.6, z: 3.6 },   // the atrium's palms
@@ -32956,7 +32955,7 @@ function hqTerrainCompile(room, roomId) {
     const inLane = (px, pz, grow) => doorPads.some(p => (p.r ? p.r - Math.hypot(px - p.x, pz - p.z) : _hqTRectIn(px, pz, p)) > -grow);
     const hBase = (px, pz) => {
         let h = base;
-        if (noise) h += (noise.amp || 0.15) * _hqTNoise(px, pz, noise.scale || 5, seed + (noise.seed || 0));
+        if (noise) h += ((noise.amp != null) ? noise.amp : 0.15) * _hqTNoise(px, pz, noise.scale || 5, seed + (noise.seed || 0));
         if (crag && closed && !inLane(px, pz, 1.3)) {
             const din = Math.min(S.w / 2 - Math.abs(px), S.d / 2 - Math.abs(pz));
             const jit = 0.55 + 0.45 * (0.5 + 0.5 * _hqTNoise(px, pz, crag.scale || 3.5, seed + 91));
