@@ -9402,3 +9402,20 @@ the landscape / planet / map."
   seed is the room's — the map is stable so the tapes stay where the officer left them).
 - UNSEEN LIVE (RULE #1c): all of it — the rock masses' sheet and shading, the thicket banks under the trees, the outer
   ground's swell, the fog density, each look's strength, the settings sheet in the pause overlay.
+
+### THE COMPLEX CANDIDATES (the user's list, 2026-09-17) — build each on THE CAVE / THE WOODS blueprint
+The cave and the woods are the blueprint for every complex from here: a generated floor plan (`terrain.gen`),
+the ground running out under a real fog, a `shell.look` grade tuned to the vibe, the room's own light, THE PARK
+RULE, the hard tapes, `check-terrain.js` before any claim. The aesthetic is the deliverable, not the room count.
+1. **DISASTER CITY** — Downtown, Cyberpunk, the Strip, the Metro (the subway stations) as ONE city: streets as
+   corridors, blocks as rooms, the metro joining them below.
+2. **CAMELOT CASTLE** — the exterior (moats, gardens, the curtain wall) and an interior of several floors;
+   possibly a castle in the sky (Howl's moving castle).
+3. **THE TUNNELS / THE DUNGEONS** — every subway tunnel, the sewer system (the storm drain), the dungeons
+   (24601, the oubliette) joined into one underworld.
+4. **HEAVEN · HELL · THE VATICAN · THE CATACOMBS · THE STAIRWAY TO HEAVEN** — one epic-fantasy complex, the
+   stairway the spine from the catacombs to the clouds.
+5. **D.U.M.B.** — Area 51, CERN, the padded rooms, the dream lab, clone disposal: the base under the base.
+6. **DOOR MANUFACTURING** — the service hallways, the warehouse, the Works: what keeps D.O.O.R. running.
+Not started. Each needs its own `HQ_ROOM_LOOKS` row, its own sky / fog, its links on the world graph and the
+7.10 checklist for any new site it introduces.

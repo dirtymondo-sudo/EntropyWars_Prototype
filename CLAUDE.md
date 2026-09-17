@@ -4938,3 +4938,17 @@ cave's rock masses, the thicket banks with the trees on them), the outer
 ground's swell against the treeline, the fog's density (`sky.fog.density` is
 the edit), each look's strength (the table is the edit), the settings sheet's
 length in the HQ pause overlay.
+
+## THE COMPLEX BLUEPRINT + THE CANDIDATE LIST (the user's rule, 2026-09-17)
+The user: "these two areas [THE CAVE and THE WOODS] are the blueprint for
+making complex maps now — especially the part about getting the aesthetic
+and the vibe right." RULE: every new complex is built the way those two
+were — a generated FLOOR PLAN (`terrain.gen`, never a big box), the field's
+own ground running out under a real FOG (no square edge, no kerb), a
+`shell.look` GRADE per place (a retro preset, a vignette, the bloom / night
+mood tuned to the vibe: exploratory, nostalgic, mysterious, fantasy, retro —
+NeverEnding Story / Princess Bride / Oz / Wind Waker / Ocarina), the room's
+own light, THE PARK RULE, the hard tapes, and `node check-terrain.js` before
+anything is claimed. The candidates are in DOOR_HQ_BUILD_PLAN.md §9
+"THE COMPLEX CANDIDATES" — read that list before starting a new complex,
+and append to it when the user names another.
