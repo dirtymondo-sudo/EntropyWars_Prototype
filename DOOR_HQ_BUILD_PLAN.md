@@ -9345,3 +9345,33 @@ the landscape / planet / map."
   the M branch before the pause gate, the battle marker's plate wears its class only.
 - UNSEEN LIVE (RULE #1c): the whole look — the plates' material under each room's light, the floating door labels
   against pale walls, the strip's wrap at narrow widths, the pills' fade, the light themes (parchment) in the building.
+
+### 2026-09-17 — THE TERRAIN ROOMS · the cave and the woods as smooth height fields (9.3 stage 4) + THE WOODS BATCH — local delivery
+- The user's brief (verbatim, the priority): "forget trying to make the complex areas seamless with the battle maps.
+  Make the exploratory areas more complex with different smooth elevations like ridges and ledges and winding
+  pathways and inclines and hills and dips and walls … 3D platforming for door gun puzzles and ramp-like obstacles
+  and tall platforms for skateboarding tricks and big huge jumps. Difficult to get to / hard to see areas for the
+  VHS tapes. Redo the cave and the woods (the ASCII map generation) … the battle map should still look like the
+  area but it is not a priority that the explorable area map to a grid." Phase 9's §11 THE FIELD (the room as the
+  8×8) is therefore CLOSED for these rooms: `hqFieldRoomOk` refuses a terrain room and the encounter fights the
+  site's Δ. The box parts (the house, the ship, the Dutchman, the Strip, Downtown) keep their windows.
+- data.js: `terrain` on a box room (the feature vocabulary, the pads, the walker's rule, the solver, the dump) —
+  CLAUDE.md "THE TERRAIN ROOMS" has the whole contract. Fourteen rooms re-authored; the shells sized by hand (the
+  grid no longer fits them); the tier doors carry `y` (the cavern's blast 5.25 / vent 3.5; the link ends of the
+  fissure / LEVEL −6 / the mouth 1.75, Shasta's and the EXIT door 3.5 — `hqLinkDoors` copies an end's `y`).
+- three-renderer.js: `_hqBuildTerrain` + `_hqTerrainMat` + `_hqPlantTreeline` (shared); the walker / air / camera /
+  sill / landing / ground reads; `_hqPortalLedgeSnap`'s terrain branch (the lip on a pinnacle); `_hqTreeWay`
+  (the two ways); the near settings dressed with the batch.
+- THE WOODS BATCH: MODEL_INDEX §3e. The seams: the fairy forest's way in is THE HOLLOW TREE (both ends); the
+  pasture's garden gate is THE DEAD TREE (both ends); a new `deadtree_lookingglass` link (the ritual ground ⇄ the
+  Looking-Glass's north strip, both ends free).
+- Tests: hq-terrain.test.js (new), hq-cave / hq-woods rewritten for the fields, hq-field (stage B vacuous, stage D's
+  sweep over the box parts), hq-finds, hq-room-in-battle (a synthetic cave), hq-world (the seams), doorhq (the mast
+  rule). `node check-terrain.js` dumps every field. Full suite 1536 / 0 / 6 skipped.
+- NOT BUILT: waterfalls where a stream steps down a tier; the footbridge GLB standing on its deck (the decks are
+  drawn planks; the GLB is catalogued); the rider's grind on a SLOPED rail (a rail registers at its mean height);
+  a room's furniture in the site Δ fight (§10 stage 4 stands for the box parts only). The user's follow-up: "the
+  8×8 with the floating battle icon can be specific rooms inside those places, eventually."
+- UNSEEN LIVE (RULE #1c): everything — the field's look (the cliff / path blend, the water sheets, the crag at
+  the walls), the walker on the ramps and off the ledges, the drop off THE HIGH TIER, the stair ramp's treads,
+  the fence walls under the rider, the tree ways' GLBs (hole facing), the batch's scales, the lip snap.

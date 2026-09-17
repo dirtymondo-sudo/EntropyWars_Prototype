@@ -32,13 +32,13 @@ for (const f of HQ.finds) {
     const tape = f.tape ? D.hqTapeById(f.tape) : null;
     let lesson = 'observation';
     if (f.hard) lesson = 'portal';
-    else if (f.cell || room.cave || f.y > 0.5) lesson = 'navigation';
+    else if (f.cell || room.cave || room.terrain || f.y > 0.5) lesson = 'navigation';
     else if (f.guard) lesson = 'fight';
     else if (tape && tape.kind === 'evidence' && dist > 8) lesson = 'evidence';
     const flags = [];
     if (f.relax > 0) flags.push('relaxed×' + f.relax);
     if (!f.cell && dist < 4) flags.push('near the way in');
-    if (!f.cell && !room.cave && f.y == null && S.w * S.d > 200 && lesson === 'observation') flags.push('floor of a big room');
+    if (!f.cell && !room.cave && !room.terrain && f.y == null && S.w * S.d > 200 && lesson === 'observation') flags.push('floor of a big room');
     rows.push({ id: f.id, room: f.room, kind: f.kind, x: f.x, z: f.z, y: f.y, cell: f.cell, hard: !!f.hard, guard: !!f.guard, quiet: !!room.quiet, relax: f.relax | 0, dist: Math.round(dist * 10) / 10, pinned, lesson, flags, num: tape ? tape.num : null });
 }
 if (asJson) { console.log(JSON.stringify(rows, null, 1)); process.exit(0); }

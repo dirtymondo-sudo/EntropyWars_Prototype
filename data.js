@@ -18433,7 +18433,7 @@ function hqWoodsShell(o) {
     const S = {
         w: 0, d: 0, h: 9.0, wallH: 9.0, dadoH: 1.0,
         open: true, edge: 'open',
-        floor: 'grass_2', wall: 'leaves_3', dado: 'dark_wood', trim: 'wood', ceiling: 'leaves_3',
+        floor: 'grass_2', wall: 'leaves_3', dado: 'wood', trim: 'wood', ceiling: 'leaves_3',
         apron: 'grass_2', skirt: 'dirt_2', apronColor: 0x5e7a48,
         floorColor: 0x6f8a52, wallColor: 0x2c3d24, dadoColor: 0x3d3126,
         pipes: false, strips: false, lights: [],
@@ -18560,6 +18560,27 @@ const DOOR_HQ = {
         sea_chest:         { file: 'Meshy_AI_pirate_treasure_chest_0912231220_texture.glb',         base: 'misc', h: 0.7, foot: 0.5, block: true },             // lock +Z
         ship_anchor:       { file: 'Meshy_AI_ship_anchor_0912231033_texture.glb',                   base: 'misc', h: 1.9, foot: 0.5, block: true },             // the spare, stowed on its flukes
         ship_lantern:      { file: 'Meshy_AI_a_hanging_lantern_0912231043_texture.glb',             base: 'misc', h: 0.5, foot: 0, ceil: true, glow: { y: -0.25, size: 1.4, color: 0xffb060 }, light: { color: 0xffa860, intensity: 0.75, dist: 7, y: -0.3 } },   // hangs from the beams; the deck's yard lanterns, below
+        /* 2026-09-17 THE WOODS BATCH (fourteen Meshy props the user uploaded to Assets/misc/ — MODEL_INDEX §3e): the forest
+           floor and the cave's furniture, and THE TWO TREES WITH HOLES IN THEM whose holes are the seams (DOOR_HQ.ways
+           hollowtree / deadtree read hollow_tree / hollow_dead_tree). Sizes are TARGETS (the files are unmeasured — a wrong
+           height is the one field); `rot` (degrees) turns a tree's hole to +Z, the placer's contract. The terrain rooms
+           scatter fern / stump / fallen_log / dead_snag / pine / menhir / cave_stone (a scatter row refuses a rect: it faces
+           where it fell). */
+        signpost:          { file: 'Meshy_AI_a_blank_wooden_signpost_0916235832_texture.glb',      base: 'misc', h: 2.2, foot: 0.2, block: true },
+        brick_arch:        { file: 'Meshy_AI_a_brick_arch_section_0916235939_texture.glb',         base: 'misc', h: 3.2, foot: 0 },
+        campfire:          { file: 'Meshy_AI_a_campfire_ring_0916235856_texture.glb',              base: 'misc', span: 1.5, foot: 0.7, block: true, glow: { y: 0.45, size: 1.8, color: 0xff9a40 }, light: { color: 0xff9040, intensity: 0.9, dist: 9, y: 0.6 } },
+        culvert_mouth:     { file: 'Meshy_AI_a_culvert_mouth_0916235929_texture.glb',              base: 'misc', h: 2.6, foot: 0, mount: 0 },
+        dead_snag:         { file: 'Meshy_AI_a_dead_snag_0916235650_texture.glb',                  base: 'misc', h: 4.6, foot: 0.4, block: true },
+        hollow_dead_tree:  { file: 'Meshy_AI_a_dead_tree_with_a_dark_hole_0916235739_texture.glb', base: 'misc', h: 5.0, foot: 0.6, block: true, rot: 0 },
+        fallen_log:        { file: 'Meshy_AI_a_fallen_log_0916235700_texture.glb',                 base: 'misc', span: 3.6, foot: 0.5, rect: { hw: 1.8, hd: 0.45 }, block: true },
+        fern:              { file: 'Meshy_AI_a_fern_0916235806_texture.glb',                       base: 'misc', h: 0.75, foot: 0 },
+        pine:              { file: 'Meshy_AI_a_pine_with_canopy_0916235640_texture.glb',           base: 'misc', h: 6.5, foot: 0.45, block: true },
+        footbridge:        { file: 'Meshy_AI_a_plank_footbridge_0916235844_texture.glb',           base: 'misc', span: 4.4, foot: 0 },
+        menhir:            { file: 'Meshy_AI_a_standing_stone_0916235906_texture.glb',             base: 'misc', h: 2.6, foot: 0.5, block: true },
+        cave_stone:        { file: 'Meshy_AI_a_standing_stone_0916235906_texture.glb',             base: 'misc', span: 0.9, foot: 0.35, block: true },   // the same stone, knee-high: the cave's rubble
+        drain_grate:       { file: 'Meshy_AI_a_storm_drain_grate_0916235918_texture.glb',          base: 'misc', span: 1.2, foot: 0, mount: 0.4 },
+        stump:             { file: 'Meshy_AI_a_stump_0916235717_texture.glb',                      base: 'misc', h: 0.6, foot: 0.4, block: true },
+        hollow_tree:       { file: 'Meshy_AI_a_tree_with_a_hole_0916235727_texture.glb',           base: 'misc', h: 6.0, foot: 0.7, block: true, rot: 0 },
         /* 2026-09-15 THE VEHICLE BATCH (nine Meshy vehicles in the misc bucket —
            MODEL_INDEX §3c): the ones that fit under a 2.8 m garage ceiling park
            in Room P1 (`vehicle: true` = the booth counts it as a car). `span` =
@@ -19247,6 +19268,11 @@ const DOOR_HQ = {
         fireplace: { verb: 'STEP INTO THE FIRE', sub: 'THE HEARTH · GREEN FLAME', sfx: 'wayFloo', w: 1.4, h: 1.5 },
         screen:    { verb: 'CRAWL THROUGH', sub: 'THE SCREEN · SIGNAL LOST', sfx: 'wayStatic', w: 1.3, h: 1.4 },
         closet:    { verb: 'STEP IN', sub: 'THE CLOSET · NO BACK WALL', sfx: 'wayCreak', w: 1.0, h: 2.1 },
+        /* THE WOODS BATCH (2026-09-17): the user's two trees with holes in them — THE HOLLOW TREE is the way into the
+           fairy forest (both ends of the path), THE DEAD TREE's dark hole looks onto the haunted house's garden and the
+           Looking-Glass's marble (three-renderer.js _hqTreeWay: the catalogue GLB, hole to +Z, a trunk until it lands) */
+        hollowtree: { verb: 'CLIMB IN', sub: 'THE HOLLOW TREE · THROUGH THE HOLE', sfx: 'wayHollow', w: 0.95, h: 1.9 },
+        deadtree:   { verb: 'CLIMB IN', sub: 'THE DEAD TREE · INTO THE DARK', sfx: 'wayHollow', w: 0.95, h: 1.9 },
     },
     /* Phase 9.3 pilot: ordinary, reversible doors between existing board
        rooms. Move the Derelict ends to its airlock when that room exists.
@@ -19371,7 +19397,7 @@ const DOOR_HQ = {
            the building (the garden-well precedent, never gated): THE STAIRCASE's
            door opens on THE STAIRWELL, THE RITUAL GROUND's circle on Room 333;
            DEAD MAN'S CAVE's grate is THE SUBWAY's fourth station. */
-        { id: 'woods_haunted', route: 'woods', leaf: 'leaf_barn',
+        { id: 'woods_haunted', route: 'woods', way: 'deadtree',   // 2026-09-17: the garden gate IS the dead tree with the hole in it (the user's GLB), at both ends
           a: { site: 'prebuilt_haunted', wall: 'n', x: -2.5 },
           b: { site: 'prebuilt_fairy_forest', part: 'pasture', wall: 'n', x: -0.875, sub: 'THE GARDEN GATE · TO THE HOUSE' },
           why: 'the garden gate in the back fence opens on the woods behind the house; it is the same woods, and the woods do not care whose fence it is', note: 'the same woods', draft: true },
@@ -19384,11 +19410,11 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_fairy_forest', part: 'redwoods', wall: 'e', z: -0.875, sub: 'THE OWL’S GATE · TO THE GROVE' },
           why: 'the owl\'s gate at the back of the grove opens on the redwood trail; the members walk it once a year and come back smaller', note: 'the fourth gate', draft: true },
         { id: 'woods_shasta', route: 'woods', leaf: 'leaf_frame_only',
-          a: { site: 'prebuilt_fairy_forest', part: 'trail', wall: 'n', x: -0.875, sub: 'THE MOUNTAIN · THE LAST SWITCHBACK' },
+          a: { site: 'prebuilt_fairy_forest', part: 'trail', wall: 'n', x: -0.875, y: 3.5, sub: 'THE MOUNTAIN · THE LAST SWITCHBACK' },
           b: { site: 'prebuilt_shasta', wall: 'n', x: -10 },
           why: 'the trail up out of the woods tops out at a frame in the snow line; the mountain was over the trees the whole way up, and now it is under your feet', note: 'the white thing over the trees', draft: true },
         { id: 'woods_stair', route: 'woods', leaf: 'leaf_exit',
-          a: { site: 'prebuilt_fairy_forest', part: 'stair', wall: 'n', x: -0.875, sub: 'THE DOOR AT THE TOP · INTO THE BUILDING' },
+          a: { site: 'prebuilt_fairy_forest', part: 'stair', wall: 'n', x: -0.875, y: 3.5, sub: 'THE DOOR AT THE TOP · INTO THE BUILDING' },
           b: { room: 'stairwell', wall: 'e', z: -2, sub: 'THE STAIRCASE IN THE WOODS · OUT' },
           why: 'four wooden risers in a clearing, a landing, an EXIT door with nothing behind it; the door opens on the building\'s own stairwell, which has no window for it to open through', note: 'nobody built it', draft: true },
         { id: 'woods_sewer', route: 'subway', leaf: 'leaf_cell',
@@ -19403,6 +19429,11 @@ const DOOR_HQ = {
           a: { site: 'prebuilt_fairy_forest', wall: 'free', x: 10, z: -11.5, face: 90, sub: 'THE SPRING · SURFACE IN THE MOAT' },
           b: { site: 'prebuilt_camelot', wall: 'free', x: 10, z: -13.5, face: 90, sub: 'THE MOAT · SURFACE IN THE SPRING' },
           why: 'the spring in the fairy forest and the castle moat share their water; dive in the woods and surface under the battlements, which the besiegers should have found suspicious', note: 'the same water', draft: true },
+        /* THE DEAD TREE'S OTHER SIDE (2026-09-17): the dead tree on the ritual ground — its hole looks onto the Looking-Glass's marble */
+        { id: 'deadtree_lookingglass', route: 'seams', way: 'deadtree',
+          a: { site: 'prebuilt_fairy_forest', part: 'ritual', wall: 'free', x: 7.0, z: 6.5, face: 300, sub: 'THE DEAD TREE · THE HOLE LOOKS ONTO MARBLE' },
+          b: { site: 'prebuilt_lookingglass', wall: 'free', x: 4.0, z: -8.0, face: 90, sub: 'THE DEAD TREE · BACK TO THE WOODS' },
+          why: 'the dead tree at the edge of the ritual ground has a hole in it the size of a door, and through it the ground is marble and the sky is a chessboard\'s; the members call it the second circle', note: 'do not agree to a game', draft: true },
         /* THE LEY LINE */
         { id: 'stonehenge_gobekli', route: 'ley', leaf: 'leaf_frame_only',
           a: { site: 'prebuilt_stonehenge', wall: 'n', x: -5 },
@@ -19576,12 +19607,12 @@ const DOOR_HQ = {
            door into a site that is already on the map. Every one is two-way
            — the same object at both ends (7.0), never a one-way drop. */
         { id: 'cave_hell', route: 'undercroft', leaf: 'leaf_hell_arch',
-          a: { site: 'prebuilt_hollow_earth', part: 'vent', wall: 'n', x: 0 },
+          a: { site: 'prebuilt_hollow_earth', part: 'vent', wall: 'n', x: 0, y: 1.75 },
           b: { site: 'prebuilt_hell', wall: 'n', x: -0.2 },
           why: 'the fissure at the end of the hot gallery; the rock stops being rock and the draught goes the wrong way',
           note: 'the draught goes down', draft: true },
         { id: 'cave_dumb', route: 'undercroft', leaf: 'leaf_bulkhead',
-          a: { site: 'prebuilt_hollow_earth', part: 'blast', wall: 'n', x: 0 },
+          a: { site: 'prebuilt_hollow_earth', part: 'blast', wall: 'n', x: 0, y: 1.75 },
           b: { site: 'prebuilt_dumb', wall: 'n', x: -0.2 },
           why: 'the base has five sides above ground and the sixth is here: rock cut square, a blast door in it, and a camera that has not been dusted since it stopped working',
           note: 'LEVEL −6', draft: true },
@@ -19591,7 +19622,7 @@ const DOOR_HQ = {
           why: 'the adit the crystal city cut toward the cave and stopped one metre short of; something opened the last metre from this side',
           note: 'one metre, from this side', draft: true },
         { id: 'cave_hollow', route: 'undercroft', leaf: 'leaf_frame_only',
-          a: { site: 'prebuilt_hollow_earth', part: 'mouth', wall: 'e', z: -5.25 },
+          a: { site: 'prebuilt_hollow_earth', part: 'mouth', wall: 'e', z: -5.25, y: 1.75 },
           b: { site: 'prebuilt_hollow_earth', wall: 'n', x: -5 },
           why: 'the cave mouth: the complex\'s own way in and out, opening on the inner sun with the whole country under it',
           note: 'the inner sun', draft: true },
@@ -19608,8 +19639,8 @@ const DOOR_HQ = {
             /* THE WOODS (9.3 stage 3, 2026-09-16): the forest is the board room
                of the woods complex; THE PATH on its north wall's west lane (the
                owl's gate moved to the redwood trail) walks into THE CLEARING */
-            prebuilt_fairy_forest: { id: 'woods', wall: 'n', x: -10, leaf: null,
-                label: 'THE WOODS', sub: 'THE PATH · INTO THE WOODS',
+            prebuilt_fairy_forest: { id: 'woods', wall: 'n', x: -10, way: 'hollowtree',   // 2026-09-17: THE HOLLOW TREE (the user's GLB) is the door to the woods
+                label: 'THE WOODS', sub: 'THE HOLLOW TREE · INTO THE WOODS',
                 action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'forest' },
                 desc: 'A path between two trees that lean in to hear you go. The woods are bigger than the board allows, which Continuity has a form for, and the mountain is over them.' },
             prebuilt_backrooms: { id: 'hwing', wall: 's', x: 6.0, leaf: 'leaf_exit',
@@ -26628,29 +26659,32 @@ const DOOR_HQ = {
                 mood: { light: 0xffc890, ambient: 0.4 },
                 plate: { x: 0, z: -9.5, y: 4.2 },
             },
-            /* the grid (14 × 12 cells): the NORTH SHELF (lvl 2, the cellar
-               and garden wells, its ramp at the west end), the FLOOR with
-               the sump (waded round its deep heart; the nuketown and ranch
-               wells), the SOUTH-EAST CRAG (lvl 4, the castle well and the
-               cistern; the four-cell ramp up its west face), the gallery on
-               the east wall at the floor */
-            cave: {
-                rows: [
-                //  01234567890123
-                    '##############',
-                    '#2222222##444#',
-                    '#2222222##444#',
-                    '#22222222#d44#',
-                    '#2b2222#..c...',
-                    '#.a.....~~b...',
-                    '#.......~~a...',
-                    '#......~~W~..#',
-                    '#......~WW~..#',
-                    '#.......~~...#',
-                    '#....#.......#',
-                    '##############',
+            /* THE FIELD (2026-09-17, the terrain rooms): THE NORTH SHELF (a 1.75 m tier
+               under the cellar and garden wells, its ramp at the west end), THE SUMP
+               (a pool waded round its deep heart; the wishing and ranch wells on the
+               floor), THE SOUTH-EAST CRAG (a 3.5 m tier under the castle well and the
+               cistern; the long ramp up its west face) and THE PINNACLE in the
+               south-west corner — a 4.2 m stack the walker cannot climb: the tape on
+               top of it is the door gun's (aim at its lip). The gallery on the east
+               wall at the floor. */
+            terrain: {
+                floor: 'cave_floor', cliff: 'rock_wall_1', path: 'rocks_dark_fantasy',
+                noise: { amp: 0.14, scale: 4.5 }, crag: { depth: 1.7, h: 2.4 },
+                features: [
+                    { k: 'hill', x: -6.5, z: 7.5, r: 4.5, h: 0.55 },
+                    { k: 'hill', x: 8.5, z: 3.0, r: 3.5, h: 0.4 },
+                    { k: 'plateau', x: -3.5, z: -6.9, w: 15.0, d: 7.2, h: 1.75 },                 // THE NORTH SHELF
+                    { k: 'ramp', x0: -9.5, z0: 1.0, x1: -9.5, z1: -3.6, w: 2.6, h0: 0, h1: 1.75 },  // its ramp, at the west end
+                    { k: 'plateau', x: 8.9, z: -6.6, w: 6.7, d: 7.4, h: 3.5 },                    // THE CRAG
+                    { k: 'ramp', x0: 5.0, z0: 2.6, x1: 7.4, z1: -3.2, w: 2.4, h0: 0, h1: 3.5 },    // the long ramp up to its south face (a ramp ENDS at a tier's edge, never deep inside it)
+                    { k: 'plateau', x: -9.6, z: 8.1, r: 1.35, h: 4.2, edge: 0.3 },                // THE PINNACLE (the tape's — the door gun reaches it)
+                    { k: 'pool', x: -0.6, z: 3.4, r: 1.25, y: -0.3, depth: 1.9, key: 'deep_water' }, // the sump's heart (never entered)
+                    { k: 'pool', x: -0.6, z: 3.4, r: 3.2, y: -0.3, depth: 0.7 },                   // THE SUMP, waded round it
+                    { k: 'rail', x0: -6.5, z0: -3.45, x1: -1.0, z1: -3.45 },                      // the shelf's rim rail (the park rule's grind)
+                    { k: 'rail', x0: 5.75, z0: -4.2, x1: 5.75, z1: -9.6 },                        // the crag's rail over the floor
+                    { k: 'path', pts: [[-10.0, 0.5], [-4.0, 0.2], [3.5, 2.0], [8.0, 6.0]], w: 1.6 },
+                    { k: 'scatter', key: 'cave_stone', n: 5, seed: 1 },
                 ],
-                ledge: 'rocks_2',
             },
             doors: [
                 { id: 'gallery', wall: 'e', z: -0.875, leaf: null,
@@ -26660,22 +26694,18 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'railing_1m',     x: -4.375, z: -3.65, face: 0 },                   // THE SHELF'S RIM (the park rule's rail): the drawn-water ledge over the floor
-                { key: 'railing_1m',     x: -3.375, z: -3.65, face: 0 },
-                { key: 'railing_1m',     x: -2.375, z: -3.65, face: 0 },
-                { key: 'railing_1m',     x: 5.6, z: -4.375, face: 90 },                    // the crag's rail over the ramp
-                { key: 'railing_1m',     x: 5.6, z: -5.375, face: 90 },
                 { key: 'cave_torch',     x: -9.625, z: -7.875 },                            // the torches: one per tier, and the floor's two
-                { key: 'cave_torch',     x: 9.625, z: -7.875 },
-                { key: 'cave_torch',     x: -9.625, z: 6.125 },
-                { key: 'cave_torch',     x: 9.625, z: 6.125 },
-                { key: 'candle_ring',    x: -0.875, z: 7.875, y: 0.0 },                     // somebody's, by the sump, and recent
-                { key: 'concrete_pillar', x: 2.625, z: 7.875 },                             // the column the water left
-                { key: 'metal_shelving', x: -9.8, z: -1.6, face: 90 },                      // somebody keeps rope down here, and rope keeps
-                { key: 'cardboard_boxes', x: 4.375, z: 7.875, face: 25 },
-                { key: 'floor_stain',    x: -3.5, z: 2.625 },
-                { key: 'paper_sheet',    x: -7.0, z: 0.875, y: 0.01, face: 130 },           // a form, wet through: WELL — WHICH
+                { key: 'cave_torch',     x: 9.625, z: -8.6 },
+                { key: 'cave_torch',     x: -9.625, z: 4.5 },
+                { key: 'cave_torch',     x: 10.0, z: 8.0 },
+                { key: 'candle_ring',    x: -1.5, z: 7.6, y: 0.0 },                        // somebody's, by the sump, and recent
+                { key: 'concrete_pillar', x: 4.2, z: 7.5 },                                 // the column the water left
+                { key: 'metal_shelving', x: -6.0, z: -1.2, face: 0 },                       // somebody keeps rope down here, and rope keeps
+                { key: 'cardboard_boxes', x: 4.375, z: 8.6, face: 25 },
+                { key: 'floor_stain',    x: -5.6, z: 0.9 },
+                { key: 'paper_sheet',    x: -7.0, z: 1.6, y: 0.01, face: 130 },            // a form, wet through: WELL — WHICH
             ],
+
             agents: [],
             npcSpots: [{ x: -9.625, z: 2.625, face: 90, race: 'reptilian' }],
             onlineSpots: [],
@@ -26704,63 +26734,65 @@ const DOOR_HQ = {
                 mood: { light: 0xffc078, ambient: 0.34 },
                 plate: { x: 0, z: -19.0, y: 6.5 },
             },
-            /* the grid (30 × 24 cells, 52.5 × 42 m). North is the top row.
-               SW: the floor, the shaft's door on the west wall and the
-               portcullis on the south; the ramps `a b` up to THE TERRACE
-               (lvl 2); the stream `P` off the pool cuts the terrace and
-               falls (`~`) to split the floor — the ford at the fall's foot
-               is the one dry-shod crossing to the SE floor and the adit.
-               NW: `c d` up to THE WEST SHELF (lvl 4), `e f` up to THE HIGH
-               TIER (lvl 6) and LEVEL −6's bulkhead. The rope bridge `B`
-               (lvl 4) over the pool joins the shelf to the spur of THE HOT
-               SHELF, the lava lake `Y` in it, the obsidian bridge `H` and
-               the causeway `O` to THE FISSURE's arch. NE: THE HALL under the
-               shelf, the river `W` (deep) along its south edge with a ford
-               `~` into the SE floor, the stair `s t` up to the terrace's
-               east end, and THE LONG RAMP `a b c d` up the east wall to the
-               shelf. E: the river's south leg, the plank bridge `=` to the
-               east bank and THE MOUTH's door. */
-            cave: {
-                rows: [
-                //  0         1         2
-                //  012345678901234567890123456789
-                    '#####666################444###',
-                    '#####666####44444#######444###',
-                    '###66666666#44444YYYY##O44O###',
-                    '###66666666#444HHHHHHHOOOOO###',
-                    '###6f666666#44YYYYYYYYYYYYO###',
-                    '####e#######44YYYYYYOOOOOOO###',
-                    '##44444444###4YYYYOO444444444#',
-                    '##444444BBBBB44...#.........4#',
-                    '##444444PPPPP44...#.........d#',
-                    '##4d4444PPPPP44.............c#',
-                    '##2c22222222P2ts............b#',
-                    '##2222222222P2WWWWWW~WWWWW#.a#',
-                    '#22222222222PWWWWWW~WWWWWW#..#',
-                    '#2222222222.P.............W..#',
-                    '##222222222.P.............W..#',
-                    '###b#####.#.~.............W..#',
-                    '...a......#.~.....K.......W..#',
-                    '..........#..W....KK......W...',
-                    '..........##.W......K.....W...',
-                    '#..........#.W............=...',
-                    '#....##....#.W............W..#',
-                    '#...####..##.W...........#W#.#',
-                    '#...#.....#..W........#..#####',
-                    '#...##################...#####',
+            /* THE FIELD (2026-09-17, the terrain rooms — 52.5 × 42 m). SW: the floor,
+               the shaft's door on the west wall and the portcullis on the south; THE
+               TERRACE (1.75 m) with the pool on it and two ramps up; THE STREAM off
+               the terrace's foot to the south wall. NW: THE WEST SHELF (3.5 m) up a
+               causeway ramp from the terrace, THE HIGH TIER (5.25 m) up one more —
+               LEVEL −6's bulkhead stands on it, and the drop off its lip to the floor
+               is the big jump. THE SPUR (3.5 m) hangs off the tier's east end by a
+               ramp down, and THE ROPE BRIDGE crosses the hall from the spur to THE
+               HOT SHELF (3.5 m, NE): the lava lake in it under an obsidian deck to
+               THE FISSURE's arch; THE LONG RAMP climbs the east wall to it. SE: THE
+               RIVER (deep — the plank bridge and the ford cross it) and the adit.
+               THE NEEDLE (6 m) stands mid-cavern: the tape on top is the door gun's. */
+            terrain: {
+                floor: 'cave_floor', cliff: 'rock_wall_2', path: 'rocks_dark_fantasy',
+                noise: { amp: 0.16, scale: 5 }, crag: { depth: 2.2, h: 2.8 },
+                features: [
+                    { k: 'hill', x: 4, z: 8, r: 7, h: 0.5 }, { k: 'hill', x: 20, z: 16, r: 5, h: 0.45 }, { k: 'dip', x: -4, z: -8, r: 5, h: 0.5 },
+                    { k: 'plateau', x: -14, z: 4, w: 18, d: 9, h: 1.75 },                                  // THE TERRACE
+                    { k: 'ramp', x0: -16, z0: 12.6, x1: -16, z1: 8.2, w: 3.2, h0: 0, h1: 1.75 },            // up from the south
+                    { k: 'ramp', x0: -1.4, z0: 5, x1: -5.4, z1: 5, w: 3.0, h0: 0, h1: 1.75 },               // up from the east
+                    { k: 'pool', x: -10, z: 3, r: 2.6, y: 1.45, depth: 0.7 },                              // THE POOL on the terrace
+                    { k: 'stream', pts: [[-7.6, 9.4], [-3, 13], [2, 15.5], [4.5, 21]], w: 2.4, y: -0.3, depth: 0.6 },   // THE STREAM to the south wall
+                    { k: 'plateau', x: -20.5, z: -9, w: 11, d: 9, h: 3.5 },                                 // THE WEST SHELF
+                    { k: 'ramp', x0: -18, z0: -0.2, x1: -18, z1: -4.9, w: 2.4, h0: 1.75, h1: 3.5 },          // the causeway from the terrace
+                    { k: 'plateau', x: -15, z: -17.5, w: 16, d: 7, h: 5.25 },                               // THE HIGH TIER (LEVEL −6's door)
+                    { k: 'ramp', x0: -19, z0: -11, x1: -19, z1: -14.4, w: 2.4, h0: 3.5, h1: 5.25 },          // up from the shelf
+                    { k: 'plateau', x: -1, z: -16, r: 3.2, h: 3.5 },                                        // THE SPUR
+                    { k: 'ramp', x0: -7.3, z0: -16.5, x1: -3.8, z1: -16.3, w: 1.8, h0: 5.25, h1: 3.5 },      // down onto it
+                    { k: 'plateau', x: 18, z: -13, w: 16, d: 12, h: 3.5 },                                  // THE HOT SHELF
+                    { k: 'deck', x0: 2.0, z0: -15.2, x1: 10.4, z1: -13.4, w: 1.6, y: 3.5 },                  // THE ROPE BRIDGE over the hall
+                    { k: 'pool', x: 15, z: -12.5, r: 3.0, y: 3.2, depth: 0.9, key: 'lava' },                // THE LAVA LAKE
+                    { k: 'deck', x0: 10.4, z0: -12.5, x1: 19.6, z1: -12.5, w: 1.6, y: 3.56, rails: false },  // the obsidian causeway (a deck spans the banks, never ends on one)
+                    { k: 'ramp', x0: 23.5, z0: 4.5, x1: 23.5, z1: -6.6, w: 3.0, h0: 0, h1: 3.5 },            // THE LONG RAMP up the east wall
+                    { k: 'stream', pts: [[26.5, 7.5], [21.6, 8.4]], w: 3.2, y: -0.3, depth: 1.6 },          // THE RIVER (deep)…
+                    { k: 'stream', pts: [[21.4, 8.45], [17.6, 10.1]], w: 3.2, y: -0.3, depth: 0.5, bank: 1.8 },   // …THE FORD: a shallow reach between the deep ones, waded
+                    { k: 'stream', pts: [[17.4, 10.2], [14, 12.2], [11, 16.5], [9, 21.5]], w: 3.2, y: -0.3, depth: 1.6 },
+                    { k: 'deck', x0: 10.4, z0: 12.4, x1: 16.4, z1: 16.5, w: 1.6, y: 0.15 },                 // THE PLANK BRIDGE (past both banks)
+                    { k: 'plateau', x: 4, z: -3, r: 1.5, h: 6.0, edge: 0.3 },                               // THE NEEDLE (the tape's)
+                    { k: 'wall', x0: 2, z0: 4.5, x1: 8, z1: 4.5, h: 0.9 },                                  // a low wall on the floor (a rail to jump onto)
+                    { k: 'rail', x0: -22, z0: 8.7, x1: -18.2, z1: 8.7 },                                   // the terrace's rim
+                    { k: 'rail', x0: -13.5, z0: 8.7, x1: -6, z1: 8.7 },
+                    { k: 'rail', x0: -15, z0: -4.7, x1: -20.5, z1: -4.7 },                                  // the shelf's rim
+                    { k: 'rail', x0: -7.2, z0: -14.2, x1: -12, z1: -14.2 },                                 // the tier's lip
+                    { k: 'rail', x0: 11.5, z0: -7.2, x1: 20, z1: -7.2 },                                    // the hot shelf's rim over the hall
+                    { k: 'path', pts: [[-23, 12], [-16, 14.5], [-6, 12], [4, 10], [14, 8], [22, 10]], w: 1.8 },
+                    { k: 'path', pts: [[-13, 5], [-5, 5], [4, 3], [12, 2], [20, 3]], w: 1.4 },
+                    { k: 'scatter', key: 'cave_stone', n: 10, seed: 3 },
                 ],
-                ledge: 'rocks_2',
             },
             doors: [
                 { id: 'shaft', wall: 'w', z: 9.625, leaf: null,
                   label: 'THE WELL ROOM', sub: 'BACK TO THE WELLS',
                   action: { room: 'site_prebuilt_hollow_earth_shaft', at: 'gallery' },
                   desc: 'Back the way the rope let you down. The wells are that way, all six of them, and one of them is yours.' },
-                { id: 'vent', wall: 'n', x: 18.375, leaf: 'leaf_hell_arch',
+                { id: 'vent', wall: 'n', x: 18.375, y: 3.5, leaf: 'leaf_hell_arch',
                   label: 'THE FISSURE', sub: 'THE HOT SIDE · ROOM 666',
                   action: { room: 'site_prebuilt_hollow_earth_vent', at: 'gallery' },
                   desc: 'Up on the hot shelf, across the lava by the causeway: the warmth has a door in it.' },
-                { id: 'blast', wall: 'n', x: -14.875, leaf: 'leaf_bulkhead', wide: true,
+                { id: 'blast', wall: 'n', x: -14.875, y: 5.25, leaf: 'leaf_bulkhead', wide: true,
                   label: 'LEVEL −6', sub: 'THE BASE’S SIXTH SIDE · ROOM 555',
                   action: { room: 'site_prebuilt_hollow_earth_blast', at: 'gallery' },
                   desc: 'On the high tier, the top of the cavern: the rock is cut square here, which rock does not do. Somebody finished the cut with a door.' },
@@ -26779,35 +26811,26 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'railing_1m',     x: -20.125, z: 4.2, face: 0 },                    // THE TERRACE'S RIM (the park rule's rail): the grind over the floor
-                { key: 'railing_1m',     x: -19.125, z: 4.2, face: 0 },
-                { key: 'railing_1m',     x: -18.125, z: 4.2, face: 0 },
-                { key: 'railing_1m',     x: -17.125, z: 4.2, face: 0 },
-                { key: 'railing_1m',     x: -16.125, z: 4.2, face: 0 },
-                { key: 'railing_1m',     x: -20.125, z: -8.6, face: 0 },                   // the west shelf's rim
-                { key: 'railing_1m',     x: -19.125, z: -8.6, face: 0 },
-                { key: 'railing_1m',     x: -18.125, z: -8.6, face: 0 },
-                { key: 'railing_1m',     x: 11.5, z: -8.95, face: 0 },                     // the hot shelf's rim over the hall
-                { key: 'railing_1m',     x: 12.5, z: -8.95, face: 0 },
-                { key: 'railing_1m',     x: 13.5, z: -8.95, face: 0 },
                 { key: 'cave_torch',     x: -16.625, z: 11.375 },                           // the floor's torches: by the shaft, by the portcullis, by the adit
-                { key: 'cave_torch',     x: -11.375, z: 14.875 },
-                { key: 'cave_torch',     x: 9.625, z: 14.875 },
-                { key: 'cave_torch',     x: 4.375, z: -6.125 },                             // the hall
-                { key: 'cave_torch',     x: 21.875, z: 6.125 },                             // the east bank, by the mouth
+                { key: 'cave_torch',     x: -12.25, z: 16.6 },
+                { key: 'cave_torch',     x: 17.5, z: 17.5 },
                 { key: 'cave_torch',     x: -16.625, z: 0.875 },                            // the terrace
-                { key: 'cave_torch',     x: -16.625, z: -7.875 },                           // the west shelf
-                { key: 'cave_torch',     x: -11.375, z: -16.625 },                          // the high tier
+                { key: 'cave_torch',     x: -22.5, z: -12.0 },                              // the west shelf
+                { key: 'cave_torch',     x: -11.0, z: -19.0 },                              // the high tier
+                { key: 'cave_torch',     x: 24.0, z: -16.0 },                               // the hot shelf
                 { key: 'crystal_cluster', x: 6.125, z: 9.625 },                             // THE CRYSTALS on the SE floor: the adit's light, leaking
+                { key: 'crystal_cluster', x: -1.2, z: -16.2 },                              // on the spur
                 { key: 'concrete_pillar', x: -0.875, z: 11.375 },                           // the columns the water left
-                { key: 'concrete_pillar', x: 11.375, z: -6.125 },
-                { key: 'cardboard_boxes', x: -21.875, z: 14.875, face: 340 },               // Facilities' rope, by the way in
+                { key: 'concrete_pillar', x: 11.375, z: -4.5 },
+                { key: 'menhir',         x: 8.5, z: -18.5, face: 20 },                      // a standing stone somebody stood
+                { key: 'cardboard_boxes', x: -23.0, z: 14.875, face: 340 },                 // Facilities' rope, by the way in
                 { key: 'paper_sheet',    x: -13.125, z: 9.625, y: 0.01, face: 40 },
                 { key: 'floor_stain',    x: -4.375, z: 14.875 },
                 { key: 'floor_stain',    x: 16.625, z: 4.375 },
             ],
+
             agents: [],
-            npcSpots: [{ x: 2.625, z: 14.875, face: 300, race: 'ghoul' }, { x: -11.375, z: 0.875, face: 160, race: 'gnome' }],
+            npcSpots: [{ x: 6.5, z: 11.5, face: 300, race: 'ghoul' }, { x: -16.5, z: 4.2, face: 160, race: 'gnome' }],
             onlineSpots: [],
             lines: [
                 '“The sign says four ways out.” “There are six doors.” “Four ways OUT. The other two are in.”',
@@ -26833,24 +26856,23 @@ const DOOR_HQ = {
                 mood: { light: 0xff7a40, ambient: 0.4 },
                 plate: { x: -4.0, z: -6.8, y: 3.6 },
             },
-            /* the grid (10 × 9): the lava channel `L` across the middle, two
-               obsidian causeways `=` over it (the near one, the far one), the
-               arch on the north wall, the gallery's arch on the south */
-            cave: {
-                rows: [
-                //  0123456789
-                    '####..####',
-                    '####..####',
-                    '#@@.....@#',
-                    '#LL=LL=LL#',
-                    '#LL=LL=LL#',
-                    '#LL=LL=LL#',
-                    '#@@...@@1#',
-                    '#..@....a#',
-                    '####..####',
+            /* THE FIELD (2026-09-17): the floor at the arch, THE FISSURE — a lava rift
+               across the middle, crossed on an obsidian span — and THE HOT SHELF
+               behind it (1.75 m), where the door to Room 666 stands. A ramp up the
+               west side, the shelf's lip railed. */
+            terrain: {
+                floor: 'obsidian', cliff: 'rock_wall_2', path: 'rocks_dark_fantasy',
+                noise: { amp: 0.12, scale: 3.5 }, crag: { depth: 1.5, h: 2.0 },
+                features: [
+                    { k: 'hill', x: 5, z: 4.5, r: 4, h: 0.4 },
+                    { k: 'stream', pts: [[-8.75, -1.2], [-3, -0.6], [2, -1.4], [8.75, -0.6]], w: 2.4, y: 0.4, depth: 0.8, key: 'lava' },   // THE FISSURE (first: what comes after crosses it)
+                    { k: 'plateau', x: 0, z: -5.5, w: 17.5, d: 4.6, h: 1.75 },                               // THE HOT SHELF
+                    { k: 'ramp', x0: -6.5, z0: 1.4, x1: -6.5, z1: -3.5, w: 2.4, h0: 0, h1: 1.75 },            // up the west side, a causeway over the rift
+                    { k: 'ramp', x0: 1.2, z0: 2.2, x1: 1.2, z1: -3.5, w: 1.6, h0: 0, h1: 1.75, edge: 0.2 },  // the obsidian span: a ramp over the rift up onto the shelf
+                    { k: 'rail', x0: -3.5, z0: -3.4, x1: 0.0, z1: -3.4 },                                      // the shelf's lip
+                    { k: 'path', pts: [[0, 7], [0, 2.2], [1.2, -3.8], [0, -6]], w: 1.4 },
+                    { k: 'scatter', key: 'cave_stone', n: 4, seed: 2 },
                 ],
-                legend: { '=': { lvl: 0, bridge: 'obsidian', under: 'L' } },
-                floor: 'obsidian', ledge: 'obsidian',
             },
             doors: [
                 { id: 'gallery', wall: 's', x: 0, leaf: 'leaf_hell_arch',
@@ -26860,16 +26882,14 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'railing_1m',     x: -7.0, z: 2.7, face: 0 },                       // the rail at the lip (the park rule)
-                { key: 'railing_1m',     x: -6.0, z: 2.7, face: 0 },
-                { key: 'railing_1m',     x: -5.0, z: 2.7, face: 0 },
-                { key: 'cave_torch',     x: -7.0, z: -3.5 },
-                { key: 'cave_torch',     x: 5.25, z: -3.5 },
-                { key: 'cave_torch',     x: -7.0, z: 3.5 },
-                { key: 'candle_ring',    x: 3.5, z: 5.25, y: 0.0 },                         // somebody's, and recent
-                { key: 'floor_stain',    x: 0.0, z: -3.5 },
-                { key: 'floor_stain',    x: 1.75, z: 5.25 },
+                { key: 'cave_torch',     x: -7.0, z: -3.9 },
+                { key: 'cave_torch',     x: 5.25, z: -3.9 },
+                { key: 'cave_torch',     x: -7.0, z: 4.5 },
+                { key: 'candle_ring',    x: 4.5, z: 5.25, y: 0.0 },                         // somebody's, and recent
+                { key: 'floor_stain',    x: -3.0, z: 3.5 },
+                { key: 'floor_stain',    x: 3.0, z: -5.6 },
             ],
+
             agents: [],
             npcSpots: [],
             onlineSpots: [],
@@ -26895,22 +26915,19 @@ const DOOR_HQ = {
                 mood: { light: 0xbfe0ff, ambient: 0.4 },
                 plate: { x: -4.2, z: -6.3, y: 3.0 },
             },
-            /* the grid (8 × 8): the cut — a concrete floor between the two
-               doors, a poured platform one level up either side (the keypad's
-               side, the camera's side) and a ramp cell onto the west one */
-            cave: {
-                rows: [
-                //  01234567
-                    '###..###',
-                    '###..###',
-                    '#11...1#',
-                    '#11...1#',
-                    '#a....1#',
-                    '#......#',
-                    '#......#',
-                    '###..###',
+            /* THE FIELD (2026-09-17): a concrete platform (1.75 m) under the blast door
+               on the north wall, the rock floor dropping away to the bulkhead on the
+               south; a ramp up the east side, a handrail on the platform's edge. */
+            terrain: {
+                floor: 'cave_floor', cliff: 'rock_wall_1', path: 'concrete',
+                noise: { amp: 0.1, scale: 3 }, crag: { depth: 1.2, h: 1.6 },
+                features: [
+                    { k: 'plateau', x: 0, z: -4.4, w: 14, d: 4.6, h: 1.75 },                                  // THE PLATFORM (LEVEL −6's landing)
+                    { k: 'ramp', x0: 4.6, z0: 2.6, x1: 4.6, z1: -2.4, w: 2.4, h0: 0, h1: 1.75 },              // up its east side
+                    { k: 'rail', x0: -6.0, z0: -2.05, x1: 2.2, z1: -2.05 },                                   // the handrail on its edge
+                    { k: 'path', pts: [[0, 6], [0, 1.5], [4.6, 1], [4.6, -3], [0, -4.5]], w: 1.6 },
+                    { k: 'scatter', key: 'cave_stone', n: 3, seed: 5 },
                 ],
-                floor: 'concrete_floor', ledge: 'concrete_floor', rock: 'cave_wall',
             },
             doors: [
                 { id: 'gallery', wall: 's', x: 0, leaf: 'leaf_bulkhead', wide: true,
@@ -26920,14 +26937,13 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'railing_1m',     x: -5.25, z: -1.0, face: 0 },                     // the handrail on the platform's edge (the park rule)
-                { key: 'railing_1m',     x: -4.25, z: -1.0, face: 0 },
                 { key: 'bare_bulb',      x: -3.5, z: 0.0, ceil: true },
                 { key: 'bare_bulb',      x: 1.75, z: -1.75, ceil: true },
-                { key: 'cardboard_boxes', x: 2.625, z: 2.625, face: 15 },
+                { key: 'cardboard_boxes', x: -2.6, z: 3.6, face: 15 },
                 { key: 'floor_stain',    x: -1.75, z: 1.75 },
-                { key: 'paper_sheet',    x: -5.25, z: -1.75, y: 0.01, face: 200 },       // a sign-in sheet on the platform; the last date is the base's first
+                { key: 'paper_sheet',    x: -5.25, z: -4.0, y: 0.01, face: 200 },          // a sign-in sheet on the platform; the last date is the base's first
             ],
+
             agents: [],
             npcSpots: [],
             onlineSpots: [],
@@ -26953,24 +26969,25 @@ const DOOR_HQ = {
                 mood: { light: 0xcfe8b0, ambient: 0.45 },
                 plate: { x: 4.0, z: -7.7, y: 3.2 },
             },
-            /* the grid (10 × 10): a stream across the adit (waded at its
-               edges, deep in the middle, a plank `=` over the deep part), the
-               crystal `K` growing out of the floor either side */
-            cave: {
-                rows: [
-                //  0123456789
-                    '####..####',
-                    '#KK.....K#',
-                    '#K...K...#',
-                    '#.~~~~~~.#',
-                    '#.~WWW=W~#',
-                    '#.~~~~=~.#',
-                    '#...K..m1#',
-                    '#K..KK..K#',
-                    '#........#',
-                    '####..####',
+            /* THE FIELD (2026-09-17): the crystal adit — a warm slope up from the
+               cavern's door on the north to the frame on the south, a crystal knoll
+               either side, a plank over a spring pool, and a crystal LEDGE (3.5 m) in
+               the west corner the walker cannot climb — the envelope on it is a jump
+               from the knoll or a door on its lip. */
+            terrain: {
+                floor: 'cave_floor', cliff: 'rock_wall_1', path: 'rocks_dark_fantasy',
+                noise: { amp: 0.14, scale: 4 }, crag: { depth: 1.5, h: 2.2 },
+                features: [
+                    { k: 'ridge', pts: [[0, -8.75], [0, 8.75]], w: 9, h: 0.9 },                              // the adit's crown rises down the middle
+                    { k: 'hill', x: -5.5, z: -3, r: 3.2, h: 1.3 }, { k: 'hill', x: 5.5, z: 3.5, r: 3.0, h: 1.1 },   // the crystal knolls
+                    { k: 'pool', x: 4.2, z: -4.0, r: 2.0, y: -0.2, depth: 0.7 },                              // the spring
+                    { k: 'deck', x0: 0.6, z0: -4.0, x1: 7.8, z1: -4.0, w: 1.3, y: 0.25 },                     // the plank over it, past both banks
+                    { k: 'plateau', x: -6.4, z: 6.0, w: 4.4, d: 4.4, h: 3.5, edge: 0.3 },                     // THE CRYSTAL LEDGE (no way up on foot)
+                    { k: 'ramp', x0: 7.6, z0: 0.2, x1: 5.6, z1: 3.2, w: 1.8, h0: 0.3, h1: 1.5 },                 // a rock spur up the east knoll (the park rule's ride)
+                    { k: 'rail', x0: 0.8, z0: -5.0, x1: 3.2, z1: -5.0 },                                       // the plank's landing rail
+                    { k: 'path', pts: [[0, -6.8], [0, 6.8]], w: 1.6 },
+                    { k: 'scatter', key: 'cave_stone', n: 4, seed: 7 },
                 ],
-                floor: 'crystal', ledge: 'crystal',
             },
             doors: [
                 { id: 'gallery', wall: 'n', x: 0, leaf: 'leaf_frame_only',
@@ -26980,20 +26997,17 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'railing_1m',     x: 1.75, z: -4.3, face: 0 },                      // the plank's landing rail (the park rule)
-                { key: 'railing_1m',     x: 2.75, z: -4.3, face: 0 },
                 { key: 'crystal_cluster', x: -7.0, z: -7.0 },                               // THE CRYSTALS: not lamps — the wall does that here
-                { key: 'crystal_cluster', x: 5.25, z: -7.0 },
-                { key: 'crystal_cluster', x: -7.0, z: -5.25 },
-                { key: 'crystal_cluster', x: -1.75, z: 1.75 },
-                { key: 'crystal_cluster', x: 5.25, z: 3.5 },
-                { key: 'crystal_cluster', x: -7.0, z: 3.5 },
-                { key: 'cave_torch',     x: 5.25, z: 5.25 },
-                { key: 'cave_torch',     x: -7.0, z: 5.25 },
-                { key: 'candle_ring',    x: -5.25, z: 1.75, y: 0.0 },
-                { key: 'floor_stain',    x: 1.75, z: 5.25 },
-                { key: 'paper_sheet',    x: 3.5, z: 5.25, y: 0.01, face: 210 },
+                { key: 'crystal_cluster', x: 6.5, z: -7.0 },
+                { key: 'crystal_cluster', x: -5.5, z: -3.0 },
+                { key: 'crystal_cluster', x: -6.4, z: 6.0 },                                // on the ledge
+                { key: 'crystal_cluster', x: 5.5, z: 3.5 },
+                { key: 'cave_torch',     x: 7.0, z: 7.0 },
+                { key: 'candle_ring',    x: -2.6, z: 4.4, y: 0.0 },
+                { key: 'floor_stain',    x: 2.0, z: 1.0 },
+                { key: 'paper_sheet',    x: -1.75, z: -6.0, y: 0.01, face: 60 },
             ],
+
             agents: [],
             npcSpots: [{ x: 1.75, z: 1.75, face: 250, race: 'gnome' }],
             onlineSpots: [],
@@ -27020,25 +27034,23 @@ const DOOR_HQ = {
                 mood: { light: 0xffe0a0, ambient: 0.5 },
                 plate: { x: -4.0, z: -7.7, y: 3.6 },
             },
-            /* the grid (12 × 10): the gallery's opening on the west wall at
-               the floor, a pool in the floor's middle, THE LIP two levels up
-               in the north-east (the ramp `a b` up to it) and the way out on
-               the east wall up there — you climb to the light */
-            cave: {
-                rows: [
-                //  012345678901
-                    '############',
-                    '#.....#22222',
-                    '#......22222',
-                    '......#b2222',
-                    '.......a...#',
-                    '...........#',
-                    '#....~~....#',
-                    '#...~~~~...#',
-                    '#....~~....#',
-                    '############',
+            /* THE FIELD (2026-09-17): the mouth of the cave — a slope up from the
+               cavern's door on the west to THE LIP (1.75 m) under the daylight where
+               Hollow Earth's door stands on the east wall; a boulder-strewn floor, a
+               rock shelf in the south corner for the envelope, the lip railed. */
+            terrain: {
+                floor: 'cave_floor', cliff: 'rock_wall_1', path: 'dirt_2',
+                noise: { amp: 0.16, scale: 4 }, crag: { depth: 1.6, h: 2.2 },
+                features: [
+                    { k: 'ridge', pts: [[10.5, -8.75], [10.5, 8.75]], w: 12, h: 1.75 },                     // the floor climbs toward the east wall
+                    { k: 'plateau', x: 7.5, z: -5.0, w: 6.0, d: 7.5, h: 1.75 },                               // THE LIP (the door's shelf)
+                    { k: 'ramp', x0: 1.4, z0: -5.0, x1: 4.8, z1: -5.0, w: 2.6, h0: 0.4, h1: 1.75 },           // up onto it
+                    { k: 'plateau', x: -6.5, z: 6.5, r: 2.2, h: 2.6, edge: 0.35 },                            // THE SHELF in the south corner (a jump from the boulders)
+                    { k: 'hill', x: -3.5, z: 4.5, r: 2.4, h: 1.5 },                                          // the boulder heap under it
+                    { k: 'rail', x0: 4.6, z0: -1.4, x1: 9.6, z1: -1.4 },                                      // the lip's rail
+                    { k: 'path', pts: [[-9, -1.75], [-2, -2.5], [3, -5], [8, -5]], w: 1.6 },
+                    { k: 'scatter', key: 'cave_stone', n: 6, seed: 9 },
                 ],
-                floor: 'dirt_3', ledge: 'rocks_2',
             },
             doors: [
                 { id: 'gallery', wall: 'w', z: -1.75, leaf: null,
@@ -27048,17 +27060,15 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'railing_1m',     x: 3.5, z: -2.8, face: 0 },                       // the lip's rail over the floor (the park rule)
-                { key: 'railing_1m',     x: 4.5, z: -2.8, face: 0 },
-                { key: 'railing_1m',     x: 5.5, z: -2.8, face: 0 },
                 { key: 'cave_torch',     x: -7.0, z: -5.25 },
-                { key: 'cave_torch',     x: 5.25, z: 0.0 },
-                { key: 'cave_torch',     x: -5.25, z: 5.25 },
-                { key: 'candle_ring',    x: 3.5, z: -5.25, y: 0.0 },                        // on the lip, by the light
-                { key: 'concrete_pillar', x: -7.0, z: 1.75 },
+                { key: 'cave_torch',     x: 7.5, z: -8.0 },
+                { key: 'cave_torch',     x: -8.2, z: 3.8 },
+                { key: 'candle_ring',    x: 8.5, z: -3.0, y: 0.0 },                        // on the lip, by the light
+                { key: 'concrete_pillar', x: -7.0, z: -1.0 },
                 { key: 'cardboard_boxes', x: 7.0, z: 5.25, face: 300 },
                 { key: 'floor_stain',    x: -1.75, z: -1.75 },
             ],
+
             agents: [],
             npcSpots: [{ x: 5.25, z: 3.5, face: 300, race: 'reptilian' }],
             onlineSpots: [],
@@ -27087,24 +27097,22 @@ const DOOR_HQ = {
                 mood: { light: 0xffa050, ambient: 0.35 },
                 plate: { x: 0, z: -6.4, y: 3.0 },
             },
-            /* the grid (10 × 8): the walk down the middle from the portcullis,
-               the CELLS sunk one level into the floor either side (`_`:
-               you step down into one and up out of it — a cell without a
-               door is still a cell), the draught along the back wall */
-            cave: {
-                rows: [
-                //  0123456789
-                    '####..####',
-                    '#__......#',
-                    '#_>..#.__#',
-                    '#....#.__#',
-                    '#__..#...#',
-                    '#__......#',
-                    '#........#',
-                    '#####...##',
+            /* THE FIELD (2026-09-17): the dead end — the floor behind the portcullis,
+               THE CELLS sunk a metre along the west wall (three hollows the walker
+               drops into and climbs out of by their ramps), the rack on a low mound,
+               the back wall Room 24601's. */
+            terrain: {
+                floor: 'cave_floor', cliff: 'rock_wall_2', path: 'rocks_dark_fantasy',
+                noise: { amp: 0.1, scale: 3 }, crag: { depth: 1.2, h: 1.5 },
+                features: [
+                    { k: 'hill', x: 1.5, z: 1.5, r: 3.5, h: 0.5 },                                            // the rack's mound
+                    { k: 'dip', x: -6.2, z: -4.8, r: 1.9, h: 1.0, dome: true }, { k: 'ramp', x0: -3.4, z0: -4.8, x1: -5.8, z1: -4.8, w: 1.6, h0: 0, h1: -0.85 },   // the first cell + its ramp
+                    { k: 'dip', x: -6.2, z: 0.0, r: 1.9, h: 1.0, dome: true },  { k: 'ramp', x0: -3.4, z0: 0.0, x1: -5.8, z1: 0.0, w: 1.6, h0: 0, h1: -0.85 },     // the second
+                    { k: 'dip', x: -6.2, z: 4.6, r: 1.9, h: 1.0, dome: true },  { k: 'ramp', x0: -3.4, z0: 4.6, x1: -5.8, z1: 4.6, w: 1.6, h0: 0, h1: -0.85 },     // the third
+                    { k: 'rail', x0: -3.9, z0: -6.4, x1: -3.9, z1: -2.2 },                                     // the rail along the cells' edge
+                    { k: 'wall', x0: -4.2, z0: -2.4, x1: -4.2, z1: 2.4, h: 0.7 },                              // a low wall between the first cells (a rail to hop onto)
+                    { k: 'path', pts: [[0, -7], [0, 5.5], [3, 6.5]], w: 1.4 },
                 ],
-                legend: { '_': { lvl: -1, key: 'dungeon_3' }, '>': { lvl: -1, slope: 'e', key: 'dungeon_3' } },
-                floor: 'dungeon_2',
             },
             doors: [
                 { id: 'gallery', wall: 'n', x: 0, leaf: 'leaf_portcullis', wide: true,
@@ -27118,20 +27126,17 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'railing_1m',     x: -4.2, z: -5.25, face: 90 },                    // the rail along the west cells' edge (the park rule)
-                { key: 'railing_1m',     x: -4.2, z: -4.25, face: 90 },
-                { key: 'railing_1m',     x: -4.2, z: 0.0, face: 90 },
-                { key: 'railing_1m',     x: -4.2, z: 1.0, face: 90 },
-                { key: 'stocks',         x: 0.0, z: 1.75, face: 20 },                       // THE RACK, near enough
-                { key: 'cot',            x: -7.0, z: -5.25, face: 90 },                     // in the first cell, on trestles
-                { key: 'cardboard_boxes', x: -7.0, z: 1.75, face: 340 },                    // THE CRATES in the third cell: the best hiding place in the world (9.1)
-                { key: 'cave_torch',     x: -3.5, z: -5.25 },
+                { key: 'stocks',         x: 1.5, z: 1.5, face: 20 },                        // THE RACK, near enough
+                { key: 'cot',            x: -6.6, z: -4.8, face: 90 },                      // in the first cell, on trestles
+                { key: 'cardboard_boxes', x: -6.6, z: 4.6, face: 340 },                     // THE CRATES in the third cell: the best hiding place in the world (9.1)
+                { key: 'cave_torch',     x: -2.0, z: -5.6 },
                 { key: 'cave_torch',     x: 5.25, z: 3.5 },
-                { key: 'candle_ring',    x: -3.5, z: 0.0, y: 0.0 },
+                { key: 'candle_ring',    x: -6.2, z: 0.0, y: 0.0 },
                 { key: 'key',            x: 1.75, z: -1.75, y: 0.0, face: 40 },             // a ring of keys, on the floor, as upstairs
                 { key: 'floor_drain',    x: -1.75, z: 3.5 },
                 { key: 'floor_stain',    x: -0.875, z: -3.5 },
             ],
+
             agents: [],
             npcSpots: [],
             onlineSpots: [],
@@ -28055,51 +28060,45 @@ const DOOR_HQ = {
             label: 'THE WOODS · THE CLEARING',
             sub: 'THE CROSSROADS · SEVEN PATHS · THE OLD TREE',
             kind: 'box', site: 'prebuilt_fairy_forest', part: 'clearing',
-            shell: hqWoodsShell({ plate: { x: 0, z: -18.6, y: 4.2 } }),
-            /* the grid (28 × 22 cells, 49 × 38.5 m). North is the top row.
-               The path in from the forest is the south lane; THE KNOLL (lvl
-               2) in the north-west with a ramp on each side (`g h` from the
-               trail's landing, `b a` from the floor); THE STREAM out of the
-               north-east, the deep pool `W` under the plank `=`, the ford
-               everywhere (it is waded), off into the trees at the south-
-               west; THE OLD TREE (the redwoods `R`) at the centre with the
-               names carved in it; the crag `##` under the staircase's lane.
-               Ways: N the trail (x −7.875) and the staircase (x 9.625), E
-               the redwoods (z −7.875) and Dead Man's Cave (z 9.625), W the
-               pasture (z −4.375) and the ritual ground (z 9.625), S the
-               forest. */
-            cave: {
-                rows: [
-                //  0         1         2
-                //  0123456789012345678901234567
-                    'TTTTTTTT...TTTTTTT...TTTTTTT',
-                    'T.T.....g...T.TT##.......T.T',
-                    'T....T..h.....T##..T...~~..T',
-                    'T...222222..T.......T.~~..TT',
-                    'T..T222222...........~~..T.T',
-                    'T....222222..T......~~......',
-                    'T.....2222.......T..~~......',
-                    '...T....b....T..T...~~....T.',
-                    '........a...T.......~=~T...T',
-                    '..T..T........R.....~W~....T',
-                    'T.T....D.....RRRT...~~..T..T',
-                    'T.....T......RRRR...~~.....T',
-                    'T...T.....T...RR...~~..T...T',
-                    'TT..T...........T.~~......TT',
-                    'T......~~~~~~~~~~~~~.....T.T',
-                    '..T..~~...T...T....~~..T....',
-                    'T...~~..T.......T...~~...T..',
-                    '..~~....T....T..T....~~T....',
-                    'T~..T.......T.........~~...T',
-                    'T~.....TT..........T...~~.TT',
-                    'TT.T..T.....T.....T....T~..T',
-                    'TTTTTTTTTTTT...TTTTTTTTTTTTT',
+            shell: hqWoodsShell({ w: 49, d: 38.5, plate: { x: 0, z: -18.6, y: 4.2 } }),
+            /* THE FIELD (2026-09-17, the terrain rooms — 49 × 38.5 m): the path in
+               from the forest is the hollow tree on the south wall; THE KNOLL in the
+               north-west (a walkable rise, the trail's door under it); THE STREAM out
+               of the north-east, down through the middle and off into the trees at
+               the south-west, the plank footbridge over it; THE OLD TREE (three
+               redwoods) at the centre with the names carved in it; THE CRAG under the
+               staircase's lane — a 3.6 m rock the walker cannot climb, the garden's
+               tape on top of it (the door gun's); a bank along the south-west, a
+               hollow east of the tree, a low fence rail by the crag. */
+            terrain: {
+                floor: 'grass_2', cliff: 'rock_wall_1', path: 'dirt_2',
+                noise: { amp: 0.2, scale: 6 },
+                features: [
+                    { k: 'hill', x: -13, z: -9, r: 8, h: 2.4 },                                              // THE KNOLL
+                    { k: 'hill', x: 12, z: 12, r: 6, h: 1.0 },
+                    { k: 'dip', x: 9, z: -8, r: 4.5, h: 0.7 },
+                    { k: 'ridge', pts: [[-24, 3.5], [-15, 13], [-6, 17.5]], w: 5.5, h: 1.3 },                 // the bank along the south-west
+                    { k: 'plateau', x: 14.5, z: -12.5, w: 6.5, d: 5.5, rot: 15, h: 3.6, edge: 0.3 },        // THE CRAG (the tape's)
+                    { k: 'stream', pts: [[24.5, -13], [21, -8], [19, -3], [18, 4], [14, 10], [8, 14], [-2, 16], [-9, 19.25]], w: 2.6, y: -0.25, depth: 0.55 },   // THE STREAM
+                    { k: 'deck', x0: 13.6, z0: 4.3, x1: 19.4, z1: 8.2, w: 1.6, y: 0.2 },                     // THE PLANK over it, past both banks
+                    { k: 'tree', x: 3.0, z: 2.0, kind: 'tree_4', h: 7.5, r: 0.9 },                            // THE OLD TREE
+                    { k: 'tree', x: 4.6, z: 3.8, kind: 'tree_4', h: 6.5, r: 0.8 },
+                    { k: 'tree', x: 1.6, z: 4.4, kind: 'tree_4', h: 6.0, r: 0.75 },
+                    { k: 'rail', x0: 9.0, z0: -16.5, x1: 4.0, z1: -16.5 },                                    // a fence rail by the crag (the park rule's grind)
+                    { k: 'path', pts: [[-0.9, 17], [-1, 8], [-4, 0], [-8, -8], [-7.9, -17]], w: 1.8 },        // the path in, over the knoll to the trail
+                    { k: 'path', pts: [[-1, 8], [8, 6], [16, 4.5], [22, -1], [22, -7.9]], w: 1.6 },           // to the plank and the redwoods
+                    { k: 'path', pts: [[-4, 0], [-14, -2], [-22, -4.4]], w: 1.6 },                            // to the pasture
+                    { k: 'path', pts: [[-1, 8], [-10, 10], [-22, 9.6]], w: 1.6 },                             // to the ritual ground
+                    { k: 'path', pts: [[8, 6], [12, 9], [22, 9.6]], w: 1.6 },                                 // to the crag and the storm drain
+                    { k: 'grove', n: 26, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 4 },
+                    { k: 'scatter', key: 'fern', n: 18, seed: 5 },
+                    { k: 'scatter', key: 'stump', n: 4, seed: 6 },
+                    { k: 'scatter', key: 'fallen_log', n: 2, seed: 7, r0: 1.9 },
                 ],
-                floor: 'grass_2', ledge: 'grass_rocky', rock: 'rock_wall_1',
             },
             doors: [
-                { id: 'forest', wall: 's', x: -0.875, leaf: null,
-                  label: 'THE FAIRY FOREST', sub: 'THE PATH BACK · ROOM 420',
+                { id: 'forest', wall: 's', x: -0.875, way: 'hollowtree',
+                  label: 'THE FAIRY FOREST', sub: 'THE HOLLOW TREE · BACK · ROOM 420',
                   action: { room: 'site_prebuilt_fairy_forest', at: 'woods' },
                   desc: 'The path back between two trees that lean in to hear you go. The forest proper is that way, and the crossing console, and the door that objected.' },
                 { id: 'trail', wall: 'n', x: -7.875, leaf: null,
@@ -28129,23 +28128,22 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'railing_1m',     x: -16.625, z: -13.7, face: 0 },                   // THE KNOLL'S RIM (the park rule's rail): the drop to the trail landing
-                { key: 'railing_1m',     x: -14.875, z: -13.7, face: 0 },
-                { key: 'railing_1m',     x: -13.125, z: -13.7, face: 0 },
-                { key: 'railing_1m',     x: -11.375, z: -13.7, face: 0 },
-                { key: 'cave_torch',     x: -2.625, z: 16.625 },                            // the torches at the paths: the way in, the trail, the stair, the crag, the pasture
+                { key: 'cave_torch',     x: 2.6, z: 17.6 },                                 // the torches at the paths: the way in, the trail, the stair, the crag, the pasture
                 { key: 'cave_torch',     x: -6.125, z: -16.625 },
                 { key: 'cave_torch',     x: 11.375, z: -16.625 },
                 { key: 'cave_torch',     x: 21.875, z: 6.125 },
                 { key: 'cave_torch',     x: -21.875, z: -0.875 },
-                { key: 'candle_ring',    x: 4.375, z: 4.375, y: 0.0 },                      // at the old tree's foot: somebody's, and this week's
+                { key: 'campfire',       x: -4.5, z: 6.0 },                                  // somebody's fire, and this week's
+                { key: 'signpost',       x: -1.0, z: 10.5, face: 30 },                       // THE SIGNPOST at the crossroads: seven arms, six of them right
+                { key: 'culvert_mouth',  wall: 'e', z: 13.2 },                               // the culvert in the crag beside the storm drain's mouth
                 { key: 'cardboard_boxes', x: -21.875, z: 12.25, face: 20 },                 // Facilities' rope, at the ritual path
                 { key: 'paper_sheet',    x: -4.375, z: 14.875, y: 0.01, face: 60 },         // a form pinned under a stone: WOODS — WHICH
                 { key: 'floor_stain',    x: 2.625, z: -4.375 },
                 { key: 'lesson_sign',    x: 14.875, z: -2.625, face: 270 },                 // a signpost at the stream: seven arms, six of them right
             ],
+
             agents: [],
-            npcSpots: [{ x: -3.5, z: 3.5, face: 60, race: 'fairy' }, { x: 12.25, z: 12.25, face: 300, race: 'bigfoot' }],
+            npcSpots: [{ x: -3.5, z: 3.5, face: 60, race: 'fairy' }, { x: 17.5, z: 14.5, face: 300, race: 'bigfoot' }],
             onlineSpots: [],
             lines: [
                 '“Which way is the ranch?” “Left at the tree.” “Which tree?” “The tree.”',
@@ -28153,43 +28151,37 @@ const DOOR_HQ = {
                 '“You can see the mountain from here.” “You can see the mountain from everywhere. That is what it is for.”',
                 '“Seven paths.” “Six, and the one you came in by.” “That is seven.” “That is the one you leave by.”',
             ],
-            spawn: { x: -0.875, z: 14.0, face: 0 },
+            spawn: { x: 2.0, z: 12.0, face: 0 },
         },
         /* ── THE MOUNTAIN TRAIL — the switchbacks up to Shasta: two tiers, a stream at the foot, the door at the top ── */
         site_prebuilt_fairy_forest_trail: {
             label: 'THE WOODS · THE MOUNTAIN TRAIL',
             sub: 'THE SWITCHBACKS · TWO TIERS · THE WAY TO ROOM 14179',
             kind: 'box', site: 'prebuilt_fairy_forest', part: 'trail',
-            shell: hqWoodsShell({ plate: { x: 0, z: -15.0, y: 7.0 }, floorColor: 0x7a8c5a }),
-            /* the grid (14 × 18): the floor with the stream at the foot, the
-               ramp `a b` up the east side onto THE TERRACE (lvl 2), the ramp
-               `c d` up the west side onto THE TOP TIER (lvl 4) and the
-               mountain's door in the north wall up there — a door you climb
-               to. `Q` / `Z` are trees standing on the tiers. */
-            cave: {
-                rows: [
-                //  01234567890123
-                    'TTTTT444TTTTTT',
-                    'T#444444444T#T',
-                    'T44444444444#T',
-                    'T4444QQ4444#TT',
-                    'T#d444444444TT',
-                    'TTc22222222T#T',
-                    'T222222ZZ222TT',
-                    'T2222Z22222b2T',
-                    'T..........aTT',
-                    'T.T....T..T..T',
-                    'T........TT..T',
-                    'T..T.........T',
-                    'TT.....~~....T',
-                    'T.T...~~..T..T',
-                    'T....~~......T',
-                    'T.T..~....T.TT',
-                    'T......T.....T',
-                    'TTTTT...TTTTTT',
+            shell: hqWoodsShell({ w: 24.5, d: 31.5, plate: { x: 0, z: -15.0, y: 7.0 }, floorColor: 0x7a8c5a }),
+            /* THE FIELD (2026-09-17): the switchbacks — the floor with a stream across
+               it, THE TERRACE (1.75 m) the full width of the trail up a ramp at the
+               east end, THE TOP TIER (3.5 m) up a ramp at the west, Shasta's frame on
+               it against the north wall. A dead snag on the top, the rims railed. */
+            terrain: {
+                floor: 'grass_2', cliff: 'rock_wall_1', path: 'dirt_2',
+                noise: { amp: 0.18, scale: 5 },
+                features: [
+                    { k: 'hill', x: -7, z: 9, r: 5, h: 0.9 },
+                    { k: 'stream', pts: [[-12.25, 12], [-4, 9.5], [4, 12], [12.25, 13.5]], w: 2.2, y: -0.2, depth: 0.5 },
+                    { k: 'plateau', x: 0, z: -2, w: 24.5, d: 8, h: 1.75 },                                    // THE TERRACE
+                    { k: 'ramp', x0: 9.5, z0: 6.8, x1: 9.5, z1: 1.7, w: 3.0, h0: 0, h1: 1.75 },               // up at the east end
+                    { k: 'plateau', x: 0, z: -11, w: 24.5, d: 9.5, h: 3.5 },                                  // THE TOP TIER
+                    { k: 'ramp', x0: -9.5, z0: -2.6, x1: -9.5, z1: -6.6, w: 2.8, h0: 1.75, h1: 3.5 },          // up at the west end
+                    { k: 'plateau', x: 8.5, z: -12.5, r: 1.5, h: 5.6, edge: 0.3 },                            // THE PINNACLE over the tier (the tape's)
+                    { k: 'rail', x0: -4.5, z0: -6.3, x1: 4.5, z1: -6.3 },                                      // the top tier's rim
+                    { k: 'rail', x0: -1.0, z0: 1.9, x1: 6.5, z1: 1.9 },                                        // the terrace's rim
+                    { k: 'path', pts: [[-0.9, 14], [3, 10], [9.5, 5], [9.5, -1], [-9.5, -4], [-9.5, -8], [-0.9, -13]], w: 1.6 },
+                    { k: 'grove', n: 12, kinds: ['tree', 'tree_2', 'tree_3'], seed: 2 },
+                    { k: 'scatter', key: 'pine', n: 5, seed: 3 },
+                    { k: 'scatter', key: 'fern', n: 8, seed: 4 },
+                    { k: 'scatter', key: 'menhir', n: 1, seed: 5 },
                 ],
-                legend: { 'Q': { lvl: 4, tree: 'tree_2' }, 'Z': { lvl: 2, tree: 'tree' } },
-                floor: 'grass_2', ledge: 'grass_rocky', rock: 'rock_wall_1',
             },
             doors: [
                 { id: 'clearing', wall: 's', x: -0.875, leaf: null,
@@ -28199,28 +28191,24 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'railing_1m',     x: -4.375, z: -7.3, face: 0 },                     // THE TOP TIER'S RIM (the park rule's rail) over the terrace
-                { key: 'railing_1m',     x: -2.625, z: -7.3, face: 0 },
-                { key: 'railing_1m',     x: -0.875, z: -7.3, face: 0 },
-                { key: 'railing_1m',     x: -0.875, z: -2.15, face: 0 },                    // the terrace's rim over the floor
-                { key: 'railing_1m',     x: 0.875, z: -2.15, face: 0 },
-                { key: 'railing_1m',     x: 2.625, z: -2.15, face: 0 },
-                { key: 'cave_torch',     x: -9.625, z: 12.25 },                             // the trail's torches: the foot, the terrace, the top
-                { key: 'cave_torch',     x: 8.75, z: 5.25 },
+                { key: 'cave_torch',     x: -10.2, z: 14.5 },                               // the trail's torches: the foot, the terrace, the top
+                { key: 'cave_torch',     x: 8.75, z: -1.2 },
                 { key: 'cave_torch',     x: -7.875, z: -4.375 },
-                { key: 'cave_torch',     x: 7.875, z: -12.25 },
-                { key: 'paper_sheet',    x: 4.375, z: -13.125, y: 0.01, face: 200 },        // a hand-drawn map of the mountain's inside, weighted with a stone
+                { key: 'cave_torch',     x: 7.875, z: -9.0 },
+                { key: 'dead_snag',      x: -6.5, z: -12.5 },                               // the snag on the top tier
+                { key: 'paper_sheet',    x: 4.375, z: -9.5, y: 0.01, face: 200 },          // a hand-drawn map of the mountain's inside, weighted with a stone
                 { key: 'floor_stain',    x: -2.625, z: 7.0 },
-                { key: 'cardboard_box',  x: -7.875, z: -0.875, face: 30 },                  // a cache of rope on the terrace: the switchbacks are the long way and Facilities knows a short one
+                { key: 'cardboard_box',  x: -6.0, z: -0.875, face: 30 },                    // a cache of rope on the terrace: the switchbacks are the long way and Facilities knows a short one
             ],
             agents: [],
-            npcSpots: [{ x: 2.625, z: -12.25, face: 200, race: 'nordic' }, { x: -7.875, z: 9.625, face: 40, race: 'yeti' }],
+            npcSpots: [{ x: 2.625, z: -10.5, face: 200, race: 'nordic' }, { x: -7.875, z: 5.5, face: 40, race: 'yeti' }],
             onlineSpots: [],
             lines: [
                 '“How far is the mountain?” “Two tiers.” “That is not a distance.” “It is here.”',
                 '“The snow does not melt.” “It is not snow.” “Then what is on the mountain?” “The mountain.”',
                 '“There is a door at the top.” “There is always a door at the top.”',
             ],
+
             spawn: { x: -2.625, z: 12.25, face: 0 },
         },
         /* ── THE REDWOOD TRAIL — the old trees, the creek and its plank, the owl's gate at the far end ── */
@@ -28228,28 +28216,28 @@ const DOOR_HQ = {
             label: 'THE WOODS · THE REDWOOD TRAIL',
             sub: 'THE OLD TREES · THE CREEK · THE WAY TO ROOM 23',
             kind: 'box', site: 'prebuilt_fairy_forest', part: 'redwoods',
-            shell: hqWoodsShell({ plate: { x: 0, z: -9.8, y: 5.0 }, floorColor: 0x5e6e46, mood: { light: 0x9fb8d8, ambient: 0.36 } }),
-            /* the grid (16 × 12): the redwoods `R` in ranks, the creek `~`
-               across the trail with the plank `=` over its deep bit, a
-               hummock (lvl 1, the ramp `a`) on the north side, the grove's
-               gate on the east wall */
-            cave: {
-                rows: [
-                //  0123456789012345
-                    'TTRTTTTRTTTTRTTT',
-                    'TR....R...R..RTT',
-                    'T..R.....R.1...T',
-                    'TR..R.~~...a.R.T',
-                    '......~~....R...',
-                    '..R...==........',
-                    '....R.~~..R.....',
-                    'TR....~~.....R.T',
-                    'T...R.~~..R....T',
-                    'TR....~~....R..T',
-                    'T..R.D~~D......T',
-                    'TTRTTTTTTTTRTTTT',
+            shell: hqWoodsShell({ w: 28, d: 21, plate: { x: 0, z: -9.8, y: 5.0 }, floorColor: 0x5e6e46, mood: { light: 0x9fb8d8, ambient: 0.36 } }),
+            /* THE FIELD (2026-09-17): the old trees — THE CREEK north to south with the
+               plank over it, a gully the fallen log spans, a hummock, and THE STAND: a
+               root mound (2.2 m) no jump reaches — the tape on it is the gun's. */
+            terrain: {
+                floor: 'forest', cliff: 'rock_wall_1', path: 'dirt_2',
+                noise: { amp: 0.2, scale: 4.5 },
+                features: [
+                    { k: 'hill', x: 8, z: -5, r: 5, h: 1.4 },
+                    { k: 'ridge', pts: [[3, -10.5], [6, 0], [9, 10.5]], w: 3.2, h: -0.9 },                   // the gully
+                    { k: 'deck', x0: 5.1, z0: -2.6, x1: 8.1, z1: 0.6, w: 0.9, y: 0.1, rails: false },        // the log you walk across it
+                    { k: 'stream', pts: [[-3, -10.5], [-2.6, -3], [-3.6, 4], [-3, 10.5]], w: 2.6, y: -0.3, depth: 0.7 },   // THE CREEK
+                    { k: 'deck', x0: -6.2, z0: -0.9, x1: 0.2, z1: -0.9, w: 1.4, y: 0.15 },                   // THE PLANK, past both banks
+                    { k: 'plateau', x: 10, z: 6, r: 2.4, h: 2.2, edge: 0.35 },                                // THE STAND
+                    { k: 'rail', x0: -6.2, z0: -2.2, x1: -2.4, z1: -2.2 },                                    // the plank's landing rail
+                    { k: 'path', pts: [[-11.6, -0.9], [-6, -0.9], [0, -0.9], [6, 0], [11.6, -0.9]], w: 1.5 },
+                    { k: 'grove', n: 12, kinds: ['tree_4'], h: 7.0, seed: 8 },
+                    { k: 'grove', n: 9, kinds: ['tree', 'tree_3', 'tree_5'], seed: 9 },
+                    { k: 'scatter', key: 'fern', n: 12, seed: 10 },
+                    { k: 'scatter', key: 'fallen_log', n: 1, seed: 11, r0: 1.9 },
+                    { k: 'scatter', key: 'stump', n: 3, seed: 12 },
                 ],
-                floor: 'grass_2', ledge: 'grass_rocky', rock: 'rock_wall_1',
             },
             doors: [
                 { id: 'clearing', wall: 'w', z: -0.875, leaf: null,
@@ -28259,17 +28247,16 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'railing_1m',     x: -0.875, z: -2.5, face: 0 },                     // the plank's landing rails (the park rule)
-                { key: 'railing_1m',     x: -0.875, z: 2.5, face: 0 },
                 { key: 'cave_torch',     x: -10.5, z: 4.375 },                              // the lantern trail: three stakes, one of them moving when not watched
                 { key: 'cave_torch',     x: 3.5, z: -7.0 },
-                { key: 'cave_torch',     x: 10.5, z: 4.375 },
+                { key: 'cave_torch',     x: 10.5, z: 3.0 },
                 { key: 'candle_ring',    x: 8.75, z: -5.25, y: 0.0 },
                 { key: 'paper_sheet',    x: -5.25, z: 7.0, y: 0.01, face: 110 },
-                { key: 'floor_stain',    x: 5.25, z: 0.875 },
+                { key: 'floor_stain',    x: 1.5, z: 3.5 },
             ],
+
             agents: [],
-            npcSpots: [{ x: 5.25, z: -7.0, face: 200, race: 'fairy' }, { x: -8.75, z: 5.25, face: 60, race: 'gnome' }],
+            npcSpots: [{ x: 1.4, z: -6.6, face: 200, race: 'fairy' }, { x: -8.75, z: 5.25, face: 60, race: 'gnome' }],
             onlineSpots: [],
             lines: [
                 '“How old is that one?” “Older than the Bureau.” “How do you know?” “It said so.”',
@@ -28283,29 +28270,30 @@ const DOOR_HQ = {
             label: 'THE WOODS · THE BACK PASTURE',
             sub: 'THE FENCE LINE · TWO GATES · ROOMS 512 AND 13',
             kind: 'box', site: 'prebuilt_fairy_forest', part: 'pasture',
-            shell: hqWoodsShell({ plate: { x: 0, z: -9.8, y: 4.4 }, floorColor: 0x8a9a5e, mood: { light: 0xc8b0e8, ambient: 0.4 } }),
-            /* the grid (16 × 12): open grass, the knoll (lvl 1, the ramp `m`
-               up its west side — the crop circle is on top), the creek off
-               the woods in the south-east; the ranch's gate on the west wall,
-               the house's garden gate on the north wall (the fence line),
-               the clearing on the east */
-            cave: {
-                rows: [
-                //  0123456789012345
-                    'TTTTTT...TTTTTTT',
-                    'T..............T',
-                    'T.T.......TT...T',
-                    'T....1111......T',
-                    '....m1111.......',
-                    '.....1111.......',
-                    '................',
-                    'T..T.......~~..T',
-                    'T.........~~...T',
-                    'T..D.....~~..T.T',
-                    'T........~~....T',
-                    'TTTTTTTTTTTTTTTT',
+            shell: hqWoodsShell({ w: 28, d: 21, plate: { x: 0, z: -9.8, y: 4.4 }, floorColor: 0x8a9a5e, mood: { light: 0xc8b0e8, ambient: 0.4 } }),
+            /* THE FIELD (2026-09-17): the back pasture — the knoll with the crop circle
+               on it, two more rises, THE POND, and THE FENCE along the north (two
+               lengths of dry-stone wall the walker jumps onto and rides): the garden
+               gate stands in its gap — the dead tree with the hole in it, the house on
+               the other side — and the ranch's gate on the west. */
+            terrain: {
+                floor: 'grass_2', cliff: 'dirt_2', path: 'dirt_2',
+                noise: { amp: 0.18, scale: 6 },
+                features: [
+                    { k: 'hill', x: -2.6, z: -3.5, r: 6, h: 1.2 },                                            // THE KNOLL (the circle)
+                    { k: 'hill', x: 9, z: -6, r: 4, h: 0.7 }, { k: 'hill', x: -9, z: 6, r: 4.5, h: 0.8 },
+                    { k: 'pool', x: 8, z: 5, r: 3.4, y: -0.25, depth: 0.6 },                                   // THE POND
+                    { k: 'plateau', x: -9, z: 6, r: 2.4, h: 1.3, edge: 0.5 },                                  // THE OUTCROP (a jump, or the ramp)
+                    { k: 'ramp', x0: -12.6, z0: 6, x1: -9.6, z1: 6, w: 2.0, h0: 0, h1: 1.3 },
+                    { k: 'wall', x0: -12.8, z0: -8.0, x1: -2.4, z1: -8.0, h: 1.0 },                            // THE FENCE, west of the gate
+                    { k: 'wall', x0: 0.9, z0: -8.0, x1: 12.8, z1: -8.0, h: 1.0 },                              // …and east of it
+                    { k: 'path', pts: [[11.6, -0.9], [4, -1], [-0.9, -6], [-0.9, -8.5]], w: 1.5 },
+                    { k: 'path', pts: [[4, -1], [-6, -0.9], [-11.6, -0.9]], w: 1.5 },
+                    { k: 'grove', n: 7, kinds: ['tree', 'tree_2', 'tree_5'], seed: 13 },
+                    { k: 'scatter', key: 'dead_snag', n: 1, seed: 14 },
+                    { k: 'scatter', key: 'stump', n: 3, seed: 15 },
+                    { k: 'scatter', key: 'fern', n: 6, seed: 16 },
                 ],
-                floor: 'grass_2', ledge: 'grass_rocky', rock: 'rock_wall_1',
             },
             doors: [
                 { id: 'clearing', wall: 'e', z: -0.875, leaf: null,
@@ -28315,22 +28303,17 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'railing_1m',     x: -11.375, z: -9.3, face: 0 },                    // THE FENCE (the park rule's rail): the line the two gates hang in
-                { key: 'railing_1m',     x: -9.625, z: -9.3, face: 0 },
-                { key: 'railing_1m',     x: -7.875, z: -9.3, face: 0 },
-                { key: 'railing_1m',     x: 2.625, z: -9.3, face: 0 },
-                { key: 'railing_1m',     x: 4.375, z: -9.3, face: 0 },
-                { key: 'railing_1m',     x: 6.125, z: -9.3, face: 0 },
                 { key: 'ritual_circle',  x: -2.625, z: -3.5, y: 0.0 },                      // THE CROP CIRCLE on the knoll: the ranch's, and this season's
                 { key: 'cave_torch',     x: -12.25, z: 5.25 },
-                { key: 'cave_torch',     x: 12.25, z: -7.0 },
-                { key: 'cave_torch',     x: 12.25, z: 7.0 },
+                { key: 'cave_torch',     x: 12.25, z: -6.5 },
+                { key: 'cave_torch',     x: 12.25, z: 8.6 },
                 { key: 'cardboard_boxes', x: -12.25, z: -5.25, face: 340 },                 // the ranch hands' tools, left in 1994
-                { key: 'floor_stain',    x: 7.0, z: 0.875 },
+                { key: 'floor_stain',    x: 3.0, z: 1.5 },
                 { key: 'paper_sheet',    x: -5.25, z: 5.25, y: 0.01, face: 20 },
             ],
+
             agents: [],
-            npcSpots: [{ x: 7.0, z: 5.25, face: 300, race: 'skinwalker' }, { x: -3.5, z: -3.5, face: 180, race: 'scarecrow' }],
+            npcSpots: [{ x: 3.2, z: 8.6, face: 300, race: 'skinwalker' }, { x: -3.5, z: -3.5, face: 180, race: 'scarecrow' }],
             onlineSpots: [],
             lines: [
                 '“Whose fence is it?” “The ranch’s.” “And the gate?” “The house’s.” “And the pasture?” “The woods’.”',
@@ -28344,31 +28327,27 @@ const DOOR_HQ = {
             label: 'THE WOODS · THE STAIRCASE',
             sub: 'A WOODEN FLIGHT · A LANDING · A DOOR',
             kind: 'box', site: 'prebuilt_fairy_forest', part: 'stair',
-            shell: hqWoodsShell({ plate: { x: 0, z: -9.8, y: 5.6 }, floorColor: 0x66784a, mood: { light: 0xb0c4ff, ambient: 0.34 } }),
-            /* the grid (12 × 12): THE FLIGHT `E G I M` — four STAIR cells
-               (2026-09-16: the board's own barrier_passage flight, wood
-               treads — never terrain blocks), each rising one level north,
-               up to THE LANDING (`J`, lvl 4, 3 × 3) against the north wall
-               where the door stands; a dead tree, a mound (lvl 1, the ramp
-               `a`) */
-            cave: {
-                rows: [
-                //  012345678901
-                    'TTTTJJJTTTTT',
-                    'T.T.JJJ..T.T',
-                    'T...JJJ....T',
-                    'T..T.M...T.T',
-                    'T....I.....T',
-                    'T.T..G..T..T',
-                    'T....E.....T',
-                    'T..T....T..T',
-                    'T.....D1...T',
-                    'TT.T...a.T.T',
-                    'T..........T',
-                    'TTTT...TTTTT',
+            shell: hqWoodsShell({ w: 21, d: 21, plate: { x: 0, z: -9.8, y: 5.6 }, floorColor: 0x66784a, mood: { light: 0xb0c4ff, ambient: 0.34 } }),
+            /* THE FIELD (2026-09-17): THE STAIRCASE — a wooden flight (a stair ramp, ten
+               metres, treads two samples deep) up to THE LANDING (3.5 m) the EXIT door
+               stands on, its banisters the rails; two quarter pipes on the floor for
+               the rider; THE TOWER (5 m) in the west — no stair to it, the tape on top. */
+            terrain: {
+                floor: 'grass_2', cliff: 'rock_wall_1', path: 'wood_planks',
+                noise: { amp: 0.16, scale: 5 },
+                features: [
+                    { k: 'hill', x: 6, z: 2, r: 4, h: 0.6 },
+                    { k: 'ramp', x0: 0, z0: 6.0, x1: 0, z1: -4.0, w: 3.0, h0: 0, h1: 3.5, stairs: true },      // THE STAIRCASE
+                    { k: 'plateau', x: 0, z: -7.4, w: 8, d: 6.4, h: 3.5 },                                     // THE LANDING
+                    { k: 'plateau', x: -7, z: 4, r: 1.6, h: 5.0, edge: 0.3 },                                 // THE TOWER (the tape's)
+                    { k: 'rail', x0: 1.6, z0: 5.6, x1: 1.6, z1: -4.0 },                                        // the banisters
+                    { k: 'rail', x0: -1.6, z0: 5.6, x1: -1.6, z1: -4.0 },
+                    { k: 'rail', x0: 3.9, z0: -4.4, x1: 3.9, z1: -10.4 },                                      // the landing's east rail
+                    { k: 'rail', x0: -3.9, z0: -4.4, x1: -3.9, z1: -10.4 },
+                    { k: 'path', pts: [[0, 6.0], [0, -4.0]], w: 3.0 },
+                    { k: 'grove', n: 8, kinds: ['tree', 'tree_2', 'tree_3'], seed: 17 },
+                    { k: 'scatter', key: 'fern', n: 6, seed: 18 },
                 ],
-                legend: { 'E': { lvl: 0, slope: 'n', stair: 'wood_planks', stairSide: 'wood' }, 'G': { lvl: 1, slope: 'n', stair: 'wood_planks', stairSide: 'wood' }, 'I': { lvl: 2, slope: 'n', stair: 'wood_planks', stairSide: 'wood' }, 'M': { lvl: 3, slope: 'n', stair: 'wood_planks', stairSide: 'wood' }, 'J': { lvl: 4, key: 'wood_planks' } },
-                floor: 'grass_2', ledge: 'grass_rocky', rock: 'rock_wall_1',
             },
             doors: [
                 { id: 'clearing', wall: 's', x: -0.875, leaf: null,
@@ -28378,25 +28357,24 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'railing_1m',     x: -2.625, z: -6.125, face: 90 },                  // THE LANDING'S BANISTERS (the park rule's rail): 3.5 m up
-                { key: 'railing_1m',     x: 0.875, z: -6.125, face: 90 },
-                { key: 'railing_1m',     x: -2.625, z: -7.875, face: 90 },
-                { key: 'railing_1m',     x: 0.875, z: -7.875, face: 90 },
+                { key: 'quarter_pipe',   x: 6.5, z: 7.0, face: 270 },                       // THE PARK: two pipes facing each other on the floor
+                { key: 'quarter_pipe',   x: 6.5, z: -1.5, face: 90 },
                 { key: 'cave_torch',     x: -7.875, z: 7.0 },
-                { key: 'cave_torch',     x: 7.0, z: 7.0 },
-                { key: 'cave_torch',     x: -5.25, z: -5.25 },
-                { key: 'lesson_sign',    x: 3.5, z: -1.75, face: 270, lesson: 'stair' },     // the plate at the foot: DO NOT USE THE STAIRS. USE THE STAIRS.
+                { key: 'cave_torch',     x: 7.0, z: 3.5 },
+                { key: 'cave_torch',     x: -5.25, z: -6.5 },
+                { key: 'lesson_sign',    x: 3.5, z: 4.0, face: 270, lesson: 'stair' },       // the plate at the foot: DO NOT USE THE STAIRS. USE THE STAIRS.
                 { key: 'paper_sheet',    x: -3.5, z: 3.5, y: 0.01, face: 250 },
                 { key: 'floor_stain',    x: 2.625, z: 2.625 },
             ],
             agents: [],
-            npcSpots: [{ x: 3.5, z: -5.25, face: 250, race: 'mothman' }],
+            npcSpots: [{ x: 2.6, z: -7.0, face: 250, race: 'mothman' }],
             onlineSpots: [],
             lines: [
                 '“Who built the stairs?” “Nobody.” “Who maintains them?” “Also nobody. Look at the varnish.”',
                 '“Do not go up.” “Why not?” “The door at the top opens.” “Onto what?” “Onto the building. That is the problem.”',
                 '“Four steps.” “Four big ones.”',
             ],
+
             spawn: { x: -4.375, z: 7.0, face: 0 },
         },
         /* ── DEAD MAN'S CAVE — THE STORM DRAIN (2026-09-16, the user: "literally a sewer, a narrow hallway like the service corridors"): an ENCLOSED brick culvert under the crag, the channel down its middle, a sump chamber halfway, the grate onto THE TUNNEL at the far end ── */
@@ -28408,39 +28386,29 @@ const DOOR_HQ = {
                3 m high, the concrete of the service corridors, lit by its own
                bulbs; the cave grid's rock is the culvert's brick, to the ceiling */
             shell: {
-                w: 0, d: 0, h: 3.0, wallH: 3.0, dadoH: 1.0,
-                floor: 'concrete', wall: 'concrete', dado: 'oxblood', trim: 'gunmetal', ceiling: 'concrete',
+                w: 35, d: 10.5, h: 3.0, wallH: 3.0, dadoH: 1.0,
+                floor: 'bricks_2', wall: 'bricks_2', dado: 'bricks_2', trim: 'gunmetal', ceiling: 'concrete',
                 floorColor: 0x6e6e66, wallColor: 0x585a56, dadoColor: 0x4a4a44, ceilColor: 0x4a4c48,
                 pipes: false, strips: false, lights: [],
                 mood: { light: 0x9fc0a8, ambient: 0.3 },
-                plate: { x: 1.75, z: -3.4, y: 2.5 },
+                plate: { x: 1.75, z: -4.6, y: 2.5 },
             },
-            /* the grid (20 × 13): a 3-cell culvert running west → east through
-               brick (`#`, to the ceiling), the channel `~` down its middle
-               (waded), a walkway either side, THE SUMP — a 6 × 5 chamber
-               halfway with the channel widening into it on the south and a raised
-               inspection ledge (lvl 1, the ramp `m` up its west end — the
-               park rule's ramp) in its north bay; the woods' door at the west
-               end, the grate (the link door) at the east. Every cell outside
-               the culvert is brick. */
-            cave: {
-                rows: [
-                //  01234567890123456789
-                    '####################',
-                    '####################',
-                    '####################',
-                    '####################',
-                    '########.m111.######',
-                    '....................',
-                    '.~~~~~~~~~~~~~~~~~~.',
-                    '..........~~~~......',
-                    '########......######',
-                    '####################',
-                    '####################',
-                    '####################',
-                    '####################',
+            /* THE FIELD (2026-09-17): the storm drain — a brick culvert 35 m long and
+               five wide, THE CHANNEL down its middle (waded), a walkway either side,
+               THE SUMP halfway (deep — never entered, the walkways go round it), an
+               inspection LEDGE (1 m) on the north bank with its ramp; the woods'
+               door at the west end, the grate at the east. */
+            terrain: {
+                floor: 'bricks_2', cliff: 'bricks_2', path: 'concrete', stalactites: false,
+                noise: { amp: 0.04, scale: 3 },
+                features: [
+                    { k: 'pool', x: 0, z: 2.6, r: 2.0, y: -0.3, depth: 1.5, key: 'deep_water' },              // THE SUMP
+                    { k: 'stream', pts: [[-17.5, 2.6], [17.5, 2.6]], w: 2.0, y: -0.3, depth: 0.55 },        // THE CHANNEL
+                    { k: 'plateau', x: 5.0, z: -3.9, w: 7.0, d: 2.4, h: 1.0, edge: 0.3 },                     // THE LEDGE on the north bank
+                    { k: 'ramp', x0: 0.4, z0: -3.9, x1: 2.0, z1: -3.9, w: 2.0, h0: 0, h1: 1.0 },              // its ramp
+                    { k: 'rail', x0: 1.8, z0: -2.6, x1: 8.4, z1: -2.6 },                                      // the ledge's handrail over the sump
+                    { k: 'path', pts: [[-17, -0.4], [17, -0.4]], w: 1.6 }, { k: 'path', pts: [[-17, 4.4], [17, 4.4]], w: 1.4 },
                 ],
-                floor: 'concrete_floor', ledge: 'concrete_floor', rock: 'bricks_2', stalactites: false,
             },
             doors: [
                 { id: 'clearing', wall: 'w', z: 0, leaf: null,
@@ -28450,28 +28418,27 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'railing_1m',     x: -0.875, z: -0.95, face: 0 },                    // the sump's handrail (the park rule): three metres of it along the channel
-                { key: 'railing_1m',     x: 0.875, z: -0.95, face: 0 },
-                { key: 'railing_1m',     x: 2.625, z: -0.95, face: 0 },
-                { key: 'graffiti_wall',  x: -11.375, z: -2.5, face: 180 },                  // THE PAINT: on the culvert's north wall, the sump's back wall, the south wall, by the grate
-                { key: 'graffiti_wall',  x: 0.875, z: -4.25, face: 180 },
-                { key: 'graffiti_wall',  x: 11.375, z: 2.5, face: 0 },
-                { key: 'graffiti_wall',  x: -4.375, z: 2.5, face: 0 },
+                { key: 'graffiti_wall',  x: -11.375, z: -2.5, face: 180 },                  // THE PAINT: on the culvert's north wall, the sump's back wall, the south wall
+                { key: 'graffiti_wall',  x: 5.0, z: -4.9, face: 180 },
+                { key: 'graffiti_wall',  x: 11.375, z: 4.9, face: 0 },
+                { key: 'graffiti_wall',  x: -4.375, z: 4.9, face: 0 },
+                { key: 'drain_grate',    wall: 'n', x: -8.0, mount: 0.4 },                   // the grates in the brick: the Works' side of the wall
+                { key: 'drain_grate',    wall: 'n', x: 12.5, mount: 0.4 },
                 { key: 'bare_bulb',      x: -8.75, z: 0 },                                  // the bulbs: the Works' power, nobody's bill
                 { key: 'bare_bulb',      x: 0.875, z: -1.75 },
                 { key: 'bare_bulb',      x: 10.5, z: 0 },
-                { key: 'flicker_tube',   x: -4.375, z: 1.75, face: 0 },
-                { key: 'flicker_tube',   x: 7.0, z: -1.75, face: 0 },
-                { key: 'pipe_run',       x: -12.25, z: -2.2, face: 0 },
-                { key: 'pipe_run',       x: 12.25, z: 2.2, face: 0 },
-                { key: 'floor_drain',    x: 3.5, z: 1.75 },
-                { key: 'cardboard_boxes', x: 6.125, z: -3.5, face: 15 },                    // somebody's things in the sump's dry corner
-                { key: 'wet_floor_sign', x: -13.125, z: 1.75, face: 30 },
-                { key: 'floor_stain',    x: 0.875, z: 1.75 },
-                { key: 'paper_sheet',    x: 7.0, z: -1.75, y: 0.01, face: 140 },            // a tag on a form: the Department's motto, crossed out, corrected
+                { key: 'flicker_tube',   x: -4.375, z: 4.4, face: 0 },
+                { key: 'flicker_tube',   x: 7.0, z: -1.0, face: 0 },
+                { key: 'pipe_run',       x: -12.25, z: -4.9, face: 0 },
+                { key: 'pipe_run',       x: 12.25, z: 4.9, face: 0 },
+                { key: 'floor_drain',    x: 3.5, z: 4.4 },
+                { key: 'cardboard_boxes', x: 7.5, z: -3.9, face: 15 },                      // somebody's things on the ledge, dry
+                { key: 'wet_floor_sign', x: -13.125, z: -0.6, face: 30 },
+                { key: 'floor_stain',    x: 0.875, z: 4.4 },
+                { key: 'paper_sheet',    x: 7.0, z: -0.6, y: 0.01, face: 140 },            // a tag on a form: the Department's motto, crossed out, corrected
             ],
             agents: [],
-            npcSpots: [{ x: -5.25, z: 1.75, face: 300, race: 'ghoul' }, { x: 12.25, z: -1.75, face: 270, race: 'gangster' }],
+            npcSpots: [{ x: -5.25, z: 4.4, face: 300, race: 'ghoul' }, { x: 12.25, z: -1.2, face: 270, race: 'gangster' }],
             onlineSpots: [],
             lines: [
                 '“Who is the dead man?” “Read the wall.” “The wall says everybody.” “Then everybody.”',
@@ -28479,37 +28446,32 @@ const DOOR_HQ = {
                 '“That is the subway.” “That is a grate.” “Behind the grate.” “Behind the grate is the subway.”',
                 '“It is a sewer.” “It is a storm drain.” “What is the difference?” “What is in it.”',
             ],
-            spawn: { x: -14.0, z: 1.75, face: 90 },
+            spawn: { x: -14.0, z: -0.6, face: 90 },
+
         },
         /* ── THE RITUAL GROUND — the stones, the fire, the circle that is Room 333's circle ── */
         site_prebuilt_fairy_forest_ritual: {
             label: 'THE WOODS · THE RITUAL GROUND',
             sub: 'THE STONES · THE FIRE · THE WAY TO ROOM 333',
             kind: 'box', site: 'prebuilt_fairy_forest', part: 'ritual',
-            shell: hqWoodsShell({ plate: { x: 0, z: -9.8, y: 4.6 }, floorColor: 0x5a6a44, mood: { light: 0xff9a50, ambient: 0.3 } }),
-            /* the grid (12 × 12): a ring of eight STANDING STONES (`S`, a
-               3.5 m block the walker never climbs) round the circle and the
-               altar, a mound (lvl 1, the ramp `a`) in the south-west; the
-               circle's door on the north wall opens on Room 333 — the same
-               chalk, the same candles, indoors */
-            cave: {
-                rows: [
-                //  012345678901
-                    'TTTT...TTTTT',
-                    'T.T........T',
-                    'T.....S....T',
-                    'T..S.....S.T',
-                    'T...........',
-                    'TS.......S..',
-                    'T...........',
-                    'T..........T',
-                    'T.1S.....S.T',
-                    'T.a...S....T',
-                    'T.T......T.T',
-                    'TTTTTTTTTTTT',
+            shell: hqWoodsShell({ w: 21, d: 21, plate: { x: 0, z: -9.8, y: 4.6 }, floorColor: 0x5a6a44, mood: { light: 0xff9a50, ambient: 0.3 } }),
+            /* THE FIELD (2026-09-17): THE MOUND with the circle on top, a henge ditch
+               round it, the standing stones (the user's menhir) in a ring, THE ALTAR
+               STONE — a 2.4 m rock behind the altar the walker cannot climb (the tape
+               on it), the hell arch on the north, and THE DEAD TREE in the south-east
+               corner: the hole in it looks onto a marble floor. */
+            terrain: {
+                floor: 'grass_dark_fantasy', cliff: 'rock_wall_2', path: 'dirt_2',
+                noise: { amp: 0.14, scale: 5 },
+                features: [
+                    { k: 'hill', x: 0, z: 0, r: 8.5, h: 1.1 },                                                // THE MOUND
+                    { k: 'ridge', pts: [[7.4, 0], [5.2, 5.2], [0, 7.4], [-5.2, 5.2], [-7.4, 0], [-5.2, -5.2], [0, -7.4], [5.2, -5.2], [7.4, 0]], w: 2.0, h: -0.45 },   // the ditch
+                    { k: 'plateau', x: 0, z: -6.3, r: 1.3, h: 2.4, edge: 0.3 },                                // THE ALTAR STONE (the tape's)
+                    { k: 'rail', x0: -6.5, z0: 3.9, x1: -3.5, z1: 3.9 },                                       // the mound's rail
+                    { k: 'path', pts: [[8.5, -0.9], [3, -0.9], [0, -3], [-0.9, -8.5]], w: 1.4 },
+                    { k: 'grove', n: 8, kinds: ['tree_5', 'tree_6', 'tree'], seed: 19 },
+                    { k: 'scatter', key: 'fern', n: 5, seed: 20 },
                 ],
-                legend: { 'S': { lvl: 4, key: 'rocks_dark_fantasy', walk: false } },
-                floor: 'grass_2', ledge: 'grass_rocky', rock: 'rock_wall_1',
             },
             doors: [
                 { id: 'clearing', wall: 'e', z: -0.875, leaf: null,
@@ -28519,11 +28481,15 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'railing_1m',     x: -6.125, z: 3.9, face: 0 },                      // the mound's rail (the park rule)
-                { key: 'railing_1m',     x: -4.375, z: 3.9, face: 0 },
                 { key: 'ritual_circle',  x: 0.0, z: 0.0, y: 0.0 },                          // THE CIRCLE: the same chalk as Room 333's, drawn from the other side
                 { key: 'candle_ring',    x: 0.0, z: 0.0, y: 0.0 },
                 { key: 'stone_altar',    x: 0.0, z: -2.625, face: 0 },
+                { key: 'menhir',         x: 5.2, z: 0.0, face: 90 },                        // THE STONES
+                { key: 'menhir',         x: 3.7, z: 3.7, face: 45 },
+                { key: 'menhir',         x: -3.7, z: 3.7, face: 315 },
+                { key: 'menhir',         x: -5.2, z: 0.0, face: 270 },
+                { key: 'menhir',         x: -3.7, z: -3.7, face: 225 },
+                { key: 'menhir',         x: 3.7, z: -3.7, face: 135 },
                 { key: 'cave_torch',     x: -7.875, z: -7.0 },
                 { key: 'cave_torch',     x: 7.0, z: -7.0 },
                 { key: 'cave_torch',     x: 7.0, z: 7.0 },
@@ -28533,6 +28499,7 @@ const DOOR_HQ = {
                 { key: 'paper_sheet',    x: 2.625, z: -4.375, y: 0.01, face: 190 },         // the minutes, weighted with a stone
                 { key: 'floor_stain',    x: -1.75, z: 1.75 },
             ],
+
             agents: [],
             npcSpots: [{ x: 2.625, z: 3.5, face: 0, race: 'necromancer' }, { x: -2.625, z: -4.375, face: 160, race: 'goatman' }],
             onlineSpots: [],
@@ -29859,6 +29826,7 @@ function hqLinkDoors(roomId) {
         if (link.note) d.note = link.note;
         if (end.wall === 'free') { d.x = end.x; d.z = end.z; d.face = end.face; }
         else d[(end.wall === 'n' || end.wall === 's') ? 'x' : 'z'] = end[(end.wall === 'n' || end.wall === 's') ? 'x' : 'z'];
+        if (typeof end.y === 'number') d.y = end.y;   // THE TERRAIN ROOM (2026-09-17): an end on a tier carries its height (the door's pad flattens the field to it)
         // Link gates are independent of the destination's sector gate.
         if (link.gate) {
             if (link.gate.minClearance != null) d.minClearance = link.gate.minClearance;
@@ -30638,6 +30606,416 @@ function hqCaveFitRooms() {
     });
 }
 hqCaveFitRooms();
+/* ══ THE TERRAIN ROOM (HQ plan 9.3 stage 4 — 2026-09-17) ═══════════════════
+   The user, on the cave grid: "make the exploratory areas more complex with
+   different smooth elevations like ridges and ledges and winding pathways
+   and inclines and hills and dips and walls … 3D platforming for door gun
+   puzzles and ramp-like obstacles and tall platforms for skateboarding
+   tricks and big huge jumps. Difficult to get to / hard to see areas for
+   the VHS tapes. Redo the cave and the woods." So a box room may carry
+   `terrain` instead of `cave`: a SMOOTH HEIGHT FIELD composed from FEATURES
+   in room metres (x east, z south, the room centred), sampled once onto a
+   grid (`res` m) that IS the floor — the renderer's mesh (three-renderer.js
+   _hqBuildTerrain) and the walker's feet (hqTerrainFeet) read the same
+   samples, so what you see is what you walk. The ASCII grid (hqCaveCompile,
+   the rev 11 dungeon) stays in the code for any room that still wears
+   `cave`; no room does today.
+
+   `terrain = { floor, cliff, path, base?, res?, noise?, crag?, features:
+   [...] }` — the three SHEETS (the floor's terrain key, the cliff faces',
+   the paths'); `features` in order, each `{ k: <kind>, ... }`:
+     RELIEF (additive, in order):
+       hill   { x, z, r, h, rz?, rot? }        a dome (rz = an ellipse's other radius, rot degrees)
+       dip    { x, z, r, h, rz?, rot? }        a hollow (h positive = the depth)
+       ridge  { pts: [[x, z], …], w, h }       a smooth ridge along a polyline (h < 0 = a gully)
+     STANDING (absolute heights, the surface is AT LEAST this):
+       plateau { x, z, r | w, d, rot?, h, edge?, dome? }   a flat-topped tier with STEEP sides — a ledge
+                                                          the walker drops off and cannot climb (edge = the
+                                                          cliff's run, 0.35 m; a wider edge is a bank it can)
+       ramp    { x0, z0, x1, z1, w, h0, h1, edge?, stairs? }  an incline from h0 to h1 along the line
+                                                          (stairs: true = the samples are treads, 2 cells each)
+       deck    { x0, z0, x1, z1, w, y }        a plank bridge: a flat deck at y over whatever is under it
+     WATER (set: the ground is TAKEN DOWN to the bed, the sheet drawn at y):
+       pool    { x, z, r, y, depth, key?, bank? }          a pond (key water | deep_water | lava)
+       stream  { pts, w, y, depth, key?, bank? }           a water course along a polyline
+     THE REST (no height):
+       wall   { x0, z0, x1, z1, h, t? }         a thin wall standing ON the ground, h above it — a wall to
+                                                the walker (jumped onto when low: the top is a floor and a
+                                                grind rail)
+       rail   { x0, z0, x1, z1, h? }            a grind rail on posts along the ground
+       path   { pts, w }                        a worn path: the path sheet painted along it
+       tree   { x, z, kind?, h? }               one tree (a blocker; the near kit's foliage model)
+       grove  { x, z, r, n, kinds?, seed? }     n trees scattered in a disc, clear of pads / paths / water
+       scatter { key, n, x?, z?, r?, seed? }    n catalogue props scattered (ferns, stumps, logs, rocks)
+   Every DOOR gets a PAD (a flat landing 3.4 × 3.2 m at the door's `y`, else
+   the relief's height at its lane — a door on a tier carries `y`); a free
+   way (a well head, a hollow tree) gets a round pad at its own spot. Pads
+   are applied last, so the ground always meets a door's sill.
+   THE WALKER'S RULE (hqTerrainFeet): the feet are the sampled height;
+   CLIMBING is refused where the slope is steeper than `maxSlope` (tan 45°)
+   — a plateau's edge, a crag — but any DROP is taken (gravity does it:
+   platforming); water is waded `wade` m under its sheet and never entered
+   deeper than `wadeMax` (deep water, lava: never); a wall is solid unless
+   the feet reach its top. hqTerrainReach walks the grid with that rule
+   (the solver every test uses: every door reaches every other). Nothing
+   on `state`, nothing relayed (RULE #2).
+   ═══════════════════════════════════════════════════════════════════════ */
+const HQ_TERRAIN_RULES = {
+    res: 0.5, resFine: 0.35, fineBelow: 26,
+    maxSlope: 1.0, climb: 0.62, dropMax: 40, wade: 0.55, wadeMax: 1.15,
+    padW: 3.4, padD: 3.2, padEdge: 1.2, freePadR: 1.7, rim: 1.0,
+    cliffFrom: 0.55, cliffTo: 1.3,       // the cliff sheet fades in between these slopes
+    bodyR: 0.34, treeR: 0.38, tile: 1.75,
+};
+function _hqTSmooth(t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); }
+function _hqTHash(ix, iz, seed) {
+    let n = (ix * 374761393 + iz * 668265263 + (seed | 0) * 1274126177) | 0;
+    n = Math.imul(n ^ (n >>> 13), 1274126177);
+    return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+}
+/* value noise, two octaves, in [−1, 1] */
+function _hqTNoise(x, z, scale, seed) {
+    let sum = 0, amp = 1, tot = 0, s = scale;
+    for (let o = 0; o < 2; o++) {
+        const fx = x / s, fz = z / s, ix = Math.floor(fx), iz = Math.floor(fz), tx = _hqTSmooth(fx - ix), tz = _hqTSmooth(fz - iz);
+        const a = _hqTHash(ix, iz, seed + o), b = _hqTHash(ix + 1, iz, seed + o), c = _hqTHash(ix, iz + 1, seed + o), d = _hqTHash(ix + 1, iz + 1, seed + o);
+        sum += ((a * (1 - tx) + b * tx) * (1 - tz) + (c * (1 - tx) + d * tx) * tz) * 2 * amp - amp;
+        tot += amp; amp *= 0.5; s *= 0.5;
+    }
+    return sum / tot;
+}
+function _hqTSegDist(px, pz, x0, z0, x1, z1) {
+    const dx = x1 - x0, dz = z1 - z0, L2 = dx * dx + dz * dz;
+    let t = L2 > 1e-9 ? ((px - x0) * dx + (pz - z0) * dz) / L2 : 0; t = t < 0 ? 0 : t > 1 ? 1 : t;
+    return { d: Math.hypot(px - (x0 + dx * t), pz - (z0 + dz * t)), t };
+}
+function _hqTPolyDist(px, pz, pts) {
+    let best = Infinity, at = 0, seg = 0;
+    for (let i = 0; i + 1 < pts.length; i++) { const r = _hqTSegDist(px, pz, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]); if (r.d < best) { best = r.d; at = r.t; seg = i; } }
+    return { d: best, t: at, seg };
+}
+/* an ellipse's normalised distance (1 at the rim) */
+function _hqTEllipse(px, pz, f) {
+    const rot = (f.rot || 0) * Math.PI / 180, c = Math.cos(rot), s = Math.sin(rot);
+    const dx = px - f.x, dz = pz - f.z, u = dx * c + dz * s, v = -dx * s + dz * c;
+    const rx = f.r || f.w / 2 || 1, rz = f.rz || f.r || f.d / 2 || rx;
+    return Math.hypot(u / rx, v / rz);
+}
+/* a rotated rectangle's INSIDE distance (≥ 0 inside, < 0 outside — the distance past the nearest edge) */
+function _hqTRectIn(px, pz, f) {
+    const rot = (f.rot || 0) * Math.PI / 180, c = Math.cos(rot), s = Math.sin(rot);
+    const dx = px - f.x, dz = pz - f.z, u = dx * c + dz * s, v = -dx * s + dz * c;
+    return Math.min(f.w / 2 - Math.abs(u), f.d / 2 - Math.abs(v));
+}
+/* a ramp's local frame: t along (0 at the start, 1 at the end), v across (metres), inside */
+function _hqTRamp(px, pz, f) {
+    const dx = f.x1 - f.x0, dz = f.z1 - f.z0, L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L;
+    const rx = px - f.x0, rz = pz - f.z0, along = rx * ux + rz * uz, across = -rx * uz + rz * ux;
+    return { t: along / L, s: along, v: across, L, ux, uz };
+}
+function hqTerrainRooms() { const R = DOOR_HQ.rooms || {}; return Object.keys(R).filter(k => R[k] && R[k].terrain); }
+function hqTerrainInfo(roomId) {
+    const r = (DOOR_HQ.rooms || {})[roomId]; if (!r || !r.terrain) return null;
+    if (!r._terrainInfo) Object.defineProperty(r, '_terrainInfo', { value: hqTerrainCompile(r, roomId), enumerable: false, configurable: true, writable: true });   // non-enumerable: a room is stringified by readers (never a visible field)
+    return r._terrainInfo;
+}
+function hqTerrainCompile(room, roomId) {
+    const T = room.terrain, S = room.shell || {}, R = HQ_TERRAIN_RULES;
+    const roam = (S.edge === 'open' && S.roam > 0) ? S.roam : 0;
+    const halfW = S.w / 2 + roam + 1.0, halfD = S.d / 2 + roam + 1.0;
+    const res = T.res || (Math.max(S.w, S.d) <= R.fineBelow ? R.resFine : R.res);
+    const nx = Math.ceil(2 * halfW / res) + 1, nz = Math.ceil(2 * halfD / res) + 1;
+    const x0 = -(nx - 1) * res / 2, z0 = -(nz - 1) * res / 2;
+    const base = T.base || 0, seed = (typeof hqHash === 'function') ? hqHash(String(roomId || room.label || 'terrain')) : 7;
+    const F = T.features || [];
+    const relief = [], standing = [], basins = [], pads = [], walls = [], rails = [], paths = [], decks = [], fluids = [], trees = [], scatterRows = [];
+    F.forEach(f => {
+        switch (f.k) {
+            case 'hill': case 'dip': case 'ridge': relief.push(f); break;
+            case 'plateau': case 'ramp': standing.push(f); break;
+            case 'deck': standing.push(f); decks.push(f); break;
+            case 'pool': basins.push(f); fluids.push({ kind: 'pool', x: f.x, z: f.z, r: f.r, rz: f.rz, rot: f.rot, y: f.y, key: f.key || 'water', depth: f.depth || 0.8 }); break;
+            case 'stream': basins.push(f); fluids.push({ kind: 'stream', pts: f.pts, w: f.w, y: f.y, key: f.key || 'water', depth: f.depth || 0.6 }); break;
+            case 'wall': walls.push(f); break;
+            case 'rail': rails.push(f); break;
+            case 'path': paths.push(f); break;
+            case 'tree': trees.push({ x: f.x, z: f.z, kind: f.kind || 'tree', h: f.h || null, r: f.r || R.treeR }); break;
+            case 'grove': case 'scatter': scatterRows.push(f); break;
+            default: break;
+        }
+    });
+    const closed = !S.open;
+    const noise = T.noise || null, crag = T.crag || null;
+    /* the door pads (every door / way a flat landing at its sill) */
+    const doorPads = [];
+    (room.doors || []).forEach(d => {
+        if (d.level) return;
+        const wall = d.wall;
+        if (wall === 'free') {   // a free way: a rect pad from the object to 1.2 m past its landing, turned to its face (a tongue the landing stands on)
+            const f = (d.face || 0) * Math.PI / 180, cx = (d.x || 0) + Math.sin(f) * 1.5, cz = (d.z || 0) - Math.cos(f) * 1.5;
+            doorPads.push({ door: d, x: cx, z: cz, w: R.padW, d: 4.8, rot: 180 + (d.face || 0), hAt: (typeof d.y === 'number') ? d.y : null, lane: { x: d.x || 0, z: d.z || 0 }, free: true }); return;
+        }
+        if (!wall) return;
+        const w = d.wide ? R.padW + 0.8 : R.padW;
+        if (wall === 'n') doorPads.push({ door: d, x: d.x || 0, z: -S.d / 2 + R.padD / 2, w, d: R.padD, rot: 0, hAt: (typeof d.y === 'number') ? d.y : null, lane: { x: d.x || 0, z: -S.d / 2 + 1.2 } });
+        else if (wall === 's') doorPads.push({ door: d, x: d.x || 0, z: S.d / 2 - R.padD / 2, w, d: R.padD, rot: 0, hAt: (typeof d.y === 'number') ? d.y : null, lane: { x: d.x || 0, z: S.d / 2 - 1.2 } });
+        else if (wall === 'e') doorPads.push({ door: d, x: S.w / 2 - R.padD / 2, z: d.z || 0, w: R.padD, d: w, rot: 0, hAt: (typeof d.y === 'number') ? d.y : null, lane: { x: S.w / 2 - 1.2, z: d.z || 0 } });
+        else if (wall === 'w') doorPads.push({ door: d, x: -S.w / 2 + R.padD / 2, z: d.z || 0, w: R.padD, d: w, rot: 0, hAt: (typeof d.y === 'number') ? d.y : null, lane: { x: -S.w / 2 + 1.2, z: d.z || 0 } });
+    });
+    /* ── the height BEFORE the pads: the base (noise + the crag, which never stands in a door's lane), then every
+       feature IN AUTHORED ORDER — relief adds, a plateau / ramp / deck is a floor (max), a pool / stream CARVES to
+       its bed: so a pool authored after a tier is sunk into the tier, a ramp or a deck authored after a stream
+       crosses it as a causeway ── */
+    const inLane = (px, pz, grow) => doorPads.some(p => (p.r ? p.r - Math.hypot(px - p.x, pz - p.z) : _hqTRectIn(px, pz, p)) > -grow);
+    const hBase = (px, pz) => {
+        let h = base;
+        if (noise) h += (noise.amp || 0.15) * _hqTNoise(px, pz, noise.scale || 5, seed + (noise.seed || 0));
+        if (crag && closed && !inLane(px, pz, 1.3)) {
+            const din = Math.min(S.w / 2 - Math.abs(px), S.d / 2 - Math.abs(pz));
+            const jit = 0.55 + 0.45 * (0.5 + 0.5 * _hqTNoise(px, pz, crag.scale || 3.5, seed + 91));
+            const depth = (crag.depth || 2.2) * jit, edge = crag.edge || 0.7;
+            if (din < depth) { const t = din < depth - edge ? 1 : (depth - din) / edge; h += (crag.h || 2.5) * (0.7 + 0.3 * jit) * _hqTSmooth(t); }
+        }
+        return h;
+    };
+    const ordered = F.filter(f => /^(hill|dip|ridge|plateau|ramp|deck|pool|stream)$/.test(f.k));
+    const hBefore = (px, pz) => {
+        let h = hBase(px, pz);
+        for (const f of ordered) {
+            if (f.k === 'ridge') { const r = _hqTPolyDist(px, pz, f.pts); h += f.h * _hqTSmooth(1 - r.d / (f.w / 2)); }
+            else if (f.k === 'hill' || f.k === 'dip') { const e = _hqTEllipse(px, pz, f); const sm = _hqTSmooth(1 - e); h += (f.k === 'dip' ? -f.h : f.h) * (f.dome ? sm * sm : sm); }
+            else if (f.k === 'plateau') {
+                let din;
+                if (f.r) din = (1 - _hqTEllipse(px, pz, f)) * Math.min(f.r, f.rz || f.r); else din = _hqTRectIn(px, pz, f);
+                if (din <= 0) continue;
+                const edge = (f.edge != null) ? f.edge : 0.35;
+                let fh = f.h * _hqTSmooth(din / edge);
+                if (f.dome && din > edge) fh += f.dome * _hqTSmooth((din - edge) / Math.max(0.5, (f.r || Math.min(f.w, f.d) / 2) - edge));
+                if (fh > h) h = fh;
+            } else if (f.k === 'ramp') {
+                const L = _hqTRamp(px, pz, f), edge = (f.edge != null) ? f.edge : 0.35;
+                if (L.t < -0.02 || L.t > 1.02 || Math.abs(L.v) > f.w / 2) continue;
+                let t = Math.max(0, Math.min(1, L.t));
+                if (f.stairs) { const tread = 2 * res, n = Math.max(1, Math.round(L.L / tread)); t = Math.min(1, Math.floor(t * n + 0.001) / n); }
+                let fh = f.h0 + (f.h1 - f.h0) * t;
+                const side = f.w / 2 - Math.abs(L.v); if (side < edge) fh = fh * _hqTSmooth(side / edge) + h * (1 - _hqTSmooth(side / edge));
+                if (fh > h) h = fh;
+            } else if (f.k === 'deck') {
+                const L = _hqTRamp(px, pz, f);
+                if (L.t < 0 || L.t > 1 || Math.abs(L.v) > f.w / 2) continue;
+                if (f.y > h) h = f.y;
+            } else {   // pool / stream: carve
+                const bank = (f.bank != null) ? f.bank : 0.9, bed = f.y - (f.depth || (f.k === 'pool' ? 0.8 : 0.6));
+                let din;
+                if (f.k === 'pool') din = (1 - _hqTEllipse(px, pz, f)) * Math.min(f.r, f.rz || f.r);
+                else din = f.w / 2 - _hqTPolyDist(px, pz, f.pts).d;
+                if (din <= -bank) continue;
+                const t = _hqTSmooth((din + bank) / bank);
+                h = h * (1 - t) + Math.min(h, bed) * t;
+            }
+        }
+        return h;
+    };
+    /* the pads: their heights (the sill = the door's y, else the ground at the lane) */
+    doorPads.forEach(p => { if (p.hAt == null) { const q = p.lane || p; p.hAt = Math.round(hBefore(q.x, q.z) * 20) / 20; } p.h = p.hAt; });
+    const hPads = (px, pz, h) => {
+        for (const p of doorPads) {
+            let din;
+            if (p.r) din = p.r - Math.hypot(px - p.x, pz - p.z); else din = _hqTRectIn(px, pz, p);
+            if (din <= -R.padEdge) continue;
+            const t = _hqTSmooth((din + R.padEdge) / R.padEdge);
+            h = h * (1 - t) + p.h * t;
+        }
+        return h;
+    };
+    const hFinal = (px, pz) => {
+        let h = hPads(px, pz, hBefore(px, pz));
+        if (closed) { const din = Math.min(S.w / 2 - Math.abs(px), S.d / 2 - Math.abs(pz)); if (din < R.rim && h < base) h = base; }
+        return h;
+    };
+    /* ── sample the grid ── */
+    const H = new Float32Array(nx * nz);
+    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) H[j * nx + i] = hFinal(x0 + i * res, z0 + j * res);
+    const info = { room, roomId: roomId || null, S, res, nx, nz, x0, z0, halfW, halfD, H, base, floor: T.floor || S.floor || 'grass_2', cliff: T.cliff || 'rock_wall_1', path: T.path || 'dirt_2',
+                   pads: doorPads, walls: [], rails: [], paths, decks, fluids, trees: [], scatter: [], tile: T.tile || R.tile, rules: R, closed, hFn: hFinal };
+    const hAt = (px, pz) => hqTerrainHeight(info, px, pz);
+    /* the walls: standing on the ground, their top h above the highest ground under them (or an absolute `y`) */
+    walls.forEach(w => {
+        let gmax = -Infinity, gmin = Infinity;
+        for (let k = 0; k <= 8; k++) { const g = hAt(w.x0 + (w.x1 - w.x0) * k / 8, w.z0 + (w.z1 - w.z0) * k / 8); if (g > gmax) gmax = g; if (g < gmin) gmin = g; }
+        const top = (typeof w.y === 'number') ? w.y : gmax + w.h;
+        info.walls.push({ x0: w.x0, z0: w.z0, x1: w.x1, z1: w.z1, t: w.t || 0.35, base: gmin - 0.3, top, h: w.h, key: w.key || null });
+        info.rails.push({ x0: w.x0, z0: w.z0, x1: w.x1, z1: w.z1, y: top, wall: true });
+    });
+    rails.forEach(r => {
+        const y = (hAt(r.x0, r.z0) + hAt(r.x1, r.z1)) / 2 + (r.h != null ? r.h : 0.98);
+        info.rails.push({ x0: r.x0, z0: r.z0, x1: r.x1, z1: r.z1, y, rail: true });
+    });
+    /* the trees + the scatter: seeded, on flat dry ground, clear of pads / paths / water / doors / each other */
+    const placed = [];
+    const freeFor = (px, pz, rad, opts) => {
+        if (Math.abs(px) > S.w / 2 - 0.6 || Math.abs(pz) > S.d / 2 - 0.6) return false;
+        if (hqTerrainFeet(info, px, pz, null) === null) return false;
+        if (hqTerrainFluidAt(info, px, pz)) return false;
+        if (hqTerrainSlope(info, px, pz) > (opts.slope || 0.5)) return false;
+        for (const p of doorPads) { const din = p.r ? p.r - Math.hypot(px - p.x, pz - p.z) : _hqTRectIn(px, pz, p); if (din > -(rad + 0.4)) return false; }
+        if (!opts.onPath) for (const p of paths) if (_hqTPolyDist(px, pz, p.pts).d < p.w / 2 + rad) return false;
+        for (const d of decks) { const L = _hqTRamp(px, pz, d); if (L.t > -0.1 && L.t < 1.1 && Math.abs(L.v) < d.w / 2 + rad + 0.3) return false; }
+        for (const q of placed) if (Math.hypot(px - q.x, pz - q.z) < q.r + rad + (opts.apart || 0.6)) return false;
+        for (const p of room.props || []) { if (p.wall || p.ceil) continue; if (Math.hypot(px - (p.x || 0), pz - (p.z || 0)) < rad + 0.9) return false; }
+        for (const q of (room.npcSpots || []).concat(room.agents || [], room.onlineSpots || [])) if (q && q.x != null && Math.hypot(px - q.x, pz - q.z) < rad + 1.0) return false;
+        for (const c of room.counters || []) if (Math.hypot(px - c.x, pz - c.z) < (c.radius || 2) + rad) return false;
+        if (room.spawn && Math.hypot(px - room.spawn.x, pz - room.spawn.z) < rad + 1.6) return false;
+        return true;
+    };
+    trees.forEach(t => { placed.push({ x: t.x, z: t.z, r: t.r }); info.trees.push(Object.assign({ y: hAt(t.x, t.z) }, t)); });
+    scatterRows.forEach((f, fi) => {
+        const n = f.n || 6, isTree = f.k === 'grove', rad = isTree ? R.treeR : (f.r0 || 0.45);
+        const kinds = f.kinds || ['tree', 'tree', 'tree_2', 'tree_3'];
+        let s = (typeof hqHash === 'function') ? hqHash((roomId || '') + '|' + f.k + '|' + (f.key || '') + '|' + fi + '|' + (f.seed || 0)) : fi * 7919;
+        const rnd = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
+        let made = 0;
+        for (let tries = 0; tries < n * 40 && made < n; tries++) {
+            let px, pz;
+            if (f.x != null && f.r) { const a = rnd() * Math.PI * 2, rr = Math.sqrt(rnd()) * f.r; px = f.x + Math.cos(a) * rr; pz = f.z + Math.sin(a) * rr; }
+            else { px = (rnd() - 0.5) * (S.w - 1.6); pz = (rnd() - 0.5) * (S.d - 1.6); }
+            px = Math.round(px * 100) / 100; pz = Math.round(pz * 100) / 100;
+            if (!freeFor(px, pz, rad, { slope: f.slope || 0.5, onPath: !!f.onPath, apart: isTree ? 0.9 : 0.5 })) continue;
+            placed.push({ x: px, z: pz, r: rad }); made++;
+            if (isTree) info.trees.push({ x: px, z: pz, kind: kinds[Math.floor(rnd() * kinds.length)], h: f.h || null, r: rad, y: hAt(px, pz) });
+            else info.scatter.push({ key: f.key, x: px, z: pz, y: hAt(px, pz), face: Math.round(rnd() * 360), r: rad, foot: (f.foot != null) ? f.foot : undefined });
+        }
+    });
+    return info;
+}
+/* the sampled height at (x, z), bilinear; the edge sample past the grid */
+function hqTerrainHeight(info, x, z) {
+    const fx = (x - info.x0) / info.res, fz = (z - info.z0) / info.res;
+    let i = Math.floor(fx), j = Math.floor(fz);
+    if (i < 0) i = 0; if (j < 0) j = 0; if (i > info.nx - 2) i = info.nx - 2; if (j > info.nz - 2) j = info.nz - 2;
+    const tx = Math.max(0, Math.min(1, fx - i)), tz = Math.max(0, Math.min(1, fz - j)), H = info.H, nx = info.nx;
+    const a = H[j * nx + i], b = H[j * nx + i + 1], c = H[(j + 1) * nx + i], d = H[(j + 1) * nx + i + 1];
+    return (a * (1 - tx) + b * tx) * (1 - tz) + (c * (1 - tx) + d * tx) * tz;
+}
+/* the slope (tan) at (x, z): a central difference one cell wide */
+function hqTerrainSlope(info, x, z) {
+    const e = info.res;
+    const dx = (hqTerrainHeight(info, x + e, z) - hqTerrainHeight(info, x - e, z)) / (2 * e);
+    const dz = (hqTerrainHeight(info, x, z + e) - hqTerrainHeight(info, x, z - e)) / (2 * e);
+    return Math.hypot(dx, dz);
+}
+function hqTerrainFluidAt(info, x, z) {
+    for (const f of info.fluids) {
+        if (f.kind === 'pool') { if (_hqTEllipse(x, z, f) <= 1) return f; }
+        else if (_hqTPolyDist(x, z, f.pts).d <= f.w / 2) return f;
+    }
+    return null;
+}
+function hqTerrainWallAt(info, x, z, pad) {
+    for (const w of info.walls) if (_hqTSegDist(x, z, w.x0, w.z0, w.x1, w.z1).d <= w.t / 2 + (pad || 0)) return w;
+    return null;
+}
+/* THE WALKER'S FEET at (x, z) coming from curY (null = a free query: the ground, a wall's top, a sheet's wade)
+   — a number, or null (a wall, a cliff climbed, deep water, lava, off the grid) */
+function hqTerrainFeet(info, x, z, curY) {
+    const R = info.rules;
+    if (Math.abs(x) > info.halfW - 0.5 || Math.abs(z) > info.halfD - 0.5) return null;
+    const g = hqTerrainHeight(info, x, z);
+    let y = g;
+    const w = hqTerrainWallAt(info, x, z, R.bodyR);
+    if (w) { if (curY == null || curY >= w.top - R.climb) y = w.top; else return null; }
+    else {
+        const f = hqTerrainFluidAt(info, x, z);
+        if (f && g < f.y - 0.05) {
+            if (f.key !== 'water') return null;
+            if (f.y - g > R.wadeMax) return null;
+            y = Math.max(g, f.y - R.wade);
+        }
+    }
+    if (curY != null && y > curY + 0.02 && !w) { if (hqTerrainSlope(info, x, z) > R.maxSlope) return null; }
+    return y;
+}
+/* the airborne body: never inside the ground, a wall or a hazard's sheet */
+function hqTerrainAir(info, x, z, y) {
+    if (Math.abs(x) > info.halfW - 0.5 || Math.abs(z) > info.halfD - 0.5) return false;
+    const g = hqTerrainHeight(info, x, z);
+    if (y < g - 0.05) return false;
+    const w = hqTerrainWallAt(info, x, z, info.rules.bodyR); if (w && y < w.top - 0.05) return false;
+    const f = hqTerrainFluidAt(info, x, z);
+    if (f && g < f.y - 0.05 && (f.key !== 'water' || f.y - g > info.rules.wadeMax) && y < f.y + 0.4) return false;
+    return true;
+}
+/* the camera boom: inside the ground, a wall, or under a sheet */
+function hqTerrainCam(info, x, z, y) {
+    const g = hqTerrainHeight(info, x, z);
+    if (y < g + 0.24) return true;
+    const w = hqTerrainWallAt(info, x, z, 0.15); if (w && y < w.top + 0.2) return true;
+    const f = hqTerrainFluidAt(info, x, z); if (f && g < f.y && y < f.y + 0.22) return true;
+    return false;
+}
+/* a door's SILL: its pad's height (a free way: its own spot's) */
+function hqTerrainDoorY(room, door) {
+    if (!room || !room.terrain || !door) return 0;
+    let info = room._terrainInfo;
+    if (!info) { info = hqTerrainCompile(room, room.id || null); Object.defineProperty(room, '_terrainInfo', { value: info, enumerable: false, configurable: true, writable: true }); }
+    const p = info.pads.find(q => q.door === door || (q.door.id === door.id && q.door.wall === door.wall));
+    if (p) return Math.round(p.h * 1000) / 1000;
+    return 0;
+}
+/* THE SOLVER: every grid node the walker reaches from (x, z) under its own rule (4-connected, the feet carried) */
+function hqTerrainReach(info, x, z) {
+    const seen = new Map(), q = [];
+    const i0 = Math.round((x - info.x0) / info.res), j0 = Math.round((z - info.z0) / info.res);
+    const at = (i, j) => hqTerrainFeet(info, info.x0 + i * info.res, info.z0 + j * info.res, null);
+    const y0 = at(i0, j0); if (y0 == null) return seen;
+    seen.set(i0 + ',' + j0, y0); q.push([i0, j0, y0]);
+    const N = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    while (q.length) {
+        const p = q.shift();
+        for (const n of N) {
+            const i = p[0] + n[0], j = p[1] + n[1];
+            if (i < 0 || j < 0 || i >= info.nx || j >= info.nz) continue;
+            const k = i + ',' + j; if (seen.has(k)) continue;
+            const y = hqTerrainFeet(info, info.x0 + i * info.res, info.z0 + j * info.res, p[2]);
+            if (y == null) continue;
+            if (y - p[2] > info.rules.climb) continue;
+            seen.set(k, y); q.push([i, j, y]);
+        }
+    }
+    return seen;
+}
+function hqTerrainNodeKey(info, x, z) { return Math.round((x - info.x0) / info.res) + ',' + Math.round((z - info.z0) / info.res); }
+/* the landing of a door in a terrain room (2.4 m inside its wall / in front of a free way), with its feet */
+function hqTerrainDoorLanding(room, door) {
+    const S = room.shell || {}; let x, z;
+    if (door.wall === 'free') { const f = (door.face || 0) * Math.PI / 180; x = (door.x || 0) + Math.sin(f) * 2.4; z = (door.z || 0) - Math.cos(f) * 2.4; }
+    else if (door.wall === 'n') { x = door.x || 0; z = -S.d / 2 + 2.4; }
+    else if (door.wall === 's') { x = door.x || 0; z = S.d / 2 - 2.4; }
+    else if (door.wall === 'e') { x = S.w / 2 - 2.4; z = door.z || 0; }
+    else { x = -S.w / 2 + 2.4; z = door.z || 0; }
+    return { x, z, y: hqTerrainDoorY(room, door) };
+}
+/* an ASCII dump of the field (a digit per 0.875 m of height; ~ water, L lava, # a wall, T a tree, D a door pad) — for check-terrain.js and the eye */
+function hqTerrainDump(info, opts) {
+    opts = opts || {};
+    const step = opts.step || Math.max(info.res, 1.0), lines = [];
+    for (let z = -info.S.d / 2 + step / 2; z < info.S.d / 2; z += step) {
+        let line = '';
+        for (let x = -info.S.w / 2 + step / 2; x < info.S.w / 2; x += step) {
+            const f = hqTerrainFluidAt(info, x, z), g = hqTerrainHeight(info, x, z);
+            let ch;
+            if (hqTerrainWallAt(info, x, z, step / 2)) ch = '#';
+            else if (info.trees.some(t => Math.hypot(t.x - x, t.z - z) < step / 2)) ch = 'T';
+            else if (info.pads.some(p => (p.r ? p.r - Math.hypot(x - p.x, z - p.z) : _hqTRectIn(x, z, p)) > 0)) ch = 'D';
+            else if (f && g < f.y - 0.05) ch = f.key === 'lava' ? 'L' : (f.y - g > info.rules.wadeMax ? 'W' : '~');
+            else if (hqTerrainSlope(info, x, z) > info.rules.maxSlope) ch = '^';
+            else { const lv = Math.round(g / 0.875); ch = lv < 0 ? '-' : lv > 9 ? '+' : String(lv); }
+            line += ch;
+        }
+        lines.push(line);
+    }
+    return lines;
+}
 /* ── THE FINDS + THE TAPES (HQ plan 9.1 stage 1 — 2026-09-15 rev 12) ─────
    Glowing objects hidden about the world and THE HUNDRED TAPES. Two kinds
    ship: a TAPE (a VHS cassette — one of DOOR_TAPES, taken ONCE EVER) and a
@@ -30814,7 +31192,9 @@ function hqFindPropBlocks(room, p, x, z, margin) {
 function hqFindRoomInfo(roomId) {
     const room = DOOR_HQ.rooms[roomId]; if (!room || room.kind !== 'box') return null;
     const S = room.shell || {};
-    const info = { room, S, doors: room.doors || [], landings: (room.doors || []).map(d => hqFindDoorLanding(room, d)), cave: room.cave ? hqCaveInfo(roomId) : null, board: null, reach: null };
+    const info = { room, S, doors: room.doors || [], landings: (room.doors || []).map(d => hqFindDoorLanding(room, d)), cave: room.cave ? hqCaveInfo(roomId) : null, terrain: room.terrain ? hqTerrainInfo(roomId) : null, board: null, reach: null };
+    /* THE TERRAIN ROOM (2026-09-17): the walker's reach from the first door's landing, on the sampled field */
+    if (info.terrain && info.doors.length) { const L0 = hqTerrainDoorLanding(room, info.doors[0]); info.reach = hqTerrainReach(info.terrain, L0.x, L0.z); }
     if (info.cave && info.doors.length) {
         const c0 = hqCaveDoorCell(room, info.doors[0]);
         if (c0) info.reach = hqCaveReach(info.cave, c0.x, c0.y);
@@ -30829,6 +31209,14 @@ function hqFindFree(ri, x, z, opts) {
     opts = opts || {};
     const R = opts.rules || HQ_FIND_RULES, S = ri.S, room = ri.room;
     if (Math.abs(x) > S.w / 2 - R.minWall || Math.abs(z) > S.d / 2 - R.minWall) return false;
+    if (ri.terrain) {
+        const ti = ri.terrain;
+        if (hqTerrainFeet(ti, x, z, null) === null || hqTerrainFluidAt(ti, x, z) || hqTerrainSlope(ti, x, z) > 0.45) return false;
+        if (ri.reach && !opts.hard && !ri.reach.has(hqTerrainNodeKey(ti, x, z))) return false;
+        for (const t of ti.trees) if (Math.hypot(x - t.x, z - t.z) < t.r + R.awayProp) return false;
+        for (const q of ti.scatter) if (Math.hypot(x - q.x, z - q.z) < q.r + R.awayProp) return false;
+        for (const w of ti.walls) if (_hqTSegDist(x, z, w.x0, w.z0, w.x1, w.z1).d < w.t / 2 + 0.6) return false;
+    }
     if (ri.cave) {
         const c = hqCaveCellAt(ri.cave, x, z);
         if (!c || !c.walk || c.fluid || c.rock || c.slope) return false;
@@ -30863,7 +31251,7 @@ function hqFindSpot(roomId, salt, avoid) {
                 const px = Math.round(x * 100) / 100, pz = Math.round(z * 100) / 100;
                 if (!hqFindFree(ri, px, pz, { avoid, rules })) continue;
                 const sc = Math.hypot(px - from.x, pz - from.z) + (hqHash(roomId + '|' + salt + '|' + px + ',' + pz) % 1000) / 1000;
-                if (sc > bestS) { bestS = sc; best = { x: px, z: pz, relax: pass }; }
+                if (sc > bestS) { bestS = sc; best = { x: px, z: pz, relax: pass }; if (ri.terrain) best.y = Math.round(hqTerrainHeight(ri.terrain, px, pz) * 100) / 100; }
             }
         }
         if (best) return best;
@@ -30889,6 +31277,16 @@ function hqFindBoardSpot(roomId) {
     }
     return best;
 }
+/* THE TERRAIN ROOM (2026-09-17): a find's spot on the field — its ground (or the pin's own `y` on a ledge / a prop),
+   `hard: true` when the walker's reach from the first door never gets there (a pinnacle: the door gun's) */
+function hqTerrainFindSpot(roomId, sp) {
+    const ri = hqFindRoomInfo(roomId); if (!ri || !ri.terrain) return sp;
+    const out = Object.assign({}, sp);
+    if (out.y == null) out.y = Math.round(hqTerrainHeight(ri.terrain, out.x, out.z) * 100) / 100;
+    if (out.hard == null && ri.reach && !ri.reach.has(hqTerrainNodeKey(ri.terrain, out.x, out.z))) out.hard = true;
+    if (!out.hard) delete out.hard;
+    return out;
+}
 function hqBuildFinds() {
     const rows = [], R = HQ_FIND_RULES, pins = DOOR_HQ.findSpots || {};
     const byRoom = {};
@@ -30900,16 +31298,18 @@ function hqBuildFinds() {
         byRoom[roomId].forEach((t, i) => {
             const onBoard = room.fx === 'site' && i === 1;
             let sp = onBoard ? (pin.tape2 || hqFindBoardSpot(roomId)) : (pin.tape || hqFindSpot(roomId, 'tape' + i, placed));
+            if (sp && room.terrain) sp = hqTerrainFindSpot(roomId, sp);   // THE TERRAIN ROOM (2026-09-17): the ground under a pin, `hard` when the walker cannot reach it
             if (!sp) return;
             placed.push(sp);
             rows.push(Object.assign({ id: 'tape:' + t.id, room: roomId, kind: 'tape', tape: t.id, x: sp.x, z: sp.z, relax: sp.relax || 0, why: onBoard ? (sp.hard ? 'on a wall of the board — the door gun reaches it' : 'on the board, up a level') : 'in the far corner, in plain sight of anyone who looks' },
                 sp.y != null ? { y: sp.y } : {}, sp.cell ? { cell: sp.cell } : {}, sp.hard ? { hard: true } : {}));
         });
         /* D7 (2026-09-16): a `quiet: true` room keeps its tape and goes without the envelope */
-        const ps = room.quiet ? null : (pin.pay || hqFindSpot(roomId, 'pay', placed));
+        let ps = room.quiet ? null : (pin.pay || hqFindSpot(roomId, 'pay', placed));
+        if (ps && room.terrain) ps = hqTerrainFindSpot(roomId, ps);
         /* THE GUARDED ENVELOPE (9.4 stage 2): in a room with natives of its own the pay stands only once the room is CLEARED today (hqFindsInRoom) */
         const guarded = hqRoomGuarded(roomId);
-        if (ps) rows.push(Object.assign({ id: 'pay:' + roomId, room: roomId, kind: 'pay', amount: room.fx === 'site' ? R.pay : R.payDeep, daily: true, x: ps.x, z: ps.z, relax: ps.relax || 0 }, ps.y != null ? { y: ps.y } : {}, guarded ? { guard: true } : {},
+        if (ps) rows.push(Object.assign({ id: 'pay:' + roomId, room: roomId, kind: 'pay', amount: room.fx === 'site' ? R.pay : R.payDeep, daily: true, x: ps.x, z: ps.z, relax: ps.relax || 0 }, ps.y != null ? { y: ps.y } : {}, ps.hard ? { hard: true } : {}, guarded ? { guard: true } : {},
             { why: guarded ? 'a manila envelope of Hazard Pay the natives sit on — clear the room (9.4) and it glows' : 'a manila envelope of Hazard Pay — the building restocks it on a third of the days' }));
     });
     /* SKATEBOARDING (9.8): THE DECK leans on a locker in Room 26 — one row, never daily, shown only while the issue is not free (hqFindsInRoom); the locker room has no tape, so it is its own stop */
@@ -30922,7 +31322,18 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
        (shell.gallery, 2.9 m up, the west end): the flight at the east end is the way that is not a portal, the gun is the short one */
     site_prebuilt_haunted_hall: { tape: { x: 2.6, z: -4.9, y: 2.9 } },   // east of the stair doorway, clear of THE DAIS (riser_1 spans x −6.7..1.7 on the floor below)
     /* THE URBAN BLOCK (9.2 stage 4): the platform's finds stand on the PLATFORM — the train (a `way` on the track, DOOR_HQ.links subway_downtown) lays its blockers at build, which the generator cannot see; the pins keep both off the track */
-    site_prebuilt_downtown_subway: { tape: { x: 3.2, z: -13.2 }, pay: { x: 0.6, z: -13.4 } } };   // the deck (SKATEBOARDING 9.8) takes the generator's far corner of Room 26
+    site_prebuilt_downtown_subway: { tape: { x: 3.2, z: -13.2 }, pay: { x: 0.6, z: -13.4 } },
+    /* THE TERRAIN ROOMS (2026-09-17, the user: "difficult to get to / hard to see areas for the VHS tapes"): the tapes on the
+       pinnacles no walk reaches — the door gun's (hqTerrainFindSpot reads the ground and marks them `hard`) */
+    site_prebuilt_hollow_earth_shaft:   { tape: { x: -9.6, z: 8.1 } },      // THE PINNACLE in the well room's south-west corner
+    site_prebuilt_hollow_earth_gallery: { tape: { x: 4.0, z: -3.0 } },      // THE NEEDLE mid-cavern
+    site_prebuilt_hollow_earth_adit:    { pay: { x: -5.3, z: 7.0 } },       // the envelope on THE CRYSTAL LEDGE
+    site_prebuilt_hollow_earth_mouth:   { tape: { x: -6.5, z: 6.5 } },      // THE SHELF in the mouth's south corner
+    site_prebuilt_fairy_forest_clearing: { tape: { x: 14.5, z: -12.5 } },   // THE CRAG under the staircase's lane
+    site_prebuilt_fairy_forest_trail:   { tape: { x: 8.5, z: -12.5 } },     // THE PINNACLE over the top tier
+    site_prebuilt_fairy_forest_redwoods: { tape: { x: 10.0, z: 6.0 } },     // THE STAND
+    site_prebuilt_fairy_forest_stair:   { tape: { x: -7.0, z: 4.0 } },      // THE TOWER
+    site_prebuilt_fairy_forest_ritual:  { tape: { x: 0.0, z: -6.3 } } };    // THE ALTAR STONE   // the deck (SKATEBOARDING 9.8) takes the generator's far corner of Room 26
 DOOR_HQ.finds = hqBuildFinds();
 /* ── THE DOOR GUN'S LEARNING SEQUENCE (PHASE9_QUALITY_PLAN §6 D8, 2026-09-16) ──
    Six situations the world already had, now LABELLED: a plate (catalogue
@@ -30956,7 +31367,50 @@ function hqGunLessons() {
    a monument's height) and the moat. Returns { ok, from: {x, z}, dist,
    face, hit: {x, y, z} } or { ok: false, reason }. */
 const HQ_HARD_REACH = { eye: 1.6, step: 0.5, band: 0.35 };
+/* THE LIP on a TERRAIN pinnacle (2026-09-17): a hard find on a smooth field — the shot is from a node the walker reaches, at eye
+   height, to a point on the pinnacle's FACE in the band under its top (the face found by walking out from the find until the
+   ground falls off the top; open when it falls further than the snap), the line clear of the ground the whole way but the last
+   0.35 m; the renderer's _hqPortalLedgeSnap turns that wall hit into a floor door on the top */
+function hqFindHardReachTerrain(row, ri) {
+    const ti = ri.terrain, R = (typeof HQ_PORTAL_RULES !== 'undefined') ? HQ_PORTAL_RULES : { reach: 14, ledgeSnapM: 0.9 };
+    const snap = R.ledgeSnapM || 0.9, reach = R.reach || 14, top = row.y, hy = top - HQ_HARD_REACH.band;
+    const faces = [];
+    for (let a = 0; a < 16; a++) {
+        const dx = Math.sin(a * Math.PI / 8), dz = -Math.cos(a * Math.PI / 8);
+        for (let r = 0.1; r <= 6; r += 0.1) {
+            const g = hqTerrainHeight(ti, row.x + dx * r, row.z + dz * r);
+            if (g < top - 0.25) { if (hqTerrainHeight(ti, row.x + dx * (r + 0.5), row.z + dz * (r + 0.5)) < top - snap) faces.push({ deg: a * 22.5, x: row.x + dx * r, z: row.z + dz * r, nx: dx, nz: dz }); break; }
+        }
+    }
+    if (!faces.length) return { ok: false, reason: 'no open face' };
+    const clear = (f, ex, ez, ey) => {
+        const dx = f.x - ex, dz = f.z - ez, dy = hy - ey, len = Math.hypot(dx, dz);
+        if (len > reach || len < 0.5) return false;
+        const n = Math.ceil(len / 0.2);
+        for (let i = 1; i < n; i++) {
+            const t = i / n; if ((1 - t) * len < 0.35) break;
+            const px = ex + dx * t, pz = ez + dz * t, py = ey + dy * t;
+            if (py <= hqTerrainHeight(ti, px, pz) + 0.05) return false;
+            const w = hqTerrainWallAt(ti, px, pz, 0); if (w && py < w.top + 0.05) return false;
+        }
+        return dx * f.nx + dz * f.nz < 0;
+    };
+    let best = null;
+    if (!ri.reach) return { ok: false, reason: 'no reach' };
+    for (const [k, y] of ri.reach) {
+        const [i, j] = k.split(',').map(Number), px = ti.x0 + i * ti.res, pz = ti.z0 + j * ti.res;
+        if (Math.hypot(px - row.x, pz - row.z) > reach) continue;
+        if (Math.abs(px) > ri.S.w / 2 - 0.5 || Math.abs(pz) > ri.S.d / 2 - 0.5) continue;
+        for (const f of faces) {
+            if (!clear(f, px, pz, y + HQ_HARD_REACH.eye)) continue;
+            const dist = Math.hypot(f.x - px, f.z - pz);
+            if (!best || dist < best.dist) best = { ok: true, from: { x: Math.round(px * 100) / 100, z: Math.round(pz * 100) / 100 }, dist: Math.round(dist * 100) / 100, face: f.deg, hit: { x: f.x, y: hy, z: f.z }, top };
+        }
+    }
+    return best || { ok: false, reason: 'no clear shot' };
+}
 function hqFindHardReach(row) {
+    if (row && row.hard && !row.cell) { const rt = hqFindRoomInfo(row.room); if (rt && rt.terrain) return hqFindHardReachTerrain(row, rt); }
     if (!row || !row.hard || !row.cell) return { ok: false, reason: 'not hard' };
     const ri = hqFindRoomInfo(row.room); if (!ri || !ri.board) return { ok: false, reason: 'no board' };
     const B = ri.board, b = B.info, C = B.cell, half = B.half, S = ri.S;
@@ -31846,6 +32300,7 @@ const HQ_FIELD_RULES = {
 function hqFieldRoomOk(roomId) {
     const r = (DOOR_HQ.rooms || {})[roomId];
     if (!r || r.kind !== 'box' || !hqRoomSite(roomId)) return false;
+    if (r.terrain) return false;   // THE TERRAIN ROOM (2026-09-17): a smooth field has no grid to raster — the encounter fights the SITE's Δ (the user: seamlessness is no longer the priority)
     if (r.cave) return true;
     return r.fx !== 'site' && !!r.shell;
 }
@@ -34186,6 +34641,11 @@ if (typeof window !== 'undefined') {
     window.hqFindsSyncPay = hqFindsSyncPay; window.hqTapeLegacyId = hqTapeLegacyId; window.hqFindLegacyId = hqFindLegacyId; window.hqFindsTakenUnion = hqFindsTakenUnion; window.hqFindsSyncedTaken = hqFindsSyncedTaken;
     window.hqTapeShelf = hqTapeShelf; window.hqTapeCount = hqTapeCount; window.hqFindById = hqFindById; window.hqTapeById = hqTapeById; window.hqTapeClipUrl = hqTapeClipUrl; window.hqFindsRecord = hqFindsRecord;
     window.hqCaveDoorCell = hqCaveDoorCell; window.hqCaveRooms = hqCaveRooms;
+    /* THE TERRAIN ROOM (2026-09-17) */
+    window.HQ_TERRAIN_RULES = HQ_TERRAIN_RULES; window.hqTerrainRooms = hqTerrainRooms; window.hqTerrainInfo = hqTerrainInfo; window.hqTerrainCompile = hqTerrainCompile;
+    window.hqTerrainHeight = hqTerrainHeight; window.hqTerrainSlope = hqTerrainSlope; window.hqTerrainFeet = hqTerrainFeet; window.hqTerrainAir = hqTerrainAir; window.hqTerrainCam = hqTerrainCam;
+    window.hqTerrainFluidAt = hqTerrainFluidAt; window.hqTerrainWallAt = hqTerrainWallAt; window.hqTerrainDoorY = hqTerrainDoorY; window.hqTerrainReach = hqTerrainReach; window.hqTerrainNodeKey = hqTerrainNodeKey;
+    window.hqTerrainDoorLanding = hqTerrainDoorLanding; window.hqTerrainDump = hqTerrainDump; window.hqFindHardReachTerrain = hqFindHardReachTerrain; window.hqTerrainFindSpot = hqTerrainFindSpot; window._hqTPolyDist = _hqTPolyDist;
     /* THE DOOR GUN (HQ plan 9.5, 2026-09-15 rev 13) */
     window.HQ_PORTAL_RULES = HQ_PORTAL_RULES; window.hqPortalRecord = hqPortalRecord; window.hqPortalStatus = hqPortalStatus; window.hqPortalIssue = hqPortalIssue;
     window.hqPortalPlace = hqPortalPlace; window.hqPortalClear = hqPortalClear; window.hqPortalLeaf = hqPortalLeaf; window.hqPortalNextSlot = hqPortalNextSlot; window.hqPortalTwin = hqPortalTwin; window.hqPortalSafeRoom = hqPortalSafeRoom; window.hqPortalDoorsIn = hqPortalDoorsIn;

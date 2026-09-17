@@ -39,7 +39,7 @@ const R = g('HQ_FIELD_RULES'), S = R.size, B = R.base;
 const MF_TID = g('MF_TID'), TERRAIN_RULES = g('TERRAIN_RULES');
 const TID2KEY = {}; Object.keys(MF_TID).forEach(k => { TID2KEY[MF_TID[k]] = k; });
 const caves = g('hqCaveRooms')();
-const parts = g('hqComplexRooms')().filter(id => !HQ.rooms[id].cave);
+const parts = g('hqComplexRooms')().filter(id => !HQ.rooms[id].cave && !HQ.rooms[id].terrain);   // THE TERRAIN ROOMS (2026-09-17) refuse the field: the encounter fights the site's Δ there
 const info = id => g('hqCaveInfo')(id);
 const cellCentre = (inf, x, y) => ({ x: (x + 0.5) * inf.cell - inf.halfW, z: (y + 0.5) * inf.cell - inf.halfD });
 /* the engine's move rule as delta-maps.test.js mirrors it: cardinal steps, |Δh| ≤ 1, no trees (a field has none) */
@@ -64,8 +64,9 @@ test('THE RULES + WHERE: an 8 × 8 window on the Δ\'s base; stage B = a WILD ro
     assert.equal(R.fluidMin, -1, 'a sheet sinks one level at most — the Δ\'s lake depth');
     assert.equal(R.prefix, 'field:'); assert.equal(R.teamSize, 4);
     const ok = g('hqFieldRoomOk');
-    assert.ok(caves.length >= 7, 'the seven chambers');
+    assert.equal(caves.length, 0, 'THE TERRAIN ROOMS (2026-09-17): no chamber wears the grid — stage B has nothing to raster');
     caves.forEach(id => assert.equal(ok(id), true, id));
+    g('hqTerrainRooms')().forEach(id => assert.equal(ok(id), false, id + ': a smooth field is never a field window'));
     assert.ok(parts.length >= 14, 'the fourteen box parts');
     parts.forEach(id => assert.equal(ok(id), true, id + ' is a complex part'));
     ['site_prebuilt_dumb', 'site_prebuilt_hollow_earth', 'site_prebuilt_haunted', 'central_egress', 'foyer', 'garage', 'hwing_w', 'nope'].forEach(id => assert.equal(ok(id), false, id + ' is never a field'));
@@ -140,10 +141,10 @@ test('THE RASTER on every chamber and every legal window: rock never climbed, ev
             }
         }
     }
-    assert.ok(windows > 2000 && edges > 20000 && starts > 5000, 'the sweep ran: ' + windows + ' windows, ' + edges + ' edges, ' + starts + ' starts');
+    if (caves.length) assert.ok(windows > 2000 && edges > 20000 && starts > 5000, 'the sweep ran: ' + windows + ' windows, ' + edges + ' edges, ' + starts + ' starts');
 });
 
-test('THE WINDOW\'S CHOICE from every door landing of every chamber: both feet inside, the walker\'s cell IN, the reach maximal over every candidate, the transform exact, the field / the seats / the eye read it like a board', () => {
+test('THE WINDOW\'s CHOICE from every door landing of every chamber: both feet inside, the walker\'s cell IN, the reach maximal over every candidate, the transform exact, the field / the seats / the eye read it like a board', { skip: caves.length === 0 && 'no room wears the cave grid since THE TERRAIN ROOMS (2026-09-17)' }, () => {
     const win = g('hqFieldWindow'), raster = g('hqFieldRaster'), reach = g('hqFieldReach'), TRf = g('hqFieldTransform');
     const field = g('hqEncounterField'), seats = g('hqEncounterSeats'), eye = g('hqEncounterEye'), doorCell = g('hqCaveDoorCell');
     let n = 0;
@@ -196,7 +197,7 @@ test('THE WINDOW\'S CHOICE from every door landing of every chamber: both feet i
     assert.ok(n >= 14, 'every chamber\'s doors were walked: ' + n);
 });
 
-test('THE BUILD: the forge entry — 8 × 8, real tids, contiguous voxels on the bed, the heights, deep water flooding the layer under it, explicit spawns per seat on IN cells; hqFieldRegister files it under PREBUILT_MAPS + MAP_LAYOUT_PRESETS with the site Δ\'s env', () => {
+test('THE BUILD: the forge entry — 8 × 8, real tids, contiguous voxels on the bed, the heights, deep water flooding the layer under it, explicit spawns per seat on IN cells; hqFieldRegister files it under PREBUILT_MAPS + MAP_LAYOUT_PRESETS with the site Δ\'s env', { skip: caves.length === 0 && 'no room wears the cave grid since THE TERRAIN ROOMS (2026-09-17)' }, () => {
     const id = 'site_prebuilt_hollow_earth_gallery', room = HQ.rooms[id], inf = info(id);
     const dc = g('hqCaveDoorCell')(room, room.doors[0]);
     const w = cellCentre(inf, dc.x, dc.y), t = cellCentre(inf, dc.x + 2, dc.y);
@@ -447,7 +448,7 @@ test('STAGE C · THE BUILD: a box field\'s forge entry — 8 × 8, real tids, th
     assert.equal(reg.meta.field, true); assert.equal(reg.meta.isDelta, true);
     assert.equal(g('hqSiteId')(W.id), 'prebuilt_haunted', 'the field reads as its site');
     /* a cave field keeps its near setting (stage B unchanged) */
-    const cave = caves[0], Wc = g('hqFieldWindow')(cave, cellCentre(info(cave), 2, 2), cellCentre(info(cave), 3, 2));
+    const cave = caves[0], Wc = cave ? g('hqFieldWindow')(cave, cellCentre(info(cave), 2, 2), cellCentre(info(cave), 3, 2)) : null;
     if (Wc) { const rc = g('hqFieldRegister')(cave, Wc.ox, Wc.oz, { cells: Wc.cells }); const lc = g('MAP_LAYOUT_PRESETS')[rc.id]; assert.ok(lc.env && lc.env.world && lc.env.world.kind === 'room' && lc.env.scenery === 'none' && lc.env.near === undefined, 'a cave field is indoors too (Phase 9 polish): inert world, no roster, no near'); assert.equal(rc.entry.field.cave, true); }
 });
 
@@ -601,7 +602,7 @@ test('STAGE D · LEGALITY FROM EVERYWHERE (§11.3 D acceptance): from EVERY cell
             if (W.raster.cells[cw.y][cw.x].seat !== false) assert.deepEqual(J(seats[1][0]), J(cw), 'the walker\'s cell is P1 seat 1');   // on a table top the lead is nudged down
         }
     }
-    assert.ok(n >= 1500, 'every standing cell of every wild room: ' + n);
+    assert.ok(n >= 600, 'every standing cell of every wild room: ' + n + ' (the fourteen box parts — the cave and the woods are terrain rooms since 2026-09-17 and fight the site\'s Δ)');
     assert.ok(minReach >= 8, 'the smallest reach ' + minReach + ' at ' + worst);
 });
 
@@ -613,9 +614,7 @@ test('STAGE D · THE ENTRY + THE TOOL: hqFieldBuild carries the doors, the edges
     assert.ok(e.field.edges && e.field.edges.n.proud > 0 && e.field.edges.s.proud === 0, 'the attic: the residue on the north, the hatch\'s wall flush');
     assert.equal(e.field.dump.length, S); assert.ok(e.field.dump.some(l => l.includes('%')), 'the dump shows the proud rim');
     assert.ok(e.field.dump.some(l => l.includes('a')) && e.field.dump.some(l => l.includes('b')), 'the seats on the dump');
-    const cave = win('site_prebuilt_hollow_earth_vent', { x: 0, z: 0 }, { x: 1.75, z: 0 });
-    const ce = build(cave.room, cave.ox, cave.oz, { cells: cave.cells });
-    assert.equal(ce.field.edges, null); assert.equal(ce.field.doors.length, 0);
+    assert.equal(g('hqFieldRoomOk')('site_prebuilt_hollow_earth_vent'), false, 'a terrain chamber (2026-09-17) is never a field room (map.js gates the window on it)');
     const TOOL = fs.readFileSync(__dirname + '/check-field-windows.js', 'utf8');
     ['hqFieldWindow', 'hqFieldDump', 'hqEncounterSeats', '--all', 'rock PROUD of the wall'].forEach(f => assert.ok(TOOL.includes(f), f));
     const r = require('node:child_process').spawnSync(process.execPath, [__dirname + '/check-field-windows.js', '--json'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });

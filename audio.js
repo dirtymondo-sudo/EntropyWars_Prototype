@@ -1863,6 +1863,7 @@
                the buzz was muted for being loud; these stay under it */
             wayCreak: 0.28, wayWell: 0.3, wayTrain: 0.32,
             wayMirror: 0.3, waySplash: 0.32, wayCanvas: 0.28, wayFloo: 0.32, wayStatic: 0.26,   // the second batch (rev 22)
+            wayHollow: 0.3,   // THE TREES WITH HOLES IN THEM (2026-09-17)
             /* SKATEBOARDING (HQ plan 9.8, 2026-09-15): the deck's own kit — quiet, the ride plays them thirty times a minute */
             skatePush: 0.3, skateOllie: 0.4, skateLand: 0.36, skateGrind: 0.3, skateBail: 0.45, skateBank: 0.4,
             /* THE DOOR GUN rev 3 (2026-09-16): the zap, the frame landing, the recall — the building AND the board (the shot VFX voices them) */
@@ -2088,6 +2089,17 @@
             /* THE SCREEN (a `way` seam, rev 22): the set's hum, a burst of
                static with the frame buzz under it, the sync tearing as the
                shape opens, then the signal cutting out — silence with a tick. */
+            /* THE HOLLOW TREE / THE DEAD TREE (2026-09-17): two knocks on wood, a
+               rustle of leaves, and the hollow note of the trunk as you climb in. */
+            wayHollow(ctx, t, out, vol) {
+                [0, 0.19].forEach(k => { const tk = t + k; _doorOsc(ctx, _doorEnv(ctx, out, tk, vol * 0.5, 0.003, 0.05, 0.12), 'sine', 190 + k * 60, tk, 0.16, { f1: 120, slide: 0.12 }); _doorNoiseSrc(ctx, _doorEnv(ctx, out, tk, vol * 0.25, 0.002, 0.03, 0.08), tk, 0.12, { type: 'bandpass', f0: 900, f1: 500, slide: 0.1, q: 1.2 }); });
+                const tr = t + 0.35;
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, tr, vol * 0.28, 0.08, 0.6, 0.4), tr, 1.1, { type: 'bandpass', f0: 3200, f1: 2200, slide: 1.0, q: 0.7 });
+                const th = t + 0.7;
+                _doorOsc(ctx, _doorEnv(ctx, out, th, vol * 0.42, 0.02, 0.5, 0.9), 'sine', 110, th, 1.4, { f1: 82, slide: 1.2 });
+                _doorOsc(ctx, _doorEnv(ctx, out, th, vol * 0.16, 0.02, 0.4, 0.7), 'triangle', 220, th, 1.1, { f1: 164, slide: 1.0 });
+                return th - t + 1.5;
+            },
             wayStatic(ctx, t, out, vol) {
                 _doorOsc(ctx, _doorEnv(ctx, out, t, vol * 0.12, 0.05, 0.9, 0.1), 'sawtooth', 60, t, 1.05);
                 _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.4, 0.02, 0.8, 0.15), t, 1.0, { type: 'highpass', f0: 2500 });

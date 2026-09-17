@@ -22181,7 +22181,32 @@ const ThreeRenderer = (function () {
         schoolbus:     'Meshy_AI_a_school_bus_0915195620_texture.glb',
         subway_cart:   'Meshy_AI_a_subway_train_cart_0915195417_texture.glb',
         subway_front:  'Meshy_AI_a_subway_train_front_0915195457_texture.glb',
-        ambulance:     'Meshy_AI_an_ambulance_0915195334_texture.glb'
+        ambulance:     'Meshy_AI_an_ambulance_0915195334_texture.glb',
+        /* 2026-09-17 THE WOODS BATCH (fourteen Meshy props the user uploaded to
+           Assets/misc/ — MODEL_INDEX.md §3e): the forest floor (fern · stump ·
+           fallen log · dead snag · pine · campfire ring · signpost · plank
+           footbridge), the stones (a standing stone · a brick arch section · a
+           culvert mouth · a storm drain grate) and THE TWO TREES WITH HOLES IN
+           THEM (the hollow tree = the way into the fairy forest, the dead tree =
+           the dead tree's dark hole onto the haunted house / the Looking-Glass:
+           DOOR_HQ.ways hollowtree / deadtree). Facings UNMEASURED (the CDN is
+           unreachable from the sandbox) — a hole that faces the wrong way is the
+           catalogue row's `rot`. The building reads them through
+           DOOR_HQ.catalogue (base: 'misc'); the near settings through _hzMiscKit. */
+        signpost:      'Meshy_AI_a_blank_wooden_signpost_0916235832_texture.glb',
+        brick_arch:    'Meshy_AI_a_brick_arch_section_0916235939_texture.glb',
+        campfire:      'Meshy_AI_a_campfire_ring_0916235856_texture.glb',
+        culvert:       'Meshy_AI_a_culvert_mouth_0916235929_texture.glb',
+        dead_snag:     'Meshy_AI_a_dead_snag_0916235650_texture.glb',
+        dead_hollow:   'Meshy_AI_a_dead_tree_with_a_dark_hole_0916235739_texture.glb',
+        fallen_log:    'Meshy_AI_a_fallen_log_0916235700_texture.glb',
+        fern:          'Meshy_AI_a_fern_0916235806_texture.glb',
+        pine:          'Meshy_AI_a_pine_with_canopy_0916235640_texture.glb',
+        footbridge:    'Meshy_AI_a_plank_footbridge_0916235844_texture.glb',
+        menhir:        'Meshy_AI_a_standing_stone_0916235906_texture.glb',
+        drain_grate:   'Meshy_AI_a_storm_drain_grate_0916235918_texture.glb',
+        stump:         'Meshy_AI_a_stump_0916235717_texture.glb',
+        hollow_tree:   'Meshy_AI_a_tree_with_a_hole_0916235727_texture.glb'
     };
 
     // keep the GLB's own baked texture, just unlit — the misc-model default
@@ -25749,6 +25774,9 @@ const ThreeRenderer = (function () {
         var bale = K.mat('wood', 0xc8a860); [[K.BX0 - 1.1 * ts, K.BZ1 + 2.0 * ts], [K.BX0 - 2.0 * ts, K.BZ1 + 2.2 * ts]].forEach(function (p) { var b = K.cyl(0.4 * ts, 0.4 * ts, 0.7 * ts, 10, bale); b.rotation.z = Math.PI / 2; b.position.set(p[0], K.fy + 0.4 * ts, p[1]); K.add(K.lit(b, true)); });
         var tank = K.cyl(0.9 * ts, 0.9 * ts, 0.5 * ts, 12, K.mat('metal_2', 0x9a9088)); tank.position.set(K.BX1 + 1.6 * ts, K.fy + 0.25 * ts, K.BZ1 + 2.6 * ts); K.add(K.lit(tank, true));
         var eye = K.lamp(K.CX + 4 * ts, K.fy + 9 * ts, K.CZ - 7 * ts, 0xff4060, 1.2 * ts, 0.35); K.add(eye); _hzPulse(eye.material, eye, 0.3, 0.2, 0.25);
+        /* THE WOODS BATCH (2026-09-17): the ranch's signpost at the road and a log by the bales */
+        _nrProp(K, function (r) { return _hzMiscKit('signpost', { metres: 2.2, rng: r, foot: 0.2, low: 'skip' }); }, K.CX + 1.5 * ts, K.BZ1 + 2.3 * ts, { ry: 0.3 });
+        _nrProp(K, function (r) { return _hzMiscKit('fallen_log', { metres: 3.4, fit: 'span', rng: r, foot: 0.5, low: 'skip' }); }, K.BX0 - 2.6 * ts, K.BZ1 + 1.0 * ts, { ry: 1.1 });
     };
     /* HOLLOW EARTH — the cavern floor under the inner sun: stalagmite walls,
        glowing fungus, crystal, the sun-shaft. */
@@ -25774,6 +25802,11 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < 24; i++) { var s = K.lamp(K.X0 + rng() * (K.X1 - K.X0), K.fy + ts * (0.3 + rng() * 2.2), K.Z0 + rng() * (K.Z1 - K.Z0), [0x9affd0, 0xffd0f2, 0xcfe0ff][i % 3], 0.22 * ts, 0.7); K.add(s); }
         _nrPool(K, K.BX0 - 2.6 * ts, K.CZ, 0.8 * ts, 'water', { rimTex: 'rocks_1', rimColor: 0x8a9a80 });
         for (var m = 0; m < 6; m++) { var a = rng() * Math.PI * 2, r = ts * (1.2 + rng() * 2.6); var x = K.CX + Math.cos(a) * r * 1.4, z = K.CZ + Math.sin(a) * r; if (x > K.BX0 - 0.7 * ts && x < K.BX1 + 0.7 * ts && z > K.BZ0 - 0.7 * ts && z < K.BZ1 + 0.7 * ts) continue; var mu = _hzPropGLB('mushroom2', ts * (0.5 + rng() * 0.6)); mu.position.set(x, K.fy, z); K.add(mu); }
+        /* THE WOODS BATCH (2026-09-17): the user's forest floor round the board — ferns, stumps, a fallen log, and THE HOLLOW TREE on the north apron (the way into the woods, from the site room) */
+        for (var fi = 0; fi < 10; fi++) { var fa = rng() * Math.PI * 2, fr = ts * (0.9 + rng() * 2.4); var fx = K.CX + Math.cos(fa) * fr * 1.5, fz = K.CZ + Math.sin(fa) * fr; if (fx > K.BX0 - 0.6 * ts && fx < K.BX1 + 0.6 * ts && fz > K.BZ0 - 0.6 * ts && fz < K.BZ1 + 0.6 * ts) continue; _nrProp(K, function (r) { return _hzMiscKit('fern', { metres: 0.6 + r() * 0.3, rng: r, foot: 0, low: 'skip' }); }, fx, fz, { ry: rng() * 6.3 }); }
+        _nrProp(K, function (r) { return _hzMiscKit('stump', { metres: 0.6, rng: r, foot: 0.4, low: 'skip' }); }, K.BX1 + 1.4 * ts, K.BZ1 + 1.2 * ts, { ry: rng() * 6.3 });
+        _nrProp(K, function (r) { return _hzMiscKit('fallen_log', { metres: 3.4, fit: 'span', rng: r, foot: 0.5, low: 'skip' }); }, K.BX0 - 1.4 * ts, K.BZ0 - 1.3 * ts, { ry: 0.6 });
+        _nrProp(K, function (r) { return _hzMiscKit('hollow_tree', { metres: 6.0, rng: r, foot: 0.7, low: 'skip' }); }, K.CX - 3.2 * ts, K.BZ0 - 2.4 * ts, { ry: Math.PI });
     };
     /* MOON — Tranquility: regolith, craters, the lander and its flag, the
        rover tracks, the black monolith, the Earth in the sky (far roster). */
@@ -25996,6 +26029,10 @@ const ThreeRenderer = (function () {
             K.add(K.lamp(q[0], fy + 1.4 * ts, q[1], 0xffc070, 0.6 * ts, 0.6));
         });
         _nrSign(K, 'hh_sign', ['THE HAUNTED HOUSE', 'FOR SALE · SINCE 1888'], 2.4 * ts, 1.0 * ts, K.CX + 2.4 * ts, K.fy + 1.1 * ts, K.Z0 + 1.4 * ts, 0, { sizes: [92, 44], bg: '#1a1216', border: '#8a7a60', color: '#e8dcc0' });
+        /* THE WOODS BATCH (2026-09-17): the dead trees of the garden — a snag, THE DEAD TREE with the hole (the woods' garden gate), stumps */
+        _nrProp(K, function (r) { return _hzMiscKit('dead_snag', { metres: 4.4, rng: r, foot: 0.4, low: 'skip' }); }, K.BX0 - 1.5 * ts, K.BZ1 + 1.4 * ts, { ry: rng() * 6.3 });
+        _nrProp(K, function (r) { return _hzMiscKit('dead_hollow', { metres: 5.0, rng: r, foot: 0.6, low: 'skip' }); }, K.CX - 1.4 * ts, K.BZ0 - 2.6 * ts, { ry: Math.PI });
+        _nrProp(K, function (r) { return _hzMiscKit('stump', { metres: 0.55, rng: r, foot: 0.4, low: 'skip' }); }, K.BX1 + 1.2 * ts, K.BZ1 + 1.8 * ts, { ry: 1.2 });
     };
     /* THE LODGE (Room 33) — the temple interior: damask walls over an oak
        dado, the ambulatory's columns along the flanks, torches in brackets,
@@ -37381,7 +37418,7 @@ const ThreeRenderer = (function () {
            in a moat room, round the moat — plan 7.2 stage 4) so the board's
            own cells and its pits show; every other box gets one plane */
         var siteHole = (room.fx === 'site' && S.grid) ? (S.grid.cells * S.grid.cell / 2 + (S.moat ? S.moat.gap : 0)) : 0;
-        if (room.cave) { /* THE CAVE (rev 11): the grid IS the floor — cells, ledges, pits and the rock border draw it (_hqBuildCave); no plane under them */ }
+        if (room.cave || room.terrain) { /* THE CAVE (rev 11) / THE TERRAIN ROOM (2026-09-17): the grid / the field IS the floor — no plane under it */ }
         else if (siteHole > 0 && siteHole < Math.min(W, Dp) / 2) {
             var TRf = TR || 1.6;
             [[0, -(Dp / 2 + siteHole) / 2, W, Dp / 2 - siteHole], [0, (Dp / 2 + siteHole) / 2, W, Dp / 2 - siteHole],
@@ -37939,13 +37976,18 @@ const ThreeRenderer = (function () {
         /* THE GALLERY (9.2 stage 2): a door on the gallery's wall stands on the slab */
         var gal = room && room.shell && room.shell.gallery;
         if (gal && door && door.wall === gal.side && !door.level && door.wall !== 'free') return Math.max(1.6, gal.h || 2.9);
+        if (room && room.terrain && typeof hqTerrainDoorY === 'function') return hqTerrainDoorY(room, door);   // THE TERRAIN ROOM (2026-09-17): its pad's height
         return (room && room.cave && typeof hqCaveDoorY === 'function') ? hqCaveDoorY(room, door) : 0;
     }
     /* the cave's feet at (x, z) in the CURRENT room (null = no cave / not walkable) */
     function _hqCaveTop(x, z) {
+        /* THE TERRAIN ROOM (2026-09-17): the ground under (x, z) — the walker's feet there, else the raw height (a prop in a hazard still stands on its bed) */
+        if (_hq && _hq.terrain && typeof hqTerrainFeet === 'function') { var tf = hqTerrainFeet(_hq.terrain, x, z, null); return (tf == null) ? hqTerrainHeight(_hq.terrain, x, z) : tf; }
         var st = _hq && _hq.site; if (!st || !st.cave || typeof hqCaveTopAt !== 'function') return null;
         return hqCaveTopAt(st.info, x, z);
     }
+    /* a room whose floor has a HEIGHT under every point (a cave grid, a terrain field) */
+    function _hqHasGround() { return !!(_hq && ((_hq.site && _hq.site.cave) || _hq.terrain)); }
     /* the walker's FEET on a board cell (site or cave) — the ONE read */
     function _hqSiteFloorY(sc, x, z) {
         var st = _hq && _hq.site; if (!st || !sc) return 0;
@@ -38205,42 +38247,7 @@ const ThreeRenderer = (function () {
            clear of every door's lane (the panel stands on the shell wall; a trunk
            behind it would poke through the doorway) — so the clearing is a hole in
            a wood, not a field with a hedge. EW_PERF_LOW plants every other tree. */
-        if (TK && S.forest && S.open) {
-            var FR = S.forest, depth = FR.depth || 9, sp = FR.spacing || 2.6, r0 = FR.start || 1.4, rStep = FR.rows || 2.4;
-            var kinds = FR.kinds || ['tree', 'tree', 'tree', 'tree_2', 'tree_3', 'tree_4', 'tree_5'];
-            var lanes = (room.doors || []).filter(function (d) { return d.wall && d.wall !== 'free'; });
-            var inLane = function (px, pz, out) {
-                if (out > 4.6) return false;
-                return lanes.some(function (d) {
-                    var half = (d.wide ? 3.3 : 2.5) / 2 + 1.0;
-                    if (d.wall === 'n') return pz < -halfZ && Math.abs(px - (d.x || 0)) < half;
-                    if (d.wall === 's') return pz > halfZ && Math.abs(px - (d.x || 0)) < half;
-                    if (d.wall === 'e') return px > halfX && Math.abs(pz - (d.z || 0)) < half;
-                    if (d.wall === 'w') return px < -halfX && Math.abs(pz - (d.z || 0)) < half;
-                    return false;
-                });
-            };
-            var low = !!(typeof window !== 'undefined' && window.EW_PERF_LOW), planted = 0;
-            for (var ro = r0; ro <= depth; ro += rStep) {
-                var hx = halfX + ro, hz = halfZ + ro, per = 4 * hx + 4 * hz;
-                var count = Math.max(8, Math.round(per / sp));
-                for (var ti = 0; ti < count; ti++) {
-                    if (low && (ti & 1)) continue;
-                    var sAlong = ((ti + rng() * 0.7) / count) * per, px, pz;
-                    if (sAlong < 2 * hx) { px = -hx + sAlong; pz = -hz; }
-                    else if (sAlong < 2 * hx + 2 * hz) { px = hx; pz = -hz + (sAlong - 2 * hx); }
-                    else if (sAlong < 4 * hx + 2 * hz) { px = hx - (sAlong - 2 * hx - 2 * hz); pz = hz; }
-                    else { px = -hx; pz = hz - (sAlong - 4 * hx - 2 * hz); }
-                    px += (rng() - 0.5) * rStep * 0.9; pz += (rng() - 0.5) * rStep * 0.9;
-                    if (Math.abs(px) < halfX + 0.6 && Math.abs(pz) < halfZ + 0.6) continue;   // never inside the grid
-                    if (inLane(px, pz, ro)) continue;
-                    var fk = kinds[(rng() * kinds.length) | 0];
-                    var fh = fk === 'tree_4' ? 3.6 + rng() * 1.2 : (fk === 'tree_5' || fk === 'tree_6') ? 2.0 + rng() * 0.6 : 2.3 + rng() * 1.1;
-                    if (plantTree(fk, fh, px, pz, 0)) planted++;
-                }
-            }
-            if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] treeline: ' + planted + ' trees past the grid');
-        }
+        if (TK && S.forest && S.open) _hqPlantTreeline(room, S, halfX, halfZ, plantTree, rng);   // THE TREELINE (shared with the terrain rooms since 2026-09-17)
         /* THE STALACTITES: over the open cells, seeded, never over a door lane's sill row — and never under an open sky (THE WOODS has no ceiling to hang them from) */
         var open = [];
         for (var sy = 1; sy < Hh - 1; sy++) for (var sx = 1; sx < W - 1; sx++) { var oc = info.cells[sy][sx]; if (!oc.rock && !inHole(sx, sy)) open.push([sx, sy]); }
@@ -38252,6 +38259,242 @@ const ThreeRenderer = (function () {
             cone.rotation.x = Math.PI; cone.position.set((cellX(pick[0]) + (rng() - 0.5) * C) * U, (rockH - len / 2 - 0.02) * U, (cellZ(pick[1]) + (rng() - 0.5) * C) * U);
             G.add(cone);
         }
+    }
+    /* ── THE TERRAIN ROOM (HQ plan 9.3 stage 4 — 2026-09-17) ─────────────────
+       A box room with `terrain` (data.js hqTerrainCompile: a SMOOTH HEIGHT
+       FIELD of hills, dips, ridges, plateaus with cliff edges, ramps, decks,
+       pools and streams, walls, rails, paths, trees, scatter — sampled onto
+       a grid) draws its field here and hands the walker the SAME samples:
+       _hqSurface reads hqTerrainFeet (the slope rule: no climbing a cliff,
+       any drop taken; water waded; a wall solid until you stand on it),
+       _hqAirOK hqTerrainAir, _hqCamBlocked hqTerrainCam. Drawn: ONE mesh
+       (the grid, the floor sheet blended into the cliff sheet where it is
+       steep and into the path sheet along the paths — a three-map Phong
+       through onBeforeCompile), the fluid sheets in the battle's animated
+       water / lava (ticked by _hqTickMoat), plank decks, walls in the cliff
+       sheet, rails on posts, the trees (_nrTree on a real _nrKit, blockers),
+       the scatter (catalogue props through _hqPlaceProps), the treeline of
+       an open room past its edge, stalactites under a closed one. Rails and
+       ramps join the park registers (_hq.rails / _hq.ramps) for the rider. */
+    function _hqTerrainMat(info, S) {
+        var floorTex = _hzTex(info.floor) || _hzTex('grass_2'), cliffTex = _hzTex(info.cliff) || _hzTex('rock_wall_1') || floorTex, pathTex = _hzTex(info.path) || _hzTex('dirt_2') || floorTex;
+        var m = new THREE.MeshPhongMaterial({ map: floorTex || null, color: 0xffffff, shininess: S.open ? 4 : 6, specular: S.open ? 0x0e0e0e : 0x161616, vertexColors: false });
+        if (S.floorColor != null) m.color.multiply(new THREE.Color(S.floorColor));
+        m.emissive = m.color.clone().multiplyScalar(S.open ? 0.06 : 0.1);
+        m.onBeforeCompile = function (sh) {
+            sh.uniforms.tCliff = { value: cliffTex }; sh.uniforms.tPath = { value: pathTex };
+            sh.vertexShader = 'attribute vec2 aBlend;\nvarying vec2 vBlend;\n' + sh.vertexShader.replace('#include <uv_vertex>', '#include <uv_vertex>\nvBlend = aBlend;');
+            sh.fragmentShader = 'uniform sampler2D tCliff;\nuniform sampler2D tPath;\nvarying vec2 vBlend;\n' + sh.fragmentShader
+                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec4 texelColor = texture2D( map, vUv );\n vec4 cliffColor = texture2D( tCliff, vUv * 0.85 );\n vec4 pathColor = texture2D( tPath, vUv * 1.15 );\n texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), vBlend.x );\n texelColor = mapTexelToLinear( texelColor );\n diffuseColor *= texelColor;\n#endif')
+                .replace('#include <emissivemap_fragment>', '#ifdef USE_MAP\n totalEmissiveRadiance *= texelColor.rgb;\n#endif');
+        };
+        m.customProgramCacheKey = function () { return 'hqTerrain'; };
+        return m;
+    }
+    function _hqTerrainGround(x, z) {
+        var ti = _hq && _hq.terrain; if (!ti) return null;
+        return hqTerrainHeight(ti, x, z);
+    }
+    /* the treeline of an open room (THE WOODS): rings of the foliage models on the apron past the shell, the door lanes kept clear */
+    function _hqPlantTreeline(room, S, halfX, halfZ, plantTree, rng) {
+        var FR = S.forest, depth = FR.depth || 9, sp = FR.spacing || 2.6, r0 = FR.start || 1.4, rStep = FR.rows || 2.4;
+        var kinds = FR.kinds || ['tree', 'tree', 'tree', 'tree_2', 'tree_3', 'tree_4', 'tree_5'];
+        var lanes = (room.doors || []).filter(function (d) { return d.wall && d.wall !== 'free'; });
+        var inLane = function (px, pz, out) {
+            if (out > 4.6) return false;
+            return lanes.some(function (d) {
+                var half = (d.wide ? 3.3 : 2.5) / 2 + 1.0;
+                if (d.wall === 'n') return pz < -halfZ && Math.abs(px - (d.x || 0)) < half;
+                if (d.wall === 's') return pz > halfZ && Math.abs(px - (d.x || 0)) < half;
+                if (d.wall === 'e') return px > halfX && Math.abs(pz - (d.z || 0)) < half;
+                if (d.wall === 'w') return px < -halfX && Math.abs(pz - (d.z || 0)) < half;
+                return false;
+            });
+        };
+        var low = !!(typeof window !== 'undefined' && window.EW_PERF_LOW), planted = 0;
+        for (var ro = r0; ro <= depth; ro += rStep) {
+            var hx = halfX + ro, hz = halfZ + ro, per = 4 * hx + 4 * hz;
+            var count = Math.max(8, Math.round(per / sp));
+            for (var ti = 0; ti < count; ti++) {
+                if (low && (ti & 1)) continue;
+                var sAlong = ((ti + rng() * 0.7) / count) * per, px, pz;
+                if (sAlong < 2 * hx) { px = -hx + sAlong; pz = -hz; }
+                else if (sAlong < 2 * hx + 2 * hz) { px = hx; pz = -hz + (sAlong - 2 * hx); }
+                else if (sAlong < 4 * hx + 2 * hz) { px = hx - (sAlong - 2 * hx - 2 * hz); pz = hz; }
+                else { px = -hx; pz = hz - (sAlong - 4 * hx - 2 * hz); }
+                px += (rng() - 0.5) * rStep * 0.9; pz += (rng() - 0.5) * rStep * 0.9;
+                if (Math.abs(px) < halfX + 0.6 && Math.abs(pz) < halfZ + 0.6) continue;   // never inside the room
+                if (inLane(px, pz, ro)) continue;
+                var fk = kinds[(rng() * kinds.length) | 0];
+                var fh = fk === 'tree_4' ? 3.6 + rng() * 1.2 : (fk === 'tree_5' || fk === 'tree_6') ? 2.0 + rng() * 0.6 : 2.3 + rng() * 1.1;
+                var gy = _hqTerrainGround(px, pz); if (gy == null) gy = 0;
+                if (plantTree(fk, fh, px, pz, gy * _hqUnits())) planted++;
+            }
+        }
+        if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] treeline: ' + planted + ' trees past the edge');
+    }
+    function _hqBuildTerrain(room) {
+        if (typeof hqTerrainInfo !== 'function') return;
+        var U = _hqUnits(), S = room.shell, G = _hq.shellGroup;
+        var roomId = (_hq.opts && _hq.opts.room) || room.id || null;
+        var info = roomId ? hqTerrainInfo(roomId) : hqTerrainCompile(room, null);
+        if (!info) { console.warn('[HQ] terrain failed to compile', room.label); return; }
+        _hq.terrain = info;
+        _hq.rails = _hq.rails || []; _hq.ramps = _hq.ramps || [];
+        var TM = info.tile * U, res = info.res, nx = info.nx, nz = info.nz;
+        var rng = _mulberry32((0x7e44 + nx * 31 + nz * 7) >>> 0);
+        var pulse = function (mat, opAmp, spd) { _hq.fxPulse.push({ mat: mat, baseOp: mat.opacity, opAmp: opAmp, spd: spd, phase: rng() * Math.PI * 2 }); return mat; };
+        var R = info.rules;
+        /* ── THE FIELD: one indexed mesh, UVs in tiles, the blend per vertex ── */
+        var pos = new Float32Array(nx * nz * 3), uv = new Float32Array(nx * nz * 2), blend = new Float32Array(nx * nz * 2);
+        var pathW = function (px, pz) {
+            var w = 0;
+            for (var i = 0; i < info.paths.length; i++) { var p = info.paths[i], d = _hqTPolyDist(px, pz, p.pts).d, hw = p.w / 2; var t = d < hw ? 1 : 1 - (d - hw) / 0.7; if (t > w) w = t; }
+            return Math.max(0, Math.min(1, w));
+        };
+        for (var j = 0; j < nz; j++) for (var i = 0; i < nx; i++) {
+            var k = j * nx + i, px = info.x0 + i * res, pz = info.z0 + j * res, h = info.H[k];
+            pos[k * 3] = px * U; pos[k * 3 + 1] = h * U; pos[k * 3 + 2] = pz * U;
+            uv[k * 2] = px * U / TM; uv[k * 2 + 1] = pz * U / TM;
+            var sl = hqTerrainSlope(info, px, pz);
+            var rock = (sl - R.cliffFrom) / (R.cliffTo - R.cliffFrom); rock = rock < 0 ? 0 : rock > 1 ? 1 : rock;
+            blend[k * 2] = rock * rock * (3 - 2 * rock); blend[k * 2 + 1] = pathW(px, pz) * (1 - blend[k * 2]);
+        }
+        var idx = [];
+        for (var j2 = 0; j2 + 1 < nz; j2++) for (var i2 = 0; i2 + 1 < nx; i2++) {
+            var a = j2 * nx + i2, b = a + 1, c = a + nx, d = c + 1;
+            idx.push(a, c, b, b, c, d);
+        }
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+        geo.setAttribute('aBlend', new THREE.BufferAttribute(blend, 2));
+        geo.setIndex(idx); geo.computeVertexNormals();
+        var field = new THREE.Mesh(geo, _hqTerrainMat(info, S));
+        field.position.y = 0.3; field.receiveShadow = true; field.renderOrder = 1; field._ew_hqPart = 'floor'; field._ew_hqTerrain = true;
+        G.add(field);
+        /* ── THE WATER: the battle's animated sheet per key; a pool a disc, a stream a mitred ribbon ── */
+        var fluidMats = {}, fluidKeys = [];
+        var fluidMatFor = function (key) {
+            if (fluidMats[key]) return fluidMats[key];
+            var fm = null;
+            try { fm = _buildFluidTopMat(key); } catch (e) { fm = null; }
+            if (fm) { if (key === 'lava' && fm.emissive) fm.emissiveIntensity = 0.9; fluidKeys.push(key); }
+            else { fm = new THREE.MeshBasicMaterial({ color: key === 'lava' ? 0xff6a2a : 0x4a9ad0, transparent: true, opacity: key === 'lava' ? 0.85 : 0.55, depthWrite: false, fog: false }); pulse(fm, 0.08, 0.9); }
+            fluidMats[key] = fm; return fm;
+        };
+        var lavaCx = 0, lavaCz = 0, lavaN = 0, lavaY = 0;
+        info.fluids.forEach(function (f) {
+            var mesh;
+            if (f.kind === 'pool') {
+                var cg = new THREE.CircleGeometry(f.r * U, 40);
+                mesh = new THREE.Mesh(cg, fluidMatFor(f.key)); mesh.rotation.x = -Math.PI / 2;
+                if (f.rz && f.rz !== f.r) mesh.scale.y = f.rz / f.r;
+                mesh.rotation.z = -((f.rot || 0) * Math.PI / 180);
+                mesh.position.set(f.x * U, f.y * U + 0.4, f.z * U);
+                _hzTileUV(cg, 2 * f.r * U, 2 * f.r * U, TM);
+                if (f.key === 'lava') { lavaCx += f.x; lavaCz += f.z; lavaN++; lavaY = f.y; var lg = _hzGlowSprite(1.4 * f.r * U, 0xff7a30, 0.3, 0, 0, 0); lg.position.set(f.x * U, (f.y + 0.25) * U, f.z * U); G.add(lg); pulse(lg.material, 0.14, 0.8); }
+            } else {
+                var pts = f.pts, hw = f.w / 2 + 0.25, vp = [], vu = [], vi = [], along = 0;
+                for (var pi = 0; pi < pts.length; pi++) {
+                    var p0 = pts[Math.max(0, pi - 1)], p1 = pts[pi], p2 = pts[Math.min(pts.length - 1, pi + 1)];
+                    var dx = p2[0] - p0[0], dz = p2[1] - p0[1], L = Math.hypot(dx, dz) || 1; dx /= L; dz /= L;
+                    if (pi > 0) along += Math.hypot(p1[0] - pts[pi - 1][0], p1[1] - pts[pi - 1][1]);
+                    var nxv = -dz * hw, nzv = dx * hw;
+                    vp.push((p1[0] + nxv) * U, f.y * U + 0.4, (p1[1] + nzv) * U, (p1[0] - nxv) * U, f.y * U + 0.4, (p1[1] - nzv) * U);
+                    vu.push(0, along * U / TM, f.w * U / TM, along * U / TM);
+                    if (pi > 0) { var b0 = (pi - 1) * 2; vi.push(b0, b0 + 2, b0 + 1, b0 + 1, b0 + 2, b0 + 3); }
+                }
+                var sg = new THREE.BufferGeometry();
+                sg.setAttribute('position', new THREE.Float32BufferAttribute(vp, 3)); sg.setAttribute('uv', new THREE.Float32BufferAttribute(vu, 2)); sg.setIndex(vi); sg.computeVertexNormals();
+                mesh = new THREE.Mesh(sg, fluidMatFor(f.key)); mesh.material.side = THREE.DoubleSide;
+                if (f.key === 'lava') { lavaN++; lavaCx += pts[0][0]; lavaCz += pts[0][1]; lavaY = f.y; }
+            }
+            mesh.renderOrder = 2; G.add(mesh);
+        });
+        if (fluidKeys.length) _hq.moatTick = { key: fluidKeys[0], keys: fluidKeys, tile: TM };
+        if (lavaN && _hq.propLights < HQ_PROP_LIGHT_MAX) { var ll = new THREE.PointLight(0xff6a2a, 1.1, 22 * U, 2); ll.position.set((lavaCx / lavaN) * U, (lavaY + 1.6) * U, (lavaCz / lavaN) * U); G.add(ll); _hq.propLights++; }
+        /* ── THE DECKS: planks on posts at their height (a rail either side to grind) ── */
+        var plankMat = new THREE.MeshPhongMaterial({ map: _hzTex('wood_planks') || null, color: 0xffffff, shininess: 10 }); plankMat.emissive = new THREE.Color(0x111111);
+        var ropeMat = new THREE.MeshPhongMaterial({ color: 0x5a4a34, shininess: 6 });
+        info.decks.forEach(function (dk) {
+            var L = Math.hypot(dk.x1 - dk.x0, dk.z1 - dk.z0), yaw = Math.atan2(dk.x1 - dk.x0, dk.z1 - dk.z0);
+            var g = new THREE.Group(); g.position.set((dk.x0 + dk.x1) / 2 * U, dk.y * U + 0.3, (dk.z0 + dk.z1) / 2 * U); g.rotation.y = yaw;
+            var slab = new THREE.Mesh(new THREE.BoxGeometry(dk.w * U, 0.18 * U, (L + 0.3) * U), plankMat); _hzBoxUV(slab.geometry, dk.w * U, 0.18 * U, (L + 0.3) * U, TM); slab.position.y = -0.09 * U; g.add(slab);
+            if (dk.rails !== false) [-1, 1].forEach(function (sg) {
+                var bar = _hqBox(0.05, 0.05, L, ropeMat); bar.position.set(sg * (dk.w / 2 - 0.08) * U, 0.95 * U, 0); g.add(bar);
+                for (var pk = 0; pk <= 1; pk++) { var post = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * U, 0.05 * U, 1.0 * U, 6), ropeMat); post.position.set(sg * (dk.w / 2 - 0.08) * U, 0.5 * U, (pk ? 1 : -1) * (L / 2 - 0.1) * U); g.add(post); }
+                var c = Math.cos(yaw), s = Math.sin(yaw), ox = sg * (dk.w / 2 - 0.08);
+                _hq.rails.push({ x0: dk.x0 + ox * c, z0: dk.z0 - ox * s, x1: dk.x1 + ox * c, z1: dk.z1 - ox * s, y: dk.y + 0.95, bridge: true });
+            });
+            g.renderOrder = 1; G.add(g);
+        });
+        /* ── THE WALLS: a slab in the cliff sheet standing on the ground (its top a rail) ── */
+        var wallMat = new THREE.MeshPhongMaterial({ map: _hzTex(info.cliff) || null, color: 0xffffff, shininess: 4 }); wallMat.emissive = new THREE.Color(0x151515);
+        if (S.wallColor != null) wallMat.color.multiply(new THREE.Color(S.wallColor));
+        info.walls.forEach(function (w) {
+            var L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0), yaw = Math.atan2(w.x1 - w.x0, w.z1 - w.z0), hM = w.top - w.base;
+            var m = new THREE.Mesh(new THREE.BoxGeometry(w.t * U, hM * U, (L + w.t) * U), w.key ? new THREE.MeshPhongMaterial({ map: _hzTex(w.key) || null, shininess: 4 }) : wallMat);
+            _hzBoxUV(m.geometry, w.t * U, hM * U, (L + w.t) * U, TM);
+            m.position.set((w.x0 + w.x1) / 2 * U, (w.base + hM / 2) * U + 0.3, (w.z0 + w.z1) / 2 * U); m.rotation.y = yaw; m.renderOrder = 1; m.castShadow = true; G.add(m);
+        });
+        /* ── THE RAILS: posts and a bar along the ground ── */
+        info.rails.filter(function (r) { return r.rail; }).forEach(function (r) {
+            var L = Math.hypot(r.x1 - r.x0, r.z1 - r.z0), yaw = Math.atan2(r.x1 - r.x0, r.z1 - r.z0);
+            var g = new THREE.Group(); g.position.set((r.x0 + r.x1) / 2 * U, 0, (r.z0 + r.z1) / 2 * U); g.rotation.y = yaw;
+            var bar = new THREE.Mesh(new THREE.CylinderGeometry(0.03 * U, 0.03 * U, L * U, 8), new THREE.MeshPhongMaterial({ color: 0x8a8f94, shininess: 60 })); bar.rotation.x = Math.PI / 2; bar.position.y = r.y * U; g.add(bar);
+            var n = Math.max(2, Math.round(L / 1.6));
+            for (var pk = 0; pk < n; pk++) { var t = n === 1 ? 0.5 : pk / (n - 1); var wx = r.x0 + (r.x1 - r.x0) * t, wz = r.z0 + (r.z1 - r.z0) * t, gy = hqTerrainHeight(info, wx, wz); var post = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.04 * U, (r.y - gy) * U, 6), bar.material); post.position.set(0, (gy + (r.y - gy) / 2) * U, (t - 0.5) * L * U); g.add(post); }
+            G.add(g);
+        });
+        _hq.rails.push.apply(_hq.rails, info.rails);
+        /* ── THE RAMPS on the park register (a rise taken at speed is a hop) ── */
+        (room.terrain.features || []).forEach(function (f) {
+            if (f.k !== 'ramp') return;
+            var L = Math.hypot(f.x1 - f.x0, f.z1 - f.z0), yaw = Math.atan2(f.x1 - f.x0, f.z1 - f.z0);
+            /* _hqRampLocal: the low end at local +Z — a ramp rising from (x0,z0) toward (x1,z1) has its low end at the start, so face the frame the other way */
+            _hq.ramps.push({ x: (f.x0 + f.x1) / 2, z: (f.z0 + f.z1) / 2, yaw: yaw + Math.PI, hw: f.w / 2, hd: L / 2, y0: Math.min(f.h0, f.h1), y1: Math.max(f.h0, f.h1), prof: null, terrain: true });
+        });
+        /* ── THE TREES: the near kit's foliage on the ground, each a blocker; the treeline past an open edge ── */
+        var TK = null;
+        if ((info.trees.length || (S.forest && S.open)) && typeof _nrTree === 'function' && typeof _nrKit === 'function') {
+            try { TK = _nrKit(G, { ts: TM, bw: Math.round(S.w / info.tile), bh: Math.round(S.d / info.tile), rng: rng, hq: { w: 0, gap: 0, B: 1, tints: null } }, {}); }
+            catch (e) { console.warn('[HQ] the terrain’s tree kit failed', e); TK = null; }
+        }
+        var plantTree = function (kind, h, px, pz, py) {
+            if (!TK) return null;
+            var tg = null;
+            try { tg = _nrTree(TK, kind, { h: h }); } catch (e) { tg = null; }
+            if (!tg) return null;
+            tg.position.set(px * U, py + 0.3, pz * U); tg.rotation.y = rng() * Math.PI * 2; tg._ew_hqTree = true;
+            if (tg.parent !== G) G.add(tg);
+            return tg;
+        };
+        info.trees.forEach(function (t) {
+            var tall = t.kind === 'tree_4', dead = (t.kind === 'tree_5' || t.kind === 'tree_6');
+            var h = t.h || (tall ? 5.0 + rng() * 1.2 : dead ? 2.3 : 2.6 + rng() * 0.6);
+            plantTree(t.kind, h, t.x, t.z, t.y * U);
+            var blk = new THREE.Object3D(); blk.position.set(t.x * U, t.y * U, t.z * U); G.add(blk);
+            _hq.blockers.push({ obj: blk, y: t.y, top: null, rad: t.r || 0.38, tree: true });
+        });
+        if (TK && S.forest && S.open) _hqPlantTreeline(room, S, S.w / 2, S.d / 2, plantTree, rng);
+        /* ── THE SCATTER: catalogue props at the compiler's spots, placed by _hqPlaceProps on the ground ── */
+        _hq.terrainScatter = info.scatter.map(function (q) { return { key: q.key, x: q.x, z: q.z, face: q.face, foot: q.foot, rect: false, scatter: true }; });
+        /* ── THE STALACTITES under a closed ceiling, over the open floor ── */
+        if (!S.open && room.terrain.stalactites !== false) {
+            var stMat = new THREE.MeshPhongMaterial({ map: _hzTex(info.cliff) || null, shininess: 3 }); stMat.emissive = new THREE.Color(0x0e0e0e);
+            if (S.wallColor != null) stMat.color.multiply(new THREE.Color(S.wallColor));
+            var nSt = Math.min(70, Math.floor(S.w * S.d / 45));
+            for (var si = 0; si < nSt; si++) {
+                var sx = (rng() - 0.5) * (S.w - 2), sz = (rng() - 0.5) * (S.d - 2), gh = hqTerrainHeight(info, sx, sz);
+                if (S.h - gh < 3.2) continue;
+                if (info.pads.some(function (p) { return Math.hypot(p.x - sx, p.z - sz) < 2.6; })) continue;
+                var len = 0.6 + rng() * 2.0, rad = 0.12 + rng() * 0.28;
+                var cone = new THREE.Mesh(new THREE.ConeGeometry(rad * U, len * U, 7), stMat);
+                cone.rotation.x = Math.PI; cone.position.set(sx * U, (S.h - len / 2 - 0.02) * U, sz * U); G.add(cone);
+            }
+        }
+        if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] terrain', roomId, nx + '×' + nz, 'trees', info.trees.length, 'scatter', info.scatter.length, 'fluids', info.fluids.length);
     }
     function _hqBuildSiteBoard(room) {
         var U = _hqUnits(), S = room.shell, G = _hq.shellGroup;
@@ -42289,6 +42532,17 @@ const ThreeRenderer = (function () {
            hinge that swings out toward you, a rail of coats inside, and no
            back — the warm light of another bedroom in another decade where
            the wall should be. Kin to the wardrobe, thinner, on the wall. */
+        /* THE TREES WITH HOLES IN THEM (2026-09-17, the user's two Meshy trees):
+           THE HOLLOW TREE (the way into the fairy forest) and THE DEAD TREE (its
+           dark hole looks onto the haunted house's garden and the Looking-Glass's
+           marble). One builder: the catalogue GLB (hollow_tree / hollow_dead_tree,
+           MODEL_INDEX §3e) stands with its hole to +Z once it lands; until then —
+           and on the stub scene — a procedural trunk with the hole set into its
+           front, a crown of leaves on the living one, two bare boughs on the dead
+           one, roots at the foot. The way rig: the light in the hole comes up as
+           you approach (the tick), the press-in at 0.55 is the climb in. */
+        hollowtree: function (U, ctx) { return _hqTreeWay(U, ctx, false); },
+        deadtree: function (U, ctx) { return _hqTreeWay(U, ctx, true); },
         closet: function (U, ctx) {
             var g = new THREE.Group();
             var W = 1.0, H = 2.1, D = 0.7, T = 0.05;
@@ -42317,6 +42571,34 @@ const ThreeRenderer = (function () {
             return { g: g, motion: motion, ow: W, oh: H, plateY: H + 0.4 };
         },
     };
+    function _hqTreeWay(U, ctx, dead) {
+        var g = new THREE.Group();
+        var H = dead ? 5.0 : 6.0, R = dead ? 0.5 : 0.68, holeW = 0.95, holeH = 1.9, zc = -R * 0.45;
+        var bark = _hqMat('wood', 1, 3, { color: dead ? 0x6a6058 : 0x7a5a3c, shininess: 4 });
+        var stand = new THREE.Group(); g.add(stand);
+        var trunk = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.78 * U, R * U, H * U, 12), bark); trunk.position.set(0, (H / 2) * U, zc * U); stand.add(trunk);
+        if (dead) {
+            [[0.55, 1.1, 0.7], [-0.6, 0.9, -0.5]].forEach(function (b, i) {
+                var bough = _hqBox(0.16, 2.2, 0.16, bark); bough.position.set(b[0] * U, (H * 0.78) * U, (zc + 0.1 * b[2]) * U); bough.rotation.z = b[0] > 0 ? -b[1] : b[1]; bough.rotation.x = 0.25 * b[2]; stand.add(bough);
+            });
+        } else {
+            var crown = new THREE.Mesh(new THREE.SphereGeometry(R * 3.4 * U, 12, 10), _hqMat('leaves_3', 2, 2, { color: 0x5a8a4a, shininess: 2 })); crown.position.set(0, (H + 0.5) * U, zc * U); crown.scale.y = 0.85; stand.add(crown);
+        }
+        for (var ri = 0; ri < 4; ri++) { var root = _hqBox(0.22, 0.28, 0.9, bark); var ra = ri * Math.PI / 2 + 0.6; root.position.set(Math.sin(ra) * R * 1.1 * U, 0.1 * U, (zc + Math.cos(ra) * R * 1.1) * U); root.rotation.y = ra; root.rotation.x = 0.35; g.add(root); }
+        /* THE HOLE: a dark recess in the trunk's front with the other side's light in it */
+        var hole = new THREE.Mesh(new THREE.PlaneGeometry(holeW * U, holeH * U), _hqBasic(0x060a08)); hole.position.set(0, (0.12 + holeH / 2) * U, (zc + R * 0.98) * U); g.add(hole);
+        var light = new THREE.Mesh(new THREE.PlaneGeometry((holeW - 0.16) * U, (holeH - 0.16) * U), _hqBasic(dead ? 0xd8d0ff : 0xbfffd0, { transparent: true, opacity: 0.16, depthWrite: false }));
+        light.position.set(0, (0.12 + holeH / 2) * U, (zc + R * 0.99 + 0.012) * U); light.renderOrder = 2; g.add(light);
+        var glow = _hzGlowSprite(1.4 * U, dead ? 0xc8c0ff : 0xa0ffc8, 0.18, 0.0, 0.0, 0.0); glow.position.set(0, 1.05 * U, (zc + R * 1.1) * U); g.add(glow);
+        /* the user's GLB, hole to +Z (the catalogue's rot turns it), the stand-in hidden when it lands */
+        var cat = (typeof _hqData === 'function') ? (((_hqData() || {}).catalogue || {})[dead ? 'hollow_dead_tree' : 'hollow_tree']) : null;
+        if (cat && cat.file && typeof _miscModelInstance === 'function' && typeof _hqModelUrl === 'function' && typeof THREE.GLTFLoader === 'function') {
+            var inst = _miscModelInstance(_hqModelUrl(cat), true, (cat.h || H) * U, { matPick: (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined, onDone: function () { stand.visible = false; } });
+            inst.position.set(0, 0, zc * U); inst.rotation.y = ((cat.rot || 0) * Math.PI / 180); g.add(inst);
+        }
+        var motion = { mode: 'way', ow: holeW, tick: function (k) { light.material.opacity = 0.16 + 0.62 * k; glow.material.opacity = 0.18 + 0.5 * k; glow.scale.setScalar((1.4 + 1.0 * k) * U); } };
+        return { g: g, motion: motion, ow: holeW, oh: holeH, plateY: 2.6 };
+    }
     function _hqBuildWay(room, door, level, y0, Rw, inward) {
         var U = _hqUnits(), S = room.shell, G = _hq.doorGroup;
         var kind = door.way, b = _hqWayBuilders[kind];
@@ -42760,14 +43042,14 @@ const ThreeRenderer = (function () {
         var U = _hqUnits(), S = room.shell, G = _hq.propGroup, D = _hqData();
         var isBox = room.kind === 'box';
         _hq.tabletops = [];
-        (room.props || []).forEach(function (p) {
+        (room.props || []).concat(_hq.terrainScatter || []).forEach(function (p) {   // THE TERRAIN ROOM (2026-09-17): the compiler's scatter stands like any floor prop
             var cat = D.catalogue[p.key];
             if (!cat || (!cat.file && !cat.proc)) return;
             /* a site room's setting (stage 5): a floor prop stands clear of its houses / stands */
             if (isBox && _hq.setting && !p.wall && !p.ceil && !cat.ceil && !(p.y > 0.5)) { var fsp = _hqSettingFreeSpot(p.x || 0, p.z || 0); if (fsp.x !== (p.x || 0) || fsp.z !== (p.z || 0)) p = Object.assign({}, p, { x: fsp.x, z: fsp.z }); }
             var level = p.level || 0, y0 = _hqLevelY(S, level);
             /* THE CAVE (rev 11): a floor prop stands on its cell — a torch on the terrace, a cot in a sunken cell */
-            if (isBox && _hq.site && _hq.site.cave && typeof p.wall !== 'string' && !(cat.ceil || p.ceil)) { var pcy = _hqCaveTop(p.x || 0, p.z || 0); if (pcy != null) y0 += pcy; }
+            if (isBox && _hqHasGround() && typeof p.wall !== 'string' && !(cat.ceil || p.ceil)) { var pcy = _hqCaveTop(p.x || 0, p.z || 0); if (pcy != null) y0 += pcy; }
             var inward = p.side === 'in';            // a bay's inner wall: the prop faces outward
             var Rw = _hqWallR(room, level, p.side);
             /* a box room's wall prop names its wall (`wall: 'n'|'e'|'s'|'w'`);
@@ -42973,7 +43255,7 @@ const ThreeRenderer = (function () {
         entry.group.name = 'hq_' + spec.id;
         _attachUnitModel(entry, unit, def, BASE_TILE);
         var y = _hqLevelY(S, spec.level || 0) + (spec.y || 0);
-        if (spec.y == null && spec.x != null && _hq.site && _hq.site.cave) { var chy = _hqCaveTop(spec.x, spec.z || 0); if (chy != null) y += chy; }   // THE CAVE (rev 11): a native / the walker stands on its cell
+        if (spec.y == null && spec.x != null && _hqHasGround()) { var chy = _hqCaveTop(spec.x, spec.z || 0); if (chy != null) y += chy; }   // THE CAVE (rev 11): a native / the walker stands on its cell
         /* box rooms place by (x, z) metres; polar rooms by (deg, r) */
         var p = (spec.x != null && spec.deg == null) ? new THREE.Vector3(spec.x * _hqUnits(), y * _hqUnits(), (spec.z || 0) * _hqUnits()) : _hqPolarW(spec.deg, spec.r, y);
         entry.group.position.copy(p);
@@ -43039,7 +43321,7 @@ const ThreeRenderer = (function () {
             if (!f.cell && f.y == null && _hq.setting) { var fs = _hqSettingFreeSpot(x, z); x = fs.x; z = fs.z; }
             var y = 0;
             if (f.y != null) y = f.y;
-            else if (_hq.site && _hq.site.cave) { var ct = _hqCaveTop(x, z); if (ct != null) y = ct; }
+            else if (_hqHasGround()) { var ct = _hqCaveTop(x, z); if (ct != null) y = ct; }
             else if (_hq.site) { var sc = _hqSiteCellAt(x, z); if (sc) y = (sc.top > 0) ? sc.top : _hqSiteFloorY(sc, x, z); }
             var color = HQ_FIND_COLORS[f.kind] || 0xffffff;
             var seed = (typeof hqHash === 'function') ? (hqHash(f.id) % 628) / 100 : 0;
@@ -43586,9 +43868,20 @@ const ThreeRenderer = (function () {
        walkway by aiming at the lip (data.js hqFindHardReach is the proof; the
        cave's ledges are climbable and never snap). Null = not a lip. */
     function _hqPortalLedgeSnap(hit, R) {
-        var H = _hq; if (!H || !H.site || H.site.cave || !hit || hit.surf !== 'wall') return null;
+        var H = _hq; if (!H || !hit || hit.surf !== 'wall') return null;
         var snap = (R && R.ledgeSnapM) || 0;
         if (!(snap > 0)) return null;
+        /* THE LIP on a TERRAIN pinnacle (2026-09-17): a wall hit on a steep face whose top — the flat ground a little inside
+           the face — lies within the snap band above the hit is a floor door on that top (the tapes on the crags) */
+        if (H.terrain && typeof hqTerrainHeight === 'function') {
+            for (var td = 0.35; td <= 1.25; td += 0.15) {
+                var tx = hit.x - hit.nx * td, tz = hit.z - hit.nz * td, tg = hqTerrainHeight(H.terrain, tx, tz);
+                if (tg > hit.y && tg - hit.y <= snap && hqTerrainSlope(H.terrain, tx, tz) < 0.5 && hqTerrainFeet(H.terrain, tx, tz, null) != null)
+                    return { surf: 'floor', x: tx, y: tg, z: tz, dist: hit.dist, nx: 0, ny: 1, nz: 0, lip: true };
+            }
+            return null;
+        }
+        if (!H.site || H.site.cave) return null;
         var bx = hit.x - hit.nx * 0.3, bz = hit.z - hit.nz * 0.3;              // just inside the face
         var hits = _hqBlockersUnder(bx, bz), top = null;
         for (var i = 0; i < hits.length; i++) {
@@ -44582,6 +44875,8 @@ const ThreeRenderer = (function () {
             y = 0;
             /* THE PLANET IN THE ROOM (2026-09-16): the carved bowls and the far curve are the floor (the board's cells override below) */
             if (_hq.planet) { var py = _hq.planet.yAt(x, z); if (isFinite(py)) y = py; }
+            /* THE TERRAIN ROOM (2026-09-17): the field's own feet — the slope rule, the wade, the walls (data.js hqTerrainFeet) */
+            if (_hq.terrain) { var tt = hqTerrainFeet(_hq.terrain, x, z, curY); if (tt === null) return null; y = tt; }
             /* the site board (plan 7.2): a cell's own top — a pit for a lake,
                nothing at all for lava / deep water; raised cells are blockers
                below (climbable one level at a time) */
@@ -44666,7 +44961,7 @@ const ThreeRenderer = (function () {
             var siteL = _hq.site ? (_hq.site.L || _hq.site.C) : 0;   // one Δ level (a site board: the tile; a cave: HQ_CAVE_LEVEL, half of it)
             var floorTol = (_hq.site && (_hqSiteCellAt(x, z) || curY < -0.5)) ? Math.max(HQ_STEP_TOL, siteL + 0.06) : HQ_STEP_TOL;   // out of a pit — or the moat — onto the walkway is one level too
             if (y - curY > floorTol) return null;
-            if (curY - y > Math.max(HQ_DROP_MAX, _hq.site ? siteL + 0.1 : 0)) return null;
+            if (curY - y > Math.max(HQ_DROP_MAX, _hq.site ? siteL + 0.1 : 0, _hq.terrain ? _hq.terrain.rules.dropMax : 0)) return null;   // a terrain room: any drop (platforming)
         }
         if (!ignoreBlockers) {
             /* furniture: a footprint's TOP is a floor when you stand on it or
@@ -44744,6 +45039,7 @@ const ThreeRenderer = (function () {
             var roamA = _hqRoamM(S);
             if (Math.abs(x) > S.w / 2 + roamA - HQ_BODY_R - 0.08 || Math.abs(z) > S.d / 2 + roamA - HQ_BODY_R - 0.08) return false;
             /* the site board (plan 7.2): lava / deep water is never overflown; a pit's floor stays under the feet */
+            if (_hq.terrain && !hqTerrainAir(_hq.terrain, x, z, y)) return false;   // THE TERRAIN ROOM: never inside the ground, a wall or over a hazard
             if (_hq.site) { var sc = _hqSiteCellAt(x, z); if (sc) { if (!sc.walk) return false; if (_hq.site.cave ? (y < _hqSiteFloorY(sc, x, z) - 0.05) : (sc.top < 0 && y < sc.top - 0.05)) return false; } }   // a cave's ledge is solid in the air (rev 11)
             if (_hq.gallery && !_hqGalleryAir(x, z, y)) return false;   // THE GALLERY (9.2 stage 2): the slab, the flight's mass and the railing are solid in the air
             if (_hq.ramps && _hq.ramps.length) { var rpa = _hqRampSurfaceAt(x, z); if (rpa !== undefined && y < rpa - 0.05) return false; }   // SKATEBOARDING (9.8): the quarter pipe's mass
@@ -44805,6 +45101,7 @@ const ThreeRenderer = (function () {
             if (Math.abs(px) > S.w / 2 + roamC - 0.28 || Math.abs(pz) > S.d / 2 + roamC - 0.28) return true;
             if (!S.open && py > S.h - 0.3) return true;   // an outdoor room has no ceiling
             if (_hq.gallery && _hqGalleryCam(px, pz, py)) return true;   // THE GALLERY (9.2 stage 2): the boom never enters the slab or the flight
+            if (_hq.terrain) return hqTerrainCam(_hq.terrain, px, pz, py);   // THE TERRAIN ROOM: the boom stays over the field, out of its walls, above its sheets
             if (_hq.site) {
                 /* the site board (plan 7.2): the boom stays out of raised cells and off a pit's floor */
                 var sc = _hqSiteCellAt(px, pz);
@@ -45702,7 +45999,7 @@ const ThreeRenderer = (function () {
                 }
             }
             var land = _hqSurface(pl.x, pl.z, null, true);
-            if (land === null || land > pl.y + 0.01) { var lc = _hq.site ? _hqSiteCellAt(pl.x, pl.z) : null; land = (_hq.site && _hq.site.cave) ? (lc ? _hqSiteFloorY(lc, pl.x, pl.z) : 0) : ((lc && lc.top < 0) ? lc.top : 0); }
+            if (land === null || land > pl.y + 0.01) { var lc = _hq.site ? _hqSiteCellAt(pl.x, pl.z) : null; land = _hq.terrain ? hqTerrainHeight(_hq.terrain, pl.x, pl.z) : (_hq.site && _hq.site.cave) ? (lc ? _hqSiteFloorY(lc, pl.x, pl.z) : 0) : ((lc && lc.top < 0) ? lc.top : 0); }
             var bf = _hqBlockerFloor(pl.x, pl.z, pl.y);
             if (bf !== null && bf > land) land = bf;
             if (ny <= land) {
@@ -45905,7 +46202,7 @@ const ThreeRenderer = (function () {
             var ny = pl.y + pl.vy * dt;
             if (pl.vy < 0) {
                 var land = _hqSurface(pl.x, pl.z, null, true);
-                if (land === null || land > pl.y + 0.01) { var lc = _hq.site ? _hqSiteCellAt(pl.x, pl.z) : null; land = (_hq.site && _hq.site.cave) ? (lc ? _hqSiteFloorY(lc, pl.x, pl.z) : 0) : ((lc && lc.top < 0) ? lc.top : 0); }   // over a band edge: the ground breaks the fall (a site pit: its floor; a cave cell: its feet)
+                if (land === null || land > pl.y + 0.01) { var lc = _hq.site ? _hqSiteCellAt(pl.x, pl.z) : null; land = _hq.terrain ? hqTerrainHeight(_hq.terrain, pl.x, pl.z) : (_hq.site && _hq.site.cave) ? (lc ? _hqSiteFloorY(lc, pl.x, pl.z) : 0) : ((lc && lc.top < 0) ? lc.top : 0); }   // over a band edge: the ground breaks the fall (a site pit: its floor; a cave cell: its feet)
                 /* a furniture top under the feet is a floor too (2026-09-05) */
                 var bf = _hqBlockerFloor(pl.x, pl.z, pl.y);
                 if (bf !== null && bf > land) land = bf;
@@ -46570,6 +46867,8 @@ const ThreeRenderer = (function () {
         if (room.fx === 'site') { try { _hqBuildSiteBoard(room); } catch (e) { console.error('[HQ] site board failed', e); } }
         /* THE CAVE (HQ plan 9.3 stage 2, rev 11): a box room whose floor is a hand-authored grid — ledges, ramps, bridges, water, lava */
         if (room.cave) { try { _hqBuildCave(room); } catch (e) { console.error('[HQ] cave failed', e); } }
+        /* THE TERRAIN ROOM (2026-09-17): a box room whose floor is a smooth height field — hills, ledges, ramps, water, walls */
+        if (room.terrain) { try { _hqBuildTerrain(room); } catch (e) { console.error('[HQ] terrain failed', e); } }
         /* the setting in the room (HQ plan 7.2 stage 5): the map's near builder, at 1:1 */
         if (room.fx === 'site' && S.near) { try { _hqBuildSetting(room); } catch (e) { console.error('[HQ] setting failed', e); } }
         /* an outdoor room (HQ plan 7.2 stage 3): the map's sky and far roster */

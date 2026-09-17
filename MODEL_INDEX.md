@@ -176,6 +176,35 @@ stand-in leaning on its tail. Columns as in §3.
 | --- | --- | --- | --- | --- | --- |
 | `skateboard` | Meshy_AI_a_skateboard_0915212313_texture.glb | length along X (measured); the rider's frame turns it to +Z | — | under the walker's feet while riding (B) | THE DECK |
 
+## 3e. THE WOODS BATCH (Assets/misc/, 2026-09-17 — THE TERRAIN ROOMS)
+
+Fourteen Meshy props the user uploaded for the woods, the cave and their
+kin. Every one is in `_MISC_GLB` (three-renderer.js, the near settings
+through `_hzMiscKit`) AND in `DOOR_HQ.catalogue` with `base: 'misc'`
+(the building's props; the terrain rooms' `scatter` rows). The two trees
+with holes in them are SEAMS: `DOOR_HQ.ways.hollowtree` / `.deadtree`
+(three-renderer.js `_hqTreeWay`: the catalogue GLB with its hole to +Z,
+a procedural trunk until it lands). Facings are UNMEASURED — a hole that
+faces the wrong way is the catalogue row's `rot`; a wrong height is its
+`h` / `span`. Columns as in §3.
+
+| `_MISC_GLB` key | catalogue key | file | S | H | stands as |
+| --- | --- | --- | --- | --- | --- |
+| `hollow_tree` | `hollow_tree` | Meshy_AI_a_tree_with_a_hole_0916235727_texture.glb | Fairy Forest (north apron, the way in) | THE HOLLOW TREE way: the forest's back door ⇄ the clearing's south wall | the door to the woods |
+| `dead_hollow` | `hollow_dead_tree` | Meshy_AI_a_dead_tree_with_a_dark_hole_0916235739_texture.glb | Haunted House (north apron) | THE DEAD TREE way: the pasture's garden gate ⇄ the house; the ritual ground ⇄ the Looking-Glass | the dead tree's dark hole |
+| `fern` | `fern` | Meshy_AI_a_fern_0916235806_texture.glb | Fairy Forest ×10 | every woods room (scatter) | undergrowth |
+| `stump` | `stump` | Meshy_AI_a_stump_0916235717_texture.glb | Fairy Forest, Haunted House | the clearing, the redwoods, the pasture (scatter) | a stump (a blocker) |
+| `fallen_log` | `fallen_log` | Meshy_AI_a_fallen_log_0916235700_texture.glb | Fairy Forest, Skinwalker Ranch | the clearing, the redwoods (scatter) | a log across the floor |
+| `dead_snag` | `dead_snag` | Meshy_AI_a_dead_snag_0916235650_texture.glb | Haunted House | the trail's top tier, the pasture | a dead trunk |
+| `pine` | `pine` | Meshy_AI_a_pine_with_canopy_0916235640_texture.glb | | the mountain trail (scatter) | a pine |
+| `campfire` | `campfire` | Meshy_AI_a_campfire_ring_0916235856_texture.glb | | the clearing (glow + light) | somebody's fire |
+| `signpost` | `signpost` | Meshy_AI_a_blank_wooden_signpost_0916235832_texture.glb | Skinwalker Ranch | the clearing's crossroads | the signpost |
+| `footbridge` | `footbridge` | Meshy_AI_a_plank_footbridge_0916235844_texture.glb | | (catalogued; the decks are drawn planks today — stand it on a `deck` with `y`) | a plank bridge |
+| `menhir` | `menhir` / `cave_stone` (knee-high) | Meshy_AI_a_standing_stone_0916235906_texture.glb | | the ritual ground ×6, the cavern; the cave's rubble (scatter) | a standing stone |
+| `brick_arch` | `brick_arch` | Meshy_AI_a_brick_arch_section_0916235939_texture.glb | | (catalogued, unplaced) | a brick arch |
+| `culvert` | `culvert_mouth` | Meshy_AI_a_culvert_mouth_0916235929_texture.glb | | the clearing's crag (the storm drain's mouth) | a culvert |
+| `drain_grate` | `drain_grate` | Meshy_AI_a_storm_drain_grate_0916235918_texture.glb | | Dead Man's Cave ×2 (wall, mount 0.4) | a grate |
+
 ## 4. The older `Assets/misc/` models (`_MISC_GLB` + the OBJ landmarks)
 
 | key | file | kind | stands as |

@@ -1,17 +1,20 @@
-// hq-woods.test.js — THE WOODS (HQ plan 9.3 stage 3 — 2026-09-16): the
-// forest on the cave grid. The SEVENTH complex, the Fairy Forest's: THE
-// CLEARING (the crossroads) and six paths — THE MOUNTAIN TRAIL up to Shasta,
-// THE REDWOOD TRAIL to the Grove, THE BACK PASTURE with the ranch's gate and
-// the house's garden gate in one fence, THE STAIRCASE whose door opens on the
-// building's stairwell, DEAD MAN'S CAVE whose grate opens on THE TUNNEL (the
-// subway's fourth station) and THE RITUAL GROUND whose circle is Room 333's.
-// Guards: the sheet (site + part, no number, the register lists 420 once),
-// the TREE cell (a wall to the walker, rock to the field's raster, planted by
-// the renderer), every grid solvable from every door with no isolated cell,
-// the complex connected from the forest's back door and every door a pair,
-// the eight links live with the rev-7 gates re-pointed, the production
-// landing on every door, THE PARK RULE, THE WEENIES (one sky, two landmarks,
-// the renderer's builders), the tapes (one per part, the hundred kept) and
+// hq-woods.test.js — THE WOODS (HQ plan 9.3 stage 3 — 2026-09-16) on THE
+// TERRAIN (stage 4 — 2026-09-17): the forest is a smooth height field now —
+// the knoll, the stream and its plank, the crag the tape stands on, the
+// switchbacks up the mountain trail, the redwoods' creek and root mound,
+// the pasture's dry-stone fence the rider jumps onto, THE STAIRCASE up to
+// its landing, the storm drain's channel and sump, the ritual mound and its
+// stones. The ASCII grid (rev 11) is retired from every part.
+// The SEVENTH complex, the Fairy Forest's: THE CLEARING (the crossroads)
+// and six paths — THE MOUNTAIN TRAIL up to Shasta, THE REDWOOD TRAIL to the
+// Grove, THE BACK PASTURE with the ranch's gate and THE DEAD TREE (the
+// house's garden gate) in one fence, THE STAIRCASE whose door opens on the
+// building's stairwell, DEAD MAN'S CAVE whose grate opens on THE TUNNEL and
+// THE RITUAL GROUND whose circle is Room 333's and whose dead tree looks
+// onto the Looking-Glass. THE HOLLOW TREE (the user's GLB) is the way in.
+// Guards: the sheet, the complex connected from the hollow tree with every
+// door a pair, the nine links live, the production landing on every door,
+// THE PARK RULE, THE WEENIES, the tapes, the staircase, the storm drain and
 // the renderer's source sites.
 'use strict';
 const test = require('node:test');
@@ -26,13 +29,11 @@ const BOARD = 'site_' + SITE;
 const PARTS = ['clearing', 'trail', 'redwoods', 'pasture', 'stair', 'deadmans', 'ritual'];
 const PART_IDS = PARTS.map(p => BOARD + '_' + p);
 const HUB = BOARD + '_clearing';
-const SEWER = BOARD + '_deadmans';   // THE STORM DRAIN (2026-09-16): the woods' one INDOOR part — a closed brick culvert, no sky
+const SEWER = BOARD + '_deadmans';   // THE STORM DRAIN: the woods' one INDOOR part — a closed brick culvert, no sky
 const STAIR = BOARD + '_stair';
-const LINKS = { woods_haunted: 'pasture', woods_skinwalker: 'pasture', woods_grove: 'redwoods', woods_shasta: 'trail', woods_stair: 'stair', woods_sewer: 'deadmans', woods_ritual: 'ritual' };
+const LINKS = { woods_haunted: 'pasture', woods_skinwalker: 'pasture', woods_grove: 'redwoods', woods_shasta: 'trail', woods_stair: 'stair', woods_sewer: 'deadmans', woods_ritual: 'ritual', deadtree_lookingglass: 'ritual' };
 const renderer = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8');
-const dataSrc = fs.readFileSync(__dirname + '/data.js', 'utf8');
 const at = (room, id) => (HQ.rooms[room].doors || []).find(d => d.id === id);
-const CELL = D.HQ_CAVE_CELL;
 
 function extract(name) {
     const start = renderer.indexOf('    function ' + name + '(');
@@ -52,7 +53,7 @@ function landing(room, door) {
     assert.equal(c._hqGoTo(door.id, true), true, room.label + '/' + door.id + ' lands');
     return c._hq;
 }
-function sill(room, door) { return room.cave ? D.hqCaveDoorY(room, door) : 0; }
+function sill(room, door) { return room.terrain ? D.hqTerrainDoorY(room, door) : 0; }
 function propBlocks(room, p, x, z, margin) {
     const S = room.shell, cat = HQ.catalogue[p.key] || {};
     if (p.ceil || cat.ceil || (p.y || 0) > 0.5) return false;
@@ -64,90 +65,31 @@ function propBlocks(room, p, x, z, margin) {
     if (!(foot > 0) && !cat.block) return false;
     return Math.hypot(x - px, z - pz) <= Math.max(foot, 0.3) + margin;
 }
-function landingCell(id, door) {
-    const room = HQ.rooms[id], info = D.hqCaveInfo(id), S = room.shell;
-    let px, pz;
-    if (door.wall === 'free') { const f = (door.face || 0) * Math.PI / 180; px = door.x + Math.sin(f) * 2.4; pz = door.z - Math.cos(f) * 2.4; }
-    else if (door.wall === 'n') { px = door.x; pz = -S.d / 2 + 2.4; }
-    else if (door.wall === 's') { px = door.x; pz = S.d / 2 - 2.4; }
-    else if (door.wall === 'e') { px = S.w / 2 - 2.4; pz = door.z; }
-    else { px = -S.w / 2 + 2.4; pz = door.z; }
-    return D.hqCaveCellAt(info, px, pz);
-}
 
-test('the sheet: THE WOODS is the Fairy Forest’s complex — seven parts, each site + part, none numbered, open under one sky, the register lists 420 once', () => {
-    for (const id of PART_IDS) {
-        const r = HQ.rooms[id];
-        assert.ok(r && r.kind === 'box' && r.site === SITE && r.part === id.slice(BOARD.length + 1), id + ': a box part of the forest');
-        assert.equal(r.roomNo, undefined, id + ': a part wears no number');
-        assert.equal(D.hqRoomNo(id), '420', id + ': the number is the threshold’s, read through the site');
-        assert.equal(D.hqRoomSite(id), SITE, id + ': wild');
-        assert.ok(/^THE WOODS · /.test(r.label) && r.sub && r.spawn && Array.isArray(r.lines) && r.lines.length, id + ': plate, spawn, lines');
-        if (id === SEWER) assert.ok(r.shell.open !== true && !r.shell.sky && r.shell.h <= 3.2 && r.cave.stalactites === false && r.shell.strips === false, id + ': the storm drain is a closed culvert — a ceiling, no sky, no stalactites of concrete');
-        else assert.ok(r.shell.open === true && r.shell.edge === 'open' && r.shell.sky && r.shell.sky.night === 1 && r.shell.forest && r.shell.forest.depth >= 8, id + ': an open room under the woods’ dusk, the forest past its grid');
-        assert.ok(r.cave && Array.isArray(r.cave.rows), id + ': a cave grid');
+test('the sheet: THE WOODS is the Fairy Forest’s complex — seven parts, each site + part, none numbered, open under one sky (the storm drain closed), every one a terrain room, the register lists 420 once', () => {
+    assert.deepEqual(D.hqSiteComplex(SITE).join(','), [BOARD].concat(PART_IDS).join(','), 'the board room, then the parts in sheet order');
+    for (const p of PARTS) {
+        const id = D.hqComplexRoomId(SITE, p), r = HQ.rooms[id];
+        assert.ok(r && r.kind === 'box' && r.site === SITE && r.part === p, id + ': a box room wearing site + part');
+        assert.equal(r.roomNo, undefined, id + ' wears no number of its own');
+        assert.equal(D.hqRoomNo(id), '420', id + ': hqRoomNo reads the threshold’s number through site');
+        assert.equal(D.hqRoomSite(id), SITE, id + ' is WILD');
+        assert.ok(/THE WOODS/.test(r.label) && r.sub && r.spawn && Array.isArray(r.lines) && r.lines.length, id + ': plate, spawn, lines');
+        assert.ok(r.terrain && !r.cave && D.hqTerrainInfo(id), id + ': a terrain room (the grid is retired)');
+        assert.ok(r.shell.w > 0 && r.shell.d > 0, id + ': a shell sized by hand');
+        if (id === SEWER) assert.ok(!r.shell.open && r.shell.wall === 'bricks_2', 'the storm drain is a closed brick culvert');
+        else { assert.ok(r.shell.open && r.shell.edge === 'open' && r.shell.sky && r.shell.forest, id + ': open under the woods’ sky with a treeline past its edge'); assert.ok(D.hqTerrainInfo(id).trees.length >= 3, id + ': trees'); }
+        for (const n of ['floor', 'wall', 'dado', 'trim']) assert.ok(HQ.textures[r.shell[n]] || TERRAIN_RULES[r.shell[n]], id + ': texture ' + r.shell[n]);
     }
-    assert.deepEqual(D.hqSiteComplex(SITE).join(','), [BOARD].concat(PART_IDS).join(','), 'the complex in sheet order (ids)');
-    assert.equal(D.hqRoomRegister().filter(e => e.no === '420').length, 1, 'the register lists the forest once');
-    assert.deepEqual(D.hqCaveRooms().filter(id => id.indexOf(BOARD + '_') === 0).sort().join(','), PART_IDS.slice().sort().join(','), 'every part is a grid');
+    const reg = D.hqRoomRegister();
+    assert.equal(reg.filter(r => r.mapId === SITE).length, 1, 'the register lists the forest once');
+    assert.ok(!reg.some(r => PART_IDS.includes(r.id) || PART_IDS.includes(r.room)), 'no part is a register entry');
 });
 
-test('THE TREE CELL: T / D / R in the standard legend, a wall to the walker (never a hazard), the floor under it at its level, rock to the field’s raster wearing the forest sheet', () => {
-    const STD = D.HQ_CAVE_STD;
-    for (const [ch, kind] of [['T', 'tree'], ['D', 'tree_5'], ['R', 'tree_4']]) assert.ok(STD[ch] && STD[ch].tree === kind && STD[ch].lvl === 0 && !STD[ch].rock, 'tree ' + ch);
-    assert.equal(STD.R.tall, true, 'a redwood is tall');
-    const info = D.hqCaveCompile({ rows: ['TTT', 'T.T', 'TDT'], legend: { 'Q': { lvl: 2, tree: 'tree' } } }, 9);
-    const t = info.cells[0][0], f = info.cells[1][1];
-    assert.ok(t.tree === 'tree' && t.walk === false && !t.rock && !t.fluid && t.top === 0 && t.key === info.floor, 'a tree cell: unwalkable, not rock, the floor sheet at level 0');
-    assert.equal(D.hqCaveFeet(info, t, 0, 0), null, 'the walker never stands on it');
-    assert.ok(f.walk && D.hqCaveReach(info, 1, 1).size === 1, 'a cell ringed by trees is walled in');
-    const raised = D.hqCaveCompile({ rows: ['Q'], legend: { 'Q': { lvl: 2, tree: 'tree' } } }, 9).cells[0][0];
-    assert.ok(raised.tree && raised.lvl === 2 && Math.abs(raised.top - 2 * D.HQ_CAVE_LEVEL) < 1e-9, 'a legend may raise a tree onto a tier');
-    /* the field's raster (hqFieldRasterCave): a tree is rock, in the forest sheet */
-    const R = D.hqFieldRaster(HUB, 0, 0);
-    const tc = R.cells[0][0];
-    assert.ok(tc.rock === true && tc.in === false && tc.key === 'forest', 'a tree cell is a rock column wearing forest in the fight');
-    assert.match(dataSrc, /if \(!src \|\| src\.rock \|\| src\.tree\)/, 'hqFieldRasterCave reads the tree flag');
-});
-
-test('THE DUNGEON RULES hold in the woods: every grid the shell fits, the border trees or rock but at the lanes, every legend char known, every sheet real, no isolated walkable cell, every door reaches every other under the walker’s own step rule', () => {
-    for (const id of PART_IDS) {
-        const room = HQ.rooms[id], info = D.hqCaveInfo(id), S = room.shell;
-        assert.ok(info.w >= 12 && info.h >= 12, id + ': a grid at least 12 × 12');
-        assert.ok(room.cave.rows.every(r => r.length === info.w), id + ': every row the same width');
-        assert.equal(S.w, Math.round(info.w * CELL * 100) / 100, id + ': the shell is as wide as the grid');
-        assert.equal(S.d, Math.round(info.h * CELL * 100) / 100, id + ': the shell is as deep as the grid');
-        assert.equal(S.wallH, S.h, id + ': wallH is the height');
-        const lanes = room.doors.filter(d => d.wall !== 'free');
-        for (let y = 0; y < info.h; y++) for (let x = 0; x < info.w; x++) {
-            if (x > 0 && y > 0 && x < info.w - 1 && y < info.h - 1) continue;
-            const c = info.cells[y][x]; if (c.rock || c.tree) continue;
-            const cx = (x + 0.5) * CELL - info.halfW, cz = (y + 0.5) * CELL - info.halfD;
-            const lane = lanes.some(d => (d.wall === 'n' && y === 0 && Math.abs(cx - d.x) <= CELL * 1.6) || (d.wall === 's' && y === info.h - 1 && Math.abs(cx - d.x) <= CELL * 1.6) || (d.wall === 'w' && x === 0 && Math.abs(cz - d.z) <= CELL * 1.6) || (d.wall === 'e' && x === info.w - 1 && Math.abs(cz - d.z) <= CELL * 1.6));
-            assert.ok(lane, id + ': the border cell ' + x + ',' + y + ' (' + c.ch + ') is open but no door’s lane reaches it');
-        }
-        for (const row of room.cave.rows) for (const ch of row) assert.ok(D.HQ_CAVE_STD[ch] || (room.cave.legend || {})[ch], id + ': the legend has no ' + JSON.stringify(ch));
-        const keys = new Set(); info.cells.forEach(r => r.forEach(c => { keys.add(c.key); if (c.under) keys.add(c.under.key); }));
-        for (const k of keys) assert.ok(HQ.textures[k] || TERRAIN_RULES[k], id + ': cell sheet ' + k);
-        if (id !== SEWER) assert.ok(info.cells.some(r => r.some(c => c.tree)), id + ': trees');
-        /* the solver: from every door, every other door — and every walkable cell (no pocket a walker can see but never reach) */
-        const cells = room.doors.map(d => ({ d, c: landingCell(id, d) }));
-        for (const x of cells) assert.ok(x.c && x.c.walk, id + '/' + x.d.id + ': the landing cell is walkable');
-        for (const a of cells) {
-            const seen = D.hqCaveReach(info, a.c.x, a.c.y);
-            for (const b of cells) assert.ok(seen.has(b.c.x + ',' + b.c.y), id + ': ' + a.d.id + ' never reaches ' + b.d.id);
-            info.cells.forEach(r => r.forEach(c => { if (c.walk) assert.ok(seen.has(c.x + ',' + c.y), id + ': the cell ' + c.x + ',' + c.y + ' (' + c.ch + ') is walkable but unreachable'); }));
-        }
-        /* a link door on a tier is a door you climb to (the mountain's, the staircase's) */
-        for (const d of room.doors) assert.equal(D.hqCaveDoorY(room, d), sill(room, d));
-    }
-    assert.ok(D.hqCaveDoorY(HQ.rooms[BOARD + '_trail'], at(BOARD + '_trail', 'link_woods_shasta')) > 3, 'the mountain’s door stands on the top tier');
-    assert.ok(D.hqCaveDoorY(HQ.rooms[BOARD + '_stair'], at(BOARD + '_stair', 'link_woods_stair')) > 3, 'the staircase’s door stands on the landing');
-});
-
-test('the woods are one piece: from the forest’s back door every part is walked, every inside door is a pair with the same opening on both sides, nothing leaves the complex but a links row, THE CLEARING has seven ways', () => {
+test('the woods are one piece: from THE HOLLOW TREE every part is walked, every inside door is a pair with the same opening on both sides, nothing leaves the complex but a links row, THE CLEARING has seven ways', () => {
     const back = at(BOARD, 'woods');
-    assert.ok(back && back.wall === 'n' && back.x === -10 && back.leaf === null && back.action.room === HUB && back.action.at === 'forest', 'the path in on the forest’s north-west lane');
+    assert.ok(back && back.wall === 'n' && back.x === -10 && back.way === 'hollowtree' && back.action.room === HUB && back.action.at === 'forest', 'the way in on the forest’s north-west lane is the hollow tree');
+    assert.ok(at(HUB, 'forest').way === 'hollowtree' && at(HUB, 'forest').wall === 's', 'and the way back is the same tree on the clearing’s south wall');
     assert.ok(!back.rankDoor && !back.minClearance && D.doorSiteState(back, null) === 'open', 'never gated');
     const seen = new Set([HUB]), queue = [HUB];
     while (queue.length) {
@@ -159,8 +101,9 @@ test('the woods are one piece: from the forest’s back door every part is walke
             const other = at(a.room, a.at);
             assert.ok(other && other.action.room === id && other.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + ' is a pair');
             assert.equal(other.leaf, d.leaf, 'the same opening on both sides of ' + d.id);
+            assert.equal(other.way, d.way, 'the same way on both sides of ' + d.id);
             assert.ok(PART_IDS.includes(a.room) || a.room === BOARD, id + '/' + d.id + ' stays inside the complex');
-            if (!seen.has(a.room)) { seen.add(a.room); if (a.room !== BOARD) queue.push(a.room); }   // the board room is the way out: its own doors are the bay's
+            if (!seen.has(a.room)) { seen.add(a.room); if (a.room !== BOARD) queue.push(a.room); }
         }
     }
     assert.deepEqual(Array.from(seen).sort().join(','), PART_IDS.concat([BOARD]).sort().join(','), 'every part is reachable from the clearing');
@@ -170,36 +113,44 @@ test('the woods are one piece: from the forest’s back door every part is walke
     assert.equal(hub.doors.filter(d => d.link).length, 0, 'no seam on the crossroads itself — the paths carry them');
 });
 
-test('THE PATHS: eight live links — the three rev-7 gates re-pointed onto the parts (the house and the ranch in the pasture’s fence, the grove at the redwoods’ end), Shasta at the top of the trail, the stairwell behind the staircase’s door, the tunnel behind the grate (the subway’s fourth station), Room 333 behind the circle, Camelot through the spring — every one two-way and explained', () => {
-    for (const old of ['haunted_skinwalker', 'skinwalker_grove', 'grove_fairy']) assert.ok(!HQ.links.some(l => l.id === old), old + ' was re-pointed and renamed (one row edit)');
+test('THE PATHS: nine live links — the house behind THE DEAD TREE in the pasture’s fence, the ranch’s gate beside it, the grove at the redwoods’ end, Shasta at the top of the trail (on the tier), the stairwell behind the staircase’s door (on the landing), the tunnel behind the grate, Room 333 behind the circle, the Looking-Glass through the ritual ground’s dead tree, Camelot through the spring', () => {
+    for (const old of ['haunted_skinwalker', 'skinwalker_grove', 'grove_fairy']) assert.ok(!HQ.links.some(l => l.id === old), old + ' was re-pointed and renamed');
     for (const [id, part] of Object.entries(LINKS)) {
         const l = HQ.links.find(x => x.id === id);
         assert.ok(l && D.hqLinkLive(l), id + ' is live');
         assert.ok(l.why && l.why.length > 20 && l.note, id + ' explains itself');
-        const end = (l.a.part === part) ? l.a : l.b, far = (end === l.a) ? l.b : l.a;
+        const end = (l.a.part === part && l.a.site === SITE) ? l.a : l.b, far = (end === l.a) ? l.b : l.a;
         assert.ok(end.site === SITE && end.part === part && end.sub, id + ': the woods end is the ' + part + ' with its own plate line');
-        assert.equal(l.route, id === 'woods_sewer' ? 'subway' : 'woods', id + ': the route');
+        assert.equal(l.route, id === 'woods_sewer' ? 'subway' : id === 'deadtree_lookingglass' ? 'seams' : 'woods', id + ': the route');
         const room = D.hqLinkRoom(end), farRoom = D.hqLinkRoom(far);
         const d = at(room, 'link_' + id), b = at(farRoom, 'link_' + id);
         assert.ok(d && b && d.action.room === farRoom && b.action.room === room && d.action.at === b.id && b.action.at === d.id, id + ': both halves pair');
         assert.ok(!(HQ.catalogue[l.leaf] || {}).rank, id + ': never a rank leaf');
+        if (l.way) assert.ok(d.way === l.way && b.way === l.way, id + ': the same object at both ends');
     }
-    assert.equal(D.hqLinkRoom(HQ.links.find(l => l.id === 'woods_haunted').a), 'site_prebuilt_haunted');
+    const haunted = HQ.links.find(l => l.id === 'woods_haunted');
+    assert.ok(haunted.way === 'deadtree' && !haunted.leaf, 'the garden gate IS the dead tree with the hole in it');
+    assert.equal(D.hqLinkRoom(haunted.a), 'site_prebuilt_haunted');
     assert.equal(D.hqLinkRoom(HQ.links.find(l => l.id === 'woods_skinwalker').a), 'site_prebuilt_skinwalker');
     assert.equal(D.hqLinkRoom(HQ.links.find(l => l.id === 'woods_grove').a), 'site_prebuilt_bohemian_grove');
     assert.equal(D.hqLinkRoom(HQ.links.find(l => l.id === 'woods_shasta').b), 'site_prebuilt_shasta');
     assert.equal(D.hqLinkRoom(HQ.links.find(l => l.id === 'woods_stair').b), 'stairwell');
     assert.equal(D.hqLinkRoom(HQ.links.find(l => l.id === 'woods_sewer').b), 'tunnel');
     assert.equal(D.hqLinkRoom(HQ.links.find(l => l.id === 'woods_ritual').b), 'ritual');
-    /* the spring: the forest leads to Camelot — a pool seam, both ends free (the castle's north wall has no lane left) */
+    const dt = HQ.links.find(l => l.id === 'deadtree_lookingglass');
+    assert.ok(dt.way === 'deadtree' && dt.a.wall === 'free' && dt.b.wall === 'free' && D.hqLinkRoom(dt.b) === D.hqSiteRoomId('prebuilt_lookingglass'), 'the ritual ground’s dead tree looks onto the Looking-Glass, free at both ends');
+    /* the tiers: Shasta's frame on the top tier, the EXIT door on the landing (hqLinkDoors copies an end's y) */
+    assert.equal(at(BOARD + '_trail', 'link_woods_shasta').y, 3.5, 'Shasta’s door on the top tier');
+    assert.equal(at(STAIR, 'link_woods_stair').y, 3.5, 'the EXIT door on the landing');
+    /* the spring */
     const sp = HQ.links.find(l => l.id === 'fairy_camelot');
     assert.ok(sp && sp.way === 'pool' && sp.a.wall === 'free' && sp.b.wall === 'free' && D.hqLinkLive(sp), 'the spring is a live pool seam');
     assert.ok(at(BOARD, 'link_fairy_camelot') && at('site_prebuilt_camelot', 'link_fairy_camelot'), 'both pools stand');
-    assert.equal(HQ.rooms.site_prebuilt_camelot.doors.filter(d => d.link && d.wall === 'n').length, 3, 'Camelot’s north wall keeps its three (the spring is on the strip)');
-    /* the world: the woods line, the house still an interchange, the subway's fourth station */
-    const R = D.hqWorldRoutes('foyer'), woods = R.find(r => r.id === 'woods'), sub = R.find(r => r.id === 'subway');
+    assert.equal(HQ.rooms.site_prebuilt_camelot.doors.filter(d => d.link && d.wall === 'n').length, 3, 'Camelot’s north wall keeps its three');
+    const R = D.hqWorldRoutes('foyer'), woods = R.find(r => r.id === 'woods'), sub = R.find(r => r.id === 'subway'), seams = R.find(r => r.id === 'seams');
     assert.ok(woods.stations.some(s => s.site === SITE) && woods.stations.some(s => s.site === 'prebuilt_shasta') && woods.stations.some(s => s.room === 'stairwell') && woods.stations.some(s => s.room === 'ritual'), 'THE WOODS line calls at the forest, the mountain, the stairwell and Room 333');
     assert.ok(sub.stations.some(s => s.site === SITE), 'the storm drain is on the subway line');
+    assert.ok(seams.stations.some(s => s.site === SITE) && seams.stations.some(s => s.site === 'prebuilt_lookingglass'), 'the dead tree puts the woods on THE SEAMS line');
     const G = D.hqWorldGraph();
     for (const id of Object.keys(LINKS).concat(['fairy_camelot'])) {
         const l = HQ.links.find(x => x.id === id), a = D.hqLinkRoom(l.a), b = D.hqLinkRoom(l.b);
@@ -207,28 +158,32 @@ test('THE PATHS: eight live links — the three rev-7 gates re-pointed onto the 
     }
 });
 
-test('the production renderer lands every door inside its part, clear of every blocker and native, facing along its doorway, at its sill; the back door lands on the forest’s walkway clear of the masts', () => {
+test('the production renderer lands every door inside its part, clear of every blocker, tree and native, facing along its doorway, at its sill on level ground; the hollow tree lands on the forest’s walkway clear of the masts', () => {
     for (const id of PART_IDS) {
-        const room = HQ.rooms[id], S = room.shell;
+        const room = HQ.rooms[id], S = room.shell, info = D.hqTerrainInfo(id);
         for (const door of room.doors) {
             const h = landing(room, door), p = h.player;
             assert.ok(Math.abs(p.x) < S.w / 2 - 0.4 && Math.abs(p.z) < S.d / 2 - 0.4, id + '/' + door.id + ': inside');
-            const inward = { n: [0, 1], s: [0, -1], e: [-1, 0], w: [1, 0] }[door.wall];
+            const inward = door.wall === 'free' ? [Math.sin(door.face * Math.PI / 180), -Math.cos(door.face * Math.PI / 180)] : { n: [0, 1], s: [0, -1], e: [-1, 0], w: [1, 0] }[door.wall];
             const dot = Math.sin(h.cam.yaw) * inward[0] + (-Math.cos(h.cam.yaw)) * inward[1];
             assert.ok(dot < -0.99 || dot > 0.99, id + '/' + door.id + ': faces along the doorway’s normal');
             assert.equal(p.air, false);
             assert.equal(p.y, sill(room, door), id + '/' + door.id + ': lands at its sill');
+            const feet = D.hqTerrainFeet(info, p.x, p.z, null);
+            assert.ok(feet != null && Math.abs(feet - p.y) < 0.12 && D.hqTerrainSlope(info, p.x, p.z) < 0.3, id + '/' + door.id + ': the pad is level under the landing');
             for (const q of [...room.props, ...room.npcSpots]) assert.ok(!propBlocks(room, q, p.x, p.z, 0.35), id + '/' + door.id + ': ' + (q.key || q.race) + ' blocks the landing');
-            for (const other of room.doors) if (other.id !== door.id && other.wall === door.wall) {
+            for (const t of info.trees) assert.ok(Math.hypot(t.x - p.x, t.z - p.z) > t.r + 0.35, id + '/' + door.id + ': a tree stands on the landing');
+            for (const q of info.scatter) assert.ok(Math.hypot(q.x - p.x, q.z - p.z) > q.r + 0.35, id + '/' + door.id + ': scattered ' + q.key + ' blocks the landing');
+            for (const other of room.doors) if (other.id !== door.id && other.wall === door.wall && door.wall !== 'free') {
                 const k = (door.wall === 'n' || door.wall === 's') ? 'x' : 'z';
                 assert.ok(Math.abs(other[k] - door[k]) > 2.6, id + ': ' + door.id + ' and ' + other.id + ' overlap on the ' + door.wall + ' wall');
             }
         }
-        const sp = room.spawn, info = D.hqCaveInfo(id);
+        const sp = room.spawn;
         for (const q of [...room.props, ...room.npcSpots]) assert.ok(!propBlocks(room, q, sp.x, sp.z, 0.3), id + ': ' + (q.key || q.race) + ' blocks the spawn');
-        const sc = D.hqCaveCellAt(info, sp.x, sp.z); assert.ok(sc && sc.walk, id + ': the spawn stands on a walkable cell');
-        for (const n of room.npcSpots) { assert.ok(D.AVAILABLE_RACES.includes(n.race), id + ': native race ' + n.race); const nc = D.hqCaveCellAt(info, n.x, n.z); assert.ok(nc && nc.walk, id + ': the ' + n.race + ' stands on a walkable cell'); }
-        for (const p of room.props) { assert.ok(HQ.catalogue[p.key], id + ': prop ' + p.key); if ((p.y || 0) > 0.5) continue; const pc = D.hqCaveCellAt(info, p.x, p.z); assert.ok(pc && !pc.rock, id + ': ' + p.key + ' stands in rock'); }
+        assert.ok(D.hqTerrainFeet(info, sp.x, sp.z, null) != null && !D.hqTerrainFluidAt(info, sp.x, sp.z), id + ': the spawn stands on dry ground');
+        for (const n of room.npcSpots) { assert.ok(D.AVAILABLE_RACES.includes(n.race), id + ': native race ' + n.race); assert.ok(D.hqTerrainFeet(info, n.x, n.z, null) != null && !D.hqTerrainFluidAt(info, n.x, n.z), id + ': the ' + n.race + ' stands on dry ground'); }
+        for (const p of room.props) { assert.ok(HQ.catalogue[p.key], id + ': prop ' + p.key); if ((p.y || 0) > 0.5 || p.wall || p.ceil) continue; assert.ok(D.hqTerrainFeet(info, p.x, p.z, null) != null, id + ': ' + p.key + ' stands in a hazard'); }
     }
     const forest = HQ.rooms[BOARD], back = at(BOARD, 'woods'), h = landing(forest, back), p = h.player;
     assert.ok(Math.abs(p.z) > forest.shell.grid.cells * forest.shell.grid.cell / 2 + 0.4, 'off the battle board');
@@ -237,22 +192,25 @@ test('the production renderer lands every door inside its part, clear of every b
     for (const other of forest.doors) if (other.id !== back.id && other.wall === 'n') assert.ok(Math.abs(other.x - back.x) >= 4.4, 'the path shares a lane with ' + other.id);
 });
 
-test('THE PARK RULE and the woods’ own light: a rail and a real ramp cell in every part, no facility strips or masts, torches under the prop-light cap; the graffiti stands against rock in Dead Man’s Cave', () => {
+test('THE PARK RULE and the woods’ own light: a rail and a real ramp or tier in every part (the pasture’s fence is a wall the rider jumps onto, the staircase’s banisters are its rails), no facility strips or masts, torches under the prop-light cap; the graffiti in Dead Man’s Cave', () => {
     for (const id of PART_IDS) {
-        const room = HQ.rooms[id], S = room.shell, info = D.hqCaveInfo(id);
-        assert.ok(room.props.some(p => p.key === 'railing_1m'), id + ': a rail to grind');
-        assert.ok(info.cells.some(r => r.some(c => c.slope)), id + ': a real ramp (a slope cell) to ride');
+        const room = HQ.rooms[id], S = room.shell, info = D.hqTerrainInfo(id);
+        assert.ok(info.rails.length >= 1, id + ': a rail to grind');
+        assert.ok(room.terrain.features.some(f => f.k === 'ramp' || f.k === 'plateau'), id + ': a ramp or a tier to ride');
         assert.ok(S.strips === false && Array.isArray(S.lights) && S.lights.length === 0 && S.mood, id + ': no strips, no masts — the woods light themselves');
         const lit = room.props.filter(p => (HQ.catalogue[p.key] || {}).light).length;
         assert.ok(lit >= 1 && lit <= 10, id + ': ' + lit + ' point lights');
     }
-    const dm = HQ.rooms[BOARD + '_deadmans'], info = D.hqCaveInfo(BOARD + '_deadmans');
-    const tags = dm.props.filter(p => p.key === 'graffiti_wall');
-    assert.ok(tags.length >= 3, 'paint on the rock');
-    for (const t of tags) {
-        const f = (t.face || 0) * Math.PI / 180, behind = D.hqCaveCellAt(info, t.x - Math.sin(f) * 0.5, t.z + Math.cos(f) * 0.5);
-        assert.ok(behind && behind.rock, 'the graffiti at ' + t.x + ',' + t.z + ' stands against rock');
-    }
+    const past = D.hqTerrainInfo(BOARD + '_pasture');
+    assert.equal(past.walls.length, 2, 'the fence: two lengths of wall either side of the garden gate');
+    assert.ok(past.walls.every(w => w.top - w.base < 2.0 && w.h === 1.0), 'a metre high — jumped onto, ridden');
+    const gate = at(BOARD + '_pasture', 'link_woods_haunted');
+    assert.ok(past.walls.every(w => Math.min(w.x0, w.x1) > gate.x + 1.2 || Math.max(w.x0, w.x1) < gate.x - 1.2), 'the gate stands in the fence’s gap');
+    const stair = D.hqTerrainInfo(STAIR);
+    assert.ok(stair.rails.filter(r => r.rail).length >= 4, 'the banisters and the landing’s rails');
+    assert.ok(HQ.rooms[STAIR].props.filter(p => p.key === 'quarter_pipe').length === 2, 'two quarter pipes on the staircase’s floor');
+    const dm = HQ.rooms[SEWER];
+    assert.ok(dm.props.filter(p => p.key === 'graffiti_wall').length >= 3, 'paint on the brick');
     assert.ok(HQ.catalogue.graffiti_wall && HQ.catalogue.graffiti_wall.proc === 'graffiti_wall' && !HQ.catalogue.graffiti_wall.block, 'the catalogue row: a proc, nothing to bump into');
     assert.ok(/graffiti_wall: function \(U, p\)/.test(renderer), 'the renderer draws it');
 });
@@ -264,71 +222,59 @@ test('THE WEENIES: one sky for the woods (hqWoodsShell), two landmarks on its ho
     assert.ok(peak && peak.id === 'prebuilt_shasta' && peak.deg > 300 && peak.deg < 360, 'the mountain north-north-west');
     assert.ok(castle && castle.id === 'prebuilt_camelot' && castle.deg > 120 && castle.deg < 180, 'the castle south-south-east');
     for (const id of PART_IDS) {
-        if (id === SEWER) continue;   // underground: no sky, no weenies
+        if (id === SEWER) continue;
         const sky = HQ.rooms[id].shell.sky;
         assert.ok(sky.landmarks && sky.landmarks.length === 2 && sky.landmarks.every((l, i) => l.kind === LM[i].kind && l.deg === LM[i].deg), id + ': the same two landmarks');
         assert.ok(sky.fog && typeof sky.fog.color === 'number' && sky.scenery && sky.tint != null, id + ': a full sky row');
     }
-    assert.notEqual(HQ.rooms[PART_IDS[0]].shell.sky, HQ.rooms[PART_IDS[1]].shell.sky, 'every room owns its sky object (a variant may edit it)');
+    assert.notEqual(HQ.rooms[PART_IDS[0]].shell.sky, HQ.rooms[PART_IDS[1]].shell.sky, 'every room owns its sky object');
     for (const k of ['peak', 'castle']) assert.ok(new RegExp('^        ' + k + ': function \\(U, o, rng\\)', 'm').test(renderer), 'a builder for ' + k);
     assert.ok(/function _hqBuildLandmarks\(H, list, discR\)/.test(renderer), 'the placer');
     assert.ok(/if \(Array\.isArray\(sky\.landmarks\) && sky\.landmarks\.length\) \{ try \{ _hqBuildLandmarks\(H, sky\.landmarks, 6000\); \}/.test(renderer), '_hqBuildSky hangs them');
-    assert.ok(/var x = Math\.sin\(a\) \* rad, z = -Math\.cos\(a\) \* rad/.test(renderer), 'deg 0 at north, clockwise — the star chart’s rule');
-    assert.ok(/H\.sky\.landmarks = group;/.test(renderer) && !/floaters\.push\(\{ obj: m,/.test(renderer.slice(renderer.indexOf('function _hqBuildLandmarks'), renderer.indexOf('function _hqBuildSky'))), 'a landmark never drifts');
 });
 
-test('THE TAPES: one per part, the hundred kept, seven re-homed (the garden’s tree and six sites’ second tapes); the renderer plants the trees, hangs no stalactite under an open sky, and the field reads the woods like a cave', () => {
+test('THE TAPES: one per part, the hundred kept; the crag, the pinnacle, the stand, the tower and the altar stone carry tapes the walker cannot reach (the door gun’s); the renderer plants the trees on a real kit and the treeline past an open edge', () => {
     const T = D.DOOR_TAPES;
     assert.equal(T.length, 100);
     for (const id of PART_IDS) assert.equal(T.filter(t => t.where === id).length, 1, id + ': one tape');
-    assert.equal(T.filter(t => t.where === 'garden').length, 0, 'the garden’s tree moved to the clearing');
-    for (const site of ['prebuilt_shasta', 'prebuilt_skinwalker', 'prebuilt_fairy_forest', 'prebuilt_bohemian_grove', 'prebuilt_babel', 'prebuilt_downtown']) assert.equal(T.filter(t => t.where === 'site_' + site).length, 1, site + ' gave its second tape');
     assert.ok(T.some(t => t.where === HUB && t.title === '1618'), 'the names are carved in the old tree');
     for (const id of PART_IDS) assert.ok(D.DOOR_HQ.finds.some(f => f.room === id && f.kind === 'tape') && D.DOOR_HQ.finds.some(f => f.room === id && f.kind === 'pay'), id + ': a tape and an envelope');
-    /* the renderer */
-    const cave = renderer.slice(renderer.indexOf('    function _hqBuildCave('), renderer.indexOf('    function _hqBuildSiteBoard('));
-    assert.ok(/if \(c\.tree\) trees\.push/.test(cave) && /TK = _nrKit\(G, \{ ts: CM, bw: W, bh: Hh, rng: rng, hq: \{ w: 0, gap: 0, B: 1, tints: null \} \}, \{\}\)/.test(cave) && /tg\._ew_hqTree = true;/.test(cave), 'a tree cell is planted with the near kit’s foliage on a REAL kit (a bare { ts, rng } threw in the stand-in and no tree was ever planted)');
-    assert.ok(/if \(TK && S\.forest && S\.open\)/.test(cave) && /if \(inLane\(px, pz, ro\)\) continue;/.test(cave), 'THE TREELINE: the forest past the grid, the door lanes kept clear');
-    assert.ok(/if \(s\.c\.stair && typeof _buildStairMesh === 'function'\)/.test(cave) && /_buildStairMesh\(0, 0, CM, L \* U,/.test(cave), 'a stair cell is the board’s own barrier_passage flight');
-    assert.ok(/var nSt = \(S\.open \|\| \(room\.cave && room\.cave\.stalactites === false\)\) \? 0 :/.test(cave), 'no stalactites under an open sky, none in a culvert that says so');
-    /* the field: every window from every door landing is legal (the stage-D guarantee, run on the woods alone) */
-    for (const id of PART_IDS) {
-        const room = HQ.rooms[id];
-        assert.ok(D.hqFieldRoomOk(id), id + ': a field room');
-        for (const d of room.doors) {
-            const c = landingCell(id, d), info = D.hqCaveInfo(id);
-            const wp = { x: (c.x + 0.5) * CELL - info.halfW, z: (c.y + 0.5) * CELL - info.halfD };
-            const W = D.hqFieldWindow(id, wp, { x: wp.x + CELL, z: wp.z });
-            assert.ok(W && W.raster && W.board && W.board.cave, id + '/' + d.id + ': a window');
-            assert.equal(W.site, SITE);
-        }
-    }
+    const hardIn = id => D.DOOR_HQ.finds.some(f => f.room === id && f.kind === 'tape' && f.hard && f.y > 2.0);
+    for (const p of ['clearing', 'trail', 'redwoods', 'stair', 'ritual']) assert.ok(hardIn(BOARD + '_' + p), p + ': the tape out of reach, up high');
+    const terr = renderer.slice(renderer.indexOf('    function _hqBuildTerrain('), renderer.indexOf('    function _hqBuildSiteBoard('));
+    assert.ok(/TK = _nrKit\(G, \{ ts: TM, bw: Math\.round\(S\.w \/ info\.tile\), bh: Math\.round\(S\.d \/ info\.tile\), rng: rng, hq: \{ w: 0, gap: 0, B: 1, tints: null \} \}, \{\}\)/.test(terr) && /tg\._ew_hqTree = true;/.test(terr), 'the trees are the near kit’s foliage on a REAL kit');
+    assert.ok(/_hq\.blockers\.push\(\{ obj: blk, y: t\.y, top: null, rad: t\.r \|\| 0\.38, tree: true \}\)/.test(terr), 'a tree is a blocker');
+    assert.ok(/if \(TK && S\.forest && S\.open\) _hqPlantTreeline\(room, S, S\.w \/ 2, S\.d \/ 2, plantTree, rng\);/.test(terr), 'THE TREELINE past an open edge');
+    assert.ok(/if \(!S\.open && room\.terrain\.stalactites !== false\)/.test(terr), 'no stalactites under an open sky');
+    for (const id of PART_IDS) assert.equal(D.hqFieldRoomOk(id), false, id + ': the encounter fights the site’s Δ (no field on a smooth floor)');
 });
 
-test('THE STAIRS + THE STORM DRAIN (2026-09-16): the flight is four STAIR cells (the board’s barrier_passage flight in wood, one level each, never terrain blocks) up to the landing the door stands on; Dead Man’s Cave is a NARROW enclosed culvert — a 3-cell corridor in brick with the channel down its middle, the sump halfway, the grate at the far end', () => {
-    const info = D.hqCaveInfo(STAIR), room = HQ.rooms[STAIR];
-    const flight = [];
-    info.cells.forEach(r => r.forEach(c => { if (c.stair) flight.push(c); }));
-    assert.equal(flight.length, 4, 'four stair cells');
-    flight.sort((a, b) => a.lvl - b.lvl).forEach((c, i) => {
-        assert.ok(c.slope === 'n' && c.lvl === i && c.stair === 'wood_planks' && c.stairSide === 'wood' && c.walk, 'riser ' + i + ' climbs north one level in wood');
-        assert.ok(Math.abs(D.hqCaveFeet(info, c, (c.x + 0.5) * CELL - info.halfW, (c.y + 0.5) * CELL - info.halfD) - (i + 0.5) * D.HQ_CAVE_LEVEL) < 1e-9, 'the walker stands mid-riser at its middle');
-    });
-    assert.ok(flight.every(c => c.x === flight[0].x), 'one straight flight');
-    assert.ok(!info.cells.some(r => r.some(c => !c.stair && c.key === 'wood_planks' && c.lvl < 4)), 'no plank block below the landing');
-    assert.ok(D.hqCaveDoorY(room, at(STAIR, 'link_woods_stair')) > 3, 'the door stands on the landing');
-    assert.match(dataSrc, /stair: d\.stair \|\| null, stairSide: d\.stairSide \|\| null/, 'the compiler carries the stair sheet');
+test('THE STAIRCASE + THE STORM DRAIN: the flight is a stair ramp (treads two samples deep) up to the landing (3.5 m) the EXIT door stands on, its banisters the rails, THE TOWER beside it no stair reaches; Dead Man’s Cave is a closed brick culvert 35 m long with THE CHANNEL waded down its middle, THE SUMP deep and never entered, the walkways dry either side, the grate at the east end', () => {
+    const room = HQ.rooms[STAIR], info = D.hqTerrainInfo(STAIR);
+    const flight = room.terrain.features.find(f => f.k === 'ramp' && f.stairs);
+    assert.ok(flight && flight.h1 === 3.5 && flight.h0 === 0, 'one stair ramp from the floor to the landing');
+    const treads = new Set(); for (let z = flight.z0 - 0.2; z >= flight.z1 + 0.2; z -= info.res / 2) treads.add(Math.round(D.hqTerrainHeight(info, 0, z) * 100));
+    assert.ok(treads.size >= 8 && treads.size <= 40, 'the flight is treads, not a slope (' + treads.size + ' levels)');
+    let y = 0; for (let z = flight.z0 + 0.5; z >= flight.z1 - 0.3; z -= 0.25) { const f = D.hqTerrainFeet(info, 0, z, y); assert.ok(f != null, 'the stair climbed at z ' + z); y = f; }
+    assert.ok(y > 3.3, 'the walker tops out on the landing');
+    assert.equal(sill(room, at(STAIR, 'link_woods_stair')), 3.5, 'the door stands on the landing');
+    const tower = room.terrain.features.find(f => f.k === 'plateau' && f.h >= 4.5);
+    assert.ok(tower, 'THE TOWER');
+    const L0 = D.hqTerrainDoorLanding(room, room.doors[0]), reach = D.hqTerrainReach(info, L0.x, L0.z);
+    assert.ok(!reach.has(D.hqTerrainNodeKey(info, tower.x, tower.z)), 'no stair reaches the tower');
     /* the culvert */
-    const S = D.hqCaveInfo(SEWER), sewer = HQ.rooms[SEWER];
-    let widest = 0, narrow = 0;
-    for (let x = 0; x < S.w; x++) { let n = 0; for (let y = 0; y < S.h; y++) if (!S.cells[y][x].rock) n++; widest = Math.max(widest, n); if (n === 3) narrow++; }
-    assert.ok(widest <= 5, 'the sump is at most five cells across (' + widest + ')');
-    assert.ok(narrow >= S.w / 2, 'the corridor is three cells wide for at least half its length');
-    assert.ok(S.cells[6].slice(1, S.w - 1).every(c => c.fluid === 'water' && c.walk), 'the channel runs the length of the culvert, waded');
-    assert.ok(S.cells[0].every(c => c.rock) && S.cells[S.h - 1].every(c => c.rock) && S.rock === 'bricks_2', 'brick to the ceiling either side');
-    assert.equal(S.rockH, sewer.shell.h, 'the brick reaches the ceiling');
+    const sewer = HQ.rooms[SEWER], S = sewer.shell, si = D.hqTerrainInfo(SEWER);
+    assert.ok(S.w === 35 && S.d <= 10.5 && S.h === 3.0 && !S.open, 'a long low box');
+    const chan = sewer.terrain.features.find(f => f.k === 'stream'), sump = sewer.terrain.features.find(f => f.k === 'pool');
+    assert.ok(chan && chan.pts[0][0] === -17.5 && chan.pts[1][0] === 17.5 && chan.key !== 'lava', 'the channel runs the length of the culvert');
+    assert.ok(sump && sump.key === 'deep_water', 'the sump is deep');
+    assert.equal(D.hqTerrainFeet(si, sump.x, sump.z, 0), null, 'never entered');
+    assert.ok(D.hqTerrainFeet(si, -8, chan.pts[0][1], 0) != null && D.hqTerrainFeet(si, -8, chan.pts[0][1], 0) < -0.4, 'the channel is waded');
+    for (const x of [-15, -6, 6, 15]) { assert.ok(D.hqTerrainFeet(si, x, -3.0, 0) != null && !D.hqTerrainFluidAt(si, x, -3.0), 'the north walkway is dry at ' + x); assert.ok(D.hqTerrainFeet(si, x, 4.4, 0) != null && !D.hqTerrainFluidAt(si, x, 4.4), 'the south walkway is dry at ' + x); }
     assert.ok(sewer.props.some(p => (HQ.catalogue[p.key] || {}).ceil && (HQ.catalogue[p.key] || {}).light), 'lit from the ceiling');
     assert.ok(!sewer.props.some(p => p.key === 'cave_torch'), 'no torch in a drain');
+    assert.ok(sewer.props.filter(p => p.key === 'drain_grate').length === 2, 'the user’s grates in the brick');
     const grate = HQ.links.find(l => l.id === 'woods_sewer');
-    assert.equal(grate.a.z, 0, 'the grate at the culvert’s east end, on the channel’s row');
+    assert.equal(grate.a.z, 0, 'the grate at the culvert’s east end');
+    assert.ok(HQ.rooms[HUB].props.some(p => p.key === 'culvert_mouth' && p.wall === 'e'), 'the culvert mouth in the clearing’s crag');
 });

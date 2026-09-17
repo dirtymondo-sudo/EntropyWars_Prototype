@@ -10714,3 +10714,13 @@ it, spent after the draw). **Harness noise to ignore**: `THREE.Scene is not a co
 inline loading-screen script — the mirrored three.min.js lands after that script runs in this sandbox;
 it is not the game's. The shots are stand-in textures (the concrete-grey cells are `cave_floor`'s stand-in);
 the real sheets, the rock's height against the chamber and the eye's first frame are UNSEEN (RULE #1c).
+
+## THE TERRAIN ROOMS — check-terrain.js (2026-09-17)
+`node check-terrain.js [roomId …] [--step 0.875] [--json]` dumps every terrain room (data.js `terrain`) as ASCII —
+a digit per 0.875 m of height, `^` a slope the walker cannot climb (a cliff), `~` water waded, `W` deep water,
+`L` lava, `#` a wall, `T` a tree, `D` a door's pad — and runs THE SOLVER (`hqTerrainReach`) from the first door,
+naming any door it cannot reach. Author a field, dump it, read it: a ramp that ends deep inside a tier reads as a
+step in the digits; a deck that ends on a bank shows `^` at its end (a one-way cliff: extend it past both banks);
+a door pad on a crag shows a high digit under `D` (the crag never stands in a lane — check the feature order).
+The offline HQ harness (`playtest_hq_offline.js <room>`) photographs a field with stand-in textures; the real
+sheets are unseen. The tape pinnacles: `hqFindHardReachTerrain` (data.js) prints the shot when it exists.

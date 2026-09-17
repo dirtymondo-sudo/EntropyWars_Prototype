@@ -116,16 +116,19 @@ test('every find stands inside its room, clear of every blocker, native, counter
     }
 });
 
-test('a cave find stands on a walkable cell the first door reaches; a site board find is on its cell, `hard` exactly when two levels up', () => {
+test('a terrain find stands on dry ground at its height, `hard` exactly when the first door\'s reach never gets there; a site board find is on its cell, `hard` exactly when two levels up', () => {
     let caves = 0, boards = 0, hard = 0;
     for (const f of FINDS) {
         const room = HQ.rooms[f.room];
-        if (room.cave) {
+        if (room.terrain) {   // THE TERRAIN ROOMS (2026-09-17): the cave and the woods
             caves++;
-            const info = D.hqCaveInfo(f.room), c = D.hqCaveCellAt(info, f.x, f.z);
-            assert.ok(c && c.walk && !c.fluid && !c.rock, f.id + ': on a walkable dry cell');
-            const c0 = D.hqCaveDoorCell(room, room.doors[0]);
-            assert.ok(D.hqCaveReach(info, c0.x, c0.y).has(c.x + ',' + c.y), f.id + ': the first door reaches it');
+            const info = D.hqTerrainInfo(f.room);
+            assert.ok(typeof f.y === 'number' && Math.abs(f.y - D.hqTerrainHeight(info, f.x, f.z)) < 0.05, f.id + ': at its ground');
+            assert.ok(!D.hqTerrainFluidAt(info, f.x, f.z), f.id + ': dry');
+            const L0 = D.hqTerrainDoorLanding(room, room.doors[0]);
+            const reached = D.hqTerrainReach(info, L0.x, L0.z).has(D.hqTerrainNodeKey(info, f.x, f.z));
+            assert.equal(!!f.hard, !reached, f.id + ': hard ⇔ the first door never reaches it');
+            if (f.hard) hard++;
         }
         if (f.cell) {
             boards++;
@@ -142,7 +145,7 @@ test('a cave find stands on a walkable cell the first door reaches; a site board
         }
     }
     assert.equal(boards, HQ.siteRooms.built.filter(site => TAPES.filter(t => t.where === 'site_' + site).length === 2).length, 'one board find per site that kept its second tape (THE WOODS took six)');
-    assert.ok(caves >= 7 && hard >= 5, 'the cave and the walls are used (caves ' + caves + ', hard ' + hard + ')');
+    assert.ok(caves >= 28 && hard >= 10, 'the terrain rooms and the walls are used (terrain finds ' + caves + ', hard ' + hard + ')');
 });
 
 test('the daily roll never lights a tape; a pay cache is live on about a third of the days; hqFindsInRoom hides the taken and the dark', () => {

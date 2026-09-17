@@ -3296,6 +3296,7 @@ STATIC, the 10 × 10 spines, `[data-tape]` re-renders the panel in place,
 collector's branch + a proc + `HQ_FIND_COLORS`. Unseen live (RULE #1c).
 
 ## THE DUNGEON — the cave is a CAVE GRID (HQ plan 9.3 stage 2) — 2026-09-15 rev 11, local delivery
+**SUPERSEDED 2026-09-17 — THE TERRAIN ROOMS (below): no room wears `cave` any more; the grid code stays for a room that does.**
 The seven cave chambers (`site_prebuilt_hollow_earth_*`, data.js, the
 block before H-WING) are Pokémon Victory-Road dungeons in 3D now: a
 `kind: 'box'` room may carry **`cave: { rows, legend?, floor, ledge,
@@ -4617,6 +4618,7 @@ zoom, the flip's timing, the zoom-out's ease, the pan under the panel's
 scroll (the stage is `touch-action: none`; the card scrolls).
 
 ## THE WOODS — the forest on the cave grid (HQ plan 9.3 stage 3) — 2026-09-16, local delivery
+**SUPERSEDED 2026-09-17 — THE TERRAIN ROOMS (below): the seven woods rooms are smooth fields now; the sheet, the links, the weenies and the tapes stand.**
 The SEVENTH complex, the FAIRY FOREST's (`site: 'prebuilt_fairy_forest'` +
 `part`, no `roomNo`; data.js, the block right before H-WING): seven OPEN
 box rooms on the CAVE GRID (rev 11's dungeon rules) under ONE sky
@@ -4780,3 +4782,85 @@ path as the card's GO; the card says CLICK THE NODE AGAIN TO GO. `npm test`
 room's light, the floating plates' legibility against bright walls, the strip
 at narrow widths, the pill fade, the parchment theme's light ink in the
 building.
+
+## THE TERRAIN ROOMS — the cave and the woods as smooth height fields (HQ plan 9.3 stage 4) — 2026-09-17, local delivery
+The user: "forget seamless with the battle maps — make the exploratory areas
+more complex: smooth elevations, ridges, ledges, winding paths, inclines,
+hills, dips, walls; 3D platforming for door gun puzzles, ramps and tall
+platforms for skate tricks and big jumps; hard-to-reach places for the tapes;
+redo the cave and the woods (the ASCII grid)". A box room may carry
+**`terrain`** instead of `cave` (data.js, the block after `hqCaveFitRooms()`):
+a SMOOTH HEIGHT FIELD composed from FEATURES in room metres, in AUTHORED
+ORDER — `hill` / `dip` / `ridge` (relief, additive; a ridge's `h < 0` is a
+gully), `plateau` (a flat tier with CLIFF sides: `edge` 0.35 m — dropped off,
+never climbed; `r` or `w × d × rot`; `dome`), `ramp` (an incline `h0 → h1`
+along a line; `stairs: true` = treads two samples deep; a ramp ENDS at a
+tier's edge, ≤ 0.3 m inside it, never deep in it), `deck` (a plank bridge at
+`y`; a deck spans BOTH banks of the water it crosses — an end on a bank is a
+one-way cliff), `pool` / `stream` (CARVE to `y − depth`; `bank`; `key` water
+(waded ≤ `wadeMax` 1.15 m under the sheet) | deep_water | lava (never
+entered)), `wall` (solid, its top a floor + a grind rail once the feet reach
+it), `rail`, `path` (the path sheet painted), `tree` / `grove` (blockers, the
+near kit's foliage), `scatter` (catalogue props at seeded free spots);
+`noise` (undulation), `crag` (a jagged rock band at a closed room's walls,
+never in a door's lane). **Every door gets a PAD** (a flat landing at its
+sill — `door.y` on a tier, else the ground; a free way a tongue from the
+object to past its landing) — `hqTerrainDoorY` is the sill (the renderer's
+`_hqDoorFloorY`); `hqLinkDoors` copies an end's `y`. THE ONE RULE:
+**`hqTerrainFeet(info, x, z, curY)`** — the sampled height (`hqTerrainHeight`,
+bilinear on a grid of `res` 0.35 / 0.5 m — the SAME samples the mesh is), a
+climb refused where the slope > `maxSlope` (tan 45°), ANY drop taken
+(`dropMax` 40: platforming), water waded, a wall solid below its top;
+`hqTerrainAir` / `hqTerrainCam` the air and the boom; **`hqTerrainReach`** =
+THE SOLVER (a BFS of that rule on the grid: hq-terrain / hq-cave / hq-woods
+insist every door reaches every other — author a field, run
+`node check-terrain.js [room]` (the ASCII dump + the reach), never guess).
+`HQ_TERRAIN_RULES` = the numbers (climb = HQ_STEP_TOL, wade = HQ_WADE_M, body
+= HQ_BODY_R — the test ties them). Renderer (three-renderer.js, the block
+before `_hqBuildSiteBoard`): **`_hqBuildTerrain`** — ONE mesh (the floor sheet
+blended into the `cliff` sheet by slope and the `path` sheet along the paths:
+`_hqTerrainMat`, a three-map Phong through onBeforeCompile with the `aBlend`
+attribute), the water in the battle's animated sheet (`_hqTickMoat`), plank
+decks with rope rails, walls in the cliff sheet, rails on posts, the trees
+(`_nrTree` on a real `_nrKit`, each a blocker), the scatter through
+`_hqPlaceProps` (`_hq.terrainScatter`, `rect: false`), the treeline past an
+open edge (`_hqPlantTreeline`, shared with the cave builder), stalactites
+under a closed ceiling; `_hqSurface` / `_hqAirOK` / `_hqCamBlocked` / the two
+landing sites / `_hqCaveTop` (= the ground under (x, z) — `_hqHasGround()`
+gates the prop / native / find / counter heights) read the data rules; the
+box shell draws no floor under a field. THE FOURTEEN: the cave's seven
+chambers (crags, the well room's tiers, THE CAVERN's terrace / west shelf /
+high tier (5.25 m, LEVEL −6's door) / spur / rope bridge / hot shelf with the
+lava lake under an obsidian deck / long ramp / deep river with a ford and a
+plank / THE NEEDLE, the fissure's obsidian ramp over the lava rift, the
+oubliette's sunken cells) and the woods' seven (the clearing's knoll, stream,
+plank, old redwoods and THE CRAG; the trail's two tiers and Shasta's door on
+the top; the redwoods' creek, gully log and THE STAND; the pasture's
+dry-stone FENCE (two walls the rider jumps onto) with THE DEAD TREE in its
+gap; THE STAIRCASE (a stair ramp to the 3.5 m landing, banister rails, two
+quarter pipes, THE TOWER); the storm drain (35 × 10.5 closed brick, the
+channel waded, the sump deep, a ledge); the ritual mound, ditch, stones and
+THE ALTAR STONE). **THE HARD TAPES**: `DOOR_HQ.findSpots` pins a tape on a
+pinnacle; `hqTerrainFindSpot` gives it its ground and `hard: true` when the
+walker's reach never gets there; `hqFindHardReachTerrain` proves a shot from
+a reachable node into the band under the top, and the renderer's
+`_hqPortalLedgeSnap` snaps such a wall hit to a floor door on the top (the
+door gun's puzzle). **THE ENCOUNTER**: `hqFieldRoomOk` refuses a terrain
+room — it fights the SITE's Δ (THE SITE IS THE BOARD; the user dropped the
+seamless field). **THE WOODS BATCH**: fourteen Meshy GLBs (MODEL_INDEX §3e)
+in `_MISC_GLB` + `DOOR_HQ.catalogue` (`base: 'misc'`) — `hollow_tree` /
+`hollow_dead_tree` are THE TWO TREES WITH HOLES: `DOOR_HQ.ways.hollowtree`
+(the fairy forest's way in, both ends) / `.deadtree` (the pasture's garden
+gate ⇄ the house; the ritual ground ⇄ the Looking-Glass, `deadtree_
+lookingglass`), built by `_hqTreeWay` (the GLB, hole to +Z — `rot` in the
+catalogue row — over a procedural trunk); fern / stump / fallen_log /
+dead_snag / pine / menhir / cave_stone scattered, campfire / signpost /
+culvert_mouth / drain_grate placed, the near settings of the fairy forest /
+haunted house / skinwalker ranch dressed. audio.js `wayHollow`. Ship data.js
+to Render too (the finds ledger). `npm test` runs `hq-terrain.test.js`
+(the rules, every room compiled and solved, the pads, the park rule, the
+hard tapes, the walker's rule on a synthetic field, the renderer on a stub
+scene). UNSEEN LIVE (RULE #1c): all of it — the mesh's look under each
+room's light (the cliff blend, the path sheet), the water sheets, the
+walker on a ramp and off a cliff, the GLBs' facings (`rot` / `h` are the
+edits), the lip snap on a pinnacle, the treeline's density.

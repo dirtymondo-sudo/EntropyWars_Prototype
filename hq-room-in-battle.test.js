@@ -66,12 +66,15 @@ test('the reader: a site\'s board room is drawn at its centred board and a cave 
     assert.equal(B.room(), null, 'a 16-wide board is not the room\'s Δ');
     /* Phase 9 polish (2026-09-16): a cave chamber IS drawn — its rock, ledges and pools round the window (the
        builder cuts the window out through the scratch record's floorHole; the field's columns fill it) */
-    const cave = g('hqCaveRooms')()[0];
+    /* THE TERRAIN ROOMS (2026-09-17): no room wears the grid any more — a synthetic chamber keeps the cave path honest */
+    const cave = '__lab_cave';
+    HQ.rooms[cave] = { kind: 'box', site: 'prebuilt_hollow_earth', part: 'lab', label: 'LAB', shell: { w: 14, d: 14, h: 6 }, cave: { rows: ['########', '#......#', '#......#', '########'] }, doors: [], props: [] };
     W._ewEncounterRoom = () => ({ room: cave, field: { board: { N: 8, C: 1.75, x0: 0, z0: 0, cave: true } } });
     const Rc = B.room();
     assert.ok(Rc && Rc.cave && !Rc.site && Rc.T && Rc.T.N === 8, 'a cave is drawn at its window');
     assert.ok(TR.includes("if (R.cave) { try { _hqBuildCave(copy); }"), 'the cave is built on the scratch record, before the shell');
     assert.ok(TR.includes("var hole = _hq.floorHole || null;") && TR.includes("if (!c.rock && inHole(x, y)) continue;   // the field's column stands for it"), 'the window is cut out of the cave (its rock stays)');
+    delete HQ.rooms[cave];
     /* the hall (the rotunda) is never a field */
     W._ewEncounterRoom = () => ({ room: 'central_egress', field: { board: { N: 8, C: 1.75, x0: 0, z0: 0 } } });
     assert.equal(B.room(), null);

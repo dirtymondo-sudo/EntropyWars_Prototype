@@ -157,7 +157,7 @@ test('an entryway kind the catalogue does not list is held back at BOTH ends; a 
  } finally{HQ.links=saved;}
 });
 test('THE SEAMS THAT ARE NOT DOORS: the wardrobe into Camelot and the well into Hollow Earth are catalogued, paired, plated, voiced and built',()=>{
- assert.deepEqual(SEAMS.map(l=>l.id).sort().join(','),'bureau_vatican,fairy_camelot,haunted_camelot,lodge_olympus,mirror_lookingglass,natatorium_dutchman,northpole_haunted,nuketown_haunted,observatorium_singularity,subway_downtown,tunnel_cyberpunk,weir_bermuda,well_camelot,well_cellar,well_garden,well_gobekli,well_nuketown,well_skinwalker','the wardrobe, the six wells (rev 10: every well drops into the cave), the train (the tunnel\u2019s platform to Cyberpunk\u2019s subway; 9.2 stage 4: Downtown\u2019s platform one stop back) and the second batch (rev 22: the mirror, the plunge pool, two paintings, the hearth, the screen, the closet)');
+ assert.deepEqual(SEAMS.map(l=>l.id).sort().join(','),'bureau_vatican,deadtree_lookingglass,fairy_camelot,haunted_camelot,lodge_olympus,mirror_lookingglass,natatorium_dutchman,northpole_haunted,nuketown_haunted,observatorium_singularity,subway_downtown,tunnel_cyberpunk,weir_bermuda,well_camelot,well_cellar,well_garden,well_gobekli,well_nuketown,well_skinwalker,woods_haunted','the wardrobe, the six wells (rev 10: every well drops into the cave), the train (the tunnel\u2019s platform to Cyberpunk\u2019s subway; 9.2 stage 4: Downtown\u2019s platform one stop back) and the second batch (rev 22: the mirror, the plunge pool, two paintings, the hearth, the screen, the closet), and the two trees with holes in them (2026-09-17: the dead tree at the garden gate and on the ritual ground)');
  for(const k of Object.keys(HQ.ways)) {
   const w=HQ.ways[k];
   assert.ok(w.verb && w.sub && w.sfx && w.w>0 && w.h>0, k+': verb · sub · sfx · w · h');
@@ -286,6 +286,7 @@ test('the way builders run on a stub scene: each returns a group, a way rig whos
   _hq:{tickers:[]},_hqUnits:()=>HQ.units,
   _hqMat:(name)=>{if(name)assert.ok(HQ.textures[name]||TR[name],'unknown texture '+name+' (the kit or the terrain sheet)');return {side:0,opacity:1};},
   _hqBasic:()=>({opacity:1}),
+  _hqData:()=>HQ,
   _hzGlowSprite:()=>{const s=new Obj();s.material={opacity:1};return s;},
   _hqBox:(w,h,d,mat)=>new Mesh(new geo(),mat),
   console};
@@ -344,7 +345,7 @@ test('hqWorldRoutes chains every live link into a line: a leg per link, a statio
  assert.ok(seams.dashed);
  const seamNos=new Set(seams.stations.map(s=>s.no));
  for(const no of ['13','i','1287','E4','50M','1717','33','12','\u2116 \u2014 CONTESTED','888','360','0','1225','1945']) assert.ok(seamNos.has(no),'THE SEAMS line calls at '+no+' (rev 22: the second batch; the wardrobe upstairs is the HOUSE\'s leg, the wells moved to THE UNDERCROFT in rev 10)');
- assert.equal(seams.stations.length,14);
+ assert.equal(seams.stations.length,15,'rev 22\u2019s fourteen + the woods (the ritual ground\u2019s dead tree, 2026-09-17)');
  assert.ok(seams.stations.every(s=>s.site?s.room===BOARD(s.site):HQ.rooms[s.room]&&!HQ.rooms[s.room].site),'a station is a board room, or (rev 22) a facility room the seam leaves from');
  assert.ok(seams.legs.every(l=>l.way));
  const house=woods.stations.find(s=>s.no==='13');
