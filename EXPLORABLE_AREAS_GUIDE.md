@@ -168,7 +168,8 @@ this engine (a height field + a mask + blockers + doors on walls).
 4. **Author the field** (features in room metres, in order — data.js `hqTerrainCompile`'s
    header lists every feature kind). A generated plan (`terrain.gen`) for A / A' / D;
    authored walls + props for B; C by hand until §7's generator lands.
-5. **The pads, the park rule, the hard tape, the landmark** (§5).
+5. **The weenies** (§5b) — place the far one and the near one BEFORE the plan, then lay
+   the plan so the pads see them. Then the pads, the park rule, the hard tape (§5).
 6. **`node check-terrain.js <room>`** — every door reaches every other, RETURN traps 0, the
    open share sane. Then `npm test`. Never claim a room the solver has not passed.
 7. **The look** — `shell.look` (an `HQ_ROOM_LOOKS` row), the sky / fog, the room's own
@@ -248,6 +249,52 @@ What is missing, and the plan for it:
 
 ---
 
+## 5b. WEENIES — the landmark that pulls you through (Disneyland's rule)
+
+Walt Disney's Imagineers call it a **weenie**: an irresistible visual landmark placed in the
+distance to draw the guest's eye, spark curiosity and guide them through the park without a
+sign (the castle at the end of Main Street; the Matterhorn from Tomorrowland; a lamp post
+lit on a dark path). **Every part of every area gets one, and it is placed BEFORE the
+floor plan** — the plan is laid so the sightlines reach it.
+
+Two sizes, both count:
+
+- **THE FAR WEENIE** — outside the room, on the sky: `shell.sky.landmarks = [{ kind, id, deg,
+  dist, s, y }]` → three-renderer.js `_hqLandmarkBuilders` (today: `peak` Shasta, `castle`
+  Camelot, `stairway` the stairway in the sky, `dome` the basilica; add a kind = one
+  builder). deg 0 = north, clockwise; `dist` a share of the sky disc; never a floater. It
+  tells the player which WAY the world continues (the woods' Shasta stands over the trail
+  whose top door opens on Shasta; the observatory's stairway stands due north over the door
+  that climbs it). The landmark and the seam it promises point the same way.
+- **THE NEAR WEENIE** — inside the room: one tall, lit, singular thing at the far end of
+  the entrance's sightline — THE NEEDLE in the cavern, the old redwood in the clearing,
+  THE TOWER on the staircase, THE SKULL STACK, THE PLINTH in the lava, THE PILLAR OF LIGHT,
+  a slot machine's glow, the sun in the bridge's viewport. Rule of thumb: from the door
+  pad, before the first step, the player should already see where they want to go.
+  The HARD TAPE usually sits on the near weenie (the door gun's puzzle IS the reward for
+  reaching what drew you); the crystal (the battle marker) is a weenie too when it stands
+  in the open.
+
+Placement rules:
+1. **One per sightline, not one per room.** A big part with a bend gets a second weenie
+   round the bend; a corridor room (family C) gets a light at its far end and nothing else.
+2. **Visible from the pad.** After the plan runs, check the line from each door's pad to
+   the weenie is not solid at eye height (a plan corridor along it — `gen.open` rows, or
+   an authored `path`, carve it). `node check-terrain.js` prints the dump; read the line.
+3. **Lit and singular.** A weenie is the brightest or tallest thing in its view and there
+   is only one of it. A cluster of five towers is a skyline, not a weenie.
+4. **Chained.** A weenie is best seen from the door you arrive by and STANDS BESIDE the
+   door you leave by — so each one hands you to the next part. THE MAP's `?` node is the
+   same idea drawn.
+5. **Scaled to the room.** A 3.4 m skull stack in a 40 m crypt; a 5 m billboard on a 100 m
+   grid; a 50 m castle on the sky. The user: "they can be smaller weenies too."
+6. **A far weenie needs a horizon.** An OPEN room only (a closed chamber's weenie is near);
+   a city's far weenie is a tower / a dome / a ferris wheel over the roofs — Disaster City
+   should wear the tower it keeps falling from (a `kind: 'tower'` landmark to add).
+
+Field per part in the build-plan entry: `weenie: { far: <kind or none>, near: <feature>,
+seen from: <door> }`. A part with neither is not finished.
+
 ## 6. THE Δ SITE ROOMS — the rework
 
 The user: the rooms that look like the delta maps are abandoned as a LOOK. Keep:
@@ -325,7 +372,9 @@ The design (build in this order; each step is one delivery):
 - [ ] THE PARK RULE: a rail and a ramp (a `rail`, a `wall` top, a `ramp` or a quarter pipe)
 - [ ] the hard tape (`findSpots` pin + `hard: true`) reachable by a door gun shot
       (`hqFindHardReachTerrain`)
-- [ ] a landmark you can steer by (`shell.sky.landmarks` or a tall feature)
+- [ ] THE WEENIES (§5b): a far landmark on the sky (`shell.sky.landmarks`) where there is a
+      horizon, a near one inside (tall, lit, singular) at the end of the entrance's sightline,
+      visible from every door's pad; the hard tape on the near one where it fits
 - [ ] the room's own light (`strips: false`, props with `light`, ≤ `HQ_PROP_LIGHT_MAX`)
 - [ ] `shell.look` row; the sky's fog `density` per metre; no square edge, no kerb line
 - [ ] natives with `say`, a tape per part (re-homed; the hundred is fixed), no envelope in a
@@ -352,5 +401,5 @@ The design (build in this order; each step is one delivery):
   The `city` plan's podium removed: a block is a mass at street level (`podium: false`,
   `hqTerrainSolidAt` / `hqTerrainSolidTop` / `info.solidTop`, the yard walls
   `info.yardWalls`); the mall keeps `podium: true`. Tests: hq-city / hq-city-2 /
-  hq-floor-plan amended. Not done: minor roads, corner-lot guarantee, interior fill, roof
+  hq-floor-plan amended. §5b WEENIES added the same day (the user's Disneyland rule). Not done: minor roads, corner-lot guarantee, interior fill, roof
   access (§4); the Δ rework (§6); discovery (§7); the family-C generator (§5 / §2).

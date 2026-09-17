@@ -5240,7 +5240,10 @@ H-Wing / the tunnels, no generator yet; D streets = `gen.kind: 'city'`), when to
 how to mix them across a complex's parts, the research (BSP, cyclic dungeons, Parish &
 Müller streets, Portal chamber chains), the build order, the checklist, the Δ site-room
 rework (§6: the square ledge goes, the crystal stays), the discovery rule (§7: Otto's
-repairs open an earned door) and the multi-floor plan (§5). Append to its §10 log.
+repairs open an earned door), the multi-floor plan (§5) and **THE WEENIES (§5b, the user's
+Disneyland rule: every part gets a far landmark on the sky and a near one inside at the end
+of the entrance's sightline, placed BEFORE the floor plan; a part with neither is not
+finished)**. Append to its §10 log.
 **STREET LEVEL rev 2**: `HQ_TERRAIN_GEN.city.podium: false` (the default) applies NO rise —
 a city block is a MASS at street level: `hqTerrainFeet` refuses it by the mask (`solidPad`),
 `hqTerrainAir` / `hqTerrainCam` meet `info.solidTop` (`hqTerrainSolidTop`: a lot's roof at
