@@ -23,6 +23,8 @@ const vm = require('node:vm');
 const { loadGameData } = require('./load-data');
 const D = loadGameData(), HQ = D.DOOR_HQ;
 const TERRAIN_RULES = vm.runInContext('TERRAIN_RULES', D);
+const SPRITES_SRC = fs.readFileSync(require('node:path').join(__dirname, 'sprites.js'), 'utf8');
+const urbanOk = k => typeof k === 'string' && k.startsWith('urban:') && SPRITES_SRC.includes("'" + k.slice(6) + "'");   // THE URBAN PACK (2026-09-17)
 const SITES = {
     prebuilt_strip:    { no: '21',   board: 'site_prebuilt_strip',    parts: ['chapel', 'casino'], back: { id: 'chapel', wall: 'n', x: -0.2, leaf: 'leaf_motel', into: 'chapel', at: 'street' } },
     prebuilt_downtown: { no: '1954', board: 'site_prebuilt_downtown', parts: ['lobby', 'subway', 'streets', 'mall', 'closet'], back: { id: 'tower', wall: 'e', z: 0, leaf: 'leaf_entrance', into: 'lobby', at: 'street' } },   // DISASTER CITY (2026-09-17): THE STREETS + THE MALL hang off the lobby's avenue doors (hq-city.test.js owns them)
@@ -110,7 +112,7 @@ test('the back doors: the chapel’s motel door takes the Strip’s one free nor
             for (const l of links) if (l.wall === 'n') assert.ok(Math.abs(l.x - bd.x) >= 4.4, site + ': ' + B.id + ' shares a lane with ' + l.id);
             assert.ok(bd.x + 2.2 < 5 - 2.4, site + ': clear of the built-in north signboard');
         } else {
-            assert.strictEqual(links.filter(d => d.wall === 'n').length, 3, site + ': the north wall is FULL — three link doors — which is why the tower door is on the east wall');
+            assert.strictEqual(links.filter(d => d.wall === 'n').length, 0, site + ': the highway left the board room for the streets\' ends (THE ROADS OUT, 2026-09-17) — the tower door stays on the east wall');
         }
         const h = landing(room, bd), p = h.player;
         assert.ok(Math.abs(p.x) < Sh.w / 2 - 0.4 && Math.abs(p.z) < Sh.d / 2 - 0.4, site + ': the landing is inside the walls');
@@ -147,8 +149,8 @@ test('THE SUBWAY’s third station: Downtown’s platform stands its train FREE 
     assert.ok(st.action.room === 'site_prebuilt_downtown_subway' && st.action.at === tr.id && tr.action.at === st.id, 'the pair');
     assert.strictEqual(D.hqDoorNo(st), '1954', 'the stair’s plate reads Downtown’s number');
     assert.strictEqual(D.hqDoorNo(tr), '2047', 'the train’s plate reads Cyberpunk’s number');
-    assert.strictEqual(cy.doors.filter(d => d.link).length, 2, 'the grid carries the stair on its north wall and the tunnel\'s train FREE at its station (the second pass)');
-    assert.strictEqual(HQ.rooms.site_prebuilt_cyberpunk.doors.filter(d => d.link).length, 1, 'the board room keeps the highway alone (the train, the stair and the machine moved into the city)');
+    assert.strictEqual(cy.doors.filter(d => d.link).length, 3, 'the grid carries the stair on its north wall, the tunnel\'s train FREE at its station (the second pass) and the Strip\'s road at its east end (THE ROADS OUT, 2026-09-17)');
+    assert.strictEqual(HQ.rooms.site_prebuilt_cyberpunk.doors.filter(d => d.link).length, 0, 'the board room carries nothing (the train, the stair, the machine and the highway all moved into the city)');
     assert.strictEqual(cy.doors.filter(d => d.link && d.wall === 'n').length, 1, 'one on the wall');
     for (const o of cy.doors) if (o !== st && o.wall === 'n') assert.ok(Math.abs(o.x - st.x) >= 4.4, 'the stair shares a lane with ' + o.id);
     const sub = D.hqWorldRoutes('foyer').find(r => r.id === 'subway');
@@ -230,7 +232,7 @@ test('THE PARK RULE + the light + the procs: a rail in every room, a stepped ram
         assert.ok(S.strips === false && S.mood && S.mood.ambient < 1 && Array.isArray(S.lights) && S.lights.length === 0, id + ': no facility strips — the room lights itself');
         const lit = room.props.filter(p => (HQ.catalogue[p.key] || {}).light).length;
         assert.ok(lit >= 1 && lit <= 10, id + ': ' + lit + ' prop lights (HQ_PROP_LIGHT_MAX is 10)');
-        for (const n of ['floor', 'wall', 'dado', 'trim', 'ceiling']) assert.ok(HQ.textures[S[n]] || TERRAIN_RULES[S[n]], id + ': texture ' + S[n]);
+        for (const n of ['floor', 'wall', 'dado', 'trim', 'ceiling']) assert.ok(HQ.textures[S[n]] || TERRAIN_RULES[S[n]] || urbanOk(S[n]), id + ': texture ' + S[n]);
         assert.strictEqual(D.DOOR_TAPES.filter(t => t.where === id).length, 1, id + ': one tape');
         for (const n of room.npcSpots) for (const l of n.say || []) assert.ok(typeof l === 'string' && l.length > 10, id + ': a said line');
     }

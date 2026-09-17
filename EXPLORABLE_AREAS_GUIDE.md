@@ -403,3 +403,4 @@ The design (build in this order; each step is one delivery):
   `info.yardWalls`); the mall keeps `podium: true`. Tests: hq-city / hq-city-2 /
   hq-floor-plan amended. §5b WEENIES added the same day (the user's Disneyland rule). Not done: minor roads, corner-lot guarantee, interior fill, roof
   access (§4); the Δ rework (§6); discovery (§7); the family-C generator (§5 / §2).
+- 2026-09-17 — THE URBAN PACK: a city's ground is THREE SHEETS of the pack (asphalt = floor, pavement = path, the yards = cliff) — never tiles laid on it (they distort on every bend); the paint / kerbs / manholes / plates are overlays (`_hqBuildRoadMarkings`); a share of the lots are TEXTURED BUILDINGS (`_hqTexBuilding`, a 1.75 m facade grid) beside the sprite prisms; a street's END is a `road` way — "roads that lead to nothing" are the seam to the next town (§4 amended: a dead end is a door or a barrier, never a wall of fog).

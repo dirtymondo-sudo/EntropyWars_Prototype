@@ -10750,3 +10750,21 @@ ring road's corner (`{"x":46,"z":36,"face":308,"pitch":-0.45,"dist":18}` — the
 legs), the mall's mezzanine (`{"x":-3,"z":-2,"face":90}` — the escalator over the ramp). A spawn on a traffic
 route reads HIT BY A CAR in the first second — that is how the first probe found the streets' spawn in the ring
 road's west leg (moved to the tower's side street, x −50).
+
+## THE CITY PROBE — playtest_city.js: the HQ with THE REAL SHEETS (2026-09-17, THE URBAN PACK)
+`node playtest_city.js <room> '[{"name":"v","x":0,"z":0,"face":0,"pitch":-0.2,"fp":true,"dist":4}]' [--wait=45000] [--flags=EW_HQ_NO_TEX_BUILDINGS,...] [--loglen=900] [--nogltf]`
+→ `shots/city/<room>_<name>.png`. Unlike playtest_hq_offline.js (stand-ins) every R2 sheet / GLB / OBJ loads for real:
+the sandbox's egress proxy (`HTTPS_PROXY`, CA bundle in /root/.ccr) reaches cdn.entropywars.net and the JS CDNs, so the
+browser is launched with that proxy (localhost bypassed — the first cut sent localhost through it and got a 405) and
+EVERY CDN response is fetched by the probe and re-served with `access-control-allow-origin: *` — the proxy strips the
+CDN's CORS header, WebGL then refuses every image as cross-origin ("WebGL: too many errors") and the whole city
+rendered BLACK with grey boxes. Responses are cached under `shots/.cdn-cache/` (gitignored; ~900 files after a city),
+so the second run is fast; the urban pack is served from the repo's `textures/` (+ the root) so an unuploaded sheet
+still shows. RULES learned: (1) the headless Chromium (swiftshader) dies now and then while a big room builds —
+"Target page, context or browser has been closed" with no page error — the probe relaunches up to three times; (2)
+NEVER run two probes at once (they kill each other); (3) `--wait` ≥ 40 s for a city (the GLBs stream); (4) a flag name
+in `--flags` is set on `window` before the page's scripts (an init script) — the kill-switches; (5) the `room=` after
+each SHOT names where the walker really is (a crash + retry once photographed the hall). What it settled: the pack's
+asphalt / pavement / concrete on the field, the plates' facing (a lane's own heading read MIRRORED from behind — the
+plates face the road now, with a grey back), the neon city's black floor (the field's emissive lift + the shell's
+tint), the road out over the void on a site room (capped to the apron).

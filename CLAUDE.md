@@ -5255,3 +5255,79 @@ solves both cities; hq-city / hq-city-2 / hq-floor-plan read the mass rule. Ship
 to R2 AND Render. Unseen live (RULE #1c): the yard walls' read in `bricks_2`, the flat
 concrete yards seen from the parking deck, the outer ground past the outer blocks now that
 no podium hides it.
+
+## THE URBAN PACK — DISASTER CITY IN THE PACK + THE ROADS OUT (2026-09-17, local delivery)
+The user's 320 tileables (128 px = one battle tile, 1.75 m; repo `textures/` + 20 at
+the root; R2 `Assets/Sprites/terrain/urban/<Name>.png`) are **sprites.js
+`URBAN_TEXTURES`** (name → url) / **`URBAN_TEX_FAMILIES`** (34 families) /
+`urbanTexPick(family, rng, filter)` / `urbanTexGlow(name)` (the lit `-Glow` twin
+of a window sheet) — NEVER in TERRAIN_SPRITES (a terrain key is a board tile).
+**THE KEY**: any material names one as **`urban:<Name>`** — three-renderer.js
+`_hzTex` / `_hqTex` fall through to the registry, so a shell (`floor` / `wall` /
+`dado` / `ceiling` + `ceilTile: 1.75`), a terrain field's `floor` / `cliff` /
+`path`, a `fenceKey`, a wall row's `key` and a prop all read it the same way.
+**THE STREETS IN THE PACK** (the user: "the streets are all distorted"): the
+asphalt IS the field — a city plan's `floor` sheet paints the corridors
+(`urban:PlasterWallPainted1b`), its `path` sheet the sidewalk band + the door
+paths + THE PLAZA (a 21 m `path` row; the slabs, `urban:TileGeneric1a`), its
+`cliff` sheet the yards and the OUTER GROUND (`_hqBuildOuterGround` blends a
+city's outer ring to the cliff sheet) — the terrain's own three-sheet blend
+follows every corridor and intersection, nothing overlaps, nothing distorts.
+What stands on it is **`_hqBuildRoadMarkings`** (three-renderer.js, before the
+street lamps; `HQ_ROAD` = the numbers): the centre dashes (never inside another
+street's corridor or through a bend), the edge lines, a ZEBRA + a stop line
+where a street enters another's corridor, KERB STONES (a light strip with a face
+down to the road), MANHOLES (`DecalManholeCover`), SPEED SIGNS on posts
+(`SignSpeedUsa025/035-small`, facing the road with a grey back) and a NO ENTRY
+at a dead end — three merged geometries. The GLB road tiles are OPT-IN now
+(`EW_HQ_ROAD_TILES`); `EW_HQ_NO_ROAD_MARKS` kills the paint. **THE HOARDINGS**:
+a city's yard walls wear `gen.fenceKey: 'urban:MetalCorrugatedPainted1a'` at
+`fenceH: 1.75` (one tile: the plinth at the foot) with `_hqHoardingSigns` —
+the pack's DANGER / CAUTION / HAZARD plates on the street face. **THE
+TEXTURED BUILDINGS** (the user: "keep the billboard buildings, but throw in
+generated buildings made with these textures"): `gen.texP` (0.5) of the lots
+(seeded per lot) and every `low` lot are **`_hqTexBuilding`** — a facade grid
+of 1.75 m cells, two a storey (`HQ_TEXB`), a STYLE from `_HQ_TEX_STYLES`
+(office: concrete spandrels + square curtain glass, a storefront ground floor;
+tower: the tall curtain wall; residential: painted plaster, the skirting band
+on the ground row, window DECALS over the upper rows, a painted door; stucco:
+the cornice on the top row; factory: the corrugated cladding + the factory
+glass + a wide door), `gen.ruinP` of them RUINED (the Broken glass, the grime;
+0.35 in Disaster City, 0.1 on the grid), the roof in `ConcreteUnderTiles` under
+a parapet, the plant on top; under a neon plan every window wears its `-Glow`
+twin as an emissive map. Quads are MERGED per sheet (`_hqTexBatch`, ~20 draw
+calls a city); a textured lot's front skips the sprite lot's awning / sign;
+blocking is the plan's own mass rule. The neon city's field is self-lit (lift
+0.42) and `hqCityShell`'s neon `floorColor` is 0xb4b4d0 — the sheet is dark
+already. `EW_HQ_NO_TEX_BUILDINGS` = sprites only. **THE ROADS OUT** (the user:
+"roads that lead to nothing need to be doors — keep walking and you end up in
+the street of another area"): **`DOOR_HQ.ways.road`** (`w` 9, `pad` 10, `open`,
+`sfx: 'wayRoad'`) — a street's END is the seam: three-renderer.js
+`_hqWayBuilders.road` runs the asphalt + the dashes 40 m on into the fog over
+the outer ground (13 m on a site room's apron), a freeway GANTRY over the mouth
+names the next town (the door's label + the end's `sub`), a LEAVING plate and
+a speed plate stand on the shoulders; the opening is the whole street and the
+press-in is walking on (`hqTerrainCompile` reads a way's `pad` for the landing;
+`_hqBuildWay` hands every builder its placed frame `wx / wz / yaw / y0`). The
+highway's four links are ROADS at both ends now: `nuketown_downtown`
+(Nuketown n −5 ⇄ the streets' cross street EAST end), `downtown_strip` (the
+cross street WEST ⇄ the Strip n −5), `stadium_downtown` (the Stadium n −5 ⇄
+THE AVENUE's north end), `strip_cyberpunk` (the Strip n −10 ⇄ the GRID's cross
+street east end); `streets_stadium` (Gate C) is RETIRED and the Downtown board
+room's north wall is free. **THE OTHER URBAN ROOMS** wear the pack: the
+platform (`TileSubway1a` walls, the slate floor, `MetalSubwayGrill1a`
+overhead), the lobby (chequered `TileMarble1a`, stucco, `FibreCeilingTile`),
+the casino (`TileMarble3c`, red `PlasterWallPainted2c`), the chapel (the
+cornice stucco), the mall (`TileMarble2a`), the closet, the noodle bar
+(`TileSubway3d`, corrugated). **THE PROBE**: `node playtest_city.js <room>
+'[views]' [--wait=ms] [--flags=A,B] [--loglen=n]` (repo tooling) = the HQ probe
+WITH THE REAL SHEETS — the sandbox's egress proxy reaches the CDN, every asset
+is re-served with a CORS header (the proxy strips it and WebGL then refused
+every image: the city rendered black) and cached under `shots/.cdn-cache`; the
+urban pack is served from `textures/`; it relaunches on the headless crash
+(one probe at a time — two browsers kill each other). `npm test` runs
+`urban-pack.test.js`; hq-city / hq-city-2 / hq-urban / hq-terrain / hq-world
+amended. Ship data.js to R2 AND Render. UNSEEN LIVE (RULE #1c): the plates'
+loudness, the road out at the Strip's / the Stadium's / Nuketown's ends (a site
+room's apron), the neon glow at 60 fps. The rest of the pack (D.U.M.B., CERN,
+Area 51, the Δ boards) is still unworn — the key is the edit.

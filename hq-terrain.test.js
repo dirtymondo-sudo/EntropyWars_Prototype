@@ -27,7 +27,8 @@ const TR_RULES = vm.runInContext('TERRAIN_RULES', D);
 const renderer = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8');
 const ROOMS = D.hqTerrainRooms();
 const KINDS = ['hill', 'dip', 'ridge', 'plateau', 'ramp', 'deck', 'pool', 'stream', 'wall', 'rail', 'path', 'tree', 'grove', 'scatter'];
-const sheetOk = k => !!(HQ.textures[k] || TR_RULES[k]);
+const SPRITES_SRC = fs.readFileSync(require('node:path').join(__dirname, 'sprites.js'), 'utf8');
+const sheetOk = k => !!(HQ.textures[k] || TR_RULES[k] || (typeof k === 'string' && k.startsWith('urban:') && SPRITES_SRC.includes("'" + k.slice(6) + "'")));   // THE URBAN PACK (2026-09-17): `urban:<Name>` is a sheet too
 const num = re => { const m = re.exec(renderer); assert.ok(m, String(re)); return parseFloat(m[1]); };
 
 test('THE RULES agree with the renderer\'s walker: climb = HQ_STEP_TOL, wade = HQ_WADE_M, body = HQ_BODY_R, a drop is unlimited', () => {

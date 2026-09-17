@@ -18562,7 +18562,7 @@ function hqCityShell(o) {
         open: true, edge: 'open',
         floor: 'urban_street', wall: 'concrete', dado: 'concrete', trim: 'gunmetal', ceiling: 'concrete',
         apron: 'urban_street', skirt: 'concrete', apronColor: 0x8a8c90,
-        floorColor: neon ? 0x6a6a86 : 0x9a9a98, wallColor: neon ? 0x8a86a0 : 0xa8a8a4, dadoColor: neon ? 0x6a6478 : 0x8a8480,
+        floorColor: neon ? 0xb4b4d0 : 0xa8a8a4, wallColor: neon ? 0x8a86a0 : 0xa8a8a4, dadoColor: neon ? 0x6a6478 : 0x8a8480,   // THE URBAN PACK (2026-09-17): the asphalt sheet is dark already — the tint lifts it (the neon city's floor was black)
         pipes: false, strips: false, lights: [],
         mood: neon ? { lamp: 0xff3ad8, glow: 0x35e0ff, strip: 0xff6ad8, light: 0xcfe8ff, ambient: 0.44, night: 1 } : { light: 0xe8ecf4, ambient: 0.5 },
         sky: sky,
@@ -19457,6 +19457,12 @@ const DOOR_HQ = {
            the concrete you climb down into; the far end is the storm drain's own grate (a plain `leaf_cell` door). */
         timemachine: { verb: 'STEP IN', sub: 'THE TIME MACHINE · SET FOR 2077', sfx: 'wayTime', w: 1.4, h: 2.4 },
         gutter:      { verb: 'CLIMB DOWN', sub: 'THE GUTTER · INTO THE STORM DRAIN', sfx: 'wayGutter', w: 1.2, h: 0.9 },
+        /* THE ROAD (2026-09-17, THE URBAN PACK — the user: "roads that lead to nothing are dead ends; those need to be doors so that if
+           you keep walking past them you end up in the street of another area"): a street's END is the seam. Nothing stands in the
+           road — it runs on past the wall into the fog under a GANTRY SIGN that names where it goes (three-renderer.js
+           _hqWayBuilders.road: the asphalt + the dashes continuing 40 m, the gantry, a LEAVING plate); the opening is the whole
+           street (`w` 9) and the press-in is walking on. `pad` = the flat landing's width in the terrain (hqTerrainCompile reads it). */
+        road:        { verb: 'WALK ON', sub: 'THE ROAD OUT · KEEP WALKING', sfx: 'wayRoad', w: 9, h: 5.2, pad: 10, open: true },
     },
     /* Phase 9.3 pilot: ordinary, reversible doors between existing board
        rooms. Move the Derelict ends to its airlock when that room exists.
@@ -19651,21 +19657,26 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_lodge', wall: 'n', x: -5 },
           why: 'the Round Table\'s other room; the Lodge keeps the chairs and denies the table', note: 'the other room', draft: true },
         /* THE HIGHWAY */
-        { id: 'nuketown_downtown', route: 'highway', leaf: 'leaf_suburban',
-          a: { site: 'prebuilt_nuketown', wall: 'n', x: -5 },
-          b: { site: 'prebuilt_downtown', wall: 'n', x: -5 },
+        /* THE ROADS OUT (2026-09-17, THE URBAN PACK): the highway's doors were hotel / suburban / glass leaves on the Downtown
+           BOARD room's north wall; the city's STREETS have ends now, and a street's end is the seam — every `road` way runs the
+           asphalt on into the fog under a gantry that names the next town. THE CROSS STREET's east end is the on-ramp to
+           NUKETOWN, its west end the same road west to THE STRIP; THE AVENUE's north end is the stadium road; the Strip's
+           road runs on, later, to CYBERPUNK CITY's cross street. The board room's north wall is free again. */
+        { id: 'nuketown_downtown', route: 'highway', way: 'road',
+          a: { site: 'prebuilt_nuketown', wall: 'n', x: -5, sub: 'THE ON-RAMP · DISASTER CITY' },
+          b: { site: 'prebuilt_downtown', part: 'streets', wall: 'e', z: 0, sub: 'THE CROSS STREET · EAST · NUKETOWN' },
           why: 'the on-ramp at the end of the cul-de-sac; one road, a century long, and the first exit is the fifties', note: 'the first exit', draft: true },
-        { id: 'downtown_strip', route: 'highway', leaf: 'leaf_hotel',
-          a: { site: 'prebuilt_downtown', wall: 'n', x: -10 },
-          b: { site: 'prebuilt_strip', wall: 'n', x: -5 },
+        { id: 'downtown_strip', route: 'highway', way: 'road',
+          a: { site: 'prebuilt_downtown', part: 'streets', wall: 'w', z: 0, sub: 'THE CROSS STREET · WEST · THE STRIP' },
+          b: { site: 'prebuilt_strip', wall: 'n', x: -5, sub: 'THE BOULEVARD · EAST · DISASTER CITY' },
           why: 'the same road, west; the neon starts where the tower\'s shadow stops', note: 'west', draft: true },
-        { id: 'strip_cyberpunk', route: 'highway', leaf: 'leaf_holographic',
-          a: { site: 'prebuilt_strip', wall: 'n', x: -10 },
-          b: { site: 'prebuilt_cyberpunk', wall: 'n', x: -5 },
+        { id: 'strip_cyberpunk', route: 'highway', way: 'road',
+          a: { site: 'prebuilt_strip', wall: 'n', x: -10, sub: 'THE BOULEVARD · LATER · CYBERPUNK CITY' },
+          b: { site: 'prebuilt_cyberpunk', part: 'streets', wall: 'e', z: 0, sub: 'THE CROSS · EAST · THE STRIP' },
           why: 'the same road, later; the last exit is the city the Strip was practising for', note: 'the last exit', draft: true },
-        { id: 'stadium_downtown', route: 'highway', leaf: 'leaf_glass',
-          a: { site: 'prebuilt_stadium', wall: 'n', x: -5 },
-          b: { site: 'prebuilt_downtown', wall: 'n', x: -0.2 },
+        { id: 'stadium_downtown', route: 'highway', way: 'road',
+          a: { site: 'prebuilt_stadium', wall: 'n', x: -5, sub: 'THE STADIUM ROAD · DISASTER CITY' },
+          b: { site: 'prebuilt_downtown', part: 'streets', wall: 'n', x: 0, sub: 'THE AVENUE · NORTH · THE STADIUM' },
           why: 'the parking structure joins the stadium to the block; on game day the road is the crowd', note: 'the parking structure', draft: true },
         /* THE WONDERLAND (the Looking-Glass has no free wall for a landing
            yet — its room is nine metres across and a door would land on the
@@ -19756,11 +19767,7 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_strip', part: 'chapel', wall: 'w', z: 5.0, sub: 'DISASTER CITY · THE STREETS · OUT THE SIDE' },
           why: 'the chapel\'s side door opens on a parking lot that is not on the Strip; the officiant says the lot is Downtown\'s and Downtown says it is the chapel\'s, and the cars in it are from both',
           note: 'the parking lot', draft: true },
-        { id: 'streets_stadium', route: 'highway', leaf: 'leaf_wired_double',
-          a: { site: 'prebuilt_downtown', part: 'streets', wall: 'n', x: -24, sub: 'THE STADIUM · GATE C' },
-          b: { site: 'prebuilt_stadium', wall: 'n', x: -10, sub: 'DISASTER CITY · THE STREETS · THE STADIUM ROAD' },
-          why: 'Gate C opens on the stadium road; eighty thousand came in through it and the turnstile count says none of them left',
-          note: 'gate c', draft: true },
+        /* streets_stadium (Gate C, a wired double door at n x −24) retired 2026-09-17: THE AVENUE's north end IS the stadium road now (stadium_downtown, a `road` way) */
         { id: 'timemachine_cyberpunk', route: 'seams', way: 'timemachine',
           /* THE SECOND PASS (2026-09-17): the machine moved out of the arcade into the mall's SUPPLY CLOSET (the user's rule) and its far end into the noodle bar's back room on the grid — a building in the city, never the board room's strip */
           a: { site: 'prebuilt_downtown', part: 'closet', wall: 'free', x: 0, z: -1.8, face: 180, sub: 'THE TIME MACHINE · SET FOR 2047 · CYBERPUNK CITY' },
@@ -27895,8 +27902,8 @@ const DOOR_HQ = {
             shell: {
                 w: 10, d: 14, h: 3.4,
                 wallH: 3.4, dadoH: 1.0,
-                floor: 'carpet', wall: 'urban_wall', dado: 'wood', trim: 'gold', ceiling: 'ceiling',
-                floorColor: 0x8a2030, wallColor: 0xf0e4d0, dadoColor: 0x6a4a30, ceilColor: 0xe8e0d0,
+                floor: 'carpet', wall: 'urban:PlasterWallStucco2a', dado: 'urban:PlasterWallPainted2d', trim: 'gold', ceiling: 'urban:FibreCeilingTile1b',   // THE URBAN PACK (2026-09-17): the cornice stucco, the ochre skirting
+                floorColor: 0x8a2030, wallColor: 0xf0e8dc, dadoColor: 0xd8c8a8, ceilColor: 0xe8e0d0, ceilTile: 1.75,
                 pipes: false,
                 strips: false,
                 lights: [],
@@ -27968,8 +27975,8 @@ const DOOR_HQ = {
             shell: {
                 w: 18, d: 14, h: 3.6,
                 wallH: 3.6, dadoH: 1.0,
-                floor: 'carpet', wall: 'urban_wall', dado: 'wood', trim: 'gold', ceiling: 'ceiling',
-                floorColor: 0x5a1830, wallColor: 0x3a1a2a, dadoColor: 0x5a3a2a, ceilColor: 0x2a1a24,
+                floor: 'urban:TileMarble3c', wall: 'urban:PlasterWallPainted2c', dado: 'urban:PlasterWallPainted2c', trim: 'gold', ceiling: 'urban:FibreCeilingTile2a',   // THE URBAN PACK (2026-09-17): the diamond marble underfoot, the red plaster with its skirting
+                floorColor: 0xb8a8a8, wallColor: 0x9a6a6a, dadoColor: 0x9a6a6a, ceilColor: 0x6a5a5c, ceilTile: 1.75,
                 pipes: false,
                 strips: false,
                 lights: [],
@@ -28108,8 +28115,8 @@ const DOOR_HQ = {
             shell: {
                 w: 14, d: 12, h: 4.2,
                 wallH: 4.2, dadoH: 1.2,
-                floor: 'tilefloor', wall: 'concrete_floor', dado: 'marble', trim: 'gunmetal', ceiling: 'ceiling',
-                floorColor: 0xb8b0a0, wallColor: 0xa8a49c, dadoColor: 0x8a8480, ceilColor: 0x9a9690,
+                floor: 'urban:TileMarble1a', wall: 'urban:PlasterWallStucco1a', dado: 'urban:TileMarble1d', trim: 'gunmetal', ceiling: 'urban:FibreCeilingTile1a',   // THE URBAN PACK (2026-09-17): the chequered marble, the stucco, the marble dado, the office ceiling
+                floorColor: 0xd8d4cc, wallColor: 0xc8c4bc, dadoColor: 0xc0bcb4, ceilColor: 0xc8c4bc, ceilTile: 1.75,
                 pipes: false,
                 strips: false,
                 lights: [],
@@ -28187,8 +28194,8 @@ const DOOR_HQ = {
             shell: {
                 w: 8, d: 30, h: 4,
                 wallH: 4, dadoH: 1.6,
-                floor: 'tilefloor', wall: 'tilefloor_2', dado: 'tilefloor', trim: 'gunmetal', ceiling: 'concrete',
-                floorColor: 0x9a968c, wallColor: 0xc8c0a8, dadoColor: 0x6a3a3a, ceilColor: 0x4a4844,
+                floor: 'urban:TileGeneric3b', wall: 'urban:TileSubway1a', dado: 'urban:TileSubway1a', trim: 'gunmetal', ceiling: 'urban:MetalSubwayGrill1a',   // THE URBAN PACK (2026-09-17): the banded subway tile up every wall, the slate floor, the grills overhead
+                floorColor: 0xb8b4ac, wallColor: 0xe0dcd0, dadoColor: 0xe0dcd0, ceilColor: 0x8a8a90, ceilTile: 1.75,
                 pipes: true,
                 strips: false,
                 lights: [],
@@ -28856,9 +28863,10 @@ const DOOR_HQ = {
                THE LIP snaps a wall shot to its top); THE OVERPASS deck across the west
                avenue. Every door's side street is a `path` (a forced corridor). */
             terrain: {
-                floor: 'urban_street', cliff: 'concrete', path: 'concrete',
+                /* THE URBAN PACK (2026-09-17): the asphalt is the floor sheet (the corridors), the pavement slabs the path sheet (the sidewalk band + the door paths), the yards' concrete the cliff sheet (the block interiors + the outer ground); the paint, the kerbs, the manholes and the signs are three-renderer.js _hqBuildRoadMarkings */
+                floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a',
                 noise: { amp: 0.05, scale: 6 },
-                gen: { kind: 'city', seed: 7, walkW: 2.4, kerb: 0.12, wallH: 3.2, lotPitch: 9.5, lotW: [6.4, 8.2], lowP: 0.22, fronts: 'window',
+                gen: { kind: 'city', seed: 7, walkW: 2.4, kerb: 0.12, wallH: 3.2, lotPitch: 9.5, lotW: [6.4, 8.2], lowP: 0.22, fronts: 'window', fenceKey: 'urban:MetalCorrugatedPainted1a', fenceH: 1.75, texP: 0.5, ruinP: 0.35,
                        streets: [
                            { pts: [[-40, -29], [40, -29], [40, -6], [31, 4], [40, 14], [40, 29], [12, 29], [-8, 22], [-40, 29], [-40, 4]], w: 9, loop: true },   // THE RING ROAD (the circuit): straight up the north, the chicane on the east leg, the bend on the south
                            { pts: [[0, -46], [0, 46]], w: 10 },                                                                                                                   // THE AVENUE (north–south; the parking lane either side)
@@ -28872,11 +28880,11 @@ const DOOR_HQ = {
                     { k: 'rail', x0: 18.4, z0: -20.6, x1: 29.6, z1: -20.6 }, { k: 'rail', x0: 29.6, z0: -20.6, x1: 29.6, z1: -9.4 }, { k: 'rail', x0: 18.4, z0: -9.4, x1: 29.6, z1: -9.4 },   // the deck's edge rail (the grind)
                     { k: 'hill', x: -20, z: -14, r: 5.5, h: 1.5, open: true },                                                      // THE COLLAPSE — the rubble mound where the tower came down (inside the north-west block)
                     { k: 'plateau', x: -29.5, z: 15, w: 7, d: 8, h: 4.0, edge: 0.3 },                                               // THE ROOFTOP (the tape's; the door gun's) — flush with the ring road's west sidewalk
+                    { k: 'path', pts: [[0, -5], [0, 5]], w: 21 },                                                                   // THE PLAZA is pavement (THE URBAN PACK, 2026-09-17): the path sheet over the open square — the cars' routes break at ±8, the square is the walker's
                     { k: 'path', pts: [[-56, -8], [-40, -8]], w: 6 },                                                                // the tower's side street (the AVENUE doors on the west wall, z −8)
                     { k: 'path', pts: [[0, 29], [0, 45]], w: 6 },                                                                    // THE MALL's forecourt (the south wall, x 0)
                     { k: 'path', pts: [[12, -29], [12, -45]], w: 5 },                                                                // THE METRO stair's street (the north wall, x 12)
                     { k: 'path', pts: [[-56, 18], [-40, 18]], w: 6 },                                                                // THE STRIP's road (the west wall, z 18)
-                    { k: 'path', pts: [[-24, -29], [-24, -45]], w: 6 },                                                              // THE STADIUM GATE's road (the north wall, x −24)
                     { k: 'path', pts: [[40, 14], [56, 14]], w: 5 },                                                                  // the gutter's alley (the east kerb)
                     { k: 'path', pts: [[6, -15], [14.0, -15]], w: 4 },                                                               // the deck's side street off the avenue
                     { k: 'tree', x: 5.5, z: 5.5, kind: 'tree_2', h: 3.2 }, { k: 'tree', x: -5.5, z: 5.5, kind: 'tree_2', h: 3.2 }, { k: 'tree', x: 5.5, z: -5.5, kind: 'tree_2', h: 3.2 }, { k: 'tree', x: -5.5, z: -5.5, kind: 'tree_2', h: 3.2 },   // the plaza's four
@@ -28966,8 +28974,8 @@ const DOOR_HQ = {
             shell: {
                 w: 66, d: 46, h: 7.6,
                 wallH: 7.6, dadoH: 1.2,
-                floor: 'tilefloor', wall: 'tilefloor_2', dado: 'marble', trim: 'gunmetal', ceiling: 'ceiling',
-                floorColor: 0xd8d0c0, wallColor: 0xc8c0b0, dadoColor: 0x9a9088, ceilColor: 0xb8b4ac,
+                floor: 'urban:TileMarble2a', wall: 'urban:PlasterWallPainted2a', dado: 'urban:TileMarble2d', trim: 'gunmetal', ceiling: 'urban:FibreCeilingTile1a',   // THE URBAN PACK (2026-09-17): the mall's green-and-cream marble, the plaster, the drop ceiling
+                floorColor: 0xe0dcd4, wallColor: 0xd0ccc4, dadoColor: 0xc8c4bc, ceilColor: 0xc8c4bc, ceilTile: 1.75,
                 pipes: false, strips: false, lights: [],
                 mood: { light: 0xfff4e0, ambient: 0.5 },
                 plate: { x: 0, z: 21.8, y: 3.4 },
@@ -29064,8 +29072,8 @@ const DOOR_HQ = {
             shell: {
                 w: 7.0, d: 7.0, h: 3.0,   // four battle cells a side (THE FIELD's lattice sits flush)
                 wallH: 3.0, dadoH: 1.0,
-                floor: 'concrete', wall: 'drywall', dado: 'concrete', trim: 'gunmetal', ceiling: 'ceiling',
-                floorColor: 0x8a8a88, wallColor: 0xb0aa9c, dadoColor: 0x807c78, ceilColor: 0xa8a49c,
+                floor: 'urban:TileGeneric4b', wall: 'urban:PlasterWallPainted2a', dado: 'urban:PlasterWallPainted2a', trim: 'gunmetal', ceiling: 'urban:FibreCeilingTile2b',   // THE URBAN PACK (2026-09-17): the back room's worn tile and stained plaster
+                floorColor: 0xa0a0a0, wallColor: 0xb8b4ac, dadoColor: 0xb8b4ac, ceilColor: 0xa8a49c, ceilTile: 1.75,
                 pipes: true, strips: false, lights: [],
                 mood: { light: 0xfff0d8, ambient: 0.4 },
                 plate: { x: 0, z: 3.4, y: 2.4 },
@@ -29135,9 +29143,9 @@ const DOOR_HQ = {
             kind: 'box', site: 'prebuilt_cyberpunk', part: 'streets',
             shell: hqCityShell({ neon: true, w: 104, d: 84, plate: { x: 0, z: 38, y: 4.6 } }),
             terrain: {
-                floor: 'urban_street', cliff: 'concrete', path: 'concrete',
+                floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteUnderTiles1', path: 'urban:TileGeneric3b',   // THE URBAN PACK (2026-09-17): the wet asphalt, the dark slate sidewalks, the grime under the blocks
                 noise: { amp: 0.05, scale: 6 },
-                gen: { kind: 'city', seed: 21, walkW: 2.4, kerb: 0.12, wallH: 3.6, lotW: [5.8, 8.0], lotD: [8, 11], lowP: 0.12, storeys: [2, 4], fronts: 'window', neon: true,
+                gen: { kind: 'city', seed: 21, walkW: 2.4, kerb: 0.12, wallH: 3.6, lotW: [5.8, 8.0], lotD: [8, 11], lowP: 0.12, storeys: [2, 4], fronts: 'window', neon: true, fenceKey: 'urban:MetalCorrugatedPainted2a', fenceH: 1.75, texP: 0.5, ruinP: 0.1,
                        streets: [
                            { pts: [[-34, -24], [34, -24], [34, -4], [26, 4], [34, 12], [34, 24], [10, 24], [-4, 18], [-34, 24], [-34, 4]], w: 9, loop: true },   // THE LOOP (the circuit)
                            { pts: [[0, -42], [0, 42]], w: 10 },                                                                                                  // THE BOULEVARD
@@ -29227,8 +29235,8 @@ const DOOR_HQ = {
             shell: {
                 w: 8.75, d: 7.0, h: 3.0,   // five × four battle cells (THE FIELD's lattice sits flush)
                 wallH: 3.0, dadoH: 1.0,
-                floor: 'tilefloor_2', wall: 'urban_wall', dado: 'metal_3', trim: 'metal', ceiling: 'ceiling',
-                floorColor: 0x8a8a98, wallColor: 0x8a86a0, dadoColor: 0x6a6478, ceilColor: 0x9a96a8,
+                floor: 'urban:TileGeneric5b', wall: 'urban:TileSubway3d', dado: 'urban:MetalCorrugatedPainted5a', trim: 'metal', ceiling: 'urban:MetalSubwayGrill2a',   // THE URBAN PACK (2026-09-17): the noodle bar's chequer floor, the blue-banded tile, the corrugated counter side
+                floorColor: 0x9a9ab0, wallColor: 0xa0a0b8, dadoColor: 0x8a8aa0, ceilColor: 0x8a8aa0, ceilTile: 1.75,
                 pipes: true, strips: false, lights: [],
                 mood: { lamp: 0xff3ad8, glow: 0x35e0ff, strip: 0xff6ad8, light: 0xcfe8ff, ambient: 0.3, night: 1 },
                 plate: { x: 0, z: 3.4, y: 2.4 },
@@ -32789,7 +32797,7 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
     info.rescues = rescues;
     info.mask = mask; info.maskD = D; info.forced = forced;
     info.gen = { kind: gen.kind, wallH, edge, open: open / (nx * nz), carved, sealed, rescued: rescues.length, solidSheet: (gen.kind === 'cave' || gen.kind === 'city') ? 'cliff' : 'floor',
-                 fronts: gen.fronts || null, prisms: gen.prisms !== false, sidewalk: walkW, kerb,
+                 fronts: gen.fronts || null, prisms: gen.prisms !== false, sidewalk: walkW, kerb, texP: (gen.texP != null) ? gen.texP : 0, ruinP: (gen.ruinP != null) ? gen.ruinP : 0.3,   // THE URBAN PACK (2026-09-17): the textured-lot share and the ruined share ride to the renderer
                  /* STREET LEVEL rev 2: the solid is a mass (the walker refused by the mask, the air / the boom by info.solidTop), never a rise */
                  solidMass, solidPad };
     /* ── THE LOTS (the city): the solid cut into building lots on a lattice, each edge that looks onto a street a FRONT ── */
@@ -33005,7 +33013,8 @@ function hqTerrainCompile(room, roomId) {
             doorPads.push({ door: d, x: cx, z: cz, w: R.padW, d: 4.8, rot: 180 + (d.face || 0), hAt: (typeof d.y === 'number') ? d.y : null, lane: { x: d.x || 0, z: d.z || 0 }, free: true }); return;
         }
         if (!wall) return;
-        const w = d.wide ? R.padW + 0.8 : R.padW;
+        const wayCat = (d.way && DOOR_HQ.ways && DOOR_HQ.ways[d.way]) || null;
+        const w = (wayCat && wayCat.pad) ? Math.max(R.padW, wayCat.pad) : (d.wide ? R.padW + 0.8 : R.padW);   // THE ROAD (2026-09-17): a way may ask for a wider landing (the whole street)
         if (wall === 'n') doorPads.push({ door: d, x: d.x || 0, z: -S.d / 2 + R.padD / 2, w, d: R.padD, rot: 0, hAt: (typeof d.y === 'number') ? d.y : null, lane: { x: d.x || 0, z: -S.d / 2 + 1.2 } });
         else if (wall === 's') doorPads.push({ door: d, x: d.x || 0, z: S.d / 2 - R.padD / 2, w, d: R.padD, rot: 0, hAt: (typeof d.y === 'number') ? d.y : null, lane: { x: d.x || 0, z: S.d / 2 - 1.2 } });
         else if (wall === 'e') doorPads.push({ door: d, x: S.w / 2 - R.padD / 2, z: d.z || 0, w: R.padD, d: w, rot: 0, hAt: (typeof d.y === 'number') ? d.y : null, lane: { x: S.w / 2 - 1.2, z: d.z || 0 } });

@@ -3042,6 +3042,90 @@ const TERRAIN_BASE_TINT = {
 };
 if (typeof window !== 'undefined') window.TERRAIN_BASE_TINT = TERRAIN_BASE_TINT;
 
+/* ═══════════════════════════════════════════════════════════════════════
+   THE URBAN PACK (2026-09-17) — 320 tileables the user painted at the game's
+   pixel density (128 px = one battle tile, 1.75 m), on R2 at
+   Assets/Sprites/terrain/urban/<Name>.png (the repo keeps them in textures/
+   + the root). Concrete, plaster and stucco walls (a base band on the `2x`
+   plasters, a cornice on the stuccos), painted corrugated metal (a concrete
+   plinth in every tile — one tile = one storey's foot), glass curtain walls
+   (Square / Tall / Factory / Residential, a BROKEN set for a disaster and a
+   -Glow emissive map for a lit night), window DECALS (transparent — laid over
+   a wall), half-width doors (painted / storefront / wooden), floor tiles
+   (generic, marble, the subway's banded tile), ceiling tiles, subway grills,
+   trusses (transparent — a girder), non-slip rubber, the manhole, and the
+   SIGNS (caution / danger / hazard / prohibited / protective / speed).
+   A material anywhere in the game names one as the terrain key
+   `urban:<Name>` — three-renderer.js _hzTex / _hqTex fall through to
+   URBAN_TEXTURES for that prefix, so a room shell, a near builder's K.mat,
+   a terrain field's floor / cliff / path and the city's buildings all read
+   the pack the same way. Never add these to TERRAIN_SPRITES (a terrain key
+   is a board tile; these are sheets). URBAN_TEX_FAMILIES groups them for a
+   seeded pick (urbanTexPick); urbanTexGlow names the lit twin of a window.
+   ═══════════════════════════════════════════════════════════════════════ */
+const _TU = `${_T}/urban`;
+const URBAN_TEX_FAMILIES = {
+    ConcreteStriped: ['ConcreteStriped1a', 'ConcreteStriped1b', 'ConcreteStriped1c', 'ConcreteStriped1d', 'ConcreteStriped1e', 'ConcreteStriped2a', 'ConcreteStriped2b', 'ConcreteStriped2c', 'ConcreteStriped2d', 'ConcreteStriped2e'],
+    ConcreteUnderTiles: ['ConcreteUnderTiles1', 'ConcreteUnderTiles2'],
+    DecalManholeCover: ['DecalManholeCover'],
+    DecalWindowsFactory: ['DecalWindowsFactory1a', 'DecalWindowsFactory1a-Glow', 'DecalWindowsFactory1b', 'DecalWindowsFactory1c', 'DecalWindowsFactory2a', 'DecalWindowsFactory2a-Glow', 'DecalWindowsFactory2b', 'DecalWindowsFactory2c'],
+    DecalWindowsResidential: ['DecalWindowsResidential-Glow1', 'DecalWindowsResidential-Glow2', 'DecalWindowsResidential1a', 'DecalWindowsResidential1b', 'DecalWindowsResidential1c', 'DecalWindowsResidential2a', 'DecalWindowsResidential2b', 'DecalWindowsResidential2c'],
+    DoorPaintedHalf: ['DoorPaintedHalf1a', 'DoorPaintedHalf1b', 'DoorPaintedHalf1c', 'DoorPaintedHalf2a', 'DoorPaintedHalf2b', 'DoorPaintedHalf2c', 'DoorPaintedHalf3a', 'DoorPaintedHalf3b', 'DoorPaintedHalf3c', 'DoorPaintedHalf4a', 'DoorPaintedHalf4b', 'DoorPaintedHalf4c'],
+    DoorStorefrontHalf: ['DoorStorefrontHalf1a', 'DoorStorefrontHalf1b', 'DoorStorefrontHalf1c', 'DoorStorefrontHalf1d', 'DoorStorefrontHalf2a', 'DoorStorefrontHalf2b', 'DoorStorefrontHalf2c', 'DoorStorefrontHalf2d'],
+    DoorWoodenHalf: ['DoorWoodenHalf1a', 'DoorWoodenHalf1b', 'DoorWoodenHalf1c', 'DoorWoodenHalf2a', 'DoorWoodenHalf2b', 'DoorWoodenHalf2c'],
+    FibreCeilingTile: ['FibreCeilingTile1a', 'FibreCeilingTile1b', 'FibreCeilingTile2a', 'FibreCeilingTile2b'],
+    GlassWindowFactory: ['GlassWindowFactory1a', 'GlassWindowFactory1a-Glow', 'GlassWindowFactory1b', 'GlassWindowFactory2a', 'GlassWindowFactory2a-Glow', 'GlassWindowFactory2b', 'GlassWindowFactory3a', 'GlassWindowFactory3a-Glow', 'GlassWindowFactory3b', 'GlassWindowFactory4a', 'GlassWindowFactory4a-Glow', 'GlassWindowFactory4b'],
+    GlassWindowFactoryBroken: ['GlassWindowFactoryBroken1a', 'GlassWindowFactoryBroken1b', 'GlassWindowFactoryBroken1c', 'GlassWindowFactoryBroken2a', 'GlassWindowFactoryBroken2b', 'GlassWindowFactoryBroken2c', 'GlassWindowFactoryBroken3a', 'GlassWindowFactoryBroken3b', 'GlassWindowFactoryBroken3c', 'GlassWindowFactoryBroken4a', 'GlassWindowFactoryBroken4b', 'GlassWindowFactoryBroken4c'],
+    GlassWindowResidential: ['GlassWindowResidential1-Glow1', 'GlassWindowResidential1-Glow2', 'GlassWindowResidential1a', 'GlassWindowResidential1b', 'GlassWindowResidential2a', 'GlassWindowResidential2b'],
+    GlassWindowResidentialBroken: ['GlassWindowResidentialBroken1a', 'GlassWindowResidentialBroken1b', 'GlassWindowResidentialBroken1c', 'GlassWindowResidentialBroken2a', 'GlassWindowResidentialBroken2b', 'GlassWindowResidentialBroken2c'],
+    GlassWindowResidentialShutter: ['GlassWindowResidentialShutter1', 'GlassWindowResidentialShutter2'],
+    GlassWindowSquare: ['GlassWindowSquare1a', 'GlassWindowSquare1a-Glow', 'GlassWindowSquare1b', 'GlassWindowSquare2a', 'GlassWindowSquare2a-Glow', 'GlassWindowSquare2b', 'GlassWindowSquare3a', 'GlassWindowSquare3a-Glow', 'GlassWindowSquare3b', 'GlassWindowSquare4a', 'GlassWindowSquare4a-Glow', 'GlassWindowSquare4b'],
+    GlassWindowSquareBroken: ['GlassWindowSquareBroken1a', 'GlassWindowSquareBroken1b', 'GlassWindowSquareBroken1c', 'GlassWindowSquareBroken2a', 'GlassWindowSquareBroken2b', 'GlassWindowSquareBroken2c', 'GlassWindowSquareBroken3a', 'GlassWindowSquareBroken3b', 'GlassWindowSquareBroken3c', 'GlassWindowSquareBroken4a', 'GlassWindowSquareBroken4b', 'GlassWindowSquareBroken4c'],
+    GlassWindowTall: ['GlassWindowTall1a', 'GlassWindowTall1a-Glow', 'GlassWindowTall1b', 'GlassWindowTall2a', 'GlassWindowTall2a-Glow', 'GlassWindowTall3a', 'GlassWindowTall3a-Glow', 'GlassWindowTall3b', 'GlassWindowTall4a', 'GlassWindowTall4a-Glow', 'GlassWindowTall4b'],
+    GlassWindowTallBroken: ['GlassWindowTallBroken1a', 'GlassWindowTallBroken1b', 'GlassWindowTallBroken1c', 'GlassWindowTallBroken2a', 'GlassWindowTallBroken2b', 'GlassWindowTallBroken2c', 'GlassWindowTallBroken3a', 'GlassWindowTallBroken3b', 'GlassWindowTallBroken3c', 'GlassWindowTallBroken4a', 'GlassWindowTallBroken4b', 'GlassWindowTallBroken4c'],
+    MetalCorrugatedPainted: ['MetalCorrugatedPainted1a', 'MetalCorrugatedPainted1b', 'MetalCorrugatedPainted1c', 'MetalCorrugatedPainted1d', 'MetalCorrugatedPainted2a', 'MetalCorrugatedPainted2b', 'MetalCorrugatedPainted2c', 'MetalCorrugatedPainted2d', 'MetalCorrugatedPainted3a', 'MetalCorrugatedPainted3b', 'MetalCorrugatedPainted3c', 'MetalCorrugatedPainted3d', 'MetalCorrugatedPainted4a', 'MetalCorrugatedPainted4b', 'MetalCorrugatedPainted4c', 'MetalCorrugatedPainted4d', 'MetalCorrugatedPainted5a', 'MetalCorrugatedPainted5b', 'MetalCorrugatedPainted5c', 'MetalCorrugatedPainted5d'],
+    MetalSubwayGrill: ['MetalSubwayGrill1a', 'MetalSubwayGrill1b', 'MetalSubwayGrill2a', 'MetalSubwayGrill2b'],
+    MetalTruss: ['MetalTruss1a', 'MetalTruss1b', 'MetalTruss1c', 'MetalTruss2a', 'MetalTruss2b', 'MetalTruss2c', 'MetalTruss3a', 'MetalTruss3b', 'MetalTruss3c', 'MetalTruss4a', 'MetalTruss4b', 'MetalTruss4c', 'MetalTruss5a', 'MetalTruss5b', 'MetalTruss5c', 'MetalTruss6a', 'MetalTruss6b', 'MetalTruss6c', 'MetalTruss7a', 'MetalTruss7b', 'MetalTruss7c', 'MetalTruss8a', 'MetalTruss8b', 'MetalTruss9c'],
+    PlasterWallPainted: ['PlasterWallPainted1a', 'PlasterWallPainted1b', 'PlasterWallPainted1c', 'PlasterWallPainted1d', 'PlasterWallPainted1e', 'PlasterWallPainted1f', 'PlasterWallPainted2a', 'PlasterWallPainted2b', 'PlasterWallPainted2c', 'PlasterWallPainted2d', 'PlasterWallPainted2e'],
+    PlasterWallStucco: ['PlasterWallStucco1a', 'PlasterWallStucco1b', 'PlasterWallStucco2a', 'PlasterWallStucco2b', 'PlasterWallStucco2c', 'PlasterWallStucco2d', 'PlasterWallStucco2e'],
+    RubberNonSlip: ['RubberNonSlip1a', 'RubberNonSlip1b', 'RubberNonSlip2a', 'RubberNonSlip2b', 'RubberNonSlip3a', 'RubberNonSlip3b', 'RubberNonSlip4a', 'RubberNonSlip4b', 'RubberNonSlip5a', 'RubberNonSlip5b'],
+    SignCaution: ['SignCaution1a', 'SignCaution1b', 'SignCaution1c', 'SignCaution1d', 'SignCaution1e', 'SignCaution1f'],
+    SignDanger: ['SignDanger1a', 'SignDanger1b', 'SignDanger1c', 'SignDanger1d', 'SignDanger1e', 'SignDanger1f'],
+    SignHazard: ['SignHazard1a', 'SignHazard1b', 'SignHazard1c', 'SignHazard2a', 'SignHazard2b'],
+    SignProhibited: ['SignProhibited1a', 'SignProhibited1b', 'SignProhibited1c'],
+    SignProtective: ['SignProtective1a', 'SignProtective1b', 'SignProtective1c', 'SignProtective1d'],
+    SignSpeed: ['SignSpeedAus010-small', 'SignSpeedAus015-small', 'SignSpeedAus020-small', 'SignSpeedAus025-small', 'SignSpeedAus030-small', 'SignSpeedAus040-small', 'SignSpeedAus050-small', 'SignSpeedAus060-small', 'SignSpeedAus070-small', 'SignSpeedAus080-small', 'SignSpeedAus090-small', 'SignSpeedAus100-small', 'SignSpeedAus110-small', 'SignSpeedAus120-small', 'SignSpeedUsa010-small', 'SignSpeedUsa015-small', 'SignSpeedUsa020-small', 'SignSpeedUsa025-small', 'SignSpeedUsa030-small', 'SignSpeedUsa040-small', 'SignSpeedUsa050-small', 'SignSpeedUsa060-small', 'SignSpeedUsa070-small', 'SignSpeedUsa080-small', 'SignSpeedUsa090-small', 'SignSpeedUsa100-small', 'SignSpeedUsa110-small', 'SignSpeedUsa120-small'],
+    TileGeneric: ['TileGeneric1a', 'TileGeneric1b', 'TileGeneric1c', 'TileGeneric2a', 'TileGeneric2b', 'TileGeneric2c', 'TileGeneric3a', 'TileGeneric3b', 'TileGeneric3c', 'TileGeneric4a', 'TileGeneric4b', 'TileGeneric4c', 'TileGeneric5a', 'TileGeneric5b', 'TileGeneric5c', 'TileGeneric6a', 'TileGeneric6b', 'TileGeneric6c'],
+    TileMarble: ['TileMarble1a', 'TileMarble1b', 'TileMarble1c', 'TileMarble1d', 'TileMarble2a', 'TileMarble2b', 'TileMarble2c', 'TileMarble2d', 'TileMarble3a', 'TileMarble3b', 'TileMarble3c', 'TileMarble3d'],
+    TileSubway: ['TileSubway1a', 'TileSubway1b', 'TileSubway1c', 'TileSubway1d', 'TileSubway2a', 'TileSubway2b', 'TileSubway2c', 'TileSubway2d', 'TileSubway3a', 'TileSubway3b', 'TileSubway3c', 'TileSubway3d', 'TileSubway4a', 'TileSubway4b', 'TileSubway4c', 'TileSubway4d'],
+    TileSubwayGen: ['TileSubwayGen1', 'TileSubwayGen2'],
+};
+const URBAN_TEXTURES = {};
+Object.keys(URBAN_TEX_FAMILIES).forEach(fam => URBAN_TEX_FAMILIES[fam].forEach(n => { URBAN_TEXTURES[n] = `${_TU}/${n}.png`; }));
+function urbanTexUrl(name) { return URBAN_TEXTURES[name] || null; }
+function urbanTexKey(name) { return 'urban:' + name; }
+/* a seeded pick from a family: `rng` a 0..1 function (or a number in 0..1), `filter` a predicate / a RegExp on the name */
+function urbanTexPick(family, rng, filter) {
+    let list = URBAN_TEX_FAMILIES[family] || [];
+    if (filter) list = list.filter(n => (typeof filter === 'function') ? filter(n) : (filter && typeof filter.test === 'function') ? filter.test(n) : true);
+    if (!list.length) return null;
+    const r = (typeof rng === 'function') ? rng() : ((typeof rng === 'number') ? rng : Math.random());
+    return list[Math.min(list.length - 1, Math.floor(Math.max(0, Math.min(0.999999, r)) * list.length))];
+}
+/* the emissive twin of a window sheet (the lit night), or null: GlassWindow*<n>a → <n>a-Glow, DecalWindowsFactory<n>a → -Glow,
+   DecalWindowsResidential<n><x> → DecalWindowsResidential-Glow<n> */
+function urbanTexGlow(name) {
+    if (!name || /-Glow/.test(name)) return null;
+    if (URBAN_TEXTURES[name + '-Glow']) return name + '-Glow';
+    const m = /^DecalWindowsResidential(\d)/.exec(name);
+    if (m && URBAN_TEXTURES['DecalWindowsResidential-Glow' + m[1]]) return 'DecalWindowsResidential-Glow' + m[1];
+    /* a b / c variant lights like its family's a */
+    const m2 = /^(GlassWindow(?:Square|Tall|Factory)|DecalWindowsFactory)(\d)[b-z]$/.exec(name);
+    if (m2 && URBAN_TEXTURES[m2[1] + m2[2] + 'a-Glow']) return m2[1] + m2[2] + 'a-Glow';
+    return null;
+}
+if (typeof window !== 'undefined') { window.URBAN_TEXTURES = URBAN_TEXTURES; window.URBAN_TEX_FAMILIES = URBAN_TEX_FAMILIES; window.urbanTexUrl = urbanTexUrl; window.urbanTexKey = urbanTexKey; window.urbanTexPick = urbanTexPick; window.urbanTexGlow = urbanTexGlow; }
+
 const TERRAIN_SIDE_SPRITES = {
 
     grass: 'dirt', grass_2: 'dirt', grass_rocky: 'dirt',

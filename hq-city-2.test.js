@@ -110,7 +110,8 @@ test('THE TRAINS ARRIVE IN THE CITY: the tunnel\'s train stands FREE at THE STAT
     for (const z of [tr.z + 9, tr.z, tr.z - 15]) assert.ok(D.hqTerrainMaskAt(info, tr.x, z) > 0.5, 'the siding is open under the train at z ' + z);
     const line = D.hqWorldRoutes('foyer').find(r => r.id === 'subway');
     assert.equal(line.stations.map(s => s.room).join(' — '), 'site_prebuilt_fairy_forest — tunnel — site_prebuilt_cyberpunk — site_prebuilt_downtown');
-    assert.equal(HQ.rooms[CYBER].doors.filter(d => d.link).length, 1); assert.equal(HQ.rooms[CYBER].doors.find(d => d.link).link, 'strip_cyberpunk');
+    /* THE ROADS OUT (2026-09-17): the Strip's road lands on the GRID's cross street (its east end, a `road` way) — the board room's north wall carries no link at all now */
+    assert.equal(HQ.rooms[CYBER].doors.filter(d => d.link).length, 0); const rd = at(GRID, 'link_strip_cyberpunk'); assert.ok(rd && rd.way === 'road' && rd.wall === 'e' && rd.z === 0, 'the road out east');
     assert.ok(!at(CYBER, 'link_tunnel_cyberpunk') && !at(CYBER, 'link_subway_downtown') && !at(CYBER, 'link_timemachine_cyberpunk'), 'the board room\'s strip is clear');
 });
 
@@ -161,7 +162,7 @@ test('THE CITY BATCH: every file is in _MISC_GLB under its key once and named on
 test('THE ROAD TILES: laid along every street of a sidewalked city plan from _hqBuildTerrain — a straight tile every street width along each segment, a quarter tile on every right-angle vertex (its runs stop half a width short), nothing inside another street\'s corridor; fitted by span, squashed to a kerb; the kill-switches', () => {
     const fn = section(renderer, 'function _hqBuildRoadTiles(room, info, G, TM)', '\n    }');
     for (const f of ["_hzMiscKit(key, { metres: w, fit: 'span'", "grp.scale.y = 0.035 * U /", "window.EW_HQ_NO_ROAD_TILES", "place('road_turn', pts[i][0], pts[i][1], th, w);", "place('road_straight', px, pz, Math.atan2(d.x, d.z), w);", "if (inOther(px, pz, si, w)) continue;", "var s0 = c0 === 'turn' ? w / 2"]) assert.ok(fn.includes(f), f);
-    assert.ok(renderer.includes("if (info.genPlan && info.genPlan.streets && info.gen && info.gen.kind === 'city' && info.gen.sidewalk > 0) { try { _hqBuildRoadTiles(room, info, G, TM); }"), 'called from the terrain build (the streets, the grid — never the mall)');
+    assert.ok(renderer.includes("if (info.genPlan && info.genPlan.streets && info.gen && info.gen.kind === 'city' && info.gen.sidewalk > 0 && typeof window !== 'undefined' && window.EW_HQ_ROAD_TILES) { try { _hqBuildRoadTiles(room, info, G, TM); }"), 'called from the terrain build (the streets, the grid — never the mall), opt-in since THE URBAN PACK (2026-09-17)');
     /* the corner rule, replayed: for a right turn d1 → d2 the tile's +X is −d1 and +Z is d2 (else the mirror) — both assignments land the road on the two adjacent edges */
     const turn = (d1, d2) => { let th = Math.atan2(d2[0], d2[1]); if (Math.abs(Math.cos(th) + d1[0]) > 0.1 || Math.abs(-Math.sin(th) + d1[1]) > 0.1) th = Math.atan2(-d1[0], -d1[1]); const X = [Math.cos(th), -Math.sin(th)], Z = [Math.sin(th), Math.cos(th)]; return { X, Z }; };
     for (const [d1, d2] of [[[1, 0], [0, 1]], [[1, 0], [0, -1]], [[-1, 0], [0, 1]], [[0, 1], [1, 0]], [[0, -1], [-1, 0]], [[0, 1], [-1, 0]]]) {

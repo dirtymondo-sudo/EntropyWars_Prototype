@@ -21832,6 +21832,7 @@ const ThreeRenderer = (function () {
     function _hzTex(terrainKey) {
         if (_hzTexCache[terrainKey] !== undefined) return _hzTexCache[terrainKey];
         var url = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[terrainKey]) ? TERRAIN_SPRITES[terrainKey][0] : null;
+        if (!url && typeof terrainKey === 'string' && terrainKey.indexOf('urban:') === 0 && typeof URBAN_TEXTURES !== 'undefined') url = URBAN_TEXTURES[terrainKey.slice(6)] || null;   // THE URBAN PACK (2026-09-17): `urban:<Name>` reads sprites.js URBAN_TEXTURES
         if (!url) { _hzTexCache[terrainKey] = null; return null; }
         var tex = textureLoader.load(url);        // fresh instance; onLoad sets image + needsUpdate
         tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
@@ -36860,6 +36861,7 @@ const ThreeRenderer = (function () {
            walls in a battle TERRAIN key (grass, planks, concrete) — those
            come off the terrain sheet, tiled like the HQ's own textures */
         var url = file ? (D.assets.textures + file) : ((typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[name]) ? TERRAIN_SPRITES[name][0] : null);
+        if (!url && typeof name === 'string' && name.indexOf('urban:') === 0 && typeof URBAN_TEXTURES !== 'undefined') url = URBAN_TEXTURES[name.slice(6)] || null;   // THE URBAN PACK (2026-09-17): a shell / prop may wear `urban:<Name>` (sprites.js URBAN_TEXTURES)
         if (!url) return null;
         var key = name + '|' + (ru || 1) + '|' + (rv || 1);
         if (_hqTexCache[key]) return _hqTexCache[key];
@@ -38385,7 +38387,8 @@ const ThreeRenderer = (function () {
         var floorTex = _hzTex(info.floor) || _hzTex('grass_2'), cliffTex = _hzTex(info.cliff) || _hzTex('rock_wall_1') || floorTex, pathTex = _hzTex(info.path) || _hzTex('dirt_2') || floorTex;
         var m = new THREE.MeshPhongMaterial({ map: floorTex || null, color: 0xffffff, shininess: S.open ? 4 : 6, specular: S.open ? 0x0e0e0e : 0x161616, vertexColors: false });
         if (S.floorColor != null) m.color.multiply(new THREE.Color(S.floorColor));
-        m.emissive = m.color.clone().multiplyScalar(S.open ? 0.06 : 0.1);
+        /* THE URBAN PACK (2026-09-17): a neon city's field is self-lit like its sprite prisms (lift 0.42) — the wet asphalt sheet went black under the night mood */
+        m.emissive = m.color.clone().multiplyScalar((info.gen && info.gen.neon) ? 0.42 : (S.open ? 0.06 : 0.1));
         m.onBeforeCompile = function (sh) {
             sh.uniforms.tCliff = { value: cliffTex }; sh.uniforms.tPath = { value: pathTex };
             sh.vertexShader = 'attribute vec2 aBlend;\nvarying vec2 vBlend;\n' + sh.vertexShader.replace('#include <uv_vertex>', '#include <uv_vertex>\nvBlend = aBlend;');
@@ -38426,6 +38429,7 @@ const ThreeRenderer = (function () {
             uv[k * 2] = px * U / TM; uv[k * 2 + 1] = pz * U / TM;
             var slx = (yAt(px + cs, pz) - yAt(px - cs, pz)) / (2 * cs), slz = (yAt(px, pz + cs) - yAt(px, pz - cs)) / (2 * cs), sl = Math.hypot(slx, slz);
             var rk = (sl - 0.55) / 0.75; rk = rk < 0 ? 0 : rk > 1 ? 1 : rk;
+            if (info.gen && info.gen.kind === 'city') { var eo = Math.hypot(Math.max(0, Math.abs(px) - hx), Math.max(0, Math.abs(pz) - hz)), ek = eo / 2.5; if (ek > 1) ek = 1; rk = Math.max(rk, ek); }   // THE STREETS IN THE PACK (2026-09-17): a city's outer ground is the cliff sheet (concrete), never the asphalt running to the fog
             blend[k * 2] = rk * rk * (3 - 2 * rk); blend[k * 2 + 1] = 0;
         }
         for (var j2 = 0; j2 + 1 < nz; j2++) for (var i2 = 0; i2 + 1 < nx; i2++) {
@@ -38603,7 +38607,9 @@ const ThreeRenderer = (function () {
         info.walls.forEach(function (w) {
             var L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0), yaw = Math.atan2(w.x1 - w.x0, w.z1 - w.z0), hM = w.top - w.base;
             var m = new THREE.Mesh(new THREE.BoxGeometry(w.t * U, hM * U, (L + w.t) * U), w.key ? new THREE.MeshPhongMaterial({ map: _hzTex(w.key) || null, shininess: 4 }) : wallMat);
-            _hzBoxUV(m.geometry, w.t * U, hM * U, (L + w.t) * U, TM);
+            /* THE URBAN PACK (2026-09-17): a YARD WALL is a hoarding in the pack's corrugated sheet — one tile per 1.75 m (its concrete plinth at the foot), never the horizon's coarse repeat */
+            _hzBoxUV(m.geometry, w.t * U, hM * U, (L + w.t) * U, w.yard ? TM * ((typeof HZ_TEX_DENSITY !== 'undefined') ? HZ_TEX_DENSITY : 0.5) : TM);
+            if (w.yard && w.key) { try { if (m.material.emissive) m.material.emissive.setHex(0x141414); _hqHoardingSigns(w, L, yaw, hM, G, U, info); } catch (e) { console.warn('[HQ] the hoarding signs failed', e); } }
             m.position.set((w.x0 + w.x1) / 2 * U, (w.base + hM / 2) * U + 0.3, (w.z0 + w.z1) / 2 * U); m.rotation.y = yaw; m.renderOrder = 1; m.castShadow = true; G.add(m);
         });
         /* ── THE RAILS: posts and a bar along the ground ── */
@@ -38657,7 +38663,8 @@ const ThreeRenderer = (function () {
         _hqBuildEscalators(room, info, G, TM);
         if (info.lots && info.lots.length) { try { _hqBuildCityLots(room, info, G, TM, rng, TK); } catch (e) { console.warn('[HQ] the city lots failed', e); } }
         if (info.genPlan && info.genPlan.streets) { try { _hqBuildStreetLamps(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the street lamps failed', e); } }
-        if (info.genPlan && info.genPlan.streets && info.gen && info.gen.kind === 'city' && info.gen.sidewalk > 0) { try { _hqBuildRoadTiles(room, info, G, TM); } catch (e) { console.warn('[HQ] the road tiles failed', e); } }
+        if (info.genPlan && info.genPlan.streets && info.gen && info.gen.kind === 'city') { try { _hqBuildRoadMarkings(room, info, G, TM); } catch (e) { console.warn('[HQ] the road markings failed', e); } }   // THE STREETS IN THE PACK (2026-09-17): the asphalt is the field's floor sheet; the paint, the kerbs, the manholes and the signs stand on it
+        if (info.genPlan && info.genPlan.streets && info.gen && info.gen.kind === 'city' && info.gen.sidewalk > 0 && typeof window !== 'undefined' && window.EW_HQ_ROAD_TILES) { try { _hqBuildRoadTiles(room, info, G, TM); } catch (e) { console.warn('[HQ] the road tiles failed', e); } }   // the GLB tiles are opt-in since the pack landed (they distorted on every bend)
         if (info.traffic && info.traffic.length) { try { _hqBuildTraffic(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the traffic failed', e); } }
         if (info.race) { try { _hqBuildRace(room, info, G, TM); } catch (e) { console.warn('[HQ] the circuit failed', e); } }
         /* ── THE SCATTER: catalogue props at the compiler's spots, placed by _hqPlaceProps on the ground ── */
@@ -38719,6 +38726,171 @@ const ThreeRenderer = (function () {
        procedural glass once it lands). `gen.neon` (Cyberpunk) = a neon name on every main front, a hologram over a
        tall lot, the sprites lit brighter. THE ROAD TILES (the user's straight + quarter-turn GLBs) are laid along every
        street by _hqBuildRoadTiles. */
+    /* ═══════════════════════════════════════════════════════════════════════
+       THE TEXTURED BUILDINGS (2026-09-17, THE URBAN PACK — the user: "keep the
+       billboard buildings, but throw in generated buildings made with these
+       textures"). A share of every city plan's lots (`gen.texP`, seeded per
+       lot) stands a building COMPOSED from the pack instead of a sprite prism:
+       a FACADE GRID of 1.75 m cells (one 128 px tile — the pack's density),
+       two cells a storey (3.5 m), every face of the box a grid of quads each
+       wearing one sheet — the STYLE picks the sheets (office: concrete
+       spandrels + square curtain glass, a storefront ground floor; tower: the
+       tall curtain wall; residential: painted plaster with its skirting band
+       on the ground row and window DECALS laid over the upper rows, a painted
+       door; stucco: the cornice band on the top row; factory: the corrugated
+       cladding, its plinth at every storey's foot, the factory glass, a wide
+       door), `gen.ruinP` of them RUINED (the pack's broken glass, the grime),
+       and under a neon plan every window cell wears its -Glow twin as an
+       emissive map (the lit night). Quads are MERGED per sheet into one
+       geometry each (a whole city is ~20 draw calls); the roof is the grime
+       sheet under a parapet in the wall's sheet, an AC unit or a tank on it.
+       The prism lots keep _nrSpriteBuilding; a `low` lot is a one-storey
+       textured shop now (the plain concrete box is gone). Blocking is the
+       plan's own mass rule (hqTerrainSolidAt) — a building adds no blocker.
+       ═══════════════════════════════════════════════════════════════════════ */
+    var HQ_TEXB = { cell: 1.75, storey: 3.5, parapet: 0.45, outset: 0.012 };
+    var _HQ_TEX_STYLES = {
+        office:      { spandrel: 'ConcreteStriped', glass: 'GlassWindowSquare', ground: 'store', door: 'DoorStorefrontHalf', roof: 'ConcreteUnderTiles1', maxS: 6 },
+        tower:       { spandrel: null, glass: 'GlassWindowTall', ground: 'store', door: 'DoorStorefrontHalf', roof: 'ConcreteUnderTiles1', tall: true, minS: 3 },
+        residential: { plaster: 'PlasterWallPainted', decal: 'DecalWindowsResidential', door: 'DoorPaintedHalf', roof: 'ConcreteUnderTiles2', maxS: 4 },
+        stucco:      { stucco: true, decal: 'DecalWindowsResidential', door: 'DoorWoodenHalf', roof: 'ConcreteUnderTiles2', maxS: 3 },
+        factory:     { clad: 'MetalCorrugatedPainted', glass: 'GlassWindowFactory', door: 'DoorPaintedHalf', roof: 'ConcreteUnderTiles2', maxS: 2, wideDoor: true },
+    };
+    /* the sheet set of one building: every cell kind → { key, glow?, over? } (a `urban:` key; `over` = a decal laid over `under`) */
+    function _hqTexPlan(lot, rng, gen) {
+        var neon = !!(gen && gen.neon), ruin = rng() < ((gen && gen.ruinP != null) ? gen.ruinP : 0.3), st = lot.storeys || 1;
+        var names = Object.keys(_HQ_TEX_STYLES).filter(function (k) { var S = _HQ_TEX_STYLES[k]; return !(S.minS && st < S.minS) && !(S.maxS && st > S.maxS); });
+        if (neon) names = names.filter(function (k) { return k !== 'stucco'; });
+        var style = names[Math.floor(rng() * names.length)] || 'office', S = _HQ_TEX_STYLES[style];
+        var pick = function (fam, f) { return urbanTexPick(fam, rng, f); };
+        var U = function (n) { return n ? 'urban:' + n : null; };
+        var P = { style: style, ruin: ruin, neon: neon, roof: U(S.roof), st: st };
+        var glowOf = function (n) { var g = neon && n ? urbanTexGlow(n) : null; return g ? U(g) : null; };
+        if (S.spandrel || S.tall) {
+            var gl = pick(S.glass, function (n) { return !/Broken/.test(n) && !/-Glow/.test(n); });
+            var glB = ruin ? pick(S.glass + 'Broken') : null;
+            P.win = { key: U(glB || gl), glow: glB ? null : glowOf(gl), tall: !!S.tall };
+            P.wall = { key: U(S.spandrel ? pick(S.spandrel, /^ConcreteStriped(1[a-e]|2[a-e])$/) : 'ConcreteStriped2a') };
+            P.ground = { key: U(pick('GlassWindowTall', function (n) { return !/Broken|-Glow/.test(n); })), tall: true, glow: glowOf('GlassWindowTall1a') };
+            P.door = { key: U(pick(S.door)), half: true };
+        } else if (S.plaster) {
+            var letter = 'abcdef'[Math.floor(rng() * (ruin ? 2 : 6))];
+            var plain = 'PlasterWallPainted1' + letter, band = 'PlasterWallPainted2' + (letter === 'f' ? 'e' : letter);
+            if (!URBAN_TEXTURES[band]) band = 'PlasterWallPainted2a';
+            P.wall = { key: U(plain) }; P.base = { key: U(band) };
+            var dec = pick(S.decal, function (n) { return !/-Glow/.test(n) && (ruin ? /[bc]$/.test(n) : /a$/.test(n)); });
+            P.over = { key: U(dec), glow: ruin ? null : glowOf(dec) };
+            P.door = { key: U(pick(S.door)), half: true };
+        } else if (S.stucco) {
+            var sc = 'abcde'[Math.floor(rng() * 5)];
+            P.wall = { key: U(ruin ? 'PlasterWallStucco1b' : 'PlasterWallStucco1a') }; P.top = { key: U('PlasterWallStucco2' + sc) };
+            var dec2 = pick(S.decal, function (n) { return !/-Glow/.test(n) && (ruin ? /[bc]$/.test(n) : /a$/.test(n)); });
+            P.over = { key: U(dec2), glow: ruin ? null : glowOf(dec2) };
+            P.door = { key: U(pick(S.door)), half: true };
+        } else {
+            var cl = pick(S.clad);
+            P.wall = { key: U(cl) };
+            var fg = pick(S.glass, function (n) { return !/Broken|-Glow/.test(n); }), fgB = ruin ? pick(S.glass + 'Broken') : null;
+            P.win = { key: U(fgB || fg), glow: fgB ? null : glowOf(fg) };
+            P.door = { key: U(pick(S.door)), half: true, wide: true };
+        }
+        return P;
+    }
+    /* THE BATCH: quads merged per material key */
+    function _hqTexBatch(G, U, neon) {
+        var B = {};
+        var mat = function (key, glowKey, kind) {
+            var tex = _hzTex(key), m;
+            if (kind === 'over') { m = new THREE.MeshPhongMaterial({ map: tex || null, transparent: true, alphaTest: 0.35, shininess: 30, specular: 0x333333, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }); }
+            else m = new THREE.MeshPhongMaterial({ map: tex || null, shininess: (kind === 'glass') ? 70 : 6, specular: (kind === 'glass') ? 0x445566 : 0x151515 });
+            m.color = new THREE.Color(neon ? 0x8c8ca4 : 0xffffff);
+            m.emissive = new THREE.Color(neon ? 0x0c0a14 : 0x101010);
+            if (glowKey) { var gt = _hzTex(glowKey); if (gt) { m.emissiveMap = gt; m.emissive = new THREE.Color(0xffffff); m.emissiveIntensity = neon ? 0.95 : 0.35; } }
+            m._ew_hzNear = true;
+            return m;
+        };
+        return {
+            add: function (key, glowKey, kind, p, uv) {
+                var id = key + '|' + (glowKey || '') + '|' + kind;
+                var b = B[id]; if (!b) b = B[id] = { key: key, glow: glowKey, kind: kind, pos: [], uv: [], idx: [], n: 0 };
+                for (var i = 0; i < 4; i++) { b.pos.push(p[i][0] * U, p[i][1] * U + 0.3, p[i][2] * U); b.uv.push(uv[i][0], uv[i][1]); }
+                var n = b.n; b.idx.push(n, n + 1, n + 2, n, n + 2, n + 3); b.n += 4;
+            },
+            flush: function () {
+                var made = 0;
+                Object.keys(B).forEach(function (id) {
+                    var b = B[id]; if (!b.n) return;
+                    var g = new THREE.BufferGeometry();
+                    g.setAttribute('position', new THREE.Float32BufferAttribute(b.pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(b.uv, 2)); g.setIndex(b.idx); g.computeVertexNormals();
+                    var m = new THREE.Mesh(g, mat(b.key, b.glow, b.kind)); m.renderOrder = b.kind === 'over' ? 2 : 1; m.castShadow = false; m._ew_hqTexBuilding = true; G.add(m); made++;
+                });
+                return made;
+            },
+        };
+    }
+    /* one textured building on a lot: the box's four faces as cell grids, the roof, the parapet, the plant */
+    function _hqTexBuilding(lot, info, batch, rng, gen, U) {
+        var C = HQ_TEXB.cell, P = _hqTexPlan(lot, rng, gen), st = lot.storeys || 1, rows = st * 2, H = st * HQ_TEXB.storey;
+        var c = Math.cos(lot.rot || 0), s = Math.sin(lot.rot || 0), base = lot.base || 0;
+        var hw = (lot.w - 0.12) / 2, hd = (lot.d - 0.12) / 2, out = HQ_TEXB.outset;
+        /* the lot frame: local +x along the face, +z toward the street (as data.js rectOf) */
+        var W = function (lx, ly, lz) { return [lot.x + lx * c + lz * s, base + ly, lot.z - lx * s + lz * c]; };
+        /* faces: [origin corner (local), along dir (local), outward normal (local), length, isFront] — ccw seen from outside */
+        var faces = [
+            { o: [-hw, hd], a: [1, 0], n: [0, 1], L: 2 * hw, front: true },     // the street face (+z)
+            { o: [hw, -hd], a: [-1, 0], n: [0, -1], L: 2 * hw, front: false },  // the back
+            { o: [hw, hd], a: [0, -1], n: [1, 0], L: 2 * hd, front: false },    // the right flank (+x)
+            { o: [-hw, -hd], a: [0, 1], n: [-1, 0], L: 2 * hd, front: false },  // the left flank
+        ];
+        var doorCol = null;
+        faces.forEach(function (F, fi) {
+            var cols = Math.max(1, Math.round(F.L / C)), cw = F.L / cols;
+            if (F.front) doorCol = Math.max(0, Math.min(cols - 1, Math.floor(cols * (0.25 + rng() * 0.5))));
+            for (var r = 0; r < rows; r++) for (var ci = 0; ci < cols; ci++) {
+                var ground = r === 0, upperOfStorey = (r % 2) === 1, top = r === rows - 1;
+                var cell = null, over = null, door = null;
+                if (P.style === 'office' || P.style === 'tower') {
+                    if (ground) { cell = (F.front || F.L > 6) ? P.ground : P.wall; if (F.front && ci === doorCol) door = P.door; }
+                    else if (P.style === 'tower') cell = P.win;
+                    else cell = upperOfStorey ? P.win : P.wall;
+                } else if (P.style === 'factory') {
+                    cell = P.wall;
+                    if (!ground && upperOfStorey && (ci % 2 === 0 || F.L < 5)) cell = P.win;
+                    if (ground && F.front && ci === doorCol) door = P.door;
+                } else {   // residential / stucco
+                    cell = ground ? (P.base || P.wall) : ((top && P.top) ? P.top : P.wall);
+                    if (upperOfStorey || (ground && !(F.front && ci === doorCol))) { if (!(ground && P.style === 'stucco')) over = P.over; }
+                    if (ground && F.front && ci === doorCol) door = P.door;
+                }
+                if (!cell || !cell.key) continue;
+                var x0 = F.o[0] + F.a[0] * cw * ci, z0 = F.o[1] + F.a[1] * cw * ci, x1 = x0 + F.a[0] * cw, z1 = z0 + F.a[1] * cw, y0 = r * C, y1 = y0 + C;
+                var uRep = cell.tall ? 2 : 1, kind = (cell === P.win || cell === P.ground) ? 'glass' : 'wall';
+                batch.add(cell.key, cell.glow || null, kind, [W(x0, y0, z0), W(x1, y0, z1), W(x1, y1, z1), W(x0, y1, z0)], [[0, 0], [uRep, 0], [uRep, 1], [0, 1]]);
+                if (over && over.key) {
+                    var ox = F.n[0] * out, oz = F.n[1] * out;
+                    batch.add(over.key, over.glow || null, 'over', [W(x0 + ox, y0, z0 + oz), W(x1 + ox, y0, z1 + oz), W(x1 + ox, y1, z1 + oz), W(x0 + ox, y1, z0 + oz)], [[0, 0], [1, 0], [1, 1], [0, 1]]);
+                }
+                if (door && door.key) {
+                    var dw = door.wide ? cw : cw / 2, dx0 = x0 + F.a[0] * (cw - dw) / 2, dz0 = z0 + F.a[1] * (cw - dw) / 2, dx1 = dx0 + F.a[0] * dw, dz1 = dz0 + F.a[1] * dw;
+                    var ox2 = F.n[0] * out * 1.5, oz2 = F.n[1] * out * 1.5;
+                    batch.add(door.key, null, 'over', [W(dx0 + ox2, y0, dz0 + oz2), W(dx1 + ox2, y0, dz1 + oz2), W(dx1 + ox2, y1, dz1 + oz2), W(dx0 + ox2, y1, dz0 + oz2)], [[0, 0], [door.wide ? 2 : 1, 0], [door.wide ? 2 : 1, 1], [0, 1]]);
+                }
+            }
+            /* the parapet's outer face in the wall's sheet (the top row's, if any) */
+            var pk = (P.top && P.top.key) || P.wall.key, ph = HQ_TEXB.parapet;
+            var px0 = F.o[0], pz0 = F.o[1], px1 = F.o[0] + F.a[0] * F.L, pz1 = F.o[1] + F.a[1] * F.L;
+            batch.add(pk, null, 'wall', [W(px0, H, pz0), W(px1, H, pz1), W(px1, H + ph, pz1), W(px0, H + ph, pz0)], [[0, 0.7], [F.L / C, 0.7], [F.L / C, 0.7 + ph / C], [0, 0.7 + ph / C]]);
+        });
+        /* the roof (inside the parapet) + the parapet's top and inner lip */
+        var rk = P.roof || 'urban:ConcreteUnderTiles1', ph2 = HQ_TEXB.parapet, t = 0.22;
+        batch.add(rk, null, 'wall', [W(-hw, H + 0.02, -hd), W(hw, H + 0.02, -hd), W(hw, H + 0.02, hd), W(-hw, H + 0.02, hd)], [[0, 0], [2 * hw / C, 0], [2 * hw / C, 2 * hd / C], [0, 2 * hd / C]]);
+        [[-hw, -hd, hw, -hd], [hw, -hd, hw, hd], [hw, hd, -hw, hd], [-hw, hd, -hw, -hd]].forEach(function (e) {
+            var ex = e[2] - e[0], ez = e[3] - e[1], L = Math.hypot(ex, ez) || 1, nx = ez / L, nz = -ex / L;   // inward normal of this parapet run (ccw box → left-hand)
+            batch.add(rk, null, 'wall', [W(e[0], H + ph2, e[1]), W(e[2], H + ph2, e[3]), W(e[2] - nx * t, H + ph2, e[3] - nz * t), W(e[0] - nx * t, H + ph2, e[1] - nz * t)], [[0, 0], [L / C, 0], [L / C, t / C], [0, t / C]]);
+            batch.add(rk, null, 'wall', [W(e[2] - nx * t, H + ph2, e[3] - nz * t), W(e[0] - nx * t, H + ph2, e[1] - nz * t), W(e[0] - nx * t, H, e[1] - nz * t), W(e[2] - nx * t, H, e[3] - nz * t)], [[0, 0], [L / C, 0], [L / C, ph2 / C], [0, ph2 / C]]);
+        });
+        return { H: H + ph2, plan: P };
+    }
     function _hqBuildCityLots(room, info, G, TM, rng, TK) {
         var U = _hqUnits(), gen = info.gen || {}, lots = info.lots || [], fronts = info.fronts || [];
         if (!lots.length) return;
@@ -38726,12 +38898,30 @@ const ThreeRenderer = (function () {
         var lowMat = new THREE.MeshPhongMaterial({ map: _hzTex('concrete') || null, color: 0x9a9a98, shininess: 4 }); lowMat.emissive = new THREE.Color(neon ? 0x1a1424 : 0x141414);
         var acMat = new THREE.MeshPhongMaterial({ color: 0x8a8e94, shininess: 20 }); acMat.emissive = new THREE.Color(0x101214);
         var lotById = {}, prevTs = _hzKitTs; _hzKitTs = TM;
+        /* THE TEXTURED BUILDINGS (2026-09-17): a `gen.texP` share of the lots (seeded per lot) and every `low` lot are composed from THE URBAN PACK — one merged batch for the room */
+        var texP = (gen.texP != null) ? gen.texP : 0, texOn = prisms && typeof URBAN_TEXTURES !== 'undefined' && typeof urbanTexPick === 'function' && !(typeof window !== 'undefined' && window.EW_HQ_NO_TEX_BUILDINGS);
+        var batch = texOn ? _hqTexBatch(G, U, neon) : null, texMade = 0;
         try {
             lots.forEach(function (lot) {
                 lotById[lot.i] = lot;
                 var base = (lot.base || 0) * U + 0.3, yaw = lot.rot || 0;
                 lot._roofY = (lot.base || 0) + lot.top;
                 if (!prisms) return;   // the mall: the units ARE the rise, fronted below
+                if (texOn) {
+                    var lr = _mulberry32(((lot.seed | 0) * 7 + 11) >>> 0);
+                    if (lot.low || lr() < texP) {
+                        try {
+                            var tb = _hqTexBuilding(lot, info, batch, lr, gen, U);
+                            lot._tex = true; lot._roofY = (lot.base || 0) + tb.H; texMade++;
+                            /* the plant on the roof */
+                            var grp = new THREE.Group(); grp.position.set(lot.x * U, base, lot.z * U); grp.rotation.y = yaw; G.add(grp);
+                            var ac = new THREE.Mesh(new THREE.BoxGeometry(1.2 * U, 0.8 * U, 1.0 * U), acMat); ac.position.set(((lot.seed % 3) - 1) * Math.min(1.2, lot.w * 0.22) * U, (tb.H - HQ_TEXB.parapet + 0.4) * U, (((lot.seed >> 2) % 3) - 1) * Math.min(1.1, lot.d * 0.22) * U); grp.add(ac);
+                            if (lot.seed % 2) { var tank = new THREE.Mesh(new THREE.CylinderGeometry(0.55 * U, 0.55 * U, 1.1 * U, 12), acMat); tank.position.set(-lot.w * 0.28 * U, (tb.H - HQ_TEXB.parapet + 0.55) * U, lot.d * 0.24 * U); grp.add(tank); }
+                            if (neon && lot.storeys >= 3) { /* the hologram below still stands on a tall lot */ }
+                            return;
+                        } catch (e) { console.warn('[HQ] a textured lot failed', e); }
+                    }
+                }
                 if (lot.storeys && TK && typeof _nrSpriteBuilding === 'function') {
                     try {
                         var b = _nrSpriteBuilding(TK, lot.key, lot.x * U, lot.z * U, { w: (lot.w - 0.16) / info.tile, d: (lot.d - 0.16) / info.tile, stack: lot.storeys, yAbs: base, cast: false, wall: false, lift: neon ? 0.42 : 0.18, roofKit: lot.storeys >= 3, beacon: neon ? 0xff3ad8 : 0xff3030, ry: yaw });
@@ -38761,6 +38951,7 @@ const ThreeRenderer = (function () {
                 }
             });
         } finally { _hzKitTs = prevTs; }
+        if (batch) { var nb = batch.flush(); if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] textured buildings', texMade, 'of', lots.length, 'in', nb, 'batches'); }
         /* THE FRONTS */
         var glassMat = new THREE.MeshPhongMaterial({ color: neon ? 0x1a2a3a : 0x2a3a4a, shininess: 90, specular: 0x88aacc, transparent: true, opacity: 0.62 }); glassMat.emissive = new THREE.Color(neon ? 0x142838 : 0x0e1822);
         var frameMat = new THREE.MeshPhongMaterial({ color: 0x2a2c30, shininess: 30 });
@@ -38773,7 +38964,10 @@ const ThreeRenderer = (function () {
             fronts.forEach(function (f, fi) {
                 var lot = lotById[f.lot] || {}, g = _hqCityFrontGroup(f, U), L = f.len, top = (lot._roofY != null ? lot._roofY - (lot.base || 0) : f.top);
                 var ink = _HQ_STORE_INKS[(f.lot * 7 + fi) % _HQ_STORE_INKS.length];
-                if (store) {
+                if (lot._tex) {
+                    /* THE TEXTURED BUILDINGS: the pack's own doors and glass are the ground floor — only an awning now and then */
+                    if (fi % 4 === 1 && !neon) { var awT = new THREE.Mesh(new THREE.BoxGeometry(Math.min(L - 1.2, 3.0) * U, 0.05 * U, 0.8 * U), new THREE.MeshPhongMaterial({ color: awnCols[fi % awnCols.length], shininess: 8 })); awT.position.set((L * 0.12) * U, 2.3 * U, 0.45 * U); awT.rotation.x = 0.28; g.add(awT); }
+                } else if (store) {
                     /* THE STOREFRONT: a sign band under the roof line, the glass under it, a door, a shutter half down on every third; the user's storefront_unit GLB over the glass once it lands */
                     var name = _HQ_STORE_NAMES[(f.lot * 3 + fi) % _HQ_STORE_NAMES.length];
                     var signH = 0.7, signY = Math.min(top - 0.45, 3.3);
@@ -38930,6 +39124,208 @@ const ThreeRenderer = (function () {
                 }
             });
         } finally { _hzKitTs = prevTs; }
+    }
+    /* ═══════════════════════════════════════════════════════════════════════
+       THE STREETS IN THE PACK (2026-09-17, THE URBAN PACK — the user: "the
+       streets are all distorted, replace them with the texture pack"). The
+       asphalt IS the field: a city plan's `floor` sheet paints the corridors
+       (urban:PlasterWallPainted1b), its `path` sheet the sidewalk band and the
+       door paths (the pavement slabs), its `cliff` sheet the block interiors
+       (the yards) and the outer ground — the terrain's own three-sheet blend
+       follows every corridor, bend and intersection exactly, so no tile can
+       distort and nothing overlaps. What stands ON it is drawn here:
+       _hqBuildRoadMarkings — the centre dashes (never inside another street's
+       corridor, never through a bend), the solid edge lines, a ZEBRA + a stop
+       line where a street enters another's corridor, KERB STONES (a light
+       concrete strip with a face down to the road along every corridor edge),
+       MANHOLES (the pack's decal, in the lanes), SPEED SIGNS on posts on the
+       sidewalks (the pack's US plates) and a NO ENTRY at a dead end. One
+       merged geometry per material (three draw calls for a whole city).
+       The GLB road tiles (_hqBuildRoadTiles) are opt-in now: EW_HQ_ROAD_TILES.
+       ═══════════════════════════════════════════════════════════════════════ */
+    var HQ_ROAD = { dashLen: 1.6, dashGap: 1.6, dashW: 0.14, edgeIn: 0.35, edgeW: 0.12, zebraBar: 0.42, zebraGap: 0.42, zebraLen: 2.6, zebraBack: 1.0, stopW: 0.32,
+                    kerbW: 0.3, kerbH: 0.13, manholeEvery: 19, manholeR: 0.42, signEvery: 27, signH: 2.3, cornerTrim: 0.6 };
+    function _hqRoadTexKey(kind) {
+        var K = { asphalt: 'urban:PlasterWallPainted1b', pavement: 'urban:TileGeneric1a', kerb: 'urban:PlasterWallPainted1a', yard: 'urban:ConcreteStriped2a', manhole: 'urban:DecalManholeCover' };
+        return K[kind] || null;
+    }
+    /* THE HOARDING SIGNS (2026-09-17): the pack's DANGER / CAUTION / HAZARD plates on a yard wall's street face, one or two per run, seeded by the run's own coordinates */
+    function _hqHoardingSigns(w, L, yaw, hM, G, U, info) {
+        if (L < 3 || typeof URBAN_TEX_FAMILIES === 'undefined' || typeof urbanTexPick !== 'function' || typeof _hzTex !== 'function' || typeof _mulberry32 !== 'function') return;
+        var seed = ((w.x0 * 73 + w.z0 * 31 + w.x1 * 7 + w.z1 * 3) * 1000) | 0, rng = _mulberry32(seed >>> 0);
+        var mx = (w.x0 + w.x1) / 2, mz = (w.z0 + w.z1) / 2, dx = (w.x1 - w.x0) / L, dz = (w.z1 - w.z0) / L;
+        /* the street side: the side the mask is open on */
+        var side = (typeof hqTerrainMaskAt === 'function' && info && info.maskD) ? ((hqTerrainMaskAt(info, mx + (-dz) * 0.7, mz + dx * 0.7) > hqTerrainMaskAt(info, mx - (-dz) * 0.7, mz - dx * 0.7)) ? 1 : -1) : 1;
+        var nx = -dz * side, nz = dx * side, n = 1 + (rng() < 0.45 && L > 6 ? 1 : 0);
+        var fams = ['SignDanger', 'SignCaution', 'SignHazard', 'SignProtective', 'SignProhibited'];
+        for (var i = 0; i < n; i++) {
+            var fam = fams[Math.floor(rng() * fams.length)], name = urbanTexPick(fam, rng), tex = name ? _hzTex('urban:' + name) : null; if (!tex) continue;
+            var at = (n === 1 ? 0 : (i ? 1 : -1) * L * 0.22) + (rng() - 0.5) * L * 0.3, px = mx + dx * at, pz = mz + dz * at;
+            var ar = 0.66; try { if (tex.image && tex.image.width) ar = tex.image.height / tex.image.width; } catch (e) {}
+            var pw = fam === 'SignHazard' || fam === 'SignProhibited' || fam === 'SignProtective' ? 0.5 : 0.8;
+            var pm = new THREE.MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.2 }); pm.emissive = new THREE.Color(0x181818); pm.emissiveMap = tex;
+            var pl = new THREE.Mesh(new THREE.PlaneGeometry(pw * U, pw * ar * U), pm);
+            pl.position.set((px + nx * (w.t / 2 + 0.02)) * U, (w.base + 0.3 + Math.min(hM - 0.5, 1.15 + rng() * 0.25)) * U + 0.3, (pz + nz * (w.t / 2 + 0.02)) * U);
+            pl.rotation.y = Math.atan2(nx, nz); G.add(pl);
+        }
+    }
+    function _hqBuildRoadMarkings(room, info, G, TM) {
+        var plan = info.genPlan; if (!plan || !plan.streets || !plan.streets.length) return;
+        if (typeof window !== 'undefined' && window.EW_HQ_NO_ROAD_MARKS) return;
+        var U = _hqUnits(), streets = plan.streets, R = HQ_ROAD, neon = !!(info.gen && info.gen.neon);
+        var lift = 0.02, walk = plan.walkW || 0;
+        var hAt = function (x, z) { return hqTerrainHeight(info, x, z); };
+        var inOther = function (px, pz, si, m) { for (var j = 0; j < streets.length; j++) { if (j === si) continue; var o = streets[j]; if (_hqTPolyDist(px, pz, o.pts).d < o.w / 2 + (m || 0)) return true; } return false; };
+        var inAny = function (px, pz, m) { for (var j = 0; j < streets.length; j++) { var o = streets[j]; if (_hqTPolyDist(px, pz, o.pts).d < o.w / 2 + (m || 0)) return true; } return false; };
+        var inPad = function (px, pz, m) { return (info.pads || []).some(function (p) { return Math.hypot(p.x - px, p.z - pz) < (m || 2.4); }); };
+        /* the merged quad lists: flat quads on the ground (a, b, c, d in metres, y = the ground + lift), each with its own uv */
+        var bucket = function () { return { pos: [], uv: [], idx: [], n: 0 }; };
+        var Bw = bucket(), Bk = bucket(), Bm = bucket();   // white paint · kerb stones · manholes
+        var quad = function (B, p, uvs, ny) {
+            /* p = four [x, y, z] in metres (ccw seen from above), uvs = four [u, v] */
+            for (var i = 0; i < 4; i++) { B.pos.push(p[i][0] * U, p[i][1] * U + 0.3, p[i][2] * U); B.uv.push(uvs[i][0], uvs[i][1]); }
+            var b = B.n; B.idx.push(b, b + 2, b + 1, b, b + 3, b + 2); B.n += 4;
+        };
+        var flat = function (B, cx, cz, dx, dz, len, wid, ofs, uvScale) {
+            /* a rectangle centred at (cx, cz) shifted `ofs` across the direction (dx, dz), `len` along it, `wid` across; flat on the ground at its four corners */
+            var nx = -dz, nz = dx, hx = dx * len / 2, hz = dz * len / 2, wx = nx * wid / 2, wz = nz * wid / 2, ox = nx * ofs, oz = nz * ofs;
+            var c = [[cx + ox - hx - wx, cz + oz - hz - wz], [cx + ox + hx - wx, cz + oz + hz - wz], [cx + ox + hx + wx, cz + oz + hz + wz], [cx + ox - hx + wx, cz + oz - hz + wz]];
+            var p = c.map(function (q) { return [q[0], hAt(q[0], q[1]) + lift, q[1]]; });
+            var s = uvScale || 1;
+            quad(B, [p[0], p[3], p[2], p[1]], [[0, 0], [s, 0], [s, s], [0, s]]);
+        };
+        var dir = function (a, b) { var dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz) || 1; return { x: dx / L, z: dz / L, L: L }; };
+        var manholes = 0, signs = 0, madeSigns = [], deadEnds = [];
+        streets.forEach(function (st, si) {
+            var pts = st.pts, w = st.w, n = pts.length, loop = n > 2 && pts[0][0] === pts[n - 1][0] && pts[0][1] === pts[n - 1][1];
+            var corner = {};
+            for (var i = 0; i < n; i++) {
+                var hasPrev = i > 0 || loop, hasNext = i + 1 < n || loop;
+                if (!hasPrev || !hasNext) continue;
+                var ip = i > 0 ? i - 1 : n - 2, inx = i + 1 < n ? i + 1 : 1;
+                var d1 = dir(pts[ip], pts[i]), d2 = dir(pts[i], pts[inx]), dot = d1.x * d2.x + d1.z * d2.z;
+                if (dot < 0.985) corner[i] = (Math.abs(dot) < 0.2) ? w / 2 + R.cornerTrim : w * 0.55;
+            }
+            if (loop) corner[n - 1] = corner[0];
+            for (var k = 0; k + 1 < n; k++) {
+                var d = dir(pts[k], pts[k + 1]), L = d.L, t0 = corner[k] || 0, t1 = L - (corner[k + 1] || 0);
+                var edgeOff = w / 2 - R.edgeIn;
+                /* THE CENTRE DASHES */
+                for (var s = t0 + 0.4; s + R.dashLen <= t1; s += R.dashLen + R.dashGap) {
+                    var cx = pts[k][0] + d.x * (s + R.dashLen / 2), cz = pts[k][1] + d.z * (s + R.dashLen / 2);
+                    if (inOther(cx, cz, si, 0.6) || inPad(cx, cz, 2.2)) continue;
+                    flat(Bw, cx, cz, d.x, d.z, R.dashLen, R.dashW, 0);
+                }
+                /* THE EDGE LINES: runs of 0.5 m, broken where another street opens (a side street's mouth) */
+                [-1, 1].forEach(function (sd) {
+                    var run = null;
+                    var flush = function () { if (run && run[1] - run[0] > 0.6) { var mid = (run[0] + run[1]) / 2; flat(Bw, pts[k][0] + d.x * mid, pts[k][1] + d.z * mid, d.x, d.z, run[1] - run[0], R.edgeW, sd * edgeOff); } run = null; };
+                    for (var u = 0; u <= L; u += 0.5) {
+                        var px = pts[k][0] + d.x * u + (-d.z) * sd * edgeOff, pz = pts[k][1] + d.z * u + d.x * sd * edgeOff;
+                        var ok = !inOther(px, pz, si, 0.3) && !inPad(px, pz, 1.9) && u >= (corner[k] ? corner[k] - w / 2 : 0) && u <= L - (corner[k + 1] ? corner[k + 1] - w / 2 : 0);
+                        if (ok) { if (!run) run = [u, u]; else run[1] = u; } else flush();
+                    }
+                    flush();
+                });
+                /* THE KERB STONES: a light strip on the sidewalk's edge (top face + the face down to the road), broken at the mouths */
+                [-1, 1].forEach(function (sd) {
+                    var run = null, kOff = w / 2 + R.kerbW / 2;
+                    var flushK = function () {
+                        if (!run || run[1] - run[0] < 0.4) { run = null; return; }
+                        var a = run[0], b = run[1], ax = pts[k][0] + d.x * a, az = pts[k][1] + d.z * a, bx = pts[k][0] + d.x * b, bz = pts[k][1] + d.z * b;
+                        var nx = -d.z * sd, nz = d.x * sd;   // out of the road
+                        var iA = [ax + nx * (w / 2), az + nz * (w / 2)], iB = [bx + nx * (w / 2), bz + nz * (w / 2)], oA = [ax + nx * (w / 2 + R.kerbW), az + nz * (w / 2 + R.kerbW)], oB = [bx + nx * (w / 2 + R.kerbW), bz + nz * (w / 2 + R.kerbW)];
+                        var yTop = Math.max(hAt(oA[0], oA[1]), hAt(oB[0], oB[1])) + 0.012, yRoad = Math.min(hAt(iA[0], iA[1]), hAt(iB[0], iB[1])) - 0.05;
+                        var vl = (b - a) / 1.75;
+                        /* the top: inner edge to outer edge; the face: down from the inner edge to the road (winding by side) */
+                        var top = [[iA[0], yTop, iA[1]], [oA[0], yTop, oA[1]], [oB[0], yTop, oB[1]], [iB[0], yTop, iB[1]]];
+                        var face = [[iA[0], yRoad, iA[1]], [iA[0], yTop, iA[1]], [iB[0], yTop, iB[1]], [iB[0], yRoad, iB[1]]];
+                        if (sd > 0) { top.reverse(); face.reverse(); }
+                        quad(Bk, top, [[0, 0], [0.18, 0], [0.18, vl], [0, vl]]);
+                        quad(Bk, face, [[0, 0], [0.1, 0], [0.1, vl], [0, vl]]);
+                        run = null;
+                    };
+                    for (var u2 = 0; u2 <= L; u2 += 0.5) {
+                        var qx = pts[k][0] + d.x * u2 + (-d.z) * sd * kOff, qz = pts[k][1] + d.z * u2 + d.x * sd * kOff;
+                        var okK = !inOther(qx, qz, si, walk + 0.3) && !inPad(qx, qz, 2.6) && Math.abs(qx) < info.halfW - 0.6 && Math.abs(qz) < info.halfD - 0.6;
+                        if (okK) { if (!run) run = [u2, u2]; else run[1] = u2; } else flushK();
+                    }
+                    flushK();
+                });
+                /* THE ZEBRA + THE STOP LINE where this street enters another's corridor (a transition along the centreline) */
+                var wasIn = inOther(pts[k][0], pts[k][1], si, 0);
+                for (var u3 = 0.5; u3 <= L; u3 += 0.5) {
+                    var mx = pts[k][0] + d.x * u3, mz = pts[k][1] + d.z * u3, nowIn = inOther(mx, mz, si, 0);
+                    if (nowIn !== wasIn) {
+                        var entering = nowIn, at = u3 - (entering ? R.zebraBack + R.zebraLen / 2 : -(R.zebraBack + R.zebraLen / 2));
+                        if (at > 0.5 && at < L - 0.5) {
+                            var zx = pts[k][0] + d.x * at, zz = pts[k][1] + d.z * at;
+                            if (!inOther(zx, zz, si, 0.2)) {
+                                var nb = Math.max(3, Math.floor((w - 1.0) / (R.zebraBar + R.zebraGap)));
+                                for (var bi = 0; bi < nb; bi++) { var ofs = (bi - (nb - 1) / 2) * (R.zebraBar + R.zebraGap); flat(Bw, zx, zz, d.x, d.z, R.zebraLen, R.zebraBar, ofs); }
+                                var stopAt = at + (entering ? -(R.zebraLen / 2 + 0.5) : (R.zebraLen / 2 + 0.5));
+                                flat(Bw, pts[k][0] + d.x * stopAt, pts[k][1] + d.z * stopAt, d.x, d.z, R.stopW, w * 0.46, entering ? -w * 0.24 : w * 0.24);
+                            }
+                        }
+                        wasIn = nowIn;
+                    }
+                }
+                /* THE MANHOLES: in the lanes, alternating, clear of the mouths */
+                for (var s4 = 6 + (si * 5) % 9; s4 < L - 3; s4 += R.manholeEvery) {
+                    var lane = ((manholes % 2) ? 1 : -1) * Math.min(w * 0.22, 1.9), hx = pts[k][0] + d.x * s4 + (-d.z) * lane, hz = pts[k][1] + d.z * s4 + d.x * lane;
+                    if (inOther(hx, hz, si, 0.8) || inPad(hx, hz, 2.4)) continue;
+                    flat(Bm, hx, hz, d.x, d.z, R.manholeR * 2, R.manholeR * 2, 0); manholes++;
+                }
+                /* THE SPEED SIGNS: on the sidewalk, alternating sides, facing the traffic */
+                for (var s5 = 9 + (si * 7) % 11; s5 < L - 4; s5 += R.signEvery) {
+                    var sdS = (signs % 2) ? 1 : -1, sOff = w / 2 + Math.min(walk, 1.2) * 0.55 + 0.3;
+                    var sx = pts[k][0] + d.x * s5 + (-d.z) * sdS * sOff, sz = pts[k][1] + d.z * s5 + d.x * sdS * sOff;
+                    if (inAny(sx, sz, 0.35) || inPad(sx, sz, 3.2) || Math.abs(sx) > info.halfW - 1 || Math.abs(sz) > info.halfD - 1) continue;
+                    if (info.maskD && hqTerrainMaskAt(info, sx, sz) < 0.25) continue;
+                    /* the plate FACES THE ROAD (perpendicular to it, toward the centreline): readable from either direction, never mirrored (a lane's own heading was — the back of a single-sided plate read backwards) */
+                    madeSigns.push({ x: sx, z: sz, yaw: Math.atan2(d.z * sdS, -d.x * sdS), plate: 'SignSpeedUsa0' + (w >= 10 ? '35' : '25') + '-small' }); signs++;
+                }
+            }
+            /* A DEAD END: an open street whose end lies inside the shell, with no door pad at it — a NO ENTRY plate faces the road */
+            if (!loop) [[pts[0], pts[1]], [pts[n - 1], pts[n - 2]]].forEach(function (e) {
+                var ex = e[0][0], ez = e[0][1]; if (Math.abs(ex) > info.halfW - 0.5 || Math.abs(ez) > info.halfD - 0.5) return;
+                if (inPad(ex, ez, 3.4) || inAny(ex, ez, -w / 2 + 0.2) && inOther(ex, ez, si, 0.5)) return;
+                var dd = dir(e[1], e[0]);
+                deadEnds.push({ x: ex, z: ez, dx: dd.x, dz: dd.z, w: w });
+            });
+        });
+        var mk = function (B, mat, order) {
+            if (!B.n) return null;
+            var g = new THREE.BufferGeometry();
+            g.setAttribute('position', new THREE.Float32BufferAttribute(B.pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(B.uv, 2)); g.setIndex(B.idx); g.computeVertexNormals();
+            var m = new THREE.Mesh(g, mat); m.renderOrder = order || 2; m._ew_hqRoadMark = true; G.add(m); return m;
+        };
+        var paint = new THREE.MeshLambertMaterial({ color: neon ? 0xd8dce8 : 0xe8e6da, transparent: true, opacity: neon ? 0.82 : 0.9, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+        paint.emissive = new THREE.Color(neon ? 0x30343c : 0x2a2924);
+        var kerbTex = _hzTex(_hqRoadTexKey('kerb')), kerbMat = new THREE.MeshPhongMaterial({ map: kerbTex || null, color: neon ? 0x9a9ab0 : 0xc8c6c0, shininess: 4, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }); kerbMat.emissive = new THREE.Color(0x1a1a1a);
+        var mhTex = _hzTex(_hqRoadTexKey('manhole')), mhMat = new THREE.MeshLambertMaterial({ map: mhTex || null, transparent: true, alphaTest: 0.3, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, color: 0xffffff });
+        mk(Bk, kerbMat, 2); mk(Bw, paint, 3); if (mhTex) mk(Bm, mhMat, 3);
+        /* the posts: a plate on a pole, a blocker under it */
+        var poleMat = new THREE.MeshPhongMaterial({ color: 0x5a5e66, shininess: 40 });
+        var placePlate = function (name, x, z, yaw, h, wM) {
+            var tex = _hzTex('urban:' + name); if (!tex) return;
+            var ar = 80 / 64; try { if (tex.image && tex.image.width) ar = tex.image.height / tex.image.width; } catch (e) {}
+            var gy = hAt(x, z), grp = new THREE.Group(); grp.position.set(x * U, gy * U + 0.3, z * U); grp.rotation.y = yaw;
+            var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.04 * U, (h + 0.3) * U, 6), poleMat); pole.position.y = (h + 0.3) / 2 * U; grp.add(pole);
+            var pw = wM || 0.62, pm = new THREE.MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.2 }); pm.emissive = new THREE.Color(0x202020); pm.emissiveMap = tex;
+            var plate = new THREE.Mesh(new THREE.PlaneGeometry(pw * U, pw * ar * U), pm); plate.position.set(0, (h + 0.05) * U, 0.045 * U); grp.add(plate);
+            var backP = new THREE.Mesh(new THREE.PlaneGeometry(pw * 0.96 * U, pw * ar * 0.96 * U), poleMat); backP.position.set(0, (h + 0.05) * U, 0.035 * U); backP.rotation.y = Math.PI; grp.add(backP);   // a grey back: a plate is read from its face only
+            G.add(grp);
+            var blk = new THREE.Object3D(); blk.position.set(x * U, gy * U, z * U); G.add(blk);
+            _hq.blockers.push({ obj: blk, y: gy, top: null, rad: 0.16, sign: true });
+        };
+        madeSigns.slice(0, 40).forEach(function (sg) { placePlate(sg.plate, sg.x, sg.z, sg.yaw, R.signH, 0.62); });
+        deadEnds.forEach(function (de) {
+            /* the plate faces back down the street (toward −d), on the sidewalk's edge; the barrier is the street end's own (_hqBuildStreetEnds) */
+            var yaw = Math.atan2(-de.dx, -de.dz);
+            placePlate('SignProhibited1a', de.x - de.dx * 1.2 + (-de.dz) * (de.w / 2 + 0.5), de.z - de.dz * 1.2 + de.dx * (de.w / 2 + 0.5), yaw, R.signH, 0.7);
+        });
+        if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] road markings', 'paint quads', Bw.n / 4, 'kerb', Bk.n / 4, 'manholes', manholes, 'signs', madeSigns.length, 'dead ends', deadEnds.length);
     }
     /* THE STREET LAMPS: on the kerb of every street of the plan, alternating sides every `every` metres, clear of the doors' lanes */
     function _hqBuildStreetLamps(room, info, G, TM, rng) {
@@ -43298,6 +43694,71 @@ const ThreeRenderer = (function () {
         /* DISASTER CITY (2026-09-17): THE GUTTER — a storm inlet in the kerb (the concrete box with the slot) and the grate in
            the road in front of it; the walker walks onto the grate toward the slot and goes down. The far end is the storm
            drain's own grate door. The green glow in the slot is the drain's light. */
+        /* THE ROAD (2026-09-17, THE URBAN PACK): a street's END is the seam. The asphalt runs on from the wall 40 m into the fog
+           over the outer ground (sampled — the strip follows the roll), the dashes with it, a freeway GANTRY over the mouth
+           names the next town (the link door's label + the end's sub) and a LEAVING plate stands on the shoulder; nothing
+           blocks the road — the opening is the whole street and the press-in is walking on. `ctx.door.w` (the street's width,
+           from the link end) sizes it, else the catalogue's `w`. The far end's gantry reads the same way back. */
+        road: function (U, ctx) {
+            var g = new THREE.Group(), door = ctx.door || {}, W = door.w || (ctx.cat && ctx.cat.w) || 9, H = (ctx.cat && ctx.cat.h) || 5.2;
+            var LEN = (_hq && _hq.terrain) ? 40 : 13;   // a terrain room's outer ground runs to the fog; a site room's apron ends 16 m out — the road stops on it, never over the void
+            var neon = !!(ctx.room && ctx.room.shell && ctx.room.shell.sky && ctx.room.shell.sky.night);
+            var grp = ctx.group || null;   // the placed group (position / rotation) — the ground under the strip is sampled in the room's frame
+            var texOf = (typeof _hzTex === 'function') ? _hzTex : function () { return null; };   // the stub scene (hq-world.test.js) has no sheet loader
+            var asphalt = _hqMat(null, 1, 1, { color: neon ? 0x8a8aa4 : 0xffffff, shininess: neon ? 24 : 6, specular: 0x151515, emissive: 0x0e0e0e, emissiveIntensity: 1 });
+            var asT = texOf('urban:PlasterWallPainted1b'); if (asT) { asphalt.map = asT; asphalt.needsUpdate = true; }
+            var paint = _hqBasic(0xe8e6da, { transparent: true, opacity: 0.85, depthWrite: false }); paint.polygonOffset = true; paint.polygonOffsetFactor = -2; paint.polygonOffsetUnits = -2;
+            var wx = ctx.wx || 0, wz = ctx.wz || 0, yaw = ctx.yaw || 0, y0 = ctx.y0 || 0, cy = Math.cos(yaw), sy = Math.sin(yaw);
+            var gAt = function (lx, lz) {   // the ground under a local point (metres), relative to the door's own floor
+                if (typeof _hqTerrainGround !== 'function' || !_hq || !_hq.terrain) return 0;
+                var X = wx + lx * cy + lz * sy, Z = wz - lx * sy + lz * cy, y = _hqTerrainGround(X, Z);
+                return (y == null) ? 0 : (y - y0);
+            };
+            /* the strip: rows every 2 m from the wall outward (−Z), each vertex on the ground + 3 cm */
+            var rows = Math.round(LEN / 2), pos = [], uv = [], idx = [];
+            for (var r = 0; r <= rows; r++) {
+                var lz = -r * 2, k = r * 2;
+                [-W / 2, W / 2].forEach(function (lx, i) { var gy = (r === 0 ? 0 : gAt(lx, lz)) + 0.03; pos.push(lx * U, gy * U, lz * U); uv.push(i * W / 1.75, r * 2 / 1.75); });
+                if (r > 0) { var b = (r - 1) * 2; idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2); }
+            }
+            var hasBuf = !!(THREE.BufferGeometry && THREE.Float32BufferAttribute);
+            var strip;
+            if (hasBuf) { var sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); sg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); sg.setIndex(idx); sg.computeVertexNormals(); strip = new THREE.Mesh(sg, asphalt); }
+            else { strip = new THREE.Mesh(new THREE.PlaneGeometry(W * U, LEN * U), asphalt); strip.rotation.x = -Math.PI / 2; strip.position.set(0, 0.03 * U, -LEN / 2 * U); }
+            strip.renderOrder = 1; strip.receiveShadow = true; g.add(strip);
+            /* the dashes + the edge lines down it */
+            var dpos = [], duv = [], didx = [], dn = 0;
+            var flat = function (x0, x1, z0, z1) {
+                var pts = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]];
+                pts.forEach(function (p) { dpos.push(p[0] * U, (gAt(p[0], p[1]) + 0.05) * U, p[1] * U); duv.push(0, 0); });
+                didx.push(dn, dn + 2, dn + 1, dn, dn + 3, dn + 2); dn += 4;
+            };
+            for (var z = -1.2; z > -LEN + 1; z -= 3.2) flat(-0.07, 0.07, z, z - 1.6);
+            for (var z2 = -0.4; z2 > -LEN + 1; z2 -= 2) { flat(W / 2 - 0.41, W / 2 - 0.29, z2, z2 - 2); flat(-W / 2 + 0.29, -W / 2 + 0.41, z2, z2 - 2); }
+            if (hasBuf) { var dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.Float32BufferAttribute(dpos, 3)); dg.setAttribute('uv', new THREE.Float32BufferAttribute(duv, 2)); dg.setIndex(didx); dg.computeVertexNormals(); var dashes = new THREE.Mesh(dg, paint); dashes.renderOrder = 3; g.add(dashes); }
+            /* THE GANTRY over the mouth: two posts on the shoulders, the beam, the green plate */
+            var steel = _hqMat(null, 1, 1, { color: 0x4a4e56, shininess: 40 });
+            [-1, 1].forEach(function (sd) { var post = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * U, 0.13 * U, H * U, 8), steel); post.position.set(sd * (W / 2 + 0.7) * U, H / 2 * U, -2.2 * U); g.add(post); });
+            var beam = _hqBox(W + 1.6, 0.22, 0.22, steel); beam.position.set(0, (H - 0.11) * U, -2.2 * U); g.add(beam);
+            var label = String(door.label || 'THE ROAD'), sub = String(door.sub || '');
+            var tt = (typeof _hzTextTex === 'function') ? _hzTextTex('hq_road_' + (door.id || label) + '_' + label, ['▲  ' + label, sub || 'KEEP WALKING'], { w: 1024, h: 256, color: '#ffffff', bg: '#1d5a30', border: '#f0f0f0', pad: 0.12, sizes: [96, 44], weight: 'bold', font: '"Arial Narrow", "Helvetica Neue", Arial, sans-serif' }) : null;
+            var pw = Math.min(W * 0.78, 7.4), plM = _hqBasic(tt ? 0xffffff : 0x1d5a30, { side: THREE.DoubleSide }); if (tt) { plM.map = tt; plM.needsUpdate = true; }
+            var plate = new THREE.Mesh(new THREE.PlaneGeometry(pw * U, pw * 0.25 * U), plM);
+            plate.position.set(0, (H - 0.22 - pw * 0.125 - 0.02) * U, -2.2 * U + 0.14 * U); g.add(plate);
+            var back = _hqBox(pw, pw * 0.25, 0.08, steel); back.position.set(0, plate.position.y, -2.2 * U - 0.02 * U); g.add(back);
+            /* the gantry's two lamps over the plate (they wake on the press-in) */
+            var lamps = [];
+            [-0.3, 0.3].forEach(function (f) { var lp = _hzGlowSprite(1.2 * U, 0xfff2c8, 0.16, 0.0, 0.0, 0.0); lp.position.set(f * pw * U, (H - 0.05) * U, -1.9 * U); g.add(lp); lamps.push(lp); });
+            /* THE LEAVING plate on the right shoulder, the pack's speed plate on the left */
+            var lv = (typeof _hzTextTex === 'function') ? _hzTextTex('hq_road_leaving_' + (ctx.room && ctx.room.label || ''), ['LEAVING', String((ctx.room && ctx.room.label) || '').split('·')[0].trim() || 'TOWN'], { w: 512, h: 256, color: '#ffffff', bg: '#1d5a30', border: '#f0f0f0', pad: 0.12, weight: 'bold' }) : null;
+            if (lv) { var lpst = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * U, 0.05 * U, 2.6 * U, 6), steel); lpst.position.set((W / 2 + 1.1) * U, 1.3 * U, -6 * U); g.add(lpst); var lvM = _hqBasic(0xffffff, { side: THREE.DoubleSide }); lvM.map = lv; var lpl = new THREE.Mesh(new THREE.PlaneGeometry(1.4 * U, 0.7 * U), lvM); lpl.position.set((W / 2 + 1.1) * U, 2.3 * U, -6 * U); g.add(lpl); }
+            var spd = texOf('urban:SignSpeedUsa045-small');
+            if (spd) { var sp = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.04 * U, 2.6 * U, 6), steel); sp.position.set(-(W / 2 + 0.9) * U, 1.3 * U, -9 * U); g.add(sp); var spm = _hqMat(null, 1, 1, { transparent: true, emissive: 0x202020, emissiveIntensity: 1 }); spm.map = spd; spm.alphaTest = 0.2; spm.needsUpdate = true; var spl = new THREE.Mesh(new THREE.PlaneGeometry(0.62 * U, 0.78 * U), spm); spl.position.set(-(W / 2 + 0.9) * U, 2.35 * U, -9 * U); g.add(spl); }
+            /* the fog takes the far end: a dark gradient plane across the road's end */
+            var fade = new THREE.Mesh(new THREE.PlaneGeometry((W + 2) * U, 6 * U), _hqBasic(0x000000, { transparent: true, opacity: 0.0, depthWrite: false })); fade.rotation.x = -Math.PI / 2; fade.position.set(0, 0.06 * U, -(LEN - 3) * U); g.add(fade);
+            var motion = { mode: 'way', ow: W, tick: function (k) { lamps.forEach(function (lp) { lp.material.opacity = 0.16 + 0.5 * k; lp.scale.setScalar((1.2 + 0.8 * k) * U); }); } };
+            return { g: g, motion: motion, ow: W, oh: H, plateY: H + 0.5, blockers: [] };
+        },
         gutter: function (U, ctx) {
             var g = new THREE.Group();
             var W = 1.2, H = 0.9;
@@ -43365,7 +43826,7 @@ const ThreeRenderer = (function () {
         var grp = new THREE.Group();
         if (box) { grp.position.set(box.wx * U, y0 * U, box.wz * U); grp.rotation.y = box.yaw; }
         else { grp.position.copy(_hqPolarW(door.deg, Rw, y0)); grp.rotation.y = _hqFaceCentreYaw(door.deg) + (inward ? Math.PI : 0); }
-        var built = b(U, { room: room, door: door, free: !!(box && box.free), cat: W });
+        var built = b(U, { room: room, door: door, free: !!(box && box.free), cat: W, wx: grp.position.x / U, wz: grp.position.z / U, yaw: grp.rotation.y, y0: y0 });   // THE ROAD (2026-09-17): the placed frame, for a builder that samples the ground
         grp.add(built.g);
         var ow = built.ow || W.w || 1.2, oh = built.oh || W.h || 2.2;
         var el = document.createElement('div');

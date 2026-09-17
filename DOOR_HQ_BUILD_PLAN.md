@@ -9770,3 +9770,20 @@ keeps `podium: true` (its units are the mass). `check-terrain.js`: both cities e
 guide + tests + docs → the repo. UNSEEN LIVE: the yard walls, the flat yards from the deck, the outer ground past the
 outer blocks. NEXT (the guide §4): minor roads through the blocks, corner lots, interior fill, roof access; then §6's
 pilot (one site room per family) and §7's discovery.
+
+### 2026-09-17 — THE URBAN PACK: Disaster City in the pack + THE ROADS OUT (local delivery)
+
+The user's 320 tileables (128 px = one battle tile) registered (sprites.js `URBAN_TEXTURES`, the `urban:<Name>` key through
+`_hzTex` / `_hqTex`). THE STREETS: the asphalt is the field's floor sheet, the pavement its path sheet (+ THE PLAZA as a
+21 m path), the yards its cliff sheet (and the outer ground); `_hqBuildRoadMarkings` = the dashes, the edge lines, the
+zebras + stop lines, the kerb stones, the manholes, the speed plates, the NO ENTRY; the GLB road tiles are opt-in
+(`EW_HQ_ROAD_TILES`). THE HOARDINGS: the yard walls in the corrugated sheet, 1.75 m, with the pack's plates. THE
+TEXTURED BUILDINGS: `gen.texP` 0.5 of the lots + every low lot through `_hqTexBuilding` (a 1.75 m facade grid, five
+styles, `gen.ruinP` ruined, the -Glow twins under neon, one merged batch per sheet); the sprite prisms keep the rest.
+THE ROADS OUT: `DOOR_HQ.ways.road` — the highway's four links land on the streets' ENDS (the cross street east →
+Nuketown, west → the Strip; the avenue north → the Stadium; the Strip's road → the grid's cross street east) as roads
+under a gantry that names the next town; Gate C retired. The platform, the lobby, the casino, the chapel, the mall,
+the closet and the noodle bar wear the pack. Verified with `playtest_city.js` (the real sheets through the proxy):
+the streets from the kerb, the plaza, the ring, the three roads out, the grid at night. NOT DONE: the pack on
+D.U.M.B. / CERN / Area 51 / the Δ boards (the key is the edit), a window-lit interior behind the glass, the sprite
+prisms' own ground floors in the pack. Delivery: ENTROPY_WARS_URBAN_PACK.zip.

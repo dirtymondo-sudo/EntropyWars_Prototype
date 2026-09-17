@@ -1865,6 +1865,7 @@
             wayMirror: 0.3, waySplash: 0.32, wayCanvas: 0.28, wayFloo: 0.32, wayStatic: 0.26,   // the second batch (rev 22)
             wayHollow: 0.3,   // THE TREES WITH HOLES IN THEM (2026-09-17)
             wayScope: 0.28,   // THE TELESCOPE (2026-09-17, THE DIVINE STAIR): the brass creak of the tube, a rising shimmer, the step onto cloud
+            wayRoad: 0.3,   // THE ROAD (2026-09-17, THE URBAN PACK): a car passing on the road out — a low whoosh with a doppler fall, the tyres' hiss
             wayTime: 0.3, wayGutter: 0.3,   // DISASTER CITY (2026-09-17): the time machine's disc spinning up to a chord and a snap; the gutter's grate, the drop, the splash below
             /* SKATEBOARDING (HQ plan 9.8, 2026-09-15): the deck's own kit — quiet, the ride plays them thirty times a minute */
             skatePush: 0.3, skateOllie: 0.4, skateLand: 0.36, skateGrind: 0.3, skateBail: 0.45, skateBank: 0.4,
@@ -2132,6 +2133,14 @@
                 _doorNoiseSrc(ctx, _doorEnv(ctx, out, ts, vol * 0.45, 0.005, 0.25, 0.6), ts, 0.9, { type: 'lowpass', f0: 2400, f1: 600, slide: 0.8 });
                 _doorOsc(ctx, _doorEnv(ctx, out, ts + 0.15, vol * 0.1, 0.05, 0.6, 0.9), 'sine', 96, ts + 0.15, 1.5, { f1: 64, slide: 1.4 });
                 return ts - t + 1.8;
+            },
+            wayRoad(ctx, t, out, vol) {
+                /* a car passing on the road out: the engine's low tone rising then falling (the doppler), the tyres' hiss under it, a horn far off */
+                _doorOsc(ctx, _doorEnv(ctx, out, t, vol * 0.14, 0.3, 0.9, 0.5), 'sawtooth', 70, t, 1.6, { f1: 52, slide: 1.4 });
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.3, 0.25, 0.8, 0.6), t, 1.7, { type: 'lowpass', f0: 900, f1: 2200, slide: 0.7 });
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t + 0.8, vol * 0.22, 0.05, 0.6, 0.5), t + 0.8, 1.0, { type: 'lowpass', f0: 2200, f1: 500, slide: 0.9 });
+                _doorOsc(ctx, _doorEnv(ctx, out, t + 1.1, vol * 0.08, 0.04, 0.3, 0.2), 'square', 330, t + 1.1, 0.5, { f1: 300, slide: 0.4 });
+                return 2.0;
             },
             wayStatic(ctx, t, out, vol) {
                 _doorOsc(ctx, _doorEnv(ctx, out, t, vol * 0.12, 0.05, 0.9, 0.1), 'sawtooth', 60, t, 1.05);

@@ -351,6 +351,17 @@ side, the storefronts' fronts (all three assumed −X → the `rot` / `turn` /
 quarter tile's curve at each corner of the ring road (`_hqBuildRoadTiles`'s
 corner rule assumes the road joins the tile's +X and +Z edges).
 
+## 3j. THE URBAN PACK (Assets/Sprites/terrain/urban/, 2026-09-17) — sheets, not models
+320 tileables at 128 px = one battle tile (1.75 m): concrete / plaster / stucco / corrugated walls, curtain glass
+(square · tall · factory · residential, Broken + -Glow sets), window decals, half doors, floor tiles (generic ·
+marble · subway), ceiling tiles, subway grills, trusses, non-slip rubber, the manhole, the signs. sprites.js
+`URBAN_TEXTURES` / `URBAN_TEX_FAMILIES`; the key `urban:<Name>` anywhere a sheet is named. Worn by: Disaster
+City's streets (asphalt / pavement / yards, the hoardings, the road plates, the manholes), THE TEXTURED BUILDINGS
+(`_hqTexBuilding`), the grid at night (the -Glow twins), the platform, the lobby, the casino, the chapel, the mall,
+the closet, the noodle bar. Not yet: D.U.M.B. (ConcreteStriped / MetalTruss / the DANGER plates), CERN (the
+subway grills, the caution plates), Area 51 (the corrugated hangars, the PROHIBITED plates), the Δ boards' own
+urban terrain sheets — the key is the edit, the family list above is the menu.
+
 ## 4. The older `Assets/misc/` models (`_MISC_GLB` + the OBJ landmarks)
 
 | key | file | kind | stands as |
