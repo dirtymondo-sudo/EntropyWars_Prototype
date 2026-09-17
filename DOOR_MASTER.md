@@ -2617,3 +2617,15 @@ Based on GitHub main c65341886eb7a4bd5f895d9d8618dfa6d393d57f. Not uploaded or d
 - Existing files only for runtime: data.js, three-renderer.js, index.html. Shared token 20260917-city-repair-03-cors. data.js belongs on both R2 and Render; three-renderer.js on R2; index.html on Render. No model files changed and no additional asset upload required.
 - Validation: Node v24-compatible bundled runtime; package test command `node --test *.test.js`: 1,584 tests, 1,578 passed, 6 skipped, 0 failed. Syntax checks passed for edited runtime JS. 42 focused city/terrain/floor-plan tests passed; terrain connectivity and return checks run in that suite. New hq-city-repair.test.js covers mesh fit callbacks, entrance alignment, escalator fit/fallback, yielding through bends/respawn, lead-vehicle spacing, density and zero noise. Updated old assertions that required the removed stepped ramp and 0.3 road squash.
 - HQ rendering/traffic changes apply to each player's local exploration; battle simulation and online relay are unchanged. No browser playtest performed. Final visual feel, escalator tread alignment and sign readability remain for in-game confirmation.
+
+
+### 2026-09-17 — Room directory navigation and zoom readability (local delivery, not deployed)
+
+- Verified the source files against GitHub main blob hashes before editing; includes the city repair already on main.
+- map.js now activates a node with one click/tap or Enter/Space. Pointer-up retains the original pressed node even when SVG pointer capture retargets the event. A pan or cancelled pointer never travels. All travel uses the existing _hqDoAction / _hqMapAt path. FIT replaces the conflicting double-click reset.
+- _hqMapLabelPlan prioritizes the current/hovered/focused room, hall/rings and major sites at overview scale, adds facility names at 1.55x and complex parts at 2.4x. Labels use screen-sized type and collision avoidance, recomputed during pan, zoom, resize and discovery animation. Uncharted names remain undisclosed.
+- Search matches charted room names, numbers and area/site names. Results travel directly. Larger hit targets, visible keyboard focus, quieter map lines, no scanline overlay on the directory frame, and readable two-column door rows improve navigation. Existing room graph, authored names and discovery ledger stay authoritative; no new runtime module, story, battle state or network relay.
+- Runtime upload: map.js and styles-base.css to R2; index.html to Render with shared token 20260917-directory-01-cors. Repository-only: hq-map.test.js and the three updated build/history documents.
+- Validation: syntax checked map.js; map tests cover captured clicks, drag/cancel, keyboard travel, progressive labels, label separation and discovery privacy. No browser playtest was performed; final visual appearance remains to be checked in game.
+
+Full suite: tests 1586; pass 1580; fail 0; skipped 6. Executed package.json’s test command directly with the bundled Node runtime (`node --test *.test.js`); npm is unavailable.

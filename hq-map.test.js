@@ -165,7 +165,7 @@ function fakeBody(html) {
   const svg = els.find(e => e.tag === 'svg');
   svg.querySelectorAll = sel => q(sel);
   const q = sel => { if (sel === 'svg.hq-map-svg') return svg; if (sel === 'g[data-mapnode]') return els.filter(e => e.tag === 'g' && e.attrs['data-mapnode'] != null); if (sel === '[data-mapedge]') return els.filter(e => e.attrs['data-mapedge'] != null); return []; };
-  return { querySelector: sel => q(sel), querySelectorAll: sel => q(sel), els, svg };
+  return { querySelector: sel => { const r = q(sel); return Array.isArray(r) ? r[0] || null : r; }, querySelectorAll: sel => q(sel), els, svg };
 }
 
 test('THE PANEL: the directory renders the map (an SVG with a node per drawn room, a ? on an uncharted one, the number on a seen one, the viewer\'s ring, a leg per edge), THIS ROOM\'s WALK rows, the register of reached places, THE LINES — and never an undefined', () => {
@@ -286,4 +286,40 @@ test('THE DIRECTORY GUARD: every room in DOOR_HQ.rooms is a node of the map (rea
   assert.equal(all.nodes.length, G.order.length, 'dev: everything drawn = every node');
   /* THE WOODS (9.3 stage 3): the first complex added under this guard hangs off its site */
   assert.equal(P.site_prebuilt_fairy_forest_clearing.where, P.site_prebuilt_fairy_forest.where, 'the woods hang off the Fairy Forest');
+});
+
+test('Directory travel survives SVG pointer capture; a drag or cancelled touch never travels', () => {
+  const p = { door: {} }; D.hqRoomSee(p, 'foyer'); D.hqRoomSee(p, 'central_egress');
+  const c = renderDirectory(p, 'foyer'), calls = [];
+  c.window._hqDoAction = a => calls.push(a);
+  const handlers = {}, svg = { getAttribute: () => '0 0 1000 800', setAttribute() {}, querySelectorAll: () => [], getBoundingClientRect: () => ({ width: 1000, height: 800 }), addEventListener: (k, fn) => handlers[k] = fn, setPointerCapture() {}, releasePointerCapture() {} };
+  c.svg = svg; vm.runInContext('_hqMapBind(svg)', c);
+  const node = { getAttribute: () => 'central_egress' };
+  const down = { button: 0, pointerId: 1, clientX: 100, clientY: 100, target: { closest: () => node } };
+  const up = { type: 'pointerup', pointerId: 1, clientX: 100, clientY: 100, target: { closest: () => null } };
+  handlers.pointerdown(down); handlers.pointerup(up);
+  assert.equal(calls.length, 1); assert.equal(calls[0].room, 'central_egress');
+  handlers.pointerdown(down); handlers.pointermove({ ...up, clientX: 150 }); handlers.pointerup({ ...up, clientX: 150 });
+  assert.equal(calls.length, 1, 'pan does not travel');
+  handlers.pointerdown(down); handlers.pointerup({ ...up, type: 'pointercancel' });
+  assert.equal(calls.length, 1, 'cancel does not travel');
+  handlers.keydown({ key: 'Enter', target: down.target, preventDefault() {}, stopPropagation() {} });
+  assert.equal(calls.length, 2, 'keyboard activation travels');
+});
+
+test('Directory labels reveal smaller areas with zoom, avoid overlaps, and never disclose question marks', () => {
+  const c = renderDirectory({ door: {} }, 'foyer');
+  const nodes = [
+    { id: 'big', x: 5, y: 5, label: 'Large area', wild: true, st: 'seen' },
+    { id: 'small', x: 7, y: 5, label: 'Small room', part: true, st: 'seen' },
+    { id: 'hidden', x: 6, y: 5, label: 'Secret', st: 'q' },
+    { id: 'overlap', x: 5, y: 5, label: 'Another area', wild: true, st: 'seen' }
+  ];
+  c.model = { nodes }; c.map.fit = [0, 0, 1000, 1000];
+  vm.runInContext('this.wide = _hqMapLabelPlan(model, [0,0,1000,1000], 1000,1000); this.close = _hqMapLabelPlan(model, [400,400,400,400], 1000,1000);', c);
+  assert.ok(c.wide.some(n => n.id === 'big')); assert.ok(!c.wide.some(n => n.id === 'small'));
+  assert.ok(c.close.some(n => n.id === 'small')); assert.ok(!c.close.some(n => n.id === 'hidden'));
+  const a = c.wide.find(n => n.id === 'big'), b = c.wide.find(n => n.id === 'overlap');
+  assert.ok(!b || Math.abs(a.y - b.y) >= 19, 'overlapping anchors get separated labels');
+  assert.ok(c.out.includes('id="hqMapSearch"')); assert.ok(!c.out.includes('data-mapmatch="uncharted'));
 });
