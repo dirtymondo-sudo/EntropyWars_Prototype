@@ -5423,11 +5423,18 @@
                         <div class="pm-set-row">
                             <button class="pm-set-btn${isFs ? ' active' : ''}" id="mmFsBtn" onclick="toggleFullscreen();setTimeout(()=>{const b=document.getElementById('mmFsBtn');if(b)b.textContent=document.fullscreenElement?'Exit Fullscreen':'⛶ Fullscreen';},120);">${isFs ? 'Exit Fullscreen' : '⛶ Fullscreen'}</button>
                         </div>
+                    </div>
+                    ${(typeof window._buildVideoSettingsHTML === 'function') ? window._buildVideoSettingsHTML('window._openMainMenuSettings();', { bare: true, noFullscreen: true,
+                        perf: window._buildPerfSettingsHTML('window._openMainMenuSettings();'),
+                        extra: `${typeof window._buildVitalsLookHTML === 'function' ? window._buildVitalsLookHTML('window._openMainMenuSettings();') : ''}
+                        ${typeof window._buildHudThemeHTML === 'function' ? window._buildHudThemeHTML('window._openMainMenuSettings();') : ''}
+                        ${typeof window._buildWorldModeHTML === 'function' ? window._buildWorldModeHTML('window._openMainMenuSettings();') : ''}` })
+                    : `<div class="pm-set-group"><div class="pm-set-group-title">Graphics</div>
                         ${window._buildPerfSettingsHTML('window._openMainMenuSettings();')}
                         ${typeof window._buildVitalsLookHTML === 'function' ? window._buildVitalsLookHTML('window._openMainMenuSettings();') : ''}
                         ${typeof window._buildHudThemeHTML === 'function' ? window._buildHudThemeHTML('window._openMainMenuSettings();') : ''}
                         ${typeof window._buildWorldModeHTML === 'function' ? window._buildWorldModeHTML('window._openMainMenuSettings();') : ''}
-                    </div>
+                    </div>`}
                     ${(typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && typeof DOOR_HQ !== 'undefined') ? (() => {
                         const on = (typeof window._hqEnabled === 'function') && window._hqEnabled();
                         return `<div class="pm-set-group">

@@ -7362,7 +7362,22 @@
             _renderPauseMenu();
         };
 
-        function _buildPauseVideo() {
+        /* ── THE VIDEO SETTINGS, EVERYWHERE (2026-09-17) ──────────────────────
+           One builder for the Graphics / CRT / Retro / Particles sheet: the battle
+           pause menu's VIDEO tab (_buildPauseVideo, refresh = _renderPauseMenu),
+           the main menu's Settings and the HQ pause menu's SETTINGS (map.js
+           _renderMainMenuSettings, refresh = _openMainMenuSettings). opts:
+           battle (the rows only a live board has: animation / camera toggles,
+           nametags, fog grid, batched terrain), perf / extra (the host's own
+           literal rows), bare (no section wrapper), noFullscreen. Every handler
+           is a global, so any host works. MAP LOOKS: a map / room may lay a
+           grade over these (ThreePost.setSceneLook); the toggle refuses it. */
+        window._buildVideoSettingsHTML = function (refreshJs, opts) {
+            opts = opts || {};
+            const RJ = refreshJs || '_renderPauseMenu();', inBattle = !!opts.battle;
+            const looksOn = !(window.EW_NO_SCENE_LOOKS) && (function () { try { return localStorage.getItem('ew_scene_looks') !== 'off'; } catch (e) { return true; } })();
+            const lookRec = (typeof ThreePost !== 'undefined' && ThreePost.getSceneLook) ? ThreePost.getSceneLook() : null;
+            const lookNow = lookRec ? (lookRec.name || 'a map look') : '';
             const cinematicChecked = state.cinematicMode ? 'checked' : '';
             const actionCamChecked = state.cinematicActionCam ? 'checked' : '';
             const animChecked = document.getElementById('animToggleBattle')?.checked !== false ? 'checked' : '';
@@ -7426,7 +7441,7 @@
             // sprites already and look wrong double-pixelated.
             const pixModelsOnly = (retroState.pixelScope || 'models') !== 'screen';
             const tintPct = Math.round(retroState.tintAmount*100);
-            const retroPresetBtns = retroPresets.map(p=>`<button class="pm-seg-btn${retroPreset===p.key?' active':''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroPreset)ThreePost.setRetroPreset('${p.key}');_renderPauseMenu();">${p.label}</button>`).join('');
+            const retroPresetBtns = retroPresets.map(p=>`<button class="pm-seg-btn${retroPreset===p.key?' active':''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroPreset)ThreePost.setRetroPreset('${p.key}');${RJ}">${p.label}</button>`).join('');
 
             const ps = state.particleSettings || {};
             const pKeys = ['projectiles','aoe','movement','healing','buffs','status','levelUp','death','combos'];
@@ -7439,18 +7454,18 @@
             const fogGridOn = !(_TR && _TR.isFogGridOn) || _TR.isFogGridOn();
 
             const uiPref = window._getUIScalePref ? window._getUIScalePref() : 1;
-            const _uiSeg = (v, label) => `<button class="pm-seg-btn${Math.abs(uiPref - v) < 0.01 ? ' active' : ''}" onclick="window._setUIScalePref(${v});_renderPauseMenu();">${label}</button>`;
+            const _uiSeg = (v, label) => `<button class="pm-seg-btn${Math.abs(uiPref - v) < 0.01 ? ' active' : ''}" onclick="window._setUIScalePref(${v});${RJ}">${label}</button>`;
 
             return `
-            <div class="pm-settings-section">
+            ${opts.bare ? '' : '<div class="pm-settings-section">'}
                 <div class="pm-set-group">
                     <div class="pm-set-group-title">Display</div>
-                    <div class="pm-set-toggles">
+                    ${inBattle ? `<div class="pm-set-toggles">
                         <label class="pm-toggle"><input type="checkbox" ${animChecked} onchange="var cb=document.getElementById('animToggleBattle');if(cb){cb.checked=this.checked;cb.dispatchEvent(new Event('change'));}"><span class="pm-toggle-label">Animation</span></label>
                         <label class="pm-toggle"><input type="checkbox" ${cinematicChecked} onchange="document.getElementById('cinematicToggle').checked=this.checked;state.cinematicMode=this.checked;"><span class="pm-toggle-label">Cinematic</span></label>
                         <label class="pm-toggle"><input type="checkbox" ${cameraChecked} onchange="var cb=document.getElementById('cameraToggleBattle');if(cb){cb.checked=this.checked;cb.dispatchEvent(new Event('change'));}"><span class="pm-toggle-label">Camera Follow</span></label>
                         <label class="pm-toggle"><input type="checkbox" ${actionCamChecked} onchange="window._setCinematicActionCam(this.checked);"><span class="pm-toggle-label">Action Cam</span><span class="pm-toggle-hint">cinematic attack shots</span></label>
-                    </div>
+                    </div>` : ''}
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">HUD Size</span>
                         <div class="pm-seg-group">
@@ -7464,7 +7479,7 @@
 
                 <div class="pm-set-group">
                     <div class="pm-set-group-title">Graphics</div>
-                    ${typeof window._buildPerfSettingsHTML === 'function' ? window._buildPerfSettingsHTML('_renderPauseMenu();') : ''}
+                    ${opts.perf != null ? opts.perf : (typeof window._buildPerfSettingsHTML === 'function' ? window._buildPerfSettingsHTML(RJ) : '')}
                     <div class="pm-set-toggles" style="margin-top:8px">
                         <label class="pm-toggle"><input type="checkbox" ${fxaaOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setFXAA)ThreePost.setFXAA(this.checked);"><span class="pm-toggle-label">FXAA</span><span class="pm-toggle-hint">anti-aliasing</span></label>
                         <label class="pm-toggle"><input type="checkbox" ${filmicOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setFilmicTone)ThreePost.setFilmicTone(this.checked);"><span class="pm-toggle-label">Filmic Tone</span><span class="pm-toggle-hint">rich contrast grade</span></label>
@@ -7472,9 +7487,9 @@
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Shadows</span>
                         <div class="pm-seg-group">
-                            <button class="pm-seg-btn${shadowQ==='off'?' active':''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setShadowQuality)ThreePost.setShadowQuality('off');_renderPauseMenu();">Off</button>
-                            <button class="pm-seg-btn${shadowQ==='low'?' active':''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setShadowQuality)ThreePost.setShadowQuality('low');_renderPauseMenu();">Low</button>
-                            <button class="pm-seg-btn${shadowQ==='high'?' active':''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setShadowQuality)ThreePost.setShadowQuality('high');_renderPauseMenu();">High</button>
+                            <button class="pm-seg-btn${shadowQ==='off'?' active':''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setShadowQuality)ThreePost.setShadowQuality('off');${RJ}">Off</button>
+                            <button class="pm-seg-btn${shadowQ==='low'?' active':''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setShadowQuality)ThreePost.setShadowQuality('low');${RJ}">Low</button>
+                            <button class="pm-seg-btn${shadowQ==='high'?' active':''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setShadowQuality)ThreePost.setShadowQuality('high');${RJ}">High</button>
                         </div>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
@@ -7521,38 +7536,39 @@
                     <div class="pm-set-toggles" style="margin-top:8px">
                         <label class="pm-toggle"><input type="checkbox" ${spellGradeOn ? 'checked' : ''} onchange="window.EW_DISABLE_SPELL_GRADE=!this.checked;if(!this.checked&&typeof ThreePost!=='undefined'&&ThreePost.spellGradeClear)ThreePost.spellGradeClear();try{localStorage.setItem('ew_spellGrade',this.checked?'1':'0');}catch(e){}"><span class="pm-toggle-label">Spell Cinematics</span><span class="pm-toggle-hint">big spells black out the board around the caster and target, cycle colour and split the RGB</span></label>
                     </div>
+                    <div class="pm-set-toggles" style="margin-top:8px">
+                        <label class="pm-toggle"><input type="checkbox" ${looksOn ? 'checked' : ''} onchange="if(window._setSceneLooks)window._setSceneLooks(this.checked);${RJ}"><span class="pm-toggle-label">Map Looks</span><span class="pm-toggle-hint">${lookNow ? 'wearing ' + lookNow + ' over your settings' : 'a map or a room may lay its own grade over these settings'}</span></label>
+                    </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Pixel Ratio</span>
                         <div class="pm-seg-group">
-                            <button class="pm-seg-btn${!isNativePixel ? ' active' : ''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setPixelRatio)ThreePost.setPixelRatio(1);_renderPauseMenu();">Fast</button>
-                            <button class="pm-seg-btn${isNativePixel ? ' active' : ''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setPixelRatio)ThreePost.setPixelRatio(Math.min(window.devicePixelRatio||1,2));_renderPauseMenu();">Native</button>
+                            <button class="pm-seg-btn${!isNativePixel ? ' active' : ''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setPixelRatio)ThreePost.setPixelRatio(1);${RJ}">Fast</button>
+                            <button class="pm-seg-btn${isNativePixel ? ' active' : ''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setPixelRatio)ThreePost.setPixelRatio(Math.min(window.devicePixelRatio||1,2));${RJ}">Native</button>
                         </div>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">FPS Cap</span>
                         <div class="pm-seg-group">
-                            <button class="pm-seg-btn${fpsCap===30?' active':''}" onclick="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setFpsCap)ThreeRenderer.setFpsCap(30);_renderPauseMenu();">30</button>
-                            <button class="pm-seg-btn${fpsCap===60?' active':''}" onclick="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setFpsCap)ThreeRenderer.setFpsCap(60);_renderPauseMenu();">60</button>
-                            <button class="pm-seg-btn${fpsCap===0?' active':''}" onclick="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setFpsCap)ThreeRenderer.setFpsCap(0);_renderPauseMenu();">Uncapped</button>
+                            <button class="pm-seg-btn${fpsCap===30?' active':''}" onclick="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setFpsCap)ThreeRenderer.setFpsCap(30);${RJ}">30</button>
+                            <button class="pm-seg-btn${fpsCap===60?' active':''}" onclick="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setFpsCap)ThreeRenderer.setFpsCap(60);${RJ}">60</button>
+                            <button class="pm-seg-btn${fpsCap===0?' active':''}" onclick="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setFpsCap)ThreeRenderer.setFpsCap(0);${RJ}">Uncapped</button>
                         </div>
                     </div>
                     <div class="pm-set-toggles" style="margin-top:8px">
                         <label class="pm-toggle"><input type="checkbox" ${fpsCounterOn ? 'checked' : ''} onchange="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setFpsCounter)ThreeRenderer.setFpsCounter(this.checked);"><span class="pm-toggle-label">FPS Counter</span><span class="pm-toggle-hint">on-screen framerate</span></label>
-                        <label class="pm-toggle"><input type="checkbox" ${terrainBatchOn ? 'checked' : ''} onchange="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setTerrainBatching)ThreeRenderer.setTerrainBatching(this.checked);"><span class="pm-toggle-label">Batched Terrain</span><span class="pm-toggle-hint">fewer draw calls — turn off only if terrain misrenders</span></label>
-                        <label class="pm-toggle"><input type="checkbox" ${fogGridOn ? 'checked' : ''} onchange="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setFogGrid)ThreeRenderer.setFogGrid(this.checked);"><span class="pm-toggle-label">Fog Grid</span><span class="pm-toggle-hint">fog-of-war overlay — unseen enemies stay hidden either way</span></label>
+                        ${inBattle ? `<label class="pm-toggle"><input type="checkbox" ${terrainBatchOn ? 'checked' : ''} onchange="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setTerrainBatching)ThreeRenderer.setTerrainBatching(this.checked);"><span class="pm-toggle-label">Batched Terrain</span><span class="pm-toggle-hint">fewer draw calls — turn off only if terrain misrenders</span></label>
+                        <label class="pm-toggle"><input type="checkbox" ${fogGridOn ? 'checked' : ''} onchange="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setFogGrid)ThreeRenderer.setFogGrid(this.checked);"><span class="pm-toggle-label">Fog Grid</span><span class="pm-toggle-hint">fog-of-war overlay — unseen enemies stay hidden either way</span></label>` : ''}
                     </div>
-                    <div class="pm-set-row pm-setting-row" style="margin-top:6px">
+                    ${inBattle ? `<div class="pm-set-row pm-setting-row" style="margin-top:6px">
                         <span class="pm-setting-label">Nametags</span>
                         <div class="pm-seg-group">
-                            <button class="pm-seg-btn${nametagMode==='name'?' active':''}" onclick="state.nametagMode='name';markDirty('board');renderIfDirty();_renderPauseMenu();">Name</button>
-                            <button class="pm-seg-btn${nametagMode==='race'?' active':''}" onclick="state.nametagMode='race';markDirty('board');renderIfDirty();_renderPauseMenu();">Race</button>
-                            <button class="pm-seg-btn${nametagMode==='job'?' active':''}" onclick="state.nametagMode='job';markDirty('board');renderIfDirty();_renderPauseMenu();">Job</button>
-                            <button class="pm-seg-btn${nametagMode==='none'?' active':''}" onclick="state.nametagMode='none';markDirty('board');renderIfDirty();_renderPauseMenu();">Lv</button>
+                            <button class="pm-seg-btn${nametagMode==='name'?' active':''}" onclick="state.nametagMode='name';markDirty('board');renderIfDirty();${RJ}">Name</button>
+                            <button class="pm-seg-btn${nametagMode==='race'?' active':''}" onclick="state.nametagMode='race';markDirty('board');renderIfDirty();${RJ}">Race</button>
+                            <button class="pm-seg-btn${nametagMode==='job'?' active':''}" onclick="state.nametagMode='job';markDirty('board');renderIfDirty();${RJ}">Job</button>
+                            <button class="pm-seg-btn${nametagMode==='none'?' active':''}" onclick="state.nametagMode='none';markDirty('board');renderIfDirty();${RJ}">Lv</button>
                         </div>
-                    </div>
-                    ${typeof window._buildVitalsLookHTML === 'function' ? window._buildVitalsLookHTML('_renderPauseMenu();') : ''}
-                    ${typeof window._buildHudThemeHTML === 'function' ? window._buildHudThemeHTML('_renderPauseMenu();') : ''}
-                    ${typeof window._buildWorldModeHTML === 'function' ? window._buildWorldModeHTML('_renderPauseMenu();') : ''}
+                    </div>` : ''}
+                    ${opts.extra || ''}
                 </div>
 
                 <div class="pm-set-group pm-collapsible">
@@ -7563,8 +7579,8 @@
                     </button>
                     <div class="pm-collapse-body" style="display:${crtVigOn?'block':'none'}">
                         <div class="pm-set-toggles" style="margin-top:10px">
-                            <label class="pm-toggle"><input type="checkbox" ${crtOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setCinematicFilter)ThreePost.setCinematicFilter(this.checked);_renderPauseMenu();"><span class="pm-toggle-label">CRT Filter</span><span class="pm-toggle-hint">scanlines + chroma</span></label>
-                            <label class="pm-toggle"><input type="checkbox" ${vignetteOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setVignetteEnabled)ThreePost.setVignetteEnabled(this.checked);_renderPauseMenu();"><span class="pm-toggle-label">Vignette</span><span class="pm-toggle-hint">dark corners</span></label>
+                            <label class="pm-toggle"><input type="checkbox" ${crtOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setCinematicFilter)ThreePost.setCinematicFilter(this.checked);${RJ}"><span class="pm-toggle-label">CRT Filter</span><span class="pm-toggle-hint">scanlines + chroma</span></label>
+                            <label class="pm-toggle"><input type="checkbox" ${vignetteOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setVignetteEnabled)ThreePost.setVignetteEnabled(this.checked);${RJ}"><span class="pm-toggle-label">Vignette</span><span class="pm-toggle-hint">dark corners</span></label>
                         </div>
                         <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                             <span class="pm-setting-label">Scanlines</span>
@@ -7602,7 +7618,7 @@
                     </button>
                     <div class="pm-collapse-body" style="display:${retroOn?'block':'none'}">
                         <div class="pm-set-toggles" style="margin-top:10px">
-                            <label class="pm-toggle"><input type="checkbox" ${retroOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroFilter)ThreePost.setRetroFilter(this.checked);_renderPauseMenu();"><span class="pm-toggle-label">Retro Filter</span><span class="pm-toggle-hint">dither + grade</span></label>
+                            <label class="pm-toggle"><input type="checkbox" ${retroOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroFilter)ThreePost.setRetroFilter(this.checked);${RJ}"><span class="pm-toggle-label">Retro Filter</span><span class="pm-toggle-hint">dither + grade</span></label>
                         </div>
                         <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                             <span class="pm-setting-label">Mood</span>
@@ -7671,17 +7687,29 @@
                             <label class="pm-toggle"><input type="checkbox" ${ps.combos ? 'checked' : ''} onchange="state.particleSettings.combos=this.checked;window._saveParticleSettings();"><span class="pm-toggle-label">Combos</span></label>
                         </div>
                         <div class="pm-set-row" style="margin-top:6px;gap:6px">
-                            <button class="pm-set-btn" onclick="window._setAllParticles(true);_renderPauseMenu();">All On</button>
-                            <button class="pm-set-btn" onclick="window._setAllParticles(false);_renderPauseMenu();">All Off</button>
+                            <button class="pm-set-btn" onclick="window._setAllParticles(true);${RJ}">All On</button>
+                            <button class="pm-set-btn" onclick="window._setAllParticles(false);${RJ}">All Off</button>
                         </div>
                     </div>
                 </div>
 
-                <div class="pm-set-row" style="margin-top:2px">
-                    <button class="pm-set-btn${isFs ? ' active' : ''}" onclick="toggleFullscreen();setTimeout(()=>_renderPauseMenu(),100)">⛶ ${isFs ? 'Exit Fullscreen' : 'Fullscreen'}</button>
-                </div>
-            </div>`;
+                ${opts.noFullscreen ? '' : `<div class="pm-set-row" style="margin-top:2px">
+                    <button class="pm-set-btn${isFs ? ' active' : ''}" onclick="toggleFullscreen();setTimeout(()=>{${RJ}},100)">⛶ ${isFs ? 'Exit Fullscreen' : 'Fullscreen'}</button>
+                </div>`}
+            ${opts.bare ? '' : '</div>'}`;
+        };
+        function _buildPauseVideo() {
+            return window._buildVideoSettingsHTML('_renderPauseMenu();', { battle: true,
+                perf: (typeof window._buildPerfSettingsHTML === 'function' ? window._buildPerfSettingsHTML('_renderPauseMenu();') : ''),
+                extra: `${typeof window._buildVitalsLookHTML === 'function' ? window._buildVitalsLookHTML('_renderPauseMenu();') : ''}
+                    ${typeof window._buildHudThemeHTML === 'function' ? window._buildHudThemeHTML('_renderPauseMenu();') : ''}
+                    ${typeof window._buildWorldModeHTML === 'function' ? window._buildWorldModeHTML('_renderPauseMenu();') : ''}` });
         }
+
+        window._setSceneLooks = function (on) {
+            try { localStorage.setItem('ew_scene_looks', on ? 'on' : 'off'); } catch (e) {}
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.refreshSceneLook) ThreeRenderer.refreshSceneLook(); } catch (e) {}
+        };
 
         /* ── Controls settings (shared: pause-menu tab + main-menu Settings) ──
            Camera-mode selector, gamepad status + remappable bindings, stick

@@ -958,21 +958,62 @@ const ThreePost = (function () {
         }
     }
 
+    /* ── THE SCENE LOOK (2026-09-17) — a per-map / per-room GRADE laid OVER the player's
+       settings without touching them. A map row (EW_MAP_META env.look) or an HQ room
+       (shell.look) may say { retro: { enabled, preset, pixelSize, ditherStrength, levels,
+       tintAmount, grain, ditherScale }, cin: { vignette, vigAmount, vigSize, vigSoft, crt,
+       scanline, chroma, curvature }, nightMood, exposure, bloom, dof, name }: every field
+       present wins over the saved preference for as long as the look is set; every field
+       absent falls through to the player's own. setSceneLook(null) clears it. Nothing here
+       writes localStorage — the getters the settings panels read (getRetroState,
+       getCinematicState, getBloomStrength…) keep answering the PREFERENCE, so the sliders
+       stay the player's; getSceneLook() says what is worn on top. The player can refuse
+       every look at once (Settings → Graphics → Map Looks): map.js / the renderer pass null
+       when localStorage ew_scene_looks === 'off'. */
+    var _look = null;
+    function _lkNum(key, base) { return (_look && typeof _look[key] === 'number' && !isNaN(_look[key])) ? _look[key] : base; }
+    function _lkRetro() {
+        if (!_look || !_look.retro) return _retro;
+        var o = {}; for (var k in _retro) o[k] = _retro[k];
+        var L = _look.retro; for (var k2 in L) if (L[k2] != null) o[k2] = L[k2];
+        if (!RETRO_PRESETS[o.preset]) o.preset = _retro.preset;
+        /* a preset named by the look re-seeds its own levels / tint unless the look pins them */
+        if (L.preset && RETRO_PRESETS[L.preset]) { if (L.levels == null) o.levels = RETRO_PRESETS[L.preset].levels; if (L.tintAmount == null) o.tintAmount = RETRO_PRESETS[L.preset].tintAmount; }
+        return o;
+    }
+    function _lkCin() {
+        if (!_look || !_look.cin) return _cin;
+        var o = {}; for (var k in _cin) o[k] = _cin[k];
+        var L = _look.cin; for (var k2 in L) if (L[k2] != null) o[k2] = L[k2];
+        return o;
+    }
+    function setSceneLook(look) {
+        var next = null;
+        if (look && typeof look === 'object') { next = {}; for (var k in look) next[k] = look[k]; }
+        _look = next;
+        _applyRetroUniforms();
+        if (_retroPass) _retroPass.enabled = !!_lkRetro().enabled;
+        _applyCinematicUniforms();
+        _applyDofUniforms();
+        if (_renderer && _cur) _renderer.toneMappingExposure = _cur.exposure * _lkNum('exposure', _exposureUser) * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
+    }
+    function getSceneLook() { return _look; }
     // Push the full _retro state (including the active preset's tint/sat/contrast)
     // into the live shader uniforms.
     function _applyRetroUniforms() {
         if (!_retroPass) return;
         var u = _retroPass.material.uniforms;
-        var p = RETRO_PRESETS[_retro.preset] || RETRO_PRESETS.teal;
-        u.uPixelSize.value      = _retro.pixelSize;
-        u.uLevels.value         = _retro.levels;
-        u.uDitherStrength.value = _retro.ditherStrength;
-        u.uDitherScale.value    = _retro.ditherScale;
-        u.uTintAmount.value     = _retro.tintAmount;
+        var R = _lkRetro();
+        var p = RETRO_PRESETS[R.preset] || RETRO_PRESETS.teal;
+        u.uPixelSize.value      = R.pixelSize;
+        u.uLevels.value         = R.levels;
+        u.uDitherStrength.value = R.ditherStrength;
+        u.uDitherScale.value    = R.ditherScale;
+        u.uTintAmount.value     = R.tintAmount;
         u.uTint.value.set(p.tint[0], p.tint[1], p.tint[2]);
         u.uSaturation.value     = p.saturation;
         u.uLevelsInOut.value.set(p.loIn, p.hiIn);
-        u.uGrain.value          = _retro.grain;
+        u.uGrain.value          = R.grain;
     }
 
     // Optional tinted scene fog. Keyed on camera distance, so with the far orbit
@@ -1181,15 +1222,15 @@ const ThreePost = (function () {
             _ambientLight.intensity = _cur.ambInt;
         }
         if (_renderer) {
-            _renderer.toneMappingExposure = _cur.exposure * _exposureUser * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
+            _renderer.toneMappingExposure = _cur.exposure * _lkNum('exposure', _exposureUser) * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
         }
         if (_bloomPass) {
-            var _bloomOn = BLOOM_USER_STRENGTH > 0;
+            var _bu = _lkNum('bloom', BLOOM_USER_STRENGTH), _bloomOn = _bu > 0;
             _bloomPass.enabled = _bloomOn;
             if (_bloomOn) {
                 // floor the env grade (which is 0 by day/night) to the user level
                 // so the glow is always visible, and let bright sky-events add to it
-                _bloomPass.strength  = Math.max(_cur.bloomStr, BLOOM_USER_STRENGTH);
+                _bloomPass.strength  = Math.max(_cur.bloomStr, _bu);
                 _bloomPass.threshold = Math.min(_cur.bloomThr, BLOOM_USER_THRESHOLD);
                 _bloomPass.radius    = BLOOM_USER_RADIUS;
             }
@@ -1336,7 +1377,7 @@ const ThreePost = (function () {
         _filmic = !!enabled;
         if (_renderer) {
             _renderer.toneMapping = _filmic ? THREE.ACESFilmicToneMapping : THREE.LinearToneMapping;
-            _renderer.toneMappingExposure = _cur.exposure * _exposureUser * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
+            _renderer.toneMappingExposure = _cur.exposure * _lkNum('exposure', _exposureUser) * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
         }
         _recompileSceneMaterials();
         try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_filmicTone', _filmic ? '1' : '0'); } catch (e) {}
@@ -1345,8 +1386,9 @@ const ThreePost = (function () {
 
     // ── Tilt-shift DoF API ───────────────────────────────────────────────
     function _applyDofUniforms() {
-        var on = _dofStrength > 0.01;
-        var amt = DOF_MAX_BLUR_PX * _dofStrength;
+        var _ds = _lkNum('dof', _dofStrength);
+        var on = _ds > 0.01;
+        var amt = DOF_MAX_BLUR_PX * _ds;
         if (_dofPassH) {
             _dofPassH.enabled = on;
             _dofPassH.material.uniforms['uAmount'].value = amt;
@@ -1855,7 +1897,7 @@ const ThreePost = (function () {
         // the eye sees (per the aesthetic guide's recommended pass order).
         _retroPass = new THREE.ShaderPass(_RetroShader);
         _retroPass.material.uniforms['uResolution'].value.set(w, h);
-        _retroPass.enabled = _retro.enabled;
+        _retroPass.enabled = !!_lkRetro().enabled;
         _applyRetroUniforms();
         _composer.addPass(_retroPass);
         _applySceneFog();
@@ -1917,14 +1959,15 @@ const ThreePost = (function () {
             }
         }
         if (_cinematicPass) {
-            var _ng = _nightF * _nightMood * 0.85;
+            var _ng = _nightF * _lkNum('nightMood', _nightMood) * 0.85;
             if (_dim > 0) _ng = Math.max(_ng, _dim * 0.92);
             // A spotlit beat carries its own darkness in the grade (the pools
             // lift out of it), so it feeds the night grade too — that's what
             // drains and crushes the world OUTSIDE the pools.
             if (_spotOn) _ng = Math.max(_ng, _grade.dim * _gk * 0.85);
             _cinematicPass.material.uniforms['uNightGrade'].value = _ng;
-            _cinematicPass.enabled = !!(_cin.crt || _cin.vignette || _ng > 0.001
+            var _lc = _lkCin();
+            _cinematicPass.enabled = !!(_lc.crt || _lc.vignette || _ng > 0.001
                 || _gk > 0.001 || _kick > 0.01);
         }
         // Exposure is pulled down for a plain dramaDim, but NOT while a
@@ -1934,14 +1977,14 @@ const ThreePost = (function () {
             // Written AFTER syncLighting() (which owns the steady value) so
             // the beat wins for its duration and restores itself on release.
             _renderer.toneMappingExposure =
-                _cur.exposure * _exposureUser * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0)
+                _cur.exposure * _lkNum('exposure', _exposureUser) * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0)
                 * (1 - 0.5 * _dim);
         }
 
         // Impact flash — decaying bloom kick over the steady user strength.
         if (_bloomPass && _bloomPass.enabled) {
             var _pulse = _bloomPulseCurrent(performance.now());
-            _bloomPass.strength = Math.max(_cur.bloomStr, BLOOM_USER_STRENGTH) + _pulse;
+            _bloomPass.strength = Math.max(_cur.bloomStr, _lkNum('bloom', BLOOM_USER_STRENGTH)) + _pulse;
         }
 
         if (_cinematicPass && _cinematicPass.enabled) {
@@ -1952,7 +1995,7 @@ const ThreePost = (function () {
             _retroPass.material.uniforms['uTime'].value = performance.now() * 0.001;
             // Models-only pixelation needs its silhouette mask refreshed before
             // the composer runs. Only when the snap is actually doing something.
-            var _wantMask = (_retro.pixelScope !== 'screen') && _retro.pixelSize > 1.0 && cam;
+            var _wantMask = (_retro.pixelScope !== 'screen') && _lkRetro().pixelSize > 1.0 && cam;
             var _maskOk = _wantMask ? _renderPixelMask(cam) : false;
             _retroPass.material.uniforms['tMask'].value = _maskOk ? _maskRT.texture : null;
             _retroPass.material.uniforms['uMaskMode'].value = _maskOk ? 1.0 : 0.0;
@@ -1997,7 +2040,7 @@ const ThreePost = (function () {
             if (_cinematicPass) {
                 _cinematicPass.material.uniforms['uNightGrade'].value = 0;
                 _cinematicPass.material.uniforms['uTime'].value = performance.now() * 0.001;
-                _cinematicPass.enabled = !!(_cin.crt || _cin.vignette);
+                var _lc2 = _lkCin(); _cinematicPass.enabled = !!(_lc2.crt || _lc2.vignette);
             }
             if (_retroPass && _retroPass.enabled) {
                 _retroPass.material.uniforms['uTime'].value = performance.now() * 0.001;
@@ -2005,7 +2048,7 @@ const ThreePost = (function () {
                 _retroPass.material.uniforms['uMaskMode'].value = 0.0;
             }
             if (_bloomPass && _bloomPass.enabled) _bloomPass.strength = Math.max(BLOOM_USER_STRENGTH, 0.42);
-            _renderer.toneMappingExposure = _exposureUser * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
+            _renderer.toneMappingExposure = _lkNum('exposure', _exposureUser) * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
             _composer.render();
         } finally {
             rp.scene = prevScene;
@@ -2054,7 +2097,7 @@ const ThreePost = (function () {
             var on = BLOOM_USER_STRENGTH > 0;
             _bloomPass.enabled = on;
             if (on) {
-                _bloomPass.strength  = Math.max(_cur.bloomStr, BLOOM_USER_STRENGTH);
+                _bloomPass.strength  = Math.max(_cur.bloomStr, _lkNum('bloom', BLOOM_USER_STRENGTH));
                 _bloomPass.threshold = Math.min(_cur.bloomThr, BLOOM_USER_THRESHOLD);
                 _bloomPass.radius    = BLOOM_USER_RADIUS;
             }
@@ -2071,7 +2114,7 @@ const ThreePost = (function () {
         _exposureUser = Math.max(EXPOSURE_MIN, Math.min(EXPOSURE_MAX, s));
         // Include the filmic compensation — omitting it made the Brightness
         // slider visibly darken the scene until the next day/night ease.
-        if (_renderer) _renderer.toneMappingExposure = _cur.exposure * _exposureUser * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
+        if (_renderer) _renderer.toneMappingExposure = _cur.exposure * _lkNum('exposure', _exposureUser) * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
         try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_exposure', String(_exposureUser)); } catch (e) {}
     }
     function getExposureScale() { return _exposureUser; }
@@ -2205,15 +2248,15 @@ const ThreePost = (function () {
     // bypasses that effect, so the CRT look and the vignette are truly separable.
     function _applyCinematicUniforms() {
         if (!_cinematicPass) return;
-        var u = _cinematicPass.material.uniforms;
-        u['uScanlineAlpha'].value  = _cin.scanline;
-        u['uChromaShift'].value    = _cin.chroma;
-        u['uCurvature'].value      = _cin.curvature;
-        u['uVignetteSize'].value   = _cin.vigSize;
-        u['uVignetteSoft'].value   = _cin.vigSoft;
-        u['uVignetteAmount'].value = _cin.vignette ? _cin.vigAmount : 0.0;
-        u['uCrtAmount'].value      = _cin.crt ? 1.0 : 0.0;
-        _cinematicPass.enabled = !!(_cin.crt || _cin.vignette);
+        var u = _cinematicPass.material.uniforms, C = _lkCin();
+        u['uScanlineAlpha'].value  = C.scanline;
+        u['uChromaShift'].value    = C.chroma;
+        u['uCurvature'].value      = C.curvature;
+        u['uVignetteSize'].value   = C.vigSize;
+        u['uVignetteSoft'].value   = C.vigSoft;
+        u['uVignetteAmount'].value = C.vignette ? C.vigAmount : 0.0;
+        u['uCrtAmount'].value      = C.crt ? 1.0 : 0.0;
+        _cinematicPass.enabled = !!(C.crt || C.vignette);
     }
 
     // CRT look = scanlines + chromatic aberration + barrel curvature + flicker.
@@ -2251,7 +2294,7 @@ const ThreePost = (function () {
     // ── Retro / Haunted-PS1 filter API ──────────────────────────────────
     function setRetroFilter(enabled) {
         _retro.enabled = !!enabled;
-        if (_retroPass) _retroPass.enabled = _retro.enabled;
+        if (_retroPass) _retroPass.enabled = !!_lkRetro().enabled;
         _saveRetro();
     }
     function isRetroFilterEnabled() { return _retro.enabled; }
@@ -2395,6 +2438,8 @@ const ThreePost = (function () {
         getRetroFogDensity: getRetroFogDensity,
         setRetroFogHorizon: setRetroFogHorizon,
         getRetroFogHorizon: getRetroFogHorizon,
+        setSceneLook: setSceneLook,
+        getSceneLook: getSceneLook,
         isReady: isReady,
         dispose: dispose
     };

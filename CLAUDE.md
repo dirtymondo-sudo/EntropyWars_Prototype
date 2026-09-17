@@ -4864,3 +4864,77 @@ scene). UNSEEN LIVE (RULE #1c): all of it — the mesh's look under each
 room's light (the cliff blend, the path sheet), the water sheets, the
 walker on a ramp and off a cliff, the GLBs' facings (`rot` / `h` are the
 edits), the lip snap on a pinnacle, the treeline's density.
+
+## THE FLOOR PLANS + THE ROOM LOOKS + THE VIDEO SETTINGS EVERYWHERE (HQ plan 9.3 stage 5) — 2026-09-17, local delivery
+The user: "use room and hallway generation algorithms like cellular automata or
+random room placing … I can see the square edge of the landscape, supposed to
+be fog … the entire area is outlined in wood planks … see what can be done with
+the graphics settings on a per map basis … I need the video settings in the
+pause menu, not just during battles". **THE FLOOR PLAN**: a terrain room may
+carry `terrain.gen = { kind: 'cave' | 'rooms', seed, … }` (data.js
+`_hqTGenerate`, the block before `hqTerrainRooms`; the numbers in
+`HQ_TERRAIN_GEN`): a MASK over the field says where the walker may go and
+everything outside it is SOLID — rock to `wallH` (3.2 m) in a cave (the crag
+everywhere, the cliff sheet to its top), a 1.7 m THICKET bank with the forest
+on it in the woods. `cave` = cellular automata on a `cell` (1.4 m) lattice
+(fill / born 5 / keep 4 / iters 3; a pinned OPEN neighbour is left out of the
+count or it eats every rock beside it), rounded by two majority passes;
+`rooms` = `n` elliptical CLEARINGS at seeded spots joined by a Prim tree +
+`loops` extra edges of WINDING corridors, every authored `path` a corridor
+too, the door pads rooms. Every authored thing is FORCED OPEN with a margin
+(pads + their lanes, plateau tops + lip, ramps / decks, pools + half their
+bank, streams, walls / rails, trees, props, natives, counters, the spawn, the
+`findSpots` pins; relief — hills / dips / ridges — is NOT forced unless the row
+says `open: true`; `gen.open` / `gen.solid` are hand rows). **THE GUARANTEE**:
+the walker's own reach (`_hqTReachGrid`, hqTerrainFeet on the authored heights
+restricted to the mask) is run from the first door; for every door it misses a
+corridor is CARVED along the walker's shortest path over the UNRESTRICTED
+field (`corridorW` 2.6 m); then every open pocket the walker cannot reach (and
+no feature needs) is filled back in, and a solid island under `minIsland` m²
+is opened (a bump is not a wall). The mask becomes a signed distance
+(`info.maskD`, m; `hqTerrainMaskAt(info, x, z)` bilinear, +∞ without a plan)
+and the rise is added to `info.H` over `edge` m — steeper than the walker
+climbs, so the plan is a wall by the height rule alone and nothing new is read
+by the renderer's walker. `freeFor` (trees / scatter) refuses the solid;
+`info.thicket` = the trees on the woods' solid (`spacing` 2.1 m, the wall of
+the woods first, `maxTrees` 280), planted by three-renderer.js
+`_hqBuildTerrain` as blockers (`thicket: true`, never `tree: true` — the stub
+test counts trees). Thirteen rooms carry a plan (the storm drain is a culvert).
+`hqTerrainDump` / `node check-terrain.js` draw the solid as `#` and print the
+open share and the corridors carved. **THE FOG PAST A FIELD**: `sky.fog.
+density` (per METRE; the woods 0.03) → `_hqEnter`'s `scene.fog` (it was a
+thin 0.00005 / unit — the square edge showed); a closed chamber's own
+`shell.fog = { color, density }` (the cave's warm dark); the open field's
+flat apron + skirt + the paving KERB (the "wood planks") are gone under a
+terrain room — `_hqBuildOuterGround` runs the field's own material out
+`HQ_OUTER_M` (54 m) past the shell, matched to the field's edge, rolling,
+swelling into low rises and falling away under the fog; the treeline stands
+on it (`_hqTerrainGround` → `_hq.outer.yAt`). **THE LOOKS**: data.js
+`HQ_ROOM_LOOKS` (declared ABOVE `EW_MAP_META` — a const in its dead zone
+throws at load) = a GRADE per place `{ name, retro: { enabled, preset,
+pixelSize, ditherStrength, levels, tintAmount, grain }, cin: { vignette,
+vigAmount, vigSize }, nightMood, bloom, exposure?, dof? }`: `shell.look` on a
+room (the woods DREAMY, the cave AMBER, the drain / the Haunted House GREEN,
+the Backrooms FADED, Hell amber), `env.look` on a map row (five maps + their
+Δs). three-post.js **`ThreePost.setSceneLook(look | null)`** lays it OVER the
+player's settings — `_lkRetro()` / `_lkCin()` / `_lkNum(key, base)` are the
+reads at every consumer (retro uniforms + pass gate, cinematic uniforms +
+gates, night mood, exposure, bloom, DoF) and the overlay never writes
+localStorage; the getters the panels read keep answering the PREFERENCE.
+three-renderer.js `_sceneLookOf` (null when localStorage `ew_scene_looks ===
+'off'` / `window.EW_NO_SCENE_LOOKS`), `_applyEnvLook` (from
+`_updateEnvironment`, keyed on the row; `activate()` resets the key),
+`_hqEnter` wears the room's / `_hqLeave` drops it / `_menuEnter` is bare,
+`ThreeRenderer.refreshSceneLook()`. **THE VIDEO SETTINGS EVERYWHERE**: ui.js
+`window._buildVideoSettingsHTML(refreshJs, { battle, perf, extra, bare,
+noFullscreen })` is the ONE sheet (Graphics · CRT · Retro · Particles + the
+MAP LOOKS toggle `window._setSceneLooks`); `_buildPauseVideo` = it with
+`battle: true`; map.js `_renderMainMenuSettings` renders it (`bare`) — and so
+the HQ pause menu's SETTINGS has it. The hosts pass their own literal
+`_buildVitalsLookHTML` / `_buildHudThemeHTML` / `_buildWorldModeHTML` /
+`_buildPerfSettingsHTML` rows (older tests read those literals). `npm test`
+runs `hq-floor-plan.test.js`. UNSEEN LIVE (RULE #1c): the plans' look (the
+cave's rock masses, the thicket banks with the trees on them), the outer
+ground's swell against the treeline, the fog's density (`sky.fog.density` is
+the edit), each look's strength (the table is the edit), the settings sheet's
+length in the HQ pause overlay.

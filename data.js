@@ -14122,6 +14122,29 @@ _MF_DELTA_BUILDERS.prebuilt_bermuda = function () {
     return M.finishDelta();
 };
 
+/* ── THE ROOM LOOKS (2026-09-17) — a GRADE per place, laid over the player's video
+   settings by ThreePost.setSceneLook while they stand there (three-renderer.js
+   _hqEnter reads shell.look; a battle map reads env.look off its EW_MAP_META row).
+   Fields absent fall through to the player's own; Settings → Graphics → Map Looks
+   turns every one off. The woods: the DREAMY preset (a soft warm-violet dither,
+   the sunset print of a VHS), a vignette, the bloom up a notch so the torches
+   and the fireflies smear — the nostalgic fantasy print the user asked for; the
+   cave: the APOCALYPSE amber (a warm dark, torchlight), a heavier vignette; the
+   storm drain and the Haunted House: the HAUNTED green; the Backrooms: FADED (a
+   worn tape); Hell: the amber with the bloom up. A BATTLE MAP wears one through
+   `look:` in its EW_MAP_META env row (below) — the same table, so the fight in
+   the woods is graded like the walk to it. Declared here, above the table. */
+const HQ_ROOM_LOOKS = {
+    woods: { name: 'THE WOODS', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.42, grain: 0.028, tintAmount: 0.5, levels: 26 }, cin: { vignette: true, vigAmount: 0.4, vigSize: 0.5 }, nightMood: 0.5, bloom: 0.24 },
+    cave:  { name: 'THE CAVE',  retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.45, grain: 0.03, tintAmount: 0.42, levels: 22 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.46 }, nightMood: 0.6, bloom: 0.2 },
+    haunted: { name: 'THE HAUNTED HOUSE', retro: { enabled: true, preset: 'green', pixelSize: 1, ditherStrength: 0.48, grain: 0.035, tintAmount: 0.5, levels: 22 }, cin: { vignette: true, vigAmount: 0.55, vigSize: 0.46 }, nightMood: 0.7, bloom: 0.2 },
+    backrooms: { name: 'THE BACKROOMS', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.4, grain: 0.05, tintAmount: 0.4, levels: 18 }, cin: { vignette: true, vigAmount: 0.35, vigSize: 0.55 }, nightMood: 0.3, bloom: 0.1, dof: 0 },
+    hell:  { name: 'HELL', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.45, grain: 0.03, tintAmount: 0.5, levels: 20 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.44 }, nightMood: 0.55, bloom: 0.3 },
+    drain: { name: 'THE STORM DRAIN', retro: { enabled: true, preset: 'green', pixelSize: 1, ditherStrength: 0.5, grain: 0.035, tintAmount: 0.55, levels: 20 }, cin: { vignette: true, vigAmount: 0.55, vigSize: 0.44 }, nightMood: 0.65, bloom: 0.16 },
+};
+// THE LOOK (2026-09-17): `env.look` on a row = a grade (a HQ_ROOM_LOOKS row: retro preset, dither,
+// vignette, night mood, bloom, exposure, dof) laid over the player's video settings for that map —
+// three-renderer.js _applyEnvLook → ThreePost.setSceneLook; Settings → Graphics → Map Looks refuses it.
 // THE WORLD (2026-09-13): `env.world` on a row = how the setting continues to the horizon and how
 // ENTROPY takes it apart (three-renderer.js THE WORLD block): { kind: plain | cavern | void | room,
 //   ground (terrain key; default = the apron's sheet), groundColor, sea (the moat's liquid runs to the
@@ -14162,7 +14185,7 @@ const EW_MAP_META = [
     { id: 'prebuilt_hell', label: 'Hell', w: 20, h: 20, teamSize: 6, tier: 1, base: 'scorched',
       biomes: ['infernal'], deltaPad: 'scorched', near: 'hell',
       desc: '20×20 prebuilt, 6v6 — the mirror of Heaven: a lava river, obsidian altar, basalt spike cover & the chained colossi',
-      env: { world: { kind: 'cavern', sea: true, rim: [{ kind: 'spires', tex: 'obsidian', color: 0x5a4058, d: 14, n: 22, h: 9 }, { kind: 'peaks', tex: 'obsidian', color: 0x4a3048, d: 28, n: 12, h: 8, ranks: 1 }], wall: { tex: 'obsidian', color: 0x3a2838, r: 40, h: 40 }, fogTop: 0.45, rootTex: 'obsidian', rootColor: 0x584058 },
+      env: { look: HQ_ROOM_LOOKS.hell, world: { kind: 'cavern', sea: true, rim: [{ kind: 'spires', tex: 'obsidian', color: 0x5a4058, d: 14, n: 22, h: 9 }, { kind: 'peaks', tex: 'obsidian', color: 0x4a3048, d: 28, n: 12, h: 8, ranks: 1 }], wall: { tex: 'obsidian', color: 0x3a2838, r: 40, h: 40 }, fogTop: 0.45, rootTex: 'obsidian', rootColor: 0x584058 },
              tint: 0x3a0505, tintAmt: 0.50, stars: 0.25, nebula: 0.55, fog: { color: 0x5a0f08, amount: 0.65, top: 0.08, band: 0.6 }, scenery: 'infernal',
              motion: { kind: 'rise', dir: -1, speed: 1.6, ramp: 0.4, max: 6.0, sky: 0.8 } } },   // MOVING MAPS rev 2: the board SINKS — a circle deeper every round, the infernal roster rising past
     { id: 'prebuilt_cyberpunk', label: 'Cyberpunk City', w: 24, h: 24, teamSize: 8, tier: 1, base: 'urban_wall', streetLamps: true,
@@ -14222,12 +14245,12 @@ const EW_MAP_META = [
     { id: 'prebuilt_hollow_earth', label: 'Hollow Earth', w: 20, h: 20, teamSize: 6, tier: 2, base: 'grass_2',
       biomes: ['inner_earth', 'forest'], deltaPad: 'cave_floor', near: 'hollow_earth',
       desc: '20×20 prebuilt, 6v6 — the world above and its petrified mirror below, joined by two great gates under a darkness veil',
-      env: { world: { kind: 'cavern', rim: [{ kind: 'spires', tex: 'cave_wall', color: 0x7a6a8c, d: 14, n: 26, h: 9 }], wall: { tex: 'cave_wall', color: 0x6a5a7c, r: 34, h: 36 }, fogTop: 0.55 },
+      env: { look: HQ_ROOM_LOOKS.cave, world: { kind: 'cavern', rim: [{ kind: 'spires', tex: 'cave_wall', color: 0x7a6a8c, d: 14, n: 26, h: 9 }], wall: { tex: 'cave_wall', color: 0x6a5a7c, r: 34, h: 36 }, fogTop: 0.55 },
              tint: 0x1c1428, tintAmt: 0.45, stars: 0.9, nebula: 1.0, fog: { color: 0x2a2038, amount: 0.55, top: 0.08, band: 0.55 }, scenery: 'crystals' } },
     { id: 'prebuilt_fairy_forest', label: 'Fairy Forest', w: 20, h: 20, teamSize: 6, tier: 2, base: 'grass_2',
       biomes: ['forest', 'astral'], deltaPad: 'grass_2', near: 'fairy_forest',
       desc: '20×20 prebuilt, 6v6 — glowing woodland: mushroom-ring hedges that eat arrows, winding fae paths, springs & crystal toadstools',
-      env: { world: { kind: 'plain', rim: [{ kind: 'trees', kinds: ['tree', 'tree_2', 'tree_5'], d: 13, n: 64, s: 1.9, ranks: 3 }] },
+      env: { look: HQ_ROOM_LOOKS.woods, world: { kind: 'plain', rim: [{ kind: 'trees', kinds: ['tree', 'tree_2', 'tree_5'], d: 13, n: 64, s: 1.9, ranks: 3 }] },
              tint: 0x0e2a1a, tintAmt: 0.50, stars: 1.1, nebula: 1.2, fog: { color: 0x1e4a30, amount: 0.55, top: 0.07, band: 0.55 }, scenery: 'crystals' } },
     { id: 'prebuilt_moon', label: 'Moon', w: 16, h: 16, teamSize: 6, tier: 2, base: 'moon',
       biomes: ['space'], deltaPad: 'moon', near: 'moon',
@@ -14274,7 +14297,7 @@ const EW_MAP_META = [
     { id: 'prebuilt_backrooms', label: 'Backrooms', w: 16, h: 16, teamSize: 6, tier: 3, base: 'carpet',
       biomes: ['astral'], deltaPad: 'carpet', near: 'backrooms',
       desc: '16×16 prebuilt, 6v6 — level 0: yellow wallpaper maze, damp carpet, humming lights, false exits & one flooded corridor',
-      env: { world: { kind: 'room' },
+      env: { look: HQ_ROOM_LOOKS.backrooms, world: { kind: 'room' },
              tint: 0xc8b25e, tintAmt: 0.80, stars: 0.0, nebula: 0.0, fog: { color: 0xd8c470, amount: 0.75, top: 0.15, band: 0.8 }, scenery: 'none' } },
     { id: 'prebuilt_northpole', label: 'North Pole', w: 16, h: 16, teamSize: 6, tier: 3, base: 'marble_light',
       biomes: ['polar'], deltaPad: 'marble_light', near: 'northpole',
@@ -14319,7 +14342,7 @@ const EW_MAP_META = [
     { id: 'prebuilt_haunted', label: 'The Haunted House', w: 16, h: 16, teamSize: 6, tier: 2, base: 'dirt_2',
       biomes: ['gothic', 'clandestine'], deltaPad: 'wood', near: 'haunted',
       desc: '16×16 prebuilt, 6v6 — the ground floor of the mansion cut open across the middle (the parlour, the hall, the library: thin walls, two front doors, windows you can shoot through) and the graveyard out back on both sides — the stones, the crypt, the bog, the coven\'s fire',
-      env: { world: { kind: 'plain', rim: [{ kind: 'trees', kinds: ['tree_5', 'tree_6'], d: 13, n: 48, s: 2.0, ranks: 2 }, { kind: 'hills', d: 20, n: 12, r: 4 }, { kind: 'town', d: 25, n: 5, p: 0.5, tex: 'wood_planks', color: 0x4a4048, roofColor: 0x2a2228, window: 0xffb060 }] },
+      env: { look: HQ_ROOM_LOOKS.haunted, world: { kind: 'plain', rim: [{ kind: 'trees', kinds: ['tree_5', 'tree_6'], d: 13, n: 48, s: 2.0, ranks: 2 }, { kind: 'hills', d: 20, n: 12, r: 4 }, { kind: 'town', d: 25, n: 5, p: 0.5, tex: 'wood_planks', color: 0x4a4048, roofColor: 0x2a2228, window: 0xffb060 }] },
              tint: 0x1a1428, tintAmt: 0.52, stars: 0.9, nebula: 0.6, fog: { color: 0x2a2438, amount: 0.62, top: 0.08, band: 0.55 }, scenery: 'dark', density: 0.7,
              ambience: 'ambNight' } },   // a still map names its bed too (audio.js reads env.ambience since 2026-09-13)
     { id: 'prebuilt_lodge', label: 'The Lodge', w: 16, h: 16, teamSize: 6, tier: 2, base: 'checkerboard',
@@ -18428,7 +18451,8 @@ const HQ_WOODS_LANDMARKS = [
 ];
 function hqWoodsShell(o) {
     o = o || {};
-    const sky = { night: 1, tint: 0x12241a, tintAmt: 0.5, stars: 0.9, nebula: 0.35, fog: { color: 0x1c3324, amount: 0.62, top: 0.08, band: 0.55 }, scenery: 'dark', density: 0.4,
+    /* fog.density = per METRE (three-renderer.js _hqEnter → scene.fog): the treeline a third gone at 12 m, the outer ground's far edge under it at 54 m; amount lifts the dome's horizon band to the same colour so the ground's edge and the sky are one */
+    const sky = { night: 1, tint: 0x12241a, tintAmt: 0.5, stars: 0.9, nebula: 0.35, fog: { color: 0x1c3324, amount: 0.86, top: 0.1, band: 0.6, density: 0.03 }, scenery: 'dark', density: 0.4,
                   landmarks: HQ_WOODS_LANDMARKS.map(l => Object.assign({}, l)) };
     const S = {
         w: 0, d: 0, h: 9.0, wallH: 9.0, dadoH: 1.0,
@@ -18445,6 +18469,7 @@ function hqWoodsShell(o) {
            (three-renderer.js _hqBuildCave; the door lanes are kept clear) */
         forest: { depth: 10.5, spacing: 2.5, rows: 2.3, start: 1.4 },
         plate: { x: 0, z: -9.8, y: 4.4 },
+        look: HQ_ROOM_LOOKS.woods,
     };
     Object.keys(o).forEach(k => { S[k] = o[k]; });
     return S;
@@ -26658,6 +26683,8 @@ const DOOR_HQ = {
                 lights: [],
                 mood: { light: 0xffc890, ambient: 0.4 },
                 plate: { x: 0, z: -9.5, y: 4.2 },
+                fog: { color: 0x14100b, density: 0.022 },   /* the cave's own haze (2026-09-17): a warm dark past the torchlight */
+                look: HQ_ROOM_LOOKS.cave,
             },
             /* THE FIELD (2026-09-17, the terrain rooms): THE NORTH SHELF (a 1.75 m tier
                under the cellar and garden wells, its ramp at the west end), THE SUMP
@@ -26670,6 +26697,7 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'cave_floor', cliff: 'rock_wall_1', path: 'rocks_dark_fantasy',
                 noise: { amp: 0.14, scale: 4.5 }, crag: { depth: 1.7, h: 2.4 },
+                gen: { kind: 'cave', fill: 0.44, seed: 1 },                       // THE FLOOR PLAN (2026-09-17): cellular automata — the rock everywhere between the tiers, not just round the rim
                 features: [
                     { k: 'hill', x: -6.5, z: 7.5, r: 4.5, h: 0.55 },
                     { k: 'hill', x: 8.5, z: 3.0, r: 3.5, h: 0.4 },
@@ -26733,6 +26761,8 @@ const DOOR_HQ = {
                 lights: [],
                 mood: { light: 0xffc078, ambient: 0.34 },
                 plate: { x: 0, z: -19.0, y: 6.5 },
+                fog: { color: 0x14100b, density: 0.022 },   /* the cave's own haze (2026-09-17): a warm dark past the torchlight */
+                look: HQ_ROOM_LOOKS.cave,
             },
             /* THE FIELD (2026-09-17, the terrain rooms — 52.5 × 42 m). SW: the floor,
                the shaft's door on the west wall and the portcullis on the south; THE
@@ -26749,6 +26779,7 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'cave_floor', cliff: 'rock_wall_2', path: 'rocks_dark_fantasy',
                 noise: { amp: 0.16, scale: 5 }, crag: { depth: 2.2, h: 2.8 },
+                gen: { kind: 'cave', fill: 0.5, seed: 2, cell: 1.4 },
                 features: [
                     { k: 'hill', x: 4, z: 8, r: 7, h: 0.5 }, { k: 'hill', x: 20, z: 16, r: 5, h: 0.45 }, { k: 'dip', x: -4, z: -8, r: 5, h: 0.5 },
                     { k: 'plateau', x: -14, z: 4, w: 18, d: 9, h: 1.75 },                                  // THE TERRACE
@@ -26855,6 +26886,8 @@ const DOOR_HQ = {
                 lights: [],
                 mood: { light: 0xff7a40, ambient: 0.4 },
                 plate: { x: -4.0, z: -6.8, y: 3.6 },
+                fog: { color: 0x14100b, density: 0.022 },   /* the cave's own haze (2026-09-17): a warm dark past the torchlight */
+                look: HQ_ROOM_LOOKS.cave,
             },
             /* THE FIELD (2026-09-17): the floor at the arch, THE FISSURE — a lava rift
                across the middle, crossed on an obsidian span — and THE HOT SHELF
@@ -26863,6 +26896,7 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'obsidian', cliff: 'rock_wall_2', path: 'rocks_dark_fantasy',
                 noise: { amp: 0.12, scale: 3.5 }, crag: { depth: 1.5, h: 2.0 },
+                gen: { kind: 'cave', fill: 0.42, seed: 3 },
                 features: [
                     { k: 'hill', x: 5, z: 4.5, r: 4, h: 0.4 },
                     { k: 'stream', pts: [[-8.75, -1.2], [-3, -0.6], [2, -1.4], [8.75, -0.6]], w: 2.4, y: 0.4, depth: 0.8, key: 'lava' },   // THE FISSURE (first: what comes after crosses it)
@@ -26914,6 +26948,8 @@ const DOOR_HQ = {
                 lights: [],
                 mood: { light: 0xbfe0ff, ambient: 0.4 },
                 plate: { x: -4.2, z: -6.3, y: 3.0 },
+                fog: { color: 0x14100b, density: 0.022 },   /* the cave's own haze (2026-09-17): a warm dark past the torchlight */
+                look: HQ_ROOM_LOOKS.cave,
             },
             /* THE FIELD (2026-09-17): a concrete platform (1.75 m) under the blast door
                on the north wall, the rock floor dropping away to the bulkhead on the
@@ -26921,6 +26957,7 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'cave_floor', cliff: 'rock_wall_1', path: 'concrete',
                 noise: { amp: 0.1, scale: 3 }, crag: { depth: 1.2, h: 1.6 },
+                gen: { kind: 'cave', fill: 0.40, seed: 4, wallH: 2.6 },
                 features: [
                     { k: 'plateau', x: 0, z: -4.4, w: 14, d: 4.6, h: 1.75 },                                  // THE PLATFORM (LEVEL −6's landing)
                     { k: 'ramp', x0: 4.6, z0: 2.6, x1: 4.6, z1: -2.4, w: 2.4, h0: 0, h1: 1.75 },              // up its east side
@@ -26968,6 +27005,8 @@ const DOOR_HQ = {
                 lights: [],
                 mood: { light: 0xcfe8b0, ambient: 0.45 },
                 plate: { x: 4.0, z: -7.7, y: 3.2 },
+                fog: { color: 0x14100b, density: 0.022 },   /* the cave's own haze (2026-09-17): a warm dark past the torchlight */
+                look: HQ_ROOM_LOOKS.cave,
             },
             /* THE FIELD (2026-09-17): the crystal adit — a warm slope up from the
                cavern's door on the north to the frame on the south, a crystal knoll
@@ -26977,6 +27016,7 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'cave_floor', cliff: 'rock_wall_1', path: 'rocks_dark_fantasy',
                 noise: { amp: 0.14, scale: 4 }, crag: { depth: 1.5, h: 2.2 },
+                gen: { kind: 'cave', fill: 0.44, seed: 5 },
                 features: [
                     { k: 'ridge', pts: [[0, -8.75], [0, 8.75]], w: 9, h: 0.9 },                              // the adit's crown rises down the middle
                     { k: 'hill', x: -5.5, z: -3, r: 3.2, h: 1.3 }, { k: 'hill', x: 5.5, z: 3.5, r: 3.0, h: 1.1 },   // the crystal knolls
@@ -27033,6 +27073,8 @@ const DOOR_HQ = {
                 lights: [],
                 mood: { light: 0xffe0a0, ambient: 0.5 },
                 plate: { x: -4.0, z: -7.7, y: 3.6 },
+                fog: { color: 0x14100b, density: 0.022 },   /* the cave's own haze (2026-09-17): a warm dark past the torchlight */
+                look: HQ_ROOM_LOOKS.cave,
             },
             /* THE FIELD (2026-09-17): the mouth of the cave — a slope up from the
                cavern's door on the west to THE LIP (1.75 m) under the daylight where
@@ -27041,6 +27083,7 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'cave_floor', cliff: 'rock_wall_1', path: 'dirt_2',
                 noise: { amp: 0.16, scale: 4 }, crag: { depth: 1.6, h: 2.2 },
+                gen: { kind: 'cave', fill: 0.44, seed: 6 },
                 features: [
                     { k: 'ridge', pts: [[10.5, -8.75], [10.5, 8.75]], w: 12, h: 1.75 },                     // the floor climbs toward the east wall
                     { k: 'plateau', x: 7.5, z: -5.0, w: 6.0, d: 7.5, h: 1.75 },                               // THE LIP (the door's shelf)
@@ -27096,6 +27139,8 @@ const DOOR_HQ = {
                 lights: [],
                 mood: { light: 0xffa050, ambient: 0.35 },
                 plate: { x: 0, z: -6.4, y: 3.0 },
+                fog: { color: 0x14100b, density: 0.022 },   /* the cave's own haze (2026-09-17): a warm dark past the torchlight */
+                look: HQ_ROOM_LOOKS.cave,
             },
             /* THE FIELD (2026-09-17): the dead end — the floor behind the portcullis,
                THE CELLS sunk a metre along the west wall (three hollows the walker
@@ -27104,6 +27149,7 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'cave_floor', cliff: 'rock_wall_2', path: 'rocks_dark_fantasy',
                 noise: { amp: 0.1, scale: 3 }, crag: { depth: 1.2, h: 1.5 },
+                gen: { kind: 'cave', fill: 0.38, seed: 7, wallH: 2.6 },
                 features: [
                     { k: 'hill', x: 1.5, z: 1.5, r: 3.5, h: 0.5 },                                            // the rack's mound
                     { k: 'dip', x: -6.2, z: -4.8, r: 1.9, h: 1.0, dome: true }, { k: 'ramp', x0: -3.4, z0: -4.8, x1: -5.8, z1: -4.8, w: 1.6, h0: 0, h1: -0.85 },   // the first cell + its ramp
@@ -28073,6 +28119,7 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'grass_2', cliff: 'rock_wall_1', path: 'dirt_2',
                 noise: { amp: 0.2, scale: 6 },
+                gen: { kind: 'rooms', seed: 11, loops: 3 },                          // THE FLOOR PLAN (2026-09-17): clearings joined by winding paths through the thicket
                 features: [
                     { k: 'hill', x: -13, z: -9, r: 8, h: 2.4 },                                              // THE KNOLL
                     { k: 'hill', x: 12, z: 12, r: 6, h: 1.0 },
@@ -28166,6 +28213,7 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'grass_2', cliff: 'rock_wall_1', path: 'dirt_2',
                 noise: { amp: 0.18, scale: 5 },
+                gen: { kind: 'rooms', seed: 12 },
                 features: [
                     { k: 'hill', x: -7, z: 9, r: 5, h: 0.9 },
                     { k: 'stream', pts: [[-12.25, 12], [-4, 9.5], [4, 12], [12.25, 13.5]], w: 2.2, y: -0.2, depth: 0.5 },
@@ -28223,6 +28271,7 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'forest', cliff: 'rock_wall_1', path: 'dirt_2',
                 noise: { amp: 0.2, scale: 4.5 },
+                gen: { kind: 'rooms', seed: 13 },
                 features: [
                     { k: 'hill', x: 8, z: -5, r: 5, h: 1.4 },
                     { k: 'ridge', pts: [[3, -10.5], [6, 0], [9, 10.5]], w: 3.2, h: -0.9 },                   // the gully
@@ -28279,6 +28328,7 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'grass_2', cliff: 'dirt_2', path: 'dirt_2',
                 noise: { amp: 0.18, scale: 6 },
+                gen: { kind: 'rooms', seed: 14, rMax: 7.5 },
                 features: [
                     { k: 'hill', x: -2.6, z: -3.5, r: 6, h: 1.2 },                                            // THE KNOLL (the circle)
                     { k: 'hill', x: 9, z: -6, r: 4, h: 0.7 }, { k: 'hill', x: -9, z: 6, r: 4.5, h: 0.8 },
@@ -28335,6 +28385,7 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'grass_2', cliff: 'rock_wall_1', path: 'wood_planks',
                 noise: { amp: 0.16, scale: 5 },
+                gen: { kind: 'rooms', seed: 15 },
                 features: [
                     { k: 'hill', x: 6, z: 2, r: 4, h: 0.6 },
                     { k: 'ramp', x0: 0, z0: 6.0, x1: 0, z1: -4.0, w: 3.0, h0: 0, h1: 3.5, stairs: true },      // THE STAIRCASE
@@ -28392,6 +28443,8 @@ const DOOR_HQ = {
                 pipes: false, strips: false, lights: [],
                 mood: { light: 0x9fc0a8, ambient: 0.3 },
                 plate: { x: 1.75, z: -4.6, y: 2.5 },
+                fog: { color: 0x0e1410, density: 0.05 },   /* the drain's haze (2026-09-17) */
+                look: HQ_ROOM_LOOKS.drain,
             },
             /* THE FIELD (2026-09-17): the storm drain — a brick culvert 35 m long and
                five wide, THE CHANNEL down its middle (waded), a walkway either side,
@@ -28463,6 +28516,7 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'grass_dark_fantasy', cliff: 'rock_wall_2', path: 'dirt_2',
                 noise: { amp: 0.14, scale: 5 },
+                gen: { kind: 'rooms', seed: 16 },
                 features: [
                     { k: 'hill', x: 0, z: 0, r: 8.5, h: 1.1 },                                                // THE MOUND
                     { k: 'ridge', pts: [[7.4, 0], [5.2, 5.2], [0, 7.4], [-5.2, 5.2], [-7.4, 0], [-5.2, -5.2], [0, -7.4], [5.2, -5.2], [7.4, 0]], w: 2.0, h: -0.45 },   // the ditch
@@ -30713,6 +30767,323 @@ function _hqTRamp(px, pz, f) {
     const rx = px - f.x0, rz = pz - f.z0, along = rx * ux + rz * uz, across = -rx * uz + rz * ux;
     return { t: along / L, s: along, v: across, L, ux, uz };
 }
+/* ═══════════════════════════════════════════════════════════════════════
+   THE GENERATED FLOOR PLAN (HQ plan 9.3 stage 5 — 2026-09-17)
+   The user: "use room and hallway generation algorithms like cellular automata
+   or random room placing to make the maps as opposed to just making them big
+   box rooms". A terrain room may carry `terrain.gen = { kind: 'cave' | 'rooms',
+   … }`: the box is no longer the floor plan — a MASK over the field says where
+   the walker may go, and everything outside it is SOLID: rock to `wallH` in a
+   cave (the crag everywhere, not just round the rim), a raised THICKET bank
+   with the forest growing on it in the woods. The authored features stay
+   exactly where they are (every one is forced OPEN with a margin, so a tested
+   coordinate never moves); the generator shapes the ground BETWEEN them.
+     cave : cellular automata on a coarse lattice (`cell` m; a random fill
+            `fill`, `iters` rounds of the B5678 / S45678 rule, the rim solid),
+            upsampled to the field's grid and rounded twice by a majority pass.
+     rooms: `n` CLEARINGS (ellipses, `rMin`..`rMax` m) at seeded spots, joined
+            by a spanning tree + `loops` extra edges of WINDING corridors
+            (`corridor` [min, max] m wide, bent by `bend`); every authored
+            path is a corridor too; the door pads are rooms.
+   THE GUARANTEE (rule §4 of the terrain rooms — every door reaches every
+   other): after the plan, the walker's own reach (hqTerrainFeet on the
+   authored heights, restricted to the mask) is run from the first door; for
+   every door it does not reach, a corridor is CARVED along the walker's own
+   shortest path on the UNRESTRICTED field (a BFS through solid cells as if
+   open — the authored room is solvable, so the path exists), `corridorW`
+   wide; then every open pocket the walker cannot reach and no feature needs
+   is filled back in (open = reachable). The mask becomes a signed distance
+   (`maskD`, m; > 0 inside) and the rise is added to the field over `edge` m
+   — steeper than the walker climbs, so the plan is a wall by the height rule
+   alone (nothing new for the renderer's walker to read). `gen.open` /
+   `gen.solid` are hand rows ({ x, z, r } | { x0, z0, x1, z1, w }) laid over
+   the roll. Dev: `hqTerrainDump` draws the solid as '#'; check-terrain.js
+   prints the open share.
+   ═══════════════════════════════════════════════════════════════════════ */
+const HQ_TERRAIN_GEN = {
+    cave:  { cell: 1.4, fill: 0.5, iters: 3, born: 5, keep: 4, wallH: 3.2, edge: 0.9, jitter: 0.3, topNoise: 0.45, rounds: 2 },
+    rooms: { rMin: 3.2, rMax: 6.4, corridor: [2.4, 3.6], loops: 2, bend: 0.3, wallH: 1.7, edge: 1.0, jitter: 0.12, topNoise: 0.35,
+             perArea: 105, nMin: 3, nMax: 9, spacing: 2.1, maxTrees: 280, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree', 'pine', 'tree_5'] },
+    forceGrow: 0.8, corridorW: 2.6, rim: 1.2, pathGrow: 1.1, minOpen: 0.28, maxOpen: 0.82, minIsland: 2.2,
+};
+function _hqTRng(seed) { let s = (seed >>> 0) || 1; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
+/* the signed distance (m) of every grid cell to the mask's boundary (> 0 open, < 0 solid) — a two-pass chamfer (3-4) per side */
+function _hqTMaskDistance(mask, nx, nz, res) {
+    const INF = 1e9, pass = (want) => {
+        const d = new Float32Array(nx * nz);
+        for (let k = 0; k < d.length; k++) d[k] = (mask[k] === want) ? INF : 0;
+        for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+            const k = j * nx + i; if (d[k] === 0) continue;
+            let v = d[k];
+            if (i > 0) v = Math.min(v, d[k - 1] + 3);
+            if (j > 0) { v = Math.min(v, d[k - nx] + 3); if (i > 0) v = Math.min(v, d[k - nx - 1] + 4); if (i + 1 < nx) v = Math.min(v, d[k - nx + 1] + 4); }
+            d[k] = v;
+        }
+        for (let j = nz - 1; j >= 0; j--) for (let i = nx - 1; i >= 0; i--) {
+            const k = j * nx + i; if (d[k] === 0) continue;
+            let v = d[k];
+            if (i + 1 < nx) v = Math.min(v, d[k + 1] + 3);
+            if (j + 1 < nz) { v = Math.min(v, d[k + nx] + 3); if (i + 1 < nx) v = Math.min(v, d[k + nx + 1] + 4); if (i > 0) v = Math.min(v, d[k + nx - 1] + 4); }
+            d[k] = v;
+        }
+        return d;
+    };
+    const dIn = pass(1), dOut = pass(0), out = new Float32Array(nx * nz);
+    for (let k = 0; k < out.length; k++) out[k] = ((mask[k] ? dIn[k] : -dOut[k]) / 3) * res;
+    return out;
+}
+/* the walker's reach on the field as it stands (info.H), from grid node (i0, j0); `mask` restricts it (null = the whole field);
+   `until` (a Set of keys) stops the walk and returns the path to the first node in it */
+function _hqTReachGrid(info, i0, j0, mask, until) {
+    const nx = info.nx, nz = info.nz, res = info.res, seen = new Map(), q = [], from = until ? new Map() : null;
+    const feet = (i, j, prev) => hqTerrainFeet(info, info.x0 + i * res, info.z0 + j * res, prev);
+    const y0 = feet(i0, j0, null); if (y0 == null) return { seen, path: null };
+    const k0 = j0 * nx + i0; seen.set(k0, y0); q.push([i0, j0, y0]);
+    if (until && until.has(k0)) return { seen, path: [k0] };
+    const N = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    let head = 0;
+    while (head < q.length) {
+        const p = q[head++];
+        for (const n of N) {
+            const i = p[0] + n[0], j = p[1] + n[1];
+            if (i < 0 || j < 0 || i >= nx || j >= nz) continue;
+            const k = j * nx + i; if (seen.has(k)) continue;
+            if (mask && !mask[k]) continue;
+            const y = feet(i, j, p[2]); if (y == null || y - p[2] > info.rules.climb) continue;
+            seen.set(k, y); q.push([i, j, y]);
+            if (from) from.set(k, p[1] * nx + p[0]);
+            if (until && until.has(k)) { const path = [k]; let c = k; while (from.has(c)) { c = from.get(c); path.push(c); } return { seen, path }; }
+        }
+    }
+    return { seen, path: null };
+}
+function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
+    const G = HQ_TERRAIN_GEN, K = G[gen.kind] || G.cave, S = info.S, nx = info.nx, nz = info.nz, res = info.res, x0 = info.x0, z0 = info.z0;
+    const seed = (typeof hqHash === 'function') ? hqHash((roomId || room.label || 'gen') + '|gen|' + (gen.seed || 0)) : 1234 + (gen.seed || 0);
+    const rnd = _hqTRng(seed);
+    const mask = new Uint8Array(nx * nz), forced = new Uint8Array(nx * nz);
+    const halfW = S.w / 2, halfD = S.d / 2, rim = (gen.rim != null) ? gen.rim : G.rim;
+    const inShell = (px, pz, inset) => Math.abs(px) < halfW - inset && Math.abs(pz) < halfD - inset;
+    const each = (fn) => { for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) fn(j * nx + i, x0 + i * res, z0 + j * res); };
+    /* ── the forced-open set: every authored thing, grown by forceGrow ── */
+    const grow = (gen.forceGrow != null) ? gen.forceGrow : G.forceGrow;
+    const discs = [], rects = [], polys = [];
+    doorPads.forEach(p => { if (p.r) discs.push({ x: p.x, z: p.z, r: p.r + grow }); else rects.push({ x: p.x, z: p.z, w: p.w + 2 * grow, d: p.d + 2 * grow, rot: p.rot || 0 });
+        /* the lane out through the rim to the wall */
+        if (p.lane && !p.free) rects.push({ x: (p.x + p.lane.x) / 2, z: (p.z + p.lane.z) / 2, w: (p.w || 3.4) + 2 * grow, d: Math.max(p.d || 3.2, 2 * Math.abs(p.z - p.lane.z) + 3.2, 2 * Math.abs(p.x - p.lane.x) + 3.2) + 2 * grow, rot: 0 }); });
+    features.forEach(f => {
+        switch (f.k) {
+            case 'plateau': {
+                /* a SMALL tier (a pinnacle, a stand) is forced whole with its lip; a BIG tier keeps only its CORE — the plan
+                   may put rock or thicket on the rim band of a terrace (the tier's centre, where the tests look, stays) */
+                const span = f.r ? 2 * Math.min(f.r, f.rz || f.r) : Math.min(f.w, f.d);
+                const shrink = span <= 5.0 ? -0.5 : Math.min(2.2, 0.3 * span / 2);
+                if (f.r) discs.push({ x: f.x, z: f.z, r: Math.max(0.8, Math.max(f.r, f.rz || f.r) - shrink) }); else rects.push({ x: f.x, z: f.z, w: Math.max(1.6, f.w - 2 * shrink), d: Math.max(1.6, f.d - 2 * shrink), rot: f.rot || 0 });
+                break; }
+            case 'hill': case 'dip': if (f.open) discs.push({ x: f.x, z: f.z, r: Math.max(f.r || 0, f.rz || 0, (f.w || 0) / 2) * 0.8 }); break;   // relief is never forced (rock stands on a hill's flank) unless the row says open: true
+            case 'ramp': case 'deck': {
+                /* the run and 3 m PAST each end (a ramp's mouth opens onto the tier it climbs; a deck's onto both banks) */
+                const dx = f.x1 - f.x0, dz = f.z1 - f.z0, L = Math.hypot(dx, dz) || 1, ex = dx / L * 3.0, ez = dz / L * 3.0;
+                polys.push({ pts: [[f.x0 - ex * 0.5, f.z0 - ez * 0.5], [f.x1 + ex, f.z1 + ez]], w: f.w + 2 * grow + 0.6 }); break; }
+            case 'pool': discs.push({ x: f.x, z: f.z, r: Math.max(f.r, f.rz || f.r) + (f.bank != null ? f.bank : 0.9) * 0.6 }); break;   // the water and half its bank (a pool may lie against the rock)
+            case 'stream': polys.push({ pts: f.pts, w: f.w + 2 * (f.bank != null ? f.bank : 0.9) * 0.7 }); break;
+            case 'ridge': if (f.open) polys.push({ pts: f.pts, w: f.w * 0.8 }); break;
+            case 'wall': case 'rail': polys.push({ pts: [[f.x0, f.z0], [f.x1, f.z1]], w: 2 * (grow + 0.6) }); break;
+            case 'path': polys.push({ pts: f.pts, w: f.w + 2 * ((gen.pathGrow != null) ? gen.pathGrow : G.pathGrow) }); break;
+            case 'tree': discs.push({ x: f.x, z: f.z, r: (f.r || 0.4) + grow + 0.6 }); break;
+            case 'grove': case 'scatter': if (f.x != null && f.r) discs.push({ x: f.x, z: f.z, r: f.r * 0.6 }); break;
+            default: break;
+        }
+    });
+    (room.props || []).forEach(p => { if (p.wall || p.ceil) return; discs.push({ x: p.x || 0, z: p.z || 0, r: 1.2 }); });
+    (room.npcSpots || []).concat(room.agents || [], room.onlineSpots || []).forEach(q => { if (q && q.x != null) discs.push({ x: q.x, z: q.z, r: 1.8 }); });
+    (room.counters || []).forEach(c => discs.push({ x: c.x, z: c.z, r: (c.radius || 2) + 0.8 }));
+    if (room.spawn) discs.push({ x: room.spawn.x, z: room.spawn.z, r: 2.2 });
+    const pins = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.findSpots && roomId) ? DOOR_HQ.findSpots[roomId] : null;
+    if (pins) Object.keys(pins).forEach(k => { const sp = pins[k]; if (sp && sp.x != null) discs.push({ x: sp.x, z: sp.z, r: 1.4 }); });
+    (gen.open || []).forEach(o => { if (o.r) discs.push(o); else polys.push({ pts: [[o.x0, o.z0], [o.x1, o.z1]], w: o.w || 3 }); });
+    const inForced = (px, pz) => {
+        for (const d of discs) if (Math.hypot(px - d.x, pz - d.z) < d.r) return true;
+        for (const r of rects) if (_hqTRectIn(px, pz, r) > 0) return true;
+        for (const p of polys) if (_hqTPolyDist(px, pz, p.pts).d < p.w / 2) return true;
+        return false;
+    };
+    each((k, px, pz) => { if (inForced(px, pz)) forced[k] = 1; });
+    const solidRows = (gen.solid || []);
+    const inSolid = (px, pz) => { for (const o of solidRows) { if (o.r) { if (Math.hypot(px - o.x, pz - o.z) < o.r) return true; } else if (_hqTPolyDist(px, pz, [[o.x0, o.z0], [o.x1, o.z1]]).d < (o.w || 1) / 2) return true; } return false; };
+    /* ── the plan ── */
+    if (gen.kind === 'rooms') {
+        const rMin = gen.rMin || K.rMin, rMax = gen.rMax || K.rMax;
+        const area = S.w * S.d, n = Math.max(K.nMin, Math.min(K.nMax, gen.n || Math.round(area / (gen.perArea || K.perArea))));
+        const rooms = [];
+        for (let tries = 0; tries < n * 60 && rooms.length < n; tries++) {
+            const rx = rMin + rnd() * (rMax - rMin), rz = rx * (0.7 + rnd() * 0.6), rot = rnd() * 180;
+            const px = (rnd() - 0.5) * (S.w - 2 * (rim + Math.min(rx, rz) * 0.7)), pz = (rnd() - 0.5) * (S.d - 2 * (rim + Math.min(rx, rz) * 0.7));
+            if (rooms.some(r => Math.hypot(r.x - px, r.z - pz) < 0.75 * (Math.max(r.r, r.rz) + Math.max(rx, rz)))) continue;
+            rooms.push({ x: px, z: pz, r: rx, rz, rot });
+        }
+        const nodes = rooms.map(r => ({ x: r.x, z: r.z })).concat(doorPads.map(p => ({ x: p.x, z: p.z })));
+        /* a spanning tree (Prim) + loops */
+        const edges = [];
+        if (nodes.length > 1) {
+            const inTree = [0], out = nodes.map((_, i) => i).slice(1);
+            while (out.length) {
+                let best = null;
+                for (const a of inTree) for (const b of out) { const d = Math.hypot(nodes[a].x - nodes[b].x, nodes[a].z - nodes[b].z); if (!best || d < best.d) best = { a, b, d }; }
+                edges.push([best.a, best.b]); inTree.push(best.b); out.splice(out.indexOf(best.b), 1);
+            }
+            const loops = (gen.loops != null) ? gen.loops : K.loops;
+            const has = (a, b) => edges.some(e => (e[0] === a && e[1] === b) || (e[0] === b && e[1] === a));
+            const cands = [];
+            for (let a = 0; a < nodes.length; a++) for (let b = a + 1; b < nodes.length; b++) if (!has(a, b)) cands.push({ a, b, d: Math.hypot(nodes[a].x - nodes[b].x, nodes[a].z - nodes[b].z) });
+            cands.sort((p, q) => p.d - q.d);
+            for (let li = 0; li < loops && li < cands.length; li++) edges.push([cands[li].a, cands[li].b]);
+        }
+        const corridors = edges.map(e => {
+            const A = nodes[e[0]], B = nodes[e[1]], dx = B.x - A.x, dz = B.z - A.z, L = Math.hypot(dx, dz) || 1, nxv = -dz / L, nzv = dx / L;
+            const bend = (gen.bend != null) ? gen.bend : K.bend, cw = K.corridor[0] + rnd() * (K.corridor[1] - K.corridor[0]);
+            const pts = [[A.x, A.z]];
+            const nMid = L > 14 ? 3 : L > 7 ? 2 : 1;
+            for (let m = 1; m <= nMid; m++) { const t = m / (nMid + 1), off = (rnd() - 0.5) * 2 * bend * L; pts.push([A.x + dx * t + nxv * off, A.z + dz * t + nzv * off]); }
+            pts.push([B.x, B.z]);
+            return { pts, w: cw };
+        });
+        each((k, px, pz) => {
+            if (!inShell(px, pz, rim)) return;
+            for (const r of rooms) if (_hqTEllipse(px, pz, { x: r.x, z: r.z, r: r.r, rz: r.rz, rot: r.rot }) <= 1) { mask[k] = 1; return; }
+            for (const c of corridors) if (_hqTPolyDist(px, pz, c.pts).d < c.w / 2) { mask[k] = 1; return; }
+        });
+        info.genPlan = { rooms, corridors };
+    } else {
+        /* cellular automata on the coarse lattice */
+        const cell = gen.cell || K.cell, cw = Math.ceil(S.w / cell), ch = Math.ceil(S.d / cell), fill = (gen.fill != null) ? gen.fill : K.fill;
+        const born = gen.born || K.born, keep = gen.keep || K.keep, iters = (gen.iters != null) ? gen.iters : K.iters;
+        let A = new Uint8Array(cw * ch);
+        const cx = (i) => -S.w / 2 + (i + 0.5) * cell, cz = (j) => -S.d / 2 + (j + 0.5) * cell;
+        for (let j = 0; j < ch; j++) for (let i = 0; i < cw; i++) {
+            const px = cx(i), pz = cz(j), k = j * cw + i;
+            if (!inShell(px, pz, rim)) { A[k] = 1; continue; }
+            if (inForced(px, pz)) { A[k] = 0; continue; }
+            A[k] = rnd() < fill ? 1 : 0;
+        }
+        const pinned = new Uint8Array(cw * ch);
+        for (let j = 0; j < ch; j++) for (let i = 0; i < cw; i++) { const px = cx(i), pz = cz(j); if (inForced(px, pz) || !inShell(px, pz, rim)) pinned[j * cw + i] = 1; }
+        for (let it = 0; it < iters; it++) {
+            const B = new Uint8Array(cw * ch);
+            for (let j = 0; j < ch; j++) for (let i = 0; i < cw; i++) {
+                const k = j * cw + i;
+                if (pinned[k]) { B[k] = A[k]; continue; }
+                /* a pinned OPEN neighbour (a forced feature) is left out of the count — it would eat every rock beside it; off the lattice counts as rock */
+                let nWall = 0, cnt = 0;
+                for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { if (!di && !dj) continue; const ii = i + di, jj = j + dj; if (ii < 0 || jj < 0 || ii >= cw || jj >= ch) { nWall++; cnt++; continue; } const kk = jj * cw + ii; if (pinned[kk] && !A[kk]) continue; nWall += A[kk]; cnt++; }
+                const eff = cnt ? nWall * 8 / cnt : (A[k] ? 8 : 0);
+                B[k] = A[k] ? (eff >= keep ? 1 : 0) : (eff >= born ? 1 : 0);
+            }
+            A = B;
+        }
+        each((k, px, pz) => {
+            if (!inShell(px, pz, rim)) return;
+            const i = Math.max(0, Math.min(cw - 1, Math.floor((px + S.w / 2) / cell))), j = Math.max(0, Math.min(ch - 1, Math.floor((pz + S.d / 2) / cell)));
+            mask[k] = A[j * cw + i] ? 0 : 1;
+        });
+        /* round the lattice's corners: a majority pass over the fine grid, the forced cells held */
+        const rounds = (gen.rounds != null) ? gen.rounds : K.rounds, R = Math.max(1, Math.round(0.6 / res));
+        for (let r = 0; r < rounds; r++) {
+            const M = new Uint8Array(mask);
+            for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+                const k = j * nx + i; if (forced[k]) continue;
+                let open = 0, tot = 0;
+                for (let dj = -R; dj <= R; dj++) for (let di = -R; di <= R; di++) { const ii = i + di, jj = j + dj; if (ii < 0 || jj < 0 || ii >= nx || jj >= nz) { tot++; continue; } open += mask[jj * nx + ii]; tot++; }
+                M[k] = open * 2 > tot ? 1 : 0;
+            }
+            mask.set(M);
+        }
+    }
+    /* the hand rows and the forced set */
+    /* forced wins inside the shell (a door's lane runs to the wall); past the wall everything is solid; a 0.6 m rim band is solid unless forced */
+    each((k, px, pz) => { if (!inShell(px, pz, 0)) mask[k] = 0; else if (forced[k]) mask[k] = 1; else if (!inShell(px, pz, 0.6) || inSolid(px, pz)) mask[k] = 0; });
+    /* ── THE GUARANTEE: carve a corridor to every door the walker cannot reach ── */
+    const node = (px, pz) => [Math.round((px - x0) / res), Math.round((pz - z0) / res)];
+    const padNodes = doorPads.map(p => node(p.x, p.z));
+    const cw2 = ((gen.corridorW != null) ? gen.corridorW : G.corridorW) / 2, cR = Math.ceil(cw2 / res);
+    const carve = (path) => {
+        path.forEach(k => {
+            const i = k % nx, j = (k - i) / nx;
+            for (let dj = -cR; dj <= cR; dj++) for (let di = -cR; di <= cR; di++) {
+                if (di * di + dj * dj > cR * cR + 0.5) continue;
+                const ii = i + di, jj = j + dj; if (ii < 0 || jj < 0 || ii >= nx || jj >= nz) continue;
+                const px = x0 + ii * res, pz = z0 + jj * res; if (!inShell(px, pz, 0.6)) continue;
+                mask[jj * nx + ii] = 1;
+            }
+        });
+    };
+    let carved = 0;
+    if (padNodes.length) {
+        for (let guard = 0; guard < 24; guard++) {
+            const main = _hqTReachGrid(info, padNodes[0][0], padNodes[0][1], mask, null).seen;
+            const missing = padNodes.find(pn => !main.has(pn[1] * nx + pn[0]));
+            if (!missing) break;
+            const until = new Set(main.keys());
+            const walk = _hqTReachGrid(info, missing[0], missing[1], null, until);
+            if (!walk.path) break;   // the authored room itself does not join them — the solver test will say so
+            carve(walk.path); carved++;
+        }
+        /* open = reachable: a pocket the walker never reaches (and no feature needs) is filled back in */
+        const main2 = _hqTReachGrid(info, padNodes[0][0], padNodes[0][1], mask, null).seen;
+        for (let k = 0; k < mask.length; k++) if (mask[k] && !forced[k] && !main2.has(k)) mask[k] = 0;
+    }
+    /* a solid island smaller than minIsland m² is a bump, not a wall: opened */
+    { const minCells = Math.round(((gen.minIsland != null) ? gen.minIsland : G.minIsland) / (res * res)), seenI = new Uint8Array(nx * nz);
+      for (let k0 = 0; k0 < mask.length; k0++) {
+          if (mask[k0] || seenI[k0]) continue;
+          const comp = [k0], q = [k0]; seenI[k0] = 1; let edgeTouch = false;
+          while (q.length) { const k = q.pop(), i = k % nx, j = (k - i) / nx; if (i === 0 || j === 0 || i === nx - 1 || j === nz - 1) edgeTouch = true;
+              [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(n => { const ii = i + n[0], jj = j + n[1]; if (ii < 0 || jj < 0 || ii >= nx || jj >= nz) return; const kk = jj * nx + ii; if (mask[kk] || seenI[kk]) return; seenI[kk] = 1; comp.push(kk); q.push(kk); }); }
+          if (!edgeTouch && comp.length < minCells) comp.forEach(k => { mask[k] = 1; });
+      } }
+    /* ── the distance field and the rise ── */
+    const D = _hqTMaskDistance(mask, nx, nz, res);
+    const wallH = (gen.wallH != null) ? gen.wallH : Math.min(K.wallH, S.open ? 99 : Math.max(1.2, (S.h || 4) - 1.2));
+    const edge = (gen.edge != null) ? gen.edge : K.edge, jit = (gen.jitter != null) ? gen.jitter : K.jitter, topN = (gen.topNoise != null) ? gen.topNoise : K.topNoise;
+    let open = 0;
+    each((k, px, pz) => {
+        if (mask[k]) open++;
+        const d = D[k];
+        if (d > 0.2) return;
+        const t = _hqTSmooth((0.2 - d) / (edge + 0.2));
+        const j1 = 1 + jit * _hqTNoise(px, pz, 2.6, seed + 17), top = topN * _hqTNoise(px, pz, 1.9, seed + 29) * _hqTSmooth((-d - 0.4) / 0.8);
+        info.H[k] += (wallH * j1 + top) * t;
+    });
+    info.mask = mask; info.maskD = D; info.forced = forced;
+    info.gen = { kind: gen.kind, wallH, edge, open: open / (nx * nz), carved, solidSheet: (gen.kind === 'cave') ? 'cliff' : 'floor' };
+    /* ── THE THICKET (rooms): the forest growing on the solid, a lattice of trees `spacing` apart ── */
+    info.thicket = [];
+    if (gen.kind === 'rooms' && gen.thicket !== false) {
+        const sp = gen.spacing || K.spacing, kinds = gen.kinds || K.kinds, maxT = gen.maxTrees || K.maxTrees, want = [];
+        for (let gz = -halfD + 0.4; gz < halfD - 0.4; gz += sp) for (let gx = -halfW + 0.4; gx < halfW - 0.4; gx += sp) {
+            const px = gx + (rnd() - 0.5) * sp * 0.8, pz = gz + (rnd() - 0.5) * sp * 0.8;
+            if (!inShell(px, pz, 0.5)) continue;
+            const d = hqTerrainMaskAt(info, px, pz); if (d > -0.55) continue;
+            const kind = kinds[Math.floor(rnd() * kinds.length)];
+            const h = kind === 'pine' ? 5.0 + rnd() * 1.6 : kind === 'tree_4' ? 4.5 + rnd() * 1.5 : (kind === 'tree_5' || kind === 'tree_6') ? 2.2 + rnd() * 0.8 : 2.6 + rnd() * 1.3;
+            want.push({ x: Math.round(px * 100) / 100, z: Math.round(pz * 100) / 100, kind, h, r: 0.42, d, y: hqTerrainHeight(info, px, pz) });
+        }
+        /* the nearest to the open ground first (the wall of the woods), the interior thinned to the cap */
+        want.sort((a, b) => b.d - a.d);
+        info.thicket = want.slice(0, maxT);
+    }
+}
+/* the mask's signed distance (m) at (x, z): > 0 on the open floor plan, < 0 in the solid; +Infinity when the room wears no plan */
+function hqTerrainMaskAt(info, x, z) {
+    if (!info.maskD) return Infinity;
+    const fx = (x - info.x0) / info.res, fz = (z - info.z0) / info.res;
+    let i = Math.floor(fx), j = Math.floor(fz);
+    if (i < 0) i = 0; if (j < 0) j = 0; if (i > info.nx - 2) i = info.nx - 2; if (j > info.nz - 2) j = info.nz - 2;
+    const tx = Math.max(0, Math.min(1, fx - i)), tz = Math.max(0, Math.min(1, fz - j)), D = info.maskD, nx = info.nx;
+    const a = D[j * nx + i], b = D[j * nx + i + 1], c = D[(j + 1) * nx + i], d = D[(j + 1) * nx + i + 1];
+    return (a * (1 - tx) + b * tx) * (1 - tz) + (c * (1 - tx) + d * tx) * tz;
+}
+function hqTerrainOpenAt(info, x, z) { return hqTerrainMaskAt(info, x, z) > 0; }
 function hqTerrainRooms() { const R = DOOR_HQ.rooms || {}; return Object.keys(R).filter(k => R[k] && R[k].terrain); }
 function hqTerrainInfo(roomId) {
     const r = (DOOR_HQ.rooms || {})[roomId]; if (!r || !r.terrain) return null;
@@ -30838,6 +31209,8 @@ function hqTerrainCompile(room, roomId) {
     for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) H[j * nx + i] = hFinal(x0 + i * res, z0 + j * res);
     const info = { room, roomId: roomId || null, S, res, nx, nz, x0, z0, halfW, halfD, H, base, floor: T.floor || S.floor || 'grass_2', cliff: T.cliff || 'rock_wall_1', path: T.path || 'dirt_2',
                    pads: doorPads, walls: [], rails: [], paths, decks, fluids, trees: [], scatter: [], tile: T.tile || R.tile, rules: R, closed, hFn: hFinal };
+    /* THE GENERATED FLOOR PLAN (2026-09-17): the mask, the rise on the solid, the thicket — before the walls / trees / scatter read the field */
+    if (T.gen) { try { _hqTGenerate(info, room, roomId, T.gen, doorPads, F); } catch (e) { console.warn('[terrain] the floor plan failed', roomId, e); } }
     const hAt = (px, pz) => hqTerrainHeight(info, px, pz);
     /* the walls: standing on the ground, their top h above the highest ground under them (or an absolute `y`) */
     walls.forEach(w => {
@@ -30856,6 +31229,7 @@ function hqTerrainCompile(room, roomId) {
     const freeFor = (px, pz, rad, opts) => {
         if (Math.abs(px) > S.w / 2 - 0.6 || Math.abs(pz) > S.d / 2 - 0.6) return false;
         if (hqTerrainFeet(info, px, pz, null) === null) return false;
+        if (info.maskD && hqTerrainMaskAt(info, px, pz) < rad + 0.3) return false;   // never on the plan's solid (the thicket / the rock)
         if (hqTerrainFluidAt(info, px, pz)) return false;
         if (hqTerrainSlope(info, px, pz) > (opts.slope || 0.5)) return false;
         for (const p of doorPads) { const din = p.r ? p.r - Math.hypot(px - p.x, pz - p.z) : _hqTRectIn(px, pz, p); if (din > -(rad + 0.4)) return false; }
@@ -31005,6 +31379,7 @@ function hqTerrainDump(info, opts) {
             const f = hqTerrainFluidAt(info, x, z), g = hqTerrainHeight(info, x, z);
             let ch;
             if (hqTerrainWallAt(info, x, z, step / 2)) ch = '#';
+            else if (info.maskD && hqTerrainMaskAt(info, x, z) < 0) ch = '#';
             else if (info.trees.some(t => Math.hypot(t.x - x, t.z - z) < step / 2)) ch = 'T';
             else if (info.pads.some(p => (p.r ? p.r - Math.hypot(x - p.x, z - p.z) : _hqTRectIn(x, z, p)) > 0)) ch = 'D';
             else if (f && g < f.y - 0.05) ch = f.key === 'lava' ? 'L' : (f.y - g > info.rules.wadeMax ? 'W' : '~');
@@ -34642,7 +35017,7 @@ if (typeof window !== 'undefined') {
     window.hqTapeShelf = hqTapeShelf; window.hqTapeCount = hqTapeCount; window.hqFindById = hqFindById; window.hqTapeById = hqTapeById; window.hqTapeClipUrl = hqTapeClipUrl; window.hqFindsRecord = hqFindsRecord;
     window.hqCaveDoorCell = hqCaveDoorCell; window.hqCaveRooms = hqCaveRooms;
     /* THE TERRAIN ROOM (2026-09-17) */
-    window.HQ_TERRAIN_RULES = HQ_TERRAIN_RULES; window.hqTerrainRooms = hqTerrainRooms; window.hqTerrainInfo = hqTerrainInfo; window.hqTerrainCompile = hqTerrainCompile;
+    window.HQ_TERRAIN_RULES = HQ_TERRAIN_RULES; window.HQ_TERRAIN_GEN = HQ_TERRAIN_GEN; window.HQ_ROOM_LOOKS = HQ_ROOM_LOOKS; window.hqTerrainMaskAt = hqTerrainMaskAt; window.hqTerrainOpenAt = hqTerrainOpenAt; window.hqTerrainRooms = hqTerrainRooms; window.hqTerrainInfo = hqTerrainInfo; window.hqTerrainCompile = hqTerrainCompile;
     window.hqTerrainHeight = hqTerrainHeight; window.hqTerrainSlope = hqTerrainSlope; window.hqTerrainFeet = hqTerrainFeet; window.hqTerrainAir = hqTerrainAir; window.hqTerrainCam = hqTerrainCam;
     window.hqTerrainFluidAt = hqTerrainFluidAt; window.hqTerrainWallAt = hqTerrainWallAt; window.hqTerrainDoorY = hqTerrainDoorY; window.hqTerrainReach = hqTerrainReach; window.hqTerrainNodeKey = hqTerrainNodeKey;
     window.hqTerrainDoorLanding = hqTerrainDoorLanding; window.hqTerrainDump = hqTerrainDump; window.hqFindHardReachTerrain = hqFindHardReachTerrain; window.hqTerrainFindSpot = hqTerrainFindSpot; window._hqTPolyDist = _hqTPolyDist;

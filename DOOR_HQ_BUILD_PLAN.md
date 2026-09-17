@@ -9375,3 +9375,30 @@ the landscape / planet / map."
 - UNSEEN LIVE (RULE #1c): everything — the field's look (the cliff / path blend, the water sheets, the crag at
   the walls), the walker on the ramps and off the ledges, the drop off THE HIGH TIER, the stair ramp's treads,
   the fence walls under the rider, the tree ways' GLBs (hole facing), the batch's scales, the lip snap.
+
+### 2026-09-17 — THE FLOOR PLANS (9.3 stage 5) + THE ROOM LOOKS + THE VIDEO SETTINGS EVERYWHERE (local delivery)
+- The user: room / hallway generation (cellular automata, random room placing) instead of big boxes; the square edge of
+  the landscape shows where the fog should be; the whole area outlined in wood planks; keep making the woods and the
+  cave better (an exploratory, nostalgic, mysterious fantasy retro vibe — NeverEnding Story / Princess Bride / Oz /
+  Wind Waker / Ocarina); graphics settings per map; the video settings in the pause menu outside a battle.
+- `terrain.gen` on thirteen rooms (data.js `_hqTGenerate`, `HQ_TERRAIN_GEN`): the seven cave chambers wear a
+  cellular-automata plan (rock to 3.2 m between the authored tiers — the cavern grew rock masses across its plain, the
+  well room keeps its tiers and pools with rock leaning on them), the six open woods rooms a clearings-and-corridors
+  plan (a 1.7 m thicket bank with the forest on it — the Lost Woods' hedge). Every authored feature is forced open;
+  every door still reaches every other (a corridor is carved along the walker's own path where it would not); open =
+  reachable. `node check-terrain.js` prints each plan's open share (51–75 %).
+- The fog: the woods' sky carries a per-metre density now (0.03); the cave chambers a warm dark haze of their own; the
+  paving kerb and the flat apron are gone under a field — the field's own ground runs 54 m out, rolling and falling
+  away under the fog, the treeline on it.
+- THE LOOKS (`HQ_ROOM_LOOKS`, `shell.look`, `env.look` → `ThreePost.setSceneLook`): the woods Dreamy + a vignette + the
+  bloom up; the cave the amber; the drain / the Haunted House green; the Backrooms faded; Hell amber. An overlay over
+  the player's own settings, never a saved preference; Settings → Graphics → Map Looks refuses them.
+- THE VIDEO SETTINGS EVERYWHERE: ui.js `_buildVideoSettingsHTML` — the battle pause menu's VIDEO tab, the main menu's
+  Settings and the HQ pause menu's SETTINGS render one sheet (the battle-only rows gated).
+- Tests: hq-floor-plan.test.js (new); hq-terrain / hq-cave / hq-woods / hq-finds / hq-map-remembers / the settings
+  tests pass unchanged. Token `20260917-floor-plans-01-cors`.
+- NOT BUILT: a plan on the site BOARD rooms (the walkway round a Δ is the console's); pillars / stalagmites standing
+  on the cave plan's islands (the rock masses are bare); ferns along the thicket's foot; a plan seed per VISIT (the
+  seed is the room's — the map is stable so the tapes stay where the officer left them).
+- UNSEEN LIVE (RULE #1c): all of it — the rock masses' sheet and shading, the thicket banks under the trees, the outer
+  ground's swell, the fog density, each look's strength, the settings sheet in the pause overlay.

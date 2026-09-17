@@ -20779,8 +20779,36 @@ const ThreeRenderer = (function () {
         return { night: night, ev: ev, zi: zi, w: w };
     }
 
+    /* ── THE SCENE LOOK (2026-09-17) ──────────────────────────────────────────
+       A map (EW_MAP_META env.look) or an HQ room (shell.look) wears a GRADE over
+       the player's post settings — ThreePost.setSceneLook lays it on top without
+       writing a preference. _sceneLookOf answers the look to wear (null when the
+       player turned map looks off: localStorage ew_scene_looks = 'off' /
+       window.EW_NO_SCENE_LOOKS). The battle applies its map's on every
+       environment update keyed by the row (a rematch on another map swaps it);
+       the HQ applies its room's on entry (_hqEnter) and drops it on leave. */
+    var _envLookKey = '';
+    function _sceneLooksOn() {
+        if (typeof window !== 'undefined' && window.EW_NO_SCENE_LOOKS) return false;
+        try { if (typeof localStorage !== 'undefined' && localStorage.getItem('ew_scene_looks') === 'off') return false; } catch (e) {}
+        return true;
+    }
+    function _sceneLookOf(look, name) {
+        if (!look || typeof look !== 'object' || !_sceneLooksOn()) return null;
+        var o = {}; for (var k in look) o[k] = look[k];
+        if (!o.name && name) o.name = name;
+        return o;
+    }
+    function _applyEnvLook(me) {
+        var look = (me && me.look) || null, key = look ? JSON.stringify(look) : '';
+        key += _sceneLooksOn() ? '' : '|off';
+        if (key === _envLookKey) return;
+        _envLookKey = key;
+        try { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(_sceneLookOf(look, me && me.label)); } catch (e) {}
+    }
     function _updateEnvironment() {
         if (!_envInited || !_envUni) return;
+        _applyEnvLook((typeof state !== 'undefined' && state && state.mapEnv) || null);
         var ts = CONFIG.tileSize || BASE_TILE;
         var _bw = (typeof bw === 'function') ? bw() : 16;
         var _bh = (typeof bh === 'function') ? bh() : 8;
@@ -29145,6 +29173,7 @@ const ThreeRenderer = (function () {
            forget the battle's record so the first frame re-applies camera
            aspect + post + CSS2D sizes to .map-center (see _viewW) */
         _viewW = -1; _viewH = -1;
+        _envLookKey = '';   // THE SCENE LOOK: the battle re-applies its map's on the first environment update
         canvas.style.display = 'block';
         if (css2dRenderer) css2dRenderer.domElement.style.display = '';
         _ensureFloatOverlay();
@@ -37456,6 +37485,8 @@ const ThreeRenderer = (function () {
             ce.rotation.x = Math.PI / 2; ce.position.y = H * U;
             ce._ew_hqPart = 'ceil';   // THE ROOM ROUND THE FIELD: the battle looks in from above — the ceiling is never drawn there
             G.add(ce);
+        } else if (room.terrain && room.terrain.outer !== false) {
+            /* THE TERRAIN ROOM (2026-09-17): the field's own outer ground runs to the fog (_hqBuildOuterGround) — no flat apron, no skirt */
         } else {
             var A = 16;
             var ap = new THREE.Mesh(new THREE.PlaneGeometry((W + 2 * A) * U, (Dp + 2 * A) * U), _hqMat(S.apron || texFloor, (W + 2 * A) / 1.75, (Dp + 2 * A) / 1.75, { shininess: 3, specular: 0x0c0c0c, color: (S.apronColor != null) ? S.apronColor : 0xffffff }));
@@ -37514,8 +37545,9 @@ const ThreeRenderer = (function () {
             });
             var edgeTrim = _hqMat(texTrim, len / 1.5, 1, { shininess: 12, specular: 0x222222 });
             if (edge === 'open') {
-                /* the paving edge: flush, a border line where the walkway meets the ground */
-                runs.forEach(function (rn) { G.add(slab(0, HQ_EDGE_KERB_H, 0.16, 0.34, edgeTrim, rn)); });
+                /* the paving edge: flush, a border line where the walkway meets the ground — never round a FIELD
+                   (2026-09-17: the woods were outlined in wood planks; the ground just runs on now) */
+                if (!room.terrain) runs.forEach(function (rn) { G.add(slab(0, HQ_EDGE_KERB_H, 0.16, 0.34, edgeTrim, rn)); });
                 return;
             }
             /* 'low': the field wall, a cap on it */
@@ -38293,7 +38325,51 @@ const ThreeRenderer = (function () {
     }
     function _hqTerrainGround(x, z) {
         var ti = _hq && _hq.terrain; if (!ti) return null;
+        if (_hq.outer && (Math.abs(x) > _hq.outer.hx || Math.abs(z) > _hq.outer.hz)) return _hq.outer.yAt(x, z);
         return hqTerrainHeight(ti, x, z);
+    }
+    var HQ_OUTER_M = 54;     /* THE OUTER GROUND: how far past an open field the ground runs before the fog has it (m) */
+    function _hqBuildOuterGround(room, info, G, mat, TM, rng) {
+        var U = _hqUnits(), S = room.shell, hx = info.halfW - 0.5, hz = info.halfD - 0.5;
+        var ext = (room.terrain.outer && room.terrain.outer.m) || HQ_OUTER_M, cs = 2.0, seed = (info.nx * 131 + info.nz * 7) | 0;
+        var nse = function (x, z, sc, sd) { return (typeof _hqTNoise === 'function') ? _hqTNoise(x, z, sc, sd) : 0; };
+        var sm = function (t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); };
+        /* the height past the field: the field's edge for the first 2.5 m, then the roll, the swell and the fall */
+        var yAt = function (x, z) {
+            var ex = Math.max(0, Math.abs(x) - hx), ez = Math.max(0, Math.abs(z) - hz), e = Math.hypot(ex, ez);
+            var cx = Math.max(-hx, Math.min(hx, x)), cz = Math.max(-hz, Math.min(hz, z));
+            var edgeH = hqTerrainHeight(info, cx, cz);
+            var roll = 1.1 * nse(x, z, 9, seed + 3) + 0.35 * nse(x, z, 3.2, seed + 5);
+            var swell = 2.4 * sm(e / 22) - 7.0 * sm((e - 24) / 26);
+            var k = sm(e / 2.5);
+            return edgeH * (1 - k) + (edgeH * 0.35 + roll + swell) * k;
+        };
+        _hq.outer = { hx: hx, hz: hz, ext: ext, yAt: yAt };
+        var X0 = -(hx + ext), Z0 = -(hz + ext), nx = Math.ceil(2 * (hx + ext) / cs) + 1, nz = Math.ceil(2 * (hz + ext) / cs) + 1;
+        var pos = new Float32Array(nx * nz * 3), uv = new Float32Array(nx * nz * 2), blend = new Float32Array(nx * nz * 2), idx = [];
+        for (var j = 0; j < nz; j++) for (var i = 0; i < nx; i++) {
+            var k = j * nx + i, px = X0 + i * cs, pz = Z0 + j * cs, h = yAt(px, pz);
+            pos[k * 3] = px * U; pos[k * 3 + 1] = h * U; pos[k * 3 + 2] = pz * U;
+            uv[k * 2] = px * U / TM; uv[k * 2 + 1] = pz * U / TM;
+            var slx = (yAt(px + cs, pz) - yAt(px - cs, pz)) / (2 * cs), slz = (yAt(px, pz + cs) - yAt(px, pz - cs)) / (2 * cs), sl = Math.hypot(slx, slz);
+            var rk = (sl - 0.55) / 0.75; rk = rk < 0 ? 0 : rk > 1 ? 1 : rk;
+            blend[k * 2] = rk * rk * (3 - 2 * rk); blend[k * 2 + 1] = 0;
+        }
+        for (var j2 = 0; j2 + 1 < nz; j2++) for (var i2 = 0; i2 + 1 < nx; i2++) {
+            /* a quad wholly inside the field's bound is the field's own */
+            var qx0 = X0 + i2 * cs, qz0 = Z0 + j2 * cs, qx1 = qx0 + cs, qz1 = qz0 + cs;
+            if (qx0 > -hx && qx1 < hx && qz0 > -hz && qz1 < hz) continue;
+            var a = j2 * nx + i2, b = a + 1, c = a + nx, d = c + 1;
+            idx.push(a, c, b, b, c, d);
+        }
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+        geo.setAttribute('aBlend', new THREE.BufferAttribute(blend, 2));
+        geo.setIndex(idx); geo.computeVertexNormals();
+        var outer = new THREE.Mesh(geo, mat);
+        outer.position.y = 0.2; outer.receiveShadow = true; outer.renderOrder = 0; outer._ew_hqPart = 'floor'; outer._ew_hqGround = true; outer._ew_hqOuter = true;
+        G.add(outer);
     }
     /* the treeline of an open room (THE WOODS): rings of the foliage models on the apron past the shell, the door lanes kept clear */
     function _hqPlantTreeline(room, S, halfX, halfZ, plantTree, rng) {
@@ -38358,6 +38434,8 @@ const ThreeRenderer = (function () {
             uv[k * 2] = px * U / TM; uv[k * 2 + 1] = pz * U / TM;
             var sl = hqTerrainSlope(info, px, pz);
             var rock = (sl - R.cliffFrom) / (R.cliffTo - R.cliffFrom); rock = rock < 0 ? 0 : rock > 1 ? 1 : rock;
+            /* THE GENERATED FLOOR PLAN (2026-09-17): a cave's solid wears the cliff sheet to its top (info.gen.solidSheet); the woods' thicket bank keeps the forest floor */
+            if (info.maskD && info.gen && info.gen.solidSheet === 'cliff' && typeof hqTerrainMaskAt === 'function') { var md = hqTerrainMaskAt(info, px, pz); if (md < 0.1) { var mr = (0.1 - md) / 0.6; rock = Math.max(rock, mr > 1 ? 1 : mr); } }
             blend[k * 2] = rock * rock * (3 - 2 * rock); blend[k * 2 + 1] = pathW(px, pz) * (1 - blend[k * 2]);
         }
         var idx = [];
@@ -38373,6 +38451,11 @@ const ThreeRenderer = (function () {
         var field = new THREE.Mesh(geo, _hqTerrainMat(info, S));
         field.position.y = 0.3; field.receiveShadow = true; field.renderOrder = 1; field._ew_hqPart = 'floor'; field._ew_hqTerrain = true;
         G.add(field);
+        /* THE OUTER GROUND (2026-09-17): an open field no longer ends at a square edge over a flat apron — the ground
+           runs on past the shell to HQ_OUTER_M, matched to the field's own edge, rolling, swelling into low rises and
+           then falling away under the fog (the sky's fog colour: scene.fog is the room's, _hqEnter). The treeline
+           stands on it (_hqTerrainGround reads _hq.outer). Built in the field's own material. */
+        if (S.open && room.terrain.outer !== false) { try { _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { console.warn('[HQ] the outer ground failed', e); } }
         /* ── THE WATER: the battle's animated sheet per key; a pool a disc, a stream a mitred ribbon ── */
         var fluidMats = {}, fluidKeys = [];
         var fluidMatFor = function (key) {
@@ -38477,6 +38560,12 @@ const ThreeRenderer = (function () {
             var blk = new THREE.Object3D(); blk.position.set(t.x * U, t.y * U, t.z * U); G.add(blk);
             _hq.blockers.push({ obj: blk, y: t.y, top: null, rad: t.r || 0.38, tree: true });
         });
+        /* THE THICKET (2026-09-17): the forest growing on the plan's solid — every tree a blocker (the bank is jumped onto; the trees hold the walker off the interior) */
+        (info.thicket || []).forEach(function (t) {
+            plantTree(t.kind, t.h, t.x, t.z, t.y * U);
+            var tb = new THREE.Object3D(); tb.position.set(t.x * U, t.y * U, t.z * U); G.add(tb);
+            _hq.blockers.push({ obj: tb, y: t.y, top: null, rad: t.r || 0.42, thicket: true });
+        });
         if (TK && S.forest && S.open) _hqPlantTreeline(room, S, S.w / 2, S.d / 2, plantTree, rng);
         /* ── THE SCATTER: catalogue props at the compiler's spots, placed by _hqPlaceProps on the ground ── */
         _hq.terrainScatter = info.scatter.map(function (q) { return { key: q.key, x: q.x, z: q.z, face: q.face, foot: q.foot, rect: false, scatter: true }; });
@@ -38488,6 +38577,7 @@ const ThreeRenderer = (function () {
             for (var si = 0; si < nSt; si++) {
                 var sx = (rng() - 0.5) * (S.w - 2), sz = (rng() - 0.5) * (S.d - 2), gh = hqTerrainHeight(info, sx, sz);
                 if (S.h - gh < 3.2) continue;
+                if (info.maskD && typeof hqTerrainMaskAt === 'function' && hqTerrainMaskAt(info, sx, sz) < 0.3) continue;   // over the open floor only, never in the plan's rock
                 if (info.pads.some(function (p) { return Math.hypot(p.x - sx, p.z - sz) < 2.6; })) continue;
                 var len = 0.6 + rng() * 2.0, rad = 0.12 + rng() * 0.28;
                 var cone = new THREE.Mesh(new THREE.ConeGeometry(rad * U, len * U, 7), stMat);
@@ -46777,6 +46867,8 @@ const ThreeRenderer = (function () {
         var sc = _hq.scene;
         sc.background = new THREE.Color(0x07070a);
         sc.fog = new THREE.FogExp2(0x0d0e12, 0.00017);
+        /* a closed room's own haze (2026-09-17): shell.fog = { color, density (per metre) } — the cave's warm dark */
+        if (S.fog && S.fog.color != null) sc.fog = new THREE.FogExp2(S.fog.color, (S.fog.density > 0 ? S.fog.density : 0.012) / U);
         sc.add(_hq.shellGroup, _hq.doorGroup, _hq.propGroup, _hq.charGroup);
         /* lights: warm ceiling / cool floor hemisphere, a soft key, point lights over the hall */
         if (room.kind === 'box' && S.open && S.sky) {
@@ -46791,8 +46883,11 @@ const ThreeRenderer = (function () {
             (S.lights || []).forEach(function (Lt) {
                 var ml = new THREE.PointLight(mplC, nightO ? 0.75 : 0.5, 20 * U, 2); ml.position.set(Lt.x * U, (S.h + 1.8) * U, Lt.z * U); sc.add(ml);
             });
-            if (S.sky.fog && S.sky.fog.color != null) sc.fog = new THREE.FogExp2(S.sky.fog.color, 0.00005);
-            else sc.fog = new THREE.FogExp2(0x0d0e12, 0.00005);
+            /* THE FOG (2026-09-17): sky.fog.density = per METRE (the woods 0.03 → the treeline at 12 m is a third gone,
+               the outer ground's far edge at 54 m is under it); a row without one keeps the thin default */
+            var fogD = (S.sky.fog && S.sky.fog.density > 0) ? S.sky.fog.density / U : 0.00005;
+            if (S.sky.fog && S.sky.fog.color != null) sc.fog = new THREE.FogExp2(S.sky.fog.color, fogD);
+            else sc.fog = new THREE.FogExp2(0x0d0e12, fogD);
             _hq.cam.dist = Math.min(_hq.cam.dist, Math.max(2.2, S.d * 0.6));
         } else if (room.kind === 'box') {
             /* a small room: one fluorescent overhead, a warm pool at the desk lamp, dim fill */
@@ -46888,6 +46983,8 @@ const ThreeRenderer = (function () {
         var sp = room.spawn || { face: 0 };
         _hq.cam.yaw = _hqRad(sp.face || 0);
         _hqBindInput();
+        /* THE ROOM'S LOOK (2026-09-17): shell.look is laid over the player's post settings while they stand here */
+        try { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(_sceneLookOf(S.look, room.label)); } catch (e) {}
         renderer.setAnimationLoop(_hqFrame);
         console.log('[HQ] entered', opts.room || 'central_egress', '(' + (room.kind || 'rotunda') + ') — doors:', _hq.doors.length, 'props:', (room.props || []).length, 'chars:', _hq.chars.length);
         return true;
@@ -46949,6 +47046,7 @@ const ThreeRenderer = (function () {
         if (opts && opts.dissolve) { try { _hqDissolveStart(H, (typeof opts.dissolve === 'object') ? opts.dissolve : null); } catch (e) { console.warn('[HQ] the dissolve did not start', e); } }
         _hqUnbindInput();
         _hq = null;
+        try { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(null); } catch (e) {}   // the room's look leaves with the room
         if (H.sky) _horizonFogDirty = true;   // an outdoor room drove the shared sky uniforms: the battle re-applies its fog
         try { renderer.setAnimationLoop(active ? renderFrame : null); } catch (e) {}
         /* characters: evict their rig-cache records (ids are ours) */
@@ -47637,6 +47735,7 @@ const ThreeRenderer = (function () {
         if (active) { console.warn('[MENU] refusing to open over a live battle'); return false; }
         if (_hq) { console.warn('[MENU] the building owns the canvas'); return false; }
         if (_menuLive) { if (_menu && _menu.host === host) return true; _menuLeave(); }
+        try { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(null); } catch (e) {}   // the menu wears the player's own settings
         if (!_menu) {
             try { _menu = _menuBuild(host); }
             catch (e) { console.error('[MENU] build failed', e); _menu = null; return false; }
@@ -47863,6 +47962,15 @@ const ThreeRenderer = (function () {
         /* THE WORLD (2026-09-13): grounded ↔ floating readout + the mode pref (entropy / grounded / floating) */
         world: function () { return _worldInfo(); },
         getWorldMode: function () { return _wdMode(); },
+        /* THE SCENE LOOK (2026-09-17): re-read the Map Looks preference and re-lay the current place's grade (the settings toggle) */
+        refreshSceneLook: function () {
+            _envLookKey = '';
+            try {
+                if (_hq && _hq.room) { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(_sceneLookOf(_hq.room.shell && _hq.room.shell.look, _hq.room.label)); }
+                else if (active) _applyEnvLook((typeof state !== 'undefined' && state && state.mapEnv) || null);
+                else if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(null);
+            } catch (e) {}
+        },
         setWorldMode: function (m) { return _wdSetMode(m); },
         setPlateStyle: function (style) {
             _plateLook.style = (style === 'compact' || style === 'side') ? style : 'bars';
