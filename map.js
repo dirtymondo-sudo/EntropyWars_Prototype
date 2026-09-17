@@ -2009,7 +2009,7 @@
                 case 'on':
                     if (h) h.classList.add('skate');
                     _hqSkateSfx('skatePush', 0.5);
-                    _hqToast('<b>ON THE BOARD</b><span>W PUSH · S BRAKE · A / D CARVE · SPACE OLLIE · LAND ON A RAIL TO GRIND · IN THE AIR ← → ↑ ↓ W A D = TRICKS · SHIFT GRAB · B OFF</span>', 3600);
+                    _hqToast('<b>ON THE BOARD</b><span>W PUSH (HOLD TO CRUISE) · S BRAKE · A / D CARVE · SPACE OLLIE · LAND ON A RAIL TO GRIND · IN THE AIR ← → ↑ ↓ W A D = TRICKS · SHIFT GRAB · B OFF</span>', 3600);
                     _hqFillStrip(_hqProfile());
                     break;
                 case 'off':
@@ -2043,7 +2043,7 @@
                     _hqSkateSfx('skateBail', 0.6);
                     _hqSkateFile({ bail: true });
                     _hqComboLive = false;
-                    _hqTrickLine(`<span>BAIL</span><b>${ev.lost ? '−' + (ev.lost | 0).toLocaleString() : ''}</b><i>${ev.why === 'wall' ? 'THE WALL' : ev.why === 'balance' ? 'OFF THE RAIL' : ev.why === 'offaxis' ? 'LANDED SIDEWAYS' : ev.why === 'drop' ? 'TOO FAR DOWN' : ev.why === 'car' ? 'THE TRAFFIC' : 'STILL TURNING'}</i>`, 'bail', 1800);
+                    _hqTrickLine(`<span>BAIL</span><b>${ev.lost ? '−' + (ev.lost | 0).toLocaleString() : ''}</b><i>${ev.why === 'balance' ? 'OFF THE RAIL' : ev.why === 'offaxis' ? 'LANDED SIDEWAYS' : 'STILL TURNING'}</i>`, 'bail', 1800);
                     break;
                 }
                 /* DISASTER CITY (2026-09-17): the traffic and the circuit — three-renderer.js _hqTickTraffic / _hqTickRace */

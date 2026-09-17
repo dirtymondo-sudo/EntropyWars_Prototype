@@ -10660,6 +10660,21 @@ stands inside a setting's piece = `_hqSettingFreeSpot` did not move it
 136 px up, over the prompt; if the prompt and the toast overlap on a
 short window, `.hq-toast { bottom }` is the edit.
 
+## THE SKATE PROBE (2026-09-17, rev 3) — playtest_skate_offline.js: the posed rider on the real deck
+The gun probe's mirror (same mirror / stand-ins / GLB-from-disk rules, same steps; the skateboard GLB sits at the repo
+root and the candidate list already reads `REPO/<base>`), output `shots/skate/`. Recipes that settled rev 3: THE
+STANCE — `[{"teleport":{"x":0,"z":2,"face":90,"dist":4.5,"pitch":-0.15}},{"eval":"ThreeRenderer.hq.skate(true)"},
+{"wait":2500},{"shot":"stand"},{"eval":"ThreeRenderer.hq.dev.lookAt(ThreeRenderer.hq.dev.walk().x, ThreeRenderer.hq.
+dev.walk().z - 8)"},{"wait":800},{"shot":"side"}]` (the camera looks −z while the heading is +x = a true side view;
++6 / −6 for a three-quarter); THE STRIDE — `{"keydown":"w"}` + shots every 2.5 s; THE BAIL — push, `keyup w`, then
+`{"keydown":"space"},{"wait":150},{"keyup":"space"},{"keydown":"down"},{"wait":120},{"keyup":"down"}` (a backflip
+pressed at once on a tap ollie lands under landGrace → the bail) and shots every 700 ms: the fall lying on the floor
+by the second, upright on the deck by the fourth (the clock runs at dt 0.05 a frame — ~5 real seconds a bail here).
+`ThreeRenderer.hq.ride()` prints v / hd / bail / trick. What it found: a flat −90° stance put Idle_10's forward foot
+off the deck (→ `_hqRideFitStance`), the deck sat a foot behind the feet (→ the centred offset), a quarter pipe at
+a cruising pace walked off its lip before the launch (→ the coping check before the move). Slow, like the gun probe:
+judge poses, not timing.
+
 ## THE DOOR GUN PROBE (2026-09-16, rev 4) — playtest_gun_offline.js: the posed walker, the real gun, the keys
 `playtest_hq_offline.js` serves every GLB as a 404 — fine for rooms, useless for a HELD gun. `playtest_gun_offline.js`
 is the same harness (the npm mirror, the stand-in textures) plus every GLB the repo holds from disk: `Assets/Models/

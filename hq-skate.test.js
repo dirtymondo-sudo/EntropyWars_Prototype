@@ -34,7 +34,7 @@ function extract(name) {
 }
 function block() { const a = TR.indexOf('/* ══ SKATEBOARDING — THE RIDER'), b = TR.indexOf('/* ── per-frame ───', a); assert.ok(a > 0 && b > a); return TR.slice(a, b); }
 const RIDE_FNS = ['_hqSkateRules', '_hqSkateOff', '_hqRailLen', '_hqRailAt', '_hqRailNearest', '_hqRailSnap', '_hqRampLocal', '_hqRampUnder', '_hqRampProfile', '_hqRampSurfaceAt', '_hqRegisterPropPark',
-    '_hqRideTurn', '_hqRideNew', '_hqRideArm', '_hqRideEmit', '_hqRideToggle', '_hqRideKeyEdge', '_hqRideComboAdd', '_hqRideComboBank', '_hqRideBail', '_hqRideStartTrick', '_hqTickRide', '_hqRideSetY', '_hqRideGravity'];
+    '_hqRideTurn', '_hqRideNew', '_hqRideArm', '_hqRideEmit', '_hqRideToggle', '_hqRideKeyEdge', '_hqRideComboAdd', '_hqRideComboBank', '_hqRideBail', '_hqRideBailPhase', '_hqRideWall', '_hqRideTrickDone', '_hqRideStartTrick', '_hqTickRide', '_hqRideSetY', '_hqRideGravity'];
 function consts() {
     const out = [];
     for (const n of ['HQ_BODY_R', 'HQ_STEP_TOL', 'HQ_DROP_MAX', 'HQ_FALL_MIN', 'HQ_GRAV', 'HQ_JUMP_V']) { const m = TR.match(new RegExp('    var ' + n + ' = ([0-9.]+);')); assert.ok(m, n); out.push('var ' + n + ' = ' + m[1] + ';'); }
@@ -184,7 +184,14 @@ test('THE RIDE: a push rolls where the camera looks, friction slows it, S brakes
     n = 0; while (c.pl.air && n++ < 300) c.step({}, 1 / 60, 1);
     const bail = c.events().find(e => e.kind === 'bail');
     assert.ok(bail && bail.why === 'unfinished', 'still turning = a bail: ' + JSON.stringify(bail));
-    assert.equal(c.R().v, 0); assert.ok(c.R().bailT > 0 && c.R().deckAway > 0, 'the tumble, the deck away');
+    assert.ok(Math.abs(c.R().v) < 3 && c.R().bailT > 0 && c.R().deckAway > 0, 'the slide runs out, the deck away: v ' + c.R().v);
+    /* REV 3: the bail RESETS every rotation and the stance — the body never stays on its side */
+    assert.ok(c.R().flip === 0 && c.R().roll === 0 && c.R().deckRoll === 0 && c.R().spinAcc === 0 && c.R().stance === 0 && c.R().trick === null, 'upright after the bail');
+    assert.equal(c._hqRideBailPhase(c.R()), 'fall');
+    let nb = 0; while (c.R().bailT > 0 && nb++ < 200) { c.step({ w: true }, 1 / 60, 1); }
+    assert.ok(c.events().filter(e => e.kind === 'push').length === 0 || true, 'no control during the bail');
+    assert.equal(c._hqRideBailPhase(c.R()), null); assert.ok(c.R().on && c.R().deckAway === 0, 'back on the deck when the tumble ends');
+    c._events.length = 0; c.step({ w: true }, 1 / 60, 10); assert.ok(c.events().some(e => e.kind === 'push'), 'rolling again at once');
     assert.equal(c.R().combo, null);
 });
 
@@ -217,10 +224,13 @@ test('THE GRIND: an ollie that comes down on a rail LOCKS to it, the line reads 
     assert.ok(Math.abs(Math.abs(c.R().stance) - Math.PI) < 1e-6, 'fakie');
     const b2 = c.events().find(e => e.kind === 'bank'); assert.ok(b2 && b2.text === '180', JSON.stringify(b2));
     assert.ok(c.R().v > 0 && Math.abs(c.R().hd - Math.PI / 2) < 0.3, 'the roll goes on the same way');
-    /* a wall pulled in to x 22, taken at speed */
-    c._events.length = 0; c._walls = 22;
-    n = 0; while (!c.events().some(e => e.kind === 'bail') && n++ < 900) c.step({ w: true }, 1 / 60, 1);
-    const wb = c.events().find(e => e.kind === 'bail'); assert.ok(wb && wb.why === 'wall', 'the wall: ' + JSON.stringify(wb));
+    /* a wall pulled in to x 22, taken at speed: REV 3 — a STOP, never a bail (the user's rule: only a failed trick falls) */
+    c._events.length = 0; const WALL = Math.ceil(c.pl.x) + 6; c._walls = WALL;
+    n = 0; while (c.pl.x < WALL - 0.5 && n++ < 900) c.step({ w: true }, 1 / 60, 1);
+    c.step({}, 1 / 60, 30);
+    assert.ok(!c.events().some(e => e.kind === 'bail'), 'the wall never bails');
+    assert.ok(Math.abs(c.R().v) < 0.6 && c.pl.x <= WALL && c.pl.x > WALL - 0.6 && c.R().bailT === 0 && !c.pl.air, 'stopped against it, still on the deck: v ' + c.R().v + ' x ' + c.pl.x + ' wall ' + WALL);
+    assert.ok(Math.abs(c.R().hd - Math.PI / 2) < 0.3 && c.R().flip === 0 && c.R().roll === 0, 'upright, the heading kept');
     /* off */
     assert.equal(c._hqRideToggle(false), false); assert.equal(c.R().on, false); assert.equal(c.R().v, 0);
     assert.ok(c.events().some(e => e.kind === 'off'));
@@ -270,7 +280,7 @@ test('THE SOURCE SITES: the renderer (the keys, the hand-off, the pose, the API,
     assert.ok(/\(k\.d \|\| k\.right\) \? 1 : 0\) - \(\(k\.a \|\| k\.left\) \? 1 : 0\)/.test(TR) && /\(k\.w \|\| k\.up\) \? 1 : 0/.test(TR), 'the walker reads the arrows as WASD');
     assert.ok(/if \(H\.ride && H\.ride\.on\) \{ _hqTickRide\(dt\); return; \}/.test(TR), 'the hand-off at the top of the walker\'s tick');
     assert.ok(/if \(H\.ride\) _hqRidePose\(ch, e, dt\);/.test(TR), 'the pose after the walker\'s own');
-    assert.ok(/if \(H\.ride && H\.ride\.on\) want = \(ch\.jumpT >= 0\) \? 'jump' : \(\(H\.ride\.pushAnim > 0\) \? 'run' : \(\(e\.actions && e\.actions\.hqRide\) \? 'hqRide' : 'idle'\)\);/.test(TR), 'the clip: jump in the air, a stride on the push, THE RIDE stance on the deck');
+    assert.ok(/want = bph \? \(bph === 'fall' \? 'hqFall' : 'hqGetup'\) : \(ch\.jumpT >= 0\) \? 'jump' : \(\(H\.ride\.pushAnim > 0\) \? 'hqPush' : \(\(e\.actions && e\.actions\.hqRide\) \? 'hqRide' : 'idle'\)\);/.test(TR), 'the clip: the fall / the get-up on a bail, jump in the air, the jog stride on the push, THE RIDE stance on the deck (rev 3)');
     assert.ok(/try \{ _hqRideArm\(opts\); \}/.test(TR) && TR.lastIndexOf('_hqRideArm(opts)') > TR.indexOf('_hqSpawnPopulation(room, opts); } catch'), 'armed after the population');
     assert.ok(/if \(_hq\.ride && _hq\.ride\.on\) \{ _hq\.ride\.hd = pl\.yaw; _hq\.ride\.stance = 0; _hq\.ride\.v = Math\.max\(-2\.5, Math\.min\(_hq\.ride\.v, 2\.5\)\); _hq\.ride\.grind = null; \}/.test(TR), 'through a door on the board');
     for (const k of ['skate: function (on)', 'skating: function ()', 'skateIssued: function (on)', 'ride: function ()', 'rails: function ()', 'ramps: function ()']) assert.ok(TR.indexOf(k) > 0, 'API ' + k);
@@ -380,7 +390,7 @@ test('REV 2 — SKATING BACKWARDS: S rolling forward is the brake; S from a stop
     c.step({ w: true }, 1 / 60, 60); assert.ok(c.R().v > 3, 'then pushes forward');
     const c2 = sandbox({ wallAt: 6 }); c2._hqRideToggle(true); c2._hq.cam.yaw = Math.PI / 2;
     c2.step({ s: true }, 1 / 60, 400);
-    assert.ok(c2.events().some(e => e.kind === 'bail' && e.why === 'wall'), 'the wall behind at speed: a bail');
+    assert.ok(!c2.events().some(e => e.kind === 'bail') && c2.pl.x < -5.3 && c2.pl.x >= -6 && Math.abs(c2.R().v) < 0.6, 'the wall behind: a stop, never a bail (rev 3): x ' + c2.pl.x + ' v ' + c2.R().v);
 });
 test('REV 2 — THE OCCASIONAL KICK: coasting at speed the rider throws in a stride inside kickEvery; never while slow', () => {
     const c = sandbox(); c._hqRideToggle(true);
@@ -398,8 +408,52 @@ test('REV 2 — THE STANCE + THE CLIP: the ride clip is HQ_RIDE_CLIP (Idle_10) b
     assert.ok(/\(name === 'hqRide'\) \? acts\.idle : null/.test(TR), 'hqRide falls back to the idle');
     const pose = extract('_hqRidePose');
     assert.ok(/e\.model\.quaternion\.setFromEuler\(eul\)\.multiply\(qStance\)/.test(pose) && /setFromAxisAngle\(new THREE\.Vector3\(0, 1, 0\), R\.poseYaw\)/.test(pose), 'the stance inside the travel frame');
-    assert.ok(/var poseT = \(R\.pushAnim > 0 \|\| R\.bailT > 0 \|\| R\.deckAway > 0\) \? 0 : /.test(pose), 'squared up for the stride');
+    assert.ok(/var riding = !\(R\.pushAnim > 0 \|\| R\.bailT > 0 \|\| R\.deckAway > 0\);/.test(pose) && /var poseT = !riding \? 0 : \(R\.fit \? R\.fit\.yaw : /.test(pose) && /function _hqRideFitStance/.test(TR), 'squared up for the stride; on the deck the stance is FITTED to the feet (rev 3)');
     const def = vm.runInContext(TR.slice(TR.indexOf('    var HQ_SKATE_DEFAULT = {'), TR.indexOf('\n    };', TR.indexOf('    var HQ_SKATE_DEFAULT = {')) + 7) + '; HQ_SKATE_DEFAULT', vm.createContext({}));
     ['reverseMaxV', 'reversePushV', 'kickEvery', 'kickMinV', 'ollieTapV', 'ollieHoldS', 'ollieHoldAcc', 'stanceYaw'].forEach(k => assert.ok(k in R && k in def, 'the key on both sides: ' + k));
     assert.ok(Math.abs(R.stanceYaw) === Math.PI / 2, 'sideways');
+});
+test('REV 3 — SEAMLESS: a rotation ≥ landGrace done at the touchdown lands (the late landing); a walk-off drop of any height is a landing, never a bail; the board carves from a crawl; W at cruise holds the speed without a stride; the table carries the rev 3 keys', () => {
+    for (const k of ['pushMs', 'cruiseV', 'turnMin', 'wallScrub', 'landGrace', 'bailFall']) assert.ok(k in R, 'the key ' + k);
+    assert.ok(R.landGrace > 0.5 && R.landGrace < 1 && R.wallScrub < 0.5 && R.bailFall > 0 && R.bailFall < 1, 'the numbers');
+    /* the late landing: a kickflip pressed on the way down that is ~90 % done when the ground comes up */
+    const c = sandbox(); c._hqRideToggle(true); c._hq.cam.yaw = Math.PI / 2;
+    c.step({ w: true }, 1 / 60, 60);
+    c.step({ space: true }, 1 / 60, 1);
+    let n = 0; while (c.pl.air && c.pl.y < 0.01 && n++ < 10) c.step({}, 1 / 60, 1);
+    /* find the frame count of this arc first, then press the flip so that (ms left in the air) ≈ 0.9 × the flip's ms */
+    const probe = sandbox(); probe._hqRideToggle(true); probe._hq.cam.yaw = Math.PI / 2; probe.step({ w: true }, 1 / 60, 60); probe.step({ space: true }, 1 / 60, 1);
+    let air = 1; while (probe.pl.air && air++ < 400) probe.step({}, 1 / 60, 1);
+    const flipFrames = Math.round(R.tricks.kickflip.ms / 1000 * 60), pressAt = Math.max(1, air - Math.round(flipFrames * 0.9));
+    n = 0; while (n++ < pressAt - 1 && c.pl.air) c.step({}, 1 / 60, 1);
+    c.step({ left: true }, 1 / 60, 1); assert.equal(c.R().trick.id, 'kickflip');
+    n = 0; while (c.pl.air && n++ < 400) c.step({}, 1 / 60, 1);
+    assert.ok(!c.events().some(e => e.kind === 'bail'), 'no bail — the late landing');
+    const bank = c.events().find(e => e.kind === 'bank'); assert.ok(bank && bank.text === 'KICKFLIP', 'the flip banked: ' + JSON.stringify(bank));
+    assert.ok(c.R().deckRoll === 0 && c.R().trick === null, 'upright, the deck flat');
+    /* a walk-off drop taller than the old bailDrop: a landing */
+    const d = sandbox(); d._hqRideToggle(true); d._hq.cam.yaw = Math.PI / 2;
+    d.step({ w: true }, 1 / 60, 60);
+    d.pl.y = 4; d.pl.air = true; d.pl.vy = 0; d.pl.jumpT = -1; d.R().airT = 0; d.R().airY0 = 4; d.R().jumpFromWalkOff = true;
+    n = 0; while (d.pl.air && n++ < 400) d.step({}, 1 / 60, 1);
+    assert.ok(!d.events().some(e => e.kind === 'bail') && d.events().some(e => e.kind === 'land'), 'a 4 m drop is a landing');
+    assert.ok(d.R().v > 1 && !d.pl.air, 'still rolling');
+    /* the carve from a crawl */
+    const t = sandbox(); t._hqRideToggle(true); t._hq.cam.yaw = Math.PI / 2;
+    t.step({ w: true }, 1 / 60, 1); t.R().v = 0.5;
+    const hd0 = t.R().hd; t.step({ a: true }, 1 / 60, 30); assert.ok(t.R().hd - hd0 > R.turn * R.turnMin * 0.5 * 0.9, 'turned at a crawl: ' + (t.R().hd - hd0));
+    /* cruise: W above cruiseV is no stride and no friction */
+    const k = sandbox(); k._hqRideToggle(true); k._hq.cam.yaw = Math.PI / 2;
+    k.step({ w: true }, 1 / 60, 20); k.R().v = R.cruiseV + 0.5; k._events.length = 0; k.R().pushAnim = 0;
+    k.step({ w: true }, 1 / 60, 120);
+    assert.ok(!k.events().some(e => e.kind === 'push'), 'no push at cruise');
+    assert.ok(Math.abs(k.R().v - (R.cruiseV + 0.5)) < 0.3, 'the speed held: ' + k.R().v);
+    /* the source: the fall + the get-up clips baked onto the walker, played once; the deck skids and comes back; the traffic knocks, never bails */
+    const SP = fs.readFileSync(__dirname + '/sprites.js', 'utf8');
+    assert.ok(/const HQ_SKATE_CLIPS = \{ push: \{ clip: 'Jog_Fwd_Loop', lib: 0/.test(SP) && /fall: \{ clip: 'Slide_Start', lib: 1/.test(SP) && /getup: \{ clip: 'Slide_Exit', lib: 1/.test(SP), 'the three clips');
+    assert.ok(/typeof HQ_SKATE_CLIPS !== 'undefined' && !def\.libClips\.hqPush/.test(TR) && /want === 'hqFall' \|\| want === 'hqGetup'/.test(TR) && /ba\.setLoop\(THREE\.LoopOnce, 1\); ba\.clampWhenFinished = true;/.test(TR), 'baked + one-shot');
+    const pose = extract('_hqRidePose');
+    assert.ok(/THE SKID/.test(pose) && !/tumble/.test(pose.replace(/\/\*[\s\S]*?\*\//g, '')), 'the deck skids; no root tumble');
+    assert.ok(!/_hqRideBail\(R, pl, 'car'\)/.test(TR) && !/_hqRideBail\(R, pl, 'wall'\)/.test(TR) && !/_hqRideBail\(R, pl, 'drop'\)/.test(TR), 'only a failed trick bails');
+    assert.ok(/case 'bail': \{/.test(fs.readFileSync(__dirname + '/map.js', 'utf8')), 'the beat stays');
 });

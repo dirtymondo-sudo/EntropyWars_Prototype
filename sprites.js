@@ -2237,6 +2237,14 @@ const _CAST_POSES = {
 // `hqRide` (_hqSpawnCharacter); never a per-race export.
 const HQ_RIDE_CLIP = { clip: 'Idle_10', lib: 2, ts: 1.0 };
 if (typeof window !== 'undefined') window.HQ_RIDE_CLIP = HQ_RIDE_CLIP;
+/* SKATEBOARDING rev 3 (2026-09-17): the rider's other three clips, baked onto the WALKER's
+   rig beside the ride stance (three-renderer.js _hqSpawnCharacter) — the push STRIDE (UAL1
+   Jog_Fwd_Loop: a light stride, the old push was the Running sprint), the bail's FALL (UAL2
+   Slide_Start 0.83 s: a run that goes down into a slide on the floor — read off the contact
+   sheet) and the GET-UP (UAL2 Slide_Exit 0.5 s: up off the floor onto the feet). The renderer
+   sizes fall / get-up to their share of HQ_SKATE_RULES.bailMs and plays each once. */
+const HQ_SKATE_CLIPS = { push: { clip: 'Jog_Fwd_Loop', lib: 0, ts: 1.15 }, fall: { clip: 'Slide_Start', lib: 1, ts: 1.0 }, getup: { clip: 'Slide_Exit', lib: 1, ts: 1.0 } };
+if (typeof window !== 'undefined') window.HQ_SKATE_CLIPS = HQ_SKATE_CLIPS;
 // THE DOOR GUN rev 4 (2026-09-16): the walker's GUN clips, baked beside the
 // ride clip on the HQ avatar's rig only (three-renderer.js _hqSpawnCharacter
 // → slots `hqAim` / `hqShoot`). UAL1 (lib 0) has the pistol set — the aim is

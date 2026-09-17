@@ -34741,30 +34741,36 @@ const HQ_SKATE_RULES = {
     free: true,          // standard issue — every officer holds a board (false = the find in Room 26)
     key: 'b',            // the walker's key: drop the deck / pick it up
     maxV: 12.5,          // m/s — the cap on the roll (a run is ~4.6)
-    pushV: 3.0,          // m/s a push adds
-    pushEvery: 0.42,     // s between pushes (W held)
-    friction: 0.99,      // per 60 Hz frame, applied time-based (a long coast — the pushes settle near the cap)
+    pushV: 4.2,          // m/s a push adds (rev 3: a fuller stroke on the slower cadence — four pushes to cruise)
+    pushEvery: 0.85,     // s between pushes (W held) — a real stroke's cadence (rev 3; was 0.42, a sprint)
+    pushMs: 520,         // ms the push STRIDE plays (the jog clip, squared up to the roll), then back on the deck
+    cruiseV: 10.5,       // m/s — at cruise W only HOLDS the speed (no friction, no stride): the rider stands on the deck (rev 3)
+    friction: 0.993,     // per 60 Hz frame, applied time-based (a long coast — rev 3: longer, a Tony Hawk roll; the pushes settle near the cap)
     brake: 0.9,          // S, per 60 Hz frame (rolling forward)
     reverseMaxV: 5.0,    // m/s — S from a stop is the FAKIE push: the roll goes backwards, capped here (rev 2)
     reversePushV: 1.8,   // m/s a fakie push adds
     kickEvery: [3.5, 7], // s — coasting at speed the rider throws in a stride now and then (rev 2)
     kickMinV: 2.5,       // m/s — slower than this no kick
     turn: 2.4,           // rad/s of carve at speed (scales up to 3 m/s)
+    turnMin: 0.4,        // the carve's floor at a crawl (a share of `turn`) — the board turns from a stop too (rev 3)
     ollieV: 7.25,        // the grind's hop-off (× 0.85) — the walker's own jump (HQ_JUMP_V)
     ollieTapV: 4.6,      // m/s up on the press — a TAP is a hop (≈ 0.6 m) (rev 2: hold to jump)
     ollieHoldS: 0.42,    // s SPACE held keeps lifting…
     ollieHoldAcc: 13,    // …at this m/s² against gravity: a full hold clears ≈ 1.65 m
     stanceYaw: -Math.PI / 2,   // the body's turn on the deck (regular: chest to the right of travel; +π/2 = goofy)
-    bailV: 4.2,          // a wall faster than this is a bail
-    bailDrop: 2.4,       // a walk-off fall taller than this is a bail (HQ_DROP_MAX × 1.5)
-    bailMs: 900,         // the tumble
-    deckBackMs: 2000,    // the deck skids away and is back under your feet
+    bailV: 4.2,          // RETIRED rev 3 (2026-09-17, the user's rule: only a failed trick bails) — a wall is a stop (wallScrub); kept for old readers
+    bailDrop: 2.4,       // RETIRED rev 3 — a drop of any height is a landing (the walker's rule)
+    wallScrub: 0.15,     // a head-on wall / prop keeps this share of the speed (a glancing one keeps the share it made); never a fall
+    landGrace: 0.8,      // a rotation this far done at the touchdown is snapped complete (the late landing); under it = the bail
+    bailMs: 1400,        // the bail: the FALL clip (Slide_Start) then the GET-UP (Slide_Exit) — every rotation reset, back on the deck
+    bailFall: 0.6,       // the fall's share of bailMs (the get-up is the rest)
+    deckBackMs: 1400,    // the deck skids out ahead and slides back under your feet
     grindSnap: 0.6,      // m off a rail's line an ollie may come down and still lock
     grindDy: 0.5,        // m under the rail's top the feet may be (coming down onto it)
     grindMinV: 1.4,      // m/s — slower than this the grind ends
     grindFriction: 0.996,// the rail is slick
-    grindBalance: 0.6,   // the drift that throws you (A / D counter it)
-    grindDrift: 0.45,    // how hard the rail tries
+    grindBalance: 0.75,  // the drift that throws you (A / D counter it) — a failed grind is the one bail a rail gives (rev 3: gentler)
+    grindDrift: 0.25,    // how hard the rail tries
     race: { hw: 5.5, tickMs: 250, minLapMs: 8000 },   // THE CIRCUIT (DISASTER CITY, 2026-09-17): a gate's half-width, the live timer's beat, the shortest lap that counts
     rampLaunchMin: 1.3,  // m/s up — a rise slower than this is just a step
     rampLaunchMax: 9.5,  // m/s up — the cap off any lip
@@ -34783,7 +34789,7 @@ const HQ_SKATE_RULES = {
         air:       { pts: 40,  label: 'BIG AIR' },
     },
     labels: { on: 'ON THE BOARD', off: 'ON FOOT', bail: 'BAIL', bank: 'LANDED' },
-    controls: ['W push', 'S brake · from a stop skate backwards', 'A / D carve', 'SPACE ollie (tap = a hop · hold = the height)', 'land on a rail = grind (A / D balance)', 'in the air: ← kickflip · → heelflip · ↑ front flip · ↓ backflip · W corkscrew · A / D 180 · SHIFT grab', 'B off'],
+    controls: ['W push (hold it at speed to cruise)', 'S brake · from a stop skate backwards', 'A / D carve', 'SPACE ollie (tap = a hop · hold = the height)', 'land on a rail = grind (A / D balance)', 'in the air: ← kickflip · → heelflip · ↑ front flip · ↓ backflip · W corkscrew · A / D 180 · SHIFT grab', 'only a trick still turning at the landing bails — walls, props and drops never do', 'B off'],
 };
 function hqSkateIssueFree() { return !!HQ_SKATE_RULES.free; }
 /* the record on the profile; `make` creates it (a writer), else a read-only shape */

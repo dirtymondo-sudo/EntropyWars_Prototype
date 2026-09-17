@@ -3773,6 +3773,59 @@ a lane swap seats P1 on P2's spawn nexus. Never swap `SPAWNS` alone. Seam
 Unseen live (RULE #1c): the eased move from the boom to the frame, the
 emptier walkway, the envelope after a win.
 
+## SKATEBOARDING rev 3 — SEAMLESS: ONLY A FAILED TRICK BAILS, THE FITTED STANCE, THE FALL + THE GET-UP (2026-09-17, local delivery)
+The user's brief: "way too easy to fall — running into objects makes me fall;
+riding should be as seamless as walking (Tony Hawk / Jet Set Radio); only fall
+on a failed trick; after a fall get back upright on the board (the character
+got stuck sideways until a landed trick); the character runs the whole time
+when it should idle on the board and only kick now and then." All of it in
+three-renderer.js's "SKATEBOARDING — THE RIDER" block, data.js `HQ_SKATE_RULES`
+and sprites.js. **THE BAIL RULE**: `_hqRideBail` is reached ONLY by a rotation
+still turning at the touchdown (`unfinished`), a spin landed off-axis
+(`offaxis`) and the balance lost on a rail (`balance`) — a wall / a prop / a
+blocker is **`_hqRideWall`** (head-on = the speed scrubs to `wallScrub` 0.15 of
+itself, glancing keeps the share it made, a door's lane a walking pace), a
+walk-off DROP of any height is a landing, a CAR KNOCKS the rider along its
+heading (`R.hd` / `R.v`, the hop) still on the deck; `bailV` / `bailDrop` stay
+in the table as retired keys. **THE LATE LANDING**: a trick ≥ `landGrace` (0.8)
+done when the ground comes up is snapped complete through `_hqRideTrickDone`
+(the one finisher the trick tick and the landing share); a queued trick never
+started is dropped. **THE SIDEWAYS BUG**: the bail never reset `flip` / `roll` /
+`deckRoll` / `spinAcc` / `stance` — a bail mid-corkscrew left the root half
+turned until the next clean landing wrote zeros. It resets every one now, the
+roll runs out under the slide (0.35 ×, then 0.93 / frame), no root tumble. **THE
+BAIL IS TWO CLIPS**: sprites.js `HQ_SKATE_CLIPS` (baked onto the walker's rig
+beside `hqRide` like the gun clips) — `hqFall` = UAL2 `Slide_Start` (a run
+into a slide on the floor) for `bailFall` 0.6 of `bailMs` 1400, then `hqGetup`
+= `Slide_Exit` for the rest, each ONE playthrough sized to its share
+(`_hqRideBailPhase` → the clip picker); THE SKID: the deck is never hidden —
+it shoots 1.6 m out ahead on a sine and slides back under the feet by
+`deckBackMs`. **THE STANCE IS FITTED** (`_hqRideFitStance`, every 0.25 s while
+the ride clip plays): the LeftFoot / RightFoot bones measured in the model's
+frame → the pose yaw that lays the foot LINE along the deck (the candidate
+nearest `stanceYaw`: regular / goofy) and the deck CENTRED under the feet's
+midpoint (`R.fit`, eased; `R.deckOx / deckOz` in the group's frame) — a flat
+−90° put Idle_10's forward foot half a metre off the deck's side (measured).
+**THE CADENCE**: `pushEvery` 0.85 s / `pushV` 4.2 / `friction` 0.993 (four
+strokes to cruise, a long Tony Hawk roll), the stride is `hqPush` = UAL1
+`Jog_Fwd_Loop` for `pushMs` 520 (the Running sprint is gone from the deck);
+above **`cruiseV`** 10.5 W only HOLDS the speed (no friction, no stride — the
+rider stands on the deck, `kickEvery` [2.5, 5.5] the occasional kick);
+`turnMin` 0.4 = the carve's floor at a crawl; the grind's drift 0.25 /
+balance 0.75. **THE COPING** check moved BEFORE the move (`here.t ≥ qpTop −
+0.2` with the next step at / past the lip): the ground probe's body pad left
+the curve a frame before the feet reached `qpTop`, and at a cruising pace that
+read as a walk-off into the air and a "wall" inside the pipe. **THE PROBE**:
+`node playtest_skate_offline.js <room> '<steps>' [tag]` (repo tooling — the
+gun probe's mirror: every repo GLB from disk, the deck at the repo root, the
+walker a POSED rig; `hq.skate(true)` + `hq.dev.press` + `hq.dev.lookAt` for a
+side view; PLAYTEST_NOTES "THE SKATE PROBE") photographed the stance from two
+sides, the stride, the fall lying on the floor and the rider back upright on
+the deck. `npm test` runs hq-skate.test.js (16; hq-city.test.js reads the
+knock). UNSEEN LIVE (RULE #1c): the clips at 60 fps (the slide's run-in, the
+get-up's speed — `bailFall` / `bailMs` are the edits), the jog stride's read
+against the deck, the fit on the CAST rigs (the probe posed the creator base).
+
 ## SKATEBOARDING rev 2 — THE RIDE STANCE, FAKIE, THE KICK, HOLD TO JUMP — 2026-09-15, local delivery
 The user's brief: Idle_10 on the deck with the feet on the board, the
 occasional run/kick, skate backwards with S, jump higher the longer SPACE is
