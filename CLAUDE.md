@@ -5231,3 +5231,24 @@ Based on GitHub main c65341886eb7a4bd5f895d9d8618dfa6d393d57f. Not uploaded or d
 - Validation: syntax checked map.js; map tests cover captured clicks, drag/cancel, keyboard travel, progressive labels, label separation and discovery privacy. No browser playtest was performed; final visual appearance remains to be checked in game.
 
 Full suite: tests 1586; pass 1580; fail 0; skipped 6. Executed package.json’s test command directly with the bundled Node runtime (`node --test *.test.js`); npm is unavailable.
+
+## EXPLORABLE AREAS — THE GUIDE + STREET LEVEL rev 2 (the city's solid is MASS) — 2026-09-17, local delivery
+**`EXPLORABLE_AREAS_GUIDE.md` is THE doc for any explorable area — read it before building
+or reworking a complex, a site room or a floor.** It names the THREE FAMILIES (A natural =
+`gen.kind: 'cave'` / `'rooms'`; B prefab = hand-authored box rooms; C rooms-and-hallways =
+H-Wing / the tunnels, no generator yet; D streets = `gen.kind: 'city'`), when to use which,
+how to mix them across a complex's parts, the research (BSP, cyclic dungeons, Parish &
+Müller streets, Portal chamber chains), the build order, the checklist, the Δ site-room
+rework (§6: the square ledge goes, the crystal stays), the discovery rule (§7: Otto's
+repairs open an earned door) and the multi-floor plan (§5). Append to its §10 log.
+**STREET LEVEL rev 2**: `HQ_TERRAIN_GEN.city.podium: false` (the default) applies NO rise —
+a city block is a MASS at street level: `hqTerrainFeet` refuses it by the mask (`solidPad`),
+`hqTerrainAir` / `hqTerrainCam` meet `info.solidTop` (`hqTerrainSolidTop`: a lot's roof at
+`storeyH` per storey, else `wallH`), and every frontage run no lot covers wears a YARD WALL
+(`info.yardWalls` → `info.walls`, `fenceH` / `fenceKey`; never in front of an authored
+tier — the rooftop's own cliff is the door gun's). The mall's plan says `podium: true` (its
+store units ARE the mass, `prisms: false`) — the only podium left. `check-terrain.js` still
+solves both cities; hq-city / hq-city-2 / hq-floor-plan read the mass rule. Ship data.js
+to R2 AND Render. Unseen live (RULE #1c): the yard walls' read in `bricks_2`, the flat
+concrete yards seen from the parking deck, the outer ground past the outer blocks now that
+no podium hides it.

@@ -41,7 +41,7 @@ function section(src, a, b) { const i = src.indexOf(a); assert.ok(i >= 0, a); co
 test('STREET LEVEL: the compiler rule — the city\'s rise begins riseIn inside the line, a lot\'s face stands frontOut outside it and its base is the sidewalk\'s; the renderer stands every prism FROM THE GROUND (yAbs = the base), w × d, turned to its face, and the low lot is a box from the ground — never a podium', () => {
     const G = D.HQ_TERRAIN_GEN.city;
     assert.ok(G.riseIn > 0 && G.riseIn < G.edge && G.frontOut > G.riseIn, 'the face stands outside the line, the rise inside it');
-    assert.ok(/const d0 = \(gen\.kind === 'city'\) \? -\(\(gen\.riseIn != null\) \? gen\.riseIn : K\.riseIn\) : 0\.2;/.test(data), 'the rise starts inside on a city');
+    assert.ok(/const d0 = \(gen\.kind === 'city'\) \? -\(\(gen\.riseIn != null\) \? gen\.riseIn : K\.riseIn\) : 0\.2;/.test(data) && data.includes('if (solidMass) return;'), 'the rise starts inside on a podium city and is skipped on a mass city');
     for (const id of [STREETS, GRID]) {
         const info = D.hqTerrainInfo(id), gen = HQ.rooms[id].terrain.gen;
         for (const lot of info.lots) {
@@ -49,8 +49,8 @@ test('STREET LEVEL: the compiler rule — the city\'s rise begins riseIn inside 
             const c = Math.cos(lot.rot), s = Math.sin(lot.rot), fx = lot.x + s * lot.d / 2, fz = lot.z + c * lot.d / 2;
             const out = D.hqTerrainHeight(info, fx + s * 1.0, fz + c * 1.0);
             assert.ok(out < 0.3 && Math.abs(out - lot.base) < 0.2, id + ': the sidewalk in front of lot ' + lot.i + ' is at ' + out.toFixed(2) + ' (base ' + lot.base + ')');
-            /* and 1.5 m inside the face the rise stands — the building hides it */
-            assert.ok(D.hqTerrainHeight(info, fx - s * 1.5, fz - c * 1.5) > gen.wallH * 0.6, id + ': the rise is inside lot ' + lot.i);
+            /* and 1.5 m inside the face the MASS stands (STREET LEVEL rev 2: no rise — the walker is refused, the ground stays the street's) */
+            assert.ok(D.hqTerrainFeet(info, fx - s * 1.5, fz - c * 1.5, null) === null && D.hqTerrainHeight(info, fx - s * 1.5, fz - c * 1.5) < 0.3, id + ': the mass is inside lot ' + lot.i);
         }
     }
     const fn = section(renderer, 'function _hqBuildCityLots(room, info, G, TM, rng, TK)', '\n    /* THE ROAD TILES');

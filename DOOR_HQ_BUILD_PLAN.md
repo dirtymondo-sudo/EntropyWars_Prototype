@@ -9748,3 +9748,25 @@ Based on GitHub main c65341886eb7a4bd5f895d9d8618dfa6d393d57f. Not uploaded or d
 - Validation: syntax checked map.js; map tests cover captured clicks, drag/cancel, keyboard travel, progressive labels, label separation and discovery privacy. No browser playtest was performed; final visual appearance remains to be checked in game.
 
 Full suite: tests 1586; pass 1580; fail 0; skipped 6. Executed package.json’s test command directly with the bundled Node runtime (`node --test *.test.js`); npm is unavailable.
+
+### 2026-09-17 — EXPLORABLE_AREAS_GUIDE.md + STREET LEVEL rev 2: the city's solid is a MASS (local delivery)
+
+The user's review of the four complexes: the cellular rule works for the cavern and the woods and fails for a city; three
+families of generation (natural / prefab / rooms-and-hallways) plus the streets kind, mixed across a complex's parts; areas
+with floors and platforms (D.U.M.B. as Portal); the Δ site rooms abandoned as a look (the crystal stays); discovery — a
+cleared map plays Otto finishing a new door. **`EXPLORABLE_AREAS_GUIDE.md`** (repo root) is now THE guide: the families
+and the code that is each one, the research to borrow from, the build order, the city rule, the multi-floor plan, the Δ
+rework, the discovery design, the checklist, a log. Read it before any new area; append to its §10.
+
+**The fix (data.js only)**: the `city` plan no longer raises its blocks — `HQ_TERRAIN_GEN.city.podium: false` skips the
+rise (`if (solidMass) return;` in `applyRise`); the mask refuses the walker (`hqTerrainSolidAt` in `hqTerrainFeet`,
+`solidPad` 0.3); the air and the boom meet `info.solidTop` (`hqTerrainSolidTop` — `storeyH` 3.4 per storey over a lot,
+`wallH` over the yard); YARD WALLS (`info.yardWalls`, 19 on the streets / 20 on the grid, `bricks_2`, 2.4 m) close every
+frontage run no lot covers, never in front of a tier (the rooftop / the deck keep their cliffs for the LIP snap). The mall
+keeps `podium: true` (its units are the mass). `check-terrain.js`: both cities every door reached, traps 0, open 61 % /
+59 %. Tests amended: hq-city (the per-lot rule, the block flat + refused, the yard walls, the mall's podium), hq-city-2
+(the mass inside a lot), hq-floor-plan (a mass city's deep solid judged by the walker's rule). Delivery:
+`ENTROPY_WARS_STREET_LEVEL_2.zip` — data.js → R2 + Render, index.html → Render (`20260917-street-level-02-cors`), the
+guide + tests + docs → the repo. UNSEEN LIVE: the yard walls, the flat yards from the deck, the outer ground past the
+outer blocks. NEXT (the guide §4): minor roads through the blocks, corner lots, interior fill, roof access; then §6's
+pilot (one site room per family) and §7's discovery.

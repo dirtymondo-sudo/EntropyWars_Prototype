@@ -108,7 +108,12 @@ test('THE PLAN (`city`): the streets are the corridors (the ring road a loop, th
             for (const c of [[-1, 1], [1, 1]]) { const p = corner(lot, c[0], c[1]); assert.ok(D.hqTerrainMaskAt(info, p[0], p[1]) < G.city.frontOut + 0.45, id + ': a front corner past the face line'); }
             assert.ok(lot.base >= -0.14 && lot.base <= (gen.kerb || 0) + 0.12, id + ': the base is the sidewalk\'s (' + lot.base + ')');
             for (const q of info.lots) if (q !== lot) assert.ok(!overlaps(rectOf(lot), rectOf(q)), id + ': lots overlap');
-            assert.ok(Math.abs(D.hqTerrainHeight(info, lot.x, lot.z) - gen.wallH) < 0.5, id + ': the rise stands inside a lot at wallH');
+            /* STREET LEVEL rev 2 (2026-09-17): no rise — the ground inside a lot is the street's, the lot is a MASS the walker's rule refuses, the air / the boom meet its roof */
+            if (info.gen.solidMass) {
+                assert.ok(Math.abs(D.hqTerrainHeight(info, lot.x, lot.z) - lot.base) < 0.35, id + ': the ground inside a lot is street level (' + D.hqTerrainHeight(info, lot.x, lot.z).toFixed(2) + ')');
+                assert.equal(D.hqTerrainFeet(info, lot.x, lot.z, null), null, id + ': a lot is never stood in');
+                assert.ok(D.hqTerrainSolidTop(info, lot.x, lot.z) >= gen.wallH - 0.01 && !D.hqTerrainAir(info, lot.x, lot.z, 1.0) && D.hqTerrainCam(info, lot.x, lot.z, 1.5), id + ': the lot is a mass to the air and the boom');
+            } else assert.ok(Math.abs(D.hqTerrainHeight(info, lot.x, lot.z) - gen.wallH) < 0.5, id + ': the podium stands inside a unit at wallH (the mall)');
         }
         const mains = info.fronts.filter(f => f.main);
         assert.equal(mains.length, info.lots.length, id + ': one main front per lot');
@@ -129,9 +134,14 @@ test('THE PLAN (`city`): the streets are the corridors (the ring road a loop, th
     }
     const st = D.hqTerrainInfo(STREETS), ring = HQ.rooms[STREETS].terrain.gen.streets[0];
     assert.ok(ring.loop && ring.pts.length >= 8 && ring.w >= 8, 'the ring road is a loop');
-    /* the kerb: the sidewalk band stands over the road; the road itself is flat; past the sidewalk the podium */
-    const road = D.hqTerrainHeight(st, 0, -20), walk = D.hqTerrainHeight(st, 6.2, -20), podium = D.hqTerrainHeight(st, 12, -20);
-    assert.ok(Math.abs(road) < 0.08 && walk - road > 0.09 && walk - road < 0.2 && podium > 3.0, 'road ' + road + ' · sidewalk ' + walk + ' · podium ' + podium);
+    /* the kerb: the sidewalk band stands over the road; the road itself is flat; past the sidewalk the BLOCK — street level (STREET LEVEL rev 2: a mass, never a podium), refused by the walker's rule */
+    const road = D.hqTerrainHeight(st, 0, -20), walk = D.hqTerrainHeight(st, 6.2, -20), block = D.hqTerrainHeight(st, 12, -20);
+    assert.ok(Math.abs(road) < 0.08 && walk - road > 0.09 && walk - road < 0.2 && block < 0.3, 'road ' + road + ' · sidewalk ' + walk + ' · block ' + block);
+    assert.ok(st.gen.solidMass && st.gen.solidPad > 0 && D.hqTerrainSolidAt(st, 12, -20, 0) && D.hqTerrainFeet(st, 12, -20, null) === null && D.hqTerrainSolidTop(st, 12, -20) >= 3.2, 'the block is a mass');
+    assert.ok(!D.hqTerrainInfo(MALL).gen.solidMass && D.hqTerrainHeight(D.hqTerrainInfo(MALL), D.hqTerrainInfo(MALL).lots[0].x, D.hqTerrainInfo(MALL).lots[0].z) > 4.5, 'the mall keeps its podium: the units are the mass');
+    /* THE YARD WALLS: a frontage no lot covers wears a wall on the face line; never in front of a tier (the rooftop's own cliff is the door gun's) */
+    assert.ok(st.yardWalls.length >= 6 && st.walls.filter(w => w.yard).length === st.yardWalls.length && st.yardWalls.every(w => w.h >= 2 && w.key), 'yard walls ' + st.yardWalls.length);
+    assert.ok(!st.yardWalls.some(w => Math.abs(w.x0 - w.x1) < 0.1 && w.x0 < -32 && w.x0 > -35 && Math.min(w.z0, w.z1) < 19 && Math.max(w.z0, w.z1) > 11), 'no yard wall in front of THE ROOFTOP\'s west face');
     assert.ok(Math.abs(D.hqTerrainHeight(st, -29.5, 15) - 4.0) < 0.01, 'THE ROOFTOP is a level (max), not wallH stacked on it');
     assert.ok(Math.abs(D.hqTerrainHeight(st, 24, -15) - 3.0) < 0.05, 'the parking deck');
     assert.ok(Math.abs(D.hqTerrainHeight(D.hqTerrainInfo(MALL), 14, -6.5) - 3.4) < 0.01, 'the mezzanine');
@@ -341,13 +351,13 @@ test('THE CIRCUIT (the renderer, in a vm): a rider round the ring road crosses t
     assert.ok(D.hqSkateBank(p, { bail: true }).bails === 1, 'a bail still counts');
 });
 
-test('the sources: the renderer reads lots / fronts / sidewalk / traffic / race and builds them from _hqBuildTerrain (the buildings on the podiums, the fronts, the lamps, the traffic with its follow + hit, the circuit with its banner), the city’s rise is a MAX in the compiler, the two way builders exist with the stub scene’s kinds, HQ_SKATE_DEFAULT carries the race row, map.js hears every beat (SKATEBOARDING rev 3: a car KNOCKS the rider along its heading, never a bail — the rule since rev 3), audio.js voices both ways, the compiler defaults the routes', () => {
+test('the sources: the renderer reads lots / fronts / sidewalk / traffic / race and builds them from _hqBuildTerrain (the buildings from the ground, the fronts, the lamps, the traffic with its follow + hit, the circuit with its banner), the podium city’s rise is a MAX in the compiler and a mass city has none, the two way builders exist with the stub scene’s kinds, HQ_SKATE_DEFAULT carries the race row, map.js hears every beat (SKATEBOARDING rev 3: a car KNOCKS the rider along its heading, never a bail — the rule since rev 3), audio.js voices both ways, the compiler defaults the routes', () => {
     for (const f of ['function _hqBuildCityLots(room, info, G, TM, rng, TK)', 'function _hqBuildStreetLamps(room, info, G, TM, rng)', 'function _hqBuildTraffic(room, info, G, TM, rng)', 'function _hqTickTraffic(dt)', 'function _hqBuildRace(room, info, G, TM)', 'function _hqTickRace(dt, now)', 'function _hqRoutePose(car, s)',
         "if (info.lots && info.lots.length) { try { _hqBuildCityLots(room, info, G, TM, rng, TK); }", "if (info.traffic && info.traffic.length) { try { _hqBuildTraffic(room, info, G, TM, rng); }", "if (info.race) { try { _hqBuildRace(room, info, G, TM); }", "if (info.genPlan && info.genPlan.streets) { try { _hqBuildStreetLamps(room, info, G, TM, rng); }",
         "if (info.gen.sidewalk > 0 && md > 0 && md < info.gen.sidewalk + 0.15) sw = 1 - Math.max(0, (md - info.gen.sidewalk) / 0.15);", "if (R && R.on) { R.hd = Math.atan2(vx, vz); R.v = Math.min(_hqSkateRules().maxV, Math.hypot(vx, vz));", "_hqRideEmit({ kind: 'carhit', kindOf: car.g._ew_hqCar, v: car.v });", "_hqRideEmit({ kind: 'lap', ms: ms, best: best, room: rc.room, label: rc.label, laps: rc.laps });",
         "race: { hw: 5.5, tickMs: 250, minLapMs: 8000 },", "_hzKitTs = TM;", "window.EW_HQ_NO_TRAFFIC", "_nrSpriteBuilding(TK, lot.key, lot.x * U, lot.z * U,", "var _HQ_STORE_NAMES = ["]) assert.ok(renderer.includes(f), 'renderer: ' + f);
     for (const k of ['timemachine', 'gutter']) assert.ok(new RegExp('^        ' + k + ': function \\(U, ctx\\) \\{', 'm').test(renderer), k + ': a way builder');
-    for (const f of ["if (gen.kind === 'city') info.H[k] = info.H[k] * (1 - t) + Math.max(info.H[k], (info.base || 0) + wallH * j1 + top) * t;", "} else if (gen.kind === 'city') {", "info.lots = []; info.fronts = [];", "traffic: (T.traffic || []).filter(", "race: (T.race && Array.isArray(T.race.pts)", "if (ev.lap) {", "laps: rec.laps || {}, lapsRun: rec.lapsRun | 0,"]) assert.ok(data.includes(f), 'data: ' + f);
+    for (const f of ["if (gen.kind === 'city') info.H[k] = info.H[k] * (1 - t) + Math.max(info.H[k], (info.base || 0) + wallH * j1 + top) * t;", "if (solidMass) return;", "if (hqTerrainSolidAt(info, x, z, 0)) return null;", "} else if (gen.kind === 'city') {", "info.lots = []; info.fronts = [];", "traffic: (T.traffic || []).filter(", "race: (T.race && Array.isArray(T.race.pts)", "if (ev.lap) {", "laps: rec.laps || {}, lapsRun: rec.lapsRun | 0,"]) assert.ok(data.includes(f), 'data: ' + f);
     for (const f of ["case 'carhit':", "case 'lapstart':", "case 'laptick':", "case 'lap': {", "case 'lapdrop':", "case 'gate':", "_hqSkateFile({ lap: { room: ev.room, ms: ev.ms } })", "function _hqLapFmt(ms)", "row('THE CIRCUIT'"]) assert.ok(map.includes(f), 'map: ' + f);
     for (const f of ['wayTime(ctx, t, out, vol) {', 'wayGutter(ctx, t, out, vol) {', 'wayTime: 0.3, wayGutter: 0.3']) assert.ok(audio.includes(f), 'audio: ' + f);
     /* the defaults: a route with only points gets n / speed / lane / kinds */

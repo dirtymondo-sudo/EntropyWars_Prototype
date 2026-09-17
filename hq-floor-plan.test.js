@@ -58,7 +58,9 @@ test('THE MASK IS THE HEIGHT: every solid cell deep in the plan stands at least 
                 /* the nearest open ground: walk the row until the mask opens */
                 /* against the AUTHORED floor under the cell (info.hFn = the field before the plan's rise) — THE DIVINE STAIR (2026-09-17): a cloud bank on the floor beside a 12 m landing is judged against the floor it stands on, not the tier a row-walk finds first */
                 const g = info.hFn(x, z);
-                if (g != null && info.H[k] - g < info.gen.wallH * 0.5) low++;
+                /* STREET LEVEL rev 2 (2026-09-17): a city block is a MASS at street level — the height is not the wall there; the walker's rule is */
+                if (info.gen.solidMass) { if (D.hqTerrainFeet(info, x, z, null) !== null) low++; }
+                else if (g != null && info.H[k] - g < info.gen.wallH * 0.5) low++;
             }
         }
         assert.equal(forcedSolid, 0, id + ': a forced cell went solid');

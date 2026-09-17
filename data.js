@@ -28845,8 +28845,10 @@ const DOOR_HQ = {
             /* THE FIELD: the floor plan is a CITY — `gen.streets` are the corridors
                (the ring road, the two avenues, the alleys), everything else the solid
                = the BLOCKS, cut into LOTS the renderer stands the map-builder buildings
-               on (a 3.2 m podium in concrete under each); a 2.4 m SIDEWALK with a kerb
-               runs along every street. THE PLAZA at the crossing (the fountain, waded);
+               on FROM THE GROUND (STREET LEVEL rev 2: the block is a MASS the walker's
+               rule refuses, never a podium — the ground under it is the concrete yard;
+               a yard wall closes any frontage no lot covers); a 2.4 m SIDEWALK with a
+               kerb runs along every street. THE PLAZA at the crossing (the fountain, waded);
                THE PARKING DECK in the north-east (a car ramp up to 3 m, a rail round
                the roof — the rider's big air); THE COLLAPSE by the tower (the rubble
                mound, the fallen pillars); THE ROOFTOP in the south-west block (a 4 m
@@ -28983,7 +28985,7 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'tilefloor', cliff: 'tilefloor_2', path: 'marble',
                 noise: { amp: 0.0, scale: 6 },
-                gen: { kind: 'city', seed: 11, walkW: 0, kerb: 0, wallH: 5.0, edge: 0.3, lotPitch: 8.4, lotW: [6.2, 7.2], lotD: [6, 8], lotMinW: 3.0, lowP: 0, fronts: 'store', prisms: false,
+                gen: { kind: 'city', seed: 11, walkW: 0, kerb: 0, wallH: 5.0, edge: 0.3, lotPitch: 8.4, lotW: [6.2, 7.2], lotD: [6, 8], lotMinW: 3.0, lowP: 0, fronts: 'store', prisms: false, podium: true,   // STREET LEVEL rev 2: the units ARE the mass (no prism stands on them) — the one plan that keeps the rise
                        streets: [
                            { pts: [[-30, 0], [30, 0]], w: 10 },                            // THE CONCOURSE (east–west)
                            { pts: [[0, 0], [0, -18]], w: 9 },                             // THE NORTH WING
@@ -32300,7 +32302,16 @@ const HQ_TERRAIN_GEN = {
        the LOTS are TERRACED: contiguous along every street face (`lotW` a frontage, `lotD` a depth into the block,
        `lotMinW` the narrowest infill), turned to the face (`rot`), each building standing on the SIDEWALK's own
        ground (`base`) with its prism from the ground up. `lotPitch` is unused by the terrace (kept for the mall's row). */
-    city:  { streetW: 8, walkW: 2.4, kerb: 0.12, lotPitch: 9.5, lotW: [6.4, 8.2], lotD: [8.5, 11.5], lotMinW: 3.2, lowP: 0.2, storeys: [1, 4], wallH: 3.2, edge: 0.3, riseIn: 0.1, jitter: 0.05, topNoise: 0.15, rim: 0.6, frontOut: 0.35 },
+    /* STREET LEVEL rev 2 (2026-09-17, the user: "get rid of the weird raised plateaus the buildings sit on — a result of the
+       cellular process, completely unnecessary in an urban city map"): a city's solid is MASS, never terrain. With `podium:
+       false` (the default) the plan's rise is NOT applied — the ground stays at street level under every block (the concrete
+       yard behind the buildings), the MASK ITSELF refuses the walker inside a block (hqTerrainFeet: maskD < `solidPad`),
+       the air and the camera meet a solid to `info.solidTop` (the lot's own roof — `storeyH` per storey — else `wallH`) and
+       any run of a street face that no lot covers wears a YARD WALL (`fenceH` / `fenceKey`, an info.walls row) so nothing
+       is an invisible barrier. `podium: true` keeps the extruded solid for a plan whose units ARE the mass (the mall:
+       `prisms: false`, the store units to wallH under their storefronts). `riseIn` is read only under a podium. */
+    city:  { streetW: 8, walkW: 2.4, kerb: 0.12, lotPitch: 9.5, lotW: [6.4, 8.2], lotD: [8.5, 11.5], lotMinW: 3.2, lowP: 0.2, storeys: [1, 4], wallH: 3.2, edge: 0.3, riseIn: 0.1, jitter: 0.05, topNoise: 0.15, rim: 0.6, frontOut: 0.35,
+             podium: false, solidPad: 0.3, storeyH: 3.4, fenceH: 2.4, fenceKey: 'bricks_2', fenceMinRun: 1.2 },
     forceGrow: 0.8, corridorW: 2.6, rim: 1.2, pathGrow: 1.1, minOpen: 0.28, maxOpen: 0.82, minIsland: 2.2,
 };
 function _hqTRng(seed) { let s = (seed >>> 0) || 1; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
@@ -32748,6 +32759,10 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
     let D = null, open = 0;
     /* THE KERB (the city, 2026-09-17): the sidewalk band stands `kerb` m over the road — a step the walker takes, a bump the rider hops; never on a forced cell (a pad, a side street) */
     const kerb = (gen.kind === 'city') ? ((gen.kerb != null) ? gen.kerb : K.kerb) : 0, walkW = (gen.kind === 'city') ? ((gen.walkW != null) ? gen.walkW : K.walkW) : 0;
+    /* STREET LEVEL rev 2 (2026-09-17): a city's solid is MASS — no rise at all unless the plan says `podium: true` (the mall's units) */
+    const solidMass = (gen.kind === 'city') && !((gen.podium != null) ? gen.podium : K.podium);
+    const solidPad = solidMass ? ((gen.solidPad != null) ? gen.solidPad : K.solidPad) : 0;
+    info.gen = { kind: gen.kind, solidMass, solidPad };   // provisional: THE RETURN GUARANTEE judges the traps through hqTerrainFeet, which reads the mass rule
     const applyRise = () => {
         D = _hqTMaskDistance(mask, nx, nz, res); open = 0;
         info.H.set(H0);
@@ -32755,7 +32770,8 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
             if (mask[k]) open++;
             const d = D[k];
             if (kerb > 0 && walkW > 0 && !forced[k] && d > 0 && d < walkW + 0.3) info.H[k] += kerb * _hqTSmooth((walkW + 0.3 - d) / 0.45);
-            /* STREET LEVEL (2026-09-17): a city's rise begins `riseIn` m INSIDE the boundary (no plinth under a building's face); a cave's / the woods' 0.2 m outside it */
+            if (solidMass) return;   // the block is a MASS the walker's rule refuses (hqTerrainFeet), the ground under it street level: the yard
+            /* STREET LEVEL (2026-09-17): a podium city's rise begins `riseIn` m INSIDE the boundary (no plinth under a building's face); a cave's / the woods' 0.2 m outside it */
             const d0 = (gen.kind === 'city') ? -((gen.riseIn != null) ? gen.riseIn : K.riseIn) : 0.2;
             if (d > d0) return;
             const t = _hqTSmooth((d0 - d) / (gen.kind === 'city' ? edge : (edge + 0.2)));
@@ -32773,7 +32789,9 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
     info.rescues = rescues;
     info.mask = mask; info.maskD = D; info.forced = forced;
     info.gen = { kind: gen.kind, wallH, edge, open: open / (nx * nz), carved, sealed, rescued: rescues.length, solidSheet: (gen.kind === 'cave' || gen.kind === 'city') ? 'cliff' : 'floor',
-                 fronts: gen.fronts || null, prisms: gen.prisms !== false, sidewalk: walkW, kerb };
+                 fronts: gen.fronts || null, prisms: gen.prisms !== false, sidewalk: walkW, kerb,
+                 /* STREET LEVEL rev 2: the solid is a mass (the walker refused by the mask, the air / the boom by info.solidTop), never a rise */
+                 solidMass, solidPad };
     /* ── THE LOTS (the city): the solid cut into building lots on a lattice, each edge that looks onto a street a FRONT ── */
     info.lots = []; info.fronts = [];
     if (gen.kind === 'city') {
@@ -32870,6 +32888,51 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
                 info.fronts.push({ lot: lot.i, x0: Math.round((ex - tx * Lf / 2) * 100) / 100, z0: Math.round((ez - tz * Lf / 2) * 100) / 100, x1: Math.round((ex + tx * Lf / 2) * 100) / 100, z1: Math.round((ez + tz * Lf / 2) * 100) / 100, nx: Math.round(wnx * 1000) / 1000, nz: Math.round(wnz * 1000) / 1000, len: Lf, top: wallH, base: lot.base, main: n[1] === 1 });
             });
         });
+        if (solidMass) {
+            /* STREET LEVEL rev 2 (2026-09-17): THE SOLID TOPS — the height the air and the camera meet inside the mass: a lot's
+               own roof (storeyH per storey, a low lot wallH) over its rect, wallH over the rest of the block (the yard's
+               notional mass — the boom never dips into a block); info.solidTop on the field's grid, read by hqTerrainSolidTop */
+            const stH = (gen.storeyH != null) ? gen.storeyH : K.storeyH;
+            const tops = new Float32Array(nx * nz);
+            each((k, px, pz) => { tops[k] = (mask[k] || D[k] > -0.05) ? 0 : ((info.base || 0) + wallH); });
+            info.lots.forEach((lot) => {
+                const R = rectOf(lot), h = (lot.base || 0) + (lot.storeys ? lot.storeys * stH : wallH);
+                const reach = Math.hypot(R.hw, R.hd) + res;
+                const i0 = Math.max(0, Math.floor((lot.x - reach - x0) / res)), i1 = Math.min(nx - 1, Math.ceil((lot.x + reach - x0) / res));
+                const j0 = Math.max(0, Math.floor((lot.z - reach - z0) / res)), j1 = Math.min(nz - 1, Math.ceil((lot.z + reach - z0) / res));
+                for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+                    const px = x0 + i * res - lot.x, pz = z0 + j * res - lot.z;
+                    const lx = px * R.ax[0] + pz * R.ax[1], lz = px * R.az[0] + pz * R.az[1];
+                    if (Math.abs(lx) <= R.hw + 0.05 && Math.abs(lz) <= R.hd + 0.05) { const k = j * nx + i; if (h > tops[k]) tops[k] = h; }
+                }
+            });
+            info.solidTop = tops;
+            /* THE YARD WALLS: every run of a street face that no lot covers (and no side street opens) wears a wall on the face
+               line — a brick yard wall the walker meets instead of an invisible line; a `wall` row the renderer draws like any */
+            const fenceH = (gen.fenceH != null) ? gen.fenceH : K.fenceH, fenceKey = gen.fenceKey || K.fenceKey, minRun = (gen.fenceMinRun != null) ? gen.fenceMinRun : K.fenceMinRun;
+            const inLot = (px, pz) => info.lots.some((lot) => { const R = rectOf(lot), dx = px - lot.x, dz = pz - lot.z; const lx = dx * R.ax[0] + dz * R.ax[1], lz = dx * R.az[0] + dz * R.az[1]; return Math.abs(lx) <= R.hw + 0.1 && Math.abs(lz) <= R.hd + 0.1; });
+            info.yardWalls = [];
+            if (fenceH > 0) faces.forEach((F) => {
+                let run = null;
+                const flush = () => { if (run && run.u1 - run.u0 >= minRun) { const row = { x0: Math.round((F.x0 + F.tx * run.u0) * 100) / 100, z0: Math.round((F.z0 + F.tz * run.u0) * 100) / 100, x1: Math.round((F.x0 + F.tx * run.u1) * 100) / 100, z1: Math.round((F.z0 + F.tz * run.u1) * 100) / 100, h: fenceH, t: 0.3, key: fenceKey, yard: true }; info.yardWalls.push(row); } run = null; };
+                for (let u = 0.3; u <= F.L - 0.3; u += 0.5) {
+                    const px = F.x0 + F.tx * u, pz = F.z0 + F.tz * u;
+                    /* behind the face line: solid (never a side street's mouth, never the rim past the shell) and under no lot */
+                    const bx = px - F.nx * 0.9, bz = pz - F.nz * 0.9;
+                    /* and no authored TIER stands behind it (a rooftop / a deck: its own cliff is the face, and the door gun's lip snap wants that cliff, not a wall in front of it) */
+                    const tier = (info.hFn(bx, bz) - info.hFn(px, pz) > 0.9) || (info.hFn(px - F.nx * 2.4, pz - F.nz * 2.4) - info.hFn(px, pz) > 0.9);
+                    const want = !tier && inShell(px, pz, 1.2) && hqTerrainMaskAt(info, bx, bz) < -0.45 && hqTerrainMaskAt(info, px + F.nx * 0.5, pz + F.nz * 0.5) > 0.1 && !inLot(bx, bz) && !inLot(px, pz);
+                    if (want) { if (!run) run = { u0: u, u1: u }; else run.u1 = u; } else flush();
+                }
+                flush();
+            });
+            /* into info.walls directly (the compiler's own `wall` rows follow; never into the room's authored features — a recompile would stack them) */
+            info.yardWalls.forEach((w) => {
+                let gmax = -Infinity, gmin = Infinity;
+                for (let q = 0; q <= 6; q++) { const g = hqTerrainHeight(info, w.x0 + (w.x1 - w.x0) * q / 6, w.z0 + (w.z1 - w.z0) * q / 6); if (g > gmax) gmax = g; if (g < gmin) gmin = g; }
+                info.walls.push({ x0: w.x0, z0: w.z0, x1: w.x1, z1: w.z1, t: w.t, base: gmin - 0.3, top: gmax + w.h, h: w.h, key: w.key, yard: true });
+            });
+        }
     }
     /* ── THE THICKET (rooms): the forest growing on the solid, a lattice of trees `spacing` apart ── */
     info.thicket = [];
@@ -33114,9 +33177,23 @@ function hqTerrainWallAt(info, x, z, pad) {
 }
 /* THE WALKER'S FEET at (x, z) coming from curY (null = a free query: the ground, a wall's top, a sheet's wade)
    — a number, or null (a wall, a cliff climbed, deep water, lava, off the grid) */
+/* STREET LEVEL rev 2 (2026-09-17): the plan's SOLID as a MASS — a city block. hqTerrainSolidTop = the height of the mass over
+   (x, z) (a lot's roof, else wallH; 0 on open ground or when the plan is a rise / there is no plan); hqTerrainSolidAt = the
+   walker is refused there (the mask's signed distance under `solidPad`, the body's own share of the face line) */
+function hqTerrainSolidAt(info, x, z, pad) {
+    const gn = info.gen; if (!gn || !gn.solidMass || !info.maskD) return false;
+    return hqTerrainMaskAt(info, x, z) < (gn.solidPad || 0) + (pad || 0);
+}
+function hqTerrainSolidTop(info, x, z) {
+    const gn = info.gen; if (!gn || !gn.solidMass || !info.solidTop) return 0;
+    const i = Math.round((x - info.x0) / info.res), j = Math.round((z - info.z0) / info.res);
+    if (i < 0 || j < 0 || i >= info.nx || j >= info.nz) return 0;
+    return info.solidTop[j * info.nx + i];
+}
 function hqTerrainFeet(info, x, z, curY) {
     const R = info.rules;
     if (Math.abs(x) > info.halfW - 0.5 || Math.abs(z) > info.halfD - 0.5) return null;
+    if (hqTerrainSolidAt(info, x, z, 0)) return null;   // a city block is a mass: never stood in
     const g = hqTerrainHeight(info, x, z);
     let y = g;
     const w = hqTerrainWallAt(info, x, z, R.bodyR);
@@ -33137,6 +33214,7 @@ function hqTerrainAir(info, x, z, y) {
     if (Math.abs(x) > info.halfW - 0.5 || Math.abs(z) > info.halfD - 0.5) return false;
     const g = hqTerrainHeight(info, x, z);
     if (y < g - 0.05) return false;
+    if (hqTerrainSolidAt(info, x, z, 0) && y < hqTerrainSolidTop(info, x, z) - 0.05) return false;   // inside a block's mass
     const w = hqTerrainWallAt(info, x, z, info.rules.bodyR); if (w && y < w.top - 0.05) return false;
     const f = hqTerrainFluidAt(info, x, z);
     if (f && g < f.y - 0.05 && (f.key !== 'water' || f.y - g > info.rules.wadeMax) && y < f.y + 0.4) return false;
@@ -33146,6 +33224,7 @@ function hqTerrainAir(info, x, z, y) {
 function hqTerrainCam(info, x, z, y) {
     const g = hqTerrainHeight(info, x, z);
     if (y < g + 0.24) return true;
+    if (hqTerrainSolidAt(info, x, z, -0.15) && y < hqTerrainSolidTop(info, x, z) + 0.2) return true;   // the boom never enters a block
     const w = hqTerrainWallAt(info, x, z, 0.15); if (w && y < w.top + 0.2) return true;
     const f = hqTerrainFluidAt(info, x, z); if (f && g < f.y && y < f.y + 0.22) return true;
     return false;
@@ -36956,7 +37035,7 @@ if (typeof window !== 'undefined') {
     window.hqTapeShelf = hqTapeShelf; window.hqTapeCount = hqTapeCount; window.hqFindById = hqFindById; window.hqFindsForRoom = hqFindsForRoom; window.hqFindsWarm = hqFindsWarm; window.hqFindsDrop = hqFindsDrop; window.hqTapeById = hqTapeById; window.hqTapeClipUrl = hqTapeClipUrl; window.hqFindsRecord = hqFindsRecord;
     window.hqCaveDoorCell = hqCaveDoorCell; window.hqCaveRooms = hqCaveRooms;
     /* THE TERRAIN ROOM (2026-09-17) */
-    window.HQ_TERRAIN_RULES = HQ_TERRAIN_RULES; window.HQ_TERRAIN_GEN = HQ_TERRAIN_GEN; window.HQ_ROOM_LOOKS = HQ_ROOM_LOOKS; window.hqTerrainMaskAt = hqTerrainMaskAt; window.hqTerrainOpenAt = hqTerrainOpenAt; window.hqTerrainRooms = hqTerrainRooms; window.hqTerrainInfo = hqTerrainInfo; window.hqTerrainTraps = hqTerrainTraps; window.hqTerrainCompile = hqTerrainCompile;
+    window.HQ_TERRAIN_RULES = HQ_TERRAIN_RULES; window.HQ_TERRAIN_GEN = HQ_TERRAIN_GEN; window.HQ_ROOM_LOOKS = HQ_ROOM_LOOKS; window.hqTerrainMaskAt = hqTerrainMaskAt; window.hqTerrainOpenAt = hqTerrainOpenAt; window.hqTerrainRooms = hqTerrainRooms; window.hqTerrainInfo = hqTerrainInfo; window.hqTerrainTraps = hqTerrainTraps; window.hqTerrainCompile = hqTerrainCompile; window.hqTerrainSolidAt = hqTerrainSolidAt; window.hqTerrainSolidTop = hqTerrainSolidTop;
     window.hqTerrainHeight = hqTerrainHeight; window.hqTerrainSlope = hqTerrainSlope; window.hqTerrainFeet = hqTerrainFeet; window.hqTerrainAir = hqTerrainAir; window.hqTerrainCam = hqTerrainCam;
     window.hqTerrainFluidAt = hqTerrainFluidAt; window.hqTerrainWallAt = hqTerrainWallAt; window.hqTerrainDoorY = hqTerrainDoorY; window.hqTerrainReach = hqTerrainReach; window.hqTerrainNodeKey = hqTerrainNodeKey;
     window.hqTerrainDoorLanding = hqTerrainDoorLanding; window.hqTerrainDump = hqTerrainDump; window.hqCityShell = hqCityShell; window.hqFindHardReachTerrain = hqFindHardReachTerrain; window.hqTerrainFindSpot = hqTerrainFindSpot; window._hqTPolyDist = _hqTPolyDist;
