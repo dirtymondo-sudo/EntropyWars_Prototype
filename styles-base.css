@@ -5420,6 +5420,14 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-map-n.wild .hq-map-dot { stroke: #c9a24a; fill: #16120a; }
 .hq-map-n.part .hq-map-dot { stroke: #a08a5a; stroke-width: 1.6; }
 .hq-map-n.st-here .hq-map-dot { fill: #f0e6c8; stroke: #f0e6c8; }
+/* THE HUBS (2026-09-18): the anchor's double ring + name in the hub's ink, the members' halo */
+.hq-map-n .hq-map-hubring { fill: rgba(0, 0, 0, 0.35); stroke: var(--hub, #f0e6c8); stroke-width: 3; opacity: 0.9; }
+.hq-map-n .hq-map-hubring.inner { fill: none; stroke-width: 1.2; stroke-dasharray: 4 3; opacity: 0.75; }
+.hq-map-n.hub .hq-map-dot { stroke: var(--hub, #f0e6c8); stroke-width: 3; }
+.hq-map-n .hq-map-halo { fill: none; stroke: var(--hub, #f0e6c8); stroke-width: 1.2; opacity: 0.45; }
+.hq-map-n.in-hub .hq-map-dot { stroke: var(--hub, #a08a5a); }
+.hq-map-n .hq-map-lbl.hublbl { font-weight: 700; letter-spacing: 0.08em; fill: var(--hub, #f0e6c8); }
+.hq-map-legend .lg-hub { color: #d9b24c; }
 .hq-map-n.st-here.hall .hq-map-dot.inner { stroke: #0d1020; }
 .hq-map-n.st-q .hq-map-dot { fill: #070a14; stroke: #4a4a52; stroke-dasharray: 2 2; }
 .hq-map-n.sel .hq-map-dot { stroke: #39ff6a; }

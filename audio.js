@@ -517,7 +517,7 @@
             derelict: ['space', 'tense', 'dark'],
             mars: ['space'], moon: ['space'], saturn: ['space'], singularity: ['space', 'mysterious'],
             heaven: ['sacred', 'calm', 'sacred_site'], vatican: ['sacred', 'sacred_site'], olympus: ['sacred', 'epic', 'sacred_site'],
-            cyberpunk: ['cyber', 'electronic', 'urban'], strip: ['urban', 'upbeat'], downtown: ['urban'], stadium: ['urban', 'upbeat'], nuketown: ['urban', 'tense'],
+            cyberpunk: ['cyber', 'electronic', 'urban'], strip: ['urban', 'upbeat'], downtown: ['urban'], stadium: ['urban', 'upbeat'],
             camelot: ['fantasy', 'epic'], agartha: ['fantasy', 'mysterious'], hollow_earth: ['fantasy', 'mysterious'],
             dumb: ['facility', 'tense'], cern: ['facility', 'electronic'], backrooms: ['horror', 'mysterious', 'facility'],
             lookingglass: ['playful', 'mysterious'],

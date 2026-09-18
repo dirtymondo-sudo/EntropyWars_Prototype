@@ -41,7 +41,7 @@ function propBlocks(room, p, x, z, margin) {
 }
 const audio=fs.readFileSync(__dirname+'/audio.js','utf8'), map=fs.readFileSync(__dirname+'/map.js','utf8');
 test('the Lunar pilot connects Moon, Derelict and Saturn both ways with distinct arrival doors',()=>{
- assert.equal(LUNAR.length,4,'the pilot\'s two, Mars and the drop (rev 7)');
+ assert.equal(LUNAR.length,5,'the pilot\'s two, Mars, the drop (rev 7) and Antarctica (2026-09-18)');
  for(const link of LUNAR) for(const end of [link.a,link.b]) {
   const rid=D.hqLinkRoom(end), room=HQ.rooms[rid];
   if(end.door){   // THE SHIP'S ONE DOOR (2026-09-16): a DOCKED end is the room's own ship door — the far end lands at it, it opens on the course
@@ -157,7 +157,7 @@ test('an entryway kind the catalogue does not list is held back at BOTH ends; a 
  } finally{HQ.links=saved;}
 });
 test('THE SEAMS THAT ARE NOT DOORS: the wardrobe into Camelot and the well into Hollow Earth are catalogued, paired, plated, voiced and built',()=>{
- assert.deepEqual(SEAMS.map(l=>l.id).sort().join(','),'bureau_vatican,deadtree_lookingglass,downtown_strip,fairy_camelot,haunted_camelot,lodge_olympus,mirror_lookingglass,natatorium_dutchman,northpole_haunted,nuketown_downtown,nuketown_haunted,observatorium_singularity,observatory_stair,stadium_downtown,streets_drain,strip_cyberpunk,subway_downtown,timemachine_cyberpunk,tunnel_cyberpunk,weir_bermuda,well_camelot,well_cellar,well_garden,well_gobekli,well_nuketown,well_skinwalker,woods_haunted','the wardrobe, the six wells (rev 10: every well drops into the cave), the train (the tunnel\u2019s platform to Cyberpunk\u2019s subway; 9.2 stage 4: Downtown\u2019s platform one stop back) and the second batch (rev 22: the mirror, the plunge pool, two paintings, the hearth, the screen, the closet), and the two trees with holes in them (2026-09-17: the dead tree at the garden gate and on the ritual ground), and DISASTER CITY\u2019s two (2026-09-17: the time machine in the mall\u2019s arcade, the gutter into the storm drain)');
+ assert.deepEqual(SEAMS.map(l=>l.id).sort().join(','),'bureau_vatican,deadtree_lookingglass,downtown_strip,fairy_camelot,haunted_camelot,lodge_olympus,mirror_lookingglass,natatorium_dutchman,northpole_haunted,observatorium_singularity,observatory_stair,ranch_haunted,stadium_downtown,streets_drain,strip_cyberpunk,subway_downtown,timemachine_cyberpunk,tunnel_cyberpunk,weir_bermuda,well_camelot,well_cellar,well_garden,well_gobekli,well_skinwalker','the wardrobe, the six wells (rev 10: every well drops into the cave), the train (the tunnel\u2019s platform to Cyberpunk\u2019s subway; 9.2 stage 4: Downtown\u2019s platform one stop back) and the second batch (rev 22: the mirror, the plunge pool, two paintings, the hearth, the screen, the closet), and the two trees with holes in them (2026-09-17: the dead tree at the garden gate and on the ritual ground), and DISASTER CITY\u2019s two (2026-09-17: the time machine in the mall\u2019s arcade, the gutter into the storm drain)');
  for(const k of Object.keys(HQ.ways)) {
   const w=HQ.ways[k];
   assert.ok(w.verb && w.sub && w.sfx && w.w>0 && w.h>0, k+': verb · sub · sfx · w · h');
@@ -221,7 +221,6 @@ test('THE SECOND BATCH (rev 22): the mirror, the plunge pool, the two paintings,
   ['bureau_vatican','a','continuity','n',-1.7,'nameplate'],
   ['northpole_haunted','b','site_prebuilt_haunted_hall','e',0.1,null],
   ['observatorium_singularity','a','observatorium','w',3.4,'hook_rail'],
-  ['nuketown_haunted','b','site_prebuilt_haunted_upstairs','w',0.4,'picture_round_a'],
  ];
  for(const [id,side,rid,wall,along,moved] of ENDS){
   const link=HQ.links.find(l=>l.id===id), end=link[side];
@@ -344,18 +343,18 @@ test('hqWorldRoutes chains every live link into a line: a leg per link, a statio
  const seams=R.find(r=>r.id==='seams'), woods=R.find(r=>r.id==='woods'), deep=R.find(r=>r.id==='deep'), hw=R.find(r=>r.id==='highway');
  assert.ok(seams.dashed);
  const seamNos=new Set(seams.stations.map(s=>s.no));
- for(const no of ['13','i','1287','E4','50M','1717','33','12','\u2116 \u2014 CONTESTED','888','360','0','1225','1945']) assert.ok(seamNos.has(no),'THE SEAMS line calls at '+no+' (rev 22: the second batch; the wardrobe upstairs is the HOUSE\'s leg, the wells moved to THE UNDERCROFT in rev 10)');
- assert.equal(seams.stations.length,17,'rev 22\u2019s fourteen + the woods (the ritual ground\u2019s dead tree, 2026-09-17) + DISASTER CITY (the time machine: the mall\u2019s house Downtown and Cyberpunk, 2026-09-17)');
+ for(const no of ['13','i','1287','E4','50M','1717','33','12','\u2116 \u2014 CONTESTED','888','360','0','1225']) assert.ok(seamNos.has(no),'THE SEAMS line calls at '+no+' (rev 22: the second batch; the wardrobe upstairs is the HOUSE\'s leg, the wells moved to THE UNDERCROFT in rev 10)');
+ assert.equal(seams.stations.length,16,'rev 22\u2019s fourteen + the woods (the ritual ground\u2019s dead tree, 2026-09-17) + DISASTER CITY (the time machine: the mall\u2019s house Downtown and Cyberpunk, 2026-09-17) − Nuketown (retired 2026-09-18)');
  assert.ok(seams.stations.every(s=>s.site?s.room===BOARD(s.site):HQ.rooms[s.room]&&!HQ.rooms[s.room].site),'a station is a board room, or (rev 22) a facility room the seam leaves from');
  assert.ok(seams.legs.every(l=>l.way));
- const house=woods.stations.find(s=>s.no==='13');
- assert.ok(house.here && house.lines.length===3 && house.lines.includes('seams') && house.lines.includes('undercroft'),'the cellar counts as the house; the house is an interchange (the woods, the wardrobe, the well)');
+ const ranch=R.find(r=>r.id==='ranch'), house=ranch.stations.find(s=>s.no==='13');   // the woods split (2026-09-18): the house's dead tree is THE RANCH's leg now
+ assert.ok(house.here && house.lines.length===3 && house.lines.includes('seams') && house.lines.includes('undercroft'),'the cellar counts as the house; the house is an interchange (the ranch, the wardrobe, the well)');
  assert.equal(D.hqWorldRoutes('foyer').find(r=>r.id==='woods').stations.filter(s=>s.here).length,0);
  assert.equal(D.hqWorldRoutes(null).flatMap(r=>r.stations).filter(s=>s.here).length,0);
  const sta=deep.stations.map(s=>s.no);
  assert.equal(sta[0],'1717','the Dutchman is the end the deep line is walked from');
  assert.ok(deep.stations.find(s=>s.no==='666').lines.includes('divine'),'Hell is on the deep and the divine lines');
- assert.equal(hw.stations.length,5);assert.ok(hw.stations.every(s=>s.label && !/PREBUILT/.test(s.label)));
+ assert.equal(hw.stations.length,4,'Nuketown retired 2026-09-18');assert.ok(hw.stations.every(s=>s.label && !/PREBUILT/.test(s.label)));
  for(const r of R){const seen=new Set();for(const s of r.stations){assert.ok(!seen.has(s.room));seen.add(s.room);}
   for(const l of r.legs){assert.ok(seen.has(l.from)&&seen.has(l.to),r.id+' leg '+l.link+' off its line');}}
 });

@@ -209,7 +209,7 @@ test('the vehicle batch: every file is in _MISC_GLB once and every key has a _VE
 test('every vehicle is placed through _hzVehicle (the settings, the train way) and never as a bare box', () => {
     const body = TR.replace(section(TR, 'var _VEHICLE_KIT = {', '};'), '');
     for (const k of Object.keys(VEHICLES)) assert.match(body, new RegExp("_hzVehicle\\('" + k + "'|\\[-?[0-9.]+, '" + k + "', "), k + ' placed through _hzVehicle');
-    for (const b of ['nuketown', 'cyberpunk', 'stadium', 'strip', 'downtown']) {
+    for (const b of ['cyberpunk', 'stadium', 'strip', 'downtown']) {
         const src = section(TR, '_NR_BUILDERS.' + b + ' = function', '\n    };');
         assert.ok(/_nrProp\(K, function \(rng\) \{ return _hzVehicle\('/.test(src), b + ': a vehicle stands in the setting');
     }

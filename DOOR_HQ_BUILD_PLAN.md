@@ -9729,6 +9729,12 @@ RULE, the hard tapes, `check-terrain.js` before any claim. The aesthetic is the 
    all black budget projects and organizations. Area 51, CERN, Dream Research, Psychic Training, Clone Research,
    A Billionaire Bunker, Government War Room, it's all there" — and "the most Portal map".
 6. **DOOR MANUFACTURING** — the service hallways, the warehouse, the Works: what keeps D.O.O.R. running.
+7. **THE RANCH** (the user, 2026-09-18 — the woods split) — Skinwalker Ranch, the Graveyard, the Haunted House, the
+   Lodge and a Western map round a hub of corn fields, crop circles and scarecrows; joined to the woods through Bohemian
+   Grove. **STARTED 2026-09-18 (THE MAPS / ROOMS CLEANUP, the entry at the end of this file): THE CORN FIELDS shipped
+   locally on Room 512 (the board bypassed) with the house's dead tree, the Lodge's saloon door, the grove's gate and the
+   well; THE GRAVEYARD and THE WESTERN MAP are NOT built — two new launch maps (the 7.10 checklist each) whose gates wait as
+   held `links` rows on the fields' east wall.**
 #1 has its second pass and CYBERPUNK CITY (the entry above); #2, #4 and #5 started; #3 and #6 not. Each needs its own `HQ_ROOM_LOOKS` row, its own sky / fog, its links on the
 world graph and the 7.10 checklist for any new site it introduces.
 
@@ -10159,3 +10165,66 @@ water, the gatehouse towers' scale against the 5.5 m wall, the sky castle's size
 0.3 on the landmark row are the edits), the round table's chairs against the cast rigs, the banners' colours, the sword's
 glow, THE GREAT STAIR's second flight crossing the stairhall in the air, the floating pieces in `castle_wall` on their
 clouds, Camelot on the sky castle's horizon, the brick cave under the green grade.
+
+### 2026-09-18 — THE MAPS / ROOMS CLEANUP: Nuketown retired · Antarctica on the lunar route · CAMELOT KINGDOM · THE WOODS split into THE WOODS and THE RANCH · THE HUBS on the map · THE PLATE READS THE ROOM THROUGH THE DOOR (local delivery)
+
+The user: "get rid of Nuketown; add Antarctica to the Lunar Route (it's where the Spaceship is); add the North Pole to Camelot
+Kingdom; remove Camelot and the Lodge from the ley lines; split the Woods into the Woods and the Ranch (Skinwalker Ranch, the
+Graveyard, the Haunted House, the Lodge, a Western map; corn fields, crop circles, scarecrows; connected to the Woods through
+Bohemian Grove); the big main areas — the Cavern, the Woods, the Divine Staircase, Disaster City, the D.U.M.B., DOOR HQ — as
+bigger hub spots on the map; and the plates that say where a door EVENTUALLY leads instead of what is directly through it."
+
+- **NUKETOWN RETIRED** (data.js): the full-map builder, the Δ builder, the EW_MAP_META row, the site file, the threshold
+  (1945), its seat in Bay 1, `siteRooms.built` / `near` / `shells` / `flavour`, the three links that stood on it
+  (`nuketown_downtown` — the cross street's east end is a dead end now, `well_nuketown` — five wells, `nuketown_haunted` — the
+  closet upstairs is gone), the challenge pools, the homosapien's point of entry (Downtown now); three-renderer.js
+  `_NR_BUILDERS.nuketown`; map.js `_TRAIN_MAP_POOL`; server.js `MAP_POOL` (both rows — check-data-parity #6 diffs them);
+  audio.js's mood row. Its tape (THE MANNEQUINS) is re-homed on THE CORN FIELDS as THE SCARECROWS — the hundred stays a
+  hundred. delta-maps expects 38 Δ boards. The user-authored cast line about Nuketown's closet door stays (A15).
+- **ANTARCTICA ON THE LUNAR ROUTE**: `links.antarctica_derelict` (route `lunar`) — Antarctica's north wall x −0.2 DOCKED on
+  the Spaceship's one collar (the ship's rule: no door at the docked end, the far end lands AT the collar; a third course on
+  the nav console beside the Moon and Saturn).
+- **CAMELOT KINGDOM**: `routes.kingdom` (a new line, `#b8c8ff`); `links.northpole_camelot` = the North Pole's north wall
+  x −0.2 ⇄ THE OUTER WARD's east wall at z 24 — on the approach OUTSIDE the moat (the first cut at z −20 stood on the far
+  bank; the solver caught it: the moat is crossed by the drawbridge only). `camelot_lodge` is DELETED: the ley line is the
+  stones alone (Stonehenge · Göbekli · Giza · Babel · Technoticlan), the Lodge's door left the great hall's west wall.
+- **THE RANCH** = `site_prebuilt_skinwalker_fields` · THE RANCH · THE CORN FIELDS (data.js, the block before H-WING;
+  `hqRanchShell(o)` beside the woods shell — open under Skinwalker Ranch's own night, the eyes in the sky, a fog per metre;
+  `HQ_ROOM_LOOKS.ranch` = the faded film; `HQ_RANCH_LANDMARKS` = Shasta's peak to the north-west, THE MESA the near weenie):
+  a 56 × 46 `rooms` plan whose SOLID IS THE STANDING CORN (1.9 m, a thin windbreak of dead trees on it, the tuft sheet), the
+  clearings the cut rows, THREE CROP CIRCLES painted as `path` rings (`hqRingPts(cx, cz, r, n)` — a closed ring of points for
+  a `path` row), the stock pond, THE MESA (3.2 m) up its cattle ramp, THE BUTTE (4.4 m, no way up — the tape, `findSpots`
+  pins it, hard), the fence line (two walls the rider grinds) + a corral rail, the campfire, the signpost, three scarecrow
+  natives with draft lines, a cowboy who explains the gates, a skinwalker on the mesa. THE ENTRY: `siteRooms.entry.
+  prebuilt_skinwalker` → the fields (the stable door lands you in the corn; the board is bypassed). THE GATES (route
+  `ranch`, `#d9b24c`): `ranch_haunted` (the house's dead tree — moved off the pasture; n x −16), `ranch_lodge` (the saloon
+  door, n x −4 ⇄ the Lodge n x −5, the lane Camelot's door freed), `ranch_grove` (n x 8 ⇄ Bohemian Grove n x −5 — the
+  grove keeps its owl's gate onto the redwood trail: THE INTERCHANGE between the ranch and the woods), `well_skinwalker`
+  (free in the farmyard now — a link on a bypassed board would land at the bay door). **HELD**: `ranch_graveyard` /
+  `ranch_western` name `prebuilt_graveyard` / `prebuilt_western` — sites that do NOT exist yet; `hqLinkLive` holds them at
+  both ends (nothing generated, nothing manufactured); building either map (the 7.10 checklist) makes its gate appear on the
+  fields' east wall by itself. THE WOODS keep the clearing · trail · redwoods · pasture (its fence keeps the gap; the two
+  gates are the ranch's) · stair · Dead Man's Cave · the ritual ground, and reach the Fairy Forest's board room, whose spring
+  surfaces in Camelot's moat.
+- **THE HUBS**: `DOOR_HQ.hubs` = `{ hq, cavern, woods, ranch, divine, city, dumb, kingdom }` — `{ label, room (the anchor),
+  sites | facility, color }`; `hqHubOf(roomId)` is the ONE read (a member of a hub's sites, or the HQ hub for a facility
+  room); `hqMapGraph` marks `hub` (the anchor) and `hubOf` on every node, `hqMapModel` carries them (never on a `?`); map.js
+  draws the anchor as a big double ring in the hub's ink with the HUB'S NAME always on (the label plan ranks it with the
+  hall), every member with a halo + a dot stroke in the same ink (`--hub` on the node's `<g>`), the card says THE HUB OF /
+  IN, the search matches the hub's name, the legend has ◎ A HUB. Adding a hub = one row.
+- **THE PLATE READS THE ROOM THROUGH THE DOOR**: data.js `hqDoorThrough(door)` (the room an action lands in — the entry
+  part of a bypassed board, the ring a bay door opens onto, the lobby a suite's door opens onto; null for a page / overlay /
+  portal / ship door), `hqDoorPlateLabel(door)`, `hqReplateDoors()` — run ONCE at load after the entries and the links: every
+  door's `label` = that room's label (the authored plate kept as `_own`; `plate: 'own'` opts out; a BAY door keeps its
+  segment wording — a ring is many bays; a SECRET door keeps its DRAUGHT). `hqLinkDoors` labels a link door with the far
+  ROOM's own label (CAMELOT · THE OUTER WARD), the site's name only for a board room you actually land in. So the ring's
+  stable door reads THE RANCH · THE CORN FIELDS, the hall's hospital door THE MEDICAL WING, the forest's path THE WOODS ·
+  THE CLEARING.
+- Tests: `hq-ranch.test.js` (7); amended hq-world · hq-woods · hq-camelot · hq-cave · hq-city · urban-pack · door-kit-batch ·
+  misc-models · hq-area51 · hq-terrain (42 rooms) · hq-floor-plan (36 planned) · delta-maps (38) · doorhq · disaster-city-3.
+  `node check-terrain.js site_prebuilt_skinwalker_fields`: every door reached, nothing traps.
+- **NOT BUILT**: the Graveyard and the Western map (new launch maps — the 7.10 checklist each; their gates are waiting),
+  Camelot's hall door onto anything (the west wall at z −8 is free), a ranch tape on the board room (the fields hold the one).
+- **UNSEEN LIVE (RULE #1c)**: the corn banks in `grass_tuft` with the dead windbreak on them, the circles' read from the mesa,
+  the butte's height against the lip snap, the hub rings' weight on the map at the fit zoom, the halo ink against the
+  parchment theme, the re-plated doors in the hall and on the rings (every plate that changed is listed by `_own`).

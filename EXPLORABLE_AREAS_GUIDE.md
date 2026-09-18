@@ -461,3 +461,8 @@ The design (build in this order; each step is one delivery):
   promises the battlements; Camelot itself stands below the sky castle facing back; THE KEEP TOWER beside the hall door; THE
   ORB in the dark. Not done: a portcullis / drawbridge GLB (MODEL_INDEX §3l), battlements on the wall tops, the board's own
   tape into the ward (the bypassed-board rule), a gallery floor inside the keep (§5's shaft room).
+
+- **2026-09-18 — THE MAPS / ROOMS CLEANUP**: THE RANCH (family A, `rooms` — the solid is the standing corn) on Room 512, the
+  board bypassed; Nuketown retired; THE HUBS on the map (`DOOR_HQ.hubs`); every door plate reads the room DIRECTLY through it
+  (`hqReplateDoors`). Two new sites are owed to the ranch: the Graveyard and a Western map (their gates are held links).
+  Log: DOOR_HQ_BUILD_PLAN §9.

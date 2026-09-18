@@ -121,7 +121,7 @@ test('THE SHIP\'S ONE DOOR (2026-09-16): both Lunar-route ends are DOCKED on the
     assert.ok(D.hqLinkDoors('site_prebuilt_saturn').some(d => d.link === 'derelict_saturn' && d.action.room === AIR && d.action.at === 'collar'), 'Saturn\'s end too');
     /* the destinations = every link docked on the collar, in sheet order */
     const dests = D.hqShipDestinations();
-    assert.strictEqual(dests.map(d => d.link).join(','), 'moon_derelict,derelict_saturn');
+    assert.strictEqual(dests.map(d => d.link).join(','), 'moon_derelict,derelict_saturn,antarctica_derelict');
     assert.strictEqual(dests[0].room, 'site_prebuilt_moon'); assert.strictEqual(dests[0].at, 'link_moon_derelict'); assert.strictEqual(dests[0].label, 'MOON');
     assert.strictEqual(dests[1].room, 'site_prebuilt_saturn'); assert.strictEqual(dests[1].at, 'link_derelict_saturn'); assert.strictEqual(dests[1].label, 'SATURN');
     assert.ok(dests.every(d => d.no), 'every destination carries its site number');
@@ -144,11 +144,11 @@ test('THE SHIP\'S ONE DOOR (2026-09-16): both Lunar-route ends are DOCKED on the
     assert.ok(nav && nav.action && nav.action.overlay === 'nav', 'THE NAV CONSOLE on the bridge lays the course in');
     /* the world graph: the collar is every destination's edge; the map still reaches both planets from the ship */
     const edges = D.hqWorldGraph().edges.filter(e => e.from === AIR && e.door === 'collar');
-    assert.strictEqual(edges.map(e => e.to).sort().join(','), 'site_prebuilt_moon,site_prebuilt_saturn');
+    assert.strictEqual(edges.map(e => e.to).sort().join(','), 'site_prebuilt_antarctica,site_prebuilt_moon,site_prebuilt_saturn');
     assert.ok(edges.every(e => e.link), 'each edge carries its link');
     const lunar = D.hqWorldRoutes('foyer').find(r => r.id === 'lunar' || r.route === 'lunar');
     const st = (lunar.stations || []).map(s => s.site);
-    assert.strictEqual(st.join(','), 'prebuilt_mars,prebuilt_moon,prebuilt_derelict,prebuilt_saturn,prebuilt_singularity', 'the stations are SITES: the ship is one station');
+    assert.strictEqual(st.join(','), 'prebuilt_antarctica,prebuilt_derelict,prebuilt_moon,prebuilt_mars,prebuilt_saturn,prebuilt_singularity', 'the stations are SITES: the ship is one station');
     /* the source sites */
     const mapSrc = fs.readFileSync(__dirname + '/map.js', 'utf8');
     for (const needle of ['if (act.ship) {', 'hqShipResolve(_hqProfile())', "act.overlay === 'nav'", 'function _hqNavHtml', 'window._hqSetCourse = function', "closest('[data-course]')", 'hqShipApplyCourse(_hqProfile())', "_hqRecordVisit(act.link ? ('link_' + act.link) : from.id)"]) assert.ok(mapSrc.includes(needle), 'map.js: ' + needle);

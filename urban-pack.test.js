@@ -94,7 +94,7 @@ test('THE ROADS OUT: `road` is a catalogued way (wide, open, a pad the width of 
     assert.ok(renderer.includes('        road: function (U, ctx) {') && renderer.includes("var LEN = (_hq && _hq.terrain) ? 40 : 13;") && renderer.includes('THE GANTRY over the mouth'), 'built');
     assert.ok(renderer.includes("cat: W, wx: grp.position.x / U, wz: grp.position.z / U, yaw: grp.rotation.y, y0: y0 })"), 'every way builder is handed its placed frame');
     const L = id => HQ.links.find(l => l.id === id);
-    const exp = { nuketown_downtown: ['prebuilt_nuketown', 'n', -5, STREETS, 'e', 0], downtown_strip: [STREETS, 'w', 0, 'site_prebuilt_strip_streets', 'e', 0], strip_cyberpunk: ['site_prebuilt_strip_streets', 'w', 0, GRID, 'e', 0], stadium_downtown: ['prebuilt_stadium', 'n', -5, STREETS, 'n', 0] };
+    const exp = { downtown_strip: [STREETS, 'w', 0, 'site_prebuilt_strip_streets', 'e', 0], strip_cyberpunk: ['site_prebuilt_strip_streets', 'w', 0, GRID, 'e', 0], stadium_downtown: ['prebuilt_stadium', 'n', -5, STREETS, 'n', 0] };
     for (const [id, e] of Object.entries(exp)) {
         const l = L(id); assert.ok(l && l.way === 'road' && !l.leaf && l.route === 'highway' && D.hqLinkLive(l), id);
         const ra = D.hqLinkRoom(l.a), rb = D.hqLinkRoom(l.b);

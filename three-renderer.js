@@ -25649,28 +25649,6 @@ const ThreeRenderer = (function () {
         [[K.BX0 - 3.2 * ts, K.CZ - 1.5 * ts], [K.BX1 + 3.2 * ts, K.CZ + 1.5 * ts]].forEach(function (p) { var t = K.box(1.2 * ts, 0.5 * ts, 3 * ts, trench); t.position.set(p[0], K.fy - 0.25 * ts - 0.7, p[1]); K.add(t); });
         _nrRocks(K, { tex: 'bricks_1', color: 0xdcb880, d: 2.2, p: 0.25, r: 0.4 });
     };
-    /* NUKETOWN — the cul-de-sac: the street runs on, two ranch houses face
-       each other, picket fences, lamps, the test tower on the horizon. */
-    _NR_BUILDERS.nuketown = function (group, ctx) {
-        var K = _nrKit(group, ctx, { w: 4.5, occ: true }), ts = K.ts;
-        _nrApron(K, { tex: 'grass_2', deep: true, skirt: 'dirt', skirtColor: 0xb8a078 });
-        var road = K.mat('urban_street', 0xb8b4ac);
-        [[K.CX, K.Z0, K.BZ0], [K.CX, K.BZ1, K.Z1]].forEach(function (s) { var len = s[2] - s[1]; var r = K.box(2.0 * ts, 0.12 * ts, len, road); r.position.set(s[0], K.fy + 0.06 * ts - 0.6, (s[1] + s[2]) / 2); K.add(K.lit(r)); });
-        _nrRoadLines(K, { color: 0xf2d24a });
-        _nrHouse(K, K.BX0 - 2.7 * ts, K.CZ - 1.6 * ts, { w: 3.4, d: 2.6, h: 1.5, tex: 'wood_planks', color: 0xf0e2c8, roofTex: 'wood', roofColor: 0x5a4a3a, ry: Math.PI / 2, window: 0xffe0a0 });
-        _nrHouse(K, K.BX1 + 2.7 * ts, K.CZ + 1.6 * ts, { w: 3.4, d: 2.6, h: 1.5, tex: 'wood_planks', color: 0xd8e8c8, roofTex: 'wood', roofColor: 0x6a4a3a, ry: -Math.PI / 2, window: 0xffe0a0 });
-        _nrFence(K, { d: 1.2, h: 0.6, spacing: 1.6, tex: 'wood_planks', color: 0xf4f0e8, picket: true, gates: true });
-        _nrTrees(K, { d: 3.6, spacing: 2.4, kinds: ['tree', 'tree_4'], p: 0.55, h: 2.0, only: ['w', 'e'] });
-        _nrLamps(K, { d: 1.9, spacing: 4.5, only: ['w', 'e'] });
-        _nrSign(K, 'nk_sign', ['NUKETOWN', 'POP. 0 · TEST SITE'], 2.4 * ts, 1.0 * ts, K.CX + 2.2 * ts, K.fy + 1.2 * ts, K.Z0 + 1.2 * ts, 0, { sizes: [110, 44], bg: '#2d6b3a', border: '#e8e2c0' });
-        var mast = K.cyl(0.08 * ts, 0.14 * ts, 9 * ts, 6, K.mat('metal', 0x7a7f88)); mast.position.set(K.BX1 + 7 * ts, K.fy + 4.5 * ts, K.BZ0 - 6 * ts); K.add(mast);
-        var cab = K.box(0.9 * ts, 0.8 * ts, 0.9 * ts, K.mat('metal', 0x8a9098)); cab.position.set(mast.position.x, K.fy + 9.1 * ts, mast.position.z); K.add(cab);
-        K.add(K.lamp(mast.position.x, K.fy + 9.6 * ts, mast.position.z, 0xff3030, 0.9 * ts, 0.7));
-        /* THE VEHICLE BATCH (2026-09-15): the test town's school bus parked on the south verge and the black Cadillac in the driveway of the east house (the boxes that stood in for the bus are gone) */
-        _nrProp(K, function (rng) { return _hzVehicle('schoolbus', { rng: rng }); }, K.BX0 - 1.6 * ts, K.BZ1 + 2.6 * ts, { ry: Math.PI / 2 + 0.12 });
-        _nrProp(K, function (rng) { return _hzVehicle('cadillac', { rng: rng }); }, K.BX1 + 1.9 * ts, K.BZ0 - 2.5 * ts, { ry: -0.25 });
-        _nrProp(K, function (rng) { return _hzDoorKitGLB('utility_box', { metres: 1.35, foot: 0.45, rng: rng }); }, K.CX + 1.9 * ts, K.BZ0 - 2.2 * ts, { ry: 0 });   // the street's utility box by the north road (the user's GLB, 2026-09-13)
-    };
     /* HEAVEN — the gate plaza on the cloud sea: the Gates at both ends,
        a columned promenade, pillars of light, cloud banks. */
     _NR_BUILDERS.heaven = function (group, ctx) {

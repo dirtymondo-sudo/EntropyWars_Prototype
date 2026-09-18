@@ -2629,3 +2629,11 @@ Based on GitHub main c65341886eb7a4bd5f895d9d8618dfa6d393d57f. Not uploaded or d
 - Validation: syntax checked map.js; map tests cover captured clicks, drag/cancel, keyboard travel, progressive labels, label separation and discovery privacy. No browser playtest was performed; final visual appearance remains to be checked in game.
 
 Full suite: tests 1586; pass 1580; fail 0; skipped 6. Executed package.json’s test command directly with the bundled Node runtime (`node --test *.test.js`); npm is unavailable.
+
+### 2026-09-18 — THE MAPS / ROOMS CLEANUP (local delivery)
+Nuketown retired (map, Δ, threshold, bay seat, site room, three links, server pool; its tape re-homed on the ranch). Antarctica
+on THE LUNAR ROUTE (docked on the Spaceship's collar). CAMELOT KINGDOM = a new route: the North Pole ⇄ the outer ward; the
+Lodge and Camelot are off THE LEY LINE. THE WOODS split: THE RANCH (route `ranch`) = THE CORN FIELDS on Room 512 (the board
+bypassed) with the Haunted House's dead tree, the Lodge's saloon door, the well and Bohemian Grove's back gate — the grove is
+the interchange to the woods; the Graveyard and the Western map are held links until built. THE HUBS on the map
+(`DOOR_HQ.hubs`); every door plate reads the room DIRECTLY through it (`hqReplateDoors`). Full log: DOOR_HQ_BUILD_PLAN §9.

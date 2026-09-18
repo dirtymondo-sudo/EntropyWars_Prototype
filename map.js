@@ -2827,6 +2827,8 @@
             }
             const kv = [];
             kv.push(_hqMapWhere(n) + (n.bayNo && !/BAY/.test(n.where || '') ? ' · BAY ' + n.bayNo : ''));
+            if (n.hub) kv.push('THE HUB OF ' + _hqEsc(String(n.hubLabel || '').toUpperCase()));
+            else if (n.hubOf) kv.push('IN ' + _hqEsc(String(n.hubLabel || '').toUpperCase()));
             if (n.part) kv.push('PART OF ' + _hqEsc(String(_hqMapLabel(n.site)).toUpperCase()));
             if (n.first) kv.push('FIRST SEEN ' + n.first);
             kv.push(`DOORS ${n.known} OF ${n.doors} CHARTED`);
@@ -2864,7 +2866,7 @@
         function _hqMapSearchHtml(M) {
             const nodes = M.nodes.filter(n => n.st !== 'q').sort((a, b) => String(a.label).localeCompare(String(b.label)));
             return '<div class="hq-map-search"><label for="hqMapSearch">FIND A ROOM</label><input id="hqMapSearch" type="search" placeholder="Room name, number or area…" autocomplete="off"><div class="hq-map-results" hidden>' + nodes.map(n =>
-                `<button class="hq-map-result" data-mapnode="${_hqEsc(n.id)}" data-mapmatch="${_hqEsc([n.label, n.no || '', _hqMapWhere(n), n.part ? _hqMapLabel(n.site) : ''].join(' ').toLowerCase())}"><b>${_hqEsc(n.label)}</b><span>${_hqEsc((n.no ? 'ROOM ' + n.no + ' · ' : '') + _hqMapWhere(n))}${n.st === 'here' ? ' · YOU ARE HERE' : ' · GO →'}</span></button>`).join('') + '<p class="hq-map-empty" hidden>No charted rooms match.</p></div></div>';
+                `<button class="hq-map-result" data-mapnode="${_hqEsc(n.id)}" data-mapmatch="${_hqEsc([n.label, n.no || '', _hqMapWhere(n), n.part ? _hqMapLabel(n.site) : '', n.hubLabel || ''].join(' ').toLowerCase())}"><b>${_hqEsc(n.label)}</b><span>${_hqEsc((n.no ? 'ROOM ' + n.no + ' · ' : '') + _hqMapWhere(n))}${n.st === 'here' ? ' · YOU ARE HERE' : ' · GO →'}</span></button>`).join('') + '<p class="hq-map-empty" hidden>No charted rooms match.</p></div></div>';
         }
         /* Pixel-sized labels, sorted by importance; reserve space before adding
            smaller names. No undiscovered names enter this presentation layer. */
@@ -2872,14 +2874,14 @@
             const scale = Math.min(width / v[2], height / v[3]);
             if (!(scale > 0)) return [];
             const zoom = (_hqMap.fit || v)[2] / v[2], boxes = [], out = [];
-            const rank = n => n.id === focus || n.st === 'here' ? 0 : n.hall || n.ring ? 1 : n.wild && !n.part ? 2 : n.part ? 4 : 3;
+            const rank = n => n.id === focus || n.st === 'here' ? 0 : n.hall || n.ring || n.hub ? 1 : n.wild && !n.part ? 2 : n.part ? 4 : 3;   // THE HUBS (2026-09-18): a hub's name is always on, like the hall's
             M.nodes.filter(n => n.st !== 'q').sort((a, b) => rank(a) - rank(b) || (b.doors || 0) - (a.doors || 0)).forEach(n => {
                 const r = rank(n);
                 if (r >= 4 && zoom < 2.4 || r === 3 && zoom < 1.55) return;
                 const x = (n.x * HQ_MAP_U - v[0]) * scale + (width - v[2] * scale) / 2;
                 const y = (n.y * HQ_MAP_U - v[1]) * scale + (height - v[3] * scale) / 2;
                 if (x < 0 || x > width || y < 0 || y > height) return;
-                const size = r < 2 ? 13 : 11, label = String(n.label).toUpperCase();
+                const size = r < 2 ? 13 : 11, label = String(n.hub ? (n.hubLabel || n.label) : n.label).toUpperCase();   // a hub node wears the HUB's name (the card has the room's)
                 const w = Math.min(width - 12, label.length * size * 0.66 + 12), h = size + 8;
                 const offset = n.ring ? -n.ring * HQ_MAP_U * scale - h : Math.max(16, (n.hall ? 24 : 16) * scale) + 5;
                 let box = null;
@@ -2952,9 +2954,13 @@
             /* the nodes */
             const sel = _hqMap.sel;
             M.nodes.forEach(n => {
-                const cls = `hq-map-n st-${n.st}${n.wild ? ' wild' : ''}${n.part ? ' part' : ''}${n.hall ? ' hall' : ''}${n.ring ? ' ring' : ''}${n.no ? ' numbered' : ''}${sel === n.id ? ' sel' : ''}`;
-                const title = n.st === 'q' ? 'UNCHARTED · WALK A DOOR TO IT' : `${n.no ? 'ROOM ' + n.no + ' · ' : ''}${String(n.label).toUpperCase()}${n.st === 'here' ? ' · YOU ARE HERE' : ''} · ${_hqMapWhere(n)}`;
-                svg += `<g class="${cls}" data-mapnode="${_hqEsc(n.id)}" tabindex="0" role="button" aria-label="${_hqEsc(title)}" transform="translate(${F(n.x * U)} ${F(n.y * U)})"><title>${_hqEsc(title)}</title>`;
+                /* THE HUBS (2026-09-18): a hub's anchor is a big ringed node in the hub's ink with the hub's name always on; every member wears a halo in the same ink */
+                const cls = `hq-map-n st-${n.st}${n.wild ? ' wild' : ''}${n.part ? ' part' : ''}${n.hall ? ' hall' : ''}${n.ring ? ' ring' : ''}${n.no ? ' numbered' : ''}${n.hub ? ' hub' : ''}${n.hubOf ? ' in-hub' : ''}${sel === n.id ? ' sel' : ''}`;
+                const title = n.st === 'q' ? 'UNCHARTED · WALK A DOOR TO IT' : `${n.hub ? String(n.hubLabel || '').toUpperCase() + ' · ' : ''}${n.no ? 'ROOM ' + n.no + ' · ' : ''}${String(n.label).toUpperCase()}${n.st === 'here' ? ' · YOU ARE HERE' : ''} · ${_hqMapWhere(n)}${(!n.hub && n.hubOf) ? ' · IN ' + String(n.hubLabel || '').toUpperCase() : ''}`;
+                const hubStyle = n.hubColor ? ` style="--hub:${_hqEsc(n.hubColor)}"` : '';
+                svg += `<g class="${cls}" data-mapnode="${_hqEsc(n.id)}" tabindex="0" role="button" aria-label="${_hqEsc(title)}"${hubStyle} transform="translate(${F(n.x * U)} ${F(n.y * U)})"><title>${_hqEsc(title)}</title>`;
+                if (n.hub && !n.ring) svg += '<circle class="hq-map-hubring" r="34"/><circle class="hq-map-hubring inner" r="27"/>';
+                else if (n.hubOf && !n.ring && !n.hall) svg += '<circle class="hq-map-halo" r="15"/>';
                 if (n.ring) {
                     svg += `<circle class="hq-map-ringline" r="${F(n.ring * U)}"/><text class="hq-map-lbl ringlbl" y="${F(-n.ring * U - 5)}" text-anchor="middle">${n.st === 'q' ? '?' : _hqEsc(String(n.label).toUpperCase())}</text>`;
                 } else {
@@ -2967,7 +2973,7 @@
                     svg += `<text class="hq-map-q" text-anchor="middle" dy="3.5">?</text>`;
                     if (n.no) svg += `<text class="hq-map-no" text-anchor="middle" dy="${n.no.length > 3 ? 3 : 3.5}"${n.no.length > 3 ? ' style="font-size:7px"' : ''}>${_hqEsc(n.no)}</text>`;
                     const lblOn = n.st !== 'q';
-                    if (lblOn) svg += `<text class="hq-map-lbl" y="${n.hall ? 32 : (n.no ? 24 : 19)}" text-anchor="middle">${_hqEsc(String(n.label).toUpperCase())}</text>`;
+                    if (lblOn) svg += `<text class="hq-map-lbl${n.hub ? ' hublbl' : ''}" y="${n.hub ? 46 : n.hall ? 32 : (n.no ? 24 : 19)}" text-anchor="middle">${_hqEsc(String(n.hub ? (n.hubLabel || n.label) : n.label).toUpperCase())}</text>`;
                 }
                 svg += '</g>';
             });
@@ -2984,7 +2990,7 @@
             const charted = (typeof window.hqWorldCharted === 'function') ? window.hqWorldCharted(profile) : null;
             let html = `<div class="hq-map"><div class="hq-map-bar"><span>${M.seen} OF ${M.total} PLACES CHARTED · ${M.q} IN QUESTION${charted ? ' · ' + charted.seen + ' OF ' + charted.total + ' SEAMS WALKED' : ''}</span><i><button class="hq-btn hq-btn-sm" data-mapzoom="in" title="zoom in">+</button><button class="hq-btn hq-btn-sm" data-mapzoom="out" title="zoom out">−</button><button class="hq-btn hq-btn-sm" data-mapfit="1" title="fit the charted map">FIT</button></i></div>`;
             html += `<div class="hq-map-stage">${_hqMapSvg(M)}</div>`;
-            html += '<div class="hq-map-legend"><i class="lg-room">●</i> ROOM <i class="lg-site">◆</i> SITE <i class="lg-part">•</i> PART OF A SITE <i class="lg-q">?</i> UNCHARTED <i class="lg-lift">┃</i> THE ELEVATOR <i class="lg-seam">╌</i> A SEAM · DRAG TO PAN · WHEEL TO ZOOM · CLICK TO TRAVEL · ZOOM IN FOR SMALLER ROOMS</div>';
+            html += '<div class="hq-map-legend"><i class="lg-room">●</i> ROOM <i class="lg-site">◆</i> SITE <i class="lg-part">•</i> PART OF A SITE <i class="lg-hub">◎</i> A HUB (ITS ROOMS WEAR ITS INK) <i class="lg-q">?</i> UNCHARTED <i class="lg-lift">┃</i> THE ELEVATOR <i class="lg-seam">╌</i> A SEAM · DRAG TO PAN · WHEEL TO ZOOM · CLICK TO TRAVEL · ZOOM IN FOR SMALLER ROOMS</div>';
             return html + '</div>';
         }
         /* after the panel's innerHTML lands: the reveal, the zoom, the handlers */
@@ -5644,10 +5650,10 @@
         }
 
         const _TRAIN_MAP_POOL = [
-            'prebuilt_shasta_delta', 'prebuilt_stonehenge_delta', 'prebuilt_giza_delta', 'prebuilt_nuketown_delta',
+            'prebuilt_shasta_delta', 'prebuilt_stonehenge_delta', 'prebuilt_giza_delta',
             'prebuilt_heaven_delta', 'prebuilt_hell_delta', 'prebuilt_cyberpunk_delta', 'prebuilt_camelot_delta',
             'prebuilt_stadium_delta', 'prebuilt_moon_delta', 'prebuilt_mars_delta', 'prebuilt_backrooms_delta',
-            'prebuilt_stonehenge', 'prebuilt_nuketown', 'prebuilt_moon', 'prebuilt_gobekli',
+            'prebuilt_stonehenge', 'prebuilt_moon', 'prebuilt_gobekli',
             'prebuilt_dumb', 'prebuilt_cern', 'prebuilt_backrooms', 'prebuilt_flatlands',
         ];
         let _trainMapIndex = 0;

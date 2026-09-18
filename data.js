@@ -11947,40 +11947,6 @@ _MF_BUILDERS.prebuilt_hell = function () {
     return M;
 };
 
-/* NUKETOWN — 14×14 6v6. Tight symmetric suburbia around an atomic test
-   street: two facing ranch houses, picket fences, hedge cover, test flags. */
-_MF_BUILDERS.prebuilt_nuketown = function () {
-    const M = _mfNew({
-        name: 'Nuketown', w: 14, h: 14, base: 'grass_2', baseH: 3, seed: 5501,
-        strata: ['lava', 'cave_floor', 'dirt'], underTop: 'dirt',
-        tints: { grass_2: '#9adf7a', road: '#b8b4ac', wasteland: '#d8c890' },
-    });
-    // perimeter: test-site wasteland ring
-    M.box(0, 0, 13, 13, 'wasteland');
-    // the street: N–S road with sidewalks (kill zone)
-    M.rect(6, 0, 7, 13, 'road');
-    M.rect(5, 0, 5, 13, 'urban_street'); M.rect(8, 0, 8, 13, 'urban_street');
-    // house yards (the homes themselves are placed after the mirror)
-    M.rect(1, 3, 4, 6, 'dirt_2');                        // west yard pad
-    // picket fences + hedges (authored top half, mirrored below)
-    M.fence(1, 2, 4, 2, 'barrier_2', 0);
-    M.rect(3, 8, 4, 8, 'leaves', 5);                     // hedge wall cover
-    M.rect(9, 2, 10, 2, 'leaves', 5);
-    M.obj(4, 7, 'tree_5'); M.obj(10, 5, 'traffic_light');
-    M.obj(5, 1, 'lamp_post'); M.obj(9, 9, 'well');
-    M.sym180();
-    // the two facing ranch houses (east yard pad is the mirror of the west one)
-    M.building(2, 4, 'building_2');
-    M.building(10, 8, 'building_3');
-    // atomic-age props: the dumpster nobody empties + the block-party flags
-    M.mon('dumpster', 6, 6, 2, 1, { rot: 0 });              // solid 2×1×1: climb the lid
-    M.mon('flag', 1, 12, 1, 2, { solid: false });
-    M.mon('flag', 12, 1, 1, 2, { solid: false });
-    M.spawnEdges('s', 6);
-    M.finishSpawns('grass_2');
-    return M;
-};
-
 /* STONEHENGE — 16×16 6v6. The sarsen ring on a ley-line cross: climbing
    pillar cover, cardinal entrances, an armillary above the altar. */
 _MF_BUILDERS.prebuilt_stonehenge = function () {
@@ -13548,23 +13514,6 @@ _MF_DELTA_BUILDERS.prebuilt_giza = function () {
     return M.finishDelta();
 };
 
-/* NUKETOWN — the street down the middle, wooden crates, dumpsters you can
-   climb, a picket fence you can shoot over but not walk through. */
-_MF_DELTA_BUILDERS.prebuilt_nuketown = function () {
-    const M = _mfDeltaNew({ name: 'Nuketown', base: 'grass_2', seed: 8104,
-        tints: { urban_street: '#b8b4ac', wood_planks: '#c8a068' },
-        desc: 'suburbia — the street, wooden crates, climbable dumpsters and a picket fence you shoot over' });
-    M.rect(3, 1, 4, 2, 'urban_street');                    // the street
-    M.block(0, 1, 'wood_planks'); M.block(2, 3, 'wood_planks');   // crates
-    M.wall(0, 3, 'N', { h: 2, tex: 'wood_planks', see: true }); // picket fence
-    M.wall(1, 3, 'N', { h: 2, tex: 'wood_planks', see: true });
-    M.treeL(7, 1, 'tree_5');
-    M.symAll();
-    M.mon('dumpster', 5, 2, 2, 1, { rot: 0 });             // (5,2)-(6,2)
-    M.mon('dumpster', 1, 5, 2, 1, { rot: 180 });           // (1,5)-(2,5)
-    return M.finishDelta();
-};
-
 /* HEAVEN — the gate plaza: a golden processional, the nexus sunk between
    two marble daises, pillars on the wings. */
 _MF_DELTA_BUILDERS.prebuilt_heaven = function () {
@@ -14171,6 +14120,7 @@ const HQ_ROOM_LOOKS = {
     greathall:  { name: 'THE GREAT HALL', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.34, grain: 0.024, tintAmount: 0.32, levels: 26 }, cin: { vignette: true, vigAmount: 0.36, vigSize: 0.54 }, nightMood: 0.2, bloom: 0.4 },
     keep:       { name: 'THE KEEP', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.42, grain: 0.035, tintAmount: 0.4, levels: 22 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.48 }, nightMood: 0.45, bloom: 0.24 },
     undercroft: { name: 'MERLIN’S UNDERCROFT', retro: { enabled: true, preset: 'green', pixelSize: 1, ditherStrength: 0.5, grain: 0.04, tintAmount: 0.5, levels: 18 }, cin: { vignette: true, vigAmount: 0.6, vigSize: 0.42 }, nightMood: 0.75, bloom: 0.22 },
+    ranch:      { name: 'THE RANCH', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.44, grain: 0.04, tintAmount: 0.42, levels: 22 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.48 }, nightMood: 0.62, bloom: 0.22 },   // THE RANCH (2026-09-18): a night in the corn — the faded film of a 1994 camcorder
     skycastle:  { name: 'THE CASTLE IN THE SKY', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.3, grain: 0.02, tintAmount: 0.35, levels: 30 }, cin: { vignette: true, vigAmount: 0.25, vigSize: 0.6 }, nightMood: 0.0, bloom: 0.5 },
 };
 // THE LOOK (2026-09-17): `env.look` on a row = a grade (a HQ_ROOM_LOOKS row: retro preset, dither,
@@ -14202,11 +14152,6 @@ const EW_MAP_META = [
       desc: '20×20 prebuilt, 6v6 — three pyramids on the great diagonal, twin obelisks, processional avenues & excavation trenches',
       env: { world: { kind: 'plain', rim: [{ kind: 'dunes', d: 14, n: 20 }, { kind: 'pyramids', d: 34, n: 6, h: 16 }] },
              tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45 }, scenery: 'pyramids' } },
-    { id: 'prebuilt_nuketown', label: 'Nuketown', w: 14, h: 14, teamSize: 6, tier: 1, base: 'grass_2',
-      biomes: ['urban', 'clandestine'], deltaPad: 'grass_2', near: 'nuketown',
-      desc: '14×14 prebuilt, 6v6 — atomic-test suburbia: two facing ranch houses, picket fences, hedges & an open street kill-zone',
-      env: { world: { kind: 'plain', rim: [{ kind: 'town', d: 16, n: 16, tex: 'wood_planks', color: 0xe8dcc0, roofColor: 0x6a5040 }, { kind: 'peaks', tex: 'wasteland', color: 0xc8a888, mesa: true, d: 32, n: 12, h: 5, ranks: 1 }] },
-             tint: 0xdfd6a8, tintAmt: 0.30, stars: 0.4, nebula: 0.5, fog: { color: 0xcfc290, amount: 0.5, top: 0.06, band: 0.5 }, scenery: 'orbs', density: 0.5 } },
     { id: 'prebuilt_heaven', label: 'Heaven', w: 20, h: 20, teamSize: 6, tier: 1, base: 'cloud_2',
       biomes: ['divine'], deltaPad: 'cloud_2', near: 'heaven',
       desc: '20×20 prebuilt, 6v6 — cloud islands over the void: the gilded gates, light-pillar daises, healing pools & bottomless rifts',
@@ -16506,11 +16451,11 @@ const SPELL_SHOP_PRICES = {
 // on as LEVEL_TOTAL_STAT_GAINS above, stretched across levels 1→100.)
 
 const _CHAL_MAP_POOL_SMALL  = ['normal'];
-const _CHAL_MAP_POOL_MED    = ['medium', 'prebuilt_moon_delta', 'prebuilt_stonehenge_delta', 'prebuilt_nuketown_delta',
+const _CHAL_MAP_POOL_MED    = ['medium', 'prebuilt_moon_delta', 'prebuilt_stonehenge_delta',
                                'prebuilt_backrooms_delta', 'prebuilt_dumb_delta', 'prebuilt_flatlands_delta'];
 const _CHAL_MAP_POOL_LARGE  = ['large', 'prebuilt_stonehenge', 'prebuilt_moon', 'prebuilt_gobekli',
                                'prebuilt_dumb', 'prebuilt_cern', 'prebuilt_backrooms',
-                               'prebuilt_northpole', 'prebuilt_flatlands', 'prebuilt_nuketown'];
+                               'prebuilt_northpole', 'prebuilt_flatlands'];
 const _CHAL_MAP_POOL_XLARGE = ['xlarge', 'prebuilt_shasta', 'prebuilt_giza', 'prebuilt_heaven',
                                 'prebuilt_hell', 'prebuilt_mars', 'prebuilt_area51',
                                 'prebuilt_skinwalker', 'prebuilt_hollow_earth', 'prebuilt_fairy_forest'];
@@ -17538,7 +17483,7 @@ const DOOR_TEXT = {
     // Where each entity crossed — one of the existing site maps, so the roster
     // and the map roster point at each other for free.
     POINT_OF_ENTRY: {
-        'homosapien': 'Nuketown', 'pirate': 'The Flying Dutchman', 'swordfighter': 'Camelot', 'knight': 'Camelot',
+        'homosapien': 'Downtown', 'pirate': 'The Flying Dutchman', 'swordfighter': 'Camelot', 'knight': 'Camelot',
         'shaman': 'Mount Shasta', 'mad scientist': 'D.U.M.B.', 'cowboy': 'Area 51', 'men in black': 'Area 51',
         'telepath': 'D.U.M.B.', 'marksman': 'The Lodge', 'priest': 'Vatican City', 'wizard': 'Stonehenge',
         'gangster': 'Cyberpunk City', 'nun': 'Vatican City', 'door agent': 'D.U.M.B.',
@@ -17619,8 +17564,6 @@ const DOOR_TEXT = {
             summary: 'A ring of sarsens on Salisbury Plain, aligned to the solstice sunrise by people with no metal tools and, apparently, no urgency: it took about a thousand years. The bluestones came 230 km from Wales and nobody agrees how. The druids arrived two millennia after the last stone went up and have claimed it ever since. Records has not corrected them. It seemed unkind.' },
         prebuilt_giza: { tone: 'admit', status: 'DIPLOMATIC', juris: 'Ministry of Antiquities · Customs by treaty',
             summary: 'Three tombs on the Nile that stayed the tallest things on Earth for 3,800 years, aligned to true north within a twentieth of a degree by people without a compass. The Annunaki claim they built them. The Egyptians say they did, and left receipts. Every century files a new theory. The Sphinx has heard all of them and is still facing the sunrise.' },
-        prebuilt_nuketown: { tone: 'deny', status: 'CONDEMNED', juris: 'Customs & Admissions · Nevada Test Site',
-            summary: 'In 1955 the U.S. government built a suburb in the Nevada desert, stocked the fridges, filled it with mannequins and dropped a 29-kiloton bomb on it to see what a family kitchen does under those conditions. The footage sold a lot of fallout shelters. The town has been rebuilt for every test since. The mannequins have never once complained. Officers find this unsettling.' },
         prebuilt_heaven: { tone: 'admit', status: 'DIPLOMATIC', juris: 'Foreign · immunity claimed',
             summary: 'Every culture on file puts the afterlife of the good somewhere upward: Elysium, Valhalla, the Pure Land, a New Jerusalem with twelve gates of pearl. Dante gave it nine spheres and ran out of adjectives by the seventh. Entry requirements vary by jurisdiction and are enforced at the gate. Nobody has ever been refunded.' },
         prebuilt_hell: { tone: 'deny', status: 'DIPLOMATIC', juris: 'Foreign · terms of entry favour the resident',
@@ -18505,6 +18448,45 @@ function hqWoodsShell(o) {
     Object.keys(o).forEach(k => { S[k] = o[k]; });
     return S;
 }
+/* ── THE RANCH'S SHELL (the woods split, 2026-09-18) ─────────────────────
+   THE CORN FIELDS are an OPEN room under Skinwalker Ranch's own night (the
+   EW_MAP_META row's violet tint, the eyes in the sky, the stars) with a fog
+   per metre so the last row of corn and the sky are one; rocky grass
+   underfoot, the STANDING CORN = the plan's solid (a bank in the tuft sheet
+   with a thin windbreak of dead trees on it), dirt for the paths and the
+   circles. THE WEENIES: Shasta's peak far to the north-west (the woods are
+   that way, through the grove), the mesa inside. One function so a second
+   ranch room cannot drift from the first; `o` overrides a field. */
+const HQ_RANCH_LANDMARKS = [
+    { kind: 'peak', id: 'prebuilt_shasta', deg: 318, dist: 0.9, s: 0.9, label: 'MOUNT SHASTA' },
+];
+function hqRanchShell(o) {
+    o = o || {};
+    const sky = { night: 1, tint: 0x2a1638, tintAmt: 0.5, stars: 1.2, nebula: 1.1, fog: { color: 0x2c2040, amount: 0.86, top: 0.1, band: 0.6, density: 0.024 }, scenery: 'eyes', density: 0.5,
+                  landmarks: HQ_RANCH_LANDMARKS.map(l => Object.assign({}, l)) };
+    const S = {
+        w: 0, d: 0, h: 9.0, wallH: 9.0, dadoH: 1.0,
+        open: true, edge: 'open',
+        floor: 'grass_rocky', wall: 'grass_tuft', dado: 'dirt', trim: 'wood', ceiling: 'grass_tuft',
+        apron: 'grass_rocky', skirt: 'dirt', apronColor: 0x8a8a5a,
+        floorColor: 0x9a9660, wallColor: 0x6a7a3a, dadoColor: 0x5a4a30,
+        pipes: false, strips: false, lights: [],
+        mood: { light: 0xc0b0e8, ambient: 0.4 },
+        sky: sky,
+        /* the windbreak past the fields: a thin ring of dead trees and one broadleaf, wide apart — the corn runs on under the fog */
+        forest: { depth: 14, spacing: 5.5, rows: 4.5, start: 2.0, kinds: ['tree_5', 'tree_6', 'tree_5', 'tree_2'] },
+        plate: { x: 0, z: -9.8, y: 4.4 },
+        look: HQ_ROOM_LOOKS.ranch,
+    };
+    Object.keys(o).forEach(k => { S[k] = o[k]; });
+    return S;
+}
+/* a closed ring of points for a `path` row (a crop circle): n points round (cx, cz) at r */
+function hqRingPts(cx, cz, r, n) {
+    const out = [];
+    for (let i = 0; i <= (n || 24); i++) { const a = i / (n || 24) * Math.PI * 2; out.push([Math.round((cx + Math.sin(a) * r) * 100) / 100, Math.round((cz - Math.cos(a) * r) * 100) / 100]); }
+    return out;
+}
 /* ── THE DIVINE STAIR'S SHELL (HQ plan 9.3 stage 6, 2026-09-17) ──────────
    Heaven's two parts (the stairway, the cloud fields) are OPEN rooms under
    Heaven's own sky (EW_MAP_META prebuilt_heaven env: the cream tint, the
@@ -19169,7 +19151,7 @@ const DOOR_HQ = {
            eight doors above): two computer chairs (16 MB each — the same
            model, blue / grey), a camera (`security_camera`: hung high on a
            wall, the lens toward the room), the street utility box (the
-           URBAN boards: cyberpunk · the Strip · Downtown · Nuketown · the
+           URBAN boards: cyberpunk · the Strip · Downtown · the
            Stadium, through _hzDoorKitGLB — never a room prop) and two
            asteroids (the CELESTIAL far rosters `space` + `wreckage`
            through _hzAsteroidFar, GLB-first over the procedural rock; the
@@ -19278,7 +19260,7 @@ const DOOR_HQ = {
            Terrestrial); Vatican City → Diplomatic (a sovereign state);
            Atlantis → Hollow (the deep). Wave-1 sites join their bays here. */
         terrestrial: { label: 'TERRESTRIAL', sub: 'clandestine · the bases',
-            maps: ['prebuilt_nuketown', 'prebuilt_area51', 'prebuilt_skinwalker', 'prebuilt_bohemian_grove', 'prebuilt_dumb', 'prebuilt_cern', 'prebuilt_haunted', 'prebuilt_lodge'] },   // 7.6 wave 1: Rooms 13 + 33
+            maps: ['prebuilt_area51', 'prebuilt_skinwalker', 'prebuilt_bohemian_grove', 'prebuilt_dumb', 'prebuilt_cern', 'prebuilt_haunted', 'prebuilt_lodge'] },   // 7.6 wave 1: Rooms 13 + 33
         ancient:     { label: 'ANCIENT', sub: 'first crossings',
             maps: ['prebuilt_stonehenge', 'prebuilt_giza', 'prebuilt_babel', 'prebuilt_gobekli', 'prebuilt_camelot', 'prebuilt_technoticlan'] },
         hollow:      { label: 'HOLLOW', sub: 'inner earth · polar · the deep',
@@ -19398,7 +19380,6 @@ const DOOR_HQ = {
        `hqRoomNo(mapId)` reads it (Δ suffix stripped); `hqRoomRegister()`
        lists every numbered place in the building, sorted for a directory. */
     thresholds: {
-        prebuilt_nuketown:      { roomNo: '1945', leaf: 'leaf_motel',          why: 'the test', note: 'the motel off the highway; it opens onto the street' },
         prebuilt_area51:        { roomNo: '51', leaf: 'leaf_window_medium',         why: 'itself · EST. 1947', note: 'the hangar man-door; the keypad is a rival account' },
         prebuilt_skinwalker:    { roomNo: '512', leaf: 'leaf_stable',         why: 'the ranch is 512 acres', note: 'the stable door, rehung indoors; the top half stays shut' },
         prebuilt_bohemian_grove:{ roomNo: '23', leaf: 'leaf_saloon',         why: 'the 23 enigma', note: 'the lodge saloon door; do not knock in rhythm' },
@@ -19612,6 +19593,8 @@ const DOOR_HQ = {
         divine:     { label: 'THE DIVINE STAIR', sub: 'THE STAIR THAT ONLY GOES UP; THE CRYPT THAT ONLY GOES DOWN', color: '#ffd28a' },
         bases:      { label: 'THE BASES',        sub: 'FIVE SIDES ABOVE GROUND; THE SIXTH IS DOWN', color: '#b9f27c' },
         woods:      { label: 'THE WOODS',        sub: 'THE SAME WOODS · EVERY PATH COMES OUT IN THE CLEARING', color: '#7fd98c' },
+        ranch:      { label: 'THE RANCH',        sub: 'THE FIELDS · EVERY GATE OPENS ONTO THE CORN', color: '#d9b24c' },   // the woods split (2026-09-18): Skinwalker Ranch · the Haunted House · the Lodge · the Grove (+ the Graveyard and the Western map when built)
+        kingdom:    { label: 'CAMELOT KINGDOM',  sub: 'THE CROWN’S ROADS · THE SNOW IS THE KINGDOM’S TOO', color: '#b8c8ff' },   // 2026-09-18: the North Pole joins Camelot (the Lodge left the ley line for the ranch)
         ley:        { label: 'THE LEY LINE',     sub: 'THE LINE THE STONES STAND ON', color: '#e0b06a' },
         highway:    { label: 'THE HIGHWAY',      sub: 'ONE ROAD, A CENTURY LONG', color: '#ff9e6b' },
         wonderland: { label: 'THE WONDERLAND',   sub: 'A PLANE ONTO A CARPET', color: '#e39cff' },
@@ -19619,6 +19602,25 @@ const DOOR_HQ = {
         undercroft: { label: 'THE UNDERCROFT',   sub: 'EVERY WELL COMES OUT IN THE SAME CAVE', color: '#c8a2e0', dashed: true },
         subway:     { label: 'THE SUBWAY',       sub: 'ALL LINES · THE TUNNEL IS ONE TUNNEL', color: '#f2d21a' },
         sewers:     { label: 'THE SEWERS',       sub: 'EVERY GUTTER DRAINS INTO THE SAME CULVERT', color: '#7fb8a0', dashed: true },   // DISASTER CITY (2026-09-17): the tunnels' first seam (candidate #3)
+    },
+    /* THE HUBS (2026-09-18, the user: "the big main areas right now are the
+       Cavern, the Woods, the Divine Staircase, Disaster City, the D.U.M.B. and
+       DOOR HQ — these places should be shown on the map / directory as
+       bigger / hub spots for other nodes"). A hub is ONE room the map draws
+       as a big ringed node with its name always on (`room`), and the rooms
+       it gathers (`sites` = every room of those sites; the HQ hub gathers
+       every facility room — a room with no site). hqHubOf(roomId) is the ONE
+       read; hqMapGraph marks the anchor `hub` and every member `hubOf`;
+       map.js draws the ring, the tint and the name. Adding a hub = one row. */
+    hubs: {
+        hq:      { label: 'D.O.O.R. HEADQUARTERS', room: 'central_egress', facility: true, color: '#f0e6c8' },
+        cavern:  { label: 'THE CAVERN', room: 'site_prebuilt_hollow_earth_gallery', sites: ['prebuilt_hollow_earth'], color: '#c8a2e0' },
+        woods:   { label: 'THE WOODS', room: 'site_prebuilt_fairy_forest_clearing', sites: ['prebuilt_fairy_forest'], color: '#7fd98c' },
+        ranch:   { label: 'THE RANCH', room: 'site_prebuilt_skinwalker_fields', sites: ['prebuilt_skinwalker'], color: '#d9b24c' },
+        divine:  { label: 'THE DIVINE STAIR', room: 'site_prebuilt_heaven_stair', sites: ['prebuilt_heaven', 'prebuilt_hell', 'prebuilt_vatican'], color: '#ffd28a' },
+        city:    { label: 'DISASTER CITY', room: 'site_prebuilt_downtown_streets', sites: ['prebuilt_downtown', 'prebuilt_strip', 'prebuilt_cyberpunk'], color: '#ff9e6b' },
+        dumb:    { label: 'THE D.U.M.B.', room: 'site_prebuilt_dumb_sublevel7', sites: ['prebuilt_dumb', 'prebuilt_cern'], color: '#b9f27c' },
+        kingdom: { label: 'CAMELOT KINGDOM', room: 'site_prebuilt_camelot_ward', sites: ['prebuilt_camelot'], color: '#b8c8ff' },
     },
     links: [
         /* THE LUNAR ROUTE (the pilot's two, plus Mars and the drop) */
@@ -19638,6 +19640,10 @@ const DOOR_HQ = {
           a: { site: 'prebuilt_derelict', part: 'airlock', door: 'collar' },   // docked: the same collar, a different course
           b: { site: 'prebuilt_saturn', wall: 'n', x: -5 },
           why: 'the second collar opens onto the hexagon plateau; the ship swings past Saturn on every orbit', note: 'mind the ring plane', draft: true },
+        { id: 'antarctica_derelict', route: 'lunar', leaf: 'leaf_bulkhead',   // 2026-09-18 (the user: "Antarctica is where the Spaceship is"): docked on the same collar — a third course
+          a: { site: 'prebuilt_antarctica', wall: 'n', x: -0.2, sub: 'THE HULL IN THE ICE · THE COLLAR' },
+          b: { site: 'prebuilt_derelict', part: 'airlock', door: 'collar' },
+          why: 'the ship is IN the ice — the hull under the station is the same hull the airlock is in; the collar opens on the crevasse it was found in', note: 'the ice creaks', draft: true },
         { id: 'mars_moon', route: 'lunar', leaf: 'leaf_bulkhead',
           a: { site: 'prebuilt_mars', wall: 'n', x: -5 },
           b: { site: 'prebuilt_moon', wall: 'n', x: -10 },
@@ -19739,14 +19745,23 @@ const DOOR_HQ = {
            the building (the garden-well precedent, never gated): THE STAIRCASE's
            door opens on THE STAIRWELL, THE RITUAL GROUND's circle on Room 333;
            DEAD MAN'S CAVE's grate is THE SUBWAY's fourth station. */
-        { id: 'woods_haunted', route: 'woods', way: 'deadtree',   // 2026-09-17: the garden gate IS the dead tree with the hole in it (the user's GLB), at both ends
+        /* THE RANCH (2026-09-18, the woods split): the house's dead tree and the ranch's gate LEFT the pasture — both stand on THE CORN
+           FIELDS now (route `ranch`); the pasture keeps its fence, its gap and its clearing door. The Lodge left Camelot's hall (the ley
+           line) for the fields; the grove is the interchange — its woods gate stays, its ranch gate is new. */
+        { id: 'ranch_haunted', route: 'ranch', way: 'deadtree',
           a: { site: 'prebuilt_haunted', wall: 'n', x: -2.5 },
-          b: { site: 'prebuilt_fairy_forest', part: 'pasture', wall: 'n', x: -0.875, sub: 'THE GARDEN GATE · TO THE HOUSE' },
-          why: 'the garden gate in the back fence opens on the woods behind the house; it is the same woods, and the woods do not care whose fence it is', note: 'the same woods', draft: true },
-        { id: 'woods_skinwalker', route: 'woods', leaf: 'leaf_stable',
-          a: { site: 'prebuilt_skinwalker', wall: 'n', x: -10 },
-          b: { site: 'prebuilt_fairy_forest', part: 'pasture', wall: 'w', z: -0.875, sub: 'THE RANCH GATE · TO THE RANCH' },
-          why: 'the gate the ranch hands stopped using; the back pasture is the woods\' now, and the fence is the ranch\'s, and the two gates in it are not the ranch\'s at all', note: 'the second gate', draft: true },
+          b: { site: 'prebuilt_skinwalker', part: 'fields', wall: 'n', x: -16, sub: 'THE DEAD TREE · THE HOLE LOOKS INTO THE HOUSE' },
+          why: 'the dead tree in the corn has a hole in it and the hole is the house\'s garden; the tree stood in the pasture until the ranch fenced it', note: 'mind the hole', draft: true },
+        { id: 'ranch_lodge', route: 'ranch', leaf: 'leaf_saloon',
+          a: { site: 'prebuilt_lodge', wall: 'n', x: -5, sub: 'THE BACK DOOR · ONTO THE FIELDS' },
+          b: { site: 'prebuilt_skinwalker', part: 'fields', wall: 'n', x: -4, sub: 'THE SALOON DOOR · INTO THE LODGE' },
+          why: 'the Lodge\'s back door was Camelot\'s once; the members voted and the door opens on the corn now, where the members are from', note: 'members only, both ways', draft: true },
+        { id: 'ranch_grove', route: 'ranch', leaf: 'leaf_shabby_wood',
+          a: { site: 'prebuilt_bohemian_grove', wall: 'n', x: -5, sub: 'THE BACK GATE · ONTO THE FIELDS' },
+          b: { site: 'prebuilt_skinwalker', part: 'fields', wall: 'n', x: 8, sub: 'THE GROVE’S GATE · TO THE WOODS, THROUGH THE GROVE' },
+          why: 'the grove is the ranch\'s neighbour and the woods\' — its back gate opens on the corn, its owl\'s gate on the redwood trail; the ranch reaches the woods through it', note: 'the owl counts you', draft: true },
+        /* THE GRAVEYARD and THE WESTERN MAP (the user's ranch list) are NOT launch maps yet — their gates go on the fields' EAST wall
+           (z 2 the lychgate, z −6 the western road) the day the sites are built; the sheet's rule is that every link is LIVE, so no held row */
         { id: 'woods_grove', route: 'woods', leaf: 'leaf_shabby_wood',
           a: { site: 'prebuilt_bohemian_grove', wall: 'n', x: -10 },
           b: { site: 'prebuilt_fairy_forest', part: 'redwoods', wall: 'e', z: -0.875, sub: 'THE OWL’S GATE · TO THE GROVE' },
@@ -19777,6 +19792,11 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_lookingglass', wall: 'free', x: 4.0, z: -8.0, face: 90, sub: 'THE DEAD TREE · BACK TO THE WOODS' },
           why: 'the dead tree at the edge of the ritual ground has a hole in it the size of a door, and through it the ground is marble and the sky is a chessboard\'s; the members call it the second circle', note: 'do not agree to a game', draft: true },
         /* THE LEY LINE */
+        /* CAMELOT KINGDOM (2026-09-18): the North Pole is the kingdom's — the sleigh road ends at the outer ward's east gate; the Lodge left the ley line for the ranch the same day */
+        { id: 'northpole_camelot', route: 'kingdom', leaf: 'leaf_frame_only',
+          a: { site: 'prebuilt_northpole', wall: 'n', x: -0.2, sub: 'THE SLEIGH ROAD · TO CAMELOT' },
+          b: { site: 'prebuilt_camelot', part: 'ward', wall: 'e', z: 24, sub: 'THE EAST GATE · THE SLEIGH ROAD NORTH' },   // on the approach, outside the moat (the moat is never crossed but by the drawbridge)
+          why: 'the crown\'s roads run north until the snow; the pole keeps the crown\'s workshop and the crown keeps the pole\'s road', note: 'the snow is the kingdom\'s too', draft: true },
         { id: 'stonehenge_gobekli', route: 'ley', leaf: 'leaf_frame_only',
           a: { site: 'prebuilt_stonehenge', wall: 'n', x: -5 },
           b: { site: 'prebuilt_gobekli', wall: 'n', x: -5 },
@@ -19793,20 +19813,12 @@ const DOOR_HQ = {
           a: { site: 'prebuilt_babel', wall: 'n', x: -10 },
           b: { site: 'prebuilt_technoticlan', wall: 'n', x: -5 },
           why: 'the tower\'s other stair comes out in the temple city; the builders kept climbing after the languages went', note: 'the other stair', draft: true },
-        { id: 'camelot_lodge', route: 'ley', leaf: 'leaf_saloon',
-          a: { site: 'prebuilt_camelot', part: 'hall', wall: 'w', z: -8, sub: 'THE LODGE · THE OTHER ROOM' },   // CAMELOT CASTLE (2026-09-18): the Round Table's other room opens off THE GREAT HALL's west wall
-          b: { site: 'prebuilt_lodge', wall: 'n', x: -5 },
-          why: 'the Round Table\'s other room; the Lodge keeps the chairs and denies the table', note: 'the other room', draft: true },
         /* THE HIGHWAY */
         /* THE ROADS OUT (2026-09-17, THE URBAN PACK): the highway's doors were hotel / suburban / glass leaves on the Downtown
            BOARD room's north wall; the city's STREETS have ends now, and a street's end is the seam — every `road` way runs the
            asphalt on into the fog under a gantry that names the next town. THE CROSS STREET's east end is the on-ramp to
-           NUKETOWN, its west end the same road west to THE STRIP; THE AVENUE's north end is the stadium road; the Strip's
+           (Nuketown, retired 2026-09-18 — the east end is a dead end now), its west end the same road west to THE STRIP; THE AVENUE's north end is the stadium road; the Strip's
            road runs on, later, to CYBERPUNK CITY's cross street. The board room's north wall is free again. */
-        { id: 'nuketown_downtown', route: 'highway', way: 'road',
-          a: { site: 'prebuilt_nuketown', wall: 'n', x: -5, sub: 'THE ON-RAMP · DISASTER CITY' },
-          b: { site: 'prebuilt_downtown', part: 'streets', wall: 'e', z: 0, sub: 'THE CROSS STREET · EAST · NUKETOWN' },
-          why: 'the on-ramp at the end of the cul-de-sac; one road, a century long, and the first exit is the fifties', note: 'the first exit', draft: true },
         { id: 'downtown_strip', route: 'highway', way: 'road',
           a: { site: 'prebuilt_downtown', part: 'streets', wall: 'w', z: 0, sub: 'THE CROSS STREET · WEST · THE STRIP' },
           b: { site: 'prebuilt_strip', part: 'streets', wall: 'e', z: 0, sub: 'THE BOULEVARD · EAST · DOWNTOWN' },
@@ -19864,15 +19876,10 @@ const DOOR_HQ = {
           why: 'a castle in the sky and a stair in the sky are in the same sky; the frame between them has no door because there is nothing to keep out up here',
           note: 'the same sky', draft: true },
         { id: 'well_skinwalker', route: 'undercroft', way: 'well',
-          a: { site: 'prebuilt_skinwalker', wall: 'n', x: -0.2 },
+          a: { site: 'prebuilt_skinwalker', part: 'fields', wall: 'free', x: -9.4, z: 11.6, face: 90, sub: 'THE RANCH WELL · DOWN THE ROPE' },   // 2026-09-18: off the bypassed board, into the farmyard
           b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: 7.875, z: 6.125, face: 270, sub: 'THE RANCH WELL · CLIMB UP', verb: 'CLIMB UP' },
           why: 'the well in the yard, boarded over in 1994 by men who did not come back for their tools; the boards are the way',
           note: 'the boards lift', draft: true },
-        { id: 'well_nuketown', route: 'undercroft', way: 'well',
-          a: { site: 'prebuilt_nuketown', wall: 'n', x: -10 },
-          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: -6.125, z: 4.375, face: 90, sub: 'THE WISHING WELL · CLIMB UP', verb: 'CLIMB UP' },
-          why: 'the wishing well on the lawn came with the house and the house came with the test; the coins in it are all from the same year',
-          note: 'make a wish', draft: true },
         { id: 'well_gobekli', route: 'undercroft', way: 'well',
           a: { site: 'prebuilt_gobekli', wall: 'n', x: -0.2 },
           b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: 9.625, z: -6.125, face: 270, sub: 'THE CISTERN · CLIMB UP', verb: 'CLIMB UP' },
@@ -19976,11 +19983,6 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_singularity', wall: 'n', x: -0.2 },
           why: 'the projection screen shows the feed from Room 0 when the projector is off; the static has a shape in it and the shape has a way in',
           note: 'signal lost', draft: true },
-        { id: 'nuketown_haunted', route: 'seams', way: 'closet',
-          a: { site: 'prebuilt_nuketown', wall: 'n', x: -0.2 },
-          b: { site: 'prebuilt_haunted', part: 'upstairs', wall: 'w', z: 0.4 },
-          why: 'two suburban houses share one closet; the coats in it belong to neither family and the back wall is another bedroom in another decade',
-          note: 'no back wall', draft: true },
         /* THE FOUR EXITS: the cave has several ways out, and each one is a
            door into a site that is already on the map. Every one is two-way
            — the same object at both ends (7.0), never a one-way drop. */
@@ -20045,6 +20047,9 @@ const DOOR_HQ = {
                drawbridge is the way in. The four links that stood on the board room (the spring's pool, the Lodge's door, the wardrobe, the well) moved
                onto the parts the same day. */
             prebuilt_camelot:   { room: 'site_prebuilt_camelot_ward',        door: { id: 'bay', wall: 's', x: 0 } },
+            /* THE RANCH (2026-09-18 — the woods split): the stable door lands you in THE CORN FIELDS, the ranch's hub; the well and the woods'
+               gate that stood on the board moved onto the fields the same day (a link door in a bypassed room would land at the bay door). */
+            prebuilt_skinwalker: { room: 'site_prebuilt_skinwalker_fields',   door: { id: 'bay', wall: 's', x: 0 } },
         },
         backDoors: {
             /* THE WOODS (9.3 stage 3, 2026-09-16): the forest is the board room
@@ -20171,7 +20176,7 @@ const DOOR_HQ = {
                   desc: 'The front door of the house. The plate says 13; the door says 237; the hall says come in. The house is bigger inside than the board allows, which Continuity has a form for.' },
             ],
         },
-        built: ['prebuilt_dumb', 'prebuilt_cern', 'prebuilt_backrooms', 'prebuilt_nuketown', 'prebuilt_stadium',
+        built: ['prebuilt_dumb', 'prebuilt_cern', 'prebuilt_backrooms', 'prebuilt_stadium',
                 'prebuilt_camelot', 'prebuilt_atlantis', 'prebuilt_hell', 'prebuilt_technoticlan', 'prebuilt_agartha', 'prebuilt_antarctica',
                 /* stage 6 (2026-09-08 rev 4): the rest of the register — every launch map is a room */
                 'prebuilt_shasta', 'prebuilt_stonehenge', 'prebuilt_giza', 'prebuilt_heaven', 'prebuilt_cyberpunk', 'prebuilt_babel',
@@ -20246,7 +20251,7 @@ const DOOR_HQ = {
                       not). */
         near: {
             dumb: { w: 3.0, h: 3.4 }, cern: { w: 3.2, h: 3.6 }, backrooms: { w: 4.0 },
-            nuketown: { w: 4.5 }, stadium: { w: 4.5, stands: true },
+            stadium: { w: 4.5, stands: true },
             camelot: { w: 4.0 }, atlantis: { w: 4.0 }, hell: { w: 4.0 }, technoticlan: { w: 4.0, stands: true }, agartha: { w: 4.5 }, antarctica: { w: 4.5 },
             /* stage 6: the rest (Flat Lands has no row — its builder's apron is 14 tiles; the room opts out) */
             shasta: { w: 4.5 }, stonehenge: { w: 4.5 }, giza: { w: 4.5 }, heaven: { w: 4.5 }, cyberpunk: { w: 3.2 }, babel: { w: 4.5, stands: true },
@@ -20271,15 +20276,6 @@ const DOOR_HQ = {
             prebuilt_backrooms: { floor: 'carpet', wall: 'drywall', dado: 'drywall', trim: 'drywall', ceiling: 'ceiling', h: 4.3, dadoH: 0.7, pipes: false,
                 mood: { lamp: 0xfff0a0, glow: 0xffe070, strip: 0xfff2b0, light: 0xfff0c0, signN: { bg: '#3a3418', border: '#e8d890', color: '#fff4c0' }, signS: { bg: '#3a3418', border: '#e8d890', color: '#fff4c0' },
                     signLines: { n: ['BACKROOMS', 'ROOM 90', 'LEVEL 0 · NO EXIT'], s: ['NON-CANON', 'THE EXIT SIGN IS A LIE', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 1945 · NUKETOWN — the first OUTDOOR room (stage 3): the test
-               site's board fence for a wall, lawn underfoot, dusk overhead
-               (the map's own khaki sky and its orbs), sodium lamp masts at
-               the corners; the way in is the motel door in the fence */
-            prebuilt_nuketown: { open: true, floor: 'grass_2', wall: 'wood_planks', dado: 'wood_planks', trim: 'concrete', ceiling: null, h: 3.2, dadoH: 0.5, pipes: false, console: { wall: 'n', at: 6 },
-                apron: 'grass_2', skirt: 'dirt', apronColor: 0xa8b888,
-                mood: { lamp: 0xffd890, glow: 0xffc060, strip: 0xffe8b0, light: 0xfff0d0, night: 0,
-                    signN: { bg: '#2d6b3a', border: '#e8e2c0', color: '#fff6dc' }, signS: { bg: '#3a2a10', border: '#ffd060', color: '#fff0c0' },
-                    signLines: { n: ['NUKETOWN', 'ROOM 1945', 'POP. 0 · TEST SITE'], s: ['CONDEMNED', 'THE FENCE IS THE WALL', 'THE CROSSING IS AT THE CONSOLE'] } } },
             /* 50 · FOOTBALL STADIUM — the bowl at night: the inner concrete
                wall round the field, turf underfoot, floodlight masts, the
                city's roster and its stars overhead; the turnstile lets you in */
@@ -20830,27 +20826,6 @@ const DOOR_HQ = {
                     { key: 'fluorescent',    x: 8.6,  z: 0,   ceil: true, face: 0 },
                     { key: 'fluorescent',    x: 0,    z: -8.6, ceil: true, face: 90 },
                     { key: 'fluorescent',    x: 0,    z: 8.6,  ceil: true, face: 90 },
-                ],
-            },
-            /* 1945 · NUKETOWN — the observation post on the east lawn: a TV
-               that still gets the test countdown, a chair to watch it from,
-               the box the mannequins came in; the fence wears the site's
-               breaker and a hose reel of clipboard paperwork */
-            prebuilt_nuketown: {
-                agent: '“Population zero. That is the sign, not the count. Do not wave at the mannequins; some of them wave back.”',
-                lines: [
-                    'The lawns are watered on a schedule. The schedule is classified.',
-                    'Every house has a basement. Every basement has a door. Continuity has stopped counting.',
-                    'The countdown on the TV has been at ten for nine years.',
-                    'The dumpsters are climbable. That is in the site file. That is the whole site file.',
-                    'If the picket fence is warm, the test is early.',
-                ],
-                props: [
-                    { key: 'tube_tv',        x: 9.6,  z: -6.9, y: 0, face: 250 },
-                    { key: 'folding_chair',  x: 8.3,  z: -6.4, face: 70 },
-                    { key: 'cardboard_box',  x: 9.5,  z: -8.6, face: 25 },
-                    { key: 'potted_plant',   x: -9.5, z: -9.4 },
-                    { key: 'mop_bucket',     x: -9.4, z: 8.6, face: 40 },
                 ],
             },
             /* 50 · THE STADIUM — the home bench along the east wall (three
@@ -26948,7 +26923,7 @@ const DOOR_HQ = {
                 { key: 'coffee_table',   x: 0, z: -1.4 },
                 { key: 'wall_torch',     wall: 's', x: -3.0, mount: 1.6 },
                 { key: 'wall_torch',     wall: 'n', x: 1.0, mount: 1.6 },
-                { key: 'picture_round_a', wall: 'n', x: -6.5, mount: 1.8 },   // rev 22: moved off the west wall — THE CLOSET (the seam to Nuketown) stands there at z 0.4
+                { key: 'picture_round_a', wall: 'n', x: -6.5, mount: 1.8 },   // rev 22: moved off the west wall for THE CLOSET (the seam to Nuketown, retired 2026-09-18) stands there at z 0.4
                 { key: 'picture_round_a', wall: 'n', x: -1.0, mount: 1.9 },
                 { key: 'wall_shelf',     wall: 'w', z: -3.0, mount: 1.5 },
                 { key: 'paper_sheet',    x: 3.2, z: 1.6, y: 0.01, face: 300 },
@@ -28862,7 +28837,7 @@ const DOOR_HQ = {
         /* ── THE BACK PASTURE — the fence line with two gates in it: the ranch's and the house's ── */
         site_prebuilt_fairy_forest_pasture: {
             label: 'THE WOODS · THE BACK PASTURE',
-            sub: 'THE FENCE LINE · TWO GATES · ROOMS 512 AND 13',
+            sub: 'THE FENCE LINE · THE GAP · THE RANCH IS OVER THE WIRE',   // the woods split (2026-09-18): the two gates that stood here are THE CORN FIELDS' now
             kind: 'box', site: 'prebuilt_fairy_forest', part: 'pasture',
             shell: hqWoodsShell({ w: 28, d: 21, plate: { x: 0, z: -9.8, y: 4.4 }, floorColor: 0x8a9a5e, mood: { light: 0xc8b0e8, ambient: 0.4 } }),
             /* THE FIELD (2026-09-17): the back pasture — the knoll with the crop circle
@@ -28911,7 +28886,7 @@ const DOOR_HQ = {
             npcSpots: [{ x: 3.2, z: 8.6, face: 300, race: 'skinwalker' }, { x: -3.5, z: -3.5, face: 180, race: 'scarecrow' }],
             onlineSpots: [],
             lines: [
-                '“Whose fence is it?” “The ranch’s.” “And the gate?” “The house’s.” “And the pasture?” “The woods’.”',
+                '“Whose fence is it?” “The ranch’s.” “And the gap?” “Where the gate was.” “And the pasture?” “The woods’.”',
                 '“Something on the mesa.” “There is no mesa here.” “Then what is it on?”',
                 '“The circle is fresh.” “They always are.”',
             ],
@@ -31781,6 +31756,101 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: 42, face: 0 },
         },
+        /* ══ THE RANCH (the woods split, 2026-09-18) ══════════════════════════
+           The user: "split the Woods into the Woods and the Ranch. The Ranch
+           should have Skinwalker Ranch, the Graveyard, the Haunted House, the
+           Lodge and a Western map; the main area can be corn fields and crop
+           circles and scarecrows; the Ranch connects to the Woods through
+           Bohemian Grove." THE CORN FIELDS is the ranch's HUB: one part on
+           Room 512 (the board is bypassed — the stable door lands you here),
+           a `rooms` floor plan whose solid is THE STANDING CORN (the walker
+           cannot push through it; the clearings are the cut rows), the crop
+           circles painted in dirt, the stock pond, THE MESA up its cattle
+           ramp, THE BUTTE with the tape on it (the door gun's), the fence
+           line the rider grinds. Doors: the house's dead tree (moved off the
+           woods' pasture), the Lodge's saloon door (moved off Camelot's
+           great hall), the grove's gate (the way to the woods), the well
+           (moved off the board). The Graveyard and the Western map are NOT
+           launch maps yet — their gates wait in `links` as held rows and
+           land the day their sites are built (hqLinkLive holds a link whose
+           far end is unbuilt at BOTH ends; nothing is manufactured). */
+        site_prebuilt_skinwalker_fields: {
+            label: 'THE RANCH · THE CORN FIELDS',
+            sub: 'THE HUB OF THE RANCH · THE CIRCLES ARE FRESH',
+            kind: 'box', site: 'prebuilt_skinwalker', part: 'fields',
+            shell: hqRanchShell({ w: 56, d: 46, plate: { x: 0, z: -22, y: 4.4 } }),
+            terrain: {
+                floor: 'grass_rocky', cliff: 'grass_tuft', path: 'dirt_2',
+                noise: { amp: 0.14, scale: 7 },
+                /* THE FLOOR PLAN: the cut rows through the corn — clearings joined by winding rows; the bank is the standing corn (1.9 m,
+                   over the walker's head), the windbreak on it thin dead trees; the mask alone is the wall (a bump is not a wall) */
+                gen: { kind: 'rooms', seed: 512, loops: 3, rMin: 5, rMax: 9, wallH: 1.9, spacing: 3.6, kinds: ['tree_5', 'tree_6', 'tree_5', 'tree_2'], maxTrees: 160 },
+                features: [
+                    /* THE FARMYARD: the flat by the stable door, the track north into the corn */
+                    { k: 'path', pts: [[0, 21], [0, 12], [-2, 4], [-3, -6], [0, -16]], w: 2.4 },
+                    { k: 'path', pts: [[-3, -6], [-14, -8], [-16, -18]], w: 1.8 },                                 // to the house's dead tree
+                    { k: 'path', pts: [[-3, -6], [8, -10], [8, -18]], w: 1.8 },                                    // to the grove's gate
+                    { k: 'path', pts: [[0, -16], [-4, -19]], w: 1.8 },                                              // to the Lodge's door
+                    { k: 'path', pts: [[0, 12], [14, 10], [22, 2]], w: 1.8 },                                       // to the east gates (the graveyard, the western — held)
+                    /* THE CIRCLES: this season's, three of them — flattened dirt rings in the corn (the ranch's, and the pasture's is the same hand) */
+                    { k: 'dip', x: -4, z: 2, r: 8.5, h: 0.12 },
+                    { k: 'path', pts: hqRingPts(-4, 2, 7.2, 28), w: 1.6 },
+                    { k: 'path', pts: hqRingPts(-4, 2, 3.6, 20), w: 1.4 },
+                    { k: 'path', pts: [[-4, 2], [-4, -5.2]], w: 1.2 },
+                    { k: 'path', pts: hqRingPts(15, -8, 3.0, 18), w: 1.3 },
+                    { k: 'path', pts: hqRingPts(-16, 10, 2.4, 16), w: 1.2 },
+                    /* THE STOCK POND, waded */
+                    { k: 'pool', x: 12, z: 12, r: 3.8, y: -0.25, depth: 0.6 },
+                    /* THE MESA: the observation mesa, the cattle ramp up its south face — the near weenie at the end of the track's sightline */
+                    { k: 'plateau', x: -2, z: -14, r: 5.0, h: 3.2, edge: 0.4 },
+                    { k: 'ramp', x0: -2, z0: -4.2, x1: -2, z1: -9.7, w: 2.4, h0: 0, h1: 3.2 },
+                    /* THE BUTTE: no way up on foot — the tape on top is the door gun's */
+                    { k: 'plateau', x: 18, z: -14, r: 2.6, h: 4.4, edge: 0.35 },
+                    /* THE FENCE LINE: two lengths of split-rail the rider jumps onto and grinds, the corral gap between */
+                    { k: 'wall', x0: -22, z0: 16, x1: -9, z1: 16, h: 1.0 },
+                    { k: 'wall', x0: -5, z0: 16, x1: 6, z1: 16, h: 1.0 },
+                    { k: 'rail', x0: 14, z0: 4, x1: 22, z1: 4, h: 0.9 },                                            // the cattle chute's top rail
+                    { k: 'grove', n: 5, kinds: ['tree_5', 'tree_6'], seed: 512 },
+                    { k: 'scatter', key: 'dead_snag', n: 2, seed: 513 },
+                    { k: 'scatter', key: 'stump', n: 3, seed: 514 },
+                    { k: 'scatter', key: 'fallen_log', n: 2, seed: 515 },
+                ],
+            },
+            doors: [
+                /* the bay door (the board's stable door) is hqApplySiteEntries' — s x 0 */
+            ],
+            counters: [],
+            props: [
+                { key: 'ritual_circle',  x: -4, z: 2, y: 0.0 },                                              // THE CIRCLE's heart — the ranch's, and this season's
+                { key: 'cave_torch',     x: 3.4, z: 18.4 },
+                { key: 'cave_torch',     x: -3.4, z: 18.4 },
+                { key: 'cave_torch',     x: 9.6, z: -7.6 },
+                { key: 'cave_torch',     x: -13.0, z: -3.0 },
+                { key: 'cave_torch',     x: 20.6, z: 6.4 },
+                { key: 'campfire',       x: 6.2, z: 15.2 },                                                  // the ranch hands' fire, out
+                { key: 'signpost',       x: 2.6, z: 9.0, face: 200 },                                        // THE HOUSE · THE LODGE · THE GROVE · THE WOODS (that way)
+                { key: 'railing_1m',     x: -7.5, z: 16.0, face: 90 },                                       // the corral gate's post rail (the park rule's rail)
+                { key: 'riser_2',        x: 8.0, z: 6.0, face: 0 },                                          // the loading dock's ramp (the park rule's ramp)
+                { key: 'cardboard_boxes', x: 4.8, z: 17.2, face: 20 },                                       // the ranch hands' tools, left in 1994
+                { key: 'floor_stain',    x: -10.0, z: 6.0 },                                                 // THE MUTILATION SITE
+            ],
+            agents: [],
+            npcSpots: [
+                { x: -4.0, z: -1.6, face: 180, race: 'scarecrow', say: ['“Nobody put me here.”', '“The circle was here before the corn.”'] },
+                { x: 15.0, z: -5.0, face: 200, race: 'scarecrow', say: '“Face the house. Not the mesa. Never the mesa.”' },
+                { x: -16.0, z: 12.4, face: 60, race: 'scarecrow', say: '“Count us on the way in. Count us on the way out.”' },
+                { x: 1.6, z: 14.0, face: 340, race: 'cowboy', say: ['“The gate to the house is a tree. The gate to the Lodge is a door. The gate to the woods is the Grove.”', '“The graveyard’s gate and the western road are boarded. That is a sign, not a count.”'] },
+                { x: -1.4, z: -12.6, face: 180, race: 'skinwalker' },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Whose corn is it?” “The ranch’s.” “And the circles?” “The corn’s.”',
+                '“Something on the mesa.” “That is the mesa.” “Then what is it standing on?”',
+                '“The Lodge keeps a door onto the fields. The house keeps a tree. The grove keeps its own counsel.”',
+                '“The scarecrows are counted at dusk. The count is filed at dawn. The two forms never agree.”',
+            ],
+            spawn: { x: 0, z: 18.6, face: 0 },
+        },
         /* ══════════════════════════════════════════════════════════════════
            H-WING (HQ plan 5.5, stage 1 — 2026-09-14 rev 4). See DOOR_HQ.hwing
            for the shape and the rules. Every room here is the one look:
@@ -33111,9 +33181,14 @@ function hqLinkDoors(roomId) {
         const other = roomId === a ? link.b : link.a, to = roomId === a ? b : a;
         const site = other.site || (DOOR_HQ.rooms[to] || {}).site;
         const meta = (typeof EW_MAP_META !== 'undefined' ? EW_MAP_META : []).find(m => m.id === hqSiteId(site));
+        /* THE PLATE READS THE ROOM THROUGH THE DOOR (2026-09-18, the user: "it'll say where that door eventually leads me
+           but not what's actually directly through the door"): a part's own label (CAMELOT · THE OUTER WARD), a facility room's,
+           the entry part of a bypassed board — the site's name only for a board room you actually land in */
+        const thr = hqSiteEntry(to, other.door ? other.door : 'link_' + link.id);
+        const toRoom = DOOR_HQ.rooms[thr ? thr.room : to] || {};
         const d = { id: 'link_' + link.id, link: link.id, wall: end.wall,
             leaf: wear.leaf || null, wide: !!wear.cat.wide,
-            label: ((meta && meta.label) || (DOOR_HQ.rooms[to] || {}).label || to).toUpperCase(),
+            label: String(toRoom.label || (meta && meta.label) || to).toUpperCase(),
             /* an end may override the kind's plate line and the prompt's verb
                (the well room's heads: THE GARDEN WELL · CLIMB UP) */
             sub: end.sub || (wear.way ? (wear.cat.sub || 'STEP THROUGH') : 'WALK THROUGH'), action: { room: to, at: other.door ? other.door : 'link_' + link.id } };   // the far end lands AT a docked end's own door
@@ -33463,6 +33538,19 @@ function hqMapRoomNo(roomId) {
    that come back with `corridor.on: false` are registered but off the
    walk — they are not on the map), undirected edges deduped by pair with
    the strongest kind kept (link / way > secret > lift > door) */
+/* THE HUBS (2026-09-18): the hub a room belongs to — { id, label, color, anchor } — a member of a hub's sites, or the HQ hub
+   for a facility room (no site); null when no hub claims it. The anchor room is the one the map draws big. */
+function hqHubOf(roomId) {
+    const H = DOOR_HQ.hubs || {}, r = (DOOR_HQ.rooms || {})[roomId];
+    if (!r) return null;
+    const site = r.site ? hqSiteId(r.site) : null;
+    for (const id of Object.keys(H)) {
+        const h = H[id];
+        const member = site ? ((h.sites || []).indexOf(site) >= 0) : !!h.facility && r.kind !== 'bay';
+        if (member || h.room === roomId) return { id, label: h.label, color: h.color || null, anchor: h.room === roomId };
+    }
+    return null;
+}
 function hqMapGraph() {
     const rooms = DOOR_HQ.rooms || {};
     const g = hqWorldGraph();
@@ -33513,8 +33601,10 @@ function hqMapGraph() {
         const r = rooms[id];
         const site = r.site ? (hqSiteId(r.site) || null) : null;
         const sector = site ? hqSectorOfMap(site) : null;
+        const hub = hqHubOf(id);
         nodes[id] = { id, label: String(r.label || id), sub: String(r.sub || ''), no: hqMapRoomNo(id), site, part: (site && r.part) ? String(r.part) : null,
             wild: !!site, ring: r.kind === 'bay' ? id : null, hall: r.kind === 'rotunda',
+            hub: (hub && hub.anchor) ? hub.id : null, hubOf: hub ? hub.id : null, hubLabel: hub ? hub.label : null, hubColor: hub ? hub.color : null,
             bayNo: sector ? hqBayNo(sector) : null, adj: (adj[id] || []).slice() };
     });
     return { nodes, order, edges: edges.filter(e => reach[e.a] && reach[e.b]), adj };
@@ -33652,6 +33742,7 @@ function hqMapModel(profile, curRoom, opts) {
         const n = G.nodes[id], p = LY.pos[id] || { x: 0, y: 0 };
         nodes.push({ id, st, x: p.x, y: p.y, ring: p.ring || 0, hall: !!p.hall, where: p.where || '', no: (st === 'q') ? '' : n.no, label: (st === 'q') ? 'UNCHARTED' : n.label, sub: (st === 'q') ? '' : n.sub,
             wild: n.wild, site: n.site, part: n.part, bayNo: n.bayNo, first: rec[id] || null,
+            hub: (st === 'q') ? null : n.hub, hubOf: (st === 'q') ? null : n.hubOf, hubLabel: (st === 'q') ? null : n.hubLabel, hubColor: (st === 'q') ? null : n.hubColor,
             doors: n.adj.length, known: n.adj.filter(b => seen[b]).length });
     });
     const edges = [];
@@ -33716,9 +33807,54 @@ function hqRefreshComplexLinks() {
         r.doors = (r.doors || []).filter(d => !d.link).concat(hqLinkDoors(id));
     });
 }
+/* ── THE PLATE READS THE ROOM THROUGH THE DOOR (2026-09-18) ───────────────
+   The user: "a lot of the rooms are starting to be mislabeled while exploring
+   — it'll say where that door eventually leads me to but not what's actually
+   directly through the door." ONE rule now: a door's LABEL is the label of
+   the room its action lands in — the entry part of a bypassed board (the
+   stable door reads THE RANCH · THE CORN FIELDS, not SKINWALKER RANCH), the
+   ring a bay door opens onto, the lobby a suite's hall door opens onto. The
+   authored plate is kept as `_own` (the panel can still quote it); a door
+   that must keep its own wording says `plate: 'own'`. hqDoorThrough(door)
+   → the room id directly through it (null for a page / overlay / portal /
+   ship door); hqDoorPlateLabel(door) → that room's label; hqReplateDoors()
+   runs once at load AFTER the entries and the links (a variant swap
+   re-plates from the current label, so it inherits this). */
+function hqDoorThrough(door) {
+    const act = door && door.action; if (!act || typeof act !== 'object') return null;
+    const rooms = DOOR_HQ.rooms || {};
+    if (act.ship || act.portal || act.fn || act.overlay) return null;
+    if (act.room) { const ent = hqSiteEntry(act.room, act.at); if (ent && rooms[ent.room]) return ent.room; return rooms[act.room] ? act.room : null; }
+    if (act.sector) { try { const rid = hqBayId(act.sector); return rooms[rid] ? rid : null; } catch (e) { return null; } }
+    if (act.mission) {
+        const id = hqSiteId(act.mission); if (!id) return null;
+        const ent = hqSiteEntryOf(id); if (ent && rooms[ent.room]) return ent.room;
+        const sr = hqSiteRoomId(id); return rooms[sr] ? sr : null;
+    }
+    return null;
+}
+function hqDoorPlateLabel(door) {
+    const to = hqDoorThrough(door); const r = to ? DOOR_HQ.rooms[to] : null;
+    return (r && r.label) ? String(r.label).toUpperCase() : null;
+}
+function hqReplateDoors() {
+    const rooms = DOOR_HQ.rooms || {};
+    let n = 0;
+    Object.keys(rooms).forEach(id => ((rooms[id] || {}).doors || []).forEach(d => {
+        if (!d || d.plate === 'own' || d.secret) return;   // a secret door is on no plate (its DRAUGHT label is the walker's only hint)
+        const to = hqDoorThrough(d);
+        if (to && (DOOR_HQ.rooms[to] || {}).kind === 'bay') return;   // a ring is many bays: the authored plate names the SEGMENT through the door (BAY 1 · TERRESTRIAL), the ring's own label none of them
+        const lbl = hqDoorPlateLabel(d);
+        if (!lbl || lbl === d.label) return;
+        if (d._own == null) d._own = d.label;
+        d.label = lbl; n++;
+    }));
+    return n;
+}
 ((DOOR_HQ.siteRooms || {}).built || []).forEach(id => { const r = hqSiteRoom(id); if (r) DOOR_HQ.rooms[hqSiteRoomId(id)] = r; });
 hqApplySiteEntries();   // THE ENTRY (2026-09-17): the bypassed board rooms' egress doors, on their parts
 hqRefreshComplexLinks();
+hqReplateDoors();       // THE PLATE READS THE ROOM THROUGH THE DOOR (2026-09-18) — after the entries and the links
 /* ── THE CAVE GRID (HQ plan 9.3 stage 2 — 2026-09-15 rev 11) ──────────────
    A box room may carry `cave`: a hand-authored ASCII GRID that IS the room's
    floor — rock, floor at several LEVELS, ramps, bridges, water and lava —
@@ -35326,7 +35462,7 @@ const HQ_TAPE_SHEET = {
     prebuilt_dumb:        [['THE LIFT LOG', 'Sub-level 7 does not exist. The lift stops there anyway.', 'facility'], ['THE BLAST DOOR, 03:14', 'Nine seconds of a door opening from the other side. Nobody comes through.', 'evidence']],
     prebuilt_cern:        [['A BADGE ON THE FLOOR', 'Your mother’s badge. The photo has been cut out.', 'parents']],   // THE VATICAN (2026-09-17): BEAM DUMP went to the cortile
     prebuilt_backrooms:   [['HUM, LEVEL 0', 'Forty seconds of carpet. Something in the wallpaper blinks.', 'evidence']],   // CAMELOT CASTLE (2026-09-18): THE EXIT SIGN went to the outer ward
-    prebuilt_nuketown:    [['THE MANNEQUINS, 05:29', 'They face the blast. On the second pass they face the camera.', 'evidence']],   // AREA 51 (2026-09-18): TEST CARD went to the white rooms
+    site_prebuilt_skinwalker_fields: [['THE SCARECROWS, 05:29', 'Three of them, facing the house. On the second pass they face the camera.', 'evidence']],   // THE RANCH (2026-09-18): Nuketown's MANNEQUINS re-homed when the site retired
     prebuilt_stadium:     [['THE CROWD NOISE', 'Eighty thousand voices. The seats are empty.', 'evidence']],   // DISASTER CITY (2026-09-17): HALF-TIME went out to the streets
     prebuilt_camelot:     [['THE ROUND TABLE', 'Twelve chairs. Thirteen shadows.', 'evidence']],   // THE VATICAN (2026-09-17): SNOW ON THE BATTLEMENTS went to the basilica
     prebuilt_atlantis:    [['SONAR, 0400', 'Something answers the ping. It answers in a voice.', 'evidence']],   // CAMELOT CASTLE (2026-09-18): THE PEARL DIVER went to the undercroft
@@ -35691,6 +35827,7 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_hollow_earth_gallery: { tape: { x: 4.0, z: -3.0 } },      // THE NEEDLE mid-cavern
     site_prebuilt_hollow_earth_adit:    { pay: { x: -5.3, z: 7.0 } },       // the envelope on THE CRYSTAL LEDGE
     site_prebuilt_hollow_earth_mouth:   { tape: { x: -6.5, z: 6.5 } },      // THE SHELF in the mouth's south corner
+    site_prebuilt_skinwalker_fields:    { tape: { x: 18.0, z: -14.0 } },     // THE BUTTE — no way up on foot (THE RANCH, 2026-09-18)
     site_prebuilt_fairy_forest_clearing: { tape: { x: 14.5, z: -12.5 } },   // THE CRAG under the staircase's lane
     site_prebuilt_fairy_forest_trail:   { tape: { x: 8.5, z: -12.5 } },     // THE PINNACLE over the top tier
     site_prebuilt_fairy_forest_redwoods: { tape: { x: 10.0, z: 6.0 } },     // THE STAND
@@ -39107,7 +39244,7 @@ if (typeof window !== 'undefined') {
     window.hqShipDoor = hqShipDoor;
     window.hqWorldRoutes = hqWorldRoutes;
     window.hqLinksSeenUnion = hqLinksSeenUnion; window.hqLinksSeenRecord = hqLinksSeenRecord;
-    window.hqRoomsSeenUnion = hqRoomsSeenUnion; window.hqRoomsSeenRecord = hqRoomsSeenRecord; window.hqRoomSeen = hqRoomSeen; window.hqRoomSee = hqRoomSee; window.hqMapRoomNo = hqMapRoomNo; window.hqMapGraph = hqMapGraph; window.hqMapLayout = hqMapLayout; window.hqMapModel = hqMapModel; window.HQ_MAP_L = HQ_MAP_L;
+    window.hqRoomsSeenUnion = hqRoomsSeenUnion; window.hqRoomsSeenRecord = hqRoomsSeenRecord; window.hqRoomSeen = hqRoomSeen; window.hqRoomSee = hqRoomSee; window.hqMapRoomNo = hqMapRoomNo; window.hqMapGraph = hqMapGraph; window.hqMapLayout = hqMapLayout; window.hqHubOf = hqHubOf; window.hqDoorThrough = hqDoorThrough; window.hqDoorPlateLabel = hqDoorPlateLabel; window.hqReplateDoors = hqReplateDoors; window.hqMapModel = hqMapModel; window.HQ_MAP_L = HQ_MAP_L;
      window.hqLinkSeen = hqLinkSeen; window.hqLinkSee = hqLinkSee; window.hqWorldCharted = hqWorldCharted; window.hqWorldApplyKnown = hqWorldApplyKnown;
     window.hqStarChart = hqStarChart;
     window.doorSiteState = doorSiteState;

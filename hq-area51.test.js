@@ -220,7 +220,7 @@ test('THE PARK RULE + THE LIGHT + THE HARD TAPES: a rail and a stair in every pa
         assert.ok(D.hqFindHardReachTerrain(tape, { terrain: info, reach, S: HQ.rooms[id].shell }).ok, id + ': the door gun has a shot at its lip');
     }
     assert.equal(tapes.filter(t => t.where === BOARD).length, 1, 'THE BADGE PHOTO stays on the board');
-    for (const site of ['prebuilt_nuketown', 'prebuilt_gobekli', 'prebuilt_bermuda']) assert.equal(tapes.filter(t => t.where === 'site_' + site).length, 1, site + ' gave its second tape');
+    for (const site of ['prebuilt_gobekli', 'prebuilt_bermuda']) assert.equal(tapes.filter(t => t.where === 'site_' + site).length, 1, site + ' gave its second tape');
     assert.ok(tapes.some(t => t.where === HANGAR && t.title === 'HANGAR 18, 03:00') && tapes.some(t => t.where === WARD && t.title === 'ROOM 5150-B') && tapes.some(t => t.where === LINE && t.title === 'RUNWAY 33'), 'the titles');
 });
 

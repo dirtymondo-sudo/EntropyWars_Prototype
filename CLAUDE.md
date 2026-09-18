@@ -5540,3 +5540,32 @@ footprint or on a moat's bank; a door landing never stands on a low `wall` row. 
 Looking-Glass's second). `npm test` runs `hq-camelot.test.js`; hq-terrain 41 rooms, hq-floor-plan 35 planned. Ship data.js
 to Render too. UNSEEN LIVE (RULE #1c): all of it — DOOR_HQ_BUILD_PLAN §9's entry lists what to eyeball first. Next in the
 candidate list: #3 THE TUNNELS / THE DUNGEONS, #6 DOOR MANUFACTURING.
+
+## THE MAPS / ROOMS CLEANUP — Nuketown retired · Antarctica on the lunar route · CAMELOT KINGDOM · THE RANCH · THE HUBS · THE PLATE READS THE ROOM THROUGH THE DOOR — 2026-09-18, local delivery
+**NUKETOWN IS GONE** (every runtime file: data.js builders / Δ / meta / site file / threshold 1945 / Bay 1 seat / built /
+near / shells / flavour / three links / challenge pools; three-renderer.js `_NR_BUILDERS.nuketown`; map.js; server.js
+`MAP_POOL` ×2; audio.js) — its tape is THE SCARECROWS on the ranch (the hundred kept); delta-maps expects 38. **ANTARCTICA
+IS ON THE LUNAR ROUTE**: `links.antarctica_derelict` docked on the Spaceship's collar (a third course on the nav console).
+**CAMELOT KINGDOM** = `routes.kingdom`: `links.northpole_camelot` (the North Pole n x −0.2 ⇄ THE OUTER WARD e z 24 — the
+approach OUTSIDE the moat; a ward door inside the moat is unreachable, the solver says so); `camelot_lodge` is deleted (the
+ley line is the stones alone). **THE RANCH** (`routes.ranch`; `DOOR_HQ.hubs.ranch`): `site_prebuilt_skinwalker_fields` ·
+THE RANCH · THE CORN FIELDS (data.js, the block before H-WING; `hqRanchShell` / `HQ_RANCH_LANDMARKS` / `hqRingPts` beside
+the woods shell; `HQ_ROOM_LOOKS.ranch`) — a `rooms` plan whose SOLID IS THE STANDING CORN, three crop circles as `path`
+rings, the mesa + its ramp, THE BUTTE (the hard tape, pinned), the fence walls; `siteRooms.entry.prebuilt_skinwalker` →
+the fields (the stable door lands you in the corn). Gates: `ranch_haunted` (the dead tree, off the pasture), `ranch_lodge`
+(off Camelot's hall), `ranch_grove` (Bohemian Grove keeps its owl's gate to the redwoods = THE INTERCHANGE to the woods),
+`well_skinwalker` (free in the farmyard). **HELD**: `ranch_graveyard` / `ranch_western` name sites that do not exist —
+`hqLinkLive` holds them at both ends; build THE GRAVEYARD / THE WESTERN MAP (the 7.10 checklist) and the gates appear.
+THE WOODS keep their seven parts (the pasture's two gates are the ranch's now). **THE HUBS**: `DOOR_HQ.hubs` `{ label,
+room = the anchor, sites | facility, color }` (hq · cavern · woods · ranch · divine · city · dumb · kingdom);
+`hqHubOf(roomId)` the ONE read; `hqMapGraph` / `hqMapModel` carry `hub` / `hubOf` / `hubLabel` / `hubColor` (never on a
+`?`); map.js draws the anchor big in its ink with the hub's name always on, the members with a halo (`--hub` on the `<g>`;
+CSS "THE HUBS" in the map block). Adding a hub = one row. **THE PLATE READS THE ROOM THROUGH THE DOOR** (the user: "it'll
+say where that door eventually leads me to but not what's actually directly through the door"): data.js `hqDoorThrough
+(door)` / `hqDoorPlateLabel(door)` / `hqReplateDoors()` — run once at load after the entries + the links; every door's
+`label` = the label of the room its action lands in (the entry part of a bypassed board, the lobby behind a suite door;
+`_own` keeps the authored plate; `plate: 'own'` opts out; a BAY door keeps its segment; a SECRET door its DRAUGHT);
+`hqLinkDoors` labels a link door with the far ROOM's own label (CAMELOT · THE OUTER WARD). Never author a door label that
+names the far destination again — name the room, put the rest in `sub`. `npm test` runs `hq-ranch.test.js`. Ship data.js to
+Render too (the finds ledger). Unseen live (RULE #1c): the corn banks, the circles, the butte, the hub rings, the re-plated
+hall.

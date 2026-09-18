@@ -120,7 +120,6 @@ test('THE ENTRY + THE SEAMS: the board room is bypassed — the portcullis lands
         fairy_camelot:   ['b', WARD, 'free', null, 'pool'],
         haunted_camelot: ['b', WARD, 'w', 28, 'wardrobe'],
         well_camelot:    ['a', WARD, 'free', null, 'well'],
-        camelot_lodge:   ['a', HALL, 'w', -8, null],
         skycastle_stair: ['a', SKY, 'e', 8, null],
     };
     for (const [id, [side, room, wall, along, way]] of Object.entries(ends)) {
@@ -140,7 +139,8 @@ test('THE ENTRY + THE SEAMS: the board room is bypassed — the portcullis lands
     const divine = D.hqWorldRoutes(SKY).find(r => r.id === 'divine');
     assert.ok(divine && divine.stations.some(s => s.site === SITE) && divine.legs.some(l => l.fromRoom === SKY || l.toRoom === SKY), 'the divine line calls at Camelot');
     assert.ok(D.hqWorldRoutes('foyer').find(r => r.id === 'woods').stations.some(s => s.site === SITE), 'the woods line still calls at Camelot (the spring)');
-    assert.ok(D.hqWorldRoutes('foyer').find(r => r.id === 'ley').stations.some(s => s.site === SITE), 'the ley line still calls at Camelot (the Lodge)');
+    assert.ok(!D.hqWorldRoutes('foyer').find(r => r.id === 'ley').stations.some(s => s.site === SITE), 'the ley line no longer calls at Camelot (the Lodge left for the ranch, 2026-09-18)');
+    assert.ok(D.hqWorldRoutes('foyer').find(r => r.id === 'kingdom').stations.some(s => s.site === SITE), 'CAMELOT KINGDOM calls at Camelot (the North Pole)');
 });
 
 test('ONE PIECE: from the bay door every part is walked; every inside door is a pair with the same leaf; nothing leaves the site but a links row or the bay; the complex is a cycle (ward → hall → keep → ward; keep ⇄ undercroft ⇄ ward; keep ⇄ sky)', () => {

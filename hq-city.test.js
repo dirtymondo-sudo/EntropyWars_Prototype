@@ -179,9 +179,9 @@ test('THE SEAMS: the Strip (streets_strip — the chapel’s west wall, a motel 
     assert.ok(stad.route === 'highway' && stad.way === 'road' && !stad.leaf && stad.b.part === 'streets' && stad.b.wall === 'n' && stad.b.x === 0 && stad.a.site === 'prebuilt_stadium' && !stad.a.part && stad.a.wall === 'n' && stad.a.x === -5, 'the avenue\'s north end is the stadium road');
     assert.equal(D.hqLinkRoom(stad.a), STADIUM); assert.equal(D.hqLinkRoom(stad.b), STREETS);
     for (const o of HQ.rooms[STADIUM].doors) if (o.id !== 'link_stadium_downtown' && o.wall === 'n') assert.ok(Math.abs(o.x - (-5)) >= 4.4, 'the stadium road shares a lane with ' + o.id);
-    for (const id of ['nuketown_downtown', 'downtown_strip', 'strip_cyberpunk']) { const l = L(id); assert.ok(l && l.way === 'road' && D.hqLinkLive(l), id + ': a road way'); }
+    for (const id of ['downtown_strip', 'strip_cyberpunk']) { const l = L(id); assert.ok(l && l.way === 'road' && D.hqLinkLive(l), id + ': a road way'); }
     const ends = HQ.rooms[STREETS].doors.filter(d => d.way === 'road').map(d => d.wall + ':' + (d.x != null ? d.x : d.z)).sort().join(' ');
-    assert.equal(ends, 'e:0 n:0 w:0', 'the cross street\'s two ends and the avenue\'s north end are roads out; the avenue\'s south end is the mall\'s door');
+    assert.equal(ends, 'n:0 w:0', 'the cross street\'s west end and the avenue\'s north end are roads out (the east end went with Nuketown, 2026-09-18); the avenue\'s south end is the mall\'s door');
     assert.ok(HQ.ways.road && HQ.ways.road.pad >= 9 && HQ.ways.road.w >= 9 && HQ.ways.road.open === true, 'the road is catalogued as a wide, open way');
     for (const d of HQ.rooms[STREETS].doors.filter(d => d.way === 'road')) { const pad = D.hqTerrainInfo(STREETS).pads.find(q => q.door.id === d.id); assert.ok(pad && Math.max(pad.w, pad.d) >= 10, d.id + ': the whole street is the landing'); }
     assert.ok(HQ.rooms[STADIUM].doors.filter(d => d.link && d.wall === 'n').length <= 3, 'the stadium keeps ≤ 3 link doors on its north wall');

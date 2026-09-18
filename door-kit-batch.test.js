@@ -84,7 +84,7 @@ test('the seven props are catalogued and stand where the index says', () => {
 
 test('the renderer: utility boxes on the five urban settings, asteroids in the space + wreckage rosters, the camera head GLB-first', () => {
     const between = (a, b) => { const i = TR.indexOf(a); assert.ok(i >= 0, a); const j = TR.indexOf(b, i + 1); assert.ok(j > i, b); return TR.slice(i, j); };
-    for (const k of ['nuketown', 'cyberpunk', 'stadium', 'strip', 'downtown']) {
+    for (const k of ['cyberpunk', 'stadium', 'strip', 'downtown']) {
         const body = between('_NR_BUILDERS.' + k + ' = function', '\n    };');
         assert.match(body, /_hzDoorKitGLB\('utility_box'/, k + ' places the utility box');
     }

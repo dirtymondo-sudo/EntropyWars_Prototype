@@ -31,7 +31,7 @@ const PART_IDS = PARTS.map(p => BOARD + '_' + p);
 const HUB = BOARD + '_clearing';
 const SEWER = BOARD + '_deadmans';   // THE STORM DRAIN: the woods' one INDOOR part — a closed brick culvert, no sky
 const STAIR = BOARD + '_stair';
-const LINKS = { woods_haunted: 'pasture', woods_skinwalker: 'pasture', woods_grove: 'redwoods', woods_shasta: 'trail', woods_stair: 'stair', woods_sewer: 'deadmans', woods_ritual: 'ritual', deadtree_lookingglass: 'ritual' };
+const LINKS = { woods_grove: 'redwoods', woods_shasta: 'trail', woods_stair: 'stair', woods_sewer: 'deadmans', woods_ritual: 'ritual', deadtree_lookingglass: 'ritual' };
 const renderer = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8');
 const at = (room, id) => (HQ.rooms[room].doors || []).find(d => d.id === id);
 
@@ -128,10 +128,9 @@ test('THE PATHS: nine live links — the house behind THE DEAD TREE in the pastu
         assert.ok(!(HQ.catalogue[l.leaf] || {}).rank, id + ': never a rank leaf');
         if (l.way) assert.ok(d.way === l.way && b.way === l.way, id + ': the same object at both ends');
     }
-    const haunted = HQ.links.find(l => l.id === 'woods_haunted');
-    assert.ok(haunted.way === 'deadtree' && !haunted.leaf, 'the garden gate IS the dead tree with the hole in it');
-    assert.equal(D.hqLinkRoom(haunted.a), 'site_prebuilt_haunted');
-    assert.equal(D.hqLinkRoom(HQ.links.find(l => l.id === 'woods_skinwalker').a), 'site_prebuilt_skinwalker');
+    /* THE WOODS SPLIT (2026-09-18): the house's dead tree and the ranch's gate left the pasture for THE CORN FIELDS (hq-ranch.test.js) */
+    assert.ok(!HQ.links.some(l => l.id === 'woods_haunted' || l.id === 'woods_skinwalker'), 'the pasture keeps no gate to the house or the ranch');
+    assert.ok(!at(BOARD + '_pasture', 'link_ranch_haunted') && !at(BOARD + '_pasture', 'link_woods_skinwalker'), 'no ranch door on the pasture');
     assert.equal(D.hqLinkRoom(HQ.links.find(l => l.id === 'woods_grove').a), 'site_prebuilt_bohemian_grove');
     assert.equal(D.hqLinkRoom(HQ.links.find(l => l.id === 'woods_shasta').b), 'site_prebuilt_shasta');
     assert.equal(D.hqLinkRoom(HQ.links.find(l => l.id === 'woods_stair').b), 'stairwell');
@@ -204,8 +203,7 @@ test('THE PARK RULE and the woods’ own light: a rail and a real ramp or tier i
     const past = D.hqTerrainInfo(BOARD + '_pasture');
     assert.equal(past.walls.length, 2, 'the fence: two lengths of wall either side of the garden gate');
     assert.ok(past.walls.every(w => w.top - w.base < 2.0 && w.h === 1.0), 'a metre high — jumped onto, ridden');
-    const gate = at(BOARD + '_pasture', 'link_woods_haunted');
-    assert.ok(past.walls.every(w => Math.min(w.x0, w.x1) > gate.x + 1.2 || Math.max(w.x0, w.x1) < gate.x - 1.2), 'the gate stands in the fence’s gap');
+    assert.ok(past.walls.every(w => Math.min(w.x0, w.x1) > -0.875 + 1.2 || Math.max(w.x0, w.x1) < -0.875 - 1.2), 'the fence keeps its gap (the dead tree that stood in it is the ranch\'s now)');
     const stair = D.hqTerrainInfo(STAIR);
     assert.ok(stair.rails.filter(r => r.rail).length >= 4, 'the banisters and the landing’s rails');
     assert.ok(HQ.rooms[STAIR].props.filter(p => p.key === 'quarter_pipe').length === 2, 'two quarter pipes on the staircase’s floor');

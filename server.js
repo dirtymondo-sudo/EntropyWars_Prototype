@@ -730,7 +730,6 @@ const MAP_POOL = [
     { modeId: 'prebuilt_shasta_delta', w: 8, h: 8, team: 4 },
     { modeId: 'prebuilt_stonehenge_delta', w: 8, h: 8, team: 4 },
     { modeId: 'prebuilt_giza_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_nuketown_delta', w: 8, h: 8, team: 4 },
     { modeId: 'prebuilt_heaven_delta', w: 8, h: 8, team: 4 },
     { modeId: 'prebuilt_hell_delta', w: 8, h: 8, team: 4 },
     { modeId: 'prebuilt_cyberpunk_delta', w: 8, h: 8, team: 4 },
@@ -770,7 +769,6 @@ const MAP_POOL = [
     // 7.7 WAVE 2 (2026-09-16)
     { modeId: 'prebuilt_bermuda_delta', w: 8, h: 8, team: 4 },
     // full launch maps (6v6 / 8v8 queues)
-    { modeId: 'prebuilt_nuketown', w: 14, h: 14, team: 6 },
     { modeId: 'prebuilt_stonehenge', w: 16, h: 16, team: 6 },
     { modeId: 'prebuilt_moon', w: 16, h: 16, team: 6 },
     { modeId: 'prebuilt_gobekli', w: 16, h: 16, team: 6 },

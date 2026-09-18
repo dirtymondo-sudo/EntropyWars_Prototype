@@ -1517,7 +1517,7 @@ test('every built site is a launch map with a threshold and generates a box room
     const built = HQ.siteRooms && HQ.siteRooms.built;
     assert.ok(Array.isArray(built) && built.includes('prebuilt_dumb'), 'D.U.M.B. is the first walkable site (plan 7.2 order)');
     assert.ok(built.includes('prebuilt_cern') && built.includes('prebuilt_backrooms'), 'CERN and the Backrooms follow (plan 7.2 stage 2)');
-    assert.ok(built.includes('prebuilt_nuketown') && built.includes('prebuilt_stadium'), 'Nuketown and the Stadium follow (plan 7.2 stage 3: the outdoor rooms)');
+    assert.ok(built.includes('prebuilt_stadium') && !built.includes('prebuilt_nuketown'), 'the Stadium follows (plan 7.2 stage 3: the outdoor rooms; Nuketown retired 2026-09-18)');
     const MOAT_SITES = ['prebuilt_camelot', 'prebuilt_atlantis', 'prebuilt_hell', 'prebuilt_technoticlan', 'prebuilt_agartha', 'prebuilt_antarctica'];
     for (const id of MOAT_SITES) assert.ok(built.includes(id), id + ' is a moat room (plan 7.2 stage 4)');
     assert.strictEqual(new Set(built).size, built.length, 'no site is built twice');
@@ -1681,14 +1681,8 @@ test('every built site is a launch map with a threshold and generates a box room
     assert.ok(brInfo.mons.length === 2 && brInfo.mons.every(m => m.kind === 'monolith' && m.solid), 'Backrooms: two solid monoliths, here with you');
     assert.ok(brInfo.cells.flat().filter(c => c.key === 'water').every(c => c.tint), 'Backrooms: the almond water carries its tint for the sheet');
     assert.strictEqual(D.hqSectorOfMap('prebuilt_backrooms'), 'quarantined');
-    /* the two stage-3 rooms — OUTDOORS, under the map's own sky */
-    const nk = HQ.rooms[D.hqSiteRoomId('prebuilt_nuketown')];
-    assert.ok(nk.shell.open === true && nk.shell.sky.night === 0 && nk.shell.sky.scenery === 'orbs', 'Nuketown: dusk, the orbs overhead');
-    assert.ok(nk.shell.wall === 'wood_planks' && nk.shell.floor === 'grass_2' && nk.shell.apron === 'grass_2', 'Nuketown: a board fence round a lawn');
-    assert.ok(nk.doors[0].leaf === 'leaf_motel' && nk.doors[0].wide === false, 'Nuketown: the motel door is the way in');
-    assert.ok(nk.props.some(p => p.key === 'tube_tv') && !nk.props.some(p => p.key === 'wall_clock' || p.key === 'locker'), 'Nuketown: the TV on the lawn, no lockers on a fence');
-    assert.ok(nk.shell.mood.signLines && nk.shell.mood.signLines.n[2] === 'POP. 0 · TEST SITE');
-    assert.strictEqual(D.hqSectorOfMap('prebuilt_nuketown'), 'terrestrial');
+    /* the stage-3 room — OUTDOORS, under the map's own sky (Nuketown, the other one, retired 2026-09-18) */
+    assert.ok(!HQ.rooms[D.hqSiteRoomId('prebuilt_nuketown')] && D.hqSectorOfMap('prebuilt_nuketown') == null, 'Nuketown is gone');
     const st = HQ.rooms[D.hqSiteRoomId('prebuilt_stadium')];
     assert.ok(st.shell.open === true && st.shell.sky.night === 1 && st.shell.sky.scenery === 'city', 'the Stadium: night, the city overhead');
     assert.ok(st.shell.h >= 4 && st.shell.wall === 'concrete_floor', 'the Stadium: the bowl\'s concrete wall');

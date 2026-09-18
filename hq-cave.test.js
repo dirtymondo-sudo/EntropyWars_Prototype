@@ -90,7 +90,7 @@ test('the sheet: the cave is Hollow Earth’s complex — seven parts, each site
 });
 
 test('THE WELLS: six of them, every one a live `way: well` link into the well room, one head each, no two heads within 1.6 m, an end’s own plate line and CLIMB UP; the heads stand on their tiers', () => {
-    assert.deepStrictEqual(WELLS.map(l => l.id).sort().join(','), 'well_camelot,well_cellar,well_garden,well_gobekli,well_nuketown,well_skinwalker', 'the garden, the cellar, Camelot, the ranch, Nuketown, Göbekli');
+    assert.deepStrictEqual(WELLS.map(l => l.id).sort().join(','), 'well_camelot,well_cellar,well_garden,well_gobekli,well_skinwalker', 'the garden, the cellar, Camelot, the ranch, Nuketown, Göbekli');
     const heads = [];
     for (const l of WELLS) {
         assert.ok(D.hqLinkLive(l), l.id + ' is held back');
@@ -106,7 +106,7 @@ test('THE WELLS: six of them, every one a live `way: well` link into the well ro
             const back = at(door.action.room, door.action.at);
             assert.ok(back && back.action.room === rid && back.action.at === door.id && back.way === 'well', l.id + ': the same object at the far end');
             assert.strictEqual(D.doorSiteState(door, {}), 'open', l.id + ': a seam is never sector-gated (C-12)');
-            if (end.wall !== 'free') assert.ok(end.wall === 'n' && end.x <= -0.2, l.id + ': a site-room end hangs in a lane on the north wall');
+            if (end.wall !== 'free') assert.ok(end.wall === 'n' && end.x <= -0.2, l.id + ': a site-room end hangs in a lane on the north wall');   // the ranch well is FREE in the corn fields since the woods split (2026-09-18)
         }
     }
     const shaft = HQ.rooms[SHAFT], wells = shaft.doors.filter(d => d.way === 'well');
@@ -116,7 +116,7 @@ test('THE WELLS: six of them, every one a live `way: well` link into the well ro
     const tier = id => sill(shaft, at(SHAFT, 'link_' + id));
     assert.ok(Math.abs(tier('well_cellar') - 1.75) < 0.01 && Math.abs(tier('well_garden') - 1.75) < 0.01, 'the north shelf');
     assert.ok(Math.abs(tier('well_camelot') - 3.5) < 0.01 && Math.abs(tier('well_gobekli') - 3.5) < 0.01, 'the crag');
-    assert.ok(tier('well_nuketown') < 0.6 && tier('well_skinwalker') < 0.6, 'the floor');
+    assert.ok(tier('well_skinwalker') < 0.6, 'the floor (Nuketown\'s wishing well retired with the site, 2026-09-18)');
     assert.ok(!HQ.links.some(l => l.id === 'haunted_hollow'), 'the old cellar ⇄ Hollow Earth pipe is gone');
     const cellarWell = at('site_prebuilt_haunted_cellar', 'link_well_cellar');
     assert.ok(cellarWell && cellarWell.wall === 'free', 'the cellar keeps its well, where it stood');
