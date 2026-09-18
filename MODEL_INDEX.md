@@ -518,6 +518,48 @@ the ones to replace: give the row a `file` and drop the `proc`, nothing in the r
 14. **a waterspout / a storm cloud** would not help: a landmark is better procedural (it turns); a **Flight 19 Avenger wreck** on the
     reef WOULD (a ~12 m propeller aircraft, broken) — the Triangle's own story on the sea floor.
 
+## 3o. THE LEY LINES (2026-09-18 — complex candidate #9, THE LEY LINES · STONEHENGE · GÖBEKLI TEPE · GIZA · BABEL) — what stands there, and the wishlist
+
+No new file. Four catalogue rows were added on EXISTING files (the same-thing rule, §9 — the board's own pieces standing in the rooms) and one proc:
+
+| catalogue key | file / proc | stands as |
+| --- | --- | --- |
+| `trilithon` | `Meshy_AI_trilithon_0912231457_texture.glb` (§4, the board's `_hzTrilithon`) — span 6.4, a `rect` blocker (place it at face 0 / 180) | twice outside the sarsen circle on THE PLAIN |
+| `sarsen` | `Meshy_AI_a_standing_stone_0912231506_texture.glb` (§4, the board's `standingstone`) — h 3.4, taller than the woods' `menhir` on the same kind of file | the bluestones inside the circle, THE HEEL STONE up the avenue (h 4.8 on the row) |
+| `obelisk` | `Meshy_AI_obelisk_0727195707_texture.glb` (§4, the board's `obelisk3d` monument) — h 7 | the pair flanking the causeway's turn on THE PLATEAU |
+| `babel_crane` | `Meshy_AI_a_scaffold_crane_0912231516_texture.glb` (§3, the board's `_hzBabelCrane`) — h 7.5, `turn: 90` (its jib is −X: UNMEASURED at room scale — a jib that swings the wrong way is `turn: -90`, one field) | on THE UNFINISHED TOP of THE TOWER, at y 14 |
+| `t_pillar` | a PROC (three-renderer.js `_hqProcBuilders.t_pillar`, the board's `_hzTPillar` in metres; the row's `h` scales it — 4.6 the great pillars, 3.0 the ring) | nineteen in the four enclosures of THE TELL |
+
+Also standing here from the kit as it was: `brazier` (the stations' antechambers, the stairs' feet), `campfire`, `menhir` (the nexus ring, the fallen
+pillars), `cave_stone` / `cinder_block` / `stump` / `skull_pile` (the scatter), `sarcophagus`, `sea_chest`, `signpost`, `cardboard_boxes` (the digs'
+crates), `paper_sheet` (the survey forms), `railing_1m`, `fallen_log` (the slaughter stone). The ley's KEYSTONES and VEINS are the renderer's
+(`_hqBuildLeyVeins`), no file; the sarsen circle, the trilithon horseshoe, the enclosures' ring walls and the brick stacks are terrain `wall` rows in
+the rock / brick sheets; the pyramids, the sphinx and the tower are stacked `plateau` tiers in the cliff sheet.
+
+THE WISHLIST for the second pass (Meshy, unit-normalised; a row = `base: 'misc'` + `h`/`span` + `foot`/`block`, then a prop line — the rows above that
+stand on a board piece or a proc are the ones to replace: give the row a `file` and drop the `proc`, nothing in the renderer unless noted):
+1. **a Göbekli T-pillar** (a limestone T with a fox / a boar / a vulture in relief, ~4.5 m, plus a plain 3 m one) — replaces the `t_pillar` proc; two
+   files would let the great pair differ from the ring.
+2. **a sarsen trilithon at room scale** and **a single leaning sarsen** — the board's trilithon is ONE piece; a second file with its lintel FALLEN
+   (two uprights, the lintel on the ground) would make the circle read as a ruin. Today the circle is wall rows in the rock sheet.
+3. **a bluestone** (a smaller, darker, rougher standing stone ~2 m) — the `sarsen` file is doing both jobs.
+4. **a sphinx** (~20 m, weathered; the head with the nemes) — THE SPHINX is two plateau tiers today (a body rect and a head disc); the tape would
+   move onto the model's head (`findSpots` — one pin).
+5. **a pyramid casing-stone block** (a 1.75 m dressed limestone cube) — for the pyramid's tiers' faces to read as courses; the cliff sheet (Babel's
+   brick) tiles them today.
+6. **a mudbrick kiln** (a domed brick oven with a chimney, ~4 m) and **a brick stack** (a 3 × 1 × 1 m pallet of fired bricks) — THE KILN is two
+   plateau tiers, the stacks are wall rows.
+7. **an unfinished scaffold section** (timber, ~6 m) for the tower's top and its faces — the crane stands alone.
+8. **an amber keystone** (an octagonal plinth with a glyph band, ~0.6 m) — the ley's KEYSTONE is a lathe + a glowing band; a modelled one with the
+   glyphs in its texture would carry the "made by nobody in particular" read; the vein strips stay procedural (they follow the traced walls).
+9. **a survey chain / a surveyor's tripod** (bronze, ~1.4 m) — THE SURVEY tape's own object for the nexus.
+10. **a dig kit**: a wheelbarrow, a sieve table, a trowel-and-brush crate, a finds tray (~1 m each) — the digs at the tell and the plateau use
+    `cardboard_boxes` and `paper_sheet` today.
+11. **an ant-people totem** (something small, wrong and very old, ~1.2 m) for the niches — the niches are empty; a find kind per niche waits on
+    an inventory owner (PHASE9 §8).
+12. **a barrow entrance** (a stone-lined passage mouth in a grassy mound, ~5 m) — THE LONG BARROW is a plateau with a wide edge; the ley door would
+    hang in its mouth (a `way` kind `barrow`, one builder).
+
 ## 4. The older `Assets/misc/` models (`_MISC_GLB` + the OBJ landmarks)
 
 | key | file | kind | stands as |

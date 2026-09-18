@@ -9745,6 +9745,13 @@ RULE, the hard tapes, `check-terrain.js` before any claim. The aesthetic is the 
 **THE DEEP** — Atlantis, Agartha, the Dutchman's hold, Bermuda's weir and the Antarctic ice on the `deep` route as one drowned
 complex (the boards bypassed; family B for the drowned halls, A for the flooded adits, a `rooms` plan for the crystal city). Each needs its own `HQ_ROOM_LOOKS` row, its own sky / fog, its links on the
 world graph and the 7.10 checklist for any new site it introduces.
+9. **THE LEY LINES** (the user, 2026-09-18) — "this weird impossible underground tunnel system, not completely cave and natural, but
+   not completely man-made either. Was it made by humans? Giants? Aliens? Ant people? Was it always there? Amber tone. Long straight
+   claustrophobic corridors that fork off." — connecting the ancient sites, and "better areas for the ancient sites".
+   **STARTED 2026-09-18 (THE LEY LINES, the entry at the end of this file): five parts shipped locally on four sites — THE LEY LINES on
+   Göbekli's (the new `ley` generator: straight lines that fork, amber veins in the walls), STONEHENGE · THE PLAIN, GÖBEKLI TEPE · THE
+   TELL, GIZA · THE PLATEAU, BABEL · THE TOWER (the four boards bypassed, the four ley links re-pointed). Technoticlan's own part is the
+   next pass.**
 **STARTED 2026-09-18 (THE DEEP, the entry at the end of this file): three parts shipped locally — THE OPEN SEA on Room 345 (the
 sea floor under one surface, `terrain.sea`; the cay, the jetty, the skiff you SAIL, the maelstrom ringed with buoys), THE ABYSS on
 Room H-20 (drowned — you SWIM in three dimensions or drive the bathyscaphe; the drowned road, the wreck of the Dutchman with her
@@ -10526,3 +10533,103 @@ the draft (the prone float against the surface sheet), the dive's pitch sign, th
 from the skiff, the skiff's bob, the bathyscaphe's lamps in the fog, the kelp's sway amplitude, the coral colours under the
 teal grade, the whale's size on the horizon, the waterspout's scale, the upwelling's bubble column, the temple dome's glow
 against the fog, the sea sheet's tiling at 150 m.
+
+### 2026-09-18 — THE LEY LINES (THE COMPLEX CANDIDATES #9, the user's pick): THE LINE THE STONES STAND ON · STONEHENGE · GÖBEKLI TEPE · GIZA · BABEL (local delivery)
+
+The user: "Let's do the Leylines to connect the ancient sites. I want the Leylines to be this weird impossible underground tunnel system,
+not completely cave and natural, but not completely man-made either. Was it made by humans? Giants? Aliens? Ant people? Was it always
+there? Amber tone. Long straight claustrophobic corridors that fork off. Also work on making better areas for the ancient sites. Let me
+know what assets would be useful for a second pass." Built on EXPLORABLE_AREAS_GUIDE (the blueprint; its §1 has the new C' row).
+
+**THE STORY BEATS (§3 step 1):** Room 9600's frame (the oldest doorway on file) → THE TELL (the mound at noon; the four enclosures sunk into
+it, the T-pillars with their arms; THE SENTINEL in D — the tape nobody climbed to; the dig's crates and the trench that stopped at a frame in
+the north side) → THE FIRST MOUTH → THE LEY LINES: three metres of ceiling, a corridor that does not bend, amber veins in the stone at your
+ankle and over your head, the forks going off at angles you did not agree to and coming round again (or not — a niche at the end of the
+dark ones), the chambers where the lines cross with THE KEYSTONE in each (the one thing plainly MADE, by nobody), THE NEXUS where the great
+line crosses the tell's — sunk, ringed with menhirs, THE OMPHALOS at its centre (the tape, a shot from the sunken floor), the antperson who
+did not dig it, the giant who did not build it, the grey who did not make it, the watcher who says it was always here → the four other
+mouths: THE LONG BARROW on Salisbury Plain (the bank, the ditch, the broken circle, the horseshoe, THE GREAT TRILITHON with the tape on its
+lintel, the heel stone up the avenue, the barrows), THE ROBBERS' TUNNEL on the Giza plateau (dug INWARD; THE NORTH STAIR up the Great
+Pyramid's four tiers to the top, THE SPHINX facing east with the tape on her head, the dig between the trenches), THE FOUNDATION SHAFT at
+the foot of THE TOWER (the spiral — north, east, south, west — to the unfinished top, the crane, THE LOAD it never lifted with the tape in
+it, the kiln, the brick stacks), THE OTHER STAIR into Technoticlan (its board room, as before).
+
+**THE GENERATOR — `terrain.gen.kind: 'ley'` (data.js `HQ_TERRAIN_GEN.ley`, the `ley` branch in `_hqTGenerate`):** family C's third
+generator. `gen.lines` = the AUTHORED main lines (straight polylines, `w` 2.6 / 2.4 / 2.0 here — dead straight whatever the geography);
+`gen.chambers` = the authored round rooms (THE NEXUS r 8.5, THE SURVEYORS' HALL r 7); the generator adds a chamber at every crossing of two
+lines (`crossR` 4.6), a round ANTECHAMBER behind every door pad (`padR` 3.4), and `forks` (18) FORKS: each leaves a random point of a random
+line at one of `forkDeg` (30 · 45 · 60 · 90 · 120, either side), `forkW` [1.5, 2.1] wide, and runs STRAIGHT until it meets another corridor
+(`join`), the shell's rim (`rim` — a dead straight run into the dark), or `forkLen` [14, 46] m; a fork that ran out turns once with
+`joinP` 0.55 straight at the nearest line (the impossible geometry — a corridor that comes round), else ends in a NICHE (`nicheR` 1.9);
+`reforkP` 0.35 forks a fork once. The solid is MASS (the halls' rule: `solidMass`, `solidPad`, `info.solidTop` = the ceiling), the tooth
+cleanup runs, the boundary is TRACED into `info.planWalls` (`simplify` 0.55 — 337 rows for a 200 × 150 room; 0.4 gave 1019). `minDegree`
+0: a niche is the design, `info.genPlan.deadEnds` is always empty (`.niches` / `.forks` / `.chambers` are the readout; every fork carries
+`end: 'join' | 'rim' | 'len'`, `parent`, `depth`). Seeded and deterministic (hq-leylines proves the same mask twice, another seed another
+plan that still joins every station). The nexus is sunk 0.7 m (`dip … open: true` — a bowl the rider carves), the floor climbs 0.9 m toward
+Babel and falls 0.6 toward Giza (open relief), THE OMPHALOS a `plateau` r 1.0 h 2.3 under the 3.2 m ceiling (hard; the shot is from the
+sunken floor, `hqFindHardReachTerrain` proves it), the surveyors' ledge a 0.5 m `wall` (the grind), a rail on the nexus's rim.
+THE RENDERER (three-renderer.js `_hqBuildLeyVeins`, hooked beside the halls' lights): an AMBER VEIN (a 5 × 6 cm emissive strip in the
+mood's `strip` colour, `0xffb347`) along the foot (0.22 m up) and the lintel (0.34 m under the top) of every traced wall on its OPEN face
+(the mask says which side), one material for the room breathing on a ticker (a slow pulse, never a flicker), a glow sprite under the
+ceiling of every chamber and niche (the antechambers dimmer), THE KEYSTONE in every crossing chamber (an octagonal plinth in the wall sheet
+with a glowing band). Caps `HQ_LEY_VEIN_MAX` 900 strips; kill-switch `EW_HQ_NO_LEY_VEINS`; no point lights of its own (the braziers in the
+antechambers are the props'). Nothing on `state`, nothing relayed (RULE #2).
+
+**THE PARTS (data.js, the block before THE UNDERWORLD's; `hqLeyShell` / `hqAncientShell` beside the sewer shell; looks `leylines` / `henge`
+/ `tell` / `plateau` / `babel`):**
+- `site_prebuilt_gobekli_leylines` 200 × 150 × 3.2 (CLOSED; Babel's brick underfoot, the traced walls in `rock_wall_1` tinted amber, the
+  cave sheet overhead, fog 0.03 / m, no strips, no lamps) — the four lines (THE GREAT LINE w → e, THE TELL'S LINE n → s, BABEL'S LINE
+  ne → s, THE SHORT LINE w → the rock), 19 forks (3 niches, 2 to the rim, the rest joined), 9 chambers; the stations: the tell's door
+  (n x −60, a pair — the same site), `link_stonehenge_gobekli` (w z −40), `link_gobekli_giza` (s x −30), `link_giza_babel` (n x 50),
+  `link_babel_technoticlan` (e z 20). Natives: the antperson, the giant, the grey, the conspiracy theorist, the watcher (each with the
+  same answer). THE SURVEY tape on the omphalos.
+- `site_prebuilt_stonehenge_henge` 120 × 100 (OPEN under Stonehenge's own night — the meta row's violet tint, the ruins roster; the wheel
+  `motion` left behind, the room stands still) — `rooms` with no thicket (`wallH` 1.3: the chalk banks), THE BANK (a ridge ring r 24, open)
+  and THE DITCH (a gully ring r 20.5, open), THE SARSEN CIRCLE (eleven `wall` rows h 4.2 on r 11, four lanes broken through and one span
+  fallen), THE TRILITHON HORSESHOE (four rows h 6.0 on r 6.2, open to the north-east), THE GREAT TRILITHON (a tier 6.6 m — the tape, the
+  door gun's), the bluestones (`sarsen` ×5), THE HEEL STONE (`sarsen` h 4.8 up THE AVENUE), THE SLAUGHTER STONE (`fallen_log`), the
+  `trilithon` GLB twice outside the circle, three barrows (THE KING BARROW's chalk cut is the rider's ramp), THE LONG BARROW (a plateau
+  with a 1.4 m edge — a bank the walker climbs — west of the ley door), the visitors' rail. The bay door (s x 0) is the board's frame.
+- `site_prebuilt_gobekli_tell` 110 × 90 (OPEN under the tell's noon) — `rooms` no thicket (`wallH` 2.0: the spoil banks), THE TELL (a hill
+  r 38 h 3.2, open), four ENCLOSURES (`dip … dome: true` r 6.5 h 2.0, open) ringed with low `wall` rows (h 1.3, five each with a gap) and
+  nineteen `t_pillar` procs (4.6 the great pairs, 3.0 the ring), THE SENTINEL (a tier r 0.8 h 5.4 in D — the tape, the door gun's), THE
+  DIG (a spoil-heap tier 1.4 up a stair with its rail, two trenches as gullies, the crates, the fire, the forms), the `well_gobekli` head
+  RE-POINTED off the bypassed board onto the tell's east flank (free, face 270), the ley's mouth (n x −10) a door PAIR with the tunnels.
+- `site_prebuilt_giza_plateau` 150 × 120 (OPEN under Giza's day) — `rooms` no thicket (`wallH` 1.4: the dunes), THE GREAT PYRAMID four
+  stacked `plateau` rects (60 / 44 / 28 / 12 m; 3.5 m a tier) up THE NORTH STAIR (four `stairs` ramps 8.2 m for 3.5 — L ≥ 2.2 h, each
+  starting 0.5 m inside the lower tier and ending 0.7 m inside the upper: THE RAMP RULE both ways; the 14 m top is walked to), KHAFRE
+  (three tiers) and MENKAURE (two) solid, THE SPHINX (a body rect 20 × 7 × 3.4 facing east, her head a disc r 2.6 h 6.8 — the tape, the
+  door gun's), THE CAUSEWAY from her paws to the pyramid's foot, two trenches, the camp, the `obelisk` pair, rails on tier 1's north ledge
+  either side of the stair (the grinds). The bay door (s x 0) is the sealed tomb door.
+- `site_prebuilt_babel_tower` 130 × 110 (OPEN under Babel's dusk; the `rise` motion left behind) — `rooms` no thicket (`wallH` 1.6: the
+  rubble of scattered tongues), THE TOWER four square tiers (64 / 46 / 28 / 10 m; 3.5 m a tier) up THE SPIRAL (a stair on each face in
+  turn — north onto tier 1, along the east ledge onto tier 2, up the south ledge onto tier 3, along the west ledge onto THE UNFINISHED
+  TOP), `babel_crane` on the top at y 14, THE LOAD (a tier r 1.0 h 18 — the tape, the door gun's from the top), THE KILN (two tiers, the
+  fires), three brick stacks as `wall` rows h 1.0 (the grinds), tier 1's south rail. The bay door (s x 0) is the barn door.
+
+**THE ENTRIES + THE LINE + THE HUB:** `siteRooms.entry` rows for the four sites (bay s x 0 each); the four ley links RE-POINTED with their
+ids kept (`stonehenge_gobekli` henge n −10 ⇄ ley w −40; `gobekli_giza` ley s −30 ⇄ plateau n −10; `giza_babel` ley n 50 ⇄ tower n −10;
+`babel_technoticlan` ley e 20 ⇄ Technoticlan's board n −5) — a STAR on the world tab, every leg Göbekli's, five stations; `DOOR_HQ.hubs.ley`
+(the tunnels the anchor, the four sites gathered). TAPES: the four boards' tapes onto their parts (SOLSTICE, FROM THE BANK · THE PILLARS ·
+THE SHAFT · ONE VOICE); the tunnels' THE SURVEY came off Cyberpunk's BYPASSED board (BILLBOARD — unreachable on foot since the grid took the
+door; the rule: a tape that must move comes off a bypassed board first). `findSpots` pins the five hard tapes. Catalogue: `trilithon`,
+`sarsen`, `obelisk`, `babel_crane` on the board's own files (MODEL_INDEX §3o), `t_pillar` a proc.
+
+**RULES that came with it:** a `rooms` plan with `thicket: false` is the solid for open ground of any kind — `wallH` is the bank's height
+(1.3 chalk, 1.4 dunes, 1.6 rubble, 2.0 spoil); a stacked monument is `plateau` rects sharing a centre (max wins); a straight stair up a
+tier's face needs the ledge ≥ 8 m (a 3.5 m tier at L ≥ 2.2 h + 0.5 in + 0.7 in) — pyramids and ziggurats want WIDE steps; a hard tape under
+a low ceiling stands on a tier whose top band the eye sees from the floor; a bypassed board's remaining tape is the first to re-home.
+
+**Tests:** `hq-leylines.test.js` (seven: the sheet, the generator, the solver + the return guarantee + the production landing + check-terrain
+on all five, the entries + the line + the hub, the weenies + the hard tapes, the park rule + the light + the stones, the renderer's veins /
+the T-pillar / the hooks); amended: hq-terrain (54 rooms), hq-floor-plan (45 planned, the `ley` kind), hq-ranch (eleven hubs),
+disaster-city-3 (the entries list). `node check-terrain.js` on the five: every door reached, nothing traps.
+
+**NOT BUILT:** Technoticlan's own part (its ley end stays on its board room — THE TEMPLE STEPS next: a stepped pyramid up a stair, the
+canals waded, the causeways decks, `hqCityShell`'s neon); a Göbekli T-pillar GLB; the keystone's glyphs as a texture; a find per niche
+(9.1's rule wants an inventory owner — the niches are empty but lit); a `barrow` way kind for the long barrow's mouth; the second-pass
+assets (MODEL_INDEX §3o's twelve). **UNSEEN LIVE (RULE #1c):** all of it — the veins' brightness against the amber grade (`HQ_ROOM_LOOKS
+.leylines` and `mood.strip` are the edits), the 3.2 m ceiling's read with the boom (a low room; `_hqCamBlocked` meets the mass), the fork
+angles from the walker's eye, the keystones' scale, the sarsen walls' sheet against the trilithon GLB, the T-pillar proc's read, the
+pyramid's four flights under the walker, the sphinx's two-tier silhouette, the tower's spiral and the crane's facing (`turn`), the tell's
+enclosure floors (the dome dips' slope at their rims), the well head on the tell's flank, every native's spot.

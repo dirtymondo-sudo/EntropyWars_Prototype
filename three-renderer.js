@@ -38581,6 +38581,58 @@ const ThreeRenderer = (function () {
         (plan.rooms || []).forEach(function (r) { if (r.authored) return; hang(r.x, r.z, r.w >= r.d ? Math.PI / 2 : 0); });
     }
     /* ═══════════════════════════════════════════════════════════════════════
+       THE LEY LINES' VEINS (2026-09-18 — THE COMPLEX CANDIDATES #9, the user:
+       "not completely cave and natural, not completely man-made either …
+       amber tone"). A `ley` floor plan (data.js HQ_TERRAIN_GEN.ley) lights
+       itself: an AMBER VEIN runs along the foot and the lintel of every
+       traced plan wall on its open face — a thin emissive strip in the
+       mood's `strip` colour, one material for the whole room, breathing on
+       a ticker (the light is IN the stone, not on it: whoever cut the
+       corridors did not hang lamps), a soft glow in every chamber and every
+       niche, and THE KEYSTONE in every crossing chamber — a low octagonal
+       plinth in the wall sheet with a glyph band that glows the same amber
+       (the one thing in the tunnels that was plainly MADE, by nobody in
+       particular). Caps: `HQ_LEY_VEIN_MAX` strips (a 200 m room traces ~340
+       walls → ~680 strips), the glows one per chamber. No point lights (the
+       braziers in the antechambers are the props'); no new state (RULE #2).
+       ═══════════════════════════════════════════════════════════════════════ */
+    var HQ_LEY_VEIN_MAX = 900;
+    function _hqBuildLeyVeins(room, info, G, TM, rng) {
+        if (typeof window !== 'undefined' && window.EW_HQ_NO_LEY_VEINS) return;
+        var U = _hqUnits(), S = room.shell, plan = info.genPlan || {}, col = (S.mood && S.mood.strip != null) ? S.mood.strip : 0xffb347;
+        var veinMat = new THREE.MeshBasicMaterial({ color: col, fog: true }), made = 0;
+        var strip = function (ax, az, bx, bz, y, ox, oz) {
+            if (made >= HQ_LEY_VEIN_MAX) return;
+            var L = Math.hypot(bx - ax, bz - az); if (L < 0.4) return;
+            var m = new THREE.Mesh(new THREE.BoxGeometry(0.05 * U, 0.06 * U, L * U), veinMat);
+            m.position.set(((ax + bx) / 2 + ox) * U, y * U + 0.3, ((az + bz) / 2 + oz) * U); m.rotation.y = Math.atan2(bx - ax, bz - az); m.renderOrder = 2; m._ew_hqPart = 'wall'; G.add(m);
+            made++;
+        };
+        (info.planWalls || []).forEach(function (w) {
+            var L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0); if (L < 0.4) return;
+            var nx = -(w.z1 - w.z0) / L, nz = (w.x1 - w.x0) / L, mx = (w.x0 + w.x1) / 2, mz = (w.z0 + w.z1) / 2;
+            /* the open side: the wall's box stands t/2 into the solid — the face 0.03 m proud of it is where the vein runs */
+            var side = (typeof hqTerrainMaskAt === 'function' && hqTerrainMaskAt(info, mx + nx * (w.t / 2 + 0.6), mz + nz * (w.t / 2 + 0.6)) > 0) ? 1 : -1;
+            var ox = nx * side * (w.t / 2 + 0.03), oz = nz * side * (w.t / 2 + 0.03);
+            strip(w.x0, w.z0, w.x1, w.z1, w.base + 0.3 + 0.22, ox, oz);
+            strip(w.x0, w.z0, w.x1, w.z1, w.top - 0.34, ox, oz);
+        });
+        /* the glows: one per chamber and niche, hung under the ceiling */
+        var h = (S.h || 3.2) - 0.25;
+        (plan.chambers || []).concat(plan.niches || []).forEach(function (c) {
+            var gl = _hzGlowSprite((c.r * 1.6 + 1.2) * U, col, c.pad ? 0.12 : 0.2, 0.05, 0, 0.6 + rng() * 0.6); gl.position.set(c.x * U, h * U, c.z * U); G.add(gl);
+        });
+        /* THE KEYSTONE in every crossing chamber (never in an authored one — the omphalos / the ledge stand there) */
+        var plinth = _hqMat(info.cliff || 'rock_wall_1', 1, 1, { color: 0xd8a868, shininess: 6 });
+        (plan.chambers || []).filter(function (c) { return c.cross; }).forEach(function (c) {
+            var base = (typeof hqTerrainHeight === 'function') ? hqTerrainHeight(info, c.x, c.z) : 0;
+            var pl = new THREE.Mesh(new THREE.CylinderGeometry(0.42 * U, 0.5 * U, 0.55 * U, 8), plinth); pl.position.set(c.x * U, (base + 0.275) * U + 0.3, c.z * U); pl.castShadow = true; G.add(pl);
+            var band = new THREE.Mesh(new THREE.CylinderGeometry(0.44 * U, 0.44 * U, 0.08 * U, 8, 1, true), veinMat); band.position.set(c.x * U, (base + 0.38) * U + 0.3, c.z * U); G.add(band);
+        });
+        /* the breathing: one material, one ticker (the tunnels never flicker — they pulse, slowly) */
+        if (_hq && _hq.tickers) { var c0 = new THREE.Color(col); _hq.tickers.push(function (dt, now) { var k = 0.78 + 0.22 * (0.5 + 0.5 * Math.sin(now * 0.00045)); veinMat.color.copy(c0).multiplyScalar(k); }); }
+    }
+    /* ═══════════════════════════════════════════════════════════════════════
        THE FLOATING PIECES (THE DIVINE STAIR, second pass, 2026-09-18)
        The user: "try using the stairways from the map builder (a floating
        staircase with floating steps) or something similar along with cloud
@@ -38811,6 +38863,7 @@ const ThreeRenderer = (function () {
         /* THE HALLS (D.U.M.B., 2026-09-17): the floor plan's own walls — the mask's boundary traced by data.js _hqTTraceMaskWalls, drawn to the ceiling in the plan's sheet; the walker never reads them (the mass is) */
         (info.planWalls || []).forEach(drawWall);
         if (info.genPlan && info.gen && info.gen.kind === 'halls') { try { _hqBuildHallsLights(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the halls’ strip lights failed', e); } }
+        if (info.genPlan && info.gen && info.gen.kind === 'ley') { try { _hqBuildLeyVeins(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the ley veins failed', e); } }   // THE LEY LINES (2026-09-18): the walls light themselves
         /* ── THE RAILS: posts and a bar along the ground ── */
         info.rails.filter(function (r) { return r.rail; }).forEach(function (r) {
             var L = Math.hypot(r.x1 - r.x0, r.z1 - r.z0), yaw = Math.atan2(r.x1 - r.x0, r.z1 - r.z0);
@@ -43391,6 +43444,19 @@ const ThreeRenderer = (function () {
                 var head = new THREE.Mesh(new THREE.BoxGeometry(0.34 * U, 0.3 * U, 0.26 * U), dark); head.position.set(x, 6.62 * U, 0.06 * U); head.rotation.x = 0.55; g.add(head);
                 var lens = new THREE.Mesh(new THREE.PlaneGeometry(0.28 * U, 0.24 * U), lampMat); lens.position.set(x, 6.55 * U, 0.2 * U); lens.rotation.x = -Math.PI / 2 + 0.55; g.add(lens);
             }
+            return g;
+        },
+        /* THE LEY LINES (2026-09-18 — GÖBEKLI TEPE · THE TELL): a T-pillar in metres — the board's _hzTPillar at room scale (the shaft, the
+           T head, the relief arm and hand on the +Z face); the placement's `h` scales the whole (the two great pillars 4.6, the ring 3.0);
+           a real Göbekli pillar GLB replaces it through the catalogue row (MODEL_INDEX §3o) */
+        t_pillar: function (U, p) {
+            var g = new THREE.Group(), h = (p && p.h) || 4.6, k = h / 4.6;
+            var stone = _hqMat('bricks_2', 1, 2, { color: 0xe0d0b0, shininess: 3 }), head = _hqMat('bricks_2', 2, 1, { color: 0xd6c6a4, shininess: 3 }), relief = _hqMat(null, 1, 1, { color: 0xb8a678, shininess: 2 });
+            var H = 3.9 * k, shaft = _hqBox(0.85 * k, H, 0.5 * k, stone); shaft.position.y = H / 2 * U; shaft.castShadow = true; g.add(shaft);
+            var top = _hqBox(1.9 * k, 0.7 * k, 0.62 * k, head); top.position.y = (H + 0.35 * k) * U; top.castShadow = true; g.add(top);
+            var arm = _hqBox(0.16 * k, H * 0.5, 0.06 * k, relief); arm.position.set(0.2 * k * U, H * 0.55 * U, 0.26 * k * U); g.add(arm);
+            var hand = _hqBox(0.4 * k, 0.14 * k, 0.06 * k, relief); hand.position.set(0.12 * k * U, H * 0.32 * U, 0.26 * k * U); g.add(hand);
+            var fox = _hqBox(0.5 * k, 0.3 * k, 0.05 * k, relief); fox.position.set(-0.1 * k * U, H * 0.78 * U, 0.26 * k * U); fox.rotation.z = 0.35; g.add(fox);   // the animal on the shaft (one of them has moved)
             return g;
         },
         saucer_rig: function (U) {

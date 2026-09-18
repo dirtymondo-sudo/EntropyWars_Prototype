@@ -39,6 +39,7 @@ them. The names below are the ones the code uses; the games / papers they come f
 | **A' · NATURAL (clearings)** | `terrain.gen.kind: 'rooms'` — elliptical clearings joined by a Prim tree + `loops` winding corridors, the solid a THICKET bank of trees | woods, cloud fields, swamps, gardens, ruins overgrown | open sky, rooms you can see across |
 | **B · PREFAB (hand-placed rooms)** | a `kind: 'box'` room with authored `doors`, `props`, `counters` (the whole facility: the rotunda + rings, the suites, the Haunted House parts, the Spaceship's decks, the Dutchman below decks) | man-made interiors and set-pieces: throne rooms, lobbies, bridges, chapels, a mall, a station | every wall means something; the art is placed, not grown |
 | **C · ROOMS-AND-HALLWAYS (maze / rogue)** | `terrain.gen.kind: 'halls'` (2026-09-17, D.U.M.B.) — a BSP of the shell into leaves with a rectangular ROOM in each, plus AUTHORED rooms (`gen.rooms`, the prefab chambers) and AUTHORED halls (`gen.halls` polylines, a ring or a spine), joined by a Prim tree + `loops` of L-SHAPED corridors; the solid a MASS to the ceiling (the city's rule), its boundary TRACED into `info.planWalls` (wall rows in an `urban:` sheet; `simplify` collapses the raster stairs); `bsp: false` = the authored rooms and halls alone. Still by hand: H-Wing, the Works' tunnel, the service corridors, the dungeon cells | dungeons, sewers, bunkers, back-of-house, D.U.M.B., Portal-style chamber chains | corridors between rooms, doors on rooms, keys and locks |
+| **C' · THE LINES (straight corridors that fork)** | `terrain.gen.kind: 'ley'` (2026-09-18, THE LEY LINES) — AUTHORED straight lines between the stations (`gen.lines`), generated FORKS at ley angles (`forkDeg`, narrower than a line) that run straight until they meet another corridor, the rim, or run out into a NICHE (a round dead end — the design, never a `deadEnd`), a chamber at every crossing and behind every station (`gen.chambers` for the authored ones); the solid a MASS to a low ceiling, traced into walls that light themselves (three-renderer.js `_hqBuildLeyVeins`) | the ley lines, a mine's drifts, a catacomb's galleries, an ant nest, anything DUG in straight lines by someone with a plan you cannot read | claustrophobic, ruler-straight, forks you cannot see the end of |
 | **D · STREETS (roads first)** | `terrain.gen.kind: 'city'` — authored polyline streets are the corridors, the blocks the solid, lots terraced along every face, buildings as MASS at street level (§4) | any city, a suburb, a base with roads, a harbour | a grid you navigate by street names |
 
 Two more things exist and are NOT families:
@@ -524,3 +525,21 @@ The design (build in this order; each step is one delivery):
   under the sea says `sea: true`; a floating prop is `float: true`; a vehicle prop stands first when its lamp must keep under
   the cap; the fluid read is height-aware. Not done: the assets (MODEL_INDEX §3n), a wind for the sail, caustics, a breath rule,
   Agartha / Antarctica / the hold as drowned parts. Log: DOOR_HQ_BUILD_PLAN §9.
+
+- **2026-09-18 — THE LEY LINES (complex candidate #9, the user's pick: "this weird impossible underground tunnel system, not completely cave
+  and natural, but not completely man-made either … Amber tone. Long straight claustrophobic corridors that fork off").** Family C's THIRD
+  generator, `ley` (§1 C'): authored straight lines between the stations, forks at ley angles that join / run to the rim / end in a niche,
+  crossing chambers, antechambers behind the doors; the solid a mass to a 3.2 m ceiling, traced into walls that carry their own amber
+  veins (the light is IN the stone — the answer to "who made it" is the room's, never a lamp). THE LEY LINES on Göbekli Tepe's site (the
+  hub) and FOUR ANCIENT SITES rebuilt as open `rooms` parts with no thicket (the banks are the solid): STONEHENGE · THE PLAIN (the sarsen
+  circle and the trilithons as `wall` rows the rider grinds, the bank + the ditch as an open ridge + gully, the barrows), GÖBEKLI TEPE · THE
+  TELL (the tell a hill, four enclosures `dip … dome: true` sunk into it with ring walls and T-pillars), GIZA · THE PLATEAU (the pyramid
+  four stacked `plateau` rects up a four-flight stair — 8.2 m a flight for 3.5 m: THE RAMP RULE and the tread rule both hold; the top is
+  walked to), BABEL · THE TOWER (four tiers up THE SPIRAL — a stair on each face in turn; the crane's load the hard tape). The four boards
+  BYPASSED; the four ley links RE-POINTED onto the parts with their ids kept (a star on the world tab: every leg is Göbekli's). Rules
+  learned: a `rooms` plan with `thicket: false` is the right solid for open ground of any kind (dunes, downland, rubble) — set `wallH` to
+  the bank's height; a hard tape under a LOW ceiling wants a tier the eye can see the top band of from the floor (THE OMPHALOS is 2.3 m
+  in a 3.2 m room, from a floor sunk 0.7 m); a tape that must be moved comes off a BYPASSED board first (Cyberpunk's BILLBOARD was
+  unreachable on foot). Not done: Technoticlan's own part (its ley end stays on its board), a Göbekli T-pillar GLB (the proc stands),
+  the keystone glyphs as a texture, the niches' finds (an envelope per niche — 9.1's rule wants an inventory owner). Log:
+  DOOR_HQ_BUILD_PLAN §9; assets: MODEL_INDEX §3o.

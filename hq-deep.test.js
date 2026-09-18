@@ -418,5 +418,5 @@ test('THE SOURCE: the renderer\'s block (the walker tick hands the frame to the 
     /* index.html + the CSS */
     assert.ok(/class="hq-hint-swim"/.test(html) && /class="hq-hint-helm"/.test(html), 'the hint lines');
     assert.ok(/\.hq-hints\.swim \.hq-hint-swim \{ display: inline;/.test(css) && /\.hq-hints\.helm \.hq-hint-helm \{ display: inline;/.test(css), 'the CSS shows them');
-    assert.ok(/\?v=20260918-the-deep-01-cors/.test(html) && !/skate-portals-0545/.test(html), 'the token bumped (RULE #1b)');
+    assert.ok(/\?v=20260918-[a-z0-9-]+-cors/.test(html) && !/skate-portals-0545/.test(html), 'the token bumped (RULE #1b)');
 });

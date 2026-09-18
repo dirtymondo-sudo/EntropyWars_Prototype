@@ -14170,6 +14170,14 @@ const HQ_ROOM_LOOKS = {
     sea:        { name: 'THE OPEN SEA', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.36, grain: 0.03, tintAmount: 0.3, levels: 24 }, cin: { vignette: true, vigAmount: 0.32, vigSize: 0.6 }, nightMood: 0.1, bloom: 0.22 },
     abyss:      { name: 'THE ABYSS', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.42, grain: 0.035, tintAmount: 0.55, levels: 20 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.5 }, nightMood: 0.55, bloom: 0.42 },
     temple:     { name: 'THE TEMPLE OF THE DEEP', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.44, grain: 0.035, tintAmount: 0.45, levels: 22 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.48 }, nightMood: 0.5, bloom: 0.26 },
+    /* THE LEY LINES (2026-09-18 — complex candidate #9, the user: "amber tone"): the tunnels the deepest amber in the building, hard dither, a tight vignette
+       (the corridor is the picture and the veins are the only light); the four ancient sites each a lighter grade of the same warmth — the henge a starlit
+       dream, the tell the excavation's dust at noon, the plateau bleached and sun-struck, the tower the brick at dusk */
+    leylines:   { name: 'THE LEY LINES', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.54, grain: 0.05, tintAmount: 0.6, levels: 16 }, cin: { vignette: true, vigAmount: 0.66, vigSize: 0.38 }, nightMood: 0.7, bloom: 0.3 },
+    henge:      { name: 'STONEHENGE · THE PLAIN', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.34, grain: 0.03, tintAmount: 0.36, levels: 26 }, cin: { vignette: true, vigAmount: 0.4, vigSize: 0.56 }, nightMood: 0.6, bloom: 0.34 },
+    tell:       { name: 'GÖBEKLI TEPE · THE TELL', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.4, grain: 0.035, tintAmount: 0.38, levels: 24 }, cin: { vignette: true, vigAmount: 0.34, vigSize: 0.58 }, nightMood: 0.1, bloom: 0.2 },
+    plateau:    { name: 'GIZA · THE PLATEAU', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.36, grain: 0.03, tintAmount: 0.34, levels: 24 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.6 }, nightMood: 0.05, bloom: 0.26 },
+    babel:      { name: 'BABEL · THE TOWER', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.42, grain: 0.035, tintAmount: 0.44, levels: 22 }, cin: { vignette: true, vigAmount: 0.4, vigSize: 0.54 }, nightMood: 0.35, bloom: 0.28 },
 };
 // THE LOOK (2026-09-17): `env.look` on a row = a grade (a HQ_ROOM_LOOKS row: retro preset, dither,
 // vignette, night mood, bloom, exposure, dof) laid over the player's video settings for that map —
@@ -18735,6 +18743,46 @@ function hqSewerShell(o) {
     Object.keys(o).forEach(k => { S[k] = o[k]; });
     return S;
 }
+/* ── THE LEY LINES' SHELLS (2026-09-18 — THE COMPLEX CANDIDATES #9: "this weird impossible underground tunnel system, not completely
+   cave and natural, not completely man-made either — amber tone; long straight claustrophobic corridors that fork off") ──
+   THE LEY LINES: a CLOSED room three metres high (the claustrophobia is the ceiling), dressed sandstone underfoot in Babel's brick sheet,
+   the traced plan walls in the cave's rock sheet tinted amber (dressed, then eroded — or eroded, then dressed: nobody filed which), no
+   strips and no lamps (the walls light themselves: three-renderer.js _hqBuildLeyVeins — an amber vein along every wall's foot and lintel,
+   a glow in every chamber), an amber haze per metre, the leylines grade. THE ANCIENT SITES (hqAncientShell): an OPEN room under the site's
+   own sky (the EW_MAP_META env row copied by hand — hq-leylines.test.js diffs tint / fog / scenery; a `motion` row is left behind: the
+   room stands still), the site's ground running out under a fog per metre, no facility walls (the user's rule for every outdoor room),
+   the room lit by its own braziers and fires, a grade per site. One function each so the parts cannot drift; `o` overrides a field. */
+function hqLeyShell(o) {
+    o = Object.assign({}, o || {});
+    const S = {
+        w: 0, d: 0, h: 3.2, wallH: 3.2, dadoH: 0.9, open: false,
+        floor: 'bricks_1', wall: 'rock_wall_1', dado: 'bricks_1', trim: 'wood', ceiling: 'cave_wall', ceilTile: 1.75,
+        floorColor: 0xc89c62, wallColor: 0xd8a868, dadoColor: 0xb88850, ceilColor: 0x9a7448,
+        pipes: false, strips: false, lights: [],
+        mood: { lamp: 0xffb347, glow: 0xffa030, strip: 0xffb347, light: 0xffc078, ambient: 0.30 },
+        fog: { color: 0x1a1006, density: 0.03 },
+        plate: { x: 0, z: 0, y: 2.4 },
+        look: HQ_ROOM_LOOKS.leylines,
+    };
+    Object.keys(o).forEach(k => { S[k] = o[k]; });
+    return S;
+}
+function hqAncientShell(o) {
+    o = Object.assign({}, o || {});
+    const S = {
+        w: 0, d: 0, h: 9.0, wallH: 9.0, dadoH: 1.0,
+        open: true, edge: 'open',
+        floor: 'grass_2', wall: 'rock_wall_1', dado: 'bricks_1', trim: 'wood', ceiling: 'rock_wall_1',
+        apron: 'grass_2', skirt: 'dirt_2', apronColor: 0x8a9a5a, floorColor: 0x8a9a5a, wallColor: 0xd8d0c0, dadoColor: 0xc8a878,
+        pipes: false, strips: false, lights: [],   // a terrain room lights itself: braziers, fires, torches
+        mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xffe8c8, ambient: 0.46 },
+        sky: { night: 0, tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45, density: 0.02 }, scenery: 'ruins', density: 0.6 },
+        plate: { x: 0, z: -9.8, y: 4.4 },
+        look: HQ_ROOM_LOOKS.tell,
+    };
+    Object.keys(o).forEach(k => { S[k] = o[k]; });
+    return S;
+}
 /* ── THE DEEP'S SHELLS (2026-09-18 — THE COMPLEX CANDIDATES #8, the user's pick: "a sea that you can sail, an ocean you can swim in
    or drive a submarine in") ── THE OPEN SEA: an open room under the Triangle's own sky (its EW_MAP_META row copied by hand — the `sea`
    roster, the storm on the horizon, a WATERSPOUT landmark), the field the SEA FLOOR under `terrain.sea` (the islands are the ground
@@ -18909,6 +18957,14 @@ const DOOR_HQ = {
         pine:              { file: 'Meshy_AI_a_pine_with_canopy_0916235640_texture.glb',           base: 'misc', h: 6.5, foot: 0.45, block: true },
         footbridge:        { file: 'Meshy_AI_a_plank_footbridge_0916235844_texture.glb',           base: 'misc', span: 4.4, foot: 0 },
         menhir:            { file: 'Meshy_AI_a_standing_stone_0916235906_texture.glb',             base: 'misc', h: 2.6, foot: 0.5, block: true },
+        /* THE LEY LINES (2026-09-18 — the ancient sites): the board's own pieces standing in the rooms (the same-thing rule, MODEL_INDEX §9) — the moving-maps
+           batch's trilithon and standing stone, the Giza obelisk, the Babel scaffold crane (its jib −X — `turn` is the one-field edit if it lands wrong);
+           the T-pillar is a proc (Göbekli's has no file yet, MODEL_INDEX §3o) */
+        trilithon:         { file: 'Meshy_AI_trilithon_0912231457_texture.glb',                    base: 'misc', span: 6.4, foot: 0, rect: { hw: 3.2, hd: 0.9 }, block: true },
+        sarsen:            { file: 'Meshy_AI_a_standing_stone_0912231506_texture.glb',             base: 'misc', h: 3.4, foot: 0.6, block: true },
+        obelisk:           { file: 'Meshy_AI_obelisk_0727195707_texture.glb',                      base: 'misc', h: 7.0, foot: 0.6, block: true },
+        babel_crane:       { file: 'Meshy_AI_a_scaffold_crane_0912231516_texture.glb',             base: 'misc', h: 7.5, foot: 1.0, block: true, turn: 90 },
+        t_pillar:          { proc: 't_pillar',      h: 4.6,  foot: 0.6, block: true },
         cave_stone:        { file: 'Meshy_AI_a_standing_stone_0916235906_texture.glb',             base: 'misc', span: 0.9, foot: 0.35, block: true },   // the same stone, knee-high: the cave's rubble
         drain_grate:       { file: 'Meshy_AI_a_storm_drain_grate_0916235918_texture.glb',          base: 'misc', span: 1.2, foot: 0, mount: 0.4 },
         stump:             { file: 'Meshy_AI_a_stump_0916235717_texture.glb',                      base: 'misc', h: 0.6, foot: 0.4, block: true },
@@ -19764,6 +19820,8 @@ const DOOR_HQ = {
         underworld: { label: 'THE UNDERWORLD', room: 'site_prebuilt_downtown_sewers', rooms: ['site_prebuilt_downtown_sewers', 'site_prebuilt_downtown_tunnels', 'site_prebuilt_downtown_cells', 'site_prebuilt_downtown_workings'], color: '#7fb8a0' },
         /* THE DEEP (2026-09-18, complex candidate #8): the open sea and the abyss under it — Bermuda's and Atlantis's parts; the abyss is the anchor */
         deep:    { label: 'THE DEEP', room: 'site_prebuilt_atlantis_abyss', sites: ['prebuilt_atlantis', 'prebuilt_bermuda'], color: '#4fc3c8' },
+        /* THE LEY LINES (2026-09-18, complex candidate #9): the tunnels and the four ancient sites' parts — the tunnels are the anchor (Göbekli's part) */
+        ley:     { label: 'THE LEY LINES', room: 'site_prebuilt_gobekli_leylines', sites: ['prebuilt_gobekli', 'prebuilt_stonehenge', 'prebuilt_giza', 'prebuilt_babel'], color: '#e0b06a' },
     },
     links: [
         /* THE LUNAR ROUTE (the pilot's two, plus Mars and the drop) */
@@ -19951,22 +20009,25 @@ const DOOR_HQ = {
           a: { site: 'prebuilt_northpole', wall: 'n', x: -0.2, sub: 'THE SLEIGH ROAD · TO CAMELOT' },
           b: { site: 'prebuilt_camelot', part: 'ward', wall: 'e', z: 24, sub: 'THE EAST GATE · THE SLEIGH ROAD NORTH' },   // on the approach, outside the moat (the moat is never crossed but by the drawbridge)
           why: 'the crown\'s roads run north until the snow; the pole keeps the crown\'s workshop and the crown keeps the pole\'s road', note: 'the snow is the kingdom\'s too', draft: true },
+        /* THE LEY LINES (2026-09-18 — complex candidate #9): the four ley links RE-POINTED (their ids kept, one row edit each): every station's tunnel
+           mouth opens into THE LEY LINES (Göbekli Tepe's part — the oldest doorway is where the line begins; the tell's own mouth is a door pair,
+           the same site), Technoticlan's from its board room's north wall as before. A star on the world tab: every leg is Göbekli's. */
         { id: 'stonehenge_gobekli', route: 'ley', leaf: 'leaf_frame_only',
-          a: { site: 'prebuilt_stonehenge', wall: 'n', x: -5 },
-          b: { site: 'prebuilt_gobekli', wall: 'n', x: -5 },
-          why: 'the line the stones stand on; a frame at each end and nothing in between but the line', note: 'a frame at each end', draft: true },
+          a: { site: 'prebuilt_stonehenge', part: 'henge', wall: 'n', x: -10, sub: 'THE LONG BARROW · DOWN THE LINE' },
+          b: { site: 'prebuilt_gobekli', part: 'leylines', wall: 'w', z: -40, sub: 'THE WEST MOUTH · UP UNDER THE BARROW' },
+          why: 'the line the stones stand on; a frame at each end and nothing in between but the line, four hundred miles of it, dead straight', note: 'a frame at each end', draft: true },
         { id: 'gobekli_giza', route: 'ley', leaf: 'leaf_frame_only',
-          a: { site: 'prebuilt_gobekli', wall: 'n', x: -10 },
-          b: { site: 'prebuilt_giza', wall: 'n', x: -5 },
-          why: 'the line runs south from the first temple to the last pyramid; the surveyors were the same family', note: 'the same family', draft: true },
+          a: { site: 'prebuilt_gobekli', part: 'leylines', wall: 's', x: -30, sub: 'THE SOUTH MOUTH · UP THE ROBBERS’ TUNNEL' },
+          b: { site: 'prebuilt_giza', part: 'plateau', wall: 'n', x: -10, sub: 'THE ROBBERS’ TUNNEL · DOWN THE LINE' },
+          why: 'the line runs south from the first temple to the last pyramid; the surveyors were the same family, and the robbers dug INWARD', note: 'the same family', draft: true },
         { id: 'giza_babel', route: 'ley', leaf: 'leaf_frame_only',
-          a: { site: 'prebuilt_giza', wall: 'n', x: -10 },
-          b: { site: 'prebuilt_babel', wall: 'n', x: -5 },
+          a: { site: 'prebuilt_gobekli', part: 'leylines', wall: 'n', x: 50, sub: 'THE NORTH-EAST MOUTH · UP THE FOUNDATION SHAFT' },
+          b: { site: 'prebuilt_babel', part: 'tower', wall: 'n', x: -10, sub: 'THE FOUNDATION SHAFT · DOWN THE LINE' },
           why: 'the line ends at the tower; the tower was built to stand on it, which is what went wrong', note: 'the line ends here', draft: true },
         { id: 'babel_technoticlan', route: 'ley', leaf: 'leaf_portcullis',
-          a: { site: 'prebuilt_babel', wall: 'n', x: -10 },
-          b: { site: 'prebuilt_technoticlan', wall: 'n', x: -5 },
-          why: 'the tower\'s other stair comes out in the temple city; the builders kept climbing after the languages went', note: 'the other stair', draft: true },
+          a: { site: 'prebuilt_gobekli', part: 'leylines', wall: 'e', z: 20, sub: 'THE EAST MOUTH · UP INTO THE TEMPLE CITY' },
+          b: { site: 'prebuilt_technoticlan', wall: 'n', x: -5, sub: 'THE OTHER STAIR · DOWN THE LINE' },
+          why: 'the tower\'s other stair comes out in the temple city; the builders kept climbing after the languages went, and the line kept going east under an ocean it does not believe in', note: 'the other stair', draft: true },
         /* THE HIGHWAY */
         /* THE ROADS OUT (2026-09-17, THE URBAN PACK): the highway's doors were hotel / suburban / glass leaves on the Downtown
            BOARD room's north wall; the city's STREETS have ends now, and a street's end is the seam — every `road` way runs the
@@ -20035,7 +20096,7 @@ const DOOR_HQ = {
           why: 'the well in the yard, boarded over in 1994 by men who did not come back for their tools; the boards are the way',
           note: 'the boards lift', draft: true },
         { id: 'well_gobekli', route: 'undercroft', way: 'well',
-          a: { site: 'prebuilt_gobekli', wall: 'n', x: -0.2 },
+          a: { site: 'prebuilt_gobekli', part: 'tell', wall: 'free', x: 30, z: 30, face: 270, sub: 'THE CISTERN · DOWN THE ROPE' },   // THE LEY LINES (2026-09-18): off the bypassed board, free-standing on the tell's east flank
           b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: 9.625, z: -6.125, face: 270, sub: 'THE CISTERN · CLIMB UP', verb: 'CLIMB UP' },
           why: 'the cistern cut into the bedrock under the first temple; the oldest well there is, and the shaft is dressed stone all the way down',
           note: 'the oldest of them', draft: true },
@@ -20251,6 +20312,14 @@ const DOOR_HQ = {
                the bay door). */
             prebuilt_bermuda:   { room: 'site_prebuilt_bermuda_sea',           door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_atlantis:  { room: 'site_prebuilt_atlantis_temple',       door: { id: 'bay', wall: 'e', z: 0 } },
+            /* THE LEY LINES (2026-09-18 — complex candidate #9, "make better areas for the ancient sites"): the frame with nothing in it lands
+               you on Salisbury Plain, the oldest doorway on THE TELL, the sealed tomb door on THE PLATEAU, the barn door at THE TOWER's foot;
+               the four ley links that stood on these boards moved onto the parts the same day (a link door in a bypassed room would land at
+               the bay door). */
+            prebuilt_stonehenge: { room: 'site_prebuilt_stonehenge_henge',     door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_gobekli:    { room: 'site_prebuilt_gobekli_tell',         door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_giza:       { room: 'site_prebuilt_giza_plateau',         door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_babel:      { room: 'site_prebuilt_babel_tower',          door: { id: 'bay', wall: 's', x: 0 } },
         },
         backDoors: {
             /* THE WOODS (9.3 stage 3, 2026-09-16): the forest is the board room
@@ -31963,6 +32032,447 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: 42, face: 0 },
         },
+        /* ══ THE LEY LINES — THE LINE THE STONES STAND ON (HQ plan 9.3 stage 12 — THE COMPLEX CANDIDATES #9, 2026-09-18) ══
+           The user: "Let's do the Leylines to connect the ancient sites. I want the Leylines to be this weird impossible underground
+           tunnel system, not completely cave and natural, but not completely man-made either. Was it made by humans? Giants? Aliens?
+           Ant people? Was it always there? Amber tone. Long straight claustrophobic corridors that fork off. Also work on making better
+           areas for the ancient sites." Built on THE CAVE / THE WOODS blueprint (EXPLORABLE_AREAS_GUIDE §3's order — the story beats
+           first, a family per part, the weenies before the plan, `node check-terrain.js` before any claim). Five parts on four sites:
+             THE LEY LINES (family C — the new `ley` generator, HQ_TERRAIN_GEN.ley: four AUTHORED straight lines between the stations
+               and eighteen generated FORKS at ley angles, a chamber at every crossing, a round antechamber behind every station, a
+               niche at every dead end; the solid a MASS to a 3.2 m ceiling, its boundary traced into amber-lit walls; THE NEXUS where
+               the great line crosses the tell's — THE OMPHALOS (2.3 m, the tape — under a 3.2 m ceiling the door gun's shot is from
+               the sunken floor); Göbekli Tepe's part, because the oldest doorway on file is where the line begins);
+             STONEHENGE · THE PLAIN (family A' — `rooms` with no thicket: the chalk banks are the solid; the bank and the ditch, the
+               broken sarsen circle and the trilithon horseshoe as walls the rider grinds, the bluestones the user's standing-stone GLB,
+               THE GREAT TRILITHON (6.6 m, the tape), the barrows, THE AVENUE, THE LONG BARROW round the ley door);
+             GÖBEKLI TEPE · THE TELL (family A' — the unexcavated mound's spoil banks the solid; THE TELL a hill, four ENCLOSURES sunk
+               into it with their ring walls and T-pillars, THE SENTINEL (5.4 m over enclosure D's floor, the tape), THE DIG's spoil
+               heap and trenches; the ley opens out of the tell — a door pair, the same site);
+             GIZA · THE PLATEAU (family A' — the dunes the solid; THE GREAT PYRAMID four tiers up THE NORTH STAIR (the 14 m top is
+               walked to — a long Tony Hawk climb), KHAFRE and MENKAURE solid, THE SPHINX with the tape on her head (6.8 m, the door
+               gun's), THE CAUSEWAY, THE DIG, the twin obelisks);
+             BABEL · THE TOWER (family A' — the brick rubble banks the solid; THE TOWER four tiers up THE SPIRAL — a ramp on each face,
+               north, east, south, west — to the unfinished top with THE CRANE and THE LOAD it never lifted (18 m, the tape), the brick
+               stacks the rider grinds, THE KILN).
+           The boards of the four sites are BYPASSED (siteRooms.entry): the frame with nothing in it lands you on the plain, the sealed
+           tomb door on the plateau, the barn door at the tower's foot, the oldest doorway on the tell. THE LEY LINE (routes.ley) is the
+           same four links RE-POINTED (their ids kept): every station's tunnel mouth opens into THE LEY LINES, Technoticlan's from its
+           board room's north wall as before; the tell and the tunnels are one site (a door pair, never a link). THE LEY LINES is the
+           map's hub (DOOR_HQ.hubs.ley). Lines are Claude's DRAFT (A15). */
+        site_prebuilt_gobekli_leylines: {
+            label: 'THE LEY LINES',
+            sub: 'THE GREAT LINE · THE NEXUS · THE FORKS · THE NICHES · EVERY STONE STANDS ON THE SAME LINE',
+            kind: 'box', site: 'prebuilt_gobekli', part: 'leylines',
+            shell: hqLeyShell({ w: 200, d: 150, plate: { x: -60, z: -73.8, y: 2.3 } }),
+            /* THE FIELD (200 × 150 m, 3.2 m high): four straight lines — THE GREAT LINE from Stonehenge's mouth on the west wall to
+               Technoticlan's on the east, THE TELL'S LINE from Göbekli's door on the north wall to Giza's on the south, BABEL'S LINE
+               from the tower's mouth to Giza's, and THE SHORT LINE that comes in from the west and runs into the rock at the south
+               wall (the line goes on; the tunnel does not) — crossing where they cross; the forks are the generator's (seeded, the
+               same every visit). THE NEXUS is sunk 0.7 m (a bowl the rider carves) round THE OMPHALOS; THE SURVEYORS' HALL where
+               the great line meets Babel's has the ledge; the floor climbs toward Babel and falls toward the sea. */
+            terrain: {
+                floor: 'bricks_1', cliff: 'rock_wall_1', path: 'dirt_3',
+                noise: { amp: 0.06, scale: 6 }, crag: false,
+                gen: { kind: 'ley', seed: 9600, forks: 18, wallKey: 'rock_wall_1',
+                       lines: [{ id: 'great', pts: [[-98, -40], [98, 20]], w: 2.6 },             // THE GREAT LINE: Stonehenge → Technoticlan
+                               { id: 'tell', pts: [[-60, -73], [-30, 73]], w: 2.4 },             // THE TELL'S LINE: Göbekli Tepe → Giza
+                               { id: 'babel', pts: [[50, -73], [-30, 73]], w: 2.4 },             // BABEL'S LINE: the tower → Giza
+                               { id: 'short', pts: [[-98, 30], [20, -73]], w: 2.0 }],            // THE SHORT LINE: from the west, into the rock
+                       chambers: [{ id: 'nexus', x: -50, z: -25, r: 8.5 }, { id: 'hall', x: 13, z: -6, r: 7 }] },
+                features: [
+                    { k: 'dip', x: -50, z: -25, r: 8.5, h: 0.7, open: true },                                                  // THE NEXUS, sunk (the bowl)
+                    { k: 'hill', x: 50, z: -50, r: 16, h: 0.9, open: true },                                                   // the line climbs toward Babel
+                    { k: 'dip', x: -30, z: 60, r: 14, h: 0.6, open: true },                                                    // … and falls toward Giza
+                    { k: 'plateau', x: -50, z: -25, r: 1.0, h: 2.3, edge: 0.3 },                                              // THE OMPHALOS (the tape — the door gun's, from the sunken floor)
+                    { k: 'wall', x0: 9, z0: -10, x1: 17, z1: -10, h: 0.5, t: 0.5, key: 'bricks_1' },                          // THE SURVEYORS' LEDGE (the grind)
+                    { k: 'rail', x0: -55, z0: -19.5, x1: -45, z1: -19.5 },                                                     // the rail on the nexus's south rim
+                    { k: 'path', pts: [[-98, -40], [98, 20]], w: 1.2 },                                                       // the worn line down the great line's middle
+                    { k: 'scatter', key: 'cave_stone', n: 12, x: -50, z: -25, r: 8, seed: 2 },
+                    { k: 'scatter', key: 'cave_stone', n: 8, x: 13, z: -6, r: 6, seed: 3 },
+                ],
+            },
+            doors: [
+                /* the four stations are LINK doors (routes.ley, generated at load); the tell's is the same site's: a pair */
+                { id: 'tell', wall: 'n', x: -60, leaf: 'leaf_frame_only',
+                  label: 'GÖBEKLI TEPE', sub: 'THE FIRST MOUTH · UP INTO THE TELL',
+                  action: { room: 'site_prebuilt_gobekli_tell', at: 'ley' },
+                  desc: 'A frame in the rock with the oldest daylight in the world behind it. The tunnel is older than the frame; the frame is older than the temple.' },
+            ],
+            counters: [],
+            props: [
+                /* THE NEXUS: the ring of stones round the omphalos, the surveyors' fire, the chest */
+                { key: 'menhir',         x: -55.5, z: -27, face: 40 }, { key: 'menhir', x: -46, z: -30, face: 300 }, { key: 'menhir', x: -53, z: -19.5, face: 120 },
+                { key: 'campfire',       x: -45.5, z: -22 },
+                { key: 'cave_torch',     x: -44, z: -28 }, { key: 'cave_torch', x: -56.5, z: -23.5 },   // the stake torches somebody left (the veins are the light; these are the proof somebody came)
+                { key: 'sea_chest',      x: -55, z: -21.5, face: 60 },
+                { key: 'paper_sheet',    x: -48, z: -27.5, y: 0.01, face: 200 },
+                /* THE SURVEYORS' HALL: a brazier, a sarcophagus nobody opened, the skulls */
+                { key: 'brazier',        x: 16, z: -2 },
+                { key: 'sarcophagus',    x: 9.5, z: -3, face: 90 },
+                { key: 'skull_pile',     x: 17.5, z: -9 },
+                { key: 'signpost',       x: 9, z: -1 },
+                /* the stations' antechambers: a brazier each */
+                { key: 'brazier',        x: -95, z: -37 }, { key: 'brazier', x: -57.5, z: -69 }, { key: 'brazier', x: 52.5, z: -69 }, { key: 'brazier', x: -27.5, z: 69 }, { key: 'brazier', x: 95, z: 23 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: -47, z: -19, face: 200, race: 'antperson', say: ['“We did not dig it.” “Then who?” “It was here when we were small. It is still here. We are still small.”', '“The line goes straight.” “Through the mountain?” “Through the mountain, through the sea, through the calendar.”'] },
+                { x: 11, z: -9, face: 20, race: 'giant', say: ['“We did not build it.” “It is the right size for you.” “It is the right size for CRAWLING. We do not crawl.”', '“The surveyors were a family.” “Whose?” “Everybody’s, for a while.”'] },
+                { x: -94, z: -43, face: 90, race: 'grey', say: ['“We did not make it.” “You are always saying that.” “It is always true. It was old when we came. We came for the line.”'] },
+                { x: 55.5, z: -70, face: 180, race: 'conspiracy theorist', say: ['“Human hands.” “Which humans?” “The ones who could walk in a straight line for four hundred miles. Where are they now?”', '“Amber.” “The light?” “The stone. The stone is what the light is stuck in.”'] },
+                { x: 94, z: 17, face: 270, race: 'watcher', say: ['“It was always here.” “Before the stones?” “The stones were put where it was. The tower was put where it was. That is what went wrong with the tower.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Was it made by humans?” “Giants?” “Aliens?” “Ant people?” “Was it always here?” “Yes.”',
+                '“The corridor does not bend.” “It goes four hundred miles.” “It does not bend for four hundred miles?” “It does not bend.”',
+                '“The forks go nowhere.” “The forks go where the line does not.” “Which is nowhere.” “Which is where the tapes are.”',
+                '“The walls are lit.” “By what?” “By the walls.”',
+                '“Every stone stands on the same line.” “All of them?” “All of the ones that are still standing.”',
+            ],
+            spawn: { x: -50, z: -31, face: 180 },
+        },
+        site_prebuilt_stonehenge_henge: {
+            label: 'STONEHENGE · THE PLAIN',
+            sub: 'THE BANK · THE DITCH · THE SARSEN CIRCLE · THE TRILITHONS · THE AVENUE · THE BARROWS',
+            kind: 'box', site: 'prebuilt_stonehenge', part: 'henge',
+            shell: hqAncientShell({ w: 120, d: 100, floor: 'grass_2', apron: 'grass_2', skirt: 'dirt', apronColor: 0x6e8a52, floorColor: 0x6e8a52, plate: { x: 0, z: -48.8, y: 5.0 },
+                                    mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xb8c4e8, ambient: 0.36, night: 1 },
+                                    sky: { night: 1, tint: 0x241b3e, tintAmt: 0.42, stars: 1.3, nebula: 0.9, fog: { color: 0x35284f, amount: 0.5, top: 0.06, band: 0.5, density: 0.022 }, scenery: 'ruins', density: 0.5 },
+                                    look: HQ_ROOM_LOOKS.henge }),
+            /* THE FIELD (120 × 100 m): the frame with nothing in it (the bay door, the board bypassed) on the south wall; THE BANK and
+               THE DITCH ring the circle (a ridge and a gully, open); THE SARSEN CIRCLE sixteen stones as walls in the rock sheet with
+               the four lanes broken through and one span fallen; THE TRILITHON HORSESHOE inside it, open to the north-east; THE GREAT
+               TRILITHON at the horseshoe's back is a tier (6.6 m — the tape, the door gun's); the bluestones the user's standing-stone
+               GLB; THE HEEL STONE up THE AVENUE; three BARROWS on the plain with a chalk cut up the biggest (the rider's ramp); THE
+               LONG BARROW banked round the ley door on the north wall; the chalk banks the plan grows. */
+            terrain: {
+                floor: 'grass_2', cliff: 'rock_wall_1', path: 'dirt',
+                noise: { amp: 0.28, scale: 9 },
+                gen: { kind: 'rooms', seed: 56, loops: 3, rMin: 8, rMax: 16, wallH: 1.3, thicket: false },                   // THE FLOOR PLAN: the plain's chalk banks (no thicket on Salisbury Plain)
+                features: [
+                    { k: 'ridge', pts: [[24.0, 0.0], [23.5, 4.7], [22.2, 9.2], [20.0, 13.3], [17.0, 17.0], [13.3, 20.0], [9.2, 22.2], [4.7, 23.5], [0.0, 24.0], [-4.7, 23.5], [-9.2, 22.2], [-13.3, 20.0], [-17.0, 17.0], [-20.0, 13.3], [-22.2, 9.2], [-23.5, 4.7], [-24.0, 0.0], [-23.5, -4.7], [-22.2, -9.2], [-20.0, -13.3], [-17.0, -17.0], [-13.3, -20.0], [-9.2, -22.2], [-4.7, -23.5], [-0.0, -24.0], [4.7, -23.5], [9.2, -22.2], [13.3, -20.0], [17.0, -17.0], [20.0, -13.3], [22.2, -9.2], [23.5, -4.7], [24.0, -0.0]], w: 5, h: 0.9, open: true },                                                     // THE BANK
+                    { k: 'ridge', pts: [[20.5, 0.0], [20.1, 4.0], [18.9, 7.8], [17.0, 11.4], [14.5, 14.5], [11.4, 17.0], [7.8, 18.9], [4.0, 20.1], [0.0, 20.5], [-4.0, 20.1], [-7.8, 18.9], [-11.4, 17.0], [-14.5, 14.5], [-17.0, 11.4], [-18.9, 7.8], [-20.1, 4.0], [-20.5, 0.0], [-20.1, -4.0], [-18.9, -7.8], [-17.0, -11.4], [-14.5, -14.5], [-11.4, -17.0], [-7.8, -18.9], [-4.0, -20.1], [-0.0, -20.5], [4.0, -20.1], [7.8, -18.9], [11.4, -17.0], [14.5, -14.5], [17.0, -11.4], [18.9, -7.8], [20.1, -4.0], [20.5, -0.0]], w: 3.4, h: -0.7, open: true },                                                 // THE DITCH
+                    { k: 'hill', x: -38, z: 22, r: 8, h: 1.8 },                                                                   // THE KING BARROW
+                    { k: 'hill', x: 38, z: 30, r: 6, h: 1.4 },
+                    { k: 'hill', x: -42, z: -28, r: 5, h: 1.1 },
+                    { k: 'ramp', x0: -38, z0: 33, x1: -38, z1: 22.5, w: 2.6, h0: 0, h1: 1.8, edge: 0.3 },                         // the chalk cut up the king barrow (the rider's ramp)
+                    { k: 'plateau', x: -28, z: -44, w: 18, d: 7, h: 2.0, edge: 1.4 },                                            // THE LONG BARROW (a bank the walker climbs), west of the ley door
+                    { k: 'wall', x0: 10.7, z0: 2.7, x1: 9.5, z1: 5.6, h: 4.2, t: 1.1, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
+                    { k: 'wall', x0: 8.8, z0: 6.6, x1: 6.6, z1: 8.8, h: 4.2, t: 1.1, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
+                    { k: 'wall', x0: 5.6, z0: 9.5, x1: 2.7, z1: 10.7, h: 4.2, t: 1.1, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
+                    { k: 'wall', x0: -2.7, z0: 10.7, x1: -5.6, z1: 9.5, h: 4.2, t: 1.1, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
+                    { k: 'wall', x0: -6.6, z0: 8.8, x1: -8.8, z1: 6.6, h: 4.2, t: 1.1, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
+                    { k: 'wall', x0: -9.5, z0: 5.6, x1: -10.7, z1: 2.7, h: 4.2, t: 1.1, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
+                    { k: 'wall', x0: -10.7, z0: -2.7, x1: -9.5, z1: -5.6, h: 4.2, t: 1.1, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
+                    { k: 'wall', x0: -8.8, z0: -6.6, x1: -6.6, z1: -8.8, h: 4.2, t: 1.1, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
+                    { k: 'wall', x0: -5.6, z0: -9.5, x1: -2.7, z1: -10.7, h: 4.2, t: 1.1, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
+                    { k: 'wall', x0: 6.6, z0: -8.8, x1: 8.8, z1: -6.6, h: 4.2, t: 1.1, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
+                    { k: 'wall', x0: 9.5, z0: -5.6, x1: 10.7, z1: -2.7, h: 4.2, t: 1.1, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
+                    { k: 'wall', x0: 5.4, z0: 3.0, x1: 3.0, z1: 5.4, h: 6.0, t: 1.3, key: 'rock_wall_1' },   // THE TRILITHON HORSESHOE
+                    { k: 'wall', x0: 1.7, z0: 6.0, x1: -1.7, z1: 6.0, h: 6.0, t: 1.3, key: 'rock_wall_1' },   // THE TRILITHON HORSESHOE
+                    { k: 'wall', x0: -3.0, z0: 5.4, x1: -5.4, z1: 3.0, h: 6.0, t: 1.3, key: 'rock_wall_1' },   // THE TRILITHON HORSESHOE
+                    { k: 'wall', x0: -6.0, z0: 1.7, x1: -6.0, z1: -1.7, h: 6.0, t: 1.3, key: 'rock_wall_1' },   // THE TRILITHON HORSESHOE
+                    { k: 'plateau', x: 0, z: 5.6, w: 3.6, d: 1.5, h: 6.6, edge: 0.3 },                                            // THE GREAT TRILITHON (the tape — the door gun's)
+                    { k: 'rail', x0: -20, z0: 34, x1: -8, z1: 34 },                                                                // the visitors' rail (the grind)
+                    { k: 'path', pts: [[0, 48], [0, 34], [-8, 20], [0, 12]], w: 3.0 },                                            // from the bay door
+                    { k: 'path', pts: [[8, -8], [30, -38]], w: 4.6 },                                                              // THE AVENUE, north-east
+                    { k: 'path', pts: [[-10, -46], [-10, -30], [-8, -12]], w: 2.4 },                                              // the ley door's track
+                    { k: 'path', pts: [[-38, 34], [-30, 34], [-20, 34], [0, 34]], w: 2.0 },                                       // to the king barrow
+                    { k: 'scatter', key: 'cave_stone', n: 8, seed: 4 },
+                    { k: 'scatter', key: 'stump', n: 3, seed: 5 },
+                ],
+            },
+            doors: [],   // the south wall at x 0 is THE BAY DOOR (siteRooms.entry); the ley's mouth on the north wall is links.stonehenge_ley
+            counters: [],
+            props: [
+                /* the stones: the trilithon GLB twice outside the circle, the bluestones, the heel stone, the slaughter stone fallen */
+                { key: 'trilithon',      x: -32, z: 8, face: 0 }, { key: 'trilithon', x: 34, z: -12, face: 180 },
+                { key: 'sarsen',         x: 26, z: -34, face: 40, h: 4.8 },                                                          // THE HEEL STONE, leaning up the avenue
+                { key: 'sarsen',         x: 7.9, z: -3.3, face: 20 }, { key: 'sarsen', x: 3.0, z: 7.6, face: 200 }, { key: 'sarsen', x: -7.4, z: 4.5, face: 300 }, { key: 'sarsen', x: -8.0, z: -2.9, face: 90 }, { key: 'sarsen', x: -2.6, z: -8.1, face: 150 },   // the bluestones
+                { key: 'fallen_log',     x: 14, z: -16, face: 30 },                                                                  // THE SLAUGHTER STONE (the fallen one)
+                /* the plain: the fires, the rail, the signs */
+                { key: 'campfire',       x: -6, z: 26 },
+                { key: 'railing_1m',     x: -14, z: 34.4, face: 0 },
+                { key: 'signpost',       x: 3, z: 40 }, { key: 'signpost', x: 24, z: -30 },
+                { key: 'brazier',        x: -13.5, z: -45 }, { key: 'brazier', x: -6.5, z: -45 },
+                { key: 'sea_chest',      x: -34, z: 20, face: 120 },
+                { key: 'paper_sheet',    x: -2, z: 22, y: 0.01, face: 60 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 14, z: 2, face: 250, race: 'shaman', say: ['“The stones throw two shadows.” “There is one moon.” “There is one moon HERE.”', '“Do not touch the altar.” “Why?” “It is not an altar. It is a table. Do not touch the table.”'] },
+                { x: -22, z: 20, face: 60, race: 'conspiracy theorist', say: ['“Ley lines.” “Everyone says that.” “Everyone is standing on one.”', '“The barrows are hollow.” “They are graves.” “The graves are hollow.”'] },
+                { x: 30, z: 32, face: 300, race: 'knight', say: ['“The Crown’s plain.” “Whose Crown?” “Lapsed. Mind the ditch.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Which way is the avenue?” “North-east.” “Toward what?” “Midsummer. Keep walking.”',
+                '“The great trilithon.” “What is on top of it?” “A tape.” “How did it get up there?” “Same way the lintel did.”',
+                '“The tunnel is under the long barrow.” “Where does it go?” “Straight. For a very long time.”',
+                '“The sun is on the wrong side.” “For what?” “For the shadow it is throwing.”',
+                '“The bluestones came from Wales.” “How?” “Along the line.”',
+            ],
+            spawn: { x: 0, z: 42, face: 0 },
+        },
+        site_prebuilt_gobekli_tell: {
+            label: 'GÖBEKLI TEPE · THE TELL',
+            sub: 'THE MOUND · FOUR ENCLOSURES · THE T-PILLARS · THE SENTINEL · THE DIG · THE FIRST DOORWAY',
+            kind: 'box', site: 'prebuilt_gobekli', part: 'tell',
+            shell: hqAncientShell({ w: 110, d: 90, floor: 'dirt_3', apron: 'dirt_3', skirt: 'dirt_3', apronColor: 0xc8a878, floorColor: 0xc8a878, plate: { x: 0, z: -43.8, y: 4.4 },
+                                    sky: { night: 0, tint: 0xc89058, tintAmt: 0.38, stars: 0.7, nebula: 0.5, fog: { color: 0xb08858, amount: 0.5, top: 0.05, band: 0.5, density: 0.02 }, scenery: 'ruins', density: 0.6 },
+                                    look: HQ_ROOM_LOOKS.tell }),
+            /* THE FIELD (110 × 90 m): the oldest doorway (the bay door) on the south wall; THE TELL a 3.2 m hill over the middle of the
+               room; four ENCLOSURES sunk two metres into it (A, B, C, D — the dig's letters), each ringed by a low wall with a gap and
+               the T-PILLARS standing in it, the two great ones in the middle; THE SENTINEL in D is a tier 5.4 m over the enclosure's
+               floor (the tape — the door gun's); THE DIG on the west: the spoil heap with its stair and rail, two trenches, the crates,
+               the fire; the unexcavated banks the plan grows; the ley's mouth on the north wall — a door pair into the tunnels, the
+               same site (never a link). */
+            terrain: {
+                floor: 'dirt_3', cliff: 'rock_wall_1', path: 'dirt_2',
+                noise: { amp: 0.2, scale: 7 },
+                gen: { kind: 'rooms', seed: 9600, loops: 3, rMin: 7, rMax: 14, wallH: 2.0, thicket: false },                   // THE FLOOR PLAN: the mound's spoil banks
+                features: [
+                    { k: 'hill', x: 0, z: -4, r: 38, h: 3.2, open: true },                                                        // THE TELL
+                    { k: 'dip', x: -16, z: -8, r: 6.5, h: 2.0, dome: true, open: true },                                          // ENCLOSURE A
+                    { k: 'dip', x: 12, z: -14, r: 6.5, h: 2.0, dome: true, open: true },                                          // ENCLOSURE B
+                    { k: 'dip', x: -4, z: 14, r: 6.5, h: 2.0, dome: true, open: true },                                           // ENCLOSURE C
+                    { k: 'dip', x: 18, z: 8, r: 6.5, h: 2.0, dome: true, open: true },                                            // ENCLOSURE D
+                    { k: 'wall', x0: -11.6, z0: -10.1, x1: -11.6, z1: -5.9, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: -16.4, z0: -3.1, x1: -20.0, z1: -5.2, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: -20.4, z0: -5.9, x1: -20.4, z1: -10.1, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: -20.0, z0: -10.8, x1: -16.4, z1: -12.9, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: -15.6, z0: -12.9, x1: -12.0, z1: -10.8, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: 16.4, z0: -16.1, x1: 16.4, z1: -11.9, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: 16.0, z0: -11.2, x1: 12.4, z1: -9.1, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: 11.6, z0: -9.1, x1: 8.0, z1: -11.2, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: 7.6, z0: -11.9, x1: 7.6, z1: -16.1, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: 12.4, z0: -18.9, x1: 16.0, z1: -16.8, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: 0.0, z0: 16.8, x1: -3.6, z1: 18.9, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: -4.4, z0: 18.9, x1: -8.0, z1: 16.8, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: -8.4, z0: 16.1, x1: -8.4, z1: 11.9, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: -8.0, z0: 11.2, x1: -4.4, z1: 9.1, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: -3.6, z0: 9.1, x1: 0.0, z1: 11.2, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: 22.4, z0: 5.9, x1: 22.4, z1: 10.1, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: 22.0, z0: 10.8, x1: 18.4, z1: 12.9, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: 13.6, z0: 10.1, x1: 13.6, z1: 5.9, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: 14.0, z0: 5.2, x1: 17.6, z1: 3.1, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: 18.4, z0: 3.1, x1: 22.0, z1: 5.2, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'plateau', x: 18.5, z: 8, r: 0.8, h: 5.4, edge: 0.3 },                                                   // THE SENTINEL (the tape — the door gun's)
+                    { k: 'plateau', x: -30, z: 22, w: 12, d: 6, h: 1.4, edge: 0.3 },                                              // THE DIG's spoil heap
+                    { k: 'ramp', x0: -30, z0: 32, x1: -30, z1: 24.3, w: 2.4, h0: 0, h1: 1.4, stairs: true, edge: 0.2 },            // its stair (L 7.7 for 1.4; ends 0.7 m inside — THE RAMP RULE)
+                    { k: 'rail', x0: -35.5, z0: 19.6, x1: -24.5, z1: 19.6 },                                                       // the heap's rail (the grind)
+                    { k: 'ridge', pts: [[-34, -28], [-14, -34]], w: 2.6, h: -1.0, open: true },                                    // TRENCH I
+                    { k: 'ridge', pts: [[20, -30], [36, -22]], w: 2.6, h: -1.0, open: true },                                     // TRENCH II
+                    { k: 'path', pts: [[0, 43], [0, 30], [-4, 20]], w: 3.0 },                                                      // from the doorway up the tell
+                    { k: 'path', pts: [[-4, 20], [-16, -8]], w: 2.2 }, { k: 'path', pts: [[-4, 20], [18, 8]], w: 2.2 }, { k: 'path', pts: [[-16, -8], [12, -14]], w: 2.2 },
+                    { k: 'path', pts: [[-10, -41], [-10, -30], [-16, -14]], w: 2.4 },                                              // the ley mouth's track
+                    { k: 'path', pts: [[-30, 34], [-20, 30], [-4, 20]], w: 2.2 },                                                  // the dig's track
+                    { k: 'scatter', key: 'cave_stone', n: 10, seed: 6 },
+                    { k: 'scatter', key: 'menhir', n: 3, x: -30, z: -30, r: 12, seed: 7 },                                        // the fallen pillars by the trenches
+                ],
+            },
+            doors: [
+                { id: 'ley', wall: 'n', x: -10, leaf: 'leaf_frame_only',
+                  label: 'THE LEY LINES', sub: 'THE FIRST MOUTH · DOWN THE LINE',
+                  action: { room: 'site_prebuilt_gobekli_leylines', at: 'tell' },
+                  desc: 'A frame in the side of the tell where the dig stopped digging. Whoever made the temple made it on top of this; whoever made this did not make the temple.' },
+            ],
+            counters: [],
+            props: [
+                /* THE ENCLOSURES: the T-pillars (two great ones in the middle of each, the ring round them) */
+                { key: 't_pillar',       x: -17.2, z: -8, face: 90, h: 4.6 }, { key: 't_pillar', x: -14.8, z: -8, face: 90, h: 4.6 },
+                { key: 't_pillar',       x: -16, z: -12.2, face: 0, h: 3.0 }, { key: 't_pillar', x: -19.8, z: -5.5, face: 60, h: 3.0 }, { key: 't_pillar', x: -12.5, z: -4.5, face: 300, h: 3.0 },
+                { key: 't_pillar',       x: 10.8, z: -14, face: 90, h: 4.6 }, { key: 't_pillar', x: 13.2, z: -14, face: 90, h: 4.6 },
+                { key: 't_pillar',       x: 12, z: -18.2, face: 0, h: 3.0 }, { key: 't_pillar', x: 8.2, z: -11.5, face: 60, h: 3.0 }, { key: 't_pillar', x: 15.5, z: -10.5, face: 300, h: 3.0 },
+                { key: 't_pillar',       x: -5.2, z: 14, face: 90, h: 4.6 }, { key: 't_pillar', x: -2.8, z: 14, face: 90, h: 4.6 },
+                { key: 't_pillar',       x: -4, z: 9.8, face: 0, h: 3.0 }, { key: 't_pillar', x: -7.8, z: 16.5, face: 60, h: 3.0 }, { key: 't_pillar', x: -0.5, z: 17.5, face: 300, h: 3.0 },
+                { key: 't_pillar',       x: 16.4, z: 8, face: 90, h: 4.6 },                                                          // D's other great pillar (THE SENTINEL is the tier beside it)
+                { key: 't_pillar',       x: 18, z: 3.8, face: 0, h: 3.0 }, { key: 't_pillar', x: 14.2, z: 10.5, face: 60, h: 3.0 }, { key: 't_pillar', x: 21.5, z: 11.5, face: 300, h: 3.0 },
+                /* THE DIG: the crates, the fire, the rail, the signs, the forms */
+                { key: 'cardboard_boxes', x: -36, z: 30, face: 20 }, { key: 'cardboard_boxes', x: -24, z: 31, face: 340 },
+                { key: 'campfire',       x: -20, z: 26 },
+                { key: 'railing_1m',     x: -30, z: 19.2, face: 0 },
+                { key: 'signpost',       x: -25, z: 36 }, { key: 'signpost', x: 4, z: 38 },
+                { key: 'paper_sheet',    x: -33, z: 27, y: 0.01, face: 120 }, { key: 'paper_sheet', x: 19, z: 14.5, y: 0.01, face: 30 },
+                { key: 'sea_chest',      x: -27, z: 17, face: 200 },
+                { key: 'brazier',        x: -13.5, z: -40 }, { key: 'brazier', x: -6.5, z: -40 },
+                { key: 'brazier',        x: 18, z: 12.3 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 20.5, z: 6, face: 240, race: 'annunaki', say: ['“We were here for the opening.” “Of the temple?” “Of the ground.”', '“The pillars are people.” “They have no faces.” “They have arms. Look at the arms.”'] },
+                { x: 9, z: -16.5, face: 40, race: 'grey', say: ['“Nine thousand six hundred.” “Years?” “Doors. This is the first one.”'] },
+                { x: -6.5, z: 11.5, face: 80, race: 'shaman', say: ['“The animals on the pillars.” “What about them?” “One of them has moved since the last tape.”'] },
+                { x: -27, z: 28.5, face: 140, race: 'conspiracy theorist', say: ['“They buried it on purpose.” “Who?” “The people who built it. Ask yourself why.”', '“The dig stopped at the frame.” “Why?” “The form for going through a frame is a different form.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Four enclosures.” “Why four?” “There are twenty. We have dug four.”',
+                '“The sentinel.” “The tall one in D?” “Nobody has been up it. Something has.”',
+                '“This is older than the wheel.” “Older than writing.” “Older than the door.” “No. The door was first.”',
+                '“Which way is the tunnel?” “Down the north side, where the trench stopped.” “Why did it stop?” “Frame.”',
+                '“The tell is a mound of the temple’s own rubbish.” “Who threw it away?” “The temple.”',
+            ],
+            spawn: { x: 0, z: 37, face: 0 },
+        },
+        site_prebuilt_giza_plateau: {
+            label: 'GIZA · THE PLATEAU',
+            sub: 'THE GREAT PYRAMID · THE NORTH STAIR · KHAFRE · MENKAURE · THE SPHINX · THE CAUSEWAY · THE DIG',
+            kind: 'box', site: 'prebuilt_giza', part: 'plateau',
+            shell: hqAncientShell({ w: 150, d: 120, h: 20, wallH: 20, floor: 'desert', apron: 'desert', skirt: 'dirt_2', apronColor: 0xe0c48c, floorColor: 0xe0c48c, plate: { x: 0, z: -58.8, y: 5.0 },
+                                    mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xfff0d0, ambient: 0.62 },
+                                    sky: { night: 0, tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45, density: 0.018 }, scenery: 'pyramids', density: 0.7 },
+                                    look: HQ_ROOM_LOOKS.plateau }),
+            /* THE FIELD (150 × 120 m): the sealed tomb door (the bay door) on the south wall; THE GREAT PYRAMID four tiers of dressed stone
+               (3.5 m each, 60 m at the base) with THE NORTH STAIR up its north face tier to tier (8.2 m a flight for 3.5 m — THE RAMP RULE
+               and the tread rule both hold; the 14 m top is walked to); KHAFRE three tiers and MENKAURE two, solid; THE SPHINX with her
+               head 6.8 m over the sand (the tape — the door gun's); THE CAUSEWAY from her paws to the pyramid's foot and the door; THE
+               DIG's two trenches and its camp; the twin obelisks; the dunes the plan grows; the ley's mouth — THE ROBBERS' TUNNEL — on
+               the north wall west of the stair. */
+            terrain: {
+                floor: 'desert', cliff: 'bricks_1', path: 'dirt_2',
+                noise: { amp: 0.32, scale: 10 },
+                gen: { kind: 'rooms', seed: 444, loops: 3, rMin: 9, rMax: 18, wallH: 1.4, thicket: false },                  // THE FLOOR PLAN: the dunes
+                features: [
+                    { k: 'plateau', x: -30, z: -20, w: 60, d: 60, h: 3.5, edge: 0.35 },                                          // THE GREAT PYRAMID, tier 1
+                    { k: 'plateau', x: -30, z: -20, w: 44, d: 44, h: 7.0, edge: 0.35 },                                          // tier 2
+                    { k: 'plateau', x: -30, z: -20, w: 28, d: 28, h: 10.5, edge: 0.35 },                                         // tier 3
+                    { k: 'plateau', x: -30, z: -20, w: 12, d: 12, h: 14.0, edge: 0.35 },                                         // THE TOP
+                    { k: 'ramp', x0: -30, z0: -57.5, x1: -30, z1: -49.3, w: 2.6, h0: 0, h1: 3.5, stairs: true, edge: 0.25 },      // THE NORTH STAIR, flight 1 (into tier 1: ends 0.7 m inside)
+                    { k: 'ramp', x0: -30, z0: -49.5, x1: -30, z1: -41.3, w: 2.6, h0: 3.5, h1: 7.0, stairs: true, edge: 0.25 },    // flight 2
+                    { k: 'ramp', x0: -30, z0: -41.5, x1: -30, z1: -33.3, w: 2.6, h0: 7.0, h1: 10.5, stairs: true, edge: 0.25 },   // flight 3
+                    { k: 'ramp', x0: -30, z0: -33.5, x1: -30, z1: -25.3, w: 2.6, h0: 10.5, h1: 14.0, stairs: true, edge: 0.25 },  // flight 4, onto the top
+                    { k: 'plateau', x: 44, z: -34, w: 30, d: 30, h: 3.5, edge: 0.35 },                                            // KHAFRE
+                    { k: 'plateau', x: 44, z: -34, w: 18, d: 18, h: 7.0, edge: 0.35 },
+                    { k: 'plateau', x: 44, z: -34, w: 8, d: 8, h: 10.5, edge: 0.35 },
+                    { k: 'plateau', x: 55, z: 30, w: 16, d: 16, h: 3.0, edge: 0.35 },                                             // MENKAURE
+                    { k: 'plateau', x: 55, z: 30, w: 8, d: 8, h: 6.0, edge: 0.35 },
+                    { k: 'plateau', x: 28, z: 26, w: 20, d: 7, h: 3.4, edge: 0.35 },                                              // THE SPHINX's body, facing east
+                    { k: 'plateau', x: 37, z: 26, r: 2.6, h: 6.8, edge: 0.35 },                                                   // her head (the tape — the door gun's)
+                    { k: 'rail', x0: -50, z0: -45, x1: -34, z1: -45 },                                                             // tier 1's north ledge, west of the stair (the grind)
+                    { k: 'rail', x0: -26, z0: -45, x1: -10, z1: -45 },                                                             // … and east
+                    { k: 'ridge', pts: [[10, -40], [24, -52]], w: 2.6, h: -1.1, open: true },                                     // TRENCH I
+                    { k: 'ridge', pts: [[6, 44], [22, 40]], w: 2.6, h: -1.1, open: true },                                        // TRENCH II
+                    { k: 'path', pts: [[0, 58], [0, 26], [18, 26]], w: 3.2 },                                                     // THE CAUSEWAY, from the door to the sphinx's paws
+                    { k: 'path', pts: [[0, 26], [-30, 26], [-30, 12]], w: 3.2 },                                                  // … and to the pyramid's south foot
+                    { k: 'path', pts: [[-30, 12], [-64, 12], [-64, -57], [-30, -57]], w: 2.6 },                                   // round the pyramid to the north stair
+                    { k: 'path', pts: [[-30, -57], [-10, -57]], w: 2.4 },                                                          // to the robbers' tunnel
+                    { k: 'path', pts: [[0, 26], [10, -10], [24, -44]], w: 2.0 },                                                  // to the dig
+                    { k: 'scatter', key: 'cave_stone', n: 12, seed: 8 },
+                    { k: 'scatter', key: 'skull_pile', n: 2, x: 18, z: -46, r: 8, seed: 9 },
+                ],
+            },
+            doors: [],   // the south wall at x 0 is THE BAY DOOR (siteRooms.entry); THE ROBBERS' TUNNEL on the north wall is links.giza_ley
+            counters: [],
+            props: [
+                /* the obelisks flanking the causeway's turn, the braziers at the stair's foot and the sphinx's paws */
+                { key: 'obelisk',        x: -36, z: 15 }, { key: 'obelisk', x: -24, z: 15 },
+                { key: 'brazier',        x: -34, z: -59 }, { key: 'brazier', x: -26, z: -59 },
+                { key: 'brazier',        x: 15, z: 22.5 }, { key: 'brazier', x: 15, z: 29.5 },
+                /* THE DIG: the camp between the trenches */
+                { key: 'campfire',       x: 12, z: -30 },
+                { key: 'cardboard_boxes', x: 8, z: -34, face: 20 }, { key: 'cardboard_boxes', x: 16, z: -26, face: 300 },
+                { key: 'sarcophagus',    x: 20, z: -34, face: 60 },
+                { key: 'paper_sheet',    x: 11, z: -27, y: 0.01, face: 150 }, { key: 'paper_sheet', x: 4, z: 40, y: 0.01, face: 250 },
+                { key: 'signpost',       x: 4, z: 52 }, { key: 'signpost', x: -14, z: -54 },
+                { key: 'sea_chest',      x: 15, z: 46, face: 30 },
+                { key: 'railing_1m',     x: -42, z: -45.4, face: 0 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 17, z: 30, face: 200, race: 'anubis', say: ['“She faces east.” “Why?” “That is where the line comes out of the ground.”', '“Do not climb her.” “Something is on her head.” “Something is always on her head.”'] },
+                { x: -33, z: -55, face: 90, race: 'annunaki', say: ['“We did not build it.” “You are on the stair.” “We built the STAIR. The stair is the easy part.”'] },
+                { x: 14, z: -32, face: 300, race: 'skeleton', say: ['“The trench hit a door.” “Whose?” “Mine, apparently. I have the paperwork.”'] },
+                { x: 2.5, z: 34, face: 40, race: 'conspiracy theorist', say: ['“The robbers’ tunnel.” “Robbers of what?” “It was dug INWARD. Ask yourself who was robbing whom.”', '“Four faces, three times.” “Three pyramids.” “Three times. Not three pyramids.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“The top.” “Walk up the north face. Four flights.” “And then?” “Then you are on top. Nobody says what for.”',
+                '“The sphinx has a tape on her head.” “How do you get it?” “Not by climbing.”',
+                '“The causeway runs to the paws.” “Then where?” “Then under the sand, straight, to the tower.”',
+                '“Which pyramid is the ministry’s?” “All three.” “Which one has the treaty?” “The one with the door.”',
+                '“It is hot.” “It is always hot.” “Even underground?” “Especially.”',
+            ],
+            spawn: { x: 0, z: 52, face: 0 },
+        },
+        site_prebuilt_babel_tower: {
+            label: 'BABEL · THE TOWER',
+            sub: 'THE FOUR TIERS · THE SPIRAL · THE UNFINISHED TOP · THE CRANE · THE KILN · THE BRICK STACKS',
+            kind: 'box', site: 'prebuilt_babel', part: 'tower',
+            shell: hqAncientShell({ w: 130, d: 110, h: 24, wallH: 24, floor: 'bricks_1', apron: 'desert', skirt: 'dirt_2', apronColor: 0xd8b888, floorColor: 0xd8a878, plate: { x: 0, z: -53.8, y: 5.0 },
+                                    mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xffe0b8, ambient: 0.5 },
+                                    sky: { night: 0, tint: 0x8a6a3a, tintAmt: 0.40, stars: 0.55, nebula: 0.6, fog: { color: 0xa8854e, amount: 0.55, top: 0.06, band: 0.5, density: 0.02 }, scenery: 'pyramids', density: 0.6 },
+                                    look: HQ_ROOM_LOOKS.babel }),
+            /* THE FIELD (130 × 110 m): the scaffold-plank barn door (the bay door) on the south wall; THE TOWER four square tiers of
+               brick (64 m at the foot, 3.5 m a tier) with THE SPIRAL — a ramp on each face in turn: up the north face onto tier 1, along
+               the east ledge onto tier 2, up the south ledge onto tier 3, along the west ledge onto THE UNFINISHED TOP (14 m), where THE
+               CRANE stands and THE LOAD it never lifted hangs 4 m over the top (the tape — the door gun's, from the top); the brick
+               stacks the rider grinds; THE KILN with its chimney and fires; the rubble banks the plan grows; the ley's mouth — THE
+               FOUNDATION SHAFT — on the north wall west of the stair. */
+            terrain: {
+                floor: 'bricks_1', cliff: 'bricks_1', path: 'desert',
+                noise: { amp: 0.18, scale: 8 },
+                gen: { kind: 'rooms', seed: 11, loops: 3, rMin: 8, rMax: 16, wallH: 1.6, thicket: false },                   // THE FLOOR PLAN: the rubble of scattered tongues
+                features: [
+                    { k: 'plateau', x: 0, z: -8, w: 64, d: 64, h: 3.5, edge: 0.35 },                                              // THE TOWER, tier 1
+                    { k: 'plateau', x: 0, z: -8, w: 46, d: 46, h: 7.0, edge: 0.35 },                                              // tier 2
+                    { k: 'plateau', x: 0, z: -8, w: 28, d: 28, h: 10.5, edge: 0.35 },                                             // tier 3
+                    { k: 'plateau', x: 0, z: -8, w: 10, d: 10, h: 14.0, edge: 0.35 },                                             // THE UNFINISHED TOP
+                    { k: 'ramp', x0: 0, z0: -47.5, x1: 0, z1: -39.3, w: 2.6, h0: 0, h1: 3.5, stairs: true, edge: 0.25 },          // THE SPIRAL: up the north face
+                    { k: 'ramp', x0: 31.5, z0: -8, x1: 22.3, z1: -8, w: 2.6, h0: 3.5, h1: 7.0, stairs: true, edge: 0.25 },        // along the east ledge onto tier 2
+                    { k: 'ramp', x0: 0, z0: 14.5, x1: 0, z1: 5.3, w: 2.6, h0: 7.0, h1: 10.5, stairs: true, edge: 0.25 },          // up the south ledge onto tier 3
+                    { k: 'ramp', x0: -13.5, z0: -8, x1: -4.3, z1: -8, w: 2.6, h0: 10.5, h1: 14.0, stairs: true, edge: 0.25 },     // along the west ledge onto the top
+                    { k: 'plateau', x: 3, z: -5.5, r: 1.0, h: 18.0, edge: 0.3 },                                                  // THE LOAD (the tape — the door gun's, from the top)
+                    { k: 'plateau', x: -46, z: 22, r: 4.2, h: 2.6, edge: 0.35 },                                                  // THE KILN
+                    { k: 'plateau', x: -46, z: 22, r: 0.9, h: 6.4, edge: 0.3 },                                                   // its chimney
+                    { k: 'wall', x0: -44, z0: -22, x1: -44, z1: -8, h: 1.0, t: 1.2, key: 'bricks_1' },                            // THE BRICK STACKS (the grinds)
+                    { k: 'wall', x0: 40, z0: 12, x1: 52, z1: 12, h: 1.0, t: 1.2, key: 'bricks_1' },
+                    { k: 'wall', x0: -22, z0: 40, x1: -8, z1: 40, h: 1.0, t: 1.2, key: 'bricks_1' },
+                    { k: 'rail', x0: -20, z0: 20, x1: 20, z1: 20 },                                                                // tier 1's south ledge rail (the grind)
+                    { k: 'path', pts: [[0, 53], [0, 26]], w: 3.0 },                                                               // from the barn door to the foot
+                    { k: 'path', pts: [[0, 26], [36, 26], [36, -8], [36, -47], [0, -47]], w: 2.6 },                               // round the foot to the north stair
+                    { k: 'path', pts: [[0, -47], [-10, -51]], w: 2.4 },                                                            // to the foundation shaft
+                    { k: 'path', pts: [[0, 26], [-36, 26], [-46, 26]], w: 2.4 },                                                  // to the kiln
+                    { k: 'scatter', key: 'cave_stone', n: 10, seed: 10 },
+                    { k: 'scatter', key: 'cinder_block', n: 14, seed: 11 },                                                       // the fired bricks
+                ],
+            },
+            doors: [],   // the south wall at x 0 is THE BAY DOOR (siteRooms.entry); THE FOUNDATION SHAFT on the north wall is links.babel_ley
+            counters: [],
+            props: [
+                /* THE TOP: the crane, the mason's chest */
+                { key: 'babel_crane',    x: -2, z: -11.5, face: 90, y: 14.0 },
+                { key: 'sea_chest',      x: 3, z: -10.5, y: 14.0, face: 200 },
+                /* THE KILN: the fires, the signs in eleven alphabets, the mason */
+                { key: 'campfire',       x: -40, z: 18 }, { key: 'campfire', x: -52, z: 26 },
+                { key: 'signpost',       x: -38, z: 28 }, { key: 'signpost', x: 4, z: 46 }, { key: 'signpost', x: 38, z: 30 },
+                { key: 'cardboard_boxes', x: -48, z: 30, face: 30 },
+                { key: 'paper_sheet',    x: -42, z: 24, y: 0.01, face: 80 },
+                /* the foot: the braziers at the stair, the rail, the chests */
+                { key: 'brazier',        x: -3.5, z: -49 }, { key: 'brazier', x: 3.5, z: -49 },
+                { key: 'brazier',        x: -13.5, z: -50 }, { key: 'brazier', x: -6.5, z: -50 },
+                { key: 'railing_1m',     x: 0, z: 20.4, face: 0 },
+                { key: 'sea_chest',      x: 44, z: 16, face: 300 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 40, z: -12, face: 270, race: 'giant', say: ['“We carried the bricks.” “All of them?” “The big ones. The small ones were yours.”', '“The crane never lifted the load.” “Why?” “The word for LIFT went first.”'] },
+                { x: -40, z: 22, face: 100, race: 'golem', say: ['“Fired. Fired. Fired.” “The bricks?” “Everybody.”'] },
+                { x: -8, z: -49, face: 60, race: 'antperson', say: ['“The shaft goes under the tower.” “The foundation?” “The tower was put on the line. The line was not asked.”'] },
+                { x: 10, z: 30, face: 320, race: 'conspiracy theorist', say: ['“One language.” “Before?” “After. It is one word. Listen.”', '“Genesis eleven.” “The chapter?” “The floor. There is no floor eleven.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Which way up?” “North face, then east, then south, then west.” “That is a spiral.” “That is the only way anyone agreed on.”',
+                '“The load.” “It is still on the hook.” “What is in it?” “A tape, and whatever they were lifting.”',
+                '“Everyone here says the same word.” “What is it?” “It is not a word.”',
+                '“The tower is still going up.” “It looks finished.” “It looks STOPPED. That is different.”',
+                '“The shaft under the north stair.” “Where does it go?” “To Giza, straight, and it was here first.”',
+            ],
+            spawn: { x: 0, z: 47, face: 0 },
+        },
         /* ══ THE UNDERWORLD — THE TUNNELS / THE DUNGEONS (HQ plan 9.3 stage 10 — THE COMPLEX CANDIDATES #3, 2026-09-18) ══
            The user's brief (the candidate list): "every subway tunnel, the sewer system (the storm drain), the dungeons
            (24601, the oubliette) joined into one underworld". Built on THE CAVE / THE WOODS blueprint and EXPLORABLE_AREAS_GUIDE
@@ -35063,6 +35573,20 @@ const HQ_TERRAIN_GEN = {
        the authored rooms and halls alone (CERN's ring). No thicket, no crag: the walls ARE the plan. */
     halls: { leafMin: 8.0, leafMax: 19.0, roomInset: 1.6, roomMin: 4.2, roomSnap: 0.5, corridor: [2.6, 3.4], loops: 2, wallH: 4.0, edge: 0.3, jitter: 0, topNoise: 0,
              solidPad: 0.3, wallT: 0.5, wallKey: null, simplify: 0.5, wallInner: 0.75, rim: 1.2, minOpen: 0.12, minDegree: 2 },   // minOpen: a ring is mostly wall (hq-floor-plan.test.js reads it per kind); minDegree: THE CYCLE RULE (2026-09-18) — every room has two ways out
+    /* THE LEY LINES (2026-09-18 — THE COMPLEX CANDIDATES #9, the user: "this weird impossible underground tunnel system, not completely
+       cave and natural, not completely man-made either — long straight claustrophobic corridors that fork off; amber tone"). Family C's
+       THIRD generator: `gen.lines` are the AUTHORED main lines (straight polylines `w` wide — the line the stones stand on, dead straight
+       whatever the geography says), `gen.chambers` the authored round rooms; the generator adds a CHAMBER at every crossing of two lines
+       (`crossR`), a ROUND ANTECHAMBER behind every door pad (`padR`) and `forks` FORKS: a fork leaves a line at a ley angle (`forkDeg`,
+       either side, off the line's own bearing), `forkW` wide (narrower than the line — claustrophobic), and runs STRAIGHT until it meets
+       another corridor (a loop), the shell's rim (a dead straight run into the dark), or `forkLen`; a fork that ends in the solid ends in
+       a NICHE (`nicheR`, a round dead end the tapes and the pay hide in) — unless `joinP` turns it once more, straight at the nearest
+       line, so most of the forks come round. A fork may fork again (`reforkP`, one level). The solid is MASS to the ceiling (the halls'
+       rule: `solidMass`, `solidPad`, `info.solidTop`), its boundary TRACED into `info.planWalls` in `wallKey` (the halls' tracer — the
+       lines come out ruler-straight, the chambers faceted: cut, not grown); the walker never reads the walls. Every fork's readout is
+       `info.genPlan.forks / chambers / niches` (check-terrain prints the niches; a niche is the design, never a `deadEnd`). */
+    ley:   { w: 2.4, forkW: [1.5, 2.1], forks: 18, forkLen: [14, 46], forkDeg: [30, 45, 60, 90, 120], reforkP: 0.35, joinP: 0.55, nicheR: 1.9, crossR: 4.6, padR: 3.4, chamberR: 5.0,
+             wallH: 3.0, edge: 0.3, jitter: 0, topNoise: 0, solidPad: 0.3, wallT: 0.5, wallKey: null, simplify: 0.55, wallInner: 0.75, rim: 1.2, minOpen: 0.05, minDegree: 0 },
     forceGrow: 0.8, corridorW: 2.6, rim: 1.2, pathGrow: 1.1, minOpen: 0.28, maxOpen: 0.82, minIsland: 2.2,
 };
 function _hqTRng(seed) { let s = (seed >>> 0) || 1; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
@@ -35494,6 +36018,89 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
         const degRooms = new Array(nodes.length).fill(0); edges.forEach(e => { degRooms[e[0]]++; degRooms[e[1]]++; });
         const deadEnds = rooms.map((r, i) => i).filter(i => degRooms[i] < 2 && nodes.length >= 3);   // THE CYCLE RULE's readout: rooms with one way in (check-terrain prints it; the tests want 0)
         info.genPlan = { rooms, corridors, halls, edges, deadEnds };
+    } else if (gen.kind === 'ley') {
+        /* THE LEY LINES (2026-09-18 — family C's third generator, see HQ_TERRAIN_GEN.ley): straight lines that fork */
+        const lw = gen.w || K.w, FW = gen.forkW || K.forkW, nForks = (gen.forks != null) ? gen.forks : K.forks, FL = gen.forkLen || K.forkLen, FD = gen.forkDeg || K.forkDeg;
+        const reforkP = (gen.reforkP != null) ? gen.reforkP : K.reforkP, joinP = (gen.joinP != null) ? gen.joinP : K.joinP;
+        const nicheR = gen.nicheR || K.nicheR, crossR = gen.crossR || K.crossR, padR = gen.padR || K.padR, chamberR = gen.chamberR || K.chamberR;
+        const lines = (gen.lines || []).map((l, i) => ({ id: l.id || ('line' + i), pts: l.pts.map(p => [p[0], p[1]]), w: l.w || lw, main: true }));
+        const chambers = (gen.chambers || []).map((c, i) => ({ id: c.id || ('chamber' + i), x: c.x, z: c.z, r: c.r || chamberR, authored: true }));
+        const niches = [], forks = [];
+        /* the antechambers: a round room behind every door pad (the pad is the rect; the line comes in through the round) */
+        doorPads.forEach(p => { const dx = p.x - (p.lane ? p.lane.x : p.x), dz = p.z - (p.lane ? p.lane.z : p.z), L = Math.hypot(dx, dz) || 1; chambers.push({ id: 'pad_' + (p.door ? p.door.id : chambers.length), x: p.x + dx / L * (padR * 0.55), z: p.z + dz / L * (padR * 0.55), r: padR, pad: true }); });
+        /* the crossings: a chamber wherever two line segments cross */
+        const segs = () => { const out = []; lines.concat(forks).forEach(l => { for (let i = 0; i + 1 < l.pts.length; i++) out.push({ a: l.pts[i], b: l.pts[i + 1], w: l.w, line: l }); }); return out; };
+        const cross = (p, q, r, t) => {   // the intersection of segments pq and rt, or null
+            const d = (q[0] - p[0]) * (t[1] - r[1]) - (q[1] - p[1]) * (t[0] - r[0]); if (Math.abs(d) < 1e-9) return null;
+            const u = ((r[0] - p[0]) * (t[1] - r[1]) - (r[1] - p[1]) * (t[0] - r[0])) / d, v = ((r[0] - p[0]) * (q[1] - p[1]) - (r[1] - p[1]) * (q[0] - p[0])) / d;
+            if (u < 0.02 || u > 0.98 || v < 0.02 || v > 0.98) return null;
+            return [p[0] + (q[0] - p[0]) * u, p[1] + (q[1] - p[1]) * u];
+        };
+        const S0 = segs();
+        for (let i = 0; i < S0.length; i++) for (let j = i + 1; j < S0.length; j++) { if (S0[i].line === S0[j].line) continue; const X = cross(S0[i].a, S0[i].b, S0[j].a, S0[j].b); if (X && !chambers.some(c => Math.hypot(c.x - X[0], c.z - X[1]) < c.r)) chambers.push({ id: 'cross' + chambers.length, x: Math.round(X[0] * 10) / 10, z: Math.round(X[1] * 10) / 10, r: crossR, cross: true }); }
+        /* the forks: off a random point of a random line, at a ley angle, straight on */
+        const nearCorridor = (px, pz, self, pad) => {   // the distance (m) to the nearest OTHER corridor's edge, or Infinity
+            let best = Infinity;
+            lines.concat(forks).forEach(l => { if (l === self) return; const d = _hqTPolyDist(px, pz, l.pts).d - l.w / 2; if (d < best) best = d; });
+            chambers.forEach(c => { const d = Math.hypot(px - c.x, pz - c.z) - c.r; if (d < best) best = d; });
+            return best - (pad || 0);
+        };
+        const runStraight = (ox, oz, ang, w, maxLen, self) => {   // walk from (ox, oz) along ang until the shell's rim, another corridor, or maxLen → { x, z, len, hit }
+            const ux = Math.cos(ang), uz = Math.sin(ang), step = 0.5; let len = 0, hit = 'len';
+            for (let s2 = step; s2 <= maxLen; s2 += step) {
+                const px = ox + ux * s2, pz = oz + uz * s2;
+                if (!inShell(px, pz, rim + w / 2 + 0.3)) { hit = 'rim'; break; }
+                len = s2;
+                if (s2 > w + 1.5 && nearCorridor(px, pz, self, 0) < w / 2 + 0.2) { hit = 'join'; break; }
+            }
+            return { x: ox + ux * len, z: oz + uz * len, len, hit };
+        };
+        const forkFrom = (parent, depth) => {
+            const segI = Math.floor(rnd() * (parent.pts.length - 1)), A = parent.pts[segI], B = parent.pts[segI + 1];
+            const t = 0.15 + rnd() * 0.7, ox = A[0] + (B[0] - A[0]) * t, oz = A[1] + (B[1] - A[1]) * t;
+            const bearing = Math.atan2(B[1] - A[1], B[0] - A[0]), side = rnd() < 0.5 ? 1 : -1, deg = FD[Math.floor(rnd() * FD.length)];
+            const ang = bearing + side * deg * Math.PI / 180, w = Math.round((FW[0] + rnd() * (FW[1] - FW[0])) * 10) / 10, maxLen = FL[0] + rnd() * (FL[1] - FL[0]);
+            /* the fork starts a body outside its parent's own edge (no stub inside the parent) */
+            const s0 = parent.w / 2 + 0.2, sx = ox + Math.cos(ang) * s0, sz = oz + Math.sin(ang) * s0;
+            if (!inShell(sx, sz, rim + w)) return null;
+            const f = { id: 'fork' + forks.length, pts: [[Math.round(ox * 10) / 10, Math.round(oz * 10) / 10]], w, depth, parent: parent.id };
+            const r1 = runStraight(sx, sz, ang, w, maxLen, f);
+            if (r1.len < w * 2) return null;
+            f.pts.push([Math.round(r1.x * 10) / 10, Math.round(r1.z * 10) / 10]); f.end = r1.hit;
+            if (r1.hit === 'len' && rnd() < joinP) {
+                /* THE TURN: once more, straight at the nearest line's nearest point (the impossible geometry — a corridor that comes round) */
+                let best = null;
+                lines.forEach(l => { const q = _hqTPolyDist(r1.x, r1.z, l.pts), A2 = l.pts[q.seg], B2 = l.pts[q.seg + 1]; if (!best || q.d < best.d) best = { d: q.d, x: A2[0] + (B2[0] - A2[0]) * q.t, z: A2[1] + (B2[1] - A2[1]) * q.t }; });
+                if (best && best.d > w) {
+                    const ang2 = Math.atan2(best.z - r1.z, best.x - r1.x), r2 = runStraight(r1.x, r1.z, ang2, w, best.d + 2, f);
+                    if (r2.len >= w) { f.pts.push([Math.round(r2.x * 10) / 10, Math.round(r2.z * 10) / 10]); f.end = r2.hit; }
+                }
+            }
+            if (f.end === 'len') { const e = f.pts[f.pts.length - 1]; niches.push({ id: 'niche' + niches.length, x: e[0], z: e[1], r: nicheR, fork: f.id }); }
+            forks.push(f);
+            return f;
+        };
+        if (lines.length) for (let n = 0, guard = 0; n < nForks && guard < nForks * 6; guard++) {
+            const parent = lines[Math.floor(rnd() * lines.length)];
+            const f = forkFrom(parent, 1); if (!f) continue; n++;
+            if (depthOk(f) && rnd() < reforkP) { const g = forkFrom(f, 2); if (g) n++; }
+        }
+        function depthOk(f) { return f.pts.length >= 2 && Math.hypot(f.pts[1][0] - f.pts[0][0], f.pts[1][1] - f.pts[0][1]) > 10; }
+        /* the raster: square-capped straight runs, round chambers and niches */
+        const segIn2 = (px, pz, ax, az, bx, bz, hw) => {
+            const dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz);
+            if (L < 1e-6) return Math.abs(px - ax) <= hw && Math.abs(pz - az) <= hw;
+            const ux = dx / L, uz = dz / L, rx = px - ax, rz = pz - az, along = rx * ux + rz * uz, across = -rx * uz + rz * ux;
+            return along >= -hw * 0.4 && along <= L + hw * 0.4 && Math.abs(across) <= hw;
+        };
+        const all = lines.concat(forks);
+        each((k, px, pz) => {
+            if (!inShell(px, pz, rim)) return;
+            for (const c of chambers) if (Math.hypot(px - c.x, pz - c.z) <= c.r) { mask[k] = 1; return; }
+            for (const c of niches) if (Math.hypot(px - c.x, pz - c.z) <= c.r) { mask[k] = 1; return; }
+            for (const l of all) { const P = l.pts; for (let i = 0; i + 1 < P.length; i++) if (segIn2(px, pz, P[i][0], P[i][1], P[i + 1][0], P[i + 1][1], l.w / 2)) { mask[k] = 1; return; } }
+        });
+        info.genPlan = { lines, forks, chambers, niches, halls: all, rooms: chambers.map(c => Object.assign({ w: c.r * 2, d: c.r * 2 }, c)), corridors: [], edges: [], deadEnds: [] };
     } else if (gen.kind === 'city') {
         /* THE CITY (2026-09-17): the streets are the corridors — every row a polyline (`loop: true` closes it) `w` wide plus
            the sidewalk `walkW` either side; everything else is the solid = the blocks (the lots are cut after the rise, below) */
@@ -35586,7 +36193,7 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
     /* THE HALLS (2026-09-17): a rounded hall at 45° rasterises to single-cell SAW-TEETH (a solid cell with three open
        neighbours, an open nub with one) that the wall tracer cannot simplify — two passes of tooth removal first; a
        forced cell is never touched, and nothing opens in the rim band */
-    if (gen.kind === 'halls') for (let pass = 0; pass < 2; pass++) {
+    if (gen.kind === 'halls' || gen.kind === 'ley') for (let pass = 0; pass < 2; pass++) {
         const M = new Uint8Array(mask);
         for (let j = 1; j + 1 < nz; j++) for (let i = 1; i + 1 < nx; i++) {
             const k = j * nx + i; if (forced[k]) continue;
@@ -35616,14 +36223,14 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
        — or, when no incline fits, is SEALED (filled back into the solid, never a feature's
        forced cell). Repeated until nothing traps. `info.rescues` lists the ramps. */
     /* ── the distance field and the rise ── */
-    const wallH = (gen.wallH != null) ? gen.wallH : (gen.kind === 'halls' ? ((S.open ? K.wallH : (S.h || K.wallH))) : Math.min(K.wallH, S.open ? 99 : Math.max(1.2, (S.h || 4) - 1.2)));   // THE HALLS (2026-09-17): the walls reach the ceiling
+    const wallH = (gen.wallH != null) ? gen.wallH : ((gen.kind === 'halls' || gen.kind === 'ley') ? ((S.open ? K.wallH : (S.h || K.wallH))) : Math.min(K.wallH, S.open ? 99 : Math.max(1.2, (S.h || 4) - 1.2)));   // THE HALLS (2026-09-17): the walls reach the ceiling
     const edge = (gen.edge != null) ? gen.edge : K.edge, jit = (gen.jitter != null) ? gen.jitter : K.jitter, topN = (gen.topNoise != null) ? gen.topNoise : K.topNoise;
     const H0 = Float32Array.from(info.H);   // the authored field (before the plan's rise)
     let D = null, open = 0;
     /* THE KERB (the city, 2026-09-17): the sidewalk band stands `kerb` m over the road — a step the walker takes, a bump the rider hops; never on a forced cell (a pad, a side street) */
     const kerb = (gen.kind === 'city') ? ((gen.kerb != null) ? gen.kerb : K.kerb) : 0, walkW = (gen.kind === 'city') ? ((gen.walkW != null) ? gen.walkW : K.walkW) : 0;
     /* STREET LEVEL rev 2 (2026-09-17): a city's solid is MASS — no rise at all unless the plan says `podium: true` (the mall's units) */
-    const solidMass = ((gen.kind === 'city') && !((gen.podium != null) ? gen.podium : K.podium)) || gen.kind === 'halls';   // THE HALLS (2026-09-17): a dungeon's walls are a mass too
+    const solidMass = ((gen.kind === 'city') && !((gen.podium != null) ? gen.podium : K.podium)) || gen.kind === 'halls' || gen.kind === 'ley';   // THE HALLS (2026-09-17): a dungeon's walls are a mass too; THE LEY LINES (2026-09-18) likewise
     const solidPad = solidMass ? ((gen.solidPad != null) ? gen.solidPad : K.solidPad) : 0;
     info.gen = { kind: gen.kind, solidMass, solidPad };   // provisional: THE RETURN GUARANTEE judges the traps through hqTerrainFeet, which reads the mass rule
     const applyRise = () => {
@@ -35807,7 +36414,7 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
     }
     /* ── THE HALLS: the solid tops (the walls to the ceiling) and THE PLAN WALLS traced off the mask ── */
     info.planWalls = [];
-    if (gen.kind === 'halls') {
+    if (gen.kind === 'halls' || gen.kind === 'ley') {
         const tops = new Float32Array(nx * nz);
         each((k) => { tops[k] = (mask[k] || D[k] > -0.05) ? 0 : ((info.base || 0) + wallH); });
         info.solidTop = tops;
@@ -36341,11 +36948,11 @@ const HQ_TAPE_SHEET = {
     prebuilt_agartha:     [['THE ADIT', 'A lamp moving through the crystal. Nobody carries it.', 'evidence']],   // THE VATICAN (2026-09-17): THE GREAT DOOR went to the archive
     prebuilt_antarctica:  [['THE ICE CORE', 'Something frozen in the core. It is looking at the drill.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base (the motor pool)
     prebuilt_shasta:      [['THE LENTICULAR', 'A cloud that holds still while the sky moves. Then it does not.', 'evidence']],
-    prebuilt_stonehenge:  [['SOLSTICE', 'The stones throw two shadows. The sun is on the wrong side for one of them.', 'evidence']],   // THE SECOND PASS (2026-09-17): THE WHEEL went to the noodle bar
-    prebuilt_giza:        [['THE SHAFT', 'A robot camera reaching a door with two copper handles. Then the feed cuts.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base
+    site_prebuilt_stonehenge_henge: [['SOLSTICE, FROM THE BANK', 'The stones throw two shadows. The sun is on the wrong side for one of them.', 'evidence']],   // THE SECOND PASS (2026-09-17): THE WHEEL went to the noodle bar
+    site_prebuilt_giza_plateau: [['THE SHAFT', 'A robot camera reaching a door with two copper handles. Then the feed cuts.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base
     site_prebuilt_atlantis_temple: [['CHOIR, UNDER THE SEA', 'Eight seconds of singing with no source. The mic was off. The mic was wet.', 'evidence']],   // THE DIVINE STAIR (2026-09-17): THE GATE went out to the fields; THE DEEP (2026-09-18): Heaven's board is bypassed — its choir sings in the temple's air pocket now
-    prebuilt_cyberpunk:   [['BILLBOARD', 'An advert for the Department. We have never advertised.', 'facility']],   // DISASTER CITY (2026-09-17): THE NOODLE STAND went back in time to the mall's food court
-    prebuilt_babel:       [['ONE VOICE', 'Everyone on the tower says the same word. It is not a word.', 'evidence']],
+    site_prebuilt_gobekli_leylines: [['THE SURVEY', 'A chain dragged down a corridor that does not bend. The chain has no end.', 'evidence']],   // THE LEY LINES (2026-09-18): BILLBOARD came off Cyberpunk's bypassed board (unreachable on foot since the grid took the door) and was rewritten for the tunnels; the four ancient boards' tapes moved onto their parts the same day (the boards are bypassed — every part keeps exactly one, the hundred stays a hundred)'s food court
+    site_prebuilt_babel_tower: [['ONE VOICE', 'Everyone on the tower says the same word. It is not a word.', 'evidence']],
     prebuilt_olympus:     [['THE FORGE', 'Sparks falling up. A hammer with no hand.', 'evidence']],   // THE DIVINE STAIR (2026-09-17): the second tape went to the stairway
     prebuilt_mars:        [['ROVER FEED 07', 'The rover turns to look at something behind it. The something waves.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base
     prebuilt_area51:      [['THE BADGE PHOTO', 'A man in a lab coat at the gate. He is holding a copy of this tape.', 'parents']],   // THE VATICAN (2026-09-17): HANGAR 18 went to the observatory
@@ -36355,7 +36962,7 @@ const HQ_TAPE_SHEET = {
     prebuilt_moon:        [['THE LANDER', 'A footprint beside the lander that was not there in the previous frame.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base
     prebuilt_vatican:     [['THE ARCHIVE', 'A reading room with one lamp lit. The book is open to a floor plan of the Bureau.', 'facility']],   // THE DIVINE STAIR (2026-09-17): THE CONFESSIONAL went down to the catacombs
     prebuilt_bohemian_grove: [['THE OWL', 'A statue of an owl. The owl blinks once, at 0:06.', 'evidence']],
-    prebuilt_gobekli:     [['THE PILLARS', 'Carvings of animals. On the loop, one animal has moved.', 'evidence']],   // AREA 51 (2026-09-18): its second tape went to the hangar
+    site_prebuilt_gobekli_tell: [['THE PILLARS', 'Carvings of animals. On the loop, one animal has moved.', 'evidence']],   // AREA 51 (2026-09-18): its second tape went to the hangar
     prebuilt_northpole:   [['THE WORKSHOP', 'Benches, tools, no one. A bell rings on the ceiling.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base
     prebuilt_flatlands:   [['THE EDGE', 'A camera on a tripod at the edge. There is an edge.', 'evidence']],   // THE SECOND PASS (2026-09-17): THE FOURTH CORNER went to the supply closet
     prebuilt_revenge:     [['THE HELM', 'The wheel turns itself into the storm. The compass points down.', 'evidence']],   // CAMELOT CASTLE (2026-09-18): THE CAPTAIN’S TABLE went to the great hall
@@ -36723,6 +37330,12 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_dumb_sublevel7: { tape: { x: 0.0, z: 0.0 } },
     /* CAMELOT CASTLE (2026-09-18): the keep tower, the loft over the gallery, the tower top, the ossuary shelf, the spire — the door gun's five */
     site_prebuilt_camelot_ward:    { tape: { x: 12.0, z: -33.0 } },
+    /* THE LEY LINES (2026-09-18): THE OMPHALOS in the nexus (2.3 m under a 3.2 m ceiling — the shot is from the sunken floor), THE GREAT TRILITHON's lintel, THE SENTINEL in enclosure D, THE SPHINX's head, THE LOAD on the crane's hook */
+    site_prebuilt_gobekli_leylines: { tape: { x: -50, z: -25 } },
+    site_prebuilt_stonehenge_henge: { tape: { x: 0, z: 5.6 } },
+    site_prebuilt_gobekli_tell:     { tape: { x: 18.5, z: 8 } },
+    site_prebuilt_giza_plateau:     { tape: { x: 37, z: 26 } },
+    site_prebuilt_babel_tower:      { tape: { x: 3, z: -5.5 } },
     site_prebuilt_camelot_hall:    { tape: { x: 10.5, z: -9.0 } },
     site_prebuilt_camelot_keep:    { tape: { x: 15.4, z: -19.0 } },
     site_prebuilt_camelot_dungeon: { tape: { x: -14.0, z: -10.0 } },

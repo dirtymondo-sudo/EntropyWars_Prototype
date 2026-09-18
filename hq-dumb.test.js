@@ -299,7 +299,7 @@ test('THE PARK RULE + THE LIGHT + THE HARD TAPES: a rail and a tier or ramp in e
         assert.ok(!reach.has(D.hqTerrainNodeKey(info, tape.x, tape.z)), id + ': the walker never reaches it');
         assert.ok(D.hqFindHardReachTerrain(tape, { terrain: info, reach, S: HQ.rooms[id].shell }).ok, id + ': the door gun has a shot at its lip');
     }
-    for (const site of ['prebuilt_cern', 'prebuilt_antarctica', 'prebuilt_northpole', 'prebuilt_singularity', 'prebuilt_mars', 'prebuilt_saturn', 'prebuilt_moon', 'prebuilt_giza']) assert.equal(tapes.filter(t => t.where === 'site_' + site).length, 1, site + ' keeps one');
+    for (const site of ['prebuilt_cern', 'prebuilt_antarctica', 'prebuilt_northpole', 'prebuilt_singularity', 'prebuilt_mars', 'prebuilt_saturn', 'prebuilt_moon']) assert.equal(tapes.filter(t => t.where === 'site_' + site).length, 1, site + ' keeps one');   // THE LEY LINES (2026-09-18): Giza's board is bypassed — its tape is on the plateau (hq-leylines)
     assert.equal(tapes.filter(t => t.where === 'site_prebuilt_dumb').length, 1, 'the base keeps one on the board (THE BLAST DOOR went down the sewers, 2026-09-18)');
     assert.ok(tapes.some(t => t.where === MOTOR && t.title === 'THE TRAM, 00:00') && tapes.some(t => t.where === SEVEN && t.title === 'SUB-LEVEL 7') && tapes.some(t => t.where === WAR && t.title === 'THE HEXAGON') && tapes.some(t => t.where === BUNKER && t.title === 'EARTHRISE') && tapes.some(t => t.where === RING && t.title === 'BEAM ON'), 'the titles');
 });
@@ -312,7 +312,7 @@ test('the shell helper, the looks, the generator table and the source sites: hqB
     for (const k of ['dumb', 'warroom', 'bunker', 'cern']) { const L = D.HQ_ROOM_LOOKS[k]; assert.ok(L && L.name && L.retro && L.cin && typeof L.bloom === 'number', 'look ' + k); }
     const H = G.halls;
     assert.ok(H && H.leafMin > 0 && H.leafMax > H.leafMin && H.roomMin > 0 && H.corridor.length === 2 && H.wallT > 0 && H.simplify > 0 && H.solidPad > 0 && H.minOpen < G.minOpen && H.minDegree === 2, 'the halls row');
-    for (const s of ["} else if (gen.kind === 'halls') {", 'function _hqTTraceMaskWalls(info, mask, o) {', 'function _hqTRdp(pts, i0, i1, tol, out) {', "|| gen.kind === 'halls';", 'info.planWalls = _hqTTraceMaskWalls(info, mask, {', "if (gen.kind === 'halls') for (let pass = 0; pass < 2; pass++) {"])
+    for (const s of ["} else if (gen.kind === 'halls') {", 'function _hqTTraceMaskWalls(info, mask, o) {', 'function _hqTRdp(pts, i0, i1, tol, out) {', "|| gen.kind === 'halls' || gen.kind === 'ley';", 'info.planWalls = _hqTTraceMaskWalls(info, mask, {', "if (gen.kind === 'halls' || gen.kind === 'ley') for (let pass = 0; pass < 2; pass++) {"])
         assert.ok(fs.readFileSync(__dirname + '/data.js', 'utf8').includes(s), 'data.js: ' + s);
     for (const s of ['var drawWall = function (w) {', 'info.walls.forEach(drawWall);', '(info.planWalls || []).forEach(drawWall);', 'function _hqBuildHallsLights(room, info, G, TM, rng) {', "if (info.genPlan && info.gen && info.gen.kind === 'halls') { try { _hqBuildHallsLights(room, info, G, TM, rng); }", 'var keyedMat = function (key) {', "if (w.plan) { m._ew_hqPart = 'wall'; m._ew_hqPlanWall = true; }"])
         assert.ok(renderer.includes(s), 'three-renderer.js: ' + s);

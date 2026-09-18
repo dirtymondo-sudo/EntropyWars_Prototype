@@ -5747,3 +5747,26 @@ failures reproduced on untouched main bb51ae4 (hq-stage2, hq-terrain, hq-urban),
 one interrupted hq-map-remembers process after ~8 minutes. Its seven non-exhaustive
 checks subsequently passed; the exhaustive hard-find reachability check remains
 unverified. No browser playtest. Full details are in the ZIP's README.txt.
+
+## THE LEY LINES — THE LINE THE STONES STAND ON (complex candidate #9, HQ plan 9.3 stage 12) — 2026-09-18, local delivery
+Family C's THIRD generator, **`terrain.gen.kind: 'ley'`** (data.js `HQ_TERRAIN_GEN.ley`, the branch in `_hqTGenerate`; EXPLORABLE_AREAS_GUIDE
+§1 row C'): `gen.lines` = the AUTHORED straight main lines, `gen.chambers` the authored round rooms; the generator adds a chamber at every
+crossing (`crossR`), a round ANTECHAMBER behind every door pad (`padR`) and `forks` FORKS that leave a line at a `forkDeg` angle, `forkW`
+wide, and run STRAIGHT until they `join` another corridor, hit the `rim`, or run out (`len`) — then one `joinP` turn at the nearest line or a
+NICHE (`nicheR`); `reforkP` forks a fork once. The solid is MASS to the ceiling and TRACED like the halls' (every `gen.kind === 'halls'`
+hook reads `|| 'ley'`); `minDegree` 0 — **a niche is the design, `genPlan.deadEnds` is always empty; `genPlan.forks / chambers / niches`
+is the readout.** THE WALLS LIGHT THEMSELVES: three-renderer.js **`_hqBuildLeyVeins`** (hooked beside the halls' lights) — an amber vein
+(the mood's `strip`) along the foot and the lintel of every traced wall on its OPEN face, one breathing material, a glow per chamber /
+niche, THE KEYSTONE in every crossing chamber; `EW_HQ_NO_LEY_VEINS`, `HQ_LEY_VEIN_MAX`. **THE PARTS**: `site_prebuilt_gobekli_leylines`
+(200 × 150 × 3.2, closed, `hqLeyShell`; THE NEXUS sunk round THE OMPHALOS = the tape) and four ancient sites REBUILT as open `rooms` parts
+with `thicket: false` (the banks are the solid — `wallH` is the bank's height) under `hqAncientShell` (the site's own sky by hand):
+`site_prebuilt_stonehenge_henge` (the bank + ditch as an open ridge + gully, the sarsen circle + the horseshoe as `wall` rows, THE GREAT
+TRILITHON tier = the tape, `trilithon` / `sarsen` GLBs), `_gobekli_tell` (THE TELL a hill, four enclosures `dip … dome: true`, ring walls,
+`t_pillar` procs, THE SENTINEL = the tape; the ley's mouth a door PAIR; `well_gobekli` free on its flank), `_giza_plateau` (the pyramid four
+stacked `plateau` rects up a four-flight stair 8.2 m per 3.5 m; THE SPHINX's head = the tape; `obelisk`), `_babel_tower` (four tiers up
+THE SPIRAL, `babel_crane` on top, THE LOAD = the tape). The four boards are BYPASSED (`siteRooms.entry`); the four `ley` links RE-POINTED
+onto the parts with their ids kept (a star: every leg Göbekli's; Technoticlan's end stays on its board); `hubs.ley`. RULES: a stair up a
+tier's face wants the ledge ≥ 8 m (L ≥ 2.2 h + 0.5 in + 0.7 in); a hard tape under a low ceiling stands on a tier whose top band the eye
+sees from the floor; a tape that must move comes off a BYPASSED board first (Cyberpunk's BILLBOARD → THE SURVEY). `npm test` runs
+`hq-leylines.test.js`; amended hq-terrain (54), hq-floor-plan (45, the kind), hq-ranch (11 hubs), disaster-city-3, hq-area51 / hq-city / hq-city-2 / hq-dumb (the re-homed tapes, the source pin), hq-deep (the token). Ship data.js to Render
+too (the finds ledger). NOT built: Technoticlan's part, the second-pass assets (MODEL_INDEX §3o). UNSEEN LIVE (RULE #1c): all of it.

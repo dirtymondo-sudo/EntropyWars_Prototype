@@ -291,7 +291,7 @@ test('THE PARK RULE + THE PLATFORMING: the streets have the parking deck (a 3 m 
     }
     assert.equal(D.DOOR_TAPES.filter(t => t.where === STREETS).length, 1); assert.equal(D.DOOR_TAPES.filter(t => t.where === MALL).length, 1);
     assert.equal(D.DOOR_TAPES.length, 100, 'the hundred stays a hundred');
-    for (const site of ['prebuilt_stadium', 'prebuilt_cyberpunk']) assert.ok(D.DOOR_TAPES.some(t => t.where === D.hqSiteRoomId(site) || (t.site === site && t.where === D.hqSiteRoomId(site))), site + ' keeps a tape');
+    for (const site of ['prebuilt_stadium']) assert.ok(D.DOOR_TAPES.some(t => t.where === D.hqSiteRoomId(site) || (t.site === site && t.where === D.hqSiteRoomId(site))), site + ' keeps a tape');   // THE LEY LINES (2026-09-18): Cyberpunk's bypassed board gave BILLBOARD to the tunnels
 });
 
 test('THE TRAFFIC + THE CIRCUIT (data): the streets carry routes — the ring road both ways on the right, the avenues either side of the plaza — every kind a vehicle of _VEHICLE_KIT, every route on the open plan; the race is the ring road with 8 gates and a label; the mall carries none; the compiler passes them through with defaults', () => {

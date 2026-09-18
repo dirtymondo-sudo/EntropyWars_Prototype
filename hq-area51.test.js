@@ -220,7 +220,7 @@ test('THE PARK RULE + THE LIGHT + THE HARD TAPES: a rail and a stair in every pa
         assert.ok(D.hqFindHardReachTerrain(tape, { terrain: info, reach, S: HQ.rooms[id].shell }).ok, id + ': the door gun has a shot at its lip');
     }
     assert.equal(tapes.filter(t => t.where === BOARD).length, 1, 'THE BADGE PHOTO stays on the board');
-    for (const where of ['site_prebuilt_gobekli', 'site_prebuilt_bermuda_sea']) assert.equal(tapes.filter(t => t.where === where).length, 1, where + ' gave its second tape');   // THE DEEP (2026-09-18): the Triangle's board is bypassed — its one tape sits on THE OPEN SEA
+    for (const where of ['site_prebuilt_gobekli_tell', 'site_prebuilt_bermuda_sea']) assert.equal(tapes.filter(t => t.where === where).length, 1, where + ' gave its second tape');   // THE DEEP (2026-09-18): the Triangle's board is bypassed — its one tape sits on THE OPEN SEA   // THE LEY LINES (2026-09-18): Göbekli's board is bypassed — its tape sits on the tell
     assert.ok(tapes.some(t => t.where === HANGAR && t.title === 'HANGAR 18, 03:00') && tapes.some(t => t.where === WARD && t.title === 'ROOM 5150-B') && tapes.some(t => t.where === LINE && t.title === 'RUNWAY 33'), 'the titles');
 });
 

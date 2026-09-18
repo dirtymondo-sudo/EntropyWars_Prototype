@@ -131,7 +131,7 @@ test('THE SUPPLY CLOSET ⇄ THE NOODLE BAR: two small box rooms (four cells a si
     assert.ok(at(CLOSET, 'link_timemachine_cyberpunk').action.room === NOODLE && at(NOODLE, 'link_timemachine_cyberpunk').action.room === CLOSET, 'the pair');
     assert.ok(at(MALL, 'closet').wall === 'n' && at(MALL, 'closet').x === 0, 'the closet\'s door at the end of the north wing');
     assert.equal(D.DOOR_TAPES.length, 100, 'the hundred');
-    for (const site of ['prebuilt_technoticlan', 'prebuilt_stonehenge', 'prebuilt_flatlands']) assert.equal(D.DOOR_TAPES.filter(t => t.site === site && t.where === D.hqSiteRoomId(site)).length, 1, site + ' keeps one');
+    for (const site of ['prebuilt_technoticlan', 'prebuilt_flatlands']) assert.equal(D.DOOR_TAPES.filter(t => t.site === site && t.where === D.hqSiteRoomId(site)).length, 1, site + ' keeps one');   // THE LEY LINES (2026-09-18): Stonehenge's board is bypassed — its tape is on the plain (hq-leylines)
     assert.ok(!HQ.rooms[MALL].doors.some(d => d.way === 'timemachine'), 'the arcade gave the machine up');
 });
 
