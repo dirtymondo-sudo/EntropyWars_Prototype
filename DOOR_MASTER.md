@@ -2637,3 +2637,47 @@ Lodge and Camelot are off THE LEY LINE. THE WOODS split: THE RANCH (route `ranch
 bypassed) with the Haunted House's dead tree, the Lodge's saloon door, the well and Bohemian Grove's back gate — the grove is
 the interchange to the woods; the Graveyard and the Western map are held links until built. THE HUBS on the map
 (`DOOR_HQ.hubs`); every door plate reads the room DIRECTLY through it (`hqReplateDoors`). Full log: DOOR_HQ_BUILD_PLAN §9.
+
+
+### 2026-09-18 — Skateboard and portal movement integration (local delivery; not uploaded)
+Based on main `bb51ae4`. User requested reverse steering, smoother obstacle contact,
+more forgiving portal entry, and skate/door-gun combo continuity.
+
+- A/D invert with negative skateboard velocity, so S braking a forward roll keeps
+  forward steering until the roll actually reverses. Steering still carries the camera.
+- Rider physics runs in steps no larger than 1/120 s. Ground probes use the body
+  centre (the surface already expands blockers by body radius). Glancing contact
+  aligns motion with the free tangent instead of repeatedly scrubbing speed; round
+  props and NPCs get tangent sliding, with a gentle side choice for a head-on NPC.
+  Solid head-on obstacles stop the board without bailing; failed tricks retain bails.
+- Portal mouths use the oriented rectangular aperture plus body-overlap tolerance,
+  including the full length of floor/ceiling hatches. Wall entry accepts a slow roll.
+  Swept checks run before collisions and landings so a fast crossing is not missed
+  and falling onto a hatch does not bank/bail the trick before traversal.
+- The rider now reports velocity and transfers portal output into its own signed
+  speed/heading. It does not leave the impulse stranded in the walker's mvx/mvz.
+  Same-room and cross-room portal exits preserve active rotations, trick queue,
+  stance and combo. Cross-room memory copies only plain ride values; grind rails
+  and other scene objects never survive the room teardown.
+- Exit holding uses wall geometry too, and stays held until the body leaves (no
+  four-second forced release). Raised wall exits keep falling; floor/ceiling exits
+  use the mapped normal velocity instead of duplicating entry vertical speed.
+- Existing two-button gun controls and placement remain. Viewer-local HQ movement;
+  no battle state or online relay changes. No assets replaced.
+- Validation: added executable movement/traversal regressions in hq-skate.test.js;
+  updated obsolete portal source assertions. See the delivery README for final
+  suite results. No browser playtest, upload, commit, push, merge or deployment.
+- Delivery: three-renderer.js → R2; index.html (20260918-skate-portals-0545-cors)
+  → Render; tests and the three updated project notes → repository only.
+- First hands-on checks: reverse carves; diagonally brushing furniture and NPCs;
+  skate into wall A and out wall B; trick into a floor hatch and fling from a wall;
+  cross-room wall/floor/ceiling pairs; shoot both doors while riding. Visual comfort
+  and the scene-load pause on cross-room travel remain unverified.
+
+Validation completed for this delivery: 49/49 skateboard + portal tests passed,
+including 11 new movement/traversal regressions; edited JavaScript syntax and diff
+whitespace checks passed. Full-suite attempt: 1642 passed, 6 skipped, seven assertion
+failures reproduced on untouched main bb51ae4 (hq-stage2, hq-terrain, hq-urban), and
+one interrupted hq-map-remembers process after ~8 minutes. Its seven non-exhaustive
+checks subsequently passed; the exhaustive hard-find reachability check remains
+unverified. No browser playtest. Full details are in the ZIP's README.txt.

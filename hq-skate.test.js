@@ -34,7 +34,7 @@ function extract(name) {
 }
 function block() { const a = TR.indexOf('/* ══ SKATEBOARDING — THE RIDER'), b = TR.indexOf('/* ── per-frame ───', a); assert.ok(a > 0 && b > a); return TR.slice(a, b); }
 const RIDE_FNS = ['_hqSkateRules', '_hqSkateOff', '_hqRailLen', '_hqRailAt', '_hqRailNearest', '_hqRailSnap', '_hqRampLocal', '_hqRampUnder', '_hqRampProfile', '_hqRampSurfaceAt', '_hqRegisterPropPark',
-    '_hqRideTurn', '_hqRideNew', '_hqRideArm', '_hqRideEmit', '_hqRideToggle', '_hqRideKeyEdge', '_hqRideComboAdd', '_hqRideComboBank', '_hqRideBail', '_hqRideBailPhase', '_hqRideWall', '_hqRideTrickDone', '_hqRideStartTrick', '_hqTickRide', '_hqRideSetY', '_hqRideGravity'];
+    '_hqRideTurn', '_hqRideNew', '_hqRideArm', '_hqRideEmit', '_hqRideToggle', '_hqRideKeyEdge', '_hqRideComboAdd', '_hqRideComboBank', '_hqRideBail', '_hqRideBailPhase', '_hqRideWall', '_hqRideSlide', '_hqRideObstacleSlide', '_hqTickRideStep', '_hqRideTrickDone', '_hqRideStartTrick', '_hqTickRide', '_hqRideSetY', '_hqRideGravity'];
 function consts() {
     const out = [];
     for (const n of ['HQ_BODY_R', 'HQ_STEP_TOL', 'HQ_DROP_MAX', 'HQ_FALL_MIN', 'HQ_GRAV', 'HQ_JUMP_V']) { const m = TR.match(new RegExp('    var ' + n + ' = ([0-9.]+);')); assert.ok(m, n); out.push('var ' + n + ' = ' + m[1] + ';'); }
@@ -56,7 +56,9 @@ function sandbox(opts) {
         function _hqSurface(x, z, curY, ig) { if (Math.abs(x) > _walls || Math.abs(z) > _walls) return null; var y = 0; var r = _hqRampSurfaceAt(x, z); if (r !== undefined && r > y) y = r; if (curY != null && y - curY > HQ_STEP_TOL) return null; return y; }
         function _hqAirOK(x, z, y) { if (Math.abs(x) > _walls || Math.abs(z) > _walls) return false; var r = _hqRampSurfaceAt(x, z); if (r !== undefined && y < r - 0.05) return false; return true; }
         function _hqBlockerFloor() { return null; }
+        function _hqBlockersUnder() { return []; }
         function _hqFindTarget() { return null; }
+        function _hqPortalSweep() { return false; }
         function _hqSiteCellAt() { return null; }
         function _hqSiteFloorY() { return 0; }
         var _hq = { player: { x: 0, z: 0, y: 0, visY: 0, yaw: 0, targetYaw: 0, air: false, vy: 0, jumpT: -1, moving: false, running: false, heightM: 1.75, entry: { group: { position: { set: function () {} } } } },
@@ -456,4 +458,172 @@ test('REV 3 — SEAMLESS: a rotation ≥ landGrace done at the touchdown lands (
     assert.ok(/THE SKID/.test(pose) && !/tumble/.test(pose.replace(/\/\*[\s\S]*?\*\//g, '')), 'the deck skids; no root tumble');
     assert.ok(!/_hqRideBail\(R, pl, 'car'\)/.test(TR) && !/_hqRideBail\(R, pl, 'wall'\)/.test(TR) && !/_hqRideBail\(R, pl, 'drop'\)/.test(TR), 'only a failed trick bails');
     assert.ok(/case 'bail': \{/.test(fs.readFileSync(__dirname + '/map.js', 'utf8')), 'the beat stays');
+});
+
+// Movement regressions: exercise the live functions with deterministic room geometry.
+test('reverse roll inverts A/D steering; braking forward with S does not invert early', () => {
+    for (const key of ['a', 'd']) {
+        const a = sandbox(), b = sandbox();
+        for (const c of [a, b]) { c._hqRideToggle(true); c.R().hd = 0; c.R().kickT = 100; }
+        a.R().v = 5; b.R().v = -5;
+        a.step({ [key]: true }, 1 / 60); b.step({ [key]: true }, 1 / 60);
+        assert.ok(a.R().hd * b.R().hd < 0);
+        assert.ok(Math.abs(a.R().hd + b.R().hd) < 1e-8);
+        assert.ok(Math.abs(b._hq.cam.yaw + b.R().hd) < 1e-8);
+    }
+    const c = sandbox(); c._hqRideToggle(true); c.R().v = 5; c.R().hd = 0;
+    c.step({ s: true, d: true }, 1 / 60);
+    assert.ok(c.R().v > 0 && c.R().hd < 0);
+});
+
+test('wall brush retains tangential speed and clears the corner at multiple frame rates', () => {
+    for (const hz of [30, 60, 144]) {
+        const c = sandbox({ wallAt: 5 }); c._hqRideToggle(true);
+        c.pl.x = 4.96; c.R().hd = Math.PI / 4; c.R().v = 10; c.R().kickT = 100;
+        c.step({}, 1 / hz, Math.round(hz * 0.25));
+        assert.ok(c.pl.x <= 5 && c.pl.z > 1.1, `${hz}: position ${c.pl.x}, ${c.pl.z}`);
+        assert.ok(c.R().v > 5.5, `${hz}: speed ${c.R().v}`);
+        assert.equal(c.R().bailT, 0);
+    }
+});
+
+test('a thin obstacle remains solid during a fast airborne skate frame', () => {
+    const c = sandbox(); c._hqRideToggle(true); c.R().hd = 0; c.R().v = 18;
+    c.pl.air = true; c.pl.y = 2; c.pl.vy = 0;
+    c._hqAirOK = (x, z) => z < 0.2 || z > 0.55;
+    c.step({}, 1 / 20);
+    assert.ok(c.pl.z < 0.2, 'substeps cannot jump over the narrow blocker');
+});
+
+test('round NPC contact slides around the shoulder without overlapping its body', () => {
+    const c = sandbox(); c._hqRideToggle(true); c.R().hd = 0; c.R().v = 8; c.R().kickT = 100;
+    const b = { obj: { position: { x: 0, z: 73 } }, rad: 0.42, y: 0, top: 2.6, npc: true };
+    c._hqBlockersUnder = (x, z) => Math.hypot(x, z - 1) < 0.76 ? [b] : [];
+    c._hqBlkTop = b => b.top;
+    c._hqSurface = (x, z) => Math.hypot(x, z - 1) < 0.76 ? null : 0;
+    c.pl.z = 0.235;
+    c.step({}, 1 / 60, 20);
+    assert.ok(Math.abs(c.pl.x) > 0.5, 'steers round the person instead of repeatedly stopping');
+    assert.ok(Math.hypot(c.pl.x, c.pl.z - 1) >= 0.76);
+    assert.equal(c.R().bailT, 0);
+});
+
+function portals(c) {
+    const names = ['_hqPortalFrame', '_hqPortalMapCarry', '_hqPortalInMouth', '_hqPortalWallTouch', '_hqPortalSweep', '_hqTickPortalCross', '_hqPortalRideState', '_hqPortalRideExit', '_hqPortalWallExit', '_hqPortalHop', '_hqPortalCarryFor', '_hqGoTo'];
+    vm.runInContext(names.map(extract).join('\n') + `
+        var _hqPortalCarryMem = null;
+        function _hqPortalRules() { return { carry: { minOut: 2.4, max: 18, touchM: 1.05 }, rearmMs: 250, exitNudge: 0.6 }; }
+        function _hqHeadingOf(x, z) { return Math.atan2(x, -z) * 180 / Math.PI; }
+        function _hqHeadingYaw(face) { return Math.atan2(Math.sin(_hqRad(face)), -Math.cos(_hqRad(face))); }
+        function _hqAirClearOfBlockers() { return true; }
+        var HQ_PORTAL_COLORS = { a: 0, b: 1 };
+    `, c);
+    c.THREE.Vector3 = class { constructor(x,y,z) { this.x=x; this.y=y; this.z=z; } };
+    c._hq.room = { shell: {} }; c._hq.doors = []; c._hq.counters = [];
+    c._hq.portal = { placed: {}, hold: null };
+    c._hq.opts.onPortalCross = slot => c._hqPortalHop(slot === 'a' ? 'b' : 'a');
+    return c;
+}
+function door(slot, surf, x, y, z, face = 0) {
+    const a = face * Math.PI / 180;
+    return { portal: slot, portalSurf: surf, px: x, py: y, pz: z, y0: surf === 'wall' ? y : 0,
+        nx: Math.sin(a), nz: -Math.cos(a), ny: surf === 'floor' ? 1 : -1,
+        ow: 1.1, oh: 2.25, door: { id: 'portal:' + slot, face } };
+}
+
+test('portal mouth follows the full rotated rectangular opening and accepts slow wall approaches', () => {
+    const c = portals(sandbox()), p = { x: 0, z: 1.1, y: 0, heightM: 1.75 };
+    assert.equal(c._hqPortalInMouth(door('a','floor',0,0,0), p), true, 'far end outside old circle');
+    p.x = 1.1; p.z = 0;
+    assert.equal(c._hqPortalInMouth(door('a','floor',0,0,0,90), p), true, 'rotates with door');
+    p.x = 0.95;
+    assert.equal(c._hqPortalInMouth(door('a','floor',0,0,0), p), false, 'outside aperture width');
+    p.x = 0.7; p.z = -0.8; p.velZ = 0.2;
+    assert.equal(c._hqPortalWallTouch(door('a','wall',0,0,0), p), true, 'body overlap and slow roll');
+    p.velZ = -2;
+    assert.equal(c._hqPortalWallTouch(door('a','wall',0,0,0), p), false, 'moving away never crosses');
+});
+
+test('wall portal keeps skateboard momentum and exits along the new wall normal, including fakie', () => {
+    for (const sign of [1,-1]) {
+        const c = portals(sandbox()); c._hqRideToggle(true);
+        c._hq.portal.placed = { a: door('a','wall',0,0,0), b: door('b','wall',10,0,0,90) };
+        c.pl.z = -1.3; c.R().hd = sign === 1 ? 0 : Math.PI; c.R().v = 10 * sign; c.R().kickT = 100;
+        c.step({}, 1 / 60, 3);
+        assert.ok(c.pl.x > 10 && Math.abs(c.R().v) > 9.5);
+        assert.equal(Math.sign(c.R().v), sign);
+        assert.ok(Math.sin(c.R().hd) * c.R().v > 9.5, 'roll points out of B');
+        assert.equal(c.pl.mvx, 0, 'no duplicate walker impulse');
+        assert.equal(c.pl.mvz, 0);
+        assert.equal(c._hq.portal.hold.slot, 'b');
+    }
+});
+
+test('falling into a hatch preserves the active trick and speed instead of landing/bailing before teleport', () => {
+    const c = portals(sandbox()); c._hqRideToggle(true);
+    c._hq.portal.placed = { a: door('a','floor',0,0,0), b: door('b','wall',10,0,0,90) };
+    c.pl.y = 0.3; c.pl.air = true; c.pl.vy = -14; c.R().v = 0;
+    c.R().trick = { id: 'kickflip', t: 100, ms: 430 }; c.R().deckRoll = 1;
+    c.R().combo = { tricks: ['GRIND'], pts: 60 };
+    c.step({}, 1 / 30);
+    assert.ok(c.pl.x > 10 && c.R().v > 13.5);
+    assert.equal(c.R().trick.id, 'kickflip');
+    assert.equal(c.R().combo.tricks[0], 'GRIND');
+    assert.ok(!c.events().some(e => e.kind === 'land' || e.kind === 'bank' || e.kind === 'bail'));
+});
+
+test('swept hatch crossing catches a fast pass between frames and an exit hold has no timer release', () => {
+    const c = portals(sandbox());
+    c._hq.portal.placed = { a: door('a','floor',0,0,0), b: door('b','ceiling',10,6,0) };
+    c.pl.x = -2; c.pl.y = 0;
+    assert.equal(c._hqPortalSweep(0.25, {x:18,y:0,z:0}), true);
+    assert.equal(c.pl.x, 10);
+    c.performance.now = () => 20000;
+    assert.equal(c._hqPortalSweep(0, {x:0,y:0,z:0}), false);
+    assert.equal(c._hq.portal.hold.slot, 'b');
+});
+
+test('cross-room portal restores the rider velocity, active rotation, queue and combo without old scene objects', () => {
+    const c = portals(sandbox()); c._hqRideToggle(true);
+    const A = door('a','wall',0,0,0), B = door('b','floor',8,0,0);
+    c._hq.portal.placed.a = A;
+    c.R().v = 11; c.R().combo = { tricks: ['180'], pts: 120 };
+    c.R().trick = { id:'kickflip', t:120, ms:430 }; c.R().queue = ['heelflip'];
+    c.R().grind = { rail: { oldScene: true } };
+    c._hq.portal.cross = { slot:'a', vx:0, vy:0, vz:11, at:1000 };
+    c._hqPortalCarryFor({ surf:'floor', face:0 });
+    assert.equal(c._hqPortalCarryMem.ride.grind, undefined);
+    c._hqRideArm({skate:{issued:true}});
+    c._hq.doors = [B]; c._hq.portal.placed = {b:B};
+    assert.equal(c._hqGoTo('portal:b', true), true);
+    assert.ok(c.pl.air && c.pl.vy === 11);
+    assert.equal(c.R().combo.tricks[0], '180');
+    assert.equal(c.R().trick.t, 120); assert.equal(c.R().queue[0], 'heelflip');
+    assert.equal(c.R().grind, null);
+    assert.equal(c._hqPortalCarryMem, null);
+});
+
+test('walking momentum survives a falling hatch entry even with no movement key held', () => {
+    const c = portals(sandbox());
+    vm.runInContext(extract('_hqTickWalker'), c);
+    c._hq.portal.placed = {a:door('a','floor',0,0,0), b:door('b','wall',10,0,0,90)};
+    c.pl.air = true; c.pl.y = 0.3; c.pl.vy = -14; c.pl.mvx = 0; c.pl.mvz = -6;
+    c._hqTickWalker(1/60);
+    assert.ok(c.pl.x > 10);
+    assert.ok(Math.hypot(c.pl.mvx, c.pl.mvz) >= 14, 'horizontal input component is not lost during the fall');
+    assert.ok(Math.abs(c.pl.vy) === 6, 'tangential component maps to the exit up axis');
+});
+
+test('a raised wall exit keeps falling and a refused portal does not consume skate motion', () => {
+    const c = portals(sandbox()); c._hqRideToggle(true);
+    c._hq.portal.placed = {a:door('a','wall',0,0,0), b:door('b','wall',10,4,0,90)};
+    c._hq.portal.cross = {slot:'a',vx:0,vy:-5,vz:10,at:1000,speed:5};
+    c._hqPortalHop('b');
+    assert.equal(c.pl.air,true); assert.equal(c.pl.vy,-5); assert.equal(c.R().v,10);
+    const d = portals(sandbox()); d._hqRideToggle(true); d.R().v=6; d.R().hd=0;
+    d._hq.portal.placed.a=door('a','wall',0,0,0); d.pl.z=-1;
+    d._hq.opts.onPortalCross = () => false;
+    d.step({},1/60);
+    assert.ok(d.pl.z > -1 && d.R().v > 5);
+    assert.equal(d._hq.portal.cross,null);
 });

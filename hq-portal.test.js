@@ -242,13 +242,13 @@ test('THE RENDERER rev 2: the ceiling and the wall are surfaces, the frame is la
     /* the crossing */
     assert.ok(/function _hqPortalInMouth\(rec, pl\)/.test(TR) && /function _hqTickPortalCross\(dt\)/.test(TR), 'the touch crossing');
     const mouth = TR.slice(TR.indexOf('function _hqPortalInMouth'), TR.indexOf('function _hqTickPortalCross'));
-    assert.ok(/rec\.portalSurf === 'wall'\) return false/.test(mouth), 'a wall door has no mouth of its own (rev 4: it is run into — _hqPortalWallTouch)');
-    assert.ok(/pl\.y <= rec\.py \+ 0\.4/.test(mouth) && /var head = pl\.y \+ \(pl\.heightM \|\| 1\.75\)/.test(mouth), 'the feet for a floor hatch, the head for a ceiling one');
+    assert.ok(/rec\.portalSurf === 'wall'/.test(mouth), 'wall mouths participate in exit hold geometry');
+    assert.ok(/pl\.y <= rec\.py \+ 0\.25/.test(mouth) && /var head = pl\.y \+ \(pl\.heightM \|\| 1\.75\)/.test(mouth), 'the feet for a floor hatch, the head for a ceiling one');
     const cross = TR.slice(TR.indexOf('function _hqTickPortalCross'), TR.indexOf('function _hqPortalHop'));
-    assert.ok(/H\.portal\.hold = \{ slot: s, at: performance\.now\(\) \}/.test(cross) && /H\.opts\.onPortalCross/.test(cross), 'the mouth is held and the crossing reported');
+    assert.ok(/H\.portal\.hold = \{ slot: slot, at: now \}/.test(cross) && /H\.opts\.onPortalCross/.test(cross), 'the mouth is held and the crossing reported');
     const hop = TR.slice(TR.indexOf('function _hqPortalHop'), TR.indexOf('/* The story cast'));
-    assert.ok(/surf === 'ceiling'/.test(hop) && /pl\.vy = -Math\.max\(2, Math\.min\(18, Math\.max\(speed, -out\.y\)\)\)/.test(hop), 'out of a ceiling hatch you keep falling');
-    assert.ok(/if \(up > 4\) \{ pl\.y = rec\.py \+ 0\.06; pl\.air = true/.test(hop), 'out of a floor hatch you are thrown up when you came in fast');
+    assert.ok(/surf === 'ceiling'/.test(hop) && /pl\.vy = -Math\.max\(2, Math\.min\(C\.max \|\| 18, -out\.y\)\)/.test(hop), 'out of a ceiling hatch you keep falling');
+    assert.ok(/if \(up > 0\.1\) \{ pl\.y = rec\.py \+ 0\.06; pl\.air = true/.test(hop), 'out of a floor hatch you are thrown up when you came in fast');
     assert.ok(/H\.portal\.hold = \{ slot: slot, at: performance\.now\(\) \}/.test(hop), 'the mouth you came out of does not swallow you again');
     /* the sites that had to learn about a flat door */
     assert.ok(/var want = \(d\.portalSurf && \(d\.portalSurf !== 'wall' \|\| _hqPortalRules\(\)\.leafAlways\)\) \? 1 :/.test(TR), 'a flat threshold stands open (rev 5: a wall one too)');
@@ -303,7 +303,7 @@ test('THE RENDERER rev 3: the gun in the hand while drawn, the laser sight, the 
     const land = TR.slice(TR.indexOf('function _hqPortalLandBeat'), TR.indexOf('function _hqPortalFlight'));
     assert.ok(/playDoorSfx\('doorGunLand'/.test(land) && /new THREE\.PointLight\(slotHex/.test(land) && /shock\.quaternion\.copy\(B\.q\)/.test(land), 'the landing: the sound, a breath of light, the shock ring in the surface\'s plane');
     const cross = TR.slice(TR.indexOf('function _hqTickPortalCross'), TR.indexOf('function _hqPortalHop'));
-    assert.ok(/rec\.lastCrossAt && performance\.now\(\) - rec\.lastCrossAt < rearm\) continue;/.test(cross) && /rec\.lastCrossAt = performance\.now\(\);/.test(cross), 'D3c: a mouth re-arms only after rearmMs');
+    assert.ok(/rec\.lastCrossAt && now - rec\.lastCrossAt < _hqPortalRules\(\)\.rearmMs\) continue;/.test(cross) && /rec\.lastCrossAt = now;/.test(cross), 'D3c: a mouth re-arms only after rearmMs');
     const hop = TR.slice(TR.indexOf('function _hqPortalHop'), TR.indexOf('function _hqPortalTickHold'));
     assert.ok(/for \(var nd = 0; nd <= nudge \+ 1e-6; nd \+= 0\.15\)/.test(hop) && /_hqAirClearOfBlockers\(pl\.x, pl\.z, fy\)/.test(hop), 'D4: the exit is nudged clear along the twin\'s normal');
     assert.ok(/function _hqPortalTickHold\(\)/.test(TR) && /function _hqPortalRecall\(\)/.test(TR), 'the hold and the recall');
@@ -438,9 +438,9 @@ test('REV 4 · THE CARRY: the velocity is measured off the frame, a wall door is
     const carry = TR.slice(TR.indexOf('function _hqTickCarry'), TR.indexOf('function _hqPortalWallTouch'));
     assert.ok(/if \(pl\.air\) \{\s*\n\s*if \(_hqAirOK\(pl\.x \+ cx, pl\.z, pl\.y\)\) pl\.x \+= cx; else pl\.mvx = 0;/.test(carry) && /var f = Math\.exp\(-dt \/ Math\.max\(0\.05, C\.groundS \|\| 0\.55\)\); pl\.mvx \*= f; pl\.mvz \*= f;/.test(carry), 'kept in the air, run off on the ground, killed by a wall');
     const touch = TR.slice(TR.indexOf('function _hqPortalWallTouch'), TR.indexOf('function _hqPortalWallExit'));
-    assert.ok(/var pin = -\(\(pl\.pushX \|\| 0\) \* rec\.nx \+ \(pl\.pushZ \|\| 0\) \* rec\.nz\);/.test(touch) && /return Math\.max\(vin, pin\) > 0\.6;/.test(touch), 'held against the discs, the push is the crossing');
+    assert.ok(/var pin = -\(\(pl\.pushX \|\| 0\) \* rec\.nx \+ \(pl\.pushZ \|\| 0\) \* rec\.nz\);/.test(touch) && /return Math\.max\(vin, pin\) > 0\.1;/.test(touch), 'held against the discs, the push is the crossing');
     const cross = TR.slice(TR.indexOf('function _hqTickPortalCross'), TR.indexOf('function _hqPortalHop'));
-    assert.ok(/if \(rec\.portalSurf === 'wall'\) \{ if \(!_hqPortalWallTouch\(rec, pl\)\) continue; \}/.test(cross) && /vx: cvx, vy: pl\.air \? \(pl\.vy \|\| 0\) : \(pl\.velY \|\| 0\), vz: cvz/.test(cross), 'the crossing carries the vector');
+    assert.ok(/_hqPortalWallTouch\(rec, sample\)/.test(cross) && /vx: v\.x, vy: v\.y, vz: v\.z/.test(cross), 'the crossing carries the vector');
     const hop = TR.slice(TR.indexOf('function _hqPortalHop'), TR.indexOf('function _hqPortalTickHold'));
     assert.ok(/var out = _hqPortalMapCarry\(vIn, A \|\| \{ surf: 'floor', face: 0 \}, rec, C\);/.test(hop) && /_hqPortalWallExit\(rec, out\);/.test(hop) && /H\.cam\.yaw \+= _hqRad\(_hqHeadingOf\(rec\.nx, rec\.nz\)\) - _hqRad\(_hqHeadingOf\(-A\.nx, -A\.nz\)\);/.test(hop), 'the hop maps the entry through the pair; wall → wall keeps the look\'s offset');
     assert.ok(/portalCarryFor\(twin\)/.test(MP) && /function _hqPortalCarryFor\(twin\)/.test(TR) && /_hqPortalCarryMem = \{ out: out, at: performance\.now\(\)/.test(TR), 'map.js hands the twin\'s row before a room change; the renderer keeps the carry for the landing');

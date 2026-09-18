@@ -45349,27 +45349,42 @@ const ThreeRenderer = (function () {
     /* a WALL door is crossed by TOUCH too (rev 4): the body's centre inside the opening's
        width, within carry.touchM in front of the plane, moving INTO it */
     function _hqPortalWallTouch(rec, pl) {
-        if (!rec || rec.portalSurf !== 'wall') return false;
-        var C = _hqPortalRules().carry;
-        var dx = pl.x - rec.px, dz = pl.z - rec.pz;
-        var front = dx * rec.nx + dz * rec.nz, lat = dx * (-rec.nz) + dz * rec.nx;
-        if (front < -0.15 || front > (C.touchM || 1.05)) return false;
-        if (Math.abs(lat) > (rec.ow || 1.1) * 0.5 + 0.12) return false;
-        if (pl.y < (rec.y0 || 0) - 1.0 || pl.y > (rec.y0 || 0) + 1.6) return false;
+        if (!rec || rec.portalSurf !== 'wall' || !_hqPortalInMouth(rec, pl)) return false;
         var vin = -((pl.velX || 0) * rec.nx + (pl.velZ || 0) * rec.nz);
-        var pin = -((pl.pushX || 0) * rec.nx + (pl.pushZ || 0) * rec.nz);   // held against the discs, the push still counts
-        return Math.max(vin, pin) > 0.6;
+        var pin = -((pl.pushX || 0) * rec.nx + (pl.pushZ || 0) * rec.nz);
+        return Math.max(vin, pin) > 0.1;
     }
     /* out of a WALL twin: standing clear of its discs, the carry along its normal */
     function _hqPortalWallExit(rec, out) {
-        var H = _hq, pl = H.player, C = _hqPortalRules().carry;
+        var H = _hq, pl = H.player;
         var gap = HQ_BODY_R + 0.45;
         pl.x = rec.px + rec.nx * gap; pl.z = rec.pz + rec.nz * gap;
         var y0 = rec.y0 || 0, fl = _hqSurface(pl.x, pl.z, null, true);
         pl.y = (fl !== null && Math.abs(fl - y0) < 0.6) ? fl : y0;
         pl.mvx = out.x; pl.mvz = out.z;
-        if (out.y > 0.8) { pl.air = true; pl.vy = Math.min(C.max || 18, out.y); pl.jumpT = -1; } else { pl.air = false; pl.vy = 0; pl.jumpT = -1; }
+        pl.air = out.y > 0.1 || fl === null || pl.y > fl + 0.08;
+        pl.vy = pl.air ? out.y : 0; pl.jumpT = -1;
         pl.yaw = pl.targetYaw = Math.atan2(rec.nx, rec.nz);
+    }
+    function _hqPortalRideState() {
+        var R = _hq && _hq.ride;
+        if (!R || !R.on) return null;
+        var saved = {};
+        ['v', 'stance', 'trick', 'queue', 'spinAcc', 'spinDir', 'combo', 'airT', 'flip', 'roll', 'deckRoll', 'deckSpin', 'grab', 'grabT', 'grabDone', 'keyLatch'].forEach(function (key) {
+            if (R[key] !== undefined) saved[key] = JSON.parse(JSON.stringify(R[key]));
+        });
+        return saved;
+    }
+    function _hqPortalRideExit(out, saved) {
+        var H = _hq, R = H && H.ride, pl = H && H.player;
+        if (!R || !R.on || !pl) return;
+        if (saved) Object.assign(R, saved);
+        var sign = R.v < 0 ? -1 : 1, speed = Math.hypot(out.x, out.z);
+        if (speed > 0.001) R.hd = Math.atan2(out.x * sign, out.z * sign);
+        R.v = speed * sign; R.grind = null; R.bal = 0; R.onRamp = null; R.lastY = pl.y;
+        R.holdOn = false; R.rise = 0; R.airY0 = pl.y; R.jumpFromWalkOff = false;
+        pl.mvx = pl.mvz = 0; // the rider owns the horizontal carry, exactly once
+        pl.yaw = pl.targetYaw = R.hd + R.stance;
     }
     var _hqPortalCarryMem = null;   // the carry across a ROOM CHANGE (map.js asks `portalCarryFor(twin)` before the change; `_hqGoTo('portal:x')` spends it)
     function _hqPortalCarryFor(twin) {
@@ -45379,7 +45394,7 @@ const ThreeRenderer = (function () {
         var A = H.portal.placed[cross.slot]; if (!A) return null;
         var out = _hqPortalMapCarry({ x: cross.vx || 0, y: cross.vy || 0, z: cross.vz || 0 }, A, { face: twin.face, surf: twin.surf || 'floor' }, _hqPortalRules().carry);
         var camDelta = (A.portalSurf === 'wall' && twin.surf === 'wall') ? (H.cam.yaw - _hqRad(_hqHeadingOf(-A.nx, -A.nz))) : null;
-        _hqPortalCarryMem = { out: out, at: performance.now(), fromSurf: A.portalSurf, camDelta: camDelta };
+        _hqPortalCarryMem = { out: out, at: performance.now(), fromSurf: A.portalSurf, camDelta: camDelta, ride: _hqPortalRideState() };
         return out;
     }
     /* THE LASER SIGHT: a thread from the muzzle to the aim in the verdict's
@@ -46131,42 +46146,59 @@ const ThreeRenderer = (function () {
     }
     /* THE MOUTH: is the body in this threshold's opening? A floor door reads
        the FEET, a ceiling door reads the HEAD (you jump up into it), a wall
-       door is walked into by the press-in and never read here. */
+       door uses the same body overlap for entry and exit holding. */
     function _hqPortalInMouth(rec, pl) {
-        if (!rec || !rec.portalSurf || rec.portalSurf === 'wall') return false;
-        var rad = (rec.ow || 1.1) * 0.5 + 0.12;
-        if (Math.hypot(pl.x - rec.px, pl.z - rec.pz) > rad) return false;
-        if (rec.portalSurf === 'floor') return pl.y <= rec.py + 0.4 && pl.y >= rec.py - 1.2;
+        if (!rec || !rec.portalSurf) return false;
+        var pad = HQ_BODY_R * 0.8, dx = pl.x - rec.px, dz = pl.z - rec.pz;
+        if (rec.portalSurf === 'wall') {
+            var front = dx * rec.nx + dz * rec.nz, lat = dx * (-rec.nz) + dz * rec.nx;
+            return front >= -0.15 && front <= (_hqPortalRules().carry.touchM || 1.05) + 0.1 &&
+                Math.abs(lat) <= (rec.ow || 1.1) * 0.5 + pad &&
+                pl.y + (pl.heightM || 1.75) > (rec.y0 || 0) + 0.2 && pl.y < (rec.y0 || 0) + (rec.oh || 2.2) - 0.2;
+        }
+        var F = _hqPortalFrame((rec.door && rec.door.face) || 0, rec.portalSurf);
+        if (Math.abs(dx * F.X[0] + dz * F.X[2]) > (rec.ow || 1.1) * 0.5 + pad ||
+            Math.abs(dx * F.Y[0] + dz * F.Y[2]) > (rec.oh || 2.2) * 0.5 + pad) return false;
+        if (rec.portalSurf === 'floor') return pl.y <= rec.py + 0.25 && pl.y >= rec.py - 1.2;
         var head = pl.y + (pl.heightM || 1.75);
-        return head >= rec.py - 0.4 && head <= rec.py + 1.4;
+        return head >= rec.py - 0.25 && head <= rec.py + 1.4;
     }
     /* run every frame right after the walker's tick: a flat threshold is
        crossed by TOUCH. The exit is HELD until the body leaves its mouth, so
        a floor door under a ceiling door is a fall that never lands. */
     function _hqTickPortalCross(dt) {
-        var H = _hq, pl = H && H.player; if (!pl || H.paused || !H.portal) return;
+        var H = _hq, pl = H && H.player;
+        if (!pl || H.paused || !H.portal) return;
+        _hqPortalSweep(0, { x: pl.velX || pl.pushX || 0, y: pl.air ? pl.vy : (pl.velY || 0), z: pl.velZ || pl.pushZ || 0 });
+    }
+    // Test the swept body before collision/gravity can stop it or bank a trick on a hatch.
+    function _hqPortalSweep(dt, v) {
+        var H = _hq, pl = H && H.player;
+        if (!pl || H.paused || !H.portal || !H.opts.onPortalCross) return false;
         var hold = H.portal.hold;
-        if (hold) {
-            var hr = H.portal.placed[hold.slot];
-            if (!hr || !_hqPortalInMouth(hr, pl) || performance.now() - hold.at > 4000) H.portal.hold = null;
+        if (hold && (!H.portal.placed[hold.slot] || !_hqPortalInMouth(H.portal.placed[hold.slot], pl))) H.portal.hold = null;
+        var steps = Math.max(1, Math.ceil(Math.hypot(v.x, v.y, v.z) * dt / 0.12));
+        var now = performance.now(), slots = ['a', 'b'];
+        for (var j = 0; j <= steps; j++) {
+            var t = dt * j / steps;
+            var sample = { x: pl.x + v.x * t, z: pl.z + v.z * t, y: pl.y + v.y * t,
+                heightM: pl.heightM, velX: v.x, velZ: v.z, pushX: v.x, pushZ: v.z };
+            for (var i = 0; i < slots.length; i++) {
+                var slot = slots[i], rec = H.portal.placed[slot];
+                if (!rec || (H.portal.hold && H.portal.hold.slot === slot)) continue;
+                if (rec.lastCrossAt && now - rec.lastCrossAt < _hqPortalRules().rearmMs) continue;
+                if (rec.portalSurf === 'wall' ? !_hqPortalWallTouch(rec, sample) : !_hqPortalInMouth(rec, sample)) continue;
+                if ((rec.portalSurf === 'floor' && v.y > 0.1) || (rec.portalSurf === 'ceiling' && v.y <= 0)) continue;
+                H.portal.cross = { slot: slot, speed: Math.abs(v.y), vx: v.x, vy: v.y, vz: v.z, at: now };
+                H.portal.hold = { slot: slot, at: now };
+                rec.lastCrossAt = now;
+                try { if (H.opts.onPortalCross(slot)) return true; }
+                catch (e) { console.warn('[HQ] portal cross failed', e); }
+                H.portal.cross = null;
+                return false;
+            }
         }
-        var slots = ['a', 'b'], rearm = _hqPortalRules().rearmMs;
-        for (var i = 0; i < slots.length; i++) {
-            var s = slots[i], rec = H.portal.placed[s];
-            if (!rec) continue;
-            if (H.portal.hold && H.portal.hold.slot === s) continue;
-            if (rec.lastCrossAt && performance.now() - rec.lastCrossAt < rearm) continue;   // D3c: a mouth re-arms only rearmMs after its last crossing (the hatch-loop cap)
-            if (rec.portalSurf === 'wall') { if (!_hqPortalWallTouch(rec, pl)) continue; }   // rev 4: a wall door is run into
-            else if (!_hqPortalInMouth(rec, pl)) continue;
-            rec.lastCrossAt = performance.now();
-            /* the entry's VELOCITY (rev 4): the walk's own m/s (velX / velZ off the frame's displacement, vy in the air) — THE CARRY reads it */
-            var cvx = pl.velX || 0, cvz = pl.velZ || 0;
-            if (rec.portalSurf === 'wall' && Math.hypot(cvx, cvz) < 0.6) { cvx = pl.pushX || 0; cvz = pl.pushZ || 0; }   // held against the discs: the push is the speed
-            H.portal.cross = { slot: s, speed: Math.abs(pl.vy || 0), vx: cvx, vy: pl.air ? (pl.vy || 0) : (pl.velY || 0), vz: cvz, at: performance.now() };
-            H.portal.hold = { slot: s, at: performance.now() };   // held either way: a refused crossing must not re-fire every frame
-            if (H.opts.onPortalCross) { try { H.opts.onPortalCross(s); } catch (e) { console.warn('[HQ] portal cross failed', e); } }
-            return;
-        }
+        return false;
     }
     /* OUT OF THE TWIN: along its own normal, carrying the entry's speed —
        out of a CEILING door you keep falling, out of a FLOOR door you are
@@ -46187,12 +46219,12 @@ const ThreeRenderer = (function () {
         if (surf === 'ceiling') {
             pl.x = rec.px; pl.z = rec.pz;
             pl.y = rec.py - (pl.heightM || 1.75) - 0.05;
-            pl.air = true; pl.jumpT = -1; pl.vy = -Math.max(2, Math.min(18, Math.max(speed, -out.y)));
+            pl.air = true; pl.jumpT = -1; pl.vy = -Math.max(2, Math.min(C.max || 18, -out.y));
             pl.mvx = out.x; pl.mvz = out.z;
         } else if (surf === 'floor') {
             pl.x = rec.px; pl.z = rec.pz;
-            var up = Math.max(speed, out.y);
-            if (up > 4) { pl.y = rec.py + 0.06; pl.air = true; pl.jumpT = -1; pl.vy = Math.min(C.max || 18, up); }   // rev 5: speedy thing goes in, speedy thing comes out — the fall's whole speed, to the carry's cap
+            var up = Math.max(0, out.y);
+            if (up > 0.1) { pl.y = rec.py + 0.06; pl.air = true; pl.jumpT = -1; pl.vy = Math.min(C.max || 18, up); }   // rev 5: speedy thing goes in, speedy thing comes out — the fall's whole speed, to the carry's cap
             else { pl.y = rec.py + 0.02; pl.air = false; pl.vy = 0; pl.jumpT = -1; }
             pl.mvx = out.x; pl.mvz = out.z;
         } else {
@@ -46212,7 +46244,9 @@ const ThreeRenderer = (function () {
                 if (_hqAirClearOfBlockers(pl.x, pl.z, fy) && _hqAirClearOfBlockers(pl.x, pl.z, fy + (pl.heightM || 1.75) * 0.9)) { pl.y = fy; break; }
             }
         }
+        _hqPortalRideExit(out);
         pl.visY = pl.y;
+        H.cam.init = false;
         rec.lastCrossAt = performance.now();
         H.portal.hold = { slot: slot, at: performance.now() };   // the mouth you came out of does not swallow you again
         H.portal.cross = null;
@@ -47490,6 +47524,39 @@ const ThreeRenderer = (function () {
     /* THE WALL (rev 3): a rider that cannot make progress along the heading STOPS — the speed
        scrubs to wallScrub of itself (a glancing wall keeps the share it made), never a bail;
        a door's lane keeps a walking pace so the press-in takes it. */
+    // Round props and people have a tangent too; axis-only sliding catches their shoulders.
+    function _hqRideObstacleSlide(pl, R, ox, oz, mx, mz, dt, S) {
+        var speed = Math.hypot(mx, mz), want = speed * dt;
+        if (speed < 0.5 || Math.hypot(pl.x - ox, pl.z - oz) >= want * 0.85) return;
+        var hits = _hqBlockersUnder(ox + mx * dt, oz + mz * dt), U = _hqUnits();
+        for (var i = 0; i < hits.length; i++) {
+            var b = hits[i];
+            if (b.rect || b.portal || _hqBlkTop(b) <= pl.y + HQ_STEP_TOL || (b.y != null && b.y > pl.y + 1.2)) continue;
+            var nx = ox - b.obj.position.x / U, nz = oz - b.obj.position.z / U, len = Math.hypot(nx, nz);
+            if (len < 0.001) continue;
+            nx /= len; nz /= len;
+            var into = mx * nx + mz * nz;
+            if (into >= 0) continue;
+            var tx = mx - into * nx, tz = mz - into * nz, along = Math.hypot(tx, tz);
+            if (along < speed * 0.25) {
+                if (!b.npc) continue; // a head-on solid prop stops the board
+                var side = (_hq.keys.a ? -1 : 1);
+                tx = -nz * speed * 0.45 * side; tz = nx * speed * 0.45 * side;
+            }
+            var x = ox + tx * dt, z = oz + tz * dt, y = _hqSurface(x, z, pl.y, false);
+            if (y === null || Math.hypot(x - ox, z - oz) <= Math.hypot(pl.x - ox, pl.z - oz)) continue;
+            pl.x = x; pl.z = z; _hqRideSetY(pl, R, y, S);
+            return;
+        }
+    }
+    function _hqRideSlide(R, S, sg, want, dx, dz, door) {
+        var distance = Math.hypot(dx, dz);
+        if (want > 0.002 && distance > want * 0.25 && distance < want * 0.98) {
+            // Align the roll to the open tangent once; keep the mouse aim steady.
+            R.hd = Math.atan2(dx * sg, dz * sg);
+            R.v *= Math.min(1, distance / want);
+        } else _hqRideWall(R, S, sg, want, distance, door);
+    }
     function _hqRideWall(R, S, sg, want, moved, door) {
         if (want <= 0.002) return;
         if (moved < want * 0.3) R.v = door ? sg * Math.min(Math.abs(R.v), 0.4) : R.v * (S.wallScrub != null ? S.wallScrub : 0.15);
@@ -47522,6 +47589,18 @@ const ThreeRenderer = (function () {
     }
     /* THE RIDE, per frame — in place of _hqTickWalker's movement */
     function _hqTickRide(dt) {
+        var H = _hq;
+        if (!H || H.paused) return;
+        var steps = Math.max(1, Math.ceil(dt / (1 / 120))), step = dt / steps;
+        for (var i = 0; i < steps; i++) {
+            var pl = H.player, x = pl.x, y = pl.y, z = pl.z;
+            pl._hopped = false;
+            _hqTickRideStep(step);
+            if (_hq !== H || pl._hopped) return;
+            if (step > 0) { pl.velX = (pl.x - x) / step; pl.velZ = (pl.z - z) / step; pl.velY = (pl.y - y) / step; }
+        }
+    }
+    function _hqTickRideStep(dt) {
         var H = _hq, pl = H.player, R = H.ride, k = H.keys, S = _hqSkateRules();
         var TR = S.tricks;
         if (H.paused) { pl.moving = false; return; }
@@ -47538,6 +47617,8 @@ const ThreeRenderer = (function () {
         /* ── THE GRIND ── */
         if (R.grind) {
             var g = R.grind, L = _hqRailLen(g.rail);
+            var railDir = _hqRailAt(g.rail, g.s);
+            if (_hqPortalSweep(dt, { x: railDir.tx * g.dir * R.v, y: 0, z: railDir.tz * g.dir * R.v })) return;
             g.t += dt; g.pts += (TR.grind.perSec || 0) * dt;
             R.v *= Math.pow(S.grindFriction, dt * 60);
             g.s += g.dir * R.v * dt;
@@ -47602,7 +47683,7 @@ const ThreeRenderer = (function () {
                 R.kickT -= dt;
                 if (R.kickT <= 0) { R.kickT = S.kickEvery[0] + Math.random() * (S.kickEvery[1] - S.kickEvery[0]); R.pushAnim = 0.28; R.v += Math.sign(R.v) * 0.25; _hqRideEmit({ kind: 'kick', v: R.v }); }
             } else if (Math.abs(R.v) < S.kickMinV) R.kickT = S.kickEvery[0];
-            _hqRideTurn(R, R.hd - turnIn * S.turn * Math.max(S.turnMin != null ? S.turnMin : 0.4, Math.min(1, Math.abs(R.v) / 3)) * dt);   // rev 3: a floor — the board turns at a crawl too
+            _hqRideTurn(R, R.hd - turnIn * (R.v < 0 ? -1 : 1) * S.turn * Math.max(S.turnMin != null ? S.turnMin : 0.4, Math.min(1, Math.abs(R.v) / 3)) * dt);   // rev 3: a floor — the board turns at a crawl too
             leanT = -turnIn * 0.32 * Math.min(1, Math.abs(R.v) / 4);
             /* THE OLLIE (rev 2 — HOLD TO JUMP): the press pops the tap height
                (ollieTapV) at once; SPACE held keeps LIFTING for ollieHoldS
@@ -47650,12 +47731,14 @@ const ThreeRenderer = (function () {
         R.lean += (leanT - R.lean) * Math.min(1, dt * 8);
         /* ── the move ── */
         var mx = Math.sin(R.hd) * R.v, mz = Math.cos(R.hd) * R.v;
+        pl.pushX = mx; pl.pushZ = mz;
+        if (_hqPortalSweep(dt, { x: mx, y: pl.air ? pl.vy : 0, z: mz })) return;
         var nx = pl.x + mx * dt, nz = pl.z + mz * dt;
         if (pl.air) {
-            var okx = _hqAirOK(nx, pl.z, pl.y), okz = _hqAirOK(pl.x, nz, pl.y), ax0 = pl.x, az0 = pl.z;
-            if (okx) pl.x = nx; if (okz) pl.z = nz;
-            var sgA = R.v < 0 ? -1 : 1, wantA = Math.abs(R.v) * dt, movedA = sgA * ((pl.x - ax0) * Math.sin(R.hd) + (pl.z - az0) * Math.cos(R.hd));
-            _hqRideWall(R, S, sgA, wantA, movedA, false);   // a wall in the air: a stop, never a bail (rev 3)
+            var okx = _hqAirOK(nx, pl.z, pl.y), ax0 = pl.x, az0 = pl.z;
+            if (okx) pl.x = nx; if (_hqAirOK(pl.x, nz, pl.y)) pl.z = nz;
+            var sgA = R.v < 0 ? -1 : 1, wantA = Math.abs(R.v) * dt;
+            _hqRideSlide(R, S, sgA, wantA, pl.x - ax0, pl.z - az0, false);   // a wall in the air: a stop, never a bail (rev 3)
             _hqRideGravity(pl, R, dt, S, false);
         } else if (R.v !== 0) {
             var under = _hqRampUnder(nx, nz), prof = under && under.ramp.prof;
@@ -47674,24 +47757,22 @@ const ThreeRenderer = (function () {
             }
             /* a profiled ramp: its own surface, no step rule (the curve is steep near the coping) */
             var skipB = _hqSurface(pl.x, pl.z, pl.y, false) === null;
-            var y1 = _hqSurface(nx + Math.sign(mx) * HQ_BODY_R * 0.6, pl.z, prof ? null : pl.y, skipB);
+            var y1 = _hqSurface(nx, pl.z, prof ? null : pl.y, skipB);
             if (y1 !== null && prof) y1 = Math.max(y1, _hqRampSurfaceAt(nx, pl.z) || y1);
             if (y1 !== null) { pl.x = nx; _hqRideSetY(pl, R, y1, S); }
-            var y2 = _hqSurface(pl.x, nz + Math.sign(mz) * HQ_BODY_R * 0.6, prof ? null : pl.y, skipB);
+            var y2 = _hqSurface(pl.x, nz, prof ? null : pl.y, skipB);
             if (y2 !== null && prof) y2 = Math.max(y2, _hqRampSurfaceAt(pl.x, nz) || y2);
             if (y2 !== null) { pl.z = nz; _hqRideSetY(pl, R, y2, S); }
             if (y1 === null && y2 === null) {
                 var y3 = _hqSurface(nx, nz, prof ? null : pl.y, skipB);
                 if (y3 !== null) { pl.x = nx; pl.z = nz; _hqRideSetY(pl, R, y3, S); }
             }
-            /* THE WALL: measured as progress ALONG THE HEADING (the axis slide
-               lets a rider rolling straight at a wall "succeed" on the other
-               axis every frame). Head-on = a stop, or a bail at speed; a
-               glancing wall scrubs speed. A door's lane is never a bail (the
-               press-in takes it). */
+            /* Keep the free tangential component after a brush. Head-on contact
+               stops without a bail; round NPCs allow a gentle shoulder slide. */
+            _hqRideObstacleSlide(pl, R, ox, oz, mx, mz, dt, S);
             var sgM = R.v < 0 ? -1 : 1, wantM = Math.abs(R.v) * dt, movedM = sgM * ((pl.x - ox) * Math.sin(R.hd) + (pl.z - oz) * Math.cos(R.hd));
             var doorT = (wantM > 0.002 && movedM < wantM * 0.3) ? _hqFindTarget() : null;
-            _hqRideWall(R, S, sgM, wantM, movedM, !!(doorT && doorT.kind === 'door'));   // rev 3: a wall / a prop is a stop, never a bail
+            _hqRideSlide(R, S, sgM, wantM, pl.x - ox, pl.z - oz, !!(doorT && doorT.kind === 'door'));   // rev 3: a wall / a prop is a stop, never a bail
             /* THE RISE: the ground climbed in the last ~0.3 s; when it runs out at speed, a hop (the stairs, the risers, the cave's wedges) */
             if (R.lastY != null && !pl.air) { var dyR = pl.y - R.lastY; R.rise = R.rise * Math.exp(-dt / 0.3) + Math.max(0, dyR); }
             R.lastY = pl.y;
@@ -47937,12 +48018,14 @@ const ThreeRenderer = (function () {
         var moving = !!(ix || iy);
         var running = !!k.shift && moving;
         var mx = 0, mz = 0;
+        if (!moving && !H.paused && _hqPortalSweep(dt, { x: pl.mvx || 0, y: pl.air ? pl.vy - HQ_GRAV * dt : 0, z: pl.mvz || 0 })) return;
         if (moving) {
             var fx = Math.sin(H.cam.yaw), fz = -Math.cos(H.cam.yaw);     // camera forward, flattened
             var rx = Math.cos(H.cam.yaw), rz = Math.sin(H.cam.yaw);      // camera right
             mx = fx * (-iy) + rx * ix; mz = fz * (-iy) + rz * ix;
             var ml = Math.hypot(mx, mz); if (ml > 0.001) { mx /= ml; mz /= ml; }
             var speed = running ? 4.6 : 2.4;   // m/s (air control keeps it)
+            if (_hqPortalSweep(dt, { x: mx * speed + (pl.mvx || 0), y: pl.air ? pl.vy - HQ_GRAV * dt : 0, z: mz * speed + (pl.mvz || 0) })) return;
             var nx = pl.x + mx * speed * dt, nz = pl.z + mz * speed * dt;
             if (pl.air) {
                 /* airborne: hard walls and furniture SIDES — no step limits */
@@ -48801,7 +48884,7 @@ const ThreeRenderer = (function () {
             face = isFinite(+id.face) ? +id.face : 0;
         }
         else for (var i = 0; i < _hq.doors.length; i++) if (_hq.doors[i].door.id === id) { d = _hq.doors[i]; break; }
-        var carryAfter = null;
+        var carryAfter = null, rideAfter = null;
         if (spot) { /* placed above */ }
         else if (d && d.portalSurf && d.portalSurf !== 'wall') {
             /* THE DOOR GUN rev 2: a flat threshold — you come out of a ceiling
@@ -48812,7 +48895,7 @@ const ThreeRenderer = (function () {
             else spot = new THREE.Vector3(d.px * U, (py0 + 0.02) * U, d.pz * U);
             face = (d.door.face || 0) + (faceAway ? 180 : 0);
             if (_hq.portal) _hq.portal.hold = { slot: d.portal, at: performance.now() };
-            if (_hqPortalCarryMem && performance.now() - _hqPortalCarryMem.at < 4000) carryAfter = _hqPortalCarryMem.out;   // rev 4: the carry across the room change
+            if (_hqPortalCarryMem && performance.now() - _hqPortalCarryMem.at < 4000) { carryAfter = _hqPortalCarryMem.out; rideAfter = _hqPortalCarryMem.ride; }   // rev 4: the carry across the room change
             _hqPortalCarryMem = null;
         }
         else if (d && d.portal && d.portalSurf === 'wall') {
@@ -48821,7 +48904,7 @@ const ThreeRenderer = (function () {
             spot = new THREE.Vector3((d.px + d.nx * gapW) * U, d.y0 * U, (d.pz + d.nz * gapW) * U);
             face = _hqHeadingOf(d.nx, d.nz);
             var memW = (_hqPortalCarryMem && performance.now() - _hqPortalCarryMem.at < 4000) ? _hqPortalCarryMem : null; _hqPortalCarryMem = null;
-            if (memW) { carryAfter = memW.out; if (memW.camDelta != null) face += memW.camDelta * 180 / Math.PI; }
+            if (memW) { carryAfter = memW.out; rideAfter = memW.ride; if (memW.camDelta != null) face += memW.camDelta * 180 / Math.PI; }
             if (_hq.portal) _hq.portal.hold = { slot: d.portal, at: performance.now() };
         }
         else if (d && d.box) {
@@ -48885,10 +48968,11 @@ const ThreeRenderer = (function () {
         if (carryAfter) {   // THE CARRY across rooms (rev 4)
             pl.mvx = carryAfter.x; pl.mvz = carryAfter.z; pl._hopped = true; pl.velX = carryAfter.x; pl.velZ = carryAfter.z; pl.velY = carryAfter.y;
             if (d && d.portalSurf === 'ceiling') { pl.y = (d.py || 0) - (pl.heightM || 1.75) - 0.05; pl.visY = pl.y; pl.air = true; pl.vy = Math.min(-2, carryAfter.y); }
-            else if (carryAfter.y > 0.8) { pl.air = true; pl.vy = Math.min(18, carryAfter.y); if (d && d.portalSurf === 'floor') pl.y += 0.04; }
+            else if (carryAfter.y > 0.1 || (d && d.portalSurf === 'wall' && (_hqSurface(pl.x, pl.z, null, true) === null || pl.y > _hqSurface(pl.x, pl.z, null, true) + 0.08))) { pl.air = true; pl.vy = carryAfter.y; if (d && d.portalSurf === 'floor') pl.y += 0.04; }
         }
         pl.yaw = pl.targetYaw = _hqHeadingYaw(face);
         if (_hq.ride && _hq.ride.on) { _hq.ride.hd = pl.yaw; _hq.ride.stance = 0; _hq.ride.v = Math.max(-2.5, Math.min(_hq.ride.v, 2.5)); _hq.ride.grind = null; }   // SKATEBOARDING (9.8): through a door on the board, rolling
+        if (carryAfter) _hqPortalRideExit(carryAfter, rideAfter);
         _hq.cam.yaw = _hqRad(face); _hq.cam.init = false;
         return true;
     }

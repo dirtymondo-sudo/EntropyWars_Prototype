@@ -5666,3 +5666,28 @@ timing against the damage tick, the ricochet's read at half speed (a bounce off
 the rim on a flat map), every monument's scale in its 1×1×2 box (the menhir GLB
 fitted to a full tile wide may read chunky — `_MON_GRID` and the builders'
 widths are the edits), the church_wall GLB's facing as a wall piece.
+
+
+## SKATE + PORTAL MOVEMENT INTEGRATION — 2026-09-18, local delivery (not uploaded)
+Main bb51ae4 base. three-renderer.js: `_hqTickRide` substeps `_hqTickRideStep` at
+≤ 1/120 s and records velocity; A/D flip for R.v < 0. `_hqRideSlide` retains the
+free tangent; `_hqRideObstacleSlide` follows circular props/NPCs without overlap.
+Body-centre ground probes retain the surface's existing body-radius collision pad.
+`_hqPortalSweep` checks movement before collision/gravity, including grinds and the
+walker, with full rectangular `_hqPortalInMouth` geometry. Wall mouths now hold exits
+until the body leaves. `_hqPortalRideExit` puts mapped carry into signed R.v / R.hd
+and clears the unused walker impulse. `_hqPortalRideState` keeps plain trick/queue/
+combo/stance data through `_hqPortalCarryFor` → `_hqGoTo` on room changes, never rail
+objects. Floor hatches do not prematurely bank/bail a trick. Raised wall exits fall;
+flat exits keep mapped normal velocity. See the HQ plan/DOOR_MASTER build logs and
+hq-skate.test.js regressions. R2: three-renderer.js; Render: index.html with fresh
+20260918-skate-portals-0545-cors token; tests/docs repo-only. No browser playtest or
+live upload; hands-on feel and cross-room scene-load pauses remain unverified.
+
+Validation completed for this delivery: 49/49 skateboard + portal tests passed,
+including 11 new movement/traversal regressions; edited JavaScript syntax and diff
+whitespace checks passed. Full-suite attempt: 1642 passed, 6 skipped, seven assertion
+failures reproduced on untouched main bb51ae4 (hq-stage2, hq-terrain, hq-urban), and
+one interrupted hq-map-remembers process after ~8 minutes. Its seven non-exhaustive
+checks subsequently passed; the exhaustive hard-find reachability check remains
+unverified. No browser playtest. Full details are in the ZIP's README.txt.
