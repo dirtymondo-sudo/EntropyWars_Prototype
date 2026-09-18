@@ -22,6 +22,7 @@
 // renderer's source sites.
 'use strict';
 const test = require('node:test');
+const { heavy } = require('./test-heavy.js');   // 2026-09-18: the heavy geometry proofs run on `npm run test:full` / in CI
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -69,7 +70,7 @@ function propBlocks(room, p, x, z, margin) {
     return Math.hypot(x - px, z - pz) <= Math.max(foot, 0.3) + margin;
 }
 
-test('the sheet: seven parts on two sites — six on Room 555, the ring on Room 999 — each site + part, none numbered, every one a closed terrain room wearing the bunker shell (the pack: concrete, corrugated, rubber, the drop ceiling), six on a `halls` plan, the war room its own floor; the register lists each site once', () => {
+test('the sheet: seven parts on two sites — six on Room 555, the ring on Room 999 — each site + part, none numbered, every one a closed terrain room wearing the bunker shell (the pack: concrete, corrugated, rubber, the drop ceiling), six on a `halls` plan, the war room its own floor; the register lists each site once', heavy, () => {
     for (const id of IDS) {
         const [site, part] = PARTS[id], r = HQ.rooms[id];
         assert.ok(r && r.kind === 'box' && r.site === site && r.part === part, id + ': a box room wearing site + part');
@@ -275,7 +276,7 @@ test('THE ROOMS: the motor pool’s platform is climbed by both stairs and the t
     assert.ok(HQ.rooms[RING].props.some(p => p.key === 'floating_orb' && Math.abs(p.x - 40) < 1 && p.z === 0), 'THE BEAM on the ring’s east vertex');
 });
 
-test('THE PARK RULE + THE LIGHT + THE HARD TAPES: a rail and a tier or ramp in every part; every part lights itself under the cap; one tape per part (seven re-homed, the hundred kept) on a pinnacle the walker never reaches with a door gun shot at its lip; the envelope walked to', () => {
+test('THE PARK RULE + THE LIGHT + THE HARD TAPES: a rail and a tier or ramp in every part; every part lights itself under the cap; one tape per part (seven re-homed, the hundred kept) on a pinnacle the walker never reaches with a door gun shot at its lip; the envelope walked to', heavy, () => {
     const cap = vm.runInContext('typeof HQ_PROP_LIGHT_MAX !== "undefined" ? HQ_PROP_LIGHT_MAX : 10', D);
     for (const id of IDS) {
         const room = HQ.rooms[id], info = D.hqTerrainInfo(id), F = room.terrain.features;
@@ -304,7 +305,7 @@ test('THE PARK RULE + THE LIGHT + THE HARD TAPES: a rail and a tier or ramp in e
     assert.ok(tapes.some(t => t.where === MOTOR && t.title === 'THE TRAM, 00:00') && tapes.some(t => t.where === SEVEN && t.title === 'SUB-LEVEL 7') && tapes.some(t => t.where === WAR && t.title === 'THE HEXAGON') && tapes.some(t => t.where === BUNKER && t.title === 'EARTHRISE') && tapes.some(t => t.where === RING && t.title === 'BEAM ON'), 'the titles');
 });
 
-test('the shell helper, the looks, the generator table and the source sites: hqBunkerShell is one function (closed, the pack, no strips, the red lamp, a haze, the D.U.M.B. look); four looks; HQ_TERRAIN_GEN.halls; the renderer draws info.planWalls through the one wall path with a keyed material cache and hangs the strip lights; check-terrain solves all seven', () => {
+test('the shell helper, the looks, the generator table and the source sites: hqBunkerShell is one function (closed, the pack, no strips, the red lamp, a haze, the D.U.M.B. look); four looks; HQ_TERRAIN_GEN.halls; the renderer draws info.planWalls through the one wall path with a keyed material cache and hangs the strip lights; check-terrain solves all seven', heavy, () => {
     const S = D.hqBunkerShell({ w: 10, d: 12 });
     assert.ok(!S.open && S.w === 10 && S.d === 12 && S.strips === false && S.lights.length === 0 && S.mood.lamp === 0xff3838 && S.fog.density > 0 && S.look === D.HQ_ROOM_LOOKS.dumb && S.ceilTile === 1.75 && /^urban:/.test(S.wall), 'the bunker shell');
     const O = D.hqBunkerShell({ w: 4, d: 4, look: D.HQ_ROOM_LOOKS.cern, floor: 'urban:TileMarble1a' });

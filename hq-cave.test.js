@@ -20,6 +20,7 @@
 // into it (the dungeon's fourth cell).
 'use strict';
 const test = require('node:test');
+const { heavy } = require('./test-heavy.js');   // 2026-09-18: the heavy geometry proofs run on `npm run test:full` / in CI
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -69,7 +70,7 @@ function propBlocks(room, p, x, z, margin) {
     return Math.hypot(x - px, z - pz) <= Math.max(foot, 0.3) + margin;
 }
 
-test('the sheet: the cave is Hollow Earth’s complex — seven parts, each site + part, none numbered, the register still lists 180 once; every chamber a terrain room, none a grid', () => {
+test('the sheet: the cave is Hollow Earth’s complex — seven parts, each site + part, none numbered, the register still lists 180 once; every chamber a terrain room, none a grid', heavy, () => {
     assert.deepStrictEqual(D.hqSiteComplex(SITE).join(','), [BOARD].concat(PART_IDS).join(','), 'the board room, then the parts in sheet order');
     for (const p of PARTS) {
         const id = D.hqComplexRoomId(SITE, p), r = HQ.rooms[id];
@@ -241,7 +242,7 @@ test('THE PARK RULE and the cave’s own light: a rail (a rail, a wall’s top o
     }
 });
 
-test('THE FIELD: every chamber is solvable from every door; the cavern climbs to 5.25 m and drops from it; THE NEEDLE and THE PINNACLE carry the tapes the walker cannot reach; the lava rift is crossed on its span; the river is deep but for the ford and the plank', () => {
+test('THE FIELD: every chamber is solvable from every door; the cavern climbs to 5.25 m and drops from it; THE NEEDLE and THE PINNACLE carry the tapes the walker cannot reach; the lava rift is crossed on its span; the river is deep but for the ford and the plank', heavy, () => {
     for (const id of PART_IDS) {
         const room = HQ.rooms[id], info = D.hqTerrainInfo(id);
         const L = room.doors.map(d => D.hqTerrainDoorLanding(room, d));

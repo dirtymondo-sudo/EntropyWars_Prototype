@@ -7,6 +7,7 @@
    kerbs; kerbs and lines mitred at corners; CYBERPUNK CITY IS THE GRID and THE
    STRIP its own area — DISASTER CITY the larger area that holds them. */
 const test = require('node:test'), assert = require('node:assert/strict'), fs = require('node:fs'), vm = require('node:vm');
+const { heavy } = require('./test-heavy.js');   // 2026-09-18: the heavy geometry proofs run on `npm run test:full` / in CI
 const { loadGameData } = require('./load-data');
 const D = loadGameData(), HQ = D.DOOR_HQ;
 const rendererSrc = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8'), mapSrc = fs.readFileSync(__dirname + '/map.js', 'utf8'), postSrc = fs.readFileSync(__dirname + '/three-post.js', 'utf8'), uiSrc = fs.readFileSync(__dirname + '/ui.js', 'utf8');
@@ -43,7 +44,7 @@ test('THE LABELS: Disaster City is the larger area — every part of Downtown, t
     assert.equal(HQ.rooms[GRID].label, 'DISASTER CITY · CYBERPUNK CITY'); assert.equal(HQ.rooms[STRIP].label, 'DISASTER CITY · THE STRIP'); assert.equal(HQ.rooms[STREETS].label, 'DISASTER CITY · DOWNTOWN');
 });
 
-test('THE STRIP: a city plan on the Strip\'s own night (hqCityShell strip, the strip look), the boulevard\'s two ends the roads out (downtown_strip east, strip_cyberpunk west — docked on the part, live), every door reached and nothing traps, THE MARQUEE ROOF the hard tape with a shot, the circuit + the traffic, the tape re-homed', () => {
+test('THE STRIP: a city plan on the Strip\'s own night (hqCityShell strip, the strip look), the boulevard\'s two ends the roads out (downtown_strip east, strip_cyberpunk west — docked on the part, live), every door reached and nothing traps, THE MARQUEE ROOF the hard tape with a shot, the circuit + the traffic, the tape re-homed', heavy, () => {
     const r = HQ.rooms[STRIP], S = r.shell, info = D.hqTerrainInfo(STRIP);
     assert.ok(S.open && S.sky && S.sky.night === 1 && S.look === D.HQ_ROOM_LOOKS.strip && S.mood.night === 1, 'the Strip\'s night');
     assert.ok(info.gen && info.gen.kind === 'city' && r.terrain.gen.neon && info.lots.length >= 10 && info.fronts.length >= 6 && info.gen.sidewalk === 3.0, 'the plan: lots ' + info.lots.length);
@@ -100,7 +101,7 @@ test('THE MALL: one open box (96 × 64 × 12), no floor plan and no store-unit m
     assert.equal(D.DOOR_TAPES.filter(t => t.where === MALL).length, 1);
 });
 
-test('THE KERB RULE: in a city plan the seeded street furniture (bins, hydrants, cones, signposts, benches) stands on the SIDEWALK — never in the roadway, never deep in a yard, never on a ramp — on the streets, the grid and the Strip; a row with its own centre (the collapse\'s rubble) keeps its ground', () => {
+test('THE KERB RULE: in a city plan the seeded street furniture (bins, hydrants, cones, signposts, benches) stands on the SIDEWALK — never in the roadway, never deep in a yard, never on a ramp — on the streets, the grid and the Strip; a row with its own centre (the collapse\'s rubble) keeps its ground', heavy, () => {
     for (const id of [STREETS, GRID, STRIP]) {
         const r = HQ.rooms[id], info = D.hqTerrainInfo(id), walk = info.gen.sidewalk;
         const seeded = r.terrain.features.filter(f => f.k === 'scatter' && !(f.x != null && f.r)).map(f => f.key);

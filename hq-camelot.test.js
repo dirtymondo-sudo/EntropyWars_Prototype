@@ -19,6 +19,7 @@
 // hard tapes, the shell helper, the landmark, the four procs and the source sites.
 'use strict';
 const test = require('node:test');
+const { heavy } = require('./test-heavy.js');   // 2026-09-18: the heavy geometry proofs run on `npm run test:full` / in CI
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -64,7 +65,7 @@ function propBlocks(room, p, x, z, margin) {
 const reachFrom = (id, doorId) => { const room = HQ.rooms[id], info = D.hqTerrainInfo(id), L = D.hqTerrainDoorLanding(room, at(id, doorId)); return [info, D.hqTerrainReach(info, L.x, L.z)]; };
 const key = (info, x, z) => D.hqTerrainNodeKey(info, x, z);
 
-test('the sheet: five parts on Room i — site + part, none numbered, every one a terrain room; the ward and the sky OPEN under their own skies (hqCastleShell), the hall / the keep / the undercroft closed and lit by their own fire; three families (rooms · none · halls · cave · rooms); the looks; the register lists the site once and its complex is six rooms', () => {
+test('the sheet: five parts on Room i — site + part, none numbered, every one a terrain room; the ward and the sky OPEN under their own skies (hqCastleShell), the hall / the keep / the undercroft closed and lit by their own fire; three families (rooms · none · halls · cave · rooms); the looks; the register lists the site once and its complex is six rooms', heavy, () => {
     for (const id of IDS) {
         const r = HQ.rooms[id];
         assert.ok(r && r.kind === 'box' && r.site === SITE && r.part === PARTS[id], id + ': a box room wearing site + part');
@@ -256,7 +257,7 @@ test('THE ROOMS: the parapet walk — the wall’s top is a floor once the terra
     assert.equal(HQ.rooms[SKY].props.filter(p => p.key === 'demon_statue').length, 2, 'the gargoyles');
 });
 
-test('THE PARK RULE + THE LIGHT + THE HARD TAPES: a rail and a stair and a tier in every part; every part lights itself under the cap; one tape per part (five re-homed, the hundred kept, every donor keeps one) on a top the walker never reaches with a shot from reached ground; the board keeps THE ROUND TABLE; every part’s envelope is guarded', () => {
+test('THE PARK RULE + THE LIGHT + THE HARD TAPES: a rail and a stair and a tier in every part; every part lights itself under the cap; one tape per part (five re-homed, the hundred kept, every donor keeps one) on a top the walker never reaches with a shot from reached ground; the board keeps THE ROUND TABLE; every part’s envelope is guarded', heavy, () => {
     const cap = vm.runInContext('typeof HQ_PROP_LIGHT_MAX !== "undefined" ? HQ_PROP_LIGHT_MAX : 10', D);
     for (const id of IDS) {
         const room = HQ.rooms[id], info = D.hqTerrainInfo(id), F = room.terrain.features;
@@ -283,7 +284,7 @@ test('THE PARK RULE + THE LIGHT + THE HARD TAPES: a rail and a stair and a tier 
     for (const [id, title] of [[WARD, 'THE DRAWBRIDGE, DUSK'], [HALL, 'THE THIRTEENTH CHAIR'], [KEEP, 'THE WATCH'], [DUNGEON, 'MERLIN, BACKWARDS'], [SKY, 'THE CASTLE IN THE SKY']]) assert.ok(tapes.some(t => t.where === id && t.title === title), title);
 });
 
-test('the shell helper, the looks, the four procs, the landmark and the source sites; check-terrain solves all five', () => {
+test('the shell helper, the looks, the four procs, the landmark and the source sites; check-terrain solves all five', heavy, () => {
     const S = D.hqCastleShell({ w: 10, d: 12 }), K = D.hqCastleShell({ sky: true, w: 10, d: 12 });
     assert.ok(S.open && S.edge === 'open' && S.w === 10 && S.d === 12 && S.sky.night === 1 && S.sky.landmarks[0].kind === 'skycastle' && S.forest && S.lights.length === 0 && S.look === D.HQ_ROOM_LOOKS.camelot && S.mood.night === 1, 'hqCastleShell (the ward)');
     assert.ok(K.open && K.sky.night === 0 && K.sky.landmarks[0].kind === 'castle' && !K.forest && K.floor === 'cloud_2' && K.look === D.HQ_ROOM_LOOKS.skycastle && K.sky === undefined || K.sky.scenery === 'islands', 'hqCastleShell({ sky: true })');

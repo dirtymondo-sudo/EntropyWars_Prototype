@@ -14,6 +14,7 @@
 // Observatorium's shelf counter — ONE home). Repo-only tooling; `npm test`.
 'use strict';
 const test = require('node:test');
+const { heavy } = require('./test-heavy.js');   // 2026-09-18: the heavy geometry proofs run on `npm run test:full` / in CI
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -117,7 +118,7 @@ test('every find stands inside its room, clear of every blocker, native, counter
     }
 });
 
-test('a terrain find stands on dry ground at its height, `hard` exactly when the first door\'s reach never gets there; a site board find is on its cell, `hard` exactly when two levels up', () => {
+test('a terrain find stands on dry ground at its height, `hard` exactly when the first door\'s reach never gets there; a site board find is on its cell, `hard` exactly when two levels up', heavy, () => {
     let caves = 0, boards = 0, hard = 0;
     for (const f of FINDS) {
         const room = HQ.rooms[f.room];

@@ -11,6 +11,7 @@
 // THE DOOR (hqDoorThrough / hqDoorPlateLabel / hqReplateDoors + hqLinkDoors).
 'use strict';
 const test = require('node:test');
+const { heavy } = require('./test-heavy.js');   // 2026-09-18: the heavy geometry proofs run on `npm run test:full` / in CI
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { loadGameData } = require('./load-data');
@@ -84,7 +85,7 @@ test('THE RANCH: THE CORN FIELDS is a terrain part on Room 512, the board is byp
     assert.ok(lit >= 1 && lit <= 10 && Array.isArray(r.shell.lights) && r.shell.lights.length === 0, 'lights itself');
 });
 
-test('THE RANCH\'S GATES: the house\'s dead tree, the Lodge\'s saloon door, the grove\'s back gate and the well stand on the fields; the Graveyard and the Western map wait on their sites', () => {
+test('THE RANCH\'S GATES: the house\'s dead tree, the Lodge\'s saloon door, the grove\'s back gate and the well stand on the fields; the Graveyard and the Western map wait on their sites', heavy, () => {
     const ends = { ranch_haunted: ['site_prebuilt_haunted', 'n', -16, 'deadtree'], ranch_lodge: ['site_prebuilt_lodge', 'n', -4, null], ranch_grove: ['site_prebuilt_bohemian_grove', 'n', 8, null] };
     for (const [id, [far, wall, along, way]] of Object.entries(ends)) {
         const l = L(id); assert.ok(l && l.route === 'ranch' && D.hqLinkLive(l), id + ' live on THE RANCH');

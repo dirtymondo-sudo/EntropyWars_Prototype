@@ -17,6 +17,7 @@
 // map.js / index.html source sites, the rules table, check-terrain on all three.
 'use strict';
 const test = require('node:test');
+const { heavy } = require('./test-heavy.js');   // 2026-09-18: the heavy geometry proofs run on `npm run test:full` / in CI
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -55,7 +56,7 @@ function landing(room, door) {
     return c._hq;
 }
 
-test('the sheet: three parts on two sites — site + part, no number, every one a TERRAIN room; the sea and the abyss OPEN under their own skies (the abyss `underwater`, the whale on its horizon, the waterspout on the sea\'s), the temple CLOSED and lit by its own props; a look each; the register lists each site once; the complexes are two and three rooms', () => {
+test('the sheet: three parts on two sites — site + part, no number, every one a TERRAIN room; the sea and the abyss OPEN under their own skies (the abyss `underwater`, the whale on its horizon, the waterspout on the sea\'s), the temple CLOSED and lit by its own props; a look each; the register lists each site once; the complexes are two and three rooms', heavy, () => {
     for (const id of IDS) {
         const r = HQ.rooms[id];
         assert.ok(r && r.kind === 'box' && r.site && r.part, id + ': a box room wearing site + part');
@@ -135,7 +136,7 @@ test('THE SEA RULE (data.js): `terrain.sea` compiles to info.sea; over the open 
     assert.equal(D.hqTerrainFeet(plain, 0, 0, null), null, 'a deep pool without a sea still refuses the walker');
 });
 
-test('THE SOLVER + THE RETURN GUARANTEE + THE PRODUCTION LANDING: from the first door every other door\'s landing is reached (the swimmer crosses the water), the whirlpool\'s landing reaches the cay, nothing traps, every sill is its pad\'s height, every landing is inside and stands clear of every prop; check-terrain prints every door reached', () => {
+test('THE SOLVER + THE RETURN GUARANTEE + THE PRODUCTION LANDING: from the first door every other door\'s landing is reached (the swimmer crosses the water), the whirlpool\'s landing reaches the cay, nothing traps, every sill is its pad\'s height, every landing is inside and stands clear of every prop; check-terrain prints every door reached', heavy, () => {
     for (const id of IDS) {
         const room = HQ.rooms[id], info = D.hqTerrainInfo(id);
         const L = room.doors.map(d => Object.assign({ d }, D.hqTerrainDoorLanding(room, d)));
@@ -163,7 +164,7 @@ test('THE SOLVER + THE RETURN GUARANTEE + THE PRODUCTION LANDING: from the first
     for (const r of out) { assert.equal(r.unreached.length, 0, r.id + ': ' + r.unreached.join(',')); assert.equal(r.traps.length, 0, r.id + ' traps'); }
 });
 
-test('THE ENTRIES + THE TAPES: the yacht\'s cabin door lands on the cay (bay s x 0), Atlantis\'s wet bulkhead lands DRY in the temple (bay e z 0); the parts wear the boards\' egress; the two bypassed boards carry no tape, each part one (FLIGHT 19 on the lighthouse rock — hard, a shot from the beach; SONAR on the spire — a swim, never hard; the choir on the oracle — hard, a shot from the floor); the hundred is a hundred', () => {
+test('THE ENTRIES + THE TAPES: the yacht\'s cabin door lands on the cay (bay s x 0), Atlantis\'s wet bulkhead lands DRY in the temple (bay e z 0); the parts wear the boards\' egress; the two bypassed boards carry no tape, each part one (FLIGHT 19 on the lighthouse rock — hard, a shot from the beach; SONAR on the spire — a swim, never hard; the choir on the oracle — hard, a shot from the floor); the hundred is a hundred', heavy, () => {
     const E = HQ.siteRooms.entry;
     assert.deepEqual([E.prebuilt_bermuda.room, E.prebuilt_bermuda.door.wall, E.prebuilt_bermuda.door.x], [SEA, 's', 0]);
     assert.deepEqual([E.prebuilt_atlantis.room, E.prebuilt_atlantis.door.wall, E.prebuilt_atlantis.door.z], [TEMPLE, 'e', 0]);

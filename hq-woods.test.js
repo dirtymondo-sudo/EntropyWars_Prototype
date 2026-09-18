@@ -18,6 +18,7 @@
 // the renderer's source sites.
 'use strict';
 const test = require('node:test');
+const { heavy } = require('./test-heavy.js');   // 2026-09-18: the heavy geometry proofs run on `npm run test:full` / in CI
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -231,7 +232,7 @@ test('THE WEENIES: one sky for the woods (hqWoodsShell), two landmarks on its ho
     assert.ok(/if \(Array\.isArray\(sky\.landmarks\) && sky\.landmarks\.length\) \{ try \{ _hqBuildLandmarks\(H, sky\.landmarks, 6000\); \}/.test(renderer), '_hqBuildSky hangs them');
 });
 
-test('THE TAPES: one per part, the hundred kept; the crag, the pinnacle, the stand, the tower and the altar stone carry tapes the walker cannot reach (the door gun’s); the renderer plants the trees on a real kit and the treeline past an open edge', () => {
+test('THE TAPES: one per part, the hundred kept; the crag, the pinnacle, the stand, the tower and the altar stone carry tapes the walker cannot reach (the door gun’s); the renderer plants the trees on a real kit and the treeline past an open edge', heavy, () => {
     const T = D.DOOR_TAPES;
     assert.equal(T.length, 100);
     for (const id of PART_IDS) assert.equal(T.filter(t => t.where === id).length, 1, id + ': one tape');

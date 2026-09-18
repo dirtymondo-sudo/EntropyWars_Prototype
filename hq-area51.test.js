@@ -14,6 +14,7 @@
 // hard tapes, the shell helper, the two procs and the source sites.
 'use strict';
 const test = require('node:test');
+const { heavy } = require('./test-heavy.js');   // 2026-09-18: the heavy geometry proofs run on `npm run test:full` / in CI
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -197,7 +198,7 @@ test('THE ROOMS: the rig and the catwalk are climbed and the crane hook is not; 
     assert.ok(HQ.rooms[LINE].props.some(p => p.key === 'floating_orb') && HQ.rooms[LINE].props.filter(p => p.key === 'flood_mast').length === 4 && HQ.rooms[LINE].props.filter(p => p.key === 'quarter_pipe').length === 2, 'the beacon, four masts, the half pipe');
 });
 
-test('THE PARK RULE + THE LIGHT + THE HARD TAPES: a rail and a stair in every part; every part lights itself under the cap; one tape per part (three re-homed, the hundred kept) on a pinnacle the walker never reaches with a shot from the ground; the board keeps THE BADGE PHOTO', () => {
+test('THE PARK RULE + THE LIGHT + THE HARD TAPES: a rail and a stair in every part; every part lights itself under the cap; one tape per part (three re-homed, the hundred kept) on a pinnacle the walker never reaches with a shot from the ground; the board keeps THE BADGE PHOTO', heavy, () => {
     const cap = vm.runInContext('typeof HQ_PROP_LIGHT_MAX !== "undefined" ? HQ_PROP_LIGHT_MAX : 10', D);
     for (const id of IDS) {
         const room = HQ.rooms[id], info = D.hqTerrainInfo(id), F = room.terrain.features;
@@ -224,7 +225,7 @@ test('THE PARK RULE + THE LIGHT + THE HARD TAPES: a rail and a stair in every pa
     assert.ok(tapes.some(t => t.where === HANGAR && t.title === 'HANGAR 18, 03:00') && tapes.some(t => t.where === WARD && t.title === 'ROOM 5150-B') && tapes.some(t => t.where === LINE && t.title === 'RUNWAY 33'), 'the titles');
 });
 
-test('the shell helper, the looks, the two procs and the source sites', () => {
+test('the shell helper, the looks, the two procs and the source sites', heavy, () => {
     const S = D.hqAirbaseShell({ w: 10, d: 12 });
     assert.ok(S.open && S.edge === 'open' && S.w === 10 && S.d === 12 && S.sky.night === 1 && S.sky.landmarks.length === 1 && S.lights.length === 0 && S.look === D.HQ_ROOM_LOOKS.flightline && S.mood.night === 1, 'hqAirbaseShell');
     for (const k of ['hangar', 'white', 'flightline']) { const L = D.HQ_ROOM_LOOKS[k]; assert.ok(L && L.name && L.retro && L.cin && typeof L.bloom === 'number', 'look ' + k); }

@@ -26,14 +26,39 @@ local server. So Claude CANNOT make changes go live. The ONLY correct workflow:
 DO NOT `git commit`, DO NOT `git push` (it 403s anyway), DO NOT generate patches/
 diffs. The deliverable is always the full edited file, produced in chat.
 
-### TOOLING (added 2026-07-29 — run `npm test` before delivering ANY file)
+### TOOLING (added 2026-07-29; THE SCOPE RULE 2026-09-18 — the user: "why do we even have to test at all, especially if the changes have nothing to do with the maps / areas")
+- **TEST WHAT YOU TOUCHED, NOTHING MORE.** Before delivering: (1) `npm run
+  test:quick` ALWAYS (`node --check` on every JS + the data / server parity
+  and schema checks — ~15 s; a stray brace in data.js takes the whole game
+  down at load, that is the one check that always pays); (2) the ONE
+  `*.test.js` that names the feature you changed, if one exists (`node --test
+  <file>`); (3) `npm run test:full` ONLY when the delivery changed an HQ
+  room / terrain / link / find / tape or the terrain compiler. NEVER run
+  `npm test` or `npm run test:full` as a session-end ritual — every session
+  before this one did, on a VFX or AI change, and it was the whole cost. CI
+  runs the full suite on every push on GitHub's minutes, not the user's.
 - `npm test` — zero-dependency (Node 22 built-in runner): syntax-checks every
   repo JS, validates data.js content schemas (races/spells/abilities/classes),
   and diffs the hand-synced server.js economy copy against data.js (this
   caught real drift on day one: `swordfighter` missing from the server's
   AVAILABLE_RACES). A server-boot smoke test runs when node_modules exists.
-  OPTIONAL: .github/workflows/ci.yml runs the same suite on every push
+  .github/workflows/ci.yml runs the FULL suite on every push
   (must live at exactly that path — GitHub ignores workflows elsewhere).
+- **THE TWO SPEEDS (2026-09-18 — the user's rule: the end-of-session test
+  run was burning credits).** `npm test` is the FAST suite (~2 min): the
+  fifty heavy HQ GEOMETRY PROOFS (every terrain room compiled + its floor
+  plan generated + the walker's reach solved + every hard tape's door-gun
+  shot, `check-terrain.js` / `check-find-spots.js` spawned) are gated behind
+  `test-heavy.js` — `test('…', heavy, () => …)` — and show as SKIPPED.
+  **`npm run test:full`** (= `EW_FULL_TESTS=1`) runs them; run it ONLY when
+  the delivery touched data.js's `DOOR_HQ` rooms / terrain / links / finds
+  / tapes or the terrain compiler, never as a session-end ritual — CI runs
+  the full suite on every push anyway (the GitHub failure e-mail means a
+  REAL red: read the run's `not ok` lines, never re-run it). A new heavy
+  test (anything that compiles more than one terrain room, reads
+  `DOOR_HQ.finds` for every room, or spawns a check-* tool) takes `heavy`.
+  `hqFindRoomInfo` is CACHED on the room object like `_terrainInfo`
+  (`hqFindsDrop()` clears it) — never recompute a room's reach per find.
 - `npm run test:parity` / `npm run test:syntax` — the individual checks.
   ANY edit to the ACCT_* constants / starter lists / race lists in data.js or
   server.js MUST pass test:parity. Since 2026-07-29 the server RUNTIME derives

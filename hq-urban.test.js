@@ -17,6 +17,7 @@
 // track).
 'use strict';
 const test = require('node:test');
+const { heavy } = require('./test-heavy.js');   // 2026-09-18: the heavy geometry proofs run on `npm run test:full` / in CI
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -27,7 +28,7 @@ const SPRITES_SRC = fs.readFileSync(require('node:path').join(__dirname, 'sprite
 const urbanOk = k => typeof k === 'string' && k.startsWith('urban:') && SPRITES_SRC.includes("'" + k.slice(6) + "'");   // THE URBAN PACK (2026-09-17)
 const SITES = {
     prebuilt_strip:    { no: '21',   board: 'site_prebuilt_strip',    parts: ['streets', 'chapel', 'casino'], back: { id: 'chapel', wall: 'n', x: -0.2, leaf: 'leaf_motel', into: 'chapel', at: 'street', backTo: 'site_prebuilt_strip_streets' } },   // THE THIRD PASS (2026-09-17): the Strip's own streets; the chapel walks back onto them
-    prebuilt_downtown: { no: '1954', board: 'site_prebuilt_downtown', parts: ['lobby', 'subway', 'streets', 'mall', 'closet'], back: { id: 'tower', wall: 'e', z: 0, leaf: 'leaf_entrance', into: 'lobby', at: 'street' } },   // DISASTER CITY (2026-09-17): THE STREETS + THE MALL hang off the lobby's avenue doors (hq-city.test.js owns them)
+    prebuilt_downtown: { no: '1954', board: 'site_prebuilt_downtown', parts: ['lobby', 'subway', 'streets', 'mall', 'closet', 'sewers', 'tunnels', 'cells', 'workings'] /* + THE UNDERWORLD (2026-09-18): four parts under the city */, back: { id: 'tower', wall: 'e', z: 0, leaf: 'leaf_entrance', into: 'lobby', at: 'street' } },   // DISASTER CITY (2026-09-17): THE STREETS + THE MALL hang off the lobby's avenue doors (hq-city.test.js owns them)
 };
 const PART_IDS = [].concat(...Object.entries(SITES).map(([s, S]) => S.parts.map(p => S.board + '_' + p)));
 const renderer = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8');
@@ -155,7 +156,7 @@ test('THE SUBWAY’s third station: Downtown’s platform stands its train FREE 
     for (const o of cy.doors) if (o !== st && o.wall === 'n') assert.ok(Math.abs(o.x - st.x) >= 4.4, 'the stair shares a lane with ' + o.id);
     const sub = D.hqWorldRoutes('foyer').find(r => r.id === 'subway');
     assert.strictEqual(sub.stations.map(s => s.room).join(' — '), 'site_prebuilt_fairy_forest — tunnel — site_prebuilt_cyberpunk — site_prebuilt_downtown', 'the line is walked from its end — THE WOODS\' storm drain (9.3 stage 3) — through the tunnel; the last stop is Downtown');
-    assert.strictEqual(sub.legs.length, 3);   // THE WOODS (9.3 stage 3): the storm drain is the third leg
+    assert.strictEqual(sub.legs.length, 5);   // THE WOODS (9.3 stage 3): the storm drain is the third leg; THE UNDERWORLD (2026-09-18): the running tunnels' two legs (the Works' tunnel room, Downtown's platform)
     const here = D.hqWorldRoutes('site_prebuilt_downtown_subway').find(r => r.id === 'subway').stations.find(s => s.room === 'site_prebuilt_downtown');
     assert.ok(here && here.here, 'standing on the platform counts as standing in Downtown');
     assert.ok(D.hqWorldRoutes('foyer').find(r => r.id === 'highway').stations.some(s => s.site === 'prebuilt_downtown'), 'Downtown is an interchange: the highway and the subway');
@@ -225,11 +226,11 @@ test('the production renderer lands every door inside its room, clear of every b
     }
 });
 
-test('THE PARK RULE + the light + the procs: a rail in every room, a stepped ramp in every big one; each room lights itself; the machines and the gates are catalogued procs with builders; one tape per part, the hundred still a hundred, the platform’s finds pinned off the track', () => {
+test('THE PARK RULE + the light + the procs: a rail in every room, a stepped ramp in every big one; each room lights itself; the machines and the gates are catalogued procs with builders; one tape per part, the hundred still a hundred, the platform’s finds pinned off the track', heavy, () => {
     for (const id of PART_IDS) {
         const room = HQ.rooms[id], S = room.shell;
         assert.ok(room.props.some(p => p.key === 'railing_1m'), id + ': a rail to grind');
-        if (S.w >= 12 || S.d >= 12) assert.ok(room.props.some(p => /^riser_[123]$/.test(p.key)), id + ': a big room has a ramp (stepped)');
+        if (S.w >= 12 || S.d >= 12) assert.ok(room.props.some(p => /^riser_[123]$/.test(p.key)) || (room.terrain && room.terrain.features.some(f => f.k === 'ramp')), id + ': a big room has a ramp (stepped, or a terrain ramp — THE UNDERWORLD, 2026-09-18)');
         assert.ok(S.strips === false && S.mood && S.mood.ambient < 1 && Array.isArray(S.lights) && S.lights.length === 0, id + ': no facility strips — the room lights itself');
         const lit = room.props.filter(p => (HQ.catalogue[p.key] || {}).light).length;
         assert.ok(lit >= 1 && lit <= 10, id + ': ' + lit + ' prop lights (HQ_PROP_LIGHT_MAX is 10)');

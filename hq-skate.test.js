@@ -94,7 +94,7 @@ test('THE TABLE: standard issue for the test, B, the feel, every trick with poin
 
 test('THE RECORD: status for nobody, the deck find in Room 26 only while the issue is not free, collect → issued, a banked line keeps the best with its words, a bail counts', () => {
     const st0 = g('hqSkateStatus')(null); assert.equal(st0.issued, true); assert.equal(st0.free, true); assert.equal(st0.key, 'B'); assert.equal(st0.best, null);
-    const finds = HQ.finds.filter(f => f.kind === 'deck');
+    const finds = D.hqFindsForRoom('locker').filter(f => f.kind === 'deck');   // 2026-09-18: the locker's own rows — never DOOR_HQ.finds (every terrain room compiled, two minutes)
     assert.equal(finds.length, 1); assert.equal(finds[0].room, 'locker'); assert.equal(finds[0].id, 'deck:locker'); assert.ok(!finds[0].daily, 'never daily');
     assert.equal(g('hqFindsInRoom')('locker', null).length, 0, 'standard issue: no deck stands in the locker room');
     vm.runInContext('HQ_SKATE_RULES.free = false', D);

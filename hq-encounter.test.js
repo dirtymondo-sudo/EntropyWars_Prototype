@@ -13,6 +13,7 @@
 // battle.js's per-launch intro gate + the commit; the hint). Repo-only.
 'use strict';
 const test = require('node:test');
+const { heavy } = require('./test-heavy.js');   // 2026-09-18: the heavy geometry proofs run on `npm run test:full` / in CI
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -245,7 +246,7 @@ test('THE CLEARED ROOM: a WIN files the native\'s spawn id under the room for TO
     assert.equal(cleared(null, 'x'), null); assert.equal(cleared(p, null), null);
 });
 
-test('THE GUARDED ENVELOPE: in a wild room with natives of its own the pay stands only once the room is cleared today; a roster-only room, a facility room and every tape are never guarded', () => {
+test('THE GUARDED ENVELOPE: in a wild room with natives of its own the pay stands only once the room is cleared today; a roster-only room, a facility room and every tape are never guarded', heavy, () => {
     const guarded = g('hqRoomGuarded');
     const wild = Object.keys(HQ.rooms).filter(id => guarded(id));
     assert.ok(wild.length >= 10, 'the sites with natives: ' + wild.length);

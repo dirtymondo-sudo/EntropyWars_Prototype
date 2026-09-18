@@ -19,6 +19,7 @@
 // catalogue ↔ _MISC_GLB, the vehicle kit, the renderer sites, the docs.
 'use strict';
 const test = require('node:test');
+const { heavy } = require('./test-heavy.js');   // 2026-09-18: the heavy geometry proofs run on `npm run test:full` / in CI
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { loadGameData } = require('./load-data');
@@ -38,7 +39,7 @@ const BATCH = {
 const CAT_KEYS = { city_bin: 'city_bin', city_trash_bin: 'mall_bin', taxi: 'car_taxi', truck: 'car_truck', crashed_car: 'crashed_car', crashed_car_2: 'crashed_car_2', time_machine: 'time_machine', street_drain: 'street_drain', escalator: 'escalator', bus_shelter: 'bus_shelter', cinder_block: 'cinder_block', fire_hydrant: 'fire_hydrant', traffic_barrel: 'traffic_barrel', traffic_cone: 'traffic_cone' };
 function section(src, a, b) { const i = src.indexOf(a); assert.ok(i >= 0, a); const j = src.indexOf(b, i + a.length); assert.ok(j > i, b); return src.slice(i, j); }
 
-test('STREET LEVEL: the compiler rule — the city\'s rise begins riseIn inside the line, a lot\'s face stands frontOut outside it and its base is the sidewalk\'s; the renderer stands every prism FROM THE GROUND (yAbs = the base), w × d, turned to its face, and the low lot is a box from the ground — never a podium', () => {
+test('STREET LEVEL: the compiler rule — the city\'s rise begins riseIn inside the line, a lot\'s face stands frontOut outside it and its base is the sidewalk\'s; the renderer stands every prism FROM THE GROUND (yAbs = the base), w × d, turned to its face, and the low lot is a box from the ground — never a podium', heavy, () => {
     const G = D.HQ_TERRAIN_GEN.city;
     assert.ok(G.riseIn > 0 && G.riseIn < G.edge && G.frontOut > G.riseIn, 'the face stands outside the line, the rise inside it');
     assert.ok(/const d0 = \(gen\.kind === 'city'\) \? -\(\(gen\.riseIn != null\) \? gen\.riseIn : K\.riseIn\) : 0\.2;/.test(data) && data.includes('if (solidMass) return;'), 'the rise starts inside on a podium city and is skipped on a mass city');
@@ -60,7 +61,7 @@ test('STREET LEVEL: the compiler rule — the city\'s rise begins riseIn inside 
     assert.ok(/dd = \(o\.d \? o\.d : \(o\.w \|\| 2\)\) \* ts/.test(sb) && /var fw = d\[2\] \? w : dd;/.test(sb) && /K\.box\(w - inset \* 2, roofY, dd - inset \* 2, coreMat, 0\.5\)/.test(sb), 'the prism takes a depth');
 });
 
-test('CYBERPUNK CITY · THE GRID: a terrain part on Room 2047 wearing hqCityShell({ neon: true }) — Cyberpunk\'s night, the neon look, the neon mood — and a `city` plan with `neon`; THE LOOP is the circuit with 8 gates and a label, the traffic drives it with taxis and trucks; THE SKYWAY (4.5 m up a car ramp, three rails, two quarter pipes), THE BILLBOARD ROOF (5 m, never climbed — the hard tape with a shot), THE PUDDLE waded, THE MARKET, no thicket; the board room\'s back gate pairs; every door reaches every other, nothing traps', () => {
+test('CYBERPUNK CITY · THE GRID: a terrain part on Room 2047 wearing hqCityShell({ neon: true }) — Cyberpunk\'s night, the neon look, the neon mood — and a `city` plan with `neon`; THE LOOP is the circuit with 8 gates and a label, the traffic drives it with taxis and trucks; THE SKYWAY (4.5 m up a car ramp, three rails, two quarter pipes), THE BILLBOARD ROOF (5 m, never climbed — the hard tape with a shot), THE PUDDLE waded, THE MARKET, no thicket; the board room\'s back gate pairs; every door reaches every other, nothing traps', heavy, () => {
     const r = HQ.rooms[GRID], S = r.shell, gen = r.terrain.gen, info = D.hqTerrainInfo(GRID), meta = D.EW_MAP_META.find(m => m.id === 'prebuilt_cyberpunk').env;
     assert.ok(r.kind === 'box' && r.site === 'prebuilt_cyberpunk' && r.part === 'streets' && r.roomNo === undefined && /CYBERPUNK CITY/.test(r.label) && r.lines.length >= 3 && r.spawn, 'the sheet');
     assert.equal(D.hqRoomNo(GRID), '2047'); assert.equal(D.hqRoomSite(GRID), 'prebuilt_cyberpunk');

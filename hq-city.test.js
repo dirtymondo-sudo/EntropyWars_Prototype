@@ -20,6 +20,7 @@
 // two way builders, the audio cues, the looks, the shell helper, the sources.
 'use strict';
 const test = require('node:test');
+const { heavy } = require('./test-heavy.js');   // 2026-09-18: the heavy geometry proofs run on `npm run test:full` / in CI
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -67,7 +68,7 @@ function propBlocks(room, p, x, z, margin) {
     return Math.hypot(x - px, z - pz) <= Math.max(foot, 0.3) + margin;
 }
 
-test('the sheet: two parts on Room 1954 — THE STREETS (open under Downtown’s own sky through hqCityShell, asphalt underfoot, a fog per metre, no treeline) and THE MALL (closed, the security camera’s grade) — each site + part, no number, a terrain room with a `city` plan; the looks; the register lists Downtown once and its complex is five rooms', () => {
+test('the sheet: two parts on Room 1954 — THE STREETS (open under Downtown’s own sky through hqCityShell, asphalt underfoot, a fog per metre, no treeline) and THE MALL (closed, the security camera’s grade) — each site + part, no number, a terrain room with a `city` plan; the looks; the register lists Downtown once and its complex is five rooms', heavy, () => {
     for (const id of IDS) {
         const r = HQ.rooms[id];
         assert.ok(r && r.kind === 'box' && r.site === 'prebuilt_downtown' && r.part, id + ': a box room wearing site + part');
@@ -92,7 +93,7 @@ test('the sheet: two parts on Room 1954 — THE STREETS (open under Downtown’s
     assert.equal(D.hqSiteComplex('prebuilt_downtown').length, 10, 'the board room, the lobby, the platform, the streets, the mall, the supply closet (the second pass) — and THE UNDERWORLD’s four under them (2026-09-18)');
 });
 
-test('THE PLAN (`city`): the streets are the corridors (the ring road a loop, the two avenues), the solid the blocks cut into LOTS (≥ 20 on the streets, ≥ 10 store units in the mall) with FRONTS that look onto a street (the façade standing where the rise begins); a 2.4 m SIDEWALK with a 12 cm kerb on the streets, none in the mall; a podium is a LEVEL, never a stack (the rooftop stays 4.0, the mezzanine 3.4); the plan is deterministic; the outer ring of blocks stands past the ring road', () => {
+test('THE PLAN (`city`): the streets are the corridors (the ring road a loop, the two avenues), the solid the blocks cut into LOTS (≥ 20 on the streets, ≥ 10 store units in the mall) with FRONTS that look onto a street (the façade standing where the rise begins); a 2.4 m SIDEWALK with a 12 cm kerb on the streets, none in the mall; a podium is a LEVEL, never a stack (the rooftop stays 4.0, the mezzanine 3.4); the plan is deterministic; the outer ring of blocks stands past the ring road', heavy, () => {
     const G = D.HQ_TERRAIN_GEN;
     assert.ok(G.city && G.city.walkW === 2.4 && G.city.kerb === 0.12 && G.city.wallH === 3.2 && Array.isArray(G.city.lotW) && Array.isArray(G.city.lotD) && G.city.frontOut > 0 && G.city.riseIn > 0 && G.city.lotMinW > 0, 'the city defaults (STREET LEVEL: the face fOut outside the line, the rise riseIn inside it)');
     /* the second pass: a rotated lot's frame (ax along the face, az toward the street) and the OBB overlap the compiler uses */
@@ -225,7 +226,7 @@ test('ONE PIECE: from the lobby’s avenue doors both parts are walked; every in
     assert.equal(D.hqSiteComplex('prebuilt_downtown').filter(r => IDS.includes(r) || r === LOBBY || r === PLAT || r === CLOSET).length, 5);
 });
 
-test('THE SOLVER + THE RETURN GUARANTEE + THE PRODUCTION LANDING: in both parts every door reaches every other under the walker’s rule, nothing traps, every ramp tops out on reached ground; the renderer lands every door (the free ways included) at its sill on level ground, clear of every prop, native, car and scattered bin; natives, the spawn and every parked car stand on dry level ground off the road’s middle', () => {
+test('THE SOLVER + THE RETURN GUARANTEE + THE PRODUCTION LANDING: in both parts every door reaches every other under the walker’s rule, nothing traps, every ramp tops out on reached ground; the renderer lands every door (the free ways included) at its sill on level ground, clear of every prop, native, car and scattered bin; natives, the spawn and every parked car stand on dry level ground off the road’s middle', heavy, () => {
     for (const id of IDS) {
         const room = HQ.rooms[id], S = room.shell, info = D.hqTerrainInfo(id);
         const L = room.doors.map(d => Object.assign({ d }, D.hqTerrainDoorLanding(room, d)));
@@ -270,7 +271,7 @@ test('THE SOLVER + THE RETURN GUARANTEE + THE PRODUCTION LANDING: in both parts 
     }
 });
 
-test('THE PARK RULE + THE PLATFORMING: the streets have the parking deck (a 3 m tier up a car ramp the walker climbs, a rail round its roof, two quarter pipes) and THE ROOFTOP (4 m, never climbed — a hop from nothing); the mall has THE MEZZANINE (3.4 m up the escalator — smooth collision under the fitted escalator) with its rails and the escalator’s riser; a `railing_1m` in each; the two hard tapes (the rooftop, a store roof) are the door gun’s and each has a shot', () => {
+test('THE PARK RULE + THE PLATFORMING: the streets have the parking deck (a 3 m tier up a car ramp the walker climbs, a rail round its roof, two quarter pipes) and THE ROOFTOP (4 m, never climbed — a hop from nothing); the mall has THE MEZZANINE (3.4 m up the escalator — smooth collision under the fitted escalator) with its rails and the escalator’s riser; a `railing_1m` in each; the two hard tapes (the rooftop, a store roof) are the door gun’s and each has a shot', heavy, () => {
     const sF = HQ.rooms[STREETS].terrain.features, mF = HQ.rooms[MALL].terrain.features, st = D.hqTerrainInfo(STREETS), ml = D.hqTerrainInfo(MALL);
     const deck = sF.find(f => f.k === 'plateau' && f.h === 3.0), ramp = sF.find(f => f.k === 'ramp' && f.h1 === 3.0), roof = sF.find(f => f.k === 'plateau' && f.h === 4.0);
     assert.ok(deck && ramp && roof && sF.filter(f => f.k === 'rail').length >= 3 && HQ.rooms[STREETS].props.filter(p => p.key === 'quarter_pipe').length === 2 && HQ.rooms[STREETS].props.some(p => p.key === 'railing_1m'), 'the streets’ park');

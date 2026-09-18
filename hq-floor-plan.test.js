@@ -17,6 +17,7 @@
    4. ui.js _buildVideoSettingsHTML: one sheet for the battle pause menu, the main
       menu and the HQ pause menu (map.js renders it into the same body). */
 const test = require('node:test');
+const { heavy } = require('./test-heavy.js');   // 2026-09-18: the heavy geometry proofs run on `npm run test:full` / in CI
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
@@ -30,7 +31,7 @@ const ROOMS = D.hqTerrainRooms();
 const PLANNED = ROOMS.filter(id => HQ.rooms[id].terrain.gen);
 const G = D.HQ_TERRAIN_GEN;
 
-test('the sheet: seventeen of the eighteen terrain rooms carry a floor plan — the cave chambers cellular automata, the open woods clearings + corridors; the storm drain (a culvert) keeps its box', () => {
+test('the sheet: seventeen of the eighteen terrain rooms carry a floor plan — the cave chambers cellular automata, the open woods clearings + corridors; the storm drain (a culvert) keeps its box', heavy, () => {
     assert.equal(PLANNED.length, 45, PLANNED.join(','));   // + THE LEY LINES' five (2026-09-18: the tunnels on the new `ley` kind, four ancient sites on `rooms`)   // + THE UNDERWORLD's four (2026-09-18: three `halls` with bsp off — the sewers, the running tunnels, the holding cells — and the old workings on `cave`)   // + THE RANCH's corn fields on `rooms` (2026-09-18)   // + CAMELOT CASTLE's four (2026-09-18: the ward and the sky on `rooms`, the keep on `halls`, the undercroft on `cave`; the great hall is its own floor)   // + AREA 51's three (2026-09-18: the hangar and the white rooms on `halls`, the flight line on `rooms`)   // + D.U.M.B.'s six `halls` plans (2026-09-17: five parts on Room 555 + CERN's ring; the war room is its own floor)   // + THE STRIP's streets, − the mall (its plan went in the third pass, 2026-09-17)   // + CYBERPUNK CITY's grid (the second pass, 2026-09-17), + THE DIVINE STAIR's four, + THE VATICAN's archive and cortile (2026-09-17; the basilica and the observatory are their own floors), + DISASTER CITY's streets and mall (the `city` kind)
     for (const id of PLANNED) {
         const room = HQ.rooms[id], gen = room.terrain.gen, info = D.hqTerrainInfo(id);
@@ -48,7 +49,7 @@ test('the sheet: seventeen of the eighteen terrain rooms carry a floor plan — 
     assert.ok(!HQ.rooms.site_prebuilt_fairy_forest_deadmans.terrain.gen, 'the storm drain is a culvert, not a cave');
 });
 
-test('THE MASK IS THE HEIGHT: every solid cell deep in the plan stands at least half the wall above the floor round it, every forced cell is open, the rim of a plan is solid, and the field is a wall to the walker by the slope rule alone', () => {
+test('THE MASK IS THE HEIGHT: every solid cell deep in the plan stands at least half the wall above the floor round it, every forced cell is open, the rim of a plan is solid, and the field is a wall to the walker by the slope rule alone', heavy, () => {
     for (const id of PLANNED) {
         const room = HQ.rooms[id], info = D.hqTerrainInfo(id), S = room.shell, res = info.res;
         let deep = 0, low = 0, forcedSolid = 0, rimOpen = 0;
@@ -94,7 +95,7 @@ test('THE MASK IS THE HEIGHT: every solid cell deep in the plan stands at least 
     }
 });
 
-test('THE GUARANTEE holds with the plan: every door reaches every other under the walker\'s rule, no tree / scatter stands on the solid, the thicket stands ONLY on the solid of an open room, the natives and props keep their open ground', () => {
+test('THE GUARANTEE holds with the plan: every door reaches every other under the walker\'s rule, no tree / scatter stands on the solid, the thicket stands ONLY on the solid of an open room, the natives and props keep their open ground', heavy, () => {
     for (const id of PLANNED) {
         const room = HQ.rooms[id], info = D.hqTerrainInfo(id);
         const L = room.doors.map(d => D.hqTerrainDoorLanding(room, d));
@@ -113,7 +114,7 @@ test('THE GUARANTEE holds with the plan: every door reaches every other under th
     assert.ok(D.hqTerrainMaskAt(D.hqTerrainInfo('site_prebuilt_fairy_forest_deadmans'), 0, 0) === Infinity, 'no plan = no mask (Infinity inside)');
 });
 
-test('the plan is deterministic and seeded: the same room compiles to the same mask twice; another seed is another plan; the automaton\'s rounds and the corridor carving are real code paths', () => {
+test('the plan is deterministic and seeded: the same room compiles to the same mask twice; another seed is another plan; the automaton\'s rounds and the corridor carving are real code paths', heavy, () => {
     const room = HQ.rooms.site_prebuilt_hollow_earth_gallery;
     const a = D.hqTerrainCompile(room, 'site_prebuilt_hollow_earth_gallery'), b = D.hqTerrainCompile(room, 'site_prebuilt_hollow_earth_gallery');
     assert.equal(Buffer.from(a.mask).toString('hex'), Buffer.from(b.mask).toString('hex'), 'the same plan twice');

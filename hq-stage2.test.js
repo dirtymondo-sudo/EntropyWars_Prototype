@@ -68,7 +68,7 @@ test('every door lands on a real door in a real room, and comes back; the tunnel
         }
     }
     const T = HQ.rooms.tunnel;
-    assert.equal(T.doors.map(d => d.id + '→' + d.action.room).sort().join(','), 'carnival→carnival,garage→garage,link_tunnel_cyberpunk→site_prebuilt_cyberpunk_streets,link_woods_sewer→site_prebuilt_fairy_forest_deadmans,stairwell→stairwell');   // THE WOODS (9.3 stage 3): Dead Man's Cave's grate on the east wall   // .join: a vm-realm array never deep-equals
+    assert.equal(T.doors.map(d => d.id + '→' + d.action.room).sort().join(','), 'carnival→carnival,garage→garage,link_tunnel_cyberpunk→site_prebuilt_cyberpunk_streets,link_tunnels_works→site_prebuilt_downtown_tunnels,link_woods_sewer→site_prebuilt_fairy_forest_deadmans,stairwell→stairwell');   // + THE UNDERWORLD (2026-09-18): the running tunnels' loop opens on the Works' tunnel room   // THE WOODS (9.3 stage 3): Dead Man's Cave's grate on the east wall   // .join: a vm-realm array never deep-equals
     const g = door('garage', 'tunnel');
     assert.ok(g && g.wall === 'e' && g.action.room === 'tunnel' && g.action.at === 'garage', 'the garage: a service hatch down to the platform');
     assert.ok(door('carnival', 'mirrors').action.room === 'mandela' && door('mandela', 'mirrors').action.room === 'carnival', 'the hall of mirrors joins the midway to the Mandela room');

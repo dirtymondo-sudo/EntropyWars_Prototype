@@ -11,6 +11,7 @@
 // _hqPortalLedgeSnap — the rule). D9: the audit tool runs.
 'use strict';
 const test = require('node:test');
+const { heavy } = require('./test-heavy.js');   // 2026-09-18: the heavy geometry proofs run on `npm run test:full` / in CI
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -86,7 +87,7 @@ test('D6 source sites: a link door charts in the visit transaction and toasts a 
     assert.ok(/\.hq-world-leg\.hq-world-unseen/.test(CSS) && /\.hq-world-stop\.unk \.hq-world-dot/.test(CSS) && /\.hq-row\.hq-world-unk/.test(CSS), 'the styles');
 });
 
-test('D7 quiet rooms + THE SUN: the attic and the airlock keep their tape and go without the envelope; the bridge\'s viewport is the sun (catalogue wall proc with a glow and a light, a ticker in the builder), the false window gone from it', () => {
+test('D7 quiet rooms + THE SUN: the attic and the airlock keep their tape and go without the envelope; the bridge\'s viewport is the sun (catalogue wall proc with a glow and a light, a ticker in the builder), the false window gone from it', heavy, () => {
     const quiet = Object.keys(HQ.rooms).filter(k => HQ.rooms[k].quiet);
     assert.ok(quiet.includes('site_prebuilt_haunted_attic') && quiet.includes('site_prebuilt_derelict_airlock') && quiet.length === 2, 'the two smallest parts');
     for (const q of quiet) {
@@ -103,7 +104,7 @@ test('D7 quiet rooms + THE SUN: the attic and the airlock keep their tape and go
     assert.ok(proc.length > 200 && /_hq\.tickers\.push\(function \(dt, now\)/.test(proc) && /sun\.scale\.set/.test(proc) && /glare\.material\.opacity/.test(proc), 'the pass is a ticker: the disc swells, the glare rises');
 });
 
-test('D8 THE SIX LESSONS: every lesson is placed in its room on the right prop (a wall plate, or a post in the open), numbered 1–6 in order, with a non-portal way back; the plate proc reads its row; the hall\'s tape stands on THE LANDING', () => {
+test('D8 THE SIX LESSONS: every lesson is placed in its room on the right prop (a wall plate, or a post in the open), numbered 1–6 in order, with a non-portal way back; the plate proc reads its row; the hall\'s tape stands on THE LANDING', heavy, () => {
     const L = D.hqGunLessons();
     assert.equal(L.length, 6); assert.deepEqual(L.map(l => l.n).join(','), '1,2,3,4,5,6');
     for (const l of L) {
@@ -126,7 +127,7 @@ test('D8 THE SIX LESSONS: every lesson is placed in its room on the right prop (
     assert.ok(tape && tape.y === G.h && tape.z < -hall.shell.d / 2 + G.w - 0.3 && tape.x < hall.shell.w / 2 - 3.36 - 0.5, 'the tape is on the slab, off the flight');
 });
 
-test('ITEM 9 THE LIP: every `hard` board find has a legal shot from a walkway point — an open face, the aim in the lip band under the cell top, inside the gun\'s reach, over every other cell; the snap rule turns that wall hit into a floor door on the top', () => {
+test('ITEM 9 THE LIP: every `hard` board find has a legal shot from a walkway point — an open face, the aim in the lip band under the cell top, inside the gun\'s reach, over every other cell; the snap rule turns that wall hit into a floor door on the top', heavy, () => {
     const hard = HQ.finds.filter(f => f.hard);
     assert.ok(hard.length >= 25, 'the walls are used (' + hard.length + ')');
     const R = D.HQ_PORTAL_RULES;
@@ -164,7 +165,7 @@ test('ITEM 9 THE LIP: every `hard` board find has a legal shot from a walkway po
     assert.ok(/aim\.lip \? \(R\.reasons\.lip/.test(TR), 'the ghost says THE LIP · ON TOP');
 });
 
-test('D9 THE AUDIT: check-find-spots.js runs, lists every find with its lesson, and flags nothing relaxed', () => {
+test('D9 THE AUDIT: check-find-spots.js runs, lists every find with its lesson, and flags nothing relaxed', heavy, () => {
     const out = execFileSync(process.execPath, [__dirname + '/check-find-spots.js', '--suggest'], { encoding: 'utf8' });
     assert.ok(new RegExp('^' + HQ.finds.length + ' finds').test(out.split('\n').find(l => /finds · lessons/.test(l))), 'every find listed');
     assert.ok(/relaxed 0 /.test(out), 'the generator needed no relaxation anywhere');

@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "test": "node --test *.test.js",
+    "test:full": "EW_FULL_TESTS=1 node --test *.test.js",
+    "test:quick": "node check-syntax.js && node check-data-parity.js && node --test content-schema.test.js",
     "test:syntax": "node check-syntax.js",
     "test:parity": "node check-data-parity.js",
     "grades": "node check-grades.js",

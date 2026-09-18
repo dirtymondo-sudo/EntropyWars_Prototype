@@ -17,6 +17,7 @@
 // synthetic field, the renderer's sites, the tool.
 'use strict';
 const test = require('node:test');
+const { heavy } = require('./test-heavy.js');   // 2026-09-18: the heavy geometry proofs run on `npm run test:full` / in CI
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -39,7 +40,7 @@ test('THE RULES agree with the renderer\'s walker: climb = HQ_STEP_TOL, wade = H
     assert.ok(R.dropMax >= 20 && R.maxSlope >= 0.9 && R.wadeMax > R.wade, 'platforming: any drop; a 45° slope is the limit; deep water past the wade');
 });
 
-test('the sheet: eighteen terrain rooms — the cave\'s seven, the woods\' seven and the divine stair\'s four — no room wears `cave` any more, every one compiles on real sheets with known feature kinds and a shell of its own', () => {
+test('the sheet: eighteen terrain rooms — the cave\'s seven, the woods\' seven and the divine stair\'s four — no room wears `cave` any more, every one compiles on real sheets with known feature kinds and a shell of its own', heavy, () => {
     assert.equal(ROOMS.length, 54, ROOMS.join(','));   // + THE LEY LINES' five (2026-09-18: the tunnels on `ley`, the plain, the tell, the plateau, the tower on `rooms`)   // + THE DEEP's three (2026-09-18: the open sea, the abyss, the temple)   // + THE UNDERWORLD's four (2026-09-18: the sewers, the running tunnels, the holding cells, the old workings)   // + THE RANCH's corn fields (2026-09-18, the woods split)   // + CAMELOT CASTLE's five (2026-09-18)   // + AREA 51's three (2026-09-18)   // + D.U.M.B.'s seven (2026-09-17: six parts on Room 555, the ring on Room 999)   // + DISASTER CITY · THE STRIP's streets (2026-09-17)   // + THE VATICAN's four (2026-09-17), + DISASTER CITY's streets and mall (2026-09-17), + CYBERPUNK CITY's grid (the second pass, 2026-09-17)
     assert.equal(D.hqCaveRooms().length, 0, 'the ASCII grid is retired from every room');
     for (const id of ROOMS) {
@@ -54,7 +55,7 @@ test('the sheet: eighteen terrain rooms — the cave\'s seven, the woods\' seven
     }
 });
 
-test('THE SOLVER: in every room, from every door\'s landing every other door\'s landing is reached under the walker\'s own rule; every sill is its pad\'s height; a door that carries y stands at y', () => {
+test('THE SOLVER: in every room, from every door\'s landing every other door\'s landing is reached under the walker\'s own rule; every sill is its pad\'s height; a door that carries y stands at y', heavy, () => {
     for (const id of ROOMS) {
         const room = HQ.rooms[id], info = D.hqTerrainInfo(id), doors = room.doors || [];
         assert.ok(doors.length >= 1, id + ': doors');
@@ -70,7 +71,7 @@ test('THE SOLVER: in every room, from every door\'s landing every other door\'s 
     }
 });
 
-test('THE PARK RULE + THE PLATFORMING: every room has a tier or a ramp AND a rail (a rail, a wall\'s top, a deck\'s rope); every woods room has trees; every closed cave room has a crag; at least five tiers stand higher than a jump', () => {
+test('THE PARK RULE + THE PLATFORMING: every room has a tier or a ramp AND a rail (a rail, a wall\'s top, a deck\'s rope); every woods room has trees; every closed cave room has a crag; at least five tiers stand higher than a jump', heavy, () => {
     let tall = 0;
     for (const id of ROOMS) {
         const room = HQ.rooms[id], T = room.terrain, info = D.hqTerrainInfo(id);
@@ -84,7 +85,7 @@ test('THE PARK RULE + THE PLATFORMING: every room has a tier or a ramp AND a rai
     assert.ok(tall >= 5, 'tall platforms: ' + tall);
 });
 
-test('THE HARD TAPES: every find in a terrain room wears its ground height, and `hard` exactly when the walker\'s reach from the first door never gets there; at least six hard tapes stand on pinnacles the door gun reaches', () => {
+test('THE HARD TAPES: every find in a terrain room wears its ground height, and `hard` exactly when the walker\'s reach from the first door never gets there; at least six hard tapes stand on pinnacles the door gun reaches', heavy, () => {
     let hard = 0, seen = 0;
     for (const f of D.DOOR_HQ.finds) {
         const room = HQ.rooms[f.room]; if (!room || !room.terrain) continue;
@@ -163,17 +164,17 @@ test('THE RENDERER: the field is built on entry, the walker\'s surface / air / c
     assert.ok(HQ.ways.hollowtree && HQ.ways.deadtree && HQ.catalogue.hollow_tree && HQ.catalogue.hollow_dead_tree, 'the two trees with holes in them');
     assert.ok(HQ.rooms.site_prebuilt_fairy_forest_clearing.doors.find(d => d.id === 'forest').way === 'hollowtree', 'the clearing\'s way back is the hollow tree');
     assert.ok(D.hqSiteRoom('prebuilt_fairy_forest').doors.find(d => d.id === 'woods').way === 'hollowtree', 'and so is the forest\'s way in');
-    assert.ok(HQ.links.find(l => l.id === 'woods_haunted').way === 'deadtree' && HQ.links.find(l => l.id === 'deadtree_lookingglass').way === 'deadtree', 'the dead tree leads to the house and to the Looking-Glass');
+    assert.ok(HQ.links.find(l => l.id === 'ranch_haunted').way === 'deadtree' /* THE RANCH (2026-09-18): the pasture's gate is the ranch's now */ && HQ.links.find(l => l.id === 'deadtree_lookingglass').way === 'deadtree', 'the dead tree leads to the house and to the Looking-Glass');
 });
 
-test('the tool: check-terrain.js prints every room with every door reached and exits 0', () => {
+test('the tool: check-terrain.js prints every room with every door reached and exits 0', heavy, () => {
     const out = execFileSync(process.execPath, [__dirname + '/check-terrain.js', '--json'], { encoding: 'utf8', timeout: 120000 });
     const rows = JSON.parse(out);
     assert.equal(rows.length, ROOMS.length);
     for (const r of rows) assert.equal(r.unreached.length, 0, r.id + ': ' + r.unreached.join(','));
 });
 
-test('THE RENDERER on a stub scene: _hqBuildTerrain builds every terrain room — the field mesh with its blend attribute, the sheets, the decks, the walls, the rails on the register, the trees as blockers, the scatter handed to the prop placer — without an error', () => {
+test('THE RENDERER on a stub scene: _hqBuildTerrain builds every terrain room — the field mesh with its blend attribute, the sheets, the decks, the walls, the rails on the register, the trees as blockers, the scatter handed to the prop placer — without an error', heavy, () => {
     const a = renderer.indexOf('    function _hqTerrainMat(info, S) {'), b = renderer.indexOf('    function _hqBuildSiteBoard(room) {');
     assert.ok(a > 0 && b > a, 'the terrain block stands before _hqBuildSiteBoard');
     const src = renderer.slice(a, b);

@@ -21,6 +21,7 @@
 // tapes, the hub, the shell helper + the looks + check-terrain on all four.
 'use strict';
 const test = require('node:test');
+const { heavy } = require('./test-heavy.js');   // 2026-09-18: the heavy geometry proofs run on `npm run test:full` / in CI
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -67,7 +68,7 @@ function propBlocks(room, p, x, z, margin) {
 const reachFrom = (id, doorId) => { const room = HQ.rooms[id], info = D.hqTerrainInfo(id), L = D.hqTerrainDoorLanding(room, at(id, doorId)); return [info, D.hqTerrainReach(info, L.x, L.z)]; };
 const key = (info, x, z) => D.hqTerrainNodeKey(info, x, z);
 
-test('the sheet: four parts on Room 1954 — site + part, none numbered, every one a CLOSED terrain room wearing the underworld shell (hqSewerShell: brick, no strips, its own haze, a look), three on a `halls` plan with the BSP off (the culverts, the loop, the cell block are AUTHORED), the workings a `cave`; every plate reads DISASTER CITY · <place>; the register lists Downtown once and its complex is ten rooms', () => {
+test('the sheet: four parts on Room 1954 — site + part, none numbered, every one a CLOSED terrain room wearing the underworld shell (hqSewerShell: brick, no strips, its own haze, a look), three on a `halls` plan with the BSP off (the culverts, the loop, the cell block are AUTHORED), the workings a `cave`; every plate reads DISASTER CITY · <place>; the register lists Downtown once and its complex is ten rooms', heavy, () => {
     for (const id of IDS) {
         const r = HQ.rooms[id];
         assert.ok(r && r.kind === 'box' && r.site === SITE && r.part === PARTS[id], id + ': a box room wearing site + part');
@@ -209,7 +210,7 @@ test('THE PLANS: the sewers’ four chambers and seven culverts are open (a chan
     for (const id of IDS) { const info = D.hqTerrainInfo(id); assert.ok(info.gen.open >= (D.HQ_TERRAIN_GEN[info.gen.kind].minOpen || D.HQ_TERRAIN_GEN.minOpen), id + ': open share ' + info.gen.open); }
 });
 
-test('THE SOLVER + THE RETURN GUARANTEE + THE PRODUCTION LANDING: every door reaches every other under the walker’s rule, nothing traps, every ramp tops out on reached ground under the tread rule, every landing is inside, level, faces the doorway and stands clear of every prop and native; natives and props on open ground; a plan room hangs nothing on the shell', () => {
+test('THE SOLVER + THE RETURN GUARANTEE + THE PRODUCTION LANDING: every door reaches every other under the walker’s rule, nothing traps, every ramp tops out on reached ground under the tread rule, every landing is inside, level, faces the doorway and stands clear of every prop and native; natives and props on open ground; a plan room hangs nothing on the shell', heavy, () => {
     for (const id of IDS) {
         const room = HQ.rooms[id], S = room.shell, info = D.hqTerrainInfo(id);
         const L = room.doors.map(d => Object.assign({ d }, D.hqTerrainDoorLanding(room, d)));
@@ -276,7 +277,7 @@ test('THE ROOMS: the gallery over the confluence is climbed, the outfall shaft n
     assert.ok(wR.has(key(wi, 6, 3)) && wR.get(key(wi, 6, 3)) < -0.5, 'THE FLOOD is waded through');
 });
 
-test('THE PARK RULE + THE LIGHT + THE HARD TAPES: a rail, a stair and a tier in every part; every part lights itself under the cap; one tape per part (four re-homed, the hundred kept, every donor keeps one) on a top the walker never reaches with a shot from reached ground; every envelope guarded', () => {
+test('THE PARK RULE + THE LIGHT + THE HARD TAPES: a rail, a stair and a tier in every part; every part lights itself under the cap; one tape per part (four re-homed, the hundred kept, every donor keeps one) on a top the walker never reaches with a shot from reached ground; every envelope guarded', heavy, () => {
     const cap = vm.runInContext('typeof HQ_PROP_LIGHT_MAX !== "undefined" ? HQ_PROP_LIGHT_MAX : 10', D);
     for (const id of IDS) {
         const room = HQ.rooms[id], info = D.hqTerrainInfo(id), F = room.terrain.features;
@@ -316,7 +317,7 @@ test('THE HUB: THE UNDERWORLD claims its four rooms BY ID (an explicit `rooms` l
     assert.ok(M.nodes.some(n => n.id === SEWERS && n.hub), 'the anchor drawn big');
 });
 
-test('the shell helper, the looks, the source sites; check-terrain solves all four', () => {
+test('the shell helper, the looks, the source sites; check-terrain solves all four', heavy, () => {
     const S = D.hqSewerShell({ w: 10, d: 12 });
     assert.ok(!S.open && S.w === 10 && S.d === 12 && S.wall === 'bricks_2' && S.strips === false && S.lights.length === 0 && S.fog.density > 0 && S.ceilTile === 1.75 && S.look === D.HQ_ROOM_LOOKS.sewers, 'hqSewerShell');
     assert.ok(/window\.hqSewerShell = hqSewerShell;/.test(data), 'on window');

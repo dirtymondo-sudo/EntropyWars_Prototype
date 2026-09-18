@@ -18523,7 +18523,7 @@ function hqRanchShell(o) {
     const S = {
         w: 0, d: 0, h: 9.0, wallH: 9.0, dadoH: 1.0,
         open: true, edge: 'open',
-        floor: 'grass_rocky', wall: 'grass_tuft', dado: 'dirt', trim: 'wood', ceiling: 'grass_tuft',
+        floor: 'grass_rocky', wall: 'grass_2', dado: 'dirt', trim: 'wood', ceiling: 'grass_2',   // 2026-09-18: grass_tuft is an OBJECT sprite, not a terrain sheet — the renderer loaded nothing for it
         apron: 'grass_rocky', skirt: 'dirt', apronColor: 0x8a8a5a,
         floorColor: 0x9a9660, wallColor: 0x6a7a3a, dadoColor: 0x5a4a30,
         pipes: false, strips: false, lights: [],
@@ -32558,7 +32558,7 @@ const DOOR_HQ = {
                 /* THE JUNCTION: the gallery's catalogue rails, the paint, the light over the confluence */
                 { key: 'railing_1m',      x: -3.5, z: -9.4, face: 0 }, { key: 'railing_1m', x: 3.5, z: -9.4, face: 0 },     // THE PARK RULE's rail on the gallery
                 { key: 'bare_bulb',       x: 0, z: -4, ceil: true }, { key: 'bare_bulb', x: 0, z: 8, ceil: true },
-                { key: 'graffiti_wall',   x: -10.6, z: 6, face: 90 }, { key: 'graffiti_wall', x: 8, z: 10.6, face: 0 },
+                { key: 'graffiti_wall',   x: -11, z: 5.4, face: 90 } /* 2026-09-18: off the culvert's channel (it stood in the waded stream) */, { key: 'graffiti_wall', x: 8, z: 10.6, face: 0 },
                 { key: 'drain_grate',     x: -6, z: -10.6, face: 0, mount: 0.4 },
                 { key: 'warning_tape',    x: 7, z: -6.2, face: 0 },
                 { key: 'traffic_barrel',  x: 9.2, z: 8.6, face: 30 },
@@ -32568,7 +32568,7 @@ const DOOR_HQ = {
                 { key: 'cardboard_boxes', x: -45.4, z: 15.6, face: 15 },
                 { key: 'pipe_run',        x: -34.4, z: 16, face: 90 }, { key: 'pipe_run', x: -34.4, z: 24, face: 90 },
                 { key: 'bare_bulb',       x: -40, z: 17, ceil: true },
-                { key: 'wet_floor_sign',  x: -36, z: 17.2, face: 30 },
+                { key: 'wet_floor_sign',  x: -35.8, z: 17.4, face: 30 } /* 2026-09-18: off the channel (it stood in the waded stream) */,
                 { key: 'floor_stain',     x: -42, z: 16.5 },
                 /* THE CISTERN: the plank, the light, the paint */
                 { key: 'bare_bulb',       x: 24, z: 14, ceil: true },
@@ -32581,15 +32581,15 @@ const DOOR_HQ = {
                 { key: 'drain_grate',     x: 57.6, z: -4, face: 180, mount: 0.4 },
                 { key: 'paper_sheet',     x: 46, z: -17.4, y: 0.01, face: 140 },                                                  // a Works' inspection form: OUTFALL — WHERE?
                 /* the culverts */
-                { key: 'pipe_run',        x: -20, z: -24.6, face: 0 },
+                { key: 'pipe_run',        x: -21.2, z: -24.6, face: 0 } /* 2026-09-18: off the channel */,
                 { key: 'floor_drain',     x: -22, z: -30 },
-                { key: 'floor_stain',     x: 24, z: 33 },
+                { key: 'floor_stain',     x: 22.8, z: 33 } /* 2026-09-18: off the cistern */,
                 { key: 'wet_floor_sign',  x: -22.2, z: -33, face: 60 },
                 { key: 'cardboard_boxes', x: 26.4, z: 36, face: 340 },
             ],
             agents: [],
             npcSpots: [
-                { x: -38, z: 17, face: 90, race: 'ghoul', say: ['“Storm drain.” “Sewer.” “What is the difference?” “Which way it smells.”', '“The pumps run all night.” “For who?” “The water. Somebody has to.”'] },
+                { x: -38.8, z: 16.2 /* 2026-09-18: off the channel */, face: 90, race: 'ghoul', say: ['“Storm drain.” “Sewer.” “What is the difference?” “Which way it smells.”', '“The pumps run all night.” “For who?” “The water. Somebody has to.”'] },
                 { x: 8, z: -8.6, face: 200, race: 'gangster', say: ['“Nobody comes down here.” “You are down here.” “I am nobody. It is a job.”'] },
                 { x: 46, z: -5, face: 230, race: 'zombie', say: ['“Light.” “That is the outfall.” “Where does it go?” “Up.” “Up where?” “Up.”'] },
                 { x: 26.5, z: 31, face: 270, race: 'conspiracy theorist', say: ['“Every gutter in the city drains into this culvert.” “That is what a sewer is.” “That is what they WANT a sewer to be.”'] },
@@ -32680,7 +32680,7 @@ const DOOR_HQ = {
             ],
             agents: [],
             npcSpots: [
-                { x: 0, z: 36.6, face: 180, race: 'skeleton', say: ['“I missed the last one.” “The last one is in the depot.” “Then I have not missed it.”', '“This station is closed.” “I am standing in it.” “That is why it is closed.”'] },
+                { x: 0, z: 36 /* 2026-09-18: off the platform's edge */, face: 180, race: 'skeleton', say: ['“I missed the last one.” “The last one is in the depot.” “Then I have not missed it.”', '“This station is closed.” “I am standing in it.” “That is why it is closed.”'] },
                 { x: -30, z: -27.2, face: 90, race: 'zombie', say: ['“Walking the line.” “Which line?” “All lines. It is one tunnel.”'] },
                 { x: 4.5, z: -3.4, face: 220, race: 'ai', say: ['“Signals green.” “There is no train.” “The signals do not know that. Neither do I, officially.”'] },
                 { x: 2, z: -35.5, face: 300, race: 'gangster', say: ['“Two cars. One lit.” “Which one goes?” “The dark one. The lit one has never moved.”'] },
@@ -32829,7 +32829,7 @@ const DOOR_HQ = {
                 { key: 'brazier',         x: -4, z: -16.5 },
                 { key: 'bare_bulb',       x: 16, z: -10, ceil: true },                                                          // daylight down THE CHIMNEY — the one bright thing
                 { key: 'railing_1m',      x: -14, z: -10.6, face: 0 },                                                          // THE PARK RULE's catalogue rail on the pump ledge
-                { key: 'pipe_run',        x: -16, z: -12.4, face: 0 }, { key: 'pipe_run', x: -10.6, z: 4, face: 90 },
+                { key: 'pipe_run',        x: -16, z: -12.4, face: 0 }, { key: 'pipe_run', x: -10.8, z: 3.6, face: 90 } /* 2026-09-18: off the flood */,
                 { key: 'cardboard_boxes', x: -24, z: -14, face: 20 },
                 { key: 'skull_pile',      x: 22, z: 8, face: 300 },
                 { key: 'signpost',        x: -20, z: -2, face: 60 },
@@ -33124,7 +33124,7 @@ const DOOR_HQ = {
             kind: 'box', site: 'prebuilt_skinwalker', part: 'fields',
             shell: hqRanchShell({ w: 56, d: 46, plate: { x: 0, z: -22, y: 4.4 } }),
             terrain: {
-                floor: 'grass_rocky', cliff: 'grass_tuft', path: 'dirt_2',
+                floor: 'grass_rocky', cliff: 'grass_2', path: 'dirt_2',   // 2026-09-18: `grass_tuft` is no sheet (hq-terrain.test.js) — the tufts' own sheet is grass_2.png
                 noise: { amp: 0.14, scale: 7 },
                 /* THE FLOOR PLAN: the cut rows through the corn — clearings joined by winding rows; the bank is the standing corn (1.9 m,
                    over the walker's head), the windbreak on it thin dead trees; the mask alone is the wall (a bump is not a wall) */
@@ -37119,8 +37119,14 @@ function hqFindPropBlocks(room, p, x, z, margin) {
     if (!(foot > 0) && !cat.block) return false;
     return Math.hypot(x - px, z - pz) <= Math.max(foot, 0.3) + margin;
 }
+/* THE CACHE (2026-09-18 — the test suite's credits): the room's info — above all the walker's REACH over a big field (a
+   third of a second on the sea room) — is kept on the room OBJECT, non-enumerable like `_terrainInfo`, and reused while the
+   room's doors array is the same one (a variant swaps the object; hqLinkDoors / hqRefreshComplexLinks rebuild the doors);
+   hqFindsDrop() clears it. Every find placement and every hard-tape proof used to recompute it per call. */
 function hqFindRoomInfo(roomId) {
     const room = DOOR_HQ.rooms[roomId]; if (!room || room.kind !== 'box') return null;
+    const c = room._findInfo;
+    if (c && c.room === room && c._doors === room.doors && c._doorsN === (room.doors || []).length && c.terrain === (room.terrain ? room._terrainInfo : null)) return c;
     const S = room.shell || {};
     const info = { room, S, doors: room.doors || [], landings: (room.doors || []).map(d => hqFindDoorLanding(room, d)), cave: room.cave ? hqCaveInfo(roomId) : null, terrain: room.terrain ? hqTerrainInfo(roomId) : null, board: null, reach: null };
     /* THE TERRAIN ROOM (2026-09-17): the walker's reach from the first door's landing, on the sampled field */
@@ -37133,6 +37139,9 @@ function hqFindRoomInfo(roomId) {
         const b = hqSiteBoardInfo(room.site);
         if (b) { const cell = 128 / DOOR_HQ.units; info.board = { info: b, cell, half: b.w * cell / 2, gap: S.moat ? (S.moat.gap || 0) : 0 }; }
     }
+    Object.defineProperty(info, '_doors', { value: room.doors, enumerable: false });
+    Object.defineProperty(info, '_doorsN', { value: (room.doors || []).length, enumerable: false });
+    Object.defineProperty(room, '_findInfo', { value: info, enumerable: false, configurable: true, writable: true });
     return info;
 }
 function hqFindFree(ri, x, z, opts) {
@@ -37141,11 +37150,13 @@ function hqFindFree(ri, x, z, opts) {
     if (Math.abs(x) > S.w / 2 - R.minWall || Math.abs(z) > S.d / 2 - R.minWall) return false;
     if (ri.terrain) {
         const ti = ri.terrain;
-        if (hqTerrainFeet(ti, x, z, null) === null || hqTerrainFluidAt(ti, x, z) || hqTerrainSlope(ti, x, z) > 0.45) return false;
+        /* the cheap refusals first (2026-09-18): the reach set, the trees, the scatter, the walls — the sampled feet / fluid /
+           slope reads are the dear ones, and every test is ANDed, so the order changes nothing but the time */
         if (ri.reach && !opts.hard && !ri.reach.has(hqTerrainNodeKey(ti, x, z))) return false;
         for (const t of ti.trees) if (Math.hypot(x - t.x, z - t.z) < t.r + R.awayProp) return false;
         for (const q of ti.scatter) if (Math.hypot(x - q.x, z - q.z) < q.r + R.awayProp) return false;
         for (const w of ti.walls) if (_hqTSegDist(x, z, w.x0, w.z0, w.x1, w.z1).d < w.t / 2 + 0.6) return false;
+        if (hqTerrainFeet(ti, x, z, null) === null || hqTerrainFluidAt(ti, x, z) || hqTerrainSlope(ti, x, z) > 0.45) return false;
     }
     if (ri.cave) {
         const c = hqCaveCellAt(ri.cave, x, z);
@@ -37252,6 +37263,7 @@ function hqFindsWarm(budgetMs) {
 }
 function hqFindsDrop() {
     Object.keys(_HQ_FINDS_CACHE).forEach(k => { delete _HQ_FINDS_CACHE[k]; });
+    Object.keys(DOOR_HQ.rooms || {}).forEach(k => { const r = DOOR_HQ.rooms[k]; if (r && r._findInfo) delete r._findInfo; });
     Object.defineProperty(DOOR_HQ, 'finds', { configurable: true, enumerable: true, get: _hqFindsAll, set: _hqFindsPin });
 }
 function hqBuildFinds(only) {

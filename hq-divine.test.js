@@ -27,6 +27,7 @@
 // shell helpers, the batch's catalogue rows, and the renderer's source sites.
 'use strict';
 const test = require('node:test');
+const { heavy } = require('./test-heavy.js');   // 2026-09-18: the heavy geometry proofs run on `npm run test:full` / in CI
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -80,7 +81,7 @@ function propBlocks(room, p, x, z, margin) {
     return Math.hypot(x - px, z - pz) <= Math.max(foot, 0.3) + margin;
 }
 
-test('the sheet: eight parts on three sites — the Vatican’s basilica, archive, cortile, observatory and catacombs, Hell’s pit, Heaven’s stairway and cloud fields — each site + part, none numbered, every one a terrain room; six carry a floor plan (three caves, three rooms plans), the basilica and the observatory are their own floors; the heaven rooms open under one sky (hqDivineShell), the cortile and the dome under the Vatican’s (hqVaticanShell — the dome at night with THE STAIRWAY IN THE SKY hung on it), the undercrofts closed with a crag; the register lists each site once', () => {
+test('the sheet: eight parts on three sites — the Vatican’s basilica, archive, cortile, observatory and catacombs, Hell’s pit, Heaven’s stairway and cloud fields — each site + part, none numbered, every one a terrain room; six carry a floor plan (three caves, three rooms plans), the basilica and the observatory are their own floors; the heaven rooms open under one sky (hqDivineShell), the cortile and the dome under the Vatican’s (hqVaticanShell — the dome at night with THE STAIRWAY IN THE SKY hung on it), the undercrofts closed with a crag; the register lists each site once', heavy, () => {
     for (const id of IDS) {
         const [site, part] = PARTS[id], r = HQ.rooms[id];
         assert.ok(r && r.kind === 'box' && r.site === site && r.part === part, id + ': a box room wearing site + part');
@@ -364,7 +365,7 @@ test('THE PARK RULE + THE HAZARDS + THE LIGHT: a rail and a tier or ramp in ever
     assert.ok(oR.has(D.hqTerrainNodeKey(oinfo, 0, -2)) && Math.abs(oR.get(D.hqTerrainNodeKey(oinfo, 0, -2)) - 1.2) < 0.2, 'the dais is climbed');
 });
 
-test('THE HARD TAPES: one tape per part (the hundred kept; four more re-homed — Camelot’s, Agartha’s, CERN’s and Area 51’s second), each on a pinnacle the walker never reaches — the skull stack, the plinth, the pinnacle on the lower shelf, the pillar of light, the organ loft, the high shelf, the campanile’s stump, the finial — and the door gun reaches every one; a pay envelope in every part', () => {
+test('THE HARD TAPES: one tape per part (the hundred kept; four more re-homed — Camelot’s, Agartha’s, CERN’s and Area 51’s second), each on a pinnacle the walker never reaches — the skull stack, the plinth, the pinnacle on the lower shelf, the pillar of light, the organ loft, the high shelf, the campanile’s stump, the finial — and the door gun reaches every one; a pay envelope in every part', heavy, () => {
     const tapes = D.DOOR_TAPES;
     assert.equal(tapes.length, 100);
     for (const id of IDS) {
@@ -384,7 +385,7 @@ test('THE HARD TAPES: one tape per part (the hundred kept; four more re-homed �
     assert.ok(tapes.some(t => t.where === PIT && t.title === 'FORM 666') && tapes.some(t => t.where === GATE && t.title === 'THE GATE') && tapes.some(t => t.where === CATACOMBS && t.title === 'THE CONFESSIONAL') && tapes.some(t => t.where === DOME && t.title === 'THE EYEPIECE'), 're-homed by name');
 });
 
-test('the shell helpers, THE VATICAN BATCH and the source sites: hqDivineShell is one function (open, Heaven’s sky, no treeline, the heaven look); hqVaticanShell is one function (open behind a parapet, the Vatican’s sky by day, the night and the landmarks on request); the twenty-four files are catalogue rows on the misc bucket AND _MISC_GLB rows (the same file); the telescope is a way with a builder, a sound and a landmark builder for the stair it sees; check-terrain.js prints every part with every door reached and nothing trapped', () => {
+test('the shell helpers, THE VATICAN BATCH and the source sites: hqDivineShell is one function (open, Heaven’s sky, no treeline, the heaven look); hqVaticanShell is one function (open behind a parapet, the Vatican’s sky by day, the night and the landmarks on request); the twenty-four files are catalogue rows on the misc bucket AND _MISC_GLB rows (the same file); the telescope is a way with a builder, a sound and a landmark builder for the stair it sees; check-terrain.js prints every part with every door reached and nothing trapped', heavy, () => {
     const S = D.hqDivineShell({ w: 10, d: 10 });
     assert.ok(S.open && S.edge === 'open' && S.sky.scenery === 'divine' && !S.forest && S.look === D.HQ_ROOM_LOOKS.heaven && S.w === 10, 'the divine shell');
     const V = D.hqVaticanShell({ w: 12, d: 12 }), N = D.hqVaticanShell({ w: 12, d: 12, night: true, landmarks: [{ kind: 'stairway', deg: 0 }] });

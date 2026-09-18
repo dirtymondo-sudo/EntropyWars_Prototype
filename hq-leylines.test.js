@@ -20,6 +20,7 @@
 // renderer's veins + the T-pillar + the catalogue, check-terrain on all five.
 'use strict';
 const test = require('node:test');
+const { heavy } = require('./test-heavy.js');   // 2026-09-18: the heavy geometry proofs run on `npm run test:full` / in CI
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -54,7 +55,7 @@ function landing(room, door) {
     return c._hq;
 }
 
-test('the sheet: five parts on four ancient sites — site + part, no number, every one a TERRAIN room; the tunnels a CLOSED room three metres high on the `ley` plan wearing the ley shell (no strips, no lamps, its own amber haze, the leylines look); the four sites OPEN under their own skies (the EW_MAP_META row by hand) on `rooms` plans with no thicket, each with its own look; the register lists each site once', () => {
+test('the sheet: five parts on four ancient sites — site + part, no number, every one a TERRAIN room; the tunnels a CLOSED room three metres high on the `ley` plan wearing the ley shell (no strips, no lamps, its own amber haze, the leylines look); the four sites OPEN under their own skies (the EW_MAP_META row by hand) on `rooms` plans with no thicket, each with its own look; the register lists each site once', heavy, () => {
     for (const id of IDS) {
         const r = HQ.rooms[id], [site, part] = PARTS[id];
         assert.ok(r && r.kind === 'box' && r.site === site && r.part === part, id + ': a box room wearing site + part');
@@ -83,7 +84,7 @@ test('the sheet: five parts on four ancient sites — site + part, no number, ev
     assert.equal(D.hqSiteComplex('prebuilt_gobekli').length, 3, 'Göbekli: the board room, the tell, the tunnels');
 });
 
-test('THE GENERATOR (HQ_TERRAIN_GEN.ley): four authored straight lines, generated forks at ley angles that join, run to the rim or end in a niche, a chamber at every crossing and behind every station, the solid a MASS to the ceiling traced into walls; deterministic and seeded; every fork leaves a line at a listed angle and is narrower than a line', () => {
+test('THE GENERATOR (HQ_TERRAIN_GEN.ley): four authored straight lines, generated forks at ley angles that join, run to the rim or end in a niche, a chamber at every crossing and behind every station, the solid a MASS to the ceiling traced into walls; deterministic and seeded; every fork leaves a line at a listed angle and is narrower than a line', heavy, () => {
     const G = D.HQ_TERRAIN_GEN.ley;
     assert.ok(G && G.forkDeg.length >= 4 && G.forkW[1] < G.w && G.minOpen < 0.1 && G.minDegree === 0, 'the table: forks narrower than the lines, a mostly-solid open share, no cycle rule (a niche is the design)');
     const info = D.hqTerrainInfo(LEY), P = info.genPlan;
@@ -121,7 +122,7 @@ test('THE GENERATOR (HQ_TERRAIN_GEN.ley): four authored straight lines, generate
     for (const q of CL) assert.ok(R.has(key(c, q.x, q.z)), 'the reseeded tunnels still join every station');
 });
 
-test('THE SOLVER + THE RETURN GUARANTEE + THE PRODUCTION LANDING: in every part every door reaches every other under the walker\'s rule, nothing traps, every sill is its pad\'s, every landing is inside and clear of every prop; check-terrain agrees on all five', () => {
+test('THE SOLVER + THE RETURN GUARANTEE + THE PRODUCTION LANDING: in every part every door reaches every other under the walker\'s rule, nothing traps, every sill is its pad\'s, every landing is inside and clear of every prop; check-terrain agrees on all five', heavy, () => {
     for (const id of IDS) {
         const room = HQ.rooms[id], info = D.hqTerrainInfo(id);
         const Ls = room.doors.map(d => Object.assign({ d }, D.hqTerrainDoorLanding(room, d)));
@@ -185,7 +186,7 @@ test('THE ENTRIES + THE LINE + THE HUB: the four boards are bypassed (the frame 
     assert.ok(D.hqMapModel({}, 'foyer', { all: true }).nodes.find(n => n.id === LEY && n.hub), 'the anchor is drawn');
 });
 
-test('THE WEENIES + THE HARD TAPES: THE OMPHALOS in the nexus (2.3 m under the 3.2 m ceiling), THE GREAT TRILITHON, THE SENTINEL in enclosure D, THE SPHINX\'s head, THE LOAD over the tower\'s top — a pinned tape on each, hard, high, with a door-gun shot from a reachable node; every board of the four is bare, every part carries exactly one tape (the tunnels\' came off Cyberpunk\'s bypassed board); the hundred stays a hundred', () => {
+test('THE WEENIES + THE HARD TAPES: THE OMPHALOS in the nexus (2.3 m under the 3.2 m ceiling), THE GREAT TRILITHON, THE SENTINEL in enclosure D, THE SPHINX\'s head, THE LOAD over the tower\'s top — a pinned tape on each, hard, high, with a door-gun shot from a reachable node; every board of the four is bare, every part carries exactly one tape (the tunnels\' came off Cyberpunk\'s bypassed board); the hundred stays a hundred', heavy, () => {
     const T = D.DOOR_TAPES, F = HQ.finds;
     assert.equal(T.length, 100);
     for (const site of SITES) assert.equal(T.filter(t => t.where === 'site_' + site).length, 0, site + '\'s board is bare');
@@ -204,7 +205,7 @@ test('THE WEENIES + THE HARD TAPES: THE OMPHALOS in the nexus (2.3 m under the 3
     assert.ok(HQ.rooms[LEY].terrain.gen.chambers.some(c => c.id === 'nexus' && c.x === -50 && c.z === -25), 'the nexus is an authored chamber where the great line crosses the tell\'s');
 });
 
-test('THE PARK RULE + THE LIGHT + THE STONES: every part has a ramp or a tier and a rail (the sarsens and the brick stacks are grinds; the pyramid and the tower are climbed on stairs that obey THE RAMP RULE); every room lights itself under the cap; the henge\'s circle is walls in the rock sheet, the trilithon GLB stands twice, the tell\'s enclosures wear ring walls and T-pillars, the plateau\'s obelisks and the tower\'s crane stand on the catalogue', () => {
+test('THE PARK RULE + THE LIGHT + THE STONES: every part has a ramp or a tier and a rail (the sarsens and the brick stacks are grinds; the pyramid and the tower are climbed on stairs that obey THE RAMP RULE); every room lights itself under the cap; the henge\'s circle is walls in the rock sheet, the trilithon GLB stands twice, the tell\'s enclosures wear ring walls and T-pillars, the plateau\'s obelisks and the tower\'s crane stand on the catalogue', heavy, () => {
     for (const id of IDS) {
         const room = HQ.rooms[id], info = D.hqTerrainInfo(id), F = room.terrain.features;
         assert.ok(F.some(f => f.k === 'plateau' || f.k === 'ramp'), id + ': a tier or a ramp');
