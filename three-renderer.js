@@ -6523,7 +6523,11 @@ const ThreeRenderer = (function () {
             // (builders take (rng, mon): mon.dark = the black set), 1×1 tile boxes
             chess_pawn: _hzChessMon('chess_pawn'), chess_knight: _hzChessMon('chess_knight'),
             chess_rook: _hzChessMon('chess_rook'), chess_bishop: _hzChessMon('chess_bishop'),
-            chess_queen: _hzChessMon('chess_queen'), chess_king: _hzChessMon('chess_king')
+            chess_queen: _hzChessMon('chess_queen'), chess_king: _hzChessMon('chess_king'),
+            // 2026-09-18 THE SPELL-MADE MONUMENTS — the wall spells' pieces (GLB-first
+            // where a file exists, textured procedural masonry otherwise)
+            menhir: _hzPropMenhir, castle_wall: _hzCastleWallSeg,
+            gothic_wall: _hzGothicWallSeg, ziggurat_block: _hzZigguratBlock
         };
         return _MON_BUILDERS;
     }
@@ -6553,7 +6557,13 @@ const ThreeRenderer = (function () {
         chess_rook:   [1, 1, 3],
         chess_bishop: [1, 1, 3],
         chess_queen:  [1, 1, 3],
-        chess_king:   [1, 1, 3]
+        chess_king:   [1, 1, 3],
+        // THE SPELL-MADE MONUMENTS (2026-09-18, map.js _MON_GRID says the same):
+        // the wall spells' pieces, each a 1×1 box two tiles high
+        menhir:         [1, 1, 2],
+        castle_wall:    [1, 1, 2],
+        gothic_wall:    [1, 1, 2],
+        ziggurat_block: [1, 1, 2]
     };
     function _monGridDims(mon) {
         var grid = _MON_GRID[mon.kind];
@@ -18277,6 +18287,10 @@ const ThreeRenderer = (function () {
             liftMs: liftMs, hangMs: hangMs, flingMs: flingMs, settleMs: settleMs,
             totalMs: liftMs + hangMs + flingMs,
             liftPx: liftPx,
+            /* TO THE MOON (2026-09-18): `arcPx` = the height of the fling's
+               bump above the carry line (the stock throw bumps 0.35 tile; the
+               moonshot goes seven tiles up and comes down like a meteor). */
+            arcPx: opts.arcPx != null ? opts.arcPx : ts * 0.35,
             drop: !!opts.drop,
             carry: !!opts.carry,
             spinTurns: opts.spinTurns || 0,
@@ -18369,7 +18383,7 @@ const ThreeRenderer = (function () {
                 } else {
                     /* ── FLING: accelerating ballistic slam into the landing tile ── */
                     var horiz = ft * ft;                       // accelerate outward
-                    var bump = tw.drop ? 0 : ts * 0.35 * 4 * ft * (1 - ft);
+                    var bump = tw.drop ? 0 : tw.arcPx * 4 * ft * (1 - ft);
                     wx = (tw.fromX + (tw.toX - tw.fromX) * horiz) * ts + ts / 2;
                     wz = (tw.fromY + (tw.toY - tw.fromY) * horiz) * ts + ts / 2;
                     wy = apexY + (tw.toSY - apexY) * (ft * ft) + bump;
@@ -23304,6 +23318,77 @@ const ThreeRenderer = (function () {
     // ── Stonehenge: a true trilithon — two sarsen uprights + lintel ──
     /* 2026-09-12: the user's trilithon GLB stands here (faces +Z like the
        boxes did); the procedural pair below is its fallback */
+    /* ── THE SPELL-MADE MONUMENTS (2026-09-18) — what the wall spells stand.
+       Each is a 1×1×2 grid monument (_MON_GRID): _buildMonumentObj fits the
+       group into that tile box, so a builder only has to give the piece its
+       shape at roughly one tile wide and two tall. A WALL piece is authored
+       running along X; the placer's `rot` (0 = a horizontal line of tiles,
+       90 = vertical) turns it to follow the spell's line. ── */
+    // Rampart — a standing stone (the woods batch's menhir GLB, MODEL_INDEX §3e)
+    function _hzPropMenhir(rng) {
+        return _hzMiscKit('menhir', { tiles: 2.0, fit: 'height', rng: rng, cast: true, low: 'skip', fallback: _hzPropMenhirProc });
+    }
+    function _hzPropMenhirProc(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var mat = _hzGeoMat(_hzTex('rocks_1') || _hzTex('cliff'), 0xb9b2a4);
+        var stone = new THREE.Mesh(new THREE.DodecahedronGeometry(ts * 0.5, 1), mat);
+        var pos = stone.geometry.attributes.position;
+        for (var i = 0; i < pos.count; i++) {   // a jostled, tapering slab
+            var k = 0.85 + rng() * 0.3;
+            pos.setXYZ(i, pos.getX(i) * k * 0.62, pos.getY(i) * 2.0, pos.getZ(i) * k * 0.9);
+        }
+        stone.geometry.computeVertexNormals();
+        _hzAt(g, stone, 0, ts * 1.0, 0, rng() * 0.3, (rng() - 0.5) * 0.06);
+        return g;
+    }
+    // Walls of Camelot — a crenellated curtain-wall segment in the castle sheet
+    function _hzCastleWallSeg(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var tex = _hzTex('castle_wall') || _hzTex('bricks_2') || _hzTex('bricks');
+        var m = function () { return _hzGeoMat(tex, 0xcfc6b6); };
+        var W = ts * 1.0, D = ts * 0.58, H = ts * 1.62, MH = ts * 0.34, MW = ts * 0.24;
+        _hzAt(g, _hzBox(W, H, D, ts, m()), 0, H / 2, 0);                              // the wall
+        _hzAt(g, _hzBox(W, ts * 0.08, D * 1.12, ts, m()), 0, H + ts * 0.04, 0);       // the string course
+        [-1, 0, 1].forEach(function (k) {                                              // three merlons
+            _hzAt(g, _hzBox(MW, MH, D * 0.92, ts, m()), k * (W / 2 - MW / 2) * 0.98 - (k === 0 ? 0 : 0), H + ts * 0.08 + MH / 2, 0);
+        });
+        _hzAt(g, _hzBox(W * 0.98, ts * 0.06, ts * 0.12, ts, _hzGeoMat(tex, 0x8f887a)), 0, H * 0.55, D / 2 + ts * 0.03);   // the drip ledge, board side
+        return g;
+    }
+    // Gothic Rampart — a cathedral wall piece (the Vatican batch's church_wall GLB, MODEL_INDEX §3g)
+    function _hzGothicWallSeg(rng) {
+        return _hzMiscKit('church_wall', { tiles: 2.0, fit: 'height', rng: rng, cast: true, low: 'skip', fallback: _hzGothicWallSegProc });
+    }
+    function _hzGothicWallSegProc(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var tex = _hzTex('bricks_3') || _hzTex('bricks_2') || _hzTex('cliff');
+        var m = function (c) { return _hzGeoMat(tex, c || 0x6f6a72); };
+        var W = ts * 1.0, D = ts * 0.5, H = ts * 1.7;
+        _hzAt(g, _hzBox(W, H, D, ts, m()), 0, H / 2, 0);
+        _hzAt(g, _hzBox(W * 0.3, ts * 0.32, D * 1.1, ts, m(0x5a5560)), -W * 0.35, H + ts * 0.16, 0);   // two pinnacles
+        _hzAt(g, _hzBox(W * 0.3, ts * 0.32, D * 1.1, ts, m(0x5a5560)), W * 0.35, H + ts * 0.16, 0);
+        var arch = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.18, ts * 0.18, D * 1.04, 3), _hzGlowMat(0x8fb4ff, 0.35));   // the lancet, lit
+        arch.rotation.x = Math.PI / 2; arch.rotation.y = Math.PI / 6;
+        _hzAt(g, arch, 0, H * 0.62, 0);
+        return g;
+    }
+    // Ziggurat Protocol — a stepped sandstone block
+    function _hzZigguratBlock(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var tex = _hzTex('desert') || _hzTex('sand') || _hzTex('cliff');
+        var m = function (c) { return _hzGeoMat(tex, c || 0xd9bb8a); };
+        var H1 = ts * 1.05, H2 = ts * 0.7;
+        _hzAt(g, _hzBox(ts * 1.0, H1, ts * 1.0, ts, m()), 0, H1 / 2, 0);
+        _hzAt(g, _hzBox(ts * 0.72, H2, ts * 0.72, ts, m(0xe0c69c)), 0, H1 + H2 / 2, 0);
+        var band = new THREE.Mesh(new THREE.BoxGeometry(ts * 1.02, ts * 0.07, ts * 1.02), _hzGlowMat(0x9fe8ff, 0.5));   // the glyph band
+        _hzAt(g, band, 0, H1 * 0.72, 0);
+        return g;
+    }
+
     function _hzTrilithon(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         return _hzMiscKit('trilithon', { tiles: 4.4, fit: 'height', rng: rng, cast: true, foot: 1.6, low: 'skip', fallback: _hzTrilithonProc });

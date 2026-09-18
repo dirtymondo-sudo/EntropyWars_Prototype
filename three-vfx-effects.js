@@ -4305,6 +4305,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     fromZ: (_flyRel != null && _flyRel > ts * 0.8) ? _flyRel : undefined,
                 });
             }
+            /* THE FINISHER PASS (2026-09-18) — METEOR STORM: a descent def
+               that says `storm: true` rains the whole zone with asteroid GLBs
+               (_sigMeteorStorm3D owns every body; the def's layers are the
+               flash only). */
+            if (descentDef.storm) {
+                try { _sigMeteorStorm3D(tx, ty, aoeRadius, { ms: descentMs }); } catch (e) {}
+            }
             _spawnEffect(defToSpawn, { tx: tx, ty: ty });
 
             if (spellId === 'meteor' && _spell3DGeometry.meteor) {
@@ -4747,6 +4754,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         if (_sigBowShotFor(spellId, params) && !params.hideGunRig) {
             try { _sigBowShot3D(fromTx, fromTy, toTx, toTy, { flyMs: params.flyMs }); } catch (e) {}
+        }
+        /* THE TRICK SHOT (2026-09-18, THE FINISHER PASS): High Noon's bullet
+           RICOCHETS off the map before it finds the target — the revolver rig
+           above still fires it, _sigTrickShot3D flies the bounces for the
+           whole travel and replaces the straight bolt (the impact intent
+           bursts on arrival as before). The generic bolt stays the fallback
+           when the board has nothing to bounce off. */
+        if (spellId === 'raceHighNoon' && !params.hideGunRig) {
+            try {
+                if (_sigTrickShot3D(fromTx, fromTy, toTx, toTy, { flyMs: params.flyMs, fromZ: params.fromZ, toZ: params.toZ })) return;
+            } catch (e) {}
         }
 
         var from = tilePx(fromTx, fromTy);
@@ -6463,8 +6481,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         // is a Group normalized to 1 unit tall and centre-pivoted, so the same
         // scale/rotation animator drives either body unchanged.
         var rock = null;
+        /* THE ROCKS (2026-09-18): the asteroid GLB is the meteor now (the
+           cratered moon was the stand-in — a moon falling on the board read
+           wrong once TO THE MOON put the real one in the sky). */
+        try { var _astRock = _finRockBody(2, { glbOnly: true }); if (_astRock) rock = _astRock.group; } catch (e) { rock = null; }
         try {
-            if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) {
+            if (!rock && window.ThreeRenderer && ThreeRenderer.getMiscModelClone) {
                 rock = ThreeRenderer.getMiscModelClone('moon', 2, 'center');   // 2 units tall = radius-1 sphere
             }
         } catch (e) { rock = null; }
@@ -6852,6 +6874,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             depthWrite: true,
         });
         var rock = new THREE.Mesh(baseGeo, matRock);
+        /* THE ROCKS (2026-09-18): a real asteroid GLB when the cache has one
+           (never for coal) — a Group normalized to 2 units across and centre-
+           pivoted, so the same scale / spin / arc drives it unchanged. The
+           icosahedron above stays the cold-cache fallback. */
+        if (!isCoal) {
+            var _glbRock = _finRockBody(2, { glbOnly: true, key: opts.spellId === 'raceStoneThrow' ? 'asteroid2' : 'asteroid' });
+            if (_glbRock) { baseGeo.dispose(); matRock.dispose(); rock = _glbRock.group; }
+        }
         rock.scale.set(rockRadius, rockRadius, rockRadius);
         var emberMat = null;
         if (isCoal) {
@@ -8500,6 +8530,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceBoulderHurl: true,
         raceBoulderThrow: true,
         raceStoneThrow: true,
+        raceStonefall: true,      /* THE ROCKS (2026-09-18): the gargoyle's stone falls as a real rock */
         raceLumpOfCoal: true,     /* Santa's coal — real 3D rock, coal-styled */
     };
 
@@ -10258,6 +10289,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            flip on +Z where _sigCannonShot3D aims. */
         cannon:      { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_iron_canon_0912231022_texture.glb',
                        axis: 'z', tweak: { ry: Math.PI } },
+        /* 2026-09-18 THE FINISHER PASS — THE ROCKS: the D.O.O.R. kit's two
+           asteroids (R2 Assets/door/models/, MODEL_INDEX §3b) are every
+           thrown / falling rock in the game now: the boulder projectile
+           (Boulder Hurl, Stone Throw, Stonefall), the Meteor's body, the
+           METEOR STORM and the moon's debris. axis 'y': a round rock, sized
+           by height, centre-pivoted so it tumbles about itself. */
+        asteroid:    { url: 'https://cdn.entropywars.net/Assets/door/models/asteroid_1.glb', axis: 'y' },
+        asteroid2:   { url: 'https://cdn.entropywars.net/Assets/door/models/asteroid_2.glb', axis: 'y' },
     };
     var _wpnCache = {};   /* key → { root, size, center, loading, failed } */
 
@@ -24828,6 +24867,492 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ── the capstone staging flag on aoe defs that own a geometry ── */
     /* ═════════ END THE CAPSTONE PASS ═════════ */
 
+    /* ═══════════════════════════════════════════════════════════════════════
+       THE FINISHER PASS (2026-09-18)
+       ═══════════════════════════════════════════════════════════════════════
+       "Super over the top and dramatic and unrealistic" — the user's brief for
+       the capstone reworks. FINISHER_PLAN.md is the plan for the rest; these
+       are the first three, each riding the pipeline that already relays to
+       the guest (RULE #2): the throw's playSkyThrowFx (sigMoonshot3D is
+       called INSIDE it, never through fireGeometry — that wrapper relays on
+       its own and the guest would get the moon twice), the descent intent
+       (the storm def's `storm: true`), the bolt intent (the trick shot).
+       THE ROCKS: every falling / thrown rock is the D.O.O.R. kit's asteroid
+       GLB through _finRockBody (the icosahedron is the cold-cache fallback).
+       Ownership: every group through _sigRunOwned, every timer through
+       _fxDelay, sprites' geometry is Three's (never disposed). */
+
+    /* a rock body: { group, glb, setFade } — the asteroid GLB normalized to
+       `diam` across and centre-pivoted, else a jostled icosahedron in the
+       boulder sheet (o.glbOnly → null instead of the fallback) */
+    function _finRockBody(diam, o) {
+        o = o || {};
+        var key = o.key || (Math.random() < 0.5 ? 'asteroid' : 'asteroid2');
+        var alt = key === 'asteroid' ? 'asteroid2' : 'asteroid';
+        var inst = null;
+        try {
+            if (_wpnReady(key)) inst = _wpnInstance(key, diam);
+            else if (_wpnReady(alt)) inst = _wpnInstance(alt, diam);
+        } catch (e) { inst = null; }
+        if (inst) { inst.setFade(1); return { group: inst.group, glb: true, setFade: inst.setFade }; }
+        if (o.glbOnly) return null;
+        var geo = new THREE.IcosahedronGeometry(diam * 0.5, 1);
+        var pa = geo.getAttribute('position');
+        for (var i = 0; i < pa.count; i++) {
+            var vx = pa.getX(i), vy = pa.getY(i), vz = pa.getZ(i);
+            var nz = 1 + 0.22 * Math.sin(vx * 7.1 + vy * 10.3) * Math.cos(vz * 6.4 + vx * 3.7);
+            pa.setXYZ(i, vx * nz, vy * nz, vz * nz);
+        }
+        pa.needsUpdate = true;
+        geo.computeVertexNormals();
+        var mat = new THREE.MeshBasicMaterial({ map: _getBoulderTexture(), transparent: true, opacity: 1, depthWrite: true });
+        var mesh = new THREE.Mesh(geo, mat);
+        mesh.renderOrder = 160;
+        var g = new THREE.Group();
+        g.add(mesh);
+        return { group: g, glb: false, setFade: function (f) { mat.opacity = f; } };
+    }
+    function _finSprite(color, tex, size, order) {
+        var sp = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: tex, color: new THREE.Color(color), transparent: true, opacity: 0,
+            blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false
+        }));
+        sp.scale.set(size, size, 1);
+        sp.renderOrder = order || 159;
+        return sp;
+    }
+
+    /* ONE falling rock: from `fromZ` px over the tile (a sideways entry when
+       o.sideways) down onto its top over o.ms, tumbling, a fire trail behind
+       it; fades on touchdown (the landing beat is the caller's). Returns true
+       when a body was built. */
+    function _sigAsteroidDrop3D(tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn()) return false;
+        var wp = _worldPos(tx, ty), ts = wp.ts;
+        var body = _finRockBody(ts * (o.scale != null ? o.scale : 0.9), { key: o.key, glbOnly: !!o.glbOnly });
+        if (!body) return false;
+        var ms = o.ms != null ? o.ms : 700;
+        var fromY = o.fromZ != null ? o.fromZ : ts * 7;
+        var side = o.sideways ? ts * rn(1.5, 3.5) : 0, ang = rn(0, Math.PI * 2);
+        var sx = Math.cos(ang) * side, sz = Math.sin(ang) * side;
+        var g = new THREE.Group();
+        g.position.set(wp.x, wp.y, wp.z);
+        var b = body.group;
+        g.add(b);
+        var rx = rn(0.003, 0.007), rz = rn(0.002, 0.005);
+        var glow = _finSprite(0xff7a33, _sigGlowTex(), ts * 1.15, 159);
+        g.add(glow);
+        var lastTrail = 0, c = tilePx(tx, ty), bz = tileZ(tx, ty);
+        var entry = _sigRunOwned(g, ms + 60, function (el) {
+            var t = _sigClamp01(el / ms), e = t * t;
+            b.position.set(sx * (1 - t), fromY * (1 - e) + ts * 0.25 * (1 - t), sz * (1 - t));
+            b.rotation.x = el * rx; b.rotation.z = el * rz;
+            glow.position.copy(b.position);
+            glow.material.opacity = t >= 1 ? 0 : 0.32 + 0.22 * Math.sin(el * 0.03);
+            if (el - lastTrail > 28 && t < 1 && _canSpawn()) {
+                lastTrail = el;
+                var px = c.x + b.position.x, py = c.y + b.position.z, pz = bz + b.position.y;
+                _spawn({ x: px + rn(-6, 6), y: py + rn(-6, 6), z: pz + rn(-4, 4),
+                         mode: 'billboard', sprite: 'ember', ml: rn(220, 420), size0: rn(10, 18), size1: 3,
+                         vx: rn(-30, 30), vy: rn(-30, 30), vz: rn(10, 50), drag: 1.2, gravity: 40, opacity0: 0.95, opacity1: 0 });
+                _spawn({ x: px + rn(-8, 8), y: py + rn(-8, 8), z: pz + rn(0, 10),
+                         mode: 'billboard', sprite: 'smoke', ml: rn(300, 520), size0: rn(10, 16), size1: rn(26, 40),
+                         vz: rn(6, 20), drag: 0.5, opacity0: 0.4, opacity1: 0 });
+            }
+            if (t >= 1) body.setFade(0);
+        });
+        return !!entry;
+    }
+
+    /* ── METEOR STORM (the mothman's Prophecy of Disaster) ───────────────
+       The whole zone under a rain of rocks: n bodies on ONE group (the
+       signature cap is 20 live groups — a storm is one of them) falling on
+       random tiles across the 0.62 first share of the descent, each with its
+       fire trail and its own landing beat (a shock ring, a crater burst on
+       every third), streakers crossing the sky beyond the zone, and THE BIG
+       ONE at the centre timed to the descent's own impact clock. */
+    function _sigMeteorStorm3D(tx, ty, r, o) {
+        o = o || {};
+        if (!_canSpawn()) return false;
+        var wp = _worldPos(tx, ty), ts = wp.ts;
+        var ms = o.ms != null ? o.ms : 1600;
+        r = Math.max(1, r != null ? r : 2);
+        var low = !!(typeof window !== 'undefined' && window.EW_PERF_LOW);
+        var n = Math.round((10 + r * 6) * (low ? 0.5 : 1));
+        var tiles = [];
+        for (var dy = -r; dy <= r; dy++) for (var dx = -r; dx <= r; dx++) if (dx || dy) tiles.push({ dx: dx, dy: dy });
+        for (var i = tiles.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var tmp = tiles[i]; tiles[i] = tiles[j]; tiles[j] = tmp; }
+        var c0 = tilePx(tx, ty), bz0 = tileZ(tx, ty);
+        var g = new THREE.Group();
+        g.position.set(wp.x, wp.y, wp.z);
+        var bodies = [];
+        var win0 = ms * 0.62;
+        function addBody(ddx, ddy, t0, fall, scale, fromZ, key, big) {
+            var body = _finRockBody(ts * scale, { key: key });
+            if (!body) return;
+            var side = ts * rn(1.5, 3.5), ang = rn(0, Math.PI * 2);
+            var tp = tilePx(tx + ddx, ty + ddy);
+            var rec = { body: body, t0: t0, fall: fall, ox: tp.x - c0.x, oz: tp.y - c0.y, oy: tileZ(tx + ddx, ty + ddy) - bz0,
+                        sx: Math.cos(ang) * side, sz: Math.sin(ang) * side, fromY: fromZ,
+                        rx: rn(0.003, 0.007), rz: rn(0.002, 0.005), last: 0, done: false, big: !!big,
+                        glow: _finSprite(0xff7a33, _sigGlowTex(), ts * scale * 1.3, 159) };
+            body.group.visible = false;
+            g.add(body.group); g.add(rec.glow);
+            bodies.push(rec);
+        }
+        for (var k = 0; k < n; k++) {
+            var t = tiles[k % tiles.length];
+            addBody(t.dx, t.dy, Math.round((k / n) * win0 + rn(0, 60)), rn(480, 720), rn(0.45, 0.85), ts * rn(6, 10), (k & 1) ? 'asteroid2' : 'asteroid', false);
+        }
+        var bigFall = Math.min(900, ms * 0.5);
+        addBody(0, 0, Math.max(0, ms - bigFall), bigFall, 1.45, ts * 11, 'asteroid', true);
+        /* the landing beats */
+        var landed = 0;
+        bodies.forEach(function (rec, idx) {
+            var ddx = Math.round(rec.ox / ts), ddy = Math.round(rec.oz / ts);
+            _fxDelay(function () {
+                if (_suppressed()) return;
+                var ttx = tx + ddx, tty = ty + ddy;
+                if (rec.big) {
+                    _sigScreenFlash('#fff0d8', 220, 0.45);
+                    _sigShockRing3D(ttx, tty, { color: 0xffb060, r0: ts * 0.3, r1: ts * (r + 1.5), ms: 620 });
+                    _shake('heavy');
+                    return;
+                }
+                if (landed === 0) _sigScreenFlash('#ffd9a8', 140, 0.2);
+                landed++;
+                _sigShockRing3D(ttx, tty, { color: 0xffa050, r0: ts * 0.15, r1: ts * 1.25, ms: 360 });
+                if (idx % 3 === 0 && EFFECTS['meteor_impact_tile']) {
+                    _spawnEffect(EFFECTS['meteor_impact_tile'], { tx: ttx, ty: tty });
+                } else if (_canSpawn()) {
+                    var lp = tilePx(ttx, tty), lz = tileZ(ttx, tty);
+                    for (var e = 0; e < 8; e++) {
+                        var a = rn(0, Math.PI * 2), sp = rn(80, 220);
+                        _spawn({ x: lp.x, y: lp.y, z: lz + 6, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, vz: rn(60, 220), gravity: 400, drag: 1.2,
+                                 mode: 'billboard', sprite: e < 3 ? 'rock-debris' : 'ember', ml: rn(400, 800), size0: rn(8, 16), size1: 2, opacity0: 1, opacity1: 0 });
+                    }
+                    _spawn({ x: lp.x, y: lp.y, z: lz + 1, mode: 'world', sprite: 'scorch', ml: 1800, size0: ts * 0.8, size1: ts * 0.95, opacity0: 0.8, opacity1: 0 });
+                }
+                if (idx % 2 === 0) _shake('normal');
+            }, rec.t0 + rec.fall);
+        });
+        var streaks = [];
+        var nStreak = low ? 2 : 5;
+        for (var sI = 0; sI < nStreak; sI++) {
+            var body2 = _finRockBody(ts * rn(0.4, 0.7), {});
+            if (!body2) continue;
+            var ang2 = rn(0, Math.PI * 2), dist = ts * (r + rn(5, 9));
+            var x0 = Math.cos(ang2) * dist, z0 = Math.sin(ang2) * dist;
+            var rec2 = { body: body2, t0: Math.round(rn(0, ms * 0.7)), ms: rn(700, 1000), x0: x0, z0: z0,
+                         x1: -x0 + rn(-2, 2) * ts, z1: -z0 + rn(-2, 2) * ts, y0: ts * rn(8, 12), y1: ts * rn(3, 5), last: 0 };
+            body2.group.visible = false;
+            g.add(body2.group);
+            streaks.push(rec2);
+        }
+        var total = ms + 700;
+        var entry = _sigRunOwned(g, total, function (el) {
+            for (var i = 0; i < bodies.length; i++) {
+                var rec = bodies[i];
+                if (rec.done || el < rec.t0) continue;
+                var t = _sigClamp01((el - rec.t0) / rec.fall), e2 = t * t;
+                var b = rec.body.group;
+                b.visible = true;
+                b.position.set(rec.ox + rec.sx * (1 - t), rec.oy + rec.fromY * (1 - e2) + ts * 0.25 * (1 - t), rec.oz + rec.sz * (1 - t));
+                b.rotation.x = (el - rec.t0) * rec.rx; b.rotation.z = (el - rec.t0) * rec.rz;
+                rec.glow.position.copy(b.position);
+                rec.glow.material.opacity = 0.3 + 0.2 * Math.sin(el * 0.03);
+                if (el - rec.last > 30 && _canSpawn()) {
+                    rec.last = el;
+                    _spawn({ x: c0.x + b.position.x + rn(-6, 6), y: c0.y + b.position.z + rn(-6, 6), z: bz0 + b.position.y + rn(-4, 4),
+                             mode: 'billboard', sprite: 'ember', ml: rn(220, 420), size0: rn(8, 16), size1: 3,
+                             vz: rn(10, 50), drag: 1.2, gravity: 40, opacity0: 0.95, opacity1: 0 });
+                }
+                if (t >= 1) { rec.done = true; rec.body.setFade(0); rec.glow.material.opacity = 0; b.visible = false; }
+            }
+            for (var s2 = 0; s2 < streaks.length; s2++) {
+                var st = streaks[s2];
+                if (el < st.t0) continue;
+                var u = _sigClamp01((el - st.t0) / st.ms);
+                var sb = st.body.group;
+                sb.visible = u < 1;
+                if (u >= 1) continue;
+                sb.position.set(st.x0 + (st.x1 - st.x0) * u, st.y0 + (st.y1 - st.y0) * u, st.z0 + (st.z1 - st.z0) * u);
+                sb.rotation.x = el * 0.005; sb.rotation.y = el * 0.003;
+                if (u > 0.85) st.body.setFade((1 - u) / 0.15);
+                if (el - st.last > 34 && _canSpawn()) {
+                    st.last = el;
+                    _spawn({ x: c0.x + sb.position.x, y: c0.y + sb.position.z, z: bz0 + sb.position.y,
+                             mode: 'billboard', sprite: 'ember', ml: rn(260, 460), size0: rn(8, 14), size1: 2, opacity0: 0.9, opacity1: 0, drag: 1 });
+                }
+            }
+        });
+        return !!entry;
+    }
+
+    /* ── TO THE MOON (the cyborg's capstone) ─────────────────────────────
+       Called by battle.js playSkyThrowFx at the start of the fling (host and
+       guest alike). The moon GLB comes down out of the sky into the fling's
+       apex — where three-renderer.js's throw tween puts the body at half the
+       fling (horiz = ft², bump = arcPx·4·ft·(1−ft)) — the body hits it, the
+       screen whites out, the moon SHATTERS into a spray of shards, and seven
+       pieces of it rain onto the landing tile's 5×5 as the body falls. */
+    function _sigMoonshot3D(tx, ty, P) {
+        P = P || {};
+        if (!_canSpawn()) return false;
+        var wpTo = _worldPos(tx, ty), ts = wpTo.ts;
+        var fx = P.fromX != null ? P.fromX : tx, fy = P.fromY != null ? P.fromY : ty;
+        var wpFrom = _worldPos(fx, fy);
+        var F = P.flingMs > 0 ? P.flingMs : 1900;
+        var liftPx = P.liftPx != null ? P.liftPx : ts * 6, arcPx = P.arcPx != null ? P.arcPx : ts * 7;
+        var apexY0 = wpFrom.y + liftPx;
+        var apex = { x: wpFrom.x + (wpTo.x - wpFrom.x) * 0.25, z: wpFrom.z + (wpTo.z - wpFrom.z) * 0.25,
+                     y: apexY0 + (wpTo.y - apexY0) * 0.25 + arcPx };
+        var diam = ts * 3.4;
+        var moon = null, moonMats = [];
+        try {
+            if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) moon = ThreeRenderer.getMiscModelClone('moon', diam, 'center');
+        } catch (e) { moon = null; }
+        if (moon) {
+            moon.traverse(function (n) { if (n.isMesh && n.material) { n.material.transparent = true; n.material.opacity = 0; moonMats.push(n.material); } });
+        } else {
+            var mm = new THREE.MeshBasicMaterial({ map: _getRocks4Texture(), color: new THREE.Color(0xd8d8d0), transparent: true, opacity: 0 });
+            moon = new THREE.Mesh(new THREE.SphereGeometry(diam * 0.5, 20, 14), mm);
+            moonMats.push(mm);
+        }
+        var g = new THREE.Group();
+        g.position.set(apex.x, apex.y, apex.z);
+        g.add(moon);
+        var halo = _finSprite(0xdfe8ff, _sigGlowTex(), diam * 2.2, 150);
+        g.add(halo);
+        var ring = _finSprite(0xffffff, _sigRingTex(), ts, 158);
+        ring.visible = false;
+        g.add(ring);
+        var shardMat = new THREE.MeshBasicMaterial({ map: _getRocks4Texture(), color: new THREE.Color(0xcfcfc6), transparent: true, opacity: 0 });
+        var shards = [];
+        for (var i = 0; i < 18; i++) {
+            var sm = new THREE.Mesh(new THREE.IcosahedronGeometry(ts * rn(0.18, 0.5), 0), shardMat);
+            sm.visible = false;
+            var a = rn(0, Math.PI * 2), b = rn(-0.6, 1.2), sp = ts * rn(2.2, 5.0);
+            sm.userData.v = new THREE.Vector3(Math.cos(a) * Math.cos(b) * sp, Math.sin(b) * sp + ts * 1.2, Math.sin(a) * Math.cos(b) * sp);
+            sm.userData.r = new THREE.Vector3(rn(-4, 4), rn(-4, 4), rn(-4, 4));
+            g.add(sm); shards.push(sm);
+        }
+        var hitMs = F * 0.5, cracked = false, total = F + 900, lastEl = 0;
+        var startY = ts * 9;
+        var entry = _sigRunOwned(g, total, function (el) {
+            var dt = Math.min(0.05, (el - lastEl) / 1000); lastEl = el;
+            if (el < hitMs) {
+                var t = _sigClamp01(el / hitMs), e = 1 - (1 - t) * (1 - t);
+                moon.position.y = startY * (1 - e);
+                moon.rotation.y = el * 0.0004;
+                halo.position.copy(moon.position);
+                halo.material.opacity = 0.12 + 0.28 * t;
+                var op = Math.min(1, t * 4);
+                for (var m = 0; m < moonMats.length; m++) moonMats[m].opacity = op;
+                return;
+            }
+            if (!cracked) {
+                cracked = true;
+                _sigScreenFlash('#ffffff', 260, 0.75);
+                moon.visible = false;
+                halo.material.opacity = 0.95;
+                ring.visible = true;
+                for (var q = 0; q < shards.length; q++) { shards[q].visible = true; shards[q].position.set(0, 0, 0); }
+                shardMat.opacity = 1;
+                _shake('heavy');
+                /* THE DEBRIS: seven pieces of moon onto the landing's 5×5,
+                   landing as the body does and just after */
+                for (var kk = 0; kk < 7; kk++) {
+                    (function (k2) {
+                        var ddx = Math.round(rn(-2, 2)), ddy = Math.round(rn(-2, 2));
+                        var land = (F - hitMs) * rn(0.7, 1.0) + k2 * 60, fall = rn(420, 600);
+                        _fxDelay(function () {
+                            if (_suppressed()) return;
+                            _sigAsteroidDrop3D(tx + ddx, ty + ddy, { ms: fall, fromZ: ts * rn(6, 9), scale: rn(0.35, 0.6), sideways: true, key: (k2 & 1) ? 'asteroid2' : 'asteroid' });
+                        }, Math.max(0, land - fall));
+                        _fxDelay(function () {
+                            if (_suppressed()) return;
+                            _sigShockRing3D(tx + ddx, ty + ddy, { color: 0xdfe8ff, r0: ts * 0.15, r1: ts * 1.1, ms: 320 });
+                            if (EFFECTS['rampart_tile']) _spawnEffect(EFFECTS['rampart_tile'], { tx: tx + ddx, ty: ty + ddy });
+                        }, land);
+                    })(kk);
+                }
+            }
+            var since = el - hitMs;
+            var fade = _sigClamp01(1 - since / (total - hitMs));
+            halo.material.opacity = 0.95 * fade;
+            var rs = ts * (1 + 9 * _sigClamp01(since / 700));
+            ring.scale.set(rs, rs, 1);
+            ring.material.opacity = 0.85 * (1 - _sigClamp01(since / 700));
+            for (var s = 0; s < shards.length; s++) {
+                var sh = shards[s], v = sh.userData.v, rr = sh.userData.r;
+                sh.position.addScaledVector(v, dt);
+                v.y -= ts * 6 * dt;
+                sh.rotation.x += rr.x * dt; sh.rotation.y += rr.y * dt; sh.rotation.z += rr.z * dt;
+            }
+            shardMat.opacity = fade;
+        });
+        return !!entry;
+    }
+
+    /* ── THE TRICK SHOT (the cowboy's High Noon) ──────────────────────────
+       The bullet bounces off the live board — raised ground higher than
+       either end, walls, mountains, the spell-made monuments, and the
+       board's own rim past the edge when the map is flat — three to five
+       times before it finds the target. The path is planned here from
+       state.boardHeights / the terrain / state._monumentTiles (a unit is
+       never a wall), the legs take the whole travel (each in proportion to
+       its length), every bounce throws steel sparks, and the tracer cools
+       behind the head. Returns false (the straight bolt plays) when the
+       board offers nothing at all. */
+    function _sigTrickShot3D(fromTx, fromTy, toTx, toTy, o) {
+        o = o || {};
+        if (!_canSpawn()) return false;
+        var ts = _cfg().tileSize || 128;
+        var H = (typeof state !== 'undefined' && state.boardHeights) ? state.boardHeights : null;
+        if (!H || !H.length || !H[0]) return false;
+        var BH = H.length, BW = H[0].length;
+        var hAt = function (x, y) { return (H[y] && H[y][x] != null) ? H[y][x] : 0; };
+        var hFrom = hAt(fromTx, fromTy), hTo = hAt(toTx, toTy);
+        var monTiles = (typeof state !== 'undefined' && state._monumentTiles && typeof state._monumentTiles.has === 'function') ? state._monumentTiles : null;
+        var hard = [];
+        for (var y = 0; y < BH; y++) for (var x = 0; x < BW; x++) {
+            if ((x === fromTx && y === fromTy) || (x === toTx && y === toTy)) continue;
+            var h = hAt(x, y), key = x + ',' + y;
+            var ter = null;
+            try { ter = (typeof getTerrainAt === 'function') ? getTerrainAt(x, y) : null; } catch (e) { ter = null; }
+            var isMon = !!(monTiles && monTiles.has(key));
+            var solid = ter === 'wall' || ter === 'mountain' || isMon || h >= Math.max(hFrom, hTo) + 1;
+            if (!solid) continue;
+            try { if (typeof unitAt === 'function' && unitAt(x, y)) continue; } catch (e) {}
+            hard.push({ x: x, y: y, top: isMon ? (monTiles.get(key) || 0) + 2 : h, rim: false });
+        }
+        var rims = [];
+        for (var k = 0; k < 10; k++) {
+            var side = k % 4, px, py;
+            if (side === 0) { px = Math.floor(rn(0, BW)); py = -1; }
+            else if (side === 1) { px = BW; py = Math.floor(rn(0, BH)); }
+            else if (side === 2) { px = Math.floor(rn(0, BW)); py = BH; }
+            else { px = -1; py = Math.floor(rn(0, BH)); }
+            rims.push({ x: px, y: py, top: 0, rim: true });
+        }
+        var bounces = 3 + Math.floor(Math.random() * 3);
+        var pts = [], cur = { x: fromTx, y: fromTy }, prevDir = null, pool = hard.slice();
+        var cheb = function (a, b) { return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)); };
+        for (var b = 0; b < bounces; b++) {
+            var cands = pool.filter(function (c) { var d = cheb(c, cur); return d >= 2 && d <= 9; });
+            if (cands.length < 2) cands = cands.concat(rims.filter(function (c) { var d = cheb(c, cur); return d >= 2 && d <= 12; }));
+            if (!cands.length) break;
+            var best = null, bestS = -1e9;
+            for (var i = 0; i < cands.length; i++) {
+                var c = cands[i], dx = c.x - cur.x, dy = c.y - cur.y, L = Math.hypot(dx, dy) || 1;
+                var sc = Math.random() * 1.5;
+                if (prevDir) sc += (1 - (dx / L * prevDir.x + dy / L * prevDir.y)) * 1.2;
+                else { var tdx = toTx - cur.x, tdy = toTy - cur.y, TL = Math.hypot(tdx, tdy) || 1; sc += (1 - Math.abs(dx / L * tdx / TL + dy / L * tdy / TL)) * 1.5; }
+                if (c.rim) sc -= 0.4;
+                if (sc > bestS) { bestS = sc; best = c; }
+            }
+            pts.push(best);
+            pool = pool.filter(function (c) { return c !== best; });
+            var bl = Math.hypot(best.x - cur.x, best.y - cur.y) || 1;
+            prevDir = { x: (best.x - cur.x) / bl, y: (best.y - cur.y) / bl };
+            cur = best;
+        }
+        if (!pts.length) return false;
+        var boost = unitZBoost();
+        var elev = function (lvl) { return (typeof window !== 'undefined' && typeof window._getElevationPx === 'function') ? window._getElevationPx(lvl) : lvl * ts; };
+        var P = [];
+        var from = tilePx(fromTx, fromTy);
+        var fz = (o.fromZ != null) ? elev(o.fromZ) : unitSurfaceZ(fromTx, fromTy);
+        P.push({ x: from.x, y: from.y, z: fz + boost });
+        for (var pi = 0; pi < pts.length; pi++) {
+            var cpt = pts[pi], cp = tilePx(cpt.x, cpt.y);
+            P.push({ x: cp.x, y: cp.y, z: cpt.rim ? ts * 0.7 : elev(cpt.top) + ts * 0.45 });
+        }
+        var to = tilePx(toTx, toTy);
+        var tz = (o.toZ != null) ? elev(o.toZ) : unitSurfaceZ(toTx, toTy);
+        P.push({ x: to.x, y: to.y, z: tz + boost });
+        var total = o.flyMs > 0 ? o.flyMs : 1400, lens = [], sum = 0;
+        for (var li = 1; li < P.length; li++) { var ll = Math.hypot(P[li].x - P[li - 1].x, P[li].y - P[li - 1].y, P[li].z - P[li - 1].z) || 1; lens.push(ll); sum += ll; }
+        var pad = _cfg().boardPadding || 2;
+        var W = function (p) { return new THREE.Vector3(p.x - pad, p.z, p.y - pad); };
+        var g = new THREE.Group();
+        var legs = [], acc = 0;
+        for (var gi = 1; gi < P.length; gi++) {
+            var a0 = W(P[gi - 1]), b0 = W(P[gi]);
+            var mid = a0.clone().add(b0).multiplyScalar(0.5), len = a0.distanceTo(b0);
+            var mat = _sigMat(0xffe9a0);
+            var m = new THREE.Mesh(new THREE.BoxGeometry(3, 3, len), mat);
+            m.position.copy(mid); m.lookAt(b0); m.renderOrder = 162; g.add(m);
+            var cmat = _sigMat(0xffffff);
+            var core = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, len), cmat);
+            core.position.copy(mid); core.lookAt(b0); core.renderOrder = 163; g.add(core);
+            var t1 = acc + total * lens[gi - 1] / sum;
+            legs.push({ a: a0, b: b0, mat: mat, cmat: cmat, t0: acc, t1: t1, sparked: false, bounce: gi - 1 < pts.length });
+            acc = t1;
+        }
+        var head = _finSprite(0xfff2c0, _sigGlowTex(), ts * 0.34, 164);
+        head.position.copy(legs[0].a);
+        g.add(head);
+        var last = 0;
+        var entry = _sigRunOwned(g, total + 300, function (el) {
+            for (var i2 = 0; i2 < legs.length; i2++) {
+                var Lg = legs[i2];
+                if (el < Lg.t0) { Lg.mat.opacity = 0; Lg.cmat.opacity = 0; continue; }
+                var tt = _sigClamp01((el - Lg.t0) / Math.max(1, Lg.t1 - Lg.t0));
+                if (tt < 1) { head.position.lerpVectors(Lg.a, Lg.b, tt); head.material.opacity = 1; }
+                var age = (el - Lg.t1) / 420;
+                Lg.mat.opacity = tt < 1 ? 0.55 : Math.max(0, 0.55 * (1 - age));
+                Lg.cmat.opacity = tt < 1 ? 0.95 : Math.max(0, 0.95 * (1 - age * 1.6));
+                if (tt >= 1 && !Lg.sparked) { Lg.sparked = true; if (Lg.bounce) _finRicochetSpark(Lg.b, ts); }
+            }
+            if (el > total) head.material.opacity = Math.max(0, 1 - (el - total) / 120);
+            if (el - last > 24 && el <= total && _canSpawn()) {
+                last = el;
+                var sp = _sigWorldToSpawn(head.position);
+                _spawn({ x: sp.x, y: sp.y, z: sp.z + 3, mode: 'billboard', sprite: 'flash', ml: 70, size0: ts * 0.2, size1: 0, opacity0: 0.9, opacity1: 0 });
+            }
+        });
+        return !!entry;
+    }
+    function _finRicochetSpark(v, ts) {
+        if (!_canSpawn()) return;
+        var sp = _sigWorldToSpawn(v);
+        _spawn({ x: sp.x, y: sp.y, z: sp.z + 3, mode: 'billboard', sprite: 'flash', ml: 120, size0: ts * 0.55, size1: ts * 0.1, opacity0: 1, opacity1: 0 });
+        for (var i = 0; i < 9; i++) {
+            var a = rn(0, Math.PI * 2), s = rn(90, 240);
+            _spawn({ x: sp.x, y: sp.y, z: sp.z + 3, vx: Math.cos(a) * s, vy: Math.sin(a) * s, vz: rn(20, 160), gravity: 420,
+                     mode: 'billboard', sprite: 'steel-spark', ml: rn(180, 360), size0: rn(4, 8), size1: 1, opacity0: 1, opacity1: 0 });
+        }
+    }
+
+    /* THE STORM'S DEF — overrides the hydrated raceProphecyOfDisaster_descent
+       (one falling ember on a 3×3): the 5×5 zone, the long fall, the storm
+       flag; the impact tile burst is light (25 tiles land). */
+    EFFECTS['raceProphecyOfDisaster_tile'] = {
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 2000, z: 1, size0: 90, size1: 110, opacity0: 0.75 },
+            { count: 6, sprite: 'ember', ml: [300, 600], offsetXY: 12, z: [6, 20],
+              vxRange: 160, vyRange: 160, vzRange: [40, 160], gravity: 380, drag: 1.2, size0: [7, 12], size1: 2 },
+            { count: 2, anchor: 'floor', sprite: 'dust-puff', ml: [400, 700], offsetXY: 14, z: [2, 8],
+              size0: [16, 24], size1: [30, 44], opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceProphecyOfDisaster_descent'] = {
+        telegraphMs: 900, descentMs: 1600, aoeRadius: 2, shape: 'square', telegraphSprite: 'target-ring',
+        storm: true,
+        impactTileEffect: 'raceProphecyOfDisaster_tile', impactCenterEffect: 'meteor_impact_center',
+        layers: [
+            { sprite: 'flash', ml: 600, size0: 220, size1: 300, opacity0: 0.35, opacity1: 0.6, tint: 0xff9a55 },
+        ]
+    };
+    SPELL_MAP['raceProphecyOfDisaster'] = Object.assign({}, SPELL_MAP['raceProphecyOfDisaster'], { descent: 'raceProphecyOfDisaster_descent' });
+    /* warm the rocks (the first meteor of a match otherwise falls as the icosahedron) */
+    try { if (!_wpnGlbOff()) setTimeout(function () { _wpnLoad('asteroid'); _wpnLoad('asteroid2'); }, 3500); } catch (e) {}
+    /* ═════════ END THE FINISHER PASS ═════════ */
+
+
     /* ── VFX3D.stage — the party builder's preview stage (§5.3) ────────
        enter({ tile, heroH, fx }) / exit() / fire(intent, spellId, params) /
        active() / clear(). The viewer (three-renderer.js
@@ -24997,6 +25522,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigLavaLampAura3D: _sigLavaLampAura3D,
         sigSupernova3D: _sigSupernova3D,
         sigCalcify3D: _sigCalcify3D,
+        /* THE FINISHER PASS (2026-09-18) */
+        sigMoonshot3D: _sigMoonshot3D,
+        sigMeteorStorm3D: _sigMeteorStorm3D,
+        sigTrickShot3D: _sigTrickShot3D,
+        sigAsteroidDrop3D: _sigAsteroidDrop3D,
 
         getDescentTotalMs: getDescentTotalMs,
         getDescentFlyover: getDescentFlyover,

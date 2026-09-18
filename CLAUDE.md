@@ -5600,3 +5600,69 @@ hq-dumb, hq-ranch (nine hubs), hq-world (the seams list), hq-city (Downtown's co
 ship data.js to Render too. NEXT: THE DEEP (the user's other pick — Atlantis / Agartha / the Dutchman's hold / Bermuda's
 weir on the `deep` route); MODEL_INDEX §3m has the underworld's wishlist. UNSEEN LIVE (RULE #1c): all of it — the channels'
 sheets in the culverts, the rails at 0.14 m, the bars standing free (`z −14.0` is the edit), the far ends on the platforms.
+
+## THE FINISHER PASS, delivery 1 — TO THE MOON · METEOR STORM · THE TRICK SHOT + THE SPELL-MADE MONUMENTS + THE ROCKS (2026-09-18, local delivery)
+**`FINISHER_PLAN.md` is THE doc for the over-the-top capstones** — the rules (§1: a
+finisher is a capstone, reworked in place or a ring-4 twin (≤ 2 per node, 8 per
+branch); the round-10 Entropy alternative is deferred, §4 has the sketch), the
+catalogue of the rest of the user's brief with home spells / engine needs / effort
+(§3), the checklist (§5). Read it before touching a capstone. **THE SPELL-MADE
+MONUMENTS** (the user's rule: raised terrain that means a wall or a pillar is a
+Meshy piece): a `terrainCreate` row with `monument: { kind }` (data.js: `rampart`
+→ `menhir`, `raceShieldWall` → `castle_wall`, `raceGothicRampart` →
+`gothic_wall`, `raceZigguratProtocol` → `ziggurat_block`) stands ONE real
+monument per affected tile through map.js **`placeSpellMonument(mon)`** (the ONE
+live placer: appends to `state.monuments` — synced —, stamps the kind's
+`_MON_GRID` box into the voxel + column grids, records the floor in
+`state._monumentTiles`, syncs the column; refused on a wall / objective /
+non-walkable object / another monument / a living unit — the damage still
+lands, the stone does not) and never raises the ground (`terrainDeform` stays on
+the row for the ghost preview only). The four kinds are `[1, 1, 2]` grid rows in
+map.js + three-renderer.js `_MON_GRID`, delta-maps.test.js's mirror,
+`MF_DELTA_SOLID_MONS` and the editor catalogue; builders `_hzPropMenhir`
+(the woods `menhir` GLB), `_hzCastleWallSeg` (procedural crenellated masonry in
+the castle sheet — a wall piece is authored along X, the placer's `rot` = 0 for a
+horizontal line / 90 vertical), `_hzGothicWallSeg` (the Vatican `church_wall`
+GLB), `_hzZigguratBlock` (a stepped sandstone block); `_buildMonumentObj` fits
+each into its tile box. Adding a wall spell = `monument: { kind }` + a grid row
+in the three tables + a builder. **THE ROCKS**: `_WPN_MODELS.asteroid` /
+`.asteroid2` (the D.O.O.R. kit's `asteroid_1/2.glb`, `axis: 'y'`) through
+**`_finRockBody(diam, { key, glbOnly })`** — the boulder projectile (Boulder
+Hurl, Stone Throw, Stonefall — added to `_BOULDER_SPELL_IDS`), the Meteor's body
+(`_spawnMeteorSphere3D`: asteroid → moon → icosahedron), the storm, the moon's
+debris; warmed 3.5 s after load. **THE THREE**: (1) cyborg `raceRocketToss` =
+**To the Moon** (`moonshot`, `moonArcTiles` 7, `carryHeight` 6): battle.js
+`playSkyThrowFx` flings 1.9 s with `arcPx` (three-renderer.js
+`startThrowArcTween`'s new opt — the bump above the carry line), publishes
+`window._ewMoonshot` and calls **`ThreeVFXEffects.sigMoonshot3D`** INSIDE the
+relayed function (never through `fireGeometry` — the guest would get the moon
+twice): the `moon` misc GLB (`getMiscModelClone`) drops into the fling's apex,
+the body hits it at half the fling, whiteout, 18 shards, seven `_sigAsteroidDrop3D`
+pieces onto the landing's 5×5; director `CINE_SEQUENCES.raceRocketToss` = sky
+watch on the apex column, freeze + slow-mo on the crack (the throw's own
+`_cineRetargetShot` yields to it). (2) mothman `raceProphecyOfDisaster` =
+**METEOR STORM** (`aoeRadius` 2, `groundsFlyers`): `EFFECTS['raceProphecyOf
+Disaster_descent']` (`storm: true`, descentMs 1600) → `_fireDescent` runs
+**`_sigMeteorStorm3D`** — ONE `_sigRunOwned` group for every body (the cap is
+20 live groups), n = 10 + 6r rocks on random tiles across the first 62 % of the
+fall, streakers across the sky, THE BIG ONE on the centre timed to the descent's
+impact, a landing beat per rock (a light `raceProphecyOfDisaster_tile` per
+tile); the camera is the descent grammar's `cineSkyWatch`. (3) cowboy
+`raceHighNoon` = **THE TRICK SHOT** (`ignoresLineOfSight`, `travelMs` 1500,
+range 6, no `projectileOverride`): battle.js `executeSpellAnimation` hands a
+row's `travelMs` to the action camera (`playCinematicAttack` honours it and the
+bolt's flyMs reads it back); `_fireBoltMapped` hands High Noon to
+**`_sigTrickShot3D`** after the revolver rig — the path is planned off the LIVE
+board (raised tiles higher than either end, `wall` / `mountain`, `state.
+_monumentTiles`, never a unit; the board's rim past the edge fills in on a flat
+map), 3–5 bounces, the legs share the travel by length, steel sparks per bounce,
+the tracer cools behind the head; director `raceHighNoon` = the clock, the slam,
+a high wide `cineFlyBy` at half speed, the slam on the hit. RULE #2: all three
+ride relays that exist (the throw FX, the descent intent, the bolt intent); the
+guest's ricochet plans its own bounces (cosmetic). `npm test` runs
+`finishers.test.js`. UNSEEN LIVE (RULE #1c): all of it — the moon's size and its
+fall into frame, the shards' spread, the storm's density and the big one's
+timing against the damage tick, the ricochet's read at half speed (a bounce off
+the rim on a flat map), every monument's scale in its 1×1×2 box (the menhir GLB
+fitted to a full tile wide may read chunky — `_MON_GRID` and the builders'
+widths are the edits), the church_wall GLB's facing as a wall piece.

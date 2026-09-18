@@ -43,7 +43,9 @@ const MON_COLLISION = {
     blastdoor: (dx, dy) => (dy === 0) ? 6 : 0,
 };
 const MON_GRID = { dumpster: [2, 1, 1], cargo: [1, 1, 3], greekcol: [1, 1, 2], mushroom: [1, 1, 2], mushroom2: [1, 1, 1], obelisk3d: [1, 1, 3],
-    chess_pawn: [1, 1, 2], chess_knight: [1, 1, 2], chess_rook: [1, 1, 3], chess_bishop: [1, 1, 3], chess_queen: [1, 1, 3], chess_king: [1, 1, 3] };   // the Looking-Glass's pieces (2026-09-12)
+    chess_pawn: [1, 1, 2], chess_knight: [1, 1, 2], chess_rook: [1, 1, 3], chess_bishop: [1, 1, 3], chess_queen: [1, 1, 3], chess_king: [1, 1, 3],
+    // THE SPELL-MADE MONUMENTS (2026-09-18): the wall spells' pieces
+    menhir: [1, 1, 2], castle_wall: [1, 1, 2], gothic_wall: [1, 1, 2], ziggurat_block: [1, 1, 2] };   // the Looking-Glass's pieces (2026-09-12)
 
 const S = 8, B = 5;
 const ascii = process.argv.includes('--ascii');

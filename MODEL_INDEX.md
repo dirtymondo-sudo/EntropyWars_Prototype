@@ -485,7 +485,15 @@ revolver · pistol · plasma · football · arrow · cauldron · crystalBall ·
 jet · sword (Excalibur, the iai, the stand-sword) · bullet · missile ·
 shotgun · sniper · fist · sleigh · femur · ulna · skull · candle ·
 candleLine · candleRing · tarot · tarot2 · tarotDeck · cross · **ufo**
-(misc bucket) · **cannon** (misc bucket, 2026-09-12). The sleigh and the
+(misc bucket) · **cannon** (misc bucket, 2026-09-12) · **asteroid** /
+**asteroid2** (THE FINISHER PASS, 2026-09-18 — the D.O.O.R. kit's
+`asteroid_1.glb` / `asteroid_2.glb` from `Assets/door/models/`, `axis: 'y'`:
+THE ROCKS — every thrown / falling rock is one of them through
+`_finRockBody`: the boulder projectile (Boulder Hurl, Stone Throw,
+Stonefall), the Meteor's body, the METEOR STORM, the moon's debris; the
+jostled icosahedron is the cold-cache fallback). The moon in TO THE MOON
+is the renderer's `moon` misc GLB through `ThreeRenderer.getMiscModelClone`
+(`_sigMoonshot3D`; a rock-sheet sphere until it streams). The sleigh and the
 master sword ALSO stand on boards from the same files (`_hzSleigh`,
 `_hzExcalibur` — North Pole, Camelot): one file, two loaders, one look.
 
@@ -539,6 +547,17 @@ the register.
 
 ## 8. Procedural families (the `_hz*` builders — no file)
 
+- **THE SPELL-MADE MONUMENTS** (`_monBuilders`, 2026-09-18 — what the wall
+  spells stand instead of raised blocks, 1×1×2 grid boxes in `_MON_GRID`,
+  placed live by map.js `placeSpellMonument`): `menhir` (Rampart — the
+  woods batch's standing-stone GLB, `_hzPropMenhirProc` the slab fallback),
+  `castle_wall` (Walls of Camelot — `_hzCastleWallSeg`, procedural
+  crenellated masonry in the castle sheet), `gothic_wall` (Gothic Rampart —
+  the Vatican batch's `church_wall` GLB, `_hzGothicWallSegProc` the
+  pinnacled fallback), `ziggurat_block` (Ziggurat Protocol — a stepped
+  sandstone block with a glyph band). Wish-list: a crenellated castle-wall
+  segment GLB (1 × 2 tiles, merlons), a ziggurat tier block, a gothic
+  buttress — measure, `_hzMiscKit`-first, keep the keys.
 - **Monuments** (`_monBuilders`, on-board cover): pyramid_cone, ziggurat,
   arch/gateway, obelisk, stairway, monolith, greek, crystal, rings,
   colossus, island, flag, rover (fallback), goldgate, lightpillar,

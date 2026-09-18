@@ -4209,12 +4209,18 @@ const SPELL_LIBRARY = [
         dmg: 60,
         damageType: 'physical',
         terrainDeform: { centerDelta: 2, edgeDelta: 0 },
+        /* THE SPELL-MADE MONUMENTS (2026-09-18): the wall is three STANDING
+           STONES — real GLB monuments (map.js placeSpellMonument, kind
+           `menhir` in _MON_GRID, two tiles high) instead of raised terrain
+           blocks. `terrainDeform` stays for the ghost preview's height read;
+           the handler never raises the ground when `monument` is set. */
+        monument: { kind: 'menhir' },
         /* Tank capstone (ring 4 = tier III, spell-tree redesign). */
         tier: 'III',
         school: 'Tank',
         classRestriction: 'Tank',
         jobPreference: ['Tank'],
-        desc: 'Raise a 3-tile wall of impassable mountain terrain. Enemies on targeted tiles take damage and are pushed aside. Hold the line — build the line.'
+        desc: 'Raise three standing stones in a line — a wall two tiles high that blocks the way and the sight. Enemies on the targeted tiles take damage. Hold the line — build the line.'
     },
     /* (mark1 / Suppressing Fire was CUT 2026-07-26 via the Spell Library.) */
     {
@@ -5589,7 +5595,11 @@ const SHARED_WALLS_OF_CAMELOT = {
     kind: 'terrainCreate', terrainType: 'castle_wall', tileCount: 3, orientable: true,
     dmg: 60, damageType: 'physical',
     terrainDeform: { centerDelta: 2, edgeDelta: 0 },
-    desc: 'Reshapes the battlefield — creates castle_wall across 3 tiles (pick the orientation).'
+    /* THE SPELL-MADE MONUMENTS (2026-09-18): three crenellated CASTLE WALL
+       segments (three-renderer.js _hzCastleWallSeg — textured masonry with
+       merlons, turned along the line) stand where the ground used to rise. */
+    monument: { kind: 'castle_wall' },
+    desc: 'Raises three segments of Camelot\'s own curtain wall in a line — crenellated stone two tiles high that blocks the way and the sight (pick the orientation). Enemies on the targeted tiles take damage.'
 };
 
 /* (SHARED_MAELSTROM was CUT 2026-07-26 via the Spell Library.) */
@@ -5920,7 +5930,8 @@ const RACE_ABILITIES = {
           kind: 'terrainCreate', terrainType: 'mountain', tileCount: 2, orientable: true,
           dmg: 50, damageType: 'physical',
           terrainDeform: { centerDelta: 2, edgeDelta: 0 },
-          desc: 'Raise 2 tiles of stone wall. Cheaper than Rampart but smaller. The cathedral grows.' },
+          monument: { kind: 'gothic_wall' },   // THE SPELL-MADE MONUMENTS (2026-09-18): two cathedral wall pieces (the church_wall GLB)
+          desc: 'Raise 2 pieces of cathedral wall — pointed stone two tiles high that blocks the way and the sight. Cheaper than Rampart but smaller. The cathedral grows.' },
         { id: 'raceStoneDrop', element: 'earth', spellType: 'unholy', name: 'Stone Drop',
           type: 'damage', tier: 'III', cost: 25, dmg: 150, range: 1, apCost: 1,
           kind: 'skyDrop', damageType: 'physical', carryHeight: 4, dmgPerLevel: 25,
@@ -6095,11 +6106,18 @@ const RACE_ABILITIES = {
           kind: 'barrage', aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'discord', duration: 2 }],
           desc: 'Emit a wave of dread. For 2 turns, all enemies within 2 tiles have their ATK lowered by 2 stages and DEF by 1 stage.' },
+        /* THE FINISHER PASS (2026-09-18) — METEOR STORM: the mothman's prophecy
+           comes true. A 5×5 mark; at the end of the round the sky falls —
+           three-vfx-effects.js `raceProphecyOfDisaster_descent` (`storm: true`
+           → _sigMeteorStorm3D: two dozen asteroid GLBs raining across the
+           zone with fire trails, streakers across the sky, a crater burst on
+           every landing) under the descent grammar's sky-watch camera. */
         { id: 'raceProphecyOfDisaster', spellType: 'anomaly', name: 'Prophecy of Disaster',
-          type: 'damage', tier: 'III', cost: 50, dmg: 160, range: 5, apCost: 2,
-          kind: 'delayed', damageType: 'magic', aoeRadius: 1, delayTurns: 1,
+          type: 'damage', tier: 'III', cost: 50, dmg: 140, range: 5, apCost: 2,
+          kind: 'delayed', damageType: 'magic', aoeRadius: 2, delayTurns: 1,
+          groundsFlyers: true,
           bonusVsStatus: { status: 'discord', mult: 1.5 },
-          desc: 'Marks the target tile — the strike lands after 1 round, dealing HEAVY magic damage in an AOE. Deals bonus damage to targets with Discord.' },
+          desc: 'The mothman foretells the disaster: marks a 5×5 zone. At the end of the round a METEOR STORM falls on it — HEAVY magic damage to everything inside, flyers knocked from the sky. Deals bonus damage to targets with Discord.' },
         { id: 'raceRedEyes', spellType: 'unholy', name: 'Red Eyes',
           type: 'debuff', cost: 20, range: 4, apCost: 1,
           kind: 'debuff',
@@ -6706,13 +6724,20 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'physical',
           projectileOverride: 'proj-bullet',
           desc: 'Shoulder the long rifle. Deals MEDIUM physical damage to a Single Enemy up to 5 tiles away.' },
+        /* THE FINISHER PASS (2026-09-18) — THE TRICK SHOT: High Noon's one
+           bullet RICOCHETS off the map — raised ground, walls, monuments, the
+           board's own rim — before it finds the target, so the shot ignores
+           cover (`ignoresLineOfSight`) and takes `travelMs` to arrive
+           (battle.js executeSpellAnimation hands it to the action camera;
+           three-vfx-effects.js _sigTrickShot3D plans the bounces off the live
+           board and flies the tracer; the director slows the bounces). */
         { id: 'raceHighNoon', spellType: 'human', element: 'metal', name: 'High Noon',
-          type: 'damage', cost: 50, dmg: 180, range: 4, apCost: 2, tier: 'III',
+          type: 'damage', cost: 50, dmg: 180, range: 6, apCost: 2, tier: 'III',
           kind: 'damage', damageType: 'physical',
-          guaranteedCrit: true,
-          projectileOverride: 'proj-bullet',
+          guaranteedCrit: true, ignoresLineOfSight: true, travelMs: 1500,
+          /* no projectileOverride: the PNG bullet flew straight over the ricochet */
           bonusVsStatus: { status: ['stagger', 'tethered'], mult: 1.5 },
-          desc: 'Deals HEAVY physical damage to a Single Enemy. Always lands a critical hit. The clock strikes twelve. Deals bonus damage to Staggered or Roped targets.' },
+          desc: 'One bullet, fired at noon, bounces off every wall on the map before it finds them. HEAVY physical damage to a Single Enemy through any cover. Always a critical hit. Deals bonus damage to Staggered or Roped targets.' },
     ],
     'men in black': [
         _mkBolt(_JAM_BOLT, { id: 'raceDeneuralizer', spellType: 'tech', element: 'psychic', name: 'Deneuralizer' }),
@@ -6985,7 +7010,8 @@ const RACE_ABILITIES = {
           kind: 'terrainCreate', terrainType: 'mountain', tileCount: 3, orientable: true,
           dmg: 80, damageType: 'physical',
           terrainDeform: { centerDelta: 2, edgeDelta: 0 },
-          desc: 'Reshapes the battlefield — creates mountain across 3 tiles (pick the orientation).' },
+          monument: { kind: 'ziggurat_block' },   // THE SPELL-MADE MONUMENTS (2026-09-18): three stepped sandstone blocks
+          desc: 'Three stepped ziggurat blocks rise in a line — carved sandstone two tiles high that blocks the way and the sight (pick the orientation). Enemies on the targeted tiles take damage.' },
         SHARED_GRAVITY_CRUSH,
         SHARED_FISSURE
     ],
@@ -7180,12 +7206,21 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'burn', duration: 1 }],
           desc: 'The arm morphs into a cannon and fires a beam two tiles wide. Deals MEDIUM magic damage to All Enemies in the line. Applies Burn.' },
         /* Cyborg capstone since the 2026-08-12 capstone pass (was overclock). */
-        { id: 'raceRocketToss', spellType: 'tech', name: 'Rocket Toss',
+        /* THE FINISHER PASS (2026-09-18) — TO THE MOON: the cyborg's capstone
+           is the JRPG throw. `moonshot: true` is read by battle.js
+           playSkyThrowFx (the fling arcs `moonArcTiles` tiles into the sky —
+           three-renderer.js startThrowArcTween `arcPx`), by ThreeVFXEffects
+           sigMoonshot3D (the moon GLB drops into the arc's apex, the body hits
+           it, the moon SHATTERS, the shards rain on the landing) and by the
+           CINE_SEQUENCES.raceRocketToss director (the sky watch, the freeze on
+           the crack). The mechanics are the skyThrow's: grab, carry, hurl. */
+        { id: 'raceRocketToss', spellType: 'tech', name: 'To the Moon',
           type: 'damage', tier: 'III', cost: 55, dmg: 150, range: 1, apCost: 1,
-          kind: 'skyThrow', damageType: 'physical', carryHeight: 4, dmgPerLevel: 25,
+          kind: 'skyThrow', damageType: 'physical', carryHeight: 6, dmgPerLevel: 25,
           throwRange: 3, collisionBonus: 50,
           requiresFlight: true,
-          desc: 'Grabs the target, carries it skyward and hurls it up to 3 tiles. Deals HEAVY physical damage, more if they crash into another unit. Caster must be flying.' },
+          moonshot: true, moonArcTiles: 7,
+          desc: 'Grabs the target, rockets skyward and hurls them AT THE MOON. The moon loses. Deals HEAVY physical damage plus the fall, more if the landing crushes another unit; the moon\'s debris rains on the landing. Caster must be flying.' },
     ],
     'demon prince': [
         { id: 'raceDarkDominion', spellType: 'unholy', name: 'Dark Dominion',
@@ -13385,6 +13420,7 @@ const MF_DELTA_STRATA = ['lava', 'cave_floor', 'cave_wall', 'dirt_4', 'dirt_3'];
    against its own bed (the shared lava bed stays the default). */
 /* monument kinds with a real collision stamp (map.js _MON_COLLISION / _MON_GRID) */
 const MF_DELTA_SOLID_MONS = new Set(['tpillar', 'greekcol', 'mushroom', 'mushroom2', 'obelisk3d', 'monolith', 'greytube', 'cargo', 'dumpster', 'obelisk', 'colossus', 'greek',
+    'menhir', 'castle_wall', 'gothic_wall', 'ziggurat_block',   // THE SPELL-MADE MONUMENTS (2026-09-18): the wall spells' pieces, placeable by the forge / editor too
     'chess_pawn', 'chess_rook', 'chess_knight', 'chess_bishop', 'chess_queen', 'chess_king']);   // the Looking-Glass's pieces (2026-09-12)
 
 function _mfDeltaNew(cfg) {

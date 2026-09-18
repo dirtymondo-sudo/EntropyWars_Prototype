@@ -5995,6 +5995,11 @@
                     : undefined;
                 cam = playOffensiveActionCamera(unit, target, {
                     ...camOpts,
+                    /* THE FINISHER PASS (2026-09-18): a row may name its own
+                       travel time (High Noon's ricochet takes 1.5 s to arrive)
+                       — playCinematicAttack honours opts.travelMs, and the
+                       bolt / impact timings below read cam.travelMs back. */
+                    ...(spell.travelMs > 0 ? { travelMs: spell.travelMs } : {}),
                     attackName: spell.name,
                     descentCam: _descentCam,
                     shotKind: _spellShotKind(spell, travel)
@@ -21227,12 +21232,63 @@
                         cineSideDolly(caster, target, { mode: 'hold', tilt: 84 });
                     }
                 });
-                // The real world SLAMS back in with the gunshot, at full speed.
+                /* THE TRICK SHOT (2026-09-18): the real world slams back in
+                   with the gunshot — then the eye climbs to a wide, high view
+                   of the board and the bullet's ricochet plays under a half-
+                   speed clock (the tracer bounces off the map for
+                   `travelMs`), and the impact lands at full speed. */
+                const _tsTravel = Math.max(600, timings.travelMs || actionMs(1500));
                 _cineAt(timings.sourceHold + actionMs(120), sequenceId, () => {
                     cineSlowMoClear();
                     VoidStage.exit();
                     cineFreezeFrame(actionMs(90), { grade: 'whiteout' });
                     shakeBoard('heavy');
+                });
+                _cineAt(timings.sourceHold + actionMs(230), sequenceId, () => {
+                    const mid = { x: (caster.x + target.x) / 2, y: (caster.y + target.y) / 2 };
+                    const span = Math.max(9, Math.abs(caster.x - target.x) + Math.abs(caster.y - target.y) + 6);
+                    cineFlyBy(mid, { span, tilt: 74 });
+                    cineSlowMo(0.5, Math.max(300, _tsTravel - actionMs(420)));
+                });
+                _cineAt(timings.sourceHold + _tsTravel - actionMs(60), sequenceId, () => {
+                    cineSlowMoClear();
+                    cineFreezeFrame(actionMs(110), { grade: 'whiteout' });
+                    shakeBoard('heavy');
+                });
+                return true;
+            },
+
+            /* ── TO THE MOON (2026-09-18, THE FINISHER PASS): the cyborg's
+               capstone. Phase 2 (the throw) opens on the stock grab shot;
+               once the fling starts the eye parks on the landing tile and
+               looks UP into the airspace the body climbs into, freezes on
+               the frame the body hits the moon, then pitches DOWN with the
+               debris. The clock comes from window._ewMoonshot, published by
+               playSkyThrowFx (host and guest alike — RULE #2). */
+            raceRocketToss(ctx) {
+                const { caster, target, timings, sequenceId } = ctx;
+                const M = () => window._ewMoonshot || null;
+                const t0 = Math.max(0, timings.sourceHold);
+                _cineAt(t0 + actionMs(80), sequenceId, () => {
+                    const m = M(); if (!m) return;
+                    const fling = m.flingMs || actionMs(1900);
+                    const hang = Math.max(0, m.carryMs - (performance.now() - m.t0));
+                    _cineAt(hang, sequenceId, () => {
+                        cineSkyWatch({ x: m.midX, y: m.midY }, { span: 9, tiltUp: 120, tiltDown: 58, ms: fling });
+                        cineInsert('🌕', 'stamp', Math.round(fling * 0.55));
+                    });
+                    _cineAt(hang + Math.round(fling * 0.5), sequenceId, () => {
+                        cineSlowMo(0.3, 520);
+                        cineFreezeFrame(actionMs(140), { grade: 'whiteout' });
+                        shakeBoard('heavy');
+                    });
+                    _cineAt(hang + Math.round(fling * 0.5) + actionMs(540), sequenceId, () => {
+                        cineSlowMoClear();
+                    });
+                    _cineAt(hang + fling, sequenceId, () => {
+                        cineFreezeFrame(actionMs(90), { grade: 'whiteout' });
+                        shakeBoard('heavy');
+                    });
                 });
                 return true;
             },
@@ -29328,12 +29384,22 @@
                 && window.ThreeAnim.hasCarryHold(target.id));
             const liftMs = preHeld ? 0 : actionMs(480);
             const hangMs = actionMs(300);
-            const flingMs = isUfo ? actionMs(Math.max(620, 320 + 200 * throwDist)) : actionMs(320);
+            /* TO THE MOON (2026-09-18, THE FINISHER PASS): a `moonshot` row
+               flings the body `moonArcTiles` tiles into the sky over a long
+               fling; the moon GLB drops into the apex and the body hits it
+               (ThreeVFXEffects.sigMoonshot3D, called here so the relayed
+               replay of THIS function plays it on the guest — never through
+               fireGeometry, which online.js relays on its own). */
+            const isMoon = !!(spell && spell.moonshot);
+            const arcPx = isMoon ? ts * (spell.moonArcTiles || 7) : undefined;
+            const flingMs = isUfo ? actionMs(Math.max(620, 320 + 200 * throwDist))
+                : (isMoon ? actionMs(1900) : actionMs(320));
             const usedArc = !!(window.ThreeAnim && window.ThreeAnim.isActive()
                 && window.ThreeAnim.throwArc && !_skipVisuals()
                 && window.ThreeAnim.throwArc(target, fromX, fromY, toX, toY, {
                     liftMs: actionMs(480), hangMs: hangMs, flingMs: flingMs,
-                    liftPx: liftPx, carry: isUfo,
+                    liftPx: liftPx, carry: isUfo, arcPx: arcPx,
+                    spinTurns: isMoon ? 3 : 0,
                     onImpact: () => {
                         if (opts.onImpact) try { opts.onImpact(); } catch (e) {}
                         try {
@@ -29345,6 +29411,26 @@
                     }
                 }));
             const carryMs = (usedArc ? liftMs : 0) + hangMs;
+            if (isMoon && !_skipVisuals()) {
+                /* the director (CINE_SEQUENCES.raceRocketToss) reads this at its
+                   beats — the fling's clock and where the apex hangs */
+                window._ewMoonshot = {
+                    fromX, fromY, toX, toY,
+                    midX: fromX + (toX - fromX) * 0.25, midY: fromY + (toY - fromY) * 0.25,
+                    t0: performance.now(), carryMs, flingMs, usedArc,
+                    liftPx, arcPx: arcPx || ts * 7
+                };
+                if (usedArc && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.sigMoonshot3D === 'function') {
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle' || _skipVisuals()) return;
+                        try {
+                            window.ThreeVFXEffects.sigMoonshot3D(toX, toY, {
+                                fromX, fromY, liftPx, arcPx: arcPx || ts * 7, flingMs
+                            });
+                        } catch (e) {}
+                    }, carryMs);
+                }
+            }
             if (usedArc && isUfo && !_skipVisuals()) {
                 /* the saucer paces the beam-carry to the drop tile, hangs for
                    the drop, then bolts */
@@ -54439,6 +54525,10 @@
                             ? getTerrainAt3D(tx, ty, pz) : getTerrainAt(tx, ty);
                         if (current === 'wall') return;
                         _pushAffected(tx, ty);
+                        /* THE SPELL-MADE MONUMENTS (2026-09-18): a wall spell
+                           stands a real piece on the tile (below) and leaves the
+                           ground itself unpainted — the stone is the wall. */
+                        if (spell.monument) return;
                         if (_paintTile(tx, ty, current, undefined, pz, pz === undefined)) convertedTiles.push({ x: tx, y: ty });
                     };
                     if (spell.elevationFlood) {
@@ -54630,11 +54720,40 @@
                         triggerTerrainSpellReaction(unit, spell, affectedTiles);
                     }
 
-                    if (spell.terrainDeform && affectedTiles.length > 0) {
+                    if (spell.terrainDeform && !spell.monument && affectedTiles.length > 0) {
                         for (const at of affectedTiles) {
                             applyTerrainDeform(at.x, at.y, 0, spell.terrainDeform);
                         }
                         _invalidateBoardGrid();
+                        scheduleBoardRender();
+                    }
+                    /* THE SPELL-MADE MONUMENTS (2026-09-18): one real piece per
+                       affected tile through map.js placeSpellMonument (the ONE
+                       live placer — it stamps the wall's collision and records
+                       the tile for the renderer). A tile the placer refuses (a
+                       unit standing there, an objective, another monument)
+                       keeps its damage and gets no stone. The row's `rot`
+                       follows the cast line: a horizontal line of tiles is a
+                       wall running along x. state.monuments SYNCS (RULE #2). */
+                    if (spell.monument && affectedTiles.length > 0 && typeof placeSpellMonument === 'function') {
+                        const _monKind = spell.monument.kind;
+                        const _monRot = (_castOrientation === 'vertical') ? 90 : 0;
+                        let _monPlaced = 0;
+                        affectedTiles.forEach((at, i) => {
+                            const ok = placeSpellMonument({
+                                kind: _monKind, x: at.x, y: at.y, rot: _monRot,
+                                seed: ((at.x + 1) * 977 + (at.y + 1) * 131 + (state.round || 0) * 7 + i) | 0,
+                                spell: spell.id, owner: unit.player, round: state.round || 0
+                            });
+                            if (ok) _monPlaced++;
+                        });
+                        if (_monPlaced > 0) {
+                            _invalidateBoardGrid();
+                            if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
+                            if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+                            if (typeof shakeBoard === 'function') shakeBoard('normal');
+                            addLog(`🪨 ${spell.name}: ${_monPlaced} piece${_monPlaced !== 1 ? 's' : ''} of wall stand${_monPlaced === 1 ? 's' : ''} where the ground was.`);
+                        }
                         scheduleBoardRender();
                     }
                 }, impactDelay);
@@ -56130,8 +56249,9 @@
                     if (_thFx && _thFx.usedArc) {
                         // Ride the fling: once the carry ends, the live action
                         // shot glides WITH the thrown body down to its landing
-                        // tile so the impact happens on camera.
-                        window.setTimeout(() => {
+                        // tile so the impact happens on camera. (A moonshot's
+                        // camera is its director's — the sky watch.)
+                        if (!spell.moonshot) window.setTimeout(() => {
                             _cineRetargetShot({ x, y }, throwTarget,
                                 { duration: _thFx.flingMs + actionMs(160) });
                         }, _thFx.carryMs);

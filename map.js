@@ -6962,8 +6962,83 @@
             chess_rook:   [1, 1, 3],
             chess_bishop: [1, 1, 3],
             chess_queen:  [1, 1, 3],
-            chess_king:   [1, 1, 3]
+            chess_king:   [1, 1, 3],
+            // THE SPELL-MADE MONUMENTS (2026-09-18): the wall spells' pieces —
+            // Rampart's standing stones, the Walls of Camelot's crenellated
+            // segments, the Gothic Rampart's cathedral wall, the Ziggurat
+            // Protocol's stepped blocks. All two high = jump-only cover that
+            // blocks the sight (the same wall the old +2 terrain raise made).
+            menhir:         [1, 1, 2],
+            castle_wall:    [1, 1, 2],
+            gothic_wall:    [1, 1, 2],
+            ziggurat_block: [1, 1, 2]
         };
+        /* ── THE SPELL-MADE MONUMENTS (2026-09-18) ───────────────────────────
+           A terrainCreate spell whose row carries `monument: { kind }` (data.js:
+           rampart · raceShieldWall · raceGothicRampart · raceZigguratProtocol)
+           stands ONE real monument per affected tile instead of raising the
+           ground — the user's rule: raised terrain that means "a pillar or a
+           wall" is a Meshy piece. This is the ONE live placer: it appends the
+           row to state.monuments (synced to the guest like any state array),
+           stamps the kind's _MON_GRID box into the voxel + column grids of
+           every covered tile (the same solid the map-init stamp makes, so
+           movement / jump / LOS / the AI read the wall with no new rule) and
+           records the covered tiles' floors in state._monumentTiles (the
+           renderer draws the column only up to that floor — the GLB is the
+           visual). Refused (returns false, nothing changes) on a tile off the
+           board, a `wall` tile, an objective tile, a non-walkable object, a
+           tile already under a monument, or a tile with a living unit on it
+           (the spell's damage still lands there; the stone does not). */
+        function placeSpellMonument(mon) {
+            if (!mon || !mon.kind || !_MON_GRID[mon.kind]) return false;
+            if (!state.boardVoxels?.length || !state.boardColumns?.length) return false;
+            const W = bw(), H = bh();
+            const grid = _MON_GRID[mon.kind];
+            const swap = (Math.round((mon.rot || 0) / 90) & 1) === 1;
+            const gw = swap ? grid[1] : grid[0], gd = swap ? grid[0] : grid[1], gh = grid[2];
+            const x0 = mon.x - Math.floor((gw - 1) / 2), y0 = mon.y - Math.floor((gd - 1) / 2);
+            const had = (state._monumentTiles instanceof Map) ? state._monumentTiles : null;
+            const cover = [];
+            for (let gy = y0; gy < y0 + gd; gy++) {
+                for (let gx = x0; gx < x0 + gw; gx++) {
+                    if (gx < 0 || gy < 0 || gx >= W || gy >= H) return false;
+                    const t = getTerrainAt(gx, gy);
+                    if (t === 'wall') return false;
+                    if (typeof isObjectiveTile === 'function' && isObjectiveTile(gx, gy)) return false;
+                    if (had && had.has(gx + ',' + gy)) return false;
+                    const obj = getObjectAt(gx, gy);
+                    if (obj) {
+                        const rule = (typeof getObjectRule === 'function') ? getObjectRule(obj) : null;
+                        if (rule && !rule.walkable) return false;
+                    }
+                    if (typeof unitsAtColumn === 'function' && unitsAtColumn(gx, gy).length) return false;
+                    cover.push({ x: gx, y: gy });
+                }
+            }
+            const tiles = had || new Map();
+            const fill = mon.terrain || 'grass';
+            for (const c of cover) {
+                const vCol = state.boardVoxels[c.y][c.x] || (state.boardVoxels[c.y][c.x] = []);
+                const col = state.boardColumns[c.y][c.x] || (state.boardColumns[c.y][c.x] = []);
+                let floor = 0;
+                for (const b of vCol) if (b.z > floor) floor = b.z;
+                for (const b of col) if (b.z > floor) floor = b.z;
+                const haveV = new Set(vCol.map(b => b.z)), haveC = new Set(col.map(b => b.z));
+                for (let z = floor + 1; z <= floor + gh; z++) {
+                    if (!haveV.has(z)) vCol.push({ z, terrain: fill });
+                    if (!haveC.has(z)) col.push({ z, terrain: fill });
+                }
+                vCol.sort((a, b) => a.z - b.z);
+                col.sort((a, b) => a.z - b.z);
+                tiles.set(c.x + ',' + c.y, floor);
+            }
+            state._monumentTiles = tiles;
+            if (!Array.isArray(state.monuments)) state.monuments = [];
+            state.monuments.push(mon);
+            for (const c of cover) _syncColumnToLegacy(c.x, c.y);   // boardHeights / terrain tops + the three version bumps
+            return true;
+        }
+        if (typeof window !== 'undefined') window.placeSpellMonument = placeSpellMonument;
         function _stampMonumentCollision() {
             state._monumentTiles = null;
             try {
@@ -12953,6 +13028,11 @@
             { kind: 'mushroom',    label: 'Mushroom',        emoji: '🍄', foot: 1, maxH: 2 },
             { kind: 'mushroom2',   label: 'Mushroom (Real)', emoji: '🍄', foot: 1, maxH: 1 },
             { kind: 'obelisk3d',   label: 'Obelisk (3D)',    emoji: '🗿', foot: 1, maxH: 3 },
+            // 2026-09-18 THE SPELL-MADE MONUMENTS — the wall spells' pieces, 1×1×2 boxes
+            { kind: 'menhir',         label: 'Standing Stone', emoji: '🪨', foot: 1, maxH: 2 },
+            { kind: 'castle_wall',    label: 'Castle Wall',    emoji: '🏰', foot: 1, maxH: 2 },
+            { kind: 'gothic_wall',    label: 'Cathedral Wall', emoji: '⛪', foot: 1, maxH: 2 },
+            { kind: 'ziggurat_block', label: 'Ziggurat Block', emoji: '🧱', foot: 1, maxH: 2 },
             // 2026-09-12 the Looking-Glass's chess pieces — 1×1 tile boxes (place with
             // { dark: true } for the black set; the editor's default is the white one)
             { kind: 'chess_pawn',   label: 'Pawn',            emoji: '♙', foot: 1, maxH: 2 },
