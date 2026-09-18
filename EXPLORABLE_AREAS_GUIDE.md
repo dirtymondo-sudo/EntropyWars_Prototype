@@ -38,7 +38,7 @@ them. The names below are the ones the code uses; the games / papers they come f
 | **A · NATURAL (cellular)** | `terrain.gen.kind: 'cave'` — cellular automata on a 1.4 m lattice, rounded, the solid raised to `wallH` in the cliff sheet (data.js `_hqTGenerate`) | caves, canyons, badlands, crypts, ice, anything eroded | organic, no straight line anywhere |
 | **A' · NATURAL (clearings)** | `terrain.gen.kind: 'rooms'` — elliptical clearings joined by a Prim tree + `loops` winding corridors, the solid a THICKET bank of trees | woods, cloud fields, swamps, gardens, ruins overgrown | open sky, rooms you can see across |
 | **B · PREFAB (hand-placed rooms)** | a `kind: 'box'` room with authored `doors`, `props`, `counters` (the whole facility: the rotunda + rings, the suites, the Haunted House parts, the Spaceship's decks, the Dutchman below decks) | man-made interiors and set-pieces: throne rooms, lobbies, bridges, chapels, a mall, a station | every wall means something; the art is placed, not grown |
-| **C · ROOMS-AND-HALLWAYS (maze / rogue)** | today only by HAND: H-Wing (`DOOR_HQ.hwing`), the Works' tunnel, the service corridors, the dungeon cells — no generator yet | dungeons, sewers, bunkers, back-of-house, D.U.M.B., Portal-style chamber chains | corridors between rooms, doors on rooms, keys and locks |
+| **C · ROOMS-AND-HALLWAYS (maze / rogue)** | `terrain.gen.kind: 'halls'` (2026-09-17, D.U.M.B.) — a BSP of the shell into leaves with a rectangular ROOM in each, plus AUTHORED rooms (`gen.rooms`, the prefab chambers) and AUTHORED halls (`gen.halls` polylines, a ring or a spine), joined by a Prim tree + `loops` of L-SHAPED corridors; the solid a MASS to the ceiling (the city's rule), its boundary TRACED into `info.planWalls` (wall rows in an `urban:` sheet; `simplify` collapses the raster stairs); `bsp: false` = the authored rooms and halls alone. Still by hand: H-Wing, the Works' tunnel, the service corridors, the dungeon cells | dungeons, sewers, bunkers, back-of-house, D.U.M.B., Portal-style chamber chains | corridors between rooms, doors on rooms, keys and locks |
 | **D · STREETS (roads first)** | `terrain.gen.kind: 'city'` — authored polyline streets are the corridors, the blocks the solid, lots terraced along every face, buildings as MASS at street level (§4) | any city, a suburb, a base with roads, a harbour | a grid you navigate by street names |
 
 Two more things exist and are NOT families:
@@ -240,8 +240,13 @@ What is missing, and the plan for it:
    Portal's chamber = a shaft with the exit up.
 2. **THE CHAMBER CHAIN** (family C): prefab chambers (a template library) joined by generated
    back-of-house corridors; every chamber entered at its lift lobby, exited up a stair.
-   D.U.M.B. is built on this: Area 51's hangar (B) → the lift → chamber chain (C) → the
-   CERN ring (A' or a `rooms` plan with concrete) → the padded rooms.
+   **BUILT 2026-09-17 as the `halls` plan (D.U.M.B. — the build-plan entry):** the authored
+   chambers are `gen.rooms` rects with their tiers, stairs, decks and pits INSIDE them (SUB-LEVEL
+   7's four chambers off a hub with THE TOWER), the BSP fills the back-of-house round them, the
+   L-corridors are the chain; the CERN ring is one authored loop hall with `bsp: false`. What a
+   chamber template library would still add: a `gen.rooms` row naming a TEMPLATE (`tpl: 'drop'`)
+   that stamps its features at the room's frame — today each chamber's features are authored
+   in room coordinates by hand.
 3. **TRUE FLOORS in one room**: a second height field over the first (`terrain.floors[]`,
    each with its own mask; a stair / a lift / a hole joins them; `hqTerrainFeet` reads the
    floor the feet are on). This is the big one; do it after the shaft room proves the
@@ -396,6 +401,27 @@ The design (build in this order; each step is one delivery):
 ---
 
 ## 10. THE LOG
+
+- **2026-09-17 — D.U.M.B. (complex candidate #5): THE HALLS floor plan (family C's generator) and seven
+  parts on Rooms 555 + 999.** `terrain.gen.kind: 'halls'` (data.js `HQ_TERRAIN_GEN.halls`, the branch in
+  `_hqTGenerate`, `_hqTTraceMaskWalls`): BSP rooms + authored rooms + authored halls, a Prim tree + loops of
+  L-corridors (square-capped — right angles), the solid a MASS to the ceiling (`solidMass`, `info.solidTop` =
+  the shell's h), the mask's boundary TRACED into `info.planWalls` (a tooth-cleanup pass first, then
+  Ramer–Douglas–Peucker at `simplify` 0.5 m with each wall pushed into the solid by its own stair's reach —
+  the drawn face never protrudes past the boundary the mask refuses at); three-renderer.js draws them through
+  the one wall path (`drawWall`, a keyed material cache) and hangs `_hqBuildHallsLights` (emissive tubes down
+  every corridor). THE MOTOR POOL (the tram hall + platform, the bays; `links.area51_dumb` / `dumb_cern`
+  RE-POINTED onto its west / east walls), SUB-LEVEL 7 (the hub + THE TOWER + four Portal chambers: THE DROP,
+  THE CATWALK, THE PIT, OBSERVATION), DREAM RESEARCH, CLONE RESEARCH (THE OTHER ONE = a `clone: true` native),
+  THE WAR ROOM (family B, its own floor: the galleries + THE BIG BOARD), THE BUNKER (the loft, the pool waded,
+  the cellar), CERN · THE RING (one loop hall, the detector hall, the control room). Rules learned: a stair's
+  TREAD RISE + the tier's own edge step must stay under the slope rule at the edge (≤ ~0.45 m a tread:
+  L ≥ 2.2 × h) and the stair ends 0.7 m inside its tier; a plan room hangs NOTHING on the shell (every wall
+  prop free-standing on a plan wall); a `wall: true` catalogue prop placed free stands at x / z with `mount`;
+  never `utility_box` as a room prop. NOT built: a chamber TEMPLATE library (§5 item 2), doors on the BSP
+  rooms (a corridor opens straight into a room), a lower corridor ceiling, THE SHAFT ROOM, Area 51's hangar
+  as a prefab part, the pack on the two board rooms. Tests: `hq-dumb.test.js`; hq-floor-plan (the kind, a
+  per-kind `minOpen`), hq-terrain (33 rooms), hq-finds (the shelf's hint count) amended.
 
 - **2026-09-17 — the guide written; STREET LEVEL rev 2 (Disaster City + Cyberpunk City).**
   The `city` plan's podium removed: a block is a mass at street level (`podium: false`,

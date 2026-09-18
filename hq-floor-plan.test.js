@@ -31,16 +31,18 @@ const PLANNED = ROOMS.filter(id => HQ.rooms[id].terrain.gen);
 const G = D.HQ_TERRAIN_GEN;
 
 test('the sheet: seventeen of the eighteen terrain rooms carry a floor plan — the cave chambers cellular automata, the open woods clearings + corridors; the storm drain (a culvert) keeps its box', () => {
-    assert.equal(PLANNED.length, 22, PLANNED.join(','));   // + THE STRIP's streets, − the mall (its plan went in the third pass, 2026-09-17)   // + CYBERPUNK CITY's grid (the second pass, 2026-09-17), + THE DIVINE STAIR's four, + THE VATICAN's archive and cortile (2026-09-17; the basilica and the observatory are their own floors), + DISASTER CITY's streets and mall (the `city` kind)
+    assert.equal(PLANNED.length, 28, PLANNED.join(','));   // + D.U.M.B.'s six `halls` plans (2026-09-17: five parts on Room 555 + CERN's ring; the war room is its own floor)   // + THE STRIP's streets, − the mall (its plan went in the third pass, 2026-09-17)   // + CYBERPUNK CITY's grid (the second pass, 2026-09-17), + THE DIVINE STAIR's four, + THE VATICAN's archive and cortile (2026-09-17; the basilica and the observatory are their own floors), + DISASTER CITY's streets and mall (the `city` kind)
     for (const id of PLANNED) {
         const room = HQ.rooms[id], gen = room.terrain.gen, info = D.hqTerrainInfo(id);
-        assert.ok(gen.kind === 'cave' || gen.kind === 'rooms' || gen.kind === 'city', id + ': kind ' + gen.kind);
+        assert.ok(gen.kind === 'cave' || gen.kind === 'rooms' || gen.kind === 'city' || gen.kind === 'halls', id + ': kind ' + gen.kind);
         if (gen.kind === 'city') { assert.ok(Array.isArray(gen.streets) && gen.streets.length >= 2 && info.lots.length >= 10 && info.fronts.length >= 4, id + ': a city plan — streets, lots, fronts'); }   // DISASTER CITY (2026-09-17)
+        else if (gen.kind === 'halls') { assert.ok(info.genPlan && (info.genPlan.rooms.length + info.genPlan.halls.length) >= 2 && info.planWalls.length >= 20 && info.gen.solidMass && info.solidTop, id + ': a halls plan — rooms / halls, traced walls, the mass'); }   // D.U.M.B. (2026-09-17)
         else if (room.shell.open) assert.equal(gen.kind, 'rooms', id + ': an open room grows a thicket, not rock');
         else assert.equal(gen.kind, 'cave', id + ': a closed chamber is carved, not planted');
         assert.ok(info.mask && info.maskD && info.forced && info.mask.length === info.nx * info.nz, id + ': a mask on the field\'s own grid');
         assert.ok(info.gen && info.gen.kind === gen.kind && info.gen.wallH > 1.0, id + ': the plan record');
-        assert.ok(info.gen.open >= G.minOpen && info.gen.open <= G.maxOpen, id + ': open share ' + info.gen.open.toFixed(2) + ' outside [' + G.minOpen + ', ' + G.maxOpen + ']');
+        const minOpen = (G[gen.kind] && G[gen.kind].minOpen != null) ? G[gen.kind].minOpen : G.minOpen;   // a halls plan may be mostly wall (CERN's ring is a tunnel)
+        assert.ok(info.gen.open >= minOpen && info.gen.open <= G.maxOpen, id + ': open share ' + info.gen.open.toFixed(2) + ' outside [' + minOpen + ', ' + G.maxOpen + ']');
     }
     assert.ok(!HQ.rooms.site_prebuilt_fairy_forest_deadmans.terrain.gen, 'the storm drain is a culvert, not a cave');
 });
@@ -102,7 +104,7 @@ test('THE GUARANTEE holds with the plan: every door reaches every other under th
         if (room.terrain.gen.kind === 'city') assert.equal(info.thicket.length, 0, id + ': a city grows buildings, not a thicket');   // DISASTER CITY (2026-09-17)
         else if (room.shell.open && room.terrain.gen.thicket !== false) assert.ok(info.thicket.length >= 3 && info.thicket.length <= G.rooms.maxTrees, id + ': thicket ' + info.thicket.length);
         else if (room.shell.open) assert.equal(info.thicket.length, 0, id + ': no thicket in heaven (gen.thicket: false)');
-        else assert.equal(info.thicket.length, 0, id + ': a cave grows no thicket');
+        else assert.equal(info.thicket.length, 0, id + ': a cave / a bunker grows no thicket');
         for (const q of (room.npcSpots || []).concat([room.spawn])) if (q && q.x != null) assert.ok(D.hqTerrainMaskAt(info, q.x, q.z) > 0.3, id + ': a body at ' + q.x + ',' + q.z + ' in the solid');
         for (const p of room.props || []) { if (p.wall || p.ceil) continue; assert.ok(D.hqTerrainMaskAt(info, p.x || 0, p.z || 0) > 0, id + ': ' + p.key + ' in the solid'); }
         assert.ok(D.hqTerrainDump(info, { step: 1 }).some(l => l.includes('#')), id + ': the dump draws the solid');

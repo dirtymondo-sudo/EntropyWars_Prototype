@@ -5381,3 +5381,51 @@ another face (1 cm) is dropped before the fronts. `HQ_TEXB.tint` /
 `disaster-city-3.test.js`. Ship data.js to Render too. UNSEEN LIVE (RULE #1c):
 the shopfronts, the balustrades, the stairs, the kerb density, the mitres on
 the 45° chicane, the Strip at night, the bay doors.
+
+## D.U.M.B. — THE HALLS FLOOR PLAN (family C's generator) + seven parts on Rooms 555 / 999 (complex candidate #5, HQ plan 9.3 stage 8) — 2026-09-17, local delivery
+**THE HALLS** (data.js `HQ_TERRAIN_GEN.halls`, the `halls` branch in `_hqTGenerate`,
+`_hqTTraceMaskWalls`, `_hqTRdp`): `terrain.gen.kind: 'halls'` = EXPLORABLE_AREAS_GUIDE
+family C (ROOMS-AND-HALLWAYS) — a BSP of the shell (`leafMin` / `leafMax`) with a
+rectangular room in each leaf, the AUTHORED rooms `gen.rooms` (`{ id, x, z, w, d }` — the
+prefab chambers; a BSP room whose centre lands in one is dropped) and the AUTHORED halls
+`gen.halls` (`{ id, pts, w, loop }` — a ring, a spur), every room / door pad / hall vertex
+a node on a Prim tree + `loops` edges of L-SHAPED corridors (`corridor` [2.6, 3.4],
+square-capped, clamped after the snap); `bsp: false` = the authored alone. The solid is
+MASS (`solidMass` like a city block: the walker refused by `solidPad`, `info.solidTop` = the
+shell's h — the walls reach the ceiling), never a rise; a TOOTH CLEANUP (two passes) before
+THE GUARANTEE; the mask's boundary TRACED into **`info.planWalls`** (unit faces on the
+half-cell lattice, skipped within `wallInner` of the shell, chained, Ramer–Douglas–Peucker
+at `simplify` 0.5 m, each row `wallT` thick in `wallKey` — an `urban:` sheet — pushed into
+the solid by t/2 + its own chain's reach toward the open side, so the drawn face never
+protrudes past the line the mask refuses at); `minOpen` 0.12 per kind (a tunnel is mostly
+wall; hq-floor-plan.test.js reads it). three-renderer.js `_hqBuildTerrain`: `drawWall` is
+the ONE wall path (info.walls AND info.planWalls; `keyedMat` caches a material per sheet;
+a plan wall wears `_ew_hqPart: 'wall'`), `_hqBuildHallsLights` hangs an emissive tube every
+6.5 m down every corridor / hall (`EW_HQ_NO_HALL_LIGHTS`). `check-terrain.js` prints
+`traced walls n`. **THE PARTS** (data.js, the block before H-WING; `hqBunkerShell(o)`
+beside the city shell — closed, the pack's concrete / corrugated / rubber / drop ceiling
+at 1.75, the red lamp, a haze, `HQ_ROOM_LOOKS.dumb`; `.warroom` / `.bunker` / `.cern`
+too): `site_prebuilt_dumb_motorpool` (the tram hall + THE PLATFORM + the lit `train_car`
+= the weenie, the bays; **`links.area51_dumb.b` / `dumb_cern.a` RE-POINTED onto its west /
+east walls** — the board room keeps `cave_dumb` alone), `_sublevel7` (the hub + THE TOWER
+(the tape) + THE DROP / THE CATWALK (a `deck` plank between two 4 m towers) / THE PIT (a
+`dip`) / OBSERVATION; five spokes), `_dreamlab` (the ward, the range's `floating_orb`, the
+booth), `_clonevats` (six `iso_tank` vats under the gantry, the free-standing
+`door_furnace`, **THE OTHER ONE = a `clone: true` npcSpot**), `_warroom` (family B, no
+plan: two galleries, THE BIG BOARD on the shell's north wall), `_bunker` (the loft, a
+`pool` waded, the cellar), `site_prebuilt_cern_ring` (`bsp: false`: one octagon loop hall
++ two spurs, the detector hall, the control room; open 19 %). Back doors on the freed
+lanes: `backDoors.prebuilt_dumb` (n x −5 → the motor pool) and `.prebuilt_cern` (n x −5 →
+the ring), both `leaf_bulkhead` wide. Tapes: seven re-homed (Antarctica's, the North
+Pole's, the Singularity's, Mars's, Saturn's, the Moon's, Giza's second — retitled for their
+rooms; the base keeps its own two on the board); `findSpots` pins the seven hard tapes. **RULES**: a STAIR's tread rise + the tier's
+0.35 m edge step must stay under the slope rule at the edge — ≤ ~0.45 m a tread (L ≥
+2.2 × h) AND the stair ends 0.7 m inside its tier (1.2 m buries the last tread: a 1.0 m
+step); a plan room hangs NOTHING on the shell — every wall prop stands FREE on a plan
+wall (`x, z, face, mount`); `leaf_security` is the L4 rank leaf; never `utility_box` as
+a room prop. `npm test` runs `hq-dumb.test.js`; hq-floor-plan (28 planned) / hq-terrain
+(33 rooms) / hq-finds (the shelf hints a site's every other tape) amended. NOT built: a chamber template library, doors on BSP rooms, a
+dropped corridor ceiling, THE SHAFT ROOM, Area 51's hangar part, the pack on the board
+rooms. Ship data.js to Render too. UNSEEN LIVE (RULE #1c): all of it — the traced walls
+at the corners, the strip lights, the tram, the plank, the pit, the windows, the furnace,
+the pool, the orb, the two new plates.

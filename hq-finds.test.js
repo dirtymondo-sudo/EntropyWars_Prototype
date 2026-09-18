@@ -262,7 +262,10 @@ test('THE SHELF: found / hint / where — an unfound spine reads its room once a
     const a = sh.rows.find(r => r.id === pair[0].id), b = sh.rows.find(r => r.id === pair[1].id);
     assert.ok(a.found && !a.hint && a.clip === null && a.roomLabel && a.roomNo === D.hqRoomNo('site_' + site), 'the found one: labelled, numbered, blank');
     assert.ok(!b.found && b.hint && b.hard === !!FINDS.find(f => f.tape === b.id).hard, 'its sibling on the board: hinted');
-    assert.equal(sh.rows.filter(r => r.hint).length, 1, 'only the sibling is hinted');
+    /* D.U.M.B. (2026-09-17): the first built site is a COMPLEX now — every other tape of the site is hinted: the board's sibling and one per part */
+    const siteTapes = TAPES.filter(t => D.hqRoomSite(t.where) === site).length;
+    assert.ok(siteTapes >= 3, 'the first built site has parts (' + siteTapes + ')');
+    assert.equal(sh.rows.filter(r => r.hint).length, siteTapes - 1, 'every other tape of the site is hinted, nothing else');
     /* a complex part hints the other parts of the same site */
     const parts = TAPES.filter(t => t.where.indexOf('site_prebuilt_hollow_earth_') === 0);
     D.hqCollectFind(p, 'tape:' + parts[0].id);

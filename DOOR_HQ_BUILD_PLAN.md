@@ -9719,6 +9719,11 @@ RULE, the hard tapes, `check-terrain.js` before any claim. The aesthetic is the 
    entries above): eight parts shipped locally — the basilica, the archive, the cortile, the observatory, the
    catacombs, the pit, the stairway, the cloud fields.**
 5. **D.U.M.B.** — Area 51, CERN, the padded rooms, the dream lab, clone disposal: the base under the base.
+   **STARTED 2026-09-17 (D.U.M.B., the entry at the end of this file): seven parts shipped locally — the motor
+   pool, sub-level 7, dream research, clone research, the war room, the bunker, CERN's ring — on the new
+   `halls` floor plan (family C's generator).** The user's brief, verbatim: "The DUMB is kind of a catch all for
+   all black budget projects and organizations. Area 51, CERN, Dream Research, Psychic Training, Clone Research,
+   A Billionaire Bunker, Government War Room, it's all there" — and "the most Portal map".
 6. **DOOR MANUFACTURING** — the service hallways, the warehouse, the Works: what keeps D.O.O.R. running.
 #1 has its second pass and CYBERPUNK CITY (the entry above); #4 started; the rest not. Each needs its own `HQ_ROOM_LOOKS` row, its own sky / fog, its links on the
 world graph and the 7.10 checklist for any new site it introduces.
@@ -9801,3 +9806,110 @@ The user's notes on the mall and the streets, every one answered in the existing
 - **CYBERPUNK CITY IS THE GRID · THE STRIP IS ITS OWN AREA · DISASTER CITY IS THE LARGER AREA**: `DOOR_HQ.siteRooms.entry` names the part that stands for a site — every door, threshold, GO on the map and post-match return that would land in `site_prebuilt_cyberpunk` / `_strip` / `_downtown` lands in `site_prebuilt_cyberpunk_streets` / `site_prebuilt_strip_streets` (NEW) / `site_prebuilt_downtown_streets` instead (map.js `_hqEnter` → data.js `hqSiteEntry(roomId, at)`: an `at` the part has is kept, the rest land at the part's `bay` door; the board room is marked seen too). `hqApplySiteEntries()` (at load, after the board rooms are generated) hangs the board room's own egress on the part as its `bay` door (`wall` / `x` from the sheet; the leaf, the label, the bay action and `site` — the plate reads the site's number). The grid's tenement door is gone (the bay door stands where it stood). **THE STRIP** (`site_prebuilt_strip_streets`, `hqCityShell({ strip: true })` — the Strip's own night off its EW_MAP_META row, `HQ_ROOM_LOOKS.strip`): THE BOULEVARD (14 m, the roads out at both ends — `downtown_strip` / `strip_cyberpunk` re-pointed onto the part), THE BACK LANE loop (= THE STRIP GRAND PRIX), two cross streets, the fountain plaza, THE VALET DECK (2.4 m, a ramp, a rail, a quarter pipe), THE MARQUEE ROOF (4.5 m, the hard tape), the chapel's motel door on the north wall (the chapel's `street` door comes back onto the boulevard). THE LUXOR BEAM tape re-homed onto it. Labels: every part reads `DISASTER CITY · <place>` (DOWNTOWN, THE MALL, THE STRIP, CYBERPUNK CITY, THE CHAPEL, THE CASINO FLOOR, THE TOWER LOBBY, THE PLATFORM, THE NOODLE BAR, SUPPLY CLOSET).
 - Tests: `disaster-city-3.test.js` (8); hq-city, hq-city-2, hq-city-repair, hq-terrain (26 rooms), hq-floor-plan, hq-urban, urban-pack amended. `node check-terrain.js site_prebuilt_downtown_mall` / `site_prebuilt_strip_streets` solve.
 - UNSEEN LIVE (RULE #1c): the shopfronts' read under the mall's light (the glass tint, the sign colours, the shutter share `HQ_SHOP.shutterP`), the balustrades against the fitted escalator GLB, the stairs' treads under the walker, the kerb rule's density on the sidewalks, the mitred corners on the chicane's 45° bends, the Strip's neon lots at night, the bay door on each part.
+
+### 2026-09-17 — D.U.M.B. (THE COMPLEX CANDIDATES #5): THE HALLS FLOOR PLAN + seven parts on Rooms 555 and 999 (local delivery)
+
+The user: "The next one I recommend doing is the DUMB which would bring some areas/rooms together and be the most
+'Portal' map. The DUMB is kind of a catch all for all black budget projects and organizations. Area 51, CERN, Dream
+Research, Psychic Training, Clone Research, A Billionaire Bunker, Government War Room, it's all there." Built on the
+guide (EXPLORABLE_AREAS_GUIDE §1 family C, §5 item 2 THE CHAMBER CHAIN), which needed a generator first.
+
+**THE STORY BEATS (§3 step 1):** Room 555's blast door → the freight lift (the board's north wall at x −5) → THE
+MOTOR POOL (arrive: the tram lit at the end of the hall — the weenie; the tunnel out both ways) → the stair to
+SUB-LEVEL 7 (the level that does not exist: THE TOWER at the hub's centre, the tape nobody can climb to, four
+numbered chambers to learn the verbs — climb THE DROP, cross THE CATWALK's plank, walk down and out of THE PIT,
+climb OBSERVATION's deck behind the round windows) → the four departments off the hub (the ward and the range,
+the vats and the furnace, the war room's board, the billionaire's screens) → back out by the tram to Area 51's
+hangar or on to CERN's ring (walk the whole octagon; the detector hall's orb).
+
+**THE HALLS FLOOR PLAN (data.js `HQ_TERRAIN_GEN.halls`, the `halls` branch in `_hqTGenerate`,
+`_hqTTraceMaskWalls`, `_hqTRdp`):** family C's generator — a BSP of the shell into leaves (`leafMin` 8 ..
+`leafMax` 19 m) with a rectangular room in each (`roomInset`, ≥ `roomMin`, snapped to `roomSnap`), plus the
+AUTHORED rooms (`gen.rooms` — the prefab chambers; a BSP room whose centre lands in one is dropped) and the
+AUTHORED halls (`gen.halls` polylines with `loop`; `bsp: false` = those alone), every room centre / door pad / hall
+vertex a node on a Prim tree (Manhattan distance; the hall vertices start in the tree as one component) + `loops`
+extra edges, each edge an L-SHAPED corridor (`corridor` [2.6, 3.4] m, square-capped — right angles, never a
+rounded end). The solid is MASS (the city's rule: `solidMass`, the walker refused by `solidPad`, `info.solidTop` =
+the shell's h — the walls reach the ceiling), never a rise; a two-pass TOOTH CLEANUP (a solid cell with three open
+neighbours opens, an open nub with one closes; never a forced cell) before THE GUARANTEE; then the mask's boundary
+is TRACED into `info.planWalls`: every open/solid face is a unit edge on the half-cell lattice (skipped within
+`wallInner` 0.75 m of the shell — the box shell's own wall serves), chained, simplified by Ramer–Douglas–Peucker at
+`simplify` 0.5 m, and each segment becomes a wall row `wallT` 0.5 m thick in `wallKey` (an `urban:` sheet) pushed
+into the solid by t/2 PLUS its own chain's reach toward the open side — the drawn face never protrudes past the
+boundary the mask refuses at (a 2-cells-run stair deviates 0.45 m from its chord; the tolerance had to be 0.5, and
+the push keeps the walker off the box). The renderer (three-renderer.js `_hqBuildTerrain`) draws them through the
+one wall path (`drawWall`, a keyed material cache — hundreds of rows in one sheet) tagged `_ew_hqPart: 'wall'`, and
+`_hqBuildHallsLights` hangs an emissive tube every 6.5 m down every corridor and hall and one over each BSP room
+(`EW_HQ_NO_HALL_LIGHTS`). `check-terrain.js` prints `traced walls n`. The ring traced 544 rows before the RDP
+rewrite, 131 after; the hub 152.
+
+**THE PARTS (data.js, the block before H-WING; `hqBunkerShell(o)` beside the city shell; four looks
+`HQ_ROOM_LOOKS.dumb / warroom / bunker / cern`):**
+- `site_prebuilt_dumb_motorpool` 64 × 40 × 6 — the tram hall (authored, 50 × 14) with THE PLATFORM (a 1 m tier,
+  two stairs, the edge rail), four `track_bed`s and the `train_car` lit at the east end (the near weenie), the
+  bays (30 × 12) with `car_suv` / `car_cop`, a quarter pipe, the kerb ledge; THE SIGNAL GANTRY pinnacle (4.4 m,
+  the tape). Doors: `lift` (s) ⇄ the board room's new back door (`siteRooms.backDoors.prebuilt_dumb`, n x −5,
+  `leaf_bulkhead` wide), `seven` (n) ⇄ sub-level 7; **`links.area51_dumb.b` and `links.dumb_cern.a` RE-POINTED
+  here** (the west and the east wall, `sub` per end) — the board room keeps `cave_dumb` alone on its north wall.
+- `site_prebuilt_dumb_sublevel7` 96 × 72 × 8 — the hub (26 × 26) with THE TOWER (r 1.7, 6.5 m — the tape, the
+  near weenie), CH01 THE DROP (a 3.5 m tier up an eight-tread stair + rail), CH02 THE CATWALK (two 4 m towers, a
+  `deck` plank between, one stair), CH03 THE PIT (a `dip` r 6 × 2.2 m — walked down, climbed out — and a grind
+  ledge), CH04 OBSERVATION (a 2.4 m deck up a stair, two `observation_window`s free-standing on its face); the
+  five spokes: `motorpool` (s), `dream` / `clone` (w, z ∓18), `war` (e z −18, `leaf_vault`) / `bunker` (e z 18,
+  `leaf_hotel`). The `MetalSubwayGrill` ceiling.
+- `site_prebuilt_dumb_dreamlab` 48 × 36 × 4.2 (subway tile) — the ward (four cots, four traces, two pods, two
+  screens), the range (THE OBJECT: a `floating_orb`, the spoons), the booth up a step; THE DREAM TOWER (3.6 m, the
+  tape). Natives: two telepaths, a dreameater. Small BSP leaves (6..12) = the training rooms round the ward.
+- `site_prebuilt_dumb_clonevats` 56 × 40 × 6.5 (corrugated) — six `iso_tank` vats in two rows under THE GANTRY
+  (2.8 m, a stair, the rail), the `door_furnace` free-standing in the disposal bay, the chute, the kerb;
+  THE VAT STACK (4.4 m, the tape); **THE OTHER ONE** — a `clone: true` native between the vats (Room II's rule).
+- `site_prebuilt_dumb_warroom` 44 × 32 × 9 — family B, its own floor: the pit with two `conference_table`s and
+  the phones, two 3 m galleries up two stairs with rails, THE BIG BOARD (three `dream_screen`s + two
+  `monitor_stack`s on the north wall over the gallery), the world clocks, THE PROJECTION BOOTH (5.5 m, the tape).
+  The one room that hangs props on the shell (no plan).
+- `site_prebuilt_dumb_bunker` 60 × 40 × 5 (marble, painted plaster, the amber look) — the great room with
+  three `false_window`s free-standing on the plan walls (the near weenie: daylight eighty metres down), the couch,
+  the throne, the speakers, THE LOFT (2.6 m, a stair, a rail), the pool (a `pool` feature, waded), the cellar
+  (three racks, the round fridge, the keypad for the panic room the BSP makes), THE SAFE STACK (3.8 m, the tape).
+- `site_prebuilt_cern_ring` 100 × 100 × 5.5 — `bsp: false`: one authored loop hall (an octagon r 40, 5.5 m wide)
+  + two spurs to the doors, the detector hall (22 × 24 on the east vertex: THE BEAM = the orb, six racks, the
+  gantry 3.2 m up a stair) and the control room (18 × 14 on the north vertex); THE BEAM DUMP (4.2 m, the tape).
+  CERN's board room opens on it by a new back door (`backDoors.prebuilt_cern`, n x −5); the tunnel from the
+  motor pool lands on its west wall. Open share 19 % — `HQ_TERRAIN_GEN.halls.minOpen` 0.12 (a tunnel is
+  mostly wall; hq-floor-plan.test.js reads `minOpen` per kind now).
+
+**Tapes:** seven re-homed with new titles for the rooms they landed in (the base keeps its own two on the board —
+the tape shelf's test reads the first built site's pair) — Antarctica's second → THE TRAM, 00:00 (the motor pool),
+the North Pole's second → SUB-LEVEL 7, the Singularity's → REM, NIGHT 40, Mars's →
+BATCH 12, Saturn's → THE HEXAGON (the war room), the Moon's → EARTHRISE (the bunker), Giza's → BEAM ON (the ring);
+the hundred stays a hundred. `findSpots` pins the seven; every one `hard` with a door gun shot
+(`hqFindHardReachTerrain` ok in all seven).
+
+**Rules learned (in the guide's log too):** THE RAMP RULE's second half for STAIRS — a tread's rise plus the
+tier's own 0.35 m edge step must stay under the slope rule (1.0) at the edge, so a stair wants ≤ ~0.45 m a tread
+(L ≥ 2.2 × h) AND ends 0.7 m inside its tier (a 1.2 m overrun buries the last tread under the tier: a 1.0 m step
+the walker refuses — THE DROP and the ring's gantry both failed on it); a plan room hangs NOTHING on the shell —
+every wall prop stands FREE on a plan wall (`x, z, face, mount`; a `wall: true` catalogue row placed without
+`p.wall` stands at its spot at `mount` height); `leaf_security` is the L4 rank leaf (the war room wears
+`leaf_vault`); never `utility_box` as a room prop (door-kit-batch.test.js) — `traffic_barrel`.
+
+**NOT built:** a chamber TEMPLATE library (`gen.rooms[].tpl` stamping features at the room's frame — every
+chamber's features are authored by hand today), doors on the BSP rooms (a corridor opens straight into a room —
+no leaf, no lock), a dropped corridor ceiling, THE SHAFT ROOM (§5 item 1), Area 51's hangar as a prefab part
+(its board room keeps the saucer), the pack on the two board rooms, the psychic training as a mechanic (the
+range is dressing), weenies on the sky (every part is closed).
+
+**Tests:** `hq-dumb.test.js` (8: the sheet, the ways in + the tunnel, one piece, THE HALLS PLAN itself — BSP
+rooms, authored rooms / halls kept open, L-corridors of right angles in range, the mass rule in every solid cell,
+the traced walls on the boundary, no teeth, determinism — the solver + the return guarantee + the production
+landing, the rooms' climbs, the park rule + the lights + the hard tapes, the helpers + the source sites +
+check-terrain on all seven); hq-floor-plan (the kind, the per-kind `minOpen`, 28 planned), hq-terrain (33
+rooms) and hq-finds (the shelf hints every other tape of a site — the first built site is a complex now) amended. `node check-terrain.js` solves all seven (every door, traps 0).
+
+**Delivery:** `ENTROPY_WARS_DUMB.zip` — data.js → R2 AND Render (the finds ledger), three-renderer.js → R2,
+index.html → Render (`20260917-dumb-01-cors`), the test, check-terrain.js and the docs → the repo. UNSEEN LIVE
+(RULE #1c): all of it — the traced walls' read at the corridor corners (the RDP diagonals on the ring), the
+strip lights' brightness (`_hqBuildHallsLights`: the tube colour is the mood's `strip`), the pack's concrete at
+the tile, the tram's scale on its rails, the plank between the catwalk towers, the pit's slope under the walker,
+the free-standing windows and screens, the furnace's mouth, the pool's water in marble, the orb on the ring's
+vertex, the two new back doors' plates.

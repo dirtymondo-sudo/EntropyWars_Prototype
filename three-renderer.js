@@ -38486,6 +38486,33 @@ const ThreeRenderer = (function () {
         }
         if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] treeline: ' + planted + ' trees past the edge');
     }
+    /* THE HALLS' STRIP LIGHTS (D.U.M.B., 2026-09-17): a fluorescent tube hung from the ceiling every `every` metres down
+       every L-corridor and authored hall of a `halls` floor plan, and one over each generated room's centre — an emissive
+       tube (never a PointLight: the room's own lights are its props, ≤ HQ_PROP_LIGHT_MAX) with a soft glow sprite under
+       it; the mood's `strip` colour. `EW_HQ_NO_HALL_LIGHTS` kills them. */
+    function _hqBuildHallsLights(room, info, G, TM, rng) {
+        if (typeof window !== 'undefined' && window.EW_HQ_NO_HALL_LIGHTS) return;
+        var U = _hqUnits(), S = room.shell, plan = info.genPlan, col = (S.mood && S.mood.strip != null) ? S.mood.strip : 0xdfe8ff;
+        var h = (S.h || 4) - 0.14, every = 6.5, made = 0, cap = 260;
+        var tubeMat = new THREE.MeshBasicMaterial({ color: col, fog: false });
+        var geo = new THREE.BoxGeometry(1.2 * U, 0.07 * U, 0.16 * U);
+        var hang = function (px, pz, yaw) {
+            if (made >= cap) return;
+            if (typeof hqTerrainMaskAt === 'function' && info.maskD && hqTerrainMaskAt(info, px, pz) < 0.5) return;   // over the open floor only
+            var m = new THREE.Mesh(geo, tubeMat); m.position.set(px * U, h * U, pz * U); m.rotation.y = yaw; G.add(m);
+            var gl = _hzGlowSprite(2.2 * U, col, 0.16, 0, 0, 0); gl.position.set(px * U, (h - 0.18) * U, pz * U); G.add(gl);
+            made++;
+        };
+        (plan.corridors || []).concat(plan.halls || []).forEach(function (c) {
+            var pts = c.pts;
+            for (var i = 0; i + 1 < pts.length; i++) {
+                var ax = pts[i][0], az = pts[i][1], bx = pts[i + 1][0], bz = pts[i + 1][1], L = Math.hypot(bx - ax, bz - az); if (L < 1.5) continue;
+                var yaw = Math.atan2(bx - ax, bz - az) + Math.PI / 2, n = Math.max(1, Math.round(L / every));
+                for (var k = 0; k < n; k++) { var t = (k + 0.5) / n; hang(ax + (bx - ax) * t, az + (bz - az) * t, yaw); }
+            }
+        });
+        (plan.rooms || []).forEach(function (r) { if (r.authored) return; hang(r.x, r.z, r.w >= r.d ? Math.PI / 2 : 0); });
+    }
     function _hqBuildTerrain(room) {
         if (typeof hqTerrainInfo !== 'function') return;
         var U = _hqUnits(), S = room.shell, G = _hq.shellGroup;
@@ -38604,14 +38631,25 @@ const ThreeRenderer = (function () {
         /* ── THE WALLS: a slab in the cliff sheet standing on the ground (its top a rail) ── */
         var wallMat = new THREE.MeshPhongMaterial({ map: _hzTex(info.cliff) || null, color: 0xffffff, shininess: 4 }); wallMat.emissive = new THREE.Color(0x151515);
         if (S.wallColor != null) wallMat.color.multiply(new THREE.Color(S.wallColor));
-        info.walls.forEach(function (w) {
+        /* THE HALLS (D.U.M.B., 2026-09-17): a keyed wall material is made ONCE per sheet — a floor plan's traced walls (info.planWalls) are hundreds of rows in one sheet */
+        var keyedMats = {};
+        var keyedMat = function (key) {
+            if (!keyedMats[key]) { var km = new THREE.MeshPhongMaterial({ map: _hzTex(key) || null, shininess: 4 }); km.emissive = new THREE.Color(0x101010); if (S.wallColor != null) km.color.multiply(new THREE.Color(S.wallColor)); keyedMats[key] = km; }
+            return keyedMats[key];
+        };
+        var drawWall = function (w) {
             var L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0), yaw = Math.atan2(w.x1 - w.x0, w.z1 - w.z0), hM = w.top - w.base;
-            var m = new THREE.Mesh(new THREE.BoxGeometry(w.t * U, hM * U, (L + w.t) * U), w.key ? new THREE.MeshPhongMaterial({ map: _hzTex(w.key) || null, shininess: 4 }) : wallMat);
+            var m = new THREE.Mesh(new THREE.BoxGeometry(w.t * U, hM * U, (L + w.t) * U), w.key ? keyedMat(w.key) : wallMat);
             /* THE URBAN PACK (2026-09-17): a YARD WALL is a hoarding in the pack's corrugated sheet — one tile per 1.75 m (its concrete plinth at the foot), never the horizon's coarse repeat */
             _hzBoxUV(m.geometry, w.t * U, hM * U, (L + w.t) * U, w.yard ? TM * ((typeof HZ_TEX_DENSITY !== 'undefined') ? HZ_TEX_DENSITY : 0.5) : TM);
             if (w.yard && w.key) { try { if (m.material.emissive) m.material.emissive.setHex(0x141414); _hqHoardingSigns(w, L, yaw, hM, G, U, info); } catch (e) { console.warn('[HQ] the hoarding signs failed', e); } }
-            m.position.set((w.x0 + w.x1) / 2 * U, (w.base + hM / 2) * U + 0.3, (w.z0 + w.z1) / 2 * U); m.rotation.y = yaw; m.renderOrder = 1; m.castShadow = true; G.add(m);
-        });
+            m.position.set((w.x0 + w.x1) / 2 * U, (w.base + hM / 2) * U + 0.3, (w.z0 + w.z1) / 2 * U); m.rotation.y = yaw; m.renderOrder = 1; m.castShadow = !w.plan; G.add(m);
+            if (w.plan) { m._ew_hqPart = 'wall'; m._ew_hqPlanWall = true; }   // THE ROOM ROUND THE FIELD: a plan wall is a wall (never drawn under the battle's floor hole)
+        };
+        info.walls.forEach(drawWall);
+        /* THE HALLS (D.U.M.B., 2026-09-17): the floor plan's own walls — the mask's boundary traced by data.js _hqTTraceMaskWalls, drawn to the ceiling in the plan's sheet; the walker never reads them (the mass is) */
+        (info.planWalls || []).forEach(drawWall);
+        if (info.genPlan && info.gen && info.gen.kind === 'halls') { try { _hqBuildHallsLights(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the halls’ strip lights failed', e); } }
         /* ── THE RAILS: posts and a bar along the ground ── */
         info.rails.filter(function (r) { return r.rail; }).forEach(function (r) {
             var L = Math.hypot(r.x1 - r.x0, r.z1 - r.z0), yaw = Math.atan2(r.x1 - r.x0, r.z1 - r.z0);

@@ -362,6 +362,42 @@ the closet, the noodle bar. Not yet: D.U.M.B. (ConcreteStriped / MetalTruss / th
 subway grills, the caution plates), Area 51 (the corrugated hangars, the PROHIBITED plates), the Δ boards' own
 urban terrain sheets — the key is the edit, the family list above is the menu.
 
+## 3k. D.U.M.B. (2026-09-17 — complex candidate #5) — what stands there, and the wishlist
+
+No new file. The seven parts (DOOR_HQ_BUILD_PLAN §9, 2026-09-17) are dressed from the kit as it stands:
+
+| family | file(s) | stands as |
+| --- | --- | --- |
+| the kit (§6 / §6b) | `track_bed` ×4 + `train_car` (the tram, lit), `car_suv` / `car_cop`, `quarter_pipe`, `railing_1m`, `traffic_barrel` / `traffic_cone`, `cardboard_boxes`, `paper_sheet` | THE MOTOR POOL |
+| the kit | `monitor_stack` ×2, `steel_table` + `crt_terminal`, `computer_chair_grey`, `observation_window` ×2 (free-standing on the deck's face), `warning_tape`, `radiation_sign`, `security_camera`, `bare_bulb` | SUB-LEVEL 7 |
+| the kit | `cot` ×4, `eeg_rack` ×4, `iso_tank` ×2, `dream_screen` ×2, `floating_orb` (THE OBJECT), `chalkboard`, `wall_clock`, `coffee_mug` / `stapler` (the spoons) | DREAM RESEARCH |
+| the kit | `iso_tank` ×6 (the vats), `door_furnace` (free-standing), `garbage_chute`, `door_xray`, `evac_button`, `manila_folders` | CLONE RESEARCH |
+| the kit | `conference_table` ×2, `computer_chair_grey` ×7, `rotary_phone` ×2, `dream_screen` ×3 + `monitor_stack` ×2 (THE BIG BOARD), `world_clocks`, `nameplate`, `water_cooler` | THE WAR ROOM |
+| the kit + §3g | `false_window` ×3, `curved_couch`, `rug_round`, `coffee_table` + `tube_tv`, `royal_throne`, `retro_speakers` / `retro_radio`, `mini_fridge` / `round_fridge`, `pool_lounger` ×2 + `pool_umbrella`, `library_shelf_full` ×3 (the racks), `keypad`, `potted_plant` | THE BUNKER |
+| the kit | `floating_orb` (THE BEAM), `server_rack` ×6, `monitor_stack`, `steel_table` ×3 + `crt_terminal` ×3, `radiation_sign` ×2, `evac_button`, `traffic_barrel` ×2, `fire_extinguisher` | CERN · THE RING |
+| THE URBAN PACK (§3j) | `ConcreteStriped` 1b/1c/1d/1e/2a..2e (walls, the plan's traced walls, floors), `MetalCorrugatedPainted` 1a/2a/3a/4a (dados, the vats' walls), `RubberNonSlip` 1a/2a/3a/4a/5a (floors, lanes), `TileSubway` 1a/1d (the ward), `TileGeneric` 1a/2a/2b/4a/4c, `TileMarble` 1a/1b/1d + `PlasterWallPainted1c` + `PlasterWallStucco1a` (the bunker), `FibreCeilingTile` 1b/2a + `MetalSubwayGrill` 1a/2a (ceilings) | every shell and every field (`hqBunkerShell`) |
+
+Procedural, in three-renderer.js: THE PLAN WALLS (`info.planWalls` through `drawWall` — the mask's boundary as
+wall boxes in the plan's sheet), THE STRIP LIGHTS (`_hqBuildHallsLights`: an emissive tube + a glow every 6.5 m
+down every corridor and hall). Stand-ins in use: `iso_tank` for the clone vats (a pod, lid ajar), `train_car` for
+the tram, `floating_orb` for THE OBJECT and THE BEAM, `library_shelf_full` for wine racks, `dream_screen` /
+`monitor_stack` for THE BIG BOARD, `false_window` for the bunker's screens, `observation_window` for the
+chambers' glass.
+
+THE WISHLIST (Meshy, unit-normalised; a row = `base: 'misc'` + `h`/`span` + `foot`/`block`, then a prop line —
+nothing in the renderer unless noted):
+1. **a clone vat** (a glass cylinder on a base with a figure in it, lit; two states: full / drained) — the six `iso_tank`s.
+2. **a tram car** (a monorail / people-mover car with open doors, ~9 m) and **a tram rail section** — the motor pool's `train_car` + `track_bed`.
+3. **a Portal test-chamber kit**: a heavy panel wall tile (1.75 m), a round chamber door, a catwalk section with rails, a floor button — the chambers' walls are the pack's concrete today; a catwalk GLB would replace the `deck` planks (`_hqBuildTerrain` decks: a `kit` per deck).
+4. **a big situation board** (a curved wall screen, ~9 × 3 m, with a world map) — THE BIG BOARD (three screens + two racks today).
+5. **a round war-room table** with inset lamps, **a red phone**.
+6. **a bunker window** (a wall-mounted screen framed as a picture window, lit) — the `false_window` proc.
+7. **a wine rack**, **a panic-room door** (a vault leaf on a hinge — `leaf_vault` stands in), **a home cinema seat**.
+8. **a particle detector** (a barrel of layered rings, ~6 m across, on a cradle) and **a beamline pipe section** (a blue tube on stands, 2 m) — THE BEAM (the orb) and the ring's floor.
+9. **a sleep pod** (a capsule bed with a canopy) and **an EEG cap on a stand** — the ward.
+10. **a spoon** (bent), **a Zener card deck**, **a Faraday cage** — the range.
+11. **a bulkhead door with a wheel** — the freight lift's leaf (`leaf_bulkhead` stands in) and the ring's blast door.
+
 ## 4. The older `Assets/misc/` models (`_MISC_GLB` + the OBJ landmarks)
 
 | key | file | kind | stands as |
