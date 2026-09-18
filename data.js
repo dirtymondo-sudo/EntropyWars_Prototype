@@ -14122,6 +14122,13 @@ const HQ_ROOM_LOOKS = {
     undercroft: { name: 'MERLIN’S UNDERCROFT', retro: { enabled: true, preset: 'green', pixelSize: 1, ditherStrength: 0.5, grain: 0.04, tintAmount: 0.5, levels: 18 }, cin: { vignette: true, vigAmount: 0.6, vigSize: 0.42 }, nightMood: 0.75, bloom: 0.22 },
     ranch:      { name: 'THE RANCH', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.44, grain: 0.04, tintAmount: 0.42, levels: 22 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.48 }, nightMood: 0.62, bloom: 0.22 },   // THE RANCH (2026-09-18): a night in the corn — the faded film of a 1994 camcorder
     skycastle:  { name: 'THE CASTLE IN THE SKY', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.3, grain: 0.02, tintAmount: 0.35, levels: 30 }, cin: { vignette: true, vigAmount: 0.25, vigSize: 0.6 }, nightMood: 0.0, bloom: 0.5 },
+    /* THE UNDERWORLD (2026-09-18 — complex candidate #3, THE TUNNELS / THE DUNGEONS): the sewers green-dark under the bulbs (the storm drain's print, tighter);
+       the running tunnels the security camera's amber over hot dust; the holding cells the precinct's flat fluorescent teal (hard dither, no bloom to speak of);
+       the old workings the cave's amber under torchlight, the darkest grade of the four */
+    sewers:     { name: 'THE SEWERS', retro: { enabled: true, preset: 'green', pixelSize: 1, ditherStrength: 0.5, grain: 0.04, tintAmount: 0.52, levels: 20 }, cin: { vignette: true, vigAmount: 0.55, vigSize: 0.44 }, nightMood: 0.65, bloom: 0.18 },
+    tunnels:    { name: 'THE RUNNING TUNNELS', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.46, grain: 0.045, tintAmount: 0.45, levels: 20 }, cin: { vignette: true, vigAmount: 0.55, vigSize: 0.46 }, nightMood: 0.6, bloom: 0.26 },
+    cells:      { name: 'THE HOLDING CELLS', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.48, grain: 0.04, tintAmount: 0.4, levels: 22 }, cin: { vignette: true, vigAmount: 0.45, vigSize: 0.5 }, nightMood: 0.35, bloom: 0.12 },
+    workings:   { name: 'THE OLD WORKINGS', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.5, grain: 0.04, tintAmount: 0.5, levels: 18 }, cin: { vignette: true, vigAmount: 0.6, vigSize: 0.42 }, nightMood: 0.75, bloom: 0.2 },
 };
 // THE LOOK (2026-09-17): `env.look` on a row = a grade (a HQ_ROOM_LOOKS row: retro preset, dither,
 // vignette, night mood, bloom, exposure, dof) laid over the player's video settings for that map —
@@ -18665,6 +18672,28 @@ function hqCastleShell(o) {
     Object.keys(o).forEach(k => { S[k] = o[k]; });
     return S;
 }
+/* ── THE UNDERWORLD'S SHELL (2026-09-18 — THE COMPLEX CANDIDATES #3, THE TUNNELS / THE DUNGEONS) ──
+   A CLOSED brick-and-concrete room under the city: the storm drain's brick up
+   every wall, a concrete floor, the corrugated dado, the grill overhead tiled
+   at the battle tile, no strips (the room lights itself: bulbs, torches), the
+   sewer's green light for a mood, a dank haze per metre, the sewers grade. One
+   function so the four parts cannot drift from each other; `o` overrides
+   (the tunnels' amber, the cells' fluorescent teal, the workings' torchlight). */
+function hqSewerShell(o) {
+    o = Object.assign({}, o || {});
+    const S = {
+        w: 0, d: 0, h: 5.5, wallH: 5.5, dadoH: 1.1, open: false,
+        floor: 'urban:ConcreteStriped2c', wall: 'bricks_2', dado: 'urban:MetalCorrugatedPainted2a', trim: 'gunmetal', ceiling: 'urban:MetalSubwayGrill2a', ceilTile: 1.75,
+        floorColor: 0x9a9c98, wallColor: 0x6e6a62, dadoColor: 0x5a6058, ceilColor: 0x6a6e72,
+        pipes: false, strips: false, lights: [],
+        mood: { lamp: 0xbfe8b0, glow: 0x9fd0a0, strip: 0xd8f0c8, light: 0xcfe8c0, ambient: 0.34 },
+        fog: { color: 0x0a100c, density: 0.03 },
+        plate: { x: 0, z: 0, y: 3.0 },
+        look: HQ_ROOM_LOOKS.sewers,
+    };
+    Object.keys(o).forEach(k => { S[k] = o[k]; });
+    return S;
+}
 const DOOR_HQ = {
     units: 73,
     assets: { models: DOOR_HQ_ASSETS + 'models/', textures: DOOR_HQ_ASSETS + 'textures/' },
@@ -19602,6 +19631,7 @@ const DOOR_HQ = {
         undercroft: { label: 'THE UNDERCROFT',   sub: 'EVERY WELL COMES OUT IN THE SAME CAVE', color: '#c8a2e0', dashed: true },
         subway:     { label: 'THE SUBWAY',       sub: 'ALL LINES · THE TUNNEL IS ONE TUNNEL', color: '#f2d21a' },
         sewers:     { label: 'THE SEWERS',       sub: 'EVERY GUTTER DRAINS INTO THE SAME CULVERT', color: '#7fb8a0', dashed: true },   // DISASTER CITY (2026-09-17): the tunnels' first seam (candidate #3)
+        dungeons:   { label: 'THE DUNGEONS',     sub: 'EVERY CELL JOINS UP · THE FOURTH WALL IS A DOOR', color: '#a88fb8', dashed: true },   // THE UNDERWORLD (2026-09-18): the cells ⇄ Room 24601, the workings ⇄ the oubliette — never THE UNDERCROFT's (hq-cave: every undercroft leg touches Hollow Earth)
     },
     /* THE HUBS (2026-09-18, the user: "the big main areas right now are the
        Cavern, the Woods, the Divine Staircase, Disaster City, the D.U.M.B. and
@@ -19621,6 +19651,9 @@ const DOOR_HQ = {
         city:    { label: 'DISASTER CITY', room: 'site_prebuilt_downtown_streets', sites: ['prebuilt_downtown', 'prebuilt_strip', 'prebuilt_cyberpunk'], color: '#ff9e6b' },
         dumb:    { label: 'THE D.U.M.B.', room: 'site_prebuilt_dumb_sublevel7', sites: ['prebuilt_dumb', 'prebuilt_cern'], color: '#b9f27c' },
         kingdom: { label: 'CAMELOT KINGDOM', room: 'site_prebuilt_camelot_ward', sites: ['prebuilt_camelot'], color: '#b8c8ff' },
+        /* THE UNDERWORLD (2026-09-18, complex candidate #3): four parts on Downtown's site that are NOT the city's — an explicit `rooms` list claims them
+           before the site rule (hqHubOf reads `rooms` first); the sewers' junction is the anchor */
+        underworld: { label: 'THE UNDERWORLD', room: 'site_prebuilt_downtown_sewers', rooms: ['site_prebuilt_downtown_sewers', 'site_prebuilt_downtown_tunnels', 'site_prebuilt_downtown_cells', 'site_prebuilt_downtown_workings'], color: '#7fb8a0' },
     },
     links: [
         /* THE LUNAR ROUTE (the pilot's two, plus Mars and the drop) */
@@ -19934,6 +19967,45 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_fairy_forest', part: 'deadmans', wall: 'n', x: -13, leaf: 'leaf_cell', sub: 'THE CULVERT · UP TO THE STREET', verb: 'CLIMB UP' },
           why: 'every gutter in the city drains into the same culvert, and the culvert is the one under the woods; the water knows the way and the Department followed it',
           note: 'the gutter', draft: true },
+        /* THE UNDERWORLD (HQ plan 9.3 stage 10 — THE COMPLEX CANDIDATES #3, 2026-09-18): the sewers and the running tunnels under
+           Disaster City, the cells under the precinct, the old workings under the cells — and the six seams that join them to what
+           was already there: the Strip's gutter drops into THE SEWERS (a `way`, free on the back lane's east kerb, the far end a
+           plain grate in the main culvert's west wall — the storm drain's rule); THE SEWERS open on the storm drain itself (a barred
+           door: "every gutter drains into the same culvert"); THE RUNNING TUNNELS join the Works' platform AND Downtown's platform
+           past their track ends (the tunnel is one tunnel — the subway line's stations are on one loop now); THE HOLDING CELLS open
+           on Room 24601 (the building's own dungeon — a fourth wall that is a door, the oubliette's precedent) and THE OLD WORKINGS
+           on the oubliette (every cell down here joins up), both on THE DUNGEONS line (never THE UNDERCROFT: every leg of that line touches
+           Hollow Earth — hq-cave.test.js). Every line is Claude's DRAFT (A15). */
+        { id: 'strip_sewer', route: 'sewers', way: 'gutter',
+          a: { site: 'prebuilt_strip', part: 'streets', wall: 'free', x: 42.2, z: 10, face: 270, sub: 'THE GUTTER · DOWN INTO THE SEWERS' },
+          b: { site: 'prebuilt_downtown', part: 'sewers', wall: 'w', z: 20, leaf: 'leaf_cell', sub: 'THE STRIP\'S GUTTER · UP TO THE BACK LANE', verb: 'CLIMB UP' },
+          why: 'the Strip\'s back lane floods every night at closing and drains by morning; the water goes down the east kerb into the main culvert, and the culvert is under a different city',
+          note: 'the back lane', draft: true },
+        { id: 'sewers_drain', route: 'sewers', leaf: 'leaf_cell',
+          a: { site: 'prebuilt_downtown', part: 'sewers', wall: 'e', z: -12, sub: 'THE OUTFALL GRATE · INTO THE STORM DRAIN' },
+          b: { site: 'prebuilt_fairy_forest', part: 'deadmans', wall: 's', x: -10, sub: 'THE CULVERT\'S GRATE · INTO THE SEWERS' },
+          why: 'the outfall does not go up; it goes sideways through a grate into the storm drain under the woods, which is where every gutter was draining all along',
+          note: 'the same culvert', draft: true },
+        { id: 'tunnels_works', route: 'subway', leaf: 'leaf_frame_only',
+          a: { site: 'prebuilt_downtown', part: 'tunnels', wall: 'w', z: -16, sub: 'THE TRACK · ON TO THE BUILDING\'S PLATFORM' },
+          b: { room: 'tunnel', wall: 'w', z: -16, sub: 'THE TRACK · PAST THE END OF THE PLATFORM', verb: 'CLIMB DOWN' },
+          why: 'the platform ends and the track does not; past the last tube the tunnel runs on to a loop nobody drew on the map, and the loop runs under a city',
+          note: 'mind the gap', draft: true },
+        { id: 'tunnels_platform', route: 'subway', leaf: 'leaf_frame_only',
+          a: { site: 'prebuilt_downtown', part: 'tunnels', wall: 'e', z: -14, sub: 'THE TRACK · ON TO DOWNTOWN\'S PLATFORM' },
+          b: { site: 'prebuilt_downtown', part: 'subway', wall: 'w', z: -13.5, sub: 'THE TRACK · PAST THE END OF THE PLATFORM', verb: 'CLIMB DOWN' },   // z −13.5: the panel's 1.25 m clears the 15 m corner (doorhq); the train's cart end stands at −12.4
+          why: 'the train that has been at the platform for an hour came out of this tunnel; the tunnel is one tunnel, and the platform is one stop on a loop',
+          note: 'one stop back', draft: true },
+        { id: 'cells_dungeon', route: 'dungeons', leaf: 'leaf_cell',
+          a: { site: 'prebuilt_downtown', part: 'cells', wall: 'w', z: -11, sub: 'THE SEVENTH CELL · INTO ROOM 24601' },
+          b: { room: 'dungeon', wall: 's', x: -2.8, sub: 'THE FOURTH WALL · INTO THE PRECINCT\'S CELLS', verb: 'WALK THROUGH' },
+          why: 'Room 24601 has three cells you can see and a fourth wall nobody counts; on the far side of it a precinct that fell down keeps six more, and the keys to all of them are on the floor',
+          note: 'the seventh cell', draft: true },
+        { id: 'workings_oubliette', route: 'dungeons', leaf: 'leaf_portcullis',
+          a: { site: 'prebuilt_downtown', part: 'workings', wall: 'w', z: 0, sub: 'THE OLD PORTCULLIS · INTO THE OUBLIETTE' },
+          b: { site: 'prebuilt_hollow_earth', part: 'oubliette', wall: 'e', z: 0, sub: 'THE OLD PORTCULLIS · INTO THE WORKINGS' },
+          why: 'the oubliette\'s cells were cut by the same hands that cut the mine, and the two were one gaol before either had a city over it; the portcullis between them was never lowered',
+          note: 'one gaol', draft: true },
         /* THE SEAMS, THE SECOND BATCH (2026-09-15 rev 22): six more kinds,
            seven rows, all on THE SEAMS line. A site room's end stands on its
            north wall in a free lane (the rev 10 rule) or, where the room is
@@ -29161,6 +29233,7 @@ const DOOR_HQ = {
                     { k: 'path', pts: [[12, -29], [12, -45]], w: 5 },                                                                // THE METRO stair's street (the north wall, x 12)
                     { k: 'path', pts: [[-56, 18], [-40, 18]], w: 6 },                                                                // THE STRIP's road (the west wall, z 18)
                     { k: 'path', pts: [[40, 14], [56, 14]], w: 5 },                                                                  // the gutter's alley (the east kerb)
+                    { k: 'path', pts: [[40, -20], [56, -20]], w: 5 },                                                                 // THE PUMPING STATION's alley (the east wall, z −20 — THE UNDERWORLD, 2026-09-18)
                     { k: 'path', pts: [[6, -15], [14.0, -15]], w: 4 },                                                               // the deck's side street off the avenue
                     { k: 'tree', x: 5.5, z: 5.5, kind: 'tree_2', h: 3.2 }, { k: 'tree', x: -5.5, z: 5.5, kind: 'tree_2', h: 3.2 }, { k: 'tree', x: 5.5, z: -5.5, kind: 'tree_2', h: 3.2 }, { k: 'tree', x: -5.5, z: -5.5, kind: 'tree_2', h: 3.2 },   // the plaza's four
                     { k: 'scatter', key: 'cave_stone', n: 7, x: -20, z: -14, r: 5, seed: 2 },                                       // THE COLLAPSE's rubble
@@ -29195,6 +29268,11 @@ const DOOR_HQ = {
                   label: 'THE METRO', sub: 'THE STAIR DOWN · THE PLATFORM',
                   action: { room: 'site_prebuilt_downtown_subway', at: 'street' },
                   desc: 'A stair down under a sign for every line. The platform under the tower has never once been touched; this is the other way onto it.' },
+                /* THE UNDERWORLD (2026-09-18 — complex candidate #3): THE PUMPING STATION at the end of the east alley — the bulkhead into the sewers */
+                { id: 'sewer', wall: 'e', z: -20, leaf: 'leaf_bulkhead', wide: true,
+                  label: 'THE SEWERS', sub: 'THE PUMPING STATION · DOWN INTO THE CULVERTS',
+                  action: { room: 'site_prebuilt_downtown_sewers', at: 'pump' },
+                  desc: 'A pumping station at the end of an alley, its bulkhead door open and its pumps running for a city that stopped paying them. The ladder inside goes down further than the tower ever went up.' },
             ],
             counters: [],
             props: [
@@ -31756,6 +31834,385 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: 42, face: 0 },
         },
+        /* ══ THE UNDERWORLD — THE TUNNELS / THE DUNGEONS (HQ plan 9.3 stage 10 — THE COMPLEX CANDIDATES #3, 2026-09-18) ══
+           The user's brief (the candidate list): "every subway tunnel, the sewer system (the storm drain), the dungeons
+           (24601, the oubliette) joined into one underworld". Built on THE CAVE / THE WOODS blueprint and EXPLORABLE_AREAS_GUIDE
+           §3's order — the story beats first, a family per part, the weenies before the plan, `node check-terrain.js` before
+           any claim. Four parts on Room 1954 (Downtown's site — the underworld is UNDER Disaster City, so every plate reads
+           DISASTER CITY · <place>; THE UNDERWORLD is the map's hub, DOOR_HQ.hubs.underworld, an explicit `rooms` list):
+             THE SEWERS (family C — `halls` with `bsp: false`: the culverts are AUTHORED halls with bends, the channels waded
+               `stream`s down their middles, the walkways either side; THE JUNCTION where three culverts meet, THE INSPECTION
+               GALLERY over it, THE CISTERN (deep, never entered — the plank crosses it), THE PUMP ROOM, THE OUTFALL SHAFT
+               (4.4 m, the tape — lit from above: the near weenie at the main culvert's east end);
+             THE RUNNING TUNNELS (family C — `halls` with `bsp: false`: THE LOOP LINE, a crossover through the middle, THE
+               CROSSING with THE SIGNAL GANTRY (5.2 m, the tape), THE DEPOT with the lit train (the near weenie), THE GHOST
+               STATION with its platform; the rails are low `wall` rows the rider grinds);
+             THE HOLDING CELLS (family C — `halls` with `bsp: false` and `minDegree: 1`: six authored cells off one corridor
+               — a cell has ONE door; THE GUARDROOM with THE CATWALK and THE VENT STACK (3.6 m, the tape), THE DRUNK TANK,
+               THE PROPERTY ROOM);
+             THE OLD WORKINGS (family A — `cave` in brick, flooded: the walker wades THE FLOOD, never THE SUMP; THE PUMP
+               LEDGE, THE CHIMNEY (3.9 m, the tape)).
+           The seams: THE PUMPING STATION on Downtown's east wall walks into the sewers (a pair); the Strip's gutter drops
+           into them (links.strip_sewer, a `way`); the sewers open on the storm drain (links.sewers_drain — "every gutter
+           drains into the same culvert"); the running tunnels join the Works' platform AND Downtown's platform on the subway
+           line (links.tunnels_works / tunnels_platform — the tunnel is one tunnel); the cells open on Room 24601
+           (links.cells_dungeon) and the workings on the oubliette (links.workings_oubliette), both on THE DUNGEONS line.
+           The complex is a cycle: sewers → tunnels; sewers → cells → workings → sewers. No new renderer code: the kit as it
+           stands (MODEL_INDEX §3m has the wishlist). Lines are Claude's DRAFT (A15). */
+        site_prebuilt_downtown_sewers: {
+            label: 'DISASTER CITY · THE SEWERS',
+            sub: 'THE CULVERTS · THE JUNCTION · THE CISTERN · THE OUTFALL · EVERY GUTTER DRAINS HERE',
+            kind: 'box', site: 'prebuilt_downtown', part: 'sewers',
+            shell: hqSewerShell({ w: 120, d: 84, h: 5.5, wallH: 5.5, plate: { x: -20, z: -40.8, y: 3.2 } }),
+            terrain: {
+                floor: 'urban:ConcreteStriped2c', cliff: 'bricks_2', path: 'urban:RubberNonSlip3a',
+                noise: { amp: 0, scale: 5 }, crag: false,
+                gen: { kind: 'halls', seed: 1954, bsp: false, loops: 2, wallKey: 'bricks_2', corridor: [3.0, 3.4],
+                       halls: [{ id: 'main', pts: [[-58, 20], [-40, 20], [-30, 8], [-12, 8], [0, 0], [20, 0], [34, -12], [50, -12]], w: 7 },   // THE MAIN CULVERT (the Strip's gutter at its west end, the outfall at its east)
+                               { id: 'north', pts: [[-20, -40], [-20, -22], [-6, -14], [0, 0]], w: 5 },                                       // THE NORTH FEEDER (from the pumping station)
+                               { id: 'south', pts: [[24, 40], [24, 20], [20, 0]], w: 5 },                                                     // THE SOUTH FEEDER (from the hatch to the tunnels, through the cistern)
+                               { id: 'cross', pts: [[-40, 20], [-40, -10], [-20, -22]], w: 4.5 },                                              // THE CROSS DRAIN (a cycle with the north feeder)
+                               { id: 'west', pts: [[-40, -10], [-58, -10]], w: 4 },                                                            // the spur to the cells
+                               { id: 'east', pts: [[50, -12], [54, 14], [24, 20]], w: 4.5 },                                                   // THE EAST RETURN (a cycle with the south feeder)
+                               { id: 'adit', pts: [[50, -12], [50, -40]], w: 4 }],                                                             // the spur up from the old workings
+                       rooms: [{ id: 'junction', x: 0, z: 0, w: 22, d: 22 }, { id: 'outfall', x: 50, z: -12, w: 16, d: 16 },
+                               { id: 'pump', x: -40, z: 20, w: 14, d: 12 }, { id: 'cistern', x: 24, z: 20, w: 18, d: 14 }] },
+                features: [
+                    { k: 'stream', pts: [[-54, 20], [-40, 20], [-30, 8], [-12, 8], [-5, 3]], w: 3.0, y: -0.3, depth: 0.6 },              // THE MAIN CHANNEL, west half (waded; the walkways either side are dry)
+                    { k: 'stream', pts: [[5, 1], [20, 0], [34, -12], [46, -12]], w: 3.0, y: -0.3, depth: 0.6 },                          // … and east, into THE OUTFALL basin
+                    { k: 'stream', pts: [[-20, -35], [-20, -22], [-6, -14], [-3, -6]], w: 2.0, y: -0.3, depth: 0.55 },                   // the north feeder's channel
+                    { k: 'stream', pts: [[24, 35], [24, 30]], w: 2.0, y: -0.3, depth: 0.55 },                                            // the south feeder's channel, to the cistern's bank
+                    { k: 'pool', x: 0, z: 2.5, r: 4.5, y: -0.3, depth: 0.6 },                                                            // THE CONFLUENCE (waded)
+                    { k: 'pool', x: 50, z: -11, r: 3.5, y: -0.3, depth: 0.6 },                                                           // THE OUTFALL basin (waded)
+                    { k: 'pool', x: 24, z: 20, r: 5.0, y: -0.3, depth: 1.8, key: 'deep_water' },                                        // THE CISTERN (never entered)
+                    { k: 'deck', x0: 24, z0: 27.5, x1: 24, z1: 12.5, w: 1.6, y: 0.05 },                                                 // THE PLANK across it — spanning both banks
+                    { k: 'plateau', x: 0, z: -8.4, w: 12, d: 3.0, h: 1.6, edge: 0.3 },                                                   // THE INSPECTION GALLERY over the confluence
+                    { k: 'ramp', x0: 0, z0: -3.3, x1: 0, z1: -7.6, w: 2.4, h0: 0, h1: 1.6, stairs: true, edge: 0.2 },                   // its stair (L 4.3 for 1.6: the last tread settles before the tier's edge blend — a 0.4 tread + the 0.3 edge overtook the climb at L 3.65)
+                    { k: 'rail', x0: -5.5, z0: -7.15, x1: -1.6, z1: -7.15 }, { k: 'rail', x0: 1.6, z0: -7.15, x1: 5.5, z1: -7.15 },    // the gallery's rail either side of the stair (the grind)
+                    { k: 'wall', x0: 4, z0: -4, x1: 10, z1: -4, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },                       // the kerb ledge on the junction's floor
+                    { k: 'plateau', x: 55, z: -18, r: 1.6, h: 4.4, edge: 0.3 },                                                          // THE OUTFALL SHAFT (the tape — the door gun's; the near weenie: lit from above)
+                    { k: 'path', pts: [[-20, -39], [-20, -35]], w: 2.4 }, { k: 'path', pts: [[24, 39], [24, 35]], w: 2.4 },              // the pads' aprons
+                    { k: 'scatter', key: 'cinder_block', n: 6, x: 0, z: -3, r: 9, seed: 5 },
+                    { k: 'scatter', key: 'cave_stone', n: 5, x: 50, z: -12, r: 6, seed: 6 },
+                ],
+            },
+            doors: [
+                { id: 'pump', wall: 'n', x: -20, leaf: 'leaf_bulkhead', wide: true,
+                  label: 'DOWNTOWN', sub: 'THE PUMPING STATION · UP TO THE STREET',
+                  action: { room: 'site_prebuilt_downtown_streets', at: 'sewer' },
+                  desc: 'A bulkhead door at the top of the north feeder, the pumps behind it running for a city that is not paying them. The street is up the ladder past them.' },
+                { id: 'hatch', wall: 's', x: 24, leaf: 'leaf_frame_only',
+                  label: 'THE RUNNING TUNNELS', sub: 'THE MAINTENANCE HATCH · DOWN TO THE TRACK',
+                  action: { room: 'site_prebuilt_downtown_tunnels', at: 'sewers' },
+                  desc: 'A frame in the brick with a hum behind it and a smell of hot dust: the subway, one level down and thirty years back.' },
+                { id: 'drain', wall: 'w', z: -10, leaf: 'leaf_cell',
+                  label: 'THE HOLDING CELLS', sub: 'THE PRECINCT DRAIN · INTO THE BASEMENT',
+                  action: { room: 'site_prebuilt_downtown_cells', at: 'sewers' },
+                  desc: 'A barred door at the end of the cross drain. The precinct\'s basement drains into the sewer; sometimes the precinct does too.' },
+                { id: 'adit', wall: 'n', x: 50, leaf: null,
+                  label: 'THE OLD WORKINGS', sub: 'THE ADIT · DOWN INTO THE OLD MINE',
+                  action: { room: 'site_prebuilt_downtown_workings', at: 'sewers' },
+                  desc: 'An opening in the brick older than the brick. The city was built on a mine; the mine was built on something else.' },
+            ],
+            counters: [],
+            props: [
+                /* THE JUNCTION: the gallery's catalogue rails, the paint, the light over the confluence */
+                { key: 'railing_1m',      x: -3.5, z: -9.4, face: 0 }, { key: 'railing_1m', x: 3.5, z: -9.4, face: 0 },     // THE PARK RULE's rail on the gallery
+                { key: 'bare_bulb',       x: 0, z: -4, ceil: true }, { key: 'bare_bulb', x: 0, z: 8, ceil: true },
+                { key: 'graffiti_wall',   x: -10.6, z: 6, face: 90 }, { key: 'graffiti_wall', x: 8, z: 10.6, face: 0 },
+                { key: 'drain_grate',     x: -6, z: -10.6, face: 0, mount: 0.4 },
+                { key: 'warning_tape',    x: 7, z: -6.2, face: 0 },
+                { key: 'traffic_barrel',  x: 9.2, z: 8.6, face: 30 },
+                { key: 'floor_drain',     x: 7.5, z: -8.5 },
+                /* THE PUMP ROOM: the boxes, the ramp, the light */
+                { key: 'quarter_pipe',    x: -40, z: 25.2, face: 180 },                                                          // THE PARK RULE's ramp, against the pump room's south side
+                { key: 'cardboard_boxes', x: -45.4, z: 15.6, face: 15 },
+                { key: 'pipe_run',        x: -34.4, z: 16, face: 90 }, { key: 'pipe_run', x: -34.4, z: 24, face: 90 },
+                { key: 'bare_bulb',       x: -40, z: 17, ceil: true },
+                { key: 'wet_floor_sign',  x: -36, z: 17.2, face: 30 },
+                { key: 'floor_stain',     x: -42, z: 16.5 },
+                /* THE CISTERN: the plank, the light, the paint */
+                { key: 'bare_bulb',       x: 24, z: 14, ceil: true },
+                { key: 'graffiti_wall',   x: 32.6, z: 24, face: 270 },
+                { key: 'wet_floor_sign',  x: 20, z: 29, face: 300 },
+                /* THE OUTFALL: the light down the shaft, the paint, the barrel */
+                { key: 'bare_bulb',       x: 55, z: -18, ceil: true },                                                            // over THE OUTFALL SHAFT — the one lit thing at the end of the main culvert
+                { key: 'bare_bulb',       x: 46, z: -6, ceil: true },
+                { key: 'traffic_barrel',  x: 44, z: -18.6, face: 300 },
+                { key: 'drain_grate',     x: 57.6, z: -4, face: 180, mount: 0.4 },
+                { key: 'paper_sheet',     x: 46, z: -17.4, y: 0.01, face: 140 },                                                  // a Works' inspection form: OUTFALL — WHERE?
+                /* the culverts */
+                { key: 'pipe_run',        x: -20, z: -24.6, face: 0 },
+                { key: 'floor_drain',     x: -22, z: -30 },
+                { key: 'floor_stain',     x: 24, z: 33 },
+                { key: 'wet_floor_sign',  x: -22.2, z: -33, face: 60 },
+                { key: 'cardboard_boxes', x: 26.4, z: 36, face: 340 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: -38, z: 17, face: 90, race: 'ghoul', say: ['“Storm drain.” “Sewer.” “What is the difference?” “Which way it smells.”', '“The pumps run all night.” “For who?” “The water. Somebody has to.”'] },
+                { x: 8, z: -8.6, face: 200, race: 'gangster', say: ['“Nobody comes down here.” “You are down here.” “I am nobody. It is a job.”'] },
+                { x: 46, z: -5, face: 230, race: 'zombie', say: ['“Light.” “That is the outfall.” “Where does it go?” “Up.” “Up where?” “Up.”'] },
+                { x: 26.5, z: 31, face: 270, race: 'conspiracy theorist', say: ['“Every gutter in the city drains into this culvert.” “That is what a sewer is.” “That is what they WANT a sewer to be.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Which way is out?” “Follow the water.” “The water goes both ways.” “Then you are at the junction.”',
+                '“The cistern is deep.” “How deep?” “Nobody who found out came back to say.” “Take the plank.”',
+                '“Somebody painted the wall.” “Somebody paints every wall.” “This one says the Department’s name.” “Everybody knows the Department’s name.”',
+                '“The Strip drains here.” “Downtown drains here.” “The woods drain here.” “Nothing drains OUT.”',
+                '“There is a light at the end of the main culvert.” “The outfall.” “The outfall of what?” “Do not climb it.”',
+            ],
+            spawn: { x: -44, z: 24.5, face: 90 },
+        },
+        site_prebuilt_downtown_tunnels: {
+            label: 'DISASTER CITY · THE RUNNING TUNNELS',
+            sub: 'THE LOOP LINE · THE CROSSING · THE DEPOT · THE GHOST STATION · ALL LINES',
+            kind: 'box', site: 'prebuilt_downtown', part: 'tunnels',
+            shell: hqSewerShell({ w: 124, d: 96, h: 6.5, wallH: 6.5, plate: { x: 24, z: -46.8, y: 3.4 },
+                                  floor: 'urban:ConcreteStriped1e', wall: 'urban:ConcreteStriped1d', dado: 'urban:TileSubway4a', ceiling: 'urban:MetalSubwayGrill1b',
+                                  floorColor: 0x9a9ca0, wallColor: 0xa0a4a8, dadoColor: 0xc0bcb0, ceilColor: 0x8a8e94,
+                                  mood: { lamp: 0xfff0c0, glow: 0xffd080, strip: 0xffe8c0, light: 0xfff0d0, ambient: 0.36 }, fog: { color: 0x0a0b0e, density: 0.024 }, look: HQ_ROOM_LOOKS.tunnels }),
+            terrain: {
+                floor: 'urban:ConcreteStriped1e', cliff: 'urban:ConcreteStriped1d', path: 'urban:TileGeneric3b',
+                noise: { amp: 0, scale: 5 }, crag: false,
+                gen: { kind: 'halls', seed: 1893, bsp: false, loops: 1, wallKey: 'urban:ConcreteStriped1d', corridor: [3.0, 3.4],
+                       halls: [{ id: 'loop', pts: [[-44, -30], [44, -30], [52, -22], [52, 22], [44, 30], [-44, 30], [-52, 22], [-52, -22]], w: 7, loop: true },   // THE LOOP LINE
+                               { id: 'crossover', pts: [[-44, -30], [0, 0], [44, 30]], w: 5 },                                                                   // THE CROSSOVER through the middle
+                               { id: 'spur_works', pts: [[-52, -16], [-60, -16]], w: 5 },                                                                       // the track on to the Works' platform (links.tunnels_works)
+                               { id: 'spur_platform', pts: [[52, -14], [60, -14]], w: 5 },                                                                      // … and to Downtown's platform (links.tunnels_platform)
+                               { id: 'spur_hatch', pts: [[24, -30], [24, -46]], w: 4 }],                                                                        // the maintenance stair up to the sewers
+                       rooms: [{ id: 'depot', x: 0, z: -38, w: 32, d: 14 }, { id: 'station', x: 0, z: 32, w: 26, d: 12 }, { id: 'crossing', x: 0, z: 0, w: 12, d: 12 }] },
+                features: [
+                    /* THE RAILS: low walls the walker steps over and the rider grinds — the four straights of the loop and the crossover's two legs */
+                    { k: 'wall', x0: -44, z0: -30.75, x1: 44, z1: -30.75, h: 0.14, t: 0.12, key: 'metal' }, { k: 'wall', x0: -44, z0: -29.25, x1: 44, z1: -29.25, h: 0.14, t: 0.12, key: 'metal' },
+                    { k: 'wall', x0: -44, z0: 30.75, x1: 44, z1: 30.75, h: 0.14, t: 0.12, key: 'metal' },   { k: 'wall', x0: -44, z0: 29.25, x1: 44, z1: 29.25, h: 0.14, t: 0.12, key: 'metal' },
+                    { k: 'wall', x0: -52.75, z0: -22, x1: -52.75, z1: 22, h: 0.14, t: 0.12, key: 'metal' }, { k: 'wall', x0: -51.25, z0: -22, x1: -51.25, z1: 22, h: 0.14, t: 0.12, key: 'metal' },
+                    { k: 'wall', x0: 52.75, z0: -22, x1: 52.75, z1: 22, h: 0.14, t: 0.12, key: 'metal' },   { k: 'wall', x0: 51.25, z0: -22, x1: 51.25, z1: 22, h: 0.14, t: 0.12, key: 'metal' },
+                    { k: 'wall', x0: -44.42, z0: -29.38, x1: -4.82, z1: -2.38, h: 0.14, t: 0.12, key: 'metal' }, { k: 'wall', x0: -43.58, z0: -30.62, x1: -3.98, z1: -3.62, h: 0.14, t: 0.12, key: 'metal' },
+                    { k: 'wall', x0: 3.98, z0: 3.62, x1: 43.58, z1: 30.62, h: 0.14, t: 0.12, key: 'metal' },     { k: 'wall', x0: 4.82, z0: 2.38, x1: 44.42, z1: 29.38, h: 0.14, t: 0.12, key: 'metal' },
+                    /* THE GHOST STATION: the platform, its two stairs, its edge rail */
+                    { k: 'plateau', x: 0, z: 35, w: 14, d: 4, h: 1.0, edge: 0.3 },
+                    { k: 'ramp', x0: -10.5, z0: 35, x1: -6.3, z1: 35, w: 2.4, h0: 0, h1: 1.0, stairs: true, edge: 0.2 },
+                    { k: 'ramp', x0: 10.5, z0: 35, x1: 6.3, z1: 35, w: 2.4, h0: 0, h1: 1.0, stairs: true, edge: 0.2 },
+                    { k: 'rail', x0: -6, z0: 33.3, x1: 6, z1: 33.3 },
+                    /* THE CROSSING: THE SIGNAL GANTRY (the tape — the door gun's; the near weenie of the crossover) */
+                    { k: 'plateau', x: 0, z: 0, r: 1.4, h: 5.2, edge: 0.3 },
+                    /* THE DEPOT: the kerb ledge along the pit (the grind) */
+                    { k: 'wall', x0: -14, z0: -44.2, x1: 0, z1: -44.2, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },
+                    { k: 'path', pts: [[24, -45], [24, -31]], w: 2.2 }, { k: 'path', pts: [[-59, -16], [-52, -16]], w: 2.2 }, { k: 'path', pts: [[52, -14], [59, -14]], w: 2.2 },   // the walkways to the doors
+                    { k: 'scatter', key: 'cinder_block', n: 5, x: 0, z: -38, r: 12, seed: 8 },
+                ],
+            },
+            doors: [
+                { id: 'sewers', wall: 'n', x: 24, leaf: 'leaf_frame_only',
+                  label: 'THE SEWERS', sub: 'THE MAINTENANCE HATCH · UP TO THE CULVERTS',
+                  action: { room: 'site_prebuilt_downtown_sewers', at: 'hatch' },
+                  desc: 'The maintenance stair up into the sewer, a frame in the wall at the top of it, water coming down the treads one at a time.' },
+            ],
+            counters: [],
+            props: [
+                /* THE DEPOT: two cars on their beds, one lit — the headlight at the end of the hall is the near weenie from the hatch */
+                { key: 'track_bed',       x: -6, z: -38, face: 90 }, { key: 'train_car', x: -6, z: -38, face: 90 },
+                { key: 'track_bed',       x: 8, z: -41.5, face: 90 }, { key: 'train_car', x: 8, z: -41.5, face: 90 },
+                { key: 'bare_bulb',       x: -6, z: -34, ceil: true }, { key: 'bare_bulb', x: 10, z: -34, ceil: true },
+                { key: 'quarter_pipe',    x: 12, z: -33.5, face: 180 },                                                          // THE PARK RULE's ramp in the depot
+                { key: 'riser_1',         x: -8, z: -33.2, face: 0, rect: false },
+                { key: 'traffic_barrel',  x: 15, z: -43.4, face: 30 },
+                { key: 'cardboard_boxes', x: -14.4, z: -36, face: 20 },
+                { key: 'floor_stain',     x: 2, z: -35 },
+                { key: 'paper_sheet',     x: -2, z: -33.6, y: 0.01, face: 60 },                                                   // the depot's roster: every driver present, no driver
+                /* THE CROSSING */
+                { key: 'bare_bulb',       x: 0, z: 0, ceil: true },
+                { key: 'warning_tape',    x: 0, z: -2.6, face: 0 },
+                { key: 'railing_1m',      x: 3.2, z: 4.2, face: 45 },                                                           // THE PARK RULE's catalogue rail by the gantry
+                /* THE GHOST STATION: the benches on the platform, the gates, the board, the map */
+                { key: 'park_bench',      x: -3, z: 36.4, face: 0 }, { key: 'park_bench', x: 3, z: 36.4, face: 0 },
+                { key: 'turnstile',       x: -1, z: 27.4, face: 0 }, { key: 'turnstile', x: 1, z: 27.4, face: 0 },
+                { key: 'departures_board', x: 0, z: 37.6, face: 0, mount: 2.4 },
+                { key: 'tube_map',        x: 12.6, z: 30, face: 270, mount: 1.1 },
+                { key: 'bare_bulb',       x: 0, z: 32, ceil: true },
+                { key: 'trash_bin',       x: 11.6, z: 36, face: 270 },
+                { key: 'wet_floor_sign',  x: -11.2, z: 28.4, face: 30 },
+                /* the tunnel */
+                { key: 'bare_bulb',       x: -40, z: -27, ceil: true }, { key: 'bare_bulb', x: 40, z: 27, ceil: true },
+                { key: 'traffic_barrel',  x: -48, z: 20, face: 300 },
+                { key: 'warning_tape',    x: 24, z: -43.6, face: 0 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 0, z: 36.6, face: 180, race: 'skeleton', say: ['“I missed the last one.” “The last one is in the depot.” “Then I have not missed it.”', '“This station is closed.” “I am standing in it.” “That is why it is closed.”'] },
+                { x: -30, z: -27.2, face: 90, race: 'zombie', say: ['“Walking the line.” “Which line?” “All lines. It is one tunnel.”'] },
+                { x: 4.5, z: -3.4, face: 220, race: 'ai', say: ['“Signals green.” “There is no train.” “The signals do not know that. Neither do I, officially.”'] },
+                { x: 2, z: -35.5, face: 300, race: 'gangster', say: ['“Two cars. One lit.” “Which one goes?” “The dark one. The lit one has never moved.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Which way does the loop go?” “Round.” “Clockwise?” “Round.”',
+                '“The crossover.” “Two tracks crossing in the dark.” “What happens when two trains meet there?” “Nothing has met there since 1954.”',
+                '“Ghost station.” “It has a platform.” “It has a platform and no stairs up.” “Then it is a ghost station.”',
+                '“The Works’ platform is that way.” “Downtown’s is the other.” “Same tunnel.” “Same tunnel.”',
+                '“Somebody left the headlight on.” “Since when?” “Since the depot was built round it.”',
+            ],
+            spawn: { x: 20, z: -40, face: 270 },
+        },
+        site_prebuilt_downtown_cells: {
+            label: 'DISASTER CITY · THE HOLDING CELLS',
+            sub: 'THE PRECINCT BASEMENT · SIX CELLS · THE DRUNK TANK · THE CATWALK',
+            kind: 'box', site: 'prebuilt_downtown', part: 'cells',
+            shell: hqSewerShell({ w: 64, d: 48, h: 4.6, wallH: 4.6, plate: { x: -29, z: -11, y: 2.9, face: 90 },
+                                  floor: 'urban:TileGeneric4b', wall: 'urban:PlasterWallPainted2c', dado: 'urban:TileSubway2c', ceiling: 'urban:FibreCeilingTile2a',
+                                  floorColor: 0xa8aca8, wallColor: 0xb8c0b8, dadoColor: 0xc8d0c8, ceilColor: 0xa8aaa8,
+                                  mood: { lamp: 0xcfe8ff, glow: 0xbfe0ff, strip: 0xdfe8ff, light: 0xe0f0ff, ambient: 0.4 }, fog: { color: 0x0c1012, density: 0.02 }, look: HQ_ROOM_LOOKS.cells }),
+            terrain: {
+                floor: 'urban:TileGeneric4b', cliff: 'urban:PlasterWallPainted2c', path: 'urban:RubberNonSlip2a',
+                noise: { amp: 0, scale: 5 }, crag: false,
+                /* a cell has ONE door: minDegree 1 keeps the cycle rule off the cells (each opens on the corridor's vertex under it and nowhere else) */
+                gen: { kind: 'halls', seed: 24601, bsp: false, loops: 0, minDegree: 1, wallKey: 'urban:PlasterWallPainted2c', corridor: [2.6, 3.0],   // loops 0: the generator's loop would join two ADJACENT CELLS (the nearest unjoined pair); the loop is the two authored side halls
+                       halls: [{ id: 'corridor', pts: [[-27, -11], [-22.5, -11], [-13.5, -11], [-4.5, -11], [4.5, -11], [13.5, -11], [22.5, -11], [27, -11]], w: 3 },   // THE CELL CORRIDOR (a vertex under every cell)
+                               { id: 'west', pts: [[-20, 12], [-20, 4], [-8, 4]], w: 2.8 },                                                                                   // THE WEST PASSAGE: the tank into the guardroom (the loop's one side)
+                               { id: 'east', pts: [[18, 12], [18, 4], [8, 4]], w: 2.8 },                                                                                      // THE EAST PASSAGE: the property room into the guardroom (the other)
+                               { id: 'stair', pts: [[0, -4], [0, -9.5]], w: 3.0 }],                                                                                           // THE STAIR DOWN: the guardroom to the cell corridor — the guardroom is the hub, every way runs through it
+                       rooms: [{ id: 'guard', x: 0, z: 2, w: 20, d: 12 }, { id: 'tank', x: -20, z: 14, w: 12, d: 10 }, { id: 'property', x: 18, z: 14, w: 12, d: 10 },
+                               { id: 'c1', x: -22.5, z: -17.5, w: 5.5, d: 4.5 }, { id: 'c2', x: -13.5, z: -17.5, w: 5.5, d: 4.5 }, { id: 'c3', x: -4.5, z: -17.5, w: 5.5, d: 4.5 },
+                               { id: 'c4', x: 4.5, z: -17.5, w: 5.5, d: 4.5 }, { id: 'c5', x: 13.5, z: -17.5, w: 5.5, d: 4.5 }, { id: 'c6', x: 22.5, z: -17.5, w: 5.5, d: 4.5 }] },
+                features: [
+                    { k: 'plateau', x: 8, z: 2, w: 3, d: 12, h: 2.2, edge: 0.3 },                                                     // THE CATWALK along the guardroom's east side
+                    { k: 'ramp', x0: 1.4, z0: 4.5, x1: 7.3, z1: 4.5, w: 2.4, h0: 0, h1: 2.2, stairs: true, edge: 0.2 },              // its stair (L 5.9 for 2.2 — under the tread rule; ends 0.8 m inside the tier)
+                    { k: 'rail', x0: 6.6, z0: -3.5, x1: 6.6, z1: 2.4 }, { k: 'rail', x0: 6.6, z0: 6.4, x1: 6.6, z1: 7.7 },           // the catwalk's rail either side of the stair's top
+                    { k: 'plateau', x: -6, z: -2, r: 1.2, h: 3.6, edge: 0.3 },                                                       // THE VENT STACK (the tape — the door gun's)
+                    { k: 'wall', x0: -8, z0: 6.5, x1: -1, z1: 6.5, h: 0.9, t: 0.6, key: 'urban:TileSubway2c' },                       // THE BOOKING COUNTER (the rider's ledge)
+                    { k: 'path', pts: [[-28, -11], [28, -11]], w: 1.6 },                                                              // the corridor's rubber runner
+                ],
+            },
+            doors: [
+                { id: 'sewers', wall: 'e', z: -11, leaf: 'leaf_cell',
+                  label: 'THE SEWERS', sub: 'THE PRECINCT DRAIN · OUT INTO THE CROSS DRAIN',
+                  action: { room: 'site_prebuilt_downtown_sewers', at: 'drain' },
+                  desc: 'The barred door at the end of the cell corridor, the one the turnkey says is the drain. It is the drain. It is also a door.' },
+                { id: 'trap', wall: 's', x: -20, leaf: null,
+                  label: 'THE OLD WORKINGS', sub: 'THE TRAP UNDER THE TANK · DOWN',
+                  action: { room: 'site_prebuilt_downtown_workings', at: 'trap' },
+                  desc: 'An opening in the drunk tank\'s back wall with a rope ladder down it and cold air coming up. The precinct was built on the mine; the mine had cells first.' },
+            ],
+            counters: [],
+            props: [
+                /* THE CELLS: a cot in each, bars at every mouth (free-standing on the plan walls — a plan room hangs nothing on the shell) */
+                { key: 'cot',             x: -22.5, z: -18.2, face: 90 }, { key: 'cot', x: -13.5, z: -18.2, face: 90 }, { key: 'cot', x: -4.5, z: -18.2, face: 90 },
+                { key: 'cot',             x: 4.5, z: -18.2, face: 90 },   { key: 'cot', x: 13.5, z: -18.2, face: 90 },  { key: 'cot', x: 22.5, z: -18.2, face: 90 },
+                { key: 'cell_bars',       x: -22.5, z: -14.0, face: 0, mount: 0 }, { key: 'cell_bars', x: -13.5, z: -14.0, face: 0, mount: 0 }, { key: 'cell_bars', x: -4.5, z: -14.0, face: 0, mount: 0 },
+                { key: 'cell_bars',       x: 4.5, z: -14.0, face: 0, mount: 0 },   { key: 'cell_bars', x: 13.5, z: -14.0, face: 0, mount: 0 },  { key: 'cell_bars', x: 22.5, z: -14.0, face: 0, mount: 0 },
+                { key: 'wall_chains',     x: -22.5, z: -19.6, face: 0, mount: 1.2 },
+                { key: 'bare_bulb',       x: -13.5, z: -11, ceil: true }, { key: 'bare_bulb', x: 13.5, z: -11, ceil: true },
+                { key: 'fire_extinguisher', x: -16, z: -12.3, face: 0 },
+                { key: 'floor_drain',     x: 0, z: -10.2 },
+                /* THE GUARDROOM: the desk under the catwalk's stair, the stack, the counter */
+                { key: 'steel_table',     x: -1, z: -1.5, face: 0 }, { key: 'crt_terminal', x: -1, z: -1.5, y: 0.76, face: 0 }, { key: 'desk_lamp', x: 0, z: -1.7, y: 0.76, face: 180 },
+                { key: 'folding_chair',   x: -1, z: 0.2, face: 180 },
+                { key: 'clipboard',       x: -9.9, z: 0, face: 90, mount: 1.45 },
+                { key: 'breaker_panel',   x: -9.9, z: 5, face: 90, mount: 1.25 },
+                { key: 'security_camera', x: -9.9, z: -3.5, face: 45, mount: 2.55 },
+                { key: 'railing_1m',      x: 8, z: -2, face: 90 },                                                              // THE PARK RULE's catalogue rail on the catwalk
+                { key: 'bare_bulb',       x: -4, z: 4, ceil: true }, { key: 'bare_bulb', x: 4, z: -2, ceil: true },
+                { key: 'key',             x: 2.4, z: -3.8, y: 0.0, face: 20 },                                                  // the ring, on the floor, as upstairs
+                { key: 'cardboard_boxes', x: 2.2, z: 7.2, face: 350 },
+                /* THE DRUNK TANK */
+                { key: 'cot',             x: -24.6, z: 14, face: 0 },
+                { key: 'floor_drain',     x: -18, z: 16 },
+                { key: 'floor_stain',     x: -20, z: 12 },
+                { key: 'wet_floor_sign',  x: -16.4, z: 11, face: 30 },
+                { key: 'bare_bulb',       x: -20, z: 14, ceil: true },
+                /* THE PROPERTY ROOM */
+                { key: 'filing_cabinet',  x: 15, z: 9.8, face: 0 }, { key: 'filing_cabinet', x: 21, z: 9.8, face: 0 },
+                { key: 'cardboard_boxes', x: 22.4, z: 17.6, face: 30 }, { key: 'cardboard_box', x: 13.8, z: 17.2, face: 300 },
+                { key: 'bare_bulb',       x: 18, z: 14, ceil: true },
+                { key: 'paper_sheet',     x: 18, z: 12.6, y: 0.01, face: 40 },                                                   // the property list: one ring of keys, unclaimed
+            ],
+            agents: [],
+            npcSpots: [
+                { x: -13.5, z: -16.8, face: 0, race: 'gangster', say: ['“Lawyer.” “You have not been charged.” “Then I am not here.”', '“How long?” “Since the musical.” “Which musical?” “The one with the number.”'] },
+                { x: 13.5, z: -16.8, face: 0, race: 'politician', say: ['“I was elected.” “To what?” “This cell, apparently. It was a landslide.”'] },
+                { x: -20.5, z: 15.6, face: 0, race: 'zombie', say: ['“Drunk.” “On what?” “Tank.” “That is the room.” “Then the room.”'] },
+                { x: -1, z: 2.2, face: 180, race: 'men in black', say: ['“Six cells, two occupied.” “Who is in the other four?” “Nobody we have charged.”', '“The drain is a door.” “Every drain is a door.” “Not every door is a drain. Do not go in the tank.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Whose precinct?” “The city’s.” “The city fell down.” “The basement did not.”',
+                '“Six cells.” “Room 24601 has three.” “Room 24601 has three you can see.”',
+                '“The catwalk.” “For who?” “Whoever watches the cells.” “Nobody is up there.” “That is who watches the cells.”',
+                '“Property room.” “What property?” “One ring of keys.” “Whose?” “Everyone’s.”',
+            ],
+            spawn: { x: -24, z: -11, face: 90 },
+        },
+        site_prebuilt_downtown_workings: {
+            label: 'DISASTER CITY · THE OLD WORKINGS',
+            sub: 'THE MINE UNDER THE PRECINCT · THE FLOOD · THE PUMP LEDGE · THE CHIMNEY',
+            kind: 'box', site: 'prebuilt_downtown', part: 'workings',
+            shell: hqSewerShell({ w: 60, d: 44, h: 5.0, wallH: 5.0, plate: { x: -20, z: -20.8, y: 3.0 },
+                                  floor: 'bricks_2', wall: 'bricks_2', dado: 'bricks_2', ceiling: 'cave_wall',
+                                  floorColor: 0x6e6a62, wallColor: 0x5e5a54, dadoColor: 0x4e4a44, ceilColor: 0x3e3a34,
+                                  mood: { lamp: 0xffa050, glow: 0xff9a40, strip: 0xffc890, light: 0xffb070, ambient: 0.32 }, fog: { color: 0x0c0a08, density: 0.03 }, look: HQ_ROOM_LOOKS.workings }),
+            /* THE FIELD: a cave somebody bricked (Merlin's undercroft's rule — `bricks_2` the cliff sheet, the rock to the
+               ceiling), FLOODED: THE FLOOD across the middle is waded, THE SUMP by the west wall is deep (never entered),
+               THE PUMP LEDGE (1.4) up its stair over the sump, the sleeper wall (the grind), THE CHIMNEY (3.9 m, the tape),
+               the boards laid across the floor as the path. */
+            terrain: {
+                floor: 'bricks_2', cliff: 'bricks_2', path: 'wood_planks',
+                noise: { amp: 0.08, scale: 3 }, crag: false,
+                gen: { kind: 'cave', fill: 0.44, seed: 41, wallH: 5.0 },
+                features: [
+                    { k: 'pool', x: 6, z: 3, r: 6, y: -0.3, depth: 0.6 },                                                       // THE FLOOD (waded)
+                    { k: 'pool', x: -14, z: 9, r: 2.6, y: -0.3, depth: 1.8, key: 'deep_water' },                               // THE SUMP (never entered)
+                    { k: 'stream', pts: [[-22, 5], [-17, 6.5], [-8, 4], [0, 3]], w: 2.2, y: -0.3, depth: 0.55 },                // the seep into the flood
+                    { k: 'plateau', x: -14, z: -10, w: 8, d: 4, h: 1.4, edge: 0.3 },                                             // THE PUMP LEDGE
+                    { k: 'ramp', x0: -14, z0: -4.4, x1: -14, z1: -8.7, w: 2.2, h0: 0, h1: 1.4, stairs: true, edge: 0.2 },        // its stair (ends 0.7 m inside the tier)
+                    { k: 'rail', x0: -17.6, z0: -7.9, x1: -15.4, z1: -7.9 }, { k: 'rail', x0: -12.6, z0: -7.9, x1: -10.4, z1: -7.9 },
+                    { k: 'wall', x0: 0, z0: -14, x1: 10, z1: -14, h: 0.6, t: 0.5, key: 'bricks_2' },                            // THE SLEEPER WALL (the grind)
+                    { k: 'plateau', x: 16, z: -10, r: 1.3, h: 3.9, edge: 0.3 },                                                 // THE CHIMNEY (the tape — the door gun's; the near weenie: daylight down it)
+                    { k: 'path', pts: [[-27, 0], [-20, -2], [-8, -6], [8, -9], [27, -12]], w: 1.6 },                            // the boards
+                    { k: 'scatter', key: 'cave_stone', n: 8, seed: 3 },
+                    { k: 'scatter', key: 'cinder_block', n: 5, seed: 4 },
+                ],
+            },
+            doors: [
+                { id: 'trap', wall: 'n', x: -20, leaf: null,
+                  label: 'THE HOLDING CELLS', sub: 'THE ROPE LADDER · UP INTO THE TANK',
+                  action: { room: 'site_prebuilt_downtown_cells', at: 'trap' },
+                  desc: 'The rope ladder up into the precinct\'s drunk tank. Somebody hung it from the tank side, which is the wrong side to hang a rope ladder from.' },
+                { id: 'sewers', wall: 'e', z: -12, leaf: null,
+                  label: 'THE SEWERS', sub: 'THE ADIT · UP INTO THE CULVERTS',
+                  action: { room: 'site_prebuilt_downtown_sewers', at: 'adit' },
+                  desc: 'The adit the miners drove up into what became the sewer. The bricks change colour halfway; so does the air.' },
+            ],
+            counters: [],
+            props: [
+                { key: 'cave_torch',      x: -22, z: -16 }, { key: 'cave_torch', x: 2, z: -12 }, { key: 'cave_torch', x: 20, z: -4 }, { key: 'cave_torch', x: -6, z: 12 },
+                { key: 'brazier',         x: -4, z: -16.5 },
+                { key: 'bare_bulb',       x: 16, z: -10, ceil: true },                                                          // daylight down THE CHIMNEY — the one bright thing
+                { key: 'railing_1m',      x: -14, z: -10.6, face: 0 },                                                          // THE PARK RULE's catalogue rail on the pump ledge
+                { key: 'pipe_run',        x: -16, z: -12.4, face: 0 }, { key: 'pipe_run', x: -10.6, z: 4, face: 90 },
+                { key: 'cardboard_boxes', x: -24, z: -14, face: 20 },
+                { key: 'skull_pile',      x: 22, z: 8, face: 300 },
+                { key: 'signpost',        x: -20, z: -2, face: 60 },
+                { key: 'drain_grate',     x: 22, z: 8.6, face: 270, mount: 0.4 },
+                { key: 'floor_drain',     x: 8, z: -6 },
+                { key: 'key',             x: 12, z: -13.2, y: 0.0, face: 20 },
+                { key: 'paper_sheet',     x: -12, z: -10.6, y: 1.41, face: 140 },                                               // the pump log on the ledge: RUNNING. RUNNING. RUNNING. STOPPED. RUNNING.
+            ],
+            agents: [],
+            npcSpots: [
+                { x: -4, z: -8, face: 30, race: 'ghoul', say: ['“The mine was here before the city.” “What did they mine?” “Cells.”', '“Do not wade the sump.” “I was not going to.” “Everyone says that.”'] },
+                { x: 11, z: -16, face: 300, race: 'skeleton', say: ['“There is daylight down the chimney.” “From where?” “Nowhere you can get to from here.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Old workings.” “How old?” “The bricks are Roman.” “The city is not.” “The bricks did not ask.”',
+                '“The flood is knee deep.” “And the sump?” “The sump is the reason there is a pump.”',
+                '“Somebody put a pump on a ledge.” “Somebody put a ledge on a pump.” “Either way it is running.”',
+                '“The oubliette is through the west wall.” “The cave’s?” “The cave’s. Every cell down here joins up eventually.”',
+            ],
+            spawn: { x: -24, z: -4, face: 90 },
+        },
         /* ══ THE RANCH (the woods split, 2026-09-18) ══════════════════════════
            The user: "split the Woods into the Woods and the Ranch. The Ranch
            should have Skinwalker Ranch, the Graveyard, the Haunted House, the
@@ -33544,8 +34001,11 @@ function hqHubOf(roomId) {
     const H = DOOR_HQ.hubs || {}, r = (DOOR_HQ.rooms || {})[roomId];
     if (!r) return null;
     const site = r.site ? hqSiteId(r.site) : null;
+    /* THE UNDERWORLD (2026-09-18): a hub may claim rooms BY ID (`rooms`) — a part under a city that is not the city's; an explicit claim beats the site rule */
+    for (const id of Object.keys(H)) { const h = H[id]; if ((h.rooms || []).indexOf(roomId) >= 0) return { id, label: h.label, color: h.color || null, anchor: h.room === roomId }; }
     for (const id of Object.keys(H)) {
         const h = H[id];
+        if ((h.rooms || []).length && !h.sites && !h.facility) continue;   // an explicit hub claims nothing but its list
         const member = site ? ((h.sites || []).indexOf(site) >= 0) : !!h.facility && r.kind !== 'bay';
         if (member || h.room === roomId) return { id, label: h.label, color: h.color || null, anchor: h.room === roomId };
     }
@@ -35459,7 +35919,7 @@ const HQ_TAPE_KINDS = ['evidence', 'parents', 'facility'];
    complex part one, per exploration-floor room one — [room | site, title,
    caption, kind]. A site key (no `site_` prefix) = its generated board room. */
 const HQ_TAPE_SHEET = {
-    prebuilt_dumb:        [['THE LIFT LOG', 'Sub-level 7 does not exist. The lift stops there anyway.', 'facility'], ['THE BLAST DOOR, 03:14', 'Nine seconds of a door opening from the other side. Nobody comes through.', 'evidence']],
+    prebuilt_dumb:        [['THE LIFT LOG', 'Sub-level 7 does not exist. The lift stops there anyway.', 'facility']],   // THE UNDERWORLD (2026-09-18): THE BLAST DOOR went down the sewers
     prebuilt_cern:        [['A BADGE ON THE FLOOR', 'Your mother’s badge. The photo has been cut out.', 'parents']],   // THE VATICAN (2026-09-17): BEAM DUMP went to the cortile
     prebuilt_backrooms:   [['HUM, LEVEL 0', 'Forty seconds of carpet. Something in the wallpaper blinks.', 'evidence']],   // CAMELOT CASTLE (2026-09-18): THE EXIT SIGN went to the outer ward
     site_prebuilt_skinwalker_fields: [['THE SCARECROWS, 05:29', 'Three of them, facing the house. On the second pass they face the camera.', 'evidence']],   // THE RANCH (2026-09-18): Nuketown's MANNEQUINS re-homed when the site retired
@@ -35480,7 +35940,7 @@ const HQ_TAPE_SHEET = {
     prebuilt_mars:        [['ROVER FEED 07', 'The rover turns to look at something behind it. The something waves.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base
     prebuilt_area51:      [['THE BADGE PHOTO', 'A man in a lab coat at the gate. He is holding a copy of this tape.', 'parents']],   // THE VATICAN (2026-09-17): HANGAR 18 went to the observatory
     prebuilt_skinwalker:  [['THE RANCH HOUSE', 'A woman on the porch, looking into the yard. The yard looks back.', 'parents']],
-    prebuilt_hollow_earth: [['THE INNER SUN', 'A light under the ground. It has a horizon.', 'evidence'], ['THE WELL', 'A bucket coming up the rope. Something has written on the bucket.', 'evidence']],
+    prebuilt_hollow_earth: [['THE INNER SUN', 'A light under the ground. It has a horizon.', 'evidence']],   // THE UNDERWORLD (2026-09-18): THE WELL went to the old workings
     prebuilt_fairy_forest: [['THE RING', 'Toadstools in a circle. On the second pass, the circle is one wider.', 'evidence']],
     prebuilt_moon:        [['THE LANDER', 'A footprint beside the lander that was not there in the previous frame.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base
     prebuilt_vatican:     [['THE ARCHIVE', 'A reading room with one lamp lit. The book is open to a floor plan of the Bureau.', 'facility']],   // THE DIVINE STAIR (2026-09-17): THE CONFESSIONAL went down to the catacombs
@@ -35491,8 +35951,8 @@ const HQ_TAPE_SHEET = {
     prebuilt_revenge:     [['THE HELM', 'The wheel turns itself into the storm. The compass points down.', 'evidence']],   // CAMELOT CASTLE (2026-09-18): THE CAPTAIN’S TABLE went to the great hall
     prebuilt_derelict:    [['THE BRIDGE', 'A dead console lights up when the camera enters. It shows a door.', 'evidence']],   // CAMELOT CASTLE (2026-09-18): CRYO went to the keep
     prebuilt_lookingglass: [['THE TEA PARTY', 'A table set for four. The cups fill in the wrong order.', 'evidence']],   // CAMELOT CASTLE (2026-09-18): THE MIRROR went to the castle in the sky
-    prebuilt_haunted:     [['THE STAIRCASE', 'A figure on the landing for one frame. The frame is at 0:03 every loop.', 'evidence'], ['THE NURSERY', 'A cot, a mobile turning. A voice singing your name.', 'parents']],
-    prebuilt_lodge:       [['THE EYE', 'A painting on the wall. Its eye is a camera. Its camera is this tape.', 'facility'], ['THE MINUTES', 'A meeting in the lodge. The minutes list the Department as an item.', 'facility']],
+    prebuilt_haunted:     [['THE STAIRCASE', 'A figure on the landing for one frame. The frame is at 0:03 every loop.', 'evidence']],   // THE UNDERWORLD (2026-09-18): THE NURSERY went to the holding cells
+    prebuilt_lodge:       [['THE EYE', 'A painting on the wall. Its eye is a camera. Its camera is this tape.', 'facility']],   // THE UNDERWORLD (2026-09-18): THE MINUTES went to the running tunnels
     prebuilt_singularity: [['THE DROP', 'Eight seconds of falling. The camera never lands.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base
     prebuilt_saturn:      [['THE RINGS', 'Ice grains in the ring, one of them square.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base
     prebuilt_strip:       [['THE CHAPEL', 'Two people at an altar, out of focus. The register says your surname.', 'parents']],   // THE LUXOR BEAM moved onto THE STRIP's own streets (2026-09-17)
@@ -35568,6 +36028,12 @@ const HQ_TAPE_SHEET = {
     site_prebuilt_area51_hangar:     [['HANGAR 18, 03:00', 'The tarp comes off the rig by itself. Under the tarp, the rig. Under the rig, the floor lift, going down.', 'evidence']],
     site_prebuilt_area51_ward:       [['ROOM 5150-B', 'A white room with no door. The camera is on the inside. So, on the second pass, are you.', 'parents']],
     site_prebuilt_area51_flightline: [['RUNWAY 33', 'Landing lights running into the desert. Something lands. It is not on the lights and it is not on the runway.', 'evidence']],
+    /* THE UNDERWORLD (2026-09-18 — complex candidate #3): one per part — four re-homed (D.U.M.B.'s THE BLAST DOOR, the Lodge's THE MINUTES, the Haunted
+       House's THE NURSERY, Hollow Earth's THE WELL — every donor keeps one; the hundred stays a hundred) */
+    site_prebuilt_downtown_sewers:   [['THE OUTFALL', 'A shaft of daylight in a sewer. Something climbs down it into the water, and the water does not move.', 'evidence']],
+    site_prebuilt_downtown_tunnels:  [['THE HEADLIGHT', 'A train in the tunnel with its lamp on. Nobody at the controls. The lamp turns to follow the camera down the track.', 'evidence']],
+    site_prebuilt_downtown_cells:    [['THE DRUNK TANK', 'A holding cell, one man asleep on the bench under a blanket. Your surname is stitched into the blanket.', 'parents']],
+    site_prebuilt_downtown_workings: [['THE WELL, FROM UNDER', 'A bucket coming down a rope into the workings. Something takes it and sends it back up full.', 'evidence']],
 };
 /* the room a sheet key names: a site key → its generated board room */
 function hqTapeRoomId(key) { return DOOR_HQ.rooms[key] ? key : (DOOR_HQ.rooms['site_' + key] ? 'site_' + key : null); }
@@ -35860,6 +36326,11 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_area51_hangar:     { tape: { x: 8.0, z: 6.0 } },
     site_prebuilt_area51_ward:       { tape: { x: 6.0, z: 0.0 } },
     site_prebuilt_area51_flightline: { tape: { x: -8.0, z: -17.5 } },
+    /* THE UNDERWORLD (2026-09-18): the outfall shaft, the signal gantry, the vent stack, the chimney — the door gun's four */
+    site_prebuilt_downtown_sewers:   { tape: { x: 55.0, z: -18.0 } },
+    site_prebuilt_downtown_tunnels:  { tape: { x: 0.0, z: 0.0 } },
+    site_prebuilt_downtown_cells:    { tape: { x: -6.0, z: -2.0 } },
+    site_prebuilt_downtown_workings: { tape: { x: 16.0, z: -10.0 } },
     site_prebuilt_fairy_forest_ritual:  { tape: { x: 0.0, z: -6.3 } } };    // THE ALTAR STONE   // the deck (SKATEBOARDING 9.8) takes the generator's far corner of Room 26
 Object.defineProperty(DOOR_HQ, 'finds', { configurable: true, enumerable: true, get: _hqFindsAll, set: _hqFindsPin });
 /* ── THE DOOR GUN'S LEARNING SEQUENCE (PHASE9_QUALITY_PLAN §6 D8, 2026-09-16) ──
@@ -39211,7 +39682,7 @@ if (typeof window !== 'undefined') {
     window.HQ_TERRAIN_RULES = HQ_TERRAIN_RULES; window.HQ_TERRAIN_GEN = HQ_TERRAIN_GEN; window.HQ_ROOM_LOOKS = HQ_ROOM_LOOKS; window.hqTerrainMaskAt = hqTerrainMaskAt; window.hqTerrainOpenAt = hqTerrainOpenAt; window.hqTerrainRooms = hqTerrainRooms; window.hqTerrainInfo = hqTerrainInfo; window.hqTerrainTraps = hqTerrainTraps; window.hqTerrainCompile = hqTerrainCompile; window.hqTerrainSolidAt = hqTerrainSolidAt; window.hqTerrainSolidTop = hqTerrainSolidTop;
     window.hqTerrainHeight = hqTerrainHeight; window.hqTerrainSlope = hqTerrainSlope; window.hqTerrainFeet = hqTerrainFeet; window.hqTerrainAir = hqTerrainAir; window.hqTerrainCam = hqTerrainCam;
     window.hqTerrainFluidAt = hqTerrainFluidAt; window.hqTerrainWallAt = hqTerrainWallAt; window.hqTerrainDoorY = hqTerrainDoorY; window.hqTerrainReach = hqTerrainReach; window.hqTerrainNodeKey = hqTerrainNodeKey;
-    window.hqTerrainDoorLanding = hqTerrainDoorLanding; window.hqTerrainDump = hqTerrainDump; window.hqCityShell = hqCityShell; window.hqAirbaseShell = hqAirbaseShell; window.hqCastleShell = hqCastleShell; window.hqSiteEntry = hqSiteEntry; window.hqSiteEntryOf = hqSiteEntryOf; window.hqApplySiteEntries = hqApplySiteEntries; window.hqFindHardReachTerrain = hqFindHardReachTerrain; window.hqTerrainFindSpot = hqTerrainFindSpot; window._hqTPolyDist = _hqTPolyDist; window._hqTEllipse = _hqTEllipse; window._hqTRectIn = _hqTRectIn; window._hqTRamp = _hqTRamp;   // THE FLOATING PIECES (2026-09-18): the renderer's underFloat cut reads the same frames the compiler does
+    window.hqTerrainDoorLanding = hqTerrainDoorLanding; window.hqTerrainDump = hqTerrainDump; window.hqCityShell = hqCityShell; window.hqAirbaseShell = hqAirbaseShell; window.hqCastleShell = hqCastleShell; window.hqSewerShell = hqSewerShell; window.hqSiteEntry = hqSiteEntry; window.hqSiteEntryOf = hqSiteEntryOf; window.hqApplySiteEntries = hqApplySiteEntries; window.hqFindHardReachTerrain = hqFindHardReachTerrain; window.hqTerrainFindSpot = hqTerrainFindSpot; window._hqTPolyDist = _hqTPolyDist; window._hqTEllipse = _hqTEllipse; window._hqTRectIn = _hqTRectIn; window._hqTRamp = _hqTRamp;   // THE FLOATING PIECES (2026-09-18): the renderer's underFloat cut reads the same frames the compiler does
     /* THE DOOR GUN (HQ plan 9.5, 2026-09-15 rev 13) */
     window.HQ_PORTAL_RULES = HQ_PORTAL_RULES; window.hqPortalRecord = hqPortalRecord; window.hqPortalStatus = hqPortalStatus; window.hqPortalIssue = hqPortalIssue;
     window.hqPortalPlace = hqPortalPlace; window.hqPortalClear = hqPortalClear; window.hqPortalLeaf = hqPortalLeaf; window.hqPortalNextSlot = hqPortalNextSlot; window.hqPortalTwin = hqPortalTwin; window.hqPortalSafeRoom = hqPortalSafeRoom; window.hqPortalDoorsIn = hqPortalDoorsIn;

@@ -89,7 +89,7 @@ test('the sheet: two parts on Room 1954 — THE STREETS (open under Downtown’s
     assert.ok(/function hqCityShell\(o\)/.test(data) && /window\.hqCityShell = hqCityShell/.test(data) && typeof D.hqCityShell === 'function', 'the shell helper');
     const reg = D.hqRoomRegister();
     assert.equal(reg.filter(r => r.mapId === 'prebuilt_downtown').length, 1); assert.ok(!reg.some(r => IDS.includes(r.id) || IDS.includes(r.room)));
-    assert.equal(D.hqSiteComplex('prebuilt_downtown').length, 6, 'the board room, the lobby, the platform, the streets, the mall, the supply closet (the second pass)');
+    assert.equal(D.hqSiteComplex('prebuilt_downtown').length, 10, 'the board room, the lobby, the platform, the streets, the mall, the supply closet (the second pass) — and THE UNDERWORLD’s four under them (2026-09-18)');
 });
 
 test('THE PLAN (`city`): the streets are the corridors (the ring road a loop, the two avenues), the solid the blocks cut into LOTS (≥ 20 on the streets, ≥ 10 store units in the mall) with FRONTS that look onto a street (the façade standing where the rise begins); a 2.4 m SIDEWALK with a 12 cm kerb on the streets, none in the mall; a podium is a LEVEL, never a stack (the rooftop stays 4.0, the mezzanine 3.4); the plan is deterministic; the outer ring of blocks stands past the ring road', () => {

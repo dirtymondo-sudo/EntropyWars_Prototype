@@ -5569,3 +5569,34 @@ say where that door eventually leads me to but not what's actually directly thro
 names the far destination again — name the room, put the rest in `sub`. `npm test` runs `hq-ranch.test.js`. Ship data.js to
 Render too (the finds ledger). Unseen live (RULE #1c): the corn banks, the circles, the butte, the hub rings, the re-plated
 hall.
+
+## THE UNDERWORLD — THE TUNNELS / THE DUNGEONS (complex candidate #3, HQ plan 9.3 stage 10) — 2026-09-18, local delivery
+Four parts UNDER Disaster City on Room 1954's site (data.js, the block before THE RANCH; `hqSewerShell(o)` beside the
+castle shell; every plate reads `DISASTER CITY · <place>` — disaster-city-3 insists — and THE MAP gathers them as
+**`DOOR_HQ.hubs.underworld`**, the first hub that claims rooms BY ID: `hubs[id].rooms = [...]` beats the site rule in
+`hqHubOf`, and a hub with only a `rooms` list claims nothing else). **THE SEWERS** (`site_prebuilt_downtown_sewers`,
+120 × 84, `halls` with `bsp: false` — the culverts are AUTHORED halls WITH BENDS (a `halls` polyline may bend; the traced
+walls follow), a waded `stream` down every culvert's middle with the walkways dry either side (the rule: `hall.w − stream.w
+− 2 × bank ≥ the body`; a stream STARTS short of a door's pad or the landing drops in), THE JUNCTION, THE INSPECTION GALLERY
+(1.6 up its stair), THE CISTERN (`deep_water`) with THE PLANK (a `deck` spanning both banks), THE PUMP ROOM, THE OUTFALL SHAFT
+(4.4 m, the tape)); **THE RUNNING TUNNELS** (`_tunnels`, 124 × 96, `halls`, `bsp: false`: THE LOOP LINE + THE CROSSOVER +
+three rooms — THE DEPOT with two `train_car`s (the lit one = the weenie), THE GHOST STATION's 1 m platform, THE CROSSING with
+THE SIGNAL GANTRY (5.2 m, the tape); **THE RAILS are twelve `wall` rows at 0.14 m** — under the climb, stepped over,
+grindable); **THE HOLDING CELLS** (`_cells`, 64 × 48, `halls`, `bsp: false`, **`minDegree: 1`** = a cell has ONE door: the
+corridor hall carries A VERTEX UNDER EVERY CELL so each authored cell takes a straight corridor to the vertex beneath it —
+the way to author any row of one-door rooms; the dead-end readout is then the design (the test pins the six cells; a room whose only tree edge is a stub onto a hall inside it reads as one too — the authored halls carry the ways); THE GUARDROOM +
+THE CATWALK (2.2) + THE VENT STACK (3.6 m, the tape), THE DRUNK TANK, THE PROPERTY ROOM; `cell_bars` free at the mouths);
+**THE OLD WORKINGS** (`_workings`, 60 × 44, `cave` bricked to the ceiling, FLOODED: THE FLOOD waded, THE SUMP never, THE PUMP
+LEDGE, THE CHIMNEY (3.9 m, the tape)). The cycle: sewers → tunnels; sewers → cells → workings → sewers. **THE SEAMS**:
+Downtown's streets grew `sewer` (THE PUMPING STATION, e z −20, a pair with the sewers' `pump`; its alley a `path`);
+`links.strip_sewer` (a `gutter` way free on the Strip's back-lane kerb ⇄ a `leaf_cell` grate — the storm drain's rule),
+`sewers_drain` (⇄ the storm drain's SOUTH wall), `tunnels_works` + `tunnels_platform` (the loop ⇄ the Works' `tunnel` room
+and Downtown's platform part, both on the WEST walls past the trains — the subway line runs THROUGH the loop now),
+`cells_dungeon` (⇄ Room 24601's south wall), `workings_oubliette` (⇄ the oubliette's east wall) — both on the NEW dashed
+`routes.dungeons` (never THE UNDERCROFT: hq-cave insists every leg of that line touches Hollow Earth). Tapes: four re-homed
+(D.U.M.B.'s, the Lodge's, the Haunted House's, Hollow Earth's second); `findSpots` pins the four. Looks `sewers` / `tunnels`
+/ `cells` / `workings`. `npm test` runs `hq-underworld.test.js`; amended: hq-terrain (46 rooms), hq-floor-plan (40 planned),
+hq-dumb, hq-ranch (nine hubs), hq-world (the seams list), hq-city (Downtown's complex is ten rooms), hq-finds (the shelf's pair is a board tape + a part tape — no board carries two any more). No renderer change;
+ship data.js to Render too. NEXT: THE DEEP (the user's other pick — Atlantis / Agartha / the Dutchman's hold / Bermuda's
+weir on the `deep` route); MODEL_INDEX §3m has the underworld's wishlist. UNSEEN LIVE (RULE #1c): all of it — the channels'
+sheets in the culverts, the rails at 0.14 m, the bars standing free (`z −14.0` is the edit), the far ends on the platforms.

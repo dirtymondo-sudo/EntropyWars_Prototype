@@ -462,6 +462,18 @@ The design (build in this order; each step is one delivery):
   ORB in the dark. Not done: a portcullis / drawbridge GLB (MODEL_INDEX §3l), battlements on the wall tops, the board's own
   tape into the ward (the bypassed-board rule), a gallery floor inside the keep (§5's shaft room).
 
+- **2026-09-18 — THE UNDERWORLD (complex candidate #3, THE TUNNELS / THE DUNGEONS).** Family C three ways under Disaster
+  City: THE SEWERS (`halls`, `bsp: false` — the culverts are authored halls WITH BENDS, a waded `stream` down every
+  middle, the chambers authored; the walls follow the diagonals), THE RUNNING TUNNELS (`halls`, `bsp: false` — a loop
+  hall + a crossover + three rooms; the rails twelve `wall` rows at 0.14 m the walker steps over and the rider grinds),
+  THE HOLDING CELLS (`halls`, `bsp: false`, `minDegree: 1` — six authored cells each joined to A VERTEX UNDER IT on one
+  corridor hall: the way to author any row of one-door rooms; the dead-end readout is the design there) and family A
+  flooded (THE OLD WORKINGS, `cave` in brick: a waded flood, a deep sump). Six seams join it to what stood already (the
+  Strip's gutter, the storm drain, both subway platforms past their track ends — the subway line runs through the loop
+  now — Room 24601, the oubliette — the last two on a new dashed `dungeons` line); a hub may claim rooms BY ID (`DOOR_HQ.hubs.underworld.rooms`). Rules: a stream starts
+  short of a door's pad; a corridor stays dry beside its channel only when hall.w − stream.w − 2 × bank ≥ the body. Not
+  done: a drunkard's-walk sewer generator (§2), a `manhole` way, doors on the cells, THE DEEP (next). Log:
+  DOOR_HQ_BUILD_PLAN §9.
 - **2026-09-18 — THE MAPS / ROOMS CLEANUP**: THE RANCH (family A, `rooms` — the solid is the standing corn) on Room 512, the
   board bypassed; Nuketown retired; THE HUBS on the map (`DOOR_HQ.hubs`); every door plate reads the room DIRECTLY through it
   (`hqReplateDoors`). Two new sites are owed to the ranch: the Graveyard and a Western map (their gates are held links).

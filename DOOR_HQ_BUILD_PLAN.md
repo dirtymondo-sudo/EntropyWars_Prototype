@@ -9718,6 +9718,12 @@ RULE, the hard tapes, `check-terrain.js` before any claim. The aesthetic is the 
    sky bridge onto the stairway to heaven) — three families in one complex; the board room bypassed.**
 3. **THE TUNNELS / THE DUNGEONS** — every subway tunnel, the sewer system (the storm drain), the dungeons
    (24601, the oubliette) joined into one underworld.
+   **STARTED 2026-09-18 (THE UNDERWORLD, the entry at the end of this file): four parts shipped locally under Room 1954 —
+   THE SEWERS (the authored culverts with waded channels, the junction, the cistern's plank, the outfall shaft), THE RUNNING
+   TUNNELS (the loop line, the crossover, the depot's lit train, the ghost station; the Works' and Downtown's platforms
+   joined past their track ends), THE HOLDING CELLS (six cells off one corridor, the catwalk; the seventh cell into 24601),
+   THE OLD WORKINGS (a flooded brick cave; the portcullis into the oubliette) — those two seams on a new `dungeons` line; the Strip's
+   gutter and the storm drain's grate.**
 4. **HEAVEN · HELL · THE VATICAN · THE CATACOMBS · THE STAIRWAY TO HEAVEN** — one epic-fantasy complex, the
    stairway the spine from the Vatican's dome to the clouds. **STARTED 2026-09-17 (THE DIVINE STAIR, the two
    entries above): eight parts shipped locally — the basilica, the archive, the cortile, the observatory, the
@@ -9735,7 +9741,9 @@ RULE, the hard tapes, `check-terrain.js` before any claim. The aesthetic is the 
    locally on Room 512 (the board bypassed) with the house's dead tree, the Lodge's saloon door, the grove's gate and the
    well; THE GRAVEYARD and THE WESTERN MAP are NOT built — two new launch maps (the 7.10 checklist each) whose gates wait as
    held `links` rows on the fields' east wall.**
-#1 has its second pass and CYBERPUNK CITY (the entry above); #2, #4 and #5 started; #3 and #6 not. Each needs its own `HQ_ROOM_LOOKS` row, its own sky / fog, its links on the
+#1 has its second pass and CYBERPUNK CITY (the entry above); #2, #3, #4 and #5 started; #6 not. NEXT (the user's pick, 2026-09-18):
+**THE DEEP** — Atlantis, Agartha, the Dutchman's hold, Bermuda's weir and the Antarctic ice on the `deep` route as one drowned
+complex (the boards bypassed; family B for the drowned halls, A for the flooded adits, a `rooms` plan for the crystal city). Each needs its own `HQ_ROOM_LOOKS` row, its own sky / fog, its links on the
 world graph and the 7.10 checklist for any new site it introduces.
 
 
@@ -10228,3 +10236,127 @@ bigger hub spots on the map; and the plates that say where a door EVENTUALLY lea
 - **UNSEEN LIVE (RULE #1c)**: the corn banks in `grass_tuft` with the dead windbreak on them, the circles' read from the mesa,
   the butte's height against the lip snap, the hub rings' weight on the map at the fit zoom, the halo ink against the
   parchment theme, the re-plated doors in the hall and on the rings (every plate that changed is listed by `_own`).
+
+### 2026-09-18 — THE UNDERWORLD (THE COMPLEX CANDIDATES #3, THE TUNNELS / THE DUNGEONS): four parts under Disaster City, family C three ways and a flooded cave, six seams (local delivery)
+
+The user's brief (the candidate list): "every subway tunnel, the sewer system (the storm drain), the dungeons (24601, the
+oubliette) joined into one underworld"; and today: "continue with the next complex area candidate … either the sewers/subway
+or the deep". The sewers / subway is #3 on the list and joins pieces that already exist, so it went first; THE DEEP (Atlantis,
+Agartha, the Dutchman's hold, Bermuda's weir — the `deep` route) is the next candidate (below). Built on THE CAVE / THE WOODS
+blueprint and EXPLORABLE_AREAS_GUIDE §3's order: the story beats, a family per part, the weenies before the plan, `node
+check-terrain.js` before any claim.
+
+**THE STORY BEATS**: from Downtown's east alley through THE PUMPING STATION's bulkhead → down the north feeder into THE SEWERS
+(the channel down the middle, the walkways dry, the water going the way you are) → THE JUNCTION where three culverts meet
+(THE INSPECTION GALLERY over the confluence, the paint) → east down the main culvert toward the one lit thing, THE OUTFALL
+SHAFT (the tape, the door gun's) → the grate into the storm drain under the woods ("every gutter drains into the same
+culvert") — or THE CISTERN's plank south to the hatch → THE RUNNING TUNNELS (the headlight in THE DEPOT at the end of the
+hall, THE LOOP LINE walked round, THE CROSSOVER to THE CROSSING and its gantry, THE GHOST STATION's platform, the track on
+to the Works' platform one way and Downtown's the other: the subway is one tunnel now) — or the cross drain west to THE
+HOLDING CELLS (six cells off one corridor, the guardroom's catwalk, the drunk tank, the seventh cell into Room 24601) → the
+rope ladder under the tank into THE OLD WORKINGS (the flood waded, the sump never, the pump on its ledge, daylight down THE
+CHIMNEY, the old portcullis into the oubliette) → the adit back up into the sewers. The complex is a cycle (sewers → cells →
+workings → sewers) with the tunnels off it; five lines call here (the sewers, the subway, the dungeons, and the city and
+the woods by their doors).
+
+**THE PARTS** (data.js, the block before THE RANCH; `hqSewerShell(o)` beside the castle shell — closed, brick up every wall,
+the corrugated dado, the grill overhead at 1.75, no strips, a dank haze per metre, the sewers grade; every part overrides its
+sheets and light):
+- `site_prebuilt_downtown_sewers` — THE SEWERS, 120 × 84 × 5.5, `halls` with `bsp: false` (family C, the culverts AUTHORED
+  as halls WITH BENDS — the main culvert, the north and south feeders, the cross drain, the east return, two spurs — and four
+  chambers: THE JUNCTION 22 × 22, THE OUTFALL, THE PUMP ROOM, THE CISTERN). A waded `stream` runs down every culvert's middle
+  (w 3 in the 7 m main, w 2 in the 5 m feeders — the walkways either side are dry), THE CONFLUENCE and THE OUTFALL BASIN are
+  waded pools, THE CISTERN is `deep_water` (never entered) with THE PLANK (a `deck`) across it spanning both banks, THE
+  INSPECTION GALLERY (1.6) up its stair over the confluence with rails either side of the stair's top, the kerb ledge (a
+  grind), THE OUTFALL SHAFT (4.4 m — the tape). Doors: `pump` (n x −20 ⇄ Downtown's `sewer`), `hatch` (s x 24 → the tunnels),
+  `drain` (w z −10 → the cells), `adit` (n x 50 ← the workings); links on the west (the Strip's gutter) and the east wall (the
+  storm drain). `weenie: { near: THE OUTFALL SHAFT lit from above at the main culvert's east end, seen from: the junction }`.
+- `site_prebuilt_downtown_tunnels` — THE RUNNING TUNNELS, 124 × 96 × 6.5, `halls` with `bsp: false`: THE LOOP LINE (one
+  authored loop hall, 7 m, chamfered corners), THE CROSSOVER (a diagonal hall through the solid middle), three spurs (the
+  maintenance stair up to the sewers, the track on to the Works' platform, the track on to Downtown's platform) and three
+  rooms — THE DEPOT (32 × 14: two `train_car`s on their beds, one lit = the near weenie from the hatch), THE GHOST STATION
+  (its 1 m platform up two stairs, the benches, the gates, the board, the map) and THE CROSSING with THE SIGNAL GANTRY (5.2 m —
+  the tape). THE RAILS are twelve low `wall` rows (0.14 m, `metal`) the walker steps over and the rider grinds — the four
+  straights of the loop and the two legs of the crossover; the depot's kerb ledge is the other grind. `weenie: { near: the
+  lit car in the depot, seen from: sewers (the hatch) }`.
+- `site_prebuilt_downtown_cells` — THE HOLDING CELLS, 64 × 48 × 4.6, `halls` with `bsp: false` and **`minDegree: 1`** (a
+  cell has ONE door): THE CELL CORRIDOR is one authored hall with a VERTEX UNDER EVERY CELL, so each of the six authored
+  5.5 × 4.5 cells takes a straight corridor to the vertex beneath it and nowhere else (the readout lists the six
+  cells as dead ends, by design — and any room whose tree edge is only a stub onto a hall vertex inside it (the tree cannot
+  count a hall): the halls carry the ways — THE WEST and THE EAST PASSAGE from the tank and the property room into THE
+  GUARDROOM and THE STAIR from the guardroom down to the corridor; the test pins the six and that all three halls end in
+  the guardroom); THE GUARDROOM (20 × 12) with THE CATWALK
+  (2.2 m along its east side up a 5.9 m stair, the rails either side of the stair's top), THE VENT STACK (3.6 m — the tape),
+  THE BOOKING COUNTER (a 0.9 m wall — the rider's ledge); THE DRUNK TANK and THE PROPERTY ROOM off two loops. `cell_bars`
+  stand FREE at every cell's mouth (a plan room hangs nothing on the shell). Doors: `sewers` (e z −11), `trap` (s x −20 → the
+  workings), the link into Room 24601 (w z −11). `weenie: { near: THE VENT STACK under its bulb, seen from: sewers }`.
+- `site_prebuilt_downtown_workings` — THE OLD WORKINGS, 60 × 44 × 5, `cave` bricked to the ceiling (Merlin's undercroft's
+  rule, `bricks_2` the cliff sheet), FLOODED: THE FLOOD (a 6 m waded pool across the middle) fed by a seep, THE SUMP by the
+  west wall (`deep_water`, never entered), THE PUMP LEDGE (1.4) up its stair, THE SLEEPER WALL (the grind), THE CHIMNEY
+  (3.9 m — the tape, a bulb over it = daylight), the boards laid across the floor as the path. Doors: `trap` (n x −20 ← the
+  cells), `sewers` (e z −12 → the adit), the old portcullis into the oubliette (w z 0). `weenie: { near: daylight down THE
+  CHIMNEY, seen from: trap }`.
+
+**THE SEAMS** (six `links` rows, all live): `strip_sewer` (route `sewers`, a `gutter` way FREE on the Strip's back lane east
+kerb at (42.2, 10) facing the lane ⇄ a `leaf_cell` grate in the sewers' west wall at z 20 — the storm drain's rule for a
+gutter's far end); `sewers_drain` (`sewers`, `leaf_cell`: the sewers' east wall z −12 ⇄ the storm drain's SOUTH wall x −10 —
+the drain's north wall carries the streets' gutter, its east wall the Works' grate); `tunnels_works` (`subway`,
+`leaf_frame_only`: the tunnels' west wall z −16 ⇄ the Works' `tunnel` room's west wall z −16, past the end of its platform
+and clear of the train's body); `tunnels_platform` (`subway`: the tunnels' east wall z −14 ⇄ Downtown's platform part's west
+wall z −14 — the subway line runs THROUGH the running tunnels now, the Works' platform ⇄ the loop ⇄ Downtown's platform, and
+the two `train` ways still stand on their platforms); `cells_dungeon` (`leaf_cell`: the cells' west wall
+z −11 ⇄ Room 24601's SOUTH wall x −2.8 — the dungeon's west wall is the oubliette's secret door, its east Room 333's, its
+north Room X's); `workings_oubliette` (`leaf_portcullis`: the workings' west wall z 0 ⇄ the oubliette's EAST
+wall z 0). Plus the PAIR: Downtown's streets grew `sewer` on the east wall at z −20 (THE PUMPING STATION, `leaf_bulkhead`
+wide) with its alley as a `path`. Nothing on the bypassed board.
+
+**THE HUB**: `DOOR_HQ.hubs.underworld` claims its four rooms BY ID — `rooms: [...]` is a new hub field; `hqHubOf` reads an
+explicit `rooms` list FIRST (a part under a city that is not the city's), and a hub with only a `rooms` list claims nothing
+else. The anchor is the sewers. hq-ranch.test.js draws nine hubs now.
+
+**RULES LEARNED**: (1) a `halls` plan's authored halls may BEND — `_hqTPolyDist` reads any polyline, the traced walls follow
+the diagonal (the sewers' culverts, the tunnels' chamfers and crossover); (2) a hall with a VERTEX UNDER EVERY ROOM makes the
+Prim tree join each room to the vertex beneath it (a straight corridor, never an L across the row) — the way to author a cell
+block, a ward, a row of shops; (3) `minDegree: 1` on a plan is how a room gets ONE door on purpose — the readout's dead ends
+are then the design, and the test pins their count — and `loops: 0` with it, because the generator's loop joins the NEAREST
+unjoined pair of rooms, which in a cell block is two adjacent cells (the cells' loop is three authored halls through the guardroom); (4) a rail the walker should step over is a `wall` row under the climb
+tolerance (0.14 m) — grindable, walkable, no blocker; (5) a waded `stream` down a corridor's middle leaves the corridor's
+edges dry only when `hall.w − stream.w − 2 × bank` ≥ the body — 7 − 3 − 1.8 = 2.2 m of walkway a side, 5 − 2 − 1.8 = 1.2 m
+(a feeder is waded in places; that is the sewer); (6) a stream must START short of a door's pad or the landing drops into
+the water (the feeders start 4–5 m inside the wall).
+
+**LOOKS**: `HQ_ROOM_LOOKS.sewers` (green, tight vignette, night 0.65) · `tunnels` (amber, night 0.6) · `cells` (teal, flat,
+bloom 0.12) · `workings` (amber, the darkest, night 0.75).
+
+**TAPES**: one per part, four re-homed (D.U.M.B.'s THE BLAST DOOR → THE OUTFALL, the Lodge's THE MINUTES → THE HEADLIGHT, the
+Haunted House's THE NURSERY → THE DRUNK TANK, Hollow Earth's THE WELL → THE WELL, FROM UNDER — every donor keeps one; the
+hundred stays a hundred); `findSpots` pins the four hard tapes (the outfall shaft, the signal gantry, the vent stack, the
+chimney), each unreached by the walker with a shot from reached ground (`hqFindHardReachTerrain`). Downtown's own RUSH HOUR
+stays on the bypassed board (the bypassed-board rule — filing it into a part is still owed for every bypassed site).
+
+**TESTS**: `hq-underworld.test.js` (10: the sheet, the weenies, the seams + the routes, one piece + the cycle, the plans, the
+solver + the return guarantee + the production landing — the far ends of every seam included — the rooms, the park rule + the
+lights + the hard tapes, the hub, the helper + the looks + check-terrain on all four); amended: hq-terrain (46 rooms),
+hq-floor-plan (40 planned), hq-dumb (the base keeps one tape), hq-ranch (nine hubs), hq-world (the seams list + strip_sewer),
+hq-city (Downtown's complex is ten rooms), hq-finds (the shelf's pair is the first built site's board tape + a part tape — no board
+carries two tapes any more). `check-terrain.js`: every door reached in all four, traps 0, the sewers and the
+tunnels 0 dead ends, the cells 6 (the cells).
+
+**NOT BUILT**: a drunkard's-walk generator for a sewer's own wandering (the guide §2 — the culverts are authored polylines);
+Cyberpunk's station on the loop (the grid's north wall has its stair already; a third platform door waits on a free lane);
+THE GRAVEYARD under the cells (a crypt the cells could open on); a `manhole` way kind (a street's own way down — the pumping
+station is a door today); the pump / valve / ladder / rail models (MODEL_INDEX §3m); doors on the cells (the bars are decor,
+`foot 0` — a cell you can walk into); water that flows (the sheets drift in place).
+
+**DELIVERY**: `ENTROPY_WARS_UNDERWORLD.zip` — data.js → R2 AND Render (the finds ledger), index.html → Render
+(`20260918-underworld-01-cors`), hq-underworld.test.js + the six amended tests + CLAUDE.md + DOOR_HQ_BUILD_PLAN.md +
+EXPLORABLE_AREAS_GUIDE.md + MODEL_INDEX.md → the repo. No renderer change.
+
+**UNSEEN LIVE (RULE #1c)**: all of it — first the channels' water sheets in the culverts and whether the walkways read as
+walkways (the `bricks_2` walls at 5.5 m under the green grade), the plank over the cistern, the gallery's stair, the rails at
+0.14 m under the walker and the rider (`h` on the twelve rows is the edit if they read as kerbs), the two cars' scale in the
+depot and the headlight's read from the hatch, the ghost station's platform against the loop's 7 m, the bars standing free at
+the cell mouths (`mount 0` — a bars proc built for a wall may float; `z −14.0` is the edit), the flood's sheet in the brick
+cave, the far ends: the grate on the storm drain's south wall between its graffiti, the frames past both platforms' ends
+(2.4 m in from the west walls, beside the trains), the barred door on 24601's south wall, the portcullis on the oubliette's
+east wall.

@@ -253,7 +253,9 @@ test('THE LEDGER: a take mirrors the claim into progress.hq.finds.taken, a serve
 
 test('THE SHELF: found / hint / where — an unfound spine reads its room once another tape of the same site is on file', () => {
     const p = profile();
-    const site = HQ.siteRooms.built[0], pair = TAPES.filter(t => t.where === 'site_' + site);
+    /* THE UNDERWORLD (2026-09-18): no board carries two tapes any more (every second tape went to a complex part — the hundred is fixed); the pair is the first built site's board tape and the first of its parts' */
+    const site = HQ.siteRooms.built[0], pair = [TAPES.find(t => t.where === 'site_' + site), TAPES.find(t => t.where !== 'site_' + site && D.hqRoomSite(t.where) === site)];
+    assert.ok(pair[0] && pair[1], 'the first built site has a board tape and a part tape');
     let sh = D.hqTapeShelf(p);
     assert.equal(sh.rows.length, 100); assert.equal(sh.found, 0);
     assert.ok(sh.rows.every(r => !r.found && !r.hint), 'nothing found, nothing hinted');
@@ -261,7 +263,7 @@ test('THE SHELF: found / hint / where — an unfound spine reads its room once a
     sh = D.hqTapeShelf(p);
     const a = sh.rows.find(r => r.id === pair[0].id), b = sh.rows.find(r => r.id === pair[1].id);
     assert.ok(a.found && !a.hint && a.clip === null && a.roomLabel && a.roomNo === D.hqRoomNo('site_' + site), 'the found one: labelled, numbered, blank');
-    assert.ok(!b.found && b.hint && b.hard === !!FINDS.find(f => f.tape === b.id).hard, 'its sibling on the board: hinted');
+    assert.ok(!b.found && b.hint && b.hard === !!FINDS.find(f => f.tape === b.id).hard, 'its sibling in the complex: hinted');
     /* D.U.M.B. (2026-09-17): the first built site is a COMPLEX now — every other tape of the site is hinted: the board's sibling and one per part */
     const siteTapes = TAPES.filter(t => D.hqRoomSite(t.where) === site).length;
     assert.ok(siteTapes >= 3, 'the first built site has parts (' + siteTapes + ')');

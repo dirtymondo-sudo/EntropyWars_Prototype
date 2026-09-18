@@ -110,17 +110,18 @@ test('THE RANCH\'S GATES: the house\'s dead tree, the Lodge\'s saloon door, the 
 
 test('THE HUBS: every hub names a room that exists and gathers its rooms; the graph marks the anchor and the members; the model carries them; map.js draws the ring and the halo', () => {
     const H = HQ.hubs;
-    assert.deepEqual(Object.keys(H).sort().join(','), 'cavern,city,divine,dumb,hq,kingdom,ranch,woods');
+    assert.deepEqual(Object.keys(H).sort().join(','), 'cavern,city,divine,dumb,hq,kingdom,ranch,underworld,woods');   // + THE UNDERWORLD (2026-09-18: a hub that claims its rooms BY ID)
     for (const id of Object.keys(H)) {
         assert.ok(HQ.rooms[H[id].room], id + ': the anchor room exists');
         const a = D.hqHubOf(H[id].room); assert.ok(a && a.id === id && a.anchor, id + ': the anchor knows its hub');
-        for (const s of H[id].sites || []) for (const rid of D.hqSiteComplex(s)) assert.equal((D.hqHubOf(rid) || {}).id, id, rid + ' is in ' + id);
+        const claimed = rid => Object.keys(H).some(k => k !== id && (H[k].rooms || []).includes(rid));   // THE UNDERWORLD (2026-09-18): a room another hub claims BY ID is that hub's (the underworld's four parts under the city)
+        for (const s of H[id].sites || []) for (const rid of D.hqSiteComplex(s)) if (!claimed(rid)) assert.equal((D.hqHubOf(rid) || {}).id, id, rid + ' is in ' + id);
     }
     assert.equal((D.hqHubOf('foyer') || {}).id, 'hq'); assert.equal(D.hqHubOf('ring_g'), null); assert.equal(D.hqHubOf('site_prebuilt_lodge'), null);
     const G = D.hqMapGraph();
     assert.equal(G.nodes.site_prebuilt_hollow_earth_gallery.hub, 'cavern'); assert.equal(G.nodes.site_prebuilt_hollow_earth_adit.hubOf, 'cavern'); assert.equal(G.nodes.site_prebuilt_hollow_earth_adit.hub, null);
     const M = D.hqMapModel({}, 'foyer', { all: true });
-    assert.equal(M.nodes.filter(n => n.hub).length, 8, 'eight hubs drawn');
+    assert.equal(M.nodes.filter(n => n.hub).length, 9, 'nine hubs drawn (THE UNDERWORLD, 2026-09-18)');
     const Q = D.hqMapModel({}, 'foyer', {});
     assert.ok(Q.nodes.every(n => n.st !== 'q' || (!n.hub && !n.hubOf && !n.hubLabel)), 'a question mark gives no hub away');
     assert.ok(/hq-map-hubring/.test(map) && /hq-map-halo/.test(map) && /n\.hub \? String\(n\.hubLabel/.test(map), 'map.js draws the hub');

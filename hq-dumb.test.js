@@ -300,7 +300,7 @@ test('THE PARK RULE + THE LIGHT + THE HARD TAPES: a rail and a tier or ramp in e
         assert.ok(D.hqFindHardReachTerrain(tape, { terrain: info, reach, S: HQ.rooms[id].shell }).ok, id + ': the door gun has a shot at its lip');
     }
     for (const site of ['prebuilt_cern', 'prebuilt_antarctica', 'prebuilt_northpole', 'prebuilt_singularity', 'prebuilt_mars', 'prebuilt_saturn', 'prebuilt_moon', 'prebuilt_giza']) assert.equal(tapes.filter(t => t.where === 'site_' + site).length, 1, site + ' keeps one');
-    assert.equal(tapes.filter(t => t.where === 'site_prebuilt_dumb').length, 2, 'the base keeps its own two on the board (the shelf’s first site)');
+    assert.equal(tapes.filter(t => t.where === 'site_prebuilt_dumb').length, 1, 'the base keeps one on the board (THE BLAST DOOR went down the sewers, 2026-09-18)');
     assert.ok(tapes.some(t => t.where === MOTOR && t.title === 'THE TRAM, 00:00') && tapes.some(t => t.where === SEVEN && t.title === 'SUB-LEVEL 7') && tapes.some(t => t.where === WAR && t.title === 'THE HEXAGON') && tapes.some(t => t.where === BUNKER && t.title === 'EARTHRISE') && tapes.some(t => t.where === RING && t.title === 'BEAM ON'), 'the titles');
 });
 

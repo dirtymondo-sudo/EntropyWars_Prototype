@@ -429,6 +429,39 @@ renderer unless noted):
 8. **a castle wall section with battlements** (crenellated, ~4 m) and **a round tower** — the terrain `wall` rows and the plateau
    towers today (a battlement GLB would ride the wall tops like the hoardings ride the yard walls: `_hqHoardingSigns`'s pattern).
 
+## 3m. THE UNDERWORLD (2026-09-18 — complex candidate #3, THE TUNNELS / THE DUNGEONS) — what stands there, and the wishlist
+
+No new file. The four parts (DOOR_HQ_BUILD_PLAN §9, 2026-09-18) are dressed from the kit as it stands:
+
+| family | file(s) | stands as |
+| --- | --- | --- |
+| the kit + §3e / §3i | `drain_grate` ×2, `pipe_run` ×3, `graffiti_wall` ×3, `traffic_barrel` ×2, `warning_tape`, `quarter_pipe`, `railing_1m` ×2, `bare_bulb` ×6, `cinder_block` / `cave_stone` (the scatter) | THE SEWERS |
+| the kit (§6b) | `train_car` ×2 + `track_bed` ×2 (THE DEPOT), `departures_board`, `tube_map`, `turnstile` ×2, `park_bench` ×2 (THE GHOST STATION), `quarter_pipe`, `riser_1`, `railing_1m`, `bare_bulb` ×7 | THE RUNNING TUNNELS |
+| the kit | `cell_bars` ×6 (free-standing at the cell mouths), `cot` ×7, `wall_chains`, `steel_table` + `crt_terminal` + `desk_lamp`, `filing_cabinet` ×2, `clipboard`, `breaker_panel`, `security_camera`, `railing_1m`, `bare_bulb` ×6 | THE HOLDING CELLS |
+| the kit + §3e / §3g | `cave_torch` ×4, `brazier`, `skull_pile`, `signpost`, `drain_grate`, `pipe_run` ×2, `railing_1m`, `cave_stone` / `cinder_block` (the scatter) | THE OLD WORKINGS |
+
+Procedural, in data.js only: the culverts' channels (`stream`), the cistern's plank (`deck`), the rails (`wall` rows at 0.14 m),
+the outfall shaft / the gantry / the stack / the chimney (`plateau` pinnacles), the traced plan walls in `bricks_2` /
+`urban:ConcreteStriped1d` / `urban:PlasterWallPainted2c`.
+
+THE WISHLIST (Meshy, unit-normalised; a row = `base: 'misc'` + `h`/`span` + `foot`/`block`, then a prop line — nothing in the
+renderer unless noted):
+1. **a sewer pipe section** (a ~2 m brick or concrete culvert ring, open both ends, ~2.4 m across) — today the culverts are the plan's walls;
+   a ring at every culvert mouth would make the transitions read.
+2. **a manhole ladder + shaft** (rungs on a wall, a ring at the top, ~4 m) — THE OUTFALL SHAFT's face and THE PUMPING STATION's way down;
+   with it a `manhole` way kind (a street's own way down — the renderer's `_hqWayBuilders`).
+3. **a pump** (a cast-iron pump on a plinth with a wheel valve, ~1.6 m) and **a valve wheel on a pipe** — THE PUMP ROOM and THE PUMP LEDGE
+   wear `pipe_run` today.
+4. **a subway track section** (two rails on sleepers on ballast, ~4 m) and **a third-rail cover** — the rails are 0.14 m `wall` rows; a track
+   GLB laid along the loop's straights would replace them (a placer along a polyline, like the road tiles: renderer work).
+5. **a signal gantry** (a lattice mast with two lamp heads, ~5 m) — THE SIGNAL GANTRY is a plateau pinnacle.
+6. **a subway maintenance cart** (a flat trolley on rail wheels) and **a spool of cable** — THE DEPOT's dressing.
+7. **a cell door with bars** (a hinged barred door in a frame, ~2.2 m) — the `cell_bars` proc stands free at the mouths; a door leaf
+   (`leaf: true`) would let the cells be DOORS (a `gen.rooms` row with a door — data + the halls generator).
+8. **a police desk** (a tall booking counter with a lamp) and **a bench with a ring** (the drunk tank's) — THE BOOKING COUNTER is a wall row.
+9. **a mine cart on rails** and **a mine timber set** (two posts and a cap) — THE OLD WORKINGS' dressing along the boards.
+10. **a hand pump with a bucket** — THE WELL, FROM UNDER's tape stands on the chimney; the bucket would stand under it.
+
 ## 4. The older `Assets/misc/` models (`_MISC_GLB` + the OBJ landmarks)
 
 | key | file | kind | stands as |
