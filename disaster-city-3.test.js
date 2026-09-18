@@ -17,7 +17,7 @@ const ramp = (px, pz, f) => { const dx = f.x1 - f.x0, dz = f.z1 - f.z0, L = Math
 
 test('THE ENTRY: Cyberpunk City IS the grid, the Strip its own streets, Downtown its streets — every landing in a bypassed board room lands in the part (an `at` the part has is kept, the rest land at the bay door), the part wears the board room\'s egress as its bay door, the grid\'s tenement door is gone, map.js redirects at the one entry point', () => {
     const E = HQ.siteRooms.entry;
-    assert.deepEqual(Object.keys(E).sort().join(','), 'prebuilt_area51,prebuilt_cern,prebuilt_cyberpunk,prebuilt_downtown,prebuilt_dumb,prebuilt_strip');   // + THE BASES (2026-09-18: hq-area51 / hq-dumb own those three)
+    assert.deepEqual(Object.keys(E).sort().join(','), 'prebuilt_area51,prebuilt_cern,prebuilt_cyberpunk,prebuilt_downtown,prebuilt_dumb,prebuilt_heaven,prebuilt_hell,prebuilt_strip,prebuilt_vatican');   // + THE BASES (2026-09-18: hq-area51 / hq-dumb own those three) + THE DIVINE STAIR (2026-09-18: hq-divine owns those three)
     for (const [site, part] of [['prebuilt_cyberpunk', GRID], ['prebuilt_strip', STRIP], ['prebuilt_downtown', STREETS]]) {
         const board = HQ.rooms['site_' + site], eg = board.doors.find(d => d.id === 'egress'), bay = at(part, 'bay');
         assert.ok(bay && bay.entry === site && bay.leaf === eg.leaf && bay.label === eg.label && bay.action.room === eg.action.room && bay.action.at === eg.action.at && bay.wall === E[site].door.wall, part + ': the bay door is the board room\'s egress');

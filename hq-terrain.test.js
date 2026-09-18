@@ -183,8 +183,8 @@ test('THE RENDERER on a stub scene: _hqBuildTerrain builds every terrain room â€
     class Mat { constructor(o) { Object.assign(this, o || {}); this.color = { clone: () => ({ multiplyScalar: () => ({}) }), multiply: () => {} }; this.emissive = null; this.opacity = 1; } }
     const D2 = vm.createContext({ console, window: { EW_HQ_DEBUG: false },
         THREE: { Group: Obj, Mesh, Object3D: Obj, BufferGeometry: Geo, BufferAttribute: class { constructor(a, n) { this.array = a; this.itemSize = n; } }, Float32BufferAttribute: class { constructor(a, n) { this.array = a; this.itemSize = n; } },
-                 MeshPhongMaterial: Mat, MeshBasicMaterial: Mat, Color: class { constructor(c) { this.c = c; } }, CircleGeometry: Geo, BoxGeometry: Geo, CylinderGeometry: Geo, ConeGeometry: Geo, PointLight: class extends Obj {}, DoubleSide: 2 },
-        hqTerrainInfo: D.hqTerrainInfo, hqTerrainCompile: D.hqTerrainCompile, hqTerrainHeight: D.hqTerrainHeight, hqTerrainSlope: D.hqTerrainSlope, _hqTPolyDist: D._hqTPolyDist,
+                 MeshPhongMaterial: Mat, MeshBasicMaterial: Mat, Color: class { constructor(c) { this.c = c; } }, CircleGeometry: Geo, BoxGeometry: Geo, CylinderGeometry: Geo, ConeGeometry: Geo, SphereGeometry: Geo, PointLight: class extends Obj {}, DoubleSide: 2 },
+        hqTerrainInfo: D.hqTerrainInfo, hqTerrainCompile: D.hqTerrainCompile, hqTerrainHeight: D.hqTerrainHeight, hqTerrainSlope: D.hqTerrainSlope, _hqTPolyDist: D._hqTPolyDist, _hqTEllipse: D._hqTEllipse, _hqTRectIn: D._hqTRectIn, _hqTRamp: D._hqTRamp,   // THE FLOATING PIECES (2026-09-18): the cut reads the compiler's frames
         _hzKitTs: 0, _hzMiscKit: () => new Obj(), _hzTextTex: () => null, hqTerrainDoorY: D.hqTerrainDoorY,
         _hqBoxWall: (r, wall, d) => { const n = { n:[0,1], s:[0,-1], e:[-1,0], w:[1,0] }[wall] || [0,1]; return { wx:d.x || 0, wz:d.z || 0, nx:n[0], nz:n[1], yaw:0 }; },
         _hqUnits: () => HQ.units, _mulberry32: () => () => 0.5, _hzTex: () => null, _buildFluidTopMat: () => { throw new Error('no shader'); }, _hzGlowSprite: () => { const s = new Obj(); s.material = { opacity: 1 }; return s; },

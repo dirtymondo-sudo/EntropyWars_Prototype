@@ -440,3 +440,11 @@ The design (build in this order; each step is one delivery):
   authored hall, the white rooms on FINE leaves = cells) + family A `rooms` with no thicket for an airfield
   (the solid = low berms, `wallH` 1.6). An outdoor terrain room lights ITSELF (`flood_mast`). The motor pool
   is P3 under the garage (`links.garage_motorpool`). Not done: a bypassed board's tapes into its entry part.
+
+- **2026-09-18 — THE DIVINE STAIR, second pass.** Three more boards bypassed (`siteRooms.entry`: an entry door
+  may carry `y` — the pit's mouth is on its rim, the gate on its dais). THE FLOATING PIECES: `float: true` on a
+  plateau / a stair ramp = a cloud platform / a flight of floating steps (the field cut away under it,
+  `_hqBuildFloats`) — the map builder's floating staircase in a terrain room; use it wherever a place hangs in
+  the sky. THE WAY DOWN: an entry on a high tier + descending flights (THE RAMP RULE holds at a descent's high
+  end: start 0.7 m INSIDE the tier). A GLB that stands upright is hung as a wall row, never laid on the floor.
+

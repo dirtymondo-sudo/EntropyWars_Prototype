@@ -14144,8 +14144,9 @@ const HQ_ROOM_LOOKS = {
     /* THE DIVINE STAIR (2026-09-17): the clouds bright, bloomed, barely vignetted; the crypt teal-dark under candles */
     heaven: { name: 'HEAVEN', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.3, grain: 0.02, tintAmount: 0.35, levels: 30 }, cin: { vignette: true, vigAmount: 0.25, vigSize: 0.6 }, nightMood: 0.0, bloom: 0.5 },
     /* THE VATICAN (2026-09-17): the nave gold under incense, the archive dark amber, the dome teal-dark under the stars */
-    basilica: { name: 'THE BASILICA', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.35, grain: 0.025, tintAmount: 0.3, levels: 26 }, cin: { vignette: true, vigAmount: 0.4, vigSize: 0.5 }, nightMood: 0.25, bloom: 0.4 },
-    archive: { name: 'THE ARCHIVE', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.45, grain: 0.035, tintAmount: 0.45, levels: 20 }, cin: { vignette: true, vigAmount: 0.55, vigSize: 0.44 }, nightMood: 0.6, bloom: 0.18 },
+    basilica: { name: 'THE BASILICA', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.32, grain: 0.022, tintAmount: 0.28, levels: 28 }, cin: { vignette: true, vigAmount: 0.32, vigSize: 0.56 }, nightMood: 0.12, bloom: 0.42 },
+    /* second pass (2026-09-18 — the user: "the library area is too dark to see anything"): the archive's night mood and vignette off, the levels up, the bloom on the lamps */
+    archive: { name: 'THE ARCHIVE', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.35, grain: 0.025, tintAmount: 0.3, levels: 26 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.58 }, nightMood: 0.1, bloom: 0.34 },
     observatory: { name: 'THE OBSERVATORY', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.4, grain: 0.03, tintAmount: 0.4, levels: 24 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.48 }, nightMood: 0.85, bloom: 0.45 },
     catacombs: { name: 'THE CATACOMBS', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.5, grain: 0.04, tintAmount: 0.45, levels: 18 }, cin: { vignette: true, vigAmount: 0.6, vigSize: 0.42 }, nightMood: 0.75, bloom: 0.14 },
     /* DISASTER CITY (2026-09-17): the disaster-movie print — overcast daylight, faded, a light vignette; the mall = the security camera's tape (grainy, fluorescent, the tubes smearing) */
@@ -18786,11 +18787,13 @@ const DOOR_HQ = {
         brazier:            { file: 'Meshy_AI_brazier_0917035429_texture.glb',                        base: 'misc', h: 1.3, foot: 0.4, block: true, glow: { y: 1.25, size: 1.6, color: 0xff9a40 }, light: { color: 0xff9040, intensity: 0.85, dist: 9, y: 1.4 } },
         catacomb_wall:      { file: 'Meshy_AI_catacomb_wall_0917035320_texture.glb',                  base: 'misc', span: 3.2, foot: 0, wall: true, mount: 0 },
         church_building:    { file: 'Meshy_AI_catholic_church_building_0917035753_texture.glb',       base: 'misc', span: 20, foot: 6, rect: { hw: 10, hd: 3 }, block: true },
-        catholic_pew:       { file: 'Meshy_AI_catholic_church_pew_0917035928_texture.glb',            base: 'misc', span: 3.6, foot: 1.0, rect: { hw: 1.8, hd: 0.5 }, block: true },
+        catholic_pew:       { file: 'Meshy_AI_catholic_church_pew_0917035928_texture.glb',            base: 'misc', span: 2.6, foot: 0.8, rect: { hw: 1.3, hd: 0.45 }, block: true },   // second pass (2026-09-18): a pew is 2.6 m long — three seats, not a bus
         church_wall:        { file: 'Meshy_AI_catholic_church_wall_0917035726_texture.glb',           base: 'misc', span: 4.0, foot: 0, wall: true, mount: 0 },
-        church_pew:         { file: 'Meshy_AI_church_pew_0917035915_texture.glb',                     base: 'misc', span: 3.6, foot: 1.0, rect: { hw: 1.8, hd: 0.5 }, block: true },
+        church_pew:         { file: 'Meshy_AI_church_pew_0917035915_texture.glb',                     base: 'misc', span: 2.6, foot: 0.8, rect: { hw: 1.3, hd: 0.45 }, block: true },
+        /* second pass (2026-09-18): the carpet GLB stands UPRIGHT (its face along z — it read as a tapestry in the nave), so it IS a tapestry: the same file as a wall row (the same-thing rule: one file, two rows, like the leaves); the aisle is the terrain's carpet path */
+        holy_tapestry:      { file: 'Meshy_AI_ornate_holy_carpet_0917035624_texture.glb',             base: 'misc', h: 5.0, foot: 0, wall: true, mount: 3.2 },
         church_podium:      { file: 'Meshy_AI_church_podium_0917035658_texture.glb',                  base: 'misc', h: 1.3, foot: 0.45, block: true },
-        confessional_booth: { file: 'Meshy_AI_confessional_booth_0917035307_texture.glb',             base: 'misc', h: 2.5, foot: 0.9, block: true },
+        confessional_booth: { file: 'Meshy_AI_confessional_booth_0917035307_texture.glb',             base: 'misc', h: 2.3, foot: 0.8, block: true },
         demon_statue:       { file: 'Meshy_AI_demon_statue_0917040101_texture.glb',                   base: 'misc', h: 3.4, foot: 0.7, block: true },
         italian_building:   { file: 'Meshy_AI_Italian_building_0917035900_texture.glb',               base: 'misc', span: 12, foot: 4.5, block: true },
         italian_building_2: { file: 'Meshy_AI_Italian_building_2_0917035828_texture.glb',             base: 'misc', span: 12, foot: 4.5, block: true },
@@ -19608,7 +19611,8 @@ const DOOR_HQ = {
           why: 'the Lemurian tunnel under the mountain; the Lemurians deny it exists and keep it swept', note: 'swept daily', draft: true },
         { id: 'hollow_hell', route: 'deep', leaf: 'leaf_hell_arch',
           a: { site: 'prebuilt_hollow_earth', wall: 'n', x: -0.2 },
-          b: { site: 'prebuilt_hell', wall: 'n', x: -5 },
+          /* THE DIVINE STAIR, second pass (2026-09-18): RE-POINTED off Hell's bypassed board onto THE PIT's east wall, at the floor of the descent */
+          b: { site: 'prebuilt_hell', part: 'pit', wall: 'e', z: 7, sub: 'THE WAY DOWN FROM THE INNER SUN · UP' },
           why: 'the way down is the way in; below the inner sun the rock is warm and then it is not rock', note: 'the way down is the way in', draft: true },
         { id: 'antarctica_agartha', route: 'deep', leaf: 'leaf_cell',
           a: { site: 'prebuilt_antarctica', wall: 'n', x: -10 },
@@ -19620,19 +19624,22 @@ const DOOR_HQ = {
           why: 'the two ends of one hole; the polar entrance is one door with a leaf in both ice walls', note: 'the same hole', draft: true },
         /* THE DIVINE STAIR */
         { id: 'heaven_olympus', route: 'divine', leaf: 'leaf_frame_only',
-          a: { site: 'prebuilt_heaven', wall: 'n', x: -5 },
+          /* THE DIVINE STAIR, second pass (2026-09-18): RE-POINTED off Heaven's bypassed board onto THE CLOUD FIELDS' east wall */
+          a: { site: 'prebuilt_heaven', part: 'gate', wall: 'e', z: 6, sub: 'A GATE OF CLOUD · THE OTHER MANAGEMENT' },
           b: { site: 'prebuilt_olympus', wall: 'n', x: -5 },
           why: 'a gate of cloud between the two managements; the stair only goes up, which is a problem for whoever is on top', note: 'a gate of cloud', draft: true },
         { id: 'vatican_heaven', route: 'divine', leaf: 'leaf_vault',
-          a: { site: 'prebuilt_vatican', wall: 'n', x: -5 },
-          b: { site: 'prebuilt_heaven', wall: 'n', x: -10 },
+          /* THE DIVINE STAIR, second pass (2026-09-18): RE-POINTED off the two bypassed boards — the archive's elevator is IN THE ARCHIVE (its west wall) and comes out on the cloud fields' west wall */
+          a: { site: 'prebuilt_vatican', part: 'library', wall: 'w', z: 6, sub: 'THE ARCHIVE’S ELEVATOR · ONE BUTTON · UP' },
+          b: { site: 'prebuilt_heaven', part: 'gate', wall: 'w', z: 6, sub: 'THE ARCHIVE’S ELEVATOR · ONE BUTTON · DOWN' },
           why: 'the archive\'s elevator has one button and it goes up; the archive filed the fact and sealed the file', note: 'one button', draft: true },
         /* THE DIVINE STAIR (9.3 stage 6, 2026-09-17): the crypt link RE-POINTED off the two board rooms onto the
            parts — the catacombs' east wall IS the warm wall, the pit's west wall its other side (one row edit, the
            id kept so a charted route stays charted; both board lanes at x −10 went to the complex's back doors) */
         { id: 'vatican_hell', route: 'divine', leaf: 'leaf_hell_arch',
           a: { site: 'prebuilt_vatican', part: 'catacombs', wall: 'e', z: 4, sub: 'THE WARM WALL · DOWN' },
-          b: { site: 'prebuilt_hell', part: 'pit', wall: 'w', z: 4, sub: 'THE WARM WALL · UP' },
+          /* second pass (2026-09-18): the pit's side of the warm wall is on its NORTH wall now, ON A LEDGE 2.5 m up (the west wall carries the descent's flights) — the crypt comes out high in Hell and goes DOWN again */
+          b: { site: 'prebuilt_hell', part: 'pit', wall: 'n', x: 8, y: 2.5, sub: 'THE WARM WALL · UP · THE CRYPT' },
           why: 'the crypt\'s back wall is warm to the touch; the masons were paid extra and did not stay', note: 'warm to the touch', draft: true },
         /* THE VATICAN expanded (2026-09-17): the stair's foot LEFT THE CATACOMBS (the user's rule) — it is IN THE SKY over
            the dome, and THE TELESCOPE in the observatory is the seam (a `way` end on the part; the far end a plain frame
@@ -19894,7 +19901,8 @@ const DOOR_HQ = {
           note: 'the frame is warm', draft: true },
         { id: 'bureau_vatican', route: 'seams', way: 'painting', gate: { minClearance: 5, requiresKeys: 24 },
           a: { room: 'continuity', wall: 'n', x: -1.7 },
-          b: { site: 'prebuilt_vatican', wall: 'n', x: -0.2 },
+          /* THE DIVINE STAIR, second pass (2026-09-18): RE-POINTED off the bypassed board onto THE CORTILE's east wall — the square in the painting is the courtyard */
+          b: { site: 'prebuilt_vatican', part: 'courtyard', wall: 'e', z: 6, sub: 'THE PAINTING · THE BUREAU BEHIND IT' },
           why: 'the Bureau keeps one painting for reference: a colonnade and a square, in case the record and the square ever disagree; the square is on the other side of it',
           note: 'the Bureau\'s own gate hangs on it', draft: true },
         { id: 'northpole_haunted', route: 'seams', way: 'fireplace',
@@ -19917,7 +19925,8 @@ const DOOR_HQ = {
            — the same object at both ends (7.0), never a one-way drop. */
         { id: 'cave_hell', route: 'undercroft', leaf: 'leaf_hell_arch',
           a: { site: 'prebuilt_hollow_earth', part: 'vent', wall: 'n', x: 0, y: 1.75 },
-          b: { site: 'prebuilt_hell', wall: 'n', x: -0.2 },
+          /* THE DIVINE STAIR, second pass (2026-09-18): RE-POINTED off Hell's bypassed board onto THE PIT's east wall (a lane south of the inner sun's) */
+          b: { site: 'prebuilt_hell', part: 'pit', wall: 'e', z: -3, sub: 'THE FISSURE · THE HOT GALLERY · UP' },
           why: 'the fissure at the end of the hot gallery; the rock stops being rock and the draught goes the wrong way',
           note: 'the draught goes down', draft: true },
         { id: 'cave_dumb', route: 'undercroft', leaf: 'leaf_bulkhead',
@@ -19963,6 +19972,14 @@ const DOOR_HQ = {
             prebuilt_dumb:      { room: 'site_prebuilt_dumb_motorpool',     door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_cern:      { room: 'site_prebuilt_cern_ring',          door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_area51:    { room: 'site_prebuilt_area51_hangar',      door: { id: 'bay', wall: 's', x: 0 } },
+            /* THE DIVINE STAIR, second pass (2026-09-18 — the user: "get rid of the board rooms since each place is supposed to be its
+               own area"): the Vatican's white door lands you in THE BASILICA (the narthex), Hell's mouth on THE RIM of the pit (5 m up —
+               everything in Hell goes down from there; `y` rides onto the bay door), Heaven's gate ON THE DAIS of the cloud fields (the
+               pearly gate is the way in — you arrive at the top of everything and every stair goes down to the dome). A `y` on the entry
+               door is its sill (hqApplySiteEntries copies the row whole). */
+            prebuilt_vatican:   { room: 'site_prebuilt_vatican_basilica',   door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_hell:      { room: 'site_prebuilt_hell_pit',           door: { id: 'bay', wall: 's', x: 0, y: 5 } },
+            prebuilt_heaven:    { room: 'site_prebuilt_heaven_gate',        door: { id: 'bay', wall: 'n', x: 0, y: 1.75 } },
         },
         backDoors: {
             /* THE WOODS (9.3 stage 3, 2026-09-16): the forest is the board room
@@ -20044,19 +20061,19 @@ const DOOR_HQ = {
                 /* expanded 2026-09-17: the white door opens on THE BASILICA now; the crypt stair is behind its altar */
                 { id: 'basilica', wall: 'n', x: -10, leaf: 'leaf_white_wood',
                   label: 'THE BASILICA', sub: 'THE WHITE DOOR · INTO THE BASILICA',
-                  action: { room: 'site_prebuilt_vatican_basilica', at: 'piazza' },
+                  action: { room: 'site_prebuilt_vatican_basilica', at: 'bay' },   // 2026-09-18: the basilica's south door IS the bay's (siteRooms.entry — the board room is bypassed)
                   desc: 'A white door in the colonnade, painted by decree. Behind it the nave, the archive, the cortile, the crypt under all of it and the dome over all of it. Immunity claimed, three times.' },
             ],
             prebuilt_hell: [
                 { id: 'pit', wall: 'n', x: -10, leaf: 'leaf_hell_arch',
                   label: 'THE PIT', sub: 'THE MOUTH · DOWN',
-                  action: { room: 'site_prebuilt_hell_pit', at: 'mouth' },
+                  action: { room: 'site_prebuilt_hell_pit', at: 'bay' },   // 2026-09-18: the rim's south door IS the bay's (siteRooms.entry — the board room is bypassed)
                   desc: 'The arch again, smaller, at the back of the causeway. Everything here goes down; this is the door that admits it.' },
             ],
             prebuilt_heaven: [
                 { id: 'gate', wall: 'n', x: -0.2, leaf: 'leaf_hotel',
                   label: 'THE CLOUD FIELDS', sub: 'THE GATE · OUT',
-                  action: { room: 'site_prebuilt_heaven_gate', at: 'heaven' },
+                  action: { room: 'site_prebuilt_heaven_gate', at: 'bay' },   // 2026-09-18: the gate ON THE DAIS IS the bay's (siteRooms.entry — the board room is bypassed)
                   desc: 'The gate from the inside: a hotel room door with no handle on this side, which is the hotel’s policy. It opens onto the fields, the rift and the top of the stair.' },
             ],
             /* D.U.M.B. (9.3 stage 8 — THE COMPLEX CANDIDATES #5, 2026-09-17): the two lanes the
@@ -29554,49 +29571,59 @@ const DOOR_HQ = {
         /* ── THE CATACOMBS — the Vatican's crypt: bone galleries, the ossuary shelf, the chapel, the warm wall ── */
         site_prebuilt_vatican_catacombs: {
             label: 'THE DIVINE STAIR · THE CATACOMBS',
-            sub: 'THE CRYPT UNDER THE BASILICA · THE WARM WALL · THE CISTERN',
+            sub: 'THE CRYPT UNDER THE BASILICA · THE DESCENT · THE WARM WALL · THE CISTERN',
             kind: 'box', site: 'prebuilt_vatican', part: 'catacombs',
             shell: {
-                w: 38.5, d: 31.5, h: 4.6,
-                wallH: 4.6, dadoH: 1.0,
+                w: 38.5, d: 31.5, h: 6.6,
+                wallH: 6.6, dadoH: 1.0,
                 floor: 'dungeon', wall: 'bricks_3', dado: 'bricks_2', trim: 'marble', ceiling: 'bricks_3',
                 floorColor: 0x8a8078, wallColor: 0x8a7a68, dadoColor: 0x6a5e52, ceilColor: 0x4a4038,
                 pipes: false, strips: false, lights: [],
-                mood: { light: 0xffc890, ambient: 0.3 },
-                plate: { x: 0, z: -14.5, y: 3.2 },
-                fog: { color: 0x0c0a08, density: 0.03 },   /* the crypt's own dark past the candles */
+                mood: { light: 0xffc890, ambient: 0.34 },
+                plate: { x: 0, z: -14.5, y: 4.6 },
+                fog: { color: 0x0c0a08, density: 0.028 },   /* the crypt's own dark past the candles */
                 look: HQ_ROOM_LOOKS.catacombs,
             },
-            /* THE FIELD: the crypt stair comes down on the south wall; THE OSSUARY
-               SHELF (1.75 m, the loculi behind cell bars) in the north-east up a
-               brick stair; THE SUNKEN CHAPEL in the west (a bowl round the holy-water
-               font, the altar and the lectern on its rim); two sarcophagus rows
-               south of the way in (low tombs the rider grinds); THE SKULL STACK in
-               the north-west corner (3.4 m — the tape on top of it is the door
-               gun's); the warm wall on the east; the foot of the stair on the north. */
+            /* THE FIELD (second pass, 2026-09-18 — the user: "the path to hell the player
+               should feel like they are going down; put some inclines in the catacombs"):
+               the crypt stair comes down on the south wall ONTO THE LANDING (3.2 m — the
+               door's sill), THE DESCENT = two brick flights in a switchback down the
+               south-west corner (3.2 → 1.6 on the half-landing → the gallery floor at 0),
+               the bone galleries at the floor; THE OSSUARY SHELF (1.75 m, the loculi
+               behind cell bars) in the north-east up its brick stair; THE SUNKEN CHAPEL
+               in the west (a bowl round the holy-water font — down again); two
+               sarcophagus rows under the landing (low tombs the rider grinds); THE SKULL
+               STACK in the north-west corner (3.4 m — the tape on top of it is the door
+               gun's); the warm wall on the east at the floor (the pit takes it lower). */
             terrain: {
                 floor: 'dungeon', cliff: 'bricks_3', path: 'cobblestone',
-                noise: { amp: 0.12, scale: 4 }, crag: { depth: 1.6, h: 2.2 },
-                gen: { kind: 'cave', fill: 0.46, seed: 3 },                           // THE FLOOR PLAN: the galleries between the bone walls
+                noise: { amp: 0.12, scale: 4 }, crag: { depth: 1.6, h: 3.0 },
+                gen: { kind: 'cave', fill: 0.46, seed: 3, wallH: 4.0 },                        // THE FLOOR PLAN: the galleries between the bone walls (the rock rises 4 m — over the landing too)
                 features: [
-                    { k: 'plateau', x: 10, z: -8, w: 12, d: 8, h: 1.75 },                                         // THE OSSUARY SHELF
-                    { k: 'ramp', x0: 6, z0: 0.6, x1: 6, z1: -4.3, w: 2.6, h0: 0, h1: 1.75, stairs: true },        // the brick stair up to it
-                    { k: 'dip', x: -9, z: 6, r: 5, h: 0.9 },                                                        // THE SUNKEN CHAPEL
-                    { k: 'pool', x: -9, z: 6, r: 1.4, y: -0.6, depth: 0.5 },                                        // the font (waded)
-                    { k: 'plateau', x: -13, z: -9, r: 1.3, h: 3.4, edge: 0.3 },                                     // THE SKULL STACK (the tape's)
-                    { k: 'wall', x0: 6, z0: 9.5, x1: 13, z1: 9.5, h: 0.9, t: 0.9, key: 'marble' },                   // the sarcophagus rows, east of the way in (the park rule's grind)
+                    { k: 'plateau', x: 0, z: 13.4, w: 9.5, d: 4.7, h: 3.2 },                                         // THE LANDING at the foot of the crypt stair (the door's sill)
+                    { k: 'ramp', x0: -4.05, z0: 13.4, x1: -12.6, z1: 13.4, w: 2.6, h0: 3.2, h1: 1.6, stairs: true },  // THE DESCENT, first flight (west along the south wall; ends 0.7 m inside the half-landing)
+                    { k: 'plateau', x: -14.15, z: 12.6, w: 4.5, d: 4.6, h: 1.6 },                                    // THE HALF-LANDING
+                    { k: 'ramp', x0: -14.15, z0: 11.0, x1: -14.15, z1: 2.0, w: 2.6, h0: 1.6, h1: 0, stairs: true },   // the second flight, north to the gallery floor (its high end 0.7 m inside the half-landing — THE RAMP RULE holds for a descent too)
+                    { k: 'plateau', x: 10, z: -8, w: 12, d: 8, h: 1.75 },                                             // THE OSSUARY SHELF
+                    { k: 'ramp', x0: 6, z0: 0.6, x1: 6, z1: -4.7, w: 2.6, h0: 0, h1: 1.75, stairs: true },            // the brick stair up to it (0.7 m inside the shelf)
+                    { k: 'dip', x: -9, z: 6, r: 5, h: 0.9 },                                                            // THE SUNKEN CHAPEL
+                    { k: 'pool', x: -9, z: 6, r: 1.4, y: -0.6, depth: 0.5 },                                            // the font (waded)
+                    { k: 'plateau', x: -13, z: -9, r: 1.3, h: 3.4, edge: 0.3 },                                         // THE SKULL STACK (the tape's)
+                    { k: 'wall', x0: 6, z0: 9.5, x1: 13, z1: 9.5, h: 0.9, t: 0.9, key: 'marble' },                       // the sarcophagus rows, east of the landing (the park rule's grind)
                     { k: 'wall', x0: 6, z0: 12.5, x1: 13, z1: 12.5, h: 0.9, t: 0.9, key: 'marble' },
-                    { k: 'rail', x0: 4.6, z0: -4.6, x1: 15.4, z1: -4.6 },                                           // the shelf's rim rail
-                    { k: 'path', pts: [[0, 14], [0, 4], [6, 1.2]], w: 1.6 },                                        // the way in, to the stair
-                    { k: 'path', pts: [[0, 4], [-5.5, 3.2], [-9, 2]], w: 1.4 },                                     // to the chapel
-                    { k: 'path', pts: [[0, 4], [-3, -6], [-4, -8]], w: 1.6 },                                       // to the cistern's rope (the well head at (−4, −10))
-                    { k: 'path', pts: [[6, 1.2], [12, 3.2], [17.5, 4]], w: 1.6 },                                   // to the warm wall (e z 4)
-                    { k: 'scatter', key: 'cave_stone', n: 8, seed: 1 },                                             // the rubble
-                    { k: 'scatter', key: 'menhir', n: 4, seed: 2 },                                                 // the standing tombstones
+                    { k: 'rail', x0: 4.6, z0: -4.6, x1: 15.4, z1: -4.6 },                                               // the shelf's rim rail
+                    { k: 'rail', x0: -3.6, z0: 11.3, x1: 4.4, z1: 11.3 },                                               // the landing's rail over the drop
+                    { k: 'path', pts: [[0, 14.6], [-4, 13.4], [-12.6, 13.4]], w: 1.6 },                                 // the landing, down the first flight
+                    { k: 'path', pts: [[-14.15, 11], [-14.15, 2], [-9, 1.5], [0, 1.5], [6, 1.2]], w: 1.6 },             // the second flight, along the gallery to the brick stair
+                    { k: 'path', pts: [[-12, 1.5], [-9, 3.4]], w: 1.4 },                                                // down into the chapel
+                    { k: 'path', pts: [[-9, 1.5], [-6, -6], [-4, -8]], w: 1.6 },                                        // to the cistern's rope (the well head at (−4, −10))
+                    { k: 'path', pts: [[6, 1.2], [12, 3.2], [17.5, 4]], w: 1.6 },                                       // to the warm wall (e z 4)
+                    { k: 'scatter', key: 'cave_stone', n: 8, seed: 1 },                                                 // the rubble
+                    { k: 'scatter', key: 'menhir', n: 4, seed: 2 },                                                     // the standing tombstones
                 ],
             },
             doors: [
-                { id: 'stair', wall: 's', x: 0, leaf: 'leaf_white_wood',
+                { id: 'stair', wall: 's', x: 0, y: 3.2, leaf: 'leaf_white_wood',
                   label: 'THE BASILICA', sub: 'THE CRYPT STAIR · UP · BEHIND THE ALTAR',
                   action: { room: 'site_prebuilt_vatican_basilica', at: 'crypt' },
                   desc: 'The stair back up behind the altar. It is longer going up. The masons who built it were paid extra and did not stay to count the steps.' },
@@ -29608,42 +29635,43 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'candle_ring',    x: -12.5, z: 12.0 },                                   // the candles: the chapel's, the way in, the shelf
+                { key: 'candle_ring',    x: -12.5, z: 12.0 },                                   // the candles: the half-landing, the way in, the chapel, the shelf
                 { key: 'candle_ring',    x: 15.5, z: 8.0 },
                 { key: 'candle_ring',    x: -6.4, z: 8.2 },
                 { key: 'candle_ring',    x: 6.0, z: -8.5 },
-                { key: 'wall_torch',     wall: 's', x: -5.0 },
+                { key: 'wall_torch',     wall: 's', x: -5.0, mount: 5.0 },                       // over the landing (the wall prop's mount is from the box floor — 3.2 m of tier under it)
                 { key: 'wall_torch',     wall: 'n', x: 3.0 },
-                { key: 'ship_lantern',   x: 0, z: 4, ceil: true },                              // a lantern on a chain at the crossroads
-                { key: 'ship_lantern',   x: 10, z: -8, ceil: true },                            // and one over the loculi
-                { key: 'cell_bars',      wall: 'e', z: -9.0 },                                   // the sealed loculi
+                { key: 'ship_lantern',   x: 0, z: 1.5, ceil: true },                             // a lantern on a chain at the gallery's crossroads
+                { key: 'ship_lantern',   x: 10, z: -8, ceil: true },                             // and one over the loculi
+                { key: 'cell_bars',      wall: 'e', z: -9.0 },                                    // the sealed loculi
                 { key: 'cell_bars',      wall: 'w', z: -3.0 },
-                { key: 'wall_chains',    wall: 'w', z: 9.0 },
-                { key: 'stone_altar',    x: -9.0, z: 9.3, face: 0 },                             // the chapel's altar on the bowl's rim
+                { key: 'wall_chains',    wall: 'w', z: 6.0 },
+                { key: 'stone_altar',    x: -9.0, z: 9.3, face: 0 },                              // the chapel's altar on the bowl's rim
                 { key: 'lectern',        x: -7.0, z: 8.7, face: 200 },
-                { key: 'brick_arch',     x: 0, z: 8.0, face: 0 },                                // the arches over the way in
-                { key: 'brick_arch',     x: 0, z: -2.0, face: 0 },
-                { key: 'paper_sheet',    x: 2.4, z: 11.0, y: 0.01, face: 40 },                    // a form under a candle: CRYPT — WHICH
+                { key: 'brick_arch',     x: -14.15, z: 6.5, face: 90 },                           // the arch over the second flight
+                { key: 'brick_arch',     x: -9, z: -1, face: 0 },                                 // and over the gallery's spine
+                { key: 'paper_sheet',    x: 2.4, z: 12.2, y: 0.01, face: 40 },                    // a form on the landing: CRYPT — WHICH
                 { key: 'floor_stain',    x: 11.0, z: 4.6 },
                 /* THE VATICAN BATCH (2026-09-17): the bones, the tombs, the booth */
-                { key: 'skull_pile',     x: -11.0, z: -7.5 },                                   // round THE SKULL STACK
+                { key: 'skull_pile',     x: -11.0, z: -7.5 },                                    // round THE SKULL STACK
                 { key: 'skull_pile',     x: -14.5, z: -10.6 },
                 { key: 'skull_pile',     x: -11.6, z: -11.0 },
-                { key: 'sarcophagus',    x: 7.8, z: 9.5, face: 90 },                             // the tombs on the two low rows
+                { key: 'sarcophagus',    x: 7.8, z: 9.5, face: 90 },                              // the tombs on the two low rows
                 { key: 'sarcophagus',    x: 11.2, z: 9.5, face: 90 },
                 { key: 'sarcophagus',    x: 7.8, z: 12.5, face: 90 },
                 { key: 'sarcophagus',    x: 11.2, z: 12.5, face: 90 },
-                { key: 'catacomb_wall',  wall: 'n', x: -10 },                                    // the bone walls
+                { key: 'catacomb_wall',  wall: 'n', x: -10 },                                     // the bone walls
                 { key: 'catacomb_wall',  wall: 'w', z: 3 },
                 { key: 'catacomb_wall',  wall: 's', x: 8 },
-                { key: 'confessional_booth', x: -4.5, z: 13, face: 90 },                         // THE CONFESSIONAL (the tape's namesake)
-                { key: 'wooden_cross',   wall: 'w', z: 6.5, mount: 1.0 },                        // under the crypt's 4.6 m vault
+                { key: 'confessional_booth', x: 3.3, z: 14.3, face: 270 },                        // THE CONFESSIONAL (the tape's namesake) on the landing, at the top of the descent
+                { key: 'wooden_cross',   wall: 'w', z: 9.5, mount: 1.0 },                         // under the crypt's vault
                 { key: 'brazier',        x: 13, z: 1 },
             ],
             agents: [],
             npcSpots: [
                 { x: -6.5, z: 7.6, face: 250, race: 'nun', say: ['“The wall is warm. It is not the boiler. There is no boiler.”', '“Mind the font. It is consecrated and it is cold, and only one of those is on the sign.”'] },
                 { x: 12.0, z: -9.5, face: 180, race: 'ghoul', say: '“Loculi. From the Latin. Little places. This one is mine.”' },
+                { x: -12.7, z: 11.3, face: 250, race: 'priest', say: ['“Two flights down and you are level with the dead. The rest of the way is theirs.”', '“The stair is counted going up. Nobody counts it going down. It seems rude.”'] },
             ],
             onlineSpots: [],
             lines: [
@@ -29651,8 +29679,9 @@ const DOOR_HQ = {
                 '“The stair only goes up.” “I came down it.” “That is the crypt. The stair is the other one.”',
                 '“Whose skulls?” “Filed. Under S.”',
                 '“Is the wall supposed to be warm?” “The wall is supposed to be a wall.”',
+                '“It keeps going down.” “It keeps going down until it is Hell’s. Then it keeps going down.”',
             ],
-            spawn: { x: 0, z: 12.5, face: 0 },
+            spawn: { x: 0, z: 14.0, face: 0 },
         },
         /* ═══════════════════════════════════════════════════════════════════
            THE VATICAN (THE DIVINE STAIR, expanded 2026-09-17 — the user: "the
@@ -29697,9 +29726,9 @@ const DOOR_HQ = {
                 floor: 'marble', wall: 'marble_light', dado: 'gold', trim: 'gold', ceiling: 'damask_2',
                 floorColor: 0xd8d0c0, wallColor: 0xe6e0d4, dadoColor: 0xd8b860, ceilColor: 0x8a7a5a,
                 pipes: false, strips: false, lights: [],
-                mood: { light: 0xffe4b0, ambient: 0.42 },
+                mood: { light: 0xffe8c0, ambient: 0.56 },   // second pass (2026-09-18): the nave lit
                 plate: { x: 0, z: -24.5, y: 6.5 },
-                fog: { color: 0x2a2418, density: 0.012 },   /* the incense */
+                fog: { color: 0x5a4a30, density: 0.007 },   /* the incense (second pass: thinner and warmer — the far end of the nave was black) */
                 look: HQ_ROOM_LOOKS.basilica,
             },
             /* THE FIELD: the white door on the south wall; THE AISLE up the middle
@@ -29727,11 +29756,8 @@ const DOOR_HQ = {
                     { k: 'path', pts: [[-11, -18], [11, -18]], w: 2.0 },                                           // across the chancel
                 ],
             },
+            /* the south wall at x 0 is THE BAY DOOR (siteRooms.entry, 2026-09-18): the board room is bypassed — the white door lands you in the narthex */
             doors: [
-                { id: 'piazza', wall: 's', x: 0, leaf: 'leaf_white_wood',
-                  label: 'THE VATICAN', sub: 'THE WHITE DOOR · BACK TO THE PIAZZA · ROOM 888',
-                  action: { room: 'site_prebuilt_vatican', at: 'basilica' },
-                  desc: 'The white door from the inside. It is not white on this side. Nobody has filed the discrepancy because nobody has stood here and looked back.' },
                 { id: 'library', wall: 'w', z: 22, leaf: 'leaf_coffee',
                   label: 'THE ARCHIVE', sub: 'THE SECRET ARCHIVE · THE STACKS',
                   action: { room: 'site_prebuilt_vatican_library', at: 'nave' },
@@ -29747,35 +29773,39 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'holy_carpet',    x: 0, z: 12, y: 0.01, face: 0 },                       // THE AISLE's carpet, three lengths
-                { key: 'holy_carpet',    x: 0, z: 2, y: 0.01, face: 0 },
-                { key: 'holy_carpet',    x: 0, z: -8, y: 0.01, face: 0 },
-                { key: 'church_pew',     x: -4.6, z: 18, face: 0 },                              // THE PEWS: the back rows
-                { key: 'church_pew',     x: 4.6, z: 18, face: 0 },
-                { key: 'church_pew',     x: -4.6, z: 14, face: 0 },
-                { key: 'church_pew',     x: 4.6, z: 14, face: 0 },
-                { key: 'church_pew',     x: -4.6, z: 10, face: 0 },
-                { key: 'church_pew',     x: 4.6, z: 10, face: 0 },
-                { key: 'church_pew',     x: -4.6, z: 6, face: 0 },
-                { key: 'church_pew',     x: 4.6, z: 6, face: 0 },
-                { key: 'catholic_pew',   x: -4.6, z: 2, face: 0 },                               // the front rows
-                { key: 'catholic_pew',   x: 4.6, z: 2, face: 0 },
-                { key: 'catholic_pew',   x: -4.6, z: -2, face: 0 },
-                { key: 'catholic_pew',   x: 4.6, z: -2, face: 0 },
-                { key: 'catholic_pew',   x: -4.6, z: -6, face: 0 },
-                { key: 'catholic_pew',   x: 4.6, z: -6, face: 0 },
-                { key: 'greek_column',   x: -8.5, z: 16 },                                       // THE NAVE'S COLUMNS
-                { key: 'greek_column',   x: 8.5, z: 16 },
-                { key: 'greek_column',   x: -8.5, z: 8 },
-                { key: 'greek_column',   x: 8.5, z: 8 },
-                { key: 'greek_column',   x: -8.5, z: 0 },
-                { key: 'greek_column',   x: 8.5, z: 0 },
-                { key: 'greek_column',   x: -8.5, z: -8 },
-                { key: 'greek_column',   x: 8.5, z: -8 },
+                /* second pass (2026-09-18 — the user: "a lot of the sizes and scales of things are off"): the carpet GLB stands upright, so it hangs as
+                   TAPESTRIES (holy_tapestry, the same file) between the windows and behind the cathedra; the aisle is the terrain's carpet path;
+                   the pews are 2.6 m (the catalogue), 2.2 m apart, a crossing at z 10; the nave's columns rise 8.5 m under the 16 m vault */
+                { key: 'holy_tapestry',  wall: 'w', z: -1, mount: 3.4 },                         // THE TAPESTRIES
+                { key: 'holy_tapestry',  wall: 'e', z: -1, mount: 3.4 },
+                { key: 'holy_tapestry',  wall: 'n', x: -5.5, mount: 3.4 },
+                { key: 'holy_tapestry',  wall: 'n', x: 5.5, mount: 3.4 },
+                { key: 'church_pew',     x: -3.2, z: 19, face: 0 },                              // THE PEWS: the back rows
+                { key: 'church_pew',     x: 3.2, z: 19, face: 0 },
+                { key: 'church_pew',     x: -3.2, z: 16.8, face: 0 },
+                { key: 'church_pew',     x: 3.2, z: 16.8, face: 0 },
+                { key: 'church_pew',     x: -3.2, z: 14.6, face: 0 },
+                { key: 'church_pew',     x: 3.2, z: 14.6, face: 0 },
+                { key: 'church_pew',     x: -3.2, z: 12.4, face: 0 },
+                { key: 'church_pew',     x: 3.2, z: 12.4, face: 0 },
+                { key: 'catholic_pew',   x: -3.2, z: 8.6, face: 0 },                             // the front rows, past the crossing
+                { key: 'catholic_pew',   x: 3.2, z: 8.6, face: 0 },
+                { key: 'catholic_pew',   x: -3.2, z: 6.4, face: 0 },
+                { key: 'catholic_pew',   x: 3.2, z: 6.4, face: 0 },
+                { key: 'catholic_pew',   x: -3.2, z: 4.2, face: 0 },
+                { key: 'catholic_pew',   x: 3.2, z: 4.2, face: 0 },
+                { key: 'greek_column',   x: -8.5, z: 16, h: 8.5 },                               // THE NAVE'S COLUMNS (8.5 m — the catalogue's 3.6 was a garden ornament under the vault)
+                { key: 'greek_column',   x: 8.5, z: 16, h: 8.5 },
+                { key: 'greek_column',   x: -8.5, z: 8, h: 8.5 },
+                { key: 'greek_column',   x: 8.5, z: 8, h: 8.5 },
+                { key: 'greek_column',   x: -8.5, z: 0, h: 8.5 },
+                { key: 'greek_column',   x: 8.5, z: 0, h: 8.5 },
+                { key: 'greek_column',   x: -8.5, z: -8, h: 8.5 },
+                { key: 'greek_column',   x: 8.5, z: -8, h: 8.5 },
                 { key: 'church_podium',  x: -4, z: -16, face: 180 },                             // THE CHANCEL
                 { key: 'lectern',        x: 4, z: -16, face: 180 },
                 { key: 'royal_throne',   x: 0, z: -22.5, face: 180 },                            // the cathedra
-                { key: 'wooden_cross',   wall: 'n', x: 0 },
+                { key: 'wooden_cross',   wall: 'n', x: 0, h: 5.0, mount: 4.6 },                  // the cross over the cathedra, 5 m
                 { key: 'church_wall',    wall: 'n', x: -12 },                                    // the chancel screens
                 { key: 'church_wall',    wall: 'n', x: 12 },
                 { key: 'angel_statue',   x: -6, z: -11.2, face: 180 },                           // flanking the altar steps
@@ -29786,12 +29816,16 @@ const DOOR_HQ = {
                 { key: 'brazier',        x: 5, z: 24 },
                 { key: 'candle_ring',    x: -8, z: -20 },
                 { key: 'candle_ring',    x: 8, z: -20 },
-                { key: 'stained_glass',  wall: 'w', z: -6 },                                     // THE WINDOWS
-                { key: 'stained_glass',  wall: 'w', z: 4 },
-                { key: 'stained_glass',  wall: 'w', z: 14 },
-                { key: 'stained_glass',  wall: 'e', z: -6 },
-                { key: 'stained_glass',  wall: 'e', z: 4 },
-                { key: 'stained_glass',  wall: 'e', z: 14 },
+                { key: 'candle_ring',    x: -2.4, z: 10.5 },                                     // the candles at the crossing and at the altar steps (ten lights — the cap)
+                { key: 'candle_ring',    x: 2.4, z: 10.5 },
+                { key: 'candle_ring',    x: -3.4, z: -11.6 },
+                { key: 'candle_ring',    x: 3.4, z: -11.6 },
+                { key: 'stained_glass',  wall: 'w', z: -6, h: 5.5, mount: 7.0 },                 // THE WINDOWS, high in the 16 m walls
+                { key: 'stained_glass',  wall: 'w', z: 4, h: 5.5, mount: 7.0 },
+                { key: 'stained_glass',  wall: 'w', z: 14, h: 5.5, mount: 7.0 },
+                { key: 'stained_glass',  wall: 'e', z: -6, h: 5.5, mount: 7.0 },
+                { key: 'stained_glass',  wall: 'e', z: 4, h: 5.5, mount: 7.0 },
+                { key: 'stained_glass',  wall: 'e', z: 14, h: 5.5, mount: 7.0 },
                 { key: 'confessional_booth', x: -10.5, z: 10, face: 90 },                        // the confessionals in the side aisles
                 { key: 'confessional_booth', x: 10.5, z: 10, face: 270 },
                 { key: 'paper_sheet',    x: 2.6, z: 23.5, y: 0.01, face: 30 },                    // a form by the door: MASS — WHICH
@@ -29820,11 +29854,11 @@ const DOOR_HQ = {
                 w: 30, d: 36, h: 9,
                 wallH: 9, dadoH: 1.2,
                 floor: 'wood_planks', wall: 'wood', dado: 'leather', trim: 'gold', ceiling: 'damask_3',
-                floorColor: 0x8a6a48, wallColor: 0x6a4a34, dadoColor: 0x4a3324, ceilColor: 0x5a4a3a,
+                floorColor: 0xb89468, wallColor: 0x9a7452, dadoColor: 0x6a4a34, ceilColor: 0x8a7a66,   // second pass (2026-09-18): the wood lighter — the archive was black
                 pipes: false, strips: false, lights: [],
-                mood: { light: 0xffd090, ambient: 0.32 },
+                mood: { light: 0xffe0b0, ambient: 0.62 },
                 plate: { x: 0, z: -16.6, y: 6.6 },
-                fog: { color: 0x120c06, density: 0.03 },   /* dust in the lamplight */
+                fog: { color: 0x3a2a18, density: 0.011 },   /* dust in the lamplight (second pass: a third of the old haze — it was the dark) */
                 look: HQ_ROOM_LOOKS.archive,
             },
             /* THE FIELD: the nave door on the east wall; THE STACKS = the plan's
@@ -29876,6 +29910,9 @@ const DOOR_HQ = {
                 { key: 'brazier',        x: 9.5, z: 14.5 },
                 { key: 'ship_lantern',   x: 0, z: -14.5, ceil: true },                           // the lamps on chains
                 { key: 'ship_lantern',   x: 1, z: 5, ceil: true },
+                { key: 'ship_lantern',   x: -8, z: 6, ceil: true },                              // second pass: a third lamp over the stacks, a fourth candle, a third brazier — ten lights, the cap
+                { key: 'candle_ring',    x: -8, z: -13 },
+                { key: 'brazier',        x: -11, z: -6 },
                 { key: 'wall_torch',     wall: 'e', z: 4 },
                 { key: 'paper_sheet',    x: 2.4, z: 7.2, y: 0.01, face: 60 },                     // a request slip: ARCHIVE — WHICH
             ],
@@ -30025,79 +30062,91 @@ const DOOR_HQ = {
         /* ── THE PIT — the mirror of the crypt: the bowl to the lava, the river, the colossus's plinth ── */
         site_prebuilt_hell_pit: {
             label: 'THE DIVINE STAIR · THE PIT',
-            sub: 'THE WARM WALL, THE OTHER SIDE · THE BOWL · THE PLINTH',
+            sub: 'THE RIM · THE DESCENT · THE BOWL · THE WARM WALL, THE OTHER SIDE · THE PLINTH',
             kind: 'box', site: 'prebuilt_hell', part: 'pit',
             shell: {
-                w: 35, d: 35, h: 7.5,
-                wallH: 7.5, dadoH: 1.05,
+                w: 36, d: 36, h: 10,
+                wallH: 10, dadoH: 1.05,
                 floor: 'scorched', wall: 'obsidian', dado: 'rocks_3', trim: 'obsidian', ceiling: 'obsidian',
                 floorColor: 0xc07050, wallColor: 0x5a3848, dadoColor: 0x4a3038, ceilColor: 0x2a1820,
                 pipes: false, strips: false, lights: [],
                 mood: { light: 0xff7a40, ambient: 0.32 },
-                plate: { x: 0, z: -16.2, y: 4.0 },
-                fog: { color: 0x1a0604, density: 0.026 },   /* the heat haze past the torches */
+                plate: { x: 0, z: -16.6, y: 5.6 },
+                fog: { color: 0x1a0604, density: 0.024 },   /* the heat haze past the torches */
                 look: HQ_ROOM_LOOKS.hell,
             },
-            /* THE FIELD: the mouth on the south wall, THE LAVA RIVER across the south
-               third with the obsidian CAUSEWAY over it; THE BOWL (a 2.4 m dip) down to
-               the lava at its heart, walked round; THE GALLERY LEDGE (1.75 m) on the
-               east up a ramp outside the bowl; THE PLINTH in the north-west (3.6 m,
-               the colossus's, the tape on it is the door gun's); THE BASALT WALL by the
-               warm wall for the rider; the warm wall itself on the west. */
+            /* THE FIELD (second pass, 2026-09-18 — the user: "the path to hell the player
+               should feel like they are going down"): the mouth (the bay door, the board
+               room bypassed) opens ON THE RIM, 5 m over the floor; THE DESCENT = three
+               flights in a switchback down the west side (5 → 3.4 on the first landing →
+               1.6 on the second → the floor), THE BOWL (a 2.4 m dip) down to the lava at
+               its heart, THE LAVA RIVER across the north with the warm wall's own ramp
+               coming down over it as a CAUSEWAY (the crypt comes out 2.5 m up on THE
+               WARM LEDGE and goes down again), THE GALLERY LEDGE (1.75 m) on the east up
+               a ramp, THE PLINTH in the north-west (3.6 m, the colossus's — the tape on it
+               is the door gun's), THE BASALT WALL under the first flight for the rider;
+               the inner sun's and the fissure's doors on the east wall at the floor. */
             terrain: {
                 floor: 'scorched', cliff: 'obsidian', path: 'rocks_3',
-                noise: { amp: 0.18, scale: 4.5 }, crag: { depth: 1.8, h: 2.8 },
-                gen: { kind: 'cave', fill: 0.46, seed: 6 },                            // THE FLOOR PLAN: obsidian masses between the ways
+                noise: { amp: 0.18, scale: 4.5 }, crag: { depth: 1.8, h: 3.0 },
+                gen: { kind: 'cave', fill: 0.46, seed: 6, wallH: 5.5 },                        // THE FLOOR PLAN: obsidian masses between the ways (the rock rises 5.5 m — over the rim too)
                 features: [
-                    { k: 'dip', x: 2, z: -3, r: 9.5, h: 2.4 },                                                       // THE BOWL
-                    { k: 'pool', x: 2, z: -3, r: 3.2, y: -2.0, depth: 0.8, key: 'lava' },                            // the lava at its heart (never entered)
-                    { k: 'stream', pts: [[-17, 10], [-8, 8], [0, 9.5], [8, 8], [17, 9]], w: 2.4, y: -0.3, depth: 0.6, key: 'lava' },   // THE LAVA RIVER
-                    { k: 'deck', x0: 0, z0: 12.5, x1: 0, z1: 6.5, w: 2.2, y: 0.25 },                                // THE CAUSEWAY over it, both banks
-                    { k: 'plateau', x: -11, z: -9, r: 2.0, h: 3.6, edge: 0.3 },                                      // THE PLINTH (the tape's)
-                    { k: 'plateau', x: 11, z: -11, w: 9, d: 6, h: 1.75 },                                            // THE GALLERY LEDGE
-                    { k: 'ramp', x0: 13, z0: -3, x1: 13, z1: -8.8, w: 2.6, h0: 0, h1: 1.75 },                        // its ramp, outside the bowl (2026-09-17: it ended 0.3 m SHORT of the ledge — the ledge was never reached; THE RAMP RULE)
-                    { k: 'wall', x0: -14, z0: 2, x1: -6, z1: 2, h: 1.1, t: 0.6, key: 'obsidian' },                   // THE BASALT WALL (the rider's)
-                    { k: 'rail', x0: 7, z0: -8.6, x1: 15, z1: -8.6 },                                                // the ledge's chain rail
-                    { k: 'path', pts: [[0, 16], [0, 6], [2, 3]], w: 1.8 },                                           // the mouth, over the causeway, into the bowl
-                    { k: 'path', pts: [[2, 3], [-8, 3.2], [-15.5, 4]], w: 1.6 },                                     // to the warm wall (w z 4)
-                    { k: 'path', pts: [[0, 6], [10, -1], [13, -3]], w: 1.6 },                                        // to the ledge's ramp
-                    { k: 'scatter', key: 'menhir', n: 7, seed: 3 },                                                  // the basalt spikes
+                    { k: 'dip', x: 2, z: 2, r: 9, h: 2.4 },                                                             // THE BOWL
+                    { k: 'pool', x: 2, z: 2, r: 3.0, y: -2.0, depth: 0.8, key: 'lava' },                                // the lava at its heart (never entered)
+                    { k: 'stream', pts: [[-9, -9.5], [0, -9], [9, -9.5], [17.5, -9]], w: 2.4, y: -0.3, depth: 0.6, key: 'lava' },   // THE LAVA RIVER across the north
+                    { k: 'plateau', x: 0, z: 15, w: 14, d: 6, h: 5 },                                                   // THE RIM (the mouth's sill — everything goes down from here)
+                    { k: 'ramp', x0: -6.3, z0: 15, x1: -13.6, z1: 15, w: 2.8, h0: 5, h1: 3.4, stairs: true },            // THE DESCENT, first flight (west; ends 0.7 m inside the first landing)
+                    { k: 'plateau', x: -15.1, z: 13.5, w: 4.4, d: 5.8, h: 3.4 },                                        // the first landing
+                    { k: 'ramp', x0: -15.1, z0: 11.3, x1: -15.1, z1: -1.8, w: 2.8, h0: 3.4, h1: 1.6, stairs: true },     // the second flight, north down the west wall (THE RAMP RULE, both ends: a DESCENDING flight's HIGH end starts 0.7 m inside its tier — 0.4 left a trench between the tier's edge blend and the first tread)
+                    { k: 'plateau', x: -15.1, z: -3.5, w: 4.4, d: 5, h: 1.6 },                                          // the second landing
+                    { k: 'ramp', x0: -13.6, z0: -3.5, x1: -5, z1: -3.5, w: 2.8, h0: 1.6, h1: 0 },                        // the last incline, east to the floor and the bowl's rim (its high end 0.7 m inside the second landing's rect — x −13.6, the landing's east edge at −12.9)
+                    { k: 'plateau', x: 8, z: -15.5, w: 7, d: 5, h: 2.5 },                                               // THE WARM LEDGE (the crypt's door on it, 2.5 m up)
+                    { k: 'ramp', x0: 8, z0: -13.7, x1: 8, z1: -6.5, w: 2.6, h0: 2.5, h1: 0 },                            // its ramp down — THE CAUSEWAY over the river (authored after the stream)
+                    { k: 'plateau', x: 11, z: 8, w: 6, d: 6, h: 1.75 },                                                 // THE GALLERY LEDGE
+                    { k: 'ramp', x0: 11, z0: 1.2, x1: 11, z1: 5.7, w: 2.6, h0: 0, h1: 1.75 },                            // its ramp, outside the bowl (ends 0.7 m inside the ledge — THE RAMP RULE)
+                    { k: 'plateau', x: -8, z: -12, r: 2.0, h: 3.6, edge: 0.3 },                                         // THE PLINTH (the tape's)
+                    { k: 'wall', x0: -4, z0: 9.5, x1: -11, z1: 9.5, h: 1.1, t: 0.6, key: 'obsidian' },                   // THE BASALT WALL under the first flight (the rider's)
+                    { k: 'rail', x0: -6, z0: 12.3, x1: 6, z1: 12.3 },                                                    // the rim's front rail over the drop
+                    { k: 'rail', x0: 8.4, z0: 10.7, x1: 13.6, z1: 10.7 },                                                // the ledge's chain rail
+                    { k: 'path', pts: [[0, 16.5], [-6.3, 15], [-13.6, 15]], w: 1.8 },                                    // the rim, down the first flight
+                    { k: 'path', pts: [[-15.1, 11.3], [-15.1, -1.8], [-13.6, -3.5], [-5, -3.5], [2, -1]], w: 1.6 },      // the second flight, the incline, into the bowl
+                    { k: 'path', pts: [[-5, -3.5], [-2, -6], [8, -6.5], [8, -13.7]], w: 1.6 },                          // to the causeway and up to the warm ledge
+                    { k: 'path', pts: [[0, 3.5], [7, 1], [11, 1.2]], w: 1.6 },                                          // round the bowl to the ledge's ramp
+                    { k: 'path', pts: [[11, 1.2], [16.5, 7]], w: 1.4 },                                                 // to the inner sun's door
+                    { k: 'path', pts: [[11, 1.2], [16.5, -3]], w: 1.4 },                                                // to the fissure's
+                    { k: 'scatter', key: 'menhir', n: 7, seed: 3 },                                                     // the basalt spikes
                     { k: 'scatter', key: 'cave_stone', n: 6, seed: 4 },
                 ],
             },
-            doors: [
-                { id: 'mouth', wall: 's', x: 0, leaf: 'leaf_hell_arch',
-                  label: 'HELL', sub: 'THE MOUTH OF THE PIT · BACK UP · ROOM 666',
-                  action: { room: 'site_prebuilt_hell', at: 'pit' },
-                  desc: 'The way back up to the causeways. The arch is the same arch. On this side the cracks glow less, which is not comfort.' },
-            ],
+            /* the south wall at x 0, 5 m up, is THE BAY DOOR (siteRooms.entry, 2026-09-18): the board room is bypassed — the mouth lands you on the rim */
+            doors: [],
             counters: [],
             props: [
-                { key: 'cave_torch',     x: -4.0, z: 14.0 },                                    // the torches: the mouth, the river, the ledge
-                { key: 'cave_torch',     x: 4.0, z: 14.0 },
-                { key: 'cave_torch',     x: -15.5, z: 7.0 },
+                { key: 'cave_torch',     x: -4.0, z: 16.6 },                                     // the torches: the rim, the foot of the descent, the warm ledge, the south-east
+                { key: 'cave_torch',     x: 4.0, z: 16.6 },
+                { key: 'cave_torch',     x: -11.5, z: 11.2 },
                 { key: 'cave_torch',     x: 13.0, z: -12.5 },
-                { key: 'wall_torch',     wall: 'w', z: -8.0 },
-                { key: 'wall_torch',     wall: 's', x: 8.0 },
-                { key: 'wall_chains',    wall: 'n', x: -4.0 },                                   // the colossus's chains run to the wall
-                { key: 'wall_chains',    wall: 'n', x: 4.0 },
-                { key: 'wall_chains',    wall: 'e', z: 2.0 },
-                { key: 'stocks',         x: 14.0, z: 5.0, face: 270 },
-                { key: 'stone_altar',    x: 11.0, z: -11.0, face: 180 },                         // the obsidian altar on the ledge
-                { key: 'fire_extinguisher', wall: 'e', z: 12.0 },                                // inspected monthly
-                { key: 'floor_stain',    x: -8.0, z: 12.6 },
-                { key: 'paper_sheet',    x: 3.2, z: 15.2, y: 0.01, face: 300 },                   // FORM 666, filled in by hand
+                { key: 'wall_torch',     wall: 'w', z: -9.0 },
+                { key: 'wall_torch',     wall: 's', x: 8.0, mount: 6.0 },                        // over the rim (5 m of tier under the wall's foot)
+                { key: 'wall_chains',    wall: 'n', x: -4.0 },                                    // the colossus's chains run to the wall
+                { key: 'wall_chains',    wall: 'n', x: -8.5 },
+                { key: 'wall_chains',    wall: 'e', z: 1.5 },
+                { key: 'stocks',         x: 14.0, z: 12.5, face: 270 },
+                { key: 'stone_altar',    x: 11.0, z: 9.5, face: 180 },                            // the obsidian altar on the gallery ledge
+                { key: 'fire_extinguisher', wall: 'e', z: 12.5 },                                 // inspected monthly
+                { key: 'floor_stain',    x: -8.0, z: 6.0 },
+                { key: 'paper_sheet',    x: 3.2, z: 17.0, y: 0.01, face: 300 },                   // FORM 666 on the rim, filled in by hand
                 /* THE VATICAN BATCH (2026-09-17): the colossus, chained beside its plinth; the bones; the braziers */
-                { key: 'demon_statue',   x: -7.5, z: -11.5, face: 120 },
-                { key: 'skull_pile',     x: 12.0, z: 7.0 },
+                { key: 'demon_statue',   x: -4.5, z: -13.0, face: 120 },
+                { key: 'skull_pile',     x: 14.0, z: 3.0 },
                 { key: 'skull_pile',     x: -13.5, z: -14.0 },
-                { key: 'brazier',        x: -6.5, z: 13.0 },
-                { key: 'brazier',        x: 6.5, z: 13.0 },
+                { key: 'brazier',        x: -6.5, z: 17.2 },
+                { key: 'brazier',        x: 6.5, z: 17.2 },
             ],
             agents: [],
             npcSpots: [
-                { x: 9.0, z: -12.0, face: 200, race: 'demon', say: ['“Take a number.” “What number?” “Yes.”', '“The chains go to the wall. What is on the other end is the wall’s business.”'] },
-                { x: -13.0, z: 6.2, face: 40, race: 'succubus', say: '“The wall is warm on this side too. We call it the cold wall.”' },
+                { x: 9.5, z: 9.2, face: 200, race: 'demon', say: ['“Take a number.” “What number?” “Yes.”', '“The chains go to the wall. What is on the other end is the wall’s business.”'] },
+                { x: -9.0, z: -6.5, face: 20, race: 'succubus', say: '“You came down three flights. The crypt comes out up there and comes down too. Everything here does.”' },
             ],
             onlineSpots: [],
             lines: [
@@ -30105,30 +30154,33 @@ const DOOR_HQ = {
                 '“Who is chained to the plinth?” “Nobody, now.” “Where did they go?” “Up.”',
                 '“Is the lava the hazard?” “The lava is the deterrent.”',
                 '“The paperwork for this room is in the Vatican.” “Which is worse.” “Which is the paperwork.”',
+                '“Three flights down from the mouth.” “And then?” “And then the bowl. And then the lava. And then it is not our department.”',
             ],
-            spawn: { x: 0, z: 15.0, face: 0 },
+            spawn: { x: 0, z: 16.2, face: 0 },
         },
         /* ── THE STAIRWAY TO HEAVEN — four flights of cloud stairs from the foot (the telescope's far end) to the gate at 12 m, and THE FALL ── */
         site_prebuilt_heaven_stair: {
             label: 'THE DIVINE STAIR · THE STAIRWAY',
-            sub: 'THE STAIR THAT ONLY GOES UP · FOUR FLIGHTS · THE FALL · THE GATE AT THE TOP',
+            sub: 'THE STAIR THAT ONLY GOES UP · FOUR FLOATING FLIGHTS · THE FALL · THE GATE AT THE TOP',
             kind: 'box', site: 'prebuilt_heaven', part: 'stair',
             shell: hqDivineShell({ w: 40, d: 54, h: 18, wallH: 18, plate: { x: 0, z: -19, y: 15.6 } }),
-            /* THE FIELD (rebuilt 2026-09-17 — the user: "multiple levels of pathways in
-               the same area; falling down you have to find your way back up; clouds
-               are perfect for floating platforming"): the foot on the south wall (the
-               telescope's far end, a frame with no door), FLIGHT A up to THE FIRST
-               LANDING (3.5 m, the healing pool), FLIGHT B up the west side to THE
-               SECOND (7 m), FLIGHT C east across to THE THIRD (10 m), FLIGHT D north
-               to THE TOP LANDING (12 m, the gate's door). THE FALL — where the
-               flights drop you: THE LOWER SHELF (2 m, east) up its own incline from
-               the foot; THE LONG WAY (a winding incline up the west side to THE WEST
-               SHELF at 6 m and three steps onto the second landing — the way back up
-               for whoever falls west); THE STEPPING CLOUDS (hop-high cloud columns:
-               the lower shelf → the first landing, the first landing → the west
-               shelf, a lookout beside flight C); THE PINNACLE on the lower shelf
-               (6 m — the tape's, the door gun's). Every flight is a stair ramp;
-               every fall has a way back (the return guarantee runs the check). */
+            /* THE FIELD (rebuilt 2026-09-17; second pass 2026-09-18 — the user: "try using
+               the stairways from the map builder (a floating staircase with floating steps)
+               or something similar along with cloud platforms"): the foot on the south wall
+               (the telescope's far end, a frame with no door), FLIGHT A up to THE FIRST
+               LANDING (3.5 m, the healing pool), FLIGHT B up the west side to THE SECOND
+               (7 m), FLIGHT C east across to THE THIRD (10 m), FLIGHT D north to THE TOP
+               LANDING (12 m, the gate's door). EVERY FLIGHT FLOATS (`float: true` — marble
+               treads hung in the air on their own cloud puffs, the field cut away under
+               them) and every landing but the summit is a CLOUD PLATFORM (a puffy
+               underside, nothing under it). THE FALL — where the flights drop you: THE
+               LOWER SHELF (2 m, east) up its own incline from the foot; THE LONG WAY (a
+               winding cloud incline up the west side to THE WEST SHELF at 6 m and three
+               floating steps onto the second landing — the way back up for whoever falls
+               west); THE STEPPING CLOUDS (hop-high floating clouds: the lower shelf → the
+               first landing, the first landing → the west shelf, a lookout beside flight
+               C); THE PINNACLE on the lower shelf (6 m — the tape's, the door gun's).
+               Every fall has a way back (the return guarantee runs the check). */
             terrain: {
                 floor: 'cloud_2', cliff: 'cloud_thick', path: 'marble_light',
                 noise: { amp: 0.25, scale: 7 },
@@ -30137,27 +30189,27 @@ const DOOR_HQ = {
                     { k: 'hill', x: -12, z: 18, r: 5, h: 1.0 },                                                       // cloud mounds
                     { k: 'hill', x: 15, z: -4, r: 4, h: 0.8 },
                     { k: 'dip', x: -13, z: -20, r: 4, h: 0.8 },
-                    /* THE FOUR FLIGHTS (every flight ends ≥ 0.3 m INSIDE its landing's edge and starts ≥ 0.4 m inside the lower one) */
-                    { k: 'ramp', x0: 0, z0: 18, x1: 0, z1: 7.4, w: 3.2, h0: 0, h1: 3.5, stairs: true },            // FLIGHT A
-                    { k: 'plateau', x: 0, z: 4, w: 16, d: 7, h: 3.5 },                                               // THE FIRST LANDING
-                    { k: 'pool', x: 4, z: 4, r: 1.3, y: 3.45, depth: 0.45 },                                         // the healing pool on it (waded)
-                    { k: 'ramp', x0: -6, z0: 1.5, x1: -6, z1: -6.9, w: 3, h0: 3.5, h1: 7, stairs: true },            // FLIGHT B
-                    { k: 'plateau', x: -6, z: -9.5, w: 9, d: 6, h: 7 },                                              // THE SECOND LANDING
-                    { k: 'ramp', x0: -2.0, z0: -10, x1: 7.8, z1: -10, w: 3, h0: 7, h1: 10, stairs: true },           // FLIGHT C
-                    { k: 'plateau', x: 10, z: -10, w: 5.2, d: 6, h: 10 },                                            // THE THIRD LANDING
-                    { k: 'ramp', x0: 10, z0: -12.6, x1: 10, z1: -19.4, w: 3, h0: 10, h1: 12, stairs: true },         // FLIGHT D
-                    { k: 'plateau', x: 0, z: -22, w: 30, d: 6, h: 12 },                                              // THE TOP LANDING (the gate's door on it)
+                    /* THE FOUR FLIGHTS (every flight ends ≥ 0.3 m INSIDE its landing's edge and starts ≥ 0.4 m inside the lower one) — floating steps, all four */
+                    { k: 'ramp', x0: 0, z0: 18, x1: 0, z1: 7.4, w: 3.2, h0: 0, h1: 3.5, stairs: true, float: true },              // FLIGHT A
+                    { k: 'plateau', x: 0, z: 4, w: 16, d: 7, h: 3.5, float: true },                                                 // THE FIRST LANDING — a cloud platform
+                    { k: 'pool', x: 4, z: 4, r: 1.3, y: 3.45, depth: 0.45 },                                                        // the healing pool on it (waded)
+                    { k: 'ramp', x0: -6, z0: 1.5, x1: -6, z1: -6.9, w: 3, h0: 3.5, h1: 7, stairs: true, float: true },              // FLIGHT B
+                    { k: 'plateau', x: -6, z: -9.5, w: 9, d: 6, h: 7, float: true },                                                // THE SECOND LANDING
+                    { k: 'ramp', x0: -2.0, z0: -10, x1: 7.8, z1: -10, w: 3, h0: 7, h1: 10, stairs: true, float: true },             // FLIGHT C
+                    { k: 'plateau', x: 10, z: -10, w: 5.2, d: 6, h: 10, float: true },                                              // THE THIRD LANDING
+                    { k: 'ramp', x0: 10, z0: -12.6, x1: 10, z1: -19.4, w: 3, h0: 10, h1: 12, stairs: true, float: true },           // FLIGHT D
+                    { k: 'plateau', x: 0, z: -22, w: 30, d: 6, h: 12 },                                                             // THE TOP LANDING (the gate's door on it; the summit's cloud bank, never hung)
                     /* THE FALL */
-                    { k: 'plateau', x: 12, z: 12, w: 12, d: 10, h: 2.0 },                                            // THE LOWER SHELF
-                    { k: 'ramp', x0: 12, z0: 23, x1: 12, z1: 16.4, w: 3, h0: 0, h1: 2.0 },                           // its incline (a rider's ramp; ends 0.6 m inside the shelf)
-                    { k: 'ramp', x0: -16, z0: 14, x1: -16, z1: -4.7, w: 3, h0: 0, h1: 6.0 },                          // THE LONG WAY (18.7 m, 0.32; ends 0.7 m inside the west shelf)
-                    { k: 'plateau', x: -16, z: -8, w: 6, d: 8, h: 6.0 },                                             // THE WEST SHELF
-                    { k: 'ramp', x0: -13.7, z0: -9.5, x1: -10.8, z1: -9.5, w: 2.6, h0: 6.0, h1: 7, stairs: true },   // three steps onto the second landing (0.7 m inside both tiers)
-                    { k: 'plateau', x: 9.6, z: 5.5, r: 1.5, h: 3.1, edge: 0.3 },                                     // THE STEPPING CLOUDS: the lower shelf → the first landing
-                    { k: 'plateau', x: -9.8, z: 0.2, r: 1.5, h: 4.6, edge: 0.3 },                                    // the first landing → the west shelf, two hops
-                    { k: 'plateau', x: -12.4, z: -2.6, r: 1.4, h: 5.6, edge: 0.3 },
-                    { k: 'plateau', x: 3.0, z: -13.2, r: 1.6, h: 9.4, edge: 0.3 },                                   // the lookout beside flight C
-                    { k: 'plateau', x: 17, z: 8, r: 1.4, h: 6.0, edge: 0.3 },                                        // THE PINNACLE on the lower shelf (the tape's)
+                    { k: 'plateau', x: 12, z: 12, w: 12, d: 10, h: 2.0 },                                                           // THE LOWER SHELF
+                    { k: 'ramp', x0: 12, z0: 23, x1: 12, z1: 16.4, w: 3, h0: 0, h1: 2.0 },                                          // its incline (a rider's ramp; ends 0.6 m inside the shelf)
+                    { k: 'ramp', x0: -16, z0: 14, x1: -16, z1: -4.7, w: 3, h0: 0, h1: 6.0 },                                         // THE LONG WAY (18.7 m, 0.32; ends 0.7 m inside the west shelf)
+                    { k: 'plateau', x: -16, z: -8, w: 6, d: 8, h: 6.0, float: true },                                               // THE WEST SHELF — a cloud platform
+                    { k: 'ramp', x0: -13.7, z0: -9.5, x1: -10.8, z1: -9.5, w: 2.6, h0: 6.0, h1: 7, stairs: true, float: true },     // three floating steps onto the second landing (0.7 m inside both tiers)
+                    { k: 'plateau', x: 9.6, z: 5.5, r: 1.5, h: 3.1, edge: 0.3, float: true },                                       // THE STEPPING CLOUDS: the lower shelf → the first landing
+                    { k: 'plateau', x: -9.8, z: 0.2, r: 1.5, h: 4.6, edge: 0.3, float: true },                                      // the first landing → the west shelf, two hops
+                    { k: 'plateau', x: -12.4, z: -2.6, r: 1.4, h: 5.6, edge: 0.3, float: true },
+                    { k: 'plateau', x: 3.0, z: -13.2, r: 1.6, h: 9.4, edge: 0.3, float: true },                                     // the lookout beside flight C
+                    { k: 'plateau', x: 17, z: 8, r: 1.4, h: 6.0, edge: 0.3, float: true },                                          // THE PINNACLE on the lower shelf (the tape's)
                     /* the rails (the park rule) */
                     { k: 'rail', x0: 7.7, z0: 0.8, x1: 7.7, z1: 4.6 },                                               // the first landing's east rim
                     { k: 'rail', x0: -14.5, z0: -19.3, x1: 6, z1: -19.3 },                                            // the top landing's front rail
@@ -30200,6 +30252,8 @@ const DOOR_HQ = {
                 { key: 'white_cloud',    x: 18, z: 1, y: 9.5 },
                 { key: 'white_cloud',    x: -18, z: 21, y: 4.0 },
                 { key: 'white_cloud',    x: 14, z: 20, y: 6.0 },
+                { key: 'white_cloud',    x: 6, z: -4, y: 11.5 },
+                { key: 'white_cloud',    x: -14, z: -14, y: 9.0 },
                 { key: 'park_bench',     x: 15, z: 25, face: 300 },                             // a bench for whoever is asked to wait
                 { key: 'paper_sheet',    x: -3.2, z: 24.2, y: 0.01, face: 20 },                  // a form at the foot: STAIR — WHICH WAY
             ],
@@ -30214,21 +30268,26 @@ const DOOR_HQ = {
                 '“The pool heals.” “Heals what?” “The stairs.”',
                 '“I fell.” “Everyone falls. The long way is on the left. It is also up.”',
                 '“The pillar has no stair.” “The pillar is not for walking.” “What is it for?” “The door.”',
+                '“What holds the steps up?” “Nothing.” “Then what am I standing on?” “The step.”',
             ],
             spawn: { x: 0, z: 22.5, face: 0 },
         },
         /* ── THE CLOUD FIELDS — islands of cloud, the rift and its plank, the dais and THE GATE ── */
         site_prebuilt_heaven_gate: {
             label: 'THE DIVINE STAIR · THE CLOUD FIELDS',
-            sub: 'THE GATE · THE RIFT · THE HEALING POOLS · ROOM 777 BEYOND',
+            sub: 'THE GATE · THE DAIS · THE RIFT · THE STEPPING CLOUDS · THE HEALING POOLS · DOWN TO THE STAIR',
             kind: 'box', site: 'prebuilt_heaven', part: 'gate',
             shell: hqDivineShell({ w: 42, d: 35, plate: { x: 0, z: -16.0, y: 5.0 } }),
-            /* THE FIELD: the top of the stair on the south wall; cloud mounds and a
-               hollow; THE RIFT (bottomless — never entered) with THE PLANK over it;
-               THE DAIS (1.75 m) along the north with THE PEARLY WALLS either side of
-               the gap the stair-ramp climbs into, THE GATE (Room 777's hotel door) at
-               its back; THE PILLAR OF LIGHT in the east (4.6 m — the tape's); two
-               healing pools; the plan's cloud banks between the islands. */
+            /* THE FIELD (second pass, 2026-09-18 — the board room is bypassed: Room 777's
+               hotel door is THE BAY DOOR on the north wall, ON THE DAIS, so you arrive at
+               the top of everything and every stair from here goes DOWN to the dome): THE
+               DAIS (1.75 m) along the north with THE PEARLY WALLS either side of the gap
+               the steps come up into; cloud mounds and a hollow; THE RIFT (bottomless —
+               never entered) with THE PLANK over it; THE STEPPING CLOUDS west of the rift
+               (three floating clouds hopped up to THE LOOKOUT, 3.4 m); THE PILLAR OF LIGHT
+               in the east (4.6 m, floating — the tape's); two healing pools; the archive's
+               elevator on the west wall, Olympus's gate of cloud on the east; the top of
+               the stair on the south wall. */
             terrain: {
                 floor: 'cloud_2', cliff: 'cloud_thick', path: 'marble_light',
                 noise: { amp: 0.22, scale: 6.5 },
@@ -30239,30 +30298,31 @@ const DOOR_HQ = {
                     { k: 'dip', x: 4, z: 2, r: 4, h: 0.6 },                                                           // the hollow
                     { k: 'pool', x: -4, z: -5, r: 3.2, rz: 1.6, rot: 20, y: -0.1, depth: 3.0, key: 'deep_water' },    // THE RIFT (never entered)
                     { k: 'deck', x0: -4, z0: -9.5, x1: -4, z1: -0.5, w: 2.0, y: 0.3 },                                // THE PLANK over it, both banks
-                    { k: 'plateau', x: 0, z: -14, w: 16, d: 6, h: 1.75 },                                             // THE DAIS
-                    { k: 'ramp', x0: 3, z0: -6.6, x1: 3, z1: -11.5, w: 3, h0: 0, h1: 1.75, stairs: true },            // the steps up to it (ending 0.5 m inside the dais's edge)
+                    { k: 'plateau', x: 0, z: -14, w: 16, d: 6, h: 1.75 },                                             // THE DAIS (the gate — the bay door — on it)
+                    { k: 'ramp', x0: 3, z0: -6.6, x1: 3, z1: -11.5, w: 3, h0: 0, h1: 1.75, stairs: true, float: true },   // the floating steps up to it (ending 0.5 m inside the dais's edge)
                     { k: 'wall', x0: -8, z0: -11.6, x1: -2.2, z1: -11.6, h: 2.0, t: 0.5, key: 'marble_light' },      // THE PEARLY WALLS (the rider's)
                     { k: 'wall', x0: 4.8, z0: -11.6, x1: 8, z1: -11.6, h: 2.0, t: 0.5, key: 'marble_light' },
-                    { k: 'plateau', x: 12, z: -8, r: 1.2, h: 4.6, edge: 0.3 },                                        // THE PILLAR OF LIGHT (the tape's)
+                    { k: 'plateau', x: 12, z: -8, r: 1.2, h: 4.6, edge: 0.3, float: true },                           // THE PILLAR OF LIGHT (the tape's) — hung in the air
+                    { k: 'plateau', x: -10.5, z: -1.5, r: 1.5, h: 1.2, edge: 0.3, float: true },                      // THE STEPPING CLOUDS west of the rift: three hops up to the lookout
+                    { k: 'plateau', x: -12.5, z: -6.5, r: 1.4, h: 2.4, edge: 0.3, float: true },
+                    { k: 'plateau', x: -13.5, z: -11.5, r: 1.6, h: 3.4, edge: 0.3, float: true },                     // THE LOOKOUT over the dais
                     { k: 'pool', x: 12, z: 4, r: 1.6, y: -0.05, depth: 0.5 },                                         // the healing pools (waded)
-                    { k: 'pool', x: -14, z: -6, r: 1.3, y: -0.05, depth: 0.5 },
+                    { k: 'pool', x: -14, z: 2, r: 1.3, y: -0.05, depth: 0.5 },
                     { k: 'rail', x0: -8, z0: -16.4, x1: -3, z1: -16.4 },                                              // the dais's back rail
-                    { k: 'path', pts: [[0, 16], [0, 8], [-4, 0.5]], w: 1.8 },                                         // the way in, to the plank
+                    { k: 'path', pts: [[0, 16], [0, 8], [-4, 0.5]], w: 1.8 },                                         // the way from the stair, to the plank
                     { k: 'path', pts: [[-4, -9.6], [0, -8], [3, -6.6]], w: 1.6 },                                     // off the plank to the steps
                     { k: 'path', pts: [[0, 8], [8, 6], [12, 2]], w: 1.4 },                                            // to the east pool
                     { k: 'path', pts: [[0, 8], [-10, 4]], w: 1.4 },                                                   // to the mound
+                    { k: 'path', pts: [[3, -12.5], [0, -14], [-6, -14]], w: 1.6 },                                    // across the dais
                     { k: 'scatter', key: 'white_cloud', n: 6, seed: 5, r0: 0.2 },                                     // cloud puffs on the ground (foot 0)
                 ],
             },
+            /* the north wall at x 0, 1.75 m up on the dais, is THE BAY DOOR (siteRooms.entry, 2026-09-18): Room 777's hotel door — the board room is bypassed, the gate lands you here */
             doors: [
                 { id: 'stair', wall: 's', x: 0, leaf: null,
-                  label: 'THE STAIRWAY', sub: 'BACK DOWN · FOUR FLIGHTS',
+                  label: 'THE STAIRWAY', sub: 'DOWN · FOUR FLIGHTS · TO THE DOME',
                   action: { room: 'site_prebuilt_heaven_stair', at: 'gates' },
                   desc: 'The top of the stair, from above. It goes down from here, which the sign does not admit.' },
-                { id: 'heaven', wall: 'n', x: 0, y: 1.75, leaf: 'leaf_hotel',
-                  label: 'HEAVEN', sub: 'THE GATE · ROOM 777 · CHECKOUT NEVER',
-                  action: { room: 'site_prebuilt_heaven', at: 'gate' },
-                  desc: 'The gate. A hotel room door, frosted for modesty, immunity claimed. The board is behind it and the book is beside it, and the book already knows.' },
             ],
             counters: [],
             props: [
@@ -30283,16 +30343,17 @@ const DOOR_HQ = {
                 { key: 'angel_statue',   x: 7, z: -15, face: 180 },
                 { key: 'brazier',        x: -10, z: 12 },
                 { key: 'brazier',        x: 10, z: 12 },
-                { key: 'white_cloud',    x: -14, z: 0, y: 5.0 },                                 // THE FLOATING CLOUDS
+                { key: 'white_cloud',    x: -14, z: 8, y: 5.0 },                                 // THE FLOATING CLOUDS
                 { key: 'white_cloud',    x: 8, z: 8, y: 6.5 },
-                { key: 'white_cloud',    x: 14, z: -14, y: 4.5 },
+                { key: 'white_cloud',    x: 16, z: -14, y: 4.5 },
                 { key: 'white_cloud',    x: -6, z: 14, y: 7.0 },
+                { key: 'white_cloud',    x: 6, z: -4, y: 8.0 },
             ],
             agents: [],
             npcSpots: [
                 { x: -2.6, z: -14.0, face: 90, race: 'seraphim', say: ['“Name?” “It is in the book.” “Then why did I ask.”', '“The gate is frosted for modesty. Ours.”'] },
                 { x: 10.0, z: 2.0, face: 250, race: 'priest', say: '“The pools are for the injured. I am here on a technicality.”' },
-                { x: -11.0, z: 2.0, face: 60, race: 'angel', say: '“The rift is bottomless. We checked. It took a while.”' },
+                { x: -9.0, z: 3.5, face: 60, race: 'angel', say: '“The rift is bottomless. We checked. It took a while.”' },
             ],
             onlineSpots: [],
             lines: [
@@ -30300,8 +30361,9 @@ const DOOR_HQ = {
                 '“The plank is the only way over.” “There is a way round.” “The way round is the plank.”',
                 '“Room 777 has no door on the inside.” “Then how do they leave?” “They are asked to wait.”',
                 '“The pillar of light is structural.” “It has no stair.” “Faith has no stair.”',
+                '“Everything from here goes down.” “To where?” “To a telescope. Do not look back up through it.”',
             ],
-            spawn: { x: 0, z: 14.5, face: 0 },
+            spawn: { x: 0, z: -14.5, face: 180 },
         },
         /* ═══════════════════════════════════════════════════════════════════
            AREA 51 — THE BASE ABOVE THE BASE (2026-09-18 — the user: "still need
@@ -34426,6 +34488,11 @@ function hqTerrainCompile(room, roomId) {
     for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) H[j * nx + i] = hFinal(x0 + i * res, z0 + j * res);
     const info = { room, roomId: roomId || null, S, res, nx, nz, x0, z0, halfW, halfD, H, base, floor: T.floor || S.floor || 'grass_2', cliff: T.cliff || 'rock_wall_1', path: T.path || 'dirt_2',
                    pads: doorPads, walls: [], planWalls: [], rails: [], paths, decks, fluids, trees: [], scatter: [], tile: T.tile || R.tile, rules: R, closed, hFn: hFinal,
+                   /* THE FLOATING PIECES (THE DIVINE STAIR, second pass, 2026-09-18): a `plateau` or a stair `ramp` wearing `float: true` is a CLOUD
+                      PLATFORM / a flight of FLOATING STEPS — the height rule is untouched (the field carries it like any tier: the walker climbs its
+                      low end, never its flank); the renderer (three-renderer.js _hqBuildTerrain) cuts the field's flank / underside away and hangs
+                      the piece in the air — a puffy underside under a platform, a slab tread + a puff under every step of a flight */
+                   floats: F.filter(f => f.float === true && (f.k === 'plateau' || (f.k === 'ramp' && f.stairs))),
                    /* DISASTER CITY (2026-09-17): NPC TRAFFIC routes ({ pts, loop, n, speed, lane, kinds }) and THE CIRCUIT ({ label, pts, w, gates }) — read by three-renderer.js _hqBuildTraffic / _hqBuildRace */
                    traffic: (T.traffic || []).filter(t => t && Array.isArray(t.pts) && t.pts.length >= 2).map(t => Object.assign({ n: 4, speed: 7, lane: 2.2, loop: false, kinds: ['suv', 'cadillac'] }, t)),
                    race: (T.race && Array.isArray(T.race.pts) && T.race.pts.length >= 3) ? Object.assign({ w: 10, gates: 8, label: 'THE CIRCUIT' }, T.race) : null };
@@ -35046,7 +35113,7 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_fairy_forest_stair:   { tape: { x: -7.0, z: 4.0 } },      // THE TOWER
     /* THE DIVINE STAIR (9.3 stage 6, 2026-09-17): the skull stack, the colossus's plinth, the stairway's pinnacle, the pillar of light — the door gun's four */
     site_prebuilt_vatican_catacombs: { tape: { x: -13.0, z: -9.0 } },
-    site_prebuilt_hell_pit:          { tape: { x: -11.0, z: -9.0 } },
+    site_prebuilt_hell_pit:          { tape: { x: -8.0, z: -12.0 } },   // THE PLINTH (second pass 2026-09-18: moved north-west, clear of the descent)
     site_prebuilt_heaven_stair:      { tape: { x: 17.0, z: 8.0 } },   // THE PINNACLE on the lower shelf (rebuilt 2026-09-17)
     /* THE VATICAN (2026-09-17): the organ loft, the high shelf, the campanile's stump, the finial — the door gun's four more */
     site_prebuilt_vatican_basilica:    { tape: { x: -9.5, z: 22.5 } },
@@ -38408,7 +38475,7 @@ if (typeof window !== 'undefined') {
     window.HQ_TERRAIN_RULES = HQ_TERRAIN_RULES; window.HQ_TERRAIN_GEN = HQ_TERRAIN_GEN; window.HQ_ROOM_LOOKS = HQ_ROOM_LOOKS; window.hqTerrainMaskAt = hqTerrainMaskAt; window.hqTerrainOpenAt = hqTerrainOpenAt; window.hqTerrainRooms = hqTerrainRooms; window.hqTerrainInfo = hqTerrainInfo; window.hqTerrainTraps = hqTerrainTraps; window.hqTerrainCompile = hqTerrainCompile; window.hqTerrainSolidAt = hqTerrainSolidAt; window.hqTerrainSolidTop = hqTerrainSolidTop;
     window.hqTerrainHeight = hqTerrainHeight; window.hqTerrainSlope = hqTerrainSlope; window.hqTerrainFeet = hqTerrainFeet; window.hqTerrainAir = hqTerrainAir; window.hqTerrainCam = hqTerrainCam;
     window.hqTerrainFluidAt = hqTerrainFluidAt; window.hqTerrainWallAt = hqTerrainWallAt; window.hqTerrainDoorY = hqTerrainDoorY; window.hqTerrainReach = hqTerrainReach; window.hqTerrainNodeKey = hqTerrainNodeKey;
-    window.hqTerrainDoorLanding = hqTerrainDoorLanding; window.hqTerrainDump = hqTerrainDump; window.hqCityShell = hqCityShell; window.hqAirbaseShell = hqAirbaseShell; window.hqSiteEntry = hqSiteEntry; window.hqSiteEntryOf = hqSiteEntryOf; window.hqApplySiteEntries = hqApplySiteEntries; window.hqFindHardReachTerrain = hqFindHardReachTerrain; window.hqTerrainFindSpot = hqTerrainFindSpot; window._hqTPolyDist = _hqTPolyDist;
+    window.hqTerrainDoorLanding = hqTerrainDoorLanding; window.hqTerrainDump = hqTerrainDump; window.hqCityShell = hqCityShell; window.hqAirbaseShell = hqAirbaseShell; window.hqSiteEntry = hqSiteEntry; window.hqSiteEntryOf = hqSiteEntryOf; window.hqApplySiteEntries = hqApplySiteEntries; window.hqFindHardReachTerrain = hqFindHardReachTerrain; window.hqTerrainFindSpot = hqTerrainFindSpot; window._hqTPolyDist = _hqTPolyDist; window._hqTEllipse = _hqTEllipse; window._hqTRectIn = _hqTRectIn; window._hqTRamp = _hqTRamp;   // THE FLOATING PIECES (2026-09-18): the renderer's underFloat cut reads the same frames the compiler does
     /* THE DOOR GUN (HQ plan 9.5, 2026-09-15 rev 13) */
     window.HQ_PORTAL_RULES = HQ_PORTAL_RULES; window.hqPortalRecord = hqPortalRecord; window.hqPortalStatus = hqPortalStatus; window.hqPortalIssue = hqPortalIssue;
     window.hqPortalPlace = hqPortalPlace; window.hqPortalClear = hqPortalClear; window.hqPortalLeaf = hqPortalLeaf; window.hqPortalNextSlot = hqPortalNextSlot; window.hqPortalTwin = hqPortalTwin; window.hqPortalSafeRoom = hqPortalSafeRoom; window.hqPortalDoorsIn = hqPortalDoorsIn;

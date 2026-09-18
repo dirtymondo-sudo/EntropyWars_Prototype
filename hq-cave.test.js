@@ -129,7 +129,7 @@ test('THE WELLS: six of them, every one a live `way: well` link into the well ro
     assert.ok(Math.hypot(gp.x, gp.z) > 2.4, 'the landing is clear of the fountain');
 });
 
-test('THE FOUR EXITS: a live pair each into Hell, D.U.M.B., Agartha and Hollow Earth’s own board room, every far end a legal north-wall lane; the fissure’s, LEVEL −6’s and the mouth’s doors stand on their tiers', () => {
+test('THE FOUR EXITS: a live pair each into Hell (the pit’s east wall since 2026-09-18), D.U.M.B., Agartha and Hollow Earth’s own board room, every far end a legal lane; the fissure’s, LEVEL −6’s and the mouth’s doors stand on their tiers', () => {
     assert.deepStrictEqual(EXITS.map(l => l.id).sort().join(','), 'cave_agartha,cave_dumb,cave_hell,cave_hollow');
     const want = { cave_hell: 'prebuilt_hell', cave_dumb: 'prebuilt_dumb', cave_agartha: 'prebuilt_agartha', cave_hollow: SITE };
     const tier = { cave_hell: 1.75, cave_dumb: 1.75, cave_hollow: 1.75, cave_agartha: null };
@@ -148,6 +148,13 @@ test('THE FOUR EXITS: a live pair each into Hell, D.U.M.B., Agartha and Hollow E
         if (tier[l.id] != null) { assert.strictEqual(door.y, tier[l.id], l.id + ': the end carries its tier (hqLinkDoors copies y)'); assert.strictEqual(sill(HQ.rooms[here], door), tier[l.id], l.id + ': the sill is the tier'); }
         else assert.ok(door.y === undefined && sill(HQ.rooms[here], door) < 1.0, l.id + ': on the floor');
         const room = HQ.rooms[there], half = room.shell.w / 2;
+        /* THE DIVINE STAIR, second pass (2026-09-18): Hell's board is BYPASSED — the fissure comes out on THE PIT's EAST wall (a part; the lane rule is the part's own: inside the wall, lanes apart) */
+        if (l.id === 'cave_hell') {
+            assert.strictEqual(there, 'site_prebuilt_hell_pit', 'the fissure opens on the pit'); assert.strictEqual(back.wall, 'e');
+            assert.ok(Math.abs(back.z) < room.shell.d / 2 - 2.2, l.id + ': the far lane is inside the wall');
+            for (const o of room.doors.filter(d => d.link && d !== back && d.wall === 'e')) assert.ok(Math.abs(o.z - back.z) >= 4.4, l.id + ': the far lane crowds ' + o.id);
+            continue;
+        }
         assert.strictEqual(back.wall, 'n');
         assert.ok(back.x > -(half - (room.shell.open ? 2.6 : 1.4)) && back.x < 0.4, l.id + ': the far lane is inside the wall');
         for (const o of room.doors.filter(d => d.link && d !== back)) assert.ok(Math.abs(o.x - back.x) >= 4.4, l.id + ': the far lane crowds ' + o.id);

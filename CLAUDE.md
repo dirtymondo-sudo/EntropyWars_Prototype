@@ -5465,3 +5465,37 @@ MAST = the tape; four `flood_mast` procs — an outdoor TERRAIN room lights ITSE
 Gobekli's, Nuketown's and Bermuda's second re-homed; `findSpots` pins the three. `npm test`
 runs `hq-area51.test.js`; hq-floor-plan 31 planned, hq-terrain 36 rooms, disaster-city-3
 six entries. Ship data.js to Render too. UNSEEN LIVE (RULE #1c): all of it.
+
+## THE DIVINE STAIR, SECOND PASS — THE BOARDS BYPASSED · THE FLOATING PIECES · THE WAY DOWN · THE BASILICA TO SCALE · THE ARCHIVE LIT (2026-09-18, local delivery)
+The user: "get rid of the board rooms since each place is its own area; use the map builder's floating
+staircase (floating steps) or something similar with cloud platforms; the path to hell should feel like
+going down — inclines in the catacombs and the hell areas; the basilica's sizes and scales are off; the
+library is too dark". **THE BOARDS BYPASSED**: `siteRooms.entry` rows for `prebuilt_vatican` (→ THE
+BASILICA, bay s x 0), `prebuilt_hell` (→ THE PIT, bay s x 0 **`y: 5`** — an entry door may carry `y`, its
+sill; the mouth opens ON THE RIM) and `prebuilt_heaven` (→ THE CLOUD FIELDS, bay **n** x 0 `y: 1.75` —
+Room 777's hotel door ON THE DAIS: you arrive at the top and every stair goes down to the dome); the
+parts' own doors back to the boards are gone; every link that stood on those boards is on a part
+(`hollow_hell` / `cave_hell` → the pit's east wall, `heaven_olympus` → the fields' east wall,
+`vatican_heaven` = the archive's west wall ⇄ the fields' west wall, `bureau_vatican` → the cortile's east
+wall, `vatican_hell.b` → the pit's NORTH wall at `y: 2.5` = THE WARM LEDGE). **THE FLOATING PIECES**: a
+`plateau` or a stair `ramp` in a terrain room may wear **`float: true`** (data.js `hqTerrainCompile` →
+`info.floats`; the height rule is untouched — the field carries the tier, the walker climbs its low end);
+three-renderer.js `_hqBuildTerrain` CUTS THE FIELD AWAY under it (`underFloat`: a platform's flank ring,
+a flight's run but its foot and its mouth) and **`_hqBuildFloats`** hangs the piece — a rounded slab in
+the cliff sheet with a ring of puffs under a platform's rim (the field's own top stays: the sheet, the
+pool, the path), one marble tread (the path sheet) per compiled step of a flight, 10 % apart, a puff
+under each = the map builder's floating staircase in the room's own kit. The compiler's frame helpers
+`_hqTEllipse` / `_hqTRectIn` / `_hqTRamp` are on `window` for it. THE STAIRWAY: every flight + every
+landing but the summit + the stepping clouds + the pinnacle float; THE CLOUD FIELDS: the dais's steps,
+the pillar of light, three stepping clouds up to THE LOOKOUT. **THE WAY DOWN**: the catacombs' crypt
+stair lands on THE LANDING (3.2 m) → two brick flights down → the galleries; the pit's mouth on THE RIM
+(5 m) → three flights down the west side → the floor → THE BOWL; the warm ledge's ramp is the causeway
+over the lava river. **THE RAMP RULE AT A DESCENT**: a descending flight's HIGH end starts 0.7 m INSIDE
+its tier's rect (0.4 left a trench between the tier's edge blend and the first tread — the solver must be
+run from EVERY door, `hq-divine.test.js` climbs back up). **THE BASILICA**: pews 2.6 m (the catalogue),
+columns `h: 8.5` per row, windows `h: 5.5, mount: 7`, the cross 5 m, the upright carpet GLB hung as
+**`holy_tapestry`** (the same file, a wall row — a GLB that stands upright is a wall row, never laid flat),
+ten lights. **THE ARCHIVE**: ambient 0.62, fog 0.011, the wood lighter, `HQ_ROOM_LOOKS.archive` without
+the night mood. hq-divine / hq-world / disaster-city-3 / hq-terrain amended. Ship data.js to Render too.
+UNSEEN LIVE (RULE #1c): all of it — DOOR_HQ_BUILD_PLAN §9 lists what to eyeball first.
+

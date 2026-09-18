@@ -38513,6 +38513,66 @@ const ThreeRenderer = (function () {
         });
         (plan.rooms || []).forEach(function (r) { if (r.authored) return; hang(r.x, r.z, r.w >= r.d ? Math.PI / 2 : 0); });
     }
+    /* ═══════════════════════════════════════════════════════════════════════
+       THE FLOATING PIECES (THE DIVINE STAIR, second pass, 2026-09-18)
+       The user: "try using the stairways from the map builder (a floating
+       staircase with floating steps) or something similar along with cloud
+       platforms". A `plateau` / a stair `ramp` in a terrain room may wear
+       `float: true` (data.js hqTerrainCompile → info.floats): the height rule
+       is untouched — the field still carries the tier, the walker climbs its
+       low end and never its flank — but the FIELD IS CUT AWAY under it
+       (_hqBuildTerrain's index loop) and this hangs the piece in the air:
+         a PLATFORM = the field's own top (the sheet, the pool, the path)
+           over a puffy underside — a rounded slab in the cliff sheet (the
+           thick cloud) with a ring of puffs under its rim and a few under
+           its belly, the whole thing 0.12 m under the top so the field's own
+           surface is what the walker sees;
+         a FLIGHT = one slab TREAD per step of the compiled stair (the same
+           treads the field carries: 2 × res deep, h0 + rise · k / n), its top
+           in the path sheet (marble), a puff of cloud under each, a 10 %
+           gap between treads so they read as separate steps hung in the
+           sky — the map builder's floating staircase in the room's own kit.
+       Nothing new for the walker, the camera or the tests to read.
+       ═══════════════════════════════════════════════════════════════════════ */
+    function _hqBuildFloats(room, info, G, TM, rng, floats) {
+        var U = _hqUnits(), S = room.shell, res = info.res;
+        var puffMat = new THREE.MeshPhongMaterial({ map: _hzTex(info.cliff) || null, color: 0xf8f6ff, shininess: 4 }); puffMat.emissive = new THREE.Color(0x2a2a34);
+        var treadMat = new THREE.MeshPhongMaterial({ map: _hzTex(info.path) || null, color: 0xfff8e8, shininess: 14 }); treadMat.emissive = new THREE.Color(0x1c1a14);
+        var puffGeo = new THREE.SphereGeometry(1, 12, 9);
+        var puff = function (x, y, z, r, sy, sx, sz) {
+            var m = new THREE.Mesh(puffGeo, puffMat); m.position.set(x * U, y * U, z * U); m.scale.set(r * (sx || 1) * U, r * (sy || 0.62) * U, r * (sz || 1) * U); m.rotation.y = rng() * Math.PI * 2; m.castShadow = false; G.add(m); return m;
+        };
+        floats.forEach(function (f) {
+            if (f.k === 'plateau') {
+                var top = f.h - 0.12, round = !!f.r, rx = round ? f.r : f.w / 2, rz = round ? (f.rz || f.r) : f.d / 2, thick = Math.max(0.6, Math.min(1.6, 0.18 * Math.max(rx, rz) + 0.4));
+                var body;
+                if (round) { body = new THREE.Mesh(new THREE.CylinderGeometry((rx + 0.15) * U, (rx * 0.7) * U, thick * U, 24), puffMat); if (rz !== rx) body.scale.z = rz / rx; }
+                else { body = new THREE.Mesh(new THREE.BoxGeometry((f.w + 0.3) * U, thick * U, (f.d + 0.3) * U), puffMat); _hzBoxUV(body.geometry, (f.w + 0.3) * U, thick * U, (f.d + 0.3) * U, TM); }
+                body.position.set(f.x * U, (top - thick / 2) * U + 0.3, f.z * U); body.rotation.y = -((f.rot || 0) * Math.PI / 180); body.renderOrder = 1; G.add(body);
+                /* the puffs: a ring under the rim, a few under the belly */
+                var per = Math.max(6, Math.round((rx + rz) * 2.2)), rot = (f.rot || 0) * Math.PI / 180, c = Math.cos(rot), sn = Math.sin(rot);
+                for (var k = 0; k < per; k++) {
+                    var a = (k + 0.5) / per * Math.PI * 2, ux = Math.cos(a), uz = Math.sin(a);
+                    var lx = round ? ux * (rx - 0.1) : Math.max(-rx + 0.2, Math.min(rx - 0.2, ux * rx * 1.5)), lz = round ? uz * (rz - 0.1) : Math.max(-rz + 0.2, Math.min(rz - 0.2, uz * rz * 1.5));
+                    var wx = f.x + lx * c - lz * sn, wz = f.z + lx * sn + lz * c, pr = 0.55 + rng() * 0.5;
+                    puff(wx, top - thick * 0.55 - pr * 0.3 + 0.3 / U, wz, pr, 0.7, 1.15, 1.0);
+                }
+                var belly = Math.max(1, Math.round(rx * rz / 6));
+                for (var q = 0; q < belly; q++) { var bx = f.x + (rng() - 0.5) * rx * 1.2, bz = f.z + (rng() - 0.5) * rz * 1.2, br = 0.8 + rng() * 0.8; puff(bx, top - thick - br * 0.35, bz, br, 0.6, 1.3, 1.1); }
+            } else {
+                /* the flight: the compiled treads */
+                var dx = f.x1 - f.x0, dz = f.z1 - f.z0, L = Math.hypot(dx, dz) || 1, ux2 = dx / L, uz2 = dz / L, yaw = Math.atan2(dx, dz);
+                var tread = 2 * res, n = Math.max(1, Math.round(L / tread)), rise = (f.h1 - f.h0) / n, depth = L / n, tDepth = depth * 0.9, thick2 = 0.42;
+                for (var k2 = 0; k2 < n; k2++) {
+                    var sMid = (k2 + 0.5) * depth, topY = f.h0 + rise * k2, cx = f.x0 + ux2 * sMid, cz = f.z0 + uz2 * sMid;
+                    var slab = new THREE.Mesh(new THREE.BoxGeometry(f.w * U, thick2 * U, tDepth * U), treadMat); _hzBoxUV(slab.geometry, f.w * U, thick2 * U, tDepth * U, TM);
+                    slab.position.set(cx * U, (topY - thick2 / 2) * U + 0.34, cz * U); slab.rotation.y = yaw; slab.renderOrder = 1; slab.castShadow = true; G.add(slab);
+                    var pr2 = 0.45 + rng() * 0.25 + f.w * 0.12;
+                    var pm = puff(cx + (rng() - 0.5) * f.w * 0.3, topY - thick2 - pr2 * 0.45, cz + (rng() - 0.5) * depth * 0.2, pr2, 0.55, f.w / (2 * pr2) + 0.3, 1.0); pm.rotation.y = yaw;
+                }
+            }
+        });
+    }
     function _hqBuildTerrain(room) {
         if (typeof hqTerrainInfo !== 'function') return;
         var U = _hqUnits(), S = room.shell, G = _hq.shellGroup;
@@ -38549,6 +38609,25 @@ const ThreeRenderer = (function () {
             blend[k * 2] = rock * rock * (3 - 2 * rock); blend[k * 2 + 1] = Math.max(pathW(px, pz), sw) * (1 - blend[k * 2]);
         }
         var idx = [], escalators = (room.terrain.features || []).filter(function (f) { return f.escalator; });
+        /* THE FLOATING PIECES (THE DIVINE STAIR, second pass, 2026-09-18): a `float: true` plateau keeps the field's own TOP (the
+           cloud sheet, the pool carved into it, the path painted on it) and loses its FLANK — the ring of triangles round its edge
+           blend — so nothing joins it to the ground; a `float: true` stair ramp loses everything under its run but the first
+           0.4 m (its foot on the ground) and the last 0.9 m (its mouth on the tier). The treads and the puffs are hung below. */
+        var floats = info.floats || [];
+        var underFloat = function (mx, mz) {
+            for (var fi = 0; fi < floats.length; fi++) {
+                var f = floats[fi];
+                if (f.k === 'plateau') {
+                    var edge = (f.edge != null) ? f.edge : 0.35, din;
+                    if (f.r) din = (1 - _hqTEllipse(mx, mz, f)) * Math.min(f.r, f.rz || f.r); else din = _hqTRectIn(mx, mz, f);
+                    if (din > -(edge + res * 1.2) && din < edge + res * 0.75) return true;
+                } else {
+                    var L = _hqTRamp(mx, mz, f), ed = (f.edge != null) ? f.edge : 0.35;
+                    if (L.s > 0.4 && L.s < L.L - 0.9 && Math.abs(L.v) < f.w / 2 + ed + res * 0.9) return true;
+                }
+            }
+            return false;
+        };
         for (var j2 = 0; j2 + 1 < nz; j2++) for (var i2 = 0; i2 + 1 < nx; i2++) {
             var a = j2 * nx + i2, b = a + 1, c = a + nx, d = c + 1;
             var mx = info.x0 + (i2 + 0.5) * res, mz = info.z0 + (j2 + 0.5) * res;
@@ -38557,7 +38636,7 @@ const ThreeRenderer = (function () {
                 var q = { t: ((mx - f.x0) * dx + (mz - f.z0) * dz) / (len * len), v: (-(mx - f.x0) * dz + (mz - f.z0) * dx) / len };
                 return q.t >= 0 && q.t <= 1 && Math.abs(q.v) <= f.w / 2;
             });
-            if (!underEscalator) idx.push(a, c, b, b, c, d);
+            if (!underEscalator && !(floats.length && underFloat(mx, mz))) idx.push(a, c, b, b, c, d);
         }
         var geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -38628,6 +38707,8 @@ const ThreeRenderer = (function () {
             });
             g.renderOrder = 1; G.add(g);
         });
+        /* ── THE FLOATING PIECES: a cloud platform's puffy underside under every float plateau, a marble tread on its own puff under every step of a float flight ── */
+        if (floats.length) { try { _hqBuildFloats(room, info, G, TM, rng, floats); } catch (e) { console.warn('[HQ] the floating pieces failed', e); } }
         /* ── THE WALLS: a slab in the cliff sheet standing on the ground (its top a rail) ── */
         var wallMat = new THREE.MeshPhongMaterial({ map: _hzTex(info.cliff) || null, color: 0xffffff, shininess: 4 }); wallMat.emissive = new THREE.Color(0x151515);
         if (S.wallColor != null) wallMat.color.multiply(new THREE.Color(S.wallColor));

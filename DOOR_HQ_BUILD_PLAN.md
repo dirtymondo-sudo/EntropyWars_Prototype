@@ -9990,3 +9990,51 @@ where the nearest node was round the corner anyway), the ramp's plate in the gar
 tarp at the rig's scale, the padding standing free of the plan walls (a corridor may still enter a cell on a
 padded side — the panel is `foot 0`), the white grade's overexposure, the berms' read in `wasteland` at
 1.6 m, the flood masts' throw at 26 m, the runway sheet under the wheel of lights.
+
+### 2026-09-18 — THE DIVINE STAIR, second pass: the boards bypassed, THE FLOATING PIECES, the way down to Hell, the basilica to scale, the archive lit (local delivery)
+
+The user: "get rid of the board rooms since each place is supposed to be its own area; try using the stairways
+from the map builder (a floating staircase with floating steps) or something similar along with cloud platforms;
+the path to hell the player should feel like they are going down — inclines in the catacombs and other hell areas;
+the basilica needs a lot of work, sizes and scales are off; the library area is too dark to see anything".
+- **THE BOARDS BYPASSED** (`siteRooms.entry` rows for `prebuilt_vatican` → THE BASILICA (the bay door at s x 0,
+  the narthex), `prebuilt_hell` → THE PIT with `y: 5` (the mouth ON THE RIM — an entry door's `y` is its sill),
+  `prebuilt_heaven` → THE CLOUD FIELDS with `wall: 'n', y: 1.75` (Room 777's hotel door ON THE DAIS: you arrive
+  at the top of everything and every stair goes down to the dome)). The parts' own doors back to the boards
+  (`piazza` / `mouth` / `heaven`) are gone; the three `backDoors` rows name `at: 'bay'`. Every link that stood on
+  the three boards moved onto a part FIRST (the rule): `hollow_hell.b` / `cave_hell.b` → the pit's east wall
+  (z 7 / z −3), `heaven_olympus.a` → the fields' east wall, `vatican_heaven` → the archive's west wall ⇄ the
+  fields' west wall (the elevator is IN the archive), `bureau_vatican.b` → the cortile's east wall (the square in
+  the painting), and `vatican_hell.b` → the pit's NORTH wall at `y: 2.5` (THE WARM LEDGE — the crypt comes out
+  high in Hell and goes down again).
+- **THE FLOATING PIECES**: a `plateau` or a stair `ramp` may wear `float: true` (data.js `hqTerrainCompile` →
+  `info.floats`; the height rule untouched). three-renderer.js `_hqBuildTerrain` cuts the field's flank away
+  round a float plateau (its own top — the sheet, the pool, the path — stays) and everything under a float
+  flight but its foot and its mouth, and **`_hqBuildFloats`** hangs the pieces: a rounded slab in the cliff
+  sheet (the thick cloud) with a ring of puffs under a platform's rim; one marble tread (the path sheet) per
+  compiled step of a flight, 10 % apart, a puff under each — the map builder's floating staircase in the
+  room's own kit. THE STAIRWAY: all five flights + every landing but the summit + the stepping clouds + the
+  pinnacle float; THE CLOUD FIELDS: the dais's steps, the pillar of light and three new stepping clouds up to
+  THE LOOKOUT (3.4 m) over the dais.
+- **THE WAY DOWN**: THE CATACOMBS' crypt stair comes down onto THE LANDING (3.2 m, the door's sill) → THE
+  DESCENT (two brick flights in a switchback down the south-west corner, 3.2 → 1.6 → the gallery floor) → the
+  galleries → the sunken chapel; the shell is 6.6 m, the plan's rock 4 m. THE PIT: the mouth ON THE RIM (5 m)
+  → three flights down the west side (5 → 3.4 → 1.6 → the floor) → THE BOWL (−2.4) → the lava; the warm
+  wall's ledge (2.5 m) with its own ramp down over THE LAVA RIVER as the causeway; the gallery ledge east; the
+  plinth north-west; the shell 10 m, the rock 5.5 m. **THE RAMP RULE at a descent**: a DESCENDING flight's
+  HIGH end starts 0.7 m INSIDE its tier's rect (0.4 left a trench between the tier's edge blend and the first
+  tread — the pit's second landing was unclimbable from the floor until the solver was run from every door).
+- **THE BASILICA TO SCALE**: the pews 2.6 m (the catalogue; was 3.6), 2.2 m apart with a crossing at z 10; the
+  nave's columns `h: 8.5` per row (the catalogue's 3.6 was a garden ornament under the 16 m vault); the
+  windows `h: 5.5, mount: 7`; the cross 5 m; the carpet GLB stands UPRIGHT (it read as a tapestry) so it IS
+  one — `holy_tapestry` (the same file, a wall row) ×4; the aisle is the terrain's carpet path; the nave lit
+  (ambient 0.56, the incense fog a third and warmer), four more candle rings (ten lights, the cap).
+- **THE ARCHIVE LIT**: ambient 0.62, the fog 0.011 (was 0.03 — the dark), the wood lighter, ten lights,
+  `HQ_ROOM_LOOKS.archive` without the night mood / heavy vignette.
+- hq-divine.test.js: THE WAYS IN = THE ENTRY, THE FLOATING PIECES, the descent walked down AND back up in
+  both undercrofts, the scale pins; hq-world / disaster-city-3 amended. Ship data.js to Render too.
+UNSEEN LIVE (RULE #1c): all of it — the puffs' read under a landing, the treads' gap at 60 fps, the cut's
+edge where a float flight meets its tier, the tapestries' facing on the walls (`mount` / `h` are the edits),
+the 8.5 m columns' girth, the pews' new size against the walker, the rim's height over the pit, the lava
+under the causeway, the archive's new light against the wood.
+

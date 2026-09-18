@@ -259,8 +259,8 @@ test('THE SECOND BATCH (rev 22): the mirror, the plunge pool, the two paintings,
  assert.ok(mir && mir.wall==='free' && Math.abs(mir.z)>lg.shell.grid.cells*lg.shell.grid.cell/2+0.4 && Math.abs(mir.z)<lg.shell.d/2-0.6,'the mirror stands on the north strip of the Looking-Glass');
  assert.ok(D.hqWorldRoutes('foyer').some(r=>r.stations.some(s=>s.site==='prebuilt_lookingglass')),'E4 is a station');
  /* the Bureau's gate rides the painting at BOTH ends */
- for(const rid of ['continuity',D.hqSiteRoomId('prebuilt_vatican')]){const d=HQ.rooms[rid].doors.find(x=>x.link==='bureau_vatican');assert.equal(d.minClearance,5);assert.equal(d.requiresKeys,24);assert.equal(D.doorSiteState(d,{}),'clearance');}
- assert.equal(D.hqDoorNo(HQ.rooms[D.hqSiteRoomId('prebuilt_vatican')].doors.find(x=>x.link==='bureau_vatican')),'№ — CONTESTED','the painting’s plate reads the Bureau’s number (hqDoorNo reads a room numbered on its own door)');
+ for(const rid of ['continuity','site_prebuilt_vatican_courtyard']){const d=HQ.rooms[rid].doors.find(x=>x.link==='bureau_vatican');   /* THE DIVINE STAIR, second pass (2026-09-18): the painting opens on THE CORTILE (the Vatican's board is bypassed) */assert.equal(d.minClearance,5);assert.equal(d.requiresKeys,24);assert.equal(D.doorSiteState(d,{}),'clearance');}
+ assert.equal(D.hqDoorNo(HQ.rooms['site_prebuilt_vatican_courtyard'].doors.find(x=>x.link==='bureau_vatican')),'№ — CONTESTED','the painting’s plate reads the Bureau’s number (hqDoorNo reads a room numbered on its own door)');
  /* the phone box is the kind that waits (A14) — not catalogued, not built */
  assert.ok(!HQ.ways.phonebox && !/^        phonebox: function/m.test(renderer),'phonebox waits on the story');
 });

@@ -258,7 +258,7 @@ Columns as in §3.
 | `royal_throne` | `royal_throne` | Meshy_AI_royal_throne_0917035803_texture.glb | | the chancel (`front: 'back'` — measured on landing) | the cathedra |
 | `wooden_cross` | `wooden_cross` | Meshy_AI_wooden_cross_0917035711_texture.glb | | the basilica's north wall (mount 2.6), the catacombs' chapel (mount 1.0) | the cross |
 | `stained_glass` | `stained_glass` | Meshy_AI_stained_glass_window_0917035453_texture.glb | | the basilica ×6 (wall, mount 5.5, a glow) | a window |
-| `holy_carpet` | `holy_carpet` | Meshy_AI_ornate_holy_carpet_0917035624_texture.glb | | the aisle ×3 (y 0.01, foot 0) | the carpet |
+| `holy_carpet` / `holy_tapestry` | `holy_carpet` | Meshy_AI_ornate_holy_carpet_0917035624_texture.glb | | THE BASILICA: four TAPESTRIES on the walls (`holy_tapestry`, the same file as a wall row — the GLB stands upright, h 5, mount 3.2; 2026-09-18); the floor row `holy_carpet` is catalogued and unused | the carpet, hung |
 | `confessional` | `confessional_booth` | Meshy_AI_confessional_booth_0917035307_texture.glb | | the basilica's side aisles ×2, the catacombs (THE CONFESSIONAL) | a booth |
 | `church_wall` | `church_wall` | Meshy_AI_catholic_church_wall_0917035726_texture.glb | | the chancel screens ×2 (wall, mount 0) | a screen |
 | `church_building` | `church_building` | Meshy_AI_catholic_church_building_0917035753_texture.glb | | the cortile's terrace (the façade, rect 20 × 6) | the basilica's front |
