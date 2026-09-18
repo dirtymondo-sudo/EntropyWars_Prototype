@@ -398,6 +398,37 @@ nothing in the renderer unless noted):
 10. **a spoon** (bent), **a Zener card deck**, **a Faraday cage** — the range.
 11. **a bulkhead door with a wheel** — the freight lift's leaf (`leaf_bulkhead` stands in) and the ring's blast door.
 
+## 3l. CAMELOT CASTLE (2026-09-18 — complex candidate #2) — what stands there, and the wishlist
+
+No new file. The five parts (DOOR_HQ_BUILD_PLAN §9, 2026-09-18) are dressed from the kit as it stands:
+
+| family | file(s) | stands as |
+| --- | --- | --- |
+| the kit + §3e / §3g | `brazier` ×4, `stocks`, `signpost`, `sea_chest`, `cave_torch`, `campfire`, `railing_1m` ×2, the plan's thicket (`_nrTree`) | THE OUTER WARD |
+| the kit + §3g | `royal_throne`, `brazier` ×2, `stained_glass`, `holy_tapestry` ×2, `wall_torch` ×4, `candle_ring`, `lectern`, `sea_chest`, `railing_1m` | THE GREAT HALL |
+| the kit + §3g | `brazier` ×3, `wall_torch` ×4 (free-standing on the plan walls), `stocks`, `lectern`, `library_shelf`, `sea_chest`, `railing_1m` | THE KEEP |
+| the kit + §3g | `floating_orb` (THE ORB), `crystal_cluster` ×2, `cave_torch` ×4, `lectern`, `library_shelf`, `sea_chest`, `stocks`, `sarcophagus`, `skull_pile` / `cave_stone` (the scatter), `railing_1m` | MERLIN'S UNDERCROFT |
+| the kit + §3g | `fountain`, `brazier` ×4, `brick_arch`, `demon_statue` ×2 (the gargoyles), `white_cloud` ×6 + the scatter, `sea_chest`, `signpost`, `railing_1m` | THE CASTLE IN THE SKY |
+
+Procedural, in three-renderer.js (`_hqProcBuilders`, the castle's own kit — 2026-09-18): **`round_table`** (an oak disc with no
+head on a stone pedestal, twelve high-backed chairs), **`banner`** (a heraldic cloth on an iron rod — a wall proc, the field's
+colour turning per instance), **`armour_stand`** (a knight's plate on a post with its shield), **`sword_stone`** (the anvil on its
+boulder, the blade upright, a light in the steel). The landmark **`skycastle`** (`_hqLandmarkBuilders`) = the `castle` builder
+hung on its own cloud isle (THE CASTLE IN THE SKY over the ward); the ward's terrain walls in `castle_wall` are THE CURTAIN WALL.
+
+THE WISHLIST (Meshy, unit-normalised; a row = `base: 'misc'` + `h`/`span` + `foot`/`block`, then a prop line — nothing in the
+renderer unless noted):
+1. **a round table with twelve chairs** (oak, a sword slot at the centre) — the `round_table` proc.
+2. **a knight's armour on a stand**, **a heraldic banner** (two or three fields), **a weapon rack** — the `armour_stand` / `banner` procs.
+3. **the sword in the stone** (a boulder, an anvil, the blade) — the `sword_stone` proc.
+4. **a portcullis** (a raised iron grate on a frame, ~4 m) — the gatehouse gap wears nothing today; **a drawbridge** (a plank
+   deck with chains, ~9 × 4 m) — the `deck` planks.
+5. **a stone gargoyle** — the `demon_statue` stands in on the keep in the air.
+6. **a wizard's workbench** (retorts, a skull, a candle) and **a crystal ball on a stand** — the `floating_orb` is THE ORB.
+7. **a wooden trestle table + benches** — the hall's `wall` bench row.
+8. **a castle wall section with battlements** (crenellated, ~4 m) and **a round tower** — the terrain `wall` rows and the plateau
+   towers today (a battlement GLB would ride the wall tops like the hoardings ride the yard walls: `_hqHoardingSigns`'s pattern).
+
 ## 4. The older `Assets/misc/` models (`_MISC_GLB` + the OBJ landmarks)
 
 | key | file | kind | stands as |

@@ -448,3 +448,16 @@ The design (build in this order; each step is one delivery):
   the sky. THE WAY DOWN: an entry on a high tier + descending flights (THE RAMP RULE holds at a descent's high
   end: start 0.7 m INSIDE the tier). A GLB that stands upright is hung as a wall row, never laid on the floor.
 
+- **2026-09-18 — CAMELOT CASTLE (complex candidate #2).** Three families in one complex, the hand-offs at doors: THE OUTER WARD
+  (A' `rooms` — the hedges the thicket; THE MOAT a `deep_water` stream never entered, THE DRAWBRIDGE a `deck` over it, THE
+  CURTAIN WALL four `wall` rows whose TOPS are THE PARAPET WALK once a terrace stair reaches them — a wall's top is the
+  HIGHEST ground under it + h, so a wall must end on level ground, never inside a tower's footprint), THE GREAT HALL (B, no
+  plan: a dais, a gallery, a loft = the tape), THE KEEP (C `halls` round two authored chambers with THE GREAT STAIR climbing
+  0 → 4.5 → 9 m across the stairhall, the sky's door ON the battlements at y 9, the tower top the tape), MERLIN'S UNDERCROFT
+  (A `cave` in brick — a cave somebody bricked), THE CASTLE IN THE SKY (A' with no thicket, THE FLOATING PIECES up 0 → 3 →
+  6.5 → 10 m, the spire the tape, THE SKY BRIDGE onto the stairway to heaven). The board bypassed (`siteRooms.entry`); the four
+  seams that stood on it moved onto the parts (a free `pool` on the moat's bank, the wardrobe on the ward's west wall, the well
+  free in the bailey, the Lodge off the hall). WEENIES: the `skycastle` landmark over the ward (the castle builder on a cloud)
+  promises the battlements; Camelot itself stands below the sky castle facing back; THE KEEP TOWER beside the hall door; THE
+  ORB in the dark. Not done: a portcullis / drawbridge GLB (MODEL_INDEX §3l), battlements on the wall tops, the board's own
+  tape into the ward (the bypassed-board rule), a gallery floor inside the keep (§5's shaft room).

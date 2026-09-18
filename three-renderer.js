@@ -40456,6 +40456,23 @@ const ThreeRenderer = (function () {
             }
             return g;
         },
+        /* THE CASTLE IN THE SKY (2026-09-18, CAMELOT CASTLE — the user's "possibly a castle in the sky"):
+           the castle builder above hung on ITS OWN CLOUD — a flattened cloud isle under the curtain wall's
+           foot with smaller puffs round its rim — so it reads as afloat, a third of the way up the disc
+           over THE OUTER WARD (hqCastleShell landmarks, y 0.3). `s` scales the whole. */
+        skycastle: function (U, o, rng) {
+            var g = _hqLandmarkBuilders.castle(U, o, rng), s = o.s || 1;
+            var cloud = _hqMat('cloud_2', 3, 2, { color: 0xf0ecff, shininess: 2 });
+            var isle = new THREE.Mesh(new THREE.SphereGeometry(40 * s * U, 16, 10), cloud);
+            isle.scale.set(1, 0.3, 0.82); isle.position.y = -5 * s * U; g.add(isle);
+            var R = rng || Math.random;
+            for (var i = 0; i < 7; i++) {
+                var a = (i / 7) * Math.PI * 2 + R() * 0.4, rr = (30 + R() * 12) * s;
+                var puff = new THREE.Mesh(new THREE.SphereGeometry((7 + R() * 5) * s * U, 10, 7), cloud);
+                puff.scale.set(1, 0.55, 0.8); puff.position.set(Math.cos(a) * rr * U, (-7 - R() * 3) * s * U, Math.sin(a) * rr * 0.82 * U); g.add(puff);
+            }
+            return g;
+        },
         /* THE STAIRWAY IN THE SKY (2026-09-17, THE DIVINE STAIR): what the Vatican's
            telescope is aimed at — a climbing chain of cloud islands, a flight of
            cloud steps between each, a lit gate at the top; hung due north of the
@@ -42089,6 +42106,75 @@ const ThreeRenderer = (function () {
             var hi = _hqBox(1.3, 0.14, 0.1, wood); hi.position.set(0, 1.02 * U, 0); hi.rotation.z = 0.06; g.add(hi);
             var hole = _hqMat(null, 1, 1, { color: 0x0c0b0a });
             [-0.3, 0, 0.3].forEach(function (x) { var h = new THREE.Mesh(new THREE.CylinderGeometry((x === 0 ? 0.09 : 0.05) * U, (x === 0 ? 0.09 : 0.05) * U, 0.12 * U, 12), hole); h.rotation.x = Math.PI / 2; h.position.set(x * U, 0.93 * U, 0); g.add(h); });
+            return g;
+        },
+        /* CAMELOT CASTLE (2026-09-18 — THE COMPLEX CANDIDATES #2): the castle's own kit.
+           THE ROUND TABLE: an oak disc with no head on a stone pedestal, twelve high-backed chairs round it;
+           the BANNER: a heraldic cloth on an iron rod (a wall proc, the field's colour turning per instance);
+           the ARMOUR STAND: a knight's plate on a post — helm, cuirass, pauldrons, the shield on its arm;
+           THE SWORD IN THE STONE: the anvil on its boulder, the blade upright, a light in the steel. */
+        round_table: function (U) {
+            var g = new THREE.Group();
+            var oak = _hqMat('wood', 4, 4, { color: 0x7a5636, shininess: 14 });
+            var dark = _hqMat('dark_woods', 2, 2, { color: 0x4a3222, shininess: 8 });
+            var stone = _hqMat('stone', 2, 1, { color: 0x7a7470, shininess: 6 });
+            var ped = new THREE.Mesh(new THREE.CylinderGeometry(0.9 * U, 1.2 * U, 0.72 * U, 12), stone); ped.position.y = 0.36 * U; g.add(ped);
+            var top = new THREE.Mesh(new THREE.CylinderGeometry(2.6 * U, 2.6 * U, 0.1 * U, 36), oak); top.position.y = 0.77 * U; g.add(top);
+            var rim = new THREE.Mesh(new THREE.TorusGeometry(2.6 * U, 0.05 * U, 8, 48), dark); rim.rotation.x = Math.PI / 2; rim.position.y = 0.82 * U; g.add(rim);
+            var inlay = new THREE.Mesh(new THREE.RingGeometry(0.9 * U, 1.0 * U, 36), _hqMat(null, 1, 1, { color: 0xd8b060, shininess: 40 })); inlay.rotation.x = -Math.PI / 2; inlay.position.y = 0.826 * U; g.add(inlay);
+            for (var i = 0; i < 12; i++) {
+                var a = (i / 12) * Math.PI * 2, cx = Math.sin(a) * 3.25 * U, cz = Math.cos(a) * 3.25 * U;
+                var seat = _hqBox(0.5, 0.08, 0.5, dark); seat.position.set(cx, 0.46 * U, cz); seat.rotation.y = a; g.add(seat);
+                var back = _hqBox(0.5, 1.15, 0.08, dark); back.position.set(Math.sin(a) * 3.48 * U, 0.98 * U, Math.cos(a) * 3.48 * U); back.rotation.y = a; g.add(back);
+                var legs = _hqBox(0.44, 0.44, 0.44, dark); legs.position.set(cx, 0.22 * U, cz); legs.rotation.y = a; g.add(legs);
+            }
+            return g;
+        },
+        banner: function (U) {
+            var g = new THREE.Group();
+            var fields = [0xb8322e, 0x2c4c8c, 0x3c7a3c, 0x6a2c7a, 0xc8a030];
+            var col = fields[(_hqProcSeed++) % fields.length];
+            var cloth = _hqMat(null, 1, 1, { color: col, shininess: 4 });
+            var gold = _hqMat(null, 1, 1, { color: 0xd8b060, shininess: 50 });
+            var iron = _hqMat(null, 1, 1, { color: 0x2a2a2e, shininess: 30 });
+            var rod = new THREE.Mesh(new THREE.CylinderGeometry(0.025 * U, 0.025 * U, 1.3 * U, 8), iron); rod.rotation.z = Math.PI / 2; rod.position.set(0, 0, 0.09 * U); g.add(rod);
+            [-0.62, 0.62].forEach(function (x) { var arm = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 0.12 * U, 6), iron); arm.rotation.x = Math.PI / 2; arm.position.set(x * U, 0, 0.045 * U); g.add(arm); });
+            var body = _hqBox(1.1, 1.9, 0.02, cloth); body.position.set(0, -0.98 * U, 0.09 * U); g.add(body);
+            var tip = new THREE.Mesh(new THREE.ConeGeometry(0.55 * U, 0.55 * U, 4), cloth); tip.rotation.y = Math.PI / 4; tip.rotation.x = Math.PI; tip.position.set(0, -2.2 * U, 0.09 * U); tip.scale.z = 0.04; g.add(tip);
+            var band = _hqBox(1.12, 0.12, 0.024, gold); band.position.set(0, -0.35 * U, 0.09 * U); g.add(band);
+            var charge = new THREE.Mesh(new THREE.CircleGeometry(0.28 * U, 20), gold); charge.position.set(0, -1.15 * U, 0.105 * U); g.add(charge);
+            return g;
+        },
+        armour_stand: function (U) {
+            var g = new THREE.Group();
+            var steel = _hqMat('metal', 1, 1, { color: 0xb0b6c0, shininess: 90, specular: 0x666666 });
+            var dark = _hqMat('dark_woods', 1, 1, { color: 0x3a2a1e, shininess: 8 });
+            var red = _hqMat(null, 1, 1, { color: 0x8c2a28, shininess: 10 });
+            var base = new THREE.Mesh(new THREE.CylinderGeometry(0.3 * U, 0.34 * U, 0.08 * U, 12), dark); base.position.y = 0.04 * U; g.add(base);
+            var post = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * U, 0.05 * U, 1.5 * U, 8), dark); post.position.y = 0.8 * U; g.add(post);
+            var skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.26 * U, 0.2 * U, 0.35 * U, 10), steel); skirt.position.y = 0.95 * U; g.add(skirt);
+            var cuirass = new THREE.Mesh(new THREE.CylinderGeometry(0.22 * U, 0.27 * U, 0.5 * U, 10), steel); cuirass.position.y = 1.35 * U; cuirass.scale.z = 0.75; g.add(cuirass);
+            [-0.3, 0.3].forEach(function (x) { var p = new THREE.Mesh(new THREE.SphereGeometry(0.12 * U, 10, 8), steel); p.position.set(x * U, 1.58 * U, 0); p.scale.set(1, 0.7, 1); g.add(p); });
+            var helm = new THREE.Mesh(new THREE.SphereGeometry(0.15 * U, 12, 10), steel); helm.position.y = 1.86 * U; helm.scale.y = 1.15; g.add(helm);
+            var visor = _hqBox(0.22, 0.05, 0.06, _hqMat(null, 1, 1, { color: 0x0a0a0c })); visor.position.set(0, 1.86 * U, 0.13 * U); g.add(visor);
+            var plume = new THREE.Mesh(new THREE.ConeGeometry(0.05 * U, 0.3 * U, 6), red); plume.position.set(0, 2.1 * U, -0.02 * U); g.add(plume);
+            var shield = _hqBox(0.42, 0.55, 0.05, red); shield.position.set(-0.38 * U, 1.25 * U, 0.12 * U); shield.rotation.y = 0.3; g.add(shield);
+            var boss = new THREE.Mesh(new THREE.CircleGeometry(0.12 * U, 16), _hqMat(null, 1, 1, { color: 0xd8b060, shininess: 40 })); boss.position.set(-0.36 * U, 1.25 * U, 0.16 * U); boss.rotation.y = 0.3; g.add(boss);
+            return g;
+        },
+        sword_stone: function (U) {
+            var g = new THREE.Group();
+            var rock = _hqMat('rocks_3', 2, 2, { color: 0x6e6a66, shininess: 4 });
+            var iron = _hqMat(null, 1, 1, { color: 0x2a2a2e, shininess: 40 });
+            var steel = new THREE.MeshPhongMaterial({ color: 0xdfe8f4, emissive: 0x5a8ac0, emissiveIntensity: 0.35, shininess: 160, specular: 0xffffff });
+            var gold = _hqMat(null, 1, 1, { color: 0xd8b060, shininess: 60 });
+            var stone = new THREE.Mesh(new THREE.DodecahedronGeometry(0.62 * U, 1), rock); stone.scale.set(1.2, 0.72, 1.0); stone.position.y = 0.4 * U; stone.rotation.y = 0.5; g.add(stone);
+            var anvil = _hqBox(0.6, 0.22, 0.32, iron); anvil.position.y = 0.92 * U; g.add(anvil);
+            var horn = new THREE.Mesh(new THREE.ConeGeometry(0.1 * U, 0.3 * U, 8), iron); horn.rotation.z = -Math.PI / 2; horn.position.set(0.42 * U, 0.96 * U, 0); g.add(horn);
+            var blade = _hqBox(0.07, 0.85, 0.014, steel); blade.position.set(-0.08 * U, 1.42 * U, 0); blade.rotation.z = 0.05; g.add(blade);
+            var guard = _hqBox(0.34, 0.05, 0.05, gold); guard.position.set(-0.11 * U, 1.66 * U, 0); guard.rotation.z = 0.05; g.add(guard);
+            var grip = new THREE.Mesh(new THREE.CylinderGeometry(0.025 * U, 0.025 * U, 0.22 * U, 8), _hqMat(null, 1, 1, { color: 0x4a2a1a })); grip.position.set(-0.12 * U, 1.8 * U, 0); grip.rotation.z = 0.05; g.add(grip);
+            var pommel = new THREE.Mesh(new THREE.SphereGeometry(0.045 * U, 10, 8), gold); pommel.position.set(-0.13 * U, 1.93 * U, 0); g.add(pommel);
             return g;
         },
         /* THE SAME TORCH EVERYWHERE (2026-09-15, the user's rule): a torch in

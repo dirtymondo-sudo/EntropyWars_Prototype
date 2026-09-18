@@ -40,7 +40,7 @@ test('THE RULES agree with the renderer\'s walker: climb = HQ_STEP_TOL, wade = H
 });
 
 test('the sheet: eighteen terrain rooms — the cave\'s seven, the woods\' seven and the divine stair\'s four — no room wears `cave` any more, every one compiles on real sheets with known feature kinds and a shell of its own', () => {
-    assert.equal(ROOMS.length, 36, ROOMS.join(','));   // + AREA 51's three (2026-09-18)   // + D.U.M.B.'s seven (2026-09-17: six parts on Room 555, the ring on Room 999)   // + DISASTER CITY · THE STRIP's streets (2026-09-17)   // + THE VATICAN's four (2026-09-17), + DISASTER CITY's streets and mall (2026-09-17), + CYBERPUNK CITY's grid (the second pass, 2026-09-17)
+    assert.equal(ROOMS.length, 41, ROOMS.join(','));   // + CAMELOT CASTLE's five (2026-09-18)   // + AREA 51's three (2026-09-18)   // + D.U.M.B.'s seven (2026-09-17: six parts on Room 555, the ring on Room 999)   // + DISASTER CITY · THE STRIP's streets (2026-09-17)   // + THE VATICAN's four (2026-09-17), + DISASTER CITY's streets and mall (2026-09-17), + CYBERPUNK CITY's grid (the second pass, 2026-09-17)
     assert.equal(D.hqCaveRooms().length, 0, 'the ASCII grid is retired from every room');
     for (const id of ROOMS) {
         const room = HQ.rooms[id], T = room.terrain, info = D.hqTerrainInfo(id);

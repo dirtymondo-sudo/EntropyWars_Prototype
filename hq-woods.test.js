@@ -145,8 +145,8 @@ test('THE PATHS: nine live links — the house behind THE DEAD TREE in the pastu
     /* the spring */
     const sp = HQ.links.find(l => l.id === 'fairy_camelot');
     assert.ok(sp && sp.way === 'pool' && sp.a.wall === 'free' && sp.b.wall === 'free' && D.hqLinkLive(sp), 'the spring is a live pool seam');
-    assert.ok(at(BOARD, 'link_fairy_camelot') && at('site_prebuilt_camelot', 'link_fairy_camelot'), 'both pools stand');
-    assert.equal(HQ.rooms.site_prebuilt_camelot.doors.filter(d => d.link && d.wall === 'n').length, 3, 'Camelot’s north wall keeps its three');
+    assert.ok(at(BOARD, 'link_fairy_camelot') && at('site_prebuilt_camelot_ward', 'link_fairy_camelot'), 'both pools stand (CAMELOT CASTLE, 2026-09-18: the castle end surfaces on THE OUTER WARD’s moat bank — the board room is bypassed)');
+    assert.equal(HQ.rooms.site_prebuilt_camelot.doors.filter(d => d.link).length, 0, 'Camelot’s bypassed board carries no link door (every seam moved onto a part)');
     const R = D.hqWorldRoutes('foyer'), woods = R.find(r => r.id === 'woods'), sub = R.find(r => r.id === 'subway'), seams = R.find(r => r.id === 'seams');
     assert.ok(woods.stations.some(s => s.site === SITE) && woods.stations.some(s => s.site === 'prebuilt_shasta') && woods.stations.some(s => s.room === 'stairwell') && woods.stations.some(s => s.room === 'ritual'), 'THE WOODS line calls at the forest, the mountain, the stairwell and Room 333');
     assert.ok(sub.stations.some(s => s.site === SITE), 'the storm drain is on the subway line');

@@ -14165,6 +14165,13 @@ const HQ_ROOM_LOOKS = {
     hangar: { name: 'HANGAR 18', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.42, grain: 0.04, tintAmount: 0.4, levels: 22 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.48 }, nightMood: 0.55, bloom: 0.3 },
     white: { name: 'THE WHITE ROOMS', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.3, grain: 0.03, tintAmount: 0.25, levels: 30 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.62 }, nightMood: 0.0, bloom: 0.55 },
     flightline: { name: 'THE FLIGHT LINE', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.45, grain: 0.045, tintAmount: 0.45, levels: 20 }, cin: { vignette: true, vigAmount: 0.55, vigSize: 0.46 }, nightMood: 0.85, bloom: 0.42 },
+    /* CAMELOT CASTLE (2026-09-18 — complex candidate #2): the Excalibur print — the ward a blue torchlit night, dreamy and soft; the hall gold under the beams;
+       the keep cold stone, faded; the undercroft green-dark under the orb; the castle in the sky the brightest grade in the building, bloomed, no night */
+    camelot:    { name: 'CAMELOT', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.4, grain: 0.03, tintAmount: 0.45, levels: 24 }, cin: { vignette: true, vigAmount: 0.45, vigSize: 0.5 }, nightMood: 0.6, bloom: 0.3 },
+    greathall:  { name: 'THE GREAT HALL', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.34, grain: 0.024, tintAmount: 0.32, levels: 26 }, cin: { vignette: true, vigAmount: 0.36, vigSize: 0.54 }, nightMood: 0.2, bloom: 0.4 },
+    keep:       { name: 'THE KEEP', retro: { enabled: true, preset: 'faded', pixelSize: 1, ditherStrength: 0.42, grain: 0.035, tintAmount: 0.4, levels: 22 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.48 }, nightMood: 0.45, bloom: 0.24 },
+    undercroft: { name: 'MERLIN’S UNDERCROFT', retro: { enabled: true, preset: 'green', pixelSize: 1, ditherStrength: 0.5, grain: 0.04, tintAmount: 0.5, levels: 18 }, cin: { vignette: true, vigAmount: 0.6, vigSize: 0.42 }, nightMood: 0.75, bloom: 0.22 },
+    skycastle:  { name: 'THE CASTLE IN THE SKY', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.3, grain: 0.02, tintAmount: 0.35, levels: 30 }, cin: { vignette: true, vigAmount: 0.25, vigSize: 0.6 }, nightMood: 0.0, bloom: 0.5 },
 };
 // THE LOOK (2026-09-17): `env.look` on a row = a grade (a HQ_ROOM_LOOKS row: retro preset, dither,
 // vignette, night mood, bloom, exposure, dof) laid over the player's video settings for that map —
@@ -18640,6 +18647,42 @@ function hqAirbaseShell(o) {
     Object.keys(o).forEach(k => { S[k] = o[k]; });
     return S;
 }
+/* ── CAMELOT CASTLE'S SHELL (2026-09-18 — THE COMPLEX CANDIDATES #2) ─────
+   THE OUTER WARD is an OPEN room under Camelot's own night (the EW_MAP_META
+   prebuilt_camelot env row by hand — the slate tint, the dark roster; edit
+   both or hq-camelot.test.js says so) with a fog per metre, grass underfoot,
+   the castle wall the cliff sheet (the moat's banks are stone-faced), a
+   TREELINE past the field (the forest round the castle), torchlight for a
+   mood and THE CASTLE IN THE SKY hung on the sky over the north-north-east
+   (the far weenie — it promises the battlements). `sky: true` = THE CASTLE
+   IN THE SKY itself: dawn above the clouds (no night, the floating islands
+   roster), cloud underfoot, no treeline, Camelot on the horizon BELOW
+   (a `castle` landmark hung low, facing back). One function so the two
+   open parts cannot drift; `o` overrides a field. */
+function hqCastleShell(o) {
+    o = Object.assign({}, o || {});
+    const sky = !!o.sky; delete o.sky;
+    const skyRow = sky
+        ? { night: 0, tint: 0xf4d8c8, tintAmt: 0.36, stars: 0.2, nebula: 0.3, fog: { color: 0xf2dcd6, amount: 0.55, top: 0.05, band: 0.5, density: 0.02 }, scenery: 'islands', density: 0.7,
+            landmarks: [{ kind: 'castle', id: 'prebuilt_camelot', deg: 180, dist: 0.94, y: -0.07, s: 1.5, label: 'CAMELOT, BELOW' }] }
+        : { night: 1, tint: 0x1c2030, tintAmt: 0.45, stars: 0.8, nebula: 0.7, fog: { color: 0x39415a, amount: 0.6, top: 0.07, band: 0.55, density: 0.022 }, scenery: 'dark', density: 0.5,
+            landmarks: [{ kind: 'skycastle', id: 'prebuilt_camelot', deg: 28, dist: 0.74, y: 0.3, s: 0.6, label: 'THE CASTLE IN THE SKY' }] };
+    const S = {
+        w: 0, d: 0, h: 9.0, wallH: 9.0, dadoH: 1.0,
+        open: true, edge: 'open',
+        floor: sky ? 'cloud_2' : 'grass_2', wall: 'castle_wall', dado: 'bricks_2', trim: 'wood', ceiling: 'castle_wall',
+        apron: sky ? 'cloud_2' : 'grass_2', skirt: sky ? 'cloud_2' : 'rock_wall_1', apronColor: sky ? 0xf4f0ff : 0x6e8a52,
+        floorColor: sky ? 0xeef2ff : 0x7a9458, wallColor: 0x9a9ea8, dadoColor: 0x8a7e72,
+        pipes: false, strips: false, lights: [],   // a terrain room lights itself: braziers and torches are props
+        mood: sky ? { lamp: 0xffb060, glow: 0xff9a40, light: 0xfff0e0, ambient: 0.55 } : { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xb8c4e8, ambient: 0.36, night: 1 },
+        sky: skyRow,
+        plate: { x: 0, z: -9.8, y: 4.4 },
+        look: sky ? HQ_ROOM_LOOKS.skycastle : HQ_ROOM_LOOKS.camelot,
+    };
+    if (!sky) S.forest = { depth: 12, spacing: 2.6, rows: 2.4, start: 1.6 };   // THE TREELINE past the field: the forest round the castle
+    Object.keys(o).forEach(k => { S[k] = o[k]; });
+    return S;
+}
 const DOOR_HQ = {
     units: 73,
     assets: { models: DOOR_HQ_ASSETS + 'models/', textures: DOOR_HQ_ASSETS + 'textures/' },
@@ -19017,7 +19060,14 @@ const DOOR_HQ = {
         garden_ring:     { proc: 'garden_ring',     h: 0.7,  foot: 0 },                                                       // Room 1618: the gravel ring + the hedge (the proc registers its own blockers)
         fountain:        { proc: 'fountain',        h: 2.0,  foot: 1.6, block: true, glow: { y: 1.4, size: 2.0, color: 0xbfe9ff }, light: { color: 0xcfefff, intensity: 0.6, dist: 9, y: 1.5 } },
         park_bench:      { proc: 'park_bench',      h: 0.85, foot: 0.8, rect: { hw: 0.8, hd: 0.3 }, block: true },
-        garden_tree:     { proc: 'garden_tree',     h: 4.5,  foot: 0.35, block: true },                                     // a foliage OBJ (_nrTree on a bare kit, like the site boards' trees)
+        garden_tree:     { proc: 'garden_tree',     h: 4.5,  foot: 0.35, block: true },
+        /* CAMELOT CASTLE (2026-09-18 — THE COMPLEX CANDIDATES #2): the castle's own kit — THE ROUND TABLE (an oak disc with no head and twelve high-backed
+           chairs), a heraldic BANNER on a rod (a wall proc; the cloth's colour turns per instance), an ARMOUR STAND (a knight's plate on a post with
+           its shield), THE SWORD IN THE STONE (the anvil on its boulder, the blade upright, the light in it) */
+        round_table:     { proc: 'round_table',     h: 1.25, foot: 3.4, block: true },
+        banner:          { proc: 'banner',          h: 2.6,  foot: 0, wall: true, mount: 3.4, depth: 0.12 },
+        armour_stand:    { proc: 'armour_stand',    h: 2.0,  foot: 0.3, block: true },
+        sword_stone:     { proc: 'sword_stone',     h: 1.7,  foot: 0.6, block: true, glow: { y: 1.3, size: 1.6, color: 0xbfe0ff }, light: { color: 0xbfe0ff, intensity: 0.7, dist: 8, y: 1.3 } },                                     // a foliage OBJ (_nrTree on a bare kit, like the site boards' trees)
         /* H-WING (HQ plan 5.5, 2026-09-14 rev 4): the wing's right angles */
         square_cubicle:  { proc: 'square_cubicle',  h: 1.6,  foot: 1.0,  rect: { hw: 1.0, hd: 0.9 }, block: true },       // three partitions in a U, the desk across the back, a beige CRT; front (+z) is the seat side
         house_stairs:    { proc: 'house_stairs',    h: 2.4,  foot: 0.6,  rect: { hw: 0.55, hd: 1.4 }, block: true },
@@ -19719,7 +19769,7 @@ const DOOR_HQ = {
           why: 'the chalk circle in Room 333 and the circle between the stones are one circle drawn from two sides; step over the line indoors and you are outdoors, downwind of the candles', note: 'one circle, two sides', draft: true },
         { id: 'fairy_camelot', route: 'woods', way: 'pool',
           a: { site: 'prebuilt_fairy_forest', wall: 'free', x: 10, z: -11.5, face: 90, sub: 'THE SPRING · SURFACE IN THE MOAT' },
-          b: { site: 'prebuilt_camelot', wall: 'free', x: 10, z: -13.5, face: 90, sub: 'THE MOAT · SURFACE IN THE SPRING' },
+          b: { site: 'prebuilt_camelot', part: 'ward', wall: 'free', x: -43, z: -10, face: 90, sub: 'THE MOAT · SURFACE IN THE SPRING' },   // CAMELOT CASTLE (2026-09-18): on the moat's west bank in THE OUTER WARD (the board room is bypassed)
           why: 'the spring in the fairy forest and the castle moat share their water; dive in the woods and surface under the battlements, which the besiegers should have found suspicious', note: 'the same water', draft: true },
         /* THE DEAD TREE'S OTHER SIDE (2026-09-17): the dead tree on the ritual ground — its hole looks onto the Looking-Glass's marble */
         { id: 'deadtree_lookingglass', route: 'seams', way: 'deadtree',
@@ -19744,7 +19794,7 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_technoticlan', wall: 'n', x: -5 },
           why: 'the tower\'s other stair comes out in the temple city; the builders kept climbing after the languages went', note: 'the other stair', draft: true },
         { id: 'camelot_lodge', route: 'ley', leaf: 'leaf_saloon',
-          a: { site: 'prebuilt_camelot', wall: 'n', x: -10 },
+          a: { site: 'prebuilt_camelot', part: 'hall', wall: 'w', z: -8, sub: 'THE LODGE · THE OTHER ROOM' },   // CAMELOT CASTLE (2026-09-18): the Round Table's other room opens off THE GREAT HALL's west wall
           b: { site: 'prebuilt_lodge', wall: 'n', x: -5 },
           why: 'the Round Table\'s other room; the Lodge keeps the chairs and denies the table', note: 'the other room', draft: true },
         /* THE HIGHWAY */
@@ -19779,7 +19829,7 @@ const DOOR_HQ = {
         /* THE SEAMS (rev 6) */
         { id: 'haunted_camelot', route: 'seams', way: 'wardrobe',
           a: { site: 'prebuilt_haunted', part: 'upstairs', wall: 'e', z: 0.4 },
-          b: { site: 'prebuilt_camelot', wall: 'n', x: -5 },
+          b: { site: 'prebuilt_camelot', part: 'ward', wall: 'w', z: 28, sub: 'THE SNOW · BACK THROUGH THE COATS' },   // CAMELOT CASTLE (2026-09-18): the coats open in the trees OUTSIDE the moat, the lamp beside them (THE OUTER WARD's west wall)
           why: 'the wardrobe in the second bedroom is colder than the room; there is snow on the floor in front of it and a lamp post\'s light at the back',
           note: 'push through the coats', draft: true },
         /* THE WELLS (9.3, 2026-09-15 rev 10): every well in the world drops
@@ -19802,10 +19852,17 @@ const DOOR_HQ = {
           why: 'the well on the gravel ring is older than the building and the building was laid out round it; the gardener draws from it and will not say for what',
           note: 'the only way down that is not the elevator', draft: true },
         { id: 'well_camelot', route: 'undercroft', way: 'well',
-          a: { site: 'prebuilt_camelot', wall: 'n', x: -0.2 },
+          a: { site: 'prebuilt_camelot', part: 'ward', wall: 'free', x: 8, z: -18, face: 180, sub: 'THE CASTLE WELL · DOWN THE ROPE' },   // CAMELOT CASTLE (2026-09-18): free-standing in THE BAILEY, the courtyard it always stood in
           b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: 7.875, z: -7.875, face: 180, sub: 'THE CASTLE WELL · CLIMB UP', verb: 'CLIMB UP' },
           why: 'the castle well in the courtyard; a siege needs water and this one never ran dry, which the besiegers should have found suspicious',
           note: 'it never ran dry', draft: true },
+        /* THE SKY BRIDGE (CAMELOT CASTLE, 2026-09-18): the castle in the sky and the stairway to heaven hang in the same sky — a plain frame on the
+           castle's east wall opens at the foot of the stair (its west wall, by the long way's foot); the divine line gains a station */
+        { id: 'skycastle_stair', route: 'divine', leaf: 'leaf_frame_only',
+          a: { site: 'prebuilt_camelot', part: 'sky', wall: 'e', z: 8, sub: 'THE SKY BRIDGE · THE STAIR IN THE SAME SKY' },
+          b: { site: 'prebuilt_heaven', part: 'stair', wall: 'w', z: 21, sub: 'THE SKY BRIDGE · A CASTLE IN THE SAME SKY' },
+          why: 'a castle in the sky and a stair in the sky are in the same sky; the frame between them has no door because there is nothing to keep out up here',
+          note: 'the same sky', draft: true },
         { id: 'well_skinwalker', route: 'undercroft', way: 'well',
           a: { site: 'prebuilt_skinwalker', wall: 'n', x: -0.2 },
           b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: 7.875, z: 6.125, face: 270, sub: 'THE RANCH WELL · CLIMB UP', verb: 'CLIMB UP' },
@@ -19984,6 +20041,10 @@ const DOOR_HQ = {
             prebuilt_vatican:   { room: 'site_prebuilt_vatican_basilica',   door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_hell:      { room: 'site_prebuilt_hell_pit',           door: { id: 'bay', wall: 's', x: 0, y: 5 } },
             prebuilt_heaven:    { room: 'site_prebuilt_heaven_gate',        door: { id: 'bay', wall: 'n', x: 0, y: 1.75 } },
+            /* CAMELOT CASTLE (2026-09-18 — THE COMPLEX CANDIDATES #2): the portcullis lands you in THE OUTER WARD, on the approach south of the moat — the
+               drawbridge is the way in. The four links that stood on the board room (the spring's pool, the Lodge's door, the wardrobe, the well) moved
+               onto the parts the same day. */
+            prebuilt_camelot:   { room: 'site_prebuilt_camelot_ward',        door: { id: 'bay', wall: 's', x: 0 } },
         },
         backDoors: {
             /* THE WOODS (9.3 stage 3, 2026-09-16): the forest is the board room
@@ -20094,6 +20155,14 @@ const DOOR_HQ = {
                   label: 'THE RING', sub: 'THE COLLIDER TUNNEL · BEAM ON',
                   action: { room: 'site_prebuilt_cern_ring', at: 'bay' },   // 2026-09-18: the ring's south door IS the bay's (siteRooms.entry)
                   desc: 'The blast door at the back of the hall they let you see. Behind it the tunnel curves, which is the point of it, and hums, which is the problem with it.' },
+            ],
+            /* CAMELOT CASTLE (2026-09-18 — THE COMPLEX CANDIDATES #2): the lane the Lodge's door gave up when it moved into the great hall — Room i's
+               gatehouse arch on the board room's north wall walks into THE OUTER WARD (whose bay door IS the board's egress: siteRooms.entry) */
+            prebuilt_camelot: [
+                { id: 'gatehouse', wall: 'n', x: -10, leaf: 'leaf_portcullis', wide: true,
+                  label: 'THE OUTER WARD', sub: 'THE GATEHOUSE ARCH · INTO THE CASTLE',
+                  action: { room: 'site_prebuilt_camelot_ward', at: 'bay' },
+                  desc: 'The second portcullis, behind the first. The castle is bigger than the board allows, which Continuity has a form for, and the moat goes all the way round it.' },
             ],
             prebuilt_haunted: [
                 { id: 'house', wall: 'n', x: -7.5, leaf: 'leaf_wooden',
@@ -30370,6 +30439,510 @@ const DOOR_HQ = {
             spawn: { x: 0, z: -14.5, face: 180 },
         },
         /* ═══════════════════════════════════════════════════════════════════
+           CAMELOT CASTLE (2026-09-18 — THE COMPLEX CANDIDATES #2: "the exterior
+           (moats, gardens, the curtain wall) and an interior of several floors;
+           possibly a castle in the sky"): five parts on Room i, on THE CAVE /
+           THE WOODS blueprint (EXPLORABLE_AREAS_GUIDE) — three families in one
+           complex, the hand-offs at doors. The board room is BYPASSED
+           (siteRooms.entry): the portcullis lands you in THE OUTER WARD.
+             site_prebuilt_camelot_ward — THE OUTER WARD (family A', open under
+               Camelot's own night, hqCastleShell): the approach, THE MOAT (a U of
+               deep water round the bailey — never entered), THE DRAWBRIDGE (the
+               one way over), THE GATEHOUSE (two towers on the gap), THE CURTAIN
+               WALL on three sides (5.5 m — its top is THE PARAPET WALK, reached
+               up two rampart stairs, the rider's grind), THE BAILEY (the orchard
+               and the gardens: a `rooms` plan whose thicket is the hedges), THE
+               SWORD IN THE STONE on its knoll, THE WELL (the undercroft's seam),
+               THE KEEP TOWER beside the hall's door (9 m — the near weenie, the
+               tape on it is the door gun's), THE CASTLE IN THE SKY hung on the
+               sky over the north-north-east (the far weenie: it promises the
+               battlements). The wardrobe's snow and the sally port stand OUTSIDE
+               the moat, in the trees; the spring's pool on the moat's bank.
+             site_prebuilt_camelot_hall — THE GREAT HALL (family B, closed, no
+               plan): THE ROUND TABLE, THE DAIS with the throne under the rose
+               window, THE MINSTRELS' GALLERY (3.5 m up its stair — the rail),
+               THE LOFT over it (8 m — the tape), the Lodge's saloon door on the
+               west wall (the Round Table's other room), the keep's stable door.
+             site_prebuilt_camelot_keep — THE KEEP (family C, `halls`, closed):
+               THE GUARDROOM the BSP wraps with stores, THE GREAT STAIR up to THE
+               SOLAR (4.5 m) and on up to THE BATTLEMENTS (9 m — the sky's door
+               stands on them), THE TOWER TOP (12.5 m — the tape), the dungeon
+               stair down on the west wall.
+             site_prebuilt_camelot_dungeon — MERLIN'S UNDERCROFT (family A,
+               `cave`, closed, brick): THE CISTERN waded, THE GAOLER'S LEDGE up
+               its stair, MERLIN'S WORKSHOP on its raised floor with THE ORB (the
+               near weenie), THE OSSUARY SHELF (4.2 m — the tape), the sally port
+               out under the west wall.
+             site_prebuilt_camelot_sky — THE CASTLE IN THE SKY (family A', open
+               above the clouds at dawn — hqCastleShell({ sky: true })): the cloud
+               deck, then THE FLOATING PIECES (`float: true`, the map builder's
+               floating staircase): THE LOWER COURT (3 m), THE BAILEY IN THE AIR
+               (6.5 m), THE KEEP IN THE AIR (10 m) with its gargoyles and THE
+               SPIRE (14 m — the tape); Camelot itself on the horizon below; a
+               frame on the east wall is THE SKY BRIDGE onto the stairway to
+               heaven (links.skycastle_stair). Every fall lands on the deck and
+               walks back to the first flight.
+           RULES kept: a part's doors stay inside the site, no part wears a
+           number, every door reaches every other and nothing traps
+           (hq-camelot.test.js runs the solver and the return guarantee), lights
+           ≤ HQ_PROP_LIGHT_MAX, never a rank leaf, a plan room hangs nothing on
+           the shell, THE PARK RULE in every part. Lines are Claude's DRAFT (A15).
+           ═══════════════════════════════════════════════════════════════════ */
+        /* ── THE OUTER WARD — the moat, the drawbridge, the gatehouse, the curtain wall, the bailey, the keep tower ── */
+        site_prebuilt_camelot_ward: {
+            label: 'CAMELOT · THE OUTER WARD',
+            sub: 'THE DRAWBRIDGE · THE GATEHOUSE · THE BAILEY · THE PARAPET WALK · NO PRIVILEGED SIDE',
+            kind: 'box', site: 'prebuilt_camelot', part: 'ward',
+            shell: hqCastleShell({ w: 96, d: 80, plate: { x: 0, z: -38.6, y: 6.4 } }),
+            /* THE FIELD (96 × 80 m): the portcullis (the bay door, the board room bypassed) on the
+               south wall; THE APPROACH north to THE DRAWBRIDGE over THE MOAT (deep water — the
+               one way in is the planks); THE GATEHOUSE's two towers on the gap in THE CURTAIN
+               WALL (5.5 m on three sides; the north side is the hall's and the keep's own
+               faces); two RAMPART STAIRS up to the wall-top terraces at the south corners —
+               the wall's top is a floor once the feet reach it: THE PARAPET WALK, and the
+               rider's grind; THE BAILEY beyond: the sword's knoll, the well, the orchard the
+               plan grows; THE KEEP TOWER (9 m, the tape) beside the hall's door at the end of
+               the avenue. Outside the moat: the wardrobe's snow in the west trees, the sally
+               port from the undercroft, the spring's pool on the moat's bank. */
+            terrain: {
+                floor: 'grass_2', cliff: 'castle_wall', path: 'cobblestone',
+                noise: { amp: 0.22, scale: 8 },
+                gen: { kind: 'rooms', seed: 8108, loops: 3, rMin: 7, rMax: 14, wallH: 1.7 },                             // THE FLOOR PLAN: the gardens are clearings, the hedges the thicket, the orchard outside the moat
+                features: [
+                    { k: 'hill', x: -14, z: -14, r: 7, h: 0.7 },                                                             // THE SWORD'S KNOLL
+                    { k: 'hill', x: 24, z: -20, r: 6, h: 0.5 },
+                    { k: 'dip', x: -20, z: 30, r: 5, h: 0.6 },                                                               // the hollow outside the moat
+                    { k: 'stream', pts: [[-36, -39], [-36, 14], [36, 14], [36, -39]], w: 6, y: -0.3, depth: 1.8, key: 'deep_water', bank: 1.2 },   // THE MOAT (never entered)
+                    { k: 'deck', x0: 0, z0: 18.6, x1: 0, z1: 9.4, w: 4.2, y: 0.3 },                                          // THE DRAWBRIDGE — both banks
+                    { k: 'wall', x0: -31, z0: 8, x1: -8.4, z1: 8, h: 5.5, t: 1.6, key: 'castle_wall' },                      // THE CURTAIN WALL, south, west of the gate — 2 m in from the moat's bank and ENDING AT THE TOWER'S OUTER EDGE: a wall's top is the highest ground under it + h, so a wall run through a tower's footprint stands the tower's height too tall
+                    { k: 'wall', x0: 8.4, z0: 8, x1: 31, z1: 8, h: 5.5, t: 1.6, key: 'castle_wall' },                          // … east of the gate
+                    { k: 'wall', x0: -31, z0: 8, x1: -31, z1: -39, h: 5.5, t: 1.6, key: 'castle_wall' },                     // the west wall
+                    { k: 'wall', x0: 31, z0: 8, x1: 31, z1: -39, h: 5.5, t: 1.6, key: 'castle_wall' },                       // the east wall
+                    { k: 'plateau', x: -5.6, z: 8, r: 2.2, h: 8.0, edge: 0.3 },                                              // THE GATEHOUSE's towers (never climbed) — they fill the wall's gap; the gate is the 6 m between them
+                    { k: 'plateau', x: 5.6, z: 8, r: 2.2, h: 8.0, edge: 0.3 },
+                    { k: 'plateau', x: -28, z: -12, w: 6, d: 6, h: 5.5, edge: 0.3 },                                         // THE WEST TERRACE (the parapet walk begins here)
+                    { k: 'ramp', x0: -28, z0: 4.5, x1: -28, z1: -9.7, w: 2.4, h0: 0, h1: 5.5, stairs: true, edge: 0.2 },     // its rampart stair (L ≥ 2.2 × h; ends 0.7 m inside the terrace — THE RAMP RULE)
+                    { k: 'plateau', x: 28, z: -12, w: 6, d: 6, h: 5.5, edge: 0.3 },                                          // THE EAST TERRACE
+                    { k: 'ramp', x0: 28, z0: 4.5, x1: 28, z1: -9.7, w: 2.4, h0: 0, h1: 5.5, stairs: true, edge: 0.2 },
+                    { k: 'plateau', x: 12, z: -33, r: 2.4, h: 9.0, edge: 0.3 },                                              // THE KEEP TOWER (the near weenie — the tape on it is the door gun's)
+                    { k: 'rail', x0: -25.2, z0: -14.6, x1: -25.2, z1: -9.4 },                                                // the terraces' inner rails (the grind)
+                    { k: 'rail', x0: 25.2, z0: -14.6, x1: 25.2, z1: -9.4 },
+                    { k: 'path', pts: [[0, 39], [0, 18.6]], w: 2.6 },                                                        // THE APPROACH
+                    { k: 'path', pts: [[0, 9.4], [0, -38]], w: 2.6 },                                                        // THE AVENUE to the hall
+                    { k: 'path', pts: [[0, -10], [-22, -10], [-22, -38]], w: 2.2 },                                          // to the keep
+                    { k: 'path', pts: [[0, 0], [-14, -14]], w: 1.6 },                                                        // to the sword
+                    { k: 'path', pts: [[0, -10], [8, -18], [12, -28]], w: 1.6 },                                             // to the tower's foot
+                    { k: 'path', pts: [[-28, 4.5], [-22, 0], [0, 0]], w: 1.6 },                                              // to the west stair
+                    { k: 'path', pts: [[28, 4.5], [22, 0], [0, 0]], w: 1.6 },                                                // to the east stair
+                    { k: 'path', pts: [[0, 30], [-44, 28], [-44, -30]], w: 2.0 },                                            // the track outside the moat: the wardrobe, the sally port
+                    { k: 'path', pts: [[-44, -10], [-40.5, -10]], w: 1.6 },                                                  // to the spring's pool on the bank
+                    { k: 'scatter', key: 'fern', n: 10, seed: 5 },
+                    { k: 'scatter', key: 'stump', n: 3, seed: 6 },
+                    { k: 'scatter', key: 'cave_stone', n: 4, seed: 7 },
+                ],
+            },
+            doors: [
+                /* the south wall at x 0 is THE BAY DOOR (siteRooms.entry): the board room is bypassed — the portcullis lands you here */
+                { id: 'hall', wall: 'n', x: 0, leaf: 'leaf_shabby_wood',
+                  label: 'THE GREAT HALL', sub: 'THE HALL DOOR · THE ROUND TABLE',
+                  action: { room: 'site_prebuilt_camelot_hall', at: 'ward' },
+                  desc: 'The hall door at the end of the avenue, under the tower. Oak, iron, a knocker shaped like a hand. The hand is warm.' },
+                { id: 'keep', wall: 'n', x: -22, leaf: 'leaf_shabby_wood',
+                  label: 'THE KEEP', sub: 'THE KEEP DOOR · THE GREAT STAIR',
+                  action: { room: 'site_prebuilt_camelot_keep', at: 'ward' },
+                  desc: 'The keep’s own door, smaller than the hall’s and thicker. The stair behind it goes up to the battlements and does not stop there.' },
+                { id: 'postern', wall: 'w', z: -30, leaf: 'leaf_shabby_wood',
+                  label: 'MERLIN’S UNDERCROFT', sub: 'THE SALLY PORT · UNDER THE WALL',
+                  action: { room: 'site_prebuilt_camelot_dungeon', at: 'postern' },
+                  desc: 'A low door in the trees outside the moat, where a wall should be and is not. It goes under the moat, which the besiegers should have found suspicious.' },
+            ],
+            counters: [],
+            props: [
+                /* THE GATEHOUSE: the braziers on the gap, the stocks inside the gate, the sign on the approach */
+                { key: 'brazier',        x: -4.6, z: 5.0 }, { key: 'brazier', x: 4.6, z: 5.0 },
+                { key: 'stocks',         x: -10, z: 4, face: 90 },
+                { key: 'signpost',       x: -4, z: 22 },
+                /* THE BAILEY: the sword in the stone on its knoll, the terraces' rails, the tower's braziers */
+                { key: 'sword_stone',    x: -14, z: -14, face: 150 },
+                { key: 'railing_1m',     x: -25.4, z: -12, face: 90 }, { key: 'railing_1m', x: 25.4, z: -12, face: 270 },
+                { key: 'brazier',        x: 12, z: -29.4 }, { key: 'brazier', x: 8.4, z: -33 },
+                { key: 'sea_chest',      x: 24, z: -20, face: 200 },
+                /* OUTSIDE THE MOAT: the lamp by the wardrobe's snow, the fire by the sally port */
+                { key: 'cave_torch',     x: -45, z: 25.4 },
+                { key: 'campfire',       x: -42, z: -26 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 2.8, z: 3.2, face: 180, race: 'knight', say: ['“Halt.” “I have a form.” “Everyone has a form. Halt anyway; it is the custom.”', '“The drawbridge is down.” “Is that safe?” “It is down for you. It is not down for everyone.”'] },
+                { x: -11.4, z: -11.8, face: 240, race: 'swordfighter', say: ['“Go on. Pull it.” “What happens?” “Nothing has happened yet. That is the interesting part.”', '“Whoso pulleth out this sword — the rest is worn off. We assume it ends well.”'] },
+                { x: 20, z: -12, face: 300, race: 'robinhood', say: ['“The orchard is the Crown’s.” “Whose Crown?” “Lapsed. Help yourself.”', '“I can see the sky castle from the east wall. Nobody else can see it from anywhere. Continuity has a form for that too.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“The moat is the record. The drawbridge is the amendment.” “And the wall?” “The wall is the appendix nobody reads.”',
+                '“Which side of the portcullis is inside?” “Both. HINGE technology. No privileged side.”',
+                '“The castle in the sky.” “Where?” “North-north-east, over the wall, a third of the way up.” “I don’t see it.” “Then you are not on the wall.”',
+                '“The sword is still in the stone.” “Who does it belong to?” “The stone, at present.”',
+                '“The well never ran dry.” “Where does it go?” “Down. Everything here that is honest goes down.”',
+            ],
+            spawn: { x: 0, z: 34, face: 0 },
+        },
+        /* ── THE GREAT HALL — the round table, the dais and the throne, the minstrels' gallery, the loft ── */
+        site_prebuilt_camelot_hall: {
+            label: 'CAMELOT · THE GREAT HALL',
+            sub: 'THE ROUND TABLE · THE DAIS · THE MINSTRELS’ GALLERY · TWELVE CHAIRS, THIRTEEN SHADOWS',
+            kind: 'box', site: 'prebuilt_camelot', part: 'hall',
+            shell: {
+                w: 26, d: 52, h: 12,
+                wallH: 12, dadoH: 1.1,
+                floor: 'cobblestone', wall: 'castle_wall', dado: 'bricks_2', trim: 'wood', ceiling: 'dark_woods', ceilTile: 1.75,
+                floorColor: 0xa8a098, wallColor: 0xa4a4ac, dadoColor: 0x8a7e72, ceilColor: 0x6a4e38,
+                pipes: false, strips: false, lights: [],
+                mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xffd8a8, ambient: 0.34 },
+                fog: { color: 0x0e0906, density: 0.014 },   /* the smoke under the beams */
+                plate: { x: 0, z: -24.4, y: 7.4 },
+                look: HQ_ROOM_LOOKS.greathall,
+            },
+            /* THE FIELD (26 × 52 m, no plan — family B): the way in from the ward on the south
+               wall; THE ROUND TABLE at the centre; THE DAIS (0.9 m) across the north end with
+               the throne under the rose window and two braziers; THE MINSTRELS' GALLERY (3.5 m)
+               along the east wall up its stair from the south end, the rail on its lip; THE
+               LOFT over the gallery's north end (8 m — the tape, the door gun's from the
+               gallery); the trestle bench along the west wall (the rider's ledge); the keep's
+               stable door and the Lodge's saloon door on the west wall. */
+            terrain: {
+                floor: 'cobblestone', cliff: 'castle_wall', path: 'wood',
+                noise: { amp: 0, scale: 5 }, crag: false,
+                features: [
+                    { k: 'plateau', x: 0, z: -22, w: 20, d: 7, h: 0.9, edge: 0.3 },                                          // THE DAIS
+                    { k: 'ramp', x0: 0, z0: -14.5, x1: 0, z1: -19.2, w: 4, h0: 0, h1: 0.9, stairs: true, edge: 0.2 },       // its three steps (end 0.7 m inside)
+                    { k: 'plateau', x: 10.5, z: 2, w: 5, d: 32, h: 3.5, edge: 0.3 },                                         // THE MINSTRELS' GALLERY (x 8..13, z −14..18)
+                    { k: 'ramp', x0: 10.5, z0: 25.2, x1: 10.5, z1: 17.3, w: 2.4, h0: 0, h1: 3.5, stairs: true, edge: 0.2 },  // its stair from the south end (L ≥ 2.2 × h)
+                    { k: 'rail', x0: 8.3, z0: -13.4, x1: 8.3, z1: 17.4 },                                                    // the gallery's rail (the grind)
+                    { k: 'plateau', x: 10.5, z: -9, w: 4.5, d: 3.5, h: 8.0, edge: 0.3 },                                     // THE LOFT (the tape — the door gun's, from the gallery)
+                    { k: 'wall', x0: -11, z0: 11, x1: -11, z1: 23, h: 0.5, t: 0.6, key: 'wood' },                            // the trestle bench along the west wall, south of the two doors (the rider's ledge)
+                    { k: 'path', pts: [[0, 25.5], [0, -14.5]], w: 2.6 },                                                     // the runner
+                    { k: 'path', pts: [[0, -19.2], [0, -23]], w: 2.0 },
+                    { k: 'path', pts: [[-12.5, 6], [-4, 4]], w: 1.6 },                                                       // to the keep's door
+                    { k: 'path', pts: [[-12.5, -8], [-4, -6]], w: 1.6 },                                                     // to the Lodge's
+                ],
+            },
+            doors: [
+                { id: 'ward', wall: 's', x: 0, leaf: 'leaf_shabby_wood',
+                  label: 'THE OUTER WARD', sub: 'THE HALL DOOR · BACK TO THE BAILEY',
+                  action: { room: 'site_prebuilt_camelot_ward', at: 'hall' },
+                  desc: 'The hall door from inside, barred with a beam nobody lifts. It opens anyway; the beam is heraldic.' },
+                { id: 'keep', wall: 'w', z: 6, leaf: 'leaf_stable',
+                  label: 'THE KEEP', sub: 'THE STABLE DOOR · THROUGH TO THE KEEP',
+                  action: { room: 'site_prebuilt_camelot_keep', at: 'hall' },
+                  desc: 'A stable door in a hall wall, the top half open. Through it the keep’s guardroom and the smell of horses there are none of.' },
+            ],
+            counters: [],
+            props: [
+                /* THE ROUND TABLE: no head, one candle ring, twelve chairs and the shadow count */
+                { key: 'round_table',    x: 0, z: 4, face: 0 },
+                { key: 'candle_ring',    x: 0, z: 4, y: 0.82 },
+                /* THE DAIS: the throne under the rose window, the braziers, the tapestries */
+                { key: 'royal_throne',   x: 0, z: -23.6, face: 180 },
+                { key: 'brazier',        x: -6, z: -23.6 }, { key: 'brazier', x: 6, z: -23.6 },
+                { key: 'stained_glass',  wall: 'n', x: 0, mount: 6.6 },
+                { key: 'holy_tapestry',  wall: 'n', x: -8, mount: 4.2 }, { key: 'holy_tapestry', wall: 'n', x: 8, mount: 4.2 },
+                /* THE WALLS: the torches, the banners, the armour by the dais */
+                { key: 'wall_torch',     wall: 'e', z: -6, mount: 2.2 }, { key: 'wall_torch', wall: 'e', z: 10, mount: 2.2 },
+                { key: 'wall_torch',     wall: 'w', z: -2, mount: 2.2 }, { key: 'wall_torch', wall: 'w', z: 14, mount: 2.2 },
+                { key: 'banner',         wall: 'e', z: 2 }, { key: 'banner', wall: 'e', z: 18 }, { key: 'banner', wall: 'w', z: -14 }, { key: 'banner', wall: 'w', z: 20 },
+                { key: 'armour_stand',   x: -11.4, z: -16, face: 90 }, { key: 'armour_stand', x: 11.4, z: -16, face: 270 },
+                /* THE GALLERY: the rail, the lectern, the chest under the stair */
+                { key: 'railing_1m',     x: 10.5, z: 10, face: 270 },
+                { key: 'lectern',        x: 10.5, z: -5, face: 270 },
+                { key: 'sea_chest',      x: -8.6, z: 24.4, face: 60 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 1.6, z: 7.6, face: 340, race: 'king arthur', say: ['“There is no head of this table.” “Then where do you sit?” “Wherever the head is not. It moves.”', '“Twelve chairs.” “I count twelve.” “Count the shadows.”'] },
+                { x: -3.4, z: 1.2, face: 60, race: 'knight', say: ['“The gallery is for the minstrels.” “There are no minstrels.” “Then it is for whoever is up there.”', '“The loft over the gallery has no stair.” “Then how is anything up there?” “Ask the Quartermaster for the gun.”'] },
+                { x: 10.5, z: 8, face: 270, race: 'robinhood', say: ['“Good view of the table from here.” “Of the chairs?” “Of the shadows.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Twelve chairs. Thirteen shadows.” “Whose is the thirteenth?” “Yours, when you sit. Nobody sits.”',
+                '“The throne faces the door.” “So the king sees who comes in.” “So the door sees the king.”',
+                '“The Lodge keeps the chairs and denies the table.” “Which is worse?” “Which is the Lodge.”',
+                '“The window shows a rose.” “At night?” “The window is lit from the far side. There is no far side.”',
+                '“Pull the sword and this chair is yours.” “Which chair?” “Whichever one is empty when you sit.”',
+            ],
+            spawn: { x: 0, z: 21, face: 0 },
+        },
+        /* ── THE KEEP — the guardroom, the great stair, the solar, the battlements, the tower top ── */
+        site_prebuilt_camelot_keep: {
+            label: 'CAMELOT · THE KEEP',
+            sub: 'THE GUARDROOM · THE GREAT STAIR · THE SOLAR · THE BATTLEMENTS · THE DOOR TO THE SKY',
+            kind: 'box', site: 'prebuilt_camelot', part: 'keep',
+            shell: {
+                w: 44, d: 44, h: 14,
+                wallH: 14, dadoH: 1.1,
+                floor: 'cobblestone', wall: 'castle_wall', dado: 'bricks_2', trim: 'wood', ceiling: 'dark_woods', ceilTile: 1.75,
+                floorColor: 0x9a948c, wallColor: 0x9c9ca4, dadoColor: 0x847a6e, ceilColor: 0x5a4030,
+                pipes: false, strips: false, lights: [],
+                mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xe8d8c0, ambient: 0.30 },
+                fog: { color: 0x0a0806, density: 0.016 },
+                plate: { x: 0, z: 20.6, y: 4.8 },
+                look: HQ_ROOM_LOOKS.keep,
+            },
+            /* THE FIELD (44 × 44 m — family C): a `halls` plan round two authored rooms — THE
+               GUARDROOM inside the ward's door and THE STAIRHALL (the BSP wraps them with the
+               stores, the armoury, the kitchen; the cycle rule gives every one two ways). THE
+               GREAT STAIR: a flight up to THE SOLAR (4.5 m) and a second across the hall to THE
+               BATTLEMENTS (9 m, against the north wall — the sky's door stands on them, y 9);
+               THE TOWER TOP off the battlements' east corner (12.5 m — the tape, the door gun's);
+               the hall's stable door on the east wall, the dungeon stair on the west. */
+            terrain: {
+                floor: 'cobblestone', cliff: 'castle_wall', path: 'wood_planks',
+                noise: { amp: 0, scale: 5 }, crag: false,
+                gen: { kind: 'halls', seed: 1187, loops: 3, wallKey: 'castle_wall', leafMin: 7, leafMax: 13,
+                       rooms: [{ id: 'guard', x: 0, z: 12, w: 16, d: 12 }, { id: 'stairhall', x: -2, z: -9, w: 34, d: 24 }] },
+                features: [
+                    { k: 'plateau', x: -10, z: -13, w: 12, d: 8, h: 4.5, edge: 0.3 },                                        // THE SOLAR (x −16..−4, z −17..−9)
+                    { k: 'ramp', x0: -10, z0: 0.6, x1: -10, z1: -9.7, w: 3, h0: 0, h1: 4.5, stairs: true, edge: 0.2 },       // THE GREAT STAIR, first flight (L ≥ 2.2 × h; ends 0.7 m inside)
+                    { k: 'plateau', x: 10, z: -16, w: 8, d: 12, h: 9.0, edge: 0.3 },                                         // THE BATTLEMENTS (x 6..14, z −22..−10 — against the north wall)
+                    { k: 'ramp', x0: -4.6, z0: -13, x1: 6.7, z1: -13, w: 3, h0: 4.5, h1: 9.0, stairs: true, edge: 0.2 },      // the second flight, across the hall (starts 0.6 m inside the solar, ends 0.7 m inside the battlements)
+                    { k: 'plateau', x: 15.4, z: -19, r: 1.4, h: 12.5, edge: 0.3 },                                           // THE TOWER TOP (the tape — the door gun's, from the battlements)
+                    { k: 'rail', x0: -8.2, z0: -9.4, x1: -4.4, z1: -9.4 },                                                   // the solar's rail, east of the flight (the grind)
+                    { k: 'rail', x0: 6.4, z0: -10.4, x1: 13.6, z1: -10.4 },                                                  // the battlements' rail
+                    { k: 'wall', x0: -6, z0: 17, x1: 6, z1: 17, h: 0.5, t: 0.5, key: 'wood' },                               // the guardroom's bench (the rider's ledge)
+                    { k: 'path', pts: [[0, 21], [0, 12], [0, 6], [-10, 2], [-10, 0.6]], w: 2.2 },                            // in, and to the stair's foot
+                    { k: 'path', pts: [[21, 6], [10, 6], [6, 8]], w: 2.0 },                                                  // the hall's door
+                    { k: 'path', pts: [[-21, -4], [-14, -2], [-10, 0.6]], w: 2.0 },                                          // the dungeon stair's door
+                    { k: 'path', pts: [[10, -21], [10, -14]], w: 2.0 },                                                      // across the battlements to the sky's door
+                ],
+            },
+            doors: [
+                { id: 'ward', wall: 's', x: 0, leaf: 'leaf_shabby_wood',
+                  label: 'THE OUTER WARD', sub: 'THE KEEP DOOR · BACK TO THE BAILEY',
+                  action: { room: 'site_prebuilt_camelot_ward', at: 'keep' },
+                  desc: 'The keep door from the guardroom side, with the bar across it and the bar’s bracket empty.' },
+                { id: 'hall', wall: 'e', z: 6, leaf: 'leaf_stable',
+                  label: 'THE GREAT HALL', sub: 'THE STABLE DOOR · THROUGH TO THE HALL',
+                  action: { room: 'site_prebuilt_camelot_hall', at: 'keep' },
+                  desc: 'The stable door from the keep side. Through the open top half: the round table, and the light off the rose window on it.' },
+                { id: 'dungeon', wall: 'w', z: -4, leaf: 'leaf_cell',
+                  label: 'MERLIN’S UNDERCROFT', sub: 'THE DUNGEON STAIR · DOWN',
+                  action: { room: 'site_prebuilt_camelot_dungeon', at: 'keep' },
+                  desc: 'A barred door at the foot of the great stair, going the other way. Cold comes up it, and a smell of candles that are not lit.' },
+                { id: 'sky', wall: 'n', x: 10, y: 9, leaf: null,
+                  label: 'THE CASTLE IN THE SKY', sub: 'FROM THE BATTLEMENTS · UP',
+                  action: { room: 'site_prebuilt_camelot_sky', at: 'keep' },
+                  desc: 'An opening in the battlements’ back wall with nothing behind it but cloud, lit from above. The sentry says it is a door. The sentry has not used it.' },
+            ],
+            counters: [],
+            props: [
+                /* THE GUARDROOM: the armour flanking the way in, the stocks, the bench, the torches on its plan walls */
+                { key: 'armour_stand',   x: -6, z: 7.2, face: 180 }, { key: 'armour_stand', x: 6, z: 7.2, face: 180 },
+                { key: 'stocks',         x: 6, z: 14.6, face: 270 },
+                { key: 'wall_torch',     x: -7.7, z: 12, face: 90, mount: 1.9 }, { key: 'wall_torch', x: 7.7, z: 10, face: 270, mount: 1.9 },
+                { key: 'banner',         x: -7.7, z: 15, face: 90, mount: 3.2 },
+                /* THE STAIRHALL: the braziers at the stair's foot, the torches on its walls, the armour under the stair */
+                { key: 'brazier',        x: -13, z: -5.6 }, { key: 'brazier', x: -7, z: -5.6 },
+                { key: 'wall_torch',     x: -18.7, z: -14, face: 90, mount: 1.9 }, { key: 'wall_torch', x: 14.7, z: -2, face: 270, mount: 1.9 },
+                { key: 'banner',         x: -18.7, z: -6, face: 90, mount: 3.4 }, { key: 'banner', x: 14.7, z: -6, face: 270, mount: 3.4 },
+                { key: 'armour_stand',   x: -16, z: -2, face: 90 },
+                /* THE SOLAR: the astrologer's desk, the shelf, the chest */
+                { key: 'lectern',        x: -12, z: -14.5, face: 0 },
+                { key: 'library_shelf',  x: -6, z: -16.4, face: 180 },
+                { key: 'sea_chest',      x: -14.5, z: -16, face: 30 },
+                /* THE BATTLEMENTS: the brazier, the rail */
+                { key: 'brazier',        x: 8.4, z: -12.4 },
+                { key: 'railing_1m',     x: 10, z: -10.7, face: 0 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 0, z: 15.2, face: 180, race: 'knight', say: ['“The great stair goes up.” “To the battlements?” “Past them. That is the complaint.”', '“Nobody comes down the dungeon stair.” “Nobody goes down it either.” “Somebody must. There is a wizard down there and he eats.”'] },
+                { x: -12.4, z: -12.4, face: 90, race: 'wizard', say: ['“The stars over the keep are wrong tonight.” “Wrong how?” “They are the stars over a different keep. It is above us, a third of the way up.”', '“I read the sky for the Crown.” “What does it say?” “That the Crown lapsed. It said so in 540. Nobody reads it.”'] },
+                { x: 11.6, z: -14.4, face: 0, race: 'swordfighter', say: ['“I stand here all night.” “Watching what?” “The door with nothing behind it. Something comes through it at dawn and goes back up.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“How many floors has the keep?” “Three.” “I count two.” “The third is not in the keep.”',
+                '“The battlements have a door in the back wall.” “Where does it go?” “Up.” “There is no up.” “There is if you go through.”',
+                '“The tower top has no stair.” “Then how did the flag get up there?” “The flag has always been up there.”',
+                '“The solar is the astrologer’s.” “What does he do?” “Reads the wrong sky, correctly.”',
+                '“The guardroom guards the door.” “Which door?” “Whichever one is open. They are all open.”',
+            ],
+            spawn: { x: 0, z: 18.6, face: 0 },
+        },
+        /* ── MERLIN'S UNDERCROFT — the cistern, the gaoler's ledge, the workshop and the orb, the ossuary shelf, the sally port ── */
+        site_prebuilt_camelot_dungeon: {
+            label: 'CAMELOT · MERLIN’S UNDERCROFT',
+            sub: 'THE CISTERN · THE CELLS · THE WORKSHOP · THE ORB · THE SALLY PORT',
+            kind: 'box', site: 'prebuilt_camelot', part: 'dungeon',
+            shell: {
+                w: 48, d: 36, h: 6,
+                wallH: 6, dadoH: 1.05,
+                floor: 'dungeon', wall: 'bricks_2', dado: 'bricks_2', trim: 'wood', ceiling: 'bricks_2', ceilTile: 1.75,
+                floorColor: 0x8a8880, wallColor: 0x8a8078, dadoColor: 0x6a6058, ceilColor: 0x4a4440,
+                pipes: false, strips: false, lights: [],
+                mood: { lamp: 0xffb060, glow: 0x9fd8c8, strip: 0xbfe8d8, light: 0xa8d0c8, ambient: 0.28 },
+                fog: { color: 0x050403, density: 0.03 },   /* the damp */
+                plate: { x: 21.4, z: -3.2, y: 3.6 },
+                look: HQ_ROOM_LOOKS.undercroft,
+            },
+            /* THE FIELD (48 × 36 m — family A): a `cave` plan in brick (the rock rises to the
+               ceiling in the wall sheet — the cellars of a castle are a cave somebody bricked);
+               the keep's stair comes in on the east wall, the sally port goes out on the west;
+               THE CISTERN at the centre (waded) behind its kerb (the rider's ledge); MERLIN'S
+               WORKSHOP on its raised floor in the east with THE ORB (the near weenie, the one
+               lit thing in the dark) and the crystals; THE GAOLER'S LEDGE (1.6 m) up its stair
+               in the west, the stocks under it; THE OSSUARY SHELF (4.2 m under a 6 m ceiling —
+               the tape, the door gun's). */
+            terrain: {
+                floor: 'dungeon', cliff: 'bricks_2', path: 'dungeon_2',
+                noise: { amp: 0.1, scale: 4 }, crag: false,
+                gen: { kind: 'cave', fill: 0.44, seed: 333, wallH: 6 },                                                     // THE FLOOR PLAN: brick masses between the ways, to the ceiling
+                features: [
+                    { k: 'pool', x: 0, z: 6, r: 4, y: -0.3, depth: 0.9 },                                                     // THE CISTERN (waded)
+                    { k: 'wall', x0: -4.5, z0: 1, x1: 4.5, z1: 1, h: 0.45, t: 0.4, key: 'bricks_2' },                        // its kerb (the grind)
+                    { k: 'plateau', x: 14, z: -8, w: 9, d: 7, h: 0.4, edge: 0.25 },                                          // MERLIN'S WORKSHOP (a raised floor, climbed)
+                    { k: 'plateau', x: -14, z: -10, r: 1.5, h: 4.2, edge: 0.3 },                                             // THE OSSUARY SHELF (the tape — the door gun's)
+                    { k: 'plateau', x: -14, z: 10, w: 6, d: 4, h: 1.6, edge: 0.3 },                                          // THE GAOLER'S LEDGE (z 8..12)
+                    { k: 'ramp', x0: -14, z0: 2.5, x1: -14, z1: 8.7, w: 2.4, h0: 0, h1: 1.6, stairs: true, edge: 0.2 },      // its stair (ends 0.7 m inside)
+                    { k: 'rail', x0: -11.4, z0: 8.5, x1: -11.4, z1: 11.6 },                                                  // the ledge's chain rail
+                    { k: 'path', pts: [[23, 0], [16, 0], [14, -4.5]], w: 2.0 },                                              // the keep's stair to the workshop
+                    { k: 'path', pts: [[16, 0], [8, -2], [0, -4], [-8, -2], [-14, 2.5]], w: 2.0 },                          // round the cistern to the ledge's stair
+                    { k: 'path', pts: [[-14, 2.5], [-20, 0], [-23, 0]], w: 2.0 },                                            // to the sally port
+                    { k: 'path', pts: [[0, -4], [-8, -8], [-12, -10]], w: 1.6 },                                             // to the ossuary's foot
+                    { k: 'scatter', key: 'skull_pile', n: 4, seed: 2 },
+                    { k: 'scatter', key: 'cave_stone', n: 5, seed: 3 },
+                ],
+            },
+            doors: [
+                { id: 'keep', wall: 'e', z: 0, leaf: 'leaf_cell',
+                  label: 'THE KEEP', sub: 'THE DUNGEON STAIR · UP',
+                  action: { room: 'site_prebuilt_camelot_keep', at: 'dungeon' },
+                  desc: 'The barred door at the top of the stair, from below. The bars are on this side, which is a comment.' },
+                { id: 'postern', wall: 'w', z: 0, leaf: 'leaf_shabby_wood',
+                  label: 'THE OUTER WARD', sub: 'THE SALLY PORT · OUT UNDER THE MOAT',
+                  action: { room: 'site_prebuilt_camelot_ward', at: 'postern' },
+                  desc: 'A low wet door at the end of the passage. It comes out in the trees outside the moat, dry, which is the trick of it.' },
+            ],
+            counters: [],
+            props: [
+                /* THE WORKSHOP: the orb, the crystals, the desk, the shelf, the chest */
+                { key: 'floating_orb',   x: 14, z: -9, face: 0 },
+                { key: 'crystal_cluster', x: 17.6, z: -6.4 }, { key: 'crystal_cluster', x: 11, z: -11 },
+                { key: 'lectern',        x: 11.6, z: -6.6, face: 90 },
+                { key: 'library_shelf',  x: 17.6, z: -10.6, face: 270 },
+                { key: 'sea_chest',      x: 11.4, z: -5.2, face: 20 },
+                /* THE CELLS: the stocks under the ledge, a sarcophagus nobody ordered, the skulls the scatter lays */
+                { key: 'stocks',         x: -8, z: 13, face: 0 },
+                { key: 'railing_1m',     x: -13.5, z: 11.4, face: 0 },                                               // THE PARK RULE's catalogue rail on the ledge
+                { key: 'sarcophagus',    x: -6, z: -14, face: 90 },
+                /* THE LIGHT: four torches on stakes; the orb and the crystals are the rest */
+                { key: 'cave_torch',     x: 20, z: 2.4 }, { key: 'cave_torch', x: -20, z: 2.4 },
+                { key: 'cave_torch',     x: -4, z: -13 }, { key: 'cave_torch', x: 6, z: 11 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 12.4, z: -9.6, face: 60, race: 'wizard', say: ['“.ngisllac ruoy wonk I” “What?” “Play it backwards. Everything down here is.”', '“The orb shows the future.” “Whose?” “Yours. It is mostly stairs.”'] },
+                { x: -8, z: 12, face: 0, race: 'skeleton', say: ['“I am in the stocks.” “For what?” “For being in the stocks. It is circular. So is the table.”'] },
+                { x: -18, z: -6, face: 90, race: 'ghost', say: ['“The cistern is the moat’s.” “The same water?” “The same water as the spring in the woods, and the well, and the sea. It is all one water. Do not drink it.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Merlin is under the castle.” “Alive?” “Backwards.”',
+                '“The sally port goes under the moat.” “Is it dry?” “The passage is dry. The moat is not. They have an arrangement.”',
+                '“The bones on the shelf.” “Whose?” “The thirteenth chair’s.”',
+                '“The orb is Continuity property.” “Then why is it here?” “Because it shows what Continuity denies. Both are true. Sign here.”',
+                '“Why brick a cave?” “So it stays a cave. Unbricked, it wanders.”',
+            ],
+            spawn: { x: 17, z: 2.4, face: 270 },
+        },
+        /* ── THE CASTLE IN THE SKY — the cloud deck, the floating court, the bailey and the keep in the air, the spire, the sky bridge ── */
+        site_prebuilt_camelot_sky: {
+            label: 'CAMELOT · THE CASTLE IN THE SKY',
+            sub: 'THE CLOUD DECK · THREE FLOATING FLIGHTS · THE SPIRE · THE SKY BRIDGE · CAMELOT, BELOW',
+            kind: 'box', site: 'prebuilt_camelot', part: 'sky',
+            shell: hqCastleShell({ sky: true, w: 64, d: 52, h: 20, wallH: 20, plate: { x: 0, z: 24.6, y: 5.2 } }),
+            /* THE FIELD (64 × 52 m — family A' with no thicket, the divine rule): the
+               battlements' door comes in on the south wall onto THE CLOUD DECK; THE FLOATING
+               PIECES climb from it — FLIGHT A up to THE LOWER COURT (3 m, the fountain), FLIGHT
+               B up to THE BAILEY IN THE AIR (6.5 m, the ruined arch and the armour), FLIGHT C
+               across to THE KEEP IN THE AIR (10 m, the gargoyles, the sentry dragon) with THE
+               SPIRE off its corner (14 m — the tape, the door gun's); every piece hung on its
+               own cloud, the deck cut away under it; every fall lands on the deck and walks
+               back to the first flight (the return guarantee runs the check). THE SKY BRIDGE
+               (links.skycastle_stair) is a frame on the east wall onto the stairway to heaven —
+               the same sky. Camelot stands on the horizon below (the far weenie faces back). */
+            terrain: {
+                floor: 'cloud_2', cliff: 'castle_wall', path: 'cobblestone',
+                noise: { amp: 0.25, scale: 7 },
+                gen: { kind: 'rooms', seed: 777, loops: 2, thicket: false, wallH: 2.4, rMin: 6, rMax: 11 },                 // THE FLOOR PLAN: cloud islands and cloud bridges — no trees in the sky
+                features: [
+                    { k: 'hill', x: -18, z: 14, r: 5, h: 0.9 },                                                              // the cloud mounds
+                    { k: 'hill', x: 20, z: -16, r: 4, h: 0.7 },
+                    { k: 'dip', x: 18, z: 12, r: 4, h: 0.6 },
+                    { k: 'ramp', x0: 0, z0: 20.5, x1: 0, z1: 12.3, w: 3.2, h0: 0, h1: 3.0, stairs: true, float: true },       // FLIGHT A (floating steps; ends 0.7 m inside the court)
+                    { k: 'plateau', x: 0, z: 8, w: 18, d: 10, h: 3.0, float: true },                                          // THE LOWER COURT (x −9..9, z 3..13) — a stone platform on its cloud
+                    { k: 'ramp', x0: -7, z0: 9.2, x1: -7, z1: 1.3, w: 3, h0: 3.0, h1: 6.5, stairs: true, float: true },        // FLIGHT B (L ≥ 2.2 × h; starts inside the court, ends 0.7 m inside the bailey)
+                    { k: 'plateau', x: -12, z: -4, w: 14, d: 12, h: 6.5, float: true },                                       // THE BAILEY IN THE AIR (x −19..−5, z −10..2)
+                    { k: 'ramp', x0: -5.6, z0: -8, x1: 4.7, z1: -8, w: 3, h0: 6.5, h1: 10.0, stairs: true, float: true },      // FLIGHT C, across the gap
+                    { k: 'plateau', x: 10, z: -12, w: 12, d: 12, h: 10.0, float: true },                                      // THE KEEP IN THE AIR (x 4..16, z −18..−6)
+                    { k: 'plateau', x: 14, z: -16, r: 1.3, h: 14.0, edge: 0.3, float: true },                                 // THE SPIRE off its corner (the tape — the door gun's)
+                    { k: 'rail', x0: 8.6, z0: 4, x1: 8.6, z1: 12 },                                                          // the court's east rim (the grind)
+                    { k: 'rail', x0: -18.6, z0: -9, x1: -18.6, z1: 1 },                                                      // the bailey's west rim
+                    { k: 'rail', x0: 4.5, z0: -17.6, x1: 12, z1: -17.6 },                                                    // the keep's north rim
+                    { k: 'path', pts: [[0, 25], [0, 20.5]], w: 2.0 },                                                        // the battlements' door onto the deck
+                    { k: 'path', pts: [[0, 12.3], [0, 9.2], [-7, 9.2]], w: 1.6 },                                            // across the court
+                    { k: 'path', pts: [[-7, 1.3], [-7, -8], [-5.6, -8]], w: 1.6 },                                           // across the bailey
+                    { k: 'path', pts: [[4.7, -8], [10, -8], [10, -12]], w: 1.6 },                                            // across the keep
+                    { k: 'path', pts: [[31, 8], [14, 16], [0, 20.5]], w: 1.8 },                                              // the sky bridge's frame to the first flight, on the deck
+                    { k: 'scatter', key: 'white_cloud', n: 5, seed: 4, r0: 0.2 },                                            // cloud puffs on the deck (foot 0)
+                ],
+            },
+            doors: [
+                { id: 'keep', wall: 's', x: 0, leaf: null,
+                  label: 'THE KEEP', sub: 'DOWN · TO THE BATTLEMENTS',
+                  action: { room: 'site_prebuilt_camelot_keep', at: 'sky' },
+                  desc: 'The opening from above: the battlements, the brazier, the sentry looking up at you. From here it is a hole in the cloud with a castle at the bottom of it.' },
+            ],
+            counters: [],
+            props: [
+                /* THE LOWER COURT: the fountain, the braziers */
+                { key: 'fountain',       x: 0, z: 8 },
+                { key: 'brazier',        x: -6, z: 12 }, { key: 'brazier', x: 6, z: 12 },
+                /* THE BAILEY IN THE AIR: the ruined arch, the armour that stayed */
+                { key: 'brick_arch',     x: -12, z: -4, face: 90 },
+                { key: 'armour_stand',   x: -16, z: -8.6, face: 90 }, { key: 'armour_stand', x: -8, z: -8.6, face: 270 },
+                /* THE KEEP IN THE AIR: the gargoyles, the braziers, the rail, the chest */
+                { key: 'demon_statue',   x: 5.6, z: -17.0, face: 180 }, { key: 'demon_statue', x: 15.2, z: -7.0, face: 0 },
+                { key: 'brazier',        x: 7, z: -8.6 }, { key: 'brazier', x: 13, z: -8.6 },
+                { key: 'railing_1m',     x: 8, z: -17.2, face: 0 },
+                { key: 'sea_chest',      x: 10, z: -14.6, face: 320 },
+                /* THE CLOUDS hung in the air (foot 0 — scenery), the sign at the foot */
+                { key: 'white_cloud',    x: -14, z: 20, y: 4.5 },
+                { key: 'white_cloud',    x: 22, z: 0, y: 7.0 },
+                { key: 'white_cloud',    x: -24, z: -14, y: 9.5 },
+                { key: 'white_cloud',    x: 4, z: -22, y: 15.5 },
+                { key: 'white_cloud',    x: 24, z: -20, y: 12.0 },
+                { key: 'white_cloud',    x: -6, z: -20, y: 5.5 },
+                { key: 'signpost',       x: 2.6, z: 23 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 10, z: -10.4, face: 180, race: 'dragon', say: ['“A castle in the sky has a dragon. It is in the brief.” “Whose brief?” “The sky’s.”', '“Do not fall.” “What happens if I fall?” “You land on a cloud and walk back. It is a long walk. I am not going to carry you.”'] },
+                { x: -3, z: 6, face: 90, race: 'fairy', say: ['“The fountain is the same water as the moat.” “From up here?” “Water does not care about up.”', '“The spire has no stair.” “Nothing up here has a stair.” “The flights are stairs.” “The flights are a suggestion.”'] },
+                { x: 3, z: 22.4, face: 300, race: 'knight', say: ['“I came up through the battlements.” “And?” “And I have been standing here deciding whether the first step holds.” “Does it?” “Every time. That is what worries me.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“What holds the castle up?” “The cloud.” “What holds the cloud up?” “The castle. It is a very old arrangement.”',
+                '“Camelot is down there.” “Which one?” “The one we came from.” “That is the one down there. This is the other one.”',
+                '“The frame on the east wall.” “Where does it go?” “To a stair in the same sky. Heaven’s. It only goes up.” “And this one?” “This one only goes up too. From different directions.”',
+                '“Nobody built this.” “Then who lit the braziers?” “The dragon. Nobody built the dragon either.”',
+                '“The spire has the tape on it.” “How do I get it?” “You don’t. The gun does.”',
+            ],
+            spawn: { x: 0, z: 23.4, face: 0 },
+        },
+        /* ═══════════════════════════════════════════════════════════════════
            AREA 51 — THE BASE ABOVE THE BASE (2026-09-18 — the user: "still need
            to add the Area 51 with the hangar and white padded rooms and other
            stuff"): three parts on Room 51, on THE HALLS blueprint (D.U.M.B.'s)
@@ -34752,11 +35325,11 @@ const HQ_TAPE_KINDS = ['evidence', 'parents', 'facility'];
 const HQ_TAPE_SHEET = {
     prebuilt_dumb:        [['THE LIFT LOG', 'Sub-level 7 does not exist. The lift stops there anyway.', 'facility'], ['THE BLAST DOOR, 03:14', 'Nine seconds of a door opening from the other side. Nobody comes through.', 'evidence']],
     prebuilt_cern:        [['A BADGE ON THE FLOOR', 'Your mother’s badge. The photo has been cut out.', 'parents']],   // THE VATICAN (2026-09-17): BEAM DUMP went to the cortile
-    prebuilt_backrooms:   [['HUM, LEVEL 0', 'Forty seconds of carpet. Something in the wallpaper blinks.', 'evidence'], ['THE EXIT SIGN', 'It points the wrong way every time the tape loops.', 'facility']],
+    prebuilt_backrooms:   [['HUM, LEVEL 0', 'Forty seconds of carpet. Something in the wallpaper blinks.', 'evidence']],   // CAMELOT CASTLE (2026-09-18): THE EXIT SIGN went to the outer ward
     prebuilt_nuketown:    [['THE MANNEQUINS, 05:29', 'They face the blast. On the second pass they face the camera.', 'evidence']],   // AREA 51 (2026-09-18): TEST CARD went to the white rooms
     prebuilt_stadium:     [['THE CROWD NOISE', 'Eighty thousand voices. The seats are empty.', 'evidence']],   // DISASTER CITY (2026-09-17): HALF-TIME went out to the streets
     prebuilt_camelot:     [['THE ROUND TABLE', 'Twelve chairs. Thirteen shadows.', 'evidence']],   // THE VATICAN (2026-09-17): SNOW ON THE BATTLEMENTS went to the basilica
-    prebuilt_atlantis:    [['SONAR, 0400', 'Something answers the ping. It answers in a voice.', 'evidence'], ['THE PEARL DIVER', 'A woman surfacing with something in her hand. She is not wearing a suit.', 'parents']],
+    prebuilt_atlantis:    [['SONAR, 0400', 'Something answers the ping. It answers in a voice.', 'evidence']],   // CAMELOT CASTLE (2026-09-18): THE PEARL DIVER went to the undercroft
     prebuilt_hell:        [['THE FISSURE', 'Heat shimmer over the causeway. The shimmer has a face.', 'evidence']],   // THE DIVINE STAIR (2026-09-17): FORM 666 went down to the pit
     prebuilt_technoticlan: [['MOTHER', 'Nine frames of a woman at a console. The console is the one in Room 1337.', 'parents']],   // THE SECOND PASS (2026-09-17): THE UPLINK went to the grid
     prebuilt_agartha:     [['THE ADIT', 'A lamp moving through the crystal. Nobody carries it.', 'evidence']],   // THE VATICAN (2026-09-17): THE GREAT DOOR went to the archive
@@ -34779,9 +35352,9 @@ const HQ_TAPE_SHEET = {
     prebuilt_gobekli:     [['THE PILLARS', 'Carvings of animals. On the loop, one animal has moved.', 'evidence']],   // AREA 51 (2026-09-18): its second tape went to the hangar
     prebuilt_northpole:   [['THE WORKSHOP', 'Benches, tools, no one. A bell rings on the ceiling.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base
     prebuilt_flatlands:   [['THE EDGE', 'A camera on a tripod at the edge. There is an edge.', 'evidence']],   // THE SECOND PASS (2026-09-17): THE FOURTH CORNER went to the supply closet
-    prebuilt_revenge:     [['THE HELM', 'The wheel turns itself into the storm. The compass points down.', 'evidence'], ['THE CAPTAIN’S TABLE', 'A log open on the table. The last entry is dated tomorrow.', 'evidence']],
-    prebuilt_derelict:    [['THE BRIDGE', 'A dead console lights up when the camera enters. It shows a door.', 'evidence'], ['CRYO', 'A dark bay of pods. One is warm.', 'evidence']],
-    prebuilt_lookingglass: [['THE TEA PARTY', 'A table set for four. The cups fill in the wrong order.', 'evidence'], ['THE MIRROR', 'A mirror that shows the corridor behind the camera. There is no corridor.', 'facility']],
+    prebuilt_revenge:     [['THE HELM', 'The wheel turns itself into the storm. The compass points down.', 'evidence']],   // CAMELOT CASTLE (2026-09-18): THE CAPTAIN’S TABLE went to the great hall
+    prebuilt_derelict:    [['THE BRIDGE', 'A dead console lights up when the camera enters. It shows a door.', 'evidence']],   // CAMELOT CASTLE (2026-09-18): CRYO went to the keep
+    prebuilt_lookingglass: [['THE TEA PARTY', 'A table set for four. The cups fill in the wrong order.', 'evidence']],   // CAMELOT CASTLE (2026-09-18): THE MIRROR went to the castle in the sky
     prebuilt_haunted:     [['THE STAIRCASE', 'A figure on the landing for one frame. The frame is at 0:03 every loop.', 'evidence'], ['THE NURSERY', 'A cot, a mobile turning. A voice singing your name.', 'parents']],
     prebuilt_lodge:       [['THE EYE', 'A painting on the wall. Its eye is a camera. Its camera is this tape.', 'facility'], ['THE MINUTES', 'A meeting in the lodge. The minutes list the Department as an item.', 'facility']],
     prebuilt_singularity: [['THE DROP', 'Eight seconds of falling. The camera never lands.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base
@@ -34848,6 +35421,13 @@ const HQ_TAPE_SHEET = {
     site_prebuilt_dumb_warroom:   [['THE HEXAGON', 'The pole’s storm on the big board. It is a door seen edge-on. Someone has circled it in grease pencil.', 'evidence']],
     site_prebuilt_dumb_bunker:    [['EARTHRISE', 'A window eighty metres under. The Earth rises in it, the wrong colour. The window is a screen and the screen is right.', 'evidence']],
     site_prebuilt_cern_ring:      [['BEAM ON', 'The ring at full power for one frame. In the frame the ring is a door, and it is ajar.', 'evidence']],
+    /* CAMELOT CASTLE (2026-09-18 — complex candidate #2): one per part — five re-homed (the Backrooms', Atlantis's, the Dutchman's, the Spaceship's and the
+       Looking-Glass's second — the hundred stays a hundred; the castle keeps THE ROUND TABLE on its board) */
+    site_prebuilt_camelot_ward:    [['THE DRAWBRIDGE, DUSK', 'The drawbridge comes down for nobody. Something crosses it anyway; the planks bow under it in order.', 'evidence']],
+    site_prebuilt_camelot_hall:    [['THE THIRTEENTH CHAIR', 'Twelve chairs at the table, and the camera counts thirteen shadows. In the last frame one of them stands up.', 'evidence']],
+    site_prebuilt_camelot_keep:    [['THE WATCH', 'A sentry on the battlements looks up all night. In the last minute something in the sky looks back, and it has windows.', 'facility']],
+    site_prebuilt_camelot_dungeon: [['MERLIN, BACKWARDS', 'An old man in the undercroft, speaking. Played in reverse he is saying your callsign, and a date that has not happened.', 'parents']],
+    site_prebuilt_camelot_sky:     [['THE CASTLE IN THE SKY', 'A castle over the clouds, filmed from below. Then from above. There was nowhere to film it from above.', 'evidence']],
     /* AREA 51 (2026-09-18): one per part — three re-homed (Gobekli's, Nuketown's and Bermuda's second; the hundred stays a hundred) */
     site_prebuilt_area51_hangar:     [['HANGAR 18, 03:00', 'The tarp comes off the rig by itself. Under the tarp, the rig. Under the rig, the floor lift, going down.', 'evidence']],
     site_prebuilt_area51_ward:       [['ROOM 5150-B', 'A white room with no door. The camera is on the inside. So, on the second pass, are you.', 'parents']],
@@ -35128,6 +35708,12 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     /* D.U.M.B. (9.3 stage 8, 2026-09-17): the signal gantry, the tower, the dream tower, the vat stack, the projection booth, the safe stack, the beam dump — the door gun's seven */
     site_prebuilt_dumb_motorpool: { tape: { x: -8.0, z: 6.0 } },
     site_prebuilt_dumb_sublevel7: { tape: { x: 0.0, z: 0.0 } },
+    /* CAMELOT CASTLE (2026-09-18): the keep tower, the loft over the gallery, the tower top, the ossuary shelf, the spire — the door gun's five */
+    site_prebuilt_camelot_ward:    { tape: { x: 12.0, z: -33.0 } },
+    site_prebuilt_camelot_hall:    { tape: { x: 10.5, z: -9.0 } },
+    site_prebuilt_camelot_keep:    { tape: { x: 15.4, z: -19.0 } },
+    site_prebuilt_camelot_dungeon: { tape: { x: -14.0, z: -10.0 } },
+    site_prebuilt_camelot_sky:     { tape: { x: 14.0, z: -16.0 } },
     site_prebuilt_dumb_dreamlab:  { tape: { x: -18.0, z: -5.0 } },
     site_prebuilt_dumb_clonevats: { tape: { x: 2.0, z: 6.0 } },
     site_prebuilt_dumb_warroom:   { tape: { x: 19.0, z: 0.0 } },
@@ -38488,7 +39074,7 @@ if (typeof window !== 'undefined') {
     window.HQ_TERRAIN_RULES = HQ_TERRAIN_RULES; window.HQ_TERRAIN_GEN = HQ_TERRAIN_GEN; window.HQ_ROOM_LOOKS = HQ_ROOM_LOOKS; window.hqTerrainMaskAt = hqTerrainMaskAt; window.hqTerrainOpenAt = hqTerrainOpenAt; window.hqTerrainRooms = hqTerrainRooms; window.hqTerrainInfo = hqTerrainInfo; window.hqTerrainTraps = hqTerrainTraps; window.hqTerrainCompile = hqTerrainCompile; window.hqTerrainSolidAt = hqTerrainSolidAt; window.hqTerrainSolidTop = hqTerrainSolidTop;
     window.hqTerrainHeight = hqTerrainHeight; window.hqTerrainSlope = hqTerrainSlope; window.hqTerrainFeet = hqTerrainFeet; window.hqTerrainAir = hqTerrainAir; window.hqTerrainCam = hqTerrainCam;
     window.hqTerrainFluidAt = hqTerrainFluidAt; window.hqTerrainWallAt = hqTerrainWallAt; window.hqTerrainDoorY = hqTerrainDoorY; window.hqTerrainReach = hqTerrainReach; window.hqTerrainNodeKey = hqTerrainNodeKey;
-    window.hqTerrainDoorLanding = hqTerrainDoorLanding; window.hqTerrainDump = hqTerrainDump; window.hqCityShell = hqCityShell; window.hqAirbaseShell = hqAirbaseShell; window.hqSiteEntry = hqSiteEntry; window.hqSiteEntryOf = hqSiteEntryOf; window.hqApplySiteEntries = hqApplySiteEntries; window.hqFindHardReachTerrain = hqFindHardReachTerrain; window.hqTerrainFindSpot = hqTerrainFindSpot; window._hqTPolyDist = _hqTPolyDist; window._hqTEllipse = _hqTEllipse; window._hqTRectIn = _hqTRectIn; window._hqTRamp = _hqTRamp;   // THE FLOATING PIECES (2026-09-18): the renderer's underFloat cut reads the same frames the compiler does
+    window.hqTerrainDoorLanding = hqTerrainDoorLanding; window.hqTerrainDump = hqTerrainDump; window.hqCityShell = hqCityShell; window.hqAirbaseShell = hqAirbaseShell; window.hqCastleShell = hqCastleShell; window.hqSiteEntry = hqSiteEntry; window.hqSiteEntryOf = hqSiteEntryOf; window.hqApplySiteEntries = hqApplySiteEntries; window.hqFindHardReachTerrain = hqFindHardReachTerrain; window.hqTerrainFindSpot = hqTerrainFindSpot; window._hqTPolyDist = _hqTPolyDist; window._hqTEllipse = _hqTEllipse; window._hqTRectIn = _hqTRectIn; window._hqTRamp = _hqTRamp;   // THE FLOATING PIECES (2026-09-18): the renderer's underFloat cut reads the same frames the compiler does
     /* THE DOOR GUN (HQ plan 9.5, 2026-09-15 rev 13) */
     window.HQ_PORTAL_RULES = HQ_PORTAL_RULES; window.hqPortalRecord = hqPortalRecord; window.hqPortalStatus = hqPortalStatus; window.hqPortalIssue = hqPortalIssue;
     window.hqPortalPlace = hqPortalPlace; window.hqPortalClear = hqPortalClear; window.hqPortalLeaf = hqPortalLeaf; window.hqPortalNextSlot = hqPortalNextSlot; window.hqPortalTwin = hqPortalTwin; window.hqPortalSafeRoom = hqPortalSafeRoom; window.hqPortalDoorsIn = hqPortalDoorsIn;

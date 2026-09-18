@@ -204,7 +204,7 @@ test('THE SEAMS: the crypt link (vatican_hell) joins the catacombs’ east wall 
     assert.ok(HQ.ways.telescope && HQ.ways.telescope.verb === 'LOOK' && HQ.ways.telescope.sfx === 'wayScope', 'the way is catalogued with its verb and its sound');
     for (const l of [crypt]) { assert.ok(!(HQ.catalogue[l.leaf] || {}).rank, l.id + ': never a rank leaf'); const x = at(D.hqLinkRoom(l.a), 'link_' + l.id), y = at(D.hqLinkRoom(l.b), 'link_' + l.id); assert.equal(x.leaf, l.leaf); assert.equal(y.leaf, l.leaf); }
     const line = D.hqWorldRoutes(CATACOMBS).find(r => r.id === 'divine');
-    assert.ok(line && line.legs.length === 4, 'four legs on the divine line');
+    assert.ok(line && line.legs.length === 5, 'five legs on the divine line (CAMELOT CASTLE, 2026-09-18: THE SKY BRIDGE from the castle in the sky onto the stairway is the fifth)');
     assert.ok(line.legs.some(l => l.fromRoom === CATACOMBS && l.toRoom === PIT) && line.legs.some(l => (l.fromRoom === DOME && l.toRoom === STAIR) || (l.fromRoom === STAIR && l.toRoom === DOME)), 'the crypt’s seam and the telescope’s');
 });
 

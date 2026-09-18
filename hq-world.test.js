@@ -273,7 +273,7 @@ test('world graph reflects real directed doors and repeated reads do not change 
  const seen=new Set([moon]), todo=[moon];while(todo.length){const at=todo.pop();for(const e of edges.filter(e=>e.from===at))if(!seen.has(e.to)){seen.add(e.to);todo.push(e.to);}}
  assert.ok(seen.has(saturn));assert.ok(seen.size>=5,'the Moon reaches Saturn and on down the line (rev 7: the lunar route joins the world)');
  const house='site_prebuilt_haunted_upstairs', seen2=new Set([house]), todo2=[house];while(todo2.length){const at=todo2.pop();for(const e of edges.filter(e=>e.from===at))if(!seen2.has(e.to)){seen2.add(e.to);todo2.push(e.to);}}
- assert.ok(seen2.has(D.hqSiteRoomId('prebuilt_camelot')),'the wardrobe is an edge of the world graph');
+ assert.ok(seen2.has('site_prebuilt_camelot_ward'),'the wardrobe is an edge of the world graph (CAMELOT CASTLE, 2026-09-18: it opens in THE OUTER WARD’s trees — the board room is bypassed)');
  assert.ok(graph.edges.some(e=>e.from==='site_prebuilt_hollow_earth_shaft' && e.to==='site_prebuilt_haunted_cellar' && e.link==='well_cellar'),'and so is the well, both ways (rev 10: into the cave\u2019s well room)');
  assert.deepEqual(plain(D.hqWorldGraph()),plain(graph));assert.equal(JSON.stringify(HQ.rooms),before);
 });

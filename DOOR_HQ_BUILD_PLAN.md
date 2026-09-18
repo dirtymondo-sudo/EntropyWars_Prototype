@@ -9712,6 +9712,10 @@ RULE, the hard tapes, `check-terrain.js` before any claim. The aesthetic is the 
    the metro stair, the Strip's and the Stadium's seams, the gutter into the storm drain.**
 2. **CAMELOT CASTLE** — the exterior (moats, gardens, the curtain wall) and an interior of several floors;
    possibly a castle in the sky (Howl's moving castle).
+   **STARTED 2026-09-18 (CAMELOT CASTLE, the entry at the end of this file): five parts shipped locally on Room i —
+   THE OUTER WARD (the moat, the drawbridge, the curtain wall's parapet walk, the bailey, the keep tower), THE GREAT HALL,
+   THE KEEP (the great stair to the battlements), MERLIN'S UNDERCROFT, THE CASTLE IN THE SKY (three floating flights, the
+   sky bridge onto the stairway to heaven) — three families in one complex; the board room bypassed.**
 3. **THE TUNNELS / THE DUNGEONS** — every subway tunnel, the sewer system (the storm drain), the dungeons
    (24601, the oubliette) joined into one underworld.
 4. **HEAVEN · HELL · THE VATICAN · THE CATACOMBS · THE STAIRWAY TO HEAVEN** — one epic-fantasy complex, the
@@ -9725,7 +9729,7 @@ RULE, the hard tapes, `check-terrain.js` before any claim. The aesthetic is the 
    all black budget projects and organizations. Area 51, CERN, Dream Research, Psychic Training, Clone Research,
    A Billionaire Bunker, Government War Room, it's all there" — and "the most Portal map".
 6. **DOOR MANUFACTURING** — the service hallways, the warehouse, the Works: what keeps D.O.O.R. running.
-#1 has its second pass and CYBERPUNK CITY (the entry above); #4 started; the rest not. Each needs its own `HQ_ROOM_LOOKS` row, its own sky / fog, its links on the
+#1 has its second pass and CYBERPUNK CITY (the entry above); #2, #4 and #5 started; #3 and #6 not. Each needs its own `HQ_ROOM_LOOKS` row, its own sky / fog, its links on the
 world graph and the 7.10 checklist for any new site it introduces.
 
 
@@ -10068,3 +10072,90 @@ more so a crossing from the side never meets the leaf; and Portal's physics — 
   barrel that still lands backward is `turn: 0`), its size in the viewmodel, the 150° leaf against each wall sheet, the far
   ghost's legibility at 100 m, the fling's feel out of a wall twin.
 
+### 2026-09-18 — CAMELOT CASTLE (THE COMPLEX CANDIDATES #2): five parts on Room i, three families, the board bypassed (local delivery)
+
+The user's brief (the candidate list): "the exterior (moats, gardens, the curtain wall) and an interior of several floors;
+possibly a castle in the sky (Howl's moving castle)". Built on THE CAVE / THE WOODS blueprint and EXPLORABLE_AREAS_GUIDE
+§3's build order: the story beats first, a family per part, the weenies before the plan, `node check-terrain.js` before
+any claim.
+
+**THE STORY BEATS**: arrive through the portcullis on the approach south of the moat → see THE CASTLE IN THE SKY over the
+wall (the far weenie) and THE KEEP TOWER at the end of the avenue (the near one) → cross THE DRAWBRIDGE through THE
+GATEHOUSE → the bailey: THE SWORD IN THE STONE, THE WELL (the undercroft's seam), the rampart stairs up to THE PARAPET WALK →
+THE GREAT HALL (THE ROUND TABLE, the throne, the gallery) → THE KEEP's GREAT STAIR up to THE SOLAR and THE BATTLEMENTS →
+the opening in the battlements' back wall → THE CASTLE IN THE SKY (three floating flights up to the keep in the air and its
+dragon; THE SKY BRIDGE onto the stairway to heaven) — or down the dungeon stair to MERLIN'S UNDERCROFT (THE ORB, the
+cistern, the ossuary) and out under the moat by THE SALLY PORT. The complex is a cycle (ward → hall → keep → ward; keep ⇄
+undercroft ⇄ ward; keep ⇄ sky ⇄ heaven's stair).
+
+**THE PARTS** (data.js, the block before AREA 51's; `hqCastleShell(o)` beside the airbase shell — Camelot's own night off
+its EW_MAP_META row, a fog per metre, grass, the castle wall as the cliff sheet, a treeline, torchlight, the `skycastle`
+landmark; `sky: true` = dawn above the clouds, cloud underfoot, the floating-islands roster, Camelot on the horizon below):
+- `site_prebuilt_camelot_ward` — THE OUTER WARD, 96 × 80, open, `rooms` (rMin 7 / rMax 14, the hedges and the orchard the
+  thicket). THE MOAT = a `deep_water` stream in a U round the bailey (never entered); THE DRAWBRIDGE = a `deck` spanning both
+  banks; THE CURTAIN WALL = four `wall` rows (5.5 m, `castle_wall`) whose tops are a floor once the feet reach them — two
+  rampart stairs up to wall-top terraces at the south corners make THE PARAPET WALK (walked end to end on both long walls
+  and along the south wall, 5.6 m; a grind the whole way); THE GATEHOUSE = two plateau towers (8 m) on the gap; THE KEEP
+  TOWER (9 m, the tape) beside the hall door; the sword's knoll; the tracks outside the moat to the wardrobe's snow (west
+  wall) and the sally port. `weenie: { far: skycastle (deg 28, y 0.3), near: THE KEEP TOWER, seen from: bay }`.
+- `site_prebuilt_camelot_hall` — THE GREAT HALL, 26 × 52 × 12, closed, NO plan (family B): THE DAIS (0.9) with the throne
+  under the rose window, THE ROUND TABLE (the new proc) with its candle ring, THE MINSTRELS' GALLERY (3.5 m along the east
+  wall up its stair), THE LOFT over it (8 m — the tape, shot from the gallery), the trestle bench (a low wall — the rider's
+  ledge), the Lodge's saloon door + the keep's stable door on the west wall. `weenie: { near: the throne under the lit
+  window, seen from: ward }`.
+- `site_prebuilt_camelot_keep` — THE KEEP, 44 × 44 × 14, closed, `halls` round THE GUARDROOM and THE STAIRHALL (the BSP
+  fills the stores round them; THE CYCLE RULE holds): THE GREAT STAIR 0 → 4.5 (THE SOLAR) → 9 (THE BATTLEMENTS, against the
+  north wall — the sky's door stands on them, `y: 9`), THE TOWER TOP (12.5 m — the tape). `weenie: { near: the braziers at
+  the stair's foot and the light of the sky door above, seen from: ward }`.
+- `site_prebuilt_camelot_dungeon` — MERLIN'S UNDERCROFT, 48 × 36 × 6, closed, `cave` bricked to the ceiling (`bricks_2`
+  the cliff sheet): THE CISTERN (waded) behind its kerb, THE GAOLER'S LEDGE (1.6) up its stair, MERLIN'S WORKSHOP on a
+  raised floor with THE ORB and the crystals, THE OSSUARY SHELF (4.2 m — the tape). `weenie: { near: THE ORB, seen from:
+  keep }`.
+- `site_prebuilt_camelot_sky` — THE CASTLE IN THE SKY, 64 × 52 × 20, open, `rooms` with no thicket (the divine rule):
+  THE FLOATING PIECES (`float: true`) — FLIGHT A → THE LOWER COURT (3, the fountain), FLIGHT B → THE BAILEY IN THE AIR
+  (6.5), FLIGHT C → THE KEEP IN THE AIR (10, the gargoyles, the dragon), THE SPIRE (14 — the tape); every fall lands on the
+  cloud deck and walks back to the first flight (two rescue ramps cut). `weenie: { far: castle (Camelot below, deg 180),
+  near: THE SPIRE over the keep in the air, seen from: keep }`.
+
+**THE ENTRY**: `siteRooms.entry.prebuilt_camelot` → the ward (bay s x 0); `backDoors.prebuilt_camelot` = the gatehouse arch
+on the board's freed lane (n x −10). **THE SEAMS RE-POINTED** (one row edit each, never a duplicate): `fairy_camelot.b` = a
+FREE pool on the moat's west bank in the ward; `haunted_camelot.b` = the ward's west wall (z 28, the snow in the trees);
+`well_camelot.a` = FREE in the bailey; `camelot_lodge.a` = the hall's west wall. **NEW**: `links.skycastle_stair` (route
+`divine`, `leaf_frame_only`) — the sky castle's east wall ⇄ the stairway's west wall (z 21, by the long way's foot): the
+divine line gains a station.
+
+**RULES LEARNED**: (1) **a terrain `wall`'s top is the HIGHEST ground under it + h** (`hqTerrainCompile`: `gmax + w.h`) —
+a wall that runs through a plateau's footprint stands that plateau's height too tall along its WHOLE run (the south curtain
+walls ran through the gatehouse towers and read 13.5 m; they end at the towers' OUTER edges now, the towers fill the gap) and a wall on a moat's bank sags with the bank (the long walls moved 2 m in); (2) the parapet walk works by the
+step rule alone — a plateau at the wall's height abutting the wall, then the top is a floor; (3) a door landing 2.4 m in
+must not stand on a low `wall` row (the hall's bench moved south of its two west doors).
+
+**THE KIT** (three-renderer.js `_hqProcBuilders`): `round_table` · `banner` (wall) · `armour_stand` · `sword_stone` (lit);
+`_hqLandmarkBuilders.skycastle` = the castle builder on a cloud isle. Catalogue rows in data.js. MODEL_INDEX §3l has the
+wishlist (a portcullis, a drawbridge, battlement sections, a gargoyle).
+
+**LOOKS**: `HQ_ROOM_LOOKS.camelot` (dream, blue night, bloom 0.3) · `greathall` (amber) · `keep` (faded stone) ·
+`undercroft` (green-dark) · `skycastle` (dream, bloom 0.5, no night).
+
+**TAPES**: one per part, five re-homed (the Backrooms' THE EXIT SIGN, Atlantis's THE PEARL DIVER, the Dutchman's THE
+CAPTAIN'S TABLE, the Spaceship's CRYO, the Looking-Glass's THE MIRROR — every donor keeps one; the hundred stays a hundred);
+`findSpots` pins the five hard tapes (the keep tower, the loft, the tower top, the ossuary shelf, the spire); every one
+unreached by the walker with a shot from reached ground (`hqFindHardReachTerrain`). The board keeps THE ROUND TABLE (the
+bypassed-board rule — filing it into the ward is still the next thing to do for every bypassed site).
+
+**TESTS**: `hq-camelot.test.js` (9: the sheet, the weenies, the entry + the seams, one piece, the plans, the solver + the
+return guarantee + the production landing, the rooms — the parapet walk, the tiers, the tapes — the park rule + the lights +
+the hard tapes, the helper + the procs + the landmark + check-terrain on all five); amended: hq-terrain (41 rooms),
+hq-floor-plan (35 planned), disaster-city-3 (the entry list), hq-woods (the pool on the ward), hq-world (the wardrobe's
+edge). `check-terrain.js`: every door reached in all five, traps 0, the keep 0 dead ends. Focused run: hq-camelot 9 / 9; the sixteen suites the change touches + doorhq + hq-divine 116 / 116 after two amendments (the false `wide` on `leaf_shabby_wood`, the divine line's fifth leg). The full `node --test *.test.js` result is recorded in the commit that follows this one.
+
+**DELIVERY**: `ENTROPY_WARS_CAMELOT_CASTLE.zip` — data.js → R2 AND Render (the finds ledger), three-renderer.js → R2,
+index.html → Render (`20260918-camelot-castle-01-cors`), hq-camelot.test.js + the amended tests + CLAUDE.md +
+DOOR_HQ_BUILD_PLAN.md + EXPLORABLE_AREAS_GUIDE.md + MODEL_INDEX.md → the repo.
+
+**UNSEEN LIVE (RULE #1c)**: all of it — first the parapet walk's read on the wall tops (the wall's top is drawn at the
+compiled `top`; the field under the terraces), the moat's stone banks in `castle_wall`, the drawbridge deck over deep
+water, the gatehouse towers' scale against the 5.5 m wall, the sky castle's size and height over the ward (`s` 0.6 / `y`
+0.3 on the landmark row are the edits), the round table's chairs against the cast rigs, the banners' colours, the sword's
+glow, THE GREAT STAIR's second flight crossing the stairhall in the air, the floating pieces in `castle_wall` on their
+clouds, Camelot on the sky castle's horizon, the brick cave under the green grade.

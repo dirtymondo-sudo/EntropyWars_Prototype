@@ -5515,3 +5515,28 @@ near flat and stands open from the landing (`_hqTickDoors`); the room's own door
 hatch the whole entry speed comes out (`C.max`, not 12). `npm test` runs hq-portal.test.js (22). UNSEEN LIVE (RULE #1c): the
 grip / barrel on the rigs (`gun.turn` / `pos` / `rot`), the leaf at 150°, the far ghost, the fling.
 
+## CAMELOT CASTLE — five parts on Room i, three families, the board bypassed (complex candidate #2, HQ plan 9.3 stage 9) — 2026-09-18, local delivery
+Built on THE CAVE / THE WOODS blueprint (EXPLORABLE_AREAS_GUIDE). data.js, the block before AREA 51's; `hqCastleShell(o)`
+beside the airbase shell (Camelot's own night off its EW_MAP_META row — hq-camelot.test.js diffs them — a treeline, torchlight,
+the `skycastle` landmark; `sky: true` = dawn above the clouds, cloud underfoot, the `islands` roster, Camelot on the horizon
+below). **THE OUTER WARD** (`site_prebuilt_camelot_ward`, open, `rooms`): THE MOAT (a `deep_water` stream, never entered),
+THE DRAWBRIDGE (a `deck` spanning both banks), THE CURTAIN WALL (four `wall` rows, 5.5 m, `castle_wall`) whose TOPS are
+THE PARAPET WALK — two rampart stairs up to wall-height terraces at the south corners, then the top is a floor and a grind
+the whole way; THE GATEHOUSE (two plateau towers), THE SWORD IN THE STONE, THE WELL free in the bailey, THE KEEP TOWER (9 m,
+the tape) beside the hall door. **THE GREAT HALL** (closed, NO plan — family B): THE ROUND TABLE, THE DAIS + the throne under
+the rose window, THE MINSTRELS' GALLERY (3.5) up its stair, THE LOFT (8 m, the tape), the Lodge's door + the keep's stable
+door on the west wall. **THE KEEP** (closed, `halls` round the guardroom + the stairhall): THE GREAT STAIR 0 → 4.5 (THE SOLAR)
+→ 9 (THE BATTLEMENTS against the north wall — the sky's door stands ON them, `y: 9`, `leaf: null`), THE TOWER TOP (12.5, the
+tape). **MERLIN'S UNDERCROFT** (closed, `cave` bricked to the ceiling): the cistern waded, the gaoler's ledge, THE ORB, THE
+OSSUARY SHELF (4.2, the tape), the sally port out under the moat. **THE CASTLE IN THE SKY** (open, `rooms`, no thicket): THE
+FLOATING PIECES 0 → 3 → 6.5 → 10 m, THE SPIRE (14, the tape), THE SKY BRIDGE = `links.skycastle_stair` (route `divine`,
+`leaf_frame_only`) onto the stairway to heaven's west wall. `siteRooms.entry.prebuilt_camelot` → the ward; the four seams
+that stood on the board RE-POINTED (`fairy_camelot.b` a free pool on the moat's bank, `haunted_camelot.b` the ward's west
+wall, `well_camelot.a` free in the bailey, `camelot_lodge.a` the hall's west wall); `backDoors.prebuilt_camelot` the
+gatehouse arch. **RULES**: a terrain `wall`'s top is the HIGHEST ground under it + h — never end a wall inside a plateau's
+footprint or on a moat's bank; a door landing never stands on a low `wall` row. Procs `round_table` / `banner` (wall) /
+`armour_stand` / `sword_stone`; landmark `skycastle` (the castle builder on a cloud). Looks `camelot` / `greathall` / `keep`
+/ `undercroft` / `skycastle`. Five tapes re-homed (the Backrooms', Atlantis's, the Dutchman's, the Spaceship's, the
+Looking-Glass's second). `npm test` runs `hq-camelot.test.js`; hq-terrain 41 rooms, hq-floor-plan 35 planned. Ship data.js
+to Render too. UNSEEN LIVE (RULE #1c): all of it — DOOR_HQ_BUILD_PLAN §9's entry lists what to eyeball first. Next in the
+candidate list: #3 THE TUNNELS / THE DUNGEONS, #6 DOOR MANUFACTURING.
